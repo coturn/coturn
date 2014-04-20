@@ -1,5 +1,5 @@
 #summary turnserver wiki page
-#labels Version-3.2.3.5
+#labels Version-3.3.0.0
 
 ==turnserver application: a TURN relay server implementation==
 
@@ -153,7 +153,7 @@ The "white" and "black" peer IP ranges can be dynamically changed in the databas
     
 === PERFORMACE OPTIMIZATION AND LOAD BALANCE ===
 
-[http://code.google.com/p/rfc5766-turn-server/wiki/turn_performance_and_load_balance PERFORMACE OPTIMIZATION AND LOAD BALANCE WIKI PAGE]
+[http://code.google.com/p/coturn/wiki/turn_performance_and_load_balance PERFORMACE OPTIMIZATION AND LOAD BALANCE WIKI PAGE]
 
 === WEBRTC USAGE ===
 
