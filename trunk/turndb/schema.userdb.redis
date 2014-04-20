@@ -1,0 +1,132 @@
+
+I. The database
+
+Redis database for user authentication and peer permissions 
+has the following schema:
+
+1) For the long-term credentials there must be keys 
+"turn/realm/<realm-name>/user/<username>/key" and the values must be 
+the the hmackeys. For example, for the user "gorst", realm "north.gov" 
+and password "hero", there must be key "turn/realm/north.gov/user/gorst/key" 
+with value "7da2270ccfa49786e0115366d3a3d14d". Alternatively, the password 
+may be stored in clear text format. Then the key will be 
+"turn/realm/north.gov/user/gorst/password" and the key will be simply "hero".
+
+2) For the short-term credentials, the passwords are stored always in
+clear text format, with no realm name (because the short-term credentials 
+are not bound to a realm). So, there will be key "turn/user/gorst/password" 
+and the value will be "hero".
+
+3) For the shared secrets (REST API), several key/value pairs 
+may be used (same as in SQL schema). The key will be 
+"turn/realm/<realm-name>/secret/<arbitrary secret ID>" and the value will be 
+"<secret>". For example, if we have secrets "hero1", "hero2" and "hero3", 
+then we will have keys "turn/realm/north.gov/secret/123",
+"turn/realm/north.gov/secret/234", "turn/realm/north.gov/secret/345" 
+and their values will be  "hero1", "hero2", "hero3". The turnserver will 
+issue command "keys turn/realm/north.gov/secret/*" it it will try to use the 
+obtained keys in arbitrary order.
+
+4) The "white" and "black" peer IP ranges are stored as keys of the
+following form: "turn/allowed-peer-ip/<arbitrary>" or 
+"turn/denied-peer-ip/<arbitrary>"
+
+The meaning of the keys is the same as the meaning of allowed-peer-ip and
+denied-peer-ip turnserver command-line option. The only difference is that 
+the option values are "static" (they remain the same for the lifetime of 
+the turnserver process) but the database records can be dynamically changed 
+and they will be almost immediately "seen" by the turnserver process.
+
+II. Extra realms data in the database
+
+We can use more than one realm with the same instance of the TURN server.
+This is done through the ORIGIN mechanism - users with different ORIGINS
+are placed into different realms. The database includes information about the
+relationships between the ORIGIN and realms, and about the extra realms
+database numbers.
+	The relationship between ORIGIN and realm is set as keys of form:
+"turn/origin/<origin>" with the realm-names as the value. Many different
+ORIGIN keys may have the same realm. If the ORIGIN value is not found in 
+the database or the ORIGIN field is missed in the initial allocate 
+request, then the default realm is assumed.
+
+III) Example of a Redis default user database setup.
+
+This example sets user database for:
+
+  * long-term credentials with hashed passwords and 
+  	with default realm "north.gov";
+  * long-term credentials with open passwords and 
+  	with default realm "north.gov";
+  * TURN REST API with shared secret "logen";
+  * short-term credentials mechanism, with open passwords;
+  * Black and white IP peer lists used.
+  * Information how to match ORIGIN field with extra
+    realms (if used). If no origin match found
+    or the ORIGIN field is absent in the ALLOCATE request then the default 
+    realm is used.
+  * The realm performance parameters: "max_bps", 
+  	"total_quota" and "user_quota" (same names as the turnserver 
+  	configuration options, with the same meanings).
+  
+The shell command would be:
+
+$ redis-cli <<!
+
+SELECT 2
+AUTH turn
+
+set turn/realm/north.gov/user/ninefingers/key "bc807ee29df3c9ffa736523fb2c4e8ee"
+set turn/realm/north.gov/user/gorst/key "7da2270ccfa49786e0115366d3a3d14d"
+set turn/realm/crinna.org/user/whirrun/key "6972e85e51f36e53b0b61759c5a5219a"
+set turn/realm/crinna.org/user/stranger-come-knocking/key "d43cb678560259a1839bff61c19de15e"
+
+set turn/realm/north.gov/user/ninefingers/password "youhavetoberealistic"
+set turn/realm/north.gov/user/gorst/password "hero"
+set turn/realm/crinna.org/user/whirrun/password "sword"
+set turn/realm/crinna.org/user/stranger-come-knocking/password "civilization"
+
+set turn/realm/north.gov/secret/1368426581 "logen"
+set turn/realm/crinna.org/secret/777888999 "north"
+
+set turn/user/ninefingers/password "youhavetoberealistic"
+set turn/user/gorst/password "hero"
+set turn/user/whirrun/password "sword"
+set turn/user/stranger-come-knocking/password "civilization"
+
+set turn/realm/north.gov/max-bps 500000
+set turn/realm/north.gov/total-quota 12000
+set turn/realm/north.gov/user-quota 10000
+set turn/realm/crinna.org/max-bps 400000
+set turn/realm/crinna.org/total-quota 10000
+set turn/realm/crinna.org/user-quota 8000
+
+set turn/origin/http://crinna.org:80 crinna.org
+set turn/origin/https://bligh.edu:443 crinna.org
+
+set turn/denied-peer-ip/123456 "172.17.13.133-172.17.14.56"
+set turn/denied-peer-ip/234567 "123::45"
+
+set turn/allowed-peer-ip/345678 "172.17.13.200"
+
+save
+
+!
+
+IV. Redis database configuration parameters
+
+TURN Server connects to the Redis and keeps the same connection during the 
+TURN server lifetime. That means that we have to take care about that 
+connection - it must not expire.
+
+You have to take care about Redis connection parameters, the timeout and the 
+keepalive. The following settings must be in your Redis config file
+(/etc/redis.conf or /usr/local/etc/redis.conf):
+
+..........
+timeout 0
+..........
+tcp-keepalive 60
+..........
+
+ 

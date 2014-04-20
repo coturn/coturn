@@ -1,0 +1,38 @@
+Redis database for allocation statuses and for event notifications 
+has the following schema:
+
+1) The allocation status is stored as keys "turn/user/<username>/allocation/<id>/status", 
+and the values may be "new lifetime=..." or "refreshed lifetime=...". There may be multiple 
+allocations under the same user name.
+
+2) Additionally, the same information is reported through the "publish" mechanism. 
+The same keys are used and the same status is reported, with the addition of status "deleted".
+The user session that is interested in those statuses, must subscribe to the events as:
+
+	psubscribe turn/realm/*/user/*/allocation/*/status
+
+3) Allocation traffic information is reported through the "publish" mechanism.
+The keys are "turn/user/<username>/allocation/<id>/traffic". The application that is interested 
+in the traffic information must subscribe to the events as:
+
+	psubscribe turn/realm/*/user/*/allocation/*/traffic
+	
+Or, to receive all allocation events:
+
+	psubscribe turn/realm/*/user/*/allocation/*
+
+4) Redis database configuration parameters
+
+TURN Server connects to the Redis and keeps the same connection during the 
+TURN server lifetime. That means that we have to take care about that 
+connection - it must NOT expire.
+
+You have to take care about Redis connection parameters, the timeout and the 
+keepalive. The following settings must be in your Redis config file
+(/etc/redis.conf or /usr/local/etc/redis.conf):
+
+..........
+timeout 0
+..........
+tcp-keepalive 60
+..........

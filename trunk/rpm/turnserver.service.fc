@@ -1,0 +1,15 @@
+[Unit]
+Description=coturn
+Documentation=man:coturn(1) man:turnadmin(1) man:turnserver(1)
+After=syslog.target network.target
+
+[Service]
+Type=forking
+EnvironmentFile=/etc/sysconfig/turnserver
+PIDFile=/var/run/turnserver.pid
+ExecStart=/usr/bin/turnserver -o -c /etc/turnserver/turnserver.conf $EXTRA_OPTIONS
+ExecStopPost=/usr/bin/rm -f /var/run/turnserver.pid
+Restart=on-abort
+
+[Install]
+WantedBy=multi-user.target

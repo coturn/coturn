@@ -1,0 +1,128 @@
+==================================================================
+
+###   I. PLATFORMS SUPPORT   ###
+
+==================================================================
+
+1) Fedora official package (turnserver or coturn ? TBD).
+
+2) MS Windows support.
+
+	Cygwin is supported. A "real" MS-Windows port would 
+	involve a usable GUI.
+
+==================================================================
+
+###   II. DOCS   ###
+
+==================================================================
+
+1) User's manual.
+
+2) Developer's manual.
+
+==================================================================
+
+###   III. NETWORK ENGINE   ###
+
+==================================================================
+
+1) Exclusive IP addresses for relay
+
+==================================================================
+
+###   IV. PERFORMANCE OPTIMIZATION   ###
+
+==================================================================
+
+1) A smarter load balancer has to be implemented.
+
+	The load balancer has to have a heartbeat channels with 
+	the slave servers, currently it is only just a dumb 
+	round-robin load distributor.
+
+2) For a large enterprise, a user-space stack to be integrated.
+
+	An another socket abstraction to be implemented, 
+	the one that uses the user-space TCP/IP stack with 
+	zero memory copy. This is an ambitious goal that would 
+	increase the system scaleability, significantly. 
+	The stock TCP/IP stack in UNIX and in MS Windows do not 
+	scale gracefully. We are trying to suppress those issues 
+	in the TURN Server, by using an advanced synchronous 
+	I/O technique, but still the underlying stock TCP/IP stack 
+	is a limitation.  
+	
+3) Multiple authentication threads.
+
+==================================================================
+
+###   V. SECURITY   ###
+
+==================================================================
+
+1) RADIUS integration ?
+
+2) Watch new TURN security draft. oAuth integration.
+
+==================================================================
+
+###   VI. STANDARDS SUPPORT   ###
+
+==================================================================
+
+1) Follow the draft ICE endpoint mobility standard and add changes 
+when necessary:
+
+   https://ietf.org/doc/draft-wing-mmusic-ice-mobility/
+
+2) For extra difficult NAT/FWs, consider implementing Websockets.
+
+3) MS TURN, MS STUN extensions.
+
+4) Bandwidth draft.
+
+5) ALPN with TLS and DTLS.
+
+6) Redirect draft.
+
+==================================================================
+
+###   VII. MISC FEATURES   ###
+
+==================================================================
+
+1) Locale support (?).
+
+	Currently we assume that all text data is 8-bits ASCII 
+	encoded, like C locale. It would be nice to support localized
+	strings (both 8-bits and 2-bytes). But I am not sure 
+	whether this is really important, given the essentially
+	backend nature of the TURN Server. The TURN server is so 
+	deeply "hidden" in the network infrastructure that the 
+	significant code complication may be unjustified.
+
+2) HTTP or GUI status monitor and management.
+
+	For enterprise users, a management (configuration, status 
+	and statistics) GUI has to be implemented. Currently, all 
+	these features are available through the shell command 
+	line, telnet client and through Redis command line.
+
+3) Traffic recording (for selected allocations).
+
+	That would be a helpful feature for a large enterprise 
+	(for testing and security purposes). 
+
+4) Ganglia monitoring.
+
+==================================================================
+
+###   VIII. CODING STUFF   ###
+
+==================================================================
+
+Nope
+
+==================================================================
+
