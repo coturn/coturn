@@ -1,0 +1,16 @@
+#summary turnutils_peer wiki page
+#labels Version-2.6.1.4
+
+== turnutils_peer  application (for test purposes ony) ==
+turnutils_peer is a simple UDP-only echo backend server. This application is used for the test purposes only, as a '_peer_'  for the _turnutils_uclient_ application.
+
+===Usage:===
+{{{
+       $ turnutils_peer [-v] [options]
+}}}
+===Options:===
+
+ *      *-p* {{{<port>}}}     Listening	UDP port (Default: 3480).
+ *      *-d* {{{<device-name>}}}     Listening	interface device (optional, Linux only)
+ *      *-L* {{{<ip>}}}     Listening	address	of _turnutils_peer_	server. Multiple listening addresses can be used, IPv4 and IPv6. If no listener address(es) defined, then it listens on all IPv4 and IPv6 addresses.
+ *      *-v*     Verbose

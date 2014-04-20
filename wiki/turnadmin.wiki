@@ -1,0 +1,77 @@
+#summary turnadmin wiki page
+#labels Version-3.2.3.1
+
+== turnadmin application: a TURN relay administration tool==
+
+===Usage:===
+{{{
+       $ turnadmin [command] [options]
+       $ turnadmin [ -h	| --help]
+}}}
+===Commands:===
+
+ * *-k,* *--key* Generate key for a long-term credentials mechanism user.
+ * *-a,* *--add* Add or update a long-term user.
+ * *-A,* *--add-st* Add or update a short-term credentials mechanism user.
+ * *-d,* *--delete* Delete a long-term user.
+ * *-D,* *--delete-st* Delete a short-term user.
+ * *-l,* *--list* List all long-term users.
+ * *-L,* *--list-st* List all short-term users.
+ * *-s,* *--set-secret=...* Set secret in the database.
+ * *-S,* *--show-secret* Show secret stored in database.
+ * *-X,* *--delete-secret* {{{<secret>}}}	Delete a shared secret.
+ * *--delete-all-secrets*	Delete all shared secrets for REST API.
+
+===Options:===
+
+ * *-b,* *--userdb* {{{<file-name>}}} 'Dynamic' user database file name (default - turnuserdb.conf).
+ * *-e,* *--psql-userdb,* *--sql-userdb* {{{<connection-string>}}} PostgreSQL database connection string.
+ * *-M,* *--mysql-userdb* {{{<connection-string>}}} MySQL database connection string.
+ * *-N,* *--redis-userdb* {{{<connection-string>}}} Redis database connection string.
+ * *-u,* *--user* {{{<user>}}}   User name.
+ * *-r,* *--realm* {{{<realm>}}}    Realm.
+ * *-p,* *--password* {{{<password>}}} Password.
+ * *-H,* *--sha256*	Use SHA256 as the keys hash function (a non-standard feature). By default, MD5 is used for the key storage encryption (as required by the current STUN/TURNstandards).
+ * *-h,* *--help* Help.
+
+===Generate a key:===
+{{{
+       $ turnadmin -k -u <username> -r <realm> -p <password>
+}}}
+===Add/update a user (and realm) in the userdb file:===
+{{{
+       $ turnadmin -a [-b <userdb-file> | -e <db-connection-string> | -M <db-connection-string>  | -N <db-connection-string> ] -u <username>	-r <realm>  -p	<password>
+}}}
+===Delete a user from the userdb file:===
+{{{
+       $ turnadmin -d [-b <userdb-file> | -e <db-connection-string> | -M <db-connection-string>  | -N <db-connection-string> ] -u <username>
+}}}
+===List all long-term users in MySQL database:===
+{{{
+$ turnadmin -l --mysql-userdb="<db-connection-string>"
+}}}
+===List all short-term users in PostgreSQL database:===
+{{{
+$ turnadmin -L --psql-userdb="<db-connection-string>"
+}}}
+===List all long-term users in Redis database:===
+{{{
+$ turnadmin -l --redis-userdb="<db-connection-string>"
+}}}
+===Set secret:===
+{{{
+$ turnadmin -s <secret> --mysql-userdb="<db-connection-string>"
+}}}
+===Show secret(s):===
+{{{
+$ turnadmin -S --psql-userdb="<db-connection-string>"
+}}}
+===Show secret(s):===
+{{{
+$ turnadmin -S --redis-userdb="<db-connection-string>"
+}}}
+
+===Help:===
+{{{
+       $ turnadmin -h
+}}}

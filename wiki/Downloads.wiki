@@ -1,4 +1,136 @@
-#summary One-sentence summary of this page.
-#labels Downloads,Featured
+#summary Downloads Page
+#labels Version-3.2.3.5,Featured
 
-= TODO =
+== Latest official recommended version - 3.2.3.5: ==
+
+  * Mobile allocation quota fixed (issue 121);
+  * *--simple-log* option added (Issue 122);
+  * documentation fixes (REST API, Redis).
+
+[http://turnserver.open-sys.org/downloads/v3.2.3.5/ 3.2.3.5 Version Downloads (full source and platform builds)]
+
+[http://turnserver.open-sys.org/downloads/ Main Downloads Page (with all recent versions)]
+
+[http://www.olegmoskalenko.com/turnserver/ Backup Downloads Page]
+
+== Older versions ==
+
+=== 3.2.3.4: ===
+
+  * Mobile TCP sessions fixed (Issue 120);
+  * log information improvements.
+
+[http://turnserver.open-sys.org/downloads/v3.2.3.4/ v3.2.3.4]
+
+=== 3.2.3.3: ===
+
+  * Pkey and cert file descriptors to be closed on initialization (issue 118);
+  * Address bind indefinite cycle on start-up fixed (Issue 119);
+  * Allocation counters time lag improved.
+
+[http://turnserver.open-sys.org/downloads/v3.2.3.3/ v3.2.3.3]
+
+=== 3.2.3.2: ===
+
+  * Allocation counters fixed (Issue 117);
+  * a possible core dump in the server code fixed;
+  * a possible memory leak in server fixed.
+
+[http://turnserver.open-sys.org/downloads/v3.2.3.2/ v3.2.3.2]
+
+=== 3.2.3.1: ===
+
+  * TCP congestion avoidance completed.
+  * Read and write streams are treated separately in bandwidth control algorithms.
+  * Test client fixed.
+  * Experimental SHA256 key storage supported, for experimental HMAC-SHA256 long-term mechanism extension.
+
+[http://turnserver.open-sys.org/downloads/v3.2.3.1/ v3.2.3.1]
+
+=== 3.2.2.912: ===
+
+  * TCP-in-TCP congestion avoidance implemented.
+  * UDP-in-TCP congestion avoidance improved.
+  * Alternate-server code cleaned.
+
+[http://turnserver.open-sys.org/downloads/v3.2.2.912/ v3.2.2.912]
+
+=== 3.2.2.911: ===
+
+  * "Congestion control" for UDP-inside-TCP tunneling;
+  * memory management improvements;
+  * socket logging improvements;
+  * debug info added to CentOS and Fedora RPMs;
+  * TCP traffic buffering improved;
+  * Thread barriers cleaned;
+  * TCP memory leak fixed;
+  * minor TCP test client improvement.
+
+[http://turnserver.open-sys.org/downloads/v3.2.2.911/ v3.2.2.911]
+
+=== 3.2.2.910: ===
+
+  * Log messages extended and cleaned.
+  * Some memory cleaning.
+
+[http://turnserver.open-sys.org/downloads/v3.2.2.910/ v3.2.2.910]
+
+=== 3.2.2.9: ===
+
+  * Issue 113: TCP relay rate control fixed;
+  * Issue 114: TCP relay stability fixes.
+
+[http://turnserver.open-sys.org/downloads/v3.2.2.9/ v3.2.2.9]
+
+=== 3.2.2.8: ===
+
+  * Issue 102: SO_BSDCOMPAT socket option removed;
+  * Issue 104: check for the REALM attribute value;
+  * Issue 105: no-cli segfault fixed;
+  * Issue 106: MESSAGE-INTEGRITY removed from DATA indication;
+  * Issue 108: Server should return 438 on unknown nonce;
+  * Issue 109: make the random functions stronger (mostly for transaction ID and for nonce);
+  * Issue 111: fix valgrind warning on memory initialization.
+  * Issue 112: RTCP sockets logging.
+
+[http://turnserver.open-sys.org/downloads/v3.2.2.8/ v3.2.2.8]
+
+=== 3.2.2.7: ===
+
+  * Possible indefinite cycle fixed in TCP/TCP routing (Issue 99);
+  * Address 0.0.0.0 can be used as a listener address (Issue 100);
+  * DHCP-configured servers supported (Issue 101).
+  * Debian and Ubuntu INSTALL file fixed (Issue 103)
+
+[http://turnserver.open-sys.org/downloads/v3.2.2.7/ v3.2.2.7]
+
+=== 3.2.2.6: ===
+
+  * Channel traffic memory copy elimination.
+  * Send indication memory copy elimination.
+  * DTLS traffic processing memory copy eliminated.
+  * Mobility forbidden error code number fixed - according to the new draft document.
+  * getsockname() usage minimized.
+  * port allocation improved.
+  * default relay behavior fixed (when no relay addresses defined).
+  * atomic create permission request handling (Issue 97).
+
+[http://turnserver.open-sys.org/downloads/v3.2.2.6/ v3.2.2.6]
+
+=== 3.2.2.5: ===
+
+  * CPU & RAM Optimization
+  * License cleaned in the platform builds
+
+[http://turnserver.open-sys.org/downloads/v3.2.2.5/ v3.2.2.5]
+
+=== 3.2.2.4 ===
+
+  * Fixes the major security issues 95 and 96
+  * Fixes the minor issues 93 and 94
+
+[http://turnserver.open-sys.org/downloads/v3.2.2.4/ v3.2.2.4]
+
+== Legacy versions ==
+
+[http://code.google.com/p/rfc5766-turn-server/downloads/list?can=1&q=&colspec=Version+Filename+Summary+Uploaded+Size Legacy Downloads Page]

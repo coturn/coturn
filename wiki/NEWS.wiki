@@ -1,0 +1,25 @@
+#summary News log
+#labels 02222014
+
+== 02/22/2014 ==
+=== Version 3.2.2.8 ===
+
+Many issues were fixed in 3.2.2.8.
+
+[https://code.google.com/p/rfc5766-turn-server/wiki/newDownloadsSite download]
+
+== 02/09/2014 ==
+=== Standard and Enterprise editions ===
+
+There is a significant movement toward updating and revising the TURN and STUN standards:
+
+http://www.ietf.org/mail-archive/web/tram/current/maillist.html
+
+We have two contradicting goals: to support the existing TURN users with the best quality product, and to keep the project up-to-date to the new standards. We decided to split the code into the "classic" "standard" TURN edition (that is the maintenance version of the existing rfc5766-turn-server project) and the mainline development version that is supposed to incorporate all new and cool features of the evolving standards - and that development line will eventually form the "enterprise" edition of the project, with a different project name. The tentative new project name is "coturn". We are going to keep them both on the same existing project site and we will release them separately and independently on the same download site.
+
+The standard edition is the exisiting code version 3.2.x.x, and the code is available from this SVN branch: [http://rfc5766-turn-server.googlecode.com/svn/v3.2 Standard Edition Code Repository]. This code will be updated only for the bug fixes, and the corresponding new maintenance releases will be issued. The current latest release is 3.2.2.6. For most users in the near future, the "standard" edition will be the right solution.
+
+The enterprise edition code will start as version 3.3.x.x, and the code is in the trunk branch: [http://rfc5766-turn-server.googlecode.com/svn/trunk Enterprise Edition Code Repository]. The first enterprise edition release will come approximately in a few weeks. It will include two new related major features:
+
+  # "Origin" TURN attribute support
+  # Multi-tenant TURN server.
