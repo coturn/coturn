@@ -1,9 +1,9 @@
 #summary top-level readme doc
-#labels Featured,Version-3.2.2.3
+#labels Featured,Version-3.3.0.0
 
 == GENERAL INFORMATION ==
 
-[http://code.google.com/p/rfc5766-turn-server/wiki/newDownloadsSite?tm=2 Project Downloads]
+[http://code.google.com/p/coturn/wiki/Downloads?tm=2 Project Downloads]
 
        The  *TURN Server* project contains the source code of a TURN server and
        TURN client messaging library. Also, some extra programs	provided,  for
@@ -51,7 +51,7 @@
        $ turnserver -h
 }}}
 
-[http://code.google.com/p/rfc5766-turn-server/wiki/turnserver TURNSERVER WIKI PAGE]
+[http://code.google.com/p/coturn/wiki/turnserver TURNSERVER WIKI PAGE]
 
 === turnadmin application: a TURN relay administration tool===
 
@@ -61,7 +61,7 @@
        $ turnadmin [ -h	| --help]
 }}}
 
-[http://code.google.com/p/rfc5766-turn-server/wiki/turnadmin TURNADMIN WIKI PAGE]
+[http://code.google.com/p/coturn/wiki/turnadmin TURNADMIN WIKI PAGE]
 
 === turnutils_uclient application (for test purposes only)===
   It was designed to simulate multiple clients. It uses asynch IO API in  libevent to  handle  multiple  clients. A  client connects to the relay, negotiates the session, and sends	multiple  (configured  number) messages	to  the	 server	 (relay), expecting the	same number of replies. The length of the messages is configurable.   The  message is an arbitrary octet stream, but it	can be configured as a string.  The number of the messages to send is configurable.
@@ -71,7 +71,7 @@
        $ turnutils_uclient [-tSvsyhcxg] [options]	<TURN-Server-IP-address>
 }}}
 
-[http://code.google.com/p/rfc5766-turn-server/wiki/turnutils_uclient UCLIENT WIKI PAGE]
+[http://code.google.com/p/coturn/wiki/turnutils_uclient UCLIENT WIKI PAGE]
 
 === turnutils_peer  application (for test purposes ony) ===
 turnutils_peer is a simple UDP-only echo backend server. This application is used for the test purposes only, as a '_peer_'  for the _turnutils_uclient_ application.
@@ -81,7 +81,7 @@ turnutils_peer is a simple UDP-only echo backend server. This application is use
        $ turnutils_peer [-v] [options]
 }}}
 
-[http://code.google.com/p/rfc5766-turn-server/wiki/turnutils_peer PEER WIKI PAGE]
+[http://code.google.com/p/coturn/wiki/turnutils_peer PEER WIKI PAGE]
 
 === turnutils_stunclient is a basic STUN client ===
 It sends a STUN request and shows the reply information.
@@ -91,7 +91,7 @@ It sends a STUN request and shows the reply information.
        $ turnutils_stunclient [options] <STUN-Server-IP-address>
 }}}
 
-[http://code.google.com/p/rfc5766-turn-server/wiki/turnutils_stunclient STUNCLIENT WIKI PAGE]
+[http://code.google.com/p/coturn/wiki/turnutils_stunclient STUNCLIENT WIKI PAGE]
 
 === turnutils_rfc5769check tests the correctness of STUN protocol ===
 It tests the protocol implementation against the test vectors predefined in RFC 5769 and prints the results of the tests on the screen.   
@@ -101,7 +101,7 @@ It tests the protocol implementation against the test vectors predefined in RFC 
 $ turnutils_rfc5769check
 }}}
 
-[http://code.google.com/p/rfc5766-turn-server/wiki/turnutils_rfc5769check PROTOCOL CHECK UTILITY WIKI PAGE]
+[http://code.google.com/p/coturn/wiki/turnutils_rfc5769check PROTOCOL CHECK UTILITY WIKI PAGE]
 
 
 == LIBRARIES ==
@@ -157,7 +157,7 @@ it would affect the performance.
 
 == Performance tuning ==
 
-[http://code.google.com/p/rfc5766-turn-server/wiki/turn_performance_and_load_balance Performance Optimization and Load Balance WIKI PAGE]
+[http://code.google.com/p/coturn/wiki/turn_performance_and_load_balance Performance Optimization and Load Balance WIKI PAGE]
 
 == FILES ==
 
@@ -189,7 +189,7 @@ A REST API For Access To TURN Services draft-uberti-behave-turn-rest-00
 
 == WEB RESOURCES ==
 
-project page: http://code.google.com/p/rfc5766-turn-server/
+project page: http://code.google.com/p/coturn/
 
 forum: https://groups.google.com/forum/?fromgroups=#!forum/turn-server-project-rfc5766-turn-server/
 
