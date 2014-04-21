@@ -275,26 +275,67 @@ For the user database, the turnserver has the following options:
   # Users can be stored in PostgreSQL database, if the turnserver was compiled with PostgreSQL support. Each time turnserver checks user credentials, it reads the database (asynchronously, of course, so that the current flow of packets is not delayed in any way), so any change in the database content is immediately visible by the turnserver. This is the way if you need the best scalability. The schema for the SQL database can be found in schema.sql file:
 
 {{{
+# Table for long-term credentials mechanism authorization:
+#
 CREATE TABLE turnusers_lt (
-    name varchar(512) PRIMARY KEY,
-    hmackey char(32)
+    realm varchar(512),
+    name varchar(512),
+    hmackey char(128),
+    PRIMARY KEY (realm,name)
 );
 
+# Table for short-term credentials mechanism authorisation:
+#
 CREATE TABLE turnusers_st (
     name varchar(512) PRIMARY KEY,
     password varchar(512)
 );
 
+# Table holding shared secrets for secret-based authorization
+# (REST API). It can only be used together with the long-term 
+# mechanism:
+#
 CREATE TABLE turn_secret (
-    value varchar(512)
+	realm varchar(512),
+    value varchar(512),
+	primary key (realm,value)
 );
 
+# Table holding "white" allowed peer IP ranges.
+#
 CREATE TABLE allowed_peer_ip (
-	ip_range varchar(256)
+	ip_range varchar(256),
+	primary key (ip_range)
 );
 
+# Table holding "black" denied peer IP ranges.
+#
 CREATE TABLE denied_peer_ip (
-	ip_range varchar(256)
+	ip_range varchar(256),
+	primary key (ip_range)
+);
+
+# Table to match origin to realm.
+# Multiple origins may have the same realm.
+# If no realm is found or the origin is absent
+# then the default realm is used.
+#
+CREATE TABLE turn_origin_to_realm (
+	origin varchar(512),
+	realm varchar(512),
+	primary key (origin,realm)
+);
+
+# Realm options.
+# Valid options are 'max-bps',
+# 'total-quota' and 'user-quota'.
+# Values for them are integers (in text form).
+#
+CREATE TABLE turn_realm_option (
+	realm varchar(512),
+	opt varchar(32),
+	value varchar(128),
+	primary key (realm,opt)
 );
 }}}
 
@@ -308,16 +349,36 @@ CREATE TABLE denied_peer_ip (
 {{{
 $ redis-cli <<!
 
-SELECT 0
+SELECT 2
 AUTH turn
 
-set turn/user/ninefingers/key "bc807ee29df3c9ffa736523fb2c4e8ee"
-set turn/user/gorst/key "7da2270ccfa49786e0115366d3a3d14d"
+set turn/realm/north.gov/user/ninefingers/key "bc807ee29df3c9ffa736523fb2c4e8ee"
+set turn/realm/north.gov/user/gorst/key "7da2270ccfa49786e0115366d3a3d14d"
+set turn/realm/crinna.org/user/whirrun/key "6972e85e51f36e53b0b61759c5a5219a"
+set turn/realm/crinna.org/user/stranger-come-knocking/key "d43cb678560259a1839bff61c19de15e"
+
+set turn/realm/north.gov/user/ninefingers/password "youhavetoberealistic"
+set turn/realm/north.gov/user/gorst/password "hero"
+set turn/realm/crinna.org/user/whirrun/password "sword"
+set turn/realm/crinna.org/user/stranger-come-knocking/password "civilization"
+
+set turn/realm/north.gov/secret/1368426581 "logen"
+set turn/realm/crinna.org/secret/777888999 "north"
 
 set turn/user/ninefingers/password "youhavetoberealistic"
 set turn/user/gorst/password "hero"
+set turn/user/whirrun/password "sword"
+set turn/user/stranger-come-knocking/password "civilization"
 
-set turn/secret/1368426581 "logen"
+set turn/realm/north.gov/max-bps 500000
+set turn/realm/north.gov/total-quota 12000
+set turn/realm/north.gov/user-quota 10000
+set turn/realm/crinna.org/max-bps 400000
+set turn/realm/crinna.org/total-quota 10000
+set turn/realm/crinna.org/user-quota 8000
+
+set turn/origin/http://crinna.org:80 crinna.org
+set turn/origin/https://bligh.edu:443 crinna.org
 
 set turn/denied-peer-ip/123456 "172.17.13.133-172.17.14.56"
 set turn/denied-peer-ip/234567 "123::45"
@@ -331,7 +392,9 @@ save
 
  In the Redis user database, you can store both "keys" and open passwords (for long term credentials) - the "open password" option is less secure but more convenient for low-security environments. For short-term credentials, you will use open passwords only. See also the file turndb/testredisdbsetup.sh.
 
-  6. Of course, the turnserver can be used in non-secure mode, when users are allowed to establish sessions anonymously. Then you do not need a database at all. But some TURN client (like WebRTC clients) are not able to work in anonymous mode, without an authentication mechanism.
+  6. If a database is used, then users can be divided into multiple independent realms. Each realm can be administered separately, and each realm can have its own set of users and its own performance options (max-bps, user-quota, total-quota).
+
+  7. Of course, the turnserver can be used in non-secure mode, when users are allowed to establish sessions anonymously. Then you do not need a database at all. But some TURN client (like WebRTC clients) are not able to work in anonymous mode, without an authentication mechanism.
 
 For the status and statistics database, there are two choices:
 
