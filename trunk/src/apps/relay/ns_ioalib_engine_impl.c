@@ -3243,17 +3243,19 @@ int ioa_socket_tobeclosed(ioa_socket_handle s)
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s socket: 0x%lx was closed\n", __FUNCTION__,(long)s);
 			return 1;
 		}
-		if(s->broken) {
+		if(s->tobeclosed) {
+			return 1;
+		} else if(s->broken) {
+			s->tobeclosed = 1;
 			log_socket_event(s, "socket broken", 0);
 			return 1;
-		} else if(s->tobeclosed) {
-			log_socket_event(s, "socket to be closed", 0);
-			return 1;
 		} else if(s->fd < 0) {
+			s->tobeclosed = 1;
 			log_socket_event(s, "socket fd<0", 0);
 			return 1;
 		} else if(s->ssl) {
 			if(SSL_get_shutdown(s->ssl)) {
+				s->tobeclosed = 1;
 				log_socket_event(s, "socket SSL shutdown", 0);
 				return 1;
 			}
