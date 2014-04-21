@@ -121,7 +121,7 @@ static char Usage[] =
   "		Without this option, by default, SHA1 is used.\n"
   "	-M	ICE Mobility engaged.\n"
   "	-I	Do not set permissions on TURN relay endpoints\n"
-  "     	(for testing the non-standard server relay functionality).\n"
+  "     		(for testing the non-standard server relay functionality).\n"
   "	-G	Generate extra requests (create permissions, channel bind).\n"
   "Options:\n"
   "	-l	Message length (Default: 100 Bytes).\n"
