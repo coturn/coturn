@@ -75,11 +75,22 @@ $ turnadmin -s <secret> --mysql-userdb="<db-connection-string>"
 {{{
 $ turnadmin -S --psql-userdb="<db-connection-string>"
 }}}
-===Show secret(s):===
+===Set origin-to-realm relation in MySQL database:===
 {{{
-$ turnadmin -S --redis-userdb="<db-connection-string>"
+$ turnadmin --mysql-userdb="<db-connection-string>" -r <realm> -o <origin>
 }}}
-
+===Delete origin-to-realm relation from Redis DB:===
+{{{
+$ turnadmin --redis-userdb="<db-connection-string>" -o <origin>
+}}}
+===List all origin-to-realm relations in Redis DB:===
+{{{
+$ turnadmin --redis-userdb="<db-connection-string>" -I
+}}}
+===List the origin-to-realm relations in PostgreSQL DB for a single realm:===
+{{{
+$ turnadmin --psql-userdb="<db-connection-string>" -I -r <realm>
+}}}
 ===Help:===
 {{{
        $ turnadmin -h
