@@ -344,7 +344,7 @@ CREATE TABLE turn_realm_option (
 
   4. The same as previous is applicable to a MySQL database. The same schema file is used. The same considerations are valid.
 
-  5. The same is true for the Redis database, but the Redis database has a different schema - it can be found (in the form of explanation) in schema.userdb.redis. Example of a redis database setup commands (for users _ninefingers_ and _gorst_, with realm set as _north.gov_ in the config file; the database is set for both long-term and short-term auth mechanisms; the database can be used for REST API, too - shared secret is set; and denied and allowed IP ranges are set, also):
+  5. The same is true for the Redis database, but the Redis database has a different schema - it can be found (in the form of explanation) in schema.userdb.redis. Example of a redis database setup commands (for two realms - north.gov and crinna.org):
 
 {{{
 $ redis-cli <<!
@@ -365,11 +365,6 @@ set turn/realm/crinna.org/user/stranger-come-knocking/password "civilization"
 set turn/realm/north.gov/secret/1368426581 "logen"
 set turn/realm/crinna.org/secret/777888999 "north"
 
-set turn/user/ninefingers/password "youhavetoberealistic"
-set turn/user/gorst/password "hero"
-set turn/user/whirrun/password "sword"
-set turn/user/stranger-come-knocking/password "civilization"
-
 set turn/realm/north.gov/max-bps 500000
 set turn/realm/north.gov/total-quota 12000
 set turn/realm/north.gov/user-quota 10000
@@ -384,6 +379,24 @@ set turn/denied-peer-ip/123456 "172.17.13.133-172.17.14.56"
 set turn/denied-peer-ip/234567 "123::45"
 
 set turn/allowed-peer-ip/345678 "172.17.13.200"
+
+save
+
+!
+}}}
+
+In the very unprobable case if you are using the short-term authentication mechanism with TURN (that should probably never happen) then you have to set the users and passwords like that:
+
+{{{
+$ redis-cli <<!
+
+SELECT 2
+AUTH turn
+
+set turn/user/ninefingers/password "youhavetoberealistic"
+set turn/user/gorst/password "hero"
+set turn/user/whirrun/password "sword"
+set turn/user/stranger-come-knocking/password "civilization"
 
 save
 
