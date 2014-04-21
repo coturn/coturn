@@ -52,5 +52,6 @@
  *	*-W* {{{<secret>}}}     TURN REST API secret. Is not compatible with -A flag.
  *	*-C* {{{<symbol>}}}     This is the timestamp/username separator symbol (character) in TURN REST API. The default value is ':'.
  *       *-F* {{{<cipher-suite>}}}   Cipher suite for TLS/DTLS. Default value is DEFAULT.
+ *       *-o* {{{<origin>}}} the ORIGIN STUN attribute value.
 
        See the _turnutils_uclient_ usage examples	in the "examples/scripts" directory.
