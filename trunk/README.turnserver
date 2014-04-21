@@ -613,11 +613,14 @@ Once the temporary username and password are obtained by the client (browser)
 application, then the rest is just 'classic" long-term credentials mechanism.
 For developers, we are going to describe it step-by-step below:
 
-  - a new TURN client sends a request command to the TURN server.
+  - a new TURN client sends a request command to the TURN server. Optionally, 
+  it adds the ORIGIN field to it. 
   - TURN server sees that this is a new client and the message is not 
   	authenticated.
   - the TURN server generates a random nonce string, and return the 
-  	error 401 to the client, with nonce and realm included.
+  	error 401 to the client, with nonce and realm included. If the ORIGIN
+  	field was present in the client request, it may affect the realm value
+  	that the server chooses for the client.
   - the client sees the 401 error and it extracts two values from 
   	the error response: the nonce and the realm.
   - the client uses username, realm and password to produce a key:
@@ -703,7 +706,11 @@ the "open password" option is less secure but more convenient for low-security e
 For short-term credentials, you will use open passwords only. See the file 
 turndb/testredisdbsetup.sh as an example. 
 
-6) Of course, the turnserver can be used in non-secure mode, when users are allowed to establish
+6) If a database is used, then users can be divided into multiple independent realms. Each realm
+can be administered separately, and each realm can have its own set of users and its own
+performance options (max-bps, user-quota, total-quota).
+
+7) Of course, the turnserver can be used in non-secure mode, when users are allowed to establish
 sessions anonymously. But in most cases (like WebRTC) that will not work.
 
 For the status and statistics database, there are two choices:
