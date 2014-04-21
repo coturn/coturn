@@ -21,6 +21,11 @@
  * *-S,* *--show-secret* Show secret stored in database.
  * *-X,* *--delete-secret* {{{<secret>}}}	Delete a shared secret.
  * *--delete-all-secrets*	Delete all shared secrets for REST API.
+ * *-O,* *--add-origin*	Add origin-to-realm relation.
+ * *-R,* *--del-origin*	Delete origin-to-realm relation.
+ * *-I,* *--list-origins* List origin-to-realm relations.
+ * *-g,* *--set-realm-option* Set realm params: *_max-bps_*, *_total-quota_*, *_user-quota_*.
+ * *-G,* *--list-realm-options* List realm params.
 
 ===Options:===
 
