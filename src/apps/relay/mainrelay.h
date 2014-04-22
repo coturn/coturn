@@ -83,9 +83,7 @@
 
 #include "ns_ioalib_impl.h"
 
-#if !defined(TURN_NO_HIREDIS)
 #include "hiredis_libevent2.h"
-#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -172,9 +170,7 @@ struct auth_server {
 	struct bufferevent *in_buf;
 	struct bufferevent *out_buf;
 	pthread_t thr;
-#if !defined(TURN_NO_HIREDIS)
 	redis_context_handle rch;
-#endif
 };
 
 /////////// PARAMS //////////////////////////////////
@@ -240,10 +236,8 @@ typedef struct _turn_params_ {
 
   char listener_ifname[1025];
 
-#if !defined(TURN_NO_HIREDIS)
   char redis_statsdb[1025];
   int use_redis_statsdb;
-#endif
 
   struct listener_server listener;
 

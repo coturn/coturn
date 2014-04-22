@@ -191,13 +191,7 @@ void release_allocation_quota(u08bits *username, u08bits *realm);
 /////////// Handle user DB /////////////////
 
 void read_userdb_file(int to_print);
-void auth_ping(
-#if !defined(TURN_NO_HIREDIS)
-	redis_context_handle rch
-#else
-	void
-#endif
-);
+void auth_ping(redis_context_handle rch);
 void reread_realms(void);
 int add_user_account(char *user, int dynamic);
 int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, u08bits *origin, TURNADMIN_COMMAND_TYPE ct, int is_st, perf_options_t* po);
@@ -207,7 +201,6 @@ int add_ip_list_range(char* range, ip_range_list_t * list);
 ///////////// Redis //////////////////////
 
 #if !defined(TURN_NO_HIREDIS)
-#include "hiredis_libevent2.h"
 redis_context_handle get_redis_async_connection(struct event_base *base, const char* connection_string, int delete_keys);
 #endif
 
