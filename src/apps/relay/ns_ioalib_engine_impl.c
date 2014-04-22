@@ -2654,9 +2654,12 @@ static void socket_input_handler_bev(struct bufferevent *bev, void* arg)
 			return;
 		}
 
-		while (!ioa_socket_tobeclosed(s)) {
-			if (socket_input_worker(s) <= 0)
-				break;
+		{
+			size_t cycle = 0;
+			while (!ioa_socket_tobeclosed(s) && (cycle++<1024)) {
+				if (socket_input_worker(s) <= 0)
+					break;
+			}
 		}
 
 		if((s->magic != SOCKET_MAGIC)||(s->done)) {
@@ -2665,29 +2668,7 @@ static void socket_input_handler_bev(struct bufferevent *bev, void* arg)
 			return;
 		}
 
-		if (ioa_socket_tobeclosed(s)) {
-			switch(s->sat) {
-			case TCP_CLIENT_DATA_SOCKET:
-			case TCP_RELAY_DATA_SOCKET:
-			{
-				tcp_connection *tc = s->sub_session;
-				if(tc) {
-					delete_tcp_connection(tc);
-				}
-			}
-			break;
-			default:
-			{
-				ts_ur_super_session *ss = s->session;
-				if (ss) {
-					turn_turnserver *server = (turn_turnserver *)ss->server;
-					if (server) {
-						shutdown_client_connection(server, ss, 0, "TCP socket buffer operation error (input handler)");
-					}
-				}
-			}
-			}
-		}
+		close_ioa_socket_after_processing_if_necessary(s);
 	}
 }
 
