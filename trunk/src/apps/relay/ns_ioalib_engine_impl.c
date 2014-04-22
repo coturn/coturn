@@ -2656,7 +2656,7 @@ static void socket_input_handler_bev(struct bufferevent *bev, void* arg)
 
 		{
 			size_t cycle = 0;
-			while (!ioa_socket_tobeclosed(s) && (cycle++<1024)) {
+			while (!ioa_socket_tobeclosed(s) && (cycle++<64)) {
 				if (socket_input_worker(s) <= 0)
 					break;
 			}
@@ -3220,7 +3220,7 @@ int ioa_socket_tobeclosed(ioa_socket_handle s)
 		}
 
 		if(s->done) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s: ceck on already closed socket: 0x%lx, st=%d, sat=%d\n",__FUNCTION__,(long)s,s->st,s->sat);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s: check on already closed socket: 0x%lx, st=%d, sat=%d\n",__FUNCTION__,(long)s,s->st,s->sat);
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s socket: 0x%lx was closed\n", __FUNCTION__,(long)s);
 			return 1;
 		}
