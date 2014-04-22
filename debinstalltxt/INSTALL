@@ -1,0 +1,25 @@
+This is a Debian binary package to be installed on a Debian family Linux system.
+
+The supported systems are Debian Wheezy, Ubuntu 12.04 and later, Linux Mint 14.1 and later.
+
+Both 32 bits and 64 bits are supported, in separate packages.
+
+To install the turnserver with all the necessary packages,
+with the help of gdebi tool, type:
+
+$ sudo apt-get install gdebi-core
+$ sudo gdebi rfc5766*.deb
+
+(to install the bare package without any dependencies, type:
+
+$ sudo dpkg -i coturn_*_*.deb)
+
+After the install, read the documentation in /usr/share/doc/coturn directory.
+
+All binaries will be installed in /usr/bin/ directory. 
+The turn*.conf config files are in /etc directory. 
+
+The service start-up control scripts will be in /etc/init.d/coturn and
+in /etc/defaults/coturn files.
+
+
