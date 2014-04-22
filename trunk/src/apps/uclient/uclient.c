@@ -1118,7 +1118,7 @@ static int refresh_channel(app_ur_session* elem, u16bits method, uint32_t lt)
 	return 0;
 }
 
-static inline int client_timer_handler(app_ur_session* elem)
+static inline int client_timer_handler(app_ur_session* elem, int *done)
 {
 	if (elem) {
 		if (!turn_time_before(current_mstime, elem->refresh_time)) {
@@ -1157,6 +1157,7 @@ static inline int client_timer_handler(app_ur_session* elem)
 					}
 				}
 			} else {
+				*done += 1;
 				client_write(elem);
 				elem->finished_time = current_mstime + STOPPING_TIME*1000;
 			}
@@ -1176,11 +1177,20 @@ static void timer_handler(evutil_socket_t fd, short event, void *arg)
 
 	if(start_full_timer) {
 		int i = 0;
+		int done = 0;
 		for (i = 0; i < total_clients; ++i) {
 			if (elems[i]) {
-				int finished = client_timer_handler(elems[i]);
+				int finished = client_timer_handler(elems[i],&done);
 				if (finished) {
 					elems[i] = NULL;
+				}
+			}
+		}
+		if(done>5 && dos) {
+			for (i = 0; i < total_clients; ++i) {
+				if (elems[i]) {
+					close(elems[i]->pinfo.fd);
+					elems[i]->pinfo.fd = -1;
 				}
 			}
 		}
