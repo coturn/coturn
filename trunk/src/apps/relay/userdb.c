@@ -2893,13 +2893,7 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, u08b
 
 /////////// PING //////////////
 
-void auth_ping(
-#if !defined(TURN_NO_HIREDIS)
-				redis_context_handle rch
-#else
-				void
-#endif
-)
+void auth_ping(redis_context_handle rch)
 {
 	donot_print_connection_success = 1;
 

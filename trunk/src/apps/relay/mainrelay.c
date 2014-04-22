@@ -73,9 +73,7 @@ TURN_VERBOSE_NONE,0,0,
 DEFAULT_STUN_PORT,DEFAULT_STUN_TLS_PORT,0,0,1,
 0,0,0,0,
 "",
-#if !defined(TURN_NO_HIREDIS)
 "",0,
-#endif
 {
   NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0,0,NULL,NULL,NULL
 },
@@ -86,11 +84,7 @@ NEV_UNKNOWN,
 LOW_DEFAULT_PORTS_BOUNDARY,HIGH_DEFAULT_PORTS_BOUNDARY,0,0,"",
 0,NULL,0,NULL,DEFAULT_GENERAL_RELAY_SERVERS_NUMBER,0,
 ////////////// Auth server /////////////////////////////////////
-{NULL,NULL,NULL,0
-#if !defined(TURN_NO_HIREDIS)
-,NULL
-#endif
-},
+{NULL,NULL,NULL,0,NULL},
 /////////////// AUX SERVERS ////////////////
 {NULL,0,{0,NULL}},0,
 /////////////// ALTERNATE SERVERS ////////////////
