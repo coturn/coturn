@@ -3646,9 +3646,6 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
 	if (server->disconnect)
 		server->disconnect(ss);
 
-	IOA_CLOSE_SOCKET(elem->s);
-	IOA_CLOSE_SOCKET(ss->alloc.relay_session.s);
-
 	if (server->verbose) {
 
 		char sraddr[129]="\0";
@@ -3659,6 +3656,9 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: closed (2nd stage), user <%s> realm <%s> origin <%s>, local %s, remote %s, reason: %s\n",
 					(unsigned long long)(ss->id), (char*)ss->username,(char*)ss->realm_options.name,(char*)ss->origin, sladdr,sraddr, reason);
 	}
+
+	IOA_CLOSE_SOCKET(elem->s);
+	IOA_CLOSE_SOCKET(ss->alloc.relay_session.s);
 
 	turn_server_remove_all_from_ur_map_ss(ss);
 
