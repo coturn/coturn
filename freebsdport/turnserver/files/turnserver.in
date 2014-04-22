@@ -1,0 +1,31 @@
+#!/bin/sh
+#
+# $FreeBSD: head/net/turnserver/files/turnserver.in 319998 2013-06-05 14:48:56Z gabor $
+#
+# PROVIDE: turnserver
+# REQUIRE: LOGIN
+# KEYWORD: shutdown
+#
+# Add the following lines to /etc/rc.conf.local or /etc/rc.conf
+# to enable this service:
+#
+# turnserver_enable (bool):	Set to NO by default.
+#				Set it to YES to enable turnserver.
+# turnserver_config (path):	Set to %%PREFIX%%/etc/turnserver.conf
+#				by default.
+
+. /etc/rc.subr
+
+name=turnserver
+rcvar=turnserver_enable
+
+load_rc_config $name
+
+: ${turnserver_enable:=no}
+: ${turnserver_config=%%PREFIX%%/etc/turnserver.conf}
+
+command="%%PREFIX%%/bin/${name}"
+command_args="--daemon -c ${turnserver_config}"
+required_files=${turnserver_config}
+
+run_rc_command "$1"

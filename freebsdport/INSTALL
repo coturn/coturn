@@ -1,0 +1,17 @@
+This is FreeBSD port of TURN Server. It was tested on FreeBSD 6.3, 8.2 and 9.1.
+It assumes you have /usr/ports collection set.
+
+To download and install in /usr/local:
+
+  $ cd turnserver
+  $ sudo make install
+
+To install to non-default directory (for example, /opt):
+
+  $ sudo make PREFIX=/opt install 
+
+To deinstall from /opt:
+
+  $ sudo make PREFIX=/opt deinstall
+
+ 
