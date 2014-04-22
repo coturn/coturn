@@ -1,0 +1,9 @@
+Document: coturn
+Title: Coturn TURN Server documentation
+Author: Oleg Moskalenko
+Abstract: This set of documents describe how the turn server programs can be used.
+Section: Network/Communication
+
+Format: Text
+Files: /usr/share/doc/coturn/README.turnserver.gz /usr/share/doc/coturn/README.turnadmin.gz /usr/share/doc/coturn/README.turnutils.gz /usr/share/doc/coturn/schema.sql /usr/share/doc/coturn/schema.userdb.redis /usr/share/doc/coturn/schema.stats.redis
+

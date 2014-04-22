@@ -1,0 +1,6 @@
+#
+# Uncomment it if you want to have the turnserver running as 
+# an automatic system service daemon
+#
+#TURNSERVER_ENABLED=1
+
