@@ -1,4 +1,4 @@
-This is Amazon EC2 system dedicated for rfc5766-turn-server TURN Server.
+This is Amazon EC2 system dedicated for Coturn TURN Server.
 Before using it, you have to set the following parameters in /etc/turnserver.conf:
 
 1) external-ip : use the public IP address assigned to your system.
@@ -33,7 +33,7 @@ mom040267@gmail.com
 
 Project page:
 
-http://code.google.com/p/rfc5766-turn-server/
+http://code.google.com/p/coturn/
  
 Appendix A. Pre-set databases
 
@@ -66,7 +66,7 @@ on his/her own risk.
 Appendix B. Misc information about the default configuration details.
 
 1) TURN server is configured as an automatically starting daemon.
-See the daemon start/stop script in /etc/rc.d/init.d/rfc5766-turn-server.
+See the daemon start/stop script in /etc/rc.d/init.d/coturn.
 
 2) The default configured port is 3478.
 If other port is needed, change the file /etc/turnserver.conf.
@@ -85,5 +85,5 @@ usual places:
 
 And in the project web page:
 
-https://code.google.com/p/rfc5766-turn-server/
+https://code.google.com/p/coturn/
 
