@@ -100,7 +100,6 @@ static void close_socket_net_data(ioa_socket_handle s);
 /************** Utils **************************/
 
 static const int tcp_congestion_control = 1;
-static const int udp_congestion_control = 1;
 
 static int bufferevent_enabled(struct bufferevent *bufev, short flags)
 {
@@ -2597,7 +2596,17 @@ static void socket_output_handler_bev(struct bufferevent *bev, void* arg)
 
 			ioa_socket_handle s = (ioa_socket_handle) arg;
 
-			if ((s->magic != SOCKET_MAGIC)||(s->done)||ioa_socket_tobeclosed(s)||(bev != s->bev)) {
+			if ((s->magic != SOCKET_MAGIC)||(s->done)||(bev != s->bev)) {
+				return;
+			}
+
+			if (s->tobeclosed) {
+				if (bufferevent_enabled(bev,EV_READ)) {
+					bufferevent_disable(bev,EV_READ);
+				}
+				if (bufferevent_enabled(bev,EV_WRITE)) {
+					bufferevent_disable(bev,EV_WRITE);
+				}
 				return;
 			}
 
@@ -3031,7 +3040,7 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 
 							ret = (int) ioa_network_buffer_get_size(nbh);
 
-							if(!udp_congestion_control || is_socket_writeable(s,(size_t)ret,__FUNCTION__,2)) {
+							if(!tcp_congestion_control || is_socket_writeable(s,(size_t)ret,__FUNCTION__,2)) {
 							  if (bufferevent_write(
 										s->bev,
 										ioa_network_buffer_data(nbh),
