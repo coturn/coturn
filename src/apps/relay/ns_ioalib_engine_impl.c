@@ -2530,8 +2530,10 @@ static void socket_input_handler(evutil_socket_t fd, short what, void* arg)
 
 	ioa_socket_handle s = (ioa_socket_handle)arg;
 
-	if(!s)
+	if(!s) {
+		read_spare_buffer(fd);
 		return;
+	}
 
 	if((s->magic != SOCKET_MAGIC)||(s->done)) {
 		read_spare_buffer(fd);
@@ -2547,6 +2549,8 @@ static void socket_input_handler(evutil_socket_t fd, short what, void* arg)
 
 	if (!ioa_socket_tobeclosed(s))
 		socket_input_worker(s);
+	else
+		read_spare_buffer(fd);
 
 	if((s->magic != SOCKET_MAGIC)||(s->done)) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s (1) on socket, ev=%d: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(int)what,(long)s, s->st, s->sat);
@@ -2645,30 +2649,50 @@ static void socket_output_handler_bev(struct bufferevent *bev, void* arg)
 	}
 }
 
+static int read_spare_buffer_bev(struct bufferevent *bev)
+{
+	if(bev) {
+		char some_buffer[8192];
+		bufferevent_read(bev, some_buffer, sizeof(some_buffer));
+	}
+	return 0;
+}
+
 static void socket_input_handler_bev(struct bufferevent *bev, void* arg)
 {
 
-	if (bev && arg) {
+	if (bev) {
+
+		if(!arg) {
+			read_spare_buffer_bev(bev);
+			return;
+		}
 
 		ioa_socket_handle s = (ioa_socket_handle) arg;
 
 		if(bev != s->bev) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s socket: 0x%lx: wrong bev\n", __FUNCTION__,(long)s);
+			read_spare_buffer_bev(bev);
 			return;
 		}
 
 		if((s->magic != SOCKET_MAGIC)||(s->done)) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s on socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__, (long) s, s->st, s->sat);
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s socket: 0x%lx was closed\n", __FUNCTION__,(long)s);
+			read_spare_buffer_bev(bev);
 			return;
 		}
 
 		{
 			size_t cycle = 0;
-			while (!ioa_socket_tobeclosed(s) && (cycle++<64)) {
+			do {
+				if(ioa_socket_tobeclosed(s)) {
+					read_spare_buffer_bev(bev);
+					break;
+				}
 				if (socket_input_worker(s) <= 0)
 					break;
-			}
+			} while(cycle++<128);
 		}
 
 		if((s->magic != SOCKET_MAGIC)||(s->done)) {
