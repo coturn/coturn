@@ -113,6 +113,8 @@ Flags:
 		
 -G	Generate extra requests (create permissions, channel bind).
 
+-B  Random disconnect after a few initial packets.
+
 Options with required values:  
 
 -l      Message length (Default: 100 Bytes).
