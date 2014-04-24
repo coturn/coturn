@@ -2687,12 +2687,12 @@ static void socket_input_handler_bev(struct bufferevent *bev, void* arg)
 			size_t cycle = 0;
 			do {
 				if(ioa_socket_tobeclosed(s)) {
-					read_spare_buffer_bev(bev);
+					read_spare_buffer_bev(s->bev);
 					break;
 				}
 				if (socket_input_worker(s) <= 0)
 					break;
-			} while(cycle++<128);
+			} while((cycle++<128) && (s->bev));
 		}
 
 		if((s->magic != SOCKET_MAGIC)||(s->done)) {
