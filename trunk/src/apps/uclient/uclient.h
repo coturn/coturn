@@ -76,6 +76,7 @@ extern int mandatory_channel_padding;
 extern int negative_test;
 extern int negative_protocol_test;
 extern int dos;
+extern int random_disconnect;
 extern SHATYPE shatype;
 extern int mobility;
 extern int no_permissions;

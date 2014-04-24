@@ -1180,13 +1180,13 @@ static void timer_handler(evutil_socket_t fd, short event, void *arg)
 		int done = 0;
 		for (i = 0; i < total_clients; ++i) {
 			if (elems[i]) {
-				int finished = client_timer_handler(elems[i],&done);
+				int finished = client_timer_handler(elems[i], &done);
 				if (finished) {
 					elems[i] = NULL;
 				}
 			}
 		}
-		if(done>5 && dos) {
+		if(done>5 && (dos || random_disconnect)) {
 			for (i = 0; i < total_clients; ++i) {
 				if (elems[i]) {
 					close(elems[i]->pinfo.fd);

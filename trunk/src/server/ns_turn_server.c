@@ -4258,7 +4258,7 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
 						"session %018llu: client socket to be closed from peer handler: ss=0x%lx\n", (unsigned long long)(ss->id), (long)ss);
 				}
-				set_ioa_socket_tobeclosed(s);
+				set_ioa_socket_tobeclosed(ss->client_session.s);
 			}
 		}
 	}

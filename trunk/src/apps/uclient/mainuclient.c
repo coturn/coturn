@@ -81,6 +81,7 @@ int mandatory_channel_padding = 0;
 int negative_test = 0;
 int negative_protocol_test = 0;
 int dos = 0;
+int random_disconnect = 0;
 
 SHATYPE shatype = SHATYPE_SHA1;
 
@@ -123,6 +124,7 @@ static char Usage[] =
   "	-I	Do not set permissions on TURN relay endpoints\n"
   "		(for testing the non-standard server relay functionality).\n"
   "	-G	Generate extra requests (create permissions, channel bind).\n"
+  " -B  Random disconnect after a few initial packets.\n"
   "Options:\n"
   "	-l	Message length (Default: 100 Bytes).\n"
   "	-i	Certificate file (for secure connections only, optional).\n"
@@ -196,10 +198,13 @@ int main(int argc, char **argv)
 
 	ns_bzero(local_addr, sizeof(local_addr));
 
-	while ((c = getopt(argc, argv, "d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:E:F:o:vsyhcxXgtTSAPDNOUHMRIG")) != -1) {
+	while ((c = getopt(argc, argv, "d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:E:F:o:vsyhcxXgtTSAPDNOUHMRIGB")) != -1) {
 		switch (c){
 		case 'o':
 			STRCPY(origin,optarg);
+			break;
+		case 'B':
+			random_disconnect = 1;
 			break;
 		case 'G':
 			extra_requests = 1;
