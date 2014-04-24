@@ -4252,14 +4252,7 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 						(int) (nswap16(t[0])));
 			}
 
-			int ret = write_client_connection(server, ss, nbh, in_buffer->recv_ttl-1, in_buffer->recv_tos);
-			if (ret < 0) {
-				if(server->verbose) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-						"session %018llu: client socket to be closed from peer handler: ss=0x%lx\n", (unsigned long long)(ss->id), (long)ss);
-				}
-				set_ioa_socket_tobeclosed(ss->client_session.s);
-			}
+			write_client_connection(server, ss, nbh, in_buffer->recv_ttl-1, in_buffer->recv_tos);
 		}
 	}
 }
