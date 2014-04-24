@@ -34,9 +34,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#if !defined(TURN_NO_HIREDIS)
 #include "hiredis_libevent2.h"
-#endif
 
 #include "ns_turn_utils.h"
 #include "ns_turn_maps.h"

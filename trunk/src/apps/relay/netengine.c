@@ -1478,11 +1478,7 @@ static void* run_auth_server_thread(void *arg)
 		run_events(eb,NULL);
 		read_userdb_file(0);
 		update_white_and_black_lists();
-		auth_ping(
-#if !defined(TURN_NO_HIREDIS)
-		authserver->rch
-#endif
-		);
+		auth_ping(authserver->rch);
 	}
 
 	return arg;

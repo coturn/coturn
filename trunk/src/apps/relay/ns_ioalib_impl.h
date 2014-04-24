@@ -157,9 +157,7 @@ struct _ioa_engine
   size_t relays_number;
   size_t relay_addr_counter;
   ioa_addr *relay_addrs;
-#if !defined(TURN_NO_HIREDIS)
   redis_context_handle rch;
-#endif
 };
 
 #define SOCKET_MAGIC (0xABACADEF)
