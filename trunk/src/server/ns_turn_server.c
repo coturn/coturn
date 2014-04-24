@@ -3595,7 +3595,7 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
 	report_turn_session_info(server,ss,1);
 	dec_quota(ss);
 
-	if(!force) {
+	if(!force && ss->is_mobile) {
 
 		if (elem->s && server->verbose) {
 
