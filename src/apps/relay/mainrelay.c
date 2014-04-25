@@ -1539,9 +1539,9 @@ static void print_features(unsigned long mfn)
 #endif
 
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "OpenSSL version: fresh enough\n");
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "OpenSSL compile-time version 0x%llx: fresh enough\n",(unsigned long long)OPENSSL_VERSION_NUMBER);
 #else
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "OpenSSL version: antique\n");
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "OpenSSL compile-time version 0x%llx version: antique\n",(unsigned long long)OPENSSL_VERSION_NUMBER);
 #endif
 
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Default Net Engine version: %d (%s)\n\n=====================================================\n\n", (int)turn_params.net_engine_version, turn_params.net_engine_version_txt[(int)turn_params.net_engine_version]);
