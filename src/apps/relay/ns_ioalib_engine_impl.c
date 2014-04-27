@@ -2600,6 +2600,9 @@ static void socket_output_handler_bev(struct bufferevent *bev, void* arg)
 
 			ioa_socket_handle s = (ioa_socket_handle) arg;
 
+			if(s->in_write)
+				return;
+
 			if ((s->magic != SOCKET_MAGIC)||(s->done)||(bev != s->bev)) {
 				return;
 			}
@@ -2607,9 +2610,6 @@ static void socket_output_handler_bev(struct bufferevent *bev, void* arg)
 			if (s->tobeclosed) {
 				if (bufferevent_enabled(bev,EV_READ)) {
 					bufferevent_disable(bev,EV_READ);
-				}
-				if (bufferevent_enabled(bev,EV_WRITE)) {
-					bufferevent_disable(bev,EV_WRITE);
 				}
 				return;
 			}
@@ -3064,21 +3064,25 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 
 							ret = (int) ioa_network_buffer_get_size(nbh);
 
-							if(!tcp_congestion_control || is_socket_writeable(s,(size_t)ret,__FUNCTION__,2)) {
-							  if (bufferevent_write(
-										s->bev,
+							if (!tcp_congestion_control || is_socket_writeable(
+									s, (size_t) ret, __FUNCTION__, 2)) {
+								s->in_write = 1;
+								if (bufferevent_write(s->bev,
 										ioa_network_buffer_data(nbh),
-										ioa_network_buffer_get_size(nbh))
-							      < 0) {
-							    ret = -1;
-							    perror("bufev send");
-							    log_socket_event(s, "socket write failed, to be closed",1);
-							    s->tobeclosed = 1;
-							    s->broken = 1;
-							  }
+										ioa_network_buffer_get_size(nbh)) < 0) {
+									ret = -1;
+									perror("bufev send");
+									log_socket_event(
+											s,
+											"socket write failed, to be closed",
+											1);
+									s->tobeclosed = 1;
+									s->broken = 1;
+								}
+								s->in_write = 0;
 							} else {
-							  //drop the packet
-							  ;
+								//drop the packet
+								;
 							}
 						}
 					} else if (s->ssl) {
