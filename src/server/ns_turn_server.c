@@ -374,8 +374,10 @@ int turn_session_info_copy_from(struct turn_session_info* tsi, ts_ur_super_sessi
 			}
 			if(ss->alloc.relay_session.s) {
 				tsi->peer_protocol = get_ioa_socket_type(ss->alloc.relay_session.s);
-				addr_cpy(&(tsi->relay_addr_data.addr),get_local_addr_from_ioa_socket(ss->alloc.relay_session.s));
-				addr_to_string(&(tsi->relay_addr_data.addr),(u08bits*)tsi->relay_addr_data.saddr);
+				if(ss->alloc.is_valid) {
+					addr_cpy(&(tsi->relay_addr_data.addr),get_local_addr_from_ioa_socket(ss->alloc.relay_session.s));
+					addr_to_string(&(tsi->relay_addr_data.addr),(u08bits*)tsi->relay_addr_data.saddr);
+				}
 			}
 			STRCPY(tsi->username,ss->username);
 			tsi->enforce_fingerprints = ss->enforce_fingerprints;
@@ -1238,7 +1240,7 @@ static int handle_turn_refresh(turn_turnserver *server,
 				if(tsid != server->id) {
 
 					if(server->send_socket_to_relay) {
-						ioa_socket_handle new_s = detach_ioa_socket(ss->client_session.s, 1);
+						ioa_socket_handle new_s = detach_ioa_socket(ss->client_session.s);
 						if(new_s) {
 						  if(server->send_socket_to_relay(tsid, mid, tid, new_s, message_integrity, 
 										  RMT_MOBILE_SOCKET, in_buffer)<0) {
@@ -1316,7 +1318,7 @@ static int handle_turn_refresh(turn_turnserver *server,
 
 								//Transfer socket:
 
-								ioa_socket_handle s = detach_ioa_socket(ss->client_session.s, 0);
+								ioa_socket_handle s = detach_ioa_socket(ss->client_session.s);
 
 								ss->to_be_closed = 1;
 
@@ -1950,7 +1952,7 @@ static int handle_turn_connection_bind(turn_turnserver *server,
 				turnserver_id sid = (id & 0xFF000000)>>24;
 				ioa_socket_handle s = ss->client_session.s;
 				if(s) {
-					ioa_socket_handle new_s = detach_ioa_socket(s, 1);
+					ioa_socket_handle new_s = detach_ioa_socket(s);
 					if(new_s) {
 					  if(server->send_socket_to_relay(sid, id, tid, new_s, message_integrity, RMT_CB_SOCKET, NULL)<0) {
 					    *err_code = 400;
@@ -2344,8 +2346,8 @@ static int handle_turn_binding(turn_turnserver *server,
 				stun_attr_get_addr_str(ioa_network_buffer_data(in_buffer->nbh),
 							ioa_network_buffer_get_size(in_buffer->nbh),
 							sar, response_destination, response_destination);
-				break;
 			}
+			break;
 		default:
 			if(attr_type>=0x0000 && attr_type<=0x7FFF)
 				unknown_attrs[(*ua_num)++] = nswap16(attr_type);

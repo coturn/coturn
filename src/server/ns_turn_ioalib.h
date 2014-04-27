@@ -197,7 +197,7 @@ void stop_ioa_timer(ioa_timer_handle th);
 void delete_ioa_timer(ioa_timer_handle th);
 #define IOA_EVENT_DEL(E) do { if(E) { delete_ioa_timer(E); E = NULL; } } while(0)
 
-ioa_socket_handle create_unbound_ioa_socket(ioa_engine_handle e, ioa_socket_handle parent_s, int family, SOCKET_TYPE st, SOCKET_APP_TYPE sat);
+ioa_socket_handle create_unbound_ioa_socket(ioa_engine_handle e, int family, SOCKET_TYPE st, SOCKET_APP_TYPE sat);
 
 void inc_ioa_socket_ref_counter(ioa_socket_handle s);
 
@@ -235,7 +235,7 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr, ioa_network_buffer_handle nbh, int ttl, int tos);
 void close_ioa_socket(ioa_socket_handle s);
 #define IOA_CLOSE_SOCKET(S) do { if(S) { close_ioa_socket(S); S = NULL; } } while(0)
-ioa_socket_handle detach_ioa_socket(ioa_socket_handle s, int full_detach);
+ioa_socket_handle detach_ioa_socket(ioa_socket_handle s);
 void detach_socket_net_data(ioa_socket_handle s);
 int set_df_on_ioa_socket(ioa_socket_handle s, int value);
 void set_do_not_use_df(ioa_socket_handle s);
