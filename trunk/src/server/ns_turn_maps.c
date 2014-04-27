@@ -164,6 +164,11 @@ int ur_map_exist(const ur_map* map, ur_map_key_type key) {
 
 void ur_map_free(ur_map** map) {
   if(map && ur_map_valid(*map)) {
+	  {
+		  static int khctest=0;
+		  if(khctest)
+			  kh_clear(3,(*map)->h);
+	  }
     kh_destroy(3,(*map)->h);
     (*map)->h=NULL;
     (*map)->magic=0;
