@@ -998,33 +998,31 @@ int set_socket_options(ioa_socket_handle s)
 
 /* <<== Socket options helpers */
 
-ioa_socket_handle create_unbound_ioa_socket(ioa_engine_handle e, ioa_socket_handle parent_s, int family, SOCKET_TYPE st, SOCKET_APP_TYPE sat)
+ioa_socket_handle create_unbound_ioa_socket(ioa_engine_handle e, int family, SOCKET_TYPE st, SOCKET_APP_TYPE sat)
 {
 	evutil_socket_t fd = -1;
 	ioa_socket_handle ret = NULL;
 
-	if(!parent_s) {
-		switch (st){
-		case UDP_SOCKET:
-			fd = socket(family, SOCK_DGRAM, 0);
-			if (fd < 0) {
-				perror("UDP socket");
-				return NULL;
-			}
-			set_sock_buf_size(fd, UR_CLIENT_SOCK_BUF_SIZE);
-			break;
-		case TCP_SOCKET:
-			fd = socket(family, SOCK_STREAM, 0);
-			if (fd < 0) {
-				perror("TCP socket");
-				return NULL;
-			}
-			set_sock_buf_size(fd, UR_CLIENT_SOCK_BUF_SIZE);
-			break;
-		default:
-			/* we do not support other sockets in the relay position */
+	switch (st){
+	case UDP_SOCKET:
+		fd = socket(family, SOCK_DGRAM, 0);
+		if (fd < 0) {
+			perror("UDP socket");
 			return NULL;
 		}
+		set_sock_buf_size(fd, UR_CLIENT_SOCK_BUF_SIZE);
+		break;
+	case TCP_SOCKET:
+		fd = socket(family, SOCK_STREAM, 0);
+		if (fd < 0) {
+			perror("TCP socket");
+			return NULL;
+		}
+		set_sock_buf_size(fd, UR_CLIENT_SOCK_BUF_SIZE);
+		break;
+	default:
+		/* we do not support other sockets in the relay position */
+		return NULL;
 	}
 
 	ret = (ioa_socket*)turn_malloc(sizeof(ioa_socket));
@@ -1038,11 +1036,7 @@ ioa_socket_handle create_unbound_ioa_socket(ioa_engine_handle e, ioa_socket_hand
 	ret->sat = sat;
 	ret->e = e;
 
-	if(parent_s) {
-		add_socket_to_parent(parent_s, ret);
-	} else {
-		set_socket_options(ret);
-	}
+	set_socket_options(ret);
 
 	return ret;
 }
@@ -1128,7 +1122,7 @@ int create_relay_ioa_sockets(ioa_engine_handle e,
 				if (port >= 0 && even_port > 0) {
 
 					IOA_CLOSE_SOCKET(*rtcp_s);
-					*rtcp_s = create_unbound_ioa_socket(e, NULL, relay_addr.ss.sa_family, UDP_SOCKET, RELAY_RTCP_SOCKET);
+					*rtcp_s = create_unbound_ioa_socket(e, relay_addr.ss.sa_family, UDP_SOCKET, RELAY_RTCP_SOCKET);
 					if (*rtcp_s == NULL) {
 						perror("socket");
 						IOA_CLOSE_SOCKET(*rtp_s);
@@ -1164,7 +1158,7 @@ int create_relay_ioa_sockets(ioa_engine_handle e,
 
 				IOA_CLOSE_SOCKET(*rtp_s);
 
-				*rtp_s = create_unbound_ioa_socket(e, NULL, relay_addr.ss.sa_family,
+				*rtp_s = create_unbound_ioa_socket(e, relay_addr.ss.sa_family,
 										(transport == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE) ? TCP_SOCKET : UDP_SOCKET,
 										RELAY_SOCKET);
 				if (*rtp_s == NULL) {
@@ -1334,7 +1328,7 @@ static void connect_eventcb(struct bufferevent *bev, short events, void *ptr)
 
 ioa_socket_handle ioa_create_connecting_tcp_relay_socket(ioa_socket_handle s, ioa_addr *peer_addr, connect_cb cb, void *arg)
 {
-	ioa_socket_handle ret = create_unbound_ioa_socket(s->e, NULL, s->family, s->st, TCP_RELAY_DATA_SOCKET);
+	ioa_socket_handle ret = create_unbound_ioa_socket(s->e, s->family, s->st, TCP_RELAY_DATA_SOCKET);
 
 	if(!ret) {
 		return NULL;
@@ -1509,6 +1503,9 @@ ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e,
 /* Only must be called for DTLS_SOCKET */
 ioa_socket_handle create_ioa_socket_from_ssl(ioa_engine_handle e, ioa_socket_handle parent_s, SSL* ssl, SOCKET_TYPE st, SOCKET_APP_TYPE sat, const ioa_addr *remote_addr, const ioa_addr *local_addr)
 {
+	if(!parent_s)
+		return NULL;
+
 	ioa_socket_handle ret = create_ioa_socket_from_fd(e, parent_s->fd, parent_s, st, sat, remote_addr, local_addr);
 
 	if(ret) {
@@ -1637,7 +1634,7 @@ void close_ioa_socket(ioa_socket_handle s)
 	}
 }
 
-ioa_socket_handle detach_ioa_socket(ioa_socket_handle s, int full_detach)
+ioa_socket_handle detach_ioa_socket(ioa_socket_handle s)
 {
 	ioa_socket_handle ret = NULL;
 
@@ -1669,14 +1666,15 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s, int full_detach)
 
 		evutil_socket_t udp_fd = -1;
 
-		if(full_detach && s->parent_s) {
-
+		if(s->parent_s) {
+#if defined(SO_REUSEPORT)
 			udp_fd = socket(s->local_addr.ss.sa_family, SOCK_DGRAM, 0);
 			if (udp_fd < 0) {
 				perror("socket");
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"%s: Cannot allocate new socket\n",__FUNCTION__);
 				return ret;
 			}
+#endif
 		}
 
 		detach_socket_net_data(s);
@@ -1711,15 +1709,20 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s, int full_detach)
 		ret->local_addr_known = s->local_addr_known;
 		addr_cpy(&(ret->local_addr),&(s->local_addr));
 		ret->connected = s->connected;
-		ioa_socket_handle parent_s = s->parent_s;
 		addr_cpy(&(ret->remote_addr),&(s->remote_addr));
 
+		ioa_socket_handle parent_s = s->parent_s;
 		ur_addr_map *sockets_container = s->sockets_container;
-
+		
 		delete_socket_from_map(s);
 		delete_socket_from_parent(s);
 
-		if(full_detach && parent_s) {
+		if(udp_fd<0) {
+
+		  add_socket_to_parent(parent_s, ret);
+		  add_socket_to_map(ret,sockets_container);
+
+		} else {
 
 			ret->fd = udp_fd;
 
@@ -1741,10 +1744,6 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s, int full_detach)
 			}
 
 			set_socket_options(ret);
-
-		} else {
-			add_socket_to_parent(parent_s, ret);
-			add_socket_to_map(ret,sockets_container);
 		}
 
 		ret->current_ttl = s->current_ttl;
@@ -1825,7 +1824,7 @@ void set_ioa_socket_app_type(ioa_socket_handle s, SOCKET_APP_TYPE sat) {
 
 ioa_addr* get_local_addr_from_ioa_socket(ioa_socket_handle s)
 {
-	if (s) {
+	if (s && (s->magic == SOCKET_MAGIC) && !(s->done)) {
 
 		if(s->parent_s) {
 			return get_local_addr_from_ioa_socket(s->parent_s);
@@ -1859,7 +1858,7 @@ ioa_addr* get_local_addr_from_ioa_socket(ioa_socket_handle s)
 
 ioa_addr* get_remote_addr_from_ioa_socket(ioa_socket_handle s)
 {
-	if (s) {
+	if (s && (s->magic == SOCKET_MAGIC) && !(s->done)) {
 
 		if (s->connected) {
 			return &(s->remote_addr);
@@ -2325,24 +2324,23 @@ static int socket_input_worker(ioa_socket_handle s)
 				if(s->e->tls_ctx_v1_2) {
 					s->ssl = SSL_new(s->e->tls_ctx_v1_2);
 					STRCPY(s->orig_ctx_type,"TLSv1.2");
-					break;
 				}
+				break;
 #endif
 #if defined(SSL_TXT_TLSV1_1)
 			case TURN_TLS_v1_1:
 				if(s->e->tls_ctx_v1_1) {
 					s->ssl = SSL_new(s->e->tls_ctx_v1_1);
 					STRCPY(s->orig_ctx_type,"TLSv1.1");
-					break;
 				}
-
+				break;
 #endif
 			case TURN_TLS_v1_0:
 				if(s->e->tls_ctx_v1_0) {
 					s->ssl = SSL_new(s->e->tls_ctx_v1_0);
 					STRCPY(s->orig_ctx_type,"TLSv1.0");
-					break;
 				}
+				break;
 			default:
 				if(s->e->tls_ctx_ssl23) {
 					s->ssl = SSL_new(s->e->tls_ctx_ssl23);
