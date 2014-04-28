@@ -1634,7 +1634,7 @@ void close_ioa_socket(ioa_socket_handle s)
 	}
 }
 
-ioa_socket_handle detach_ioa_socket(ioa_socket_handle s)
+ioa_socket_handle detach_ioa_socket(ioa_socket_handle s, int full_detach)
 {
 	ioa_socket_handle ret = NULL;
 
@@ -1666,15 +1666,13 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s)
 
 		evutil_socket_t udp_fd = -1;
 
-		if(s->parent_s) {
-#if defined(SO_REUSEPORT)
+		if(s->parent_s && full_detach) {
 			udp_fd = socket(s->local_addr.ss.sa_family, SOCK_DGRAM, 0);
 			if (udp_fd < 0) {
 				perror("socket");
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"%s: Cannot allocate new socket\n",__FUNCTION__);
 				return ret;
 			}
-#endif
 		}
 
 		detach_socket_net_data(s);
@@ -1826,8 +1824,9 @@ ioa_addr* get_local_addr_from_ioa_socket(ioa_socket_handle s)
 {
 	if (s && (s->magic == SOCKET_MAGIC) && !(s->done)) {
 
-		if(s->parent_s)
+		if(s->parent_s) {
 			s = s->parent_s;
+		}
 
 		if (s->local_addr_known) {
 			return &(s->local_addr);
