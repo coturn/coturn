@@ -1709,6 +1709,8 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s, int full_detach)
 		ret->connected = s->connected;
 		addr_cpy(&(ret->remote_addr),&(s->remote_addr));
 
+		STRCPY(ret->orig_ctx_type, s->orig_ctx_type);
+
 		ioa_socket_handle parent_s = s->parent_s;
 		ur_addr_map *sockets_container = s->sockets_container;
 		
