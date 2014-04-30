@@ -2895,6 +2895,8 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, u08b
 
 void auth_ping(redis_context_handle rch)
 {
+	UNUSED_ARG(rch);
+
 	donot_print_connection_success = 1;
 
 #if !defined(TURN_NO_PQ)
