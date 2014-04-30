@@ -908,6 +908,8 @@ static redisContext *get_redis_connection(void)
 
 static int get_auth_secrets(secrets_list_t *sl, u08bits *realm)
 {
+	UNUSED_ARG(realm);
+
 	int ret = -1;
 
 	clean_secrets_list(sl);
@@ -1652,6 +1654,8 @@ int add_user_account(char *user, int dynamic)
 
 static int list_users(int is_st, u08bits *realm)
 {
+	UNUSED_ARG(realm);
+
 	donot_print_connection_success = 1;
 
 	if(is_pqsql_userdb()){
@@ -2209,6 +2213,8 @@ static int del_origin(u08bits *origin0)
 
 static int list_origins(u08bits *realm)
 {
+	UNUSED_ARG(realm);
+
 	donot_print_connection_success = 1;
 
 	if(is_pqsql_userdb()){
@@ -2422,6 +2428,8 @@ static int set_realm_option(u08bits *realm, perf_options_t *po)
 
 static int list_realm_options(u08bits *realm)
 {
+	UNUSED_ARG(realm);
+
 	donot_print_connection_success = 1;
 
 	if(is_pqsql_userdb()){
