@@ -90,7 +90,7 @@ u32bits hash_int32(u32bits a)
 u64bits hash_int64(u64bits a)
 {
 	a = a ^ (a>>4);
-	a = (a^0xdeadbeefdeadbeef) + (a<<5);
+	a = (a^0xdeadbeefdeadbeefLL) + (a<<5);
 	a = a ^ (a>>11);
 	return a;
 }
