@@ -569,6 +569,9 @@ static int create_new_connected_udp_socket(
 
 		ioa_network_buffer_delete(server->e, server->sm.m.sm.nd.nbh);
 		server->sm.m.sm.nd.nbh = NULL;
+
+		ret->st = DTLS_SOCKET;
+		STRCPY(ret->orig_ctx_type,"DTLSv1.0");
 	}
 #endif
 
