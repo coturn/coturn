@@ -598,9 +598,9 @@ int get_canonic_origin(const char* o, char *co, int sz)
 						otmp[schlen]=0;
 
 						{
-							char *s = otmp;
+							unsigned char *s = (unsigned char*)otmp;
 							while(*s) {
-								*s = (char)tolower(*s);
+								*s = (unsigned char)tolower((int)*s);
 								++s;
 							}
 						}
@@ -615,9 +615,9 @@ int get_canonic_origin(const char* o, char *co, int sz)
 							snprintf(otmp+schlen,sizeof(otmp)-schlen-1,"://%s",host);
 
 						{
-							char *s = otmp + schlen + 3;
+							unsigned char *s = (unsigned char*)otmp + schlen + 3;
 							while(*s) {
-								*s = (char)tolower(*s);
+								*s = (unsigned char)tolower((int)*s);
 								++s;
 							}
 						}
