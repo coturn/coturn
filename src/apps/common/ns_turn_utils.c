@@ -281,11 +281,13 @@ void reset_rtpprintf(void)
 	log_unlock();
 }
 
-static void set_log_file_name(char *base, char *f)
+#define set_log_file_name(base, f) set_log_file_name_func(base, f, sizeof(f))
+
+static void set_log_file_name_func(char *base, char *f, size_t fsz)
 {
 	if(simple_log) {
-		STRCPY(f,base);
-		return;
+	  strncpy(f,base,fsz);
+	  return;
 	}
 
 	char logdate[125];
