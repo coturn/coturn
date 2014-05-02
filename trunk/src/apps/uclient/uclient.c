@@ -1128,7 +1128,12 @@ static inline int client_timer_handler(app_ur_session* elem, int *done)
 		if(hang_on && elem->completed)
 			return 0;
 
-		if (!turn_time_before(current_mstime, elem->to_send_timems)) {
+		int max_num = 50;
+		int cur_num = 0;
+
+		while (!turn_time_before(current_mstime, elem->to_send_timems)) {
+		  if(cur_num++>=max_num)
+		    break;
 			if (elem->wmsgnum >= elem->tot_msgnum) {
 				if (!turn_time_before(current_mstime, elem->finished_time) ||
 				 (tot_recv_messages>=tot_messages)) {
