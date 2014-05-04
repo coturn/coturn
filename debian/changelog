@@ -1,6 +1,6 @@
 coturn (4.0.0.0-2) unstable; urgency=low
 
-  * Initial Debian release (Closes #747010)
+  * Initial Debian release (Closes: #747010)
 
  -- Oleg Moskalenko <mom040267@gmail.com>  Sun, 04 May 2014 12:58:45 -0700
 
