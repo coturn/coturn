@@ -7,6 +7,7 @@ lib/libturnclient.a usr/lib
 turndb/schema.sql usr/share/coturn
 turndb/schema.sql usr/share/doc/coturn
 turndb/testredisdbsetup.sh usr/share/coturn
+turndb/testsqldbsetup.sh usr/share/coturn
 turndb/schema.userdb.redis usr/share/coturn
 turndb/schema.userdb.redis usr/share/doc/coturn
 turndb/schema.stats.redis usr/share/coturn
