@@ -1,6 +1,6 @@
-coturn (3.3.0.0-1) unstable; urgency=low
+coturn (4.0.0.0-1) unstable; urgency=low
 
   * Initial Debian release
 
- -- Oleg Moskalenko <mom040267@gmail.com>  Tue, 22 Apr 2014 12:58:45 -0700
+ -- Oleg Moskalenko <mom040267@gmail.com>  Sun, 04 May 2014 12:58:45 -0700
 
