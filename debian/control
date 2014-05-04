@@ -16,7 +16,7 @@ Vcs-Browser: http://git.debian.org/?p=pkg-voip/coturn.git;a=summary
 Package: coturn
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, adduser, telnet
-Conflicts: turnserver
+Conflicts: turnserver, rfc5766-turn-server
 Suggests: sip-router, xmpp-server
 Provides: stun-server, turn-server
 Description: TURN and STUN server for VoIP 
