@@ -1,5 +1,10 @@
 #summary News log
-#labels Version-3.3.0.0
+#labels Version-4.0.0.0
+
+== 05/04/2014 ==
+=== Version 4.0.0.0 ===
+
+First downloads issued
 
 == 04/20/2014 ==
 === Version 3.3.0.0 ===
