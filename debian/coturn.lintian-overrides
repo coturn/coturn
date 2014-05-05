@@ -8,4 +8,8 @@ coturn: possible-gpl-code-linked-with-openssl
 #
 #coturn: binary-file-built-without-LFS-support
 
+#
+# No pgp upstream signature is used
+#
+coturn: debian-watch-may-check-gpg-signature
 
