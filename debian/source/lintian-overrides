@@ -1,0 +1,5 @@
+#
+# No pgp upstream signature is used
+#
+coturn source: debian-watch-may-check-gpg-signature
+
