@@ -26,4 +26,3 @@ insert into allowed_peer_ip (ip_range) values('172.17.13.200');
 
 insert into denied_peer_ip (ip_range) values('172.17.13.133-172.17.14.56');
 insert into denied_peer_ip (ip_range) values('123::45');
-
