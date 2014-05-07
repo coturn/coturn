@@ -127,6 +127,7 @@ typedef struct _ch_info {
   turn_time_t expiration_time;
   ioa_timer_handle lifetime_ev;
   void *owner; //perm
+  TURN_CHANNEL_HANDLER_KERNEL kernel_channel;
 } ch_info;
 
 ///////////// "channel" map /////////////////////
