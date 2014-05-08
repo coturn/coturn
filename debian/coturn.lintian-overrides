@@ -1,0 +1,10 @@
+#
+# The project is covered by Citrix BSD open source license
+#
+coturn: possible-gpl-code-linked-with-openssl
+
+#
+# The project is not using any large files:
+#
+#coturn: binary-file-built-without-LFS-support
+

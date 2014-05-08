@@ -1,0 +1,6 @@
+coturn (4.0.0.0-1) unstable; urgency=low
+
+  * Initial Debian release (Closes: #747010)
+
+ -- Daniel Pocock <daniel@pocock.pro>  Wed, 07 May 2014 21:33:36 +0200
+

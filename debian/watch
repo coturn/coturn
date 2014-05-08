@@ -1,0 +1,6 @@
+# Compulsory line, this is a version 3 file
+version=3
+# Old project downloads: 
+# http://code.google.com/p/rfc5766-turn-server/downloads/list?can=1 .*/turnserver-(\d[\d.]*)\.(?:zip|tgz|tbz2|txz|tar\.gz|tar\.bz2|tar\.xz)
+# New downloads:
+http://turnserver.open-sys.org/downloads/v(\d[\d.]*)/turnserver-(\d[\d.]*)\.(?:zip|tgz|tbz2|txz|tar\.gz|tar\.bz2|tar\.xz)

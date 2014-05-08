@@ -1,0 +1,57 @@
+Coturn TURN Server for Debian
+------------------------------
+
+1) The turnserver has reasonable default option values and can work in many 
+simple environments without extra configuration. But more complex meaningful 
+usage requires setting options specific to your particular environment. 
+For example, WebRTC requires long-term credentials and some extra stuff. 
+To set the turnserver parameters:
+
+	a) Edit /etc/turnserver.conf file.
+
+	b) For user accounts settings, if using the turnserver 
+	with authentication: edit /etc/turnuserdb.conf 
+	file, or set up PostgreSQL or MySQL or Redis database for user accounts.
+	Use /usr/share/coturn/schema.sql as SQL database schema,
+	or use /usr/share/coturn/schema.userdb.redis as Redis 
+	database schema explanation for the user authentication data, and 
+	(optionally) use /usr/share/coturn/schema.stats.redis as 
+	Redis database schema explanation for status and statistics data.
+
+2) You can start/stop the turnserver "manually", using the "/usr/bin/turnserver" 
+   executable with appropriate options (see the documentation).
+   If you want the turnserver to be an automatically started system service, 
+   then you have to uncomment line "TURNSERVER_ENABLED=1" in 
+   the /etc/default/coturn file.
+   
+3) To create database schema, use schema in file 
+   /usr/share/coturn/schema.sql.
+   
+4) For additional information, run:
+ 
+   $ man turnserver
+   $ man turnadmin
+   $ man turnutils
+
+5) During installation, no TURN user accounts are created.  
+Coturn does not recognise UNIX accounts and requires accounts 
+to be defined in it's own config file. By default, the TURN server 
+uses anonymous access. 
+
+Traditional STUN doesn't require an account. For TURN relay
+purposes, several accounting options are possible:
+	  - anonymous access (the default option);
+	  - traditional long-term credentials mechanism (see RFC5766);
+	  - TURN REST API shared-secret-based long-term credentials mechanism
+	    (see TURN REST API docs);
+	  - short-term authentication mechanism (see RFC5766);
+
+If you are installing the TURN server for WebRTC usage, then you must set 
+the long term credentials mechanism option and add user accounts - 
+either with the flat config userdb file, or with PostgreSQL 
+database, or with MySQL database, or with Redis database. Optionally,
+you can add TURN REST API on top of long-term credentials mechanism.
+
+Please see the README.* files for details.
+
+ -- Oleg Moskalenko <mom040267@gmail.com>  Wed, 15 May 2013 11:58:45 -0700
