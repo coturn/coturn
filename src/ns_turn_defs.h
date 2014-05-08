@@ -31,7 +31,7 @@
 #ifndef __IOADEFS__
 #define __IOADEFS__
 
-#define TURN_SERVER_VERSION "4.0.0.0"
+#define TURN_SERVER_VERSION "4.0.0.1"
 #define TURN_SERVER_VERSION_NAME "Threetrees"
 #define TURN_SOFTWARE "Coturn-"TURN_SERVER_VERSION" '"TURN_SERVER_VERSION_NAME"'"
 
@@ -173,6 +173,20 @@ typedef enum _SHATYPE SHATYPE;
 #define shatype_name(sht) ((sht == SHATYPE_SHA1) ? "SHA1" : ((sht == SHATYPE_SHA256) ? "SHA256" : "SHA UNKNOWN"))
 
 #define SHA_TOO_WEAK (426)
+
+//////////////// KERNEL-LEVEL CHANNEL HANDLERS /////////
+
+#if !defined(TURN_CHANNEL_HANDLER_KERNEL)
+#define TURN_CHANNEL_HANDLER_KERNEL void*
+#endif
+
+#if !defined(CREATE_TURN_CHANNEL_KERNEL)
+#define CREATE_TURN_CHANNEL_KERNEL(channel_number, address_family_client, address_family_peer, protocol_client, client_addr, local_addr, local_relay_addr, peer_addr) ((TURN_CHANNEL_HANDLER_KERNEL)(1))
+#endif
+
+#if !defined(DELETE_TURN_CHANNEL_KERNEL)
+#define DELETE_TURN_CHANNEL_KERNEL(handler)
+#endif
 
 ////////////////////////////////////////////////////////
 
