@@ -1,0 +1,35 @@
+==================================================================
+
+1) If you system supports automatic start-up system daemon services, 
+the, to enable the turnserver as an automatically started system 
+service, you have to:
+
+	a) Create and edit /etc/turnserver.conf or 
+	/usr/local/etc/turnserver.conf . 
+	Use /usr/local/etc/turnserver.conf.default as an example.
+
+	b) For user accounts settings, if using the turnserver 
+	with authentication: create and edit /etc/turnuserdb.conf 
+	file, or set up PostgreSQL or MySQL or Redis database for user accounts.
+	Use /usr/local/etc/turnuserdb.conf.default as example for flat file DB,
+	or use /usr/local/share/turnserver/schema.sql as SQL database schema,
+	or use /usr/local/share/turnserver/schema.userdb.redis as Redis
+	database schema description and/or /usr/local/share/turnserver/schema.stats.redis
+	as Redis status & statistics database schema description.
+
+	c) add whatever is necessary to enable start-up daemon for the /usr/local/bin/turnserver.
+     
+2) If you do not want the turnserver to be a system service, 
+   then you can start/stop it "manually", using the "turnserver" 
+   executable with appropriate options (see the documentation).
+   
+3) To create database schema, use schema in file /usr/local/share/turnserver/schema.sql.
+   
+4) For additional information, run:
+ 
+   $ man turnserver
+   $ man turnadmin
+   $ man turnutils
+	
+==================================================================
+ 
