@@ -1,3 +1,10 @@
+coturn (4.0.0.1-1) unstable; urgency=low
+
+  * New upstream release.
+  * Kernel channels definitions added.
+
+ -- Oleg Moskalenko <mom040267@gmail.com>  Wed, 07 May 2014 23:28:04 -0700
+
 coturn (4.0.0.0-1) unstable; urgency=low
 
   * Initial Debian release (Closes: #747010)
