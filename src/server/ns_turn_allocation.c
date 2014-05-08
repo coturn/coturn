@@ -215,10 +215,14 @@ static turn_permission_info* get_from_turn_permission_hashtable(turn_permission_
 }
 
 static void ch_info_clean(ch_info* c) {
-  if(c) {
-    IOA_EVENT_DEL(c->lifetime_ev);
-    ns_bzero(c,sizeof(ch_info));
-  }
+  if (c) {
+		if (c->kernel_channel) {
+			DELETE_TURN_CHANNEL_KERNEL(c->kernel_channel);
+			c->kernel_channel = 0;
+		}
+		IOA_EVENT_DEL(c->lifetime_ev);
+		ns_bzero(c,sizeof(ch_info));
+	}
 }
 
 static int delete_channel_info_from_allocation_map(ur_map_key_type key, ur_map_value_type value)
