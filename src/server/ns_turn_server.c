@@ -2242,17 +2242,21 @@ static int handle_turn_channel_bind(turn_turnserver *server,
 				  ioa_network_buffer_set_size(nbh,len);
 				  *resp_constructed = 1;
 
-				  if(get_ioa_socket_type(ss->client_session.s) == UDP_SOCKET ||
-						  get_ioa_socket_type(ss->client_session.s) == TCP_SOCKET) {
-					  chn->kernel_channel = CREATE_TURN_CHANNEL_KERNEL(chn->chnum,
-						  get_ioa_socket_address_family(ss->client_session.s),
-						  get_ioa_socket_address_family(ss->alloc.relay_session.s),
-						  get_ioa_socket_type(ss->client_session.s)==UDP_SOCKET ? IPPROTO_UDP : IPPROTO_TCP,
-						  &(get_remote_addr_from_ioa_socket(ss->client_session.s)->ss),
-						  &(get_local_addr_from_ioa_socket(ss->client_session.s)->ss),
-						  &(get_local_addr_from_ioa_socket(ss->alloc.relay_session.s)),
-						  &(get_remote_addr_from_ioa_socket(ss->alloc.relay_session.s))
-						  );
+				  if(!(ss->is_mobile)) {
+					  if(get_ioa_socket_type(ss->client_session.s) == UDP_SOCKET ||
+							  get_ioa_socket_type(ss->client_session.s) == TCP_SOCKET) {
+						  if(get_ioa_socket_type(ss->alloc.relay_session.s) == UDP_SOCKET) {
+							  chn->kernel_channel = CREATE_TURN_CHANNEL_KERNEL(chn->chnum,
+								  get_ioa_socket_address_family(ss->client_session.s),
+								  get_ioa_socket_address_family(ss->alloc.relay_session.s),
+								  (get_ioa_socket_type(ss->client_session.s)==UDP_SOCKET ? IPPROTO_UDP : IPPROTO_TCP),
+								  &(get_remote_addr_from_ioa_socket(ss->client_session.s)->ss),
+								  &(get_local_addr_from_ioa_socket(ss->client_session.s)->ss),
+								  &(get_local_addr_from_ioa_socket(ss->alloc.relay_session.s)),
+								  &(get_remote_addr_from_ioa_socket(ss->alloc.relay_session.s))
+							  );
+						  }
+					  }
 				  }
 			  }
 			}
