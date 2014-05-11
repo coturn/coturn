@@ -208,15 +208,16 @@ The following platforms have been used in the development:
 	- Linux CentOS / Red Hat Enterprise Edition 6.4, x86_32 (i386)
 	- Linux Debian 'Squeeze', i386
 	- Linux Mint 14.1 'Nadia', i386
+	- Linux Mint 16 'Petra', i386
 	- Linux Debian 'Wheezy', x86_64 
 	- Cygwin 1.7.20
-	- NetBSD 6.0.1
-	- OpenBSD 5.3
-	- Amazon Linux
+	- NetBSD 6.0.1, i386
+	- OpenBSD 5.3, i386
+	- Amazon Linux, x86_64
 	- Mac OS X Mountain Lion
-	- ArchLinux
-	- Fedora 19
-	- OpenSUSE 12.3 x86_64
+	- ArchLinux, x86_64
+	- Fedora 19 and 20, x86_64
+	- OpenSUSE 12.3, x86_64
 
 It must work on many other *NIXes, as well. The configure script and/or 
 Makefile may need adjustments for other *NIXes not mentioned above.
