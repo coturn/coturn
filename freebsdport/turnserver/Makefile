@@ -78,14 +78,12 @@ CONFIGURE_ENV+=	PTHREAD_LIBS=-pthread TURN_DISABLE_RPATH=1
 
 .if ${PORT_OPTIONS:MPGSQL}
 USE_PGSQL=	yes
-LIB_DEPENDS+=	pq:${PORTSDIR}/databases/postgresql90-client
 .else
 CONFIGURE_ENV+=	TURN_NO_PQ=1
 .endif
 
 .if ${PORT_OPTIONS:MMYSQL}
 USE_MYSQL=	yes
-LIB_DEPENDS+=	mysqlclient:${PORTSDIR}/databases/mysql55-client
 .else
 CONFIGURE_ENV+=	TURN_NO_MYSQL=1
 .endif
