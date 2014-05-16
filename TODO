@@ -27,7 +27,7 @@
 
 ==================================================================
 
-1) Exclusive IP addresses for relay
+1) Kernel module for data channels.
 
 ==================================================================
 
@@ -41,20 +41,6 @@
 	the slave servers, currently it is only just a dumb 
 	round-robin load distributor.
 
-2) For a large enterprise, a user-space stack to be integrated.
-
-	An another socket abstraction to be implemented, 
-	the one that uses the user-space TCP/IP stack with 
-	zero memory copy. This is an ambitious goal that would 
-	increase the system scaleability, significantly. 
-	The stock TCP/IP stack in UNIX and in MS Windows do not 
-	scale gracefully. We are trying to suppress those issues 
-	in the TURN Server, by using an advanced synchronous 
-	I/O technique, but still the underlying stock TCP/IP stack 
-	is a limitation.  
-	
-3) Multiple authentication threads.
-
 ==================================================================
 
 ###   V. SECURITY   ###
@@ -63,15 +49,13 @@
 
 1) RADIUS integration ?
 
-2) Watch new TURN security draft. oAuth integration.
-
 ==================================================================
 
 ###   VI. STANDARDS SUPPORT   ###
 
 ==================================================================
 
-1) Follow the draft ICE endpoint mobility standard and add changes 
+1) Follow the draft ICE endpoint mobility standard and apply changes 
 when necessary:
 
    https://ietf.org/doc/draft-wing-mmusic-ice-mobility/
@@ -82,9 +66,13 @@ when necessary:
 
 4) Bandwidth draft.
 
-5) ALPN with TLS and DTLS.
+5) ALPN with TLS and DTLS (when OpenSSL 1.0.2 is available).
 
 6) Redirect draft.
+
+7) Dual allocation draft.
+
+8) New security oAuth draft.
 
 ==================================================================
 
