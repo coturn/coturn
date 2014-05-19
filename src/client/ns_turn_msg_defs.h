@@ -31,6 +31,8 @@
 #ifndef __LIB_TURN_MSG_DEFS__
 #define __LIB_TURN_MSG_DEFS__
 
+#include "ns_turn_msg_defs_new.h"
+
 ///////////////////////////////////////////
 // http://www.iana.org/assignments/stun-parameters/stun-parameters.xhtml
 ///////////////////////////////////////////
@@ -40,7 +42,6 @@
 
 #define STUN_MAX_USERNAME_SIZE (513)
 #define STUN_MAX_REALM_SIZE (127)
-#define STUN_MAX_ORIGIN_SIZE (127)
 #define STUN_MAX_NONCE_SIZE (127)
 #define STUN_MAX_PWD_SIZE (127)
 
@@ -129,7 +130,7 @@
 
 #define STUN_VALID_CHANNEL(chn) ((chn)>=0x4000 && (chn)<=0x7FFF)
 
-///////// values //////////////////
+///////// extra values //////////////////
 
 /* RFC 6156 ==>> */
 #define STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4 (0x01)
@@ -150,10 +151,6 @@
 #define STUN_ATTRIBUTE_MOBILITY_EVENT (0x802)
 #define STUN_ATTRIBUTE_MOBILITY_SUPPORT (0x8000)
 /* <<== Mobility */
-
-/* Origin ==>> */
-#define STUN_ATTRIBUTE_ORIGIN (0x802F)
-/* <<== Origin */
 
 ////////////////////////////////////////////////
 

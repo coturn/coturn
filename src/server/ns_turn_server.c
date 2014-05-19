@@ -2866,7 +2866,7 @@ static int check_stun_auth(turn_turnserver *server,
 		switch(sarlen) {
 		case SHA1SIZEBYTES:
 			if(server->shatype != SHATYPE_SHA1) {
-				*err_code = SHA_TOO_WEAK;
+				*err_code = SHA_TOO_WEAK_ERROR_CODE;
 				return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
 			}
 			break;
@@ -3010,7 +3010,7 @@ static int check_stun_auth(turn_turnserver *server,
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
 							"%s: user %s credentials are incorrect: SHA function is too weak\n",
 									__FUNCTION__, (char*)usname);
-					*err_code = SHA_TOO_WEAK;
+					*err_code = SHA_TOO_WEAK_ERROR_CODE;
 					*reason = (const u08bits*)"Unauthorised: weak SHA function is used";
 					if(server->ct != TURN_CREDENTIALS_SHORT_TERM) {
 						return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
