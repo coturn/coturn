@@ -1,5 +1,5 @@
 Name:		turnserver
-Version:	4.0.0.1
+Version:	4.0.0.2
 Release:	0%{dist}
 Summary:	Coturn TURN Server
 
@@ -284,10 +284,13 @@ fi
 %{_includedir}/turn/client/ns_turn_ioaddr.h
 %{_includedir}/turn/client/ns_turn_msg_addr.h
 %{_includedir}/turn/client/ns_turn_msg_defs.h
+%{_includedir}/turn/client/ns_turn_msg_defs_new.h
 %{_includedir}/turn/client/ns_turn_msg.h
 %{_includedir}/turn/client/TurnMsgLib.h
 
 %changelog
+* Sun May 18 2014 Oleg Moskalenko <mom040267@gmail.com>
+  - Sync to 4.0.0.2
 * Wed May 07 2014 Oleg Moskalenko <mom040267@gmail.com>
   - Sync to 4.0.0.1
 * Wed Apr 30 2014 Oleg Moskalenko <mom040267@gmail.com>
