@@ -433,3 +433,9 @@ The turnserver process provides a telnet CLI access as statistics and basic mana
 === SHA256 extension ===
 
 The existing STUN/TURN standards require HMAC-SHA1 function for the message integrity digest calculation, and MD5 for the password hash (key) calculation. As an extension for stronger protection, optionally, this server can use (with option *--sha256*) HMAC-SHA256 for the message integrity digest calculation, and SHA256 for the password hash (key) calculation. Of course, the TURN client has to implement the same extension. 
+
+=== TURN connection with Proxy ===
+
+In an Enterprise environment when a Proxy is used for the Internet connections, the TURN connection handling has some specifics. The discussion about the matter can be found here:
+
+[https://groups.google.com/forum/#!topic/discuss-webrtc/q0_RHvYNbf8 TURN and Proxy]
