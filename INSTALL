@@ -22,6 +22,33 @@ In the new Debian "jessie", and in the related Ubuntu and Mint, you will
 be able to just select rfc5766-turn-server from the packages list and 
 install it through Synaptic or through the package manager.
 
+If you are using the Debian package from the project download site, then follow these instructions:
+
+Unpack the archive:
+
+ $ tar xvfz turnserver-<...>.tar.gz
+ 
+Read the INSTALl file:
+
+ $ cat INSTALL
+ 
+Install the *.deb file:
+
+  $ sudo apt-get install gdebi-core
+  $ sudo gdebi coturn*.deb
+
+(to install the bare package without any dependencies, type:
+
+  $ sudo dpkg -i coturn_*_*.deb)
+
+After the install, read the documentation in /usr/share/doc/coturn directory.
+
+All binaries will be installed in /usr/bin/ directory. 
+The turn*.conf config files are in /etc directory. 
+
+The service start-up control scripts will be in /etc/init.d/coturn and
+in /etc/defaults/coturn files.
+
 3) ArchLinux has alse the predecessor of the TURN server package:
 
 https://aur.archlinux.org/packages/rfc5766-turn-server/
