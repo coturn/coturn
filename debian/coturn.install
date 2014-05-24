@@ -63,3 +63,4 @@ include/turn/client/ns_turn_ioaddr.h usr/include/turn
 include/turn/client/ns_turn_msg.h usr/include/turn
 include/turn/client/ns_turn_msg_addr.h usr/include/turn
 include/turn/client/ns_turn_msg_defs.h usr/include/turn
+include/turn/client/ns_turn_msg_defs_new.h usr/include/turn

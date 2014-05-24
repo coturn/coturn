@@ -34,6 +34,8 @@ Description: TURN and STUN server for VoIP
     http://tools.ietf.org/html/draft-petithuguenin-tram-turn-dtls-00;
   * Mobile ICE (MICE) support
     http://datatracker.ietf.org/doc/draft-wing-mmusic-ice-mobility.
+  * TURN ORIGIN specs for multi-tenant servers
+    http://tools.ietf.org/html/draft-johnston-tram-stun-origin-02
  .
  STUN specs:
   * RFC 3489 - obsolete "classic" STUN specs;

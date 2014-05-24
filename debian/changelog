@@ -1,3 +1,10 @@
+coturn (4.0.0.2-1) unstable; urgency=low
+
+  * Sync to upstream 4.0.0.2.
+  * Package description in the control file updated.
+
+ -- Oleg Moskalenko <mom040267@gmail.com>  Fri, 23 May 2014 23:20:39 -0700
+
 coturn (4.0.0.1-1) unstable; urgency=low
 
   * New upstream release.
