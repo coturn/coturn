@@ -1,14 +1,23 @@
 #summary Downloads Page
-#labels Version-4.0.0.0,Featured
+#labels Version-4.0.0.2,Featured
 
-== Latest official recommended version - 4.0.0.0: ==
+== Latest official recommended version - 4.0.0.2: ==
 
-  * Multi-tenant TURN server.
+  * Channel management callbacks for the custom libraries.
+  * Separate header file for the new spaces data.
 
-[http://turnserver.open-sys.org/downloads/v4.0.0.0/ 4.0.0.0 Version Downloads (full source and platform builds)]
+[http://turnserver.open-sys.org/downloads/v4.0.0.2/ 4.0.0.2 Version Downloads (full source and platform builds)]
 
 [http://turnserver.open-sys.org/downloads/ Main Downloads Page (with all recent versions)]
 
 [http://www.olegmoskalenko.com/turnserver/ Backup Downloads Page]
 
 [http://turnserver.open-sys.org/downloads/extradocs/ Extra Docs ]
+
+== Older versions ==
+
+=== 4.0.0.0: ===
+
+  * Multi-tenant TURN server.
+
+[http://turnserver.open-sys.org/downloads/v4.0.0.0/ v4.0.0.0]
