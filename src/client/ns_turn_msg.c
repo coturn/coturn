@@ -281,7 +281,7 @@ int stun_is_challenge_response_str(const u08bits* buf, size_t len, int *err_code
 {
 	int ret = stun_is_error_response_str(buf, len, err_code, err_msg, err_msg_size);
 
-	if(ret && (((*err_code) == 401) || ((*err_code) == 438) || ((*err_code) == SHA_TOO_WEAK))) {
+	if(ret && (((*err_code) == 401) || ((*err_code) == 438) || ((*err_code) == SHA_TOO_WEAK_ERROR_CODE))) {
 
 		stun_attr_ref sar = stun_attr_get_first_by_type_str(buf,len,STUN_ATTRIBUTE_REALM);
 		if(sar) {

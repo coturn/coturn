@@ -31,7 +31,7 @@
 #ifndef __IOADEFS__
 #define __IOADEFS__
 
-#define TURN_SERVER_VERSION "4.0.0.1"
+#define TURN_SERVER_VERSION "4.0.0.2"
 #define TURN_SERVER_VERSION_NAME "Threetrees"
 #define TURN_SOFTWARE "Coturn-"TURN_SERVER_VERSION" '"TURN_SERVER_VERSION_NAME"'"
 
@@ -155,24 +155,6 @@ typedef u32bits turn_time_t;
 			((char*)(dst))[szdst-1] = 0;\
 		}\
 	} } while(0)
-
-////////////////// Security ////////////////////////////
-
-#define SHA1SIZEBYTES (20)
-#define SHA256SIZEBYTES (32)
-
-#define MAXSHASIZE (128)
-
-enum _SHATYPE {
-	SHATYPE_SHA1 = 0,
-	SHATYPE_SHA256
-};
-
-typedef enum _SHATYPE SHATYPE;
-
-#define shatype_name(sht) ((sht == SHATYPE_SHA1) ? "SHA1" : ((sht == SHATYPE_SHA256) ? "SHA256" : "SHA UNKNOWN"))
-
-#define SHA_TOO_WEAK (426)
 
 //////////////// KERNEL-LEVEL CHANNEL HANDLERS /////////
 
