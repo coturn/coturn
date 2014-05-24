@@ -596,7 +596,7 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 		} else if (stun_is_challenge_response_str(elem->in_buffer.buf, (size_t)elem->in_buffer.len,
 							&err_code,err_msg,sizeof(err_msg),
 							clnet_info->realm,clnet_info->nonce)) {
-			if(err_code == SHA_TOO_WEAK && (elem->pinfo.shatype == SHATYPE_SHA1)) {
+			if(err_code == SHA_TOO_WEAK_ERROR_CODE && (elem->pinfo.shatype == SHATYPE_SHA1)) {
 				elem->pinfo.shatype = SHATYPE_SHA256;
 				recalculate_restapi_hmac();
 			}
