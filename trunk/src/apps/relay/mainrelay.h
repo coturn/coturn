@@ -299,6 +299,7 @@ typedef struct _turn_params_ {
   turn_credential_type ct;
   int use_auth_secret_with_timestamp;
   band_limit_t max_bps;
+  band_limit_t bps_capacity;
   vint total_quota;
   vint user_quota;
 

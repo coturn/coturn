@@ -714,6 +714,7 @@ static void cli_print_configuration(struct cli_session* cs)
 
 		cli_print_uint(cs,(unsigned long)turn_params.min_port,"min-port",0);
 		cli_print_uint(cs,(unsigned long)turn_params.max_port,"max-port",0);
+		cli_print_uint(cs,(unsigned long)turn_params.bps_capacity,"bps_capacity",0);
 
 		cli_print_ip_range_list(cs,&turn_params.ip_whitelist,"Whitelist IP",0);
 		cli_print_ip_range_list(cs,&turn_params.ip_blacklist,"Blacklist IP",0);
