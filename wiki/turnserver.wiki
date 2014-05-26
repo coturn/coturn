@@ -1,5 +1,5 @@
 #summary turnserver wiki page
-#labels Version-4.0.0.0
+#labels Version-4.0.1.1
 
 ==turnserver application: a TURN relay server implementation==
 
@@ -123,6 +123,7 @@ Valid formats are 1.2.3.4:5555 for IPv4 and [1:2::3:4]:5555 for IPv6. There may 
     *   *-q,* *--user-quota* {{{<number>}}} Per-user allocation quota: how many concurrent allocations a user can create. _This option can also be set	through the database, for a particular realm._
     *   *-Q,* *--total-quota* {{{<number>}}} Total allocations quota: global limit on concurrent allocations. _This option can also be set	through the database, for a particular realm._
     *	*-s,* *--max-bps* {{{<number>}}} Max bytes-per-second bandwidth a TURN session is allowed to handle (input and output network streams are treated separately). Anything above that limit will be dropped or temporary suppressed (within the available buffer limits). _This option can also be set	through the database, for a particular realm._
+    *   *-B,* *--bps-capacity* {{{<number>}}} Maximum server capacity. Total bytes-per-second bandwidth the TURN server is allowed to allocate for the sessions, combined (input and output network streams are treated separately).
     *   *--static-auth-secret* {{{<secret>}}} Static authentication secret value (a string), for TURN REST API. If not set, then the turn server will try to use the 'dynamic' value in turn_secret table in user database (if present). The database-stored value can be changed on-the-fly by a separate program, so this is why that other mode is 'dynamic'. Multiple shared secrets can be used (both in the database and in the "static" fashion).
     *   *--cert* {{{<file-name>}}} Certificate file, PEM format. Same file search rules applied  as for the configuration file. If both *--no-tls* and *--no-dtls* options are specified, then this parameter is not needed. Default value is turn_server_cert.pem.
     *   *--pkey* {{{<file-name>}}} Private key file, PEM format. Same file search rules applied as for the configuration file. If both *--no-tls* and *--no-dtls* options are specified, then this parameter is not needed. Default value is turn_server_pkey.pem.
