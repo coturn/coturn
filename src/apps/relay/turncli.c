@@ -350,12 +350,16 @@ static void change_cli_param(struct cli_session* cs, const char* pn)
 	if(cs && cs->ts && pn) {
 
 		if(strstr(pn,"total-quota")==pn) {
-			int new_quota = change_total_quota(cs->realm, atoi(pn+strlen("total-quota")));
-			cli_print_uint(cs,(unsigned long)new_quota,"total-quota",2);
+			turn_params.total_quota = atoi(pn+strlen("total-quota"));
+			cli_print_uint(cs,(unsigned long)turn_params.total_quota,"total-quota",2);
 			return;
 		} else if(strstr(pn,"user-quota")==pn) {
-			int new_quota = change_user_quota(cs->realm, atoi(pn+strlen("user-quota")));
-			cli_print_uint(cs,(unsigned long)new_quota,"user-quota",2);
+			turn_params.user_quota = atoi(pn+strlen("user-quota"));
+			cli_print_uint(cs,(unsigned long)turn_params.user_quota,"user-quota",2);
+			return;
+		} else if(strstr(pn,"max-bps")==pn) {
+			turn_params.max_bps = atoi(pn+strlen("max-bps"));
+			cli_print_uint(cs,(unsigned long)turn_params.max_bps,"max-bps",2);
 			return;
 		} else if(strstr(pn,"cli-max-output-sessions")==pn) {
 			cli_max_output_sessions = atoi(pn+strlen("cli-max-output-sessions"));
@@ -718,7 +722,6 @@ static void cli_print_configuration(struct cli_session* cs)
 
 		cli_print_uint(cs,(unsigned long)turn_params.min_port,"min-port",0);
 		cli_print_uint(cs,(unsigned long)turn_params.max_port,"max-port",0);
-		cli_print_uint(cs,(unsigned long)turn_params.bps_capacity,"bps-capacity",2);
 		cli_print_uint(cs,(unsigned long)turn_params.bps_capacity_allocated,"Allocated bps-capacity",0);
 
 		cli_print_ip_range_list(cs,&turn_params.ip_whitelist,"Whitelist IP",0);
@@ -791,9 +794,18 @@ static void cli_print_configuration(struct cli_session* cs)
 
 		cli_print_uint(cs,(unsigned long)cs->rp->status.total_current_allocs,"total-current-allocs",0);
 
-		cli_print_uint(cs,(unsigned long)cs->rp->options.perf_options.total_quota,"total-quota",2);
-		cli_print_uint(cs,(unsigned long)cs->rp->options.perf_options.user_quota,"user-quota",2);
-		cli_print_uint(cs,(unsigned long)cs->rp->options.perf_options.max_bps,"max-bps",0);
+		myprintf(cs,"\n");
+
+		cli_print_uint(cs,(unsigned long)turn_params.total_quota,"total-quota",2);
+		cli_print_uint(cs,(unsigned long)turn_params.user_quota,"user-quota",2);
+		cli_print_uint(cs,(unsigned long)turn_params.bps_capacity,"bps-capacity",2);
+		cli_print_uint(cs,(unsigned long)turn_params.max_bps,"max-bps",2);
+
+		myprintf(cs,"\n");
+
+		cli_print_uint(cs,(unsigned long)cs->rp->options.perf_options.total_quota,"current realm total-quota",0);
+		cli_print_uint(cs,(unsigned long)cs->rp->options.perf_options.user_quota,"current realm user-quota",0);
+		cli_print_uint(cs,(unsigned long)cs->rp->options.perf_options.max_bps,"current realm max-bps",0);
 
 		myprintf(cs,"\n");
 
