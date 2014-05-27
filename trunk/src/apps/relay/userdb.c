@@ -3282,6 +3282,15 @@ static int set_redis_realm_opt(char *realm, const char* key, vint *value)
 
 void reread_realms(void)
 {
+	{
+		realm_params_t* defrp = get_realm(NULL);
+		ur_string_map_lock(realms);
+		defrp->options.perf_options.max_bps = turn_params.max_bps;
+		defrp->options.perf_options.total_quota = turn_params.total_quota;
+		defrp->options.perf_options.user_quota = turn_params.user_quota;
+		ur_string_map_unlock(realms);
+	}
+
 #if !defined(TURN_NO_PQ)
 	PGconn * pqc = get_pqdb_connection();
 	if(pqc) {
