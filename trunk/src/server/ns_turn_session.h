@@ -60,6 +60,7 @@ struct _realm_options_t {
 //////////////// session info //////////////////////
 
 typedef u64bits turnsession_id;
+typedef unsigned int band_limit_t;
 
 #define NONCE_MAX_SIZE (NONCE_LENGTH_32BITS*4+1)
 
@@ -103,6 +104,8 @@ struct _ts_ur_super_session {
   realm_options_t realm_options;
   int realm_set;
   s08bits origin[STUN_MAX_ORIGIN_SIZE + 1];
+  /* Bandwidth */
+  band_limit_t bps;
 };
 
 ////// Session info for statistics //////

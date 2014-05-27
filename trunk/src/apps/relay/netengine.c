@@ -77,6 +77,32 @@ static void barrier_wait_func(const char* func, int line)
 
 #define barrier_wait() barrier_wait_func(__FUNCTION__,__LINE__)
 
+/////////////// Bandwidth //////////////////
+
+static pthread_mutex_t mutex_bps;
+
+static band_limit_t allocate_bps(band_limit_t bps)
+{
+	band_limit_t ret = 0;
+	if(bps>0) {
+		pthread_mutex_lock(&mutex_bps);
+
+		if(turn_params.bps_capacity_allocated < turn_params.bps_capacity) {
+			band_limit_t reserve = turn_params.bps_capacity - turn_params.bps_capacity_allocated;
+			if(reserve <= bps) {
+				ret = reserve;
+				turn_params.bps_capacity_allocated = turn_params.bps_capacity;
+			} else {
+				ret = bps;
+				turn_params.bps_capacity_allocated -= ret;
+			}
+		}
+
+		pthread_mutex_unlock(&mutex_bps);
+	}
+	return ret;
+}
+
 /////////////// AUX SERVERS ////////////////
 
 static void add_aux_server_list(const char *saddr, turn_server_addrs_list_t *list)
@@ -1382,7 +1408,7 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
 			 &turn_params.secure_stun, turn_params.shatype, &turn_params.mobility,
 			 turn_params.server_relay,
 			 send_turn_session_info,
-			 turn_params.max_bps);
+			 turn_params.max_bps, allocate_bps);
 	
 	if(to_set_rfc5780) {
 		set_rfc5780(&(rs->server), get_alt_addr, send_message_from_listener_to_client);
@@ -1526,6 +1552,8 @@ static void setup_cli_server(void)
 void setup_server(void)
 {
 	evthread_use_pthreads();
+
+	pthread_mutex_init(&mutex_bps, NULL);
 
 #if !defined(TURN_NO_THREAD_BARRIERS)
 
