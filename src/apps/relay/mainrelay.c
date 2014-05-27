@@ -92,7 +92,7 @@ LOW_DEFAULT_PORTS_BOUNDARY,HIGH_DEFAULT_PORTS_BOUNDARY,0,0,"",
 /////////////// stop server ////////////////
 0,
 /////////////// MISC PARAMS ////////////////
-0,0,0,0,0,SHATYPE_SHA1,':',0,0,TURN_CREDENTIALS_NONE,0,0,0,0,0,
+0,0,0,0,0,SHATYPE_SHA1,':',0,0,TURN_CREDENTIALS_NONE,0,0,0,0,0,0,
 ///////////// Users DB //////////////
 { TURN_USERDB_TYPE_FILE, {"\0",NULL}, {0,NULL,NULL, {NULL,0}} }
 
@@ -1713,6 +1713,11 @@ int main(int argc, char **argv)
 	  if(c == 'u') {
 	    set_option(c,optarg);
 	  }
+	}
+
+	if(turn_params.bps_capacity && !(turn_params.max_bps)) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nCONFIG ERROR: If you set the --bps-capacity option, then you must set --max-bps options, too.\n");
+		exit(-1);
 	}
 
 	if(turn_params.no_udp_relay && turn_params.no_tcp_relay) {

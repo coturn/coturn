@@ -92,6 +92,8 @@ typedef void (*release_allocation_quota_cb)(u08bits *username, u08bits *realm);
 typedef int (*send_socket_to_relay_cb)(turnserver_id id, u64bits cid, stun_tid *tid, ioa_socket_handle s, int message_integrity, MESSAGE_TO_RELAY_TYPE rmt, ioa_net_data *nd);
 typedef int (*send_turn_session_info_cb)(struct turn_session_info *tsi);
 
+typedef vint band_limit_t;
+
 struct _turn_turnserver {
 
 	turnserver_id id;
@@ -149,6 +151,9 @@ struct _turn_turnserver {
 
 	/* Server relay */
 	int server_relay;
+
+	/* Bandwidth draft: */
+	band_limit_t max_bps;
 };
 
 ///////////////////////////////////////////
@@ -182,7 +187,8 @@ void init_turn_server(turn_turnserver* server,
 				    SHATYPE shatype,
 				    vintp mobility,
 				    int server_relay,
-				    send_turn_session_info_cb send_turn_session_info);
+				    send_turn_session_info_cb send_turn_session_info,
+				    band_limit_t max_bps);
 
 ioa_engine_handle turn_server_get_engine(turn_turnserver *s);
 
