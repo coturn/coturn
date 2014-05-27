@@ -361,6 +361,10 @@ static void change_cli_param(struct cli_session* cs, const char* pn)
 			cli_max_output_sessions = atoi(pn+strlen("cli-max-output-sessions"));
 			cli_print_uint(cs,(unsigned long)cli_max_output_sessions,"cli-max-output-sessions",2);
 			return;
+		} else if(strstr(pn,"bps-capacity")==pn) {
+			turn_params.bps_capacity = atoi(pn+strlen("bps-capacity"));
+			cli_print_uint(cs,(unsigned long)turn_params.bps_capacity,"bps-capacity",2);
+			return;
 		}
 
 		myprintf(cs, "\n");
@@ -714,7 +718,8 @@ static void cli_print_configuration(struct cli_session* cs)
 
 		cli_print_uint(cs,(unsigned long)turn_params.min_port,"min-port",0);
 		cli_print_uint(cs,(unsigned long)turn_params.max_port,"max-port",0);
-		cli_print_uint(cs,(unsigned long)turn_params.bps_capacity,"bps_capacity",0);
+		cli_print_uint(cs,(unsigned long)turn_params.bps_capacity,"bps-capacity",2);
+		cli_print_uint(cs,(unsigned long)turn_params.bps_capacity_allocated,"Allocated bps-capacity",0);
 
 		cli_print_ip_range_list(cs,&turn_params.ip_whitelist,"Whitelist IP",0);
 		cli_print_ip_range_list(cs,&turn_params.ip_blacklist,"Blacklist IP",0);

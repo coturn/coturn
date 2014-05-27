@@ -4348,7 +4348,8 @@ void init_turn_server(turn_turnserver* server,
 		ip_range_list_t* ip_whitelist, ip_range_list_t* ip_blacklist,
 		send_socket_to_relay_cb send_socket_to_relay,
 		vintp secure_stun, SHATYPE shatype, vintp mobility, int server_relay,
-		send_turn_session_info_cb send_turn_session_info) {
+		send_turn_session_info_cb send_turn_session_info,
+		band_limit_t max_bps) {
 
 	if (!server)
 		return;
@@ -4404,6 +4405,8 @@ void init_turn_server(turn_turnserver* server,
 	server->ip_blacklist = ip_blacklist;
 
 	server->send_socket_to_relay = send_socket_to_relay;
+
+	server->max_bps = max_bps;
 
 	set_ioa_timer(server->e, 1, 0, timer_timeout_handler, server, 1, "timer_timeout_handler");
 }

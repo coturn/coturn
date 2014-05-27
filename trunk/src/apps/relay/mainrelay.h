@@ -300,6 +300,7 @@ typedef struct _turn_params_ {
   int use_auth_secret_with_timestamp;
   band_limit_t max_bps;
   band_limit_t bps_capacity;
+  band_limit_t bps_capacity_allocated;
   vint total_quota;
   vint user_quota;
 
