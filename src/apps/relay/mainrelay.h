@@ -348,6 +348,14 @@ void init_listener(void);
 void setup_server(void);
 void run_listener_server(struct listener_server *ls);
 
+////////// BPS ////////////////
+
+band_limit_t get_bps_capacity_allocated(void);
+band_limit_t get_bps_capacity(void);
+void set_bps_capacity(band_limit_t value);
+band_limit_t get_max_bps(void);
+void set_max_bps(band_limit_t value);
+
 ///////////////////////////////
 
 #ifdef __cplusplus

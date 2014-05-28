@@ -81,26 +81,78 @@ static void barrier_wait_func(const char* func, int line)
 
 static pthread_mutex_t mutex_bps;
 
-static band_limit_t allocate_bps(band_limit_t bps)
+static band_limit_t allocate_bps(band_limit_t bps, int negative)
 {
 	band_limit_t ret = 0;
 	if(bps>0) {
 		pthread_mutex_lock(&mutex_bps);
 
-		if(turn_params.bps_capacity_allocated < turn_params.bps_capacity) {
-			band_limit_t reserve = turn_params.bps_capacity - turn_params.bps_capacity_allocated;
-			if(reserve <= bps) {
-				ret = reserve;
-				turn_params.bps_capacity_allocated = turn_params.bps_capacity;
+		if(!negative) {
+
+			if(turn_params.bps_capacity_allocated < turn_params.bps_capacity) {
+				band_limit_t reserve = turn_params.bps_capacity - turn_params.bps_capacity_allocated;
+				if(reserve <= bps) {
+					ret = reserve;
+					turn_params.bps_capacity_allocated = turn_params.bps_capacity;
+				} else {
+					ret = bps;
+					turn_params.bps_capacity_allocated -= ret;
+				}
+			}
+
+		} else {
+			if(turn_params.bps_capacity_allocated >= bps) {
+				turn_params.bps_capacity_allocated -= bps;
+				ret = turn_params.bps_capacity_allocated;
 			} else {
-				ret = bps;
-				turn_params.bps_capacity_allocated -= ret;
+				turn_params.bps_capacity_allocated = 0;
 			}
 		}
 
 		pthread_mutex_unlock(&mutex_bps);
 	}
 	return ret;
+}
+
+band_limit_t get_bps_capacity_allocated(void)
+{
+	band_limit_t ret = 0;
+	pthread_mutex_lock(&mutex_bps);
+	ret = turn_params.bps_capacity_allocated;
+	pthread_mutex_unlock(&mutex_bps);
+	return ret;
+}
+
+band_limit_t get_bps_capacity(void)
+{
+	band_limit_t ret = 0;
+	pthread_mutex_lock(&mutex_bps);
+	ret = turn_params.bps_capacity;
+	pthread_mutex_unlock(&mutex_bps);
+	return ret;
+}
+
+void set_bps_capacity(band_limit_t value)
+{
+	pthread_mutex_lock(&mutex_bps);
+	turn_params.bps_capacity = value;
+	pthread_mutex_unlock(&mutex_bps);
+}
+
+band_limit_t get_max_bps(void)
+{
+	band_limit_t ret = 0;
+	pthread_mutex_lock(&mutex_bps);
+	ret = turn_params.max_bps;
+	pthread_mutex_unlock(&mutex_bps);
+	return ret;
+}
+
+void set_max_bps(band_limit_t value)
+{
+	pthread_mutex_lock(&mutex_bps);
+	turn_params.max_bps = value;
+	pthread_mutex_unlock(&mutex_bps);
 }
 
 /////////////// AUX SERVERS ////////////////
@@ -735,7 +787,7 @@ static ioa_engine_handle create_new_listener_engine(void)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"IO method (udp listener/relay thread): %s\n",event_base_get_method(eb));
 	super_memory_t* sm = new_super_memory_region();
 	ioa_engine_handle e = create_ioa_engine(sm, eb, turn_params.listener.tp, turn_params.relay_ifname, turn_params.relays_number, turn_params.relay_addrs,
-			turn_params.default_relays, turn_params.verbose, turn_params.max_bps
+			turn_params.default_relays, turn_params.verbose
 #if !defined(TURN_NO_HIREDIS)
 			,turn_params.redis_statsdb
 #endif
@@ -781,7 +833,7 @@ static void setup_listener(void)
 
 	turn_params.listener.ioa_eng = create_ioa_engine(sm, turn_params.listener.event_base, turn_params.listener.tp,
 			turn_params.relay_ifname, turn_params.relays_number, turn_params.relay_addrs,
-			turn_params.default_relays, turn_params.verbose, turn_params.max_bps
+			turn_params.default_relays, turn_params.verbose
 #if !defined(TURN_NO_HIREDIS)
 			,turn_params.redis_statsdb
 #endif
@@ -1355,7 +1407,7 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
 		rs->event_base = turn_event_base_new();
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"IO method (general relay thread): %s\n",event_base_get_method(rs->event_base));
 		rs->ioa_eng = create_ioa_engine(rs->sm, rs->event_base, turn_params.listener.tp, turn_params.relay_ifname,
-			turn_params.relays_number, turn_params.relay_addrs, turn_params.default_relays, turn_params.verbose, turn_params.max_bps
+			turn_params.relays_number, turn_params.relay_addrs, turn_params.default_relays, turn_params.verbose
 #if !defined(TURN_NO_HIREDIS)
 			,turn_params.redis_statsdb
 #endif
@@ -1408,7 +1460,7 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
 			 &turn_params.secure_stun, turn_params.shatype, &turn_params.mobility,
 			 turn_params.server_relay,
 			 send_turn_session_info,
-			 turn_params.max_bps, allocate_bps);
+			 allocate_bps);
 	
 	if(to_set_rfc5780) {
 		set_rfc5780(&(rs->server), get_alt_addr, send_message_from_listener_to_client);

@@ -358,16 +358,16 @@ static void change_cli_param(struct cli_session* cs, const char* pn)
 			cli_print_uint(cs,(unsigned long)turn_params.user_quota,"user-quota",2);
 			return;
 		} else if(strstr(pn,"max-bps")==pn) {
-			turn_params.max_bps = atoi(pn+strlen("max-bps"));
-			cli_print_uint(cs,(unsigned long)turn_params.max_bps,"max-bps",2);
+			set_max_bps((band_limit_t)atol(pn+strlen("max-bps")));
+			cli_print_uint(cs,(unsigned long)get_max_bps(),"max-bps",2);
+			return;
+		} else if(strstr(pn,"bps-capacity")==pn) {
+			set_bps_capacity((band_limit_t)atol(pn+strlen("bps-capacity")));
+			cli_print_uint(cs,(unsigned long)get_bps_capacity(),"bps-capacity",2);
 			return;
 		} else if(strstr(pn,"cli-max-output-sessions")==pn) {
 			cli_max_output_sessions = atoi(pn+strlen("cli-max-output-sessions"));
 			cli_print_uint(cs,(unsigned long)cli_max_output_sessions,"cli-max-output-sessions",2);
-			return;
-		} else if(strstr(pn,"bps-capacity")==pn) {
-			turn_params.bps_capacity = atoi(pn+strlen("bps-capacity"));
-			cli_print_uint(cs,(unsigned long)turn_params.bps_capacity,"bps-capacity",2);
 			return;
 		}
 
@@ -722,7 +722,6 @@ static void cli_print_configuration(struct cli_session* cs)
 
 		cli_print_uint(cs,(unsigned long)turn_params.min_port,"min-port",0);
 		cli_print_uint(cs,(unsigned long)turn_params.max_port,"max-port",0);
-		cli_print_uint(cs,(unsigned long)turn_params.bps_capacity_allocated,"Allocated bps-capacity",0);
 
 		cli_print_ip_range_list(cs,&turn_params.ip_whitelist,"Whitelist IP",0);
 		cli_print_ip_range_list(cs,&turn_params.ip_blacklist,"Blacklist IP",0);
@@ -796,10 +795,11 @@ static void cli_print_configuration(struct cli_session* cs)
 
 		myprintf(cs,"\n");
 
-		cli_print_uint(cs,(unsigned long)turn_params.total_quota,"total-quota",2);
-		cli_print_uint(cs,(unsigned long)turn_params.user_quota,"user-quota",2);
-		cli_print_uint(cs,(unsigned long)turn_params.bps_capacity,"bps-capacity",2);
-		cli_print_uint(cs,(unsigned long)turn_params.max_bps,"max-bps",2);
+		cli_print_uint(cs,(unsigned long)turn_params.total_quota,"Default total-quota",2);
+		cli_print_uint(cs,(unsigned long)turn_params.user_quota,"Default user-quota",2);
+		cli_print_uint(cs,(unsigned long)get_bps_capacity(),"Total server bps-capacity",2);
+		cli_print_uint(cs,(unsigned long)get_bps_capacity_allocated(),"Allocated bps-capacity",0);
+		cli_print_uint(cs,(unsigned long)get_max_bps(),"Default max-bps",2);
 
 		myprintf(cs,"\n");
 
