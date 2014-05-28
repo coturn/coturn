@@ -335,7 +335,7 @@ static void timer_handler(ioa_engine_handle e, void* arg) {
 ioa_engine_handle create_ioa_engine(super_memory_t *sm,
 				struct event_base *eb, turnipports *tp, const s08bits* relay_ifname,
 				size_t relays_number, s08bits **relay_addrs, int default_relays,
-				int verbose, band_limit_t max_bps
+				int verbose
 #if !defined(TURN_NO_HIREDIS)
 				,const char* redis_report_connection_string
 #endif
@@ -370,7 +370,6 @@ ioa_engine_handle create_ioa_engine(super_memory_t *sm,
 
 		e->sm = sm;
 		e->default_relays = default_relays;
-		e->max_bpj = max_bps;
 		e->verbose = verbose;
 		e->tp = tp;
 		if (eb) {
@@ -627,10 +626,7 @@ static int ioa_socket_check_bandwidth(ioa_socket_handle s, size_t sz, int read)
 {
 	if(s && (s->e) && sz && (s->sat == CLIENT_SOCKET) && (s->session)) {
 
-		band_limit_t max_bps = s->e->max_bpj;
-		band_limit_t s_max_bps = s->session->realm_options.perf_options.max_bps;
-		if(s_max_bps>0)
-			max_bps = s_max_bps;
+		band_limit_t max_bps = s->session->realm_options.perf_options.max_bps;
 
 		if(max_bps<1)
 			return 1;

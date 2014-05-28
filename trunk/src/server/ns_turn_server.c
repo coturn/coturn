@@ -4349,7 +4349,7 @@ void init_turn_server(turn_turnserver* server,
 		send_socket_to_relay_cb send_socket_to_relay,
 		vintp secure_stun, SHATYPE shatype, vintp mobility, int server_relay,
 		send_turn_session_info_cb send_turn_session_info,
-		band_limit_t max_bps, allocate_bps_cb allocate_bps_func) {
+		allocate_bps_cb allocate_bps_func) {
 
 	if (!server)
 		return;
@@ -4406,7 +4406,6 @@ void init_turn_server(turn_turnserver* server,
 
 	server->send_socket_to_relay = send_socket_to_relay;
 
-	server->max_bps = max_bps;
 	server->allocate_bps_func = allocate_bps_func;
 
 	set_ioa_timer(server->e, 1, 0, timer_timeout_handler, server, 1, "timer_timeout_handler");
