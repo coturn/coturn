@@ -7,6 +7,7 @@ Both 32 bits and 64 bits are supported, in separate packages.
 To install the turnserver with all the necessary packages,
 with the help of gdebi tool, type:
 
+$ sudo apt-get update
 $ sudo apt-get install gdebi-core
 $ sudo gdebi coturn*.deb
 
