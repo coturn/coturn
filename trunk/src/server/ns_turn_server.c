@@ -132,6 +132,13 @@ static void dec_quota(ts_ur_super_session* ss)
 
 		ss->quota_used = 0;
 
+		if(ss->bps) {
+			if(((turn_turnserver*)ss->server)->allocate_bps_func) {
+				((turn_turnserver*)ss->server)->allocate_bps_func(ss->bps,0);
+			}
+			ss->bps = 0;
+		}
+
 		(((turn_turnserver*)ss->server)->raqcb)(ss->username, (u08bits*)ss->realm_options.name);
 	}
 }
@@ -361,6 +368,7 @@ int turn_session_info_copy_from(struct turn_session_info* tsi, ts_ur_super_sessi
 
 	if(tsi && ss) {
 		tsi->id = ss->id;
+		tsi->bps = ss->bps;
 		tsi->start_time = ss->start_time;
 		tsi->valid = is_allocation_valid(&(ss->alloc)) && !(ss->to_be_closed) && (ss->quota_used);
 		if(tsi->valid) {
@@ -1056,6 +1064,11 @@ static int handle_turn_allocate(turn_turnserver *server,
 				*reason = (const u08bits *)"Allocation Quota Reached";
 
 			} else {
+
+				band_limit_t max_bps = ss->realm_options.perf_options.max_bps;
+				if(max_bps && server->allocate_bps_func) {
+					ss->bps = server->allocate_bps_func(max_bps,1);
+				}
 
 				if (create_relay_connection(server, ss, lifetime,
 							af, transport,

@@ -81,13 +81,13 @@ static void barrier_wait_func(const char* func, int line)
 
 static pthread_mutex_t mutex_bps;
 
-static band_limit_t allocate_bps(band_limit_t bps, int negative)
+static band_limit_t allocate_bps(band_limit_t bps, int positive)
 {
 	band_limit_t ret = 0;
 	if(bps>0) {
 		pthread_mutex_lock(&mutex_bps);
 
-		if(!negative) {
+		if(positive) {
 
 			if(turn_params.bps_capacity_allocated < turn_params.bps_capacity) {
 				band_limit_t reserve = turn_params.bps_capacity - turn_params.bps_capacity_allocated;
@@ -96,11 +96,12 @@ static band_limit_t allocate_bps(band_limit_t bps, int negative)
 					turn_params.bps_capacity_allocated = turn_params.bps_capacity;
 				} else {
 					ret = bps;
-					turn_params.bps_capacity_allocated -= ret;
+					turn_params.bps_capacity_allocated += ret;
 				}
 			}
 
 		} else {
+
 			if(turn_params.bps_capacity_allocated >= bps) {
 				turn_params.bps_capacity_allocated -= bps;
 				ret = turn_params.bps_capacity_allocated;

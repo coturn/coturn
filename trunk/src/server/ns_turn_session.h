@@ -42,9 +42,11 @@ extern "C" {
 
 ////////// REALM ////////////
 
+typedef unsigned int band_limit_t;
+
 typedef struct _perf_options_t {
 
-	vint max_bps;
+	band_limit_t max_bps;
 	vint total_quota;
 	vint user_quota;
 
@@ -60,7 +62,6 @@ struct _realm_options_t {
 //////////////// session info //////////////////////
 
 typedef u64bits turnsession_id;
-typedef unsigned int band_limit_t;
 
 #define NONCE_MAX_SIZE (NONCE_LENGTH_32BITS*4+1)
 
@@ -150,6 +151,8 @@ struct turn_session_info {
 /* Realm */
 	char realm[STUN_MAX_REALM_SIZE+1];
 	char origin[STUN_MAX_ORIGIN_SIZE + 1];
+/* Bandwidth */
+	band_limit_t bps;
 };
 
 void turn_session_info_init(struct turn_session_info* tsi);

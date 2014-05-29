@@ -1338,7 +1338,7 @@ static int adminmain(int argc, char **argv)
 	u08bits pwd[STUN_MAX_PWD_SIZE+1]="";
 	u08bits secret[AUTH_SECRET_SIZE+1]="";
 	u08bits origin[STUN_MAX_ORIGIN_SIZE+1]="";
-	perf_options_t po = {-1,-1,-1};
+	perf_options_t po = {(band_limit_t)-1,-1,-1};
 
 	while (((c = getopt_long(argc, argv, ADMIN_OPTIONS, admin_long_options, NULL)) != -1)) {
 		switch (c){
