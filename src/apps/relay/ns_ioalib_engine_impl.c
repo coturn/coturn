@@ -624,9 +624,11 @@ void delete_ioa_timer(ioa_timer_handle th)
 
 static int ioa_socket_check_bandwidth(ioa_socket_handle s, size_t sz, int read)
 {
-	if(s && (s->e) && sz && (s->sat == CLIENT_SOCKET) && (s->session)) {
+	if(s && (s->e) && sz &&
+			((s->sat == CLIENT_SOCKET) || (s->sat == RELAY_SOCKET) || (s->sat == RELAY_RTCP_SOCKET)) &&
+			(s->session)) {
 
-		band_limit_t max_bps = s->session->realm_options.perf_options.max_bps;
+		band_limit_t max_bps = s->session->bps;
 
 		if(max_bps<1)
 			return 1;

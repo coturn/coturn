@@ -92,7 +92,7 @@ typedef void (*release_allocation_quota_cb)(u08bits *username, u08bits *realm);
 typedef int (*send_socket_to_relay_cb)(turnserver_id id, u64bits cid, stun_tid *tid, ioa_socket_handle s, int message_integrity, MESSAGE_TO_RELAY_TYPE rmt, ioa_net_data *nd);
 typedef int (*send_turn_session_info_cb)(struct turn_session_info *tsi);
 
-typedef band_limit_t (*allocate_bps_cb)(band_limit_t bps, int negative);
+typedef band_limit_t (*allocate_bps_cb)(band_limit_t bps, int positive);
 
 struct _turn_turnserver {
 

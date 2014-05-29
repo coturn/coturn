@@ -506,6 +506,8 @@ static int print_session(ur_map_key_type key, ur_map_value_type value, void *arg
 					myprintf(cs,"      TLS method: %s\n",tsi->tls_method);
 					myprintf(cs,"      TLS cipher: %s\n",tsi->tls_cipher);
 				}
+				if(tsi->bps)
+					myprintf(cs,"      Max throughput: %lu bytes per second\n",(unsigned long)tsi->bps);
 				myprintf(cs,"      usage: rp=%lu, rb=%lu, sp=%lu, sb=%lu\n",(unsigned long)(tsi->received_packets), (unsigned long)(tsi->received_bytes),(unsigned long)(tsi->sent_packets),(unsigned long)(tsi->sent_bytes));
 				myprintf(cs,"       rate: r=%lu, s=%lu, total=%lu (bytes per sec)\n",(unsigned long)(tsi->received_rate), (unsigned long)(tsi->sent_rate),(unsigned long)(tsi->total_rate));
 				if(tsi->main_peers_size) {
