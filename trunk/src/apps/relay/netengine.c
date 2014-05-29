@@ -89,7 +89,10 @@ static band_limit_t allocate_bps(band_limit_t bps, int positive)
 
 		if(positive) {
 
-			if(turn_params.bps_capacity_allocated < turn_params.bps_capacity) {
+			if(!(turn_params.bps_capacity)) {
+				ret = bps;
+				turn_params.bps_capacity_allocated += ret;
+			} else if(turn_params.bps_capacity_allocated < turn_params.bps_capacity) {
 				band_limit_t reserve = turn_params.bps_capacity - turn_params.bps_capacity_allocated;
 				if(reserve <= bps) {
 					ret = reserve;
