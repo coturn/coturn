@@ -147,8 +147,8 @@ static char Usage[] =
   "	-W	TURN REST API authentication secret. Is not compatible with -A option.\n"
   "	-C	TURN REST API timestamp/username separator symbol (character). The default value is ':'.\n"
   "	-F	<cipher-suite> Cipher suite for TLS/DTLS. Default value is DEFAULT.\n"
-  "	-a	<bytes-per-second> Bandwidth for the bandwidth request in ALLOCATE. The default value is zero.\n"
-  "	-o	<origin> - the ORIGIN STUN attribute value.\n";
+  "	-o	<origin> - the ORIGIN STUN attribute value.\n"
+  "	-a	<bytes-per-second> Bandwidth for the bandwidth request in ALLOCATE. The default value is zero.\n";
 
 //////////////////////////////////////////////////
 

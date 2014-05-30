@@ -113,7 +113,7 @@ Flags:
 		
 -G	Generate extra requests (create permissions, channel bind).
 
--B  Random disconnect after a few initial packets.
+-B  	Random disconnect after a few initial packets.
 
 Options with required values:  
 
@@ -148,10 +148,12 @@ Options with required values:
 
 -W      TURN REST API authentication secret. Is not compatible with -A flag.
 
--C	This is the timestamp/username separator symbol (character) in 
+-C  	This is the timestamp/username separator symbol (character) in 
 	TURN REST API. The default value is :.
 
 -F	Cipher suite for TLS/DTLS. Default value is DEFAULT.
+
+-o	the ORIGIN STUN attribute value.
 
 -a	Bandwidth for the bandwidth request in ALLOCATE. The default value is zero.
 
