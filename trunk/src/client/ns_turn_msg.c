@@ -944,6 +944,17 @@ u16bits stun_attr_get_channel_number(stun_attr_ref attr) {
   return 0;
 }
 
+band_limit_t stun_attr_get_bandwidth(stun_attr_ref attr) {
+  if(attr) {
+    const u08bits* value = stun_attr_get_value(attr);
+    if(value && (stun_attr_get_len(attr) >= 4)) {
+      u32bits bps=nswap32(((const u32bits*)value)[0]);
+      return (band_limit_t)(bps << 7);
+    }
+  }
+  return 0;
+}
+
 u64bits stun_attr_get_reservation_token_value(stun_attr_ref attr)  {
   if(attr) {
     const u08bits* value = stun_attr_get_value(attr);
@@ -1148,6 +1159,15 @@ int stun_attr_add_channel_number_str(u08bits* buf, size_t *len, u16bits chnumber
   field[1]=0;
   
   return stun_attr_add_str(buf,len,STUN_ATTRIBUTE_CHANNEL_NUMBER,(u08bits*)(field),sizeof(field));
+}
+
+int stun_attr_add_bandwidth_str(u08bits* buf, size_t *len, band_limit_t bps0) {
+
+	u32bits bps = (band_limit_t)(bps0 >> 7);
+
+	u32bits field=nswap32(bps);
+
+	return stun_attr_add_str(buf,len,STUN_ATTRIBUTE_NEW_BANDWIDTH,(u08bits*)(&field),sizeof(field));
 }
 
 u16bits stun_attr_get_first_channel_number_str(const u08bits *buf, size_t len) {
