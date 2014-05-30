@@ -42,8 +42,6 @@ extern "C" {
 
 ////////// REALM ////////////
 
-typedef unsigned int band_limit_t;
-
 typedef struct _perf_options_t {
 
 	band_limit_t max_bps;

@@ -153,6 +153,8 @@ Options with required values:
 
 -F	Cipher suite for TLS/DTLS. Default value is DEFAULT.
 
+-a	Bandwidth for the bandwidth request in ALLOCATE. The default value is zero.
+
 See the examples in the "examples/scripts" directory.
 
 ======================================

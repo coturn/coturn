@@ -339,6 +339,10 @@ static int clnet_allocate(int verbose,
 			stun_set_allocate_request(&message, 800, af, relay_transport, mobility);
 		else
 			stun_set_allocate_request(&message, 300, af, relay_transport, mobility);
+
+		if(bps)
+			stun_attr_add_bandwidth_str(message.buf, (size_t*)(&(message.len)), bps);
+
 		if(dont_fragment)
 			stun_attr_add(&message, STUN_ATTRIBUTE_DONT_FRAGMENT, NULL, 0);
 		if(!no_rtcp) {

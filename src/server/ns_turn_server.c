@@ -868,6 +868,8 @@ static int handle_turn_allocate(turn_turnserver *server,
 		int af = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT;
 		u08bits username[STUN_MAX_USERNAME_SIZE+1]="\0";
 		size_t ulen = 0;
+		band_limit_t bps = 0;
+		band_limit_t max_bps = 0;
 
 		stun_attr_ref sar = stun_attr_get_first_str(ioa_network_buffer_data(in_buffer->nbh), 
 							    ioa_network_buffer_get_size(in_buffer->nbh));
@@ -891,6 +893,9 @@ static int handle_turn_allocate(turn_turnserver *server,
 
 			switch (attr_type) {
 			SKIP_ATTRIBUTES;
+			case STUN_ATTRIBUTE_NEW_BANDWIDTH:
+				bps = stun_attr_get_bandwidth(sar);
+				break;
 			case STUN_ATTRIBUTE_MOBILITY_TICKET:
 				if(!(*(server->mobility))) {
 					*err_code = 501;
@@ -1065,12 +1070,21 @@ static int handle_turn_allocate(turn_turnserver *server,
 
 			} else {
 
-				band_limit_t max_bps = ss->realm_options.perf_options.max_bps;
-				if(max_bps && server->allocate_bps_func) {
-					ss->bps = server->allocate_bps_func(max_bps,1);
+				if(server->allocate_bps_func) {
+					max_bps = ss->realm_options.perf_options.max_bps;
+					if(max_bps && (!bps || (bps && (bps>max_bps)))) {
+						bps = max_bps;
+					}
+					if(bps) {
+						ss->bps = server->allocate_bps_func(bps,1);
+						if(!(ss->bps)) {
+							*err_code = 486;
+							*reason = (const u08bits *)"Allocation Bandwidth Quota Reached";
+						}
+					}
 				}
 
-				if (create_relay_connection(server, ss, lifetime,
+				if (*err_code || create_relay_connection(server, ss, lifetime,
 							af, transport,
 							even_port, in_reservation_token, &out_reservation_token,
 							err_code, reason,
@@ -1110,6 +1124,11 @@ static int handle_turn_allocate(turn_turnserver *server,
 									0,NULL,
 									out_reservation_token,
 									ss->s_mobile_id);
+
+						if(ss->bps) {
+							stun_attr_add_bandwidth_str(ioa_network_buffer_data(nbh), &len, ss->bps);
+						}
+
 						ioa_network_buffer_set_size(nbh,len);
 						*resp_constructed = 1;
 
