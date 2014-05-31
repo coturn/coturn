@@ -508,11 +508,20 @@ static int send_socket_to_relay(turnserver_id id, u64bits cid, stun_tid *tid, io
 	switch (rmt) {
 	case(RMT_CB_SOCKET): {
 
-		sm.m.cb_sm.id = id;
-		sm.m.cb_sm.connection_id = (tcp_connection_id)cid;
-		stun_tid_cpy(&(sm.m.cb_sm.tid),tid);
-		sm.m.cb_sm.s = s;
-		sm.m.cb_sm.message_integrity = message_integrity;
+		if(nd && nd->nbh) {
+			sm.m.cb_sm.id = id;
+			sm.m.cb_sm.connection_id = (tcp_connection_id)cid;
+			stun_tid_cpy(&(sm.m.cb_sm.tid),tid);
+			sm.m.cb_sm.s = s;
+			sm.m.cb_sm.message_integrity = message_integrity;
+
+			addr_cpy(&(sm.m.cb_sm.nd.src_addr),&(nd->src_addr));
+			sm.m.cb_sm.nd.recv_tos = nd->recv_tos;
+			sm.m.cb_sm.nd.recv_ttl = nd->recv_ttl;
+			sm.m.cb_sm.nd.nbh = nd->nbh;
+
+			nd->nbh = NULL;
+		}
 
 		break;
 	}
@@ -562,6 +571,9 @@ static int send_socket_to_relay(turnserver_id id, u64bits cid, stun_tid *tid, io
 	  if(rmt == RMT_MOBILE_SOCKET) {
 	    ioa_network_buffer_delete(NULL, sm.m.sm.nd.nbh);
 	    sm.m.sm.nd.nbh = NULL;
+	  } else if(rmt == RMT_CB_SOCKET) {
+		  ioa_network_buffer_delete(NULL, sm.m.cb_sm.nd.nbh);
+		  sm.m.cb_sm.nd.nbh = NULL;
 	  }
 	}
 
@@ -608,7 +620,10 @@ static int handle_relay_message(relay_server_handle rs, struct message_to_relay 
 		case RMT_CB_SOCKET:
 
 			turnserver_accept_tcp_client_data_connection(&(rs->server), sm->m.cb_sm.connection_id,
-				&(sm->m.cb_sm.tid), sm->m.cb_sm.s, sm->m.cb_sm.message_integrity);
+				&(sm->m.cb_sm.tid), sm->m.cb_sm.s, sm->m.cb_sm.message_integrity, &(sm->m.cb_sm.nd));
+
+			ioa_network_buffer_delete(rs->ioa_eng, sm->m.cb_sm.nd.nbh);
+			sm->m.cb_sm.nd.nbh = NULL;
 
 			break;
 		case RMT_MOBILE_SOCKET: {
