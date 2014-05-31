@@ -436,6 +436,7 @@ static int send_socket_to_general_relay(ioa_engine_handle e, struct message_to_r
 	struct message_to_relay *smptr = sm;
 
 	smptr->t = RMT_SOCKET;
+	smptr->m.sm.can_resume = 1;
 
 	{
 		struct evbuffer *output = NULL;
@@ -472,7 +473,8 @@ static int send_socket_to_general_relay(ioa_engine_handle e, struct message_to_r
 }
 
 static int send_socket_to_relay(turnserver_id id, u64bits cid, stun_tid *tid, ioa_socket_handle s, 
-				int message_integrity, MESSAGE_TO_RELAY_TYPE rmt, ioa_net_data *nd)
+				int message_integrity, MESSAGE_TO_RELAY_TYPE rmt, ioa_net_data *nd,
+				int can_resume)
 {
 	int ret = 0;
 
@@ -519,6 +521,7 @@ static int send_socket_to_relay(turnserver_id id, u64bits cid, stun_tid *tid, io
 			sm.m.cb_sm.nd.recv_tos = nd->recv_tos;
 			sm.m.cb_sm.nd.recv_ttl = nd->recv_ttl;
 			sm.m.cb_sm.nd.nbh = nd->nbh;
+			sm.m.cb_sm.can_resume = can_resume;
 
 			nd->nbh = NULL;
 		}
@@ -533,6 +536,7 @@ static int send_socket_to_relay(turnserver_id id, u64bits cid, stun_tid *tid, io
 			sm.m.sm.nd.recv_tos = nd->recv_tos;
 			sm.m.sm.nd.recv_ttl = nd->recv_ttl;
 			sm.m.sm.nd.nbh = nd->nbh;
+			sm.m.sm.can_resume = can_resume;
 			nd->nbh = NULL;
 		} else {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Empty buffer with mobile socket\n",__FUNCTION__);
@@ -620,7 +624,8 @@ static int handle_relay_message(relay_server_handle rs, struct message_to_relay 
 		case RMT_CB_SOCKET:
 
 			turnserver_accept_tcp_client_data_connection(&(rs->server), sm->m.cb_sm.connection_id,
-				&(sm->m.cb_sm.tid), sm->m.cb_sm.s, sm->m.cb_sm.message_integrity, &(sm->m.cb_sm.nd));
+				&(sm->m.cb_sm.tid), sm->m.cb_sm.s, sm->m.cb_sm.message_integrity, &(sm->m.cb_sm.nd),
+				sm->m.cb_sm.can_resume);
 
 			ioa_network_buffer_delete(rs->ioa_eng, sm->m.cb_sm.nd.nbh);
 			sm->m.cb_sm.nd.nbh = NULL;
