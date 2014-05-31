@@ -47,6 +47,31 @@
 int TURN_MAX_ALLOCATE_TIMEOUT = 60;
 int TURN_MAX_ALLOCATE_TIMEOUT_STUN_ONLY = 3;
 
+#define log_method(ss, method, err_code, reason) \
+{\
+  if(!(err_code)) {\
+	  if(ss->origin[0]) {\
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,\
+					"session %018llu: origin <%s> realm <%s> user <%s>: incoming packet " method " processed, success\n",\
+					(unsigned long long)(ss->id), (const char*)(ss->origin),(const char*)(ss->realm_options.name),(const char*)(ss->username));\
+		} else {\
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,\
+					"session %018llu: realm <%s> user <%s>: incoming packet " method " processed, success\n",\
+					(unsigned long long)(ss->id), (const char*)(ss->realm_options.name),(const char*)(ss->username));\
+		}\
+  } else {\
+	  if(ss->origin[0]) {\
+		  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,\
+		  "session %018llu: origin <%s> realm <%s> user <%s>: incoming packet " method " processed, error %d: %s\n",\
+		  (unsigned long long)(ss->id), (const char*)(ss->origin),(const char*)(ss->realm_options.name),(const char*)(ss->username), (err_code), (reason));\
+	  } else {\
+		  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,\
+		  "session %018llu: realm <%s> user <%s>: incoming packet " method " processed, error %d: %s\n",\
+		  (unsigned long long)(ss->id), (const char*)(ss->realm_options.name),(const char*)(ss->username), (err_code), (reason));\
+	  }\
+  }\
+}
+
 ///////////////////////////////////////////
 
 static int attach_socket_to_session(turn_turnserver* server, ioa_socket_handle s, ts_ur_super_session* ss);
@@ -1986,7 +2011,7 @@ static int handle_turn_connection_bind(turn_turnserver *server,
 				if(s) {
 					ioa_socket_handle new_s = detach_ioa_socket(s,1);
 					if(new_s) {
-					  if(server->send_socket_to_relay(sid, id, tid, new_s, message_integrity, RMT_CB_SOCKET, NULL)<0) {
+					  if(server->send_socket_to_relay(sid, id, tid, new_s, message_integrity, RMT_CB_SOCKET, in_buffer)<0) {
 					    *err_code = 400;
 					    *reason = (const u08bits *)"Wrong connection id";
 					  }
@@ -2019,7 +2044,7 @@ static int handle_turn_connection_bind(turn_turnserver *server,
 	return 0;
 }
 
-int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_connection_id tcid, stun_tid *tid, ioa_socket_handle s, int message_integrity)
+int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_connection_id tcid, stun_tid *tid, ioa_socket_handle s, int message_integrity, ioa_net_data *in_buffer)
 {
 	if(!server)
 		return -1;
@@ -2030,10 +2055,13 @@ int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_co
 	ts_ur_super_session *ss = NULL;
 
 	int err_code = 0;
+	const u08bits *reason = NULL;
 
 	if(tcid && tid && s) {
 
 		tc = get_and_clean_tcp_connection_by_id(server->tcp_relay_connections, tcid);
+		ioa_network_buffer_handle nbh = ioa_network_buffer_allocate(server->e);
+		int resp_constructed = 0;
 		if(!tc || (tc->state == TC_STATE_READY) || (tc->client_s)) {
 			err_code = 400;
 		} else {
@@ -2042,9 +2070,18 @@ int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_co
 				err_code = 500;
 			} else {
 				ss = (ts_ur_super_session*)(a->owner);
-				if(!check_username_hash(s,ss->username,(u08bits*)ss->realm_options.name)) {
-					err_code = 401;
-				} else {
+
+				//Check security:
+				int postpone_reply = 0;
+				check_stun_auth(server, ss, tid, &resp_constructed, &err_code, &reason, in_buffer, nbh,
+						STUN_METHOD_CONNECTION_BIND, &message_integrity, &postpone_reply, 0);
+
+				if(postpone_reply) {
+
+					ioa_network_buffer_delete(server->e, nbh);
+					return 0;
+
+				} else if(!err_code) {
 					tc->state = TC_STATE_READY;
 					tc->client_s = s;
 					set_ioa_socket_session(s,ss);
@@ -2060,16 +2097,16 @@ int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_co
 			}
 		}
 
-		ioa_network_buffer_handle nbh = ioa_network_buffer_allocate(server->e);
-
-		if(!err_code) {
-			size_t len = ioa_network_buffer_get_size(nbh);
-			stun_init_success_response_str(STUN_METHOD_CONNECTION_BIND, ioa_network_buffer_data(nbh), &len, tid);
-			ioa_network_buffer_set_size(nbh,len);
-		} else {
-			size_t len = ioa_network_buffer_get_size(nbh);
-			stun_init_error_response_str(STUN_METHOD_CONNECTION_BIND, ioa_network_buffer_data(nbh), &len, err_code, NULL, tid);
-			ioa_network_buffer_set_size(nbh,len);
+		if(!resp_constructed) {
+			if(!err_code) {
+				size_t len = ioa_network_buffer_get_size(nbh);
+				stun_init_success_response_str(STUN_METHOD_CONNECTION_BIND, ioa_network_buffer_data(nbh), &len, tid);
+				ioa_network_buffer_set_size(nbh,len);
+			} else {
+				size_t len = ioa_network_buffer_get_size(nbh);
+				stun_init_error_response_str(STUN_METHOD_CONNECTION_BIND, ioa_network_buffer_data(nbh), &len, err_code, NULL, tid);
+				ioa_network_buffer_set_size(nbh,len);
+			}
 		}
 
 		{
@@ -2090,6 +2127,10 @@ int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_co
 			size_t len = ioa_network_buffer_get_size(nbh);
 			stun_attr_add_fingerprint_str(ioa_network_buffer_data(nbh), &len);
 			ioa_network_buffer_set_size(nbh, len);
+		}
+
+		if(server->verbose) {
+			log_method(ss, "CONNECTION_BIND", err_code, reason);
 		}
 
 		if(ss && !err_code) {
@@ -3106,31 +3147,6 @@ static void set_alternate_server(turn_server_addrs_list_t *asl, const ioa_addr *
 	}
 }
 
-#define log_method(ss, method, err_code, reason) \
-{\
-  if(!(err_code)) {\
-	  if(ss->origin[0]) {\
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,\
-					"session %018llu: origin <%s> realm <%s> user <%s>: incoming packet " method " processed, success\n",\
-					(unsigned long long)(ss->id), (const char*)(ss->origin),(const char*)(ss->realm_options.name),(const char*)(ss->username));\
-		} else {\
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,\
-					"session %018llu: realm <%s> user <%s>: incoming packet " method " processed, success\n",\
-					(unsigned long long)(ss->id), (const char*)(ss->realm_options.name),(const char*)(ss->username));\
-		}\
-  } else {\
-	  if(ss->origin[0]) {\
-		  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,\
-		  "session %018llu: origin <%s> realm <%s> user <%s>: incoming packet " method " processed, error %d: %s\n",\
-		  (unsigned long long)(ss->id), (const char*)(ss->origin),(const char*)(ss->realm_options.name),(const char*)(ss->username), (err_code), (reason));\
-	  } else {\
-		  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,\
-		  "session %018llu: realm <%s> user <%s>: incoming packet " method " processed, error %d: %s\n",\
-		  (unsigned long long)(ss->id), (const char*)(ss->realm_options.name),(const char*)(ss->username), (err_code), (reason));\
-	  }\
-  }\
-}
-
 static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss, ioa_net_data *in_buffer, ioa_network_buffer_handle nbh, int *resp_constructed, int can_resume)
 {
 
@@ -3225,7 +3241,9 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 			}
 
 			if(!err_code && !(*resp_constructed) && !no_response) {
-				if(!(*(server->mobility)) || (method != STUN_METHOD_REFRESH) || is_allocation_valid(get_allocation_ss(ss))) {
+				if(method == STUN_METHOD_CONNECTION_BIND) {
+					;
+				} else if(!(*(server->mobility)) || (method != STUN_METHOD_REFRESH) || is_allocation_valid(get_allocation_ss(ss))) {
 					int postpone_reply = 0;
 					check_stun_auth(server, ss, &tid, resp_constructed, &err_code, &reason, in_buffer, nbh, method, &message_integrity, &postpone_reply, can_resume);
 					if(postpone_reply)
@@ -3270,7 +3288,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 				handle_turn_connection_bind(server, ss, &tid, resp_constructed, &err_code, &reason,
 								unknown_attrs, &ua_num, in_buffer, nbh, message_integrity);
 
-				if(server->verbose) {
+				if(server->verbose && err_code) {
 				  log_method(ss, "CONNECTION_BIND", err_code, reason);
 				}
 
