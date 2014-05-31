@@ -91,6 +91,7 @@ struct cb_socket_message {
 	ioa_socket_handle s;
 	int message_integrity;
 	ioa_net_data nd;
+	int can_resume;
 };
 
 struct relay_server {

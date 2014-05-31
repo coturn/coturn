@@ -1300,7 +1300,7 @@ static int handle_turn_refresh(turn_turnserver *server,
 						ioa_socket_handle new_s = detach_ioa_socket(ss->client_session.s,1);
 						if(new_s) {
 						  if(server->send_socket_to_relay(tsid, mid, tid, new_s, message_integrity, 
-										  RMT_MOBILE_SOCKET, in_buffer)<0) {
+										  RMT_MOBILE_SOCKET, in_buffer, can_resume)<0) {
 						    *err_code = 400;
 						    *reason = (const u08bits *)"Wrong mobile ticket";
 						  } else {
@@ -1528,12 +1528,13 @@ static void tcp_deliver_delayed_buffer(unsent_buffer *ub, ioa_socket_handle s, t
 	}
 }
 
-static void tcp_peer_input_handler(ioa_socket_handle s, int event_type, ioa_net_data *in_buffer, void *arg)
+static void tcp_peer_input_handler(ioa_socket_handle s, int event_type, ioa_net_data *in_buffer, void *arg, int can_resume)
 {
 	if (!(event_type & IOA_EV_READ) || !arg)
 		return;
 
 	UNUSED_ARG(s);
+	UNUSED_ARG(can_resume);
 
 	tcp_connection *tc = (tcp_connection*)arg;
 	ts_ur_super_session *ss=NULL;
@@ -1563,12 +1564,13 @@ static void tcp_peer_input_handler(ioa_socket_handle s, int event_type, ioa_net_
 	}
 }
 
-static void tcp_client_input_handler_rfc6062data(ioa_socket_handle s, int event_type, ioa_net_data *in_buffer, void *arg)
+static void tcp_client_input_handler_rfc6062data(ioa_socket_handle s, int event_type, ioa_net_data *in_buffer, void *arg, int can_resume)
 {
 	if (!(event_type & IOA_EV_READ) || !arg)
 		return;
 
 	UNUSED_ARG(s);
+	UNUSED_ARG(can_resume);
 
 	tcp_connection *tc = (tcp_connection*)arg;
 	ts_ur_super_session *ss=NULL;
@@ -1947,7 +1949,8 @@ static int handle_turn_connect(turn_turnserver *server,
 static int handle_turn_connection_bind(turn_turnserver *server,
 			       ts_ur_super_session *ss, stun_tid *tid, int *resp_constructed,
 			       int *err_code, 	const u08bits **reason, u16bits *unknown_attrs, u16bits *ua_num,
-			       ioa_net_data *in_buffer, ioa_network_buffer_handle nbh, int message_integrity) {
+			       ioa_net_data *in_buffer, ioa_network_buffer_handle nbh, int message_integrity,
+			       int can_resume) {
 
 	allocation* a = get_allocation_ss(ss);
 
@@ -2011,7 +2014,7 @@ static int handle_turn_connection_bind(turn_turnserver *server,
 				if(s) {
 					ioa_socket_handle new_s = detach_ioa_socket(s,1);
 					if(new_s) {
-					  if(server->send_socket_to_relay(sid, id, tid, new_s, message_integrity, RMT_CB_SOCKET, in_buffer)<0) {
+					  if(server->send_socket_to_relay(sid, id, tid, new_s, message_integrity, RMT_CB_SOCKET, in_buffer, can_resume)<0) {
 					    *err_code = 400;
 					    *reason = (const u08bits *)"Wrong connection id";
 					  }
@@ -2044,7 +2047,7 @@ static int handle_turn_connection_bind(turn_turnserver *server,
 	return 0;
 }
 
-int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_connection_id tcid, stun_tid *tid, ioa_socket_handle s, int message_integrity, ioa_net_data *in_buffer)
+int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_connection_id tcid, stun_tid *tid, ioa_socket_handle s, int message_integrity, ioa_net_data *in_buffer, int can_resume)
 {
 	if(!server)
 		return -1;
@@ -2074,7 +2077,7 @@ int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_co
 				//Check security:
 				int postpone_reply = 0;
 				check_stun_auth(server, ss, tid, &resp_constructed, &err_code, &reason, in_buffer, nbh,
-						STUN_METHOD_CONNECTION_BIND, &message_integrity, &postpone_reply, 0);
+						STUN_METHOD_CONNECTION_BIND, &message_integrity, &postpone_reply, can_resume);
 
 				if(postpone_reply) {
 
@@ -3286,7 +3289,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 			case STUN_METHOD_CONNECTION_BIND:
 
 				handle_turn_connection_bind(server, ss, &tid, resp_constructed, &err_code, &reason,
-								unknown_attrs, &ua_num, in_buffer, nbh, message_integrity);
+								unknown_attrs, &ua_num, in_buffer, nbh, message_integrity, can_resume);
 
 				if(server->verbose && err_code) {
 				  log_method(ss, "CONNECTION_BIND", err_code, reason);
@@ -3646,9 +3649,9 @@ static int write_to_peerchannel(ts_ur_super_session* ss, u16bits chnum, ioa_net_
 }
 
 static void client_input_handler(ioa_socket_handle s, int event_type,
-		ioa_net_data *data, void *arg);
+		ioa_net_data *data, void *arg, int can_resume);
 static void peer_input_handler(ioa_socket_handle s, int event_type,
-		ioa_net_data *data, void *arg);
+		ioa_net_data *data, void *arg, int can_resume);
 
 /////////////// Client actions /////////////////
 
@@ -4198,7 +4201,7 @@ int open_client_connection_session(turn_turnserver* server,
 			"client_to_be_allocated_timeout_handler");
 
 	if(sm->nd.nbh) {
-		client_input_handler(newelem->s,IOA_EV_READ,&(sm->nd),ss);
+		client_input_handler(newelem->s,IOA_EV_READ,&(sm->nd),ss,sm->can_resume);
 		ioa_network_buffer_delete(server->e, sm->nd.nbh);
 		sm->nd.nbh = NULL;
 	}
@@ -4211,7 +4214,7 @@ int open_client_connection_session(turn_turnserver* server,
 /////////////// io handlers ///////////////////
 
 static void peer_input_handler(ioa_socket_handle s, int event_type,
-		ioa_net_data *in_buffer, void *arg) {
+		ioa_net_data *in_buffer, void *arg, int can_resume) {
 
 	if (!(event_type & IOA_EV_READ) || !arg)
 		return;
@@ -4220,6 +4223,7 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 		return;
 
 	UNUSED_ARG(s);
+	UNUSED_ARG(can_resume);
 
 	ts_ur_super_session* ss = (ts_ur_super_session*) arg;
 
@@ -4324,7 +4328,7 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 }
 
 static void client_input_handler(ioa_socket_handle s, int event_type,
-		ioa_net_data *data, void *arg) {
+		ioa_net_data *data, void *arg, int can_resume) {
 
 	if (!arg)
 		return;
@@ -4350,7 +4354,7 @@ static void client_input_handler(ioa_socket_handle s, int event_type,
 
 	switch (elem->state) {
 	case UR_STATE_READY:
-		read_client_connection(server, elem, ss, data, 1, 1);
+		read_client_connection(server, elem, ss, data, can_resume, 1);
 		break;
 	case UR_STATE_DONE:
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,

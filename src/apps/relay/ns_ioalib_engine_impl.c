@@ -2484,7 +2484,7 @@ static int socket_input_worker(ioa_socket_handle s)
 				nd.recv_ttl = ttl;
 				nd.recv_tos = tos;
 
-				s->read_cb(s, IOA_EV_READ, &nd, s->read_ctx);
+				s->read_cb(s, IOA_EV_READ, &nd, s->read_ctx, 1);
 
 				if(nd.nbh)
 					free_blist_elem(s->e,buf_elem);
