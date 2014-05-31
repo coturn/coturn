@@ -604,6 +604,7 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void* arg)
 	server->sm.m.sm.nd.nbh = elem;
 	server->sm.m.sm.nd.recv_ttl = TTL_IGNORE;
 	server->sm.m.sm.nd.recv_tos = TOS_IGNORE;
+	server->sm.m.sm.can_resume = 1;
 
 	addr_set_any(&(server->sm.m.sm.nd.src_addr));
 
