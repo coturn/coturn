@@ -436,7 +436,6 @@ static int send_socket_to_general_relay(ioa_engine_handle e, struct message_to_r
 	struct message_to_relay *smptr = sm;
 
 	smptr->t = RMT_SOCKET;
-	smptr->m.sm.can_resume = 1;
 
 	{
 		struct evbuffer *output = NULL;
