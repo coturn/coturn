@@ -108,10 +108,12 @@ static int bufferevent_enabled(struct bufferevent *bufev, short flags)
 
 static int is_socket_writeable(ioa_socket_handle s, size_t sz, const char *msg, int option) 
 {
-  UNUSED_ARG(s);
   UNUSED_ARG(sz);
   UNUSED_ARG(msg);
   UNUSED_ARG(option);
+
+  if(!s)
+	  return 0;
 
   if(!(s->done) && !(s->broken) && !(s->tobeclosed)) {
 
@@ -2273,13 +2275,13 @@ static int socket_input_worker(ioa_socket_handle s)
 		addr_cpy(&remote_addr,&(s->remote_addr));
 
 	if(tcp_congestion_control && s->sub_session && s->bev) {
-	  if(s == s->sub_session->client_s) {
+	  if(s == s->sub_session->client_s && (s->sub_session->peer_s)) {
 	    if(!is_socket_writeable(s->sub_session->peer_s, STUN_BUFFER_SIZE,__FUNCTION__,0)) {
 	      if(bufferevent_enabled(s->bev,EV_READ)) {
 	    	  bufferevent_disable(s->bev,EV_READ);
 	      }
 	    }
-	  } else if(s == s->sub_session->peer_s) {
+	  } else if(s == s->sub_session->peer_s && (s->sub_session->client_s)) {
 	    if(!is_socket_writeable(s->sub_session->client_s, STUN_BUFFER_SIZE,__FUNCTION__,1)) {
 	      if(bufferevent_enabled(s->bev,EV_READ)) {
 	    	  bufferevent_disable(s->bev,EV_READ);
@@ -3430,7 +3432,7 @@ void turn_report_allocation_set(void *a, turn_time_t lifetime, int refresh)
 			turn_turnserver *server = (turn_turnserver*)ss->server;
 			if(server) {
 				ioa_engine_handle e = turn_server_get_engine(server);
-				if(e && e->verbose) {
+				if(e && e->verbose && ss->client_session.s) {
 					if(ss->client_session.s->ssl) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"session %018llu: %s, realm=<%s>, username=<%s>, lifetime=%lu, cipher=%s, method=%s (%s)\n", (unsigned long long)ss->id, status, (char*)ss->realm_options.name, (char*)ss->username, (unsigned long)lifetime, SSL_get_cipher(ss->client_session.s->ssl),
 							turn_get_ssl_method(ss->client_session.s->ssl, ss->client_session.s->orig_ctx_type),ss->client_session.s->orig_ctx_type);
