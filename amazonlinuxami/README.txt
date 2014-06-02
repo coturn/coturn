@@ -1,18 +1,37 @@
 This is Amazon EC2 system dedicated for Coturn TURN Server.
-Before using it, you have to set the following parameters in /etc/turnserver.conf:
+Before using it, you have to set the following parameters in 
+/etc/turnserver.conf:
 
 1) external-ip : use the public IP address assigned to your system.
 
-2) Choose authentication option. This system is pre-set with the following options:
+2) Choose authentication option. This system is pre-set with the 
+following options:
+
 	a) long-term mechanism.
-	b) MySQL is used as the user database.
-	c) two test users are set:
-		- ninefingers, with password "youhavetoberealistic";
-		- gorst, with password "hero";
-	d) test realm is set: north.gov;
-	e) shared secret for REST API is set as "logen" (but REST API is not
-	activated in /etc/turnserver.conf).
-	f) The same two users are pre-set for the short-term authentication mechanism,
+
+	b) MySQL is used as the user database. The database name is "turn",
+	the user name is "turn", the password is "turn". The database can 
+	be acecssed with the command-line tool as:
+		$ mysql -p turn -u turn
+		Password: turn
+
+	c) two test users are set for the default realm "north.gov":
+		- user "ninefingers", with password "youhavetoberealistic";
+		- user "gorst", with password "hero";
+
+	d) two test users are set for the secondary realm "crinna.org":
+		- user "whirrun" with password "sword";
+		- user "stranger-come-knocking" with password "civilization";
+
+	e) Default realm is set: "north.gov";
+
+	f) shared secret for REST API is set as "logen", for the realm 
+	"north.gov" (but REST API is not activated in /etc/turnserver.conf).
+
+	g) shared secret for REST API is set as "north", for the realm 
+	"crinna.org" (but REST API is not activated in /etc/turnserver.conf).
+
+	h) The same four users are pre-set for the short-term authentication mechanism,
 	but the short-term mechanism is not activated in /etc/turnserver.conf.
 
 	You will have to choose the authentication option (long-term,
