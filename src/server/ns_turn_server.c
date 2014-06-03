@@ -2062,7 +2062,7 @@ int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_co
 
 	if(tcid && tid && s) {
 
-		tc = get_and_clean_tcp_connection_by_id(server->tcp_relay_connections, tcid);
+		tc = get_tcp_connection_by_id(server->tcp_relay_connections, tcid);
 		ioa_network_buffer_handle nbh = ioa_network_buffer_allocate(server->e);
 		int resp_constructed = 0;
 		if(!tc || (tc->state == TC_STATE_READY) || (tc->client_s)) {
@@ -2099,6 +2099,9 @@ int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_co
 				}
 			}
 		}
+
+		if(tc)
+			get_and_clean_tcp_connection_by_id(server->tcp_relay_connections, tcid);
 
 		if(!resp_constructed) {
 			if(!err_code) {
