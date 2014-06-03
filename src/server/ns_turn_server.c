@@ -48,7 +48,7 @@ int TURN_MAX_ALLOCATE_TIMEOUT = 60;
 int TURN_MAX_ALLOCATE_TIMEOUT_STUN_ONLY = 3;
 
 #define log_method(ss, method, err_code, reason) \
-{\
+if (ss) {\
   if(!(err_code)) {\
 	  if(ss->origin[0]) {\
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,\
