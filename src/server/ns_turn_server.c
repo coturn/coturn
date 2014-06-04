@@ -47,27 +47,31 @@
 int TURN_MAX_ALLOCATE_TIMEOUT = 60;
 int TURN_MAX_ALLOCATE_TIMEOUT_STUN_ONLY = 3;
 
-#define log_method(ss, method, err_code, reason) \
-if (ss) {\
-  if(!(err_code)) {\
-	  if(ss->origin[0]) {\
+#define log_method(ss0, method, err_code0, reason0) \
+if (ss0) {\
+  ts_ur_super_session* _ss = (ss0); \
+  int _err_code = (err_code0); \
+  if(!_err_code) {\
+	  if(_ss->origin[0]) {\
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,\
 					"session %018llu: origin <%s> realm <%s> user <%s>: incoming packet " method " processed, success\n",\
-					(unsigned long long)(ss->id), (const char*)(ss->origin),(const char*)(ss->realm_options.name),(const char*)(ss->username));\
+					(unsigned long long)(_ss->id), (const char*)(_ss->origin),(const char*)(_ss->realm_options.name),(const char*)(_ss->username));\
 		} else {\
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,\
 					"session %018llu: realm <%s> user <%s>: incoming packet " method " processed, success\n",\
-					(unsigned long long)(ss->id), (const char*)(ss->realm_options.name),(const char*)(ss->username));\
+					(unsigned long long)(_ss->id), (const char*)(_ss->realm_options.name),(const char*)(_ss->username));\
 		}\
   } else {\
-	  if(ss->origin[0]) {\
+	  const char *_reason = (const char*)(reason0); \
+	  if(!_reason) _reason="Unknown error"; \
+	  if(_ss->origin[0]) {\
 		  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,\
 		  "session %018llu: origin <%s> realm <%s> user <%s>: incoming packet " method " processed, error %d: %s\n",\
-		  (unsigned long long)(ss->id), (const char*)(ss->origin),(const char*)(ss->realm_options.name),(const char*)(ss->username), (err_code), (reason));\
+		  (unsigned long long)(_ss->id), (const char*)(_ss->origin),(const char*)(_ss->realm_options.name),(const char*)(_ss->username), _err_code, _reason);\
 	  } else {\
 		  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,\
 		  "session %018llu: realm <%s> user <%s>: incoming packet " method " processed, error %d: %s\n",\
-		  (unsigned long long)(ss->id), (const char*)(ss->realm_options.name),(const char*)(ss->username), (err_code), (reason));\
+		  (unsigned long long)(_ss->id), (const char*)(_ss->realm_options.name),(const char*)(_ss->username), _err_code, _reason);\
 	  }\
   }\
 }
