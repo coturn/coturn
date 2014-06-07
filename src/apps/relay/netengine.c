@@ -77,6 +77,88 @@ static void barrier_wait_func(const char* func, int line)
 
 #define barrier_wait() barrier_wait_func(__FUNCTION__,__LINE__)
 
+/////////////// Bandwidth //////////////////
+
+static pthread_mutex_t mutex_bps;
+
+static band_limit_t allocate_bps(band_limit_t bps, int positive)
+{
+	band_limit_t ret = 0;
+	if(bps>0) {
+		pthread_mutex_lock(&mutex_bps);
+
+		if(positive) {
+
+			if(!(turn_params.bps_capacity)) {
+				ret = bps;
+				turn_params.bps_capacity_allocated += ret;
+			} else if(turn_params.bps_capacity_allocated < turn_params.bps_capacity) {
+				band_limit_t reserve = turn_params.bps_capacity - turn_params.bps_capacity_allocated;
+				if(reserve <= bps) {
+					ret = reserve;
+					turn_params.bps_capacity_allocated = turn_params.bps_capacity;
+				} else {
+					ret = bps;
+					turn_params.bps_capacity_allocated += ret;
+				}
+			}
+
+		} else {
+
+			if(turn_params.bps_capacity_allocated >= bps) {
+				turn_params.bps_capacity_allocated -= bps;
+				ret = turn_params.bps_capacity_allocated;
+			} else {
+				turn_params.bps_capacity_allocated = 0;
+			}
+		}
+
+		pthread_mutex_unlock(&mutex_bps);
+	}
+	return ret;
+}
+
+band_limit_t get_bps_capacity_allocated(void)
+{
+	band_limit_t ret = 0;
+	pthread_mutex_lock(&mutex_bps);
+	ret = turn_params.bps_capacity_allocated;
+	pthread_mutex_unlock(&mutex_bps);
+	return ret;
+}
+
+band_limit_t get_bps_capacity(void)
+{
+	band_limit_t ret = 0;
+	pthread_mutex_lock(&mutex_bps);
+	ret = turn_params.bps_capacity;
+	pthread_mutex_unlock(&mutex_bps);
+	return ret;
+}
+
+void set_bps_capacity(band_limit_t value)
+{
+	pthread_mutex_lock(&mutex_bps);
+	turn_params.bps_capacity = value;
+	pthread_mutex_unlock(&mutex_bps);
+}
+
+band_limit_t get_max_bps(void)
+{
+	band_limit_t ret = 0;
+	pthread_mutex_lock(&mutex_bps);
+	ret = turn_params.max_bps;
+	pthread_mutex_unlock(&mutex_bps);
+	return ret;
+}
+
+void set_max_bps(band_limit_t value)
+{
+	pthread_mutex_lock(&mutex_bps);
+	turn_params.max_bps = value;
+	pthread_mutex_unlock(&mutex_bps);
+}
+
 /////////////// AUX SERVERS ////////////////
 
 static void add_aux_server_list(const char *saddr, turn_server_addrs_list_t *list)
@@ -390,7 +472,8 @@ static int send_socket_to_general_relay(ioa_engine_handle e, struct message_to_r
 }
 
 static int send_socket_to_relay(turnserver_id id, u64bits cid, stun_tid *tid, ioa_socket_handle s, 
-				int message_integrity, MESSAGE_TO_RELAY_TYPE rmt, ioa_net_data *nd)
+				int message_integrity, MESSAGE_TO_RELAY_TYPE rmt, ioa_net_data *nd,
+				int can_resume)
 {
 	int ret = 0;
 
@@ -426,11 +509,21 @@ static int send_socket_to_relay(turnserver_id id, u64bits cid, stun_tid *tid, io
 	switch (rmt) {
 	case(RMT_CB_SOCKET): {
 
-		sm.m.cb_sm.id = id;
-		sm.m.cb_sm.connection_id = (tcp_connection_id)cid;
-		stun_tid_cpy(&(sm.m.cb_sm.tid),tid);
-		sm.m.cb_sm.s = s;
-		sm.m.cb_sm.message_integrity = message_integrity;
+		if(nd && nd->nbh) {
+			sm.m.cb_sm.id = id;
+			sm.m.cb_sm.connection_id = (tcp_connection_id)cid;
+			stun_tid_cpy(&(sm.m.cb_sm.tid),tid);
+			sm.m.cb_sm.s = s;
+			sm.m.cb_sm.message_integrity = message_integrity;
+
+			addr_cpy(&(sm.m.cb_sm.nd.src_addr),&(nd->src_addr));
+			sm.m.cb_sm.nd.recv_tos = nd->recv_tos;
+			sm.m.cb_sm.nd.recv_ttl = nd->recv_ttl;
+			sm.m.cb_sm.nd.nbh = nd->nbh;
+			sm.m.cb_sm.can_resume = can_resume;
+
+			nd->nbh = NULL;
+		}
 
 		break;
 	}
@@ -442,6 +535,7 @@ static int send_socket_to_relay(turnserver_id id, u64bits cid, stun_tid *tid, io
 			sm.m.sm.nd.recv_tos = nd->recv_tos;
 			sm.m.sm.nd.recv_ttl = nd->recv_ttl;
 			sm.m.sm.nd.nbh = nd->nbh;
+			sm.m.sm.can_resume = can_resume;
 			nd->nbh = NULL;
 		} else {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Empty buffer with mobile socket\n",__FUNCTION__);
@@ -480,6 +574,9 @@ static int send_socket_to_relay(turnserver_id id, u64bits cid, stun_tid *tid, io
 	  if(rmt == RMT_MOBILE_SOCKET) {
 	    ioa_network_buffer_delete(NULL, sm.m.sm.nd.nbh);
 	    sm.m.sm.nd.nbh = NULL;
+	  } else if(rmt == RMT_CB_SOCKET) {
+		  ioa_network_buffer_delete(NULL, sm.m.cb_sm.nd.nbh);
+		  sm.m.cb_sm.nd.nbh = NULL;
 	  }
 	}
 
@@ -526,7 +623,11 @@ static int handle_relay_message(relay_server_handle rs, struct message_to_relay 
 		case RMT_CB_SOCKET:
 
 			turnserver_accept_tcp_client_data_connection(&(rs->server), sm->m.cb_sm.connection_id,
-				&(sm->m.cb_sm.tid), sm->m.cb_sm.s, sm->m.cb_sm.message_integrity);
+				&(sm->m.cb_sm.tid), sm->m.cb_sm.s, sm->m.cb_sm.message_integrity, &(sm->m.cb_sm.nd),
+				sm->m.cb_sm.can_resume);
+
+			ioa_network_buffer_delete(rs->ioa_eng, sm->m.cb_sm.nd.nbh);
+			sm->m.cb_sm.nd.nbh = NULL;
 
 			break;
 		case RMT_MOBILE_SOCKET: {
@@ -709,7 +810,7 @@ static ioa_engine_handle create_new_listener_engine(void)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"IO method (udp listener/relay thread): %s\n",event_base_get_method(eb));
 	super_memory_t* sm = new_super_memory_region();
 	ioa_engine_handle e = create_ioa_engine(sm, eb, turn_params.listener.tp, turn_params.relay_ifname, turn_params.relays_number, turn_params.relay_addrs,
-			turn_params.default_relays, turn_params.verbose, turn_params.max_bps
+			turn_params.default_relays, turn_params.verbose
 #if !defined(TURN_NO_HIREDIS)
 			,turn_params.redis_statsdb
 #endif
@@ -755,7 +856,7 @@ static void setup_listener(void)
 
 	turn_params.listener.ioa_eng = create_ioa_engine(sm, turn_params.listener.event_base, turn_params.listener.tp,
 			turn_params.relay_ifname, turn_params.relays_number, turn_params.relay_addrs,
-			turn_params.default_relays, turn_params.verbose, turn_params.max_bps
+			turn_params.default_relays, turn_params.verbose
 #if !defined(TURN_NO_HIREDIS)
 			,turn_params.redis_statsdb
 #endif
@@ -1329,7 +1430,7 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
 		rs->event_base = turn_event_base_new();
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"IO method (general relay thread): %s\n",event_base_get_method(rs->event_base));
 		rs->ioa_eng = create_ioa_engine(rs->sm, rs->event_base, turn_params.listener.tp, turn_params.relay_ifname,
-			turn_params.relays_number, turn_params.relay_addrs, turn_params.default_relays, turn_params.verbose, turn_params.max_bps
+			turn_params.relays_number, turn_params.relay_addrs, turn_params.default_relays, turn_params.verbose
 #if !defined(TURN_NO_HIREDIS)
 			,turn_params.redis_statsdb
 #endif
@@ -1381,7 +1482,8 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
 			 send_socket_to_relay,
 			 &turn_params.secure_stun, turn_params.shatype, &turn_params.mobility,
 			 turn_params.server_relay,
-			 send_turn_session_info);
+			 send_turn_session_info,
+			 allocate_bps);
 	
 	if(to_set_rfc5780) {
 		set_rfc5780(&(rs->server), get_alt_addr, send_message_from_listener_to_client);
@@ -1525,6 +1627,8 @@ static void setup_cli_server(void)
 void setup_server(void)
 {
 	evthread_use_pthreads();
+
+	pthread_mutex_init(&mutex_bps, NULL);
 
 #if !defined(TURN_NO_THREAD_BARRIERS)
 

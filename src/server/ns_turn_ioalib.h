@@ -183,7 +183,7 @@ void turn_report_session_usage(void *session);
  * the function must work correctly when chnum=0
  * (when no hint information is available).
  */
-typedef void (*ioa_net_event_handler)(ioa_socket_handle s, int event_type, ioa_net_data *data, void *ctx);
+typedef void (*ioa_net_event_handler)(ioa_socket_handle s, int event_type, ioa_net_data *data, void *ctx, int can_resume);
 
 /*
  * Timer callback

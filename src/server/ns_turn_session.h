@@ -44,7 +44,7 @@ extern "C" {
 
 typedef struct _perf_options_t {
 
-	vint max_bps;
+	band_limit_t max_bps;
 	vint total_quota;
 	vint user_quota;
 
@@ -103,6 +103,8 @@ struct _ts_ur_super_session {
   realm_options_t realm_options;
   int realm_set;
   s08bits origin[STUN_MAX_ORIGIN_SIZE + 1];
+  /* Bandwidth */
+  band_limit_t bps;
 };
 
 ////// Session info for statistics //////
@@ -147,6 +149,8 @@ struct turn_session_info {
 /* Realm */
 	char realm[STUN_MAX_REALM_SIZE+1];
 	char origin[STUN_MAX_ORIGIN_SIZE + 1];
+/* Bandwidth */
+	band_limit_t bps;
 };
 
 void turn_session_info_init(struct turn_session_info* tsi);

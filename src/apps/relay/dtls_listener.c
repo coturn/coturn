@@ -348,7 +348,7 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server,
 
 		if (s && s->read_cb && sm->m.sm.nd.nbh) {
 			s->e = ioa_eng;
-			s->read_cb(s, IOA_EV_READ, &(sm->m.sm.nd), s->read_ctx);
+			s->read_cb(s, IOA_EV_READ, &(sm->m.sm.nd), s->read_ctx, 1);
 			ioa_network_buffer_delete(ioa_eng, sm->m.sm.nd.nbh);
 			sm->m.sm.nd.nbh = NULL;
 
@@ -604,6 +604,7 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void* arg)
 	server->sm.m.sm.nd.nbh = elem;
 	server->sm.m.sm.nd.recv_ttl = TTL_IGNORE;
 	server->sm.m.sm.nd.recv_tos = TOS_IGNORE;
+	server->sm.m.sm.can_resume = 1;
 
 	addr_set_any(&(server->sm.m.sm.nd.src_addr));
 

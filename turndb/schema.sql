@@ -30,7 +30,7 @@ CREATE TABLE denied_peer_ip (
 CREATE TABLE turn_origin_to_realm (
 	origin varchar(512),
 	realm varchar(512),
-	primary key (origin,realm)
+	primary key (origin)
 );
 
 CREATE TABLE turn_realm_option (

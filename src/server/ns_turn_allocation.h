@@ -217,6 +217,7 @@ ts_ur_session *get_relay_session(allocation *a);
 ioa_socket_handle get_relay_socket(allocation *a);
 
 tcp_connection *get_and_clean_tcp_connection_by_id(ur_map *map, tcp_connection_id id);
+tcp_connection *get_tcp_connection_by_id(ur_map *map, tcp_connection_id id);
 tcp_connection *get_tcp_connection_by_peer(allocation *a, ioa_addr *peer_addr);
 int can_accept_tcp_connection_from_peer(allocation *a, ioa_addr *peer_addr, int server_relay);
 tcp_connection *create_tcp_connection(u08bits server_id, allocation *a, stun_tid *tid, ioa_addr *peer_addr, int *err_code);

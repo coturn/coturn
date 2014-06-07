@@ -68,6 +68,7 @@ typedef u08bits hmackey_t[64];
  */
 #define SHORT_TERM_PASSWORD_SIZE (512)
 typedef u08bits st_password_t[SHORT_TERM_PASSWORD_SIZE+1];
+typedef unsigned int band_limit_t;
 
 ///////////////////////////////////
 
@@ -140,6 +141,7 @@ int stun_attr_get_type(stun_attr_ref attr);
 int stun_attr_get_len(stun_attr_ref attr);
 const u08bits* stun_attr_get_value(stun_attr_ref attr);
 u16bits stun_attr_get_channel_number(stun_attr_ref attr);
+band_limit_t stun_attr_get_bandwidth(stun_attr_ref attr);
 u08bits stun_attr_get_even_port(stun_attr_ref attr);
 u64bits stun_attr_get_reservation_token_value(stun_attr_ref attr);
 stun_attr_ref stun_attr_get_first_by_type_str(const u08bits* buf, size_t len, u16bits attr_type);
@@ -150,6 +152,7 @@ int stun_attr_add_addr_str(u08bits *buf, size_t *len, u16bits attr_type, const i
 int stun_attr_get_addr_str(const u08bits *buf, size_t len, stun_attr_ref attr, ioa_addr* ca, const ioa_addr *default_addr);
 int stun_attr_get_first_addr_str(const u08bits *buf, size_t len, u16bits attr_type, ioa_addr* ca, const ioa_addr *default_addr);
 int stun_attr_add_channel_number_str(u08bits* buf, size_t *len, u16bits chnumber);
+int stun_attr_add_bandwidth_str(u08bits* buf, size_t *len, band_limit_t bps);
 u16bits stun_attr_get_first_channel_number_str(const u08bits *buf, size_t len);
 
 int stun_set_allocate_request_str(u08bits* buf, size_t *len, u32bits lifetime, int address_family, u08bits transport, int mobile);

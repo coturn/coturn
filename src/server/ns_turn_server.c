@@ -47,6 +47,35 @@
 int TURN_MAX_ALLOCATE_TIMEOUT = 60;
 int TURN_MAX_ALLOCATE_TIMEOUT_STUN_ONLY = 3;
 
+static inline void log_method(ts_ur_super_session* ss, const char *method, int err_code, const u08bits *reason)
+{
+  if(ss) {
+	  if(!method) method = "unknown";
+	  if(!err_code) {
+		  if(ss->origin[0]) {
+			  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+					"session %018llu: origin <%s> realm <%s> user <%s>: incoming packet %s processed, success\n",
+					(unsigned long long)(ss->id), (const char*)(ss->origin),(const char*)(ss->realm_options.name),(const char*)(ss->username),method);
+		} else {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+				"session %018llu: realm <%s> user <%s>: incoming packet %s processed, success\n",
+				(unsigned long long)(ss->id), (const char*)(ss->realm_options.name),(const char*)(ss->username),method);
+		}
+	  } else {
+		  if(!reason) reason=(const u08bits*)"Unknown error";
+		  if(ss->origin[0]) {
+			  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+					  "session %018llu: origin <%s> realm <%s> user <%s>: incoming packet %s processed, error %d: %s\n",
+					  (unsigned long long)(ss->id), (const char*)(ss->origin),(const char*)(ss->realm_options.name),(const char*)(ss->username), method, err_code, reason);
+		  } else {
+			  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+					  "session %018llu: realm <%s> user <%s>: incoming packet %s processed, error %d: %s\n",
+					  (unsigned long long)(ss->id), (const char*)(ss->realm_options.name),(const char*)(ss->username), method, err_code, reason);
+		  }
+	  }
+  }
+}
+
 ///////////////////////////////////////////
 
 static int attach_socket_to_session(turn_turnserver* server, ioa_socket_handle s, ts_ur_super_session* ss);
@@ -131,6 +160,13 @@ static void dec_quota(ts_ur_super_session* ss)
 	if(ss && ss->quota_used && ss->server && ((turn_turnserver*)ss->server)->raqcb) {
 
 		ss->quota_used = 0;
+
+		if(ss->bps) {
+			if(((turn_turnserver*)ss->server)->allocate_bps_func) {
+				((turn_turnserver*)ss->server)->allocate_bps_func(ss->bps,0);
+			}
+			ss->bps = 0;
+		}
 
 		(((turn_turnserver*)ss->server)->raqcb)(ss->username, (u08bits*)ss->realm_options.name);
 	}
@@ -361,6 +397,7 @@ int turn_session_info_copy_from(struct turn_session_info* tsi, ts_ur_super_sessi
 
 	if(tsi && ss) {
 		tsi->id = ss->id;
+		tsi->bps = ss->bps;
 		tsi->start_time = ss->start_time;
 		tsi->valid = is_allocation_valid(&(ss->alloc)) && !(ss->to_be_closed) && (ss->quota_used);
 		if(tsi->valid) {
@@ -860,6 +897,8 @@ static int handle_turn_allocate(turn_turnserver *server,
 		int af = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT;
 		u08bits username[STUN_MAX_USERNAME_SIZE+1]="\0";
 		size_t ulen = 0;
+		band_limit_t bps = 0;
+		band_limit_t max_bps = 0;
 
 		stun_attr_ref sar = stun_attr_get_first_str(ioa_network_buffer_data(in_buffer->nbh), 
 							    ioa_network_buffer_get_size(in_buffer->nbh));
@@ -883,6 +922,9 @@ static int handle_turn_allocate(turn_turnserver *server,
 
 			switch (attr_type) {
 			SKIP_ATTRIBUTES;
+			case STUN_ATTRIBUTE_NEW_BANDWIDTH:
+				bps = stun_attr_get_bandwidth(sar);
+				break;
 			case STUN_ATTRIBUTE_MOBILITY_TICKET:
 				if(!(*(server->mobility))) {
 					*err_code = 501;
@@ -1057,7 +1099,21 @@ static int handle_turn_allocate(turn_turnserver *server,
 
 			} else {
 
-				if (create_relay_connection(server, ss, lifetime,
+				if(server->allocate_bps_func) {
+					max_bps = ss->realm_options.perf_options.max_bps;
+					if(max_bps && (!bps || (bps && (bps>max_bps)))) {
+						bps = max_bps;
+					}
+					if(bps) {
+						ss->bps = server->allocate_bps_func(bps,1);
+						if(!(ss->bps)) {
+							*err_code = 486;
+							*reason = (const u08bits *)"Allocation Bandwidth Quota Reached";
+						}
+					}
+				}
+
+				if (*err_code || create_relay_connection(server, ss, lifetime,
 							af, transport,
 							even_port, in_reservation_token, &out_reservation_token,
 							err_code, reason,
@@ -1097,6 +1153,11 @@ static int handle_turn_allocate(turn_turnserver *server,
 									0,NULL,
 									out_reservation_token,
 									ss->s_mobile_id);
+
+						if(ss->bps) {
+							stun_attr_add_bandwidth_str(ioa_network_buffer_data(nbh), &len, ss->bps);
+						}
+
 						ioa_network_buffer_set_size(nbh,len);
 						*resp_constructed = 1;
 
@@ -1243,7 +1304,7 @@ static int handle_turn_refresh(turn_turnserver *server,
 						ioa_socket_handle new_s = detach_ioa_socket(ss->client_session.s,1);
 						if(new_s) {
 						  if(server->send_socket_to_relay(tsid, mid, tid, new_s, message_integrity, 
-										  RMT_MOBILE_SOCKET, in_buffer)<0) {
+										  RMT_MOBILE_SOCKET, in_buffer, can_resume)<0) {
 						    *err_code = 400;
 						    *reason = (const u08bits *)"Wrong mobile ticket";
 						  } else {
@@ -1471,12 +1532,13 @@ static void tcp_deliver_delayed_buffer(unsent_buffer *ub, ioa_socket_handle s, t
 	}
 }
 
-static void tcp_peer_input_handler(ioa_socket_handle s, int event_type, ioa_net_data *in_buffer, void *arg)
+static void tcp_peer_input_handler(ioa_socket_handle s, int event_type, ioa_net_data *in_buffer, void *arg, int can_resume)
 {
 	if (!(event_type & IOA_EV_READ) || !arg)
 		return;
 
 	UNUSED_ARG(s);
+	UNUSED_ARG(can_resume);
 
 	tcp_connection *tc = (tcp_connection*)arg;
 	ts_ur_super_session *ss=NULL;
@@ -1506,12 +1568,13 @@ static void tcp_peer_input_handler(ioa_socket_handle s, int event_type, ioa_net_
 	}
 }
 
-static void tcp_client_input_handler_rfc6062data(ioa_socket_handle s, int event_type, ioa_net_data *in_buffer, void *arg)
+static void tcp_client_input_handler_rfc6062data(ioa_socket_handle s, int event_type, ioa_net_data *in_buffer, void *arg, int can_resume)
 {
 	if (!(event_type & IOA_EV_READ) || !arg)
 		return;
 
 	UNUSED_ARG(s);
+	UNUSED_ARG(can_resume);
 
 	tcp_connection *tc = (tcp_connection*)arg;
 	ts_ur_super_session *ss=NULL;
@@ -1890,7 +1953,8 @@ static int handle_turn_connect(turn_turnserver *server,
 static int handle_turn_connection_bind(turn_turnserver *server,
 			       ts_ur_super_session *ss, stun_tid *tid, int *resp_constructed,
 			       int *err_code, 	const u08bits **reason, u16bits *unknown_attrs, u16bits *ua_num,
-			       ioa_net_data *in_buffer, ioa_network_buffer_handle nbh, int message_integrity) {
+			       ioa_net_data *in_buffer, ioa_network_buffer_handle nbh, int message_integrity,
+			       int can_resume) {
 
 	allocation* a = get_allocation_ss(ss);
 
@@ -1954,7 +2018,7 @@ static int handle_turn_connection_bind(turn_turnserver *server,
 				if(s) {
 					ioa_socket_handle new_s = detach_ioa_socket(s,1);
 					if(new_s) {
-					  if(server->send_socket_to_relay(sid, id, tid, new_s, message_integrity, RMT_CB_SOCKET, NULL)<0) {
+					  if(server->send_socket_to_relay(sid, id, tid, new_s, message_integrity, RMT_CB_SOCKET, in_buffer, can_resume)<0) {
 					    *err_code = 400;
 					    *reason = (const u08bits *)"Wrong connection id";
 					  }
@@ -1987,7 +2051,7 @@ static int handle_turn_connection_bind(turn_turnserver *server,
 	return 0;
 }
 
-int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_connection_id tcid, stun_tid *tid, ioa_socket_handle s, int message_integrity)
+int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_connection_id tcid, stun_tid *tid, ioa_socket_handle s, int message_integrity, ioa_net_data *in_buffer, int can_resume)
 {
 	if(!server)
 		return -1;
@@ -1998,10 +2062,13 @@ int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_co
 	ts_ur_super_session *ss = NULL;
 
 	int err_code = 0;
+	const u08bits *reason = NULL;
 
 	if(tcid && tid && s) {
 
-		tc = get_and_clean_tcp_connection_by_id(server->tcp_relay_connections, tcid);
+		tc = get_tcp_connection_by_id(server->tcp_relay_connections, tcid);
+		ioa_network_buffer_handle nbh = ioa_network_buffer_allocate(server->e);
+		int resp_constructed = 0;
 		if(!tc || (tc->state == TC_STATE_READY) || (tc->client_s)) {
 			err_code = 400;
 		} else {
@@ -2010,9 +2077,18 @@ int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_co
 				err_code = 500;
 			} else {
 				ss = (ts_ur_super_session*)(a->owner);
-				if(!check_username_hash(s,ss->username,(u08bits*)ss->realm_options.name)) {
-					err_code = 401;
-				} else {
+
+				//Check security:
+				int postpone_reply = 0;
+				check_stun_auth(server, ss, tid, &resp_constructed, &err_code, &reason, in_buffer, nbh,
+						STUN_METHOD_CONNECTION_BIND, &message_integrity, &postpone_reply, can_resume);
+
+				if(postpone_reply) {
+
+					ioa_network_buffer_delete(server->e, nbh);
+					return 0;
+
+				} else if(!err_code) {
 					tc->state = TC_STATE_READY;
 					tc->client_s = s;
 					set_ioa_socket_session(s,ss);
@@ -2028,16 +2104,19 @@ int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_co
 			}
 		}
 
-		ioa_network_buffer_handle nbh = ioa_network_buffer_allocate(server->e);
+		if(tc)
+			get_and_clean_tcp_connection_by_id(server->tcp_relay_connections, tcid);
 
-		if(!err_code) {
-			size_t len = ioa_network_buffer_get_size(nbh);
-			stun_init_success_response_str(STUN_METHOD_CONNECTION_BIND, ioa_network_buffer_data(nbh), &len, tid);
-			ioa_network_buffer_set_size(nbh,len);
-		} else {
-			size_t len = ioa_network_buffer_get_size(nbh);
-			stun_init_error_response_str(STUN_METHOD_CONNECTION_BIND, ioa_network_buffer_data(nbh), &len, err_code, NULL, tid);
-			ioa_network_buffer_set_size(nbh,len);
+		if(!resp_constructed) {
+			if(!err_code) {
+				size_t len = ioa_network_buffer_get_size(nbh);
+				stun_init_success_response_str(STUN_METHOD_CONNECTION_BIND, ioa_network_buffer_data(nbh), &len, tid);
+				ioa_network_buffer_set_size(nbh,len);
+			} else {
+				size_t len = ioa_network_buffer_get_size(nbh);
+				stun_init_error_response_str(STUN_METHOD_CONNECTION_BIND, ioa_network_buffer_data(nbh), &len, err_code, NULL, tid);
+				ioa_network_buffer_set_size(nbh,len);
+			}
 		}
 
 		{
@@ -2058,6 +2137,10 @@ int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_co
 			size_t len = ioa_network_buffer_get_size(nbh);
 			stun_attr_add_fingerprint_str(ioa_network_buffer_data(nbh), &len);
 			ioa_network_buffer_set_size(nbh, len);
+		}
+
+		if(server->verbose) {
+			log_method(ss, "CONNECTION_BIND", err_code, reason);
 		}
 
 		if(ss && !err_code) {
@@ -3019,6 +3102,13 @@ static int check_stun_auth(turn_turnserver *server,
 					}
 		}
 
+		if(can_resume) {
+			(server->userkeycb)(server->id, server->ct, usname, realm, resume_processing_after_username_check, in_buffer, ss->id, postpone_reply);
+			if(*postpone_reply) {
+				return 0;
+			}
+		}
+
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
 				"%s: user %s credentials are incorrect\n",
 				__FUNCTION__, (char*)usname);
@@ -3072,31 +3162,6 @@ static void set_alternate_server(turn_server_addrs_list_t *asl, const ioa_addr *
 			}
 		}
 	}
-}
-
-#define log_method(ss, method, err_code, reason) \
-{\
-  if(!(err_code)) {\
-	  if(ss->origin[0]) {\
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,\
-					"session %018llu: origin <%s> realm <%s> user <%s>: incoming packet " method " processed, success\n",\
-					(unsigned long long)(ss->id), (const char*)(ss->origin),(const char*)(ss->realm_options.name),(const char*)(ss->username));\
-		} else {\
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,\
-					"session %018llu: realm <%s> user <%s>: incoming packet " method " processed, success\n",\
-					(unsigned long long)(ss->id), (const char*)(ss->realm_options.name),(const char*)(ss->username));\
-		}\
-  } else {\
-	  if(ss->origin[0]) {\
-		  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,\
-		  "session %018llu: origin <%s> realm <%s> user <%s>: incoming packet " method " processed, error %d: %s\n",\
-		  (unsigned long long)(ss->id), (const char*)(ss->origin),(const char*)(ss->realm_options.name),(const char*)(ss->username), (err_code), (reason));\
-	  } else {\
-		  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,\
-		  "session %018llu: realm <%s> user <%s>: incoming packet " method " processed, error %d: %s\n",\
-		  (unsigned long long)(ss->id), (const char*)(ss->realm_options.name),(const char*)(ss->username), (err_code), (reason));\
-	  }\
-  }\
 }
 
 static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss, ioa_net_data *in_buffer, ioa_network_buffer_handle nbh, int *resp_constructed, int can_resume)
@@ -3193,7 +3258,9 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 			}
 
 			if(!err_code && !(*resp_constructed) && !no_response) {
-				if(!(*(server->mobility)) || (method != STUN_METHOD_REFRESH) || is_allocation_valid(get_allocation_ss(ss))) {
+				if(method == STUN_METHOD_CONNECTION_BIND) {
+					;
+				} else if(!(*(server->mobility)) || (method != STUN_METHOD_REFRESH) || is_allocation_valid(get_allocation_ss(ss))) {
 					int postpone_reply = 0;
 					check_stun_auth(server, ss, &tid, resp_constructed, &err_code, &reason, in_buffer, nbh, method, &message_integrity, &postpone_reply, can_resume);
 					if(postpone_reply)
@@ -3236,9 +3303,9 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 			case STUN_METHOD_CONNECTION_BIND:
 
 				handle_turn_connection_bind(server, ss, &tid, resp_constructed, &err_code, &reason,
-								unknown_attrs, &ua_num, in_buffer, nbh, message_integrity);
+								unknown_attrs, &ua_num, in_buffer, nbh, message_integrity, can_resume);
 
-				if(server->verbose) {
+				if(server->verbose && err_code) {
 				  log_method(ss, "CONNECTION_BIND", err_code, reason);
 				}
 
@@ -3596,9 +3663,9 @@ static int write_to_peerchannel(ts_ur_super_session* ss, u16bits chnum, ioa_net_
 }
 
 static void client_input_handler(ioa_socket_handle s, int event_type,
-		ioa_net_data *data, void *arg);
+		ioa_net_data *data, void *arg, int can_resume);
 static void peer_input_handler(ioa_socket_handle s, int event_type,
-		ioa_net_data *data, void *arg);
+		ioa_net_data *data, void *arg, int can_resume);
 
 /////////////// Client actions /////////////////
 
@@ -4148,7 +4215,7 @@ int open_client_connection_session(turn_turnserver* server,
 			"client_to_be_allocated_timeout_handler");
 
 	if(sm->nd.nbh) {
-		client_input_handler(newelem->s,IOA_EV_READ,&(sm->nd),ss);
+		client_input_handler(newelem->s,IOA_EV_READ,&(sm->nd),ss,sm->can_resume);
 		ioa_network_buffer_delete(server->e, sm->nd.nbh);
 		sm->nd.nbh = NULL;
 	}
@@ -4161,7 +4228,7 @@ int open_client_connection_session(turn_turnserver* server,
 /////////////// io handlers ///////////////////
 
 static void peer_input_handler(ioa_socket_handle s, int event_type,
-		ioa_net_data *in_buffer, void *arg) {
+		ioa_net_data *in_buffer, void *arg, int can_resume) {
 
 	if (!(event_type & IOA_EV_READ) || !arg)
 		return;
@@ -4170,6 +4237,7 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 		return;
 
 	UNUSED_ARG(s);
+	UNUSED_ARG(can_resume);
 
 	ts_ur_super_session* ss = (ts_ur_super_session*) arg;
 
@@ -4274,7 +4342,7 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 }
 
 static void client_input_handler(ioa_socket_handle s, int event_type,
-		ioa_net_data *data, void *arg) {
+		ioa_net_data *data, void *arg, int can_resume) {
 
 	if (!arg)
 		return;
@@ -4300,7 +4368,7 @@ static void client_input_handler(ioa_socket_handle s, int event_type,
 
 	switch (elem->state) {
 	case UR_STATE_READY:
-		read_client_connection(server, elem, ss, data, 1, 1);
+		read_client_connection(server, elem, ss, data, can_resume, 1);
 		break;
 	case UR_STATE_DONE:
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
@@ -4348,7 +4416,8 @@ void init_turn_server(turn_turnserver* server,
 		ip_range_list_t* ip_whitelist, ip_range_list_t* ip_blacklist,
 		send_socket_to_relay_cb send_socket_to_relay,
 		vintp secure_stun, SHATYPE shatype, vintp mobility, int server_relay,
-		send_turn_session_info_cb send_turn_session_info) {
+		send_turn_session_info_cb send_turn_session_info,
+		allocate_bps_cb allocate_bps_func) {
 
 	if (!server)
 		return;
@@ -4404,6 +4473,8 @@ void init_turn_server(turn_turnserver* server,
 	server->ip_blacklist = ip_blacklist;
 
 	server->send_socket_to_relay = send_socket_to_relay;
+
+	server->allocate_bps_func = allocate_bps_func;
 
 	set_ioa_timer(server->e, 1, 0, timer_timeout_handler, server, 1, "timer_timeout_handler");
 }

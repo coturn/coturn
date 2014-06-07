@@ -602,6 +602,17 @@ tcp_connection *get_and_clean_tcp_connection_by_id(ur_map *map, tcp_connection_i
 	return NULL;
 }
 
+tcp_connection *get_tcp_connection_by_id(ur_map *map, tcp_connection_id id)
+{
+	if(map) {
+		ur_map_value_type t = 0;
+		if (ur_map_get(map, (ur_map_key_type)id, &t) && t) {
+			return (tcp_connection*)t;
+		}
+	}
+	return NULL;
+}
+
 tcp_connection *get_tcp_connection_by_peer(allocation *a, ioa_addr *peer_addr)
 {
 	if(a && peer_addr) {
