@@ -104,6 +104,7 @@ static void server_input_handler(struct evconnlistener *l, evutil_socket_t fd,
 		server->sm.m.sm.nd.recv_tos = TOS_IGNORE;
 		server->sm.m.sm.nd.nbh = NULL;
 		server->sm.m.sm.s = ioas;
+		server->sm.m.sm.can_resume = 1;
 		server->sm.relay_server = server->relay_server;
 
 		int rc = server->connect_cb(server->e, &(server->sm));

@@ -108,10 +108,12 @@ static int bufferevent_enabled(struct bufferevent *bufev, short flags)
 
 static int is_socket_writeable(ioa_socket_handle s, size_t sz, const char *msg, int option) 
 {
-  UNUSED_ARG(s);
   UNUSED_ARG(sz);
   UNUSED_ARG(msg);
   UNUSED_ARG(option);
+
+  if(!s)
+	  return 0;
 
   if(!(s->done) && !(s->broken) && !(s->tobeclosed)) {
 
@@ -335,7 +337,7 @@ static void timer_handler(ioa_engine_handle e, void* arg) {
 ioa_engine_handle create_ioa_engine(super_memory_t *sm,
 				struct event_base *eb, turnipports *tp, const s08bits* relay_ifname,
 				size_t relays_number, s08bits **relay_addrs, int default_relays,
-				int verbose, band_limit_t max_bps
+				int verbose
 #if !defined(TURN_NO_HIREDIS)
 				,const char* redis_report_connection_string
 #endif
@@ -370,7 +372,6 @@ ioa_engine_handle create_ioa_engine(super_memory_t *sm,
 
 		e->sm = sm;
 		e->default_relays = default_relays;
-		e->max_bpj = max_bps;
 		e->verbose = verbose;
 		e->tp = tp;
 		if (eb) {
@@ -625,12 +626,11 @@ void delete_ioa_timer(ioa_timer_handle th)
 
 static int ioa_socket_check_bandwidth(ioa_socket_handle s, size_t sz, int read)
 {
-	if(s && (s->e) && sz && (s->sat == CLIENT_SOCKET) && (s->session)) {
+	if(read && s && (s->e) && sz &&
+			((s->sat == CLIENT_SOCKET) || (s->sat == RELAY_SOCKET) || (s->sat == RELAY_RTCP_SOCKET)) &&
+			(s->session)) {
 
-		band_limit_t max_bps = s->e->max_bpj;
-		band_limit_t s_max_bps = s->session->realm_options.perf_options.max_bps;
-		if(s_max_bps>0)
-			max_bps = s_max_bps;
+		band_limit_t max_bps = s->session->bps;
 
 		if(max_bps<1)
 			return 1;
@@ -2275,13 +2275,13 @@ static int socket_input_worker(ioa_socket_handle s)
 		addr_cpy(&remote_addr,&(s->remote_addr));
 
 	if(tcp_congestion_control && s->sub_session && s->bev) {
-	  if(s == s->sub_session->client_s) {
+	  if(s == s->sub_session->client_s && (s->sub_session->peer_s)) {
 	    if(!is_socket_writeable(s->sub_session->peer_s, STUN_BUFFER_SIZE,__FUNCTION__,0)) {
 	      if(bufferevent_enabled(s->bev,EV_READ)) {
 	    	  bufferevent_disable(s->bev,EV_READ);
 	      }
 	    }
-	  } else if(s == s->sub_session->peer_s) {
+	  } else if(s == s->sub_session->peer_s && (s->sub_session->client_s)) {
 	    if(!is_socket_writeable(s->sub_session->client_s, STUN_BUFFER_SIZE,__FUNCTION__,1)) {
 	      if(bufferevent_enabled(s->bev,EV_READ)) {
 	    	  bufferevent_disable(s->bev,EV_READ);
@@ -2486,7 +2486,7 @@ static int socket_input_worker(ioa_socket_handle s)
 				nd.recv_ttl = ttl;
 				nd.recv_tos = tos;
 
-				s->read_cb(s, IOA_EV_READ, &nd, s->read_ctx);
+				s->read_cb(s, IOA_EV_READ, &nd, s->read_ctx, 1);
 
 				if(nd.nbh)
 					free_blist_elem(s->e,buf_elem);
@@ -3432,7 +3432,7 @@ void turn_report_allocation_set(void *a, turn_time_t lifetime, int refresh)
 			turn_turnserver *server = (turn_turnserver*)ss->server;
 			if(server) {
 				ioa_engine_handle e = turn_server_get_engine(server);
-				if(e && e->verbose) {
+				if(e && e->verbose && ss->client_session.s) {
 					if(ss->client_session.s->ssl) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"session %018llu: %s, realm=<%s>, username=<%s>, lifetime=%lu, cipher=%s, method=%s (%s)\n", (unsigned long long)ss->id, status, (char*)ss->realm_options.name, (char*)ss->username, (unsigned long)lifetime, SSL_get_cipher(ss->client_session.s->ssl),
 							turn_get_ssl_method(ss->client_session.s->ssl, ss->client_session.s->orig_ctx_type),ss->client_session.s->orig_ctx_type);

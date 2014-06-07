@@ -2343,12 +2343,12 @@ static int list_origins(u08bits *realm)
 	return 0;
 }
 
-static int set_realm_option_one(u08bits *realm, vint value, const char* opt)
+static int set_realm_option_one(u08bits *realm, unsigned long value, const char* opt)
 {
 	UNUSED_ARG(realm);
 	UNUSED_ARG(value);
 	UNUSED_ARG(opt);
-	if(value<0)
+	if(value == (unsigned long)-1)
 		return 0;
 #if !defined(TURN_NO_PQ)
 	if(is_pqsql_userdb()) {
@@ -2363,7 +2363,7 @@ static int set_realm_option_one(u08bits *realm, vint value, const char* opt)
 				}
 			}
 			if(value>0) {
-				snprintf(statement,sizeof(statement),"insert into turn_realm_option (realm,opt,value) values('%s','%s','%d')",realm,opt,(int)value);
+				snprintf(statement,sizeof(statement),"insert into turn_realm_option (realm,opt,value) values('%s','%s','%lu')",realm,opt,(unsigned long)value);
 				PGresult *res = PQexec(pqc, statement);
 				if(!res || (PQresultStatus(res) != PGRES_COMMAND_OK)) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error inserting realm option information: %s\n",PQerrorMessage(pqc));
@@ -2386,7 +2386,7 @@ static int set_realm_option_one(u08bits *realm, vint value, const char* opt)
 				mysql_query(myc, statement);
 			}
 			if(value>0) {
-				snprintf(statement,sizeof(statement),"insert into turn_realm_option (realm,opt,value) values('%s','%s','%d')",realm,opt,(int)value);
+				snprintf(statement,sizeof(statement),"insert into turn_realm_option (realm,opt,value) values('%s','%s','%lu')",realm,opt,(unsigned long)value);
 				int res = mysql_query(myc, statement);
 				if (res) {
 					TURN_LOG_FUNC(
@@ -2406,7 +2406,7 @@ static int set_realm_option_one(u08bits *realm, vint value, const char* opt)
 			char s[LONG_STRING_SIZE];
 
 			if(value>0)
-				snprintf(s,sizeof(s),"set turn/realm/%s/%s %d", (char*)realm, opt, (int)value);
+				snprintf(s,sizeof(s),"set turn/realm/%s/%s %lu", (char*)realm, opt, (unsigned long)value);
 			else
 				snprintf(s,sizeof(s),"del turn/realm/%s/%s", (char*)realm, opt);
 
@@ -2420,9 +2420,9 @@ static int set_realm_option_one(u08bits *realm, vint value, const char* opt)
 
 static int set_realm_option(u08bits *realm, perf_options_t *po)
 {
-	set_realm_option_one(realm,po->max_bps,"max-bps");
-	set_realm_option_one(realm,po->user_quota,"user-quota");
-	set_realm_option_one(realm,po->total_quota,"total-quota");
+	set_realm_option_one(realm,(unsigned long)po->max_bps,"max-bps");
+	set_realm_option_one(realm,(unsigned long)po->user_quota,"user-quota");
+	set_realm_option_one(realm,(unsigned long)po->total_quota,"total-quota");
 	return 0;
 }
 
@@ -2612,7 +2612,7 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, u08b
 
 	if(ct == TA_SET_REALM_OPTION) {
 		must_set_admin_realm(realm);
-		if(!(po && (po->max_bps>=0 || po->total_quota>=0 || po->user_quota>=0))) {
+		if(!(po && (po->max_bps!=((band_limit_t)-1) || po->total_quota>=0 || po->user_quota>=0))) {
 			fprintf(stderr, "The operation cannot be completed: a realm option must be set.\n");
 			exit(-1);
 		}
@@ -3246,7 +3246,7 @@ int add_ip_list_range(char* range, ip_range_list_t * list)
 /////////// REALM //////////////
 
 #if !defined(TURN_NO_HIREDIS)
-static int set_redis_realm_opt(char *realm, const char* key, vint *value)
+static int set_redis_realm_opt(char *realm, const char* key, unsigned long *value)
 {
 	int found = 0;
 
@@ -3268,7 +3268,7 @@ static int set_redis_realm_opt(char *realm, const char* key, vint *value)
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", rget->type);
 			} else {
 				ur_string_map_lock(realms);
-				*value = atoi(rget->str);
+				*value = (unsigned long)atol(rget->str);
 				ur_string_map_unlock(realms);
 				found = 1;
 			}
@@ -3282,6 +3282,15 @@ static int set_redis_realm_opt(char *realm, const char* key, vint *value)
 
 void reread_realms(void)
 {
+	{
+		realm_params_t* defrp = get_realm(NULL);
+		ur_string_map_lock(realms);
+		defrp->options.perf_options.max_bps = turn_params.max_bps;
+		defrp->options.perf_options.total_quota = turn_params.total_quota;
+		defrp->options.perf_options.user_quota = turn_params.user_quota;
+		ur_string_map_unlock(realms);
+	}
+
 #if !defined(TURN_NO_PQ)
 	PGconn * pqc = get_pqdb_connection();
 	if(pqc) {
@@ -3362,7 +3371,7 @@ void reread_realms(void)
 					if(rval && oval && vval) {
 						realm_params_t* rp = get_realm(rval);
 						if(!strcmp(oval,"max-bps"))
-							rp->options.perf_options.max_bps = (vint)atoi(vval);
+							rp->options.perf_options.max_bps = (band_limit_t)atol(vval);
 						else if(!strcmp(oval,"total-quota"))
 							rp->options.perf_options.total_quota = (vint)atoi(vval);
 						else if(!strcmp(oval,"user-quota"))
@@ -3482,7 +3491,7 @@ void reread_realms(void)
 								vval[sz]=0;
 								realm_params_t* rp = get_realm(rval);
 								if(!strcmp(oval,"max-bps"))
-									rp->options.perf_options.max_bps = (vint)atoi(vval);
+									rp->options.perf_options.max_bps = (band_limit_t)atol(vval);
 								else if(!strcmp(oval,"total-quota"))
 									rp->options.perf_options.total_quota = (vint)atoi(vval);
 								else if(!strcmp(oval,"user-quota"))
@@ -3574,21 +3583,25 @@ void reread_realms(void)
 				for (i = 0; i<rlsz; ++i) {
 					char *realm = realms_list.secrets[i];
 					realm_params_t* rp = get_realm(realm);
-					if(!set_redis_realm_opt(realm,"max-bps",&(rp->options.perf_options.max_bps))) {
+					unsigned long value = 0;
+					if(!set_redis_realm_opt(realm,"max-bps",&value)) {
 						ur_string_map_lock(realms);
 						rp->options.perf_options.max_bps = turn_params.max_bps;
 						ur_string_map_unlock(realms);
 					}
-					if(!set_redis_realm_opt(realm,"total-quota",&(rp->options.perf_options.total_quota))) {
+					rp->options.perf_options.max_bps = (band_limit_t)value;
+					if(!set_redis_realm_opt(realm,"total-quota",&value)) {
 						ur_string_map_lock(realms);
 						rp->options.perf_options.total_quota = turn_params.total_quota;
 						ur_string_map_unlock(realms);
 					}
-					if(!set_redis_realm_opt(realm,"user-quota",&(rp->options.perf_options.user_quota))) {
+					rp->options.perf_options.total_quota = (vint)value;
+					if(!set_redis_realm_opt(realm,"user-quota",&value)) {
 						ur_string_map_lock(realms);
 						rp->options.perf_options.user_quota = turn_params.user_quota;
 						ur_string_map_unlock(realms);
 					}
+					rp->options.perf_options.user_quota = (vint)value;
 				}
 			}
 		}

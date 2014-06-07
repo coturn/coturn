@@ -350,12 +350,20 @@ static void change_cli_param(struct cli_session* cs, const char* pn)
 	if(cs && cs->ts && pn) {
 
 		if(strstr(pn,"total-quota")==pn) {
-			int new_quota = change_total_quota(cs->realm, atoi(pn+strlen("total-quota")));
-			cli_print_uint(cs,(unsigned long)new_quota,"total-quota",2);
+			turn_params.total_quota = atoi(pn+strlen("total-quota"));
+			cli_print_uint(cs,(unsigned long)turn_params.total_quota,"total-quota",2);
 			return;
 		} else if(strstr(pn,"user-quota")==pn) {
-			int new_quota = change_user_quota(cs->realm, atoi(pn+strlen("user-quota")));
-			cli_print_uint(cs,(unsigned long)new_quota,"user-quota",2);
+			turn_params.user_quota = atoi(pn+strlen("user-quota"));
+			cli_print_uint(cs,(unsigned long)turn_params.user_quota,"user-quota",2);
+			return;
+		} else if(strstr(pn,"max-bps")==pn) {
+			set_max_bps((band_limit_t)atol(pn+strlen("max-bps")));
+			cli_print_uint(cs,(unsigned long)get_max_bps(),"max-bps",2);
+			return;
+		} else if(strstr(pn,"bps-capacity")==pn) {
+			set_bps_capacity((band_limit_t)atol(pn+strlen("bps-capacity")));
+			cli_print_uint(cs,(unsigned long)get_bps_capacity(),"bps-capacity",2);
 			return;
 		} else if(strstr(pn,"cli-max-output-sessions")==pn) {
 			cli_max_output_sessions = atoi(pn+strlen("cli-max-output-sessions"));
@@ -498,6 +506,8 @@ static int print_session(ur_map_key_type key, ur_map_value_type value, void *arg
 					myprintf(cs,"      TLS method: %s\n",tsi->tls_method);
 					myprintf(cs,"      TLS cipher: %s\n",tsi->tls_cipher);
 				}
+				if(tsi->bps)
+					myprintf(cs,"      Max throughput: %lu bytes per second\n",(unsigned long)tsi->bps);
 				myprintf(cs,"      usage: rp=%lu, rb=%lu, sp=%lu, sb=%lu\n",(unsigned long)(tsi->received_packets), (unsigned long)(tsi->received_bytes),(unsigned long)(tsi->sent_packets),(unsigned long)(tsi->sent_bytes));
 				myprintf(cs,"       rate: r=%lu, s=%lu, total=%lu (bytes per sec)\n",(unsigned long)(tsi->received_rate), (unsigned long)(tsi->sent_rate),(unsigned long)(tsi->total_rate));
 				if(tsi->main_peers_size) {
@@ -785,9 +795,19 @@ static void cli_print_configuration(struct cli_session* cs)
 
 		cli_print_uint(cs,(unsigned long)cs->rp->status.total_current_allocs,"total-current-allocs",0);
 
-		cli_print_uint(cs,(unsigned long)cs->rp->options.perf_options.total_quota,"total-quota",2);
-		cli_print_uint(cs,(unsigned long)cs->rp->options.perf_options.user_quota,"user-quota",2);
-		cli_print_uint(cs,(unsigned long)cs->rp->options.perf_options.max_bps,"max-bps",0);
+		myprintf(cs,"\n");
+
+		cli_print_uint(cs,(unsigned long)turn_params.total_quota,"Default total-quota",2);
+		cli_print_uint(cs,(unsigned long)turn_params.user_quota,"Default user-quota",2);
+		cli_print_uint(cs,(unsigned long)get_bps_capacity(),"Total server bps-capacity",2);
+		cli_print_uint(cs,(unsigned long)get_bps_capacity_allocated(),"Allocated bps-capacity",0);
+		cli_print_uint(cs,(unsigned long)get_max_bps(),"Default max-bps",2);
+
+		myprintf(cs,"\n");
+
+		cli_print_uint(cs,(unsigned long)cs->rp->options.perf_options.total_quota,"current realm total-quota",0);
+		cli_print_uint(cs,(unsigned long)cs->rp->options.perf_options.user_quota,"current realm user-quota",0);
+		cli_print_uint(cs,(unsigned long)cs->rp->options.perf_options.max_bps,"current realm max-bps",0);
 
 		myprintf(cs,"\n");
 

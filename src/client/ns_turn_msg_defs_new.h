@@ -58,4 +58,10 @@ typedef enum _SHATYPE SHATYPE;
 
 /* <<== SHA AGILITY */
 
+/* Bandwidth */
+
+#define STUN_ATTRIBUTE_NEW_BANDWIDTH (0x8000 + STUN_ATTRIBUTE_BANDWIDTH)
+
+/* <<== Bandwidth */
+
 #endif //__LIB_TURN_MSG_DEFS_NEW__

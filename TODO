@@ -64,7 +64,7 @@ when necessary:
 
 3) MS TURN, MS STUN extensions.
 
-4) Bandwidth draft.
+4) Multiple origins.
 
 5) ALPN with TLS and DTLS (when OpenSSL 1.0.2 is available).
 

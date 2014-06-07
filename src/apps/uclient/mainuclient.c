@@ -93,6 +93,8 @@ int extra_requests = 0;
 
 char origin[STUN_MAX_ORIGIN_SIZE+1] = "\0";
 
+band_limit_t bps = 0;
+
 //////////////// local definitions /////////////////
 
 static char Usage[] =
@@ -145,7 +147,8 @@ static char Usage[] =
   "	-W	TURN REST API authentication secret. Is not compatible with -A option.\n"
   "	-C	TURN REST API timestamp/username separator symbol (character). The default value is ':'.\n"
   "	-F	<cipher-suite> Cipher suite for TLS/DTLS. Default value is DEFAULT.\n"
-  "	-o	<origin> - the ORIGIN STUN attribute value.\n";
+  "	-o	<origin> - the ORIGIN STUN attribute value.\n"
+  "	-a	<bytes-per-second> Bandwidth for the bandwidth request in ALLOCATE. The default value is zero.\n";
 
 //////////////////////////////////////////////////
 
@@ -198,8 +201,11 @@ int main(int argc, char **argv)
 
 	ns_bzero(local_addr, sizeof(local_addr));
 
-	while ((c = getopt(argc, argv, "d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:E:F:o:vsyhcxXgtTSAPDNOUHMRIGB")) != -1) {
+	while ((c = getopt(argc, argv, "a:d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:E:F:o:vsyhcxXgtTSAPDNOUHMRIGB")) != -1) {
 		switch (c){
+		case 'a':
+			bps = (band_limit_t)atol(optarg);
+			break;
 		case 'o':
 			STRCPY(origin,optarg);
 			break;

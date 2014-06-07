@@ -377,6 +377,11 @@ Options with required values:
 			that limit will be dropped or temporary suppressed (within the
 			available buffer limits). This option can also be set through the 
 			database, for a particular realm.
+			
+-B, --bps-capacity	Maximum server capacity.
+			Total bytes-per-second bandwidth the TURN server is allowed to allocate
+			for the sessions, combined (input and output network streams are treated
+			separately).
 
 --static-auth-secret	Static authentication secret value (a string) for TURN REST API only.
 			If not set, then the turn server will try to use the dynamic value 

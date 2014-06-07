@@ -92,7 +92,7 @@ LOW_DEFAULT_PORTS_BOUNDARY,HIGH_DEFAULT_PORTS_BOUNDARY,0,0,"",
 /////////////// stop server ////////////////
 0,
 /////////////// MISC PARAMS ////////////////
-0,0,0,0,0,SHATYPE_SHA1,':',0,0,TURN_CREDENTIALS_NONE,0,0,0,0,
+0,0,0,0,0,SHATYPE_SHA1,':',0,0,TURN_CREDENTIALS_NONE,0,0,0,0,0,0,
 ///////////// Users DB //////////////
 { TURN_USERDB_TYPE_FILE, {"\0",NULL}, {0,NULL,NULL, {NULL,0}} }
 
@@ -400,11 +400,14 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						This option can also be set through the database, for a particular realm.\n"
 " -Q, --total-quota		<number>	Total allocations quota: global limit on concurrent allocations.\n"
 "						This option can also be set through the database, for a particular realm.\n"
-" -s, --max-bps			<number>	Max bytes-per-second bandwidth a TURN session is allowed to handle\n"
+" -s, --max-bps			<number>	Default max bytes-per-second bandwidth a TURN session is allowed to handle\n"
 "						(input and output network streams are treated separately). Anything above\n"
 "						that limit will be dropped or temporary suppressed\n"
 "						(within the available buffer limits).\n"
 "						This option can also be set through the database, for a particular realm.\n"
+" -B, --bps-capacity		<number>	Maximum server capacity.\n"
+"						Total bytes-per-second bandwidth the TURN server is allowed to allocate\n"
+"						for the sessions, combined (input and output network streams are treated separately).\n"
 " -c				<filename>	Configuration file name (default - turnserver.conf).\n"
 " -b, --userdb			<filename>	User database file name (default - turnuserdb.conf) for long-term credentials only.\n"
 #if !defined(TURN_NO_PQ)
@@ -592,7 +595,7 @@ static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
 	"					Setting to zero value means removal of the option.\n"
 	"	-h, --help			Help\n";
 
-#define OPTIONS "c:d:p:L:E:X:i:m:l:r:u:b:e:M:N:O:q:Q:s:C:vVofhznaAS"
+#define OPTIONS "c:d:p:L:E:X:i:m:l:r:u:b:B:e:M:N:O:q:Q:s:C:vVofhznaAS"
 
 #define ADMIN_OPTIONS "gGORIHlLkaADSdb:e:M:N:u:r:p:s:X:o:h"
 
@@ -694,6 +697,7 @@ static struct option long_options[] = {
 				{ "user-quota", required_argument, NULL, 'q' },
 				{ "total-quota", required_argument, NULL, 'Q' },
 				{ "max-bps", required_argument, NULL, 's' },
+				{ "bps-capacity", required_argument, NULL, 'B' },
 				{ "verbose", optional_argument, NULL, 'v' },
 				{ "Verbose", optional_argument, NULL, 'V' },
 				{ "daemon", optional_argument, NULL, 'o' },
@@ -1103,6 +1107,10 @@ static void set_option(int c, char *value)
 		get_realm(NULL)->options.perf_options.max_bps = atoi(value);
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%lu bytes per second allowed per session\n",(unsigned long)turn_params.max_bps);
 		break;
+	case 'B':
+		turn_params.bps_capacity = (band_limit_t)atoi(value);
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%lu bytes per second allowed, combined server capacity\n",(unsigned long)turn_params.bps_capacity);
+		break;
 	case NO_UDP_OPT:
 		turn_params.no_udp = get_bool_value(value);
 		break;
@@ -1330,7 +1338,7 @@ static int adminmain(int argc, char **argv)
 	u08bits pwd[STUN_MAX_PWD_SIZE+1]="";
 	u08bits secret[AUTH_SECRET_SIZE+1]="";
 	u08bits origin[STUN_MAX_ORIGIN_SIZE+1]="";
-	perf_options_t po = {-1,-1,-1};
+	perf_options_t po = {(band_limit_t)-1,-1,-1};
 
 	while (((c = getopt_long(argc, argv, ADMIN_OPTIONS, admin_long_options, NULL)) != -1)) {
 		switch (c){
@@ -1705,6 +1713,11 @@ int main(int argc, char **argv)
 	  if(c == 'u') {
 	    set_option(c,optarg);
 	  }
+	}
+
+	if(turn_params.bps_capacity && !(turn_params.max_bps)) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nCONFIG ERROR: If you set the --bps-capacity option, then you must set --max-bps options, too.\n");
+		exit(-1);
 	}
 
 	if(turn_params.no_udp_relay && turn_params.no_tcp_relay) {
