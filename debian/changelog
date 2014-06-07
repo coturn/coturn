@@ -1,6 +1,20 @@
+coturn (4.0.1.2-1) unstable; urgency=low
+
+  * Sync to upstream 4.0.1.2: Bandwidth specs implemented.
+
+ -- Oleg Moskalenko <mom040267@gmail.com>  Sat, 07 Jun 2014 00:07:45 -0700
+
+coturn (4.0.0.2-1) unstable; urgency=low
+
+  * Sync to upstream 4.0.0.2.
+  * Package description in the control file updated.
+
+ -- Oleg Moskalenko <mom040267@gmail.com>  Fri, 23 May 2014 23:20:39 -0700
+
 coturn (4.0.0.1-1) unstable; urgency=low
 
-  * Kernel channels definitions added
+  * New upstream release.
+  * Kernel channels definitions added.
 
  -- Oleg Moskalenko <mom040267@gmail.com>  Wed, 07 May 2014 23:28:04 -0700
 
