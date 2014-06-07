@@ -1,3 +1,9 @@
+coturn (4.0.1.2-1) unstable; urgency=low
+
+  * Sync to upstream 4.0.1.2: Bandwidth specs implemented.
+
+ -- Oleg Moskalenko <mom040267@gmail.com>  Sat, 07 Jun 2014 00:07:45 -0700
+
 coturn (4.0.0.2-1) unstable; urgency=low
 
   * Sync to upstream 4.0.0.2.
