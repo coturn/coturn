@@ -1,0 +1,15 @@
+#summary Difference between rfc5766-turn-server and coturn.
+
+= Introduction =
+
+The two projects - rfc5766-turn-server and coturn - are closely related. Coturn was created as a next-generation TURN server. This document summarizes the differences between the two projects. The differences are supposed to grow with time, because rfc5766-turn-server is supported for the legacy purposes and its main goal is stability and performance. On the other hand, the coturn project is supposed to embrace all new things in the TURN world.
+
+= Details =
+
+== Multiple realms and ORIGIN field support in coturn. ==
+
+TODO
+
+== Bandwidth draft specs support in coturn. ==
+
+TODO
