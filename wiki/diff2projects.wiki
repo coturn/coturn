@@ -9,7 +9,15 @@ The two projects - rfc5766-turn-server and coturn - are closely related. Coturn 
 
 == Multiple realms and ORIGIN field support in coturn. ==
 
-TODO
+Coturn is capable of handling multiple user realms in a single TURN server setup. From the database point of view, it is done by introducing a field "realm" in the database tables related to the long-term credentials; and by introducing a new table that maps the ORIGIN field in the ALLOCATE request to the realm (the relationship between realm and origin is one-to-many: many origins can correspond to the same realm).
+
+If the ORIGIN field is not present in the ALLOCATE request, or no realm was found for the ORIGIN field, then the default realm is used.
+
+The realms data items are independent. The same user name can be present in different realms with different passwords and those user names are used independently.
+
+Different realms can have different performance settings (max-bps, total-quota and user-quota). There is a special database table that holds those settings, per realm. Those settings can be changed, per realm, in the telnet CLI, too.
+
+The CLI interface shows the realm data. You can set the CLI session realm and then you will see only that realm data.
 
 == Bandwidth draft specs support in coturn. ==
 
