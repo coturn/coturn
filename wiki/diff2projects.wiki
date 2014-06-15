@@ -19,6 +19,8 @@ Different realms can have different performance settings (max-bps, total-quota a
 
 The CLI interface shows the realm data. You can set the CLI session realm and then you will see only that realm data.
 
+See the specs document here: http://tools.ietf.org/html/draft-johnston-tram-stun-origin-02 .
+
 == Bandwidth draft specs support in coturn. ==
 
 TODO
