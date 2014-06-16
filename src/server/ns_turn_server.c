@@ -2988,8 +2988,8 @@ static int check_stun_auth(turn_turnserver *server,
 			get_realm_options_by_name((char *)realm, &(ss->realm_options));
 
 		} else if(strcmp((char*)realm, (char*)(ss->realm_options.name))) {
-			*err_code = 400;
-			*reason = (const u08bits*)"Bad request: the realm value incorrect";
+			*err_code = 441;
+			*reason = (const u08bits*)"Wrong credentials: the realm value incorrect";
 			return -1;
 		}
 	}
