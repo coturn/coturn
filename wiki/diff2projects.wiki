@@ -23,4 +23,10 @@ See the specs document here: http://tools.ietf.org/html/draft-johnston-tram-stun
 
 == Bandwidth draft specs support in coturn. ==
 
-TODO
+Bandwidth support was implemented to allow some control over the total bandwidth utilization by the server. The space are here: http://tools.ietf.org/html/draft-thomson-tram-turn-bandwidth-00.
+
+This implementation of the specs document is fairly simple and straightforward. If the TURN server administrator wants to utilize the bandwidth functionality, then he/she must set the bps-capacity parameter of the TURN server. This value can be set statically (as the command-line parameter or as the config file setting) or dynamically (through the CLI interface). The max server bandwidth capacity must be determined by the administrator. 
+
+For correct functionality, the administrator must also set the max-bps TURN server parameter. The max-bps must be determined experimentally and/or by the administrative goals.
+
+If the ALLOCATE request includes BANDWIDTH attribute (0x8010 attribute type, for experimental reasons; in the final document, the exact attribute type will be defined) then the server subtracts the value of the BANDWIDTH attribute (up to max-bps) from the total bandwidth capacity. If there is not enough bandwidth, then 486 error will be returned. If no BANDWIDTH attribute is included in the ALLOCATE request, then max-bps will be allocated. In the ALLOCATE response, the real allocated BANDWIDTH value is returned to the client.
