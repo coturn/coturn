@@ -1,7 +1,7 @@
-Current Amazon TURN Server public AMI: ami-17691b27.
+Current Amazon TURN Server public AMI: ami-971569a7.
 This image is available in US West (Oregon) region:
 
-search by "coturn" string or by AMI name "ami-17691b27".
+search by "coturn" string or by AMI name "ami-971569a7".
 
 Below is the README.txt file included into AMI's ec2-user home directory, for information.
 
