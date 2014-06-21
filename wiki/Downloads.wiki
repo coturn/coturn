@@ -1,13 +1,16 @@
 #summary Downloads Page
-#labels Version-4.0.1.2,Featured
+#labels Version-4.0.1.3,Featured
 
-== Latest official recommended version - 4.0.1.2: ==
+== Latest official recommended version - 4.0.1.3: ==
 
-  * Bandwidth draft implemented.
-  * Issues 126, 127 and 128 fixes merged from rfc5766-turn-server.
-  * Amazon EC2 image fixed (test db).
+  * Redis DB connection status fixed (Issue 129).
+  * SIGHUP for logfile reset implemented (Gustavo Garcia suggestion).
+  * log reset command in CLI added.
+  * Some error code corrections:
+    # "Mobility forbidden" error changed, to value 405.
+    # "Wrong credentials" situation is now treated as error 441.
 
-[http://turnserver.open-sys.org/downloads/v4.0.1.2/ 4.0.1.2 Version Downloads (full source and platform builds)]
+[http://turnserver.open-sys.org/downloads/v4.0.1.3/ 4.0.1.3 Version Downloads (full source and platform builds)]
 
 [http://turnserver.open-sys.org/downloads/ Main Downloads Page (with all recent versions)]
 
@@ -16,6 +19,14 @@
 [http://turnserver.open-sys.org/downloads/extradocs/ Extra Docs ]
 
 == Older versions ==
+
+=== 4.0.1.2: ===
+
+  * Bandwidth draft implemented.
+  * Issues 126, 127 and 128 fixes merged from rfc5766-turn-server.
+  * Amazon EC2 image fixed (test db).
+
+[http://turnserver.open-sys.org/downloads/v4.0.1.2/ v4.0.1.2]
 
 === 4.0.0.2: ===
 
