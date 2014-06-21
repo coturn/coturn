@@ -879,19 +879,45 @@ static redisContext *get_redis_connection(void)
 				redisconnection = redisConnect(ip, port);
 			}
 
-			if (!redisconnection) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot initialize Redis DB connection\n");
-			} else {
-				if (co->password) {
-					turnFreeRedisReply(redisCommand(redisconnection, "AUTH %s", co->password));
-				}
-				if (co->dbname) {
-					turnFreeRedisReply(redisCommand(redisconnection, "select %s", co->dbname));
-				}
-				if (!donot_print_connection_success) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Redis DB sync connection success: %s\n", pud->userdb);
+			if (redisconnection) {
+				if(redisconnection->err) {
+					if(redisconnection->errstr[0]) {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Redis: %s\n",redisconnection->errstr);
+					}
+					redisFree(redisconnection);
+					redisconnection = NULL;
+				} else if (co->password) {
+					void *reply = redisCommand(redisconnection, "AUTH %s", co->password);
+					if(!reply) {
+						if(redisconnection->err && redisconnection->errstr[0]) {
+							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Redis: %s\n",redisconnection->errstr);
+						}
+						redisFree(redisconnection);
+						redisconnection = NULL;
+					} else {
+						turnFreeRedisReply(reply);
+						if (co->dbname) {
+							reply = redisCommand(redisconnection, "select %s", co->dbname);
+							if(!reply) {
+								if(redisconnection->err && redisconnection->errstr[0]) {
+									TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Redis: %s\n",redisconnection->errstr);
+								}
+								redisFree(redisconnection);
+								redisconnection = NULL;
+							} else {
+								turnFreeRedisReply(reply);
+							}
+						}
+					}
 				}
 			}
+
+			if (!redisconnection) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot initialize Redis DB connection\n");
+			} else if (!donot_print_connection_success) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Redis DB sync connection success: %s\n", pud->userdb);
+			}
+
 			RyconninfoFree(co);
 		}
 		pud->connection = redisconnection;

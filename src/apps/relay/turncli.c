@@ -132,6 +132,8 @@ static const char *CLI_HELP_STR[] =
    "",
    "  pu [udp|tcp|dtls|tls]- print current users",
    "",
+   "  lr - log reset",
+   "",
    "  aas ip[:port} - add an alternate server reference",
    "  das ip[:port] - delete an alternate server reference",
    "  atas ip[:port] - add a TLS alternate server reference",
@@ -188,6 +190,14 @@ static void myprintf(struct cli_session *cs, const char *format, ...)
 			telnet_vprintf(cs->ts, format, args);
 		}
 		va_end (args);
+	}
+}
+
+static void log_reset(struct cli_session* cs)
+{
+	if(cs) {
+	  reset_rtpprintf();
+	  myprintf(cs,"  log reset done\n");
 	}
 }
 
@@ -1011,6 +1021,9 @@ static int run_cli_input(struct cli_session* cs, const char *buf0, unsigned int 
 				type_cli_cursor(cs);
 			} else if(strstr(cmd,"ps") == cmd) {
 				print_sessions(cs,cmd+2,1,0);
+				type_cli_cursor(cs);
+			} else if(strstr(cmd,"lr") == cmd) {
+				log_reset(cs);
 				type_cli_cursor(cs);
 			} else if(strstr(cmd,"cc ") == cmd) {
 				change_cli_param(cs,cmd+3);
