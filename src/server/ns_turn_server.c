@@ -927,7 +927,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 				break;
 			case STUN_ATTRIBUTE_MOBILITY_TICKET:
 				if(!(*(server->mobility))) {
-					*err_code = 501;
+					*err_code = 405;
 					*reason = (const u08bits *)"Mobility Forbidden";
 				} else if (stun_attr_get_len(sar) != 0) {
 					*err_code = 400;
@@ -1211,7 +1211,7 @@ static int handle_turn_refresh(turn_turnserver *server,
 			SKIP_ATTRIBUTES;
 			case STUN_ATTRIBUTE_MOBILITY_TICKET: {
 				if(!(*(server->mobility))) {
-					*err_code = 501;
+					*err_code = 405;
 					*reason = (const u08bits *)"Mobility forbidden";
 				} if(is_allocation_valid(a)) {
 					*err_code = 400;
@@ -2988,8 +2988,8 @@ static int check_stun_auth(turn_turnserver *server,
 			get_realm_options_by_name((char *)realm, &(ss->realm_options));
 
 		} else if(strcmp((char*)realm, (char*)(ss->realm_options.name))) {
-			*err_code = 400;
-			*reason = (const u08bits*)"Bad request: the realm value incorrect";
+			*err_code = 441;
+			*reason = (const u08bits*)"Wrong credentials: the realm value incorrect";
 			return -1;
 		}
 	}
@@ -3012,8 +3012,8 @@ static int check_stun_auth(turn_turnserver *server,
 
 	if(ss->username[0]) {
 		if(strcmp((char*)ss->username,(char*)usname)) {
-			*err_code = 401;
-			*reason = (const u08bits*)"Wrong username";
+			*err_code = 441;
+			*reason = (const u08bits*)"Wrong credentials";
 			return -1;
 		}
 	} else {

@@ -42,6 +42,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include <signal.h>
+
 ////////// LOG TIME OPTIMIZATION ///////////
 
 static volatile turn_time_t log_start_time = 0;
@@ -337,11 +339,20 @@ static void set_log_file_name_func(char *base, char *f, size_t fsz)
 	turn_free(tail,strlen(tail)+1);
 }
 
+static void sighup_callback_handler(int signum)
+{
+	if(signum == SIGHUP) {
+		printf("%s: resetting the log file\n",__FUNCTION__);
+		reset_rtpprintf();
+	}
+}
+
 static void set_rtpfile(void)
 {
 	if(to_syslog) {
 		return;
 	} else if (!_rtpfile) {
+		signal(SIGHUP, sighup_callback_handler);
 		if(log_fn_base[0]) {
 			if(!strcmp(log_fn_base,"syslog")) {
 				_rtpfile = stdout;
