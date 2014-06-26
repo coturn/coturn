@@ -425,7 +425,9 @@ Options with required values:
 			definite log file name.
 			The special names are "stdout" and "-" - they will force everything 
 			to the stdout. Also, "syslog" name will redirect everything into
-			the system log (syslog), as if the option "--syslog" was set.
+			the system log (syslog), as if the option "--syslog" was set. 
+			In the runtime, the logfile can be reset with the SIGHUP signal 
+			to the turnserver process.
 				
 --alternate-server	Option to set the "redirection" mode. The value of this option
 			will be the address of the alternate server for UDP & TCP service in form of 
