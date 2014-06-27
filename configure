@@ -731,7 +731,7 @@ if ! [ ${ER} -eq 0 ] ; then
 		ER=$?
 		if ! [ ${ER} -eq 0 ] ; then
 	    	${ECHO_CMD} "Not an ordinary g++ compiler"
-	    	GNUOSCFLAGS="-x c++ -g -Wall -Wno-deprecated-declarations -Wextra -Wformat-security -Wpointer-arith -Wcast-qual -Wno-write-strings"
+	    	GNUOSCFLAGS="-x c++ -g -Wall -Wno-deprecated-declarations -Wextra -Wformat-security -Wpointer-arith -Wcast-qual"
 	    	${CC} -Werror ${GNUOSCFLAGS} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>>/dev/null
 	    	ER=$?
 	    	if ! [ ${ER} -eq 0 ] ; then
