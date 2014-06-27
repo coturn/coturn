@@ -661,7 +661,15 @@ enum EXTRA_OPTS {
 	ADMIN_USER_QUOTA_OPT
 };
 
-static struct option long_options[] = {
+struct myoption {
+        const char *name;     /* name of long option */
+        int has_arg;    /* whether option takes an argument */
+        int *flag;      /* if not NULL, set *flag to val when option found */
+        int val;        /* if flag is not NULL, value to set *flag to. */
+                        /* if flag is NULL, return value */
+};
+
+static const struct myoption long_options[] = {
 				{ "listening-device", required_argument, NULL, 'd' },
 				{ "listening-port", required_argument, NULL, 'p' },
 				{ "tls-listening-port", required_argument, NULL, TLS_PORT_OPT },
@@ -755,7 +763,7 @@ static struct option long_options[] = {
 				{ NULL, no_argument, NULL, 0 }
 };
 
-static struct option admin_long_options[] = {
+static const struct myoption admin_long_options[] = {
 				{ "key", no_argument, NULL, 'k' },
 				{ "add", no_argument, NULL, 'a' },
 				{ "delete", no_argument, NULL, 'd' },
@@ -1340,7 +1348,7 @@ static int adminmain(int argc, char **argv)
 	u08bits origin[STUN_MAX_ORIGIN_SIZE+1]="";
 	perf_options_t po = {(band_limit_t)-1,-1,-1};
 
-	while (((c = getopt_long(argc, argv, ADMIN_OPTIONS, admin_long_options, NULL)) != -1)) {
+	while (((c = getopt_long(argc, argv, ADMIN_OPTIONS, (const struct option*)admin_long_options, NULL)) != -1)) {
 		switch (c){
 		case 'g':
 			ct = TA_SET_REALM_OPTION;
@@ -1640,7 +1648,7 @@ int main(int argc, char **argv)
 	init_dynamic_ip_lists();
 
 	if (!strstr(argv[0], "turnadmin")) {
-		while (((c = getopt_long(argc, argv, OPTIONS, long_options, NULL)) != -1)) {
+		while (((c = getopt_long(argc, argv, OPTIONS, (const struct option*)long_options, NULL)) != -1)) {
 			switch (c){
 			case 'l':
 				set_logfile(optarg);
@@ -1700,7 +1708,7 @@ int main(int argc, char **argv)
 
 	read_config_file(argc,argv,0);
 
-	while (((c = getopt_long(argc, argv, OPTIONS, long_options, NULL)) != -1)) {
+	while (((c = getopt_long(argc, argv, OPTIONS, (const struct option*)long_options, NULL)) != -1)) {
 		if(c != 'u')
 			set_option(c,optarg);
 	}
@@ -1709,7 +1717,7 @@ int main(int argc, char **argv)
 
 	optind = 0;
 
-	while (((c = getopt_long(argc, argv, OPTIONS, long_options, NULL)) != -1)) {
+	while (((c = getopt_long(argc, argv, OPTIONS, (const struct option*)long_options, NULL)) != -1)) {
 	  if(c == 'u') {
 	    set_option(c,optarg);
 	  }
