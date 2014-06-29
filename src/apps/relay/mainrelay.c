@@ -669,6 +669,13 @@ struct myoption {
                         /* if flag is NULL, return value */
 };
 
+struct uoptions {
+	union {
+		const struct myoption *m;
+		const struct option *o;
+	} u;
+};
+
 static const struct myoption long_options[] = {
 				{ "listening-device", required_argument, NULL, 'd' },
 				{ "listening-port", required_argument, NULL, 'p' },
@@ -1348,7 +1355,10 @@ static int adminmain(int argc, char **argv)
 	u08bits origin[STUN_MAX_ORIGIN_SIZE+1]="";
 	perf_options_t po = {(band_limit_t)-1,-1,-1};
 
-	while (((c = getopt_long(argc, argv, ADMIN_OPTIONS, (const struct option*)admin_long_options, NULL)) != -1)) {
+	struct uoptions uo;
+	uo.u.m = admin_long_options;
+
+	while (((c = getopt_long(argc, argv, ADMIN_OPTIONS, uo.u.o, NULL)) != -1)) {
 		switch (c){
 		case 'g':
 			ct = TA_SET_REALM_OPTION;
@@ -1648,7 +1658,11 @@ int main(int argc, char **argv)
 	init_dynamic_ip_lists();
 
 	if (!strstr(argv[0], "turnadmin")) {
-		while (((c = getopt_long(argc, argv, OPTIONS, (const struct option*)long_options, NULL)) != -1)) {
+
+		struct uoptions uo;
+		uo.u.m = long_options;
+
+		while (((c = getopt_long(argc, argv, OPTIONS, uo.u.o, NULL)) != -1)) {
 			switch (c){
 			case 'l':
 				set_logfile(optarg);
@@ -1708,7 +1722,10 @@ int main(int argc, char **argv)
 
 	read_config_file(argc,argv,0);
 
-	while (((c = getopt_long(argc, argv, OPTIONS, (const struct option*)long_options, NULL)) != -1)) {
+	struct uoptions uo;
+	uo.u.m = long_options;
+
+	while (((c = getopt_long(argc, argv, OPTIONS, uo.u.o, NULL)) != -1)) {
 		if(c != 'u')
 			set_option(c,optarg);
 	}
@@ -1717,7 +1734,7 @@ int main(int argc, char **argv)
 
 	optind = 0;
 
-	while (((c = getopt_long(argc, argv, OPTIONS, (const struct option*)long_options, NULL)) != -1)) {
+	while (((c = getopt_long(argc, argv, OPTIONS, uo.u.o, NULL)) != -1)) {
 	  if(c == 'u') {
 	    set_option(c,optarg);
 	  }
