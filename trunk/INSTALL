@@ -50,11 +50,11 @@ The turn*.conf config files are in /etc directory.
 The service start-up control scripts will be in /etc/init.d/coturn and
 in /etc/defaults/coturn files.
 
-3) ArchLinux has also the predecessor of the TURN server package:
+3) ArchLinux has this TURN server package:
 
-https://aur.archlinux.org/packages/rfc5766-turn-server/
+https://aur.archlinux.org/packages/coturn/
 
-4) OpenSUSE has a package, too:
+4) OpenSUSE has an older package, too:
 
 https://build.opensuse.org/package/show/home:ehauenstein/rfc5766-turn-server
 
