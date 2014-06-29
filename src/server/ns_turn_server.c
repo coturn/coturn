@@ -3231,29 +3231,36 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 			}
 
 			if(!(ss->realm_set) && (method == STUN_METHOD_ALLOCATE)) {
-				stun_attr_ref sar = stun_attr_get_first_by_type_str(ioa_network_buffer_data(in_buffer->nbh),
-					ioa_network_buffer_get_size(in_buffer->nbh),
-					STUN_ATTRIBUTE_ORIGIN);
 
-				if(sar) {
-					int sarlen = stun_attr_get_len(sar);
-					if(sarlen>0) {
-						char *o = (char*)turn_malloc(sarlen+1);
-						ns_bcopy(stun_attr_get_value(sar),o,sarlen);
-						o[sarlen]=0;
-						char *corigin = (char*)turn_malloc(STUN_MAX_ORIGIN_SIZE+1);
-						corigin[0]=0;
-						if(get_canonic_origin(o,corigin,STUN_MAX_ORIGIN_SIZE)<0) {
-							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+				stun_attr_ref sar = stun_attr_get_first_str(ioa_network_buffer_data(in_buffer->nbh),
+					ioa_network_buffer_get_size(in_buffer->nbh));
+
+				int origin_found = 0;
+
+				while(sar && !origin_found) {
+					if(stun_attr_get_type(sar) == STUN_ATTRIBUTE_ORIGIN) {
+						int sarlen = stun_attr_get_len(sar);
+						if(sarlen>0) {
+							char *o = (char*)turn_malloc(sarlen+1);
+							ns_bcopy(stun_attr_get_value(sar),o,sarlen);
+							o[sarlen]=0;
+							char *corigin = (char*)turn_malloc(STUN_MAX_ORIGIN_SIZE+1);
+							corigin[0]=0;
+							if(get_canonic_origin(o,corigin,STUN_MAX_ORIGIN_SIZE)<0) {
+								TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
 									"%s: Wrong origin format: %s\n",
 									__FUNCTION__, o);
+							}
+							strncpy(ss->origin,corigin,STUN_MAX_ORIGIN_SIZE);
+							turn_free(corigin,sarlen+1);
+							turn_free(o,sarlen+1);
+							origin_found = get_realm_options_by_origin(ss->origin,&(ss->realm_options));
 						}
-						strncpy(ss->origin,corigin,STUN_MAX_ORIGIN_SIZE);
-						turn_free(corigin,sarlen+1);
-						turn_free(o,sarlen+1);
-						get_realm_options_by_origin(ss->origin,&(ss->realm_options));
 					}
+					sar = stun_attr_get_next_str(ioa_network_buffer_data(in_buffer->nbh),
+							ioa_network_buffer_get_size(in_buffer->nbh), sar);
 				}
+
 				ss->realm_set = 1;
 			}
 

@@ -186,7 +186,7 @@ int get_realm_data(char* name, realm_params_t* rp)
 	return 0;
 }
 
-void get_realm_options_by_origin(char *origin, realm_options_t* ro)
+int get_realm_options_by_origin(char *origin, realm_options_t* ro)
 {
 	ur_string_map_value_type value = 0;
 	TURN_MUTEX_LOCK(&o_to_realm_mutex);
@@ -197,9 +197,11 @@ void get_realm_options_by_origin(char *origin, realm_options_t* ro)
 		get_realm_data(realm, &rp);
 		ns_bcopy(&(rp.options),ro,sizeof(realm_options_t));
 		free(realm);
+		return 1;
 	} else {
 		TURN_MUTEX_UNLOCK(&o_to_realm_mutex);
 		get_default_realm_options(ro);
+		return 0;
 	}
 }
 
