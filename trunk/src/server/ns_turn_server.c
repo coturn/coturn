@@ -1898,7 +1898,7 @@ static int handle_turn_connect(turn_turnserver *server,
 				if(stun_attr_get_addr_str(ioa_network_buffer_data(in_buffer->nbh),
 						       ioa_network_buffer_get_size(in_buffer->nbh),
 						       sar, &peer_addr,
-						       &(ss->default_peer_addr)) == -1) {
+						       NULL) == -1) {
 					*err_code = 400;
 					*reason = (const u08bits *)"Bad Peer Address";
 				} else {
@@ -2216,7 +2216,7 @@ static int handle_turn_channel_bind(turn_turnserver *server,
 				stun_attr_get_addr_str(ioa_network_buffer_data(in_buffer->nbh), 
 						       ioa_network_buffer_get_size(in_buffer->nbh), 
 						       sar, &peer_addr,
-						       &(ss->default_peer_addr));
+						       NULL);
 
 				ioa_addr *relay_addr = get_local_addr_from_ioa_socket(a->relay_session.s);
 
@@ -2591,7 +2591,7 @@ static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss,
 					stun_attr_get_addr_str(ioa_network_buffer_data(in_buffer->nbh), 
 							       ioa_network_buffer_get_size(in_buffer->nbh),
 							       sar, &peer_addr,
-							       &(ss->default_peer_addr));
+							       NULL);
 				}
 			}
 				break;
@@ -2717,7 +2717,7 @@ static int handle_turn_create_permission(turn_turnserver *server,
 					stun_attr_get_addr_str(ioa_network_buffer_data(in_buffer->nbh),
 						       ioa_network_buffer_get_size(in_buffer->nbh),
 						       sar, &peer_addr,
-						       &(ss->default_peer_addr));
+						       NULL);
 
 					ioa_addr *relay_addr = get_local_addr_from_ioa_socket(a->relay_session.s);
 
@@ -2776,7 +2776,7 @@ static int handle_turn_create_permission(turn_turnserver *server,
 					stun_attr_get_addr_str(ioa_network_buffer_data(in_buffer->nbh),
 									       ioa_network_buffer_get_size(in_buffer->nbh),
 									       sar, &peer_addr,
-									       &(ss->default_peer_addr));
+									       NULL);
 
 					addr_set_port(&peer_addr, 0);
 					if (update_permission(ss, &peer_addr) < 0) {
