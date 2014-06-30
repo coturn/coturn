@@ -355,8 +355,13 @@ static int clnet_allocate(int verbose,
 		  }
 		}
 
-		if(origin[0])
+		if(origin[0]) {
+			const char* some_origin = "https://carleon.gov:443";
+			stun_attr_add(&message, STUN_ATTRIBUTE_ORIGIN, some_origin, strlen(some_origin));
 			stun_attr_add(&message, STUN_ATTRIBUTE_ORIGIN, origin, strlen(origin));
+			some_origin = "ftp://uffrith.net";
+			stun_attr_add(&message, STUN_ATTRIBUTE_ORIGIN, some_origin, strlen(some_origin));
+		}
 
 		if(add_integrity(clnet_info, &message)<0) return -1;
 
