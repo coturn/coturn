@@ -71,9 +71,9 @@ void clear_allocation(allocation *a)
 		a->tcs.sz = 0;
 
 		clear_ioa_socket_session_if(a->relay_session.s, a->owner);
-		clear_ts_ur_session_data(&(a->relay_session));
+		clear_relay_endpoint_session_data(&(a->relay_session));
 
-		IOA_EVENT_DEL(a->lifetime_ev);
+		IOA_EVENT_DEL(a->relay_session.lifetime_ev);
 
 		/* The order is important here: */
 		free_turn_permission_hashtable(&(a->addr_to_perm));
@@ -83,7 +83,7 @@ void clear_allocation(allocation *a)
 	}
 }
 
-ts_ur_session *get_relay_session(allocation *a)
+relay_endpoint_session *get_relay_session(allocation *a)
 {
 	return &(a->relay_session);
 }
@@ -96,9 +96,9 @@ ioa_socket_handle get_relay_socket(allocation *a)
 void set_allocation_lifetime_ev(allocation *a, turn_time_t exp_time, ioa_timer_handle ev)
 {
 	if (a) {
-		IOA_EVENT_DEL(a->lifetime_ev);
-		a->expiration_time = exp_time;
-		a->lifetime_ev = ev;
+		IOA_EVENT_DEL(a->relay_session.lifetime_ev);
+		a->relay_session.expiration_time = exp_time;
+		a->relay_session.lifetime_ev = ev;
 	}
 }
 

@@ -45,26 +45,16 @@ extern "C" {
 #define TCP_PEER_CONN_TIMEOUT (30)
 #define TCP_CONN_BIND_TIMEOUT (30)
 
-///////// types ////////////
-
-enum _UR_STATE {
-  UR_STATE_UNKNOWN=0,
-  UR_STATE_READY,
-  UR_STATE_DONE
-};
-
-typedef enum _UR_STATE UR_STATE;
-
 ////////////// Network session ////////////////
 
 typedef struct
 {
-	UR_STATE state;
 	ioa_socket_handle s;
-	int known_mtu;
-} ts_ur_session;
+	turn_time_t expiration_time;
+	ioa_timer_handle lifetime_ev;
+} relay_endpoint_session;
 
-static inline void clear_ts_ur_session_data(ts_ur_session* cdi)
+static inline void clear_relay_endpoint_session_data(relay_endpoint_session* cdi)
 {
 	if (cdi)
 		IOA_CLOSE_SOCKET(cdi->s);
@@ -178,10 +168,8 @@ typedef struct _turn_permission_hashtable {
 typedef struct _allocation {
   int is_valid;
   stun_tid tid;
-  turn_time_t expiration_time;
-  ioa_timer_handle lifetime_ev;
   turn_permission_hashtable addr_to_perm;
-  ts_ur_session relay_session;
+  relay_endpoint_session relay_session;
   ch_map chns; /* chnum-to-ch_info* */
   void *owner; //ss
   ur_map *tcp_connections; //global (per turn server) reference
@@ -213,7 +201,7 @@ ch_info* allocation_get_new_ch_info(allocation* a, u16bits chnum, ioa_addr* peer
 ch_info* allocation_get_ch_info(allocation* a, u16bits chnum);
 ch_info* allocation_get_ch_info_by_peer_addr(allocation* a, ioa_addr* peer_addr);
 
-ts_ur_session *get_relay_session(allocation *a);
+relay_endpoint_session *get_relay_session(allocation *a);
 ioa_socket_handle get_relay_socket(allocation *a);
 
 tcp_connection *get_and_clean_tcp_connection_by_id(ur_map *map, tcp_connection_id id);

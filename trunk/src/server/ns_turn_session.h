@@ -69,7 +69,7 @@ struct _ts_ur_super_session {
   void* server; 
   turnsession_id id;
   turn_time_t start_time;
-  ts_ur_session client_session;
+  ioa_socket_handle client_socket;
   allocation alloc;
   ioa_timer_handle to_be_allocated_timeout_ev;
   u08bits nonce[NONCE_MAX_SIZE];
