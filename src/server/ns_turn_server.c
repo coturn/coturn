@@ -103,7 +103,7 @@ static int write_client_connection(turn_turnserver *server, ts_ur_super_session*
 
 static void tcp_peer_accept_connection(ioa_socket_handle s, void *arg);
 
-static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
+static int read_client_connection(turn_turnserver *server,
 				  ts_ur_super_session *ss, ioa_net_data *in_buffer,
 				  int can_resume, int count_usage);
 
@@ -210,8 +210,8 @@ static int is_rfc5780(turn_turnserver *server)
 
 static int get_other_address(turn_turnserver *server, ts_ur_super_session *ss, ioa_addr *alt_addr)
 {
-	if(is_rfc5780(server) && ss && ss->client_session.s) {
-		int ret = server->alt_addr_cb(get_local_addr_from_ioa_socket(ss->client_session.s), alt_addr);
+	if(is_rfc5780(server) && ss && ss->client_socket) {
+		int ret = server->alt_addr_cb(get_local_addr_from_ioa_socket(ss->client_socket), alt_addr);
 		return ret;
 	}
 
@@ -308,7 +308,7 @@ allocation* get_allocation_ss(ts_ur_super_session *ss) {
 	return &(ss->alloc);
 }
 
-static inline ts_ur_session *get_relay_session_ss(ts_ur_super_session *ss)
+static inline relay_endpoint_session *get_relay_session_ss(ts_ur_super_session *ss)
 {
 	return &(ss->alloc.relay_session);
 }
@@ -401,12 +401,12 @@ int turn_session_info_copy_from(struct turn_session_info* tsi, ts_ur_super_sessi
 		tsi->start_time = ss->start_time;
 		tsi->valid = is_allocation_valid(&(ss->alloc)) && !(ss->to_be_closed) && (ss->quota_used);
 		if(tsi->valid) {
-			tsi->expiration_time = ss->alloc.expiration_time;
-			if(ss->client_session.s) {
-				tsi->client_protocol = get_ioa_socket_type(ss->client_session.s);
-				addr_cpy(&(tsi->local_addr_data.addr),get_local_addr_from_ioa_socket(ss->client_session.s));
+			tsi->expiration_time = ss->alloc.relay_session.expiration_time;
+			if(ss->client_socket) {
+				tsi->client_protocol = get_ioa_socket_type(ss->client_socket);
+				addr_cpy(&(tsi->local_addr_data.addr),get_local_addr_from_ioa_socket(ss->client_socket));
 				addr_to_string(&(tsi->local_addr_data.addr),(u08bits*)tsi->local_addr_data.saddr);
-				addr_cpy(&(tsi->remote_addr_data.addr),get_remote_addr_from_ioa_socket(ss->client_session.s));
+				addr_cpy(&(tsi->remote_addr_data.addr),get_remote_addr_from_ioa_socket(ss->client_socket));
 				addr_to_string(&(tsi->remote_addr_data.addr),(u08bits*)tsi->remote_addr_data.saddr);
 			}
 			if(ss->alloc.relay_session.s) {
@@ -418,8 +418,8 @@ int turn_session_info_copy_from(struct turn_session_info* tsi, ts_ur_super_sessi
 			}
 			STRCPY(tsi->username,ss->username);
 			tsi->enforce_fingerprints = ss->enforce_fingerprints;
-			STRCPY(tsi->tls_method, get_ioa_socket_tls_method(ss->client_session.s));
-			STRCPY(tsi->tls_cipher, get_ioa_socket_tls_cipher(ss->client_session.s));
+			STRCPY(tsi->tls_method, get_ioa_socket_tls_method(ss->client_socket));
+			STRCPY(tsi->tls_cipher, get_ioa_socket_tls_cipher(ss->client_socket));
 			STRCPY(tsi->realm, ss->realm_options.name);
 			STRCPY(tsi->origin, ss->origin);
 
@@ -712,7 +712,7 @@ static void delete_ur_map_ss(void *p) {
 	if (p) {
 		ts_ur_super_session* ss = (ts_ur_super_session*) p;
 		delete_session_from_map(ss);
-		clear_ts_ur_session_data(&(ss->client_session));
+		IOA_CLOSE_SOCKET(ss->client_socket);
 		clear_allocation(get_allocation_ss(ss));
 		IOA_EVENT_DEL(ss->to_be_allocated_timeout_ev);
 		turn_free(p,sizeof(ts_ur_super_session));
@@ -726,8 +726,8 @@ static int turn_server_remove_all_from_ur_map_ss(ts_ur_super_session* ss) {
 		return 0;
 	else {
 		int ret = 0;
-		if (ss->client_session.s) {
-			clear_ioa_socket_session_if(ss->client_session.s, ss);
+		if (ss->client_socket) {
+			clear_ioa_socket_session_if(ss->client_socket, ss);
 		}
 		if (get_relay_socket_ss(ss)) {
 			clear_ioa_socket_session_if(get_relay_socket_ss(ss), ss);
@@ -856,8 +856,6 @@ static int handle_turn_allocate(turn_turnserver *server,
 
 	allocation* a = get_allocation_ss(ss);
 
-	ts_ur_session* elem = &(ss->client_session);
-
 	if (is_allocation_valid(a)) {
 
 		if (!stun_tid_equals(tid, &(a->tid))) {
@@ -877,8 +875,8 @@ static int handle_turn_allocate(turn_turnserver *server,
 				stun_set_allocate_response_str(ioa_network_buffer_data(nbh), &len,
 							tid,
 							&xor_relayed_addr,
-							get_remote_addr_from_ioa_socket(elem->s),
-							(a->expiration_time - server->ctime), 0, NULL, 0,
+							get_remote_addr_from_ioa_socket(ss->client_socket),
+							(a->relay_session.expiration_time - server->ctime), 0, NULL, 0,
 							ss->s_mobile_id);
 				ioa_network_buffer_set_size(nbh,len);
 				*resp_constructed = 1;
@@ -957,8 +955,8 @@ static int handle_turn_allocate(turn_turnserver *server,
 						} else if((transport == STUN_ATTRIBUTE_TRANSPORT_UDP_VALUE) && *(server->no_udp_relay)) {
 							*err_code = 403;
 							*reason = (const u08bits *)"UDP Transport is not allowed by the TURN Server configuration";
-						} else if(ss->client_session.s) {
-							SOCKET_TYPE cst = get_ioa_socket_type(ss->client_session.s);
+						} else if(ss->client_socket) {
+							SOCKET_TYPE cst = get_ioa_socket_type(ss->client_socket);
 							if((transport == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE) &&
 											(cst!=TCP_SOCKET) && (cst!=TLS_SOCKET)) {
 								*err_code = 400;
@@ -1149,7 +1147,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 
 						stun_set_allocate_response_str(ioa_network_buffer_data(nbh), &len, tid,
 									&xor_relayed_addr,
-									get_remote_addr_from_ioa_socket(elem->s), lifetime,
+									get_remote_addr_from_ioa_socket(ss->client_socket), lifetime,
 									0,NULL,
 									out_reservation_token,
 									ss->s_mobile_id);
@@ -1301,7 +1299,7 @@ static int handle_turn_refresh(turn_turnserver *server,
 				if(tsid != server->id) {
 
 					if(server->send_socket_to_relay) {
-						ioa_socket_handle new_s = detach_ioa_socket(ss->client_session.s,1);
+						ioa_socket_handle new_s = detach_ioa_socket(ss->client_socket,1);
 						if(new_s) {
 						  if(server->send_socket_to_relay(tsid, mid, tid, new_s, message_integrity, 
 										  RMT_MOBILE_SOCKET, in_buffer, can_resume)<0) {
@@ -1334,10 +1332,10 @@ static int handle_turn_refresh(turn_turnserver *server,
 					} else if(!(orig_ss->is_mobile)) {
 						*err_code = 500;
 						*reason = (const u08bits *)"Software error: invalid mobile allocation";
-					} else if(orig_ss->client_session.s == ss->client_session.s) {
+					} else if(orig_ss->client_socket == ss->client_socket) {
 						*err_code = 500;
 						*reason = (const u08bits *)"Software error: invalid mobile client socket (orig)";
-					} else if(!(ss->client_session.s)) {
+					} else if(!(ss->client_socket)) {
 						*err_code = 500;
 						*reason = (const u08bits *)"Software error: invalid mobile client socket (new)";
 					} else {
@@ -1379,7 +1377,7 @@ static int handle_turn_refresh(turn_turnserver *server,
 
 								//Transfer socket:
 
-								ioa_socket_handle s = detach_ioa_socket(ss->client_session.s,0);
+								ioa_socket_handle s = detach_ioa_socket(ss->client_socket,0);
 
 								ss->to_be_closed = 1;
 
@@ -1965,7 +1963,7 @@ static int handle_turn_connection_bind(turn_turnserver *server,
 		*err_code = 400;
 		*reason = (const u08bits *)"Bad request: CONNECTION_BIND cannot be issued after allocation";
 
-	} else if((get_ioa_socket_type(ss->client_session.s)!=TCP_SOCKET) && (get_ioa_socket_type(ss->client_session.s)!=TLS_SOCKET)) {
+	} else if((get_ioa_socket_type(ss->client_socket)!=TCP_SOCKET) && (get_ioa_socket_type(ss->client_socket)!=TLS_SOCKET)) {
 
 		*err_code = 400;
 		*reason = (const u08bits *)"Bad request: CONNECTION_BIND only possible with TCP/TLS";
@@ -2014,7 +2012,7 @@ static int handle_turn_connection_bind(turn_turnserver *server,
 		} else {
 			if(server->send_socket_to_relay) {
 				turnserver_id sid = (id & 0xFF000000)>>24;
-				ioa_socket_handle s = ss->client_session.s;
+				ioa_socket_handle s = ss->client_socket;
 				if(s) {
 					ioa_socket_handle new_s = detach_ioa_socket(s,1);
 					if(new_s) {
@@ -2035,7 +2033,7 @@ static int handle_turn_connection_bind(turn_turnserver *server,
 		}
 	}
 
-	if (!(*resp_constructed) && ss->client_session.s && !ioa_socket_tobeclosed(ss->client_session.s)) {
+	if (!(*resp_constructed) && ss->client_socket && !ioa_socket_tobeclosed(ss->client_socket)) {
 
 		if (!(*err_code)) {
 			*err_code = 437;
@@ -2326,15 +2324,15 @@ static int handle_turn_channel_bind(turn_turnserver *server,
 				  *resp_constructed = 1;
 
 				  if(!(ss->is_mobile)) {
-					  if(get_ioa_socket_type(ss->client_session.s) == UDP_SOCKET ||
-							  get_ioa_socket_type(ss->client_session.s) == TCP_SOCKET) {
+					  if(get_ioa_socket_type(ss->client_socket) == UDP_SOCKET ||
+							  get_ioa_socket_type(ss->client_socket) == TCP_SOCKET) {
 						  if(get_ioa_socket_type(ss->alloc.relay_session.s) == UDP_SOCKET) {
 							  chn->kernel_channel = CREATE_TURN_CHANNEL_KERNEL(chn->chnum,
-								  get_ioa_socket_address_family(ss->client_session.s),
+								  get_ioa_socket_address_family(ss->client_socket),
 								  get_ioa_socket_address_family(ss->alloc.relay_session.s),
-								  (get_ioa_socket_type(ss->client_session.s)==UDP_SOCKET ? IPPROTO_UDP : IPPROTO_TCP),
-								  &(get_remote_addr_from_ioa_socket(ss->client_session.s)->ss),
-								  &(get_local_addr_from_ioa_socket(ss->client_session.s)->ss),
+								  (get_ioa_socket_type(ss->client_socket)==UDP_SOCKET ? IPPROTO_UDP : IPPROTO_TCP),
+								  &(get_remote_addr_from_ioa_socket(ss->client_socket)->ss),
+								  &(get_local_addr_from_ioa_socket(ss->client_socket)->ss),
 								  &(get_local_addr_from_ioa_socket(ss->alloc.relay_session.s)),
 								  &(get_remote_addr_from_ioa_socket(ss->alloc.relay_session.s))
 							  );
@@ -2359,16 +2357,15 @@ static int handle_turn_binding(turn_turnserver *server,
 				    u32bits cookie, int old_stun) {
 
 	FUNCSTART;
-	ts_ur_session* elem = &(ss->client_session);
 	int change_ip = 0;
 	int change_port = 0;
 	int padding = 0;
 	int response_port_present = 0;
 	u16bits response_port = 0;
-	SOCKET_TYPE st = get_ioa_socket_type(ss->client_session.s);
+	SOCKET_TYPE st = get_ioa_socket_type(ss->client_socket);
 	int use_reflected_from = 0;
 
-	if(!(ss->client_session.s))
+	if(!(ss->client_socket))
 		return -1;
 
 	*origin_changed = 0;
@@ -2466,20 +2463,20 @@ static int handle_turn_binding(turn_turnserver *server,
 
 		;
 
-	} else if(ss->client_session.s) {
+	} else if(ss->client_socket) {
 
 		size_t len = ioa_network_buffer_get_size(nbh);
 		if (stun_set_binding_response_str(ioa_network_buffer_data(nbh), &len, tid,
-					get_remote_addr_from_ioa_socket(elem->s), 0, NULL, cookie, old_stun) >= 0) {
+					get_remote_addr_from_ioa_socket(ss->client_socket), 0, NULL, cookie, old_stun) >= 0) {
 
-			addr_cpy(response_origin, get_local_addr_from_ioa_socket(ss->client_session.s));
+			addr_cpy(response_origin, get_local_addr_from_ioa_socket(ss->client_socket));
 
 			*resp_constructed = 1;
 
 			if(old_stun && use_reflected_from) {
 				stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len,
 						OLD_STUN_ATTRIBUTE_REFLECTED_FROM,
-						get_remote_addr_from_ioa_socket(ss->client_session.s));
+						get_remote_addr_from_ioa_socket(ss->client_socket));
 			}
 
 			if(!is_rfc5780(server)) {
@@ -2494,13 +2491,13 @@ static int handle_turn_binding(turn_turnserver *server,
 							STUN_ATTRIBUTE_RESPONSE_ORIGIN, response_origin);
 				}
 
-			} else if(ss->client_session.s) {
+			} else if(ss->client_socket) {
 
 				ioa_addr other_address;
 
 				if(get_other_address(server,ss,&other_address) == 0) {
 
-					addr_cpy(response_destination, get_remote_addr_from_ioa_socket(ss->client_session.s));
+					addr_cpy(response_destination, get_remote_addr_from_ioa_socket(ss->client_socket));
 
 					if(change_ip) {
 						*origin_changed = 1;
@@ -2534,7 +2531,7 @@ static int handle_turn_binding(turn_turnserver *server,
 					}
 
 					if(padding) {
-						int mtu = get_local_mtu_ioa_socket(ss->client_session.s);
+						int mtu = get_local_mtu_ioa_socket(ss->client_socket);
 						if(mtu<68)
 							mtu=1500;
 
@@ -2856,9 +2853,8 @@ static void resume_processing_after_username_check(int success,  hmackey_t hmack
 	if(server && in_buffer && in_buffer->nbh) {
 
 		ts_ur_super_session *ss = get_session_from_map(server,(turnsession_id)ctxkey);
-		if(ss && ss->client_session.s) {
+		if(ss && ss->client_socket) {
 			turn_turnserver *server = (turn_turnserver *)ss->server;
-			ts_ur_session *elem = &(ss->client_session);
 
 			if(success) {
 				ns_bcopy(hmackey,ss->hmackey,sizeof(hmackey_t));
@@ -2866,9 +2862,9 @@ static void resume_processing_after_username_check(int success,  hmackey_t hmack
 				ns_bcopy(pwd,ss->pwd,sizeof(st_password_t));
 			}
 
-			read_client_connection(server,elem,ss,in_buffer,0,0);
+			read_client_connection(server,ss,in_buffer,0,0);
 
-			close_ioa_socket_after_processing_if_necessary(ss->client_session.s);
+			close_ioa_socket_after_processing_if_necessary(ss->client_socket);
 
 			ioa_network_buffer_delete(server->e, in_buffer->nbh);
 			in_buffer->nbh=NULL;
@@ -3018,7 +3014,7 @@ static int check_stun_auth(turn_turnserver *server,
 		}
 	} else {
 		STRCPY(ss->username,usname);
-		set_username_hash(ss->client_session.s,ss->username,(u08bits*)ss->realm_options.name);
+		set_username_hash(ss->client_socket,ss->username,(u08bits*)ss->realm_options.name);
 	}
 
 	if(server->ct != TURN_CREDENTIALS_SHORT_TERM) {
@@ -3173,7 +3169,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 	int no_response = 0;
 	int message_integrity = 0;
 
-	if(!(ss->client_session.s))
+	if(!(ss->client_socket))
 		return -1;
 
 	u16bits unknown_attrs[MAX_NUMBER_OF_UNKNOWN_ATTRS];
@@ -3212,7 +3208,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 
 			if(method == STUN_METHOD_ALLOCATE) {
 
-				SOCKET_TYPE cst = get_ioa_socket_type(ss->client_session.s);
+				SOCKET_TYPE cst = get_ioa_socket_type(ss->client_socket);
 				turn_server_addrs_list_t *asl = server->alternate_servers_list;
 
 				if(((cst == UDP_SOCKET)||(cst == DTLS_SOCKET)) && server->self_udp_balance &&
@@ -3225,7 +3221,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 
 				if(asl && asl->size) {
 					turn_mutex_lock(&(asl->m));
-					set_alternate_server(asl,get_local_addr_from_ioa_socket(ss->client_session.s),&(server->as_counter),method,&tid,resp_constructed,&err_code,&reason,nbh);
+					set_alternate_server(asl,get_local_addr_from_ioa_socket(ss->client_socket),&(server->as_counter),method,&tid,resp_constructed,&err_code,&reason,nbh);
 					turn_mutex_unlock(&(asl->m));
 				}
 			}
@@ -3447,7 +3443,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 		}
 	}
 
-	if(ss->to_be_closed || !(ss->client_session.s) || ioa_socket_tobeclosed(ss->client_session.s))
+	if(ss->to_be_closed || !(ss->client_socket) || ioa_socket_tobeclosed(ss->client_socket))
 		return 0;
 
 	if (ua_num > 0) {
@@ -3683,24 +3679,22 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
 	if (!ss)
 		return -1;
 
-	ts_ur_session* elem = &(ss->client_session);
-
 	report_turn_session_info(server,ss,1);
 	dec_quota(ss);
 
 	if(!force && ss->is_mobile) {
 
-		if (elem->s && server->verbose) {
+		if (ss->client_socket && server->verbose) {
 
 			char sraddr[129]="\0";
 			char sladdr[129]="\0";
-			addr_to_string(get_remote_addr_from_ioa_socket(elem->s),(u08bits*)sraddr);
-			addr_to_string(get_local_addr_from_ioa_socket(elem->s),(u08bits*)sladdr);
+			addr_to_string(get_remote_addr_from_ioa_socket(ss->client_socket),(u08bits*)sraddr);
+			addr_to_string(get_local_addr_from_ioa_socket(ss->client_socket),(u08bits*)sladdr);
 
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: closed (1st stage), user <%s> realm <%s> origin <%s>, local %s, remote %s, reason: %s\n",(unsigned long long)(ss->id),(char*)ss->username,(char*)ss->realm_options.name,(char*)ss->origin, sladdr,sraddr,reason);
 		}
 
-		IOA_CLOSE_SOCKET(elem->s);
+		IOA_CLOSE_SOCKET(ss->client_socket);
 
 		FUNCEND;
 
@@ -3709,29 +3703,11 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
 
 	if (eve(server->verbose)) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-				"closing session 0x%lx, client socket 0x%lx in state %ld (socket session=0x%lx)\n",
+				"closing session 0x%lx, client socket 0x%lx (socket session=0x%lx)\n",
 				(long) ss,
-				(long) elem->s,
-				(long) (elem->state),
-				(long)get_ioa_socket_session(elem->s));
+				(long) ss->client_socket,
+				(long)get_ioa_socket_session(ss->client_socket));
 	}
-
-	if (elem->state == UR_STATE_DONE) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
-				"!!! closing session 0x%lx, client session 0x%lx in DONE state\n",
-				(long)ss, (long) elem);
-		return -1;
-	}
-
-	elem->state = UR_STATE_DONE;
-
-	if (ss->alloc.relay_session.state == UR_STATE_DONE) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
-				"!!! closing session 0x%lx, relay session 0x%lx in DONE state\n",
-				(long)ss, (long)&(ss->alloc.relay_session));
-		return -1;
-	}
-	ss->alloc.relay_session.state = UR_STATE_DONE;
 
 	if (server->disconnect)
 		server->disconnect(ss);
@@ -3740,14 +3716,14 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
 
 		char sraddr[129]="\0";
 		char sladdr[129]="\0";
-		addr_to_string(get_remote_addr_from_ioa_socket(elem->s),(u08bits*)sraddr);
-		addr_to_string(get_local_addr_from_ioa_socket(elem->s),(u08bits*)sladdr);
+		addr_to_string(get_remote_addr_from_ioa_socket(ss->client_socket),(u08bits*)sraddr);
+		addr_to_string(get_local_addr_from_ioa_socket(ss->client_socket),(u08bits*)sladdr);
 
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: closed (2nd stage), user <%s> realm <%s> origin <%s>, local %s, remote %s, reason: %s\n",
 					(unsigned long long)(ss->id), (char*)ss->username,(char*)ss->realm_options.name,(char*)ss->origin, sladdr,sraddr, reason);
 	}
 
-	IOA_CLOSE_SOCKET(elem->s);
+	IOA_CLOSE_SOCKET(ss->client_socket);
 	IOA_CLOSE_SOCKET(ss->alloc.relay_session.s);
 
 	turn_server_remove_all_from_ur_map_ss(ss);
@@ -3776,18 +3752,18 @@ static void client_to_be_allocated_timeout_handler(ioa_engine_handle e,
 
 	int to_close = 0;
 
-	ioa_socket_handle s = ss->client_session.s;
+	ioa_socket_handle s = ss->client_socket;
 	if(!s || ioa_socket_tobeclosed(s)) {
 		to_close = 1;
 	} else {
 		ioa_socket_handle rs = ss->alloc.relay_session.s;
 		if(!rs || ioa_socket_tobeclosed(rs)) {
 			to_close = 1;
-		} else if(ss->alloc.relay_session.state == UR_STATE_DONE) {
+		} else if(ss->alloc.relay_session.s == NULL) {
 			to_close = 1;
-		} else if(ss->client_session.state == UR_STATE_DONE) {
+		} else if(ss->client_socket == NULL) {
 			to_close = 1;
-		} else if(!(ss->alloc.lifetime_ev)) {
+		} else if(!(ss->alloc.relay_session.lifetime_ev)) {
 			to_close = 1;
 		} else if(!(ss->to_be_allocated_timeout_ev)) {
 			to_close = 1;
@@ -3806,9 +3782,7 @@ static int write_client_connection(turn_turnserver *server, ts_ur_super_session*
 
 	FUNCSTART;
 
-	ts_ur_session* elem = &(ss->client_session);
-
-	if (elem->state != UR_STATE_READY) {
+	if (!(ss->client_socket)) {
 		ioa_network_buffer_delete(server->e, nbh);
 		FUNCEND;
 		return -1;
@@ -3821,10 +3795,10 @@ static int write_client_connection(turn_turnserver *server, ts_ur_super_session*
 		if (eve(server->verbose)) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
 				"%s: prepare to write to s 0x%lx\n", __FUNCTION__,
-				(long) (elem->s));
+				(long) (ss->client_socket));
 		}
 
-		int ret = send_data_from_ioa_socket_nbh(elem->s, NULL, nbh, ttl, tos);
+		int ret = send_data_from_ioa_socket_nbh(ss->client_socket, NULL, nbh, ttl, tos);
 
 		FUNCEND;
 		return ret;
@@ -3866,14 +3840,14 @@ static int create_relay_connection(turn_turnserver* server,
 				   int *err_code, const u08bits **reason,
 				   accept_cb acb) {
 
-	if (server && ss && ss->client_session.s) {
+	if (server && ss && ss->client_socket) {
 
 		allocation* a = get_allocation_ss(ss);
-		ts_ur_session* newelem = get_relay_session_ss(ss);
+		relay_endpoint_session* newelem = get_relay_session_ss(ss);
 
 		IOA_CLOSE_SOCKET(newelem->s);
 
-		ns_bzero(newelem, sizeof(ts_ur_session));
+		ns_bzero(newelem, sizeof(relay_endpoint_session));
 		newelem->s = NULL;
 
 		ioa_socket_handle rtcp_s = NULL;
@@ -3900,7 +3874,7 @@ static int create_relay_connection(turn_turnserver* server,
 		} else {
 
 			int res = create_relay_ioa_sockets(server->e,
-							ss->client_session.s,
+							ss->client_socket,
 							address_family, transport,
 							even_port, &(newelem->s), &rtcp_s, out_reservation_token,
 							err_code, reason, acb, ss);
@@ -3937,11 +3911,9 @@ static int create_relay_connection(turn_turnserver* server,
 			}
 		}
 
-		newelem->state = UR_STATE_READY;
-
 		/* RFC6156: do not use DF when IPv6 is involved: */
 		if((get_local_addr_from_ioa_socket(newelem->s)->ss.sa_family == AF_INET6) ||
-		   (get_local_addr_from_ioa_socket(ss->client_session.s)->ss.sa_family == AF_INET6))
+		   (get_local_addr_from_ioa_socket(ss->client_socket)->ss.sa_family == AF_INET6))
 			set_do_not_use_df(newelem->s);
 
 		if(get_ioa_socket_type(newelem->s) != TCP_SOCKET) {
@@ -3999,7 +3971,7 @@ static int refresh_relay_connection(turn_turnserver* server,
 
 static void write_http_echo(turn_turnserver *server, ts_ur_super_session *ss)
 {
-	if(server && ss && ss->client_session.s && !(ss->to_be_closed)) {
+	if(server && ss && ss->client_socket && !(ss->to_be_closed)) {
 		ioa_network_buffer_handle nbh_http = ioa_network_buffer_allocate(server->e);
 		size_t len_http = ioa_network_buffer_get_size(nbh_http);
 		u08bits *data = ioa_network_buffer_data(nbh_http);
@@ -4011,22 +3983,17 @@ static void write_http_echo(turn_turnserver *server, ts_ur_super_session *ss)
 		len_http = strlen(data_http);
 		ns_bcopy(data_http,data,len_http);
 		ioa_network_buffer_set_size(nbh_http,len_http);
-		send_data_from_ioa_socket_nbh(ss->client_session.s, NULL, nbh_http, TTL_IGNORE, TOS_IGNORE);
+		send_data_from_ioa_socket_nbh(ss->client_socket, NULL, nbh_http, TTL_IGNORE, TOS_IGNORE);
 	}
 }
 
-static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
+static int read_client_connection(turn_turnserver *server,
 				  	  	  	  	  ts_ur_super_session *ss, ioa_net_data *in_buffer,
 				  	  	  	  	  int can_resume, int count_usage) {
 
 	FUNCSTART;
 
-	if (!server || !elem || !ss || !in_buffer) {
-		FUNCEND;
-		return -1;
-	}
-
-	if (elem->state != UR_STATE_READY) {
+	if (!server || !ss || !in_buffer || !(ss->client_socket)) {
 		FUNCEND;
 		return -1;
 	}
@@ -4055,7 +4022,7 @@ static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 
 	size_t blen = ioa_network_buffer_get_size(in_buffer->nbh);
 	size_t orig_blen = blen;
-	SOCKET_TYPE st = get_ioa_socket_type(ss->client_session.s);
+	SOCKET_TYPE st = get_ioa_socket_type(ss->client_socket);
 	int is_padding_mandatory = ((st == TCP_SOCKET)||(st==TLS_SOCKET)||(st==TENTATIVE_TCP_SOCKET));
 
 	if (stun_is_channel_message_str(ioa_network_buffer_data(in_buffer->nbh), 
@@ -4097,7 +4064,7 @@ static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 		if((method != STUN_METHOD_BINDING) && (method != STUN_METHOD_SEND))
 			report_turn_session_info(server,ss,0);
 
-		if(ss->to_be_closed || ioa_socket_tobeclosed(ss->client_session.s)) {
+		if(ss->to_be_closed || ioa_socket_tobeclosed(ss->client_socket)) {
 			FUNCEND;
 			ioa_network_buffer_delete(server->e, nbh);
 			return 0;
@@ -4143,7 +4110,7 @@ static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 		}
 
 	} else {
-		SOCKET_TYPE st = get_ioa_socket_type(ss->client_session.s);
+		SOCKET_TYPE st = get_ioa_socket_type(ss->client_socket);
 		if((st == TCP_SOCKET)||(st==TLS_SOCKET)||(st==TENTATIVE_TCP_SOCKET)) {
 			if(is_http_get((char*)ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh)))
 				write_http_echo(server,ss);
@@ -4163,22 +4130,16 @@ static int attach_socket_to_session(turn_turnserver* server, ioa_socket_handle s
 
 	if(s && server && ss) {
 
-		if(ss->client_session.s != s) {
+		if(ss->client_socket != s) {
 
-			ts_ur_session *newelem = &(ss->client_session);
+			IOA_CLOSE_SOCKET(ss->client_socket);
 
-			if(newelem->s) {
-				IOA_CLOSE_SOCKET(newelem->s);
-			}
+			ss->client_socket = s;
 
-			newelem->s = s;
-
-			register_callback_on_ioa_socket(server->e, newelem->s, IOA_EV_READ,
+			register_callback_on_ioa_socket(server->e, s, IOA_EV_READ,
 					client_input_handler, ss, 0);
 
-			set_ioa_socket_session(newelem->s, ss);
-
-			newelem->state = UR_STATE_READY;
+			set_ioa_socket_session(s, ss);
 		}
 
 		ret = 0;
@@ -4200,16 +4161,12 @@ int open_client_connection_session(turn_turnserver* server,
 
 	ts_ur_super_session* ss = create_new_ss(server);
 
-	ts_ur_session *newelem = &(ss->client_session);
+	ss->client_socket = sm->s;
 
-	newelem->s = sm->s;
-
-	register_callback_on_ioa_socket(server->e, newelem->s, IOA_EV_READ,
+	register_callback_on_ioa_socket(server->e, ss->client_socket, IOA_EV_READ,
 			client_input_handler, ss, 0);
 
-	set_ioa_socket_session(newelem->s, ss);
-
-	newelem->state = UR_STATE_READY;
+	set_ioa_socket_session(ss->client_socket, ss);
 
 	int at = TURN_MAX_ALLOCATE_TIMEOUT;
 	if(*(server->stun_only))
@@ -4222,7 +4179,7 @@ int open_client_connection_session(turn_turnserver* server,
 			"client_to_be_allocated_timeout_handler");
 
 	if(sm->nd.nbh) {
-		client_input_handler(newelem->s,IOA_EV_READ,&(sm->nd),ss,sm->can_resume);
+		client_input_handler(ss->client_socket,IOA_EV_READ,&(sm->nd),ss,sm->can_resume);
 		ioa_network_buffer_delete(server->e, sm->nd.nbh);
 		sm->nd.nbh = NULL;
 	}
@@ -4256,7 +4213,7 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 		return;
 	}
 
-	ts_ur_session* elem = get_relay_session_ss(ss);
+	relay_endpoint_session* elem = get_relay_session_ss(ss);
 	if (elem->s == NULL) {
 		return;
 	}
@@ -4295,7 +4252,7 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 
 				ioa_network_buffer_header_init(nbh);
 
-				SOCKET_TYPE st = get_ioa_socket_type(ss->client_session.s);
+				SOCKET_TYPE st = get_ioa_socket_type(ss->client_socket);
 				int do_padding = ((st == TCP_SOCKET)||(st==TLS_SOCKET)||(st==TENTATIVE_TCP_SOCKET));
 
 				stun_init_channel_message_str(chnum, ioa_network_buffer_data(nbh), &len, len, do_padding);
@@ -4365,34 +4322,13 @@ static void client_input_handler(ioa_socket_handle s, int event_type,
 		return;
 	}
 
-	ts_ur_session* elem = &(ss->client_session);
-
-	if (elem->s == NULL) {
+	if (ss->client_socket != s) {
 		return;
 	}
 
-	int ret = 0;
+	read_client_connection(server, ss, data, can_resume, 1);
 
-	switch (elem->state) {
-	case UR_STATE_READY:
-		read_client_connection(server, elem, ss, data, can_resume, 1);
-		break;
-	case UR_STATE_DONE:
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
-				"!!! %s: Trying to read from closed socket: s=0x%lx\n",
-				__FUNCTION__, (long) (elem->s));
-		break;
-	default:
-		ret = -1;
-	}
-
-	if (ret < 0) {
-		if(server->verbose) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
-				"session %018llu: client socket error in client handler: s=0x%lx\n", (unsigned long long)(ss->id), (long) (elem->s));
-		}
-		set_ioa_socket_tobeclosed(s);
-	} else if (ss->to_be_closed) {
+	if (ss->to_be_closed) {
 		if(server->verbose) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
 				"session %018llu: client socket to be closed in client handler: ss=0x%lx\n", (unsigned long long)(ss->id), (long)ss);

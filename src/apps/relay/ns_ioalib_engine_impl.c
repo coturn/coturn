@@ -2761,7 +2761,7 @@ static void eventcb_bev(struct bufferevent *bev, short events, void *arg)
 							if (events & BEV_EVENT_EOF) {
 								if(server->verbose)
 									TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"session %018llu: TCP socket closed remotely %s\n",(unsigned long long)(ss->id),sraddr);
-								if(s == ss->client_session.s) {
+								if(s == ss->client_socket) {
 									shutdown_client_connection(server, ss, 0, "TCP connection closed by client (callback)");
 								} else if(s == ss->alloc.relay_session.s) {
 									shutdown_client_connection(server, ss, 0, "TCP connection closed by peer (callback)");
@@ -3432,10 +3432,10 @@ void turn_report_allocation_set(void *a, turn_time_t lifetime, int refresh)
 			turn_turnserver *server = (turn_turnserver*)ss->server;
 			if(server) {
 				ioa_engine_handle e = turn_server_get_engine(server);
-				if(e && e->verbose && ss->client_session.s) {
-					if(ss->client_session.s->ssl) {
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"session %018llu: %s, realm=<%s>, username=<%s>, lifetime=%lu, cipher=%s, method=%s (%s)\n", (unsigned long long)ss->id, status, (char*)ss->realm_options.name, (char*)ss->username, (unsigned long)lifetime, SSL_get_cipher(ss->client_session.s->ssl),
-							turn_get_ssl_method(ss->client_session.s->ssl, ss->client_session.s->orig_ctx_type),ss->client_session.s->orig_ctx_type);
+				if(e && e->verbose && ss->client_socket) {
+					if(ss->client_socket->ssl) {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"session %018llu: %s, realm=<%s>, username=<%s>, lifetime=%lu, cipher=%s, method=%s (%s)\n", (unsigned long long)ss->id, status, (char*)ss->realm_options.name, (char*)ss->username, (unsigned long)lifetime, SSL_get_cipher(ss->client_socket->ssl),
+							turn_get_ssl_method(ss->client_socket->ssl, ss->client_socket->orig_ctx_type),ss->client_socket->orig_ctx_type);
 					} else {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"session %018llu: %s, realm=<%s>, username=<%s>, lifetime=%lu\n", (unsigned long long)ss->id, status, (char*)ss->realm_options.name, (char*)ss->username, (unsigned long)lifetime);
 					}
