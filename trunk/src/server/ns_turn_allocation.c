@@ -70,10 +70,14 @@ void clear_allocation(allocation *a)
 		}
 		a->tcs.sz = 0;
 
-		clear_ioa_socket_session_if(a->relay_session.s, a->owner);
-		clear_relay_endpoint_session_data(&(a->relay_session));
-
-		IOA_EVENT_DEL(a->relay_session.lifetime_ev);
+		{
+			int i;
+			for(i = 0;i<ALLOC_PROTOCOLS_NUMBER; ++i) {
+				clear_ioa_socket_session_if(a->relay_sessions[i].s, a->owner);
+				clear_relay_endpoint_session_data(&(a->relay_sessions[i]));
+				IOA_EVENT_DEL(a->relay_sessions[i].lifetime_ev);
+			}
+		}
 
 		/* The order is important here: */
 		free_turn_permission_hashtable(&(a->addr_to_perm));
@@ -83,22 +87,22 @@ void clear_allocation(allocation *a)
 	}
 }
 
-relay_endpoint_session *get_relay_session(allocation *a)
+relay_endpoint_session *get_relay_session(allocation *a, int family)
 {
-	return &(a->relay_session);
+	return &(a->relay_sessions[ALLOC_INDEX(family)]);
 }
 
-ioa_socket_handle get_relay_socket(allocation *a)
+ioa_socket_handle get_relay_socket(allocation *a, int family)
 {
-	return a->relay_session.s;
+	return a->relay_sessions[ALLOC_INDEX(family)].s;
 }
 
-void set_allocation_lifetime_ev(allocation *a, turn_time_t exp_time, ioa_timer_handle ev)
+void set_allocation_lifetime_ev(allocation *a, turn_time_t exp_time, ioa_timer_handle ev, int family)
 {
 	if (a) {
-		IOA_EVENT_DEL(a->relay_session.lifetime_ev);
-		a->relay_session.expiration_time = exp_time;
-		a->relay_session.lifetime_ev = ev;
+		IOA_EVENT_DEL(a->relay_sessions[ALLOC_INDEX(family)].lifetime_ev);
+		a->relay_sessions[ALLOC_INDEX(family)].expiration_time = exp_time;
+		a->relay_sessions[ALLOC_INDEX(family)].lifetime_ev = ev;
 	}
 }
 

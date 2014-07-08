@@ -165,11 +165,17 @@ typedef struct _turn_permission_hashtable {
 
 //////////////// ALLOCATION //////////////////////
 
+#define ALLOC_IPV4_INDEX (0)
+#define ALLOC_IPV6_INDEX (1)
+#define ALLOC_PROTOCOLS_NUMBER (2)
+#define ALLOC_INDEX(family) ((((family)==AF_INET6)) ? ALLOC_IPV6_INDEX : ALLOC_IPV4_INDEX )
+#define ALLOC_INDEX_ADDR(addr) ALLOC_INDEX(((addr)->ss).sa_family)
+
 typedef struct _allocation {
   int is_valid;
   stun_tid tid;
   turn_permission_hashtable addr_to_perm;
-  relay_endpoint_session relay_session;
+  relay_endpoint_session relay_sessions[ALLOC_PROTOCOLS_NUMBER];
   ch_map chns; /* chnum-to-ch_info* */
   void *owner; //ss
   ur_map *tcp_connections; //global (per turn server) reference
@@ -190,7 +196,7 @@ void clear_allocation(allocation *a);
 
 void turn_permission_clean(turn_permission_info* tinfo);
 
-void set_allocation_lifetime_ev(allocation *a, turn_time_t exp_time, ioa_timer_handle ev);
+void set_allocation_lifetime_ev(allocation *a, turn_time_t exp_time, ioa_timer_handle ev, int family);
 int is_allocation_valid(const allocation* a);
 void set_allocation_valid(allocation* a, int value);
 turn_permission_info* allocation_get_permission(allocation* a, const ioa_addr *addr);
@@ -201,8 +207,8 @@ ch_info* allocation_get_new_ch_info(allocation* a, u16bits chnum, ioa_addr* peer
 ch_info* allocation_get_ch_info(allocation* a, u16bits chnum);
 ch_info* allocation_get_ch_info_by_peer_addr(allocation* a, ioa_addr* peer_addr);
 
-relay_endpoint_session *get_relay_session(allocation *a);
-ioa_socket_handle get_relay_socket(allocation *a);
+relay_endpoint_session *get_relay_session(allocation *a, int family);
+ioa_socket_handle get_relay_socket(allocation *a, int family);
 
 tcp_connection *get_and_clean_tcp_connection_by_id(ur_map *map, tcp_connection_id id);
 tcp_connection *get_tcp_connection_by_id(ur_map *map, tcp_connection_id id);
