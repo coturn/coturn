@@ -2763,8 +2763,10 @@ static void eventcb_bev(struct bufferevent *bev, short events, void *arg)
 									TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"session %018llu: TCP socket closed remotely %s\n",(unsigned long long)(ss->id),sraddr);
 								if(s == ss->client_socket) {
 									shutdown_client_connection(server, ss, 0, "TCP connection closed by client (callback)");
-								} else if(s == ss->alloc.relay_session.s) {
-									shutdown_client_connection(server, ss, 0, "TCP connection closed by peer (callback)");
+								} else if(s == ss->alloc.relay_sessions[ALLOC_IPV4_INDEX].s) {
+									shutdown_client_connection(server, ss, 0, "TCP connection closed by peer (ipv4 callback)");
+								} else if(s == ss->alloc.relay_sessions[ALLOC_IPV6_INDEX].s) {
+									shutdown_client_connection(server, ss, 0, "TCP connection closed by peer (ipv6 callback)");
 								} else {
 									shutdown_client_connection(server, ss, 0, "TCP connection closed by remote party (callback)");
 								}

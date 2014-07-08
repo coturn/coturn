@@ -42,6 +42,21 @@
 
 ////////////////////////////////////////////////
 
+static inline int get_family(int stun_family) {
+	switch(stun_family) {
+	case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4:
+		return AF_INET;
+	case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6:
+		return AF_INET6;
+	case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT:
+		return AF_INET;
+	default:
+		return AF_INET;
+	};
+}
+
+////////////////////////////////////////////////
+
 #define MAX_NUMBER_OF_UNKNOWN_ATTRS (128)
 
 int TURN_MAX_ALLOCATE_TIMEOUT = 60;
@@ -97,7 +112,7 @@ static int create_relay_connection(turn_turnserver* server,
 static int refresh_relay_connection(turn_turnserver* server,
 		ts_ur_super_session *ss, u32bits lifetime, int even_port,
 		u64bits in_reservation_token, u64bits *out_reservation_token,
-		int *err_code);
+		int *err_code, int family);
 
 static int write_client_connection(turn_turnserver *server, ts_ur_super_session* ss, ioa_network_buffer_handle nbh, int ttl, int tos);
 
@@ -308,14 +323,14 @@ allocation* get_allocation_ss(ts_ur_super_session *ss) {
 	return &(ss->alloc);
 }
 
-static inline relay_endpoint_session *get_relay_session_ss(ts_ur_super_session *ss)
+static inline relay_endpoint_session *get_relay_session_ss(ts_ur_super_session *ss, int family)
 {
-	return &(ss->alloc.relay_session);
+	return get_relay_session(&(ss->alloc),family);
 }
 
-static inline ioa_socket_handle get_relay_socket_ss(ts_ur_super_session *ss)
+static inline ioa_socket_handle get_relay_socket_ss(ts_ur_super_session *ss, int family)
 {
-	return ss->alloc.relay_session.s;
+	return get_relay_socket(&(ss->alloc),family);
 }
 
 /////////// Session info ///////
@@ -401,7 +416,16 @@ int turn_session_info_copy_from(struct turn_session_info* tsi, ts_ur_super_sessi
 		tsi->start_time = ss->start_time;
 		tsi->valid = is_allocation_valid(&(ss->alloc)) && !(ss->to_be_closed) && (ss->quota_used);
 		if(tsi->valid) {
-			tsi->expiration_time = ss->alloc.relay_session.expiration_time;
+			if(ss->alloc.relay_sessions[ALLOC_IPV4_INDEX].s) {
+				tsi->expiration_time = ss->alloc.relay_sessions[ALLOC_IPV4_INDEX].expiration_time;
+				if(ss->alloc.relay_sessions[ALLOC_IPV6_INDEX].s) {
+					if(turn_time_before(tsi->expiration_time,ss->alloc.relay_sessions[ALLOC_IPV6_INDEX].expiration_time)) {
+						tsi->expiration_time = ss->alloc.relay_sessions[ALLOC_IPV6_INDEX].expiration_time;
+					}
+				}
+			} else if(ss->alloc.relay_sessions[ALLOC_IPV6_INDEX].s) {
+				tsi->expiration_time = ss->alloc.relay_sessions[ALLOC_IPV6_INDEX].expiration_time;
+			}
 			if(ss->client_socket) {
 				tsi->client_protocol = get_ioa_socket_type(ss->client_socket);
 				addr_cpy(&(tsi->local_addr_data.addr),get_local_addr_from_ioa_socket(ss->client_socket));
@@ -409,11 +433,17 @@ int turn_session_info_copy_from(struct turn_session_info* tsi, ts_ur_super_sessi
 				addr_cpy(&(tsi->remote_addr_data.addr),get_remote_addr_from_ioa_socket(ss->client_socket));
 				addr_to_string(&(tsi->remote_addr_data.addr),(u08bits*)tsi->remote_addr_data.saddr);
 			}
-			if(ss->alloc.relay_session.s) {
-				tsi->peer_protocol = get_ioa_socket_type(ss->alloc.relay_session.s);
-				if(ss->alloc.is_valid) {
-					addr_cpy(&(tsi->relay_addr_data.addr),get_local_addr_from_ioa_socket(ss->alloc.relay_session.s));
-					addr_to_string(&(tsi->relay_addr_data.addr),(u08bits*)tsi->relay_addr_data.saddr);
+			{
+				int i;
+				for(i=0;i<ALLOC_PROTOCOLS_NUMBER;++i) {
+					if(ss->alloc.relay_sessions[i].s) {
+						tsi->peer_protocol = get_ioa_socket_type(ss->alloc.relay_sessions[i].s);
+						if(ss->alloc.is_valid) {
+							addr_cpy(&(tsi->relay_addr_data.addr),get_local_addr_from_ioa_socket(ss->alloc.relay_sessions[i].s));
+							addr_to_string(&(tsi->relay_addr_data.addr),(u08bits*)tsi->relay_addr_data.saddr);
+						}
+						break;
+					}
 				}
 			}
 			STRCPY(tsi->username,ss->username);
@@ -729,8 +759,11 @@ static int turn_server_remove_all_from_ur_map_ss(ts_ur_super_session* ss) {
 		if (ss->client_socket) {
 			clear_ioa_socket_session_if(ss->client_socket, ss);
 		}
-		if (get_relay_socket_ss(ss)) {
-			clear_ioa_socket_session_if(get_relay_socket_ss(ss), ss);
+		if (get_relay_socket_ss(ss,AF_INET)) {
+			clear_ioa_socket_session_if(get_relay_socket_ss(ss,AF_INET), ss);
+		}
+		if (get_relay_socket_ss(ss,AF_INET6)) {
+			clear_ioa_socket_session_if(get_relay_socket_ss(ss,AF_INET6), ss);
 		}
 		delete_ur_map_ss(ss);
 		return ret;
@@ -864,7 +897,9 @@ static int handle_turn_allocate(turn_turnserver *server,
 		} else {
 			size_t len = ioa_network_buffer_get_size(nbh);
 			ioa_addr xor_relayed_addr;
-			ioa_addr *relayed_addr = get_local_addr_from_ioa_socket(get_relay_socket_ss(ss));
+			ioa_addr *relayed_addr = get_local_addr_from_ioa_socket(get_relay_socket_ss(ss,AF_INET));
+			if(!relayed_addr)
+				relayed_addr = get_local_addr_from_ioa_socket(get_relay_socket_ss(ss,AF_INET6));
 			if(relayed_addr) {
 				if(server->external_ip_set) {
 					addr_cpy(&xor_relayed_addr, &(server->external_ip));
@@ -876,7 +911,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 							tid,
 							&xor_relayed_addr,
 							get_remote_addr_from_ioa_socket(ss->client_socket),
-							(a->relay_session.expiration_time - server->ctime), 0, NULL, 0,
+							(get_relay_session(a,relayed_addr->ss.sa_family)->expiration_time - server->ctime), 0, NULL, 0,
 							ss->s_mobile_id);
 				ioa_network_buffer_set_size(nbh,len);
 				*resp_constructed = 1;
@@ -1136,7 +1171,9 @@ static int handle_turn_allocate(turn_turnserver *server,
 					size_t len = ioa_network_buffer_get_size(nbh);
 
 					ioa_addr xor_relayed_addr;
-					ioa_addr *relayed_addr = get_local_addr_from_ioa_socket(get_relay_socket_ss(ss));
+					ioa_addr *relayed_addr = get_local_addr_from_ioa_socket(get_relay_socket_ss(ss,AF_INET));
+					if(!relayed_addr)
+						relayed_addr = get_local_addr_from_ioa_socket(get_relay_socket_ss(ss,AF_INET6));
 					if(relayed_addr) {
 						if(server->external_ip_set) {
 							addr_cpy(&xor_relayed_addr, &(server->external_ip));
@@ -1188,6 +1225,16 @@ static int handle_turn_refresh(turn_turnserver *server,
 			       int message_integrity, int *no_response, int can_resume) {
 
 	allocation* a = get_allocation_ss(ss);
+	int family = AF_INET;
+	{
+		int i;
+		for(i = 0;i<ALLOC_PROTOCOLS_NUMBER; ++i) {
+			if(a->relay_sessions[i].s) {
+				family = get_local_addr_from_ioa_socket(a->relay_sessions[i].s)->ss.sa_family;
+				break;
+			}
+		}
+	}
 
 	if (!is_allocation_valid(a) && !(*(server->mobility))) {
 
@@ -1248,17 +1295,16 @@ static int handle_turn_refresh(turn_turnserver *server,
 				break;
 			case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY: {
 				int af_req = stun_get_requested_address_family(sar);
-				ioa_addr *addr = get_local_addr_from_ioa_socket(a->relay_session.s);
-				if(addr) {
+				{
 					int is_err = 0;
 					switch (af_req) {
 					case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4:
-						if(addr->ss.sa_family != AF_INET) {
+						if(family != AF_INET) {
 							is_err = 1;
 						}
 						break;
 					case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6:
-						if(addr->ss.sa_family != AF_INET6) {
+						if(family != AF_INET6) {
 							is_err = 1;
 						}
 						break;
@@ -1361,7 +1407,7 @@ static int handle_turn_refresh(turn_turnserver *server,
 								lifetime = stun_adjust_allocate_lifetime(lifetime);
 
 							if (refresh_relay_connection(server, orig_ss, lifetime, 0, 0, 0,
-										err_code) < 0) {
+										err_code, family) < 0) {
 
 								if (!(*err_code)) {
 									*err_code = 437;
@@ -1462,7 +1508,7 @@ static int handle_turn_refresh(turn_turnserver *server,
 				lifetime = stun_adjust_allocate_lifetime(lifetime);
 
 			if (refresh_relay_connection(server, ss, lifetime, 0, 0, 0,
-					err_code) < 0) {
+					err_code, family) < 0) {
 
 				if (!(*err_code)) {
 					*err_code = 437;
@@ -1704,7 +1750,14 @@ static int tcp_start_connection_to_peer(turn_turnserver *server, ts_ur_super_ses
 		return -1;
 	}
 
-	if(!(a->relay_session.s)) {
+	if(!peer_addr) {
+		*err_code = 500;
+		*reason = (const u08bits *)"Server error: empty peer addr";
+		FUNCEND;
+		return -1;
+	}
+
+	if(!get_relay_socket(a,peer_addr->ss.sa_family)) {
 		*err_code = 500;
 		*reason = (const u08bits *)"Server error: no relay connection created";
 		FUNCEND;
@@ -1738,7 +1791,8 @@ static int tcp_start_connection_to_peer(turn_turnserver *server, ts_ur_super_ses
 						tcp_peer_conn_timeout_handler, tc, 0,
 						"tcp_peer_conn_timeout_handler");
 
-	ioa_socket_handle tcs = ioa_create_connecting_tcp_relay_socket(a->relay_session.s, peer_addr, tcp_peer_connection_completed_callback, tc);
+	ioa_socket_handle tcs = ioa_create_connecting_tcp_relay_socket(get_relay_socket(a,peer_addr->ss.sa_family),
+			peer_addr, tcp_peer_connection_completed_callback, tc);
 	if(!tcs) {
 		delete_tcp_connection(tc);
 		*err_code = 500;
@@ -1900,9 +1954,7 @@ static int handle_turn_connect(turn_turnserver *server,
 					*err_code = 400;
 					*reason = (const u08bits *)"Bad Peer Address";
 				} else {
-					ioa_addr *relay_addr = get_local_addr_from_ioa_socket(a->relay_session.s);
-
-					if(relay_addr && (relay_addr->ss.sa_family != peer_addr.ss.sa_family)) {
+					if(!get_relay_socket(a,peer_addr.ss.sa_family)) {
 						*err_code = 443;
 						*reason = (const u08bits *)"Peer Address Family Mismatch";
 					}
@@ -2216,9 +2268,7 @@ static int handle_turn_channel_bind(turn_turnserver *server,
 						       sar, &peer_addr,
 						       NULL);
 
-				ioa_addr *relay_addr = get_local_addr_from_ioa_socket(a->relay_session.s);
-
-				if(relay_addr && relay_addr->ss.sa_family != peer_addr.ss.sa_family) {
+				if(!get_relay_socket(a,peer_addr.ss.sa_family)) {
 					*err_code = 443;
 					*reason = (const u08bits *)"Peer Address Family Mismatch";
 				}
@@ -2326,15 +2376,15 @@ static int handle_turn_channel_bind(turn_turnserver *server,
 				  if(!(ss->is_mobile)) {
 					  if(get_ioa_socket_type(ss->client_socket) == UDP_SOCKET ||
 							  get_ioa_socket_type(ss->client_socket) == TCP_SOCKET) {
-						  if(get_ioa_socket_type(ss->alloc.relay_session.s) == UDP_SOCKET) {
+						  if(get_ioa_socket_type(get_relay_socket(&(ss->alloc),peer_addr.ss.sa_family)) == UDP_SOCKET) {
 							  chn->kernel_channel = CREATE_TURN_CHANNEL_KERNEL(chn->chnum,
 								  get_ioa_socket_address_family(ss->client_socket),
-								  get_ioa_socket_address_family(ss->alloc.relay_session.s),
+								  peer_addr.ss.sa_family,
 								  (get_ioa_socket_type(ss->client_socket)==UDP_SOCKET ? IPPROTO_UDP : IPPROTO_TCP),
 								  &(get_remote_addr_from_ioa_socket(ss->client_socket)->ss),
 								  &(get_local_addr_from_ioa_socket(ss->client_socket)->ss),
-								  &(get_local_addr_from_ioa_socket(ss->alloc.relay_session.s)),
-								  &(get_remote_addr_from_ioa_socket(ss->alloc.relay_session.s))
+								  &(get_local_addr_from_ioa_socket(get_relay_socket(&(ss->alloc),peer_addr.ss.sa_family))),
+								  &(get_remote_addr_from_ioa_socket(get_relay_socket(&(ss->alloc),peer_addr.ss.sa_family)))
 							  );
 						  }
 					  }
@@ -2626,7 +2676,7 @@ static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss,
 
 			if (tinfo || (server->server_relay)) {
 
-				set_df_on_ioa_socket(get_relay_socket_ss(ss), set_df);
+				set_df_on_ioa_socket(get_relay_socket_ss(ss,peer_addr.ss.sa_family), set_df);
 
 				ioa_network_buffer_handle nbh = in_buffer->nbh;
 				if(value && len>0) {
@@ -2637,7 +2687,7 @@ static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss,
 					ioa_network_buffer_set_size(nbh,len);
 				}
 				ioa_network_buffer_header_init(nbh);
-				send_data_from_ioa_socket_nbh(get_relay_socket_ss(ss), &peer_addr, nbh, in_buffer->recv_ttl-1, in_buffer->recv_tos);
+				send_data_from_ioa_socket_nbh(get_relay_socket_ss(ss,peer_addr.ss.sa_family), &peer_addr, nbh, in_buffer->recv_ttl-1, in_buffer->recv_tos);
 				in_buffer->nbh = NULL;
 			}
 
@@ -2716,9 +2766,7 @@ static int handle_turn_create_permission(turn_turnserver *server,
 						       sar, &peer_addr,
 						       NULL);
 
-					ioa_addr *relay_addr = get_local_addr_from_ioa_socket(a->relay_session.s);
-
-					if(relay_addr && (relay_addr->ss.sa_family != peer_addr.ss.sa_family)) {
+					if(!get_relay_socket(a,peer_addr.ss.sa_family)) {
 						*err_code = 443;
 						*reason = (const u08bits *)"Peer Address Family Mismatch";
 					} else if(!good_peer_addr(server, &peer_addr)) {
@@ -3637,7 +3685,7 @@ static int write_to_peerchannel(ts_ur_super_session* ss, u16bits chnum, ioa_net_
 
 	int rc = 0;
 
-	if (ss && get_relay_socket_ss(ss) && (in_buffer->recv_ttl!=0)) {
+	if (ss && (in_buffer->recv_ttl!=0)) {
 
 		allocation* a = get_allocation_ss(ss);
 
@@ -3649,7 +3697,7 @@ static int write_to_peerchannel(ts_ur_super_session* ss, u16bits chnum, ioa_net_
 				return -1;
 
 			/* Channel packets are always sent with DF=0: */
-			set_df_on_ioa_socket(get_relay_socket_ss(ss), 0);
+			set_df_on_ioa_socket(get_relay_socket_ss(ss, chn->peer_addr.ss.sa_family), 0);
 
 			ioa_network_buffer_handle nbh = in_buffer->nbh;
 
@@ -3657,7 +3705,7 @@ static int write_to_peerchannel(ts_ur_super_session* ss, u16bits chnum, ioa_net_
 
 			ioa_network_buffer_header_init(nbh);
 
-			rc = send_data_from_ioa_socket_nbh(get_relay_socket_ss(ss), &(chn->peer_addr), nbh, in_buffer->recv_ttl-1, in_buffer->recv_tos);
+			rc = send_data_from_ioa_socket_nbh(get_relay_socket_ss(ss, chn->peer_addr.ss.sa_family), &(chn->peer_addr), nbh, in_buffer->recv_ttl-1, in_buffer->recv_tos);
 			in_buffer->nbh = NULL;
 		}
 	}
@@ -3724,7 +3772,12 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
 	}
 
 	IOA_CLOSE_SOCKET(ss->client_socket);
-	IOA_CLOSE_SOCKET(ss->alloc.relay_session.s);
+	{
+		int i;
+		for(i=0;i<ALLOC_PROTOCOLS_NUMBER;++i) {
+			IOA_CLOSE_SOCKET(ss->alloc.relay_sessions[i].s);
+		}
+	}
 
 	turn_server_remove_all_from_ur_map_ss(ss);
 
@@ -3756,14 +3809,14 @@ static void client_to_be_allocated_timeout_handler(ioa_engine_handle e,
 	if(!s || ioa_socket_tobeclosed(s)) {
 		to_close = 1;
 	} else {
-		ioa_socket_handle rs = ss->alloc.relay_session.s;
-		if(!rs || ioa_socket_tobeclosed(rs)) {
-			to_close = 1;
-		} else if(ss->alloc.relay_session.s == NULL) {
+		ioa_socket_handle rs4 = ss->alloc.relay_sessions[ALLOC_IPV4_INDEX].s;
+		ioa_socket_handle rs6 = ss->alloc.relay_sessions[ALLOC_IPV6_INDEX].s;
+		if((!rs4 || ioa_socket_tobeclosed(rs4)) && (!rs6 || ioa_socket_tobeclosed(rs6))) {
 			to_close = 1;
 		} else if(ss->client_socket == NULL) {
 			to_close = 1;
-		} else if(!(ss->alloc.relay_session.lifetime_ev)) {
+		} else if(!(ss->alloc.relay_sessions[ALLOC_IPV4_INDEX].lifetime_ev) &&
+				!(ss->alloc.relay_sessions[ALLOC_IPV6_INDEX].lifetime_ev)) {
 			to_close = 1;
 		} else if(!(ss->to_be_allocated_timeout_ev)) {
 			to_close = 1;
@@ -3843,7 +3896,7 @@ static int create_relay_connection(turn_turnserver* server,
 	if (server && ss && ss->client_socket) {
 
 		allocation* a = get_allocation_ss(ss);
-		relay_endpoint_session* newelem = get_relay_session_ss(ss);
+		relay_endpoint_session* newelem = get_relay_session_ss(ss,get_family(address_family));
 
 		IOA_CLOSE_SOCKET(newelem->s);
 
@@ -3929,7 +3982,7 @@ static int create_relay_connection(turn_turnserver* server,
 		ioa_timer_handle ev = set_ioa_timer(server->e, lifetime, 0,
 				client_ss_allocation_timeout_handler, ss, 0,
 				"client_ss_allocation_timeout_handler");
-		set_allocation_lifetime_ev(a, server->ctime + lifetime, ev);
+		set_allocation_lifetime_ev(a, server->ctime + lifetime, ev, get_local_addr_from_ioa_socket(newelem->s)->ss.sa_family);
 
 		set_ioa_socket_session(newelem->s, ss);
 	}
@@ -3940,7 +3993,7 @@ static int create_relay_connection(turn_turnserver* server,
 static int refresh_relay_connection(turn_turnserver* server,
 		ts_ur_super_session *ss, u32bits lifetime, int even_port,
 		u64bits in_reservation_token, u64bits *out_reservation_token,
-		int *err_code) {
+		int *err_code, int family) {
 
 	UNUSED_ARG(even_port);
 	UNUSED_ARG(in_reservation_token);
@@ -3960,7 +4013,7 @@ static int refresh_relay_connection(turn_turnserver* server,
 				client_ss_allocation_timeout_handler, ss, 0,
 				"refresh_client_ss_allocation_timeout_handler");
 
-		set_allocation_lifetime_ev(a, server->ctime + lifetime, ev);
+		set_allocation_lifetime_ev(a, server->ctime + lifetime, ev, family);
 
 		return 0;
 
@@ -4205,7 +4258,7 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 
 	ts_ur_super_session* ss = (ts_ur_super_session*) arg;
 
-	if(!ss) return;
+	if(!ss || !s) return;
 
 	turn_turnserver *server = (turn_turnserver*) (ss->server);
 
@@ -4213,7 +4266,7 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 		return;
 	}
 
-	relay_endpoint_session* elem = get_relay_session_ss(ss);
+	relay_endpoint_session* elem = get_relay_session_ss(ss, get_ioa_socket_address_family(s));
 	if (elem->s == NULL) {
 		return;
 	}
