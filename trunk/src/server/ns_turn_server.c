@@ -434,15 +434,18 @@ int turn_session_info_copy_from(struct turn_session_info* tsi, ts_ur_super_sessi
 				addr_to_string(&(tsi->remote_addr_data.addr),(u08bits*)tsi->remote_addr_data.saddr);
 			}
 			{
-				int i;
-				for(i=0;i<ALLOC_PROTOCOLS_NUMBER;++i) {
-					if(ss->alloc.relay_sessions[i].s) {
-						tsi->peer_protocol = get_ioa_socket_type(ss->alloc.relay_sessions[i].s);
-						if(ss->alloc.is_valid) {
-							addr_cpy(&(tsi->relay_addr_data.addr),get_local_addr_from_ioa_socket(ss->alloc.relay_sessions[i].s));
-							addr_to_string(&(tsi->relay_addr_data.addr),(u08bits*)tsi->relay_addr_data.saddr);
-						}
-						break;
+				if(ss->alloc.relay_sessions[ALLOC_IPV4_INDEX].s) {
+					tsi->peer_protocol = get_ioa_socket_type(ss->alloc.relay_sessions[ALLOC_IPV4_INDEX].s);
+					if(ss->alloc.is_valid) {
+						addr_cpy(&(tsi->relay_addr_data_ipv4.addr),get_local_addr_from_ioa_socket(ss->alloc.relay_sessions[ALLOC_IPV4_INDEX].s));
+						addr_to_string(&(tsi->relay_addr_data_ipv4.addr),(u08bits*)tsi->relay_addr_data_ipv4.saddr);
+					}
+				}
+				if(ss->alloc.relay_sessions[ALLOC_IPV6_INDEX].s) {
+					tsi->peer_protocol = get_ioa_socket_type(ss->alloc.relay_sessions[ALLOC_IPV6_INDEX].s);
+					if(ss->alloc.is_valid) {
+						addr_cpy(&(tsi->relay_addr_data_ipv6.addr),get_local_addr_from_ioa_socket(ss->alloc.relay_sessions[ALLOC_IPV6_INDEX].s));
+						addr_to_string(&(tsi->relay_addr_data_ipv6.addr),(u08bits*)tsi->relay_addr_data_ipv6.saddr);
 					}
 				}
 			}
@@ -3896,24 +3899,29 @@ static int create_relay_connection(turn_turnserver* server,
 	if (server && ss && ss->client_socket) {
 
 		allocation* a = get_allocation_ss(ss);
-		relay_endpoint_session* newelem = get_relay_session_ss(ss,get_family(address_family));
-
-		IOA_CLOSE_SOCKET(newelem->s);
-
-		ns_bzero(newelem, sizeof(relay_endpoint_session));
-		newelem->s = NULL;
-
+		relay_endpoint_session* newelem = NULL;
 		ioa_socket_handle rtcp_s = NULL;
 
 		if (in_reservation_token) {
 
+			ioa_socket_handle s = NULL;
+
 			if (get_ioa_socket_from_reservation(server->e, in_reservation_token,
-					&newelem->s) < 0) {
-				IOA_CLOSE_SOCKET(newelem->s);
+					&s) < 0) {
+				IOA_CLOSE_SOCKET(s);
 				*err_code = 508;
 				*reason = (const u08bits *)"Cannot find reserved socket";
 				return -1;
 			}
+
+			int family = get_ioa_socket_address_family(s);
+
+			newelem = get_relay_session_ss(ss,family);
+
+			IOA_CLOSE_SOCKET(newelem->s);
+
+			ns_bzero(newelem, sizeof(relay_endpoint_session));
+			newelem->s = s;
 
 			if(!check_username_hash(newelem->s,ss->username,(u08bits*)ss->realm_options.name)) {
 				IOA_CLOSE_SOCKET(newelem->s);
@@ -3925,6 +3933,13 @@ static int create_relay_connection(turn_turnserver* server,
 			addr_debug_print(server->verbose, get_local_addr_from_ioa_socket(newelem->s), "Local relay addr (RTCP)");
 
 		} else {
+
+			newelem = get_relay_session_ss(ss,get_family(address_family));
+
+			IOA_CLOSE_SOCKET(newelem->s);
+
+			ns_bzero(newelem, sizeof(relay_endpoint_session));
+			newelem->s = NULL;
 
 			int res = create_relay_ioa_sockets(server->e,
 							ss->client_socket,

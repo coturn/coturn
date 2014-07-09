@@ -502,13 +502,19 @@ static int print_session(ur_map_key_type key, ur_map_value_type value, void *arg
 						addr_to_string(&(tsi->local_addr_data.addr),(u08bits*)tsi->local_addr_data.saddr);
 					if(!tsi->remote_addr_data.saddr[0])
 						addr_to_string(&(tsi->remote_addr_data.addr),(u08bits*)tsi->remote_addr_data.saddr);
-					if(!tsi->relay_addr_data.saddr[0])
-						addr_to_string(&(tsi->relay_addr_data.addr),(u08bits*)tsi->relay_addr_data.saddr);
+					if(!tsi->relay_addr_data_ipv4.saddr[0])
+						addr_to_string(&(tsi->relay_addr_data_ipv4.addr),(u08bits*)tsi->relay_addr_data_ipv4.saddr);
+					if(!tsi->relay_addr_data_ipv6.saddr[0])
+						addr_to_string(&(tsi->relay_addr_data_ipv6.addr),(u08bits*)tsi->relay_addr_data_ipv6.saddr);
 					myprintf(cs,"      client addr %s, server addr %s\n",
 									tsi->remote_addr_data.saddr,
 									tsi->local_addr_data.saddr);
-					myprintf(cs,"      relay addr %s\n",
-									tsi->relay_addr_data.saddr);
+					if(tsi->relay_addr_data_ipv4.saddr[0]) {
+						myprintf(cs,"      relay addr %s\n", tsi->relay_addr_data_ipv4.saddr);
+					}
+					if(tsi->relay_addr_data_ipv6.saddr[0]) {
+						myprintf(cs,"      relay addr %s\n", tsi->relay_addr_data_ipv6.saddr);
+					}
 				}
 				myprintf(cs,"      fingerprints enforced: %s\n",get_flag(tsi->enforce_fingerprints));
 				myprintf(cs,"      mobile: %s\n",get_flag(tsi->is_mobile));
