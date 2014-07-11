@@ -83,8 +83,6 @@
 
 #include "ns_ioalib_impl.h"
 
-#include "hiredis_libevent2.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif

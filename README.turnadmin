@@ -92,6 +92,8 @@ Options with required values:
 			See the --psql-userdb option in the turnserver section.
 -M, --mysql-userdb	MySQL user database connection string.
 			See the --mysql-userdb option in the turnserver section.
+-J, --mongo-userdb	MongoDB user database connection string.
+			See the --mysql-mongo option in the turnserver section.
 -N, --redis-userdb	Redis user database connection string.
 			See the --redis-userdb option in the turnserver section.
 -u, --user		User name.

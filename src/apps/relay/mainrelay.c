@@ -427,6 +427,11 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "	        	          		\"host=<ip-addr> dbname=<database-name> user=<database-user> \\\n								password=<database-user-password> port=<db-port> connect_timeout=<seconds>\".\n"
 "	        	          		All parameters are optional.\n"
 #endif
+#if !defined(TURN_NO_MONGO)
+" -J, --mongo-userdb	<connection-string>	MongoDB connection string, if used (default - empty, no MongoDB used).\n"
+"	                                	This database can be used for long-term and short-term credentials mechanisms,\n"
+"		                                and it can store the secret value(s) for secret-based timed authentication in TURN RESP API.\n"
+#endif
 #if !defined(TURN_NO_HIREDIS)
 " -N, --redis-userdb	<connection-string>	Redis user database connection string, if used (default - empty, no Redis DB used).\n"
 "	                                	This database can be used for long-term and short-term credentials mechanisms,\n"
@@ -557,7 +562,7 @@ static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
 	"	-D, --delete-st			delete a short-term mechanism user\n"
 	"	-l, --list			list all long-term mechanism users\n"
 	"	-L, --list-st			list all short-term mechanism users\n"
-#if !defined(TURN_NO_PQ) || !defined(TURN_NO_MYSQL) || !defined(TURN_NO_HIREDIS)
+#if !defined(TURN_NO_PQ) || !defined(TURN_NO_MYSQL) || !defined(TURN_NO_MONGO) || !defined(TURN_NO_HIREDIS)
 	"	-s, --set-secret=<value>	Add shared secret for TURN RESP API\n"
 	"	-S, --show-secret		Show stored shared secrets for TURN REST API\n"
 	"	-X, --delete-secret=<value>	Delete a shared secret\n"
@@ -576,13 +581,16 @@ static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
 #if !defined(TURN_NO_MYSQL)
 	"	-M, --mysql-userdb		MySQL user database connection string, if MySQL DB is used.\n"
 #endif
+#if !defined(TURN_NO_MONGO)
+	"	-J, --mongo-userdb		MongoDB user database connection string, if MongoDB is used.\n"
+#endif
 #if !defined(TURN_NO_HIREDIS)
 	"	-N, --redis-userdb		Redis user database connection string, if Redis DB is used.\n"
 #endif
 	"	-u, --user			Username\n"
 	"	-r, --realm			Realm for long-term mechanism only\n"
 	"	-p, --password			Password\n"
-#if !defined(TURN_NO_PQ) || !defined(TURN_NO_MYSQL) || !defined(TURN_NO_HIREDIS)
+#if !defined(TURN_NO_PQ) || !defined(TURN_NO_MYSQL) || !defined(TURN_NO_MONGO) || !defined(TURN_NO_HIREDIS)
 	"	-o, --origin			Origin\n"
 #endif
 	"	-H, --sha256			Use SHA256 digest function to be used for the message integrity.\n"
@@ -595,9 +603,9 @@ static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
 	"					Setting to zero value means removal of the option.\n"
 	"	-h, --help			Help\n";
 
-#define OPTIONS "c:d:p:L:E:X:i:m:l:r:u:b:B:e:M:N:O:q:Q:s:C:vVofhznaAS"
-
-#define ADMIN_OPTIONS "gGORIHlLkaADSdb:e:M:N:u:r:p:s:X:o:h"
+#define OPTIONS "c:d:p:L:E:X:i:m:l:r:u:b:B:e:M:J:N:O:q:Q:s:C:vVofhznaAS"
+  
+#define ADMIN_OPTIONS "gGORIHlLkaADSdb:e:M:J:N:u:r:p:s:X:o:h"
 
 enum EXTRA_OPTS {
 	NO_UDP_OPT=256,
@@ -701,6 +709,9 @@ static const struct myoption long_options[] = {
 #if !defined(TURN_NO_MYSQL)
 				{ "mysql-userdb", required_argument, NULL, 'M' },
 #endif
+#if !defined(TURN_NO_MONGO)
+				{ "mongo-userdb", required_argument, NULL, 'J' },
+#endif
 #if !defined(TURN_NO_HIREDIS)
 				{ "redis-userdb", required_argument, NULL, 'N' },
 				{ "redis-statsdb", required_argument, NULL, 'O' },
@@ -776,7 +787,7 @@ static const struct myoption admin_long_options[] = {
 				{ "delete", no_argument, NULL, 'd' },
 				{ "list", no_argument, NULL, 'l' },
 				{ "list-st", no_argument, NULL, 'L' },
-#if !defined(TURN_NO_PQ) || !defined(TURN_NO_MYSQL) || !defined(TURN_NO_HIREDIS)
+#if !defined(TURN_NO_PQ) || !defined(TURN_NO_MYSQL) || !defined(TURN_NO_MONGO) || !defined(TURN_NO_HIREDIS)
 				{ "set-secret", required_argument, NULL, 's' },
 				{ "show-secret", no_argument, NULL, 'S' },
 				{ "delete-secret", required_argument, NULL, 'X' },
@@ -792,6 +803,9 @@ static const struct myoption admin_long_options[] = {
 #if !defined(TURN_NO_MYSQL)
 				{ "mysql-userdb", required_argument, NULL, 'M' },
 #endif
+#if !defined(TURN_NO_MONGO)
+				{ "mongo-userdb", required_argument, NULL, 'J' },
+#endif
 #if !defined(TURN_NO_HIREDIS)
 				{ "redis-userdb", required_argument, NULL, 'N' },
 #endif
@@ -799,7 +813,7 @@ static const struct myoption admin_long_options[] = {
 				{ "realm", required_argument, NULL, 'r' },
 				{ "password", required_argument, NULL, 'p' },
 				{ "sha256", no_argument, NULL, 'H' },
-#if !defined(TURN_NO_PQ) || !defined(TURN_NO_MYSQL) || !defined(TURN_NO_HIREDIS)
+#if !defined(TURN_NO_PQ) || !defined(TURN_NO_MYSQL) || !defined(TURN_NO_MONGO) || !defined(TURN_NO_HIREDIS)
 				{ "add-origin", no_argument, NULL, 'O' },
 				{ "del-origin", no_argument, NULL, 'R' },
 				{ "list-origins", required_argument, NULL, 'I' },
@@ -1084,6 +1098,12 @@ static void set_option(int c, char *value)
 	case 'M':
 		STRCPY(turn_params.default_users_db.persistent_users_db.userdb, value);
 		turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_MYSQL;
+		break;
+#endif
+#if !defined(TURN_NO_MONGO)
+	case 'J':
+		STRCPY(turn_params.default_users_db.persistent_users_db.userdb, value);
+		turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_MONGO;
 		break;
 #endif
 #if !defined(TURN_NO_HIREDIS)
@@ -1411,7 +1431,7 @@ static int adminmain(int argc, char **argv)
 			ct = TA_LIST_USERS;
 			is_st = 1;
 			break;
-#if !defined(TURN_NO_PQ) || !defined(TURN_NO_MYSQL) || !defined(TURN_NO_HIREDIS)
+#if !defined(TURN_NO_PQ) || !defined(TURN_NO_MYSQL) || !defined(TURN_NO_MONGO) || !defined(TURN_NO_HIREDIS)
 		case 's':
 			ct = TA_SET_SECRET;
 			STRCPY(secret,optarg);
@@ -1442,6 +1462,12 @@ static int adminmain(int argc, char **argv)
 		case 'M':
 		  STRCPY(turn_params.default_users_db.persistent_users_db.userdb,optarg);
 		  turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_MYSQL;
+		  break;
+#endif
+#if !defined(TURN_NO_MONGO)
+		case 'J':
+		  STRCPY(turn_params.default_users_db.persistent_users_db.userdb,optarg);
+		  turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_MONGO;
 		  break;
 #endif
 #if !defined(TURN_NO_HIREDIS)
@@ -1556,6 +1582,12 @@ static void print_features(unsigned long mfn)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "MySQL supported\n");
 #else
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "MySQL is not supported\n");
+#endif
+
+#if !defined(TURN_NO_MONGO)
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "MongoDB supported\n");
+#else
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "MongoDB is not supported\n");
 #endif
 
 #if defined(OPENSSL_THREADS)

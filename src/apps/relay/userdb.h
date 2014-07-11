@@ -77,6 +77,10 @@ struct _realm_params_t {
 
 };
 
+void lock_realms(void);
+void unlock_realms(void);
+void update_o_to_realm(ur_string_map * o_to_realm_new);
+
 //////////// USER DB //////////////////////////////
 
 struct auth_message {
@@ -99,6 +103,9 @@ enum _TURN_USERDB_TYPE {
 #endif
 #if !defined(TURN_NO_MYSQL)
 	,TURN_USERDB_TYPE_MYSQL
+#endif
+#if !defined(TURN_NO_MONGO)
+	,TURN_USERDB_TYPE_MONGO
 #endif
 #if !defined(TURN_NO_HIREDIS)
 	,TURN_USERDB_TYPE_REDIS
@@ -194,7 +201,7 @@ void reread_realms(void);
 int add_user_account(char *user, int dynamic);
 int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, u08bits *origin, TURNADMIN_COMMAND_TYPE ct, int is_st, perf_options_t* po);
 
-int add_ip_list_range(char* range, ip_range_list_t * list);
+int add_ip_list_range(const char* range, ip_range_list_t * list);
 
 ///////////// Redis //////////////////////
 
