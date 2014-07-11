@@ -212,13 +212,13 @@ do not allows that, then after the installation, you may have to adjust the
 system-wide shared library search path by using "ldconfig -n <libdirname>" 
 (Linux), "ldconfig -m <libdirname>" (BSD) or "crle -u -l <libdirname>" 
 (Solaris). Your system must be able to find the libevent2, openssl and 
-(optionally) PostgreSQL and/or MySQL (MariaDB) and/or Redis shared libraries, 
-either with the help of the system-wide library search configuration or by 
-using LD_LIBRARY_PATH. "make install" will make a non-garantied effort to add 
-automatically PREFIX/lib and /usr/local/lib to the libraries search path, 
-but if you have some libraries in different non-default directories 
-you will have to add them manually to the search path, or you 
-will have to adjust LD_LIBRARY_PATH.
+(optionally) PostgreSQL and/or MySQL (MariaDB) and/or MongoDB and/or Redis 
+shared libraries, either with the help of the system-wide library search 
+configuration or by using LD_LIBRARY_PATH. "make install" will make a 
+non-garantied effort to add automatically PREFIX/lib and /usr/local/lib to 
+the libraries search path, but if you have some libraries in different 
+non-default directories you will have to add them manually to the search 
+path, or you will have to adjust LD_LIBRARY_PATH.
 
 V. PLATFORMS
 
@@ -277,8 +277,8 @@ VII. WHICH EXTRA LIBRARIES AND UTILITIES YOU NEED
 In addition to common *NIX OS services and libraries, to compile this code, 
 OpenSSL (version 1.0.0a or better recommended) and libevent2 (version 2.0.5 
 or better) are required, the PostgreSQL C client development setup is 
-optional, the MySQL (MariaDB) C client development setup is optional, and the 
-Hiredis development files for Redis database access are optional.
+optional, the MySQL (MariaDB) C client development setup is optional, the MongoDB
+C Driver and the Hiredis development files for Redis database access are optional.
 For fully functional build, the extra set of libraries must be installed
 in full version (the development headers and the libraries to link with). 
 For runtime, only runtime setup is required. If the build is modified for 
@@ -290,6 +290,7 @@ libraries can be downloaded from their web sites:
  - http://www.libevent.org (required);
  - http://www.postgresql.org (optional);
  - http://www.mysql.org (or http://mariadb.org) (optional);
+ - https://github.com/mongodb/mongo-c-driver (optional);
  - http://redis.io (optional).
  
 The installations are pretty straightforward - the usual 
@@ -352,6 +353,11 @@ installation:
 	- you have to install gcc first:
 		$ sudo yum install gcc
 
+	- mongo-c-driver packages are not available. MongoDB support 
+  will not be compiled, unless you install it "manually" before 
+  the TURN server compilation. Refer to https://github.com/mongodb/mongo-c-driver
+  for installation instructions of the driver.
+		
 	- hiredis packages are not available, so do not issue the 
 	hiredis installation commands. Redis support will not be 
 	compiled, unless you install it "manually" before the TURN 
@@ -381,7 +387,7 @@ like this:
 Dynamic library paths:
 
 You may also have to adjust the turn server start script, add PostgreSQL 
-and/or MySQL and/or Redis runtime library path to LD_LIBRARY_PATH. 
+and/or MySQL and/or MongoDB and/or Redis runtime library path to LD_LIBRARY_PATH.
 Or you may find that it would be more convenient to adjust the 
 system-wide shared library search path by using commands:
 
@@ -412,17 +418,17 @@ absolute paths or @rpath/... .
 
 See also the next section.
 
-NOTE: See "PostgreSQL setup" and "MySQL setup" and "Redis setup" sections 
-below for more database setup information.
+NOTE: See "PostgreSQL setup" and "MySQL setup" and "MongoDB setup" and 
+"Redis setup" sections below for more database setup information.
 
-NOTE: If you do not install PostgreSQL or MySQL or Redis then you will
+NOTE: If you do not install PostgreSQL or MySQL or MongoDB or Redis then you will
 be limited to flat files for user database. It will work great for 
 smaller user databases (like 100 users) but for larger systems you 
-will need PostgreSQL or MySQL or Redis.
+will need PostgreSQL or MySQL or MongoDB or Redis.
 
-NOTE: To run PostgreSQL or MySQL or Redis server on the same system, 
+NOTE: To run PostgreSQL or MySQL or MongoDB or Redis server on the same system, 
 you will also have to install a corresponding PostgreSQL or MySQL or 
-Redis server package. The DB C development packages only provide 
+MongoDB or Redis server package. The DB C development packages only provide 
 development libraries, and client libraries only provide client 
 access utilities and runtime libraries. The server packages may 
 include everything - client, C development and server runtime.   
@@ -892,7 +898,28 @@ Or in the turnserver.conf file:
 
 mysql-userdb="host=localhost dbname=turn user=turn password=turn connect_timeout=30"
 
-XVI. Redis setup
+XVI. MongoDB setup
+
+The MongoDB setup is well documented on their site http://docs.mongodb.org/manual/. 
+
+If the TURN server was compiled with MongoDB support (mongo-c-driver is the C client 
+library for MongoDB), then we can use the TURN server database parameter 
+--mongo-userdb. The value of this parameter is a connection string 
+for the MongoDB database. The format of the connection string is described at 
+http://hergert.me/docs/mongo-c-driver/mongoc_uri.html:
+
+"mongodb://[username:password@]host1[:port1][,host2[:port2],...[,hostN[:portN]]][/[database][?options]]"
+
+So, an example of the MongoDB database parameter in the TURN server command 
+line would be:
+
+--mongo-userdb="mongodb://localhost:27017/turndb"
+
+Or in the turnserver.conf file:
+
+mongo-userdb="mongodb://localhost:27017/turndb"
+
+XVII. Redis setup
 
 The Redis setup is well documented on their site http://redis.io. 
 The TURN Server Redis database schema description can be found 
@@ -961,20 +988,20 @@ Redis TURN admin commands:
   $ bin/turnadmin -A -N "host=localhost dbname=0 user=turn password=turn" -u gorst -r north.gov -p hero
   $ bin/turnadmin -A -N "host=localhost dbname=0 user=turn password=turn" -u ninefingers -r north.gov -p youhavetoberealistic 
 
-XV. Performance tuning
+XVIII. Performance tuning
 
 This topic is covered in the wiki page:
 
 http://code.google.com/p/coturn/wiki/turn_performance_and_load_balance
 
-XVI. TURN Server setup
+XIX. TURN Server setup
 
 Read the project wiki pages: http://code.google.com/p/coturn/w/list
 
 Also, check the project from page links to the TURN/WebRTC configuration examples.
 It may give you an idea how it can be done.
 
-XVI. Management interface
+XX. Management interface
 
 You have a telnet interface (enabled by default) to access the turnserver process, 
 to view its state, to gather some statistical information, and to make some changes 

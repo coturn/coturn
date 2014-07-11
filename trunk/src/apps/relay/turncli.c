@@ -764,6 +764,11 @@ static void cli_print_configuration(struct cli_session* cs)
 				cli_print_str(cs,"MySQL/MariaDB","DB type",0);
 				break;
 #endif
+#if !defined(TURN_NO_MONGO)
+			case TURN_USERDB_TYPE_MONGO:
+				cli_print_str(cs,"MongoDB","DB type",0);
+				break;
+#endif
 #if !defined(TURN_NO_HIREDIS)
 			case TURN_USERDB_TYPE_REDIS:
 				cli_print_str(cs,"redis","DB type",0);
