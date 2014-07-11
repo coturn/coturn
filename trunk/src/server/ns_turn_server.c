@@ -3035,8 +3035,13 @@ static int check_stun_auth(turn_turnserver *server,
 			get_realm_options_by_name((char *)realm, &(ss->realm_options));
 
 		} else if(strcmp((char*)realm, (char*)(ss->realm_options.name))) {
-			*err_code = 441;
-			*reason = (const u08bits*)"Wrong credentials: the realm value incorrect";
+			if(method == STUN_METHOD_ALLOCATE) {
+				*err_code = 437;
+				*reason = (const u08bits*)"Allocation mismatch: wrong credentials: the realm value is incorrect";
+			} else {
+				*err_code = 441;
+				*reason = (const u08bits*)"Wrong credentials: the realm value is incorrect";
+			}
 			return -1;
 		}
 	}
@@ -3059,8 +3064,13 @@ static int check_stun_auth(turn_turnserver *server,
 
 	if(ss->username[0]) {
 		if(strcmp((char*)ss->username,(char*)usname)) {
-			*err_code = 441;
-			*reason = (const u08bits*)"Wrong credentials";
+			if(method == STUN_METHOD_ALLOCATE) {
+				*err_code = 437;
+				*reason = (const u08bits*)"Allocation mismatch: wrong credentials";
+			} else {
+				*err_code = 441;
+				*reason = (const u08bits*)"Wrong credentials";
+			}
 			return -1;
 		}
 	} else {
@@ -3259,21 +3269,31 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 
 			if(method == STUN_METHOD_ALLOCATE) {
 
-				SOCKET_TYPE cst = get_ioa_socket_type(ss->client_socket);
-				turn_server_addrs_list_t *asl = server->alternate_servers_list;
-
-				if(((cst == UDP_SOCKET)||(cst == DTLS_SOCKET)) && server->self_udp_balance &&
-						server->aux_servers_list && server->aux_servers_list->size) {
-					asl = server->aux_servers_list;
-				} else if(((cst == TLS_SOCKET) || (cst == DTLS_SOCKET)) &&
-						server->tls_alternate_servers_list && server->tls_alternate_servers_list->size) {
-					asl = server->tls_alternate_servers_list;
+				allocation *a = get_allocation_ss(ss);
+				if(is_allocation_valid(a)) {
+					if(!stun_tid_equals(&(a->tid), &tid)) {
+						err_code = 437;
+						reason = (const u08bits *)"Mismatched allocation: wrong transaction ID";
+					}
 				}
 
-				if(asl && asl->size) {
-					turn_mutex_lock(&(asl->m));
-					set_alternate_server(asl,get_local_addr_from_ioa_socket(ss->client_socket),&(server->as_counter),method,&tid,resp_constructed,&err_code,&reason,nbh);
-					turn_mutex_unlock(&(asl->m));
+				if(!err_code) {
+					SOCKET_TYPE cst = get_ioa_socket_type(ss->client_socket);
+					turn_server_addrs_list_t *asl = server->alternate_servers_list;
+
+					if(((cst == UDP_SOCKET)||(cst == DTLS_SOCKET)) && server->self_udp_balance &&
+							server->aux_servers_list && server->aux_servers_list->size) {
+						asl = server->aux_servers_list;
+					} else if(((cst == TLS_SOCKET) || (cst == DTLS_SOCKET)) &&
+							server->tls_alternate_servers_list && server->tls_alternate_servers_list->size) {
+						asl = server->tls_alternate_servers_list;
+					}
+
+					if(asl && asl->size) {
+						turn_mutex_lock(&(asl->m));
+						set_alternate_server(asl,get_local_addr_from_ioa_socket(ss->client_socket),&(server->as_counter),method,&tid,resp_constructed,&err_code,&reason,nbh);
+						turn_mutex_unlock(&(asl->m));
+					}
 				}
 			}
 
