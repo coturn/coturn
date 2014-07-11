@@ -1,8 +1,9 @@
 06/25/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.0.1.4 'Severard':
-	- multiple origins supported.
+	- multiple origins supported per request.
 	- working on compilation warnings.
 	- "allocation mismatch" condition fixed (merged from rfc5766-turn-server).
+	- STUN BINDING response fixed in the case of -X (external address) option.
 
 06/13/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.0.1.3 'Severard':

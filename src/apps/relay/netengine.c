@@ -891,7 +891,7 @@ static void setup_listener(void)
 		bufferevent_enable(turn_params.listener.in_buf, EV_READ);
 	}
 
-	if(turn_params.listener.addrs_number<2) {
+	if(turn_params.listener.addrs_number<2 || turn_params.external_ip) {
 		turn_params.rfc5780 = 0;
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: I cannot support STUN CHANGE_REQUEST functionality because only one IP address is provided\n");
 	} else {
