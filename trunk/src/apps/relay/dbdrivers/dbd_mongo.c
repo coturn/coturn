@@ -700,7 +700,6 @@ static int mongo_list_realm_options(u08bits *realm) {
           if (bson_iter_init(&options_iter, &options)) {
             while(bson_iter_next(&options_iter)) {
               const char * _k = bson_iter_key(&options_iter);
-              printf("key %s, type %d\n", _k, bson_iter_type(&options_iter));
               if (BSON_ITER_HOLDS_DOUBLE(&options_iter)) {
                 int32_t _v = (int32_t)bson_iter_double(&options_iter);
 								printf("%s[%s]=%d\n", _k, _realm, _v);
@@ -759,7 +758,7 @@ static int mongo_get_ip_list(const char *kind, ip_range_list_t * list) {
     bson_iter_t iter;
     const char * value;
     while(mongoc_cursor_next(cursor, &item)) {
-    	if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "value") && BSON_ITER_HOLDS_UTF8(&iter)) {
+    	if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "ip_range") && BSON_ITER_HOLDS_UTF8(&iter)) {
         value = bson_iter_utf8(&iter, &length);
 				add_ip_list_range(value, list);
       }
