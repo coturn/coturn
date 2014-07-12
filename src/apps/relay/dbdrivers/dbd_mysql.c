@@ -741,14 +741,14 @@ static void mysql_reread_realms(secrets_list_t * realms_list) {
 									oval[sz]=0;
 									char *rval=strdup(row[1]);
 									get_realm(rval);
-									ur_string_map_value_type value = strdup(rval);
+									ur_string_map_value_type value = (ur_string_map_value_type)rval;
 									ur_string_map_put(o_to_realm_new, (const ur_string_map_key_type) oval, value);
 								}
 							}
 						}
 					}
 
-          update_o_to_realm(o_to_realm_new);
+					update_o_to_realm(o_to_realm_new);
 				}
 
 				if(mres)
