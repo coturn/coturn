@@ -44,3 +44,6 @@ Mutsutoshi Yoshimoto <mutsutoshi.yoshimoto@mixi.co.jp>
 	TCP routing: testing and bug fixes
 	(since v3.2.2.7)
 
+Federico Pinna <fpinna@vivocha.com>
+	MongoDB support
+	(since v4.1.0.1)
