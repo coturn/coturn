@@ -815,6 +815,8 @@ static void mongo_reread_realms(secrets_list_t * realms_list) {
     	if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "realm") && BSON_ITER_HOLDS_UTF8(&iter)) {
         char * _realm = strdup(bson_iter_utf8(&iter, &length));
 
+        get_realm(_realm);
+
         if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "origin") && BSON_ITER_HOLDS_ARRAY(&iter)) {
           const uint8_t *docbuf = NULL;
           uint32_t doclen = 0;
@@ -827,9 +829,11 @@ static void mongo_reread_realms(secrets_list_t * realms_list) {
           if (bson_iter_init(&origin_iter, &origin_array)) {
             while(bson_iter_next(&origin_iter)) {
               if (BSON_ITER_HOLDS_UTF8(&origin_iter)) {
-                const char * _origin = bson_iter_utf8(&origin_iter, &length);
-								ur_string_map_value_type value = strdup(_origin);
-								ur_string_map_put(o_to_realm_new, (const ur_string_map_key_type)_realm, value);
+                char * _origin = strdup(bson_iter_utf8(&origin_iter, &length));
+				char *rval = strdup(_realm);
+				ur_string_map_value_type value = (ur_string_map_value_type)(rval);
+				ur_string_map_put(o_to_realm_new, (const ur_string_map_key_type) _origin, value);
+				free(_origin);
               }
             }
           }
