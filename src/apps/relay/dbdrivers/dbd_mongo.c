@@ -462,7 +462,7 @@ static int mongo_del_secret(u08bits *secret, u08bits *realm) {
     BSON_APPEND_UTF8(&query, "value", (const char *)secret);
 	}
 
-  mongoc_collection_delete(collection, 0, &query, NULL, NULL);
+  mongoc_collection_delete(collection, MONGOC_DELETE_NONE, &query, NULL, NULL);
   mongoc_collection_destroy(collection);
   bson_destroy(&query);
   return 0;
@@ -844,7 +844,7 @@ static void mongo_reread_realms(secrets_list_t * realms_list) {
           if (bson_iter_init(&options_iter, &options)) {
             while(bson_iter_next(&options_iter)) {
               const char * _k = bson_iter_key(&options_iter);
-              int32_t _v;
+              int32_t _v = 0;
               if (BSON_ITER_HOLDS_DOUBLE(&options_iter)) {
                 _v = (int32_t)bson_iter_double(&options_iter);
               } else if (BSON_ITER_HOLDS_INT32(&options_iter)) {
