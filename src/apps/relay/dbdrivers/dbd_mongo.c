@@ -76,46 +76,56 @@ static void MongoFree(MONGO * info) {
 	}
 }
 
-static MONGO * get_mydb_connection(const char *realm) {
-	UNUSED_ARG(realm);
-  
+static MONGO * get_mongodb_connection(void) {
+
 	persistent_users_db_t * pud = get_persistent_users_db();
 
-	MONGO * mydbconnection = (MONGO *)(pud->connection);
+	MONGO * mydbconnection = (MONGO *) (pud->connection);
 
-	if(!mydbconnection) {
-    mongoc_init();
-    mongoc_log_set_handler(&mongo_logger, NULL);
+	if (!mydbconnection) {
+		mongoc_init();
+		mongoc_log_set_handler(&mongo_logger, NULL);
 
-  	mydbconnection = (MONGO *)turn_malloc(sizeof(MONGO));
-    mydbconnection->uri = mongoc_uri_new(pud->userdb);
-    
-    if (!mydbconnection->uri) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open parse MongoDB URI <%s>, connection string format error\n", pud->userdb);
-      MongoFree(mydbconnection);
-      mydbconnection = NULL;
-    } else {
-      mydbconnection->client = mongoc_client_new_from_uri(mydbconnection->uri);
-      if (!mydbconnection->client) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot initialize MongoDB connection\n");
-        MongoFree(mydbconnection);
-        mydbconnection = NULL;
-      } else {
-        mydbconnection->database = mongoc_uri_get_database(mydbconnection->uri);
-        if (!mydbconnection->database) mydbconnection->database = MONGO_DEFAULT_DB;
-    		pud->connection = mydbconnection;
-    	}
-    }
-  }
+		mydbconnection = (MONGO *) turn_malloc(sizeof(MONGO));
+		mydbconnection->uri = mongoc_uri_new(pud->userdb);
+
+		if (!mydbconnection->uri) {
+			TURN_LOG_FUNC(
+					TURN_LOG_LEVEL_ERROR,
+					"Cannot open parse MongoDB URI <%s>, connection string format error\n",
+					pud->userdb);
+			MongoFree(mydbconnection);
+			mydbconnection = NULL;
+		} else {
+			mydbconnection->client = mongoc_client_new_from_uri(
+					mydbconnection->uri);
+			if (!mydbconnection->client) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+						"Cannot initialize MongoDB connection\n");
+				MongoFree(mydbconnection);
+				mydbconnection = NULL;
+			} else {
+				mydbconnection->database = mongoc_uri_get_database(
+						mydbconnection->uri);
+				if (!mydbconnection->database)
+					mydbconnection->database = MONGO_DEFAULT_DB;
+				pud->connection = mydbconnection;
+				TURN_LOG_FUNC(
+					TURN_LOG_LEVEL_INFO,
+					"Opened MongoDB URI <%s>\n",
+					pud->userdb);
+			}
+		}
+	}
 	return mydbconnection;
 }
 
 static mongoc_collection_t * mongo_get_collection(const char * name) {
-	MONGO * mc = get_mydb_connection(NULL);
+	MONGO * mc = get_mongodb_connection();
 
 	if(!mc) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error gettting a connection to MongoDB\n");
-    return NULL;
+		return NULL;
 	}
     
   mongoc_collection_t * collection;
