@@ -1,7 +1,7 @@
 06/25/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.1.0.1 'Vitari':
 	- SSODA support (TODO).
-	- MongoDB support (in progress) (Federico Pinna).
+	- DB "driver" abstraction and MongoDB support (Federico Pinna).
 	- multiple origins supported per request.
 	- "allocation mismatch" condition fixed (merged from rfc5766-turn-server).
 	- STUN BINDING response fixed in the case of -X (external address) option.
