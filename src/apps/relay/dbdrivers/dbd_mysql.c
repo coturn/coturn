@@ -400,11 +400,11 @@ static int mysql_list_users(int is_st, u08bits *realm) {
 	MYSQL * myc = get_mydb_connection();
 	if(myc) {
 		if(is_st) {
-		  snprintf(statement,sizeof(statement),"select name from turnusers_st order by name");
+		  snprintf(statement,sizeof(statement),"select name,'' from turnusers_st order by name");
 		} else if(realm && realm[0]) {
-		  snprintf(statement,sizeof(statement),"select name from turnusers_lt where realm='%s' order by name",realm);
+		  snprintf(statement,sizeof(statement),"select name, realm from turnusers_lt where realm='%s' order by name",realm);
 		} else {
-		  snprintf(statement,sizeof(statement),"select name from turnusers_lt order by name");
+		  snprintf(statement,sizeof(statement),"select name, realm from turnusers_lt order by name");
 		}
 		int res = mysql_query(myc, statement);
 		if(res) {
@@ -413,7 +413,7 @@ static int mysql_list_users(int is_st, u08bits *realm) {
 			MYSQL_RES *mres = mysql_store_result(myc);
 			if(!mres) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n",mysql_error(myc));
-			} else if(mysql_field_count(myc)!=1) {
+			} else if(mysql_field_count(myc)!=2) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown error retrieving MySQL DB information: %s\n",statement);
 			} else {
 				for(;;) {
@@ -422,7 +422,11 @@ static int mysql_list_users(int is_st, u08bits *realm) {
 						break;
 					} else {
 						if(row[0]) {
-							printf("%s\n",row[0]);
+							if(row[1] && row[1][0]) {
+								printf("%s[%s]\n",row[0],row[1]);
+							} else {
+								printf("%s\n",row[0]);
+							}
 						}
 					}
 				}

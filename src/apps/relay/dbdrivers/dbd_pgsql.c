@@ -253,11 +253,11 @@ static int pgsql_list_users(int is_st, u08bits *realm) {
 	PGconn *pqc = get_pqdb_connection();
 	if(pqc) {
 		if(is_st) {
-		  snprintf(statement,sizeof(statement),"select name from turnusers_st order by name");
+		  snprintf(statement,sizeof(statement),"select name,'' from turnusers_st order by name");
 		} else if(realm && realm[0]) {
-		  snprintf(statement,sizeof(statement),"select name from turnusers_lt where realm='%s' order by name",realm);
+		  snprintf(statement,sizeof(statement),"select name,realm from turnusers_lt where realm='%s' order by name",realm);
 		} else {
-		  snprintf(statement,sizeof(statement),"select name from turnusers_lt order by name");
+		  snprintf(statement,sizeof(statement),"select name,realm from turnusers_lt order by name");
 		}
 		PGresult *res = PQexec(pqc, statement);
 		if(!res || (PQresultStatus(res) != PGRES_TUPLES_OK)) {
@@ -267,10 +267,15 @@ static int pgsql_list_users(int is_st, u08bits *realm) {
 			for(i=0;i<PQntuples(res);i++) {
 				char *kval = PQgetvalue(res,i,0);
 				if(kval) {
-					printf("%s\n",kval);
+					char *rval = PQgetvalue(res,i,1);
+					if(rval && *rval) {
+						printf("%s[%s]\n",kval,rval);
+					} else {
+						printf("%s\n",kval);
+					}
 				}
 			}
-      ret = 0;
+			ret = 0;
 		}
 		if(res) {
 			PQclear(res);

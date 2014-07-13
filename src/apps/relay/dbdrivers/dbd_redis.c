@@ -650,7 +650,7 @@ static int redis_list_users(int is_st, u08bits *realm) {
 		}
 
 		clean_secrets_list(&keys);
-    ret = 0;
+		ret = 0;
 	}
   return ret;
 }

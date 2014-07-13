@@ -386,6 +386,7 @@ static int mongo_list_users(int is_st, u08bits *realm) {
   bson_t fields;
   bson_init(&fields);
   BSON_APPEND_INT32(&fields, "name", 1);
+  if(!is_st) BSON_APPEND_INT32(&fields, "realm", 1);
 
   mongoc_cursor_t * cursor;
   cursor = mongoc_collection_find(collection, MONGOC_QUERY_NONE, 0, 0, 0, &query, &fields, NULL);
@@ -398,14 +399,23 @@ static int mongo_list_users(int is_st, u08bits *realm) {
     const bson_t * item;
     uint32_t length;
     bson_iter_t iter;
+    bson_iter_t iter_realm;
     const char * value;
     while (mongoc_cursor_next(cursor, &item)) {
     	if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "name") && BSON_ITER_HOLDS_UTF8(&iter)) {
-        value = bson_iter_utf8(&iter, &length);
-        if (length) {
-					printf("%s\n", value);
-        }
-      }
+    		value = bson_iter_utf8(&iter, &length);
+    		if (length) {
+        		const char *realm = "";
+    			if (!is_st && bson_iter_init(&iter_realm, item) && bson_iter_find(&iter_realm, "realm") && BSON_ITER_HOLDS_UTF8(&iter_realm)) {
+    				realm = bson_iter_utf8(&iter_realm, &length);
+    			}
+    			if(realm && *realm) {
+    				printf("%s[%s]\n", value, realm);
+    			} else {
+    				printf("%s\n", value);
+    			}
+    		}
+    	}
     }
     mongoc_cursor_destroy(cursor);
     ret = 0;
