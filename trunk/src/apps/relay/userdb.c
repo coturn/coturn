@@ -1249,8 +1249,10 @@ void update_white_and_black_lists(void)
 
 /////////////// add ACL record ///////////////////
 
-int add_ip_list_range(const char * range, ip_range_list_t * list)
+int add_ip_list_range(const char * range0, ip_range_list_t * list)
 {
+	char *range = strdup(range0);
+
 	char* separator = strchr(range, '-');
 
 	if (separator) {
@@ -1261,12 +1263,14 @@ int add_ip_list_range(const char * range, ip_range_list_t * list)
 
 	if (make_ioa_addr((const u08bits*) range, 0, &min) < 0) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong address format: %s\n", range);
+		free(range);
 		return -1;
 	}
 
 	if (separator) {
 		if (make_ioa_addr((const u08bits*) separator + 1, 0, &max) < 0) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong address format: %s\n", separator + 1);
+			free(range);
 			return -1;
 		}
 	} else {
@@ -1279,7 +1283,7 @@ int add_ip_list_range(const char * range, ip_range_list_t * list)
 
 	++(list->ranges_number);
 	list->ranges = (char**) realloc(list->ranges, sizeof(char*) * list->ranges_number);
-	list->ranges[list->ranges_number - 1] = strdup(range);
+	list->ranges[list->ranges_number - 1] = range;
 	list->encaddrsranges = (ioa_addr_range**) realloc(list->encaddrsranges, sizeof(ioa_addr_range*) * list->ranges_number);
 
 	list->encaddrsranges[list->ranges_number - 1] = (ioa_addr_range*) turn_malloc(sizeof(ioa_addr_range));

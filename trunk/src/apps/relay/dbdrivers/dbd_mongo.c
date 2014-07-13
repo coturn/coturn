@@ -780,7 +780,7 @@ static int mongo_get_ip_list(const char *kind, ip_range_list_t * list) {
     while(mongoc_cursor_next(cursor, &item)) {
     	if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "ip_range") && BSON_ITER_HOLDS_UTF8(&iter)) {
         value = bson_iter_utf8(&iter, &length);
-				add_ip_list_range(value, list);
+		add_ip_list_range(value, list);
       }
     }
     mongoc_cursor_destroy(cursor);
