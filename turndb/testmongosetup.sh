@@ -2,7 +2,7 @@
 
 mongo $* <<EOF
 
-use turn;
+use coturn;
 
 db.turnusers_lt.insert({ realm: 'north.gov', name: 'ninefingers', hmackey: 'bc807ee29df3c9ffa736523fb2c4e8ee' });
 db.turnusers_lt.insert({ realm: 'north.gov', name: 'gorst', hmackey: '7da2270ccfa49786e0115366d3a3d14d' });

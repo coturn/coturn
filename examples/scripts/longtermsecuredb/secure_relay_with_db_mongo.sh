@@ -15,7 +15,7 @@
 # 3) use 3 relay threads (-m 3)
 # 4) use min UDP relay port 32355 and max UDP relay port 65535
 # 5) "-r north.gov" means "use authentication realm north.gov"
-# 6) --mongo-userdb="mongodb://localhost/turn" 
+# 6) --mongo-userdb="mongodb://localhost/coturn" 
 # means that local MongoDB database "turn" will be used.
 # 7) "--cert=example_turn_server_cert.pem" sets the OpenSSL certificate file name. 
 # 8) "--pkey=example_turn_server_pkey.pem" sets the OpenSSL private key name.
@@ -30,4 +30,4 @@ fi
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib/
 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/usr/local/lib/
 
-PATH="./bin/:../bin/:../../bin/:${PATH}" turnserver -v --syslog -a -L 127.0.0.1 -L ::1 -E 127.0.0.1 -E ::1 --max-bps=3000000 -f -m 3 --min-port=32355 --max-port=65535 -r north.gov --mongo-userdb="mongodb://localhost/turn" --cert=turn_server_cert.pem --pkey=turn_server_pkey.pem --log-file=stdout --cipher-list=ALL:SSLv2 $@
+PATH="./bin/:../bin/:../../bin/:${PATH}" turnserver -v --syslog -a -L 127.0.0.1 -L ::1 -E 127.0.0.1 -E ::1 --max-bps=3000000 -f -m 3 --min-port=32355 --max-port=65535 -r north.gov --mongo-userdb="mongodb://localhost/coturn" --cert=turn_server_cert.pem --pkey=turn_server_pkey.pem --log-file=stdout --cipher-list=ALL:SSLv2 $@
