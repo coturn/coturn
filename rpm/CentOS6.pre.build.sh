@@ -29,16 +29,6 @@ fi
 
 # Libevent2:
 
-cd ${BUILDDIR}/SOURCES
-if ! [ -f  ${LIBEVENT_DISTRO} ] ; then
-    wget ${WGETOPTIONS} https://github.com/downloads/libevent/libevent/${LIBEVENT_DISTRO}
-    ER=$?
-    if ! [ ${ER} -eq 0 ] ; then
-	cd ${CPWD}
-	exit -1
-    fi
-fi
-
 if ! [ -f ${BUILDDIR}/SPECS/${LIBEVENT_SPEC_FILE} ] ; then 
     cd ${BUILDDIR}/tmp
     rm -rf ${LIBEVENT_SPEC_DIR}
@@ -56,6 +46,7 @@ if ! [ -f ${BUILDDIR}/SPECS/${LIBEVENT_SPEC_FILE} ] ; then
     fi
 
     cp ${LIBEVENT_SPEC_DIR}/${LIBEVENT_SPEC_FILE} ${BUILDDIR}/SPECS
+    cp ${LIBEVENT_SPEC_DIR}/${LIBEVENT_DISTRO} ${BUILDDIR}/SOURCES
 fi
 
 cd ${BUILDDIR}/SPECS
