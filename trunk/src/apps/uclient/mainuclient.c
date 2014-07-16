@@ -95,6 +95,8 @@ char origin[STUN_MAX_ORIGIN_SIZE+1] = "\0";
 
 band_limit_t bps = 0;
 
+int dual_allocation = 0;
+
 //////////////// local definitions /////////////////
 
 static char Usage[] =
@@ -127,6 +129,7 @@ static char Usage[] =
   "		(for testing the non-standard server relay functionality).\n"
   "	-G	Generate extra requests (create permissions, channel bind).\n"
   " -B  Random disconnect after a few initial packets.\n"
+  " -Z  Dual allocation.\n"
   "Options:\n"
   "	-l	Message length (Default: 100 Bytes).\n"
   "	-i	Certificate file (for secure connections only, optional).\n"
@@ -201,7 +204,7 @@ int main(int argc, char **argv)
 
 	ns_bzero(local_addr, sizeof(local_addr));
 
-	while ((c = getopt(argc, argv, "a:d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:E:F:o:vsyhcxXgtTSAPDNOUHMRIGB")) != -1) {
+	while ((c = getopt(argc, argv, "a:d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:E:F:o:ZvsyhcxXgtTSAPDNOUHMRIGB")) != -1) {
 		switch (c){
 		case 'a':
 			bps = (band_limit_t)atol(optarg);
@@ -254,6 +257,9 @@ int main(int argc, char **argv)
 			break;
 		case 'z':
 			RTP_PACKET_INTERVAL = atoi(optarg);
+			break;
+		case 'Z':
+			dual_allocation = 1;
 			break;
 		case 'A':
 			use_short_term = 1;

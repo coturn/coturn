@@ -101,9 +101,10 @@ int stun_is_channel_message(stun_buffer* buf, u16bits* chnumber, int is_padding_
 
 ///////////////////////////////////////////////////////////////
 
-int stun_set_allocate_request(stun_buffer* buf, u32bits lifetime, int address_family, u08bits transport, int mobile);
+int stun_set_allocate_request(stun_buffer* buf, u32bits lifetime, int af4, int af6, u08bits transport, int mobile);
 int stun_set_allocate_response(stun_buffer* buf, stun_tid* tid, 
-			       const ioa_addr *relayed_addr, const ioa_addr *reflexive_addr,
+			       const ioa_addr *relayed_addr1, const ioa_addr *relayed_addr2,
+			       const ioa_addr *reflexive_addr,
 			       u32bits lifetime,
 			       int error_code, const u08bits *reason,
 			       u64bits reservation_token, char *mobile_id);

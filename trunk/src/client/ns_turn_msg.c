@@ -644,7 +644,7 @@ int stun_get_message_len_str(u08bits *buf, size_t blen, int padding, size_t *app
 
 ////////// ALLOCATE ///////////////////////////////////
 
-int stun_set_allocate_request_str(u08bits* buf, size_t *len, u32bits lifetime, int address_family,
+int stun_set_allocate_request_str(u08bits* buf, size_t *len, u32bits lifetime, int af4, int af6,
 				u08bits transport, int mobile) {
 
   stun_init_request_str(STUN_METHOD_ALLOCATE, buf, len);
@@ -671,30 +671,30 @@ int stun_set_allocate_request_str(u08bits* buf, size_t *len, u32bits lifetime, i
   }
 
   //ADRESS-FAMILY
-  switch (address_family) {
-  case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4:
-  case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6:
-  {
+  if (af4) {
 	  u08bits field[4];
-	  field[0] = (u08bits)address_family;
+	  field[0] = (u08bits)STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4;
 	  field[1]=0;
 	  field[2]=0;
 	  field[3]=0;
 	  if(stun_attr_add_str(buf,len,STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY,field,sizeof(field))<0) return -1;
-	  break;
   }
-  case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT:
-	  /* ignore */
-	  break;
-  default:
-	  return -1;
+
+  if (af6) {
+  	  u08bits field[4];
+  	  field[0] = (u08bits)STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6;
+  	  field[1]=0;
+  	  field[2]=0;
+  	  field[3]=0;
+  	  if(stun_attr_add_str(buf,len,STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY,field,sizeof(field))<0) return -1;
   };
 
   return 0;
 }
 
 int stun_set_allocate_response_str(u08bits* buf, size_t *len, stun_tid* tid, 
-				   const ioa_addr *relayed_addr, const ioa_addr *reflexive_addr,
+				   const ioa_addr *relayed_addr1, const ioa_addr *relayed_addr2,
+				   const ioa_addr *reflexive_addr,
 				   u32bits lifetime, int error_code, const u08bits *reason,
 				   u64bits reservation_token, char* mobile_id) {
 
@@ -702,8 +702,12 @@ int stun_set_allocate_response_str(u08bits* buf, size_t *len, stun_tid* tid,
 
     stun_init_success_response_str(STUN_METHOD_ALLOCATE, buf, len, tid);
     
-    if(relayed_addr) {
-      if(stun_attr_add_addr_str(buf,len,STUN_ATTRIBUTE_XOR_RELAYED_ADDRESS,relayed_addr)<0) return -1;
+    if(relayed_addr1) {
+      if(stun_attr_add_addr_str(buf,len,STUN_ATTRIBUTE_XOR_RELAYED_ADDRESS,relayed_addr1)<0) return -1;
+    }
+
+    if(relayed_addr2) {
+      if(stun_attr_add_addr_str(buf,len,STUN_ATTRIBUTE_XOR_RELAYED_ADDRESS,relayed_addr2)<0) return -1;
     }
     
     if(reflexive_addr) {
