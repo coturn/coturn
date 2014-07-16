@@ -899,22 +899,43 @@ static int handle_turn_allocate(turn_turnserver *server,
 			*reason = (const u08bits *)"Wrong TID";
 		} else {
 			size_t len = ioa_network_buffer_get_size(nbh);
-			ioa_addr xor_relayed_addr;
-			ioa_addr *relayed_addr = get_local_addr_from_ioa_socket(get_relay_socket_ss(ss,AF_INET));
-			if(!relayed_addr)
-				relayed_addr = get_local_addr_from_ioa_socket(get_relay_socket_ss(ss,AF_INET6));
-			if(relayed_addr) {
+			ioa_addr xor_relayed_addr1, *pxor_relayed_addr1=NULL;
+			ioa_addr xor_relayed_addr2, *pxor_relayed_addr2=NULL;
+			ioa_addr *relayed_addr1 = get_local_addr_from_ioa_socket(get_relay_socket_ss(ss,AF_INET));
+			ioa_addr *relayed_addr2 = get_local_addr_from_ioa_socket(get_relay_socket_ss(ss,AF_INET6));
+
+			if(relayed_addr1) {
 				if(server->external_ip_set) {
-					addr_cpy(&xor_relayed_addr, &(server->external_ip));
-					addr_set_port(&xor_relayed_addr,addr_get_port(relayed_addr));
+					addr_cpy(&xor_relayed_addr1, &(server->external_ip));
+					addr_set_port(&xor_relayed_addr1,addr_get_port(relayed_addr1));
 				} else {
-					addr_cpy(&xor_relayed_addr, relayed_addr);
+					addr_cpy(&xor_relayed_addr1, relayed_addr1);
+				}
+				pxor_relayed_addr1 = &xor_relayed_addr1;
+			}
+
+			if(relayed_addr2) {
+				if(server->external_ip_set) {
+					addr_cpy(&xor_relayed_addr2, &(server->external_ip));
+					addr_set_port(&xor_relayed_addr2,addr_get_port(relayed_addr2));
+				} else {
+					addr_cpy(&xor_relayed_addr2, relayed_addr2);
+				}
+				pxor_relayed_addr2 = &xor_relayed_addr2;
+			}
+
+			if(pxor_relayed_addr1 || pxor_relayed_addr2) {
+				u32bits lifetime = 0;
+				if(pxor_relayed_addr1) {
+					lifetime = (get_relay_session(a,pxor_relayed_addr1->ss.sa_family)->expiration_time - server->ctime);
+				} else if(pxor_relayed_addr2) {
+					lifetime = (get_relay_session(a,pxor_relayed_addr2->ss.sa_family)->expiration_time - server->ctime);
 				}
 				stun_set_allocate_response_str(ioa_network_buffer_data(nbh), &len,
 							tid,
-							&xor_relayed_addr,
+							pxor_relayed_addr1, pxor_relayed_addr2,
 							get_remote_addr_from_ioa_socket(ss->client_socket),
-							(get_relay_session(a,relayed_addr->ss.sa_family)->expiration_time - server->ctime), 0, NULL, 0,
+							lifetime, 0, NULL, 0,
 							ss->s_mobile_id);
 				ioa_network_buffer_set_size(nbh,len);
 				*resp_constructed = 1;
@@ -930,7 +951,8 @@ static int handle_turn_allocate(turn_turnserver *server,
 		int even_port = -1;
 		int dont_fragment = 0;
 		u64bits in_reservation_token = 0;
-		int af = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT;
+		int af4 = 0;
+		int af6 = 0;
 		u08bits username[STUN_MAX_USERNAME_SIZE+1]="\0";
 		size_t ulen = 0;
 		band_limit_t bps = 0;
@@ -1047,7 +1069,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 			  if (len != 8) {
 			    *err_code = 400;
 			    *reason = (const u08bits *)"Wrong Format of Reservation Token";
-			  } else if(af != STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT) {
+			  } else if(af4 || af6) {
 				  *err_code = 400;
 				  *reason = (const u08bits *)"Address family attribute can not be used with reservation token request";
 			  } else {
@@ -1069,11 +1091,13 @@ static int handle_turn_allocate(turn_turnserver *server,
 					*reason = (const u08bits *)"Address family attribute can not be used with reservation token request";
 				} else {
 					int af_req = stun_get_requested_address_family(sar);
-					if(af == STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT) {
+					if(!af4 && !af6) {
 						switch (af_req) {
 						case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4:
+							af4 = 1;
+							break;
 						case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6:
-							af = af_req;
+							af6 = 1;
 							break;
 						default:
 							*err_code = 440;
@@ -1149,6 +1173,10 @@ static int handle_turn_allocate(turn_turnserver *server,
 					}
 				}
 
+				int af = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT;
+				if(af4) af = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4;
+				else if(af6) af = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6;
+
 				if (*err_code || create_relay_connection(server, ss, lifetime,
 							af, transport,
 							even_port, in_reservation_token, &out_reservation_token,
@@ -1173,20 +1201,35 @@ static int handle_turn_allocate(turn_turnserver *server,
 
 					size_t len = ioa_network_buffer_get_size(nbh);
 
-					ioa_addr xor_relayed_addr;
-					ioa_addr *relayed_addr = get_local_addr_from_ioa_socket(get_relay_socket_ss(ss,AF_INET));
-					if(!relayed_addr)
-						relayed_addr = get_local_addr_from_ioa_socket(get_relay_socket_ss(ss,AF_INET6));
-					if(relayed_addr) {
+					ioa_addr xor_relayed_addr1, *pxor_relayed_addr1=NULL;
+					ioa_addr xor_relayed_addr2, *pxor_relayed_addr2=NULL;
+					ioa_addr *relayed_addr1 = get_local_addr_from_ioa_socket(get_relay_socket_ss(ss,AF_INET));
+					ioa_addr *relayed_addr2 = get_local_addr_from_ioa_socket(get_relay_socket_ss(ss,AF_INET6));
+
+					if(relayed_addr1) {
 						if(server->external_ip_set) {
-							addr_cpy(&xor_relayed_addr, &(server->external_ip));
-							addr_set_port(&xor_relayed_addr,addr_get_port(relayed_addr));
+							addr_cpy(&xor_relayed_addr1, &(server->external_ip));
+							addr_set_port(&xor_relayed_addr1,addr_get_port(relayed_addr1));
 						} else {
-							addr_cpy(&xor_relayed_addr, relayed_addr);
+							addr_cpy(&xor_relayed_addr1, relayed_addr1);
 						}
+						pxor_relayed_addr1 = &xor_relayed_addr1;
+					}
+
+					if(relayed_addr2) {
+						if(server->external_ip_set) {
+							addr_cpy(&xor_relayed_addr2, &(server->external_ip));
+							addr_set_port(&xor_relayed_addr2,addr_get_port(relayed_addr2));
+						} else {
+							addr_cpy(&xor_relayed_addr2, relayed_addr2);
+						}
+						pxor_relayed_addr2 = &xor_relayed_addr2;
+					}
+
+					if(pxor_relayed_addr1 || pxor_relayed_addr2) {
 
 						stun_set_allocate_response_str(ioa_network_buffer_data(nbh), &len, tid,
-									&xor_relayed_addr,
+									pxor_relayed_addr1, pxor_relayed_addr2,
 									get_remote_addr_from_ioa_socket(ss->client_socket), lifetime,
 									0,NULL,
 									out_reservation_token,
@@ -1213,7 +1256,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 		}
 
 		size_t len = ioa_network_buffer_get_size(nbh);
-		stun_set_allocate_response_str(ioa_network_buffer_data(nbh), &len, tid, NULL, NULL, 0, *err_code, *reason, 0, ss->s_mobile_id);
+		stun_set_allocate_response_str(ioa_network_buffer_data(nbh), &len, tid, NULL, NULL, NULL, 0, *err_code, *reason, 0, ss->s_mobile_id);
 		ioa_network_buffer_set_size(nbh,len);
 		*resp_constructed = 1;
 	}

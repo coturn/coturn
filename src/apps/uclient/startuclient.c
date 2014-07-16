@@ -338,10 +338,13 @@ static int clnet_allocate(int verbose,
 			af = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT;
 		}
 
+		int af4 = dual_allocation || (af == STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4);
+		int af6 = dual_allocation || (af == STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6);
+
 		if(!dos)
-			stun_set_allocate_request(&message, 800, af, relay_transport, mobility);
+			stun_set_allocate_request(&message, 800, af4, af6, relay_transport, mobility);
 		else
-			stun_set_allocate_request(&message, 300, af, relay_transport, mobility);
+			stun_set_allocate_request(&message, 300, af4, af6, relay_transport, mobility);
 
 		if(bps)
 			stun_attr_add_bandwidth_str(message.buf, (size_t*)(&(message.len)), bps);

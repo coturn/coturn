@@ -82,6 +82,7 @@ extern int mobility;
 extern int no_permissions;
 extern int extra_requests;
 extern band_limit_t bps;
+extern int dual_allocation;
 
 extern char origin[STUN_MAX_ORIGIN_SIZE+1];
 
