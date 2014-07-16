@@ -1177,6 +1177,13 @@ static int handle_turn_allocate(turn_turnserver *server,
 				if(af4) af = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4;
 				else if(af6) af = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6;
 
+				if(af4 && af6) {
+					if(server->external_ip_set) {
+						*err_code = 440;
+						*reason = (const u08bits *)"Dual allocation cannot be supported in the current server configuration";
+					}
+				}
+
 				if (*err_code || create_relay_connection(server, ss, lifetime,
 							af, transport,
 							even_port, in_reservation_token, &out_reservation_token,
