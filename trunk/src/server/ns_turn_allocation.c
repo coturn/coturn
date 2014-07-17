@@ -92,6 +92,16 @@ relay_endpoint_session *get_relay_session(allocation *a, int family)
 	return &(a->relay_sessions[ALLOC_INDEX(family)]);
 }
 
+int get_relay_session_failure(allocation *a, int family)
+{
+	return a->relay_sessions_failure[ALLOC_INDEX(family)];
+}
+
+void set_relay_session_failure(allocation *a, int family)
+{
+	a->relay_sessions_failure[ALLOC_INDEX(family)] = 1;
+}
+
 ioa_socket_handle get_relay_socket(allocation *a, int family)
 {
 	return a->relay_sessions[ALLOC_INDEX(family)].s;
