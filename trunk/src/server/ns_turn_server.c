@@ -1097,21 +1097,16 @@ static int handle_turn_allocate(turn_turnserver *server,
 					*reason = (const u08bits *)"Address family attribute can not be used with reservation token request";
 				} else {
 					int af_req = stun_get_requested_address_family(sar);
-					if(!af4 && !af6) {
-						switch (af_req) {
-						case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4:
-							af4 = 1;
-							break;
-						case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6:
-							af6 = 1;
-							break;
-						default:
-							*err_code = 440;
-							*reason = (const u08bits *)"Unsupported address family requested";
-						}
-					} else {
-						*err_code = 400;
-						*reason = (const u08bits *)"Only one address family attribute can be used in a request";
+					switch (af_req) {
+					case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4:
+						af4 = af_req;
+						break;
+					case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6:
+						af6 = af_req;
+						break;
+					default:
+						*err_code = 440;
+						*reason = (const u08bits *)"Unsupported address family requested";
 					}
 				}
 			}
@@ -1179,22 +1174,87 @@ static int handle_turn_allocate(turn_turnserver *server,
 					}
 				}
 
-				int af = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT;
-				if(af4) af = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4;
-				else if(af6) af = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6;
+				if(af4) af4 = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4;
+				if(af6) af6 = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6;
 
 				if(af4 && af6) {
 					if(server->external_ip_set) {
 						*err_code = 440;
 						*reason = (const u08bits *)"Dual allocation cannot be supported in the current server configuration";
 					}
+					if(even_port >= 0) {
+						*err_code = 440;
+						*reason = (const u08bits *)"Dual allocation cannot be supported with even-port functionality";
+					}
 				}
 
-				if (*err_code || create_relay_connection(server, ss, lifetime,
-							af, transport,
+				if(!(*err_code)) {
+					if(!af4 && !af6) {
+						create_relay_connection(server, ss, lifetime,
+							STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT, transport,
 							even_port, in_reservation_token, &out_reservation_token,
 							err_code, reason,
-							tcp_peer_accept_connection) < 0) {
+							tcp_peer_accept_connection);
+					} else if(!af4 && af6) {
+						create_relay_connection(server, ss, lifetime,
+							af6, transport,
+							even_port, in_reservation_token, &out_reservation_token,
+							err_code, reason,
+							tcp_peer_accept_connection);
+					} else if(af4 && !af6) {
+						create_relay_connection(server, ss, lifetime,
+							af4, transport,
+							even_port, in_reservation_token, &out_reservation_token,
+							err_code, reason,
+							tcp_peer_accept_connection);
+					} else {
+						int err_code4 = 0;
+						const u08bits *reason4 = NULL;
+						if(af4) {
+							int af4res = create_relay_connection(server, ss, lifetime,
+									af4, transport,
+									even_port, in_reservation_token, &out_reservation_token,
+									&err_code4, &reason4,
+									tcp_peer_accept_connection);
+							if(af4res<0) {
+								set_relay_session_failure(a,AF_INET);
+								if(!err_code4) {
+									err_code4 = 437;
+								}
+							}
+						}
+						int err_code6 = 0;
+						const u08bits *reason6 = NULL;
+						if(af6) {
+							int af6res = create_relay_connection(server, ss, lifetime,
+												af6, transport,
+												even_port, in_reservation_token, &out_reservation_token,
+												&err_code6, &reason6,
+												tcp_peer_accept_connection);
+							if(af6res<0) {
+								set_relay_session_failure(a,AF_INET6);
+								if(!err_code6) {
+									err_code6 = 437;
+								}
+							}
+						}
+
+						if(err_code4 && err_code6) {
+							if(reason4) {
+								*err_code = err_code4;
+								*reason = reason4;
+							} else if(reason6) {
+								*err_code = err_code6;
+								*reason = reason6;
+							} else {
+								*err_code = err_code4;
+							}
+						}
+					}
+				}
+
+
+				if (*err_code) {
 
 					dec_quota(ss);
 
