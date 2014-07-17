@@ -904,7 +904,10 @@ static int handle_turn_allocate(turn_turnserver *server,
 			ioa_addr *relayed_addr1 = get_local_addr_from_ioa_socket(get_relay_socket_ss(ss,AF_INET));
 			ioa_addr *relayed_addr2 = get_local_addr_from_ioa_socket(get_relay_socket_ss(ss,AF_INET6));
 
-			if(relayed_addr1) {
+			if(get_relay_session_failure(a,AF_INET)) {
+				addr_set_any(&xor_relayed_addr1);
+				pxor_relayed_addr1 = &xor_relayed_addr1;
+			} else if(relayed_addr1) {
 				if(server->external_ip_set) {
 					addr_cpy(&xor_relayed_addr1, &(server->external_ip));
 					addr_set_port(&xor_relayed_addr1,addr_get_port(relayed_addr1));
@@ -914,7 +917,10 @@ static int handle_turn_allocate(turn_turnserver *server,
 				pxor_relayed_addr1 = &xor_relayed_addr1;
 			}
 
-			if(relayed_addr2) {
+			if(get_relay_session_failure(a,AF_INET6)) {
+				addr_set_any(&xor_relayed_addr2);
+				pxor_relayed_addr2 = &xor_relayed_addr2;
+			} else if(relayed_addr2) {
 				if(server->external_ip_set) {
 					addr_cpy(&xor_relayed_addr2, &(server->external_ip));
 					addr_set_port(&xor_relayed_addr2,addr_get_port(relayed_addr2));
@@ -1213,7 +1219,10 @@ static int handle_turn_allocate(turn_turnserver *server,
 					ioa_addr *relayed_addr1 = get_local_addr_from_ioa_socket(get_relay_socket_ss(ss,AF_INET));
 					ioa_addr *relayed_addr2 = get_local_addr_from_ioa_socket(get_relay_socket_ss(ss,AF_INET6));
 
-					if(relayed_addr1) {
+					if(get_relay_session_failure(a,AF_INET)) {
+						addr_set_any(&xor_relayed_addr1);
+						pxor_relayed_addr1 = &xor_relayed_addr1;
+					} else if(relayed_addr1) {
 						if(server->external_ip_set) {
 							addr_cpy(&xor_relayed_addr1, &(server->external_ip));
 							addr_set_port(&xor_relayed_addr1,addr_get_port(relayed_addr1));
@@ -1223,7 +1232,10 @@ static int handle_turn_allocate(turn_turnserver *server,
 						pxor_relayed_addr1 = &xor_relayed_addr1;
 					}
 
-					if(relayed_addr2) {
+					if(get_relay_session_failure(a,AF_INET6)) {
+						addr_set_any(&xor_relayed_addr2);
+						pxor_relayed_addr2 = &xor_relayed_addr2;
+					} else if(relayed_addr2) {
 						if(server->external_ip_set) {
 							addr_cpy(&xor_relayed_addr2, &(server->external_ip));
 							addr_set_port(&xor_relayed_addr2,addr_get_port(relayed_addr2));

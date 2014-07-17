@@ -176,6 +176,7 @@ typedef struct _allocation {
   stun_tid tid;
   turn_permission_hashtable addr_to_perm;
   relay_endpoint_session relay_sessions[ALLOC_PROTOCOLS_NUMBER];
+  int relay_sessions_failure[ALLOC_PROTOCOLS_NUMBER];
   ch_map chns; /* chnum-to-ch_info* */
   void *owner; //ss
   ur_map *tcp_connections; //global (per turn server) reference
@@ -208,6 +209,8 @@ ch_info* allocation_get_ch_info(allocation* a, u16bits chnum);
 ch_info* allocation_get_ch_info_by_peer_addr(allocation* a, ioa_addr* peer_addr);
 
 relay_endpoint_session *get_relay_session(allocation *a, int family);
+int get_relay_session_failure(allocation *a, int family);
+void set_relay_session_failure(allocation *a, int family);
 ioa_socket_handle get_relay_socket(allocation *a, int family);
 
 tcp_connection *get_and_clean_tcp_connection_by_id(ur_map *map, tcp_connection_id id);
