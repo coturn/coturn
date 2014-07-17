@@ -341,6 +341,13 @@ static int clnet_allocate(int verbose,
 		int af4 = dual_allocation || (af == STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4);
 		int af6 = dual_allocation || (af == STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6);
 
+		if(!no_rtcp && !in_tid) {
+			if (!never_allocate_rtcp && allocate_rtcp) {
+				af4 = 0;
+				af6 = 0;
+			}
+		}
+
 		if(!dos)
 			stun_set_allocate_request(&message, 800, af4, af6, relay_transport, mobility);
 		else
@@ -433,22 +440,55 @@ static int clnet_allocate(int verbose,
 						if (verbose) {
 							TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "success\n");
 						}
-						if (stun_attr_get_first_addr(&message,
-								STUN_ATTRIBUTE_XOR_RELAYED_ADDRESS, relay_addr,
-								NULL) < 0) {
-							TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-									"%s: !!!: relay addr cannot be received\n",
-									__FUNCTION__);
-							return -1;
-						} else {
-							if (verbose) {
-								ioa_addr remote_addr;
-								memcpy(&remote_addr, relay_addr,
-										sizeof(ioa_addr));
-								addr_debug_print(verbose, &remote_addr,
-										"Received relay addr");
+						{
+							int found = 0;
+
+							stun_attr_ref sar = stun_attr_get_first(&message);
+							while (sar) {
+
+								int attr_type = stun_attr_get_type(sar);
+								if(attr_type == STUN_ATTRIBUTE_XOR_RELAYED_ADDRESS) {
+
+									if (stun_attr_get_addr(&message, sar, relay_addr, NULL) < 0) {
+										TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+											"%s: !!!: relay addr cannot be received (1)\n",
+											__FUNCTION__);
+										return -1;
+									} else {
+										if (verbose) {
+											ioa_addr remote_addr;
+											memcpy(&remote_addr, relay_addr,sizeof(ioa_addr));
+											addr_debug_print(verbose, &remote_addr,"Received relay addr");
+										}
+
+										if(!addr_any(relay_addr)) {
+											if(relay_addr->ss.sa_family == AF_INET) {
+												if(default_address_family != STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6) {
+													found = 1;
+													break;
+												}
+											}
+											if(relay_addr->ss.sa_family == AF_INET6) {
+												if(default_address_family == STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6) {
+													found = 1;
+													break;
+												}
+											}
+										}
+									}
+								}
+
+								sar = stun_attr_get_next(&message,sar);
+							}
+
+							if(!found) {
+								TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+										"%s: !!!: relay addr cannot be received (2)\n",
+										__FUNCTION__);
+								return -1;
 							}
 						}
+
 						stun_attr_ref rt_sar = stun_attr_get_first_by_type(
 								&message, STUN_ATTRIBUTE_RESERVATION_TOKEN);
 						uint64_t rtv = stun_attr_get_reservation_token_value(rt_sar);
