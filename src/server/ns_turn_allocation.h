@@ -212,6 +212,7 @@ relay_endpoint_session *get_relay_session(allocation *a, int family);
 int get_relay_session_failure(allocation *a, int family);
 void set_relay_session_failure(allocation *a, int family);
 ioa_socket_handle get_relay_socket(allocation *a, int family);
+void set_allocation_family_invalid(allocation *a, int family);
 
 tcp_connection *get_and_clean_tcp_connection_by_id(ur_map *map, tcp_connection_id id);
 tcp_connection *get_tcp_connection_by_id(ur_map *map, tcp_connection_id id);
