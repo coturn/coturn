@@ -1190,23 +1190,41 @@ static int handle_turn_allocate(turn_turnserver *server,
 
 				if(!(*err_code)) {
 					if(!af4 && !af6) {
-						create_relay_connection(server, ss, lifetime,
+						int af4res = create_relay_connection(server, ss, lifetime,
 							STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT, transport,
 							even_port, in_reservation_token, &out_reservation_token,
 							err_code, reason,
 							tcp_peer_accept_connection);
+						if(af4res<0) {
+							set_relay_session_failure(a,AF_INET);
+							if(!(*err_code)) {
+								*err_code = 437;
+							}
+						}
 					} else if(!af4 && af6) {
-						create_relay_connection(server, ss, lifetime,
+						int af6res = create_relay_connection(server, ss, lifetime,
 							af6, transport,
 							even_port, in_reservation_token, &out_reservation_token,
 							err_code, reason,
 							tcp_peer_accept_connection);
+						if(af6res<0) {
+							set_relay_session_failure(a,AF_INET6);
+							if(!(*err_code)) {
+								*err_code = 437;
+							}
+						}
 					} else if(af4 && !af6) {
-						create_relay_connection(server, ss, lifetime,
+						int af4res = create_relay_connection(server, ss, lifetime,
 							af4, transport,
 							even_port, in_reservation_token, &out_reservation_token,
 							err_code, reason,
 							tcp_peer_accept_connection);
+						if(af4res<0) {
+							set_relay_session_failure(a,AF_INET);
+							if(!(*err_code)) {
+								*err_code = 437;
+							}
+						}
 					} else {
 						int err_code4 = 0;
 						const u08bits *reason4 = NULL;
@@ -1253,15 +1271,12 @@ static int handle_turn_allocate(turn_turnserver *server,
 					}
 				}
 
-
 				if (*err_code) {
 
 					dec_quota(ss);
 
-					if (!*err_code) {
-						*err_code = 437;
-						if(!(*reason))
-							*reason = (const u08bits *)"Cannot create relay endpoint";
+					if(!(*reason)) {
+						*reason = (const u08bits *)"Cannot create relay endpoint(s)";
 					}
 
 				} else {
@@ -1350,13 +1365,20 @@ static int handle_turn_refresh(turn_turnserver *server,
 			       int message_integrity, int *no_response, int can_resume) {
 
 	allocation* a = get_allocation_ss(ss);
-	int family = AF_INET;
+	int af4c = 0;
+	int af6c = 0;
+	int af4 = 0;
+	int af6 = 0;
 	{
 		int i;
 		for(i = 0;i<ALLOC_PROTOCOLS_NUMBER; ++i) {
 			if(a->relay_sessions[i].s) {
-				family = get_local_addr_from_ioa_socket(a->relay_sessions[i].s)->ss.sa_family;
-				break;
+				int family = get_local_addr_from_ioa_socket(a->relay_sessions[i].s)->ss.sa_family;
+				if(AF_INET == family) {
+					af4c = 1;
+				} else if(AF_INET6 == family) {
+					af6c = 1;
+				}
 			}
 		}
 	}
@@ -1424,13 +1446,17 @@ static int handle_turn_refresh(turn_turnserver *server,
 					int is_err = 0;
 					switch (af_req) {
 					case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4:
-						if(family != AF_INET) {
+						if(!af4c) {
 							is_err = 1;
+						} else {
+							af4 = 1;
 						}
 						break;
 					case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6:
-						if(family != AF_INET6) {
+						if(!af6c) {
 							is_err = 1;
+						} else {
+							af6 = 1;
 						}
 						break;
 					default:
@@ -1531,8 +1557,16 @@ static int handle_turn_refresh(turn_turnserver *server,
 							else
 								lifetime = stun_adjust_allocate_lifetime(lifetime);
 
-							if (refresh_relay_connection(server, orig_ss, lifetime, 0, 0, 0,
-										err_code, family) < 0) {
+							if (af4c && refresh_relay_connection(server, orig_ss, lifetime, 0, 0, 0,
+										err_code, AF_INET) < 0) {
+
+								if (!(*err_code)) {
+									*err_code = 437;
+									*reason = (const u08bits *)"Cannot refresh relay connection (internal error)";
+								}
+
+							} else if (af6c && refresh_relay_connection(server, orig_ss, lifetime, 0, 0, 0,
+										err_code, AF_INET6) < 0) {
 
 								if (!(*err_code)) {
 									*err_code = 437;
@@ -1632,8 +1666,21 @@ static int handle_turn_refresh(turn_turnserver *server,
 			else
 				lifetime = stun_adjust_allocate_lifetime(lifetime);
 
-			if (refresh_relay_connection(server, ss, lifetime, 0, 0, 0,
-					err_code, family) < 0) {
+			if(!af4 && !af6) {
+				af4 = af4c;
+				af6 = af6c;
+			}
+
+			if (af4 && refresh_relay_connection(server, ss, lifetime, 0, 0, 0,
+					err_code, AF_INET) < 0) {
+
+				if (!(*err_code)) {
+					*err_code = 437;
+					*reason = (const u08bits *)"Cannot refresh relay connection (internal error)";
+				}
+
+			} else if (af6 && refresh_relay_connection(server, ss, lifetime, 0, 0, 0,
+					err_code, AF_INET6) < 0) {
 
 				if (!(*err_code)) {
 					*err_code = 437;
@@ -4162,7 +4209,21 @@ static int refresh_relay_connection(turn_turnserver* server,
 	if (server && ss && is_allocation_valid(a)) {
 
 		if (lifetime < 1) {
-			set_allocation_valid(&(ss->alloc),0);
+
+			set_allocation_family_invalid(&(ss->alloc),family);
+
+			if(family == AF_INET) {
+				if(get_relay_socket(&(ss->alloc), AF_INET6)) {
+					return 0;
+				}
+			}
+
+			if(family == AF_INET6) {
+				if(get_relay_socket(&(ss->alloc), AF_INET)) {
+					return 0;
+				}
+			}
+
 			lifetime = 1;
 		}
 
