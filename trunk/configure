@@ -990,10 +990,10 @@ if [ -z "${TURN_NO_MONGO}" ] ; then
 	if ! [ ${ER} -eq 0 ] ; then
 		${ECHO_CMD} "MongoDB found."
 	else
-		TURN_NO_MYSQL="-DTURN_NO_MONGO"
+		TURN_NO_MONGO="-DTURN_NO_MONGO"
 	fi
 else
-	TURN_NO_MYSQL="-DTURN_NO_MONGO"
+	TURN_NO_MONGO="-DTURN_NO_MONGO"
 fi
 
 ###########################
@@ -1068,7 +1068,7 @@ ${ECHO_CMD} "LDFLAGS += ${OSLIBS}" >> Makefile
 ${ECHO_CMD} "DBLIBS += ${DBLIBS}" >> Makefile
 ${ECHO_CMD} "CFLAGS += ${OSCFLAGS}" >> Makefile
 ${ECHO_CMD} "CPPFLAGS = ${CPPFLAGS}" >> Makefile
-${ECHO_CMD} "DBCFLAGS += ${DBCFLAGS} ${TURN_NO_PQ} ${TURN_NO_MYSQL} ${TURN_NO_HIREDIS}" >> Makefile
+${ECHO_CMD} "DBCFLAGS += ${DBCFLAGS} ${TURN_NO_PQ} ${TURN_NO_MYSQL} ${TURN_NO_MONGO} ${TURN_NO_HIREDIS}" >> Makefile
 ${ECHO_CMD} "#" >> Makefile
 ${ECHO_CMD} "PORTNAME = ${PORTNAME}" >> Makefile
 ${ECHO_CMD} "PREFIX = ${PREFIX}" >> Makefile
