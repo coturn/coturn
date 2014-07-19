@@ -88,22 +88,29 @@ void clear_allocation(allocation *a)
 
 relay_endpoint_session *get_relay_session(allocation *a, int family)
 {
-	return &(a->relay_sessions[ALLOC_INDEX(family)]);
+	if(a)
+		return &(a->relay_sessions[ALLOC_INDEX(family)]);
+	return NULL;
 }
 
 int get_relay_session_failure(allocation *a, int family)
 {
-	return a->relay_sessions_failure[ALLOC_INDEX(family)];
+	if(a)
+		return a->relay_sessions_failure[ALLOC_INDEX(family)];
+	return 0;
 }
 
 void set_relay_session_failure(allocation *a, int family)
 {
-	a->relay_sessions_failure[ALLOC_INDEX(family)] = 1;
+	if(a)
+		a->relay_sessions_failure[ALLOC_INDEX(family)] = 1;
 }
 
 ioa_socket_handle get_relay_socket(allocation *a, int family)
 {
-	return a->relay_sessions[ALLOC_INDEX(family)].s;
+	if(a)
+		return a->relay_sessions[ALLOC_INDEX(family)].s;
+	return NULL;
 }
 
 void set_allocation_family_invalid(allocation *a, int family)
