@@ -890,11 +890,11 @@ static int handle_turn_allocate(turn_turnserver *server,
 				int *err_code, 	const u08bits **reason, u16bits *unknown_attrs, u16bits *ua_num,
 				ioa_net_data *in_buffer, ioa_network_buffer_handle nbh) {
 
-	allocation* a = get_allocation_ss(ss);
+	allocation* alloc = get_allocation_ss(ss);
 
-	if (is_allocation_valid(a)) {
+	if (is_allocation_valid(alloc)) {
 
-		if (!stun_tid_equals(tid, &(a->tid))) {
+		if (!stun_tid_equals(tid, &(alloc->tid))) {
 			*err_code = 437;
 			*reason = (const u08bits *)"Wrong TID";
 		} else {
@@ -904,7 +904,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 			ioa_addr *relayed_addr1 = get_local_addr_from_ioa_socket(get_relay_socket_ss(ss,AF_INET));
 			ioa_addr *relayed_addr2 = get_local_addr_from_ioa_socket(get_relay_socket_ss(ss,AF_INET6));
 
-			if(get_relay_session_failure(a,AF_INET)) {
+			if(get_relay_session_failure(alloc,AF_INET)) {
 				addr_set_any(&xor_relayed_addr1);
 				pxor_relayed_addr1 = &xor_relayed_addr1;
 			} else if(relayed_addr1) {
@@ -917,7 +917,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 				pxor_relayed_addr1 = &xor_relayed_addr1;
 			}
 
-			if(get_relay_session_failure(a,AF_INET6)) {
+			if(get_relay_session_failure(alloc,AF_INET6)) {
 				addr_set_any(&xor_relayed_addr2);
 				pxor_relayed_addr2 = &xor_relayed_addr2;
 			} else if(relayed_addr2) {
@@ -933,9 +933,9 @@ static int handle_turn_allocate(turn_turnserver *server,
 			if(pxor_relayed_addr1 || pxor_relayed_addr2) {
 				u32bits lifetime = 0;
 				if(pxor_relayed_addr1) {
-					lifetime = (get_relay_session(a,pxor_relayed_addr1->ss.sa_family)->expiration_time - server->ctime);
+					lifetime = (get_relay_session(alloc,pxor_relayed_addr1->ss.sa_family)->expiration_time - server->ctime);
 				} else if(pxor_relayed_addr2) {
-					lifetime = (get_relay_session(a,pxor_relayed_addr2->ss.sa_family)->expiration_time - server->ctime);
+					lifetime = (get_relay_session(alloc,pxor_relayed_addr2->ss.sa_family)->expiration_time - server->ctime);
 				}
 				stun_set_allocate_response_str(ioa_network_buffer_data(nbh), &len,
 							tid,
@@ -949,8 +949,6 @@ static int handle_turn_allocate(turn_turnserver *server,
 		}
 
 	} else {
-
-		a = NULL;
 
 		u08bits transport = 0;
 		u32bits lifetime = 0;
@@ -1196,7 +1194,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 							err_code, reason,
 							tcp_peer_accept_connection);
 						if(af4res<0) {
-							set_relay_session_failure(a,AF_INET);
+							set_relay_session_failure(alloc,AF_INET);
 							if(!(*err_code)) {
 								*err_code = 437;
 							}
@@ -1208,7 +1206,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 							err_code, reason,
 							tcp_peer_accept_connection);
 						if(af6res<0) {
-							set_relay_session_failure(a,AF_INET6);
+							set_relay_session_failure(alloc,AF_INET6);
 							if(!(*err_code)) {
 								*err_code = 437;
 							}
@@ -1220,7 +1218,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 							err_code, reason,
 							tcp_peer_accept_connection);
 						if(af4res<0) {
-							set_relay_session_failure(a,AF_INET);
+							set_relay_session_failure(alloc,AF_INET);
 							if(!(*err_code)) {
 								*err_code = 437;
 							}
@@ -1235,7 +1233,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 									&err_code4, &reason4,
 									tcp_peer_accept_connection);
 							if(af4res<0) {
-								set_relay_session_failure(a,AF_INET);
+								set_relay_session_failure(alloc,AF_INET);
 								if(!err_code4) {
 									err_code4 = 437;
 								}
@@ -1250,7 +1248,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 												&err_code6, &reason6,
 												tcp_peer_accept_connection);
 							if(af6res<0) {
-								set_relay_session_failure(a,AF_INET6);
+								set_relay_session_failure(alloc,AF_INET6);
 								if(!err_code6) {
 									err_code6 = 437;
 								}
@@ -1281,11 +1279,9 @@ static int handle_turn_allocate(turn_turnserver *server,
 
 				} else {
 
-					a = get_allocation_ss(ss);
+					set_allocation_valid(alloc,1);
 
-					set_allocation_valid(a,1);
-
-					stun_tid_cpy(&(a->tid), tid);
+					stun_tid_cpy(&(alloc->tid), tid);
 
 					size_t len = ioa_network_buffer_get_size(nbh);
 
@@ -1294,7 +1290,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 					ioa_addr *relayed_addr1 = get_local_addr_from_ioa_socket(get_relay_socket_ss(ss,AF_INET));
 					ioa_addr *relayed_addr2 = get_local_addr_from_ioa_socket(get_relay_socket_ss(ss,AF_INET6));
 
-					if(get_relay_session_failure(a,AF_INET)) {
+					if(get_relay_session_failure(alloc,AF_INET)) {
 						addr_set_any(&xor_relayed_addr1);
 						pxor_relayed_addr1 = &xor_relayed_addr1;
 					} else if(relayed_addr1) {
@@ -1307,7 +1303,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 						pxor_relayed_addr1 = &xor_relayed_addr1;
 					}
 
-					if(get_relay_session_failure(a,AF_INET6)) {
+					if(get_relay_session_failure(alloc,AF_INET6)) {
 						addr_set_any(&xor_relayed_addr2);
 						pxor_relayed_addr2 = &xor_relayed_addr2;
 					} else if(relayed_addr2) {
@@ -4057,7 +4053,12 @@ static void client_ss_allocation_timeout_handler(ioa_engine_handle e, void *arg)
 	if (!arg)
 		return;
 
-	ts_ur_super_session* ss = (ts_ur_super_session*)arg;
+	relay_endpoint_session *rsession = (relay_endpoint_session*)arg;
+
+	if(!(rsession->s))
+		return;
+
+	ts_ur_super_session* ss = get_ioa_socket_session(rsession->s);
 
 	if (!ss)
 		return;
@@ -4073,7 +4074,13 @@ static void client_ss_allocation_timeout_handler(ioa_engine_handle e, void *arg)
 
 	FUNCSTART;
 
-	shutdown_client_connection(server, ss, 0, "allocation timeout");
+	int family = get_ioa_socket_address_family(rsession->s);
+
+	set_allocation_family_invalid(a,family);
+
+	if(!get_relay_socket(a, AF_INET) && !get_relay_socket(a, AF_INET6)) {
+		shutdown_client_connection(server, ss, 0, "allocation timeout");
+	}
 
 	FUNCEND;
 }
@@ -4184,7 +4191,7 @@ static int create_relay_connection(turn_turnserver* server,
 			lifetime = STUN_MAX_ALLOCATE_LIFETIME;
 
 		ioa_timer_handle ev = set_ioa_timer(server->e, lifetime, 0,
-				client_ss_allocation_timeout_handler, ss, 0,
+				client_ss_allocation_timeout_handler, newelem, 0,
 				"client_ss_allocation_timeout_handler");
 		set_allocation_lifetime_ev(a, server->ctime + lifetime, ev, get_local_addr_from_ioa_socket(newelem->s)->ss.sa_family);
 
@@ -4209,26 +4216,11 @@ static int refresh_relay_connection(turn_turnserver* server,
 	if (server && ss && is_allocation_valid(a)) {
 
 		if (lifetime < 1) {
-
-			set_allocation_family_invalid(&(ss->alloc),family);
-
-			if(family == AF_INET) {
-				if(get_relay_socket(&(ss->alloc), AF_INET6)) {
-					return 0;
-				}
-			}
-
-			if(family == AF_INET6) {
-				if(get_relay_socket(&(ss->alloc), AF_INET)) {
-					return 0;
-				}
-			}
-
 			lifetime = 1;
 		}
 
 		ioa_timer_handle ev = set_ioa_timer(server->e, lifetime, 0,
-				client_ss_allocation_timeout_handler, ss, 0,
+				client_ss_allocation_timeout_handler, get_relay_session(a,family), 0,
 				"refresh_client_ss_allocation_timeout_handler");
 
 		set_allocation_lifetime_ev(a, server->ctime + lifetime, ev, family);
