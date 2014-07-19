@@ -42,8 +42,8 @@ static pthread_barrier_t barrier;
 #define get_real_general_relay_servers_number() (turn_params.general_relay_servers_number > 1 ? turn_params.general_relay_servers_number : 1)
 #define get_real_udp_relay_servers_number() (turn_params.udp_relay_servers_number > 1 ? turn_params.udp_relay_servers_number : 1)
 
-static struct relay_server **general_relay_servers = NULL;
-static struct relay_server **udp_relay_servers = NULL;
+static struct relay_server *general_relay_servers[1+((turnserver_id)-1)];
+static struct relay_server *udp_relay_servers[1+((turnserver_id)-1)];
 
 //////////////////////////////////////////////
 
@@ -979,7 +979,6 @@ static void setup_socket_per_endpoint_udp_listener_servers(void)
 
 	{
 		if (!turn_params.no_udp || !turn_params.no_dtls) {
-			udp_relay_servers = (struct relay_server**) allocate_super_memory_engine(turn_params.listener.ioa_eng, sizeof(struct relay_server *)*get_real_udp_relay_servers_number());
 
 			for (i = 0; i < get_real_udp_relay_servers_number(); i++) {
 
@@ -1519,8 +1518,6 @@ static void *run_general_relay_thread(void *arg)
 static void setup_general_relay_servers(void)
 {
 	size_t i = 0;
-
-	general_relay_servers = (struct relay_server**)allocate_super_memory_engine(turn_params.listener.ioa_eng, sizeof(struct relay_server *)*get_real_general_relay_servers_number());
 
 	for(i=0;i<get_real_general_relay_servers_number();i++) {
 
