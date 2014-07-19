@@ -433,26 +433,28 @@ static int print_session(ur_map_key_type key, ur_map_value_type value, void *arg
 					return 0;
 
 		if(csarg->users) {
+
+			const char *pn=csarg->pname;
+			if(pn[0]) {
+				if(!strcmp(pn,"TLS") || !strcmp(pn,"tls") || !strcmp(pn,"Tls")) {
+					if(tsi->client_protocol != TLS_SOCKET)
+						return 0;
+				} else if(!strcmp(pn,"DTLS") || !strcmp(pn,"dtls") || !strcmp(pn,"Dtls")) {
+					if(tsi->client_protocol != DTLS_SOCKET)
+						return 0;
+				} else if(!strcmp(pn,"TCP") || !strcmp(pn,"tcp") || !strcmp(pn,"Tcp")) {
+					if(tsi->client_protocol != TCP_SOCKET)
+						return 0;
+				} else if(!strcmp(pn,"UDP") || !strcmp(pn,"udp") || !strcmp(pn,"Udp")) {
+					if(tsi->client_protocol != UDP_SOCKET)
+						return 0;
+				} else {
+					return 0;
+				}
+			}
+
 			ur_string_map_value_type value;
 			if(!ur_string_map_get(csarg->users, (ur_string_map_key_type)(char*)tsi->username, &value)) {
-				const char *pn=csarg->pname;
-				if(pn[0]) {
-					if(!strcmp(pn,"TLS") || !strcmp(pn,"tls") || !strcmp(pn,"Tls")) {
-						if(tsi->client_protocol != TLS_SOCKET)
-							return 0;
-					} else if(!strcmp(pn,"DTLS") || !strcmp(pn,"dtls") || !strcmp(pn,"Dtls")) {
-						if(tsi->client_protocol != DTLS_SOCKET)
-							return 0;
-					} else if(!strcmp(pn,"TCP") || !strcmp(pn,"tcp") || !strcmp(pn,"Tcp")) {
-						if(tsi->client_protocol != TCP_SOCKET)
-							return 0;
-					} else if(!strcmp(pn,"UDP") || !strcmp(pn,"udp") || !strcmp(pn,"Udp")) {
-						if(tsi->client_protocol != UDP_SOCKET)
-							return 0;
-					} else {
-						return 0;
-					}
-				}
 				value = (ur_string_map_value_type)csarg->users_number;
 				csarg->users_number += 1;
 				csarg->user_counters = (size_t*)turn_realloc(csarg->user_counters,
