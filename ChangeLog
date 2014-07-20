@@ -7,6 +7,7 @@ Version 4.1.0.1 'Vitari':
 	- STUN BINDING response fixed in the case of -X (external address) option.
 	- "pu" CLI command fixed.
 	- session cleaning fixed in TCP relay functionality (RFC 6062).
+	- some crash conditions fixed.
 	- working on compilation warnings.
 
 06/13/2014 Oleg Moskalenko <mom040267@gmail.com>
