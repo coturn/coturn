@@ -192,9 +192,11 @@ fi
 %{_docdir}/%{name}/schema.userdb.redis
 %dir %{_datadir}/%{name}
 %{_datadir}/%{name}/schema.sql
+%{_datadir}/%{name}/schema.mongo.sh
 %{_datadir}/%{name}/schema.stats.redis
 %{_datadir}/%{name}/schema.userdb.redis
 %{_datadir}/%{name}/testredisdbsetup.sh
+%{_datadir}/%{name}/testmongodbsetup.sh
 %{_datadir}/%{name}/testsqldbsetup.sql
 %dir %{_datadir}/%{name}/etc
 %{_datadir}/%{name}/etc/turn_server_cert.pem
@@ -232,6 +234,7 @@ fi
 %{_datadir}/%{name}/scripts/longtermsecure/secure_udp_client.sh
 %dir %{_datadir}/%{name}/scripts/longtermsecuredb
 %{_datadir}/%{name}/scripts/longtermsecuredb/secure_relay_with_db_mysql.sh
+%{_datadir}/%{name}/scripts/longtermsecuredb/secure_relay_with_db_mongo.sh
 %{_datadir}/%{name}/scripts/longtermsecuredb/secure_relay_with_db_psql.sh
 %{_datadir}/%{name}/scripts/longtermsecuredb/secure_relay_with_db_redis.sh
 %dir %{_datadir}/%{name}/scripts/restapi
