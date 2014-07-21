@@ -9,7 +9,9 @@ etc/turnuserdb.conf.default
 %%DATADIR%%/schema.sql
 %%DATADIR%%/schema.userdb.redis
 %%DATADIR%%/schema.stats.redis
+%%DATADIR%%/schema.mongo.sh
 %%DATADIR%%/testredisdbsetup.sh
+%%DATADIR%%/testmongodbsetup.sh
 @dirrmtry %%DATADIR%%
 %%PORTEXAMPLES%%%%EXAMPLESDIR%%/etc/turnserver.conf
 %%PORTEXAMPLES%%%%EXAMPLESDIR%%/etc/turnuserdb.conf
@@ -45,6 +47,7 @@ etc/turnuserdb.conf.default
 %%PORTEXAMPLES%%%%EXAMPLESDIR%%/scripts/longtermsecure/secure_dos_attack.sh
 %%PORTEXAMPLES%%%%EXAMPLESDIR%%/scripts/longtermsecuredb/secure_relay_with_db_psql.sh
 %%PORTEXAMPLES%%%%EXAMPLESDIR%%/scripts/longtermsecuredb/secure_relay_with_db_mysql.sh
+%%PORTEXAMPLES%%%%EXAMPLESDIR%%/scripts/longtermsecuredb/secure_relay_with_db_mongo.sh
 %%PORTEXAMPLES%%%%EXAMPLESDIR%%/scripts/longtermsecuredb/secure_relay_with_db_redis.sh
 %%PORTEXAMPLES%%%%EXAMPLESDIR%%/scripts/restapi/secure_relay_secret.sh
 %%PORTEXAMPLES%%%%EXAMPLESDIR%%/scripts/restapi/secure_relay_secret_with_db_mysql.sh

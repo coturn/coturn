@@ -62,6 +62,7 @@ longtermsecure/secure_tls_client_c2c_tcp_relay.sh longtermsecure/secure_tls_clie
 longtermsecure/secure_udp_c2c.sh longtermsecure/secure_udp_client.sh \
 longtermsecure/secure_dos_attack.sh longtermsecure/secure_udp_client.sh \
 longtermsecuredb/secure_relay_with_db_psql.sh longtermsecuredb/secure_relay_with_db_mysql.sh \
+longtermsecuredb/secure_relay_with_db_psql.sh longtermsecuredb/secure_relay_with_db_mongo.sh \
 longtermsecuredb/secure_relay_with_db_redis.sh \
 restapi/secure_relay_secret.sh restapi/secure_relay_secret_with_db_mysql.sh \
 restapi/secure_relay_secret.sh restapi/secure_relay_secret_with_db_redis.sh \
@@ -108,6 +109,8 @@ do-install:
 	${INSTALL_DATA} ${WRKSRC}/turndb/schema.userdb.redis ${DATADIR}/schema.userdb.redis
 	${INSTALL_DATA} ${WRKSRC}/turndb/schema.stats.redis ${DATADIR}/schema.stats.redis
 	${INSTALL_SCRIPT} ${WRKSRC}/turndb/testredisdbsetup.sh ${DATADIR}/testredisdbsetup.sh
+	${INSTALL_SCRIPT} ${WRKSRC}/turndb/schema.mongo.sh ${DATADIR}/schema.mongo.sh
+	${INSTALL_SCRIPT} ${WRKSRC}/turndb/testmongodbsetup.sh ${DATADIR}/testmongodbsetup.sh
 	${INSTALL_DATA} ${WRKSRC}/lib/libturnclient.a ${PREFIX}/lib/libturnclient.a
 	${INSTALL_DATA} ${WRKSRC}/examples/etc/turnserver.conf ${PREFIX}/etc/turnserver.conf.default
 	${INSTALL_DATA} ${WRKSRC}/examples/etc/turnuserdb.conf ${PREFIX}/etc/turnuserdb.conf.default
@@ -144,7 +147,8 @@ do-install:
 	${INSTALL_DATA} ${WRKSRC}/turndb/schema.sql ${DOCSDIR}/schema.sql
 	${INSTALL_DATA} ${WRKSRC}/turndb/schema.userdb.redis ${DOCSDIR}/schema.userdb.redis
 	${INSTALL_DATA} ${WRKSRC}/turndb/schema.stats.redis ${DOCSDIR}/schema.stats.redis
-PORTDOCS+=	postinstall.txt ${PORTREADMEDOCS} schema.sql schema.userdb.redis schema.stats.redis
+PORTDOCS+=	postinstall.txt ${PORTREADMEDOCS} schema.sql schema.mongo.sh  \
+		schema.userdb.redis schema.stats.redis
 .endif
 
 post-install:

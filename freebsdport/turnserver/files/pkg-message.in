@@ -12,8 +12,7 @@ you have to:
 	file, or set up PostgreSQL or MySQL or Redis database for user accounts.
 	Use %%PREFIX%%/etc/turnuserdb.conf.default as example for flat file DB,
 	or use %%DATADIR%%/schema.sql as database schema,
-	or use %%DATADIR%%/schema*redis as Redis
-	database description.
+	or use %%DATADIR%%/schema*redis as Redis database description.
 
 	d) add line turnserver_enable="YES" to /etc/rc.conf.
 	 
