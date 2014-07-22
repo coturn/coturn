@@ -1,3 +1,9 @@
+coturn (4.1.0.2-1) unstable; urgency=low
+
+  * Sync to upstream 4.1.0.2
+
+ -- Oleg Moskalenko <mom040267@gmail.com>  Tue, 22 Jul 2014 13:23:09 -0700
+
 coturn (4.1.0.1-1) unstable; urgency=low
 
   * Sync to upstream 4.1.0.1: SSODA support, bug fixes.
