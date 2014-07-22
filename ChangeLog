@@ -1,5 +1,5 @@
 06/25/2014 Oleg Moskalenko <mom040267@gmail.com>
-Version 4.1.0.1 'Vitari':
+Version 4.1.0.2 'Vitari':
 	- SSODA (double allocation) draft support added.
 	- DB "driver" abstraction and MongoDB support (by Federico Pinna).
 	- multiple origins supported per request.
