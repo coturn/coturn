@@ -188,6 +188,7 @@ fi
 %{_docdir}/%{name}/README.turnadmin
 %{_docdir}/%{name}/README.turnserver
 %{_docdir}/%{name}/schema.sql
+%{_docdir}/%{name}/schema.mongo.sh
 %{_docdir}/%{name}/schema.stats.redis
 %{_docdir}/%{name}/schema.userdb.redis
 %dir %{_datadir}/%{name}
