@@ -83,13 +83,14 @@ User database settings:
 
 -b, --userdb	User database file name (default - turnuserdb.conf),
 		for long-term credentials mechanism only.
-		This user file database is being dynamically checked while the turnserver 
-		is working, and the user accounts can be changed dynamically by
-		editing the database.
+		This user file database is being dynamically checked while the 
+		turnserver is working, and the user accounts can be changed 
+		dynamically by editing the database.
 				  
 -e, --psql-userdb	User database connection string for PostgreSQL.
-		This database can be used for long-term and short-term credentials mechanisms,
-		and it can store the secret value for secret-based timed authentication in TURN RESP API.
+		This database can be used for long-term and short-term 
+		credentials mechanisms, and it can store the secret value 
+		for secret-based timed authentication in TURN RESP API.
 		The connection string format is like that:
 		 
 		"host=<host> dbname=<dbname> user=<db-user> password=<db-user-password> connect_timeout=<seconds>" 
@@ -97,14 +98,16 @@ User database settings:
 		
 		Or:
 		
-		"postgresql://username:password@hostname:port/databasename" (for 9.x or newer Postgres). 
+		"postgresql://username:password@hostname:port/databasename" 
+		(for 9.x or newer Postgres). 
 		See the INSTALL file for more explanations and examples.
 		
 		Also, see http://www.PostgreSQL.org for full PostgreSQL documentation.
 				  
 -M, --mysql-userdb	User database connection string for MySQL or MariaDB. 
-		This database can be used for long-term and short-term credentials mechanisms,
-		and it can store the secret value for secret-based timed authentication in TURN RESP API.
+		This database can be used for long-term and short-term 
+		credentials mechanisms, and it can store the secret value for 
+		secret-based timed authentication in TURN RESP API.
 		The connection string format is like that:
 		 
 		"host=<host> dbname=<dbname> user=<db-user> password=<db-user-password> connect_timeout=<seconds>"
@@ -114,19 +117,21 @@ User database settings:
 		for full MySQL documentation.
 		
 -J, --mongo-userdb	User database connection string for MongoDB. 
-		This database can be used for long-term and short-term credentials mechanisms,
-		and it can store the secret value for secret-based timed authentication in TURN RESP API.
+		This database can be used for long-term and short-term 
+		credentials mechanisms, and it can store the secret value 
+		for secret-based timed authentication in TURN RESP API.
 		The connection string format is like that:
 		 
-		"mongodb://[username:password@]host1[:port1][,host2[:port2],...[,hostN[:portN]]][/[database][?options]]"
+		"mongodb://[username:password@]host1[:port1][,host2[:port2],...[,hostN[:portN]]] [/[database][?options]]"
 		See the INSTALL file for more explanations and examples.
 		
 		Also, see http://docs.mongodb.org/manual/
 		for full MongoDB documentation.
 		
 -N, --redis-userdb	User database connection string for Redis. 
-		This database can be used for long-term and short-term credentials mechanisms,
-		and it can store the secret value for secret-based timed authentication in TURN RESP API.
+		This database can be used for long-term and short-term
+		credentials mechanisms, and it can store the secret 
+		value for secret-based timed authentication in TURN RESP API.
 		The connection string format is like that:
 		 
 		"ip=<ip-addr> dbname=<db-number> password=<db-password> connect_timeout=<seconds>"
