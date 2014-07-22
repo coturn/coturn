@@ -5,5 +5,5 @@ Abstract: This set of documents describe how the turn server programs can be use
 Section: Network/Communication
 
 Format: Text
-Files: /usr/share/doc/coturn/README.turnserver.gz /usr/share/doc/coturn/README.turnadmin.gz /usr/share/doc/coturn/README.turnutils.gz /usr/share/doc/coturn/schema.sql /usr/share/doc/coturn/schema.userdb.redis.gz /usr/share/doc/coturn/schema.stats.redis
+Files: /usr/share/doc/coturn/README.turnserver.gz /usr/share/doc/coturn/README.turnadmin.gz /usr/share/doc/coturn/README.turnutils.gz /usr/share/doc/coturn/schema.sql /usr/share/doc/coturn/schema.mongo.sh /usr/share/doc/coturn/schema.userdb.redis.gz /usr/share/doc/coturn/schema.stats.redis
 
