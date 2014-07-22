@@ -9,6 +9,7 @@ turndb/schema.sql usr/share/doc/coturn
 turndb/schema.mongo.sh usr/share/coturn
 turndb/schema.mongo.sh usr/share/doc/coturn
 turndb/testredisdbsetup.sh usr/share/coturn
+turndb/testmongosetup.sh usr/share/coturn
 turndb/testsqldbsetup.sql usr/share/coturn
 turndb/schema.userdb.redis usr/share/coturn
 turndb/schema.userdb.redis usr/share/doc/coturn
