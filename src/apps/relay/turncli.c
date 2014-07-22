@@ -433,26 +433,28 @@ static int print_session(ur_map_key_type key, ur_map_value_type value, void *arg
 					return 0;
 
 		if(csarg->users) {
+
+			const char *pn=csarg->pname;
+			if(pn[0]) {
+				if(!strcmp(pn,"TLS") || !strcmp(pn,"tls") || !strcmp(pn,"Tls")) {
+					if(tsi->client_protocol != TLS_SOCKET)
+						return 0;
+				} else if(!strcmp(pn,"DTLS") || !strcmp(pn,"dtls") || !strcmp(pn,"Dtls")) {
+					if(tsi->client_protocol != DTLS_SOCKET)
+						return 0;
+				} else if(!strcmp(pn,"TCP") || !strcmp(pn,"tcp") || !strcmp(pn,"Tcp")) {
+					if(tsi->client_protocol != TCP_SOCKET)
+						return 0;
+				} else if(!strcmp(pn,"UDP") || !strcmp(pn,"udp") || !strcmp(pn,"Udp")) {
+					if(tsi->client_protocol != UDP_SOCKET)
+						return 0;
+				} else {
+					return 0;
+				}
+			}
+
 			ur_string_map_value_type value;
 			if(!ur_string_map_get(csarg->users, (ur_string_map_key_type)(char*)tsi->username, &value)) {
-				const char *pn=csarg->pname;
-				if(pn[0]) {
-					if(!strcmp(pn,"TLS") || !strcmp(pn,"tls") || !strcmp(pn,"Tls")) {
-						if(tsi->client_protocol != TLS_SOCKET)
-							return 0;
-					} else if(!strcmp(pn,"DTLS") || !strcmp(pn,"dtls") || !strcmp(pn,"Dtls")) {
-						if(tsi->client_protocol != DTLS_SOCKET)
-							return 0;
-					} else if(!strcmp(pn,"TCP") || !strcmp(pn,"tcp") || !strcmp(pn,"Tcp")) {
-						if(tsi->client_protocol != TCP_SOCKET)
-							return 0;
-					} else if(!strcmp(pn,"UDP") || !strcmp(pn,"udp") || !strcmp(pn,"Udp")) {
-						if(tsi->client_protocol != UDP_SOCKET)
-							return 0;
-					} else {
-						return 0;
-					}
-				}
 				value = (ur_string_map_value_type)csarg->users_number;
 				csarg->users_number += 1;
 				csarg->user_counters = (size_t*)turn_realloc(csarg->user_counters,
@@ -502,13 +504,19 @@ static int print_session(ur_map_key_type key, ur_map_value_type value, void *arg
 						addr_to_string(&(tsi->local_addr_data.addr),(u08bits*)tsi->local_addr_data.saddr);
 					if(!tsi->remote_addr_data.saddr[0])
 						addr_to_string(&(tsi->remote_addr_data.addr),(u08bits*)tsi->remote_addr_data.saddr);
-					if(!tsi->relay_addr_data.saddr[0])
-						addr_to_string(&(tsi->relay_addr_data.addr),(u08bits*)tsi->relay_addr_data.saddr);
+					if(!tsi->relay_addr_data_ipv4.saddr[0])
+						addr_to_string(&(tsi->relay_addr_data_ipv4.addr),(u08bits*)tsi->relay_addr_data_ipv4.saddr);
+					if(!tsi->relay_addr_data_ipv6.saddr[0])
+						addr_to_string(&(tsi->relay_addr_data_ipv6.addr),(u08bits*)tsi->relay_addr_data_ipv6.saddr);
 					myprintf(cs,"      client addr %s, server addr %s\n",
 									tsi->remote_addr_data.saddr,
 									tsi->local_addr_data.saddr);
-					myprintf(cs,"      relay addr %s\n",
-									tsi->relay_addr_data.saddr);
+					if(tsi->relay_addr_data_ipv4.saddr[0]) {
+						myprintf(cs,"      relay addr %s\n", tsi->relay_addr_data_ipv4.saddr);
+					}
+					if(tsi->relay_addr_data_ipv6.saddr[0]) {
+						myprintf(cs,"      relay addr %s\n", tsi->relay_addr_data_ipv6.saddr);
+					}
 				}
 				myprintf(cs,"      fingerprints enforced: %s\n",get_flag(tsi->enforce_fingerprints));
 				myprintf(cs,"      mobile: %s\n",get_flag(tsi->is_mobile));
@@ -756,6 +764,11 @@ static void cli_print_configuration(struct cli_session* cs)
 #if !defined(TURN_NO_MYSQL)
 			case TURN_USERDB_TYPE_MYSQL:
 				cli_print_str(cs,"MySQL/MariaDB","DB type",0);
+				break;
+#endif
+#if !defined(TURN_NO_MONGO)
+			case TURN_USERDB_TYPE_MONGO:
+				cli_print_str(cs,"MongoDB","DB type",0);
 				break;
 #endif
 #if !defined(TURN_NO_HIREDIS)

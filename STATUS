@@ -93,9 +93,15 @@ compatibility.
 
 39) Congestion avoidance implemented, for all protocols.
 
-40) Multi-tenant server implemented.
+40) Coturn project forked from rfc5766-turn-server.
 
-41) Coturn project forked from rfc5766-turn-server.
+41) Multi-tenant server implemented (ORIGIN support).
+
+42) Bandwidth draft support added.
+
+43) MongoDB support added.
+
+44) Double (dual) allocation added (SSODA draft).
  
 Things to be implemented in future (the development roadmap) 
 are described in the TODO file.

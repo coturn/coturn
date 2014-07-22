@@ -306,7 +306,9 @@ static int clnet_allocate(int verbose,
 		app_ur_conn_info *clnet_info,
 		ioa_addr *relay_addr,
 		int af,
-		char *turn_addr, u16bits *turn_port) {
+		char *turn_addr, u16bits *turn_port,
+		stun_tid *in_tid,
+		stun_tid *out_tid) {
 
 	int af_cycle = 0;
 	int reopen_socket = 0;
@@ -332,20 +334,35 @@ static int clnet_allocate(int verbose,
 		}
 
 		stun_buffer message;
-		if(current_reservation_token)
+		if(!in_tid && current_reservation_token) {
 			af = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT;
+		}
+
+		int af4 = dual_allocation || (af == STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4);
+		int af6 = dual_allocation || (af == STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6);
+
+		if(!no_rtcp && !in_tid) {
+			if (!never_allocate_rtcp && allocate_rtcp) {
+				af4 = 0;
+				af6 = 0;
+			}
+		}
 
 		if(!dos)
-			stun_set_allocate_request(&message, 800, af, relay_transport, mobility);
+			stun_set_allocate_request(&message, 800, af4, af6, relay_transport, mobility);
 		else
-			stun_set_allocate_request(&message, 300, af, relay_transport, mobility);
+			stun_set_allocate_request(&message, 300, af4, af6, relay_transport, mobility);
 
 		if(bps)
 			stun_attr_add_bandwidth_str(message.buf, (size_t*)(&(message.len)), bps);
 
+		if(in_tid) {
+			stun_tid_message_cpy(message.buf, in_tid);
+		}
+
 		if(dont_fragment)
 			stun_attr_add(&message, STUN_ATTRIBUTE_DONT_FRAGMENT, NULL, 0);
-		if(!no_rtcp) {
+		if(!no_rtcp && !in_tid) {
 		  if (!never_allocate_rtcp && allocate_rtcp) {
 		    uint64_t reservation_token = ioa_ntoh64(current_reservation_token);
 		    stun_attr_add(&message, STUN_ATTRIBUTE_RESERVATION_TOKEN,
@@ -355,12 +372,21 @@ static int clnet_allocate(int verbose,
 		  }
 		}
 
-		if(origin[0])
+		if(origin[0]) {
+			const char* some_origin = "https://carleon.gov:443";
+			stun_attr_add(&message, STUN_ATTRIBUTE_ORIGIN, some_origin, strlen(some_origin));
 			stun_attr_add(&message, STUN_ATTRIBUTE_ORIGIN, origin, strlen(origin));
+			some_origin = "ftp://uffrith.net";
+			stun_attr_add(&message, STUN_ATTRIBUTE_ORIGIN, some_origin, strlen(some_origin));
+		}
 
 		if(add_integrity(clnet_info, &message)<0) return -1;
 
 		stun_attr_add_fingerprint_str(message.buf,(size_t*)&(message.len));
+
+		if(out_tid) {
+			stun_tid_from_message_str(message.buf, (size_t)message.len, out_tid);
+		}
 
 		while (!allocate_sent) {
 
@@ -414,22 +440,55 @@ static int clnet_allocate(int verbose,
 						if (verbose) {
 							TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "success\n");
 						}
-						if (stun_attr_get_first_addr(&message,
-								STUN_ATTRIBUTE_XOR_RELAYED_ADDRESS, relay_addr,
-								NULL) < 0) {
-							TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-									"%s: !!!: relay addr cannot be received\n",
-									__FUNCTION__);
-							return -1;
-						} else {
-							if (verbose) {
-								ioa_addr remote_addr;
-								memcpy(&remote_addr, relay_addr,
-										sizeof(ioa_addr));
-								addr_debug_print(verbose, &remote_addr,
-										"Received relay addr");
+						{
+							int found = 0;
+
+							stun_attr_ref sar = stun_attr_get_first(&message);
+							while (sar) {
+
+								int attr_type = stun_attr_get_type(sar);
+								if(attr_type == STUN_ATTRIBUTE_XOR_RELAYED_ADDRESS) {
+
+									if (stun_attr_get_addr(&message, sar, relay_addr, NULL) < 0) {
+										TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+											"%s: !!!: relay addr cannot be received (1)\n",
+											__FUNCTION__);
+										return -1;
+									} else {
+										if (verbose) {
+											ioa_addr remote_addr;
+											memcpy(&remote_addr, relay_addr,sizeof(ioa_addr));
+											addr_debug_print(verbose, &remote_addr,"Received relay addr");
+										}
+
+										if(!addr_any(relay_addr)) {
+											if(relay_addr->ss.sa_family == AF_INET) {
+												if(default_address_family != STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6) {
+													found = 1;
+													break;
+												}
+											}
+											if(relay_addr->ss.sa_family == AF_INET6) {
+												if(default_address_family == STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6) {
+													found = 1;
+													break;
+												}
+											}
+										}
+									}
+								}
+
+								sar = stun_attr_get_next(&message,sar);
+							}
+
+							if(!found) {
+								TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+										"%s: !!!: relay addr cannot be received (2)\n",
+										__FUNCTION__);
+								return -1;
 							}
 						}
+
 						stun_attr_ref rt_sar = stun_attr_get_first_by_type(
 								&message, STUN_ATTRIBUTE_RESERVATION_TOKEN);
 						uint64_t rtv = stun_attr_get_reservation_token_value(rt_sar);
@@ -514,7 +573,9 @@ static int clnet_allocate(int verbose,
 	  exit(-1);
 	}
 
-	allocate_rtcp = !allocate_rtcp;
+	if(!in_tid) {
+		allocate_rtcp = !allocate_rtcp;
+	}
 
 	if (1) {
 
@@ -895,7 +956,9 @@ int start_connection(uint16_t clnet_remote_port0,
 	char remote_address[1025];
 	STRCPY(remote_address,remote_address0);
 
-	clnet_allocate(verbose, clnet_info_probe, &relay_addr, default_address_family, remote_address, &clnet_remote_port);
+	stun_tid tid;
+
+	clnet_allocate(verbose, clnet_info_probe, &relay_addr, default_address_family, remote_address, &clnet_remote_port,NULL,NULL);
 
 	/* Real: */
 
@@ -915,15 +978,20 @@ int start_connection(uint16_t clnet_remote_port0,
 	}
 
 	int af = default_address_family ? default_address_family : get_allocate_address_family(&peer_addr);
-	if (clnet_allocate(verbose, clnet_info, &relay_addr, af, NULL,NULL) < 0) {
+	if (clnet_allocate(verbose, clnet_info, &relay_addr, af, NULL,NULL,NULL,&tid) < 0) {
 	  exit(-1);
 	}
+
+	//strcpy((char*)g_uname,"qqq");
+	//if (clnet_allocate(verbose, clnet_info, &relay_addr, af, NULL,NULL,&tid,NULL) < 0) {
+	//	exit(-1);
+	//}
 
 	if(rare_event()) return 0;
 
 	if(!no_rtcp) {
 		af = default_address_family ? default_address_family : get_allocate_address_family(&peer_addr_rtcp);
-	  if (clnet_allocate(verbose, clnet_info_rtcp, &relay_addr_rtcp, af,NULL,NULL) < 0) {
+	  if (clnet_allocate(verbose, clnet_info_rtcp, &relay_addr_rtcp, af,NULL,NULL,NULL,NULL) < 0) {
 	    exit(-1);
 	  }
 	  if(rare_event()) return 0;
@@ -1110,7 +1178,7 @@ int start_c2c_connection(uint16_t clnet_remote_port0,
 	char remote_address[1025];
 	STRCPY(remote_address,remote_address0);
 
-	clnet_allocate(verbose, clnet_info_probe, &relay_addr1, default_address_family, remote_address, &clnet_remote_port);
+	clnet_allocate(verbose, clnet_info_probe, &relay_addr1, default_address_family, remote_address, &clnet_remote_port,NULL,NULL);
 
 	if(rare_event()) return 0;
 
@@ -1143,7 +1211,7 @@ int start_c2c_connection(uint16_t clnet_remote_port0,
 
 	if(!no_rtcp) {
 
-	  if (clnet_allocate(verbose, clnet_info1, &relay_addr1, default_address_family,NULL,NULL)
+	  if (clnet_allocate(verbose, clnet_info1, &relay_addr1, default_address_family,NULL,NULL,NULL,NULL)
 	      < 0) {
 	    exit(-1);
 	  }
@@ -1151,13 +1219,13 @@ int start_c2c_connection(uint16_t clnet_remote_port0,
 	  if(rare_event()) return 0;
 
 	  if (clnet_allocate(verbose, clnet_info1_rtcp,
-			   &relay_addr1_rtcp, default_address_family,NULL,NULL) < 0) {
+			   &relay_addr1_rtcp, default_address_family,NULL,NULL,NULL,NULL) < 0) {
 	    exit(-1);
 	  }
 	  
 	  if(rare_event()) return 0;
 
-	  if (clnet_allocate(verbose, clnet_info2, &relay_addr2, default_address_family,NULL,NULL)
+	  if (clnet_allocate(verbose, clnet_info2, &relay_addr2, default_address_family,NULL,NULL,NULL,NULL)
 	      < 0) {
 	    exit(-1);
 	  }
@@ -1165,20 +1233,20 @@ int start_c2c_connection(uint16_t clnet_remote_port0,
 	  if(rare_event()) return 0;
 
 	  if (clnet_allocate(verbose, clnet_info2_rtcp,
-			   &relay_addr2_rtcp, default_address_family,NULL,NULL) < 0) {
+			   &relay_addr2_rtcp, default_address_family,NULL,NULL,NULL,NULL) < 0) {
 	    exit(-1);
 	  }
 
 	  if(rare_event()) return 0;
 	} else {
 
-	  if (clnet_allocate(verbose, clnet_info1, &relay_addr1, default_address_family,NULL,NULL)
+	  if (clnet_allocate(verbose, clnet_info1, &relay_addr1, default_address_family,NULL,NULL,NULL,NULL)
 	      < 0) {
 	    exit(-1);
 	  }
 	  if(rare_event()) return 0;
 	  if(!(clnet_info2->is_peer)) {
-		  if (clnet_allocate(verbose, clnet_info2, &relay_addr2, default_address_family,NULL,NULL) < 0) {
+		  if (clnet_allocate(verbose, clnet_info2, &relay_addr2, default_address_family,NULL,NULL,NULL,NULL) < 0) {
 			  exit(-1);
 		  }
 		  if(rare_event()) return 0;
