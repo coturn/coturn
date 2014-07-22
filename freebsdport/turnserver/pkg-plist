@@ -11,7 +11,7 @@ etc/turnuserdb.conf.default
 %%DATADIR%%/schema.stats.redis
 %%DATADIR%%/schema.mongo.sh
 %%DATADIR%%/testredisdbsetup.sh
-%%DATADIR%%/testmongodbsetup.sh
+%%DATADIR%%/testmongosetup.sh
 @dirrmtry %%DATADIR%%
 %%PORTEXAMPLES%%%%EXAMPLESDIR%%/etc/turnserver.conf
 %%PORTEXAMPLES%%%%EXAMPLESDIR%%/etc/turnuserdb.conf

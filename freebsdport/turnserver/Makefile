@@ -1,7 +1,7 @@
 # $FreeBSD: head/net/turnserver/Makefile 339463 2014-01-12 00:58:18Z tabthorpe $
 
 PORTNAME=	turnserver
-PORTVERSION=	4.0.1.3
+PORTVERSION=	4.1.0.1
 CATEGORIES=	net
 MASTER_SITES=	http://turnserver.open-sys.org/downloads/v${PORTVERSION}/ \
 		http://turnserver.open-sys.org/downloads/extradocs/ \
@@ -110,7 +110,7 @@ do-install:
 	${INSTALL_DATA} ${WRKSRC}/turndb/schema.stats.redis ${DATADIR}/schema.stats.redis
 	${INSTALL_SCRIPT} ${WRKSRC}/turndb/testredisdbsetup.sh ${DATADIR}/testredisdbsetup.sh
 	${INSTALL_SCRIPT} ${WRKSRC}/turndb/schema.mongo.sh ${DATADIR}/schema.mongo.sh
-	${INSTALL_SCRIPT} ${WRKSRC}/turndb/testmongodbsetup.sh ${DATADIR}/testmongodbsetup.sh
+	${INSTALL_SCRIPT} ${WRKSRC}/turndb/testmongosetup.sh ${DATADIR}/testmongosetup.sh
 	${INSTALL_DATA} ${WRKSRC}/lib/libturnclient.a ${PREFIX}/lib/libturnclient.a
 	${INSTALL_DATA} ${WRKSRC}/examples/etc/turnserver.conf ${PREFIX}/etc/turnserver.conf.default
 	${INSTALL_DATA} ${WRKSRC}/examples/etc/turnuserdb.conf ${PREFIX}/etc/turnuserdb.conf.default
@@ -145,6 +145,7 @@ do-install:
 .endfor
 	${INSTALL_DATA} ${PKGMESSAGE} ${DOCSDIR}/postinstall.txt
 	${INSTALL_DATA} ${WRKSRC}/turndb/schema.sql ${DOCSDIR}/schema.sql
+	${INSTALL_DATA} ${WRKSRC}/turndb/schema.mongo.sh ${DOCSDIR}/schema.mongo.sh
 	${INSTALL_DATA} ${WRKSRC}/turndb/schema.userdb.redis ${DOCSDIR}/schema.userdb.redis
 	${INSTALL_DATA} ${WRKSRC}/turndb/schema.stats.redis ${DOCSDIR}/schema.stats.redis
 PORTDOCS+=	postinstall.txt ${PORTREADMEDOCS} schema.sql schema.mongo.sh  \
