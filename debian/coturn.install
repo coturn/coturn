@@ -54,7 +54,6 @@ examples/scripts/selfloadbalance/secure_relay.sh usr/share/coturn/examples/scrip
 examples/scripts/selfloadbalance/secure_dos_attack.sh usr/share/coturn/examples/scripts/selfloadbalance
 examples/scripts/restapi/secure_relay_secret.sh usr/share/coturn/examples/scripts/restapi
 examples/scripts/restapi/secure_relay_secret_with_db_mysql.sh usr/share/coturn/examples/scripts/restapi
-examples/scripts/restapi/secure_relay_secret_with_db_mongo.sh usr/share/coturn/examples/scripts/restapi
 examples/scripts/restapi/secure_relay_secret_with_db_psql.sh usr/share/coturn/examples/scripts/restapi
 examples/scripts/restapi/secure_relay_secret_with_db_redis.sh usr/share/coturn/examples/scripts/restapi
 examples/scripts/restapi/secure_udp_client_with_secret.sh usr/share/coturn/examples/scripts/restapi
