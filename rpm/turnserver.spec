@@ -196,7 +196,7 @@ fi
 %{_datadir}/%{name}/schema.stats.redis
 %{_datadir}/%{name}/schema.userdb.redis
 %{_datadir}/%{name}/testredisdbsetup.sh
-%{_datadir}/%{name}/testmongodbsetup.sh
+%{_datadir}/%{name}/testmongosetup.sh
 %{_datadir}/%{name}/testsqldbsetup.sql
 %dir %{_datadir}/%{name}/etc
 %{_datadir}/%{name}/etc/turn_server_cert.pem
