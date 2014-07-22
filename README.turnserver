@@ -122,7 +122,8 @@ User database settings:
 		for secret-based timed authentication in TURN RESP API.
 		The connection string format is like that:
 		 
-		"mongodb://[username:password@]host1[:port1][,host2[:port2],...[,hostN[:portN]]] [/[database][?options]]"
+		"mongodb://[username:password@]host1[:port1][,host2[:port2],...
+			[,hostN[:portN]]][/[database][?options]]"
 		See the INSTALL file for more explanations and examples.
 		
 		Also, see http://docs.mongodb.org/manual/
