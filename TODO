@@ -55,24 +55,17 @@
 
 ==================================================================
 
-1) Follow the draft ICE endpoint mobility standard and apply changes 
-when necessary:
+1) For extra difficult NAT/FWs, consider implementing Websockets.
 
-   https://ietf.org/doc/draft-wing-mmusic-ice-mobility/
+2) MS TURN, MS STUN extensions.
 
-2) For extra difficult NAT/FWs, consider implementing Websockets.
+3) ALPN with TLS and DTLS (when OpenSSL 1.0.2 is available).
 
-3) MS TURN, MS STUN extensions.
+4) Redirect draft.
 
-4) Multiple origins.
+5) New security oAuth draft.
 
-5) ALPN with TLS and DTLS (when OpenSSL 1.0.2 is available).
-
-6) Redirect draft.
-
-7) Dual allocation draft.
-
-8) New security oAuth draft.
+6) DTLS 1.2 (when available).
 
 ==================================================================
 

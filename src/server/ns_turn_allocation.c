@@ -62,7 +62,6 @@ void clear_allocation(allocation *a)
 				if(tc) {
 					delete_tcp_connection(tc);
 					a->tcs.elems[i] = NULL;
-					break;
 				}
 			}
 			turn_free(a->tcs.elems,sz*sizeof(tcp_connection*));
@@ -70,10 +69,14 @@ void clear_allocation(allocation *a)
 		}
 		a->tcs.sz = 0;
 
-		clear_ioa_socket_session_if(a->relay_session.s, a->owner);
-		clear_ts_ur_session_data(&(a->relay_session));
-
-		IOA_EVENT_DEL(a->lifetime_ev);
+		{
+			int i;
+			for(i = 0;i<ALLOC_PROTOCOLS_NUMBER; ++i) {
+				clear_ioa_socket_session_if(a->relay_sessions[i].s, a->owner);
+				clear_relay_endpoint_session_data(&(a->relay_sessions[i]));
+				IOA_EVENT_DEL(a->relay_sessions[i].lifetime_ev);
+			}
+		}
 
 		/* The order is important here: */
 		free_turn_permission_hashtable(&(a->addr_to_perm));
@@ -83,22 +86,65 @@ void clear_allocation(allocation *a)
 	}
 }
 
-ts_ur_session *get_relay_session(allocation *a)
+relay_endpoint_session *get_relay_session(allocation *a, int family)
 {
-	return &(a->relay_session);
+	if(a)
+		return &(a->relay_sessions[ALLOC_INDEX(family)]);
+	return NULL;
 }
 
-ioa_socket_handle get_relay_socket(allocation *a)
+int get_relay_session_failure(allocation *a, int family)
 {
-	return a->relay_session.s;
+	if(a)
+		return a->relay_sessions_failure[ALLOC_INDEX(family)];
+	return 0;
 }
 
-void set_allocation_lifetime_ev(allocation *a, turn_time_t exp_time, ioa_timer_handle ev)
+void set_relay_session_failure(allocation *a, int family)
+{
+	if(a)
+		a->relay_sessions_failure[ALLOC_INDEX(family)] = 1;
+}
+
+ioa_socket_handle get_relay_socket(allocation *a, int family)
+{
+	if(a)
+		return a->relay_sessions[ALLOC_INDEX(family)].s;
+	return NULL;
+}
+
+void set_allocation_family_invalid(allocation *a, int family)
+{
+	if(a) {
+		size_t index = ALLOC_INDEX(family);
+		if(a->relay_sessions[index].s) {
+			if(a->tcs.elems) {
+				size_t i;
+				size_t sz = a->tcs.sz;
+				for(i=0;i<sz;++i) {
+					tcp_connection *tc = a->tcs.elems[i];
+					if(tc) {
+						if(tc->peer_s && (get_ioa_socket_address_family(tc->peer_s) == family)) {
+							delete_tcp_connection(tc);
+							a->tcs.elems[i] = NULL;
+						}
+					}
+				}
+			}
+
+			clear_ioa_socket_session_if(a->relay_sessions[index].s, a->owner);
+			clear_relay_endpoint_session_data(&(a->relay_sessions[index]));
+			IOA_EVENT_DEL(a->relay_sessions[index].lifetime_ev);
+		}
+	}
+}
+
+void set_allocation_lifetime_ev(allocation *a, turn_time_t exp_time, ioa_timer_handle ev, int family)
 {
 	if (a) {
-		IOA_EVENT_DEL(a->lifetime_ev);
-		a->expiration_time = exp_time;
-		a->lifetime_ev = ev;
+		IOA_EVENT_DEL(a->relay_sessions[ALLOC_INDEX(family)].lifetime_ev);
+		a->relay_sessions[ALLOC_INDEX(family)].expiration_time = exp_time;
+		a->relay_sessions[ALLOC_INDEX(family)].lifetime_ev = ev;
 	}
 }
 

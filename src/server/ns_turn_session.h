@@ -69,8 +69,7 @@ struct _ts_ur_super_session {
   void* server; 
   turnsession_id id;
   turn_time_t start_time;
-  ts_ur_session client_session;
-  ioa_addr default_peer_addr;
+  ioa_socket_handle client_socket;
   allocation alloc;
   ioa_timer_handle to_be_allocated_timeout_ev;
   u08bits nonce[NONCE_MAX_SIZE];
@@ -128,7 +127,8 @@ struct turn_session_info {
 	char tls_cipher[65];
 	addr_data local_addr_data;
 	addr_data remote_addr_data;
-	addr_data relay_addr_data;
+	addr_data relay_addr_data_ipv4;
+	addr_data relay_addr_data_ipv6;
 	u08bits username[STUN_MAX_USERNAME_SIZE+1];
 	int enforce_fingerprints;
 /* Stats */
@@ -147,7 +147,7 @@ struct turn_session_info {
 	addr_data *extra_peers_data;
 	size_t extra_peers_size;
 /* Realm */
-	char realm[STUN_MAX_REALM_SIZE+1];
+	char realm[STUN_MAX_REALM_SIZE + 1];
 	char origin[STUN_MAX_ORIGIN_SIZE + 1];
 /* Bandwidth */
 	band_limit_t bps;

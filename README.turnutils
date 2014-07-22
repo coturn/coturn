@@ -115,6 +115,8 @@ Flags:
 
 -B  	Random disconnect after a few initial packets.
 
+-Z  Dual allocation.
+
 Options with required values:  
 
 -l      Message length (Default: 100 Bytes).
@@ -333,3 +335,5 @@ SEE ALSO
 	Peter Dunkley <peter.dunkley@crocodilertc.net>
 	
 	Mutsutoshi Yoshimoto <mutsutoshi.yoshimoto@mixi.co.jp>
+	
+	Federico Pinna <fpinna@vivocha.com>

@@ -39,19 +39,6 @@
 #include <locale.h>
 #include <libgen.h>
 
-#if !defined(TURN_NO_PQ)
-#include <libpq-fe.h>
-#endif
-
-#if !defined(TURN_NO_MYSQL)
-#include <mysql.h>
-#endif
-
-#if !defined(TURN_NO_HIREDIS)
-#include "hiredis_libevent2.h"
-#include <hiredis/hiredis.h>
-#endif
-
 #include <pthread.h>
 
 #include <signal.h>
@@ -65,6 +52,7 @@
 #include <event2/buffer.h>
 
 #include "userdb.h"
+#include "dbdrivers/dbdriver.h"
 #include "mainrelay.h"
 
 #include "ns_turn_utils.h"
@@ -73,12 +61,6 @@
 #include "ns_turn_maps.h"
 
 #include "apputils.h"
-
-//////////// USER DB //////////////////////////////
-
-#define LONG_STRING_SIZE (TURN_LONG_STRING_SIZE)
-
-static int donot_print_connection_success=0;
 
 //////////// REALM //////////////
 
@@ -97,6 +79,21 @@ static ur_string_map *realms = NULL;
 static turn_mutex o_to_realm_mutex;
 static ur_string_map *o_to_realm = NULL;
 static secrets_list_t realms_list;
+
+void lock_realms(void) {
+	ur_string_map_lock(realms);
+}
+
+void unlock_realms(void) {
+	ur_string_map_unlock(realms);
+}
+
+void update_o_to_realm(ur_string_map * o_to_realm_new) {
+  TURN_MUTEX_LOCK(&o_to_realm_mutex);
+  ur_string_map_free(&o_to_realm);
+  o_to_realm = o_to_realm_new;
+  TURN_MUTEX_UNLOCK(&o_to_realm_mutex);
+}
 
 void create_new_realm(char* name)
 {
@@ -186,7 +183,7 @@ int get_realm_data(char* name, realm_params_t* rp)
 	return 0;
 }
 
-void get_realm_options_by_origin(char *origin, realm_options_t* ro)
+int get_realm_options_by_origin(char *origin, realm_options_t* ro)
 {
 	ur_string_map_value_type value = 0;
 	TURN_MUTEX_LOCK(&o_to_realm_mutex);
@@ -197,9 +194,11 @@ void get_realm_options_by_origin(char *origin, realm_options_t* ro)
 		get_realm_data(realm, &rp);
 		ns_bcopy(&(rp.options),ro,sizeof(realm_options_t));
 		free(realm);
+		return 1;
 	} else {
 		TURN_MUTEX_UNLOCK(&o_to_realm_mutex);
 		get_default_realm_options(ro);
+		return 0;
 	}
 }
 
@@ -317,626 +316,12 @@ void add_to_secrets_list(secrets_list_t *sl, const char* elem)
 	}
 }
 
-/////////// USER DB CHECK //////////////////
-
-static persistent_users_db_t* get_persistent_users_db(void)
-{
-	return &(turn_params.default_users_db.persistent_users_db);
-}
-
-static int convert_string_key_to_binary(char* keysource, hmackey_t key, size_t sz) {
-	{
-		char is[3];
-		size_t i;
-		unsigned int v;
-		is[2]=0;
-		for(i=0;i<sz;i++) {
-			is[0]=keysource[i*2];
-			is[1]=keysource[i*2+1];
-			sscanf(is,"%02x",&v);
-			key[i]=(unsigned char)v;
-		}
-		return 0;
-	}
-}
-
-
-static int is_pqsql_userdb(void)
-{
-#if !defined(TURN_NO_PQ)
-	return (turn_params.default_users_db.userdb_type == TURN_USERDB_TYPE_PQ);
-#else
-	return 0;
-#endif
-}
-
-static int is_mysql_userdb(void)
-{
-#if !defined(TURN_NO_MYSQL)
-	return (turn_params.default_users_db.userdb_type == TURN_USERDB_TYPE_MYSQL);
-#else
-	return 0;
-#endif
-}
-
-static int is_redis_userdb(void)
-{
-#if !defined(TURN_NO_HIREDIS)
-	return (turn_params.default_users_db.userdb_type == TURN_USERDB_TYPE_REDIS);
-#else
-	return 0;
-#endif
-}
-
-#if !defined(TURN_NO_PQ)
-static PGconn *get_pqdb_connection(void)
-{
-
-	if(!is_pqsql_userdb())
-		return NULL;
-
-	persistent_users_db_t *pud = get_persistent_users_db();
-
-	PGconn *pqdbconnection = (PGconn*)(pud->connection);
-	if(pqdbconnection) {
-		ConnStatusType status = PQstatus(pqdbconnection);
-		if(status != CONNECTION_OK) {
-			PQfinish(pqdbconnection);
-			pqdbconnection = NULL;
-		}
-	}
-	if(!pqdbconnection) {
-		char *errmsg=NULL;
-		PQconninfoOption *co = PQconninfoParse(pud->userdb, &errmsg);
-		if(!co) {
-			if(errmsg) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open PostgreSQL DB connection <%s>, connection string format error: %s\n",pud->userdb,errmsg);
-				turn_free(errmsg,strlen(errmsg)+1);
-			} else {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open PostgreSQL DB connection: <%s>, unknown connection string format error\n",pud->userdb);
-			}
-		} else {
-			PQconninfoFree(co);
-			if(errmsg)
-				turn_free(errmsg,strlen(errmsg)+1);
-			pqdbconnection = PQconnectdb(pud->userdb);
-			if(!pqdbconnection) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open PostgreSQL DB connection: <%s>, runtime error\n",pud->userdb);
-			} else {
-				ConnStatusType status = PQstatus(pqdbconnection);
-				if(status != CONNECTION_OK) {
-					PQfinish(pqdbconnection);
-					pqdbconnection = NULL;
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open PostgreSQL DB connection: <%s>, runtime error\n",pud->userdb);
-				} else if(!donot_print_connection_success){
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "PostgreSQL DB connection success: %s\n",pud->userdb);
-				}
-			}
-		}
-		pud->connection = pqdbconnection;
-	}
-	return pqdbconnection;
-}
-
-#endif
-
-#if !defined(TURN_NO_MYSQL)
-
-struct _Myconninfo {
-	char *host;
-	char *dbname;
-	char *user;
-	char *password;
-	unsigned int port;
-	unsigned int connect_timeout;
-};
-
-typedef struct _Myconninfo Myconninfo;
-
-static void MyconninfoFree(Myconninfo *co) {
-	if(co) {
-		if(co->host) turn_free(co->host,strlen(co->host)+1);
-		if(co->dbname) turn_free(co->dbname, strlen(co->dbname)+1);
-		if(co->user) turn_free(co->user, strlen(co->user)+1);
-		if(co->password) turn_free(co->password, strlen(co->password)+1);
-		ns_bzero(co,sizeof(Myconninfo));
-	}
-}
-
-static Myconninfo *MyconninfoParse(char *userdb, char **errmsg)
-{
-	Myconninfo *co = (Myconninfo*)turn_malloc(sizeof(Myconninfo));
-	ns_bzero(co,sizeof(Myconninfo));
-	if(userdb) {
-		char *s0=strdup(userdb);
-		char *s = s0;
-
-		while(s && *s) {
-
-			while(*s && (*s==' ')) ++s;
-			char *snext = strstr(s," ");
-			if(snext) {
-				*snext = 0;
-				++snext;
-			}
-
-			char* seq = strstr(s,"=");
-			if(!seq) {
-				MyconninfoFree(co);
-				co = NULL;
-				if(errmsg) {
-					*errmsg = strdup(s);
-				}
-				break;
-			}
-
-			*seq = 0;
-			if(!strcmp(s,"host"))
-				co->host = strdup(seq+1);
-			else if(!strcmp(s,"ip"))
-				co->host = strdup(seq+1);
-			else if(!strcmp(s,"addr"))
-				co->host = strdup(seq+1);
-			else if(!strcmp(s,"ipaddr"))
-				co->host = strdup(seq+1);
-			else if(!strcmp(s,"hostaddr"))
-				co->host = strdup(seq+1);
-			else if(!strcmp(s,"dbname"))
-				co->dbname = strdup(seq+1);
-			else if(!strcmp(s,"db"))
-				co->dbname = strdup(seq+1);
-			else if(!strcmp(s,"database"))
-				co->dbname = strdup(seq+1);
-			else if(!strcmp(s,"user"))
-				co->user = strdup(seq+1);
-			else if(!strcmp(s,"uname"))
-				co->user = strdup(seq+1);
-			else if(!strcmp(s,"name"))
-				co->user = strdup(seq+1);
-			else if(!strcmp(s,"username"))
-				co->user = strdup(seq+1);
-			else if(!strcmp(s,"password"))
-				co->password = strdup(seq+1);
-			else if(!strcmp(s,"pwd"))
-				co->password = strdup(seq+1);
-			else if(!strcmp(s,"passwd"))
-				co->password = strdup(seq+1);
-			else if(!strcmp(s,"secret"))
-				co->password = strdup(seq+1);
-			else if(!strcmp(s,"port"))
-				co->port = (unsigned int)atoi(seq+1);
-			else if(!strcmp(s,"p"))
-				co->port = (unsigned int)atoi(seq+1);
-			else if(!strcmp(s,"connect_timeout"))
-				co->connect_timeout = (unsigned int)atoi(seq+1);
-			else if(!strcmp(s,"timeout"))
-				co->connect_timeout = (unsigned int)atoi(seq+1);
-			else {
-				MyconninfoFree(co);
-				co = NULL;
-				if(errmsg) {
-					*errmsg = strdup(s);
-				}
-				break;
-			}
-
-			s = snext;
-		}
-
-		turn_free(s0, strlen(s0)+1);
-	}
-
-	if(!(co->dbname))
-		co->dbname=strdup("0");
-	if(!(co->host))
-		co->host=strdup("127.0.0.1");
-	if(!(co->user))
-		co->user=strdup("");
-	if(!(co->password))
-		co->password=strdup("");
-
-	return co;
-}
-
-static MYSQL *get_mydb_connection(void)
-{
-
-	if(!is_mysql_userdb())
-		return NULL;
-
-	persistent_users_db_t *pud = get_persistent_users_db();
-
-	MYSQL *mydbconnection = (MYSQL*)(pud->connection);
-
-	if(mydbconnection) {
-		if(mysql_ping(mydbconnection)) {
-			mysql_close(mydbconnection);
-			mydbconnection=NULL;
-		}
-	}
-
-	if(!mydbconnection) {
-		char *errmsg=NULL;
-		Myconninfo *co=MyconninfoParse(pud->userdb, &errmsg);
-		if(!co) {
-			if(errmsg) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open MySQL DB connection <%s>, connection string format error: %s\n",pud->userdb,errmsg);
-				turn_free(errmsg,strlen(errmsg)+1);
-			} else {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open MySQL DB connection <%s>, connection string format error\n",pud->userdb);
-			}
-		} else if(errmsg) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open MySQL DB connection <%s>, connection string format error: %s\n",pud->userdb,errmsg);
-			turn_free(errmsg,strlen(errmsg)+1);
-			MyconninfoFree(co);
-		} else if(!(co->dbname)) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "MySQL Database name is not provided: <%s>\n",pud->userdb);
-			MyconninfoFree(co);
-		} else {
-			mydbconnection = mysql_init(NULL);
-			if(!mydbconnection) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot initialize MySQL DB connection\n");
-			} else {
-				if(co->connect_timeout)
-					mysql_options(mydbconnection,MYSQL_OPT_CONNECT_TIMEOUT,&(co->connect_timeout));
-				MYSQL *conn = mysql_real_connect(mydbconnection, co->host, co->user, co->password, co->dbname, co->port, NULL, CLIENT_IGNORE_SIGPIPE);
-				if(!conn) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open MySQL DB connection: <%s>, runtime error\n",pud->userdb);
-					mysql_close(mydbconnection);
-					mydbconnection=NULL;
-				} else if(mysql_select_db(mydbconnection, co->dbname)) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot connect to MySQL DB: %s\n",co->dbname);
-					mysql_close(mydbconnection);
-					mydbconnection=NULL;
-				} else if(!donot_print_connection_success) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "MySQL DB connection success: %s\n",pud->userdb);
-				}
-			}
-			MyconninfoFree(co);
-		}
-		pud->connection = mydbconnection;
-	}
-	return mydbconnection;
-}
-
-#endif
-
-
-#if !defined(TURN_NO_HIREDIS)
-
-static void turnFreeRedisReply(void *reply)
-{
-	if(reply) {
-		freeReplyObject(reply);
-	}
-}
-
-struct _Ryconninfo {
-	char *host;
-	char *dbname;
-	char *password;
-	unsigned int connect_timeout;
-	unsigned int port;
-};
-
-typedef struct _Ryconninfo Ryconninfo;
-
-static void RyconninfoFree(Ryconninfo *co) {
-	if(co) {
-		if(co->host) turn_free(co->host, strlen(co->host)+1);
-		if(co->dbname) turn_free(co->dbname, strlen(co->username)+1);
-		if(co->password) turn_free(co->password, strlen(co->password)+1);
-		ns_bzero(co,sizeof(Ryconninfo));
-	}
-}
-
-static Ryconninfo *RyconninfoParse(const char *userdb, char **errmsg)
-{
-	Ryconninfo *co = (Ryconninfo*) turn_malloc(sizeof(Ryconninfo));
-	ns_bzero(co,sizeof(Ryconninfo));
-	if (userdb) {
-		char *s0 = strdup(userdb);
-		char *s = s0;
-
-		while (s && *s) {
-
-			while (*s && (*s == ' '))
-				++s;
-			char *snext = strstr(s, " ");
-			if (snext) {
-				*snext = 0;
-				++snext;
-			}
-
-			char* seq = strstr(s, "=");
-			if (!seq) {
-				RyconninfoFree(co);
-				co = NULL;
-				if (errmsg) {
-					*errmsg = strdup(s);
-				}
-				break;
-			}
-
-			*seq = 0;
-			if (!strcmp(s, "host"))
-				co->host = strdup(seq + 1);
-			else if (!strcmp(s, "ip"))
-				co->host = strdup(seq + 1);
-			else if (!strcmp(s, "addr"))
-				co->host = strdup(seq + 1);
-			else if (!strcmp(s, "ipaddr"))
-				co->host = strdup(seq + 1);
-			else if (!strcmp(s, "hostaddr"))
-				co->host = strdup(seq + 1);
-			else if (!strcmp(s, "dbname"))
-				co->dbname = strdup(seq + 1);
-			else if (!strcmp(s, "db"))
-				co->dbname = strdup(seq + 1);
-			else if (!strcmp(s, "database"))
-				co->dbname = strdup(seq + 1);
-			else if (!strcmp(s, "user"))
-				;
-			else if (!strcmp(s, "uname"))
-				;
-			else if (!strcmp(s, "name"))
-				;
-			else if (!strcmp(s, "username"))
-				;
-			else if (!strcmp(s, "password"))
-				co->password = strdup(seq + 1);
-			else if (!strcmp(s, "pwd"))
-				co->password = strdup(seq + 1);
-			else if (!strcmp(s, "passwd"))
-				co->password = strdup(seq + 1);
-			else if (!strcmp(s, "secret"))
-				co->password = strdup(seq + 1);
-			else if (!strcmp(s, "port"))
-				co->port = (unsigned int) atoi(seq + 1);
-			else if (!strcmp(s, "p"))
-				co->port = (unsigned int) atoi(seq + 1);
-			else if (!strcmp(s, "connect_timeout"))
-				co->connect_timeout = (unsigned int) atoi(seq + 1);
-			else if (!strcmp(s, "timeout"))
-				co->connect_timeout = (unsigned int) atoi(seq + 1);
-			else {
-				RyconninfoFree(co);
-				co = NULL;
-				if (errmsg) {
-					*errmsg = strdup(s);
-				}
-				break;
-			}
-
-			s = snext;
-		}
-
-		turn_free(s0, strlen(s0)+1);
-	}
-
-	if(!(co->dbname))
-		co->dbname=strdup("0");
-	if(!(co->host))
-		co->host=strdup("127.0.0.1");
-	if(!(co->password))
-		co->password=strdup("");
-
-	return co;
-}
-
-redis_context_handle get_redis_async_connection(struct event_base *base, const char* connection_string, int delete_keys)
-{
-	redis_context_handle ret = NULL;
-
-	char *errmsg = NULL;
-	if(base  && connection_string  && connection_string[0]) {
-		Ryconninfo *co = RyconninfoParse(connection_string, &errmsg);
-		if (!co) {
-			if (errmsg) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open Redis DB connection <%s>, connection string format error: %s\n", connection_string, errmsg);
-				turn_free(errmsg,strlen(errmsg)+1);
-			} else {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open Redis DB connection <%s>, connection string format error\n", connection_string);
-			}
-		} else if (errmsg) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open Redis DB connection <%s>, connection string format error: %s\n", connection_string, errmsg);
-			turn_free(errmsg,strlen(errmsg)+1);
-			RyconninfoFree(co);
-		} else {
-
-			if(delete_keys) {
-
-				redisContext *rc = NULL;
-
-				char ip[256] = "\0";
-				int port = DEFAULT_REDIS_PORT;
-				if (co->host)
-					STRCPY(ip,co->host);
-				if (!ip[0])
-					STRCPY(ip,"127.0.0.1");
-
-				if (co->port)
-					port = (int) (co->port);
-
-				if (co->connect_timeout) {
-					struct timeval tv;
-					tv.tv_usec = 0;
-					tv.tv_sec = (time_t) (co->connect_timeout);
-					rc = redisConnectWithTimeout(ip, port, tv);
-				} else {
-					rc = redisConnect(ip, port);
-				}
-
-				if (!rc) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot initialize Redis DB async connection\n");
-				} else {
-					if (co->password) {
-						turnFreeRedisReply(redisCommand(rc, "AUTH %s", co->password));
-					}
-					if (co->dbname) {
-						turnFreeRedisReply(redisCommand(rc, "select %s", co->dbname));
-					}
-					{
-						redisReply *reply = (redisReply*)redisCommand(rc, "keys turn/*/allocation/*/status");
-						if(reply) {
-							secrets_list_t keys;
-							size_t isz = 0;
-							char s[513];
-
-							init_secrets_list(&keys);
-
-							if (reply->type == REDIS_REPLY_ERROR) {
-								TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", reply->str);
-							} else if (reply->type != REDIS_REPLY_ARRAY) {
-								if (reply->type != REDIS_REPLY_NIL)
-									TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", reply->type);
-							} else {
-								size_t i;
-								for (i = 0; i < reply->elements; ++i) {
-									add_to_secrets_list(&keys,reply->element[i]->str);
-								}
-							}
-
-							for(isz=0;isz<keys.sz;++isz) {
-
-								snprintf(s,sizeof(s),"del %s", keys.secrets[isz]);
-								turnFreeRedisReply(redisCommand(rc, s));
-							}
-
-							clean_secrets_list(&keys);
-
-							turnFreeRedisReply(reply);
-						}
-					}
-					redisFree(rc);
-				}
-			}
-
-			ret = redisLibeventAttach(base, co->host, co->port, co->password, atoi(co->dbname));
-
-			if (!ret) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot initialize Redis DB connection\n");
-			} else if (is_redis_asyncconn_good(ret) && !donot_print_connection_success) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Redis DB async connection to be used: %s\n", connection_string);
-			}
-			RyconninfoFree(co);
-		}
-	}
-
-	return ret;
-}
-
-static redisContext *get_redis_connection(void)
-{
-	if(!is_redis_userdb())
-		return NULL;
-
-	persistent_users_db_t *pud = get_persistent_users_db();
-
-	redisContext *redisconnection = (redisContext*)(pud->connection);
-
-	if(redisconnection) {
-		if(redisconnection->err) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot connect to redis, err=%d, flags=0x%x\n", __FUNCTION__,(int)redisconnection->err,(unsigned long)redisconnection->flags);
-			redisFree(redisconnection);
-			pud->connection = NULL;
-			redisconnection = NULL;
-		}
-	}
-
-	if (!redisconnection) {
-
-		char *errmsg = NULL;
-		Ryconninfo *co = RyconninfoParse(pud->userdb, &errmsg);
-		if (!co) {
-			if (errmsg) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open Redis DB connection <%s>, connection string format error: %s\n", pud->userdb, errmsg);
-				turn_free(errmsg,strlen(errmsg)+1);
-			} else {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open Redis DB connection <%s>, connection string format error\n", pud->userdb);
-			}
-		} else if (errmsg) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open Redis DB connection <%s>, connection string format error: %s\n", pud->userdb, errmsg);
-			turn_free(errmsg,strlen(errmsg)+1);
-			RyconninfoFree(co);
-		} else {
-			char ip[256] = "\0";
-			int port = DEFAULT_REDIS_PORT;
-			if (co->host)
-				STRCPY(ip,co->host);
-			if (!ip[0])
-				STRCPY(ip,"127.0.0.1");
-
-			if (co->port)
-				port = (int) (co->port);
-
-			if (co->connect_timeout) {
-				struct timeval tv;
-				tv.tv_usec = 0;
-				tv.tv_sec = (time_t) (co->connect_timeout);
-				redisconnection = redisConnectWithTimeout(ip, port, tv);
-			} else {
-				redisconnection = redisConnect(ip, port);
-			}
-
-			if (redisconnection) {
-				if(redisconnection->err) {
-					if(redisconnection->errstr[0]) {
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Redis: %s\n",redisconnection->errstr);
-					}
-					redisFree(redisconnection);
-					redisconnection = NULL;
-				} else if (co->password) {
-					void *reply = redisCommand(redisconnection, "AUTH %s", co->password);
-					if(!reply) {
-						if(redisconnection->err && redisconnection->errstr[0]) {
-							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Redis: %s\n",redisconnection->errstr);
-						}
-						redisFree(redisconnection);
-						redisconnection = NULL;
-					} else {
-						turnFreeRedisReply(reply);
-						if (co->dbname) {
-							reply = redisCommand(redisconnection, "select %s", co->dbname);
-							if(!reply) {
-								if(redisconnection->err && redisconnection->errstr[0]) {
-									TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Redis: %s\n",redisconnection->errstr);
-								}
-								redisFree(redisconnection);
-								redisconnection = NULL;
-							} else {
-								turnFreeRedisReply(reply);
-							}
-						}
-					}
-				}
-			}
-
-			if (!redisconnection) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot initialize Redis DB connection\n");
-			} else if (!donot_print_connection_success) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Redis DB sync connection success: %s\n", pud->userdb);
-			}
-
-			RyconninfoFree(co);
-		}
-		pud->connection = redisconnection;
-
-		pud = get_persistent_users_db();
-
-		redisconnection = (redisContext*)(pud->connection);
-	}
-
-	return redisconnection;
-}
-
-#endif
+////////////////////////////////////////////
 
 static int get_auth_secrets(secrets_list_t *sl, u08bits *realm)
 {
-	UNUSED_ARG(realm);
-
 	int ret = -1;
+  turn_dbdriver_t * dbd = get_dbdriver();
 
 	clean_secrets_list(sl);
 
@@ -947,120 +332,10 @@ static int get_auth_secrets(secrets_list_t *sl, u08bits *realm)
 		}
 		ret=0;
 	}
-
-#if !defined(TURN_NO_PQ)
-	PGconn * pqc = get_pqdb_connection();
-	if(pqc) {
-		char statement[LONG_STRING_SIZE];
-		snprintf(statement,sizeof(statement)-1,"select value from turn_secret where realm='%s'",realm);
-		PGresult *res = PQexec(pqc, statement);
-
-		if(!res || (PQresultStatus(res) != PGRES_TUPLES_OK)) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving PostgreSQL DB information: %s\n",PQerrorMessage(pqc));
-		} else {
-			int i = 0;
-			for(i=0;i<PQntuples(res);i++) {
-				char *kval = PQgetvalue(res,i,0);
-				if(kval) {
-					add_to_secrets_list(sl,kval);
-				}
-			}
-			ret = 0;
-		}
-
-		if(res) {
-			PQclear(res);
-		}
-	}
-#endif
-
-#if !defined(TURN_NO_MYSQL)
-	MYSQL * myc = get_mydb_connection();
-	if(myc) {
-		char statement[LONG_STRING_SIZE];
-		snprintf(statement,sizeof(statement)-1,"select value from turn_secret where realm='%s'",realm);
-		int res = mysql_query(myc, statement);
-		if(res) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n",mysql_error(myc));
-		} else {
-			MYSQL_RES *mres = mysql_store_result(myc);
-			if(!mres) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n",mysql_error(myc));
-			} else if(mysql_field_count(myc)==1) {
-				for(;;) {
-					MYSQL_ROW row = mysql_fetch_row(mres);
-					if(!row) {
-						break;
-					} else {
-						if(row[0]) {
-							unsigned long *lengths = mysql_fetch_lengths(mres);
-							if(lengths) {
-								size_t sz = lengths[0];
-								char auth_secret[LONG_STRING_SIZE];
-								ns_bcopy(row[0],auth_secret,sz);
-								auth_secret[sz]=0;
-								add_to_secrets_list(sl,auth_secret);
-							}
-						}
-					}
-				}
-				ret = 0;
-			}
-
-			if(mres)
-				mysql_free_result(mres);
-		}
-	}
-#endif
-
-#if !defined(TURN_NO_HIREDIS)
-	redisContext *rc = get_redis_connection();
-	if(rc) {
-		redisReply *reply = (redisReply*)redisCommand(rc, "keys turn/realm/%s/secret/*", (char*)realm);
-		if(reply) {
-
-			secrets_list_t keys;
-			size_t isz = 0;
-			char s[257];
-
-			init_secrets_list(&keys);
-
-			if (reply->type == REDIS_REPLY_ERROR)
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", reply->str);
-			else if (reply->type != REDIS_REPLY_ARRAY) {
-				if (reply->type != REDIS_REPLY_NIL)
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", reply->type);
-			} else {
-				size_t i;
-				for (i = 0; i < reply->elements; ++i) {
-					add_to_secrets_list(&keys,reply->element[i]->str);
-				}
-			}
-
-			for(isz=0;isz<keys.sz;++isz) {
-				snprintf(s,sizeof(s),"get %s", keys.secrets[isz]);
-				redisReply *rget = (redisReply *)redisCommand(rc, s);
-				if(rget) {
-					if (rget->type == REDIS_REPLY_ERROR)
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", rget->str);
-					else if (rget->type != REDIS_REPLY_STRING) {
-						if (rget->type != REDIS_REPLY_NIL)
-							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", rget->type);
-					} else {
-						add_to_secrets_list(sl,rget->str);
-					}
-					turnFreeRedisReply(rget);
-				}
-			}
-
-			clean_secrets_list(&keys);
-
-			ret = 0;
-
-			turnFreeRedisReply(reply);
-		}
-	}
-#endif
+  
+  if (dbd && dbd->get_auth_secrets) {
+    ret = (*dbd->get_auth_secrets)(sl, realm);
+  }
 
 	return ret;
 }
@@ -1250,129 +525,10 @@ int get_user_key(u08bits *usname, u08bits *realm, hmackey_t key, ioa_network_buf
 		return 0;
 	}
 
-#if !defined(TURN_NO_PQ)
-	{
-		PGconn * pqc = get_pqdb_connection();
-		if(pqc) {
-			char statement[LONG_STRING_SIZE];
-			snprintf(statement,sizeof(statement),"select hmackey from turnusers_lt where name='%s' and realm='%s'",usname,realm);
-			PGresult *res = PQexec(pqc, statement);
-
-			if(!res || (PQresultStatus(res) != PGRES_TUPLES_OK) || (PQntuples(res)!=1)) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving PostgreSQL DB information: %s\n",PQerrorMessage(pqc));
-			} else {
-				char *kval = PQgetvalue(res,0,0);
-				int len = PQgetlength(res,0,0);
-				if(kval) {
-					size_t sz = get_hmackey_size(turn_params.shatype);
-					if(((size_t)len<sz*2)||(strlen(kval)<sz*2)) {
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key format: %s, user %s\n",kval,usname);
-					} else if(convert_string_key_to_binary(kval, key, sz)<0) {
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key: %s, user %s\n",kval,usname);
-					} else {
-						ret = 0;
-					}
-				} else {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong hmackey data for user %s: NULL\n",usname);
-				}
-			}
-
-			if(res)
-				PQclear(res);
-
-		}
-	}
-#endif
-
-#if !defined(TURN_NO_MYSQL)
-	{
-		MYSQL * myc = get_mydb_connection();
-		if(myc) {
-			char statement[LONG_STRING_SIZE];
-			snprintf(statement,sizeof(statement),"select hmackey from turnusers_lt where name='%s' and realm='%s'",usname,realm);
-			int res = mysql_query(myc, statement);
-			if(res) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n",mysql_error(myc));
-			} else {
-				MYSQL_RES *mres = mysql_store_result(myc);
-				if(!mres) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n",mysql_error(myc));
-				} else if(mysql_field_count(myc)!=1) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown error retrieving MySQL DB information: %s\n",statement);
-				} else {
-					MYSQL_ROW row = mysql_fetch_row(mres);
-					if(row && row[0]) {
-						unsigned long *lengths = mysql_fetch_lengths(mres);
-						if(lengths) {
-							size_t sz = get_hmackey_size(turn_params.shatype)*2;
-							if(lengths[0]<sz) {
-								TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key format: string length=%d (must be %d): user %s\n",(int)lengths[0],(int)sz,usname);
-							} else {
-								char kval[sizeof(hmackey_t)+sizeof(hmackey_t)+1];
-								ns_bcopy(row[0],kval,sz);
-								kval[sz]=0;
-								if(convert_string_key_to_binary(kval, key, sz/2)<0) {
-									TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key: %s, user %s\n",kval,usname);
-								} else {
-									ret = 0;
-								}
-							}
-						}
-					}
-				}
-
-				if(mres)
-					mysql_free_result(mres);
-			}
-		}
-	}
-#endif
-
-#if !defined(TURN_NO_HIREDIS)
-	{
-		redisContext * rc = get_redis_connection();
-		if(rc) {
-			char s[LONG_STRING_SIZE];
-			snprintf(s,sizeof(s),"get turn/realm/%s/user/%s/key", (char*)realm, usname);
-			redisReply *rget = (redisReply *)redisCommand(rc, s);
-			if(rget) {
-				if (rget->type == REDIS_REPLY_ERROR)
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", rget->str);
-				else if (rget->type != REDIS_REPLY_STRING) {
-					if (rget->type != REDIS_REPLY_NIL)
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", rget->type);
-				} else {
-					size_t sz = get_hmackey_size(turn_params.shatype);
-					if(strlen(rget->str)<sz*2) {
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key format: %s, user %s\n",rget->str,usname);
-					} else if(convert_string_key_to_binary(rget->str, key, sz)<0) {
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key: %s, user %s\n",rget->str,usname);
-					} else {
-						ret = 0;
-					}
-				}
-				turnFreeRedisReply(rget);
-			}
-			if(ret != 0) {
-				snprintf(s,sizeof(s),"get turn/realm/%s/user/%s/password", (char*)realm, usname);
-				rget = (redisReply *)redisCommand(rc, s);
-				if(rget) {
-					if (rget->type == REDIS_REPLY_ERROR)
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", rget->str);
-					else if (rget->type != REDIS_REPLY_STRING) {
-						if (rget->type != REDIS_REPLY_NIL)
-							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", rget->type);
-					} else {
-						if(stun_produce_integrity_key_str((u08bits*)usname, realm, (u08bits*)rget->str, key, turn_params.shatype)>=0) {
-							ret = 0;
-						}
-					}
-					turnFreeRedisReply(rget);
-				}
-			}
-		}
-	}
-#endif
+  turn_dbdriver_t * dbd = get_dbdriver();
+  if (dbd && dbd->get_user_key) {
+    ret = (*dbd->get_user_key)(usname, realm, key);
+  }
 
 	return ret;
 }
@@ -1384,93 +540,12 @@ int get_user_pwd(u08bits *usname, st_password_t pwd)
 {
 	int ret = -1;
 
-	UNUSED_ARG(pwd);
+  turn_dbdriver_t * dbd = get_dbdriver();
+  if (dbd && dbd->get_user_pwd) {
+    ret = (*dbd->get_user_pwd)(usname, pwd);
+  }
 
-	char statement[LONG_STRING_SIZE];
-	snprintf(statement,sizeof(statement),"select password from turnusers_st where name='%s'",usname);
-
-	{
-#if !defined(TURN_NO_PQ)
-	PGconn * pqc = get_pqdb_connection();
-	if(pqc) {
-		PGresult *res = PQexec(pqc, statement);
-
-		if(!res || (PQresultStatus(res) != PGRES_TUPLES_OK) || (PQntuples(res)!=1)) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving PostgreSQL DB information: %s\n",PQerrorMessage(pqc));
-		} else {
-			char *kval = PQgetvalue(res,0,0);
-			if(kval) {
-				strncpy((char*)pwd,kval,sizeof(st_password_t));
-				ret = 0;
-			} else {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong password data for user %s: NULL\n",usname);
-			}
-		}
-
-		if(res) {
-			PQclear(res);
-		}
-	}
-#endif
-#if !defined(TURN_NO_MYSQL)
-	MYSQL * myc = get_mydb_connection();
-	if(myc) {
-		int res = mysql_query(myc, statement);
-		if(res) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n",mysql_error(myc));
-		} else {
-			MYSQL_RES *mres = mysql_store_result(myc);
-			if(!mres) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n",mysql_error(myc));
-			} else if(mysql_field_count(myc)!=1) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown error retrieving MySQL DB information: %s\n",statement);
-			} else {
-				MYSQL_ROW row = mysql_fetch_row(mres);
-				if(row && row[0]) {
-					unsigned long *lengths = mysql_fetch_lengths(mres);
-					if(lengths) {
-						if(lengths[0]<1) {
-							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong password data for user %s, size in MySQL DB is zero(0)\n",usname);
-						} else {
-							ns_bcopy(row[0],pwd,lengths[0]);
-							pwd[lengths[0]]=0;
-							ret = 0;
-						}
-					}
-				}
-			}
-
-			if(mres)
-				mysql_free_result(mres);
-		}
-	}
-#endif
-#if !defined(TURN_NO_HIREDIS)
-	{
-		redisContext * rc = get_redis_connection();
-		if(rc) {
-			char s[LONG_STRING_SIZE];
-			snprintf(s,sizeof(s),"get turn/user/%s/password", usname);
-			redisReply *rget = (redisReply *)redisCommand(rc, s);
-			if(rget) {
-				if (rget->type == REDIS_REPLY_ERROR)
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", rget->str);
-				else if (rget->type != REDIS_REPLY_STRING) {
-					if (rget->type != REDIS_REPLY_NIL)
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", rget->type);
-				} else {
-					strncpy((char*)pwd,rget->str,SHORT_TERM_PASSWORD_SIZE);
-					pwd[SHORT_TERM_PASSWORD_SIZE]=0;
-					ret = 0;
-				}
-				turnFreeRedisReply(rget);
-			}
-		}
-	}
-#endif
-	}
-
-	return ret;
+  return ret;
 }
 
 u08bits *start_user_check(turnserver_id id, turn_credential_type ct, u08bits *usname, u08bits *realm, get_username_resume_cb resume, ioa_net_data *in_buffer, u64bits ctxkey, int *postpone_reply)
@@ -1583,7 +658,7 @@ void read_userdb_file(int to_print)
 
 	if (f) {
 
-		char sbuf[LONG_STRING_SIZE];
+		char sbuf[TURN_LONG_STRING_SIZE];
 
 		ur_string_map_lock(turn_params.default_users_db.ram_db.dynamic_accounts);
 
@@ -1680,170 +755,11 @@ int add_user_account(char *user, int dynamic)
 
 static int list_users(int is_st, u08bits *realm)
 {
-	UNUSED_ARG(realm);
-
-	donot_print_connection_success = 1;
-
-	if(is_pqsql_userdb()){
-#if !defined(TURN_NO_PQ)
-		char statement[LONG_STRING_SIZE];
-		PGconn *pqc = get_pqdb_connection();
-		if(pqc) {
-			if(is_st) {
-			  snprintf(statement,sizeof(statement),"select name from turnusers_st order by name");
-			} else if(realm && realm[0]) {
-			  snprintf(statement,sizeof(statement),"select name from turnusers_lt where realm='%s' order by name",realm);
-			} else {
-			  snprintf(statement,sizeof(statement),"select name from turnusers_lt order by name");
-			}
-			PGresult *res = PQexec(pqc, statement);
-			if(!res || (PQresultStatus(res) != PGRES_TUPLES_OK)) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving PostgreSQL DB information: %s\n",PQerrorMessage(pqc));
-			} else {
-				int i = 0;
-				for(i=0;i<PQntuples(res);i++) {
-					char *kval = PQgetvalue(res,i,0);
-					if(kval) {
-						printf("%s\n",kval);
-					}
-				}
-			}
-			if(res) {
-				PQclear(res);
-			}
-		}
-#endif
-	} else if(is_mysql_userdb()){
-#if !defined(TURN_NO_MYSQL)
-		char statement[LONG_STRING_SIZE];
-		MYSQL * myc = get_mydb_connection();
-		if(myc) {
-			if(is_st) {
-			  snprintf(statement,sizeof(statement),"select name from turnusers_st order by name");
-			} else if(realm && realm[0]) {
-			  snprintf(statement,sizeof(statement),"select name from turnusers_lt where realm='%s' order by name",realm);
-			} else {
-			  snprintf(statement,sizeof(statement),"select name from turnusers_lt order by name");
-			}
-			int res = mysql_query(myc, statement);
-			if(res) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n",mysql_error(myc));
-			} else {
-				MYSQL_RES *mres = mysql_store_result(myc);
-				if(!mres) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n",mysql_error(myc));
-				} else if(mysql_field_count(myc)!=1) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown error retrieving MySQL DB information: %s\n",statement);
-				} else {
-					for(;;) {
-						MYSQL_ROW row = mysql_fetch_row(mres);
-						if(!row) {
-							break;
-						} else {
-							if(row[0]) {
-								printf("%s\n",row[0]);
-							}
-						}
-					}
-				}
-
-				if(mres)
-					mysql_free_result(mres);
-			}
-		}
-#endif
-	} else if(is_redis_userdb()) {
-#if !defined(TURN_NO_HIREDIS)
-		redisContext *rc = get_redis_connection();
-		if(rc) {
-			secrets_list_t keys;
-			size_t isz = 0;
-
-			init_secrets_list(&keys);
-
-			redisReply *reply = NULL;
-
-			if(!is_st) {
-
-				if(realm && realm[0]) {
-					reply = (redisReply*)redisCommand(rc, "keys turn/realm/%s/user/*/key", (char*)realm);
-				} else {
-					reply = (redisReply*)redisCommand(rc, "keys turn/realm/*/user/*/key");
-				}
-				if(reply) {
-
-					if (reply->type == REDIS_REPLY_ERROR)
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", reply->str);
-					else if (reply->type != REDIS_REPLY_ARRAY) {
-						if (reply->type != REDIS_REPLY_NIL)
-							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", reply->type);
-					} else {
-						size_t i;
-						for (i = 0; i < reply->elements; ++i) {
-							add_to_secrets_list(&keys,reply->element[i]->str);
-						}
-					}
-					turnFreeRedisReply(reply);
-				}
-
-				if(realm && realm[0]) {
-					reply = (redisReply*)redisCommand(rc, "keys turn/realm/%s/user/*/password", (char*)realm);
-				} else {
-					reply = (redisReply*)redisCommand(rc, "keys turn/realm/*/user/*/password");
-				}
-				if(reply) {
-
-					if (reply->type == REDIS_REPLY_ERROR)
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", reply->str);
-					else if (reply->type != REDIS_REPLY_ARRAY) {
-						if (reply->type != REDIS_REPLY_NIL)
-							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", reply->type);
-					} else {
-						size_t i;
-						for (i = 0; i < reply->elements; ++i) {
-							add_to_secrets_list(&keys,reply->element[i]->str);
-						}
-					}
-					turnFreeRedisReply(reply);
-				}
-			} else {
-
-				reply = (redisReply*)redisCommand(rc, "keys turn/user/*/password");
-				if(reply) {
-					if (reply->type == REDIS_REPLY_ERROR)
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", reply->str);
-					else if (reply->type != REDIS_REPLY_ARRAY) {
-						if (reply->type != REDIS_REPLY_NIL)
-							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", reply->type);
-					} else {
-						size_t i;
-						for (i = 0; i < reply->elements; ++i) {
-							add_to_secrets_list(&keys,reply->element[i]->str);
-						}
-					}
-					turnFreeRedisReply(reply);
-				}
-			}
-
-			for(isz=0;isz<keys.sz;++isz) {
-				char *s = keys.secrets[isz];
-				char *sh = strstr(s,"/user/");
-				if(sh) {
-					sh += 6;
-					char* st = strchr(sh,'/');
-					if(st)
-						*st=0;
-					printf("%s\n",sh);
-				}
-			}
-
-			clean_secrets_list(&keys);
-		}
-#endif
+  turn_dbdriver_t * dbd = get_dbdriver();
+  if (dbd && dbd->list_users) {
+    (*dbd->list_users)(is_st, realm);
 	} else if(!is_st) {
-
 		read_userdb_file(1);
-
 	}
 
 	return 0;
@@ -1851,116 +767,11 @@ static int list_users(int is_st, u08bits *realm)
 
 static int show_secret(u08bits *realm)
 {
-	char statement[LONG_STRING_SIZE];
-	snprintf(statement,sizeof(statement)-1,"select value from turn_secret where realm='%s'",realm);
-
-	donot_print_connection_success=1;
-
 	must_set_admin_realm(realm);
 
-	if(is_pqsql_userdb()){
-#if !defined(TURN_NO_PQ)
-		PGconn *pqc = get_pqdb_connection();
-		if(pqc) {
-			PGresult *res = PQexec(pqc, statement);
-			if(!res || (PQresultStatus(res) != PGRES_TUPLES_OK)) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving PostgreSQL DB information: %s\n",PQerrorMessage(pqc));
-			} else {
-				int i = 0;
-				for(i=0;i<PQntuples(res);i++) {
-					char *kval = PQgetvalue(res,i,0);
-					if(kval) {
-						printf("%s\n",kval);
-					}
-				}
-			}
-			if(res) {
-				PQclear(res);
-			}
-		}
-#endif
-	} else if(is_mysql_userdb()){
-#if !defined(TURN_NO_MYSQL)
-		MYSQL * myc = get_mydb_connection();
-		if(myc) {
-			int res = mysql_query(myc, statement);
-			if(res) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n",mysql_error(myc));
-			} else {
-				MYSQL_RES *mres = mysql_store_result(myc);
-				if(!mres) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n",mysql_error(myc));
-				} else if(mysql_field_count(myc)!=1) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown error retrieving MySQL DB information: %s\n",statement);
-				} else {
-					for(;;) {
-						MYSQL_ROW row = mysql_fetch_row(mres);
-						if(!row) {
-							break;
-						} else {
-							if(row[0]) {
-								printf("%s\n",row[0]);
-							}
-						}
-					}
-				}
-
-				if(mres)
-					mysql_free_result(mres);
-			}
-		}
-#endif
-	} else if(is_redis_userdb()) {
-#if !defined(TURN_NO_HIREDIS)
-		redisContext *rc = get_redis_connection();
-		if(rc) {
-			redisReply *reply = NULL;
-			if(realm && realm[0]) {
-				reply = (redisReply*)redisCommand(rc, "keys turn/realm/%s/secret/*",(char*)realm);
-			} else {
-				reply = (redisReply*)redisCommand(rc, "keys turn/realm/*/secret/*");
-			}
-			if(reply) {
-				secrets_list_t keys;
-				size_t isz = 0;
-				char s[257];
-
-				init_secrets_list(&keys);
-
-				if (reply->type == REDIS_REPLY_ERROR)
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", reply->str);
-				else if (reply->type != REDIS_REPLY_ARRAY) {
-					if (reply->type != REDIS_REPLY_NIL)
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", reply->type);
-				} else {
-					size_t i;
-					for (i = 0; i < reply->elements; ++i) {
-						add_to_secrets_list(&keys,reply->element[i]->str);
-					}
-				}
-
-				for(isz=0;isz<keys.sz;++isz) {
-					snprintf(s,sizeof(s),"get %s", keys.secrets[isz]);
-					redisReply *rget = (redisReply *)redisCommand(rc, s);
-					if(rget) {
-						if (rget->type == REDIS_REPLY_ERROR)
-							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", rget->str);
-						else if (rget->type != REDIS_REPLY_STRING) {
-							if (rget->type != REDIS_REPLY_NIL)
-								TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", rget->type);
-						} else {
-							printf("%s\n",rget->str);
-						}
-					}
-					turnFreeRedisReply(rget);
-				}
-
-				clean_secrets_list(&keys);
-
-				turnFreeRedisReply(reply);
-			}
-		}
-#endif
+  turn_dbdriver_t * dbd = get_dbdriver();
+  if (dbd && dbd->show_secret) {
+    (*dbd->show_secret)(realm);
 	}
 
 	return 0;
@@ -1968,99 +779,14 @@ static int show_secret(u08bits *realm)
 
 static int del_secret(u08bits *secret, u08bits *realm) {
 
-	UNUSED_ARG(secret);
-
 	must_set_admin_realm(realm);
 
-	donot_print_connection_success=1;
-
-	if (is_pqsql_userdb()) {
-#if !defined(TURN_NO_PQ)
-		char statement[LONG_STRING_SIZE];
-		PGconn *pqc = get_pqdb_connection();
-		if (pqc) {
-			if(!secret || (secret[0]==0))
-			  snprintf(statement,sizeof(statement),"delete from turn_secret where realm='%s'",realm);
-			else
-			  snprintf(statement,sizeof(statement),"delete from turn_secret where value='%s' and realm='%s'",secret,realm);
-
-			PGresult *res = PQexec(pqc, statement);
-			if (res) {
-				PQclear(res);
-			}
-		}
-#endif
-	} else if (is_mysql_userdb()) {
-#if !defined(TURN_NO_MYSQL)
-		char statement[LONG_STRING_SIZE];
-		MYSQL * myc = get_mydb_connection();
-		if (myc) {
-			if(!secret || (secret[0]==0))
-			  snprintf(statement,sizeof(statement),"delete from turn_secret where realm='%s'",realm);
-			else
-			  snprintf(statement,sizeof(statement),"delete from turn_secret where value='%s' and realm='%s'",secret,realm);
-			mysql_query(myc, statement);
-		}
-#endif
-	} else if(is_redis_userdb()) {
-#if !defined(TURN_NO_HIREDIS)
-		redisContext *rc = get_redis_connection();
-		if(rc) {
-			redisReply *reply = (redisReply*)redisCommand(rc, "keys turn/realm/%s/secret/*", (char*)realm);
-			if(reply) {
-				secrets_list_t keys;
-				size_t isz = 0;
-				char s[LONG_STRING_SIZE];
-
-				init_secrets_list(&keys);
-
-				if (reply->type == REDIS_REPLY_ERROR)
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", reply->str);
-				else if (reply->type != REDIS_REPLY_ARRAY) {
-					if (reply->type != REDIS_REPLY_NIL)
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", reply->type);
-				} else {
-					size_t i;
-					for (i = 0; i < reply->elements; ++i) {
-						add_to_secrets_list(&keys,reply->element[i]->str);
-					}
-				}
-
-				for(isz=0;isz<keys.sz;++isz) {
-					if(!secret || (secret[0]==0)) {
-						snprintf(s,sizeof(s),"del %s", keys.secrets[isz]);
-						turnFreeRedisReply(redisCommand(rc, s));
-					} else {
-						snprintf(s,sizeof(s),"get %s", keys.secrets[isz]);
-						redisReply *rget = (redisReply *)redisCommand(rc, s);
-						if(rget) {
-							if (rget->type == REDIS_REPLY_ERROR)
-								TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", rget->str);
-							else if (rget->type != REDIS_REPLY_STRING) {
-								if (rget->type != REDIS_REPLY_NIL)
-									TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", rget->type);
-							} else {
-								if(!strcmp((char*)secret,rget->str)) {
-									snprintf(s,sizeof(s),"del %s", keys.secrets[isz]);
-									turnFreeRedisReply(redisCommand(rc, s));
-								}
-							}
-							turnFreeRedisReply(rget);
-						}
-					}
-				}
-
-				turnFreeRedisReply(redisCommand(rc, "save"));
-
-				clean_secrets_list(&keys);
-
-				turnFreeRedisReply(reply);
-			}
-		}
-#endif
+  turn_dbdriver_t * dbd = get_dbdriver();
+  if (dbd && dbd->del_secret) {
+    (*dbd->del_secret)(secret, realm);
 	}
 
-	return 0;
+  return 0;
 }
 
 static int set_secret(u08bits *secret, u08bits *realm) {
@@ -2070,57 +796,11 @@ static int set_secret(u08bits *secret, u08bits *realm) {
 
 	must_set_admin_realm(realm);
 
-	donot_print_connection_success = 1;
-
 	del_secret(secret, realm);
 
-	if (is_pqsql_userdb()) {
-#if !defined(TURN_NO_PQ)
-		char statement[LONG_STRING_SIZE];
-		PGconn *pqc = get_pqdb_connection();
-		if (pqc) {
-		  snprintf(statement,sizeof(statement),"insert into turn_secret (realm,value) values('%s','%s')",realm,secret);
-		  PGresult *res = PQexec(pqc, statement);
-		  if (!res || (PQresultStatus(res) != PGRES_COMMAND_OK)) {
-		    TURN_LOG_FUNC(
-				  TURN_LOG_LEVEL_ERROR,
-				  "Error inserting/updating secret key information: %s\n",
-				  PQerrorMessage(pqc));
-		  }
-		  if (res) {
-		    PQclear(res);
-		  }
-		}
-#endif
-	} else if (is_mysql_userdb()) {
-#if !defined(TURN_NO_MYSQL)
-		char statement[LONG_STRING_SIZE];
-		MYSQL * myc = get_mydb_connection();
-		if (myc) {
-		  snprintf(statement,sizeof(statement),"insert into turn_secret (realm,value) values('%s','%s')",realm,secret);
-		  int res = mysql_query(myc, statement);
-		  if (res) {
-		    TURN_LOG_FUNC(
-				  TURN_LOG_LEVEL_ERROR,
-				  "Error inserting/updating secret key information: %s\n",
-				  mysql_error(myc));
-		  }
-		}
-#endif
-	} else if(is_redis_userdb()) {
-#if !defined(TURN_NO_HIREDIS)
-		redisContext *rc = get_redis_connection();
-		if(rc) {
-			char s[LONG_STRING_SIZE];
-
-			del_secret(secret, realm);
-
-			snprintf(s,sizeof(s),"set turn/realm/%s/secret/%lu %s", (char*)realm, (unsigned long)turn_time(), secret);
-
-			turnFreeRedisReply(redisCommand(rc, s));
-			turnFreeRedisReply(redisCommand(rc, "save"));
-		}
-#endif
+  turn_dbdriver_t * dbd = get_dbdriver();
+  if (dbd && dbd->set_secret) {
+    (*dbd->set_secret)(secret, realm);
 	}
 
 	return 0;
@@ -2128,242 +808,37 @@ static int set_secret(u08bits *secret, u08bits *realm) {
 
 static int add_origin(u08bits *origin0, u08bits *realm)
 {
-	UNUSED_ARG(realm);
-	UNUSED_ARG(origin0);
-	char origin[STUN_MAX_ORIGIN_SIZE+1];
-	get_canonic_origin((char*)origin0, origin, sizeof(origin)-1);
-#if !defined(TURN_NO_PQ)
-	if(is_pqsql_userdb()) {
-		char statement[LONG_STRING_SIZE];
-		PGconn *pqc = get_pqdb_connection();
-		if(pqc) {
-			snprintf(statement,sizeof(statement),"insert into turn_origin_to_realm (origin,realm) values('%s','%s')",origin,realm);
-			PGresult *res = PQexec(pqc, statement);
-			if(!res || (PQresultStatus(res) != PGRES_COMMAND_OK)) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error inserting origin information: %s\n",PQerrorMessage(pqc));
-			}
-			if(res) {
-				PQclear(res);
-			}
-		}
+	u08bits origin[STUN_MAX_ORIGIN_SIZE+1];
+
+	get_canonic_origin((const char *)origin0, (char *)origin, sizeof(origin)-1);
+
+  turn_dbdriver_t * dbd = get_dbdriver();
+  if (dbd && dbd->add_origin) {
+    (*dbd->add_origin)(origin, realm);
 	}
-#endif
 
-#if !defined(TURN_NO_MYSQL)
-	if (is_mysql_userdb()) {
-		char statement[LONG_STRING_SIZE];
-		MYSQL * myc = get_mydb_connection();
-		if (myc) {
-			snprintf(statement,sizeof(statement),"insert into turn_origin_to_realm (origin,realm) values('%s','%s')",origin,realm);
-			int res = mysql_query(myc, statement);
-			if (res) {
-				TURN_LOG_FUNC(
-				  TURN_LOG_LEVEL_ERROR,
-				  "Error inserting origin information: %s\n",
-				  mysql_error(myc));
-			}
-		}
-	}
-#endif
-
-#if !defined(TURN_NO_HIREDIS)
-	if(is_redis_userdb()) {
-		redisContext *rc = get_redis_connection();
-		if(rc) {
-			char s[LONG_STRING_SIZE];
-
-			snprintf(s,sizeof(s),"set turn/origin/%s %s", (char*)origin, (char*)realm);
-
-			turnFreeRedisReply(redisCommand(rc, s));
-			turnFreeRedisReply(redisCommand(rc, "save"));
-		}
-	}
-#endif
 	return 0;
 }
 
 static int del_origin(u08bits *origin0)
 {
-	UNUSED_ARG(origin0);
-	char origin[STUN_MAX_ORIGIN_SIZE+1];
-	get_canonic_origin((char*)origin0, origin, sizeof(origin)-1);
-#if !defined(TURN_NO_PQ)
-	if(is_pqsql_userdb()) {
-		char statement[LONG_STRING_SIZE];
-		PGconn *pqc = get_pqdb_connection();
-		if(pqc) {
-			snprintf(statement,sizeof(statement),"delete from turn_origin_to_realm where origin='%s'",origin);
-			PGresult *res = PQexec(pqc, statement);
-			if(!res || (PQresultStatus(res) != PGRES_COMMAND_OK)) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error deleting origin information: %s\n",PQerrorMessage(pqc));
-			}
-			if(res) {
-				PQclear(res);
-			}
-		}
+	u08bits origin[STUN_MAX_ORIGIN_SIZE+1];
+
+	get_canonic_origin((const char *)origin0, (char *)origin, sizeof(origin)-1);
+
+  turn_dbdriver_t * dbd = get_dbdriver();
+  if (dbd && dbd->del_origin) {
+    (*dbd->del_origin)(origin);
 	}
-#endif
 
-#if !defined(TURN_NO_MYSQL)
-	if (is_mysql_userdb()) {
-		char statement[LONG_STRING_SIZE];
-		MYSQL * myc = get_mydb_connection();
-		if (myc) {
-			snprintf(statement,sizeof(statement),"delete from turn_origin_to_realm where origin='%s'",origin);
-			int res = mysql_query(myc, statement);
-			if (res) {
-				TURN_LOG_FUNC(
-				  TURN_LOG_LEVEL_ERROR,
-				  "Error deleting origin information: %s\n",
-				  mysql_error(myc));
-			}
-		}
-	}
-#endif
-
-#if !defined(TURN_NO_HIREDIS)
-	if(is_redis_userdb()) {
-		redisContext *rc = get_redis_connection();
-		if(rc) {
-			char s[LONG_STRING_SIZE];
-
-			snprintf(s,sizeof(s),"del turn/origin/%s", (char*)origin);
-
-			turnFreeRedisReply(redisCommand(rc, s));
-			turnFreeRedisReply(redisCommand(rc, "save"));
-		}
-	}
-#endif
 	return 0;
 }
 
 static int list_origins(u08bits *realm)
 {
-	UNUSED_ARG(realm);
-
-	donot_print_connection_success = 1;
-
-	if(is_pqsql_userdb()){
-#if !defined(TURN_NO_PQ)
-		char statement[LONG_STRING_SIZE];
-		PGconn *pqc = get_pqdb_connection();
-		if(pqc) {
-			if(realm && realm[0]) {
-			  snprintf(statement,sizeof(statement),"select origin,realm from turn_origin_to_realm where realm='%s' order by origin",realm);
-			} else {
-			  snprintf(statement,sizeof(statement),"select origin,realm from turn_origin_to_realm order by origin,realm");
-			}
-			PGresult *res = PQexec(pqc, statement);
-			if(!res || (PQresultStatus(res) != PGRES_TUPLES_OK)) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving PostgreSQL DB information: %s\n",PQerrorMessage(pqc));
-			} else {
-				int i = 0;
-				for(i=0;i<PQntuples(res);i++) {
-					char *oval = PQgetvalue(res,i,0);
-					if(oval) {
-						char *rval = PQgetvalue(res,i,1);
-						if(rval) {
-							printf("%s ==>> %s\n",oval,rval);
-						}
-					}
-				}
-			}
-			if(res) {
-				PQclear(res);
-			}
-		}
-#endif
-	} else if(is_mysql_userdb()){
-#if !defined(TURN_NO_MYSQL)
-		char statement[LONG_STRING_SIZE];
-		MYSQL * myc = get_mydb_connection();
-		if(myc) {
-			if(realm && realm[0]) {
-				snprintf(statement,sizeof(statement),"select origin,realm from turn_origin_to_realm where realm='%s' order by origin",realm);
-			} else {
-				snprintf(statement,sizeof(statement),"select origin,realm from turn_origin_to_realm order by origin,realm");
-			}
-			int res = mysql_query(myc, statement);
-			if(res) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n",mysql_error(myc));
-			} else {
-				MYSQL_RES *mres = mysql_store_result(myc);
-				if(!mres) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n",mysql_error(myc));
-				} else if(mysql_field_count(myc)!=2) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown error retrieving MySQL DB information: %s\n",statement);
-				} else {
-					for(;;) {
-						MYSQL_ROW row = mysql_fetch_row(mres);
-						if(!row) {
-							break;
-						} else {
-							if(row[0] && row[1]) {
-								printf("%s ==>> %s\n",row[0],row[1]);
-							}
-						}
-					}
-				}
-
-				if(mres)
-					mysql_free_result(mres);
-			}
-		}
-#endif
-	} else if(is_redis_userdb()) {
-#if !defined(TURN_NO_HIREDIS)
-		redisContext *rc = get_redis_connection();
-		if(rc) {
-			secrets_list_t keys;
-			size_t isz = 0;
-
-			init_secrets_list(&keys);
-
-			redisReply *reply = NULL;
-
-			{
-				reply = (redisReply*)redisCommand(rc, "keys turn/origin/*");
-				if(reply) {
-
-					if (reply->type == REDIS_REPLY_ERROR)
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", reply->str);
-					else if (reply->type != REDIS_REPLY_ARRAY) {
-						if (reply->type != REDIS_REPLY_NIL)
-							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", reply->type);
-					} else {
-						size_t i;
-						size_t offset = strlen("turn/origin/");
-						for (i = 0; i < reply->elements; ++i) {
-							add_to_secrets_list(&keys,reply->element[i]->str+offset);
-						}
-					}
-					turnFreeRedisReply(reply);
-				}
-			}
-
-			for(isz=0;isz<keys.sz;++isz) {
-				char *o = keys.secrets[isz];
-
-				reply = (redisReply*)redisCommand(rc, "get turn/origin/%s",o);
-				if(reply) {
-
-					if (reply->type == REDIS_REPLY_ERROR)
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", reply->str);
-					else if (reply->type != REDIS_REPLY_STRING) {
-						if (reply->type != REDIS_REPLY_NIL)
-							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", reply->type);
-					} else {
-						if(!(realm && realm[0] && strcmp((char*)realm,reply->str))) {
-							printf("%s ==>> %s\n",o,reply->str);
-						}
-					}
-					turnFreeRedisReply(reply);
-				}
-			}
-
-			clean_secrets_list(&keys);
-		}
-#endif
+  turn_dbdriver_t * dbd = get_dbdriver();
+  if (dbd && dbd->list_origins) {
+    (*dbd->list_origins)(realm);
 	}
 
 	return 0;
@@ -2371,76 +846,14 @@ static int list_origins(u08bits *realm)
 
 static int set_realm_option_one(u08bits *realm, unsigned long value, const char* opt)
 {
-	UNUSED_ARG(realm);
-	UNUSED_ARG(value);
-	UNUSED_ARG(opt);
 	if(value == (unsigned long)-1)
 		return 0;
-#if !defined(TURN_NO_PQ)
-	if(is_pqsql_userdb()) {
-		char statement[LONG_STRING_SIZE];
-		PGconn *pqc = get_pqdb_connection();
-		if(pqc) {
-			{
-				snprintf(statement,sizeof(statement),"delete from turn_realm_option where realm='%s' and opt='%s'",realm,opt);
-				PGresult *res = PQexec(pqc, statement);
-				if(res) {
-					PQclear(res);
-				}
-			}
-			if(value>0) {
-				snprintf(statement,sizeof(statement),"insert into turn_realm_option (realm,opt,value) values('%s','%s','%lu')",realm,opt,(unsigned long)value);
-				PGresult *res = PQexec(pqc, statement);
-				if(!res || (PQresultStatus(res) != PGRES_COMMAND_OK)) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error inserting realm option information: %s\n",PQerrorMessage(pqc));
-				}
-				if(res) {
-					PQclear(res);
-				}
-			}
-		}
+
+  turn_dbdriver_t * dbd = get_dbdriver();
+  if (dbd && dbd->set_realm_option_one) {
+    (*dbd->set_realm_option_one)(realm, value, opt);
 	}
-#endif
 
-#if !defined(TURN_NO_MYSQL)
-	if (is_mysql_userdb()) {
-		char statement[LONG_STRING_SIZE];
-		MYSQL * myc = get_mydb_connection();
-		if (myc) {
-			{
-				snprintf(statement,sizeof(statement),"delete from turn_realm_option where realm='%s' and opt='%s'",realm,opt);
-				mysql_query(myc, statement);
-			}
-			if(value>0) {
-				snprintf(statement,sizeof(statement),"insert into turn_realm_option (realm,opt,value) values('%s','%s','%lu')",realm,opt,(unsigned long)value);
-				int res = mysql_query(myc, statement);
-				if (res) {
-					TURN_LOG_FUNC(
-								TURN_LOG_LEVEL_ERROR,
-								"Error inserting realm option information: %s\n",
-								mysql_error(myc));
-				}
-			}
-		}
-	}
-#endif
-
-#if !defined(TURN_NO_HIREDIS)
-	if(is_redis_userdb()) {
-		redisContext *rc = get_redis_connection();
-		if(rc) {
-			char s[LONG_STRING_SIZE];
-
-			if(value>0)
-				snprintf(s,sizeof(s),"set turn/realm/%s/%s %lu", (char*)realm, opt, (unsigned long)value);
-			else
-				snprintf(s,sizeof(s),"del turn/realm/%s/%s", (char*)realm, opt);
-
-			turnFreeRedisReply(redisCommand(rc, s));
-			turnFreeRedisReply(redisCommand(rc, "save"));
-		}
-	}
-#endif
 	return 0;
 }
 
@@ -2454,141 +867,9 @@ static int set_realm_option(u08bits *realm, perf_options_t *po)
 
 static int list_realm_options(u08bits *realm)
 {
-	UNUSED_ARG(realm);
-
-	donot_print_connection_success = 1;
-
-	if(is_pqsql_userdb()){
-#if !defined(TURN_NO_PQ)
-		char statement[LONG_STRING_SIZE];
-		PGconn *pqc = get_pqdb_connection();
-		if(pqc) {
-			if(realm && realm[0]) {
-				snprintf(statement,sizeof(statement),"select realm,opt,value from turn_realm_option where realm='%s' order by realm,opt",realm);
-			} else {
-				snprintf(statement,sizeof(statement),"select realm,opt,value from turn_realm_option order by realm,opt");
-			}
-			PGresult *res = PQexec(pqc, statement);
-			if(!res || (PQresultStatus(res) != PGRES_TUPLES_OK)) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving PostgreSQL DB information: %s\n",PQerrorMessage(pqc));
-			} else {
-				int i = 0;
-				for(i=0;i<PQntuples(res);i++) {
-					char *rval = PQgetvalue(res,i,0);
-					if(rval) {
-						char *oval = PQgetvalue(res,i,1);
-						if(oval) {
-							char *vval = PQgetvalue(res,i,2);
-							if(vval) {
-								printf("%s[%s]=%s\n",oval,rval,vval);
-							}
-						}
-					}
-				}
-			}
-			if(res) {
-				PQclear(res);
-			}
-		}
-#endif
-	} else if(is_mysql_userdb()){
-#if !defined(TURN_NO_MYSQL)
-		char statement[LONG_STRING_SIZE];
-		MYSQL * myc = get_mydb_connection();
-		if(myc) {
-			if(realm && realm[0]) {
-				snprintf(statement,sizeof(statement),"select realm,opt,value from turn_realm_option where realm='%s' order by realm,opt",realm);
-			} else {
-				snprintf(statement,sizeof(statement),"select realm,opt,value from turn_realm_option order by realm,opt");
-			}
-			int res = mysql_query(myc, statement);
-			if(res) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n",mysql_error(myc));
-			} else {
-				MYSQL_RES *mres = mysql_store_result(myc);
-				if(!mres) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n",mysql_error(myc));
-				} else if(mysql_field_count(myc)!=3) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown error retrieving MySQL DB information: %s\n",statement);
-				} else {
-					for(;;) {
-						MYSQL_ROW row = mysql_fetch_row(mres);
-						if(!row) {
-							break;
-						} else {
-							if(row[0] && row[1] && row[2]) {
-								printf("%s[%s]=%s\n",row[1],row[0],row[2]);
-							}
-						}
-					}
-				}
-
-				if(mres)
-					mysql_free_result(mres);
-			}
-		}
-#endif
-	} else if(is_redis_userdb()) {
-#if !defined(TURN_NO_HIREDIS)
-		redisContext *rc = get_redis_connection();
-		if(rc) {
-			secrets_list_t keys;
-			size_t isz = 0;
-
-			init_secrets_list(&keys);
-
-			redisReply *reply = NULL;
-
-			{
-				if(realm && realm[0]) {
-					reply = (redisReply*)redisCommand(rc, "keys turn/realm/%s/*",realm);
-				} else {
-					reply = (redisReply*)redisCommand(rc, "keys turn/realm/*");
-				}
-				if(reply) {
-
-					if (reply->type == REDIS_REPLY_ERROR)
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", reply->str);
-					else if (reply->type != REDIS_REPLY_ARRAY) {
-						if (reply->type != REDIS_REPLY_NIL)
-							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", reply->type);
-					} else {
-						size_t i;
-						for (i = 0; i < reply->elements; ++i) {
-							if(strstr(reply->element[i]->str,"/max-bps")||
-								strstr(reply->element[i]->str,"/total-quota")||
-								strstr(reply->element[i]->str,"/user-quota")) {
-								add_to_secrets_list(&keys,reply->element[i]->str);
-							}
-						}
-					}
-					turnFreeRedisReply(reply);
-				}
-			}
-
-			size_t offset = strlen("turn/realm/");
-
-			for(isz=0;isz<keys.sz;++isz) {
-				char *o = keys.secrets[isz];
-
-				reply = (redisReply*)redisCommand(rc, "get %s",o);
-				if(reply) {
-
-					if (reply->type == REDIS_REPLY_ERROR)
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", reply->str);
-					else if (reply->type != REDIS_REPLY_STRING) {
-						if (reply->type != REDIS_REPLY_NIL)
-							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", reply->type);
-					} else {
-						printf("%s = %s\n",o+offset,reply->str);
-					}
-					turnFreeRedisReply(reply);
-				}
-			}
-
-			clean_secrets_list(&keys);
-		}
-#endif
+  turn_dbdriver_t * dbd = get_dbdriver();
+  if (dbd && dbd->list_realm_options) {
+    (*dbd->list_realm_options)(realm);
 	}
 
 	return 0;
@@ -2596,12 +877,9 @@ static int list_realm_options(u08bits *realm)
 
 int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, u08bits *origin,
 				TURNADMIN_COMMAND_TYPE ct, int is_st,
-				perf_options_t *po)
-{
+				perf_options_t *po) {
 	hmackey_t key;
 	char skey[sizeof(hmackey_t)*2+1];
-
-	donot_print_connection_success = 1;
 
 	st_password_t passwd;
 
@@ -2672,152 +950,40 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, u08b
 		}
 	}
 
+  turn_dbdriver_t * dbd = get_dbdriver();
+
 	if(ct == TA_PRINT_KEY) {
 
 		if(!is_st) {
 			printf("0x%s\n",skey);
 		}
 
-	} else if(is_pqsql_userdb()){
-
-#if !defined(TURN_NO_PQ)
+	} else if(dbd) {
 
 		if(!is_st) {
 			must_set_admin_realm(realm);
 		}
-
-		char statement[LONG_STRING_SIZE];
-		PGconn *pqc = get_pqdb_connection();
-		if(pqc) {
-			if(ct == TA_DELETE_USER) {
-				if(is_st) {
-				  snprintf(statement,sizeof(statement),"delete from turnusers_st where name='%s'",user);
-				} else {
-				  snprintf(statement,sizeof(statement),"delete from turnusers_lt where name='%s' and realm='%s'",user,realm);
-				}
-				PGresult *res = PQexec(pqc, statement);
-				if(res) {
-					PQclear(res);
-				}
-			}
-
-			if(ct == TA_UPDATE_USER) {
-				if(is_st) {
-				  snprintf(statement,sizeof(statement),"insert into turnusers_st values('%s','%s')",user,passwd);
-				} else {
-				  snprintf(statement,sizeof(statement),"insert into turnusers_lt (realm,name,hmackey) values('%s','%s','%s')",realm,user,skey);
-				}
-				PGresult *res = PQexec(pqc, statement);
-				if(!res || (PQresultStatus(res) != PGRES_COMMAND_OK)) {
-					if(res) {
-						PQclear(res);
-					}
-					if(is_st) {
-					  snprintf(statement,sizeof(statement),"update turnusers_st set password='%s' where name='%s'",passwd,user);
-					} else {
-					  snprintf(statement,sizeof(statement),"update turnusers_lt set hmackey='%s' where name='%s' and realm='%s'",skey,user,realm);
-					}
-					res = PQexec(pqc, statement);
-					if(!res || (PQresultStatus(res) != PGRES_COMMAND_OK)) {
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error inserting/updating user information: %s\n",PQerrorMessage(pqc));
-					}
-				}
-				if(res) {
-					PQclear(res);
-				}
-			}
-		}
-#endif
-	} else if(is_mysql_userdb()){
-
-#if !defined(TURN_NO_MYSQL)
-
-		if(!is_st) {
-			must_set_admin_realm(realm);
-		}
-
-		char statement[LONG_STRING_SIZE];
-		MYSQL * myc = get_mydb_connection();
-		if(myc) {
-			if(ct == TA_DELETE_USER) {
-				if(is_st) {
-				  snprintf(statement,sizeof(statement),"delete from turnusers_st where name='%s'",user);
-				} else {
-				  snprintf(statement,sizeof(statement),"delete from turnusers_lt where name='%s' and realm='%s'",user,realm);
-				}
-				int res = mysql_query(myc, statement);
-				if(res) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error deleting user key information: %s\n",mysql_error(myc));
-				}
-			}
-
-			if(ct == TA_UPDATE_USER) {
-				if(is_st) {
-				  snprintf(statement,sizeof(statement),"insert into turnusers_st values('%s','%s')",user,passwd);
-				} else {
-				  snprintf(statement,sizeof(statement),"insert into turnusers_lt (realm,name,hmackey) values('%s','%s','%s')",realm,user,skey);
-				}
-				int res = mysql_query(myc, statement);
-				if(res) {
-					if(is_st) {
-					  snprintf(statement,sizeof(statement),"update turnusers_st set password='%s' where name='%s'",passwd,user);
-					} else {
-					  snprintf(statement,sizeof(statement),"update turnusers_lt set hmackey='%s' where name='%s' and realm='%s'",skey,user,realm);
-					}
-					res = mysql_query(myc, statement);
-					if(res) {
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error inserting/updating user key information: %s\n",mysql_error(myc));
-					}
-				}
-			}
-		}
-#endif
-	} else if(is_redis_userdb()) {
-
-#if !defined(TURN_NO_HIREDIS)
-
-		if(!is_st) {
-			must_set_admin_realm(realm);
-		}
-
-		redisContext *rc = get_redis_connection();
-		if(rc) {
-			char statement[LONG_STRING_SIZE];
-
-			if(ct == TA_DELETE_USER) {
-				if(is_st) {
-				  snprintf(statement,sizeof(statement),"del turn/user/%s/password",user);
-				  turnFreeRedisReply(redisCommand(rc, statement));
-				} else {
-				  snprintf(statement,sizeof(statement),"del turn/realm/%s/user/%s/key",(char*)realm,user);
-				  turnFreeRedisReply(redisCommand(rc, statement));
-				  snprintf(statement,sizeof(statement),"del turn/realm/%s/user/%s/password",(char*)realm,user);
-				  turnFreeRedisReply(redisCommand(rc, statement));
-				}
-			}
-
-			if(ct == TA_UPDATE_USER) {
-				if(is_st) {
-				  snprintf(statement,sizeof(statement),"set turn/user/%s/password %s",user,passwd);
-				  turnFreeRedisReply(redisCommand(rc, statement));
-				} else {
-				  snprintf(statement,sizeof(statement),"set turn/realm/%s/user/%s/key %s",(char*)realm,user,skey);
-				  turnFreeRedisReply(redisCommand(rc, statement));
-				  snprintf(statement,sizeof(statement),"del turn/realm/%s/user/%s/password",(char*)realm,user);
-				  turnFreeRedisReply(redisCommand(rc, statement));
-				}
-			}
-
-			turnFreeRedisReply(redisCommand(rc, "save"));
-		}
-#endif
+    
+    if (ct == TA_DELETE_USER) {
+      if (dbd->del_user) 
+        (*dbd->del_user)(user, is_st, realm);
+    } else if (ct == TA_UPDATE_USER) {
+      if (is_st) {
+        if (dbd->set_user_pwd) 
+          (*dbd->set_user_pwd)(user, passwd);
+      } else {
+        if (dbd->set_user_key) 
+          (*dbd->set_user_key)(user, realm, skey);
+      }
+    }
+    
 	} else if(!is_st) {
 
 		persistent_users_db_t *pud = get_persistent_users_db();
 		char *full_path_to_userdb_file = find_config_file(pud->userdb, 1);
 		FILE *f = full_path_to_userdb_file ? fopen(full_path_to_userdb_file,"r") : NULL;
 		int found = 0;
-		char us[LONG_STRING_SIZE];
+		char us[TURN_LONG_STRING_SIZE];
 		size_t i = 0;
 		char **content = NULL;
 		size_t csz = 0;
@@ -2830,8 +996,8 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, u08b
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "File %s not found, will be created.\n",pud->userdb);
 		} else {
 
-			char sarg[LONG_STRING_SIZE];
-			char sbuf[LONG_STRING_SIZE];
+			char sarg[TURN_LONG_STRING_SIZE];
+			char sbuf[TURN_LONG_STRING_SIZE];
 
 			for (;;) {
 				char *s0 = fgets(sbuf, sizeof(sbuf) - 1, f);
@@ -2929,55 +1095,10 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, u08b
 
 void auth_ping(redis_context_handle rch)
 {
-	UNUSED_ARG(rch);
-
-	donot_print_connection_success = 1;
-
-#if !defined(TURN_NO_PQ)
-	PGconn * pqc = get_pqdb_connection();
-	if(pqc) {
-		char statement[LONG_STRING_SIZE];
-		STRCPY(statement,"select value from turn_secret");
-		PGresult *res = PQexec(pqc, statement);
-
-		if(!res || (PQresultStatus(res) != PGRES_TUPLES_OK)) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving PostgreSQL DB information: %s\n",PQerrorMessage(pqc));
-		}
-
-		if(res) {
-			PQclear(res);
-		}
+  turn_dbdriver_t * dbd = get_dbdriver();
+  if (dbd && dbd->auth_ping) {
+    (*dbd->auth_ping)(rch);
 	}
-#endif
-
-#if !defined(TURN_NO_MYSQL)
-	MYSQL * myc = get_mydb_connection();
-	if(myc) {
-		char statement[LONG_STRING_SIZE];
-		STRCPY(statement,"select value from turn_secret");
-		int res = mysql_query(myc, statement);
-		if(res) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n",mysql_error(myc));
-		} else {
-			MYSQL_RES *mres = mysql_store_result(myc);
-			if(!mres) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n",mysql_error(myc));
-			} else {
-				mysql_free_result(mres);
-			}
-		}
-	}
-#endif
-
-#if !defined(TURN_NO_HIREDIS)
-	redisContext *rc = get_redis_connection();
-	if(rc) {
-		turnFreeRedisReply(redisCommand(rc, "keys turn/origin/*"));
-	}
-	if(rch)
-		send_message_to_redis(rch, "publish", "__XXX__", "__YYY__");
-#endif
-
 }
 
 ///////////////// WHITE/BLACK IP LISTS ///////////////////
@@ -3075,114 +1196,13 @@ const ip_range_list_t* ioa_get_blacklist(ioa_engine_handle e)
 
 static ip_range_list_t* get_ip_list(const char *kind)
 {
-	UNUSED_ARG(kind);
 	ip_range_list_t *ret = (ip_range_list_t*)turn_malloc(sizeof(ip_range_list_t));
 	ns_bzero(ret,sizeof(ip_range_list_t));
 
-#if !defined(TURN_NO_PQ)
-	PGconn * pqc = get_pqdb_connection();
-	if(pqc) {
-		char statement[LONG_STRING_SIZE];
-		snprintf(statement,sizeof(statement),"select ip_range from %s_peer_ip",kind);
-		PGresult *res = PQexec(pqc, statement);
-
-		if(res && (PQresultStatus(res) == PGRES_TUPLES_OK)) {
-			int i = 0;
-			for(i=0;i<PQntuples(res);i++) {
-				char *kval = PQgetvalue(res,i,0);
-				if(kval) {
-					add_ip_list_range(kval,ret);
-				}
-			}
-		}
-
-		if(res) {
-			PQclear(res);
-		}
+  turn_dbdriver_t * dbd = get_dbdriver();
+  if (dbd && dbd->get_ip_list) {
+    (*dbd->get_ip_list)(kind, ret);
 	}
-#endif
-
-#if !defined(TURN_NO_MYSQL)
-	MYSQL * myc = get_mydb_connection();
-	if(myc) {
-		char statement[LONG_STRING_SIZE];
-		snprintf(statement,sizeof(statement),"select ip_range from %s_peer_ip",kind);
-		int res = mysql_query(myc, statement);
-		if(res == 0) {
-			MYSQL_RES *mres = mysql_store_result(myc);
-			if(mres && mysql_field_count(myc)==1) {
-				for(;;) {
-					MYSQL_ROW row = mysql_fetch_row(mres);
-					if(!row) {
-						break;
-					} else {
-						if(row[0]) {
-							unsigned long *lengths = mysql_fetch_lengths(mres);
-							if(lengths) {
-								size_t sz = lengths[0];
-								char kval[LONG_STRING_SIZE];
-								ns_bcopy(row[0],kval,sz);
-								kval[sz]=0;
-								add_ip_list_range(kval,ret);
-							}
-						}
-					}
-				}
-			}
-
-			if(mres)
-				mysql_free_result(mres);
-		}
-	}
-#endif
-
-#if !defined(TURN_NO_HIREDIS)
-	redisContext *rc = get_redis_connection();
-	if(rc) {
-		char statement[LONG_STRING_SIZE];
-		snprintf(statement,sizeof(statement),"keys turn/%s-peer-ip/*", kind);
-		redisReply *reply = (redisReply*)redisCommand(rc, statement);
-		if(reply) {
-			secrets_list_t keys;
-			size_t isz = 0;
-			char s[257];
-
-			init_secrets_list(&keys);
-
-			if (reply->type == REDIS_REPLY_ERROR)
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", reply->str);
-			else if (reply->type != REDIS_REPLY_ARRAY) {
-				if (reply->type != REDIS_REPLY_NIL)
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", reply->type);
-			} else {
-				size_t i;
-				for (i = 0; i < reply->elements; ++i) {
-					add_to_secrets_list(&keys,reply->element[i]->str);
-				}
-			}
-
-			for(isz=0;isz<keys.sz;++isz) {
-				snprintf(s,sizeof(s),"get %s", keys.secrets[isz]);
-				redisReply *rget = (redisReply *)redisCommand(rc, s);
-				if(rget) {
-					if (rget->type == REDIS_REPLY_ERROR)
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", rget->str);
-					else if (rget->type != REDIS_REPLY_STRING) {
-						if (rget->type != REDIS_REPLY_NIL)
-							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", rget->type);
-					} else {
-						add_ip_list_range(rget->str,ret);
-					}
-					turnFreeRedisReply(rget);
-				}
-			}
-
-			clean_secrets_list(&keys);
-
-			turnFreeRedisReply(reply);
-		}
-	}
-#endif
 
 	return ret;
 }
@@ -3229,8 +1249,10 @@ void update_white_and_black_lists(void)
 
 /////////////// add ACL record ///////////////////
 
-int add_ip_list_range(char* range, ip_range_list_t * list)
+int add_ip_list_range(const char * range0, ip_range_list_t * list)
 {
+	char *range = strdup(range0);
+
 	char* separator = strchr(range, '-');
 
 	if (separator) {
@@ -3241,12 +1263,14 @@ int add_ip_list_range(char* range, ip_range_list_t * list)
 
 	if (make_ioa_addr((const u08bits*) range, 0, &min) < 0) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong address format: %s\n", range);
+		free(range);
 		return -1;
 	}
 
 	if (separator) {
 		if (make_ioa_addr((const u08bits*) separator + 1, 0, &max) < 0) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong address format: %s\n", separator + 1);
+			free(range);
 			return -1;
 		}
 	} else {
@@ -3259,7 +1283,7 @@ int add_ip_list_range(char* range, ip_range_list_t * list)
 
 	++(list->ranges_number);
 	list->ranges = (char**) realloc(list->ranges, sizeof(char*) * list->ranges_number);
-	list->ranges[list->ranges_number - 1] = strdup(range);
+	list->ranges[list->ranges_number - 1] = range;
 	list->encaddrsranges = (ioa_addr_range**) realloc(list->encaddrsranges, sizeof(ioa_addr_range*) * list->ranges_number);
 
 	list->encaddrsranges[list->ranges_number - 1] = (ioa_addr_range*) turn_malloc(sizeof(ioa_addr_range));
@@ -3270,41 +1294,6 @@ int add_ip_list_range(char* range, ip_range_list_t * list)
 }
 
 /////////// REALM //////////////
-
-#if !defined(TURN_NO_HIREDIS)
-static int set_redis_realm_opt(char *realm, const char* key, unsigned long *value)
-{
-	int found = 0;
-
-	redisContext *rc = get_redis_connection();
-
-	if(rc) {
-		redisReply *rget = NULL;
-
-		char s[1025];
-
-		snprintf(s, sizeof(s), "get turn/realm/%s/%s", realm, key);
-
-		rget = (redisReply *) redisCommand(rc, s);
-		if (rget) {
-			if (rget->type == REDIS_REPLY_ERROR)
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", rget->str);
-			else if (rget->type != REDIS_REPLY_STRING) {
-				if (rget->type != REDIS_REPLY_NIL)
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", rget->type);
-			} else {
-				ur_string_map_lock(realms);
-				*value = (unsigned long)atol(rget->str);
-				ur_string_map_unlock(realms);
-				found = 1;
-			}
-			turnFreeRedisReply(rget);
-		}
-	}
-
-	return found;
-}
-#endif
 
 void reread_realms(void)
 {
@@ -3317,322 +1306,10 @@ void reread_realms(void)
 		ur_string_map_unlock(realms);
 	}
 
-#if !defined(TURN_NO_PQ)
-	PGconn * pqc = get_pqdb_connection();
-	if(pqc) {
-		char statement[LONG_STRING_SIZE];
-
-		{
-			snprintf(statement,sizeof(statement),"select origin,realm from turn_origin_to_realm");
-			PGresult *res = PQexec(pqc, statement);
-
-			if(res && (PQresultStatus(res) == PGRES_TUPLES_OK)) {
-
-				ur_string_map *o_to_realm_new = ur_string_map_create(free);
-
-				int i = 0;
-				for(i=0;i<PQntuples(res);i++) {
-					char *oval = PQgetvalue(res,i,0);
-					if(oval) {
-						char *rval = PQgetvalue(res,i,1);
-						if(rval) {
-							get_realm(rval);
-							ur_string_map_value_type value = strdup(rval);
-							ur_string_map_put(o_to_realm_new, (const ur_string_map_key_type) oval, value);
-						}
-					}
-				}
-
-				TURN_MUTEX_LOCK(&o_to_realm_mutex);
-				ur_string_map_free(&o_to_realm);
-				o_to_realm = o_to_realm_new;
-				TURN_MUTEX_UNLOCK(&o_to_realm_mutex);
-			}
-
-			if(res) {
-				PQclear(res);
-			}
-		}
-
-		{
-			{
-				size_t i = 0;
-				size_t rlsz = 0;
-
-				ur_string_map_lock(realms);
-				rlsz = realms_list.sz;
-				ur_string_map_unlock(realms);
-
-				for (i = 0; i<rlsz; ++i) {
-
-					char *realm = realms_list.secrets[i];
-
-					realm_params_t* rp = get_realm(realm);
-
-					ur_string_map_lock(realms);
-					rp->options.perf_options.max_bps = turn_params.max_bps;
-					ur_string_map_unlock(realms);
-
-					ur_string_map_lock(realms);
-					rp->options.perf_options.total_quota = turn_params.total_quota;
-					ur_string_map_unlock(realms);
-
-					ur_string_map_lock(realms);
-					rp->options.perf_options.user_quota = turn_params.user_quota;
-					ur_string_map_unlock(realms);
-
-				}
-			}
-
-			snprintf(statement,sizeof(statement),"select realm,opt,value from turn_realm_option");
-			PGresult *res = PQexec(pqc, statement);
-
-			if(res && (PQresultStatus(res) == PGRES_TUPLES_OK)) {
-
-				int i = 0;
-				for(i=0;i<PQntuples(res);i++) {
-					char *rval = PQgetvalue(res,i,0);
-					char *oval = PQgetvalue(res,i,1);
-					char *vval = PQgetvalue(res,i,2);
-					if(rval && oval && vval) {
-						realm_params_t* rp = get_realm(rval);
-						if(!strcmp(oval,"max-bps"))
-							rp->options.perf_options.max_bps = (band_limit_t)atol(vval);
-						else if(!strcmp(oval,"total-quota"))
-							rp->options.perf_options.total_quota = (vint)atoi(vval);
-						else if(!strcmp(oval,"user-quota"))
-							rp->options.perf_options.user_quota = (vint)atoi(vval);
-						else {
-							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown realm option: %s\n", oval);
-						}
-					}
-				}
-			}
-
-			if(res) {
-				PQclear(res);
-			}
-		}
+  turn_dbdriver_t * dbd = get_dbdriver();
+  if (dbd && dbd->reread_realms) {
+    (*dbd->reread_realms)(&realms_list);
 	}
-#endif
-
-#if !defined(TURN_NO_MYSQL)
-	MYSQL * myc = get_mydb_connection();
-	if(myc) {
-		char statement[LONG_STRING_SIZE];
-		{
-			snprintf(statement,sizeof(statement),"select origin,realm from turn_origin_to_realm");
-			int res = mysql_query(myc, statement);
-			if(res == 0) {
-				MYSQL_RES *mres = mysql_store_result(myc);
-				if(mres && mysql_field_count(myc)==2) {
-
-					ur_string_map *o_to_realm_new = ur_string_map_create(free);
-
-					for(;;) {
-						MYSQL_ROW row = mysql_fetch_row(mres);
-						if(!row) {
-							break;
-						} else {
-							if(row[0] && row[1]) {
-								unsigned long *lengths = mysql_fetch_lengths(mres);
-								if(lengths) {
-									size_t sz = lengths[0];
-									char oval[513];
-									ns_bcopy(row[0],oval,sz);
-									oval[sz]=0;
-									char *rval=strdup(row[1]);
-									get_realm(rval);
-									ur_string_map_value_type value = strdup(rval);
-									ur_string_map_put(o_to_realm_new, (const ur_string_map_key_type) oval, value);
-								}
-							}
-						}
-					}
-
-					TURN_MUTEX_LOCK(&o_to_realm_mutex);
-					ur_string_map_free(&o_to_realm);
-					o_to_realm = o_to_realm_new;
-					TURN_MUTEX_UNLOCK(&o_to_realm_mutex);
-				}
-
-				if(mres)
-					mysql_free_result(mres);
-			}
-		}
-		{
-			size_t i = 0;
-			size_t rlsz = 0;
-
-			ur_string_map_lock(realms);
-			rlsz = realms_list.sz;
-			ur_string_map_unlock(realms);
-
-			for (i = 0; i<rlsz; ++i) {
-
-				char *realm = realms_list.secrets[i];
-
-				realm_params_t* rp = get_realm(realm);
-
-				ur_string_map_lock(realms);
-				rp->options.perf_options.max_bps = turn_params.max_bps;
-				ur_string_map_unlock(realms);
-
-				ur_string_map_lock(realms);
-				rp->options.perf_options.total_quota = turn_params.total_quota;
-				ur_string_map_unlock(realms);
-
-				ur_string_map_lock(realms);
-				rp->options.perf_options.user_quota = turn_params.user_quota;
-				ur_string_map_unlock(realms);
-
-			}
-		}
-
-		snprintf(statement,sizeof(statement),"select realm,opt,value from turn_realm_option");
-		int res = mysql_query(myc, statement);
-		if(res == 0) {
-			MYSQL_RES *mres = mysql_store_result(myc);
-			if(mres && mysql_field_count(myc)==3) {
-
-				for(;;) {
-					MYSQL_ROW row = mysql_fetch_row(mres);
-					if(!row) {
-						break;
-					} else {
-						if(row[0] && row[1] && row[2]) {
-							unsigned long *lengths = mysql_fetch_lengths(mres);
-							if(lengths) {
-								char rval[513];
-								size_t sz = lengths[0];
-								ns_bcopy(row[0],rval,sz);
-								rval[sz]=0;
-								char oval[513];
-								sz = lengths[1];
-								ns_bcopy(row[1],oval,sz);
-								oval[sz]=0;
-								char vval[513];
-								sz = lengths[2];
-								ns_bcopy(row[2],vval,sz);
-								vval[sz]=0;
-								realm_params_t* rp = get_realm(rval);
-								if(!strcmp(oval,"max-bps"))
-									rp->options.perf_options.max_bps = (band_limit_t)atol(vval);
-								else if(!strcmp(oval,"total-quota"))
-									rp->options.perf_options.total_quota = (vint)atoi(vval);
-								else if(!strcmp(oval,"user-quota"))
-									rp->options.perf_options.user_quota = (vint)atoi(vval);
-								else {
-									TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown realm option: %s\n", oval);
-								}
-							}
-						}
-					}
-				}
-			}
-
-			if(mres)
-				mysql_free_result(mres);
-		}
-	}
-#endif
-
-#if !defined(TURN_NO_HIREDIS)
-	if (is_redis_userdb()) {
-		redisContext *rc = get_redis_connection();
-		if (rc) {
-
-			redisReply *reply = (redisReply*) redisCommand(rc, "keys turn/origin/*");
-			if (reply) {
-
-				ur_string_map *o_to_realm_new = ur_string_map_create(free);
-
-				secrets_list_t keys;
-
-				init_secrets_list(&keys);
-
-				size_t isz = 0;
-
-				char s[1025];
-
-				if (reply->type == REDIS_REPLY_ERROR)
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", reply->str);
-				else if (reply->type != REDIS_REPLY_ARRAY) {
-					if (reply->type != REDIS_REPLY_NIL)
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", reply->type);
-				} else {
-					size_t i;
-					for (i = 0; i < reply->elements; ++i) {
-						add_to_secrets_list(&keys, reply->element[i]->str);
-					}
-				}
-
-				size_t offset = strlen("turn/origin/");
-
-				for (isz = 0; isz < keys.sz; ++isz) {
-					char *origin = keys.secrets[isz] + offset;
-					snprintf(s, sizeof(s), "get %s", keys.secrets[isz]);
-					redisReply *rget = (redisReply *) redisCommand(rc, s);
-					if (rget) {
-						if (rget->type == REDIS_REPLY_ERROR)
-							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", rget->str);
-						else if (rget->type != REDIS_REPLY_STRING) {
-							if (rget->type != REDIS_REPLY_NIL)
-								TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", rget->type);
-						} else {
-							get_realm(rget->str);
-							ur_string_map_value_type value = strdup(rget->str);
-							ur_string_map_put(o_to_realm_new, (const ur_string_map_key_type) origin, value);
-						}
-						turnFreeRedisReply(rget);
-					}
-				}
-
-				clean_secrets_list(&keys);
-
-				TURN_MUTEX_LOCK(&o_to_realm_mutex);
-				ur_string_map_free(&o_to_realm);
-				o_to_realm = o_to_realm_new;
-				TURN_MUTEX_UNLOCK(&o_to_realm_mutex);
-
-				turnFreeRedisReply(reply);
-			}
-
-			{
-				size_t i = 0;
-				size_t rlsz = 0;
-
-				ur_string_map_lock(realms);
-				rlsz = realms_list.sz;
-				ur_string_map_unlock(realms);
-
-				for (i = 0; i<rlsz; ++i) {
-					char *realm = realms_list.secrets[i];
-					realm_params_t* rp = get_realm(realm);
-					unsigned long value = 0;
-					if(!set_redis_realm_opt(realm,"max-bps",&value)) {
-						ur_string_map_lock(realms);
-						rp->options.perf_options.max_bps = turn_params.max_bps;
-						ur_string_map_unlock(realms);
-					}
-					rp->options.perf_options.max_bps = (band_limit_t)value;
-					if(!set_redis_realm_opt(realm,"total-quota",&value)) {
-						ur_string_map_lock(realms);
-						rp->options.perf_options.total_quota = turn_params.total_quota;
-						ur_string_map_unlock(realms);
-					}
-					rp->options.perf_options.total_quota = (vint)value;
-					if(!set_redis_realm_opt(realm,"user-quota",&value)) {
-						ur_string_map_lock(realms);
-						rp->options.perf_options.user_quota = turn_params.user_quota;
-						ur_string_map_unlock(realms);
-					}
-					rp->options.perf_options.user_quota = (vint)value;
-				}
-			}
-		}
-	}
-#endif
 }
 
 ///////////////////////////////

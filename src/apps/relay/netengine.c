@@ -42,8 +42,8 @@ static pthread_barrier_t barrier;
 #define get_real_general_relay_servers_number() (turn_params.general_relay_servers_number > 1 ? turn_params.general_relay_servers_number : 1)
 #define get_real_udp_relay_servers_number() (turn_params.udp_relay_servers_number > 1 ? turn_params.udp_relay_servers_number : 1)
 
-static struct relay_server **general_relay_servers = NULL;
-static struct relay_server **udp_relay_servers = NULL;
+static struct relay_server *general_relay_servers[1+((turnserver_id)-1)];
+static struct relay_server *udp_relay_servers[1+((turnserver_id)-1)];
 
 //////////////////////////////////////////////
 
@@ -401,6 +401,11 @@ static void auth_server_receive_message(struct bufferevent *bev, void *ptr)
 		      TURN_LOG_LEVEL_ERROR,
 		      "%s: Too large UDP relay number: %d\n",
 		      __FUNCTION__,(int)dest);
+      } else if(!(udp_relay_servers[dest])) {
+    	  TURN_LOG_FUNC(
+    	  	TURN_LOG_LEVEL_ERROR,
+    	  	"%s: Wrong UDP relay number: %d, total %d\n",
+    	  	__FUNCTION__,(int)dest, (int)get_real_udp_relay_servers_number());
       } else {
     	  output = bufferevent_get_output(udp_relay_servers[dest]->auth_out_buf);
       }
@@ -408,8 +413,13 @@ static void auth_server_receive_message(struct bufferevent *bev, void *ptr)
       if(dest >= get_real_general_relay_servers_number()) {
     	  TURN_LOG_FUNC(
 		      TURN_LOG_LEVEL_ERROR,
-		      "%s: Too large general relay number: %d\n",
-		      __FUNCTION__,(int)dest);
+		      "%s: Too large general relay number: %d, total %d\n",
+		      __FUNCTION__,(int)dest,(int)get_real_general_relay_servers_number());
+      } else if(!(general_relay_servers[dest])) {
+    	  TURN_LOG_FUNC(
+    	  		      TURN_LOG_LEVEL_ERROR,
+    	  		      "%s: Wrong general relay number: %d, total %d\n",
+    	  		      __FUNCTION__,(int)dest,(int)get_real_general_relay_servers_number());
       } else {
     	  output = bufferevent_get_output(general_relay_servers[dest]->auth_out_buf);
       }
@@ -437,35 +447,36 @@ static int send_socket_to_general_relay(ioa_engine_handle e, struct message_to_r
 
 	smptr->t = RMT_SOCKET;
 
-	{
-		struct evbuffer *output = NULL;
-		int success = 0;
+	struct evbuffer *output = NULL;
+	int success = 0;
 
-		output = bufferevent_get_output(rdest->out_buf);
+	if(!rdest) {
+		success = -1;
+		goto label_end;
+	}
 
-		if(output) {
+	output = bufferevent_get_output(rdest->out_buf);
 
-			if(evbuffer_add(output,smptr,sizeof(struct message_to_relay))<0) {
-				TURN_LOG_FUNC(
-					TURN_LOG_LEVEL_ERROR,
-					"%s: Cannot add message to relay output buffer\n",
-					__FUNCTION__);
-			} else {
+	if(output) {
 
-				success = 1;
-				smptr->m.sm.nd.nbh=NULL;
-			}
-
-		}
-
-		if(!success) {
-			ioa_network_buffer_delete(e, smptr->m.sm.nd.nbh);
+		if(evbuffer_add(output,smptr,sizeof(struct message_to_relay))<0) {
+			TURN_LOG_FUNC(
+				TURN_LOG_LEVEL_ERROR,
+				"%s: Cannot add message to relay output buffer\n",
+				__FUNCTION__);
+		} else {
+			success = 1;
 			smptr->m.sm.nd.nbh=NULL;
-
-			IOA_CLOSE_SOCKET(smptr->m.sm.s);
-
-			return -1;
 		}
+	}
+
+	label_end:
+
+	if(!success) {
+		ioa_network_buffer_delete(e, smptr->m.sm.nd.nbh);
+		smptr->m.sm.nd.nbh=NULL;
+		IOA_CLOSE_SOCKET(smptr->m.sm.s);
+		return -1;
 	}
 
 	return 0;
@@ -487,23 +498,39 @@ static int send_socket_to_relay(turnserver_id id, u64bits cid, stun_tid *tid, io
 		if(dest >= get_real_udp_relay_servers_number()) {
 			TURN_LOG_FUNC(
 					TURN_LOG_LEVEL_ERROR,
-					"%s: Too large UDP relay number: %d, rmt=%d\n",
-					__FUNCTION__,(int)dest,(int)rmt);
+					"%s: Too large UDP relay number: %d, rmt=%d, total=%d\n",
+					__FUNCTION__,(int)dest,(int)rmt, (int)get_real_udp_relay_servers_number());
 			ret = -1;
 			goto err;
 		}
 		rs = udp_relay_servers[dest];
+		if(!rs) {
+			TURN_LOG_FUNC(
+				TURN_LOG_LEVEL_ERROR,
+					"%s: Wrong UDP relay number: %d, rmt=%d, total=%d\n",
+					__FUNCTION__,(int)dest,(int)rmt, (int)get_real_udp_relay_servers_number());
+			ret = -1;
+			goto err;
+		}
 	} else {
 		size_t dest = id;
 		if(dest >= get_real_general_relay_servers_number()) {
 			TURN_LOG_FUNC(
 					TURN_LOG_LEVEL_ERROR,
-					"%s: Too large general relay number: %d, rmt=%d\n",
-					__FUNCTION__,(int)dest,(int)rmt);
+					"%s: Too large general relay number: %d, rmt=%d, total=%d\n",
+					__FUNCTION__,(int)dest,(int)rmt, (int)get_real_general_relay_servers_number());
 			ret = -1;
 			goto err;
 		}
 		rs = general_relay_servers[dest];
+		if(!rs) {
+			TURN_LOG_FUNC(
+				TURN_LOG_LEVEL_ERROR,
+				"%s: Wrong general relay number: %d, rmt=%d, total=%d\n",
+				__FUNCTION__,(int)dest,(int)rmt, (int)get_real_general_relay_servers_number());
+			ret = -1;
+			goto err;
+		}
 	}
 
 	switch (rmt) {
@@ -749,7 +776,12 @@ static void listener_receive_message(struct bufferevent *bev, void *ptr)
 		if(turn_params.net_engine_version == NEV_UDP_SOCKET_PER_THREAD) {
 			size_t ri;
 			for(ri=0;ri<get_real_general_relay_servers_number();ri++) {
-				if(general_relay_servers[ri]->thr == pthread_self()) {
+				if(!(general_relay_servers[ri])) {
+					TURN_LOG_FUNC(
+					    	  TURN_LOG_LEVEL_ERROR,
+					    	       "%s: Wrong general relay number: %d, total %d\n",
+					    	       __FUNCTION__,(int)ri,(int)get_real_general_relay_servers_number());
+				} else if(general_relay_servers[ri]->thr == pthread_self()) {
 					relay_thread_index=ri;
 					break;
 				}
@@ -891,7 +923,7 @@ static void setup_listener(void)
 		bufferevent_enable(turn_params.listener.in_buf, EV_READ);
 	}
 
-	if(turn_params.listener.addrs_number<2) {
+	if(turn_params.listener.addrs_number<2 || turn_params.external_ip) {
 		turn_params.rfc5780 = 0;
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: I cannot support STUN CHANGE_REQUEST functionality because only one IP address is provided\n");
 	} else {
@@ -979,7 +1011,6 @@ static void setup_socket_per_endpoint_udp_listener_servers(void)
 
 	{
 		if (!turn_params.no_udp || !turn_params.no_dtls) {
-			udp_relay_servers = (struct relay_server**) allocate_super_memory_engine(turn_params.listener.ioa_eng, sizeof(struct relay_server *)*get_real_udp_relay_servers_number());
 
 			for (i = 0; i < get_real_udp_relay_servers_number(); i++) {
 
@@ -1520,8 +1551,6 @@ static void setup_general_relay_servers(void)
 {
 	size_t i = 0;
 
-	general_relay_servers = (struct relay_server**)allocate_super_memory_engine(turn_params.listener.ioa_eng, sizeof(struct relay_server *)*get_real_general_relay_servers_number());
-
 	for(i=0;i<get_real_general_relay_servers_number();i++) {
 
 		if(turn_params.general_relay_servers_number == 0) {
@@ -1656,6 +1685,25 @@ void setup_server(void)
 
 	if(turn_params.net_engine_version != NEV_UDP_SOCKET_PER_THREAD) {
 		setup_tcp_listener_servers(turn_params.listener.ioa_eng, NULL);
+	}
+
+	{
+		int tot = 0;
+		if(udp_relay_servers[0]) {
+			tot = get_real_udp_relay_servers_number();
+		}
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Total UDP servers: %d\n",(int)tot);
+	}
+
+	{
+		int tot = get_real_general_relay_servers_number();
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Total General servers: %d\n",(int)tot);
+		int i;
+		for(i = 0;i<tot;i++) {
+			if(!(general_relay_servers[i])) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"General server %d is not initialized !\n",(int)i);
+			}
+		}
 	}
 
 	setup_auth_server();

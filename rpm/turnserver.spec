@@ -1,5 +1,5 @@
 Name:		turnserver
-Version:	4.0.1.3
+Version:	4.1.0.1
 Release:	0%{dist}
 Summary:	Coturn TURN Server
 
@@ -188,13 +188,16 @@ fi
 %{_docdir}/%{name}/README.turnadmin
 %{_docdir}/%{name}/README.turnserver
 %{_docdir}/%{name}/schema.sql
+%{_docdir}/%{name}/schema.mongo.sh
 %{_docdir}/%{name}/schema.stats.redis
 %{_docdir}/%{name}/schema.userdb.redis
 %dir %{_datadir}/%{name}
 %{_datadir}/%{name}/schema.sql
+%{_datadir}/%{name}/schema.mongo.sh
 %{_datadir}/%{name}/schema.stats.redis
 %{_datadir}/%{name}/schema.userdb.redis
 %{_datadir}/%{name}/testredisdbsetup.sh
+%{_datadir}/%{name}/testmongosetup.sh
 %{_datadir}/%{name}/testsqldbsetup.sql
 %dir %{_datadir}/%{name}/etc
 %{_datadir}/%{name}/etc/turn_server_cert.pem
@@ -232,6 +235,7 @@ fi
 %{_datadir}/%{name}/scripts/longtermsecure/secure_udp_client.sh
 %dir %{_datadir}/%{name}/scripts/longtermsecuredb
 %{_datadir}/%{name}/scripts/longtermsecuredb/secure_relay_with_db_mysql.sh
+%{_datadir}/%{name}/scripts/longtermsecuredb/secure_relay_with_db_mongo.sh
 %{_datadir}/%{name}/scripts/longtermsecuredb/secure_relay_with_db_psql.sh
 %{_datadir}/%{name}/scripts/longtermsecuredb/secure_relay_with_db_redis.sh
 %dir %{_datadir}/%{name}/scripts/restapi
@@ -289,6 +293,10 @@ fi
 %{_includedir}/turn/client/TurnMsgLib.h
 
 %changelog
+* Fri Jul 11 2014 Oleg Moskalenko <mom040267@gmail.com>
+  - Sync to 4.1.0.1
+* Wed Jun 25 2014 Oleg Moskalenko <mom040267@gmail.com>
+  - Sync to 4.0.1.4
 * Fri Jun 13 2014 Oleg Moskalenko <mom040267@gmail.com>
   - Sync to 4.0.1.3
 * Fri Jun 06 2014 Oleg Moskalenko <mom040267@gmail.com>

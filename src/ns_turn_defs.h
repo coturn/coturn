@@ -31,9 +31,9 @@
 #ifndef __IOADEFS__
 #define __IOADEFS__
 
-#define TURN_SERVER_VERSION "4.0.1.3"
-#define TURN_SERVER_VERSION_NAME "Severard"
-#define TURN_SOFTWARE "Coturn-"TURN_SERVER_VERSION" '"TURN_SERVER_VERSION_NAME"'"
+#define TURN_SERVER_VERSION "4.1.0.1"
+#define TURN_SERVER_VERSION_NAME "Vitari"
+#define TURN_SOFTWARE "Coturn-" TURN_SERVER_VERSION " '" TURN_SERVER_VERSION_NAME "'"
 
 #if (defined(__unix__) || defined(unix)) && !defined(USG)
 #include <sys/param.h>

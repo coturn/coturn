@@ -45,26 +45,16 @@ extern "C" {
 #define TCP_PEER_CONN_TIMEOUT (30)
 #define TCP_CONN_BIND_TIMEOUT (30)
 
-///////// types ////////////
-
-enum _UR_STATE {
-  UR_STATE_UNKNOWN=0,
-  UR_STATE_READY,
-  UR_STATE_DONE
-};
-
-typedef enum _UR_STATE UR_STATE;
-
 ////////////// Network session ////////////////
 
 typedef struct
 {
-	UR_STATE state;
 	ioa_socket_handle s;
-	int known_mtu;
-} ts_ur_session;
+	turn_time_t expiration_time;
+	ioa_timer_handle lifetime_ev;
+} relay_endpoint_session;
 
-static inline void clear_ts_ur_session_data(ts_ur_session* cdi)
+static inline void clear_relay_endpoint_session_data(relay_endpoint_session* cdi)
 {
 	if (cdi)
 		IOA_CLOSE_SOCKET(cdi->s);
@@ -175,13 +165,18 @@ typedef struct _turn_permission_hashtable {
 
 //////////////// ALLOCATION //////////////////////
 
+#define ALLOC_IPV4_INDEX (0)
+#define ALLOC_IPV6_INDEX (1)
+#define ALLOC_PROTOCOLS_NUMBER (2)
+#define ALLOC_INDEX(family) ((((family)==AF_INET6)) ? ALLOC_IPV6_INDEX : ALLOC_IPV4_INDEX )
+#define ALLOC_INDEX_ADDR(addr) ALLOC_INDEX(((addr)->ss).sa_family)
+
 typedef struct _allocation {
   int is_valid;
   stun_tid tid;
-  turn_time_t expiration_time;
-  ioa_timer_handle lifetime_ev;
   turn_permission_hashtable addr_to_perm;
-  ts_ur_session relay_session;
+  relay_endpoint_session relay_sessions[ALLOC_PROTOCOLS_NUMBER];
+  int relay_sessions_failure[ALLOC_PROTOCOLS_NUMBER];
   ch_map chns; /* chnum-to-ch_info* */
   void *owner; //ss
   ur_map *tcp_connections; //global (per turn server) reference
@@ -202,7 +197,7 @@ void clear_allocation(allocation *a);
 
 void turn_permission_clean(turn_permission_info* tinfo);
 
-void set_allocation_lifetime_ev(allocation *a, turn_time_t exp_time, ioa_timer_handle ev);
+void set_allocation_lifetime_ev(allocation *a, turn_time_t exp_time, ioa_timer_handle ev, int family);
 int is_allocation_valid(const allocation* a);
 void set_allocation_valid(allocation* a, int value);
 turn_permission_info* allocation_get_permission(allocation* a, const ioa_addr *addr);
@@ -213,8 +208,11 @@ ch_info* allocation_get_new_ch_info(allocation* a, u16bits chnum, ioa_addr* peer
 ch_info* allocation_get_ch_info(allocation* a, u16bits chnum);
 ch_info* allocation_get_ch_info_by_peer_addr(allocation* a, ioa_addr* peer_addr);
 
-ts_ur_session *get_relay_session(allocation *a);
-ioa_socket_handle get_relay_socket(allocation *a);
+relay_endpoint_session *get_relay_session(allocation *a, int family);
+int get_relay_session_failure(allocation *a, int family);
+void set_relay_session_failure(allocation *a, int family);
+ioa_socket_handle get_relay_socket(allocation *a, int family);
+void set_allocation_family_invalid(allocation *a, int family);
 
 tcp_connection *get_and_clean_tcp_connection_by_id(ur_map *map, tcp_connection_id id);
 tcp_connection *get_tcp_connection_by_id(ur_map *map, tcp_connection_id id);
