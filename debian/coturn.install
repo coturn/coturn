@@ -6,7 +6,10 @@ bin/turnutils_uclient usr/bin
 lib/libturnclient.a usr/lib
 turndb/schema.sql usr/share/coturn
 turndb/schema.sql usr/share/doc/coturn
+turndb/schema.mongo.sh usr/share/coturn
+turndb/schema.mongo.sh usr/share/doc/coturn
 turndb/testredisdbsetup.sh usr/share/coturn
+turndb/testmongosetup.sh usr/share/coturn
 turndb/testsqldbsetup.sql usr/share/coturn
 turndb/schema.userdb.redis usr/share/coturn
 turndb/schema.userdb.redis usr/share/doc/coturn
@@ -45,6 +48,7 @@ examples/scripts/longtermsecure/secure_udp_c2c.sh usr/share/coturn/examples/scri
 examples/scripts/longtermsecure/secure_udp_client.sh usr/share/coturn/examples/scripts/longtermsecure
 examples/scripts/longtermsecuredb/secure_relay_with_db_psql.sh usr/share/coturn/examples/scripts/longtermsecuredb
 examples/scripts/longtermsecuredb/secure_relay_with_db_mysql.sh usr/share/coturn/examples/scripts/longtermsecuredb
+examples/scripts/longtermsecuredb/secure_relay_with_db_mongo.sh usr/share/coturn/examples/scripts/longtermsecuredb
 examples/scripts/longtermsecuredb/secure_relay_with_db_redis.sh usr/share/coturn/examples/scripts/longtermsecuredb
 examples/scripts/selfloadbalance/secure_relay.sh usr/share/coturn/examples/scripts/selfloadbalance
 examples/scripts/selfloadbalance/secure_dos_attack.sh usr/share/coturn/examples/scripts/selfloadbalance
