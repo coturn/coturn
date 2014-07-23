@@ -1,11 +1,11 @@
 #summary turnserver wiki page
-#labels Version-4.0.1.4
+#labels Version-4.1.0.2
 
 ==turnserver application: a TURN relay server implementation==
 
 ===Usage:===
 {{{
-       $ turnserver [flags] [-n | -c <config-file>] [ --userdb=<userdb-file> | --psql-userdb=<db-conn-string> | --mysql-userdb=<db-conn-string> ] [options]
+       $ turnserver [flags] [-n | -c <config-file>] [ --userdb=<userdb-file> | --psql-userdb=<db-conn-string> | --mysql-userdb=<db-conn-string> | --mongo-userdb=<db-conn-string>  | --redis-userdb=<db-conn-string> ] [options]
        $ turnserver -h
 }}}
 
@@ -16,7 +16,7 @@
    * *-o,* *--daemon* Run server process as daemon.
    * *-f,* *--fingerprint* Use fingerprints in the TURN messages. If an incoming request contains fingerprint, then TURN server will always add fingerprints to the messages in this session, regardless of the per-server setting.
    * *-a,* *--lt-cred-mech* Use long-term credentials mechanism (this one you need for WebRTC usage). This option can be used with either flat file user database or PostgreSQL or MySQL or Redis DB for user keys storage.
-   * *-A,* *--st-cred-mech* Use short-term credentials mechanism. This option requires a PostgreSQL or MySQL or Redis DB for short term passwords storage.
+   * *-A,* *--st-cred-mech* Use short-term credentials mechanism. This option requires a PostgreSQL or MySQL or Redis DB or Mongo DB for short term passwords storage.
    * *-z,* *--no-auth* Do not use any credentials mechanism, allow anonymous access. Opposite to *-a* and *-A* options.
    * *--use-auth-secret* TURN REST API flag. Flag that sets a special WebRTC authorization option that is based upon authentication secret. This feature purpose is to support "TURN Server REST API" as described in TURNServerRESTAPI.pdf in the docs. This option can be used with long-term credentials mechanism only - it does not make much sense with the short-term mechanism.
    * *--dh566*	Use 566 bits DH TLS key. Default size of the key is 1066.
@@ -82,7 +82,7 @@
 		Also, see http://www.PostgreSQL.org for full PostgreSQL documentation.
    * *-M,* *--mysql-userdb* {{{<connection-string>}}}
    		  User database connection string for MySQL. 
-		This database can be used for long-term and short-term credentials mechanisms, and it can store the secret value for secret-based timed authentication in TURN RESP API. The (proprietary) connection string format is like this:
+		This database can be used for long-term and short-term credentials mechanisms, and it can store the secret value for secret-based timed authentication in TURN RESP API. The (proprietary) connection string format is like that:
 		{{{
 "host=<host> dbname=<dbname> user=<db-user> password=<db-user-password> connect_timeout=<seconds>".
 }}}
@@ -92,13 +92,27 @@
 		
    * *-N,* *--redis-userdb* {{{<connection-string>}}}
    		  User database connection string for Redis. 
-		This database can be used for long-term and short-term credentials mechanisms, and it can store the secret value for secret-based timed authentication in TURN RESP API. The (proprietary) connection string format is like this:
+		This database can be used for long-term and short-term credentials mechanisms, and it can store the secret value for secret-based timed authentication in TURN RESP API. The (proprietary) connection string format is like that:
 		{{{
 "ip=<ip-addr> dbname=<number> password=<db-password> connect_timeout=<seconds>".
 }}}
 		See the INSTALL file for more explanations and examples.
 		
 		Also, see http://redis.io for full Redis documentation. 
+
+   * *-J,* *--mongo-userdb* {{{<connection-string>}}}
+   		  User database connection string for MongoDB. 
+		This database can be used for long-term and short-term 
+		credentials mechanisms, and it can store the secret value 
+		for secret-based timed authentication in TURN RESP API.
+		The connection string format is like that:
+		{{{
+"mongodb://username:password@host:port/database?options".
+}}}
+		See the INSTALL file for more explanations and examples.
+		
+		Also, see http://docs.mongodb.org/manual/
+		for full MongoDB documentation.
 
 ===Options:===
 
@@ -164,8 +178,9 @@ This is a set of notes for the WebRTC users:
     *   command-line options (-u).
     *   userdb config file.
     *   database table (if PostgreSQL or MySQL used). You will have to set keys with turnadmin utility (see docs and wiki for turnadmin). You cannot use open passwords in the database. 
-    *   Redis key/value pair(s), if Redis is used. You key use either keys or open passwords with Redis; see turndb/testredisdbsetup.sh file.
-    *   you also can use the TURN REST API (see docs). You will need shared secret(s) set either	through the command line option, or through the config file, or through the database table (PostgreSQL or MySQL), or through the Redis database.
+    *   Redis key/value pair(s), if Redis is used. You can use either keys or open passwords with Redis; see turndb/testredisdbsetup.sh file.
+    *   Mongo database; see turndb/testmongosetup.sh file.
+    *   you also can use the TURN REST API (see docs). You will need shared secret(s) set either	through the command line option, or through the config file, or through the database table (PostgreSQL or MySQL), or through the Redis or Mongo database.
   # Usually WebRTC uses fingerprinting (-f).
   # -v option may be nice to see the connected clients.
   # -X is needed if you are running your TURN server behind a NAT.
@@ -407,9 +422,42 @@ save
 
  In the Redis user database, you can store both "keys" and open passwords (for long term credentials) - the "open password" option is less secure but more convenient for low-security environments. For short-term credentials, you will use open passwords only. See also the file turndb/testredisdbsetup.sh.
 
-  6. If a database is used, then users can be divided into multiple independent realms. Each realm can be administered separately, and each realm can have its own set of users and its own performance options (max-bps, user-quota, total-quota).
+  6. MongoDB setup 
 
-  7. Of course, the turnserver can be used in non-secure mode, when users are allowed to establish sessions anonymously. Then you do not need a database at all. But some TURN client (like WebRTC clients) are not able to work in anonymous mode, without an authentication mechanism.
+The MongoDB setup is well documented on their site http://docs.mongodb.org/manual/. 
+
+Note: if your system has a "standard" plain vanilla UNIX "make" utility
+(that is not a GNU make) then you will have to use the GNU make to compile 
+the Mongo driver, because the Mongo compilation process was written with 
+the "proprietary" GNU extentions. For example, in FreeBSD in will have to use 
+"gmake" command. 
+
+If the TURN server was compiled with MongoDB support (mongo-c-driver is the C client 
+library for MongoDB), then we can use the TURN server database parameter 
+--mongo-userdb. The value of this parameter is a connection string 
+for the MongoDB database. The format of the connection string is described at 
+http://hergert.me/docs/mongo-c-driver/mongoc_uri.html:
+
+{{{
+"mongodb://[username:password@]host1[:port1][,host2[:port2],...[,hostN[:portN]]][/[database][?options]]"
+}}}
+
+So, an example of the MongoDB database parameter in the TURN server command 
+line would be:
+
+{{{
+--mongo-userdb="mongodb://localhost:27017/turndb"
+}}}
+
+Or in the turnserver.conf file:
+
+{{{
+mongo-userdb="mongodb://localhost:27017/turndb"
+}}}
+
+  7. If a database is used, then users can be divided into multiple independent realms. Each realm can be administered separately, and each realm can have its own set of users and its own performance options (max-bps, user-quota, total-quota).
+
+  8. Of course, the turnserver can be used in non-secure mode, when users are allowed to establish sessions anonymously. Then you do not need a database at all. But some TURN client (like WebRTC clients) are not able to work in anonymous mode, without an authentication mechanism.
 
 For the status and statistics database, there are two choices:
 
@@ -418,7 +466,7 @@ For the status and statistics database, there are two choices:
 
 So, we have 6 choices for the user management, and 2 choices for the statistics management. These two are totally independent. So, you have overall 6*2=12 ways to handle persistent information, choose any for your convenience.
 
-You do not have to handle the database information "manually" - the turnadmin program can handle everything for you. For PostgreSQL and MySQL you will just have to create an empty database with schema.sql SQL script. With Redis, you do not have to do even that - just run turnadmin and it will set the users for you (see the turnadmin manuals).
+You do not have to handle the database information "manually" - the turnadmin program can handle everything for you. For PostgreSQL and MySQL you will just have to create an empty database with schema.sql SQL script. With Redis or Mongo, you do not have to do even that - just run turnadmin and it will set the users for you (see the turnadmin manuals).
 
 === KEEP ALIVE ===
 
