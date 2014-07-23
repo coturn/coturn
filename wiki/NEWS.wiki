@@ -1,5 +1,10 @@
 #summary News log
-#labels Version-4.0.0.0
+#labels Version-4.1.0.2
+
+== 07/22/3014 ==
+=== Version 4.1.0.2 ===
+
+SSODA draft support and MongoDB support.
 
 == 05/04/2014 ==
 === Version 4.0.0.0 ===
