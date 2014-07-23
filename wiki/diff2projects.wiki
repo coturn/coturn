@@ -1,5 +1,5 @@
 #summary Difference between rfc5766-turn-server and coturn.
-#labels Version-4.0.1.3
+#labels Version-4.1.0.2
 
 = Introduction =
 
@@ -30,3 +30,11 @@ This implementation of the specs document is fairly simple and straightforward. 
 For correct functionality, the administrator must also set the max-bps TURN server parameter. The max-bps must be determined experimentally and/or by the administrative goals.
 
 If the ALLOCATE request includes BANDWIDTH attribute (0x8010 attribute type, for experimental reasons; in the final document, the exact attribute type will be defined) then the server subtracts the value of the BANDWIDTH attribute (up to max-bps) from the total bandwidth capacity. If there is not enough bandwidth, then 486 error will be returned. If no BANDWIDTH attribute is included in the ALLOCATE request, then max-bps will be allocated. In the ALLOCATE response, the real allocated BANDWIDTH value is returned to the client.
+
+== SSODA draft support in coturn. ==
+
+Coturn supports the dual allocation specs: in a single TURN session, the client can request both IPv4 and IPv6 relay endpoints.
+
+== MongoDB support in coturn. ==
+
+Coturn can store data in Mongo.
