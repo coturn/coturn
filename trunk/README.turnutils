@@ -115,7 +115,7 @@ Flags:
 
 -B  	Random disconnect after a few initial packets.
 
--Z  Dual allocation.
+-Z	Dual allocation (SSODA draft support).
 
 Options with required values:  
 
