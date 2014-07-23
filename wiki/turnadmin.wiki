@@ -1,5 +1,5 @@
 #summary turnadmin wiki page
-#labels Version-4.0.0.0
+#labels Version-4.1.0.2
 
 == turnadmin application: a TURN relay administration tool==
 
@@ -33,6 +33,7 @@
  * *-e,* *--psql-userdb,* *--sql-userdb* {{{<connection-string>}}} PostgreSQL database connection string.
  * *-M,* *--mysql-userdb* {{{<connection-string>}}} MySQL database connection string.
  * *-N,* *--redis-userdb* {{{<connection-string>}}} Redis database connection string.
+ * *-J,* *--mongo-userdb* {{{<connection-string>}}} MongoDB user database connection string.
  * *-u,* *--user* {{{<user>}}}   User name.
  * *-r,* *--realm* {{{<realm>}}}    Realm.
  * *-p,* *--password* {{{<password>}}} Password.
