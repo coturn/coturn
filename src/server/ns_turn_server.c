@@ -720,8 +720,8 @@ void turn_cancel_session(turn_turnserver *server, turnsession_id sid)
 	if(server) {
 		ts_ur_super_session* ts = get_session_from_map(server, sid);
 		if(ts) {
-			ts->to_be_closed = 1;
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Session %018llu to be forcefully canceled\n",(unsigned long long)sid);
+			shutdown_client_connection(server, ts, 0, "Forceful shutdown");
 		}
 	}
 }
