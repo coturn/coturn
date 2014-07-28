@@ -94,6 +94,10 @@ struct cb_socket_message {
 	int can_resume;
 };
 
+struct cancelled_session_message {
+	turnsession_id id;
+};
+
 struct relay_server {
 	turnserver_id id;
 	super_memory_t* sm;
@@ -113,6 +117,7 @@ struct message_to_relay {
 	union {
 		struct socket_message sm;
 		struct cb_socket_message cb_sm;
+		struct cancelled_session_message csm;
 	} m;
 };
 
@@ -280,6 +285,8 @@ int set_raw_socket_tos_options(evutil_socket_t fd, int family);
 
 int set_socket_options_fd(evutil_socket_t fd, int tcp, int family);
 int set_socket_options(ioa_socket_handle s);
+
+int send_session_cancellation_to_relay(turnsession_id sid);
 
 ///////////////////////// SUPER MEMORY ////////
 

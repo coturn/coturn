@@ -673,14 +673,13 @@ static void put_session_into_map(ts_ur_super_session *ss)
 	if(ss && ss->server) {
 		turn_turnserver* server = (turn_turnserver*)(ss->server);
 		if(!(ss->id)) {
-			ss->id = (turnsession_id)((turnsession_id)server->id * 1000000000000000LL);
+			ss->id = (turnsession_id)((turnsession_id)server->id * TURN_SESSION_ID_FACTOR);
 			ss->id += ++(server->session_id_counter);
 			ss->start_time = server->ctime;
 		}
 		ur_map_put(server->sessions_map, (ur_map_key_type)(ss->id), (ur_map_value_type)ss);
 		put_session_into_mobile_map(ss);
 	}
-
 }
 
 static void delete_session_from_mobile_map(ts_ur_super_session *ss)
@@ -714,6 +713,17 @@ static ts_ur_super_session* get_session_from_map(turn_turnserver* server, turnse
 		}
 	}
 	return ss;
+}
+
+void turn_cancel_session(turn_turnserver *server, turnsession_id sid)
+{
+	if(server) {
+		ts_ur_super_session* ts = get_session_from_map(server, sid);
+		if(ts) {
+			ts->to_be_closed = 1;
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Session %018llu to be forcefully canceled\n",(unsigned long long)sid);
+		}
+	}
 }
 
 static ts_ur_super_session* get_session_from_mobile_map(turn_turnserver* server, mobile_id_t mid)
