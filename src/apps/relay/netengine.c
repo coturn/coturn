@@ -610,12 +610,87 @@ static int send_socket_to_relay(turnserver_id id, u64bits cid, stun_tid *tid, io
 	return ret;
 }
 
+int send_session_cancellation_to_relay(turnsession_id sid)
+{
+	int ret = 0;
+
+	struct message_to_relay sm;
+	ns_bzero(&sm,sizeof(struct message_to_relay));
+	sm.t = RMT_CANCEL_SESSION;
+
+	turnserver_id id = (turnserver_id)(sid / TURN_SESSION_ID_FACTOR);
+
+	struct relay_server *rs = NULL;
+	if(id>=TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP) {
+		size_t dest = id-TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP;
+		if(dest >= get_real_udp_relay_servers_number()) {
+			TURN_LOG_FUNC(
+					TURN_LOG_LEVEL_ERROR,
+					"%s: Too large UDP relay number: %d, total=%d\n",
+					__FUNCTION__,(int)dest,(int)get_real_udp_relay_servers_number());
+			ret = -1;
+			goto err;
+		}
+		rs = udp_relay_servers[dest];
+		if(!rs) {
+			TURN_LOG_FUNC(
+				TURN_LOG_LEVEL_ERROR,
+					"%s: Wrong UDP relay number: %d, total=%d\n",
+					__FUNCTION__,(int)dest,(int)get_real_udp_relay_servers_number());
+			ret = -1;
+			goto err;
+		}
+	} else {
+		size_t dest = id;
+		if(dest >= get_real_general_relay_servers_number()) {
+			TURN_LOG_FUNC(
+					TURN_LOG_LEVEL_ERROR,
+					"%s: Too large general relay number: %d, total=%d\n",
+					__FUNCTION__,(int)dest,(int)get_real_general_relay_servers_number());
+			ret = -1;
+			goto err;
+		}
+		rs = general_relay_servers[dest];
+		if(!rs) {
+			TURN_LOG_FUNC(
+				TURN_LOG_LEVEL_ERROR,
+				"%s: Wrong general relay number: %d, total=%d\n",
+				__FUNCTION__,(int)dest,(int)get_real_general_relay_servers_number());
+			ret = -1;
+			goto err;
+		}
+	}
+
+	sm.relay_server = rs;
+	sm.m.csm.id = sid;
+
+	{
+		struct evbuffer *output = bufferevent_get_output(rs->out_buf);
+		if(output) {
+			evbuffer_add(output,&sm,sizeof(struct message_to_relay));
+		} else {
+			TURN_LOG_FUNC(
+					TURN_LOG_LEVEL_ERROR,
+					"%s: Empty output buffer\n",
+					__FUNCTION__);
+			ret = -1;
+		}
+	}
+
+ err:
+	return ret;
+}
+
 static int handle_relay_message(relay_server_handle rs, struct message_to_relay *sm)
 {
 	if(rs && sm) {
 
 		switch (sm->t) {
 
+		case RMT_CANCEL_SESSION: {
+			turn_cancel_session(&(rs->server),sm->m.csm.id);
+		}
+		break;
 		case RMT_SOCKET: {
 
 			if (sm->m.sm.s->defer_nbh) {

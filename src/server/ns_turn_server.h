@@ -38,6 +38,9 @@
 extern "C" {
 #endif
 
+//////////// defines //////////////
+
+#define TURN_SESSION_ID_FACTOR (1000000000000000LL)
 
 //////////// ALTERNATE-SERVER /////////////
 
@@ -67,7 +70,8 @@ enum _MESSAGE_TO_RELAY_TYPE {
 	RMT_UNKNOWN = 0,
 	RMT_SOCKET,
 	RMT_CB_SOCKET,
-	RMT_MOBILE_SOCKET
+	RMT_MOBILE_SOCKET,
+	RMT_CANCEL_SESSION
 };
 typedef enum _MESSAGE_TO_RELAY_TYPE MESSAGE_TO_RELAY_TYPE;
 
@@ -208,6 +212,8 @@ int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_co
 int report_turn_session_info(turn_turnserver *server, ts_ur_super_session *ss, int force_invalid);
 
 turn_time_t get_turn_server_time(turn_turnserver *server);
+
+void turn_cancel_session(turn_turnserver *server, turnsession_id sid);
 
 ///////////////////////////////////////////
 

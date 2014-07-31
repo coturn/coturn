@@ -139,6 +139,8 @@ static const char *CLI_HELP_STR[] =
    "  atas ip[:port] - add a TLS alternate server reference",
    "  dtas ip[:port] - delete a TLS alternate server reference",
    "",
+   "  cs <session-id> - cancel session, forcefully"
+   "",
    NULL};
 
 static const char *CLI_GREETING_STR[] = {
@@ -550,6 +552,14 @@ static int print_session(ur_map_key_type key, ur_map_value_type value, void *arg
 		csarg->counter += 1;
 	}
 	return 0;
+}
+
+static void cancel_session(struct cli_session* cs, const char* ssid)
+{
+	if(cs && cs->ts && ssid && *ssid) {
+		turnsession_id sid = strtoull(ssid,NULL,10);
+		send_session_cancellation_to_relay(sid);
+	}
 }
 
 static void print_sessions(struct cli_session* cs, const char* pn, int exact_match, int print_users)
@@ -1034,6 +1044,9 @@ static int run_cli_input(struct cli_session* cs, const char *buf0, unsigned int 
 				type_cli_cursor(cs);
 			} else if(strstr(cmd,"ps") == cmd) {
 				print_sessions(cs,cmd+2,1,0);
+				type_cli_cursor(cs);
+			} else if(strstr(cmd,"cs ") == cmd) {
+				cancel_session(cs,cmd+3);
 				type_cli_cursor(cs);
 			} else if(strstr(cmd,"lr") == cmd) {
 				log_reset(cs);
