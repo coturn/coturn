@@ -1,7 +1,7 @@
 # $FreeBSD: head/net/turnserver/Makefile 339463 2014-01-12 00:58:18Z tabthorpe $
 
 PORTNAME=	turnserver
-PORTVERSION=	4.1.0.2
+PORTVERSION=	4.1.1.1
 CATEGORIES=	net
 MASTER_SITES=	http://turnserver.open-sys.org/downloads/v${PORTVERSION}/ \
 		http://turnserver.open-sys.org/downloads/extradocs/ \
