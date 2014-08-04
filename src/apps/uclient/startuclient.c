@@ -302,6 +302,17 @@ int read_mobility_ticket(app_ur_conn_info *clnet_info, stun_buffer *message)
 	return ret;
 }
 
+void add_origin(stun_buffer *message)
+{
+	if(message && origin[0]) {
+		const char* some_origin = "https://carleon.gov:443";
+		stun_attr_add(message, STUN_ATTRIBUTE_ORIGIN, some_origin, strlen(some_origin));
+		stun_attr_add(message, STUN_ATTRIBUTE_ORIGIN, origin, strlen(origin));
+		some_origin = "ftp://uffrith.net";
+		stun_attr_add(message, STUN_ATTRIBUTE_ORIGIN, some_origin, strlen(some_origin));
+	}
+}
+
 static int clnet_allocate(int verbose,
 		app_ur_conn_info *clnet_info,
 		ioa_addr *relay_addr,
@@ -372,13 +383,7 @@ static int clnet_allocate(int verbose,
 		  }
 		}
 
-		if(origin[0]) {
-			const char* some_origin = "https://carleon.gov:443";
-			stun_attr_add(&message, STUN_ATTRIBUTE_ORIGIN, some_origin, strlen(some_origin));
-			stun_attr_add(&message, STUN_ATTRIBUTE_ORIGIN, origin, strlen(origin));
-			some_origin = "ftp://uffrith.net";
-			stun_attr_add(&message, STUN_ATTRIBUTE_ORIGIN, some_origin, strlen(some_origin));
-		}
+		add_origin(&message);
 
 		if(add_integrity(clnet_info, &message)<0) return -1;
 
@@ -645,6 +650,8 @@ static int clnet_allocate(int verbose,
 				stun_attr_add(&message, STUN_ATTRIBUTE_MOBILITY_TICKET, (const char*)clnet_info->s_mobile_id, strlen(clnet_info->s_mobile_id));
 			}
 
+			add_origin(&message);
+
 			if(add_integrity(clnet_info, &message)<0) return -1;
 
 			stun_attr_add_fingerprint_str(message.buf,(size_t*)&(message.len));
@@ -733,6 +740,8 @@ static int turn_channel_bind(int verbose, uint16_t *chn,
 		} else {
 			*chn = stun_set_channel_bind_request(&message, peer_addr, *chn);
 		}
+
+		add_origin(&message);
 
 		if(add_integrity(clnet_info, &message)<0) return -1;
 
@@ -844,6 +853,8 @@ static int turn_create_permission(int verbose, app_ur_conn_info *clnet_info,
 				stun_attr_add_addr(&message, STUN_ATTRIBUTE_XOR_PEER_ADDRESS, peer_addr+addrindex);
 			}
 		}
+
+		add_origin(&message);
 
 		if(add_integrity(clnet_info, &message)<0) return -1;
 
@@ -1388,6 +1399,8 @@ int turn_tcp_connect(int verbose, app_ur_conn_info *clnet_info, ioa_addr *peer_a
 		stun_init_request(STUN_METHOD_CONNECT, &message);
 		stun_attr_add_addr(&message, STUN_ATTRIBUTE_XOR_PEER_ADDRESS, peer_addr);
 
+		add_origin(&message);
+
 		if(add_integrity(clnet_info, &message)<0) return -1;
 
 		stun_attr_add_fingerprint_str(message.buf,(size_t*)&(message.len));
@@ -1426,6 +1439,8 @@ static int turn_tcp_connection_bind(int verbose, app_ur_conn_info *clnet_info, a
 		stun_init_request(STUN_METHOD_CONNECTION_BIND, &message);
 
 		stun_attr_add(&message, STUN_ATTRIBUTE_CONNECTION_ID, (const s08bits*)&cid,4);
+
+		add_origin(&message);
 
 		if(add_integrity(clnet_info, &message)<0) return -1;
 

@@ -1,3 +1,8 @@
+08/03/2014 Oleg Moskalenko <mom040267@gmail.com>
+Version 4.1.1.2 'Vitari':
+	- The origin attribute is verified in the subsequent 
+	session messages.
+	
 07/29/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.1.1.1 'Vitari':
 	- Forceful server-side session cancellation implemented
