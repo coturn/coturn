@@ -94,6 +94,8 @@ u32bits stun_adjust_allocate_lifetime(u32bits lifetime);
 
 ///////////// STR ////////////////////////////////////////////////
 
+int stun_method_str(u16bits method, char *smethod);
+
 int stun_get_message_len_str(u08bits *buf, size_t len, int padding, size_t *app_len);
 
 void stun_init_buffer_str(u08bits *buf, size_t *len);
