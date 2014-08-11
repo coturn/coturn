@@ -1,5 +1,5 @@
 #summary turnserver wiki page
-#labels Version-4.1.0.2
+#labels Version-4.1.2.1
 
 ==turnserver application: a TURN relay server implementation==
 
@@ -35,7 +35,7 @@
    * *--stale-nonce* Use extra security with nonce value having limited lifetime (600 secs).
    * *--no-stdout-log* Flag to prevent stdout log messages. By default, all log messages are going to both stdout and to the configured log. With this option everything will be going to the configured log file only (unless the log file itself is stdout).
    * *--syslog* Flag to redirect everything into the system log (syslog).
-   * *--simple-log* This flag means that no log file rollover will be used, and the log file name will be constructed as-is, without PID and date appendage.
+   * *--simple-log* This flag means that no log file rollover will be used, and the log file name will be constructed as-is, without PID and date appendage. This option can be used, for example, together with logrotate tool.
    * *--no-loopback-peers* Disallow peers on the loopback addresses (127.x.x.x and ::1).
    * *--no-multicast-peers* Disallow peers on well-known broadcast addresses (224.0.0.0 and above, and {{{FFXX:*}}}).
    * * --udp-self-balance* (_recommended for older Linuxes only_) balance the UDP traffic among the aux endpoints (for clients supporting 300 ALTERNATE-SERVER response). See *--aux-server* option.
