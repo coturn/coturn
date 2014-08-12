@@ -224,6 +224,7 @@ Flags:
 
 --simple-log	This flag means that no log file rollover will be used, and the log file
 				name will be constructed as-is, without PID and date appendage.
+				This option can be used, for example, together with the logrotate tool.
 				
 --secure-stun		Require authentication of the STUN Binding request.
 			By default, the clients are allowed anonymous access to the STUN Binding functionality.
