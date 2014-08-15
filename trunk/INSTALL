@@ -232,8 +232,7 @@ The following platforms have been used in the development:
 	- FreeBSD 8.x, i386
 	- PC-BSD 9.x, x86_64
 	- Solaris 11, x86_64
-	- Linux CentOS / Red Hat Enterprise Edition 6.3, x86_64 (amd64)
-	- Linux CentOS / Red Hat Enterprise Edition 6.4, x86_32 (i386)
+	- Linux CentOS / Red Hat Enterprise Edition 6.x-7.0, x86_64 (i386 & amd64)
 	- Linux Debian 'Squeeze', i386
 	- Linux Mint 14.1 'Nadia', i386
 	- Linux Mint 16 'Petra', i386
