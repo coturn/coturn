@@ -1,7 +1,9 @@
-08/03/2014 Oleg Moskalenko <mom040267@gmail.com>
-Version 4.1.1.2 'Vitari':
+08/14/2014 Oleg Moskalenko <mom040267@gmail.com>
+Version 4.1.2.1 'Vitari':
 	- The origin attribute is verified in the subsequent 
 	session messages.
+	- Crash fixed when the DB connection string is incorrect.
+	- Minor docs fixes.
 	
 07/29/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.1.1.1 'Vitari':
