@@ -897,6 +897,11 @@ Or in the turnserver.conf file:
 
 mysql-userdb="host=localhost dbname=turn user=turn password=turn connect_timeout=30"
 
+If you have to use a secure MySQL connection (SSL) then you have to use also
+the optional connection string parameters for the secure communications:
+ca, capath, cert, key, cipher (see 
+http://dev.mysql.com/doc/refman/5.0/en/mysql-ssl-set.html for the description).
+
 XVI. MongoDB setup
 
 The MongoDB setup is well documented on their site http://docs.mongodb.org/manual/. 

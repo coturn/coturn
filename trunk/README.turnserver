@@ -118,6 +118,10 @@ User database settings:
 		Also, see http://www.mysql.org or http://mariadb.org 
 		for full MySQL documentation.
 		
+		Optional connection string parameters for the secure communications (SSL): 
+		ca, capath, cert, key, cipher 
+		(see http://dev.mysql.com/doc/refman/5.0/en/mysql-ssl-set.html for the description).
+		
 -J, --mongo-userdb	User database connection string for MongoDB. 
 		This database can be used for long-term and short-term 
 		credentials mechanisms, and it can store the secret value 
