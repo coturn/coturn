@@ -120,7 +120,8 @@ User database settings:
 		
 		Optional connection string parameters for the secure communications (SSL): 
 		ca, capath, cert, key, cipher 
-		(see http://dev.mysql.com/doc/refman/5.0/en/mysql-ssl-set.html for the description).
+		(see http://dev.mysql.com/doc/refman/5.1/en/ssl-options.html for the 
+		command options description).
 		
 -J, --mongo-userdb	User database connection string for MongoDB. 
 		This database can be used for long-term and short-term 

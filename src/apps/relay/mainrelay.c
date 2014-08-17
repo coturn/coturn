@@ -428,7 +428,8 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "	        	          		\"host=<ip-addr> dbname=<database-name> user=<database-user> \\\n								password=<database-user-password> port=<db-port> connect_timeout=<seconds>\".\n\n"
 "						The connection string parameters for the secure communications (SSL):\n"
 "						ca, capath, cert, key, cipher\n"
-"						(see http://dev.mysql.com/doc/refman/5.0/en/mysql-ssl-set.html for the description).\n\n"
+"						(see http://dev.mysql.com/doc/refman/5.1/en/ssl-options.html for the\n"
+"						command options description).\n\n"
 "	        	          		All connection-string parameters are optional.\n\n"
 #endif
 #if !defined(TURN_NO_MONGO)
