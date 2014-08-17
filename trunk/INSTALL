@@ -900,7 +900,8 @@ mysql-userdb="host=localhost dbname=turn user=turn password=turn connect_timeout
 If you have to use a secure MySQL connection (SSL) then you have to use also
 the optional connection string parameters for the secure communications:
 ca, capath, cert, key, cipher (see 
-http://dev.mysql.com/doc/refman/5.0/en/mysql-ssl-set.html for the description).
+http://dev.mysql.com/doc/refman/5.1/en/ssl-options.html for the 
+command options description).
 
 XVI. MongoDB setup
 
