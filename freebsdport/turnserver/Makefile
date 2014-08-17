@@ -62,6 +62,7 @@ longtermsecure/secure_tls_client_c2c_tcp_relay.sh longtermsecure/secure_tls_clie
 longtermsecure/secure_udp_c2c.sh longtermsecure/secure_udp_client.sh \
 longtermsecure/secure_dos_attack.sh longtermsecure/secure_udp_client.sh \
 longtermsecuredb/secure_relay_with_db_psql.sh longtermsecuredb/secure_relay_with_db_mysql.sh \
+longtermsecuredb/secure_relay_with_db_mysql_ssl.sh \
 longtermsecuredb/secure_relay_with_db_psql.sh longtermsecuredb/secure_relay_with_db_mongo.sh \
 longtermsecuredb/secure_relay_with_db_redis.sh \
 restapi/secure_relay_secret.sh restapi/secure_relay_secret_with_db_mysql.sh \
