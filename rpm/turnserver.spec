@@ -235,6 +235,7 @@ fi
 %{_datadir}/%{name}/scripts/longtermsecure/secure_udp_client.sh
 %dir %{_datadir}/%{name}/scripts/longtermsecuredb
 %{_datadir}/%{name}/scripts/longtermsecuredb/secure_relay_with_db_mysql.sh
+%{_datadir}/%{name}/scripts/longtermsecuredb/secure_relay_with_db_mysql_ssl.sh
 %{_datadir}/%{name}/scripts/longtermsecuredb/secure_relay_with_db_mongo.sh
 %{_datadir}/%{name}/scripts/longtermsecuredb/secure_relay_with_db_psql.sh
 %{_datadir}/%{name}/scripts/longtermsecuredb/secure_relay_with_db_redis.sh
