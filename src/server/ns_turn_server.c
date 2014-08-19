@@ -3506,23 +3506,25 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 							ioa_network_buffer_get_size(in_buffer->nbh), sar);
 				}
 
-				if(ss->origin[0]) {
-					if(!origin_found) {
+				if(server->check_origin && *(server->check_origin)) {
+					if(ss->origin[0]) {
+						if(!origin_found) {
+							err_code = 441;
+							reason = (const u08bits *)"The origin attribute does not match the initial session origin value";
+							if(server->verbose) {
+								char smethod[129];
+								stun_method_str(method,smethod);
+								log_method(ss, smethod, err_code, reason);
+							}
+						}
+					} else if(norigins > 0){
 						err_code = 441;
-						reason = (const u08bits *)"The origin attribute does not match the initial session origin value";
+						reason = (const u08bits *)"The origin attribute is empty, does not match the initial session origin value";
 						if(server->verbose) {
 							char smethod[129];
 							stun_method_str(method,smethod);
 							log_method(ss, smethod, err_code, reason);
 						}
-					}
-				} else if(norigins > 0){
-					err_code = 441;
-					reason = (const u08bits *)"The origin attribute is empty, does not match the initial session origin value";
-					if(server->verbose) {
-						char smethod[129];
-						stun_method_str(method,smethod);
-						log_method(ss, smethod, err_code, reason);
 					}
 				}
 			}
@@ -4675,6 +4677,7 @@ void init_turn_server(turn_turnserver* server,
 		check_new_allocation_quota_cb chquotacb,
 		release_allocation_quota_cb raqcb,
 		ioa_addr *external_ip,
+		vintp check_origin,
 		vintp no_tcp_relay,
 		vintp no_udp_relay,
 		vintp stale_nonce,
@@ -4718,6 +4721,7 @@ void init_turn_server(turn_turnserver* server,
 
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"turn server id=%d created\n",(int)id);
 
+	server->check_origin = check_origin;
 	server->no_tcp_relay = no_tcp_relay;
 	server->no_udp_relay = no_udp_relay;
 
