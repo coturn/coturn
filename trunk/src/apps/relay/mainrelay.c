@@ -81,7 +81,7 @@ DEFAULT_STUN_PORT,DEFAULT_STUN_TLS_PORT,0,0,1,
 NEV_UNKNOWN, 
 { "Unknown", "UDP listening socket per session", "UDP thread per network endpoint", "UDP thread per CPU core" },
 //////////////// Relay servers //////////////////////////////////
-LOW_DEFAULT_PORTS_BOUNDARY,HIGH_DEFAULT_PORTS_BOUNDARY,0,0,"",
+LOW_DEFAULT_PORTS_BOUNDARY,HIGH_DEFAULT_PORTS_BOUNDARY,0,0,0,"",
 0,NULL,0,NULL,DEFAULT_GENERAL_RELAY_SERVERS_NUMBER,0,
 ////////////// Auth server /////////////////////////////////////
 {NULL,NULL,NULL,0,NULL},
@@ -397,6 +397,10 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						server is not using any database (just the commands-line settings\n"
 "						and the userdb file). Must be used with long-term credentials \n"
 "						mechanism or with TURN REST API.\n"
+" --check-origin-consistency			The flag that sets the origin consistency check:\n"
+"						across the session, all requests must have the same\n"
+"						main ORIGIN attribute value (if the ORIGIN was\n"
+"						initially used by the session).\n"
 " -q, --user-quota		<number>	Per-user allocation quota: how many concurrent allocations a user can create.\n"
 "						This option can also be set through the database, for a particular realm.\n"
 " -Q, --total-quota		<number>	Total allocations quota: global limit on concurrent allocations.\n"
@@ -670,6 +674,7 @@ enum EXTRA_OPTS {
 	NO_TLSV1_OPT,
 	NO_TLSV1_1_OPT,
 	NO_TLSV1_2_OPT,
+	CHECK_ORIGIN_CONSISTENCY_OPT,
 	ADMIN_MAX_BPS_OPT,
 	ADMIN_TOTAL_QUOTA_OPT,
 	ADMIN_USER_QUOTA_OPT
@@ -734,6 +739,7 @@ static const struct myoption long_options[] = {
 				{ "Verbose", optional_argument, NULL, 'V' },
 				{ "daemon", optional_argument, NULL, 'o' },
 				{ "fingerprint", optional_argument, NULL, 'f' },
+				{ "check-origin-consistency", optional_argument, NULL, CHECK_ORIGIN_CONSISTENCY_OPT },
 				{ "no-udp", optional_argument, NULL, NO_UDP_OPT },
 				{ "no-tcp", optional_argument, NULL, NO_TCP_OPT },
 				{ "no-tls", optional_argument, NULL, NO_TLS_OPT },
@@ -1151,6 +1157,9 @@ static void set_option(int c, char *value)
 	case 'B':
 		turn_params.bps_capacity = (band_limit_t)atoi(value);
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%lu bytes per second allowed, combined server capacity\n",(unsigned long)turn_params.bps_capacity);
+		break;
+	case CHECK_ORIGIN_CONSISTENCY_OPT:
+		turn_params.check_origin = get_bool_value(value);
 		break;
 	case NO_UDP_OPT:
 		turn_params.no_udp = get_bool_value(value);

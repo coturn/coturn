@@ -112,6 +112,7 @@ struct _turn_turnserver {
 	int verbose;
 	int fingerprint;
 	int rfc5780;
+	vintp check_origin;
 	vintp stale_nonce;
 	vintp stun_only;
 	vintp no_stun;
@@ -174,6 +175,7 @@ void init_turn_server(turn_turnserver* server,
 				    check_new_allocation_quota_cb chquotacb,
 				    release_allocation_quota_cb raqcb,
 				    ioa_addr *external_addr,
+				    vintp check_origin,
 				    vintp no_tcp_relay,
 				    vintp no_udp_relay,
 				    vintp stale_nonce,

@@ -269,6 +269,11 @@ Flags:
 			(if configured). The load balancing is using the 
 			ALTERNATE-SERVER mechanism. The TURN client must support 
 			300 ALTERNATE-SERVER response for this functionality.
+			
+--check-origin-consistency		The flag that sets the origin consistency 
+			check: across the session, all requests must have the same
+			main ORIGIN attribute value (if the ORIGIN was
+			initially used by the session).
 
 -h			Help.
     
@@ -388,8 +393,8 @@ Options with required values:
 			and the userdb file). Must be used with long-term credentials 
 			mechanism or with TURN REST API.
 
--C, --rest-api-separator	This is the timestamp/username separator symbol (character) in TURN REST API.
-				The default value is :.
+-C, --rest-api-separator	This is the timestamp/username separator symbol 
+			(character) in TURN REST API. The default value is :.
 
 -q, --user-quota	Per-user allocations quota: how many concurrent 
 			allocations a user can create. This option can also be set 

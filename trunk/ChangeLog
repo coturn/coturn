@@ -1,7 +1,7 @@
 08/14/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.1.2.1 'Vitari':
 	- The origin attribute is verified in the subsequent 
-	session messages.
+	session messages (server flag --check-origin-consistency).
 	- MySQL SSL connection support.
 	- Crash fixed when the DB connection string is incorrect.
 	- Minor docs fixes.

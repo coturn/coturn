@@ -250,6 +250,8 @@ typedef struct _turn_params_ {
   u16bits min_port;
   u16bits max_port;
 
+  vint check_origin;
+
   vint no_multicast_peers;
   vint no_loopback_peers;
 
