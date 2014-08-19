@@ -227,9 +227,9 @@ Flags:
 			
 --syslog		With this flag, all log will be redirected to the system log (syslog).
 
---simple-log	This flag means that no log file rollover will be used, and the log file
-				name will be constructed as-is, without PID and date appendage.
-				This option can be used, for example, together with the logrotate tool.
+--simple-log		This flag means that no log file rollover will be used, and the log file
+			name will be constructed as-is, without PID and date appendage.
+			This option can be used, for example, together with the logrotate tool.
 				
 --secure-stun		Require authentication of the STUN Binding request.
 			By default, the clients are allowed anonymous access to the STUN Binding functionality.
@@ -270,7 +270,7 @@ Flags:
 			ALTERNATE-SERVER mechanism. The TURN client must support 
 			300 ALTERNATE-SERVER response for this functionality.
 			
---check-origin-consistency		The flag that sets the origin consistency 
+--check-origin-consistency	The flag that sets the origin consistency 
 			check: across the session, all requests must have the same
 			main ORIGIN attribute value (if the ORIGIN was
 			initially used by the session).
@@ -316,7 +316,7 @@ Options with required values:
 			on that endpoint only for "symmetry".
 
 --alt-tls-listening-port	Alternative listening port for TLS and DTLS protocols.
-				Default (or zero) value means "TLS listening port plus one".
+			Default (or zero) value means "TLS listening port plus one".
 				
 --aux-server		Auxiliary STUN/TURN server listening endpoint.
 			Aux servers have almost full TURN and STUN functionality.
@@ -538,7 +538,7 @@ Options with required values:
 --cli-max-output-sessions	Maximum number of output sessions in ps CLI command.
 			This value can be changed on-the-fly in CLI. The default value is 256.
 
---ne=[1|2|3]			Set network engine type for the process (for internal purposes).
+--ne=[1|2|3]		Set network engine type for the process (for internal purposes).
 
 ==================================
 
