@@ -65,6 +65,8 @@
 
 5) DTLS 1.2 (when available).
 
+7) TURN Proxy ? http://tools.ietf.org/html/draft-schwartz-rtcweb-return-00
+
 ==================================================================
 
 ###   VII. MISC FEATURES   ###
