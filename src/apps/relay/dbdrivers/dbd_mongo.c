@@ -124,7 +124,7 @@ static mongoc_collection_t * mongo_get_collection(const char * name) {
 	MONGO * mc = get_mongodb_connection();
 
 	if(!mc) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error gettting a connection to MongoDB\n");
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error getting a connection to MongoDB\n");
 		return NULL;
 	}
     
