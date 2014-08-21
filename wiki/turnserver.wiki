@@ -89,6 +89,11 @@
 		See the INSTALL file for more explanations and examples.
 		
 		Also, see http://www.mysql.org for full MySQL documentation.
+
+		Optional connection string parameters for the secure 
+		communications (SSL): *ca*, *capath*, *cert*, *key*, *cipher* 
+		(see http://dev.mysql.com/doc/refman/5.1/en/ssl-options.html 
+		for the command options description).
 		
    * *-N,* *--redis-userdb* {{{<connection-string>}}}
    		  User database connection string for Redis. 
