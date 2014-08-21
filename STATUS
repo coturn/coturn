@@ -102,6 +102,8 @@ compatibility.
 43) MongoDB support added.
 
 44) Double (dual) allocation added (SSODA draft).
+
+45) Secure MySQL connection implemented.
  
 Things to be implemented in future (the development roadmap) 
 are described in the TODO file.

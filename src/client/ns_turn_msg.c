@@ -43,6 +43,54 @@
 
 ///////////
 
+int stun_method_str(u16bits method, char *smethod)
+{
+	int ret = 0;
+
+	const char* s = "UNKNOWN";
+
+	switch(method) {
+	case STUN_METHOD_BINDING:
+		s = "BINDING";
+		break;
+	case STUN_METHOD_ALLOCATE:
+		s = "ALLOCATE";
+		break;
+	case STUN_METHOD_REFRESH:
+		s = "REFRESH";
+		break;
+	case STUN_METHOD_SEND:
+		s = "SEND";
+		break;
+	case STUN_METHOD_DATA:
+		s = "DATA";
+		break;
+	case STUN_METHOD_CREATE_PERMISSION:
+		s = "CREATE_PERMISSION";
+		break;
+	case STUN_METHOD_CHANNEL_BIND:
+		s = "CHANNEL_BIND";
+		break;
+	case STUN_METHOD_CONNECT:
+		s = "CONNECT";
+		break;
+	case STUN_METHOD_CONNECTION_BIND:
+		s = "CONNECTION_BIND";
+		break;
+	case STUN_METHOD_CONNECTION_ATTEMPT:
+		s = "CONNECTION_ATTEMPT";
+		break;
+	default:
+		ret = -1;
+	};
+
+	if(smethod) {
+		STRCPY(smethod,s);
+	}
+
+	return ret;
+}
+
 long turn_random(void)
 {
 	long ret = 0;

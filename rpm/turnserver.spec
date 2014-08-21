@@ -1,5 +1,5 @@
 Name:		turnserver
-Version:	4.1.1.1
+Version:	4.1.2.1
 Release:	0%{dist}
 Summary:	Coturn TURN Server
 
@@ -235,6 +235,7 @@ fi
 %{_datadir}/%{name}/scripts/longtermsecure/secure_udp_client.sh
 %dir %{_datadir}/%{name}/scripts/longtermsecuredb
 %{_datadir}/%{name}/scripts/longtermsecuredb/secure_relay_with_db_mysql.sh
+%{_datadir}/%{name}/scripts/longtermsecuredb/secure_relay_with_db_mysql_ssl.sh
 %{_datadir}/%{name}/scripts/longtermsecuredb/secure_relay_with_db_mongo.sh
 %{_datadir}/%{name}/scripts/longtermsecuredb/secure_relay_with_db_psql.sh
 %{_datadir}/%{name}/scripts/longtermsecuredb/secure_relay_with_db_redis.sh
@@ -293,6 +294,8 @@ fi
 %{_includedir}/turn/client/TurnMsgLib.h
 
 %changelog
+* Thu Aug 14 2014 Oleg Moskalenko <mom040267@gmail.com>
+  - Sync to 4.1.2.1
 * Tue Jul 29 2014 Oleg Moskalenko <mom040267@gmail.com>
   - Sync to 4.1.1.1
 * Tue Jul 22 2014 Oleg Moskalenko <mom040267@gmail.com>

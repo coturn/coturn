@@ -46,6 +46,13 @@ struct _Myconninfo {
 	char *password;
 	unsigned int port;
 	unsigned int connect_timeout;
+	/* SSL ==>> */
+	char *key;
+	char *ca;
+	char *cert;
+	char *capath;
+	char *cipher;
+	/* <<== SSL : see http://dev.mysql.com/doc/refman/5.0/en/mysql-ssl-set.html */
 };
 
 typedef struct _Myconninfo Myconninfo;
@@ -56,6 +63,11 @@ static void MyconninfoFree(Myconninfo *co) {
 		if(co->dbname) turn_free(co->dbname, strlen(co->dbname)+1);
 		if(co->user) turn_free(co->user, strlen(co->user)+1);
 		if(co->password) turn_free(co->password, strlen(co->password)+1);
+		if(co->key) turn_free(co->key, strlen(co->key)+1);
+		if(co->ca) turn_free(co->ca, strlen(co->ca)+1);
+		if(co->cert) turn_free(co->cert, strlen(co->cert)+1);
+		if(co->capath) turn_free(co->capath, strlen(co->capath)+1);
+		if(co->cipher) turn_free(co->cipher, strlen(co->cipher)+1);
 		ns_bzero(co,sizeof(Myconninfo));
 	}
 }
@@ -127,6 +139,26 @@ static Myconninfo *MyconninfoParse(char *userdb, char **errmsg) {
 				co->connect_timeout = (unsigned int)atoi(seq+1);
 			else if(!strcmp(s,"timeout"))
 				co->connect_timeout = (unsigned int)atoi(seq+1);
+			else if(!strcmp(s,"key"))
+				co->key = strdup(seq+1);
+			else if(!strcmp(s,"ssl-key"))
+				co->key = strdup(seq+1);
+			else if(!strcmp(s,"ca"))
+				co->ca = strdup(seq+1);
+			else if(!strcmp(s,"ssl-ca"))
+				co->ca = strdup(seq+1);
+			else if(!strcmp(s,"capath"))
+				co->capath = strdup(seq+1);
+			else if(!strcmp(s,"ssl-capath"))
+				co->capath = strdup(seq+1);
+			else if(!strcmp(s,"cert"))
+				co->cert = strdup(seq+1);
+			else if(!strcmp(s,"ssl-cert"))
+				co->cert = strdup(seq+1);
+			else if(!strcmp(s,"cipher"))
+				co->cipher = strdup(seq+1);
+			else if(!strcmp(s,"ssl-cipher"))
+				co->cipher = strdup(seq+1);
 			else {
 				MyconninfoFree(co);
 				co = NULL;
@@ -142,14 +174,16 @@ static Myconninfo *MyconninfoParse(char *userdb, char **errmsg) {
 		turn_free(s0, strlen(s0)+1);
 	}
 
-	if(!(co->dbname))
-		co->dbname=strdup("0");
-	if(!(co->host))
-		co->host=strdup("127.0.0.1");
-	if(!(co->user))
-		co->user=strdup("");
-	if(!(co->password))
-		co->password=strdup("");
+	if(co) {
+		if(!(co->dbname))
+			co->dbname=strdup("0");
+		if(!(co->host))
+			co->host=strdup("127.0.0.1");
+		if(!(co->user))
+			co->user=strdup("");
+		if(!(co->password))
+			co->password=strdup("");
+	}
 
 	return co;
 }
@@ -190,6 +224,9 @@ static MYSQL *get_mydb_connection(void) {
 			} else {
 				if(co->connect_timeout)
 					mysql_options(mydbconnection,MYSQL_OPT_CONNECT_TIMEOUT,&(co->connect_timeout));
+				if(co->ca || co->capath || co->cert || co->cipher || co->key) {
+					mysql_ssl_set(mydbconnection, co->key, co->cert, co->ca, co->capath, co->cipher);
+				}
 				MYSQL *conn = mysql_real_connect(mydbconnection, co->host, co->user, co->password, co->dbname, co->port, NULL, CLIENT_IGNORE_SIGPIPE);
 				if(!conn) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open MySQL DB connection: <%s>, runtime error\n",pud->userdb);

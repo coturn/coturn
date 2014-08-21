@@ -43,6 +43,8 @@ extern "C" {
 int rare_event(void);
 int not_rare_event(void);
 
+void add_origin(stun_buffer *message);
+
 int start_c2c_connection(uint16_t clnet_remote_port,
 			 const char *remote_address, 
 			 const unsigned char* ifname, const char *local_address,

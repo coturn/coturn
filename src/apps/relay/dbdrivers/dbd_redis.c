@@ -148,12 +148,14 @@ static Ryconninfo *RyconninfoParse(const char *userdb, char **errmsg) {
 		turn_free(s0, strlen(s0)+1);
 	}
 
-	if(!(co->dbname))
-		co->dbname=strdup("0");
-	if(!(co->host))
-		co->host=strdup("127.0.0.1");
-	if(!(co->password))
-		co->password=strdup("");
+	if(co) {
+		if(!(co->dbname))
+			co->dbname=strdup("0");
+		if(!(co->host))
+			co->host=strdup("127.0.0.1");
+		if(!(co->password))
+			co->password=strdup("");
+	}
 
 	return co;
 }

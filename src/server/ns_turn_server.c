@@ -3472,7 +3472,65 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 				}
 			}
 
-			if(!(ss->realm_set) && (method == STUN_METHOD_ALLOCATE)) {
+			/* check that the realm is the same as in the original request */
+			if(ss->realm_set) {
+				stun_attr_ref sar = stun_attr_get_first_str(ioa_network_buffer_data(in_buffer->nbh),
+					ioa_network_buffer_get_size(in_buffer->nbh));
+
+				int origin_found = 0;
+				int norigins = 0;
+
+				while(sar && !origin_found) {
+					if(stun_attr_get_type(sar) == STUN_ATTRIBUTE_ORIGIN) {
+						int sarlen = stun_attr_get_len(sar);
+						if(sarlen>0) {
+							++norigins;
+							char *o = (char*)turn_malloc(sarlen+1);
+							ns_bcopy(stun_attr_get_value(sar),o,sarlen);
+							o[sarlen]=0;
+							char *corigin = (char*)turn_malloc(STUN_MAX_ORIGIN_SIZE+1);
+							corigin[0]=0;
+							if(get_canonic_origin(o,corigin,STUN_MAX_ORIGIN_SIZE)<0) {
+								TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+									"%s: Wrong origin format: %s\n",
+									__FUNCTION__, o);
+							}
+							if(!strncmp(ss->origin,corigin,STUN_MAX_ORIGIN_SIZE)) {
+								origin_found = 1;
+							}
+							turn_free(corigin,sarlen+1);
+							turn_free(o,sarlen+1);
+						}
+					}
+					sar = stun_attr_get_next_str(ioa_network_buffer_data(in_buffer->nbh),
+							ioa_network_buffer_get_size(in_buffer->nbh), sar);
+				}
+
+				if(server->check_origin && *(server->check_origin)) {
+					if(ss->origin[0]) {
+						if(!origin_found) {
+							err_code = 441;
+							reason = (const u08bits *)"The origin attribute does not match the initial session origin value";
+							if(server->verbose) {
+								char smethod[129];
+								stun_method_str(method,smethod);
+								log_method(ss, smethod, err_code, reason);
+							}
+						}
+					} else if(norigins > 0){
+						err_code = 441;
+						reason = (const u08bits *)"The origin attribute is empty, does not match the initial session origin value";
+						if(server->verbose) {
+							char smethod[129];
+							stun_method_str(method,smethod);
+							log_method(ss, smethod, err_code, reason);
+						}
+					}
+				}
+			}
+
+			/* get the initial origin value */
+			if(!err_code && !(ss->realm_set) && (method == STUN_METHOD_ALLOCATE)) {
 
 				stun_attr_ref sar = stun_attr_get_first_str(ioa_network_buffer_data(in_buffer->nbh),
 					ioa_network_buffer_get_size(in_buffer->nbh));
@@ -4619,6 +4677,7 @@ void init_turn_server(turn_turnserver* server,
 		check_new_allocation_quota_cb chquotacb,
 		release_allocation_quota_cb raqcb,
 		ioa_addr *external_ip,
+		vintp check_origin,
 		vintp no_tcp_relay,
 		vintp no_udp_relay,
 		vintp stale_nonce,
@@ -4662,6 +4721,7 @@ void init_turn_server(turn_turnserver* server,
 
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"turn server id=%d created\n",(int)id);
 
+	server->check_origin = check_origin;
 	server->no_tcp_relay = no_tcp_relay;
 	server->no_udp_relay = no_udp_relay;
 
