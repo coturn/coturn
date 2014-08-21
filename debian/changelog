@@ -1,3 +1,9 @@
+coturn (4.1.2.1-1) unstable; urgency=low
+
+  * Sync to upstream 4.1.2.1
+
+ -- Oleg Moskalenko <mom040267@gmail.com>  Wed, 20 Aug 2014 22:23:56 -0700
+
 coturn (4.1.1.1-1) unstable; urgency=low
 
   * Sync to upstream 4.1.1.1
