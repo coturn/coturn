@@ -81,7 +81,7 @@ DEFAULT_STUN_PORT,DEFAULT_STUN_TLS_PORT,0,0,1,
 NEV_UNKNOWN, 
 { "Unknown", "UDP listening socket per session", "UDP thread per network endpoint", "UDP thread per CPU core" },
 //////////////// Relay servers //////////////////////////////////
-LOW_DEFAULT_PORTS_BOUNDARY,HIGH_DEFAULT_PORTS_BOUNDARY,0,0,"",
+LOW_DEFAULT_PORTS_BOUNDARY,HIGH_DEFAULT_PORTS_BOUNDARY,0,0,0,"",
 0,NULL,0,NULL,DEFAULT_GENERAL_RELAY_SERVERS_NUMBER,0,
 ////////////// Auth server /////////////////////////////////////
 {NULL,NULL,NULL,0,NULL},
@@ -361,7 +361,8 @@ static char Usage[] = "Usage: turnserver [options]\n"
 " -X, --external-ip  <public-ip[/private-ip]>	TURN Server public/private address mapping, if the server is behind NAT.\n"
 "						In that situation, if a -X is used in form \"-X ip\" then that ip will be reported\n"
 "						as relay IP address of all allocations. This scenario works only in a simple case\n"
-"						when one single relay address is be used, and no STUN CHANGE_REQUEST functionality is required.\n"
+"						when one single relay address is be used, and no STUN CHANGE_REQUEST\n"
+"						functionality is required.\n"
 "						That single relay address must be mapped by NAT to the 'external' IP.\n"
 "						For that 'external' IP, NAT must forward ports directly (relayed port 12345\n"
 "						must be always mapped to the same 'external' port 12345).\n"
@@ -396,6 +397,10 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						server is not using any database (just the commands-line settings\n"
 "						and the userdb file). Must be used with long-term credentials \n"
 "						mechanism or with TURN REST API.\n"
+" --check-origin-consistency			The flag that sets the origin consistency check:\n"
+"						across the session, all requests must have the same\n"
+"						main ORIGIN attribute value (if the ORIGIN was\n"
+"						initially used by the session).\n"
 " -q, --user-quota		<number>	Per-user allocation quota: how many concurrent allocations a user can create.\n"
 "						This option can also be set through the database, for a particular realm.\n"
 " -Q, --total-quota		<number>	Total allocations quota: global limit on concurrent allocations.\n"
@@ -424,8 +429,12 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "	                                	This database can be used for long-term and short-term credentials mechanisms,\n"
 "		                                and it can store the secret value(s) for secret-based timed authentication in TURN RESP API.\n"
 "						The connection string my be space-separated list of parameters:\n"
-"	        	          		\"host=<ip-addr> dbname=<database-name> user=<database-user> \\\n								password=<database-user-password> port=<db-port> connect_timeout=<seconds>\".\n"
-"	        	          		All parameters are optional.\n"
+"	        	          		\"host=<ip-addr> dbname=<database-name> user=<database-user> \\\n								password=<database-user-password> port=<db-port> connect_timeout=<seconds>\".\n\n"
+"						The connection string parameters for the secure communications (SSL):\n"
+"						ca, capath, cert, key, cipher\n"
+"						(see http://dev.mysql.com/doc/refman/5.1/en/ssl-options.html for the\n"
+"						command options description).\n\n"
+"	        	          		All connection-string parameters are optional.\n\n"
 #endif
 #if !defined(TURN_NO_MONGO)
 " -J, --mongo-userdb	<connection-string>	MongoDB connection string, if used (default - empty, no MongoDB used).\n"
@@ -437,8 +446,8 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "	                                	This database can be used for long-term and short-term credentials mechanisms,\n"
 "		                                and it can store the secret value(s) for secret-based timed authentication in TURN RESP API.\n"
 "						The connection string my be space-separated list of parameters:\n"
-"	        	          		\"host=<ip-addr> dbname=<db-number> \\\n								password=<database-user-password> port=<db-port> connect_timeout=<seconds>\".\n"
-"	        	          		All parameters are optional.\n"
+"	        	          		\"host=<ip-addr> dbname=<db-number> \\\n								password=<database-user-password> port=<db-port> connect_timeout=<seconds>\".\n\n"
+"	        	          		All connection-string parameters are optional.\n\n"
 " -O, --redis-statsdb	<connection-string>	Redis status and statistics database connection string, if used \n"
 "						(default - empty, no Redis stats DB used).\n"
 "	                                	This database keeps allocations status information, and it can be also used for publishing\n"
@@ -499,6 +508,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 " --syslog					Output all log information into the system log (syslog), do not use the file output.\n"
 " --simple-log					This flag means that no log file rollover will be used, and the log file\n"
 "						name will be constructed as-is, without PID and date appendage.\n"
+"						This option can be used, for example, together with the logrotate tool.\n"
 " --stale-nonce					Use extra security with nonce value having limited lifetime (600 secs).\n"
 " -S, --stun-only				Option to set standalone STUN operation only, all TURN requests will be ignored.\n"
 "     --no-stun					Option to suppress STUN functionality, only TURN requests will be processed.\n"
@@ -664,6 +674,7 @@ enum EXTRA_OPTS {
 	NO_TLSV1_OPT,
 	NO_TLSV1_1_OPT,
 	NO_TLSV1_2_OPT,
+	CHECK_ORIGIN_CONSISTENCY_OPT,
 	ADMIN_MAX_BPS_OPT,
 	ADMIN_TOTAL_QUOTA_OPT,
 	ADMIN_USER_QUOTA_OPT
@@ -728,6 +739,7 @@ static const struct myoption long_options[] = {
 				{ "Verbose", optional_argument, NULL, 'V' },
 				{ "daemon", optional_argument, NULL, 'o' },
 				{ "fingerprint", optional_argument, NULL, 'f' },
+				{ "check-origin-consistency", optional_argument, NULL, CHECK_ORIGIN_CONSISTENCY_OPT },
 				{ "no-udp", optional_argument, NULL, NO_UDP_OPT },
 				{ "no-tcp", optional_argument, NULL, NO_TCP_OPT },
 				{ "no-tls", optional_argument, NULL, NO_TLS_OPT },
@@ -1145,6 +1157,9 @@ static void set_option(int c, char *value)
 	case 'B':
 		turn_params.bps_capacity = (band_limit_t)atoi(value);
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%lu bytes per second allowed, combined server capacity\n",(unsigned long)turn_params.bps_capacity);
+		break;
+	case CHECK_ORIGIN_CONSISTENCY_OPT:
+		turn_params.check_origin = get_bool_value(value);
 		break;
 	case NO_UDP_OPT:
 		turn_params.no_udp = get_bool_value(value);

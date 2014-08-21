@@ -1574,6 +1574,7 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
 			 check_new_allocation_quota,
 			 release_allocation_quota,
 			 turn_params.external_ip,
+			 &turn_params.check_origin,
 			 &turn_params.no_tcp_relay,
 			 &turn_params.no_udp_relay,
 			 &turn_params.stale_nonce,
