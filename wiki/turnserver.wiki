@@ -46,6 +46,7 @@
    * *--mobility*    Mobility with ICE (MICE) specs support.
    * *--no-cli*      Turn OFF the CLI support. By default it is always ON, and the process turnserver accepts the telnet client connections on IP address 127.0.0.1, port 5766. See also options *--cli-ip*, *--cli-port* and *--cli-password*.
    * *--server-relay*   Server relay. *NON-STANDARD AND DANGEROUS OPTION*. Only for an application that want to run a server on the relay endpoints. This option eliminates the IP permissions check on the packets incoming to the relay endpoints. That makes the system vulnerable to DOS attack, for example, among other bad things. The rule is: if you do not understand what is this option about and why would you need it, *then you absolutely must NOT use it under any circumstances*. See http://tools.ietf.org/search/rfc5766#section-17.2.3 .
+   * *--check-origin-consistency*	The flag that sets the origin consistency check: across the session, all requests must have the same main ORIGIN attribute value (if the ORIGIN was initially used by the session).
    * *-h* Help.
 
 ===Config file setting:===
