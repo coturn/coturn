@@ -1,3 +1,7 @@
+08/22/2014 Oleg Moskalenko <mom040267@gmail.com>
+Version 4.1.2.2 'Vitari':
+	- SHA-256 memory leak fixed. 
+	
 08/14/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.1.2.1 'Vitari':
 	- The origin attribute is verified in the subsequent 
