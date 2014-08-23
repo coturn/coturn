@@ -155,6 +155,7 @@ int stun_produce_integrity_key_str(u08bits *uname, u08bits *realm, u08bits *upwd
 		EVP_DigestInit(&ctx,EVP_sha256());
 		EVP_DigestUpdate(&ctx,str,strl);
 		EVP_DigestFinal(&ctx,key,&keylen);
+		EVP_MD_CTX_cleanup(&ctx);
 	} else
 #endif
 	{
