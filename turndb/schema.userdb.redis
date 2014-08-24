@@ -37,6 +37,39 @@ the option values are "static" (they remain the same for the lifetime of
 the turnserver process) but the database records can be dynamically changed 
 and they will be almost immediately "seen" by the turnserver process.
 
+5) For the oAuth authentication, there is a hash structure with the key 
+"turn/oauth/kid/<kid-value>". The kid structure fields are:
+ 
+	ikm_key - (optional) base64-encoded key ("input keying material");
+		The ikm_key is not needed if the as_rs_key and auth_key are defined
+		explicitly in the database;
+		
+	timestamp - (optional) the timestamp (in seconds) when the key 
+		lifetime started;
+	
+	lifetime - (optional) the key lifetime in seconds; the default value 
+		is 0 - unlimited lifetime.
+	
+	hkdf_hash_func - (optional) hash function for HKDF procedure; the 
+		valid values are SHA-1 and SHA-256, with SHA-256 as default;
+		The hkdf_hash_func is not needed if the as_rs_key and auth_key 
+		are defined explicitly in the database;
+		
+	as_rs_alg - oAuth token encryption algorithm; the valid values are
+		"AES-128-CBC" and "AES-256-CBC", with "AES-256-CBC" as default;
+		
+	as_rs_key - (optional) base64-encoded AS-RS key. If not defined, then 
+		calculated with ikm_key and hkdf_hash_func. The as_rs_key length 
+		is defined by as_rs_alg.
+		
+	auth_alg - oAuth token authentication algorithm; the valid values are
+		"HMAC-SHA-256-128", "HMAC-SHA-256" and "HMAC-SHA-1", with 
+		"HMAC-SHA-256-128" as default;
+		
+	auth_key - (optional) base64-encoded AUTH key. If not defined, then 
+		calculated with ikm_key and hkdf_hash_func. The auth_key length 
+		is defined by auth_alg.
+
 II. Extra realms data in the database
 
 We can use more than one realm with the same instance of the TURN server.
@@ -68,6 +101,7 @@ This example sets user database for:
   * The realm performance parameters: "max_bps", 
   	"total_quota" and "user_quota" (same names as the turnserver 
   	configuration options, with the same meanings).
+  * The oAuth data for the key with kid "north" and key value "carleon". 
   
 The shell command would be:
 
@@ -108,6 +142,8 @@ set turn/denied-peer-ip/123456 "172.17.13.133-172.17.14.56"
 set turn/denied-peer-ip/234567 "123::45"
 
 set turn/allowed-peer-ip/345678 "172.17.13.200"
+
+hmset turn/oauth/kid/north ikm_key Y2FybGVvbg== hkdf_hash_func 'SHA-256' as_rs_alg 'AES-128-CBC' auth_alg 'HMAC-SHA-256-128'
 
 save
 

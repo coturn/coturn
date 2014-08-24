@@ -26,3 +26,7 @@ insert into allowed_peer_ip (ip_range) values('172.17.13.200');
 
 insert into denied_peer_ip (ip_range) values('172.17.13.133-172.17.14.56');
 insert into denied_peer_ip (ip_range) values('123::45');
+
+insert into oauth_key (kid,ikm_key,timestamp,lifetime,hkdf_hash_func,as_rs_alg,as_rs_key,auth_alg,auth_key) values('north','Y2FybGVvbg==',0,0,'SHA-256','AES-256-CBC','','HMAC-SHA-256-128','');
+
+);
