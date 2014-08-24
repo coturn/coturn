@@ -41,6 +41,8 @@ db.allowed_peer_ip.insert({ ip_range: '172.17.13.200' });
 db.denied_peer_ip.insert({ ip_range: '172.17.13.133-172.17.14.56' });
 db.denied_peer_ip.insert({ ip_range: '123::45' });
 
+db.oauth_key.insert({ kid: 'north', ikm_key: 'Y2FybGVvbg==', hkdf_hash_func: 'SHA-256', as_rs_alg: 'AES-128-CBC', auth_alg: 'HMAC-SHA-256-128' });
+
 exit
 
 EOF
