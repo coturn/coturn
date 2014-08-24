@@ -30,6 +30,9 @@
  */
 
 #include "../mainrelay.h"
+
+#include "apputils.h"
+
 #include "dbdriver.h"
 #include "dbd_pgsql.h"
 #include "dbd_mysql.h"
@@ -86,5 +89,52 @@ turn_dbdriver_t * get_dbdriver() {
   return _driver;
 }
 
+/////////// OAUTH /////////////////
 
+void convert_oauth_key_data_raw(const oauth_key_data_raw *raw, oauth_key_data *oakd)
+{
+	if(raw && oakd) {
+
+		ns_bzero(oakd,sizeof(oauth_key_data));
+
+		oakd->timestamp = (turn_time_t)raw->timestamp;
+		oakd->lifetime = raw->lifetime;
+
+		ns_bcopy(raw->as_rs_alg,oakd->as_rs_alg,sizeof(oakd->as_rs_alg));
+		ns_bcopy(raw->auth_alg,oakd->auth_alg,sizeof(oakd->auth_alg));
+		ns_bcopy(raw->hkdf_hash_func,oakd->hkdf_hash_func,sizeof(oakd->hkdf_hash_func));
+		ns_bcopy(raw->kid,oakd->kid,sizeof(oakd->kid));
+
+		{
+			size_t ikm_key_size = 0;
+			char *ikm_key = base64_encode((const unsigned char *)(raw->ikm_key),strlen(raw->ikm_key),&ikm_key_size);
+			if(ikm_key) {
+				ns_bcopy(ikm_key,oakd->ikm_key,ikm_key_size);
+				oakd->ikm_key_size = ikm_key_size;
+				turn_free(ikm_key,ikm_key_size);
+			}
+		}
+
+		{
+			size_t as_rs_key_size = 0;
+			char *as_rs_key = base64_encode((const unsigned char *)(raw->as_rs_key),strlen(raw->as_rs_key),&as_rs_key_size);
+			if(as_rs_key) {
+				ns_bcopy(as_rs_key,oakd->as_rs_key,as_rs_key_size);
+				oakd->as_rs_key_size = as_rs_key_size;
+				turn_free(as_rs_key,as_rs_key_size);
+			}
+		}
+
+		{
+			size_t as_rs_key_size = 0;
+			char *as_rs_key = base64_encode((const unsigned char *)(raw->as_rs_key),strlen(raw->as_rs_key),&as_rs_key_size);
+			if(as_rs_key) {
+				ns_bcopy(as_rs_key,oakd->as_rs_key,as_rs_key_size);
+				oakd->as_rs_key_size = as_rs_key_size;
+				turn_free(as_rs_key,as_rs_key_size);
+			}
+		}
+
+	}
+}
 

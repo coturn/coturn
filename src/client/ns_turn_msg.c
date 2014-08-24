@@ -1789,6 +1789,9 @@ int convert_oauth_key_data(oauth_key_data *oakd, oauth_key *key, char *err_msg, 
 		key->timestamp = oakd->timestamp;
 		key->lifetime = oakd->lifetime;
 
+		if(!(key->timestamp)) key->timestamp = OAUTH_DEFAULT_TIMESTAMP;
+		if(!(key->lifetime)) key->lifetime = OAUTH_DEFAULT_LIFETIME;
+
 		key->hkdf_hash_func = SHATYPE_SHA256;
 		if(!strcmp(oakd->hkdf_hash_func,"SHA1") || !strcmp(oakd->hkdf_hash_func,"SHA-1")) {
 			key->hkdf_hash_func = SHATYPE_SHA1;
