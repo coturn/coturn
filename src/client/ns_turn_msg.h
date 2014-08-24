@@ -209,6 +209,9 @@ int stun_attr_add_padding_str(u08bits *buf, size_t *len, u16bits padding_len);
 /* HTTP */
 int is_http_get(const char *s, size_t blen);
 
+/* OAUTH */
+int convert_oauth_key_data(oauth_key_data *oakd, oauth_key *key, char *err_msg, size_t err_msg_size);
+
 ///////////////////////////////////////////////////////////////
 
 #ifdef __cplusplus

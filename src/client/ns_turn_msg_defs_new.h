@@ -38,6 +38,12 @@
 #define STUN_ATTRIBUTE_ORIGIN (0x802F)
 /* <<== Origin */
 
+/* Bandwidth */
+
+#define STUN_ATTRIBUTE_NEW_BANDWIDTH (0x8000 + STUN_ATTRIBUTE_BANDWIDTH)
+
+/* <<== Bandwidth */
+
 /* SHA AGILITY ==>> */
 
 #define SHA1SIZEBYTES (20)
@@ -46,7 +52,9 @@
 #define MAXSHASIZE (128)
 
 enum _SHATYPE {
-	SHATYPE_SHA1 = 0,
+	SHATYPE_ERROR = -1,
+	SHATYPE_DEFAULT=0,
+	SHATYPE_SHA1=SHATYPE_DEFAULT,
 	SHATYPE_SHA256
 };
 
@@ -58,10 +66,75 @@ typedef enum _SHATYPE SHATYPE;
 
 /* <<== SHA AGILITY */
 
-/* Bandwidth */
+/* OAUTH TOKEN ENC ALG ==> */
 
-#define STUN_ATTRIBUTE_NEW_BANDWIDTH (0x8000 + STUN_ATTRIBUTE_BANDWIDTH)
+enum _ENC_ALG {
+	ENC_ALG_ERROR=-1,
+	ENC_ALG_DEFAULT=0,
+	AES_128_CBC=ENC_ALG_DEFAULT,
+	AES_256_CBC,
+	ENG_ALG_NUM
+};
 
-/* <<== Bandwidth */
+typedef enum _ENC_ALG ENC_ALG;
+
+/* <<== OAUTH TOKEN ENC ALG */
+
+/* OAUTH TOKEN AUTH ALG ==> */
+
+enum _AUTH_ALG {
+	AUTH_ALG_ERROR = -1,
+	AUTH_ALG_DEFAULT = 0,
+	AUTH_ALG_HMAC_SHA_256_128 = AUTH_ALG_DEFAULT,
+	AUTH_ALG_HMAC_SHA_1,
+	AUTH_ALG_HMAC_SHA_256
+};
+
+typedef enum _AUTH_ALG AUTH_ALG;
+
+/* <<== OAUTH TOKEN AUTH ALG */
+
+/**
+ * oAuth struct
+ */
+
+#define OAUTH_KID_SIZE (128)
+#define OAUTH_HASH_FUNC_SIZE (64)
+#define OAUTH_ALG_SIZE (64)
+#define OAUTH_KEY_SIZE (256)
+
+struct _oauth_key_data {
+	char kid[OAUTH_KID_SIZE+1];
+	char ikm_key[OAUTH_KEY_SIZE+1];
+	size_t ikm_key_size;
+	u64bits timestamp;
+	turn_time_t lifetime;
+	char hkdf_hash_func[OAUTH_HASH_FUNC_SIZE+1];
+	char as_rs_alg[OAUTH_ALG_SIZE+1];
+	char as_rs_key[OAUTH_KEY_SIZE+1];
+	size_t as_rs_key_size;
+	char auth_alg[OAUTH_ALG_SIZE+1];
+	char auth_key[OAUTH_KEY_SIZE+1];
+	size_t auth_key_size;
+};
+
+typedef struct _oauth_key_data oauth_key_data;
+
+struct _oauth_key {
+	char kid[OAUTH_KID_SIZE+1];
+	char ikm_key[OAUTH_KEY_SIZE+1];
+	size_t ikm_key_size;
+	u64bits timestamp;
+	turn_time_t lifetime;
+	SHATYPE hkdf_hash_func;
+	ENC_ALG as_rs_alg;
+	char as_rs_key[OAUTH_KEY_SIZE+1];
+	size_t as_rs_key_size;
+	AUTH_ALG auth_alg;
+	char auth_key[OAUTH_KEY_SIZE+1];
+	size_t auth_key_size;
+};
+
+typedef struct _oauth_key oauth_key;
 
 #endif //__LIB_TURN_MSG_DEFS_NEW__

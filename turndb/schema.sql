@@ -39,3 +39,16 @@ CREATE TABLE turn_realm_option (
 	value varchar(128),
 	primary key (realm,opt)
 );
+
+CREATE TABLE oauth_key (
+	kid varchar(128),
+	ikm_key varchar(256),
+	timestamp bigint,
+	lifetime integer,
+	hkdf_hash_func varchar(64),
+	as_rs_alg varchar(64),
+	as_rs_key varchar(256),
+	auth_alg varchar(64),
+	auth_key varchar(256),
+	primary key (kid)
+);

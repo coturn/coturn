@@ -1631,4 +1631,218 @@ int stun_attr_add_padding_str(u08bits *buf, size_t *len, u16bits padding_len)
 	return stun_attr_add_str(buf, len, STUN_ATTRIBUTE_PADDING, avalue, padding_len);
 }
 
+/* OAUTH */
+
+static void remove_spaces(char *s)
+{
+	char *sfns = s;
+	while(*sfns) {
+		if(*sfns != ' ')
+			break;
+		++sfns;
+	}
+	if(*sfns) {
+		if(sfns != s) {
+			while(*sfns && (*sfns != ' ')) {
+				*s = *sfns;
+				++s;
+				++sfns;
+			};
+			*s = 0;
+		} else {
+			while(*s) {
+				if(*s == ' ') {
+					*s = 0;
+					break;
+				}
+				++s;
+			}
+		}
+	}
+}
+
+static void normalize_algorithm(char *s)
+{
+	char c = *s;
+	while(c) {
+		if(c=='_') c='-';
+		else if((c>='a')&&(c<='z')) {
+			c = c - 'a' + 'A';
+		}
+		++s;
+		c = *s;
+	}
+}
+
+static size_t calculate_enc_key_length(ENC_ALG a)
+{
+	switch(a) {
+	case AES_128_CBC:
+		return 16;
+	case AES_256_CBC:
+		return 32;
+	default:
+		;
+	};
+
+	return 32;
+}
+
+static size_t calculate_auth_key_length(AUTH_ALG a)
+{
+	switch(a) {
+	case AUTH_ALG_HMAC_SHA_1:
+		return 20;
+	case AUTH_ALG_HMAC_SHA_256_128:
+		return 32;
+	case AUTH_ALG_HMAC_SHA_256:
+		return 32;
+	default:
+		;
+	};
+
+	return 32;
+}
+
+static int calculate_key(char *key, size_t key_size, char *new_key, size_t new_key_size, SHATYPE shatype,
+		char *err_msg, size_t err_msg_size)
+{
+	//Extract:
+	u08bits prk[128];
+	unsigned int prk_len = 0;
+	stun_calculate_hmac((const u08bits *)key, key_size, (const u08bits *)"", 0, prk, &prk_len, shatype);
+
+	//Expand:
+	u08bits buf[128];
+	buf[0]=1;
+	u08bits hmac[128];
+	unsigned int hmac_len = 0;
+	stun_calculate_hmac((const u08bits *)buf, 1, prk, prk_len, hmac, &hmac_len, shatype);
+	ns_bcopy(hmac,new_key,hmac_len);
+
+	//Check
+	if(new_key_size>hmac_len) {
+		ns_bcopy(hmac,buf,hmac_len);
+		buf[hmac_len]=2;
+		u08bits hmac1[128];
+		unsigned int hmac1_len = 0;
+		stun_calculate_hmac((const u08bits *)buf, hmac_len+1, prk, prk_len, hmac1, &hmac1_len, shatype);
+		ns_bcopy(hmac1,new_key+hmac_len,hmac1_len);
+		if(new_key_size > (hmac_len + hmac1_len)) {
+			if(err_msg) {
+				snprintf(err_msg,err_msg_size,"Wrong HKDF procedure (key sizes): output.sz=%lu, hmac(1)=%lu, hmac(2)=%lu",(unsigned long)new_key_size,(unsigned long)hmac_len,(unsigned long)hmac1_len);
+			}
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+int convert_oauth_key_data(oauth_key_data *oakd, oauth_key *key, char *err_msg, size_t err_msg_size)
+{
+	if(oakd && key) {
+
+		if(!(oakd->ikm_key_size)) {
+			if(!(oakd->as_rs_key_size)) {
+				if(err_msg) {
+					snprintf(err_msg,err_msg_size,"AS-RS key is not defined");
+				}
+				return -1;
+			}
+			if(!(oakd->auth_key_size)) {
+				if(err_msg) {
+					snprintf(err_msg,err_msg_size,"AUTH key is not defined");
+				}
+				return -1;
+			}
+		}
+
+		remove_spaces(oakd->kid);
+
+		remove_spaces(oakd->hkdf_hash_func);
+		remove_spaces(oakd->as_rs_alg);
+		remove_spaces(oakd->auth_alg);
+
+		normalize_algorithm(oakd->hkdf_hash_func);
+		normalize_algorithm(oakd->as_rs_alg);
+		normalize_algorithm(oakd->auth_alg);
+
+		if(!(oakd->kid[0])) {
+			if(err_msg) {
+				snprintf(err_msg,err_msg_size,"KID is not defined");
+			}
+			return -1;
+		}
+
+		ns_bzero(key,sizeof(oauth_key));
+
+		STRCPY(key->kid,oakd->kid);
+
+		ns_bcopy(oakd->as_rs_key,key->as_rs_key,sizeof(key->as_rs_key));
+		key->as_rs_key_size = oakd->as_rs_key_size;
+		ns_bcopy(oakd->auth_key,key->auth_key,sizeof(key->auth_key));
+		key->auth_key_size = oakd->auth_key_size;
+		ns_bcopy(oakd->ikm_key,key->ikm_key,sizeof(key->ikm_key));
+		key->ikm_key_size = oakd->ikm_key_size;
+
+		key->timestamp = oakd->timestamp;
+		key->lifetime = oakd->lifetime;
+
+		key->hkdf_hash_func = SHATYPE_SHA256;
+		if(!strcmp(oakd->hkdf_hash_func,"SHA1") || !strcmp(oakd->hkdf_hash_func,"SHA-1")) {
+			key->hkdf_hash_func = SHATYPE_SHA1;
+		} else if(!strcmp(oakd->hkdf_hash_func,"SHA256") || !strcmp(oakd->hkdf_hash_func,"SHA-256")) {
+			key->hkdf_hash_func = SHATYPE_SHA256;
+		} else if(oakd->hkdf_hash_func[0]) {
+			if(err_msg) {
+				snprintf(err_msg,err_msg_size,"Wrong HKDF hash function algorithm: %s",oakd->hkdf_hash_func);
+			}
+			return -1;
+		}
+
+		key->as_rs_alg = ENC_ALG_DEFAULT;
+		if(!strcmp(oakd->as_rs_alg,"AES-128-CBC")) {
+			key->as_rs_alg = AES_128_CBC;
+		} else if(!strcmp(oakd->as_rs_alg,"AES-256-CBC")) {
+			key->as_rs_alg = AES_256_CBC;
+		} else if(oakd->as_rs_alg[0]) {
+			if(err_msg) {
+				snprintf(err_msg,err_msg_size,"Wrong oAuth token encryption algorithm: %s",oakd->as_rs_alg);
+			}
+			return -1;
+		}
+
+		key->auth_alg = AUTH_ALG_DEFAULT;
+		if(!strcmp(oakd->auth_alg,"HMAC-SHA-1") || !strcmp(oakd->auth_alg,"HMAC-SHA1")) {
+			key->auth_alg = AUTH_ALG_HMAC_SHA_1;
+		} else if(!strcmp(oakd->auth_alg,"HMAC-SHA-256")) {
+			key->auth_alg = AUTH_ALG_HMAC_SHA_256;
+		} else if(!strcmp(oakd->auth_alg,"HMAC-SHA-256-128")) {
+			key->auth_alg = AUTH_ALG_HMAC_SHA_256_128;
+		} else if(oakd->auth_alg[0]) {
+			if(err_msg) {
+				snprintf(err_msg,err_msg_size,"Wrong oAuth token hash algorithm: %s",oakd->auth_alg);
+			}
+			return -1;
+		}
+	}
+
+	if(!(key->auth_key_size)) {
+		key->auth_key_size = calculate_auth_key_length(key->auth_alg);
+		if(calculate_key(key->ikm_key,key->ikm_key_size,key->auth_key,key->auth_key_size,key->hkdf_hash_func,err_msg,err_msg_size)<0) {
+			return -1;
+		}
+	}
+
+	if(!(key->as_rs_key_size)) {
+		key->as_rs_key_size = calculate_enc_key_length(key->as_rs_alg);
+		if(calculate_key(key->ikm_key,key->ikm_key_size,key->as_rs_key,key->as_rs_key_size,key->hkdf_hash_func,err_msg,err_msg_size)<0) {
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
 ///////////////////////////////////////////////////////////////
