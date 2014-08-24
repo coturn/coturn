@@ -116,7 +116,7 @@ save
 IV. Redis database configuration parameters
 
 TURN Server connects to the Redis and keeps the same connection during the 
-TURN server lifetime. That means that we have to take care about that 
+TURN Server process lifetime. That means that we have to take care about that 
 connection - it must not expire.
 
 You have to take care about Redis connection parameters, the timeout and the 
