@@ -103,11 +103,14 @@ typedef enum _AUTH_ALG AUTH_ALG;
 #define OAUTH_ALG_SIZE (64)
 #define OAUTH_KEY_SIZE (256)
 
+#define OAUTH_DEFAULT_LIFETIME (0)
+#define OAUTH_DEFAULT_TIMESTAMP (turn_time())
+
 struct _oauth_key_data {
 	char kid[OAUTH_KID_SIZE+1];
 	char ikm_key[OAUTH_KEY_SIZE+1];
 	size_t ikm_key_size;
-	u64bits timestamp;
+	turn_time_t timestamp;
 	turn_time_t lifetime;
 	char hkdf_hash_func[OAUTH_HASH_FUNC_SIZE+1];
 	char as_rs_alg[OAUTH_ALG_SIZE+1];
@@ -124,7 +127,7 @@ struct _oauth_key {
 	char kid[OAUTH_KID_SIZE+1];
 	char ikm_key[OAUTH_KEY_SIZE+1];
 	size_t ikm_key_size;
-	u64bits timestamp;
+	turn_time_t timestamp;
 	turn_time_t lifetime;
 	SHATYPE hkdf_hash_func;
 	ENC_ALG as_rs_alg;
