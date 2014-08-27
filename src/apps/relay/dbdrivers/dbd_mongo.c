@@ -234,6 +234,79 @@ static int mongo_get_user_key(u08bits *usname, u08bits *realm, hmackey_t key) {
   bson_destroy(&fields);
   return ret;
 }
+
+static int mongo_get_oauth_key(const u08bits *kid, oauth_key_data_raw *key) {
+
+	mongoc_collection_t * collection = mongo_get_collection("oauth_key");
+
+	if (!collection)
+		return -1;
+
+	bson_t query;
+	bson_init(&query);
+	BSON_APPEND_UTF8(&query, "kid", (const char *)key->kid);
+
+	bson_t fields;
+	bson_init(&fields);
+	BSON_APPEND_INT32(&fields, "lifetime", 1);
+	BSON_APPEND_INT32(&fields, "timestamp", 1);
+	BSON_APPEND_INT32(&fields, "as_rs_alg", 1);
+	BSON_APPEND_INT32(&fields, "as_rs_key", 1);
+	BSON_APPEND_INT32(&fields, "auth_alg", 1);
+	BSON_APPEND_INT32(&fields, "auth_key", 1);
+	BSON_APPEND_INT32(&fields, "hkdf_hash_func", 1);
+	BSON_APPEND_INT32(&fields, "ikm_key", 1);
+
+	mongoc_cursor_t * cursor;
+	cursor = mongoc_collection_find(collection, MONGOC_QUERY_NONE, 0, 1, 0,
+			&query, &fields, NULL);
+
+	int ret = -1;
+
+	ns_bzero(key,sizeof(oauth_key_data_raw));
+	STRCPY(key->kid,kid);
+
+	if (!cursor) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+				"Error querying MongoDB collection 'oauth_key'\n");
+	} else {
+		const bson_t * item;
+		uint32_t length;
+		bson_iter_t iter;
+		if (mongoc_cursor_next(cursor, &item)) {
+			if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "as_rs_alg") && BSON_ITER_HOLDS_UTF8(&iter)) {
+				STRCPY(key->as_rs_alg,bson_iter_utf8(&iter, &length));
+			}
+			if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "as_rs_key") && BSON_ITER_HOLDS_UTF8(&iter)) {
+				STRCPY(key->as_rs_key,bson_iter_utf8(&iter, &length));
+			}
+			if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "auth_alg") && BSON_ITER_HOLDS_UTF8(&iter)) {
+				STRCPY(key->auth_alg,bson_iter_utf8(&iter, &length));
+			}
+			if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "auth_key") && BSON_ITER_HOLDS_UTF8(&iter)) {
+				STRCPY(key->auth_key,bson_iter_utf8(&iter, &length));
+			}
+			if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "ikm_key") && BSON_ITER_HOLDS_UTF8(&iter)) {
+				STRCPY(key->ikm_key,bson_iter_utf8(&iter, &length));
+			}
+			if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "hkdf_hash_func") && BSON_ITER_HOLDS_UTF8(&iter)) {
+				STRCPY(key->hkdf_hash_func,bson_iter_utf8(&iter, &length));
+			}
+			if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "timestamp") && BSON_ITER_HOLDS_INT64(&iter)) {
+				key->timestamp = (u64bits)bson_iter_int64(&iter);
+			}
+			if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "lifetime") && BSON_ITER_HOLDS_INT32(&iter)) {
+				key->lifetime = (u32bits)bson_iter_int32(&iter);
+			}
+			ret = 0;
+		}
+		mongoc_cursor_destroy(cursor);
+	}
+	mongoc_collection_destroy(collection);
+	bson_destroy(&query);
+	bson_destroy(&fields);
+	return ret;
+}
   
 static int mongo_get_user_pwd(u08bits *usname, st_password_t pwd) {
   mongoc_collection_t * collection = mongo_get_collection("turnusers_st"); 
@@ -302,7 +375,43 @@ static int mongo_set_user_key(u08bits *usname, u08bits *realm, const char *key) 
   int ret = -1;
   
   if (!mongoc_collection_update(collection, MONGOC_UPDATE_UPSERT, &query, &doc, NULL, NULL)) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error inserting/updating secret key information\n");
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error inserting/updating user key information\n");
+  } else {
+    ret = 0;
+  }
+  mongoc_collection_destroy(collection);
+  bson_destroy(&doc);
+  bson_destroy(&query);
+  return ret;
+}
+
+static int mongo_set_oauth_key(oauth_key_data_raw *key) {
+
+  mongoc_collection_t * collection = mongo_get_collection("oauth_key");
+
+  if(!collection)
+    return -1;
+
+  bson_t query;
+  bson_init(&query);
+  BSON_APPEND_UTF8(&query, "kid", (const char *)key->kid);
+
+  bson_t doc;
+  bson_init(&doc);
+  BSON_APPEND_UTF8(&query, "kid", (const char *)key->kid);
+  BSON_APPEND_UTF8(&doc, "as_rs_alg", (const char *)key->as_rs_alg);
+  BSON_APPEND_UTF8(&doc, "as_rs_key", (const char *)key->as_rs_key);
+  BSON_APPEND_UTF8(&doc, "auth_alg", (const char *)key->auth_alg);
+  BSON_APPEND_UTF8(&doc, "auth_key", (const char *)key->auth_key);
+  BSON_APPEND_UTF8(&doc, "hkdf_hash_func", (const char *)key->hkdf_hash_func);
+  BSON_APPEND_UTF8(&doc, "ikm_key", (const char *)key->ikm_key);
+  BSON_APPEND_INT64(&doc, "timestamp", (int64_t)key->timestamp);
+  BSON_APPEND_INT32(&doc, "lifetime", (int32_t)key->lifetime);
+
+  int ret = -1;
+
+  if (!mongoc_collection_update(collection, MONGOC_UPDATE_UPSERT, &query, &doc, NULL, NULL)) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error inserting/updating oauth key information\n");
   } else {
     ret = 0;
   }
@@ -364,6 +473,29 @@ static int mongo_del_user(u08bits *usname, int is_st, u08bits *realm) {
   bson_destroy(&query);
   return ret;
 }
+
+static int mongo_del_oauth_key(const u08bits *kid) {
+
+  mongoc_collection_t * collection = mongo_get_collection("oauth_key");
+
+  if(!collection)
+    return -1;
+
+  bson_t query;
+  bson_init(&query);
+  BSON_APPEND_UTF8(&query, "kid", (const char *)kid);
+
+  int ret = -1;
+
+  if (!mongoc_collection_delete(collection, MONGOC_DELETE_SINGLE_REMOVE, &query, NULL, NULL)) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error deleting oauth key information\n");
+  } else {
+    ret = 0;
+  }
+  mongoc_collection_destroy(collection);
+  bson_destroy(&query);
+  return ret;
+}
   
 static int mongo_list_users(int is_st, u08bits *realm) {
   const char * collection_name = is_st ? "turnusers_st" : "turnusers_lt";
@@ -416,6 +548,86 @@ static int mongo_list_users(int is_st, u08bits *realm) {
     			}
     		}
     	}
+    }
+    mongoc_cursor_destroy(cursor);
+    ret = 0;
+  }
+  mongoc_collection_destroy(collection);
+  bson_destroy(&query);
+  bson_destroy(&fields);
+  return ret;
+}
+
+static int mongo_list_oauth_keys(void) {
+
+  const char * collection_name = "oauth_key";
+  mongoc_collection_t * collection = mongo_get_collection(collection_name);
+
+  if(!collection)
+    return -1;
+
+  bson_t query, child;
+  bson_init(&query);
+  bson_append_document_begin(&query, "$orderby", -1, &child);
+  bson_append_int32(&child, "kid", -1, 1);
+  bson_append_document_end(&query, &child);
+
+  bson_t fields;
+  bson_init(&fields);
+  BSON_APPEND_INT32(&fields, "kid", 1);
+  BSON_APPEND_INT32(&fields, "lifetime", 1);
+  BSON_APPEND_INT32(&fields, "timestamp", 1);
+  BSON_APPEND_INT32(&fields, "as_rs_alg", 1);
+  BSON_APPEND_INT32(&fields, "as_rs_key", 1);
+  BSON_APPEND_INT32(&fields, "auth_alg", 1);
+  BSON_APPEND_INT32(&fields, "auth_key", 1);
+  BSON_APPEND_INT32(&fields, "hkdf_hash_func", 1);
+  BSON_APPEND_INT32(&fields, "ikm_key", 1);
+
+  mongoc_cursor_t * cursor;
+  cursor = mongoc_collection_find(collection, MONGOC_QUERY_NONE, 0, 0, 0, &query, &fields, NULL);
+
+  int ret = -1;
+
+  if (!cursor) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error querying MongoDB collection '%s'\n", collection_name);
+  } else {
+    const bson_t * item;
+	oauth_key_data_raw key_;
+	oauth_key_data_raw *key=&key_;
+    uint32_t length;
+    bson_iter_t iter;
+    while (mongoc_cursor_next(cursor, &item)) {
+    	if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "kid") && BSON_ITER_HOLDS_UTF8(&iter)) {
+    		STRCPY(key->kid,bson_iter_utf8(&iter, &length));
+    	}
+    	if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "as_rs_alg") && BSON_ITER_HOLDS_UTF8(&iter)) {
+    	    STRCPY(key->as_rs_alg,bson_iter_utf8(&iter, &length));
+    	}
+    	if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "as_rs_key") && BSON_ITER_HOLDS_UTF8(&iter)) {
+    		STRCPY(key->as_rs_key,bson_iter_utf8(&iter, &length));
+    	}
+    	if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "auth_alg") && BSON_ITER_HOLDS_UTF8(&iter)) {
+    		STRCPY(key->auth_alg,bson_iter_utf8(&iter, &length));
+    	}
+    	if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "auth_key") && BSON_ITER_HOLDS_UTF8(&iter)) {
+    		STRCPY(key->auth_key,bson_iter_utf8(&iter, &length));
+    	}
+    	if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "ikm_key") && BSON_ITER_HOLDS_UTF8(&iter)) {
+    		STRCPY(key->ikm_key,bson_iter_utf8(&iter, &length));
+    	}
+    	if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "hkdf_hash_func") && BSON_ITER_HOLDS_UTF8(&iter)) {
+    		STRCPY(key->hkdf_hash_func,bson_iter_utf8(&iter, &length));
+    	}
+    	if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "timestamp") && BSON_ITER_HOLDS_INT64(&iter)) {
+    		key->timestamp = (u64bits)bson_iter_int64(&iter);
+    	}
+    	if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "lifetime") && BSON_ITER_HOLDS_INT32(&iter)) {
+    		key->lifetime = (u32bits)bson_iter_int32(&iter);
+    	}
+    	printf("  kid=%s, ikm_key=%s, timestamp=%llu, lifetime=%lu, hkdf_hash_func=%s, as_rs_alg=%s, as_rs_key=%s, auth_alg=%s, auth_key=%s\n",
+    		key->kid, key->ikm_key, (unsigned long long)key->timestamp, (unsigned long)key->lifetime, key->hkdf_hash_func,
+    		key->as_rs_alg, key->as_rs_key, key->auth_alg, key->auth_key);
     }
     mongoc_cursor_destroy(cursor);
     ret = 0;
@@ -921,7 +1133,11 @@ static turn_dbdriver_t driver = {
   &mongo_list_realm_options,
   &mongo_auth_ping,
   &mongo_get_ip_list,
-  &mongo_reread_realms
+  &mongo_reread_realms,
+  &mongo_set_oauth_key,
+  &mongo_get_oauth_key,
+  &mongo_del_oauth_key,
+  &mongo_list_oauth_keys
 };
 
 turn_dbdriver_t * get_mongo_dbdriver(void) {
