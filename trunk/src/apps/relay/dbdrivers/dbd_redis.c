@@ -492,6 +492,53 @@ static int redis_get_user_key(u08bits *usname, u08bits *realm, hmackey_t key) {
 	}
   return ret;
 }
+
+static int redis_get_oauth_key(const u08bits *kid, oauth_key_data_raw *key) {
+  int ret = 1;
+  redisContext * rc = get_redis_connection();
+  if(rc) {
+	char s[TURN_LONG_STRING_SIZE];
+	ns_bzero(key,sizeof(oauth_key_data_raw));
+	STRCPY(key->kid,kid);
+	snprintf(s,sizeof(s),"hgetall turn/oauth/kid/%s", (const char*)kid);
+	redisReply *reply = (redisReply *)redisCommand(rc, s);
+	if(reply) {
+		if (reply->type == REDIS_REPLY_ERROR)
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", reply->str);
+		else if (reply->type != REDIS_REPLY_ARRAY) {
+			if (reply->type != REDIS_REPLY_NIL)
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", reply->type);
+		} else {
+			size_t i;
+			for (i = 0; i < (reply->elements)/2; ++i) {
+				char *kw = reply->element[i]->str;
+				if(kw) {
+					if(!strcmp(kw,"as_rs_alg")) {
+						STRCPY(key->as_rs_alg,reply->element[i+1]->str);
+					} else if(!strcmp(kw,"as_rs_key")) {
+						STRCPY(key->as_rs_key,reply->element[i+1]->str);
+					} else if(!strcmp(kw,"auth_key")) {
+						STRCPY(key->auth_key,reply->element[i+1]->str);
+					} else if(!strcmp(kw,"auth_alg")) {
+						STRCPY(key->auth_alg,reply->element[i+1]->str);
+					} else if(!strcmp(kw,"ikm_key")) {
+						STRCPY(key->ikm_key,reply->element[i+1]->str);
+					} else if(!strcmp(kw,"hkdf_hash_func")) {
+						STRCPY(key->hkdf_hash_func,reply->element[i+1]->str);
+					} else if(!strcmp(kw,"timestamp")) {
+						key->timestamp = (u64bits)strtoull(reply->element[i+1]->str,NULL,10);
+					} else if(!strcmp(kw,"lifetime")) {
+						key->lifetime = (u32bits)strtoul(reply->element[i+1]->str,NULL,10);
+					}
+				}
+			}
+		}
+		turnFreeRedisReply(reply);
+		ret = 0;
+	}
+  }
+  return ret;
+}
   
 static int redis_get_user_pwd(u08bits *usname, st_password_t pwd) {
   int ret = 1;
@@ -531,16 +578,30 @@ static int redis_set_user_key(u08bits *usname, u08bits *realm, const char *key) 
 	}
   return ret;
 }
+
+static int redis_set_oauth_key(oauth_key_data_raw *key) {
+  int ret = 1;
+  redisContext *rc = get_redis_connection();
+  if(rc) {
+	char statement[TURN_LONG_STRING_SIZE];
+	snprintf(statement,sizeof(statement),"hmset turn/oauth/kid/%s ikm_key '%s' hkdf_hash_func '%s' as_rs_alg '%s' as_rs_key '%s' auth_alg '%s' auth_key '%s' timestamp %llu lifetime %lu",
+			key->kid,key->ikm_key,key->hkdf_hash_func,key->as_rs_alg,key->as_rs_key,key->auth_alg,key->auth_key,(unsigned long long)key->timestamp,(unsigned long)key->lifetime);
+	turnFreeRedisReply(redisCommand(rc, statement));
+	turnFreeRedisReply(redisCommand(rc, "save"));
+    ret = 0;
+  }
+  return ret;
+}
   
 static int redis_set_user_pwd(u08bits *usname, st_password_t pwd) {
   int ret = 1;
 	redisContext *rc = get_redis_connection();
 	if(rc) {
 		char statement[TURN_LONG_STRING_SIZE];
-	  snprintf(statement,sizeof(statement),"set turn/user/%s/password %s",usname,pwd);
-	  turnFreeRedisReply(redisCommand(rc, statement));
+		snprintf(statement,sizeof(statement),"set turn/user/%s/password %s",usname,pwd);
+		turnFreeRedisReply(redisCommand(rc, statement));
 		turnFreeRedisReply(redisCommand(rc, "save"));
-    ret = 0;
+		ret = 0;
 	}
   return ret;
 }
@@ -563,6 +624,19 @@ static int redis_del_user(u08bits *usname, int is_st, u08bits *realm) {
 		turnFreeRedisReply(redisCommand(rc, "save"));
     ret = 0;
 	}
+  return ret;
+}
+
+static int redis_del_oauth_key(const u08bits *kid) {
+  int ret = 1;
+  redisContext *rc = get_redis_connection();
+  if(rc) {
+	char statement[TURN_LONG_STRING_SIZE];
+	snprintf(statement,sizeof(statement),"del turn/oauth/kid/%s",(const char*)kid);
+	turnFreeRedisReply(redisCommand(rc, statement));
+	turnFreeRedisReply(redisCommand(rc, "save"));
+    ret = 0;
+  }
   return ret;
 }
   
@@ -654,6 +728,51 @@ static int redis_list_users(int is_st, u08bits *realm) {
 		clean_secrets_list(&keys);
 		ret = 0;
 	}
+  return ret;
+}
+
+static int redis_list_oauth_keys(void) {
+  int ret = 1;
+  redisContext *rc = get_redis_connection();
+  secrets_list_t keys;
+  size_t isz = 0;
+  init_secrets_list(&keys);
+
+  if(rc) {
+	  redisReply *reply = NULL;
+
+	  reply = (redisReply*)redisCommand(rc, "keys turn/oauth/kid/*");
+	  if(reply) {
+
+		if (reply->type == REDIS_REPLY_ERROR)
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", reply->str);
+		else if (reply->type != REDIS_REPLY_ARRAY) {
+			if (reply->type != REDIS_REPLY_NIL)
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", reply->type);
+		} else {
+			size_t i;
+			for (i = 0; i < reply->elements; ++i) {
+				add_to_secrets_list(&keys,reply->element[i]->str);
+			}
+		}
+		turnFreeRedisReply(reply);
+	}
+  }
+
+  for(isz=0;isz<keys.sz;++isz) {
+	char *s = keys.secrets[isz];
+	oauth_key_data_raw key_;
+	oauth_key_data_raw *key=&key_;
+	if(redis_get_oauth_key((const u08bits*)s,key) == 0) {
+		printf("  kid=%s, ikm_key=%s, timestamp=%llu, lifetime=%lu, hkdf_hash_func=%s, as_rs_alg=%s, as_rs_key=%s, auth_alg=%s, auth_key=%s\n",
+		    key->kid, key->ikm_key, (unsigned long long)key->timestamp, (unsigned long)key->lifetime, key->hkdf_hash_func,
+		    key->as_rs_alg, key->as_rs_key, key->auth_alg, key->auth_key);
+	}
+  }
+
+  clean_secrets_list(&keys);
+  ret = 0;
+
   return ret;
 }
   
@@ -1134,7 +1253,11 @@ static turn_dbdriver_t driver = {
   &redis_list_realm_options,
   &redis_auth_ping,
   &redis_get_ip_list,
-  &redis_reread_realms
+  &redis_reread_realms,
+  &redis_set_oauth_key,
+  &redis_get_oauth_key,
+  &redis_del_oauth_key,
+  &redis_list_oauth_keys
 };
 
 turn_dbdriver_t * get_redis_dbdriver(void) {

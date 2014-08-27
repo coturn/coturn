@@ -42,6 +42,22 @@ extern "C" {
 
 ////////////////////////////////////////////
 
+struct _oauth_key_data_raw {
+	char kid[OAUTH_KID_SIZE+1];
+	char ikm_key[OAUTH_KEY_SIZE+1];
+	u64bits timestamp;
+	u32bits lifetime;
+	char hkdf_hash_func[OAUTH_HASH_FUNC_SIZE+1];
+	char as_rs_alg[OAUTH_ALG_SIZE+1];
+	char as_rs_key[OAUTH_KEY_SIZE+1];
+	char auth_alg[OAUTH_ALG_SIZE+1];
+	char auth_key[OAUTH_KEY_SIZE+1];
+};
+
+typedef struct _oauth_key_data_raw oauth_key_data_raw;
+
+////////////////////////////////////////////
+
 typedef struct _turn_dbdriver_t {
   int (*get_auth_secrets)(secrets_list_t *sl, u08bits *realm);
   int (*get_user_key)(u08bits *usname, u08bits *realm, hmackey_t key);
@@ -61,6 +77,10 @@ typedef struct _turn_dbdriver_t {
   void (*auth_ping)(void * rch);
   int (*get_ip_list)(const char *kind, ip_range_list_t * list);
   void (*reread_realms)(secrets_list_t * realms_list);
+  int (*set_oauth_key)(oauth_key_data_raw *key);
+  int (*get_oauth_key)(const u08bits *kid, oauth_key_data_raw *key);
+  int (*del_oauth_key)(const u08bits *kid);
+  int (*list_oauth_keys)(void);
 } turn_dbdriver_t;
 
 /////////// USER DB CHECK //////////////////
@@ -70,20 +90,6 @@ persistent_users_db_t * get_persistent_users_db(void);
 turn_dbdriver_t * get_dbdriver(void);
 
 ////////////// OAUTH UTILS ////////////////
-
-struct _oauth_key_data_raw {
-	char kid[OAUTH_KID_SIZE+1];
-	char ikm_key[OAUTH_KEY_SIZE+1];
-	u64bits timestamp;
-	u32bits lifetime;
-	char hkdf_hash_func[OAUTH_HASH_FUNC_SIZE+1];
-	char as_rs_alg[OAUTH_ALG_SIZE+1];
-	char as_rs_key[OAUTH_KEY_SIZE+1];
-	char auth_alg[OAUTH_ALG_SIZE+1];
-	char auth_key[OAUTH_KEY_SIZE+1];
-};
-
-typedef struct _oauth_key_data_raw oauth_key_data_raw;
 
 void convert_oauth_key_data_raw(const oauth_key_data_raw *raw, oauth_key_data *oakd);
 
