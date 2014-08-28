@@ -1686,6 +1686,9 @@ static void* run_auth_server_thread(void *arg)
 		read_userdb_file(0);
 		update_white_and_black_lists();
 		auth_ping(authserver->rch);
+#if defined(DB_TEST)
+		run_db_test();
+#endif
 	}
 
 	return arg;

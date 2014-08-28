@@ -566,10 +566,14 @@ static int mongo_list_oauth_keys(void) {
   if(!collection)
     return -1;
 
-  bson_t query, child;
+  bson_t query;
   bson_init(&query);
+
+  bson_t child;
   bson_append_document_begin(&query, "$orderby", -1, &child);
   bson_append_int32(&child, "kid", -1, 1);
+  bson_append_document_end(&query, &child);
+  bson_append_document_begin(&query, "$query", -1, &child);
   bson_append_document_end(&query, &child);
 
   bson_t fields;
@@ -598,6 +602,8 @@ static int mongo_list_oauth_keys(void) {
     uint32_t length;
     bson_iter_t iter;
     while (mongoc_cursor_next(cursor, &item)) {
+
+    	ns_bzero(key,sizeof(oauth_key_data_raw));
     	if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "kid") && BSON_ITER_HOLDS_UTF8(&iter)) {
     		STRCPY(key->kid,bson_iter_utf8(&iter, &length));
     	}

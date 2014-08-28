@@ -195,6 +195,10 @@ void release_allocation_quota(u08bits *username, u08bits *realm);
 
 /////////// Handle user DB /////////////////
 
+#if defined(DB_TEST)
+	void run_db_test(void);
+#endif
+
 void read_userdb_file(int to_print);
 void auth_ping(redis_context_handle rch);
 void reread_realms(void);
