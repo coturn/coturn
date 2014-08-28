@@ -244,7 +244,7 @@ static int mongo_get_oauth_key(const u08bits *kid, oauth_key_data_raw *key) {
 
 	bson_t query;
 	bson_init(&query);
-	BSON_APPEND_UTF8(&query, "kid", (const char *)key->kid);
+	BSON_APPEND_UTF8(&query, "kid", (const char *)kid);
 
 	bson_t fields;
 	bson_init(&fields);
@@ -398,7 +398,7 @@ static int mongo_set_oauth_key(oauth_key_data_raw *key) {
 
   bson_t doc;
   bson_init(&doc);
-  BSON_APPEND_UTF8(&query, "kid", (const char *)key->kid);
+  BSON_APPEND_UTF8(&doc, "kid", (const char *)key->kid);
   BSON_APPEND_UTF8(&doc, "as_rs_alg", (const char *)key->as_rs_alg);
   BSON_APPEND_UTF8(&doc, "as_rs_key", (const char *)key->as_rs_key);
   BSON_APPEND_UTF8(&doc, "auth_alg", (const char *)key->auth_alg);

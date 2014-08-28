@@ -1109,7 +1109,43 @@ void run_db_test(void)
 {
 	turn_dbdriver_t * dbd = get_dbdriver();
 	if (dbd) {
+
+		printf("DB TEST 1:\n");
 		dbd->list_oauth_keys();
+
+		printf("DB TEST 2:\n");
+		oauth_key_data_raw key_;
+		oauth_key_data_raw *key=&key_;
+		dbd->get_oauth_key((const u08bits*)"north",key);
+		printf("  kid=%s, ikm_key=%s, timestamp=%llu, lifetime=%lu, hkdf_hash_func=%s, as_rs_alg=%s, as_rs_key=%s, auth_alg=%s, auth_key=%s\n",
+		    		key->kid, key->ikm_key, (unsigned long long)key->timestamp, (unsigned long)key->lifetime, key->hkdf_hash_func,
+		    		key->as_rs_alg, key->as_rs_key, key->auth_alg, key->auth_key);
+
+		printf("DB TEST 3:\n");
+
+		STRCPY(key->as_rs_alg,"as_rs_alg");
+		STRCPY(key->as_rs_key,"as_rs_key");
+		STRCPY(key->auth_alg,"auth_alg");
+		STRCPY(key->auth_key,"auth_key");
+		STRCPY(key->hkdf_hash_func,"hkdf");
+		STRCPY(key->ikm_key,"ikm_key");
+		STRCPY(key->kid,"kid");
+		key->timestamp = 123;
+		key->lifetime = 456;
+		dbd->del_oauth_key((const u08bits*)"kid");
+		dbd->set_oauth_key(key);
+		dbd->list_oauth_keys();
+
+		printf("DB TEST 4:\n");
+		dbd->get_oauth_key((const u08bits*)"kid",key);
+		printf("  kid=%s, ikm_key=%s, timestamp=%llu, lifetime=%lu, hkdf_hash_func=%s, as_rs_alg=%s, as_rs_key=%s, auth_alg=%s, auth_key=%s\n",
+		    		key->kid, key->ikm_key, (unsigned long long)key->timestamp, (unsigned long)key->lifetime, key->hkdf_hash_func,
+		    		key->as_rs_alg, key->as_rs_key, key->auth_alg, key->auth_key);
+
+		printf("DB TEST 5:\n");
+		dbd->del_oauth_key((const u08bits*)"kid");
+		dbd->list_oauth_keys();
+		printf("DB TEST END\n");
 	}
 }
 
