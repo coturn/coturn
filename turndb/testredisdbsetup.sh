@@ -39,6 +39,7 @@ set turn/denied-peer-ip/234567 "123::45"
 set turn/allowed-peer-ip/345678 "172.17.13.200"
 
 hmset turn/oauth/kid/north ikm_key Y2FybGVvbg== hkdf_hash_func 'SHA-256' as_rs_alg 'AES-256-CBC' auth_alg 'HMAC-SHA-256-128'
+hmset turn/oauth/kid/oldempire ikm_key YXVsY3Vz hkdf_hash_func 'SHA-256' as_rs_alg 'AEAD-AES-256-GCM'
 
 save
 

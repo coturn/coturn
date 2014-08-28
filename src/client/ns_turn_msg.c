@@ -1678,9 +1678,9 @@ static size_t calculate_enc_key_length(ENC_ALG a)
 {
 	switch(a) {
 	case AES_128_CBC:
+	case AEAD_AES_128_CCM:
+	case AEAD_AES_128_GCM:
 		return 16;
-	case AES_256_CBC:
-		return 32;
 	default:
 		;
 	};
@@ -1821,6 +1821,14 @@ int convert_oauth_key_data(oauth_key_data *oakd, oauth_key *key, char *err_msg, 
 			key->as_rs_alg = AES_128_CBC;
 		} else if(!strcmp(oakd->as_rs_alg,"AES-256-CBC")) {
 			key->as_rs_alg = AES_256_CBC;
+		} else if(!strcmp(oakd->as_rs_alg,"AEAD-AES-128-GCM")) {
+			key->as_rs_alg = AEAD_AES_128_GCM;
+		} else if(!strcmp(oakd->as_rs_alg,"AEAD-AES-256-GCM")) {
+			key->as_rs_alg = AEAD_AES_256_GCM;
+		} else if(!strcmp(oakd->as_rs_alg,"AEAD-AES-128-CCM")) {
+			key->as_rs_alg = AEAD_AES_128_CCM;
+		} else if(!strcmp(oakd->as_rs_alg,"AEAD_AES_256_CCM")) {
+			key->as_rs_alg = AEAD_AES_256_CCM;
 		} else if(oakd->as_rs_alg[0]) {
 			if(err_msg) {
 				snprintf(err_msg,err_msg_size,"Wrong oAuth token encryption algorithm: %s",oakd->as_rs_alg);

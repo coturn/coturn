@@ -56,15 +56,17 @@ and they will be almost immediately "seen" by the turnserver process.
 		are defined explicitly in the database;
 		
 	as_rs_alg - oAuth token encryption algorithm; the valid values are
-		"AES-128-CBC" and "AES-256-CBC", with "AES-256-CBC" as default;
+		"AES-128-CBC" and "AES-256-CBC", , "AEAD-AES-128-GCM",
+		"AEAD-AES-256-GCM",	"AEAD-AES-128-CCM",	"AEAD-AES-256-CCM".
+		The default value is "AES-256-CBC";
 		
 	as_rs_key - (optional) base64-encoded AS-RS key. If not defined, then 
 		calculated with ikm_key and hkdf_hash_func. The as_rs_key length 
 		is defined by as_rs_alg.
 		
-	auth_alg - oAuth token authentication algorithm; the valid values are
-		"HMAC-SHA-256-128", "HMAC-SHA-256" and "HMAC-SHA-1", with 
-		"HMAC-SHA-256-128" as default;
+	auth_alg - (optional) oAuth token authentication algorithm; the valid values are
+		"HMAC-SHA-256-128", "HMAC-SHA-256" and "HMAC-SHA-1".		  
+		The default value is "HMAC-SHA-256-128".
 		
 	auth_key - (optional) base64-encoded AUTH key. If not defined, then 
 		calculated with ikm_key and hkdf_hash_func. The auth_key length 
