@@ -1101,6 +1101,20 @@ void auth_ping(redis_context_handle rch)
 	}
 }
 
+///////////////// TEST /////////////////
+
+#if defined(DB_TEST)
+
+void run_db_test(void)
+{
+	turn_dbdriver_t * dbd = get_dbdriver();
+	if (dbd) {
+		dbd->list_oauth_keys();
+	}
+}
+
+#endif
+
 ///////////////// WHITE/BLACK IP LISTS ///////////////////
 
 #if !defined(TURN_NO_RWLOCK)

@@ -511,24 +511,25 @@ static int redis_get_oauth_key(const u08bits *kid, oauth_key_data_raw *key) {
 		} else {
 			size_t i;
 			for (i = 0; i < (reply->elements)/2; ++i) {
-				char *kw = reply->element[i]->str;
+				char *kw = reply->element[2*i]->str;
+				char *val = reply->element[2*i+1]->str;
 				if(kw) {
 					if(!strcmp(kw,"as_rs_alg")) {
-						STRCPY(key->as_rs_alg,reply->element[i+1]->str);
+						STRCPY(key->as_rs_alg,val);
 					} else if(!strcmp(kw,"as_rs_key")) {
-						STRCPY(key->as_rs_key,reply->element[i+1]->str);
+						STRCPY(key->as_rs_key,val);
 					} else if(!strcmp(kw,"auth_key")) {
-						STRCPY(key->auth_key,reply->element[i+1]->str);
+						STRCPY(key->auth_key,val);
 					} else if(!strcmp(kw,"auth_alg")) {
-						STRCPY(key->auth_alg,reply->element[i+1]->str);
+						STRCPY(key->auth_alg,val);
 					} else if(!strcmp(kw,"ikm_key")) {
-						STRCPY(key->ikm_key,reply->element[i+1]->str);
+						STRCPY(key->ikm_key,val);
 					} else if(!strcmp(kw,"hkdf_hash_func")) {
-						STRCPY(key->hkdf_hash_func,reply->element[i+1]->str);
+						STRCPY(key->hkdf_hash_func,val);
 					} else if(!strcmp(kw,"timestamp")) {
-						key->timestamp = (u64bits)strtoull(reply->element[i+1]->str,NULL,10);
+						key->timestamp = (u64bits)strtoull(val,NULL,10);
 					} else if(!strcmp(kw,"lifetime")) {
-						key->lifetime = (u32bits)strtoul(reply->element[i+1]->str,NULL,10);
+						key->lifetime = (u32bits)strtoul(val,NULL,10);
 					}
 				}
 			}
@@ -739,16 +740,18 @@ static int redis_list_oauth_keys(void) {
   init_secrets_list(&keys);
 
   if(rc) {
+
 	  redisReply *reply = NULL;
 
 	  reply = (redisReply*)redisCommand(rc, "keys turn/oauth/kid/*");
 	  if(reply) {
 
-		if (reply->type == REDIS_REPLY_ERROR)
+		if (reply->type == REDIS_REPLY_ERROR) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", reply->str);
-		else if (reply->type != REDIS_REPLY_ARRAY) {
-			if (reply->type != REDIS_REPLY_NIL)
+		} else if (reply->type != REDIS_REPLY_ARRAY) {
+			if (reply->type != REDIS_REPLY_NIL) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", reply->type);
+			}
 		} else {
 			size_t i;
 			for (i = 0; i < reply->elements; ++i) {
@@ -761,6 +764,7 @@ static int redis_list_oauth_keys(void) {
 
   for(isz=0;isz<keys.sz;++isz) {
 	char *s = keys.secrets[isz];
+	s += strlen("turn/oauth/kid/");
 	oauth_key_data_raw key_;
 	oauth_key_data_raw *key=&key_;
 	if(redis_get_oauth_key((const u08bits*)s,key) == 0) {
