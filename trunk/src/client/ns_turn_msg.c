@@ -1751,10 +1751,7 @@ int convert_oauth_key_data(oauth_key_data *oakd, oauth_key *key, char *err_msg, 
 				return -1;
 			}
 			if(!(oakd->auth_key_size)) {
-				if(err_msg) {
-					snprintf(err_msg,err_msg_size,"AUTH key is not defined");
-				}
-				return -1;
+				//AEAD ?
 			}
 		}
 
@@ -1804,6 +1801,21 @@ int convert_oauth_key_data(oauth_key_data *oakd, oauth_key *key, char *err_msg, 
 			return -1;
 		}
 
+		key->auth_alg = AUTH_ALG_DEFAULT;
+		if(!strcmp(oakd->auth_alg,"HMAC-SHA-1") || !strcmp(oakd->auth_alg,"HMAC-SHA1")) {
+			key->auth_alg = AUTH_ALG_HMAC_SHA_1;
+		} else if(!strcmp(oakd->auth_alg,"HMAC-SHA-256")) {
+			key->auth_alg = AUTH_ALG_HMAC_SHA_256;
+		} else if(!strcmp(oakd->auth_alg,"HMAC-SHA-256-128")) {
+			key->auth_alg = AUTH_ALG_HMAC_SHA_256_128;
+		} else if(oakd->auth_alg[0]) {
+			if(err_msg) {
+				snprintf(err_msg,err_msg_size,"Wrong oAuth token hash algorithm: %s",oakd->auth_alg);
+			}
+			key->auth_alg = AUTH_ALG_ERROR;
+			return -1;
+		}
+
 		key->as_rs_alg = ENC_ALG_DEFAULT;
 		if(!strcmp(oakd->as_rs_alg,"AES-128-CBC")) {
 			key->as_rs_alg = AES_128_CBC;
@@ -1816,32 +1828,22 @@ int convert_oauth_key_data(oauth_key_data *oakd, oauth_key *key, char *err_msg, 
 			return -1;
 		}
 
-		key->auth_alg = AUTH_ALG_DEFAULT;
-		if(!strcmp(oakd->auth_alg,"HMAC-SHA-1") || !strcmp(oakd->auth_alg,"HMAC-SHA1")) {
-			key->auth_alg = AUTH_ALG_HMAC_SHA_1;
-		} else if(!strcmp(oakd->auth_alg,"HMAC-SHA-256")) {
-			key->auth_alg = AUTH_ALG_HMAC_SHA_256;
-		} else if(!strcmp(oakd->auth_alg,"HMAC-SHA-256-128")) {
-			key->auth_alg = AUTH_ALG_HMAC_SHA_256_128;
-		} else if(oakd->auth_alg[0]) {
-			if(err_msg) {
-				snprintf(err_msg,err_msg_size,"Wrong oAuth token hash algorithm: %s",oakd->auth_alg);
+		if(key->auth_alg == AUTH_ALG_UNDEFINED) {
+			//AEAD
+			key->auth_key_size = 0;
+			key->auth_key[0] = 0;
+		} else if(!(key->auth_key_size)) {
+			key->auth_key_size = calculate_auth_key_length(key->auth_alg);
+			if(calculate_key(key->ikm_key,key->ikm_key_size,key->auth_key,key->auth_key_size,key->hkdf_hash_func,err_msg,err_msg_size)<0) {
+				return -1;
 			}
-			return -1;
 		}
-	}
 
-	if(!(key->auth_key_size)) {
-		key->auth_key_size = calculate_auth_key_length(key->auth_alg);
-		if(calculate_key(key->ikm_key,key->ikm_key_size,key->auth_key,key->auth_key_size,key->hkdf_hash_func,err_msg,err_msg_size)<0) {
-			return -1;
-		}
-	}
-
-	if(!(key->as_rs_key_size)) {
-		key->as_rs_key_size = calculate_enc_key_length(key->as_rs_alg);
-		if(calculate_key(key->ikm_key,key->ikm_key_size,key->as_rs_key,key->as_rs_key_size,key->hkdf_hash_func,err_msg,err_msg_size)<0) {
-			return -1;
+		if(!(key->as_rs_key_size)) {
+			key->as_rs_key_size = calculate_enc_key_length(key->as_rs_alg);
+			if(calculate_key(key->ikm_key,key->ikm_key_size,key->as_rs_key,key->as_rs_key_size,key->hkdf_hash_func,err_msg,err_msg_size)<0) {
+				return -1;
+			}
 		}
 	}
 
