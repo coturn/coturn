@@ -107,7 +107,7 @@ void convert_oauth_key_data_raw(const oauth_key_data_raw *raw, oauth_key_data *o
 
 		if(raw->ikm_key[0]) {
 			size_t ikm_key_size = 0;
-			char *ikm_key = base64_encode((const unsigned char *)(raw->ikm_key),strlen(raw->ikm_key),&ikm_key_size);
+			char *ikm_key = (char*)base64_decode(raw->ikm_key,strlen(raw->ikm_key),&ikm_key_size);
 			if(ikm_key) {
 				ns_bcopy(ikm_key,oakd->ikm_key,ikm_key_size);
 				oakd->ikm_key_size = ikm_key_size;
@@ -117,7 +117,7 @@ void convert_oauth_key_data_raw(const oauth_key_data_raw *raw, oauth_key_data *o
 
 		if(raw->as_rs_key[0]) {
 			size_t as_rs_key_size = 0;
-			char *as_rs_key = base64_encode((const unsigned char *)(raw->as_rs_key),strlen(raw->as_rs_key),&as_rs_key_size);
+			char *as_rs_key = (char*)base64_decode(raw->as_rs_key,strlen(raw->as_rs_key),&as_rs_key_size);
 			if(as_rs_key) {
 				ns_bcopy(as_rs_key,oakd->as_rs_key,as_rs_key_size);
 				oakd->as_rs_key_size = as_rs_key_size;
@@ -127,7 +127,7 @@ void convert_oauth_key_data_raw(const oauth_key_data_raw *raw, oauth_key_data *o
 
 		if(raw->auth_key[0]) {
 			size_t auth_key_size = 0;
-			char *auth_key = base64_encode((const unsigned char *)(raw->auth_key),strlen(raw->auth_key),&auth_key_size);
+			char *auth_key = (char*)base64_decode(raw->auth_key,strlen(raw->auth_key),&auth_key_size);
 			if(auth_key) {
 				ns_bcopy(auth_key,oakd->auth_key,auth_key_size);
 				oakd->auth_key_size = auth_key_size;

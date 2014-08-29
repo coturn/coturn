@@ -1145,6 +1145,25 @@ void run_db_test(void)
 		printf("DB TEST 5:\n");
 		dbd->del_oauth_key((const u08bits*)"kid");
 		dbd->list_oauth_keys();
+
+		printf("DB TEST 6:\n");
+
+		dbd->get_oauth_key((const u08bits*)"north",key);
+
+		oauth_key_data oakd;
+		convert_oauth_key_data_raw(key, &oakd);
+		printf("  kid=%s, ikm_key=%s, timestamp=%llu, lifetime=%lu, hkdf_hash_func=%s, as_rs_alg=%s, as_rs_key_size=%d, auth_alg=%s, auth_key_size=%d\n",
+				    		oakd.kid, oakd.ikm_key, (unsigned long long)oakd.timestamp, (unsigned long)oakd.lifetime, oakd.hkdf_hash_func,
+				    		oakd.as_rs_alg, (int)oakd.as_rs_key_size, oakd.auth_alg, (int)oakd.auth_key_size);
+
+		oauth_key oak;
+		char err_msg[1025];
+		err_msg[0]=0;
+		if(convert_oauth_key_data(&oakd,&oak,err_msg,sizeof(err_msg)-1)<0) {
+			printf("  ERROR: %s\n",err_msg);
+		} else {
+			printf("  OK!\n");
+		}
 		printf("DB TEST END\n");
 	}
 }
