@@ -1,5 +1,7 @@
 08/22/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.1.2.2 'Vitari':
+	- redis user key operation fixed.
+	- redis, mysql and psql db operations fixed.
 	- SHA-256 memory leak fixed.
 	- Mobility ticket retransmission fixed.
 	

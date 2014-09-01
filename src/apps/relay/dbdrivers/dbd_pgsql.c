@@ -86,7 +86,7 @@ static PGconn *get_pqdb_connection(void) {
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 static int pgsql_get_auth_secrets(secrets_list_t *sl, u08bits *realm) {
-  int ret = 1;
+  int ret = -1;
 	PGconn * pqc = get_pqdb_connection();
 	if(pqc) {
 		char statement[TURN_LONG_STRING_SIZE];
@@ -114,7 +114,7 @@ static int pgsql_get_auth_secrets(secrets_list_t *sl, u08bits *realm) {
 }
   
 static int pgsql_get_user_key(u08bits *usname, u08bits *realm, hmackey_t key) {
-  int ret = 1;
+  int ret = -1;
 	PGconn * pqc = get_pqdb_connection();
 	if(pqc) {
 		char statement[TURN_LONG_STRING_SIZE];
@@ -148,7 +148,7 @@ static int pgsql_get_user_key(u08bits *usname, u08bits *realm, hmackey_t key) {
 }
   
 static int pgsql_get_user_pwd(u08bits *usname, st_password_t pwd) {
-  int ret = 1;
+  int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
 	snprintf(statement,sizeof(statement),"select password from turnusers_st where name='%s'",usname);
 
@@ -177,7 +177,7 @@ static int pgsql_get_user_pwd(u08bits *usname, st_password_t pwd) {
 
 static int pgsql_get_oauth_key(const u08bits *kid, oauth_key_data_raw *key) {
 
-	int ret = 1;
+	int ret = -1;
 
 	char statement[TURN_LONG_STRING_SIZE];
 	snprintf(statement,sizeof(statement),"select ikm_key,timestamp,lifetime,hkdf_hash_func,as_rs_alg,as_rs_key,auth_alg,auth_key from oauth_key where kid='%s'",(const char*)kid);
@@ -214,7 +214,7 @@ static int pgsql_list_oauth_keys(void) {
 	oauth_key_data_raw key_;
 	oauth_key_data_raw *key=&key_;
 
-	int ret = 1;
+	int ret = -1;
 
 	char statement[TURN_LONG_STRING_SIZE];
 	snprintf(statement,sizeof(statement),"select ikm_key,timestamp,lifetime,hkdf_hash_func,as_rs_alg,as_rs_key,auth_alg,auth_key,kid from oauth_key order by kid");
@@ -256,7 +256,7 @@ static int pgsql_list_oauth_keys(void) {
 }
   
 static int pgsql_set_user_key(u08bits *usname, u08bits *realm, const char *key) {
-  int ret = 1;
+  int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
 	PGconn *pqc = get_pqdb_connection();
 	if(pqc) {
@@ -284,7 +284,7 @@ static int pgsql_set_user_key(u08bits *usname, u08bits *realm, const char *key) 
 
 static int pgsql_set_oauth_key(oauth_key_data_raw *key) {
 
-  int ret = 1;
+  int ret = -1;
   char statement[TURN_LONG_STRING_SIZE];
   PGconn *pqc = get_pqdb_connection();
   if(pqc) {
@@ -314,7 +314,7 @@ static int pgsql_set_oauth_key(oauth_key_data_raw *key) {
 }
 
 static int pgsql_set_user_pwd(u08bits *usname, st_password_t pwd) {
-  int ret = 1;
+  int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
 	PGconn *pqc = get_pqdb_connection();
 	if(pqc) {
@@ -340,7 +340,7 @@ static int pgsql_set_user_pwd(u08bits *usname, st_password_t pwd) {
 }
   
 static int pgsql_del_user(u08bits *usname, int is_st, u08bits *realm) {
-  int ret = 1;
+  int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
 	PGconn *pqc = get_pqdb_connection();
 	if(pqc) {
@@ -360,7 +360,7 @@ static int pgsql_del_user(u08bits *usname, int is_st, u08bits *realm) {
 
 static int pgsql_del_oauth_key(const u08bits *kid) {
 
-  int ret = 1;
+  int ret = -1;
   char statement[TURN_LONG_STRING_SIZE];
   PGconn *pqc = get_pqdb_connection();
   if(pqc) {
@@ -380,7 +380,7 @@ static int pgsql_del_oauth_key(const u08bits *kid) {
 }
   
 static int pgsql_list_users(int is_st, u08bits *realm) {
-  int ret = 1;
+  int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
 	PGconn *pqc = get_pqdb_connection();
 	if(pqc) {
@@ -417,7 +417,7 @@ static int pgsql_list_users(int is_st, u08bits *realm) {
 }
   
 static int pgsql_show_secret(u08bits *realm) {
-  int ret = 1;
+  int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
 	snprintf(statement,sizeof(statement)-1,"select value from turn_secret where realm='%s'",realm);
 
@@ -446,7 +446,7 @@ static int pgsql_show_secret(u08bits *realm) {
 }
   
 static int pgsql_del_secret(u08bits *secret, u08bits *realm) {
-  int ret = 1;
+  int ret = -1;
 	donot_print_connection_success=1;
 	char statement[TURN_LONG_STRING_SIZE];
 	PGconn *pqc = get_pqdb_connection();
@@ -466,7 +466,7 @@ static int pgsql_del_secret(u08bits *secret, u08bits *realm) {
 }
   
 static int pgsql_set_secret(u08bits *secret, u08bits *realm) {
-  int ret = 1;
+  int ret = -1;
 	donot_print_connection_success = 1;
   char statement[TURN_LONG_STRING_SIZE];
 	PGconn *pqc = get_pqdb_connection();
@@ -490,7 +490,7 @@ static int pgsql_set_secret(u08bits *secret, u08bits *realm) {
 }
   
 static int pgsql_add_origin(u08bits *origin, u08bits *realm) {
-  int ret = 1;
+  int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
 	PGconn *pqc = get_pqdb_connection();
 	if(pqc) {
@@ -509,7 +509,7 @@ static int pgsql_add_origin(u08bits *origin, u08bits *realm) {
 }
   
 static int pgsql_del_origin(u08bits *origin) {
-  int ret = 1;
+  int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
 	PGconn *pqc = get_pqdb_connection();
 	if(pqc) {
@@ -528,7 +528,7 @@ static int pgsql_del_origin(u08bits *origin) {
 }
   
 static int pgsql_list_origins(u08bits *realm) {
-  int ret = 1;
+  int ret = -1;
 	donot_print_connection_success = 1;
 	char statement[TURN_LONG_STRING_SIZE];
 	PGconn *pqc = get_pqdb_connection();
@@ -562,7 +562,7 @@ static int pgsql_list_origins(u08bits *realm) {
 }
   
 static int pgsql_set_realm_option_one(u08bits *realm, unsigned long value, const char* opt) {
-  int ret = 1;
+  int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
 	PGconn *pqc = get_pqdb_connection();
 	if(pqc) {
@@ -590,7 +590,7 @@ static int pgsql_set_realm_option_one(u08bits *realm, unsigned long value, const
 }
   
 static int pgsql_list_realm_options(u08bits *realm) {
-  int ret = 1;
+  int ret = -1;
 	donot_print_connection_success = 1;
 	char statement[TURN_LONG_STRING_SIZE];
 	PGconn *pqc = get_pqdb_connection();
@@ -646,7 +646,7 @@ static void pgsql_auth_ping(void * rch) {
 }
   
 static int pgsql_get_ip_list(const char *kind, ip_range_list_t * list) {
-  int ret = 1;
+  int ret = -1;
 	PGconn * pqc = get_pqdb_connection();
 	if(pqc) {
 		char statement[TURN_LONG_STRING_SIZE];
