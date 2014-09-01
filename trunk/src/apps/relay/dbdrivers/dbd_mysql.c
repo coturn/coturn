@@ -335,7 +335,9 @@ static int mysql_get_user_key(u08bits *usname, u08bits *realm, hmackey_t key) {
 }
   
 static int mysql_get_user_pwd(u08bits *usname, st_password_t pwd) {
-  int ret = 1;
+
+  int ret = -1;
+
 	char statement[TURN_LONG_STRING_SIZE];
 	snprintf(statement,sizeof(statement),"select password from turnusers_st where name='%s'",usname);
 
@@ -375,7 +377,7 @@ static int mysql_get_user_pwd(u08bits *usname, st_password_t pwd) {
 
 static int mysql_get_oauth_key(const u08bits *kid, oauth_key_data_raw *key) {
 
-	int ret = 1;
+	int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
 	snprintf(statement,sizeof(statement),"select ikm_key,timestamp,lifetime,hkdf_hash_func,as_rs_alg,as_rs_key,auth_alg,auth_key from oauth_key where kid='%s'",(const char*)kid);
 
@@ -440,7 +442,7 @@ static int mysql_list_oauth_keys(void) {
 
 	oauth_key_data_raw key_;
 	oauth_key_data_raw *key=&key_;
-	int ret = 1;
+	int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
 	snprintf(statement,sizeof(statement),"select ikm_key,timestamp,lifetime,hkdf_hash_func,as_rs_alg,as_rs_key,auth_alg,auth_key,kid from oauth_key order by kid");
 
@@ -508,7 +510,7 @@ static int mysql_list_oauth_keys(void) {
 }
   
 static int mysql_set_user_key(u08bits *usname, u08bits *realm, const char *key) {
-  int ret = 1;
+  int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
 	MYSQL * myc = get_mydb_connection();
 	if(myc) {
@@ -526,7 +528,7 @@ static int mysql_set_user_key(u08bits *usname, u08bits *realm, const char *key) 
 }
 
 static int mysql_set_oauth_key(oauth_key_data_raw *key) {
-  int ret = 1;
+  int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
 	MYSQL * myc = get_mydb_connection();
 	if(myc) {
@@ -547,7 +549,7 @@ static int mysql_set_oauth_key(oauth_key_data_raw *key) {
 }
   
 static int mysql_set_user_pwd(u08bits *usname, st_password_t pwd) {
-  int ret = 1;
+  int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
 	MYSQL * myc = get_mydb_connection();
 	if(myc) {
@@ -567,7 +569,7 @@ static int mysql_set_user_pwd(u08bits *usname, st_password_t pwd) {
 }
   
 static int mysql_del_user(u08bits *usname, int is_st, u08bits *realm) {
-  int ret = 1;
+  int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
 	MYSQL * myc = get_mydb_connection();
 	if(myc) {
@@ -587,7 +589,7 @@ static int mysql_del_user(u08bits *usname, int is_st, u08bits *realm) {
 }
 
 static int mysql_del_oauth_key(const u08bits *kid) {
-	int ret = 1;
+	int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
 	MYSQL * myc = get_mydb_connection();
 	if(myc) {
@@ -603,7 +605,7 @@ static int mysql_del_oauth_key(const u08bits *kid) {
 }
   
 static int mysql_list_users(int is_st, u08bits *realm) {
-  int ret = 1;
+  int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
 	MYSQL * myc = get_mydb_connection();
 	if(myc) {
@@ -649,7 +651,7 @@ static int mysql_list_users(int is_st, u08bits *realm) {
 }
   
 static int mysql_show_secret(u08bits *realm) {
-  int ret = 1;
+  int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
 	snprintf(statement,sizeof(statement)-1,"select value from turn_secret where realm='%s'",realm);
 
@@ -688,7 +690,7 @@ static int mysql_show_secret(u08bits *realm) {
 }
   
 static int mysql_del_secret(u08bits *secret, u08bits *realm) {
-  int ret = 1;
+  int ret = -1;
 	donot_print_connection_success=1;
 	char statement[TURN_LONG_STRING_SIZE];
 	MYSQL * myc = get_mydb_connection();
@@ -704,7 +706,7 @@ static int mysql_del_secret(u08bits *secret, u08bits *realm) {
 }
   
 static int mysql_set_secret(u08bits *secret, u08bits *realm) {
-  int ret = 1;
+  int ret = -1;
 	donot_print_connection_success = 1;
 	char statement[TURN_LONG_STRING_SIZE];
 	MYSQL * myc = get_mydb_connection();
@@ -724,7 +726,7 @@ static int mysql_set_secret(u08bits *secret, u08bits *realm) {
 }
   
 static int mysql_add_origin(u08bits *origin, u08bits *realm) {
-  int ret = 1;
+  int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
 	MYSQL * myc = get_mydb_connection();
 	if (myc) {
@@ -743,7 +745,7 @@ static int mysql_add_origin(u08bits *origin, u08bits *realm) {
 }
   
 static int mysql_del_origin(u08bits *origin) {
-  int ret = 1;
+  int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
 	MYSQL * myc = get_mydb_connection();
 	if (myc) {
@@ -762,7 +764,7 @@ static int mysql_del_origin(u08bits *origin) {
 }
   
 static int mysql_list_origins(u08bits *realm) {
-  int ret = 1;
+  int ret = -1;
 	donot_print_connection_success = 1;
 	char statement[TURN_LONG_STRING_SIZE];
 	MYSQL * myc = get_mydb_connection();
@@ -803,7 +805,7 @@ static int mysql_list_origins(u08bits *realm) {
 }
   
 static int mysql_set_realm_option_one(u08bits *realm, unsigned long value, const char* opt) {
-  int ret = 1;
+  int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
 	MYSQL * myc = get_mydb_connection();
 	if (myc) {
@@ -828,7 +830,7 @@ static int mysql_set_realm_option_one(u08bits *realm, unsigned long value, const
 }
   
 static int mysql_list_realm_options(u08bits *realm) {
-  int ret = 1;
+  int ret = -1;
 	donot_print_connection_success = 1;
 	char statement[TURN_LONG_STRING_SIZE];
 	MYSQL * myc = get_mydb_connection();
@@ -890,7 +892,7 @@ static void mysql_auth_ping(void * rch) {
 }
   
 static int mysql_get_ip_list(const char *kind, ip_range_list_t * list) {
-  int ret = 1;
+  int ret = -1;
 	MYSQL * myc = get_mydb_connection();
 	if(myc) {
 		char statement[TURN_LONG_STRING_SIZE];
@@ -916,7 +918,7 @@ static int mysql_get_ip_list(const char *kind, ip_range_list_t * list) {
 						}
 					}
 				}
-        ret = 0;
+				ret = 0;
 			}
 
 			if(mres)
