@@ -97,6 +97,7 @@ struct _ts_ur_super_session {
   /* Mobile */
   int is_mobile;
   mobile_id_t mobile_id;
+  mobile_id_t old_mobile_id;
   char s_mobile_id[33];
   /* Realm */
   realm_options_t realm_options;
