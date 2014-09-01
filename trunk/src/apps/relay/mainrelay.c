@@ -85,6 +85,7 @@ LOW_DEFAULT_PORTS_BOUNDARY,HIGH_DEFAULT_PORTS_BOUNDARY,0,0,0,"",
 0,NULL,0,NULL,DEFAULT_GENERAL_RELAY_SERVERS_NUMBER,0,
 ////////////// Auth server /////////////////////////////////////
 {NULL,NULL,NULL,0,NULL},
+"",
 /////////////// AUX SERVERS ////////////////
 {NULL,0,{0,NULL}},0,
 /////////////// ALTERNATE SERVERS ////////////////
@@ -1556,7 +1557,7 @@ static int adminmain(int argc, char **argv)
 static void print_features(unsigned long mfn)
 {
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\nRFC 3489/5389/5766/5780/6062/6156 STUN/TURN Server\nVersion %s\n",TURN_SOFTWARE);
-
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Server name: %s\n",turn_params.oauth_server_name);
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\nMax number of open files/sockets allowed for this process: %lu\n",mfn);
 	if(turn_params.net_engine_version == 1)
 		mfn = mfn/3;
@@ -1678,6 +1679,16 @@ static void drop_privileges(void)
 	}
 }
 
+static void init_oauth_server_name(void) {
+	struct utsname name;
+	if(!uname(&name)) {
+		STRCPY(turn_params.oauth_server_name,name.nodename);
+	}
+	if(!turn_params.oauth_server_name[0]) {
+		STRCPY(turn_params.oauth_server_name,TURN_SOFTWARE);
+	}
+}
+
 int main(int argc, char **argv)
 {
 	int c = 0;
@@ -1703,6 +1714,7 @@ int main(int argc, char **argv)
 	init_listener();
 	init_secrets_list(&turn_params.default_users_db.ram_db.static_auth_secrets);
 	init_dynamic_ip_lists();
+	init_oauth_server_name();
 
 	if (!strstr(argv[0], "turnadmin")) {
 

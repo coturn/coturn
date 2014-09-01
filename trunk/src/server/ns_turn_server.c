@@ -150,7 +150,7 @@ static int inc_quota(ts_ur_super_session* ss, u08bits *username)
 	if(ss && !(ss->quota_used) && ss->server && ((turn_turnserver*)ss->server)->chquotacb && username) {
 
 		if(((turn_turnserver*)ss->server)->ct == TURN_CREDENTIALS_LONG_TERM) {
-			if(!(ss->realm_set)) {
+			if(!(ss->origin_set)) {
 				return -1;
 			}
 		}
@@ -3483,7 +3483,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 			}
 
 			/* check that the realm is the same as in the original request */
-			if(ss->realm_set) {
+			if(ss->origin_set) {
 				stun_attr_ref sar = stun_attr_get_first_str(ioa_network_buffer_data(in_buffer->nbh),
 					ioa_network_buffer_get_size(in_buffer->nbh));
 
@@ -3540,7 +3540,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 			}
 
 			/* get the initial origin value */
-			if(!err_code && !(ss->realm_set) && (method == STUN_METHOD_ALLOCATE)) {
+			if(!err_code && !(ss->origin_set) && (method == STUN_METHOD_ALLOCATE)) {
 
 				stun_attr_ref sar = stun_attr_get_first_str(ioa_network_buffer_data(in_buffer->nbh),
 					ioa_network_buffer_get_size(in_buffer->nbh));
@@ -3571,7 +3571,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 							ioa_network_buffer_get_size(in_buffer->nbh), sar);
 				}
 
-				ss->realm_set = 1;
+				ss->origin_set = 1;
 			}
 
 			if(!err_code && !(*resp_constructed) && !no_response) {

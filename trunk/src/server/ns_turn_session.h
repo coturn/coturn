@@ -101,7 +101,7 @@ struct _ts_ur_super_session {
   char s_mobile_id[33];
   /* Realm */
   realm_options_t realm_options;
-  int realm_set;
+  int origin_set;
   s08bits origin[STUN_MAX_ORIGIN_SIZE + 1];
   /* Bandwidth */
   band_limit_t bps;
