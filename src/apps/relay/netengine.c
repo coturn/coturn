@@ -1797,4 +1797,23 @@ void init_listener(void)
 	ns_bzero(&turn_params.listener,sizeof(struct listener_server));
 }
 
+void get_oauth_server_name(const char* realm, char *server_name, size_t server_name_size)
+{
+	if(server_name && server_name_size) {
+		strncpy(server_name,turn_params.oauth_server_name,server_name_size);
+		if(realm && realm[0]) {
+			char* sat = strstr(server_name,"@");
+			if(sat) {
+				*sat = 0;
+			}
+			size_t snl = strlen(server_name);
+			size_t rl = strlen(realm);
+			if(snl+1+rl<server_name_size) {
+				strncpy(server_name+snl,"@",1);
+				strncpy(server_name+snl+1,realm,rl+1);
+			}
+		}
+	}
+}
+
 ///////////////////////////////
