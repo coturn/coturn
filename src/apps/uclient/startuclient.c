@@ -665,6 +665,11 @@ static int clnet_allocate(int verbose,
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "refresh sent\n");
 					}
 					refresh_sent = 1;
+
+					if(clnet_info->s_mobile_id[0]) {
+						usleep(10000);
+						send_buffer(clnet_info, &message, 0,0);
+					}
 				} else {
 					perror("send");
 					exit(1);
@@ -681,6 +686,10 @@ static int clnet_allocate(int verbose,
 			while (!refresh_received) {
 
 				int len = recv_buffer(clnet_info, &message, 1, 0);
+
+				if(clnet_info->s_mobile_id[0]) {
+					len = recv_buffer(clnet_info, &message, 1, 0);
+				}
 
 				if (len > 0) {
 					if (verbose) {
