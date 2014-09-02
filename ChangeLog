@@ -5,6 +5,8 @@ Version 4.1.2.2 'Vitari':
 	- SHA-256 memory leak fixed.
 	- Mobility ticket retransmission fixed.
 	- Move debian package from SVN to GIT. (TODO)
+	- Move secondary download area to coturn.net. (TODO)
+	- oAuth security implementation. (TODO) 
 	
 08/14/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.1.2.1 'Vitari':
