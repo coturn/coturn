@@ -12,7 +12,7 @@
 
 [http://turnserver.open-sys.org/downloads/ Main Downloads Page (with all recent versions)]
 
-[http://www.olegmoskalenko.com/turnserver/ Backup Downloads Page]
+[http://coturn.net/turnserver/ Backup Downloads Page]
 
 [http://turnserver.open-sys.org/downloads/extradocs/ Extra Docs ]
 
