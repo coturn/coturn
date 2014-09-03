@@ -1,3 +1,9 @@
+coturn (4.1.2.1-3) unstable; urgency=low
+
+  * List of supported specs extended.
+
+ -- Oleg Moskalenko <mom040267@gmail.com>  Tue, 02 Sep 2014 22:57:32 -0700
+
 coturn (4.1.2.1-2) unstable; urgency=low
 
   * SVN source control tags changed to GIT

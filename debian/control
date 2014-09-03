@@ -31,11 +31,15 @@ Description: TURN and STUN server for VoIP
   * RFC 6062 - TCP relaying TURN extension;
   * RFC 6156 - IPv6 extension for TURN;
   * DTLS support as client protocol 
-    http://tools.ietf.org/html/draft-petithuguenin-tram-turn-dtls-00;
+    http://tools.ietf.org/html/draft-petithuguenin-tram-turn-dtls-00
   * Mobile ICE (MICE) support
-    http://datatracker.ietf.org/doc/draft-wing-mmusic-ice-mobility.
+    http://datatracker.ietf.org/doc/draft-wing-mmusic-ice-mobility
   * TURN ORIGIN specs for multi-tenant servers
     http://tools.ietf.org/html/draft-johnston-tram-stun-origin-02
+  * TURN Bandwidth draft specs
+    http://tools.ietf.org/html/draft-thomson-tram-turn-bandwidth-00
+  * SSODA (dual allocation) draft specs
+    http://tools.ietf.org/html/draft-martinsen-tram-ssoda-00
  .
  STUN specs:
   * RFC 3489 - obsolete "classic" STUN specs;
