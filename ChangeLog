@@ -4,7 +4,7 @@ Version 4.1.2.2 'Vitari':
 	- redis, mysql and psql db operations fixed.
 	- SHA-256 memory leak fixed.
 	- Mobility ticket retransmission fixed.
-	- Move debian package from SVN to GIT. (TODO)
+	- Move debian package from SVN to GIT.
 	- Move secondary download area to coturn.net. (TODO)
 	- oAuth security implementation. (TODO) 
 	
