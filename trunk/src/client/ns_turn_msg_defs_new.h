@@ -145,4 +145,29 @@ struct _oauth_key {
 
 typedef struct _oauth_key oauth_key;
 
+struct _oauth_encrypted_block {
+	uint16_t key_length;
+	uint8_t mac_key[MAXSHASIZE];
+	uint64_t timestamp;
+	uint32_t lifetime;
+};
+
+typedef struct _oauth_encrypted_block oauth_encrypted_block;
+
+struct _oauth_token {
+	oauth_encrypted_block enc_block;
+	uint8_t mac[MAXSHASIZE];
+};
+
+typedef struct _oauth_token oauth_token;
+
+#define MAX_ENCODED_OAUTH_TOKEN_SIZE (1024)
+
+struct _encoded_oauth_token {
+	char token[MAX_ENCODED_OAUTH_TOKEN_SIZE];
+	size_t size;
+};
+
+typedef struct _encoded_oauth_token encoded_oauth_token;
+
 #endif //__LIB_TURN_MSG_DEFS_NEW__

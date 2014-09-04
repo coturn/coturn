@@ -1858,4 +1858,16 @@ int convert_oauth_key_data(oauth_key_data *oakd, oauth_key *key, char *err_msg, 
 	return 0;
 }
 
+int decode_oauth_token(encoded_oauth_token *etoken, oauth_key *key, oauth_token *dtoken)
+{
+	//TODO
+	return 0;
+}
+
+int encode_oauth_token(encoded_oauth_token *etoken, oauth_key *key, oauth_token *dtoken)
+{
+	//TODO
+	return 0;
+}
+
 ///////////////////////////////////////////////////////////////
