@@ -80,6 +80,8 @@ struct turn_sock_extended_err {
 
 #define TRIAL_EFFORTS_TO_SEND (2)
 
+#define SSL_MAX_RENEG_NUMBER (3)
+
 const int predef_timer_intervals[PREDEF_TIMERS_NUM] = {30,60,90,120,240,300,360,540,600,700,800,900,1800,3600};
 
 /************** Forward function declarations ******/
@@ -1500,6 +1502,43 @@ ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e,
 	return ret;
 }
 
+static void ssl_info_callback(SSL *ssl, int where, int ret) {
+
+    UNUSED_ARG(ret);
+
+    if (0 != (where & SSL_CB_HANDSHAKE_START)) {
+    	ioa_socket_handle s = (ioa_socket_handle)SSL_get_app_data(ssl);
+    	if(s) {
+    		++(s->ssl_renegs);
+    	}
+    } else if (0 != (where & SSL_CB_HANDSHAKE_DONE)) {
+    	if(ssl->s3) {
+    		ioa_socket_handle s = (ioa_socket_handle)SSL_get_app_data(ssl);
+    		if(s) {
+    			if(s->ssl_renegs>SSL_MAX_RENEG_NUMBER) {
+    				ssl->s3->flags |= SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS;
+    			}
+    		}
+    	}
+    }
+}
+
+typedef void (*ssl_info_callback_t)(const SSL *ssl,int type,int val);
+
+static void set_socket_ssl(ioa_socket_handle s, SSL *ssl)
+{
+	if(s && (s->ssl != ssl)) {
+		if(s->ssl) {
+			SSL_set_app_data(s->ssl,NULL);
+		}
+		s->ssl = ssl;
+		if(ssl) {
+			SSL_set_app_data(ssl,s);
+			SSL_set_info_callback(ssl, (ssl_info_callback_t)ssl_info_callback);
+		}
+	}
+}
+
 /* Only must be called for DTLS_SOCKET */
 ioa_socket_handle create_ioa_socket_from_ssl(ioa_engine_handle e, ioa_socket_handle parent_s, SSL* ssl, SOCKET_TYPE st, SOCKET_APP_TYPE sat, const ioa_addr *remote_addr, const ioa_addr *local_addr)
 {
@@ -1509,7 +1548,7 @@ ioa_socket_handle create_ioa_socket_from_ssl(ioa_engine_handle e, ioa_socket_han
 	ioa_socket_handle ret = create_ioa_socket_from_fd(e, parent_s->fd, parent_s, st, sat, remote_addr, local_addr);
 
 	if(ret) {
-		ret->ssl = ssl;
+		set_socket_ssl(ret,ssl);
 		if(st == DTLS_SOCKET)
 			STRCPY(ret->orig_ctx_type,"DTLSv1.0");
 	}
@@ -1697,7 +1736,7 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s, int full_detach)
 		ret->username_hash = s->username_hash;
 		ret->realm_hash = s->realm_hash;
 
-		ret->ssl = s->ssl;
+		set_socket_ssl(ret,s->ssl);
 		ret->fd = s->fd;
 
 		ret->family = s->family;
@@ -1752,7 +1791,7 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s, int full_detach)
 		ret->current_tos = s->current_tos;
 		ret->default_tos = s->default_tos;
 
-		s->ssl = NULL;
+		set_socket_ssl(s,NULL);
 		s->fd = -1;
 	}
 
@@ -2324,7 +2363,7 @@ static int socket_input_worker(ioa_socket_handle s)
 #if defined(SSL_TXT_TLSV1_2)
 			case TURN_TLS_v1_2:
 				if(s->e->tls_ctx_v1_2) {
-					s->ssl = SSL_new(s->e->tls_ctx_v1_2);
+					set_socket_ssl(s,SSL_new(s->e->tls_ctx_v1_2));
 					STRCPY(s->orig_ctx_type,"TLSv1.2");
 				}
 				break;
@@ -2332,35 +2371,37 @@ static int socket_input_worker(ioa_socket_handle s)
 #if defined(SSL_TXT_TLSV1_1)
 			case TURN_TLS_v1_1:
 				if(s->e->tls_ctx_v1_1) {
-					s->ssl = SSL_new(s->e->tls_ctx_v1_1);
+					set_socket_ssl(s,SSL_new(s->e->tls_ctx_v1_1));
 					STRCPY(s->orig_ctx_type,"TLSv1.1");
 				}
 				break;
 #endif
 			case TURN_TLS_v1_0:
 				if(s->e->tls_ctx_v1_0) {
-					s->ssl = SSL_new(s->e->tls_ctx_v1_0);
+					set_socket_ssl(s,SSL_new(s->e->tls_ctx_v1_0));
 					STRCPY(s->orig_ctx_type,"TLSv1.0");
 				}
 				break;
 			default:
 				if(s->e->tls_ctx_ssl23) {
-					s->ssl = SSL_new(s->e->tls_ctx_ssl23);
+					set_socket_ssl(s,SSL_new(s->e->tls_ctx_ssl23));
 					STRCPY(s->orig_ctx_type,"SSLv23");
 				} else {
 					s->tobeclosed = 1;
 					return 0;
 				}
 			};
-			s->bev = bufferevent_openssl_socket_new(s->e->event_base,
+			if(s->ssl) {
+				s->bev = bufferevent_openssl_socket_new(s->e->event_base,
 								s->fd,
 								s->ssl,
 								BUFFEREVENT_SSL_ACCEPTING,
 								BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS);
-			bufferevent_setcb(s->bev, socket_input_handler_bev, socket_output_handler_bev,
-					eventcb_bev, s);
-			bufferevent_setwatermark(s->bev, EV_READ|EV_WRITE, 0, BUFFEREVENT_HIGH_WATERMARK);
-			bufferevent_enable(s->bev, EV_READ|EV_WRITE); /* Start reading. */
+				bufferevent_setcb(s->bev, socket_input_handler_bev, socket_output_handler_bev,
+								eventcb_bev, s);
+				bufferevent_setwatermark(s->bev, EV_READ|EV_WRITE, 0, BUFFEREVENT_HIGH_WATERMARK);
+				bufferevent_enable(s->bev, EV_READ|EV_WRITE); /* Start reading. */
+			}
 		} else
 #endif //TURN_NO_TLS
 		{
@@ -3212,7 +3253,7 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 #if !defined(TURN_NO_TLS)
 						if(!(s->ssl)) {
 							//??? how we can get to this point ???
-							s->ssl = SSL_new(e->tls_ctx_ssl23);
+							set_socket_ssl(s,SSL_new(e->tls_ctx_ssl23));
 							STRCPY(s->orig_ctx_type,"SSLv23");
 							s->bev = bufferevent_openssl_socket_new(s->e->event_base,
 											s->fd,
