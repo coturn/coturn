@@ -286,6 +286,10 @@ void add_listener_addr(const char* addr) {
 	if(make_ioa_addr((const u08bits*)addr,0,&baddr)<0) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot add a listener address: %s\n",addr);
 	} else {
+
+	  char sbaddr[129];
+	  addr_to_string_no_port(&baddr,(u08bits*)sbaddr);
+
 		size_t i = 0;
 		for(i=0;i<turn_params.listener.addrs_number;++i) {
 			if(addr_eq(turn_params.listener.encaddrs[turn_params.listener.addrs_number-1],&baddr)) {
@@ -295,11 +299,11 @@ void add_listener_addr(const char* addr) {
 		++turn_params.listener.addrs_number;
 		++turn_params.listener.services_number;
 		turn_params.listener.addrs = (char**)realloc(turn_params.listener.addrs, sizeof(char*)*turn_params.listener.addrs_number);
-		turn_params.listener.addrs[turn_params.listener.addrs_number-1]=strdup(addr);
+		turn_params.listener.addrs[turn_params.listener.addrs_number-1]=strdup(sbaddr);
 		turn_params.listener.encaddrs = (ioa_addr**)realloc(turn_params.listener.encaddrs, sizeof(ioa_addr*)*turn_params.listener.addrs_number);
 		turn_params.listener.encaddrs[turn_params.listener.addrs_number-1]=(ioa_addr*)turn_malloc(sizeof(ioa_addr));
 		addr_cpy(turn_params.listener.encaddrs[turn_params.listener.addrs_number-1],&baddr);
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Listener address to use: %s\n",addr);
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Listener address to use: %s\n",sbaddr);
 	}
 }
 
