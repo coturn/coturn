@@ -7,7 +7,8 @@ Version 4.1.2.2 'Vitari':
 	- Move debian package from SVN to GIT.
 	- Move secondary download area to coturn.net.
 	- TLS renegotiation DoS attack prevention implemented;
-	- FQDN as relay-ip and listener-ip parameters (issue 6);
+	- FQDN as relay-ip and listener-ip parameters (issue 6)
+	(patch provided by Iñaki Baz Castillo);
 	- oAuth security implementation. (TODO) 
 	
 08/14/2014 Oleg Moskalenko <mom040267@gmail.com>
