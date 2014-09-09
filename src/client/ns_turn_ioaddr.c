@@ -218,24 +218,47 @@ int make_ioa_addr(const u08bits* saddr, int port, ioa_addr *addr) {
     addr_hints.ai_next = NULL;
 
     err = getaddrinfo((const char*)saddr, NULL, &addr_hints, &addr_result);
-    if (err != 0) {
+    if ((err != 0)||(!addr_result)) {
       fprintf(stderr,"error resolving '%s' hostname: %s\n",saddr,gai_strerror(err));
       return -1;
     }
     
-    // getaddrinfo() returns a list of address structures. We just take the
-    // first one.
-    ns_bcopy(addr_result->ai_addr, addr, addr_result->ai_addrlen);
-    if (addr_result->ai_family == AF_INET) {
-      addr->s4.sin_port = nswap16(port);
-    } else if (addr_result->ai_family == AF_INET6) {
-      addr->s6.sin6_port = nswap16(port);
-#if defined(SIN6_LEN) /* this define is required by IPv6 if used */
-      addr->s6.sin6_len = sizeof(struct sockaddr_in6);
+    int family = AF_INET;
+    struct addrinfo *addr_result_orig = addr_result;
+    int found = 0;
+
+    beg_af:
+
+    while(!found && addr_result) {
+
+    	if(addr_result->ai_family == family) {
+    		ns_bcopy(addr_result->ai_addr, addr, addr_result->ai_addrlen);
+    		if (addr_result->ai_family == AF_INET) {
+    			addr->s4.sin_port = nswap16(port);
+#if defined(TURN_HAS_SIN_LEN) /* tested when configured */
+    			addr->s4.sin_len = sizeof(struct sockaddr_in);
 #endif
+    		} else if (addr_result->ai_family == AF_INET6) {
+    			addr->s6.sin6_port = nswap16(port);
+#if defined(SIN6_LEN) /* this define is required by IPv6 if used */
+    			addr->s6.sin6_len = sizeof(struct sockaddr_in6);
+#endif
+    		} else {
+    			continue;
+    		}
+    		found = 1;
+    	}
+
+    	addr_result = addr_result->ai_next;
+    }
+
+    if(!found && family == AF_INET) {
+    	family = AF_INET6;
+    	addr_result = addr_result_orig;
+    	goto beg_af;
     }
     
-    freeaddrinfo(addr_result);
+    freeaddrinfo(addr_result_orig);
   }
 
   return 0;
