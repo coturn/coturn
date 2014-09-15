@@ -1705,8 +1705,7 @@ static size_t calculate_auth_key_length(AUTH_ALG a)
 	return 32;
 }
 
-size_t calculate_auth_output_length(AUTH_ALG a);
-size_t calculate_auth_output_length(AUTH_ALG a)
+static size_t calculate_auth_output_length(AUTH_ALG a)
 {
 	switch(a) {
 	case AUTH_ALG_HMAC_SHA_1:
@@ -1980,9 +1979,68 @@ static int encode_oauth_token_normal(u08bits *server_name, encoded_oauth_token *
 
 static int decode_oauth_token_normal(u08bits *server_name, encoded_oauth_token *etoken, oauth_key *key, oauth_token *dtoken)
 {
-	if(server_name && etoken && key && dtoken && (dtoken->enc_block.key_length<=128)) {
+	if(server_name && etoken && key && dtoken) {
 
-		//TODO
+		size_t mac_size = calculate_auth_output_length(key->auth_alg);
+		size_t min_encoded_field_size = 2+4+8+calculate_auth_output_length(AUTH_ALG_HMAC_SHA_256_128);
+		if(etoken->size < mac_size+min_encoded_field_size) {
+			return -1;
+		}
+
+		unsigned char* encoded_field = (unsigned char*)etoken->token;
+		unsigned int encoded_field_size = (unsigned int)etoken->size-mac_size;
+		unsigned char* mac = ((unsigned char*)etoken->token) + etoken->size - mac_size;
+
+		{
+			const EVP_MD *md = get_auth_type(key->auth_alg);
+			if(!md)
+				return -1;
+       		unsigned int hmac_len = EVP_MD_size(md);
+       		if(hmac_len != mac_size)
+       			return -1;
+       		unsigned char check_mac[MAXSHASIZE];
+		    if (!HMAC(md, key->auth_key, key->auth_key_size, encoded_field, encoded_field_size, check_mac, &hmac_len)) {
+		    	return -1;
+		    }
+
+		    if(ns_bcmp(check_mac,mac,mac_size))
+		    	return -1;
+		}
+
+		ns_bcopy(mac,dtoken->mac,mac_size);
+		dtoken->mac_size = mac_size;
+
+		unsigned char decoded_field[MAX_ENCODED_OAUTH_TOKEN_SIZE];
+
+		const EVP_CIPHER * cipher = get_cipher_type(key->as_rs_alg);
+		if(!cipher)
+			return -1;
+
+		EVP_CIPHER_CTX ctx;
+		EVP_CIPHER_CTX_init(&ctx);
+		EVP_DecryptInit_ex(&ctx, cipher, NULL, (unsigned char *)key->as_rs_key, NULL);
+		int outl=0;
+		EVP_DecryptUpdate(&ctx, decoded_field, &outl, encoded_field, (int)encoded_field_size);
+		EVP_DecryptFinal_ex(&ctx, decoded_field + outl, &outl);
+
+		if(outl<(int)min_encoded_field_size)
+			return -1;
+
+		size_t len = 0;
+
+		dtoken->enc_block.key_length = nswap16(*((uint16_t*)(decoded_field+len)));
+		len += 2;
+
+		ns_bcopy(decoded_field+len,dtoken->enc_block.mac_key,dtoken->enc_block.key_length);
+		len += dtoken->enc_block.key_length;
+
+		dtoken->enc_block.timestamp = nswap64(*((uint64_t*)(decoded_field+len)));
+		len += 8;
+
+		dtoken->enc_block.lifetime = nswap32(*((uint32_t*)(decoded_field+len)));
+		len += 4;
+
+		return 0;
 	}
 	return -1;
 }
@@ -2037,7 +2095,7 @@ static int encode_oauth_token_aead(u08bits *server_name, encoded_oauth_token *et
 		if(1 != EVP_CIPHER_CTX_ctrl(&ctx, EVP_CTRL_GCM_SET_IVLEN, OAUTH_AEAD_NONCE_SIZE, NULL))
 			return -1;
 
-		/* Initialise key and IV */
+		/* Initialize key and IV */
 		if(1 != EVP_EncryptInit_ex(&ctx, NULL, NULL, (unsigned char *)key->as_rs_key, nonce))
 			return -1;
 

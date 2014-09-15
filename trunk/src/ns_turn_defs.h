@@ -76,6 +76,7 @@ extern "C" {
 
 #define ns_bcopy(src,dst,sz) bcopy((src),(dst),(sz))
 #define ns_bzero(ptr,sz) bzero((ptr),(sz))
+#define ns_bcmp(ptr1,ptr2,sz) bcmp((ptr1),(ptr2),(sz))
 
 #define nswap16(s) ntohs(s)
 #define nswap32(ul) ntohl(ul)
