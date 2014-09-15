@@ -57,7 +57,7 @@ and they will be almost immediately "seen" by the turnserver process.
 		
 	as_rs_alg - oAuth token encryption algorithm; the valid values are
 		"AES-128-CBC" and "AES-256-CBC", , "AEAD-AES-128-GCM",
-		"AEAD-AES-256-GCM",	"AEAD-AES-128-CCM",	"AEAD-AES-256-CCM".
+		"AEAD-AES-256-GCM".
 		The default value is "AES-256-CBC";
 		
 	as_rs_key - (optional) base64-encoded AS-RS key. If not defined, then 
