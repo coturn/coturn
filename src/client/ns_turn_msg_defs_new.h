@@ -75,8 +75,6 @@ enum _ENC_ALG {
 	AES_128_CBC,
 	AEAD_AES_128_GCM,
 	AEAD_AES_256_GCM,
-	AEAD_AES_128_CCM,
-	AEAD_AES_256_CCM,
 	ENG_ALG_NUM
 };
 
@@ -107,6 +105,8 @@ typedef enum _AUTH_ALG AUTH_ALG;
 #define OAUTH_HASH_FUNC_SIZE (64)
 #define OAUTH_ALG_SIZE (64)
 #define OAUTH_KEY_SIZE (256)
+#define OAUTH_AEAD_NONCE_SIZE (12)
+#define OAUTH_AEAD_TAG_SIZE (16)
 
 #define OAUTH_DEFAULT_LIFETIME (0)
 #define OAUTH_DEFAULT_TIMESTAMP (turn_time())
@@ -157,6 +157,7 @@ typedef struct _oauth_encrypted_block oauth_encrypted_block;
 struct _oauth_token {
 	oauth_encrypted_block enc_block;
 	uint8_t mac[MAXSHASIZE];
+	size_t mac_size;
 };
 
 typedef struct _oauth_token oauth_token;
