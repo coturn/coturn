@@ -1870,12 +1870,6 @@ int convert_oauth_key_data(oauth_key_data *oakd, oauth_key *key, char *err_msg, 
 	return 0;
 }
 
-int decode_oauth_token(u08bits *server_name, encoded_oauth_token *etoken, oauth_key *key, oauth_token *dtoken)
-{
-	//TODO
-	return 0;
-}
-
 static const EVP_CIPHER *get_cipher_type(ENC_ALG enc_alg)
 {
 	switch(enc_alg) {
@@ -2048,7 +2042,7 @@ static int encode_oauth_token_aead(u08bits *server_name, encoded_oauth_token *et
 		outl += OAUTH_AEAD_TAG_SIZE;
 
 		ns_bcopy(nonce, encoded_field + outl, OAUTH_AEAD_NONCE_SIZE);
-		outl += OAUTH_AEAD_NONCE_SIZE; //encoded+hmac
+		outl += OAUTH_AEAD_NONCE_SIZE; //encoded+tag+hmac
 
 		etoken->size = outl;
 
@@ -2072,6 +2066,12 @@ int encode_oauth_token(u08bits *server_name, encoded_oauth_token *etoken, oauth_
 		};
 	}
 	return -1;
+}
+
+int decode_oauth_token(u08bits *server_name, encoded_oauth_token *etoken, oauth_key *key, oauth_token *dtoken)
+{
+	//TODO
+	return 0;
 }
 
 ///////////////////////////////////////////////////////////////
