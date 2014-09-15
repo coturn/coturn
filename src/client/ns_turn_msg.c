@@ -101,7 +101,7 @@ long turn_random(void)
 
 void turn_random32_size(u32bits *ar, size_t sz)
 {
-	if(!RAND_bytes((unsigned char *)ar, sz<<2)<0) {
+	if(!RAND_bytes((unsigned char *)ar, sz<<2)) {
 		size_t i;
 		for(i=0;i<sz;++i) {
 			ar[i] = (u32bits)random();
@@ -1678,7 +1678,9 @@ static size_t calculate_enc_key_length(ENC_ALG a)
 {
 	switch(a) {
 	case AES_128_CBC:
+#if !defined(TURN_NO_GCM_SUPPORT)
 	case AEAD_AES_128_GCM:
+#endif
 		return 16;
 	default:
 		;
@@ -1837,10 +1839,12 @@ int convert_oauth_key_data(oauth_key_data *oakd, oauth_key *key, char *err_msg, 
 			key->as_rs_alg = AES_128_CBC;
 		} else if(!strcmp(oakd->as_rs_alg,"AES-256-CBC")) {
 			key->as_rs_alg = AES_256_CBC;
+#if !defined(TURN_NO_GCM_SUPPORT)
 		} else if(!strcmp(oakd->as_rs_alg,"AEAD-AES-128-GCM")) {
 			key->as_rs_alg = AEAD_AES_128_GCM;
 		} else if(!strcmp(oakd->as_rs_alg,"AEAD-AES-256-GCM")) {
 			key->as_rs_alg = AEAD_AES_256_GCM;
+#endif
 		} else if(oakd->as_rs_alg[0]) {
 			if(err_msg) {
 				snprintf(err_msg,err_msg_size,"Wrong oAuth token encryption algorithm: %s",oakd->as_rs_alg);
@@ -1877,23 +1881,16 @@ static const EVP_CIPHER *get_cipher_type(ENC_ALG enc_alg)
 		return EVP_aes_256_cbc();
 	case AES_128_CBC:
 		return EVP_aes_128_cbc();
+#if !defined(TURN_NO_GCM_SUPPORT)
 	case AEAD_AES_128_GCM:
 		return EVP_aes_128_gcm();
 	case AEAD_AES_256_GCM:
 		return EVP_aes_256_gcm();
+#endif
 	default:
 		;
 	}
 	return NULL;
-}
-
-static void generate_random_nonce(unsigned char *nonce, size_t sz) {
-	if(!RAND_bytes(nonce, sz)<0) {
-		size_t i;
-		for(i=0;i<sz;++i) {
-			nonce[i] = (unsigned char)random();
-		}
-	}
 }
 
 static const EVP_MD *get_auth_type(AUTH_ALG aa)
@@ -1916,6 +1913,7 @@ static void update_hmac_len(AUTH_ALG aa, unsigned int *hmac_len)
 		switch(aa) {
 		case AUTH_ALG_HMAC_SHA_256_128:
 			*hmac_len = *hmac_len >> 1;
+			break;
 		default:
 			;
 		};
@@ -1978,6 +1976,26 @@ static int encode_oauth_token_normal(u08bits *server_name, encoded_oauth_token *
 		return 0;
 	}
 	return -1;
+}
+
+static int decode_oauth_token_normal(u08bits *server_name, encoded_oauth_token *etoken, oauth_key *key, oauth_token *dtoken)
+{
+	if(server_name && etoken && key && dtoken && (dtoken->enc_block.key_length<=128)) {
+
+		//TODO
+	}
+	return -1;
+}
+
+#if !defined(TURN_NO_GCM_SUPPORT)
+
+static void generate_random_nonce(unsigned char *nonce, size_t sz) {
+	if(!RAND_bytes(nonce, sz)) {
+		size_t i;
+		for(i=0;i<sz;++i) {
+			nonce[i] = (unsigned char)random();
+		}
+	}
 }
 
 static int encode_oauth_token_aead(u08bits *server_name, encoded_oauth_token *etoken, oauth_key *key, oauth_token *dtoken)
@@ -2051,6 +2069,17 @@ static int encode_oauth_token_aead(u08bits *server_name, encoded_oauth_token *et
 	return -1;
 }
 
+static int decode_oauth_token_aead(u08bits *server_name, encoded_oauth_token *etoken, oauth_key *key, oauth_token *dtoken)
+{
+	if(server_name && etoken && key && dtoken && (dtoken->enc_block.key_length<128)) {
+
+		//TODO
+	}
+	return -1;
+}
+
+#endif
+
 int encode_oauth_token(u08bits *server_name, encoded_oauth_token *etoken, oauth_key *key, oauth_token *dtoken)
 {
 	if(server_name && etoken && key && dtoken) {
@@ -2058,9 +2087,11 @@ int encode_oauth_token(u08bits *server_name, encoded_oauth_token *etoken, oauth_
 		case AES_256_CBC:
 		case AES_128_CBC:
 			return encode_oauth_token_normal(server_name, etoken,key,dtoken);
+#if !defined(TURN_NO_GCM_SUPPORT)
 		case AEAD_AES_128_GCM:
 		case AEAD_AES_256_GCM:
 			return encode_oauth_token_aead(server_name, etoken,key,dtoken);
+#endif
 		default:
 			fprintf(stderr,"Wrong AS_RS algorithm: %d\n",(int)key->as_rs_alg);
 		};
@@ -2070,7 +2101,20 @@ int encode_oauth_token(u08bits *server_name, encoded_oauth_token *etoken, oauth_
 
 int decode_oauth_token(u08bits *server_name, encoded_oauth_token *etoken, oauth_key *key, oauth_token *dtoken)
 {
-	//TODO
+	if(server_name && etoken && key && dtoken) {
+		switch(key->as_rs_alg) {
+		case AES_256_CBC:
+		case AES_128_CBC:
+			return decode_oauth_token_normal(server_name, etoken,key,dtoken);
+#if !defined(TURN_NO_GCM_SUPPORT)
+		case AEAD_AES_128_GCM:
+		case AEAD_AES_256_GCM:
+			return decode_oauth_token_aead(server_name, etoken,key,dtoken);
+#endif
+		default:
+			fprintf(stderr,"Wrong AS_RS algorithm: %d\n",(int)key->as_rs_alg);
+		};
+	}
 	return 0;
 }
 
