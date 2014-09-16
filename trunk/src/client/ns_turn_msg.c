@@ -39,6 +39,8 @@
 #include <openssl/err.h>
 #include <openssl/rand.h>
 
+///////////
+
 #include <stdlib.h>
 
 ///////////
@@ -1678,7 +1680,7 @@ static size_t calculate_enc_key_length(ENC_ALG a)
 {
 	switch(a) {
 	case AES_128_CBC:
-#if !defined(TURN_NO_GCM_SUPPORT)
+#if !defined(TURN_NO_GCM)
 	case AEAD_AES_128_GCM:
 #endif
 		return 16;
@@ -1838,7 +1840,7 @@ int convert_oauth_key_data(oauth_key_data *oakd, oauth_key *key, char *err_msg, 
 			key->as_rs_alg = AES_128_CBC;
 		} else if(!strcmp(oakd->as_rs_alg,"AES-256-CBC")) {
 			key->as_rs_alg = AES_256_CBC;
-#if !defined(TURN_NO_GCM_SUPPORT)
+#if !defined(TURN_NO_GCM)
 		} else if(!strcmp(oakd->as_rs_alg,"AEAD-AES-128-GCM")) {
 			key->as_rs_alg = AEAD_AES_128_GCM;
 		} else if(!strcmp(oakd->as_rs_alg,"AEAD-AES-256-GCM")) {
@@ -1880,7 +1882,7 @@ static const EVP_CIPHER *get_cipher_type(ENC_ALG enc_alg)
 		return EVP_aes_256_cbc();
 	case AES_128_CBC:
 		return EVP_aes_128_cbc();
-#if !defined(TURN_NO_GCM_SUPPORT)
+#if !defined(TURN_NO_GCM)
 	case AEAD_AES_128_GCM:
 		return EVP_aes_128_gcm();
 	case AEAD_AES_256_GCM:
@@ -1911,7 +1913,7 @@ static void update_hmac_len(AUTH_ALG aa, unsigned int *hmac_len)
 	if(hmac_len) {
 		switch(aa) {
 		case AUTH_ALG_HMAC_SHA_256_128:
-			*hmac_len = *hmac_len >> 1;
+			*hmac_len = 16;
 			break;
 		default:
 			;
@@ -1982,7 +1984,7 @@ static int decode_oauth_token_normal(u08bits *server_name, encoded_oauth_token *
 	if(server_name && etoken && key && dtoken) {
 
 		size_t mac_size = calculate_auth_output_length(key->auth_alg);
-		size_t min_encoded_field_size = 2+4+8+calculate_auth_output_length(AUTH_ALG_HMAC_SHA_256_128);
+		size_t min_encoded_field_size = 2+4+8+calculate_auth_output_length(AUTH_ALG_HMAC_SHA_1);
 		if(etoken->size < mac_size+min_encoded_field_size) {
 			return -1;
 		}
@@ -2045,7 +2047,7 @@ static int decode_oauth_token_normal(u08bits *server_name, encoded_oauth_token *
 	return -1;
 }
 
-#if !defined(TURN_NO_GCM_SUPPORT)
+#if !defined(TURN_NO_GCM)
 
 static void generate_random_nonce(unsigned char *nonce, size_t sz) {
 	if(!RAND_bytes(nonce, sz)) {
@@ -2087,7 +2089,7 @@ static int encode_oauth_token_aead(u08bits *server_name, encoded_oauth_token *et
 		EVP_CIPHER_CTX ctx;
 		EVP_CIPHER_CTX_init(&ctx);
 
-		/* Initialise the encryption operation. */
+		/* Initialize the encryption operation. */
 		if(1 != EVP_EncryptInit_ex(&ctx, cipher, NULL, NULL, NULL))
 			return -1;
 
@@ -2129,9 +2131,75 @@ static int encode_oauth_token_aead(u08bits *server_name, encoded_oauth_token *et
 
 static int decode_oauth_token_aead(u08bits *server_name, encoded_oauth_token *etoken, oauth_key *key, oauth_token *dtoken)
 {
-	if(server_name && etoken && key && dtoken && (dtoken->enc_block.key_length<128)) {
+	if(server_name && etoken && key && dtoken) {
 
-		//TODO
+		size_t min_encoded_field_size = 2+4+8+OAUTH_AEAD_NONCE_SIZE+OAUTH_AEAD_TAG_SIZE+calculate_auth_output_length(AUTH_ALG_HMAC_SHA_1);
+		if(etoken->size < min_encoded_field_size) {
+			return -1;
+		}
+
+		unsigned char* encoded_field = (unsigned char*)etoken->token;
+		unsigned int encoded_field_size = (unsigned int)etoken->size-OAUTH_AEAD_NONCE_SIZE;
+		unsigned char* nonce = ((unsigned char*)etoken->token) + encoded_field_size;
+		unsigned char* tag = ((unsigned char*)etoken->token) + encoded_field_size - OAUTH_AEAD_TAG_SIZE;
+
+		dtoken->mac_size = 0;
+
+		unsigned char decoded_field[MAX_ENCODED_OAUTH_TOKEN_SIZE];
+
+		const EVP_CIPHER * cipher = get_cipher_type(key->as_rs_alg);
+		if(!cipher)
+			return -1;
+
+		EVP_CIPHER_CTX ctx;
+		EVP_CIPHER_CTX_init(&ctx);
+		/* Initialize the encryption operation. */
+		if(1 != EVP_EncryptInit_ex(&ctx, cipher, NULL, NULL, NULL))
+			return -1;
+
+		/* Set IV length if default 12 bytes (96 bits) is not appropriate */
+		if(1 != EVP_CIPHER_CTX_ctrl(&ctx, EVP_CTRL_GCM_SET_IVLEN, OAUTH_AEAD_NONCE_SIZE, NULL))
+			return -1;
+
+		/* Initialize key and IV */
+		if(1 != EVP_EncryptInit_ex(&ctx, NULL, NULL, (unsigned char *)key->as_rs_key, nonce))
+			return -1;
+
+		EVP_CIPHER_CTX_ctrl (&ctx, EVP_CTRL_GCM_SET_TAG, OAUTH_AEAD_TAG_SIZE, tag);
+
+		int outl=0;
+		size_t sn_len = strlen((char*)server_name);
+
+		/* Provide any AAD data. This can be called zero or more times as
+		 * required
+		 */
+		if(1 != EVP_EncryptUpdate(&ctx, NULL, &outl, server_name, (int)sn_len))
+			return -1;
+		EVP_DecryptUpdate(&ctx, decoded_field, &outl, encoded_field, (int)encoded_field_size);
+		int tmp_outl = 0;
+		if(EVP_DecryptFinal_ex(&ctx, decoded_field + outl, &tmp_outl)<1)
+			return -1;
+
+		outl += tmp_outl;
+
+		if(outl<(int)min_encoded_field_size)
+			return -1;
+
+		size_t len = 0;
+
+		dtoken->enc_block.key_length = nswap16(*((uint16_t*)(decoded_field+len)));
+		len += 2;
+
+		ns_bcopy(decoded_field+len,dtoken->enc_block.mac_key,dtoken->enc_block.key_length);
+		len += dtoken->enc_block.key_length;
+
+		dtoken->enc_block.timestamp = nswap64(*((uint64_t*)(decoded_field+len)));
+		len += 8;
+
+		dtoken->enc_block.lifetime = nswap32(*((uint32_t*)(decoded_field+len)));
+		len += 4;
+
+		return 0;
 	}
 	return -1;
 }
@@ -2145,7 +2213,7 @@ int encode_oauth_token(u08bits *server_name, encoded_oauth_token *etoken, oauth_
 		case AES_256_CBC:
 		case AES_128_CBC:
 			return encode_oauth_token_normal(server_name, etoken,key,dtoken);
-#if !defined(TURN_NO_GCM_SUPPORT)
+#if !defined(TURN_NO_GCM)
 		case AEAD_AES_128_GCM:
 		case AEAD_AES_256_GCM:
 			return encode_oauth_token_aead(server_name, etoken,key,dtoken);
@@ -2164,7 +2232,7 @@ int decode_oauth_token(u08bits *server_name, encoded_oauth_token *etoken, oauth_
 		case AES_256_CBC:
 		case AES_128_CBC:
 			return decode_oauth_token_normal(server_name, etoken,key,dtoken);
-#if !defined(TURN_NO_GCM_SUPPORT)
+#if !defined(TURN_NO_GCM)
 		case AEAD_AES_128_GCM:
 		case AEAD_AES_256_GCM:
 			return decode_oauth_token_aead(server_name, etoken,key,dtoken);

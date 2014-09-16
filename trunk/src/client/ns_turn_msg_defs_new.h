@@ -68,16 +68,12 @@ typedef enum _SHATYPE SHATYPE;
 
 /* OAUTH TOKEN ENC ALG ==> */
 
-#if !defined(EVP_CIPH_GCM_MODE)
-#define TURN_NO_GCM_SUPPORT
-#endif
-
 enum _ENC_ALG {
 	ENC_ALG_ERROR=-1,
 	ENC_ALG_DEFAULT=0,
 	AES_256_CBC=ENC_ALG_DEFAULT,
 	AES_128_CBC,
-#if !defined(TURN_NO_GCM_SUPPORT)
+#if !defined(TURN_NO_GCM)
 	AEAD_AES_128_GCM,
 	AEAD_AES_256_GCM,
 #endif
