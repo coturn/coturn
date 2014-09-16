@@ -1931,11 +1931,54 @@ static void update_hmac_len(AUTH_ALG aa, unsigned int *hmac_len)
 	}
 }
 
+static int my_EVP_EncryptUpdate(EVP_CIPHER_CTX *ctx, unsigned char *out,
+		int *outl, const unsigned char *in, int inl)
+{
+	int cycle = 0;
+	int out_len = 0;
+	while((out_len<inl)&&(++cycle<128)) {
+		int tmp_outl=0;
+		int ret = EVP_EncryptUpdate(ctx, out+out_len, &tmp_outl, in+out_len, inl-out_len);
+		out_len += tmp_outl;
+		if(ret<1)
+			return ret;
+	}
+	*outl = out_len;
+	return 1;
+}
+
+static int my_EVP_DecryptUpdate(EVP_CIPHER_CTX *ctx, unsigned char *out,
+		int *outl, const unsigned char *in, int inl)
+{
+	int cycle = 0;
+	int out_len = 0;
+	while((out_len<inl)&&(++cycle<128)) {
+		int tmp_outl=0;
+		int ret = EVP_DecryptUpdate(ctx, out+out_len, &tmp_outl, in+out_len, inl-out_len);
+		out_len += tmp_outl;
+		if(ret<1)
+			return ret;
+	}
+	*outl = out_len;
+	return 1;
+}
+
+void print_field(const char* name, const unsigned char* f, size_t len);
+void print_field(const char* name, const unsigned char* f, size_t len) {
+	printf("\nfield %s==>>\n",name);
+	size_t i;
+	for(i = 0;i<len;++i) {
+		printf("<0x%x>",(unsigned int)f[i]);
+	}
+	printf("\n<<==field %s\n",name);
+}
+
 static int encode_oauth_token_normal(u08bits *server_name, encoded_oauth_token *etoken, oauth_key *key, oauth_token *dtoken)
 {
 	if(server_name && etoken && key && dtoken && (dtoken->enc_block.key_length<=128)) {
 
 		unsigned char orig_field[MAX_ENCODED_OAUTH_TOKEN_SIZE];
+		ns_bzero(orig_field,sizeof(orig_field));
 
 		size_t len = 0;
 		*((uint16_t*)(orig_field+len)) = nswap16(dtoken->enc_block.key_length);
@@ -1960,8 +2003,10 @@ static int encode_oauth_token_normal(u08bits *server_name, encoded_oauth_token *
 		EVP_CIPHER_CTX_init(&ctx);
 		EVP_EncryptInit_ex(&ctx, cipher, NULL, (unsigned char *)key->as_rs_key, NULL);
 		int outl=0;
-		EVP_EncryptUpdate(&ctx, encoded_field, &outl, orig_field, (int)len);
-		EVP_EncryptFinal_ex(&ctx, encoded_field + outl, &outl);
+		my_EVP_EncryptUpdate(&ctx, encoded_field, &outl, orig_field, (int)len);
+		int tmp_outl = 0;
+		EVP_EncryptFinal_ex(&ctx, encoded_field + outl, &tmp_outl);
+		outl += tmp_outl;
 
 		size_t sn_len = strlen((char*)server_name);
 		ns_bcopy(server_name,encoded_field+outl,sn_len);
@@ -1994,9 +2039,9 @@ static int decode_oauth_token_normal(u08bits *server_name, encoded_oauth_token *
 	if(server_name && etoken && key && dtoken) {
 
 		size_t mac_size = calculate_auth_output_length(key->auth_alg);
-		size_t min_encoded_field_size = 2+4+8+calculate_auth_output_length(AUTH_ALG_HMAC_SHA_1);
+		size_t min_encoded_field_size = 2+4+8+1;
 		if(etoken->size < mac_size+min_encoded_field_size) {
-			OAUTH_ERROR("%s: token size too small: %d\n",__FUNCTION__,(int)etoken->size);
+			OAUTH_ERROR("%s: token size too small: %d, mac_size=%d, min_encoded_field_size=%d\n",__FUNCTION__,(int)etoken->size,(int)mac_size,(int)min_encoded_field_size);
 			return -1;
 		}
 
@@ -2013,8 +2058,12 @@ static int decode_oauth_token_normal(u08bits *server_name, encoded_oauth_token *
        			OAUTH_ERROR("%s: mac size is wrong: %d, must be %d\n",__FUNCTION__,(int)mac_size,(int)hmac_len);
        			return -1;
        		}
+       		unsigned char efield[MAX_ENCODED_OAUTH_TOKEN_SIZE];
        		unsigned char check_mac[MAXSHASIZE];
-		    if (!HMAC(md, key->auth_key, key->auth_key_size, encoded_field, encoded_field_size, check_mac, &hmac_len)) {
+       		ns_bcopy(encoded_field,efield,encoded_field_size);
+       		size_t sn_len = strlen((char*)server_name);
+       		ns_bcopy(server_name,efield+encoded_field_size,sn_len);
+		    if (!HMAC(md, key->auth_key, key->auth_key_size, efield, encoded_field_size+sn_len, check_mac, &hmac_len)) {
 		    	return -1;
 		    }
 
@@ -2037,13 +2086,11 @@ static int decode_oauth_token_normal(u08bits *server_name, encoded_oauth_token *
 		EVP_CIPHER_CTX_init(&ctx);
 		EVP_DecryptInit_ex(&ctx, cipher, NULL, (unsigned char *)key->as_rs_key, NULL);
 		int outl=0;
-		EVP_DecryptUpdate(&ctx, decoded_field, &outl, encoded_field, (int)encoded_field_size);
-		EVP_DecryptFinal_ex(&ctx, decoded_field + outl, &outl);
+		my_EVP_DecryptUpdate(&ctx, decoded_field, &outl, encoded_field, (int)encoded_field_size);
 
-		if(outl<(int)min_encoded_field_size) {
-			OAUTH_ERROR("%s: decrypted output has wrong size: %d\n",__FUNCTION__,(int)outl);
-			return -1;
-		}
+		int tmp_outl = 0;
+		EVP_DecryptFinal_ex(&ctx, decoded_field + outl, &tmp_outl);
+		outl += tmp_outl;
 
 		size_t len = 0;
 
@@ -2080,6 +2127,7 @@ static int encode_oauth_token_aead(u08bits *server_name, encoded_oauth_token *et
 	if(server_name && etoken && key && dtoken && (dtoken->enc_block.key_length<128)) {
 
 		unsigned char orig_field[MAX_ENCODED_OAUTH_TOKEN_SIZE];
+		ns_bzero(orig_field,sizeof(orig_field));
 
 		size_t len = 0;
 		*((uint16_t*)(orig_field+len)) = nswap16(dtoken->enc_block.key_length);
@@ -2124,10 +2172,10 @@ static int encode_oauth_token_aead(u08bits *server_name, encoded_oauth_token *et
 		/* Provide any AAD data. This can be called zero or more times as
 		 * required
 		 */
-		if(1 != EVP_EncryptUpdate(&ctx, NULL, &outl, server_name, (int)sn_len))
+		if(1 != my_EVP_EncryptUpdate(&ctx, NULL, &outl, server_name, (int)sn_len))
 			return -1;
 
-		if(1 != EVP_EncryptUpdate(&ctx, encoded_field, &outl, orig_field, (int)len))
+		if(1 != my_EVP_EncryptUpdate(&ctx, encoded_field, &outl, orig_field, (int)len))
 			return -1;
 
 		int tmp_outl = 0;
@@ -2151,7 +2199,7 @@ static int decode_oauth_token_aead(u08bits *server_name, encoded_oauth_token *et
 {
 	if(server_name && etoken && key && dtoken) {
 
-		size_t min_encoded_field_size = 2+4+8+OAUTH_AEAD_NONCE_SIZE+OAUTH_AEAD_TAG_SIZE+calculate_auth_output_length(AUTH_ALG_HMAC_SHA_1);
+		size_t min_encoded_field_size = 2+4+8+OAUTH_AEAD_NONCE_SIZE+OAUTH_AEAD_TAG_SIZE+1;
 		if(etoken->size < min_encoded_field_size) {
 			OAUTH_ERROR("%s: token size too small: %d\n",__FUNCTION__,(int)etoken->size);
 			return -1;
@@ -2190,21 +2238,19 @@ static int decode_oauth_token_aead(u08bits *server_name, encoded_oauth_token *et
 		/* Provide any AAD data. This can be called zero or more times as
 		 * required
 		 */
-		if(1 != EVP_DecryptUpdate(&ctx, NULL, &outl, server_name, (int)sn_len))
+		if(1 != my_EVP_DecryptUpdate(&ctx, NULL, &outl, server_name, (int)sn_len))
 			return -1;
-		if(1 != EVP_DecryptUpdate(&ctx, decoded_field, &outl, encoded_field, (int)encoded_field_size))
+		if(1 != my_EVP_DecryptUpdate(&ctx, decoded_field, &outl, encoded_field, (int)encoded_field_size))
 			return -1;
-		int tmp_outl = 0;
+
 		EVP_CIPHER_CTX_ctrl (&ctx, EVP_CTRL_GCM_SET_TAG, OAUTH_AEAD_TAG_SIZE, tag);
+
+		int tmp_outl = 0;
 		if(EVP_DecryptFinal_ex(&ctx, decoded_field + outl, &tmp_outl)<1) {
 			OAUTH_ERROR("%s: token integrity check failed\n",__FUNCTION__);
 			return -1;
 		}
-
 		outl += tmp_outl;
-
-		if(outl<(int)min_encoded_field_size)
-			return -1;
 
 		size_t len = 0;
 

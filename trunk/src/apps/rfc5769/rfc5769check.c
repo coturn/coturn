@@ -39,6 +39,81 @@
 #include "apputils.h"
 #include "stun_buffer.h"
 
+//////////// OAUTH //////////////////
+
+static int check_oauth(void)
+{
+	oauth_key_data_raw okdr = {
+			"0123456789",
+			"01234567890123456789012345678901",
+			123456789,
+			3600,
+			"SHA1",
+			"AES-256-CBC",
+			"",
+			"HMAC-SHA-1",
+			""
+	};
+
+	oauth_key_data okd;
+
+	convert_oauth_key_data_raw(&okdr,&okd);
+
+	char err_msg[1025]="\0";
+	size_t err_msg_size = sizeof(err_msg)-1;
+	oauth_key key;
+
+	if(convert_oauth_key_data(&okd, &key, err_msg, err_msg_size)<0) {
+		fprintf(stderr,"%s\n",err_msg);
+		return -1;
+	}
+
+	oauth_token ot = {
+			{
+					20,
+					"01234567890123456789",
+					123456789,
+					3600
+			},
+			"",0
+	};
+
+	char server_name[33]="herod";
+	encoded_oauth_token etoken;
+
+	if(encode_oauth_token((u08bits *)server_name, &etoken, &key, &ot)<0) {
+		fprintf(stderr,"%s: cannot encode oauth token\n",__FUNCTION__);
+		return -1;
+	}
+
+	oauth_token dot;
+
+	if(decode_oauth_token((u08bits *)server_name, &etoken, &key, &dot)<0) {
+		fprintf(stderr,"%s: cannot decode oauth token\n",__FUNCTION__);
+		return -1;
+	}
+
+	if(strcmp((char*)ot.enc_block.mac_key,(char*)dot.enc_block.mac_key)) {
+		fprintf(stderr,"%s: wrong mac key: %s, must be %s\n",__FUNCTION__,(char*)dot.enc_block.mac_key,(char*)ot.enc_block.mac_key);
+		return -1;
+	}
+
+	if(ot.enc_block.key_length != dot.enc_block.key_length) {
+		fprintf(stderr,"%s: wrong key length: %d, must be %d\n",__FUNCTION__,(int)dot.enc_block.key_length,(int)ot.enc_block.key_length);
+		return -1;
+	}
+	if(ot.enc_block.timestamp != dot.enc_block.timestamp) {
+		fprintf(stderr,"%s: wrong timestamp: %llu, must be %llu\n",__FUNCTION__,(unsigned long long)dot.enc_block.timestamp,(unsigned long long)ot.enc_block.timestamp);
+		return -1;
+	}
+	if(ot.enc_block.lifetime != dot.enc_block.lifetime) {
+		fprintf(stderr,"%s: wrong lifetime: %lu, must be %lu\n",__FUNCTION__,(unsigned long)dot.enc_block.lifetime,(unsigned long)ot.enc_block.lifetime);
+		return -1;
+	}
+
+	return 0;
+}
+
 //////////////////////////////////////////////////
 
 static SHATYPE shatype = SHATYPE_SHA1;
@@ -399,6 +474,11 @@ int main(int argc, const char **argv)
 				exit(-1);
 			}
 		}
+	}
+
+	{
+		if(check_oauth()<0)
+			exit(-1);
 	}
 
 	return 0;

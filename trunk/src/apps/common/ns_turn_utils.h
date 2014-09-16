@@ -36,7 +36,6 @@
 #endif
 
 #include "ns_turn_ioaddr.h"
-//#include <event2/http.h>
 
 #ifdef __cplusplus
 extern "C" {
