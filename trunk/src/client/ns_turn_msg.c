@@ -2019,7 +2019,7 @@ static int decode_oauth_token_normal(u08bits *server_name, encoded_oauth_token *
 		    }
 
 		    if(ns_bcmp(check_mac,mac,mac_size)) {
-		    	OAUTH_ERROR("%s: mac is wrong\n",__FUNCTION__);
+		    	OAUTH_ERROR("%s: token integrity check failed\n",__FUNCTION__);
 		    	return -1;
 		    }
 		}
@@ -2158,9 +2158,9 @@ static int decode_oauth_token_aead(u08bits *server_name, encoded_oauth_token *et
 		}
 
 		unsigned char* encoded_field = (unsigned char*)etoken->token;
-		unsigned int encoded_field_size = (unsigned int)etoken->size-OAUTH_AEAD_NONCE_SIZE;
-		unsigned char* nonce = ((unsigned char*)etoken->token) + encoded_field_size;
-		unsigned char* tag = ((unsigned char*)etoken->token) + encoded_field_size - OAUTH_AEAD_TAG_SIZE;
+		unsigned int encoded_field_size = (unsigned int)etoken->size-OAUTH_AEAD_NONCE_SIZE - OAUTH_AEAD_TAG_SIZE;
+		unsigned char* nonce = ((unsigned char*)etoken->token) + encoded_field_size + OAUTH_AEAD_TAG_SIZE;
+		unsigned char* tag = ((unsigned char*)etoken->token) + encoded_field_size;
 
 		dtoken->mac_size = 0;
 
@@ -2184,8 +2184,6 @@ static int decode_oauth_token_aead(u08bits *server_name, encoded_oauth_token *et
 		if(1 != EVP_DecryptInit_ex(&ctx, NULL, NULL, (unsigned char *)key->as_rs_key, nonce))
 			return -1;
 
-		EVP_CIPHER_CTX_ctrl (&ctx, EVP_CTRL_GCM_SET_TAG, OAUTH_AEAD_TAG_SIZE, tag);
-
 		int outl=0;
 		size_t sn_len = strlen((char*)server_name);
 
@@ -2197,8 +2195,11 @@ static int decode_oauth_token_aead(u08bits *server_name, encoded_oauth_token *et
 		if(1 != EVP_DecryptUpdate(&ctx, decoded_field, &outl, encoded_field, (int)encoded_field_size))
 			return -1;
 		int tmp_outl = 0;
-		if(EVP_DecryptFinal_ex(&ctx, decoded_field + outl, &tmp_outl)<1)
+		EVP_CIPHER_CTX_ctrl (&ctx, EVP_CTRL_GCM_SET_TAG, OAUTH_AEAD_TAG_SIZE, tag);
+		if(EVP_DecryptFinal_ex(&ctx, decoded_field + outl, &tmp_outl)<1) {
+			OAUTH_ERROR("%s: token integrity check failed\n",__FUNCTION__);
 			return -1;
+		}
 
 		outl += tmp_outl;
 
