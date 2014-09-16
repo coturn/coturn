@@ -1582,6 +1582,12 @@ static void print_features(unsigned long mfn)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS supported\n");
 #endif
 
+#if defined(TURN_NO_GCM)
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "AEAD is not supported\n");
+#else
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "AEAD supported\n");
+#endif
+
 #if !defined(TURN_NO_HIREDIS)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Redis supported\n");
 #else
