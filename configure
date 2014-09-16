@@ -9,6 +9,8 @@ cleanup() {
 	rm -rf ${TH_TMPCPROGB}
 	rm -rf ${DTLS_TMPCPROGC}
 	rm -rf ${DTLS_TMPCPROGB}
+	rm -rf ${GCM_TMPCPROGC}
+	rm -rf ${GCM_TMPCPROGB}
 	rm -rf ${PQ_TMPCPROGC}
 	rm -rf ${PQ_TMPCPROGB}
 	rm -rf ${MYSQL_TMPCPROGC}
@@ -226,6 +228,21 @@ dtls_testlib() {
 
     if [ -z "${TURN_NO_DTLS}" ] ; then
     	${CC} ${DTLS_TMPCPROGC} -o ${DTLS_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} 2>>/dev/null
+    	ER=$?
+    	if [ ${ER} -eq 0 ] ; then
+    	    return 1
+    	else
+    	    return 0
+    	fi
+    else
+		return 0
+    fi
+}
+
+gcm_testlib() {
+
+    if [ -z "${TURN_NO_GCM}" ] ; then
+    	${CC} ${GCM_TMPCPROGC} -o ${GCM_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} 2>>/dev/null
     	ER=$?
     	if [ ${ER} -eq 0 ] ; then
     	    return 1
@@ -628,6 +645,19 @@ int main(int argc, char** argv) {
 }
 !
 
+GCM_TMPCPROG=__test__ccomp__gcm__$$
+GCM_TMPCPROGC=${TMPDIR}/${GCM_TMPCPROG}.c
+GCM_TMPCPROGB=${TMPDIR}/${GCM_TMPCPROG}
+
+cat > ${GCM_TMPCPROGC} <<!
+#include <stdlib.h>
+#include <openssl/ssl.h>
+#include <openssl/evp.h>
+int main(int argc, char** argv) {
+    return (int)EVP_CIPH_GCM_MODE;
+}
+!
+
 D_TMPCPROG=__test__ccomp__daemon__$$
 D_TMPCPROGC=${TMPDIR}/${D_TMPCPROG}.c
 D_TMPCPROGB=${TMPDIR}/${D_TMPCPROG}
@@ -886,6 +916,24 @@ else
 fi
 
 ###########################
+# Can we use GCM cipher ?
+###########################
+
+if [ -z ${TURN_NO_GCM} ] ; then 
+
+gcm_testlib
+ER=$?
+if [ ${ER} -eq 0 ] ; then
+	${ECHO_CMD} "WARNING: Cannot find GCM support."
+	${ECHO_CMD} "Turning GCM off."
+	TURN_NO_GCM="-DTURN_NO_GCM"
+fi
+
+else
+	TURN_NO_GCM="-DTURN_NO_GCM"
+fi
+
+###########################
 # Test Libevent2 setup
 ###########################
 testlibevent2_comp
@@ -1044,7 +1092,7 @@ fi
 # So, what we have now:
 ###############################
 
-OSCFLAGS="${OSCFLAGS} ${TURN_NO_THREAD_BARRIERS} ${TURN_NO_DTLS} ${TURN_NO_TLS} -DINSTALL_PREFIX=${PREFIX}"
+OSCFLAGS="${OSCFLAGS} ${TURN_NO_THREAD_BARRIERS} ${TURN_NO_DTLS} ${TURN_NO_GCM} ${TURN_NO_TLS} -DINSTALL_PREFIX=${PREFIX}"
 
 if ! [ -z "${TURN_ACCEPT_RPATH}" ] ; then
   if [ -z "${TURN_DISABLE_RPATH}" ] ; then
