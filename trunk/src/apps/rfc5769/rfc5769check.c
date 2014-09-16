@@ -41,74 +41,105 @@
 
 //////////// OAUTH //////////////////
 
-static int check_oauth(void)
-{
-	oauth_key_data_raw okdr = {
-			"0123456789",
-			"01234567890123456789012345678901",
-			123456789,
-			3600,
-			"SHA1",
-			"AES-256-CBC",
-			"",
-			"HMAC-SHA-1",
-			""
-	};
+static const char* shas[]={"SHA1","SHA256",NULL};
+static const char* encs[]={"AES-256-CBC","AES-128-CBC",
+#if !defined(TURN_NO_GCM)
+		"AEAD_AES_128_GCM", "AEAD_AES_256_GCM",
+#endif
+		NULL};
+static const char* hmacs[]={"HMAC-SHA-1","HMAC-SHA-256","HMAC-SHA-256-128",NULL};
 
-	oauth_key_data okd;
+static int check_oauth(void) {
 
-	convert_oauth_key_data_raw(&okdr,&okd);
+	const char server_name[33] = "herod";
 
-	char err_msg[1025]="\0";
-	size_t err_msg_size = sizeof(err_msg)-1;
-	oauth_key key;
+	for (size_t i_hmacs = 0; hmacs[i_hmacs]; ++i_hmacs) {
 
-	if(convert_oauth_key_data(&okd, &key, err_msg, err_msg_size)<0) {
-		fprintf(stderr,"%s\n",err_msg);
-		return -1;
-	}
+		for (size_t i_shas = 0; shas[i_shas]; ++i_shas) {
 
-	oauth_token ot = {
-			{
-					20,
-					"01234567890123456789",
-					123456789,
-					3600
-			},
-			"",0
-	};
+			for (size_t i_encs = 0; encs[i_encs]; ++i_encs) {
 
-	char server_name[33]="herod";
-	encoded_oauth_token etoken;
+				printf("oauth token %s:%s:%s:",hmacs[i_hmacs],shas[i_shas],encs[i_encs]);
 
-	if(encode_oauth_token((u08bits *)server_name, &etoken, &key, &ot)<0) {
-		fprintf(stderr,"%s: cannot encode oauth token\n",__FUNCTION__);
-		return -1;
-	}
+				oauth_token ot = {	{ 20, "01234567890123456789", 123456789, 3600 } };
+				oauth_token dot;
+				oauth_key key;
 
-	oauth_token dot;
+				{
+					oauth_key_data okd;
 
-	if(decode_oauth_token((u08bits *)server_name, &etoken, &key, &dot)<0) {
-		fprintf(stderr,"%s: cannot decode oauth token\n",__FUNCTION__);
-		return -1;
-	}
+					{
+						oauth_key_data_raw okdr = { "0123456789",
+								"01234567890123456789012345678901", 123456789,
+								3600, "", "", "", "", "" };
 
-	if(strcmp((char*)ot.enc_block.mac_key,(char*)dot.enc_block.mac_key)) {
-		fprintf(stderr,"%s: wrong mac key: %s, must be %s\n",__FUNCTION__,(char*)dot.enc_block.mac_key,(char*)ot.enc_block.mac_key);
-		return -1;
-	}
+						STRCPY(okdr.as_rs_alg, encs[i_encs]);
+						STRCPY(okdr.auth_alg, hmacs[i_hmacs]);
+						STRCPY(okdr.hkdf_hash_func, shas[i_shas]);
 
-	if(ot.enc_block.key_length != dot.enc_block.key_length) {
-		fprintf(stderr,"%s: wrong key length: %d, must be %d\n",__FUNCTION__,(int)dot.enc_block.key_length,(int)ot.enc_block.key_length);
-		return -1;
-	}
-	if(ot.enc_block.timestamp != dot.enc_block.timestamp) {
-		fprintf(stderr,"%s: wrong timestamp: %llu, must be %llu\n",__FUNCTION__,(unsigned long long)dot.enc_block.timestamp,(unsigned long long)ot.enc_block.timestamp);
-		return -1;
-	}
-	if(ot.enc_block.lifetime != dot.enc_block.lifetime) {
-		fprintf(stderr,"%s: wrong lifetime: %lu, must be %lu\n",__FUNCTION__,(unsigned long)dot.enc_block.lifetime,(unsigned long)ot.enc_block.lifetime);
-		return -1;
+						convert_oauth_key_data_raw(&okdr, &okd);
+
+						char err_msg[1025] = "\0";
+						size_t err_msg_size = sizeof(err_msg) - 1;
+
+						if (convert_oauth_key_data(&okd, &key, err_msg,
+								err_msg_size) < 0) {
+							fprintf(stderr, "%s\n", err_msg);
+							return -1;
+						}
+					}
+				}
+
+				{
+					encoded_oauth_token etoken;
+
+					if (encode_oauth_token((u08bits *) server_name, &etoken,
+							&key, &ot) < 0) {
+						fprintf(stderr, "%s: cannot encode oauth token\n",
+								__FUNCTION__);
+						return -1;
+					}
+
+					if (decode_oauth_token((u08bits *) server_name, &etoken,
+							&key, &dot) < 0) {
+						fprintf(stderr, "%s: cannot decode oauth token\n",
+								__FUNCTION__);
+						return -1;
+					}
+				}
+
+				if (strcmp((char*) ot.enc_block.mac_key,
+						(char*) dot.enc_block.mac_key)) {
+					fprintf(stderr, "%s: wrong mac key: %s, must be %s\n",
+							__FUNCTION__, (char*) dot.enc_block.mac_key,
+							(char*) ot.enc_block.mac_key);
+					return -1;
+				}
+
+				if (ot.enc_block.key_length != dot.enc_block.key_length) {
+					fprintf(stderr, "%s: wrong key length: %d, must be %d\n",
+							__FUNCTION__, (int) dot.enc_block.key_length,
+							(int) ot.enc_block.key_length);
+					return -1;
+				}
+				if (ot.enc_block.timestamp != dot.enc_block.timestamp) {
+					fprintf(stderr, "%s: wrong timestamp: %llu, must be %llu\n",
+							__FUNCTION__,
+							(unsigned long long) dot.enc_block.timestamp,
+							(unsigned long long) ot.enc_block.timestamp);
+					return -1;
+				}
+				if (ot.enc_block.lifetime != dot.enc_block.lifetime) {
+					fprintf(stderr, "%s: wrong lifetime: %lu, must be %lu\n",
+							__FUNCTION__,
+							(unsigned long) dot.enc_block.lifetime,
+							(unsigned long) ot.enc_block.lifetime);
+					return -1;
+				}
+
+				printf("OK\n");
+			}
+		}
 	}
 
 	return 0;

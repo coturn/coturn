@@ -158,8 +158,6 @@ typedef struct _oauth_encrypted_block oauth_encrypted_block;
 
 struct _oauth_token {
 	oauth_encrypted_block enc_block;
-	uint8_t mac[MAXSHASIZE];
-	size_t mac_size;
 };
 
 typedef struct _oauth_token oauth_token;
