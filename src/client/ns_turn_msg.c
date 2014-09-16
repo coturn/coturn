@@ -1669,9 +1669,9 @@ static void normalize_algorithm(char *s)
 {
 	char c = *s;
 	while(c) {
-		if(c=='_') c='-';
+		if(c=='_') *s='-';
 		else if((c>='a')&&(c<='z')) {
-			c = c - 'a' + 'A';
+			*s = c - 'a' + 'A';
 		}
 		++s;
 		c = *s;
@@ -1835,10 +1835,10 @@ int convert_oauth_key_data(oauth_key_data *oakd, oauth_key *key, char *err_msg, 
 			key->auth_alg = AUTH_ALG_HMAC_SHA_256_128;
 		} else if(oakd->auth_alg[0]) {
 			if(err_msg) {
-				snprintf(err_msg,err_msg_size,"Wrong oAuth token hash algorithm: %s",oakd->auth_alg);
+				snprintf(err_msg,err_msg_size,"Wrong oAuth token hash algorithm: %s (1)\n",oakd->auth_alg);
 			}
 			key->auth_alg = AUTH_ALG_ERROR;
-			OAUTH_ERROR("Wrong oAuth token hash algorithm: %s",oakd->auth_alg);
+			OAUTH_ERROR("Wrong oAuth token hash algorithm: %s (2)\n",oakd->auth_alg);
 			return -1;
 		}
 
@@ -1855,9 +1855,9 @@ int convert_oauth_key_data(oauth_key_data *oakd, oauth_key *key, char *err_msg, 
 #endif
 		} else if(oakd->as_rs_alg[0]) {
 			if(err_msg) {
-				snprintf(err_msg,err_msg_size,"Wrong oAuth token encryption algorithm: %s",oakd->as_rs_alg);
+				snprintf(err_msg,err_msg_size,"Wrong oAuth token encryption algorithm: %s (2)\n",oakd->as_rs_alg);
 			}
-			OAUTH_ERROR("Wrong oAuth token encryption algorithm: %s",oakd->as_rs_alg);
+			OAUTH_ERROR("Wrong oAuth token encryption algorithm: %s (3)\n",oakd->as_rs_alg);
 			return -1;
 		}
 
@@ -2008,6 +2008,8 @@ static int encode_oauth_token_normal(u08bits *server_name, encoded_oauth_token *
 		EVP_EncryptFinal_ex(&ctx, encoded_field + outl, &tmp_outl);
 		outl += tmp_outl;
 
+		EVP_CIPHER_CTX_cleanup(&ctx);
+
 		size_t sn_len = strlen((char*)server_name);
 		ns_bcopy(server_name,encoded_field+outl,sn_len);
 		outl += sn_len;
@@ -2054,6 +2056,7 @@ static int decode_oauth_token_normal(u08bits *server_name, encoded_oauth_token *
 			if(!md)
 				return -1;
        		unsigned int hmac_len = EVP_MD_size(md);
+       		update_hmac_len(key->auth_alg,&hmac_len);
        		if(hmac_len != mac_size) {
        			OAUTH_ERROR("%s: mac size is wrong: %d, must be %d\n",__FUNCTION__,(int)mac_size,(int)hmac_len);
        			return -1;
@@ -2073,9 +2076,6 @@ static int decode_oauth_token_normal(u08bits *server_name, encoded_oauth_token *
 		    }
 		}
 
-		ns_bcopy(mac,dtoken->mac,mac_size);
-		dtoken->mac_size = mac_size;
-
 		unsigned char decoded_field[MAX_ENCODED_OAUTH_TOKEN_SIZE];
 
 		const EVP_CIPHER * cipher = get_cipher_type(key->as_rs_alg);
@@ -2091,6 +2091,8 @@ static int decode_oauth_token_normal(u08bits *server_name, encoded_oauth_token *
 		int tmp_outl = 0;
 		EVP_DecryptFinal_ex(&ctx, decoded_field + outl, &tmp_outl);
 		outl += tmp_outl;
+
+		EVP_CIPHER_CTX_cleanup(&ctx);
 
 		size_t len = 0;
 
@@ -2190,6 +2192,8 @@ static int encode_oauth_token_aead(u08bits *server_name, encoded_oauth_token *et
 
 		etoken->size = outl;
 
+		EVP_CIPHER_CTX_cleanup(&ctx);
+
 		return 0;
 	}
 	return -1;
@@ -2209,8 +2213,6 @@ static int decode_oauth_token_aead(u08bits *server_name, encoded_oauth_token *et
 		unsigned int encoded_field_size = (unsigned int)etoken->size-OAUTH_AEAD_NONCE_SIZE - OAUTH_AEAD_TAG_SIZE;
 		unsigned char* nonce = ((unsigned char*)etoken->token) + encoded_field_size + OAUTH_AEAD_TAG_SIZE;
 		unsigned char* tag = ((unsigned char*)etoken->token) + encoded_field_size;
-
-		dtoken->mac_size = 0;
 
 		unsigned char decoded_field[MAX_ENCODED_OAUTH_TOKEN_SIZE];
 
@@ -2247,10 +2249,13 @@ static int decode_oauth_token_aead(u08bits *server_name, encoded_oauth_token *et
 
 		int tmp_outl = 0;
 		if(EVP_DecryptFinal_ex(&ctx, decoded_field + outl, &tmp_outl)<1) {
+			EVP_CIPHER_CTX_cleanup(&ctx);
 			OAUTH_ERROR("%s: token integrity check failed\n",__FUNCTION__);
 			return -1;
 		}
 		outl += tmp_outl;
+
+		EVP_CIPHER_CTX_cleanup(&ctx);
 
 		size_t len = 0;
 
