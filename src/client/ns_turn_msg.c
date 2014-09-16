@@ -1635,6 +1635,8 @@ int stun_attr_add_padding_str(u08bits *buf, size_t *len, u16bits padding_len)
 
 /* OAUTH */
 
+#define OAUTH_ERROR(...) fprintf(stderr,__VA_ARGS__)
+
 static void remove_spaces(char *s)
 {
 	char *sfns = s;
@@ -1751,6 +1753,7 @@ static int calculate_key(char *key, size_t key_size, char *new_key, size_t new_k
 			if(err_msg) {
 				snprintf(err_msg,err_msg_size,"Wrong HKDF procedure (key sizes): output.sz=%lu, hmac(1)=%lu, hmac(2)=%lu",(unsigned long)new_key_size,(unsigned long)hmac_len,(unsigned long)hmac1_len);
 			}
+			OAUTH_ERROR("Wrong HKDF procedure (key sizes): output.sz=%lu, hmac(1)=%lu, hmac(2)=%lu",(unsigned long)new_key_size,(unsigned long)hmac_len,(unsigned long)hmac1_len);
 			return -1;
 		}
 	}
@@ -1767,6 +1770,7 @@ int convert_oauth_key_data(oauth_key_data *oakd, oauth_key *key, char *err_msg, 
 				if(err_msg) {
 					snprintf(err_msg,err_msg_size,"AS-RS key is not defined");
 				}
+				OAUTH_ERROR("AS-RS key is not defined");
 				return -1;
 			}
 			if(!(oakd->auth_key_size)) {
@@ -1788,6 +1792,7 @@ int convert_oauth_key_data(oauth_key_data *oakd, oauth_key *key, char *err_msg, 
 			if(err_msg) {
 				snprintf(err_msg,err_msg_size,"KID is not defined");
 			}
+			OAUTH_ERROR("KID is not defined");
 			return -1;
 		}
 
@@ -1817,6 +1822,7 @@ int convert_oauth_key_data(oauth_key_data *oakd, oauth_key *key, char *err_msg, 
 			if(err_msg) {
 				snprintf(err_msg,err_msg_size,"Wrong HKDF hash function algorithm: %s",oakd->hkdf_hash_func);
 			}
+			OAUTH_ERROR("Wrong HKDF hash function algorithm: %s",oakd->hkdf_hash_func);
 			return -1;
 		}
 
@@ -1832,6 +1838,7 @@ int convert_oauth_key_data(oauth_key_data *oakd, oauth_key *key, char *err_msg, 
 				snprintf(err_msg,err_msg_size,"Wrong oAuth token hash algorithm: %s",oakd->auth_alg);
 			}
 			key->auth_alg = AUTH_ALG_ERROR;
+			OAUTH_ERROR("Wrong oAuth token hash algorithm: %s",oakd->auth_alg);
 			return -1;
 		}
 
@@ -1850,6 +1857,7 @@ int convert_oauth_key_data(oauth_key_data *oakd, oauth_key *key, char *err_msg, 
 			if(err_msg) {
 				snprintf(err_msg,err_msg_size,"Wrong oAuth token encryption algorithm: %s",oakd->as_rs_alg);
 			}
+			OAUTH_ERROR("Wrong oAuth token encryption algorithm: %s",oakd->as_rs_alg);
 			return -1;
 		}
 
@@ -1891,6 +1899,7 @@ static const EVP_CIPHER *get_cipher_type(ENC_ALG enc_alg)
 	default:
 		;
 	}
+	OAUTH_ERROR("%s: Unknown enc algorithm: %d\n",__FUNCTION__,(int)enc_alg);
 	return NULL;
 }
 
@@ -1905,6 +1914,7 @@ static const EVP_MD *get_auth_type(AUTH_ALG aa)
 	default:
 		;
 	};
+	OAUTH_ERROR("%s: Unknown auth algorithm: %d\n",__FUNCTION__,(int)aa);
 	return NULL;
 }
 
@@ -1986,6 +1996,7 @@ static int decode_oauth_token_normal(u08bits *server_name, encoded_oauth_token *
 		size_t mac_size = calculate_auth_output_length(key->auth_alg);
 		size_t min_encoded_field_size = 2+4+8+calculate_auth_output_length(AUTH_ALG_HMAC_SHA_1);
 		if(etoken->size < mac_size+min_encoded_field_size) {
+			OAUTH_ERROR("%s: token size too small: %d\n",__FUNCTION__,(int)etoken->size);
 			return -1;
 		}
 
@@ -1998,15 +2009,19 @@ static int decode_oauth_token_normal(u08bits *server_name, encoded_oauth_token *
 			if(!md)
 				return -1;
        		unsigned int hmac_len = EVP_MD_size(md);
-       		if(hmac_len != mac_size)
+       		if(hmac_len != mac_size) {
+       			OAUTH_ERROR("%s: mac size is wrong: %d, must be %d\n",__FUNCTION__,(int)mac_size,(int)hmac_len);
        			return -1;
+       		}
        		unsigned char check_mac[MAXSHASIZE];
 		    if (!HMAC(md, key->auth_key, key->auth_key_size, encoded_field, encoded_field_size, check_mac, &hmac_len)) {
 		    	return -1;
 		    }
 
-		    if(ns_bcmp(check_mac,mac,mac_size))
+		    if(ns_bcmp(check_mac,mac,mac_size)) {
+		    	OAUTH_ERROR("%s: mac is wrong\n",__FUNCTION__);
 		    	return -1;
+		    }
 		}
 
 		ns_bcopy(mac,dtoken->mac,mac_size);
@@ -2025,8 +2040,10 @@ static int decode_oauth_token_normal(u08bits *server_name, encoded_oauth_token *
 		EVP_DecryptUpdate(&ctx, decoded_field, &outl, encoded_field, (int)encoded_field_size);
 		EVP_DecryptFinal_ex(&ctx, decoded_field + outl, &outl);
 
-		if(outl<(int)min_encoded_field_size)
+		if(outl<(int)min_encoded_field_size) {
+			OAUTH_ERROR("%s: decrypted output has wrong size: %d\n",__FUNCTION__,(int)outl);
 			return -1;
+		}
 
 		size_t len = 0;
 
@@ -2110,7 +2127,8 @@ static int encode_oauth_token_aead(u08bits *server_name, encoded_oauth_token *et
 		if(1 != EVP_EncryptUpdate(&ctx, NULL, &outl, server_name, (int)sn_len))
 			return -1;
 
-		EVP_EncryptUpdate(&ctx, encoded_field, &outl, orig_field, (int)len);
+		if(1 != EVP_EncryptUpdate(&ctx, encoded_field, &outl, orig_field, (int)len))
+			return -1;
 
 		int tmp_outl = 0;
 		EVP_EncryptFinal_ex(&ctx, encoded_field + outl, &tmp_outl);
@@ -2135,6 +2153,7 @@ static int decode_oauth_token_aead(u08bits *server_name, encoded_oauth_token *et
 
 		size_t min_encoded_field_size = 2+4+8+OAUTH_AEAD_NONCE_SIZE+OAUTH_AEAD_TAG_SIZE+calculate_auth_output_length(AUTH_ALG_HMAC_SHA_1);
 		if(etoken->size < min_encoded_field_size) {
+			OAUTH_ERROR("%s: token size too small: %d\n",__FUNCTION__,(int)etoken->size);
 			return -1;
 		}
 
@@ -2153,8 +2172,8 @@ static int decode_oauth_token_aead(u08bits *server_name, encoded_oauth_token *et
 
 		EVP_CIPHER_CTX ctx;
 		EVP_CIPHER_CTX_init(&ctx);
-		/* Initialize the encryption operation. */
-		if(1 != EVP_EncryptInit_ex(&ctx, cipher, NULL, NULL, NULL))
+		/* Initialize the decryption operation. */
+		if(1 != EVP_DecryptInit_ex(&ctx, cipher, NULL, NULL, NULL))
 			return -1;
 
 		/* Set IV length if default 12 bytes (96 bits) is not appropriate */
@@ -2162,7 +2181,7 @@ static int decode_oauth_token_aead(u08bits *server_name, encoded_oauth_token *et
 			return -1;
 
 		/* Initialize key and IV */
-		if(1 != EVP_EncryptInit_ex(&ctx, NULL, NULL, (unsigned char *)key->as_rs_key, nonce))
+		if(1 != EVP_DecryptInit_ex(&ctx, NULL, NULL, (unsigned char *)key->as_rs_key, nonce))
 			return -1;
 
 		EVP_CIPHER_CTX_ctrl (&ctx, EVP_CTRL_GCM_SET_TAG, OAUTH_AEAD_TAG_SIZE, tag);
@@ -2173,9 +2192,10 @@ static int decode_oauth_token_aead(u08bits *server_name, encoded_oauth_token *et
 		/* Provide any AAD data. This can be called zero or more times as
 		 * required
 		 */
-		if(1 != EVP_EncryptUpdate(&ctx, NULL, &outl, server_name, (int)sn_len))
+		if(1 != EVP_DecryptUpdate(&ctx, NULL, &outl, server_name, (int)sn_len))
 			return -1;
-		EVP_DecryptUpdate(&ctx, decoded_field, &outl, encoded_field, (int)encoded_field_size);
+		if(1 != EVP_DecryptUpdate(&ctx, decoded_field, &outl, encoded_field, (int)encoded_field_size))
+			return -1;
 		int tmp_outl = 0;
 		if(EVP_DecryptFinal_ex(&ctx, decoded_field + outl, &tmp_outl)<1)
 			return -1;
@@ -2241,7 +2261,7 @@ int decode_oauth_token(u08bits *server_name, encoded_oauth_token *etoken, oauth_
 			fprintf(stderr,"Wrong AS_RS algorithm: %d\n",(int)key->as_rs_alg);
 		};
 	}
-	return 0;
+	return -1;
 }
 
 ///////////////////////////////////////////////////////////////
