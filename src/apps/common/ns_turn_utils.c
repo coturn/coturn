@@ -32,6 +32,8 @@
 #include "ns_turn_ioalib.h"
 #include "ns_turn_msg_defs.h"
 
+#include <event2/http.h>
+
 #include <time.h>
 
 #include <pthread.h>
