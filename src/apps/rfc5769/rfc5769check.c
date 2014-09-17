@@ -76,9 +76,7 @@ static int check_oauth(void) {
 
 	const char mac_key[33] = "ZksjpweoixXmvn67534m";
 	const size_t mac_key_length=strlen(mac_key);
-	uint64_t token_timestamp0 = turn_time();
-	const uint64_t token_timestamp = token_timestamp0 << 16;
-	printf("key timestamp: %llu\n",(unsigned long long)token_timestamp);
+	const uint64_t token_timestamp = 92470300704768;
 	const uint32_t token_lifetime = 3600;
 
 	const char kid[33] = "2783466234";
