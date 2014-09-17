@@ -2006,11 +2006,14 @@ static int encode_oauth_token_normal(const u08bits *server_name, encoded_oauth_t
 		EVP_CIPHER_CTX ctx;
 		EVP_CIPHER_CTX_init(&ctx);
 		EVP_EncryptInit_ex(&ctx, cipher, NULL, (const unsigned char *)key->as_rs_key, NULL);
+		EVP_CIPHER_CTX_set_padding(&ctx,1);
 		int outl=0;
 		my_EVP_EncryptUpdate(&ctx, encoded_field, &outl, orig_field, (int)len);
-		int tmp_outl = 0;
-		EVP_EncryptFinal_ex(&ctx, encoded_field + outl, &tmp_outl);
-		outl += tmp_outl;
+		if(outl % OAUTH_ENC_ALG_BLOCK_SIZE) {
+			int tmp_outl = 0;
+			EVP_EncryptFinal_ex(&ctx, encoded_field + outl, &tmp_outl);
+			outl += tmp_outl;
+		}
 
 		EVP_CIPHER_CTX_cleanup(&ctx);
 
@@ -2089,6 +2092,7 @@ static int decode_oauth_token_normal(const u08bits *server_name, const encoded_o
 		EVP_CIPHER_CTX ctx;
 		EVP_CIPHER_CTX_init(&ctx);
 		EVP_DecryptInit_ex(&ctx, cipher, NULL, (const unsigned char *)key->as_rs_key, NULL);
+		EVP_CIPHER_CTX_set_padding(&ctx,1);
 		int outl=0;
 		my_EVP_DecryptUpdate(&ctx, decoded_field, &outl, encoded_field, (int)encoded_field_size);
 
@@ -2128,7 +2132,7 @@ static void generate_random_nonce(unsigned char *nonce, size_t sz) {
 	}
 }
 
-static int encode_oauth_token_aead(const u08bits *server_name, encoded_oauth_token *etoken, const oauth_key *key, const oauth_token *dtoken)
+static int encode_oauth_token_aead(const u08bits *server_name, encoded_oauth_token *etoken, const oauth_key *key, const oauth_token *dtoken, const u08bits* nonce0)
 {
 	if(server_name && etoken && key && dtoken && (dtoken->enc_block.key_length<128)) {
 
@@ -2155,7 +2159,11 @@ static int encode_oauth_token_aead(const u08bits *server_name, encoded_oauth_tok
 		unsigned char *encoded_field = (unsigned char*)etoken->token;
 
 		unsigned char nonce[OAUTH_AEAD_NONCE_SIZE];
-		generate_random_nonce(nonce, sizeof(nonce));
+		if(nonce0) {
+			ns_bcopy(nonce0,nonce,sizeof(nonce));
+		} else {
+			generate_random_nonce(nonce, sizeof(nonce));
+		}
 
 		EVP_CIPHER_CTX ctx;
 		EVP_CIPHER_CTX_init(&ctx);
@@ -2163,6 +2171,8 @@ static int encode_oauth_token_aead(const u08bits *server_name, encoded_oauth_tok
 		/* Initialize the encryption operation. */
 		if(1 != EVP_EncryptInit_ex(&ctx, cipher, NULL, NULL, NULL))
 			return -1;
+
+		EVP_CIPHER_CTX_set_padding(&ctx,1);
 
 		/* Set IV length if default 12 bytes (96 bits) is not appropriate */
 		if(1 != EVP_CIPHER_CTX_ctrl(&ctx, EVP_CTRL_GCM_SET_IVLEN, OAUTH_AEAD_NONCE_SIZE, NULL))
@@ -2180,6 +2190,8 @@ static int encode_oauth_token_aead(const u08bits *server_name, encoded_oauth_tok
 		 */
 		if(1 != my_EVP_EncryptUpdate(&ctx, NULL, &outl, server_name, (int)sn_len))
 			return -1;
+
+		outl=0;
 
 		if(1 != my_EVP_EncryptUpdate(&ctx, encoded_field, &outl, orig_field, (int)len))
 			return -1;
@@ -2231,6 +2243,8 @@ static int decode_oauth_token_aead(const u08bits *server_name, const encoded_oau
 		/* Initialize the decryption operation. */
 		if(1 != EVP_DecryptInit_ex(&ctx, cipher, NULL, NULL, NULL))
 			return -1;
+
+		EVP_CIPHER_CTX_set_padding(&ctx,1);
 
 		/* Set IV length if default 12 bytes (96 bits) is not appropriate */
 		if(1 != EVP_CIPHER_CTX_ctrl(&ctx, EVP_CTRL_GCM_SET_IVLEN, OAUTH_AEAD_NONCE_SIZE, NULL))
@@ -2285,8 +2299,9 @@ static int decode_oauth_token_aead(const u08bits *server_name, const encoded_oau
 
 #endif
 
-int encode_oauth_token(const u08bits *server_name, encoded_oauth_token *etoken, const oauth_key *key, const oauth_token *dtoken)
+int encode_oauth_token(const u08bits *server_name, encoded_oauth_token *etoken, const oauth_key *key, const oauth_token *dtoken, const u08bits *nonce)
 {
+	UNUSED_ARG(nonce);
 	if(server_name && etoken && key && dtoken) {
 		switch(key->as_rs_alg) {
 		case AES_256_CBC:
@@ -2295,7 +2310,7 @@ int encode_oauth_token(const u08bits *server_name, encoded_oauth_token *etoken, 
 #if !defined(TURN_NO_GCM)
 		case AEAD_AES_128_GCM:
 		case AEAD_AES_256_GCM:
-			return encode_oauth_token_aead(server_name, etoken,key,dtoken);
+			return encode_oauth_token_aead(server_name, etoken,key,dtoken,nonce);
 #endif
 		default:
 			fprintf(stderr,"Wrong AS_RS algorithm: %d\n",(int)key->as_rs_alg);

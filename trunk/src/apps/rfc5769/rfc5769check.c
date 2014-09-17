@@ -52,7 +52,7 @@ static const char* hmacs[]={"HMAC-SHA-1","HMAC-SHA-256","HMAC-SHA-256-128",NULL}
 void print_field5769(const char* name, const void* f0, size_t len);
 void print_field5769(const char* name, const void* f0, size_t len) {
   const unsigned char* f = (const unsigned char*)f0;
-  printf("\nfield %s==>>\n",name);
+  printf("\nfield %s %lu==>>\n",name,(unsigned long)len);
   size_t i;
   for(i = 0;i<len;++i) {
     printf("\\x%x",(unsigned int)f[i]);
@@ -76,12 +76,16 @@ static int check_oauth(void) {
 
 	const char mac_key[33] = "ZksjpweoixXmvn67534m";
 	const size_t mac_key_length=strlen(mac_key);
-	const uint64_t token_timestamp = 1234567890;
+	uint64_t token_timestamp0 = turn_time();
+	const uint64_t token_timestamp = token_timestamp0 << 16;
+	printf("key timestamp: %llu\n",(unsigned long long)token_timestamp);
 	const uint32_t token_lifetime = 3600;
 
 	const char kid[33] = "2783466234";
 	const turn_time_t key_timestamp = 1234567890;
 	const turn_time_t key_lifetime = 3600;
+
+	const char aead_nonce[OAUTH_AEAD_NONCE_SIZE+1] = "h4j3k2l2n4b5";
 
 	for (i_hmacs = 0; hmacs[i_hmacs]; ++i_hmacs) {
 
@@ -98,14 +102,17 @@ static int check_oauth(void) {
 				ot.enc_block.lifetime = token_lifetime;
 
 				oauth_token dot;
+				ns_bzero((&dot),sizeof(dot));
 				oauth_key key;
 				ns_bzero(&key,sizeof(key));
 
 				{
 					oauth_key_data okd;
+					ns_bzero(&okd,sizeof(okd));
 
 					{
 					  oauth_key_data_raw okdr;
+					  ns_bzero(&okdr,sizeof(okdr));
 
 						STRCPY(okdr.kid,kid);
 						STRCPY(okdr.ikm_key,base64encoded_ltp);
@@ -133,9 +140,10 @@ static int check_oauth(void) {
 
 				{
 					encoded_oauth_token etoken;
+					ns_bzero(&etoken,sizeof(etoken));
 
 					if (encode_oauth_token((const u08bits *) server_name, &etoken,
-							&key, &ot) < 0) {
+							&key, &ot, (const u08bits*)aead_nonce) < 0) {
 						fprintf(stderr, "%s: cannot encode oauth token\n",
 								__FUNCTION__);
 						return -1;
