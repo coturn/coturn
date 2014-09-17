@@ -49,11 +49,39 @@ static const char* encs[]={"AES-256-CBC","AES-128-CBC",
 		NULL};
 static const char* hmacs[]={"HMAC-SHA-1","HMAC-SHA-256","HMAC-SHA-256-128",NULL};
 
+void print_field5769(const char* name, const void* f0, size_t len);
+void print_field5769(const char* name, const void* f0, size_t len) {
+  const unsigned char* f = (const unsigned char*)f0;
+  printf("\nfield %s==>>\n",name);
+  size_t i;
+  for(i = 0;i<len;++i) {
+    printf("\\x%x",(unsigned int)f[i]);
+  }
+  printf("\n<<==field %s\n",name);
+}
+
 static int check_oauth(void) {
 
 	const char server_name[33] = "blackdow.carleon.gov";
 
 	size_t i_hmacs,i_shas,i_encs;
+
+	const char long_term_password[33] = "HGkj32KJGiuy098sdfaqbNjOiaz71923";
+
+	size_t ltp_output_length=0;
+
+	const char* base64encoded_ltp = base64_encode((const unsigned char *)long_term_password,
+						      strlen(long_term_password),
+						      &ltp_output_length);
+
+	const char mac_key[33] = "ZksjpweoixXmvn67534m";
+	const size_t mac_key_length=strlen(mac_key);
+	const uint64_t token_timestamp = 1234567890;
+	const uint32_t token_lifetime = 3600;
+
+	const char kid[33] = "2783466234";
+	const turn_time_t key_timestamp = 1234567890;
+	const turn_time_t key_lifetime = 3600;
 
 	for (i_hmacs = 0; hmacs[i_hmacs]; ++i_hmacs) {
 
@@ -61,23 +89,31 @@ static int check_oauth(void) {
 
 			for (i_encs = 0; encs[i_encs]; ++i_encs) {
 
-				printf("oauth token %s:%s:%s:",hmacs[i_hmacs],shas[i_shas],encs[i_encs]);
+				printf("oauth token %s:%s:%s:\n",hmacs[i_hmacs],shas[i_shas],encs[i_encs]);
 
-				oauth_token ot = {	{ 20, "01234567890123456789", 123456789, 3600 } };
+				oauth_token ot;
+				ot.enc_block.key_length = (uint16_t)mac_key_length;
+				STRCPY(ot.enc_block.mac_key,mac_key);
+				ot.enc_block.timestamp = token_timestamp;
+				ot.enc_block.lifetime = token_lifetime;
+
 				oauth_token dot;
 				oauth_key key;
+				ns_bzero(&key,sizeof(key));
 
 				{
 					oauth_key_data okd;
 
 					{
-						oauth_key_data_raw okdr = { "0123456789",
-								"01234567890123456789012345678901", 123456789,
-								3600, "", "", "", "", "" };
+					  oauth_key_data_raw okdr;
 
+						STRCPY(okdr.kid,kid);
+						STRCPY(okdr.ikm_key,base64encoded_ltp);
 						STRCPY(okdr.as_rs_alg, encs[i_encs]);
 						STRCPY(okdr.auth_alg, hmacs[i_hmacs]);
 						STRCPY(okdr.hkdf_hash_func, shas[i_shas]);
+						okdr.timestamp = key_timestamp;
+						okdr.lifetime = key_lifetime;
 
 						convert_oauth_key_data_raw(&okdr, &okd);
 
@@ -92,6 +128,9 @@ static int check_oauth(void) {
 					}
 				}
 
+				print_field5769("AS-RS",key.as_rs_key,key.as_rs_key_size);
+				print_field5769("AUTH",key.auth_key,key.auth_key_size);
+
 				{
 					encoded_oauth_token etoken;
 
@@ -101,6 +140,8 @@ static int check_oauth(void) {
 								__FUNCTION__);
 						return -1;
 					}
+
+					print_field5769("encoded token",etoken.token,etoken.size);
 
 					if (decode_oauth_token((const u08bits *) server_name, &etoken,
 							&key, &dot) < 0) {
