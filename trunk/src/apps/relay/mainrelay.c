@@ -1704,7 +1704,7 @@ static void init_oauth_server_name(void) {
 		char domain[513];
 		if(getdomainname(domain,sizeof(domain)-1)>=0) {
 			size_t dlen = strlen(domain);
-			if(dlen>0) {
+			if(dlen>0 && domain[0] != '(') {
 				size_t slen = strlen(turn_params.oauth_server_name);
 				turn_params.oauth_server_name[slen]='.';
 				ns_bcopy(domain,turn_params.oauth_server_name+slen+1,strlen(domain)+1);
