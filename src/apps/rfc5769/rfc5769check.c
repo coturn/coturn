@@ -49,6 +49,8 @@ static const char* encs[]={"AES-256-CBC","AES-128-CBC",
 		NULL};
 static const char* hmacs[]={"HMAC-SHA-1","HMAC-SHA-256","HMAC-SHA-256-128",NULL};
 
+static int print_extra = 0;
+
 void print_field5769(const char* name, const void* f0, size_t len);
 void print_field5769(const char* name, const void* f0, size_t len) {
   const unsigned char* f = (const unsigned char*)f0;
@@ -91,7 +93,10 @@ static int check_oauth(void) {
 
 			for (i_encs = 0; encs[i_encs]; ++i_encs) {
 
-				printf("oauth token %s:%s:%s:\n",hmacs[i_hmacs],shas[i_shas],encs[i_encs]);
+				printf("oauth token %s:%s:%s:",hmacs[i_hmacs],shas[i_shas],encs[i_encs]);
+
+				if(print_extra)
+					printf("\n");
 
 				oauth_token ot;
 				ot.enc_block.key_length = (uint16_t)mac_key_length;
@@ -133,8 +138,10 @@ static int check_oauth(void) {
 					}
 				}
 
-				print_field5769("AS-RS",key.as_rs_key,key.as_rs_key_size);
-				print_field5769("AUTH",key.auth_key,key.auth_key_size);
+				if(print_extra) {
+					print_field5769("AS-RS",key.as_rs_key,key.as_rs_key_size);
+					print_field5769("AUTH",key.auth_key,key.auth_key_size);
+				}
 
 				{
 					encoded_oauth_token etoken;
@@ -147,7 +154,9 @@ static int check_oauth(void) {
 						return -1;
 					}
 
-					print_field5769("encoded token",etoken.token,etoken.size);
+					if(print_extra) {
+						print_field5769("encoded token",etoken.token,etoken.size);
+					}
 
 					if (decode_oauth_token((const u08bits *) server_name, &etoken,
 							&key, &dot) < 0) {
@@ -204,6 +213,9 @@ int main(int argc, const char **argv)
 
 	UNUSED_ARG(argc);
 	UNUSED_ARG(argv);
+
+	if(argc>1)
+		print_extra = 1;
 
 	set_logfile("stdout");
 	set_system_parameters(0);
