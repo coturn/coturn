@@ -420,6 +420,10 @@ Options with required values:
 			value can be changed on-the-fly by a separate program, so this is why
 			that other mode is dynamic. Multiple shared secrets can be used
 			(both in the database and in the "static" fashion).
+			
+--server-name		Server name used (when necessary) for
+			the authentication purposes (oauth).
+			The default value is the FQDN of the host.
 
 --cert			Certificate file, PEM format. Same file 
 			search rules applied as for the configuration 

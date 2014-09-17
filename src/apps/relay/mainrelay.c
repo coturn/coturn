@@ -464,6 +464,9 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						That database value can be changed on-the-fly\n"
 "						by a separate program, so this is why it is 'dynamic'.\n"
 "						Multiple shared secrets can be used (both in the database and in the \"static\" fashion).\n"
+" --server-name					Server name used (when necessary) for\n"
+"						the authentication purposes (oauth).\n"
+"						The default value is the FQDN of the host.\n"
 " -n						Do not use configuration file, take all parameters from the command line only.\n"
 " --cert			<filename>		Certificate file, PEM format. Same file search rules\n"
 "						applied as for the configuration file.\n"
@@ -678,7 +681,8 @@ enum EXTRA_OPTS {
 	CHECK_ORIGIN_CONSISTENCY_OPT,
 	ADMIN_MAX_BPS_OPT,
 	ADMIN_TOTAL_QUOTA_OPT,
-	ADMIN_USER_QUOTA_OPT
+	ADMIN_USER_QUOTA_OPT,
+	SERVER_NAME_OPT
 };
 
 struct myoption {
@@ -732,6 +736,7 @@ static const struct myoption long_options[] = {
 				{ "static-auth-secret", required_argument, NULL, STATIC_AUTH_SECRET_VAL_OPT },
 /* deprecated: */		{ "secret-ts-exp-time", optional_argument, NULL, AUTH_SECRET_TS_EXP },
 				{ "realm", required_argument, NULL, 'r' },
+				{ "server-name", required_argument, NULL, SERVER_NAME_OPT },
 				{ "user-quota", required_argument, NULL, 'q' },
 				{ "total-quota", required_argument, NULL, 'Q' },
 				{ "max-bps", required_argument, NULL, 's' },
@@ -860,6 +865,9 @@ static void set_option(int c, char *value)
   }
 
   switch (c) {
+  case SERVER_NAME_OPT:
+	  STRCPY(turn_params.oauth_server_name,value);
+	  break;
   case NO_SSLV2_OPT:
 	  turn_params.no_sslv2 = get_bool_value(value);
 	  break;
@@ -1557,7 +1565,6 @@ static int adminmain(int argc, char **argv)
 static void print_features(unsigned long mfn)
 {
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\nRFC 3489/5389/5766/5780/6062/6156 STUN/TURN Server\nVersion %s\n",TURN_SOFTWARE);
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Server name: %s\n",turn_params.oauth_server_name);
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\nMax number of open files/sockets allowed for this process: %lu\n",mfn);
 	if(turn_params.net_engine_version == 1)
 		mfn = mfn/3;
@@ -1693,6 +1700,17 @@ static void init_oauth_server_name(void) {
 	if(!turn_params.oauth_server_name[0]) {
 		STRCPY(turn_params.oauth_server_name,TURN_SOFTWARE);
 	}
+	{
+		char domain[513];
+		if(getdomainname(domain,sizeof(domain)-1)>=0) {
+			size_t dlen = strlen(domain);
+			if(dlen>0) {
+				size_t slen = strlen(turn_params.oauth_server_name);
+				turn_params.oauth_server_name[slen]='.';
+				ns_bcopy(domain,turn_params.oauth_server_name+slen+1,strlen(domain)+1);
+			}
+		}
+	}
 }
 
 int main(int argc, char **argv)
@@ -1796,6 +1814,8 @@ int main(int argc, char **argv)
 	}
 
 	read_config_file(argc,argv,1);
+
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Server name: %s\n",turn_params.oauth_server_name);
 
 	optind = 0;
 
