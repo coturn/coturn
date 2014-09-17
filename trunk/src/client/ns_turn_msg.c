@@ -1761,9 +1761,13 @@ static int calculate_key(char *key, size_t key_size, char *new_key, size_t new_k
 	return 0;
 }
 
-int convert_oauth_key_data(oauth_key_data *oakd, oauth_key *key, char *err_msg, size_t err_msg_size)
+int convert_oauth_key_data(const oauth_key_data *oakd0, oauth_key *key, char *err_msg, size_t err_msg_size)
 {
-	if(oakd && key) {
+	if(oakd0 && key) {
+
+		oauth_key_data oakd_obj;
+		ns_bcopy(oakd0,&oakd_obj,sizeof(oauth_key_data));
+		oauth_key_data *oakd = &oakd_obj;
 
 		if(!(oakd->ikm_key_size)) {
 			if(!(oakd->as_rs_key_size)) {
@@ -1973,7 +1977,7 @@ void print_field(const char* name, const unsigned char* f, size_t len) {
 	printf("\n<<==field %s\n",name);
 }
 
-static int encode_oauth_token_normal(u08bits *server_name, encoded_oauth_token *etoken, oauth_key *key, oauth_token *dtoken)
+static int encode_oauth_token_normal(const u08bits *server_name, encoded_oauth_token *etoken, const oauth_key *key, const oauth_token *dtoken)
 {
 	if(server_name && etoken && key && dtoken && (dtoken->enc_block.key_length<=128)) {
 
@@ -2001,7 +2005,7 @@ static int encode_oauth_token_normal(u08bits *server_name, encoded_oauth_token *
 
 		EVP_CIPHER_CTX ctx;
 		EVP_CIPHER_CTX_init(&ctx);
-		EVP_EncryptInit_ex(&ctx, cipher, NULL, (unsigned char *)key->as_rs_key, NULL);
+		EVP_EncryptInit_ex(&ctx, cipher, NULL, (const unsigned char *)key->as_rs_key, NULL);
 		int outl=0;
 		my_EVP_EncryptUpdate(&ctx, encoded_field, &outl, orig_field, (int)len);
 		int tmp_outl = 0;
@@ -2010,7 +2014,7 @@ static int encode_oauth_token_normal(u08bits *server_name, encoded_oauth_token *
 
 		EVP_CIPHER_CTX_cleanup(&ctx);
 
-		size_t sn_len = strlen((char*)server_name);
+		size_t sn_len = strlen((const char*)server_name);
 		ns_bcopy(server_name,encoded_field+outl,sn_len);
 		outl += sn_len;
 
@@ -2036,7 +2040,7 @@ static int encode_oauth_token_normal(u08bits *server_name, encoded_oauth_token *
 	return -1;
 }
 
-static int decode_oauth_token_normal(u08bits *server_name, encoded_oauth_token *etoken, oauth_key *key, oauth_token *dtoken)
+static int decode_oauth_token_normal(const u08bits *server_name, const encoded_oauth_token *etoken, const oauth_key *key, oauth_token *dtoken)
 {
 	if(server_name && etoken && key && dtoken) {
 
@@ -2047,9 +2051,9 @@ static int decode_oauth_token_normal(u08bits *server_name, encoded_oauth_token *
 			return -1;
 		}
 
-		unsigned char* encoded_field = (unsigned char*)etoken->token;
+		const unsigned char* encoded_field = (const unsigned char*)etoken->token;
 		unsigned int encoded_field_size = (unsigned int)etoken->size-mac_size;
-		unsigned char* mac = ((unsigned char*)etoken->token) + etoken->size - mac_size;
+		const unsigned char* mac = ((const unsigned char*)etoken->token) + etoken->size - mac_size;
 
 		{
 			const EVP_MD *md = get_auth_type(key->auth_alg);
@@ -2064,7 +2068,7 @@ static int decode_oauth_token_normal(u08bits *server_name, encoded_oauth_token *
        		unsigned char efield[MAX_ENCODED_OAUTH_TOKEN_SIZE];
        		unsigned char check_mac[MAXSHASIZE];
        		ns_bcopy(encoded_field,efield,encoded_field_size);
-       		size_t sn_len = strlen((char*)server_name);
+       		size_t sn_len = strlen((const char*)server_name);
        		ns_bcopy(server_name,efield+encoded_field_size,sn_len);
 		    if (!HMAC(md, key->auth_key, key->auth_key_size, efield, encoded_field_size+sn_len, check_mac, &hmac_len)) {
 		    	return -1;
@@ -2084,7 +2088,7 @@ static int decode_oauth_token_normal(u08bits *server_name, encoded_oauth_token *
 
 		EVP_CIPHER_CTX ctx;
 		EVP_CIPHER_CTX_init(&ctx);
-		EVP_DecryptInit_ex(&ctx, cipher, NULL, (unsigned char *)key->as_rs_key, NULL);
+		EVP_DecryptInit_ex(&ctx, cipher, NULL, (const unsigned char *)key->as_rs_key, NULL);
 		int outl=0;
 		my_EVP_DecryptUpdate(&ctx, decoded_field, &outl, encoded_field, (int)encoded_field_size);
 
@@ -2124,7 +2128,7 @@ static void generate_random_nonce(unsigned char *nonce, size_t sz) {
 	}
 }
 
-static int encode_oauth_token_aead(u08bits *server_name, encoded_oauth_token *etoken, oauth_key *key, oauth_token *dtoken)
+static int encode_oauth_token_aead(const u08bits *server_name, encoded_oauth_token *etoken, const oauth_key *key, const oauth_token *dtoken)
 {
 	if(server_name && etoken && key && dtoken && (dtoken->enc_block.key_length<128)) {
 
@@ -2165,11 +2169,11 @@ static int encode_oauth_token_aead(u08bits *server_name, encoded_oauth_token *et
 			return -1;
 
 		/* Initialize key and IV */
-		if(1 != EVP_EncryptInit_ex(&ctx, NULL, NULL, (unsigned char *)key->as_rs_key, nonce))
+		if(1 != EVP_EncryptInit_ex(&ctx, NULL, NULL, (const unsigned char *)key->as_rs_key, nonce))
 			return -1;
 
 		int outl=0;
-		size_t sn_len = strlen((char*)server_name);
+		size_t sn_len = strlen((const char*)server_name);
 
 		/* Provide any AAD data. This can be called zero or more times as
 		 * required
@@ -2199,7 +2203,7 @@ static int encode_oauth_token_aead(u08bits *server_name, encoded_oauth_token *et
 	return -1;
 }
 
-static int decode_oauth_token_aead(u08bits *server_name, encoded_oauth_token *etoken, oauth_key *key, oauth_token *dtoken)
+static int decode_oauth_token_aead(const u08bits *server_name, const encoded_oauth_token *etoken, const oauth_key *key, oauth_token *dtoken)
 {
 	if(server_name && etoken && key && dtoken) {
 
@@ -2209,10 +2213,12 @@ static int decode_oauth_token_aead(u08bits *server_name, encoded_oauth_token *et
 			return -1;
 		}
 
-		unsigned char* encoded_field = (unsigned char*)etoken->token;
+		const unsigned char* encoded_field = (const unsigned char*)etoken->token;
 		unsigned int encoded_field_size = (unsigned int)etoken->size-OAUTH_AEAD_NONCE_SIZE - OAUTH_AEAD_TAG_SIZE;
-		unsigned char* nonce = ((unsigned char*)etoken->token) + encoded_field_size + OAUTH_AEAD_TAG_SIZE;
-		unsigned char* tag = ((unsigned char*)etoken->token) + encoded_field_size;
+		const unsigned char* nonce = ((const unsigned char*)etoken->token) + encoded_field_size + OAUTH_AEAD_TAG_SIZE;
+
+		unsigned char tag[OAUTH_AEAD_TAG_SIZE];
+		ns_bcopy(((const unsigned char*)etoken->token) + encoded_field_size, tag ,sizeof(tag));
 
 		unsigned char decoded_field[MAX_ENCODED_OAUTH_TOKEN_SIZE];
 
@@ -2231,11 +2237,11 @@ static int decode_oauth_token_aead(u08bits *server_name, encoded_oauth_token *et
 			return -1;
 
 		/* Initialize key and IV */
-		if(1 != EVP_DecryptInit_ex(&ctx, NULL, NULL, (unsigned char *)key->as_rs_key, nonce))
+		if(1 != EVP_DecryptInit_ex(&ctx, NULL, NULL, (const unsigned char *)key->as_rs_key, nonce))
 			return -1;
 
 		int outl=0;
-		size_t sn_len = strlen((char*)server_name);
+		size_t sn_len = strlen((const char*)server_name);
 
 		/* Provide any AAD data. This can be called zero or more times as
 		 * required
@@ -2244,6 +2250,7 @@ static int decode_oauth_token_aead(u08bits *server_name, encoded_oauth_token *et
 			return -1;
 		if(1 != my_EVP_DecryptUpdate(&ctx, decoded_field, &outl, encoded_field, (int)encoded_field_size))
 			return -1;
+
 
 		EVP_CIPHER_CTX_ctrl (&ctx, EVP_CTRL_GCM_SET_TAG, OAUTH_AEAD_TAG_SIZE, tag);
 
@@ -2278,7 +2285,7 @@ static int decode_oauth_token_aead(u08bits *server_name, encoded_oauth_token *et
 
 #endif
 
-int encode_oauth_token(u08bits *server_name, encoded_oauth_token *etoken, oauth_key *key, oauth_token *dtoken)
+int encode_oauth_token(const u08bits *server_name, encoded_oauth_token *etoken, const oauth_key *key, const oauth_token *dtoken)
 {
 	if(server_name && etoken && key && dtoken) {
 		switch(key->as_rs_alg) {
@@ -2297,7 +2304,7 @@ int encode_oauth_token(u08bits *server_name, encoded_oauth_token *etoken, oauth_
 	return -1;
 }
 
-int decode_oauth_token(u08bits *server_name, encoded_oauth_token *etoken, oauth_key *key, oauth_token *dtoken)
+int decode_oauth_token(const u08bits *server_name, const encoded_oauth_token *etoken, const oauth_key *key, oauth_token *dtoken)
 {
 	if(server_name && etoken && key && dtoken) {
 		switch(key->as_rs_alg) {

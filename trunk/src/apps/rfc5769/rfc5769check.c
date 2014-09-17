@@ -51,13 +51,15 @@ static const char* hmacs[]={"HMAC-SHA-1","HMAC-SHA-256","HMAC-SHA-256-128",NULL}
 
 static int check_oauth(void) {
 
-	const char server_name[33] = "herod";
+	const char server_name[33] = "blackdow.carleon.gov";
 
-	for (size_t i_hmacs = 0; hmacs[i_hmacs]; ++i_hmacs) {
+	size_t i_hmacs,i_shas,i_encs;
 
-		for (size_t i_shas = 0; shas[i_shas]; ++i_shas) {
+	for (i_hmacs = 0; hmacs[i_hmacs]; ++i_hmacs) {
 
-			for (size_t i_encs = 0; encs[i_encs]; ++i_encs) {
+		for (i_shas = 0; shas[i_shas]; ++i_shas) {
+
+			for (i_encs = 0; encs[i_encs]; ++i_encs) {
 
 				printf("oauth token %s:%s:%s:",hmacs[i_hmacs],shas[i_shas],encs[i_encs]);
 
@@ -93,14 +95,14 @@ static int check_oauth(void) {
 				{
 					encoded_oauth_token etoken;
 
-					if (encode_oauth_token((u08bits *) server_name, &etoken,
+					if (encode_oauth_token((const u08bits *) server_name, &etoken,
 							&key, &ot) < 0) {
 						fprintf(stderr, "%s: cannot encode oauth token\n",
 								__FUNCTION__);
 						return -1;
 					}
 
-					if (decode_oauth_token((u08bits *) server_name, &etoken,
+					if (decode_oauth_token((const u08bits *) server_name, &etoken,
 							&key, &dot) < 0) {
 						fprintf(stderr, "%s: cannot decode oauth token\n",
 								__FUNCTION__);
