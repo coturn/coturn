@@ -212,7 +212,7 @@ int is_http_get(const char *s, size_t blen);
 /* OAUTH */
 int convert_oauth_key_data(const oauth_key_data *oakd, oauth_key *key, char *err_msg, size_t err_msg_size);
 int decode_oauth_token(const u08bits *server_name, const encoded_oauth_token *etoken, const oauth_key *key, oauth_token *dtoken);
-int encode_oauth_token(const u08bits *server_name, encoded_oauth_token *etoken, const oauth_key *key, const oauth_token *dtoken);
+int encode_oauth_token(const u08bits *server_name, encoded_oauth_token *etoken, const oauth_key *key, const oauth_token *dtoken, const u08bits *nonce);
 
 ///////////////////////////////////////////////////////////////
 
