@@ -65,15 +65,6 @@
 //////////// REALM //////////////
 
 static realm_params_t *default_realm_params_ptr = NULL;
-static const realm_params_t _default_realm_params =
-{
-  1,
-  {
-	"\0", /* name */
-    {0,0,0}
-  },
-  {0,NULL}
-};
 
 static ur_string_map *realms = NULL;
 static turn_mutex o_to_realm_mutex;
@@ -95,40 +86,30 @@ void update_o_to_realm(ur_string_map * o_to_realm_new) {
   TURN_MUTEX_UNLOCK(&o_to_realm_mutex);
 }
 
-void create_new_realm(char* name)
+void create_default_realm()
 {
-	realm_params_t *ret = NULL;
-
-	if((name == NULL)||(name[0]==0)) {
-		if(default_realm_params_ptr) {
-			return;
-		}
-		/* init everything: */
-		TURN_MUTEX_INIT_RECURSIVE(&o_to_realm_mutex);
-		init_secrets_list(&realms_list);
-		o_to_realm = ur_string_map_create(free);
-		default_realm_params_ptr = (realm_params_t*)malloc(sizeof(realm_params_t));
-		ns_bcopy(&_default_realm_params,default_realm_params_ptr,sizeof(realm_params_t));
-		realms = ur_string_map_create(NULL);
-		ur_string_map_lock(realms);
-		ret = default_realm_params_ptr;
-	} else {
-		ur_string_map_value_type value = 0;
-		ur_string_map_lock(realms);
-		if (!ur_string_map_get(realms, (const ur_string_map_key_type) name, &value)) {
-			ret = (realm_params_t*)turn_malloc(sizeof(realm_params_t));
-			ns_bcopy(default_realm_params_ptr,ret,sizeof(realm_params_t));
-			STRCPY(ret->options.name,name);
-			value = (ur_string_map_value_type)ret;
-			ur_string_map_put(realms, (const ur_string_map_key_type) name, value);
-			add_to_secrets_list(&realms_list, name);
-		} else {
-			ur_string_map_unlock(realms);
-			return;
-		}
+	if(default_realm_params_ptr) {
+		return;
 	}
 
-	ret->status.alloc_counters =  ur_string_map_create(NULL);
+	static realm_params_t _default_realm_params =
+	{
+	  1,
+	  {
+		"\0", /* name */
+	    {0,0,0}
+	  },
+	  {0,NULL}
+	};
+
+	/* init everything: */
+	TURN_MUTEX_INIT_RECURSIVE(&o_to_realm_mutex);
+	init_secrets_list(&realms_list);
+	o_to_realm = ur_string_map_create(free);
+	default_realm_params_ptr = &_default_realm_params;
+	realms = ur_string_map_create(NULL);
+	ur_string_map_lock(realms);
+	default_realm_params_ptr->status.alloc_counters =  ur_string_map_create(NULL);
 	ur_string_map_unlock(realms);
 }
 
