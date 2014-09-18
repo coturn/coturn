@@ -272,6 +272,7 @@ typedef struct _turn_params_ {
 
   struct auth_server authserver;
   char oauth_server_name[1025];
+  char domain[1025];
 
 /////////////// AUX SERVERS ////////////////
 

@@ -85,7 +85,7 @@ LOW_DEFAULT_PORTS_BOUNDARY,HIGH_DEFAULT_PORTS_BOUNDARY,0,0,0,"",
 0,NULL,0,NULL,DEFAULT_GENERAL_RELAY_SERVERS_NUMBER,0,
 ////////////// Auth server /////////////////////////////////////
 {NULL,NULL,NULL,0,NULL},
-"",
+"","",
 /////////////// AUX SERVERS ////////////////
 {NULL,0,{0,NULL}},0,
 /////////////// ALTERNATE SERVERS ////////////////
@@ -1693,24 +1693,36 @@ static void drop_privileges(void)
 }
 
 static void init_oauth_server_name(void) {
-	struct utsname name;
-	if(!uname(&name)) {
-		STRCPY(turn_params.oauth_server_name,name.nodename);
-	}
+
 	if(!turn_params.oauth_server_name[0]) {
-		STRCPY(turn_params.oauth_server_name,TURN_SOFTWARE);
-	}
-	{
-		char domain[513];
-		if(getdomainname(domain,sizeof(domain)-1)>=0) {
-			size_t dlen = strlen(domain);
-			if(dlen>0 && domain[0] != '(') {
-				size_t slen = strlen(turn_params.oauth_server_name);
+
+		struct utsname name;
+
+		if(!uname(&name)) {
+			STRCPY(turn_params.oauth_server_name,name.nodename);
+		}
+		if(!turn_params.oauth_server_name[0]) {
+			STRCPY(turn_params.oauth_server_name,TURN_SOFTWARE);
+		}
+
+		size_t slen = strlen(turn_params.oauth_server_name);
+
+		if(get_realm(NULL)->options.name[0]) {
+			turn_params.oauth_server_name[slen]='.';
+			ns_bcopy(get_realm(NULL)->options.name,turn_params.oauth_server_name+slen+1,strlen(get_realm(NULL)->options.name)+1);
+		} else {
+			size_t dlen = strlen(turn_params.domain);
+			if(dlen>0 && turn_params.domain[0] != '(') {
 				turn_params.oauth_server_name[slen]='.';
-				ns_bcopy(domain,turn_params.oauth_server_name+slen+1,strlen(domain)+1);
+				ns_bcopy(turn_params.domain,turn_params.oauth_server_name+slen+1,strlen(turn_params.domain)+1);
 			}
 		}
 	}
+}
+
+static void init_domain(void)
+{
+	getdomainname(turn_params.domain,sizeof(turn_params.domain)-1);
 }
 
 int main(int argc, char **argv)
@@ -1727,7 +1739,8 @@ int main(int argc, char **argv)
 	redis_async_init();
 #endif
 
-	create_new_realm(NULL);
+	init_domain();
+	create_default_realm();
 
 	init_turn_server_addrs_list(&turn_params.alternate_servers_list);
 	init_turn_server_addrs_list(&turn_params.tls_alternate_servers_list);
@@ -1738,7 +1751,6 @@ int main(int argc, char **argv)
 	init_listener();
 	init_secrets_list(&turn_params.default_users_db.ram_db.static_auth_secrets);
 	init_dynamic_ip_lists();
-	init_oauth_server_name();
 
 	if (!strstr(argv[0], "turnadmin")) {
 
@@ -1815,6 +1827,13 @@ int main(int argc, char **argv)
 
 	read_config_file(argc,argv,1);
 
+	if(!get_realm(NULL)->options.name[0]) {
+		STRCPY(get_realm(NULL)->options.name,turn_params.domain);
+	}
+
+	init_oauth_server_name();
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Domain name: %s\n",turn_params.domain);
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Default realm: %s\n",get_realm(NULL)->options.name);
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Server name: %s\n",turn_params.oauth_server_name);
 
 	optind = 0;
