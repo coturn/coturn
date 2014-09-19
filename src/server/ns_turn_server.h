@@ -160,6 +160,10 @@ struct _turn_turnserver {
 
 	/* Bandwidth draft: */
 	allocate_bps_cb allocate_bps_func;
+
+	/* oAuth: */
+	int oauth;
+	const char* oauth_server_name;
 };
 
 ///////////////////////////////////////////
@@ -195,7 +199,9 @@ void init_turn_server(turn_turnserver* server,
 				    vintp mobility,
 				    int server_relay,
 				    send_turn_session_info_cb send_turn_session_info,
-				    allocate_bps_cb allocate_bps_func);
+				    allocate_bps_cb allocate_bps_func,
+				    int oauth,
+				    const char* oauth_server_name);
 
 ioa_engine_handle turn_server_get_engine(turn_turnserver *s);
 
