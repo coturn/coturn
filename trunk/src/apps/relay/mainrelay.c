@@ -85,7 +85,7 @@ LOW_DEFAULT_PORTS_BOUNDARY,HIGH_DEFAULT_PORTS_BOUNDARY,0,0,0,"",
 0,NULL,0,NULL,DEFAULT_GENERAL_RELAY_SERVERS_NUMBER,0,
 ////////////// Auth server /////////////////////////////////////
 {NULL,NULL,NULL,0,NULL},
-"","",
+"","",0,
 /////////////// AUX SERVERS ////////////////
 {NULL,0,{0,NULL}},0,
 /////////////// ALTERNATE SERVERS ////////////////
@@ -467,6 +467,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 " --server-name					Server name used (when necessary) for\n"
 "						the authentication purposes (oauth).\n"
 "						The default value is the FQDN of the host.\n"
+" --oauth					Support oAuth authentication.\n"
 " -n						Do not use configuration file, take all parameters from the command line only.\n"
 " --cert			<filename>		Certificate file, PEM format. Same file search rules\n"
 "						applied as for the configuration file.\n"
@@ -682,7 +683,8 @@ enum EXTRA_OPTS {
 	ADMIN_MAX_BPS_OPT,
 	ADMIN_TOTAL_QUOTA_OPT,
 	ADMIN_USER_QUOTA_OPT,
-	SERVER_NAME_OPT
+	SERVER_NAME_OPT,
+	OAUTH_OPT
 };
 
 struct myoption {
@@ -737,6 +739,7 @@ static const struct myoption long_options[] = {
 /* deprecated: */		{ "secret-ts-exp-time", optional_argument, NULL, AUTH_SECRET_TS_EXP },
 				{ "realm", required_argument, NULL, 'r' },
 				{ "server-name", required_argument, NULL, SERVER_NAME_OPT },
+				{ "oauth", optional_argument, NULL, OAUTH_OPT },
 				{ "user-quota", required_argument, NULL, 'q' },
 				{ "total-quota", required_argument, NULL, 'Q' },
 				{ "max-bps", required_argument, NULL, 's' },
@@ -867,6 +870,9 @@ static void set_option(int c, char *value)
   switch (c) {
   case SERVER_NAME_OPT:
 	  STRCPY(turn_params.oauth_server_name,value);
+	  break;
+  case OAUTH_OPT:
+	  turn_params.oauth = get_bool_value(value);
 	  break;
   case NO_SSLV2_OPT:
 	  turn_params.no_sslv2 = get_bool_value(value);
@@ -1834,7 +1840,9 @@ int main(int argc, char **argv)
 	init_oauth_server_name();
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Domain name: %s\n",turn_params.domain);
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Default realm: %s\n",get_realm(NULL)->options.name);
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Server name: %s\n",turn_params.oauth_server_name);
+	if(turn_params.oauth) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "oAuth server name: %s\n",turn_params.oauth_server_name);
+	}
 
 	optind = 0;
 

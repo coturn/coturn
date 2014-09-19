@@ -3075,6 +3075,17 @@ static int create_challenge_response(ts_ur_super_session *ss, stun_tid *tid, int
 	char *realm = ss->realm_options.name;
 	stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_REALM,
 					(u08bits*)realm, (int)(strlen((s08bits*)(realm))));
+
+	if(ss->server) {
+		turn_turnserver* server = (turn_turnserver*)ss->server;
+		if(server->oauth && (server->oauth_server_name)&&(server->oauth_server_name[0])) {
+    	stun_attr_add_str(ioa_network_buffer_data(nbh), &len,
+    			STUN_ATTRIBUTE_THIRD_PARTY_AUTHORIZATION,
+    			(const u08bits*)(server->oauth_server_name),
+    			strlen(server->oauth_server_name));
+		}
+    }
+
 	ioa_network_buffer_set_size(nbh,len);
 	return 0;
 }
@@ -4702,7 +4713,8 @@ void init_turn_server(turn_turnserver* server,
 		send_socket_to_relay_cb send_socket_to_relay,
 		vintp secure_stun, SHATYPE shatype, vintp mobility, int server_relay,
 		send_turn_session_info_cb send_turn_session_info,
-		allocate_bps_cb allocate_bps_func) {
+		allocate_bps_cb allocate_bps_func,
+		int oauth, const char* oauth_server_name) {
 
 	if (!server)
 		return;
@@ -4726,6 +4738,9 @@ void init_turn_server(turn_turnserver* server,
 	server->mobility = mobility;
 	server->server_relay = server_relay;
 	server->send_turn_session_info = send_turn_session_info;
+	server->oauth = oauth;
+	if(oauth)
+		server->oauth_server_name = oauth_server_name;
 	if(mobility)
 		server->mobile_connections_map = ur_map_create();
 

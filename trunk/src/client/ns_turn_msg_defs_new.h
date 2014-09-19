@@ -103,6 +103,8 @@ typedef enum _AUTH_ALG AUTH_ALG;
  * oAuth struct
  */
 
+#define STUN_ATTRIBUTE_THIRD_PARTY_AUTHORIZATION (0x8030)
+
 #define OAUTH_KID_SIZE (128)
 #define OAUTH_HASH_FUNC_SIZE (64)
 #define OAUTH_ALG_SIZE (64)
