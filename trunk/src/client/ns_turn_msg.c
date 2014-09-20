@@ -1912,9 +1912,11 @@ static const EVP_MD *get_auth_type(AUTH_ALG aa)
 	switch(aa) {
 	case AUTH_ALG_HMAC_SHA_1:
 		return EVP_sha1();
+#if !defined(OPENSSL_NO_SHA256) && defined(SSL_TXT_SHA256)
 	case AUTH_ALG_HMAC_SHA_256_128:
 	case AUTH_ALG_HMAC_SHA_256:
 		return EVP_sha256();
+#endif
 	default:
 		break;
 	};
