@@ -1704,11 +1704,11 @@ static void init_oauth_server_name(void) {
 
 		struct utsname name;
 
-		if(!uname(&name)) {
+		if(uname(&name)>=0) {
 			STRCPY(turn_params.oauth_server_name,name.nodename);
 		}
 		if(!turn_params.oauth_server_name[0]) {
-			STRCPY(turn_params.oauth_server_name,TURN_SOFTWARE);
+			STRCPY(turn_params.oauth_server_name,"coturn");
 		}
 
 		size_t slen = strlen(turn_params.oauth_server_name);
@@ -1728,7 +1728,9 @@ static void init_oauth_server_name(void) {
 
 static void init_domain(void)
 {
+#if !defined(NO_GETDOMAINNAME)
 	getdomainname(turn_params.domain,sizeof(turn_params.domain)-1);
+#endif
 }
 
 int main(int argc, char **argv)
