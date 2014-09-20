@@ -1687,7 +1687,7 @@ static size_t calculate_enc_key_length(ENC_ALG a)
 #endif
 		return 16;
 	default:
-		;
+		break;
 	};
 
 	return 32;
@@ -1703,7 +1703,7 @@ static size_t calculate_auth_key_length(AUTH_ALG a)
 	case AUTH_ALG_HMAC_SHA_256:
 		return 32;
 	default:
-		;
+		break;
 	};
 
 	return 32;
@@ -1719,7 +1719,7 @@ static size_t calculate_auth_output_length(AUTH_ALG a)
 	case AUTH_ALG_HMAC_SHA_256:
 		return 32;
 	default:
-		;
+		break;
 	};
 
 	return 32;
@@ -1901,7 +1901,7 @@ static const EVP_CIPHER *get_cipher_type(ENC_ALG enc_alg)
 		return EVP_aes_256_gcm();
 #endif
 	default:
-		;
+		break;
 	}
 	OAUTH_ERROR("%s: Unknown enc algorithm: %d\n",__FUNCTION__,(int)enc_alg);
 	return NULL;
@@ -1916,7 +1916,7 @@ static const EVP_MD *get_auth_type(AUTH_ALG aa)
 	case AUTH_ALG_HMAC_SHA_256:
 		return EVP_sha256();
 	default:
-		;
+		break;
 	};
 	OAUTH_ERROR("%s: Unknown auth algorithm: %d\n",__FUNCTION__,(int)aa);
 	return NULL;
@@ -1930,7 +1930,7 @@ static void update_hmac_len(AUTH_ALG aa, unsigned int *hmac_len)
 			*hmac_len = 16;
 			break;
 		default:
-			;
+			break;
 		};
 	}
 }
@@ -1942,7 +1942,10 @@ static int my_EVP_EncryptUpdate(EVP_CIPHER_CTX *ctx, unsigned char *out,
 	int out_len = 0;
 	while((out_len<inl)&&(++cycle<128)) {
 		int tmp_outl=0;
-		int ret = EVP_EncryptUpdate(ctx, out+out_len, &tmp_outl, in+out_len, inl-out_len);
+		unsigned char *ptr = NULL;
+		if(out)
+			ptr = out+out_len;
+		int ret = EVP_EncryptUpdate(ctx, ptr, &tmp_outl, in+out_len, inl-out_len);
 		out_len += tmp_outl;
 		if(ret<1)
 			return ret;
@@ -1958,7 +1961,10 @@ static int my_EVP_DecryptUpdate(EVP_CIPHER_CTX *ctx, unsigned char *out,
 	int out_len = 0;
 	while((out_len<inl)&&(++cycle<128)) {
 		int tmp_outl=0;
-		int ret = EVP_DecryptUpdate(ctx, out+out_len, &tmp_outl, in+out_len, inl-out_len);
+		unsigned char *ptr = NULL;
+		if(out)
+			ptr = out+out_len;
+		int ret = EVP_DecryptUpdate(ctx, ptr, &tmp_outl, in+out_len, inl-out_len);
 		out_len += tmp_outl;
 		if(ret<1)
 			return ret;
@@ -2235,24 +2241,36 @@ static int decode_oauth_token_aead(const u08bits *server_name, const encoded_oau
 		unsigned char decoded_field[MAX_ENCODED_OAUTH_TOKEN_SIZE];
 
 		const EVP_CIPHER * cipher = get_cipher_type(key->as_rs_alg);
-		if(!cipher)
+		if(!cipher) {
+			OAUTH_ERROR("%s: Cannot find cipher for algorithm: %d\n",__FUNCTION__,(int)key->as_rs_alg);
 			return -1;
+		}
 
 		EVP_CIPHER_CTX ctx;
 		EVP_CIPHER_CTX_init(&ctx);
 		/* Initialize the decryption operation. */
-		if(1 != EVP_DecryptInit_ex(&ctx, cipher, NULL, NULL, NULL))
+		if(1 != EVP_DecryptInit_ex(&ctx, cipher, NULL, NULL, NULL)) {
+			OAUTH_ERROR("%s: Cannot initialize decryption\n",__FUNCTION__);
 			return -1;
+		}
 
-		EVP_CIPHER_CTX_set_padding(&ctx,1);
+		//EVP_CIPHER_CTX_set_padding(&ctx,1);
 
 		/* Set IV length if default 12 bytes (96 bits) is not appropriate */
-		if(1 != EVP_CIPHER_CTX_ctrl(&ctx, EVP_CTRL_GCM_SET_IVLEN, OAUTH_AEAD_NONCE_SIZE, NULL))
+		if(1 != EVP_CIPHER_CTX_ctrl(&ctx, EVP_CTRL_GCM_SET_IVLEN, OAUTH_AEAD_NONCE_SIZE, NULL)) {
+			OAUTH_ERROR("%s: Cannot set nonce length\n",__FUNCTION__);
 			return -1;
+		}
 
 		/* Initialize key and IV */
-		if(1 != EVP_DecryptInit_ex(&ctx, NULL, NULL, (const unsigned char *)key->as_rs_key, nonce))
+		if(1 != EVP_DecryptInit_ex(&ctx, NULL, NULL, (const unsigned char *)key->as_rs_key, nonce)) {
+			OAUTH_ERROR("%s: Cannot set nonce\n",__FUNCTION__);
 			return -1;
+		}
+
+		/* Set expected tag value. A restriction in OpenSSL 1.0.1c and earlier
+		  +         * required the tag before any AAD or ciphertext */
+		EVP_CIPHER_CTX_ctrl (&ctx, EVP_CTRL_GCM_SET_TAG, OAUTH_AEAD_TAG_SIZE, tag);
 
 		int outl=0;
 		size_t sn_len = strlen((const char*)server_name);
@@ -2260,13 +2278,14 @@ static int decode_oauth_token_aead(const u08bits *server_name, const encoded_oau
 		/* Provide any AAD data. This can be called zero or more times as
 		 * required
 		 */
-		if(1 != my_EVP_DecryptUpdate(&ctx, NULL, &outl, server_name, (int)sn_len))
+		if(1 != my_EVP_DecryptUpdate(&ctx, NULL, &outl, server_name, (int)sn_len)) {
+			OAUTH_ERROR("%s: Cannot decrypt update server_name: %s, len=%d\n",__FUNCTION__,server_name,(int)sn_len);
 			return -1;
-		if(1 != my_EVP_DecryptUpdate(&ctx, decoded_field, &outl, encoded_field, (int)encoded_field_size))
+		}
+		if(1 != my_EVP_DecryptUpdate(&ctx, decoded_field, &outl, encoded_field, (int)encoded_field_size)) {
+			OAUTH_ERROR("%s: Cannot decrypt update\n",__FUNCTION__);
 			return -1;
-
-
-		EVP_CIPHER_CTX_ctrl (&ctx, EVP_CTRL_GCM_SET_TAG, OAUTH_AEAD_TAG_SIZE, tag);
+		}
 
 		int tmp_outl = 0;
 		if(EVP_DecryptFinal_ex(&ctx, decoded_field + outl, &tmp_outl)<1) {
