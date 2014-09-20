@@ -87,7 +87,7 @@ int stun_method_str(u16bits method, char *smethod)
 	};
 
 	if(smethod) {
-		STRCPY(smethod,s);
+		ns_bcopy(s,smethod,strlen(s)+1);
 	}
 
 	return ret;
