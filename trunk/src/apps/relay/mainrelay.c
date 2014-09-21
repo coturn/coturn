@@ -1730,6 +1730,8 @@ static void init_domain(void)
 {
 #if !defined(TURN_NO_GETDOMAINNAME)
 	getdomainname(turn_params.domain,sizeof(turn_params.domain)-1);
+	if(!strcmp(turn_params.domain,"(none)")) 
+	  turn_params.domain[0]=0;
 #endif
 }
 
