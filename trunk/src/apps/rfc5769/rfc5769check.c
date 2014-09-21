@@ -42,7 +42,7 @@
 //////////// OAUTH //////////////////
 
 static const char* shas[]={"SHA1",
-#if !defined(OPENSSL_NO_SHA256) && defined(SSL_TXT_SHA256)
+#if !defined(OPENSSL_NO_SHA256) && defined(SHA256_DIGEST_LENGTH)
 			   "SHA256",
 #endif
 			   NULL};
@@ -52,7 +52,7 @@ static const char* encs[]={"AES-256-CBC","AES-128-CBC",
 #endif
 		NULL};
 static const char* hmacs[]={"HMAC-SHA-1",
-#if !defined(OPENSSL_NO_SHA256) && defined(SSL_TXT_SHA256)
+#if !defined(OPENSSL_NO_SHA256) && defined(SHA256_DIGEST_LENGTH)
 			    "HMAC-SHA-256","HMAC-SHA-256-128",
 #endif
 			    NULL};

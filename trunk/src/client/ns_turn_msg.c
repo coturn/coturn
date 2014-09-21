@@ -117,7 +117,7 @@ int stun_calculate_hmac(const u08bits *buf, size_t len, const u08bits *key, size
 	UNUSED_ARG(shatype);
 
 	if(shatype == SHATYPE_SHA256) {
-#if !defined(OPENSSL_NO_SHA256) && defined(SSL_TXT_SHA256)
+#if !defined(OPENSSL_NO_SHA256) && defined(SHA256_DIGEST_LENGTH)
 	  if (!HMAC(EVP_sha256(), key, keylen, buf, len, hmac, hmac_len)) {
 	    return -1;
 	  }
@@ -153,7 +153,7 @@ int stun_produce_integrity_key_str(u08bits *uname, u08bits *realm, u08bits *upwd
 	str[strl]=0;
 
 	if(shatype == SHATYPE_SHA256) {
-#if !defined(OPENSSL_NO_SHA256) && defined(SSL_TXT_SHA256)
+#if !defined(OPENSSL_NO_SHA256) && defined(SHA256_DIGEST_LENGTH)
 		unsigned int keylen = 0;
 		EVP_MD_CTX ctx;
 		EVP_DigestInit(&ctx,EVP_sha256());
@@ -1686,9 +1686,7 @@ static size_t calculate_enc_key_length(ENC_ALG a)
 {
 	switch(a) {
 	case AES_128_CBC:
-#if !defined(TURN_NO_GCM)
 	case AEAD_AES_128_GCM:
-#endif
 		return 16;
 	default:
 		break;
@@ -1855,12 +1853,10 @@ int convert_oauth_key_data(const oauth_key_data *oakd0, oauth_key *key, char *er
 			key->as_rs_alg = AES_128_CBC;
 		} else if(!strcmp(oakd->as_rs_alg,"AES-256-CBC")) {
 			key->as_rs_alg = AES_256_CBC;
-#if !defined(TURN_NO_GCM)
 		} else if(!strcmp(oakd->as_rs_alg,"AEAD-AES-128-GCM")) {
 			key->as_rs_alg = AEAD_AES_128_GCM;
 		} else if(!strcmp(oakd->as_rs_alg,"AEAD-AES-256-GCM")) {
 			key->as_rs_alg = AEAD_AES_256_GCM;
-#endif
 		} else if(oakd->as_rs_alg[0]) {
 			if(err_msg) {
 				snprintf(err_msg,err_msg_size,"Wrong oAuth token encryption algorithm: %s (2)\n",oakd->as_rs_alg);
@@ -1907,7 +1903,7 @@ static const EVP_CIPHER *get_cipher_type(ENC_ALG enc_alg)
 	default:
 		break;
 	}
-	OAUTH_ERROR("%s: Unknown enc algorithm: %d\n",__FUNCTION__,(int)enc_alg);
+	OAUTH_ERROR("%s: Unsupported enc algorithm: %d\n",__FUNCTION__,(int)enc_alg);
 	return NULL;
 }
 
@@ -1916,7 +1912,7 @@ static const EVP_MD *get_auth_type(AUTH_ALG aa)
 	switch(aa) {
 	case AUTH_ALG_HMAC_SHA_1:
 		return EVP_sha1();
-#if !defined(OPENSSL_NO_SHA256) && defined(SSL_TXT_SHA256)
+#if !defined(OPENSSL_NO_SHA256) && defined(SHA256_DIGEST_LENGTH)
 	case AUTH_ALG_HMAC_SHA_256_128:
 	case AUTH_ALG_HMAC_SHA_256:
 		return EVP_sha256();
@@ -2338,7 +2334,8 @@ int encode_oauth_token(const u08bits *server_name, encoded_oauth_token *etoken, 
 			return encode_oauth_token_aead(server_name, etoken,key,dtoken,nonce);
 #endif
 		default:
-			fprintf(stderr,"Wrong AS_RS algorithm: %d\n",(int)key->as_rs_alg);
+			fprintf(stderr,"Unsupported AS_RS algorithm: %d\n",(int)key->as_rs_alg);
+			break;
 		};
 	}
 	return -1;
@@ -2357,7 +2354,8 @@ int decode_oauth_token(const u08bits *server_name, const encoded_oauth_token *et
 			return decode_oauth_token_aead(server_name, etoken,key,dtoken);
 #endif
 		default:
-			fprintf(stderr,"Wrong AS_RS algorithm: %d\n",(int)key->as_rs_alg);
+			fprintf(stderr,"Unsupported AS_RS algorithm: %d\n",(int)key->as_rs_alg);
+			break;
 		};
 	}
 	return -1;
