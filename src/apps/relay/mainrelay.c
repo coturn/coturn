@@ -1728,7 +1728,7 @@ static void init_oauth_server_name(void) {
 
 static void init_domain(void)
 {
-#if !defined(NO_GETDOMAINNAME)
+#if !defined(TURN_NO_GETDOMAINNAME)
 	getdomainname(turn_params.domain,sizeof(turn_params.domain)-1);
 #endif
 }

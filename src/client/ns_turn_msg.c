@@ -116,14 +116,16 @@ int stun_calculate_hmac(const u08bits *buf, size_t len, const u08bits *key, size
 	ERR_clear_error();
 	UNUSED_ARG(shatype);
 
-#if !defined(OPENSSL_NO_SHA256) && defined(SSL_TXT_SHA256)
 	if(shatype == SHATYPE_SHA256) {
+#if !defined(OPENSSL_NO_SHA256) && defined(SSL_TXT_SHA256)
 	  if (!HMAC(EVP_sha256(), key, keylen, buf, len, hmac, hmac_len)) {
 	    return -1;
 	  }
-	} else
+#else
+	  fprintf(stderr,"SHA256 is not supported\n");
+	  return -1;
 #endif
-
+	} else
 	  if (!HMAC(EVP_sha1(), key, keylen, buf, len, hmac, hmac_len)) {
 	    return -1;
 	  }
@@ -150,17 +152,19 @@ int stun_produce_integrity_key_str(u08bits *uname, u08bits *realm, u08bits *upwd
 	strncpy((s08bits*)str+ulen+1+rlen+1,(s08bits*)upwd,sz-ulen-1-rlen-1);
 	str[strl]=0;
 
-#if !defined(OPENSSL_NO_SHA256) && defined(SSL_TXT_SHA256)
 	if(shatype == SHATYPE_SHA256) {
+#if !defined(OPENSSL_NO_SHA256) && defined(SSL_TXT_SHA256)
 		unsigned int keylen = 0;
 		EVP_MD_CTX ctx;
 		EVP_DigestInit(&ctx,EVP_sha256());
 		EVP_DigestUpdate(&ctx,str,strl);
 		EVP_DigestFinal(&ctx,key,&keylen);
 		EVP_MD_CTX_cleanup(&ctx);
-	} else
+#else
+		fprintf(stderr,"SHA256 is not supported\n");
+		return -1;
 #endif
-	{
+	} else {
 		MD5_CTX ctx;
 		MD5_Init(&ctx);
 		MD5_Update(&ctx,str,strl);
