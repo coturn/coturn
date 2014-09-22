@@ -1,4 +1,4 @@
-# $FreeBSD: head/net/turnserver/Makefile 339463 2014-01-12 00:58:18Z tabthorpe $
+# $FreeBSD$
 
 PORTNAME=	turnserver
 PORTVERSION=	4.1.2.1
@@ -13,16 +13,15 @@ DISTFILES=	${DISTNAME}${EXTRACT_SUFX} turn.extra.docs-2.0.0.1.tar.gz
 MAINTAINER=	mom040267@gmail.com
 COMMENT=	STUN/TURN Server; IPv6, DTLS support; RFCs 5389, 5766, 6062, 6156
 
-LICENSE=	BSD
+LICENSE=	BSD3CLAUSE
 
-LIB_DEPENDS=	event-2:${PORTSDIR}/devel/libevent2
+LIB_DEPENDS=	libevent.so:${PORTSDIR}/devel/libevent2
 
 CONFLICTS=	libevent-1.*
 
 SUB_FILES=	pkg-message
 
-MAN1=	turnserver.1 turnadmin.1 turnutils.1 turnutils_peer.1 turnutils_stunclient.1 turnutils_uclient.1 coturn.1
-MANCOMPRESSED=	no
+MANPAGES=	turnserver.1 turnadmin.1 turnutils.1 turnutils_peer.1 turnutils_stunclient.1 turnutils_uclient.1 coturn.1
 
 USE_OPENSSL=	YES
 
@@ -30,7 +29,10 @@ USE_RC_SUBR=	turnserver
 
 HAS_CONFIGURE=	YES
 
-OPTIONS_DEFINE=	MYSQL PGSQL REDIS
+OPTIONS_DEFINE=	MYSQL PGSQL REDIS DOCS EXAMPLES
+
+SHEBANG_FILES=	examples/scripts/restapi/shared_secret_maintainer.pl
+USES=		perl5 shebangfix
 
 MYSQL_DESC=	MySQL support for users database
 PGSQL_DESC=	PostgreSQL support for users database
@@ -38,7 +40,6 @@ REDIS_DESC=	Redis support for user database and for status and statistics report
 
 OPTIONS_DEFAULT=	MYSQL PGSQL REDIS
 
-NO_STAGE=	yes
 .include <bsd.port.options.mk>
 
 PORTDOCS=	html TurnNetworks.pdf
@@ -79,7 +80,7 @@ selfloadbalance/secure_relay.sh
 CONFIGURE_ENV+=	PTHREAD_LIBS=-pthread TURN_DISABLE_RPATH=1
 
 .if ${PORT_OPTIONS:MPGSQL}
-USE_PGSQL=	yes
+USES+=		pgsql
 .else
 CONFIGURE_ENV+=	TURN_NO_PQ=1
 .endif
@@ -91,64 +92,64 @@ CONFIGURE_ENV+=	TURN_NO_MYSQL=1
 .endif
 
 .if ${PORT_OPTIONS:MREDIS}
-LIB_DEPENDS+=	hiredis:${PORTSDIR}/databases/hiredis
+LIB_DEPENDS+=	libhiredis.so:${PORTSDIR}/databases/hiredis
 .else
 CONFIGURE_ENV+=	TURN_NO_HIREDIS=1
 .endif
 
 do-install:
-	${INSTALL_PROGRAM} ${WRKSRC}/bin/turnserver ${PREFIX}/bin/turnserver
-	${INSTALL_PROGRAM} ${WRKSRC}/bin/turnadmin ${PREFIX}/bin/turnadmin
+	${INSTALL_PROGRAM} ${WRKSRC}/bin/turnserver ${STAGEDIR}${PREFIX}/bin/turnserver
+	${INSTALL_PROGRAM} ${WRKSRC}/bin/turnadmin ${STAGEDIR}${PREFIX}/bin/turnadmin
 .for f in ${_BIN_UTILS}
-	${INSTALL_PROGRAM} ${WRKSRC}/bin/turnutils_${f} ${PREFIX}/bin/
+	${INSTALL_PROGRAM} ${WRKSRC}/bin/turnutils_${f} ${STAGEDIR}${PREFIX}/bin/
 .endfor
-.for f in ${MAN1}
-	${INSTALL_MAN} ${WRKSRC}/man/man1/${f} ${PREFIX}/man/man1/${f}
+.for f in ${MANPAGES}
+	${INSTALL_MAN} ${WRKSRC}/man/man1/${f} ${STAGEDIR}${PREFIX}/man/man1/${f}
 .endfor
-	${MKDIR} ${DATADIR}/
-	${INSTALL_DATA} ${WRKSRC}/turndb/schema.sql ${DATADIR}/schema.sql
-	${INSTALL_DATA} ${WRKSRC}/turndb/schema.userdb.redis ${DATADIR}/schema.userdb.redis
-	${INSTALL_DATA} ${WRKSRC}/turndb/schema.stats.redis ${DATADIR}/schema.stats.redis
-	${INSTALL_SCRIPT} ${WRKSRC}/turndb/testredisdbsetup.sh ${DATADIR}/testredisdbsetup.sh
-	${INSTALL_SCRIPT} ${WRKSRC}/turndb/schema.mongo.sh ${DATADIR}/schema.mongo.sh
-	${INSTALL_SCRIPT} ${WRKSRC}/turndb/testmongosetup.sh ${DATADIR}/testmongosetup.sh
-	${INSTALL_DATA} ${WRKSRC}/lib/libturnclient.a ${PREFIX}/lib/libturnclient.a
-	${INSTALL_DATA} ${WRKSRC}/examples/etc/turnserver.conf ${PREFIX}/etc/turnserver.conf.default
-	${INSTALL_DATA} ${WRKSRC}/examples/etc/turnuserdb.conf ${PREFIX}/etc/turnuserdb.conf.default
-	${MKDIR} ${PREFIX}/include/turn
-	(cd ${WRKSRC}/include/turn/ && ${COPYTREE_SHARE} client ${PREFIX}/include/turn/)
-	(cd ${WRKSRC}/include/turn/ && ${COPYTREE_SHARE} ns_turn_defs.h ${PREFIX}/include/turn/)
+	${MKDIR} ${STAGEDIR}${DATADIR}/
+	${INSTALL_DATA} ${WRKSRC}/turndb/schema.sql ${STAGEDIR}${DATADIR}/schema.sql
+	${INSTALL_DATA} ${WRKSRC}/turndb/schema.userdb.redis ${STAGEDIR}${DATADIR}/schema.userdb.redis
+	${INSTALL_DATA} ${WRKSRC}/turndb/schema.stats.redis ${STAGEDIR}${DATADIR}/schema.stats.redis
+	${INSTALL_SCRIPT} ${WRKSRC}/turndb/testredisdbsetup.sh ${STAGEDIR}${DATADIR}/testredisdbsetup.sh
+	${INSTALL_SCRIPT} ${WRKSRC}/turndb/schema.mongo.sh ${STAGEDIR}${DATADIR}/schema.mongo.sh
+	${INSTALL_SCRIPT} ${WRKSRC}/turndb/testmongosetup.sh ${STAGEDIR}${DATADIR}/testmongosetup.sh
+	${INSTALL_DATA} ${WRKSRC}/lib/libturnclient.a ${STAGEDIR}${PREFIX}/lib/libturnclient.a
+	${INSTALL_DATA} ${WRKSRC}/examples/etc/turnserver.conf ${STAGEDIR}${PREFIX}/etc/turnserver.conf.default
+	${INSTALL_DATA} ${WRKSRC}/examples/etc/turnuserdb.conf ${STAGEDIR}${PREFIX}/etc/turnuserdb.conf.default
+	${MKDIR} ${STAGEDIR}${PREFIX}/include/turn
+	(cd ${WRKSRC}/include/turn/ && ${COPYTREE_SHARE} client ${STAGEDIR}${PREFIX}/include/turn/)
+	(cd ${WRKSRC}/include/turn/ && ${COPYTREE_SHARE} ns_turn_defs.h ${STAGEDIR}${PREFIX}/include/turn/)
 .if ${PORT_OPTIONS:MEXAMPLES}
-	${MKDIR} ${EXAMPLESDIR}/scripts
-	${MKDIR} ${EXAMPLESDIR}/scripts/basic
-	${MKDIR} ${EXAMPLESDIR}/scripts/loadbalance
-	${MKDIR} ${EXAMPLESDIR}/scripts/longtermsecure
-	${MKDIR} ${EXAMPLESDIR}/scripts/longtermsecuredb
-	${MKDIR} ${EXAMPLESDIR}/scripts/restapi
-	${MKDIR} ${EXAMPLESDIR}/scripts/shorttermsecure
-	${MKDIR} ${EXAMPLESDIR}/scripts/selfloadbalance
-	${MKDIR} ${EXAMPLESDIR}/etc
-	${INSTALL_MAN} ${WRKSRC}/examples/scripts/readme.txt ${EXAMPLESDIR}/scripts
+	${MKDIR} ${STAGEDIR}${EXAMPLESDIR}/scripts
+	${MKDIR} ${STAGEDIR}${EXAMPLESDIR}/scripts/basic
+	${MKDIR} ${STAGEDIR}${EXAMPLESDIR}/scripts/loadbalance
+	${MKDIR} ${STAGEDIR}${EXAMPLESDIR}/scripts/longtermsecure
+	${MKDIR} ${STAGEDIR}${EXAMPLESDIR}/scripts/longtermsecuredb
+	${MKDIR} ${STAGEDIR}${EXAMPLESDIR}/scripts/restapi
+	${MKDIR} ${STAGEDIR}${EXAMPLESDIR}/scripts/shorttermsecure
+	${MKDIR} ${STAGEDIR}${EXAMPLESDIR}/scripts/selfloadbalance
+	${MKDIR} ${STAGEDIR}${EXAMPLESDIR}/etc
+	${INSTALL_MAN} ${WRKSRC}/examples/scripts/readme.txt ${STAGEDIR}${EXAMPLESDIR}/scripts
 .for f in ${_ETC_EXAMPLES}
-	${INSTALL_DATA} ${WRKSRC}/examples/etc/${f} ${EXAMPLESDIR}/etc/
+	${INSTALL_DATA} ${WRKSRC}/examples/etc/${f} ${STAGEDIR}${EXAMPLESDIR}/etc/
 .endfor
 .for f in ${_SCRIPT_EXAMPLES}
-	${INSTALL_SCRIPT} ${WRKSRC}/examples/scripts/${f} ${EXAMPLESDIR}/scripts/${f}
+	${INSTALL_SCRIPT} ${WRKSRC}/examples/scripts/${f} ${STAGEDIR}${EXAMPLESDIR}/scripts/${f}
 .endfor
 .endif
 .if ${PORT_OPTIONS:MDOCS}
-	${MKDIR} ${DOCSDIR}
+	${MKDIR} ${STAGEDIR}${DOCSDIR}
 .for f in ${PORTDOCS}
-	(cd ${WRKSRC}/../turndocs/docs/ && ${COPYTREE_SHARE} ${f} ${DOCSDIR})
+	(cd ${WRKSRC}/../turndocs/docs/ && ${COPYTREE_SHARE} ${f} ${STAGEDIR}${DOCSDIR})
 .endfor
 .for f in ${PORTREADMEDOCS}
-	${INSTALL_DATA} ${WRKSRC}/${f} ${DOCSDIR}
+	${INSTALL_DATA} ${WRKSRC}/${f} ${STAGEDIR}${DOCSDIR}
 .endfor
-	${INSTALL_DATA} ${PKGMESSAGE} ${DOCSDIR}/postinstall.txt
-	${INSTALL_DATA} ${WRKSRC}/turndb/schema.sql ${DOCSDIR}/schema.sql
-	${INSTALL_DATA} ${WRKSRC}/turndb/schema.mongo.sh ${DOCSDIR}/schema.mongo.sh
-	${INSTALL_DATA} ${WRKSRC}/turndb/schema.userdb.redis ${DOCSDIR}/schema.userdb.redis
-	${INSTALL_DATA} ${WRKSRC}/turndb/schema.stats.redis ${DOCSDIR}/schema.stats.redis
+	${INSTALL_DATA} ${PKGMESSAGE} ${STAGEDIR}${DOCSDIR}/postinstall.txt
+	${INSTALL_DATA} ${WRKSRC}/turndb/schema.sql ${STAGEDIR}${DOCSDIR}/schema.sql
+	${INSTALL_DATA} ${WRKSRC}/turndb/schema.mongo.sh ${STAGEDIR}${DOCSDIR}/schema.mongo.sh
+	${INSTALL_DATA} ${WRKSRC}/turndb/schema.userdb.redis ${STAGEDIR}${DOCSDIR}/schema.userdb.redis
+	${INSTALL_DATA} ${WRKSRC}/turndb/schema.stats.redis ${STAGEDIR}${DOCSDIR}/schema.stats.redis
 PORTDOCS+=	postinstall.txt ${PORTREADMEDOCS} schema.sql schema.mongo.sh  \
 		schema.userdb.redis schema.stats.redis
 .endif

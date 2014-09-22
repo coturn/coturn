@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $FreeBSD: head/net/turnserver/files/turnserver.in 319998 2013-06-05 14:48:56Z gabor $
+# $FreeBSD$
 #
 # PROVIDE: turnserver
 # REQUIRE: LOGIN
