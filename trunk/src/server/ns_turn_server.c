@@ -881,7 +881,7 @@ static int update_channel_lifetime(ts_ur_super_session *ss, ch_info* chn)
 
 /////////////// TURN ///////////////////////////
 
-#define SKIP_ATTRIBUTES case STUN_ATTRIBUTE_PRIORITY: case STUN_ATTRIBUTE_FINGERPRINT: case STUN_ATTRIBUTE_MESSAGE_INTEGRITY: break; \
+#define SKIP_ATTRIBUTES case STUN_ATTRIBUTE_OAUTH_ACCESS_TOKEN: case STUN_ATTRIBUTE_PRIORITY: case STUN_ATTRIBUTE_FINGERPRINT: case STUN_ATTRIBUTE_MESSAGE_INTEGRITY: break; \
 	case STUN_ATTRIBUTE_USERNAME: case STUN_ATTRIBUTE_REALM: case STUN_ATTRIBUTE_NONCE: case STUN_ATTRIBUTE_ORIGIN: \
 	sar = stun_attr_get_next_str(ioa_network_buffer_data(in_buffer->nbh),\
 		ioa_network_buffer_get_size(in_buffer->nbh), sar); \
