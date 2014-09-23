@@ -47,3 +47,7 @@ Mutsutoshi Yoshimoto <mutsutoshi.yoshimoto@mixi.co.jp>
 Federico Pinna <fpinna@vivocha.com>
 	MongoDB support
 	(since v4.1.0.1)
+
+Bradley T. Hughes <bradleythughes@fastmail.fm>
+	FreeBSD port
+	(since v4.1.2.1)
