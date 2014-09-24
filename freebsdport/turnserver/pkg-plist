@@ -84,6 +84,5 @@ include/turn/client/ns_turn_msg.h
 include/turn/client/ns_turn_msg_addr.h
 include/turn/client/ns_turn_msg_defs.h
 include/turn/client/ns_turn_msg_defs_new.h
-@dir include/turn/client/
 @dir include/turn
 @stopdaemon turnserver
