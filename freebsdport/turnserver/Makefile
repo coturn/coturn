@@ -3,12 +3,13 @@
 PORTNAME=	turnserver
 PORTVERSION=	4.1.2.1
 CATEGORIES=	net
-MASTER_SITES=	http://turnserver.open-sys.org/downloads/v${PORTVERSION}/ \
-		http://turnserver.open-sys.org/downloads/extradocs/ \
-		http://coturn.net/turnserver/v${PORTVERSION}/ \
-		http://coturn.net/turnserver/extradocs/
+MASTER_SITES=	http://turnserver.open-sys.org/downloads/v${PORTVERSION}/:prog \
+		http://turnserver.open-sys.org/downloads/extradocs/:xdocs \
+		http://coturn.net/turnserver/v${PORTVERSION}/:prog \
+		http://coturn.net/turnserver/extradocs/:xdocs
 PKGNAMEPREFIX=
-DISTFILES=	${DISTNAME}${EXTRACT_SUFX} turn.extra.docs-2.0.0.1.tar.gz
+DISTFILES=	${DISTNAME}${EXTRACT_SUFX}:prog \
+		turn.extra.docs-2.0.0.1.tar.gz:xdocs
 
 MAINTAINER=	mom040267@gmail.com
 COMMENT=	STUN/TURN Server; IPv6, DTLS support; RFCs 5389, 5766, 6062, 6156

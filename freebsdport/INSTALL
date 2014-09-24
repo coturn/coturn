@@ -1,5 +1,7 @@
-This is FreeBSD port of TURN Server. It was tested on FreeBSD 6.3, 8.2 and 9.1.
-It assumes you have /usr/ports collection set.
+This is FreeBSD port of TURN Server. 
+It assumes you have /usr/ports collection set,
+and that you have the pkg version 1.3.8 or later
+(see the pkgng conversion).
 
 To download and install in /usr/local:
 
