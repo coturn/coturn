@@ -378,6 +378,7 @@ static void auth_server_receive_message(struct bufferevent *bev, void *ptr)
     
     if(am.ct == TURN_CREDENTIALS_SHORT_TERM) {
       st_password_t pwd;
+      am.oauth = 0;
       if(get_user_pwd(am.username,pwd)<0) {
     	  am.success = 0;
       } else {
@@ -386,7 +387,7 @@ static void auth_server_receive_message(struct bufferevent *bev, void *ptr)
       }
     } else {
       hmackey_t key;
-      if(get_user_key(&(am.oauth),am.username,am.realm,key,am.in_buffer.nbh)<0) {
+      if(get_user_key(am.oauth,&(am.oauth),am.username,am.realm,key,am.in_buffer.nbh)<0) {
     	  am.success = 0;
       } else {
     	  ns_bcopy(key,am.key,sizeof(hmackey_t));

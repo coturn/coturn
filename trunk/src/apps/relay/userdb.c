@@ -398,11 +398,106 @@ static char *get_real_username(char *usname)
 /*
  * Password retrieval
  */
-int get_user_key(int *oauth, u08bits *usname, u08bits *realm, hmackey_t key, ioa_network_buffer_handle nbh)
+int get_user_key(int in_oauth, int *out_oauth, u08bits *usname, u08bits *realm, hmackey_t key, ioa_network_buffer_handle nbh)
 {
-	UNUSED_ARG(oauth);
-
 	int ret = -1;
+
+	if(in_oauth && out_oauth && usname && usname[0] && realm && realm[0]) {
+
+		*out_oauth = 0;
+
+		stun_attr_ref sar = stun_attr_get_first_by_type_str(ioa_network_buffer_data(nbh),
+								ioa_network_buffer_get_size(nbh),
+								STUN_ATTRIBUTE_OAUTH_ACCESS_TOKEN);
+		if(sar) {
+
+			int len = stun_attr_get_len(sar);
+			const u08bits *value = stun_attr_get_value(sar);
+
+			*out_oauth = 1;
+
+			if(len>0 && value) {
+
+				turn_dbdriver_t * dbd = get_dbdriver();
+
+				if (dbd && dbd->get_oauth_key) {
+
+					oauth_key_data_raw rawKey;
+					ns_bzero(&rawKey,sizeof(rawKey));
+
+					int gres = (*(dbd->get_oauth_key))(usname,&rawKey);
+					if(gres<0)
+						return ret;
+
+					oauth_key_data okd;
+					ns_bzero(&okd,sizeof(okd));
+
+					convert_oauth_key_data_raw(&rawKey, &okd);
+
+					char err_msg[1025] = "\0";
+					size_t err_msg_size = sizeof(err_msg) - 1;
+
+					oauth_key okey;
+					ns_bzero(&okey,sizeof(okey));
+
+					if (convert_oauth_key_data(&okd, &okey, err_msg, err_msg_size) < 0) {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s\n", err_msg);
+						return -1;
+					}
+
+					oauth_token dot;
+					ns_bzero((&dot),sizeof(dot));
+
+					encoded_oauth_token etoken;
+					ns_bzero(&etoken,sizeof(etoken));
+
+					if((size_t)len > sizeof(etoken.token)) {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Encoded oAuth token is too large\n");
+						return -1;
+					}
+					ns_bcopy(value,etoken.token,(size_t)len);
+					etoken.size = (size_t)len;
+
+					if (decode_oauth_token((const u08bits *) turn_params.oauth_server_name, &etoken,&okey, &dot) < 0) {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot decode oauth token\n");
+						return -1;
+					}
+
+					switch(dot.enc_block.key_length) {
+					case SHA1SIZEBYTES:
+						if(turn_params.shatype != SHATYPE_SHA1) {
+							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong size of the MAC key in oAuth token(1): %d\n",(int)dot.enc_block.key_length);
+							return -1;
+						}
+						break;
+					case SHA256SIZEBYTES:
+						if(turn_params.shatype != SHATYPE_SHA256) {
+							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong size of the MAC key in oAuth token(2): %d\n",(int)dot.enc_block.key_length);
+							return -1;
+						}
+						break;
+					default:
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong size of the MAC key in oAuth token(3): %d\n",(int)dot.enc_block.key_length);
+						return -1;
+					};
+
+					st_password_t pwdtmp;
+					if(stun_check_message_integrity_by_key_str(TURN_CREDENTIALS_LONG_TERM,
+								ioa_network_buffer_data(nbh),
+								ioa_network_buffer_get_size(nbh),
+								dot.enc_block.mac_key,
+								pwdtmp,
+								turn_params.shatype,NULL)>0) {
+						ns_bcopy(dot.enc_block.mac_key,&key,dot.enc_block.key_length);
+						ret = 0;
+					}
+				}
+			}
+		}
+	}
+
+	if(out_oauth && *out_oauth)
+		return ret;
 
 	if(turn_params.use_auth_secret_with_timestamp) {
 
@@ -510,7 +605,7 @@ int get_user_key(int *oauth, u08bits *usname, u08bits *realm, hmackey_t key, ioa
 
   turn_dbdriver_t * dbd = get_dbdriver();
   if (dbd && dbd->get_user_key) {
-    ret = (*dbd->get_user_key)(usname, realm, key);
+    ret = (*(dbd->get_user_key))(usname, realm, key);
   }
 
 	return ret;

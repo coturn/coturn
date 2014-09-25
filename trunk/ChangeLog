@@ -1,15 +1,15 @@
 08/22/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.2.1.1 'Monza':
 	- oAuth security implementation. (TODO)
+	- TLS renegotiation DoS attack prevention implemented;
+	- FQDN as relay-ip and listener-ip parameters (issue 6)
+	(patch provided by Iñaki Baz Castillo);
 	- redis user key operation fixed.
 	- redis, mysql and psql db operations fixed.
 	- SHA-256 memory leak fixed.
 	- Mobility ticket retransmission fixed.
 	- Move debian package from SVN to GIT.
 	- Move secondary download area to coturn.net.
-	- TLS renegotiation DoS attack prevention implemented;
-	- FQDN as relay-ip and listener-ip parameters (issue 6)
-	(patch provided by Iñaki Baz Castillo); 
 	
 08/14/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.1.2.1 'Vitari':
