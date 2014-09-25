@@ -396,10 +396,12 @@ static char *get_real_username(char *usname)
 }
 
 /*
- * Long-term mechanism password retrieval
+ * Password retrieval
  */
-int get_user_key(u08bits *usname, u08bits *realm, hmackey_t key, ioa_network_buffer_handle nbh)
+int get_user_key(int *oauth, u08bits *usname, u08bits *realm, hmackey_t key, ioa_network_buffer_handle nbh)
 {
+	UNUSED_ARG(oauth);
+
 	int ret = -1;
 
 	if(turn_params.use_auth_secret_with_timestamp) {
@@ -529,7 +531,7 @@ int get_user_pwd(u08bits *usname, st_password_t pwd)
   return ret;
 }
 
-u08bits *start_user_check(turnserver_id id, turn_credential_type ct, u08bits *usname, u08bits *realm, get_username_resume_cb resume, ioa_net_data *in_buffer, u64bits ctxkey, int *postpone_reply)
+u08bits *start_user_check(turnserver_id id, turn_credential_type ct, int oauth, u08bits *usname, u08bits *realm, get_username_resume_cb resume, ioa_net_data *in_buffer, u64bits ctxkey, int *postpone_reply)
 {
 	*postpone_reply = 1;
 
@@ -537,6 +539,7 @@ u08bits *start_user_check(turnserver_id id, turn_credential_type ct, u08bits *us
 	ns_bzero(&am,sizeof(struct auth_message));
 	am.id = id;
 	am.ct = ct;
+	am.oauth = oauth;
 	STRCPY(am.username,usname);
 	STRCPY(am.realm,realm);
 	am.resume_func = resume;
