@@ -1,5 +1,6 @@
 08/22/2014 Oleg Moskalenko <mom040267@gmail.com>
-Version 4.1.2.2 'Vitari':
+Version 4.1.3.2 'Vitari':
+	- oAuth security implementation. (TODO)
 	- redis user key operation fixed.
 	- redis, mysql and psql db operations fixed.
 	- SHA-256 memory leak fixed.
@@ -8,8 +9,7 @@ Version 4.1.2.2 'Vitari':
 	- Move secondary download area to coturn.net.
 	- TLS renegotiation DoS attack prevention implemented;
 	- FQDN as relay-ip and listener-ip parameters (issue 6)
-	(patch provided by Iñaki Baz Castillo);
-	- oAuth security implementation. (TODO) 
+	(patch provided by Iñaki Baz Castillo); 
 	
 08/14/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.1.2.1 'Vitari':
