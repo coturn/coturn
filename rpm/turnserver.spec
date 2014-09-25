@@ -1,5 +1,5 @@
 Name:		turnserver
-Version:	4.1.3.2
+Version:	4.2.1.1
 Release:	0%{dist}
 Summary:	Coturn TURN Server
 
@@ -295,7 +295,7 @@ fi
 
 %changelog
 * Wed Sep 24 2014 Oleg Moskalenko <mom040267@gmail.com>
-  - Sync to 4.1.3.2
+  - Sync to 4.2.1.1
 * Thu Aug 14 2014 Oleg Moskalenko <mom040267@gmail.com>
   - Sync to 4.1.2.1
 * Tue Jul 29 2014 Oleg Moskalenko <mom040267@gmail.com>
