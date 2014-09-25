@@ -1550,7 +1550,7 @@ int stun_check_message_integrity_by_key_str(turn_credential_type ct, u08bits *bu
 	if(bcmp(old_hmac,new_hmac,shasize))
 		return 0;
 
-	return 1;
+	return +1;
 }
 
 /*
