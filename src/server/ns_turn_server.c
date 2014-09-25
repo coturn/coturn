@@ -3308,29 +3308,24 @@ static int check_stun_auth(turn_turnserver *server,
 
 	/* Password */
 	if(!(ss->hmackey_set) && (ss->pwd[0] == 0)) {
-		ur_string_map_value_type ukey = NULL;
 		if(can_resume) {
-			ukey = (server->userkeycb)(server->id, server->ct, usname, realm, resume_processing_after_username_check, in_buffer, ss->id, postpone_reply);
+			(server->userkeycb)(server->id, server->ct, usname, realm, resume_processing_after_username_check, in_buffer, ss->id, postpone_reply);
 			if(*postpone_reply) {
 				return 0;
 			}
 		}
 		/* we always return NULL for short-term credentials here */
-		if(!ukey) {
-			/* direct user pattern is supported only for long-term credentials */
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
-					"%s: Cannot find credentials of user <%s>\n",
-					__FUNCTION__, (char*)usname);
-			*err_code = 401;
-			*reason = (const u08bits*)"Unauthorised";
-			if(server->ct != TURN_CREDENTIALS_SHORT_TERM) {
-				return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
-			} else {
-				return -1;
-			}
+		/* direct user pattern is supported only for long-term credentials */
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+				"%s: Cannot find credentials of user <%s>\n",
+				__FUNCTION__, (char*)usname);
+		*err_code = 401;
+		*reason = (const u08bits*)"Unauthorised";
+		if(server->ct != TURN_CREDENTIALS_SHORT_TERM) {
+			return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
+		} else {
+			return -1;
 		}
-		ns_bcopy(ukey,ss->hmackey,16);
-		ss->hmackey_set = 1;
 	}
 
 	/* Check integrity */
