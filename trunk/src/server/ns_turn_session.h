@@ -72,16 +72,22 @@ struct _ts_ur_super_session {
   ioa_socket_handle client_socket;
   allocation alloc;
   ioa_timer_handle to_be_allocated_timeout_ev;
+  int enforce_fingerprints;
+  int is_tcp_relay;
+  int to_be_closed;
+  /* Auth */
   u08bits nonce[NONCE_MAX_SIZE];
   turn_time_t nonce_expiration_time;
   u08bits username[STUN_MAX_USERNAME_SIZE+1];
   hmackey_t hmackey;
   int hmackey_set;
   st_password_t pwd;
-  int enforce_fingerprints;
-  int is_tcp_relay;
-  int to_be_closed;
   int quota_used;
+  int oauth;
+  /* Realm */
+  realm_options_t realm_options;
+  int origin_set;
+  s08bits origin[STUN_MAX_ORIGIN_SIZE + 1];
   /* Stats */
   u32bits received_packets;
   u32bits sent_packets;
@@ -99,10 +105,6 @@ struct _ts_ur_super_session {
   mobile_id_t mobile_id;
   mobile_id_t old_mobile_id;
   char s_mobile_id[33];
-  /* Realm */
-  realm_options_t realm_options;
-  int origin_set;
-  s08bits origin[STUN_MAX_ORIGIN_SIZE + 1];
   /* Bandwidth */
   band_limit_t bps;
 };

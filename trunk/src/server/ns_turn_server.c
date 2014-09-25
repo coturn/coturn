@@ -3094,7 +3094,7 @@ static int create_challenge_response(ts_ur_super_session *ss, stun_tid *tid, int
 #define min(a,b) ((a)<=(b) ? (a) : (b))
 #endif
 
-static void resume_processing_after_username_check(int success,  hmackey_t hmackey, st_password_t pwd, turn_turnserver *server, u64bits ctxkey, ioa_net_data *in_buffer)
+static void resume_processing_after_username_check(int success,  int oauth, hmackey_t hmackey, st_password_t pwd, turn_turnserver *server, u64bits ctxkey, ioa_net_data *in_buffer)
 {
 
 	if(server && in_buffer && in_buffer->nbh) {
@@ -3106,6 +3106,7 @@ static void resume_processing_after_username_check(int success,  hmackey_t hmack
 			if(success) {
 				ns_bcopy(hmackey,ss->hmackey,sizeof(hmackey_t));
 				ss->hmackey_set = 1;
+				ss->oauth = oauth;
 				ns_bcopy(pwd,ss->pwd,sizeof(st_password_t));
 			}
 
@@ -3260,14 +3261,19 @@ static int check_stun_auth(turn_turnserver *server,
 
 	if(ss->username[0]) {
 		if(strcmp((char*)ss->username,(char*)usname)) {
-			if(method == STUN_METHOD_ALLOCATE) {
-				*err_code = 437;
-				*reason = (const u08bits*)"Allocation mismatch: wrong credentials";
+			if(ss->oauth) {
+				STRCPY(ss->username,usname);
+				set_username_hash(ss->client_socket,ss->username,(u08bits*)ss->realm_options.name);
 			} else {
-				*err_code = 441;
-				*reason = (const u08bits*)"Wrong credentials";
+				if(method == STUN_METHOD_ALLOCATE) {
+					*err_code = 437;
+					*reason = (const u08bits*)"Allocation mismatch: wrong credentials";
+				} else {
+					*err_code = 441;
+					*reason = (const u08bits*)"Wrong credentials";
+				}
+				return -1;
 			}
-			return -1;
 		}
 	} else {
 		STRCPY(ss->username,usname);
@@ -3309,7 +3315,7 @@ static int check_stun_auth(turn_turnserver *server,
 	/* Password */
 	if(!(ss->hmackey_set) && (ss->pwd[0] == 0)) {
 		if(can_resume) {
-			(server->userkeycb)(server->id, server->ct, usname, realm, resume_processing_after_username_check, in_buffer, ss->id, postpone_reply);
+			(server->userkeycb)(server->id, server->ct, server->oauth, usname, realm, resume_processing_after_username_check, in_buffer, ss->id, postpone_reply);
 			if(*postpone_reply) {
 				return 0;
 			}
@@ -3351,7 +3357,7 @@ static int check_stun_auth(turn_turnserver *server,
 		}
 
 		if(can_resume) {
-			(server->userkeycb)(server->id, server->ct, usname, realm, resume_processing_after_username_check, in_buffer, ss->id, postpone_reply);
+			(server->userkeycb)(server->id, server->ct, server->oauth, usname, realm, resume_processing_after_username_check, in_buffer, ss->id, postpone_reply);
 			if(*postpone_reply) {
 				return 0;
 			}
