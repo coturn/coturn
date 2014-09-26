@@ -46,6 +46,7 @@
 
 #include <openssl/ssl.h>
 #include <openssl/opensslv.h>
+#include <openssl/rand.h>
 
 /////////////// extern definitions /////////////////////
 
@@ -98,7 +99,10 @@ band_limit_t bps = 0;
 int dual_allocation = 0;
 
 int oauth = 0;
-oauth_key_data_raw okdr = {
+oauth_key okey;
+oauth_token otoken;
+
+static oauth_key_data_raw okdr = {
 		"north","Y2FybGVvbg==",0,0,"SHA-256","AES-256-CBC","","HMAC-SHA-256-128",""
 };
 
@@ -212,8 +216,26 @@ int main(int argc, char **argv)
 
 	while ((c = getopt(argc, argv, "a:d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:E:F:o:ZvsyhcxXgtTSAPDNOUHMRIGBJ")) != -1) {
 		switch (c){
-		case 'J':
+		case 'J': {
+
 			oauth = 1;
+
+			if(use_short_term) {
+				fprintf(stderr,"Short-term mechanism cannot be used together with oAuth.\n");
+				exit(-1);
+			}
+
+			oauth_key_data okd;
+			convert_oauth_key_data_raw(&okdr, &okd);
+
+			char err_msg[1025] = "\0";
+			size_t err_msg_size = sizeof(err_msg) - 1;
+
+			if (convert_oauth_key_data(&okd, &okey, err_msg, err_msg_size) < 0) {
+				fprintf(stderr, "%s\n", err_msg);
+				exit(-1);
+			}
+		}
 			break;
 		case 'a':
 			bps = (band_limit_t)atol(optarg);
@@ -271,6 +293,10 @@ int main(int argc, char **argv)
 			dual_allocation = 1;
 			break;
 		case 'A':
+			if(oauth) {
+				fprintf(stderr,"Short-term mechanism cannot be used together with oAuth.\n");
+				exit(-1);
+			}
 			use_short_term = 1;
 			break;
 		case 'u':
@@ -373,6 +399,23 @@ int main(int argc, char **argv)
 			fprintf(stderr, "%s\n", Usage);
 			exit(1);
 		}
+	}
+
+	if(oauth) {
+
+		otoken.enc_block.lifetime = 0;
+		otoken.enc_block.timestamp = 0;
+
+		switch(shatype) {
+		case SHATYPE_SHA256:
+			otoken.enc_block.key_length = 32;
+			break;
+		default:
+			otoken.enc_block.key_length = 20;
+			break;
+		};
+
+		RAND_bytes((unsigned char *)(otoken.enc_block.mac_key), otoken.enc_block.key_length);
 	}
 
 	if(g_use_auth_secret_with_timestamp) {

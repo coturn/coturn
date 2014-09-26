@@ -1449,13 +1449,8 @@ int stun_attr_add_integrity_str(turn_credential_type ct, u08bits *buf, size_t *l
 	return 0;
 }
 
-int stun_attr_add_integrity_by_user_str(u08bits *buf, size_t *len, u08bits *uname, u08bits *realm, u08bits *upwd, u08bits *nonce, SHATYPE shatype)
+int stun_attr_add_integrity_by_key_str(u08bits *buf, size_t *len, u08bits *uname, u08bits *realm, hmackey_t key, u08bits *nonce, SHATYPE shatype)
 {
-	hmackey_t key;
-
-	if(stun_produce_integrity_key_str(uname, realm, upwd, key, shatype)<0)
-		return -1;
-
 	if(stun_attr_add_str(buf, len, STUN_ATTRIBUTE_USERNAME, uname, strlen((s08bits*)uname))<0)
 			return -1;
 
@@ -1467,6 +1462,16 @@ int stun_attr_add_integrity_by_user_str(u08bits *buf, size_t *len, u08bits *unam
 
 	st_password_t p;
 	return stun_attr_add_integrity_str(TURN_CREDENTIALS_LONG_TERM, buf, len, key, p, shatype);
+}
+
+int stun_attr_add_integrity_by_user_str(u08bits *buf, size_t *len, u08bits *uname, u08bits *realm, u08bits *upwd, u08bits *nonce, SHATYPE shatype)
+{
+	hmackey_t key;
+
+	if(stun_produce_integrity_key_str(uname, realm, upwd, key, shatype)<0)
+		return -1;
+
+	return stun_attr_add_integrity_by_key_str(buf, len, uname, realm, key, nonce, shatype);
 }
 
 int stun_attr_add_integrity_by_user_short_term_str(u08bits *buf, size_t *len, u08bits *uname, st_password_t pwd, SHATYPE shatype)
