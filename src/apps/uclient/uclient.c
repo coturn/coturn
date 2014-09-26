@@ -587,7 +587,8 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 			return rc;
 		} else if (stun_is_challenge_response_str(elem->in_buffer.buf, (size_t)elem->in_buffer.len,
 							&err_code,err_msg,sizeof(err_msg),
-							clnet_info->realm,clnet_info->nonce)) {
+							clnet_info->realm,clnet_info->nonce,
+							clnet_info->server_name, &(clnet_info->oauth))) {
 			if(err_code == SHA_TOO_WEAK_ERROR_CODE && (elem->pinfo.shatype == SHATYPE_SHA1)) {
 				elem->pinfo.shatype = SHATYPE_SHA256;
 				recalculate_restapi_hmac();
@@ -1443,10 +1444,20 @@ int add_integrity(app_ur_conn_info *clnet_info, stun_buffer *message)
 
 			hmackey_t key;
 			ns_bcopy(otoken.enc_block.mac_key,key,otoken.enc_block.key_length);
-			if(stun_attr_add_integrity_by_key_str(message->buf, (size_t*)&(message->len), g_uname,
+			if(stun_attr_add_integrity_by_key_str(message->buf, (size_t*)&(message->len), (u08bits*)okey.kid,
 					clnet_info->realm, key, clnet_info->nonce, clnet_info->shatype)<0) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO," Cannot add integrity to the message\n");
 				return -1;
+			}
+
+			//self-test:
+			{
+				st_password_t pwd;
+				if(stun_check_message_integrity_by_key_str(get_turn_credentials_type(),
+								message->buf, (size_t)(message->len), key, pwd, clnet_info->shatype, NULL)<1) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR," Self-test of integrity does not comple correctly !\n");
+					return -1;
+				}
 			}
 		} else {
 			if(stun_attr_add_integrity_by_user_str(message->buf, (size_t*)&(message->len), g_uname,

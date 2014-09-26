@@ -116,7 +116,7 @@ int stun_is_command_message_offset_str(const u08bits* buf, size_t blen, int offs
 int stun_is_request_str(const u08bits* buf, size_t len);
 int stun_is_success_response_str(const u08bits* buf, size_t len);
 int stun_is_error_response_str(const u08bits* buf, size_t len, int *err_code, u08bits *err_msg, size_t err_msg_size);
-int stun_is_challenge_response_str(const u08bits* buf, size_t len, int *err_code, u08bits *err_msg, size_t err_msg_size, u08bits *realm, u08bits *nonce);
+int stun_is_challenge_response_str(const u08bits* buf, size_t len, int *err_code, u08bits *err_msg, size_t err_msg_size, u08bits *realm, u08bits *nonce, u08bits *server_name, int *oauth);
 int stun_is_response_str(const u08bits* buf, size_t len);
 int stun_is_indication_str(const u08bits* buf, size_t len);
 u16bits stun_get_method_str(const u08bits *buf, size_t len);

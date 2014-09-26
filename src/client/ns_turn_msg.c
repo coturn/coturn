@@ -332,7 +332,7 @@ int stun_is_error_response_str(const u08bits* buf, size_t len, int *err_code, u0
 }
 
 int stun_is_challenge_response_str(const u08bits* buf, size_t len, int *err_code, u08bits *err_msg, size_t err_msg_size,
-				u08bits *realm, u08bits *nonce)
+				u08bits *realm, u08bits *nonce, u08bits *server_name, int *oauth)
 {
 	int ret = stun_is_error_response_str(buf, len, err_code, err_msg, err_msg_size);
 
@@ -345,6 +345,25 @@ int stun_is_challenge_response_str(const u08bits* buf, size_t len, int *err_code
 				size_t vlen = (size_t)stun_attr_get_len(sar);
 				ns_bcopy(value,realm,vlen);
 				realm[vlen]=0;
+
+				{
+					stun_attr_ref sar = stun_attr_get_first_by_type_str(buf,len,STUN_ATTRIBUTE_THIRD_PARTY_AUTHORIZATION);
+					if(sar) {
+						const u08bits *value = stun_attr_get_value(sar);
+						if(value) {
+							size_t vlen = (size_t)stun_attr_get_len(sar);
+							if(vlen>0) {
+								if(server_name) {
+									ns_bcopy(value,server_name,vlen);
+								}
+								if(oauth) {
+									*oauth = 1;
+								}
+							}
+						}
+					}
+				}
+
 				sar = stun_attr_get_first_by_type_str(buf,len,STUN_ATTRIBUTE_NONCE);
 				if(sar) {
 					value = stun_attr_get_value(sar);
@@ -1781,7 +1800,7 @@ int convert_oauth_key_data(const oauth_key_data *oakd0, oauth_key *key, char *er
 				if(err_msg) {
 					snprintf(err_msg,err_msg_size,"AS-RS key is not defined");
 				}
-				OAUTH_ERROR("AS-RS key is not defined");
+				OAUTH_ERROR("AS-RS key is not defined\n");
 				return -1;
 			}
 			if(!(oakd->auth_key_size)) {
@@ -1803,7 +1822,7 @@ int convert_oauth_key_data(const oauth_key_data *oakd0, oauth_key *key, char *er
 			if(err_msg) {
 				snprintf(err_msg,err_msg_size,"KID is not defined");
 			}
-			OAUTH_ERROR("KID is not defined");
+			OAUTH_ERROR("KID is not defined\n");
 			return -1;
 		}
 
@@ -1833,7 +1852,7 @@ int convert_oauth_key_data(const oauth_key_data *oakd0, oauth_key *key, char *er
 			if(err_msg) {
 				snprintf(err_msg,err_msg_size,"Wrong HKDF hash function algorithm: %s",oakd->hkdf_hash_func);
 			}
-			OAUTH_ERROR("Wrong HKDF hash function algorithm: %s",oakd->hkdf_hash_func);
+			OAUTH_ERROR("Wrong HKDF hash function algorithm: %s\n",oakd->hkdf_hash_func);
 			return -1;
 		}
 
