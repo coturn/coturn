@@ -1463,12 +1463,27 @@ int add_integrity(app_ur_conn_info *clnet_info, stun_buffer *message)
 int check_integrity(app_ur_conn_info *clnet_info, stun_buffer *message)
 {
 	SHATYPE sht = clnet_info->shatype;
-	if(stun_check_message_integrity_str(get_turn_credentials_type(),
+
+	if(oauth && clnet_info->oauth) {
+
+		hmackey_t key;
+		st_password_t pwd;
+
+		ns_bcopy(otoken.enc_block.mac_key,key,otoken.enc_block.key_length);
+
+		return stun_check_message_integrity_by_key_str(get_turn_credentials_type(),
+				message->buf, (size_t)(message->len), key, pwd, sht, NULL);
+
+	} else {
+
+		if(stun_check_message_integrity_str(get_turn_credentials_type(),
 			message->buf, (size_t)(message->len), g_uname,
 			clnet_info->realm, g_upwd, sht)<1) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Wrong integrity in a message received from server\n");
-		return -1;
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Wrong integrity in a message received from server\n");
+			return -1;
+		}
 	}
+
 	return 0;
 }
 
