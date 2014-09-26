@@ -97,6 +97,11 @@ band_limit_t bps = 0;
 
 int dual_allocation = 0;
 
+int oauth = 0;
+oauth_key_data_raw okdr = {
+		"north","Y2FybGVvbg==",0,0,"SHA-256","AES-256-CBC","","HMAC-SHA-256-128",""
+};
+
 //////////////// local definitions /////////////////
 
 static char Usage[] =
@@ -130,6 +135,7 @@ static char Usage[] =
   "	-G	Generate extra requests (create permissions, channel bind).\n"
   " -B  Random disconnect after a few initial packets.\n"
   " -Z  Dual allocation.\n"
+  " -J	Use oAuth.\n"
   "Options:\n"
   "	-l	Message length (Default: 100 Bytes).\n"
   "	-i	Certificate file (for secure connections only, optional).\n"
@@ -204,8 +210,11 @@ int main(int argc, char **argv)
 
 	ns_bzero(local_addr, sizeof(local_addr));
 
-	while ((c = getopt(argc, argv, "a:d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:E:F:o:ZvsyhcxXgtTSAPDNOUHMRIGB")) != -1) {
+	while ((c = getopt(argc, argv, "a:d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:E:F:o:ZvsyhcxXgtTSAPDNOUHMRIGBJ")) != -1) {
 		switch (c){
+		case 'J':
+			oauth = 1;
+			break;
 		case 'a':
 			bps = (band_limit_t)atol(optarg);
 			break;

@@ -117,6 +117,8 @@ Flags:
 
 -Z	Dual allocation (SSODA draft support).
 
+-J	Use oAuth.
+
 Options with required values:  
 
 -l      Message length (Default: 100 Bytes).
