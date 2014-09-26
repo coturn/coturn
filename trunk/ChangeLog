@@ -2,7 +2,6 @@
 Version 4.2.1.1 'Monza':
 	- oAuth security implementation: 
 		TODO:
-		- clients's check_integrity method();
 		- security dialog;
 		- authorization process - test;
 		- access-token must be cached and included only in ALLOCATE and REFRESH;
