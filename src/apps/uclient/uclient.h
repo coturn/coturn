@@ -87,7 +87,8 @@ extern int dual_allocation;
 extern char origin[STUN_MAX_ORIGIN_SIZE+1];
 
 extern int oauth;
-extern oauth_key_data_raw okdr;
+extern oauth_key okey;
+extern oauth_token otoken;
 
 #define is_TCP_relay() (relay_transport == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE)
 
@@ -103,6 +104,7 @@ void client_input_handler(evutil_socket_t fd, short what, void* arg);
 turn_credential_type get_turn_credentials_type(void);
 
 int add_integrity(app_ur_conn_info *clnet_info, stun_buffer *message);
+int check_integrity(app_ur_conn_info *clnet_info, stun_buffer *message);
 
 void recalculate_restapi_hmac(void);
 
