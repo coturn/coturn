@@ -508,7 +508,7 @@ static int redis_get_oauth_key(const u08bits *kid, oauth_key_data_raw *key) {
 		else if (reply->type != REDIS_REPLY_ARRAY) {
 			if (reply->type != REDIS_REPLY_NIL)
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", reply->type);
-		} else {
+		} else if(reply->elements > 1) {
 			size_t i;
 			for (i = 0; i < (reply->elements)/2; ++i) {
 				char *kw = reply->element[2*i]->str;
@@ -533,9 +533,9 @@ static int redis_get_oauth_key(const u08bits *kid, oauth_key_data_raw *key) {
 					}
 				}
 			}
+			ret = 0;
 		}
 		turnFreeRedisReply(reply);
-		ret = 0;
 	}
   }
   return ret;
