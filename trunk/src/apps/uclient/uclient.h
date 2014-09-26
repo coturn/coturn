@@ -86,6 +86,9 @@ extern int dual_allocation;
 
 extern char origin[STUN_MAX_ORIGIN_SIZE+1];
 
+extern int oauth;
+extern oauth_key_data_raw okdr;
+
 #define is_TCP_relay() (relay_transport == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE)
 
 void start_mclient(const char *remote_address, int port,
