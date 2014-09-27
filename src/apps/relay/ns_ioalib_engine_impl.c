@@ -1733,7 +1733,6 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s, int full_detach)
 
 		ret->magic = SOCKET_MAGIC;
 
-		ret->username_hash = s->username_hash;
 		ret->realm_hash = s->realm_hash;
 
 		set_socket_ssl(ret,s->ssl);
@@ -3342,14 +3341,9 @@ static u32bits string_hash(const u08bits *str) {
   return hash;
 }
 
-int check_username_hash(ioa_socket_handle s, u08bits *username, u08bits *realm)
+int check_realm_hash(ioa_socket_handle s, u08bits *realm)
 {
 	if(s) {
-		if(username && username[0]) {
-			if(s->username_hash != string_hash(username)) {
-				return 0;
-			}
-		}
 		if(realm && realm[0]) {
 			if(s->realm_hash != string_hash(realm)) {
 				return 0;
@@ -3359,12 +3353,9 @@ int check_username_hash(ioa_socket_handle s, u08bits *username, u08bits *realm)
 	return 1;
 }
 
-void set_username_hash(ioa_socket_handle s, u08bits *username, u08bits *realm)
+void set_realm_hash(ioa_socket_handle s, u08bits *realm)
 {
 	if(s) {
-		if(username && username[0]) {
-			s->username_hash = string_hash(username);
-		}
 		if(realm && realm[0]) {
 			s->realm_hash = string_hash(realm);
 		}

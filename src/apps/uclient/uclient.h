@@ -87,8 +87,8 @@ extern int dual_allocation;
 extern char origin[STUN_MAX_ORIGIN_SIZE+1];
 
 extern int oauth;
-extern oauth_key okey;
-extern oauth_token otoken;
+extern oauth_key okey_array[2];
+extern oauth_token otoken_array[2];
 
 #define is_TCP_relay() (relay_transport == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE)
 
