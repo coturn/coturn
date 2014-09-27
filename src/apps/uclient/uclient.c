@@ -1432,20 +1432,28 @@ int add_integrity(app_ur_conn_info *clnet_info, stun_buffer *message)
 	} else if(clnet_info->nonce[0]) {
 
 		if(oauth && clnet_info->oauth) {
-			encoded_oauth_token etoken;
-			u08bits nonce[12];
-			RAND_bytes((unsigned char*)nonce,12);
-			if(encode_oauth_token(clnet_info->server_name, &etoken, &okey, &otoken, nonce)<0) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO," Cannot encode token\n");
-				return -1;
-			}
-			stun_attr_add_str(message->buf, (size_t*)&(message->len), STUN_ATTRIBUTE_OAUTH_ACCESS_TOKEN,
+
+			u16bits method = stun_get_method_str(message->buf, message->len);
+
+			if(((method == STUN_METHOD_ALLOCATE) || (method == STUN_METHOD_REFRESH)) || !(clnet_info->key_set))
+			{
+
+				encoded_oauth_token etoken;
+				u08bits nonce[12];
+				RAND_bytes((unsigned char*)nonce,12);
+				if(encode_oauth_token(clnet_info->server_name, &etoken, &okey, &otoken, nonce)<0) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO," Cannot encode token\n");
+					return -1;
+				}
+				stun_attr_add_str(message->buf, (size_t*)&(message->len), STUN_ATTRIBUTE_OAUTH_ACCESS_TOKEN,
 					(const u08bits*)etoken.token, (int)etoken.size);
 
-			hmackey_t key;
-			ns_bcopy(otoken.enc_block.mac_key,key,otoken.enc_block.key_length);
+				ns_bcopy(otoken.enc_block.mac_key,clnet_info->key,otoken.enc_block.key_length);
+				clnet_info->key_set = 1;
+			}
+
 			if(stun_attr_add_integrity_by_key_str(message->buf, (size_t*)&(message->len), (u08bits*)okey.kid,
-					clnet_info->realm, key, clnet_info->nonce, clnet_info->shatype)<0) {
+					clnet_info->realm, clnet_info->key, clnet_info->nonce, clnet_info->shatype)<0) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO," Cannot add integrity to the message\n");
 				return -1;
 			}
@@ -1454,7 +1462,7 @@ int add_integrity(app_ur_conn_info *clnet_info, stun_buffer *message)
 			{
 				st_password_t pwd;
 				if(stun_check_message_integrity_by_key_str(get_turn_credentials_type(),
-								message->buf, (size_t)(message->len), key, pwd, clnet_info->shatype, NULL)<1) {
+								message->buf, (size_t)(message->len), clnet_info->key, pwd, clnet_info->shatype, NULL)<1) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR," Self-test of integrity does not comple correctly !\n");
 					return -1;
 				}

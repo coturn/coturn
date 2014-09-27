@@ -3262,6 +3262,7 @@ static int check_stun_auth(turn_turnserver *server,
 	if(ss->username[0]) {
 		if(strcmp((char*)ss->username,(char*)usname)) {
 			if(ss->oauth) {
+				ss->hmackey_set = 0;
 				STRCPY(ss->username,usname);
 				set_username_hash(ss->client_socket,ss->username,(u08bits*)ss->realm_options.name);
 			} else {
