@@ -378,7 +378,8 @@ static void auth_server_receive_message(struct bufferevent *bev, void *ptr)
     
     if(am.ct == TURN_CREDENTIALS_SHORT_TERM) {
       st_password_t pwd;
-      am.oauth = 0;
+      am.in_oauth = 0;
+      am.out_oauth = 0;
       if(get_user_pwd(am.username,pwd)<0) {
     	  am.success = 0;
       } else {
@@ -387,7 +388,7 @@ static void auth_server_receive_message(struct bufferevent *bev, void *ptr)
       }
     } else {
       hmackey_t key;
-      if(get_user_key(am.oauth,&(am.oauth),am.username,am.realm,key,am.in_buffer.nbh)<0) {
+      if(get_user_key(am.in_oauth,&(am.out_oauth),am.username,am.realm,key,am.in_buffer.nbh)<0) {
     	  am.success = 0;
       } else {
     	  ns_bcopy(key,am.key,sizeof(hmackey_t));
@@ -769,7 +770,7 @@ static int handle_relay_message(relay_server_handle rs, struct message_to_relay 
 
 static void handle_relay_auth_message(struct relay_server *rs, struct auth_message *am)
 {
-	am->resume_func(am->success, am->oauth, am->key, am->pwd,
+	am->resume_func(am->success, am->out_oauth, am->key, am->pwd,
 				&(rs->server), am->ctxkey, &(am->in_buffer));
 	if (am->in_buffer.nbh) {
 		ioa_network_buffer_delete(rs->ioa_eng, am->in_buffer.nbh);

@@ -3315,7 +3315,7 @@ static int check_stun_auth(turn_turnserver *server,
 	/* Password */
 	if(!(ss->hmackey_set) && (ss->pwd[0] == 0)) {
 		if(can_resume) {
-			(server->userkeycb)(server->id, server->ct, server->oauth, usname, realm, resume_processing_after_username_check, in_buffer, ss->id, postpone_reply);
+			(server->userkeycb)(server->id, server->ct, server->oauth, &(ss->oauth), usname, realm, resume_processing_after_username_check, in_buffer, ss->id, postpone_reply);
 			if(*postpone_reply) {
 				return 0;
 			}
@@ -3357,7 +3357,7 @@ static int check_stun_auth(turn_turnserver *server,
 		}
 
 		if(can_resume) {
-			(server->userkeycb)(server->id, server->ct, server->oauth, usname, realm, resume_processing_after_username_check, in_buffer, ss->id, postpone_reply);
+			(server->userkeycb)(server->id, server->ct, server->oauth, &(ss->oauth), usname, realm, resume_processing_after_username_check, in_buffer, ss->id, postpone_reply);
 			if(*postpone_reply) {
 				return 0;
 			}

@@ -404,8 +404,6 @@ int get_user_key(int in_oauth, int *out_oauth, u08bits *usname, u08bits *realm, 
 
 	if(in_oauth && out_oauth && usname && usname[0] && realm && realm[0]) {
 
-		*out_oauth = 0;
-
 		stun_attr_ref sar = stun_attr_get_first_by_type_str(ioa_network_buffer_data(nbh),
 								ioa_network_buffer_get_size(nbh),
 								STUN_ATTRIBUTE_OAUTH_ACCESS_TOKEN);
@@ -627,7 +625,7 @@ int get_user_pwd(u08bits *usname, st_password_t pwd)
   return ret;
 }
 
-u08bits *start_user_check(turnserver_id id, turn_credential_type ct, int oauth, u08bits *usname, u08bits *realm, get_username_resume_cb resume, ioa_net_data *in_buffer, u64bits ctxkey, int *postpone_reply)
+u08bits *start_user_check(turnserver_id id, turn_credential_type ct, int in_oauth, int *out_oauth, u08bits *usname, u08bits *realm, get_username_resume_cb resume, ioa_net_data *in_buffer, u64bits ctxkey, int *postpone_reply)
 {
 	*postpone_reply = 1;
 
@@ -635,7 +633,8 @@ u08bits *start_user_check(turnserver_id id, turn_credential_type ct, int oauth, 
 	ns_bzero(&am,sizeof(struct auth_message));
 	am.id = id;
 	am.ct = ct;
-	am.oauth = oauth;
+	am.in_oauth = in_oauth;
+	am.out_oauth = *out_oauth;
 	STRCPY(am.username,usname);
 	STRCPY(am.realm,realm);
 	am.resume_func = resume;
