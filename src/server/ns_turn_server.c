@@ -1548,8 +1548,24 @@ static int handle_turn_refresh(turn_turnserver *server,
 
 						//Check security:
 						int postpone_reply = 0;
-						check_stun_auth(server, orig_ss, tid, resp_constructed, err_code, reason, in_buffer, nbh,
-								STUN_METHOD_REFRESH, &message_integrity, &postpone_reply, can_resume);
+
+						ns_bcopy(orig_ss->nonce,ss->nonce,sizeof(ss->nonce));
+						ss->nonce_expiration_time = orig_ss->nonce_expiration_time;
+						ns_bcopy(&(orig_ss->realm_options),&(ss->realm_options),sizeof(ss->realm_options));
+						ns_bcopy(orig_ss->username,ss->username,sizeof(ss->username));
+						ss->hmackey_set = orig_ss->hmackey_set;
+						ns_bcopy(orig_ss->hmackey,ss->hmackey,sizeof(ss->hmackey));
+						ss->oauth = orig_ss->oauth;
+						ns_bcopy(orig_ss->origin,ss->origin,sizeof(ss->origin));
+						ss->origin_set = orig_ss->origin_set;
+						ns_bcopy(orig_ss->pwd,ss->pwd,sizeof(ss->pwd));
+
+						if(check_stun_auth(server, ss, tid, resp_constructed, err_code, reason, in_buffer, nbh,
+								STUN_METHOD_REFRESH, &message_integrity, &postpone_reply, can_resume)<0) {
+							if(!(*err_code)) {
+								*err_code = 401;
+							}
+						}
 
 						if(postpone_reply) {
 
