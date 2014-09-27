@@ -117,7 +117,7 @@ Flags:
 
 -Z	Dual allocation (SSODA draft support).
 
--J	Use oAuth.
+-J	Use oAuth with default test key kid='north'.
 
 Options with required values:  
 

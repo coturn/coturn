@@ -139,7 +139,7 @@ static char Usage[] =
   "	-G	Generate extra requests (create permissions, channel bind).\n"
   " -B  Random disconnect after a few initial packets.\n"
   " -Z  Dual allocation.\n"
-  " -J	Use oAuth.\n"
+  " -J	Use oAuth with default test key kid='north'.\n"
   "Options:\n"
   "	-l	Message length (Default: 100 Bytes).\n"
   "	-i	Certificate file (for secure connections only, optional).\n"
