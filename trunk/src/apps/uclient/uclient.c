@@ -1435,24 +1435,29 @@ int add_integrity(app_ur_conn_info *clnet_info, stun_buffer *message)
 
 			u16bits method = stun_get_method_str(message->buf, message->len);
 
+			int cok = clnet_info->cok;
+
 			if(((method == STUN_METHOD_ALLOCATE) || (method == STUN_METHOD_REFRESH)) || !(clnet_info->key_set))
 			{
 
+				if(!mobility)
+					cok=(++(clnet_info->cok))%2;
+				clnet_info->cok = cok;
 				encoded_oauth_token etoken;
 				u08bits nonce[12];
 				RAND_bytes((unsigned char*)nonce,12);
-				if(encode_oauth_token(clnet_info->server_name, &etoken, &okey, &otoken, nonce)<0) {
+				if(encode_oauth_token(clnet_info->server_name, &etoken, &(okey_array[cok]), &(otoken_array[cok]), nonce)<0) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO," Cannot encode token\n");
 					return -1;
 				}
 				stun_attr_add_str(message->buf, (size_t*)&(message->len), STUN_ATTRIBUTE_OAUTH_ACCESS_TOKEN,
 					(const u08bits*)etoken.token, (int)etoken.size);
 
-				ns_bcopy(otoken.enc_block.mac_key,clnet_info->key,otoken.enc_block.key_length);
+				ns_bcopy(otoken_array[cok].enc_block.mac_key,clnet_info->key,otoken_array[cok].enc_block.key_length);
 				clnet_info->key_set = 1;
 			}
 
-			if(stun_attr_add_integrity_by_key_str(message->buf, (size_t*)&(message->len), (u08bits*)okey.kid,
+			if(stun_attr_add_integrity_by_key_str(message->buf, (size_t*)&(message->len), (u08bits*)okey_array[cok].kid,
 					clnet_info->realm, clnet_info->key, clnet_info->nonce, clnet_info->shatype)<0) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO," Cannot add integrity to the message\n");
 				return -1;
@@ -1488,7 +1493,9 @@ int check_integrity(app_ur_conn_info *clnet_info, stun_buffer *message)
 		hmackey_t key;
 		st_password_t pwd;
 
-		ns_bcopy(otoken.enc_block.mac_key,key,otoken.enc_block.key_length);
+		int cok = clnet_info->cok;
+
+		ns_bcopy(otoken_array[cok].enc_block.mac_key,key,otoken_array[cok].enc_block.key_length);
 
 		return stun_check_message_integrity_by_key_str(get_turn_credentials_type(),
 				message->buf, (size_t)(message->len), key, pwd, sht, NULL);

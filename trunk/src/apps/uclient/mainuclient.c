@@ -99,11 +99,12 @@ band_limit_t bps = 0;
 int dual_allocation = 0;
 
 int oauth = 0;
-oauth_key okey;
-oauth_token otoken;
+oauth_key okey_array[2];
+oauth_token otoken_array[2];
 
-static oauth_key_data_raw okdr = {
-		"north","Y2FybGVvbg==",0,0,"SHA-256","AES-256-CBC","","HMAC-SHA-256-128",""
+static oauth_key_data_raw okdr_array[2] = {
+		{"north","Y2FybGVvbg==",0,0,"SHA-256","AES-256-CBC","","HMAC-SHA-256-128",""},
+		{"oldempire","YXVsY3Vz",0,0,"SHA-256","AEAD-AES-256-GCM","","",""}
 };
 
 //////////////// local definitions /////////////////
@@ -225,13 +226,19 @@ int main(int argc, char **argv)
 				exit(-1);
 			}
 
-			oauth_key_data okd;
-			convert_oauth_key_data_raw(&okdr, &okd);
+			oauth_key_data okd_array[2];
+			convert_oauth_key_data_raw(&okdr_array[0], &okd_array[0]);
+			convert_oauth_key_data_raw(&okdr_array[1], &okd_array[1]);
 
 			char err_msg[1025] = "\0";
 			size_t err_msg_size = sizeof(err_msg) - 1;
 
-			if (convert_oauth_key_data(&okd, &okey, err_msg, err_msg_size) < 0) {
+			if (convert_oauth_key_data(&okd_array[0], &okey_array[0], err_msg, err_msg_size) < 0) {
+				fprintf(stderr, "%s\n", err_msg);
+				exit(-1);
+			}
+
+			if (convert_oauth_key_data(&okd_array[1], &okey_array[1], err_msg, err_msg_size) < 0) {
 				fprintf(stderr, "%s\n", err_msg);
 				exit(-1);
 			}
@@ -403,19 +410,25 @@ int main(int argc, char **argv)
 
 	if(oauth) {
 
-		otoken.enc_block.lifetime = 0;
-		otoken.enc_block.timestamp = 0;
+		otoken_array[0].enc_block.lifetime = 0;
+		otoken_array[0].enc_block.timestamp = 0;
+
+		otoken_array[1].enc_block.lifetime = 0;
+		otoken_array[1].enc_block.timestamp = 0;
 
 		switch(shatype) {
 		case SHATYPE_SHA256:
-			otoken.enc_block.key_length = 32;
+			otoken_array[0].enc_block.key_length = 32;
+			otoken_array[1].enc_block.key_length = 32;
 			break;
 		default:
-			otoken.enc_block.key_length = 20;
+			otoken_array[0].enc_block.key_length = 20;
+			otoken_array[1].enc_block.key_length = 20;
 			break;
 		};
 
-		RAND_bytes((unsigned char *)(otoken.enc_block.mac_key), otoken.enc_block.key_length);
+		RAND_bytes((unsigned char *)(otoken_array[0].enc_block.mac_key), otoken_array[0].enc_block.key_length);
+		RAND_bytes((unsigned char *)(otoken_array[1].enc_block.mac_key), otoken_array[1].enc_block.key_length);
 	}
 
 	if(g_use_auth_secret_with_timestamp) {
