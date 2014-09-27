@@ -488,7 +488,7 @@ int get_user_key(int in_oauth, int *out_oauth, u08bits *usname, u08bits *realm, 
 								dot.enc_block.mac_key,
 								pwdtmp,
 								turn_params.shatype,NULL)>0) {
-						ns_bcopy(dot.enc_block.mac_key,&key,dot.enc_block.key_length);
+						ns_bcopy(dot.enc_block.mac_key,key,dot.enc_block.key_length);
 						ret = 0;
 					}
 				}
@@ -496,8 +496,9 @@ int get_user_key(int in_oauth, int *out_oauth, u08bits *usname, u08bits *realm, 
 		}
 	}
 
-	if(out_oauth && *out_oauth)
+	if(out_oauth && *out_oauth) {
 		return ret;
+	}
 
 	if(turn_params.use_auth_secret_with_timestamp) {
 
