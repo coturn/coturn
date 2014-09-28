@@ -1159,6 +1159,9 @@ static int handle_turn_allocate(turn_turnserver *server,
 			}
 
 			lifetime = stun_adjust_allocate_lifetime(lifetime);
+			if(ss->max_session_time_auth && (ss->max_session_time_auth < lifetime)) {
+				lifetime = ss->max_session_time_auth;
+			}
 			u64bits out_reservation_token = 0;
 
 			if(inc_quota(ss, username)<0) {
@@ -1559,6 +1562,7 @@ static int handle_turn_refresh(turn_turnserver *server,
 						ns_bcopy(orig_ss->origin,ss->origin,sizeof(ss->origin));
 						ss->origin_set = orig_ss->origin_set;
 						ns_bcopy(orig_ss->pwd,ss->pwd,sizeof(ss->pwd));
+						ss->max_session_time_auth = orig_ss->max_session_time_auth;
 
 						if(check_stun_auth(server, ss, tid, resp_constructed, err_code, reason, in_buffer, nbh,
 								STUN_METHOD_REFRESH, &message_integrity, &postpone_reply, can_resume)<0) {
@@ -1577,8 +1581,12 @@ static int handle_turn_refresh(turn_turnserver *server,
 
 							if (to_delete)
 								lifetime = 0;
-							else
+							else {
 								lifetime = stun_adjust_allocate_lifetime(lifetime);
+								if(ss->max_session_time_auth && (ss->max_session_time_auth < lifetime)) {
+									lifetime = ss->max_session_time_auth;
+								}
+							}
 
 							if (af4c && refresh_relay_connection(server, orig_ss, lifetime, 0, 0, 0,
 										err_code, AF_INET) < 0) {
@@ -3110,7 +3118,7 @@ static int create_challenge_response(ts_ur_super_session *ss, stun_tid *tid, int
 #define min(a,b) ((a)<=(b) ? (a) : (b))
 #endif
 
-static void resume_processing_after_username_check(int success,  int oauth, hmackey_t hmackey, st_password_t pwd, turn_turnserver *server, u64bits ctxkey, ioa_net_data *in_buffer)
+static void resume_processing_after_username_check(int success,  int oauth, int max_session_time, hmackey_t hmackey, st_password_t pwd, turn_turnserver *server, u64bits ctxkey, ioa_net_data *in_buffer)
 {
 
 	if(server && in_buffer && in_buffer->nbh) {
@@ -3123,6 +3131,7 @@ static void resume_processing_after_username_check(int success,  int oauth, hmac
 				ns_bcopy(hmackey,ss->hmackey,sizeof(hmackey_t));
 				ss->hmackey_set = 1;
 				ss->oauth = oauth;
+				ss->max_session_time_auth = (turn_time_t)max_session_time;
 				ns_bcopy(pwd,ss->pwd,sizeof(st_password_t));
 			}
 

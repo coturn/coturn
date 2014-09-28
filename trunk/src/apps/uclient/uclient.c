@@ -1445,6 +1445,7 @@ int add_integrity(app_ur_conn_info *clnet_info, stun_buffer *message)
 				encoded_oauth_token etoken;
 				u08bits nonce[12];
 				RAND_bytes((unsigned char*)nonce,12);
+				otoken_array[cok].enc_block.timestamp = ((uint64_t)turn_time()) << 16;
 				if(encode_oauth_token(clnet_info->server_name, &etoken, &(okey_array[cok]), &(otoken_array[cok]), nonce)<0) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO," Cannot encode token\n");
 					return -1;
