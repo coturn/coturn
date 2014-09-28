@@ -90,7 +90,7 @@ u16bits stun_make_error_response(u16bits method);
 
 ///////////////////////////////////////////////////////////////
 
-u32bits stun_adjust_allocate_lifetime(u32bits lifetime);
+turn_time_t stun_adjust_allocate_lifetime(turn_time_t lifetime, turn_time_t max_lifetime);
 
 ///////////// STR ////////////////////////////////////////////////
 
