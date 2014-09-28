@@ -961,7 +961,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 	} else {
 
 		u08bits transport = 0;
-		u32bits lifetime = 0;
+		turn_time_t lifetime = 0;
 		int even_port = -1;
 		int dont_fragment = 0;
 		u64bits in_reservation_token = 0;
@@ -1158,10 +1158,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 				}
 			}
 
-			lifetime = stun_adjust_allocate_lifetime(lifetime);
-			if(ss->max_session_time_auth && (ss->max_session_time_auth < lifetime)) {
-				lifetime = ss->max_session_time_auth;
-			}
+			lifetime = stun_adjust_allocate_lifetime(lifetime, ss->max_session_time_auth);
 			u64bits out_reservation_token = 0;
 
 			if(inc_quota(ss, username)<0) {
@@ -1399,7 +1396,7 @@ static int handle_turn_refresh(turn_turnserver *server,
 
 	} else {
 
-		u32bits lifetime = 0;
+		turn_time_t lifetime = 0;
 		int to_delete = 0;
 		mobile_id_t mid = 0;
 		char smid[sizeof(ss->s_mobile_id)] = "\0";
@@ -1552,17 +1549,19 @@ static int handle_turn_refresh(turn_turnserver *server,
 						//Check security:
 						int postpone_reply = 0;
 
-						ns_bcopy(orig_ss->nonce,ss->nonce,sizeof(ss->nonce));
-						ss->nonce_expiration_time = orig_ss->nonce_expiration_time;
-						ns_bcopy(&(orig_ss->realm_options),&(ss->realm_options),sizeof(ss->realm_options));
-						ns_bcopy(orig_ss->username,ss->username,sizeof(ss->username));
-						ss->hmackey_set = orig_ss->hmackey_set;
-						ns_bcopy(orig_ss->hmackey,ss->hmackey,sizeof(ss->hmackey));
-						ss->oauth = orig_ss->oauth;
-						ns_bcopy(orig_ss->origin,ss->origin,sizeof(ss->origin));
-						ss->origin_set = orig_ss->origin_set;
-						ns_bcopy(orig_ss->pwd,ss->pwd,sizeof(ss->pwd));
-						ss->max_session_time_auth = orig_ss->max_session_time_auth;
+						if(!ss->hmackey_set) {
+							ns_bcopy(orig_ss->nonce,ss->nonce,sizeof(ss->nonce));
+							ss->nonce_expiration_time = orig_ss->nonce_expiration_time;
+							ns_bcopy(&(orig_ss->realm_options),&(ss->realm_options),sizeof(ss->realm_options));
+							ns_bcopy(orig_ss->username,ss->username,sizeof(ss->username));
+							ss->hmackey_set = orig_ss->hmackey_set;
+							ns_bcopy(orig_ss->hmackey,ss->hmackey,sizeof(ss->hmackey));
+							ss->oauth = orig_ss->oauth;
+							ns_bcopy(orig_ss->origin,ss->origin,sizeof(ss->origin));
+							ss->origin_set = orig_ss->origin_set;
+							ns_bcopy(orig_ss->pwd,ss->pwd,sizeof(ss->pwd));
+							ss->max_session_time_auth = orig_ss->max_session_time_auth;
+						}
 
 						if(check_stun_auth(server, ss, tid, resp_constructed, err_code, reason, in_buffer, nbh,
 								STUN_METHOD_REFRESH, &message_integrity, &postpone_reply, can_resume)<0) {
@@ -1582,10 +1581,7 @@ static int handle_turn_refresh(turn_turnserver *server,
 							if (to_delete)
 								lifetime = 0;
 							else {
-								lifetime = stun_adjust_allocate_lifetime(lifetime);
-								if(ss->max_session_time_auth && (ss->max_session_time_auth < lifetime)) {
-									lifetime = ss->max_session_time_auth;
-								}
+								lifetime = stun_adjust_allocate_lifetime(lifetime, ss->max_session_time_auth);
 							}
 
 							if (af4c && refresh_relay_connection(server, orig_ss, lifetime, 0, 0, 0,
@@ -1695,8 +1691,9 @@ static int handle_turn_refresh(turn_turnserver *server,
 
 			if (to_delete)
 				lifetime = 0;
-			else
-				lifetime = stun_adjust_allocate_lifetime(lifetime);
+			else {
+				lifetime = stun_adjust_allocate_lifetime(lifetime, ss->max_session_time_auth);
+			}
 
 			if(!af4 && !af6) {
 				af4 = af4c;
