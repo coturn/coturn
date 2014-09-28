@@ -360,9 +360,9 @@ static int clnet_allocate(int verbose,
 		}
 
 		if(!dos)
-			stun_set_allocate_request(&message, 800, af4, af6, relay_transport, mobility);
+			stun_set_allocate_request(&message, UCLIENT_SESSION_LIFETIME, af4, af6, relay_transport, mobility);
 		else
-			stun_set_allocate_request(&message, 300, af4, af6, relay_transport, mobility);
+			stun_set_allocate_request(&message, UCLIENT_SESSION_LIFETIME/3, af4, af6, relay_transport, mobility);
 
 		if(bps)
 			stun_attr_add_bandwidth_str(message.buf, (size_t*)(&(message.len)), bps);
@@ -633,9 +633,8 @@ static int clnet_allocate(int verbose,
 
 			stun_buffer message;
 			stun_init_request(STUN_METHOD_REFRESH, &message);
-			uint32_t lt = htonl(600);
-			stun_attr_add(&message, STUN_ATTRIBUTE_LIFETIME, (const char*) &lt,
-					4);
+			uint32_t lt = htonl(UCLIENT_SESSION_LIFETIME);
+			stun_attr_add(&message, STUN_ATTRIBUTE_LIFETIME, (const char*) &lt, 4);
 
 			if(clnet_info->s_mobile_id[0]) {
 				stun_attr_add(&message, STUN_ATTRIBUTE_MOBILITY_TICKET, (const char*)clnet_info->s_mobile_id, strlen(clnet_info->s_mobile_id));

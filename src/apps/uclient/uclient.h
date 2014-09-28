@@ -90,6 +90,9 @@ extern int oauth;
 extern oauth_key okey_array[2];
 extern oauth_token otoken_array[2];
 
+#define UCLIENT_SESSION_LIFETIME (777)
+#define OAUTH_SESSION_LIFETIME (555)
+
 #define is_TCP_relay() (relay_transport == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE)
 
 void start_mclient(const char *remote_address, int port,

@@ -398,9 +398,12 @@ static char *get_real_username(char *usname)
 /*
  * Password retrieval
  */
-int get_user_key(int in_oauth, int *out_oauth, u08bits *usname, u08bits *realm, hmackey_t key, ioa_network_buffer_handle nbh)
+int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, u08bits *usname, u08bits *realm, hmackey_t key, ioa_network_buffer_handle nbh)
 {
 	int ret = -1;
+
+	if(max_session_time)
+		*max_session_time = 0;
 
 	if(in_oauth && out_oauth && usname && usname[0] && realm && realm[0]) {
 
@@ -495,7 +498,27 @@ int get_user_key(int in_oauth, int *out_oauth, u08bits *usname, u08bits *realm, 
 								dot.enc_block.mac_key,
 								pwdtmp,
 								turn_params.shatype,NULL)>0) {
+
+						turn_time_t lifetime = (turn_time_t)(dot.enc_block.lifetime);
+						if(lifetime) {
+							turn_time_t ts = (turn_time_t)(dot.enc_block.timestamp >> 16);
+							turn_time_t to = ts + lifetime + OAUTH_TIME_DELTA;
+							turn_time_t ct = turn_time();
+							if(!turn_time_before(ct,to)) {
+								TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "oAuth token is too old\n");
+								return -1;
+							}
+							if(max_session_time) {
+								*max_session_time = to - ct;
+								if(*max_session_time > OAUTH_TIME_DELTA)
+									*max_session_time -= OAUTH_TIME_DELTA;
+								if(*max_session_time < OAUTH_TIME_DELTA)
+									*max_session_time = OAUTH_TIME_DELTA;
+							}
+						}
+
 						ns_bcopy(dot.enc_block.mac_key,key,dot.enc_block.key_length);
+
 						ret = 0;
 					}
 				}

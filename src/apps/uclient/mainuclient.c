@@ -410,10 +410,10 @@ int main(int argc, char **argv)
 
 	if(oauth) {
 
-		otoken_array[0].enc_block.lifetime = 0;
+		otoken_array[0].enc_block.lifetime = OAUTH_SESSION_LIFETIME;
 		otoken_array[0].enc_block.timestamp = 0;
 
-		otoken_array[1].enc_block.lifetime = 0;
+		otoken_array[1].enc_block.lifetime = OAUTH_SESSION_LIFETIME;
 		otoken_array[1].enc_block.timestamp = 0;
 
 		switch(shatype) {

@@ -84,6 +84,7 @@ struct _ts_ur_super_session {
   st_password_t pwd;
   int quota_used;
   int oauth;
+  turn_time_t max_session_time_auth;
   /* Realm */
   realm_options_t realm_options;
   int origin_set;

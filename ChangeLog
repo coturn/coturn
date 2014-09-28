@@ -1,9 +1,7 @@
 08/22/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.2.1.1 'Monza':
-	- oAuth security implementation: 
-		TODO:
-		- token timeout;
-	- TLS renegotiation DoS attack prevention implemented;
+	- oAuth security experimental implementation;
+	- The "TLS renegotiation" DoS attack prevention implemented;
 	- FQDN as relay-ip and listener-ip parameters (issue 6)
 	(patch provided by Iñaki Baz Castillo);
 	- redis user key operation fixed.
