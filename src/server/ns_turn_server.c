@@ -1549,7 +1549,7 @@ static int handle_turn_refresh(turn_turnserver *server,
 						//Check security:
 						int postpone_reply = 0;
 
-						if(!ss->hmackey_set) {
+						if(!(ss->hmackey_set)) {
 							ns_bcopy(orig_ss->nonce,ss->nonce,sizeof(ss->nonce));
 							ss->nonce_expiration_time = orig_ss->nonce_expiration_time;
 							ns_bcopy(&(orig_ss->realm_options),&(ss->realm_options),sizeof(ss->realm_options));
