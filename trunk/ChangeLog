@@ -3,7 +3,6 @@ Version 4.2.1.1 'Monza':
 	- oAuth security implementation: 
 		TODO:
 		- token timeout;
-		- kid timeout;
 	- TLS renegotiation DoS attack prevention implemented;
 	- FQDN as relay-ip and listener-ip parameters (issue 6)
 	(patch provided by Iñaki Baz Castillo);

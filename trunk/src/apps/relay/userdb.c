@@ -427,6 +427,15 @@ int get_user_key(int in_oauth, int *out_oauth, u08bits *usname, u08bits *realm, 
 					if(gres<0)
 						return ret;
 
+					if(!rawKey.kid[0])
+						return ret;
+
+					if(rawKey.lifetime) {
+						if(!turn_time_before(turn_time(),(turn_time_t)(rawKey.timestamp + rawKey.lifetime+OAUTH_TIME_DELTA))) {
+							return ret;
+						}
+					}
+
 					oauth_key_data okd;
 					ns_bzero(&okd,sizeof(okd));
 
