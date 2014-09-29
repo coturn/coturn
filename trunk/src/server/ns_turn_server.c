@@ -1364,6 +1364,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 
 static void copy_auth_parameters(ts_ur_super_session *orig_ss, ts_ur_super_session *ss) {
 	if(orig_ss && ss) {
+		dec_quota(ss);
 		ns_bcopy(orig_ss->nonce,ss->nonce,sizeof(ss->nonce));
 		ss->nonce_expiration_time = orig_ss->nonce_expiration_time;
 		ns_bcopy(&(orig_ss->realm_options),&(ss->realm_options),sizeof(ss->realm_options));
@@ -1375,6 +1376,7 @@ static void copy_auth_parameters(ts_ur_super_session *orig_ss, ts_ur_super_sessi
 		ss->origin_set = orig_ss->origin_set;
 		ns_bcopy(orig_ss->pwd,ss->pwd,sizeof(ss->pwd));
 		ss->max_session_time_auth = orig_ss->max_session_time_auth;
+		inc_quota(ss,ss->username);
 	}
 }
 
@@ -1631,7 +1633,11 @@ static int handle_turn_refresh(turn_turnserver *server,
 
 										//Use new buffer and redefine ss:
 										nbh = ioa_network_buffer_allocate(server->e);
+
+										dec_quota(ss);
 										ss = orig_ss;
+										inc_quota(ss,ss->username);
+
 										ss->old_mobile_id = mid;
 										size_t len = ioa_network_buffer_get_size(nbh);
 
