@@ -1440,7 +1440,8 @@ int add_integrity(app_ur_conn_info *clnet_info, stun_buffer *message)
 			if(((method == STUN_METHOD_ALLOCATE) || (method == STUN_METHOD_REFRESH)) || !(clnet_info->key_set))
 			{
 
-				cok=(++(clnet_info->cok))%2;
+				cok=(random())%2;
+				if(cok<0) cok=-cok;
 				clnet_info->cok = cok;
 				oauth_token otoken;
 				encoded_oauth_token etoken;
