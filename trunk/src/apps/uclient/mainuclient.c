@@ -100,7 +100,6 @@ int dual_allocation = 0;
 
 int oauth = 0;
 oauth_key okey_array[2];
-oauth_token otoken_array[2];
 
 static oauth_key_data_raw okdr_array[2] = {
 		{"north","Y2FybGVvbg==",0,0,"SHA-256","AES-256-CBC","","HMAC-SHA-256-128",""},
@@ -406,26 +405,6 @@ int main(int argc, char **argv)
 			fprintf(stderr, "%s\n", Usage);
 			exit(1);
 		}
-	}
-
-	if(oauth) {
-
-		otoken_array[0].enc_block.lifetime = OAUTH_SESSION_LIFETIME;
-		otoken_array[0].enc_block.timestamp = 0;
-
-		otoken_array[1].enc_block.lifetime = OAUTH_SESSION_LIFETIME;
-		otoken_array[1].enc_block.timestamp = 0;
-
-		switch(shatype) {
-		case SHATYPE_SHA256:
-			otoken_array[0].enc_block.key_length = 32;
-			otoken_array[1].enc_block.key_length = 32;
-			break;
-		default:
-			otoken_array[0].enc_block.key_length = 20;
-			otoken_array[1].enc_block.key_length = 20;
-			break;
-		};
 	}
 
 	if(g_use_auth_secret_with_timestamp) {

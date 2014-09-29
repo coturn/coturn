@@ -1442,19 +1442,33 @@ int add_integrity(app_ur_conn_info *clnet_info, stun_buffer *message)
 
 				cok=(++(clnet_info->cok))%2;
 				clnet_info->cok = cok;
+				oauth_token otoken;
 				encoded_oauth_token etoken;
 				u08bits nonce[12];
 				RAND_bytes((unsigned char*)nonce,12);
-				otoken_array[cok].enc_block.timestamp = ((uint64_t)turn_time()) << 16;
-				RAND_bytes((unsigned char *)(otoken_array[cok].enc_block.mac_key), otoken_array[cok].enc_block.key_length);
-				if(encode_oauth_token(clnet_info->server_name, &etoken, &(okey_array[cok]), &(otoken_array[cok]), nonce)<0) {
+				long halflifetime = OAUTH_SESSION_LIFETIME/2;
+				long random_lifetime = 0;
+				while(!random_lifetime) {
+					random_lifetime = random();
+				}
+				if(random_lifetime<0) random_lifetime=-random_lifetime;
+				random_lifetime = random_lifetime % halflifetime;
+				otoken.enc_block.lifetime =  (uint32_t)(halflifetime + random_lifetime);
+				otoken.enc_block.timestamp = ((uint64_t)turn_time()) << 16;
+				if(shatype == SHATYPE_SHA256) {
+					otoken.enc_block.key_length = 32;
+				} else {
+					otoken.enc_block.key_length = 20;
+				}
+				RAND_bytes((unsigned char *)(otoken.enc_block.mac_key), otoken.enc_block.key_length);
+				if(encode_oauth_token(clnet_info->server_name, &etoken, &(okey_array[cok]), &otoken, nonce)<0) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO," Cannot encode token\n");
 					return -1;
 				}
 				stun_attr_add_str(message->buf, (size_t*)&(message->len), STUN_ATTRIBUTE_OAUTH_ACCESS_TOKEN,
 					(const u08bits*)etoken.token, (int)etoken.size);
 
-				ns_bcopy(otoken_array[cok].enc_block.mac_key,clnet_info->key,otoken_array[cok].enc_block.key_length);
+				ns_bcopy(otoken.enc_block.mac_key,clnet_info->key,otoken.enc_block.key_length);
 				clnet_info->key_set = 1;
 			}
 
