@@ -190,7 +190,7 @@ Flags:
 			This option can be used with long-term credentials mechanisms only -
 			it does not make much sense with the short-term mechanism.
 			
---oauth			Support oAuth authentication.
+--oauth			Support oAuth authentication, as in the third-party TURN specs document.
 			
 --dh566			Use 566 bits predefined DH TLS key. Default size of the key is 1066.
 
