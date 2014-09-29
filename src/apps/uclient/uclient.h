@@ -88,7 +88,6 @@ extern char origin[STUN_MAX_ORIGIN_SIZE+1];
 
 extern int oauth;
 extern oauth_key okey_array[2];
-extern oauth_token otoken_array[2];
 
 #define UCLIENT_SESSION_LIFETIME (777)
 #define OAUTH_SESSION_LIFETIME (555)
