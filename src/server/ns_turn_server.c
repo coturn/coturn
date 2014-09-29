@@ -155,7 +155,7 @@ static int inc_quota(ts_ur_super_session* ss, u08bits *username)
 			}
 		}
 
-		if((((turn_turnserver*)ss->server)->chquotacb)(username, (u08bits*)ss->realm_options.name)<0) {
+		if((((turn_turnserver*)ss->server)->chquotacb)(username, ss->oauth, (u08bits*)ss->realm_options.name)<0) {
 
 			return -1;
 
@@ -183,7 +183,7 @@ static void dec_quota(ts_ur_super_session* ss)
 			ss->bps = 0;
 		}
 
-		(((turn_turnserver*)ss->server)->raqcb)(ss->username, (u08bits*)ss->realm_options.name);
+		(((turn_turnserver*)ss->server)->raqcb)(ss->username, ss->oauth, (u08bits*)ss->realm_options.name);
 	}
 }
 
@@ -1281,8 +1281,6 @@ static int handle_turn_allocate(turn_turnserver *server,
 
 				if (*err_code) {
 
-					dec_quota(ss);
-
 					if(!(*reason)) {
 						*reason = (const u08bits *)"Cannot create relay endpoint(s)";
 					}
@@ -1362,6 +1360,22 @@ static int handle_turn_allocate(turn_turnserver *server,
 	}
 
 	return 0;
+}
+
+static void copy_auth_parameters(ts_ur_super_session *orig_ss, ts_ur_super_session *ss) {
+	if(orig_ss && ss) {
+		ns_bcopy(orig_ss->nonce,ss->nonce,sizeof(ss->nonce));
+		ss->nonce_expiration_time = orig_ss->nonce_expiration_time;
+		ns_bcopy(&(orig_ss->realm_options),&(ss->realm_options),sizeof(ss->realm_options));
+		ns_bcopy(orig_ss->username,ss->username,sizeof(ss->username));
+		ss->hmackey_set = orig_ss->hmackey_set;
+		ns_bcopy(orig_ss->hmackey,ss->hmackey,sizeof(ss->hmackey));
+		ss->oauth = orig_ss->oauth;
+		ns_bcopy(orig_ss->origin,ss->origin,sizeof(ss->origin));
+		ss->origin_set = orig_ss->origin_set;
+		ns_bcopy(orig_ss->pwd,ss->pwd,sizeof(ss->pwd));
+		ss->max_session_time_auth = orig_ss->max_session_time_auth;
+	}
 }
 
 static int handle_turn_refresh(turn_turnserver *server,
@@ -1550,17 +1564,7 @@ static int handle_turn_refresh(turn_turnserver *server,
 						int postpone_reply = 0;
 
 						if(!(ss->hmackey_set)) {
-							ns_bcopy(orig_ss->nonce,ss->nonce,sizeof(ss->nonce));
-							ss->nonce_expiration_time = orig_ss->nonce_expiration_time;
-							ns_bcopy(&(orig_ss->realm_options),&(ss->realm_options),sizeof(ss->realm_options));
-							ns_bcopy(orig_ss->username,ss->username,sizeof(ss->username));
-							ss->hmackey_set = orig_ss->hmackey_set;
-							ns_bcopy(orig_ss->hmackey,ss->hmackey,sizeof(ss->hmackey));
-							ss->oauth = orig_ss->oauth;
-							ns_bcopy(orig_ss->origin,ss->origin,sizeof(ss->origin));
-							ss->origin_set = orig_ss->origin_set;
-							ns_bcopy(orig_ss->pwd,ss->pwd,sizeof(ss->pwd));
-							ss->max_session_time_auth = orig_ss->max_session_time_auth;
+							copy_auth_parameters(orig_ss,ss);
 						}
 
 						if(check_stun_auth(server, ss, tid, resp_constructed, err_code, reason, in_buffer, nbh,
@@ -1600,11 +1604,6 @@ static int handle_turn_refresh(turn_turnserver *server,
 									*reason = (const u08bits *)"Cannot refresh relay connection (internal error)";
 								}
 
-							} else if(!to_delete && orig_ss && (inc_quota(orig_ss, orig_ss->username)<0)) {
-
-								*err_code = 486;
-								*reason = (const u08bits *)"Allocation Quota Reached";
-
 							} else {
 
 								//Transfer socket:
@@ -1614,15 +1613,17 @@ static int handle_turn_refresh(turn_turnserver *server,
 								ss->to_be_closed = 1;
 
 								if(!s) {
-									dec_quota(orig_ss);
 									*err_code = 500;
 								} else {
 
 									if(attach_socket_to_session(server, s, orig_ss) < 0) {
 										IOA_CLOSE_SOCKET(s);
 										*err_code = 500;
-										dec_quota(orig_ss);
 									} else {
+
+										if(ss->hmackey_set) {
+											copy_auth_parameters(ss,orig_ss);
+										}
 
 										delete_session_from_mobile_map(ss);
 										delete_session_from_mobile_map(orig_ss);
@@ -1663,7 +1664,6 @@ static int handle_turn_refresh(turn_turnserver *server,
 
 										if ((server->fingerprint) || ss->enforce_fingerprints) {
 											if (stun_attr_add_fingerprint_str(ioa_network_buffer_data(nbh), &len) < 0) {
-												dec_quota(ss);
 												*err_code = 500;
 												ioa_network_buffer_delete(server->e, nbh);
 												return -1;
@@ -3099,11 +3099,15 @@ static int create_challenge_response(ts_ur_super_session *ss, stun_tid *tid, int
 
 	if(ss->server) {
 		turn_turnserver* server = (turn_turnserver*)ss->server;
-		if(server->oauth && (server->oauth_server_name)&&(server->oauth_server_name[0])) {
-    	stun_attr_add_str(ioa_network_buffer_data(nbh), &len,
+		if(server->oauth) {
+			const char *server_name = server->oauth_server_name;
+			if(!(server_name && server_name[0])) {
+				server_name = realm;
+			}
+			stun_attr_add_str(ioa_network_buffer_data(nbh), &len,
     			STUN_ATTRIBUTE_THIRD_PARTY_AUTHORIZATION,
-    			(const u08bits*)(server->oauth_server_name),
-    			strlen(server->oauth_server_name));
+    			(const u08bits*)(server_name),
+    			strlen(server_name));
 		}
     }
 
@@ -3286,7 +3290,6 @@ static int check_stun_auth(turn_turnserver *server,
 			if(ss->oauth) {
 				ss->hmackey_set = 0;
 				STRCPY(ss->username,usname);
-				set_realm_hash(ss->client_socket,(u08bits*)ss->realm_options.name);
 			} else {
 				if(method == STUN_METHOD_ALLOCATE) {
 					*err_code = 437;

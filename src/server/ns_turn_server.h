@@ -92,8 +92,8 @@ typedef struct _turn_turnserver turn_turnserver;
 
 typedef void (*get_username_resume_cb)(int success, int oauth, int max_session_time, hmackey_t hmackey, st_password_t pwd, turn_turnserver *server, u64bits ctxkey, ioa_net_data *in_buffer);
 typedef u08bits *(*get_user_key_cb)(turnserver_id id, turn_credential_type ct, int in_oauth, int *out_oauth, u08bits *uname, u08bits *realm, get_username_resume_cb resume, ioa_net_data *in_buffer, u64bits ctxkey, int *postpone_reply);
-typedef int (*check_new_allocation_quota_cb)(u08bits *username, u08bits *realm);
-typedef void (*release_allocation_quota_cb)(u08bits *username, u08bits *realm);
+typedef int (*check_new_allocation_quota_cb)(u08bits *username, int oauth, u08bits *realm);
+typedef void (*release_allocation_quota_cb)(u08bits *username, int oauth, u08bits *realm);
 typedef int (*send_socket_to_relay_cb)(turnserver_id id, u64bits cid, stun_tid *tid, ioa_socket_handle s, int message_integrity, MESSAGE_TO_RELAY_TYPE rmt, ioa_net_data *nd, int can_resume);
 typedef int (*send_turn_session_info_cb)(struct turn_session_info *tsi);
 

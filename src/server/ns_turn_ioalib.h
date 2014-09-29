@@ -265,8 +265,6 @@ void get_realm_options_by_name(char *realm, realm_options_t* ro);
 int get_canonic_origin(const char* o, char *co, int sz);
 int get_default_protocol_port(const char* scheme, size_t slen);
 
-void get_oauth_server_name(const char* realm, char *server_name, size_t server_name_size);
-
 ///////////////////////////////////////
 
 #ifdef __cplusplus
