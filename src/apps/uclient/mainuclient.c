@@ -426,9 +426,6 @@ int main(int argc, char **argv)
 			otoken_array[1].enc_block.key_length = 20;
 			break;
 		};
-
-		RAND_bytes((unsigned char *)(otoken_array[0].enc_block.mac_key), otoken_array[0].enc_block.key_length);
-		RAND_bytes((unsigned char *)(otoken_array[1].enc_block.mac_key), otoken_array[1].enc_block.key_length);
 	}
 
 	if(g_use_auth_secret_with_timestamp) {

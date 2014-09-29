@@ -1446,6 +1446,7 @@ int add_integrity(app_ur_conn_info *clnet_info, stun_buffer *message)
 				u08bits nonce[12];
 				RAND_bytes((unsigned char*)nonce,12);
 				otoken_array[cok].enc_block.timestamp = ((uint64_t)turn_time()) << 16;
+				RAND_bytes((unsigned char *)(otoken_array[cok].enc_block.mac_key), otoken_array[cok].enc_block.key_length);
 				if(encode_oauth_token(clnet_info->server_name, &etoken, &(okey_array[cok]), &(otoken_array[cok]), nonce)<0) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO," Cannot encode token\n");
 					return -1;
@@ -1490,15 +1491,10 @@ int check_integrity(app_ur_conn_info *clnet_info, stun_buffer *message)
 
 	if(oauth && clnet_info->oauth) {
 
-		hmackey_t key;
 		st_password_t pwd;
 
-		int cok = clnet_info->cok;
-
-		ns_bcopy(otoken_array[cok].enc_block.mac_key,key,otoken_array[cok].enc_block.key_length);
-
 		return stun_check_message_integrity_by_key_str(get_turn_credentials_type(),
-				message->buf, (size_t)(message->len), key, pwd, sht, NULL);
+				message->buf, (size_t)(message->len), clnet_info->key, pwd, sht, NULL);
 
 	} else {
 
