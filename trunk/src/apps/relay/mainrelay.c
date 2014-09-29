@@ -464,9 +464,9 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						That database value can be changed on-the-fly\n"
 "						by a separate program, so this is why it is 'dynamic'.\n"
 "						Multiple shared secrets can be used (both in the database and in the \"static\" fashion).\n"
-" --server-name					Server name used (when necessary) for\n"
-"						the authentication purposes (oauth).\n"
-"						The default value is the FQDN of the host.\n"
+" --server-name					Server name used for\n"
+"						the oAuth authentication purposes.\n"
+"						The default value is the realm name.\n"
 " --oauth					Support oAuth authentication.\n"
 " -n						Do not use configuration file, take all parameters from the command line only.\n"
 " --cert			<filename>		Certificate file, PEM format. Same file search rules\n"
@@ -1698,34 +1698,6 @@ static void drop_privileges(void)
 	}
 }
 
-static void init_oauth_server_name(void) {
-
-	if(!turn_params.oauth_server_name[0]) {
-
-		struct utsname name;
-
-		if(uname(&name)>=0) {
-			STRCPY(turn_params.oauth_server_name,name.nodename);
-		}
-		if(!turn_params.oauth_server_name[0]) {
-			STRCPY(turn_params.oauth_server_name,"coturn");
-		}
-
-		size_t slen = strlen(turn_params.oauth_server_name);
-
-		if(get_realm(NULL)->options.name[0]) {
-			turn_params.oauth_server_name[slen]='.';
-			ns_bcopy(get_realm(NULL)->options.name,turn_params.oauth_server_name+slen+1,strlen(get_realm(NULL)->options.name)+1);
-		} else {
-			size_t dlen = strlen(turn_params.domain);
-			if(dlen>0 && turn_params.domain[0] != '(') {
-				turn_params.oauth_server_name[slen]='.';
-				ns_bcopy(turn_params.domain,turn_params.oauth_server_name+slen+1,strlen(turn_params.domain)+1);
-			}
-		}
-	}
-}
-
 static void init_domain(void)
 {
 #if !defined(TURN_NO_GETDOMAINNAME)
@@ -1841,10 +1813,9 @@ int main(int argc, char **argv)
 		STRCPY(get_realm(NULL)->options.name,turn_params.domain);
 	}
 
-	init_oauth_server_name();
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Domain name: %s\n",turn_params.domain);
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Default realm: %s\n",get_realm(NULL)->options.name);
-	if(turn_params.oauth) {
+	if(turn_params.oauth && turn_params.oauth_server_name[0]) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "oAuth server name: %s\n",turn_params.oauth_server_name);
 	}
 

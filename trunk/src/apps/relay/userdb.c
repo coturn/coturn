@@ -365,7 +365,7 @@ static turn_time_t get_rest_api_timestamp(char *usname)
 
 static char *get_real_username(char *usname)
 {
-	if(turn_params.use_auth_secret_with_timestamp) {
+	if(usname[0] && turn_params.use_auth_secret_with_timestamp) {
 		char *col=strchr(usname,turn_params.rest_api_separator);
 		if(col) {
 			if(col == usname) {
@@ -468,7 +468,12 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, u08bits *u
 					ns_bcopy(value,etoken.token,(size_t)len);
 					etoken.size = (size_t)len;
 
-					if (decode_oauth_token((const u08bits *) turn_params.oauth_server_name, &etoken,&okey, &dot) < 0) {
+					const char* server_name = (char*)turn_params.oauth_server_name;
+					if(!(server_name && server_name[0])) {
+						server_name = (char*)realm;
+					}
+
+					if (decode_oauth_token((const u08bits *) server_name, &etoken,&okey, &dot) < 0) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot decode oauth token\n");
 						return -1;
 					}
@@ -679,11 +684,11 @@ u08bits *start_user_check(turnserver_id id, turn_credential_type ct, int in_oaut
 	return NULL;
 }
 
-int check_new_allocation_quota(u08bits *user, u08bits *realm)
+int check_new_allocation_quota(u08bits *user, int oauth, u08bits *realm)
 {
 	int ret = 0;
-	if (user) {
-		u08bits *username = (u08bits*)get_real_username((char*)user);
+	if (user || oauth) {
+		u08bits *username = oauth ? (u08bits*)strdup("") : (u08bits*)get_real_username((char*)user);
 		realm_params_t *rp = get_realm((char*)realm);
 		ur_string_map_lock(rp->status.alloc_counters);
 		if (rp->options.perf_options.total_quota && (rp->status.total_current_allocs >= rp->options.perf_options.total_quota)) {
@@ -712,17 +717,19 @@ int check_new_allocation_quota(u08bits *user, u08bits *realm)
 	return ret;
 }
 
-void release_allocation_quota(u08bits *user, u08bits *realm)
+void release_allocation_quota(u08bits *user, int oauth, u08bits *realm)
 {
 	if (user) {
-		u08bits *username = (u08bits*)get_real_username((char*)user);
+		u08bits *username = oauth ? (u08bits*)strdup("") : (u08bits*)get_real_username((char*)user);
 		realm_params_t *rp = get_realm((char*)realm);
 		ur_string_map_lock(rp->status.alloc_counters);
-		ur_string_map_value_type value = 0;
-		ur_string_map_get(rp->status.alloc_counters, (ur_string_map_key_type) username, &value);
-		if (value) {
-			value = (ur_string_map_value_type)(((size_t)value) - 1);
-			ur_string_map_put(rp->status.alloc_counters, (ur_string_map_key_type) username, value);
+		if(username[0]) {
+			ur_string_map_value_type value = 0;
+			ur_string_map_get(rp->status.alloc_counters, (ur_string_map_key_type) username, &value);
+			if (value) {
+				value = (ur_string_map_value_type)(((size_t)value) - 1);
+				ur_string_map_put(rp->status.alloc_counters, (ur_string_map_key_type) username, value);
+			}
 		}
 		if (rp->status.total_current_allocs)
 			--(rp->status.total_current_allocs);
