@@ -29,5 +29,3 @@ insert into denied_peer_ip (ip_range) values('123::45');
 
 insert into oauth_key (kid,ikm_key,timestamp,lifetime,hkdf_hash_func,as_rs_alg,as_rs_key,auth_alg,auth_key) values('north','Y2FybGVvbg==',0,0,'SHA-256','AES-256-CBC','','HMAC-SHA-256-128','');
 insert into oauth_key (kid,ikm_key,timestamp,lifetime,hkdf_hash_func,as_rs_alg,as_rs_key,auth_alg,auth_key) values('oldempire','YXVsY3Vz',0,0,'SHA-256','AEAD-AES-256-GCM','','','');
-
-);
