@@ -732,7 +732,13 @@ static int handle_relay_message(relay_server_handle rs, struct message_to_relay 
 
 			turnserver_accept_tcp_client_data_connection(&(rs->server), sm->m.cb_sm.connection_id,
 				&(sm->m.cb_sm.tid), sm->m.cb_sm.s, sm->m.cb_sm.message_integrity, &(sm->m.cb_sm.nd),
-				/*sm->m.cb_sm.can_resume*//* we cannot resume this call, it must be authenticated in-place:*/0);
+				/*sm->m.cb_sm.can_resume*/
+				/* Note: we cannot resume this call, it must be authenticated in-place.
+				 * There are two reasons for that:
+				 * 1) Technical. That's very difficult with the current code structure.
+				 * 2) Security (more important). We do not want 'stealing' connections between the users.
+				 * */
+				0);
 
 			ioa_network_buffer_delete(rs->ioa_eng, sm->m.cb_sm.nd.nbh);
 			sm->m.cb_sm.nd.nbh = NULL;
