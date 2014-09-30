@@ -340,6 +340,9 @@ int stun_is_challenge_response_str(const u08bits* buf, size_t len, int *err_code
 
 		stun_attr_ref sar = stun_attr_get_first_by_type_str(buf,len,STUN_ATTRIBUTE_REALM);
 		if(sar) {
+
+			int found_oauth = 0;
+
 			const u08bits *value = stun_attr_get_value(sar);
 			if(value) {
 				size_t vlen = (size_t)stun_attr_get_len(sar);
@@ -356,9 +359,7 @@ int stun_is_challenge_response_str(const u08bits* buf, size_t len, int *err_code
 								if(server_name) {
 									ns_bcopy(value,server_name,vlen);
 								}
-								if(oauth) {
-									*oauth = 1;
-								}
+								found_oauth = 1;
 							}
 						}
 					}
@@ -371,6 +372,9 @@ int stun_is_challenge_response_str(const u08bits* buf, size_t len, int *err_code
 						vlen = (size_t)stun_attr_get_len(sar);
 						ns_bcopy(value,nonce,vlen);
 						nonce[vlen]=0;
+						if(oauth) {
+							*oauth = found_oauth;
+						}
 						return 1;
 					}
 				}
