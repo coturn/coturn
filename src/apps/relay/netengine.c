@@ -732,7 +732,7 @@ static int handle_relay_message(relay_server_handle rs, struct message_to_relay 
 
 			turnserver_accept_tcp_client_data_connection(&(rs->server), sm->m.cb_sm.connection_id,
 				&(sm->m.cb_sm.tid), sm->m.cb_sm.s, sm->m.cb_sm.message_integrity, &(sm->m.cb_sm.nd),
-				sm->m.cb_sm.can_resume);
+				/*sm->m.cb_sm.can_resume*//* we cannot resume this call, it must be authenticated in-place:*/0);
 
 			ioa_network_buffer_delete(rs->ioa_eng, sm->m.cb_sm.nd.nbh);
 			sm->m.cb_sm.nd.nbh = NULL;
