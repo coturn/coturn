@@ -1394,7 +1394,7 @@ static int handle_turn_refresh(turn_turnserver *server,
 	{
 		int i;
 		for(i = 0;i<ALLOC_PROTOCOLS_NUMBER; ++i) {
-			if(a->relay_sessions[i].s) {
+			if(a->relay_sessions[i].s && !ioa_socket_tobeclosed(a->relay_sessions[i].s)) {
 				int family = get_local_addr_from_ioa_socket(a->relay_sessions[i].s)->ss.sa_family;
 				if(AF_INET == family) {
 					af4c = 1;
