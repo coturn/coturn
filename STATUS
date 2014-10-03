@@ -104,6 +104,8 @@ compatibility.
 44) Double (dual) allocation added (SSODA draft).
 
 45) Secure MySQL connection implemented.
+
+46) Third-party security mechanism (through oAuth) implemented.
  
 Things to be implemented in future (the development roadmap) 
 are described in the TODO file.
