@@ -1395,7 +1395,7 @@ static int handle_turn_refresh(turn_turnserver *server,
 		int i;
 		for(i = 0;i<ALLOC_PROTOCOLS_NUMBER; ++i) {
 			if(a->relay_sessions[i].s && !ioa_socket_tobeclosed(a->relay_sessions[i].s)) {
-				int family = get_local_addr_from_ioa_socket(a->relay_sessions[i].s)->ss.sa_family;
+				int family = get_ioa_socket_address_family(a->relay_sessions[i].s);
 				if(AF_INET == family) {
 					af4c = 1;
 				} else if(AF_INET6 == family) {
@@ -2045,6 +2045,11 @@ static void tcp_peer_accept_connection(ioa_socket_handle s, void *arg)
 
 		allocation *a = &(ss->alloc);
 		ioa_addr *peer_addr = get_remote_addr_from_ioa_socket(s);
+		if(!peer_addr) {
+			close_ioa_socket(s);
+			FUNCEND;
+			return;
+		}
 
 		tcp_connection *tc = get_tcp_connection_by_peer(a, peer_addr);
 		if(tc) {
@@ -2731,7 +2736,7 @@ static int handle_turn_binding(turn_turnserver *server,
 
 		;
 
-	} else if(ss->client_socket) {
+	} else if(ss->client_socket && get_remote_addr_from_ioa_socket(ss->client_socket)) {
 
 		size_t len = ioa_network_buffer_get_size(nbh);
 		if (stun_set_binding_response_str(ioa_network_buffer_data(nbh), &len, tid,
@@ -4301,8 +4306,8 @@ static int create_relay_connection(turn_turnserver* server,
 		}
 
 		/* RFC6156: do not use DF when IPv6 is involved: */
-		if((get_local_addr_from_ioa_socket(newelem->s)->ss.sa_family == AF_INET6) ||
-		   (get_local_addr_from_ioa_socket(ss->client_socket)->ss.sa_family == AF_INET6))
+		if((get_ioa_socket_address_family(newelem->s) == AF_INET6) ||
+		   (get_ioa_socket_address_family(ss->client_socket) == AF_INET6))
 			set_do_not_use_df(newelem->s);
 
 		if(get_ioa_socket_type(newelem->s) != TCP_SOCKET) {
@@ -4318,7 +4323,7 @@ static int create_relay_connection(turn_turnserver* server,
 		ioa_timer_handle ev = set_ioa_timer(server->e, lifetime, 0,
 				client_ss_allocation_timeout_handler, newelem, 0,
 				"client_ss_allocation_timeout_handler");
-		set_allocation_lifetime_ev(a, server->ctime + lifetime, ev, get_local_addr_from_ioa_socket(newelem->s)->ss.sa_family);
+		set_allocation_lifetime_ev(a, server->ctime + lifetime, ev, get_ioa_socket_address_family(newelem->s));
 
 		set_ioa_socket_session(newelem->s, ss);
 	}

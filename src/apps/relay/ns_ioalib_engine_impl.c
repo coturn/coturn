@@ -1478,18 +1478,20 @@ ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e,
 	ret->magic = SOCKET_MAGIC;
 
 	ret->fd = fd;
-	ret->family = local_addr->ss.sa_family;
 	ret->st = st;
 	ret->sat = sat;
 	ret->e = e;
 
 	if (local_addr) {
+		ret->family = local_addr->ss.sa_family;
 		ret->bound = 1;
 		addr_cpy(&(ret->local_addr), local_addr);
 	}
 
 	if (remote_addr) {
 		ret->connected = 1;
+		if(!(ret->family))
+			ret->family = remote_addr->ss.sa_family;
 		addr_cpy(&(ret->remote_addr), remote_addr);
 	}
 
@@ -1895,10 +1897,7 @@ ioa_addr* get_local_addr_from_ioa_socket(ioa_socket_handle s)
 		}
 	}
 
-	{
-	  static ioa_addr lbad_addr;
-	  return &lbad_addr;
-	}
+	return NULL;
 }
 
 ioa_addr* get_remote_addr_from_ioa_socket(ioa_socket_handle s)
@@ -1910,10 +1909,7 @@ ioa_addr* get_remote_addr_from_ioa_socket(ioa_socket_handle s)
 		}
 	}
 
-	{
-	  static ioa_addr rbad_addr;
-	  return &rbad_addr;
-	}
+	return NULL;
 }
 
 int get_local_mtu_ioa_socket(ioa_socket_handle s)
