@@ -866,12 +866,14 @@ int stun_set_binding_response_str(u08bits* buf, size_t *len, stun_tid* tid,
 		} else {
 			old_stun_init_success_response_str(STUN_METHOD_BINDING, buf, len, tid, cookie);
 		}
-		if(!old_stun) {
+		if(!old_stun && reflexive_addr) {
 			if (stun_attr_add_addr_str(buf, len, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS, reflexive_addr) < 0)
 				return -1;
 		}
-		if (stun_attr_add_addr_str(buf, len, STUN_ATTRIBUTE_MAPPED_ADDRESS, reflexive_addr) < 0)
-			return -1;
+		if(reflexive_addr) {
+			if (stun_attr_add_addr_str(buf, len, STUN_ATTRIBUTE_MAPPED_ADDRESS, reflexive_addr) < 0)
+				return -1;
+		}
 	} else if (!old_stun) {
 		stun_init_error_response_str(STUN_METHOD_BINDING, buf, len, error_code, reason, tid);
 	} else {
