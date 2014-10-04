@@ -457,7 +457,6 @@ static int send_socket_to_general_relay(ioa_engine_handle e, struct message_to_r
 	int success = 0;
 
 	if(!rdest) {
-		success = -1;
 		goto label_end;
 	}
 
@@ -719,6 +718,7 @@ static int handle_relay_message(relay_server_handle rs, struct message_to_relay 
 					"%s: socket wrongly preset: 0x%lx : 0x%lx\n",
 					__FUNCTION__, (long) s->read_event, (long) s->bev);
 				IOA_CLOSE_SOCKET(s);
+				sm->m.sm.s = NULL;
 			} else {
 				s->e = rs->ioa_eng;
 				open_client_connection_session(&(rs->server), &(sm->m.sm));
@@ -756,6 +756,7 @@ static int handle_relay_message(relay_server_handle rs, struct message_to_relay 
 									"%s: mobile socket wrongly preset: 0x%lx : 0x%lx\n",
 									__FUNCTION__, (long) s->read_event, (long) s->bev);
 				IOA_CLOSE_SOCKET(s);
+				sm->m.sm.s = NULL;
 			} else {
 				s->e = rs->ioa_eng;
 				open_client_connection_session(&(rs->server), &(sm->m.sm));

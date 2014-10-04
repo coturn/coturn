@@ -1543,7 +1543,7 @@ static int handle_turn_refresh(turn_turnserver *server,
 				} else {
 
 					ts_ur_super_session *orig_ss = get_session_from_mobile_map(server, mid);
-					if(!orig_ss) {
+					if(!orig_ss || orig_ss->to_be_closed || ioa_socket_tobeclosed(orig_ss->client_socket)) {
 						*err_code = 404;
 						*reason = (const u08bits *)"Allocation not found";
 					} else if(orig_ss == ss) {
@@ -1619,7 +1619,9 @@ static int handle_turn_refresh(turn_turnserver *server,
 								} else {
 
 									if(attach_socket_to_session(server, s, orig_ss) < 0) {
-										IOA_CLOSE_SOCKET(s);
+										if(orig_ss->client_socket != s) {
+											IOA_CLOSE_SOCKET(s);
+										}
 										*err_code = 500;
 									} else {
 
@@ -2017,8 +2019,10 @@ static int tcp_start_connection_to_peer(turn_turnserver *server, ts_ur_super_ses
 	}
 
 	tc->state = TC_STATE_CLIENT_TO_PEER_CONNECTING;
-	IOA_CLOSE_SOCKET(tc->peer_s);
-	tc->peer_s = tcs;
+	if(tc->peer_s != tcs) {
+		IOA_CLOSE_SOCKET(tc->peer_s);
+		tc->peer_s = tcs;
+	}
 	set_ioa_socket_sub_session(tc->peer_s,tc);
 
 	FUNCEND;
@@ -2086,8 +2090,7 @@ static void tcp_peer_accept_connection(ioa_socket_handle s, void *arg)
 
 		if(register_callback_on_ioa_socket(server->e, s, IOA_EV_READ, tcp_peer_input_handler, tc, 1)<0) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: cannot set TCP peer data input callback\n", __FUNCTION__);
-			close_ioa_socket(s);
-			tc->peer_s = NULL;
+			IOA_CLOSE_SOCKET(tc->peer_s);
 			tc->state = TC_STATE_UNKNOWN;
 			FUNCEND;
 			return;
@@ -4378,7 +4381,7 @@ static int read_client_connection(turn_turnserver *server,
 
 	FUNCSTART;
 
-	if (!server || !ss || !in_buffer || !(ss->client_socket)) {
+	if (!server || !ss || !in_buffer || !(ss->client_socket) || ss->to_be_closed || ioa_socket_tobeclosed(ss->client_socket)) {
 		FUNCEND;
 		return -1;
 	}
@@ -4514,7 +4517,7 @@ static int attach_socket_to_session(turn_turnserver* server, ioa_socket_handle s
 	int ret = -1;
 	FUNCSTART;
 
-	if(s && server && ss) {
+	if(s && server && ss && !ioa_socket_tobeclosed(s)) {
 
 		if(ss->client_socket != s) {
 
