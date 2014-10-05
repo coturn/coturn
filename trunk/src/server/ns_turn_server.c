@@ -1543,7 +1543,7 @@ static int handle_turn_refresh(turn_turnserver *server,
 				} else {
 
 					ts_ur_super_session *orig_ss = get_session_from_mobile_map(server, mid);
-					if(!orig_ss || orig_ss->to_be_closed || ioa_socket_tobeclosed(orig_ss->client_socket)) {
+					if(!orig_ss) {
 						*err_code = 404;
 						*reason = (const u08bits *)"Allocation not found";
 					} else if(orig_ss == ss) {
