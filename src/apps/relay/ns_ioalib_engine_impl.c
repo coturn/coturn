@@ -3642,13 +3642,13 @@ void* allocate_super_memory_region_func(super_memory_t *r, size_t size, const ch
 	UNUSED_ARG(func);
 	UNUSED_ARG(line);
 
+	void *ret = NULL;
+
 	if(!r) {
-		void *ret = malloc(size);
+		ret = malloc(size);
 		ns_bzero(ret, size);
 		return ret;
 	}
-
-	void *ret = NULL;
 
 	pthread_mutex_lock(&r->mutex_sm);
 
