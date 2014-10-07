@@ -2352,6 +2352,8 @@ int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_co
 	int err_code = 0;
 	const u08bits *reason = NULL;
 
+	ioa_socket_handle s_to_delete = s;
+
 	if(tcid && tid && s) {
 
 		tc = get_tcp_connection_by_id(server->tcp_relay_connections, tcid);
@@ -2382,6 +2384,7 @@ int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_co
 					} else if(!err_code) {
 						tc->state = TC_STATE_READY;
 						tc->client_s = s;
+						s_to_delete = NULL;
 						set_ioa_socket_session(s,ss);
 						set_ioa_socket_sub_session(s,tc);
 						set_ioa_socket_app_type(s,TCP_CLIENT_DATA_SOCKET);
@@ -2451,12 +2454,8 @@ int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_co
 		}
 	}
 
-	if(s) {
-		if(tc && (s==tc->client_s)) {
-			;
-		} else {
-			close_ioa_socket(s);
-		}
+	if(s_to_delete) {
+		close_ioa_socket(s_to_delete);
 	}
 
 	FUNCEND;
