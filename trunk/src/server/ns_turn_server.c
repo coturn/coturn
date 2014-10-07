@@ -2441,6 +2441,7 @@ int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_co
 		if(ss && !err_code) {
 			send_data_from_ioa_socket_nbh(s, NULL, nbh, TTL_IGNORE, TOS_IGNORE);
 			tcp_deliver_delayed_buffer(&(tc->ub_to_client),s,ss);
+			IOA_CLOSE_SOCKET(s_to_delete);
 			FUNCEND;
 			return 0;
 		} else {
@@ -2454,9 +2455,7 @@ int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_co
 		}
 	}
 
-	if(s_to_delete) {
-		close_ioa_socket(s_to_delete);
-	}
+	IOA_CLOSE_SOCKET(s_to_delete);
 
 	FUNCEND;
 	return -1;
