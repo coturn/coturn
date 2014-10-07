@@ -2368,7 +2368,7 @@ int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_co
 			} else {
 				ss = (ts_ur_super_session*)(a->owner);
 
-				if(ss->to_be_closed) {
+				if(ss->to_be_closed || ioa_socket_tobeclosed(ss->client_socket)) {
 					err_code = 404;
 				} else {
 					//Check security:
