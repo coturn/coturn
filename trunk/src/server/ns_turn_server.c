@@ -2248,7 +2248,7 @@ static int handle_turn_connection_bind(turn_turnserver *server,
 		*err_code = 400;
 		*reason = (const u08bits *)"Bad request";
 
-	} if (is_allocation_valid(a)) {
+	} else if (is_allocation_valid(a)) {
 
 		*err_code = 400;
 		*reason = (const u08bits *)"Bad request: CONNECTION_BIND cannot be issued after allocation";
