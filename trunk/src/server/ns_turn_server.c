@@ -1610,7 +1610,7 @@ static int handle_turn_refresh(turn_turnserver *server,
 
 								//Transfer socket:
 
-								ioa_socket_handle s = detach_ioa_socket(ss->client_socket,0);
+								ioa_socket_handle s = detach_ioa_socket(ss->client_socket,1);
 
 								ss->to_be_closed = 1;
 

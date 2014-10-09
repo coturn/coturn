@@ -1448,16 +1448,23 @@ void add_socket_to_map(ioa_socket_handle s, ur_addr_map *amap)
 				&(s->remote_addr),
 				(ur_addr_map_value_type)s);
 		s->sockets_container = amap;
+
+		//printf("%s: 111.111: amap=0x%lx: ne=%lu, sz=%lu\n",__FUNCTION__,(unsigned long)amap,(unsigned long)ur_addr_map_num_elements(amap),(unsigned long)ur_addr_map_size(amap));
 	}
 }
 
 void delete_socket_from_map(ioa_socket_handle s)
 {
 	if(s && s->sockets_container) {
+
+		//ur_addr_map *amap = s->sockets_container;
+
 		ur_addr_map_del(s->sockets_container,
 				&(s->remote_addr),
 				NULL);
 		s->sockets_container = NULL;
+
+		//printf("%s: 111.222: amap=0x%lx: ne=%lu, sz=%lu\n",__FUNCTION__,(unsigned long)amap,(unsigned long)ur_addr_map_num_elements(amap),(unsigned long)ur_addr_map_size(amap));
 	}
 }
 
@@ -1741,7 +1748,11 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s, int full_detach)
 		set_socket_ssl(ret,s->ssl);
 		ret->fd = s->fd;
 
-		ret->family = s->family;
+		if(s->parent_s)
+			ret->family = s->parent_s->family;
+		else
+			ret->family = s->family;
+
 		ret->st = s->st;
 		ret->sat = s->sat;
 		ret->bound = s->bound;
@@ -1836,6 +1847,8 @@ void set_ioa_socket_sub_session(ioa_socket_handle s, tcp_connection *tc)
 int get_ioa_socket_address_family(ioa_socket_handle s) {
 	if(!s) {
 		return AF_INET;
+	} else if(s->done) {
+		return s->family;
 	} else if(s->parent_s) {
 		return s->parent_s->family;
 	} else {

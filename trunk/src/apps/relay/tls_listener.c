@@ -98,8 +98,6 @@ static void server_input_handler(struct evconnlistener *l, evutil_socket_t fd,
 
 	if (ioas) {
 
-		ioas->listener_server = server;
-
 		server->sm.m.sm.nd.recv_ttl = TTL_IGNORE;
 		server->sm.m.sm.nd.recv_tos = TOS_IGNORE;
 		server->sm.m.sm.nd.nbh = NULL;
