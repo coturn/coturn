@@ -692,6 +692,48 @@ static void addr_list_foreach(addr_list_header* slh,  ur_addr_map_func func) {
   }
 }
 
+static size_t addr_list_num_elements(const addr_list_header* slh) {
+
+	size_t ret = 0;
+
+	if (slh) {
+
+		size_t i;
+
+		for (i = 0; i < ADDR_ARRAY_SIZE; ++i) {
+			const addr_elem *elem = &(slh->main_list[i]);
+			if (elem->value) {
+				++ret;
+			}
+		}
+
+		if (slh->extra_list) {
+			for (i = 0; i < slh->extra_sz; ++i) {
+				addr_elem *elem = &(slh->extra_list[i]);
+				if (elem->value) {
+					++ret;
+				}
+			}
+		}
+	}
+
+	return ret;
+}
+
+static size_t addr_list_size(const addr_list_header* slh) {
+
+	size_t ret = 0;
+
+	if (slh) {
+
+		ret += ADDR_ARRAY_SIZE;
+
+		ret += slh->extra_sz;
+	}
+
+	return ret;
+}
+
 static addr_elem* addr_list_get(addr_list_header* slh, const ioa_addr* key) {
 
   if(!slh || !key) return NULL;
@@ -861,6 +903,40 @@ void ur_addr_map_foreach(ur_addr_map* map, ur_addr_map_func func) {
       addr_list_foreach(slh, func);
     }
   }
+}
+
+size_t ur_addr_map_num_elements(const ur_addr_map* map) {
+
+	size_t ret = 0;
+
+	if (ur_addr_map_valid(map)) {
+		u32bits i = 0;
+		for (i = 0; i < ADDR_MAP_SIZE; i++) {
+
+			const addr_list_header* slh = &(map->lists[i]);
+
+			ret += addr_list_num_elements(slh);
+		}
+	}
+
+	return ret;
+}
+
+size_t ur_addr_map_size(const ur_addr_map* map) {
+
+	size_t ret = 0;
+
+	if (ur_addr_map_valid(map)) {
+		u32bits i = 0;
+		for (i = 0; i < ADDR_MAP_SIZE; i++) {
+
+			const addr_list_header* slh = &(map->lists[i]);
+
+			ret += addr_list_size(slh);
+		}
+	}
+
+	return ret;
 }
 
 ////////////////////  STRING LISTS ///////////////////////////////////

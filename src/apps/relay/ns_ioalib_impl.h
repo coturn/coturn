@@ -170,7 +170,6 @@ struct _ioa_socket
 {
 	evutil_socket_t fd;
 	struct _ioa_socket *parent_s;
-	void *listener_server;
 	u32bits magic;
 	ur_addr_map *sockets_container; /* relay container for UDP sockets */
 	struct bufferevent *bev;

@@ -229,9 +229,6 @@ static ioa_socket_handle dtls_accept_client_connection(
 
 	ioa_socket_handle ioas = create_ioa_socket_from_ssl(server->e, sock, ssl, DTLS_SOCKET, CLIENT_SOCKET, remote_addr, local_addr);
 	if(ioas) {
-
-		ioas->listener_server = server;
-
 		addr_cpy(&(server->sm.m.sm.nd.src_addr),remote_addr);
 		server->sm.m.sm.nd.recv_ttl = TTL_IGNORE;
 		server->sm.m.sm.nd.recv_tos = TOS_IGNORE;
@@ -437,7 +434,6 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server,
 					__FUNCTION__, (char*) saddr,(char*) rsaddr);
 			}
 			s->e = ioa_eng;
-			s->listener_server = server;
 			add_socket_to_map(s, amap);
 			open_client_connection_session(ts, &(sm->m.sm));
 		}
@@ -565,7 +561,6 @@ static int create_new_connected_udp_socket(
 				"Accepted DTLS connection from");
 
 		ret->ssl = connecting_ssl;
-		ret->listener_server = server;
 
 		ioa_network_buffer_delete(server->e, server->sm.m.sm.nd.nbh);
 		server->sm.m.sm.nd.nbh = NULL;
@@ -583,9 +578,8 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void* arg)
 {
 	int cycle = 0;
 
-	ioa_socket_handle s = (ioa_socket_handle)arg;
-
-	dtls_listener_relay_server_type* server = (dtls_listener_relay_server_type*)s->listener_server;
+	dtls_listener_relay_server_type* server = (dtls_listener_relay_server_type*)arg;
+	ioa_socket_handle s = server->udp_listen_s;
 
 	FUNCSTART;
 
@@ -726,8 +720,6 @@ static int create_server_socket(dtls_listener_relay_server_type* server, int rep
 
 	  server->udp_listen_s = create_ioa_socket_from_fd(server->e, udp_listen_fd, NULL, UDP_SOCKET, LISTENER_SOCKET, NULL, &(server->addr));
 
-	  server->udp_listen_s->listener_server = server;
-
 	  set_sock_buf_size(udp_listen_fd,UR_SERVER_SOCK_BUF_SIZE);
 
 	  if(sock_bind_to_device(udp_listen_fd, (unsigned char*)server->ifname)<0) {
@@ -756,7 +748,7 @@ static int create_server_socket(dtls_listener_relay_server_type* server, int rep
 
 	  server->udp_listen_ev = event_new(server->e->event_base,udp_listen_fd,
 				    EV_READ|EV_PERSIST,udp_server_input_handler,
-				    server->udp_listen_s);
+				    server);
 
 	  event_add(server->udp_listen_ev,NULL);
   }
@@ -827,7 +819,7 @@ static int reopen_server_socket(dtls_listener_relay_server_type* server, evutil_
 
 		server->udp_listen_ev = event_new(server->e->event_base, udp_listen_fd,
 				EV_READ | EV_PERSIST, udp_server_input_handler,
-				server->udp_listen_s);
+				server);
 
 		event_add(server->udp_listen_ev, NULL );
 	}
