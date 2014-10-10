@@ -250,10 +250,10 @@ redis_context_handle redisLibeventAttach(struct event_base *base, char *ip0, int
   e->allocated = 1;
   e->context = ac;
   e->base = base;
-  e->ip = strdup(ip);
+  e->ip = turn_strdup(ip);
   e->port = port;
   if(pwd)
-	  e->pwd = strdup(pwd);
+	  e->pwd = turn_strdup(pwd);
   e->db = db;
 
   /* Register functions to start/stop listening for events */

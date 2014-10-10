@@ -174,7 +174,7 @@ int get_realm_options_by_origin(char *origin, realm_options_t* ro)
 		realm_params_t rp;
 		get_realm_data(realm, &rp);
 		ns_bcopy(&(rp.options),ro,sizeof(realm_options_t));
-		free(realm);
+		turn_free(realm,strlen(realm)+1);
 		return 1;
 	} else {
 		TURN_MUTEX_UNLOCK(&o_to_realm_mutex);
@@ -291,9 +291,9 @@ const char* get_secrets_list_elem(secrets_list_t *sl, size_t i)
 void add_to_secrets_list(secrets_list_t *sl, const char* elem)
 {
 	if(sl && elem) {
-		sl->secrets = (char**)realloc(sl->secrets,(sizeof(char*)*(sl->sz+1)));
-		sl->secrets[sl->sz] = strdup(elem);
-		sl->sz += 1;
+	  sl->secrets = (char**)turn_realloc(sl->secrets,0,(sizeof(char*)*(sl->sz+1)));
+	  sl->secrets[sl->sz] = strdup(elem);
+	  sl->sz += 1;
 	}
 }
 
@@ -707,7 +707,7 @@ int check_new_allocation_quota(u08bits *user, int oauth, u08bits *realm)
 		} else {
 			++(rp->status.total_current_allocs);
 		}
-		turn_free(username,strlen(username)+1);
+		turn_free(username,strlen((char*)username)+1);
 		ur_string_map_unlock(rp->status.alloc_counters);
 	}
 	return ret;
@@ -730,7 +730,7 @@ void release_allocation_quota(u08bits *user, int oauth, u08bits *realm)
 		if (rp->status.total_current_allocs)
 			--(rp->status.total_current_allocs);
 		ur_string_map_unlock(rp->status.alloc_counters);
-		turn_free(username, strlen(username)+1);
+		turn_free(username, strlen((char*)username)+1);
 	}
 }
 
@@ -839,8 +839,8 @@ int add_user_account(char *user, int dynamic)
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key format: %s\n",s);
 				} if(convert_string_key_to_binary(keysource, *key, sz)<0) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key: %s\n",s);
-					free(usname);
-					free(key);
+					turn_free(usname,strlen(usname)+1);
+					turn_free(key,sizeof(hmackey_t));
 					return -1;
 				}
 			} else {
@@ -857,7 +857,7 @@ int add_user_account(char *user, int dynamic)
 				ur_string_map_unlock(turn_params.default_users_db.ram_db.static_accounts);
 			}
 			turn_params.default_users_db.ram_db.users_number++;
-			free(usname);
+			turn_free(usname,strlen(usname)+1);
 			return 0;
 		}
 	}
@@ -1153,7 +1153,7 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, u08b
 				}
 
 				add_and_cont:
-				content = (char**)realloc(content, sizeof(char*) * (++csz));
+				content = (char**)turn_realloc(content, 0, sizeof(char*) * (++csz));
 				content[csz - 1] = strdup(s0);
 			}
 
@@ -1168,7 +1168,7 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, u08b
 		  for(i=0;i<sz;i++) {
 		    snprintf(us+strlen(us),sizeof(us)-strlen(us),"%02x",(unsigned int)key[i]);
 		  }
-		  content = (char**)realloc(content,sizeof(char*)*(++csz));
+		  content = (char**)turn_realloc(content,0,sizeof(char*)*(++csz));
 		  content[csz-1]=strdup(us);
 		}
 
@@ -1199,7 +1199,7 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, u08b
 		fclose(f);
 
 		rename(dir,full_path_to_userdb_file);
-		free(dir);
+		turn_free(dir,dirsz+1);
 	}
 
 	return 0;
@@ -1396,15 +1396,15 @@ static void ip_list_free(ip_range_list_t *l)
 		size_t i;
 		for(i=0;i<l->ranges_number;++i) {
 			if(l->ranges && l->ranges[i])
-				free(l->ranges[i]);
+			  turn_free(l->ranges[i],0);
 			if(l->encaddrsranges && l->encaddrsranges[i])
-				free(l->encaddrsranges[i]);
+			  turn_free(l->encaddrsranges[i],0);
 		}
 		if(l->ranges)
-			free(l->ranges);
+		  turn_free(l->ranges,0);
 		if(l->encaddrsranges)
-			free(l->encaddrsranges);
-		free(l);
+		  turn_free(l->encaddrsranges,0);
+		turn_free(l,sizeof(ip_range_list_t));
 	}
 }
 
@@ -1446,14 +1446,14 @@ int add_ip_list_range(const char * range0, ip_range_list_t * list)
 
 	if (make_ioa_addr((const u08bits*) range, 0, &min) < 0) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong address format: %s\n", range);
-		free(range);
+		turn_free(range,0);
 		return -1;
 	}
 
 	if (separator) {
 		if (make_ioa_addr((const u08bits*) separator + 1, 0, &max) < 0) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong address format: %s\n", separator + 1);
-			free(range);
+			turn_free(range,0);
 			return -1;
 		}
 	} else {
@@ -1465,9 +1465,9 @@ int add_ip_list_range(const char * range0, ip_range_list_t * list)
 		*separator = '-';
 
 	++(list->ranges_number);
-	list->ranges = (char**) realloc(list->ranges, sizeof(char*) * list->ranges_number);
+	list->ranges = (char**) turn_realloc(list->ranges, 0, sizeof(char*) * list->ranges_number);
 	list->ranges[list->ranges_number - 1] = range;
-	list->encaddrsranges = (ioa_addr_range**) realloc(list->encaddrsranges, sizeof(ioa_addr_range*) * list->ranges_number);
+	list->encaddrsranges = (ioa_addr_range**) turn_realloc(list->encaddrsranges, 0, sizeof(ioa_addr_range*) * list->ranges_number);
 
 	list->encaddrsranges[list->ranges_number - 1] = (ioa_addr_range*) turn_malloc(sizeof(ioa_addr_range));
 

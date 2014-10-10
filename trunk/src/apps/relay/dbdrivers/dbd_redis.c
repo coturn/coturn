@@ -59,7 +59,7 @@ typedef struct _Ryconninfo Ryconninfo;
 static void RyconninfoFree(Ryconninfo *co) {
 	if(co) {
 		if(co->host) turn_free(co->host, strlen(co->host)+1);
-		if(co->dbname) turn_free(co->dbname, strlen(co->username)+1);
+		if(co->dbname) turn_free(co->dbname, strlen(co->dbname)+1);
 		if(co->password) turn_free(co->password, strlen(co->password)+1);
 		ns_bzero(co,sizeof(Ryconninfo));
 	}
