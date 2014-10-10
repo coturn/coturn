@@ -1034,7 +1034,7 @@ static void set_option(int c, char *value)
 		if(value) {
 			char *div = strchr(value,'/');
 			if(div) {
-				char *nval=strdup(value);
+				char *nval=turn_strdup(value);
 				div = strchr(nval,'/');
 				div[0]=0;
 				++div;
