@@ -755,7 +755,7 @@ static void tm_id(char *id, const char* file, int line) {
 
 #define TM_START() char id[128];tm_id(id,file,line);tm_init()
 
-void tm_print_func(void);
+extern "C" void tm_print_func(void);
 void tm_print_func(void) {
   pthread_mutex_lock(&tm);
   printf("=============================================\n");
@@ -767,7 +767,7 @@ void tm_print_func(void) {
   pthread_mutex_unlock(&tm);
 } 
 
-void *turn_malloc_func(size_t sz, const char* file, int line);
+extern "C" void *turn_malloc_func(size_t sz, const char* file, int line);
 void *turn_malloc_func(size_t sz, const char* file, int line) {
 
   TM_START();
@@ -779,7 +779,7 @@ void *turn_malloc_func(size_t sz, const char* file, int line) {
   return ptr;
 }
 
-void *turn_realloc_func(void *ptr, size_t old_sz, size_t new_sz, const char* file, int line);
+extern "C" void *turn_realloc_func(void *ptr, size_t old_sz, size_t new_sz, const char* file, int line);
 void *turn_realloc_func(void *ptr, size_t old_sz, size_t new_sz, const char* file, int line) {
 
   UNUSED_ARG(old_sz);
@@ -796,7 +796,7 @@ void *turn_realloc_func(void *ptr, size_t old_sz, size_t new_sz, const char* fil
   return ptr;
 }
 
-void turn_free_func(void *ptr, size_t sz, const char* file, int line);
+extern "C" void turn_free_func(void *ptr, size_t sz, const char* file, int line);
 void turn_free_func(void *ptr, size_t sz, const char* file, int line) {
 
   UNUSED_ARG(sz);
@@ -808,7 +808,7 @@ void turn_free_func(void *ptr, size_t sz, const char* file, int line) {
   free(ptr);
 }
 
-void turn_free_simple(void *ptr);
+extern "C" void turn_free_simple(void *ptr);
 void turn_free_simple(void *ptr) {
 
   tm_init();
@@ -818,7 +818,7 @@ void turn_free_simple(void *ptr) {
   free(ptr);
 }
 
-void *turn_calloc_func(size_t number, size_t size, const char* file, int line);
+extern "C" void *turn_calloc_func(size_t number, size_t size, const char* file, int line);
 void *turn_calloc_func(size_t number, size_t size, const char* file, int line) {
   
   TM_START();
@@ -830,7 +830,7 @@ void *turn_calloc_func(size_t number, size_t size, const char* file, int line) {
   return ptr;
 }
 
-char *turn_strdup_func(const char* s, const char* file, int line);
+extern "C" char *turn_strdup_func(const char* s, const char* file, int line);
 char *turn_strdup_func(const char* s, const char* file, int line) {
 
   TM_START();
