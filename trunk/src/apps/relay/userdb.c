@@ -105,7 +105,7 @@ void create_default_realm()
 	/* init everything: */
 	TURN_MUTEX_INIT_RECURSIVE(&o_to_realm_mutex);
 	init_secrets_list(&realms_list);
-	o_to_realm = ur_string_map_create(free);
+	o_to_realm = ur_string_map_create(turn_free_simple);
 	default_realm_params_ptr = &_default_realm_params;
 	realms = ur_string_map_create(NULL);
 	ur_string_map_lock(realms);
@@ -169,7 +169,7 @@ int get_realm_options_by_origin(char *origin, realm_options_t* ro)
 	ur_string_map_value_type value = 0;
 	TURN_MUTEX_LOCK(&o_to_realm_mutex);
 	if (ur_string_map_get(o_to_realm, (ur_string_map_key_type) origin, &value) && value) {
-		char *realm = strdup((char*)value);
+		char *realm = turn_strdup((char*)value);
 		TURN_MUTEX_UNLOCK(&o_to_realm_mutex);
 		realm_params_t rp;
 		get_realm_data(realm, &rp);
@@ -292,7 +292,7 @@ void add_to_secrets_list(secrets_list_t *sl, const char* elem)
 {
 	if(sl && elem) {
 	  sl->secrets = (char**)turn_realloc(sl->secrets,0,(sizeof(char*)*(sl->sz+1)));
-	  sl->secrets[sl->sz] = strdup(elem);
+	  sl->secrets[sl->sz] = turn_strdup(elem);
 	  sl->sz += 1;
 	}
 }
@@ -384,7 +384,7 @@ static char *get_real_username(char *usname)
 					usname = col+1;
 				} else {
 					*col=0;
-					usname = strdup(usname);
+					usname = turn_strdup(usname);
 					*col=turn_params.rest_api_separator;
 					return usname;
 				}
@@ -392,7 +392,7 @@ static char *get_real_username(char *usname)
 		}
 	}
 
-	return strdup(usname);
+	return turn_strdup(usname);
 }
 
 /*
@@ -684,7 +684,7 @@ int check_new_allocation_quota(u08bits *user, int oauth, u08bits *realm)
 {
 	int ret = 0;
 	if (user || oauth) {
-		u08bits *username = oauth ? (u08bits*)strdup("") : (u08bits*)get_real_username((char*)user);
+		u08bits *username = oauth ? (u08bits*)turn_strdup("") : (u08bits*)get_real_username((char*)user);
 		realm_params_t *rp = get_realm((char*)realm);
 		ur_string_map_lock(rp->status.alloc_counters);
 		if (rp->options.perf_options.total_quota && (rp->status.total_current_allocs >= rp->options.perf_options.total_quota)) {
@@ -716,7 +716,7 @@ int check_new_allocation_quota(u08bits *user, int oauth, u08bits *realm)
 void release_allocation_quota(u08bits *user, int oauth, u08bits *realm)
 {
 	if (user) {
-		u08bits *username = oauth ? (u08bits*)strdup("") : (u08bits*)get_real_username((char*)user);
+		u08bits *username = oauth ? (u08bits*)turn_strdup("") : (u08bits*)get_real_username((char*)user);
 		realm_params_t *rp = get_realm((char*)realm);
 		ur_string_map_lock(rp->status.alloc_counters);
 		if(username[0]) {
@@ -1154,7 +1154,7 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, u08b
 
 				add_and_cont:
 				content = (char**)turn_realloc(content, 0, sizeof(char*) * (++csz));
-				content[csz - 1] = strdup(s0);
+				content[csz - 1] = turn_strdup(s0);
 			}
 
 			fclose(f);
@@ -1169,11 +1169,11 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, u08b
 		    snprintf(us+strlen(us),sizeof(us)-strlen(us),"%02x",(unsigned int)key[i]);
 		  }
 		  content = (char**)turn_realloc(content,0,sizeof(char*)*(++csz));
-		  content[csz-1]=strdup(us);
+		  content[csz-1]=turn_strdup(us);
 		}
 
 		if(!full_path_to_userdb_file)
-			full_path_to_userdb_file=strdup(pud->userdb);
+			full_path_to_userdb_file=turn_strdup(pud->userdb);
 
 		size_t dirsz = strlen(full_path_to_userdb_file)+21;
 		char *dir = (char*)turn_malloc(dirsz+1);
@@ -1434,7 +1434,7 @@ void update_white_and_black_lists(void)
 
 int add_ip_list_range(const char * range0, ip_range_list_t * list)
 {
-	char *range = strdup(range0);
+	char *range = turn_strdup(range0);
 
 	char* separator = strchr(range, '-');
 

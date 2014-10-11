@@ -658,6 +658,7 @@ int get_canonic_origin(const char* o, char *co, int sz)
 //////////////////////////////////////////////////////////////////
 
 #ifdef __cplusplus
+#if defined(TURN_MEMORY_DEBUG)
 
 #include <map>
 #include <set>
@@ -691,15 +692,22 @@ static void add_tm_ptr(void *ptr, const char *id) {
   if(!ptr)
     return;
 
+  string sid(id);
+
+  str_to_ptrs_t::iterator iter;
+
   pthread_mutex_lock(&tm);
 
-  string sid(id);
-  if(str_to_ptrs.find(sid) == str_to_ptrs.end()) {
+  iter = str_to_ptrs.find(sid);
+
+  if(iter == str_to_ptrs.end()) {
     set<ptrtype> sp;
+    sp.insert(ptr);
     str_to_ptrs[sid]=sp;
+  } else {
+	iter->second.insert(ptr);
   }
 
-  str_to_ptrs[sid].insert(ptr);
   ptr_to_str[ptr]=sid;
 
   pthread_mutex_unlock(&tm);
@@ -716,11 +724,25 @@ static void del_tm_ptr(void *ptr, const char *id) {
   pthread_mutex_lock(&tm);
 
   ptr_to_str_t::iterator pts_iter = ptr_to_str.find(ptr);
-  if(pts_iter != ptr_to_str.end()) {
+  if(pts_iter == ptr_to_str.end()) {
+
+	  printf("Tring to free unknown pointer (1): %s\n",id);
+
+  } else {
+
     string sid = pts_iter->second;
     ptr_to_str.erase(pts_iter);
-    if(str_to_ptrs.find(sid) != str_to_ptrs.end()) {
-      str_to_ptrs[sid].erase(ptr);
+
+    str_to_ptrs_t::iterator iter = str_to_ptrs.find(sid);
+
+    if(iter == str_to_ptrs.end()) {
+
+    	printf("Tring to free unknown pointer (2): %s\n",id);
+
+    } else {
+
+      iter->second.erase(ptr);
+
     }
   }
 
@@ -738,7 +760,8 @@ void tm_print_func(void) {
   pthread_mutex_lock(&tm);
   printf("=============================================\n");
   for(str_to_ptrs_t::const_iterator iter=str_to_ptrs.begin();iter != str_to_ptrs.end();++iter) {
-    printf("%s: %s: %d\n",__FUNCTION__,iter->first.c_str(),(int)(iter->second.size()));
+	  if(iter->second.size())
+		  printf("%s: %s: %d\n",__FUNCTION__,iter->first.c_str(),(int)(iter->second.size()));
   }
   printf("=============================================\n");
   pthread_mutex_unlock(&tm);
@@ -763,7 +786,8 @@ void *turn_realloc_func(void *ptr, size_t old_sz, size_t new_sz, const char* fil
 
   TM_START();
 
-  del_tm_ptr(ptr,id);
+  if(ptr)
+	  del_tm_ptr(ptr,id);
 
   ptr = realloc(ptr,new_sz);
 
@@ -780,6 +804,16 @@ void turn_free_func(void *ptr, size_t sz, const char* file, int line) {
   TM_START();
 
   del_tm_ptr(ptr,id);
+
+  free(ptr);
+}
+
+void turn_free_simple(void *ptr);
+void turn_free_simple(void *ptr) {
+
+  tm_init();
+
+  del_tm_ptr(ptr,__FUNCTION__);
 
   free(ptr);
 }
@@ -808,6 +842,7 @@ char *turn_strdup_func(const char* s, const char* file, int line) {
   return ptr;
 }
 
+#endif
 #endif
 
 //////////////////////////////////////////////////////////////////
