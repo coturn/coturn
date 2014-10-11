@@ -113,6 +113,12 @@ static inline u64bits _ioa_ntoh64(u64bits v)
 
 #if defined(TURN_MEMORY_DEBUG)
 
+#if defined(TURN_LOG_FUNC)
+#undef TURN_LOG_FUNC
+#endif
+
+#define TURN_LOG_FUNC(level, ...) printf (__VA_ARGS__)
+
   void tm_print_func(void);
   void *turn_malloc_func(size_t sz, const char* file, int line);
   void *turn_realloc_func(void *ptr, size_t old_sz, size_t new_sz, const char* file, int line);

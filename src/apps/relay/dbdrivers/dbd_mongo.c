@@ -52,8 +52,10 @@ static void mongo_logger(mongoc_log_level_t log_level, const char * log_domain, 
 	UNUSED_ARG(log_domain);
 	UNUSED_ARG(user_data);
 
-  TURN_LOG_LEVEL l;
+  TURN_LOG_LEVEL l = TURN_LOG_LEVEL_INFO;
   
+  UNUSED_ARG(l);
+
   switch(log_level) {
     case MONGOC_LOG_LEVEL_ERROR:
       l = TURN_LOG_LEVEL_ERROR;

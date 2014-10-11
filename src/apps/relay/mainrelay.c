@@ -1918,7 +1918,7 @@ int main(int argc, char **argv)
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "===========Discovering listener addresses: =========\n");
 		int maddrs = make_local_listeners_list();
 		if((maddrs<1) || !turn_params.listener.addrs_number) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot configure any meaningful IP listener address\n", __FUNCTION__);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Cannot configure any meaningful IP listener address\n", __FUNCTION__);
 			fprintf(stderr,"\n%s\n", Usage);
 			exit(-1);
 		}
@@ -1953,7 +1953,7 @@ int main(int argc, char **argv)
 		}
 
 		if (!turn_params.relays_number) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "You must specify the relay address(es)\n",
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: You must specify the relay address(es)\n",
 							__FUNCTION__);
 			fprintf(stderr,"\n%s\n", Usage);
 			exit(-1);
@@ -2345,7 +2345,7 @@ static void set_ctx(SSL_CTX* ctx, const char *protocol)
 		EC_KEY *ecdh = EC_KEY_new_by_curve_name(nid);
 		if (!ecdh) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
-					"%s: ERROR: allocate EC suite\n");
+				      "%s: ERROR: allocate EC suite\n",__FUNCTION__);
 		} else {
 			SSL_CTX_set_tmp_ecdh(ctx, ecdh);
 			EC_KEY_free(ecdh);
@@ -2379,10 +2379,10 @@ static void set_ctx(SSL_CTX* ctx, const char *protocol)
 		}
 
 		if(!dh) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: cannot allocate DH suite\n");
+		  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: cannot allocate DH suite\n",__FUNCTION__);
 		} else {
 			if (1 != SSL_CTX_set_tmp_dh (ctx, dh)) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: cannot set DH\n");
+			  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: cannot set DH\n",__FUNCTION__);
 			}
 			DH_free (dh);
 		}

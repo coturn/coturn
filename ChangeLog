@@ -10,9 +10,10 @@ Version 4.2.1.2 'Monza':
 	- Mobility ticket retransmission fixed.
 	- Move debian package from SVN to GIT.
 	- Move secondary download area to coturn.net.
-	- Auota allocation fixed.
+	- Quota allocation fixed.
 	- Core dump fixed.
 	- Bandwidth allocation fixed.
+	- Logging fixes.
 	
 08/14/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.1.2.1 'Vitari':

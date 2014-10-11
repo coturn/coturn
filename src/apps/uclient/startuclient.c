@@ -495,7 +495,7 @@ static int clnet_allocate(int verbose,
 						current_reservation_token = rtv;
 						if (verbose)
 							TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-									"%s: rtv=%llu\n", __FUNCTION__, rtv);
+								      "%s: rtv=%llu\n", __FUNCTION__, (long long unsigned int)rtv);
 
 						read_mobility_ticket(clnet_info, &message);
 
@@ -542,7 +542,7 @@ static int clnet_allocate(int verbose,
 							return -1;
 						} else {
 							TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-									"trying allocate again...\n", err_code);
+									"trying allocate again %d...\n", err_code);
 							sleep(1);
 							reopen_socket = 1;
 						}
