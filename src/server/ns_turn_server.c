@@ -1179,7 +1179,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 					if(max_bps && (!bps || (bps && (bps>max_bps)))) {
 						bps = max_bps;
 					}
-					if(bps) {
+					if(bps && (ss->bps == 0)) {
 						ss->bps = server->allocate_bps_func(bps,1);
 						if(!(ss->bps)) {
 							*err_code = 486;
