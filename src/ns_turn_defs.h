@@ -117,6 +117,7 @@ static inline u64bits _ioa_ntoh64(u64bits v)
   void *turn_malloc_func(size_t sz, const char* file, int line);
   void *turn_realloc_func(void *ptr, size_t old_sz, size_t new_sz, const char* file, int line);
   void turn_free_func(void *ptr, size_t sz, const char* file, int line);
+  void turn_free_simple(void *ptr);
   void *turn_calloc_func(size_t number, size_t size, const char* file, int line);
   char *turn_strdup_func(const char* s, const char* file, int line);
 
@@ -135,6 +136,7 @@ static inline u64bits _ioa_ntoh64(u64bits v)
 #define turn_realloc(ptr, old_sz, new_sz) realloc((ptr),(size_t)(new_sz))
 #define turn_calloc(number, sz) calloc((number),(size_t)(sz))
 #define turn_strdup(s) strdup((s))
+#define turn_free_simple free
 
 #endif
 

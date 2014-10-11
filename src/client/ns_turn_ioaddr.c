@@ -313,7 +313,7 @@ int make_ioa_addr_from_full_string(const u08bits* saddr, int default_port, ioa_a
 			port = default_port;
 		ret = make_ioa_addr((u08bits*)sa,port,addr);
 	}
-	turn_free(s,strlen(s)+1);
+	free(s);
 	return ret;
 }
 
@@ -493,10 +493,10 @@ static size_t msz = 0;
 void ioa_addr_add_mapping(ioa_addr *apub, ioa_addr *apriv)
 {
 	size_t new_size = msz + sizeof(ioa_addr*);
-	public_addrs = (ioa_addr**)turn_realloc(public_addrs, msz, new_size);
-	private_addrs = (ioa_addr**)turn_realloc(private_addrs, msz, new_size);
-	public_addrs[mcount]=(ioa_addr*)turn_malloc(sizeof(ioa_addr));
-	private_addrs[mcount]=(ioa_addr*)turn_malloc(sizeof(ioa_addr));
+	public_addrs = (ioa_addr**)realloc(public_addrs, new_size);
+	private_addrs = (ioa_addr**)realloc(private_addrs, new_size);
+	public_addrs[mcount]=(ioa_addr*)malloc(sizeof(ioa_addr));
+	private_addrs[mcount]=(ioa_addr*)malloc(sizeof(ioa_addr));
 	addr_cpy(public_addrs[mcount],apub);
 	addr_cpy(private_addrs[mcount],apriv);
 	++mcount;

@@ -76,7 +76,7 @@ static Myconninfo *MyconninfoParse(char *userdb, char **errmsg) {
 	Myconninfo *co = (Myconninfo*)turn_malloc(sizeof(Myconninfo));
 	ns_bzero(co,sizeof(Myconninfo));
 	if(userdb) {
-		char *s0=strdup(userdb);
+		char *s0=turn_strdup(userdb);
 		char *s = s0;
 
 		while(s && *s) {
@@ -93,44 +93,44 @@ static Myconninfo *MyconninfoParse(char *userdb, char **errmsg) {
 				MyconninfoFree(co);
 				co = NULL;
 				if(errmsg) {
-					*errmsg = strdup(s);
+					*errmsg = turn_strdup(s);
 				}
 				break;
 			}
 
 			*seq = 0;
 			if(!strcmp(s,"host"))
-				co->host = strdup(seq+1);
+				co->host = turn_strdup(seq+1);
 			else if(!strcmp(s,"ip"))
-				co->host = strdup(seq+1);
+				co->host = turn_strdup(seq+1);
 			else if(!strcmp(s,"addr"))
-				co->host = strdup(seq+1);
+				co->host = turn_strdup(seq+1);
 			else if(!strcmp(s,"ipaddr"))
-				co->host = strdup(seq+1);
+				co->host = turn_strdup(seq+1);
 			else if(!strcmp(s,"hostaddr"))
-				co->host = strdup(seq+1);
+				co->host = turn_strdup(seq+1);
 			else if(!strcmp(s,"dbname"))
-				co->dbname = strdup(seq+1);
+				co->dbname = turn_strdup(seq+1);
 			else if(!strcmp(s,"db"))
-				co->dbname = strdup(seq+1);
+				co->dbname = turn_strdup(seq+1);
 			else if(!strcmp(s,"database"))
-				co->dbname = strdup(seq+1);
+				co->dbname = turn_strdup(seq+1);
 			else if(!strcmp(s,"user"))
-				co->user = strdup(seq+1);
+				co->user = turn_strdup(seq+1);
 			else if(!strcmp(s,"uname"))
-				co->user = strdup(seq+1);
+				co->user = turn_strdup(seq+1);
 			else if(!strcmp(s,"name"))
-				co->user = strdup(seq+1);
+				co->user = turn_strdup(seq+1);
 			else if(!strcmp(s,"username"))
-				co->user = strdup(seq+1);
+				co->user = turn_strdup(seq+1);
 			else if(!strcmp(s,"password"))
-				co->password = strdup(seq+1);
+				co->password = turn_strdup(seq+1);
 			else if(!strcmp(s,"pwd"))
-				co->password = strdup(seq+1);
+				co->password = turn_strdup(seq+1);
 			else if(!strcmp(s,"passwd"))
-				co->password = strdup(seq+1);
+				co->password = turn_strdup(seq+1);
 			else if(!strcmp(s,"secret"))
-				co->password = strdup(seq+1);
+				co->password = turn_strdup(seq+1);
 			else if(!strcmp(s,"port"))
 				co->port = (unsigned int)atoi(seq+1);
 			else if(!strcmp(s,"p"))
@@ -140,30 +140,30 @@ static Myconninfo *MyconninfoParse(char *userdb, char **errmsg) {
 			else if(!strcmp(s,"timeout"))
 				co->connect_timeout = (unsigned int)atoi(seq+1);
 			else if(!strcmp(s,"key"))
-				co->key = strdup(seq+1);
+				co->key = turn_strdup(seq+1);
 			else if(!strcmp(s,"ssl-key"))
-				co->key = strdup(seq+1);
+				co->key = turn_strdup(seq+1);
 			else if(!strcmp(s,"ca"))
-				co->ca = strdup(seq+1);
+				co->ca = turn_strdup(seq+1);
 			else if(!strcmp(s,"ssl-ca"))
-				co->ca = strdup(seq+1);
+				co->ca = turn_strdup(seq+1);
 			else if(!strcmp(s,"capath"))
-				co->capath = strdup(seq+1);
+				co->capath = turn_strdup(seq+1);
 			else if(!strcmp(s,"ssl-capath"))
-				co->capath = strdup(seq+1);
+				co->capath = turn_strdup(seq+1);
 			else if(!strcmp(s,"cert"))
-				co->cert = strdup(seq+1);
+				co->cert = turn_strdup(seq+1);
 			else if(!strcmp(s,"ssl-cert"))
-				co->cert = strdup(seq+1);
+				co->cert = turn_strdup(seq+1);
 			else if(!strcmp(s,"cipher"))
-				co->cipher = strdup(seq+1);
+				co->cipher = turn_strdup(seq+1);
 			else if(!strcmp(s,"ssl-cipher"))
-				co->cipher = strdup(seq+1);
+				co->cipher = turn_strdup(seq+1);
 			else {
 				MyconninfoFree(co);
 				co = NULL;
 				if(errmsg) {
-					*errmsg = strdup(s);
+					*errmsg = turn_strdup(s);
 				}
 				break;
 			}
@@ -176,13 +176,13 @@ static Myconninfo *MyconninfoParse(char *userdb, char **errmsg) {
 
 	if(co) {
 		if(!(co->dbname))
-			co->dbname=strdup("0");
+			co->dbname=turn_strdup("0");
 		if(!(co->host))
-			co->host=strdup("127.0.0.1");
+			co->host=turn_strdup("127.0.0.1");
 		if(!(co->user))
-			co->user=strdup("");
+			co->user=turn_strdup("");
 		if(!(co->password))
-			co->password=strdup("");
+			co->password=turn_strdup("");
 	}
 
 	return co;
@@ -939,7 +939,7 @@ static void mysql_reread_realms(secrets_list_t * realms_list) {
 				MYSQL_RES *mres = mysql_store_result(myc);
 				if(mres && mysql_field_count(myc)==2) {
 
-					ur_string_map *o_to_realm_new = ur_string_map_create(free);
+					ur_string_map *o_to_realm_new = ur_string_map_create(turn_free_simple);
 
 					for(;;) {
 						MYSQL_ROW row = mysql_fetch_row(mres);
@@ -953,7 +953,7 @@ static void mysql_reread_realms(secrets_list_t * realms_list) {
 									char oval[513];
 									ns_bcopy(row[0],oval,sz);
 									oval[sz]=0;
-									char *rval=strdup(row[1]);
+									char *rval=turn_strdup(row[1]);
 									get_realm(rval);
 									ur_string_map_value_type value = (ur_string_map_value_type)rval;
 									ur_string_map_put(o_to_realm_new, (const ur_string_map_key_type) oval, value);

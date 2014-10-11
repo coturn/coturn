@@ -465,7 +465,7 @@ static int print_session(ur_map_key_type key, ur_map_value_type value, void *arg
 				csarg->user_names = (char**)turn_realloc(csarg->user_names,
 						(size_t)value * sizeof(char*),
 						csarg->users_number * sizeof(char*));
-				csarg->user_names[(size_t)value] = strdup((char*)tsi->username);
+				csarg->user_names[(size_t)value] = turn_strdup((char*)tsi->username);
 				csarg->user_counters[(size_t)value] = 0;
 				ur_string_map_put(csarg->users, (ur_string_map_key_type)(char*)tsi->username, value);
 			}
@@ -939,7 +939,7 @@ static int run_cli_input(struct cli_session* cs, const char *buf0, unsigned int 
 
 	if(cs && buf0 && cs->ts && cs->bev) {
 
-		char *buf = (char*)malloc(len+1);
+		char *buf = (char*)turn_malloc(len+1);
 		ns_bcopy(buf0,buf,len);
 		buf[len]=0;
 
@@ -1078,7 +1078,7 @@ static int run_cli_input(struct cli_session* cs, const char *buf0, unsigned int 
 			type_cli_cursor(cs);
 		}
 
-		free(buf);
+		turn_free(buf,len+1);
 	}
 
 	return ret;
