@@ -107,7 +107,6 @@ static band_limit_t allocate_bps(band_limit_t bps, int positive)
 
 			if(turn_params.bps_capacity_allocated >= bps) {
 				turn_params.bps_capacity_allocated -= bps;
-				ret = turn_params.bps_capacity_allocated;
 			} else {
 				turn_params.bps_capacity_allocated = 0;
 			}
@@ -115,6 +114,7 @@ static band_limit_t allocate_bps(band_limit_t bps, int positive)
 
 		pthread_mutex_unlock(&mutex_bps);
 	}
+
 	return ret;
 }
 
