@@ -91,7 +91,7 @@ static void redisLibeventReadEvent(int fd, short event, void *arg) {
 		  } while((len<0)&&(errno == EINTR));
 		  if(len<1) {
 			  e->invalid = 1;
-			  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Redis connection broken: e=0x%lx\n", __FUNCTION__, (unsigned long)e);
+			  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Redis connection broken: e=0x%lx\n", __FUNCTION__, ((unsigned long)e));
 		  }
 	  }
 	  if(redis_le_valid(e)) {
@@ -213,7 +213,7 @@ void send_message_to_redis(redis_context_handle rch, const char *command, const 
 
 			if((redisAsyncCommand(ac, NULL, e, rm.format, rm.arg)!=REDIS_OK)) {
 				e->invalid = 1;
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Redis connection broken: ac=0x%lx, e=0x%x\n", __FUNCTION__,(unsigned long)ac,(unsigned long)e);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Redis connection broken: ac=0x%lx, e=0x%lx\n", __FUNCTION__,(unsigned long)ac,(unsigned long)e);
 			}
 		}
 	}
@@ -372,7 +372,7 @@ static void redis_reconnect(struct redisLibeventEvents *e)
   }
 
   if(redis_le_valid(e)) {
-	  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Re-connected to redis, async\n", __FUNCTION__);
+	  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: Re-connected to redis, async\n", __FUNCTION__);
   }
 }
 

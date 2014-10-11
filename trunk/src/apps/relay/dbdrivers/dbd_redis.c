@@ -268,7 +268,7 @@ static redisContext *get_redis_connection(void) {
 
 	if(redisconnection) {
 		if(redisconnection->err) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot connect to redis, err=%d, flags=0x%x\n", __FUNCTION__,(int)redisconnection->err,(unsigned long)redisconnection->flags);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Cannot connect to redis, err=%d, flags=0x%lx\n", __FUNCTION__,(int)redisconnection->err,(unsigned long)redisconnection->flags);
 			redisFree(redisconnection);
 			pud->connection = NULL;
 			redisconnection = NULL;

@@ -188,6 +188,8 @@ static void log_socket_event(ioa_socket_handle s, const char *msg, int error) {
 		if(error)
 			ll = TURN_LOG_LEVEL_ERROR;
 
+		UNUSED_ARG(ll);
+
 		{
 			char sraddr[129]="\0";
 			char sladdr[129]="\0";
@@ -367,7 +369,7 @@ ioa_engine_handle create_ioa_engine(super_memory_t *sm,
 	}
 
 	if (!relays_number || !relay_addrs || !tp) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create TURN engine\n", __FUNCTION__);
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Cannot create TURN engine\n", __FUNCTION__);
 		return NULL;
 	} else {
 		ioa_engine_handle e = (ioa_engine_handle)allocate_super_memory_region(sm, sizeof(ioa_engine));
