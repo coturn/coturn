@@ -176,14 +176,20 @@ static void dec_quota(ts_ur_super_session* ss)
 
 		ss->quota_used = 0;
 
+		(((turn_turnserver*)ss->server)->raqcb)(ss->username, ss->oauth, (u08bits*)ss->realm_options.name);
+	}
+}
+
+static void dec_bps(ts_ur_super_session* ss)
+{
+	if(ss && ss->server) {
+
 		if(ss->bps) {
 			if(((turn_turnserver*)ss->server)->allocate_bps_func) {
 				((turn_turnserver*)ss->server)->allocate_bps_func(ss->bps,0);
 			}
 			ss->bps = 0;
 		}
-
-		(((turn_turnserver*)ss->server)->raqcb)(ss->username, ss->oauth, (u08bits*)ss->realm_options.name);
 	}
 }
 
@@ -4064,6 +4070,7 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
 
 	report_turn_session_info(server,ss,1);
 	dec_quota(ss);
+	dec_bps(ss);
 
 	if(!force && ss->is_mobile) {
 
