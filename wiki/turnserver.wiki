@@ -290,9 +290,11 @@ box and then supplied to the web server, remotely, is provided in the script {{{
 A very important thing is that the nonce must be totally random and it must be 
 different for different clients and different sessions.
 
-=== Third-Party authorization support (with oAuth) ===
+=== THIRD-PARTY AUTHORIZATION/AUTHENTICATION SUPPORT (with oAuth) ===
 
 Starting with version 4.2.1.2, the TURN server supports the third-party authorization (when the option --oauth is used), in the way how it is described in the document http://tools.ietf.org/html/draft-ietf-tram-turn-third-party-authz-05. The TURN server takes all oAuth key information from its database; it assumes that a separate program handles the keys. The keys can be handled by any algorithm described in the specs document - the only requirement is that the external program has to update the key database, correctly.
+
+As IANA has not assigned the attribute numbers, yet, we are using the unassigned values 0x8031 and 0x0031 for the THIRD_PARTY_AUTHORIZATION and OAUTH_ACCESS_TOKEN attributes.
 
 === DATABASES ===
 
