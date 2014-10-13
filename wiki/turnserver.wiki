@@ -19,6 +19,7 @@
    * *-A,* *--st-cred-mech* Use short-term credentials mechanism. This option requires a PostgreSQL or MySQL or Redis DB or Mongo DB for short term passwords storage.
    * *-z,* *--no-auth* Do not use any credentials mechanism, allow anonymous access. Opposite to *-a* and *-A* options.
    * *--use-auth-secret* TURN REST API flag. Flag that sets a special WebRTC authorization option that is based upon authentication secret. This feature purpose is to support "TURN Server REST API" as described in TURNServerRESTAPI.pdf in the docs. This option can be used with long-term credentials mechanism only - it does not make much sense with the short-term mechanism.
+   * *--oauth* Support oAuth authentication, as in the third-party TURN specs document.
    * *--dh566*	Use 566 bits DH TLS key. Default size of the key is 1066.
    * *--dh2066*	Use 2066 bits DH TLS key. Default size of the key is 1066.
    * *--no-sslv2*  Do not allow SSLv2 protocol.
@@ -145,6 +146,7 @@ Valid formats are 1.2.3.4:5555 for IPv4 and [1:2::3:4]:5555 for IPv6. There may 
     *	*-s,* *--max-bps* {{{<number>}}} Max bytes-per-second bandwidth a TURN session is allowed to handle (input and output network streams are treated separately). Anything above that limit will be dropped or temporary suppressed (within the available buffer limits). _This option can also be set	through the database, for a particular realm._
     *   *-B,* *--bps-capacity* {{{<number>}}} Maximum server capacity. Total bytes-per-second bandwidth the TURN server is allowed to allocate for the sessions, combined (input and output network streams are treated separately).
     *   *--static-auth-secret* {{{<secret>}}} Static authentication secret value (a string), for TURN REST API. If not set, then the turn server will try to use the 'dynamic' value in turn_secret table in user database (if present). The database-stored value can be changed on-the-fly by a separate program, so this is why that other mode is 'dynamic'. Multiple shared secrets can be used (both in the database and in the "static" fashion).
+    *   *--server-name*	Server name used for the oAuth authentication purposes. The default value is the realm name.
     *   *--cert* {{{<file-name>}}} Certificate file, PEM format. Same file search rules applied  as for the configuration file. If both *--no-tls* and *--no-dtls* options are specified, then this parameter is not needed. Default value is turn_server_cert.pem.
     *   *--pkey* {{{<file-name>}}} Private key file, PEM format. Same file search rules applied as for the configuration file. If both *--no-tls* and *--no-dtls* options are specified, then this parameter is not needed. Default value is turn_server_pkey.pem.
     *   *--pkey-pwd* {{{<private-key-password>}}} Private key file password, if the key is encrypted.
@@ -290,7 +292,7 @@ different for different clients and different sessions.
 
 === Third-Party authorization support (with oAuth) ===
 
-Starting with version 4.2.1.2, the TURN server supports the third-party authorization option, how it is described in the document http://tools.ietf.org/html/draft-ietf-tram-turn-third-party-authz-05. The TURN server takes all oAuth key information from its database; it assumes that a separate program handles the keys. The keys can be handled by any algorithm described in the specs document - the only requirement is that the external program has to update the key database, correctly.
+Starting with version 4.2.1.2, the TURN server supports the third-party authorization (when the option --oauth is used), in the way how it is described in the document http://tools.ietf.org/html/draft-ietf-tram-turn-third-party-authz-05. The TURN server takes all oAuth key information from its database; it assumes that a separate program handles the keys. The keys can be handled by any algorithm described in the specs document - the only requirement is that the external program has to update the key database, correctly.
 
 === DATABASES ===
 
