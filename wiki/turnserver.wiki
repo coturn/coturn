@@ -376,8 +376,8 @@ CREATE TABLE turn_realm_option (
       The hkdf_hash_func is not needed if the as_rs_key and auth_key are defined explicitly in the database;
 #  as_rs_alg - oAuth token encryption algorithm; the valid values are "AES-128-CBC" and "AES-256-CBC", , "AEAD-AES-128-GCM", "AEAD-AES-256-GCM". The default value is "AES-256-CBC";
 #  as_rs_key - (optional) base64-encoded AS-RS key. If not defined, then calculated with ikm_key and hkdf_hash_func. The as_rs_key length is defined by as_rs_alg.
-#  auth_alg - (optional) oAuth token authentication algorithm; the valid values are "HMAC-SHA-256-128", "HMAC-SHA-256" and "HMAC-SHA-1".	The default value is "HMAC-SHA-256-128".
-# auth_key - (optional) base64-encoded AUTH key. If not defined, then calculated with ikm_key and hkdf_hash_func. The auth_key length is defined by auth_alg.
+#  auth_alg - (optional) oAuth token authentication algorithm; the valid values are "HMAC-SHA-256-128", "HMAC-SHA-256" and "HMAC-SHA-1". The default value is "HMAC-SHA-256-128".
+#  auth_key - (optional) base64-encoded AUTH key. If not defined, then calculated with ikm_key and hkdf_hash_func. The auth_key length is defined by auth_alg.
 #
 CREATE TABLE oauth_key (
 	kid varchar(128),
@@ -436,10 +436,15 @@ set turn/denied-peer-ip/234567 "123::45"
 
 set turn/allowed-peer-ip/345678 "172.17.13.200"
 
+hmset turn/oauth/kid/north ikm_key Y2FybGVvbg== hkdf_hash_func 'SHA-256' as_rs_alg 'AES-256-CBC' auth_alg 'HMAC-SHA-256-128'
+hmset turn/oauth/kid/oldempire ikm_key YXVsY3Vz hkdf_hash_func 'SHA-256' as_rs_alg 'AEAD-AES-256-GCM'
+
 save
 
 !
 }}}
+
+See the file schema.userdb.redis for the more detailed explanation.
 
 In the very unprobable case if you are using the short-term authentication mechanism with TURN (that should probably never happen) then you have to set the users and passwords like that:
 
@@ -493,6 +498,8 @@ Or in the turnserver.conf file:
 {{{
 mongo-userdb="mongodb://localhost:27017/turndb"
 }}}
+
+See the files schema.mongo.sh and testmongosetup.sh for the more examples.
 
   7. If a database is used, then users can be divided into multiple independent realms. Each realm can be administered separately, and each realm can have its own set of users and its own performance options (max-bps, user-quota, total-quota).
 
