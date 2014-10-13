@@ -17,7 +17,7 @@ Version 4.2.1.2 'Monza':
 	- Quota allocation fixed.
 	- Core dump fixed.
 	- Bandwidth allocation fixed.
-	- Memory code clening.
+	- Memory code cleaning.
 	- Logging fixed.
 	
 08/14/2014 Oleg Moskalenko <mom040267@gmail.com>
