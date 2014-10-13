@@ -1,5 +1,5 @@
 #summary turnserver wiki page
-#labels Version-4.1.2.1
+#labels Version-4.2.1.2
 
 ==turnserver application: a TURN relay server implementation==
 
@@ -287,6 +287,10 @@ box and then supplied to the web server, remotely, is provided in the script {{{
 
 A very important thing is that the nonce must be totally random and it must be 
 different for different clients and different sessions.
+
+=== Third-Party authorization support (with oAuth) ===
+
+Starting with version 4.2.1.2, the TURN server supports the third-party authorization option, how it is described in the document http://tools.ietf.org/html/draft-ietf-tram-turn-third-party-authz-05. The TURN server takes all oAuth key information from its database; it assumes that a separate program handles the keys. The keys can be handled by any algorithm described in the specs document - the only requirement is that the external program has to update the key database, correctly.
 
 === DATABASES ===
 
