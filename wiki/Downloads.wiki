@@ -1,14 +1,25 @@
 #summary Downloads Page
-#labels Version-4.1.2.1,Featured
+#labels Version-4.2.1.2,Featured
 
-== Latest official recommended version - 4.1.2.1: ==
+== Latest official recommended version - 4.2.1.2: ==
 
-  * The origin attribute is verified in the subsequent session messages (server flag --check-origin-consistency).
-  * MySQL SSL connection support.
-  * Crash fixed when the DB connection string is incorrect.
-  * Minor docs fixes.
+  * oAuth security experimental implementation;
+  * The "TLS renegotiation" DoS attack prevention implemented;
+  * FQDN as relay-ip and listener-ip parameters (issue 6)
+    (patch provided by Iñaki Baz Castillo);
+  * redis user key operation fixed.
+  * redis, mysql and psql db operations fixed.
+  * SHA-256 memory leak fixed.
+  * Mobility ticket retransmission fixed.
+  * Move debian package from SVN to GIT.
+  * Move secondary download area to coturn.net.
+  * Quota allocation fixed.
+  * Core dump fixed.
+  * Bandwidth allocation fixed.
+  * Memory code cleaning.
+  * Logging fixed.
 
-[http://turnserver.open-sys.org/downloads/v4.1.2.1/ 4.1.2.1 Version Downloads (full source and platform builds)]
+[http://turnserver.open-sys.org/downloads/v4.2.1.2/ 4.2.1.2 Version Downloads (full source and platform builds)]
 
 [http://turnserver.open-sys.org/downloads/ Main Downloads Page (with all recent versions)]
 
@@ -17,6 +28,15 @@
 [http://turnserver.open-sys.org/downloads/extradocs/ Extra Docs ]
 
 == Older versions ==
+
+=== 4.1.2.1: ===
+
+  * The origin attribute is verified in the subsequent session messages (server flag --check-origin-consistency).
+  * MySQL SSL connection support.
+  * Crash fixed when the DB connection string is incorrect.
+  * Minor docs fixes.
+
+[http://turnserver.open-sys.org/downloads/v4.1.2.1/ v4.1.2.1]
 
 === 4.1.1.1: ===
 
