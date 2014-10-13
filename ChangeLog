@@ -13,7 +13,8 @@ Version 4.2.1.2 'Monza':
 	- Quota allocation fixed.
 	- Core dump fixed.
 	- Bandwidth allocation fixed.
-	- Logging fixes.
+	- Memory code clening.
+	- Logging fixed.
 	
 08/14/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.1.2.1 'Vitari':
