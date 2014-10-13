@@ -65,15 +65,6 @@
 //////////// REALM //////////////
 
 static realm_params_t *default_realm_params_ptr = NULL;
-static const realm_params_t _default_realm_params =
-{
-  1,
-  {
-	"\0", /* name */
-    {0,0,0}
-  },
-  {0,NULL}
-};
 
 static ur_string_map *realms = NULL;
 static turn_mutex o_to_realm_mutex;
@@ -95,40 +86,30 @@ void update_o_to_realm(ur_string_map * o_to_realm_new) {
   TURN_MUTEX_UNLOCK(&o_to_realm_mutex);
 }
 
-void create_new_realm(char* name)
+void create_default_realm()
 {
-	realm_params_t *ret = NULL;
-
-	if((name == NULL)||(name[0]==0)) {
-		if(default_realm_params_ptr) {
-			return;
-		}
-		/* init everything: */
-		TURN_MUTEX_INIT_RECURSIVE(&o_to_realm_mutex);
-		init_secrets_list(&realms_list);
-		o_to_realm = ur_string_map_create(free);
-		default_realm_params_ptr = (realm_params_t*)malloc(sizeof(realm_params_t));
-		ns_bcopy(&_default_realm_params,default_realm_params_ptr,sizeof(realm_params_t));
-		realms = ur_string_map_create(NULL);
-		ur_string_map_lock(realms);
-		ret = default_realm_params_ptr;
-	} else {
-		ur_string_map_value_type value = 0;
-		ur_string_map_lock(realms);
-		if (!ur_string_map_get(realms, (const ur_string_map_key_type) name, &value)) {
-			ret = (realm_params_t*)turn_malloc(sizeof(realm_params_t));
-			ns_bcopy(default_realm_params_ptr,ret,sizeof(realm_params_t));
-			STRCPY(ret->options.name,name);
-			value = (ur_string_map_value_type)ret;
-			ur_string_map_put(realms, (const ur_string_map_key_type) name, value);
-			add_to_secrets_list(&realms_list, name);
-		} else {
-			ur_string_map_unlock(realms);
-			return;
-		}
+	if(default_realm_params_ptr) {
+		return;
 	}
 
-	ret->status.alloc_counters =  ur_string_map_create(NULL);
+	static realm_params_t _default_realm_params =
+	{
+	  1,
+	  {
+		"\0", /* name */
+	    {0,0,0}
+	  },
+	  {0,NULL}
+	};
+
+	/* init everything: */
+	TURN_MUTEX_INIT_RECURSIVE(&o_to_realm_mutex);
+	init_secrets_list(&realms_list);
+	o_to_realm = ur_string_map_create(turn_free_simple);
+	default_realm_params_ptr = &_default_realm_params;
+	realms = ur_string_map_create(NULL);
+	ur_string_map_lock(realms);
+	default_realm_params_ptr->status.alloc_counters =  ur_string_map_create(NULL);
 	ur_string_map_unlock(realms);
 }
 
@@ -188,12 +169,12 @@ int get_realm_options_by_origin(char *origin, realm_options_t* ro)
 	ur_string_map_value_type value = 0;
 	TURN_MUTEX_LOCK(&o_to_realm_mutex);
 	if (ur_string_map_get(o_to_realm, (ur_string_map_key_type) origin, &value) && value) {
-		char *realm = strdup((char*)value);
+		char *realm = turn_strdup((char*)value);
 		TURN_MUTEX_UNLOCK(&o_to_realm_mutex);
 		realm_params_t rp;
 		get_realm_data(realm, &rp);
 		ns_bcopy(&(rp.options),ro,sizeof(realm_options_t));
-		free(realm);
+		turn_free(realm,strlen(realm)+1);
 		return 1;
 	} else {
 		TURN_MUTEX_UNLOCK(&o_to_realm_mutex);
@@ -310,9 +291,9 @@ const char* get_secrets_list_elem(secrets_list_t *sl, size_t i)
 void add_to_secrets_list(secrets_list_t *sl, const char* elem)
 {
 	if(sl && elem) {
-		sl->secrets = (char**)realloc(sl->secrets,(sizeof(char*)*(sl->sz+1)));
-		sl->secrets[sl->sz] = strdup(elem);
-		sl->sz += 1;
+	  sl->secrets = (char**)turn_realloc(sl->secrets,0,(sizeof(char*)*(sl->sz+1)));
+	  sl->secrets[sl->sz] = turn_strdup(elem);
+	  sl->sz += 1;
 	}
 }
 
@@ -384,7 +365,7 @@ static turn_time_t get_rest_api_timestamp(char *usname)
 
 static char *get_real_username(char *usname)
 {
-	if(turn_params.use_auth_secret_with_timestamp) {
+	if(usname[0] && turn_params.use_auth_secret_with_timestamp) {
 		char *col=strchr(usname,turn_params.rest_api_separator);
 		if(col) {
 			if(col == usname) {
@@ -403,7 +384,7 @@ static char *get_real_username(char *usname)
 					usname = col+1;
 				} else {
 					*col=0;
-					usname = strdup(usname);
+					usname = turn_strdup(usname);
 					*col=turn_params.rest_api_separator;
 					return usname;
 				}
@@ -411,15 +392,144 @@ static char *get_real_username(char *usname)
 		}
 	}
 
-	return strdup(usname);
+	return turn_strdup(usname);
 }
 
 /*
- * Long-term mechanism password retrieval
+ * Password retrieval
  */
-int get_user_key(u08bits *usname, u08bits *realm, hmackey_t key, ioa_network_buffer_handle nbh)
+int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, u08bits *usname, u08bits *realm, hmackey_t key, ioa_network_buffer_handle nbh)
 {
 	int ret = -1;
+
+	if(max_session_time)
+		*max_session_time = 0;
+
+	if(in_oauth && out_oauth && usname && usname[0] && realm && realm[0]) {
+
+		stun_attr_ref sar = stun_attr_get_first_by_type_str(ioa_network_buffer_data(nbh),
+								ioa_network_buffer_get_size(nbh),
+								STUN_ATTRIBUTE_OAUTH_ACCESS_TOKEN);
+		if(sar) {
+
+			int len = stun_attr_get_len(sar);
+			const u08bits *value = stun_attr_get_value(sar);
+
+			*out_oauth = 1;
+
+			if(len>0 && value) {
+
+				turn_dbdriver_t * dbd = get_dbdriver();
+
+				if (dbd && dbd->get_oauth_key) {
+
+					oauth_key_data_raw rawKey;
+					ns_bzero(&rawKey,sizeof(rawKey));
+
+					int gres = (*(dbd->get_oauth_key))(usname,&rawKey);
+					if(gres<0)
+						return ret;
+
+					if(!rawKey.kid[0])
+						return ret;
+
+					if(rawKey.lifetime) {
+						if(!turn_time_before(turn_time(),(turn_time_t)(rawKey.timestamp + rawKey.lifetime+OAUTH_TIME_DELTA))) {
+							return ret;
+						}
+					}
+
+					oauth_key_data okd;
+					ns_bzero(&okd,sizeof(okd));
+
+					convert_oauth_key_data_raw(&rawKey, &okd);
+
+					char err_msg[1025] = "\0";
+					size_t err_msg_size = sizeof(err_msg) - 1;
+
+					oauth_key okey;
+					ns_bzero(&okey,sizeof(okey));
+
+					if (convert_oauth_key_data(&okd, &okey, err_msg, err_msg_size) < 0) {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s\n", err_msg);
+						return -1;
+					}
+
+					oauth_token dot;
+					ns_bzero((&dot),sizeof(dot));
+
+					encoded_oauth_token etoken;
+					ns_bzero(&etoken,sizeof(etoken));
+
+					if((size_t)len > sizeof(etoken.token)) {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Encoded oAuth token is too large\n");
+						return -1;
+					}
+					ns_bcopy(value,etoken.token,(size_t)len);
+					etoken.size = (size_t)len;
+
+					const char* server_name = (char*)turn_params.oauth_server_name;
+					if(!(server_name && server_name[0])) {
+						server_name = (char*)realm;
+					}
+
+					if (decode_oauth_token((const u08bits *) server_name, &etoken,&okey, &dot) < 0) {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot decode oauth token\n");
+						return -1;
+					}
+
+					switch(dot.enc_block.key_length) {
+					case SHA1SIZEBYTES:
+						if(turn_params.shatype != SHATYPE_SHA1) {
+							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong size of the MAC key in oAuth token(1): %d\n",(int)dot.enc_block.key_length);
+							return -1;
+						}
+						break;
+					case SHA256SIZEBYTES:
+						if(turn_params.shatype != SHATYPE_SHA256) {
+							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong size of the MAC key in oAuth token(2): %d\n",(int)dot.enc_block.key_length);
+							return -1;
+						}
+						break;
+					default:
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong size of the MAC key in oAuth token(3): %d\n",(int)dot.enc_block.key_length);
+						return -1;
+					};
+
+					st_password_t pwdtmp;
+					if(stun_check_message_integrity_by_key_str(TURN_CREDENTIALS_LONG_TERM,
+								ioa_network_buffer_data(nbh),
+								ioa_network_buffer_get_size(nbh),
+								dot.enc_block.mac_key,
+								pwdtmp,
+								turn_params.shatype,NULL)>0) {
+
+						turn_time_t lifetime = (turn_time_t)(dot.enc_block.lifetime);
+						if(lifetime) {
+							turn_time_t ts = (turn_time_t)(dot.enc_block.timestamp >> 16);
+							turn_time_t to = ts + lifetime + OAUTH_TIME_DELTA;
+							turn_time_t ct = turn_time();
+							if(!turn_time_before(ct,to)) {
+								TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "oAuth token is too old\n");
+								return -1;
+							}
+							if(max_session_time) {
+								*max_session_time = to - ct;
+							}
+						}
+
+						ns_bcopy(dot.enc_block.mac_key,key,dot.enc_block.key_length);
+
+						ret = 0;
+					}
+				}
+			}
+		}
+	}
+
+	if(out_oauth && *out_oauth) {
+		return ret;
+	}
 
 	if(turn_params.use_auth_secret_with_timestamp) {
 
@@ -527,7 +637,7 @@ int get_user_key(u08bits *usname, u08bits *realm, hmackey_t key, ioa_network_buf
 
   turn_dbdriver_t * dbd = get_dbdriver();
   if (dbd && dbd->get_user_key) {
-    ret = (*dbd->get_user_key)(usname, realm, key);
+    ret = (*(dbd->get_user_key))(usname, realm, key);
   }
 
 	return ret;
@@ -548,7 +658,7 @@ int get_user_pwd(u08bits *usname, st_password_t pwd)
   return ret;
 }
 
-u08bits *start_user_check(turnserver_id id, turn_credential_type ct, u08bits *usname, u08bits *realm, get_username_resume_cb resume, ioa_net_data *in_buffer, u64bits ctxkey, int *postpone_reply)
+u08bits *start_user_check(turnserver_id id, turn_credential_type ct, int in_oauth, int *out_oauth, u08bits *usname, u08bits *realm, get_username_resume_cb resume, ioa_net_data *in_buffer, u64bits ctxkey, int *postpone_reply)
 {
 	*postpone_reply = 1;
 
@@ -556,6 +666,8 @@ u08bits *start_user_check(turnserver_id id, turn_credential_type ct, u08bits *us
 	ns_bzero(&am,sizeof(struct auth_message));
 	am.id = id;
 	am.ct = ct;
+	am.in_oauth = in_oauth;
+	am.out_oauth = *out_oauth;
 	STRCPY(am.username,usname);
 	STRCPY(am.realm,realm);
 	am.resume_func = resume;
@@ -568,11 +680,11 @@ u08bits *start_user_check(turnserver_id id, turn_credential_type ct, u08bits *us
 	return NULL;
 }
 
-int check_new_allocation_quota(u08bits *user, u08bits *realm)
+int check_new_allocation_quota(u08bits *user, int oauth, u08bits *realm)
 {
 	int ret = 0;
-	if (user) {
-		u08bits *username = (u08bits*)get_real_username((char*)user);
+	if (user || oauth) {
+		u08bits *username = oauth ? (u08bits*)turn_strdup("") : (u08bits*)get_real_username((char*)user);
 		realm_params_t *rp = get_realm((char*)realm);
 		ur_string_map_lock(rp->status.alloc_counters);
 		if (rp->options.perf_options.total_quota && (rp->status.total_current_allocs >= rp->options.perf_options.total_quota)) {
@@ -595,28 +707,30 @@ int check_new_allocation_quota(u08bits *user, u08bits *realm)
 		} else {
 			++(rp->status.total_current_allocs);
 		}
-		turn_free(username,strlen(username)+1);
+		turn_free(username,strlen((char*)username)+1);
 		ur_string_map_unlock(rp->status.alloc_counters);
 	}
 	return ret;
 }
 
-void release_allocation_quota(u08bits *user, u08bits *realm)
+void release_allocation_quota(u08bits *user, int oauth, u08bits *realm)
 {
 	if (user) {
-		u08bits *username = (u08bits*)get_real_username((char*)user);
+		u08bits *username = oauth ? (u08bits*)turn_strdup("") : (u08bits*)get_real_username((char*)user);
 		realm_params_t *rp = get_realm((char*)realm);
 		ur_string_map_lock(rp->status.alloc_counters);
-		ur_string_map_value_type value = 0;
-		ur_string_map_get(rp->status.alloc_counters, (ur_string_map_key_type) username, &value);
-		if (value) {
-			value = (ur_string_map_value_type)(((size_t)value) - 1);
-			ur_string_map_put(rp->status.alloc_counters, (ur_string_map_key_type) username, value);
+		if(username[0]) {
+			ur_string_map_value_type value = 0;
+			ur_string_map_get(rp->status.alloc_counters, (ur_string_map_key_type) username, &value);
+			if (value) {
+				value = (ur_string_map_value_type)(((size_t)value) - 1);
+				ur_string_map_put(rp->status.alloc_counters, (ur_string_map_key_type) username, value);
+			}
 		}
 		if (rp->status.total_current_allocs)
 			--(rp->status.total_current_allocs);
 		ur_string_map_unlock(rp->status.alloc_counters);
-		turn_free(username, strlen(username)+1);
+		turn_free(username, strlen((char*)username)+1);
 	}
 }
 
@@ -725,8 +839,8 @@ int add_user_account(char *user, int dynamic)
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key format: %s\n",s);
 				} if(convert_string_key_to_binary(keysource, *key, sz)<0) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key: %s\n",s);
-					free(usname);
-					free(key);
+					turn_free(usname,strlen(usname)+1);
+					turn_free(key,sizeof(hmackey_t));
 					return -1;
 				}
 			} else {
@@ -743,7 +857,7 @@ int add_user_account(char *user, int dynamic)
 				ur_string_map_unlock(turn_params.default_users_db.ram_db.static_accounts);
 			}
 			turn_params.default_users_db.ram_db.users_number++;
-			free(usname);
+			turn_free(usname,strlen(usname)+1);
 			return 0;
 		}
 	}
@@ -1039,8 +1153,8 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, u08b
 				}
 
 				add_and_cont:
-				content = (char**)realloc(content, sizeof(char*) * (++csz));
-				content[csz - 1] = strdup(s0);
+				content = (char**)turn_realloc(content, 0, sizeof(char*) * (++csz));
+				content[csz - 1] = turn_strdup(s0);
 			}
 
 			fclose(f);
@@ -1054,12 +1168,12 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, u08b
 		  for(i=0;i<sz;i++) {
 		    snprintf(us+strlen(us),sizeof(us)-strlen(us),"%02x",(unsigned int)key[i]);
 		  }
-		  content = (char**)realloc(content,sizeof(char*)*(++csz));
-		  content[csz-1]=strdup(us);
+		  content = (char**)turn_realloc(content,0,sizeof(char*)*(++csz));
+		  content[csz-1]=turn_strdup(us);
 		}
 
 		if(!full_path_to_userdb_file)
-			full_path_to_userdb_file=strdup(pud->userdb);
+			full_path_to_userdb_file=turn_strdup(pud->userdb);
 
 		size_t dirsz = strlen(full_path_to_userdb_file)+21;
 		char *dir = (char*)turn_malloc(dirsz+1);
@@ -1085,7 +1199,7 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, u08b
 		fclose(f);
 
 		rename(dir,full_path_to_userdb_file);
-		free(dir);
+		turn_free(dir,dirsz+1);
 	}
 
 	return 0;
@@ -1100,6 +1214,75 @@ void auth_ping(redis_context_handle rch)
     (*dbd->auth_ping)(rch);
 	}
 }
+
+///////////////// TEST /////////////////
+
+#if defined(DB_TEST)
+
+void run_db_test(void)
+{
+	turn_dbdriver_t * dbd = get_dbdriver();
+	if (dbd) {
+
+		printf("DB TEST 1:\n");
+		dbd->list_oauth_keys();
+
+		printf("DB TEST 2:\n");
+		oauth_key_data_raw key_;
+		oauth_key_data_raw *key=&key_;
+		dbd->get_oauth_key((const u08bits*)"north",key);
+		printf("  kid=%s, ikm_key=%s, timestamp=%llu, lifetime=%lu, hkdf_hash_func=%s, as_rs_alg=%s, as_rs_key=%s, auth_alg=%s, auth_key=%s\n",
+		    		key->kid, key->ikm_key, (unsigned long long)key->timestamp, (unsigned long)key->lifetime, key->hkdf_hash_func,
+		    		key->as_rs_alg, key->as_rs_key, key->auth_alg, key->auth_key);
+
+		printf("DB TEST 3:\n");
+
+		STRCPY(key->as_rs_alg,"as_rs_alg");
+		STRCPY(key->as_rs_key,"as_rs_key");
+		STRCPY(key->auth_alg,"auth_alg");
+		STRCPY(key->auth_key,"auth_key");
+		STRCPY(key->hkdf_hash_func,"hkdf");
+		STRCPY(key->ikm_key,"ikm_key");
+		STRCPY(key->kid,"kid");
+		key->timestamp = 123;
+		key->lifetime = 456;
+		dbd->del_oauth_key((const u08bits*)"kid");
+		dbd->set_oauth_key(key);
+		dbd->list_oauth_keys();
+
+		printf("DB TEST 4:\n");
+		dbd->get_oauth_key((const u08bits*)"kid",key);
+		printf("  kid=%s, ikm_key=%s, timestamp=%llu, lifetime=%lu, hkdf_hash_func=%s, as_rs_alg=%s, as_rs_key=%s, auth_alg=%s, auth_key=%s\n",
+		    		key->kid, key->ikm_key, (unsigned long long)key->timestamp, (unsigned long)key->lifetime, key->hkdf_hash_func,
+		    		key->as_rs_alg, key->as_rs_key, key->auth_alg, key->auth_key);
+
+		printf("DB TEST 5:\n");
+		dbd->del_oauth_key((const u08bits*)"kid");
+		dbd->list_oauth_keys();
+
+		printf("DB TEST 6:\n");
+
+		dbd->get_oauth_key((const u08bits*)"north",key);
+
+		oauth_key_data oakd;
+		convert_oauth_key_data_raw(key, &oakd);
+		printf("  kid=%s, ikm_key=%s, timestamp=%llu, lifetime=%lu, hkdf_hash_func=%s, as_rs_alg=%s, as_rs_key_size=%d, auth_alg=%s, auth_key_size=%d\n",
+				    		oakd.kid, oakd.ikm_key, (unsigned long long)oakd.timestamp, (unsigned long)oakd.lifetime, oakd.hkdf_hash_func,
+				    		oakd.as_rs_alg, (int)oakd.as_rs_key_size, oakd.auth_alg, (int)oakd.auth_key_size);
+
+		oauth_key oak;
+		char err_msg[1025];
+		err_msg[0]=0;
+		if(convert_oauth_key_data(&oakd,&oak,err_msg,sizeof(err_msg)-1)<0) {
+			printf("  ERROR: %s\n",err_msg);
+		} else {
+			printf("  OK!\n");
+		}
+		printf("DB TEST END\n");
+	}
+}
+
+#endif
 
 ///////////////// WHITE/BLACK IP LISTS ///////////////////
 
@@ -1213,15 +1396,15 @@ static void ip_list_free(ip_range_list_t *l)
 		size_t i;
 		for(i=0;i<l->ranges_number;++i) {
 			if(l->ranges && l->ranges[i])
-				free(l->ranges[i]);
+			  turn_free(l->ranges[i],0);
 			if(l->encaddrsranges && l->encaddrsranges[i])
-				free(l->encaddrsranges[i]);
+			  turn_free(l->encaddrsranges[i],0);
 		}
 		if(l->ranges)
-			free(l->ranges);
+		  turn_free(l->ranges,0);
 		if(l->encaddrsranges)
-			free(l->encaddrsranges);
-		free(l);
+		  turn_free(l->encaddrsranges,0);
+		turn_free(l,sizeof(ip_range_list_t));
 	}
 }
 
@@ -1251,7 +1434,7 @@ void update_white_and_black_lists(void)
 
 int add_ip_list_range(const char * range0, ip_range_list_t * list)
 {
-	char *range = strdup(range0);
+	char *range = turn_strdup(range0);
 
 	char* separator = strchr(range, '-');
 
@@ -1263,14 +1446,14 @@ int add_ip_list_range(const char * range0, ip_range_list_t * list)
 
 	if (make_ioa_addr((const u08bits*) range, 0, &min) < 0) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong address format: %s\n", range);
-		free(range);
+		turn_free(range,0);
 		return -1;
 	}
 
 	if (separator) {
 		if (make_ioa_addr((const u08bits*) separator + 1, 0, &max) < 0) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong address format: %s\n", separator + 1);
-			free(range);
+			turn_free(range,0);
 			return -1;
 		}
 	} else {
@@ -1282,9 +1465,9 @@ int add_ip_list_range(const char * range0, ip_range_list_t * list)
 		*separator = '-';
 
 	++(list->ranges_number);
-	list->ranges = (char**) realloc(list->ranges, sizeof(char*) * list->ranges_number);
+	list->ranges = (char**) turn_realloc(list->ranges, 0, sizeof(char*) * list->ranges_number);
 	list->ranges[list->ranges_number - 1] = range;
-	list->encaddrsranges = (ioa_addr_range**) realloc(list->encaddrsranges, sizeof(ioa_addr_range*) * list->ranges_number);
+	list->encaddrsranges = (ioa_addr_range**) turn_realloc(list->encaddrsranges, 0, sizeof(ioa_addr_range*) * list->ranges_number);
 
 	list->encaddrsranges[list->ranges_number - 1] = (ioa_addr_range*) turn_malloc(sizeof(ioa_addr_range));
 

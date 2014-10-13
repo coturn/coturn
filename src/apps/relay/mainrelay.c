@@ -85,6 +85,7 @@ LOW_DEFAULT_PORTS_BOUNDARY,HIGH_DEFAULT_PORTS_BOUNDARY,0,0,0,"",
 0,NULL,0,NULL,DEFAULT_GENERAL_RELAY_SERVERS_NUMBER,0,
 ////////////// Auth server /////////////////////////////////////
 {NULL,NULL,NULL,0,NULL},
+"","",0,
 /////////////// AUX SERVERS ////////////////
 {NULL,0,{0,NULL}},0,
 /////////////// ALTERNATE SERVERS ////////////////
@@ -463,6 +464,10 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						That database value can be changed on-the-fly\n"
 "						by a separate program, so this is why it is 'dynamic'.\n"
 "						Multiple shared secrets can be used (both in the database and in the \"static\" fashion).\n"
+" --server-name					Server name used for\n"
+"						the oAuth authentication purposes.\n"
+"						The default value is the realm name.\n"
+" --oauth					Support oAuth authentication.\n"
 " -n						Do not use configuration file, take all parameters from the command line only.\n"
 " --cert			<filename>		Certificate file, PEM format. Same file search rules\n"
 "						applied as for the configuration file.\n"
@@ -677,7 +682,9 @@ enum EXTRA_OPTS {
 	CHECK_ORIGIN_CONSISTENCY_OPT,
 	ADMIN_MAX_BPS_OPT,
 	ADMIN_TOTAL_QUOTA_OPT,
-	ADMIN_USER_QUOTA_OPT
+	ADMIN_USER_QUOTA_OPT,
+	SERVER_NAME_OPT,
+	OAUTH_OPT
 };
 
 struct myoption {
@@ -731,6 +738,8 @@ static const struct myoption long_options[] = {
 				{ "static-auth-secret", required_argument, NULL, STATIC_AUTH_SECRET_VAL_OPT },
 /* deprecated: */		{ "secret-ts-exp-time", optional_argument, NULL, AUTH_SECRET_TS_EXP },
 				{ "realm", required_argument, NULL, 'r' },
+				{ "server-name", required_argument, NULL, SERVER_NAME_OPT },
+				{ "oauth", optional_argument, NULL, OAUTH_OPT },
 				{ "user-quota", required_argument, NULL, 'q' },
 				{ "total-quota", required_argument, NULL, 'Q' },
 				{ "max-bps", required_argument, NULL, 's' },
@@ -859,6 +868,12 @@ static void set_option(int c, char *value)
   }
 
   switch (c) {
+  case SERVER_NAME_OPT:
+	  STRCPY(turn_params.oauth_server_name,value);
+	  break;
+  case OAUTH_OPT:
+	  turn_params.oauth = get_bool_value(value);
+	  break;
   case NO_SSLV2_OPT:
 	  turn_params.no_sslv2 = get_bool_value(value);
 	  break;
@@ -1019,7 +1034,7 @@ static void set_option(int c, char *value)
 		if(value) {
 			char *div = strchr(value,'/');
 			if(div) {
-				char *nval=strdup(value);
+				char *nval=turn_strdup(value);
 				div = strchr(nval,'/');
 				div[0]=0;
 				++div;
@@ -1556,7 +1571,6 @@ static int adminmain(int argc, char **argv)
 static void print_features(unsigned long mfn)
 {
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\nRFC 3489/5389/5766/5780/6062/6156 STUN/TURN Server\nVersion %s\n",TURN_SOFTWARE);
-
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\nMax number of open files/sockets allowed for this process: %lu\n",mfn);
 	if(turn_params.net_engine_version == 1)
 		mfn = mfn/3;
@@ -1579,6 +1593,12 @@ static void print_features(unsigned long mfn)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS is not supported\n");
 #else
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS supported\n");
+#endif
+
+#if defined(TURN_NO_GCM)
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "AEAD is not supported\n");
+#else
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "AEAD supported\n");
 #endif
 
 #if !defined(TURN_NO_HIREDIS)
@@ -1678,6 +1698,15 @@ static void drop_privileges(void)
 	}
 }
 
+static void init_domain(void)
+{
+#if !defined(TURN_NO_GETDOMAINNAME)
+	getdomainname(turn_params.domain,sizeof(turn_params.domain)-1);
+	if(!strcmp(turn_params.domain,"(none)")) 
+	  turn_params.domain[0]=0;
+#endif
+}
+
 int main(int argc, char **argv)
 {
 	int c = 0;
@@ -1692,7 +1721,8 @@ int main(int argc, char **argv)
 	redis_async_init();
 #endif
 
-	create_new_realm(NULL);
+	init_domain();
+	create_default_realm();
 
 	init_turn_server_addrs_list(&turn_params.alternate_servers_list);
 	init_turn_server_addrs_list(&turn_params.tls_alternate_servers_list);
@@ -1755,8 +1785,8 @@ int main(int argc, char **argv)
 #endif
 
 	ns_bzero(&turn_params.default_users_db,sizeof(default_users_db_t));
-	turn_params.default_users_db.ram_db.static_accounts = ur_string_map_create(free);
-	turn_params.default_users_db.ram_db.dynamic_accounts = ur_string_map_create(free);
+	turn_params.default_users_db.ram_db.static_accounts = ur_string_map_create(turn_free_simple);
+	turn_params.default_users_db.ram_db.dynamic_accounts = ur_string_map_create(turn_free_simple);
 
 	if(strstr(argv[0],"turnadmin"))
 		return adminmain(argc,argv);
@@ -1778,6 +1808,16 @@ int main(int argc, char **argv)
 	}
 
 	read_config_file(argc,argv,1);
+
+	if(!get_realm(NULL)->options.name[0]) {
+		STRCPY(get_realm(NULL)->options.name,turn_params.domain);
+	}
+
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Domain name: %s\n",turn_params.domain);
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Default realm: %s\n",get_realm(NULL)->options.name);
+	if(turn_params.oauth && turn_params.oauth_server_name[0]) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "oAuth server name: %s\n",turn_params.oauth_server_name);
+	}
 
 	optind = 0;
 
@@ -1878,7 +1918,7 @@ int main(int argc, char **argv)
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "===========Discovering listener addresses: =========\n");
 		int maddrs = make_local_listeners_list();
 		if((maddrs<1) || !turn_params.listener.addrs_number) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot configure any meaningful IP listener address\n", __FUNCTION__);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Cannot configure any meaningful IP listener address\n", __FUNCTION__);
 			fprintf(stderr,"\n%s\n", Usage);
 			exit(-1);
 		}
@@ -1913,7 +1953,7 @@ int main(int argc, char **argv)
 		}
 
 		if (!turn_params.relays_number) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "You must specify the relay address(es)\n",
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: You must specify the relay address(es)\n",
 							__FUNCTION__);
 			fprintf(stderr,"\n%s\n", Usage);
 			exit(-1);
@@ -2305,7 +2345,7 @@ static void set_ctx(SSL_CTX* ctx, const char *protocol)
 		EC_KEY *ecdh = EC_KEY_new_by_curve_name(nid);
 		if (!ecdh) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
-					"%s: ERROR: allocate EC suite\n");
+				      "%s: ERROR: allocate EC suite\n",__FUNCTION__);
 		} else {
 			SSL_CTX_set_tmp_ecdh(ctx, ecdh);
 			EC_KEY_free(ecdh);
@@ -2339,10 +2379,10 @@ static void set_ctx(SSL_CTX* ctx, const char *protocol)
 		}
 
 		if(!dh) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: cannot allocate DH suite\n");
+		  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: cannot allocate DH suite\n",__FUNCTION__);
 		} else {
 			if (1 != SSL_CTX_set_tmp_dh (ctx, dh)) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: cannot set DH\n");
+			  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: cannot set DH\n",__FUNCTION__);
 			}
 			DH_free (dh);
 		}

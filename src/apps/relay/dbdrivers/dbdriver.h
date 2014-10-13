@@ -34,6 +34,8 @@
 
 #include "../userdb.h"
 
+#include "ns_turn_msg_defs_new.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -59,6 +61,10 @@ typedef struct _turn_dbdriver_t {
   void (*auth_ping)(void * rch);
   int (*get_ip_list)(const char *kind, ip_range_list_t * list);
   void (*reread_realms)(secrets_list_t * realms_list);
+  int (*set_oauth_key)(oauth_key_data_raw *key);
+  int (*get_oauth_key)(const u08bits *kid, oauth_key_data_raw *key);
+  int (*del_oauth_key)(const u08bits *kid);
+  int (*list_oauth_keys)(void);
 } turn_dbdriver_t;
 
 /////////// USER DB CHECK //////////////////

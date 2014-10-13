@@ -80,6 +80,8 @@ struct turn_sock_extended_err {
 
 #define TRIAL_EFFORTS_TO_SEND (2)
 
+#define SSL_MAX_RENEG_NUMBER (3)
+
 const int predef_timer_intervals[PREDEF_TIMERS_NUM] = {30,60,90,120,240,300,360,540,600,700,800,900,1800,3600};
 
 /************** Forward function declarations ******/
@@ -185,6 +187,8 @@ static void log_socket_event(ioa_socket_handle s, const char *msg, int error) {
 		TURN_LOG_LEVEL ll = TURN_LOG_LEVEL_INFO;
 		if(error)
 			ll = TURN_LOG_LEVEL_ERROR;
+
+		UNUSED_ARG(ll);
 
 		{
 			char sraddr[129]="\0";
@@ -365,7 +369,7 @@ ioa_engine_handle create_ioa_engine(super_memory_t *sm,
 	}
 
 	if (!relays_number || !relay_addrs || !tp) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create TURN engine\n", __FUNCTION__);
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Cannot create TURN engine\n", __FUNCTION__);
 		return NULL;
 	} else {
 		ioa_engine_handle e = (ioa_engine_handle)allocate_super_memory_region(sm, sizeof(ioa_engine));
@@ -574,7 +578,7 @@ ioa_timer_handle set_ioa_timer(ioa_engine_handle e, int secs, int ms, ioa_timer_
 		te->e = e;
 		te->ev = ev;
 		te->cb = cb;
-		te->txt = strdup(txt);
+		te->txt = turn_strdup(txt);
 
 		if(!ms) {
 			tv.tv_usec = 0;
@@ -1446,16 +1450,23 @@ void add_socket_to_map(ioa_socket_handle s, ur_addr_map *amap)
 				&(s->remote_addr),
 				(ur_addr_map_value_type)s);
 		s->sockets_container = amap;
+
+		//printf("%s: 111.111: amap=0x%lx: ne=%lu, sz=%lu\n",__FUNCTION__,(unsigned long)amap,(unsigned long)ur_addr_map_num_elements(amap),(unsigned long)ur_addr_map_size(amap));
 	}
 }
 
 void delete_socket_from_map(ioa_socket_handle s)
 {
 	if(s && s->sockets_container) {
+
+		//ur_addr_map *amap = s->sockets_container;
+
 		ur_addr_map_del(s->sockets_container,
 				&(s->remote_addr),
 				NULL);
 		s->sockets_container = NULL;
+
+		//printf("%s: 111.222: amap=0x%lx: ne=%lu, sz=%lu\n",__FUNCTION__,(unsigned long)amap,(unsigned long)ur_addr_map_num_elements(amap),(unsigned long)ur_addr_map_size(amap));
 	}
 }
 
@@ -1476,18 +1487,20 @@ ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e,
 	ret->magic = SOCKET_MAGIC;
 
 	ret->fd = fd;
-	ret->family = local_addr->ss.sa_family;
 	ret->st = st;
 	ret->sat = sat;
 	ret->e = e;
 
 	if (local_addr) {
+		ret->family = local_addr->ss.sa_family;
 		ret->bound = 1;
 		addr_cpy(&(ret->local_addr), local_addr);
 	}
 
 	if (remote_addr) {
 		ret->connected = 1;
+		if(!(ret->family))
+			ret->family = remote_addr->ss.sa_family;
 		addr_cpy(&(ret->remote_addr), remote_addr);
 	}
 
@@ -1500,6 +1513,44 @@ ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e,
 	return ret;
 }
 
+static void ssl_info_callback(SSL *ssl, int where, int ret) {
+
+    UNUSED_ARG(ret);
+
+    if (0 != (where & SSL_CB_HANDSHAKE_START)) {
+    	ioa_socket_handle s = (ioa_socket_handle)SSL_get_app_data(ssl);
+    	if(s) {
+    		++(s->ssl_renegs);
+    	}
+    } else if (0 != (where & SSL_CB_HANDSHAKE_DONE)) {
+    	if(ssl->s3) {
+    		ioa_socket_handle s = (ioa_socket_handle)SSL_get_app_data(ssl);
+    		if(s) {
+    			if(s->ssl_renegs>SSL_MAX_RENEG_NUMBER) {
+    				ssl->s3->flags |= SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS;
+    			}
+    		}
+    	}
+    }
+}
+
+typedef void (*ssl_info_callback_t)(const SSL *ssl,int type,int val);
+
+static void set_socket_ssl(ioa_socket_handle s, SSL *ssl)
+{
+	if(s && (s->ssl != ssl)) {
+		if(s->ssl) {
+			SSL_set_app_data(s->ssl,NULL);
+			SSL_set_info_callback(s->ssl, (ssl_info_callback_t)NULL);
+		}
+		s->ssl = ssl;
+		if(ssl) {
+			SSL_set_app_data(ssl,s);
+			SSL_set_info_callback(ssl, (ssl_info_callback_t)ssl_info_callback);
+		}
+	}
+}
+
 /* Only must be called for DTLS_SOCKET */
 ioa_socket_handle create_ioa_socket_from_ssl(ioa_engine_handle e, ioa_socket_handle parent_s, SSL* ssl, SOCKET_TYPE st, SOCKET_APP_TYPE sat, const ioa_addr *remote_addr, const ioa_addr *local_addr)
 {
@@ -1509,7 +1560,7 @@ ioa_socket_handle create_ioa_socket_from_ssl(ioa_engine_handle e, ioa_socket_han
 	ioa_socket_handle ret = create_ioa_socket_from_fd(e, parent_s->fd, parent_s, st, sat, remote_addr, local_addr);
 
 	if(ret) {
-		ret->ssl = ssl;
+		set_socket_ssl(ret,ssl);
 		if(st == DTLS_SOCKET)
 			STRCPY(ret->orig_ctx_type,"DTLSv1.0");
 	}
@@ -1576,16 +1627,16 @@ void detach_socket_net_data(ioa_socket_handle s)
 		if(s->list_ev) {
 			evconnlistener_free(s->list_ev);
 			s->list_ev = NULL;
-			s->acb = NULL;
-			s->acbarg = NULL;
 		}
+		s->acb = NULL;
+		s->acbarg = NULL;
 		if(s->conn_bev) {
 			bufferevent_disable(s->conn_bev,EV_READ|EV_WRITE);
 			bufferevent_free(s->conn_bev);
 			s->conn_bev=NULL;
-			s->conn_arg=NULL;
-			s->conn_cb=NULL;
 		}
+		s->conn_arg=NULL;
+		s->conn_cb=NULL;
 		if(s->bev) {
 			bufferevent_disable(s->bev,EV_READ|EV_WRITE);
 			bufferevent_free(s->bev);
@@ -1694,13 +1745,16 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s, int full_detach)
 
 		ret->magic = SOCKET_MAGIC;
 
-		ret->username_hash = s->username_hash;
 		ret->realm_hash = s->realm_hash;
 
-		ret->ssl = s->ssl;
+		set_socket_ssl(ret,s->ssl);
 		ret->fd = s->fd;
 
-		ret->family = s->family;
+		if(s->parent_s)
+			ret->family = s->parent_s->family;
+		else
+			ret->family = s->family;
+
 		ret->st = s->st;
 		ret->sat = s->sat;
 		ret->bound = s->bound;
@@ -1752,7 +1806,7 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s, int full_detach)
 		ret->current_tos = s->current_tos;
 		ret->default_tos = s->default_tos;
 
-		s->ssl = NULL;
+		set_socket_ssl(s,NULL);
 		s->fd = -1;
 	}
 
@@ -1795,6 +1849,8 @@ void set_ioa_socket_sub_session(ioa_socket_handle s, tcp_connection *tc)
 int get_ioa_socket_address_family(ioa_socket_handle s) {
 	if(!s) {
 		return AF_INET;
+	} else if(s->done) {
+		return s->family;
 	} else if(s->parent_s) {
 		return s->parent_s->family;
 	} else {
@@ -1821,7 +1877,7 @@ void set_ioa_socket_app_type(ioa_socket_handle s, SOCKET_APP_TYPE sat) {
 	if(s)
 		s->sat = sat;
 }
-
+ 
 ioa_addr* get_local_addr_from_ioa_socket(ioa_socket_handle s)
 {
 	if (s && (s->magic == SOCKET_MAGIC) && !(s->done)) {
@@ -1855,6 +1911,7 @@ ioa_addr* get_local_addr_from_ioa_socket(ioa_socket_handle s)
 			}
 		}
 	}
+
 	return NULL;
 }
 
@@ -1866,6 +1923,7 @@ ioa_addr* get_remote_addr_from_ioa_socket(ioa_socket_handle s)
 			return &(s->remote_addr);
 		}
 	}
+
 	return NULL;
 }
 
@@ -2324,7 +2382,7 @@ static int socket_input_worker(ioa_socket_handle s)
 #if defined(SSL_TXT_TLSV1_2)
 			case TURN_TLS_v1_2:
 				if(s->e->tls_ctx_v1_2) {
-					s->ssl = SSL_new(s->e->tls_ctx_v1_2);
+					set_socket_ssl(s,SSL_new(s->e->tls_ctx_v1_2));
 					STRCPY(s->orig_ctx_type,"TLSv1.2");
 				}
 				break;
@@ -2332,35 +2390,37 @@ static int socket_input_worker(ioa_socket_handle s)
 #if defined(SSL_TXT_TLSV1_1)
 			case TURN_TLS_v1_1:
 				if(s->e->tls_ctx_v1_1) {
-					s->ssl = SSL_new(s->e->tls_ctx_v1_1);
+					set_socket_ssl(s,SSL_new(s->e->tls_ctx_v1_1));
 					STRCPY(s->orig_ctx_type,"TLSv1.1");
 				}
 				break;
 #endif
 			case TURN_TLS_v1_0:
 				if(s->e->tls_ctx_v1_0) {
-					s->ssl = SSL_new(s->e->tls_ctx_v1_0);
+					set_socket_ssl(s,SSL_new(s->e->tls_ctx_v1_0));
 					STRCPY(s->orig_ctx_type,"TLSv1.0");
 				}
 				break;
 			default:
 				if(s->e->tls_ctx_ssl23) {
-					s->ssl = SSL_new(s->e->tls_ctx_ssl23);
+					set_socket_ssl(s,SSL_new(s->e->tls_ctx_ssl23));
 					STRCPY(s->orig_ctx_type,"SSLv23");
 				} else {
 					s->tobeclosed = 1;
 					return 0;
 				}
 			};
-			s->bev = bufferevent_openssl_socket_new(s->e->event_base,
+			if(s->ssl) {
+				s->bev = bufferevent_openssl_socket_new(s->e->event_base,
 								s->fd,
 								s->ssl,
 								BUFFEREVENT_SSL_ACCEPTING,
 								BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS);
-			bufferevent_setcb(s->bev, socket_input_handler_bev, socket_output_handler_bev,
-					eventcb_bev, s);
-			bufferevent_setwatermark(s->bev, EV_READ|EV_WRITE, 0, BUFFEREVENT_HIGH_WATERMARK);
-			bufferevent_enable(s->bev, EV_READ|EV_WRITE); /* Start reading. */
+				bufferevent_setcb(s->bev, socket_input_handler_bev, socket_output_handler_bev,
+								eventcb_bev, s);
+				bufferevent_setwatermark(s->bev, EV_READ|EV_WRITE, 0, BUFFEREVENT_HIGH_WATERMARK);
+				bufferevent_enable(s->bev, EV_READ|EV_WRITE); /* Start reading. */
+			}
 		} else
 #endif //TURN_NO_TLS
 		{
@@ -3212,7 +3272,7 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 #if !defined(TURN_NO_TLS)
 						if(!(s->ssl)) {
 							//??? how we can get to this point ???
-							s->ssl = SSL_new(e->tls_ctx_ssl23);
+							set_socket_ssl(s,SSL_new(e->tls_ctx_ssl23));
 							STRCPY(s->orig_ctx_type,"SSLv23");
 							s->bev = bufferevent_openssl_socket_new(s->e->event_base,
 											s->fd,
@@ -3301,14 +3361,9 @@ static u32bits string_hash(const u08bits *str) {
   return hash;
 }
 
-int check_username_hash(ioa_socket_handle s, u08bits *username, u08bits *realm)
+int check_realm_hash(ioa_socket_handle s, u08bits *realm)
 {
 	if(s) {
-		if(username && username[0]) {
-			if(s->username_hash != string_hash(username)) {
-				return 0;
-			}
-		}
 		if(realm && realm[0]) {
 			if(s->realm_hash != string_hash(realm)) {
 				return 0;
@@ -3318,12 +3373,9 @@ int check_username_hash(ioa_socket_handle s, u08bits *username, u08bits *realm)
 	return 1;
 }
 
-void set_username_hash(ioa_socket_handle s, u08bits *username, u08bits *realm)
+void set_realm_hash(ioa_socket_handle s, u08bits *realm)
 {
 	if(s) {
-		if(username && username[0]) {
-			s->username_hash = string_hash(username);
-		}
 		if(realm && realm[0]) {
 			s->realm_hash = string_hash(realm);
 		}
@@ -3570,11 +3622,11 @@ static void init_super_memory_region(super_memory_t *r)
 	if(r) {
 		ns_bzero(r,sizeof(super_memory_t));
 
-		r->super_memory = (char**)malloc(sizeof(char*));
-		r->super_memory[0] = (char*)malloc(TURN_SM_SIZE);
+		r->super_memory = (char**)turn_malloc(sizeof(char*));
+		r->super_memory[0] = (char*)turn_malloc(TURN_SM_SIZE);
 		ns_bzero(r->super_memory[0],TURN_SM_SIZE);
 
-		r->sm_allocated = (size_t*)malloc(sizeof(size_t*));
+		r->sm_allocated = (size_t*)turn_malloc(sizeof(size_t*));
 		r->sm_allocated[0] = 0;
 
 		r->sm_total_sz = TURN_SM_SIZE;
@@ -3594,7 +3646,7 @@ void init_super_memory(void)
 
 super_memory_t* new_super_memory_region(void)
 {
-	super_memory_t* r = (super_memory_t*)malloc(sizeof(super_memory_t));
+	super_memory_t* r = (super_memory_t*)turn_malloc(sizeof(super_memory_t));
 	init_super_memory_region(r);
 	return r;
 }
@@ -3605,10 +3657,13 @@ void* allocate_super_memory_region_func(super_memory_t *r, size_t size, const ch
 	UNUSED_ARG(func);
 	UNUSED_ARG(line);
 
-	if(!r)
-		return malloc(size);
-
 	void *ret = NULL;
+
+	if(!r) {
+		ret = turn_malloc(size);
+		ns_bzero(ret, size);
+		return ret;
+	}
 
 	pthread_mutex_lock(&r->mutex_sm);
 
@@ -3638,10 +3693,10 @@ void* allocate_super_memory_region_func(super_memory_t *r, size_t size, const ch
 
 		if(!region) {
 			r->sm_chunk += 1;
-			r->super_memory = (char**)realloc(r->super_memory,(r->sm_chunk+1) * sizeof(char*));
-			r->super_memory[r->sm_chunk] = (char*)malloc(TURN_SM_SIZE);
+			r->super_memory = (char**)turn_realloc(r->super_memory,0,(r->sm_chunk+1) * sizeof(char*));
+			r->super_memory[r->sm_chunk] = (char*)turn_malloc(TURN_SM_SIZE);
 			ns_bzero(r->super_memory[r->sm_chunk],TURN_SM_SIZE);
-			r->sm_allocated = (size_t*)realloc(r->sm_allocated,(r->sm_chunk+1) * sizeof(size_t*));
+			r->sm_allocated = (size_t*)turn_realloc(r->sm_allocated,0,(r->sm_chunk+1) * sizeof(size_t*));
 			r->sm_allocated[r->sm_chunk] = 0;
 			region = r->super_memory[r->sm_chunk];
 			rsz = r->sm_allocated + r->sm_chunk;
@@ -3660,8 +3715,10 @@ void* allocate_super_memory_region_func(super_memory_t *r, size_t size, const ch
 
 	pthread_mutex_unlock(&r->mutex_sm);
 
-	if(!ret)
-		ret = malloc(size);
+	if(!ret) {
+		ret = turn_malloc(size);
+		ns_bzero(ret, size);
+	}
 
 	return ret;
 }

@@ -107,7 +107,6 @@ static band_limit_t allocate_bps(band_limit_t bps, int positive)
 
 			if(turn_params.bps_capacity_allocated >= bps) {
 				turn_params.bps_capacity_allocated -= bps;
-				ret = turn_params.bps_capacity_allocated;
 			} else {
 				turn_params.bps_capacity_allocated = 0;
 			}
@@ -115,6 +114,7 @@ static band_limit_t allocate_bps(band_limit_t bps, int positive)
 
 		pthread_mutex_unlock(&mutex_bps);
 	}
+
 	return ret;
 }
 
@@ -168,7 +168,7 @@ static void add_aux_server_list(const char *saddr, turn_server_addrs_list_t *lis
 		if(make_ioa_addr_from_full_string((const u08bits*)saddr, 0, &addr)!=0) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong full address format: %s\n",saddr);
 		} else {
-			list->addrs = (ioa_addr*)realloc(list->addrs,sizeof(ioa_addr)*(list->size+1));
+		  list->addrs = (ioa_addr*)turn_realloc(list->addrs,0,sizeof(ioa_addr)*(list->size+1));
 			addr_cpy(&(list->addrs[(list->size)++]),&addr);
 			{
 				u08bits s[1025];
@@ -196,7 +196,7 @@ static void add_alt_server(const char *saddr, int default_port, turn_server_addr
 		if(make_ioa_addr_from_full_string((const u08bits*)saddr, default_port, &addr)!=0) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong IP address format: %s\n",saddr);
 		} else {
-			list->addrs = (ioa_addr*)realloc(list->addrs,sizeof(ioa_addr)*(list->size+1));
+		  list->addrs = (ioa_addr*)turn_realloc(list->addrs,0,sizeof(ioa_addr)*(list->size+1));
 			addr_cpy(&(list->addrs[(list->size)++]),&addr);
 			{
 				u08bits s[1025];
@@ -233,7 +233,7 @@ static void del_alt_server(const char *saddr, int default_port, turn_server_addr
 			if(found) {
 
 				size_t j;
-				ioa_addr *new_addrs = (ioa_addr*)malloc(sizeof(ioa_addr)*(list->size-1));
+				ioa_addr *new_addrs = (ioa_addr*)turn_malloc(sizeof(ioa_addr)*(list->size-1));
 				for(j=0;j<i;++j) {
 					addr_cpy(&(new_addrs[j]),&(list->addrs[j]));
 				}
@@ -241,7 +241,7 @@ static void del_alt_server(const char *saddr, int default_port, turn_server_addr
 					addr_cpy(&(new_addrs[j]),&(list->addrs[j+1]));
 				}
 
-				free(list->addrs);
+				turn_free(list->addrs,0);
 				list->addrs = new_addrs;
 				list->size -= 1;
 
@@ -286,6 +286,10 @@ void add_listener_addr(const char* addr) {
 	if(make_ioa_addr((const u08bits*)addr,0,&baddr)<0) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot add a listener address: %s\n",addr);
 	} else {
+
+	  char sbaddr[129];
+	  addr_to_string_no_port(&baddr,(u08bits*)sbaddr);
+
 		size_t i = 0;
 		for(i=0;i<turn_params.listener.addrs_number;++i) {
 			if(addr_eq(turn_params.listener.encaddrs[turn_params.listener.addrs_number-1],&baddr)) {
@@ -294,12 +298,12 @@ void add_listener_addr(const char* addr) {
 		}
 		++turn_params.listener.addrs_number;
 		++turn_params.listener.services_number;
-		turn_params.listener.addrs = (char**)realloc(turn_params.listener.addrs, sizeof(char*)*turn_params.listener.addrs_number);
-		turn_params.listener.addrs[turn_params.listener.addrs_number-1]=strdup(addr);
-		turn_params.listener.encaddrs = (ioa_addr**)realloc(turn_params.listener.encaddrs, sizeof(ioa_addr*)*turn_params.listener.addrs_number);
+		turn_params.listener.addrs = (char**)turn_realloc(turn_params.listener.addrs, 0, sizeof(char*)*turn_params.listener.addrs_number);
+		turn_params.listener.addrs[turn_params.listener.addrs_number-1]=turn_strdup(sbaddr);
+		turn_params.listener.encaddrs = (ioa_addr**)turn_realloc(turn_params.listener.encaddrs, 0, sizeof(ioa_addr*)*turn_params.listener.addrs_number);
 		turn_params.listener.encaddrs[turn_params.listener.addrs_number-1]=(ioa_addr*)turn_malloc(sizeof(ioa_addr));
 		addr_cpy(turn_params.listener.encaddrs[turn_params.listener.addrs_number-1],&baddr);
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Listener address to use: %s\n",addr);
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Listener address to use: %s\n",sbaddr);
 	}
 }
 
@@ -321,8 +325,8 @@ int add_relay_addr(const char* addr) {
 		}
 
 		++turn_params.relays_number;
-		turn_params.relay_addrs = (char**)realloc(turn_params.relay_addrs, sizeof(char*)*turn_params.relays_number);
-		turn_params.relay_addrs[turn_params.relays_number-1]=strdup(sbaddr);
+		turn_params.relay_addrs = (char**)turn_realloc(turn_params.relay_addrs, 0, sizeof(char*)*turn_params.relays_number);
+		turn_params.relay_addrs[turn_params.relays_number-1]=turn_strdup(sbaddr);
 
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Relay address to use: %s\n",sbaddr);
 		return 1;
@@ -374,6 +378,8 @@ static void auth_server_receive_message(struct bufferevent *bev, void *ptr)
     
     if(am.ct == TURN_CREDENTIALS_SHORT_TERM) {
       st_password_t pwd;
+      am.in_oauth = 0;
+      am.out_oauth = 0;
       if(get_user_pwd(am.username,pwd)<0) {
     	  am.success = 0;
       } else {
@@ -382,7 +388,7 @@ static void auth_server_receive_message(struct bufferevent *bev, void *ptr)
       }
     } else {
       hmackey_t key;
-      if(get_user_key(am.username,am.realm,key,am.in_buffer.nbh)<0) {
+      if(get_user_key(am.in_oauth,&(am.out_oauth),&(am.max_session_time),am.username,am.realm,key,am.in_buffer.nbh)<0) {
     	  am.success = 0;
       } else {
     	  ns_bcopy(key,am.key,sizeof(hmackey_t));
@@ -451,7 +457,6 @@ static int send_socket_to_general_relay(ioa_engine_handle e, struct message_to_r
 	int success = 0;
 
 	if(!rdest) {
-		success = -1;
 		goto label_end;
 	}
 
@@ -486,11 +491,13 @@ static int send_socket_to_relay(turnserver_id id, u64bits cid, stun_tid *tid, io
 				int message_integrity, MESSAGE_TO_RELAY_TYPE rmt, ioa_net_data *nd,
 				int can_resume)
 {
-	int ret = 0;
+	int ret = -1;
 
 	struct message_to_relay sm;
 	ns_bzero(&sm,sizeof(struct message_to_relay));
 	sm.t = rmt;
+
+	ioa_socket_handle s_to_delete = s;
 
 	struct relay_server *rs = NULL;
 	if(id>=TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP) {
@@ -500,7 +507,6 @@ static int send_socket_to_relay(turnserver_id id, u64bits cid, stun_tid *tid, io
 					TURN_LOG_LEVEL_ERROR,
 					"%s: Too large UDP relay number: %d, rmt=%d, total=%d\n",
 					__FUNCTION__,(int)dest,(int)rmt, (int)get_real_udp_relay_servers_number());
-			ret = -1;
 			goto err;
 		}
 		rs = udp_relay_servers[dest];
@@ -509,7 +515,6 @@ static int send_socket_to_relay(turnserver_id id, u64bits cid, stun_tid *tid, io
 				TURN_LOG_LEVEL_ERROR,
 					"%s: Wrong UDP relay number: %d, rmt=%d, total=%d\n",
 					__FUNCTION__,(int)dest,(int)rmt, (int)get_real_udp_relay_servers_number());
-			ret = -1;
 			goto err;
 		}
 	} else {
@@ -519,7 +524,6 @@ static int send_socket_to_relay(turnserver_id id, u64bits cid, stun_tid *tid, io
 					TURN_LOG_LEVEL_ERROR,
 					"%s: Too large general relay number: %d, rmt=%d, total=%d\n",
 					__FUNCTION__,(int)dest,(int)rmt, (int)get_real_general_relay_servers_number());
-			ret = -1;
 			goto err;
 		}
 		rs = general_relay_servers[dest];
@@ -528,7 +532,6 @@ static int send_socket_to_relay(turnserver_id id, u64bits cid, stun_tid *tid, io
 				TURN_LOG_LEVEL_ERROR,
 				"%s: Wrong general relay number: %d, rmt=%d, total=%d\n",
 				__FUNCTION__,(int)dest,(int)rmt, (int)get_real_general_relay_servers_number());
-			ret = -1;
 			goto err;
 		}
 	}
@@ -550,6 +553,8 @@ static int send_socket_to_relay(turnserver_id id, u64bits cid, stun_tid *tid, io
 			sm.m.cb_sm.can_resume = can_resume;
 
 			nd->nbh = NULL;
+			s_to_delete = NULL;
+			ret = 0;
 		}
 
 		break;
@@ -563,17 +568,19 @@ static int send_socket_to_relay(turnserver_id id, u64bits cid, stun_tid *tid, io
 			sm.m.sm.nd.recv_ttl = nd->recv_ttl;
 			sm.m.sm.nd.nbh = nd->nbh;
 			sm.m.sm.can_resume = can_resume;
+
 			nd->nbh = NULL;
+			s_to_delete = NULL;
+			ret = 0;
+
 		} else {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Empty buffer with mobile socket\n",__FUNCTION__);
-			ret = -1;
 		}
 
 		break;
 	}
 	default: {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: UNKNOWN RMT message: %d\n",__FUNCTION__,(int)rmt);
-		ret = -1;
 	}
 	}
 
@@ -588,16 +595,19 @@ static int send_socket_to_relay(turnserver_id id, u64bits cid, stun_tid *tid, io
 					"%s: Empty output buffer\n",
 					__FUNCTION__);
 			ret = -1;
+			s_to_delete = s;
 		}
 	}
 
  err:
-	if(ret < 0) {
-	  IOA_CLOSE_SOCKET(s);
-	  if(nd) {
-	    ioa_network_buffer_delete(NULL, nd->nbh);
-	    nd->nbh = NULL;
-	  }
+
+	IOA_CLOSE_SOCKET(s_to_delete);
+	if(nd && nd->nbh) {
+	  ioa_network_buffer_delete(NULL, nd->nbh);
+	  nd->nbh = NULL;
+	}
+
+	if(ret<0) {
 	  if(rmt == RMT_MOBILE_SOCKET) {
 	    ioa_network_buffer_delete(NULL, sm.m.sm.nd.nbh);
 	    sm.m.sm.nd.nbh = NULL;
@@ -713,6 +723,7 @@ static int handle_relay_message(relay_server_handle rs, struct message_to_relay 
 					"%s: socket wrongly preset: 0x%lx : 0x%lx\n",
 					__FUNCTION__, (long) s->read_event, (long) s->bev);
 				IOA_CLOSE_SOCKET(s);
+				sm->m.sm.s = NULL;
 			} else {
 				s->e = rs->ioa_eng;
 				open_client_connection_session(&(rs->server), &(sm->m.sm));
@@ -726,7 +737,13 @@ static int handle_relay_message(relay_server_handle rs, struct message_to_relay 
 
 			turnserver_accept_tcp_client_data_connection(&(rs->server), sm->m.cb_sm.connection_id,
 				&(sm->m.cb_sm.tid), sm->m.cb_sm.s, sm->m.cb_sm.message_integrity, &(sm->m.cb_sm.nd),
-				sm->m.cb_sm.can_resume);
+				/*sm->m.cb_sm.can_resume*/
+				/* Note: we cannot resume this call, it must be authenticated in-place.
+				 * There are two reasons for that:
+				 * 1) Technical. That's very difficult with the current code structure.
+				 * 2) Security (more important). We do not want 'stealing' connections between the users.
+				 * */
+				0);
 
 			ioa_network_buffer_delete(rs->ioa_eng, sm->m.cb_sm.nd.nbh);
 			sm->m.cb_sm.nd.nbh = NULL;
@@ -744,6 +761,7 @@ static int handle_relay_message(relay_server_handle rs, struct message_to_relay 
 									"%s: mobile socket wrongly preset: 0x%lx : 0x%lx\n",
 									__FUNCTION__, (long) s->read_event, (long) s->bev);
 				IOA_CLOSE_SOCKET(s);
+				sm->m.sm.s = NULL;
 			} else {
 				s->e = rs->ioa_eng;
 				open_client_connection_session(&(rs->server), &(sm->m.sm));
@@ -764,7 +782,7 @@ static int handle_relay_message(relay_server_handle rs, struct message_to_relay 
 
 static void handle_relay_auth_message(struct relay_server *rs, struct auth_message *am)
 {
-	am->resume_func(am->success, am->key, am->pwd,
+	am->resume_func(am->success, am->out_oauth, am->max_session_time, am->key, am->pwd,
 				&(rs->server), am->ctxkey, &(am->in_buffer));
 	if (am->in_buffer.nbh) {
 		ioa_network_buffer_delete(rs->ioa_eng, am->in_buffer.nbh);
@@ -1521,6 +1539,9 @@ void run_listener_server(struct listener_server *ls)
 		run_events(ls->event_base, ls->ioa_eng);
 
 		rollover_logfile();
+
+		tm_print();
+
 	}
 }
 
@@ -1590,7 +1611,8 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
 			 &turn_params.secure_stun, turn_params.shatype, &turn_params.mobility,
 			 turn_params.server_relay,
 			 send_turn_session_info,
-			 allocate_bps);
+			 allocate_bps,
+			 turn_params.oauth, turn_params.oauth_server_name);
 	
 	if(to_set_rfc5780) {
 		set_rfc5780(&(rs->server), get_alt_addr, send_message_from_listener_to_client);
@@ -1686,6 +1708,9 @@ static void* run_auth_server_thread(void *arg)
 		read_userdb_file(0);
 		update_white_and_black_lists();
 		auth_ping(authserver->rch);
+#if defined(DB_TEST)
+		run_db_test();
+#endif
 	}
 
 	return arg;

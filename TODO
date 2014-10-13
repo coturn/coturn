@@ -47,7 +47,6 @@
 
 ==================================================================
 
-1) New security oAuth draft.
 
 ==================================================================
 
@@ -57,13 +56,13 @@
 
 1) For extra difficult NAT/FWs, consider implementing Websockets.
 
-2) MS TURN, MS STUN extensions.
+2) ALPN with TLS and DTLS (when OpenSSL 1.0.2 is available).
 
-3) ALPN with TLS and DTLS (when OpenSSL 1.0.2 is available).
+3) Redirect draft.
 
-4) Redirect draft.
+4) DTLS 1.2 (when available).
 
-5) DTLS 1.2 (when available).
+5) TURN Proxy ? http://tools.ietf.org/html/draft-schwartz-rtcweb-return-00
 
 ==================================================================
 
@@ -94,6 +93,10 @@
 	(for testing and security purposes). 
 
 4) Ganglia monitoring.
+
+5) Web API to the database (oAuth keys, for example).
+
+6) Key exchange mechanism for oAuth.
 
 ==================================================================
 

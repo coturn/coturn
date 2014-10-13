@@ -32,6 +32,8 @@
 #include "ns_turn_ioalib.h"
 #include "ns_turn_msg_defs.h"
 
+#include <event2/http.h>
+
 #include <time.h>
 
 #include <pthread.h>
@@ -293,11 +295,11 @@ static void set_log_file_name_func(char *base, char *f, size_t fsz)
 	}
 
 	char logdate[125];
-	char *tail=strdup(".log");
+	char *tail=turn_strdup(".log");
 
 	get_date(logdate,sizeof(logdate));
 
-	char *base1=strdup(base);
+	char *base1=turn_strdup(base);
 
 	int len=(int)strlen(base1);
 
@@ -317,11 +319,11 @@ static void set_log_file_name_func(char *base, char *f, size_t fsz)
 			break;
 		else if(base1[len]=='.') {
 			turn_free(tail,strlen(tail)+1);
-			tail=strdup(base1+len);
+			tail=turn_strdup(base1+len);
 			base1[len]=0;
 			if(strlen(tail)<2) {
 				turn_free(tail,strlen(tail)+1);
-				tail = strdup(".log");
+				tail = turn_strdup(".log");
 			}
 			break;
 		}
@@ -652,5 +654,195 @@ int get_canonic_origin(const char* o, char *co, int sz)
 
 	return ret;
 }
+
+//////////////////////////////////////////////////////////////////
+
+#ifdef __cplusplus
+#if defined(TURN_MEMORY_DEBUG)
+
+#include <map>
+#include <set>
+#include <string>
+
+using namespace std;
+
+static volatile int tmm_init = 0;
+static pthread_mutex_t tm;
+
+typedef void* ptrtype;
+typedef set<ptrtype> ptrs_t;
+typedef map<string,ptrs_t> str_to_ptrs_t;
+typedef map<ptrtype,string> ptr_to_str_t;
+
+static str_to_ptrs_t str_to_ptrs;
+static ptr_to_str_t ptr_to_str;
+
+static void tm_init(void) {
+  if(!tmm_init) {
+    pthread_mutex_init(&tm,NULL);
+    tmm_init = 1;
+  }
+}
+
+static void add_tm_ptr(void *ptr, const char *id) {
+
+  UNUSED_ARG(ptr);
+  UNUSED_ARG(id);
+
+  if(!ptr)
+    return;
+
+  string sid(id);
+
+  str_to_ptrs_t::iterator iter;
+
+  pthread_mutex_lock(&tm);
+
+  iter = str_to_ptrs.find(sid);
+
+  if(iter == str_to_ptrs.end()) {
+    set<ptrtype> sp;
+    sp.insert(ptr);
+    str_to_ptrs[sid]=sp;
+  } else {
+	iter->second.insert(ptr);
+  }
+
+  ptr_to_str[ptr]=sid;
+
+  pthread_mutex_unlock(&tm);
+}
+
+static void del_tm_ptr(void *ptr, const char *id) {
+
+  UNUSED_ARG(ptr);
+  UNUSED_ARG(id);
+
+  if(!ptr)
+    return;
+
+  pthread_mutex_lock(&tm);
+
+  ptr_to_str_t::iterator pts_iter = ptr_to_str.find(ptr);
+  if(pts_iter == ptr_to_str.end()) {
+
+	  printf("Tring to free unknown pointer (1): %s\n",id);
+
+  } else {
+
+    string sid = pts_iter->second;
+    ptr_to_str.erase(pts_iter);
+
+    str_to_ptrs_t::iterator iter = str_to_ptrs.find(sid);
+
+    if(iter == str_to_ptrs.end()) {
+
+    	printf("Tring to free unknown pointer (2): %s\n",id);
+
+    } else {
+
+      iter->second.erase(ptr);
+
+    }
+  }
+
+  pthread_mutex_unlock(&tm);
+}
+
+static void tm_id(char *id, const char* file, int line) {
+  sprintf(id,"%s:%d",file,line);
+}
+
+#define TM_START() char id[128];tm_id(id,file,line);tm_init()
+
+extern "C" void tm_print_func(void);
+void tm_print_func(void) {
+  pthread_mutex_lock(&tm);
+  printf("=============================================\n");
+  for(str_to_ptrs_t::const_iterator iter=str_to_ptrs.begin();iter != str_to_ptrs.end();++iter) {
+	  if(iter->second.size())
+		  printf("%s: %s: %d\n",__FUNCTION__,iter->first.c_str(),(int)(iter->second.size()));
+  }
+  printf("=============================================\n");
+  pthread_mutex_unlock(&tm);
+} 
+
+extern "C" void *turn_malloc_func(size_t sz, const char* file, int line);
+void *turn_malloc_func(size_t sz, const char* file, int line) {
+
+  TM_START();
+
+  void *ptr = malloc(sz);
+  
+  add_tm_ptr(ptr,id);
+
+  return ptr;
+}
+
+extern "C" void *turn_realloc_func(void *ptr, size_t old_sz, size_t new_sz, const char* file, int line);
+void *turn_realloc_func(void *ptr, size_t old_sz, size_t new_sz, const char* file, int line) {
+
+  UNUSED_ARG(old_sz);
+
+  TM_START();
+
+  if(ptr)
+	  del_tm_ptr(ptr,id);
+
+  ptr = realloc(ptr,new_sz);
+
+  add_tm_ptr(ptr,id);
+
+  return ptr;
+}
+
+extern "C" void turn_free_func(void *ptr, size_t sz, const char* file, int line);
+void turn_free_func(void *ptr, size_t sz, const char* file, int line) {
+
+  UNUSED_ARG(sz);
+
+  TM_START();
+
+  del_tm_ptr(ptr,id);
+
+  free(ptr);
+}
+
+extern "C" void turn_free_simple(void *ptr);
+void turn_free_simple(void *ptr) {
+
+  tm_init();
+
+  del_tm_ptr(ptr,__FUNCTION__);
+
+  free(ptr);
+}
+
+extern "C" void *turn_calloc_func(size_t number, size_t size, const char* file, int line);
+void *turn_calloc_func(size_t number, size_t size, const char* file, int line) {
+  
+  TM_START();
+
+  void *ptr = calloc(number,size);
+
+  add_tm_ptr(ptr,id);
+
+  return ptr;
+}
+
+extern "C" char *turn_strdup_func(const char* s, const char* file, int line);
+char *turn_strdup_func(const char* s, const char* file, int line) {
+
+  TM_START();
+
+  char *ptr = strdup(s);
+
+  add_tm_ptr(ptr,id);
+
+  return ptr;
+}
+
+#endif
+#endif
 
 //////////////////////////////////////////////////////////////////

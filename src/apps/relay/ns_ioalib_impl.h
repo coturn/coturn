@@ -170,7 +170,6 @@ struct _ioa_socket
 {
 	evutil_socket_t fd;
 	struct _ioa_socket *parent_s;
-	void *listener_server;
 	u32bits magic;
 	ur_addr_map *sockets_container; /* relay container for UDP sockets */
 	struct bufferevent *bev;
@@ -179,6 +178,7 @@ struct _ioa_socket
 	SOCKET_TYPE st;
 	SOCKET_APP_TYPE sat;
 	SSL* ssl;
+	u32bits ssl_renegs;
 	int in_write;
 	char orig_ctx_type[16];
 	int bound;
@@ -213,7 +213,6 @@ struct _ioa_socket
 	connect_cb conn_cb;
 	void *conn_arg;
 	//Transferable sockets user data
-	u32bits username_hash;
 	u32bits realm_hash;
 	//Accept:
 	struct evconnlistener *list_ev;
@@ -235,7 +234,7 @@ typedef struct _timer_event
 
 /* realm */
 
-void create_new_realm(char* name);
+void create_default_realm(void);
 int get_realm_data(char* name, realm_params_t* rp);
 
 /* engine handling */

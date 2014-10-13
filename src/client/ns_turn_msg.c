@@ -39,6 +39,8 @@
 #include <openssl/err.h>
 #include <openssl/rand.h>
 
+///////////
+
 #include <stdlib.h>
 
 ///////////
@@ -85,7 +87,7 @@ int stun_method_str(u16bits method, char *smethod)
 	};
 
 	if(smethod) {
-		STRCPY(smethod,s);
+		ns_bcopy(s,smethod,strlen(s)+1);
 	}
 
 	return ret;
@@ -101,7 +103,7 @@ long turn_random(void)
 
 void turn_random32_size(u32bits *ar, size_t sz)
 {
-	if(!RAND_bytes((unsigned char *)ar, sz<<2)<0) {
+	if(!RAND_bytes((unsigned char *)ar, sz<<2)) {
 		size_t i;
 		for(i=0;i<sz;++i) {
 			ar[i] = (u32bits)random();
@@ -114,14 +116,16 @@ int stun_calculate_hmac(const u08bits *buf, size_t len, const u08bits *key, size
 	ERR_clear_error();
 	UNUSED_ARG(shatype);
 
-#if !defined(OPENSSL_NO_SHA256) && defined(SSL_TXT_SHA256)
 	if(shatype == SHATYPE_SHA256) {
+#if !defined(OPENSSL_NO_SHA256) && defined(SHA256_DIGEST_LENGTH)
 	  if (!HMAC(EVP_sha256(), key, keylen, buf, len, hmac, hmac_len)) {
 	    return -1;
 	  }
-	} else
+#else
+	  fprintf(stderr,"SHA256 is not supported\n");
+	  return -1;
 #endif
-
+	} else
 	  if (!HMAC(EVP_sha1(), key, keylen, buf, len, hmac, hmac_len)) {
 	    return -1;
 	  }
@@ -139,7 +143,7 @@ int stun_produce_integrity_key_str(u08bits *uname, u08bits *realm, u08bits *upwd
 	size_t plen = strlen((s08bits*)upwd);
 	size_t sz = ulen+1+rlen+1+plen+1+10;
 	size_t strl = ulen+1+rlen+1+plen;
-	u08bits *str = (u08bits*)malloc(sz+1);
+	u08bits *str = (u08bits*)turn_malloc(sz+1);
 
 	strncpy((s08bits*)str,(s08bits*)uname,sz);
 	str[ulen]=':';
@@ -148,23 +152,26 @@ int stun_produce_integrity_key_str(u08bits *uname, u08bits *realm, u08bits *upwd
 	strncpy((s08bits*)str+ulen+1+rlen+1,(s08bits*)upwd,sz-ulen-1-rlen-1);
 	str[strl]=0;
 
-#if !defined(OPENSSL_NO_SHA256) && defined(SSL_TXT_SHA256)
 	if(shatype == SHATYPE_SHA256) {
+#if !defined(OPENSSL_NO_SHA256) && defined(SHA256_DIGEST_LENGTH)
 		unsigned int keylen = 0;
 		EVP_MD_CTX ctx;
 		EVP_DigestInit(&ctx,EVP_sha256());
 		EVP_DigestUpdate(&ctx,str,strl);
 		EVP_DigestFinal(&ctx,key,&keylen);
-	} else
+		EVP_MD_CTX_cleanup(&ctx);
+#else
+		fprintf(stderr,"SHA256 is not supported\n");
+		return -1;
 #endif
-	{
+	} else {
 		MD5_CTX ctx;
 		MD5_Init(&ctx);
 		MD5_Update(&ctx,str,strl);
 		MD5_Final(key,&ctx);
 	}
 
-	free(str);
+	turn_free(str,sz+1);
 
 	return 0;
 }
@@ -325,7 +332,7 @@ int stun_is_error_response_str(const u08bits* buf, size_t len, int *err_code, u0
 }
 
 int stun_is_challenge_response_str(const u08bits* buf, size_t len, int *err_code, u08bits *err_msg, size_t err_msg_size,
-				u08bits *realm, u08bits *nonce)
+				u08bits *realm, u08bits *nonce, u08bits *server_name, int *oauth)
 {
 	int ret = stun_is_error_response_str(buf, len, err_code, err_msg, err_msg_size);
 
@@ -333,11 +340,31 @@ int stun_is_challenge_response_str(const u08bits* buf, size_t len, int *err_code
 
 		stun_attr_ref sar = stun_attr_get_first_by_type_str(buf,len,STUN_ATTRIBUTE_REALM);
 		if(sar) {
+
+			int found_oauth = 0;
+
 			const u08bits *value = stun_attr_get_value(sar);
 			if(value) {
 				size_t vlen = (size_t)stun_attr_get_len(sar);
 				ns_bcopy(value,realm,vlen);
 				realm[vlen]=0;
+
+				{
+					stun_attr_ref sar = stun_attr_get_first_by_type_str(buf,len,STUN_ATTRIBUTE_THIRD_PARTY_AUTHORIZATION);
+					if(sar) {
+						const u08bits *value = stun_attr_get_value(sar);
+						if(value) {
+							size_t vlen = (size_t)stun_attr_get_len(sar);
+							if(vlen>0) {
+								if(server_name) {
+									ns_bcopy(value,server_name,vlen);
+								}
+								found_oauth = 1;
+							}
+						}
+					}
+				}
+
 				sar = stun_attr_get_first_by_type_str(buf,len,STUN_ATTRIBUTE_NONCE);
 				if(sar) {
 					value = stun_attr_get_value(sar);
@@ -345,6 +372,9 @@ int stun_is_challenge_response_str(const u08bits* buf, size_t len, int *err_code
 						vlen = (size_t)stun_attr_get_len(sar);
 						ns_bcopy(value,nonce,vlen);
 						nonce[vlen]=0;
+						if(oauth) {
+							*oauth = found_oauth;
+						}
 						return 1;
 					}
 				}
@@ -836,12 +866,14 @@ int stun_set_binding_response_str(u08bits* buf, size_t *len, stun_tid* tid,
 		} else {
 			old_stun_init_success_response_str(STUN_METHOD_BINDING, buf, len, tid, cookie);
 		}
-		if(!old_stun) {
+		if(!old_stun && reflexive_addr) {
 			if (stun_attr_add_addr_str(buf, len, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS, reflexive_addr) < 0)
 				return -1;
 		}
-		if (stun_attr_add_addr_str(buf, len, STUN_ATTRIBUTE_MAPPED_ADDRESS, reflexive_addr) < 0)
-			return -1;
+		if(reflexive_addr) {
+			if (stun_attr_add_addr_str(buf, len, STUN_ATTRIBUTE_MAPPED_ADDRESS, reflexive_addr) < 0)
+				return -1;
+		}
 	} else if (!old_stun) {
 		stun_init_error_response_str(STUN_METHOD_BINDING, buf, len, error_code, reason, tid);
 	} else {
@@ -936,10 +968,16 @@ void stun_tid_generate_in_message_str(u08bits* buf, stun_tid* id) {
 
 /////////////////// TIME ////////////////////////////////////////////////////////
 
-u32bits stun_adjust_allocate_lifetime(u32bits lifetime) {
-  if(!lifetime) return STUN_DEFAULT_ALLOCATE_LIFETIME;
-  else if(lifetime<STUN_MIN_ALLOCATE_LIFETIME) return STUN_MIN_ALLOCATE_LIFETIME;
-  else if(lifetime>STUN_MAX_ALLOCATE_LIFETIME) return STUN_MAX_ALLOCATE_LIFETIME;
+turn_time_t stun_adjust_allocate_lifetime(turn_time_t lifetime, turn_time_t max_lifetime) {
+
+  if(!lifetime) lifetime = STUN_DEFAULT_ALLOCATE_LIFETIME;
+  else if(lifetime<STUN_MIN_ALLOCATE_LIFETIME) lifetime = STUN_MIN_ALLOCATE_LIFETIME;
+  else if(lifetime>STUN_MAX_ALLOCATE_LIFETIME) lifetime = STUN_MAX_ALLOCATE_LIFETIME;
+
+  if(max_lifetime && (max_lifetime < lifetime)) {
+  	lifetime = max_lifetime;
+  }
+
   return lifetime;
 }
 
@@ -1442,13 +1480,8 @@ int stun_attr_add_integrity_str(turn_credential_type ct, u08bits *buf, size_t *l
 	return 0;
 }
 
-int stun_attr_add_integrity_by_user_str(u08bits *buf, size_t *len, u08bits *uname, u08bits *realm, u08bits *upwd, u08bits *nonce, SHATYPE shatype)
+int stun_attr_add_integrity_by_key_str(u08bits *buf, size_t *len, u08bits *uname, u08bits *realm, hmackey_t key, u08bits *nonce, SHATYPE shatype)
 {
-	hmackey_t key;
-
-	if(stun_produce_integrity_key_str(uname, realm, upwd, key, shatype)<0)
-		return -1;
-
 	if(stun_attr_add_str(buf, len, STUN_ATTRIBUTE_USERNAME, uname, strlen((s08bits*)uname))<0)
 			return -1;
 
@@ -1460,6 +1493,16 @@ int stun_attr_add_integrity_by_user_str(u08bits *buf, size_t *len, u08bits *unam
 
 	st_password_t p;
 	return stun_attr_add_integrity_str(TURN_CREDENTIALS_LONG_TERM, buf, len, key, p, shatype);
+}
+
+int stun_attr_add_integrity_by_user_str(u08bits *buf, size_t *len, u08bits *uname, u08bits *realm, u08bits *upwd, u08bits *nonce, SHATYPE shatype)
+{
+	hmackey_t key;
+
+	if(stun_produce_integrity_key_str(uname, realm, upwd, key, shatype)<0)
+		return -1;
+
+	return stun_attr_add_integrity_by_key_str(buf, len, uname, realm, key, nonce, shatype);
 }
 
 int stun_attr_add_integrity_by_user_short_term_str(u08bits *buf, size_t *len, u08bits *uname, st_password_t pwd, SHATYPE shatype)
@@ -1543,7 +1586,7 @@ int stun_check_message_integrity_by_key_str(turn_credential_type ct, u08bits *bu
 	if(bcmp(old_hmac,new_hmac,shasize))
 		return 0;
 
-	return 1;
+	return +1;
 }
 
 /*
@@ -1628,6 +1671,730 @@ int stun_attr_add_padding_str(u08bits *buf, size_t *len, u16bits padding_len)
 	ns_bzero(avalue,padding_len);
 
 	return stun_attr_add_str(buf, len, STUN_ATTRIBUTE_PADDING, avalue, padding_len);
+}
+
+/* OAUTH */
+
+#define OAUTH_ERROR(...) fprintf(stderr,__VA_ARGS__)
+
+static void remove_spaces(char *s)
+{
+	char *sfns = s;
+	while(*sfns) {
+		if(*sfns != ' ')
+			break;
+		++sfns;
+	}
+	if(*sfns) {
+		if(sfns != s) {
+			while(*sfns && (*sfns != ' ')) {
+				*s = *sfns;
+				++s;
+				++sfns;
+			};
+			*s = 0;
+		} else {
+			while(*s) {
+				if(*s == ' ') {
+					*s = 0;
+					break;
+				}
+				++s;
+			}
+		}
+	}
+}
+
+static void normalize_algorithm(char *s)
+{
+	char c = *s;
+	while(c) {
+		if(c=='_') *s='-';
+		else if((c>='a')&&(c<='z')) {
+			*s = c - 'a' + 'A';
+		}
+		++s;
+		c = *s;
+	}
+}
+
+static size_t calculate_enc_key_length(ENC_ALG a)
+{
+	switch(a) {
+	case AES_128_CBC:
+	case AEAD_AES_128_GCM:
+		return 16;
+	default:
+		break;
+	};
+
+	return 32;
+}
+
+static size_t calculate_auth_key_length(AUTH_ALG a)
+{
+	switch(a) {
+	case AUTH_ALG_HMAC_SHA_1:
+		return 20;
+	case AUTH_ALG_HMAC_SHA_256_128:
+		return 32;
+	case AUTH_ALG_HMAC_SHA_256:
+		return 32;
+	default:
+		break;
+	};
+
+	return 32;
+}
+
+static size_t calculate_auth_output_length(AUTH_ALG a)
+{
+	switch(a) {
+	case AUTH_ALG_HMAC_SHA_1:
+		return 20;
+	case AUTH_ALG_HMAC_SHA_256_128:
+		return 16;
+	case AUTH_ALG_HMAC_SHA_256:
+		return 32;
+	default:
+		break;
+	};
+
+	return 32;
+}
+
+static int calculate_key(char *key, size_t key_size, char *new_key, size_t new_key_size, SHATYPE shatype,
+		char *err_msg, size_t err_msg_size)
+{
+	//Extract:
+	u08bits prk[128];
+	unsigned int prk_len = 0;
+	stun_calculate_hmac((const u08bits *)key, key_size, (const u08bits *)"", 0, prk, &prk_len, shatype);
+
+	//Expand:
+	u08bits buf[128];
+	buf[0]=1;
+	u08bits hmac[128];
+	unsigned int hmac_len = 0;
+	stun_calculate_hmac((const u08bits *)buf, 1, prk, prk_len, hmac, &hmac_len, shatype);
+	ns_bcopy(hmac,new_key,hmac_len);
+
+	//Check
+	if(new_key_size>hmac_len) {
+		ns_bcopy(hmac,buf,hmac_len);
+		buf[hmac_len]=2;
+		u08bits hmac1[128];
+		unsigned int hmac1_len = 0;
+		stun_calculate_hmac((const u08bits *)buf, hmac_len+1, prk, prk_len, hmac1, &hmac1_len, shatype);
+		ns_bcopy(hmac1,new_key+hmac_len,hmac1_len);
+		if(new_key_size > (hmac_len + hmac1_len)) {
+			if(err_msg) {
+				snprintf(err_msg,err_msg_size,"Wrong HKDF procedure (key sizes): output.sz=%lu, hmac(1)=%lu, hmac(2)=%lu",(unsigned long)new_key_size,(unsigned long)hmac_len,(unsigned long)hmac1_len);
+			}
+			OAUTH_ERROR("Wrong HKDF procedure (key sizes): output.sz=%lu, hmac(1)=%lu, hmac(2)=%lu",(unsigned long)new_key_size,(unsigned long)hmac_len,(unsigned long)hmac1_len);
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+int convert_oauth_key_data(const oauth_key_data *oakd0, oauth_key *key, char *err_msg, size_t err_msg_size)
+{
+	if(oakd0 && key) {
+
+		oauth_key_data oakd_obj;
+		ns_bcopy(oakd0,&oakd_obj,sizeof(oauth_key_data));
+		oauth_key_data *oakd = &oakd_obj;
+
+		if(!(oakd->ikm_key_size)) {
+			if(!(oakd->as_rs_key_size)) {
+				if(err_msg) {
+					snprintf(err_msg,err_msg_size,"AS-RS key is not defined");
+				}
+				OAUTH_ERROR("AS-RS key is not defined\n");
+				return -1;
+			}
+			if(!(oakd->auth_key_size)) {
+				//AEAD ?
+			}
+		}
+
+		remove_spaces(oakd->kid);
+
+		remove_spaces(oakd->hkdf_hash_func);
+		remove_spaces(oakd->as_rs_alg);
+		remove_spaces(oakd->auth_alg);
+
+		normalize_algorithm(oakd->hkdf_hash_func);
+		normalize_algorithm(oakd->as_rs_alg);
+		normalize_algorithm(oakd->auth_alg);
+
+		if(!(oakd->kid[0])) {
+			if(err_msg) {
+				snprintf(err_msg,err_msg_size,"KID is not defined");
+			}
+			OAUTH_ERROR("KID is not defined\n");
+			return -1;
+		}
+
+		ns_bzero(key,sizeof(oauth_key));
+
+		STRCPY(key->kid,oakd->kid);
+
+		ns_bcopy(oakd->as_rs_key,key->as_rs_key,sizeof(key->as_rs_key));
+		key->as_rs_key_size = oakd->as_rs_key_size;
+		ns_bcopy(oakd->auth_key,key->auth_key,sizeof(key->auth_key));
+		key->auth_key_size = oakd->auth_key_size;
+		ns_bcopy(oakd->ikm_key,key->ikm_key,sizeof(key->ikm_key));
+		key->ikm_key_size = oakd->ikm_key_size;
+
+		key->timestamp = oakd->timestamp;
+		key->lifetime = oakd->lifetime;
+
+		if(!(key->timestamp)) key->timestamp = OAUTH_DEFAULT_TIMESTAMP;
+		if(!(key->lifetime)) key->lifetime = OAUTH_DEFAULT_LIFETIME;
+
+		key->hkdf_hash_func = SHATYPE_SHA256;
+		if(!strcmp(oakd->hkdf_hash_func,"SHA1") || !strcmp(oakd->hkdf_hash_func,"SHA-1")) {
+			key->hkdf_hash_func = SHATYPE_SHA1;
+		} else if(!strcmp(oakd->hkdf_hash_func,"SHA256") || !strcmp(oakd->hkdf_hash_func,"SHA-256")) {
+			key->hkdf_hash_func = SHATYPE_SHA256;
+		} else if(oakd->hkdf_hash_func[0]) {
+			if(err_msg) {
+				snprintf(err_msg,err_msg_size,"Wrong HKDF hash function algorithm: %s",oakd->hkdf_hash_func);
+			}
+			OAUTH_ERROR("Wrong HKDF hash function algorithm: %s\n",oakd->hkdf_hash_func);
+			return -1;
+		}
+
+		key->auth_alg = AUTH_ALG_DEFAULT;
+		if(!strcmp(oakd->auth_alg,"HMAC-SHA-1") || !strcmp(oakd->auth_alg,"HMAC-SHA1")) {
+			key->auth_alg = AUTH_ALG_HMAC_SHA_1;
+		} else if(!strcmp(oakd->auth_alg,"HMAC-SHA-256")) {
+			key->auth_alg = AUTH_ALG_HMAC_SHA_256;
+		} else if(!strcmp(oakd->auth_alg,"HMAC-SHA-256-128")) {
+			key->auth_alg = AUTH_ALG_HMAC_SHA_256_128;
+		} else if(oakd->auth_alg[0]) {
+			if(err_msg) {
+				snprintf(err_msg,err_msg_size,"Wrong oAuth token hash algorithm: %s (1)\n",oakd->auth_alg);
+			}
+			key->auth_alg = AUTH_ALG_ERROR;
+			OAUTH_ERROR("Wrong oAuth token hash algorithm: %s (2)\n",oakd->auth_alg);
+			return -1;
+		}
+
+		key->as_rs_alg = ENC_ALG_DEFAULT;
+		if(!strcmp(oakd->as_rs_alg,"AES-128-CBC")) {
+			key->as_rs_alg = AES_128_CBC;
+		} else if(!strcmp(oakd->as_rs_alg,"AES-256-CBC")) {
+			key->as_rs_alg = AES_256_CBC;
+		} else if(!strcmp(oakd->as_rs_alg,"AEAD-AES-128-GCM")) {
+			key->as_rs_alg = AEAD_AES_128_GCM;
+		} else if(!strcmp(oakd->as_rs_alg,"AEAD-AES-256-GCM")) {
+			key->as_rs_alg = AEAD_AES_256_GCM;
+		} else if(oakd->as_rs_alg[0]) {
+			if(err_msg) {
+				snprintf(err_msg,err_msg_size,"Wrong oAuth token encryption algorithm: %s (2)\n",oakd->as_rs_alg);
+			}
+			OAUTH_ERROR("Wrong oAuth token encryption algorithm: %s (3)\n",oakd->as_rs_alg);
+			return -1;
+		}
+
+		if(key->auth_alg == AUTH_ALG_UNDEFINED) {
+			//AEAD
+			key->auth_key_size = 0;
+			key->auth_key[0] = 0;
+		} else if(!(key->auth_key_size)) {
+			key->auth_key_size = calculate_auth_key_length(key->auth_alg);
+			if(calculate_key(key->ikm_key,key->ikm_key_size,key->auth_key,key->auth_key_size,key->hkdf_hash_func,err_msg,err_msg_size)<0) {
+				return -1;
+			}
+		}
+
+		if(!(key->as_rs_key_size)) {
+			key->as_rs_key_size = calculate_enc_key_length(key->as_rs_alg);
+			if(calculate_key(key->ikm_key,key->ikm_key_size,key->as_rs_key,key->as_rs_key_size,key->hkdf_hash_func,err_msg,err_msg_size)<0) {
+				return -1;
+			}
+		}
+	}
+
+	return 0;
+}
+
+static const EVP_CIPHER *get_cipher_type(ENC_ALG enc_alg)
+{
+	switch(enc_alg) {
+	case AES_256_CBC:
+		return EVP_aes_256_cbc();
+	case AES_128_CBC:
+		return EVP_aes_128_cbc();
+#if !defined(TURN_NO_GCM)
+	case AEAD_AES_128_GCM:
+		return EVP_aes_128_gcm();
+	case AEAD_AES_256_GCM:
+		return EVP_aes_256_gcm();
+#endif
+	default:
+		break;
+	}
+	OAUTH_ERROR("%s: Unsupported enc algorithm: %d\n",__FUNCTION__,(int)enc_alg);
+	return NULL;
+}
+
+static const EVP_MD *get_auth_type(AUTH_ALG aa)
+{
+	switch(aa) {
+	case AUTH_ALG_HMAC_SHA_1:
+		return EVP_sha1();
+#if !defined(OPENSSL_NO_SHA256) && defined(SHA256_DIGEST_LENGTH)
+	case AUTH_ALG_HMAC_SHA_256_128:
+	case AUTH_ALG_HMAC_SHA_256:
+		return EVP_sha256();
+#endif
+	default:
+		break;
+	};
+	OAUTH_ERROR("%s: Unknown auth algorithm: %d\n",__FUNCTION__,(int)aa);
+	return NULL;
+}
+
+static void update_hmac_len(AUTH_ALG aa, unsigned int *hmac_len)
+{
+	if(hmac_len) {
+		switch(aa) {
+		case AUTH_ALG_HMAC_SHA_256_128:
+			*hmac_len = 16;
+			break;
+		default:
+			break;
+		};
+	}
+}
+
+static int my_EVP_EncryptUpdate(EVP_CIPHER_CTX *ctx, unsigned char *out,
+		int *outl, const unsigned char *in, int inl)
+{
+	int cycle = 0;
+	int out_len = 0;
+	while((out_len<inl)&&(++cycle<128)) {
+		int tmp_outl=0;
+		unsigned char *ptr = NULL;
+		if(out)
+			ptr = out+out_len;
+		int ret = EVP_EncryptUpdate(ctx, ptr, &tmp_outl, in+out_len, inl-out_len);
+		out_len += tmp_outl;
+		if(ret<1)
+			return ret;
+	}
+	*outl = out_len;
+	return 1;
+}
+
+static int my_EVP_DecryptUpdate(EVP_CIPHER_CTX *ctx, unsigned char *out,
+		int *outl, const unsigned char *in, int inl)
+{
+	int cycle = 0;
+	int out_len = 0;
+	while((out_len<inl)&&(++cycle<128)) {
+		int tmp_outl=0;
+		unsigned char *ptr = NULL;
+		if(out)
+			ptr = out+out_len;
+		int ret = EVP_DecryptUpdate(ctx, ptr, &tmp_outl, in+out_len, inl-out_len);
+		out_len += tmp_outl;
+		if(ret<1)
+			return ret;
+	}
+	*outl = out_len;
+	return 1;
+}
+
+void print_field(const char* name, const unsigned char* f, size_t len);
+void print_field(const char* name, const unsigned char* f, size_t len) {
+	printf("\nfield %s==>>\n",name);
+	size_t i;
+	for(i = 0;i<len;++i) {
+		printf("<0x%x>",(unsigned int)f[i]);
+	}
+	printf("\n<<==field %s\n",name);
+}
+
+static int encode_oauth_token_normal(const u08bits *server_name, encoded_oauth_token *etoken, const oauth_key *key, const oauth_token *dtoken)
+{
+	if(server_name && etoken && key && dtoken && (dtoken->enc_block.key_length<=128)) {
+
+		unsigned char orig_field[MAX_ENCODED_OAUTH_TOKEN_SIZE];
+		ns_bzero(orig_field,sizeof(orig_field));
+
+		size_t len = 0;
+		*((uint16_t*)(orig_field+len)) = nswap16(dtoken->enc_block.key_length);
+		len +=2;
+
+		ns_bcopy(dtoken->enc_block.mac_key,orig_field+len,dtoken->enc_block.key_length);
+		len += dtoken->enc_block.key_length;
+
+		*((uint64_t*)(orig_field+len)) = nswap64(dtoken->enc_block.timestamp);
+		len += 8;
+
+		*((uint32_t*)(orig_field+len)) = nswap32(dtoken->enc_block.lifetime);
+		len += 4;
+
+		const EVP_CIPHER * cipher = get_cipher_type(key->as_rs_alg);
+		if(!cipher)
+			return -1;
+
+		unsigned char *encoded_field = (unsigned char*)etoken->token;
+
+		EVP_CIPHER_CTX ctx;
+		EVP_CIPHER_CTX_init(&ctx);
+		EVP_EncryptInit_ex(&ctx, cipher, NULL, (const unsigned char *)key->as_rs_key, NULL);
+		EVP_CIPHER_CTX_set_padding(&ctx,1);
+		int outl=0;
+		my_EVP_EncryptUpdate(&ctx, encoded_field, &outl, orig_field, (int)len);
+		if(outl % OAUTH_ENC_ALG_BLOCK_SIZE) {
+			int tmp_outl = 0;
+			EVP_EncryptFinal_ex(&ctx, encoded_field + outl, &tmp_outl);
+			outl += tmp_outl;
+		}
+
+		EVP_CIPHER_CTX_cleanup(&ctx);
+
+		size_t sn_len = strlen((const char*)server_name);
+		ns_bcopy(server_name,encoded_field+outl,sn_len);
+		outl += sn_len;
+
+		const EVP_MD *md = get_auth_type(key->auth_alg);
+		if(!md)
+			return -1;
+
+		unsigned int hmac_len = EVP_MD_size(md);
+		if (!HMAC(md, key->auth_key, key->auth_key_size, encoded_field, outl, encoded_field + outl, &hmac_len)) {
+		    return -1;
+		}
+
+		update_hmac_len(key->auth_alg, &hmac_len);
+
+		ns_bcopy(encoded_field + outl, encoded_field + outl - sn_len, hmac_len);
+		outl -= sn_len;
+		outl += hmac_len; //encoded+hmac
+
+		etoken->size = outl;
+
+		return 0;
+	}
+	return -1;
+}
+
+static int decode_oauth_token_normal(const u08bits *server_name, const encoded_oauth_token *etoken, const oauth_key *key, oauth_token *dtoken)
+{
+	if(server_name && etoken && key && dtoken) {
+
+		size_t mac_size = calculate_auth_output_length(key->auth_alg);
+		size_t min_encoded_field_size = 2+4+8+1;
+		if(etoken->size < mac_size+min_encoded_field_size) {
+			OAUTH_ERROR("%s: token size too small: %d, mac_size=%d, min_encoded_field_size=%d\n",__FUNCTION__,(int)etoken->size,(int)mac_size,(int)min_encoded_field_size);
+			return -1;
+		}
+
+		const unsigned char* encoded_field = (const unsigned char*)etoken->token;
+		unsigned int encoded_field_size = (unsigned int)etoken->size-mac_size;
+		const unsigned char* mac = ((const unsigned char*)etoken->token) + etoken->size - mac_size;
+
+		{
+			const EVP_MD *md = get_auth_type(key->auth_alg);
+			if(!md)
+				return -1;
+       		unsigned int hmac_len = EVP_MD_size(md);
+       		update_hmac_len(key->auth_alg,&hmac_len);
+       		if(hmac_len != mac_size) {
+       			OAUTH_ERROR("%s: mac size is wrong: %d, must be %d\n",__FUNCTION__,(int)mac_size,(int)hmac_len);
+       			return -1;
+       		}
+       		unsigned char efield[MAX_ENCODED_OAUTH_TOKEN_SIZE];
+       		unsigned char check_mac[MAXSHASIZE];
+       		ns_bcopy(encoded_field,efield,encoded_field_size);
+       		size_t sn_len = strlen((const char*)server_name);
+       		ns_bcopy(server_name,efield+encoded_field_size,sn_len);
+		    if (!HMAC(md, key->auth_key, key->auth_key_size, efield, encoded_field_size+sn_len, check_mac, &hmac_len)) {
+		    	return -1;
+		    }
+
+		    if(ns_bcmp(check_mac,mac,mac_size)) {
+		    	OAUTH_ERROR("%s: token integrity check failed\n",__FUNCTION__);
+		    	return -1;
+		    }
+		}
+
+		unsigned char decoded_field[MAX_ENCODED_OAUTH_TOKEN_SIZE];
+
+		const EVP_CIPHER * cipher = get_cipher_type(key->as_rs_alg);
+		if(!cipher)
+			return -1;
+
+		EVP_CIPHER_CTX ctx;
+		EVP_CIPHER_CTX_init(&ctx);
+		EVP_DecryptInit_ex(&ctx, cipher, NULL, (const unsigned char *)key->as_rs_key, NULL);
+		EVP_CIPHER_CTX_set_padding(&ctx,1);
+		int outl=0;
+		my_EVP_DecryptUpdate(&ctx, decoded_field, &outl, encoded_field, (int)encoded_field_size);
+
+		int tmp_outl = 0;
+		EVP_DecryptFinal_ex(&ctx, decoded_field + outl, &tmp_outl);
+		outl += tmp_outl;
+
+		EVP_CIPHER_CTX_cleanup(&ctx);
+
+		size_t len = 0;
+
+		dtoken->enc_block.key_length = nswap16(*((uint16_t*)(decoded_field+len)));
+		len += 2;
+
+		ns_bcopy(decoded_field+len,dtoken->enc_block.mac_key,dtoken->enc_block.key_length);
+		len += dtoken->enc_block.key_length;
+
+		dtoken->enc_block.timestamp = nswap64(*((uint64_t*)(decoded_field+len)));
+		len += 8;
+
+		dtoken->enc_block.lifetime = nswap32(*((uint32_t*)(decoded_field+len)));
+		len += 4;
+
+		return 0;
+	}
+	return -1;
+}
+
+#if !defined(TURN_NO_GCM)
+
+static void generate_random_nonce(unsigned char *nonce, size_t sz) {
+	if(!RAND_bytes(nonce, sz)) {
+		size_t i;
+		for(i=0;i<sz;++i) {
+			nonce[i] = (unsigned char)random();
+		}
+	}
+}
+
+static int encode_oauth_token_aead(const u08bits *server_name, encoded_oauth_token *etoken, const oauth_key *key, const oauth_token *dtoken, const u08bits* nonce0)
+{
+	if(server_name && etoken && key && dtoken && (dtoken->enc_block.key_length<128)) {
+
+		unsigned char orig_field[MAX_ENCODED_OAUTH_TOKEN_SIZE];
+		ns_bzero(orig_field,sizeof(orig_field));
+
+		size_t len = 0;
+		*((uint16_t*)(orig_field+len)) = nswap16(dtoken->enc_block.key_length);
+		len +=2;
+
+		ns_bcopy(dtoken->enc_block.mac_key,orig_field+len,dtoken->enc_block.key_length);
+		len += dtoken->enc_block.key_length;
+
+		*((uint64_t*)(orig_field+len)) = nswap64(dtoken->enc_block.timestamp);
+		len += 8;
+
+		*((uint32_t*)(orig_field+len)) = nswap32(dtoken->enc_block.lifetime);
+		len += 4;
+
+		const EVP_CIPHER * cipher = get_cipher_type(key->as_rs_alg);
+		if(!cipher)
+			return -1;
+
+		unsigned char *encoded_field = (unsigned char*)etoken->token;
+
+		unsigned char nonce[OAUTH_AEAD_NONCE_SIZE];
+		if(nonce0) {
+			ns_bcopy(nonce0,nonce,sizeof(nonce));
+		} else {
+			generate_random_nonce(nonce, sizeof(nonce));
+		}
+
+		EVP_CIPHER_CTX ctx;
+		EVP_CIPHER_CTX_init(&ctx);
+
+		/* Initialize the encryption operation. */
+		if(1 != EVP_EncryptInit_ex(&ctx, cipher, NULL, NULL, NULL))
+			return -1;
+
+		EVP_CIPHER_CTX_set_padding(&ctx,1);
+
+		/* Set IV length if default 12 bytes (96 bits) is not appropriate */
+		if(1 != EVP_CIPHER_CTX_ctrl(&ctx, EVP_CTRL_GCM_SET_IVLEN, OAUTH_AEAD_NONCE_SIZE, NULL))
+			return -1;
+
+		/* Initialize key and IV */
+		if(1 != EVP_EncryptInit_ex(&ctx, NULL, NULL, (const unsigned char *)key->as_rs_key, nonce))
+			return -1;
+
+		int outl=0;
+		size_t sn_len = strlen((const char*)server_name);
+
+		/* Provide any AAD data. This can be called zero or more times as
+		 * required
+		 */
+		if(1 != my_EVP_EncryptUpdate(&ctx, NULL, &outl, server_name, (int)sn_len))
+			return -1;
+
+		outl=0;
+
+		if(1 != my_EVP_EncryptUpdate(&ctx, encoded_field, &outl, orig_field, (int)len))
+			return -1;
+
+		int tmp_outl = 0;
+		EVP_EncryptFinal_ex(&ctx, encoded_field + outl, &tmp_outl);
+		outl += tmp_outl;
+
+		EVP_CIPHER_CTX_ctrl(&ctx, EVP_CTRL_GCM_GET_TAG, OAUTH_AEAD_TAG_SIZE, encoded_field + outl);
+		outl += OAUTH_AEAD_TAG_SIZE;
+
+		ns_bcopy(nonce, encoded_field + outl, OAUTH_AEAD_NONCE_SIZE);
+		outl += OAUTH_AEAD_NONCE_SIZE; //encoded+tag+hmac
+
+		etoken->size = outl;
+
+		EVP_CIPHER_CTX_cleanup(&ctx);
+
+		return 0;
+	}
+	return -1;
+}
+
+static int decode_oauth_token_aead(const u08bits *server_name, const encoded_oauth_token *etoken, const oauth_key *key, oauth_token *dtoken)
+{
+	if(server_name && etoken && key && dtoken) {
+
+		size_t min_encoded_field_size = 2+4+8+OAUTH_AEAD_NONCE_SIZE+OAUTH_AEAD_TAG_SIZE+1;
+		if(etoken->size < min_encoded_field_size) {
+			OAUTH_ERROR("%s: token size too small: %d\n",__FUNCTION__,(int)etoken->size);
+			return -1;
+		}
+
+		const unsigned char* encoded_field = (const unsigned char*)etoken->token;
+		unsigned int encoded_field_size = (unsigned int)etoken->size-OAUTH_AEAD_NONCE_SIZE - OAUTH_AEAD_TAG_SIZE;
+		const unsigned char* nonce = ((const unsigned char*)etoken->token) + encoded_field_size + OAUTH_AEAD_TAG_SIZE;
+
+		unsigned char tag[OAUTH_AEAD_TAG_SIZE];
+		ns_bcopy(((const unsigned char*)etoken->token) + encoded_field_size, tag ,sizeof(tag));
+
+		unsigned char decoded_field[MAX_ENCODED_OAUTH_TOKEN_SIZE];
+
+		const EVP_CIPHER * cipher = get_cipher_type(key->as_rs_alg);
+		if(!cipher) {
+			OAUTH_ERROR("%s: Cannot find cipher for algorithm: %d\n",__FUNCTION__,(int)key->as_rs_alg);
+			return -1;
+		}
+
+		EVP_CIPHER_CTX ctx;
+		EVP_CIPHER_CTX_init(&ctx);
+		/* Initialize the decryption operation. */
+		if(1 != EVP_DecryptInit_ex(&ctx, cipher, NULL, NULL, NULL)) {
+			OAUTH_ERROR("%s: Cannot initialize decryption\n",__FUNCTION__);
+			return -1;
+		}
+
+		//EVP_CIPHER_CTX_set_padding(&ctx,1);
+
+		/* Set IV length if default 12 bytes (96 bits) is not appropriate */
+		if(1 != EVP_CIPHER_CTX_ctrl(&ctx, EVP_CTRL_GCM_SET_IVLEN, OAUTH_AEAD_NONCE_SIZE, NULL)) {
+			OAUTH_ERROR("%s: Cannot set nonce length\n",__FUNCTION__);
+			return -1;
+		}
+
+		/* Initialize key and IV */
+		if(1 != EVP_DecryptInit_ex(&ctx, NULL, NULL, (const unsigned char *)key->as_rs_key, nonce)) {
+			OAUTH_ERROR("%s: Cannot set nonce\n",__FUNCTION__);
+			return -1;
+		}
+
+		/* Set expected tag value. A restriction in OpenSSL 1.0.1c and earlier
+		  +         * required the tag before any AAD or ciphertext */
+		EVP_CIPHER_CTX_ctrl (&ctx, EVP_CTRL_GCM_SET_TAG, OAUTH_AEAD_TAG_SIZE, tag);
+
+		int outl=0;
+		size_t sn_len = strlen((const char*)server_name);
+
+		/* Provide any AAD data. This can be called zero or more times as
+		 * required
+		 */
+		if(1 != my_EVP_DecryptUpdate(&ctx, NULL, &outl, server_name, (int)sn_len)) {
+			OAUTH_ERROR("%s: Cannot decrypt update server_name: %s, len=%d\n",__FUNCTION__,server_name,(int)sn_len);
+			return -1;
+		}
+		if(1 != my_EVP_DecryptUpdate(&ctx, decoded_field, &outl, encoded_field, (int)encoded_field_size)) {
+			OAUTH_ERROR("%s: Cannot decrypt update\n",__FUNCTION__);
+			return -1;
+		}
+
+		int tmp_outl = 0;
+		if(EVP_DecryptFinal_ex(&ctx, decoded_field + outl, &tmp_outl)<1) {
+			EVP_CIPHER_CTX_cleanup(&ctx);
+			OAUTH_ERROR("%s: token integrity check failed\n",__FUNCTION__);
+			return -1;
+		}
+		outl += tmp_outl;
+
+		EVP_CIPHER_CTX_cleanup(&ctx);
+
+		size_t len = 0;
+
+		dtoken->enc_block.key_length = nswap16(*((uint16_t*)(decoded_field+len)));
+		len += 2;
+
+		ns_bcopy(decoded_field+len,dtoken->enc_block.mac_key,dtoken->enc_block.key_length);
+		len += dtoken->enc_block.key_length;
+
+		dtoken->enc_block.timestamp = nswap64(*((uint64_t*)(decoded_field+len)));
+		len += 8;
+
+		dtoken->enc_block.lifetime = nswap32(*((uint32_t*)(decoded_field+len)));
+		len += 4;
+
+		return 0;
+	}
+	return -1;
+}
+
+#endif
+
+int encode_oauth_token(const u08bits *server_name, encoded_oauth_token *etoken, const oauth_key *key, const oauth_token *dtoken, const u08bits *nonce)
+{
+	UNUSED_ARG(nonce);
+	if(server_name && etoken && key && dtoken) {
+		switch(key->as_rs_alg) {
+		case AES_256_CBC:
+		case AES_128_CBC:
+			return encode_oauth_token_normal(server_name, etoken,key,dtoken);
+#if !defined(TURN_NO_GCM)
+		case AEAD_AES_128_GCM:
+		case AEAD_AES_256_GCM:
+			return encode_oauth_token_aead(server_name, etoken,key,dtoken,nonce);
+#endif
+		default:
+			fprintf(stderr,"Unsupported AS_RS algorithm: %d\n",(int)key->as_rs_alg);
+			break;
+		};
+	}
+	return -1;
+}
+
+int decode_oauth_token(const u08bits *server_name, const encoded_oauth_token *etoken, const oauth_key *key, oauth_token *dtoken)
+{
+	if(server_name && etoken && key && dtoken) {
+		switch(key->as_rs_alg) {
+		case AES_256_CBC:
+		case AES_128_CBC:
+			return decode_oauth_token_normal(server_name, etoken,key,dtoken);
+#if !defined(TURN_NO_GCM)
+		case AEAD_AES_128_GCM:
+		case AEAD_AES_256_GCM:
+			return decode_oauth_token_aead(server_name, etoken,key,dtoken);
+#endif
+		default:
+			fprintf(stderr,"Unsupported AS_RS algorithm: %d\n",(int)key->as_rs_alg);
+			break;
+		};
+	}
+	return -1;
 }
 
 ///////////////////////////////////////////////////////////////

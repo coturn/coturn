@@ -46,6 +46,7 @@
 
 #include <openssl/ssl.h>
 #include <openssl/opensslv.h>
+#include <openssl/rand.h>
 
 /////////////// extern definitions /////////////////////
 
@@ -97,6 +98,14 @@ band_limit_t bps = 0;
 
 int dual_allocation = 0;
 
+int oauth = 0;
+oauth_key okey_array[2];
+
+static oauth_key_data_raw okdr_array[2] = {
+		{"north","Y2FybGVvbg==",0,0,"SHA-256","AES-256-CBC","","HMAC-SHA-256-128",""},
+		{"oldempire","YXVsY3Vz",0,0,"SHA-256","AEAD-AES-256-GCM","","",""}
+};
+
 //////////////// local definitions /////////////////
 
 static char Usage[] =
@@ -130,6 +139,7 @@ static char Usage[] =
   "	-G	Generate extra requests (create permissions, channel bind).\n"
   " -B  Random disconnect after a few initial packets.\n"
   " -Z  Dual allocation.\n"
+  " -J	Use oAuth with default test key kid='north'.\n"
   "Options:\n"
   "	-l	Message length (Default: 100 Bytes).\n"
   "	-i	Certificate file (for secure connections only, optional).\n"
@@ -204,8 +214,35 @@ int main(int argc, char **argv)
 
 	ns_bzero(local_addr, sizeof(local_addr));
 
-	while ((c = getopt(argc, argv, "a:d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:E:F:o:ZvsyhcxXgtTSAPDNOUHMRIGB")) != -1) {
+	while ((c = getopt(argc, argv, "a:d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:E:F:o:ZvsyhcxXgtTSAPDNOUHMRIGBJ")) != -1) {
 		switch (c){
+		case 'J': {
+
+			oauth = 1;
+
+			if(use_short_term) {
+				fprintf(stderr,"Short-term mechanism cannot be used together with oAuth.\n");
+				exit(-1);
+			}
+
+			oauth_key_data okd_array[2];
+			convert_oauth_key_data_raw(&okdr_array[0], &okd_array[0]);
+			convert_oauth_key_data_raw(&okdr_array[1], &okd_array[1]);
+
+			char err_msg[1025] = "\0";
+			size_t err_msg_size = sizeof(err_msg) - 1;
+
+			if (convert_oauth_key_data(&okd_array[0], &okey_array[0], err_msg, err_msg_size) < 0) {
+				fprintf(stderr, "%s\n", err_msg);
+				exit(-1);
+			}
+
+			if (convert_oauth_key_data(&okd_array[1], &okey_array[1], err_msg, err_msg_size) < 0) {
+				fprintf(stderr, "%s\n", err_msg);
+				exit(-1);
+			}
+		}
+			break;
 		case 'a':
 			bps = (band_limit_t)atol(optarg);
 			break;
@@ -262,6 +299,10 @@ int main(int argc, char **argv)
 			dual_allocation = 1;
 			break;
 		case 'A':
+			if(oauth) {
+				fprintf(stderr,"Short-term mechanism cannot be used together with oAuth.\n");
+				exit(-1);
+			}
 			use_short_term = 1;
 			break;
 		case 'u':

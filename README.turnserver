@@ -190,6 +190,8 @@ Flags:
 			This option can be used with long-term credentials mechanisms only -
 			it does not make much sense with the short-term mechanism.
 			
+--oauth			Support oAuth authentication, as in the third-party TURN specs document.
+			
 --dh566			Use 566 bits predefined DH TLS key. Default size of the key is 1066.
 
 --dh2066		Use 2066 bits predefined DH TLS key. Default size of the key is 1066.
@@ -420,6 +422,10 @@ Options with required values:
 			value can be changed on-the-fly by a separate program, so this is why
 			that other mode is dynamic. Multiple shared secrets can be used
 			(both in the database and in the "static" fashion).
+			
+--server-name		Server name used for
+			the oAuth authentication purposes.
+			The default value is the realm name.
 
 --cert			Certificate file, PEM format. Same file 
 			search rules applied as for the configuration 
@@ -928,3 +934,5 @@ https://groups.google.com/forum/?fromgroups=#!forum/turn-server-project-rfc5766-
 	Mutsutoshi Yoshimoto <mutsutoshi.yoshimoto@mixi.co.jp>
 
 	Federico Pinna <fpinna@vivocha.com>
+
+	Bradley T. Hughes <bradleythughes@fastmail.fm>

@@ -360,9 +360,9 @@ static int clnet_allocate(int verbose,
 		}
 
 		if(!dos)
-			stun_set_allocate_request(&message, 800, af4, af6, relay_transport, mobility);
+			stun_set_allocate_request(&message, UCLIENT_SESSION_LIFETIME, af4, af6, relay_transport, mobility);
 		else
-			stun_set_allocate_request(&message, 300, af4, af6, relay_transport, mobility);
+			stun_set_allocate_request(&message, UCLIENT_SESSION_LIFETIME/3, af4, af6, relay_transport, mobility);
 
 		if(bps)
 			stun_attr_add_bandwidth_str(message.buf, (size_t*)(&(message.len)), bps);
@@ -433,13 +433,8 @@ static int clnet_allocate(int verbose,
 						allocate_finished = 1;
 
 						if(clnet_info->nonce[0] || use_short_term) {
-							SHATYPE sht = clnet_info->shatype;
-							if(stun_check_message_integrity_str(get_turn_credentials_type(),
-											message.buf, (size_t)(message.len), g_uname,
-										clnet_info->realm, g_upwd, sht)<1) {
-								TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Wrong integrity in allocate message received from server\n");
+							if(check_integrity(clnet_info, &message)<0)
 								return -1;
-							}
 						}
 
 						if (verbose) {
@@ -500,13 +495,14 @@ static int clnet_allocate(int verbose,
 						current_reservation_token = rtv;
 						if (verbose)
 							TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-									"%s: rtv=%llu\n", __FUNCTION__, rtv);
+								      "%s: rtv=%llu\n", __FUNCTION__, (long long unsigned int)rtv);
 
 						read_mobility_ticket(clnet_info, &message);
 
 					} else if (stun_is_challenge_response_str(message.buf, (size_t)message.len,
 									&err_code,err_msg,sizeof(err_msg),
-									clnet_info->realm,clnet_info->nonce)) {
+									clnet_info->realm,clnet_info->nonce,
+									clnet_info->server_name, &(clnet_info->oauth))) {
 						if(err_code == SHA_TOO_WEAK_ERROR_CODE && (clnet_info->shatype == SHATYPE_SHA1)) {
 							clnet_info->shatype = SHATYPE_SHA256;
 							recalculate_restapi_hmac();
@@ -524,13 +520,8 @@ static int clnet_allocate(int verbose,
 						if(err_code == 300) {
 
 							if(clnet_info->nonce[0] || use_short_term) {
-								SHATYPE sht = clnet_info->shatype;
-								if(stun_check_message_integrity_str(get_turn_credentials_type(),
-											message.buf, (size_t)(message.len), g_uname,
-											clnet_info->realm, g_upwd, sht)<1) {
-									TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Wrong integrity in allocate message received from server\n");
+								if(check_integrity(clnet_info, &message)<0)
 									return -1;
-								}
 							}
 
 							ioa_addr alternate_server;
@@ -551,7 +542,7 @@ static int clnet_allocate(int verbose,
 							return -1;
 						} else {
 							TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-									"trying allocate again...\n", err_code);
+									"trying allocate again %d...\n", err_code);
 							sleep(1);
 							reopen_socket = 1;
 						}
@@ -642,9 +633,8 @@ static int clnet_allocate(int verbose,
 
 			stun_buffer message;
 			stun_init_request(STUN_METHOD_REFRESH, &message);
-			uint32_t lt = htonl(600);
-			stun_attr_add(&message, STUN_ATTRIBUTE_LIFETIME, (const char*) &lt,
-					4);
+			uint32_t lt = htonl(UCLIENT_SESSION_LIFETIME);
+			stun_attr_add(&message, STUN_ATTRIBUTE_LIFETIME, (const char*) &lt, 4);
 
 			if(clnet_info->s_mobile_id[0]) {
 				stun_attr_add(&message, STUN_ATTRIBUTE_MOBILITY_TICKET, (const char*)clnet_info->s_mobile_id, strlen(clnet_info->s_mobile_id));
@@ -665,6 +655,11 @@ static int clnet_allocate(int verbose,
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "refresh sent\n");
 					}
 					refresh_sent = 1;
+
+					if(clnet_info->s_mobile_id[0]) {
+						usleep(10000);
+						send_buffer(clnet_info, &message, 0,0);
+					}
 				} else {
 					perror("send");
 					exit(1);
@@ -682,6 +677,10 @@ static int clnet_allocate(int verbose,
 
 				int len = recv_buffer(clnet_info, &message, 1, 0);
 
+				if(clnet_info->s_mobile_id[0]) {
+					len = recv_buffer(clnet_info, &message, 1, 0);
+				}
+
 				if (len > 0) {
 					if (verbose) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
@@ -698,7 +697,8 @@ static int clnet_allocate(int verbose,
 						}
 					} else if (stun_is_challenge_response_str(message.buf, (size_t)message.len,
 										&err_code,err_msg,sizeof(err_msg),
-										clnet_info->realm,clnet_info->nonce)) {
+										clnet_info->realm,clnet_info->nonce,
+										clnet_info->server_name, &(clnet_info->oauth))) {
 						if(err_code == SHA_TOO_WEAK_ERROR_CODE && (clnet_info->shatype == SHATYPE_SHA1)) {
 							clnet_info->shatype = SHATYPE_SHA256;
 							recalculate_restapi_hmac();
@@ -786,13 +786,8 @@ static int turn_channel_bind(int verbose, uint16_t *chn,
 					cb_received = 1;
 
 					if(clnet_info->nonce[0] || use_short_term) {
-						SHATYPE sht = clnet_info->shatype;
-						if(stun_check_message_integrity_str(get_turn_credentials_type(),
-										message.buf, (size_t)(message.len), g_uname,
-									clnet_info->realm, g_upwd, sht)<1) {
-							TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Wrong integrity in channel bind message received from server\n");
+						if(check_integrity(clnet_info, &message)<0)
 							return -1;
-						}
 					}
 
 					if (verbose) {
@@ -801,7 +796,8 @@ static int turn_channel_bind(int verbose, uint16_t *chn,
 					}
 				} else if (stun_is_challenge_response_str(message.buf, (size_t)message.len,
 										&err_code,err_msg,sizeof(err_msg),
-										clnet_info->realm,clnet_info->nonce)) {
+										clnet_info->realm,clnet_info->nonce,
+										clnet_info->server_name, &(clnet_info->oauth))) {
 					if(err_code == SHA_TOO_WEAK_ERROR_CODE && (clnet_info->shatype == SHATYPE_SHA1)) {
 						clnet_info->shatype = SHATYPE_SHA256;
 						recalculate_restapi_hmac();
@@ -900,13 +896,8 @@ static int turn_create_permission(int verbose, app_ur_conn_info *clnet_info,
 					cp_received = 1;
 
 					if(clnet_info->nonce[0] || use_short_term) {
-						SHATYPE sht = clnet_info->shatype;
-						if(stun_check_message_integrity_str(get_turn_credentials_type(),
-										message.buf, (size_t)(message.len), g_uname,
-											clnet_info->realm, g_upwd, sht)<1) {
-							TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Wrong integrity in create permission message received from server\n");
+						if(check_integrity(clnet_info, &message)<0)
 							return -1;
-						}
 					}
 
 					if (verbose) {
@@ -914,7 +905,8 @@ static int turn_create_permission(int verbose, app_ur_conn_info *clnet_info,
 					}
 				} else if (stun_is_challenge_response_str(message.buf, (size_t)message.len,
 									&err_code,err_msg,sizeof(err_msg),
-									clnet_info->realm,clnet_info->nonce)) {
+									clnet_info->realm,clnet_info->nonce,
+									clnet_info->server_name, &(clnet_info->oauth))) {
 					if(err_code == SHA_TOO_WEAK_ERROR_CODE && (clnet_info->shatype == SHATYPE_SHA1)) {
 						clnet_info->shatype = SHATYPE_SHA256;
 						recalculate_restapi_hmac();
@@ -1486,13 +1478,8 @@ static int turn_tcp_connection_bind(int verbose, app_ur_conn_info *clnet_info, a
 				if (stun_is_success_response(&message)) {
 
 					if(clnet_info->nonce[0] || use_short_term) {
-						SHATYPE sht = clnet_info->shatype;
-						if(stun_check_message_integrity_str(get_turn_credentials_type(),
-										message.buf, (size_t)(message.len), g_uname,
-									clnet_info->realm, g_upwd, sht)<1) {
-							TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Wrong integrity in connect bind message received from server\n");
+						if(check_integrity(clnet_info, &message)<0)
 							return -1;
-						}
 					}
 
 					if(stun_get_method(&message)!=STUN_METHOD_CONNECTION_BIND)
@@ -1504,7 +1491,8 @@ static int turn_tcp_connection_bind(int verbose, app_ur_conn_info *clnet_info, a
 					atc->tcp_data_bound = 1;
 				} else if (stun_is_challenge_response_str(message.buf, (size_t)message.len,
 										&err_code,err_msg,sizeof(err_msg),
-										clnet_info->realm,clnet_info->nonce)) {
+										clnet_info->realm,clnet_info->nonce,
+										clnet_info->server_name, &(clnet_info->oauth))) {
 					if(err_code == SHA_TOO_WEAK_ERROR_CODE && (clnet_info->shatype == SHATYPE_SHA1)) {
 						clnet_info->shatype = SHATYPE_SHA256;
 						recalculate_restapi_hmac();

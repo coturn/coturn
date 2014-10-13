@@ -29,6 +29,8 @@
  */
 
 #include "ns_turn_ioaddr.h"
+#include <netdb.h>
+#include <string.h>
 
 //////////////////////////////////////////////////////////////
 
@@ -202,7 +204,61 @@ int make_ioa_addr(const u08bits* saddr, int port, ioa_addr *addr) {
 #endif
     addr->s6.sin6_port = nswap16(port);
   } else {
-    return -1;
+    struct addrinfo addr_hints;
+    struct addrinfo *addr_result = NULL;
+    int err;
+
+    memset(&addr_hints, 0, sizeof(struct addrinfo));
+    addr_hints.ai_family = AF_UNSPEC;    /* Allow IPv4 or IPv6 */
+    addr_hints.ai_socktype = SOCK_DGRAM; /* Datagram socket */
+    addr_hints.ai_flags = AI_PASSIVE;    /* For wildcard IP address */
+    addr_hints.ai_protocol = 0;          /* Any protocol */
+    addr_hints.ai_canonname = NULL;
+    addr_hints.ai_addr = NULL;
+    addr_hints.ai_next = NULL;
+
+    err = getaddrinfo((const char*)saddr, NULL, &addr_hints, &addr_result);
+    if ((err != 0)||(!addr_result)) {
+      fprintf(stderr,"error resolving '%s' hostname: %s\n",saddr,gai_strerror(err));
+      return -1;
+    }
+    
+    int family = AF_INET;
+    struct addrinfo *addr_result_orig = addr_result;
+    int found = 0;
+
+    beg_af:
+
+    while(!found && addr_result) {
+
+    	if(addr_result->ai_family == family) {
+    		ns_bcopy(addr_result->ai_addr, addr, addr_result->ai_addrlen);
+    		if (addr_result->ai_family == AF_INET) {
+    			addr->s4.sin_port = nswap16(port);
+#if defined(TURN_HAS_SIN_LEN) /* tested when configured */
+    			addr->s4.sin_len = sizeof(struct sockaddr_in);
+#endif
+    		} else if (addr_result->ai_family == AF_INET6) {
+    			addr->s6.sin6_port = nswap16(port);
+#if defined(SIN6_LEN) /* this define is required by IPv6 if used */
+    			addr->s6.sin6_len = sizeof(struct sockaddr_in6);
+#endif
+    		} else {
+    			continue;
+    		}
+    		found = 1;
+    	}
+
+    	addr_result = addr_result->ai_next;
+    }
+
+    if(!found && family == AF_INET) {
+    	family = AF_INET6;
+    	addr_result = addr_result_orig;
+    	goto beg_af;
+    }
+    
+    freeaddrinfo(addr_result_orig);
   }
 
   return 0;
@@ -257,7 +313,7 @@ int make_ioa_addr_from_full_string(const u08bits* saddr, int default_port, ioa_a
 			port = default_port;
 		ret = make_ioa_addr((u08bits*)sa,port,addr);
 	}
-	turn_free(s,strlen(s)+1);
+	free(s);
 	return ret;
 }
 
@@ -437,10 +493,10 @@ static size_t msz = 0;
 void ioa_addr_add_mapping(ioa_addr *apub, ioa_addr *apriv)
 {
 	size_t new_size = msz + sizeof(ioa_addr*);
-	public_addrs = (ioa_addr**)turn_realloc(public_addrs, msz, new_size);
-	private_addrs = (ioa_addr**)turn_realloc(private_addrs, msz, new_size);
-	public_addrs[mcount]=(ioa_addr*)turn_malloc(sizeof(ioa_addr));
-	private_addrs[mcount]=(ioa_addr*)turn_malloc(sizeof(ioa_addr));
+	public_addrs = (ioa_addr**)realloc(public_addrs, new_size);
+	private_addrs = (ioa_addr**)realloc(private_addrs, new_size);
+	public_addrs[mcount]=(ioa_addr*)malloc(sizeof(ioa_addr));
+	private_addrs[mcount]=(ioa_addr*)malloc(sizeof(ioa_addr));
 	addr_cpy(public_addrs[mcount],apub);
 	addr_cpy(private_addrs[mcount],apriv);
 	++mcount;

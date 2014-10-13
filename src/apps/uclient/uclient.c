@@ -38,6 +38,7 @@
 #include <time.h>
 
 #include <openssl/err.h>
+#include <openssl/rand.h>
 
 static int verbose_packets=0;
 
@@ -510,13 +511,9 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 		} else if (stun_is_indication(&(elem->in_buffer))) {
 
 			if(use_short_term) {
-				SHATYPE sht = elem->pinfo.shatype;
-				if(stun_check_message_integrity_str(get_turn_credentials_type(),
-							elem->in_buffer.buf, (size_t)(elem->in_buffer.len), g_uname,
-							elem->pinfo.realm, g_upwd, sht)<1) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Wrong integrity in indication message 0x%x received from server\n",(unsigned int)stun_get_method(&(elem->in_buffer)));
+
+				if(check_integrity(&(elem->pinfo), &(elem->in_buffer))<0)
 					return -1;
-				}
 			}
 
 			uint16_t method = stun_get_method(&elem->in_buffer);
@@ -569,13 +566,8 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 		} else if (stun_is_success_response(&(elem->in_buffer))) {
 
 			if(elem->pinfo.nonce[0] || use_short_term) {
-				SHATYPE sht = elem->pinfo.shatype;
-				if(stun_check_message_integrity_str(get_turn_credentials_type(),
-								elem->in_buffer.buf, (size_t)(elem->in_buffer.len), g_uname,
-								elem->pinfo.realm, g_upwd, sht)<1) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Wrong integrity in success message 0x%x received from server\n",(unsigned int)stun_get_method(&(elem->in_buffer)));
+				if(check_integrity(&(elem->pinfo), &(elem->in_buffer))<0)
 					return -1;
-				}
 			}
 
 			if(is_TCP_relay() && (stun_get_method(&(elem->in_buffer)) == STUN_METHOD_CONNECT)) {
@@ -595,7 +587,8 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 			return rc;
 		} else if (stun_is_challenge_response_str(elem->in_buffer.buf, (size_t)elem->in_buffer.len,
 							&err_code,err_msg,sizeof(err_msg),
-							clnet_info->realm,clnet_info->nonce)) {
+							clnet_info->realm,clnet_info->nonce,
+							clnet_info->server_name, &(clnet_info->oauth))) {
 			if(err_code == SHA_TOO_WEAK_ERROR_CODE && (elem->pinfo.shatype == SHATYPE_SHA1)) {
 				elem->pinfo.shatype = SHATYPE_SHA256;
 				recalculate_restapi_hmac();
@@ -1437,9 +1430,93 @@ int add_integrity(app_ur_conn_info *clnet_info, stun_buffer *message)
 			return -1;
 		}
 	} else if(clnet_info->nonce[0]) {
-		if(stun_attr_add_integrity_by_user_str(message->buf, (size_t*)&(message->len), g_uname,
+
+		if(oauth && clnet_info->oauth) {
+
+			u16bits method = stun_get_method_str(message->buf, message->len);
+
+			int cok = clnet_info->cok;
+
+			if(((method == STUN_METHOD_ALLOCATE) || (method == STUN_METHOD_REFRESH)) || !(clnet_info->key_set))
+			{
+
+				cok=(random())%2;
+				if(cok<0) cok=-cok;
+				clnet_info->cok = cok;
+				oauth_token otoken;
+				encoded_oauth_token etoken;
+				u08bits nonce[12];
+				RAND_bytes((unsigned char*)nonce,12);
+				long halflifetime = OAUTH_SESSION_LIFETIME/2;
+				long random_lifetime = 0;
+				while(!random_lifetime) {
+					random_lifetime = random();
+				}
+				if(random_lifetime<0) random_lifetime=-random_lifetime;
+				random_lifetime = random_lifetime % halflifetime;
+				otoken.enc_block.lifetime =  (uint32_t)(halflifetime + random_lifetime);
+				otoken.enc_block.timestamp = ((uint64_t)turn_time()) << 16;
+				if(shatype == SHATYPE_SHA256) {
+					otoken.enc_block.key_length = 32;
+				} else {
+					otoken.enc_block.key_length = 20;
+				}
+				RAND_bytes((unsigned char *)(otoken.enc_block.mac_key), otoken.enc_block.key_length);
+				if(encode_oauth_token(clnet_info->server_name, &etoken, &(okey_array[cok]), &otoken, nonce)<0) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO," Cannot encode token\n");
+					return -1;
+				}
+				stun_attr_add_str(message->buf, (size_t*)&(message->len), STUN_ATTRIBUTE_OAUTH_ACCESS_TOKEN,
+					(const u08bits*)etoken.token, (int)etoken.size);
+
+				ns_bcopy(otoken.enc_block.mac_key,clnet_info->key,otoken.enc_block.key_length);
+				clnet_info->key_set = 1;
+			}
+
+			if(stun_attr_add_integrity_by_key_str(message->buf, (size_t*)&(message->len), (u08bits*)okey_array[cok].kid,
+					clnet_info->realm, clnet_info->key, clnet_info->nonce, clnet_info->shatype)<0) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO," Cannot add integrity to the message\n");
+				return -1;
+			}
+
+			//self-test:
+			{
+				st_password_t pwd;
+				if(stun_check_message_integrity_by_key_str(get_turn_credentials_type(),
+								message->buf, (size_t)(message->len), clnet_info->key, pwd, clnet_info->shatype, NULL)<1) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR," Self-test of integrity does not comple correctly !\n");
+					return -1;
+				}
+			}
+		} else {
+			if(stun_attr_add_integrity_by_user_str(message->buf, (size_t*)&(message->len), g_uname,
 					clnet_info->realm, g_upwd, clnet_info->nonce, clnet_info->shatype)<0) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO," Cannot add integrity to the message\n");
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO," Cannot add integrity to the message\n");
+				return -1;
+			}
+		}
+	}
+
+	return 0;
+}
+
+int check_integrity(app_ur_conn_info *clnet_info, stun_buffer *message)
+{
+	SHATYPE sht = clnet_info->shatype;
+
+	if(oauth && clnet_info->oauth) {
+
+		st_password_t pwd;
+
+		return stun_check_message_integrity_by_key_str(get_turn_credentials_type(),
+				message->buf, (size_t)(message->len), clnet_info->key, pwd, sht, NULL);
+
+	} else {
+
+		if(stun_check_message_integrity_str(get_turn_credentials_type(),
+			message->buf, (size_t)(message->len), g_uname,
+			clnet_info->realm, g_upwd, sht)<1) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Wrong integrity in a message received from server\n");
 			return -1;
 		}
 	}

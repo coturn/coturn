@@ -39,6 +39,178 @@
 #include "apputils.h"
 #include "stun_buffer.h"
 
+//////////// OAUTH //////////////////
+
+static const char* shas[]={"SHA1",
+#if !defined(OPENSSL_NO_SHA256) && defined(SHA256_DIGEST_LENGTH)
+			   "SHA256",
+#endif
+			   NULL};
+static const char* encs[]={"AES-256-CBC","AES-128-CBC",
+#if !defined(TURN_NO_GCM)
+		"AEAD_AES_128_GCM", "AEAD_AES_256_GCM",
+#endif
+		NULL};
+static const char* hmacs[]={"HMAC-SHA-1",
+#if !defined(OPENSSL_NO_SHA256) && defined(SHA256_DIGEST_LENGTH)
+			    "HMAC-SHA-256","HMAC-SHA-256-128",
+#endif
+			    NULL};
+
+static int print_extra = 0;
+
+void print_field5769(const char* name, const void* f0, size_t len);
+void print_field5769(const char* name, const void* f0, size_t len) {
+  const unsigned char* f = (const unsigned char*)f0;
+  printf("\nfield %s %lu==>>\n",name,(unsigned long)len);
+  size_t i;
+  for(i = 0;i<len;++i) {
+    printf("\\x%x",(unsigned int)f[i]);
+  }
+  printf("\n<<==field %s\n",name);
+}
+
+static int check_oauth(void) {
+
+	const char server_name[33] = "blackdow.carleon.gov";
+
+	size_t i_hmacs,i_shas,i_encs;
+
+	const char long_term_password[33] = "HGkj32KJGiuy098sdfaqbNjOiaz71923";
+
+	size_t ltp_output_length=0;
+
+	const char* base64encoded_ltp = base64_encode((const unsigned char *)long_term_password,
+						      strlen(long_term_password),
+						      &ltp_output_length);
+
+	const char mac_key[33] = "ZksjpweoixXmvn67534m";
+	const size_t mac_key_length=strlen(mac_key);
+	const uint64_t token_timestamp = (uint64_t)(92470300704768LL);
+	const uint32_t token_lifetime = 3600;
+
+	const char kid[33] = "2783466234";
+	const turn_time_t key_timestamp = 1234567890;
+	const turn_time_t key_lifetime = 3600;
+
+	const char aead_nonce[OAUTH_AEAD_NONCE_SIZE+1] = "h4j3k2l2n4b5";
+
+	for (i_hmacs = 0; hmacs[i_hmacs]; ++i_hmacs) {
+
+		for (i_shas = 0; shas[i_shas]; ++i_shas) {
+
+			for (i_encs = 0; encs[i_encs]; ++i_encs) {
+
+				printf("oauth token %s:%s:%s:",hmacs[i_hmacs],shas[i_shas],encs[i_encs]);
+
+				if(print_extra)
+					printf("\n");
+
+				oauth_token ot;
+				ot.enc_block.key_length = (uint16_t)mac_key_length;
+				STRCPY(ot.enc_block.mac_key,mac_key);
+				ot.enc_block.timestamp = token_timestamp;
+				ot.enc_block.lifetime = token_lifetime;
+
+				oauth_token dot;
+				ns_bzero((&dot),sizeof(dot));
+				oauth_key key;
+				ns_bzero(&key,sizeof(key));
+
+				{
+					oauth_key_data okd;
+					ns_bzero(&okd,sizeof(okd));
+
+					{
+					  oauth_key_data_raw okdr;
+					  ns_bzero(&okdr,sizeof(okdr));
+
+						STRCPY(okdr.kid,kid);
+						STRCPY(okdr.ikm_key,base64encoded_ltp);
+						STRCPY(okdr.as_rs_alg, encs[i_encs]);
+						STRCPY(okdr.auth_alg, hmacs[i_hmacs]);
+						STRCPY(okdr.hkdf_hash_func, shas[i_shas]);
+						okdr.timestamp = key_timestamp;
+						okdr.lifetime = key_lifetime;
+
+						convert_oauth_key_data_raw(&okdr, &okd);
+
+						char err_msg[1025] = "\0";
+						size_t err_msg_size = sizeof(err_msg) - 1;
+
+						if (convert_oauth_key_data(&okd, &key, err_msg,
+								err_msg_size) < 0) {
+							fprintf(stderr, "%s\n", err_msg);
+							return -1;
+						}
+					}
+				}
+
+				if(print_extra) {
+					print_field5769("AS-RS",key.as_rs_key,key.as_rs_key_size);
+					print_field5769("AUTH",key.auth_key,key.auth_key_size);
+				}
+
+				{
+					encoded_oauth_token etoken;
+					ns_bzero(&etoken,sizeof(etoken));
+
+					if (encode_oauth_token((const u08bits *) server_name, &etoken,
+							&key, &ot, (const u08bits*)aead_nonce) < 0) {
+						fprintf(stderr, "%s: cannot encode oauth token\n",
+								__FUNCTION__);
+						return -1;
+					}
+
+					if(print_extra) {
+						print_field5769("encoded token",etoken.token,etoken.size);
+					}
+
+					if (decode_oauth_token((const u08bits *) server_name, &etoken,
+							&key, &dot) < 0) {
+						fprintf(stderr, "%s: cannot decode oauth token\n",
+								__FUNCTION__);
+						return -1;
+					}
+				}
+
+				if (strcmp((char*) ot.enc_block.mac_key,
+						(char*) dot.enc_block.mac_key)) {
+					fprintf(stderr, "%s: wrong mac key: %s, must be %s\n",
+							__FUNCTION__, (char*) dot.enc_block.mac_key,
+							(char*) ot.enc_block.mac_key);
+					return -1;
+				}
+
+				if (ot.enc_block.key_length != dot.enc_block.key_length) {
+					fprintf(stderr, "%s: wrong key length: %d, must be %d\n",
+							__FUNCTION__, (int) dot.enc_block.key_length,
+							(int) ot.enc_block.key_length);
+					return -1;
+				}
+				if (ot.enc_block.timestamp != dot.enc_block.timestamp) {
+					fprintf(stderr, "%s: wrong timestamp: %llu, must be %llu\n",
+							__FUNCTION__,
+							(unsigned long long) dot.enc_block.timestamp,
+							(unsigned long long) ot.enc_block.timestamp);
+					return -1;
+				}
+				if (ot.enc_block.lifetime != dot.enc_block.lifetime) {
+					fprintf(stderr, "%s: wrong lifetime: %lu, must be %lu\n",
+							__FUNCTION__,
+							(unsigned long) dot.enc_block.lifetime,
+							(unsigned long) ot.enc_block.lifetime);
+					return -1;
+				}
+
+				printf("OK\n");
+			}
+		}
+	}
+
+	return 0;
+}
+
 //////////////////////////////////////////////////
 
 static SHATYPE shatype = SHATYPE_SHA1;
@@ -49,6 +221,9 @@ int main(int argc, const char **argv)
 
 	UNUSED_ARG(argc);
 	UNUSED_ARG(argv);
+
+	if(argc>1)
+		print_extra = 1;
 
 	set_logfile("stdout");
 	set_system_parameters(0);
@@ -399,6 +574,11 @@ int main(int argc, const char **argv)
 				exit(-1);
 			}
 		}
+	}
+
+	{
+		if(check_oauth()<0)
+			exit(-1);
 	}
 
 	return 0;
