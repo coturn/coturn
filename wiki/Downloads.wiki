@@ -5,8 +5,7 @@
 
   * oAuth security experimental implementation;
   * The "TLS renegotiation" DoS attack prevention implemented;
-  * FQDN as relay-ip and listener-ip parameters (issue 6)
-    (patch provided by Iñaki Baz Castillo);
+  * FQDN as relay-ip and listener-ip parameters (issue 6) (patch provided by Iñaki Baz Castillo);
   * redis user key operation fixed.
   * redis, mysql and psql db operations fixed.
   * SHA-256 memory leak fixed.
