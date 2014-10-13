@@ -31,8 +31,8 @@
 #ifndef __IOADEFS__
 #define __IOADEFS__
 
-#define TURN_SERVER_VERSION "4.1.2.1"
-#define TURN_SERVER_VERSION_NAME "Vitari"
+#define TURN_SERVER_VERSION "4.2.1.2"
+#define TURN_SERVER_VERSION_NAME "Monza"
 #define TURN_SOFTWARE "Coturn-" TURN_SERVER_VERSION " '" TURN_SERVER_VERSION_NAME "'"
 
 #if (defined(__unix__) || defined(unix)) && !defined(USG)
@@ -76,6 +76,7 @@ extern "C" {
 
 #define ns_bcopy(src,dst,sz) bcopy((src),(dst),(sz))
 #define ns_bzero(ptr,sz) bzero((ptr),(sz))
+#define ns_bcmp(ptr1,ptr2,sz) bcmp((ptr1),(ptr2),(sz))
 
 #define nswap16(s) ntohs(s)
 #define nswap32(ul) ntohl(ul)
@@ -110,10 +111,40 @@ static inline u64bits _ioa_ntoh64(u64bits v)
 #define ioa_ntoh64 _ioa_ntoh64
 #define ioa_hton64 _ioa_ntoh64
 
-#define turn_malloc(sz) malloc(sz)
-#define turn_free(ptr,sz) free(ptr)
-#define turn_realloc(ptr, old_sz, new_sz) realloc((ptr),(new_sz))
-#define turn_calloc(number, sz) calloc((number),(sz))
+#if defined(TURN_MEMORY_DEBUG)
+
+#if defined(TURN_LOG_FUNC)
+#undef TURN_LOG_FUNC
+#endif
+
+#define TURN_LOG_FUNC(level, ...) printf (__VA_ARGS__)
+
+  void tm_print_func(void);
+  void *turn_malloc_func(size_t sz, const char* file, int line);
+  void *turn_realloc_func(void *ptr, size_t old_sz, size_t new_sz, const char* file, int line);
+  void turn_free_func(void *ptr, size_t sz, const char* file, int line);
+  void turn_free_simple(void *ptr);
+  void *turn_calloc_func(size_t number, size_t size, const char* file, int line);
+  char *turn_strdup_func(const char* s, const char* file, int line);
+
+#define tm_print() tm_print_func()
+#define turn_malloc(sz) turn_malloc_func((size_t)(sz),__FUNCTION__,__LINE__)
+#define turn_free(ptr,sz) turn_free_func((ptr),(size_t)(sz),__FUNCTION__,__LINE__)
+#define turn_realloc(ptr, old_sz, new_sz) turn_realloc_func((ptr),(size_t)(old_sz),(size_t)(new_sz),__FUNCTION__,__LINE__)
+#define turn_calloc(number, sz) turn_calloc_func((number),(size_t)(sz),__FUNCTION__,__LINE__)
+#define turn_strdup(s) turn_strdup_func((s),__FUNCTION__,__LINE__)
+
+#else
+
+#define tm_print() 
+#define turn_malloc(sz) malloc((size_t)(sz))
+#define turn_free(ptr,sz) free((ptr))
+#define turn_realloc(ptr, old_sz, new_sz) realloc((ptr),(size_t)(new_sz))
+#define turn_calloc(number, sz) calloc((number),(size_t)(sz))
+#define turn_strdup(s) strdup((s))
+#define turn_free_simple free
+
+#endif
 
 #define turn_time() ((turn_time_t)time(NULL))
 

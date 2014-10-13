@@ -52,8 +52,10 @@ static void mongo_logger(mongoc_log_level_t log_level, const char * log_domain, 
 	UNUSED_ARG(log_domain);
 	UNUSED_ARG(user_data);
 
-  TURN_LOG_LEVEL l;
+  TURN_LOG_LEVEL l = TURN_LOG_LEVEL_INFO;
   
+  UNUSED_ARG(l);
+
   switch(log_level) {
     case MONGOC_LOG_LEVEL_ERROR:
       l = TURN_LOG_LEVEL_ERROR;
@@ -72,7 +74,7 @@ static void MongoFree(MONGO * info) {
 	if(info) {
 		if(info->uri) mongoc_uri_destroy(info->uri);
 		if(info->client) mongoc_client_destroy(info->client);
-    turn_free(info, sizeof(MONGO));
+		turn_free(info, sizeof(MONGO));
 	}
 }
 
@@ -234,6 +236,79 @@ static int mongo_get_user_key(u08bits *usname, u08bits *realm, hmackey_t key) {
   bson_destroy(&fields);
   return ret;
 }
+
+static int mongo_get_oauth_key(const u08bits *kid, oauth_key_data_raw *key) {
+
+	mongoc_collection_t * collection = mongo_get_collection("oauth_key");
+
+	if (!collection)
+		return -1;
+
+	bson_t query;
+	bson_init(&query);
+	BSON_APPEND_UTF8(&query, "kid", (const char *)kid);
+
+	bson_t fields;
+	bson_init(&fields);
+	BSON_APPEND_INT32(&fields, "lifetime", 1);
+	BSON_APPEND_INT32(&fields, "timestamp", 1);
+	BSON_APPEND_INT32(&fields, "as_rs_alg", 1);
+	BSON_APPEND_INT32(&fields, "as_rs_key", 1);
+	BSON_APPEND_INT32(&fields, "auth_alg", 1);
+	BSON_APPEND_INT32(&fields, "auth_key", 1);
+	BSON_APPEND_INT32(&fields, "hkdf_hash_func", 1);
+	BSON_APPEND_INT32(&fields, "ikm_key", 1);
+
+	mongoc_cursor_t * cursor;
+	cursor = mongoc_collection_find(collection, MONGOC_QUERY_NONE, 0, 1, 0,
+			&query, &fields, NULL);
+
+	int ret = -1;
+
+	ns_bzero(key,sizeof(oauth_key_data_raw));
+	STRCPY(key->kid,kid);
+
+	if (!cursor) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+				"Error querying MongoDB collection 'oauth_key'\n");
+	} else {
+		const bson_t * item;
+		uint32_t length;
+		bson_iter_t iter;
+		if (mongoc_cursor_next(cursor, &item)) {
+			if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "as_rs_alg") && BSON_ITER_HOLDS_UTF8(&iter)) {
+				STRCPY(key->as_rs_alg,bson_iter_utf8(&iter, &length));
+			}
+			if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "as_rs_key") && BSON_ITER_HOLDS_UTF8(&iter)) {
+				STRCPY(key->as_rs_key,bson_iter_utf8(&iter, &length));
+			}
+			if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "auth_alg") && BSON_ITER_HOLDS_UTF8(&iter)) {
+				STRCPY(key->auth_alg,bson_iter_utf8(&iter, &length));
+			}
+			if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "auth_key") && BSON_ITER_HOLDS_UTF8(&iter)) {
+				STRCPY(key->auth_key,bson_iter_utf8(&iter, &length));
+			}
+			if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "ikm_key") && BSON_ITER_HOLDS_UTF8(&iter)) {
+				STRCPY(key->ikm_key,bson_iter_utf8(&iter, &length));
+			}
+			if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "hkdf_hash_func") && BSON_ITER_HOLDS_UTF8(&iter)) {
+				STRCPY(key->hkdf_hash_func,bson_iter_utf8(&iter, &length));
+			}
+			if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "timestamp") && BSON_ITER_HOLDS_INT64(&iter)) {
+				key->timestamp = (u64bits)bson_iter_int64(&iter);
+			}
+			if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "lifetime") && BSON_ITER_HOLDS_INT32(&iter)) {
+				key->lifetime = (u32bits)bson_iter_int32(&iter);
+			}
+			ret = 0;
+		}
+		mongoc_cursor_destroy(cursor);
+	}
+	mongoc_collection_destroy(collection);
+	bson_destroy(&query);
+	bson_destroy(&fields);
+	return ret;
+}
   
 static int mongo_get_user_pwd(u08bits *usname, st_password_t pwd) {
   mongoc_collection_t * collection = mongo_get_collection("turnusers_st"); 
@@ -302,7 +377,43 @@ static int mongo_set_user_key(u08bits *usname, u08bits *realm, const char *key) 
   int ret = -1;
   
   if (!mongoc_collection_update(collection, MONGOC_UPDATE_UPSERT, &query, &doc, NULL, NULL)) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error inserting/updating secret key information\n");
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error inserting/updating user key information\n");
+  } else {
+    ret = 0;
+  }
+  mongoc_collection_destroy(collection);
+  bson_destroy(&doc);
+  bson_destroy(&query);
+  return ret;
+}
+
+static int mongo_set_oauth_key(oauth_key_data_raw *key) {
+
+  mongoc_collection_t * collection = mongo_get_collection("oauth_key");
+
+  if(!collection)
+    return -1;
+
+  bson_t query;
+  bson_init(&query);
+  BSON_APPEND_UTF8(&query, "kid", (const char *)key->kid);
+
+  bson_t doc;
+  bson_init(&doc);
+  BSON_APPEND_UTF8(&doc, "kid", (const char *)key->kid);
+  BSON_APPEND_UTF8(&doc, "as_rs_alg", (const char *)key->as_rs_alg);
+  BSON_APPEND_UTF8(&doc, "as_rs_key", (const char *)key->as_rs_key);
+  BSON_APPEND_UTF8(&doc, "auth_alg", (const char *)key->auth_alg);
+  BSON_APPEND_UTF8(&doc, "auth_key", (const char *)key->auth_key);
+  BSON_APPEND_UTF8(&doc, "hkdf_hash_func", (const char *)key->hkdf_hash_func);
+  BSON_APPEND_UTF8(&doc, "ikm_key", (const char *)key->ikm_key);
+  BSON_APPEND_INT64(&doc, "timestamp", (int64_t)key->timestamp);
+  BSON_APPEND_INT32(&doc, "lifetime", (int32_t)key->lifetime);
+
+  int ret = -1;
+
+  if (!mongoc_collection_update(collection, MONGOC_UPDATE_UPSERT, &query, &doc, NULL, NULL)) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error inserting/updating oauth key information\n");
   } else {
     ret = 0;
   }
@@ -364,6 +475,29 @@ static int mongo_del_user(u08bits *usname, int is_st, u08bits *realm) {
   bson_destroy(&query);
   return ret;
 }
+
+static int mongo_del_oauth_key(const u08bits *kid) {
+
+  mongoc_collection_t * collection = mongo_get_collection("oauth_key");
+
+  if(!collection)
+    return -1;
+
+  bson_t query;
+  bson_init(&query);
+  BSON_APPEND_UTF8(&query, "kid", (const char *)kid);
+
+  int ret = -1;
+
+  if (!mongoc_collection_delete(collection, MONGOC_DELETE_SINGLE_REMOVE, &query, NULL, NULL)) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error deleting oauth key information\n");
+  } else {
+    ret = 0;
+  }
+  mongoc_collection_destroy(collection);
+  bson_destroy(&query);
+  return ret;
+}
   
 static int mongo_list_users(int is_st, u08bits *realm) {
   const char * collection_name = is_st ? "turnusers_st" : "turnusers_lt";
@@ -416,6 +550,92 @@ static int mongo_list_users(int is_st, u08bits *realm) {
     			}
     		}
     	}
+    }
+    mongoc_cursor_destroy(cursor);
+    ret = 0;
+  }
+  mongoc_collection_destroy(collection);
+  bson_destroy(&query);
+  bson_destroy(&fields);
+  return ret;
+}
+
+static int mongo_list_oauth_keys(void) {
+
+  const char * collection_name = "oauth_key";
+  mongoc_collection_t * collection = mongo_get_collection(collection_name);
+
+  if(!collection)
+    return -1;
+
+  bson_t query;
+  bson_init(&query);
+
+  bson_t child;
+  bson_append_document_begin(&query, "$orderby", -1, &child);
+  bson_append_int32(&child, "kid", -1, 1);
+  bson_append_document_end(&query, &child);
+  bson_append_document_begin(&query, "$query", -1, &child);
+  bson_append_document_end(&query, &child);
+
+  bson_t fields;
+  bson_init(&fields);
+  BSON_APPEND_INT32(&fields, "kid", 1);
+  BSON_APPEND_INT32(&fields, "lifetime", 1);
+  BSON_APPEND_INT32(&fields, "timestamp", 1);
+  BSON_APPEND_INT32(&fields, "as_rs_alg", 1);
+  BSON_APPEND_INT32(&fields, "as_rs_key", 1);
+  BSON_APPEND_INT32(&fields, "auth_alg", 1);
+  BSON_APPEND_INT32(&fields, "auth_key", 1);
+  BSON_APPEND_INT32(&fields, "hkdf_hash_func", 1);
+  BSON_APPEND_INT32(&fields, "ikm_key", 1);
+
+  mongoc_cursor_t * cursor;
+  cursor = mongoc_collection_find(collection, MONGOC_QUERY_NONE, 0, 0, 0, &query, &fields, NULL);
+
+  int ret = -1;
+
+  if (!cursor) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error querying MongoDB collection '%s'\n", collection_name);
+  } else {
+    const bson_t * item;
+	oauth_key_data_raw key_;
+	oauth_key_data_raw *key=&key_;
+    uint32_t length;
+    bson_iter_t iter;
+    while (mongoc_cursor_next(cursor, &item)) {
+
+    	ns_bzero(key,sizeof(oauth_key_data_raw));
+    	if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "kid") && BSON_ITER_HOLDS_UTF8(&iter)) {
+    		STRCPY(key->kid,bson_iter_utf8(&iter, &length));
+    	}
+    	if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "as_rs_alg") && BSON_ITER_HOLDS_UTF8(&iter)) {
+    	    STRCPY(key->as_rs_alg,bson_iter_utf8(&iter, &length));
+    	}
+    	if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "as_rs_key") && BSON_ITER_HOLDS_UTF8(&iter)) {
+    		STRCPY(key->as_rs_key,bson_iter_utf8(&iter, &length));
+    	}
+    	if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "auth_alg") && BSON_ITER_HOLDS_UTF8(&iter)) {
+    		STRCPY(key->auth_alg,bson_iter_utf8(&iter, &length));
+    	}
+    	if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "auth_key") && BSON_ITER_HOLDS_UTF8(&iter)) {
+    		STRCPY(key->auth_key,bson_iter_utf8(&iter, &length));
+    	}
+    	if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "ikm_key") && BSON_ITER_HOLDS_UTF8(&iter)) {
+    		STRCPY(key->ikm_key,bson_iter_utf8(&iter, &length));
+    	}
+    	if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "hkdf_hash_func") && BSON_ITER_HOLDS_UTF8(&iter)) {
+    		STRCPY(key->hkdf_hash_func,bson_iter_utf8(&iter, &length));
+    	}
+    	if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "timestamp") && BSON_ITER_HOLDS_INT64(&iter)) {
+    		key->timestamp = (u64bits)bson_iter_int64(&iter);
+    	}
+    	if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "lifetime") && BSON_ITER_HOLDS_INT32(&iter)) {
+    		key->lifetime = (u32bits)bson_iter_int32(&iter);
+    	}
+    	printf("  kid=%s, ikm_key=%s, timestamp=%llu, lifetime=%lu, hkdf_hash_func=%s, as_rs_alg=%s, as_rs_key=%s, auth_alg=%s, auth_key=%s\n",
+    		key->kid, key->ikm_key, (unsigned long long)key->timestamp, (unsigned long)key->lifetime, key->hkdf_hash_func,
+    		key->as_rs_alg, key->as_rs_key, key->auth_alg, key->auth_key);
     }
     mongoc_cursor_destroy(cursor);
     ret = 0;
@@ -642,7 +862,8 @@ static int mongo_set_realm_option_one(u08bits *realm, unsigned long value, const
   BSON_APPEND_UTF8(&query, "realm", (const char *)realm);
   bson_init(&doc);
   
-  char * _k = (char *)turn_malloc(9 + strlen(opt));
+  size_t klen = 9 + strlen(opt);
+  char * _k = (char *)turn_malloc(klen);
   strcpy(_k, "options.");
   strcat(_k, opt);
   
@@ -655,7 +876,7 @@ static int mongo_set_realm_option_one(u08bits *realm, unsigned long value, const
     BSON_APPEND_INT32(&child, _k, 1);
     bson_append_document_end(&doc, &child);
   }
-  free(_k);
+  turn_free(_k,klen);
   
   int ret = -1;
   
@@ -792,113 +1013,129 @@ static int mongo_get_ip_list(const char *kind, ip_range_list_t * list) {
   return ret;
 }
   
+
 static void mongo_reread_realms(secrets_list_t * realms_list) {
+
 	UNUSED_ARG(realms_list);
 
-  mongoc_collection_t * collection = mongo_get_collection("realm"); 
+	mongoc_collection_t * collection = mongo_get_collection("realm");
 
-	if(!collection)
-    return;
+	if (!collection)
+		return;
 
-  bson_t query;
-  bson_init(&query);
+	bson_t query;
+	bson_init(&query);
 
-  bson_t fields;
-  bson_init(&fields);
-  BSON_APPEND_INT32(&fields, "realm", 1);
-  BSON_APPEND_INT32(&fields, "origin", 1);
-  BSON_APPEND_INT32(&fields, "options", 1);
-  
-  mongoc_cursor_t * cursor;
-  cursor = mongoc_collection_find(collection, MONGOC_QUERY_NONE, 0, 0, 0, &query, &fields, NULL);
+	bson_t fields;
+	bson_init(&fields);
+	BSON_APPEND_INT32(&fields, "realm", 1);
+	BSON_APPEND_INT32(&fields, "origin", 1);
+	BSON_APPEND_INT32(&fields, "options", 1);
 
-  if (!cursor) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error querying MongoDB collection 'realm'\n");
-  } else {
-		ur_string_map *o_to_realm_new = ur_string_map_create(free);
+	mongoc_cursor_t * cursor;
+	cursor = mongoc_collection_find(collection, MONGOC_QUERY_NONE, 0, 0, 0,
+			&query, &fields, NULL);
 
-    const bson_t * item;
-    uint32_t length;
-    bson_iter_t iter;
+	if (!cursor) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+				"Error querying MongoDB collection 'realm'\n");
+	} else {
+		ur_string_map *o_to_realm_new = ur_string_map_create(turn_free_simple);
 
-    while (mongoc_cursor_next(cursor, &item)) {
-    	if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "realm") && BSON_ITER_HOLDS_UTF8(&iter)) {
-        char * _realm = strdup(bson_iter_utf8(&iter, &length));
+		const bson_t * item;
+		uint32_t length;
+		bson_iter_t iter;
 
-        get_realm(_realm);
+		while (mongoc_cursor_next(cursor, &item)) {
 
-        if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "origin") && BSON_ITER_HOLDS_ARRAY(&iter)) {
-          const uint8_t *docbuf = NULL;
-          uint32_t doclen = 0;
-          bson_t origin_array;
-          bson_iter_t origin_iter;
+			if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "realm")
+					&& BSON_ITER_HOLDS_UTF8(&iter)) {
 
-          bson_iter_array(&iter, &doclen, &docbuf);
-          bson_init_static(&origin_array, docbuf, doclen);
+				char * _realm = turn_strdup(bson_iter_utf8(&iter, &length));
 
-          if (bson_iter_init(&origin_iter, &origin_array)) {
-            while(bson_iter_next(&origin_iter)) {
-              if (BSON_ITER_HOLDS_UTF8(&origin_iter)) {
-                char * _origin = strdup(bson_iter_utf8(&origin_iter, &length));
-				char *rval = strdup(_realm);
-				ur_string_map_value_type value = (ur_string_map_value_type)(rval);
-				ur_string_map_put(o_to_realm_new, (const ur_string_map_key_type) _origin, value);
-				free(_origin);
-              }
-            }
-          }
-        }
-        
-  			realm_params_t* rp = get_realm(_realm);
-  			lock_realms();
-  			rp->options.perf_options.max_bps = turn_params.max_bps;
-  			rp->options.perf_options.total_quota = turn_params.total_quota;
-  			rp->options.perf_options.user_quota = turn_params.user_quota;
-  			unlock_realms();
+				get_realm(_realm);
 
-        if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "options") && BSON_ITER_HOLDS_DOCUMENT(&iter)) {
-          const uint8_t *docbuf = NULL;
-          uint32_t doclen = 0;
-          bson_t options;
-          bson_iter_t options_iter;
+				if (bson_iter_init(&iter, item) && bson_iter_find(&iter,
+						"origin") && BSON_ITER_HOLDS_ARRAY(&iter)) {
+					const uint8_t *docbuf = NULL;
+					uint32_t doclen = 0;
+					bson_t origin_array;
+					bson_iter_t origin_iter;
 
-          bson_iter_document(&iter, &doclen, &docbuf);
-          bson_init_static(&options, docbuf, doclen);
+					bson_iter_array(&iter, &doclen, &docbuf);
+					bson_init_static(&origin_array, docbuf, doclen);
 
-          if (bson_iter_init(&options_iter, &options)) {
-            while(bson_iter_next(&options_iter)) {
-              const char * _k = bson_iter_key(&options_iter);
-              int32_t _v = 0;
-              if (BSON_ITER_HOLDS_DOUBLE(&options_iter)) {
-                _v = (int32_t)bson_iter_double(&options_iter);
-              } else if (BSON_ITER_HOLDS_INT32(&options_iter)) {
-                _v = bson_iter_int32(&options_iter);
-              } else if (BSON_ITER_HOLDS_INT64(&options_iter)) {
-                _v = (int32_t)bson_iter_int64(&options_iter);
-              }
-              if (_v) {
-								if(!strcmp(_k,"max-bps"))
-									rp->options.perf_options.max_bps = (band_limit_t)_v;
-								else if(!strcmp(_k,"total-quota"))
-									rp->options.perf_options.total_quota = (vint)_v;
-								else if(!strcmp(_k,"user-quota"))
-									rp->options.perf_options.user_quota = (vint)_v;
+					if (bson_iter_init(&origin_iter, &origin_array)) {
+						while (bson_iter_next(&origin_iter)) {
+							if (BSON_ITER_HOLDS_UTF8(&origin_iter)) {
+								char* _origin =	turn_strdup(bson_iter_utf8(&origin_iter, &length));
+								char *rval = turn_strdup(_realm);
+								ur_string_map_value_type value =
+										(ur_string_map_value_type) (rval);
+								ur_string_map_put(o_to_realm_new,
+										(const ur_string_map_key_type) _origin,
+										value);
+								turn_free(_origin,strlen(_origin)+1);
+							}
+						}
+					}
+				}
+
+				realm_params_t* rp = get_realm(_realm);
+				lock_realms();
+				rp->options.perf_options.max_bps = turn_params.max_bps;
+				rp->options.perf_options.total_quota = turn_params.total_quota;
+				rp->options.perf_options.user_quota = turn_params.user_quota;
+				unlock_realms();
+
+				if (bson_iter_init(&iter, item) && bson_iter_find(&iter,
+						"options") && BSON_ITER_HOLDS_DOCUMENT(&iter)) {
+					const uint8_t *docbuf = NULL;
+					uint32_t doclen = 0;
+					bson_t options;
+					bson_iter_t options_iter;
+
+					bson_iter_document(&iter, &doclen, &docbuf);
+					bson_init_static(&options, docbuf, doclen);
+
+					if (bson_iter_init(&options_iter, &options)) {
+						while (bson_iter_next(&options_iter)) {
+							const char * _k = bson_iter_key(&options_iter);
+							int32_t _v = 0;
+							if (BSON_ITER_HOLDS_DOUBLE(&options_iter)) {
+								_v = (int32_t) bson_iter_double(&options_iter);
+							} else if (BSON_ITER_HOLDS_INT32(&options_iter)) {
+								_v = bson_iter_int32(&options_iter);
+							} else if (BSON_ITER_HOLDS_INT64(&options_iter)) {
+								_v = (int32_t) bson_iter_int64(&options_iter);
+							}
+							if (_v) {
+								if (!strcmp(_k, "max-bps"))
+									rp->options.perf_options.max_bps
+											= (band_limit_t) _v;
+								else if (!strcmp(_k, "total-quota"))
+									rp->options.perf_options.total_quota
+											= (vint) _v;
+								else if (!strcmp(_k, "user-quota"))
+									rp->options.perf_options.user_quota
+											= (vint) _v;
 								else {
-									TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown realm option: %s\n", _k);
+									TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+											"Unknown realm option: %s\n", _k);
 								}
-              }
-            }
-          }
-        }
-        free(_realm);
-      }
-    }
-    update_o_to_realm(o_to_realm_new);
-    mongoc_cursor_destroy(cursor);
-  }
-  mongoc_collection_destroy(collection);
-  bson_destroy(&query);
-  bson_destroy(&fields);
+							}
+						}
+					}
+				}
+				turn_free(_realm,strlen(_realm)+1);
+			}
+		}
+		update_o_to_realm(o_to_realm_new);
+		mongoc_cursor_destroy(cursor);
+	}
+	mongoc_collection_destroy(collection);
+	bson_destroy(&query);
+	bson_destroy(&fields);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -921,7 +1158,11 @@ static turn_dbdriver_t driver = {
   &mongo_list_realm_options,
   &mongo_auth_ping,
   &mongo_get_ip_list,
-  &mongo_reread_realms
+  &mongo_reread_realms,
+  &mongo_set_oauth_key,
+  &mongo_get_oauth_key,
+  &mongo_del_oauth_key,
+  &mongo_list_oauth_keys
 };
 
 turn_dbdriver_t * get_mongo_dbdriver(void) {

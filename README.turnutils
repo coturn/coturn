@@ -117,6 +117,8 @@ Flags:
 
 -Z	Dual allocation (SSODA draft support).
 
+-J	Use oAuth with default test key kid='north'.
+
 Options with required values:  
 
 -l      Message length (Default: 100 Bytes).
@@ -337,3 +339,5 @@ SEE ALSO
 	Mutsutoshi Yoshimoto <mutsutoshi.yoshimoto@mixi.co.jp>
 	
 	Federico Pinna <fpinna@vivocha.com>
+
+	Bradley T. Hughes <bradleythughes@fastmail.fm>

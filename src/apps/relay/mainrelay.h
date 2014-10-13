@@ -51,6 +51,7 @@
 #include <sys/time.h>
 #include <sys/stat.h>
 #include <sys/resource.h>
+#include <sys/utsname.h>
 
 #include <pwd.h>
 #include <grp.h>
@@ -64,8 +65,6 @@
 #include <openssl/rand.h>
 #include <openssl/crypto.h>
 #include <openssl/opensslv.h>
-
-#include <sys/utsname.h>
 
 #include "ns_turn_utils.h"
 #include "ns_turn_khash.h"
@@ -272,6 +271,9 @@ typedef struct _turn_params_ {
 ////////////// Auth server ////////////////
 
   struct auth_server authserver;
+  char oauth_server_name[1025];
+  char domain[1025];
+  int oauth;
 
 /////////////// AUX SERVERS ////////////////
 

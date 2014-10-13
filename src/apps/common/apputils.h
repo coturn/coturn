@@ -36,6 +36,7 @@
 #include <openssl/ssl.h>
 
 #include "ns_turn_ioaddr.h"
+#include "ns_turn_msg_defs.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -68,6 +69,22 @@ enum _TURN_TLS_TYPE {
 };
 
 typedef enum _TURN_TLS_TYPE TURN_TLS_TYPE;
+
+////////////////////////////////////////////
+
+struct _oauth_key_data_raw {
+	char kid[OAUTH_KID_SIZE+1];
+	char ikm_key[OAUTH_KEY_SIZE+1];
+	u64bits timestamp;
+	u32bits lifetime;
+	char hkdf_hash_func[OAUTH_HASH_FUNC_SIZE+1];
+	char as_rs_alg[OAUTH_ALG_SIZE+1];
+	char as_rs_key[OAUTH_KEY_SIZE+1];
+	char auth_alg[OAUTH_ALG_SIZE+1];
+	char auth_key[OAUTH_KEY_SIZE+1];
+};
+
+typedef struct _oauth_key_data_raw oauth_key_data_raw;
 
 //////////////////////////////////////////
 
@@ -149,6 +166,10 @@ unsigned char *base64_decode(const char *data,
 ///////////// SSL ////////////////
 
 const char* turn_get_ssl_method(SSL *ssl, const char* mdefault);
+
+////////////// OAUTH UTILS ////////////////
+
+void convert_oauth_key_data_raw(const oauth_key_data_raw *raw, oauth_key_data *oakd);
 
 //////////// Event Base /////////////////////
 

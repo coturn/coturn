@@ -549,7 +549,7 @@ void set_execdir(void)
   /* On some systems, this may give us the execution path */
   char *_var = getenv("_");
   if(_var && *_var) {
-    _var = strdup(_var);
+    _var = turn_strdup(_var);
     char *edir=_var;
     if(edir[0]!='.') 
       edir = strstr(edir,"/");
@@ -559,7 +559,7 @@ void set_execdir(void)
       edir = dirname(_var);
     if(c_execdir)
       turn_free(c_execdir,strlen(c_execdir)+1);
-    c_execdir = strdup(edir);
+    c_execdir = turn_strdup(edir);
     turn_free(_var,strlen(_var)+1);
   }
 }
@@ -604,7 +604,7 @@ char* find_config_file(const char *config_file, int print_file_name)
 			FILE *f = fopen(config_file, "r");
 			if (f) {
 				fclose(f);
-				full_path_to_config_file = strdup(config_file);
+				full_path_to_config_file = turn_strdup(config_file);
 			}
 		} else {
 			int i = 0;
@@ -897,6 +897,55 @@ struct event_base *turn_event_base_new(void)
 	event_config_set_flag(cfg,EVENT_BASE_FLAG_EPOLL_USE_CHANGELIST);
 
 	return event_base_new_with_config(cfg);
+}
+
+/////////// OAUTH /////////////////
+
+void convert_oauth_key_data_raw(const oauth_key_data_raw *raw, oauth_key_data *oakd)
+{
+	if(raw && oakd) {
+
+		ns_bzero(oakd,sizeof(oauth_key_data));
+
+		oakd->timestamp = (turn_time_t)raw->timestamp;
+		oakd->lifetime = raw->lifetime;
+
+		ns_bcopy(raw->as_rs_alg,oakd->as_rs_alg,sizeof(oakd->as_rs_alg));
+		ns_bcopy(raw->auth_alg,oakd->auth_alg,sizeof(oakd->auth_alg));
+		ns_bcopy(raw->hkdf_hash_func,oakd->hkdf_hash_func,sizeof(oakd->hkdf_hash_func));
+		ns_bcopy(raw->kid,oakd->kid,sizeof(oakd->kid));
+
+		if(raw->ikm_key[0]) {
+			size_t ikm_key_size = 0;
+			char *ikm_key = (char*)base64_decode(raw->ikm_key,strlen(raw->ikm_key),&ikm_key_size);
+			if(ikm_key) {
+				ns_bcopy(ikm_key,oakd->ikm_key,ikm_key_size);
+				oakd->ikm_key_size = ikm_key_size;
+				turn_free(ikm_key,ikm_key_size);
+			}
+		}
+
+		if(raw->as_rs_key[0]) {
+			size_t as_rs_key_size = 0;
+			char *as_rs_key = (char*)base64_decode(raw->as_rs_key,strlen(raw->as_rs_key),&as_rs_key_size);
+			if(as_rs_key) {
+				ns_bcopy(as_rs_key,oakd->as_rs_key,as_rs_key_size);
+				oakd->as_rs_key_size = as_rs_key_size;
+				turn_free(as_rs_key,as_rs_key_size);
+			}
+		}
+
+		if(raw->auth_key[0]) {
+			size_t auth_key_size = 0;
+			char *auth_key = (char*)base64_decode(raw->auth_key,strlen(raw->auth_key),&auth_key_size);
+			if(auth_key) {
+				ns_bcopy(auth_key,oakd->auth_key,auth_key_size);
+				oakd->auth_key_size = auth_key_size;
+				turn_free(auth_key,auth_key_size);
+			}
+		}
+
+	}
 }
 
 //////////////////////////////////////////////////////////////

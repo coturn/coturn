@@ -665,8 +665,9 @@ public:
 	 */
 	static bool isChallengeResponse(const u08bits* buf, size_t sz,
 					int &err_code, u08bits *err_msg, size_t err_msg_size,
-					u08bits *realm, u08bits *nonce) {
-		return stun_is_challenge_response_str(buf, sz, &err_code, err_msg, err_msg_size, realm, nonce);
+					u08bits *realm, u08bits *nonce,
+					u08bits *server_name, int *oauth) {
+		return stun_is_challenge_response_str(buf, sz, &err_code, err_msg, err_msg_size, realm, nonce, server_name, oauth);
 	}
 
 	/**
@@ -970,7 +971,7 @@ public:
 			size_t err_msg_size=sizeof(err_msg);
 			u08bits srealm[0xFFFF];
 			u08bits snonce[0xFFFF];
-			ret = stun_is_challenge_response_str(_buffer, _sz, &err_code, err_msg, err_msg_size, srealm, snonce);
+			ret = stun_is_challenge_response_str(_buffer, _sz, &err_code, err_msg, err_msg_size, srealm, snonce, NULL, NULL);
 			if(ret) {
 				realm = (char*)srealm;
 				nonce = (char*)snonce;

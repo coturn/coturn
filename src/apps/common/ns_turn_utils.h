@@ -32,12 +32,11 @@
 #define __TURN_ULIB__
 
 #if !defined(TURN_LOG_FUNC)
+//#define TURN_LOG_FUNC(level, ...) printf (__VA_ARGS__)
 #define TURN_LOG_FUNC turn_log_func_default
 #endif
 
 #include "ns_turn_ioaddr.h"
-
-#include <event2/http.h>
 
 #ifdef __cplusplus
 extern "C" {

@@ -30,6 +30,9 @@
  */
 
 #include "../mainrelay.h"
+
+#include "apputils.h"
+
 #include "dbdriver.h"
 #include "dbd_pgsql.h"
 #include "dbd_mysql.h"
@@ -85,6 +88,4 @@ turn_dbdriver_t * get_dbdriver() {
   }
   return _driver;
 }
-
-
 

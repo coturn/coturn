@@ -90,7 +90,7 @@ u16bits stun_make_error_response(u16bits method);
 
 ///////////////////////////////////////////////////////////////
 
-u32bits stun_adjust_allocate_lifetime(u32bits lifetime);
+turn_time_t stun_adjust_allocate_lifetime(turn_time_t lifetime, turn_time_t max_lifetime);
 
 ///////////// STR ////////////////////////////////////////////////
 
@@ -116,7 +116,7 @@ int stun_is_command_message_offset_str(const u08bits* buf, size_t blen, int offs
 int stun_is_request_str(const u08bits* buf, size_t len);
 int stun_is_success_response_str(const u08bits* buf, size_t len);
 int stun_is_error_response_str(const u08bits* buf, size_t len, int *err_code, u08bits *err_msg, size_t err_msg_size);
-int stun_is_challenge_response_str(const u08bits* buf, size_t len, int *err_code, u08bits *err_msg, size_t err_msg_size, u08bits *realm, u08bits *nonce);
+int stun_is_challenge_response_str(const u08bits* buf, size_t len, int *err_code, u08bits *err_msg, size_t err_msg_size, u08bits *realm, u08bits *nonce, u08bits *server_name, int *oauth);
 int stun_is_response_str(const u08bits* buf, size_t len);
 int stun_is_indication_str(const u08bits* buf, size_t len);
 u16bits stun_get_method_str(const u08bits *buf, size_t len);
@@ -183,6 +183,7 @@ void print_bin_func(const char *name, size_t len, const void *s, const char *fun
 int stun_check_message_integrity_by_key_str(turn_credential_type ct, u08bits *buf, size_t len, hmackey_t key, st_password_t pwd, SHATYPE shatype, int *too_weak);
 int stun_check_message_integrity_str(turn_credential_type ct, u08bits *buf, size_t len, u08bits *uname, u08bits *realm, u08bits *upwd, SHATYPE shatype);
 int stun_attr_add_integrity_str(turn_credential_type ct, u08bits *buf, size_t *len, hmackey_t key, st_password_t pwd, SHATYPE shatype);
+int stun_attr_add_integrity_by_key_str(u08bits *buf, size_t *len, u08bits *uname, u08bits *realm, hmackey_t key, u08bits *nonce, SHATYPE shatype);
 int stun_attr_add_integrity_by_user_str(u08bits *buf, size_t *len, u08bits *uname, u08bits *realm, u08bits *upwd, u08bits *nonce, SHATYPE shatype);
 int stun_attr_add_integrity_by_user_short_term_str(u08bits *buf, size_t *len, u08bits *uname, st_password_t pwd, SHATYPE shatype);
 size_t get_hmackey_size(SHATYPE shatype);
@@ -208,6 +209,11 @@ int stun_attr_add_padding_str(u08bits *buf, size_t *len, u16bits padding_len);
 
 /* HTTP */
 int is_http_get(const char *s, size_t blen);
+
+/* OAUTH */
+int convert_oauth_key_data(const oauth_key_data *oakd, oauth_key *key, char *err_msg, size_t err_msg_size);
+int decode_oauth_token(const u08bits *server_name, const encoded_oauth_token *etoken, const oauth_key *key, oauth_token *dtoken);
+int encode_oauth_token(const u08bits *server_name, encoded_oauth_token *etoken, const oauth_key *key, const oauth_token *dtoken, const u08bits *nonce);
 
 ///////////////////////////////////////////////////////////////
 

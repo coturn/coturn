@@ -86,6 +86,9 @@ void update_o_to_realm(ur_string_map * o_to_realm_new);
 struct auth_message {
 	turnserver_id id;
 	turn_credential_type ct;
+	int in_oauth;
+	int out_oauth;
+	int max_session_time;
 	u08bits username[STUN_MAX_USERNAME_SIZE + 1];
 	u08bits realm[STUN_MAX_REALM_SIZE + 1];
 	hmackey_t key;
@@ -187,13 +190,17 @@ void add_to_secrets_list(secrets_list_t *sl, const char* elem);
 
 /////////// USER DB CHECK //////////////////
 
-int get_user_key(u08bits *uname, u08bits *realm, hmackey_t key, ioa_network_buffer_handle nbh);
+int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, u08bits *uname, u08bits *realm, hmackey_t key, ioa_network_buffer_handle nbh);
 int get_user_pwd(u08bits *uname, st_password_t pwd);
-u08bits *start_user_check(turnserver_id id, turn_credential_type ct, u08bits *uname, u08bits *realm, get_username_resume_cb resume, ioa_net_data *in_buffer, u64bits ctxkey, int *postpone_reply);
-int check_new_allocation_quota(u08bits *username, u08bits *realm);
-void release_allocation_quota(u08bits *username, u08bits *realm);
+u08bits *start_user_check(turnserver_id id, turn_credential_type ct, int in_oauth, int *out_oauth, u08bits *uname, u08bits *realm, get_username_resume_cb resume, ioa_net_data *in_buffer, u64bits ctxkey, int *postpone_reply);
+int check_new_allocation_quota(u08bits *username, int oauth, u08bits *realm);
+void release_allocation_quota(u08bits *username, int oauth, u08bits *realm);
 
 /////////// Handle user DB /////////////////
+
+#if defined(DB_TEST)
+	void run_db_test(void);
+#endif
 
 void read_userdb_file(int to_print);
 void auth_ping(redis_context_handle rch);

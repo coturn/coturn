@@ -80,6 +80,12 @@ typedef struct {
   int broken;
   u08bits nonce[STUN_MAX_NONCE_SIZE+1];
   u08bits realm[STUN_MAX_REALM_SIZE+1];
+  /* oAuth */
+  int oauth;
+  u08bits server_name[STUN_MAX_SERVER_NAME_SIZE+1];
+  hmackey_t key;
+  int key_set;
+  int cok;
   /* RFC 6062 */
   app_tcp_conn_info **tcp_conn;
   size_t tcp_conn_number;

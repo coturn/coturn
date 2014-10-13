@@ -216,6 +216,7 @@ int ur_addr_map_del(ur_addr_map* map, ioa_addr* key,ur_addr_map_func func);
  */
 void ur_addr_map_foreach(ur_addr_map* map, ur_addr_map_func func);
 
+size_t ur_addr_map_num_elements(const ur_addr_map* map);
 size_t ur_addr_map_size(const ur_addr_map* map);
 
 //////////////// UR STRING MAP //////////////////
