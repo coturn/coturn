@@ -1221,7 +1221,7 @@ void start_mclient(const char *remote_address, int port,
 	      ++mclient;
 	}
 
-	elems = (app_ur_session**)malloc(sizeof(app_ur_session)*((mclient*2)+1)+sizeof(void*));
+	elems = (app_ur_session**)turn_malloc(sizeof(app_ur_session)*((mclient*2)+1)+sizeof(void*));
 
 	__turn_getMSTime();
 	u32bits stime = current_time;
@@ -1419,7 +1419,7 @@ void start_mclient(const char *remote_address, int port,
 				(unsigned long)min_jitter,
 				(unsigned long)max_jitter);
 
-	free(elems);
+	turn_free(elems,0);
 }
 
 ///////////////////////////////////////////
