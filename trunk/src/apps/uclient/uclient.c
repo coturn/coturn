@@ -153,8 +153,10 @@ static void uc_delete_session_elem_data(app_ur_session* cdi) {
 	}
       }
       cdi->pinfo.tcp_conn_number=0;
-      turn_free(cdi->pinfo.tcp_conn, 111);
-      cdi->pinfo.tcp_conn=NULL;
+      if(cdi->pinfo.tcp_conn) {
+    	  turn_free(cdi->pinfo.tcp_conn, 111);
+    	  cdi->pinfo.tcp_conn=NULL;
+      }
     }
     if(cdi->pinfo.ssl && !(cdi->pinfo.broken)) {
 	    if(!(SSL_get_shutdown(cdi->pinfo.ssl) & SSL_SENT_SHUTDOWN)) {
@@ -1294,9 +1296,12 @@ void start_mclient(const char *remote_address, int port,
 					int connect_err = 0;
 					socket_connect(elems[i]->pinfo.fd, &(elems[i]->pinfo.remote_addr), &connect_err);
 				}
-			} else if((i%2) == 0) {
-				if (turn_tcp_connect(clnet_verbose, &(elems[i]->pinfo), &(elems[i]->pinfo.peer_addr)) < 0) {
-					exit(-1);
+			} else {
+				int j = 0;
+				for(j=i+1;j<total_clients;j++) {
+					if (turn_tcp_connect(clnet_verbose, &(elems[i]->pinfo), &(elems[j]->pinfo.relay_addr)) < 0) {
+						exit(-1);
+					}
 				}
 			}
 		}
@@ -1328,18 +1333,22 @@ void start_mclient(const char *remote_address, int port,
 					break;
 			} else {
 				for(i=0;i<total_clients;++i) {
-					if(elems[i]->pinfo.tcp_conn_number>0 &&
-							elems[i]->pinfo.tcp_conn[0]->tcp_data_bound) {
-						completed += elems[i]->pinfo.tcp_conn_number;
+					int j = 0;
+					for(j=0;j<(int)elems[i]->pinfo.tcp_conn_number;j++) {
+						if(elems[i]->pinfo.tcp_conn[j]->tcp_data_bound) {
+							completed++;
+						}
 					}
 				}
-				if(completed >= total_clients)
+				if(completed >= total_clients*(total_clients-1)) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%d connections are completed\n",(int)(completed));
 					break;
+				}
 			}
 			run_events(0);
-			if(current_time > connect_wait_start_time + STARTING_TCP_RELAY_TIME) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: %d connections are not completed\n",
-						(int)(total_clients - completed));
+			if(current_time > connect_wait_start_time + STARTING_TCP_RELAY_TIME + total_clients) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: %d connections are completed, not enough\n",
+						(int)(completed));
 				break;
 			}
 		}
