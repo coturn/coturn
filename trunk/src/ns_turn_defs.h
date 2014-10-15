@@ -138,9 +138,11 @@ static inline u64bits _ioa_ntoh64(u64bits v)
 #define turn_calloc(number, sz) turn_calloc_func((number),(size_t)(sz),__FUNCTION__,__LINE__)
 #define turn_strdup(s) turn_strdup_func((s),__FUNCTION__,__LINE__)
 
+#define SSL_NEW(ctx) ((SSL*)debug_ptr_add(SSL_new(ctx)))
+
 #else
 
-#define debug_ptr_add(ptr) (ptr)
+#define debug_ptr_add(ptr)
 #define debug_ptr_del(ptr)
 #define tm_print() 
 #define turn_malloc(sz) malloc((size_t)(sz))
@@ -150,11 +152,11 @@ static inline u64bits _ioa_ntoh64(u64bits v)
 #define turn_strdup(s) strdup((s))
 #define turn_free_simple free
 
+#define SSL_NEW(ctx) SSL_new(ctx)
+
 #endif
 
-#define SSL_NEW(ctx) ((SSL*)debug_ptr_add(SSL_new(ctx)))
 #define SSL_FREE(ssl) do { debug_ptr_del(ssl); SSL_free(ssl); ssl = NULL; } while(0)
-
 #define BUFFEREVENT_FREE(be) do { if(be) { debug_ptr_del(be); bufferevent_flush(be,EV_READ|EV_WRITE,BEV_FLUSH); bufferevent_disable(be,EV_READ|EV_WRITE); bufferevent_free(be); be = NULL;} } while(0)
 
 #define turn_time() ((turn_time_t)time(NULL))
