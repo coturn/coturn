@@ -747,11 +747,27 @@ static void del_tm_ptr(void *ptr, const char *id) {
   pthread_mutex_unlock(&tm);
 }
 
-static void tm_id(char *id, const char* file, int line) {
-  sprintf(id,"%s:%d",file,line);
+static void tm_id(char *id, const char* function, int line) {
+  sprintf(id,"%s:%d",function,line);
 }
 
-#define TM_START() char id[128];tm_id(id,file,line);tm_init()
+#define TM_START() char id[128];tm_id(id,function,line);tm_init()
+
+extern "C" void* debug_ptr_add_func(void *ptr, const char* function, int line) {
+
+	TM_START();
+
+	add_tm_ptr(ptr,id);
+
+	return ptr;
+}
+
+extern "C" void debug_ptr_del_func(void *ptr, const char* function, int line) {
+
+	TM_START();
+
+	del_tm_ptr(ptr,id);
+}
 
 extern "C" void tm_print_func(void);
 void tm_print_func(void) {
@@ -765,8 +781,8 @@ void tm_print_func(void) {
   pthread_mutex_unlock(&tm);
 } 
 
-extern "C" void *turn_malloc_func(size_t sz, const char* file, int line);
-void *turn_malloc_func(size_t sz, const char* file, int line) {
+extern "C" void *turn_malloc_func(size_t sz, const char* function, int line);
+void *turn_malloc_func(size_t sz, const char* function, int line) {
 
   TM_START();
 
@@ -777,8 +793,8 @@ void *turn_malloc_func(size_t sz, const char* file, int line) {
   return ptr;
 }
 
-extern "C" void *turn_realloc_func(void *ptr, size_t old_sz, size_t new_sz, const char* file, int line);
-void *turn_realloc_func(void *ptr, size_t old_sz, size_t new_sz, const char* file, int line) {
+extern "C" void *turn_realloc_func(void *ptr, size_t old_sz, size_t new_sz, const char* function, int line);
+void *turn_realloc_func(void *ptr, size_t old_sz, size_t new_sz, const char* function, int line) {
 
   UNUSED_ARG(old_sz);
 
@@ -794,8 +810,8 @@ void *turn_realloc_func(void *ptr, size_t old_sz, size_t new_sz, const char* fil
   return ptr;
 }
 
-extern "C" void turn_free_func(void *ptr, size_t sz, const char* file, int line);
-void turn_free_func(void *ptr, size_t sz, const char* file, int line) {
+extern "C" void turn_free_func(void *ptr, size_t sz, const char* function, int line);
+void turn_free_func(void *ptr, size_t sz, const char* function, int line) {
 
   UNUSED_ARG(sz);
 
@@ -816,8 +832,8 @@ void turn_free_simple(void *ptr) {
   free(ptr);
 }
 
-extern "C" void *turn_calloc_func(size_t number, size_t size, const char* file, int line);
-void *turn_calloc_func(size_t number, size_t size, const char* file, int line) {
+extern "C" void *turn_calloc_func(size_t number, size_t size, const char* function, int line);
+void *turn_calloc_func(size_t number, size_t size, const char* function, int line) {
   
   TM_START();
 
@@ -828,8 +844,8 @@ void *turn_calloc_func(size_t number, size_t size, const char* file, int line) {
   return ptr;
 }
 
-extern "C" char *turn_strdup_func(const char* s, const char* file, int line);
-char *turn_strdup_func(const char* s, const char* file, int line) {
+extern "C" char *turn_strdup_func(const char* s, const char* function, int line);
+char *turn_strdup_func(const char* s, const char* function, int line) {
 
   TM_START();
 

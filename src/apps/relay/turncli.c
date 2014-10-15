@@ -882,12 +882,7 @@ static void close_cli_session(struct cli_session* cs)
 			cs->ts = NULL;
 		}
 
-		if(cs->bev) {
-			bufferevent_flush(cs->bev,EV_READ|EV_WRITE,BEV_FLUSH);
-			bufferevent_disable(cs->bev,EV_READ|EV_WRITE);
-			bufferevent_free(cs->bev);
-			cs->bev=NULL;
-		}
+		BUFFEREVENT_FREE(cs->bev);
 
 		if(cs->fd>=0) {
 			close(cs->fd);
@@ -1175,6 +1170,7 @@ static void cliserver_input_handler(struct evconnlistener *l, evutil_socket_t fd
 	clisession->bev = bufferevent_socket_new(cliserver.event_base,
 					fd,
 					BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS);
+	debug_ptr_add(clisession->bev);
 	bufferevent_setcb(clisession->bev, cli_socket_input_handler_bev, NULL,
 			cli_eventcb_bev, clisession);
 	bufferevent_setwatermark(clisession->bev, EV_READ|EV_WRITE, 0, BUFFEREVENT_HIGH_WATERMARK);
