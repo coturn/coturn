@@ -1305,11 +1305,7 @@ static void connect_eventcb(struct bufferevent *bev, short events, void *ptr)
 		if (events & BEV_EVENT_CONNECTED) {
 			ret->conn_cb = NULL;
 			ret->conn_arg = NULL;
-			if(ret->conn_bev) {
-				bufferevent_disable(ret->conn_bev,EV_READ|EV_WRITE);
-				bufferevent_free(ret->conn_bev);
-				ret->conn_bev=NULL;
-			}
+			BUFFEREVENT_FREE(ret->conn_bev);
 			ret->connected = 1;
 			if(cb) {
 				cb(1,arg);
@@ -1318,11 +1314,7 @@ static void connect_eventcb(struct bufferevent *bev, short events, void *ptr)
 			/* An error occured while connecting. */
 			ret->conn_cb = NULL;
 			ret->conn_arg = NULL;
-			if(ret->conn_bev) {
-				bufferevent_disable(ret->conn_bev,EV_READ|EV_WRITE);
-				bufferevent_free(ret->conn_bev);
-				ret->conn_bev=NULL;
-			}
+			BUFFEREVENT_FREE(ret->conn_bev);
 			if(cb) {
 				cb(0,arg);
 			}
@@ -1364,15 +1356,12 @@ ioa_socket_handle ioa_create_connecting_tcp_relay_socket(ioa_socket_handle s, io
 
 	set_ioa_socket_session(ret, s->session);
 
-	if(ret->conn_bev) {
-		bufferevent_disable(ret->conn_bev,EV_READ|EV_WRITE);
-		bufferevent_free(ret->conn_bev);
-		ret->conn_bev=NULL;
-	}
+	BUFFEREVENT_FREE(ret->conn_bev);
 
 	ret->conn_bev = bufferevent_socket_new(ret->e->event_base,
 					ret->fd,
 					BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS);
+	debug_ptr_add(ret->conn_bev);
 	bufferevent_setcb(ret->conn_bev, NULL, NULL, connect_eventcb, ret);
 
 	ret->conn_arg = arg;
@@ -1577,16 +1566,8 @@ static void close_socket_net_data(ioa_socket_handle s)
 			evconnlistener_free(s->list_ev);
 			s->list_ev = NULL;
 		}
-		if(s->conn_bev) {
-			bufferevent_disable(s->conn_bev,EV_READ|EV_WRITE);
-			bufferevent_free(s->conn_bev);
-			s->conn_bev=NULL;
-		}
-		if(s->bev) {
-			bufferevent_disable(s->bev,EV_READ|EV_WRITE);
-			bufferevent_free(s->bev);
-			s->bev=NULL;
-		}
+		BUFFEREVENT_FREE(s->conn_bev);
+		BUFFEREVENT_FREE(s->bev);
 
 		if (s->ssl) {
 			if (!s->broken) {
@@ -1607,8 +1588,7 @@ static void close_socket_net_data(ioa_socket_handle s)
 					log_socket_event(s, "SSL shutdown received, socket to be closed",0);
 				}
 			}
-			SSL_free(s->ssl);
-			s->ssl = NULL;
+			SSL_FREE(s->ssl);
 		}
 
 		if (s->fd >= 0) {
@@ -1630,18 +1610,10 @@ void detach_socket_net_data(ioa_socket_handle s)
 		}
 		s->acb = NULL;
 		s->acbarg = NULL;
-		if(s->conn_bev) {
-			bufferevent_disable(s->conn_bev,EV_READ|EV_WRITE);
-			bufferevent_free(s->conn_bev);
-			s->conn_bev=NULL;
-		}
+		BUFFEREVENT_FREE(s->conn_bev);
 		s->conn_arg=NULL;
 		s->conn_cb=NULL;
-		if(s->bev) {
-			bufferevent_disable(s->bev,EV_READ|EV_WRITE);
-			bufferevent_free(s->bev);
-			s->bev=NULL;
-		}
+		BUFFEREVENT_FREE(s->bev);
 	}
 }
 
@@ -2382,7 +2354,7 @@ static int socket_input_worker(ioa_socket_handle s)
 #if defined(SSL_TXT_TLSV1_2)
 			case TURN_TLS_v1_2:
 				if(s->e->tls_ctx_v1_2) {
-					set_socket_ssl(s,SSL_new(s->e->tls_ctx_v1_2));
+					set_socket_ssl(s,SSL_NEW(s->e->tls_ctx_v1_2));
 					STRCPY(s->orig_ctx_type,"TLSv1.2");
 				}
 				break;
@@ -2390,20 +2362,20 @@ static int socket_input_worker(ioa_socket_handle s)
 #if defined(SSL_TXT_TLSV1_1)
 			case TURN_TLS_v1_1:
 				if(s->e->tls_ctx_v1_1) {
-					set_socket_ssl(s,SSL_new(s->e->tls_ctx_v1_1));
+					set_socket_ssl(s,SSL_NEW(s->e->tls_ctx_v1_1));
 					STRCPY(s->orig_ctx_type,"TLSv1.1");
 				}
 				break;
 #endif
 			case TURN_TLS_v1_0:
 				if(s->e->tls_ctx_v1_0) {
-					set_socket_ssl(s,SSL_new(s->e->tls_ctx_v1_0));
+					set_socket_ssl(s,SSL_NEW(s->e->tls_ctx_v1_0));
 					STRCPY(s->orig_ctx_type,"TLSv1.0");
 				}
 				break;
 			default:
 				if(s->e->tls_ctx_ssl23) {
-					set_socket_ssl(s,SSL_new(s->e->tls_ctx_ssl23));
+					set_socket_ssl(s,SSL_NEW(s->e->tls_ctx_ssl23));
 					STRCPY(s->orig_ctx_type,"SSLv23");
 				} else {
 					s->tobeclosed = 1;
@@ -2416,6 +2388,7 @@ static int socket_input_worker(ioa_socket_handle s)
 								s->ssl,
 								BUFFEREVENT_SSL_ACCEPTING,
 								BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS);
+				debug_ptr_add(s->bev);
 				bufferevent_setcb(s->bev, socket_input_handler_bev, socket_output_handler_bev,
 								eventcb_bev, s);
 				bufferevent_setwatermark(s->bev, EV_READ|EV_WRITE, 0, BUFFEREVENT_HIGH_WATERMARK);
@@ -2431,6 +2404,7 @@ static int socket_input_worker(ioa_socket_handle s)
 			s->bev = bufferevent_socket_new(s->e->event_base,
 							s->fd,
 							BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS);
+			debug_ptr_add(s->bev);
 			bufferevent_setcb(s->bev, socket_input_handler_bev, socket_output_handler_bev,
 					eventcb_bev, s);
 			bufferevent_setwatermark(s->bev, EV_READ|EV_WRITE, 0, BUFFEREVENT_HIGH_WATERMARK);
@@ -3255,6 +3229,7 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 						s->bev = bufferevent_socket_new(s->e->event_base,
 										s->fd,
 										BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS);
+						debug_ptr_add(s->bev);
 						bufferevent_setcb(s->bev, socket_input_handler_bev, socket_output_handler_bev,
 							eventcb_bev, s);
 						bufferevent_setwatermark(s->bev, EV_READ|EV_WRITE, 0, BUFFEREVENT_HIGH_WATERMARK);
@@ -3272,19 +3247,21 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 #if !defined(TURN_NO_TLS)
 						if(!(s->ssl)) {
 							//??? how we can get to this point ???
-							set_socket_ssl(s,SSL_new(e->tls_ctx_ssl23));
+							set_socket_ssl(s,SSL_NEW(e->tls_ctx_ssl23));
 							STRCPY(s->orig_ctx_type,"SSLv23");
 							s->bev = bufferevent_openssl_socket_new(s->e->event_base,
 											s->fd,
 											s->ssl,
 											BUFFEREVENT_SSL_ACCEPTING,
 											BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS);
+							debug_ptr_add(s->bev);
 						} else {
 							s->bev = bufferevent_openssl_socket_new(s->e->event_base,
 											s->fd,
 											s->ssl,
 											BUFFEREVENT_SSL_OPEN,
 											BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS);
+							debug_ptr_add(s->bev);
 						}
 						bufferevent_setcb(s->bev, socket_input_handler_bev, socket_output_handler_bev,
 							eventcb_bev, s);

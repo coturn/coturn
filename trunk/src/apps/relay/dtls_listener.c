@@ -266,7 +266,7 @@ static ioa_socket_handle dtls_server_input_handler(dtls_listener_relay_server_ty
 	timeout.tv_usec = 0;
 	BIO_ctrl(wbio, BIO_CTRL_DGRAM_SET_RECV_TIMEOUT, 0, &timeout);
 
-	connecting_ssl = SSL_new(server->dtls_ctx);
+	connecting_ssl = SSL_NEW(server->dtls_ctx);
 
 	SSL_set_accept_state(connecting_ssl);
 
@@ -285,7 +285,7 @@ static ioa_socket_handle dtls_server_input_handler(dtls_listener_relay_server_ty
 			SSL_set_shutdown(connecting_ssl, SSL_RECEIVED_SHUTDOWN);
 			SSL_shutdown(connecting_ssl);
 		}
-		SSL_free(connecting_ssl);
+		SSL_FREE(connecting_ssl);
 	}
 
 	return rc;
@@ -536,7 +536,7 @@ static int create_new_connected_udp_socket(
 		timeout.tv_usec = 0;
 		BIO_ctrl(wbio, BIO_CTRL_DGRAM_SET_RECV_TIMEOUT, 0, &timeout);
 
-		connecting_ssl = SSL_new(server->dtls_ctx);
+		connecting_ssl = SSL_NEW(server->dtls_ctx);
 
 		SSL_set_accept_state(connecting_ssl);
 
@@ -552,7 +552,7 @@ static int create_new_connected_udp_socket(
 				SSL_set_shutdown(connecting_ssl, SSL_RECEIVED_SHUTDOWN);
 				SSL_shutdown(connecting_ssl);
 			}
-			SSL_free(connecting_ssl);
+			SSL_FREE(connecting_ssl);
 			IOA_CLOSE_SOCKET(ret);
 			return -1;
 		}

@@ -80,7 +80,7 @@ static SSL* tls_connect(ioa_socket_raw fd, ioa_addr *remote_addr)
 {
 	int ctxtype = (int)(((unsigned long)random())%root_tls_ctx_num);
 
-	SSL *ssl = SSL_new(root_tls_ctx[ctxtype]);
+	SSL *ssl = SSL_NEW(root_tls_ctx[ctxtype]);
 
 	if(use_tcp) {
 		SSL_set_fd(ssl, fd);
@@ -590,8 +590,7 @@ static int clnet_allocate(int verbose,
 			  int close_socket = (int)(random()%2);
 			  if(ssl && !close_socket) {
 				  SSL_shutdown(ssl);
-				  SSL_free(ssl);
-				  ssl = NULL;
+				  SSL_FREE(ssl);
 				  fd = -1;
 			  } else if(fd>=0) {
 				  close(fd);
@@ -615,7 +614,7 @@ static int clnet_allocate(int verbose,
 
 		  if(ssl) {
 			  SSL_shutdown(ssl);
-		  	  SSL_free(ssl);
+		  	  SSL_FREE(ssl);
 		  } else if(fd>=0) {
 		  	  close(fd);
 		  }
