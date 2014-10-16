@@ -1166,12 +1166,17 @@ int create_relay_ioa_sockets(ioa_engine_handle e,
 										(transport == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE) ? TCP_SOCKET : UDP_SOCKET,
 										RELAY_SOCKET);
 				if (*rtp_s == NULL) {
-					if (rtcp_s)
+					int rtcp_bound = 0;
+					if (rtcp_s && *rtcp_s) {
+						rtcp_bound = (*rtcp_s)->bound;
 						IOA_CLOSE_SOCKET(*rtcp_s);
+					}
 					addr_set_port(&local_addr, port);
 					turnipports_release(tp, transport, &local_addr);
-					if (rtcp_port >= 0)
+					if (rtcp_port >= 0 && !rtcp_bound) {
+						addr_set_port(&rtcp_local_addr, rtcp_port);
 						turnipports_release(tp, transport, &rtcp_local_addr);
+					}
 					perror("socket");
 					return -1;
 				}
@@ -1184,12 +1189,17 @@ int create_relay_ioa_sockets(ioa_engine_handle e,
 					break;
 				} else {
 					IOA_CLOSE_SOCKET(*rtp_s);
-					if (rtcp_s)
+					int rtcp_bound = 0;
+					if (rtcp_s && *rtcp_s) {
+						rtcp_bound = (*rtcp_s)->bound;
 						IOA_CLOSE_SOCKET(*rtcp_s);
+					}
 					addr_set_port(&local_addr, port);
 					turnipports_release(tp, transport, &local_addr);
-					if (rtcp_port >= 0)
+					if (rtcp_port >= 0 && !rtcp_bound) {
+						addr_set_port(&rtcp_local_addr, rtcp_port);
 						turnipports_release(tp, transport, &rtcp_local_addr);
+					}
 					rtcp_port = -1;
 				}
 			}
@@ -1638,7 +1648,8 @@ void close_ioa_socket(ioa_socket_handle s)
 
 		ioa_network_buffer_delete(s->e, s->defer_nbh);
 
-		if(s->bound && s->e && s->e->tp) {
+		if(s->bound && s->e && s->e->tp &&
+				((s->sat == RELAY_SOCKET)||(s->sat == RELAY_RTCP_SOCKET))) {
 			turnipports_release(s->e->tp,
 					((s->st == TCP_SOCKET) ? STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE : STUN_ATTRIBUTE_TRANSPORT_UDP_VALUE),
 					&(s->local_addr));
