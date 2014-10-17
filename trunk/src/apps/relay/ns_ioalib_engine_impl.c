@@ -1449,8 +1449,6 @@ void add_socket_to_map(ioa_socket_handle s, ur_addr_map *amap)
 				&(s->remote_addr),
 				(ur_addr_map_value_type)s);
 		s->sockets_container = amap;
-
-		//printf("%s: 111.111: amap=0x%lx: ne=%lu, sz=%lu\n",__FUNCTION__,(unsigned long)amap,(unsigned long)ur_addr_map_num_elements(amap),(unsigned long)ur_addr_map_size(amap));
 	}
 }
 
@@ -1458,14 +1456,10 @@ void delete_socket_from_map(ioa_socket_handle s)
 {
 	if(s && s->sockets_container) {
 
-		//ur_addr_map *amap = s->sockets_container;
-
 		ur_addr_map_del(s->sockets_container,
 				&(s->remote_addr),
 				NULL);
 		s->sockets_container = NULL;
-
-		//printf("%s: 111.222: amap=0x%lx: ne=%lu, sz=%lu\n",__FUNCTION__,(unsigned long)amap,(unsigned long)ur_addr_map_num_elements(amap),(unsigned long)ur_addr_map_size(amap));
 	}
 }
 
