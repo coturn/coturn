@@ -823,8 +823,6 @@ fi
 ###########################
 
 testlib socket
-testlib nsl
-testlib dl
 testlib rt
 testlib wldap32
 ER=$?
@@ -952,13 +950,23 @@ fi
 testlib event_core
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then
-    testlib event_extra
     ${ECHO_CMD} "Libevent2 runtime found."
+    testlib event_extra
+    ER=$?
+    if ! [ ${ER} -eq 0 ] ; then
+	${ECHO_CMD} "Libevent2 runtime 'extra' found."
+    else
+	${ECHO_CMD} "ERROR: Libevent2 'extra' runtime library is not installed properly in required location."
+	${ECHO_CMD} "See the INSTALL file."
+	${ECHO_CMD} "Abort."
+	cleanup
+	exit
+    fi
 else
     testlib event
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
-		${ECHO_CMD} "Libevent2 runtime found."
+		${ECHO_CMD} "Libevent2 runtime found (old style)."
     else
 		${ECHO_CMD} "ERROR: Libevent2 runtime libraries are not installed properly in required location."
 		${ECHO_CMD} "See the INSTALL file."
