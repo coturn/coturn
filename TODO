@@ -11,9 +11,7 @@
 	Cygwin is supported. A "real" MS-Windows port would 
 	involve a usable GUI.
 
-3) Debian is complaining about libdl, libnsl and libevent-extra (unused dependencies). Investigate.
-
-4) Debian: update control to 3.9.6
+3) Debian: update control to 3.9.6
 
 ==================================================================
 
