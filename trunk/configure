@@ -585,6 +585,7 @@ SYSTEM=`uname`
 if [ "${SYSTEM}" = "SunOS" ] ; then
 # Solaris ? is this you ?!
     OSCFLAGS="${OSCFLAGS} -D__EXTENSIONS__ -D_XOPEN_SOURCE=500 -DTURN_NO_GETDOMAINNAME"
+    OSLIBS="${OSLIBS} -lnsl"
 fi
 
 #########################
