@@ -13,6 +13,8 @@
 
 3) Debian is complaining about libdl, libnsl and libevent-extra (unused dependencies). Investigate.
 
+4) Debian: update control to 3.9.6
+
 ==================================================================
 
 ###   II. DOCS   ###
