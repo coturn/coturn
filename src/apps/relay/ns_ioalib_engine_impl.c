@@ -1828,8 +1828,8 @@ int get_ioa_socket_address_family(ioa_socket_handle s) {
 		return AF_INET;
 	} else if(s->done) {
 		return s->family;
-	} else if(s->parent_s) {
-		return s->parent_s->family;
+	} else if(s->parent_s && (s != s->parent_s)) {
+		return get_ioa_socket_address_family(s->parent_s);
 	} else {
 		return s->family;
 	}
