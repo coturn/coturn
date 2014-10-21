@@ -4072,6 +4072,11 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
 	dec_quota(ss);
 	dec_bps(ss);
 
+	allocation* alloc = get_allocation_ss(ss);
+	if (!is_allocation_valid(alloc)) {
+		force = 1;
+	}
+
 	if(!force && ss->is_mobile) {
 
 		if (ss->client_socket && server->verbose) {
@@ -4246,7 +4251,7 @@ static int create_relay_connection(turn_turnserver* server,
 				   int *err_code, const u08bits **reason,
 				   accept_cb acb) {
 
-	if (server && ss && ss->client_socket) {
+	if (server && ss && ss->client_socket && !ioa_socket_tobeclosed(ss->client_socket)) {
 
 		allocation* a = get_allocation_ss(ss);
 		relay_endpoint_session* newelem = NULL;
@@ -4256,8 +4261,10 @@ static int create_relay_connection(turn_turnserver* server,
 
 			ioa_socket_handle s = NULL;
 
-			if (get_ioa_socket_from_reservation(server->e, in_reservation_token,
-					&s) < 0) {
+			if ((get_ioa_socket_from_reservation(server->e, in_reservation_token,&s) < 0)||
+				!s ||
+				ioa_socket_tobeclosed(s)) {
+
 				IOA_CLOSE_SOCKET(s);
 				*err_code = 508;
 				*reason = (const u08bits *)"Cannot find reserved socket";
