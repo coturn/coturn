@@ -166,13 +166,14 @@ int rtcp_map_put(rtcp_map* map, rtcp_token_type token, ioa_socket_handle s) {
  * >=0 - success
  * <0 - not found
  */
-ioa_socket_handle rtcp_map_get(const rtcp_map* map, rtcp_token_type token) {
+ioa_socket_handle rtcp_map_get(rtcp_map* map, rtcp_token_type token) {
   if(!rtcp_map_valid(map)) return NULL;
   else {
     ur_map_value_type value;
     TURN_MUTEX_LOCK(&map->mutex);
     int ret = ur_map_get(map->map,token,&value);
     //TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: 111.111: ret=%d, value=%llu, token=%llu\n",__FUNCTION__,ret,(unsigned long)value,token);
+    rtcp_map_del_savefd(map, token);
     TURN_MUTEX_UNLOCK(&map->mutex);
     if(!ret) return NULL;
     rtcp_alloc_type* rval=(rtcp_alloc_type*)value;
@@ -224,9 +225,7 @@ int rtcp_map_del(rtcp_map* map, rtcp_token_type token) {
 int rtcp_map_del_savefd(rtcp_map* map, rtcp_token_type token) {
   if(!rtcp_map_valid(map)) return 0;
   else {
-    TURN_MUTEX_LOCK(&map->mutex);
     int ret = ur_map_del(map->map,token,rtcp_alloc_free_savefd);
-    TURN_MUTEX_UNLOCK(&map->mutex);
     return ret;
   }
 }
