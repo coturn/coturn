@@ -61,7 +61,7 @@ int rtcp_map_put(rtcp_map* map, rtcp_token_type key, ioa_socket_handle s);
  * >=0 - success
  * <0 - not found
  */
-ioa_socket_handle rtcp_map_get(const rtcp_map* map, rtcp_token_type token);
+ioa_socket_handle rtcp_map_get(rtcp_map* map, rtcp_token_type token);
 
 /**
  * @ret:

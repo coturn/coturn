@@ -686,7 +686,6 @@ int get_ioa_socket_from_reservation(ioa_engine_handle e, u64bits in_reservation_
   if (e && in_reservation_token && s) {
     *s = rtcp_map_get(e->map_rtcp, in_reservation_token);
     if (*s) {
-      rtcp_map_del_savefd(e->map_rtcp, in_reservation_token);
       return 0;
     }
   }
