@@ -61,15 +61,7 @@ int rtcp_map_put(rtcp_map* map, rtcp_token_type key, ioa_socket_handle s);
  * >=0 - success
  * <0 - not found
  */
-ioa_socket_handle rtcp_map_get(rtcp_map* map, rtcp_token_type token);
-
-/**
- * @ret:
- * 1 - success
- * 0 - not found
- */
-int rtcp_map_del(rtcp_map* map, rtcp_token_type token);
-int rtcp_map_del_savefd(rtcp_map* map, rtcp_token_type token);
+ioa_socket_handle rtcp_map_get(rtcp_map* map, rtcp_token_type token, u08bits *realm);
 
 /**
  * @ret:
