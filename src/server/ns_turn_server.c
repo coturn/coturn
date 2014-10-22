@@ -4261,7 +4261,7 @@ static int create_relay_connection(turn_turnserver* server,
 
 			ioa_socket_handle s = NULL;
 
-			if ((get_ioa_socket_from_reservation(server->e, in_reservation_token,&s) < 0)||
+			if ((get_ioa_socket_from_reservation(server->e, in_reservation_token,&s,(u08bits*)ss->realm_options.name) < 0)||
 				!s ||
 				ioa_socket_tobeclosed(s)) {
 
@@ -4275,16 +4275,12 @@ static int create_relay_connection(turn_turnserver* server,
 
 			newelem = get_relay_session_ss(ss,family);
 
-			IOA_CLOSE_SOCKET(newelem->s);
+			if(newelem->s != s) {
 
-			ns_bzero(newelem, sizeof(relay_endpoint_session));
-			newelem->s = s;
-
-			if(!check_realm_hash(newelem->s,(u08bits*)ss->realm_options.name)) {
 				IOA_CLOSE_SOCKET(newelem->s);
-				*err_code = 508;
-				*reason = (const u08bits *)"Cannot find a valid reserved socket for this realm";
-				return -1;
+
+				ns_bzero(newelem, sizeof(relay_endpoint_session));
+				newelem->s = s;
 			}
 
 			addr_debug_print(server->verbose, get_local_addr_from_ioa_socket(newelem->s), "Local relay addr (RTCP)");

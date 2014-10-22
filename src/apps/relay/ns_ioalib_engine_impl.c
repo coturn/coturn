@@ -681,10 +681,10 @@ static int ioa_socket_check_bandwidth(ioa_socket_handle s, size_t sz, int read)
 	return 1;
 }
 
-int get_ioa_socket_from_reservation(ioa_engine_handle e, u64bits in_reservation_token, ioa_socket_handle *s)
+int get_ioa_socket_from_reservation(ioa_engine_handle e, u64bits in_reservation_token, ioa_socket_handle *s, u08bits *realm)
 {
   if (e && in_reservation_token && s) {
-    *s = rtcp_map_get(e->map_rtcp, in_reservation_token);
+    *s = rtcp_map_get(e->map_rtcp, in_reservation_token, realm);
     if (*s) {
       return 0;
     }
@@ -1823,12 +1823,15 @@ void set_ioa_socket_sub_session(ioa_socket_handle s, tcp_connection *tc)
 }
 
 int get_ioa_socket_address_family(ioa_socket_handle s) {
-	if(!s) {
+
+	int first_time = 1;
+	beg:
+	if (!(s && (s->magic == SOCKET_MAGIC) && !(s->done))) {
 		return AF_INET;
-	} else if(s->done) {
-		return s->family;
-	} else if(s->parent_s && (s != s->parent_s)) {
-		return get_ioa_socket_address_family(s->parent_s);
+	} else if(first_time && s->parent_s && (s != s->parent_s)) {
+		first_time = 0;
+		s = s->parent_s;
+		goto beg;
 	} else {
 		return s->family;
 	}
