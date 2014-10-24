@@ -1525,7 +1525,7 @@ static int handle_turn_refresh(turn_turnserver *server,
 				if(tsid != server->id) {
 
 					if(server->send_socket_to_relay) {
-						ioa_socket_handle new_s = detach_ioa_socket(ss->client_socket,1);
+						ioa_socket_handle new_s = detach_ioa_socket(ss->client_socket);
 						if(new_s) {
 						  if(server->send_socket_to_relay(tsid, mid, tid, new_s, message_integrity, 
 										  RMT_MOBILE_SOCKET, in_buffer, can_resume)<0) {
@@ -1616,7 +1616,7 @@ static int handle_turn_refresh(turn_turnserver *server,
 
 								//Transfer socket:
 
-								ioa_socket_handle s = detach_ioa_socket(ss->client_socket,0);
+								ioa_socket_handle s = detach_ioa_socket(ss->client_socket);
 
 								ss->to_be_closed = 1;
 
@@ -2310,7 +2310,7 @@ static int handle_turn_connection_bind(turn_turnserver *server,
 				turnserver_id sid = (id & 0xFF000000)>>24;
 				ioa_socket_handle s = ss->client_socket;
 				if(s && !ioa_socket_tobeclosed(s)) {
-					ioa_socket_handle new_s = detach_ioa_socket(s,1);
+					ioa_socket_handle new_s = detach_ioa_socket(s);
 					if(new_s) {
 					  if(server->send_socket_to_relay(sid, id, tid, new_s, message_integrity, RMT_CB_SOCKET, in_buffer, can_resume)<0) {
 					    *err_code = 400;

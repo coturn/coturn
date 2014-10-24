@@ -365,6 +365,7 @@ int main(int argc, char **argv)
 		case 'P':
 			passive_tcp = 1;
 			/* implies 'T': */
+			/* no break */
 		case 'T':
 			relay_transport = STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE;
 			break;
