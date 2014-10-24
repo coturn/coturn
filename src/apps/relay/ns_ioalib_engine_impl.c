@@ -1726,10 +1726,7 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s, int full_detach)
 		set_socket_ssl(ret,s->ssl);
 		ret->fd = s->fd;
 
-		if(s->parent_s)
-			ret->family = s->parent_s->family;
-		else
-			ret->family = s->family;
+		ret->family = get_ioa_socket_address_family(s);
 
 		ret->st = s->st;
 		ret->sat = s->sat;
