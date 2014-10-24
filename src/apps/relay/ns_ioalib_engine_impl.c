@@ -1369,7 +1369,7 @@ ioa_socket_handle ioa_create_connecting_tcp_relay_socket(ioa_socket_handle s, io
 
 	ret->conn_bev = bufferevent_socket_new(ret->e->event_base,
 					ret->fd,
-					BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS);
+					BEV_OPT_DEFER_CALLBACKS | BEV_OPT_THREADSAFE);
 	debug_ptr_add(ret->conn_bev);
 	bufferevent_setcb(ret->conn_bev, NULL, NULL, connect_eventcb, ret);
 
@@ -2394,7 +2394,7 @@ static int socket_input_worker(ioa_socket_handle s)
 								s->fd,
 								s->ssl,
 								BUFFEREVENT_SSL_ACCEPTING,
-								BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS);
+								BEV_OPT_DEFER_CALLBACKS | BEV_OPT_THREADSAFE);
 				debug_ptr_add(s->bev);
 				bufferevent_setcb(s->bev, socket_input_handler_bev, socket_output_handler_bev,
 								eventcb_bev, s);
@@ -2410,7 +2410,7 @@ static int socket_input_worker(ioa_socket_handle s)
 			}
 			s->bev = bufferevent_socket_new(s->e->event_base,
 							s->fd,
-							BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS);
+							BEV_OPT_DEFER_CALLBACKS | BEV_OPT_THREADSAFE);
 			debug_ptr_add(s->bev);
 			bufferevent_setcb(s->bev, socket_input_handler_bev, socket_output_handler_bev,
 					eventcb_bev, s);
@@ -3235,7 +3235,7 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 					} else {
 						s->bev = bufferevent_socket_new(s->e->event_base,
 										s->fd,
-										BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS);
+										BEV_OPT_DEFER_CALLBACKS | BEV_OPT_THREADSAFE);
 						debug_ptr_add(s->bev);
 						bufferevent_setcb(s->bev, socket_input_handler_bev, socket_output_handler_bev,
 							eventcb_bev, s);
@@ -3260,14 +3260,14 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 											s->fd,
 											s->ssl,
 											BUFFEREVENT_SSL_ACCEPTING,
-											BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS);
+											BEV_OPT_DEFER_CALLBACKS | BEV_OPT_THREADSAFE);
 							debug_ptr_add(s->bev);
 						} else {
 							s->bev = bufferevent_openssl_socket_new(s->e->event_base,
 											s->fd,
 											s->ssl,
 											BUFFEREVENT_SSL_OPEN,
-											BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS);
+											BEV_OPT_DEFER_CALLBACKS | BEV_OPT_THREADSAFE);
 							debug_ptr_add(s->bev);
 						}
 						bufferevent_setcb(s->bev, socket_input_handler_bev, socket_output_handler_bev,

@@ -1005,11 +1005,8 @@ static void setup_listener(void)
 
 	{
 		struct bufferevent *pair[2];
-		int opts = BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS;
 
-		opts |= BEV_OPT_THREADSAFE;
-
-		bufferevent_pair_new(turn_params.listener.event_base, opts, pair);
+		bufferevent_pair_new(turn_params.listener.event_base, BEV_OPT_DEFER_CALLBACKS | BEV_OPT_THREADSAFE, pair);
 		turn_params.listener.in_buf = pair[0];
 		turn_params.listener.out_buf = pair[1];
 		bufferevent_setcb(turn_params.listener.in_buf, listener_receive_message, NULL, NULL, &turn_params.listener);
@@ -1548,7 +1545,6 @@ void run_listener_server(struct listener_server *ls)
 static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int to_set_rfc5780)
 {
 	struct bufferevent *pair[2];
-	int opts = BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS;
 
 	if(e) {
 		rs->event_base = e->event_base;
@@ -1573,15 +1569,13 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
 		ioa_engine_set_rtcp_map(rs->ioa_eng, turn_params.listener.rtcpmap);
 	}
 
-	opts |= BEV_OPT_THREADSAFE;
-
-	bufferevent_pair_new(rs->event_base, opts, pair);
+	bufferevent_pair_new(rs->event_base, BEV_OPT_DEFER_CALLBACKS | BEV_OPT_THREADSAFE, pair);
 	rs->in_buf = pair[0];
 	rs->out_buf = pair[1];
 	bufferevent_setcb(rs->in_buf, relay_receive_message, NULL, NULL, rs);
 	bufferevent_enable(rs->in_buf, EV_READ);
 
-	bufferevent_pair_new(rs->event_base, opts, pair);
+	bufferevent_pair_new(rs->event_base, BEV_OPT_DEFER_CALLBACKS | BEV_OPT_THREADSAFE, pair);
 	rs->auth_in_buf = pair[0];
 	rs->auth_out_buf = pair[1];
 	bufferevent_setcb(rs->auth_in_buf, relay_receive_auth_message, NULL, NULL, rs);
@@ -1683,11 +1677,8 @@ static void* run_auth_server_thread(void *arg)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"IO method (auth thread): %s\n",event_base_get_method(turn_params.authserver.event_base));
 
 	struct bufferevent *pair[2];
-	int opts = BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS;
 
-	opts |= BEV_OPT_THREADSAFE;
-
-	bufferevent_pair_new(turn_params.authserver.event_base, opts, pair);
+	bufferevent_pair_new(turn_params.authserver.event_base, BEV_OPT_DEFER_CALLBACKS | BEV_OPT_THREADSAFE, pair);
 	turn_params.authserver.in_buf = pair[0];
 	turn_params.authserver.out_buf = pair[1];
 	bufferevent_setcb(turn_params.authserver.in_buf, auth_server_receive_message, NULL, NULL, &turn_params.authserver);

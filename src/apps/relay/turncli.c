@@ -1169,7 +1169,7 @@ static void cliserver_input_handler(struct evconnlistener *l, evutil_socket_t fd
 
 	clisession->bev = bufferevent_socket_new(cliserver.event_base,
 					fd,
-					BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS);
+					BEV_OPT_DEFER_CALLBACKS | BEV_OPT_THREADSAFE);
 	debug_ptr_add(clisession->bev);
 	bufferevent_setcb(clisession->bev, cli_socket_input_handler_bev, NULL,
 			cli_eventcb_bev, clisession);
@@ -1201,11 +1201,8 @@ void setup_cli_thread(void)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"IO method (cli thread): %s\n",event_base_get_method(cliserver.event_base));
 
 	struct bufferevent *pair[2];
-	int opts = BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS;
 
-	opts |= BEV_OPT_THREADSAFE;
-
-	bufferevent_pair_new(cliserver.event_base, opts, pair);
+	bufferevent_pair_new(cliserver.event_base, BEV_OPT_DEFER_CALLBACKS | BEV_OPT_THREADSAFE, pair);
 	cliserver.in_buf = pair[0];
 	cliserver.out_buf = pair[1];
 	bufferevent_setcb(cliserver.in_buf, cli_server_receive_message, NULL, NULL, &cliserver);
