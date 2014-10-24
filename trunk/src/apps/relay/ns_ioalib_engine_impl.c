@@ -1661,7 +1661,7 @@ void close_ioa_socket(ioa_socket_handle s)
 	}
 }
 
-ioa_socket_handle detach_ioa_socket(ioa_socket_handle s, int full_detach)
+ioa_socket_handle detach_ioa_socket(ioa_socket_handle s)
 {
 	ioa_socket_handle ret = NULL;
 
@@ -1693,11 +1693,27 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s, int full_detach)
 
 		evutil_socket_t udp_fd = -1;
 
-		if(s->parent_s && full_detach) {
+		if(s->parent_s) {
 			udp_fd = socket(s->local_addr.ss.sa_family, SOCK_DGRAM, 0);
 			if (udp_fd < 0) {
 				perror("socket");
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"%s: Cannot allocate new socket\n",__FUNCTION__);
+				return ret;
+			}
+			if(sock_bind_to_device(udp_fd, (unsigned char*)(s->e->relay_ifname))<0) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot bind udp server socket to device %s\n",(char*)(s->e->relay_ifname));
+			}
+
+			if(addr_bind(udp_fd,&(s->local_addr),1)<0) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot bind new detached udp server socket to local addr\n");
+				close(udp_fd);
+				return ret;
+			}
+
+			int connect_err=0;
+			if(addr_connect(udp_fd, &(s->remote_addr), &connect_err)<0) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot connect new detached udp server socket to remote addr\n");
+				close(udp_fd);
 				return ret;
 			}
 		}
@@ -1737,38 +1753,13 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s, int full_detach)
 		addr_cpy(&(ret->remote_addr),&(s->remote_addr));
 
 		STRCPY(ret->orig_ctx_type, s->orig_ctx_type);
-
-		ioa_socket_handle parent_s = s->parent_s;
-		ur_addr_map *sockets_container = s->sockets_container;
 		
 		delete_socket_from_map(s);
 		delete_socket_from_parent(s);
 
-		if(udp_fd<0) {
-
-		  add_socket_to_parent(parent_s, ret);
-		  add_socket_to_map(ret,sockets_container);
-
-		} else {
+		if(udp_fd>=0) {
 
 			ret->fd = udp_fd;
-
-			if(sock_bind_to_device(udp_fd, (unsigned char*)(s->e->relay_ifname))<0) {
-			    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot bind udp server socket to device %s\n",(char*)(s->e->relay_ifname));
-			}
-
-			if(addr_bind(udp_fd,&(s->local_addr),1)<0) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot bind new detached udp server socket to local addr\n");
-				IOA_CLOSE_SOCKET(ret);
-				return ret;
-			}
-
-			int connect_err=0;
-			if(addr_connect(udp_fd, &(s->remote_addr), &connect_err)<0) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot connect new detached udp server socket to remote addr\n");
-				IOA_CLOSE_SOCKET(ret);
-				return ret;
-			}
 
 			set_socket_options(ret);
 		}
