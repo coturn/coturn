@@ -200,6 +200,10 @@ typedef u32bits turn_time_t;
 		}\
 	} } while(0)
 
+//////////////// Bufferevents /////////////////////
+
+#define TURN_BUFFEREVENTS_OPTIONS (BEV_OPT_DEFER_CALLBACKS | BEV_OPT_THREADSAFE | BEV_OPT_UNLOCK_CALLBACKS)
+
 //////////////// KERNEL-LEVEL CHANNEL HANDLERS /////////
 
 #if !defined(TURN_CHANNEL_HANDLER_KERNEL)
