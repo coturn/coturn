@@ -913,7 +913,7 @@ static int mysql_get_ip_list(const char *kind, ip_range_list_t * list) {
 								char kval[TURN_LONG_STRING_SIZE];
 								ns_bcopy(row[0],kval,sz);
 								kval[sz]=0;
-								add_ip_list_range(kval,list);
+								add_ip_list_range(kval,NULL,list);
 							}
 						}
 					}

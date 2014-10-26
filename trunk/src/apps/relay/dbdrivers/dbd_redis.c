@@ -1130,7 +1130,7 @@ static int redis_get_ip_list(const char *kind, ip_range_list_t * list) {
 						if (rget->type != REDIS_REPLY_NIL)
 							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", rget->type);
 					} else {
-						add_ip_list_range(rget->str,list);
+						add_ip_list_range(rget->str,NULL,list);
 					}
 					turnFreeRedisReply(rget);
 				}
