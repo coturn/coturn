@@ -1393,17 +1393,8 @@ static ip_range_list_t* get_ip_list(const char *kind)
 static void ip_list_free(ip_range_list_t *l)
 {
 	if(l) {
-		size_t i;
-		for(i=0;i<l->ranges_number;++i) {
-			if(l->ranges && l->ranges[i])
-			  turn_free(l->ranges[i],0);
-			if(l->encaddrsranges && l->encaddrsranges[i])
-			  turn_free(l->encaddrsranges[i],0);
-		}
-		if(l->ranges)
-		  turn_free(l->ranges,0);
-		if(l->encaddrsranges)
-		  turn_free(l->encaddrsranges,0);
+		if(l->rs)
+		  turn_free(l->rs,l->ranges_number * sizeof(ip_range_t));
 		turn_free(l,sizeof(ip_range_list_t));
 	}
 }
@@ -1432,7 +1423,7 @@ void update_white_and_black_lists(void)
 
 /////////////// add ACL record ///////////////////
 
-int add_ip_list_range(const char * range0, ip_range_list_t * list)
+int add_ip_list_range(const char * range0, const char * realm, ip_range_list_t * list)
 {
 	char *range = turn_strdup(range0);
 
@@ -1465,13 +1456,14 @@ int add_ip_list_range(const char * range0, ip_range_list_t * list)
 		*separator = '-';
 
 	++(list->ranges_number);
-	list->ranges = (char**) turn_realloc(list->ranges, 0, sizeof(char*) * list->ranges_number);
-	list->ranges[list->ranges_number - 1] = range;
-	list->encaddrsranges = (ioa_addr_range**) turn_realloc(list->encaddrsranges, 0, sizeof(ioa_addr_range*) * list->ranges_number);
-
-	list->encaddrsranges[list->ranges_number - 1] = (ioa_addr_range*) turn_malloc(sizeof(ioa_addr_range));
-
-	ioa_addr_range_set(list->encaddrsranges[list->ranges_number - 1], &min, &max);
+	list->rs = (ip_range_t*) turn_realloc(list->rs, 0, sizeof(ip_range_t) * list->ranges_number);
+	STRCPY(list->rs[list->ranges_number - 1].str,range);
+	if(realm)
+		STRCPY(list->rs[list->ranges_number - 1].realm,realm);
+	else
+		list->rs[list->ranges_number - 1].realm[0]=0;
+	turn_free(range,0);
+	ioa_addr_range_set(&(list->rs[list->ranges_number - 1].enc), &min, &max);
 
 	return 0;
 }

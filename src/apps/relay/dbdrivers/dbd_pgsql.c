@@ -658,7 +658,7 @@ static int pgsql_get_ip_list(const char *kind, ip_range_list_t * list) {
 			for(i=0;i<PQntuples(res);i++) {
 				char *kval = PQgetvalue(res,i,0);
 				if(kval) {
-					add_ip_list_range(kval,list);
+					add_ip_list_range(kval,NULL,list);
 				}
 			}
       ret = 0;

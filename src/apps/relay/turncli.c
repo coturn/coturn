@@ -312,7 +312,7 @@ static void cli_print_str_array(struct cli_session* cs, char **value, size_t sz,
 
 static void cli_print_ip_range_list(struct cli_session* cs, ip_range_list_t *value, const char* name, int changeable)
 {
-	if(cs && cs->ts && name && value && value->ranges_number && value->ranges) {
+	if(cs && cs->ts && name && value && value->ranges_number && value->rs) {
 		const char *sc="";
 		if(changeable==1)
 			sc=" (*)";
@@ -320,8 +320,15 @@ static void cli_print_ip_range_list(struct cli_session* cs, ip_range_list_t *val
 			sc=" (**)";
 		size_t i;
 		for(i=0;i<value->ranges_number;++i) {
-			if(value->ranges[i])
-				myprintf(cs,"  %s: %s%s\n",name,value->ranges[i],sc);
+			if(value->rs[i].realm[0]) {
+				if(cs->realm[0] && strcmp(cs->realm,value->rs[i].realm)) {
+					continue;
+				} else {
+					myprintf(cs,"  common %s: %s (%s)%s\n",name,value->rs[i].str,value->rs[i].realm,sc);
+				}
+			} else {
+				myprintf(cs,"  common %s: %s%s\n",name,value->rs[i].str,sc);
+			}
 		}
 	}
 }

@@ -77,7 +77,7 @@ DEFAULT_STUN_PORT,DEFAULT_STUN_TLS_PORT,0,0,1,
 {
   NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0,0,NULL,NULL,NULL
 },
-{NULL, NULL, 0},{NULL, NULL, 0},
+{NULL, 0},{NULL, 0},
 NEV_UNKNOWN, 
 { "Unknown", "UDP listening socket per session", "UDP thread per network endpoint", "UDP thread per CPU core" },
 //////////////// Relay servers //////////////////////////////////
@@ -1230,10 +1230,10 @@ static void set_option(int c, char *value)
 		add_tls_alternate_server(value);
 		break;
 	case ALLOWED_PEER_IPS:
-		if (add_ip_list_range(value, &turn_params.ip_whitelist) == 0) TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "White listing: %s\n", value);
+		if (add_ip_list_range(value, NULL, &turn_params.ip_whitelist) == 0) TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "White listing: %s\n", value);
 		break;
 	case DENIED_PEER_IPS:
-		if (add_ip_list_range(value, &turn_params.ip_blacklist) == 0) TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Black listing: %s\n", value);
+		if (add_ip_list_range(value, NULL, &turn_params.ip_blacklist) == 0) TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Black listing: %s\n", value);
 		break;
 	case CIPHER_LIST_OPT:
 		STRCPY(turn_params.cipher_list,value);

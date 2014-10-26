@@ -137,9 +137,16 @@ typedef struct _realm_options_t realm_options_t;
 
 //////// IP White/black listing ///////////
 
+struct _ip_range {
+	char str[257];
+	char realm[513];
+	ioa_addr_range enc;
+};
+
+typedef struct _ip_range ip_range_t;
+
 struct _ip_range_list {
-	char **ranges;
-	ioa_addr_range **encaddrsranges;
+	ip_range_t *rs;
 	size_t ranges_number;
 };
 
