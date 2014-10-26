@@ -1739,7 +1739,9 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s)
 
 		ret->realm_hash = s->realm_hash;
 
-		set_socket_ssl(ret,s->ssl);
+		SSL* ssl = s->ssl;
+		set_socket_ssl(s,NULL);
+		set_socket_ssl(ret,ssl);
 		ret->fd = s->fd;
 
 		ret->family = get_ioa_socket_address_family(s);
@@ -1770,7 +1772,6 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s)
 		ret->current_tos = s->current_tos;
 		ret->default_tos = s->default_tos;
 
-		set_socket_ssl(s,NULL);
 		s->fd = -1;
 	}
 
