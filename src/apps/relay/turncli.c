@@ -324,10 +324,10 @@ static void cli_print_ip_range_list(struct cli_session* cs, ip_range_list_t *val
 				if(cs->realm[0] && strcmp(cs->realm,value->rs[i].realm)) {
 					continue;
 				} else {
-					myprintf(cs,"  common %s: %s (%s)%s\n",name,value->rs[i].str,value->rs[i].realm,sc);
+					myprintf(cs,"  %s: %s (%s)%s\n",name,value->rs[i].str,value->rs[i].realm,sc);
 				}
 			} else {
-				myprintf(cs,"  common %s: %s%s\n",name,value->rs[i].str,sc);
+				myprintf(cs,"  %s: %s%s\n",name,value->rs[i].str,sc);
 			}
 		}
 	}
@@ -760,8 +760,19 @@ static void cli_print_configuration(struct cli_session* cs)
 		cli_print_uint(cs,(unsigned long)turn_params.min_port,"min-port",0);
 		cli_print_uint(cs,(unsigned long)turn_params.max_port,"max-port",0);
 
-		cli_print_ip_range_list(cs,&turn_params.ip_whitelist,"Whitelist IP",0);
-		cli_print_ip_range_list(cs,&turn_params.ip_blacklist,"Blacklist IP",0);
+		cli_print_ip_range_list(cs,&turn_params.ip_whitelist,"Whitelist IP (static)",0);
+		{
+			ip_range_list_t* l = get_ip_list("allowed");
+			cli_print_ip_range_list(cs,l,"Whitelist IP (dynamic)",0);
+			ip_list_free(l);
+		}
+
+		cli_print_ip_range_list(cs,&turn_params.ip_blacklist,"Blacklist IP (static)",0);
+		{
+			ip_range_list_t* l = get_ip_list("denied");
+			cli_print_ip_range_list(cs,l,"Blacklist IP (dynamic)",0);
+			ip_list_free(l);
+		}
 
 		cli_print_flag(cs,turn_params.no_multicast_peers,"no-multicast-peers",1);
 		cli_print_flag(cs,turn_params.no_loopback_peers,"no-loopback-peers",1);

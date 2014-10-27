@@ -1377,20 +1377,20 @@ const ip_range_list_t* ioa_get_blacklist(ioa_engine_handle e)
 	return ipblacklist;
 }
 
-static ip_range_list_t* get_ip_list(const char *kind)
+ip_range_list_t* get_ip_list(const char *kind)
 {
-	ip_range_list_t *ret = (ip_range_list_t*)turn_malloc(sizeof(ip_range_list_t));
+	ip_range_list_t *ret = (ip_range_list_t*) turn_malloc(sizeof(ip_range_list_t));
 	ns_bzero(ret,sizeof(ip_range_list_t));
 
-  turn_dbdriver_t * dbd = get_dbdriver();
-  if (dbd && dbd->get_ip_list) {
-    (*dbd->get_ip_list)(kind, ret);
+	turn_dbdriver_t * dbd = get_dbdriver();
+	if (dbd && dbd->get_ip_list) {
+		(*dbd->get_ip_list)(kind, ret);
 	}
 
 	return ret;
 }
 
-static void ip_list_free(ip_range_list_t *l)
+void ip_list_free(ip_range_list_t *l)
 {
 	if(l) {
 		if(l->rs)
