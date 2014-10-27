@@ -645,30 +645,43 @@ static void pgsql_auth_ping(void * rch) {
 	}
 }
   
-static int pgsql_get_ip_list(const char *kind, ip_range_list_t * list) {
-  int ret = -1;
+
+static int pgsql_get_ip_list(const char *kind, ip_range_list_t * list)
+{
+	int ret = -1;
 	PGconn * pqc = get_pqdb_connection();
-	if(pqc) {
+	if (pqc) {
 		char statement[TURN_LONG_STRING_SIZE];
-		snprintf(statement,sizeof(statement),"select ip_range from %s_peer_ip",kind);
+		snprintf(statement, sizeof(statement), "select ip_range,realm from %s_peer_ip", kind);
 		PGresult *res = PQexec(pqc, statement);
 
-		if(res && (PQresultStatus(res) == PGRES_TUPLES_OK)) {
-			int i = 0;
-			for(i=0;i<PQntuples(res);i++) {
-				char *kval = PQgetvalue(res,i,0);
-				if(kval) {
-					add_ip_list_range(kval,NULL,list);
-				}
+		if (!res || (PQresultStatus(res) != PGRES_TUPLES_OK)) {
+			static int wrong_table_reported = 0;
+			if(!wrong_table_reported) {
+				wrong_table_reported = 1;
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving PostgreSQL DB information: %s; probably, the tables 'allowed_peer_ip' and/or 'denied_peer_ip' have to be upgraded to include the realm column.\n",PQerrorMessage(pqc));
 			}
-      ret = 0;
+			snprintf(statement, sizeof(statement), "select ip_range,'' from %s_peer_ip", kind);
+			res = PQexec(pqc, statement);
 		}
 
-		if(res) {
+		if (res && (PQresultStatus(res) == PGRES_TUPLES_OK)) {
+			int i = 0;
+			for (i = 0; i < PQntuples(res); i++) {
+				char *kval = PQgetvalue(res, i, 0);
+				char *rval = PQgetvalue(res, i, 1);
+				if (kval) {
+					add_ip_list_range(kval, rval, list);
+				}
+			}
+			ret = 0;
+		}
+
+		if (res) {
 			PQclear(res);
 		}
 	}
-  return ret;
+	return ret;
 }
   
 static void pgsql_reread_realms(secrets_list_t * realms_list) {

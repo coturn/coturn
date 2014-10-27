@@ -896,11 +896,22 @@ static int mysql_get_ip_list(const char *kind, ip_range_list_t * list) {
 	MYSQL * myc = get_mydb_connection();
 	if(myc) {
 		char statement[TURN_LONG_STRING_SIZE];
-		snprintf(statement,sizeof(statement),"select ip_range from %s_peer_ip",kind);
+		snprintf(statement,sizeof(statement),"select ip_range,realm from %s_peer_ip",kind);
 		int res = mysql_query(myc, statement);
+
+		if(res) {
+			static int wrong_table_reported = 0;
+			if(!wrong_table_reported) {
+				wrong_table_reported = 1;
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information; probably, the tables 'allowed_peer_ip' and/or 'denied_peer_ip' have to be upgraded to include the realm column.\n");
+			}
+			snprintf(statement, sizeof(statement), "select ip_range,'' from %s_peer_ip", kind);
+			res = mysql_query(myc, statement);
+		}
+
 		if(res == 0) {
 			MYSQL_RES *mres = mysql_store_result(myc);
-			if(mres && mysql_field_count(myc)==1) {
+			if(mres && mysql_field_count(myc)==2) {
 				for(;;) {
 					MYSQL_ROW row = mysql_fetch_row(mres);
 					if(!row) {
@@ -913,7 +924,11 @@ static int mysql_get_ip_list(const char *kind, ip_range_list_t * list) {
 								char kval[TURN_LONG_STRING_SIZE];
 								ns_bcopy(row[0],kval,sz);
 								kval[sz]=0;
-								add_ip_list_range(kval,NULL,list);
+								sz = lengths[1];
+								char rval[TURN_LONG_STRING_SIZE];
+								ns_bcopy(row[1],rval,sz);
+								rval[sz]=0;
+								add_ip_list_range(kval,rval,list);
 							}
 						}
 					}
