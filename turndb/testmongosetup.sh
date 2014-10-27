@@ -4,6 +4,12 @@ mongo $* <<EOF
 
 use coturn;
 
+db.turnusers_lt.ensureIndex({ realm: 1, name: 1 }, { unique: 1 });
+db.turnusers_st.ensureIndex({ name: 1 }, { unique: 1 });
+db.turn_secret.ensureIndex({ realm: 1 }, { unique: 1 });
+db.realm.ensureIndex({ realm: 1 }, { unique: 1 });
+db.oauth_key.ensureIndex({ kid: 1 }, {unique: 1 });
+
 db.turnusers_lt.insert({ realm: 'north.gov', name: 'ninefingers', hmackey: 'bc807ee29df3c9ffa736523fb2c4e8ee' });
 db.turnusers_lt.insert({ realm: 'north.gov', name: 'gorst', hmackey: '7da2270ccfa49786e0115366d3a3d14d' });
 db.turnusers_lt.insert({ realm: 'crinna.org', name: 'whirrun', hmackey: '6972e85e51f36e53b0b61759c5a5219a' });
@@ -23,7 +29,9 @@ db.realm.insert({
     "max-bps" : 500000,
     "user-quota" : 10000,
     "total-quota" : 12000 
-  }
+  },
+  allowed_peer_ip: [ '172.17.13.200', '172.17.13.201' ],
+  denied_peer_ip: ['172.17.13.133-172.17.14.56', '123::45', '172.17.17.133-172.17.19.56']
 });
 
 db.realm.insert({
@@ -33,13 +41,10 @@ db.realm.insert({
     "max-bps" : 400000,
     "user-quota" : 8000,
     "total-quota" : 10000 
-  }
+  },
+  allowed_peer_ip: [ '172.17.13.200', '172.17.13.201' ],
+  denied_peer_ip: ['172.17.13.133-172.17.14.56', '123::45', '123::77']
 });
-
-db.allowed_peer_ip.insert({ ip_range: '172.17.13.200' });
-
-db.denied_peer_ip.insert({ ip_range: '172.17.13.133-172.17.14.56' });
-db.denied_peer_ip.insert({ ip_range: '123::45' });
 
 db.oauth_key.insert({ kid: 'north', 
 					ikm_key: 'Y2FybGVvbg==', 
