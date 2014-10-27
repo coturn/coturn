@@ -1094,14 +1094,20 @@ static void redis_auth_ping(void * rch) {
 		send_message_to_redis((redis_context_handle)rch, "publish", "__XXX__", "__YYY__");
 }
   
-static int redis_get_ip_list(const char *kind, ip_range_list_t * list) {
-  int ret = -1;
+
+
+static int redis_get_ip_list(const char *kind, ip_range_list_t * list)
+{
+	int ret = -1;
 	redisContext *rc = get_redis_connection();
-	if(rc) {
+	if (rc) {
+		char header[TURN_LONG_STRING_SIZE];
 		char statement[TURN_LONG_STRING_SIZE];
-		snprintf(statement,sizeof(statement),"keys turn/%s-peer-ip/*", kind);
-		redisReply *reply = (redisReply*)redisCommand(rc, statement);
-		if(reply) {
+		snprintf(header, sizeof(header), "turn/%s-peer-ip/", kind);
+		size_t header_len = strlen(header);
+		snprintf(statement, sizeof(statement), "keys %s*", header);
+		redisReply *reply = (redisReply*) redisCommand(rc, statement);
+		if (reply) {
 			secrets_list_t keys;
 			size_t isz = 0;
 			char s[257];
@@ -1116,21 +1122,31 @@ static int redis_get_ip_list(const char *kind, ip_range_list_t * list) {
 			} else {
 				size_t i;
 				for (i = 0; i < reply->elements; ++i) {
-					add_to_secrets_list(&keys,reply->element[i]->str);
+					add_to_secrets_list(&keys, reply->element[i]->str);
 				}
 			}
 
-			for(isz=0;isz<keys.sz;++isz) {
-				snprintf(s,sizeof(s),"get %s", keys.secrets[isz]);
-				redisReply *rget = (redisReply *)redisCommand(rc, s);
-				if(rget) {
+			for (isz = 0; isz < keys.sz; ++isz) {
+				char *realm = NULL;
+				snprintf(s, sizeof(s), "get %s", keys.secrets[isz]);
+				redisReply *rget = (redisReply *) redisCommand(rc, s);
+				if (rget) {
 					if (rget->type == REDIS_REPLY_ERROR)
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", rget->str);
 					else if (rget->type != REDIS_REPLY_STRING) {
 						if (rget->type != REDIS_REPLY_NIL)
 							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", rget->type);
 					} else {
-						add_ip_list_range(rget->str,NULL,list);
+						char *ptr = ((char*)keys.secrets[isz])+header_len;
+						char *sep = strstr(ptr, "/");
+						if (sep) {
+							*sep = 0;
+							realm = ptr;
+						}
+						add_ip_list_range(rget->str, realm, list);
+						if(sep) {
+							*sep='/';
+						}
 					}
 					turnFreeRedisReply(rget);
 				}
@@ -1139,10 +1155,10 @@ static int redis_get_ip_list(const char *kind, ip_range_list_t * list) {
 			clean_secrets_list(&keys);
 
 			turnFreeRedisReply(reply);
-      ret = 0;
+			ret = 0;
 		}
 	}
-  return ret;
+	return ret;
 }
   
 static void redis_reread_realms(secrets_list_t * realms_list) {

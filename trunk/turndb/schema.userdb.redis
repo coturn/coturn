@@ -28,13 +28,17 @@ issue command "keys turn/realm/north.gov/secret/*" it it will try to use the
 obtained keys in arbitrary order.
 
 4) The "white" and "black" peer IP ranges are stored as keys of the
-following form: "turn/allowed-peer-ip/<arbitrary>" or 
-"turn/denied-peer-ip/<arbitrary>"
+following form: 
+"turn/allowed-peer-ip/<arbitrary-unique-id>" or 
+"turn/allowed-peer-ip/<realm>/<arbitrary-unique-id>" or 
+"turn/denied-peer-ip/<arbitrary-unique-id>" or
+"turn/denied-peer-ip/<realm>/<arbitrary-unique-id>".
 
 The meaning of the keys is the same as the meaning of allowed-peer-ip and
-denied-peer-ip turnserver command-line option. The only difference is that 
-the option values are "static" (they remain the same for the lifetime of 
-the turnserver process) but the database records can be dynamically changed 
+denied-peer-ip turnserver command-line option (with the addition of the realm option).
+The only difference is that the turnserver option values are "static" 
+(they remain the same for the lifetime of the turnserver process) but 
+the database records can be dynamically changed 
 and they will be almost immediately "seen" by the turnserver process.
 
 5) For the oAuth authentication, there is a hash structure with the key 
@@ -143,7 +147,12 @@ set turn/origin/https://bligh.edu:443 crinna.org
 set turn/denied-peer-ip/123456 "172.17.13.133-172.17.14.56"
 set turn/denied-peer-ip/234567 "123::45"
 
+set turn/denied-peer-ip/north.gov/1234567 "172.17.17.133-172.17.19.56"
+set turn/denied-peer-ip/crinna.org/2345678 "123::77"
+
 set turn/allowed-peer-ip/345678 "172.17.13.200"
+set turn/allowed-peer-ip/north.gov/345679 "172.17.13.201"
+set turn/allowed-peer-ip/crinna.org/3456710 "172.17.13.202"
 
 hmset turn/oauth/kid/north ikm_key Y2FybGVvbg== hkdf_hash_func 'SHA-256' as_rs_alg 'AES-128-CBC' auth_alg 'HMAC-SHA-256-128'
 
