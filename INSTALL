@@ -700,7 +700,7 @@ The schema description:
 # Table for long-term credentials mechanism authorization:
 #
 CREATE TABLE turnusers_lt (
-    realm varchar(512),
+    realm varchar(512) default '',
     name varchar(512),
     hmackey char(128),
     PRIMARY KEY (realm,name)
@@ -727,7 +727,7 @@ CREATE TABLE turnusers_st (
 # mechanism:
 #
 CREATE TABLE turn_secret (
-	realm varchar(512),
+	realm varchar(512) default '',
     value varchar(512),
 	primary key (realm,value)
 );
@@ -735,15 +735,17 @@ CREATE TABLE turn_secret (
 # Table holding "white" allowed peer IP ranges.
 #
 CREATE TABLE allowed_peer_ip (
+	realm varchar(512) default '',
 	ip_range varchar(256),
-	primary key (ip_range)
+	primary key (realm,ip_range)
 );
 
 # Table holding "black" denied peer IP ranges.
 #
 CREATE TABLE denied_peer_ip (
+	realm varchar(512) default '',
 	ip_range varchar(256),
-	primary key (ip_range)
+	primary key (realm,ip_range)
 );
 
 # Table to match origin to realm.
@@ -763,7 +765,7 @@ CREATE TABLE turn_origin_to_realm (
 # Values for them are integers (in text form).
 #
 CREATE TABLE turn_realm_option (
-	realm varchar(512),
+	realm varchar(512) default '',
 	opt varchar(32),
 	value varchar(128),
 	primary key (realm,opt)
