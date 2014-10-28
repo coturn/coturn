@@ -37,11 +37,12 @@ following options:
 	You will have to choose the authentication option (long-term,
 	or long-term with REST API, or short-term, or no authentication).
 	Then you will have to choose the user database option: MySQL (set by default here), 
-	or PostgreSQL, or flat file DB (/etc/turnuserdb.conf), or Redis. All four possible 
-	databases are pre-set with the same data.
+	or PostgreSQL, or flat file DB (/etc/turnuserdb.conf), or Redis, or MongoDB. 
+	All five possible options are pre-set with the same data.
 	Then you will have to remove the test users with the turnadmin utility, and add 
 	the real users. The turnadmin utility must be called with -M option for MySQL, 
-	-e option for PostgreSQL, -N option for Redis, or with -b option for flat DB file.
+	-e option for PostgreSQL, -N option for Redis, -J for MongoDB,
+	or with -b option for flat DB file.
 
 3) Choose loging option. By default, the log file is /var/log/turn_*.log, in verbose mode. 
 You can choose a different file prefix, or redirect the log into syslog. 
@@ -77,6 +78,11 @@ password: turn
 
 number: 1
 password: turn
+
+5) MongoDB for authentication
+
+name: turn
+no password is set.
 
 All databases are accessible only locally, from the loopback interface, 
 to eliminate the security threat. The user can change it if necessary, 
