@@ -1,7 +1,7 @@
 10/26/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.2.2.1 'Monza':
 	- Black- and white- IP lists are divided per realm
-		(the DB schema changed);
+		(the DB schema for those two tables changed);
 	- TCP/TLS tests extended.
 	- Relay RTCP sockets ports allocation fixed.
 	- List of libraries cleaned.
