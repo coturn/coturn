@@ -42,15 +42,11 @@ set turn/realm/crinna.org/user-quota 8000
 set turn/origin/http://crinna.org:80 crinna.org
 set turn/origin/https://bligh.edu:443 crinna.org
 
-set turn/denied-peer-ip/123456 "172.17.13.133-172.17.14.56"
-set turn/denied-peer-ip/234567 "123::45"
+sadd turn/realm/north.gov/allowed-peer-ip "172.17.13.200" "172.17.13.201"
+sadd turn/realm/crinna.org/allowed-peer-ip "172.17.13.202"
 
-set turn/denied-peer-ip/north.gov/1234567 "172.17.17.133-172.17.19.56"
-set turn/denied-peer-ip/crinna.org/2345678 "123::77"
-
-set turn/allowed-peer-ip/345678 "172.17.13.200"
-set turn/allowed-peer-ip/north.gov/345679 "172.17.13.201"
-set turn/allowed-peer-ip/crinna.org/3456710 "172.17.13.202"
+sadd turn/realm/north.gov/denied-peer-ip "172.17.13.133-172.17.14.56" "172.17.17.133-172.17.19.56" "123::45"
+sadd turn/realm/crinna.org/denied-peer-ip "123::77"
 
 hmset turn/oauth/kid/north ikm_key Y2FybGVvbg== hkdf_hash_func 'SHA-256' as_rs_alg 'AES-256-CBC' auth_alg 'HMAC-SHA-256-128'
 hmset turn/oauth/kid/oldempire ikm_key YXVsY3Vz hkdf_hash_func 'SHA-256' as_rs_alg 'AEAD-AES-256-GCM'

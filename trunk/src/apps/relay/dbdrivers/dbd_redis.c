@@ -1041,11 +1041,10 @@ static int redis_get_ip_list(const char *kind, ip_range_list_t * list)
 	int ret = -1;
 	redisContext *rc = get_redis_connection();
 	if (rc) {
-		char header[TURN_LONG_STRING_SIZE];
 		char statement[TURN_LONG_STRING_SIZE];
-		snprintf(header, sizeof(header), "turn/%s-peer-ip/", kind);
+		const char* header = "turn/realm/";
 		size_t header_len = strlen(header);
-		snprintf(statement, sizeof(statement), "keys %s*", header);
+		snprintf(statement, sizeof(statement), "keys %s*/%s-peer-ip", header,kind);
 		redisReply *reply = (redisReply*) redisCommand(rc, statement);
 		if (reply) {
 			secrets_list_t keys;
@@ -1067,28 +1066,39 @@ static int redis_get_ip_list(const char *kind, ip_range_list_t * list)
 			}
 
 			for (isz = 0; isz < keys.sz; ++isz) {
+
 				char *realm = NULL;
-				snprintf(s, sizeof(s), "get %s", keys.secrets[isz]);
+
+				snprintf(s, sizeof(s), "smembers %s", keys.secrets[isz]);
+
 				redisReply *rget = (redisReply *) redisCommand(rc, s);
+
+				char *ptr = ((char*)keys.secrets[isz])+header_len;
+				char *sep = strstr(ptr, "/");
+				if (sep) {
+					*sep = 0;
+					realm = ptr;
+				}
+
 				if (rget) {
-					if (rget->type == REDIS_REPLY_ERROR)
+					if (rget->type == REDIS_REPLY_ERROR) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", rget->str);
-					else if (rget->type != REDIS_REPLY_STRING) {
+					} else if (rget->type == REDIS_REPLY_STRING) {
+						add_ip_list_range(rget->str, realm, list);
+					} else if (rget->type != REDIS_REPLY_ARRAY) {
 						if (rget->type != REDIS_REPLY_NIL)
 							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", rget->type);
 					} else {
-						char *ptr = ((char*)keys.secrets[isz])+header_len;
-						char *sep = strstr(ptr, "/");
-						if (sep) {
-							*sep = 0;
-							realm = ptr;
-						}
-						add_ip_list_range(rget->str, realm, list);
-						if(sep) {
-							*sep='/';
+						size_t i;
+						for (i = 0; i < rget->elements; ++i) {
+							add_ip_list_range(rget->element[i]->str, realm, list);
 						}
 					}
 					turnFreeRedisReply(rget);
+				}
+
+				if(sep) {
+					*sep='/';
 				}
 			}
 
