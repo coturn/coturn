@@ -21,8 +21,8 @@ set turn/realm/north.gov/user/bethod/password "king-of-north"
 set turn/realm/crinna.org/user/whirrun/password "sword"
 set turn/realm/crinna.org/user/stranger-come-knocking/password "civilization"
 
-set turn/realm/north.gov/secret/1368426581 "logen"
-set turn/realm/crinna.org/secret/777888999 "north"
+sadd turn/realm/north.gov/secret "logen" "bloody9"
+sadd turn/realm/crinna.org/secret "north" "library"
 
 set turn/user/ninefingers/password "youhavetoberealistic"
 set turn/user/gorst/password "hero"

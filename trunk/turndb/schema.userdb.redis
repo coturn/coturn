@@ -18,14 +18,13 @@ are not bound to a realm). So, there will be key "turn/user/gorst/password"
 and the value will be "hero".
 
 3) For the shared secrets (REST API), several key/value pairs 
-may be used (same as in SQL schema). The key will be 
-"turn/realm/<realm-name>/secret/<arbitrary secret ID>" and the value will be 
-"<secret>". For example, if we have secrets "hero1", "hero2" and "hero3", 
-then we will have keys "turn/realm/north.gov/secret/123",
-"turn/realm/north.gov/secret/234", "turn/realm/north.gov/secret/345" 
-and their values will be  "hero1", "hero2", "hero3". The turnserver will 
-issue command "keys turn/realm/north.gov/secret/*" it it will try to use the 
-obtained keys in arbitrary order.
+may be used (same as in SQL schema). The secrets are stored as members 
+of an unordered set. The name of the set will be 
+"turn/realm/<realm-name>/secret" and the value(s) will be the secret(s).
+For example, if we have secrets "hero1", "hero2" and "hero3", 
+then we will have set "turn/realm/north.gov/secret" with values
+"hero1", "hero2" and "hero3". The turnserver will try to use the 
+secrets in arbitrary order.
 
 4) The "white" and "black" peer IP ranges are stored as keys of the
 following form: 
@@ -97,7 +96,7 @@ This example sets user database for:
   	with default realm "north.gov";
   * long-term credentials with open passwords and 
   	with default realm "north.gov";
-  * TURN REST API with shared secret "logen";
+  * TURN REST API with shared secrets "logen", etc;
   * short-term credentials mechanism, with open passwords;
   * Black and white IP peer lists used.
   * Information how to match ORIGIN field with extra
@@ -126,8 +125,8 @@ set turn/realm/north.gov/user/gorst/password "hero"
 set turn/realm/crinna.org/user/whirrun/password "sword"
 set turn/realm/crinna.org/user/stranger-come-knocking/password "civilization"
 
-set turn/realm/north.gov/secret/1368426581 "logen"
-set turn/realm/crinna.org/secret/777888999 "north"
+sadd turn/realm/north.gov/secret "logen" "bloody9"
+sadd turn/realm/crinna.org/secret "north" "library"
 
 set turn/user/ninefingers/password "youhavetoberealistic"
 set turn/user/gorst/password "hero"
