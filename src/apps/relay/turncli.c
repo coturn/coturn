@@ -312,7 +312,7 @@ static void cli_print_str_array(struct cli_session* cs, char **value, size_t sz,
 
 static void cli_print_ip_range_list(struct cli_session* cs, ip_range_list_t *value, const char* name, int changeable)
 {
-	if(cs && cs->ts && name && value && value->ranges_number && value->ranges) {
+	if(cs && cs->ts && name && value && value->ranges_number && value->rs) {
 		const char *sc="";
 		if(changeable==1)
 			sc=" (*)";
@@ -320,8 +320,15 @@ static void cli_print_ip_range_list(struct cli_session* cs, ip_range_list_t *val
 			sc=" (**)";
 		size_t i;
 		for(i=0;i<value->ranges_number;++i) {
-			if(value->ranges[i])
-				myprintf(cs,"  %s: %s%s\n",name,value->ranges[i],sc);
+			if(value->rs[i].realm[0]) {
+				if(cs->realm[0] && strcmp(cs->realm,value->rs[i].realm)) {
+					continue;
+				} else {
+					myprintf(cs,"  %s: %s (%s)%s\n",name,value->rs[i].str,value->rs[i].realm,sc);
+				}
+			} else {
+				myprintf(cs,"  %s: %s%s\n",name,value->rs[i].str,sc);
+			}
 		}
 	}
 }
@@ -753,8 +760,19 @@ static void cli_print_configuration(struct cli_session* cs)
 		cli_print_uint(cs,(unsigned long)turn_params.min_port,"min-port",0);
 		cli_print_uint(cs,(unsigned long)turn_params.max_port,"max-port",0);
 
-		cli_print_ip_range_list(cs,&turn_params.ip_whitelist,"Whitelist IP",0);
-		cli_print_ip_range_list(cs,&turn_params.ip_blacklist,"Blacklist IP",0);
+		cli_print_ip_range_list(cs,&turn_params.ip_whitelist,"Whitelist IP (static)",0);
+		{
+			ip_range_list_t* l = get_ip_list("allowed");
+			cli_print_ip_range_list(cs,l,"Whitelist IP (dynamic)",0);
+			ip_list_free(l);
+		}
+
+		cli_print_ip_range_list(cs,&turn_params.ip_blacklist,"Blacklist IP (static)",0);
+		{
+			ip_range_list_t* l = get_ip_list("denied");
+			cli_print_ip_range_list(cs,l,"Blacklist IP (dynamic)",0);
+			ip_list_free(l);
+		}
 
 		cli_print_flag(cs,turn_params.no_multicast_peers,"no-multicast-peers",1);
 		cli_print_flag(cs,turn_params.no_loopback_peers,"no-loopback-peers",1);
@@ -882,12 +900,7 @@ static void close_cli_session(struct cli_session* cs)
 			cs->ts = NULL;
 		}
 
-		if(cs->bev) {
-			bufferevent_flush(cs->bev,EV_READ|EV_WRITE,BEV_FLUSH);
-			bufferevent_disable(cs->bev,EV_READ|EV_WRITE);
-			bufferevent_free(cs->bev);
-			cs->bev=NULL;
-		}
+		BUFFEREVENT_FREE(cs->bev);
 
 		if(cs->fd>=0) {
 			close(cs->fd);
@@ -1174,7 +1187,8 @@ static void cliserver_input_handler(struct evconnlistener *l, evutil_socket_t fd
 
 	clisession->bev = bufferevent_socket_new(cliserver.event_base,
 					fd,
-					BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS);
+					TURN_BUFFEREVENTS_OPTIONS);
+	debug_ptr_add(clisession->bev);
 	bufferevent_setcb(clisession->bev, cli_socket_input_handler_bev, NULL,
 			cli_eventcb_bev, clisession);
 	bufferevent_setwatermark(clisession->bev, EV_READ|EV_WRITE, 0, BUFFEREVENT_HIGH_WATERMARK);
@@ -1205,11 +1219,8 @@ void setup_cli_thread(void)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"IO method (cli thread): %s\n",event_base_get_method(cliserver.event_base));
 
 	struct bufferevent *pair[2];
-	int opts = BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS;
 
-	opts |= BEV_OPT_THREADSAFE;
-
-	bufferevent_pair_new(cliserver.event_base, opts, pair);
+	bufferevent_pair_new(cliserver.event_base, TURN_BUFFEREVENTS_OPTIONS, pair);
 	cliserver.in_buf = pair[0];
 	cliserver.out_buf = pair[1];
 	bufferevent_setcb(cliserver.in_buf, cli_server_receive_message, NULL, NULL, &cliserver);

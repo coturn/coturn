@@ -80,7 +80,7 @@ static SSL* tls_connect(ioa_socket_raw fd, ioa_addr *remote_addr)
 {
 	int ctxtype = (int)(((unsigned long)random())%root_tls_ctx_num);
 
-	SSL *ssl = SSL_new(root_tls_ctx[ctxtype]);
+	SSL *ssl = SSL_NEW(root_tls_ctx[ctxtype]);
 
 	if(use_tcp) {
 		SSL_set_fd(ssl, fd);
@@ -456,21 +456,23 @@ static int clnet_allocate(int verbose,
 										return -1;
 									} else {
 										if (verbose) {
-											ioa_addr remote_addr;
-											memcpy(&remote_addr, relay_addr,sizeof(ioa_addr));
-											addr_debug_print(verbose, &remote_addr,"Received relay addr");
+											ioa_addr raddr;
+											memcpy(&raddr, relay_addr,sizeof(ioa_addr));
+											addr_debug_print(verbose, &raddr,"Received relay addr");
 										}
 
 										if(!addr_any(relay_addr)) {
 											if(relay_addr->ss.sa_family == AF_INET) {
 												if(default_address_family != STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6) {
 													found = 1;
+													addr_cpy(&(clnet_info->relay_addr),relay_addr);
 													break;
 												}
 											}
 											if(relay_addr->ss.sa_family == AF_INET6) {
 												if(default_address_family == STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6) {
 													found = 1;
+													addr_cpy(&(clnet_info->relay_addr),relay_addr);
 													break;
 												}
 											}
@@ -588,8 +590,7 @@ static int clnet_allocate(int verbose,
 			  int close_socket = (int)(random()%2);
 			  if(ssl && !close_socket) {
 				  SSL_shutdown(ssl);
-				  SSL_free(ssl);
-				  ssl = NULL;
+				  SSL_FREE(ssl);
 				  fd = -1;
 			  } else if(fd>=0) {
 				  close(fd);
@@ -613,7 +614,7 @@ static int clnet_allocate(int verbose,
 
 		  if(ssl) {
 			  SSL_shutdown(ssl);
-		  	  SSL_free(ssl);
+		  	  SSL_FREE(ssl);
 		  } else if(fd>=0) {
 		  	  close(fd);
 		  }
@@ -1535,7 +1536,7 @@ void tcp_data_connect(app_ur_session *elem, u32bits cid)
 
 	++elem->pinfo.tcp_conn_number;
 	int i = (int)(elem->pinfo.tcp_conn_number-1);
-	elem->pinfo.tcp_conn=(app_tcp_conn_info**)realloc(elem->pinfo.tcp_conn,elem->pinfo.tcp_conn_number*sizeof(app_tcp_conn_info*));
+	elem->pinfo.tcp_conn=(app_tcp_conn_info**)turn_realloc(elem->pinfo.tcp_conn,0,elem->pinfo.tcp_conn_number*sizeof(app_tcp_conn_info*));
 	elem->pinfo.tcp_conn[i]=(app_tcp_conn_info*)turn_malloc(sizeof(app_tcp_conn_info));
 	ns_bzero(elem->pinfo.tcp_conn[i],sizeof(app_tcp_conn_info));
 

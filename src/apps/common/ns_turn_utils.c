@@ -664,15 +664,13 @@ int get_canonic_origin(const char* o, char *co, int sz)
 #include <set>
 #include <string>
 
-using namespace std;
-
 static volatile int tmm_init = 0;
 static pthread_mutex_t tm;
 
 typedef void* ptrtype;
-typedef set<ptrtype> ptrs_t;
-typedef map<string,ptrs_t> str_to_ptrs_t;
-typedef map<ptrtype,string> ptr_to_str_t;
+typedef std::set<ptrtype> ptrs_t;
+typedef std::map<std::string,ptrs_t> str_to_ptrs_t;
+typedef std::map<ptrtype,std::string> ptr_to_str_t;
 
 static str_to_ptrs_t str_to_ptrs;
 static ptr_to_str_t ptr_to_str;
@@ -692,7 +690,7 @@ static void add_tm_ptr(void *ptr, const char *id) {
   if(!ptr)
     return;
 
-  string sid(id);
+  std::string sid(id);
 
   str_to_ptrs_t::iterator iter;
 
@@ -701,7 +699,7 @@ static void add_tm_ptr(void *ptr, const char *id) {
   iter = str_to_ptrs.find(sid);
 
   if(iter == str_to_ptrs.end()) {
-    set<ptrtype> sp;
+    std::set<ptrtype> sp;
     sp.insert(ptr);
     str_to_ptrs[sid]=sp;
   } else {
@@ -730,7 +728,7 @@ static void del_tm_ptr(void *ptr, const char *id) {
 
   } else {
 
-    string sid = pts_iter->second;
+    std::string sid = pts_iter->second;
     ptr_to_str.erase(pts_iter);
 
     str_to_ptrs_t::iterator iter = str_to_ptrs.find(sid);
@@ -749,11 +747,27 @@ static void del_tm_ptr(void *ptr, const char *id) {
   pthread_mutex_unlock(&tm);
 }
 
-static void tm_id(char *id, const char* file, int line) {
-  sprintf(id,"%s:%d",file,line);
+static void tm_id(char *id, const char* function, int line) {
+  sprintf(id,"%s:%d",function,line);
 }
 
-#define TM_START() char id[128];tm_id(id,file,line);tm_init()
+#define TM_START() char id[128];tm_id(id,function,line);tm_init()
+
+extern "C" void* debug_ptr_add_func(void *ptr, const char* function, int line) {
+
+	TM_START();
+
+	add_tm_ptr(ptr,id);
+
+	return ptr;
+}
+
+extern "C" void debug_ptr_del_func(void *ptr, const char* function, int line) {
+
+	TM_START();
+
+	del_tm_ptr(ptr,id);
+}
 
 extern "C" void tm_print_func(void);
 void tm_print_func(void) {
@@ -767,8 +781,8 @@ void tm_print_func(void) {
   pthread_mutex_unlock(&tm);
 } 
 
-extern "C" void *turn_malloc_func(size_t sz, const char* file, int line);
-void *turn_malloc_func(size_t sz, const char* file, int line) {
+extern "C" void *turn_malloc_func(size_t sz, const char* function, int line);
+void *turn_malloc_func(size_t sz, const char* function, int line) {
 
   TM_START();
 
@@ -779,8 +793,8 @@ void *turn_malloc_func(size_t sz, const char* file, int line) {
   return ptr;
 }
 
-extern "C" void *turn_realloc_func(void *ptr, size_t old_sz, size_t new_sz, const char* file, int line);
-void *turn_realloc_func(void *ptr, size_t old_sz, size_t new_sz, const char* file, int line) {
+extern "C" void *turn_realloc_func(void *ptr, size_t old_sz, size_t new_sz, const char* function, int line);
+void *turn_realloc_func(void *ptr, size_t old_sz, size_t new_sz, const char* function, int line) {
 
   UNUSED_ARG(old_sz);
 
@@ -796,8 +810,8 @@ void *turn_realloc_func(void *ptr, size_t old_sz, size_t new_sz, const char* fil
   return ptr;
 }
 
-extern "C" void turn_free_func(void *ptr, size_t sz, const char* file, int line);
-void turn_free_func(void *ptr, size_t sz, const char* file, int line) {
+extern "C" void turn_free_func(void *ptr, size_t sz, const char* function, int line);
+void turn_free_func(void *ptr, size_t sz, const char* function, int line) {
 
   UNUSED_ARG(sz);
 
@@ -818,8 +832,8 @@ void turn_free_simple(void *ptr) {
   free(ptr);
 }
 
-extern "C" void *turn_calloc_func(size_t number, size_t size, const char* file, int line);
-void *turn_calloc_func(size_t number, size_t size, const char* file, int line) {
+extern "C" void *turn_calloc_func(size_t number, size_t size, const char* function, int line);
+void *turn_calloc_func(size_t number, size_t size, const char* function, int line) {
   
   TM_START();
 
@@ -830,8 +844,8 @@ void *turn_calloc_func(size_t number, size_t size, const char* file, int line) {
   return ptr;
 }
 
-extern "C" char *turn_strdup_func(const char* s, const char* file, int line);
-char *turn_strdup_func(const char* s, const char* file, int line) {
+extern "C" char *turn_strdup_func(const char* s, const char* function, int line);
+char *turn_strdup_func(const char* s, const char* function, int line) {
 
   TM_START();
 

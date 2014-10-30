@@ -250,8 +250,10 @@ static int send_turn_message_to(turn_turnserver *server, ioa_network_buffer_hand
 
 /////////////////// Peer addr check /////////////////////////////
 
-static int good_peer_addr(turn_turnserver *server, ioa_addr *peer_addr)
+static int good_peer_addr(turn_turnserver *server, const char* realm, ioa_addr *peer_addr)
 {
+#define CHECK_REALM(r) if((r)[0] && realm && realm[0] && strcmp((r),realm)) continue
+
 	if(server && peer_addr) {
 		if(*(server->no_multicast_peers) && ioa_addr_is_multicast(peer_addr))
 			return 0;
@@ -264,7 +266,8 @@ static int good_peer_addr(turn_turnserver *server, ioa_addr *peer_addr)
 			if(server->ip_whitelist) {
 				// White listing of addr ranges
 				for (i = server->ip_whitelist->ranges_number - 1; i >= 0; --i) {
-					if (ioa_addr_in_range(server->ip_whitelist->encaddrsranges[i], peer_addr))
+					CHECK_REALM(server->ip_whitelist->rs[i].realm);
+					if (ioa_addr_in_range(&(server->ip_whitelist->rs[i].enc), peer_addr))
 						return 1;
 				}
 			}
@@ -276,7 +279,8 @@ static int good_peer_addr(turn_turnserver *server, ioa_addr *peer_addr)
 				if(wl) {
 					// White listing of addr ranges
 					for (i = wl->ranges_number - 1; i >= 0; --i) {
-						if (ioa_addr_in_range(wl->encaddrsranges[i], peer_addr)) {
+						CHECK_REALM(wl->rs[i].realm);
+						if (ioa_addr_in_range(&(wl->rs[i].enc), peer_addr)) {
 							ioa_unlock_whitelist(server->e);
 							return 1;
 						}
@@ -289,10 +293,11 @@ static int good_peer_addr(turn_turnserver *server, ioa_addr *peer_addr)
 			if(server->ip_blacklist) {
 				// Black listing of addr ranges
 				for (i = server->ip_blacklist->ranges_number - 1; i >= 0; --i) {
-					if (ioa_addr_in_range(server->ip_blacklist->encaddrsranges[i], peer_addr)) {
+					CHECK_REALM(server->ip_blacklist->rs[i].realm);
+					if (ioa_addr_in_range(&(server->ip_blacklist->rs[i].enc), peer_addr)) {
 						char saddr[129];
 						addr_to_string_no_port(peer_addr,(u08bits*)saddr);
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "A peer IP %s denied in the range: %s\n",saddr,server->ip_blacklist->ranges[i]);
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "A peer IP %s denied in the range: %s\n",saddr,server->ip_blacklist->rs[i].str);
 						return 0;
 					}
 				}
@@ -305,11 +310,12 @@ static int good_peer_addr(turn_turnserver *server, ioa_addr *peer_addr)
 				if(bl) {
 					// Black listing of addr ranges
 					for (i = bl->ranges_number - 1; i >= 0; --i) {
-						if (ioa_addr_in_range(bl->encaddrsranges[i], peer_addr)) {
+						CHECK_REALM(bl->rs[i].realm);
+						if (ioa_addr_in_range(&(bl->rs[i].enc), peer_addr)) {
 							ioa_unlock_blacklist(server->e);
 							char saddr[129];
 							addr_to_string_no_port(peer_addr,(u08bits*)saddr);
-							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "A peer IP %s denied in the range: %s\n",saddr,bl->ranges[i]);
+							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "A peer IP %s denied in the range: %s\n",saddr,bl->rs[i].str);
 							return 0;
 						}
 					}
@@ -319,6 +325,8 @@ static int good_peer_addr(turn_turnserver *server, ioa_addr *peer_addr)
 			}
 		}
 	}
+
+#undef CHECK_REALM
 
 	return 1;
 }
@@ -1525,7 +1533,7 @@ static int handle_turn_refresh(turn_turnserver *server,
 				if(tsid != server->id) {
 
 					if(server->send_socket_to_relay) {
-						ioa_socket_handle new_s = detach_ioa_socket(ss->client_socket,1);
+						ioa_socket_handle new_s = detach_ioa_socket(ss->client_socket);
 						if(new_s) {
 						  if(server->send_socket_to_relay(tsid, mid, tid, new_s, message_integrity, 
 										  RMT_MOBILE_SOCKET, in_buffer, can_resume)<0) {
@@ -1616,7 +1624,7 @@ static int handle_turn_refresh(turn_turnserver *server,
 
 								//Transfer socket:
 
-								ioa_socket_handle s = detach_ioa_socket(ss->client_socket,1);
+								ioa_socket_handle s = detach_ioa_socket(ss->client_socket);
 
 								ss->to_be_closed = 1;
 
@@ -2076,7 +2084,7 @@ static void tcp_peer_accept_connection(ioa_socket_handle s, void *arg)
 			return;
 		}
 
-		if(!good_peer_addr(server, peer_addr)) {
+		if(!good_peer_addr(server, ss->realm_options.name, peer_addr)) {
 			u08bits saddr[256];
 			addr_to_string(peer_addr, saddr);
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: an attempt to connect from a peer with forbidden address: %s\n", __FUNCTION__,saddr);
@@ -2226,7 +2234,7 @@ static int handle_turn_connect(turn_turnserver *server,
 			*reason = (const u08bits *)"Where is Peer Address ?";
 
 		} else {
-			if(!good_peer_addr(server,&peer_addr)) {
+			if(!good_peer_addr(server,ss->realm_options.name,&peer_addr)) {
 				*err_code = 403;
 				*reason = (const u08bits *) "Forbidden IP";
 			} else {
@@ -2310,7 +2318,7 @@ static int handle_turn_connection_bind(turn_turnserver *server,
 				turnserver_id sid = (id & 0xFF000000)>>24;
 				ioa_socket_handle s = ss->client_socket;
 				if(s && !ioa_socket_tobeclosed(s)) {
-					ioa_socket_handle new_s = detach_ioa_socket(s,1);
+					ioa_socket_handle new_s = detach_ioa_socket(s);
 					if(new_s) {
 					  if(server->send_socket_to_relay(sid, id, tid, new_s, message_integrity, RMT_CB_SOCKET, in_buffer, can_resume)<0) {
 					    *err_code = 400;
@@ -2588,7 +2596,7 @@ static int handle_turn_channel_bind(turn_turnserver *server,
 					*err_code = 400;
 					*reason = (const u08bits *)"You cannot use the same peer with different channel number";
 				} else {
-					if(!good_peer_addr(server,&peer_addr)) {
+					if(!good_peer_addr(server,ss->realm_options.name,&peer_addr)) {
 						*err_code = 403;
 						*reason = (const u08bits *) "Forbidden IP";
 					} else {
@@ -3015,7 +3023,7 @@ static int handle_turn_create_permission(turn_turnserver *server,
 					if(!get_relay_socket(a,peer_addr.ss.sa_family)) {
 						*err_code = 443;
 						*reason = (const u08bits *)"Peer Address Family Mismatch";
-					} else if(!good_peer_addr(server, &peer_addr)) {
+					} else if(!good_peer_addr(server, ss->realm_options.name, &peer_addr)) {
 						*err_code = 403;
 						*reason = (const u08bits *) "Forbidden IP";
 					} else {
@@ -4072,6 +4080,11 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
 	dec_quota(ss);
 	dec_bps(ss);
 
+	allocation* alloc = get_allocation_ss(ss);
+	if (!is_allocation_valid(alloc)) {
+		force = 1;
+	}
+
 	if(!force && ss->is_mobile) {
 
 		if (ss->client_socket && server->verbose) {
@@ -4246,7 +4259,7 @@ static int create_relay_connection(turn_turnserver* server,
 				   int *err_code, const u08bits **reason,
 				   accept_cb acb) {
 
-	if (server && ss && ss->client_socket) {
+	if (server && ss && ss->client_socket && !ioa_socket_tobeclosed(ss->client_socket)) {
 
 		allocation* a = get_allocation_ss(ss);
 		relay_endpoint_session* newelem = NULL;
@@ -4256,8 +4269,10 @@ static int create_relay_connection(turn_turnserver* server,
 
 			ioa_socket_handle s = NULL;
 
-			if (get_ioa_socket_from_reservation(server->e, in_reservation_token,
-					&s) < 0) {
+			if ((get_ioa_socket_from_reservation(server->e, in_reservation_token,&s,(u08bits*)ss->realm_options.name) < 0)||
+				!s ||
+				ioa_socket_tobeclosed(s)) {
+
 				IOA_CLOSE_SOCKET(s);
 				*err_code = 508;
 				*reason = (const u08bits *)"Cannot find reserved socket";
@@ -4268,16 +4283,12 @@ static int create_relay_connection(turn_turnserver* server,
 
 			newelem = get_relay_session_ss(ss,family);
 
-			IOA_CLOSE_SOCKET(newelem->s);
+			if(newelem->s != s) {
 
-			ns_bzero(newelem, sizeof(relay_endpoint_session));
-			newelem->s = s;
-
-			if(!check_realm_hash(newelem->s,(u08bits*)ss->realm_options.name)) {
 				IOA_CLOSE_SOCKET(newelem->s);
-				*err_code = 508;
-				*reason = (const u08bits *)"Cannot find a valid reserved socket for this realm";
-				return -1;
+
+				ns_bzero(newelem, sizeof(relay_endpoint_session));
+				newelem->s = s;
 			}
 
 			addr_debug_print(server->verbose, get_local_addr_from_ioa_socket(newelem->s), "Local relay addr (RTCP)");

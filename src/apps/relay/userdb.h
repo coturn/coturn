@@ -208,7 +208,9 @@ void reread_realms(void);
 int add_user_account(char *user, int dynamic);
 int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, u08bits *origin, TURNADMIN_COMMAND_TYPE ct, int is_st, perf_options_t* po);
 
-int add_ip_list_range(const char* range, ip_range_list_t * list);
+int add_ip_list_range(const char* range, const char* realm, ip_range_list_t * list);
+ip_range_list_t* get_ip_list(const char *kind);
+void ip_list_free(ip_range_list_t *l);
 
 ///////////// Redis //////////////////////
 

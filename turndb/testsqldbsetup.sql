@@ -23,9 +23,13 @@ insert into turn_realm_option (realm,opt,value) values('north.gov','user-quota',
 insert into turn_realm_option (realm,opt,value) values('crinna.org','user-quota','8000');
 
 insert into allowed_peer_ip (ip_range) values('172.17.13.200');
+insert into allowed_peer_ip (realm,ip_range) values('north.gov','172.17.13.201');
+insert into allowed_peer_ip (realm,ip_range) values('crinna.org','172.17.13.202');
 
 insert into denied_peer_ip (ip_range) values('172.17.13.133-172.17.14.56');
 insert into denied_peer_ip (ip_range) values('123::45');
+insert into denied_peer_ip (realm,ip_range) values('north.gov','172.17.17.133-172.17.19.56');
+insert into denied_peer_ip (realm,ip_range) values('crinna.org','123::77');
 
 insert into oauth_key (kid,ikm_key,timestamp,lifetime,hkdf_hash_func,as_rs_alg,as_rs_key,auth_alg,auth_key) values('north','Y2FybGVvbg==',0,0,'SHA-256','AES-256-CBC','','HMAC-SHA-256-128','');
 insert into oauth_key (kid,ikm_key,timestamp,lifetime,hkdf_hash_func,as_rs_alg,as_rs_key,auth_alg,auth_key) values('oldempire','YXVsY3Vz',0,0,'SHA-256','AEAD-AES-256-GCM','','','');

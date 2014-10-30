@@ -1,0 +1,4 @@
+[Turnserver]
+title=Coturn Turnserver
+description=Free open source implementation of TURN and STUN Server
+ports=3478,3479,5349,5350,49152:65535/tcp|3478,3479,5349,5350,49152:65535/udp

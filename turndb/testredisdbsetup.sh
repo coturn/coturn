@@ -21,8 +21,8 @@ set turn/realm/north.gov/user/bethod/password "king-of-north"
 set turn/realm/crinna.org/user/whirrun/password "sword"
 set turn/realm/crinna.org/user/stranger-come-knocking/password "civilization"
 
-set turn/realm/north.gov/secret/1368426581 "logen"
-set turn/realm/crinna.org/secret/777888999 "north"
+sadd turn/realm/north.gov/secret "logen" "bloody9"
+sadd turn/realm/crinna.org/secret "north" "library"
 
 set turn/user/ninefingers/password "youhavetoberealistic"
 set turn/user/gorst/password "hero"
@@ -42,10 +42,11 @@ set turn/realm/crinna.org/user-quota 8000
 set turn/origin/http://crinna.org:80 crinna.org
 set turn/origin/https://bligh.edu:443 crinna.org
 
-set turn/denied-peer-ip/123456 "172.17.13.133-172.17.14.56"
-set turn/denied-peer-ip/234567 "123::45"
+sadd turn/realm/north.gov/allowed-peer-ip "172.17.13.200" "172.17.13.201"
+sadd turn/realm/crinna.org/allowed-peer-ip "172.17.13.202"
 
-set turn/allowed-peer-ip/345678 "172.17.13.200"
+sadd turn/realm/north.gov/denied-peer-ip "172.17.13.133-172.17.14.56" "172.17.17.133-172.17.19.56" "123::45"
+sadd turn/realm/crinna.org/denied-peer-ip "123::77"
 
 hmset turn/oauth/kid/north ikm_key Y2FybGVvbg== hkdf_hash_func 'SHA-256' as_rs_alg 'AES-256-CBC' auth_alg 'HMAC-SHA-256-128'
 hmset turn/oauth/kid/oldempire ikm_key YXVsY3Vz hkdf_hash_func 'SHA-256' as_rs_alg 'AEAD-AES-256-GCM'

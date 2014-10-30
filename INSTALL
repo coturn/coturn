@@ -700,7 +700,7 @@ The schema description:
 # Table for long-term credentials mechanism authorization:
 #
 CREATE TABLE turnusers_lt (
-    realm varchar(512),
+    realm varchar(512) default '',
     name varchar(512),
     hmackey char(128),
     PRIMARY KEY (realm,name)
@@ -727,7 +727,7 @@ CREATE TABLE turnusers_st (
 # mechanism:
 #
 CREATE TABLE turn_secret (
-	realm varchar(512),
+	realm varchar(512) default '',
     value varchar(512),
 	primary key (realm,value)
 );
@@ -735,15 +735,17 @@ CREATE TABLE turn_secret (
 # Table holding "white" allowed peer IP ranges.
 #
 CREATE TABLE allowed_peer_ip (
+	realm varchar(512) default '',
 	ip_range varchar(256),
-	primary key (ip_range)
+	primary key (realm,ip_range)
 );
 
 # Table holding "black" denied peer IP ranges.
 #
 CREATE TABLE denied_peer_ip (
+	realm varchar(512) default '',
 	ip_range varchar(256),
-	primary key (ip_range)
+	primary key (realm,ip_range)
 );
 
 # Table to match origin to realm.
@@ -763,7 +765,7 @@ CREATE TABLE turn_origin_to_realm (
 # Values for them are integers (in text form).
 #
 CREATE TABLE turn_realm_option (
-	realm varchar(512),
+	realm varchar(512) default '',
 	opt varchar(32),
 	value varchar(128),
 	primary key (realm,opt)
@@ -842,7 +844,7 @@ Of course, the administrators can play with the connection string as they want.
 
 When starting the turnserver, the psql-userdb parameter will be, for example:
 
-turnserver ... --psql-userdb="host=localhost dbname=turn user=turn password=turn connect_timeout=30"
+turnserver ... --psql-userdb="host=localhost dbname=coturn user=turn password=turn connect_timeout=30"
 
 Or, for 9.x PostgreSQL versions: 
 turnserver ... --psql-userdb=postgresql://username:password@/databasename ...
@@ -856,20 +858,20 @@ Fill in users, for example:
 
   Shared secret for the TURN REST API:
   
-  $ bin/turnadmin -s logen -e "host=localhost dbname=turn user=turn password=turn"
+  $ bin/turnadmin -s logen -e "host=localhost dbname=coturn user=turn password=turn"
   
   Long-term credentials mechanism:
   
-  $ bin/turnadmin -a -e "host=localhost dbname=turn user=turn password=turn" -u gorst -r north.gov -p hero
-  $ bin/turnadmin -a -e "host=localhost dbname=turn user=turn password=turn" -u ninefingers -r north.gov -p youhavetoberealistic
+  $ bin/turnadmin -a -e "host=localhost dbname=coturn user=turn password=turn" -u gorst -r north.gov -p hero
+  $ bin/turnadmin -a -e "host=localhost dbname=coturn user=turn password=turn" -u ninefingers -r north.gov -p youhavetoberealistic
   
   Long-term credentials mechanism with SHA256 extention:
-  $ bin/turnadmin -a -e "host=localhost dbname=turn user=turn password=turn" -u bethod -r north.gov -p king-of-north --sha256
+  $ bin/turnadmin -a -e "host=localhost dbname=coturn user=turn password=turn" -u bethod -r north.gov -p king-of-north --sha256
   
   Short-term credentials mechanism:
    
-  $ bin/turnadmin -A -e "host=localhost dbname=turn user=turn password=turn" -u gorst -r north.gov -p hero
-  $ bin/turnadmin -A -e "host=localhost dbname=turn user=turn password=turn" -u ninefingers -r north.gov -p youhavetoberealistic 
+  $ bin/turnadmin -A -e "host=localhost dbname=coturn user=turn password=turn" -u gorst -r north.gov -p hero
+  $ bin/turnadmin -A -e "host=localhost dbname=coturn user=turn password=turn" -u ninefingers -r north.gov -p youhavetoberealistic 
 
 XV. MySQL (MariaDB) setup
 
@@ -911,20 +913,20 @@ the root account.
 
   Shared secret for the TURN REST API:
   
-  $ bin/turnadmin -s logen -M "host=localhost dbname=turn user=turn password=turn"
+  $ bin/turnadmin -s logen -M "host=localhost dbname=coturn user=turn password=turn"
   
   Long-term credentials mechanism:
   
-  $ bin/turnadmin -a -M "host=localhost dbname=turn user=turn password=turn" -u gorst -r north.gov -p hero
-  $ bin/turnadmin -a -M "host=localhost dbname=turn user=turn password=turn" -u ninefingers -r north.gov -p youhavetoberealistic
+  $ bin/turnadmin -a -M "host=localhost dbname=coturn user=turn password=turn" -u gorst -r north.gov -p hero
+  $ bin/turnadmin -a -M "host=localhost dbname=coturn user=turn password=turn" -u ninefingers -r north.gov -p youhavetoberealistic
   
   Long-term credentials mechanism with SHA256 extention:
-  $ bin/turnadmin -a -M "host=localhost dbname=turn user=turn password=turn" -u bethod -r north.gov -p king-of-north --sha256
+  $ bin/turnadmin -a -M "host=localhost dbname=coturn user=turn password=turn" -u bethod -r north.gov -p king-of-north --sha256
   
   Short-term credentials mechanism:
    
-  $ bin/turnadmin -A -M "host=localhost dbname=turn user=turn password=turn" -u gorst -r north.gov -p hero
-  $ bin/turnadmin -A -M "host=localhost dbname=turn user=turn password=turn" -u ninefingers -r north.gov -p youhavetoberealistic 
+  $ bin/turnadmin -A -M "host=localhost dbname=coturn user=turn password=turn" -u gorst -r north.gov -p hero
+  $ bin/turnadmin -A -M "host=localhost dbname=coturn user=turn password=turn" -u ninefingers -r north.gov -p youhavetoberealistic 
 
 7) Now we can use mysql in the turnserver.
 
@@ -942,11 +944,11 @@ The format of the MySQL connection string is:
 So, an example of the MySQL database parameter in the TURN server command 
 line would be:
 
---mysql-userdb="host=localhost dbname=turn user=turn password=turn connect_timeout=30"
+--mysql-userdb="host=localhost dbname=coturn user=turn password=turn connect_timeout=30"
 
 Or in the turnserver.conf file:
 
-mysql-userdb="host=localhost dbname=turn user=turn password=turn connect_timeout=30"
+mysql-userdb="host=localhost dbname=coturn user=turn password=turn connect_timeout=30"
 
 If you have to use a secure MySQL connection (SSL) then you have to use also
 the optional connection string parameters for the secure communications:
@@ -975,11 +977,11 @@ http://hergert.me/docs/mongo-c-driver/mongoc_uri.html:
 So, an example of the MongoDB database parameter in the TURN server command 
 line would be:
 
---mongo-userdb="mongodb://localhost:27017/turndb"
+--mongo-userdb="mongodb://localhost:27017/coturn"
 
 Or in the turnserver.conf file:
 
-mongo-userdb="mongodb://localhost:27017/turndb"
+mongo-userdb="mongodb://localhost:27017/coturn"
 
 The meanings of the MongoDB keys are the same as for the other databases, see the 
 explanations for the Postgres, for example.
@@ -1010,11 +1012,11 @@ connection string is:
 So, an example of the Redis database parameter in the TURN server command 
 line would be:
 
---redis-userdb="ip=127.0.0.1 dbname=0 password=turn connect_timeout=30"
+--redis-userdb="ip=127.0.0.1 dbname=2 password=turn connect_timeout=30"
 
 Or in the turnserver.conf file:
 
-redis-userdb="ip=127.0.0.1 dbname=0 password=turn connect_timeout=30"
+redis-userdb="ip=127.0.0.1 dbname=2 password=turn connect_timeout=30"
 
 Redis can be also used for the TURN allocation status check and for status and 
 traffic notifications.
@@ -1040,20 +1042,20 @@ Redis TURN admin commands:
 
   Shared secret for the TURN REST API:
   
-  $ bin/turnadmin -s logen -N "host=localhost dbname=0 user=turn password=turn"
+  $ bin/turnadmin -s logen -N "host=localhost dbname=2 user=turn password=turn"
   
   Long-term credentials mechanism:
   
-  $ bin/turnadmin -a -N "host=localhost dbname=0 user=turn password=turn" -u gorst -r north.gov -p hero
-  $ bin/turnadmin -a -N "host=localhost dbname=0 user=turn password=turn" -u ninefingers -r north.gov -p youhavetoberealistic
+  $ bin/turnadmin -a -N "host=localhost dbname=2 user=turn password=turn" -u gorst -r north.gov -p hero
+  $ bin/turnadmin -a -N "host=localhost dbname=2 user=turn password=turn" -u ninefingers -r north.gov -p youhavetoberealistic
   
   Long-term credentials mechanism with SHA256 extention:
-  $ bin/turnadmin -a -N "host=localhost dbname=0 user=turn password=turn" -u bethod -r north.gov -p king-of-north --sha256
+  $ bin/turnadmin -a -N "host=localhost dbname=2 user=turn password=turn" -u bethod -r north.gov -p king-of-north --sha256
   
   Short-term credentials mechanism:
    
-  $ bin/turnadmin -A -N "host=localhost dbname=0 user=turn password=turn" -u gorst -r north.gov -p hero
-  $ bin/turnadmin -A -N "host=localhost dbname=0 user=turn password=turn" -u ninefingers -r north.gov -p youhavetoberealistic 
+  $ bin/turnadmin -A -N "host=localhost dbname=2 user=turn password=turn" -u gorst -r north.gov -p hero
+  $ bin/turnadmin -A -N "host=localhost dbname=2 user=turn password=turn" -u ninefingers -r north.gov -p youhavetoberealistic 
   
 See the file testredisdbsetup.sh for the data structure examples.
 
