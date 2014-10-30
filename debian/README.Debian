@@ -21,7 +21,7 @@ To set the turnserver parameters:
 2) You can start/stop the turnserver "manually", using the "/usr/bin/turnserver" 
    executable with appropriate options (see the documentation).
    If you want the turnserver to be an automatically started system service, 
-   then you have to uncomment line "TURNSERVER_ENABLED=1" in 
+   then you have to un-comment the line "TURNSERVER_ENABLED=1" in 
    the /etc/default/coturn file.
    
 3) If you are using UFW, then run the command after the installation:
@@ -38,7 +38,7 @@ To set the turnserver parameters:
    $ man turnutils
 
 5) During installation, no TURN user accounts are created.  
-Coturn does not recognise UNIX accounts and requires accounts 
+Coturn does not recognize UNIX accounts and requires accounts 
 to be defined in it's own config file. By default, the TURN server 
 uses anonymous access. 
 
@@ -49,7 +49,7 @@ purposes, several accounting options are possible:
 	  - TURN REST API shared-secret-based long-term credentials mechanism
 	    (see TURN REST API docs);
 	  - Third-party authorization extention for the
-	    long-term credentials mechanism (oAuth-based);
+	    long-term credentials mechanism;
 	  - short-term authentication mechanism (see RFC5766);
 
 If you are installing the TURN server for WebRTC usage, then you must set 
