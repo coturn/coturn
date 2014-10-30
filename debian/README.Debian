@@ -48,7 +48,7 @@ purposes, several accounting options are possible:
 	  - traditional long-term credentials mechanism (see RFC5766);
 	  - TURN REST API shared-secret-based long-term credentials mechanism
 	    (see TURN REST API docs);
-	  - Third-party authorization extention for the
+	  - Third-party authorization extension for the
 	    long-term credentials mechanism;
 	  - short-term authentication mechanism (see RFC5766);
 
