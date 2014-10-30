@@ -24,8 +24,12 @@ To set the turnserver parameters:
    then you have to uncomment line "TURNSERVER_ENABLED=1" in 
    the /etc/default/coturn file.
    
-3) To create database schema, use schema in file 
-   /usr/share/coturn/schema.sql.
+3) If you are using UFW, then run the command after the installation:
+
+   $ ufw add turnserver
+
+   You can inspect and adjust the UFW turnserver settings in the file 
+   /etc/ufw/applications.d/turnserver.
    
 4) For additional information, run:
  
@@ -44,6 +48,8 @@ purposes, several accounting options are possible:
 	  - traditional long-term credentials mechanism (see RFC5766);
 	  - TURN REST API shared-secret-based long-term credentials mechanism
 	    (see TURN REST API docs);
+	  - Third-party authorization extention for the
+	    long-term credentials mechanism (oAuth-based);
 	  - short-term authentication mechanism (see RFC5766);
 
 If you are installing the TURN server for WebRTC usage, then you must set 
@@ -54,4 +60,4 @@ you can add TURN REST API on top of long-term credentials mechanism.
 
 Please see the README.* files for details.
 
- -- Oleg Moskalenko <mom040267@gmail.com>  Wed, 15 May 2013 11:58:45 -0700
+ -- Oleg Moskalenko <mom040267@gmail.com>  Wed, 29 Oct 2014 11:47:00 -0700
