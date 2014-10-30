@@ -1,3 +1,9 @@
+coturn (4.2.2.2-1) unstable; urgency=low
+
+  * 1) Sync to 4.2.2.2; 2) UFW definitions added to the debian package.
+
+ -- Oleg Moskalenko <mom040267@gmail.com>  Wed, 29 Oct 2014 23:49:49 -0700
+
 coturn (4.2.1.2-1) unstable; urgency=low
 
   * Sync to upstream 4.2.1.2 version: the oAuth support added.
