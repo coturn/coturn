@@ -3,6 +3,7 @@ Version 4.2.2.2 'Monza':
 	- Black- and white- IP lists are divided per realm
 		(the DB schema for those two tables changed);
 	- Updated Redis database schema.
+	- Debian UFW file added (Issue 1 fixed).
 	- TCP/TLS tests extended.
 	- Relay RTCP sockets ports allocation fixed.
 	- List of libraries cleaned.
