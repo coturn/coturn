@@ -43,8 +43,8 @@ extern "C" {
 
 //////////////////////////////////////////////
 
-#define STOPPING_TIME (5)
-#define STARTING_TCP_RELAY_TIME (10)
+#define STOPPING_TIME (10)
+#define STARTING_TCP_RELAY_TIME (30)
 
 extern int clmessage_length;
 extern int do_not_use_channel;

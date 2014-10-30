@@ -31,7 +31,7 @@
 #ifndef __IOADEFS__
 #define __IOADEFS__
 
-#define TURN_SERVER_VERSION "4.2.1.2"
+#define TURN_SERVER_VERSION "4.2.2.2"
 #define TURN_SERVER_VERSION_NAME "Monza"
 #define TURN_SOFTWARE "Coturn-" TURN_SERVER_VERSION " '" TURN_SERVER_VERSION_NAME "'"
 
@@ -120,13 +120,17 @@ static inline u64bits _ioa_ntoh64(u64bits v)
 #define TURN_LOG_FUNC(level, ...) printf (__VA_ARGS__)
 
   void tm_print_func(void);
-  void *turn_malloc_func(size_t sz, const char* file, int line);
-  void *turn_realloc_func(void *ptr, size_t old_sz, size_t new_sz, const char* file, int line);
-  void turn_free_func(void *ptr, size_t sz, const char* file, int line);
+  void *turn_malloc_func(size_t sz, const char* function, int line);
+  void *turn_realloc_func(void *ptr, size_t old_sz, size_t new_sz, const char* function, int line);
+  void turn_free_func(void *ptr, size_t sz, const char* function, int line);
   void turn_free_simple(void *ptr);
-  void *turn_calloc_func(size_t number, size_t size, const char* file, int line);
-  char *turn_strdup_func(const char* s, const char* file, int line);
+  void *turn_calloc_func(size_t number, size_t size, const char* function, int line);
+  char *turn_strdup_func(const char* s, const char* function, int line);
+  void* debug_ptr_add_func(void *ptr, const char* function, int line);
+  void debug_ptr_del_func(void *ptr, const char* function, int line);
 
+#define debug_ptr_add(ptr) debug_ptr_add_func((ptr),__FUNCTION__,__LINE__)
+#define debug_ptr_del(ptr) debug_ptr_del_func((ptr),__FUNCTION__,__LINE__)
 #define tm_print() tm_print_func()
 #define turn_malloc(sz) turn_malloc_func((size_t)(sz),__FUNCTION__,__LINE__)
 #define turn_free(ptr,sz) turn_free_func((ptr),(size_t)(sz),__FUNCTION__,__LINE__)
@@ -134,8 +138,12 @@ static inline u64bits _ioa_ntoh64(u64bits v)
 #define turn_calloc(number, sz) turn_calloc_func((number),(size_t)(sz),__FUNCTION__,__LINE__)
 #define turn_strdup(s) turn_strdup_func((s),__FUNCTION__,__LINE__)
 
+#define SSL_NEW(ctx) ((SSL*)debug_ptr_add(SSL_new(ctx)))
+
 #else
 
+#define debug_ptr_add(ptr)
+#define debug_ptr_del(ptr)
 #define tm_print() 
 #define turn_malloc(sz) malloc((size_t)(sz))
 #define turn_free(ptr,sz) free((ptr))
@@ -144,7 +152,12 @@ static inline u64bits _ioa_ntoh64(u64bits v)
 #define turn_strdup(s) strdup((s))
 #define turn_free_simple free
 
+#define SSL_NEW(ctx) SSL_new(ctx)
+
 #endif
+
+#define SSL_FREE(ssl) do { debug_ptr_del(ssl); SSL_free(ssl); ssl = NULL; } while(0)
+#define BUFFEREVENT_FREE(be) do { if(be) { debug_ptr_del(be); bufferevent_flush(be,EV_READ|EV_WRITE,BEV_FLUSH); bufferevent_disable(be,EV_READ|EV_WRITE); bufferevent_free(be); be = NULL;} } while(0)
 
 #define turn_time() ((turn_time_t)time(NULL))
 
@@ -186,6 +199,10 @@ typedef u32bits turn_time_t;
 			((char*)(dst))[szdst-1] = 0;\
 		}\
 	} } while(0)
+
+//////////////// Bufferevents /////////////////////
+
+#define TURN_BUFFEREVENTS_OPTIONS (BEV_OPT_DEFER_CALLBACKS | BEV_OPT_THREADSAFE | BEV_OPT_UNLOCK_CALLBACKS)
 
 //////////////// KERNEL-LEVEL CHANNEL HANDLERS /////////
 

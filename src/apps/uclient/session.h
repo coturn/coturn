@@ -75,6 +75,7 @@ typedef struct {
   char rsaddr[129];
   char ifname[129];
   ioa_addr peer_addr;
+  ioa_addr relay_addr;
   ioa_socket_raw fd;
   SSL *ssl;
   int broken;

@@ -969,48 +969,80 @@ static void mongo_auth_ping(void * rch) {
 	UNUSED_ARG(rch);
   // NOOP
 }
+
+static int mongo_read_realms_ip_lists(const char *kind, ip_range_list_t * list)
+{
+	int ret = 0;
+
+	char field_name[129];
+	sprintf(field_name, "%s_peer_ip", kind);
+
+	mongoc_collection_t * collection = mongo_get_collection("realm");
+
+	if (!collection)
+		return ret;
+
+	bson_t query;
+	bson_init(&query);
+
+	bson_t fields;
+	bson_init(&fields);
+	BSON_APPEND_INT32(&fields, "realm", 1);
+	BSON_APPEND_INT32(&fields, field_name, 1);
+
+	mongoc_cursor_t * cursor;
+	cursor = mongoc_collection_find(collection, MONGOC_QUERY_NONE, 0, 0, 0,
+			&query, &fields, NULL);
+
+	if (!cursor) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+				"Error querying MongoDB collection 'realm'\n");
+		ret = -1;
+	} else {
+		const bson_t * item;
+		uint32_t length;
+		bson_iter_t iter;
+		char realm[513];
+
+		while (mongoc_cursor_next(cursor, &item)) {
+
+			if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "realm")
+					&& BSON_ITER_HOLDS_UTF8(&iter)) {
+
+				STRCPY(realm,bson_iter_utf8(&iter, &length));
+
+				if (bson_iter_init(&iter, item) && bson_iter_find(&iter,
+						field_name) && BSON_ITER_HOLDS_ARRAY(&iter)) {
+					const uint8_t *docbuf = NULL;
+					uint32_t doclen = 0;
+					bson_t ip_range_array;
+					bson_iter_t ip_range_iter;
+
+					bson_iter_array(&iter, &doclen, &docbuf);
+					bson_init_static(&ip_range_array, docbuf, doclen);
+
+					if (bson_iter_init(&ip_range_iter, &ip_range_array)) {
+						while (bson_iter_next(&ip_range_iter)) {
+							if (BSON_ITER_HOLDS_UTF8(&ip_range_iter)) {
+								const char* ip_range = bson_iter_utf8(&ip_range_iter, &length);
+								add_ip_list_range(ip_range, realm, list);
+							}
+						}
+					}
+				}
+			}
+		}
+		mongoc_cursor_destroy(cursor);
+	}
+	mongoc_collection_destroy(collection);
+	bson_destroy(&query);
+	bson_destroy(&fields);
+
+	return ret;
+}
   
 static int mongo_get_ip_list(const char *kind, ip_range_list_t * list) {
-  char * collection_name = 	(char *)turn_malloc(strlen(kind) + 9);
-  sprintf(collection_name, "%s_peer_ip", kind);
-  mongoc_collection_t * collection = mongo_get_collection(collection_name); 
-  turn_free(collection_name, strlen(kind) + 9);
-
-	if(!collection)
-    return -1;
-    
-  bson_t query;
-  bson_init(&query);
-  
-  bson_t fields;
-  bson_init(&fields);
-  BSON_APPEND_INT32(&fields, "ip_range", 1);
-  
-  mongoc_cursor_t * cursor;
-  cursor = mongoc_collection_find(collection, MONGOC_QUERY_NONE, 0, 0, 0, &query, &fields, NULL);
-  
-  int ret = -1;
-  
-  if (!cursor) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error querying MongoDB collection '%s'\n", collection_name);
-  } else {
-    const bson_t * item;
-    uint32_t length;
-    bson_iter_t iter;
-    const char * value;
-    while(mongoc_cursor_next(cursor, &item)) {
-    	if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "ip_range") && BSON_ITER_HOLDS_UTF8(&iter)) {
-        value = bson_iter_utf8(&iter, &length);
-		add_ip_list_range(value, list);
-      }
-    }
-    mongoc_cursor_destroy(cursor);
-    ret = 0;
-  }
-  mongoc_collection_destroy(collection);
-  bson_destroy(&query);
-  bson_destroy(&fields);
-  return ret;
+	return mongo_read_realms_ip_lists(kind, list);
 }
   
 

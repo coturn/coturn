@@ -137,9 +137,16 @@ typedef struct _realm_options_t realm_options_t;
 
 //////// IP White/black listing ///////////
 
+struct _ip_range {
+	char str[257];
+	char realm[513];
+	ioa_addr_range enc;
+};
+
+typedef struct _ip_range ip_range_t;
+
 struct _ip_range_list {
-	char **ranges;
-	ioa_addr_range **encaddrsranges;
+	ip_range_t *rs;
 	size_t ranges_number;
 };
 
@@ -215,7 +222,7 @@ int create_relay_ioa_sockets(ioa_engine_handle e, ioa_socket_handle client_s,
 
 ioa_socket_handle  ioa_create_connecting_tcp_relay_socket(ioa_socket_handle s, ioa_addr *peer_addr, connect_cb cb, void *arg);
 
-int get_ioa_socket_from_reservation(ioa_engine_handle e, u64bits in_reservation_token, ioa_socket_handle *s);
+int get_ioa_socket_from_reservation(ioa_engine_handle e, u64bits in_reservation_token, ioa_socket_handle *s, u08bits *realm);
 
 int get_ioa_socket_address_family(ioa_socket_handle s);
 SOCKET_TYPE get_ioa_socket_type(ioa_socket_handle s);
@@ -235,7 +242,7 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr, ioa_network_buffer_handle nbh, int ttl, int tos);
 void close_ioa_socket(ioa_socket_handle s);
 #define IOA_CLOSE_SOCKET(S) do { if(S) { close_ioa_socket(S); S = NULL; } } while(0)
-ioa_socket_handle detach_ioa_socket(ioa_socket_handle s, int full_detach);
+ioa_socket_handle detach_ioa_socket(ioa_socket_handle s);
 void detach_socket_net_data(ioa_socket_handle s);
 int set_df_on_ioa_socket(ioa_socket_handle s, int value);
 void set_do_not_use_df(ioa_socket_handle s);

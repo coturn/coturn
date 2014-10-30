@@ -140,8 +140,7 @@ static void uc_delete_session_elem_data(app_ur_session* cdi) {
 	      SSL_shutdown(cdi->pinfo.tcp_conn[i]->tcp_data_ssl);
 	    }
 	    if(cdi->pinfo.tcp_conn[i]->tcp_data_ssl) {
-	      SSL_free(cdi->pinfo.tcp_conn[i]->tcp_data_ssl);
-	      cdi->pinfo.tcp_conn[i]->tcp_data_ssl = NULL;
+	      SSL_FREE(cdi->pinfo.tcp_conn[i]->tcp_data_ssl);
 	    }
 	    if(cdi->pinfo.tcp_conn[i]->tcp_data_fd>=0) {
 	    	socket_closesocket(cdi->pinfo.tcp_conn[i]->tcp_data_fd);
@@ -153,8 +152,10 @@ static void uc_delete_session_elem_data(app_ur_session* cdi) {
 	}
       }
       cdi->pinfo.tcp_conn_number=0;
-      turn_free(cdi->pinfo.tcp_conn, 111);
-      cdi->pinfo.tcp_conn=NULL;
+      if(cdi->pinfo.tcp_conn) {
+    	  turn_free(cdi->pinfo.tcp_conn, 111);
+    	  cdi->pinfo.tcp_conn=NULL;
+      }
     }
     if(cdi->pinfo.ssl && !(cdi->pinfo.broken)) {
 	    if(!(SSL_get_shutdown(cdi->pinfo.ssl) & SSL_SENT_SHUTDOWN)) {
@@ -163,8 +164,7 @@ static void uc_delete_session_elem_data(app_ur_session* cdi) {
 	    }
     }
     if(cdi->pinfo.ssl) {
-	    SSL_free(cdi->pinfo.ssl);
-	    cdi->pinfo.ssl = NULL;
+	    SSL_FREE(cdi->pinfo.ssl);
     }
     if(cdi->pinfo.fd>=0) {
     	socket_closesocket(cdi->pinfo.fd);
@@ -863,8 +863,7 @@ static int start_client(const char *remote_address, int port,
 		   clnet_info_rtcp, &chnum_rtcp);
 		   
   if(clnet_info_probe.ssl) {
-  	SSL_free(clnet_info_probe.ssl);
-  	clnet_info_probe.ssl = NULL;
+  	SSL_FREE(clnet_info_probe.ssl);
   	clnet_info_probe.fd = -1;
   } else if(clnet_info_probe.fd != -1) {
 	  socket_closesocket(clnet_info_probe.fd);
@@ -969,8 +968,7 @@ static int start_c2c(const char *remote_address, int port,
 		       clnet_info2_rtcp, &chnum2_rtcp);
 		       
   if(clnet_info_probe.ssl) {
-	SSL_free(clnet_info_probe.ssl);
-	clnet_info_probe.ssl = NULL;
+	SSL_FREE(clnet_info_probe.ssl);
 	clnet_info_probe.fd = -1;
   } else if(clnet_info_probe.fd != -1) {
 	  socket_closesocket(clnet_info_probe.fd);
@@ -1219,7 +1217,7 @@ void start_mclient(const char *remote_address, int port,
 	      ++mclient;
 	}
 
-	elems = (app_ur_session**)malloc(sizeof(app_ur_session)*((mclient*2)+1)+sizeof(void*));
+	elems = (app_ur_session**)turn_malloc(sizeof(app_ur_session)*((mclient*2)+1)+sizeof(void*));
 
 	__turn_getMSTime();
 	u32bits stime = current_time;
@@ -1294,9 +1292,12 @@ void start_mclient(const char *remote_address, int port,
 					int connect_err = 0;
 					socket_connect(elems[i]->pinfo.fd, &(elems[i]->pinfo.remote_addr), &connect_err);
 				}
-			} else if((i%2) == 0) {
-				if (turn_tcp_connect(clnet_verbose, &(elems[i]->pinfo), &(elems[i]->pinfo.peer_addr)) < 0) {
-					exit(-1);
+			} else {
+				int j = 0;
+				for(j=i+1;j<total_clients;j++) {
+					if (turn_tcp_connect(clnet_verbose, &(elems[i]->pinfo), &(elems[j]->pinfo.relay_addr)) < 0) {
+						exit(-1);
+					}
 				}
 			}
 		}
@@ -1328,18 +1329,22 @@ void start_mclient(const char *remote_address, int port,
 					break;
 			} else {
 				for(i=0;i<total_clients;++i) {
-					if(elems[i]->pinfo.tcp_conn_number>0 &&
-							elems[i]->pinfo.tcp_conn[0]->tcp_data_bound) {
-						completed += elems[i]->pinfo.tcp_conn_number;
+					int j = 0;
+					for(j=0;j<(int)elems[i]->pinfo.tcp_conn_number;j++) {
+						if(elems[i]->pinfo.tcp_conn[j]->tcp_data_bound) {
+							completed++;
+						}
 					}
 				}
-				if(completed >= total_clients)
+				if(completed >= total_clients*(total_clients-1)) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%d connections are completed\n",(int)(completed));
 					break;
+				}
 			}
 			run_events(0);
-			if(current_time > connect_wait_start_time + STARTING_TCP_RELAY_TIME) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: %d connections are not completed\n",
-						(int)(total_clients - completed));
+			if(current_time > connect_wait_start_time + STARTING_TCP_RELAY_TIME + total_clients) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: %d connections are completed, not enough\n",
+						(int)(completed));
 				break;
 			}
 		}
@@ -1410,7 +1415,7 @@ void start_mclient(const char *remote_address, int port,
 				(unsigned long)min_jitter,
 				(unsigned long)max_jitter);
 
-	free(elems);
+	turn_free(elems,0);
 }
 
 ///////////////////////////////////////////

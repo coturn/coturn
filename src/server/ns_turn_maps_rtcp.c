@@ -85,6 +85,54 @@ static int timeout_check(ur_map_key_type key,
   return 0;
 }
 
+static void rtcp_alloc_free(ur_map_value_type value)
+{
+	rtcp_alloc_type *at = (rtcp_alloc_type *)value;
+	if (at) {
+		IOA_CLOSE_SOCKET(at->s);
+		turn_free(at,sizeof(rtcp_alloc_type));
+	}
+}
+
+static void rtcp_alloc_free_savefd(ur_map_value_type value)
+{
+	rtcp_alloc_type *at = (rtcp_alloc_type *) value;
+	if (at) {
+		turn_free(at,sizeof(rtcp_alloc_type));
+	}
+}
+
+static int foreachcb_free(ur_map_key_type key, ur_map_value_type value) {
+  UNUSED_ARG(key);
+  if(value) {
+    rtcp_alloc_free(value);
+  }
+  return 0;
+}
+
+/**
+ * @ret:
+ * 1 - success
+ * 0 - not found
+ */
+static int rtcp_map_del(rtcp_map* map, rtcp_token_type token) {
+  if(!rtcp_map_valid(map)) return 0;
+  else {
+    TURN_MUTEX_LOCK(&map->mutex);
+    int ret = ur_map_del(map->map,token,rtcp_alloc_free);
+    TURN_MUTEX_UNLOCK(&map->mutex);
+    return ret;
+  }
+}
+
+static int rtcp_map_del_savefd(rtcp_map* map, rtcp_token_type token) {
+  if(!rtcp_map_valid(map)) return 0;
+  else {
+    int ret = ur_map_del(map->map,token,rtcp_alloc_free_savefd);
+    return ret;
+  }
+}
+
 static void rtcp_map_timeout_handler(ioa_engine_handle e, void* arg) {
   
   UNUSED_ARG(e);
@@ -166,69 +214,26 @@ int rtcp_map_put(rtcp_map* map, rtcp_token_type token, ioa_socket_handle s) {
  * >=0 - success
  * <0 - not found
  */
-ioa_socket_handle rtcp_map_get(const rtcp_map* map, rtcp_token_type token) {
-  if(!rtcp_map_valid(map)) return NULL;
-  else {
-    ur_map_value_type value;
-    TURN_MUTEX_LOCK(&map->mutex);
-    int ret = ur_map_get(map->map,token,&value);
-    //TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: 111.111: ret=%d, value=%llu, token=%llu\n",__FUNCTION__,ret,(unsigned long)value,token);
-    TURN_MUTEX_UNLOCK(&map->mutex);
-    if(!ret) return NULL;
-    rtcp_alloc_type* rval=(rtcp_alloc_type*)value;
-    if(!rval) return NULL;
-    //TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: 111.222: ret=%d, token=%llu\n",__FUNCTION__,ret,token);
-    return rval->s;
-  }
-}
-
-static void rtcp_alloc_free(ur_map_value_type value)
-{
-	rtcp_alloc_type *at = (rtcp_alloc_type *)value;
-	if (at) {
-		IOA_CLOSE_SOCKET(at->s);
-		turn_free(at,sizeof(rtcp_alloc_type));
+ioa_socket_handle rtcp_map_get(rtcp_map* map, rtcp_token_type token, u08bits *realm) {
+	ioa_socket_handle s = NULL;
+	if (rtcp_map_valid(map)) {
+		ur_map_value_type value;
+		TURN_MUTEX_LOCK(&map->mutex);
+		int ret = ur_map_get(map->map, token, &value);
+		if (ret) {
+			rtcp_alloc_type* rval = (rtcp_alloc_type*) value;
+			if (rval) {
+				s = rval->s;
+				if(!check_realm_hash(s,realm)) {
+					s = NULL;
+				} else {
+					rtcp_map_del_savefd(map, token);
+				}
+			}
+		}
+		TURN_MUTEX_UNLOCK(&map->mutex);
 	}
-}
-
-static void rtcp_alloc_free_savefd(ur_map_value_type value)
-{
-	rtcp_alloc_type *at = (rtcp_alloc_type *) value;
-	if (at) {
-		turn_free(at,sizeof(rtcp_alloc_type));
-	}
-}
-
-static int foreachcb_free(ur_map_key_type key, ur_map_value_type value) {
-  UNUSED_ARG(key);
-  if(value) {
-    rtcp_alloc_free(value);
-  }
-  return 0;
-}
-
-/**
- * @ret:
- * 1 - success
- * 0 - not found
- */
-int rtcp_map_del(rtcp_map* map, rtcp_token_type token) {
-  if(!rtcp_map_valid(map)) return 0;
-  else {
-    TURN_MUTEX_LOCK(&map->mutex);
-    int ret = ur_map_del(map->map,token,rtcp_alloc_free);
-    TURN_MUTEX_UNLOCK(&map->mutex);
-    return ret;
-  }
-}
-int rtcp_map_del_savefd(rtcp_map* map, rtcp_token_type token) {
-  if(!rtcp_map_valid(map)) return 0;
-  else {
-    TURN_MUTEX_LOCK(&map->mutex);
-    int ret = ur_map_del(map->map,token,rtcp_alloc_free_savefd);
-    TURN_MUTEX_UNLOCK(&map->mutex);
-    return ret;
-  }
+	return s;
 }
 
 void rtcp_map_free(rtcp_map** map) {
