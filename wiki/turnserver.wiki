@@ -382,7 +382,7 @@ CREATE TABLE turn_realm_option (
 # oAuth key storage table.
 #
 CREATE TABLE oauth_key (
-	kid varchar(128), /* 
+	kid varchar(128),
 	ikm_key varchar(256) default '',
 	timestamp bigint default 0,
 	lifetime integer default 0,
@@ -407,18 +407,6 @@ CREATE TABLE oauth_key (
 #  auth_alg - (optional) oAuth token authentication algorithm; the valid values are "HMAC-SHA-256-128", "HMAC-SHA-256" and "HMAC-SHA-1". The default value is "HMAC-SHA-256-128".
 #  auth_key - (optional) base64-encoded AUTH key. If not defined, then calculated with ikm_key and hkdf_hash_func. The auth_key length is defined by auth_alg.
 #
-CREATE TABLE oauth_key (
-	kid varchar(128),
-	ikm_key varchar(256) default '',
-	timestamp bigint default 0,
-	lifetime integer default 0,
-	hkdf_hash_func varchar(64) default '',
-	as_rs_alg varchar(64) default '',
-	as_rs_key varchar(256) default '',
-	auth_alg varchar(64) default '',
-	auth_key varchar(256) default '',
-	primary key (kid)
-);
 
 }}}
 
