@@ -11,8 +11,6 @@
 	Cygwin is supported. A "real" MS-Windows port would 
 	involve a usable GUI.
 
-3) Move UFW stuff from the main tarball to the debian repository
-
 ==================================================================
 
 ###   II. DOCS   ###
