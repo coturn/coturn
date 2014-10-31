@@ -1,7 +1,28 @@
 #summary Downloads Page
-#labels Version-4.2.1.2,Featured
+#labels Version-4.2.2.2,Featured
 
-== Latest official recommended version - 4.2.1.2: ==
+== Latest official recommended version - 4.2.2.2: ==
+
+  * Black- and white- IP lists are divided per realm
+	(the DB schema for those two tables changed);
+  * Updated Redis database schema.
+  * Debian UFW file added (Issue 1 fixed).
+  * TCP/TLS tests extended.
+  * Relay RTCP sockets ports allocation fixed.
+  * List of libraries cleaned.
+  * SSL renegotiation callback fixed.
+
+[http://turnserver.open-sys.org/downloads/v4.2.2.2/ 4.2.2.2 Version Downloads (full source and platform builds)]
+
+[http://turnserver.open-sys.org/downloads/ Main Downloads Page (with all recent versions)]
+
+[http://coturn.net/turnserver/ Backup Downloads Page]
+
+[http://turnserver.open-sys.org/downloads/extradocs/ Extra Docs ]
+
+== Older versions ==
+
+=== 4.2.1.2: ===
 
   * oAuth security experimental implementation;
   * The "TLS renegotiation" DoS attack prevention implemented;
@@ -18,15 +39,7 @@
   * Memory code cleaning.
   * Logging fixed.
 
-[http://turnserver.open-sys.org/downloads/v4.2.1.2/ 4.2.1.2 Version Downloads (full source and platform builds)]
-
-[http://turnserver.open-sys.org/downloads/ Main Downloads Page (with all recent versions)]
-
-[http://coturn.net/turnserver/ Backup Downloads Page]
-
-[http://turnserver.open-sys.org/downloads/extradocs/ Extra Docs ]
-
-== Older versions ==
+[http://turnserver.open-sys.org/downloads/v4.2.1.2/ v4.2.1.2]
 
 === 4.1.2.1: ===
 
