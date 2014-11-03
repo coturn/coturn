@@ -133,8 +133,8 @@ static SSL* tls_connect(ioa_socket_raw fd, ioa_addr *remote_addr)
 		  }
 		  break;
 		} else {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: cannot connect\n",
-					__FUNCTION__);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: cannot connect: rc=%d, ctx=%d\n",
+					__FUNCTION__,rc,ctxtype);
 			switch (SSL_get_error(ssl, rc)) {
 			case SSL_ERROR_WANT_READ:
 			case SSL_ERROR_WANT_WRITE:
@@ -143,8 +143,7 @@ static SSL* tls_connect(ioa_socket_raw fd, ioa_addr *remote_addr)
 			default: {
 				char buf[1025];
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s (%d)\n",
-						ERR_error_string(ERR_get_error(), buf), SSL_get_error(
-								ssl, rc));
+						ERR_error_string(ERR_get_error(), buf), SSL_get_error(ssl, rc));
 				exit(-1);
 			}
 			};
