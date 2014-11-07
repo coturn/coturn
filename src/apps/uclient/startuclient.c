@@ -76,11 +76,12 @@ static int get_allocate_address_family(ioa_addr *relay_addr) {
 
 /////////////////////////////////////////
 
-static SSL* tls_connect(ioa_socket_raw fd, ioa_addr *remote_addr)
+static SSL* tls_connect(ioa_socket_raw fd, ioa_addr *remote_addr, int *try_again)
 {
 	int ctxtype = (int)(((unsigned long)random())%root_tls_ctx_num);
+	SSL *ssl;
 
-	SSL *ssl = SSL_NEW(root_tls_ctx[ctxtype]);
+	ssl = SSL_NEW(root_tls_ctx[ctxtype]);
 
 	if(use_tcp) {
 		SSL_set_fd(ssl, fd);
@@ -144,6 +145,12 @@ static SSL* tls_connect(ioa_socket_raw fd, ioa_addr *remote_addr)
 				char buf[1025];
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s (%d)\n",
 						ERR_error_string(ERR_get_error(), buf), SSL_get_error(ssl, rc));
+				if(ctxtype>0) {
+					if(try_again) {
+						*try_again = 1;
+						return NULL;
+					}
+				}
 				exit(-1);
 			}
 			};
@@ -258,8 +265,13 @@ static int clnet_connect(uint16_t clnet_remote_port, const char *remote_address,
 	}
 
 	if (use_secure) {
-		clnet_info->ssl = tls_connect(clnet_info->fd, &remote_addr);
+		int try_again = 0;
+		clnet_info->ssl = tls_connect(clnet_info->fd, &remote_addr,&try_again);
 		if (!clnet_info->ssl) {
+			if(try_again) {
+				close(clnet_fd);
+				goto start_socket;
+			}
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: cannot SSL connect to remote addr\n", __FUNCTION__);
 			exit(-1);
 		}
@@ -1521,7 +1533,11 @@ static int turn_tcp_connection_bind(int verbose, app_ur_conn_info *clnet_info, a
 
 void tcp_data_connect(app_ur_session *elem, u32bits cid)
 {
-	int clnet_fd = socket(elem->pinfo.remote_addr.ss.sa_family, SOCK_STREAM, 0);
+	int clnet_fd;
+
+	again:
+
+	clnet_fd = socket(elem->pinfo.remote_addr.ss.sa_family, SOCK_STREAM, 0);
 	if (clnet_fd < 0) {
 		perror("socket");
 		exit(-1);
@@ -1593,8 +1609,14 @@ void tcp_data_connect(app_ur_session *elem, u32bits cid)
 	}
 
 	if(use_secure) {
-		elem->pinfo.tcp_conn[i]->tcp_data_ssl = tls_connect(elem->pinfo.tcp_conn[i]->tcp_data_fd, &(elem->pinfo.remote_addr));
+		int try_again = 0;
+		elem->pinfo.tcp_conn[i]->tcp_data_ssl = tls_connect(elem->pinfo.tcp_conn[i]->tcp_data_fd, &(elem->pinfo.remote_addr),&try_again);
 		if(!(elem->pinfo.tcp_conn[i]->tcp_data_ssl)) {
+			if(try_again) {
+				close(clnet_fd);
+				--elem->pinfo.tcp_conn_number;
+				goto again;
+			}
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
 					"%s: cannot SSL connect to remote addr\n", __FUNCTION__);
 			exit(-1);

@@ -146,7 +146,6 @@ static char Usage[] =
   "	-k	Private key file (for secure connections only).\n"
   "	-E	CA file for server certificate verification, \n"
   "		if the server certificate to be verified.\n"
-  "	-F	Cipher suite for TLS/DTLS. Default value is DEFAULT.\n"
   "	-p	TURN server port (Default: 3478 unsecure, 5349 secure).\n"
   "	-n	Number of messages to send (Default: 5).\n"
   "	-d	Local interface device (optional).\n"
