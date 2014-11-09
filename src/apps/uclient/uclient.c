@@ -308,28 +308,52 @@ int send_buffer(app_ur_conn_info *clnet_info, stun_buffer* message, int data_con
 
 static int wait_fd(int fd, unsigned int cycle) {
 
-	fd_set fds;
-	FD_ZERO(&fds);
-	FD_SET(fd,&fds);
+	if(fd>=(int)FD_SETSIZE) {
+		return 1;
+	} else {
+		fd_set fds;
+		FD_ZERO(&fds);
+		FD_SET(fd,&fds);
 
-	if(dos && cycle==0)
-		return 0;
+		if(dos && cycle==0)
+			return 0;
 
-	struct timeval timeout = {0,0};
-	if(cycle == 0)
-		timeout.tv_usec = 500000;
-	else {
-		timeout.tv_sec = 1;
-		while(--cycle) timeout.tv_sec = timeout.tv_sec + timeout.tv_sec;
+		struct timeval start_time;
+		struct timeval ctime;
+		gettimeofday(&start_time,NULL);
+
+		ctime.tv_sec = start_time.tv_sec;
+		ctime.tv_usec = start_time.tv_usec;
+
+		int rc = 0;
+
+		do {
+			struct timeval timeout = {0,0};
+			if(cycle == 0) {
+				timeout.tv_usec = 500000;
+			} else {
+
+				timeout.tv_sec = 1;
+				while(--cycle) timeout.tv_sec = timeout.tv_sec + timeout.tv_sec;
+
+				if(ctime.tv_sec > start_time.tv_sec) {
+					if(ctime.tv_sec >= start_time.tv_sec + timeout.tv_sec) {
+						break;
+					} else {
+						timeout.tv_sec -= (ctime.tv_sec - start_time.tv_sec);
+					}
+				}
+			}
+			rc = select(fd+1,&fds,NULL,NULL,&timeout);
+			if((rc<0) && (errno == EINTR)) {
+				gettimeofday(&ctime,NULL);
+			} else {
+				break;
+			}
+		} while(1);
+
+		return rc;
 	}
-
-	int rc = 0;
-
-	do {
-		rc = select(fd+1,&fds,NULL,NULL,&timeout);
-	} while((rc<0) && (errno == EINTR));
-
-	return rc;
 }
 
 int recv_buffer(app_ur_conn_info *clnet_info, stun_buffer* message, int sync, int data_connection, app_tcp_conn_info *atc, stun_buffer* request_message) {
