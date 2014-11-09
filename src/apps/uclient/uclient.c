@@ -302,10 +302,17 @@ int send_buffer(app_ur_conn_info *clnet_info, stun_buffer* message, int data_con
 	return ret;
 }
 
-int recv_buffer(app_ur_conn_info *clnet_info, stun_buffer* message, int sync,
-		app_tcp_conn_info *atc) {
+int recv_buffer(app_ur_conn_info *clnet_info, stun_buffer* message, int sync, app_tcp_conn_info *atc, stun_buffer* request_message) {
 
 	int rc = 0;
+
+	stun_tid tid;
+	u16bits method = 0;
+
+	if(request_message) {
+		stun_tid_from_message(request_message, &tid);
+		method = stun_get_method(request_message);
+	}
 
 	ioa_socket_raw fd = clnet_info->fd;
 	if (atc)
@@ -314,6 +321,8 @@ int recv_buffer(app_ur_conn_info *clnet_info, stun_buffer* message, int sync,
 	SSL* ssl = clnet_info->ssl;
 	if (atc)
 		ssl = atc->tcp_data_ssl;
+
+	recv_again:
 
 	if (!use_secure && !use_tcp && fd >= 0) {
 
@@ -331,9 +340,9 @@ int recv_buffer(app_ur_conn_info *clnet_info, stun_buffer* message, int sync,
 
 		message->len = rc;
 
-	} else if (use_secure && ssl && !(clnet_info->broken)) {
+	} else if (use_secure && !use_tcp && ssl && !(clnet_info->broken)) {
 
-		/* TLS/DTLS */
+		/* DTLS */
 
 		int message_received = 0;
 		int cycle = 0;
@@ -361,6 +370,74 @@ int recv_buffer(app_ur_conn_info *clnet_info, stun_buffer* message, int sync,
 			} else {
 
 				int sslerr = SSL_get_error(ssl, rc);
+
+				switch (sslerr) {
+				case SSL_ERROR_NONE:
+					/* Try again ? */
+					break;
+				case SSL_ERROR_WANT_WRITE:
+					/* Just try again later */
+					break;
+				case SSL_ERROR_WANT_READ:
+					/* continue with reading */
+					break;
+				case SSL_ERROR_ZERO_RETURN:
+					/* Try again */
+					break;
+				case SSL_ERROR_SYSCALL:
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+							"Socket read error 111.999: \n");
+					if (handle_socket_error())
+						break;
+				case SSL_ERROR_SSL: {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "SSL write error: \n");
+					char buf[1024];
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s (%d)\n",
+							ERR_error_string(ERR_get_error(), buf),
+							SSL_get_error(ssl, rc));
+				}
+				default:
+					clnet_info->broken = 1;
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+							"Unexpected error while reading: rc=%d, sslerr=%d\n",
+							rc, sslerr);
+					return -1;
+				}
+
+				if (!sync)
+					break;
+			}
+		}
+
+	} else if (use_secure && use_tcp && ssl && !(clnet_info->broken)) {
+
+		/* TLS*/
+
+		int message_received = 0;
+		int cycle = 0;
+		while (!message_received && cycle++ < 100) {
+
+			if (SSL_get_shutdown(ssl))
+				return -1;
+				rc = 0;
+			do {
+				rc = SSL_read(ssl, message->buf, sizeof(message->buf) - 1);
+				if (rc < 0 && errno == EAGAIN && sync)
+					continue;
+			} while (rc < 0 && (errno == EINTR));
+
+			if (rc > 0) {
+
+				if (clnet_verbose) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+							"response received: size=%d\n", rc);
+				}
+				message->len = rc;
+				message_received = 1;
+
+			} else {
+
+			int sslerr = SSL_get_error(ssl, rc);
 
 				switch (sslerr) {
 				case SSL_ERROR_NONE:
@@ -465,6 +542,27 @@ int recv_buffer(app_ur_conn_info *clnet_info, stun_buffer* message, int sync,
 		}
 	}
 
+	if(rc>0) {
+		if(request_message) {
+
+			stun_tid recv_tid;
+			u16bits recv_method = 0;
+
+			stun_tid_from_message(message, &recv_tid);
+			recv_method = stun_get_method(message);
+
+			if(method != recv_method) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Received wrong response method: 0x%x, expected 0x%x; trying again...\n",(unsigned int)recv_method,(unsigned int)method);
+				goto recv_again;
+			}
+
+			if(memcmp(tid.tsx_id,recv_tid.tsx_id,STUN_TID_SIZE)) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Received wrong response tid; trying again...\n");
+				goto recv_again;
+			}
+		}
+	}
+
 	return rc;
 }
 
@@ -488,7 +586,7 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "before read ...\n");
 	}
 
-	rc = recv_buffer(clnet_info, &(elem->in_buffer), 0, atc);
+	rc = recv_buffer(clnet_info, &(elem->in_buffer), 0, atc, NULL);
 
 	if (clnet_verbose && verbose_packets) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "read %d bytes\n", (int) rc);
