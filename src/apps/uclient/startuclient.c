@@ -419,7 +419,7 @@ static int clnet_allocate(int verbose,
 			int allocate_received = 0;
 			while (!allocate_received) {
 
-				int len = recv_buffer(clnet_info, &response_message, 1, NULL, &request_message);
+				int len = recv_buffer(clnet_info, &response_message, 1, 0, NULL, &request_message);
 
 				if (len > 0) {
 					if (verbose) {
@@ -673,10 +673,10 @@ static int clnet_allocate(int verbose,
 			int refresh_received = 0;
 			while (!refresh_received) {
 
-				int len = recv_buffer(clnet_info, &response_message, 1, 0, &request_message);
+				int len = recv_buffer(clnet_info, &response_message, 1, 0, NULL, &request_message);
 
 				if(clnet_info->s_mobile_id[0]) {
-					len = recv_buffer(clnet_info, &response_message, 1, 0, &request_message);
+					len = recv_buffer(clnet_info, &response_message, 1, 0, NULL, &request_message);
 				}
 
 				if (len > 0) {
@@ -770,7 +770,7 @@ static int turn_channel_bind(int verbose, uint16_t *chn,
 		int cb_received = 0;
 		while (!cb_received) {
 
-			int len = recv_buffer(clnet_info, &response_message, 1, NULL, &request_message);
+			int len = recv_buffer(clnet_info, &response_message, 1, 0, NULL, &request_message);
 			if (len > 0) {
 				if (verbose) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
@@ -879,7 +879,7 @@ static int turn_create_permission(int verbose, app_ur_conn_info *clnet_info,
 		int cp_received = 0;
 		while (!cp_received) {
 
-			int len = recv_buffer(clnet_info, &response_message, 1, NULL, &request_message);
+			int len = recv_buffer(clnet_info, &response_message, 1, 0, NULL, &request_message);
 			if (len > 0) {
 				if (verbose) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
@@ -1456,7 +1456,7 @@ static int turn_tcp_connection_bind(int verbose, app_ur_conn_info *clnet_info, a
 		int cb_received = 0;
 		while (!cb_received) {
 
-			int len = recv_buffer(clnet_info, &response_message, 1, atc, &request_message);
+			int len = recv_buffer(clnet_info, &response_message, 1, 1, atc, &request_message);
 			if (len > 0) {
 				if (verbose) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,

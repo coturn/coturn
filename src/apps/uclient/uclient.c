@@ -40,6 +40,8 @@
 #include <openssl/err.h>
 #include <openssl/rand.h>
 
+#include <sys/select.h>
+
 static int verbose_packets=0;
 
 static size_t current_clients_number = 0;
@@ -68,6 +70,8 @@ static int total_clients = 0;
 static app_ur_session** elems = NULL;
 
 #define SLEEP_INTERVAL (234)
+
+#define MAX_LISTENING_CYCLE_NUMBER (7)
 
 int RTP_PACKET_INTERVAL = 20;
 
@@ -302,7 +306,33 @@ int send_buffer(app_ur_conn_info *clnet_info, stun_buffer* message, int data_con
 	return ret;
 }
 
-int recv_buffer(app_ur_conn_info *clnet_info, stun_buffer* message, int sync, app_tcp_conn_info *atc, stun_buffer* request_message) {
+static int wait_fd(int fd, unsigned int cycle) {
+
+	fd_set fds;
+	FD_ZERO(&fds);
+	FD_SET(fd,&fds);
+
+	if(dos && cycle==0)
+		return 0;
+
+	struct timeval timeout = {0,0};
+	if(cycle == 0)
+		timeout.tv_usec = 500000;
+	else {
+		timeout.tv_sec = 1;
+		while(--cycle) timeout.tv_sec = timeout.tv_sec + timeout.tv_sec;
+	}
+
+	int rc = 0;
+
+	do {
+		rc = select(fd+1,&fds,NULL,NULL,&timeout);
+	} while((rc<0) && (errno == EINTR));
+
+	return rc;
+}
+
+int recv_buffer(app_ur_conn_info *clnet_info, stun_buffer* message, int sync, int data_connection, app_tcp_conn_info *atc, stun_buffer* request_message) {
 
 	int rc = 0;
 
@@ -323,6 +353,22 @@ int recv_buffer(app_ur_conn_info *clnet_info, stun_buffer* message, int sync, ap
 		ssl = atc->tcp_data_ssl;
 
 	recv_again:
+
+	if(!use_tcp && sync && request_message && (fd>=0)) {
+
+		unsigned int cycle = 0;
+		while(cycle < MAX_LISTENING_CYCLE_NUMBER) {
+			int serc = wait_fd(fd,cycle);
+			if(serc>0)
+				break;
+			if(serc<0) {
+				return -1;
+			}
+			if(send_buffer(clnet_info, request_message, data_connection, atc)<=0)
+				return -1;
+			++cycle;
+		}
+	}
 
 	if (!use_secure && !use_tcp && fd >= 0) {
 
@@ -586,7 +632,7 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "before read ...\n");
 	}
 
-	rc = recv_buffer(clnet_info, &(elem->in_buffer), 0, atc, NULL);
+	rc = recv_buffer(clnet_info, &(elem->in_buffer), 0, is_tcp_data, atc, NULL);
 
 	if (clnet_verbose && verbose_packets) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "read %d bytes\n", (int) rc);
@@ -890,13 +936,13 @@ void client_input_handler(evutil_socket_t fd, short what, void* arg) {
     if(elem->pinfo.tcp_conn) {
       int i = 0;
       for(i=0;i<(int)(elem->pinfo.tcp_conn_number);++i) {
-	if(elem->pinfo.tcp_conn[i]) {
-	  if((fd==elem->pinfo.tcp_conn[i]->tcp_data_fd) && (elem->pinfo.tcp_conn[i]->tcp_data_bound)) {
-	    is_tcp_data = 1;
-	    atc = elem->pinfo.tcp_conn[i];
-	    break;
-	  }
-	}
+    	  if(elem->pinfo.tcp_conn[i]) {
+    		  if((fd==elem->pinfo.tcp_conn[i]->tcp_data_fd) && (elem->pinfo.tcp_conn[i]->tcp_data_bound)) {
+    			  is_tcp_data = 1;
+    			  atc = elem->pinfo.tcp_conn[i];
+    			  break;
+    		  }
+    	  }
       }
     }
     int rc = client_read(elem, is_tcp_data, atc);
