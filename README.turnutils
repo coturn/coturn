@@ -8,13 +8,6 @@ for testing and for setting up the TURN server.
 The compiled binary image of this program is located in bin/ 
 sub-directory.
 
-WARNING: the turnutils_uclient program is a primitive client application. 
-It does not implement the re-transmission pattern that is necessary for 
-a correct TURN client implementation. In TURN, the retransmission burden 
-is lying almost entirely on the client application. We provide the messaging 
-functionality in the client library, but the client must implement 
-the correct Networking IO processing in the client program code.
-
 2.	turnutils_peer: a simple stateless UDP-only "echo" server, 
 to be used as the final server in relay pattern ("peer"). For every incoming 
 UDP packet, it simply echoes it back.
