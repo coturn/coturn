@@ -187,7 +187,7 @@ void recalculate_restapi_hmac(void) {
 					g_upwd[pwd_length] = 0;
 				}
 			}
-			free(pwd);
+			turn_free(pwd,strlen(pwd)+1);
 		}
 	}
 }
