@@ -774,7 +774,7 @@ CREATE TABLE turn_realm_option (
 # oAuth key storage table.
 #
 CREATE TABLE oauth_key (
-	kid varchar(128), /* 
+	kid varchar(128), 
 	ikm_key varchar(256) default '',
 	timestamp bigint default 0,
 	lifetime integer default 0,
