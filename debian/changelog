@@ -1,3 +1,9 @@
+coturn (4.2.3.1-1) unstable; urgency=low
+
+  * Sync to 4.2.3.1
+
+ -- Oleg Moskalenko <mom040267@gmail.com>  Sun, 09 Nov 2014 22:56:18 -0800
+
 coturn (4.2.2.2-1) unstable; urgency=low
 
   * 1) Sync to 4.2.2.2; 2) UFW definitions added to the debian package.
