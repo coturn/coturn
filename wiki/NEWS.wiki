@@ -1,7 +1,12 @@
 #summary News log
-#labels Version-4.1.0.2
+#labels Version-4.2.3.1
 
-== 07/22/3014 ==
+== 10/05/2014 ==
+=== Version 4.2.1.2 ===
+
+oAuth authorization implemented
+
+== 07/22/2014 ==
 === Version 4.1.0.2 ===
 
 SSODA draft support and MongoDB support.
