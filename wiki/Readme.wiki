@@ -1,5 +1,5 @@
 #summary top-level readme doc
-#labels Featured,Version-4.0.0.0
+#labels Featured,Version-4.2.3.1
 
 == GENERAL INFORMATION ==
 
@@ -21,15 +21,6 @@
    # updating user passwords. 
    # setting shared secret for TURN REST API.
  *     _*turnutils_uclient*_: emulates multiple UDP,TCP,TLS or DTLS  clients. The compiled binary image of this program is located in bin/ sub-directory.
-{{{
-       WARNING:	the turnutils_uclient program is a primitive client application and 
-       is provided for test-only purposes.  
-       It does not implement the re-transmission pattern that is necessary for a
-       correct	TURN client implementation. In TURN, the retransmission	burden
-       is lying	almost entirely on the	client application. We provide	the  messaging
-       functionality  in the client library, but the client must implement the
-       correct Networking IO processing	in the client program code.
-}}}
  *	_*turnutils_peer*_: a simple stateless UDP-only "echo" server, to be used as the final server in relay pattern ("_peer_"). For every incoming UDP packet, it simply echoes it back.  (this program is provided for the testing purposes only !)	When the test clients are communicating in the	client-to-client manner, this component	is not needed. The compiled binary image of this program is located in bin/ subdirectory.
  *	_*turnutils_stunclient*_: a simple STUN	client example that implements RFC 5389 and RFC 5780.	 The  compiled	binary image of this program is located in bin/ subdirectory.
  *	_*turnutils_rfc5769check*_: a utility that checks the correctness of the STUN/TURN protocol implementation. This program will perform several checks and print the result on the screen. It will exit with 0 status if everything is OK, and with (-1) if there was an error in the protocol implementation.   
