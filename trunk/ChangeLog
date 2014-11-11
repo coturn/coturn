@@ -1,3 +1,7 @@
+11/10/2014 Oleg Moskalenko <mom040267@gmail.com>
+Version 4.2.3.2 'Monza':
+	- TLS connection procedure improved in uclient test program.
+	
 11/07/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.2.3.1 'Monza':
 	- Request re-transmission implemented in uclient test program.
