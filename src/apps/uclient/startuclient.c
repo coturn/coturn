@@ -148,7 +148,7 @@ static SSL* tls_connect(ioa_socket_raw fd, ioa_addr *remote_addr, int *try_again
 				char buf[1025];
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "errno=%d, err=%d, %s (%d)\n",orig_errno,
 								(int)ERR_get_error(), ERR_error_string(ERR_get_error(), buf), (int)SSL_get_error(ssl, rc));
-				if((orig_errno == ECONNRESET) && (connect_cycle<MAX_TLS_CYCLES)) {
+				if(connect_cycle<MAX_TLS_CYCLES) {
 					if(try_again) {
 						SSL_FREE(ssl);
 						*try_again = 1;
