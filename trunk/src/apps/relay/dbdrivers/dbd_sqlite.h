@@ -29,67 +29,21 @@
  * SUCH DAMAGE.
  */
 
-#include "../mainrelay.h"
-
-#include "apputils.h"
+#ifndef __DBD_SQLITE__
+#define __DBD_SQLITE__
 
 #include "dbdriver.h"
-#include "dbd_sqlite.h"
-#include "dbd_pgsql.h"
-#include "dbd_mysql.h"
-#include "dbd_mongo.h"
-#include "dbd_redis.h"
 
-static turn_dbdriver_t * _driver;
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-int convert_string_key_to_binary(char* keysource, hmackey_t key, size_t sz) {
-	char is[3];
-	size_t i;
-	unsigned int v;
-	is[2]=0;
-	for(i=0;i<sz;i++) {
-		is[0]=keysource[i*2];
-		is[1]=keysource[i*2+1];
-		sscanf(is,"%02x",&v);
-		key[i]=(unsigned char)v;
-	}
-	return 0;
+turn_dbdriver_t * get_sqlite_dbdriver(void);
+
+#ifdef __cplusplus
 }
+#endif
 
-persistent_users_db_t * get_persistent_users_db(void) {
-	return &(turn_params.default_users_db.persistent_users_db);
-}
-
-turn_dbdriver_t * get_dbdriver() {
-  if (!_driver) {
-    switch(turn_params.default_users_db.userdb_type) {
-    case TURN_USERDB_TYPE_SQLITE:
-    	_driver = get_sqlite_dbdriver();
-    	break;
-#if !defined(TURN_NO_PQ)
-    case TURN_USERDB_TYPE_PQ:
-      _driver = get_pgsql_dbdriver();
-      break;
 #endif
-#if !defined(TURN_NO_MYSQL)
-    case TURN_USERDB_TYPE_MYSQL:
-      _driver = get_mysql_dbdriver();
-      break;
-#endif
-#if !defined(TURN_NO_MONGO)
-    case TURN_USERDB_TYPE_MONGO:
-      _driver = get_mongo_dbdriver();
-      break;
-#endif
-#if !defined(TURN_NO_HIREDIS)
-    case TURN_USERDB_TYPE_REDIS:
-      _driver = get_redis_dbdriver();
-      break;
-#endif
-    default:
-      break;
-    }
-  }
-  return _driver;
-}
+/// __DBD_SQLITE__///
 

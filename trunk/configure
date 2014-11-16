@@ -19,6 +19,8 @@ cleanup() {
 	rm -rf ${MONGO_TMPCPROGB}
 	rm -rf ${D_TMPCPROGC}
 	rm -rf ${D_TMPCPROGB}
+	rm -rf ${SQL_TMPCPROGC}
+	rm -rf ${SQL_TMPCPROGO}
 	rm -rf ${E_TMPCPROGC}
 	rm -rf ${E_TMPCPROGO}
 	rm -rf ${HR_TMPCPROGC}
@@ -34,6 +36,19 @@ testlibraw() {
 		return 0
     else
 		OSLIBS="${OSLIBS} -${1}"
+		return 1
+    fi
+}
+
+testsqlite_comp() {
+	SQLITE_LIBS=-lsqlite3
+    ${CC} -c ${SQL_TMPCPROGC} -o ${SQL_TMPCPROGO} ${OSCFLAGS} 2>>/dev/null
+    ER=$?
+    if ! [ ${ER} -eq 0 ] ; then
+		${ECHO_CMD} "SQLite development is not installed properly"
+		return 0
+    else
+		DBLIBS="${DBLIBS} ${SQLITE_LIBS}"
 		return 1
     fi
 }
@@ -683,6 +698,18 @@ int main(int argc, char** argv) {
 }
 !
 
+SQL_TMPCPROG=__test__ccomp__sqlite__$$
+SQL_TMPCPROGC=${TMPDIR}/${SQL_TMPCPROG}.c
+SQL_TMPCPROGO=${TMPDIR}/${SQL_TMPCPROG}.o
+
+cat > ${SQL_TMPCPROGC} <<!
+#include <stdlib.h>
+#include <sqlite3.h>
+int main(int argc, char** argv) {
+    return (int)(argv[argc][0]);
+}
+!
+
 HR_TMPCPROG=__test__ccomp__hiredis__$$
 HR_TMPCPROGC=${TMPDIR}/${HR_TMPCPROG}.c
 HR_TMPCPROGB=${TMPDIR}/${HR_TMPCPROG}
@@ -930,6 +957,32 @@ fi
 
 else
 	TURN_NO_GCM="-DTURN_NO_GCM"
+fi
+
+###########################
+# Test SQLite setup
+###########################
+
+testlib sqlite3
+ER=$?
+if ! [ ${ER} -eq 0 ] ; then
+   	${ECHO_CMD} "SQLite library found."
+else
+   	${ECHO_CMD} "ERROR: SQLite3 development library cannot be found."
+   	cleanup
+   	exit
+fi
+	
+testsqlite_comp
+ER=$?
+if ! [ ${ER} -eq 0 ] ; then
+    ${ECHO_CMD} "SQLite development found."
+else
+    ${ECHO_CMD} "ERROR: SQLite development libraries are not installed properly in required location."
+    ${ECHO_CMD} "See the INSTALL file."
+    ${ECHO_CMD} "Abort."
+    cleanup
+    exit
 fi
 
 ###########################

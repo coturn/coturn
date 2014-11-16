@@ -9,13 +9,15 @@ service, you have to:
 	Use /usr/local/etc/turnserver.conf.default as an example.
 
 	b) For user accounts settings, if using the turnserver 
-	with authentication: create and edit /etc/turnuserdb.conf 
-	file, or set up PostgreSQL or MySQL or MongoDB or Redis database for user accounts.
-	Use /usr/local/etc/turnuserdb.conf.default as example for flat file DB,
-	or use /usr/local/share/turnserver/schema.sql as SQL database schema,
+	with authentication: set up SQLite or PostgreSQL or MySQL or MongoDB or 
+	Redis database for user accounts.
+	Use /usr/local/share/turnserver/schema.sql as SQL database schema,
 	or use /usr/local/share/turnserver/schema.userdb.redis as Redis
 	database schema description and/or /usr/local/share/turnserver/schema.stats.redis
 	as Redis status & statistics database schema description.
+	 
+	The installation process automatically creates /var/db/turndb SQlite database file,
+	with empty tables.
 
 	c) add whatever is necessary to enable start-up daemon for the /usr/local/bin/turnserver.
      
