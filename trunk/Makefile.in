@@ -142,7 +142,6 @@ install:	all ${MAKE_DEPS}
 	${INSTALL_DATA} turndb/schema.stats.redis ${DESTDIR}${DOCSDIR}
 	${INSTALL_DATA} turndb/schema.stats.redis ${DESTDIR}${SCHEMADIR}
 	${INSTALL_DATA} examples/etc/turnserver.conf ${DESTDIR}${CONFDIR}/turnserver.conf.default
-	${INSTALL_DATA} examples/var/db/turdb ${DESTDIR}/var/db/turndb
 	${INSTALL_DIR} examples/etc ${DESTDIR}${EXAMPLESDIR}
 	${INSTALL_DIR} examples/scripts ${DESTDIR}${EXAMPLESDIR}
 	${RMCMD} ${DESTDIR}${EXAMPLESDIR}/scripts/rfc5769.sh
@@ -169,7 +168,6 @@ deinstall:	${MAKE_DEPS}
 	${RMCMD} ${DESTDIR}${LIBDIR}/libturnclient.a
 	${RMCMD} ${DESTDIR}${EXAMPLESDIR}/
 	${RMCMD} ${DESTDIR}${CONFDIR}/turnserver.conf.default
-	${RMCMD} ${DESTDIR}/var/db/turndb
 	${RMCMD} ${DESTDIR}${TURNINCLUDEDIR}
 
 uninstall:	deinstall

@@ -167,7 +167,6 @@ fi
 %defattr(-,root,root)
 %{_bindir}/turnserver
 %{_bindir}/turnadmin
-%{_localstatedir}/db/turndb
 %{_mandir}/man1/coturn.1.gz
 %{_mandir}/man1/turnserver.1.gz
 %{_mandir}/man1/turnadmin.1.gz
