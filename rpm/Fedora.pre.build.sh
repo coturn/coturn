@@ -6,7 +6,7 @@ CPWD=`pwd`
 
 . ./common.pre.build.sh
 
-PACKS="libevent-devel mariadb-devel"
+PACKS="libevent-devel mariadb-devel sqlite sqlite-devel"
 sudo yum -y install ${PACKS}
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then

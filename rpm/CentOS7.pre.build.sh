@@ -12,7 +12,7 @@ EPELRPM=epel-release-6-8.noarch.rpm
 
 # Common packs
 
-PACKS="libevent-devel mariadb-devel"
+PACKS="libevent-devel mariadb-devel sqlite sqlite-devel"
 sudo yum -y install ${PACKS}
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then
