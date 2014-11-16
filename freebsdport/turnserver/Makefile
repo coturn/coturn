@@ -1,7 +1,7 @@
 # $FreeBSD$
 
 PORTNAME=	turnserver
-PORTVERSION=	4.2.3.1
+PORTVERSION=	4.3.1.1
 CATEGORIES=	net
 MASTER_SITES=	http://turnserver.open-sys.org/downloads/v${PORTVERSION}/:prog \
 		http://turnserver.open-sys.org/downloads/extradocs/:xdocs \
@@ -29,6 +29,8 @@ USE_OPENSSL=	YES
 USE_RC_SUBR=	turnserver
 
 HAS_CONFIGURE=	YES
+
+USE_SQLITE=	YES
 
 OPTIONS_DEFINE=	MYSQL PGSQL REDIS DOCS EXAMPLES
 
