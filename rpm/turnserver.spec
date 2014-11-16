@@ -1,5 +1,5 @@
 Name:		turnserver
-Version:	4.2.3.2
+Version:	4.3.1.1
 Release:	0%{dist}
 Summary:	Coturn TURN Server
 
@@ -112,8 +112,6 @@ DESTDIR=$RPM_BUILD_ROOT make install
 mkdir -p $RPM_BUILD_ROOT/%{_sysconfdir}/sysconfig
 install -m644 rpm/turnserver.sysconfig \
 		$RPM_BUILD_ROOT/%{_sysconfdir}/sysconfig/turnserver
-mv $RPM_BUILD_ROOT/%{_sysconfdir}/%{name}/turnuserdb.conf.default \
-	$RPM_BUILD_ROOT/%{_sysconfdir}/%{name}/turnuserdb.conf
 %if 0%{?el6}
 cat $RPM_BUILD_ROOT/%{_sysconfdir}/%{name}/turnserver.conf.default | \
     sed s/#syslog/syslog/g | \
@@ -169,12 +167,12 @@ fi
 %defattr(-,root,root)
 %{_bindir}/turnserver
 %{_bindir}/turnadmin
+%{_localstatedir}/db/turndb
 %{_mandir}/man1/coturn.1.gz
 %{_mandir}/man1/turnserver.1.gz
 %{_mandir}/man1/turnadmin.1.gz
 %dir %attr(-,turnserver,turnserver) %{_sysconfdir}/%{name}
 %config(noreplace) %attr(0644,turnserver,turnserver) %{_sysconfdir}/%{name}/turnserver.conf
-%config(noreplace) %attr(0644,turnserver,turnserver) %{_sysconfdir}/%{name}/turnuserdb.conf
 %config(noreplace) %{_sysconfdir}/sysconfig/turnserver
 %if 0%{?el6}
 %config %{_sysconfdir}/rc.d/init.d/turnserver
@@ -203,7 +201,6 @@ fi
 %{_datadir}/%{name}/etc/turn_server_cert.pem
 %{_datadir}/%{name}/etc/turn_server_pkey.pem
 %{_datadir}/%{name}/etc/turnserver.conf
-%{_datadir}/%{name}/etc/turnuserdb.conf
 %dir %{_datadir}/%{name}/scripts
 %{_datadir}/%{name}/scripts/peer.sh
 %{_datadir}/%{name}/scripts/readme.txt
@@ -295,7 +292,7 @@ fi
 
 %changelog
 * Mon Nov 10 2014 Oleg Moskalenko <mom040267@gmail.com>
-  - Sync to 4.2.3.2
+  - Sync to 4.3.1.1
 * Thu Nov 07 2014 Oleg Moskalenko <mom040267@gmail.com>
   - Sync to 4.2.3.1
 * Sun Oct 26 2014 Oleg Moskalenko <mom040267@gmail.com>

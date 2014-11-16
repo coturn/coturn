@@ -781,8 +781,8 @@ static void cli_print_configuration(struct cli_session* cs)
 
 		if(turn_params.default_users_db.persistent_users_db.userdb[0]) {
 			switch(turn_params.default_users_db.userdb_type) {
-			case TURN_USERDB_TYPE_FILE:
-				cli_print_str(cs,"file","DB type",0);
+			case TURN_USERDB_TYPE_SQLITE:
+				cli_print_str(cs,"SQLite","DB type",0);
 				break;
 #if !defined(TURN_NO_PQ)
 			case TURN_USERDB_TYPE_PQ:

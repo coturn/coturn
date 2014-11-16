@@ -736,83 +736,6 @@ void release_allocation_quota(u08bits *user, int oauth, u08bits *realm)
 
 //////////////////////////////////
 
-void read_userdb_file(int to_print)
-{
-	static char *full_path_to_userdb_file = NULL;
-	static int first_read = 1;
-	static turn_time_t mtime = 0;
-
-	if(turn_params.default_users_db.userdb_type != TURN_USERDB_TYPE_FILE)
-		return;
-	if(turn_params.use_auth_secret_with_timestamp)
-		return;
-
-	FILE *f = NULL;
-
-	persistent_users_db_t *pud = get_persistent_users_db();
-
-	if(full_path_to_userdb_file) {
-		struct stat sb;
-		if(stat(full_path_to_userdb_file,&sb)<0) {
-			perror("File statistics");
-		} else {
-			turn_time_t newmtime = (turn_time_t)(sb.st_mtime);
-			if(mtime == newmtime)
-				return;
-			mtime = newmtime;
-
-		}
-	}
-
-	if (!full_path_to_userdb_file)
-		full_path_to_userdb_file = find_config_file(pud->userdb, first_read);
-
-	if (full_path_to_userdb_file)
-		f = fopen(full_path_to_userdb_file, "r");
-
-	if (f) {
-
-		char sbuf[TURN_LONG_STRING_SIZE];
-
-		ur_string_map_lock(turn_params.default_users_db.ram_db.dynamic_accounts);
-
-		ur_string_map_clean(turn_params.default_users_db.ram_db.dynamic_accounts);
-
-		for (;;) {
-			char *s = fgets(sbuf, sizeof(sbuf) - 1, f);
-			if (!s)
-				break;
-			s = skip_blanks(s);
-			if (s[0] == '#')
-				continue;
-			if (!s[0])
-				continue;
-			size_t slen = strlen(s);
-			while (slen && (s[slen - 1] == 10 || s[slen - 1] == 13))
-				s[--slen] = 0;
-			if (slen) {
-				if(to_print) {
-					char* sc=strstr(s,":");
-					if(sc)
-						sc[0]=0;
-					printf("%s\n",s);
-				} else {
-					add_user_account(s,1);
-				}
-			}
-		}
-
-		ur_string_map_unlock(turn_params.default_users_db.ram_db.dynamic_accounts);
-
-		fclose(f);
-
-	} else if (first_read) {
-	  TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: Cannot find userdb file: %s: going without flat file user database.\n", pud->userdb);
-	} 
-
-	first_read = 0;
-}
-
 int add_user_account(char *user, int dynamic)
 {
 	/* Realm is either default or empty for users taken from file or command-line */
@@ -872,11 +795,9 @@ static int list_users(int is_st, u08bits *realm)
   turn_dbdriver_t * dbd = get_dbdriver();
   if (dbd && dbd->list_users) {
     (*dbd->list_users)(is_st, realm);
-	} else if(!is_st) {
-		read_userdb_file(1);
-	}
+  }
 
-	return 0;
+  return 0;
 }
 
 static int show_secret(u08bits *realm)
@@ -989,217 +910,107 @@ static int list_realm_options(u08bits *realm)
 	return 0;
 }
 
-int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, u08bits *origin,
-				TURNADMIN_COMMAND_TYPE ct, int is_st,
-				perf_options_t *po) {
+int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, u08bits *origin, TURNADMIN_COMMAND_TYPE ct, int is_st, perf_options_t *po)
+{
 	hmackey_t key;
-	char skey[sizeof(hmackey_t)*2+1];
+	char skey[sizeof(hmackey_t) * 2 + 1];
 
 	st_password_t passwd;
 
-	if(ct == TA_LIST_USERS) {
+	if (ct == TA_LIST_USERS) {
 		return list_users(is_st, realm);
 	}
 
-	if(ct == TA_LIST_ORIGINS) {
+	if (ct == TA_LIST_ORIGINS) {
 		return list_origins(realm);
 	}
 
-	if(ct == TA_SHOW_SECRET) {
+	if (ct == TA_SHOW_SECRET) {
 		return show_secret(realm);
 	}
 
-	if(ct == TA_SET_SECRET) {
+	if (ct == TA_SET_SECRET) {
 		return set_secret(secret, realm);
 	}
 
-	if(ct == TA_DEL_SECRET) {
+	if (ct == TA_DEL_SECRET) {
 		return del_secret(secret, realm);
 	}
 
-	if(ct == TA_ADD_ORIGIN) {
+	if (ct == TA_ADD_ORIGIN) {
 		must_set_admin_origin(origin);
 		must_set_admin_realm(realm);
-		return add_origin(origin,realm);
+		return add_origin(origin, realm);
 	}
 
-	if(ct == TA_DEL_ORIGIN) {
+	if (ct == TA_DEL_ORIGIN) {
 		must_set_admin_origin(origin);
 		return del_origin(origin);
 	}
 
-	if(ct == TA_SET_REALM_OPTION) {
+	if (ct == TA_SET_REALM_OPTION) {
 		must_set_admin_realm(realm);
-		if(!(po && (po->max_bps!=((band_limit_t)-1) || po->total_quota>=0 || po->user_quota>=0))) {
+		if (!(po && (po->max_bps != ((band_limit_t) -1) || po->total_quota >= 0 || po->user_quota >= 0))) {
 			fprintf(stderr, "The operation cannot be completed: a realm option must be set.\n");
 			exit(-1);
 		}
-		return set_realm_option(realm,po);
+		return set_realm_option(realm, po);
 	}
 
-	if(ct == TA_LIST_REALM_OPTIONS) {
+	if (ct == TA_LIST_REALM_OPTIONS) {
 		return list_realm_options(realm);
 	}
 
 	must_set_admin_user(user);
 
-	if(ct != TA_DELETE_USER) {
+	if (ct != TA_DELETE_USER) {
 
 		must_set_admin_pwd(pwd);
 
-		if(is_st) {
-			strncpy((char*)passwd,(char*)pwd,sizeof(st_password_t));
+		if (is_st) {
+			strncpy((char*) passwd, (char*) pwd, sizeof(st_password_t));
 		} else {
 			stun_produce_integrity_key_str(user, realm, pwd, key, turn_params.shatype);
 			size_t i = 0;
 			size_t sz = get_hmackey_size(turn_params.shatype);
-			int maxsz = (int)(sz*2)+1;
-			char *s=skey;
-			for(i=0;(i<sz) && (maxsz>2);i++) {
-			  snprintf(s,(size_t)(sz*2),"%02x",(unsigned int)key[i]);
-			  maxsz-=2;
-			  s+=2;
+			int maxsz = (int) (sz * 2) + 1;
+			char *s = skey;
+			for (i = 0; (i < sz) && (maxsz > 2); i++) {
+				snprintf(s, (size_t) (sz * 2), "%02x", (unsigned int) key[i]);
+				maxsz -= 2;
+				s += 2;
 			}
-			skey[sz*2]=0;
+			skey[sz * 2] = 0;
 		}
 	}
 
-  turn_dbdriver_t * dbd = get_dbdriver();
+	turn_dbdriver_t * dbd = get_dbdriver();
 
-	if(ct == TA_PRINT_KEY) {
+	if (ct == TA_PRINT_KEY) {
 
-		if(!is_st) {
-			printf("0x%s\n",skey);
+		if (!is_st) {
+			printf("0x%s\n", skey);
 		}
 
-	} else if(dbd) {
+	} else if (dbd) {
 
-		if(!is_st) {
+		if (!is_st) {
 			must_set_admin_realm(realm);
 		}
-    
-    if (ct == TA_DELETE_USER) {
-      if (dbd->del_user) 
-        (*dbd->del_user)(user, is_st, realm);
-    } else if (ct == TA_UPDATE_USER) {
-      if (is_st) {
-        if (dbd->set_user_pwd) 
-          (*dbd->set_user_pwd)(user, passwd);
-      } else {
-        if (dbd->set_user_key) 
-          (*dbd->set_user_key)(user, realm, skey);
-      }
-    }
-    
-	} else if(!is_st) {
 
-		persistent_users_db_t *pud = get_persistent_users_db();
-		char *full_path_to_userdb_file = find_config_file(pud->userdb, 1);
-		FILE *f = full_path_to_userdb_file ? fopen(full_path_to_userdb_file,"r") : NULL;
-		int found = 0;
-		char us[TURN_LONG_STRING_SIZE];
-		size_t i = 0;
-		char **content = NULL;
-		size_t csz = 0;
-
-		STRCPY(us, (char*) user);
-		strncpy(us + strlen(us), ":", sizeof(us)-1-strlen(us));
-		us[sizeof(us)-1]=0;
-
-		if (!f) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "File %s not found, will be created.\n",pud->userdb);
-		} else {
-
-			char sarg[TURN_LONG_STRING_SIZE];
-			char sbuf[TURN_LONG_STRING_SIZE];
-
-			for (;;) {
-				char *s0 = fgets(sbuf, sizeof(sbuf) - 1, f);
-				if (!s0)
-					break;
-
-				size_t slen = strlen(s0);
-				while (slen && (s0[slen - 1] == 10 || s0[slen - 1] == 13))
-					s0[--slen] = 0;
-
-				char *s = skip_blanks(s0);
-
-				if (s[0] == '#')
-					goto add_and_cont;
-				if (!s[0])
-					goto add_and_cont;
-
-				STRCPY(sarg, s);
-				if (strstr(sarg, us) == sarg) {
-					if (ct == TA_DELETE_USER)
-						continue;
-
-					if (found)
-						continue;
-					found = 1;
-					STRCPY(us, (char*) user);
-					strncpy(us + strlen(us), ":0x", sizeof(us)-1-strlen(us));
-					us[sizeof(us)-1]=0;
-					size_t sz = get_hmackey_size(turn_params.shatype);
-					for (i = 0; i < sz; i++) {
-						snprintf(
-							us + strlen(us),
-							sizeof(us)-strlen(us),
-							"%02x",
-							(unsigned int) key[i]);
-					}
-
-					s0 = us;
-				}
-
-				add_and_cont:
-				content = (char**)turn_realloc(content, 0, sizeof(char*) * (++csz));
-				content[csz - 1] = turn_strdup(s0);
+		if (ct == TA_DELETE_USER) {
+			if (dbd->del_user)
+				(*dbd->del_user)(user, is_st, realm);
+		} else if (ct == TA_UPDATE_USER) {
+			if (is_st) {
+				if (dbd->set_user_pwd)
+					(*dbd->set_user_pwd)(user, passwd);
+			} else {
+				if (dbd->set_user_key)
+					(*dbd->set_user_key)(user, realm, skey);
 			}
-
-			fclose(f);
 		}
 
-		if(!found && (ct == TA_UPDATE_USER)) {
-		  STRCPY(us,(char*)user);
-		  strncpy(us+strlen(us),":0x",sizeof(us)-1-strlen(us));
-		  us[sizeof(us)-1]=0;
-		  size_t sz = get_hmackey_size(turn_params.shatype);
-		  for(i=0;i<sz;i++) {
-		    snprintf(us+strlen(us),sizeof(us)-strlen(us),"%02x",(unsigned int)key[i]);
-		  }
-		  content = (char**)turn_realloc(content,0,sizeof(char*)*(++csz));
-		  content[csz-1]=turn_strdup(us);
-		}
-
-		if(!full_path_to_userdb_file)
-			full_path_to_userdb_file=turn_strdup(pud->userdb);
-
-		size_t dirsz = strlen(full_path_to_userdb_file)+21;
-		char *dir = (char*)turn_malloc(dirsz+1);
-		strncpy(dir,full_path_to_userdb_file,dirsz);
-		dir[dirsz]=0;
-		size_t dlen = strlen(dir);
-		while(dlen) {
-			if(dir[dlen-1]=='/')
-				break;
-			dir[--dlen]=0;
-		}
-		strncpy(dir+strlen(dir),".tmp_userdb",dirsz-strlen(dir));
-
-		f = fopen(dir,"w");
-		if(!f) {
-			perror("file open");
-			exit(-1);
-		}
-
-		for(i=0;i<csz;i++)
-			fprintf(f,"%s\n",content[i]);
-
-		fclose(f);
-
-		rename(dir,full_path_to_userdb_file);
-		turn_free(dir,dirsz+1);
 	}
 
 	return 0;

@@ -81,11 +81,7 @@ Config file settings:
 
 User database settings:  
 
--b, --userdb	User database file name (default - turnuserdb.conf),
-		for long-term credentials mechanism only.
-		This user file database is being dynamically checked while the 
-		turnserver is working, and the user accounts can be changed 
-		dynamically by editing the database.
+-b, --db, --userdb	SQLite user database file name (default - /var/db/turndb).
 				  
 -e, --psql-userdb	User database connection string for PostgreSQL.
 		This database can be used for long-term and short-term 
@@ -161,11 +157,9 @@ Flags:
 			fingerprints to the messages in this session, regardless of the
 			per-server setting.
 
--a, --lt-cred-mech	Use long-term credentials mechanism (this one you need for WebRTC usage). 
-			This option can be used with either flat file user database or 
-			PostgreSQL DB or MySQL DB or MongoDB or Redis for user keys storage.
--A, --st-cred-mech	Use the short-term credentials mechanism. This option requires
-	                a PostgreSQL or MySQL or MongoDB or Redis DB for short term passwords storage.
+-a, --lt-cred-mech	Use long-term credentials mechanism (this one you need for WebRTC usage).
+
+-A, --st-cred-mech	Use the short-term credentials mechanism.
 
 -z, --no-auth		Do not use any credentials mechanism, allow anonymous access. 
 			Opposite to -a and -A options. This is default option when no 
@@ -568,16 +562,14 @@ for that you have a number of options:
 
 	a) command-line options (-u).
 	
-	b) userdb config file.
-	
-	c) a database table (PostgreSQL or MySQL or MongoDB). You will have to set keys with 
-	turnadmin utility (see docs and wiki for turnadmin). You cannot use open passwords 
-	in the database.
+	b) a database table (SQLite or PostgreSQL or MySQL or MongoDB). You will have to 
+	set keys with turnadmin utility (see docs and wiki for turnadmin). 
+	You cannot use open passwords in the database.
 
-	d) Redis key/value pair(s), if Redis is used. You key use either keys or 
+	c) Redis key/value pair(s), if Redis is used. You key use either keys or 
 	open passwords with Redis; see turndb/testredisdbsetup.sh file.  
 	
-	e) You also can use the TURN REST API. You will need shared secret(s) set
+	d) You also can use the TURN REST API. You will need shared secret(s) set
 	either	through the command line option, or through the config file, or through
 	the database table or Redis key/value pairs.  
 
@@ -724,9 +716,7 @@ For the user database, the turnserver has the following options:
 Obviously, only a few users can be set that way, and their credentials are fixed 
 for the turnserver process lifetime.
 
-2) Users can be set in turnusers.conf flat file DB. The turnserver process periodically 
-re-reads this file, so the user accounts may be changed while the turnserver is running.
-But still a relatively small (up to a hundred ?) number of users can be handled that way.
+2) Users can be stored in SQlite DB. The default SQLite database file is /var/db/turndb.
 
 3) Users can be stored in PostgreSQL database, if the turnserver was compiled with PostgreSQL
 support. Each time turnserver checks user credentials, it reads the database (asynchronously,
@@ -851,11 +841,9 @@ FILES
 
 /etc/turnserver.conf
 
-/etc/turnuserdb.conf
+/var/db/turndb
 
 /usr/local/etc/turnserver.conf
-
-/usr/local/etc/turnuserdb.conf
 
 =================================
 

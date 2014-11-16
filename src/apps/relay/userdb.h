@@ -48,7 +48,7 @@ extern "C" {
 
 //////////// Defines //////////////////////////////
 
-#define DEFAULT_USERDB_FILE "turnuserdb.conf"
+#define DEFAULT_USERDB_FILE "/var/db/turndb"
 
 #define AUTH_SECRET_SIZE (512)
 
@@ -100,7 +100,7 @@ struct auth_message {
 };
 
 enum _TURN_USERDB_TYPE {
-	TURN_USERDB_TYPE_FILE=0
+	TURN_USERDB_TYPE_SQLITE=0
 #if !defined(TURN_NO_PQ)
 	,TURN_USERDB_TYPE_PQ
 #endif
@@ -202,7 +202,6 @@ void release_allocation_quota(u08bits *username, int oauth, u08bits *realm);
 	void run_db_test(void);
 #endif
 
-void read_userdb_file(int to_print);
 void auth_ping(redis_context_handle rch);
 void reread_realms(void);
 int add_user_account(char *user, int dynamic);

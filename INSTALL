@@ -211,7 +211,7 @@ If you do not want to use the rpath linking option, or you OS or compiler
 do not allows that, then after the installation, you may have to adjust the 
 system-wide shared library search path by using "ldconfig -n <libdirname>" 
 (Linux), "ldconfig -m <libdirname>" (BSD) or "crle -u -l <libdirname>" 
-(Solaris). Your system must be able to find the libevent2, openssl and 
+(Solaris). Your system must be able to find the sqlite, libevent2, openssl and 
 (optionally) PostgreSQL and/or MySQL (MariaDB) and/or MongoDB and/or Redis 
 shared libraries, either with the help of the system-wide library search 
 configuration or by using LD_LIBRARY_PATH. "make install" will make a 
@@ -274,8 +274,9 @@ The code is compatible with C++ compiler, and a C++ compiler
 VII. WHICH EXTRA LIBRARIES AND UTILITIES YOU NEED 
 
 In addition to common *NIX OS services and libraries, to compile this code, 
-OpenSSL (version 1.0.0a or better recommended) and libevent2 (version 2.0.5 
-or better) are required, the PostgreSQL C client development setup is 
+OpenSSL (version 1.0.0a or better recommended), sqlite C development library,
+and libevent2 (version 2.0.5 or better) are required, 
+the PostgreSQL C client development setup is 
 optional, the MySQL (MariaDB) C client development setup is optional, the MongoDB
 C Driver and the Hiredis development files for Redis database access are optional.
 For fully functional build, the extra set of libraries must be installed
@@ -283,9 +284,10 @@ in full version (the development headers and the libraries to link with).
 For runtime, only runtime setup is required. If the build is modified for 
 static linking, then even runtime installation is not needed.
 
-OpenSSL, libevent2, PostgreSQL, MySQL (or MariaDB) and Hiredis 
+OpenSSL, SQLite, libevent2, PostgreSQL, MySQL (or MariaDB) and Hiredis 
 libraries can be downloaded from their web sites:
  - http://www.openssl.org (required);
+ - http://www.sqlite.org (required);
  - http://www.libevent.org (required);
  - http://www.postgresql.org (optional);
  - http://www.mysql.org (or http://mariadb.org) (optional);
@@ -315,6 +317,8 @@ installation:
 
 		$ cd /usr/ports/security/openssl/
 		$ sudo make install clean
+		$ cd /usr/ports/databases/sqlite3/
+		$ sudo make install clean
 		$ cd /usr/ports/devel/libevent2/
 		$ sudo make install clean
 		$ cd /usr/ports/databases/postgresql84-client/ (or any other version)
@@ -327,6 +331,7 @@ installation:
 	**) Linux Ubuntu 11.10+, Debian Wheezy, Mint 14+:
 		
 		$ sudo apt-get install libssl-dev
+		$ sudo apt-get install sqlite3-dev
 		$ sudo apt-get install libevent-dev
 		$ sudo apt-get install libpq-dev
 		$ sudo apt-get install mysql-client
@@ -338,6 +343,8 @@ installation:
 	***) Fedora:
 
 	$ sudo yum install openssl-devel
+	$ sudo yum install sqlite
+	$ sudo yum install sqlite-devel
 	$ sudo yum install libevent
 	$ sudo yum install libevent-devel
 	$ sudo yum install postgresql-devel
@@ -445,6 +452,8 @@ not providing backward compatibility with the older libevent 1.x version.
 If you have a system with older libevent, then you have to install the new 
 libevent2 from their web site. It was tested with older *NIXes 
 (like FreeBSD 6.x) and it works just fine.
+
+NOTE: SQLite must be of version 3.x.
 
 NOTE: For extra security features (DTLS and SHA256) support, OpenSSL version 
 1.0.0a or newer is recommended. Older versions do not support DTLS, reliably, 
