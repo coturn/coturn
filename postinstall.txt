@@ -16,9 +16,6 @@ service, you have to:
 	database schema description and/or /usr/local/share/turnserver/schema.stats.redis
 	as Redis status & statistics database schema description.
 	 
-	The installation process automatically creates /var/db/turndb SQlite database file,
-	with pre-set example data tables.
-
 	c) add whatever is necessary to enable start-up daemon for the /usr/local/bin/turnserver.
      
 2) If you do not want the turnserver to be a system service, 

@@ -48,7 +48,7 @@ extern "C" {
 
 //////////// Defines //////////////////////////////
 
-#define DEFAULT_USERDB_FILE "/var/db/turndb"
+#define DEFAULT_USERDB_FILE ("/var/turndb")
 
 #define AUTH_SECRET_SIZE (512)
 
