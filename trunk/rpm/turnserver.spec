@@ -8,10 +8,10 @@ License:	BSD
 URL:		https://code.google.com/p/coturn/ 
 Source0:	http://turnserver.open-sys.org/downloads/v%{version}/%{name}-%{version}.tar.gz
 
-BuildRequires:	gcc, make, redhat-rpm-config
+BuildRequires:	gcc, make, redhat-rpm-config, sqlite-devel
 BuildRequires:	openssl-devel, libevent-devel >= 2.0.0, postgresql-devel
 BuildRequires:	hiredis-devel
-Requires:	openssl, libevent >= 2.0.0, mysql-libs, postgresql-libs
+Requires:	openssl, sqlite, libevent >= 2.0.0, mysql-libs, postgresql-libs
 Requires:	hiredis, perl-DBI, perl-libwww-perl
 Requires:	telnet
 %if 0%{?el6}

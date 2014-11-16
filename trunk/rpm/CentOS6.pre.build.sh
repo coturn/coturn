@@ -18,7 +18,7 @@ LIBEVENT_SPEC_FILE=libevent.spec
 
 # Common packs
 
-PACKS="mysql-devel"
+PACKS="mysql-devel sqlite sqlite-devel"
 sudo yum -y install ${PACKS}
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then
