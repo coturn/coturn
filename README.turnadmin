@@ -80,7 +80,7 @@ Commands:
   
 Options with required values:  
 
--b, --db, --userdb		SQLite user database file name (default - /var/turndb).
+-b, --db, --userdb		SQLite user database file name (default - ~/turndb).
 			See the same option in the turnserver section.
 -e, --psql-userdb	PostgreSQL user database connection string.
 			See the --psql-userdb option in the turnserver section.
@@ -170,7 +170,7 @@ to see the man page.
 
 /etc/turnserver.conf
 
-/var/turndb
+~/turndb
 
 /usr/local/etc/turnserver.conf
 

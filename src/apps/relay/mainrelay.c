@@ -412,7 +412,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						Total bytes-per-second bandwidth the TURN server is allowed to allocate\n"
 "						for the sessions, combined (input and output network streams are treated separately).\n"
 " -c				<filename>	Configuration file name (default - turnserver.conf).\n"
-" -b, , --db, --userdb	<filename>		SQLite database file name (default - "DEFAULT_USERDB_FILE").\n"
+" -b, , --db, --userdb	<filename>		SQLite database file name (default - ~/turndb).\n"
 #if !defined(TURN_NO_PQ)
 " -e, --psql-userdb, --sql-userdb <conn-string>	PostgreSQL database connection string, if used (default - empty, no PostreSQL DB used).\n"
 "		                                This database can be used for long-term and short-term credentials mechanisms,\n"
@@ -584,7 +584,7 @@ static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
 	"	-g, --set-realm-option		Set realm params: max-bps, total-quota, user-quota.\n"
 	"	-G, --list-realm-options	List realm params.\n"
 	"\nOptions with mandatory values:\n\n"
-	"	-b, --db, --userdb		SQLite database file, default value is "DEFAULT_USERDB_FILE".\n"
+	"	-b, --db, --userdb		SQLite database file, default value is ~/turndb.\n"
 #if !defined(TURN_NO_PQ)
 	"	-e, --psql-userdb, --sql-userdb	PostgreSQL user database connection string, if PostgreSQL DB is used.\n"
 #endif

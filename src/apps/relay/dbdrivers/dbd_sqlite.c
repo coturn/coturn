@@ -36,6 +36,26 @@
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+static int sqlite_init_multithreaded(void) {
+
+	sqlite3_shutdown();
+
+	if (sqlite3_threadsafe() > 0) {
+		int retCode = sqlite3_config(SQLITE_CONFIG_SERIALIZED);
+		if (retCode == SQLITE_OK) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Can now use sqlite on multiple threads, using the same connection\n");
+		} else {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "setting sqlite thread safe mode to serialized failed!!! return code: %d\n", retCode);
+			return -1;
+		}
+	} else {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Your SQLite database is not compiled to be threadsafe.\n");
+		return -1;
+	}
+
+	return 0;
+}
+
 #if 0
 
 static int donot_print_connection_success = 0;
