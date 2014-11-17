@@ -235,11 +235,14 @@ fi
 %{_datadir}/%{name}/scripts/longtermsecuredb/secure_relay_with_db_mongo.sh
 %{_datadir}/%{name}/scripts/longtermsecuredb/secure_relay_with_db_psql.sh
 %{_datadir}/%{name}/scripts/longtermsecuredb/secure_relay_with_db_redis.sh
+%{_datadir}/%{name}/scripts/longtermsecuredb/secure_relay_with_db_sqlite.sh
 %dir %{_datadir}/%{name}/scripts/restapi
 %{_datadir}/%{name}/scripts/restapi/secure_relay_secret.sh
 %{_datadir}/%{name}/scripts/restapi/secure_relay_secret_with_db_mysql.sh
 %{_datadir}/%{name}/scripts/restapi/secure_relay_secret_with_db_psql.sh
 %{_datadir}/%{name}/scripts/restapi/secure_relay_secret_with_db_redis.sh
+%{_datadir}/%{name}/scripts/restapi/secure_relay_secret_with_db_mongo.sh
+%{_datadir}/%{name}/scripts/restapi/secure_relay_secret_with_db_sqlite.sh
 %{_datadir}/%{name}/scripts/restapi/secure_udp_client_with_secret.sh
 %{_datadir}/%{name}/scripts/restapi/shared_secret_maintainer.pl
 %dir %{_datadir}/%{name}/scripts/selfloadbalance
