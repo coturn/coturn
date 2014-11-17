@@ -69,8 +69,11 @@ longtermsecuredb/secure_relay_with_db_psql.sh longtermsecuredb/secure_relay_with
 longtermsecuredb/secure_relay_with_db_mysql_ssl.sh \
 longtermsecuredb/secure_relay_with_db_psql.sh longtermsecuredb/secure_relay_with_db_mongo.sh \
 longtermsecuredb/secure_relay_with_db_redis.sh \
+longtermsecuredb/secure_relay_with_db_sqlite.sh \
 restapi/secure_relay_secret.sh restapi/secure_relay_secret_with_db_mysql.sh \
 restapi/secure_relay_secret.sh restapi/secure_relay_secret_with_db_redis.sh \
+restapi/secure_relay_secret.sh restapi/secure_relay_secret_with_db_mongo.sh \
+restapi/secure_relay_secret.sh restapi/secure_relay_secret_with_db_sqlite.sh \
 restapi/secure_udp_client_with_secret.sh \
 restapi/secure_relay_secret_with_db_psql.sh \
 restapi/shared_secret_maintainer.pl \
