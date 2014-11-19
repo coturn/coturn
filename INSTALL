@@ -225,26 +225,20 @@ V. PLATFORMS
 The TURN Server is using generic *NIX system APIs and is supposed to be 
 usable on wide range of *NIX systems. 
 
-The following platforms have been used in the development:
+The following platforms have been used in the development (i386 and x86_64):
 
-	- Linux Ubuntu 11.x and 12.x, i386 and x86_64
-	- FreeBSD 6.x, i386
-	- FreeBSD 8.x, i386
-	- PC-BSD 9.x, x86_64
-	- Solaris 11, x86_64
-	- Linux CentOS / Red Hat Enterprise Edition 6.x-7.0, x86_64 (i386 & amd64)
-	- Linux Debian 'Squeeze', i386
-	- Linux Mint 14.1 'Nadia', i386
-	- Linux Mint 16 'Petra', i386
-	- Linux Debian 'Wheezy', x86_64 
+	- Linux Ubuntu, Mint, Debian,
+	- FreeBSD,
+	- Solaris 11,
+	- Linux CentOS / Red Hat Enterprise Edition 6.x-7.0, x86_64
 	- Cygwin 1.7.20
-	- NetBSD 6.0.1, i386
-	- OpenBSD 5.3, i386
-	- Amazon Linux, x86_64
-	- Mac OS X Mountain Lion
-	- ArchLinux, x86_64
-	- Fedora 19 and 20, x86_64
-	- OpenSUSE 12.3, x86_64
+	- NetBSD 6.0.1,
+	- OpenBSD 5.3,
+	- Amazon Linux,
+	- Mac OS X,
+	- ArchLinux,
+	- Fedora,
+	- OpenSUSE
 
 It must work on many other *NIXes, as well. The configure script and/or 
 Makefile may need adjustments for other *NIXes not mentioned above.
@@ -259,9 +253,9 @@ and for the performance reasons.
 
 The tested C compilers are:
 
-	- gcc 3.4.4 thru 4.8.1
+	- gcc 3.4.4 thru 4.8.x
 	- clang 3.0 or better
-	- Solaris Studio 12.3 C compiler, version 5.12
+	- Solaris Studio 12 C and C++ compilers
 
 It may be compiled with others compilers, too.
 
@@ -287,7 +281,7 @@ static linking, then even runtime installation is not needed.
 OpenSSL, SQLite, libevent2, PostgreSQL, MySQL (or MariaDB) and Hiredis 
 libraries can be downloaded from their web sites:
  - http://www.openssl.org (required);
- - http://www.sqlite.org (required);
+ - http://www.sqlite.org (optional);
  - http://www.libevent.org (required);
  - http://www.postgresql.org (optional);
  - http://www.mysql.org (or http://mariadb.org) (optional);
