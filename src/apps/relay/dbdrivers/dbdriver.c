@@ -60,36 +60,43 @@ persistent_users_db_t * get_persistent_users_db(void) {
 	return &(turn_params.default_users_db.persistent_users_db);
 }
 
-turn_dbdriver_t * get_dbdriver() {
-  if (!_driver) {
-    switch(turn_params.default_users_db.userdb_type) {
-    case TURN_USERDB_TYPE_SQLITE:
-    	_driver = get_sqlite_dbdriver();
-    	break;
+turn_dbdriver_t * get_dbdriver()
+{
+
+	if (turn_params.default_users_db.userdb_type == TURN_USERDB_TYPE_UNKNOWN)
+		return NULL;
+
+	if (!_driver) {
+		switch (turn_params.default_users_db.userdb_type){
+#if !defined(TURN_NO_SQLITE)
+		case TURN_USERDB_TYPE_SQLITE:
+			_driver = get_sqlite_dbdriver();
+			break;
+#endif
 #if !defined(TURN_NO_PQ)
-    case TURN_USERDB_TYPE_PQ:
-      _driver = get_pgsql_dbdriver();
-      break;
+		case TURN_USERDB_TYPE_PQ:
+			_driver = get_pgsql_dbdriver();
+			break;
 #endif
 #if !defined(TURN_NO_MYSQL)
-    case TURN_USERDB_TYPE_MYSQL:
-      _driver = get_mysql_dbdriver();
-      break;
+		case TURN_USERDB_TYPE_MYSQL:
+			_driver = get_mysql_dbdriver();
+			break;
 #endif
 #if !defined(TURN_NO_MONGO)
-    case TURN_USERDB_TYPE_MONGO:
-      _driver = get_mongo_dbdriver();
-      break;
+		case TURN_USERDB_TYPE_MONGO:
+			_driver = get_mongo_dbdriver();
+			break;
 #endif
 #if !defined(TURN_NO_HIREDIS)
-    case TURN_USERDB_TYPE_REDIS:
-      _driver = get_redis_dbdriver();
-      break;
+		case TURN_USERDB_TYPE_REDIS:
+			_driver = get_redis_dbdriver();
+			break;
 #endif
-    default:
-      break;
-    }
-  }
-  return _driver;
+		default:
+			break;
+		}
+	}
+	return _driver;
 }
 
