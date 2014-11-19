@@ -960,32 +960,6 @@ else
 fi
 
 ###########################
-# Test SQLite setup
-###########################
-
-testlib sqlite3
-ER=$?
-if ! [ ${ER} -eq 0 ] ; then
-   	${ECHO_CMD} "SQLite library found."
-else
-   	${ECHO_CMD} "ERROR: SQLite3 development library cannot be found."
-   	cleanup
-   	exit
-fi
-	
-testsqlite_comp
-ER=$?
-if ! [ ${ER} -eq 0 ] ; then
-    ${ECHO_CMD} "SQLite development found."
-else
-    ${ECHO_CMD} "ERROR: SQLite development libraries are not installed properly in required location."
-    ${ECHO_CMD} "See the INSTALL file."
-    ${ECHO_CMD} "Abort."
-    cleanup
-    exit
-fi
-
-###########################
 # Test Libevent2 setup
 ###########################
 testlibevent2_comp
@@ -1053,6 +1027,31 @@ if ! [ ${ER} -eq 0 ] ; then
 else
    	${ECHO_CMD} "ERROR: Libevent2 development libraries are not compiled with threads support."
 	exit
+fi
+
+###########################
+# Test SQLite setup
+###########################
+
+if [ -z "${TURN_NO_SQLITE}" ] ; then
+
+	testlib sqlite3
+	ER=$?
+	if ! [ ${ER} -eq 0 ] ; then
+   		${ECHO_CMD} "SQLite library found."
+	else
+   		${ECHO_CMD} "SQLite3 development library cannot be found."
+   		TURN_NO_SQLITE="-DTURN_NO_SQLITE"
+	fi
+	
+	testsqlite_comp
+	ER=$?
+	if ! [ ${ER} -eq 0 ] ; then
+    	${ECHO_CMD} "SQLite development found."
+	else
+    	${ECHO_CMD} "SQLite development libraries are not installed properly in required location."
+    	TURN_NO_SQLITE="-DTURN_NO_SQLITE"
+	fi
 fi
 
 ###########################
@@ -1178,7 +1177,7 @@ ${ECHO_CMD} "LDFLAGS += ${OSLIBS}" >> Makefile
 ${ECHO_CMD} "DBLIBS += ${DBLIBS}" >> Makefile
 ${ECHO_CMD} "CFLAGS += ${OSCFLAGS}" >> Makefile
 ${ECHO_CMD} "CPPFLAGS = ${CPPFLAGS}" >> Makefile
-${ECHO_CMD} "DBCFLAGS += ${DBCFLAGS} ${TURN_NO_PQ} ${TURN_NO_MYSQL} ${TURN_NO_MONGO} ${TURN_NO_HIREDIS}" >> Makefile
+${ECHO_CMD} "DBCFLAGS += ${DBCFLAGS} ${TURN_NO_PQ} ${TURN_NO_MYSQL} ${TURN_NO_SQLITE} ${TURN_NO_MONGO} ${TURN_NO_HIREDIS}" >> Makefile
 ${ECHO_CMD} "#" >> Makefile
 ${ECHO_CMD} "PORTNAME = ${PORTNAME}" >> Makefile
 ${ECHO_CMD} "PREFIX = ${PREFIX}" >> Makefile

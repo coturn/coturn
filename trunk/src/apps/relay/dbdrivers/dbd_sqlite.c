@@ -32,6 +32,8 @@
 #include "../mainrelay.h"
 #include "dbd_sqlite.h"
 
+#if !defined(TURN_NO_SQLITE)
+
 #include <sqlite3.h>
 
 #include <unistd.h>
@@ -124,7 +126,12 @@ static sqlite3 * get_sqlite_connection(void) {
 		int rc = sqlite3_open(pud->userdb, &sqliteconnection);
 		if(!sqliteconnection || (rc != SQLITE_OK)) {
 			const char* errmsg = sqlite3_errmsg(sqliteconnection);
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open SQLite DB connection: <%s>, runtime error: %s\n",pud->userdb,errmsg);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open SQLite DB connection: <%s>, runtime error:\n  %s\n  (If your intention is to use a database for the TURN server, then\n  check the TURN server process / file / DB directory permissions and\n  re-start the TURN server)\n",pud->userdb,errmsg);
+			if(sqliteconnection) {
+				sqlite3_close(sqliteconnection);
+				sqliteconnection=NULL;
+			}
+			turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_UNKNOWN;
 		} else if(!donot_print_connection_success){
 			init_sqlite_database(sqliteconnection);
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "SQLite DB connection success: %s\n",pud->userdb);
@@ -923,8 +930,12 @@ static turn_dbdriver_t driver = {
   &sqlite_list_oauth_keys
 };
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////
 
 turn_dbdriver_t * get_sqlite_dbdriver(void) {
 	return &driver;
 }
+
+//////////////////////////////////////////////////
+
+#endif

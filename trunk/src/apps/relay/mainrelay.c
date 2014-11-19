@@ -412,7 +412,9 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						Total bytes-per-second bandwidth the TURN server is allowed to allocate\n"
 "						for the sessions, combined (input and output network streams are treated separately).\n"
 " -c				<filename>	Configuration file name (default - turnserver.conf).\n"
-" -b, , --db, --userdb	<filename>		SQLite database file name (default - ~/turndb).\n"
+#if !defined(TURN_NO_SQLITE)
+" -b, , --db, --userdb	<filename>		SQLite database file name (default - /var/db/turndb).\n"
+#endif
 #if !defined(TURN_NO_PQ)
 " -e, --psql-userdb, --sql-userdb <conn-string>	PostgreSQL database connection string, if used (default - empty, no PostreSQL DB used).\n"
 "		                                This database can be used for long-term and short-term credentials mechanisms,\n"
@@ -584,7 +586,9 @@ static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
 	"	-g, --set-realm-option		Set realm params: max-bps, total-quota, user-quota.\n"
 	"	-G, --list-realm-options	List realm params.\n"
 	"\nOptions with mandatory values:\n\n"
-	"	-b, --db, --userdb		SQLite database file, default value is ~/turndb.\n"
+#if !defined(TURN_NO_SQLITE)
+	"	-b, --db, --userdb		SQLite database file, default value is /var/db/turndb.\n"
+#endif
 #if !defined(TURN_NO_PQ)
 	"	-e, --psql-userdb, --sql-userdb	PostgreSQL user database connection string, if PostgreSQL DB is used.\n"
 #endif
@@ -600,7 +604,7 @@ static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
 	"	-u, --user			Username\n"
 	"	-r, --realm			Realm for long-term mechanism only\n"
 	"	-p, --password			Password\n"
-#if !defined(TURN_NO_PQ) || !defined(TURN_NO_MYSQL) || !defined(TURN_NO_MONGO) || !defined(TURN_NO_HIREDIS)
+#if !defined(TURN_NO_SQLITE) || !defined(TURN_NO_PQ) || !defined(TURN_NO_MYSQL) || !defined(TURN_NO_MONGO) || !defined(TURN_NO_HIREDIS)
 	"	-o, --origin			Origin\n"
 #endif
 	"	-H, --sha256			Use SHA256 digest function to be used for the message integrity.\n"
@@ -714,8 +718,10 @@ static const struct myoption long_options[] = {
 				{ "st-cred-mech", optional_argument, NULL, 'A' },
 				{ "no-auth", optional_argument, NULL, 'z' },
 				{ "user", required_argument, NULL, 'u' },
+#if !defined(TURN_NO_SQLITE)
 				{ "userdb", required_argument, NULL, 'b' },
 				{ "db", required_argument, NULL, 'b' },
+#endif
 #if !defined(TURN_NO_PQ)
 				{ "psql-userdb", required_argument, NULL, 'e' },
 				{ "sql-userdb", required_argument, NULL, 'e' },
@@ -810,8 +816,10 @@ static const struct myoption admin_long_options[] = {
 				{ "delete-all-secrets", no_argument, NULL, DEL_ALL_AUTH_SECRETS_OPT },
 				{ "add-st", no_argument, NULL, 'A' },
 				{ "delete-st", no_argument, NULL, 'D' },
+#if !defined(TURN_NO_SQLITE)
 				{ "userdb", required_argument, NULL, 'b' },
 				{ "db", required_argument, NULL, 'b' },
+#endif
 #if !defined(TURN_NO_PQ)
 				{ "psql-userdb", required_argument, NULL, 'e' },
 				{ "sql-userdb", required_argument, NULL, 'e' },
@@ -1104,10 +1112,12 @@ static void set_option(int c, char *value)
 	case 'u':
 		add_user_account(value,0);
 		break;
+#if !defined(TURN_NO_SQLITE)
 	case 'b':
 		STRCPY(turn_params.default_users_db.persistent_users_db.userdb, value);
 		turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_SQLITE;
 		break;
+#endif
 #if !defined(TURN_NO_PQ)
 	case 'e':
 		STRCPY(turn_params.default_users_db.persistent_users_db.userdb, value);
@@ -1469,10 +1479,12 @@ static int adminmain(int argc, char **argv)
 		case DEL_ALL_AUTH_SECRETS_OPT:
 			ct = TA_DEL_SECRET;
 			break;
+#if !defined(TURN_NO_SQLITE)
 		case 'b':
 		  STRCPY(turn_params.default_users_db.persistent_users_db.userdb,optarg);
 		  turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_SQLITE;
 		  break;
+#endif
 #if !defined(TURN_NO_PQ)
 		case 'e':
 		  STRCPY(turn_params.default_users_db.persistent_users_db.userdb,optarg);
@@ -1587,8 +1599,9 @@ static void print_features(unsigned long mfn)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "AEAD supported\n");
 #endif
 
+#if !defined(TURN_NO_SQLITE)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "SQLite supported\n");
-
+#endif
 #if !defined(TURN_NO_HIREDIS)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Redis supported\n");
 #else

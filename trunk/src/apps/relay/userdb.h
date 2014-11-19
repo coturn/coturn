@@ -48,7 +48,7 @@ extern "C" {
 
 //////////// Defines //////////////////////////////
 
-#define DEFAULT_USERDB_FILE ("~/turndb")
+#define DEFAULT_USERDB_FILE ("/var/db/turndb")
 
 #define AUTH_SECRET_SIZE (512)
 
@@ -100,7 +100,12 @@ struct auth_message {
 };
 
 enum _TURN_USERDB_TYPE {
+#if !defined(TURN_NO_SQLITE)
+	TURN_USERDB_TYPE_UNKNOWN=-1,
 	TURN_USERDB_TYPE_SQLITE=0
+#else
+	TURN_USERDB_TYPE_UNKNOWN=0
+#endif
 #if !defined(TURN_NO_PQ)
 	,TURN_USERDB_TYPE_PQ
 #endif
