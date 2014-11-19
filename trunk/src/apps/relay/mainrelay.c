@@ -95,7 +95,7 @@ LOW_DEFAULT_PORTS_BOUNDARY,HIGH_DEFAULT_PORTS_BOUNDARY,0,0,0,"",
 /////////////// MISC PARAMS ////////////////
 0,0,0,0,0,SHATYPE_SHA1,':',0,0,TURN_CREDENTIALS_NONE,0,0,0,0,0,0,
 ///////////// Users DB //////////////
-{ TURN_USERDB_TYPE_SQLITE, {"\0",NULL}, {0,NULL,NULL, {NULL,0}} }
+{ 0, {"\0",NULL}, {0,NULL,NULL, {NULL,0}} }
 
 };
 
@@ -1547,8 +1547,10 @@ static int adminmain(int argc, char **argv)
 		}
 	}
 
+#if !defined(TURN_NO_SQLITE)
 	if(!strlen(turn_params.default_users_db.persistent_users_db.userdb) && (turn_params.default_users_db.userdb_type == TURN_USERDB_TYPE_SQLITE))
 		STRCPY(turn_params.default_users_db.persistent_users_db.userdb,DEFAULT_USERDB_FILE);
+#endif
 
 	if(ct == TA_COMMAND_UNKNOWN) {
 		fprintf(stderr,"\n%s\n", AdminUsage);
@@ -1601,7 +1603,10 @@ static void print_features(unsigned long mfn)
 
 #if !defined(TURN_NO_SQLITE)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "SQLite supported\n");
+#else
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "SQLite is not supported\n");
 #endif
+
 #if !defined(TURN_NO_HIREDIS)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Redis supported\n");
 #else
@@ -1852,8 +1857,10 @@ int main(int argc, char **argv)
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "\nCONFIG: WARNING: --server-relay: NON-STANDARD AND DANGEROUS OPTION.\n");
 	}
 
+#if !defined(TURN_NO_SQLITE)
 	if(!strlen(turn_params.default_users_db.persistent_users_db.userdb) && (turn_params.default_users_db.userdb_type == TURN_USERDB_TYPE_SQLITE))
 			STRCPY(turn_params.default_users_db.persistent_users_db.userdb,DEFAULT_USERDB_FILE);
+#endif
 
 	update_white_and_black_lists();
 
