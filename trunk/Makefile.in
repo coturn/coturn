@@ -104,7 +104,7 @@ distclean:	clean
 install:	all ${MAKE_DEPS}
 	${MKDIR} ${DESTDIR}${PREFIX}
 	${MKDIR} ${DESTDIR}${BINDIR}
-	${MKDIR} ${DESTDIR}${LOCALSTATEDIR}
+	${MKDIR} ${DESTDIR}${LOCALSTATEDIR}/db
 	${MKDIR} ${DESTDIR}${MANPREFIX}/man/man1
 	${MKDIR} ${DESTDIR}${CONFDIR}
 	${MKDIR} ${DESTDIR}${LIBDIR}
@@ -148,12 +148,12 @@ install:	all ${MAKE_DEPS}
 	${RMCMD} ${DESTDIR}${EXAMPLESDIR}/scripts/rfc5769.sh
 	${INSTALL_DIR} include/turn/client ${DESTDIR}${TURNINCLUDEDIR}
 	${INSTALL_DATA} include/turn/ns_turn_defs.h ${DESTDIR}${TURNINCLUDEDIR}
-	${SQLITECMD} ${DESTDIR}${LOCALSTATEDIR}/turndb < turndb/schema.sql
+	${SQLITECMD} ${DESTDIR}${LOCALSTATEDIR}/db/turndb < turndb/schema.sql
 	${MORECMD} ${DESTDIR}${DOCSDIR}/postinstall.txt
 
 deinstall:	${MAKE_DEPS}
 	${PKILL_PROGRAM} turnserver || ${ECHO_CMD} OK
-	${RMCMD} ${DESTDIR}${LOCALSTATEDIR}/turndb
+	${RMCMD} ${DESTDIR}${LOCALSTATEDIR}/db/turndb
 	${RMCMD} ${DESTDIR}${DOCSDIR}
 	${RMCMD} ${DESTDIR}${SCHEMADIR}
 	${RMCMD} ${DESTDIR}${BINDIR}/turnserver

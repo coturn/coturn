@@ -445,7 +445,13 @@ fi
 
 if [ -z "${LOCALSTATEDIR}" ] ; then
     if [ -z "${localstatedir}" ] ; then
-		LOCALSTATEDIR=/var
+    
+    	if [ "${PREFIX}" = "/usr" ] ; then
+			LOCALSTATEDIR=/var
+		else
+			LOCALSTATEDIR=${PREFIX}/var
+		fi
+		
     else
 		LOCALSTATEDIR=${localstatedir}
     fi
@@ -1176,7 +1182,7 @@ fi
 # So, what we have now:
 ###############################
 
-OSCFLAGS="${OSCFLAGS} ${TURN_NO_THREAD_BARRIERS} ${TURN_NO_DTLS} ${TURN_NO_GCM} ${TURN_NO_TLS} -DINSTALL_PREFIX=${PREFIX}"
+OSCFLAGS="${OSCFLAGS} ${TURN_NO_THREAD_BARRIERS} ${TURN_NO_DTLS} ${TURN_NO_GCM} ${TURN_NO_TLS} -DINSTALL_PREFIX=${PREFIX} -DTURNDB=${LOCALSTATEDIR}/db/turndb"
 
 if ! [ -z "${TURN_ACCEPT_RPATH}" ] ; then
   if [ -z "${TURN_DISABLE_RPATH}" ] ; then
@@ -1185,7 +1191,7 @@ if ! [ -z "${TURN_ACCEPT_RPATH}" ] ; then
   fi
 fi
 
-${ECHO_CMD} PREFIX="${PREFIX}" OSLIBS="${OSLIBS}" DBLIBS="${DBLIBS}" OSCFLAGS="${OSCFLAGS}" DBCFLAGS="${DBCFLAGS}" $@
+${ECHO_CMD} PREFIX="${PREFIX}" LOCALSTATEDIR="${LOCALSTATEDIR}" OSLIBS="${OSLIBS}" DBLIBS="${DBLIBS}" OSCFLAGS="${OSCFLAGS}" DBCFLAGS="${DBCFLAGS}" $@
 
 ###############################
 # Make make:
