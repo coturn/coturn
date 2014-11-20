@@ -132,7 +132,8 @@ User database settings:
 .TP
 .B
 \fB\-b\fP, \fB\-\-db\fP, \fB\-\-userdb\fP
-SQLite user database file name (default \- /var/turndb).
+SQLite user database file name (default \- /var/db/turndb or
+/usr/local/var/db/turndb).
 .TP
 .B
 \fB\-e\fP, \fB\-\-psql\-userdb\fP
@@ -971,7 +972,8 @@ Users can be set in the command line, with multiple \fB\-u\fP or \fB\-\-user\fP 
 Obviously, only a few users can be set that way, and their credentials are fixed 
 for the \fIturnserver\fP process lifetime.
 .IP 2) 4
-Users can be stored in SQLite DB. The default SQLite database file is /var/turndb.
+Users can be stored in SQLite DB. The default SQLite database file is /var/db/turndb
+or /usr/local/var/db/turndb.
 .IP 3) 4
 Users can be stored in PostgreSQL database, if the \fIturnserver\fP was compiled with PostgreSQL
 support. Each time \fIturnserver\fP checks user credentials, it reads the database (asynchronously,
@@ -1096,7 +1098,8 @@ it would affect the performance.
 
 /etc/turnserver.conf
 .PP
-/var/turndb
+/var/db/turndb
+/usr/local/var/db/turndb
 .PP
 /usr/local/etc/turnserver.conf
 .PP

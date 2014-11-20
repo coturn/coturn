@@ -36,6 +36,30 @@ static int use_lt_credentials = 0;
 static int use_st_credentials = 0;
 static int anon_credentials = 0;
 
+////// TURNDB //////////////
+
+#if defined(TURNDB)
+
+#if defined(Q)
+#undef Q
+#endif
+
+#define Q(x) #x
+
+#if defined(QUOTE)
+#undef QUOTE
+#endif
+
+#define QUOTE(x) Q(x)
+
+#define DEFAULT_USERDB_FILE QUOTE(TURNDB)
+
+#else
+
+#define DEFAULT_USERDB_FILE "/usr/local/var/db/turndb"
+
+#endif
+
 //////TURN PARAMS STRUCTURE DEFINITION //////
 
 #define DEFAULT_GENERAL_RELAY_SERVERS_NUMBER (1)
@@ -413,7 +437,8 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						for the sessions, combined (input and output network streams are treated separately).\n"
 " -c				<filename>	Configuration file name (default - turnserver.conf).\n"
 #if !defined(TURN_NO_SQLITE)
-" -b, , --db, --userdb	<filename>		SQLite database file name (default - /var/turndb).\n"
+" -b, , --db, --userdb	<filename>		SQLite database file name; default - /var/db/turndb or\n"
+"										/usr/local/var/db/turndb.\n"
 #endif
 #if !defined(TURN_NO_PQ)
 " -e, --psql-userdb, --sql-userdb <conn-string>	PostgreSQL database connection string, if used (default - empty, no PostreSQL DB used).\n"
@@ -587,7 +612,8 @@ static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
 	"	-G, --list-realm-options	List realm params.\n"
 	"\nOptions with mandatory values:\n\n"
 #if !defined(TURN_NO_SQLITE)
-	"	-b, --db, --userdb		SQLite database file, default value is /var/turndb.\n"
+	"	-b, --db, --userdb		SQLite database file, default value is /var/db/turndb or\n"
+	"							/usr/local/var/db/turndb.\n"
 #endif
 #if !defined(TURN_NO_PQ)
 	"	-e, --psql-userdb, --sql-userdb	PostgreSQL user database connection string, if PostgreSQL DB is used.\n"
@@ -1602,7 +1628,7 @@ static void print_features(unsigned long mfn)
 #endif
 
 #if !defined(TURN_NO_SQLITE)
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "SQLite supported\n");
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "SQLite supported, default database location is %s\n",DEFAULT_USERDB_FILE);
 #else
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "SQLite is not supported\n");
 #endif

@@ -251,7 +251,8 @@ FILES
 
 /etc/turnserver.conf
 
-/var/turndb
+/var/db/turndb
+/usr/local/var/db/turndb
 
 /usr/local/etc/turnserver.conf
 

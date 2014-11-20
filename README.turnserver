@@ -81,7 +81,8 @@ Config file settings:
 
 User database settings:  
 
--b, --db, --userdb	SQLite user database file name (default - /var/turndb).
+-b, --db, --userdb	SQLite user database file name (default - /var/db/turndb or
+		/usr/local/var/db/turndb).
 				  
 -e, --psql-userdb	User database connection string for PostgreSQL.
 		This database can be used for long-term and short-term 
@@ -716,7 +717,8 @@ For the user database, the turnserver has the following options:
 Obviously, only a few users can be set that way, and their credentials are fixed 
 for the turnserver process lifetime.
 
-2) Users can be stored in SQLite DB. The default SQLite database file is /var/turndb.
+2) Users can be stored in SQLite DB. The default SQLite database file is /var/db/turndb
+or /usr/local/var/db/turndb.
 
 3) Users can be stored in PostgreSQL database, if the turnserver was compiled with PostgreSQL
 support. Each time turnserver checks user credentials, it reads the database (asynchronously,
@@ -841,7 +843,8 @@ FILES
 
 /etc/turnserver.conf
 
-/var/turndb
+/var/db/turndb
+/usr/local/var/db/turndb
 
 /usr/local/etc/turnserver.conf
 
