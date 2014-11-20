@@ -32,24 +32,24 @@ testlibraw() {
     ${CC} ${TMPCPROGC} -o ${TMPCPROGB} ${OSCFLAGS} ${OSLIBS} -${1} 2>>/dev/null
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
-		${ECHO_CMD} "Do not use -${1}"
-		return 0
+	${ECHO_CMD} "Library option -${1} cannot be used"
+	return 0
     else
-		OSLIBS="${OSLIBS} -${1}"
-		return 1
+	OSLIBS="${OSLIBS} -${1}"
+	return 1
     fi
 }
 
 testsqlite_comp() {
-	SQLITE_LIBS=-lsqlite3
+    SQLITE_LIBS=-lsqlite3
     ${CC} -c ${SQL_TMPCPROGC} -o ${SQL_TMPCPROGO} ${OSCFLAGS} 2>>/dev/null
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
-		${ECHO_CMD} "SQLite development is not installed properly"
-		return 0
+	${ECHO_CMD} "SQLite development is not installed properly"
+	return 0
     else
-		DBLIBS="${DBLIBS} ${SQLITE_LIBS}"
-		return 1
+	DBLIBS="${DBLIBS} ${SQLITE_LIBS}"
+	return 1
     fi
 }
 
@@ -155,15 +155,15 @@ testlibmongoc() {
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
     	${ECHO_CMD}
-		${ECHO_CMD} "MONGODB DEVELOPMENT LIBRARIES (libmongoc-1.0 and libbson-1.0) AND/OR HEADER (mongoc.h)"
-		${ECHO_CMD} "	ARE NOT INSTALLED PROPERLY ON THIS SYSTEM."
-		${ECHO_CMD} "	THAT'S OK BUT THE TURN SERVER IS BUILDING WITHOUT MONGODB SUPPORT."
-		${ECHO_CMD}
-		return 0
+	${ECHO_CMD} "MONGODB DEVELOPMENT LIBRARIES (libmongoc-1.0 and libbson-1.0) AND/OR HEADER (mongoc.h)"
+	${ECHO_CMD} "	ARE NOT INSTALLED PROPERLY ON THIS SYSTEM."
+	${ECHO_CMD} "	THAT'S OK BUT THE TURN SERVER IS BUILDING WITHOUT MONGODB SUPPORT."
+	${ECHO_CMD}
+	return 0
     else
-		DBCFLAGS="${DBCFLAGS} ${MONGO_CFLAGS}"
-		DBLIBS="${DBLIBS} ${MONGO_LIBS}"
-		return 1
+	DBCFLAGS="${DBCFLAGS} ${MONGO_CFLAGS}"
+	DBLIBS="${DBLIBS} ${MONGO_LIBS}"
+	return 1
     fi
 }
 
@@ -1072,14 +1072,22 @@ if [ -z "${TURN_NO_SQLITE}" ] ; then
 	fi
 
 	if [ -z "${TURN_NO_SQLITE}" ] ; then	
-		testsqlite_comp
-		ER=$?
-		if ! [ ${ER} -eq 0 ] ; then
+	    testsqlite_comp
+	    ER=$?
+	    if ! [ ${ER} -eq 0 ] ; then
     		${ECHO_CMD} "SQLite development found."
-		else
+	    else
     		${ECHO_CMD} "SQLite development libraries are not installed properly in required location."
     		TURN_NO_SQLITE="-DTURN_NO_SQLITE"
-		fi
+	    fi
+	fi
+
+	if ! [ -z "${TURN_NO_SQLITE}" ] ; then	
+	    ${ECHO_CMD}
+	    ${ECHO_CMD} "SQLite DEVELOPMENT LIBRARY (libsqlite3) AND/OR HEADER (sqlite3.h)"
+	    ${ECHO_CMD} "	ARE NOT INSTALLED PROPERLY ON THIS SYSTEM."
+	    ${ECHO_CMD} "	THAT'S OK BUT THE TURN SERVER IS BUILDING WITHOUT SQLITE SUPPORT."
+	    ${ECHO_CMD}
 	fi
 fi
 
@@ -1257,4 +1265,4 @@ cat Makefile.in >> Makefile
 
 cleanup
 
-
+${ECHO_CMD} "Makefile created: success."
