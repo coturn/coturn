@@ -34,7 +34,7 @@ SERVERAPP_HEADERS = src/apps/relay/userdb.h src/apps/relay/tls_listener.h src/ap
 SERVERAPP_MODS = src/apps/relay/mainrelay.c src/apps/relay/netengine.c src/apps/relay/libtelnet.c src/apps/relay/turncli.c src/apps/relay/userdb.c src/apps/relay/tls_listener.c src/apps/relay/dtls_listener.c ${HIREDIS_MODS} ${USERDB_MODS}
 SERVERAPP_DEPS = ${SERVERTURN_MODS} ${SERVERTURN_DEPS} ${SERVERAPP_MODS} ${SERVERAPP_HEADERS} ${COMMON_DEPS} ${IMPL_DEPS} lib/libturnclient.a
 
-TURN_BUILD_RESULTS = bin/turnutils_stunclient bin/turnutils_rfc5769check bin/turnutils_uclient bin/turnserver bin/turnutils_peer lib/libturnclient.a include/turn/ns_turn_defs.h
+TURN_BUILD_RESULTS = bin/turnutils_stunclient bin/turnutils_rfc5769check bin/turnutils_uclient bin/turnserver bin/turnutils_peer lib/libturnclient.a include/turn/ns_turn_defs.h sqlite_empty_db
 
 all:	${TURN_BUILD_RESULTS}
 
@@ -95,10 +95,18 @@ build/obj/ns_turn_msg.o:	src/client/ns_turn_msg.c ${LUBCLIENTTURN_DEPS}
 ### Clean all:
 
 clean:	
-	${RMCMD} bin build lib obj *bak *~ */*~ */*/*~ */*/*/*~ *core */*core */*/*core include Makefile tmp
+	${RMCMD} bin build lib obj *bak *~ */*~ */*/*~ */*/*/*~ *core */*core */*/*core include Makefile tmp sqlite
 
 distclean:	clean
 
+### SQLite empty database:
+sqlite_empty_db	:	sqlite/turndb
+
+sqlite/turndb	:	turndb/schema.sql
+	${MKDIR} sqlite
+	${RMCMD} sqlite/turndb
+	${SQLITECMD} sqlite/turndb < turndb/schema.sql
+	
 ### Install all:
 
 install:	all ${MAKE_DEPS}
@@ -142,13 +150,13 @@ install:	all ${MAKE_DEPS}
 	${INSTALL_DATA} turndb/schema.userdb.redis ${DESTDIR}${SCHEMADIR}
 	${INSTALL_DATA} turndb/schema.stats.redis ${DESTDIR}${DOCSDIR}
 	${INSTALL_DATA} turndb/schema.stats.redis ${DESTDIR}${SCHEMADIR}
+	${INSTALL_DATA} sqlite/turndb ${DESTDIR}${LOCALSTATEDIR}/db/turndb
 	${INSTALL_DATA} examples/etc/turnserver.conf ${DESTDIR}${CONFDIR}/turnserver.conf.default
 	${INSTALL_DIR} examples/etc ${DESTDIR}${EXAMPLESDIR}
 	${INSTALL_DIR} examples/scripts ${DESTDIR}${EXAMPLESDIR}
 	${RMCMD} ${DESTDIR}${EXAMPLESDIR}/scripts/rfc5769.sh
 	${INSTALL_DIR} include/turn/client ${DESTDIR}${TURNINCLUDEDIR}
 	${INSTALL_DATA} include/turn/ns_turn_defs.h ${DESTDIR}${TURNINCLUDEDIR}
-	${SQLITECMD} ${DESTDIR}${LOCALSTATEDIR}/db/turndb < turndb/schema.sql
 	${MORECMD} ${DESTDIR}${DOCSDIR}/postinstall.txt
 
 deinstall:	${MAKE_DEPS}
@@ -176,5 +184,3 @@ deinstall:	${MAKE_DEPS}
 uninstall:	deinstall
 
 reinstall:	deinstall install
-
-
