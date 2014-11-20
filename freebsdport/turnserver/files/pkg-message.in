@@ -7,12 +7,13 @@ you have to:
 	a) Create and edit /etc/turnserver.conf file.
 	Use %%PREFIX%%/etc/turnserver.conf.default as an example.
 
-	b) For user accounts settings, if using the turnserver 
-	with authentication: create and edit /etc/turnuserdb.conf 
-	file, or set up PostgreSQL or MySQL or Redis database for user accounts.
-	Use %%PREFIX%%/etc/turnuserdb.conf.default as example for flat file DB,
-	or use %%DATADIR%%/schema.sql as database schema,
+	b) For user accounts settings: set up SQLite or PostgreSQL or 
+	MySQL or Redis database for user accounts.
+	Use use %%DATADIR%%/schema.sql as an SQL database schema,
 	or use %%DATADIR%%/schema*redis as Redis database description.
+	
+	If SQLite is used, then /usr/local/var/db/turndb is the default database
+	location.
 
 	d) add line turnserver_enable="YES" to /etc/rc.conf.
 	 

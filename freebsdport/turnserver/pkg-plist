@@ -4,6 +4,7 @@ bin/turnutils_peer
 bin/turnutils_stunclient
 bin/turnutils_uclient
 lib/libturnclient.a
+var/db/turndb
 etc/turnserver.conf.default
 etc/turnuserdb.conf.default
 man/man1/turnserver.1.gz

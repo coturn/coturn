@@ -112,6 +112,8 @@ do-install:
 .for f in ${MANPAGES}
 	${INSTALL_MAN} ${WRKSRC}/man/man1/${f} ${STAGEDIR}${PREFIX}/man/man1/${f}
 .endfor
+	${MKDIR} ${STAGEDIR}${PREFIX}/var/db
+	${INSTALL_DATA} ${WRKSRC}/sqlite/turndb ${STAGEDIR}${PREFIX}/var/db/turndb
 	${MKDIR} ${STAGEDIR}${DATADIR}/
 	${INSTALL_DATA} ${WRKSRC}/turndb/schema.sql ${STAGEDIR}${DATADIR}/schema.sql
 	${INSTALL_DATA} ${WRKSRC}/turndb/schema.userdb.redis ${STAGEDIR}${DATADIR}/schema.userdb.redis
