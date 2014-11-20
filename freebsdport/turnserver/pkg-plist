@@ -6,7 +6,6 @@ bin/turnutils_uclient
 lib/libturnclient.a
 var/db/turndb
 etc/turnserver.conf.default
-etc/turnuserdb.conf.default
 man/man1/turnserver.1.gz
 man/man1/turnadmin.1.gz
 man/man1/turnutils.1.gz
@@ -22,7 +21,6 @@ man/man1/coturn.1.gz
 %%DATADIR%%/testmongosetup.sh
 @dir %%DATADIR%%
 %%PORTEXAMPLES%%%%EXAMPLESDIR%%/etc/turnserver.conf
-%%PORTEXAMPLES%%%%EXAMPLESDIR%%/etc/turnuserdb.conf
 %%PORTEXAMPLES%%%%EXAMPLESDIR%%/etc/turn_client_cert.pem
 %%PORTEXAMPLES%%%%EXAMPLESDIR%%/etc/turn_client_pkey.pem
 %%PORTEXAMPLES%%%%EXAMPLESDIR%%/etc/turn_server_cert.pem

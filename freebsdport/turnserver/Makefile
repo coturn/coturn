@@ -50,7 +50,7 @@ PORTREADMEDOCS=	LICENSE README.turnserver README.turnadmin README.turnutils INST
 
 _BIN_UTILS=	peer stunclient uclient
 
-_ETC_EXAMPLES=	turnserver.conf turnuserdb.conf turn_client_cert.pem \
+_ETC_EXAMPLES=	turnserver.conf turn_client_cert.pem \
 		turn_client_pkey.pem turn_server_cert.pem turn_server_pkey.pem
 _SCRIPT_EXAMPLES=	peer.sh	\
 basic/relay.sh basic/dos_attack.sh \
@@ -123,7 +123,6 @@ do-install:
 	${INSTALL_SCRIPT} ${WRKSRC}/turndb/testmongosetup.sh ${STAGEDIR}${DATADIR}/testmongosetup.sh
 	${INSTALL_DATA} ${WRKSRC}/lib/libturnclient.a ${STAGEDIR}${PREFIX}/lib/libturnclient.a
 	${INSTALL_DATA} ${WRKSRC}/examples/etc/turnserver.conf ${STAGEDIR}${PREFIX}/etc/turnserver.conf.default
-	${INSTALL_DATA} ${WRKSRC}/examples/etc/turnuserdb.conf ${STAGEDIR}${PREFIX}/etc/turnuserdb.conf.default
 	${MKDIR} ${STAGEDIR}${PREFIX}/include/turn
 	(cd ${WRKSRC}/include/turn/ && ${COPYTREE_SHARE} client ${STAGEDIR}${PREFIX}/include/turn/)
 	(cd ${WRKSRC}/include/turn/ && ${COPYTREE_SHARE} ns_turn_defs.h ${STAGEDIR}${PREFIX}/include/turn/)
