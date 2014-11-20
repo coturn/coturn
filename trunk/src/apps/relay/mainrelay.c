@@ -95,7 +95,7 @@ LOW_DEFAULT_PORTS_BOUNDARY,HIGH_DEFAULT_PORTS_BOUNDARY,0,0,0,"",
 /////////////// MISC PARAMS ////////////////
 0,0,0,0,0,SHATYPE_SHA1,':',0,0,TURN_CREDENTIALS_NONE,0,0,0,0,0,0,
 ///////////// Users DB //////////////
-{ 0, {"\0",NULL}, {0,NULL,NULL, {NULL,0}} }
+{ (TURN_USERDB_TYPE)0, {"\0",NULL}, {0,NULL,NULL, {NULL,0}} }
 
 };
 
@@ -413,7 +413,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						for the sessions, combined (input and output network streams are treated separately).\n"
 " -c				<filename>	Configuration file name (default - turnserver.conf).\n"
 #if !defined(TURN_NO_SQLITE)
-" -b, , --db, --userdb	<filename>		SQLite database file name (default - /var/db/turndb).\n"
+" -b, , --db, --userdb	<filename>		SQLite database file name (default - /var/turndb).\n"
 #endif
 #if !defined(TURN_NO_PQ)
 " -e, --psql-userdb, --sql-userdb <conn-string>	PostgreSQL database connection string, if used (default - empty, no PostreSQL DB used).\n"
@@ -587,7 +587,7 @@ static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
 	"	-G, --list-realm-options	List realm params.\n"
 	"\nOptions with mandatory values:\n\n"
 #if !defined(TURN_NO_SQLITE)
-	"	-b, --db, --userdb		SQLite database file, default value is /var/db/turndb.\n"
+	"	-b, --db, --userdb		SQLite database file, default value is /var/turndb.\n"
 #endif
 #if !defined(TURN_NO_PQ)
 	"	-e, --psql-userdb, --sql-userdb	PostgreSQL user database connection string, if PostgreSQL DB is used.\n"

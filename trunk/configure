@@ -346,6 +346,11 @@ do
   -bindir=* | --bindir=* | --bindi=* | --bind=* | --bin=* | --bi=*)
     BINDIR=$ac_optarg ;;
 
+  -localstatedir | --localstatedir | --localstatedi | --localstated | --localstate | --localstat)
+    ac_prev=LOCALSTATEDIR ;;
+  -localstatedir=* | --localstatedir=* | --localstatedi=* | --localstated=* | --localstate=* | --localstat=*)
+    LOCALSTATEDIR=$ac_optarg ;;
+
   -datadir | --datadir | --datadi | --datad | -schemadir | --schemadir)
     ac_prev=SCHEMADIR ;;
   -datadir=* | --datadir=* | --datadi=* | --datad=* | -schemadir=* | --schemadir=*)
@@ -432,9 +437,17 @@ fi
 
 if [ -z "${BINDIR}" ] ; then
     if [ -z "${bindir}" ] ; then
-	BINDIR=${PREFIX}/bin
+		BINDIR=${PREFIX}/bin
     else
-	BINDIR=${bindir}
+		BINDIR=${bindir}
+    fi
+fi
+
+if [ -z "${LOCALSTATEDIR}" ] ; then
+    if [ -z "${localstatedir}" ] ; then
+		LOCALSTATEDIR=/var
+    else
+		LOCALSTATEDIR=${localstatedir}
     fi
 fi
 
@@ -590,6 +603,14 @@ fi
 INSTALL_DIR="cp -rpf"
 MKBUILDDIR="mkdir -p"
 RMCMD="rm -rf"
+
+type sqlite3 2>>/dev/null
+ER=$?
+if [ ${ER} -eq 0 ] ; then
+	SQLITECMD="sqlite3"
+else
+	SQLITECMD="echo"
+fi
 
 #############################
 # Adjustments for Solaris
@@ -1043,14 +1064,16 @@ if [ -z "${TURN_NO_SQLITE}" ] ; then
    		${ECHO_CMD} "SQLite3 development library cannot be found."
    		TURN_NO_SQLITE="-DTURN_NO_SQLITE"
 	fi
-	
-	testsqlite_comp
-	ER=$?
-	if ! [ ${ER} -eq 0 ] ; then
-    	${ECHO_CMD} "SQLite development found."
-	else
-    	${ECHO_CMD} "SQLite development libraries are not installed properly in required location."
-    	TURN_NO_SQLITE="-DTURN_NO_SQLITE"
+
+	if [ -z "${TURN_NO_SQLITE}" ] ; then	
+		testsqlite_comp
+		ER=$?
+		if ! [ ${ER} -eq 0 ] ; then
+    		${ECHO_CMD} "SQLite development found."
+		else
+    		${ECHO_CMD} "SQLite development libraries are not installed properly in required location."
+    		TURN_NO_SQLITE="-DTURN_NO_SQLITE"
+		fi
 	fi
 fi
 
@@ -1184,6 +1207,8 @@ ${ECHO_CMD} "PREFIX = ${PREFIX}" >> Makefile
 ${ECHO_CMD} "prefix = ${PREFIX}" >> Makefile
 ${ECHO_CMD} "BINDIR = ${BINDIR}" >> Makefile
 ${ECHO_CMD} "bindir = ${BINDIR}" >> Makefile
+${ECHO_CMD} "LOCALSTATEDIR = ${LOCALSTATEDIR}" >> Makefile
+${ECHO_CMD} "localstatedir = ${LOCALSTATEDIR}" >> Makefile
 ${ECHO_CMD} "CONFDIR = ${CONFDIR}" >> Makefile
 ${ECHO_CMD} "confdir = ${CONFDIR}" >> Makefile
 ${ECHO_CMD} "MANPREFIX = ${MANPREFIX}" >> Makefile
@@ -1203,6 +1228,7 @@ ${ECHO_CMD} "turnincludedir = ${TURNINCLUDEDIR}" >> Makefile
 ${ECHO_CMD} "#" >> Makefile
 ${ECHO_CMD} "ARCHIVERCMD = ${ARCHIVERCMD}" >> Makefile
 ${ECHO_CMD} "MKDIR = ${MKDIR}" >> Makefile
+${ECHO_CMD} "SQLITECMD = ${SQLITECMD}" >> Makefile
 ${ECHO_CMD} "INSTALL_PROGRAM = ${INSTALL_PROGRAM}" >> Makefile
 ${ECHO_CMD} "PKILL_PROGRAM = ${PKILL_PROGRAM}" >> Makefile
 ${ECHO_CMD} "INSTALL_MAN = ${INSTALL_MAN}" >> Makefile
