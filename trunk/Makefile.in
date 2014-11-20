@@ -169,7 +169,7 @@ deinstall:	${MAKE_DEPS}
 	${RMCMD} ${DESTDIR}${MANPREFIX}/man/man1/turnutils_peer.1
 	${RMCMD} ${DESTDIR}${MANPREFIX}/man/man1/coturn.1
 	${RMCMD} ${DESTDIR}${LIBDIR}/libturnclient.a
-	${RMCMD} ${DESTDIR}${EXAMPLESDIR}/
+	${RMCMD} ${DESTDIR}${EXAMPLESDIR}
 	${RMCMD} ${DESTDIR}${CONFDIR}/turnserver.conf.default
 	${RMCMD} ${DESTDIR}${TURNINCLUDEDIR}
 
