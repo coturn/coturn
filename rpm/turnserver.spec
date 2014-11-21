@@ -54,7 +54,7 @@ Supported relay protocols:
 
 Supported user databases (for user repository, with passwords or keys, if
 authentication is required):
-- Flat files
+- SQLite
 - MySQL
 - PostgreSQL
 - Redis
