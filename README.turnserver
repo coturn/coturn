@@ -486,15 +486,15 @@ Options with required values:
 
 --tls-alternate-server	Option to set alternative server for TLS & DTLS services in form of 
 			<ip>:<port>. If the port number is omitted, then the default port 
-			number 5349 for the TLS/DTLS protocols will be used. See the previous option for the 
-			functionality description.
+			number 5349 for the TLS/DTLS protocols will be used. See the 
+			previous option for the functionality description.
 
 -O, --redis-statsdb	Redis status and statistics database connection string, if used (default - empty, 
 			no Redis stats DB used). This database keeps allocations status information, and it can 
 			be also used for publishing and delivering traffic and allocation event notifications.
 			This database option can be used independently of --redis-userdb option,
-			and actually Redis can be used for status/statistics and MySQL or MongoDB or PostgreSQL can
-			be used for the user database.
+			and actually Redis can be used for status/statistics and SQLite or MySQL or MongoDB or 
+			PostgreSQL can be used for the user database.
 			The connection string has the same parameters as redis-userdb connection string.
 
 --max-allocate-timeout	Max time, in seconds, allowed for full allocation establishment. 
@@ -770,7 +770,10 @@ choose any for your convenience.
 You do not have to handle the database information "manually" - the turnadmin program can handle 
 everything for you. For PostgreSQL and MySQL you will just have to create an empty database
 with schema.sql SQL script. With Redis, you do not have to do even that - just run turnadmin and 
-it will set the users for you (see the turnadmin manuals).
+it will set the users for you (see the turnadmin manuals). If you are using SQLite, then the 
+turnserver or turnadmin will initialize the empty database, for you, when started. The 
+TURN server installation process creates an empty initialized SQLite database in the default 
+location (/var/db/turndb or /usr/local/var/db/turndb, depending on the system).
     
 =================================
 
@@ -844,6 +847,7 @@ FILES
 /etc/turnserver.conf
 
 /var/db/turndb
+
 /usr/local/var/db/turndb
 
 /usr/local/etc/turnserver.conf

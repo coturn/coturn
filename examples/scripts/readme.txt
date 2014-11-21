@@ -11,8 +11,8 @@ mechanism (peer.sh to be used, too).
 
 4) "longtermsecuredb" shows how to start TURN server with database. The clients from the
 directory "longtermsecure" can be used with the relay scripts in the "longtermsecuredb" 
-directory. Of course, the database (PostgreSQL or MySQL) must be set for these scripts
-to work correctly. 
+directory. Of course, the database (SQLite, PostgreSQL, MySQL, Redis or MongoDB) must 
+be set for these scripts to work correctly. 
 
 5) "restapi" shows how to use TURN REST API.
 
