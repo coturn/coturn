@@ -63,6 +63,7 @@ cat <<EOF >>turnserver-${TURNVERSION}/install.sh
 
 sudo yum -y install openssl
 sudo yum -y install telnet
+sudo yum -y install sqlite
   
 for i in *.rpm ; do
 
