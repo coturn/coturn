@@ -613,9 +613,15 @@ RMCMD="rm -rf"
 type sqlite3 2>>/dev/null
 ER=$?
 if [ ${ER} -eq 0 ] ; then
-	SQLITECMD="sqlite3"
+    SQLITECMD="sqlite3"
 else
+    type sqlite 2>>/dev/null
+    ER=$?
+    if [ ${ER} -eq 0 ] ; then
+	SQLITECMD="sqlite"
+    else
 	SQLITECMD="echo"
+    fi
 fi
 
 #############################
