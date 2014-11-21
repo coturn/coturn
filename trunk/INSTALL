@@ -211,10 +211,10 @@ If you do not want to use the rpath linking option, or you OS or compiler
 do not allows that, then after the installation, you may have to adjust the 
 system-wide shared library search path by using "ldconfig -n <libdirname>" 
 (Linux), "ldconfig -m <libdirname>" (BSD) or "crle -u -l <libdirname>" 
-(Solaris). Your system must be able to find the sqlite, libevent2, openssl and 
-(optionally) PostgreSQL and/or MySQL (MariaDB) and/or MongoDB and/or Redis 
-shared libraries, either with the help of the system-wide library search 
-configuration or by using LD_LIBRARY_PATH. "make install" will make a 
+(Solaris). Your system must be able to find the libevent2, openssl and 
+(optionally) SQLite and/or PostgreSQL and/or MySQL (MariaDB) and/or MongoDB 
+and/or Redis shared libraries, either with the help of the system-wide library 
+search configuration or by using LD_LIBRARY_PATH. "make install" will make a 
 non-garantied effort to add automatically PREFIX/lib and /usr/local/lib to 
 the libraries search path, but if you have some libraries in different 
 non-default directories you will have to add them manually to the search 
@@ -268,21 +268,21 @@ The code is compatible with C++ compiler, and a C++ compiler
 VII. WHICH EXTRA LIBRARIES AND UTILITIES YOU NEED 
 
 In addition to common *NIX OS services and libraries, to compile this code, 
-OpenSSL (version 1.0.0a or better recommended), sqlite C development library,
-and libevent2 (version 2.0.5 or better) are required, 
-the PostgreSQL C client development setup is 
-optional, the MySQL (MariaDB) C client development setup is optional, the MongoDB
-C Driver and the Hiredis development files for Redis database access are optional.
-For fully functional build, the extra set of libraries must be installed
-in full version (the development headers and the libraries to link with). 
-For runtime, only runtime setup is required. If the build is modified for 
+OpenSSL (version 1.0.0a or better recommended) and libevent2 (version 2.0.5 
+or better) are required, SQLite C development library and header is optional,
+the PostgreSQL C client development setup is optional, 
+the MySQL (MariaDB) C client development setup is optional, 
+the MongoDB C Driver and the Hiredis development files for Redis database 
+access are all optional. For development build, the development headers and 
+the libraries to link with, are to be installed. For the runtime, only the 
+runtime setup is required. If the build is modified for 
 static linking, then even runtime installation is not needed.
 
 OpenSSL, SQLite, libevent2, PostgreSQL, MySQL (or MariaDB) and Hiredis 
 libraries can be downloaded from their web sites:
  - http://www.openssl.org (required);
- - http://www.sqlite.org (optional);
  - http://www.libevent.org (required);
+ - http://www.sqlite.org (optional);
  - http://www.postgresql.org (optional);
  - http://www.mysql.org (or http://mariadb.org) (optional);
  - https://github.com/mongodb/mongo-c-driver (optional);
@@ -387,9 +387,8 @@ like this:
 
 Dynamic library paths:
 
-You may also have to adjust the turn server start script, add PostgreSQL 
-and/or MySQL and/or MongoDB and/or Redis runtime library path to LD_LIBRARY_PATH.
-Or you may find that it would be more convenient to adjust the 
+You may also have to adjust the turn server start script, add all the dynamic runtime 
+library paths to LD_LIBRARY_PATH. Or you may find that it would be more convenient to adjust the 
 system-wide shared library search path by using commands:
 
 on Linux:
@@ -410,22 +409,23 @@ On Mac OS X, you have three different choices for dynamic libraries handling:
 
 2) Before the compilation, check the dynamic libraries and adjust their identification names,
 if necessary, to the absolute library path or to @rpath/<library-file-name>. 
-For exmple, the MySQL dynamic library may need that adjustment. You will have to use 
+For example, the MySQL dynamic library may need that adjustment. You will have to use 
 "adjust_name_tool" with -id option for that; OR
 
-3) After the compilation, you can use the same tool, "adjust_name_tool", with option -change,
-to adjust the library paths values in the binary, where necessary. All library paths must be 
-absolute paths or @rpath/... .
+3) After the compilation, you can use the same tool, "adjust_name_tool", 
+with option -change, to adjust the library paths values in the binary, 
+where necessary. All library paths must be absolute paths or @rpath/... .
 
 See also the next section.
 
-NOTE: See "PostgreSQL setup" and "MySQL setup" and "MongoDB setup" and 
-"Redis setup" sections below for more database setup information.
+NOTE: See "SQLite setup" and "PostgreSQL setup" and "MySQL setup" and 
+"MongoDB setup" and "Redis setup" sections below for more database setup 
+information.
 
-NOTE: If you do not install PostgreSQL or MySQL or MongoDB or Redis then you will
-be limited to flat files for user database. It will work great for 
-smaller user databases (like 100 users) but for larger systems you 
-will need PostgreSQL or MySQL or MongoDB or Redis.
+NOTE: If you do not install SQLite or PostgreSQL or MySQL or MongoDB or Redis,
+then you will be limited to the command-line options for user database. 
+It will work great for development setup, but for real runtime systems you 
+will need SQLite or PostgreSQL or MySQL or MongoDB or Redis.
 
 NOTE: To run PostgreSQL or MySQL or MongoDB or Redis server on the same system, 
 you will also have to install a corresponding PostgreSQL or MySQL or 
@@ -1026,11 +1026,11 @@ Redis can be also used for the TURN allocation status check and for status and
 traffic notifications.
 
 See the explanation in the turndb/schema.stats.redis file, and an example in 
-turndb/testredisdbsetup.sh file. One special thing about TURN Redis security setup
-is that you can store open passwords for long-term credentials in Redis.
-You cannot set open passwords for long-term credentials in MySQL and PostgreSQL -
-with those DBs, you have to use the keys only. With Redis, you have a choice - 
-keys or open passwords.
+turndb/testredisdbsetup.sh file. One special thing about TURN Redis security 
+setup is that you can store open passwords for long-term credentials in Redis.
+You cannot set open passwords for long-term credentials in SQLite or MySQL or
+PostgreSQL - with those DBs, you have to use the keys only. With Redis, you 
+have a choice - keys or open passwords.
 
 You also have to take care about Redis connection parameters, the timeout and the 
 keepalive. The following settings must be in your Redis config file
