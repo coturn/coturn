@@ -294,8 +294,8 @@ locations - the configure script and the Makefile are assuming that they are
 installed in their default locations. If not, then you will have to modify 
 those.
 
-Most modern popular systems (FreeBSD / PC-BSD, Linux Ubuntu 11.10+, Debian Wheezy, 
-Linux Mint 14+, Amazon Linux, Fedora) have a simpler way of the third party tools 
+Most modern popular systems (FreeBSD / PC-BSD, Linux Ubuntu, Debian Wheezy, 
+Linux Mint, Amazon Linux, Fedora) have a simpler way of the third party tools 
 installation:      
 
 	*) PC-BSD or FreeBSD (the FRESH ports database is assumed to be installed, with
@@ -367,9 +367,8 @@ installation:
 	perfectly installed without redis support - if you do not 
 	need it.
 		
-	*****) Some OSes in Debian family (Debian Squeeze and 
-	pre-11.10 Ubuntus) setups are similar to Debian Wheezy, 
-	although some packages have different names. 
+	*****) Older Debian family Linuxes are using some packages 
+	with different names. 
 		 
 	******) On some CentOS / RedHat 6.x systems you have to install 
 	libevent2 "manually", and optionally you have to download and 
