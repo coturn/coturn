@@ -290,6 +290,8 @@ static int sqlite_list_oauth_keys(void) {
 	oauth_key_data_raw key_;
 	oauth_key_data_raw *key=&key_;
 
+	donot_print_connection_success=1;
+
 	int ret = -1;
 
 	char statement[TURN_LONG_STRING_SIZE];
@@ -347,6 +349,9 @@ static int sqlite_set_user_key(u08bits *usname, u08bits *realm, const char *key)
 	char statement[TURN_LONG_STRING_SIZE];
 	sqlite3_stmt *st = NULL;
 	int rc = 0;
+
+	donot_print_connection_success=1;
+
 	sqlite3 *sqliteconnection = get_sqlite_connection();
 	if (sqliteconnection) {
 
@@ -371,6 +376,9 @@ static int sqlite_set_oauth_key(oauth_key_data_raw *key)
 	char statement[TURN_LONG_STRING_SIZE];
 	sqlite3_stmt *st = NULL;
 	int rc = 0;
+
+	donot_print_connection_success=1;
+
 	sqlite3 *sqliteconnection = get_sqlite_connection();
 	if (sqliteconnection) {
 		snprintf(
@@ -398,6 +406,9 @@ static int sqlite_set_user_pwd(u08bits *usname, st_password_t pwd)
 	char statement[TURN_LONG_STRING_SIZE];
 	sqlite3_stmt *st = NULL;
 	int rc = 0;
+
+	donot_print_connection_success=1;
+
 	sqlite3 *sqliteconnection = get_sqlite_connection();
 	if (sqliteconnection) {
 		snprintf(statement, sizeof(statement), "insert or replace into turnusers_st values('%s','%s')", usname, pwd);
@@ -419,6 +430,9 @@ static int sqlite_del_user(u08bits *usname, int is_st, u08bits *realm)
 	char statement[TURN_LONG_STRING_SIZE];
 	sqlite3_stmt *st = NULL;
 	int rc = 0;
+
+	donot_print_connection_success=1;
+
 	sqlite3 *sqliteconnection = get_sqlite_connection();
 	if (sqliteconnection) {
 		if (is_st) {
@@ -444,6 +458,9 @@ static int sqlite_del_oauth_key(const u08bits *kid)
 	char statement[TURN_LONG_STRING_SIZE];
 	sqlite3_stmt *st = NULL;
 	int rc = 0;
+
+	donot_print_connection_success=1;
+
 	sqlite3 *sqliteconnection = get_sqlite_connection();
 	if (sqliteconnection) {
 		snprintf(statement, sizeof(statement), "delete from oauth_key where kid = '%s'", (const char*) kid);
@@ -467,6 +484,9 @@ static int sqlite_list_users(int is_st, u08bits *realm)
 	char statement[TURN_LONG_STRING_SIZE];
 	sqlite3_stmt *st = NULL;
 	int rc = 0;
+
+	donot_print_connection_success=1;
+
 	sqlite3 *sqliteconnection = get_sqlite_connection();
 	if (sqliteconnection) {
 		if (is_st) {
@@ -547,6 +567,7 @@ static int sqlite_del_secret(u08bits *secret, u08bits *realm)
 	char statement[TURN_LONG_STRING_SIZE];
 	sqlite3_stmt *st = NULL;
 	int rc = 0;
+
 	sqlite3 *sqliteconnection = get_sqlite_connection();
 	if (sqliteconnection) {
 		if(!secret || (secret[0]==0))
@@ -573,6 +594,7 @@ static int sqlite_set_secret(u08bits *secret, u08bits *realm)
 	char statement[TURN_LONG_STRING_SIZE];
 	sqlite3_stmt *st = NULL;
 	int rc = 0;
+
 	sqlite3 *sqliteconnection = get_sqlite_connection();
 	if (sqliteconnection) {
 	  snprintf(statement,sizeof(statement),"insert or replace into turn_secret (realm,value) values('%s','%s')",realm,secret);
@@ -594,6 +616,8 @@ static int sqlite_add_origin(u08bits *origin, u08bits *realm)
 	char statement[TURN_LONG_STRING_SIZE];
 	sqlite3_stmt *st = NULL;
 	int rc = 0;
+	donot_print_connection_success=1;
+
 	sqlite3 *sqliteconnection = get_sqlite_connection();
 	if(sqliteconnection) {
 		snprintf(statement,sizeof(statement),"insert or replace into turn_origin_to_realm (origin,realm) values('%s','%s')",origin,realm);
@@ -615,6 +639,8 @@ static int sqlite_del_origin(u08bits *origin)
 	char statement[TURN_LONG_STRING_SIZE];
 	sqlite3_stmt *st = NULL;
 	int rc = 0;
+	donot_print_connection_success=1;
+
 	sqlite3 *sqliteconnection = get_sqlite_connection();
 	if(sqliteconnection) {
 		snprintf(statement,sizeof(statement),"delete from turn_origin_to_realm where origin='%s'",origin);
@@ -637,6 +663,7 @@ static int sqlite_list_origins(u08bits *realm)
 	char statement[TURN_LONG_STRING_SIZE];
 	sqlite3_stmt *st = NULL;
 	int rc = 0;
+
 	sqlite3 *sqliteconnection = get_sqlite_connection();
 	if (sqliteconnection) {
 		if (realm && realm[0]) {
@@ -680,6 +707,8 @@ static int sqlite_set_realm_option_one(u08bits *realm, unsigned long value, cons
 	char statement[TURN_LONG_STRING_SIZE];
 	sqlite3_stmt *st = NULL;
 	int rc = 0;
+	donot_print_connection_success=1;
+
 	sqlite3 *sqliteconnection = get_sqlite_connection();
 	if(sqliteconnection) {
 		if(value>0) {
@@ -704,6 +733,7 @@ static int sqlite_list_realm_options(u08bits *realm)
 	char statement[TURN_LONG_STRING_SIZE];
 	sqlite3_stmt *st = NULL;
 	int rc = 0;
+
 	sqlite3 *sqliteconnection = get_sqlite_connection();
 	if (sqliteconnection) {
 		if (realm && realm[0]) {
@@ -751,6 +781,7 @@ static void sqlite_auth_ping(void * rch)
 static int sqlite_get_ip_list(const char *kind, ip_range_list_t * list)
 {
 	int ret = -1;
+
 	sqlite3 *sqliteconnection = get_sqlite_connection();
 	if (sqliteconnection) {
 		char statement[TURN_LONG_STRING_SIZE];

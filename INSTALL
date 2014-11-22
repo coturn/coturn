@@ -761,9 +761,9 @@ database, or you can do that manually with psql.
 
 Fill in users, for example:
 
-  Shared secret for the TURN REST API:
+  Shared secret for the TURN REST API (realm north.gov):
   
-  $ bin/turnadmin -s logen -b "/var/db/turndb"
+  $ bin/turnadmin -s logen -r north.gov -b "/var/db/turndb"
   
   Long-term credentials mechanism:
   
@@ -775,8 +775,8 @@ Fill in users, for example:
   
   Short-term credentials mechanism:
    
-  $ bin/turnadmin -A -b "/var/db/turndb" -u gorst -r north.gov -p hero
-  $ bin/turnadmin -A -b "/var/db/turndb" -u ninefingers -r north.gov -p youhavetoberealistic 
+  $ bin/turnadmin -A -b "/var/db/turndb" -u gorst -p hero
+  $ bin/turnadmin -A -b "/var/db/turndb" -u ninefingers -p youhavetoberealistic 
 
 XV. PostgreSQL setup
 
@@ -885,9 +885,9 @@ database, or you can do that manually with psql.
 
 Fill in users, for example:
 
-  Shared secret for the TURN REST API:
+  Shared secret for the TURN REST API (realm north.gov):
   
-  $ bin/turnadmin -s logen -e "host=localhost dbname=coturn user=turn password=turn"
+  $ bin/turnadmin -s logen -r north.gov -e "host=localhost dbname=coturn user=turn password=turn"
   
   Long-term credentials mechanism:
   
@@ -899,8 +899,8 @@ Fill in users, for example:
   
   Short-term credentials mechanism:
    
-  $ bin/turnadmin -A -e "host=localhost dbname=coturn user=turn password=turn" -u gorst -r north.gov -p hero
-  $ bin/turnadmin -A -e "host=localhost dbname=coturn user=turn password=turn" -u ninefingers -r north.gov -p youhavetoberealistic 
+  $ bin/turnadmin -A -e "host=localhost dbname=coturn user=turn password=turn" -u gorst -p hero
+  $ bin/turnadmin -A -e "host=localhost dbname=coturn user=turn password=turn" -u ninefingers -p youhavetoberealistic 
 
 XVI. MySQL (MariaDB) setup
 
@@ -940,9 +940,9 @@ the root account.
   
 6) Fill in users, for example:
 
-  Shared secret for the TURN REST API:
+  Shared secret for the TURN REST API (realm north.gov):
   
-  $ bin/turnadmin -s logen -M "host=localhost dbname=coturn user=turn password=turn"
+  $ bin/turnadmin -s logen -r north.gov -M "host=localhost dbname=coturn user=turn password=turn"
   
   Long-term credentials mechanism:
   
@@ -954,8 +954,8 @@ the root account.
   
   Short-term credentials mechanism:
    
-  $ bin/turnadmin -A -M "host=localhost dbname=coturn user=turn password=turn" -u gorst -r north.gov -p hero
-  $ bin/turnadmin -A -M "host=localhost dbname=coturn user=turn password=turn" -u ninefingers -r north.gov -p youhavetoberealistic 
+  $ bin/turnadmin -A -M "host=localhost dbname=coturn user=turn password=turn" -u gorst -p hero
+  $ bin/turnadmin -A -M "host=localhost dbname=coturn user=turn password=turn" -u ninefingers -p youhavetoberealistic 
 
 7) Now we can use mysql in the turnserver.
 
@@ -1069,9 +1069,9 @@ tcp-keepalive 60
 
 Redis TURN admin commands:
 
-  Shared secret for the TURN REST API:
+  Shared secret for the TURN REST API (realm north.gov):
   
-  $ bin/turnadmin -s logen -N "host=localhost dbname=2 user=turn password=turn"
+  $ bin/turnadmin -s logen -r north.gov -N "host=localhost dbname=2 user=turn password=turn"
   
   Long-term credentials mechanism:
   
@@ -1083,8 +1083,8 @@ Redis TURN admin commands:
   
   Short-term credentials mechanism:
    
-  $ bin/turnadmin -A -N "host=localhost dbname=2 user=turn password=turn" -u gorst -r north.gov -p hero
-  $ bin/turnadmin -A -N "host=localhost dbname=2 user=turn password=turn" -u ninefingers -r north.gov -p youhavetoberealistic 
+  $ bin/turnadmin -A -N "host=localhost dbname=2 user=turn password=turn" -u gorst -p hero
+  $ bin/turnadmin -A -N "host=localhost dbname=2 user=turn password=turn" -u ninefingers -p youhavetoberealistic 
   
 See the file testredisdbsetup.sh for the data structure examples.
 
