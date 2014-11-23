@@ -1,5 +1,5 @@
 #summary turnadmin wiki page
-#labels Version-4.1.0.2
+#labels Version-4.3.1.1
 
 == turnadmin application: a TURN relay administration tool==
 
@@ -29,7 +29,7 @@
 
 ===Options:===
 
- * *-b,* *--userdb* {{{<file-name>}}} 'Dynamic' user database file name (default - turnuserdb.conf).
+ * *-b,* *--db*, *--userdb* {{{<sqlite-file-name>}}} SQLite database file name (default - /var/db/turndb or /usr/local/var/db/turndb).
  * *-e,* *--psql-userdb,* *--sql-userdb* {{{<connection-string>}}} PostgreSQL database connection string.
  * *-M,* *--mysql-userdb* {{{<connection-string>}}} MySQL database connection string.
  * *-N,* *--redis-userdb* {{{<connection-string>}}} Redis database connection string.
@@ -48,13 +48,13 @@
 {{{
        $ turnadmin -k -u <username> -r <realm> -p <password>
 }}}
-===Add/update a user (and realm) in the userdb file:===
+===Add/update a user (and realm) in the database:===
 {{{
-       $ turnadmin -a [-b <userdb-file> | -e <db-connection-string> | -M <db-connection-string>  | -N <db-connection-string> ] -u <username>	-r <realm>  -p	<password>
+       $ turnadmin -a [-b <sqlite-db-file> | -e <db-connection-string> | -M <db-connection-string>  | -N <db-connection-string> ] -u <username>	-r <realm>  -p	<password>
 }}}
-===Delete a user from the userdb file:===
+===Delete a user from the database:===
 {{{
-       $ turnadmin -d [-b <userdb-file> | -e <db-connection-string> | -M <db-connection-string>  | -N <db-connection-string> ] -u <username>
+       $ turnadmin -d [-b <sqlite-db-file> | -e <db-connection-string> | -M <db-connection-string>  | -N <db-connection-string> ] -u <username>
 }}}
 ===List all long-term users in MySQL database:===
 {{{
