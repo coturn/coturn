@@ -17,7 +17,7 @@ service, you have to:
 	as Redis status & statistics database schema description.
 	
 	If you are using SQLite, the default database location is in 
-	/var/db/turndb or in /usr/local/var/db/turndb.
+	/var/db/turndb or in /usr/local/var/db/turndb or in /var/lib/turn/turndb.
 	 
 	c) add whatever is necessary to enable start-up daemon for the 
 	/usr/local/bin/turnserver.

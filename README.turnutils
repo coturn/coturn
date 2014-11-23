@@ -255,6 +255,8 @@ FILES
 
 /usr/local/var/db/turndb
 
+/var/lib/turn/turndb
+
 /usr/local/etc/turnserver.conf
 
 =================================

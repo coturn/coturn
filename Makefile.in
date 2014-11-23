@@ -106,13 +106,13 @@ sqlite/turndb	:	turndb/schema.sql
 	${MKDIR} sqlite
 	${RMCMD} sqlite/turndb
 	${SQLITE_CMD} sqlite/turndb < turndb/schema.sql
-	
+
 ### Install all:
 
 install:	all ${MAKE_DEPS}
 	${MKDIR} ${DESTDIR}${PREFIX}
 	${MKDIR} ${DESTDIR}${BINDIR}
-	${MKDIR} ${DESTDIR}${LOCALSTATEDIR}/db
+	${MKDIR} ${DESTDIR}${TURNDBDIR}
 	${MKDIR} ${DESTDIR}${MANPREFIX}/man/man1
 	${MKDIR} ${DESTDIR}${CONFDIR}
 	${MKDIR} ${DESTDIR}${LIBDIR}
@@ -150,7 +150,7 @@ install:	all ${MAKE_DEPS}
 	${INSTALL_DATA} turndb/schema.userdb.redis ${DESTDIR}${SCHEMADIR}
 	${INSTALL_DATA} turndb/schema.stats.redis ${DESTDIR}${DOCSDIR}
 	${INSTALL_DATA} turndb/schema.stats.redis ${DESTDIR}${SCHEMADIR}
-	if [ -f sqlite/turndb ] ; then ${INSTALL_DATA} sqlite/turndb ${DESTDIR}${LOCALSTATEDIR}/db/turndb; fi
+	if [ -f sqlite/turndb ] ; then ${INSTALL_DATA} sqlite/turndb ${DESTDIR}${TURNDBDIR}/turndb; fi
 	${INSTALL_DATA} examples/etc/turnserver.conf ${DESTDIR}${CONFDIR}/turnserver.conf.default
 	${INSTALL_DIR} examples/etc ${DESTDIR}${EXAMPLESDIR}
 	${INSTALL_DIR} examples/scripts ${DESTDIR}${EXAMPLESDIR}
@@ -161,7 +161,7 @@ install:	all ${MAKE_DEPS}
 
 deinstall:	${MAKE_DEPS}
 	${PKILL_PROGRAM} turnserver || ${ECHO_CMD} OK
-	${RMCMD} ${DESTDIR}${LOCALSTATEDIR}/db/turndb
+	${RMCMD} ${DESTDIR}${TURNDBDIR}/turndb
 	${RMCMD} ${DESTDIR}${DOCSDIR}
 	${RMCMD} ${DESTDIR}${SCHEMADIR}
 	${RMCMD} ${DESTDIR}${BINDIR}/turnserver
