@@ -1,4 +1,8 @@
-11/10/2014 Oleg Moskalenko <mom040267@gmail.com>
+11/23/2014 Oleg Moskalenko <mom040267@gmail.com>
+Version 4.3.1.2 'Tolomei':
+	- Debian package fixes.
+	
+11/22/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.3.1.1 'Tolomei':
 	- SQLite supported as the default user database.
 	- Support of the flat-file user database removed.

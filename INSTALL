@@ -85,7 +85,7 @@ Or:
 
  You can change the auxiliary configured destination sub-directories by 
 setting BINDIR, CONFDIR, MANPREFIX, EXAMPLESDIR, DOCSDIR, LIBDIR, SCHEMADIR,
-LOCALSTATEDIR and TURNINCLUDEDIR variables in the 
+LOCALSTATEDIR, TURNDBDIR and TURNINCLUDEDIR variables in the 
 configure command line. For example:
 
 	$ PREFIX=/opt BINDIR=/opt/bin64 CONFDIR=/opt/conf ./configure
@@ -171,7 +171,7 @@ This command will also:
  - copy the content of examples subdirectory into 
  PREFIX/share/examples/turnserver/ directory;
  - copy the generated default empty SQLite database from sqlite/turndb
- to /var/db/turndb;
+ to /usr/local/var/db or to /var/db/turndb;
  - copy the content of include/turn subdirectory into
  PREFIX/include/turn/ directory;
  - copy the database schema file turndb/schema.sql into 
