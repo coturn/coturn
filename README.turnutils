@@ -251,11 +251,11 @@ FILES
 
 /etc/turnserver.conf
 
-/etc/turnuserdb.conf
+/var/db/turndb
+
+/usr/local/var/db/turndb
 
 /usr/local/etc/turnserver.conf
-
-/usr/local/etc/turnuserdb.conf
 
 =================================
 

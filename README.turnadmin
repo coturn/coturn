@@ -77,17 +77,12 @@ Commands:
 -g, --set-realm-option		Set realm params: max-bps, total-quota, user-quota.
 
 -G, --list-realm-options	List realm params.
-
-NOTE: if you are using the flat file for the user database, then you will have 
-to use a text editor to set or show the shared secrets.
-
-NOTE: the origin functionality is not supported with flat user db file, 
-a "real" database must be used.
   
 Options with required values:  
 
--b, --userdb		File-based user database file name (default - turnuserdb.conf).
-			See the --userdb option in the turnserver section.
+-b, --db, --userdb	SQLite user database file name (default - /var/db/turndb or
+			/usr/local/var/db/turndb).
+			See the same option in the turnserver section.
 -e, --psql-userdb	PostgreSQL user database connection string.
 			See the --psql-userdb option in the turnserver section.
 -M, --mysql-userdb	MySQL user database connection string.
@@ -112,11 +107,11 @@ Generate a key:
 
 $ turnadmin -k -u <username> -r <realm> -p <password>
   
-Add/update a user in the userdb file or in the database:
+Add/update a user in the in the database:
 
 $ turnadmin -a [-b <userdb-file> | -e <db-connection-string> | -M <db-connection-string> | -N <db-connection-string> ] -u <username> -r <realm> -p <password>
   
-Delete a user from the userdb file or from the database:
+Delete a user from the database:
 
 $ turnadmin -d [-b <userdb-file> | -e <db-connection-string> | -M <db-connection-string> | -N <db-connection-string> ] -u <username> -r <realm>
 
@@ -176,11 +171,11 @@ to see the man page.
 
 /etc/turnserver.conf
 
-/etc/turnuserdb.conf
+/var/db/turndb
+
+/usr/local/var/db/turndb
 
 /usr/local/etc/turnserver.conf
-
-/usr/local/etc/turnuserdb.conf
 
 =====================================
 

@@ -43,6 +43,7 @@
 
 #define MAX_CONNECT_EFFORTS (77)
 #define DTLS_MAX_CONNECT_TIMEOUT (30)
+#define MAX_TLS_CYCLES (32)
 #define EXTRA_CREATE_PERMS (25)
 
 static uint64_t current_reservation_token = 0;
@@ -76,7 +77,7 @@ static int get_allocate_address_family(ioa_addr *relay_addr) {
 
 /////////////////////////////////////////
 
-static SSL* tls_connect(ioa_socket_raw fd, ioa_addr *remote_addr, int *try_again)
+static SSL* tls_connect(ioa_socket_raw fd, ioa_addr *remote_addr, int *try_again, int connect_cycle)
 {
 	int ctxtype = (int)(((unsigned long)random())%root_tls_ctx_num);
 	SSL *ssl;
@@ -122,6 +123,7 @@ static SSL* tls_connect(ioa_socket_raw fd, ioa_addr *remote_addr, int *try_again
 		do {
 			rc = SSL_connect(ssl);
 		} while (rc < 0 && errno == EINTR);
+		int orig_errno = errno;
 		if (rc > 0) {
 		  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: client session connected with cipher %s, method=%s\n",__FUNCTION__,
 				  SSL_get_cipher(ssl),turn_get_ssl_method(ssl,NULL));
@@ -136,6 +138,7 @@ static SSL* tls_connect(ioa_socket_raw fd, ioa_addr *remote_addr, int *try_again
 		} else {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: cannot connect: rc=%d, ctx=%d\n",
 					__FUNCTION__,rc,ctxtype);
+
 			switch (SSL_get_error(ssl, rc)) {
 			case SSL_ERROR_WANT_READ:
 			case SSL_ERROR_WANT_WRITE:
@@ -143,10 +146,11 @@ static SSL* tls_connect(ioa_socket_raw fd, ioa_addr *remote_addr, int *try_again
 				continue;
 			default: {
 				char buf[1025];
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s (%d)\n",
-						ERR_error_string(ERR_get_error(), buf), SSL_get_error(ssl, rc));
-				if(ctxtype>0) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "errno=%d, err=%d, %s (%d)\n",orig_errno,
+								(int)ERR_get_error(), ERR_error_string(ERR_get_error(), buf), (int)SSL_get_error(ssl, rc));
+				if(connect_cycle<MAX_TLS_CYCLES) {
 					if(try_again) {
+						SSL_FREE(ssl);
 						*try_again = 1;
 						return NULL;
 					}
@@ -198,6 +202,7 @@ static int clnet_connect(uint16_t clnet_remote_port, const char *remote_address,
 	ioa_addr local_addr;
 	evutil_socket_t clnet_fd;
 	int connect_err;
+	int connect_cycle = 0;
 
 	ioa_addr remote_addr;
 
@@ -266,10 +271,9 @@ static int clnet_connect(uint16_t clnet_remote_port, const char *remote_address,
 
 	if (use_secure) {
 		int try_again = 0;
-		clnet_info->ssl = tls_connect(clnet_info->fd, &remote_addr,&try_again);
+		clnet_info->ssl = tls_connect(clnet_info->fd, &remote_addr,&try_again,connect_cycle++);
 		if (!clnet_info->ssl) {
 			if(try_again) {
-				close(clnet_fd);
 				goto start_socket;
 			}
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: cannot SSL connect to remote addr\n", __FUNCTION__);
@@ -1511,6 +1515,7 @@ static int turn_tcp_connection_bind(int verbose, app_ur_conn_info *clnet_info, a
 void tcp_data_connect(app_ur_session *elem, u32bits cid)
 {
 	int clnet_fd;
+	int connect_cycle = 0;
 
 	again:
 
@@ -1587,10 +1592,9 @@ void tcp_data_connect(app_ur_session *elem, u32bits cid)
 
 	if(use_secure) {
 		int try_again = 0;
-		elem->pinfo.tcp_conn[i]->tcp_data_ssl = tls_connect(elem->pinfo.tcp_conn[i]->tcp_data_fd, &(elem->pinfo.remote_addr),&try_again);
+		elem->pinfo.tcp_conn[i]->tcp_data_ssl = tls_connect(elem->pinfo.tcp_conn[i]->tcp_data_fd, &(elem->pinfo.remote_addr),&try_again, connect_cycle++);
 		if(!(elem->pinfo.tcp_conn[i]->tcp_data_ssl)) {
 			if(try_again) {
-				close(clnet_fd);
 				--elem->pinfo.tcp_conn_number;
 				goto again;
 			}

@@ -18,8 +18,12 @@ To build the TURN server:
 
     1) Install libevent and libevent-devel rpms
     2) Install EPEL (http://fedoraproject.org/wiki/EPEL) - needed for hiredis
-    3) Install the dependencies for building the TURN server: gcc, make, redhat-rpm-config, openssl-devel, libevent-devel >= 2.0.0, 
-       mysql-devel, postgresql-devel, hiredis-devel
+    3) Install the dependencies for building the TURN server: 
+    	gcc, make, redhat-rpm-config, 
+    	openssl-devel, 
+    	libevent-devel >= 2.0.0, 
+       	sqlite, sqlite-devel,
+       	mysql-devel (or mariadb-devel), postgresql-devel, hiredis-devel
     4) $ mkdir ~/rpmbuild
     5) $ mkdir ~/rpmbuild/SOURCES
     6) Export the TURN server from SVN, "svn export http://coturn.googlecode.com/svn/trunk/ turnserver-2.6.7.0"

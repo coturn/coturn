@@ -27,14 +27,14 @@ IMPL_DEPS = ${COMMON_DEPS} ${IMPL_HEADERS} ${IMPL_MODS}
 HIREDIS_HEADERS = src/apps/common/hiredis_libevent2.h
 HIREDIS_MODS = src/apps/common/hiredis_libevent2.c
 
-USERDB_HEADERS = src/apps/relay/dbdrivers/dbdriver.h src/apps/relay/dbdrivers/dbd_pgsql.h src/apps/relay/dbdrivers/dbd_mysql.h src/apps/relay/dbdrivers/dbd_mongo.h src/apps/relay/dbdrivers/dbd_redis.h
-USERDB_MODS = src/apps/relay/dbdrivers/dbdriver.c src/apps/relay/dbdrivers/dbd_pgsql.c src/apps/relay/dbdrivers/dbd_mysql.c src/apps/relay/dbdrivers/dbd_mongo.c src/apps/relay/dbdrivers/dbd_redis.c
+USERDB_HEADERS = src/apps/relay/dbdrivers/dbdriver.h src/apps/relay/dbdrivers/dbd_sqlite.h src/apps/relay/dbdrivers/dbd_pgsql.h src/apps/relay/dbdrivers/dbd_mysql.h src/apps/relay/dbdrivers/dbd_mongo.h src/apps/relay/dbdrivers/dbd_redis.h
+USERDB_MODS = src/apps/relay/dbdrivers/dbdriver.c src/apps/relay/dbdrivers/dbd_sqlite.c src/apps/relay/dbdrivers/dbd_pgsql.c src/apps/relay/dbdrivers/dbd_mysql.c src/apps/relay/dbdrivers/dbd_mongo.c src/apps/relay/dbdrivers/dbd_redis.c
 
 SERVERAPP_HEADERS = src/apps/relay/userdb.h src/apps/relay/tls_listener.h src/apps/relay/mainrelay.h src/apps/relay/turncli.h src/apps/relay/dtls_listener.h src/apps/relay/libtelnet.h ${HIREDIS_HEADERS} ${USERDB_HEADERS}
 SERVERAPP_MODS = src/apps/relay/mainrelay.c src/apps/relay/netengine.c src/apps/relay/libtelnet.c src/apps/relay/turncli.c src/apps/relay/userdb.c src/apps/relay/tls_listener.c src/apps/relay/dtls_listener.c ${HIREDIS_MODS} ${USERDB_MODS}
 SERVERAPP_DEPS = ${SERVERTURN_MODS} ${SERVERTURN_DEPS} ${SERVERAPP_MODS} ${SERVERAPP_HEADERS} ${COMMON_DEPS} ${IMPL_DEPS} lib/libturnclient.a
 
-TURN_BUILD_RESULTS = bin/turnutils_stunclient bin/turnutils_rfc5769check bin/turnutils_uclient bin/turnserver bin/turnutils_peer lib/libturnclient.a include/turn/ns_turn_defs.h
+TURN_BUILD_RESULTS = bin/turnutils_stunclient bin/turnutils_rfc5769check bin/turnutils_uclient bin/turnserver bin/turnutils_peer lib/libturnclient.a include/turn/ns_turn_defs.h sqlite_empty_db
 
 all:	${TURN_BUILD_RESULTS}
 
@@ -95,15 +95,24 @@ build/obj/ns_turn_msg.o:	src/client/ns_turn_msg.c ${LUBCLIENTTURN_DEPS}
 ### Clean all:
 
 clean:	
-	${RMCMD} bin build lib obj *bak *~ */*~ */*/*~ */*/*/*~ *core */*core */*/*core include Makefile tmp
+	${RMCMD} bin build lib obj *bak *~ */*~ */*/*~ */*/*/*~ *core */*core */*/*core include Makefile tmp sqlite
 
 distclean:	clean
 
+### SQLite empty database:
+sqlite_empty_db	:	sqlite/turndb
+
+sqlite/turndb	:	turndb/schema.sql
+	${MKDIR} sqlite
+	${RMCMD} sqlite/turndb
+	${SQLITE_CMD} sqlite/turndb < turndb/schema.sql
+	
 ### Install all:
 
 install:	all ${MAKE_DEPS}
 	${MKDIR} ${DESTDIR}${PREFIX}
 	${MKDIR} ${DESTDIR}${BINDIR}
+	${MKDIR} ${DESTDIR}${LOCALSTATEDIR}/db
 	${MKDIR} ${DESTDIR}${MANPREFIX}/man/man1
 	${MKDIR} ${DESTDIR}${CONFDIR}
 	${MKDIR} ${DESTDIR}${LIBDIR}
@@ -141,8 +150,8 @@ install:	all ${MAKE_DEPS}
 	${INSTALL_DATA} turndb/schema.userdb.redis ${DESTDIR}${SCHEMADIR}
 	${INSTALL_DATA} turndb/schema.stats.redis ${DESTDIR}${DOCSDIR}
 	${INSTALL_DATA} turndb/schema.stats.redis ${DESTDIR}${SCHEMADIR}
+	if [ -f sqlite/turndb ] ; then ${INSTALL_DATA} sqlite/turndb ${DESTDIR}${LOCALSTATEDIR}/db/turndb; fi
 	${INSTALL_DATA} examples/etc/turnserver.conf ${DESTDIR}${CONFDIR}/turnserver.conf.default
-	${INSTALL_DATA} examples/etc/turnuserdb.conf ${DESTDIR}${CONFDIR}/turnuserdb.conf.default
 	${INSTALL_DIR} examples/etc ${DESTDIR}${EXAMPLESDIR}
 	${INSTALL_DIR} examples/scripts ${DESTDIR}${EXAMPLESDIR}
 	${RMCMD} ${DESTDIR}${EXAMPLESDIR}/scripts/rfc5769.sh
@@ -152,6 +161,7 @@ install:	all ${MAKE_DEPS}
 
 deinstall:	${MAKE_DEPS}
 	${PKILL_PROGRAM} turnserver || ${ECHO_CMD} OK
+	${RMCMD} ${DESTDIR}${LOCALSTATEDIR}/db/turndb
 	${RMCMD} ${DESTDIR}${DOCSDIR}
 	${RMCMD} ${DESTDIR}${SCHEMADIR}
 	${RMCMD} ${DESTDIR}${BINDIR}/turnserver
@@ -167,13 +177,10 @@ deinstall:	${MAKE_DEPS}
 	${RMCMD} ${DESTDIR}${MANPREFIX}/man/man1/turnutils_peer.1
 	${RMCMD} ${DESTDIR}${MANPREFIX}/man/man1/coturn.1
 	${RMCMD} ${DESTDIR}${LIBDIR}/libturnclient.a
-	${RMCMD} ${DESTDIR}${EXAMPLESDIR}/
+	${RMCMD} ${DESTDIR}${EXAMPLESDIR}
 	${RMCMD} ${DESTDIR}${CONFDIR}/turnserver.conf.default
-	${RMCMD} ${DESTDIR}${CONFDIR}/turnuserdb.conf.default
 	${RMCMD} ${DESTDIR}${TURNINCLUDEDIR}
 
 uninstall:	deinstall
 
 reinstall:	deinstall install
-
-
