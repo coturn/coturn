@@ -15,7 +15,7 @@ turndb/schema.userdb.redis usr/share/coturn
 turndb/schema.userdb.redis usr/share/doc/coturn
 turndb/schema.stats.redis usr/share/coturn
 turndb/schema.stats.redis usr/share/doc/coturn
-sqlite/turndb /var/lib/turn
+sqlite/turndb var/lib/turn
 examples/etc/turnserver.conf etc
 examples/etc/turnserver.conf usr/share/coturn/examples/etc
 examples/etc/turn_client_cert.pem usr/share/coturn/examples/etc
