@@ -32,11 +32,11 @@ testlibraw() {
     ${CC} ${TMPCPROGC} -o ${TMPCPROGB} ${OSCFLAGS} ${OSLIBS} -${1} 2>>/dev/null
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
-	${ECHO_CMD} "Library option -${1} cannot be used"
-	return 0
+		${ECHO_CMD} "Library option -${1} cannot be used"
+		return 0
     else
-	OSLIBS="${OSLIBS} -${1}"
-	return 1
+		OSLIBS="${OSLIBS} -${1}"
+		return 1
     fi
 }
 
@@ -45,11 +45,11 @@ testsqlite_comp() {
     ${CC} -c ${SQL_TMPCPROGC} -o ${SQL_TMPCPROGO} ${OSCFLAGS} 2>>/dev/null
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
-	${ECHO_CMD} "SQLite development is not installed properly"
-	return 0
+		${ECHO_CMD} "SQLite development is not installed properly"
+		return 0
     else
-	DBLIBS="${DBLIBS} ${SQLITE_LIBS}"
-	return 1
+		DBLIBS="${DBLIBS} ${SQLITE_LIBS}"
+		return 1
     fi
 }
 
@@ -70,16 +70,16 @@ testhiredis() {
     ${CC} ${HR_TMPCPROGC} -o ${HR_TMPCPROGB} ${OSCFLAGS} ${DBLIBS} ${HIREDISCFLAGS} ${HIREDISLIBS} 2>>/dev/null
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
-	${ECHO_CMD}
-	${ECHO_CMD} "HIREDIS DEVELOPMENT LIBRARY (libhiredis.*) AND/OR HEADERS (hiredis/*.h)"
-	${ECHO_CMD} "	ARE NOT INSTALLED PROPERLY ON THIS SYSTEM."
-	${ECHO_CMD} "	THAT'S OK BUT THE TURN SERVER IS BUILDING WITHOUT REDIS SUPPORT."
-	${ECHO_CMD}
-	return 0
+		${ECHO_CMD}
+		${ECHO_CMD} "HIREDIS DEVELOPMENT LIBRARY (libhiredis.*) AND/OR HEADERS (hiredis/*.h)"
+		${ECHO_CMD} "	ARE NOT INSTALLED PROPERLY ON THIS SYSTEM."
+		${ECHO_CMD} "	THAT'S OK BUT THE TURN SERVER IS BUILDING WITHOUT REDIS SUPPORT."
+		${ECHO_CMD}
+		return 0
     else
-	DBCFLAGS="${DBCFLAGS} ${HIREDISCFLAGS}"
-	DBLIBS="${DBLIBS} ${HIREDISLIBS}"
-	return 1
+		DBCFLAGS="${DBCFLAGS} ${HIREDISCFLAGS}"
+		DBLIBS="${DBLIBS} ${HIREDISLIBS}"
+		return 1
     fi
 }
 
@@ -155,15 +155,15 @@ testlibmongoc() {
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
     	${ECHO_CMD}
-	${ECHO_CMD} "MONGODB DEVELOPMENT LIBRARIES (libmongoc-1.0 and libbson-1.0) AND/OR HEADER (mongoc.h)"
-	${ECHO_CMD} "	ARE NOT INSTALLED PROPERLY ON THIS SYSTEM."
-	${ECHO_CMD} "	THAT'S OK BUT THE TURN SERVER IS BUILDING WITHOUT MONGODB SUPPORT."
-	${ECHO_CMD}
-	return 0
+		${ECHO_CMD} "MONGODB DEVELOPMENT LIBRARIES (libmongoc-1.0 and libbson-1.0) AND/OR HEADER (mongoc.h)"
+		${ECHO_CMD} "	ARE NOT INSTALLED PROPERLY ON THIS SYSTEM."
+		${ECHO_CMD} "	THAT'S OK BUT THE TURN SERVER IS BUILDING WITHOUT MONGODB SUPPORT."
+		${ECHO_CMD}
+		return 0
     else
-	DBCFLAGS="${DBCFLAGS} ${MONGO_CFLAGS}"
-	DBLIBS="${DBLIBS} ${MONGO_LIBS}"
-	return 1
+		DBCFLAGS="${DBCFLAGS} ${MONGO_CFLAGS}"
+		DBLIBS="${DBLIBS} ${MONGO_LIBS}"
+		return 1
     fi
 }
 
@@ -613,14 +613,14 @@ RMCMD="rm -rf"
 type sqlite3 2>>/dev/null
 ER=$?
 if [ ${ER} -eq 0 ] ; then
-    SQLITECMD="sqlite3"
+    SQLITE_CMD="sqlite3"
 else
     type sqlite 2>>/dev/null
     ER=$?
     if [ ${ER} -eq 0 ] ; then
-	SQLITECMD="sqlite"
+		SQLITE_CMD="sqlite"
     else
-	SQLITECMD="echo"
+		SQLITE_CMD=${ECHO_CMD}
     fi
 fi
 
@@ -1095,6 +1095,9 @@ if [ -z "${TURN_NO_SQLITE}" ] ; then
 	    ${ECHO_CMD} "	THAT'S OK BUT THE TURN SERVER IS BUILDING WITHOUT SQLITE SUPPORT."
 	    ${ECHO_CMD}
 	fi
+else
+	TURN_NO_SQLITE="-DTURN_NO_SQLITE"
+	SQLITE_CMD=${ECHO_CMD}
 fi
 
 ###########################
@@ -1248,7 +1251,7 @@ ${ECHO_CMD} "turnincludedir = ${TURNINCLUDEDIR}" >> Makefile
 ${ECHO_CMD} "#" >> Makefile
 ${ECHO_CMD} "ARCHIVERCMD = ${ARCHIVERCMD}" >> Makefile
 ${ECHO_CMD} "MKDIR = ${MKDIR}" >> Makefile
-${ECHO_CMD} "SQLITECMD = ${SQLITECMD}" >> Makefile
+${ECHO_CMD} "SQLITE_CMD = ${SQLITE_CMD}" >> Makefile
 ${ECHO_CMD} "INSTALL_PROGRAM = ${INSTALL_PROGRAM}" >> Makefile
 ${ECHO_CMD} "PKILL_PROGRAM = ${PKILL_PROGRAM}" >> Makefile
 ${ECHO_CMD} "INSTALL_MAN = ${INSTALL_MAN}" >> Makefile

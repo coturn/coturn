@@ -105,7 +105,7 @@ sqlite_empty_db	:	sqlite/turndb
 sqlite/turndb	:	turndb/schema.sql
 	${MKDIR} sqlite
 	${RMCMD} sqlite/turndb
-	${SQLITECMD} sqlite/turndb < turndb/schema.sql
+	${SQLITE_CMD} sqlite/turndb < turndb/schema.sql
 	
 ### Install all:
 
