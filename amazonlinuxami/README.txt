@@ -9,11 +9,12 @@ following options:
 
 	a) long-term mechanism.
 
-	b) MySQL is used as the user database. The database name is "turn",
-	the user name is "turn", the password is "turn". The database can 
-	be acecssed with the command-line tool as:
-		$ mysql -p turn -u turn
-		Password: turn
+	b) SQLite is used as the default user database. 
+	The pre-set database location is /usr/local/var/db/turndb.
+
+	The pre-set database can be accessed from the command line as:
+
+	$ sqlite3 /usr/local/var/db/turndb
 
 	c) two test users are set for the default realm "north.gov":
 		- user "ninefingers", with password "youhavetoberealistic";
@@ -36,13 +37,15 @@ following options:
 
 	You will have to choose the authentication option (long-term,
 	or long-term with REST API, or short-term, or no authentication).
-	Then you will have to choose the user database option: MySQL (set by default here), 
-	or PostgreSQL, or flat file DB (/etc/turnuserdb.conf), or Redis, or MongoDB. 
+	Then you will have to choose the user database option: 
+	SQLite (pre-set by default here), or MySQL, 
+	or PostgreSQL, or Redis, or MongoDB. 
 	All five possible options are pre-set with the same data.
-	Then you will have to remove the test users with the turnadmin utility, and add 
-	the real users. The turnadmin utility must be called with -M option for MySQL, 
-	-e option for PostgreSQL, -N option for Redis, -J for MongoDB,
-	or with -b option for flat DB file.
+	Then you will have to remove the test users (manually or with the turnadmin 
+	utility), and add  the real users.
+	The turnadmin utility must be called with -b option for SQLite,
+	-M option for MySQL, 
+	-e option for PostgreSQL, -N option for Redis, -J for MongoDB.
 
 3) Choose loging option. By default, the log file is /var/log/turn_*.log, in verbose mode. 
 You can choose a different file prefix, or redirect the log into syslog. 
@@ -55,7 +58,8 @@ Project page:
 
 http://code.google.com/p/coturn/
  
-Appendix A. Pre-set databases
+Appendix A. Pre-set databases 
+  (in addition to SQLite default database in /usr/local/var/db/turndb):
 
 1) MySQL:
 
