@@ -150,7 +150,7 @@ install:	all ${MAKE_DEPS}
 	${INSTALL_DATA} turndb/schema.userdb.redis ${DESTDIR}${SCHEMADIR}
 	${INSTALL_DATA} turndb/schema.stats.redis ${DESTDIR}${DOCSDIR}
 	${INSTALL_DATA} turndb/schema.stats.redis ${DESTDIR}${SCHEMADIR}
-	${INSTALL_DATA} sqlite/turndb ${DESTDIR}${LOCALSTATEDIR}/db/turndb
+	if [ -f sqlite/turndb ] ; then ${INSTALL_DATA} sqlite/turndb ${DESTDIR}${LOCALSTATEDIR}/db/turndb; fi
 	${INSTALL_DATA} examples/etc/turnserver.conf ${DESTDIR}${CONFDIR}/turnserver.conf.default
 	${INSTALL_DIR} examples/etc ${DESTDIR}${EXAMPLESDIR}
 	${INSTALL_DIR} examples/scripts ${DESTDIR}${EXAMPLESDIR}
