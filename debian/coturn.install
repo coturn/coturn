@@ -15,6 +15,7 @@ turndb/schema.userdb.redis usr/share/coturn
 turndb/schema.userdb.redis usr/share/doc/coturn
 turndb/schema.stats.redis usr/share/coturn
 turndb/schema.stats.redis usr/share/doc/coturn
+sqlite/turndb var/db
 examples/etc/turnserver.conf etc
 examples/etc/turnuserdb.conf etc
 examples/etc/turnserver.conf usr/share/coturn/examples/etc
@@ -51,12 +52,15 @@ examples/scripts/longtermsecuredb/secure_relay_with_db_mysql.sh usr/share/coturn
 examples/scripts/longtermsecuredb/secure_relay_with_db_mysql_ssl.sh usr/share/coturn/examples/scripts/longtermsecuredb
 examples/scripts/longtermsecuredb/secure_relay_with_db_mongo.sh usr/share/coturn/examples/scripts/longtermsecuredb
 examples/scripts/longtermsecuredb/secure_relay_with_db_redis.sh usr/share/coturn/examples/scripts/longtermsecuredb
+examples/scripts/longtermsecuredb/secure_relay_with_db_sqlite.sh usr/share/coturn/examples/scripts/longtermsecuredb
 examples/scripts/selfloadbalance/secure_relay.sh usr/share/coturn/examples/scripts/selfloadbalance
 examples/scripts/selfloadbalance/secure_dos_attack.sh usr/share/coturn/examples/scripts/selfloadbalance
 examples/scripts/restapi/secure_relay_secret.sh usr/share/coturn/examples/scripts/restapi
 examples/scripts/restapi/secure_relay_secret_with_db_mysql.sh usr/share/coturn/examples/scripts/restapi
 examples/scripts/restapi/secure_relay_secret_with_db_psql.sh usr/share/coturn/examples/scripts/restapi
 examples/scripts/restapi/secure_relay_secret_with_db_redis.sh usr/share/coturn/examples/scripts/restapi
+examples/scripts/restapi/secure_relay_secret_with_db_mongo.sh usr/share/coturn/examples/scripts/restapi
+examples/scripts/restapi/secure_relay_secret_with_db_sqlite.sh usr/share/coturn/examples/scripts/restapi
 examples/scripts/restapi/secure_udp_client_with_secret.sh usr/share/coturn/examples/scripts/restapi
 examples/scripts/restapi/shared_secret_maintainer.pl usr/share/coturn/examples/scripts/restapi
 examples/scripts/shorttermsecure/secure_tcp_client_c2c_tcp_relay_short_term.sh usr/share/coturn/examples/scripts/shorttermsecure

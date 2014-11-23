@@ -1,3 +1,9 @@
+coturn (4.3.1.1-1) unstable; urgency=low
+
+  * Sync to 4.3.1.1: SQLite support added.
+
+ -- Oleg Moskalenko <mom040267@gmail.com>  Sun, 23 Nov 2014 00:15:03 -0800
+
 coturn (4.2.3.1-1) unstable; urgency=low
 
   * Sync to 4.2.3.1
