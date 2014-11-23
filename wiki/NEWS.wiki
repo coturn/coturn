@@ -1,5 +1,11 @@
 #summary News log
-#labels Version-4.2.3.1
+#labels Version-4.3.1.1
+
+== 11/22/2014 ==
+=== Version 4.3.1.1 ===
+
+Flat files are not supported as the user database.
+SQLite support added, as the default DB option.
 
 == 10/05/2014 ==
 === Version 4.2.1.2 ===
