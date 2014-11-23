@@ -351,6 +351,11 @@ do
   -localstatedir=* | --localstatedir=* | --localstatedi=* | --localstated=* | --localstate=* | --localstat=*)
     LOCALSTATEDIR=$ac_optarg ;;
 
+  -turndbdir | --turndbdir | --turndbdi | --turndbd | --turndb | --turnd)
+    ac_prev=TURNDBDIR ;;
+  -turndbdir=* | --turndbdir=* | --turndbdi=* | --turndbd=* | --turndb=* | --turnd=*)
+    TURNDBDIR=$ac_optarg ;;
+
   -datadir | --datadir | --datadi | --datad | -schemadir | --schemadir)
     ac_prev=SCHEMADIR ;;
   -datadir=* | --datadir=* | --datadi=* | --datad=* | -schemadir=* | --schemadir=*)
@@ -1100,6 +1105,10 @@ else
 	SQLITE_CMD=${ECHO_CMD}
 fi
 
+if [ -z "${TURNDBDIR}" ] ; then
+	TURNDBDIR=${LOCALSTATEDIR}/db
+fi
+
 ###########################
 # Test PostgreSQL
 ###########################
@@ -1199,7 +1208,7 @@ fi
 # So, what we have now:
 ###############################
 
-OSCFLAGS="${OSCFLAGS} ${TURN_NO_THREAD_BARRIERS} ${TURN_NO_DTLS} ${TURN_NO_GCM} ${TURN_NO_TLS} -DINSTALL_PREFIX=${PREFIX} -DTURNDB=${LOCALSTATEDIR}/db/turndb"
+OSCFLAGS="${OSCFLAGS} ${TURN_NO_THREAD_BARRIERS} ${TURN_NO_DTLS} ${TURN_NO_GCM} ${TURN_NO_TLS} -DINSTALL_PREFIX=${PREFIX} -DTURNDB=${TURNDBDIR}/turndb"
 
 if ! [ -z "${TURN_ACCEPT_RPATH}" ] ; then
   if [ -z "${TURN_DISABLE_RPATH}" ] ; then
@@ -1232,6 +1241,8 @@ ${ECHO_CMD} "BINDIR = ${BINDIR}" >> Makefile
 ${ECHO_CMD} "bindir = ${BINDIR}" >> Makefile
 ${ECHO_CMD} "LOCALSTATEDIR = ${LOCALSTATEDIR}" >> Makefile
 ${ECHO_CMD} "localstatedir = ${LOCALSTATEDIR}" >> Makefile
+${ECHO_CMD} "TURNDBDIR = ${TURNDBDIR}" >> Makefile
+${ECHO_CMD} "turndbdir = ${TURNDBDIR}" >> Makefile
 ${ECHO_CMD} "CONFDIR = ${CONFDIR}" >> Makefile
 ${ECHO_CMD} "confdir = ${CONFDIR}" >> Makefile
 ${ECHO_CMD} "MANPREFIX = ${MANPREFIX}" >> Makefile
