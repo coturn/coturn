@@ -9,10 +9,12 @@ To set the turnserver parameters:
 
 	a) Edit /etc/turnserver.conf file.
 
-	b) For user accounts settings, if using the turnserver 
-	with authentication: edit /etc/turnuserdb.conf 
-	file, or set up PostgreSQL or MySQL or Redis database for user accounts.
-	Use /usr/share/coturn/schema.sql as SQL database schema,
+	b) For user accounts settings, the default SQLite TURN database location 
+	is /var/db/turndb. If you do not set any database and if you do not set
+	any TURN server database options, then the TURN server 
+	will try to create an empty SQLite database in that default location.
+	Or you can set up PostgreSQL or MySQL or Redis database for 
+	user accounts. Use /usr/share/coturn/schema.sql as SQL database schema,
 	or use /usr/share/coturn/schema.userdb.redis as Redis 
 	database schema explanation for the user authentication data, and 
 	(optionally) use /usr/share/coturn/schema.stats.redis as 
@@ -54,7 +56,7 @@ purposes, several accounting options are possible:
 
 If you are installing the TURN server for WebRTC usage, then you must set 
 the long term credentials mechanism option and add user accounts - 
-either with the flat config userdb file, or with PostgreSQL 
+either with the default SQLite database, or with PostgreSQL 
 database, or with MySQL database, or with Redis database. Optionally,
 you can add TURN REST API on top of long-term credentials mechanism.
 
