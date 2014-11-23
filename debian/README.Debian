@@ -10,8 +10,10 @@ To set the turnserver parameters:
 	a) Edit /etc/turnserver.conf file.
 
 	b) For user accounts settings, the default SQLite TURN database location 
-	is /var/db/turndb. The installation process sets an empty DB in that 
-	location. Or you can set up PostgreSQL or MySQL or Redis database for 
+	is /var/db/turndb. If you do not set any database and if you do not set
+	any TURN server database options, then the TURN server 
+	will try to create an empty SQLite database in that default location.
+	Or you can set up PostgreSQL or MySQL or Redis database for 
 	user accounts. Use /usr/share/coturn/schema.sql as SQL database schema,
 	or use /usr/share/coturn/schema.userdb.redis as Redis 
 	database schema explanation for the user authentication data, and 
