@@ -1,5 +1,5 @@
 #summary Difference between rfc5766-turn-server and coturn.
-#labels Version-4.1.0.2
+#labels Version-4.3.1.1
 
 = Introduction =
 
@@ -38,3 +38,11 @@ Coturn supports the dual allocation specs: in a single TURN session, the client 
 == MongoDB support in coturn. ==
 
 Coturn can store data in Mongo.
+
+== SQLite support in coturn. ==
+
+Coturn can store data in SQLite.
+
+== No flat files database support in coturn ==
+
+Starting with version 4.3.1.1, coturn does not support turnuserdb.conf flat-file database. The default database for Coturn is SQLite.
