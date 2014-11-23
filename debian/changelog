@@ -1,3 +1,9 @@
+coturn (4.3.1.2-1) unstable; urgency=low
+
+  * Sync to 4.3.1.2: SQLite DB installation fixed.
+
+ -- Oleg Moskalenko <mom040267@gmail.com>  Sun, 23 Nov 2014 13:38:11 -0800
+
 coturn (4.3.1.1-1) unstable; urgency=low
 
   * Sync to 4.3.1.1: SQLite support added.
