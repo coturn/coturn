@@ -2,27 +2,12 @@ I. TURN Server as a standard OS package
 
 At the present time, several operation systems have this project pre-packaged:
 
-1) FreeBSD (and PC-BSD) have this project as a "port", named "turnserver",
-in /usr/ports/net/turnserver directory. Installation is very simple:
+1) New Linuxes in Debian family have package "coturn":  
 
-# optional commands, to update the ports tree:
-  $ sudo portsnap fetch 
-  $ sudo portsnap update
+http://packages.qa.debian.org/r/coturn.html
 
-# Build and install the TURN Server: 
-  $ cd /usr/ports/net/turnserver
-  $ sudo make install clean
-  
-2) Debian "jessie" (and the recent version of Ubuntu and Mint)  
-have the predecessor of this project packaged as "rfc5766-turn-server", see the link:
-
-http://packages.qa.debian.org/r/rfc5766-turn-server.html
-
-In the new Debian "jessie", and in the related Ubuntu and Mint, you will 
-be able to just select rfc5766-turn-server from the packages list and 
-install it through Synaptic or through the package manager.
-
-If you are using the Debian package from the project download site, then follow these instructions:
+If you are using the Debian package from the project download site, 
+then follow these instructions:
 
 Unpack the archive:
 
@@ -50,16 +35,12 @@ The turn*.conf config files are in /etc directory.
 The service start-up control scripts will be in /etc/init.d/coturn and
 in /etc/defaults/coturn files.
 
-3) ArchLinux has this TURN server package:
+2) ArchLinux has this TURN server package:
 
 https://aur.archlinux.org/packages/coturn/
 
-4) OpenSUSE has an older package, too:
-
-https://build.opensuse.org/package/show/home:ehauenstein/rfc5766-turn-server
-
-If you are using a pre-packaged TURN server then you can skip 
-to the section IX. 
+3) FreeBSD and OpenSUSE have the predecessor of this project packaged
+(rfc5766-turn-server).
  
 II. DOWNLOAD 
 
@@ -81,17 +62,18 @@ First, you have to run the configure script:
 	
 It will create a Makefile customized for your system. 
 
-By default, the generated Makefile will be set to install everything
-in:
+By default, the generated Makefile will install everything to:
+
 	- /usr on Solaris.
 	- /usr/pkg on NetBSD.
 	- /usr/local everywhere else.
 
-The binaries will be copied in bin subdirectory of the installation 
-destination, config files copied to etc subdirectory. There will be 
+The binaries will be copied to the bin subdirectory of the installation 
+destination, config files copied to etc subdirectory. The default SQLite database
+will be created in var/db/turndb. There will be 
 also documents, examples and some other files, in separate directories.
 
- You can change the root configured destination directory by 
+You can change the root configured destination directory by 
 setting PREFIX variable in the 
 configure command line. For example:
 
@@ -102,8 +84,8 @@ Or:
 	$ ./configure --prefix=/opt   
 
  You can change the auxiliary configured destination sub-directories by 
-setting BINDIR, CONFDIR, MANPREFIX, EXAMPLESDIR, DOCSDIR, LIBDIR, SCHEMADIR
-and TURNINCLUDEDIR variables in the 
+setting BINDIR, CONFDIR, MANPREFIX, EXAMPLESDIR, DOCSDIR, LIBDIR, SCHEMADIR,
+LOCALSTATEDIR and TURNINCLUDEDIR variables in the 
 configure command line. For example:
 
 	$ PREFIX=/opt BINDIR=/opt/bin64 CONFDIR=/opt/conf ./configure
@@ -120,7 +102,7 @@ configure command line. For example:
 
 See below a separate INSTALL section for more details.
 
-The script configure is a proprietary script. It will create a Makefile 
+The script "configure" is a proprietary script. It will create a Makefile 
 that you can use to build the project:
 
 	$ make
@@ -131,8 +113,10 @@ The make command without options will do the following:
  "utility" programs there.
  - create lib/ sub-directory and put the client library there.
  - create include/turn/ sub-directory and put include files there.
+ - create sqlite/turndb default empty database that will be copied to 
+ var/db/ during the installation.
 
-The programs can be either called directly, or a shell scripts can be used. 
+The TURN programs can be either called directly, or a shell scripts can be used. 
 The script examples are located in examples/scripts directory. These scripts 
 are just examples: you can run them successfully for the tests, but
 you will have to change the script parameters for your real environment.
@@ -169,7 +153,7 @@ accordingly, the Makefile.in template file.
 IV. INSTALL
 
 This step is optional. You can run the turnserver from the original build 
-directory, successfully, without installing the TURN server into the system. 
+directory, successfully, without installing the TURN server into your system. 
 You have to install the turnserver only if you want to integrate the 
 turnserver in your system.
 
@@ -186,10 +170,12 @@ This command will also:
 
  - copy the content of examples subdirectory into 
  PREFIX/share/examples/turnserver/ directory;
+ - copy the generated default empty SQLite database from sqlite/turndb
+ to /var/db/turndb;
  - copy the content of include/turn subdirectory into
  PREFIX/include/turn/ directory;
  - copy the database schema file turndb/schema.sql into 
- PREFIX/share/turnserver/ 
+ PREFIX/share/turnserver/
  directory;
  - copy all docs into PREFIX/share/doc/turnserver/ directory.
  
@@ -203,50 +189,37 @@ using DESTDIR variable, for example:
 In this example, the root installation directory will be /opt/usr.  
 
 The "configure" script by default generates a Makefile with "rpath" option
-set for the binaries linking (if your compiler allows that option). If that 
-is not desirable (like in some OS packaging procedures), then run the 
-"configure" script with --disable-rpath option.
+set for the dynamic libraries linking (if your system and your compiler 
+allow that option). If that is not desirable (like in some OS packaging
+procedures), then run the "configure" script with --disable-rpath option.
 
-If you do not want to use the rpath linking option, or you OS or compiler 
-do not allows that, then after the installation, you may have to adjust the 
-system-wide shared library search path by using "ldconfig -n <libdirname>" 
-(Linux), "ldconfig -m <libdirname>" (BSD) or "crle -u -l <libdirname>" 
-(Solaris). Your system must be able to find the libevent2, openssl and 
-(optionally) PostgreSQL and/or MySQL (MariaDB) and/or MongoDB and/or Redis 
-shared libraries, either with the help of the system-wide library search 
-configuration or by using LD_LIBRARY_PATH. "make install" will make a 
-non-garantied effort to add automatically PREFIX/lib and /usr/local/lib to 
-the libraries search path, but if you have some libraries in different 
-non-default directories you will have to add them manually to the search 
-path, or you will have to adjust LD_LIBRARY_PATH.
+If you are not using the rpath linking option, then after the installation, 
+you may have to adjust the system-wide shared library search path with
+"ldconfig -n <libdirname>" (Linux), "ldconfig -m <libdirname>" (BSD) or 
+"crle -u -l <libdirname>" (Solaris). Your system must be able to find the 
+libevent2, openssl and (optionally) SQLite and/or PostgreSQL and/or MySQL 
+(MariaDB) and/or MongoDB and/or Redis shared libraries, either with the 
+help of the system-wide library search configuration or by using 
+LD_LIBRARY_PATH. "make install" will make a non-guaranteed effort to add 
+automatically PREFIX/lib and /usr/local/lib to the libraries search path, 
+but if you have some libraries in different non-default directories then
+you will have to add them manually to the search path, or you will have 
+to adjust LD_LIBRARY_PATH.
 
 V. PLATFORMS
 
 The TURN Server is using generic *NIX system APIs and is supposed to be 
 usable on wide range of *NIX systems. 
 
-The following platforms have been used in the development:
+The following platforms are supported 
+(both i386 and x86_64 variants when applicable):
 
-	- Linux Ubuntu 11.x and 12.x, i386 and x86_64
-	- FreeBSD 6.x, i386
-	- FreeBSD 8.x, i386
-	- PC-BSD 9.x, x86_64
-	- Solaris 11, x86_64
-	- Linux CentOS / Red Hat Enterprise Edition 6.x-7.0, x86_64 (i386 & amd64)
-	- Linux Debian 'Squeeze', i386
-	- Linux Mint 14.1 'Nadia', i386
-	- Linux Mint 16 'Petra', i386
-	- Linux Debian 'Wheezy', x86_64 
-	- Cygwin 1.7.20
-	- NetBSD 6.0.1, i386
-	- OpenBSD 5.3, i386
-	- Amazon Linux, x86_64
-	- Mac OS X Mountain Lion
-	- ArchLinux, x86_64
-	- Fedora 19 and 20, x86_64
-	- OpenSUSE 12.3, x86_64
+	- Linux,
+	- BSD family (Mac OS X, FreeBSD, NetBSD, OpenBSD),
+	- Solaris 11,
+	- Cygwin
 
-It must work on many other *NIXes, as well. The configure script and/or 
+It must work on other *NIXes, as well. The configure script and/or 
 Makefile may need adjustments for other *NIXes not mentioned above.
 
 The code of the client messaging library can be compiled and used on 
@@ -259,11 +232,11 @@ and for the performance reasons.
 
 The tested C compilers are:
 
-	- gcc 3.4.4 thru 4.8.1
+	- gcc 3.4.4 thru 4.8.x
 	- clang 3.0 or better
-	- Solaris Studio 12.3 C compiler, version 5.12
+	- Solaris Studio 12 C compiler
 
-It may be compiled with others compilers, too.
+It may be compiled with other compilers, too.
 
 The code is compatible with C++ compiler, and a C++ compiler
 (like g++) can be used for the compilation, too:
@@ -275,18 +248,20 @@ VII. WHICH EXTRA LIBRARIES AND UTILITIES YOU NEED
 
 In addition to common *NIX OS services and libraries, to compile this code, 
 OpenSSL (version 1.0.0a or better recommended) and libevent2 (version 2.0.5 
-or better) are required, the PostgreSQL C client development setup is 
-optional, the MySQL (MariaDB) C client development setup is optional, the MongoDB
-C Driver and the Hiredis development files for Redis database access are optional.
-For fully functional build, the extra set of libraries must be installed
-in full version (the development headers and the libraries to link with). 
-For runtime, only runtime setup is required. If the build is modified for 
+or better) are required, SQLite C development library and header is optional,
+the PostgreSQL C client development setup is optional, 
+the MySQL (MariaDB) C client development setup is optional, 
+the MongoDB C Driver and the Hiredis development files for Redis database 
+access are all optional. For development build, the development headers and 
+the libraries to link with, are to be installed. For the runtime, only the 
+runtime setup is required. If the build is modified for 
 static linking, then even runtime installation is not needed.
 
-OpenSSL, libevent2, PostgreSQL, MySQL (or MariaDB) and Hiredis 
+OpenSSL, SQLite, libevent2, PostgreSQL, MySQL (or MariaDB) and Hiredis 
 libraries can be downloaded from their web sites:
  - http://www.openssl.org (required);
  - http://www.libevent.org (required);
+ - http://www.sqlite.org (optional);
  - http://www.postgresql.org (optional);
  - http://www.mysql.org (or http://mariadb.org) (optional);
  - https://github.com/mongodb/mongo-c-driver (optional);
@@ -298,11 +273,10 @@ locations - the configure script and the Makefile are assuming that they are
 installed in their default locations. If not, then you will have to modify 
 those.
 
-Most modern popular systems (FreeBSD / PC-BSD, Linux Ubuntu 11.10+, Debian Wheezy, 
-Linux Mint 14+, Amazon Linux, Fedora) have a simpler way of the third party tools 
-installation:      
+Most modern popular systems (FreeBSD, Linux Ubuntu/Debian/Mint, Amazon Linux, Fedora) 
+have a simpler way of the third party tools installation:      
 
-	*) PC-BSD or FreeBSD (the FRESH ports database is assumed to be installed, with
+	*) FreeBSD (the FRESH ports database is assumed to be installed, with
 		the turnserver port included):
 
 		$ cd /usr/ports/net/turnserver
@@ -315,6 +289,8 @@ installation:
 
 		$ cd /usr/ports/security/openssl/
 		$ sudo make install clean
+		$ cd /usr/ports/databases/sqlite3/
+		$ sudo make install clean
 		$ cd /usr/ports/devel/libevent2/
 		$ sudo make install clean
 		$ cd /usr/ports/databases/postgresql84-client/ (or any other version)
@@ -324,9 +300,11 @@ installation:
 		$ cd /usr/ports/databases/hiredis/
 		$ sudo make install clean
 
-	**) Linux Ubuntu 11.10+, Debian Wheezy, Mint 14+:
+	**) Linux Ubuntu, Debian, Mint:
 		
 		$ sudo apt-get install libssl-dev
+		$ sudo apt-get install libsqlite3 (or sqlite3)
+		$ sudo apt-get install libsqlite3-dev (or sqlite3-dev)
 		$ sudo apt-get install libevent-dev
 		$ sudo apt-get install libpq-dev
 		$ sudo apt-get install mysql-client
@@ -338,6 +316,8 @@ installation:
 	***) Fedora:
 
 	$ sudo yum install openssl-devel
+	$ sudo yum install sqlite
+	$ sudo yum install sqlite-devel
 	$ sudo yum install libevent
 	$ sudo yum install libevent-devel
 	$ sudo yum install postgresql-devel
@@ -352,10 +332,11 @@ installation:
 	- you have to install gcc first:
 		$ sudo yum install gcc
 
-	- mongo-c-driver packages are not available. MongoDB support 
-  will not be compiled, unless you install it "manually" before 
-  the TURN server compilation. Refer to https://github.com/mongodb/mongo-c-driver
-  for installation instructions of the driver.
+	- mongo-c-driver packages are not available "automatically". 
+	MongoDB support will not be compiled, unless you install it "manually"
+	before the TURN server compilation. Refer to 
+	https://github.com/mongodb/mongo-c-driver for installation instructions
+	of the driver.
 		
 	- hiredis packages are not available, so do not issue the 
 	hiredis installation commands. Redis support will not be 
@@ -365,9 +346,8 @@ installation:
 	perfectly installed without redis support - if you do not 
 	need it.
 		
-	*****) Some OSes in Debian family (Debian Squeeze and 
-	pre-11.10 Ubuntus) setups are similar to Debian Wheezy, 
-	although some packages have different names. 
+	*****) Older Debian family Linuxes are using some packages 
+	with different names. 
 		 
 	******) On some CentOS / RedHat 6.x systems you have to install 
 	libevent2 "manually", and optionally you have to download and 
@@ -385,9 +365,8 @@ like this:
 
 Dynamic library paths:
 
-You may also have to adjust the turn server start script, add PostgreSQL 
-and/or MySQL and/or MongoDB and/or Redis runtime library path to LD_LIBRARY_PATH.
-Or you may find that it would be more convenient to adjust the 
+You may also have to adjust the turn server start script, add all the dynamic runtime 
+library paths to LD_LIBRARY_PATH. Or you may find that it would be more convenient to adjust the 
 system-wide shared library search path by using commands:
 
 on Linux:
@@ -408,22 +387,23 @@ On Mac OS X, you have three different choices for dynamic libraries handling:
 
 2) Before the compilation, check the dynamic libraries and adjust their identification names,
 if necessary, to the absolute library path or to @rpath/<library-file-name>. 
-For exmple, the MySQL dynamic library may need that adjustment. You will have to use 
+For example, the MySQL dynamic library may need that adjustment. You will have to use 
 "adjust_name_tool" with -id option for that; OR
 
-3) After the compilation, you can use the same tool, "adjust_name_tool", with option -change,
-to adjust the library paths values in the binary, where necessary. All library paths must be 
-absolute paths or @rpath/... .
+3) After the compilation, you can use the same tool, "adjust_name_tool", 
+with option -change, to adjust the library paths values in the binary, 
+where necessary. All library paths must be absolute paths or @rpath/... .
 
 See also the next section.
 
-NOTE: See "PostgreSQL setup" and "MySQL setup" and "MongoDB setup" and 
-"Redis setup" sections below for more database setup information.
+NOTE: See "SQLite setup" and "PostgreSQL setup" and "MySQL setup" and 
+"MongoDB setup" and "Redis setup" sections below for more database setup 
+information.
 
-NOTE: If you do not install PostgreSQL or MySQL or MongoDB or Redis then you will
-be limited to flat files for user database. It will work great for 
-smaller user databases (like 100 users) but for larger systems you 
-will need PostgreSQL or MySQL or MongoDB or Redis.
+NOTE: If you do not install SQLite or PostgreSQL or MySQL or MongoDB or Redis,
+then you will be limited to the command-line options for user database. 
+It will work great for development setup, but for real runtime systems you 
+will need SQLite or PostgreSQL or MySQL or MongoDB or Redis.
 
 NOTE: To run PostgreSQL or MySQL or MongoDB or Redis server on the same system, 
 you will also have to install a corresponding PostgreSQL or MySQL or 
@@ -445,6 +425,8 @@ not providing backward compatibility with the older libevent 1.x version.
 If you have a system with older libevent, then you have to install the new 
 libevent2 from their web site. It was tested with older *NIXes 
 (like FreeBSD 6.x) and it works just fine.
+
+NOTE: SQLite must be of version 3.x.
 
 NOTE: For extra security features (DTLS and SHA256) support, OpenSSL version 
 1.0.0a or newer is recommended. Older versions do not support DTLS, reliably, 
@@ -500,9 +482,9 @@ by using
  $ ldconfig -m <libdirname> (BSD) 
  $ crle -u -l <libdirname> (Solaris)
 
-IX. TEST SCRIPT SETS
+IX. TEST SCRIPTS
 
-First of all, we can use test vectors from RFC 5769 to double-check that our 
+First of all, you can use the test vectors from RFC 5769 to double-check that the 
 STUN/TURN message encoding algorithms work properly. Run the utility:
 
  $ cd examples
@@ -585,9 +567,10 @@ secure_relay.sh as a guidance how to run the TURN server.
 X. OS X compilation notes
 
 OS X usually has an older version of openssl supplied, with some Apple 
-additions. The best option is to install a good fresh openssl development 
-library, free of Apple tweaks, from http://www.openssl.org. But the "native"
-openssl will work, too.
+additions. The the "native" openssl will work, within its limitations,
+but the best option is to install a good fresh openssl development 
+library, from http://www.openssl.org. You will have 
+to handle the dynamic linking of the generated binaries. 
 
 XI. MS Windows and Cygwin support
 
@@ -623,77 +606,20 @@ HTML-formatted client library functions reference is located in docs/html
 subdirectory of the original archive tree. After the installation, it will 
 be placed in PREFIX/share/doc/turnserver/html.
 
-XIV. PostgreSQL setup
+XIV. SQLite setup
 
-The site http://www.postgresql.org site has excellent extensive documentation. 
-For a quick-start guide, you can take a look into this page: 
-http://www.freebsddiary.org/postgresql.php. That page is written for 
-FreeBSD users, but it has lots of generic information applicable to other 
-*NIXes, too.
+The site http://www.sqlite.org site has excellent extensive documentation. 
 
-For the psql-userdb TURN server parameter, you can either set a PostgreSQL 
-connection string, or a PostgreSQL URI, see the link:
-
-For 8.4 PostgreSQL version:
-http://www.postgresql.org/docs/8.4/static/libpq-connect.html
-
-For newer 9.x versions: 
-http://www.postgresql.org/docs/9.2/static/libpq-connect.html#LIBPQ-CONNSTRING.
-
-In the PostgreSQL connection string or URI, you can set the host, the 
-access port, the database name, the user, and the user password 
-(if the access is secured). Numerous other parameters can be set, 
-see the links above. The TURN server will blindly use that connection 
-string without any modifications. You are responsible for the right 
-connection string format.
-
-Below are the steps to setup the PostgreSQL database server from scratch:
-
-1) Install PostgreSQL server.
-
-2) Find and edit Postgres' pg_hba.conf file to set the access options 
-(see docs). On different systems, it may be located in different places.
-Set the lines for local access as "trust" for now (you can change it later), 
-for TCP/IP access set the value as "md5".
-To set TCP/IP access from any host, use "0.0.0.0/0" for IPv4, and "::/0" 
-for IPv6.
-
-3) Edit postgresql.conf file to allow TCP/IP access - uncomment and edit 
-the "listen_addresses" option (see docs). On different systems, this file 
-may be located in different places.
-
-4) Restart your system or restart the postgresql server, for example:
-
-  $ sudo /etc/init.d/postgresql stop
-  $ sudo /etc/init.d/postgresql start
-
-5) Check /etc/passwd file to find out which user account is used for the 
-PostgreSQL admin access on your system (it may be "pgsql", or "postgres", 
-or "postgresql"). Let's assume that this is "postgres" account.
-
-6) Create a database for the TURN purposes, with name, say, "turn":
-
-   $ createdb -U postgres turn
-
-7) Create a user for the TURN with name, say, "turn":
-   $ psql -U postgres turn
-     turn=# create user turn with password 'turn';
-     turn=# 
-     Ctrl-D
-
-8) Create the TURN users database schema.
+The default SQLite database location for the TURN Server is 
+/usr/local/var/db/turndb or /var/db/turndb (depending on the platform).
 
 The database schema for the TURN server is very minimalistic and is located 
 in project's turndb/schema.sql file, or in the system's 
 PREFIX/share/turnserver/schema.sql file after the turnserver installation:
 
-$ cat turndb/schema.sql | psql -U turn turn
-	NOTICE:  CREATE TABLE / PRIMARY KEY will create implicit index "turnusers_lt_pkey" for table "turnusers_lt"
-	CREATE TABLE
-	NOTICE:  CREATE TABLE / PRIMARY KEY will create implicit index "turnusers_st_pkey" for table "turnusers_st"
-	CREATE TABLE
-	CREATE TABLE
-$ 
+If you would like to created a new fresh SQLite TURN database:
+
+$ sqlite3 <your-db-file-name> < turndb/schema.sql
 
 The schema description:
 
@@ -826,6 +752,109 @@ You can use turnadmin program to manage the database - you can either use
 turnadmin to add/modify/delete users, or you can use turnadmin to produce 
 the hmac keys and modify the database with your favorite tools.
 
+When starting the turnserver, the --db parameter will be, for example:
+
+turnserver ... --db="/var/db/turndb"
+
+You will have to use the program turnadmin to fill the 
+database, or you can do that manually with psql.
+
+Fill in users, for example:
+
+  Shared secret for the TURN REST API (realm north.gov):
+  
+  $ bin/turnadmin -s logen -r north.gov -b "/var/db/turndb"
+  
+  Long-term credentials mechanism:
+  
+  $ bin/turnadmin -a -b "/var/db/turndb" -u gorst -r north.gov -p hero
+  $ bin/turnadmin -a -b "/var/db/turndb" -u ninefingers -r north.gov -p youhavetoberealistic
+  
+  Long-term credentials mechanism with SHA256 extention:
+  $ bin/turnadmin -a -b "/var/db/turndb" -u bethod -r north.gov -p king-of-north --sha256
+  
+  Short-term credentials mechanism:
+   
+  $ bin/turnadmin -A -b "/var/db/turndb" -u gorst -p hero
+  $ bin/turnadmin -A -b "/var/db/turndb" -u ninefingers -p youhavetoberealistic 
+
+XV. PostgreSQL setup
+
+The site http://www.postgresql.org site has excellent extensive documentation. 
+For a quick-start guide, you can take a look into this page: 
+http://www.freebsddiary.org/postgresql.php. That page is written for 
+FreeBSD users, but it has lots of generic information applicable to other 
+*NIXes, too.
+
+For the psql-userdb TURN server parameter, you can either set a PostgreSQL 
+connection string, or a PostgreSQL URI, see the link:
+
+For 8.4 PostgreSQL version:
+http://www.postgresql.org/docs/8.4/static/libpq-connect.html
+
+For newer 9.x versions: 
+http://www.postgresql.org/docs/9.2/static/libpq-connect.html#LIBPQ-CONNSTRING.
+
+In the PostgreSQL connection string or URI, you can set the host, the 
+access port, the database name, the user, and the user password 
+(if the access is secured). Numerous other parameters can be set, 
+see the links above. The TURN server will blindly use that connection 
+string without any modifications. You are responsible for the right 
+connection string format.
+
+Below are the steps to setup the PostgreSQL database server from scratch:
+
+1) Install PostgreSQL server.
+
+2) Find and edit Postgres' pg_hba.conf file to set the access options 
+(see docs). On different systems, it may be located in different places.
+Set the lines for local access as "trust" for now (you can change it later), 
+for TCP/IP access set the value as "md5".
+To set TCP/IP access from any host, use "0.0.0.0/0" for IPv4, and "::/0" 
+for IPv6.
+
+3) Edit postgresql.conf file to allow TCP/IP access - uncomment and edit 
+the "listen_addresses" option (see docs). On different systems, this file 
+may be located in different places.
+
+4) Restart your system or restart the postgresql server, for example:
+
+  $ sudo /etc/init.d/postgresql stop
+  $ sudo /etc/init.d/postgresql start
+
+5) Check /etc/passwd file to find out which user account is used for the 
+PostgreSQL admin access on your system (it may be "pgsql", or "postgres", 
+or "postgresql"). Let's assume that this is "postgres" account.
+
+6) Create a database for the TURN purposes, with name, say, "turn":
+
+   $ createdb -U postgres turn
+
+7) Create a user for the TURN with name, say, "turn":
+   $ psql -U postgres turn
+     turn=# create user turn with password 'turn';
+     turn=# 
+     Ctrl-D
+
+8) Create the TURN users database schema.
+
+The database schema for the TURN server is very minimalistic and is located 
+in project's turndb/schema.sql file, or in the system's 
+PREFIX/share/turnserver/schema.sql file after the turnserver installation:
+
+$ cat turndb/schema.sql | psql -U turn turn
+	NOTICE:  CREATE TABLE / PRIMARY KEY will create implicit index "turnusers_lt_pkey" for table "turnusers_lt"
+	CREATE TABLE
+	NOTICE:  CREATE TABLE / PRIMARY KEY will create implicit index "turnusers_st_pkey" for table "turnusers_st"
+	CREATE TABLE
+	CREATE TABLE
+
+See the SQLite section for the detailed database schema explanation.
+
+You can use turnadmin program to manage the database - you can either use 
+turnadmin to add/modify/delete users, or you can use turnadmin to produce 
+the hmac keys and modify the database with your favorite tools.
+
 More examples of database schema creation:
 
 psql -h <host> -U <db-user> -d <database-name>  < turndb/schema.sql
@@ -856,9 +885,9 @@ database, or you can do that manually with psql.
 
 Fill in users, for example:
 
-  Shared secret for the TURN REST API:
+  Shared secret for the TURN REST API (realm north.gov):
   
-  $ bin/turnadmin -s logen -e "host=localhost dbname=coturn user=turn password=turn"
+  $ bin/turnadmin -s logen -r north.gov -e "host=localhost dbname=coturn user=turn password=turn"
   
   Long-term credentials mechanism:
   
@@ -870,10 +899,10 @@ Fill in users, for example:
   
   Short-term credentials mechanism:
    
-  $ bin/turnadmin -A -e "host=localhost dbname=coturn user=turn password=turn" -u gorst -r north.gov -p hero
-  $ bin/turnadmin -A -e "host=localhost dbname=coturn user=turn password=turn" -u ninefingers -r north.gov -p youhavetoberealistic 
+  $ bin/turnadmin -A -e "host=localhost dbname=coturn user=turn password=turn" -u gorst -p hero
+  $ bin/turnadmin -A -e "host=localhost dbname=coturn user=turn password=turn" -u ninefingers -p youhavetoberealistic 
 
-XV. MySQL (MariaDB) setup
+XVI. MySQL (MariaDB) setup
 
 The MySQL setup is similar to PostgreSQL (same idea), and is well documented 
 on their site http://www.mysql.org. The TURN Server database schema is the 
@@ -881,7 +910,7 @@ same as for PostgreSQL and you can find it in turndb/schema.sql file, or
 in the system's PREFIX/share/turnserver/schema.sql file after the turnserver 
 installation.
 
-The general setup idea is the same as for PostgreSQL case:
+The general setup idea is the same as for PostgreSQL:
 
 1) Check that the mysql server access is OK. Immediately after the MySQL server 
 installation, it must be accessible, at the very minimum, at the localhost with
@@ -911,9 +940,9 @@ the root account.
   
 6) Fill in users, for example:
 
-  Shared secret for the TURN REST API:
+  Shared secret for the TURN REST API (realm north.gov):
   
-  $ bin/turnadmin -s logen -M "host=localhost dbname=coturn user=turn password=turn"
+  $ bin/turnadmin -s logen -r north.gov -M "host=localhost dbname=coturn user=turn password=turn"
   
   Long-term credentials mechanism:
   
@@ -925,8 +954,8 @@ the root account.
   
   Short-term credentials mechanism:
    
-  $ bin/turnadmin -A -M "host=localhost dbname=coturn user=turn password=turn" -u gorst -r north.gov -p hero
-  $ bin/turnadmin -A -M "host=localhost dbname=coturn user=turn password=turn" -u ninefingers -r north.gov -p youhavetoberealistic 
+  $ bin/turnadmin -A -M "host=localhost dbname=coturn user=turn password=turn" -u gorst -p hero
+  $ bin/turnadmin -A -M "host=localhost dbname=coturn user=turn password=turn" -u ninefingers -p youhavetoberealistic 
 
 7) Now we can use mysql in the turnserver.
 
@@ -956,7 +985,7 @@ ca, capath, cert, key, cipher (see
 http://dev.mysql.com/doc/refman/5.1/en/ssl-options.html for the 
 command options description).
 
-XVI. MongoDB setup
+XVII. MongoDB setup
 
 The MongoDB setup is well documented on their site http://docs.mongodb.org/manual/. 
 
@@ -988,7 +1017,7 @@ explanations for the Postgres, for example.
 
 See the file testmongosetup.sh for the database structure examples. 
 
-XVII. Redis setup
+XVIII. Redis setup
 
 The Redis setup is well documented on their site http://redis.io. 
 The TURN Server Redis database schema description can be found 
@@ -1022,11 +1051,11 @@ Redis can be also used for the TURN allocation status check and for status and
 traffic notifications.
 
 See the explanation in the turndb/schema.stats.redis file, and an example in 
-turndb/testredisdbsetup.sh file. One special thing about TURN Redis security setup
-is that you can store open passwords for long-term credentials in Redis.
-You cannot set open passwords for long-term credentials in MySQL and PostgreSQL -
-with those DBs, you have to use the keys only. With Redis, you have a choice - 
-keys or open passwords.
+turndb/testredisdbsetup.sh file. One special thing about TURN Redis security 
+setup is that you can store open passwords for long-term credentials in Redis.
+You cannot set open passwords for long-term credentials in SQLite or MySQL or
+PostgreSQL - with those DBs, you have to use the keys only. With Redis, you 
+have a choice - keys or open passwords.
 
 You also have to take care about Redis connection parameters, the timeout and the 
 keepalive. The following settings must be in your Redis config file
@@ -1040,9 +1069,9 @@ tcp-keepalive 60
 
 Redis TURN admin commands:
 
-  Shared secret for the TURN REST API:
+  Shared secret for the TURN REST API (realm north.gov):
   
-  $ bin/turnadmin -s logen -N "host=localhost dbname=2 user=turn password=turn"
+  $ bin/turnadmin -s logen -r north.gov -N "host=localhost dbname=2 user=turn password=turn"
   
   Long-term credentials mechanism:
   
@@ -1054,25 +1083,25 @@ Redis TURN admin commands:
   
   Short-term credentials mechanism:
    
-  $ bin/turnadmin -A -N "host=localhost dbname=2 user=turn password=turn" -u gorst -r north.gov -p hero
-  $ bin/turnadmin -A -N "host=localhost dbname=2 user=turn password=turn" -u ninefingers -r north.gov -p youhavetoberealistic 
+  $ bin/turnadmin -A -N "host=localhost dbname=2 user=turn password=turn" -u gorst -p hero
+  $ bin/turnadmin -A -N "host=localhost dbname=2 user=turn password=turn" -u ninefingers -p youhavetoberealistic 
   
 See the file testredisdbsetup.sh for the data structure examples.
 
-XVIII. Performance tuning
+XIX. Performance tuning
 
 This topic is covered in the wiki page:
 
 http://code.google.com/p/coturn/wiki/turn_performance_and_load_balance
 
-XIX. TURN Server setup
+XX. TURN Server setup
 
 Read the project wiki pages: http://code.google.com/p/coturn/w/list
 
 Also, check the project from page links to the TURN/WebRTC configuration examples.
 It may give you an idea how it can be done.
 
-XX. Management interface
+XXI. Management interface
 
 You have a telnet interface (enabled by default) to access the turnserver process, 
 to view its state, to gather some statistical information, and to make some changes 

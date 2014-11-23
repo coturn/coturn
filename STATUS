@@ -106,6 +106,8 @@ compatibility.
 45) Secure MySQL connection implemented.
 
 46) Third-party security mechanism (through oAuth) implemented.
+
+47) SQLite support added as default database.
  
 Things to be implemented in future (the development roadmap) 
 are described in the TODO file.

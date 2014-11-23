@@ -19,6 +19,8 @@ cleanup() {
 	rm -rf ${MONGO_TMPCPROGB}
 	rm -rf ${D_TMPCPROGC}
 	rm -rf ${D_TMPCPROGB}
+	rm -rf ${SQL_TMPCPROGC}
+	rm -rf ${SQL_TMPCPROGO}
 	rm -rf ${E_TMPCPROGC}
 	rm -rf ${E_TMPCPROGO}
 	rm -rf ${HR_TMPCPROGC}
@@ -30,10 +32,23 @@ testlibraw() {
     ${CC} ${TMPCPROGC} -o ${TMPCPROGB} ${OSCFLAGS} ${OSLIBS} -${1} 2>>/dev/null
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
-		${ECHO_CMD} "Do not use -${1}"
+		${ECHO_CMD} "Library option -${1} cannot be used"
 		return 0
     else
 		OSLIBS="${OSLIBS} -${1}"
+		return 1
+    fi
+}
+
+testsqlite_comp() {
+    SQLITE_LIBS=-lsqlite3
+    ${CC} -c ${SQL_TMPCPROGC} -o ${SQL_TMPCPROGO} ${OSCFLAGS} 2>>/dev/null
+    ER=$?
+    if ! [ ${ER} -eq 0 ] ; then
+		${ECHO_CMD} "SQLite development is not installed properly"
+		return 0
+    else
+		DBLIBS="${DBLIBS} ${SQLITE_LIBS}"
 		return 1
     fi
 }
@@ -55,16 +70,16 @@ testhiredis() {
     ${CC} ${HR_TMPCPROGC} -o ${HR_TMPCPROGB} ${OSCFLAGS} ${DBLIBS} ${HIREDISCFLAGS} ${HIREDISLIBS} 2>>/dev/null
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
-	${ECHO_CMD}
-	${ECHO_CMD} "HIREDIS DEVELOPMENT LIBRARY (libhiredis.*) AND/OR HEADERS (hiredis/*.h)"
-	${ECHO_CMD} "	ARE NOT INSTALLED PROPERLY ON THIS SYSTEM."
-	${ECHO_CMD} "	THAT'S OK BUT THE TURN SERVER IS BUILDING WITHOUT REDIS SUPPORT."
-	${ECHO_CMD}
-	return 0
+		${ECHO_CMD}
+		${ECHO_CMD} "HIREDIS DEVELOPMENT LIBRARY (libhiredis.*) AND/OR HEADERS (hiredis/*.h)"
+		${ECHO_CMD} "	ARE NOT INSTALLED PROPERLY ON THIS SYSTEM."
+		${ECHO_CMD} "	THAT'S OK BUT THE TURN SERVER IS BUILDING WITHOUT REDIS SUPPORT."
+		${ECHO_CMD}
+		return 0
     else
-	DBCFLAGS="${DBCFLAGS} ${HIREDISCFLAGS}"
-	DBLIBS="${DBLIBS} ${HIREDISLIBS}"
-	return 1
+		DBCFLAGS="${DBCFLAGS} ${HIREDISCFLAGS}"
+		DBLIBS="${DBLIBS} ${HIREDISLIBS}"
+		return 1
     fi
 }
 
@@ -331,6 +346,11 @@ do
   -bindir=* | --bindir=* | --bindi=* | --bind=* | --bin=* | --bi=*)
     BINDIR=$ac_optarg ;;
 
+  -localstatedir | --localstatedir | --localstatedi | --localstated | --localstate | --localstat)
+    ac_prev=LOCALSTATEDIR ;;
+  -localstatedir=* | --localstatedir=* | --localstatedi=* | --localstated=* | --localstate=* | --localstat=*)
+    LOCALSTATEDIR=$ac_optarg ;;
+
   -datadir | --datadir | --datadi | --datad | -schemadir | --schemadir)
     ac_prev=SCHEMADIR ;;
   -datadir=* | --datadir=* | --datadi=* | --datad=* | -schemadir=* | --schemadir=*)
@@ -417,9 +437,23 @@ fi
 
 if [ -z "${BINDIR}" ] ; then
     if [ -z "${bindir}" ] ; then
-	BINDIR=${PREFIX}/bin
+		BINDIR=${PREFIX}/bin
     else
-	BINDIR=${bindir}
+		BINDIR=${bindir}
+    fi
+fi
+
+if [ -z "${LOCALSTATEDIR}" ] ; then
+    if [ -z "${localstatedir}" ] ; then
+    
+    	if [ "${PREFIX}" = "/usr" ] ; then
+			LOCALSTATEDIR=/var
+		else
+			LOCALSTATEDIR=${PREFIX}/var
+		fi
+		
+    else
+		LOCALSTATEDIR=${localstatedir}
     fi
 fi
 
@@ -576,6 +610,20 @@ INSTALL_DIR="cp -rpf"
 MKBUILDDIR="mkdir -p"
 RMCMD="rm -rf"
 
+type sqlite3 2>>/dev/null
+ER=$?
+if [ ${ER} -eq 0 ] ; then
+    SQLITE_CMD="sqlite3"
+else
+    type sqlite 2>>/dev/null
+    ER=$?
+    if [ ${ER} -eq 0 ] ; then
+		SQLITE_CMD="sqlite"
+    else
+		SQLITE_CMD=${ECHO_CMD}
+    fi
+fi
+
 #############################
 # Adjustments for Solaris
 #############################
@@ -678,6 +726,18 @@ E_TMPCPROGO=${TMPDIR}/${E_TMPCPROG}.o
 cat > ${E_TMPCPROGC} <<!
 #include <stdlib.h>
 #include <event2/event.h>
+int main(int argc, char** argv) {
+    return (int)(argv[argc][0]);
+}
+!
+
+SQL_TMPCPROG=__test__ccomp__sqlite__$$
+SQL_TMPCPROGC=${TMPDIR}/${SQL_TMPCPROG}.c
+SQL_TMPCPROGO=${TMPDIR}/${SQL_TMPCPROG}.o
+
+cat > ${SQL_TMPCPROGC} <<!
+#include <stdlib.h>
+#include <sqlite3.h>
 int main(int argc, char** argv) {
     return (int)(argv[argc][0]);
 }
@@ -1003,6 +1063,44 @@ else
 fi
 
 ###########################
+# Test SQLite setup
+###########################
+
+if [ -z "${TURN_NO_SQLITE}" ] ; then
+
+	testlib sqlite3
+	ER=$?
+	if ! [ ${ER} -eq 0 ] ; then
+   		${ECHO_CMD} "SQLite library found."
+	else
+   		${ECHO_CMD} "SQLite3 development library cannot be found."
+   		TURN_NO_SQLITE="-DTURN_NO_SQLITE"
+	fi
+
+	if [ -z "${TURN_NO_SQLITE}" ] ; then	
+	    testsqlite_comp
+	    ER=$?
+	    if ! [ ${ER} -eq 0 ] ; then
+    		${ECHO_CMD} "SQLite development found."
+	    else
+    		${ECHO_CMD} "SQLite development libraries are not installed properly in required location."
+    		TURN_NO_SQLITE="-DTURN_NO_SQLITE"
+	    fi
+	fi
+
+	if ! [ -z "${TURN_NO_SQLITE}" ] ; then	
+	    ${ECHO_CMD}
+	    ${ECHO_CMD} "SQLite DEVELOPMENT LIBRARY (libsqlite3) AND/OR HEADER (sqlite3.h)"
+	    ${ECHO_CMD} "	ARE NOT INSTALLED PROPERLY ON THIS SYSTEM."
+	    ${ECHO_CMD} "	THAT'S OK BUT THE TURN SERVER IS BUILDING WITHOUT SQLITE SUPPORT."
+	    ${ECHO_CMD}
+	fi
+else
+	TURN_NO_SQLITE="-DTURN_NO_SQLITE"
+	SQLITE_CMD=${ECHO_CMD}
+fi
+
+###########################
 # Test PostgreSQL
 ###########################
 
@@ -1101,7 +1199,7 @@ fi
 # So, what we have now:
 ###############################
 
-OSCFLAGS="${OSCFLAGS} ${TURN_NO_THREAD_BARRIERS} ${TURN_NO_DTLS} ${TURN_NO_GCM} ${TURN_NO_TLS} -DINSTALL_PREFIX=${PREFIX}"
+OSCFLAGS="${OSCFLAGS} ${TURN_NO_THREAD_BARRIERS} ${TURN_NO_DTLS} ${TURN_NO_GCM} ${TURN_NO_TLS} -DINSTALL_PREFIX=${PREFIX} -DTURNDB=${LOCALSTATEDIR}/db/turndb"
 
 if ! [ -z "${TURN_ACCEPT_RPATH}" ] ; then
   if [ -z "${TURN_DISABLE_RPATH}" ] ; then
@@ -1110,7 +1208,7 @@ if ! [ -z "${TURN_ACCEPT_RPATH}" ] ; then
   fi
 fi
 
-${ECHO_CMD} PREFIX="${PREFIX}" OSLIBS="${OSLIBS}" DBLIBS="${DBLIBS}" OSCFLAGS="${OSCFLAGS}" DBCFLAGS="${DBCFLAGS}" $@
+${ECHO_CMD} PREFIX="${PREFIX}" LOCALSTATEDIR="${LOCALSTATEDIR}" OSLIBS="${OSLIBS}" DBLIBS="${DBLIBS}" OSCFLAGS="${OSCFLAGS}" DBCFLAGS="${DBCFLAGS}" $@
 
 ###############################
 # Make make:
@@ -1125,13 +1223,15 @@ ${ECHO_CMD} "LDFLAGS += ${OSLIBS}" >> Makefile
 ${ECHO_CMD} "DBLIBS += ${DBLIBS}" >> Makefile
 ${ECHO_CMD} "CFLAGS += ${OSCFLAGS}" >> Makefile
 ${ECHO_CMD} "CPPFLAGS = ${CPPFLAGS}" >> Makefile
-${ECHO_CMD} "DBCFLAGS += ${DBCFLAGS} ${TURN_NO_PQ} ${TURN_NO_MYSQL} ${TURN_NO_MONGO} ${TURN_NO_HIREDIS}" >> Makefile
+${ECHO_CMD} "DBCFLAGS += ${DBCFLAGS} ${TURN_NO_PQ} ${TURN_NO_MYSQL} ${TURN_NO_SQLITE} ${TURN_NO_MONGO} ${TURN_NO_HIREDIS}" >> Makefile
 ${ECHO_CMD} "#" >> Makefile
 ${ECHO_CMD} "PORTNAME = ${PORTNAME}" >> Makefile
 ${ECHO_CMD} "PREFIX = ${PREFIX}" >> Makefile
 ${ECHO_CMD} "prefix = ${PREFIX}" >> Makefile
 ${ECHO_CMD} "BINDIR = ${BINDIR}" >> Makefile
 ${ECHO_CMD} "bindir = ${BINDIR}" >> Makefile
+${ECHO_CMD} "LOCALSTATEDIR = ${LOCALSTATEDIR}" >> Makefile
+${ECHO_CMD} "localstatedir = ${LOCALSTATEDIR}" >> Makefile
 ${ECHO_CMD} "CONFDIR = ${CONFDIR}" >> Makefile
 ${ECHO_CMD} "confdir = ${CONFDIR}" >> Makefile
 ${ECHO_CMD} "MANPREFIX = ${MANPREFIX}" >> Makefile
@@ -1151,6 +1251,7 @@ ${ECHO_CMD} "turnincludedir = ${TURNINCLUDEDIR}" >> Makefile
 ${ECHO_CMD} "#" >> Makefile
 ${ECHO_CMD} "ARCHIVERCMD = ${ARCHIVERCMD}" >> Makefile
 ${ECHO_CMD} "MKDIR = ${MKDIR}" >> Makefile
+${ECHO_CMD} "SQLITE_CMD = ${SQLITE_CMD}" >> Makefile
 ${ECHO_CMD} "INSTALL_PROGRAM = ${INSTALL_PROGRAM}" >> Makefile
 ${ECHO_CMD} "PKILL_PROGRAM = ${PKILL_PROGRAM}" >> Makefile
 ${ECHO_CMD} "INSTALL_MAN = ${INSTALL_MAN}" >> Makefile
@@ -1173,4 +1274,4 @@ cat Makefile.in >> Makefile
 
 cleanup
 
-
+${ECHO_CMD} "Makefile created: success."

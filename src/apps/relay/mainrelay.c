@@ -36,6 +36,30 @@ static int use_lt_credentials = 0;
 static int use_st_credentials = 0;
 static int anon_credentials = 0;
 
+////// TURNDB //////////////
+
+#if defined(TURNDB)
+
+#if defined(Q)
+#undef Q
+#endif
+
+#define Q(x) #x
+
+#if defined(QUOTE)
+#undef QUOTE
+#endif
+
+#define QUOTE(x) Q(x)
+
+#define DEFAULT_USERDB_FILE QUOTE(TURNDB)
+
+#else
+
+#define DEFAULT_USERDB_FILE "/usr/local/var/db/turndb"
+
+#endif
+
 //////TURN PARAMS STRUCTURE DEFINITION //////
 
 #define DEFAULT_GENERAL_RELAY_SERVERS_NUMBER (1)
@@ -95,7 +119,7 @@ LOW_DEFAULT_PORTS_BOUNDARY,HIGH_DEFAULT_PORTS_BOUNDARY,0,0,0,"",
 /////////////// MISC PARAMS ////////////////
 0,0,0,0,0,SHATYPE_SHA1,':',0,0,TURN_CREDENTIALS_NONE,0,0,0,0,0,0,
 ///////////// Users DB //////////////
-{ TURN_USERDB_TYPE_FILE, {"\0",NULL}, {0,NULL,NULL, {NULL,0}} }
+{ (TURN_USERDB_TYPE)0, {"\0",NULL}, {0,NULL,NULL, {NULL,0}} }
 
 };
 
@@ -386,17 +410,14 @@ static char Usage[] = "Usage: turnserver [options]\n"
 " -V, --Verbose					Extra verbose mode, very annoying (for debug purposes only).\n"
 " -o, --daemon					Start process as daemon (detach from current shell).\n"
 " -f, --fingerprint				Use fingerprints in the TURN messages.\n"
-" -a, --lt-cred-mech				Use the long-term credential mechanism. This option can be used with either\n"
-"		                                flat file user database or PostgreSQL DB or MySQL DB for user keys storage.\n"
-" -A, --st-cred-mech				Use the short-term credential mechanism. This option requires\n"
-"		                                a PostgreSQL or MySQL DB for short term passwords storage.\n"
+" -a, --lt-cred-mech				Use the long-term credential mechanism.\n"
+" -A, --st-cred-mech				Use the short-term credential mechanism.\n"
 " -z, --no-auth					Do not use any credential mechanism, allow anonymous access.\n"
 " -u, --user			<user:pwd>	User account, in form 'username:password', for long-term credentials.\n"
 "						Cannot be used with TURN REST API or with short-term credentials.\n"
 " -r, --realm			<realm>		The default realm to be used for the users when no explicit\n"
-"						origin/realm relationship was found in the database, or if the TURN\n"
-"						server is not using any database (just the commands-line settings\n"
-"						and the userdb file). Must be used with long-term credentials \n"
+"						origin/realm relationship was found in the database.\n"
+"						Must be used with long-term credentials \n"
 "						mechanism or with TURN REST API.\n"
 " --check-origin-consistency			The flag that sets the origin consistency check:\n"
 "						across the session, all requests must have the same\n"
@@ -415,7 +436,10 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						Total bytes-per-second bandwidth the TURN server is allowed to allocate\n"
 "						for the sessions, combined (input and output network streams are treated separately).\n"
 " -c				<filename>	Configuration file name (default - turnserver.conf).\n"
-" -b, --userdb			<filename>	User database file name (default - turnuserdb.conf) for long-term credentials only.\n"
+#if !defined(TURN_NO_SQLITE)
+" -b, , --db, --userdb	<filename>		SQLite database file name; default - /var/db/turndb or\n"
+"										/usr/local/var/db/turndb.\n"
+#endif
 #if !defined(TURN_NO_PQ)
 " -e, --psql-userdb, --sql-userdb <conn-string>	PostgreSQL database connection string, if used (default - empty, no PostreSQL DB used).\n"
 "		                                This database can be used for long-term and short-term credentials mechanisms,\n"
@@ -569,7 +593,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "\n";
 
 static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
-	"Commands:\n"
+	"\nCommands:\n\n"
 	"	-k, --key			generate long-term credential mechanism key for a user\n"
 	"	-a, --add			add/update a long-term mechanism user\n"
 	"	-A, --add-st			add/update a short-term mechanism user\n"
@@ -577,7 +601,6 @@ static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
 	"	-D, --delete-st			delete a short-term mechanism user\n"
 	"	-l, --list			list all long-term mechanism users\n"
 	"	-L, --list-st			list all short-term mechanism users\n"
-#if !defined(TURN_NO_PQ) || !defined(TURN_NO_MYSQL) || !defined(TURN_NO_MONGO) || !defined(TURN_NO_HIREDIS)
 	"	-s, --set-secret=<value>	Add shared secret for TURN RESP API\n"
 	"	-S, --show-secret		Show stored shared secrets for TURN REST API\n"
 	"	-X, --delete-secret=<value>	Delete a shared secret\n"
@@ -587,9 +610,11 @@ static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
 	"	-I, --list-origins		List origin-to-realm relations.\n"
 	"	-g, --set-realm-option		Set realm params: max-bps, total-quota, user-quota.\n"
 	"	-G, --list-realm-options	List realm params.\n"
+	"\nOptions with mandatory values:\n\n"
+#if !defined(TURN_NO_SQLITE)
+	"	-b, --db, --userdb		SQLite database file, default value is /var/db/turndb or\n"
+	"							/usr/local/var/db/turndb.\n"
 #endif
-	"Options with mandatory values:\n"
-	"	-b, --userdb			User database file, if flat DB file is used.\n"
 #if !defined(TURN_NO_PQ)
 	"	-e, --psql-userdb, --sql-userdb	PostgreSQL user database connection string, if PostgreSQL DB is used.\n"
 #endif
@@ -605,7 +630,7 @@ static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
 	"	-u, --user			Username\n"
 	"	-r, --realm			Realm for long-term mechanism only\n"
 	"	-p, --password			Password\n"
-#if !defined(TURN_NO_PQ) || !defined(TURN_NO_MYSQL) || !defined(TURN_NO_MONGO) || !defined(TURN_NO_HIREDIS)
+#if !defined(TURN_NO_SQLITE) || !defined(TURN_NO_PQ) || !defined(TURN_NO_MYSQL) || !defined(TURN_NO_MONGO) || !defined(TURN_NO_HIREDIS)
 	"	-o, --origin			Origin\n"
 #endif
 	"	-H, --sha256			Use SHA256 digest function to be used for the message integrity.\n"
@@ -719,7 +744,10 @@ static const struct myoption long_options[] = {
 				{ "st-cred-mech", optional_argument, NULL, 'A' },
 				{ "no-auth", optional_argument, NULL, 'z' },
 				{ "user", required_argument, NULL, 'u' },
+#if !defined(TURN_NO_SQLITE)
 				{ "userdb", required_argument, NULL, 'b' },
+				{ "db", required_argument, NULL, 'b' },
+#endif
 #if !defined(TURN_NO_PQ)
 				{ "psql-userdb", required_argument, NULL, 'e' },
 				{ "sql-userdb", required_argument, NULL, 'e' },
@@ -808,15 +836,16 @@ static const struct myoption admin_long_options[] = {
 				{ "delete", no_argument, NULL, 'd' },
 				{ "list", no_argument, NULL, 'l' },
 				{ "list-st", no_argument, NULL, 'L' },
-#if !defined(TURN_NO_PQ) || !defined(TURN_NO_MYSQL) || !defined(TURN_NO_MONGO) || !defined(TURN_NO_HIREDIS)
 				{ "set-secret", required_argument, NULL, 's' },
 				{ "show-secret", no_argument, NULL, 'S' },
 				{ "delete-secret", required_argument, NULL, 'X' },
 				{ "delete-all-secrets", no_argument, NULL, DEL_ALL_AUTH_SECRETS_OPT },
-#endif
 				{ "add-st", no_argument, NULL, 'A' },
 				{ "delete-st", no_argument, NULL, 'D' },
+#if !defined(TURN_NO_SQLITE)
 				{ "userdb", required_argument, NULL, 'b' },
+				{ "db", required_argument, NULL, 'b' },
+#endif
 #if !defined(TURN_NO_PQ)
 				{ "psql-userdb", required_argument, NULL, 'e' },
 				{ "sql-userdb", required_argument, NULL, 'e' },
@@ -834,7 +863,6 @@ static const struct myoption admin_long_options[] = {
 				{ "realm", required_argument, NULL, 'r' },
 				{ "password", required_argument, NULL, 'p' },
 				{ "sha256", no_argument, NULL, 'H' },
-#if !defined(TURN_NO_PQ) || !defined(TURN_NO_MYSQL) || !defined(TURN_NO_MONGO) || !defined(TURN_NO_HIREDIS)
 				{ "add-origin", no_argument, NULL, 'O' },
 				{ "del-origin", no_argument, NULL, 'R' },
 				{ "list-origins", required_argument, NULL, 'I' },
@@ -844,7 +872,6 @@ static const struct myoption admin_long_options[] = {
 				{ "user-quota", required_argument, NULL, ADMIN_USER_QUOTA_OPT },
 				{ "total-quota", required_argument, NULL, ADMIN_TOTAL_QUOTA_OPT },
 				{ "max-bps", required_argument, NULL, ADMIN_MAX_BPS_OPT },
-#endif
 				{ "help", no_argument, NULL, 'h' },
 				{ NULL, no_argument, NULL, 0 }
 };
@@ -1111,10 +1138,12 @@ static void set_option(int c, char *value)
 	case 'u':
 		add_user_account(value,0);
 		break;
+#if !defined(TURN_NO_SQLITE)
 	case 'b':
 		STRCPY(turn_params.default_users_db.persistent_users_db.userdb, value);
-		turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_FILE;
+		turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_SQLITE;
 		break;
+#endif
 #if !defined(TURN_NO_PQ)
 	case 'e':
 		STRCPY(turn_params.default_users_db.persistent_users_db.userdb, value);
@@ -1461,7 +1490,6 @@ static int adminmain(int argc, char **argv)
 			ct = TA_LIST_USERS;
 			is_st = 1;
 			break;
-#if !defined(TURN_NO_PQ) || !defined(TURN_NO_MYSQL) || !defined(TURN_NO_MONGO) || !defined(TURN_NO_HIREDIS)
 		case 's':
 			ct = TA_SET_SECRET;
 			STRCPY(secret,optarg);
@@ -1477,11 +1505,12 @@ static int adminmain(int argc, char **argv)
 		case DEL_ALL_AUTH_SECRETS_OPT:
 			ct = TA_DEL_SECRET;
 			break;
-#endif
+#if !defined(TURN_NO_SQLITE)
 		case 'b':
 		  STRCPY(turn_params.default_users_db.persistent_users_db.userdb,optarg);
-		  turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_FILE;
+		  turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_SQLITE;
 		  break;
+#endif
 #if !defined(TURN_NO_PQ)
 		case 'e':
 		  STRCPY(turn_params.default_users_db.persistent_users_db.userdb,optarg);
@@ -1544,13 +1573,10 @@ static int adminmain(int argc, char **argv)
 		}
 	}
 
-	if(is_st && (turn_params.default_users_db.userdb_type == TURN_USERDB_TYPE_FILE)) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: you have to use a PostgreSQL or MySQL database with short-term credentials\n");
-		exit(-1);
-	}
-
-	if(!strlen(turn_params.default_users_db.persistent_users_db.userdb) && (turn_params.default_users_db.userdb_type == TURN_USERDB_TYPE_FILE))
+#if !defined(TURN_NO_SQLITE)
+	if(!strlen(turn_params.default_users_db.persistent_users_db.userdb) && (turn_params.default_users_db.userdb_type == TURN_USERDB_TYPE_SQLITE))
 		STRCPY(turn_params.default_users_db.persistent_users_db.userdb,DEFAULT_USERDB_FILE);
+#endif
 
 	if(ct == TA_COMMAND_UNKNOWN) {
 		fprintf(stderr,"\n%s\n", AdminUsage);
@@ -1599,6 +1625,12 @@ static void print_features(unsigned long mfn)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "AEAD is not supported\n");
 #else
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "AEAD supported\n");
+#endif
+
+#if !defined(TURN_NO_SQLITE)
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "SQLite supported, default database location is %s\n",DEFAULT_USERDB_FILE);
+#else
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "SQLite is not supported\n");
 #endif
 
 #if !defined(TURN_NO_HIREDIS)
@@ -1851,10 +1883,11 @@ int main(int argc, char **argv)
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "\nCONFIG: WARNING: --server-relay: NON-STANDARD AND DANGEROUS OPTION.\n");
 	}
 
-	if(!strlen(turn_params.default_users_db.persistent_users_db.userdb) && (turn_params.default_users_db.userdb_type == TURN_USERDB_TYPE_FILE))
+#if !defined(TURN_NO_SQLITE)
+	if(!strlen(turn_params.default_users_db.persistent_users_db.userdb) && (turn_params.default_users_db.userdb_type == TURN_USERDB_TYPE_SQLITE))
 			STRCPY(turn_params.default_users_db.persistent_users_db.userdb,DEFAULT_USERDB_FILE);
+#endif
 
-	read_userdb_file(0);
 	update_white_and_black_lists();
 
 	argc -= optind;
@@ -1891,9 +1924,7 @@ int main(int argc, char **argv)
 	}
 
 	if(use_lt_credentials) {
-		if(!turn_params.default_users_db.ram_db.users_number && (turn_params.default_users_db.userdb_type == TURN_USERDB_TYPE_FILE) && !turn_params.use_auth_secret_with_timestamp) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "\nCONFIGURATION ALERT: you did not specify any user account, (-u option) \n	but you did specified a long-term credentials mechanism option (-a option).\n	The TURN Server will be inaccessible.\n		Check your configuration.\n");
-		} else if(!get_realm(NULL)->options.name[0]) {
+		if(!get_realm(NULL)->options.name[0]) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "\nCONFIGURATION ALERT: you did specify the long-term credentials usage\n but you did not specify the default realm option (-r option).\n		Check your configuration.\n");
 		}
 	}
