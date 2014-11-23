@@ -15,7 +15,8 @@ $ sudo dpkg -i coturn_*_*.deb)
 After the install, read the documentation in /usr/share/doc/coturn directory.
 
 All binaries will be installed in /usr/bin/ directory. 
-The turn*.conf config files are in /etc directory. 
+The turnserver.conf config file is in /etc directory. 
+The turndb SQLite default empty database is in /var/lib/turn directory.
 
 The service start-up control scripts will be in /etc/init.d/coturn and
 in /etc/defaults/coturn files.
