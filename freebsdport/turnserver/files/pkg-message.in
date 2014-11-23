@@ -29,6 +29,7 @@ you have to:
    executable with appropriate options (see the documentation).
    
 3) To create database schema, use schema in file %%DATADIR%%/schema.sql.
+The TURN Server supports (optionally) SQLite, MySQL, PostgreSQL, Redis.
    
 4) For additional information, run:
  

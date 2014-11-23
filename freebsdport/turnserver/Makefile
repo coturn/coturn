@@ -30,18 +30,17 @@ USE_RC_SUBR=	turnserver
 
 HAS_CONFIGURE=	YES
 
-USE_SQLITE=	YES
-
-OPTIONS_DEFINE=	MYSQL PGSQL REDIS DOCS EXAMPLES
+OPTIONS_DEFINE=	SQLITE MYSQL PGSQL REDIS DOCS EXAMPLES
 
 SHEBANG_FILES=	examples/scripts/restapi/shared_secret_maintainer.pl
 USES=		perl5 shebangfix
 
-MYSQL_DESC=	MySQL support for users database
-PGSQL_DESC=	PostgreSQL support for users database
+SQLITE_DESC=	SQLite database support
+MYSQL_DESC=	MySQL database support
+PGSQL_DESC=	PostgreSQL database support
 REDIS_DESC=	Redis support for user database and for status and statistics reporting
 
-OPTIONS_DEFAULT=	MYSQL PGSQL REDIS
+OPTIONS_DEFAULT=	SQLITE MYSQL PGSQL REDIS
 
 .include <bsd.port.options.mk>
 
@@ -65,15 +64,18 @@ longtermsecure/secure_tcp_client_c2c_tcp_relay.sh longtermsecure/secure_tcp_clie
 longtermsecure/secure_tls_client_c2c_tcp_relay.sh longtermsecure/secure_tls_client.sh \
 longtermsecure/secure_udp_c2c.sh longtermsecure/secure_udp_client.sh \
 longtermsecure/secure_dos_attack.sh longtermsecure/secure_udp_client.sh \
-longtermsecuredb/secure_relay_with_db_psql.sh longtermsecuredb/secure_relay_with_db_mysql.sh \
+longtermsecuredb/secure_relay_with_db_psql.sh \
+longtermsecuredb/secure_relay_with_db_mysql.sh \
 longtermsecuredb/secure_relay_with_db_mysql_ssl.sh \
-longtermsecuredb/secure_relay_with_db_psql.sh longtermsecuredb/secure_relay_with_db_mongo.sh \
+longtermsecuredb/secure_relay_with_db_mongo.sh \
 longtermsecuredb/secure_relay_with_db_redis.sh \
 longtermsecuredb/secure_relay_with_db_sqlite.sh \
-restapi/secure_relay_secret.sh restapi/secure_relay_secret_with_db_mysql.sh \
-restapi/secure_relay_secret.sh restapi/secure_relay_secret_with_db_redis.sh \
-restapi/secure_relay_secret.sh restapi/secure_relay_secret_with_db_mongo.sh \
-restapi/secure_relay_secret.sh restapi/secure_relay_secret_with_db_sqlite.sh \
+restapi/secure_relay_secret.sh \
+restapi/secure_relay_secret_with_db_mysql.sh \
+restapi/secure_relay_secret_with_db_psql.sh \
+restapi/secure_relay_secret_with_db_redis.sh \
+restapi/secure_relay_secret_with_db_mongo.sh \
+restapi/secure_relay_secret_with_db_sqlite.sh \
 restapi/secure_udp_client_with_secret.sh \
 restapi/secure_relay_secret_with_db_psql.sh \
 restapi/shared_secret_maintainer.pl \
@@ -84,6 +86,12 @@ selfloadbalance/secure_dos_attack.sh \
 selfloadbalance/secure_relay.sh
 
 CONFIGURE_ENV+=	PTHREAD_LIBS=-pthread TURN_DISABLE_RPATH=1
+
+.if ${PORT_OPTIONS:MSQLITE}
+USE_SQLITE=	yes
+.else
+CONFIGURE_ENV+=	TURN_NO_SQLITE=1
+.endif
 
 .if ${PORT_OPTIONS:MPGSQL}
 USES+=		pgsql
@@ -113,7 +121,9 @@ do-install:
 	${INSTALL_MAN} ${WRKSRC}/man/man1/${f} ${STAGEDIR}${PREFIX}/man/man1/${f}
 .endfor
 	${MKDIR} ${STAGEDIR}${PREFIX}/var/db
+.if ${PORT_OPTIONS:MSQLITE}
 	${INSTALL_DATA} ${WRKSRC}/sqlite/turndb ${STAGEDIR}${PREFIX}/var/db/turndb
+.endif
 	${MKDIR} ${STAGEDIR}${DATADIR}/
 	${INSTALL_DATA} ${WRKSRC}/turndb/schema.sql ${STAGEDIR}${DATADIR}/schema.sql
 	${INSTALL_DATA} ${WRKSRC}/turndb/schema.userdb.redis ${STAGEDIR}${DATADIR}/schema.userdb.redis
