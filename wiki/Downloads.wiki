@@ -1,12 +1,15 @@
 #summary Downloads Page
-#labels Version-4.2.3.1,Featured
+#labels Version-4.3.1.1,Featured
 
-== Latest official recommended version - 4.2.3.1: ==
+== Latest official recommended version - 4.3.1.1: ==
 
-  * Request re-transmission implemented in uclient test program.
+  * SQLite supported as the default user database.
+  * Support of the flat-file user database removed (no longer supported).
   * TLS connection procedure improved in uclient test program.
+  * CentOS 6.5 binary build in the downloads section upgraded to CentOS 6.6.
+  * We do not provide 32-bits binary download images since this release. We do support the 32-bits platforms, but you either have to compile it yourself, or you have to use the Coturn package that is packed with your OS (if available).
 
-[http://turnserver.open-sys.org/downloads/v4.2.3.1/ 4.2.3.1 Version Downloads (full source and platform builds)]
+[http://turnserver.open-sys.org/downloads/v4.3.1.1/ 4.3.1.1 Version Downloads (full source and platform builds)]
 
 [http://turnserver.open-sys.org/downloads/ Main Downloads Page (with all recent versions)]
 
@@ -15,6 +18,13 @@
 [http://turnserver.open-sys.org/downloads/extradocs/ Extra Docs ]
 
 == Older versions ==
+
+=== 4.2.3.1: ===
+
+  * Request re-transmission implemented in uclient test program.
+  * TLS connection procedure improved in uclient test program.
+
+[http://turnserver.open-sys.org/downloads/v4.2.3.1/ v4.2.3.1]
 
 === 4.2.2.2: ===
 
