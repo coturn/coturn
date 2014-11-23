@@ -1,8 +1,5 @@
-This is a Debian binary package to be installed on a Debian family Linux system.
-
-The supported systems are Debian Wheezy, Ubuntu 12.04 and later, Linux Mint 14.1 and later.
-
-Both 32 bits and 64 bits are supported, in separate packages.
+This is a Debian binary package to be installed on a Debian family Linux system,
+64 bits platform.
 
 To install the turnserver with all the necessary packages,
 with the help of gdebi tool, type:
