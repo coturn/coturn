@@ -1,5 +1,5 @@
 #summary turnadmin wiki page
-#labels Version-4.3.1.1
+#labels Version-4.3.1.2
 
 == turnadmin application: a TURN relay administration tool==
 
@@ -29,7 +29,7 @@
 
 ===Options:===
 
- * *-b,* *--db*, *--userdb* {{{<sqlite-file-name>}}} SQLite database file name (default - /var/db/turndb or /usr/local/var/db/turndb).
+ * *-b,* *--db*, *--userdb* {{{<sqlite-file-name>}}} SQLite database file name (default - /var/db/turndb or /usr/local/var/db/turndb or /var/lib/turn/turndb, depending on platform).
  * *-e,* *--psql-userdb,* *--sql-userdb* {{{<connection-string>}}} PostgreSQL database connection string.
  * *-M,* *--mysql-userdb* {{{<connection-string>}}} MySQL database connection string.
  * *-N,* *--redis-userdb* {{{<connection-string>}}} Redis database connection string.
