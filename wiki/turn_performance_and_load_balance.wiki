@@ -1,5 +1,5 @@
 #summary turnserver performance optimization wiki page
-#labels Version-4.0.0.0
+#labels Version-4.3.1.2
 
 =TURN relay server performance: load balance and network optimization=
 
@@ -43,6 +43,17 @@ Of course TURN sessions still require resources and they still consume CPU power
     # OS type and version.
     # How well NICs are integrated with your OS (whether your drivers are using full NIC capabilities).
     # How many file descriptors the system can handle (overall and per-process limits). Usually this is ulimit system parameter, see your system manual how to increase per-process and system-wide ulimits. Each TURN allocations takes at least 1 file descriptor or more (different types of sessions consume different number of file descriptors, and different network engines behave differently in that regard). If you are trying to open more sessions than your system limits allow, then you will see an error like "Too many open files" in the TURN server console or in the log file.
+
+==Database optimization==
+
+The fastest database option is SQLite - because there is no inter-process or network communications involved, the database management library is linked directly into the TURN server process. But you may need a more robust database management system (like PostgreSQL, MySQL, Redis, or MongoDB) if:
+
+  # your database is more than a few thousand records;
+  # if extra security is required;
+  # if other processes are going to access, actively, the TURN database simultaneously with the TURN server;
+  # if the database is shared among several TURN servers.
+
+In a lean and simple setup, SQLite is the simplest and the fastest option. 
 
 ==Network operations performance optimization==
 
