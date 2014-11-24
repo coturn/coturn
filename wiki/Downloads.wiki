@@ -1,7 +1,7 @@
 #summary Downloads Page
-#labels Version-4.3.1.1,Featured
+#labels Version-4.3.1.2,Featured
 
-== Latest official recommended version - 4.3.1.1: ==
+== Latest official recommended version - 4.3.1.2: ==
 
   * SQLite supported as the default user database.
   * Support of the flat-file user database removed (no longer supported).
@@ -9,7 +9,7 @@
   * CentOS 6.5 binary build in the downloads section upgraded to CentOS 6.6.
   * We do not provide 32-bits binary download images since this release. We do support the 32-bits platforms, but you either have to compile it yourself, or you have to use the Coturn package that is packed with your OS (if available).
 
-[http://turnserver.open-sys.org/downloads/v4.3.1.1/ 4.3.1.1 Version Downloads (full source and platform builds)]
+[http://turnserver.open-sys.org/downloads/v4.3.1.2/ 4.3.1.2 Version Downloads (full source and platform builds)]
 
 [http://turnserver.open-sys.org/downloads/ Main Downloads Page (with all recent versions)]
 
