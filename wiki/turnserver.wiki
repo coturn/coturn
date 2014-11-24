@@ -1,5 +1,5 @@
 #summary turnserver wiki page
-#labels Version-4.3.1.1
+#labels Version-4.3.1.2
 
 ==turnserver application: a TURN relay server implementation==
 
@@ -63,7 +63,7 @@
 ===User database settings:===
 
    * *-b,* *--db*, *--userdb* {{{<sqlite-file-name>}}}
-	      SQLite database file name.
+	      SQLite database file name. If no database option is defined, then an SQLite database is implied by default, with default location /usr/local/var/db/turndb, or /var/db/turndb, or /var/lib/turn/turndb, depending on the platform.
    * *-e,* *--psql-userdb,* *--sql-userdb* {{{<connection-string>}}}
    		  User database connection string for PostgreSQL. 
 		The connection string format is like that:
