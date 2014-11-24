@@ -1,5 +1,5 @@
 #summary top-level readme doc
-#labels Featured,Version-4.3.1.1
+#labels Featured,Version-4.3.1.2
 
 == GENERAL INFORMATION ==
 
@@ -159,6 +159,8 @@ it would affect the performance.
 /usr/local/etc/turnserver.conf
 
 /usr/local/var/db/turndb
+
+/var/lib/turn/turndb
 
 == STANDARDS ==
 
