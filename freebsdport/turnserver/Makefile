@@ -1,7 +1,7 @@
 # $FreeBSD$
 
 PORTNAME=	turnserver
-PORTVERSION=	4.3.1.1
+PORTVERSION=	4.3.1.2
 CATEGORIES=	net
 MASTER_SITES=	http://turnserver.open-sys.org/downloads/v${PORTVERSION}/:prog \
 		http://turnserver.open-sys.org/downloads/extradocs/:xdocs \
@@ -30,7 +30,7 @@ USE_RC_SUBR=	turnserver
 
 HAS_CONFIGURE=	YES
 
-OPTIONS_DEFINE=	SQLITE MYSQL PGSQL REDIS DOCS EXAMPLES
+OPTIONS_DEFINE=	DOCS EXAMPLES REDIS PGSQL MYSQL SQLITE 
 
 SHEBANG_FILES=	examples/scripts/restapi/shared_secret_maintainer.pl
 USES=		perl5 shebangfix
