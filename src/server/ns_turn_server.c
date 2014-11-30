@@ -4623,24 +4623,23 @@ int open_client_connection_session(turn_turnserver* server,
 static void peer_input_handler(ioa_socket_handle s, int event_type,
 		ioa_net_data *in_buffer, void *arg, int can_resume) {
 
-	if (!(event_type & IOA_EV_READ) || !arg)
-		return;
+	if (!(event_type & IOA_EV_READ) || !arg) return;
 
-	if(in_buffer->recv_ttl==0)
-		return;
+	if(in_buffer->recv_ttl==0) return;
 
-	UNUSED_ARG(s);
 	UNUSED_ARG(can_resume);
+
+	if(ioa_socket_tobeclosed(s)) return;
 
 	ts_ur_super_session* ss = (ts_ur_super_session*) arg;
 
-	if(!ss || !s) return;
+	if(!ss) return;
+
+	if(ss->to_be_closed) return;
 
 	turn_turnserver *server = (turn_turnserver*) (ss->server);
 
-	if (!server) {
-		return;
-	}
+	if (!server) return;
 
 	relay_endpoint_session* elem = get_relay_session_ss(ss, get_ioa_socket_address_family(s));
 	if (elem->s == NULL) {
@@ -4653,8 +4652,6 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 			(int)(ioa_network_buffer_get_capacity_udp() - offset));
 
 	if (ilen >= 0) {
-
-		size_t len = (size_t)(ilen);
 
 		allocation* a = get_allocation_ss(ss);
 		if (is_allocation_valid(a)) {
@@ -4672,6 +4669,9 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 			}
 
 			if (chnum) {
+
+				size_t len = (size_t)(ilen);
+
 				nbh = in_buffer->nbh;
 
 				ioa_network_buffer_add_offset_size(nbh,
@@ -4693,6 +4693,9 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 							(int) (chnum));
 				}
 			} else {
+
+				size_t len = 0;
+
 				nbh = ioa_network_buffer_allocate(server->e);
 				stun_init_indication_str(STUN_METHOD_DATA, ioa_network_buffer_data(nbh), &len);
 				stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_DATA,
