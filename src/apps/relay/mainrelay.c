@@ -2063,6 +2063,8 @@ int main(int argc, char **argv)
 
 #if defined(OPENSSL_THREADS)
 
+static char some_buffer[65536];
+
 static pthread_mutex_t** mutex_buf = NULL;
 
 static void locking_function(int mode, int n, const char *file, int line) {
@@ -2095,6 +2097,8 @@ static int THREAD_setup(void) {
 #if defined(OPENSSL_THREADS)
 
 	int i;
+
+	some_buffer[0] = 0;
 
 	mutex_buf = (pthread_mutex_t**) turn_malloc(CRYPTO_num_locks() * sizeof(pthread_mutex_t*));
 	if (!mutex_buf)
