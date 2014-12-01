@@ -126,7 +126,7 @@ static sqlite3 * get_sqlite_connection(void) {
 		int rc = sqlite3_open(pud->userdb, &sqliteconnection);
 		if(!sqliteconnection || (rc != SQLITE_OK)) {
 			const char* errmsg = sqlite3_errmsg(sqliteconnection);
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open SQLite DB connection: <%s>, runtime error:\n  %s\n  (If your intention is to use a database for the TURN server, then\n  check the TURN server process / file / DB directory permissions and\n  re-start the TURN server)\n",pud->userdb,errmsg);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open SQLite DB connection: <%s>, runtime error:\n  %s\n  (If your intention is to use an SQLite database for the TURN server, then\n  check and fix, if necessary, the effective permissions of the TURN server\n  process and of the DB directory and then re-start the TURN server)\n",pud->userdb,errmsg);
 			if(sqliteconnection) {
 				sqlite3_close(sqliteconnection);
 				sqliteconnection=NULL;
