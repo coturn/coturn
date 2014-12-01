@@ -2065,16 +2065,18 @@ int main(int argc, char **argv)
 
 static char some_buffer[65536];
 
-static pthread_mutex_t** mutex_buf = NULL;
+//array larger than anything that OpenSSL may need:
+static pthread_mutex_t mutex_buf[256];
+static int mutex_buf_initialized = 0;
 
 static void locking_function(int mode, int n, const char *file, int line) {
   UNUSED_ARG(file);
   UNUSED_ARG(line);
-  if(mutex_buf && (n < CRYPTO_num_locks()) && mutex_buf[n]) {
+  if(mutex_buf_initialized && (n < CRYPTO_num_locks())) {
 	  if (mode & CRYPTO_LOCK)
-		  pthread_mutex_lock(mutex_buf[n]);
+		  pthread_mutex_lock(&(mutex_buf[n]));
 	  else
-		  pthread_mutex_unlock(mutex_buf[n]);
+		  pthread_mutex_unlock(&(mutex_buf[n]));
   }
 }
 
@@ -2100,13 +2102,11 @@ static int THREAD_setup(void) {
 
 	some_buffer[0] = 0;
 
-	mutex_buf = (pthread_mutex_t**) turn_malloc(CRYPTO_num_locks() * sizeof(pthread_mutex_t*));
-	if (!mutex_buf)
-		return 0;
 	for (i = 0; i < CRYPTO_num_locks(); i++) {
-		mutex_buf[i] = (pthread_mutex_t*) turn_malloc(sizeof(pthread_mutex_t));
-		pthread_mutex_init(mutex_buf[i], NULL);
+		pthread_mutex_init(&(mutex_buf[i]), NULL);
 	}
+
+	mutex_buf_initialized = 1;
 
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L
 	CRYPTO_THREADID_set_callback(id_function);
@@ -2127,7 +2127,7 @@ int THREAD_cleanup(void) {
 
   int i;
 
-  if (!mutex_buf)
+  if (!mutex_buf_initialized)
     return 0;
 
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L
@@ -2138,14 +2138,10 @@ int THREAD_cleanup(void) {
 
   CRYPTO_set_locking_callback(NULL);
   for (i = 0; i < CRYPTO_num_locks(); i++) {
-	  if(mutex_buf[i]) {
-		  pthread_mutex_destroy(mutex_buf[i]);
-		  turn_free(mutex_buf[i],sizeof(pthread_mutex_t));
-		  mutex_buf[i] = NULL;
-	  }
+	  pthread_mutex_destroy(&(mutex_buf[i]));
   }
-  turn_free(mutex_buf,CRYPTO_num_locks() * sizeof(pthread_mutex_t*));
-  mutex_buf = NULL;
+
+  mutex_buf_initialized = 0;
 
 #endif
 
