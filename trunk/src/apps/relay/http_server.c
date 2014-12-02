@@ -30,12 +30,12 @@
 
 #include "ns_ioalib_impl.h"
 
-void write_http_echo(ts_ur_super_session *ss)
+void write_http_echo(ioa_socket_handle s)
 {
-	if(ss && ss->client_socket && !(ss->to_be_closed)) {
-		turn_turnserver *server = (turn_turnserver *)ss->server;
-		if(server) {
-			ioa_network_buffer_handle nbh_http = ioa_network_buffer_allocate(server->e);
+	if(s && !ioa_socket_tobeclosed(s)) {
+		SOCKET_APP_TYPE sat = get_ioa_socket_app_type(s);
+		if((sat == HTTP_CLIENT_SOCKET) || (sat == HTTPS_CLIENT_SOCKET)) {
+			ioa_network_buffer_handle nbh_http = ioa_network_buffer_allocate(s->e);
 			size_t len_http = ioa_network_buffer_get_size(nbh_http);
 			u08bits *data = ioa_network_buffer_data(nbh_http);
 			char data_http[1025];
@@ -46,13 +46,13 @@ void write_http_echo(ts_ur_super_session *ss)
 			len_http = strlen(data_http);
 			ns_bcopy(data_http,data,len_http);
 			ioa_network_buffer_set_size(nbh_http,len_http);
-			send_data_from_ioa_socket_nbh(ss->client_socket, NULL, nbh_http, TTL_IGNORE, TOS_IGNORE);
+			send_data_from_ioa_socket_nbh(s, NULL, nbh_http, TTL_IGNORE, TOS_IGNORE);
 		}
 	}
 }
 
-void handle_https(ts_ur_super_session *ss, ioa_network_buffer_handle nbh) {
+void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
 	//TODO
 	UNUSED_ARG(nbh);
-	write_http_echo(ss);
+	write_http_echo(s);
 }

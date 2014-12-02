@@ -4442,12 +4442,12 @@ static int read_client_connection(turn_turnserver *server,
 	if(sat == HTTP_CLIENT_SOCKET) {
 
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: HTTP connection input: %s\n", __FUNCTION__, (char*)ioa_network_buffer_data(in_buffer->nbh));
-		write_http_echo(ss);
+		write_http_echo(ss->client_socket);
 
 	} else if(sat == HTTPS_CLIENT_SOCKET) {
 
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: HTTPS connection input: %s\n", __FUNCTION__, (char*)ioa_network_buffer_data(in_buffer->nbh));
-		handle_https(ss,in_buffer->nbh);
+		handle_https(ss->client_socket,in_buffer->nbh);
 
 	} else if (stun_is_channel_message_str(ioa_network_buffer_data(in_buffer->nbh),
 					&blen,
@@ -4542,11 +4542,11 @@ static int read_client_connection(turn_turnserver *server,
 					proto = "HTTPS";
 					set_ioa_socket_app_type(ss->client_socket,HTTPS_CLIENT_SOCKET);
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s (%s %s) request: %s\n", __FUNCTION__, proto, get_ioa_socket_cipher(ss->client_socket), get_ioa_socket_ssl_method(ss->client_socket), (char*)ioa_network_buffer_data(in_buffer->nbh));
-					handle_https(ss,in_buffer->nbh);
+					handle_https(ss->client_socket,in_buffer->nbh);
 				} else {
 					set_ioa_socket_app_type(ss->client_socket,HTTP_CLIENT_SOCKET);
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s request: %s\n", __FUNCTION__, proto, (char*)ioa_network_buffer_data(in_buffer->nbh));
-					write_http_echo(ss);
+					write_http_echo(ss->client_socket);
 				}
 			}
 		}
