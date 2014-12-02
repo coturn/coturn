@@ -4161,8 +4161,11 @@ static void client_to_be_allocated_timeout_handler(ioa_engine_handle e,
 	int to_close = 0;
 
 	ioa_socket_handle s = ss->client_socket;
+
 	if(!s || ioa_socket_tobeclosed(s)) {
 		to_close = 1;
+	} else if(get_ioa_socket_app_type(s) == HTTPS_CLIENT_SOCKET) {
+		;
 	} else {
 		ioa_socket_handle rs4 = ss->alloc.relay_sessions[ALLOC_IPV4_INDEX].s;
 		ioa_socket_handle rs6 = ss->alloc.relay_sessions[ALLOC_IPV6_INDEX].s;
@@ -4415,6 +4418,12 @@ static void write_http_echo(turn_turnserver *server, ts_ur_super_session *ss)
 	}
 }
 
+static void handle_https(turn_turnserver *server, ts_ur_super_session *ss, ioa_network_buffer_handle nbh) {
+	//TODO
+	UNUSED_ARG(nbh);
+	write_http_echo(server,ss);
+}
+
 static int read_client_connection(turn_turnserver *server,
 				  	  	  	  	  ts_ur_super_session *ss, ioa_net_data *in_buffer,
 				  	  	  	  	  int can_resume, int count_usage) {
@@ -4451,9 +4460,20 @@ static int read_client_connection(turn_turnserver *server,
 	size_t blen = ioa_network_buffer_get_size(in_buffer->nbh);
 	size_t orig_blen = blen;
 	SOCKET_TYPE st = get_ioa_socket_type(ss->client_socket);
+	SOCKET_APP_TYPE sat = get_ioa_socket_app_type(ss->client_socket);
 	int is_padding_mandatory = ((st == TCP_SOCKET)||(st==TLS_SOCKET)||(st==TENTATIVE_TCP_SOCKET));
 
-	if (stun_is_channel_message_str(ioa_network_buffer_data(in_buffer->nbh), 
+	if(sat == HTTP_CLIENT_SOCKET) {
+
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: HTTP connection input: %s\n", __FUNCTION__, (char*)ioa_network_buffer_data(in_buffer->nbh));
+		write_http_echo(server,ss);
+
+	} else if(sat == HTTPS_CLIENT_SOCKET) {
+
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: HTTPS connection input: %s\n", __FUNCTION__, (char*)ioa_network_buffer_data(in_buffer->nbh));
+		handle_https(server,ss,in_buffer->nbh);
+
+	} else if (stun_is_channel_message_str(ioa_network_buffer_data(in_buffer->nbh),
 					&blen,
 					&chnum,
 					is_padding_mandatory)) {
@@ -4542,9 +4562,16 @@ static int read_client_connection(turn_turnserver *server,
 		if((st == TCP_SOCKET)||(st==TLS_SOCKET)||(st==TENTATIVE_TCP_SOCKET)) {
 			if(is_http_get((char*)ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh))) {
 				const char *proto = "HTTP";
-				if(st==TLS_SOCKET) proto = "HTTPS";
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s request: %s\n", __FUNCTION__, proto, (char*)ioa_network_buffer_data(in_buffer->nbh));
-				write_http_echo(server,ss);
+				if(st==TLS_SOCKET) {
+					proto = "HTTPS";
+					set_ioa_socket_app_type(ss->client_socket,HTTPS_CLIENT_SOCKET);
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s (%s %s) request: %s\n", __FUNCTION__, proto, get_ioa_socket_cipher(ss->client_socket), get_ioa_socket_ssl_method(ss->client_socket), (char*)ioa_network_buffer_data(in_buffer->nbh));
+					handle_https(server,ss,in_buffer->nbh);
+				} else {
+					set_ioa_socket_app_type(ss->client_socket,HTTP_CLIENT_SOCKET);
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s request: %s\n", __FUNCTION__, proto, (char*)ioa_network_buffer_data(in_buffer->nbh));
+					write_http_echo(server,ss);
+				}
 			}
 		}
 	}
