@@ -1993,6 +1993,23 @@ int main(int argc, char **argv)
 		}
 	}
 
+	if(turn_params.external_ip && turn_params.relay_addrs) {
+		size_t ir = 0;
+		for(ir = 0; ir < turn_params.relays_number; ++ir) {
+			if(turn_params.relay_addrs[ir]) {
+				const char* sra = (const char*)turn_params.relay_addrs[ir];
+				if((strstr(sra,"127.0.0.1") != sra)&&(strstr(sra,"::1")!=sra)) {
+					ioa_addr ra;
+					if(make_ioa_addr((const u08bits*)sra,0,&ra)<0) {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"-X : Wrong address format: %s\n",sra);
+					} else if(ra.ss.sa_family == turn_params.external_ip->ss.sa_family) {
+						ioa_addr_add_mapping(turn_params.external_ip,&ra);
+					}
+				}
+			}
+		}
+	}
+
 	if(turn_params.turn_daemon) {
 #if !defined(TURN_HAS_DAEMON)
 		pid_t pid = fork();
