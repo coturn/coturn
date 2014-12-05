@@ -4548,6 +4548,7 @@ static int read_client_connection(turn_turnserver *server,
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s request: %s\n", __FUNCTION__, proto, (char*)ioa_network_buffer_data(in_buffer->nbh));
 					write_http_echo(ss->client_socket);
 				}
+				return 0;
 			}
 		}
 	}
