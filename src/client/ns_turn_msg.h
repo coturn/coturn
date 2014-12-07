@@ -194,7 +194,6 @@ size_t get_hmackey_size(SHATYPE shatype);
 
 #define TURN_RANDOM_SIZE (sizeof(long))
 long turn_random(void);
-void turn_random32_size(u32bits *ar, size_t sz);
 
 int stun_produce_integrity_key_str(u08bits *uname, u08bits *realm, u08bits *upwd, hmackey_t key, SHATYPE shatype);
 int stun_calculate_hmac(const u08bits *buf, size_t len, const u08bits *key, size_t sz, u08bits *hmac, unsigned int *hmac_len, SHATYPE shatype);
