@@ -1,3 +1,10 @@
+11/29/2014 Oleg Moskalenko <mom040267@gmail.com>
+Version 4.3.1.3 'Tolomei':
+	- Reliability fixes (Issue 141 from rfc5766-turn-server).
+	- HTTP/HTTPS echo fixed.
+	- External address mapping fixes for Amazon EC2.
+	- Minor docs improvements.
+	
 11/23/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.3.1.2 'Tolomei':
 	- Debian package fixes.

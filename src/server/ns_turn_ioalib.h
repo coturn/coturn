@@ -96,6 +96,8 @@ typedef enum _SOCKET_TYPE SOCKET_TYPE;
 enum _SOCKET_APP_TYPE {
 	UNKNOWN_APP_SOCKET,
 	CLIENT_SOCKET,
+	HTTP_CLIENT_SOCKET,
+	HTTPS_CLIENT_SOCKET,
 	RELAY_SOCKET,
 	RELAY_RTCP_SOCKET,
 	TCP_CLIENT_DATA_SOCKET,
@@ -225,6 +227,8 @@ ioa_socket_handle  ioa_create_connecting_tcp_relay_socket(ioa_socket_handle s, i
 int get_ioa_socket_from_reservation(ioa_engine_handle e, u64bits in_reservation_token, ioa_socket_handle *s, u08bits *realm);
 
 int get_ioa_socket_address_family(ioa_socket_handle s);
+const char* get_ioa_socket_cipher(ioa_socket_handle s);
+const char* get_ioa_socket_ssl_method(ioa_socket_handle s);
 SOCKET_TYPE get_ioa_socket_type(ioa_socket_handle s);
 SOCKET_APP_TYPE get_ioa_socket_app_type(ioa_socket_handle s);
 const char* get_ioa_socket_tls_method(ioa_socket_handle s);
@@ -271,6 +275,11 @@ int get_realm_options_by_origin(char *origin, realm_options_t* ro);
 void get_realm_options_by_name(char *realm, realm_options_t* ro);
 int get_canonic_origin(const char* o, char *co, int sz);
 int get_default_protocol_port(const char* scheme, size_t slen);
+
+///////////// HTTP ////////////////////
+
+void write_http_echo(ioa_socket_handle s);
+void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh);
 
 ///////////////////////////////////////
 

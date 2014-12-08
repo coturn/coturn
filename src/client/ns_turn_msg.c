@@ -101,11 +101,12 @@ long turn_random(void)
 	return ret;
 }
 
-void turn_random32_size(u32bits *ar, size_t sz)
+static void turn_random_tid_size(void *id)
 {
-	if(!RAND_bytes((unsigned char *)ar, sz<<2)) {
+	u32bits *ar=(u32bits*)id;
+	if(!RAND_pseudo_bytes((unsigned char *)ar,12)) {
 		size_t i;
-		for(i=0;i<sz;++i) {
+		for(i=0;i<3;++i) {
 			ar[i] = (u32bits)random();
 		}
 	}
@@ -954,8 +955,7 @@ void stun_tid_message_cpy(u08bits* buf, const stun_tid* id) {
 
 void stun_tid_generate(stun_tid* id) {
   if(id) {
-    u32bits *w=(u32bits*)(id->tsx_id);
-    turn_random32_size(w,3);
+    turn_random_tid_size(id->tsx_id);
   }
 }
 
