@@ -398,7 +398,8 @@ static char Usage[] = "Usage: turnserver [options]\n"
 " --no-multicast-peers				Disallow peers on well-known broadcast addresses (224.0.0.0 and above, and FFXX:*).\n"
 " -m, --relay-threads		<number>	Number of relay threads to handle the established connections\n"
 "						(in addition to authentication thread and the listener thread).\n"
-"						If set to 0 then application runs in single-threaded mode.\n"
+"						If explicitly set to 0 then application runs in single-threaded mode.\n"
+"						If not set then a default OS-dependent optimal algorithm will be employed.\n"
 "						The default thread number is the number of CPUs.\n"
 "						In older systems (pre-Linux 3.9) the number of UDP relay threads always equals\n"
 "						the number of listening endpoints (unless -m 0 is set).\n"
@@ -1993,6 +1994,23 @@ int main(int argc, char **argv)
 		}
 	}
 
+	if(turn_params.external_ip && turn_params.relay_addrs) {
+		size_t ir = 0;
+		for(ir = 0; ir < turn_params.relays_number; ++ir) {
+			if(turn_params.relay_addrs[ir]) {
+				const char* sra = (const char*)turn_params.relay_addrs[ir];
+				if((strstr(sra,"127.0.0.1") != sra)&&(strstr(sra,"::1")!=sra)) {
+					ioa_addr ra;
+					if(make_ioa_addr((const u08bits*)sra,0,&ra)<0) {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"-X : Wrong address format: %s\n",sra);
+					} else if(ra.ss.sa_family == turn_params.external_ip->ss.sa_family) {
+						ioa_addr_add_mapping(turn_params.external_ip,&ra);
+					}
+				}
+			}
+		}
+	}
+
 	if(turn_params.turn_daemon) {
 #if !defined(TURN_HAS_DAEMON)
 		pid_t pid = fork();
@@ -2063,15 +2081,21 @@ int main(int argc, char **argv)
 
 #if defined(OPENSSL_THREADS)
 
-static pthread_mutex_t* mutex_buf = NULL;
+static char some_buffer[65536];
+
+//array larger than anything that OpenSSL may need:
+static pthread_mutex_t mutex_buf[256];
+static int mutex_buf_initialized = 0;
 
 static void locking_function(int mode, int n, const char *file, int line) {
   UNUSED_ARG(file);
   UNUSED_ARG(line);
-  if (mode & CRYPTO_LOCK)
-    pthread_mutex_lock(&mutex_buf[n]);
-  else
-    pthread_mutex_unlock(&mutex_buf[n]);
+  if(mutex_buf_initialized && (n < CRYPTO_num_locks())) {
+	  if (mode & CRYPTO_LOCK)
+		  pthread_mutex_lock(&(mutex_buf[n]));
+	  else
+		  pthread_mutex_unlock(&(mutex_buf[n]));
+  }
 }
 
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L
@@ -2094,12 +2118,13 @@ static int THREAD_setup(void) {
 
 	int i;
 
-	mutex_buf = (pthread_mutex_t*) turn_malloc(CRYPTO_num_locks()
-			* sizeof(pthread_mutex_t));
-	if (!mutex_buf)
-		return 0;
-	for (i = 0; i < CRYPTO_num_locks(); i++)
-		pthread_mutex_init(&mutex_buf[i], NULL);
+	some_buffer[0] = 0;
+
+	for (i = 0; i < CRYPTO_num_locks(); i++) {
+		pthread_mutex_init(&(mutex_buf[i]), NULL);
+	}
+
+	mutex_buf_initialized = 1;
 
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L
 	CRYPTO_THREADID_set_callback(id_function);
@@ -2120,7 +2145,7 @@ int THREAD_cleanup(void) {
 
   int i;
 
-  if (!mutex_buf)
+  if (!mutex_buf_initialized)
     return 0;
 
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L
@@ -2130,10 +2155,11 @@ int THREAD_cleanup(void) {
 #endif
 
   CRYPTO_set_locking_callback(NULL);
-  for (i = 0; i < CRYPTO_num_locks(); i++)
-    pthread_mutex_destroy(&mutex_buf[i]);
-  turn_free(mutex_buf,sizeof(pthread_mutex_t));
-  mutex_buf = NULL;
+  for (i = 0; i < CRYPTO_num_locks(); i++) {
+	  pthread_mutex_destroy(&(mutex_buf[i]));
+  }
+
+  mutex_buf_initialized = 0;
 
 #endif
 

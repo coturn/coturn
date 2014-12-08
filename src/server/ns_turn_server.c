@@ -4161,8 +4161,11 @@ static void client_to_be_allocated_timeout_handler(ioa_engine_handle e,
 	int to_close = 0;
 
 	ioa_socket_handle s = ss->client_socket;
+
 	if(!s || ioa_socket_tobeclosed(s)) {
 		to_close = 1;
+	} else if(get_ioa_socket_app_type(s) == HTTPS_CLIENT_SOCKET) {
+		;
 	} else {
 		ioa_socket_handle rs4 = ss->alloc.relay_sessions[ALLOC_IPV4_INDEX].s;
 		ioa_socket_handle rs6 = ss->alloc.relay_sessions[ALLOC_IPV6_INDEX].s;
@@ -4397,24 +4400,6 @@ static int refresh_relay_connection(turn_turnserver* server,
 	}
 }
 
-static void write_http_echo(turn_turnserver *server, ts_ur_super_session *ss)
-{
-	if(server && ss && ss->client_socket && !(ss->to_be_closed)) {
-		ioa_network_buffer_handle nbh_http = ioa_network_buffer_allocate(server->e);
-		size_t len_http = ioa_network_buffer_get_size(nbh_http);
-		u08bits *data = ioa_network_buffer_data(nbh_http);
-		char data_http[1025];
-		char content_http[1025];
-		const char* title = "TURN Server";
-		snprintf(content_http,sizeof(content_http)-1,"<!DOCTYPE html>\r\n<html>\r\n  <head>\r\n    <title>%s</title>\r\n  </head>\r\n  <body>\r\n    %s\r\n  </body>\r\n</html>\r\n",title,title);
-		snprintf(data_http,sizeof(data_http)-1,"HTTP/1.1 200 OK\r\nServer: %s\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Length: %d\r\n\r\n%s",TURN_SOFTWARE,(int)strlen(content_http),content_http);
-		len_http = strlen(data_http);
-		ns_bcopy(data_http,data,len_http);
-		ioa_network_buffer_set_size(nbh_http,len_http);
-		send_data_from_ioa_socket_nbh(ss->client_socket, NULL, nbh_http, TTL_IGNORE, TOS_IGNORE);
-	}
-}
-
 static int read_client_connection(turn_turnserver *server,
 				  	  	  	  	  ts_ur_super_session *ss, ioa_net_data *in_buffer,
 				  	  	  	  	  int can_resume, int count_usage) {
@@ -4451,9 +4436,20 @@ static int read_client_connection(turn_turnserver *server,
 	size_t blen = ioa_network_buffer_get_size(in_buffer->nbh);
 	size_t orig_blen = blen;
 	SOCKET_TYPE st = get_ioa_socket_type(ss->client_socket);
+	SOCKET_APP_TYPE sat = get_ioa_socket_app_type(ss->client_socket);
 	int is_padding_mandatory = ((st == TCP_SOCKET)||(st==TLS_SOCKET)||(st==TENTATIVE_TCP_SOCKET));
 
-	if (stun_is_channel_message_str(ioa_network_buffer_data(in_buffer->nbh), 
+	if(sat == HTTP_CLIENT_SOCKET) {
+
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: HTTP connection input: %s\n", __FUNCTION__, (char*)ioa_network_buffer_data(in_buffer->nbh));
+		write_http_echo(ss->client_socket);
+
+	} else if(sat == HTTPS_CLIENT_SOCKET) {
+
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: HTTPS connection input: %s\n", __FUNCTION__, (char*)ioa_network_buffer_data(in_buffer->nbh));
+		handle_https(ss->client_socket,in_buffer->nbh);
+
+	} else if (stun_is_channel_message_str(ioa_network_buffer_data(in_buffer->nbh),
 					&blen,
 					&chnum,
 					is_padding_mandatory)) {
@@ -4540,9 +4536,20 @@ static int read_client_connection(turn_turnserver *server,
 	} else {
 		SOCKET_TYPE st = get_ioa_socket_type(ss->client_socket);
 		if((st == TCP_SOCKET)||(st==TLS_SOCKET)||(st==TENTATIVE_TCP_SOCKET)) {
-			if(is_http_get((char*)ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh)))
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: HTTP request: %s\n", __FUNCTION__, (char*)ioa_network_buffer_data(in_buffer->nbh));
-				write_http_echo(server,ss);
+			if(is_http_get((char*)ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh))) {
+				const char *proto = "HTTP";
+				if(st==TLS_SOCKET) {
+					proto = "HTTPS";
+					set_ioa_socket_app_type(ss->client_socket,HTTPS_CLIENT_SOCKET);
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s (%s %s) request: %s\n", __FUNCTION__, proto, get_ioa_socket_cipher(ss->client_socket), get_ioa_socket_ssl_method(ss->client_socket), (char*)ioa_network_buffer_data(in_buffer->nbh));
+					handle_https(ss->client_socket,in_buffer->nbh);
+				} else {
+					set_ioa_socket_app_type(ss->client_socket,HTTP_CLIENT_SOCKET);
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s request: %s\n", __FUNCTION__, proto, (char*)ioa_network_buffer_data(in_buffer->nbh));
+					write_http_echo(ss->client_socket);
+				}
+				return 0;
+			}
 		}
 	}
 
@@ -4623,24 +4630,25 @@ int open_client_connection_session(turn_turnserver* server,
 static void peer_input_handler(ioa_socket_handle s, int event_type,
 		ioa_net_data *in_buffer, void *arg, int can_resume) {
 
-	if (!(event_type & IOA_EV_READ) || !arg)
-		return;
+	if (!(event_type & IOA_EV_READ) || !arg) return;
 
-	if(in_buffer->recv_ttl==0)
-		return;
+	if(in_buffer->recv_ttl==0) return;
 
-	UNUSED_ARG(s);
 	UNUSED_ARG(can_resume);
+
+	if(!s || ioa_socket_tobeclosed(s)) return;
 
 	ts_ur_super_session* ss = (ts_ur_super_session*) arg;
 
-	if(!ss || !s) return;
+	if(!ss) return;
+
+	if(ss->to_be_closed) return;
+
+	if(!(ss->client_socket) || ioa_socket_tobeclosed(ss->client_socket)) return;
 
 	turn_turnserver *server = (turn_turnserver*) (ss->server);
 
-	if (!server) {
-		return;
-	}
+	if (!server) return;
 
 	relay_endpoint_session* elem = get_relay_session_ss(ss, get_ioa_socket_address_family(s));
 	if (elem->s == NULL) {
@@ -4653,8 +4661,6 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 			(int)(ioa_network_buffer_get_capacity_udp() - offset));
 
 	if (ilen >= 0) {
-
-		size_t len = (size_t)(ilen);
 
 		allocation* a = get_allocation_ss(ss);
 		if (is_allocation_valid(a)) {
@@ -4672,6 +4678,9 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 			}
 
 			if (chnum) {
+
+				size_t len = (size_t)(ilen);
+
 				nbh = in_buffer->nbh;
 
 				ioa_network_buffer_add_offset_size(nbh,
@@ -4693,6 +4702,9 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 							(int) (chnum));
 				}
 			} else {
+
+				size_t len = 0;
+
 				nbh = ioa_network_buffer_allocate(server->e);
 				stun_init_indication_str(STUN_METHOD_DATA, ioa_network_buffer_data(nbh), &len);
 				stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_DATA,

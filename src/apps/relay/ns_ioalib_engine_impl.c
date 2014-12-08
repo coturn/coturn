@@ -108,66 +108,67 @@ static int bufferevent_enabled(struct bufferevent *bufev, short flags)
   return (bufferevent_get_enabled(bufev) & flags);
 }
 
-static int is_socket_writeable(ioa_socket_handle s, size_t sz, const char *msg, int option) 
+static int is_socket_writeable(ioa_socket_handle s, size_t sz, const char *msg, int option)
 {
-  UNUSED_ARG(sz);
-  UNUSED_ARG(msg);
-  UNUSED_ARG(option);
+	UNUSED_ARG(sz);
+	UNUSED_ARG(msg);
+	UNUSED_ARG(option);
 
-  if(!s)
-	  return 0;
+	if (!s)
+		return 0;
 
-  if(!(s->done) && !(s->broken) && !(s->tobeclosed)) {
+	if (!(s->done) && !(s->broken) && !(s->tobeclosed)) {
 
-    switch(s->st) {
-      
-    case TCP_SOCKET:
-    case TLS_SOCKET:
-      if(s->bev) {
+		switch (s->st){
 
-	struct evbuffer *evb = bufferevent_get_output(s->bev);
-	
-	if(evb) {
-	  size_t bufsz = evbuffer_get_length(evb);
-	  size_t newsz = bufsz + sz;
-	  
-	  switch(s->sat) {
-	  case TCP_CLIENT_DATA_SOCKET:
-	  case TCP_RELAY_DATA_SOCKET:
-	    
-	    switch(option) {
-	    case 0:
-	    case 1:
-	      if(newsz >= BUFFEREVENT_MAX_TCP_TO_TCP_WRITE) {
-	    	  return 0;
-	      }
-	      break;
-	    case 3:
-	    case 4:
-	    	if(newsz >= BUFFEREVENT_MAX_TCP_TO_TCP_WRITE) {
-	    	  return 0;
-	    	}
-	      break;
-	    default:
-	      return 1;
-	    };
-	    break;
-	  default:
-	    if(option == 2) {
-	      if(newsz >= BUFFEREVENT_MAX_UDP_TO_TCP_WRITE) {
-	    	  return 0;
-	      }
-	    }
-	  };
+		case TCP_SOCKET:
+		case TLS_SOCKET:
+			if (s->bev) {
+
+				struct evbuffer *evb = bufferevent_get_output(s->bev);
+
+				if (evb) {
+					size_t bufsz = evbuffer_get_length(evb);
+					size_t newsz = bufsz + sz;
+
+					switch (s->sat){
+					case TCP_CLIENT_DATA_SOCKET:
+					case TCP_RELAY_DATA_SOCKET:
+
+						switch (option){
+						case 0:
+						case 1:
+							if (newsz >= BUFFEREVENT_MAX_TCP_TO_TCP_WRITE) {
+								return 0;
+							}
+							break;
+						case 3:
+						case 4:
+							if (newsz >= BUFFEREVENT_MAX_TCP_TO_TCP_WRITE) {
+								return 0;
+							}
+							break;
+						default:
+							return 1;
+						}
+						;
+						break;
+					default:
+						if (option == 2) {
+							if (newsz >= BUFFEREVENT_MAX_UDP_TO_TCP_WRITE) {
+								return 0;
+							}
+						}
+					};
+				}
+			}
+			break;
+		default:
+			;
+		};
 	}
-      }
-      break;
-    default:
-      ;
-    };
-  }
 
-  return 1;
+	return 1;
 }
 
 static void log_socket_event(ioa_socket_handle s, const char *msg, int error) {
@@ -3447,6 +3448,22 @@ void ioa_network_buffer_delete(ioa_engine_handle e, ioa_network_buffer_handle nb
 }
 
 /////////// REPORTING STATUS /////////////////////
+
+const char* get_ioa_socket_cipher(ioa_socket_handle s)
+{
+	if(s && s->ssl) {
+		return SSL_get_cipher(s->ssl);
+	}
+	return "no SSL";
+}
+
+const char* get_ioa_socket_ssl_method(ioa_socket_handle s)
+{
+	if(s && s->ssl) {
+		return turn_get_ssl_method(s->ssl, s->orig_ctx_type);
+	}
+	return "no SSL";
+}
 
 void turn_report_allocation_set(void *a, turn_time_t lifetime, int refresh)
 {
