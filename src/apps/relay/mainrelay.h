@@ -188,6 +188,9 @@ typedef struct _turn_params_ {
 #endif
   
   SSL_CTX *dtls_ctx;
+#if defined(SSL_OP_NO_DTLSv1_2)
+  SSL_CTX *dtls_ctx_v1_2;
+#endif
   
   DH_KEY_SIZE dh_key_size;
   

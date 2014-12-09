@@ -79,7 +79,9 @@ static int get_allocate_address_family(ioa_addr *relay_addr) {
 
 static SSL* tls_connect(ioa_socket_raw fd, ioa_addr *remote_addr, int *try_again, int connect_cycle)
 {
+
 	int ctxtype = (int)(((unsigned long)random())%root_tls_ctx_num);
+
 	SSL *ssl;
 
 	ssl = SSL_NEW(root_tls_ctx[ctxtype]);

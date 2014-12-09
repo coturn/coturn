@@ -440,7 +440,11 @@ void set_ssl_ctx(ioa_engine_handle e,
 		SSL_CTX *tls_ctx_v1_2,
 #endif
 #endif
-		SSL_CTX *dtls_ctx)
+		SSL_CTX *dtls_ctx
+#if defined(SSL_OP_NO_DTLSv1_2)
+		,SSL_CTX *dtls_ctx_v1_2
+#endif
+)
 {
 	e->tls_ctx_ssl23 = tls_ctx_ssl23;
 	e->tls_ctx_v1_0 = tls_ctx_v1_0;
@@ -451,6 +455,9 @@ void set_ssl_ctx(ioa_engine_handle e,
 #endif
 #endif
 	e->dtls_ctx = dtls_ctx;
+#if defined(SSL_OP_NO_DTLSv1_2)
+	e->dtls_ctx_v1_2 = dtls_ctx_v1_2;
+#endif
 }
 
 void ioa_engine_set_rtcp_map(ioa_engine_handle e, rtcp_map *rtcpmap)
