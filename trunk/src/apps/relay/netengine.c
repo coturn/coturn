@@ -947,7 +947,11 @@ static ioa_engine_handle create_new_listener_engine(void)
 					turn_params.tls_ctx_v1_2,
 #endif
 #endif
-					turn_params.dtls_ctx);
+					turn_params.dtls_ctx
+#if defined(SSL_OP_NO_DTLSv1_2)
+					,turn_params.dtls_ctx_v1_2
+#endif
+	);
 	ioa_engine_set_rtcp_map(e, turn_params.listener.rtcpmap);
 	return e;
 }
@@ -997,7 +1001,11 @@ static void setup_listener(void)
 					turn_params.tls_ctx_v1_2,
 #endif
 #endif
-					turn_params.dtls_ctx);
+					turn_params.dtls_ctx
+#if defined(SSL_OP_NO_DTLSv1_2)
+					,turn_params.dtls_ctx_v1_2
+#endif
+	);
 
 	turn_params.listener.rtcpmap = rtcp_map_create(turn_params.listener.ioa_eng);
 
@@ -1565,7 +1573,11 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
 						turn_params.tls_ctx_v1_2,
 #endif
 #endif
-						turn_params.dtls_ctx);
+						turn_params.dtls_ctx
+#if defined(SSL_OP_NO_DTLSv1_2)
+					,turn_params.dtls_ctx_v1_2
+#endif
+		);
 		ioa_engine_set_rtcp_map(rs->ioa_eng, turn_params.listener.rtcpmap);
 	}
 

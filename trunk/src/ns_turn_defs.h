@@ -31,7 +31,7 @@
 #ifndef __IOADEFS__
 #define __IOADEFS__
 
-#define TURN_SERVER_VERSION "4.3.1.3"
+#define TURN_SERVER_VERSION "4.3.2.1"
 #define TURN_SERVER_VERSION_NAME "Tolomei"
 #define TURN_SOFTWARE "Coturn-" TURN_SERVER_VERSION " '" TURN_SERVER_VERSION_NAME "'"
 

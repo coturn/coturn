@@ -864,6 +864,14 @@ static const char* turn_get_method(const SSL_METHOD *method, const char* mdefaul
 					return "DTLSv1.0";
 			} else if(method == DTLSv1_client_method()) {
 				return "DTLSv1.0";
+
+#if defined(SSL_OP_NO_DTLSv1_2)
+			} else if(method == DTLSv1_2_server_method()) {
+					return "DTLSv1.2";
+			} else if(method == DTLSv1_2_client_method()) {
+				return "DTLSv1.2";
+#endif
+
 #endif
 			} else {
 				if(mdefault)

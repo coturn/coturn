@@ -65,17 +65,17 @@ static int anon_credentials = 0;
 #define DEFAULT_GENERAL_RELAY_SERVERS_NUMBER (1)
 
 turn_params_t turn_params = {
-
 NULL, NULL,
-
 #if defined(SSL_TXT_TLSV1_1)
 	NULL,
 #if defined(SSL_TXT_TLSV1_2)
 	NULL,
 #endif
 #endif
-
 NULL,
+#if defined(SSL_OP_NO_DTLSv1_2)
+NULL,
+#endif
 
 DH_1066, "", DEFAULT_EC_CURVE_NAME, "",
 "turn_server_cert.pem","turn_server_pkey.pem", "", "",
@@ -2546,7 +2546,15 @@ static void openssl_setup(void)
 		turn_params.dtls_ctx = SSL_CTX_new(DTLSv1_server_method());
 		set_ctx(turn_params.dtls_ctx,"DTLS");
 		SSL_CTX_set_read_ahead(turn_params.dtls_ctx, 1);
+
+#if defined(SSL_OP_NO_DTLSv1_2)
+		turn_params.dtls_ctx_v1_2 = SSL_CTX_new(DTLSv1_2_server_method());
+		set_ctx(turn_params.dtls_ctx_v1_2,"DTLS1,2");
+		SSL_CTX_set_read_ahead(turn_params.dtls_ctx_v1_2, 1);
+#endif
+
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS cipher suite: %s\n",turn_params.cipher_list);
+
 #endif
 	}
 }

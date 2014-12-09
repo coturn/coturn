@@ -150,6 +150,9 @@ struct _ioa_engine
 #endif
 #endif
   SSL_CTX *dtls_ctx;
+#if defined(SSL_OP_NO_DTLSv1_2)
+  SSL_CTX *dtls_ctx_v1_2;
+#endif
   turn_time_t jiffie; /* bandwidth check interval */
   ioa_timer_handle timer_ev;
   s08bits cmsg[TURN_CMSG_SZ+1];
@@ -258,7 +261,11 @@ void set_ssl_ctx(ioa_engine_handle e,
 		SSL_CTX *tls_ctx_v1_2,
 #endif
 #endif
-		SSL_CTX *dtls_ctx);
+		SSL_CTX *dtls_ctx
+#if defined(SSL_OP_NO_DTLSv1_2)
+		,SSL_CTX *dtls_ctx_v1_2
+#endif
+);
 
 void ioa_engine_set_rtcp_map(ioa_engine_handle e, rtcp_map *rtcpmap);
 
