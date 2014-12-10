@@ -57,9 +57,7 @@
 
 1) For extra difficult NAT/FWs, consider implementing Websockets.
 
-2) ALPN with TLS and DTLS (when OpenSSL 1.0.2 is available).
-
-3) Redirect draft.
+2) Redirect draft.
 
 ==================================================================
 

@@ -515,9 +515,9 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						Flags --dh566 and --dh2066 are ignored when the DH key is taken from a file.\n"
 " --no-sslv2					Do not allow SSLv2 protocol.\n"
 " --no-sslv3					Do not allow SSLv3 protocol.\n"
-" --no-tlsv1					Do not allow TLSv1 protocol.\n"
+" --no-tlsv1					Do not allow TLSv1/DTLSv1 protocol.\n"
 " --no-tlsv1_1					Do not allow TLSv1.1 protocol.\n"
-" --no-tlsv1_2					Do not allow TLSv1.2 protocol.\n"
+" --no-tlsv1_2					Do not allow TLSv1.2/DTLSv1.2 protocol.\n"
 " --no-udp					Do not start UDP client listeners.\n"
 " --no-tcp					Do not start TCP client listeners.\n"
 " --no-tls					Do not start TLS client listeners.\n"
@@ -2339,8 +2339,59 @@ static int pem_password_func(char *buf, int size, int rwflag, void *password)
 	return (strlen(buf));
 }
 
+#if OPENSSL_VERSION_NUMBER >= OPENSSL_FIRST_ALPN_VERSION
+
+static int ServerALPNCallback(SSL *s,
+				const unsigned char **out,
+				unsigned char *outlen,
+				const unsigned char *in,
+				unsigned int inlen,
+				void *arg) {
+
+	UNUSED_ARG(s);
+	UNUSED_ARG(arg);
+
+	unsigned char sa_len = (unsigned char)strlen(STUN_ALPN);
+	unsigned char ta_len = (unsigned char)strlen(TURN_ALPN);
+	unsigned char ha_len = (unsigned char)strlen(HTTP_ALPN);
+
+	int found_http = 0;
+
+	const unsigned char *ptr = in;
+	while(ptr < (in+inlen)) {
+		unsigned char current_len = *ptr;
+		if(ptr+1+current_len > in+inlen)
+			break;
+		if((current_len == sa_len) && (memcmp(ptr+1,STUN_ALPN,sa_len)==0)) {
+			*out = ptr+1;
+			*outlen = sa_len;
+			return SSL_TLSEXT_ERR_OK;
+		}
+		if((current_len == ta_len) && (memcmp(ptr+1,TURN_ALPN,ta_len)==0)) {
+			*out = ptr+1;
+			*outlen = ta_len;
+			return SSL_TLSEXT_ERR_OK;
+		}
+		if((current_len == ha_len) && (memcmp(ptr+1,HTTP_ALPN,ha_len)==0)) {
+			found_http = 1;
+		}
+		ptr += 1 + current_len;
+	}
+
+	if(found_http)
+		return SSL_TLSEXT_ERR_NOACK;
+
+	return SSL_TLSEXT_ERR_NOACK; //???
+}
+
+#endif
+
 static void set_ctx(SSL_CTX* ctx, const char *protocol)
 {
+#if OPENSSL_VERSION_NUMBER >= OPENSSL_FIRST_ALPN_VERSION
+	SSL_CTX_set_alpn_select_cb(ctx, ServerALPNCallback, NULL);
+#endif
+
 	SSL_CTX_set_default_passwd_cb_userdata(ctx, turn_params.tls_password);
 
 	SSL_CTX_set_default_passwd_cb(ctx, pem_password_func);
@@ -2437,6 +2488,14 @@ static void set_ctx(SSL_CTX* ctx, const char *protocol)
 				dh = get_dh1066();
 		}
 
+		/*
+		if(!dh) {
+			dh = DH_new();
+			DH_generate_parameters_ex(dh, 32, DH_GENERATOR_2, 0);
+			DH_generate_key(dh);
+		}
+		*/
+
 		if(!dh) {
 		  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: cannot allocate DH suite\n",__FUNCTION__);
 		} else {
@@ -2467,6 +2526,16 @@ static void set_ctx(SSL_CTX* ctx, const char *protocol)
 #if defined(SSL_OP_NO_TLSv1_2)
 		if(turn_params.no_tlsv1_2)
 			op |= SSL_OP_NO_TLSv1_2;
+#endif
+
+#if defined(SSL_OP_NO_DTLSv1)
+		if(turn_params.no_tlsv1)
+			op |= SSL_OP_NO_DTLSv1;
+#endif
+
+#if defined(SSL_OP_NO_DTLSv1_2)
+		if(turn_params.no_tlsv1_2)
+			op |= SSL_OP_NO_DTLSv1_2;
 #endif
 
 #if defined(SSL_OP_CIPHER_SERVER_PREFERENCE)

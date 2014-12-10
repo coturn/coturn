@@ -195,11 +195,11 @@ Flags:
 
 --no-sslv3		Do not allow SSLv3 protocol.
 
---no-tlsv1		Do not allow TLSv1 protocol.
+--no-tlsv1		Do not allow TLSv1/DTLSv1 protocol.
 
 --no-tlsv1_1		Do not allow TLSv1.1 protocol.
 
---no-tlsv1_2		Do not allow TLSv1.2 protocol.
+--no-tlsv1_2		Do not allow TLSv1.2/DTLSv1.2 protocol.
 
 --no-udp		Do not start UDP client listeners.
 
@@ -775,7 +775,18 @@ it will set the users for you (see the turnadmin manuals). If you are using SQLi
 turnserver or turnadmin will initialize the empty database, for you, when started. The 
 TURN server installation process creates an empty initialized SQLite database in the default 
 location (/var/db/turndb or /usr/local/var/db/turndb or /var/lib/turn/turndb, depending on the system).
-    
+
+=================================
+
+ALPN
+
+The server supports ALPNs "stun.turn" and "stun.nat-discovery", when
+compiled with OpenSSL 1.0.2 or newer. If the server receives a TLS/DTLS
+ClientHello message that contains one or both of those ALPNs, then the
+server chooses the first stun.* label and sends it back (in the ServerHello)
+in the ALPN extention field. If no stun.* label is found, then the server
+does not include the ALPN information into the ServerHello.
+
 =================================
 
 LIBRARIES
@@ -786,7 +797,7 @@ The C++ wrapper for the messaging functionality is located in TurnMsgLib.h heade
 An example of C++ code can be found in stunclient.c file. 
 
 =================================
- 
+
 DOCS
 
 After installation, run the command:
