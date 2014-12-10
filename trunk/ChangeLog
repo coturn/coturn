@@ -1,6 +1,7 @@
 12/09/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.3.2.1 'Tolomei':
-	- DTLS v1.2 supported (for OpenSSL 1.0.2+);
+	- DTLS v1.2 supported (when compiled with OpenSSL 1.0.2+ );
+	- STUN/TURN ALPN supported (when compiled with OpenSSL 1.0.2+ );
 
 11/29/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.3.1.3 'Tolomei':

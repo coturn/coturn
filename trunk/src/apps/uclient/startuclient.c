@@ -50,6 +50,11 @@ static uint64_t current_reservation_token = 0;
 static int allocate_rtcp = 0;
 static const int never_allocate_rtcp = 0;
 
+#if OPENSSL_VERSION_NUMBER >= OPENSSL_FIRST_ALPN_VERSION
+static const unsigned char kALPNProtos[] = "\x09stun.turn\x12stun.nat-discovery";
+static const size_t kALPNProtosLen = sizeof(kALPNProtos) - 1;
+#endif
+
 /////////////////////////////////////////
 
 int rare_event(void)
@@ -85,6 +90,10 @@ static SSL* tls_connect(ioa_socket_raw fd, ioa_addr *remote_addr, int *try_again
 	SSL *ssl;
 
 	ssl = SSL_NEW(root_tls_ctx[ctxtype]);
+
+#if OPENSSL_VERSION_NUMBER >= OPENSSL_FIRST_ALPN_VERSION
+	SSL_set_alpn_protos(ssl, kALPNProtos, kALPNProtosLen);
+#endif
 
 	if(use_tcp) {
 		SSL_set_fd(ssl, fd);
