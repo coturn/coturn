@@ -1561,8 +1561,6 @@ ioa_socket_handle create_ioa_socket_from_ssl(ioa_engine_handle e, ioa_socket_han
 
 	if(ret) {
 		set_socket_ssl(ret,ssl);
-		if(st == DTLS_SOCKET)
-			STRCPY(ret->orig_ctx_type,"DTLSv1.0");
 	}
 
 	return ret;
@@ -1761,8 +1759,6 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s)
 		addr_cpy(&(ret->local_addr),&(s->local_addr));
 		ret->connected = s->connected;
 		addr_cpy(&(ret->remote_addr),&(s->remote_addr));
-
-		STRCPY(ret->orig_ctx_type, s->orig_ctx_type);
 		
 		delete_socket_from_map(s);
 		delete_socket_from_parent(s);
@@ -2359,7 +2355,6 @@ static int socket_input_worker(ioa_socket_handle s)
 			case TURN_TLS_v1_2:
 				if(s->e->tls_ctx_v1_2) {
 					set_socket_ssl(s,SSL_NEW(s->e->tls_ctx_v1_2));
-					STRCPY(s->orig_ctx_type,"TLSv1.2");
 				}
 				break;
 #endif
@@ -2367,20 +2362,17 @@ static int socket_input_worker(ioa_socket_handle s)
 			case TURN_TLS_v1_1:
 				if(s->e->tls_ctx_v1_1) {
 					set_socket_ssl(s,SSL_NEW(s->e->tls_ctx_v1_1));
-					STRCPY(s->orig_ctx_type,"TLSv1.1");
 				}
 				break;
 #endif
 			case TURN_TLS_v1_0:
 				if(s->e->tls_ctx_v1_0) {
 					set_socket_ssl(s,SSL_NEW(s->e->tls_ctx_v1_0));
-					STRCPY(s->orig_ctx_type,"TLSv1.0");
 				}
 				break;
 			default:
 				if(s->e->tls_ctx_ssl23) {
 					set_socket_ssl(s,SSL_NEW(s->e->tls_ctx_ssl23));
-					STRCPY(s->orig_ctx_type,"SSLv23");
 				} else {
 					s->tobeclosed = 1;
 					return 0;
@@ -3252,7 +3244,6 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 						if(!(s->ssl)) {
 							//??? how we can get to this point ???
 							set_socket_ssl(s,SSL_NEW(e->tls_ctx_ssl23));
-							STRCPY(s->orig_ctx_type,"SSLv23");
 							s->bev = bufferevent_openssl_socket_new(s->e->event_base,
 											s->fd,
 											s->ssl,
@@ -3467,7 +3458,7 @@ const char* get_ioa_socket_cipher(ioa_socket_handle s)
 const char* get_ioa_socket_ssl_method(ioa_socket_handle s)
 {
 	if(s && s->ssl) {
-		return turn_get_ssl_method(s->ssl, s->orig_ctx_type);
+		return turn_get_ssl_method(s->ssl, "UNKNOWN");
 	}
 	return "no SSL";
 }
@@ -3485,8 +3476,8 @@ void turn_report_allocation_set(void *a, turn_time_t lifetime, int refresh)
 				ioa_engine_handle e = turn_server_get_engine(server);
 				if(e && e->verbose && ss->client_socket) {
 					if(ss->client_socket->ssl) {
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"session %018llu: %s, realm=<%s>, username=<%s>, lifetime=%lu, cipher=%s, method=%s (%s)\n", (unsigned long long)ss->id, status, (char*)ss->realm_options.name, (char*)ss->username, (unsigned long)lifetime, SSL_get_cipher(ss->client_socket->ssl),
-							turn_get_ssl_method(ss->client_socket->ssl, ss->client_socket->orig_ctx_type),ss->client_socket->orig_ctx_type);
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"session %018llu: %s, realm=<%s>, username=<%s>, lifetime=%lu, cipher=%s, method=%s\n", (unsigned long long)ss->id, status, (char*)ss->realm_options.name, (char*)ss->username, (unsigned long)lifetime, SSL_get_cipher(ss->client_socket->ssl),
+							turn_get_ssl_method(ss->client_socket->ssl, "UNKNOWN"));
 					} else {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"session %018llu: %s, realm=<%s>, username=<%s>, lifetime=%lu\n", (unsigned long long)ss->id, status, (char*)ss->realm_options.name, (char*)ss->username, (unsigned long)lifetime);
 					}
