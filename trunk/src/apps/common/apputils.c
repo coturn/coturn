@@ -861,13 +861,13 @@ static const char* turn_get_method(const SSL_METHOD *method, const char* mdefaul
 #endif
 #if !defined(TURN_NO_DTLS)
 			} else if(method == DTLSv1_server_method()) {
-					return "DTLSv1.0";
+				return "DTLSv1.0";
 			} else if(method == DTLSv1_client_method()) {
 				return "DTLSv1.0";
 
 #if defined(SSL_OP_NO_DTLSv1_2)
 			} else if(method == DTLSv1_2_server_method()) {
-					return "DTLSv1.2";
+				return "DTLSv1.2";
 			} else if(method == DTLSv1_2_client_method()) {
 				return "DTLSv1.2";
 #endif
@@ -880,20 +880,23 @@ static const char* turn_get_method(const SSL_METHOD *method, const char* mdefaul
 			}
 		}
 	}
-
 }
 
 const char* turn_get_ssl_method(SSL *ssl, const char* mdefault)
 {
-	if(!ssl)
-		return mdefault;
-	else {
+	const char* ret = "unknown";
+	if(!ssl) {
+		ret = mdefault;
+	} else {
 		const SSL_METHOD *method = SSL_get_ssl_method(ssl);
-		if(!method)
-			return mdefault;
-		else
-			return turn_get_method(method, mdefault);
+		if(!method) {
+			ret = mdefault;
+		} else {
+			ret = turn_get_method(method, mdefault);
+		}
 	}
+
+	return ret;
 }
 
 //////////// EVENT BASE ///////////////

@@ -183,7 +183,6 @@ struct _ioa_socket
 	SSL* ssl;
 	u32bits ssl_renegs;
 	int in_write;
-	char orig_ctx_type[16];
 	int bound;
 	int local_addr_known;
 	ioa_addr local_addr;
