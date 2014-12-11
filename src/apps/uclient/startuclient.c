@@ -50,7 +50,7 @@ static uint64_t current_reservation_token = 0;
 static int allocate_rtcp = 0;
 static const int never_allocate_rtcp = 0;
 
-#if OPENSSL_VERSION_NUMBER >= OPENSSL_FIRST_ALPN_VERSION
+#if ALPN_SUPPORTED
 static const unsigned char kALPNProtos[] = "\x09stun.turn\x12stun.nat-discovery";
 static const size_t kALPNProtosLen = sizeof(kALPNProtos) - 1;
 #endif
@@ -91,14 +91,14 @@ static SSL* tls_connect(ioa_socket_raw fd, ioa_addr *remote_addr, int *try_again
 
 	ssl = SSL_NEW(root_tls_ctx[ctxtype]);
 
-#if OPENSSL_VERSION_NUMBER >= OPENSSL_FIRST_ALPN_VERSION
+#if ALPN_SUPPORTED
 	SSL_set_alpn_protos(ssl, kALPNProtos, kALPNProtosLen);
 #endif
 
 	if(use_tcp) {
 		SSL_set_fd(ssl, fd);
 	} else {
-#if defined(TURN_NO_DTLS)
+#if !DTLSv1_SUPPORTED
 	  UNUSED_ARG(remote_addr);
 	  fprintf(stderr,"ERROR: DTLS is not supported.\n");
 	  exit(-1);

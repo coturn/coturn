@@ -66,27 +66,29 @@ static int anon_credentials = 0;
 
 turn_params_t turn_params = {
 NULL, NULL,
-#if defined(SSL_TXT_TLSV1_1)
+#if TLSv1_1_SUPPORTED
 	NULL,
-#if defined(SSL_TXT_TLSV1_2)
+#if TLSv1_2_SUPPORTED
 	NULL,
 #endif
 #endif
+#if DTLSv1_SUPPORTED
 NULL,
-#if defined(SSL_OP_NO_DTLSv1_2)
+#endif
+#if DTLSv1_2_SUPPORTED
 NULL,
 #endif
 
 DH_1066, "", DEFAULT_EC_CURVE_NAME, "",
 "turn_server_cert.pem","turn_server_pkey.pem", "", "",
 0,0,0,0,0,
-#if defined(TURN_NO_TLS)
+#if !TLS_SUPPORTED
 1,
 #else
 0,
 #endif
 
-#if defined(TURN_NO_DTLS)
+#if !DTLSv1_SUPPORTED
 1,
 #else
 0,
@@ -1219,14 +1221,14 @@ static void set_option(int c, char *value)
 		turn_params.no_tcp_relay = get_bool_value(value);
 		break;
 	case NO_TLS_OPT:
-#if defined(TURN_NO_TLS)
+#if !TLS_SUPPORTED
 		turn_params.no_tls = 1;
 #else
 		turn_params.no_tls = get_bool_value(value);
 #endif
 		break;
 	case NO_DTLS_OPT:
-#if !defined(TURN_NO_DTLS)
+#if DTLSv1_SUPPORTED
 		turn_params.no_dtls = get_bool_value(value);
 #else
 		turn_params.no_dtls = 1;
@@ -1610,13 +1612,13 @@ static void print_features(unsigned long mfn)
 
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\n\n==== Show him the instruments, Practical Frost: ====\n\n");
 
-#if defined(TURN_NO_TLS)
+#if !TLS_SUPPORTED
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS is not supported\n");
 #else
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS supported\n");
 #endif
 
-#if defined(TURN_NO_DTLS)
+#if !DTLSv1_SUPPORTED
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS is not supported\n");
 #else
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS supported\n");
@@ -1796,11 +1798,11 @@ int main(int argc, char **argv)
 
 	optind = 0;
 
-#if defined(TURN_NO_TLS)
+#if !TLS_SUPPORTED
 	turn_params.no_tls = 1;
 #endif
 
-#if defined(TURN_NO_DTLS)
+#if !DTLSv1_SUPPORTED
 	turn_params.no_dtls = 1;
 #endif
 
@@ -2339,7 +2341,7 @@ static int pem_password_func(char *buf, int size, int rwflag, void *password)
 	return (strlen(buf));
 }
 
-#if OPENSSL_VERSION_NUMBER >= OPENSSL_FIRST_ALPN_VERSION
+#if ALPN_SUPPORTED
 
 static int ServerALPNCallback(SSL *s,
 				const unsigned char **out,
@@ -2388,7 +2390,7 @@ static int ServerALPNCallback(SSL *s,
 
 static void set_ctx(SSL_CTX* ctx, const char *protocol)
 {
-#if OPENSSL_VERSION_NUMBER >= OPENSSL_FIRST_ALPN_VERSION
+#if ALPN_SUPPORTED
 	SSL_CTX_set_alpn_select_cb(ctx, ServerALPNCallback, NULL);
 #endif
 
@@ -2528,12 +2530,12 @@ static void set_ctx(SSL_CTX* ctx, const char *protocol)
 			op |= SSL_OP_NO_TLSv1_2;
 #endif
 
-#if defined(SSL_OP_NO_DTLSv1)
+#if defined(SSL_OP_NO_DTLSv1) && DTLSv1_SUPPORTED
 		if(turn_params.no_tlsv1)
 			op |= SSL_OP_NO_DTLSv1;
 #endif
 
-#if defined(SSL_OP_NO_DTLSv1_2)
+#if defined(SSL_OP_NO_DTLSv1_2) && DTLSv1_2_SUPPORTED
 		if(turn_params.no_tlsv1_2)
 			op |= SSL_OP_NO_DTLSv1_2;
 #endif
@@ -2560,7 +2562,7 @@ static void openssl_setup(void)
 	SSL_load_error_strings();
 	OpenSSL_add_ssl_algorithms();
 
-#if defined(TURN_NO_TLS)
+#if !TLS_SUPPORTED
 	if(!turn_params.no_tls) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "WARNING: TLS is not supported\n");
 		turn_params.no_tls = 1;
@@ -2590,12 +2592,12 @@ static void openssl_setup(void)
 			turn_params.tls_ctx_v1_0 = SSL_CTX_new(TLSv1_server_method());
 			set_ctx(turn_params.tls_ctx_v1_0,"TLS1.0");
 		}
-#if defined(SSL_TXT_TLSV1_1)
+#if TLSv1_1_SUPPORTED
 		if(!turn_params.no_tlsv1_1) {
 			turn_params.tls_ctx_v1_1 = SSL_CTX_new(TLSv1_1_server_method());
 			set_ctx(turn_params.tls_ctx_v1_1,"TLS1.1");
 		}
-#if defined(SSL_TXT_TLSV1_2)
+#if TLSv1_2_SUPPORTED
 		if(!turn_params.no_tlsv1_2) {
 			turn_params.tls_ctx_v1_2 = SSL_CTX_new(TLSv1_2_server_method());
 			set_ctx(turn_params.tls_ctx_v1_2,"TLS1.2");
@@ -2606,7 +2608,7 @@ static void openssl_setup(void)
 	}
 
 	if(!turn_params.no_dtls) {
-#if defined(TURN_NO_DTLS)
+#if !DTLSv1_SUPPORTED
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: DTLS is not supported.\n");
 #else
 		if(OPENSSL_VERSION_NUMBER < 0x10000000L) {
@@ -2616,7 +2618,7 @@ static void openssl_setup(void)
 		set_ctx(turn_params.dtls_ctx,"DTLS");
 		SSL_CTX_set_read_ahead(turn_params.dtls_ctx, 1);
 
-#if defined(SSL_OP_NO_DTLSv1_2)
+#if DTLSv1_2_SUPPORTED
 		turn_params.dtls_ctx_v1_2 = SSL_CTX_new(DTLSv1_2_server_method());
 		set_ctx(turn_params.dtls_ctx_v1_2,"DTLS1,2");
 		SSL_CTX_set_read_ahead(turn_params.dtls_ctx_v1_2, 1);
