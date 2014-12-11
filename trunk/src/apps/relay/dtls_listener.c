@@ -898,7 +898,10 @@ static int init_server(dtls_listener_relay_server_type* server,
 
   if(!server) return -1;
 
+#if DTLSv1_SUPPORTED
   server->dtls_ctx = e->dtls_ctx;
+#endif
+
 #if DTLSv1_2_SUPPORTED
   server->dtls_ctx_v1_2 = e->dtls_ctx_v1_2;
 #endif
@@ -918,6 +921,7 @@ static int init_server(dtls_listener_relay_server_type* server,
   
   server->e = e;
   
+#if DTLSv1_SUPPORTED
   if(server->dtls_ctx) {
 
 #if defined(REQUEST_CLIENT_CERT)
@@ -927,11 +931,10 @@ static int init_server(dtls_listener_relay_server_type* server,
   
 	  SSL_CTX_set_read_ahead(server->dtls_ctx, 1);
 
-#if DTLSv1_SUPPORTED
 	  SSL_CTX_set_cookie_generate_cb(server->dtls_ctx, generate_cookie);
 	  SSL_CTX_set_cookie_verify_cb(server->dtls_ctx, verify_cookie);
-#endif
   }
+#endif
 
 #if DTLSv1_2_SUPPORTED
   if(server->dtls_ctx_v1_2) {
