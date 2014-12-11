@@ -143,14 +143,16 @@ struct _ioa_engine
   stun_buffer_list bufs;
   SSL_CTX *tls_ctx_ssl23;
   SSL_CTX *tls_ctx_v1_0;
-#if defined(SSL_TXT_TLSV1_1)
+#if TLSv1_1_SUPPORTED
   SSL_CTX *tls_ctx_v1_1;
-#if defined(SSL_TXT_TLSV1_2)
+#if TLSv1_2_SUPPORTED
   SSL_CTX *tls_ctx_v1_2;
 #endif
 #endif
+#if DTLSv1_SUPPORTED
   SSL_CTX *dtls_ctx;
-#if defined(SSL_OP_NO_DTLSv1_2)
+#endif
+#if DTLSv1_2_SUPPORTED
   SSL_CTX *dtls_ctx_v1_2;
 #endif
   turn_time_t jiffie; /* bandwidth check interval */
@@ -254,14 +256,16 @@ ioa_engine_handle create_ioa_engine(super_memory_t *sm,
 void set_ssl_ctx(ioa_engine_handle e,
 		SSL_CTX *tls_ctx_ssl23,
 		SSL_CTX *tls_ctx_v1_0,
-#if defined(SSL_TXT_TLSV1_1)
+#if TLSv1_1_SUPPORTED
 		SSL_CTX *tls_ctx_v1_1,
-#if defined(SSL_TXT_TLSV1_2)
+#if TLSv1_2_SUPPORTED
 		SSL_CTX *tls_ctx_v1_2,
 #endif
 #endif
+#if DTLSv1_SUPPORTED
 		SSL_CTX *dtls_ctx
-#if defined(SSL_OP_NO_DTLSv1_2)
+#endif
+#if DTLSv1_2_SUPPORTED
 		,SSL_CTX *dtls_ctx_v1_2
 #endif
 );

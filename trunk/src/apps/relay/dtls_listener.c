@@ -58,9 +58,11 @@ struct dtls_listener_relay_server_info {
   ioa_engine_handle e;
   turn_turnserver *ts;
   int verbose;
+#if DTLSv1_SUPPORTED
   SSL_CTX *dtls_ctx;
-#if defined(SSL_OP_NO_DTLSv1_2)
+#if DTLSv1_2_SUPPORTED
   SSL_CTX *dtls_ctx_v1_2;
+#endif
 #endif
   struct event *udp_listen_ev;
   ioa_socket_handle udp_listen_s;
@@ -126,7 +128,7 @@ int get_dtls_version(const unsigned char* buf, int len) {
 
 ///////////// utils /////////////////////
 
-#if !defined(TURN_NO_DTLS)
+#if DTLSv1_SUPPORTED
 
 static void calculate_cookie(SSL* ssl, unsigned char *cookie_secret, unsigned int cookie_length) {
   long rv=(long)ssl;
@@ -277,7 +279,7 @@ static ioa_socket_handle dtls_server_input_handler(dtls_listener_relay_server_ty
 	timeout.tv_usec = 0;
 	BIO_ctrl(wbio, BIO_CTRL_DGRAM_SET_RECV_TIMEOUT, 0, &timeout);
 
-#if defined(SSL_OP_NO_DTLSv1_2)
+#if DTLSv1_2_SUPPORTED
 	if(get_dtls_version(ioa_network_buffer_data(nbh),
 							(int)ioa_network_buffer_get_size(nbh)) == 1) {
 		connecting_ssl = SSL_NEW(server->dtls_ctx_v1_2);
@@ -426,7 +428,7 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server,
 
 		chs = NULL;
 
-#if !defined(TURN_NO_DTLS)
+#if DTLSv1_SUPPORTED
 		if (!turn_params.no_dtls &&
 			is_dtls_handshake_message(ioa_network_buffer_data(sm->m.sm.nd.nbh),
 			(int)ioa_network_buffer_get_size(sm->m.sm.nd.nbh))) {
@@ -535,7 +537,7 @@ static int create_new_connected_udp_socket(
 	ret->current_tos = s->current_tos;
 	ret->default_tos = s->default_tos;
 
-#if !defined(TURN_NO_DTLS)
+#if DTLSv1_SUPPORTED
 	if (!turn_params.no_dtls
 			&& is_dtls_handshake_message(
 					ioa_network_buffer_data(server->sm.m.sm.nd.nbh),
@@ -558,7 +560,7 @@ static int create_new_connected_udp_socket(
 		timeout.tv_usec = 0;
 		BIO_ctrl(wbio, BIO_CTRL_DGRAM_SET_RECV_TIMEOUT, 0, &timeout);
 
-#if defined(SSL_OP_NO_DTLSv1_2)
+#if DTLSv1_2_SUPPORTED
 		if(get_dtls_version(ioa_network_buffer_data(server->sm.m.sm.nd.nbh),
 							(int)ioa_network_buffer_get_size(server->sm.m.sm.nd.nbh)) == 1) {
 			connecting_ssl = SSL_NEW(server->dtls_ctx_v1_2);
@@ -897,7 +899,7 @@ static int init_server(dtls_listener_relay_server_type* server,
   if(!server) return -1;
 
   server->dtls_ctx = e->dtls_ctx;
-#if defined(SSL_OP_NO_DTLSv1_2)
+#if DTLSv1_2_SUPPORTED
   server->dtls_ctx_v1_2 = e->dtls_ctx_v1_2;
 #endif
   server->ts = ts;
@@ -925,13 +927,13 @@ static int init_server(dtls_listener_relay_server_type* server,
   
 	  SSL_CTX_set_read_ahead(server->dtls_ctx, 1);
 
-#if !defined(TURN_NO_DTLS)
+#if DTLSv1_SUPPORTED
 	  SSL_CTX_set_cookie_generate_cb(server->dtls_ctx, generate_cookie);
 	  SSL_CTX_set_cookie_verify_cb(server->dtls_ctx, verify_cookie);
 #endif
   }
 
-#if defined(SSL_OP_NO_DTLSv1_2)
+#if DTLSv1_2_SUPPORTED
   if(server->dtls_ctx_v1_2) {
 
   #if defined(REQUEST_CLIENT_CERT)
@@ -941,7 +943,7 @@ static int init_server(dtls_listener_relay_server_type* server,
 
   	  SSL_CTX_set_read_ahead(server->dtls_ctx_v1_2, 1);
 
-  #if !defined(TURN_NO_DTLS)
+  #if DTLSv1_SUPPORTED
   	  SSL_CTX_set_cookie_generate_cb(server->dtls_ctx_v1_2, generate_cookie);
   	  SSL_CTX_set_cookie_verify_cb(server->dtls_ctx_v1_2, verify_cookie);
   #endif

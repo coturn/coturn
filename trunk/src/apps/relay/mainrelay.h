@@ -180,15 +180,17 @@ typedef struct _turn_params_ {
   
   SSL_CTX *tls_ctx_v1_0;
   
-#if defined(SSL_TXT_TLSV1_1)
+#if TLSv1_1_SUPPORTED
   SSL_CTX *tls_ctx_v1_1;
-#if defined(SSL_TXT_TLSV1_2)
+#if TLSv1_2_SUPPORTED
   SSL_CTX *tls_ctx_v1_2;
 #endif
 #endif
   
+#if DTLSv1_SUPPORTED
   SSL_CTX *dtls_ctx;
-#if defined(SSL_OP_NO_DTLSv1_2)
+#endif
+#if DTLSv1_2_SUPPORTED
   SSL_CTX *dtls_ctx_v1_2;
 #endif
   

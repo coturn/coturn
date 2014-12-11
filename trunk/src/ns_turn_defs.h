@@ -216,14 +216,6 @@ typedef u32bits turn_time_t;
 #define DELETE_TURN_CHANNEL_KERNEL(handler)
 #endif
 
-/* ALPN */
-
-#define OPENSSL_FIRST_ALPN_VERSION (0x10002003L)
-
-#define STUN_ALPN "stun.nat-discovery"
-#define TURN_ALPN "stun.turn"
-#define HTTP_ALPN "http/1.1"
-
 ////////////////////////////////////////////////////////
 
 #ifdef __cplusplus

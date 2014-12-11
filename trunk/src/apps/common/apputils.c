@@ -349,7 +349,7 @@ int set_socket_df(evutil_socket_t fd, int family, int value)
 static int get_mtu_from_ssl(SSL* ssl)
 {
   int ret = SOSO_MTU;
-#if !defined(TURN_NO_DTLS)
+#if DTLSv1_SUPPORTED
   if(ssl)
 	  ret = BIO_ctrl(SSL_get_wbio(ssl), BIO_CTRL_DGRAM_QUERY_MTU, 0, NULL);
 #else
@@ -395,7 +395,7 @@ int decrease_mtu(SSL* ssl, int mtu, int verbose)
 	if (verbose)
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "1. mtu to use: %d\n", mtu);
 
-#if !defined(TURN_NO_DTLS)
+#if DTLSv1_SUPPORTED
 	SSL_set_mtu(ssl,mtu);
 	BIO_ctrl(SSL_get_wbio(ssl), BIO_CTRL_DGRAM_SET_MTU, mtu, NULL);
 #endif
@@ -416,7 +416,7 @@ int set_mtu_df(SSL* ssl, evutil_socket_t fd, int family, int mtu, int df_value, 
   set_query_mtu(ssl);
   if(verbose) TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"3. mtu to use: %d\n",mtu);
 
-#if !defined(TURN_NO_DTLS)
+#if DTLSv1_SUPPORTED
 
   SSL_set_mtu(ssl,mtu);
 
@@ -847,25 +847,26 @@ static const char* turn_get_method(const SSL_METHOD *method, const char* mdefaul
 					return "TLSv1.0";
 			} else if(method == TLSv1_client_method()) {
 				return "TLSv1.0";
-#if defined(SSL_TXT_TLSV1_1)
+#if TLSv1_1_SUPPORTED
 			} else if(method == TLSv1_1_server_method()) {
 					return "TLSv1.1";
 			} else if(method == TLSv1_1_client_method()) {
 				return "TLSv1.1";
-#if defined(SSL_TXT_TLSV1_2)
+#if TLSv1_2_SUPPORTED
 			} else if(method == TLSv1_2_server_method()) {
 					return "TLSv1.2";
 			} else if(method == TLSv1_2_client_method()) {
 				return "TLSv1.2";
 #endif
 #endif
-#if !defined(TURN_NO_DTLS)
+#if DTLSv1_SUPPORTED
+
 			} else if(method == DTLSv1_server_method()) {
 				return "DTLSv1.0";
 			} else if(method == DTLSv1_client_method()) {
 				return "DTLSv1.0";
 
-#if defined(SSL_OP_NO_DTLSv1_2)
+#if DTLSv1_2_SUPPORTED
 			} else if(method == DTLSv1_2_server_method()) {
 				return "DTLSv1.2";
 			} else if(method == DTLSv1_2_client_method()) {
