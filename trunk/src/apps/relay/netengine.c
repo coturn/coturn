@@ -947,7 +947,7 @@ static ioa_engine_handle create_new_listener_engine(void)
 		    ,turn_params.tls_ctx_v1_2
 #endif
 #endif
-#if DTLSv1_SUPPORTED
+#if DTLS_SUPPORTED
 		    ,turn_params.dtls_ctx
 #endif
 #if DTLSv1_2_SUPPORTED
@@ -1003,7 +1003,7 @@ static void setup_listener(void)
 		    ,turn_params.tls_ctx_v1_2
 #endif
 #endif
-#if DTLSv1_SUPPORTED
+#if DTLS_SUPPORTED
 		    ,turn_params.dtls_ctx
 #endif
 #if DTLSv1_2_SUPPORTED
@@ -1577,7 +1577,7 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
 			    ,turn_params.tls_ctx_v1_2
 #endif
 #endif
-#if DTLSv1_SUPPORTED
+#if DTLS_SUPPORTED
 			    ,turn_params.dtls_ctx
 #endif
 #if DTLSv1_2_SUPPORTED

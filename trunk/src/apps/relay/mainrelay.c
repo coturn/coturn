@@ -72,7 +72,7 @@ NULL, NULL,
 	NULL,
 #endif
 #endif
-#if DTLSv1_SUPPORTED
+#if DTLS_SUPPORTED
 NULL,
 #endif
 #if DTLSv1_2_SUPPORTED
@@ -88,7 +88,7 @@ DH_1066, "", DEFAULT_EC_CURVE_NAME, "",
 0,
 #endif
 
-#if !DTLSv1_SUPPORTED
+#if !DTLS_SUPPORTED
 1,
 #else
 0,
@@ -1228,7 +1228,7 @@ static void set_option(int c, char *value)
 #endif
 		break;
 	case NO_DTLS_OPT:
-#if DTLSv1_SUPPORTED
+#if DTLS_SUPPORTED
 		turn_params.no_dtls = get_bool_value(value);
 #else
 		turn_params.no_dtls = 1;
@@ -1618,7 +1618,7 @@ static void print_features(unsigned long mfn)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS supported\n");
 #endif
 
-#if !DTLSv1_SUPPORTED
+#if !DTLS_SUPPORTED
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS is not supported\n");
 #else
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS supported\n");
@@ -1666,11 +1666,7 @@ static void print_features(unsigned long mfn)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "OpenSSL multithreading is not supported (?!)\n");
 #endif
 
-#if OPENSSL_VERSION_NUMBER >= 0x10000000L
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "OpenSSL compile-time version 0x%llx: fresh enough\n",(unsigned long long)OPENSSL_VERSION_NUMBER);
-#else
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "OpenSSL compile-time version 0x%llx version: antique\n",(unsigned long long)OPENSSL_VERSION_NUMBER);
-#endif
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "OpenSSL compile-time version: %s\n",OPENSSL_VERSION_TEXT);
 
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Default Net Engine version: %d (%s)\n\n=====================================================\n\n", (int)turn_params.net_engine_version, turn_params.net_engine_version_txt[(int)turn_params.net_engine_version]);
 
@@ -1802,7 +1798,7 @@ int main(int argc, char **argv)
 	turn_params.no_tls = 1;
 #endif
 
-#if !DTLSv1_SUPPORTED
+#if !DTLS_SUPPORTED
 	turn_params.no_dtls = 1;
 #endif
 
@@ -2525,12 +2521,13 @@ static void set_ctx(SSL_CTX* ctx, const char *protocol)
 		if(turn_params.no_tlsv1_1)
 			op |= SSL_OP_NO_TLSv1_1;
 #endif
+
 #if defined(SSL_OP_NO_TLSv1_2)
 		if(turn_params.no_tlsv1_2)
 			op |= SSL_OP_NO_TLSv1_2;
 #endif
 
-#if defined(SSL_OP_NO_DTLSv1) && DTLSv1_SUPPORTED
+#if defined(SSL_OP_NO_DTLSv1) && DTLS_SUPPORTED
 		if(turn_params.no_tlsv1)
 			op |= SSL_OP_NO_DTLSv1;
 #endif
@@ -2608,7 +2605,7 @@ static void openssl_setup(void)
 	}
 
 	if(!turn_params.no_dtls) {
-#if !DTLSv1_SUPPORTED
+#if !DTLS_SUPPORTED
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: DTLS is not supported.\n");
 #else
 		if(OPENSSL_VERSION_NUMBER < 0x10000000L) {

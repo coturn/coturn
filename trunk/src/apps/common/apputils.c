@@ -349,7 +349,7 @@ int set_socket_df(evutil_socket_t fd, int family, int value)
 static int get_mtu_from_ssl(SSL* ssl)
 {
   int ret = SOSO_MTU;
-#if DTLSv1_SUPPORTED
+#if DTLS_SUPPORTED
   if(ssl)
 	  ret = BIO_ctrl(SSL_get_wbio(ssl), BIO_CTRL_DGRAM_QUERY_MTU, 0, NULL);
 #else
@@ -395,7 +395,7 @@ int decrease_mtu(SSL* ssl, int mtu, int verbose)
 	if (verbose)
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "1. mtu to use: %d\n", mtu);
 
-#if DTLSv1_SUPPORTED
+#if DTLS_SUPPORTED
 	SSL_set_mtu(ssl,mtu);
 	BIO_ctrl(SSL_get_wbio(ssl), BIO_CTRL_DGRAM_SET_MTU, mtu, NULL);
 #endif
@@ -416,7 +416,7 @@ int set_mtu_df(SSL* ssl, evutil_socket_t fd, int family, int mtu, int df_value, 
   set_query_mtu(ssl);
   if(verbose) TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"3. mtu to use: %d\n",mtu);
 
-#if DTLSv1_SUPPORTED
+#if DTLS_SUPPORTED
 
   SSL_set_mtu(ssl,mtu);
 
@@ -859,7 +859,7 @@ static const char* turn_get_method(const SSL_METHOD *method, const char* mdefaul
 				return "TLSv1.2";
 #endif
 #endif
-#if DTLSv1_SUPPORTED
+#if DTLS_SUPPORTED
 
 			} else if(method == DTLSv1_server_method()) {
 				return "DTLSv1.0";
@@ -872,7 +872,6 @@ static const char* turn_get_method(const SSL_METHOD *method, const char* mdefaul
 			} else if(method == DTLSv1_2_client_method()) {
 				return "DTLSv1.2";
 #endif
-
 #endif
 			} else {
 				if(mdefault)

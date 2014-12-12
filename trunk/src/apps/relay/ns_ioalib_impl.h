@@ -149,7 +149,7 @@ struct _ioa_engine
   SSL_CTX *tls_ctx_v1_2;
 #endif
 #endif
-#if DTLSv1_SUPPORTED
+#if DTLS_SUPPORTED
   SSL_CTX *dtls_ctx;
 #endif
 #if DTLSv1_2_SUPPORTED
@@ -262,7 +262,7 @@ void set_ssl_ctx(ioa_engine_handle e,
 		 ,SSL_CTX *tls_ctx_v1_2
 #endif
 #endif
-#if DTLSv1_SUPPORTED
+#if DTLS_SUPPORTED
 		 ,SSL_CTX *dtls_ctx
 #endif
 #if DTLSv1_2_SUPPORTED
