@@ -1660,12 +1660,6 @@ static void print_features(unsigned long mfn)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "MongoDB is not supported\n");
 #endif
 
-#if defined(OPENSSL_THREADS)
-	//TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "OpenSSL multithreading supported\n");
-#else
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "OpenSSL multithreading is not supported (?!)\n");
-#endif
-
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "OpenSSL compile-time version: %s\n",OPENSSL_VERSION_TEXT);
 
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Default Net Engine version: %d (%s)\n\n=====================================================\n\n", (int)turn_params.net_engine_version, turn_params.net_engine_version_txt[(int)turn_params.net_engine_version]);
