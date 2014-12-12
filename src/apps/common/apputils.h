@@ -70,36 +70,44 @@ extern int IS_TURN_SERVER;
 /* TLS */
 
 #if defined(TURN_NO_TLS)
-#define TLS_SUPPORTED 0
-#define TLSv1_1_SUPPORTED 0
-#define TLSv1_2_SUPPORTED 0
+
+	#define TLS_SUPPORTED 0
+	#define TLSv1_1_SUPPORTED 0
+	#define TLSv1_2_SUPPORTED 0
+
 #else
-#define TLS_SUPPORTED 1
-#if defined(SSL_TXT_TLSV1_1)
-#define TLSv1_1_SUPPORTED 1
-#else
-#define TLSv1_1_SUPPORTED 0
+
+	#define TLS_SUPPORTED 1
+
+	#if defined(SSL_OP_NO_TLSv1_1)
+		#define TLSv1_1_SUPPORTED 1
+	#else
+		#define TLSv1_1_SUPPORTED 0
+	#endif
+
+	#if defined(SSL_OP_NO_TLSv1_2)
+		#define TLSv1_2_SUPPORTED 1
+	#else
+		#define TLSv1_2_SUPPORTED 0
+	#endif
+
 #endif
 
-#if defined(SSL_TXT_TLSV1_2)
-#define TLSv1_2_SUPPORTED 1
-#else
-#define TLSv1_2_SUPPORTED 0
-#endif
-#endif
+#if defined(TURN_NO_DTLS) || !defined(DTLS_CTRL_LISTEN)
 
-#define OPENSSL_FIRST_DTLSv1_2_VERSION (0x10002003L)
+	#define DTLS_SUPPORTED 0
+	#define DTLSv1_2_SUPPORTED 0
 
-#if defined(TURN_NO_DTLS)
-#define DTLSv1_SUPPORTED 0
-#define DTLSv1_2_SUPPORTED 0
 #else
-#define DTLSv1_SUPPORTED 1
-#if OPENSSL_VERSION_NUMBER >= OPENSSL_FIRST_DTLSv1_2_VERSION
-#define DTLSv1_2_SUPPORTED 1
-#else
-#define DTLSv1_2_SUPPORTED 0
-#endif
+
+	#define DTLS_SUPPORTED 1
+
+#if defined(SSL_OP_NO_DTLSv1_2)
+		#define DTLSv1_2_SUPPORTED 1
+	#else
+		#define DTLSv1_2_SUPPORTED 0
+	#endif
+
 #endif
 
 /////////// SSL //////////////////////////

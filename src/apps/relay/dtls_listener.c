@@ -58,7 +58,7 @@ struct dtls_listener_relay_server_info {
   ioa_engine_handle e;
   turn_turnserver *ts;
   int verbose;
-#if DTLSv1_SUPPORTED
+#if DTLS_SUPPORTED
   SSL_CTX *dtls_ctx;
 #if DTLSv1_2_SUPPORTED
   SSL_CTX *dtls_ctx_v1_2;
@@ -128,7 +128,7 @@ int get_dtls_version(const unsigned char* buf, int len) {
 
 ///////////// utils /////////////////////
 
-#if DTLSv1_SUPPORTED
+#if DTLS_SUPPORTED
 
 static void calculate_cookie(SSL* ssl, unsigned char *cookie_secret, unsigned int cookie_length) {
   long rv=(long)ssl;
@@ -428,7 +428,7 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server,
 
 		chs = NULL;
 
-#if DTLSv1_SUPPORTED
+#if DTLS_SUPPORTED
 		if (!turn_params.no_dtls &&
 			is_dtls_handshake_message(ioa_network_buffer_data(sm->m.sm.nd.nbh),
 			(int)ioa_network_buffer_get_size(sm->m.sm.nd.nbh))) {
@@ -537,7 +537,7 @@ static int create_new_connected_udp_socket(
 	ret->current_tos = s->current_tos;
 	ret->default_tos = s->default_tos;
 
-#if DTLSv1_SUPPORTED
+#if DTLS_SUPPORTED
 	if (!turn_params.no_dtls
 			&& is_dtls_handshake_message(
 					ioa_network_buffer_data(server->sm.m.sm.nd.nbh),
@@ -898,13 +898,14 @@ static int init_server(dtls_listener_relay_server_type* server,
 
   if(!server) return -1;
 
-#if DTLSv1_SUPPORTED
+#if DTLS_SUPPORTED
   server->dtls_ctx = e->dtls_ctx;
-#endif
 
 #if DTLSv1_2_SUPPORTED
   server->dtls_ctx_v1_2 = e->dtls_ctx_v1_2;
 #endif
+#endif
+
   server->ts = ts;
   server->connect_cb = send_socket;
 
@@ -921,7 +922,7 @@ static int init_server(dtls_listener_relay_server_type* server,
   
   server->e = e;
   
-#if DTLSv1_SUPPORTED
+#if DTLS_SUPPORTED
   if(server->dtls_ctx) {
 
 #if defined(REQUEST_CLIENT_CERT)
@@ -934,7 +935,6 @@ static int init_server(dtls_listener_relay_server_type* server,
 	  SSL_CTX_set_cookie_generate_cb(server->dtls_ctx, generate_cookie);
 	  SSL_CTX_set_cookie_verify_cb(server->dtls_ctx, verify_cookie);
   }
-#endif
 
 #if DTLSv1_2_SUPPORTED
   if(server->dtls_ctx_v1_2) {
@@ -946,11 +946,10 @@ static int init_server(dtls_listener_relay_server_type* server,
 
   	  SSL_CTX_set_read_ahead(server->dtls_ctx_v1_2, 1);
 
-  #if DTLSv1_SUPPORTED
   	  SSL_CTX_set_cookie_generate_cb(server->dtls_ctx_v1_2, generate_cookie);
   	  SSL_CTX_set_cookie_verify_cb(server->dtls_ctx_v1_2, verify_cookie);
-  #endif
     }
+#endif
 #endif
 
   return create_server_socket(server, report_creation);

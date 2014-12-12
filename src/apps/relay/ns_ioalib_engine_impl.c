@@ -440,7 +440,7 @@ void set_ssl_ctx(ioa_engine_handle e,
 		 ,SSL_CTX *tls_ctx_v1_2
 #endif
 #endif
-#if DTLSv1_SUPPORTED
+#if DTLS_SUPPORTED
 		 ,SSL_CTX *dtls_ctx
 #endif
 #if DTLSv1_2_SUPPORTED
@@ -456,7 +456,7 @@ void set_ssl_ctx(ioa_engine_handle e,
 	e->tls_ctx_v1_2 = tls_ctx_v1_2;
 #endif
 #endif
-#if DTLSv1_SUPPORTED
+#if DTLS_SUPPORTED
 	e->dtls_ctx = dtls_ctx;
 #endif
 #if DTLSv1_2_SUPPORTED

@@ -98,7 +98,7 @@ static SSL* tls_connect(ioa_socket_raw fd, ioa_addr *remote_addr, int *try_again
 	if(use_tcp) {
 		SSL_set_fd(ssl, fd);
 	} else {
-#if !DTLSv1_SUPPORTED
+#if !DTLS_SUPPORTED
 	  UNUSED_ARG(remote_addr);
 	  fprintf(stderr,"ERROR: DTLS is not supported.\n");
 	  exit(-1);

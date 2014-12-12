@@ -528,7 +528,7 @@ int main(int argc, char **argv)
 #endif
 #endif
 		} else {
-#if !DTLSv1_SUPPORTED
+#if !DTLS_SUPPORTED
 		  fprintf(stderr,"ERROR: DTLS is not supported.\n");
 		  exit(-1);
 #else
