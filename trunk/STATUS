@@ -110,6 +110,8 @@ compatibility.
 47) SQLite support added as default database.
 
 48) DTLS1.2 supported.
+
+49) ALPN stun.turn and stun.nat-discovery supported.
  
 Things to be implemented in future (the development roadmap) 
 are described in the TODO file.
