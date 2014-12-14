@@ -110,6 +110,12 @@ extern int IS_TURN_SERVER;
 
 #endif
 
+#if OPENSSL_VERSION_NUMBER >= OPENSSL_FIRST_ALPN_VERSION
+#define SSL_SESSION_ECDH_AUTO_SUPPORTED 1
+#else
+#define SSL_SESSION_ECDH_AUTO_SUPPORTED 0
+#endif
+
 /////////// SSL //////////////////////////
 
 enum _TURN_TLS_TYPE {

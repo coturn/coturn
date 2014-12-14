@@ -2,6 +2,7 @@
 Version 4.3.2.1 'Tolomei':
 	- STUN/TURN ALPN supported (when compiled with OpenSSL 1.0.2+ );
 	- DTLS v1.2 supported (when compiled with OpenSSL 1.0.2+ );
+	- Auto optimal ECDH parameters (when compiled with OpenSSL 1.0.2+ );
 	- TLS/DTLS code cleaning.
 
 11/29/2014 Oleg Moskalenko <mom040267@gmail.com>
