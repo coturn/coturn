@@ -2473,11 +2473,12 @@ static void set_ctx(SSL_CTX* ctx, const char *protocol)
 			}
 		}
 
-#if SSL_SESSION_ECDH_AUTO_SUPPORTED
 		if(set_auto_curve) {
+#if SSL_SESSION_ECDH_AUTO_SUPPORTED
 			SSL_CTX_set_ecdh_auto(ctx,1);
-		}
 #endif
+			set_auto_curve = 0;
+		}
 	}
 #endif
 
