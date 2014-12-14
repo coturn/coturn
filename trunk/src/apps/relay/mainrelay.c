@@ -509,8 +509,11 @@ static char Usage[] = "Usage: turnserver [options]\n"
 " --CA-file		<filename>		CA file in OpenSSL format.\n"
 "						Forces TURN server to verify the client SSL certificates.\n"
 "						By default, no CA is set and no client certificate check is performed.\n"
-" --ec-curve-name	<curve-name>		Curve name for EC ciphers, if supported by OpenSSL library\n"
-"						(TLS and DTLS). The default value is prime256v1.\n"
+" --ec-curve-name	<curve-name>		Curve name for EC ciphers, if supported by OpenSSL\n"
+"						library (TLS and DTLS). The default value is prime256v1,\n"
+"						if pre-OpenSSL 1.0.2 is used. With OpenSSL 1.0.2+,\n"
+"						an optimal curve will be automatically calculated, if not defined\n"
+"						by this option.\n"
 " --dh566					Use 566 bits predefined DH TLS key. Default size of the predefined key is 1066.\n"
 " --dh2066					Use 2066 bits predefined DH TLS key. Default size of the predefined key is 1066.\n"
 " --dh-file	<dh-file-name>			Use custom DH TLS key, stored in PEM format in the file.\n"
@@ -2435,23 +2438,35 @@ static void set_ctx(SSL_CTX* ctx, const char *protocol)
 #if !defined(OPENSSL_NO_EC) && defined(OPENSSL_EC_NAMED_CURVE)
 	{ //Elliptic curve algorithms:
 		int nid = NID_X9_62_prime256v1;
+		int set_tmp_curve = !SSL_SESSION_ECDH_AUTO_SUPPORTED;
 
 		if (turn_params.ec_curve_name[0]) {
 			nid = OBJ_sn2nid(turn_params.ec_curve_name);
 			if (nid == 0) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"unknown curve name (%s), using NID_X9_62_prime256v1\n",turn_params.ec_curve_name);
 				nid = NID_X9_62_prime256v1;
+			} else {
+				set_tmp_curve = 1;
 			}
 		}
 
-		EC_KEY *ecdh = EC_KEY_new_by_curve_name(nid);
-		if (!ecdh) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+		if(set_tmp_curve) {
+			EC_KEY *ecdh = EC_KEY_new_by_curve_name(nid);
+			if (!ecdh) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
 				      "%s: ERROR: allocate EC suite\n",__FUNCTION__);
-		} else {
-			SSL_CTX_set_tmp_ecdh(ctx, ecdh);
-			EC_KEY_free(ecdh);
+				set_tmp_curve = 0;
+			} else {
+				SSL_CTX_set_tmp_ecdh(ctx, ecdh);
+				EC_KEY_free(ecdh);
+			}
 		}
+
+#if SSL_SESSION_ECDH_AUTO_SUPPORTED
+		if(!set_tmp_curve) {
+			SSL_CTX_set_ecdh_auto(ctx,1);
+		}
+#endif
 	}
 #endif
 
