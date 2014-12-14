@@ -79,7 +79,7 @@ NULL,
 NULL,
 #endif
 
-DH_1066, "", DEFAULT_EC_CURVE_NAME, "",
+DH_1066, "", "", "",
 "turn_server_cert.pem","turn_server_pkey.pem", "", "",
 0,0,0,0,0,
 #if !TLS_SUPPORTED
@@ -2437,33 +2437,44 @@ static void set_ctx(SSL_CTX* ctx, const char *protocol)
 
 #if !defined(OPENSSL_NO_EC) && defined(OPENSSL_EC_NAMED_CURVE)
 	{ //Elliptic curve algorithms:
-		int nid = NID_X9_62_prime256v1;
-		int set_tmp_curve = !SSL_SESSION_ECDH_AUTO_SUPPORTED;
+		int nid = 0;
+		int set_auto_curve = 0;
 
-		if (turn_params.ec_curve_name[0]) {
-			nid = OBJ_sn2nid(turn_params.ec_curve_name);
-			if (nid == 0) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"unknown curve name (%s), using NID_X9_62_prime256v1\n",turn_params.ec_curve_name);
-				nid = NID_X9_62_prime256v1;
-			} else {
-				set_tmp_curve = 1;
-			}
+		const char* curve_name = turn_params.ec_curve_name;
+
+		if (!(curve_name[0])) {
+#if !SSL_SESSION_ECDH_AUTO_SUPPORTED
+			curve_name = DEFAULT_EC_CURVE_NAME;
+#endif
+			set_auto_curve = 1;
 		}
 
-		if(set_tmp_curve) {
-			EC_KEY *ecdh = EC_KEY_new_by_curve_name(nid);
-			if (!ecdh) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+		if(curve_name[0]) {
+			{
+				nid = OBJ_sn2nid(curve_name);
+				if (nid == 0) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"unknown curve name: %s\n",curve_name);
+					curve_name = DEFAULT_EC_CURVE_NAME;
+					nid = OBJ_sn2nid(curve_name);
+					set_auto_curve = 1;
+				}
+			}
+
+			{
+				EC_KEY *ecdh = EC_KEY_new_by_curve_name(nid);
+				if (!ecdh) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
 				      "%s: ERROR: allocate EC suite\n",__FUNCTION__);
-				set_tmp_curve = 0;
-			} else {
-				SSL_CTX_set_tmp_ecdh(ctx, ecdh);
-				EC_KEY_free(ecdh);
+					set_auto_curve = 1;
+				} else {
+					SSL_CTX_set_tmp_ecdh(ctx, ecdh);
+					EC_KEY_free(ecdh);
+				}
 			}
 		}
 
 #if SSL_SESSION_ECDH_AUTO_SUPPORTED
-		if(!set_tmp_curve) {
+		if(set_auto_curve) {
 			SSL_CTX_set_ecdh_auto(ctx,1);
 		}
 #endif
