@@ -556,3 +556,12 @@ The existing STUN/TURN standards require HMAC-SHA1 function for the message inte
 In an Enterprise environment when a Proxy is used for the Internet connections, the TURN connection handling has some specifics. The discussion about the matter can be found here:
 
 [https://groups.google.com/forum/#!topic/discuss-webrtc/q0_RHvYNbf8 TURN and Proxy]
+
+=== ALPN ===
+
+The server supports ALPNs "stun.turn" and "stun.nat-discovery", when
+compiled with OpenSSL 1.0.2 or newer. If the server receives a TLS/DTLS
+ClientHello message that contains one or both of those ALPNs, then the
+server chooses the first stun.* label and sends it back (in the ServerHello)
+in the ALPN extention field. If no stun.* label is found, then the server
+does not include the ALPN information into the ServerHello.
