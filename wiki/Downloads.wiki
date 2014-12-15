@@ -1,14 +1,15 @@
 #summary Downloads Page
-#labels Version-4.3.1.3,Featured
+#labels Version-4.3.2.2,Featured
 
-== Latest official recommended version - 4.3.1.3: ==
+== Latest official recommended version - 4.3.2.2: ==
 
-  * Reliability fixes (Issue 141 from rfc5766-turn-server).
-  * HTTP/HTTPS echo fixed.
-  * External address mapping fixes for Amazon EC2.
-  * Minor docs improvements.
+  * Redis read message queue bug fixed;
+  * STUN/TURN ALPN supported (when compiled with OpenSSL 1.0.2+ );
+  * DTLS v1.2 supported (when compiled with OpenSSL 1.0.2+ );
+  * Auto optimal ECDH parameters (when compiled with OpenSSL 1.0.2+ );
+  * TLS/DTLS code cleaning.
 
-[http://turnserver.open-sys.org/downloads/v4.3.1.3/ 4.3.1.3 Version Downloads (full source and platform builds)]
+[http://turnserver.open-sys.org/downloads/v4.3.2.2/ 4.3.2.2 Version Downloads (full source and platform builds)]
 
 [http://turnserver.open-sys.org/downloads/ Main Downloads Page (with all recent versions)]
 
@@ -17,6 +18,15 @@
 [http://turnserver.open-sys.org/downloads/extradocs/ Extra Docs ]
 
 == Older versions ==
+
+=== 4.3.1.3: ===
+
+  * Reliability fixes (Issue 141 from rfc5766-turn-server).
+  * HTTP/HTTPS echo fixed.
+  * External address mapping fixes for Amazon EC2.
+  * Minor docs improvements.
+
+[http://turnserver.open-sys.org/downloads/v4.3.1.3/ v4.3.1.3]
 
 === 4.3.1.2: ===
 
