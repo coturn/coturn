@@ -1,5 +1,10 @@
 #summary News log
-#labels Version-4.3.1.1
+#labels Version-4.3.2.2
+
+== 12/14/2014 ==
+=== Version 4.3.2.2 ===
+
+STUN/TURN ALPN supported (whith OpenSSL 1.0.2+):http://tools.ietf.org/html/draft-ietf-tram-alpn-08
 
 == 11/22/2014 ==
 === Version 4.3.1.1 ===
