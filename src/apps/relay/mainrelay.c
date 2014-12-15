@@ -65,28 +65,30 @@ static int anon_credentials = 0;
 #define DEFAULT_GENERAL_RELAY_SERVERS_NUMBER (1)
 
 turn_params_t turn_params = {
-
 NULL, NULL,
-
-#if defined(SSL_TXT_TLSV1_1)
+#if TLSv1_1_SUPPORTED
 	NULL,
-#if defined(SSL_TXT_TLSV1_2)
+#if TLSv1_2_SUPPORTED
 	NULL,
 #endif
 #endif
-
+#if DTLS_SUPPORTED
 NULL,
+#endif
+#if DTLSv1_2_SUPPORTED
+NULL,
+#endif
 
-DH_1066, "", DEFAULT_EC_CURVE_NAME, "",
+DH_1066, "", "", "",
 "turn_server_cert.pem","turn_server_pkey.pem", "", "",
 0,0,0,0,0,
-#if defined(TURN_NO_TLS)
+#if !TLS_SUPPORTED
 1,
 #else
 0,
 #endif
 
-#if defined(TURN_NO_DTLS)
+#if !DTLS_SUPPORTED
 1,
 #else
 0,
@@ -507,17 +509,20 @@ static char Usage[] = "Usage: turnserver [options]\n"
 " --CA-file		<filename>		CA file in OpenSSL format.\n"
 "						Forces TURN server to verify the client SSL certificates.\n"
 "						By default, no CA is set and no client certificate check is performed.\n"
-" --ec-curve-name	<curve-name>		Curve name for EC ciphers, if supported by OpenSSL library\n"
-"						(TLS and DTLS). The default value is prime256v1.\n"
+" --ec-curve-name	<curve-name>		Curve name for EC ciphers, if supported by OpenSSL\n"
+"						library (TLS and DTLS). The default value is prime256v1,\n"
+"						if pre-OpenSSL 1.0.2 is used. With OpenSSL 1.0.2+,\n"
+"						an optimal curve will be automatically calculated, if not defined\n"
+"						by this option.\n"
 " --dh566					Use 566 bits predefined DH TLS key. Default size of the predefined key is 1066.\n"
 " --dh2066					Use 2066 bits predefined DH TLS key. Default size of the predefined key is 1066.\n"
 " --dh-file	<dh-file-name>			Use custom DH TLS key, stored in PEM format in the file.\n"
 "						Flags --dh566 and --dh2066 are ignored when the DH key is taken from a file.\n"
 " --no-sslv2					Do not allow SSLv2 protocol.\n"
 " --no-sslv3					Do not allow SSLv3 protocol.\n"
-" --no-tlsv1					Do not allow TLSv1 protocol.\n"
+" --no-tlsv1					Do not allow TLSv1/DTLSv1 protocol.\n"
 " --no-tlsv1_1					Do not allow TLSv1.1 protocol.\n"
-" --no-tlsv1_2					Do not allow TLSv1.2 protocol.\n"
+" --no-tlsv1_2					Do not allow TLSv1.2/DTLSv1.2 protocol.\n"
 " --no-udp					Do not start UDP client listeners.\n"
 " --no-tcp					Do not start TCP client listeners.\n"
 " --no-tls					Do not start TLS client listeners.\n"
@@ -1219,14 +1224,14 @@ static void set_option(int c, char *value)
 		turn_params.no_tcp_relay = get_bool_value(value);
 		break;
 	case NO_TLS_OPT:
-#if defined(TURN_NO_TLS)
+#if !TLS_SUPPORTED
 		turn_params.no_tls = 1;
 #else
 		turn_params.no_tls = get_bool_value(value);
 #endif
 		break;
 	case NO_DTLS_OPT:
-#if !defined(TURN_NO_DTLS)
+#if DTLS_SUPPORTED
 		turn_params.no_dtls = get_bool_value(value);
 #else
 		turn_params.no_dtls = 1;
@@ -1610,13 +1615,13 @@ static void print_features(unsigned long mfn)
 
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\n\n==== Show him the instruments, Practical Frost: ====\n\n");
 
-#if defined(TURN_NO_TLS)
+#if !TLS_SUPPORTED
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS is not supported\n");
 #else
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS supported\n");
 #endif
 
-#if defined(TURN_NO_DTLS)
+#if !DTLS_SUPPORTED
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS is not supported\n");
 #else
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS supported\n");
@@ -1658,17 +1663,7 @@ static void print_features(unsigned long mfn)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "MongoDB is not supported\n");
 #endif
 
-#if defined(OPENSSL_THREADS)
-	//TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "OpenSSL multithreading supported\n");
-#else
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "OpenSSL multithreading is not supported (?!)\n");
-#endif
-
-#if OPENSSL_VERSION_NUMBER >= 0x10000000L
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "OpenSSL compile-time version 0x%llx: fresh enough\n",(unsigned long long)OPENSSL_VERSION_NUMBER);
-#else
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "OpenSSL compile-time version 0x%llx version: antique\n",(unsigned long long)OPENSSL_VERSION_NUMBER);
-#endif
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "OpenSSL compile-time version: %s\n",OPENSSL_VERSION_TEXT);
 
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Default Net Engine version: %d (%s)\n\n=====================================================\n\n", (int)turn_params.net_engine_version, turn_params.net_engine_version_txt[(int)turn_params.net_engine_version]);
 
@@ -1796,11 +1791,11 @@ int main(int argc, char **argv)
 
 	optind = 0;
 
-#if defined(TURN_NO_TLS)
+#if !TLS_SUPPORTED
 	turn_params.no_tls = 1;
 #endif
 
-#if defined(TURN_NO_DTLS)
+#if !DTLS_SUPPORTED
 	turn_params.no_dtls = 1;
 #endif
 
@@ -2339,8 +2334,59 @@ static int pem_password_func(char *buf, int size, int rwflag, void *password)
 	return (strlen(buf));
 }
 
+#if ALPN_SUPPORTED
+
+static int ServerALPNCallback(SSL *s,
+				const unsigned char **out,
+				unsigned char *outlen,
+				const unsigned char *in,
+				unsigned int inlen,
+				void *arg) {
+
+	UNUSED_ARG(s);
+	UNUSED_ARG(arg);
+
+	unsigned char sa_len = (unsigned char)strlen(STUN_ALPN);
+	unsigned char ta_len = (unsigned char)strlen(TURN_ALPN);
+	unsigned char ha_len = (unsigned char)strlen(HTTP_ALPN);
+
+	int found_http = 0;
+
+	const unsigned char *ptr = in;
+	while(ptr < (in+inlen)) {
+		unsigned char current_len = *ptr;
+		if(ptr+1+current_len > in+inlen)
+			break;
+		if((!turn_params.no_stun) && (current_len == sa_len) && (memcmp(ptr+1,STUN_ALPN,sa_len)==0)) {
+			*out = ptr+1;
+			*outlen = sa_len;
+			return SSL_TLSEXT_ERR_OK;
+		}
+		if((!turn_params.stun_only) && (current_len == ta_len) && (memcmp(ptr+1,TURN_ALPN,ta_len)==0)) {
+			*out = ptr+1;
+			*outlen = ta_len;
+			return SSL_TLSEXT_ERR_OK;
+		}
+		if((current_len == ha_len) && (memcmp(ptr+1,HTTP_ALPN,ha_len)==0)) {
+			found_http = 1;
+		}
+		ptr += 1 + current_len;
+	}
+
+	if(found_http)
+		return SSL_TLSEXT_ERR_NOACK;
+
+	return SSL_TLSEXT_ERR_NOACK; //???
+}
+
+#endif
+
 static void set_ctx(SSL_CTX* ctx, const char *protocol)
 {
+#if ALPN_SUPPORTED
+	SSL_CTX_set_alpn_select_cb(ctx, ServerALPNCallback, NULL);
+#endif
+
 	SSL_CTX_set_default_passwd_cb_userdata(ctx, turn_params.tls_password);
 
 	SSL_CTX_set_default_passwd_cb(ctx, pem_password_func);
@@ -2391,23 +2437,47 @@ static void set_ctx(SSL_CTX* ctx, const char *protocol)
 
 #if !defined(OPENSSL_NO_EC) && defined(OPENSSL_EC_NAMED_CURVE)
 	{ //Elliptic curve algorithms:
-		int nid = NID_X9_62_prime256v1;
+		int nid = 0;
+		int set_auto_curve = 0;
 
-		if (turn_params.ec_curve_name[0]) {
-			nid = OBJ_sn2nid(turn_params.ec_curve_name);
-			if (nid == 0) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"unknown curve name (%s), using NID_X9_62_prime256v1\n",turn_params.ec_curve_name);
-				nid = NID_X9_62_prime256v1;
+		const char* curve_name = turn_params.ec_curve_name;
+
+		if (!(curve_name[0])) {
+#if !SSL_SESSION_ECDH_AUTO_SUPPORTED
+			curve_name = DEFAULT_EC_CURVE_NAME;
+#endif
+			set_auto_curve = 1;
+		}
+
+		if(curve_name[0]) {
+			{
+				nid = OBJ_sn2nid(curve_name);
+				if (nid == 0) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"unknown curve name: %s\n",curve_name);
+					curve_name = DEFAULT_EC_CURVE_NAME;
+					nid = OBJ_sn2nid(curve_name);
+					set_auto_curve = 1;
+				}
+			}
+
+			{
+				EC_KEY *ecdh = EC_KEY_new_by_curve_name(nid);
+				if (!ecdh) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+				      "%s: ERROR: allocate EC suite\n",__FUNCTION__);
+					set_auto_curve = 1;
+				} else {
+					SSL_CTX_set_tmp_ecdh(ctx, ecdh);
+					EC_KEY_free(ecdh);
+				}
 			}
 		}
 
-		EC_KEY *ecdh = EC_KEY_new_by_curve_name(nid);
-		if (!ecdh) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
-				      "%s: ERROR: allocate EC suite\n",__FUNCTION__);
-		} else {
-			SSL_CTX_set_tmp_ecdh(ctx, ecdh);
-			EC_KEY_free(ecdh);
+		if(set_auto_curve) {
+#if SSL_SESSION_ECDH_AUTO_SUPPORTED
+			SSL_CTX_set_ecdh_auto(ctx,1);
+#endif
+			set_auto_curve = 0;
 		}
 	}
 #endif
@@ -2437,6 +2507,14 @@ static void set_ctx(SSL_CTX* ctx, const char *protocol)
 				dh = get_dh1066();
 		}
 
+		/*
+		if(!dh) {
+			dh = DH_new();
+			DH_generate_parameters_ex(dh, 32, DH_GENERATOR_2, 0);
+			DH_generate_key(dh);
+		}
+		*/
+
 		if(!dh) {
 		  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: cannot allocate DH suite\n",__FUNCTION__);
 		} else {
@@ -2464,9 +2542,20 @@ static void set_ctx(SSL_CTX* ctx, const char *protocol)
 		if(turn_params.no_tlsv1_1)
 			op |= SSL_OP_NO_TLSv1_1;
 #endif
+
 #if defined(SSL_OP_NO_TLSv1_2)
 		if(turn_params.no_tlsv1_2)
 			op |= SSL_OP_NO_TLSv1_2;
+#endif
+
+#if defined(SSL_OP_NO_DTLSv1) && DTLS_SUPPORTED
+		if(turn_params.no_tlsv1)
+			op |= SSL_OP_NO_DTLSv1;
+#endif
+
+#if defined(SSL_OP_NO_DTLSv1_2) && DTLSv1_2_SUPPORTED
+		if(turn_params.no_tlsv1_2)
+			op |= SSL_OP_NO_DTLSv1_2;
 #endif
 
 #if defined(SSL_OP_CIPHER_SERVER_PREFERENCE)
@@ -2491,7 +2580,7 @@ static void openssl_setup(void)
 	SSL_load_error_strings();
 	OpenSSL_add_ssl_algorithms();
 
-#if defined(TURN_NO_TLS)
+#if !TLS_SUPPORTED
 	if(!turn_params.no_tls) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "WARNING: TLS is not supported\n");
 		turn_params.no_tls = 1;
@@ -2521,12 +2610,12 @@ static void openssl_setup(void)
 			turn_params.tls_ctx_v1_0 = SSL_CTX_new(TLSv1_server_method());
 			set_ctx(turn_params.tls_ctx_v1_0,"TLS1.0");
 		}
-#if defined(SSL_TXT_TLSV1_1)
+#if TLSv1_1_SUPPORTED
 		if(!turn_params.no_tlsv1_1) {
 			turn_params.tls_ctx_v1_1 = SSL_CTX_new(TLSv1_1_server_method());
 			set_ctx(turn_params.tls_ctx_v1_1,"TLS1.1");
 		}
-#if defined(SSL_TXT_TLSV1_2)
+#if TLSv1_2_SUPPORTED
 		if(!turn_params.no_tlsv1_2) {
 			turn_params.tls_ctx_v1_2 = SSL_CTX_new(TLSv1_2_server_method());
 			set_ctx(turn_params.tls_ctx_v1_2,"TLS1.2");
@@ -2537,7 +2626,7 @@ static void openssl_setup(void)
 	}
 
 	if(!turn_params.no_dtls) {
-#if defined(TURN_NO_DTLS)
+#if !DTLS_SUPPORTED
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: DTLS is not supported.\n");
 #else
 		if(OPENSSL_VERSION_NUMBER < 0x10000000L) {
@@ -2546,7 +2635,15 @@ static void openssl_setup(void)
 		turn_params.dtls_ctx = SSL_CTX_new(DTLSv1_server_method());
 		set_ctx(turn_params.dtls_ctx,"DTLS");
 		SSL_CTX_set_read_ahead(turn_params.dtls_ctx, 1);
+
+#if DTLSv1_2_SUPPORTED
+		turn_params.dtls_ctx_v1_2 = SSL_CTX_new(DTLSv1_2_server_method());
+		set_ctx(turn_params.dtls_ctx_v1_2,"DTLS1,2");
+		SSL_CTX_set_read_ahead(turn_params.dtls_ctx_v1_2, 1);
+#endif
+
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS cipher suite: %s\n",turn_params.cipher_list);
+
 #endif
 	}
 }

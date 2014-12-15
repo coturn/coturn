@@ -195,11 +195,11 @@ Flags:
 
 --no-sslv3		Do not allow SSLv3 protocol.
 
---no-tlsv1		Do not allow TLSv1 protocol.
+--no-tlsv1		Do not allow TLSv1/DTLSv1 protocol.
 
 --no-tlsv1_1		Do not allow TLSv1.1 protocol.
 
---no-tlsv1_2		Do not allow TLSv1.2 protocol.
+--no-tlsv1_2		Do not allow TLSv1.2/DTLSv1.2 protocol.
 
 --no-udp		Do not start UDP client listeners.
 
@@ -444,8 +444,11 @@ Options with required values:
 			Forces TURN server to verify the client SSL certificates.
 			By default, no CA is set and no client certificate check is performed.
 
---ec-curve-name		Curve name for EC ciphers, if supported by OpenSSL library (TLS and DTLS).
-			The default value is prime256v1.
+--ec-curve-name		Curve name for EC ciphers, if supported by OpenSSL 
+			library (TLS and DTLS). The default value is prime256v1, 
+			if pre-OpenSSL 1.0.2 is used. With OpenSSL 1.0.2+,
+			an optimal curve will be automatically calculated, if not defined
+			by this option.
 
 --dh-file		Use custom DH TLS key, stored in PEM format in the file.
 			Flags --dh566 and --dh2066 are ignored when the DH key is taken from a file.
@@ -775,7 +778,18 @@ it will set the users for you (see the turnadmin manuals). If you are using SQLi
 turnserver or turnadmin will initialize the empty database, for you, when started. The 
 TURN server installation process creates an empty initialized SQLite database in the default 
 location (/var/db/turndb or /usr/local/var/db/turndb or /var/lib/turn/turndb, depending on the system).
-    
+
+=================================
+
+ALPN
+
+The server supports ALPNs "stun.turn" and "stun.nat-discovery", when
+compiled with OpenSSL 1.0.2 or newer. If the server receives a TLS/DTLS
+ClientHello message that contains one or both of those ALPNs, then the
+server chooses the first stun.* label and sends it back (in the ServerHello)
+in the ALPN extention field. If no stun.* label is found, then the server
+does not include the ALPN information into the ServerHello.
+
 =================================
 
 LIBRARIES
@@ -786,7 +800,7 @@ The C++ wrapper for the messaging functionality is located in TurnMsgLib.h heade
 An example of C++ code can be found in stunclient.c file. 
 
 =================================
- 
+
 DOCS
 
 After installation, run the command:

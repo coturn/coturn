@@ -50,6 +50,11 @@ static uint64_t current_reservation_token = 0;
 static int allocate_rtcp = 0;
 static const int never_allocate_rtcp = 0;
 
+#if ALPN_SUPPORTED
+static const unsigned char kALPNProtos[] = "\x08http/1.1\x09stun.turn\x12stun.nat-discovery";
+static const size_t kALPNProtosLen = sizeof(kALPNProtos) - 1;
+#endif
+
 /////////////////////////////////////////
 
 int rare_event(void)
@@ -79,15 +84,21 @@ static int get_allocate_address_family(ioa_addr *relay_addr) {
 
 static SSL* tls_connect(ioa_socket_raw fd, ioa_addr *remote_addr, int *try_again, int connect_cycle)
 {
+
 	int ctxtype = (int)(((unsigned long)random())%root_tls_ctx_num);
+
 	SSL *ssl;
 
 	ssl = SSL_NEW(root_tls_ctx[ctxtype]);
 
+#if ALPN_SUPPORTED
+	SSL_set_alpn_protos(ssl, kALPNProtos, kALPNProtosLen);
+#endif
+
 	if(use_tcp) {
 		SSL_set_fd(ssl, fd);
 	} else {
-#if defined(TURN_NO_DTLS)
+#if !DTLS_SUPPORTED
 	  UNUSED_ARG(remote_addr);
 	  fprintf(stderr,"ERROR: DTLS is not supported.\n");
 	  exit(-1);

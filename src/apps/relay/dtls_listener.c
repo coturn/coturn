@@ -58,7 +58,12 @@ struct dtls_listener_relay_server_info {
   ioa_engine_handle e;
   turn_turnserver *ts;
   int verbose;
+#if DTLS_SUPPORTED
   SSL_CTX *dtls_ctx;
+#if DTLSv1_2_SUPPORTED
+  SSL_CTX *dtls_ctx_v1_2;
+#endif
+#endif
   struct event *udp_listen_ev;
   ioa_socket_handle udp_listen_s;
   ur_addr_map *children_ss; /* map of socket children on remote addr */
@@ -79,27 +84,28 @@ int is_dtls_handshake_message(const unsigned char* buf, int len);
 int is_dtls_data_message(const unsigned char* buf, int len);
 int is_dtls_alert_message(const unsigned char* buf, int len);
 int is_dtls_cipher_change_message(const unsigned char* buf, int len);
+int get_dtls_version(const unsigned char* buf, int len);
 
 int is_dtls_message(const unsigned char* buf, int len);
 
 int is_dtls_handshake_message(const unsigned char* buf, int len) {
-  return (buf && len>3 && buf[0]==0x16 && buf[1]==0xfe && buf[2]==0xff);
+  return (buf && len>3 && buf[0]==0x16 && buf[1]==0xfe && ((buf[2]==0xff)||(buf[2]==0xfd)));
 }
 
 int is_dtls_data_message(const unsigned char* buf, int len) {
-  return (buf && len>3 && buf[0]==0x17 && buf[1]==0xfe && buf[2]==0xff);
+  return (buf && len>3 && buf[0]==0x17 && buf[1]==0xfe && ((buf[2]==0xff)||(buf[2]==0xfd)));
 }
 
 int is_dtls_alert_message(const unsigned char* buf, int len) {
-  return (buf && len>3 && buf[0]==0x15 && buf[1]==0xfe && buf[2]==0xff);
+  return (buf && len>3 && buf[0]==0x15 && buf[1]==0xfe && ((buf[2]==0xff)||(buf[2]==0xfd)));
 }
 
 int is_dtls_cipher_change_message(const unsigned char* buf, int len) {
-  return (buf && len>3 && buf[0]==0x14 && buf[1]==0xfe && buf[2]==0xff);
+  return (buf && len>3 && buf[0]==0x14 && buf[1]==0xfe && ((buf[2]==0xff)||(buf[2]==0xfd)));
 }
 
 int is_dtls_message(const unsigned char* buf, int len) {
-  if(buf && (len>3) && (buf[1])==0xfe && (buf[2]==0xff)) {
+  if(buf && (len>3) && (buf[1])==0xfe && ((buf[2]==0xff)||(buf[2]==0xfd))) {
 	  switch (buf[0]) {
 	  case 0x14:
 	  case 0x15:
@@ -113,9 +119,16 @@ int is_dtls_message(const unsigned char* buf, int len) {
   return 0;
 }
 
+/* 0 - 1.0, 1 - 1.2 */
+int get_dtls_version(const unsigned char* buf, int len) {
+	if(buf && (len>3) && (buf[2] == 0xfd))
+		return 1;
+	return 0;
+}
+
 ///////////// utils /////////////////////
 
-#if !defined(TURN_NO_DTLS)
+#if DTLS_SUPPORTED
 
 static void calculate_cookie(SSL* ssl, unsigned char *cookie_secret, unsigned int cookie_length) {
   long rv=(long)ssl;
@@ -266,7 +279,18 @@ static ioa_socket_handle dtls_server_input_handler(dtls_listener_relay_server_ty
 	timeout.tv_usec = 0;
 	BIO_ctrl(wbio, BIO_CTRL_DGRAM_SET_RECV_TIMEOUT, 0, &timeout);
 
-	connecting_ssl = SSL_NEW(server->dtls_ctx);
+#if DTLSv1_2_SUPPORTED
+	if(get_dtls_version(ioa_network_buffer_data(nbh),
+							(int)ioa_network_buffer_get_size(nbh)) == 1) {
+		connecting_ssl = SSL_NEW(server->dtls_ctx_v1_2);
+	} else {
+		connecting_ssl = SSL_NEW(server->dtls_ctx);
+	}
+#else
+	{
+		connecting_ssl = SSL_NEW(server->dtls_ctx);
+	}
+#endif
 
 	SSL_set_accept_state(connecting_ssl);
 
@@ -404,7 +428,7 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server,
 
 		chs = NULL;
 
-#if !defined(TURN_NO_DTLS)
+#if DTLS_SUPPORTED
 		if (!turn_params.no_dtls &&
 			is_dtls_handshake_message(ioa_network_buffer_data(sm->m.sm.nd.nbh),
 			(int)ioa_network_buffer_get_size(sm->m.sm.nd.nbh))) {
@@ -513,7 +537,7 @@ static int create_new_connected_udp_socket(
 	ret->current_tos = s->current_tos;
 	ret->default_tos = s->default_tos;
 
-#if !defined(TURN_NO_DTLS)
+#if DTLS_SUPPORTED
 	if (!turn_params.no_dtls
 			&& is_dtls_handshake_message(
 					ioa_network_buffer_data(server->sm.m.sm.nd.nbh),
@@ -536,7 +560,18 @@ static int create_new_connected_udp_socket(
 		timeout.tv_usec = 0;
 		BIO_ctrl(wbio, BIO_CTRL_DGRAM_SET_RECV_TIMEOUT, 0, &timeout);
 
-		connecting_ssl = SSL_NEW(server->dtls_ctx);
+#if DTLSv1_2_SUPPORTED
+		if(get_dtls_version(ioa_network_buffer_data(server->sm.m.sm.nd.nbh),
+							(int)ioa_network_buffer_get_size(server->sm.m.sm.nd.nbh)) == 1) {
+			connecting_ssl = SSL_NEW(server->dtls_ctx_v1_2);
+		} else {
+			connecting_ssl = SSL_NEW(server->dtls_ctx);
+		}
+#else
+		{
+			connecting_ssl = SSL_NEW(server->dtls_ctx);
+		}
+#endif
 
 		SSL_set_accept_state(connecting_ssl);
 
@@ -566,7 +601,6 @@ static int create_new_connected_udp_socket(
 		server->sm.m.sm.nd.nbh = NULL;
 
 		ret->st = DTLS_SOCKET;
-		STRCPY(ret->orig_ctx_type,"DTLSv1.0");
 	}
 #endif
 
@@ -864,7 +898,14 @@ static int init_server(dtls_listener_relay_server_type* server,
 
   if(!server) return -1;
 
+#if DTLS_SUPPORTED
   server->dtls_ctx = e->dtls_ctx;
+
+#if DTLSv1_2_SUPPORTED
+  server->dtls_ctx_v1_2 = e->dtls_ctx_v1_2;
+#endif
+#endif
+
   server->ts = ts;
   server->connect_cb = send_socket;
 
@@ -881,6 +922,7 @@ static int init_server(dtls_listener_relay_server_type* server,
   
   server->e = e;
   
+#if DTLS_SUPPORTED
   if(server->dtls_ctx) {
 
 #if defined(REQUEST_CLIENT_CERT)
@@ -890,11 +932,25 @@ static int init_server(dtls_listener_relay_server_type* server,
   
 	  SSL_CTX_set_read_ahead(server->dtls_ctx, 1);
 
-#if !defined(TURN_NO_DTLS)
 	  SSL_CTX_set_cookie_generate_cb(server->dtls_ctx, generate_cookie);
 	  SSL_CTX_set_cookie_verify_cb(server->dtls_ctx, verify_cookie);
-#endif
   }
+
+#if DTLSv1_2_SUPPORTED
+  if(server->dtls_ctx_v1_2) {
+
+  #if defined(REQUEST_CLIENT_CERT)
+  	  /* If client has to authenticate, then  */
+  	  SSL_CTX_set_verify(server->dtls_ctx_v1_2, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, dtls_verify_callback);
+  #endif
+
+  	  SSL_CTX_set_read_ahead(server->dtls_ctx_v1_2, 1);
+
+  	  SSL_CTX_set_cookie_generate_cb(server->dtls_ctx_v1_2, generate_cookie);
+  	  SSL_CTX_set_cookie_verify_cb(server->dtls_ctx_v1_2, verify_cookie);
+    }
+#endif
+#endif
 
   return create_server_socket(server, report_creation);
 }

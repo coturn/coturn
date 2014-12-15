@@ -38,7 +38,7 @@
 
 #include "ns_ioalib_impl.h"
 
-#if !defined(TURN_NO_TLS)
+#if TLS_SUPPORTED
 #include <event2/bufferevent_ssl.h>
 #endif
 
@@ -433,24 +433,35 @@ ioa_engine_handle create_ioa_engine(super_memory_t *sm,
 
 void set_ssl_ctx(ioa_engine_handle e,
 		SSL_CTX *tls_ctx_ssl23,
-		SSL_CTX *tls_ctx_v1_0,
-#if defined(SSL_TXT_TLSV1_1)
-		SSL_CTX *tls_ctx_v1_1,
-#if defined(SSL_TXT_TLSV1_2)
-		SSL_CTX *tls_ctx_v1_2,
+		SSL_CTX *tls_ctx_v1_0
+#if TLSv1_1_SUPPORTED
+		 ,SSL_CTX *tls_ctx_v1_1
+#if TLSv1_2_SUPPORTED
+		 ,SSL_CTX *tls_ctx_v1_2
 #endif
 #endif
-		SSL_CTX *dtls_ctx)
+#if DTLS_SUPPORTED
+		 ,SSL_CTX *dtls_ctx
+#endif
+#if DTLSv1_2_SUPPORTED
+		,SSL_CTX *dtls_ctx_v1_2
+#endif
+)
 {
 	e->tls_ctx_ssl23 = tls_ctx_ssl23;
 	e->tls_ctx_v1_0 = tls_ctx_v1_0;
-#if defined(SSL_TXT_TLSV1_1)
+#if TLSv1_1_SUPPORTED
 	e->tls_ctx_v1_1 = tls_ctx_v1_1;
-#if defined(SSL_TXT_TLSV1_2)
+#if TLSv1_2_SUPPORTED
 	e->tls_ctx_v1_2 = tls_ctx_v1_2;
 #endif
 #endif
+#if DTLS_SUPPORTED
 	e->dtls_ctx = dtls_ctx;
+#endif
+#if DTLSv1_2_SUPPORTED
+	e->dtls_ctx_v1_2 = dtls_ctx_v1_2;
+#endif
 }
 
 void ioa_engine_set_rtcp_map(ioa_engine_handle e, rtcp_map *rtcpmap)
@@ -1554,8 +1565,6 @@ ioa_socket_handle create_ioa_socket_from_ssl(ioa_engine_handle e, ioa_socket_han
 
 	if(ret) {
 		set_socket_ssl(ret,ssl);
-		if(st == DTLS_SOCKET)
-			STRCPY(ret->orig_ctx_type,"DTLSv1.0");
 	}
 
 	return ret;
@@ -1754,8 +1763,6 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s)
 		addr_cpy(&(ret->local_addr),&(s->local_addr));
 		ret->connected = s->connected;
 		addr_cpy(&(ret->remote_addr),&(s->remote_addr));
-
-		STRCPY(ret->orig_ctx_type, s->orig_ctx_type);
 		
 		delete_socket_from_map(s);
 		delete_socket_from_parent(s);
@@ -2239,7 +2246,8 @@ int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr *like_a
 	return len;
 }
 
-#if !defined(TURN_NO_TLS)
+#if TLS_SUPPORTED
+
 static TURN_TLS_TYPE check_tentative_tls(ioa_socket_raw fd)
 {
 	TURN_TLS_TYPE ret = TURN_TLS_NO;
@@ -2318,7 +2326,7 @@ static int socket_input_worker(ioa_socket_handle s)
 	}
 
 	if(s->st == TLS_SOCKET) {
-#if !defined(TURN_NO_TLS)
+#if TLS_SUPPORTED
 		SSL *ctx = bufferevent_openssl_get_ssl(s->bev);
 		if(!ctx || SSL_get_shutdown(ctx)) {
 			s->tobeclosed = 1;
@@ -2337,7 +2345,7 @@ static int socket_input_worker(ioa_socket_handle s)
 
 	if(s->st == TENTATIVE_TCP_SOCKET) {
 		EVENT_DEL(s->read_event);
-#if !defined(TURN_NO_TLS)
+#if TLS_SUPPORTED
 		TURN_TLS_TYPE tls_type = check_tentative_tls(s->fd);
 		if(tls_type) {
 			s->st = TLS_SOCKET;
@@ -2348,32 +2356,28 @@ static int socket_input_worker(ioa_socket_handle s)
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s on socket: 0x%lx, st=%d, sat=%d: bev already exist\n", __FUNCTION__,(long)s, s->st, s->sat);
 			}
 			switch(tls_type) {
-#if defined(SSL_TXT_TLSV1_2)
+#if TLSv1_2_SUPPORTED
 			case TURN_TLS_v1_2:
 				if(s->e->tls_ctx_v1_2) {
 					set_socket_ssl(s,SSL_NEW(s->e->tls_ctx_v1_2));
-					STRCPY(s->orig_ctx_type,"TLSv1.2");
 				}
 				break;
 #endif
-#if defined(SSL_TXT_TLSV1_1)
+#if TLSv1_1_SUPPORTED
 			case TURN_TLS_v1_1:
 				if(s->e->tls_ctx_v1_1) {
 					set_socket_ssl(s,SSL_NEW(s->e->tls_ctx_v1_1));
-					STRCPY(s->orig_ctx_type,"TLSv1.1");
 				}
 				break;
 #endif
 			case TURN_TLS_v1_0:
 				if(s->e->tls_ctx_v1_0) {
 					set_socket_ssl(s,SSL_NEW(s->e->tls_ctx_v1_0));
-					STRCPY(s->orig_ctx_type,"TLSv1.0");
 				}
 				break;
 			default:
 				if(s->e->tls_ctx_ssl23) {
 					set_socket_ssl(s,SSL_NEW(s->e->tls_ctx_ssl23));
-					STRCPY(s->orig_ctx_type,"SSLv23");
 				} else {
 					s->tobeclosed = 1;
 					return 0;
@@ -2392,7 +2396,7 @@ static int socket_input_worker(ioa_socket_handle s)
 				bufferevent_enable(s->bev, EV_READ|EV_WRITE); /* Start reading. */
 			}
 		} else
-#endif //TURN_NO_TLS
+#endif //TLS_SUPPORTED
 		{
 			s->st = TCP_SOCKET;
 			if(s->bev) {
@@ -2444,7 +2448,7 @@ static int socket_input_worker(ioa_socket_handle s)
 						s->broken = 1;
 						log_socket_event(s, "socket read failed, to be closed",1);
 					} else if(s->st == TLS_SOCKET) {
-#if !defined(TURN_NO_TLS)
+#if TLS_SUPPORTED
 						SSL *ctx = bufferevent_openssl_get_ssl(s->bev);
 						if(!ctx || SSL_get_shutdown(ctx)) {
 							ret = -1;
@@ -3084,7 +3088,7 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 
 					if (s->connected && s->bev) {
 						if (s->st == TLS_SOCKET) {
-#if !defined(TURN_NO_TLS)
+#if TLS_SUPPORTED
 							SSL *ctx = bufferevent_openssl_get_ssl(s->bev);
 							if (!ctx || SSL_get_shutdown(ctx)) {
 								s->tobeclosed = 1;
@@ -3241,11 +3245,10 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 							return -1;
 						}
 					} else {
-#if !defined(TURN_NO_TLS)
+#if TLS_SUPPORTED
 						if(!(s->ssl)) {
 							//??? how we can get to this point ???
 							set_socket_ssl(s,SSL_NEW(e->tls_ctx_ssl23));
-							STRCPY(s->orig_ctx_type,"SSLv23");
 							s->bev = bufferevent_openssl_socket_new(s->e->event_base,
 											s->fd,
 											s->ssl,
@@ -3460,7 +3463,7 @@ const char* get_ioa_socket_cipher(ioa_socket_handle s)
 const char* get_ioa_socket_ssl_method(ioa_socket_handle s)
 {
 	if(s && s->ssl) {
-		return turn_get_ssl_method(s->ssl, s->orig_ctx_type);
+		return turn_get_ssl_method(s->ssl, "UNKNOWN");
 	}
 	return "no SSL";
 }
@@ -3478,8 +3481,8 @@ void turn_report_allocation_set(void *a, turn_time_t lifetime, int refresh)
 				ioa_engine_handle e = turn_server_get_engine(server);
 				if(e && e->verbose && ss->client_socket) {
 					if(ss->client_socket->ssl) {
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"session %018llu: %s, realm=<%s>, username=<%s>, lifetime=%lu, cipher=%s, method=%s (%s)\n", (unsigned long long)ss->id, status, (char*)ss->realm_options.name, (char*)ss->username, (unsigned long)lifetime, SSL_get_cipher(ss->client_socket->ssl),
-							turn_get_ssl_method(ss->client_socket->ssl, ss->client_socket->orig_ctx_type),ss->client_socket->orig_ctx_type);
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"session %018llu: %s, realm=<%s>, username=<%s>, lifetime=%lu, cipher=%s, method=%s\n", (unsigned long long)ss->id, status, (char*)ss->realm_options.name, (char*)ss->username, (unsigned long)lifetime, SSL_get_cipher(ss->client_socket->ssl),
+							turn_get_ssl_method(ss->client_socket->ssl, "UNKNOWN"));
 					} else {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"session %018llu: %s, realm=<%s>, username=<%s>, lifetime=%lu\n", (unsigned long long)ss->id, status, (char*)ss->realm_options.name, (char*)ss->username, (unsigned long)lifetime);
 					}

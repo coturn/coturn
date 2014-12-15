@@ -7,8 +7,6 @@ cleanup() {
 	rm -rf ${TMPCPROGB}
 	rm -rf ${TH_TMPCPROGC}
 	rm -rf ${TH_TMPCPROGB}
-	rm -rf ${DTLS_TMPCPROGC}
-	rm -rf ${DTLS_TMPCPROGB}
 	rm -rf ${GCM_TMPCPROGC}
 	rm -rf ${GCM_TMPCPROGB}
 	rm -rf ${PQ_TMPCPROGC}
@@ -236,21 +234,6 @@ pthread_testbarriers() {
     if ! [ ${ER} -eq 0 ] ; then
 		${ECHO_CMD} "pthread barriers not found"
 		OSCFLAGS="${OSCFLAGS} -DTURN_NO_THREAD_BARRIERS"
-    fi
-}
-
-dtls_testlib() {
-
-    if [ -z "${TURN_NO_DTLS}" ] ; then
-    	${CC} ${DTLS_TMPCPROGC} -o ${DTLS_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} 2>>/dev/null
-    	ER=$?
-    	if [ ${ER} -eq 0 ] ; then
-    	    return 1
-    	else
-    	    return 0
-    	fi
-    else
-		return 0
     fi
 }
 
@@ -686,19 +669,6 @@ int main(int argc, char** argv) {
 
 !
 
-DTLS_TMPCPROG=__test__ccomp__dtls__$$
-DTLS_TMPCPROGC=${TMPDIR}/${DTLS_TMPCPROG}.c
-DTLS_TMPCPROGB=${TMPDIR}/${DTLS_TMPCPROG}
-
-cat > ${DTLS_TMPCPROGC} <<!
-#include <stdlib.h>
-#include <openssl/ssl.h>
-#include <openssl/bio.h>
-int main(int argc, char** argv) {
-    return (((int)(BIO_CTRL_DGRAM_QUERY_MTU)) + argc + (int)(argv[argc][0]) + DTLSv1_listen(NULL,NULL));
-}
-!
-
 GCM_TMPCPROG=__test__ccomp__gcm__$$
 GCM_TMPCPROGC=${TMPDIR}/${GCM_TMPCPROG}.c
 GCM_TMPCPROGB=${TMPDIR}/${GCM_TMPCPROG}
@@ -959,24 +929,6 @@ else
     ${ECHO_CMD} "Abort."
     cleanup
     exit
-fi
-
-###########################
-# Can we use DTLS ?
-###########################
-
-if [ -z ${TURN_NO_DTLS} ] ; then 
-
-dtls_testlib
-ER=$?
-if [ ${ER} -eq 0 ] ; then
-	${ECHO_CMD} "WARNING: Cannot find DTLS support."
-	${ECHO_CMD} "Turning DTLS off."
-	TURN_NO_DTLS="-DTURN_NO_DTLS"
-fi
-
-else
-	TURN_NO_DTLS="-DTURN_NO_DTLS"
 fi
 
 ###########################
