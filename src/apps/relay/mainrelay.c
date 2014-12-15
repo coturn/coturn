@@ -2357,12 +2357,12 @@ static int ServerALPNCallback(SSL *s,
 		unsigned char current_len = *ptr;
 		if(ptr+1+current_len > in+inlen)
 			break;
-		if((current_len == sa_len) && (memcmp(ptr+1,STUN_ALPN,sa_len)==0)) {
+		if((!turn_params.no_stun) && (current_len == sa_len) && (memcmp(ptr+1,STUN_ALPN,sa_len)==0)) {
 			*out = ptr+1;
 			*outlen = sa_len;
 			return SSL_TLSEXT_ERR_OK;
 		}
-		if((current_len == ta_len) && (memcmp(ptr+1,TURN_ALPN,ta_len)==0)) {
+		if((!turn_params.stun_only) && (current_len == ta_len) && (memcmp(ptr+1,TURN_ALPN,ta_len)==0)) {
 			*out = ptr+1;
 			*outlen = ta_len;
 			return SSL_TLSEXT_ERR_OK;
