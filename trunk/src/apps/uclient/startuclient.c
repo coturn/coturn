@@ -51,7 +51,7 @@ static int allocate_rtcp = 0;
 static const int never_allocate_rtcp = 0;
 
 #if ALPN_SUPPORTED
-static const unsigned char kALPNProtos[] = "\x09stun.turn\x12stun.nat-discovery";
+static const unsigned char kALPNProtos[] = "\x08http/1.1\x09stun.turn\x12stun.nat-discovery";
 static const size_t kALPNProtosLen = sizeof(kALPNProtos) - 1;
 #endif
 
