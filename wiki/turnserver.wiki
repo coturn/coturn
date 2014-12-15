@@ -1,5 +1,5 @@
 #summary turnserver wiki page
-#labels Version-4.3.2.1
+#labels Version-4.3.2.2
 
 ==turnserver application: a TURN relay server implementation==
 
@@ -495,7 +495,7 @@ The MongoDB setup is well documented on their site http://docs.mongodb.org/manua
 Note: if your system has a "standard" plain vanilla UNIX "make" utility
 (that is not a GNU make) then you will have to use the GNU make to compile 
 the Mongo driver, because the Mongo compilation process was written with 
-the "proprietary" GNU extentions. For example, in FreeBSD in will have to use 
+the "proprietary" GNU extensions. For example, in FreeBSD in will have to use 
 "gmake" command. 
 
 If the TURN server was compiled with MongoDB support (mongo-c-driver is the C client 
@@ -563,5 +563,5 @@ The server supports ALPNs "stun.turn" and "stun.nat-discovery", when
 compiled with OpenSSL 1.0.2 or newer. If the server receives a TLS/DTLS
 {{{ClientHello}}} message that contains one or both of those ALPNs, then the
 server chooses the first {{{stun.*}}} label and sends it back (in the {{{ServerHello}}})
-in the ALPN extention field. If no {{{stun.*}}} label is found, then the server
+in the ALPN extension field. If no {{{stun.*}}} label is found, then the server
 does not include the ALPN information into the {{{ServerHello}}}.
