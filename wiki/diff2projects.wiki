@@ -1,5 +1,5 @@
 #summary Difference between rfc5766-turn-server and coturn.
-#labels Version-4.3.1.1
+#labels Version-4.3.2.2
 
 = Introduction =
 
@@ -46,3 +46,8 @@ Coturn can store data in SQLite.
 == No flat files database support in coturn ==
 
 Starting with version 4.3.1.1, coturn does not support turnuserdb.conf flat-file database. The default database for Coturn is SQLite.
+
+== Coturn supports STUN/TURN ALPN ==
+
+The details are in http://tools.ietf.org/html/draft-ietf-tram-alpn-08. 
+For ALPN support, Coturn has to be compiled with OpenSSL 1.0.2+.
