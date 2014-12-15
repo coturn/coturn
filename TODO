@@ -47,7 +47,7 @@
 
 ==================================================================
 
-Nope
+1) EC curve new features in OpenSSL 1.0.2
  
 ==================================================================
 
@@ -57,11 +57,7 @@ Nope
 
 1) For extra difficult NAT/FWs, consider implementing Websockets.
 
-2) ALPN with TLS and DTLS (when OpenSSL 1.0.2 is available).
-
-3) Redirect draft.
-
-4) DTLS 1.2 (when available).
+2) Redirect draft.
 
 ==================================================================
 

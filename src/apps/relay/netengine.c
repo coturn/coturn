@@ -940,14 +940,20 @@ static ioa_engine_handle create_new_listener_engine(void)
 			,turn_params.redis_statsdb
 #endif
 	);
-	set_ssl_ctx(e, turn_params.tls_ctx_ssl23, turn_params.tls_ctx_v1_0,
-#if defined(SSL_TXT_TLSV1_1)
-					turn_params.tls_ctx_v1_1,
-#if defined(SSL_TXT_TLSV1_2)
-					turn_params.tls_ctx_v1_2,
+	set_ssl_ctx(e, turn_params.tls_ctx_ssl23, turn_params.tls_ctx_v1_0
+#if TLSv1_1_SUPPORTED
+		    ,turn_params.tls_ctx_v1_1
+#if TLSv1_2_SUPPORTED
+		    ,turn_params.tls_ctx_v1_2
 #endif
 #endif
-					turn_params.dtls_ctx);
+#if DTLS_SUPPORTED
+		    ,turn_params.dtls_ctx
+#endif
+#if DTLSv1_2_SUPPORTED
+		    ,turn_params.dtls_ctx_v1_2
+#endif
+	);
 	ioa_engine_set_rtcp_map(e, turn_params.listener.rtcpmap);
 	return e;
 }
@@ -990,14 +996,20 @@ static void setup_listener(void)
 	if(!turn_params.listener.ioa_eng)
 		exit(-1);
 
-	set_ssl_ctx(turn_params.listener.ioa_eng, turn_params.tls_ctx_ssl23, turn_params.tls_ctx_v1_0,
-#if defined(SSL_TXT_TLSV1_1)
-					turn_params.tls_ctx_v1_1,
-#if defined(SSL_TXT_TLSV1_2)
-					turn_params.tls_ctx_v1_2,
+	set_ssl_ctx(turn_params.listener.ioa_eng, turn_params.tls_ctx_ssl23, turn_params.tls_ctx_v1_0
+#if TLSv1_1_SUPPORTED
+		    ,turn_params.tls_ctx_v1_1
+#if TLSv1_2_SUPPORTED
+		    ,turn_params.tls_ctx_v1_2
 #endif
 #endif
-					turn_params.dtls_ctx);
+#if DTLS_SUPPORTED
+		    ,turn_params.dtls_ctx
+#endif
+#if DTLSv1_2_SUPPORTED
+		    ,turn_params.dtls_ctx_v1_2
+#endif
+	);
 
 	turn_params.listener.rtcpmap = rtcp_map_create(turn_params.listener.ioa_eng);
 
@@ -1558,14 +1570,20 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
 			,turn_params.redis_statsdb
 #endif
 		);
-		set_ssl_ctx(rs->ioa_eng, turn_params.tls_ctx_ssl23, turn_params.tls_ctx_v1_0,
-#if defined(SSL_TXT_TLSV1_1)
-						turn_params.tls_ctx_v1_1,
-#if defined(SSL_TXT_TLSV1_2)
-						turn_params.tls_ctx_v1_2,
+		set_ssl_ctx(rs->ioa_eng, turn_params.tls_ctx_ssl23, turn_params.tls_ctx_v1_0
+#if TLSv1_1_SUPPORTED
+			    ,turn_params.tls_ctx_v1_1
+#if TLSv1_2_SUPPORTED
+			    ,turn_params.tls_ctx_v1_2
 #endif
 #endif
-						turn_params.dtls_ctx);
+#if DTLS_SUPPORTED
+			    ,turn_params.dtls_ctx
+#endif
+#if DTLSv1_2_SUPPORTED
+			    ,turn_params.dtls_ctx_v1_2
+#endif
+		);
 		ioa_engine_set_rtcp_map(rs->ioa_eng, turn_params.listener.rtcpmap);
 	}
 
