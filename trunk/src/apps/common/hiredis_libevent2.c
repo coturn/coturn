@@ -267,7 +267,7 @@ redis_context_handle redisLibeventAttach(struct event_base *base, char *ip0, int
 
   /* Initialize and install read/write events */
   e->rev = event_new(e->base,e->context->c.fd,
-  		     EV_READ,redisLibeventReadEvent,
+  		     EV_READ|EV_PERSIST,redisLibeventReadEvent,
   		     e);
 
   e->wev = event_new(e->base,e->context->c.fd,
