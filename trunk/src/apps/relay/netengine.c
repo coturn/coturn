@@ -37,6 +37,18 @@ static unsigned int barrier_count = 0;
 static pthread_barrier_t barrier;
 #endif
 
+////////////// Auth Server ////////////////
+
+struct auth_server {
+	struct event_base* event_base;
+	struct bufferevent *in_buf;
+	struct bufferevent *out_buf;
+	pthread_t thr;
+	redis_context_handle rch;
+};
+
+static struct auth_server authserver = {NULL,NULL,NULL,0,NULL};
+
 //////////////////////////////////////////////
 
 #define get_real_general_relay_servers_number() (turn_params.general_relay_servers_number > 1 ? turn_params.general_relay_servers_number : 1)
@@ -356,7 +368,7 @@ static int handle_relay_message(relay_server_handle rs, struct message_to_relay 
 
 void send_auth_message_to_auth_server(struct auth_message *am)
 {
-	struct evbuffer *output = bufferevent_get_output(turn_params.authserver.out_buf);
+	struct evbuffer *output = bufferevent_get_output(authserver.out_buf);
 	if(evbuffer_add(output,am,sizeof(struct auth_message))<0) {
 		fprintf(stderr,"%s: Weird buffer error\n",__FUNCTION__);
 	}
@@ -1689,33 +1701,34 @@ static void* run_auth_server_thread(void *arg)
 {
 	ignore_sigpipe();
 
-	ns_bzero(&turn_params.authserver,sizeof(struct auth_server));
+	struct auth_server *as = (struct auth_server*)arg;
 
-	turn_params.authserver.event_base = turn_event_base_new();
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"IO method (auth thread): %s\n",event_base_get_method(turn_params.authserver.event_base));
+	ns_bzero(as,sizeof(struct auth_server));
+
+	as->event_base = turn_event_base_new();
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"IO method (auth thread): %s\n",event_base_get_method(as->event_base));
 
 	struct bufferevent *pair[2];
 
-	bufferevent_pair_new(turn_params.authserver.event_base, TURN_BUFFEREVENTS_OPTIONS, pair);
-	turn_params.authserver.in_buf = pair[0];
-	turn_params.authserver.out_buf = pair[1];
-	bufferevent_setcb(turn_params.authserver.in_buf, auth_server_receive_message, NULL, NULL, &turn_params.authserver);
-	bufferevent_enable(turn_params.authserver.in_buf, EV_READ);
+	bufferevent_pair_new(as->event_base, TURN_BUFFEREVENTS_OPTIONS, pair);
+	as->in_buf = pair[0];
+	as->out_buf = pair[1];
+	bufferevent_setcb(as->in_buf, auth_server_receive_message, NULL, NULL, as);
+	bufferevent_enable(as->in_buf, EV_READ);
 
 #if !defined(TURN_NO_HIREDIS)
-	turn_params.authserver.rch = get_redis_async_connection(turn_params.authserver.event_base, turn_params.redis_statsdb, 1);
+	as->rch = get_redis_async_connection(as->event_base, turn_params.redis_statsdb, 1);
 #endif
 
-	struct auth_server *authserver = &turn_params.authserver;
-	struct event_base *eb = authserver->event_base;
+	struct event_base *eb = as->event_base;
 
 	barrier_wait();
 
 	while(run_auth_server_flag) {
 		reread_realms();
-		run_events(eb,NULL);
 		update_white_and_black_lists();
-		auth_ping(authserver->rch);
+		auth_ping(as->rch);
+		run_events(eb,NULL);
 #if defined(DB_TEST)
 		run_db_test();
 #endif
@@ -1724,13 +1737,13 @@ static void* run_auth_server_thread(void *arg)
 	return arg;
 }
 
-static void setup_auth_server(void)
+static void setup_auth_server(struct auth_server *as)
 {
-	if(pthread_create(&(turn_params.authserver.thr), NULL, run_auth_server_thread, NULL)<0) {
+	if(pthread_create(&(as->thr), NULL, run_auth_server_thread, as)<0) {
 		perror("Cannot create auth thread\n");
 		exit(-1);
 	}
-	pthread_detach(turn_params.authserver.thr);
+	pthread_detach(as->thr);
 }
 
 static void* run_cli_server_thread(void *arg)
@@ -1815,7 +1828,7 @@ void setup_server(void)
 		}
 	}
 
-	setup_auth_server();
+	setup_auth_server(&authserver);
 	if(use_cli)
 		setup_cli_server();
 

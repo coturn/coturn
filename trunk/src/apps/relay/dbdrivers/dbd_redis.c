@@ -161,6 +161,7 @@ static Ryconninfo *RyconninfoParse(const char *userdb, char **errmsg) {
 }
 
 redis_context_handle get_redis_async_connection(struct event_base *base, const char* connection_string, int delete_keys) {
+
 	redis_context_handle ret = NULL;
 
 	char *errmsg = NULL;

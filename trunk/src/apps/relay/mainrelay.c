@@ -110,7 +110,6 @@ NEV_UNKNOWN,
 LOW_DEFAULT_PORTS_BOUNDARY,HIGH_DEFAULT_PORTS_BOUNDARY,0,0,0,"",
 0,NULL,0,NULL,DEFAULT_GENERAL_RELAY_SERVERS_NUMBER,0,
 ////////////// Auth server /////////////////////////////////////
-{NULL,NULL,NULL,0,NULL},
 "","",0,
 /////////////// AUX SERVERS ////////////////
 {NULL,0,{0,NULL}},0,
@@ -1883,8 +1882,6 @@ int main(int argc, char **argv)
 	if(!strlen(turn_params.default_users_db.persistent_users_db.userdb) && (turn_params.default_users_db.userdb_type == TURN_USERDB_TYPE_SQLITE))
 			STRCPY(turn_params.default_users_db.persistent_users_db.userdb,DEFAULT_USERDB_FILE);
 #endif
-
-	update_white_and_black_lists();
 
 	argc -= optind;
 	argv += optind;
