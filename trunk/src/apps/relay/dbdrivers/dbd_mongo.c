@@ -82,7 +82,7 @@ static MONGO * get_mongodb_connection(void) {
 
 	persistent_users_db_t * pud = get_persistent_users_db();
 
-	MONGO * mydbconnection = (MONGO *) (pud->connection);
+	MONGO * mydbconnection = (MONGO *) pthread_getspecific(connection_key);
 
 	if (!mydbconnection) {
 		mongoc_init();
@@ -111,7 +111,9 @@ static MONGO * get_mongodb_connection(void) {
 						mydbconnection->uri);
 				if (!mydbconnection->database)
 					mydbconnection->database = MONGO_DEFAULT_DB;
-				pud->connection = mydbconnection;
+				if(mydbconnection) {
+					(void) pthread_setspecific(connection_key, mydbconnection);
+				}
 				TURN_LOG_FUNC(
 					TURN_LOG_LEVEL_INFO,
 					"Opened MongoDB URI <%s>\n",
@@ -1172,7 +1174,7 @@ static void mongo_reread_realms(secrets_list_t * realms_list) {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static turn_dbdriver_t driver = {
+static const turn_dbdriver_t driver = {
   &mongo_get_auth_secrets,
   &mongo_get_user_key,
   &mongo_get_user_pwd,
@@ -1197,7 +1199,7 @@ static turn_dbdriver_t driver = {
   &mongo_list_oauth_keys
 };
 
-turn_dbdriver_t * get_mongo_dbdriver(void) {
+const turn_dbdriver_t * get_mongo_dbdriver(void) {
   return &driver;
 }
 
@@ -1205,7 +1207,7 @@ turn_dbdriver_t * get_mongo_dbdriver(void) {
 
 #else
 
-turn_dbdriver_t * get_mongo_dbdriver(void) {
+const turn_dbdriver_t * get_mongo_dbdriver(void) {
   return NULL;
 }
 

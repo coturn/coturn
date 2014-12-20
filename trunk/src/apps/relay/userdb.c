@@ -302,7 +302,7 @@ void add_to_secrets_list(secrets_list_t *sl, const char* elem)
 static int get_auth_secrets(secrets_list_t *sl, u08bits *realm)
 {
 	int ret = -1;
-  turn_dbdriver_t * dbd = get_dbdriver();
+  const turn_dbdriver_t * dbd = get_dbdriver();
 
 	clean_secrets_list(sl);
 
@@ -419,7 +419,7 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, u08bits *u
 
 			if(len>0 && value) {
 
-				turn_dbdriver_t * dbd = get_dbdriver();
+				const turn_dbdriver_t * dbd = get_dbdriver();
 
 				if (dbd && dbd->get_oauth_key) {
 
@@ -635,7 +635,7 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, u08bits *u
 		return 0;
 	}
 
-  turn_dbdriver_t * dbd = get_dbdriver();
+  const turn_dbdriver_t * dbd = get_dbdriver();
   if (dbd && dbd->get_user_key) {
     ret = (*(dbd->get_user_key))(usname, realm, key);
   }
@@ -650,7 +650,7 @@ int get_user_pwd(u08bits *usname, st_password_t pwd)
 {
 	int ret = -1;
 
-  turn_dbdriver_t * dbd = get_dbdriver();
+  const turn_dbdriver_t * dbd = get_dbdriver();
   if (dbd && dbd->get_user_pwd) {
     ret = (*dbd->get_user_pwd)(usname, pwd);
   }
@@ -792,7 +792,7 @@ int add_user_account(char *user, int dynamic)
 
 static int list_users(int is_st, u08bits *realm)
 {
-  turn_dbdriver_t * dbd = get_dbdriver();
+  const turn_dbdriver_t * dbd = get_dbdriver();
   if (dbd && dbd->list_users) {
     (*dbd->list_users)(is_st, realm);
   }
@@ -804,7 +804,7 @@ static int show_secret(u08bits *realm)
 {
 	must_set_admin_realm(realm);
 
-  turn_dbdriver_t * dbd = get_dbdriver();
+  const turn_dbdriver_t * dbd = get_dbdriver();
   if (dbd && dbd->show_secret) {
     (*dbd->show_secret)(realm);
 	}
@@ -816,7 +816,7 @@ static int del_secret(u08bits *secret, u08bits *realm) {
 
 	must_set_admin_realm(realm);
 
-  turn_dbdriver_t * dbd = get_dbdriver();
+  const turn_dbdriver_t * dbd = get_dbdriver();
   if (dbd && dbd->del_secret) {
     (*dbd->del_secret)(secret, realm);
 	}
@@ -833,7 +833,7 @@ static int set_secret(u08bits *secret, u08bits *realm) {
 
 	del_secret(secret, realm);
 
-  turn_dbdriver_t * dbd = get_dbdriver();
+  const turn_dbdriver_t * dbd = get_dbdriver();
   if (dbd && dbd->set_secret) {
     (*dbd->set_secret)(secret, realm);
 	}
@@ -847,7 +847,7 @@ static int add_origin(u08bits *origin0, u08bits *realm)
 
 	get_canonic_origin((const char *)origin0, (char *)origin, sizeof(origin)-1);
 
-  turn_dbdriver_t * dbd = get_dbdriver();
+  const turn_dbdriver_t * dbd = get_dbdriver();
   if (dbd && dbd->add_origin) {
     (*dbd->add_origin)(origin, realm);
 	}
@@ -861,7 +861,7 @@ static int del_origin(u08bits *origin0)
 
 	get_canonic_origin((const char *)origin0, (char *)origin, sizeof(origin)-1);
 
-  turn_dbdriver_t * dbd = get_dbdriver();
+  const turn_dbdriver_t * dbd = get_dbdriver();
   if (dbd && dbd->del_origin) {
     (*dbd->del_origin)(origin);
 	}
@@ -871,7 +871,7 @@ static int del_origin(u08bits *origin0)
 
 static int list_origins(u08bits *realm)
 {
-  turn_dbdriver_t * dbd = get_dbdriver();
+  const turn_dbdriver_t * dbd = get_dbdriver();
   if (dbd && dbd->list_origins) {
     (*dbd->list_origins)(realm);
 	}
@@ -884,7 +884,7 @@ static int set_realm_option_one(u08bits *realm, unsigned long value, const char*
 	if(value == (unsigned long)-1)
 		return 0;
 
-  turn_dbdriver_t * dbd = get_dbdriver();
+  const turn_dbdriver_t * dbd = get_dbdriver();
   if (dbd && dbd->set_realm_option_one) {
     (*dbd->set_realm_option_one)(realm, value, opt);
 	}
@@ -902,7 +902,7 @@ static int set_realm_option(u08bits *realm, perf_options_t *po)
 
 static int list_realm_options(u08bits *realm)
 {
-  turn_dbdriver_t * dbd = get_dbdriver();
+  const turn_dbdriver_t * dbd = get_dbdriver();
   if (dbd && dbd->list_realm_options) {
     (*dbd->list_realm_options)(realm);
 	}
@@ -984,7 +984,7 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, u08b
 		}
 	}
 
-	turn_dbdriver_t * dbd = get_dbdriver();
+	const turn_dbdriver_t * dbd = get_dbdriver();
 
 	if (ct == TA_PRINT_KEY) {
 
@@ -1020,7 +1020,7 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, u08b
 
 void auth_ping(redis_context_handle rch)
 {
-  turn_dbdriver_t * dbd = get_dbdriver();
+  const turn_dbdriver_t * dbd = get_dbdriver();
   if (dbd && dbd->auth_ping) {
     (*dbd->auth_ping)(rch);
 	}
@@ -1193,7 +1193,7 @@ ip_range_list_t* get_ip_list(const char *kind)
 	ip_range_list_t *ret = (ip_range_list_t*) turn_malloc(sizeof(ip_range_list_t));
 	ns_bzero(ret,sizeof(ip_range_list_t));
 
-	turn_dbdriver_t * dbd = get_dbdriver();
+	const turn_dbdriver_t * dbd = get_dbdriver();
 	if (dbd && dbd->get_ip_list) {
 		(*dbd->get_ip_list)(kind, ret);
 	}
@@ -1292,7 +1292,7 @@ void reread_realms(void)
 		ur_string_map_unlock(realms);
 	}
 
-  turn_dbdriver_t * dbd = get_dbdriver();
+  const turn_dbdriver_t * dbd = get_dbdriver();
   if (dbd && dbd->reread_realms) {
     (*dbd->reread_realms)(&realms_list);
 	}
