@@ -650,12 +650,12 @@ int get_user_pwd(u08bits *usname, st_password_t pwd)
 {
 	int ret = -1;
 
-  const turn_dbdriver_t * dbd = get_dbdriver();
-  if (dbd && dbd->get_user_pwd) {
-    ret = (*dbd->get_user_pwd)(usname, pwd);
-  }
+	const turn_dbdriver_t * dbd = get_dbdriver();
+	if (dbd && dbd->get_user_pwd) {
+		ret = (*dbd->get_user_pwd)(usname, pwd);
+	}
 
-  return ret;
+	return ret;
 }
 
 u08bits *start_user_check(turnserver_id id, turn_credential_type ct, int in_oauth, int *out_oauth, u08bits *usname, u08bits *realm, get_username_resume_cb resume, ioa_net_data *in_buffer, u64bits ctxkey, int *postpone_reply)
@@ -1023,7 +1023,7 @@ void auth_ping(redis_context_handle rch)
   const turn_dbdriver_t * dbd = get_dbdriver();
   if (dbd && dbd->auth_ping) {
     (*dbd->auth_ping)(rch);
-	}
+  }
 }
 
 ///////////////// TEST /////////////////

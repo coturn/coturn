@@ -160,16 +160,6 @@ enum _NET_ENG_VERSION {
 
 typedef enum _NET_ENG_VERSION NET_ENG_VERSION;
 
-////////////// Auth Server Types ////////////////
-
-struct auth_server {
-	struct event_base* event_base;
-	struct bufferevent *in_buf;
-	struct bufferevent *out_buf;
-	pthread_t thr;
-	redis_context_handle rch;
-};
-
 /////////// PARAMS //////////////////////////////////
 
 typedef struct _turn_params_ {
@@ -275,7 +265,6 @@ typedef struct _turn_params_ {
 
 ////////////// Auth server ////////////////
 
-  struct auth_server authserver;
   char oauth_server_name[1025];
   char domain[1025];
   int oauth;
