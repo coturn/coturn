@@ -40,14 +40,16 @@
 static int donot_print_connection_success = 0;
 
 static PGconn *get_pqdb_connection(void) {
+
 	persistent_users_db_t *pud = get_persistent_users_db();
 
-	PGconn *pqdbconnection = (PGconn*)(pud->connection);
+	PGconn *pqdbconnection = (PGconn*)pthread_getspecific(connection_key);
 	if(pqdbconnection) {
 		ConnStatusType status = PQstatus(pqdbconnection);
 		if(status != CONNECTION_OK) {
 			PQfinish(pqdbconnection);
 			pqdbconnection = NULL;
+			(void) pthread_setspecific(connection_key, pqdbconnection);
 		}
 	}
 	if(!pqdbconnection) {
@@ -78,7 +80,10 @@ static PGconn *get_pqdb_connection(void) {
 				}
 			}
 		}
-		pud->connection = pqdbconnection;
+
+		if(pqdbconnection) {
+			(void) pthread_setspecific(connection_key, pqdbconnection);
+		}
 	}
 	return pqdbconnection;
 }
@@ -782,7 +787,7 @@ static void pgsql_reread_realms(secrets_list_t * realms_list) {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static turn_dbdriver_t driver = {
+static const turn_dbdriver_t driver = {
   &pgsql_get_auth_secrets,
   &pgsql_get_user_key,
   &pgsql_get_user_pwd,
@@ -807,7 +812,7 @@ static turn_dbdriver_t driver = {
   &pgsql_list_oauth_keys
 };
 
-turn_dbdriver_t * get_pgsql_dbdriver(void) {
+const turn_dbdriver_t * get_pgsql_dbdriver(void) {
   return &driver;
 }
 
@@ -815,7 +820,7 @@ turn_dbdriver_t * get_pgsql_dbdriver(void) {
 
 #else
 
-turn_dbdriver_t * get_pgsql_dbdriver(void) {
+const turn_dbdriver_t * get_pgsql_dbdriver(void) {
   return NULL;
 }
 

@@ -36,11 +36,16 @@
 
 #include "ns_turn_msg_defs_new.h"
 
+#include <pthread.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 ////////////////////////////////////////////
+
+extern pthread_key_t connection_key;
+extern pthread_once_t connection_key_once;
 
 typedef struct _turn_dbdriver_t {
   int (*get_auth_secrets)(secrets_list_t *sl, u08bits *realm);
@@ -71,7 +76,7 @@ typedef struct _turn_dbdriver_t {
 
 int convert_string_key_to_binary(char* keysource, hmackey_t key, size_t sz);
 persistent_users_db_t * get_persistent_users_db(void);
-turn_dbdriver_t * get_dbdriver(void);
+const turn_dbdriver_t * get_dbdriver(void);
 
 ////////////////////////////////////////////
 

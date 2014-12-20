@@ -189,14 +189,16 @@ static Myconninfo *MyconninfoParse(char *userdb, char **errmsg) {
 }
 
 static MYSQL *get_mydb_connection(void) {
+
 	persistent_users_db_t *pud = get_persistent_users_db();
 
-	MYSQL *mydbconnection = (MYSQL*)(pud->connection);
+	MYSQL *mydbconnection = (MYSQL*)pthread_getspecific(connection_key);
 
 	if(mydbconnection) {
 		if(mysql_ping(mydbconnection)) {
 			mysql_close(mydbconnection);
 			mydbconnection=NULL;
+			(void) pthread_setspecific(connection_key, mydbconnection);
 		}
 	}
 
@@ -242,7 +244,9 @@ static MYSQL *get_mydb_connection(void) {
 			}
 			MyconninfoFree(co);
 		}
-		pud->connection = mydbconnection;
+		if(mydbconnection) {
+			(void) pthread_setspecific(connection_key, mydbconnection);
+		}
 	}
 	return mydbconnection;
 }
@@ -1063,7 +1067,7 @@ static void mysql_reread_realms(secrets_list_t * realms_list) {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static turn_dbdriver_t driver = {
+static const turn_dbdriver_t driver = {
   &mysql_get_auth_secrets,
   &mysql_get_user_key,
   &mysql_get_user_pwd,
@@ -1088,7 +1092,7 @@ static turn_dbdriver_t driver = {
   &mysql_list_oauth_keys
 };
 
-turn_dbdriver_t * get_mysql_dbdriver(void) {
+const turn_dbdriver_t * get_mysql_dbdriver(void) {
   return &driver;
 }
 
@@ -1096,7 +1100,7 @@ turn_dbdriver_t * get_mysql_dbdriver(void) {
 
 #else
 
-turn_dbdriver_t * get_mysql_dbdriver(void) {
+const turn_dbdriver_t * get_mysql_dbdriver(void) {
   return NULL;
 }
 

@@ -119,7 +119,7 @@ static sqlite3 * get_sqlite_connection(void) {
 
 	persistent_users_db_t *pud = get_persistent_users_db();
 
-	sqlite3 *sqliteconnection = (sqlite3 *)(pud->connection);
+	sqlite3 *sqliteconnection = (sqlite3 *)pthread_getspecific(connection_key);
 	if(!sqliteconnection) {
 		fix_user_directory(pud->userdb);
 		sqlite_init_multithreaded();
@@ -136,7 +136,9 @@ static sqlite3 * get_sqlite_connection(void) {
 			init_sqlite_database(sqliteconnection);
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "SQLite DB connection success: %s\n",pud->userdb);
 		}
-		pud->connection = sqliteconnection;
+		if(sqliteconnection) {
+			(void) pthread_setspecific(connection_key, sqliteconnection);
+		}
 	}
 	return sqliteconnection;
 }
@@ -936,7 +938,7 @@ static void sqlite_reread_realms(secrets_list_t * realms_list)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static turn_dbdriver_t driver = {
+static const turn_dbdriver_t driver = {
   &sqlite_get_auth_secrets,
   &sqlite_get_user_key,
   &sqlite_get_user_pwd,
@@ -963,10 +965,16 @@ static turn_dbdriver_t driver = {
 
 //////////////////////////////////////////////////
 
-turn_dbdriver_t * get_sqlite_dbdriver(void) {
+const turn_dbdriver_t * get_sqlite_dbdriver(void) {
 	return &driver;
 }
 
 //////////////////////////////////////////////////
+
+#else
+
+const turn_dbdriver_t * get_sqlite_dbdriver(void) {
+	return NULL;
+}
 
 #endif

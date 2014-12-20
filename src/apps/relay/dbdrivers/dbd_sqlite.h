@@ -38,7 +38,7 @@
 extern "C" {
 #endif
 
-turn_dbdriver_t * get_sqlite_dbdriver(void);
+const turn_dbdriver_t * get_sqlite_dbdriver(void);
 
 #ifdef __cplusplus
 }
