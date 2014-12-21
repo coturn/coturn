@@ -1721,6 +1721,9 @@ static void* run_auth_server_thread(void *arg)
 
 	if(id == 0) {
 
+		reread_realms();
+		update_white_and_black_lists();
+
 		barrier_wait();
 
 		while(run_auth_server_flag) {
