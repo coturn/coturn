@@ -39,7 +39,10 @@ static pthread_barrier_t barrier;
 
 ////////////// Auth Server ////////////////
 
+typedef unsigned char authserver_id;
+
 struct auth_server {
+	authserver_id id;
 	struct event_base* event_base;
 	struct bufferevent *in_buf;
 	struct bufferevent *out_buf;
@@ -47,7 +50,9 @@ struct auth_server {
 	redis_context_handle rch;
 };
 
-static struct auth_server authserver = {NULL,NULL,NULL,0,NULL};
+#define MIN_AUTHSERVER_NUMBER (3)
+static authserver_id authserver_number = MIN_AUTHSERVER_NUMBER;
+static struct auth_server authserver[256];
 
 //////////////////////////////////////////////
 
@@ -366,9 +371,20 @@ static void allocate_relay_addrs_ports(void) {
 
 static int handle_relay_message(relay_server_handle rs, struct message_to_relay *sm);
 
+static pthread_mutex_t auth_message_counter_mutex = PTHREAD_MUTEX_INITIALIZER;
+static authserver_id auth_message_counter = 1;
+
 void send_auth_message_to_auth_server(struct auth_message *am)
 {
-	struct evbuffer *output = bufferevent_get_output(authserver.out_buf);
+	pthread_mutex_lock(&auth_message_counter_mutex);
+	if(auth_message_counter>=authserver_number) auth_message_counter = 1;
+	else if(auth_message_counter<1) auth_message_counter = 1;
+	authserver_id sn = auth_message_counter++;
+	pthread_mutex_unlock(&auth_message_counter_mutex);
+
+	printf("%s: 111.111: %d\n",__FUNCTION__,(int)sn);
+
+	struct evbuffer *output = bufferevent_get_output(authserver[sn].out_buf);
 	if(evbuffer_add(output,am,sizeof(struct auth_message))<0) {
 		fprintf(stderr,"%s: Weird buffer error\n",__FUNCTION__);
 	}
@@ -1703,35 +1719,48 @@ static void* run_auth_server_thread(void *arg)
 
 	struct auth_server *as = (struct auth_server*)arg;
 
-	ns_bzero(as,sizeof(struct auth_server));
+	authserver_id id = as->id;
 
-	as->event_base = turn_event_base_new();
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"IO method (auth thread): %s\n",event_base_get_method(as->event_base));
+	if(id == 0) {
 
-	struct bufferevent *pair[2];
+		barrier_wait();
 
-	bufferevent_pair_new(as->event_base, TURN_BUFFEREVENTS_OPTIONS, pair);
-	as->in_buf = pair[0];
-	as->out_buf = pair[1];
-	bufferevent_setcb(as->in_buf, auth_server_receive_message, NULL, NULL, as);
-	bufferevent_enable(as->in_buf, EV_READ);
+		while(run_auth_server_flag) {
+			reread_realms();
+			update_white_and_black_lists();
+#if defined(DB_TEST)
+			run_db_test();
+#endif
+			sleep(5);
+		}
+
+	} else {
+
+		ns_bzero(as,sizeof(struct auth_server));
+
+		as->id = id;
+
+		as->event_base = turn_event_base_new();
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"IO method (auth thread): %s\n",event_base_get_method(as->event_base));
+
+		struct bufferevent *pair[2];
+
+		bufferevent_pair_new(as->event_base, TURN_BUFFEREVENTS_OPTIONS, pair);
+		as->in_buf = pair[0];
+		as->out_buf = pair[1];
+		bufferevent_setcb(as->in_buf, auth_server_receive_message, NULL, NULL, as);
+		bufferevent_enable(as->in_buf, EV_READ);
 
 #if !defined(TURN_NO_HIREDIS)
-	as->rch = get_redis_async_connection(as->event_base, turn_params.redis_statsdb, 1);
+		as->rch = get_redis_async_connection(as->event_base, turn_params.redis_statsdb, 1);
 #endif
 
-	struct event_base *eb = as->event_base;
+		barrier_wait();
 
-	barrier_wait();
-
-	while(run_auth_server_flag) {
-		reread_realms();
-		update_white_and_black_lists();
-		auth_ping(as->rch);
-		run_events(eb,NULL);
-#if defined(DB_TEST)
-		run_db_test();
-#endif
+		while(run_auth_server_flag) {
+			auth_ping(as->rch);
+			run_events(as->event_base,NULL);
+		}
 	}
 
 	return arg;
@@ -1781,11 +1810,15 @@ void setup_server(void)
 
 	pthread_mutex_init(&mutex_bps, NULL);
 
+	authserver_number = 1 + (authserver_id)(turn_params.cpus / 2);
+
+	if(authserver_number < MIN_AUTHSERVER_NUMBER) authserver_number = MIN_AUTHSERVER_NUMBER;
+
 #if !defined(TURN_NO_THREAD_BARRIERS)
 
-	/* relay threads plus auth thread plus main listener thread */
+	/* relay threads plus auth threads plus main listener thread */
 	/* udp address listener thread(s) will start later */
-	barrier_count = turn_params.general_relay_servers_number+2;
+	barrier_count = turn_params.general_relay_servers_number+authserver_number+1;
 
 	if(use_cli) {
 		barrier_count += 1;
@@ -1828,7 +1861,14 @@ void setup_server(void)
 		}
 	}
 
-	setup_auth_server(&authserver);
+	{
+		authserver_id sn = 0;
+		for(sn = 0; sn < authserver_number;++sn) {
+			authserver[sn].id = sn;
+			setup_auth_server(&(authserver[sn]));
+		}
+	}
+
 	if(use_cli)
 		setup_cli_server();
 

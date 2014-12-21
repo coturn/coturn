@@ -77,6 +77,7 @@ static PGconn *get_pqdb_connection(void) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open PostgreSQL DB connection: <%s>, runtime error\n",pud->userdb);
 				} else if(!donot_print_connection_success){
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "PostgreSQL DB connection success: %s\n",pud->userdb);
+					donot_print_connection_success = 1;
 				}
 			}
 		}
@@ -633,7 +634,6 @@ static int pgsql_list_realm_options(u08bits *realm) {
   
 static void pgsql_auth_ping(void * rch) {
 	UNUSED_ARG(rch);
-	donot_print_connection_success = 1;
 	PGconn * pqc = get_pqdb_connection();
 	if(pqc) {
 		char statement[TURN_LONG_STRING_SIZE];

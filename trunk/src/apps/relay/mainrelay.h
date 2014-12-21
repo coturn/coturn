@@ -100,6 +100,8 @@ extern "C" {
 #define TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP MAX_NUMBER_OF_GENERAL_RELAY_SERVERS
 #define TURNSERVER_ID_BOUNDARY_BETWEEN_UDP_AND_TCP TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP
 
+#define DEFAULT_CPUS_NUMBER (2)
+
 /////////// TYPES ///////////////////////////////////
 
 enum _DH_KEY_SIZE {
@@ -303,6 +305,10 @@ typedef struct _turn_params_ {
 /////// Users DB ///////////
 
   default_users_db_t default_users_db;
+
+/////// CPUs //////////////
+
+  unsigned long cpus;
 
 } turn_params_t;
 

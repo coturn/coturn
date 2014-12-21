@@ -240,6 +240,7 @@ static MYSQL *get_mydb_connection(void) {
 					mydbconnection=NULL;
 				} else if(!donot_print_connection_success) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "MySQL DB connection success: %s\n",pud->userdb);
+					donot_print_connection_success = 1;
 				}
 			}
 			MyconninfoFree(co);
@@ -876,7 +877,6 @@ static int mysql_list_realm_options(u08bits *realm) {
   
 static void mysql_auth_ping(void * rch) {
 	UNUSED_ARG(rch);
-	donot_print_connection_success = 1;
 	MYSQL * myc = get_mydb_connection();
 	if(myc) {
 		char statement[TURN_LONG_STRING_SIZE];
