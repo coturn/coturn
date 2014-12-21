@@ -77,7 +77,7 @@ static void sqlite_lock(int write)
 	}
 }
 
-void sqlite_unlock(int write)
+static void sqlite_unlock(int write)
 {
 	pthread_mutex_lock(&rc_mutex);
 	if (write) {
