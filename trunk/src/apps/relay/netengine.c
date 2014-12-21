@@ -382,8 +382,6 @@ void send_auth_message_to_auth_server(struct auth_message *am)
 	authserver_id sn = auth_message_counter++;
 	pthread_mutex_unlock(&auth_message_counter_mutex);
 
-	printf("%s: 111.111: %d\n",__FUNCTION__,(int)sn);
-
 	struct evbuffer *output = bufferevent_get_output(authserver[sn].out_buf);
 	if(evbuffer_add(output,am,sizeof(struct auth_message))<0) {
 		fprintf(stderr,"%s: Weird buffer error\n",__FUNCTION__);
