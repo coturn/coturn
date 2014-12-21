@@ -120,8 +120,9 @@ LOW_DEFAULT_PORTS_BOUNDARY,HIGH_DEFAULT_PORTS_BOUNDARY,0,0,0,"",
 /////////////// MISC PARAMS ////////////////
 0,0,0,0,0,SHATYPE_SHA1,':',0,0,TURN_CREDENTIALS_NONE,0,0,0,0,0,0,
 ///////////// Users DB //////////////
-{ (TURN_USERDB_TYPE)0, {"\0"}, {0,NULL,NULL, {NULL,0}} }
-
+{ (TURN_USERDB_TYPE)0, {"\0"}, {0,NULL,NULL, {NULL,0}} },
+///////////// CPUs //////////////////
+DEFAULT_CPUS_NUMBER
 };
 
 //////////////// OpenSSL Init //////////////////////
@@ -1801,14 +1802,14 @@ int main(int argc, char **argv)
 #if defined(_SC_NPROCESSORS_ONLN)
 
 	{
-		 long cpus = (long)sysconf(_SC_NPROCESSORS_CONF);
+		 turn_params.cpus = (long)sysconf(_SC_NPROCESSORS_CONF);
 
-		 if(cpus<1)
-			 cpus = 1;
-		 else if(cpus>MAX_NUMBER_OF_GENERAL_RELAY_SERVERS)
-			 cpus = MAX_NUMBER_OF_GENERAL_RELAY_SERVERS;
+		 if(turn_params.cpus<DEFAULT_CPUS_NUMBER)
+			 turn_params.cpus = DEFAULT_CPUS_NUMBER;
+		 else if(turn_params.cpus>MAX_NUMBER_OF_GENERAL_RELAY_SERVERS)
+			 turn_params.cpus = MAX_NUMBER_OF_GENERAL_RELAY_SERVERS;
 
-		 turn_params.general_relay_servers_number = (turnserver_id)cpus;
+		 turn_params.general_relay_servers_number = (turnserver_id)turn_params.cpus;
 	}
 
 #endif

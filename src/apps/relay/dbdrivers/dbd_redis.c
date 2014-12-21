@@ -254,6 +254,7 @@ redis_context_handle get_redis_async_connection(struct event_base *base, const c
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot initialize Redis DB connection\n");
 			} else if (is_redis_asyncconn_good(ret) && !donot_print_connection_success) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Redis DB async connection to be used: %s\n", connection_string);
+				donot_print_connection_success = 1;
 			}
 			RyconninfoFree(co);
 		}
@@ -348,6 +349,7 @@ static redisContext *get_redis_connection(void) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot initialize Redis DB connection\n");
 			} else if (!donot_print_connection_success) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Redis DB sync connection success: %s\n", pud->userdb);
+				donot_print_connection_success = 1;
 			}
 
 			RyconninfoFree(co);
@@ -1024,7 +1026,6 @@ static int redis_list_realm_options(u08bits *realm) {
 }
   
 static void redis_auth_ping(void * rch) {
-	donot_print_connection_success = 1;
 	redisContext *rc = get_redis_connection();
 	if(rc) {
 		turnFreeRedisReply(redisCommand(rc, "keys turn/origin/*"));

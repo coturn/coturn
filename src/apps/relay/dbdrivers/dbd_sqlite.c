@@ -135,6 +135,7 @@ static sqlite3 * get_sqlite_connection(void) {
 		} else if(!donot_print_connection_success){
 			init_sqlite_database(sqliteconnection);
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "SQLite DB connection success: %s\n",pud->userdb);
+			donot_print_connection_success = 1;
 		}
 		if(sqliteconnection) {
 			(void) pthread_setspecific(connection_key, sqliteconnection);
