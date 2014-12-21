@@ -2334,14 +2334,14 @@ static int pem_password_func(char *buf, int size, int rwflag, void *password)
 
 #if ALPN_SUPPORTED
 
-static int ServerALPNCallback(SSL *s,
+static int ServerALPNCallback(SSL *ssl,
 				const unsigned char **out,
 				unsigned char *outlen,
 				const unsigned char *in,
 				unsigned int inlen,
 				void *arg) {
 
-	UNUSED_ARG(s);
+	UNUSED_ARG(ssl);
 	UNUSED_ARG(arg);
 
 	unsigned char sa_len = (unsigned char)strlen(STUN_ALPN);
@@ -2358,21 +2358,26 @@ static int ServerALPNCallback(SSL *s,
 		if((!turn_params.no_stun) && (current_len == sa_len) && (memcmp(ptr+1,STUN_ALPN,sa_len)==0)) {
 			*out = ptr+1;
 			*outlen = sa_len;
+			SSL_set_app_data(ssl,STUN_ALPN);
 			return SSL_TLSEXT_ERR_OK;
 		}
 		if((!turn_params.stun_only) && (current_len == ta_len) && (memcmp(ptr+1,TURN_ALPN,ta_len)==0)) {
 			*out = ptr+1;
 			*outlen = ta_len;
+			SSL_set_app_data(ssl,TURN_ALPN);
 			return SSL_TLSEXT_ERR_OK;
 		}
 		if((current_len == ha_len) && (memcmp(ptr+1,HTTP_ALPN,ha_len)==0)) {
+			*out = ptr+1;
+			*outlen = ta_len;
+			SSL_set_app_data(ssl,HTTP_ALPN);
 			found_http = 1;
 		}
 		ptr += 1 + current_len;
 	}
 
 	if(found_http)
-		return SSL_TLSEXT_ERR_NOACK;
+		return SSL_TLSEXT_ERR_OK;
 
 	return SSL_TLSEXT_ERR_NOACK; //???
 }
