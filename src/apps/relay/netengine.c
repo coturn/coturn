@@ -1727,12 +1727,12 @@ static void* run_auth_server_thread(void *arg)
 		barrier_wait();
 
 		while(run_auth_server_flag) {
-			reread_realms();
-			update_white_and_black_lists();
 #if defined(DB_TEST)
 			run_db_test();
 #endif
 			sleep(5);
+			reread_realms();
+			update_white_and_black_lists();
 		}
 
 	} else {
