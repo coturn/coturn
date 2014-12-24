@@ -40,14 +40,16 @@
 static int donot_print_connection_success = 0;
 
 static PGconn *get_pqdb_connection(void) {
+
 	persistent_users_db_t *pud = get_persistent_users_db();
 
-	PGconn *pqdbconnection = (PGconn*)(pud->connection);
+	PGconn *pqdbconnection = (PGconn*)pthread_getspecific(connection_key);
 	if(pqdbconnection) {
 		ConnStatusType status = PQstatus(pqdbconnection);
 		if(status != CONNECTION_OK) {
 			PQfinish(pqdbconnection);
 			pqdbconnection = NULL;
+			(void) pthread_setspecific(connection_key, pqdbconnection);
 		}
 	}
 	if(!pqdbconnection) {
@@ -75,10 +77,14 @@ static PGconn *get_pqdb_connection(void) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open PostgreSQL DB connection: <%s>, runtime error\n",pud->userdb);
 				} else if(!donot_print_connection_success){
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "PostgreSQL DB connection success: %s\n",pud->userdb);
+					donot_print_connection_success = 1;
 				}
 			}
 		}
-		pud->connection = pqdbconnection;
+
+		if(pqdbconnection) {
+			(void) pthread_setspecific(connection_key, pqdbconnection);
+		}
 	}
 	return pqdbconnection;
 }
@@ -628,7 +634,6 @@ static int pgsql_list_realm_options(u08bits *realm) {
   
 static void pgsql_auth_ping(void * rch) {
 	UNUSED_ARG(rch);
-	donot_print_connection_success = 1;
 	PGconn * pqc = get_pqdb_connection();
 	if(pqc) {
 		char statement[TURN_LONG_STRING_SIZE];
@@ -782,7 +787,7 @@ static void pgsql_reread_realms(secrets_list_t * realms_list) {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static turn_dbdriver_t driver = {
+static const turn_dbdriver_t driver = {
   &pgsql_get_auth_secrets,
   &pgsql_get_user_key,
   &pgsql_get_user_pwd,
@@ -807,7 +812,7 @@ static turn_dbdriver_t driver = {
   &pgsql_list_oauth_keys
 };
 
-turn_dbdriver_t * get_pgsql_dbdriver(void) {
+const turn_dbdriver_t * get_pgsql_dbdriver(void) {
   return &driver;
 }
 
@@ -815,7 +820,7 @@ turn_dbdriver_t * get_pgsql_dbdriver(void) {
 
 #else
 
-turn_dbdriver_t * get_pgsql_dbdriver(void) {
+const turn_dbdriver_t * get_pgsql_dbdriver(void) {
   return NULL;
 }
 

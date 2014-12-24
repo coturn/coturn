@@ -161,6 +161,7 @@ static Ryconninfo *RyconninfoParse(const char *userdb, char **errmsg) {
 }
 
 redis_context_handle get_redis_async_connection(struct event_base *base, const char* connection_string, int delete_keys) {
+
 	redis_context_handle ret = NULL;
 
 	char *errmsg = NULL;
@@ -253,6 +254,7 @@ redis_context_handle get_redis_async_connection(struct event_base *base, const c
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot initialize Redis DB connection\n");
 			} else if (is_redis_asyncconn_good(ret) && !donot_print_connection_success) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Redis DB async connection to be used: %s\n", connection_string);
+				donot_print_connection_success = 1;
 			}
 			RyconninfoFree(co);
 		}
@@ -264,14 +266,14 @@ redis_context_handle get_redis_async_connection(struct event_base *base, const c
 static redisContext *get_redis_connection(void) {
 	persistent_users_db_t *pud = get_persistent_users_db();
 
-	redisContext *redisconnection = (redisContext*)(pud->connection);
+	redisContext *redisconnection = (redisContext*)pthread_getspecific(connection_key);
 
 	if(redisconnection) {
 		if(redisconnection->err) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Cannot connect to redis, err=%d, flags=0x%lx\n", __FUNCTION__,(int)redisconnection->err,(unsigned long)redisconnection->flags);
 			redisFree(redisconnection);
-			pud->connection = NULL;
 			redisconnection = NULL;
+			(void) pthread_setspecific(connection_key, redisconnection);
 		}
 	}
 
@@ -347,15 +349,14 @@ static redisContext *get_redis_connection(void) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot initialize Redis DB connection\n");
 			} else if (!donot_print_connection_success) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Redis DB sync connection success: %s\n", pud->userdb);
+				donot_print_connection_success = 1;
 			}
 
 			RyconninfoFree(co);
 		}
-		pud->connection = redisconnection;
-
-		pud = get_persistent_users_db();
-
-		redisconnection = (redisContext*)(pud->connection);
+		if(redisconnection) {
+			(void) pthread_setspecific(connection_key, redisconnection);
+		}
 	}
 
 	return redisconnection;
@@ -1025,7 +1026,6 @@ static int redis_list_realm_options(u08bits *realm) {
 }
   
 static void redis_auth_ping(void * rch) {
-	donot_print_connection_success = 1;
 	redisContext *rc = get_redis_connection();
 	if(rc) {
 		turnFreeRedisReply(redisCommand(rc, "keys turn/origin/*"));
@@ -1205,7 +1205,7 @@ static void redis_reread_realms(secrets_list_t * realms_list) {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static turn_dbdriver_t driver = {
+static const turn_dbdriver_t driver = {
   &redis_get_auth_secrets,
   &redis_get_user_key,
   &redis_get_user_pwd,
@@ -1230,7 +1230,7 @@ static turn_dbdriver_t driver = {
   &redis_list_oauth_keys
 };
 
-turn_dbdriver_t * get_redis_dbdriver(void) {
+const turn_dbdriver_t * get_redis_dbdriver(void) {
   return &driver;
 }
 
@@ -1238,7 +1238,7 @@ turn_dbdriver_t * get_redis_dbdriver(void) {
 
 #else
 
-turn_dbdriver_t * get_redis_dbdriver(void) {
+const turn_dbdriver_t * get_redis_dbdriver(void) {
   return NULL;
 }
 

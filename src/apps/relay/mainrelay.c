@@ -110,7 +110,6 @@ NEV_UNKNOWN,
 LOW_DEFAULT_PORTS_BOUNDARY,HIGH_DEFAULT_PORTS_BOUNDARY,0,0,0,"",
 0,NULL,0,NULL,DEFAULT_GENERAL_RELAY_SERVERS_NUMBER,0,
 ////////////// Auth server /////////////////////////////////////
-{NULL,NULL,NULL,0,NULL},
 "","",0,
 /////////////// AUX SERVERS ////////////////
 {NULL,0,{0,NULL}},0,
@@ -121,8 +120,9 @@ LOW_DEFAULT_PORTS_BOUNDARY,HIGH_DEFAULT_PORTS_BOUNDARY,0,0,0,"",
 /////////////// MISC PARAMS ////////////////
 0,0,0,0,0,SHATYPE_SHA1,':',0,0,TURN_CREDENTIALS_NONE,0,0,0,0,0,0,
 ///////////// Users DB //////////////
-{ (TURN_USERDB_TYPE)0, {"\0",NULL}, {0,NULL,NULL, {NULL,0}} }
-
+{ (TURN_USERDB_TYPE)0, {"\0"}, {0,NULL,NULL, {NULL,0}} },
+///////////// CPUs //////////////////
+DEFAULT_CPUS_NUMBER
 };
 
 //////////////// OpenSSL Init //////////////////////
@@ -1802,14 +1802,14 @@ int main(int argc, char **argv)
 #if defined(_SC_NPROCESSORS_ONLN)
 
 	{
-		 long cpus = (long)sysconf(_SC_NPROCESSORS_CONF);
+		 turn_params.cpus = (long)sysconf(_SC_NPROCESSORS_CONF);
 
-		 if(cpus<1)
-			 cpus = 1;
-		 else if(cpus>MAX_NUMBER_OF_GENERAL_RELAY_SERVERS)
-			 cpus = MAX_NUMBER_OF_GENERAL_RELAY_SERVERS;
+		 if(turn_params.cpus<DEFAULT_CPUS_NUMBER)
+			 turn_params.cpus = DEFAULT_CPUS_NUMBER;
+		 else if(turn_params.cpus>MAX_NUMBER_OF_GENERAL_RELAY_SERVERS)
+			 turn_params.cpus = MAX_NUMBER_OF_GENERAL_RELAY_SERVERS;
 
-		 turn_params.general_relay_servers_number = (turnserver_id)cpus;
+		 turn_params.general_relay_servers_number = (turnserver_id)turn_params.cpus;
 	}
 
 #endif
@@ -1883,8 +1883,6 @@ int main(int argc, char **argv)
 	if(!strlen(turn_params.default_users_db.persistent_users_db.userdb) && (turn_params.default_users_db.userdb_type == TURN_USERDB_TYPE_SQLITE))
 			STRCPY(turn_params.default_users_db.persistent_users_db.userdb,DEFAULT_USERDB_FILE);
 #endif
-
-	update_white_and_black_lists();
 
 	argc -= optind;
 	argv += optind;
@@ -2336,14 +2334,14 @@ static int pem_password_func(char *buf, int size, int rwflag, void *password)
 
 #if ALPN_SUPPORTED
 
-static int ServerALPNCallback(SSL *s,
+static int ServerALPNCallback(SSL *ssl,
 				const unsigned char **out,
 				unsigned char *outlen,
 				const unsigned char *in,
 				unsigned int inlen,
 				void *arg) {
 
-	UNUSED_ARG(s);
+	UNUSED_ARG(ssl);
 	UNUSED_ARG(arg);
 
 	unsigned char sa_len = (unsigned char)strlen(STUN_ALPN);
@@ -2360,21 +2358,26 @@ static int ServerALPNCallback(SSL *s,
 		if((!turn_params.no_stun) && (current_len == sa_len) && (memcmp(ptr+1,STUN_ALPN,sa_len)==0)) {
 			*out = ptr+1;
 			*outlen = sa_len;
+			SSL_set_app_data(ssl,STUN_ALPN);
 			return SSL_TLSEXT_ERR_OK;
 		}
 		if((!turn_params.stun_only) && (current_len == ta_len) && (memcmp(ptr+1,TURN_ALPN,ta_len)==0)) {
 			*out = ptr+1;
 			*outlen = ta_len;
+			SSL_set_app_data(ssl,TURN_ALPN);
 			return SSL_TLSEXT_ERR_OK;
 		}
 		if((current_len == ha_len) && (memcmp(ptr+1,HTTP_ALPN,ha_len)==0)) {
+			*out = ptr+1;
+			*outlen = ta_len;
+			SSL_set_app_data(ssl,HTTP_ALPN);
 			found_http = 1;
 		}
 		ptr += 1 + current_len;
 	}
 
 	if(found_http)
-		return SSL_TLSEXT_ERR_NOACK;
+		return SSL_TLSEXT_ERR_OK;
 
 	return SSL_TLSEXT_ERR_NOACK; //???
 }

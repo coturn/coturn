@@ -108,37 +108,37 @@ void create_default_realm()
 	o_to_realm = ur_string_map_create(turn_free_simple);
 	default_realm_params_ptr = &_default_realm_params;
 	realms = ur_string_map_create(NULL);
-	ur_string_map_lock(realms);
+	lock_realms();
 	default_realm_params_ptr->status.alloc_counters =  ur_string_map_create(NULL);
-	ur_string_map_unlock(realms);
+	unlock_realms();
 }
 
 void get_default_realm_options(realm_options_t* ro)
 {
 	if(ro) {
-		ur_string_map_lock(realms);
+		lock_realms();
 		ns_bcopy(&(default_realm_params_ptr->options),ro,sizeof(realm_options_t));
-		ur_string_map_unlock(realms);
+		unlock_realms();
 	}
 }
 
 void set_default_realm_name(char *realm) {
-	ur_string_map_lock(realms);
+	lock_realms();
 	ur_string_map_value_type value = (ur_string_map_value_type)default_realm_params_ptr;
 	STRCPY(default_realm_params_ptr->options.name,realm);
 	ur_string_map_put(realms, (ur_string_map_key_type)default_realm_params_ptr->options.name, value);
 	add_to_secrets_list(&realms_list, realm);
-	ur_string_map_unlock(realms);
+	unlock_realms();
 }
 
 realm_params_t* get_realm(char* name)
 {
 	if(name && name[0]) {
-		ur_string_map_lock(realms);
+		lock_realms();
 		ur_string_map_value_type value = 0;
 		ur_string_map_key_type key = (ur_string_map_key_type)name;
 		if (ur_string_map_get(realms, key, &value)) {
-			ur_string_map_unlock(realms);
+			unlock_realms();
 			return (realm_params_t*)value;
 		} else {
 			realm_params_t *ret = (realm_params_t*)turn_malloc(sizeof(realm_params_t));
@@ -148,7 +148,7 @@ realm_params_t* get_realm(char* name)
 			ur_string_map_put(realms, key, value);
 			ret->status.alloc_counters =  ur_string_map_create(NULL);
 			add_to_secrets_list(&realms_list, name);
-			ur_string_map_unlock(realms);
+			unlock_realms();
 			return ret;
 		}
 	}
@@ -158,9 +158,9 @@ realm_params_t* get_realm(char* name)
 
 int get_realm_data(char* name, realm_params_t* rp)
 {
-	ur_string_map_lock(realms);
+	lock_realms();
 	ns_bcopy(get_realm(name),rp,sizeof(realm_params_t));
-	ur_string_map_unlock(realms);
+	unlock_realms();
 	return 0;
 }
 
@@ -193,20 +193,20 @@ void get_realm_options_by_name(char *realm, realm_options_t* ro)
 int change_total_quota(char *realm, int value)
 {
 	int ret = value;
-	ur_string_map_lock(realms);
+	lock_realms();
 	realm_params_t* rp = get_realm(realm);
 	rp->options.perf_options.total_quota = value;
-	ur_string_map_unlock(realms);
+	unlock_realms();
 	return ret;
 }
 
 int change_user_quota(char *realm, int value)
 {
 	int ret = value;
-	ur_string_map_lock(realms);
+	lock_realms();
 	realm_params_t* rp = get_realm(realm);
 	rp->options.perf_options.user_quota = value;
-	ur_string_map_unlock(realms);
+	unlock_realms();
 	return ret;
 }
 
@@ -302,7 +302,7 @@ void add_to_secrets_list(secrets_list_t *sl, const char* elem)
 static int get_auth_secrets(secrets_list_t *sl, u08bits *realm)
 {
 	int ret = -1;
-  turn_dbdriver_t * dbd = get_dbdriver();
+  const turn_dbdriver_t * dbd = get_dbdriver();
 
 	clean_secrets_list(sl);
 
@@ -419,7 +419,7 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, u08bits *u
 
 			if(len>0 && value) {
 
-				turn_dbdriver_t * dbd = get_dbdriver();
+				const turn_dbdriver_t * dbd = get_dbdriver();
 
 				if (dbd && dbd->get_oauth_key) {
 
@@ -635,7 +635,7 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, u08bits *u
 		return 0;
 	}
 
-  turn_dbdriver_t * dbd = get_dbdriver();
+  const turn_dbdriver_t * dbd = get_dbdriver();
   if (dbd && dbd->get_user_key) {
     ret = (*(dbd->get_user_key))(usname, realm, key);
   }
@@ -650,12 +650,12 @@ int get_user_pwd(u08bits *usname, st_password_t pwd)
 {
 	int ret = -1;
 
-  turn_dbdriver_t * dbd = get_dbdriver();
-  if (dbd && dbd->get_user_pwd) {
-    ret = (*dbd->get_user_pwd)(usname, pwd);
-  }
+	const turn_dbdriver_t * dbd = get_dbdriver();
+	if (dbd && dbd->get_user_pwd) {
+		ret = (*dbd->get_user_pwd)(usname, pwd);
+	}
 
-  return ret;
+	return ret;
 }
 
 u08bits *start_user_check(turnserver_id id, turn_credential_type ct, int in_oauth, int *out_oauth, u08bits *usname, u08bits *realm, get_username_resume_cb resume, ioa_net_data *in_buffer, u64bits ctxkey, int *postpone_reply)
@@ -792,7 +792,7 @@ int add_user_account(char *user, int dynamic)
 
 static int list_users(int is_st, u08bits *realm)
 {
-  turn_dbdriver_t * dbd = get_dbdriver();
+  const turn_dbdriver_t * dbd = get_dbdriver();
   if (dbd && dbd->list_users) {
     (*dbd->list_users)(is_st, realm);
   }
@@ -804,7 +804,7 @@ static int show_secret(u08bits *realm)
 {
 	must_set_admin_realm(realm);
 
-  turn_dbdriver_t * dbd = get_dbdriver();
+  const turn_dbdriver_t * dbd = get_dbdriver();
   if (dbd && dbd->show_secret) {
     (*dbd->show_secret)(realm);
 	}
@@ -816,7 +816,7 @@ static int del_secret(u08bits *secret, u08bits *realm) {
 
 	must_set_admin_realm(realm);
 
-  turn_dbdriver_t * dbd = get_dbdriver();
+  const turn_dbdriver_t * dbd = get_dbdriver();
   if (dbd && dbd->del_secret) {
     (*dbd->del_secret)(secret, realm);
 	}
@@ -833,7 +833,7 @@ static int set_secret(u08bits *secret, u08bits *realm) {
 
 	del_secret(secret, realm);
 
-  turn_dbdriver_t * dbd = get_dbdriver();
+  const turn_dbdriver_t * dbd = get_dbdriver();
   if (dbd && dbd->set_secret) {
     (*dbd->set_secret)(secret, realm);
 	}
@@ -847,7 +847,7 @@ static int add_origin(u08bits *origin0, u08bits *realm)
 
 	get_canonic_origin((const char *)origin0, (char *)origin, sizeof(origin)-1);
 
-  turn_dbdriver_t * dbd = get_dbdriver();
+  const turn_dbdriver_t * dbd = get_dbdriver();
   if (dbd && dbd->add_origin) {
     (*dbd->add_origin)(origin, realm);
 	}
@@ -861,7 +861,7 @@ static int del_origin(u08bits *origin0)
 
 	get_canonic_origin((const char *)origin0, (char *)origin, sizeof(origin)-1);
 
-  turn_dbdriver_t * dbd = get_dbdriver();
+  const turn_dbdriver_t * dbd = get_dbdriver();
   if (dbd && dbd->del_origin) {
     (*dbd->del_origin)(origin);
 	}
@@ -871,7 +871,7 @@ static int del_origin(u08bits *origin0)
 
 static int list_origins(u08bits *realm)
 {
-  turn_dbdriver_t * dbd = get_dbdriver();
+  const turn_dbdriver_t * dbd = get_dbdriver();
   if (dbd && dbd->list_origins) {
     (*dbd->list_origins)(realm);
 	}
@@ -884,7 +884,7 @@ static int set_realm_option_one(u08bits *realm, unsigned long value, const char*
 	if(value == (unsigned long)-1)
 		return 0;
 
-  turn_dbdriver_t * dbd = get_dbdriver();
+  const turn_dbdriver_t * dbd = get_dbdriver();
   if (dbd && dbd->set_realm_option_one) {
     (*dbd->set_realm_option_one)(realm, value, opt);
 	}
@@ -902,7 +902,7 @@ static int set_realm_option(u08bits *realm, perf_options_t *po)
 
 static int list_realm_options(u08bits *realm)
 {
-  turn_dbdriver_t * dbd = get_dbdriver();
+  const turn_dbdriver_t * dbd = get_dbdriver();
   if (dbd && dbd->list_realm_options) {
     (*dbd->list_realm_options)(realm);
 	}
@@ -984,7 +984,7 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, u08b
 		}
 	}
 
-	turn_dbdriver_t * dbd = get_dbdriver();
+	const turn_dbdriver_t * dbd = get_dbdriver();
 
 	if (ct == TA_PRINT_KEY) {
 
@@ -1020,10 +1020,10 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, u08b
 
 void auth_ping(redis_context_handle rch)
 {
-  turn_dbdriver_t * dbd = get_dbdriver();
+  const turn_dbdriver_t * dbd = get_dbdriver();
   if (dbd && dbd->auth_ping) {
     (*dbd->auth_ping)(rch);
-	}
+  }
 }
 
 ///////////////// TEST /////////////////
@@ -1193,7 +1193,7 @@ ip_range_list_t* get_ip_list(const char *kind)
 	ip_range_list_t *ret = (ip_range_list_t*) turn_malloc(sizeof(ip_range_list_t));
 	ns_bzero(ret,sizeof(ip_range_list_t));
 
-	turn_dbdriver_t * dbd = get_dbdriver();
+	const turn_dbdriver_t * dbd = get_dbdriver();
 	if (dbd && dbd->get_ip_list) {
 		(*dbd->get_ip_list)(kind, ret);
 	}
@@ -1285,16 +1285,16 @@ void reread_realms(void)
 {
 	{
 		realm_params_t* defrp = get_realm(NULL);
-		ur_string_map_lock(realms);
+		lock_realms();
 		defrp->options.perf_options.max_bps = turn_params.max_bps;
 		defrp->options.perf_options.total_quota = turn_params.total_quota;
 		defrp->options.perf_options.user_quota = turn_params.user_quota;
-		ur_string_map_unlock(realms);
+		unlock_realms();
 	}
 
-  turn_dbdriver_t * dbd = get_dbdriver();
-  if (dbd && dbd->reread_realms) {
-    (*dbd->reread_realms)(&realms_list);
+	const turn_dbdriver_t * dbd = get_dbdriver();
+	if (dbd && dbd->reread_realms) {
+		(*dbd->reread_realms)(&realms_list);
 	}
 }
 

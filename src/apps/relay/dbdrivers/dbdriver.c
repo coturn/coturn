@@ -40,7 +40,14 @@
 #include "dbd_mongo.h"
 #include "dbd_redis.h"
 
-static turn_dbdriver_t * _driver;
+static void make_connection_key(void)
+{
+    (void) pthread_key_create(&connection_key, NULL);
+}
+
+
+pthread_key_t connection_key;
+pthread_once_t connection_key_once = PTHREAD_ONCE_INIT;
 
 int convert_string_key_to_binary(char* keysource, hmackey_t key, size_t sz) {
 	char is[3];
@@ -60,13 +67,17 @@ persistent_users_db_t * get_persistent_users_db(void) {
 	return &(turn_params.default_users_db.persistent_users_db);
 }
 
-turn_dbdriver_t * get_dbdriver()
+const turn_dbdriver_t * get_dbdriver()
 {
-
 	if (turn_params.default_users_db.userdb_type == TURN_USERDB_TYPE_UNKNOWN)
 		return NULL;
 
-	if (!_driver) {
+	(void) pthread_once(&connection_key_once, make_connection_key);
+
+	static const turn_dbdriver_t * _driver = NULL;
+
+	if (_driver == NULL) {
+
 		switch (turn_params.default_users_db.userdb_type){
 #if !defined(TURN_NO_SQLITE)
 		case TURN_USERDB_TYPE_SQLITE:
