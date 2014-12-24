@@ -1,15 +1,12 @@
 #summary Downloads Page
-#labels Version-4.3.2.2,Featured
+#labels Version-4.3.3.1,Featured
 
-== Latest official recommended version - 4.3.2.2: ==
+== Latest official recommended version - 4.3.3.1: ==
 
-  * Redis read message queue bug fixed;
-  * STUN/TURN ALPN supported (when compiled with OpenSSL 1.0.2+ );
-  * DTLS v1.2 supported (when compiled with OpenSSL 1.0.2+ );
-  * Auto optimal ECDH parameters (when compiled with OpenSSL 1.0.2+ );
-  * TLS/DTLS code cleaning.
+  * multiple authentication threads;
+  * database code cleaned;
 
-[http://turnserver.open-sys.org/downloads/v4.3.2.2/ 4.3.2.2 Version Downloads (full source and platform builds)]
+[http://turnserver.open-sys.org/downloads/v4.3.3.1/ 4.3.3.1 Version Downloads (full source and platform builds)]
 
 [http://turnserver.open-sys.org/downloads/ Main Downloads Page (with all recent versions)]
 
@@ -18,6 +15,16 @@
 [http://turnserver.open-sys.org/downloads/extradocs/ Extra Docs ]
 
 == Older versions ==
+
+=== 4.3.2.2: ===
+
+  * Redis read message queue bug fixed;
+  * STUN/TURN ALPN supported (when compiled with OpenSSL 1.0.2+ );
+  * DTLS v1.2 supported (when compiled with OpenSSL 1.0.2+ );
+  * Auto optimal ECDH parameters (when compiled with OpenSSL 1.0.2+ );
+  * TLS/DTLS code cleaning.
+
+[http://turnserver.open-sys.org/downloads/v4.3.2.2/ v4.3.2.2]
 
 === 4.3.1.3: ===
 
