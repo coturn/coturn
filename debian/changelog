@@ -1,3 +1,9 @@
+coturn (4.3.3.1-1) unstable; urgency=low
+
+  * Sync to 4.3.3.1
+
+ -- Oleg Moskalenko <mom040267@gmail.com>  Wed, 24 Dec 2014 00:50:38 -0800
+
 coturn (4.3.2.2-1) unstable; urgency=low
 
   * Sync to 4.3.2.2
