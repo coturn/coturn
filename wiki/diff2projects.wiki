@@ -1,5 +1,5 @@
 #summary Difference between rfc5766-turn-server and coturn.
-#labels Version-4.3.2.2
+#labels Version-4.3.3.1
 
 = Introduction =
 
@@ -51,3 +51,7 @@ Starting with version 4.3.1.1, coturn does not support turnuserdb.conf flat-file
 
 The details are in http://tools.ietf.org/html/draft-ietf-tram-alpn-08. 
 For ALPN support, Coturn has to be compiled with OpenSSL 1.0.2+.
+
+== Authentication threading model ==
+
+Coturn, starting with version 4.3.3.1, uses multiple authentication threads. rfc5766-turn-server uses a single authentication thread, always.
