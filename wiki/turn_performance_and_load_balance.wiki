@@ -1,5 +1,5 @@
 #summary turnserver performance optimization wiki page
-#labels Version-4.3.1.2
+#labels Version-4.3.3.1
 
 =TURN relay server performance: load balance and network optimization=
 
@@ -109,7 +109,7 @@ configuration instructions.
 The TURN Server is designed as a multi-threaded network packets routing system. But multi-threading is not always the best option for a particular
 system configuration. The default start-up TURN Server configuration is a compromise between memory, thread affinity, cache and CPU resources, and between TCP and UDP typical "vanilla" OS networking stack implementations. This is not a specialized system tuned for a very particular hardware, a particular OS or a particular load pattern. The TURN Server design is tuned for very wide range of possible applications, so it may not be 100% most optimal for a particular application on the particular platform. But it must be good enough to be usable everywhere. 
   
-The TURN server parameter -m allows tuning of the threading configuration. You can turn off the multi-threading by using "-m 0" parameter (or "--relay-threads=0"). It will keep all network packets processing within one thread, eliminating context switch etc - it may be a more efficient option for your system. There still will be a separate authentication thread because the authentication process must not be holding the normal packets routing.
+The TURN server parameter -m allows tuning of the threading configuration. You can turn off the multi-threading by using "-m 0" parameter (or "--relay-threads=0"). It will keep all network packets processing within one thread, eliminating context switch etc - it may be a more efficient option for your system. There still will be separate authentication threads because the authentication process must not be holding the normal packets routing.
 
 You can use "-m 0" option and run multiple TURN servers on your system, one per CPU core. That would be probably the best performance option in terms of scalability. Each TURN server must have its own network listening address and its own relay IP and/or relay ports range - so the configuration will be complicated - but the performance will be the best possible. You can use ALTERNATE-SERVER mechanism to present the whole "pack" as a single "initial" TURN server front-end to the external world.
 
