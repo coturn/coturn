@@ -100,6 +100,8 @@ extern "C" {
 #define TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP MAX_NUMBER_OF_GENERAL_RELAY_SERVERS
 #define TURNSERVER_ID_BOUNDARY_BETWEEN_UDP_AND_TCP TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP
 
+#define DEFAULT_CPUS_NUMBER (2)
+
 /////////// TYPES ///////////////////////////////////
 
 enum _DH_KEY_SIZE {
@@ -159,16 +161,6 @@ enum _NET_ENG_VERSION {
 };
 
 typedef enum _NET_ENG_VERSION NET_ENG_VERSION;
-
-////////////// Auth Server Types ////////////////
-
-struct auth_server {
-	struct event_base* event_base;
-	struct bufferevent *in_buf;
-	struct bufferevent *out_buf;
-	pthread_t thr;
-	redis_context_handle rch;
-};
 
 /////////// PARAMS //////////////////////////////////
 
@@ -275,7 +267,6 @@ typedef struct _turn_params_ {
 
 ////////////// Auth server ////////////////
 
-  struct auth_server authserver;
   char oauth_server_name[1025];
   char domain[1025];
   int oauth;
@@ -314,6 +305,10 @@ typedef struct _turn_params_ {
 /////// Users DB ///////////
 
   default_users_db_t default_users_db;
+
+/////// CPUs //////////////
+
+  unsigned long cpus;
 
 } turn_params_t;
 

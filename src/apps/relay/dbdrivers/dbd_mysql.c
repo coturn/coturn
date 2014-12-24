@@ -189,14 +189,16 @@ static Myconninfo *MyconninfoParse(char *userdb, char **errmsg) {
 }
 
 static MYSQL *get_mydb_connection(void) {
+
 	persistent_users_db_t *pud = get_persistent_users_db();
 
-	MYSQL *mydbconnection = (MYSQL*)(pud->connection);
+	MYSQL *mydbconnection = (MYSQL*)pthread_getspecific(connection_key);
 
 	if(mydbconnection) {
 		if(mysql_ping(mydbconnection)) {
 			mysql_close(mydbconnection);
 			mydbconnection=NULL;
+			(void) pthread_setspecific(connection_key, mydbconnection);
 		}
 	}
 
@@ -238,11 +240,14 @@ static MYSQL *get_mydb_connection(void) {
 					mydbconnection=NULL;
 				} else if(!donot_print_connection_success) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "MySQL DB connection success: %s\n",pud->userdb);
+					donot_print_connection_success = 1;
 				}
 			}
 			MyconninfoFree(co);
 		}
-		pud->connection = mydbconnection;
+		if(mydbconnection) {
+			(void) pthread_setspecific(connection_key, mydbconnection);
+		}
 	}
 	return mydbconnection;
 }
@@ -872,7 +877,6 @@ static int mysql_list_realm_options(u08bits *realm) {
   
 static void mysql_auth_ping(void * rch) {
 	UNUSED_ARG(rch);
-	donot_print_connection_success = 1;
 	MYSQL * myc = get_mydb_connection();
 	if(myc) {
 		char statement[TURN_LONG_STRING_SIZE];
@@ -1063,7 +1067,7 @@ static void mysql_reread_realms(secrets_list_t * realms_list) {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static turn_dbdriver_t driver = {
+static const turn_dbdriver_t driver = {
   &mysql_get_auth_secrets,
   &mysql_get_user_key,
   &mysql_get_user_pwd,
@@ -1088,7 +1092,7 @@ static turn_dbdriver_t driver = {
   &mysql_list_oauth_keys
 };
 
-turn_dbdriver_t * get_mysql_dbdriver(void) {
+const turn_dbdriver_t * get_mysql_dbdriver(void) {
   return &driver;
 }
 
@@ -1096,7 +1100,7 @@ turn_dbdriver_t * get_mysql_dbdriver(void) {
 
 #else
 
-turn_dbdriver_t * get_mysql_dbdriver(void) {
+const turn_dbdriver_t * get_mysql_dbdriver(void) {
   return NULL;
 }
 
