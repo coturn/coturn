@@ -1,18 +1,18 @@
 ==================================================================
 
 1) You can start and stop the turnserver manually. But, if you want
-to enable turnserver as an automatically started system service, 
+to enable turnserver as an automatically started system service,
 you have to:
 
-	a) Create and edit /etc/turnserver.conf file.
+	a) Create and edit %%PREFIX%%/etc/turnserver.conf file.
 	Use %%PREFIX%%/etc/turnserver.conf.default as an example.
 
 	b) For user accounts settings: set up SQLite or PostgreSQL or 
 	MySQL or Redis database for user accounts.
-	Use use %%DATADIR%%/schema.sql as an SQL database schema,
+	Use %%DATADIR%%/schema.sql as an SQL database schema,
 	or use %%DATADIR%%/schema*redis as Redis database description.
 	
-	If SQLite is used, then /usr/local/var/db/turndb is the default database
+	If SQLite is used, then %%PREFIX%%/var/db/turndb is the default database
 	location.
 
 	d) add line turnserver_enable="YES" to /etc/rc.conf.
@@ -20,22 +20,22 @@ you have to:
 	e) If you are using a non-default PREFIX (other than /usr/local),
 	then edit /usr/local/etc/rc.d/turnserver file, according to
 	your system settings.
-	
+
 	f) Restart the system or run the command:
 	$ %%PREFIX%%/etc/rc.d/turnserver start
-     
-2) If you do not want the turnserver to be a system service, 
-   then you can start/stop it "manually", using the "turnserver" 
+
+2) If you do not want the turnserver to be a system service,
+   then you can start/stop it "manually", using the "turnserver"
    executable with appropriate options (see the documentation).
-   
+
 3) To create database schema, use schema in file %%DATADIR%%/schema.sql.
 The TURN Server supports (optionally) SQLite, MySQL, PostgreSQL, Redis.
-   
+
 4) For additional information, run:
- 
+
    $ man turnserver
    $ man turnadmin
    $ man turnutils
-	
+
 ==================================================================
  
