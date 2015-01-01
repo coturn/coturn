@@ -4164,8 +4164,6 @@ static void client_to_be_allocated_timeout_handler(ioa_engine_handle e,
 
 	if(!s || ioa_socket_tobeclosed(s)) {
 		to_close = 1;
-	} else if(get_ioa_socket_app_type(s) == HTTPS_CLIENT_SOCKET) {
-		;
 	} else {
 		ioa_socket_handle rs4 = ss->alloc.relay_sessions[ALLOC_IPV4_INDEX].s;
 		ioa_socket_handle rs6 = ss->alloc.relay_sessions[ALLOC_IPV6_INDEX].s;
@@ -4439,17 +4437,13 @@ static int read_client_connection(turn_turnserver *server,
 	SOCKET_APP_TYPE sat = get_ioa_socket_app_type(ss->client_socket);
 	int is_padding_mandatory = ((st == TCP_SOCKET)||(st==TLS_SOCKET)||(st==TENTATIVE_TCP_SOCKET));
 
-	if(sat == HTTP_CLIENT_SOCKET) {
+	if((sat == HTTP_CLIENT_SOCKET)||(sat == HTTPS_CLIENT_SOCKET)) {
 
 		if(server->verbose) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: HTTP connection input: %s\n", __FUNCTION__, (char*)ioa_network_buffer_data(in_buffer->nbh));
 		}
 
 		handle_http(ss->client_socket);
-
-	} else if(sat == HTTPS_CLIENT_SOCKET) {
-
-		//???
 
 	} else if (stun_is_channel_message_str(ioa_network_buffer_data(in_buffer->nbh),
 					&blen,
@@ -4544,19 +4538,13 @@ static int read_client_connection(turn_turnserver *server,
 					proto = "HTTPS";
 					set_ioa_socket_app_type(ss->client_socket,HTTPS_CLIENT_SOCKET);
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s (%s %s) request: %s\n", __FUNCTION__, proto, get_ioa_socket_cipher(ss->client_socket), get_ioa_socket_ssl_method(ss->client_socket), (char*)ioa_network_buffer_data(in_buffer->nbh));
-					if(server->send_https_socket) {
-						ioa_socket_handle new_s = detach_ioa_socket(ss->client_socket);
-						if(new_s) {
-							server->send_https_socket(new_s);
-						}
-					}
 				} else {
 					set_ioa_socket_app_type(ss->client_socket,HTTP_CLIENT_SOCKET);
 					if(server->verbose) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s request: %s\n", __FUNCTION__, proto, (char*)ioa_network_buffer_data(in_buffer->nbh));
 					}
-					handle_http(ss->client_socket);
 				}
+				handle_http(ss->client_socket);
 				return 0;
 			}
 		}
@@ -4811,7 +4799,6 @@ void init_turn_server(turn_turnserver* server,
 		send_socket_to_relay_cb send_socket_to_relay,
 		vintp secure_stun, SHATYPE shatype, vintp mobility, int server_relay,
 		send_turn_session_info_cb send_turn_session_info,
-		send_https_socket_cb send_https_socket,
 		allocate_bps_cb allocate_bps_func,
 		int oauth, const char* oauth_server_name) {
 
@@ -4837,7 +4824,6 @@ void init_turn_server(turn_turnserver* server,
 	server->mobility = mobility;
 	server->server_relay = server_relay;
 	server->send_turn_session_info = send_turn_session_info;
-	server->send_https_socket = send_https_socket;
 	server->oauth = oauth;
 	if(oauth)
 		server->oauth_server_name = oauth_server_name;

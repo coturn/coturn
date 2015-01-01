@@ -1239,18 +1239,6 @@ void setup_cli_thread(void)
 		bufferevent_enable(cliserver.in_buf, EV_READ);
 	}
 
-	{
-		struct bufferevent *pair[2];
-
-		bufferevent_pair_new(cliserver.event_base, TURN_BUFFEREVENTS_OPTIONS, pair);
-
-		cliserver.https_in_buf = pair[0];
-		cliserver.https_out_buf = pair[1];
-
-		bufferevent_setcb(cliserver.https_in_buf, https_cli_server_receive_message, NULL, NULL, &cliserver);
-		bufferevent_enable(cliserver.https_in_buf, EV_READ);
-	}
-
 	if(!cli_addr_set) {
 		if(make_ioa_addr((const u08bits*)CLI_DEFAULT_IP,0,&cli_addr)<0) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot set cli address %s\n",CLI_DEFAULT_IP);
@@ -1355,80 +1343,8 @@ int send_turn_session_info(struct turn_session_info* tsi)
 
 /////////// HTTPS /////////////
 
-static void write_https_echo(ioa_socket_handle s)
-{
-	if(s && !ioa_socket_tobeclosed(s)) {
-		SOCKET_APP_TYPE sat = get_ioa_socket_app_type(s);
-		if(sat == HTTPS_CLIENT_SOCKET) {
-			ioa_network_buffer_handle nbh_http = ioa_network_buffer_allocate(s->e);
-			size_t len_http = ioa_network_buffer_get_size(nbh_http);
-			u08bits *data = ioa_network_buffer_data(nbh_http);
-			char data_http[1025];
-			char content_http[1025];
-			const char* title = "HTTPS TURN Server";
-			snprintf(content_http,sizeof(content_http)-1,"<!DOCTYPE html>\r\n<html>\r\n  <head>\r\n    <title>%s</title>\r\n  </head>\r\n  <body>\r\n    %s\r\n  </body>\r\n</html>\r\n",title,title);
-			snprintf(data_http,sizeof(data_http)-1,"HTTP/1.1 200 OK\r\nServer: %s\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Length: %d\r\n\r\n%s",TURN_SOFTWARE,(int)strlen(content_http),content_http);
-			len_http = strlen(data_http);
-			ns_bcopy(data_http,data,len_http);
-			ioa_network_buffer_set_size(nbh_http,len_http);
-			send_data_from_ioa_socket_nbh(s, NULL, nbh_http, TTL_IGNORE, TOS_IGNORE);
-		}
-	}
-}
+//https://github.com/ppelleti/https-example
 
-static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
 
-	//TODO
-
-	if(turn_params.verbose) {
-		if(nbh) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: HTTPS connection input: %s\n", __FUNCTION__, (char*)ioa_network_buffer_data(nbh));
-		} else {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: HTTPS connection initial input\n", __FUNCTION__);
-		}
-	}
-
-	write_https_echo(s);
-}
-
-static void https_input_handler(ioa_socket_handle s, int event_type, ioa_net_data *data, void *arg, int can_resume) {
-
-	UNUSED_ARG(arg);
-	UNUSED_ARG(s);
-	UNUSED_ARG(event_type);
-	UNUSED_ARG(can_resume);
-
-	handle_https(s,data->nbh);
-
-	ioa_network_buffer_delete(cliserver.e, data->nbh);
-	data->nbh = NULL;
-}
-
-void https_cli_server_receive_message(struct bufferevent *bev, void *ptr)
-{
-	UNUSED_ARG(ptr);
-
-	ioa_socket_handle s= NULL;
-	int n = 0;
-	struct evbuffer *input = bufferevent_get_input(bev);
-
-	while ((n = evbuffer_remove(input, &s, sizeof(s))) > 0) {
-		if (n != sizeof(s)) {
-			fprintf(stderr,"%s: Weird HTTPS CLI buffer error: size=%d\n",__FUNCTION__,n);
-			continue;
-		}
-
-		register_callback_on_ioa_socket(cliserver.e, s, IOA_EV_READ, https_input_handler, NULL, 0);
-
-		handle_https(s,NULL);
-	}
-}
-
-void send_https_socket(ioa_socket_handle s) {
-	struct evbuffer *output = bufferevent_get_output(cliserver.https_out_buf);
-	if(output) {
-		evbuffer_add(output,&s,sizeof(s));
-	}
-}
 
 ///////////////////////////////
