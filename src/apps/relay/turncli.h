@@ -59,8 +59,6 @@ struct cli_server {
 	struct evconnlistener *l;
 	struct bufferevent *in_buf;
 	struct bufferevent *out_buf;
-	struct bufferevent *https_in_buf;
-	struct bufferevent *https_out_buf;
 	ur_map *sessions;
 	pthread_t thr;
 };
@@ -89,10 +87,8 @@ extern int cli_max_output_sessions;
 void setup_cli_thread(void);
 
 void cli_server_receive_message(struct bufferevent *bev, void *ptr);
-void https_cli_server_receive_message(struct bufferevent *bev, void *ptr);
 
 int send_turn_session_info(struct turn_session_info* tsi);
-void send_https_socket(ioa_socket_handle s);
 
 ////////////////////////////////////////////
 
