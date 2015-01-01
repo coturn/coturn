@@ -4441,7 +4441,10 @@ static int read_client_connection(turn_turnserver *server,
 
 	if(sat == HTTP_CLIENT_SOCKET) {
 
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: HTTP connection input: %s\n", __FUNCTION__, (char*)ioa_network_buffer_data(in_buffer->nbh));
+		if(server->verbose) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: HTTP connection input: %s\n", __FUNCTION__, (char*)ioa_network_buffer_data(in_buffer->nbh));
+		}
+
 		handle_http(ss->client_socket);
 
 	} else if(sat == HTTPS_CLIENT_SOCKET) {
@@ -4549,7 +4552,9 @@ static int read_client_connection(turn_turnserver *server,
 					}
 				} else {
 					set_ioa_socket_app_type(ss->client_socket,HTTP_CLIENT_SOCKET);
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s request: %s\n", __FUNCTION__, proto, (char*)ioa_network_buffer_data(in_buffer->nbh));
+					if(server->verbose) {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s request: %s\n", __FUNCTION__, proto, (char*)ioa_network_buffer_data(in_buffer->nbh));
+					}
 					handle_http(ss->client_socket);
 				}
 				return 0;

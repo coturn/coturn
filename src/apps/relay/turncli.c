@@ -1377,8 +1377,17 @@ static void write_https_echo(ioa_socket_handle s)
 }
 
 static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
+
 	//TODO
-	UNUSED_ARG(nbh);
+
+	if(turn_params.verbose) {
+		if(nbh) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: HTTPS connection input: %s\n", __FUNCTION__, (char*)ioa_network_buffer_data(nbh));
+		} else {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: HTTPS connection initial input\n", __FUNCTION__);
+		}
+	}
+
 	write_https_echo(s);
 }
 
