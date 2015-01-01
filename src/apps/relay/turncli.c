@@ -1217,15 +1217,37 @@ static void cliserver_input_handler(struct evconnlistener *l, evutil_socket_t fd
 
 void setup_cli_thread(void)
 {
+	ns_bzero(&cliserver,sizeof(cliserver));
 	cliserver.event_base = turn_event_base_new();
-	super_memory_t* sm = new_super_memory_region();
-	cliserver.e = create_ioa_engine(sm, cliserver.event_base, turn_params.listener.tp, turn_params.relay_ifname, turn_params.relays_number, turn_params.relay_addrs,
-				turn_params.default_relays, turn_params.verbose
-	#if !defined(TURN_NO_HIREDIS)
-				,turn_params.redis_statsdb
-	#endif
-		);
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"IO method (cli thread): %s\n",event_base_get_method(cliserver.event_base));
+
+	if (turn_params.use_https_admin_server
+			&& turn_params.https_admin_server_pwd[0]) {
+
+#if TLSv1_2_SUPPORTED
+		if (turn_params.tls_ctx_v1_2) {
+			cliserver.ctx = turn_params.tls_ctx_v1_2;
+		}
+#endif
+
+#if TLSv1_1_SUPPORTED
+		if (!cliserver.ctx && turn_params.tls_ctx_v1_1) {
+			cliserver.ctx = turn_params.tls_ctx_v1_1;
+		}
+#endif
+
+		if (!cliserver.ctx && turn_params.tls_ctx_v1_0) {
+			cliserver.ctx = turn_params.tls_ctx_v1_0;
+		}
+
+		if (!cliserver.ctx && turn_params.tls_ctx_ssl23) {
+			cliserver.ctx = turn_params.tls_ctx_ssl23;
+		}
+	}
+
+	if(!cliserver.ctx) {
+		turn_params.use_https_admin_server = 0;
+	}
 
 	{
 		struct bufferevent *pair[2];
