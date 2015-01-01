@@ -278,8 +278,7 @@ int get_default_protocol_port(const char* scheme, size_t slen);
 
 ///////////// HTTP ////////////////////
 
-void write_http_echo(ioa_socket_handle s);
-void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh);
+void handle_http(ioa_socket_handle s);
 
 ///////////////////////////////////////
 

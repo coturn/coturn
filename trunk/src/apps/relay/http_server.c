@@ -30,7 +30,7 @@
 
 #include "ns_ioalib_impl.h"
 
-void write_http_echo(ioa_socket_handle s)
+static void write_http_echo(ioa_socket_handle s)
 {
 	if(s && !ioa_socket_tobeclosed(s)) {
 		SOCKET_APP_TYPE sat = get_ioa_socket_app_type(s);
@@ -51,8 +51,6 @@ void write_http_echo(ioa_socket_handle s)
 	}
 }
 
-void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
-	//TODO
-	UNUSED_ARG(nbh);
+void handle_http(ioa_socket_handle s) {
 	write_http_echo(s);
 }
