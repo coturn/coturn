@@ -102,9 +102,6 @@ extern "C" {
 
 #define DEFAULT_CPUS_NUMBER (2)
 
-#define DEFAULT_HTTPS_ADMIN_PORT (4433)
-#define DEFAULT_HTTPS_ADMIN_ADDR ("0.0.0.0")
-
 /////////// TYPES ///////////////////////////////////
 
 enum _DH_KEY_SIZE {
@@ -312,13 +309,6 @@ typedef struct _turn_params_ {
 /////// CPUs //////////////
 
   unsigned long cpus;
-
-/////// HTTPS Admin server //////
-
-  int use_https_admin_server;
-  int https_admin_server_port;
-  char https_admin_server_addr[129];
-  char https_admin_server_pwd[129];
 
 } turn_params_t;
 
