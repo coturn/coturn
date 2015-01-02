@@ -2599,6 +2599,13 @@ static void socket_input_handler(evutil_socket_t fd, short what, void* arg)
 void close_ioa_socket_after_processing_if_necessary(ioa_socket_handle s)
 {
 	if (s && ioa_socket_tobeclosed(s)) {
+
+		if(!(s->session) && !(s->sub_session)) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s https server socket closed: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(long)s, get_ioa_socket_type(s), get_ioa_socket_type(s));
+			IOA_CLOSE_SOCKET(s);
+			return;
+		}
+
 		switch (s->sat){
 		case TCP_CLIENT_DATA_SOCKET:
 		case TCP_RELAY_DATA_SOCKET:
@@ -2771,6 +2778,14 @@ static void eventcb_bev(struct bufferevent *bev, short events, void *arg)
 				s->broken = 1;
 
 			s->tobeclosed = 1;
+
+			if(!(s->session) && !(s->sub_session)) {
+				char sraddr[129]="\0";
+				addr_to_string(&(s->remote_addr),(u08bits*)sraddr);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s https server socket closed: 0x%lx, st=%d, sat=%d, remote addr=%s\n", __FUNCTION__,(long)s, get_ioa_socket_type(s), get_ioa_socket_type(s),sraddr);
+				IOA_CLOSE_SOCKET(s);
+				return;
+			}
 
 			switch (s->sat){
 			case TCP_CLIENT_DATA_SOCKET:
