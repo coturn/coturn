@@ -38,7 +38,6 @@
 
 #include <event2/bufferevent.h>
 #include <event2/buffer.h>
-#include <event2/http.h>
 
 #include "ns_turn_utils.h"
 #include "ns_turn_maps.h"
@@ -55,15 +54,15 @@ extern "C" {
 struct cli_server {
 	evutil_socket_t listen_fd;
 	struct event_base* event_base;
+	ioa_engine_handle e;
 	int verbose;
 	struct evconnlistener *l;
 	struct bufferevent *in_buf;
 	struct bufferevent *out_buf;
+	struct bufferevent *https_in_buf;
+	struct bufferevent *https_out_buf;
 	ur_map *sessions;
 	pthread_t thr;
-	//// HTTPS interface ////
-	SSL_CTX *ctx;
-	struct evhttp *https;
 };
 
 ///////////////////////////////////////////
@@ -90,8 +89,10 @@ extern int cli_max_output_sessions;
 void setup_cli_thread(void);
 
 void cli_server_receive_message(struct bufferevent *bev, void *ptr);
+void https_cli_server_receive_message(struct bufferevent *bev, void *ptr);
 
 int send_turn_session_info(struct turn_session_info* tsi);
+void send_https_socket(ioa_socket_handle s);
 
 ////////////////////////////////////////////
 

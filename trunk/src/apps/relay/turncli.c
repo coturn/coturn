@@ -1217,37 +1217,15 @@ static void cliserver_input_handler(struct evconnlistener *l, evutil_socket_t fd
 
 void setup_cli_thread(void)
 {
-	ns_bzero(&cliserver,sizeof(cliserver));
 	cliserver.event_base = turn_event_base_new();
+	super_memory_t* sm = new_super_memory_region();
+	cliserver.e = create_ioa_engine(sm, cliserver.event_base, turn_params.listener.tp, turn_params.relay_ifname, turn_params.relays_number, turn_params.relay_addrs,
+				turn_params.default_relays, turn_params.verbose
+	#if !defined(TURN_NO_HIREDIS)
+				,turn_params.redis_statsdb
+	#endif
+		);
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"IO method (cli thread): %s\n",event_base_get_method(cliserver.event_base));
-
-	if (turn_params.use_https_admin_server
-			&& turn_params.https_admin_server_pwd[0]) {
-
-#if TLSv1_2_SUPPORTED
-		if (turn_params.tls_ctx_v1_2) {
-			cliserver.ctx = turn_params.tls_ctx_v1_2;
-		}
-#endif
-
-#if TLSv1_1_SUPPORTED
-		if (!cliserver.ctx && turn_params.tls_ctx_v1_1) {
-			cliserver.ctx = turn_params.tls_ctx_v1_1;
-		}
-#endif
-
-		if (!cliserver.ctx && turn_params.tls_ctx_v1_0) {
-			cliserver.ctx = turn_params.tls_ctx_v1_0;
-		}
-
-		if (!cliserver.ctx && turn_params.tls_ctx_ssl23) {
-			cliserver.ctx = turn_params.tls_ctx_ssl23;
-		}
-	}
-
-	if(!cliserver.ctx) {
-		turn_params.use_https_admin_server = 0;
-	}
 
 	{
 		struct bufferevent *pair[2];
@@ -1259,6 +1237,18 @@ void setup_cli_thread(void)
 
 		bufferevent_setcb(cliserver.in_buf, cli_server_receive_message, NULL, NULL, &cliserver);
 		bufferevent_enable(cliserver.in_buf, EV_READ);
+	}
+
+	{
+		struct bufferevent *pair[2];
+
+		bufferevent_pair_new(cliserver.event_base, TURN_BUFFEREVENTS_OPTIONS, pair);
+
+		cliserver.https_in_buf = pair[0];
+		cliserver.https_out_buf = pair[1];
+
+		bufferevent_setcb(cliserver.https_in_buf, https_cli_server_receive_message, NULL, NULL, &cliserver);
+		bufferevent_enable(cliserver.https_in_buf, EV_READ);
 	}
 
 	if(!cli_addr_set) {
@@ -1365,8 +1355,80 @@ int send_turn_session_info(struct turn_session_info* tsi)
 
 /////////// HTTPS /////////////
 
-//https://github.com/ppelleti/https-example
+static void write_https_echo(ioa_socket_handle s)
+{
+	if(s && !ioa_socket_tobeclosed(s)) {
+		SOCKET_APP_TYPE sat = get_ioa_socket_app_type(s);
+		if(sat == HTTPS_CLIENT_SOCKET) {
+			ioa_network_buffer_handle nbh_http = ioa_network_buffer_allocate(s->e);
+			size_t len_http = ioa_network_buffer_get_size(nbh_http);
+			u08bits *data = ioa_network_buffer_data(nbh_http);
+			char data_http[1025];
+			char content_http[1025];
+			const char* title = "HTTPS TURN Server";
+			snprintf(content_http,sizeof(content_http)-1,"<!DOCTYPE html>\r\n<html>\r\n  <head>\r\n    <title>%s</title>\r\n  </head>\r\n  <body>\r\n    %s\r\n  </body>\r\n</html>\r\n",title,title);
+			snprintf(data_http,sizeof(data_http)-1,"HTTP/1.1 200 OK\r\nServer: %s\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Length: %d\r\n\r\n%s",TURN_SOFTWARE,(int)strlen(content_http),content_http);
+			len_http = strlen(data_http);
+			ns_bcopy(data_http,data,len_http);
+			ioa_network_buffer_set_size(nbh_http,len_http);
+			send_data_from_ioa_socket_nbh(s, NULL, nbh_http, TTL_IGNORE, TOS_IGNORE);
+		}
+	}
+}
 
+static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
 
+	//TODO
+
+	if(turn_params.verbose) {
+		if(nbh) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: HTTPS connection input: %s\n", __FUNCTION__, (char*)ioa_network_buffer_data(nbh));
+		} else {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: HTTPS connection initial input\n", __FUNCTION__);
+		}
+	}
+
+	write_https_echo(s);
+}
+
+static void https_input_handler(ioa_socket_handle s, int event_type, ioa_net_data *data, void *arg, int can_resume) {
+
+	UNUSED_ARG(arg);
+	UNUSED_ARG(s);
+	UNUSED_ARG(event_type);
+	UNUSED_ARG(can_resume);
+
+	handle_https(s,data->nbh);
+
+	ioa_network_buffer_delete(cliserver.e, data->nbh);
+	data->nbh = NULL;
+}
+
+void https_cli_server_receive_message(struct bufferevent *bev, void *ptr)
+{
+	UNUSED_ARG(ptr);
+
+	ioa_socket_handle s= NULL;
+	int n = 0;
+	struct evbuffer *input = bufferevent_get_input(bev);
+
+	while ((n = evbuffer_remove(input, &s, sizeof(s))) > 0) {
+		if (n != sizeof(s)) {
+			fprintf(stderr,"%s: Weird HTTPS CLI buffer error: size=%d\n",__FUNCTION__,n);
+			continue;
+		}
+
+		register_callback_on_ioa_socket(cliserver.e, s, IOA_EV_READ, https_input_handler, NULL, 0);
+
+		handle_https(s,NULL);
+	}
+}
+
+void send_https_socket(ioa_socket_handle s) {
+	struct evbuffer *output = bufferevent_get_output(cliserver.https_out_buf);
+	if(output) {
+		evbuffer_add(output,&s,sizeof(s));
+	}
+}
 
 ///////////////////////////////

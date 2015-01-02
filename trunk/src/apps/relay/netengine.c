@@ -1649,6 +1649,7 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
 			 &turn_params.secure_stun, turn_params.shatype, &turn_params.mobility,
 			 turn_params.server_relay,
 			 send_turn_session_info,
+			 send_https_socket,
 			 allocate_bps,
 			 turn_params.oauth, turn_params.oauth_server_name);
 	
