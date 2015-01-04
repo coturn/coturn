@@ -310,6 +310,10 @@ typedef struct _turn_params_ {
 
   unsigned long cpus;
 
+/////// HTTPS SERVER /////
+
+  char https_admin_pwd[129];
+
 } turn_params_t;
 
 extern turn_params_t turn_params;

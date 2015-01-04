@@ -66,6 +66,8 @@
 
 #include "turn_admin_server.h"
 
+#include "http_server.h"
+
 ///////////////////////////////
 
 struct cli_server cliserver;
@@ -1358,6 +1360,7 @@ int send_turn_session_info(struct turn_session_info* tsi)
 static void write_https_default_page(ioa_socket_handle s)
 {
 	if(s && !ioa_socket_tobeclosed(s)) {
+		//TODO
 		ioa_network_buffer_handle nbh_http = ioa_network_buffer_allocate(s->e);
 		size_t len_http = ioa_network_buffer_get_size(nbh_http);
 		u08bits *data = ioa_network_buffer_data(nbh_http);
@@ -1383,11 +1386,14 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
 		}
 	}
 
-	if(nbh) {
-		//TODO
+	if(!turn_params.https_admin_pwd[0]) {
+		handle_http_echo(s);
+	} else {
+		if(nbh) {
+			//TODO
+		}
+		write_https_default_page(s);
 	}
-
-	write_https_default_page(s);
 }
 
 static void https_input_handler(ioa_socket_handle s, int event_type, ioa_net_data *data, void *arg, int can_resume) {
@@ -1419,7 +1425,7 @@ void https_cli_server_receive_message(struct bufferevent *bev, void *ptr)
 
 		register_callback_on_ioa_socket(cliserver.e, s, IOA_EV_READ, https_input_handler, NULL, 0);
 
-		write_https_default_page(s);
+		handle_https(s,NULL);
 	}
 }
 
