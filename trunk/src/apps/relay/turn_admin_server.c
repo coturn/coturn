@@ -64,7 +64,7 @@
 
 #include "apputils.h"
 
-#include "turncli.h"
+#include "turn_admin_server.h"
 
 ///////////////////////////////
 

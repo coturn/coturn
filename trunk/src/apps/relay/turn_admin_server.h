@@ -28,8 +28,8 @@
  * SUCH DAMAGE.
  */
 
-#ifndef __TURNCLI__
-#define __TURNCLI__
+#ifndef __TURN_ADMIN_SERVER__
+#define __TURN_ADMIN_SERVER__
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -101,5 +101,5 @@ void send_https_socket(ioa_socket_handle s);
 #endif
 
 #endif
-/// __TURNCLI__///
+/// __TURN_ADMIN_SERVER__///
 

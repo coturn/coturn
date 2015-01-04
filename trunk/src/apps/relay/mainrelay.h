@@ -70,7 +70,7 @@
 #include "ns_turn_khash.h"
 
 #include "userdb.h"
-#include "turncli.h"
+#include "turn_admin_server.h"
 
 #include "tls_listener.h"
 #include "dtls_listener.h"
