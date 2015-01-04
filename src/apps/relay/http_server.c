@@ -30,6 +30,26 @@
 
 #include "ns_ioalib_impl.h"
 
+#include "http_server.h"
+
+#include <event2/http.h>
+#include <event2/keyvalq_struct.h>
+
+//////////////////////////////////////
+
+struct headers_list {
+	size_t n;
+	char **keys;
+	char **values;
+};
+
+struct http_headers {
+	struct evkeyvalq *uri_headers;
+	struct headers_list *post_headers;
+};
+
+//////////////////////////////////////
+
 static void write_http_echo(ioa_socket_handle s)
 {
 	if(s && !ioa_socket_tobeclosed(s)) {
@@ -54,3 +74,188 @@ static void write_http_echo(ioa_socket_handle s)
 void handle_http_echo(ioa_socket_handle s) {
 	write_http_echo(s);
 }
+
+///////////////////////////////////////////////
+
+static struct headers_list * post_parse(char *data, size_t data_len)
+{
+	char *post_data = calloc(data_len + 1, sizeof(char));
+	memcpy(post_data, data, data_len);
+	char *fmarker = NULL;
+	char *fsplit = strtok_r(post_data, "&", &fmarker);
+	struct headers_list *list = (struct headers_list*)malloc(sizeof(struct headers_list));
+	ns_bzero(list,sizeof(struct headers_list));
+	while (fsplit != NULL) {
+		char *vmarker = NULL;
+		char *key = strtok_r(fsplit, "=", &vmarker);
+		char *value = strtok_r(NULL, "=", &vmarker);
+		value = value ? value : "";
+		value = evhttp_decode_uri(value);
+		char *p = value;
+		while (*p != '\0') {
+			if (*p == '+')
+				*p = ' ';
+			p++;
+		}
+		list->keys = (char**)realloc(list->keys,sizeof(char*)*(list->n+1));
+		list->keys[list->n] = strdup(key);
+		list->values = (char**)realloc(list->values,sizeof(char*)*(list->n+1));
+		list->values[list->n] = value;
+		++(list->n);
+		fsplit = strtok_r(NULL, "&", &fmarker);
+	}
+	free(post_data);
+	return list;
+}
+
+static struct http_request* parse_http_request_1(struct http_request* ret, char* request, int parse_post)
+{
+	if(ret && request) {
+
+		char* s = strstr(request," HTTP/");
+		if(!s) {
+			free(ret);
+			ret = NULL;
+		} else {
+			*s = 0;
+
+			struct evhttp_uri *uri = evhttp_uri_parse(request);
+			if(!uri) {
+				free(ret);
+				ret = NULL;
+			} else {
+
+				const char *query = evhttp_uri_get_query(uri);
+				if(query) {
+					struct evkeyvalq* kv = (struct evkeyvalq*)malloc(sizeof(struct evkeyvalq));
+					ns_bzero(kv,sizeof(struct evkeyvalq));
+					if(evhttp_parse_query_str(query, kv)<0) {
+						free(ret);
+						ret = NULL;
+					} else {
+						ret->headers = (struct http_headers*)malloc(sizeof(struct http_headers));
+						ns_bzero(ret->headers,sizeof(struct http_headers));
+						ret->headers->uri_headers = kv;
+					}
+				}
+				evhttp_uri_free(uri);
+
+				if(parse_post) {
+					char *body = strstr(s+1,"\r\n\r\n");
+					if(body && body[0]) {
+						if(!ret->headers) {
+							ret->headers = (struct http_headers*)malloc(sizeof(struct http_headers));
+							ns_bzero(ret->headers,sizeof(struct http_headers));
+						}
+						ret->headers->post_headers = post_parse(body,strlen(body));
+					}
+				}
+			}
+
+			*s = ' ';
+		}
+	}
+
+	return ret;
+}
+
+struct http_request* parse_http_request(char* request) {
+
+	struct http_request* ret = NULL;
+
+	if(request) {
+
+		ret = (struct http_request*)malloc(sizeof(struct http_request));
+		ns_bzero(ret,sizeof(struct http_request));
+
+		if(strstr(request,"GET ") == request) {
+			ret->rtype = HRT_GET;
+			ret = parse_http_request_1(ret,request+4,0);
+		} else if(strstr(request,"POST ") == request) {
+			ret->rtype = HRT_POST;
+			ret = parse_http_request_1(ret,request+5,1);
+		} else {
+			free(ret);
+			ret = NULL;
+		}
+	}
+
+	return ret;
+}
+
+static const char * get_headers_list_value(struct headers_list *h, const char* key) {
+	const char* ret = NULL;
+	if(h && h->keys && h->values && key && key[0]) {
+		size_t i = 0;
+		for(i=0;i<h->n;++i) {
+			if(h->keys[i] && !strcmp(key,h->keys[i]) && h->values[i]) {
+				ret = h->values[i];
+				break;
+			}
+		}
+	}
+	return ret;
+}
+
+static void free_headers_list(struct headers_list *h) {
+	if(h) {
+		if(h->keys) {
+			size_t i = 0;
+			for(i=0;i<h->n;++i) {
+				if(h->keys[i]) {
+					free(h->keys[i]);
+					h->keys[i]=NULL;
+				}
+			}
+			free(h->keys);
+			h->keys = NULL;
+		}
+		if(h->values) {
+			size_t i = 0;
+			for(i=0;i<h->n;++i) {
+				if(h->values[i]) {
+					free(h->values[i]);
+					h->values[i]=NULL;
+				}
+			}
+			free(h->values);
+			h->values = NULL;
+		}
+		h->n = 0;
+		free(h);
+	}
+}
+
+const char *get_http_header_value(const struct http_request *request, const char* key) {
+	const char *ret = NULL;
+	if(key && key[0] && request && request->headers) {
+		if(request->headers->uri_headers) {
+			ret = evhttp_find_header(request->headers->uri_headers,key);
+		}
+		if(!ret && request->headers->post_headers) {
+			ret = get_headers_list_value(request->headers->post_headers,key);
+		}
+	}
+	return ret;
+}
+
+void free_http_request(struct http_request *request) {
+	if(request) {
+		if(request->headers) {
+			if(request->headers->uri_headers) {
+				evhttp_clear_headers(request->headers->uri_headers);
+				free(request->headers->uri_headers);
+				request->headers->uri_headers = NULL;
+			}
+			if(request->headers->post_headers) {
+				free_headers_list(request->headers->post_headers);
+				request->headers->post_headers = NULL;
+			}
+			free(request->headers);
+			request->headers = NULL;
+		}
+		free(request);
+	}
+}
+
+///////////////////////////////////////////////

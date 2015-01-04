@@ -31,16 +31,37 @@
 #ifndef __TURN_HTTP_SERVER__
 #define __TURN_HTTP_SERVER__
 
-#include <stdlib.h>
-#include <stdio.h>
-
 #include "ns_turn_utils.h"
 #include "ns_turn_server.h"
 #include "apputils.h"
 
+#include <stdlib.h>
+#include <stdio.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/////////  HTTP REQUEST //////////
+
+enum _HTTP_REQUEST_TYPE {
+	HRT_UNKNOWN=0,
+	HRT_GET,
+	HRT_POST
+};
+
+typedef enum _HTTP_REQUEST_TYPE HTTP_REQUEST_TYPE;
+
+struct http_headers;
+
+struct http_request {
+	HTTP_REQUEST_TYPE rtype;
+	struct http_headers *headers;
+};
+
+struct http_request* parse_http_request(char* request);
+const char *get_http_header_value(const struct http_request *request, const char* key);
+void free_http_request(struct http_request *request);
 
 ////////////////////////////////////////////
 

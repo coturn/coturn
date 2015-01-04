@@ -646,9 +646,9 @@ static inline const char* findstr(const char *hay, size_t slen, const char *need
 static inline int is_http_get_inline(const char *s, size_t blen) {
 	if(s && blen>=12) {
 		if((s[0]=='G')&&(s[1]=='E')&&(s[2]=='T')&&(s[3]==' ')) {
-			const char *sp=findstr(s+4,blen-4,"HTTP");
+			const char *sp=findstr(s+4,blen-4," HTTP/");
 			if(sp) {
-				sp += 4;
+				sp += 6;
 				size_t diff_blen = sp-s;
 				if(diff_blen+4 <= blen) {
 					sp=findstr(sp,blen-diff_blen,"\r\n\r\n");

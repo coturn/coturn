@@ -1390,7 +1390,13 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
 		handle_http_echo(s);
 	} else {
 		if(nbh) {
-			//TODO
+			struct http_request* hr = parse_http_request((char*)ioa_network_buffer_data(nbh));
+			if(!hr) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: wrong HTTPS request (I cannot parse it)\n", __FUNCTION__);
+			} else {
+				//TODO
+				free_http_request(hr);
+			}
 		}
 		write_https_default_page(s);
 	}
