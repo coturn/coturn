@@ -1355,30 +1355,25 @@ int send_turn_session_info(struct turn_session_info* tsi)
 
 /////////// HTTPS /////////////
 
-static void write_https_echo(ioa_socket_handle s)
+static void write_https_default_page(ioa_socket_handle s)
 {
 	if(s && !ioa_socket_tobeclosed(s)) {
-		SOCKET_APP_TYPE sat = get_ioa_socket_app_type(s);
-		if(sat == HTTPS_CLIENT_SOCKET) {
-			ioa_network_buffer_handle nbh_http = ioa_network_buffer_allocate(s->e);
-			size_t len_http = ioa_network_buffer_get_size(nbh_http);
-			u08bits *data = ioa_network_buffer_data(nbh_http);
-			char data_http[1025];
-			char content_http[1025];
-			const char* title = "HTTPS TURN Server";
-			snprintf(content_http,sizeof(content_http)-1,"<!DOCTYPE html>\r\n<html>\r\n  <head>\r\n    <title>%s</title>\r\n  </head>\r\n  <body>\r\n    %s\r\n  </body>\r\n</html>\r\n",title,title);
-			snprintf(data_http,sizeof(data_http)-1,"HTTP/1.1 200 OK\r\nServer: %s\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Length: %d\r\n\r\n%s",TURN_SOFTWARE,(int)strlen(content_http),content_http);
-			len_http = strlen(data_http);
-			ns_bcopy(data_http,data,len_http);
-			ioa_network_buffer_set_size(nbh_http,len_http);
-			send_data_from_ioa_socket_nbh(s, NULL, nbh_http, TTL_IGNORE, TOS_IGNORE);
-		}
+		ioa_network_buffer_handle nbh_http = ioa_network_buffer_allocate(s->e);
+		size_t len_http = ioa_network_buffer_get_size(nbh_http);
+		u08bits *data = ioa_network_buffer_data(nbh_http);
+		char data_http[1025];
+		char content_http[1025];
+		const char* title = "HTTPS TURN Server";
+		snprintf(content_http,sizeof(content_http)-1,"<!DOCTYPE html>\r\n<html>\r\n  <head>\r\n    <title>%s</title>\r\n  </head>\r\n  <body>\r\n    %s\r\n  </body>\r\n</html>\r\n",title,title);
+		snprintf(data_http,sizeof(data_http)-1,"HTTP/1.1 200 OK\r\nServer: %s\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Length: %d\r\n\r\n%s",TURN_SOFTWARE,(int)strlen(content_http),content_http);
+		len_http = strlen(data_http);
+		ns_bcopy(data_http,data,len_http);
+		ioa_network_buffer_set_size(nbh_http,len_http);
+		send_data_from_ioa_socket_nbh(s, NULL, nbh_http, TTL_IGNORE, TOS_IGNORE);
 	}
 }
 
 static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
-
-	//TODO
 
 	if(turn_params.verbose) {
 		if(nbh) {
@@ -1388,7 +1383,11 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
 		}
 	}
 
-	write_https_echo(s);
+	if(nbh) {
+		//TODO
+	}
+
+	write_https_default_page(s);
 }
 
 static void https_input_handler(ioa_socket_handle s, int event_type, ioa_net_data *data, void *arg, int can_resume) {
@@ -1420,7 +1419,7 @@ void https_cli_server_receive_message(struct bufferevent *bev, void *ptr)
 
 		register_callback_on_ioa_socket(cliserver.e, s, IOA_EV_READ, https_input_handler, NULL, 0);
 
-		handle_https(s,NULL);
+		write_https_default_page(s);
 	}
 }
 
