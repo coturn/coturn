@@ -1357,7 +1357,7 @@ int send_turn_session_info(struct turn_session_info* tsi)
 
 /////////// HTTPS /////////////
 
-static void write_https_default_page(ioa_socket_handle s)
+static void write_https_logon_page(ioa_socket_handle s)
 {
 	if(s && !ioa_socket_tobeclosed(s)) {
 		//TODO
@@ -1386,19 +1386,20 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
 		}
 	}
 
-	if(!turn_params.https_admin_pwd[0]) {
-		handle_http_echo(s);
-	} else {
+	if(s->as_ok) {
 		if(nbh) {
 			struct http_request* hr = parse_http_request((char*)ioa_network_buffer_data(nbh));
 			if(!hr) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: wrong HTTPS request (I cannot parse it)\n", __FUNCTION__);
 			} else {
 				//TODO
+				write_https_logon_page(s);
+				s->as_ok = 1;
 				free_http_request(hr);
 			}
 		}
-		write_https_default_page(s);
+	} else {
+		write_https_logon_page(s);
 	}
 }
 
