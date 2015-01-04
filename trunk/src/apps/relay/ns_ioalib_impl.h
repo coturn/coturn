@@ -223,6 +223,10 @@ struct _ioa_socket
 	accept_cb acb;
 	void *acbarg;
 	/* <<== RFC 6062 */
+	//Admin server:
+	int as_ok;
+	char as_login[17];
+	char as_realm[STUN_MAX_REALM_SIZE + 1];
 };
 
 typedef struct _timer_event
