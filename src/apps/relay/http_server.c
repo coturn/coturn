@@ -138,6 +138,11 @@ static struct http_request* parse_http_request_1(struct http_request* ret, char*
 						ret->headers->uri_headers = kv;
 					}
 				}
+
+				const char *path = evhttp_uri_get_path(uri);
+				if(path)
+					ret->path = strdup(path);
+
 				evhttp_uri_free(uri);
 
 				if(parse_post) {
@@ -174,6 +179,12 @@ struct http_request* parse_http_request(char* request) {
 		} else if(strstr(request,"POST ") == request) {
 			ret->rtype = HRT_POST;
 			ret = parse_http_request_1(ret,request+5,1);
+		} else if(strstr(request,"PUT ") == request) {
+			ret->rtype = HRT_PUT;
+			ret = parse_http_request_1(ret,request+4,1);
+		} else if(strstr(request,"DELETE ") == request) {
+			ret->rtype = HRT_DELETE;
+			ret = parse_http_request_1(ret,request+7,1);
 		} else {
 			free(ret);
 			ret = NULL;
@@ -241,6 +252,10 @@ const char *get_http_header_value(const struct http_request *request, const char
 
 void free_http_request(struct http_request *request) {
 	if(request) {
+		if(request->path) {
+			free(request->path);
+			request->path = NULL;
+		}
 		if(request->headers) {
 			if(request->headers->uri_headers) {
 				evhttp_clear_headers(request->headers->uri_headers);
@@ -255,6 +270,68 @@ void free_http_request(struct http_request *request) {
 			request->headers = NULL;
 		}
 		free(request);
+	}
+}
+
+////////////////////////////////////////////
+
+struct str_buffer {
+	size_t capacity;
+	size_t sz;
+	char* buffer;
+};
+
+struct str_buffer* str_buffer_new(void)
+{
+	struct str_buffer* ret = (struct str_buffer*)malloc(sizeof(struct str_buffer));
+	ns_bzero(ret,sizeof(struct str_buffer));
+	ret->buffer = (char*)malloc(1);
+	ret->buffer[0] = 0;
+	ret->capacity = 1;
+	return ret;
+}
+
+void str_buffer_append(struct str_buffer* sb, const char* str)
+{
+	if(sb && str && str[0]) {
+		size_t len = strlen(str);
+		while(sb->sz + len + 1 > sb->capacity) {
+			sb->capacity += len + 1024;
+			sb->buffer = (char*)realloc(sb->buffer,sb->capacity);
+		}
+		ns_bcopy(str,sb->buffer+sb->sz,len+1);
+		sb->sz += len;
+	}
+}
+
+void str_buffer_append_sz(struct str_buffer* sb, size_t sz)
+{
+	char ssz[129];
+	snprintf(ssz,sizeof(ssz)-1,"%lu",(unsigned long)sz);
+	str_buffer_append(sb,ssz);
+}
+
+const char* str_buffer_get_str(const struct str_buffer *sb)
+{
+	if(sb) {
+		return sb->buffer;
+	}
+	return NULL;
+}
+
+size_t str_buffer_get_str_len(const struct str_buffer *sb)
+{
+	if(sb) {
+		return sb->sz;
+	}
+	return 0;
+}
+
+void str_buffer_free(struct str_buffer *sb)
+{
+	if(sb) {
+		free(sb->buffer);
+		free(sb);
 	}
 }
 

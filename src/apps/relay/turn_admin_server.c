@@ -1249,7 +1249,7 @@ void setup_cli_thread(void)
 		cliserver.https_in_buf = pair[0];
 		cliserver.https_out_buf = pair[1];
 
-		bufferevent_setcb(cliserver.https_in_buf, https_cli_server_receive_message, NULL, NULL, &cliserver);
+		bufferevent_setcb(cliserver.https_in_buf, https_admin_server_receive_message, NULL, NULL, &cliserver);
 		bufferevent_enable(cliserver.https_in_buf, EV_READ);
 	}
 
@@ -1360,19 +1360,35 @@ int send_turn_session_info(struct turn_session_info* tsi)
 static void write_https_logon_page(ioa_socket_handle s)
 {
 	if(s && !ioa_socket_tobeclosed(s)) {
-		//TODO
-		ioa_network_buffer_handle nbh_http = ioa_network_buffer_allocate(s->e);
-		size_t len_http = ioa_network_buffer_get_size(nbh_http);
-		u08bits *data = ioa_network_buffer_data(nbh_http);
-		char data_http[1025];
-		char content_http[1025];
-		const char* title = "HTTPS TURN Server";
-		snprintf(content_http,sizeof(content_http)-1,"<!DOCTYPE html>\r\n<html>\r\n  <head>\r\n    <title>%s</title>\r\n  </head>\r\n  <body>\r\n    %s\r\n  </body>\r\n</html>\r\n",title,title);
-		snprintf(data_http,sizeof(data_http)-1,"HTTP/1.1 200 OK\r\nServer: %s\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Length: %d\r\n\r\n%s",TURN_SOFTWARE,(int)strlen(content_http),content_http);
-		len_http = strlen(data_http);
-		ns_bcopy(data_http,data,len_http);
-		ioa_network_buffer_set_size(nbh_http,len_http);
-		send_data_from_ioa_socket_nbh(s, NULL, nbh_http, TTL_IGNORE, TOS_IGNORE);
+
+		struct str_buffer* sb = str_buffer_new();
+
+		const char* title = "TURN Server (https admin connection)";
+
+		str_buffer_append(sb,"<!DOCTYPE html>\r\n<html>\r\n  <head>\r\n    <title>");
+		str_buffer_append(sb,title);
+		str_buffer_append(sb,"</title>\r\n  </head>\r\n  <body>\r\n    ");
+		str_buffer_append(sb,title);
+		str_buffer_append(sb,"<br>\r\n");
+		str_buffer_append(sb,"<form action=\"logon\" method=\"POST\">\r\n");
+		str_buffer_append(sb,"  <fieldset><legend>Admin user information:</legend>  user name:<br><input type=\"text\" name=\"uname\" value=\"\"><br>password:<br><input type=\"password\" name=\"pwd\" value=\"\"><br><br><input type=\"submit\" value=\"Login\"></fieldset>\r\n");
+		str_buffer_append(sb,"</form>\r\n");
+		str_buffer_append(sb,"\r\n  </body>\r\n</html>\r\n");
+
+		struct str_buffer* sb_http = str_buffer_new();
+
+		str_buffer_append(sb_http,"HTTP/1.1 200 OK\r\nServer: ");
+		str_buffer_append(sb_http,TURN_SOFTWARE);
+		str_buffer_append(sb_http,"\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Length: ");
+		str_buffer_append_sz(sb_http,str_buffer_get_str_len(sb));
+		str_buffer_append(sb_http,"\r\n\r\n");
+		str_buffer_append(sb_http,str_buffer_get_str(sb));
+
+		str_buffer_free(sb);
+
+		send_data_from_ioa_socket_tcp(s, str_buffer_get_str(sb_http), str_buffer_get_str_len(sb_http));
+
+		str_buffer_free(sb_http);
 	}
 }
 
@@ -1393,6 +1409,7 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: wrong HTTPS request (I cannot parse it)\n", __FUNCTION__);
 			} else {
 				//TODO
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: HTTPS request, path %s\n", __FUNCTION__,hr->path);
 				write_https_logon_page(s);
 				s->as_ok = 1;
 				free_http_request(hr);
@@ -1400,6 +1417,7 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
 		}
 	} else {
 		write_https_logon_page(s);
+		s->as_ok = 1;
 	}
 }
 
@@ -1416,7 +1434,7 @@ static void https_input_handler(ioa_socket_handle s, int event_type, ioa_net_dat
 	data->nbh = NULL;
 }
 
-void https_cli_server_receive_message(struct bufferevent *bev, void *ptr)
+void https_admin_server_receive_message(struct bufferevent *bev, void *ptr)
 {
 	UNUSED_ARG(ptr);
 

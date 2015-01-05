@@ -47,7 +47,9 @@ extern "C" {
 enum _HTTP_REQUEST_TYPE {
 	HRT_UNKNOWN=0,
 	HRT_GET,
-	HRT_POST
+	HRT_POST,
+	HRT_PUT,
+	HRT_DELETE
 };
 
 typedef enum _HTTP_REQUEST_TYPE HTTP_REQUEST_TYPE;
@@ -56,12 +58,24 @@ struct http_headers;
 
 struct http_request {
 	HTTP_REQUEST_TYPE rtype;
+	char *path;
 	struct http_headers *headers;
 };
 
 struct http_request* parse_http_request(char* request);
 const char *get_http_header_value(const struct http_request *request, const char* key);
 void free_http_request(struct http_request *request);
+
+////////////////////////////////////////////
+
+struct str_buffer;
+
+struct str_buffer* str_buffer_new(void);
+void str_buffer_append(struct str_buffer* sb, const char* str);
+void str_buffer_append_sz(struct str_buffer* sb, size_t sz);
+const char* str_buffer_get_str(const struct str_buffer *sb);
+size_t str_buffer_get_str_len(const struct str_buffer *sb);
+void str_buffer_free(struct str_buffer *sb);
 
 ////////////////////////////////////////////
 

@@ -66,6 +66,8 @@ extern "C" {
 #define MAX_BUFFER_QUEUE_SIZE_PER_ENGINE (64)
 #define MAX_SOCKET_BUFFER_BACKLOG (16)
 
+#define ADMIN_USER_MAX_LENGTH (32)
+
 #define BUFFEREVENT_HIGH_WATERMARK (128<<10)
 #define BUFFEREVENT_MAX_UDP_TO_TCP_WRITE (64<<9)
 #define BUFFEREVENT_MAX_TCP_TO_TCP_WRITE (192<<10)
@@ -225,7 +227,7 @@ struct _ioa_socket
 	/* <<== RFC 6062 */
 	//Admin server:
 	int as_ok;
-	char as_login[17];
+	char as_login[ADMIN_USER_MAX_LENGTH + 1];
 	char as_realm[STUN_MAX_REALM_SIZE + 1];
 };
 
@@ -300,6 +302,8 @@ int set_socket_options_fd(evutil_socket_t fd, int tcp, int family);
 int set_socket_options(ioa_socket_handle s);
 
 int send_session_cancellation_to_relay(turnsession_id sid);
+
+int send_data_from_ioa_socket_tcp(ioa_socket_handle s, const void *data, size_t sz);
 
 ///////////////////////// SUPER MEMORY ////////
 

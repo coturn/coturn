@@ -207,7 +207,7 @@ int stun_attr_get_padding_len_str(stun_attr_ref attr);
 int stun_attr_add_padding_str(u08bits *buf, size_t *len, u16bits padding_len);
 
 /* HTTP */
-int is_http_get(const char *s, size_t blen);
+int is_http(const char *s, size_t blen);
 
 /* OAUTH */
 int convert_oauth_key_data(const oauth_key_data *oakd, oauth_key *key, char *err_msg, size_t err_msg_size);

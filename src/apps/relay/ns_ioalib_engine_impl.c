@@ -3191,6 +3191,51 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 	return ret;
 }
 
+int send_data_from_ioa_socket_tcp(ioa_socket_handle s, const void *data, size_t sz)
+{
+	int ret = -1;
+
+	if(s && data) {
+
+		if (s->done || (s->fd == -1) || ioa_socket_tobeclosed(s) || !(s->e)) {
+			TURN_LOG_FUNC(
+				TURN_LOG_LEVEL_INFO,
+				"!!! %s: (1) Trying to send data from bad socket: 0x%lx (1): done=%d, fd=%d, st=%d, sat=%d\n",
+				__FUNCTION__, (long) s, (int) s->done,
+				(int) s->fd, s->st, s->sat);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s socket: 0x%lx was closed\n", __FUNCTION__,(long)s);
+
+		} else if (s->connected && s->bev) {
+			if (s->st == TLS_SOCKET) {
+#if TLS_SUPPORTED
+				SSL *ctx = bufferevent_openssl_get_ssl(s->bev);
+				if (!ctx || SSL_get_shutdown(ctx)) {
+					s->tobeclosed = 1;
+					ret = 0;
+				}
+#endif
+			}
+
+			if (!(s->tobeclosed)) {
+
+				ret = (int)sz;
+
+				s->in_write = 1;
+				if (bufferevent_write(s->bev, data, sz) < 0) {
+					ret = -1;
+					perror("bufev send");
+					log_socket_event(s, "socket write failed, to be closed", 1);
+					s->tobeclosed = 1;
+					s->broken = 1;
+				}
+				s->in_write = 0;
+			}
+		}
+	}
+
+	return ret;
+}
+
 int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, int event_type, ioa_net_event_handler cb, void* ctx, int clean_preexisting)
 {
 	if(s) {
