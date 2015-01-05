@@ -611,17 +611,22 @@ int stun_is_channel_message_str(const u08bits *buf, size_t *blen, u16bits* chnum
 
 ////////// STUN message ///////////////////////////////
 
-static inline int sheadof(const char *head, const char* full)
+static inline int sheadof(const char *head, const char* full, int ignore_case)
 {
 	while(*head) {
-		if(*head != *full)
-			return 0;
+		if(*head != *full) {
+			if(ignore_case && (tolower(*head)==tolower(*full))) {
+				//OK
+			} else {
+				return 0;
+			}
+		}
 		++head;++full;
 	}
 	return 1;
 }
 
-static inline const char* findstr(const char *hay, size_t slen, const char *needle)
+static inline const char* findstr(const char *hay, size_t slen, const char *needle, int ignore_case)
 {
 	const char *ret = NULL;
 
@@ -632,7 +637,7 @@ static inline const char* findstr(const char *hay, size_t slen, const char *need
 			size_t i;
 			const char *sp = hay;
 			for(i=0;i<smax;++i) {
-				if(sheadof(needle,sp+i)) {
+				if(sheadof(needle,sp+i,ignore_case)) {
 					ret = sp+i;
 					break;
 				}
@@ -643,28 +648,36 @@ static inline const char* findstr(const char *hay, size_t slen, const char *need
 	return ret;
 }
 
-static inline int is_http_get_inline(const char *s, size_t blen) {
+static inline int is_http_inline(const char *s, size_t blen) {
 	if(s && blen>=12) {
-		if((s[0]=='G')&&(s[1]=='E')&&(s[2]=='T')&&(s[3]==' ')) {
-			const char *sp=findstr(s+4,blen-4," HTTP/");
+		if((strstr(s,"GET ")==s) ||(strstr(s,"POST ")==s) || (strstr(s,"DELETE ")==s) || (strstr(s,"PUT ")==s)) {
+			const char *sp=findstr(s+4,blen-4," HTTP/",0);
 			if(sp) {
 				sp += 6;
 				size_t diff_blen = sp-s;
 				if(diff_blen+4 <= blen) {
-					sp=findstr(sp,blen-diff_blen,"\r\n\r\n");
+					sp=findstr(sp,blen-diff_blen,"\r\n\r\n",0);
 					if(sp) {
-						return (int)(sp-s+4);
+						int ret_len = (int)(sp-s+4);
+						const char* clheader = "content-length: ";
+						const char* cl = findstr(s,sp-s,clheader,1);
+						if(cl) {
+							unsigned long clen = strtoul(cl+strlen(clheader),NULL,10);
+							if(clen>0 && clen<(0x0FFFFFFF)) {
+								ret_len += (int)clen;
+							}
+						}
+						return ret_len;
 					}
 				}
 			}
-
 		}
 	}
 	return 0;
 }
 
-int is_http_get(const char *s, size_t blen) {
-	return is_http_get_inline(s, blen);
+int is_http(const char *s, size_t blen) {
+	return is_http_inline(s, blen);
 }
 
 int stun_get_message_len_str(u08bits *buf, size_t blen, int padding, size_t *app_len) {
@@ -690,7 +703,7 @@ int stun_get_message_len_str(u08bits *buf, size_t blen, int padding, size_t *app
 
 		//HTTP request ?
 		{
-			int http_len = is_http_get_inline(((char*)buf), blen);
+			int http_len = is_http_inline(((char*)buf), blen);
 			if((http_len>0) && ((size_t)http_len<=blen)) {
 				*app_len = (size_t)http_len;
 				return http_len;
