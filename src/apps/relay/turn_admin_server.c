@@ -1357,6 +1357,24 @@ int send_turn_session_info(struct turn_session_info* tsi)
 
 /////////// HTTPS /////////////
 
+enum _AS_FORM {
+	AS_FORM_UNKNOWN,
+	AS_FORM_LOGON
+};
+
+typedef enum _AS_FORM AS_FORM;
+
+#define HR_USERNAME "uname"
+#define HR_PASSWORD "pwd"
+
+#define AS_FORM_NAME_LOGON "logon"
+
+static AS_FORM get_form(const char* path) {
+	while(*path=='/') ++path;
+	if(!strcmp(path,AS_FORM_NAME_LOGON)) return AS_FORM_LOGON;
+	return AS_FORM_UNKNOWN;
+}
+
 static void write_https_logon_page(ioa_socket_handle s)
 {
 	if(s && !ioa_socket_tobeclosed(s)) {
@@ -1370,8 +1388,14 @@ static void write_https_logon_page(ioa_socket_handle s)
 		str_buffer_append(sb,"</title>\r\n  </head>\r\n  <body>\r\n    ");
 		str_buffer_append(sb,title);
 		str_buffer_append(sb,"<br>\r\n");
-		str_buffer_append(sb,"<form action=\"logon\" method=\"POST\">\r\n");
-		str_buffer_append(sb,"  <fieldset><legend>Admin user information:</legend>  user name:<br><input type=\"text\" name=\"uname\" value=\"\"><br>password:<br><input type=\"password\" name=\"pwd\" value=\"\"><br><br><input type=\"submit\" value=\"Login\"></fieldset>\r\n");
+		str_buffer_append(sb,"<form action=\"");
+		str_buffer_append(sb,AS_FORM_NAME_LOGON);
+		str_buffer_append(sb,"\" method=\"POST\">\r\n");
+		str_buffer_append(sb,"  <fieldset><legend>Admin user information:</legend>  user name:<br><input type=\"text\" name=\"");
+		str_buffer_append(sb,HR_USERNAME);
+		str_buffer_append(sb,"\" value=\"\"><br>password:<br><input type=\"password\" name=\"");
+		str_buffer_append(sb,HR_PASSWORD);
+		str_buffer_append(sb,"\" value=\"\"><br><br><input type=\"submit\" value=\"Login\"></fieldset>\r\n");
 		str_buffer_append(sb,"</form>\r\n");
 		str_buffer_append(sb,"\r\n  </body>\r\n</html>\r\n");
 
@@ -1392,32 +1416,93 @@ static void write_https_logon_page(ioa_socket_handle s)
 	}
 }
 
+static void write_https_default_page(ioa_socket_handle s)
+{
+	if(s && !ioa_socket_tobeclosed(s)) {
+
+		if(!(s->as_ok)) {
+			write_https_logon_page(s);
+		} else {
+
+			struct str_buffer* sb = str_buffer_new();
+
+			const char* title = "TURN Server (https admin connection)";
+
+			str_buffer_append(sb,"<!DOCTYPE html>\r\n<html>\r\n  <head>\r\n    <title>");
+			str_buffer_append(sb,title);
+			str_buffer_append(sb,"</title>\r\n  </head>\r\n  <body>\r\n    ");
+			str_buffer_append(sb,title);
+			str_buffer_append(sb,"<br>\r\n");
+			str_buffer_append(sb,"\r\n  </body>\r\n</html>\r\n");
+
+			struct str_buffer* sb_http = str_buffer_new();
+
+			str_buffer_append(sb_http,"HTTP/1.1 200 OK\r\nServer: ");
+			str_buffer_append(sb_http,TURN_SOFTWARE);
+			str_buffer_append(sb_http,"\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Length: ");
+			str_buffer_append_sz(sb_http,str_buffer_get_str_len(sb));
+			str_buffer_append(sb_http,"\r\n\r\n");
+			str_buffer_append(sb_http,str_buffer_get_str(sb));
+
+			str_buffer_free(sb);
+
+			send_data_from_ioa_socket_tcp(s, str_buffer_get_str(sb_http), str_buffer_get_str_len(sb_http));
+
+			str_buffer_free(sb_http);
+		}
+	}
+}
+
+static void handle_logon_request(ioa_socket_handle s, struct http_request* hr)
+{
+	if(s && hr) {
+		if(hr->rtype != HRT_POST) {
+			write_https_default_page(s);
+		} else {
+			const char *uname = get_http_header_value(hr, HR_USERNAME);
+			const char *pwd = get_http_header_value(hr, HR_PASSWORD);
+			//TODO
+			if(uname && pwd) {
+				s->as_ok = 1;
+				write_https_default_page(s);
+			} else {
+				write_https_logon_page(s);
+			}
+		}
+	}
+}
+
 static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
 
 	if(turn_params.verbose) {
 		if(nbh) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: HTTPS connection input: %s\n", __FUNCTION__, (char*)ioa_network_buffer_data(nbh));
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: HTTPS connection input: %.40s\n", __FUNCTION__, (char*)ioa_network_buffer_data(nbh));
 		} else {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: HTTPS connection initial input\n", __FUNCTION__);
 		}
 	}
 
-	if(s->as_ok) {
-		if(nbh) {
-			struct http_request* hr = parse_http_request((char*)ioa_network_buffer_data(nbh));
-			if(!hr) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: wrong HTTPS request (I cannot parse it)\n", __FUNCTION__);
-			} else {
-				//TODO
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: HTTPS request, path %s\n", __FUNCTION__,hr->path);
-				write_https_logon_page(s);
-				s->as_ok = 1;
-				free_http_request(hr);
-			}
-		}
-	} else {
+	if(!nbh) {
 		write_https_logon_page(s);
-		s->as_ok = 1;
+	} else {
+		struct http_request* hr = parse_http_request((char*)ioa_network_buffer_data(nbh));
+		if(!hr) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: wrong HTTPS request (I cannot parse it)\n", __FUNCTION__);
+		} else {
+			//TODO
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: HTTPS request, path %s\n", __FUNCTION__,hr->path);
+
+			AS_FORM form = get_form(hr->path);
+
+			switch(form) {
+			case AS_FORM_LOGON:
+				handle_logon_request(s,hr);
+				break;
+			default:
+				write_https_default_page(s);
+			};
+			free_http_request(hr);
+		}
 	}
 }
 
