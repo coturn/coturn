@@ -79,6 +79,7 @@ void handle_http_echo(ioa_socket_handle s) {
 
 static struct headers_list * post_parse(char *data, size_t data_len)
 {
+	while((*data=='\r')||(*data=='\n')) ++data;
 	char *post_data = calloc(data_len + 1, sizeof(char));
 	memcpy(post_data, data, data_len);
 	char *fmarker = NULL;
