@@ -634,7 +634,7 @@ static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
 	"	-N, --redis-userdb		Redis user database connection string, if Redis DB is used.\n"
 #endif
 	"	-u, --user			Username\n"
-	"	-r, --realm			Realm for long-term mechanism only\n"
+	"	-r, --realm			Realm\n"
 	"	-p, --password			Password\n"
 #if !defined(TURN_NO_SQLITE) || !defined(TURN_NO_PQ) || !defined(TURN_NO_MYSQL) || !defined(TURN_NO_MONGO) || !defined(TURN_NO_HIREDIS)
 	"	-o, --origin			Origin\n"

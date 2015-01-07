@@ -92,7 +92,7 @@ Options with required values:
 -N, --redis-userdb	Redis user database connection string.
 			See the --redis-userdb option in the turnserver section.
 -u, --user		User name.
--r, --realm		Realm, for long-term credentials mechanism only.
+-r, --realm		Realm.
 -p, --password		Password.
 -o, --origin		Origin
 -H, --sha256	Use SHA256 as the keys hash function (a non-standard feature). 
