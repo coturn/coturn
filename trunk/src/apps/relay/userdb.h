@@ -46,10 +46,6 @@
 extern "C" {
 #endif
 
-//////////// Defines //////////////////////////////
-
-#define AUTH_SECRET_SIZE (512)
-
 //////////// REALM //////////////
 
 struct _realm_status_t;

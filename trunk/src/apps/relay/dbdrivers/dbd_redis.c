@@ -533,8 +533,8 @@ static int redis_get_user_pwd(u08bits *usname, st_password_t pwd) {
 				if (rget->type != REDIS_REPLY_NIL)
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", rget->type);
 			} else {
-				strncpy((char*)pwd,rget->str,SHORT_TERM_PASSWORD_SIZE);
-				pwd[SHORT_TERM_PASSWORD_SIZE]=0;
+				strncpy((char*)pwd,rget->str,STUN_MAX_PWD_SIZE);
+				pwd[STUN_MAX_PWD_SIZE]=0;
 				ret = 0;
 			}
 			turnFreeRedisReply(rget);

@@ -66,8 +66,7 @@ typedef u08bits hmackey_t[64];
 /**
  * Short-term credentials password
  */
-#define SHORT_TERM_PASSWORD_SIZE (512)
-typedef u08bits st_password_t[SHORT_TERM_PASSWORD_SIZE+1];
+typedef u08bits st_password_t[STUN_MAX_PWD_SIZE+1];
 typedef unsigned int band_limit_t;
 
 ///////////////////////////////////

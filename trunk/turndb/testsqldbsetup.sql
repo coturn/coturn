@@ -12,6 +12,9 @@ insert into turnusers_st (name, password) values('stranger-come-knocking','civil
 insert into turn_secret (realm,value) values('north.gov','logen');
 insert into turn_secret (realm,value) values('crinna.org','north');
 
+insert into admin_user (uname, realm, password) values('skarling','north.gov','hoodless');
+insert into admin_user (uname, realm, password) values('bayaz','','magi');
+
 insert into turn_origin_to_realm (origin,realm) values('http://crinna.org:80','crinna.org');
 insert into turn_origin_to_realm (origin,realm) values('https://bligh.edu:443','crinna.org');
 

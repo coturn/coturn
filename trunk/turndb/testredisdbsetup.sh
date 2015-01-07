@@ -32,6 +32,9 @@ set turn/user/bethod/password "king-of-north"
 set turn/user/whirrun/password "sword"
 set turn/user/stranger-come-knocking/password "civilization"
 
+set turn/realm/north.gov/admin_user/skarling/password "hoodless"
+set turn/admin_user/bayaz/password "magi"
+
 set turn/realm/north.gov/max-bps 500000
 set turn/realm/north.gov/total-quota 12000
 set turn/realm/north.gov/user-quota 10000

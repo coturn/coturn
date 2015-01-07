@@ -72,6 +72,12 @@ and they will be almost immediately "seen" by the turnserver process.
 	auth_key - (optional) base64-encoded AUTH key. If not defined, then 
 		calculated with ikm_key and hkdf_hash_func. The auth_key length 
 		is defined by auth_alg.
+		
+6) admin users (over https interface) are maintained as keys of form:
+"turn/realm/<realm-name>/admin_user/<username>/password" with the password 
+values (for the per-relam admin users), or as keys of form:
+"turn/admin_user/<username>/password" with password values - for the global
+admin users.
 
 II. Extra realms data in the database
 
@@ -104,7 +110,9 @@ This example sets user database for:
   * The realm performance parameters: "max_bps", 
   	"total_quota" and "user_quota" (same names as the turnserver 
   	configuration options, with the same meanings).
-  * The oAuth data for the key with kid "north" and key value "carleon". 
+  * The oAuth data for the key with kid "north" and key value "carleon".
+  * The admin user 'skarling', realm 'north.gov', with password 'hoodless';
+  * The global admin user 'bayaz' with password 'magi';  
   
 The shell command would be:
 
@@ -130,6 +138,9 @@ set turn/user/ninefingers/password "youhavetoberealistic"
 set turn/user/gorst/password "hero"
 set turn/user/whirrun/password "sword"
 set turn/user/stranger-come-knocking/password "civilization"
+
+set turn/realm/north.gov/admin_user/skarling/password "hoodless"
+set turn/admin_user/bayaz/password "magi"
 
 set turn/realm/north.gov/max-bps 500000
 set turn/realm/north.gov/total-quota 12000
