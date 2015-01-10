@@ -44,8 +44,7 @@ STUN specs:
 The implementation fully supports the following client-to-TURN-server protocols:
 - UDP (per RFC 5766)
 - TCP (per RFC 5766 and RFC 6062)
-- TLS (per RFC 5766 and RFC 6062); SSL3/TLS1.0/TLS1.1/TLS1.2; SSL2 wrapping
-  supported
+- TLS (per RFC 5766 and RFC 6062); SSL3/TLS1.0/TLS1.1/TLS1.2
 - DTLS (experimental non-standard feature)
 
 Supported relay protocols:

@@ -1654,7 +1654,7 @@ int add_integrity(app_ur_conn_info *clnet_info, stun_buffer *message)
 
 			//self-test:
 			{
-				st_password_t pwd;
+				password_t pwd;
 				if(stun_check_message_integrity_by_key_str(get_turn_credentials_type(),
 								message->buf, (size_t)(message->len), clnet_info->key, pwd, clnet_info->shatype, NULL)<1) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR," Self-test of integrity does not comple correctly !\n");
@@ -1679,7 +1679,7 @@ int check_integrity(app_ur_conn_info *clnet_info, stun_buffer *message)
 
 	if(oauth && clnet_info->oauth) {
 
-		st_password_t pwd;
+		password_t pwd;
 
 		return stun_check_message_integrity_by_key_str(get_turn_credentials_type(),
 				message->buf, (size_t)(message->len), clnet_info->key, pwd, sht, NULL);

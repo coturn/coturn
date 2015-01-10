@@ -61,7 +61,7 @@ extern int no_rtcp;
 extern int default_address_family;
 extern int dont_fragment;
 extern u08bits g_uname[STUN_MAX_USERNAME_SIZE+1];
-extern st_password_t g_upwd;
+extern password_t g_upwd;
 extern char g_auth_secret[1025];
 extern int g_use_auth_secret_with_timestamp;
 extern int use_fingerprints;

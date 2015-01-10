@@ -56,8 +56,8 @@ CREATE TABLE oauth_key (
 );
 
 CREATE TABLE admin_user (
-	uname varchar(32),
+	name varchar(32),
 	realm varchar(127),
 	password varchar(127),
-	primary key (uname)
+	primary key (name)
 );

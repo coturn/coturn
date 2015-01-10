@@ -796,10 +796,10 @@ The oauth_key table fields meanings are:
 # remote https access to the admin functions.
 #
 CREATE TABLE admin_user (
-	uname varchar(32),
+	name varchar(32),
 	realm varchar(127),
 	password varchar(127),
-	primary key (uname)
+	primary key (name)
 );
 
 You can use turnadmin program to manage the database - you can either use 

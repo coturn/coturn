@@ -50,9 +50,9 @@ extern pthread_once_t connection_key_once;
 typedef struct _turn_dbdriver_t {
   int (*get_auth_secrets)(secrets_list_t *sl, u08bits *realm);
   int (*get_user_key)(u08bits *usname, u08bits *realm, hmackey_t key);
-  int (*get_user_pwd)(u08bits *usname, st_password_t pwd);
+  int (*get_user_pwd)(u08bits *usname, password_t pwd);
   int (*set_user_key)(u08bits *usname, u08bits *realm, const char *key);
-  int (*set_user_pwd)(u08bits *usname, st_password_t pwd);
+  int (*set_user_pwd)(u08bits *usname, password_t pwd);
   int (*del_user)(u08bits *usname, int is_st, u08bits *realm);
   int (*list_users)(int is_st, u08bits *realm);
   int (*show_secret)(u08bits *realm);
@@ -70,6 +70,10 @@ typedef struct _turn_dbdriver_t {
   int (*get_oauth_key)(const u08bits *kid, oauth_key_data_raw *key);
   int (*del_oauth_key)(const u08bits *kid);
   int (*list_oauth_keys)(void);
+  int (*get_admin_user)(const u08bits *usname, u08bits *realm, password_t pwd);
+  int (*set_admin_user)(const u08bits *usname, const u08bits *realm, const password_t pwd);
+  int (*del_admin_user)(const u08bits *usname);
+  int (*list_admin_users)(void);
 } turn_dbdriver_t;
 
 /////////// USER DB CHECK //////////////////

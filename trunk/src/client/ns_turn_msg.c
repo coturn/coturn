@@ -1465,7 +1465,7 @@ void print_bin_func(const char *name, size_t len, const void *s, const char *fun
 	printf("]\n");
 }
 
-int stun_attr_add_integrity_str(turn_credential_type ct, u08bits *buf, size_t *len, hmackey_t key, st_password_t pwd, SHATYPE shatype)
+int stun_attr_add_integrity_str(turn_credential_type ct, u08bits *buf, size_t *len, hmackey_t key, password_t pwd, SHATYPE shatype)
 {
 	u08bits hmac[MAXSHASIZE];
 
@@ -1504,7 +1504,7 @@ int stun_attr_add_integrity_by_key_str(u08bits *buf, size_t *len, u08bits *uname
 	if(stun_attr_add_str(buf, len, STUN_ATTRIBUTE_REALM, realm, strlen((s08bits*)realm))<0)
 			return -1;
 
-	st_password_t p;
+	password_t p;
 	return stun_attr_add_integrity_str(TURN_CREDENTIALS_LONG_TERM, buf, len, key, p, shatype);
 }
 
@@ -1518,7 +1518,7 @@ int stun_attr_add_integrity_by_user_str(u08bits *buf, size_t *len, u08bits *unam
 	return stun_attr_add_integrity_by_key_str(buf, len, uname, realm, key, nonce, shatype);
 }
 
-int stun_attr_add_integrity_by_user_short_term_str(u08bits *buf, size_t *len, u08bits *uname, st_password_t pwd, SHATYPE shatype)
+int stun_attr_add_integrity_by_user_short_term_str(u08bits *buf, size_t *len, u08bits *uname, password_t pwd, SHATYPE shatype)
 {
 	if(stun_attr_add_str(buf, len, STUN_ATTRIBUTE_USERNAME, uname, strlen((s08bits*)uname))<0)
 			return -1;
@@ -1540,7 +1540,7 @@ void print_hmac(const char *name, const void *s, size_t len)
 /*
  * Return -1 if failure, 0 if the integrity is not correct, 1 if OK
  */
-int stun_check_message_integrity_by_key_str(turn_credential_type ct, u08bits *buf, size_t len, hmackey_t key, st_password_t pwd, SHATYPE shatype, int *too_weak)
+int stun_check_message_integrity_by_key_str(turn_credential_type ct, u08bits *buf, size_t len, hmackey_t key, password_t pwd, SHATYPE shatype, int *too_weak)
 {
 	int res = 0;
 	u08bits new_hmac[MAXSHASIZE];
@@ -1608,10 +1608,10 @@ int stun_check_message_integrity_by_key_str(turn_credential_type ct, u08bits *bu
 int stun_check_message_integrity_str(turn_credential_type ct, u08bits *buf, size_t len, u08bits *uname, u08bits *realm, u08bits *upwd, SHATYPE shatype)
 {
 	hmackey_t key;
-	st_password_t pwd;
+	password_t pwd;
 
 	if(ct == TURN_CREDENTIALS_SHORT_TERM)
-		strncpy((char*)pwd,(char*)upwd,sizeof(st_password_t));
+		strncpy((char*)pwd,(char*)upwd,sizeof(password_t));
 	else if (stun_produce_integrity_key_str(uname, realm, upwd, key, shatype) < 0)
 		return -1;
 

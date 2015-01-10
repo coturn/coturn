@@ -403,13 +403,13 @@ static void auth_server_receive_message(struct bufferevent *bev, void *ptr)
     }
     
     if(am.ct == TURN_CREDENTIALS_SHORT_TERM) {
-      st_password_t pwd;
+      password_t pwd;
       am.in_oauth = 0;
       am.out_oauth = 0;
       if(get_user_pwd(am.username,pwd)<0) {
     	  am.success = 0;
       } else {
-    	  ns_bcopy(pwd,am.pwd,sizeof(st_password_t));
+    	  ns_bcopy(pwd,am.pwd,sizeof(password_t));
     	  am.success = 1;
       }
     } else {

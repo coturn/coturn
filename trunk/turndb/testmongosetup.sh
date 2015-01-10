@@ -23,8 +23,8 @@ db.turnusers_st.insert({ name: 'stranger-come-knocking', password: 'civilization
 db.turn_secret.insert({ realm: 'north.gov', value: 'logen' });
 db.turn_secret.insert({ realm: 'crinna.org', value: 'north' });
 
-db.admin_user.insert({ uname: 'skarling', realm: 'north.gov', password: 'hoodless' });
-db.admin_user.insert({ uname: 'bayaz', realm: '', password: 'magi' });
+db.admin_user.insert({ name: 'skarling', realm: 'north.gov', password: 'hoodless' });
+db.admin_user.insert({ name: 'bayaz', realm: '', password: 'magi' });
 
 db.realm.insert({
   realm: 'north.gov',

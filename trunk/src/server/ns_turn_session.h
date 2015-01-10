@@ -81,7 +81,7 @@ struct _ts_ur_super_session {
   u08bits username[STUN_MAX_USERNAME_SIZE+1];
   hmackey_t hmackey;
   int hmackey_set;
-  st_password_t pwd;
+  password_t pwd;
   int quota_used;
   int oauth;
   turn_time_t max_session_time_auth;

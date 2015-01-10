@@ -300,7 +300,7 @@ Options with required values:
 			endpoints (the "plain" one and the "tls" one) are equivalent in terms of
 			functionality; but we keep both endpoints to satisfy the RFC 5766 specs.
 			For secure TCP connections, we currently support SSL version 3 and 
-			TLS versions 1.0, 1.1, 1.2. SSL2 "encapsulation mode" is also supported.
+			TLS versions 1.0, 1.1, 1.2.
 			For secure UDP connections, we support DTLS version 1.
 
 --alt-listening-port	Alternative listening port for UDP and TCP listeners;
