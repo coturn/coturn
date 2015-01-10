@@ -81,7 +81,8 @@ NULL,
 
 DH_1066, "", "", "",
 "turn_server_cert.pem","turn_server_pkey.pem", "", "",
-0,0,0,0,0,
+1,
+0,0,0,0,
 #if !TLS_SUPPORTED
 1,
 #else
@@ -518,7 +519,6 @@ static char Usage[] = "Usage: turnserver [options]\n"
 " --dh2066					Use 2066 bits predefined DH TLS key. Default size of the predefined key is 1066.\n"
 " --dh-file	<dh-file-name>			Use custom DH TLS key, stored in PEM format in the file.\n"
 "						Flags --dh566 and --dh2066 are ignored when the DH key is taken from a file.\n"
-" --no-sslv2					Do not allow SSLv2 protocol.\n"
 " --no-sslv3					Do not allow SSLv3 protocol.\n"
 " --no-tlsv1					Do not allow TLSv1/DTLSv1 protocol.\n"
 " --no-tlsv1_1					Do not allow TLSv1.1 protocol.\n"
@@ -908,7 +908,7 @@ static void set_option(int c, char *value)
 	  turn_params.oauth = get_bool_value(value);
 	  break;
   case NO_SSLV2_OPT:
-	  turn_params.no_sslv2 = get_bool_value(value);
+    //deprecated
 	  break;
   case NO_SSLV3_OPT:
 	  turn_params.no_sslv3 = get_bool_value(value);
@@ -2531,9 +2531,11 @@ static void set_ctx(SSL_CTX* ctx, const char *protocol)
 	{
 		int op = 0;
 
+#if !defined(OPENSSL_NO_SSL2)
 #if defined(SSL_OP_NO_SSLv2)
 		if(turn_params.no_sslv2)
 			op |= SSL_OP_NO_SSLv2;
+#endif
 #endif
 		if(turn_params.no_sslv3)
 			op |= SSL_OP_NO_SSLv3;

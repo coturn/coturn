@@ -191,8 +191,6 @@ Flags:
 
 --dh2066		Use 2066 bits predefined DH TLS key. Default size of the key is 1066.
 
---no-sslv2		Do not allow SSLv2 protocol.
-
 --no-sslv3		Do not allow SSLv3 protocol.
 
 --no-tlsv1		Do not allow TLSv1/DTLSv1 protocol.
