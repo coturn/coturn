@@ -81,7 +81,6 @@ NULL,
 
 DH_1066, "", "", "",
 "turn_server_cert.pem","turn_server_pkey.pem", "", "",
-1,
 0,0,0,0,
 #if !TLS_SUPPORTED
 1,
@@ -705,7 +704,7 @@ enum EXTRA_OPTS {
 	DH566_OPT,
 	DH2066_OPT,
 	NE_TYPE_OPT,
-	NO_SSLV2_OPT,
+	NO_SSLV2_OPT, /*deprecated*/
 	NO_SSLV3_OPT,
 	NO_TLSV1_OPT,
 	NO_TLSV1_1_OPT,
@@ -828,7 +827,7 @@ static const struct myoption long_options[] = {
 				{ "dh566", optional_argument, NULL, DH566_OPT },
 				{ "dh2066", optional_argument, NULL, DH2066_OPT },
 				{ "ne", required_argument, NULL, NE_TYPE_OPT },
-				{ "no-sslv2", optional_argument, NULL, NO_SSLV2_OPT },
+				{ "no-sslv2", optional_argument, NULL, NO_SSLV2_OPT }, /* deprecated */
 				{ "no-sslv3", optional_argument, NULL, NO_SSLV3_OPT },
 				{ "no-tlsv1", optional_argument, NULL, NO_TLSV1_OPT },
 				{ "no-tlsv1_1", optional_argument, NULL, NO_TLSV1_1_OPT },
@@ -2531,12 +2530,10 @@ static void set_ctx(SSL_CTX* ctx, const char *protocol)
 	{
 		int op = 0;
 
-#if !defined(OPENSSL_NO_SSL2)
 #if defined(SSL_OP_NO_SSLv2)
-		if(turn_params.no_sslv2)
-			op |= SSL_OP_NO_SSLv2;
+		op |= SSL_OP_NO_SSLv2;
 #endif
-#endif
+
 		if(turn_params.no_sslv3)
 			op |= SSL_OP_NO_SSLv3;
 

@@ -827,14 +827,6 @@ static const char* turn_get_method(const SSL_METHOD *method, const char* mdefaul
 			return mdefault;
 		else {
 
-#ifndef OPENSSL_NO_SSL2
-			if(method == SSLv2_server_method()) {
-					return "SSLv2";
-			} else if(method == SSLv2_client_method()) {
-					return "SSLv2";
-			} else
-#endif
-
 			if(method == SSLv3_server_method()) {
 				return "SSLv3";
 			} else if(method == SSLv3_client_method()) {

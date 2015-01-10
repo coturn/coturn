@@ -2268,10 +2268,6 @@ static TURN_TLS_TYPE check_tentative_tls(ioa_socket_raw fd)
 				ret = (TURN_TLS_TYPE)(s[10]+1);
 		} else if((s[2]==1)&&(s[3]==3)) {
 			ret = TURN_TLS_SSL23; /* compatibility mode */
-#ifndef OPENSSL_NO_SSL2
-		} else if((s[2]==1)&&(s[3]==0)&&(s[4]==2)) {
-			ret = TURN_TLS_SSL23; /* old mode */
-#endif
 		}
 	}
 
