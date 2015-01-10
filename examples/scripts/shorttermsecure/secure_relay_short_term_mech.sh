@@ -21,7 +21,7 @@
 # 8) "--log-file=stdout" means that all log output will go to the stdout.
 # 9) -E 127.0.0.1 and -E :;1 sets the relay addresses, in this case for loopback 
 # communications only.
-# 10) --cipher-list=ALL:SSLv2 means that we support all OpenSSL ciphers, including SSLv2.
+# 10) --cipher-list=ALL means that we support all OpenSSL ciphers
 # Other parameters (config file name, etc) are default.
 
 if [ -d examples ] ; then
@@ -31,4 +31,4 @@ fi
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib/:/usr/local/mysql/lib/
 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/usr/local/lib/:/usr/local/mysql/lib/
 
-PATH="./bin/:../bin/:../../bin/:${PATH}" turnserver -v --syslog -A --max-bps=3000000 -f -m 3 --min-port=32355 --max-port=65535  --db="var/db/turndb" --cert=turn_server_cert.pem --pkey=turn_server_pkey.pem --log-file=stdout -E 127.0.0.1 -E ::1 --cipher-list=ALL:SSLv2 $@
+PATH="./bin/:../bin/:../../bin/:${PATH}" turnserver -v --syslog -A --max-bps=3000000 -f -m 3 --min-port=32355 --max-port=65535  --db="var/db/turndb" --cert=turn_server_cert.pem --pkey=turn_server_pkey.pem --log-file=stdout -E 127.0.0.1 -E ::1 --cipher-list=ALL $@

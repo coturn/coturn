@@ -496,7 +496,7 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, u08bits *u
 						return -1;
 					};
 
-					st_password_t pwdtmp;
+					password_t pwdtmp;
 					if(stun_check_message_integrity_by_key_str(TURN_CREDENTIALS_LONG_TERM,
 								ioa_network_buffer_data(nbh),
 								ioa_network_buffer_get_size(nbh),
@@ -549,7 +549,7 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, u08bits *u
 
 			u08bits hmac[MAXSHASIZE];
 			unsigned int hmac_len;
-			st_password_t pwdtmp;
+			password_t pwdtmp;
 
 			hmac[0] = 0;
 
@@ -646,7 +646,7 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, u08bits *u
 /*
  * Short-term mechanism password retrieval
  */
-int get_user_pwd(u08bits *usname, st_password_t pwd)
+int get_user_pwd(u08bits *usname, password_t pwd)
 {
 	int ret = -1;
 
@@ -915,7 +915,7 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, u08b
 	hmackey_t key;
 	char skey[sizeof(hmackey_t) * 2 + 1];
 
-	st_password_t passwd;
+	password_t passwd;
 
 	if (ct == TA_LIST_USERS) {
 		return list_users(is_st, realm);
@@ -968,7 +968,7 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, u08b
 		must_set_admin_pwd(pwd);
 
 		if (is_st) {
-			strncpy((char*) passwd, (char*) pwd, sizeof(st_password_t));
+			strncpy((char*) passwd, (char*) pwd, sizeof(password_t));
 		} else {
 			stun_produce_integrity_key_str(user, realm, pwd, key, turn_params.shatype);
 			size_t i = 0;

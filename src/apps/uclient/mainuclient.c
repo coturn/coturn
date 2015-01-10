@@ -63,7 +63,7 @@ int no_rtcp = 0;
 int default_address_family = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT;
 int dont_fragment = 0;
 u08bits g_uname[STUN_MAX_USERNAME_SIZE+1];
-st_password_t g_upwd;
+password_t g_upwd;
 char g_auth_secret[1025]="\0";
 int g_use_auth_secret_with_timestamp = 0;
 int use_fingerprints = 1;

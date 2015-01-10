@@ -153,7 +153,7 @@ static int pgsql_get_user_key(u08bits *usname, u08bits *realm, hmackey_t key) {
   return ret;
 }
   
-static int pgsql_get_user_pwd(u08bits *usname, st_password_t pwd) {
+static int pgsql_get_user_pwd(u08bits *usname, password_t pwd) {
   int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
 	snprintf(statement,sizeof(statement),"select password from turnusers_st where name='%s'",usname);
@@ -167,7 +167,7 @@ static int pgsql_get_user_pwd(u08bits *usname, st_password_t pwd) {
 		} else {
 			char *kval = PQgetvalue(res,0,0);
 			if(kval) {
-				strncpy((char*)pwd,kval,sizeof(st_password_t));
+				strncpy((char*)pwd,kval,sizeof(password_t));
 				ret = 0;
 			} else {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong password data for user %s: NULL\n",usname);
@@ -319,7 +319,7 @@ static int pgsql_set_oauth_key(oauth_key_data_raw *key) {
   return ret;
 }
 
-static int pgsql_set_user_pwd(u08bits *usname, st_password_t pwd) {
+static int pgsql_set_user_pwd(u08bits *usname, password_t pwd) {
   int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
 	PGconn *pqc = get_pqdb_connection();
@@ -785,7 +785,119 @@ static void pgsql_reread_realms(secrets_list_t * realms_list) {
 	}
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////
+
+static int pgsql_get_admin_user(const u08bits *usname, u08bits *realm, password_t pwd)
+{
+	int ret = -1;
+
+	realm[0]=0;
+	pwd[0]=0;
+
+	PGconn * pqc = get_pqdb_connection();
+	if(pqc) {
+		char statement[TURN_LONG_STRING_SIZE];
+		snprintf(statement,sizeof(statement),"select realm,password from admin_user where name='%s'",usname);
+		PGresult *res = PQexec(pqc, statement);
+
+		if(!res || (PQresultStatus(res) != PGRES_TUPLES_OK) || (PQntuples(res)!=1)) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving PostgreSQL DB information: %s\n",PQerrorMessage(pqc));
+		} else {
+			const char *kval = PQgetvalue(res,0,0);
+			if(kval) {
+				strncpy((char*)realm,kval,STUN_MAX_REALM_SIZE);
+			}
+			kval = (const char*) PQgetvalue(res,0,1);
+			if(kval) {
+				strncpy((char*)pwd,kval,STUN_MAX_PWD_SIZE);
+			}
+			ret = 0;
+		}
+
+		if(res)
+			PQclear(res);
+
+	}
+	return ret;
+}
+
+static int pgsql_set_admin_user(const u08bits *usname, const u08bits *realm, const password_t pwd)
+{
+	int ret = -1;
+	char statement[TURN_LONG_STRING_SIZE];
+	PGconn *pqc = get_pqdb_connection();
+	if(pqc) {
+	  snprintf(statement,sizeof(statement),"insert into admin_user (realm,name,password) values('%s','%s','%s')",realm,usname,pwd);
+
+	  PGresult *res = PQexec(pqc, statement);
+	  if(!res || (PQresultStatus(res) != PGRES_COMMAND_OK)) {
+		if(res) {
+			PQclear(res);
+		}
+		snprintf(statement,sizeof(statement),"update admin_user set password='%s',realm='%s' where name='%s'",pwd,realm,usname);
+		res = PQexec(pqc, statement);
+		if(!res || (PQresultStatus(res) != PGRES_COMMAND_OK)) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error inserting/updating user information: %s\n",PQerrorMessage(pqc));
+		} else {
+		  ret = 0;
+		}
+	  }
+	  if(res) {
+		PQclear(res);
+	  }
+	}
+	return ret;
+}
+
+static int pgsql_del_admin_user(const u08bits *usname)
+{
+	int ret = -1;
+	char statement[TURN_LONG_STRING_SIZE];
+	PGconn *pqc = get_pqdb_connection();
+	if(pqc) {
+		snprintf(statement,sizeof(statement),"delete from admin_user where name='%s'",usname);
+		PGresult *res = PQexec(pqc, statement);
+		if(res) {
+			PQclear(res);
+			ret = 0;
+		}
+	}
+	return ret;
+}
+
+static int pgsql_list_admin_users(void)
+{
+	int ret = -1;
+	char statement[TURN_LONG_STRING_SIZE];
+	PGconn *pqc = get_pqdb_connection();
+	if(pqc) {
+		snprintf(statement,sizeof(statement),"select name,realm,password from admin_user order by realm,name");
+	}
+	PGresult *res = PQexec(pqc, statement);
+	if(!res || (PQresultStatus(res) != PGRES_TUPLES_OK)) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving PostgreSQL DB information: %s\n",PQerrorMessage(pqc));
+	} else {
+		int i = 0;
+		for(i=0;i<PQntuples(res);i++) {
+			char *kval = PQgetvalue(res,i,0);
+			if(kval) {
+				char *rval = PQgetvalue(res,i,1);
+				if(rval && *rval) {
+					printf("%s[%s]\n",kval,rval);
+				} else {
+					printf("%s\n",kval);
+				}
+			}
+		}
+		ret = 0;
+	}
+	if(res) {
+		PQclear(res);
+	}
+	return ret;
+}
+
+/////////////////////////////////////////////////////////////
 
 static const turn_dbdriver_t driver = {
   &pgsql_get_auth_secrets,
@@ -809,7 +921,11 @@ static const turn_dbdriver_t driver = {
   &pgsql_set_oauth_key,
   &pgsql_get_oauth_key,
   &pgsql_del_oauth_key,
-  &pgsql_list_oauth_keys
+  &pgsql_list_oauth_keys,
+  &pgsql_get_admin_user,
+  &pgsql_set_admin_user,
+  &pgsql_del_admin_user,
+  &pgsql_list_admin_users
 };
 
 const turn_dbdriver_t * get_pgsql_dbdriver(void) {

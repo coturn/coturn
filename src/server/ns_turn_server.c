@@ -3164,7 +3164,7 @@ static int create_challenge_response(ts_ur_super_session *ss, stun_tid *tid, int
 #define min(a,b) ((a)<=(b) ? (a) : (b))
 #endif
 
-static void resume_processing_after_username_check(int success,  int oauth, int max_session_time, hmackey_t hmackey, st_password_t pwd, turn_turnserver *server, u64bits ctxkey, ioa_net_data *in_buffer)
+static void resume_processing_after_username_check(int success,  int oauth, int max_session_time, hmackey_t hmackey, password_t pwd, turn_turnserver *server, u64bits ctxkey, ioa_net_data *in_buffer)
 {
 
 	if(server && in_buffer && in_buffer->nbh) {
@@ -3178,7 +3178,7 @@ static void resume_processing_after_username_check(int success,  int oauth, int 
 				ss->hmackey_set = 1;
 				ss->oauth = oauth;
 				ss->max_session_time_auth = (turn_time_t)max_session_time;
-				ns_bcopy(pwd,ss->pwd,sizeof(st_password_t));
+				ns_bcopy(pwd,ss->pwd,sizeof(password_t));
 			}
 
 			read_client_connection(server,ss,in_buffer,0,0);
