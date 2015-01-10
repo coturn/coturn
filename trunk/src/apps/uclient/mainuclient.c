@@ -503,11 +503,6 @@ int main(int argc, char **argv)
 			csuite=cipher_suite;
 
 		if(use_tcp) {
-#ifndef OPENSSL_NO_SSL2
-		  root_tls_ctx[root_tls_ctx_num] = SSL_CTX_new(SSLv2_client_method());
-		  SSL_CTX_set_cipher_list(root_tls_ctx[root_tls_ctx_num], csuite);
-		  root_tls_ctx_num++;
-#endif
 		  root_tls_ctx[root_tls_ctx_num] = SSL_CTX_new(SSLv23_client_method());
 		  SSL_CTX_set_cipher_list(root_tls_ctx[root_tls_ctx_num], csuite);
 		  root_tls_ctx_num++;

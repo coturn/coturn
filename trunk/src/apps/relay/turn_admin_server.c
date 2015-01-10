@@ -723,12 +723,6 @@ static void cli_print_configuration(struct cli_session* cs)
 		cli_print_flag(cs,turn_params.no_dtls,"no-dtls",0);
 		cli_print_flag(cs,turn_params.no_tls,"no-tls",0);
 
-#ifndef OPENSSL_NO_SSL2
-		cli_print_flag(cs,(!turn_params.no_sslv2 && !turn_params.no_tls),"SSLv2",0);
-#else
-		cli_print_flag(cs,0,"SSLv2",0);
-#endif
-
 		cli_print_flag(cs,(!turn_params.no_sslv3 && !turn_params.no_tls),"SSLv3",0);
 		cli_print_flag(cs,(!turn_params.no_tlsv1 && !turn_params.no_tls),"TLSv1.0",0);
 		cli_print_flag(cs,(!turn_params.no_tlsv1_1 && !turn_params.no_tls),"TLSv1.1",0);
