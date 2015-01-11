@@ -149,7 +149,6 @@ typedef struct _secrets_list secrets_list_t;
 typedef struct _ram_users_db_t {
 	size_t users_number;
 	ur_string_map *static_accounts;
-	ur_string_map *dynamic_accounts;
 	secrets_list_t static_auth_secrets;
 } ram_users_db_t;
 
@@ -199,8 +198,8 @@ void release_allocation_quota(u08bits *username, int oauth, u08bits *realm);
 
 void auth_ping(redis_context_handle rch);
 void reread_realms(void);
-int add_user_account(char *user, int dynamic);
-int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, u08bits *origin, TURNADMIN_COMMAND_TYPE ct, perf_options_t* po);
+int add_static_user_account(char *user);
+int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, u08bits *origin, TURNADMIN_COMMAND_TYPE ct, perf_options_t* po, int is_admin);
 
 int add_ip_list_range(const char* range, const char* realm, ip_range_list_t * list);
 ip_range_list_t* get_ip_list(const char *kind);

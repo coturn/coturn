@@ -1045,6 +1045,7 @@ static int mysql_set_admin_user(const u08bits *usname, const u08bits *realm, con
 {
   int ret = -1;
   char statement[TURN_LONG_STRING_SIZE];
+  donot_print_connection_success=1;
   MYSQL * myc = get_mydb_connection();
   if(myc) {
 	  snprintf(statement,sizeof(statement),"insert into admin_user (realm,name,password) values('%s','%s','%s')",realm,usname,pwd);
@@ -1068,6 +1069,7 @@ static int mysql_del_admin_user(const u08bits *usname)
 {
 	int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
+	donot_print_connection_success=1;
 	MYSQL * myc = get_mydb_connection();
 	if(myc) {
 		snprintf(statement,sizeof(statement),"delete from admin_user where name='%s'",usname);
@@ -1085,6 +1087,7 @@ static int mysql_list_admin_users(void)
 {
 	int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
+	donot_print_connection_success=1;
 	MYSQL * myc = get_mydb_connection();
 	if(myc) {
 		snprintf(statement,sizeof(statement),"select name, realm from admin_user order by realm,name");

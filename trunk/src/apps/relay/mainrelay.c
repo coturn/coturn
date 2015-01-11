@@ -119,7 +119,7 @@ LOW_DEFAULT_PORTS_BOUNDARY,HIGH_DEFAULT_PORTS_BOUNDARY,0,0,0,"",
 /////////////// MISC PARAMS ////////////////
 0,0,0,0,0,SHATYPE_SHA1,':',0,0,TURN_CREDENTIALS_NONE,0,0,0,0,0,0,
 ///////////// Users DB //////////////
-{ (TURN_USERDB_TYPE)0, {"\0"}, {0,NULL,NULL, {NULL,0}} },
+{ (TURN_USERDB_TYPE)0, {"\0"}, {0,NULL, {NULL,0}} },
 ///////////// CPUs //////////////////
 DEFAULT_CPUS_NUMBER
 };
@@ -1129,7 +1129,7 @@ static void set_option(int c, char *value)
 		turn_params.fingerprint = get_bool_value(value);
 		break;
 	case 'u':
-		add_user_account(value,0);
+		add_static_user_account(value);
 		break;
 #if !defined(TURN_NO_SQLITE)
 	case 'b':
@@ -1585,7 +1585,7 @@ static int adminmain(int argc, char **argv)
 		exit(-1);
 	}
 
-	return adminuser(user, realm, pwd, secret, origin, ct, &po);
+	return adminuser(user, realm, pwd, secret, origin, ct, &po, is_admin);
 }
 
 static void print_features(unsigned long mfn)
@@ -1804,7 +1804,6 @@ int main(int argc, char **argv)
 
 	ns_bzero(&turn_params.default_users_db,sizeof(default_users_db_t));
 	turn_params.default_users_db.ram_db.static_accounts = ur_string_map_create(turn_free_simple);
-	turn_params.default_users_db.ram_db.dynamic_accounts = ur_string_map_create(turn_free_simple);
 
 	if(strstr(argv[0],"turnadmin"))
 		return adminmain(argc,argv);
