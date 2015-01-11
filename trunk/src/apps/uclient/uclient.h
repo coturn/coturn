@@ -53,7 +53,6 @@ extern int do_not_use_channel;
 extern int clnet_verbose;
 extern int use_tcp;
 extern int use_secure;
-extern int use_short_term;
 extern char cert_file[1025];
 extern char pkey_file[1025];
 extern int hang_on;

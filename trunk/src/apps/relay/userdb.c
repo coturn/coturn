@@ -643,21 +643,6 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, u08bits *u
 	return ret;
 }
 
-/*
- * Short-term mechanism password retrieval
- */
-int get_user_pwd(u08bits *usname, password_t pwd)
-{
-	int ret = -1;
-
-	const turn_dbdriver_t * dbd = get_dbdriver();
-	if (dbd && dbd->get_user_pwd) {
-		ret = (*dbd->get_user_pwd)(usname, pwd);
-	}
-
-	return ret;
-}
-
 u08bits *start_user_check(turnserver_id id, turn_credential_type ct, int in_oauth, int *out_oauth, u08bits *usname, u08bits *realm, get_username_resume_cb resume, ioa_net_data *in_buffer, u64bits ctxkey, int *postpone_reply)
 {
 	*postpone_reply = 1;
@@ -790,11 +775,11 @@ int add_user_account(char *user, int dynamic)
 
 ////////////////// Admin /////////////////////////
 
-static int list_users(int is_st, u08bits *realm)
+static int list_users(u08bits *realm)
 {
   const turn_dbdriver_t * dbd = get_dbdriver();
   if (dbd && dbd->list_users) {
-    (*dbd->list_users)(is_st, realm);
+    (*dbd->list_users)(realm);
   }
 
   return 0;
@@ -910,15 +895,17 @@ static int list_realm_options(u08bits *realm)
 	return 0;
 }
 
-int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, u08bits *origin, TURNADMIN_COMMAND_TYPE ct, int is_st, perf_options_t *po)
+int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, u08bits *origin, TURNADMIN_COMMAND_TYPE ct, perf_options_t *po)
 {
 	hmackey_t key;
 	char skey[sizeof(hmackey_t) * 2 + 1];
 
 	password_t passwd;
 
+	STRCPY(passwd,pwd);
+
 	if (ct == TA_LIST_USERS) {
-		return list_users(is_st, realm);
+		return list_users(realm);
 	}
 
 	if (ct == TA_LIST_ORIGINS) {
@@ -967,9 +954,7 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, u08b
 
 		must_set_admin_pwd(pwd);
 
-		if (is_st) {
-			strncpy((char*) passwd, (char*) pwd, sizeof(password_t));
-		} else {
+		{
 			stun_produce_integrity_key_str(user, realm, pwd, key, turn_params.shatype);
 			size_t i = 0;
 			size_t sz = get_hmackey_size(turn_params.shatype);
@@ -988,27 +973,18 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, u08b
 
 	if (ct == TA_PRINT_KEY) {
 
-		if (!is_st) {
-			printf("0x%s\n", skey);
-		}
+		printf("0x%s\n", skey);
 
 	} else if (dbd) {
 
-		if (!is_st) {
-			must_set_admin_realm(realm);
-		}
+		must_set_admin_realm(realm);
 
 		if (ct == TA_DELETE_USER) {
 			if (dbd->del_user)
-				(*dbd->del_user)(user, is_st, realm);
+				(*dbd->del_user)(user, realm);
 		} else if (ct == TA_UPDATE_USER) {
-			if (is_st) {
-				if (dbd->set_user_pwd)
-					(*dbd->set_user_pwd)(user, passwd);
-			} else {
-				if (dbd->set_user_key)
-					(*dbd->set_user_key)(user, realm, skey);
-			}
+			if (dbd->set_user_key)
+				(*dbd->set_user_key)(user, realm, skey);
 		}
 
 	}

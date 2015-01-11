@@ -56,7 +56,6 @@ int c2c=0;
 int clnet_verbose=TURN_VERBOSE_NONE;
 int use_tcp=0;
 int use_secure=0;
-int use_short_term=0;
 int hang_on=0;
 ioa_addr peer_addr;
 int no_rtcp = 0;
@@ -125,8 +124,6 @@ static char Usage[] =
   "	-x	IPv6 relay address requested.\n"
   "	-X	IPv4 relay address explicitly requested.\n"
   "	-g	Include DONT_FRAGMENT option.\n"
-  "	-A	Use short-term credentials mechanism. By default, the program uses\n"
-  "		the long-term credentials mechanism if authentication is required.\n"
   "	-D	Mandatory channel padding (like in pjnath).\n"
   "	-N	Negative tests (some limited cases only).\n"
   "	-R	Negative protocol tests.\n"
@@ -219,11 +216,6 @@ int main(int argc, char **argv)
 
 			oauth = 1;
 
-			if(use_short_term) {
-				fprintf(stderr,"Short-term mechanism cannot be used together with oAuth.\n");
-				exit(-1);
-			}
-
 			oauth_key_data okd_array[2];
 			convert_oauth_key_data_raw(&okdr_array[0], &okd_array[0]);
 			convert_oauth_key_data_raw(&okdr_array[1], &okd_array[1]);
@@ -296,13 +288,6 @@ int main(int argc, char **argv)
 			break;
 		case 'Z':
 			dual_allocation = 1;
-			break;
-		case 'A':
-			if(oauth) {
-				fprintf(stderr,"Short-term mechanism cannot be used together with oAuth.\n");
-				exit(-1);
-			}
-			use_short_term = 1;
 			break;
 		case 'u':
 			STRCPY(g_uname, optarg);
@@ -409,10 +394,6 @@ int main(int argc, char **argv)
 
 	if(g_use_auth_secret_with_timestamp) {
 
-		if(use_short_term) {
-			fprintf(stderr,"ERROR: You cannot use authentication secret (REST API) with short-term credentials mechanism.\n");
-			exit(-1);
-		}
 		{
 			char new_uname[1025];
 			const unsigned long exp_time = 3600 * 24; /* one day */

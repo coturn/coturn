@@ -1,5 +1,5 @@
 Name:		turnserver
-Version:	4.3.4.1
+Version:	4.4.1.1
 Release:	0%{dist}
 Summary:	Coturn TURN Server
 
@@ -61,7 +61,6 @@ authentication is required):
 Redis can also be used for status and statistics storage and notification.
 
 Supported TURN authentication mechanisms:
-- short-term
 - long-term
 - TURN REST API (a modification of the long-term mechanism, for time-limited
   secret-based authentication, for WebRTC applications)
@@ -248,10 +247,6 @@ fi
 %dir %{_datadir}/%{name}/scripts/selfloadbalance
 %{_datadir}/%{name}/scripts/selfloadbalance/secure_dos_attack.sh
 %{_datadir}/%{name}/scripts/selfloadbalance/secure_relay.sh
-%dir %{_datadir}/%{name}/scripts/shorttermsecure
-%{_datadir}/%{name}/scripts/shorttermsecure/secure_relay_short_term_mech.sh
-%{_datadir}/%{name}/scripts/shorttermsecure/secure_tcp_client_c2c_tcp_relay_short_term.sh
-%{_datadir}/%{name}/scripts/shorttermsecure/secure_udp_client_short_term.sh
 %dir %{_datadir}/%{name}/scripts/mobile
 %{_datadir}/%{name}/scripts/mobile/mobile_relay.sh
 %{_datadir}/%{name}/scripts/mobile/mobile_dtls_client.sh
@@ -293,8 +288,8 @@ fi
 %{_includedir}/turn/client/TurnMsgLib.h
 
 %changelog
-* Thu Jan 24 2015 Oleg Moskalenko <mom040267@gmail.com>
-  - Sync to 4.3.4.1
+* Sat Jan 10 2015 Oleg Moskalenko <mom040267@gmail.com>
+  - Sync to 4.4.1.1
 * Wed Dec 24 2014 Oleg Moskalenko <mom040267@gmail.com>
   - Sync to 4.3.3.1
 * Sun Dec 14 2014 Oleg Moskalenko <mom040267@gmail.com>

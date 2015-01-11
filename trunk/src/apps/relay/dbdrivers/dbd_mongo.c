@@ -312,53 +312,6 @@ static int mongo_get_oauth_key(const u08bits *kid, oauth_key_data_raw *key) {
 	return ret;
 }
   
-static int mongo_get_user_pwd(u08bits *usname, password_t pwd) {
-  mongoc_collection_t * collection = mongo_get_collection("turnusers_st"); 
-
-	if(!collection)
-    return -1;
-    
-  bson_t query;
-  bson_init(&query);
-  BSON_APPEND_UTF8(&query, "name", (const char *)usname);
-
-  bson_t fields;
-  bson_init(&fields);
-  BSON_APPEND_INT32(&fields, "password", 1);
-  
-  mongoc_cursor_t * cursor;
-  cursor = mongoc_collection_find(collection, MONGOC_QUERY_NONE, 0, 1, 0, &query, &fields, NULL);
-  
-  int ret = -1;
-
-  if (!cursor) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error querying MongoDB collection 'turnusers_st'\n");
-  } else {
-    const bson_t * item;
-    uint32_t length;
-    bson_iter_t iter;
-    const char * value;
-    if (mongoc_cursor_next(cursor, &item)) {
-    	if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "password") && BSON_ITER_HOLDS_UTF8(&iter)) {
-        value = bson_iter_utf8(&iter, &length);
-
-				if(length < 1) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong password data for user %s, size in MongoDB is zero(0)\n", usname);
-				} else {
-					ns_bcopy(value, pwd, length);
-					pwd[length] = 0;
-					ret = 0;
-				}
-			}
-    }
-    mongoc_cursor_destroy(cursor);
-  }
-  mongoc_collection_destroy(collection);
-  bson_destroy(&query);
-  bson_destroy(&fields);
-  return ret;
-}
-  
 static int mongo_set_user_key(u08bits *usname, u08bits *realm, const char *key) {
   mongoc_collection_t * collection = mongo_get_collection("turnusers_lt"); 
 
@@ -425,8 +378,8 @@ static int mongo_set_oauth_key(oauth_key_data_raw *key) {
   return ret;
 }
   
-static int mongo_set_user_pwd(u08bits *usname, password_t pwd) {
-  mongoc_collection_t * collection = mongo_get_collection("turnusers_st");
+static int mongo_del_user(u08bits *usname, u08bits *realm) {
+  mongoc_collection_t * collection = mongo_get_collection("turnusers_lt");
 
 	if(!collection)
     return -1;
@@ -434,37 +387,7 @@ static int mongo_set_user_pwd(u08bits *usname, password_t pwd) {
   bson_t query;
   bson_init(&query);
   BSON_APPEND_UTF8(&query, "name", (const char *)usname);
-  
-  bson_t doc;
-  bson_init(&doc);
-  BSON_APPEND_UTF8(&doc, "name", (const char *)usname);
-  BSON_APPEND_UTF8(&doc, "password", (const char *)pwd);
-
-  int ret = -1;
-  
-  if (!mongoc_collection_update(collection, MONGOC_UPDATE_UPSERT, &query, &doc, NULL, NULL)) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error inserting/updating secret key information\n");
-  } else {
-    ret = 0;
-  }
-  mongoc_collection_destroy(collection);
-  bson_destroy(&doc);
-  bson_destroy(&query);
-  return ret;
-}
-  
-static int mongo_del_user(u08bits *usname, int is_st, u08bits *realm) {
-  mongoc_collection_t * collection = mongo_get_collection(is_st ? "turnusers_st" : "turnusers_lt");
-
-	if(!collection)
-    return -1;
-    
-  bson_t query;
-  bson_init(&query);
-  BSON_APPEND_UTF8(&query, "name", (const char *)usname);
-  if(!is_st) {
-    BSON_APPEND_UTF8(&query, "realm", (const char *)realm);
-  }
+  BSON_APPEND_UTF8(&query, "realm", (const char *)realm);
   
   int ret = -1;    
 
@@ -501,8 +424,8 @@ static int mongo_del_oauth_key(const u08bits *kid) {
   return ret;
 }
   
-static int mongo_list_users(int is_st, u08bits *realm) {
-  const char * collection_name = is_st ? "turnusers_st" : "turnusers_lt";
+static int mongo_list_users(u08bits *realm) {
+  const char * collection_name = "turnusers_lt";
   mongoc_collection_t * collection = mongo_get_collection(collection_name); 
 
 	if(!collection)
@@ -514,7 +437,7 @@ static int mongo_list_users(int is_st, u08bits *realm) {
   bson_append_int32(&child, "name", -1, 1);
   bson_append_document_end(&query, &child);
   bson_append_document_begin(&query, "$query", -1, &child);
-  if (!is_st && realm && realm[0]) {
+  if (realm && realm[0]) {
     BSON_APPEND_UTF8(&child, "realm", (const char *)realm);
   }
   bson_append_document_end(&query, &child);
@@ -522,7 +445,7 @@ static int mongo_list_users(int is_st, u08bits *realm) {
   bson_t fields;
   bson_init(&fields);
   BSON_APPEND_INT32(&fields, "name", 1);
-  if(!is_st) BSON_APPEND_INT32(&fields, "realm", 1);
+  BSON_APPEND_INT32(&fields, "realm", 1);
 
   mongoc_cursor_t * cursor;
   cursor = mongoc_collection_find(collection, MONGOC_QUERY_NONE, 0, 0, 0, &query, &fields, NULL);
@@ -542,7 +465,7 @@ static int mongo_list_users(int is_st, u08bits *realm) {
     		value = bson_iter_utf8(&iter, &length);
     		if (length) {
         		const char *realm = "";
-    			if (!is_st && bson_iter_init(&iter_realm, item) && bson_iter_find(&iter_realm, "realm") && BSON_ITER_HOLDS_UTF8(&iter_realm)) {
+    			if (bson_iter_init(&iter_realm, item) && bson_iter_find(&iter_realm, "realm") && BSON_ITER_HOLDS_UTF8(&iter_realm)) {
     				realm = bson_iter_utf8(&iter_realm, &length);
     			}
     			if(realm && *realm) {
@@ -1339,9 +1262,7 @@ static int mongo_list_admin_users(void)
 static const turn_dbdriver_t driver = {
   &mongo_get_auth_secrets,
   &mongo_get_user_key,
-  &mongo_get_user_pwd,
   &mongo_set_user_key,
-  &mongo_set_user_pwd,
   &mongo_del_user,
   &mongo_list_users,
   &mongo_show_secret,

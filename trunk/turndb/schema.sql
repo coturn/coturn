@@ -6,11 +6,6 @@ CREATE TABLE turnusers_lt (
     PRIMARY KEY (realm,name)
 );
 
-CREATE TABLE turnusers_st (
-    name varchar(512) PRIMARY KEY,
-    password varchar(127)
-);
-
 CREATE TABLE turn_secret (
 	realm varchar(127) default '',
     value varchar(127),

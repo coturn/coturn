@@ -519,30 +519,6 @@ static int redis_get_oauth_key(const u08bits *kid, oauth_key_data_raw *key) {
   return ret;
 }
   
-static int redis_get_user_pwd(u08bits *usname, password_t pwd) {
-  int ret = -1;
-	redisContext * rc = get_redis_connection();
-	if(rc) {
-		char s[TURN_LONG_STRING_SIZE];
-		snprintf(s,sizeof(s),"get turn/user/%s/password", usname);
-		redisReply *rget = (redisReply *)redisCommand(rc, s);
-		if(rget) {
-			if (rget->type == REDIS_REPLY_ERROR)
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", rget->str);
-			else if (rget->type != REDIS_REPLY_STRING) {
-				if (rget->type != REDIS_REPLY_NIL)
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", rget->type);
-			} else {
-				strncpy((char*)pwd,rget->str,STUN_MAX_PWD_SIZE);
-				pwd[STUN_MAX_PWD_SIZE]=0;
-				ret = 0;
-			}
-			turnFreeRedisReply(rget);
-		}
-	}
-  return ret;
-}
-  
 static int redis_set_user_key(u08bits *usname, u08bits *realm, const char *key) {
   int ret = -1;
 	redisContext *rc = get_redis_connection();
@@ -572,28 +548,12 @@ static int redis_set_oauth_key(oauth_key_data_raw *key) {
   return ret;
 }
   
-static int redis_set_user_pwd(u08bits *usname, password_t pwd) {
+static int redis_del_user(u08bits *usname, u08bits *realm) {
   int ret = -1;
 	redisContext *rc = get_redis_connection();
 	if(rc) {
 		char statement[TURN_LONG_STRING_SIZE];
-		snprintf(statement,sizeof(statement),"set turn/user/%s/password %s",usname,pwd);
-		turnFreeRedisReply(redisCommand(rc, statement));
-		turnFreeRedisReply(redisCommand(rc, "save"));
-		ret = 0;
-	}
-  return ret;
-}
-  
-static int redis_del_user(u08bits *usname, int is_st, u08bits *realm) {
-  int ret = -1;
-	redisContext *rc = get_redis_connection();
-	if(rc) {
-		char statement[TURN_LONG_STRING_SIZE];
-		if(is_st) {
-		  snprintf(statement,sizeof(statement),"del turn/user/%s/password",usname);
-		  turnFreeRedisReply(redisCommand(rc, statement));
-		} else {
+		{
 		  snprintf(statement,sizeof(statement),"del turn/realm/%s/user/%s/key",(char*)realm,usname);
 		  turnFreeRedisReply(redisCommand(rc, statement));
 		  snprintf(statement,sizeof(statement),"del turn/realm/%s/user/%s/password",(char*)realm,usname);
@@ -619,7 +579,7 @@ static int redis_del_oauth_key(const u08bits *kid) {
   return ret;
 }
   
-static int redis_list_users(int is_st, u08bits *realm) {
+static int redis_list_users(u08bits *realm) {
   int ret = -1;
 	redisContext *rc = get_redis_connection();
 	if(rc) {
@@ -630,8 +590,7 @@ static int redis_list_users(int is_st, u08bits *realm) {
 
 		redisReply *reply = NULL;
 
-		if(!is_st) {
-
+		{
 			if(realm && realm[0]) {
 				reply = (redisReply*)redisCommand(rc, "keys turn/realm/%s/user/*/key", (char*)realm);
 			} else {
@@ -660,23 +619,6 @@ static int redis_list_users(int is_st, u08bits *realm) {
 			}
 			if(reply) {
 
-				if (reply->type == REDIS_REPLY_ERROR)
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", reply->str);
-				else if (reply->type != REDIS_REPLY_ARRAY) {
-					if (reply->type != REDIS_REPLY_NIL)
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", reply->type);
-				} else {
-					size_t i;
-					for (i = 0; i < reply->elements; ++i) {
-						add_to_secrets_list(&keys,reply->element[i]->str);
-					}
-				}
-				turnFreeRedisReply(reply);
-			}
-		} else {
-
-			reply = (redisReply*)redisCommand(rc, "keys turn/user/*/password");
-			if(reply) {
 				if (reply->type == REDIS_REPLY_ERROR)
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", reply->str);
 				else if (reply->type != REDIS_REPLY_ARRAY) {
@@ -1329,9 +1271,7 @@ static int redis_list_admin_users(void)
 static const turn_dbdriver_t driver = {
   &redis_get_auth_secrets,
   &redis_get_user_key,
-  &redis_get_user_pwd,
   &redis_set_user_key,
-  &redis_set_user_pwd,
   &redis_del_user,
   &redis_list_users,
   &redis_show_secret,

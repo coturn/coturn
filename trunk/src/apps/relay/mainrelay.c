@@ -33,7 +33,6 @@
 ////// TEMPORARY data //////////
 
 static int use_lt_credentials = 0;
-static int use_st_credentials = 0;
 static int anon_credentials = 0;
 
 ////// TURNDB //////////////
@@ -414,10 +413,9 @@ static char Usage[] = "Usage: turnserver [options]\n"
 " -o, --daemon					Start process as daemon (detach from current shell).\n"
 " -f, --fingerprint				Use fingerprints in the TURN messages.\n"
 " -a, --lt-cred-mech				Use the long-term credential mechanism.\n"
-" -A, --st-cred-mech				Use the short-term credential mechanism.\n"
 " -z, --no-auth					Do not use any credential mechanism, allow anonymous access.\n"
 " -u, --user			<user:pwd>	User account, in form 'username:password', for long-term credentials.\n"
-"						Cannot be used with TURN REST API or with short-term credentials.\n"
+"						Cannot be used with TURN REST API.\n"
 " -r, --realm			<realm>		The default realm to be used for the users when no explicit\n"
 "						origin/realm relationship was found in the database.\n"
 "						Must be used with long-term credentials \n"
@@ -445,7 +443,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 #endif
 #if !defined(TURN_NO_PQ)
 " -e, --psql-userdb, --sql-userdb <conn-string>	PostgreSQL database connection string, if used (default - empty, no PostreSQL DB used).\n"
-"		                                This database can be used for long-term and short-term credentials mechanisms,\n"
+"		                                This database can be used for long-term credentials mechanism users,\n"
 "		                                and it can store the secret value(s) for secret-based timed authentication in TURN RESP API.\n"
 "						See http://www.postgresql.org/docs/8.4/static/libpq-connect.html for 8.x PostgreSQL\n"
 "						versions format, see \n"
@@ -454,7 +452,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 #endif
 #if !defined(TURN_NO_MYSQL)
 " -M, --mysql-userdb	<connection-string>	MySQL database connection string, if used (default - empty, no MySQL DB used).\n"
-"	                                	This database can be used for long-term and short-term credentials mechanisms,\n"
+"	                                	This database can be used for long-term credentials mechanism users,\n"
 "		                                and it can store the secret value(s) for secret-based timed authentication in TURN RESP API.\n"
 "						The connection string my be space-separated list of parameters:\n"
 "	        	          		\"host=<ip-addr> dbname=<database-name> user=<database-user> \\\n								password=<database-user-password> port=<db-port> connect_timeout=<seconds>\".\n\n"
@@ -466,12 +464,12 @@ static char Usage[] = "Usage: turnserver [options]\n"
 #endif
 #if !defined(TURN_NO_MONGO)
 " -J, --mongo-userdb	<connection-string>	MongoDB connection string, if used (default - empty, no MongoDB used).\n"
-"	                                	This database can be used for long-term and short-term credentials mechanisms,\n"
+"	                                	This database can be used for long-term credentials mechanism users,\n"
 "		                                and it can store the secret value(s) for secret-based timed authentication in TURN RESP API.\n"
 #endif
 #if !defined(TURN_NO_HIREDIS)
 " -N, --redis-userdb	<connection-string>	Redis user database connection string, if used (default - empty, no Redis DB used).\n"
-"	                                	This database can be used for long-term and short-term credentials mechanisms,\n"
+"	                                	This database can be used for long-term credentials mechanism users,\n"
 "		                                and it can store the secret value(s) for secret-based timed authentication in TURN RESP API.\n"
 "						The connection string my be space-separated list of parameters:\n"
 "	        	          		\"host=<ip-addr> dbname=<db-number> \\\n								password=<database-user-password> port=<db-port> connect_timeout=<seconds>\".\n\n"
@@ -601,11 +599,11 @@ static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
 	"\nCommands:\n\n"
 	"	-k, --key			generate long-term credential mechanism key for a user\n"
 	"	-a, --add			add/update a long-term mechanism user\n"
-	"	-A, --add-st			add/update a short-term mechanism user\n"
+	"	-A, --add-admin			add/update a web admin user\n"
 	"	-d, --delete			delete a long-term mechanism user\n"
-	"	-D, --delete-st			delete a short-term mechanism user\n"
+	"	-D, --delete-admin		delete an admin user\n"
 	"	-l, --list			list all long-term mechanism users\n"
-	"	-L, --list-st			list all short-term mechanism users\n"
+	"	-L, --list-admin		list all admin users\n"
 	"	-s, --set-secret=<value>	Add shared secret for TURN RESP API\n"
 	"	-S, --show-secret		Show stored shared secrets for TURN REST API\n"
 	"	-X, --delete-secret=<value>	Delete a shared secret\n"
@@ -746,7 +744,6 @@ static const struct myoption long_options[] = {
 				{ "min-port", required_argument, NULL, MIN_PORT_OPT },
 				{ "max-port", required_argument, NULL, MAX_PORT_OPT },
 				{ "lt-cred-mech", optional_argument, NULL, 'a' },
-				{ "st-cred-mech", optional_argument, NULL, 'A' },
 				{ "no-auth", optional_argument, NULL, 'z' },
 				{ "user", required_argument, NULL, 'u' },
 #if !defined(TURN_NO_SQLITE)
@@ -840,13 +837,13 @@ static const struct myoption admin_long_options[] = {
 				{ "add", no_argument, NULL, 'a' },
 				{ "delete", no_argument, NULL, 'd' },
 				{ "list", no_argument, NULL, 'l' },
-				{ "list-st", no_argument, NULL, 'L' },
+				{ "list-admin", no_argument, NULL, 'L' },
 				{ "set-secret", required_argument, NULL, 's' },
 				{ "show-secret", no_argument, NULL, 'S' },
 				{ "delete-secret", required_argument, NULL, 'X' },
 				{ "delete-all-secrets", no_argument, NULL, DEL_ALL_AUTH_SECRETS_OPT },
-				{ "add-st", no_argument, NULL, 'A' },
-				{ "delete-st", no_argument, NULL, 'D' },
+				{ "add-admin", no_argument, NULL, 'A' },
+				{ "delete-admin", no_argument, NULL, 'D' },
 #if !defined(TURN_NO_SQLITE)
 				{ "userdb", required_argument, NULL, 'b' },
 				{ "db", required_argument, NULL, 'b' },
@@ -1117,15 +1114,6 @@ static void set_option(int c, char *value)
 		} else {
 			turn_params.ct = TURN_CREDENTIALS_UNDEFINED;
 			use_lt_credentials=0;
-		}
-		break;
-	case 'A':
-		if (get_bool_value(value)) {
-			turn_params.ct = TURN_CREDENTIALS_SHORT_TERM;
-			use_st_credentials=1;
-		} else {
-			turn_params.ct = TURN_CREDENTIALS_UNDEFINED;
-			use_st_credentials=0;
 		}
 		break;
 	case 'z':
@@ -1430,7 +1418,8 @@ static int adminmain(int argc, char **argv)
 	int c = 0;
 
 	TURNADMIN_COMMAND_TYPE ct = TA_COMMAND_UNKNOWN;
-	int is_st = 0;
+
+	int is_admin = 0;
 
 	u08bits user[STUN_MAX_USERNAME_SIZE+1]="";
 	u08bits realm[STUN_MAX_REALM_SIZE+1]="";
@@ -1482,18 +1471,18 @@ static int adminmain(int argc, char **argv)
 			break;
 		case 'A':
 			ct = TA_UPDATE_USER;
-			is_st = 1;
+			is_admin = 1;
 			break;
 		case 'D':
 			ct = TA_DELETE_USER;
-			is_st = 1;
+			is_admin = 1;
 			break;
 		case 'l':
 			ct = TA_LIST_USERS;
 			break;
 		case 'L':
 			ct = TA_LIST_USERS;
-			is_st = 1;
+			is_admin = 1;
 			break;
 		case 's':
 			ct = TA_SET_SECRET;
@@ -1596,7 +1585,7 @@ static int adminmain(int argc, char **argv)
 		exit(-1);
 	}
 
-	return adminuser(user, realm, pwd, secret, origin, ct, is_st, &po);
+	return adminuser(user, realm, pwd, secret, origin, ct, &po);
 }
 
 static void print_features(unsigned long mfn)
@@ -1895,17 +1884,7 @@ int main(int argc, char **argv)
 		exit(-1);
 	}
 
-	if(use_st_credentials && anon_credentials) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nCONFIG ERROR: -A and -z options cannot be used together.\n");
-		exit(-1);
-	}
-
-	if(use_lt_credentials && use_st_credentials) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nCONFIG ERROR: -a and -A options cannot be used together.\n");
-		exit(-1);
-	}
-
-	if(!use_lt_credentials && !anon_credentials && !use_st_credentials) {
+	if(!use_lt_credentials && !anon_credentials) {
 		if(turn_params.default_users_db.ram_db.users_number) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "\nCONFIGURATION ALERT: you specified long-term user accounts, (-u option) \n	but you did not specify the long-term credentials option\n	(-a or --lt-cred-mech option).\n 	I am turning --lt-cred-mech ON for you, but double-check your configuration.\n");
 			turn_params.ct = TURN_CREDENTIALS_LONG_TERM;
@@ -1927,13 +1906,7 @@ int main(int argc, char **argv)
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "\nCONFIGURATION ALERT: you specified user accounts, (-u option) \n	but you also specified the anonymous user access option (-z or --no-auth option).\n 	User accounts will be ignored.\n");
 			turn_params.ct = TURN_CREDENTIALS_NONE;
 			use_lt_credentials=0;
-			use_st_credentials=0;
 		}
-	}
-
-	if(turn_params.use_auth_secret_with_timestamp && use_st_credentials) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nCONFIGURATION ERROR: Authentication secret (REST API) cannot be used with short-term credentials mechanism.\n");
-		exit(-1);
 	}
 
 	openssl_setup();
