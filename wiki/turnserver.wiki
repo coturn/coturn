@@ -1,5 +1,5 @@
 #summary turnserver wiki page
-#labels Version-4.3.2.2
+#labels Version-4.3.4.1
 
 ==turnserver application: a TURN relay server implementation==
 
@@ -22,7 +22,6 @@
    * *--oauth* Support oAuth authentication, as in the third-party TURN specs document: http://tools.ietf.org/html/draft-ietf-tram-turn-third-party-authz-05. The oAuth keys must be stored in the database, and handled by an external program. The TURN server expects the keys to be present in the database, and the TURN server does not handle the keys by itself. In the specs document, section 4.1, several key-management schemes are proposed and to be followed by the external key-management program.
    * *--dh566*	Use 566 bits DH TLS key. Default size of the key is 1066.
    * *--dh2066*	Use 2066 bits DH TLS key. Default size of the key is 1066.
-   * *--no-sslv2*  Do not allow SSLv2 protocol.
    * *--no-sslv3*  Do not allow SSLv3 protocol.
    * *--no-tlsv1*  Do not allow TLSv1 protocol.
    * *--no-tlsv1_1*  Do not allow TLSv1.1 protocol.
@@ -119,7 +118,7 @@
     *   *-d,* *--listening-device* {{{<device-name>}}} *_NOT RECOMMENDED, USE IT ONLY AS THE LAST RESORT OPTIMIZATION & SECURITY OPTION, FOR LINUX SYSTEMS ONLY._* Listener interface device. The turnserver process must have root privileges to bind the	listening endpoint to a device. If turnserver must run as a	process without root privileges, then just do not use this setting.
     *   *-L,* *--listening-ip* {{{<ip>}}} Listener IP address of relay server.  Multiple listeners can  be specified.  If no *IP*(s) specified, then all IPv4 and IPv6 system IPs will be used for listening.
     *   *-p,* *--listening-port* {{{<port>}}} TURN listener port for UDP and TCP listeners (Default: 3478). Note: actually, TLS & DTLS sessions can connect to the "plain" TCP & UDP port(s), too - if allowed by configuration. For example, the default listening port can be set to 80 or 443, to go around some strict NATs. Remember that ports < 1024 may require superuser privileges to start the turnserver process. 
-    *   *--tls-listening-port* {{{<port>}}}   TURN listener port for TLS and DTLS listeners (Default: 5349). Note: actually, "plain" TCP & UDP sessions can connect to the TLS & DTLS port(s), too - if allowed by configuration. For example, the default tls listening port can be set to 443, to go around some strict NATs. Remember that ports < 1024 may require superuser privileges to start the turnserver process. For secure TCP connections, we currently support SSL version 3 and TLS versions 1.0, 1.1, 1.2. SSL2 "encapsulation mode" is also supported. For secure UDP connections, we support DTLS version 1.
+    *   *--tls-listening-port* {{{<port>}}}   TURN listener port for TLS and DTLS listeners (Default: 5349). Note: actually, "plain" TCP & UDP sessions can connect to the TLS & DTLS port(s), too - if allowed by configuration. For example, the default tls listening port can be set to 443, to go around some strict NATs. Remember that ports < 1024 may require superuser privileges to start the turnserver process. For secure TCP connections, we currently support SSL version 3 and TLS versions 1.0, 1.1, 1.2. For secure UDP connections, we support DTLS version 1.
     *   *--alt-listening-port* {{{<port>}}}   Alternative listener port for UDP and TCP listeners; default (or zero) value means "listening port plus one". This is needed for CHANGE_REQUEST attribute in STUN NAT behavior discovery functionality, like one defined in STUN RFC 3489 or in RFC 5780. The STUN/TURN Server supports CHANGE_REQUEST only if it is started with more than one listening IP address of the same family (IPv4 or IPv6). If only single IP address is used, then the CHANGE_REQUEST attribute in BINDING request will be rejected.
     *   *--alt-tls-listening-port* {{{<port>}}}   Alternative listener port for TLS and DTLS listeners; default (or zero) value means "TLS listening port plus one".
     *   *--aux-server* {{{<IPv4:port>|<[IPv6]:port>}}}	Auxiliary STUN/TURN server listening endpoint. Aux servers have almost full TURN and STUN functionality. The (minor) limitations are:
