@@ -149,7 +149,6 @@ static void init_sqlite_database(sqlite3 *sqliteconnection) {
 
 	const char * statements[] = {
 		"CREATE TABLE turnusers_lt ( realm varchar(127) default '', name varchar(512), hmackey char(128), PRIMARY KEY (realm,name))",
-		"CREATE TABLE turnusers_st (name varchar(512) PRIMARY KEY, password varchar(127))",
 		"CREATE TABLE turn_secret (realm varchar(127) default '', value varchar(127), primary key (realm,value))",
 		"CREATE TABLE allowed_peer_ip (realm varchar(127) default '', ip_range varchar(256), primary key (realm,ip_range))",
 		"CREATE TABLE denied_peer_ip (realm varchar(127) default '', ip_range varchar(256), primary key (realm,ip_range))",
@@ -274,42 +273,6 @@ static int sqlite_get_user_key(u08bits *usname, u08bits *realm, hmackey_t key)
 					ret = 0;
 				}
 				turn_free(kval,strlen(kval)+1);
-			}
-		} else {
-			const char* errmsg = sqlite3_errmsg(sqliteconnection);
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving SQLite DB information: %s\n", errmsg);
-		}
-
-		sqlite3_finalize(st);
-
-		sqlite_unlock(0);
-	}
-	return ret;
-}
-
-static int sqlite_get_user_pwd(u08bits *usname, password_t pwd)
-{
-	int ret = -1;
-	char statement[TURN_LONG_STRING_SIZE];
-	sqlite3_stmt *st = NULL;
-	int rc = 0;
-	snprintf(statement, sizeof(statement), "select password from turnusers_st where name='%s'", usname);
-
-	sqlite3 *sqliteconnection = get_sqlite_connection();
-	if (sqliteconnection) {
-
-		sqlite_lock(0);
-
-		if ((rc = sqlite3_prepare(sqliteconnection, statement, -1, &st, 0)) == SQLITE_OK) {
-			int res = sqlite3_step(st);
-			if (res == SQLITE_ROW) {
-				const char *kval = (const char*) sqlite3_column_text(st, 0);
-				if (kval) {
-					strncpy((char*) pwd, kval, sizeof(password_t));
-					ret = 0;
-				} else {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong password data for user %s: NULL\n", usname);
-				}
 			}
 		} else {
 			const char* errmsg = sqlite3_errmsg(sqliteconnection);
@@ -493,7 +456,7 @@ static int sqlite_set_oauth_key(oauth_key_data_raw *key)
 	return ret;
 }
 
-static int sqlite_set_user_pwd(u08bits *usname, password_t pwd)
+static int sqlite_del_user(u08bits *usname, u08bits *realm)
 {
 	int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
@@ -504,40 +467,7 @@ static int sqlite_set_user_pwd(u08bits *usname, password_t pwd)
 
 	sqlite3 *sqliteconnection = get_sqlite_connection();
 	if (sqliteconnection) {
-		snprintf(statement, sizeof(statement), "insert or replace into turnusers_st values('%s','%s')", usname, pwd);
-
-		sqlite_lock(1);
-
-		if ((rc = sqlite3_prepare(sqliteconnection, statement, -1, &st, 0)) == SQLITE_OK) {
-			sqlite3_step(st);
-			ret = 0;
-		} else {
-			const char* errmsg = sqlite3_errmsg(sqliteconnection);
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving SQLite DB information: %s\n", errmsg);
-		}
-		sqlite3_finalize(st);
-
-		sqlite_unlock(1);
-	}
-	return ret;
-}
-
-static int sqlite_del_user(u08bits *usname, int is_st, u08bits *realm)
-{
-	int ret = -1;
-	char statement[TURN_LONG_STRING_SIZE];
-	sqlite3_stmt *st = NULL;
-	int rc = 0;
-
-	donot_print_connection_success=1;
-
-	sqlite3 *sqliteconnection = get_sqlite_connection();
-	if (sqliteconnection) {
-		if (is_st) {
-			snprintf(statement, sizeof(statement), "delete from turnusers_st where name='%s'", usname);
-		} else {
-			snprintf(statement, sizeof(statement), "delete from turnusers_lt where name='%s' and realm='%s'", usname, realm);
-		}
+		snprintf(statement, sizeof(statement), "delete from turnusers_lt where name='%s' and realm='%s'", usname, realm);
 
 		sqlite_lock(1);
 
@@ -586,7 +516,7 @@ static int sqlite_del_oauth_key(const u08bits *kid)
 }
 
 
-static int sqlite_list_users(int is_st, u08bits *realm)
+static int sqlite_list_users(u08bits *realm)
 {
 	int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
@@ -597,9 +527,7 @@ static int sqlite_list_users(int is_st, u08bits *realm)
 
 	sqlite3 *sqliteconnection = get_sqlite_connection();
 	if (sqliteconnection) {
-		if (is_st) {
-			snprintf(statement, sizeof(statement), "select name,'' from turnusers_st order by name");
-		} else if (realm && realm[0]) {
+		if (realm && realm[0]) {
 			snprintf(statement, sizeof(statement), "select name,realm from turnusers_lt where realm='%s' order by name", realm);
 		} else {
 			snprintf(statement, sizeof(statement), "select name,realm from turnusers_lt order by name");
@@ -1259,9 +1187,7 @@ static int sqlite_list_admin_users(void)
 static const turn_dbdriver_t driver = {
   &sqlite_get_auth_secrets,
   &sqlite_get_user_key,
-  &sqlite_get_user_pwd,
   &sqlite_set_user_key,
-  &sqlite_set_user_pwd,
   &sqlite_del_user,
   &sqlite_list_users,
   &sqlite_show_secret,

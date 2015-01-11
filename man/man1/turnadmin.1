@@ -74,24 +74,24 @@ Generate key for a long\-term credentials mechanism user.
 Add or update a long\-term user.
 .TP
 .B
-\fB\-A\fP, \fB\-\-add\-st\fP
-Add or update a short\-term credentials mechanism user.
+\fB\-A\fP, \fB\-\-add\-admin\fP
+Add or update an admin user.
 .TP
 .B
 \fB\-d\fP, \fB\-\-delete\fP
 Delete a long\-term user.
 .TP
 .B
-\fB\-D\fP, \fB\-\-delete\-st\fP
-Delete a short\-term user.
+\fB\-D\fP, \fB\-\-delete\-admin\fP
+Delete an admin user.
 .TP
 .B
 \fB\-l\fP, \fB\-\-list\fP
 List long\-term users in the database.
 .TP
 .B
-\fB\-L\fP, \fB\-\-list\-st\fP
-List short\-term users in the database.
+\fB\-L\fP, \fB\-\-list\-admin\fP
+List admin users in the database.
 .PP
 \fB\-s\fP, \fB\-\-set\-secret\fP=<value> Add shared secret for TURN RESP API
 .TP
@@ -211,7 +211,7 @@ List all long\-term users in MySQL database:
 .PP
 $ \fIturnadmin\fP \fB\-l\fP \fB\-\-mysql\-userdb\fP="<db\-connection\-string>" \fB\-r\fP <realm>
 .PP
-List all short\-term users in Redis database:
+List all admin users in Redis database:
 .PP
 $ \fIturnadmin\fP \fB\-L\fP \fB\-\-redis\-userdb\fP="<db\-connection\-string>"
 .PP

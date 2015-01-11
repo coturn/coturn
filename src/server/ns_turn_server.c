@@ -2148,13 +2148,6 @@ static void tcp_peer_accept_connection(ioa_socket_handle s, void *arg)
 			ioa_network_buffer_set_size(nbh, len);
 		}
 
-		/* We add integrity for short-term indication messages, only */
-		if(server->ct == TURN_CREDENTIALS_SHORT_TERM)
-		{
-			stun_attr_add_integrity_str(server->ct,ioa_network_buffer_data(nbh),&len,ss->hmackey,ss->pwd,server->shatype);
-			ioa_network_buffer_set_size(nbh,len);
-		}
-
 		if ((server->fingerprint) || ss->enforce_fingerprints) {
 			size_t len = ioa_network_buffer_get_size(nbh);
 			stun_attr_add_fingerprint_str(ioa_network_buffer_data(nbh), &len);
@@ -3118,8 +3111,6 @@ static int need_stun_authentication(turn_turnserver *server, ts_ur_super_session
 		switch(server->ct) {
 		case TURN_CREDENTIALS_LONG_TERM:
 			return 1;
-		case TURN_CREDENTIALS_SHORT_TERM:
-			return 1;
 		default:
 			;
 		};
@@ -3252,11 +3243,7 @@ static int check_stun_auth(turn_turnserver *server,
 	if(!sar) {
 		*err_code = 401;
 		*reason = (const u08bits*)"Unauthorised";
-		if(server->ct != TURN_CREDENTIALS_SHORT_TERM) {
-			return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
-		} else {
-			return -1;
-		}
+		return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
 	}
 
 	{
@@ -3280,7 +3267,7 @@ static int check_stun_auth(turn_turnserver *server,
 		};
 	}
 
-	if(server->ct != TURN_CREDENTIALS_SHORT_TERM) {
+	{
 
 		/* REALM ATTR: */
 
@@ -3351,7 +3338,7 @@ static int check_stun_auth(turn_turnserver *server,
 		set_realm_hash(ss->client_socket,(u08bits*)ss->realm_options.name);
 	}
 
-	if(server->ct != TURN_CREDENTIALS_SHORT_TERM) {
+	{
 		/* NONCE ATTR: */
 
 		sar = stun_attr_get_first_by_type_str(ioa_network_buffer_data(in_buffer->nbh),
@@ -3391,18 +3378,14 @@ static int check_stun_auth(turn_turnserver *server,
 				return 0;
 			}
 		}
-		/* we always return NULL for short-term credentials here */
+
 		/* direct user pattern is supported only for long-term credentials */
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
 				"%s: Cannot find credentials of user <%s>\n",
 				__FUNCTION__, (char*)usname);
 		*err_code = 401;
 		*reason = (const u08bits*)"Unauthorised";
-		if(server->ct != TURN_CREDENTIALS_SHORT_TERM) {
-			return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
-		} else {
-			return -1;
-		}
+		return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
 	}
 
 	/* Check integrity */
@@ -3420,11 +3403,7 @@ static int check_stun_auth(turn_turnserver *server,
 									__FUNCTION__, (char*)usname);
 					*err_code = SHA_TOO_WEAK_ERROR_CODE;
 					*reason = (const u08bits*)"Unauthorised: weak SHA function is used";
-					if(server->ct != TURN_CREDENTIALS_SHORT_TERM) {
-						return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
-					} else {
-						return -1;
-					}
+					return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
 		}
 
 		if(can_resume) {
@@ -3439,11 +3418,7 @@ static int check_stun_auth(turn_turnserver *server,
 				__FUNCTION__, (char*)usname);
 		*err_code = 401;
 		*reason = (const u08bits*)"Unauthorised";
-		if(server->ct != TURN_CREDENTIALS_SHORT_TERM) {
-			return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
-		} else {
-			return -1;
-		}
+		return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
 	}
 
 	*message_integrity = 1;
@@ -3791,10 +3766,6 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 
 		no_response = 1;
 		int postpone = 0;
-
-		if(server->ct == TURN_CREDENTIALS_SHORT_TERM) {
-			check_stun_auth(server, ss, &tid, resp_constructed, &err_code, &reason, in_buffer, nbh, method, &message_integrity, &postpone, can_resume);
-		}
 
 		if (!postpone && !err_code) {
 
@@ -4732,13 +4703,6 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 					size_t len = ioa_network_buffer_get_size(nbh);
 					stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_SOFTWARE, field, fsz);
 					ioa_network_buffer_set_size(nbh, len);
-				}
-
-				/* We add integrity for short-term indication messages, only */
-				if(server->ct == TURN_CREDENTIALS_SHORT_TERM)
-				{
-					stun_attr_add_integrity_str(server->ct,ioa_network_buffer_data(nbh),&len,ss->hmackey,ss->pwd,server->shatype);
-					ioa_network_buffer_set_size(nbh,len);
 				}
 
 				if ((server->fingerprint) || ss->enforce_fingerprints) {

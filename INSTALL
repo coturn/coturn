@@ -684,13 +684,6 @@ used for the HMAC key generation.
 The key must be 32 characters (HEX representation of 16 bytes) for SHA1,
 or 64 characters (HEX representation of 32 bytes) for SHA256.
 
-# Table for short-term credentials mechanism authorisation:
-#
-CREATE TABLE turnusers_st (
-    name varchar(512) PRIMARY KEY,
-    password varchar(127)
-);
-
 # Table holding shared secrets for secret-based authorization
 # (REST API). It can only be used together with the long-term 
 # mechanism:
@@ -827,10 +820,10 @@ Fill in users, for example:
   Long-term credentials mechanism with SHA256 extension:
   $ bin/turnadmin -a -b "/var/db/turndb" -u bethod -r north.gov -p king-of-north --sha256
   
-  Short-term credentials mechanism:
+  Admin users:
    
   $ bin/turnadmin -A -b "/var/db/turndb" -u gorst -p hero
-  $ bin/turnadmin -A -b "/var/db/turndb" -u ninefingers -p youhavetoberealistic 
+  $ bin/turnadmin -A -b "/var/db/turndb" -u ninefingers -p youhavetoberealistic -r north.gov 
 
 XVI. PostgreSQL setup
 
@@ -899,8 +892,6 @@ PREFIX/share/turnserver/schema.sql file after the turnserver installation:
 $ cat turndb/schema.sql | psql -U turn turn
 	NOTICE:  CREATE TABLE / PRIMARY KEY will create implicit index "turnusers_lt_pkey" for table "turnusers_lt"
 	CREATE TABLE
-	NOTICE:  CREATE TABLE / PRIMARY KEY will create implicit index "turnusers_st_pkey" for table "turnusers_st"
-	CREATE TABLE
 	CREATE TABLE
 
 See the SQLite section for the detailed database schema explanation.
@@ -951,10 +942,10 @@ Fill in users, for example:
   Long-term credentials mechanism with SHA256 extension:
   $ bin/turnadmin -a -e "host=localhost dbname=coturn user=turn password=turn" -u bethod -r north.gov -p king-of-north --sha256
   
-  Short-term credentials mechanism:
+  Admin users:
    
   $ bin/turnadmin -A -e "host=localhost dbname=coturn user=turn password=turn" -u gorst -p hero
-  $ bin/turnadmin -A -e "host=localhost dbname=coturn user=turn password=turn" -u ninefingers -p youhavetoberealistic 
+  $ bin/turnadmin -A -e "host=localhost dbname=coturn user=turn password=turn" -u ninefingers -p youhavetoberealistic -r north.gov
 
 XVII. MySQL (MariaDB) setup
 
@@ -1006,10 +997,10 @@ the root account.
   Long-term credentials mechanism with SHA256 extension:
   $ bin/turnadmin -a -M "host=localhost dbname=coturn user=turn password=turn" -u bethod -r north.gov -p king-of-north --sha256
   
-  Short-term credentials mechanism:
+  Admin users:
    
   $ bin/turnadmin -A -M "host=localhost dbname=coturn user=turn password=turn" -u gorst -p hero
-  $ bin/turnadmin -A -M "host=localhost dbname=coturn user=turn password=turn" -u ninefingers -p youhavetoberealistic 
+  $ bin/turnadmin -A -M "host=localhost dbname=coturn user=turn password=turn" -u ninefingers -p youhavetoberealistic -r north.gov
 
 7) Now we can use mysql in the turnserver.
 
@@ -1135,10 +1126,10 @@ Redis TURN admin commands:
   Long-term credentials mechanism with SHA256 extension:
   $ bin/turnadmin -a -N "host=localhost dbname=2 user=turn password=turn" -u bethod -r north.gov -p king-of-north --sha256
   
-  Short-term credentials mechanism:
+  Admin users:
    
   $ bin/turnadmin -A -N "host=localhost dbname=2 user=turn password=turn" -u gorst -p hero
-  $ bin/turnadmin -A -N "host=localhost dbname=2 user=turn password=turn" -u ninefingers -p youhavetoberealistic 
+  $ bin/turnadmin -A -N "host=localhost dbname=2 user=turn password=turn" -u ninefingers -p youhavetoberealistic -r north.gov
   
 See the file testredisdbsetup.sh for the data structure examples.
 

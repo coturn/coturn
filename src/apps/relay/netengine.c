@@ -402,17 +402,7 @@ static void auth_server_receive_message(struct bufferevent *bev, void *ptr)
       continue;
     }
     
-    if(am.ct == TURN_CREDENTIALS_SHORT_TERM) {
-      password_t pwd;
-      am.in_oauth = 0;
-      am.out_oauth = 0;
-      if(get_user_pwd(am.username,pwd)<0) {
-    	  am.success = 0;
-      } else {
-    	  ns_bcopy(pwd,am.pwd,sizeof(password_t));
-    	  am.success = 1;
-      }
-    } else {
+    {
       hmackey_t key;
       if(get_user_key(am.in_oauth,&(am.out_oauth),&(am.max_session_time),am.username,am.realm,key,am.in_buffer.nbh)<0) {
     	  am.success = 0;

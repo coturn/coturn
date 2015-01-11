@@ -4,11 +4,6 @@ insert into turnusers_lt (realm, name, hmackey) values('north.gov','gorst','7da2
 insert into turnusers_lt (realm, name, hmackey) values('crinna.org','whirrun','6972e85e51f36e53b0b61759c5a5219a');
 insert into turnusers_lt (realm, name, hmackey) values('crinna.org','stranger-come-knocking','d43cb678560259a1839bff61c19de15e');
 
-insert into turnusers_st (name, password) values('ninefingers','youhavetoberealistic');
-insert into turnusers_st (name, password) values('gorst','hero');
-insert into turnusers_st (name, password) values('whirrun','sword');
-insert into turnusers_st (name, password) values('stranger-come-knocking','civilization');
-
 insert into turn_secret (realm,value) values('north.gov','logen');
 insert into turn_secret (realm,value) values('crinna.org','north');
 

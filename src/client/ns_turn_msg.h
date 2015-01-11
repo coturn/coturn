@@ -63,9 +63,6 @@ typedef enum {
  */
 typedef u08bits hmackey_t[64];
 
-/**
- * Short-term credentials password
- */
 typedef u08bits password_t[STUN_MAX_PWD_SIZE+1];
 typedef unsigned int band_limit_t;
 

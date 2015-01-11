@@ -152,34 +152,6 @@ static int pgsql_get_user_key(u08bits *usname, u08bits *realm, hmackey_t key) {
 	}
   return ret;
 }
-  
-static int pgsql_get_user_pwd(u08bits *usname, password_t pwd) {
-  int ret = -1;
-	char statement[TURN_LONG_STRING_SIZE];
-	snprintf(statement,sizeof(statement),"select password from turnusers_st where name='%s'",usname);
-
-	PGconn * pqc = get_pqdb_connection();
-	if(pqc) {
-		PGresult *res = PQexec(pqc, statement);
-
-		if(!res || (PQresultStatus(res) != PGRES_TUPLES_OK) || (PQntuples(res)!=1)) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving PostgreSQL DB information: %s\n",PQerrorMessage(pqc));
-		} else {
-			char *kval = PQgetvalue(res,0,0);
-			if(kval) {
-				strncpy((char*)pwd,kval,sizeof(password_t));
-				ret = 0;
-			} else {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong password data for user %s: NULL\n",usname);
-			}
-		}
-
-		if(res) {
-			PQclear(res);
-		}
-	}
-  return ret;
-}
 
 static int pgsql_get_oauth_key(const u08bits *kid, oauth_key_data_raw *key) {
 
@@ -318,43 +290,13 @@ static int pgsql_set_oauth_key(oauth_key_data_raw *key) {
   }
   return ret;
 }
-
-static int pgsql_set_user_pwd(u08bits *usname, password_t pwd) {
-  int ret = -1;
-	char statement[TURN_LONG_STRING_SIZE];
-	PGconn *pqc = get_pqdb_connection();
-	if(pqc) {
-	  snprintf(statement,sizeof(statement),"insert into turnusers_st values('%s','%s')",usname,pwd);
-    PGresult *res = PQexec(pqc, statement);
-		if(!res || (PQresultStatus(res) != PGRES_COMMAND_OK)) {
-			if(res) {
-				PQclear(res);
-			}
-		  snprintf(statement,sizeof(statement),"update turnusers_st set password='%s' where name='%s'",pwd,usname);
-			res = PQexec(pqc, statement);
-			if(!res || (PQresultStatus(res) != PGRES_COMMAND_OK)) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error inserting/updating user information: %s\n",PQerrorMessage(pqc));
-			} else {
-			  ret = 0;
-			}
-		}
-		if(res) {
-			PQclear(res);
-		}
-	}
-  return ret;
-}
   
-static int pgsql_del_user(u08bits *usname, int is_st, u08bits *realm) {
+static int pgsql_del_user(u08bits *usname, u08bits *realm) {
   int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
 	PGconn *pqc = get_pqdb_connection();
 	if(pqc) {
-		if(is_st) {
-		  snprintf(statement,sizeof(statement),"delete from turnusers_st where name='%s'",usname);
-		} else {
-		  snprintf(statement,sizeof(statement),"delete from turnusers_lt where name='%s' and realm='%s'",usname,realm);
-		}
+		snprintf(statement,sizeof(statement),"delete from turnusers_lt where name='%s' and realm='%s'",usname,realm);
 		PGresult *res = PQexec(pqc, statement);
 		if(res) {
 			PQclear(res);
@@ -385,14 +327,12 @@ static int pgsql_del_oauth_key(const u08bits *kid) {
   return ret;
 }
   
-static int pgsql_list_users(int is_st, u08bits *realm) {
+static int pgsql_list_users(u08bits *realm) {
   int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
 	PGconn *pqc = get_pqdb_connection();
 	if(pqc) {
-		if(is_st) {
-		  snprintf(statement,sizeof(statement),"select name,'' from turnusers_st order by name");
-		} else if(realm && realm[0]) {
+		if(realm && realm[0]) {
 		  snprintf(statement,sizeof(statement),"select name,realm from turnusers_lt where realm='%s' order by name",realm);
 		} else {
 		  snprintf(statement,sizeof(statement),"select name,realm from turnusers_lt order by name");
@@ -902,9 +842,7 @@ static int pgsql_list_admin_users(void)
 static const turn_dbdriver_t driver = {
   &pgsql_get_auth_secrets,
   &pgsql_get_user_key,
-  &pgsql_get_user_pwd,
   &pgsql_set_user_key,
-  &pgsql_set_user_pwd,
   &pgsql_del_user,
   &pgsql_list_users,
   &pgsql_show_secret,

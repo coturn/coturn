@@ -338,47 +338,6 @@ static int mysql_get_user_key(u08bits *usname, u08bits *realm, hmackey_t key) {
 	}
   return ret;
 }
-  
-static int mysql_get_user_pwd(u08bits *usname, password_t pwd) {
-
-  int ret = -1;
-
-	char statement[TURN_LONG_STRING_SIZE];
-	snprintf(statement,sizeof(statement),"select password from turnusers_st where name='%s'",usname);
-
-	MYSQL * myc = get_mydb_connection();
-	if(myc) {
-		int res = mysql_query(myc, statement);
-		if(res) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n",mysql_error(myc));
-		} else {
-			MYSQL_RES *mres = mysql_store_result(myc);
-			if(!mres) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n",mysql_error(myc));
-			} else if(mysql_field_count(myc)!=1) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown error retrieving MySQL DB information: %s\n",statement);
-			} else {
-				MYSQL_ROW row = mysql_fetch_row(mres);
-				if(row && row[0]) {
-					unsigned long *lengths = mysql_fetch_lengths(mres);
-					if(lengths) {
-						if(lengths[0]<1) {
-							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong password data for user %s, size in MySQL DB is zero(0)\n",usname);
-						} else {
-							ns_bcopy(row[0],pwd,lengths[0]);
-							pwd[lengths[0]]=0;
-							ret = 0;
-						}
-					}
-				}
-			}
-
-			if(mres)
-				mysql_free_result(mres);
-		}
-	}
-  return ret;
-}
 
 static int mysql_get_oauth_key(const u08bits *kid, oauth_key_data_raw *key) {
 
@@ -558,36 +517,12 @@ static int mysql_set_oauth_key(oauth_key_data_raw *key) {
   return ret;
 }
   
-static int mysql_set_user_pwd(u08bits *usname, password_t pwd) {
+static int mysql_del_user(u08bits *usname, u08bits *realm) {
   int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
 	MYSQL * myc = get_mydb_connection();
 	if(myc) {
-	  snprintf(statement,sizeof(statement),"insert into turnusers_st values('%s','%s')",usname,pwd);
-		int res = mysql_query(myc, statement);
-		if(res) {
-		  snprintf(statement,sizeof(statement),"update turnusers_st set password='%s' where name='%s'",pwd,usname);
-			res = mysql_query(myc, statement);
-			if(res) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error inserting/updating user key information: %s\n",mysql_error(myc));
-			} else {
-			  ret = 0;
-			}
-		}
-	}
-  return ret;
-}
-  
-static int mysql_del_user(u08bits *usname, int is_st, u08bits *realm) {
-  int ret = -1;
-	char statement[TURN_LONG_STRING_SIZE];
-	MYSQL * myc = get_mydb_connection();
-	if(myc) {
-		if(is_st) {
-		  snprintf(statement,sizeof(statement),"delete from turnusers_st where name='%s'",usname);
-		} else {
-		  snprintf(statement,sizeof(statement),"delete from turnusers_lt where name='%s' and realm='%s'",usname,realm);
-		}
+		snprintf(statement,sizeof(statement),"delete from turnusers_lt where name='%s' and realm='%s'",usname,realm);
 		int res = mysql_query(myc, statement);
 		if(res) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error deleting user key information: %s\n",mysql_error(myc));
@@ -614,14 +549,12 @@ static int mysql_del_oauth_key(const u08bits *kid) {
 	return ret;
 }
   
-static int mysql_list_users(int is_st, u08bits *realm) {
+static int mysql_list_users(u08bits *realm) {
   int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
 	MYSQL * myc = get_mydb_connection();
 	if(myc) {
-		if(is_st) {
-		  snprintf(statement,sizeof(statement),"select name,'' from turnusers_st order by name");
-		} else if(realm && realm[0]) {
+		if(realm && realm[0]) {
 		  snprintf(statement,sizeof(statement),"select name, realm from turnusers_lt where realm='%s' order by name",realm);
 		} else {
 		  snprintf(statement,sizeof(statement),"select name, realm from turnusers_lt order by name");
@@ -1194,9 +1127,7 @@ static int mysql_list_admin_users(void)
 static const turn_dbdriver_t driver = {
   &mysql_get_auth_secrets,
   &mysql_get_user_key,
-  &mysql_get_user_pwd,
   &mysql_set_user_key,
-  &mysql_set_user_pwd,
   &mysql_del_user,
   &mysql_list_users,
   &mysql_show_secret,
