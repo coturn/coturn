@@ -539,7 +539,7 @@ static int redis_set_oauth_key(oauth_key_data_raw *key) {
   redisContext *rc = get_redis_connection();
   if(rc) {
 	char statement[TURN_LONG_STRING_SIZE];
-	snprintf(statement,sizeof(statement),"hmset turn/oauth/kid/%s ikm_key '%s' hkdf_hash_func '%s' as_rs_alg '%s' as_rs_key '%s' auth_alg '%s' auth_key '%s' timestamp %llu lifetime %lu",
+	snprintf(statement,sizeof(statement),"hmset turn/oauth/kid/%s ikm_key %s hkdf_hash_func %s as_rs_alg %s as_rs_key %s auth_alg %s auth_key %s timestamp %llu lifetime %lu",
 			key->kid,key->ikm_key,key->hkdf_hash_func,key->as_rs_alg,key->as_rs_key,key->auth_alg,key->auth_key,(unsigned long long)key->timestamp,(unsigned long)key->lifetime);
 	turnFreeRedisReply(redisCommand(rc, statement));
 	turnFreeRedisReply(redisCommand(rc, "save"));
@@ -1187,13 +1187,14 @@ static int redis_get_admin_user(const u08bits *usname, u08bits *realm, password_
 static int redis_set_admin_user(const u08bits *usname, const u08bits *realm, const password_t pwd)
 {
   int ret = -1;
+  donot_print_connection_success = 1;
   redisContext *rc = get_redis_connection();
   if(rc) {
 	char statement[TURN_LONG_STRING_SIZE];
 	if(realm[0]) {
-		snprintf(statement,sizeof(statement),"hmset turn/admin_user/%s realm '%s' password '%s'",usname,realm,pwd);
+		snprintf(statement,sizeof(statement),"hmset turn/admin_user/%s realm %s password %s",usname,realm,pwd);
 	} else {
-		snprintf(statement,sizeof(statement),"hmset turn/admin_user/%s password '%s'",usname,pwd);
+		snprintf(statement,sizeof(statement),"hmset turn/admin_user/%s password %s",usname,pwd);
 	}
 	turnFreeRedisReply(redisCommand(rc, statement));
 	turnFreeRedisReply(redisCommand(rc, "save"));
@@ -1204,6 +1205,7 @@ static int redis_set_admin_user(const u08bits *usname, const u08bits *realm, con
 
 static int redis_del_admin_user(const u08bits *usname) {
   int ret = -1;
+  donot_print_connection_success = 1;
   redisContext *rc = get_redis_connection();
   if(rc) {
 	char statement[TURN_LONG_STRING_SIZE];
@@ -1218,6 +1220,7 @@ static int redis_del_admin_user(const u08bits *usname) {
 static int redis_list_admin_users(void)
 {
   int ret = -1;
+  donot_print_connection_success = 1;
   redisContext *rc = get_redis_connection();
   secrets_list_t keys;
   size_t isz = 0;
