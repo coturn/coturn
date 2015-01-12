@@ -1352,8 +1352,10 @@ int send_turn_session_info(struct turn_session_info* tsi)
 /////////// HTTPS /////////////
 
 enum _AS_FORM {
-	AS_FORM_UNKNOWN,
-	AS_FORM_LOGON
+	AS_FORM_LOGON,
+	AS_FORM_PC,
+	AS_FORM_HOME,
+	AS_FORM_UNKNOWN
 };
 
 typedef enum _AS_FORM AS_FORM;
@@ -1361,11 +1363,32 @@ typedef enum _AS_FORM AS_FORM;
 #define HR_USERNAME "uname"
 #define HR_PASSWORD "pwd"
 
-#define AS_FORM_NAME_LOGON "logon"
+struct form_name {
+	AS_FORM form;
+	const char* name;
+};
+
+static struct form_name form_names[] = {
+				{AS_FORM_LOGON,"/logon"},
+				{AS_FORM_PC,"/pc"},
+				{AS_FORM_HOME,"/home"},
+				{AS_FORM_UNKNOWN,NULL}
+};
+
+static const char* admin_title = "TURN Server (https admin connection)";
+static const char* home_link = "<br><a href=\"/home\">home page</a><br>\r\n";
+
+static ioa_socket_handle current_socket = NULL;
 
 static AS_FORM get_form(const char* path) {
-	while(*path=='/') ++path;
-	if(!strcmp(path,AS_FORM_NAME_LOGON)) return AS_FORM_LOGON;
+	if(path) {
+		size_t i = 0;
+		while(form_names[i].name) {
+			if(!strcmp(form_names[i].name,path))
+				return form_names[i].form;
+			++i;
+		}
+	}
 	return AS_FORM_UNKNOWN;
 }
 
@@ -1375,15 +1398,13 @@ static void write_https_logon_page(ioa_socket_handle s)
 
 		struct str_buffer* sb = str_buffer_new();
 
-		const char* title = "TURN Server (https admin connection)";
-
 		str_buffer_append(sb,"<!DOCTYPE html>\r\n<html>\r\n  <head>\r\n    <title>");
-		str_buffer_append(sb,title);
+		str_buffer_append(sb,admin_title);
 		str_buffer_append(sb,"</title>\r\n  </head>\r\n  <body>\r\n    ");
-		str_buffer_append(sb,title);
+		str_buffer_append(sb,admin_title);
 		str_buffer_append(sb,"<br>\r\n");
 		str_buffer_append(sb,"<form action=\"");
-		str_buffer_append(sb,AS_FORM_NAME_LOGON);
+		str_buffer_append(sb,form_names[AS_FORM_LOGON].name);
 		str_buffer_append(sb,"\" method=\"POST\">\r\n");
 		str_buffer_append(sb,"  <fieldset><legend>Admin user information:</legend>  user name:<br><input type=\"text\" name=\"");
 		str_buffer_append(sb,HR_USERNAME);
@@ -1410,7 +1431,7 @@ static void write_https_logon_page(ioa_socket_handle s)
 	}
 }
 
-static void write_https_initial_page(ioa_socket_handle s)
+static void write_https_home_page(ioa_socket_handle s)
 {
 	if(s && !ioa_socket_tobeclosed(s)) {
 
@@ -1420,14 +1441,377 @@ static void write_https_initial_page(ioa_socket_handle s)
 
 			struct str_buffer* sb = str_buffer_new();
 
-			const char* title = "TURN Server (https admin connection)";
+			str_buffer_append(sb,"<!DOCTYPE html>\r\n<html>\r\n  <head>\r\n    <title>");
+			str_buffer_append(sb,admin_title);
+			str_buffer_append(sb,"</title>\r\n  </head>\r\n  <body>\r\n    ");
+			str_buffer_append(sb,admin_title);
+			str_buffer_append(sb,"<br><br>\r\n");
+			str_buffer_append(sb,"<a href=\"");
+			str_buffer_append(sb,form_names[AS_FORM_PC].name);
+			str_buffer_append(sb,"\">Print Config Parameters</a><br>\r\n");
+			str_buffer_append(sb,"\r\n  </body>\r\n</html>\r\n");
+
+			send_str_from_ioa_socket_tcp(s,"HTTP/1.1 200 OK\r\nServer: ");
+			send_str_from_ioa_socket_tcp(s,TURN_SOFTWARE);
+			send_str_from_ioa_socket_tcp(s,"\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Length: ");
+
+			send_ulong_from_ioa_socket_tcp(s,str_buffer_get_str_len(sb));
+
+			send_str_from_ioa_socket_tcp(s,"\r\n\r\n");
+			send_str_from_ioa_socket_tcp(s,str_buffer_get_str(sb));
+
+			str_buffer_free(sb);
+		}
+	}
+}
+
+static void sbprintf(struct str_buffer *sb, const char *format, ...)
+{
+	if(sb && format) {
+		va_list args;
+		va_start (args, format);
+		static char s[1025]="\0";
+		vsnprintf(s,sizeof(s)-1,format, args);
+		str_buffer_append(sb,s);
+		va_end (args);
+	}
+}
+
+static void https_print_flag(struct str_buffer* sb, int flag, const char* name, int changeable)
+{
+	if(sb && name) {
+		const char *sc="";
+		if(changeable)
+			sc=" (*)";
+		sbprintf(sb,"<tr><td>%s</td><td>%s%s</td></tr>\r\n",name,get_flag(flag),sc);
+	}
+}
+
+static void https_print_uint(struct str_buffer* sb, unsigned long value, const char* name, int changeable)
+{
+	if(sb && name) {
+		const char *sc="";
+		if(changeable==1)
+			sc=" (*)";
+		else if(changeable==2)
+			sc=" (**)";
+		sbprintf(sb,"<tr><td>%s</td><td>%lu%s</td></tr>\r\n",name,value,sc);
+	}
+}
+
+static void https_print_str(struct str_buffer* sb, const char *value, const char* name, int changeable)
+{
+	if(sb && name && value) {
+		if((value[0] == 0) && name[0])
+			value="empty";
+		const char *sc="";
+		if(changeable==1)
+			sc=" (*)";
+		else if(changeable==2)
+			sc=" (**)";
+		sbprintf(sb,"<tr><td>%s</td><td>%s%s</td></tr>\r\n",name,value,sc);
+	}
+}
+
+static void https_print_str_array(struct str_buffer* sb, char **value, size_t sz, const char* name, int changeable)
+{
+	if(sb && name && value && sz) {
+		const char *sc="";
+		if(changeable==1)
+			sc=" (*)";
+		else if(changeable==2)
+			sc=" (**)";
+		size_t i;
+		for(i=0;i<sz;i++) {
+			if(value[i])
+				sbprintf(sb,"<tr><td>  %s</td><td> %s%s</td></tr>\r\n",name,value[i],sc);
+		}
+	}
+}
+
+static void https_print_addr(struct str_buffer* sb, ioa_addr *value, int use_port, const char* name, int changeable)
+{
+	if(sb && name && value) {
+		const char *sc="";
+		if(changeable==1)
+			sc=" (*)";
+		else if(changeable==2)
+			sc=" (**)";
+		char s[256];
+		if(!use_port)
+			addr_to_string_no_port(value,(u08bits*)s);
+		else
+			addr_to_string(value,(u08bits*)s);
+		sbprintf(sb,"<tr><td>  %s</td><td> %s%s</td></tr>\r\n",name,s,sc);
+	}
+}
+
+static void https_print_addr_list(struct str_buffer* sb, turn_server_addrs_list_t *value, int use_port, const char* name, int changeable)
+{
+	if(sb && name && value && value->size && value->addrs) {
+		const char *sc="";
+		if(changeable==1)
+			sc=" (*)";
+		else if(changeable==2)
+			sc=" (**)";
+		char s[256];
+		size_t i;
+		for(i=0;i<value->size;i++) {
+			if(!use_port)
+				addr_to_string_no_port(&(value->addrs[i]),(u08bits*)s);
+			else
+				addr_to_string(&(value->addrs[i]),(u08bits*)s);
+			sbprintf(sb,"</tr><td>  %s</td><td> %s%s</td></tr>\r\n",name,s,sc);
+		}
+	}
+}
+
+static void https_print_ip_range_list(struct str_buffer* sb, ip_range_list_t *value, const char* name, int changeable)
+{
+	if(sb && name && value && value->ranges_number && value->rs) {
+		const char *sc="";
+		if(changeable==1)
+			sc=" (*)";
+		else if(changeable==2)
+			sc=" (**)";
+		size_t i;
+		for(i=0;i<value->ranges_number;++i) {
+			if(value->rs[i].realm[0]) {
+				if(current_socket->as_realm[0] && strcmp(current_socket->as_realm,value->rs[i].realm)) {
+					continue;
+				} else {
+					sbprintf(sb,"<tr><td>  %s</td><td> %s (%s)%s</td></tr>\r\n",name,value->rs[i].str,value->rs[i].realm,sc);
+				}
+			} else {
+				sbprintf(sb,"<tr><td>  %s</td><td> %s%s</td></tr>\r\n",name,value->rs[i].str,sc);
+			}
+		}
+	}
+}
+
+static void write_pc_page(ioa_socket_handle s)
+{
+	if(s && !ioa_socket_tobeclosed(s)) {
+
+		if(!(s->as_ok)) {
+			write_https_logon_page(s);
+		} else {
+
+			struct str_buffer* sb = str_buffer_new();
 
 			str_buffer_append(sb,"<!DOCTYPE html>\r\n<html>\r\n  <head>\r\n    <title>");
-			str_buffer_append(sb,title);
+			str_buffer_append(sb,admin_title);
 			str_buffer_append(sb,"</title>\r\n  </head>\r\n  <body>\r\n    ");
-			str_buffer_append(sb,title);
+			str_buffer_append(sb,admin_title);
 			str_buffer_append(sb,"<br>\r\n");
-			str_buffer_append(sb,"\r\n  </body>\r\n</html>\r\n");
+			str_buffer_append(sb,home_link);
+			str_buffer_append(sb,"<br>\r\n");
+			str_buffer_append(sb,"Config Parameters:<br><table>\r\n");
+
+			{
+				https_print_flag(sb,turn_params.verbose,"verbose",0);
+				https_print_flag(sb,turn_params.turn_daemon,"daemon process",0);
+				https_print_flag(sb,turn_params.stale_nonce,"stale-nonce",1);
+				https_print_flag(sb,turn_params.stun_only,"stun-only",1);
+				https_print_flag(sb,turn_params.no_stun,"no-stun",1);
+				https_print_flag(sb,turn_params.secure_stun,"secure-stun",1);
+				https_print_flag(sb,turn_params.do_not_use_config_file,"do-not-use-config-file",0);
+				https_print_flag(sb,turn_params.rfc5780,"RFC5780 support",0);
+				https_print_uint(sb,(unsigned int)turn_params.net_engine_version,"net engine version",0);
+				https_print_str(sb,turn_params.net_engine_version_txt[(int)turn_params.net_engine_version],"net engine",0);
+				https_print_flag(sb,turn_params.fingerprint,"enforce fingerprints",0);
+				https_print_flag(sb,turn_params.mobility,"mobility",1);
+				https_print_flag(sb,turn_params.udp_self_balance,"udp-self-balance",0);
+				https_print_str(sb,turn_params.pidfile,"pidfile",0);
+				https_print_uint(sb,(unsigned long)getuid(),"process user ID",0);
+				https_print_uint(sb,(unsigned long)getgid(),"process group ID",0);
+
+				{
+					char wd[1025];
+					if(getcwd(wd,sizeof(wd)-1)) {
+						https_print_str(sb,wd,"process dir",0);
+					}
+				}
+
+				https_print_str(sb,"","",0);
+
+				if(turn_params.cipher_list[0])
+					https_print_str(sb,turn_params.cipher_list,"cipher-list",0);
+				else
+					https_print_str(sb,DEFAULT_CIPHER_LIST,"cipher-list",0);
+
+				https_print_str(sb,turn_params.ec_curve_name,"ec-curve-name",0);
+				{
+					if(turn_params.dh_key_size == DH_CUSTOM)
+						https_print_str(sb,turn_params.dh_file,"dh-file",0);
+					else {
+						unsigned int dh_key_length = 1066;
+						if(turn_params.dh_key_size == DH_566)
+							dh_key_length = 566;
+						else if(turn_params.dh_key_size == DH_2066)
+							dh_key_length = 2066;
+						https_print_uint(sb,(unsigned long)dh_key_length,"DH-key-length",0);
+					}
+				}
+
+				https_print_str(sb,turn_params.ca_cert_file,"Certificate Authority file",0);
+				https_print_str(sb,turn_params.cert_file,"Certificate file",0);
+				https_print_str(sb,turn_params.pkey_file,"Private Key file",0);
+
+				if(turn_params.shatype == SHATYPE_SHA256)
+					https_print_str(sb,"SHA256","SHA type",0);
+				else
+					https_print_str(sb,"SHA1","SHA type",0);
+
+				https_print_str(sb,"","",0);
+
+				https_print_str_array(sb,turn_params.listener.addrs,turn_params.listener.addrs_number,"Listener addr",0);
+
+				if(turn_params.listener_ifname[0])
+					https_print_str(sb,turn_params.listener_ifname,"listener-ifname",0);
+
+				https_print_flag(sb,turn_params.no_udp,"no-udp",0);
+				https_print_flag(sb,turn_params.no_tcp,"no-tcp",0);
+				https_print_flag(sb,turn_params.no_dtls,"no-dtls",0);
+				https_print_flag(sb,turn_params.no_tls,"no-tls",0);
+
+				https_print_flag(sb,(!turn_params.no_sslv3 && !turn_params.no_tls),"SSLv3",0);
+				https_print_flag(sb,(!turn_params.no_tlsv1 && !turn_params.no_tls),"TLSv1.0",0);
+				https_print_flag(sb,(!turn_params.no_tlsv1_1 && !turn_params.no_tls),"TLSv1.1",0);
+				https_print_flag(sb,(!turn_params.no_tlsv1_2 && !turn_params.no_tls),"TLSv1.2",0);
+
+				https_print_uint(sb,(unsigned long)turn_params.listener_port,"listener-port",0);
+				https_print_uint(sb,(unsigned long)turn_params.tls_listener_port,"tls-listener-port",0);
+				https_print_uint(sb,(unsigned long)turn_params.alt_listener_port,"alt-listener-port",0);
+				https_print_uint(sb,(unsigned long)turn_params.alt_tls_listener_port,"alt-tls-listener-port",0);
+
+				https_print_addr(sb,turn_params.external_ip,0,"External public IP",0);
+
+				https_print_str(sb,"","",0);
+
+				https_print_addr_list(sb,&turn_params.aux_servers_list,1,"Aux server",0);
+				https_print_addr_list(sb,&turn_params.alternate_servers_list,1,"Alternate server",0);
+				https_print_addr_list(sb,&turn_params.tls_alternate_servers_list,1,"TLS alternate server",0);
+
+				https_print_str(sb,"","",0);
+
+				https_print_str_array(sb,turn_params.relay_addrs,turn_params.relays_number,"Relay addr",0);
+
+				if(turn_params.relay_ifname[0])
+					https_print_str(sb,turn_params.relay_ifname,"relay-ifname",0);
+
+				https_print_flag(sb,turn_params.server_relay,"server-relay",0);
+
+				https_print_flag(sb,turn_params.no_udp_relay,"no-udp-relay",1);
+				https_print_flag(sb,turn_params.no_tcp_relay,"no-tcp-relay",1);
+
+				https_print_uint(sb,(unsigned long)turn_params.min_port,"min-port",0);
+				https_print_uint(sb,(unsigned long)turn_params.max_port,"max-port",0);
+
+				https_print_ip_range_list(sb,&turn_params.ip_whitelist,"Whitelist IP (static)",0);
+				{
+					ip_range_list_t* l = get_ip_list("allowed");
+					https_print_ip_range_list(sb,l,"Whitelist IP (dynamic)",0);
+					ip_list_free(l);
+				}
+
+				https_print_ip_range_list(sb,&turn_params.ip_blacklist,"Blacklist IP (static)",0);
+				{
+					ip_range_list_t* l = get_ip_list("denied");
+					https_print_ip_range_list(sb,l,"Blacklist IP (dynamic)",0);
+					ip_list_free(l);
+				}
+
+				https_print_flag(sb,turn_params.no_multicast_peers,"no-multicast-peers",1);
+				https_print_flag(sb,turn_params.no_loopback_peers,"no-loopback-peers",1);
+
+				https_print_str(sb,"","",0);
+
+				if(turn_params.default_users_db.persistent_users_db.userdb[0]) {
+					switch(turn_params.default_users_db.userdb_type) {
+#if !defined(TURN_NO_SQLITE)
+					case TURN_USERDB_TYPE_SQLITE:
+						https_print_str(sb,"SQLite","DB type",0);
+						break;
+#endif
+#if !defined(TURN_NO_PQ)
+					case TURN_USERDB_TYPE_PQ:
+						https_print_str(sb,"Postgres","DB type",0);
+						break;
+#endif
+#if !defined(TURN_NO_MYSQL)
+					case TURN_USERDB_TYPE_MYSQL:
+						https_print_str(sb,"MySQL/MariaDB","DB type",0);
+						break;
+#endif
+#if !defined(TURN_NO_MONGO)
+					case TURN_USERDB_TYPE_MONGO:
+						https_print_str(sb,"MongoDB","DB type",0);
+						break;
+#endif
+#if !defined(TURN_NO_HIREDIS)
+					case TURN_USERDB_TYPE_REDIS:
+						https_print_str(sb,"redis","DB type",0);
+						break;
+#endif
+					default:
+						https_print_str(sb,"unknown","DB type",0);
+					};
+					https_print_str(sb,turn_params.default_users_db.persistent_users_db.userdb,"DB",0);
+				} else {
+					https_print_str(sb,"none","DB type",0);
+					https_print_str(sb,"none","DB",0);
+				}
+
+#if !defined(TURN_NO_HIREDIS)
+				if(turn_params.use_redis_statsdb && turn_params.redis_statsdb[0])
+					https_print_str(sb,turn_params.redis_statsdb,"Redis Statistics DB",0);
+#endif
+
+				https_print_str(sb,"","",0);
+
+				{
+					char * rn = get_realm(NULL)->options.name;
+					if(rn[0])
+						https_print_str(sb,rn,"Default realm",0);
+				}
+				if(current_socket->as_realm[0])
+					https_print_str(sb,current_socket->as_realm,"Admin session realm",0);
+
+				if(turn_params.ct == TURN_CREDENTIALS_LONG_TERM)
+					https_print_flag(sb,1,"Long-term authorization mechanism",0);
+				else
+					https_print_flag(sb,1,"Anonymous credentials",0);
+				https_print_flag(sb,turn_params.use_auth_secret_with_timestamp,"TURN REST API support",0);
+				if(turn_params.use_auth_secret_with_timestamp && turn_params.rest_api_separator)
+					https_print_uint(sb,turn_params.rest_api_separator,"TURN REST API separator ASCII number",0);
+
+				https_print_str(sb,"","",0);
+
+				realm_params_t *rp = get_realm(NULL);
+				if(current_socket->as_realm[0]) {
+					rp = get_realm(current_socket->as_realm);
+					if(!rp) rp = get_realm(NULL);
+				}
+
+				https_print_uint(sb,(unsigned long)rp->status.total_current_allocs,"total-current-allocs",0);
+
+				https_print_str(sb,"","",0);
+
+				https_print_uint(sb,(unsigned long)turn_params.total_quota,"Default total-quota",2);
+				https_print_uint(sb,(unsigned long)turn_params.user_quota,"Default user-quota",2);
+				https_print_uint(sb,(unsigned long)get_bps_capacity(),"Total server bps-capacity",2);
+				https_print_uint(sb,(unsigned long)get_bps_capacity_allocated(),"Allocated bps-capacity",0);
+				https_print_uint(sb,(unsigned long)get_max_bps(),"Default max-bps",2);
+
+				https_print_str(sb,"","",0);
+
+				https_print_uint(sb,(unsigned long)rp->options.perf_options.total_quota,"current realm total-quota",0);
+				https_print_uint(sb,(unsigned long)rp->options.perf_options.user_quota,"current realm user-quota",0);
+				https_print_uint(sb,(unsigned long)rp->options.perf_options.max_bps,"current realm max-bps",0);
+			}
+
+			str_buffer_append(sb,"\r\n</table>  </body>\r\n</html>\r\n");
 
 			send_str_from_ioa_socket_tcp(s,"HTTP/1.1 200 OK\r\nServer: ");
 			send_str_from_ioa_socket_tcp(s,TURN_SOFTWARE);
@@ -1465,7 +1849,9 @@ static void handle_logon_request(ioa_socket_handle s, struct http_request* hr)
 	}
 }
 
-static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
+static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
+{
+	current_socket = s;
 
 	if(turn_params.verbose) {
 		if(nbh) {
@@ -1482,17 +1868,21 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
 		if(!hr) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: wrong HTTPS request (I cannot parse it)\n", __FUNCTION__);
 		} else {
-			//TODO
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: HTTPS request, path %s\n", __FUNCTION__,hr->path);
 
 			AS_FORM form = get_form(hr->path);
 
 			switch(form) {
+			case AS_FORM_PC:
+				write_pc_page(s);
+				break;
 			case AS_FORM_LOGON:
-				handle_logon_request(s,hr);
+				if(!(s->as_ok)) {
+					handle_logon_request(s,hr);
+				}
 			default:
 				if(s->as_ok) {
-					write_https_initial_page(s);
+					write_https_home_page(s);
 				} else {
 					write_https_logon_page(s);
 				}
@@ -1500,6 +1890,8 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
 			free_http_request(hr);
 		}
 	}
+
+	current_socket = NULL;
 }
 
 static void https_input_handler(ioa_socket_handle s, int event_type, ioa_net_data *data, void *arg, int can_resume) {
