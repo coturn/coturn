@@ -3234,6 +3234,19 @@ int send_data_from_ioa_socket_tcp(ioa_socket_handle s, const void *data, size_t 
 	return ret;
 }
 
+int send_str_from_ioa_socket_tcp(ioa_socket_handle s, const void *data)
+{
+	return send_data_from_ioa_socket_tcp(s, data, strlen(data));
+}
+
+int send_ulong_from_ioa_socket_tcp(ioa_socket_handle s, size_t data)
+{
+	char str[129];
+	snprintf(str,sizeof(str)-1,"%lu",(unsigned long)data);
+
+	return send_str_from_ioa_socket_tcp(s,str);
+}
+
 int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, int event_type, ioa_net_event_handler cb, void* ctx, int clean_preexisting)
 {
 	if(s) {
