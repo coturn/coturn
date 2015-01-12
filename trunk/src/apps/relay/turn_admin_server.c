@@ -68,6 +68,8 @@
 
 #include "http_server.h"
 
+#include "dbdrivers/dbdriver.h"
+
 ///////////////////////////////
 
 struct cli_server cliserver;
@@ -1408,7 +1410,7 @@ static void write_https_logon_page(ioa_socket_handle s)
 	}
 }
 
-static void write_https_default_page(ioa_socket_handle s)
+static void write_https_initial_page(ioa_socket_handle s)
 {
 	if(s && !ioa_socket_tobeclosed(s)) {
 
@@ -1427,20 +1429,16 @@ static void write_https_default_page(ioa_socket_handle s)
 			str_buffer_append(sb,"<br>\r\n");
 			str_buffer_append(sb,"\r\n  </body>\r\n</html>\r\n");
 
-			struct str_buffer* sb_http = str_buffer_new();
+			send_str_from_ioa_socket_tcp(s,"HTTP/1.1 200 OK\r\nServer: ");
+			send_str_from_ioa_socket_tcp(s,TURN_SOFTWARE);
+			send_str_from_ioa_socket_tcp(s,"\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Length: ");
 
-			str_buffer_append(sb_http,"HTTP/1.1 200 OK\r\nServer: ");
-			str_buffer_append(sb_http,TURN_SOFTWARE);
-			str_buffer_append(sb_http,"\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Length: ");
-			str_buffer_append_sz(sb_http,str_buffer_get_str_len(sb));
-			str_buffer_append(sb_http,"\r\n\r\n");
-			str_buffer_append(sb_http,str_buffer_get_str(sb));
+			send_ulong_from_ioa_socket_tcp(s,str_buffer_get_str_len(sb));
+
+			send_str_from_ioa_socket_tcp(s,"\r\n\r\n");
+			send_str_from_ioa_socket_tcp(s,str_buffer_get_str(sb));
 
 			str_buffer_free(sb);
-
-			send_data_from_ioa_socket_tcp(s, str_buffer_get_str(sb_http), str_buffer_get_str_len(sb_http));
-
-			str_buffer_free(sb_http);
 		}
 	}
 }
@@ -1448,17 +1446,20 @@ static void write_https_default_page(ioa_socket_handle s)
 static void handle_logon_request(ioa_socket_handle s, struct http_request* hr)
 {
 	if(s && hr) {
-		if(hr->rtype != HRT_POST) {
-			write_https_default_page(s);
-		} else {
-			const char *uname = get_http_header_value(hr, HR_USERNAME);
-			const char *pwd = get_http_header_value(hr, HR_PASSWORD);
-			//TODO
-			if(uname && pwd) {
-				s->as_ok = 1;
-				write_https_default_page(s);
-			} else {
-				write_https_logon_page(s);
+		const char *uname = get_http_header_value(hr, HR_USERNAME);
+		const char *pwd = get_http_header_value(hr, HR_PASSWORD);
+
+		if(!(s->as_ok) && uname && pwd) {
+			const turn_dbdriver_t * dbd = get_dbdriver();
+			if (dbd && dbd->get_admin_user) {
+
+				password_t password;
+				char realm[STUN_MAX_REALM_SIZE]="\0";
+				if((*(dbd->get_admin_user))((const u08bits*)uname,(u08bits*)realm,password)>=0) {
+					if(!strcmp(pwd,(char*)password)) {
+						s->as_ok = 1;
+					}
+				}
 			}
 		}
 	}
@@ -1489,9 +1490,12 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
 			switch(form) {
 			case AS_FORM_LOGON:
 				handle_logon_request(s,hr);
-				break;
 			default:
-				write_https_default_page(s);
+				if(s->as_ok) {
+					write_https_initial_page(s);
+				} else {
+					write_https_logon_page(s);
+				}
 			};
 			free_http_request(hr);
 		}

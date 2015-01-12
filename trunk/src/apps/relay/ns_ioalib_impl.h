@@ -227,6 +227,7 @@ struct _ioa_socket
 	/* <<== RFC 6062 */
 	//Admin server:
 	int as_ok;
+	int as_private;
 	char as_login[ADMIN_USER_MAX_LENGTH + 1];
 	char as_realm[STUN_MAX_REALM_SIZE + 1];
 };
@@ -304,6 +305,8 @@ int set_socket_options(ioa_socket_handle s);
 int send_session_cancellation_to_relay(turnsession_id sid);
 
 int send_data_from_ioa_socket_tcp(ioa_socket_handle s, const void *data, size_t sz);
+int send_str_from_ioa_socket_tcp(ioa_socket_handle s, const void *data);
+int send_ulong_from_ioa_socket_tcp(ioa_socket_handle s, size_t data);
 
 ///////////////////////// SUPER MEMORY ////////
 
