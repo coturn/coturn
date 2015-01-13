@@ -2263,7 +2263,7 @@ static TURN_TLS_TYPE check_tentative_tls(ioa_socket_raw fd)
 		if((s[0]==22)&&(s[1]==3)&&(s[5]==1)&&(s[9]==3)) {
 			char max_supported = (char)(TURN_TLS_TOTAL-2);
 			if(s[10] >= max_supported)
-				ret = (TURN_TLS_TYPE)((((int)TURN_TLS_TOTAL)-1));
+				ret = TURN_TLS_SSL23; /* compatibility mode */
 			else
 				ret = (TURN_TLS_TYPE)(s[10]+1);
 		} else if((s[2]==1)&&(s[3]==3)) {
