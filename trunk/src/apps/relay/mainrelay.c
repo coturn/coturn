@@ -2606,15 +2606,17 @@ static void openssl_setup(void)
 		if(OPENSSL_VERSION_NUMBER < 0x10000000L) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: TURN Server was compiled with rather old OpenSSL version, DTLS may not be working correctly.\n");
 		}
-		turn_params.dtls_ctx = SSL_CTX_new(DTLSv1_server_method());
-		set_ctx(turn_params.dtls_ctx,"DTLS");
-		SSL_CTX_set_read_ahead(turn_params.dtls_ctx, 1);
 
 #if DTLSv1_2_SUPPORTED
+		turn_params.dtls_ctx = SSL_CTX_new(DTLS_server_method());
 		turn_params.dtls_ctx_v1_2 = SSL_CTX_new(DTLSv1_2_server_method());
 		set_ctx(turn_params.dtls_ctx_v1_2,"DTLS1,2");
 		SSL_CTX_set_read_ahead(turn_params.dtls_ctx_v1_2, 1);
+#else
+		turn_params.dtls_ctx = SSL_CTX_new(DTLSv1_server_method());
 #endif
+		set_ctx(turn_params.dtls_ctx,"DTLS");
+		SSL_CTX_set_read_ahead(turn_params.dtls_ctx, 1);
 
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS cipher suite: %s\n",turn_params.cipher_list);
 
