@@ -227,7 +227,6 @@ struct _ioa_socket
 	/* <<== RFC 6062 */
 	//Admin server:
 	int as_ok;
-	int as_private;
 	char as_login[ADMIN_USER_MAX_LENGTH + 1];
 	char as_realm[STUN_MAX_REALM_SIZE + 1];
 };
