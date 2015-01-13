@@ -1362,6 +1362,7 @@ typedef enum _AS_FORM AS_FORM;
 
 #define HR_USERNAME "uname"
 #define HR_PASSWORD "pwd"
+#define HR_REALM "realm"
 
 struct form_name {
 	AS_FORM form;
@@ -1379,6 +1380,7 @@ static const char* admin_title = "TURN Server (https admin connection)";
 static const char* home_link = "<br><a href=\"/home\">home page</a><br>\r\n";
 
 static ioa_socket_handle current_socket = NULL;
+static char* current_realm = NULL;
 
 static AS_FORM get_form(const char* path) {
 	if(path) {
@@ -1446,9 +1448,22 @@ static void write_https_home_page(ioa_socket_handle s)
 			str_buffer_append(sb,"</title>\r\n  </head>\r\n  <body>\r\n    ");
 			str_buffer_append(sb,admin_title);
 			str_buffer_append(sb,"<br><br>\r\n");
-			str_buffer_append(sb,"<a href=\"");
-			str_buffer_append(sb,form_names[AS_FORM_PC].name);
-			str_buffer_append(sb,"\">Print Config Parameters</a><br>\r\n");
+
+			if(current_socket->as_realm[0]) {
+				str_buffer_append(sb,"<a href=\"");
+				str_buffer_append(sb,form_names[AS_FORM_PC].name);
+				str_buffer_append(sb,"\">Config Parameters</a><br>\r\n");
+			} else {
+				str_buffer_append(sb,"<form action=\"");
+				str_buffer_append(sb,form_names[AS_FORM_PC].name);
+				str_buffer_append(sb,"\" method=\"POST\">\r\n");
+				str_buffer_append(sb,"  <fieldset><legend>Current realm:</legend>  name:<br><input type=\"text\" name=\"");
+				str_buffer_append(sb,HR_REALM);
+				str_buffer_append(sb,"\" value=\"\"><br>");
+				str_buffer_append(sb,"<br><input type=\"submit\" value=\"Config Parameters\"></fieldset>\r\n");
+				str_buffer_append(sb,"</form>\r\n");
+			}
+
 			str_buffer_append(sb,"\r\n  </body>\r\n</html>\r\n");
 
 			send_str_from_ioa_socket_tcp(s,"HTTP/1.1 200 OK\r\nServer: ");
@@ -1577,7 +1592,7 @@ static void https_print_ip_range_list(struct str_buffer* sb, ip_range_list_t *va
 		size_t i;
 		for(i=0;i<value->ranges_number;++i) {
 			if(value->rs[i].realm[0]) {
-				if(current_socket->as_realm[0] && strcmp(current_socket->as_realm,value->rs[i].realm)) {
+				if(current_realm && current_realm[0] && strcmp(current_realm,value->rs[i].realm)) {
 					continue;
 				} else {
 					sbprintf(sb,"<tr><td>  %s</td><td> %s (%s)%s</td></tr>\r\n",name,value->rs[i].str,value->rs[i].realm,sc);
@@ -1775,8 +1790,6 @@ static void write_pc_page(ioa_socket_handle s)
 					if(rn[0])
 						https_print_str(sb,rn,"Default realm",0);
 				}
-				if(current_socket->as_realm[0])
-					https_print_str(sb,current_socket->as_realm,"Admin session realm",0);
 
 				if(turn_params.ct == TURN_CREDENTIALS_LONG_TERM)
 					https_print_flag(sb,1,"Long-term authorization mechanism",0);
@@ -1788,11 +1801,17 @@ static void write_pc_page(ioa_socket_handle s)
 
 				https_print_str(sb,"","",0);
 
-				realm_params_t *rp = get_realm(NULL);
-				if(current_socket->as_realm[0]) {
-					rp = get_realm(current_socket->as_realm);
-					if(!rp) rp = get_realm(NULL);
-				}
+				realm_params_t *rp = get_realm(current_realm);
+				if(!rp) rp = get_realm(NULL);
+
+				if(current_realm)
+					https_print_str(sb,current_realm,"current realm",0);
+
+				https_print_uint(sb,(unsigned long)rp->options.perf_options.total_quota,"current realm total-quota",0);
+				https_print_uint(sb,(unsigned long)rp->options.perf_options.user_quota,"current realm user-quota",0);
+				https_print_uint(sb,(unsigned long)rp->options.perf_options.max_bps,"current realm max-bps",0);
+
+				https_print_str(sb,"","",0);
 
 				https_print_uint(sb,(unsigned long)rp->status.total_current_allocs,"total-current-allocs",0);
 
@@ -1803,12 +1822,6 @@ static void write_pc_page(ioa_socket_handle s)
 				https_print_uint(sb,(unsigned long)get_bps_capacity(),"Total server bps-capacity",2);
 				https_print_uint(sb,(unsigned long)get_bps_capacity_allocated(),"Allocated bps-capacity",0);
 				https_print_uint(sb,(unsigned long)get_max_bps(),"Default max-bps",2);
-
-				https_print_str(sb,"","",0);
-
-				https_print_uint(sb,(unsigned long)rp->options.perf_options.total_quota,"current realm total-quota",0);
-				https_print_uint(sb,(unsigned long)rp->options.perf_options.user_quota,"current realm user-quota",0);
-				https_print_uint(sb,(unsigned long)rp->options.perf_options.max_bps,"current realm max-bps",0);
 			}
 
 			str_buffer_append(sb,"\r\n</table>  </body>\r\n</html>\r\n");
@@ -1841,6 +1854,8 @@ static void handle_logon_request(ioa_socket_handle s, struct http_request* hr)
 				char realm[STUN_MAX_REALM_SIZE]="\0";
 				if((*(dbd->get_admin_user))((const u08bits*)uname,(u08bits*)realm,password)>=0) {
 					if(!strcmp(pwd,(char*)password)) {
+						STRCPY(s->as_login,uname);
+						STRCPY(s->as_realm,realm);
 						s->as_ok = 1;
 					}
 				}
@@ -1852,6 +1867,7 @@ static void handle_logon_request(ioa_socket_handle s, struct http_request* hr)
 static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 {
 	current_socket = s;
+	current_realm = s->as_realm;
 
 	if(turn_params.verbose) {
 		if(nbh) {
@@ -1864,6 +1880,7 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 	if(!nbh) {
 		write_https_logon_page(s);
 	} else {
+		((char*)ioa_network_buffer_data(nbh))[ioa_network_buffer_get_size(nbh)] = 0;
 		struct http_request* hr = parse_http_request((char*)ioa_network_buffer_data(nbh));
 		if(!hr) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: wrong HTTPS request (I cannot parse it)\n", __FUNCTION__);
@@ -1873,9 +1890,19 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 			AS_FORM form = get_form(hr->path);
 
 			switch(form) {
-			case AS_FORM_PC:
+			case AS_FORM_PC: {
+				const char *realm0 = get_http_header_value(hr, HR_REALM);
+				if(!realm0 || !realm0[0])
+					realm0=get_realm(NULL)->options.name;
+				if(current_socket->as_realm[0])
+					realm0 = current_socket->as_realm;
+				char realm[STUN_MAX_REALM_SIZE + 1];
+				STRCPY(realm,realm0);
+				current_realm = realm;
 				write_pc_page(s);
+				current_realm = s->as_realm;
 				break;
+			}
 			case AS_FORM_LOGON:
 				if(!(s->as_ok)) {
 					handle_logon_request(s,hr);
@@ -1892,6 +1919,7 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 	}
 
 	current_socket = NULL;
+	current_realm = NULL;
 }
 
 static void https_input_handler(ioa_socket_handle s, int event_type, ioa_net_data *data, void *arg, int can_resume) {
