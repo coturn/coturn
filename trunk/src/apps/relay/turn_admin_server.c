@@ -1388,6 +1388,10 @@ static const char* logout_link = "<br><a href=\"/logout\">Logout</a><br><br>\r\n
 
 static ioa_socket_handle current_socket = NULL;
 
+static int is_superuser(void) {
+	return !(current_socket->as_realm[0]);
+}
+
 static AS_FORM get_form(const char* path) {
 	if(path) {
 		size_t i = 0;
@@ -1456,7 +1460,7 @@ static void write_https_home_page(ioa_socket_handle s)
 			str_buffer_append(sb,"<br><br>\r\n");
 			str_buffer_append(sb,logout_link);
 
-			if(current_socket->as_realm[0]) {
+			if(!is_superuser()) {
 				str_buffer_append(sb,"<a href=\"");
 				str_buffer_append(sb,form_names[AS_FORM_PC].name);
 				str_buffer_append(sb,"\">Config Parameters</a><br>\r\n");
@@ -1501,15 +1505,15 @@ static void sbprintf(struct str_buffer *sb, const char *format, ...)
 	}
 }
 
-static void https_print_flag(struct str_buffer* sb, int flag, const char* name, int changeable)
+static void https_print_flag(struct str_buffer* sb, int flag, const char* name, const char* param_name)
 {
 	if(sb && name) {
-		if(current_socket->as_realm[0])
-			changeable = 0;
-		if(!changeable) {
+		if(!is_superuser())
+			param_name = 0;
+		if(!param_name) {
 			sbprintf(sb,"<tr><td>%s</td><td>%s</td><td></td></tr>\r\n",name,get_flag(flag));
 		} else {
-			sbprintf(sb,"<tr><td>%s</td><td>%s</td><td><a href=\"/toggle?parameter=%s\">toggle</a></td></tr>\r\n",name,get_flag(flag),name);
+			sbprintf(sb,"<tr><td>%s</td><td>%s</td><td><a href=\"/toggle?parameter=%s\">toggle</a></td></tr>\r\n",name,get_flag(flag),param_name);
 		}
 	}
 }
@@ -1517,7 +1521,7 @@ static void https_print_flag(struct str_buffer* sb, int flag, const char* name, 
 static void https_print_uint(struct str_buffer* sb, unsigned long value, const char* name, const char* param_name)
 {
 	if(sb && name) {
-		if(current_socket->as_realm[0])
+		if(!is_superuser())
 			param_name = 0;
 		if(!param_name) {
 			sbprintf(sb,"<tr><td>%s</td><td>%lu</td><td></td></tr>\r\n",name,value);
@@ -1530,7 +1534,7 @@ static void https_print_uint(struct str_buffer* sb, unsigned long value, const c
 static void https_print_str(struct str_buffer* sb, const char *value, const char* name, const char* param_name)
 {
 	if(sb && name && value) {
-		if(current_socket->as_realm[0])
+		if(!is_superuser())
 			param_name = 0;
 		const char *v = value;
 		if((value[0] == 0) && name[0])
@@ -1601,31 +1605,35 @@ static void https_print_ip_range_list(struct str_buffer* sb, ip_range_list_t *va
 
 static void toggle_param(const char* pn)
 {
-	if(pn) {
-		int i=0;
-		while(tcmds[i].cmd && tcmds[i].data) {
-			if(strcmp(tcmds[i].cmd,pn) == 0) {
-				*(tcmds[i].data) = !(*(tcmds[i].data));
-				return;
+	if(is_superuser()) {
+		if(pn) {
+			int i=0;
+			while(tcmds[i].cmd && tcmds[i].data) {
+				if(strcmp(tcmds[i].cmd,pn) == 0) {
+					*(tcmds[i].data) = !(*(tcmds[i].data));
+					return;
+				}
+				++i;
 			}
-			++i;
 		}
 	}
 }
 
 static void update_param(const char* pn, const char *value)
 {
-	if(pn) {
-		if(!value)
-			value = "0";
-		if(strstr(pn,"total-quota")==pn) {
-			turn_params.total_quota = atoi(value);
-		} else if(strstr(pn,"user-quota")==pn) {
-			turn_params.user_quota = atoi(value);
-		} else if(strstr(pn,"max-bps")==pn) {
-			set_max_bps((band_limit_t)atol(value));
-		} else if(strstr(pn,"bps-capacity")==pn) {
-			set_bps_capacity((band_limit_t)atol(value));
+	if(is_superuser()) {
+		if(pn) {
+			if(!value)
+				value = "0";
+			if(strstr(pn,"total-quota")==pn) {
+				turn_params.total_quota = atoi(value);
+			} else if(strstr(pn,"user-quota")==pn) {
+				turn_params.user_quota = atoi(value);
+			} else if(strstr(pn,"max-bps")==pn) {
+				set_max_bps((band_limit_t)atol(value));
+			} else if(strstr(pn,"bps-capacity")==pn) {
+				set_bps_capacity((band_limit_t)atol(value));
+			}
 		}
 	}
 }
@@ -1649,7 +1657,7 @@ static void write_pc_page(ioa_socket_handle s)
 			str_buffer_append(sb,"<br>\r\n");
 			str_buffer_append(sb,"Config Parameters:<br><table  style=\"width:100%\">\r\n");
 			str_buffer_append(sb,"<tr><th>Parameter</th><th>Current Value</th><th>");
-			if(!(current_socket->as_realm[0])) {
+			if(is_superuser()) {
 				str_buffer_append(sb,"New (ephemeral) Value");
 			}
 			str_buffer_append(sb,"</th></tr>\r\n");
@@ -1657,16 +1665,16 @@ static void write_pc_page(ioa_socket_handle s)
 			{
 				https_print_flag(sb,turn_params.verbose,"verbose",0);
 				https_print_flag(sb,turn_params.turn_daemon,"daemon process",0);
-				https_print_flag(sb,turn_params.stale_nonce,"stale-nonce",1);
-				https_print_flag(sb,turn_params.stun_only,"stun-only",1);
-				https_print_flag(sb,turn_params.no_stun,"no-stun",1);
-				https_print_flag(sb,turn_params.secure_stun,"secure-stun",1);
+				https_print_flag(sb,turn_params.stale_nonce,"stale-nonce","stale-nonce");
+				https_print_flag(sb,turn_params.stun_only,"stun-only","stun-only");
+				https_print_flag(sb,turn_params.no_stun,"no-stun","no-stun");
+				https_print_flag(sb,turn_params.secure_stun,"secure-stun","secure-stun");
 				https_print_flag(sb,turn_params.do_not_use_config_file,"do-not-use-config-file",0);
 				https_print_flag(sb,turn_params.rfc5780,"RFC5780 support",0);
 				https_print_uint(sb,(unsigned int)turn_params.net_engine_version,"net engine version",0);
 				https_print_str(sb,turn_params.net_engine_version_txt[(int)turn_params.net_engine_version],"net engine",0);
 				https_print_flag(sb,turn_params.fingerprint,"enforce fingerprints",0);
-				https_print_flag(sb,turn_params.mobility,"mobility",1);
+				https_print_flag(sb,turn_params.mobility,"mobility","mobility");
 				https_print_flag(sb,turn_params.udp_self_balance,"udp-self-balance",0);
 				https_print_str(sb,turn_params.pidfile,"pidfile",0);
 				https_print_uint(sb,(unsigned long)getuid(),"process user ID",0);
@@ -1748,8 +1756,8 @@ static void write_pc_page(ioa_socket_handle s)
 
 				https_print_flag(sb,turn_params.server_relay,"server-relay",0);
 
-				https_print_flag(sb,turn_params.no_udp_relay,"no-udp-relay",1);
-				https_print_flag(sb,turn_params.no_tcp_relay,"no-tcp-relay",1);
+				https_print_flag(sb,turn_params.no_udp_relay,"no-udp-relay","no-udp-relay");
+				https_print_flag(sb,turn_params.no_tcp_relay,"no-tcp-relay","no-tcp-relay");
 
 				https_print_uint(sb,(unsigned long)turn_params.min_port,"min-port",0);
 				https_print_uint(sb,(unsigned long)turn_params.max_port,"max-port",0);
@@ -1768,8 +1776,8 @@ static void write_pc_page(ioa_socket_handle s)
 					ip_list_free(l);
 				}
 
-				https_print_flag(sb,turn_params.no_multicast_peers,"no-multicast-peers",1);
-				https_print_flag(sb,turn_params.no_loopback_peers,"no-loopback-peers",1);
+				https_print_flag(sb,turn_params.no_multicast_peers,"no-multicast-peers","no-multicast-peers");
+				https_print_flag(sb,turn_params.no_loopback_peers,"no-loopback-peers","no-loopback-peers");
 
 				https_print_str(sb,"","",0);
 
@@ -1803,20 +1811,25 @@ static void write_pc_page(ioa_socket_handle s)
 					default:
 						https_print_str(sb,"unknown","DB type",0);
 					};
-					https_print_str(sb,turn_params.default_users_db.persistent_users_db.userdb,"DB",0);
+					if(is_superuser()) {
+						https_print_str(sb,turn_params.default_users_db.persistent_users_db.userdb,"DB",0);
+					}
 				} else {
 					https_print_str(sb,"none","DB type",0);
 					https_print_str(sb,"none","DB",0);
 				}
 
 #if !defined(TURN_NO_HIREDIS)
-				if(turn_params.use_redis_statsdb && turn_params.redis_statsdb[0])
-					https_print_str(sb,turn_params.redis_statsdb,"Redis Statistics DB",0);
+				if(is_superuser()) {
+					if(turn_params.use_redis_statsdb && turn_params.redis_statsdb[0]) {
+						https_print_str(sb,turn_params.redis_statsdb,"Redis Statistics DB",0);
+					}
+				}
 #endif
 
 				https_print_str(sb,"","",0);
 
-				{
+				if(is_superuser()) {
 					char * rn = get_realm(NULL)->options.name;
 					if(rn[0])
 						https_print_str(sb,rn,"Default realm",0);
@@ -1955,7 +1968,7 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 					const char *realm0 = get_http_header_value(hr, HR_REALM);
 					if(!realm0 || !realm0[0])
 						realm0=get_realm(NULL)->options.name;
-					if(current_socket->as_realm[0])
+					if(!is_superuser())
 						realm0 = current_socket->as_realm;
 					STRCPY(current_socket->as_eff_realm,realm0);
 					write_pc_page(s);
