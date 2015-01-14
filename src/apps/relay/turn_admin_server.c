@@ -1353,8 +1353,11 @@ int send_turn_session_info(struct turn_session_info* tsi)
 
 enum _AS_FORM {
 	AS_FORM_LOGON,
+	AS_FORM_LOGOUT,
 	AS_FORM_PC,
 	AS_FORM_HOME,
+	AS_FORM_TOGGLE,
+	AS_FORM_UPDATE,
 	AS_FORM_UNKNOWN
 };
 
@@ -1371,16 +1374,19 @@ struct form_name {
 
 static struct form_name form_names[] = {
 				{AS_FORM_LOGON,"/logon"},
+				{AS_FORM_LOGOUT,"/logout"},
 				{AS_FORM_PC,"/pc"},
 				{AS_FORM_HOME,"/home"},
+				{AS_FORM_TOGGLE,"/toggle"},
+				{AS_FORM_UPDATE,"/update"},
 				{AS_FORM_UNKNOWN,NULL}
 };
 
 static const char* admin_title = "TURN Server (https admin connection)";
-static const char* home_link = "<br><a href=\"/home\">home page</a><br>\r\n";
+static const char* home_link = "<br><a href=\"/home\">home page</a><br>\r\n<br><a href=\"/logout\">Logout</a><br><br>\r\n";
+static const char* logout_link = "<br><a href=\"/logout\">Logout</a><br><br>\r\n";
 
 static ioa_socket_handle current_socket = NULL;
-static char* current_realm = NULL;
 
 static AS_FORM get_form(const char* path) {
 	if(path) {
@@ -1404,7 +1410,7 @@ static void write_https_logon_page(ioa_socket_handle s)
 		str_buffer_append(sb,admin_title);
 		str_buffer_append(sb,"</title>\r\n  </head>\r\n  <body>\r\n    ");
 		str_buffer_append(sb,admin_title);
-		str_buffer_append(sb,"<br>\r\n");
+		str_buffer_append(sb,"<br><br>\r\n");
 		str_buffer_append(sb,"<form action=\"");
 		str_buffer_append(sb,form_names[AS_FORM_LOGON].name);
 		str_buffer_append(sb,"\" method=\"POST\">\r\n");
@@ -1448,6 +1454,7 @@ static void write_https_home_page(ioa_socket_handle s)
 			str_buffer_append(sb,"</title>\r\n  </head>\r\n  <body>\r\n    ");
 			str_buffer_append(sb,admin_title);
 			str_buffer_append(sb,"<br><br>\r\n");
+			str_buffer_append(sb,logout_link);
 
 			if(current_socket->as_realm[0]) {
 				str_buffer_append(sb,"<a href=\"");
@@ -1459,7 +1466,9 @@ static void write_https_home_page(ioa_socket_handle s)
 				str_buffer_append(sb,"\" method=\"POST\">\r\n");
 				str_buffer_append(sb,"  <fieldset><legend>Current realm:</legend>  name:<br><input type=\"text\" name=\"");
 				str_buffer_append(sb,HR_REALM);
-				str_buffer_append(sb,"\" value=\"\"><br>");
+				str_buffer_append(sb,"\" value=\"");
+				str_buffer_append(sb,current_socket->as_eff_realm);
+				str_buffer_append(sb,"\"><br>");
 				str_buffer_append(sb,"<br><input type=\"submit\" value=\"Config Parameters\"></fieldset>\r\n");
 				str_buffer_append(sb,"</form>\r\n");
 			}
@@ -1495,80 +1504,71 @@ static void sbprintf(struct str_buffer *sb, const char *format, ...)
 static void https_print_flag(struct str_buffer* sb, int flag, const char* name, int changeable)
 {
 	if(sb && name) {
-		const char *sc="";
-		if(changeable)
-			sc=" (*)";
-		sbprintf(sb,"<tr><td>%s</td><td>%s%s</td></tr>\r\n",name,get_flag(flag),sc);
-	}
-}
-
-static void https_print_uint(struct str_buffer* sb, unsigned long value, const char* name, int changeable)
-{
-	if(sb && name) {
-		const char *sc="";
-		if(changeable==1)
-			sc=" (*)";
-		else if(changeable==2)
-			sc=" (**)";
-		sbprintf(sb,"<tr><td>%s</td><td>%lu%s</td></tr>\r\n",name,value,sc);
-	}
-}
-
-static void https_print_str(struct str_buffer* sb, const char *value, const char* name, int changeable)
-{
-	if(sb && name && value) {
-		if((value[0] == 0) && name[0])
-			value="empty";
-		const char *sc="";
-		if(changeable==1)
-			sc=" (*)";
-		else if(changeable==2)
-			sc=" (**)";
-		sbprintf(sb,"<tr><td>%s</td><td>%s%s</td></tr>\r\n",name,value,sc);
-	}
-}
-
-static void https_print_str_array(struct str_buffer* sb, char **value, size_t sz, const char* name, int changeable)
-{
-	if(sb && name && value && sz) {
-		const char *sc="";
-		if(changeable==1)
-			sc=" (*)";
-		else if(changeable==2)
-			sc=" (**)";
-		size_t i;
-		for(i=0;i<sz;i++) {
-			if(value[i])
-				sbprintf(sb,"<tr><td>  %s</td><td> %s%s</td></tr>\r\n",name,value[i],sc);
+		if(current_socket->as_realm[0])
+			changeable = 0;
+		if(!changeable) {
+			sbprintf(sb,"<tr><td>%s</td><td>%s</td><td></td></tr>\r\n",name,get_flag(flag));
+		} else {
+			sbprintf(sb,"<tr><td>%s</td><td>%s</td><td><a href=\"/toggle?parameter=%s\">toggle</a></td></tr>\r\n",name,get_flag(flag),name);
 		}
 	}
 }
 
-static void https_print_addr(struct str_buffer* sb, ioa_addr *value, int use_port, const char* name, int changeable)
+static void https_print_uint(struct str_buffer* sb, unsigned long value, const char* name, const char* param_name)
+{
+	if(sb && name) {
+		if(current_socket->as_realm[0])
+			param_name = 0;
+		if(!param_name) {
+			sbprintf(sb,"<tr><td>%s</td><td>%lu</td><td></td></tr>\r\n",name,value);
+		} else {
+			sbprintf(sb,"<tr><td>%s</td><td>%lu</td><td> <form action=\"/update?parameter=%s\" method=\"POST\"><input type=\"text\" name=\"%s\" value=\"%lu\"><input type=\"submit\" value=\"Update\"></form> </td></tr>\r\n",name,value,param_name,param_name,value);
+		}
+	}
+}
+
+static void https_print_str(struct str_buffer* sb, const char *value, const char* name, const char* param_name)
 {
 	if(sb && name && value) {
-		const char *sc="";
-		if(changeable==1)
-			sc=" (*)";
-		else if(changeable==2)
-			sc=" (**)";
+		if(current_socket->as_realm[0])
+			param_name = 0;
+		const char *v = value;
+		if((value[0] == 0) && name[0])
+			v="empty";
+		if(!param_name) {
+			sbprintf(sb,"<tr><td>%s</td><td>%s</td><td></td></tr>\r\n",name,v);
+		} else {
+			sbprintf(sb,"<tr><td>%s</td><td>%s</td><td> <form action=\"/update?parameter=%s\" method=\"POST\"><input type=\"text\" name=\"%s\" value=\"%s\"><input type=\"submit\" value=\"Update\"></form> </td></tr>\r\n",name,v,param_name,param_name,value);
+		}
+	}
+}
+
+static void https_print_str_array(struct str_buffer* sb, char **value, size_t sz, const char* name)
+{
+	if(sb && name && value && sz) {
+		size_t i;
+		for(i=0;i<sz;i++) {
+			if(value[i])
+				sbprintf(sb,"<tr><td>  %s</td><td> %s</td><td></td></tr>\r\n",name,value[i]);
+		}
+	}
+}
+
+static void https_print_addr(struct str_buffer* sb, ioa_addr *value, int use_port, const char* name)
+{
+	if(sb && name && value) {
 		char s[256];
 		if(!use_port)
 			addr_to_string_no_port(value,(u08bits*)s);
 		else
 			addr_to_string(value,(u08bits*)s);
-		sbprintf(sb,"<tr><td>  %s</td><td> %s%s</td></tr>\r\n",name,s,sc);
+		sbprintf(sb,"<tr><td>  %s</td><td> %s</td><td></td></tr>\r\n",name,s);
 	}
 }
 
-static void https_print_addr_list(struct str_buffer* sb, turn_server_addrs_list_t *value, int use_port, const char* name, int changeable)
+static void https_print_addr_list(struct str_buffer* sb, turn_server_addrs_list_t *value, int use_port, const char* name)
 {
 	if(sb && name && value && value->size && value->addrs) {
-		const char *sc="";
-		if(changeable==1)
-			sc=" (*)";
-		else if(changeable==2)
-			sc=" (**)";
 		char s[256];
 		size_t i;
 		for(i=0;i<value->size;i++) {
@@ -1576,30 +1576,56 @@ static void https_print_addr_list(struct str_buffer* sb, turn_server_addrs_list_
 				addr_to_string_no_port(&(value->addrs[i]),(u08bits*)s);
 			else
 				addr_to_string(&(value->addrs[i]),(u08bits*)s);
-			sbprintf(sb,"</tr><td>  %s</td><td> %s%s</td></tr>\r\n",name,s,sc);
+			sbprintf(sb,"</tr><td>  %s</td><td> %s</td><td></td></tr>\r\n",name,s);
 		}
 	}
 }
 
-static void https_print_ip_range_list(struct str_buffer* sb, ip_range_list_t *value, const char* name, int changeable)
+static void https_print_ip_range_list(struct str_buffer* sb, ip_range_list_t *value, const char* name)
 {
 	if(sb && name && value && value->ranges_number && value->rs) {
-		const char *sc="";
-		if(changeable==1)
-			sc=" (*)";
-		else if(changeable==2)
-			sc=" (**)";
 		size_t i;
 		for(i=0;i<value->ranges_number;++i) {
 			if(value->rs[i].realm[0]) {
-				if(current_realm && current_realm[0] && strcmp(current_realm,value->rs[i].realm)) {
+				if(current_socket->as_eff_realm[0] && strcmp(current_socket->as_eff_realm,value->rs[i].realm)) {
 					continue;
 				} else {
-					sbprintf(sb,"<tr><td>  %s</td><td> %s (%s)%s</td></tr>\r\n",name,value->rs[i].str,value->rs[i].realm,sc);
+					sbprintf(sb,"<tr><td>  %s</td><td> %s (%s)</td><td></td></tr>\r\n",name,value->rs[i].str,value->rs[i].realm);
 				}
 			} else {
-				sbprintf(sb,"<tr><td>  %s</td><td> %s%s</td></tr>\r\n",name,value->rs[i].str,sc);
+				sbprintf(sb,"<tr><td>  %s</td><td> %s</td><td></td></tr>\r\n",name,value->rs[i].str);
 			}
+		}
+	}
+}
+
+static void toggle_param(const char* pn)
+{
+	if(pn) {
+		int i=0;
+		while(tcmds[i].cmd && tcmds[i].data) {
+			if(strcmp(tcmds[i].cmd,pn) == 0) {
+				*(tcmds[i].data) = !(*(tcmds[i].data));
+				return;
+			}
+			++i;
+		}
+	}
+}
+
+static void update_param(const char* pn, const char *value)
+{
+	if(pn) {
+		if(!value)
+			value = "0";
+		if(strstr(pn,"total-quota")==pn) {
+			turn_params.total_quota = atoi(value);
+		} else if(strstr(pn,"user-quota")==pn) {
+			turn_params.user_quota = atoi(value);
+		} else if(strstr(pn,"max-bps")==pn) {
+			set_max_bps((band_limit_t)atol(value));
+		} else if(strstr(pn,"bps-capacity")==pn) {
+			set_bps_capacity((band_limit_t)atol(value));
 		}
 	}
 }
@@ -1616,12 +1642,17 @@ static void write_pc_page(ioa_socket_handle s)
 
 			str_buffer_append(sb,"<!DOCTYPE html>\r\n<html>\r\n  <head>\r\n    <title>");
 			str_buffer_append(sb,admin_title);
-			str_buffer_append(sb,"</title>\r\n  </head>\r\n  <body>\r\n    ");
+			str_buffer_append(sb,"</title>\r\n <style> table, th, td { border: 1px solid black; } </style> </head>\r\n  <body>\r\n    ");
 			str_buffer_append(sb,admin_title);
 			str_buffer_append(sb,"<br>\r\n");
 			str_buffer_append(sb,home_link);
 			str_buffer_append(sb,"<br>\r\n");
-			str_buffer_append(sb,"Config Parameters:<br><table>\r\n");
+			str_buffer_append(sb,"Config Parameters:<br><table  style=\"width:100%\">\r\n");
+			str_buffer_append(sb,"<tr><th>Parameter</th><th>Current Value</th><th>");
+			if(!(current_socket->as_realm[0])) {
+				str_buffer_append(sb,"New (ephemeral) Value");
+			}
+			str_buffer_append(sb,"</th></tr>\r\n");
 
 			{
 				https_print_flag(sb,turn_params.verbose,"verbose",0);
@@ -1680,7 +1711,7 @@ static void write_pc_page(ioa_socket_handle s)
 
 				https_print_str(sb,"","",0);
 
-				https_print_str_array(sb,turn_params.listener.addrs,turn_params.listener.addrs_number,"Listener addr",0);
+				https_print_str_array(sb,turn_params.listener.addrs,turn_params.listener.addrs_number,"Listener addr");
 
 				if(turn_params.listener_ifname[0])
 					https_print_str(sb,turn_params.listener_ifname,"listener-ifname",0);
@@ -1700,17 +1731,17 @@ static void write_pc_page(ioa_socket_handle s)
 				https_print_uint(sb,(unsigned long)turn_params.alt_listener_port,"alt-listener-port",0);
 				https_print_uint(sb,(unsigned long)turn_params.alt_tls_listener_port,"alt-tls-listener-port",0);
 
-				https_print_addr(sb,turn_params.external_ip,0,"External public IP",0);
+				https_print_addr(sb,turn_params.external_ip,0,"External public IP");
 
 				https_print_str(sb,"","",0);
 
-				https_print_addr_list(sb,&turn_params.aux_servers_list,1,"Aux server",0);
-				https_print_addr_list(sb,&turn_params.alternate_servers_list,1,"Alternate server",0);
-				https_print_addr_list(sb,&turn_params.tls_alternate_servers_list,1,"TLS alternate server",0);
+				https_print_addr_list(sb,&turn_params.aux_servers_list,1,"Aux server");
+				https_print_addr_list(sb,&turn_params.alternate_servers_list,1,"Alternate server");
+				https_print_addr_list(sb,&turn_params.tls_alternate_servers_list,1,"TLS alternate server");
 
 				https_print_str(sb,"","",0);
 
-				https_print_str_array(sb,turn_params.relay_addrs,turn_params.relays_number,"Relay addr",0);
+				https_print_str_array(sb,turn_params.relay_addrs,turn_params.relays_number,"Relay addr");
 
 				if(turn_params.relay_ifname[0])
 					https_print_str(sb,turn_params.relay_ifname,"relay-ifname",0);
@@ -1723,17 +1754,17 @@ static void write_pc_page(ioa_socket_handle s)
 				https_print_uint(sb,(unsigned long)turn_params.min_port,"min-port",0);
 				https_print_uint(sb,(unsigned long)turn_params.max_port,"max-port",0);
 
-				https_print_ip_range_list(sb,&turn_params.ip_whitelist,"Whitelist IP (static)",0);
+				https_print_ip_range_list(sb,&turn_params.ip_whitelist,"Whitelist IP (static)");
 				{
 					ip_range_list_t* l = get_ip_list("allowed");
-					https_print_ip_range_list(sb,l,"Whitelist IP (dynamic)",0);
+					https_print_ip_range_list(sb,l,"Whitelist IP (dynamic)");
 					ip_list_free(l);
 				}
 
-				https_print_ip_range_list(sb,&turn_params.ip_blacklist,"Blacklist IP (static)",0);
+				https_print_ip_range_list(sb,&turn_params.ip_blacklist,"Blacklist IP (static)");
 				{
 					ip_range_list_t* l = get_ip_list("denied");
-					https_print_ip_range_list(sb,l,"Blacklist IP (dynamic)",0);
+					https_print_ip_range_list(sb,l,"Blacklist IP (dynamic)");
 					ip_list_free(l);
 				}
 
@@ -1801,11 +1832,11 @@ static void write_pc_page(ioa_socket_handle s)
 
 				https_print_str(sb,"","",0);
 
-				realm_params_t *rp = get_realm(current_realm);
+				realm_params_t *rp = get_realm(current_socket->as_eff_realm);
 				if(!rp) rp = get_realm(NULL);
 
-				if(current_realm)
-					https_print_str(sb,current_realm,"current realm",0);
+				if(current_socket->as_eff_realm[0])
+					https_print_str(sb,current_socket->as_eff_realm,"current realm",0);
 
 				https_print_uint(sb,(unsigned long)rp->options.perf_options.total_quota,"current realm total-quota",0);
 				https_print_uint(sb,(unsigned long)rp->options.perf_options.user_quota,"current realm user-quota",0);
@@ -1817,11 +1848,11 @@ static void write_pc_page(ioa_socket_handle s)
 
 				https_print_str(sb,"","",0);
 
-				https_print_uint(sb,(unsigned long)turn_params.total_quota,"Default total-quota",2);
-				https_print_uint(sb,(unsigned long)turn_params.user_quota,"Default user-quota",2);
-				https_print_uint(sb,(unsigned long)get_bps_capacity(),"Total server bps-capacity",2);
+				https_print_uint(sb,(unsigned long)turn_params.total_quota,"Default total-quota","total-quota");
+				https_print_uint(sb,(unsigned long)turn_params.user_quota,"Default user-quota","user-quota");
+				https_print_uint(sb,(unsigned long)get_bps_capacity(),"Total server bps-capacity","bps-capacity");
 				https_print_uint(sb,(unsigned long)get_bps_capacity_allocated(),"Allocated bps-capacity",0);
-				https_print_uint(sb,(unsigned long)get_max_bps(),"Default max-bps",2);
+				https_print_uint(sb,(unsigned long)get_max_bps(),"Default max-bps","max-bps");
 			}
 
 			str_buffer_append(sb,"\r\n</table>  </body>\r\n</html>\r\n");
@@ -1836,6 +1867,24 @@ static void write_pc_page(ioa_socket_handle s)
 			send_str_from_ioa_socket_tcp(s,str_buffer_get_str(sb));
 
 			str_buffer_free(sb);
+		}
+	}
+}
+
+static void handle_toggle_request(ioa_socket_handle s, struct http_request* hr)
+{
+	if(s && hr) {
+		const char *param = get_http_header_value(hr, "parameter");
+		toggle_param(param);
+	}
+}
+
+static void handle_update_request(ioa_socket_handle s, struct http_request* hr)
+{
+	if(s && hr) {
+		const char *param = get_http_header_value(hr, "parameter");
+		if(param) {
+			update_param(param,get_http_header_value(hr,param));
 		}
 	}
 }
@@ -1856,6 +1905,7 @@ static void handle_logon_request(ioa_socket_handle s, struct http_request* hr)
 					if(!strcmp(pwd,(char*)password)) {
 						STRCPY(s->as_login,uname);
 						STRCPY(s->as_realm,realm);
+						STRCPY(s->as_eff_realm,realm);
 						s->as_ok = 1;
 					}
 				}
@@ -1864,10 +1914,20 @@ static void handle_logon_request(ioa_socket_handle s, struct http_request* hr)
 	}
 }
 
+static void handle_logout_request(ioa_socket_handle s, struct http_request* hr)
+{
+	UNUSED_ARG(hr);
+	if(s) {
+		s->as_login[0] = 0;
+		s->as_ok = 0;
+		s->as_realm[0] = 0;
+		s->as_eff_realm[0] = 0;
+	}
+}
+
 static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 {
 	current_socket = s;
-	current_realm = s->as_realm;
 
 	if(turn_params.verbose) {
 		if(nbh) {
@@ -1891,35 +1951,59 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 
 			switch(form) {
 			case AS_FORM_PC: {
-				const char *realm0 = get_http_header_value(hr, HR_REALM);
-				if(!realm0 || !realm0[0])
-					realm0=get_realm(NULL)->options.name;
-				if(current_socket->as_realm[0])
-					realm0 = current_socket->as_realm;
-				char realm[STUN_MAX_REALM_SIZE + 1];
-				STRCPY(realm,realm0);
-				current_realm = realm;
-				write_pc_page(s);
-				current_realm = s->as_realm;
-				break;
-			}
-			case AS_FORM_LOGON:
-				if(!(s->as_ok)) {
-					handle_logon_request(s,hr);
-				}
-			default:
 				if(s->as_ok) {
-					write_https_home_page(s);
+					const char *realm0 = get_http_header_value(hr, HR_REALM);
+					if(!realm0 || !realm0[0])
+						realm0=get_realm(NULL)->options.name;
+					if(current_socket->as_realm[0])
+						realm0 = current_socket->as_realm;
+					STRCPY(current_socket->as_eff_realm,realm0);
+					write_pc_page(s);
 				} else {
 					write_https_logon_page(s);
 				}
+				break;
+			}
+			case AS_FORM_TOGGLE:
+				if(s->as_ok) {
+					handle_toggle_request(s,hr);
+					write_pc_page(s);
+				} else {
+					write_https_logon_page(s);
+				}
+				break;
+			case AS_FORM_UPDATE:
+				if(s->as_ok) {
+					handle_update_request(s,hr);
+					write_pc_page(s);
+				} else {
+					write_https_logon_page(s);
+				}
+				break;
+			case AS_FORM_LOGON:
+				if(!(s->as_ok)) {
+					handle_logon_request(s,hr);
+					if(s->as_ok) {
+						write_https_home_page(s);
+					} else {
+						write_https_logon_page(s);
+					}
+				} else {
+					write_https_home_page(s);
+				}
+				break;
+			case AS_FORM_LOGOUT:
+				handle_logout_request(s,hr);
+				write_https_logon_page(s);
+				break;
+			default:
+				write_https_home_page(s);
 			};
 			free_http_request(hr);
 		}
 	}
 
 	current_socket = NULL;
-	current_realm = NULL;
 }
 
 static void https_input_handler(ioa_socket_handle s, int event_type, ioa_net_data *data, void *arg, int can_resume) {
