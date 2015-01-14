@@ -229,6 +229,7 @@ struct _ioa_socket
 	int as_ok;
 	char as_login[ADMIN_USER_MAX_LENGTH + 1];
 	char as_realm[STUN_MAX_REALM_SIZE + 1];
+	char as_eff_realm[STUN_MAX_REALM_SIZE + 1];
 };
 
 typedef struct _timer_event
