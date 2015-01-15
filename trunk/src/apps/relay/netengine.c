@@ -742,7 +742,10 @@ static int handle_relay_message(relay_server_handle rs, struct message_to_relay 
 				sm->m.sm.s = NULL;
 			} else {
 				s->e = rs->ioa_eng;
-				open_client_connection_session(&(rs->server), &(sm->m.sm));
+				if(open_client_connection_session(&(rs->server), &(sm->m.sm))<0) {
+					IOA_CLOSE_SOCKET(s);
+					sm->m.sm.s = NULL;
+				}
 			}
 
 			ioa_network_buffer_delete(rs->ioa_eng, sm->m.sm.nd.nbh);
@@ -780,7 +783,10 @@ static int handle_relay_message(relay_server_handle rs, struct message_to_relay 
 				sm->m.sm.s = NULL;
 			} else {
 				s->e = rs->ioa_eng;
-				open_client_connection_session(&(rs->server), &(sm->m.sm));
+				if(open_client_connection_session(&(rs->server), &(sm->m.sm))<0) {
+					IOA_CLOSE_SOCKET(s);
+					sm->m.sm.s = NULL;
+				}
 			}
 
 			ioa_network_buffer_delete(rs->ioa_eng, sm->m.sm.nd.nbh);

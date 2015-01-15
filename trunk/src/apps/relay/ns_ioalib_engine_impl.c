@@ -1633,6 +1633,7 @@ void detach_socket_net_data(ioa_socket_handle s)
 void close_ioa_socket(ioa_socket_handle s)
 {
 	if (s) {
+
 		if(s->magic != SOCKET_MAGIC) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s wrong magic on socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(long)s, s->st, s->sat);
 			return;
@@ -2401,11 +2402,11 @@ static int socket_input_worker(ioa_socket_handle s)
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s on socket: 0x%lx, st=%d, sat=%d: bev already exist\n", __FUNCTION__,(long)s, s->st, s->sat);
 			}
 			s->bev = bufferevent_socket_new(s->e->event_base,
-							s->fd,
-							TURN_BUFFEREVENTS_OPTIONS);
+						s->fd,
+						TURN_BUFFEREVENTS_OPTIONS);
 			debug_ptr_add(s->bev);
 			bufferevent_setcb(s->bev, socket_input_handler_bev, socket_output_handler_bev,
-					eventcb_bev, s);
+				eventcb_bev, s);
 			bufferevent_setwatermark(s->bev, EV_READ|EV_WRITE, 0, BUFFEREVENT_HIGH_WATERMARK);
 			bufferevent_enable(s->bev, EV_READ|EV_WRITE); /* Start reading. */
 		}
@@ -3298,14 +3299,19 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 							return -1;
 						}
 					} else {
-						s->bev = bufferevent_socket_new(s->e->event_base,
+						if(check_tentative_tls(s->fd)) {
+							s->tobeclosed = 1;
+							return -1;
+						} else {
+							s->bev = bufferevent_socket_new(s->e->event_base,
 										s->fd,
 										TURN_BUFFEREVENTS_OPTIONS);
-						debug_ptr_add(s->bev);
-						bufferevent_setcb(s->bev, socket_input_handler_bev, socket_output_handler_bev,
-							eventcb_bev, s);
-						bufferevent_setwatermark(s->bev, EV_READ|EV_WRITE, 0, BUFFEREVENT_HIGH_WATERMARK);
-						bufferevent_enable(s->bev, EV_READ|EV_WRITE); /* Start reading. */
+							debug_ptr_add(s->bev);
+							bufferevent_setcb(s->bev, socket_input_handler_bev, socket_output_handler_bev,
+											eventcb_bev, s);
+							bufferevent_setwatermark(s->bev, EV_READ|EV_WRITE, 0, BUFFEREVENT_HIGH_WATERMARK);
+							bufferevent_enable(s->bev, EV_READ|EV_WRITE); /* Start reading. */
+						}
 					}
 					break;
 				case TLS_SOCKET:

@@ -459,7 +459,9 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server,
 			}
 			s->e = ioa_eng;
 			add_socket_to_map(s, amap);
-			open_client_connection_session(ts, &(sm->m.sm));
+			if(open_client_connection_session(ts, &(sm->m.sm))<0) {
+				return -1;
+			}
 		}
 	}
 
