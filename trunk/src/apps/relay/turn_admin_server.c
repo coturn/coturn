@@ -1358,6 +1358,7 @@ enum _AS_FORM {
 	AS_FORM_HOME,
 	AS_FORM_TOGGLE,
 	AS_FORM_UPDATE,
+	AS_FORM_PS,
 	AS_FORM_UNKNOWN
 };
 
@@ -1379,6 +1380,7 @@ static struct form_name form_names[] = {
 				{AS_FORM_HOME,"/home"},
 				{AS_FORM_TOGGLE,"/toggle"},
 				{AS_FORM_UPDATE,"/update"},
+				{AS_FORM_PS,"/ps"},
 				{AS_FORM_UNKNOWN,NULL}
 };
 
@@ -1460,22 +1462,31 @@ static void write_https_home_page(ioa_socket_handle s)
 			str_buffer_append(sb,"<br><br>\r\n");
 			str_buffer_append(sb,logout_link);
 
+			str_buffer_append(sb,"<form action=\"");
+			str_buffer_append(sb,form_names[AS_FORM_HOME].name);
+			str_buffer_append(sb,"\" method=\"POST\">\r\n");
+			str_buffer_append(sb,"  <fieldset><legend>Actions:</legend>\r\n");
+
+			str_buffer_append(sb,"  Realm name: <input type=\"text\" name=\"");
+			str_buffer_append(sb,HR_REALM);
+			str_buffer_append(sb,"\" value=\"");
+			str_buffer_append(sb,current_socket->as_eff_realm);
+			str_buffer_append(sb,"\"");
 			if(!is_superuser()) {
-				str_buffer_append(sb,"<a href=\"");
-				str_buffer_append(sb,form_names[AS_FORM_PC].name);
-				str_buffer_append(sb,"\">Config Parameters</a><br>\r\n");
-			} else {
-				str_buffer_append(sb,"<form action=\"");
-				str_buffer_append(sb,form_names[AS_FORM_PC].name);
-				str_buffer_append(sb,"\" method=\"POST\">\r\n");
-				str_buffer_append(sb,"  <fieldset><legend>Current realm:</legend>  name:<br><input type=\"text\" name=\"");
-				str_buffer_append(sb,HR_REALM);
-				str_buffer_append(sb,"\" value=\"");
-				str_buffer_append(sb,current_socket->as_eff_realm);
-				str_buffer_append(sb,"\"><br>");
-				str_buffer_append(sb,"<br><input type=\"submit\" value=\"Config Parameters\"></fieldset>\r\n");
-				str_buffer_append(sb,"</form>\r\n");
+				str_buffer_append(sb," disabled ");
 			}
+			str_buffer_append(sb,"><br>");
+
+			str_buffer_append(sb,"<br><input type=\"submit\" value=\"Configuration Parameters\" formaction=\"");
+			str_buffer_append(sb,form_names[AS_FORM_PC].name);
+			str_buffer_append(sb,"\">");
+
+			str_buffer_append(sb,"<br><input type=\"submit\" value=\"TURN sessions\" formaction=\"");
+			str_buffer_append(sb,form_names[AS_FORM_PS].name);
+			str_buffer_append(sb,"\">");
+
+			str_buffer_append(sb,"</fieldset>\r\n");
+			str_buffer_append(sb,"</form>\r\n");
 
 			str_buffer_append(sb,"\r\n  </body>\r\n</html>\r\n");
 
@@ -1655,7 +1666,7 @@ static void write_pc_page(ioa_socket_handle s)
 			str_buffer_append(sb,"<br>\r\n");
 			str_buffer_append(sb,home_link);
 			str_buffer_append(sb,"<br>\r\n");
-			str_buffer_append(sb,"Config Parameters:<br><table  style=\"width:100%\">\r\n");
+			str_buffer_append(sb,"Configuration Parameters:<br><table  style=\"width:100%\">\r\n");
 			str_buffer_append(sb,"<tr><th>Parameter</th><th>Current Value</th><th>");
 			if(is_superuser()) {
 				str_buffer_append(sb,"New (ephemeral) Value");
@@ -1884,6 +1895,165 @@ static void write_pc_page(ioa_socket_handle s)
 	}
 }
 
+struct https_ps_arg {
+	struct str_buffer* sb;
+	size_t counter;
+	turn_time_t ct;
+};
+
+static int https_print_session(ur_map_key_type key, ur_map_value_type value, void *arg)
+{
+	if(key && value && arg) {
+		struct https_ps_arg *csarg = (struct https_ps_arg*)arg;
+		struct str_buffer* sb = csarg->sb;
+		struct turn_session_info *tsi = (struct turn_session_info *)value;
+
+		if(current_socket->as_eff_realm[0] && strcmp(current_socket->as_eff_realm,tsi->realm))
+			return 0;
+
+		if((unsigned long)csarg->counter<(unsigned long)cli_max_output_sessions) {
+			str_buffer_append(sb,"<tr><td>");
+			str_buffer_append_sz(sb,(size_t)(csarg->counter+1));
+			str_buffer_append(sb,"</td><td>");
+			str_buffer_append_sid(sb,tsi->id);
+			str_buffer_append(sb,"</td><td>");
+			str_buffer_append(sb,(char*)tsi->username);
+			str_buffer_append(sb,"</td><td>");
+			str_buffer_append(sb,tsi->realm);
+			str_buffer_append(sb,"</td><td>");
+			str_buffer_append(sb,tsi->origin);
+			str_buffer_append(sb,"</td><td>");
+			if(turn_time_before(csarg->ct, tsi->start_time)) {
+				str_buffer_append(sb,"undefined time\n");
+			} else {
+				str_buffer_append_sz(sb,(size_t)(csarg->ct - tsi->start_time));
+			}
+			str_buffer_append(sb,"</td><td>");
+			if(turn_time_before(tsi->expiration_time,csarg->ct)) {
+				str_buffer_append(sb,"expired");
+			} else {
+				str_buffer_append_sz(sb,(size_t)(tsi->expiration_time - csarg->ct));
+			}
+			str_buffer_append(sb,"</td><td>");
+			str_buffer_append(sb,pname(tsi->client_protocol));
+			str_buffer_append(sb,"</td><td>");
+			str_buffer_append(sb,pname(tsi->peer_protocol));
+			str_buffer_append(sb,"</td><td>");
+			{
+				if(!tsi->local_addr_data.saddr[0])
+					addr_to_string(&(tsi->local_addr_data.addr),(u08bits*)tsi->local_addr_data.saddr);
+				if(!tsi->remote_addr_data.saddr[0])
+					addr_to_string(&(tsi->remote_addr_data.addr),(u08bits*)tsi->remote_addr_data.saddr);
+				if(!tsi->relay_addr_data_ipv4.saddr[0])
+					addr_to_string(&(tsi->relay_addr_data_ipv4.addr),(u08bits*)tsi->relay_addr_data_ipv4.saddr);
+				if(!tsi->relay_addr_data_ipv6.saddr[0])
+					addr_to_string(&(tsi->relay_addr_data_ipv6.addr),(u08bits*)tsi->relay_addr_data_ipv6.saddr);
+				str_buffer_append(sb,tsi->remote_addr_data.saddr);
+				str_buffer_append(sb,"</td><td>");
+				str_buffer_append(sb,tsi->local_addr_data.saddr);
+				str_buffer_append(sb,"</td><td>");
+				str_buffer_append(sb,tsi->relay_addr_data_ipv4.saddr);
+				str_buffer_append(sb,"</td><td>");
+				str_buffer_append(sb,tsi->relay_addr_data_ipv6.saddr);
+				str_buffer_append(sb,"</td><td>");
+				str_buffer_append(sb,get_flag(tsi->enforce_fingerprints));
+				str_buffer_append(sb,"</td><td>");
+				str_buffer_append(sb,get_flag(tsi->is_mobile));
+				str_buffer_append(sb,"</td><td>");
+				str_buffer_append(sb,tsi->tls_method);
+				str_buffer_append(sb,"</td><td>");
+				str_buffer_append(sb,tsi->tls_cipher);
+				str_buffer_append(sb,"</td><td>");
+				str_buffer_append_sz(sb,(size_t)tsi->bps);
+				str_buffer_append(sb,"</td><td>");
+				{
+					char str[1025];
+					snprintf(str,sizeof(str)-1,"rp=%lu, rb=%lu, sp=%lu, sb=%lu\n",(unsigned long)(tsi->received_packets), (unsigned long)(tsi->received_bytes),(unsigned long)(tsi->sent_packets),(unsigned long)(tsi->sent_bytes));
+					str_buffer_append(sb,str);
+					str_buffer_append(sb,"</td><td>");
+				}
+				{
+					char str[1025];
+					snprintf(str,sizeof(str)-1,"r=%lu, s=%lu, total=%lu (bytes per sec)\n",(unsigned long)(tsi->received_rate), (unsigned long)(tsi->sent_rate),(unsigned long)(tsi->total_rate));
+					str_buffer_append(sb,str);
+					str_buffer_append(sb,"</td><td>");
+				}
+
+				if(tsi->main_peers_size) {
+					size_t i;
+					for(i=0;i<tsi->main_peers_size;++i) {
+						if(!(tsi->main_peers_data[i].saddr[0]))
+							addr_to_string(&(tsi->main_peers_data[i].addr),(u08bits*)tsi->main_peers_data[i].saddr);
+						str_buffer_append(sb," ");
+						str_buffer_append(sb,tsi->main_peers_data[i].saddr);
+						str_buffer_append(sb," ");
+					}
+					if(tsi->extra_peers_size && tsi->extra_peers_data) {
+						for(i=0;i<tsi->extra_peers_size;++i) {
+							if(!(tsi->extra_peers_data[i].saddr[0]))
+								addr_to_string(&(tsi->extra_peers_data[i].addr),(u08bits*)tsi->extra_peers_data[i].saddr);
+							str_buffer_append(sb," ");
+							str_buffer_append(sb,tsi->extra_peers_data[i].saddr);
+							str_buffer_append(sb," ");
+						}
+					}
+				}
+				str_buffer_append(sb,"</td>");
+			}
+		}
+
+		csarg->counter += 1;
+	}
+	return 0;
+}
+
+static void https_print_sessions(struct str_buffer* sb)
+{
+	struct https_ps_arg arg = {sb,0,0};
+
+	arg.ct = turn_time();
+
+	ur_map_foreach_arg(cliserver.sessions, (foreachcb_arg_type)https_print_session, &arg);
+}
+
+static void write_ps_page(ioa_socket_handle s)
+{
+	if(s && !ioa_socket_tobeclosed(s)) {
+
+		if(!(s->as_ok)) {
+			write_https_logon_page(s);
+		} else {
+
+			struct str_buffer* sb = str_buffer_new();
+
+			str_buffer_append(sb,"<!DOCTYPE html>\r\n<html>\r\n  <head>\r\n    <title>");
+			str_buffer_append(sb,admin_title);
+			str_buffer_append(sb,"</title>\r\n <style> table, th, td { border: 1px solid black; } </style> </head>\r\n  <body>\r\n    ");
+			str_buffer_append(sb,admin_title);
+			str_buffer_append(sb,"<br>\r\n");
+			str_buffer_append(sb,home_link);
+			str_buffer_append(sb,"<br>\r\n");
+			str_buffer_append(sb,"TURN Sessions:<br><table>\r\n");
+			str_buffer_append(sb,"<tr><th>N</th><th>Session ID</th><th>User</th><th>Realm</th><th>Origin</th><th>Age, secs</th><th>Expires, secs</th><th>Client protocol</th><th>Relay protocol</th><th>Client addr</th><th>Server addr</th><th>Relay addr (IPv4)</th><th>Relay addr (IPv6)</th><th>Fingerprints</th><th>Mobile</th><th>TLS method</th><th>TLS cipher</th><th>BPS (allocated)</th><th>Packets</th><th>Rate</th><th>Peers</th></tr>\r\n");
+
+			https_print_sessions(sb);
+
+			str_buffer_append(sb,"\r\n</table>  </body>\r\n</html>\r\n");
+
+			send_str_from_ioa_socket_tcp(s,"HTTP/1.1 200 OK\r\nServer: ");
+			send_str_from_ioa_socket_tcp(s,TURN_SOFTWARE);
+			send_str_from_ioa_socket_tcp(s,"\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Length: ");
+
+			send_ulong_from_ioa_socket_tcp(s,str_buffer_get_str_len(sb));
+
+			send_str_from_ioa_socket_tcp(s,"\r\n\r\n");
+			send_str_from_ioa_socket_tcp(s,str_buffer_get_str(sb));
+
+			str_buffer_free(sb);
+		}
+	}
+}
+
 static void handle_toggle_request(ioa_socket_handle s, struct http_request* hr)
 {
 	if(s && hr) {
@@ -1972,6 +2142,20 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 						realm0 = current_socket->as_realm;
 					STRCPY(current_socket->as_eff_realm,realm0);
 					write_pc_page(s);
+				} else {
+					write_https_logon_page(s);
+				}
+				break;
+			}
+			case AS_FORM_PS: {
+				if(s->as_ok) {
+					const char *realm0 = get_http_header_value(hr, HR_REALM);
+					if(!realm0 || !realm0[0])
+						realm0=get_realm(NULL)->options.name;
+					if(!is_superuser())
+						realm0 = current_socket->as_realm;
+					STRCPY(current_socket->as_eff_realm,realm0);
+					write_ps_page(s);
 				} else {
 					write_https_logon_page(s);
 				}

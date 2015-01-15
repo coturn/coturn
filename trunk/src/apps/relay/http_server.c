@@ -312,6 +312,13 @@ void str_buffer_append_sz(struct str_buffer* sb, size_t sz)
 	str_buffer_append(sb,ssz);
 }
 
+void str_buffer_append_sid(struct str_buffer* sb, turnsession_id sid)
+{
+	char ssz[129];
+	snprintf(ssz,sizeof(ssz)-1,"%018llu",(unsigned long long)sid);
+	str_buffer_append(sb,ssz);
+}
+
 const char* str_buffer_get_str(const struct str_buffer *sb)
 {
 	if(sb) {
