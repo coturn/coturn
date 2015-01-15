@@ -4320,8 +4320,9 @@ static int create_relay_connection(turn_turnserver* server,
 			set_do_not_use_df(newelem->s);
 
 		if(get_ioa_socket_type(newelem->s) != TCP_SOCKET) {
-			register_callback_on_ioa_socket(server->e, newelem->s, IOA_EV_READ,
-				peer_input_handler, ss, 0);
+			if(register_callback_on_ioa_socket(server->e, newelem->s, IOA_EV_READ,peer_input_handler, ss, 0)<0) {
+				return -1;
+			}
 		}
 
 		if (lifetime<1)
@@ -4555,8 +4556,10 @@ static int attach_socket_to_session(turn_turnserver* server, ioa_socket_handle s
 
 			ss->client_socket = s;
 
-			register_callback_on_ioa_socket(server->e, s, IOA_EV_READ,
-					client_input_handler, ss, 0);
+			if(register_callback_on_ioa_socket(server->e, s, IOA_EV_READ,
+					client_input_handler, ss, 0)<0) {
+				return -1;
+			}
 
 			set_ioa_socket_session(s, ss);
 		}
@@ -4582,8 +4585,10 @@ int open_client_connection_session(turn_turnserver* server,
 
 	ss->client_socket = sm->s;
 
-	register_callback_on_ioa_socket(server->e, ss->client_socket, IOA_EV_READ,
-			client_input_handler, ss, 0);
+	if(register_callback_on_ioa_socket(server->e, ss->client_socket, IOA_EV_READ,
+			client_input_handler, ss, 0)<0) {
+		return -1;
+	}
 
 	set_ioa_socket_session(ss->client_socket, ss);
 
