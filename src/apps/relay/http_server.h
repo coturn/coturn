@@ -73,6 +73,7 @@ struct str_buffer;
 struct str_buffer* str_buffer_new(void);
 void str_buffer_append(struct str_buffer* sb, const char* str);
 void str_buffer_append_sz(struct str_buffer* sb, size_t sz);
+void str_buffer_append_sid(struct str_buffer* sb, turnsession_id sid);
 const char* str_buffer_get_str(const struct str_buffer *sb);
 size_t str_buffer_get_str_len(const struct str_buffer *sb);
 void str_buffer_free(struct str_buffer *sb);
