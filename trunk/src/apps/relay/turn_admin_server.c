@@ -1394,6 +1394,12 @@ static int is_superuser(void) {
 	return !(current_socket->as_realm[0]);
 }
 
+static char* get_eff_realm(void) {
+	if(current_socket->as_realm[0])
+		return current_socket->as_realm;
+	return current_socket->as_eff_realm;
+}
+
 static AS_FORM get_form(const char* path) {
 	if(path) {
 		size_t i = 0;
@@ -1470,7 +1476,7 @@ static void write_https_home_page(ioa_socket_handle s)
 			str_buffer_append(sb,"  Realm name: <input type=\"text\" name=\"");
 			str_buffer_append(sb,HR_REALM);
 			str_buffer_append(sb,"\" value=\"");
-			str_buffer_append(sb,current_socket->as_eff_realm);
+			str_buffer_append(sb,get_eff_realm());
 			str_buffer_append(sb,"\"");
 			if(!is_superuser()) {
 				str_buffer_append(sb," disabled ");
@@ -1602,7 +1608,7 @@ static void https_print_ip_range_list(struct str_buffer* sb, ip_range_list_t *va
 		size_t i;
 		for(i=0;i<value->ranges_number;++i) {
 			if(value->rs[i].realm[0]) {
-				if(current_socket->as_eff_realm[0] && strcmp(current_socket->as_eff_realm,value->rs[i].realm)) {
+				if(get_eff_realm()[0] && strcmp(get_eff_realm(),value->rs[i].realm)) {
 					continue;
 				} else {
 					sbprintf(sb,"<tr><td>  %s</td><td> %s (%s)</td><td></td></tr>\r\n",name,value->rs[i].str,value->rs[i].realm);
@@ -1856,11 +1862,11 @@ static void write_pc_page(ioa_socket_handle s)
 
 				https_print_str(sb,"","",0);
 
-				realm_params_t *rp = get_realm(current_socket->as_eff_realm);
+				realm_params_t *rp = get_realm(get_eff_realm());
 				if(!rp) rp = get_realm(NULL);
 
-				if(current_socket->as_eff_realm[0])
-					https_print_str(sb,current_socket->as_eff_realm,"current realm",0);
+				if(get_eff_realm()[0])
+					https_print_str(sb,get_eff_realm(),"current realm",0);
 
 				https_print_uint(sb,(unsigned long)rp->options.perf_options.total_quota,"current realm total-quota",0);
 				https_print_uint(sb,(unsigned long)rp->options.perf_options.user_quota,"current realm user-quota",0);
@@ -1908,7 +1914,7 @@ static int https_print_session(ur_map_key_type key, ur_map_value_type value, voi
 		struct str_buffer* sb = csarg->sb;
 		struct turn_session_info *tsi = (struct turn_session_info *)value;
 
-		if(current_socket->as_eff_realm[0] && strcmp(current_socket->as_eff_realm,tsi->realm))
+		if(get_eff_realm()[0] && strcmp(get_eff_realm(),tsi->realm))
 			return 0;
 
 		if((unsigned long)csarg->counter<(unsigned long)cli_max_output_sessions) {
@@ -2088,7 +2094,7 @@ static void handle_logon_request(ioa_socket_handle s, struct http_request* hr)
 					if(!strcmp(pwd,(char*)password)) {
 						STRCPY(s->as_login,uname);
 						STRCPY(s->as_realm,realm);
-						STRCPY(s->as_eff_realm,realm);
+						s->as_eff_realm[0]=0;
 						s->as_ok = 1;
 					}
 				}
@@ -2136,8 +2142,8 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 			case AS_FORM_PC: {
 				if(s->as_ok) {
 					const char *realm0 = get_http_header_value(hr, HR_REALM);
-					if(!realm0 || !realm0[0])
-						realm0=get_realm(NULL)->options.name;
+					if(!realm0)
+						realm0="";
 					if(!is_superuser())
 						realm0 = current_socket->as_realm;
 					STRCPY(current_socket->as_eff_realm,realm0);
@@ -2150,8 +2156,8 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 			case AS_FORM_PS: {
 				if(s->as_ok) {
 					const char *realm0 = get_http_header_value(hr, HR_REALM);
-					if(!realm0 || !realm0[0])
-						realm0=get_realm(NULL)->options.name;
+					if(!realm0)
+						realm0="";
 					if(!is_superuser())
 						realm0 = current_socket->as_realm;
 					STRCPY(current_socket->as_eff_realm,realm0);
