@@ -1370,6 +1370,7 @@ typedef enum _AS_FORM AS_FORM;
 #define HR_CLIENT_PROTOCOL "cprotocol"
 #define HR_USER_PATTERN "puser"
 #define HR_MAX_SESSIONS "maxsess"
+#define HR_CANCEL_SESSION "cs"
 
 struct form_name {
 	AS_FORM form;
@@ -1396,6 +1397,16 @@ static ioa_socket_handle current_socket = NULL;
 
 static int is_superuser(void) {
 	return !(current_socket->as_realm[0]);
+}
+
+static void https_cancel_session(const char* ssid)
+{
+	printf("%s: 111.111: %s\n",__FUNCTION__,ssid);
+	if(ssid && *ssid) {
+		turnsession_id sid = (turnsession_id)strtoull(ssid,NULL,10);
+		printf("%s: 111.222: %llu\n",__FUNCTION__,(unsigned long long)sid);
+		send_session_cancellation_to_relay(sid);
+	}
 }
 
 static char* get_eff_realm(void) {
@@ -1916,6 +1927,7 @@ struct https_ps_arg {
 	const char* client_protocol;
 	const char* user_pattern;
 	size_t max_sessions;
+	turnsession_id cs;
 };
 
 static int https_print_session(ur_map_key_type key, ur_map_value_type value, void *arg)
@@ -1928,12 +1940,14 @@ static int https_print_session(ur_map_key_type key, ur_map_value_type value, voi
 		if(get_eff_realm()[0] && strcmp(get_eff_realm(),tsi->realm))
 			return 0;
 
-		{
-			if(csarg->user_pattern[0]) {
-				if(!strstr((char*)tsi->username,csarg->user_pattern)) {
-					return 0;
-				}
+		if(csarg->user_pattern[0]) {
+			if(!strstr((char*)tsi->username,csarg->user_pattern)) {
+				return 0;
 			}
+		}
+
+		if(csarg->cs == tsi->id) {
+			return 0;
 		}
 
 		{
@@ -1962,6 +1976,11 @@ static int https_print_session(ur_map_key_type key, ur_map_value_type value, voi
 			str_buffer_append_sz(sb,(size_t)(csarg->counter+1));
 			str_buffer_append(sb,"</td><td>");
 			str_buffer_append_sid(sb,tsi->id);
+			str_buffer_append(sb,"<br><a href=\"");
+			str_buffer_append(sb,form_names[AS_FORM_PS].name);
+			str_buffer_append(sb,"?cs=");
+			str_buffer_append_sid(sb,tsi->id);
+			str_buffer_append(sb,"\">cancel</a>");
 			str_buffer_append(sb,"</td><td>");
 			str_buffer_append(sb,(char*)tsi->username);
 			str_buffer_append(sb,"</td><td>");
@@ -2053,9 +2072,9 @@ static int https_print_session(ur_map_key_type key, ur_map_value_type value, voi
 	return 0;
 }
 
-static size_t https_print_sessions(struct str_buffer* sb, const char* client_protocol, const char* user_pattern, size_t max_sessions)
+static size_t https_print_sessions(struct str_buffer* sb, const char* client_protocol, const char* user_pattern, size_t max_sessions, turnsession_id cs)
 {
-	struct https_ps_arg arg = {sb,0,0,client_protocol,user_pattern,max_sessions};
+	struct https_ps_arg arg = {sb,0,0,client_protocol,user_pattern,max_sessions,cs};
 
 	arg.ct = turn_time();
 
@@ -2064,7 +2083,7 @@ static size_t https_print_sessions(struct str_buffer* sb, const char* client_pro
 	return arg.counter;
 }
 
-static void write_ps_page(ioa_socket_handle s, const char* client_protocol, const char* user_pattern, size_t max_sessions)
+static void write_ps_page(ioa_socket_handle s, const char* client_protocol, const char* user_pattern, size_t max_sessions, turnsession_id cs)
 {
 	if(s && !ioa_socket_tobeclosed(s)) {
 
@@ -2126,7 +2145,7 @@ static void write_ps_page(ioa_socket_handle s, const char* client_protocol, cons
 			str_buffer_append(sb,"TURN Sessions:<br><table>\r\n");
 			str_buffer_append(sb,"<tr><th>N</th><th>Session ID</th><th>User</th><th>Realm</th><th>Origin</th><th>Age, secs</th><th>Expires, secs</th><th>Client protocol</th><th>Relay protocol</th><th>Client addr</th><th>Server addr</th><th>Relay addr (IPv4)</th><th>Relay addr (IPv6)</th><th>Fingerprints</th><th>Mobile</th><th>TLS method</th><th>TLS cipher</th><th>BPS (allocated)</th><th>Packets</th><th>Rate</th><th>Peers</th></tr>\r\n");
 
-			size_t total_sz = https_print_sessions(sb,client_protocol,user_pattern,max_sessions);
+			size_t total_sz = https_print_sessions(sb,client_protocol,user_pattern,max_sessions,cs);
 
 			str_buffer_append(sb,"\r\n</table>\r\n");
 
@@ -2258,6 +2277,13 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 					const char* user_pattern = get_http_header_value(hr, HR_USER_PATTERN);
 					if(!user_pattern) user_pattern="";
 
+					turnsession_id csid=0;
+					const char* ssid = get_http_header_value(hr, HR_CANCEL_SESSION);
+					if(ssid) {
+						https_cancel_session(ssid);
+						csid = (turnsession_id)strtoull(ssid,NULL,10);
+					}
+
 					size_t max_sessions = cli_max_output_sessions;
 					const char* s_max_sessions = get_http_header_value(hr, HR_MAX_SESSIONS);
 					if(s_max_sessions) {
@@ -2267,7 +2293,7 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 
 					if(!max_sessions) max_sessions = DEFAULT_CLI_MAX_OUTPUT_SESSIONS;
 
-					write_ps_page(s,client_protocol,user_pattern,max_sessions);
+					write_ps_page(s,client_protocol,user_pattern,max_sessions,csid);
 				} else {
 					write_https_logon_page(s);
 				}
