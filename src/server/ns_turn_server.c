@@ -4512,6 +4512,7 @@ static int read_client_connection(turn_turnserver *server,
 		if((st == TCP_SOCKET)||(st==TLS_SOCKET)||(st==TENTATIVE_TCP_SOCKET)) {
 			if(is_http((char*)ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh))) {
 				const char *proto = "HTTP";
+				ioa_network_buffer_data(in_buffer->nbh)[ioa_network_buffer_get_size(in_buffer->nbh)] = 0;
 				if(st==TLS_SOCKET) {
 					proto = "HTTPS";
 					set_ioa_socket_app_type(ss->client_socket,HTTPS_CLIENT_SOCKET);
