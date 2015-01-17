@@ -1547,9 +1547,9 @@ static void https_print_flag(struct str_buffer* sb, int flag, const char* name, 
 		if(!is_superuser())
 			param_name = 0;
 		if(!param_name) {
-			sbprintf(sb,"<tr><td>%s</td><td>%s</td><td></td></tr>\r\n",name,get_flag(flag));
+			sbprintf(sb,"<tr><td>%s</td><td>%s</td></tr>\r\n",name,get_flag(flag));
 		} else {
-			sbprintf(sb,"<tr><td>%s</td><td>%s</td><td><a href=\"/toggle?parameter=%s\">toggle</a></td></tr>\r\n",name,get_flag(flag),param_name);
+			sbprintf(sb,"<tr><td>%s</td><td><a href=\"/toggle?parameter=%s\">%s</a></td></tr>\r\n",name,param_name,get_flag(flag));
 		}
 	}
 }
@@ -1560,9 +1560,17 @@ static void https_print_uint(struct str_buffer* sb, unsigned long value, const c
 		if(!is_superuser())
 			param_name = 0;
 		if(!param_name) {
-			sbprintf(sb,"<tr><td>%s</td><td>%lu</td><td></td></tr>\r\n",name,value);
+			if(value) {
+				sbprintf(sb,"<tr><td>%s</td><td>%lu</td></tr>\r\n",name,value);
+			} else {
+				sbprintf(sb,"<tr><td>%s</td><td> </td></tr>\r\n",name);
+			}
 		} else {
-			sbprintf(sb,"<tr><td>%s</td><td>%lu</td><td> <form action=\"/update?parameter=%s\" method=\"POST\"><input type=\"text\" name=\"%s\" value=\"%lu\"><input type=\"submit\" value=\"Update\"></form> </td></tr>\r\n",name,value,param_name,param_name,value);
+			if(value) {
+				sbprintf(sb,"<tr><td>%s</td><td> <form action=\"/update?parameter=%s\" method=\"POST\"><input type=\"text\" name=\"%s\" value=\"%lu\"><input type=\"submit\" value=\"Update\"></form> </td></tr>\r\n",name,param_name,param_name,value);
+			} else {
+				sbprintf(sb,"<tr><td>%s</td><td> <form action=\"/update?parameter=%s\" method=\"POST\"><input type=\"text\" name=\"%s\" value=\"\"><input type=\"submit\" value=\"Update\"></form> </td></tr>\r\n",name,param_name,param_name);
+			}
 		}
 	}
 }
@@ -1572,13 +1580,10 @@ static void https_print_str(struct str_buffer* sb, const char *value, const char
 	if(sb && name && value) {
 		if(!is_superuser())
 			param_name = 0;
-		const char *v = value;
-		if((value[0] == 0) && name[0])
-			v="empty";
 		if(!param_name) {
-			sbprintf(sb,"<tr><td>%s</td><td>%s</td><td></td></tr>\r\n",name,v);
+			sbprintf(sb,"<tr><td>%s</td><td>%s</td></tr>\r\n",name,value);
 		} else {
-			sbprintf(sb,"<tr><td>%s</td><td>%s</td><td> <form action=\"/update?parameter=%s\" method=\"POST\"><input type=\"text\" name=\"%s\" value=\"%s\"><input type=\"submit\" value=\"Update\"></form> </td></tr>\r\n",name,v,param_name,param_name,value);
+			sbprintf(sb,"<tr><td>%s</td><td> <form action=\"/update?parameter=%s\" method=\"POST\"><input type=\"text\" name=\"%s\" value=\"%s\"><input type=\"submit\" value=\"Update\"></form> </td></tr>\r\n",name,param_name,param_name,value);
 		}
 	}
 }
@@ -1589,7 +1594,7 @@ static void https_print_str_array(struct str_buffer* sb, char **value, size_t sz
 		size_t i;
 		for(i=0;i<sz;i++) {
 			if(value[i])
-				sbprintf(sb,"<tr><td>  %s</td><td> %s</td><td></td></tr>\r\n",name,value[i]);
+				sbprintf(sb,"<tr><td>  %s</td><td> %s</td></tr>\r\n",name,value[i]);
 		}
 	}
 }
@@ -1602,7 +1607,7 @@ static void https_print_addr(struct str_buffer* sb, ioa_addr *value, int use_por
 			addr_to_string_no_port(value,(u08bits*)s);
 		else
 			addr_to_string(value,(u08bits*)s);
-		sbprintf(sb,"<tr><td>  %s</td><td> %s</td><td></td></tr>\r\n",name,s);
+		sbprintf(sb,"<tr><td>  %s</td><td> %s</td></tr>\r\n",name,s);
 	}
 }
 
@@ -1616,7 +1621,7 @@ static size_t https_print_addr_list(struct str_buffer* sb, turn_server_addrs_lis
 				addr_to_string_no_port(&(value->addrs[i]),(u08bits*)s);
 			else
 				addr_to_string(&(value->addrs[i]),(u08bits*)s);
-			sbprintf(sb,"</tr><td>  %s</td><td> %s</td><td></td></tr>\r\n",name,s);
+			sbprintf(sb,"</tr><td>  %s</td><td> %s</td></tr>\r\n",name,s);
 		}
 		return i;
 	}
@@ -1632,10 +1637,10 @@ static void https_print_ip_range_list(struct str_buffer* sb, ip_range_list_t *va
 				if(get_eff_realm()[0] && strcmp(get_eff_realm(),value->rs[i].realm)) {
 					continue;
 				} else {
-					sbprintf(sb,"<tr><td>  %s</td><td> %s (%s)</td><td></td></tr>\r\n",name,value->rs[i].str,value->rs[i].realm);
+					sbprintf(sb,"<tr><td>  %s</td><td> %s (%s)</td></tr>\r\n",name,value->rs[i].str,value->rs[i].realm);
 				}
 			} else {
-				sbprintf(sb,"<tr><td>  %s</td><td> %s</td><td></td></tr>\r\n",name,value->rs[i].str);
+				sbprintf(sb,"<tr><td>  %s</td><td> %s</td></tr>\r\n",name,value->rs[i].str);
 			}
 		}
 	}
@@ -1659,10 +1664,10 @@ static void toggle_param(const char* pn)
 
 static void update_param(const char* pn, const char *value)
 {
-	if(is_superuser()) {
-		if(pn) {
-			if(!value)
-				value = "0";
+	if(pn) {
+		if(!value)
+			value = "0";
+		if(is_superuser()) {
 			if(strstr(pn,"total-quota")==pn) {
 				turn_params.total_quota = atoi(value);
 			} else if(strstr(pn,"user-quota")==pn) {
@@ -1671,6 +1676,24 @@ static void update_param(const char* pn, const char *value)
 				set_max_bps((band_limit_t)atol(value));
 			} else if(strstr(pn,"bps-capacity")==pn) {
 				set_bps_capacity((band_limit_t)atol(value));
+			}
+		}
+		{
+			realm_params_t *rp = get_realm(get_eff_realm());
+			if(!rp) rp = get_realm(NULL);
+
+			const turn_dbdriver_t * dbd = get_dbdriver();
+			if (dbd && dbd->set_realm_option_one) {
+				if(strstr(pn,"cr-total-quota")==pn) {
+					rp->options.perf_options.total_quota = atoi(value);
+					dbd->set_realm_option_one((u08bits*)rp->options.name,rp->options.perf_options.total_quota,"total-quota");
+				} else if(strstr(pn,"cr-user-quota")==pn) {
+					rp->options.perf_options.user_quota = atoi(value);
+					dbd->set_realm_option_one((u08bits*)rp->options.name,rp->options.perf_options.user_quota,"user-quota");
+				} else if(strstr(pn,"cr-max-bps")==pn) {
+					rp->options.perf_options.max_bps = (band_limit_t)atol(value);
+					dbd->set_realm_option_one((u08bits*)rp->options.name,rp->options.perf_options.max_bps,"max-bps");
+				}
 			}
 		}
 	}
@@ -1701,11 +1724,7 @@ static void write_pc_page(ioa_socket_handle s)
 			str_buffer_append(sb,home_link);
 			str_buffer_append(sb,"<br>\r\n");
 			str_buffer_append(sb,"Configuration Parameters:<br><table  style=\"width:100%\">\r\n");
-			str_buffer_append(sb,"<tr><th>Parameter</th><th>Current Value</th><th>");
-			if(is_superuser()) {
-				str_buffer_append(sb,"Update Value");
-			}
-			str_buffer_append(sb,"</th></tr>\r\n");
+			str_buffer_append(sb,"<tr><th>Parameter</th><th>Value</th></tr>\r\n");
 
 			{
 				https_print_flag(sb,turn_params.verbose,"verbose",0);
@@ -1732,7 +1751,7 @@ static void write_pc_page(ioa_socket_handle s)
 					}
 				}
 
-				https_print_empty_row(sb,3);
+				https_print_empty_row(sb,2);
 
 				if(turn_params.cipher_list[0])
 					https_print_str(sb,turn_params.cipher_list,"cipher-list",0);
@@ -1762,7 +1781,7 @@ static void write_pc_page(ioa_socket_handle s)
 				else
 					https_print_str(sb,"SHA1","SHA type",0);
 
-				https_print_empty_row(sb,3);
+				https_print_empty_row(sb,2);
 
 				https_print_str_array(sb,turn_params.listener.addrs,turn_params.listener.addrs_number,"Listener addr");
 
@@ -1786,7 +1805,7 @@ static void write_pc_page(ioa_socket_handle s)
 
 				https_print_addr(sb,turn_params.external_ip,0,"External public IP");
 
-				https_print_empty_row(sb,3);
+				https_print_empty_row(sb,2);
 
 				{
 					size_t an = https_print_addr_list(sb,&turn_params.aux_servers_list,1,"Aux server");
@@ -1794,7 +1813,7 @@ static void write_pc_page(ioa_socket_handle s)
 					an += https_print_addr_list(sb,&turn_params.tls_alternate_servers_list,1,"TLS alternate server");
 
 					if(an) {
-						https_print_empty_row(sb,3);
+						https_print_empty_row(sb,2);
 					}
 				}
 
@@ -1828,7 +1847,7 @@ static void write_pc_page(ioa_socket_handle s)
 				https_print_flag(sb,turn_params.no_multicast_peers,"no-multicast-peers","no-multicast-peers");
 				https_print_flag(sb,turn_params.no_loopback_peers,"no-loopback-peers","no-loopback-peers");
 
-				https_print_empty_row(sb,3);
+				https_print_empty_row(sb,2);
 
 				if(turn_params.default_users_db.persistent_users_db.userdb[0]) {
 					switch(turn_params.default_users_db.userdb_type) {
@@ -1876,7 +1895,7 @@ static void write_pc_page(ioa_socket_handle s)
 				}
 #endif
 
-				https_print_empty_row(sb,3);
+				https_print_empty_row(sb,2);
 
 				if(turn_params.ct == TURN_CREDENTIALS_LONG_TERM)
 					https_print_flag(sb,1,"Long-term authorization mechanism",0);
@@ -1886,7 +1905,7 @@ static void write_pc_page(ioa_socket_handle s)
 				if(turn_params.use_auth_secret_with_timestamp && turn_params.rest_api_separator)
 					https_print_uint(sb,turn_params.rest_api_separator,"TURN REST API separator ASCII number",0);
 
-				https_print_empty_row(sb,3);
+				https_print_empty_row(sb,2);
 
 				if(is_superuser()) {
 					char * rn = get_realm(NULL)->options.name;
@@ -1897,17 +1916,17 @@ static void write_pc_page(ioa_socket_handle s)
 				realm_params_t *rp = get_realm(get_eff_realm());
 				if(!rp) rp = get_realm(NULL);
 
-				https_print_str(sb,rp->options.name,"current realm",0);
+				https_print_str(sb,rp->options.name,"Admin session (current) realm",0);
 
-				https_print_uint(sb,(unsigned long)rp->options.perf_options.total_quota,"current realm total-quota",0);
-				https_print_uint(sb,(unsigned long)rp->options.perf_options.user_quota,"current realm user-quota",0);
-				https_print_uint(sb,(unsigned long)rp->options.perf_options.max_bps,"current realm max-bps (per session)",0);
+				https_print_uint(sb,(unsigned long)rp->options.perf_options.total_quota,"current realm max number of sessions (total-quota)","cr-total-quota");
+				https_print_uint(sb,(unsigned long)rp->options.perf_options.user_quota,"current realm max sessions per user (user-quota)","cr-user-quota");
+				https_print_uint(sb,(unsigned long)rp->options.perf_options.max_bps,"current realm max-bps (per session)","cr-max-bps");
 
-				https_print_empty_row(sb,3);
+				https_print_empty_row(sb,2);
 
 				https_print_uint(sb,(unsigned long)rp->status.total_current_allocs,"total-current-allocs",0);
 
-				https_print_empty_row(sb,3);
+				https_print_empty_row(sb,2);
 
 				https_print_uint(sb,(unsigned long)turn_params.total_quota,"Default total-quota (per realm)","total-quota");
 				https_print_uint(sb,(unsigned long)turn_params.user_quota,"Default user-quota (per realm)","user-quota");
