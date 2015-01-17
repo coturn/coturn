@@ -44,7 +44,7 @@ extern "C" {
 
 typedef struct _perf_options_t {
 
-	band_limit_t max_bps;
+	volatile band_limit_t max_bps;
 	vint total_quota;
 	vint user_quota;
 
