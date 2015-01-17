@@ -1606,7 +1606,7 @@ static void https_print_addr(struct str_buffer* sb, ioa_addr *value, int use_por
 	}
 }
 
-static void https_print_addr_list(struct str_buffer* sb, turn_server_addrs_list_t *value, int use_port, const char* name)
+static size_t https_print_addr_list(struct str_buffer* sb, turn_server_addrs_list_t *value, int use_port, const char* name)
 {
 	if(sb && name && value && value->size && value->addrs) {
 		char s[256];
@@ -1618,7 +1618,9 @@ static void https_print_addr_list(struct str_buffer* sb, turn_server_addrs_list_
 				addr_to_string(&(value->addrs[i]),(u08bits*)s);
 			sbprintf(sb,"</tr><td>  %s</td><td> %s</td><td></td></tr>\r\n",name,s);
 		}
+		return i;
 	}
+	return 0;
 }
 
 static void https_print_ip_range_list(struct str_buffer* sb, ip_range_list_t *value, const char* name)
@@ -1674,6 +1676,13 @@ static void update_param(const char* pn, const char *value)
 	}
 }
 
+static void https_print_empty_row(struct str_buffer* sb, size_t span)
+{
+	str_buffer_append(sb,"<tr><td colspan=");
+	str_buffer_append_sz(sb,span);
+	str_buffer_append(sb,"><br></td></tr>");
+}
+
 static void write_pc_page(ioa_socket_handle s)
 {
 	if(s && !ioa_socket_tobeclosed(s)) {
@@ -1694,7 +1703,7 @@ static void write_pc_page(ioa_socket_handle s)
 			str_buffer_append(sb,"Configuration Parameters:<br><table  style=\"width:100%\">\r\n");
 			str_buffer_append(sb,"<tr><th>Parameter</th><th>Current Value</th><th>");
 			if(is_superuser()) {
-				str_buffer_append(sb,"New (ephemeral) Value");
+				str_buffer_append(sb,"Update Value");
 			}
 			str_buffer_append(sb,"</th></tr>\r\n");
 
@@ -1723,7 +1732,7 @@ static void write_pc_page(ioa_socket_handle s)
 					}
 				}
 
-				https_print_str(sb,"","",0);
+				https_print_empty_row(sb,3);
 
 				if(turn_params.cipher_list[0])
 					https_print_str(sb,turn_params.cipher_list,"cipher-list",0);
@@ -1753,7 +1762,7 @@ static void write_pc_page(ioa_socket_handle s)
 				else
 					https_print_str(sb,"SHA1","SHA type",0);
 
-				https_print_str(sb,"","",0);
+				https_print_empty_row(sb,3);
 
 				https_print_str_array(sb,turn_params.listener.addrs,turn_params.listener.addrs_number,"Listener addr");
 
@@ -1777,13 +1786,17 @@ static void write_pc_page(ioa_socket_handle s)
 
 				https_print_addr(sb,turn_params.external_ip,0,"External public IP");
 
-				https_print_str(sb,"","",0);
+				https_print_empty_row(sb,3);
 
-				https_print_addr_list(sb,&turn_params.aux_servers_list,1,"Aux server");
-				https_print_addr_list(sb,&turn_params.alternate_servers_list,1,"Alternate server");
-				https_print_addr_list(sb,&turn_params.tls_alternate_servers_list,1,"TLS alternate server");
+				{
+					size_t an = https_print_addr_list(sb,&turn_params.aux_servers_list,1,"Aux server");
+					an += https_print_addr_list(sb,&turn_params.alternate_servers_list,1,"Alternate server");
+					an += https_print_addr_list(sb,&turn_params.tls_alternate_servers_list,1,"TLS alternate server");
 
-				https_print_str(sb,"","",0);
+					if(an) {
+						https_print_empty_row(sb,3);
+					}
+				}
 
 				https_print_str_array(sb,turn_params.relay_addrs,turn_params.relays_number,"Relay addr");
 
@@ -1815,7 +1828,7 @@ static void write_pc_page(ioa_socket_handle s)
 				https_print_flag(sb,turn_params.no_multicast_peers,"no-multicast-peers","no-multicast-peers");
 				https_print_flag(sb,turn_params.no_loopback_peers,"no-loopback-peers","no-loopback-peers");
 
-				https_print_str(sb,"","",0);
+				https_print_empty_row(sb,3);
 
 				if(turn_params.default_users_db.persistent_users_db.userdb[0]) {
 					switch(turn_params.default_users_db.userdb_type) {
@@ -1863,13 +1876,7 @@ static void write_pc_page(ioa_socket_handle s)
 				}
 #endif
 
-				https_print_str(sb,"","",0);
-
-				if(is_superuser()) {
-					char * rn = get_realm(NULL)->options.name;
-					if(rn[0])
-						https_print_str(sb,rn,"Default realm",0);
-				}
+				https_print_empty_row(sb,3);
 
 				if(turn_params.ct == TURN_CREDENTIALS_LONG_TERM)
 					https_print_flag(sb,1,"Long-term authorization mechanism",0);
@@ -1879,29 +1886,34 @@ static void write_pc_page(ioa_socket_handle s)
 				if(turn_params.use_auth_secret_with_timestamp && turn_params.rest_api_separator)
 					https_print_uint(sb,turn_params.rest_api_separator,"TURN REST API separator ASCII number",0);
 
-				https_print_str(sb,"","",0);
+				https_print_empty_row(sb,3);
+
+				if(is_superuser()) {
+					char * rn = get_realm(NULL)->options.name;
+					if(rn[0])
+						https_print_str(sb,rn,"Default realm",0);
+				}
 
 				realm_params_t *rp = get_realm(get_eff_realm());
 				if(!rp) rp = get_realm(NULL);
 
-				if(get_eff_realm()[0])
-					https_print_str(sb,get_eff_realm(),"current realm",0);
+				https_print_str(sb,rp->options.name,"current realm",0);
 
 				https_print_uint(sb,(unsigned long)rp->options.perf_options.total_quota,"current realm total-quota",0);
 				https_print_uint(sb,(unsigned long)rp->options.perf_options.user_quota,"current realm user-quota",0);
-				https_print_uint(sb,(unsigned long)rp->options.perf_options.max_bps,"current realm max-bps",0);
+				https_print_uint(sb,(unsigned long)rp->options.perf_options.max_bps,"current realm max-bps (per session)",0);
 
-				https_print_str(sb,"","",0);
+				https_print_empty_row(sb,3);
 
 				https_print_uint(sb,(unsigned long)rp->status.total_current_allocs,"total-current-allocs",0);
 
-				https_print_str(sb,"","",0);
+				https_print_empty_row(sb,3);
 
-				https_print_uint(sb,(unsigned long)turn_params.total_quota,"Default total-quota","total-quota");
-				https_print_uint(sb,(unsigned long)turn_params.user_quota,"Default user-quota","user-quota");
-				https_print_uint(sb,(unsigned long)get_bps_capacity(),"Total server bps-capacity","bps-capacity");
-				https_print_uint(sb,(unsigned long)get_bps_capacity_allocated(),"Allocated bps-capacity",0);
-				https_print_uint(sb,(unsigned long)get_max_bps(),"Default max-bps","max-bps");
+				https_print_uint(sb,(unsigned long)turn_params.total_quota,"Default total-quota (per realm)","total-quota");
+				https_print_uint(sb,(unsigned long)turn_params.user_quota,"Default user-quota (per realm)","user-quota");
+				https_print_uint(sb,(unsigned long)get_bps_capacity(),"Total bps-capacity (per server)","bps-capacity");
+				https_print_uint(sb,(unsigned long)get_bps_capacity_allocated(),"Allocated bps-capacity (per server)",0);
+				https_print_uint(sb,(unsigned long)get_max_bps(),"Default max-bps (per session)","max-bps");
 			}
 
 			str_buffer_append(sb,"\r\n</table>  </body>\r\n</html>\r\n");
