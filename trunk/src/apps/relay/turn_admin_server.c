@@ -72,7 +72,7 @@
 
 ///////////////////////////////
 
-struct cli_server cliserver;
+struct admin_server adminserver;
 
 int use_cli = 1;
 
@@ -594,7 +594,7 @@ static void print_sessions(struct cli_session* cs, const char* pn, int exact_mat
 			arg.users = ur_string_map_create(NULL);
 		}
 
-		ur_map_foreach_arg(cliserver.sessions, (foreachcb_arg_type)print_session, &arg);
+		ur_map_foreach_arg(adminserver.sessions, (foreachcb_arg_type)print_session, &arg);
 
 		myprintf(cs,"\n");
 
@@ -891,7 +891,7 @@ static void close_cli_session(struct cli_session* cs)
 {
 	if(cs) {
 
-		addr_debug_print(cliserver.verbose, &(cs->addr),"CLI session disconnected from");
+		addr_debug_print(adminserver.verbose, &(cs->addr),"CLI session disconnected from");
 
 		if(cs->ts) {
 			telnet_free(cs->ts);
@@ -1170,7 +1170,7 @@ static void cliserver_input_handler(struct evconnlistener *l, evutil_socket_t fd
 	UNUSED_ARG(arg);
 	UNUSED_ARG(socklen);
 
-	addr_debug_print(cliserver.verbose, (ioa_addr*)sa,"CLI connected to");
+	addr_debug_print(adminserver.verbose, (ioa_addr*)sa,"CLI connected to");
 
 	struct cli_session *clisession = (struct cli_session*)turn_malloc(sizeof(struct cli_session));
 	ns_bzero(clisession,sizeof(struct cli_session));
@@ -1183,7 +1183,7 @@ static void cliserver_input_handler(struct evconnlistener *l, evutil_socket_t fd
 
 	addr_cpy(&(clisession->addr),(ioa_addr*)sa);
 
-	clisession->bev = bufferevent_socket_new(cliserver.event_base,
+	clisession->bev = bufferevent_socket_new(adminserver.event_base,
 					fd,
 					TURN_BUFFEREVENTS_OPTIONS);
 	debug_ptr_add(clisession->bev);
@@ -1196,7 +1196,7 @@ static void cliserver_input_handler(struct evconnlistener *l, evutil_socket_t fd
 
 	if(!(clisession->ts)) {
 		const char *str = "Cannot open telnet session\n";
-		addr_debug_print(cliserver.verbose, (ioa_addr*)sa,str);
+		addr_debug_print(adminserver.verbose, (ioa_addr*)sa,str);
 		close_cli_session(clisession);
 	} else {
 	  print_str_array(clisession, CLI_GREETING_STR);
@@ -1211,88 +1211,91 @@ static void cliserver_input_handler(struct evconnlistener *l, evutil_socket_t fd
 	}
 }
 
-void setup_cli_thread(void)
+void setup_admin_thread(void)
 {
-	cliserver.event_base = turn_event_base_new();
+	adminserver.event_base = turn_event_base_new();
 	super_memory_t* sm = new_super_memory_region();
-	cliserver.e = create_ioa_engine(sm, cliserver.event_base, turn_params.listener.tp, turn_params.relay_ifname, turn_params.relays_number, turn_params.relay_addrs,
+	adminserver.e = create_ioa_engine(sm, adminserver.event_base, turn_params.listener.tp, turn_params.relay_ifname, turn_params.relays_number, turn_params.relay_addrs,
 				turn_params.default_relays, turn_params.verbose
 	#if !defined(TURN_NO_HIREDIS)
 				,turn_params.redis_statsdb
 	#endif
 		);
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"IO method (cli thread): %s\n",event_base_get_method(cliserver.event_base));
+
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"IO method (admin thread): %s\n",event_base_get_method(adminserver.event_base));
 
 	{
 		struct bufferevent *pair[2];
 
-		bufferevent_pair_new(cliserver.event_base, TURN_BUFFEREVENTS_OPTIONS, pair);
+		bufferevent_pair_new(adminserver.event_base, TURN_BUFFEREVENTS_OPTIONS, pair);
 
-		cliserver.in_buf = pair[0];
-		cliserver.out_buf = pair[1];
+		adminserver.in_buf = pair[0];
+		adminserver.out_buf = pair[1];
 
-		bufferevent_setcb(cliserver.in_buf, cli_server_receive_message, NULL, NULL, &cliserver);
-		bufferevent_enable(cliserver.in_buf, EV_READ);
+		bufferevent_setcb(adminserver.in_buf, admin_server_receive_message, NULL, NULL, &adminserver);
+		bufferevent_enable(adminserver.in_buf, EV_READ);
 	}
 
 	{
 		struct bufferevent *pair[2];
 
-		bufferevent_pair_new(cliserver.event_base, TURN_BUFFEREVENTS_OPTIONS, pair);
+		bufferevent_pair_new(adminserver.event_base, TURN_BUFFEREVENTS_OPTIONS, pair);
 
-		cliserver.https_in_buf = pair[0];
-		cliserver.https_out_buf = pair[1];
+		adminserver.https_in_buf = pair[0];
+		adminserver.https_out_buf = pair[1];
 
-		bufferevent_setcb(cliserver.https_in_buf, https_admin_server_receive_message, NULL, NULL, &cliserver);
-		bufferevent_enable(cliserver.https_in_buf, EV_READ);
+		bufferevent_setcb(adminserver.https_in_buf, https_admin_server_receive_message, NULL, NULL, &adminserver);
+		bufferevent_enable(adminserver.https_in_buf, EV_READ);
 	}
 
-	if(!cli_addr_set) {
-		if(make_ioa_addr((const u08bits*)CLI_DEFAULT_IP,0,&cli_addr)<0) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot set cli address %s\n",CLI_DEFAULT_IP);
+	if(use_cli) {
+		if(!cli_addr_set) {
+			if(make_ioa_addr((const u08bits*)CLI_DEFAULT_IP,0,&cli_addr)<0) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot set cli address %s\n",CLI_DEFAULT_IP);
+				return;
+			}
+		}
+
+		addr_set_port(&cli_addr,cli_port);
+
+		adminserver.listen_fd = socket(cli_addr.ss.sa_family, SOCK_STREAM, 0);
+		if (adminserver.listen_fd < 0) {
+			perror("socket");
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot open CLI socket\n");
 			return;
 		}
-	}
 
-	addr_set_port(&cli_addr,cli_port);
+		if(addr_bind(adminserver.listen_fd,&cli_addr,1)<0) {
+			perror("Cannot bind CLI socket to addr");
+			char saddr[129];
+			addr_to_string(&cli_addr,(u08bits*)saddr);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot bind CLI listener socket to addr %s\n",saddr);
+			socket_closesocket(adminserver.listen_fd);
+			return;
+		}
 
-	cliserver.listen_fd = socket(cli_addr.ss.sa_family, SOCK_STREAM, 0);
-	if (cliserver.listen_fd < 0) {
-	    perror("socket");
-	    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot open CLI socket\n");
-	    return;
-	}
+		socket_tcp_set_keepalive(adminserver.listen_fd);
 
-	if(addr_bind(cliserver.listen_fd,&cli_addr,1)<0) {
-	  perror("Cannot bind CLI socket to addr");
-	  char saddr[129];
-	  addr_to_string(&cli_addr,(u08bits*)saddr);
-	  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot bind CLI listener socket to addr %s\n",saddr);
-	  socket_closesocket(cliserver.listen_fd);
-	  return;
-	}
+		socket_set_nonblocking(adminserver.listen_fd);
 
-	socket_tcp_set_keepalive(cliserver.listen_fd);
-
-	socket_set_nonblocking(cliserver.listen_fd);
-
-	cliserver.l = evconnlistener_new(cliserver.event_base,
-			  cliserver_input_handler, &cliserver,
+		adminserver.l = evconnlistener_new(adminserver.event_base,
+			  cliserver_input_handler, &adminserver,
 			  LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE,
-			  1024, cliserver.listen_fd);
+			  1024, adminserver.listen_fd);
 
-	if(!(cliserver.l)) {
-	  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot create CLI listener\n");
-	  socket_closesocket(cliserver.listen_fd);
-	  return;
+		if(!(adminserver.l)) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot create CLI listener\n");
+			socket_closesocket(adminserver.listen_fd);
+			return;
+		}
+
+		addr_debug_print(adminserver.verbose, &cli_addr,"CLI listener opened on ");
 	}
 
-	cliserver.sessions = ur_map_create();
-
-	addr_debug_print(cliserver.verbose, &cli_addr,"CLI listener opened on ");
+	adminserver.sessions = ur_map_create();
 }
 
-void cli_server_receive_message(struct bufferevent *bev, void *ptr)
+void admin_server_receive_message(struct bufferevent *bev, void *ptr)
 {
 	UNUSED_ARG(ptr);
 
@@ -1308,15 +1311,15 @@ void cli_server_receive_message(struct bufferevent *bev, void *ptr)
 		}
 
 		ur_map_value_type t = 0;
-		if (ur_map_get(cliserver.sessions, (ur_map_key_type)tsi->id, &t) && t) {
+		if (ur_map_get(adminserver.sessions, (ur_map_key_type)tsi->id, &t) && t) {
 			struct turn_session_info *old = (struct turn_session_info*)t;
 			turn_session_info_clean(old);
 			turn_free(old,sizeof(struct turn_session_info));
-			ur_map_del(cliserver.sessions, (ur_map_key_type)tsi->id, NULL);
+			ur_map_del(adminserver.sessions, (ur_map_key_type)tsi->id, NULL);
 		}
 
 		if(tsi->valid) {
-			ur_map_put(cliserver.sessions, (ur_map_key_type)tsi->id, (ur_map_value_type)tsi);
+			ur_map_put(adminserver.sessions, (ur_map_key_type)tsi->id, (ur_map_value_type)tsi);
 			tsi = (struct turn_session_info*)turn_malloc(sizeof(struct turn_session_info));
 			turn_session_info_init(tsi);
 		} else {
@@ -1334,11 +1337,8 @@ int send_turn_session_info(struct turn_session_info* tsi)
 {
 	int ret = -1;
 
-	if(!use_cli)
-		return ret;
-
 	if(tsi) {
-		struct evbuffer *output = bufferevent_get_output(cliserver.out_buf);
+		struct evbuffer *output = bufferevent_get_output(adminserver.out_buf);
 		if(output) {
 			if(evbuffer_add(output,tsi,sizeof(struct turn_session_info))>=0) {
 				ret = 0;
@@ -2109,7 +2109,7 @@ static size_t https_print_sessions(struct str_buffer* sb, const char* client_pro
 
 	arg.ct = turn_time();
 
-	ur_map_foreach_arg(cliserver.sessions, (foreachcb_arg_type)https_print_session, &arg);
+	ur_map_foreach_arg(adminserver.sessions, (foreachcb_arg_type)https_print_session, &arg);
 
 	return arg.counter;
 }
@@ -2381,7 +2381,7 @@ static void https_input_handler(ioa_socket_handle s, int event_type, ioa_net_dat
 
 	handle_https(s,data->nbh);
 
-	ioa_network_buffer_delete(cliserver.e, data->nbh);
+	ioa_network_buffer_delete(adminserver.e, data->nbh);
 	data->nbh = NULL;
 }
 
@@ -2399,14 +2399,14 @@ void https_admin_server_receive_message(struct bufferevent *bev, void *ptr)
 			continue;
 		}
 
-		register_callback_on_ioa_socket(cliserver.e, s, IOA_EV_READ, https_input_handler, NULL, 0);
+		register_callback_on_ioa_socket(adminserver.e, s, IOA_EV_READ, https_input_handler, NULL, 0);
 
 		handle_https(s,NULL);
 	}
 }
 
 void send_https_socket(ioa_socket_handle s) {
-	struct evbuffer *output = bufferevent_get_output(cliserver.https_out_buf);
+	struct evbuffer *output = bufferevent_get_output(adminserver.https_out_buf);
 	if(output) {
 		evbuffer_add(output,&s,sizeof(s));
 	}

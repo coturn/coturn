@@ -1773,33 +1773,33 @@ static void setup_auth_server(struct auth_server *as)
 	pthread_detach(as->thr);
 }
 
-static void* run_cli_server_thread(void *arg)
+static void* run_admin_server_thread(void *arg)
 {
 	ignore_sigpipe();
 
-	setup_cli_thread();
+	setup_admin_thread();
 
 	barrier_wait();
 
-	while(cliserver.event_base) {
-		run_events(cliserver.event_base,NULL);
+	while(adminserver.event_base) {
+		run_events(adminserver.event_base,NULL);
 	}
 
 	return arg;
 }
 
-static void setup_cli_server(void)
+static void setup_admin_server(void)
 {
-	ns_bzero(&cliserver,sizeof(struct cli_server));
-	cliserver.listen_fd = -1;
-	cliserver.verbose = turn_params.verbose;
+	ns_bzero(&adminserver,sizeof(struct admin_server));
+	adminserver.listen_fd = -1;
+	adminserver.verbose = turn_params.verbose;
 
-	if(pthread_create(&(cliserver.thr), NULL, run_cli_server_thread, &cliserver)<0) {
+	if(pthread_create(&(adminserver.thr), NULL, run_admin_server_thread, &adminserver)<0) {
 		perror("Cannot create cli thread\n");
 		exit(-1);
 	}
 
-	pthread_detach(cliserver.thr);
+	pthread_detach(adminserver.thr);
 }
 
 void setup_server(void)
@@ -1815,12 +1815,9 @@ void setup_server(void)
 #if !defined(TURN_NO_THREAD_BARRIERS)
 
 	/* relay threads plus auth threads plus main listener thread */
+	/* plus admin thread */
 	/* udp address listener thread(s) will start later */
-	barrier_count = turn_params.general_relay_servers_number+authserver_number+1;
-
-	if(use_cli) {
-		barrier_count += 1;
-	}
+	barrier_count = turn_params.general_relay_servers_number+authserver_number+1+1;
 
 #endif
 
@@ -1867,8 +1864,7 @@ void setup_server(void)
 		}
 	}
 
-	if(use_cli)
-		setup_cli_server();
+	setup_admin_server();
 
 	barrier_wait();
 }
