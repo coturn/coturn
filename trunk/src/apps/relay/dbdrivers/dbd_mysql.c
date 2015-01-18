@@ -549,15 +549,20 @@ static int mysql_del_oauth_key(const u08bits *kid) {
 	return ret;
 }
   
-static int mysql_list_users(u08bits *realm) {
-  int ret = -1;
+static int mysql_list_users(u08bits *realm, secrets_list_t *users, secrets_list_t *realms)
+{
+	int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
+
+	u08bits realm0[STUN_MAX_REALM_SIZE+1] = "\0";
+	if(!realm) realm=realm0;
+
 	MYSQL * myc = get_mydb_connection();
 	if(myc) {
-		if(realm && realm[0]) {
+		if(realm[0]) {
 		  snprintf(statement,sizeof(statement),"select name, realm from turnusers_lt where realm='%s' order by name",realm);
 		} else {
-		  snprintf(statement,sizeof(statement),"select name, realm from turnusers_lt order by name");
+		  snprintf(statement,sizeof(statement),"select name, realm from turnusers_lt order by realm,name");
 		}
 		int res = mysql_query(myc, statement);
 		if(res) {
@@ -575,10 +580,17 @@ static int mysql_list_users(u08bits *realm) {
 						break;
 					} else {
 						if(row[0]) {
-							if(row[1] && row[1][0]) {
-								printf("%s[%s]\n",row[0],row[1]);
+							if(users) {
+								add_to_secrets_list(users,row[0]);
+								if(realms) {
+									if(row[1]) {
+										add_to_secrets_list(realms,row[1]);
+									} else {
+										add_to_secrets_list(realms,(char*)realm);
+									}
+								}
 							} else {
-								printf("%s\n",row[0]);
+								printf("%s[%s]\n", row[0], row[1]);
 							}
 						}
 					}

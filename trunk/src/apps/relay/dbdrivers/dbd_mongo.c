@@ -424,16 +424,21 @@ static int mongo_del_oauth_key(const u08bits *kid) {
   return ret;
 }
   
-static int mongo_list_users(u08bits *realm) {
+static int mongo_list_users(u08bits *realm, secrets_list_t *users, secrets_list_t *realms)
+{
   const char * collection_name = "turnusers_lt";
-  mongoc_collection_t * collection = mongo_get_collection(collection_name); 
+  mongoc_collection_t * collection = mongo_get_collection(collection_name);
 
-	if(!collection)
+  u08bits realm0[STUN_MAX_REALM_SIZE+1] = "\0";
+  if(!realm) realm=realm0;
+
+  if(!collection)
     return -1;
     
   bson_t query, child;
   bson_init(&query);
   bson_append_document_begin(&query, "$orderby", -1, &child);
+  bson_append_int32(&child, "realm", -1, 1);
   bson_append_int32(&child, "name", -1, 1);
   bson_append_document_end(&query, &child);
   bson_append_document_begin(&query, "$query", -1, &child);
@@ -464,14 +469,21 @@ static int mongo_list_users(u08bits *realm) {
     	if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "name") && BSON_ITER_HOLDS_UTF8(&iter)) {
     		value = bson_iter_utf8(&iter, &length);
     		if (length) {
-        		const char *realm = "";
+        		const char *rval = "";
     			if (bson_iter_init(&iter_realm, item) && bson_iter_find(&iter_realm, "realm") && BSON_ITER_HOLDS_UTF8(&iter_realm)) {
-    				realm = bson_iter_utf8(&iter_realm, &length);
+    				rval = bson_iter_utf8(&iter_realm, &length);
     			}
-    			if(realm && *realm) {
-    				printf("%s[%s]\n", value, realm);
+    			if(users) {
+    				add_to_secrets_list(users,value);
+    				if(realms) {
+    					if(rval && *rval) {
+    						add_to_secrets_list(realms,rval);
+    					} else {
+    						add_to_secrets_list(realms,(char*)realm);
+    					}
+    				}
     			} else {
-    				printf("%s\n", value);
+    				printf("%s[%s]\n", value, rval);
     			}
     		}
     	}

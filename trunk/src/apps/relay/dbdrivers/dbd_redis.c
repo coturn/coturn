@@ -450,23 +450,6 @@ static int redis_get_user_key(u08bits *usname, u08bits *realm, hmackey_t key) {
 			}
 			turnFreeRedisReply(rget);
 		}
-		if(ret == 0) {
-			snprintf(s,sizeof(s),"get turn/realm/%s/user/%s/password", (char*)realm, usname);
-			rget = (redisReply *)redisCommand(rc, s);
-			if(rget) {
-				if (rget->type == REDIS_REPLY_ERROR)
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", rget->str);
-				else if (rget->type != REDIS_REPLY_STRING) {
-					if (rget->type != REDIS_REPLY_NIL)
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", rget->type);
-				} else {
-					if(stun_produce_integrity_key_str((u08bits*)usname, realm, (u08bits*)rget->str, key, turn_params.shatype)>=0) {
-						ret = 0;
-					}
-				}
-				turnFreeRedisReply(rget);
-			}
-		}
 	}
   return ret;
 }
@@ -524,12 +507,10 @@ static int redis_set_user_key(u08bits *usname, u08bits *realm, const char *key) 
 	redisContext *rc = get_redis_connection();
 	if(rc) {
 		char statement[TURN_LONG_STRING_SIZE];
-	  snprintf(statement,sizeof(statement),"set turn/realm/%s/user/%s/key %s",(char*)realm,usname,key);
-	  turnFreeRedisReply(redisCommand(rc, statement));
-	  snprintf(statement,sizeof(statement),"del turn/realm/%s/user/%s/password",(char*)realm,usname);
-	  turnFreeRedisReply(redisCommand(rc, statement));
+		snprintf(statement,sizeof(statement),"set turn/realm/%s/user/%s/key %s",(char*)realm,usname,key);
+		turnFreeRedisReply(redisCommand(rc, statement));
 		turnFreeRedisReply(redisCommand(rc, "save"));
-    ret = 0;
+		ret = 0;
 	}
   return ret;
 }
@@ -556,8 +537,6 @@ static int redis_del_user(u08bits *usname, u08bits *realm) {
 		{
 		  snprintf(statement,sizeof(statement),"del turn/realm/%s/user/%s/key",(char*)realm,usname);
 		  turnFreeRedisReply(redisCommand(rc, statement));
-		  snprintf(statement,sizeof(statement),"del turn/realm/%s/user/%s/password",(char*)realm,usname);
-		  turnFreeRedisReply(redisCommand(rc, statement));
 		}
 
 		turnFreeRedisReply(redisCommand(rc, "save"));
@@ -579,9 +558,14 @@ static int redis_del_oauth_key(const u08bits *kid) {
   return ret;
 }
   
-static int redis_list_users(u08bits *realm) {
-  int ret = -1;
+static int redis_list_users(u08bits *realm, secrets_list_t *users, secrets_list_t *realms)
+{
+	int ret = -1;
 	redisContext *rc = get_redis_connection();
+
+	u08bits realm0[STUN_MAX_REALM_SIZE+1] = "\0";
+	if(!realm) realm=realm0;
+
 	if(rc) {
 		secrets_list_t keys;
 		size_t isz = 0;
@@ -596,27 +580,7 @@ static int redis_list_users(u08bits *realm) {
 			} else {
 				reply = (redisReply*)redisCommand(rc, "keys turn/realm/*/user/*/key");
 			}
-			if(reply) {
 
-				if (reply->type == REDIS_REPLY_ERROR)
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", reply->str);
-				else if (reply->type != REDIS_REPLY_ARRAY) {
-					if (reply->type != REDIS_REPLY_NIL)
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", reply->type);
-				} else {
-					size_t i;
-					for (i = 0; i < reply->elements; ++i) {
-						add_to_secrets_list(&keys,reply->element[i]->str);
-					}
-				}
-				turnFreeRedisReply(reply);
-			}
-
-			if(realm && realm[0]) {
-				reply = (redisReply*)redisCommand(rc, "keys turn/realm/%s/user/*/password", (char*)realm);
-			} else {
-				reply = (redisReply*)redisCommand(rc, "keys turn/realm/*/user/*/password");
-			}
 			if(reply) {
 
 				if (reply->type == REDIS_REPLY_ERROR)
@@ -634,22 +598,43 @@ static int redis_list_users(u08bits *realm) {
 			}
 		}
 
+		size_t rhsz=strlen("turn/realm/");
+		size_t uhsz = strlen("user/");
+
 		for(isz=0;isz<keys.sz;++isz) {
 			char *s = keys.secrets[isz];
-			char *sh = strstr(s,"/user/");
-			if(sh) {
-				sh += 6;
-				char* st = strchr(sh,'/');
-				if(st)
-					*st=0;
-				printf("%s\n",sh);
+
+			char *sh = strstr(s,"turn/realm/");
+			if(sh != s) continue;
+			sh += rhsz;
+			char* st = strchr(sh,'/');
+			if(!st) continue;
+			*st=0;
+			char *sr = sh;
+			++st;
+
+			sh = strstr(st,"user/");
+			if(sh != st) continue;
+			sh += uhsz;
+			st = strchr(sh,'/');
+			if(!st) continue;
+			*st=0;
+			char *su = sh;
+
+			if(users) {
+				add_to_secrets_list(users,su);
+				if(realms) {
+					add_to_secrets_list(realms,sr);
+				}
+			} else {
+				printf("%s[%s]\n", su, sr);
 			}
 		}
 
 		clean_secrets_list(&keys);
 		ret = 0;
 	}
-  return ret;
+	return ret;
 }
 
 static int redis_list_oauth_keys(void) {

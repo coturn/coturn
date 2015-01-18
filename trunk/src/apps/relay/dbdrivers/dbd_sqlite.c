@@ -516,21 +516,24 @@ static int sqlite_del_oauth_key(const u08bits *kid)
 }
 
 
-static int sqlite_list_users(u08bits *realm)
+static int sqlite_list_users(u08bits *realm, secrets_list_t *users, secrets_list_t *realms)
 {
 	int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
 	sqlite3_stmt *st = NULL;
 	int rc = 0;
 
+	u08bits realm0[STUN_MAX_REALM_SIZE+1] = "\0";
+	if(!realm) realm=realm0;
+
 	donot_print_connection_success=1;
 
 	sqlite3 *sqliteconnection = get_sqlite_connection();
 	if (sqliteconnection) {
-		if (realm && realm[0]) {
+		if (realm[0]) {
 			snprintf(statement, sizeof(statement), "select name,realm from turnusers_lt where realm='%s' order by name", realm);
 		} else {
-			snprintf(statement, sizeof(statement), "select name,realm from turnusers_lt order by name");
+			snprintf(statement, sizeof(statement), "select name,realm from turnusers_lt order by realm,name");
 		}
 
 		sqlite_lock(0);
@@ -545,10 +548,17 @@ static int sqlite_list_users(u08bits *realm)
 					const char* kval = (const char*) sqlite3_column_text(st, 0);
 					const char* rval = (const char*) sqlite3_column_text(st, 1);
 
-					if (rval && *rval) {
-						printf("%s[%s]\n", kval, rval);
+					if(users) {
+						add_to_secrets_list(users,kval);
+						if(realms) {
+							if(rval && *rval) {
+								add_to_secrets_list(realms,rval);
+							} else {
+								add_to_secrets_list(realms,(char*)realm);
+							}
+						}
 					} else {
-						printf("%s\n", kval);
+						printf("%s[%s]\n", kval, rval);
 					}
 
 				} else if (res == SQLITE_DONE) {
