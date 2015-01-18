@@ -53,6 +53,7 @@
 #include <event2/bufferevent.h>
 #include <event2/buffer.h>
 #include <event2/listener.h>
+#include <event2/http.h>
 
 #include "userdb.h"
 #include "mainrelay.h"
@@ -1402,6 +1403,17 @@ static const char* logout_link = "<br><a href=\"/logout\">Logout</a><br><br>\r\n
 
 static ioa_socket_handle current_socket = NULL;
 
+static int wrong_html_name(const char* s)
+{
+	int ret = 0;
+	if(s) {
+		char* v=evhttp_encode_uri(s);
+		ret = strcmp(v,s);
+		free(v);
+	}
+	return ret;
+}
+
 static int is_superuser(void) {
 	return !(current_socket->as_realm[0]);
 }
@@ -1602,8 +1614,9 @@ static void https_print_str_array(struct str_buffer* sb, char **value, size_t sz
 	if(sb && name && value && sz) {
 		size_t i;
 		for(i=0;i<sz;i++) {
-			if(value[i])
+			if(value[i]) {
 				sbprintf(sb,"<tr><td>  %s</td><td> %s</td></tr>\r\n",name,value[i]);
+			}
 		}
 	}
 }
@@ -1911,8 +1924,14 @@ static void write_pc_page(ioa_socket_handle s)
 				else
 					https_print_flag(sb,1,"Anonymous credentials",0);
 				https_print_flag(sb,turn_params.use_auth_secret_with_timestamp,"TURN REST API support",0);
-				if(turn_params.use_auth_secret_with_timestamp && turn_params.rest_api_separator)
-					https_print_uint(sb,turn_params.rest_api_separator,"TURN REST API separator ASCII number",0);
+				if(turn_params.use_auth_secret_with_timestamp) {
+
+					if(!turn_params.rest_api_separator || ((unsigned int)turn_params.rest_api_separator == (unsigned int)':')) {
+						https_print_str(sb,":","TURN REST API separator",0);
+					} else {
+						https_print_uint(sb,turn_params.rest_api_separator,"TURN REST API separator ASCII number",0);
+					}
+				}
 
 				https_print_empty_row(sb,2);
 
@@ -2539,6 +2558,10 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 					const u08bits *add_user = (const u08bits*)get_http_header_value(hr, HR_ADD_USER);
 					const char* msg = "";
 					if(!add_user) add_user = (const u08bits*)"";
+					if(wrong_html_name((const char*)add_user)) {
+						msg = "Error: wrong user name";
+						add_user = (const u08bits*)"";
+					}
 					if(add_user[0]) {
 						add_realm = (const u08bits*)get_http_header_value(hr, HR_ADD_USER_REALM);
 						if(!add_realm) {
@@ -2549,6 +2572,10 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 						}
 						if(!add_realm[0]) {
 							add_realm=(const u08bits*)current_socket->as_eff_realm;
+						}
+						if(wrong_html_name((const char*)add_realm)) {
+							msg = "Error: wrong realm name";
+							add_realm = (const u08bits*)"";
 						}
 						if(add_realm[0]) {
 							const u08bits *pwd = (const u08bits*)get_http_header_value(hr, HR_PASSWORD);
