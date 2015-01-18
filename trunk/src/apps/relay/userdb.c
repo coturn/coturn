@@ -790,21 +790,21 @@ static int show_secret(u08bits *realm)
   const turn_dbdriver_t * dbd = get_dbdriver();
   if (dbd && dbd->show_secret) {
     (*dbd->show_secret)(realm);
-	}
+  }
 
-	return 0;
+  return 0;
 }
 
 static int del_secret(u08bits *secret, u08bits *realm) {
 
 	must_set_admin_realm(realm);
 
-  const turn_dbdriver_t * dbd = get_dbdriver();
-  if (dbd && dbd->del_secret) {
-    (*dbd->del_secret)(secret, realm);
+	const turn_dbdriver_t * dbd = get_dbdriver();
+	if (dbd && dbd->del_secret) {
+		(*dbd->del_secret)(secret, realm);
 	}
 
-  return 0;
+	return 0;
 }
 
 static int set_secret(u08bits *secret, u08bits *realm) {
@@ -816,9 +816,9 @@ static int set_secret(u08bits *secret, u08bits *realm) {
 
 	del_secret(secret, realm);
 
-  const turn_dbdriver_t * dbd = get_dbdriver();
-  if (dbd && dbd->set_secret) {
-    (*dbd->set_secret)(secret, realm);
+	const turn_dbdriver_t * dbd = get_dbdriver();
+	if (dbd && dbd->set_secret) {
+		(*dbd->set_secret)(secret, realm);
 	}
 
 	return 0;
