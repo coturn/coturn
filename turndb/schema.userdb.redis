@@ -8,9 +8,7 @@ has the following schema:
 "turn/realm/<realm-name>/user/<username>/key" and the values must be 
 the the hmackeys. For example, for the user "gorst", realm "north.gov" 
 and password "hero", there must be key "turn/realm/north.gov/user/gorst/key" 
-with value "7da2270ccfa49786e0115366d3a3d14d". Alternatively, the password 
-may be stored in clear text format. Then the key will be 
-"turn/realm/north.gov/user/gorst/password" and the key will be simply "hero".
+with value "7da2270ccfa49786e0115366d3a3d14d".
 
 2) For the shared secrets (REST API), several key/value pairs 
 may be used (same as in SQL schema). The secrets are stored as members 
@@ -117,11 +115,6 @@ set turn/realm/north.gov/user/ninefingers/key "bc807ee29df3c9ffa736523fb2c4e8ee"
 set turn/realm/north.gov/user/gorst/key "7da2270ccfa49786e0115366d3a3d14d"
 set turn/realm/crinna.org/user/whirrun/key "6972e85e51f36e53b0b61759c5a5219a"
 set turn/realm/crinna.org/user/stranger-come-knocking/key "d43cb678560259a1839bff61c19de15e"
-
-set turn/realm/north.gov/user/ninefingers/password "youhavetoberealistic"
-set turn/realm/north.gov/user/gorst/password "hero"
-set turn/realm/crinna.org/user/whirrun/password "sword"
-set turn/realm/crinna.org/user/stranger-come-knocking/password "civilization"
 
 sadd turn/realm/north.gov/secret "logen" "bloody9"
 sadd turn/realm/crinna.org/secret "north" "library"

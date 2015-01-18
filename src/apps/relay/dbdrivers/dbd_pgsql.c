@@ -327,15 +327,20 @@ static int pgsql_del_oauth_key(const u08bits *kid) {
   return ret;
 }
   
-static int pgsql_list_users(u08bits *realm) {
-  int ret = -1;
+static int pgsql_list_users(u08bits *realm, secrets_list_t *users, secrets_list_t *realms)
+{
+	int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
+
+	u08bits realm0[STUN_MAX_REALM_SIZE+1] = "\0";
+	if(!realm) realm=realm0;
+
 	PGconn *pqc = get_pqdb_connection();
 	if(pqc) {
-		if(realm && realm[0]) {
+		if(realm[0]) {
 		  snprintf(statement,sizeof(statement),"select name,realm from turnusers_lt where realm='%s' order by name",realm);
 		} else {
-		  snprintf(statement,sizeof(statement),"select name,realm from turnusers_lt order by name");
+		  snprintf(statement,sizeof(statement),"select name,realm from turnusers_lt order by realm,name");
 		}
 		PGresult *res = PQexec(pqc, statement);
 		if(!res || (PQresultStatus(res) != PGRES_TUPLES_OK)) {
@@ -346,10 +351,19 @@ static int pgsql_list_users(u08bits *realm) {
 				char *kval = PQgetvalue(res,i,0);
 				if(kval) {
 					char *rval = PQgetvalue(res,i,1);
-					if(rval && *rval) {
-						printf("%s[%s]\n",kval,rval);
-					} else {
-						printf("%s\n",kval);
+					if(rval) {
+						if(users) {
+							add_to_secrets_list(users,kval);
+							if(realms) {
+								if(rval && *rval) {
+									add_to_secrets_list(realms,rval);
+								} else {
+									add_to_secrets_list(realms,(char*)realm);
+								}
+							}
+						} else {
+							printf("%s[%s]\n", kval, rval);
+						}
 					}
 				}
 			}

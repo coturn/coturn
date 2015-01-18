@@ -1,5 +1,10 @@
 #!/bin/sh
 
+# ninefingers:password: youhavetoberealistic
+# gorst:password: hero
+# whirrun:password: sword
+# stranger-come-knocking:password: civilization
+
 redis-cli <<!
 
 SELECT 2
@@ -8,18 +13,8 @@ AUTH turn
 set turn/realm/north.gov/user/ninefingers/key "bc807ee29df3c9ffa736523fb2c4e8ee"
 set turn/realm/north.gov/user/gorst/key "7da2270ccfa49786e0115366d3a3d14d"
 
-set turn/realm/north.gov/user/bethod/key "3b4125e139811b8577a214c24273fee27b15ff397631c7775b980785a229e6bd"
-
 set turn/realm/crinna.org/user/whirrun/key "6972e85e51f36e53b0b61759c5a5219a"
 set turn/realm/crinna.org/user/stranger-come-knocking/key "d43cb678560259a1839bff61c19de15e"
-
-set turn/realm/north.gov/user/ninefingers/password "youhavetoberealistic"
-set turn/realm/north.gov/user/gorst/password "hero"
-
-set turn/realm/north.gov/user/bethod/password "king-of-north"
-
-set turn/realm/crinna.org/user/whirrun/password "sword"
-set turn/realm/crinna.org/user/stranger-come-knocking/password "civilization"
 
 sadd turn/realm/north.gov/secret "logen" "bloody9"
 sadd turn/realm/crinna.org/secret "north" "library"
