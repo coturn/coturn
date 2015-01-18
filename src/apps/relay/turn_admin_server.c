@@ -1408,10 +1408,8 @@ static int is_superuser(void) {
 
 static void https_cancel_session(const char* ssid)
 {
-	printf("%s: 111.111: %s\n",__FUNCTION__,ssid);
 	if(ssid && *ssid) {
 		turnsession_id sid = (turnsession_id)strtoull(ssid,NULL,10);
-		printf("%s: 111.222: %llu\n",__FUNCTION__,(unsigned long long)sid);
 		send_session_cancellation_to_relay(sid);
 	}
 }
