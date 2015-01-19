@@ -376,10 +376,19 @@ static int pgsql_list_users(u08bits *realm, secrets_list_t *users, secrets_list_
   return ret;
 }
   
-static int pgsql_show_secret(u08bits *realm) {
-  int ret = -1;
+static int pgsql_list_secrets(u08bits *realm, secrets_list_t *secrets, secrets_list_t *realms)
+{
+	int ret = -1;
+
+	u08bits realm0[STUN_MAX_REALM_SIZE+1] = "\0";
+	if(!realm) realm=realm0;
+
 	char statement[TURN_LONG_STRING_SIZE];
-	snprintf(statement,sizeof(statement)-1,"select value from turn_secret where realm='%s'",realm);
+	if (realm[0]) {
+		snprintf(statement, sizeof(statement), "select value,realm from turn_secret where realm='%s' order by value", realm);
+	} else {
+		snprintf(statement, sizeof(statement), "select value,realm from turn_secret order by realm,value");
+	}
 
 	donot_print_connection_success=1;
 
@@ -393,16 +402,28 @@ static int pgsql_show_secret(u08bits *realm) {
 			for(i=0;i<PQntuples(res);i++) {
 				char *kval = PQgetvalue(res,i,0);
 				if(kval) {
-					printf("%s\n",kval);
+					char* rval = PQgetvalue(res,i,1);
+					if(secrets) {
+						add_to_secrets_list(secrets,kval);
+						if(realms) {
+							if(rval && *rval) {
+								add_to_secrets_list(realms,rval);
+							} else {
+								add_to_secrets_list(realms,(char*)realm);
+							}
+						}
+					} else {
+						printf("%s[%s]\n",kval,rval);
+					}
 				}
 			}
-      ret = 0;
+			ret = 0;
 		}
 		if(res) {
 			PQclear(res);
 		}
 	}
-  return ret;
+	return ret;
 }
   
 static int pgsql_del_secret(u08bits *secret, u08bits *realm) {
@@ -862,7 +883,7 @@ static const turn_dbdriver_t driver = {
   &pgsql_set_user_key,
   &pgsql_del_user,
   &pgsql_list_users,
-  &pgsql_show_secret,
+  &pgsql_list_secrets,
   &pgsql_del_secret,
   &pgsql_set_secret,
   &pgsql_add_origin,

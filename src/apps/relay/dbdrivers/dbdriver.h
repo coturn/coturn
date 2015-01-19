@@ -53,7 +53,7 @@ typedef struct _turn_dbdriver_t {
   int (*set_user_key)(u08bits *usname, u08bits *realm, const char *key);
   int (*del_user)(u08bits *usname, u08bits *realm);
   int (*list_users)(u08bits *realm, secrets_list_t *users, secrets_list_t *realms);
-  int (*show_secret)(u08bits *realm);
+  int (*list_secrets)(u08bits *realm, secrets_list_t *users, secrets_list_t *realms);
   int (*del_secret)(u08bits *secret, u08bits *realm);
   int (*set_secret)(u08bits *secret, u08bits *realm);
   int (*add_origin)(u08bits *origin, u08bits *realm);

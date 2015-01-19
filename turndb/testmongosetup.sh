@@ -5,7 +5,7 @@ mongo $* <<EOF
 use coturn;
 
 db.turnusers_lt.ensureIndex({ realm: 1, name: 1 }, { unique: 1 });
-db.turn_secret.ensureIndex({ realm: 1 }, { unique: 1 });
+db.turn_secret.ensureIndex({ realm: 1, value:1 }, { unique: 1 });
 db.realm.ensureIndex({ realm: 1 }, { unique: 1 });
 db.oauth_key.ensureIndex({ kid: 1 }, {unique: 1 });
 
@@ -15,7 +15,9 @@ db.turnusers_lt.insert({ realm: 'crinna.org', name: 'whirrun', hmackey: '6972e85
 db.turnusers_lt.insert({ realm: 'crinna.org', name: 'stranger-come-knocking', hmackey: 'd43cb678560259a1839bff61c19de15e' });
 
 db.turn_secret.insert({ realm: 'north.gov', value: 'logen' });
+db.turn_secret.insert({ realm: 'north.gov', value: 'bloody9' });
 db.turn_secret.insert({ realm: 'crinna.org', value: 'north' });
+db.turn_secret.insert({ realm: 'crinna.org', value: 'library' });
 
 db.admin_user.insert({ name: 'skarling', realm: 'north.gov', password: 'hoodless' });
 db.admin_user.insert({ name: 'bayaz', realm: '', password: 'magi' });

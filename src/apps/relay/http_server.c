@@ -61,7 +61,7 @@ static void write_http_echo(ioa_socket_handle s)
 			char data_http[1025];
 			char content_http[1025];
 			const char* title = "TURN Server";
-			snprintf(content_http,sizeof(content_http)-1,"<!DOCTYPE html>\r\n<html>\r\n  <head>\r\n    <title>%s</title>\r\n  </head>\r\n  <body>\r\n    %s\r\n  </body>\r\n</html>\r\n",title,title);
+			snprintf(content_http,sizeof(content_http)-1,"<!DOCTYPE html>\r\n<html>\r\n  <head>\r\n    <title>%s</title>\r\n  </head>\r\n  <body>\r\n    <b>%s</b> <br> <b><i>use https connection for the admin session</i></b>\r\n  </body>\r\n</html>\r\n",title,title);
 			snprintf(data_http,sizeof(data_http)-1,"HTTP/1.1 200 OK\r\nServer: %s\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Length: %d\r\n\r\n%s",TURN_SOFTWARE,(int)strlen(content_http),content_http);
 			len_http = strlen(data_http);
 			ns_bcopy(data_http,data,len_http);

@@ -686,9 +686,13 @@ static int redis_list_oauth_keys(void) {
 }
   
 
-static int redis_show_secret(u08bits *realm)
+static int redis_list_secrets(u08bits *realm, secrets_list_t *secrets, secrets_list_t *realms)
 {
 	int ret = -1;
+
+	u08bits realm0[STUN_MAX_REALM_SIZE+1] = "\0";
+	if(!realm) realm=realm0;
+
 	donot_print_connection_success = 1;
 	redisContext *rc = get_redis_connection();
 	if (rc) {
@@ -717,6 +721,8 @@ static int redis_show_secret(u08bits *realm)
 				}
 			}
 
+			size_t rhsz=strlen("turn/realm/");
+
 			for (isz = 0; isz < keys.sz; ++isz) {
 				snprintf(s, sizeof(s), "smembers %s", keys.secrets[isz]);
 				redisReply *rget = (redisReply *) redisCommand(rc, s);
@@ -729,9 +735,32 @@ static int redis_show_secret(u08bits *realm)
 						if (rget->type != REDIS_REPLY_NIL)
 							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", rget->type);
 					} else {
+
+						char *s = keys.secrets[isz];
+
+						char *sh = strstr(s,"turn/realm/");
+						if(sh != s) continue;
+						sh += rhsz;
+						char* st = strchr(sh,'/');
+						if(!st) continue;
+						*st=0;
+						const char *rval = sh;
+
 						size_t i;
 						for (i = 0; i < rget->elements; ++i) {
-							printf("%s\n", rget->element[i]->str);
+							const char *kval = rget->element[i]->str;
+							if(secrets) {
+								add_to_secrets_list(secrets,kval);
+								if(realms) {
+									if(rval && *rval) {
+								   		add_to_secrets_list(realms,rval);
+									} else {
+										add_to_secrets_list(realms,(char*)realm);
+									}
+								}
+							} else {
+								printf("%s[%s]\n", kval, rval);
+							}
 						}
 					}
 				}
@@ -1262,7 +1291,7 @@ static const turn_dbdriver_t driver = {
   &redis_set_user_key,
   &redis_del_user,
   &redis_list_users,
-  &redis_show_secret,
+  &redis_list_secrets,
   &redis_del_secret,
   &redis_set_secret,
   &redis_add_origin,
