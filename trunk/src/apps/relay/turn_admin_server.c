@@ -1362,6 +1362,7 @@ enum _AS_FORM {
 	AS_FORM_PS,
 	AS_FORM_USERS,
 	AS_FORM_SS,
+	AS_FORM_OS,
 	AS_FORM_UNKNOWN
 };
 
@@ -1374,6 +1375,7 @@ typedef enum _AS_FORM AS_FORM;
 #define HR_ADD_USER "add_user"
 #define HR_ADD_REALM "add_user_realm"
 #define HR_ADD_SECRET "add_secret"
+#define HR_ADD_ORIGIN "add_origin"
 #define HR_CLIENT_PROTOCOL "cprotocol"
 #define HR_USER_PATTERN "puser"
 #define HR_MAX_SESSIONS "maxsess"
@@ -1381,6 +1383,7 @@ typedef enum _AS_FORM AS_FORM;
 #define HR_DELETE_USER "du"
 #define HR_DELETE_REALM "dr"
 #define HR_DELETE_SECRET "ds"
+#define HR_DELETE_ORIGIN "do"
 
 struct form_name {
 	AS_FORM form;
@@ -1397,6 +1400,7 @@ static struct form_name form_names[] = {
 				{AS_FORM_PS,"/ps"},
 				{AS_FORM_USERS,"/us"},
 				{AS_FORM_SS,"/ss"},
+				{AS_FORM_OS,"/os"},
 				{AS_FORM_UNKNOWN,NULL}
 };
 
@@ -1537,6 +1541,10 @@ static void write_https_home_page(ioa_socket_handle s)
 
 			str_buffer_append(sb,"<br><input type=\"submit\" value=\"Shared Secrets (for TURN REST API)\" formaction=\"");
 			str_buffer_append(sb,form_names[AS_FORM_SS].name);
+			str_buffer_append(sb,"\">");
+
+			str_buffer_append(sb,"<br><input type=\"submit\" value=\"Origins\" formaction=\"");
+			str_buffer_append(sb,form_names[AS_FORM_OS].name);
 			str_buffer_append(sb,"\">");
 
 			str_buffer_append(sb,"</fieldset>\r\n");
@@ -2250,7 +2258,7 @@ static size_t https_print_users(struct str_buffer* sb)
 		size_t i;
 		for(i=0;i<sz;++i) {
 			str_buffer_append(sb,"<tr><td>");
-			str_buffer_append_sz(sb,i);
+			str_buffer_append_sz(sb,i+1);
 			str_buffer_append(sb,"</td>");
 			str_buffer_append(sb,"<td>");
 			str_buffer_append(sb,get_secrets_list_elem(&users,i));
@@ -2415,7 +2423,7 @@ static size_t https_print_secrets(struct str_buffer* sb)
 		size_t i;
 		for(i=0;i<sz;++i) {
 			str_buffer_append(sb,"<tr><td>");
-			str_buffer_append_sz(sb,i);
+			str_buffer_append_sz(sb,i+1);
 			str_buffer_append(sb,"</td>");
 			str_buffer_append(sb,"<td>");
 			str_buffer_append(sb,get_secrets_list_elem(&secrets,i));
@@ -2533,6 +2541,156 @@ static void write_shared_secrets_page(ioa_socket_handle s, const char* add_secre
 			str_buffer_append(sb,"\r\n</table>\r\n");
 
 			str_buffer_append(sb,"<br>Total secrets = ");
+			str_buffer_append_sz(sb,total_sz);
+			str_buffer_append(sb,"<br>\r\n");
+
+			str_buffer_append(sb,"</body>\r\n</html>\r\n");
+
+			send_str_from_ioa_socket_tcp(s,"HTTP/1.1 200 OK\r\nServer: ");
+			send_str_from_ioa_socket_tcp(s,TURN_SOFTWARE);
+			send_str_from_ioa_socket_tcp(s,"\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Length: ");
+
+			send_ulong_from_ioa_socket_tcp(s,str_buffer_get_str_len(sb));
+
+			send_str_from_ioa_socket_tcp(s,"\r\n\r\n");
+			send_str_from_ioa_socket_tcp(s,str_buffer_get_str(sb));
+
+			str_buffer_free(sb);
+		}
+	}
+}
+
+static size_t https_print_origins(struct str_buffer* sb)
+{
+	size_t ret = 0;
+	const turn_dbdriver_t * dbd = get_dbdriver();
+	if (dbd && dbd->list_origins) {
+		secrets_list_t origins,realms;
+		init_secrets_list(&origins);
+		init_secrets_list(&realms);
+		dbd->list_origins((u08bits*)current_socket->as_eff_realm,&origins,&realms);
+
+		size_t sz = get_secrets_list_size(&origins);
+		size_t i;
+		for(i=0;i<sz;++i) {
+			str_buffer_append(sb,"<tr><td>");
+			str_buffer_append_sz(sb,i+1);
+			str_buffer_append(sb,"</td>");
+			str_buffer_append(sb,"<td>");
+			str_buffer_append(sb,get_secrets_list_elem(&origins,i));
+			str_buffer_append(sb,"</td>");
+			if(!current_socket->as_eff_realm[0]) {
+				str_buffer_append(sb,"<td>");
+				str_buffer_append(sb,get_secrets_list_elem(&realms,i));
+				str_buffer_append(sb,"</td>");
+			}
+			if(is_superuser()) {
+				str_buffer_append(sb,"<td> <a href=\"");
+				str_buffer_append(sb,form_names[AS_FORM_OS].name);
+				str_buffer_append(sb,"?");
+				str_buffer_append(sb,HR_DELETE_ORIGIN);
+				str_buffer_append(sb,"=");
+				str_buffer_append(sb,get_secrets_list_elem(&origins,i));
+				str_buffer_append(sb,"\">delete</a>");
+				str_buffer_append(sb,"</td>");
+			}
+			str_buffer_append(sb,"</tr>");
+			++ret;
+		}
+
+		clean_secrets_list(&origins);
+		clean_secrets_list(&realms);
+	}
+
+	return ret;
+}
+
+static void write_origins_page(ioa_socket_handle s, const char* add_origin, const char* add_realm, const char* msg)
+{
+	if(s && !ioa_socket_tobeclosed(s)) {
+
+		if(!(s->as_ok)) {
+			write_https_logon_page(s);
+		} else {
+
+			struct str_buffer* sb = str_buffer_new();
+
+			str_buffer_append(sb,"<!DOCTYPE html>\r\n<html>\r\n  <head>\r\n    <title>");
+			str_buffer_append(sb,admin_title);
+			str_buffer_append(sb,"</title>\r\n <style> table, th, td { border: 1px solid black; } table#msg th { color: red; background-color: white; } </style> </head>\r\n  <body>\r\n    ");
+			str_buffer_append(sb,bold_admin_title);
+			str_buffer_append(sb,"<br>\r\n");
+			str_buffer_append(sb,home_link);
+			str_buffer_append(sb,"<br>\r\n");
+
+			str_buffer_append(sb,"<form action=\"");
+			str_buffer_append(sb,form_names[AS_FORM_OS].name);
+			str_buffer_append(sb,"\" method=\"POST\">\r\n");
+			str_buffer_append(sb,"  <fieldset><legend>Filter:</legend>\r\n");
+
+			str_buffer_append(sb,"  <br>Realm name: <input type=\"text\" name=\"");
+			str_buffer_append(sb,HR_REALM);
+			str_buffer_append(sb,"\" value=\"");
+			str_buffer_append(sb,get_eff_realm());
+			str_buffer_append(sb,"\"");
+			if(!is_superuser()) {
+				str_buffer_append(sb," disabled ");
+			}
+			str_buffer_append(sb,">");
+
+			str_buffer_append(sb,"<br><input type=\"submit\" value=\"Filter\">");
+
+			str_buffer_append(sb,"</fieldset>\r\n");
+			str_buffer_append(sb,"</form>\r\n");
+
+			if(is_superuser()) {
+				str_buffer_append(sb,"<form action=\"");
+				str_buffer_append(sb,form_names[AS_FORM_OS].name);
+				str_buffer_append(sb,"\" method=\"POST\">\r\n");
+				str_buffer_append(sb,"  <fieldset><legend>Origin:</legend>\r\n");
+
+				if(msg && msg[0]) {
+					str_buffer_append(sb,"<br><table id=\"msg\"><th>");
+					str_buffer_append(sb,msg);
+					str_buffer_append(sb,"</th></table><br>");
+				}
+
+				str_buffer_append(sb,"  <br>Realm name: <input type=\"text\" name=\"");
+				str_buffer_append(sb,HR_ADD_REALM);
+				str_buffer_append(sb,"\" value=\"");
+				str_buffer_append(sb,(const char*)add_realm);
+				str_buffer_append(sb,"\"");
+				str_buffer_append(sb,"><br>\r\n");
+
+				str_buffer_append(sb,"  <br>Origin: <input type=\"text\" name=\"");
+				str_buffer_append(sb,HR_ADD_ORIGIN);
+				str_buffer_append(sb,"\" value=\"");
+				str_buffer_append(sb,(const char*)add_origin);
+				str_buffer_append(sb,"\"");
+				str_buffer_append(sb,"><br>\r\n");
+
+				str_buffer_append(sb,"<br><input type=\"submit\" value=\"Add origin\">");
+
+				str_buffer_append(sb,"</fieldset>\r\n");
+				str_buffer_append(sb,"</form>\r\n");
+			}
+
+			str_buffer_append(sb,"Origins:<br>\r\n");
+			str_buffer_append(sb,"<table>\r\n");
+			str_buffer_append(sb,"<tr><th>N</th><th>Value</th>");
+			if(!current_socket->as_eff_realm[0]) {
+				str_buffer_append(sb,"<th>Realm</th>");
+			}
+			if(is_superuser()) {
+				str_buffer_append(sb,"<th> </th>");
+			}
+			str_buffer_append(sb,"</tr>\r\n");
+
+			size_t total_sz = https_print_origins(sb);
+
+			str_buffer_append(sb,"\r\n</table>\r\n");
+
+			str_buffer_append(sb,"<br>Total origins = ");
 			str_buffer_append_sz(sb,total_sz);
 			str_buffer_append(sb,"<br>\r\n");
 
@@ -2732,6 +2890,9 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 						if(!add_realm[0]) {
 							add_realm=(const u08bits*)current_socket->as_eff_realm;
 						}
+						if(!add_realm[0]) {
+							add_realm = (const u08bits*)get_realm(NULL)->options.name;
+						}
 						if(wrong_html_name((const char*)add_realm)) {
 							msg = "Error: wrong realm name";
 							add_realm = (const u08bits*)"";
@@ -2835,6 +2996,9 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 						if(!add_realm[0]) {
 							add_realm=(const u08bits*)current_socket->as_eff_realm;
 						}
+						if(!add_realm[0]) {
+							add_realm = (const u08bits*)get_realm(NULL)->options.name;
+						}
 						if(wrong_html_name((const char*)add_realm)) {
 							msg = "Error: wrong realm name";
 							add_realm = (const u08bits*)"";
@@ -2855,6 +3019,74 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 					}
 
 					write_shared_secrets_page(s,(const char*)add_secret,(const char*)add_realm,msg);
+
+				} else {
+					write_https_logon_page(s);
+				}
+				break;
+			}
+			case AS_FORM_OS: {
+				if(s->as_ok) {
+					{
+						const char *realm0 = get_http_header_value(hr, HR_REALM);
+						if(!realm0)
+							realm0="";
+						if(!is_superuser())
+							realm0 = current_socket->as_realm;
+						STRCPY(current_socket->as_eff_realm,realm0);
+					}
+
+					if(is_superuser()) {
+						const u08bits *origin = (const u08bits*)get_http_header_value(hr, HR_DELETE_ORIGIN);
+						if(origin && origin[0]) {
+							const turn_dbdriver_t * dbd = get_dbdriver();
+							if (dbd && dbd->del_origin) {
+								u08bits o[STUN_MAX_ORIGIN_SIZE+1];
+								STRCPY(o,origin);
+								dbd->del_origin(o);
+								u08bits corigin[STUN_MAX_ORIGIN_SIZE+1];
+								get_canonic_origin((const char *)origin, (char *)corigin, sizeof(corigin)-1);
+								dbd->del_origin(corigin);
+							}
+						}
+					}
+
+					const u08bits *add_realm = (const u08bits*)current_socket->as_eff_realm;
+					const u08bits *add_origin = (const u08bits*)get_http_header_value(hr, HR_ADD_ORIGIN);
+					const char* msg = "";
+					if(!add_origin) add_origin = (const u08bits*)"";
+					u08bits corigin[STUN_MAX_ORIGIN_SIZE+1];
+					get_canonic_origin((const char *)add_origin, (char *)corigin, sizeof(corigin)-1);
+					if(corigin[0]) {
+						add_realm = (const u08bits*)get_http_header_value(hr, HR_ADD_REALM);
+						if(!add_realm) {
+							add_realm=(const u08bits*)"";
+						}
+						if(!is_superuser()) {
+							add_realm = (const u08bits*)current_socket->as_realm;
+						}
+						if(!add_realm[0]) {
+							add_realm=(const u08bits*)current_socket->as_eff_realm;
+						}
+						if(!add_realm[0]) {
+							add_realm = (const u08bits*)get_realm(NULL)->options.name;
+						}
+						if(add_realm[0]) {
+							const turn_dbdriver_t * dbd = get_dbdriver();
+							if (dbd && dbd->add_origin) {
+								u08bits o[STUN_MAX_ORIGIN_SIZE+1];
+								u08bits r[STUN_MAX_REALM_SIZE+1];
+								STRCPY(o,corigin);
+								STRCPY(r,add_realm);
+								(*dbd->add_origin)(o, r);
+							}
+
+							add_origin=(const u08bits*)"";
+							add_realm=(const u08bits*)"";
+						}
+					}
+
+					write_origins_page(s,(const char*)add_origin,(const char*)add_realm,msg);
 
 				} else {
 					write_https_logon_page(s);

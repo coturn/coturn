@@ -508,16 +508,25 @@ static int pgsql_del_origin(u08bits *origin) {
   return ret;
 }
   
-static int pgsql_list_origins(u08bits *realm) {
-  int ret = -1;
+static int pgsql_list_origins(u08bits *realm, secrets_list_t *origins, secrets_list_t *realms)
+{
+	int ret = -1;
+
+	u08bits realm0[STUN_MAX_REALM_SIZE+1] = "\0";
+	if(!realm) realm=realm0;
+
 	donot_print_connection_success = 1;
-	char statement[TURN_LONG_STRING_SIZE];
+
 	PGconn *pqc = get_pqdb_connection();
+
 	if(pqc) {
+
+		char statement[TURN_LONG_STRING_SIZE];
+
 		if(realm && realm[0]) {
 		  snprintf(statement,sizeof(statement),"select origin,realm from turn_origin_to_realm where realm='%s' order by origin",realm);
 		} else {
-		  snprintf(statement,sizeof(statement),"select origin,realm from turn_origin_to_realm order by origin,realm");
+		  snprintf(statement,sizeof(statement),"select origin,realm from turn_origin_to_realm order by realm,origin");
 		}
 		PGresult *res = PQexec(pqc, statement);
 		if(!res || (PQresultStatus(res) != PGRES_TUPLES_OK)) {
@@ -525,21 +534,32 @@ static int pgsql_list_origins(u08bits *realm) {
 		} else {
 			int i = 0;
 			for(i=0;i<PQntuples(res);i++) {
-				char *oval = PQgetvalue(res,i,0);
-				if(oval) {
+				char *kval = PQgetvalue(res,i,0);
+				if(kval) {
 					char *rval = PQgetvalue(res,i,1);
 					if(rval) {
-						printf("%s ==>> %s\n",oval,rval);
+						if(origins) {
+							add_to_secrets_list(origins,kval);
+							if(realms) {
+								if(rval && *rval) {
+									add_to_secrets_list(realms,rval);
+								} else {
+									add_to_secrets_list(realms,(char*)realm);
+								}
+							}
+						} else {
+							printf("%s ==>> %s\n",kval,rval);
+						}
 					}
 				}
 			}
-      ret = 0;
+			ret = 0;
 		}
 		if(res) {
 			PQclear(res);
 		}
 	}
-  return ret;
+	return ret;
 }
   
 static int pgsql_set_realm_option_one(u08bits *realm, unsigned long value, const char* opt) {
