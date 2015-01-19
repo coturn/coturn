@@ -581,13 +581,22 @@ static int sqlite_list_users(u08bits *realm, secrets_list_t *users, secrets_list
 	return ret;
 }
 
-static int sqlite_show_secret(u08bits *realm)
+static int sqlite_list_secrets(u08bits *realm, secrets_list_t *secrets, secrets_list_t *realms)
 {
 	int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
+
+	u08bits realm0[STUN_MAX_REALM_SIZE+1] = "\0";
+	if(!realm) realm=realm0;
+
 	sqlite3_stmt *st = NULL;
 	int rc = 0;
-	snprintf(statement,sizeof(statement)-1,"select value from turn_secret where realm='%s'",realm);
+
+	if (realm[0]) {
+		snprintf(statement, sizeof(statement), "select value,realm from turn_secret where realm='%s' order by value", realm);
+	} else {
+		snprintf(statement, sizeof(statement), "select value,realm from turn_secret order by realm,value");
+	}
 
 	donot_print_connection_success=1;
 
@@ -597,17 +606,37 @@ static int sqlite_show_secret(u08bits *realm)
 		sqlite_lock(0);
 
 		if ((rc = sqlite3_prepare(sqliteconnection, statement, -1, &st, 0)) == SQLITE_OK) {
-			int res = sqlite3_step(st);
-			if (res == SQLITE_ROW) {
-				ret = 0;
-				const char* kval = (const char*) sqlite3_column_text(st, 0);
-				if(kval) {
-					printf("%s\n",kval);
+
+			int res = 0;
+			while(1) {
+				res = sqlite3_step(st);
+				if (res == SQLITE_ROW) {
+					ret = 0;
+					const char* kval = (const char*) sqlite3_column_text(st, 0);
+					if(kval) {
+						const char* rval = (const char*) sqlite3_column_text(st, 1);
+						if(secrets) {
+							add_to_secrets_list(secrets,kval);
+							if(realms) {
+								if(rval && *rval) {
+									add_to_secrets_list(realms,rval);
+								} else {
+									add_to_secrets_list(realms,(char*)realm);
+								}
+							}
+						} else {
+							printf("%s[%s]\n",kval,rval);
+						}
+					}
+				} else if (res == SQLITE_DONE) {
+					break;
+				} else {
+					const char* errmsg = sqlite3_errmsg(sqliteconnection);
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving SQLite DB information: %s\n", errmsg);
+					ret = -1;
+					break;
 				}
 			}
-		} else {
-			const char* errmsg = sqlite3_errmsg(sqliteconnection);
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving SQLite DB information: %s\n", errmsg);
 		}
 		sqlite3_finalize(st);
 
@@ -1200,7 +1229,7 @@ static const turn_dbdriver_t driver = {
   &sqlite_set_user_key,
   &sqlite_del_user,
   &sqlite_list_users,
-  &sqlite_show_secret,
+  &sqlite_list_secrets,
   &sqlite_del_secret,
   &sqlite_set_secret,
   &sqlite_add_origin,

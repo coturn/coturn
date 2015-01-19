@@ -5,7 +5,9 @@ insert into turnusers_lt (realm, name, hmackey) values('crinna.org','whirrun','6
 insert into turnusers_lt (realm, name, hmackey) values('crinna.org','stranger-come-knocking','d43cb678560259a1839bff61c19de15e');
 
 insert into turn_secret (realm,value) values('north.gov','logen');
+insert into turn_secret (realm,value) values('north.gov','bloody9');
 insert into turn_secret (realm,value) values('crinna.org','north');
+insert into turn_secret (realm,value) values('crinna.org','library');
 
 insert into admin_user (name, realm, password) values('skarling','north.gov','hoodless');
 insert into admin_user (name, realm, password) values('bayaz','','magi');

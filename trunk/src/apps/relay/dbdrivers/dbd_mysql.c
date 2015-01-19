@@ -605,10 +605,19 @@ static int mysql_list_users(u08bits *realm, secrets_list_t *users, secrets_list_
   return ret;
 }
   
-static int mysql_show_secret(u08bits *realm) {
-  int ret = -1;
+static int mysql_list_secrets(u08bits *realm, secrets_list_t *secrets, secrets_list_t *realms)
+{
+	int ret = -1;
+
+	u08bits realm0[STUN_MAX_REALM_SIZE+1] = "\0";
+	if(!realm) realm=realm0;
+
 	char statement[TURN_LONG_STRING_SIZE];
-	snprintf(statement,sizeof(statement)-1,"select value from turn_secret where realm='%s'",realm);
+	if (realm[0]) {
+		snprintf(statement, sizeof(statement), "select value,realm from turn_secret where realm='%s' order by value", realm);
+	} else {
+		snprintf(statement, sizeof(statement), "select value,realm from turn_secret order by realm,value");
+	}
 
 	donot_print_connection_success=1;
 
@@ -621,7 +630,7 @@ static int mysql_show_secret(u08bits *realm) {
 			MYSQL_RES *mres = mysql_store_result(myc);
 			if(!mres) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n",mysql_error(myc));
-			} else if(mysql_field_count(myc)!=1) {
+			} else if(mysql_field_count(myc)!=2) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown error retrieving MySQL DB information: %s\n",statement);
 			} else {
 				for(;;) {
@@ -629,19 +638,32 @@ static int mysql_show_secret(u08bits *realm) {
 					if(!row) {
 						break;
 					} else {
-						if(row[0]) {
-							printf("%s\n",row[0]);
+						const char* kval = row[0];
+						if(kval) {
+							const char* rval = row[1];
+							if(secrets) {
+								add_to_secrets_list(secrets,kval);
+								if(realms) {
+									if(rval && *rval) {
+										add_to_secrets_list(realms,rval);
+									} else {
+										add_to_secrets_list(realms,(char*)realm);
+									}
+								}
+							} else {
+								printf("%s[%s]\n",kval,rval);
+							}
 						}
 					}
 				}
-        ret = 0;
+				ret = 0;
 			}
 
 			if(mres)
 				mysql_free_result(mres);
 		}
 	}
-  return ret;
+	return ret;
 }
   
 static int mysql_del_secret(u08bits *secret, u08bits *realm) {
@@ -1145,7 +1167,7 @@ static const turn_dbdriver_t driver = {
   &mysql_set_user_key,
   &mysql_del_user,
   &mysql_list_users,
-  &mysql_show_secret,
+  &mysql_list_secrets,
   &mysql_del_secret,
   &mysql_set_secret,
   &mysql_add_origin,

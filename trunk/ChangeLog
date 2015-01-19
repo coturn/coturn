@@ -1,9 +1,11 @@
 1/12/2015 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.4.1.1 'Ardee West':
 	- https admin server;
-	- SSLv2 support removed;
+	- SSLv2 support removed (security concern fixed);
 	- The server-side short-term credentials mechanism support removed;
 	- OpenSSL 1.1.0 supported;
+	- shared secrets fixed in MongoDB: multiple secrets per realm allowed;
+	- shared secrets admin fixed in Redis;
 
 12/24/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.3.3.1 'Tolomei':

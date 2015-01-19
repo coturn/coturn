@@ -785,11 +785,9 @@ static int list_users(u08bits *realm, int is_admin)
 
 static int show_secret(u08bits *realm)
 {
-	must_set_admin_realm(realm);
-
   const turn_dbdriver_t * dbd = get_dbdriver();
-  if (dbd && dbd->show_secret) {
-    (*dbd->show_secret)(realm);
+  if (dbd && dbd->list_secrets) {
+    (*dbd->list_secrets)(realm,NULL,NULL);
   }
 
   return 0;

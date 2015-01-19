@@ -1361,6 +1361,7 @@ enum _AS_FORM {
 	AS_FORM_UPDATE,
 	AS_FORM_PS,
 	AS_FORM_USERS,
+	AS_FORM_SS,
 	AS_FORM_UNKNOWN
 };
 
@@ -1371,13 +1372,15 @@ typedef enum _AS_FORM AS_FORM;
 #define HR_PASSWORD1 "pwd1"
 #define HR_REALM "realm"
 #define HR_ADD_USER "add_user"
-#define HR_ADD_USER_REALM "add_user_realm"
+#define HR_ADD_REALM "add_user_realm"
+#define HR_ADD_SECRET "add_secret"
 #define HR_CLIENT_PROTOCOL "cprotocol"
 #define HR_USER_PATTERN "puser"
 #define HR_MAX_SESSIONS "maxsess"
 #define HR_CANCEL_SESSION "cs"
 #define HR_DELETE_USER "du"
 #define HR_DELETE_REALM "dr"
+#define HR_DELETE_SECRET "ds"
 
 struct form_name {
 	AS_FORM form;
@@ -1393,6 +1396,7 @@ static struct form_name form_names[] = {
 				{AS_FORM_UPDATE,"/update"},
 				{AS_FORM_PS,"/ps"},
 				{AS_FORM_USERS,"/us"},
+				{AS_FORM_SS,"/ss"},
 				{AS_FORM_UNKNOWN,NULL}
 };
 
@@ -1529,6 +1533,10 @@ static void write_https_home_page(ioa_socket_handle s)
 
 			str_buffer_append(sb,"<br><input type=\"submit\" value=\"Users\" formaction=\"");
 			str_buffer_append(sb,form_names[AS_FORM_USERS].name);
+			str_buffer_append(sb,"\">");
+
+			str_buffer_append(sb,"<br><input type=\"submit\" value=\"Shared Secrets (for TURN REST API)\" formaction=\"");
+			str_buffer_append(sb,form_names[AS_FORM_SS].name);
 			str_buffer_append(sb,"\">");
 
 			str_buffer_append(sb,"</fieldset>\r\n");
@@ -2325,7 +2333,7 @@ static void write_users_page(ioa_socket_handle s, const u08bits *add_user, const
 			}
 
 			str_buffer_append(sb,"  <br>Realm name: <input type=\"text\" name=\"");
-			str_buffer_append(sb,HR_ADD_USER_REALM);
+			str_buffer_append(sb,HR_ADD_REALM);
 			str_buffer_append(sb,"\" value=\"");
 			str_buffer_append(sb,(const char*)add_realm);
 			str_buffer_append(sb,"\"");
@@ -2374,6 +2382,157 @@ static void write_users_page(ioa_socket_handle s, const u08bits *add_user, const
 			str_buffer_append(sb,"\r\n</table>\r\n");
 
 			str_buffer_append(sb,"<br>Total users = ");
+			str_buffer_append_sz(sb,total_sz);
+			str_buffer_append(sb,"<br>\r\n");
+
+			str_buffer_append(sb,"</body>\r\n</html>\r\n");
+
+			send_str_from_ioa_socket_tcp(s,"HTTP/1.1 200 OK\r\nServer: ");
+			send_str_from_ioa_socket_tcp(s,TURN_SOFTWARE);
+			send_str_from_ioa_socket_tcp(s,"\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Length: ");
+
+			send_ulong_from_ioa_socket_tcp(s,str_buffer_get_str_len(sb));
+
+			send_str_from_ioa_socket_tcp(s,"\r\n\r\n");
+			send_str_from_ioa_socket_tcp(s,str_buffer_get_str(sb));
+
+			str_buffer_free(sb);
+		}
+	}
+}
+
+static size_t https_print_secrets(struct str_buffer* sb)
+{
+	size_t ret = 0;
+	const turn_dbdriver_t * dbd = get_dbdriver();
+	if (dbd && dbd->list_secrets) {
+		secrets_list_t secrets,realms;
+		init_secrets_list(&secrets);
+		init_secrets_list(&realms);
+		dbd->list_secrets((u08bits*)current_socket->as_eff_realm,&secrets,&realms);
+
+		size_t sz = get_secrets_list_size(&secrets);
+		size_t i;
+		for(i=0;i<sz;++i) {
+			str_buffer_append(sb,"<tr><td>");
+			str_buffer_append_sz(sb,i);
+			str_buffer_append(sb,"</td>");
+			str_buffer_append(sb,"<td>");
+			str_buffer_append(sb,get_secrets_list_elem(&secrets,i));
+			str_buffer_append(sb,"</td>");
+			if(!current_socket->as_eff_realm[0]) {
+				str_buffer_append(sb,"<td>");
+				str_buffer_append(sb,get_secrets_list_elem(&realms,i));
+				str_buffer_append(sb,"</td>");
+			}
+			str_buffer_append(sb,"<td> <a href=\"");
+			str_buffer_append(sb,form_names[AS_FORM_SS].name);
+			str_buffer_append(sb,"?");
+			str_buffer_append(sb,HR_DELETE_SECRET);
+			str_buffer_append(sb,"=");
+			str_buffer_append(sb,get_secrets_list_elem(&secrets,i));
+			str_buffer_append(sb,"&");
+			str_buffer_append(sb,HR_DELETE_REALM);
+			str_buffer_append(sb,"=");
+			str_buffer_append(sb,get_secrets_list_elem(&realms,i));
+			str_buffer_append(sb,"\">delete</a>");
+			str_buffer_append(sb,"</td>");
+			str_buffer_append(sb,"</tr>");
+			++ret;
+		}
+
+		clean_secrets_list(&secrets);
+		clean_secrets_list(&realms);
+	}
+
+	return ret;
+}
+
+static void write_shared_secrets_page(ioa_socket_handle s, const char* add_secret, const char* add_realm, const char* msg)
+{
+	if(s && !ioa_socket_tobeclosed(s)) {
+
+		if(!(s->as_ok)) {
+			write_https_logon_page(s);
+		} else {
+
+			struct str_buffer* sb = str_buffer_new();
+
+			str_buffer_append(sb,"<!DOCTYPE html>\r\n<html>\r\n  <head>\r\n    <title>");
+			str_buffer_append(sb,admin_title);
+			str_buffer_append(sb,"</title>\r\n <style> table, th, td { border: 1px solid black; } table#msg th { color: red; background-color: white; } </style> </head>\r\n  <body>\r\n    ");
+			str_buffer_append(sb,bold_admin_title);
+			str_buffer_append(sb,"<br>\r\n");
+			str_buffer_append(sb,home_link);
+			str_buffer_append(sb,"<br>\r\n");
+
+			str_buffer_append(sb,"<form action=\"");
+			str_buffer_append(sb,form_names[AS_FORM_SS].name);
+			str_buffer_append(sb,"\" method=\"POST\">\r\n");
+			str_buffer_append(sb,"  <fieldset><legend>Filter:</legend>\r\n");
+
+			str_buffer_append(sb,"  <br>Realm name: <input type=\"text\" name=\"");
+			str_buffer_append(sb,HR_REALM);
+			str_buffer_append(sb,"\" value=\"");
+			str_buffer_append(sb,get_eff_realm());
+			str_buffer_append(sb,"\"");
+			if(!is_superuser()) {
+				str_buffer_append(sb," disabled ");
+			}
+			str_buffer_append(sb,">");
+
+			str_buffer_append(sb,"<br><input type=\"submit\" value=\"Filter\">");
+
+			str_buffer_append(sb,"</fieldset>\r\n");
+			str_buffer_append(sb,"</form>\r\n");
+
+			str_buffer_append(sb,"<form action=\"");
+			str_buffer_append(sb,form_names[AS_FORM_SS].name);
+			str_buffer_append(sb,"\" method=\"POST\">\r\n");
+			str_buffer_append(sb,"  <fieldset><legend>Secret:</legend>\r\n");
+
+			if(msg && msg[0]) {
+				str_buffer_append(sb,"<br><table id=\"msg\"><th>");
+				str_buffer_append(sb,msg);
+				str_buffer_append(sb,"</th></table><br>");
+			}
+
+			str_buffer_append(sb,"  <br>Realm name: <input type=\"text\" name=\"");
+			str_buffer_append(sb,HR_ADD_REALM);
+			str_buffer_append(sb,"\" value=\"");
+			str_buffer_append(sb,(const char*)add_realm);
+			str_buffer_append(sb,"\"");
+			if(!is_superuser()) {
+				str_buffer_append(sb," disabled ");
+			}
+			str_buffer_append(sb,"><br>\r\n");
+
+			str_buffer_append(sb,"  <br>Secret: <input type=\"text\" name=\"");
+			str_buffer_append(sb,HR_ADD_SECRET);
+			str_buffer_append(sb,"\" value=\"");
+			str_buffer_append(sb,(const char*)add_secret);
+			str_buffer_append(sb,"\"");
+			str_buffer_append(sb,"><br>\r\n");
+
+			str_buffer_append(sb,"<br><input type=\"submit\" value=\"Add secret\">");
+
+			str_buffer_append(sb,"</fieldset>\r\n");
+			str_buffer_append(sb,"</form>\r\n");
+
+			str_buffer_append(sb,"Secrets:<br>\r\n");
+			str_buffer_append(sb,"<table>\r\n");
+			str_buffer_append(sb,"<tr><th>N</th><th>Value</th>");
+			if(!current_socket->as_eff_realm[0]) {
+				str_buffer_append(sb,"<th>Realm</th>");
+			}
+			str_buffer_append(sb,"<th> </th>");
+			str_buffer_append(sb,"</tr>\r\n");
+
+			size_t total_sz = https_print_secrets(sb);
+
+			str_buffer_append(sb,"\r\n</table>\r\n");
+
+			str_buffer_append(sb,"<br>Total secrets = ");
 			str_buffer_append_sz(sb,total_sz);
 			str_buffer_append(sb,"<br>\r\n");
 
@@ -2563,7 +2722,7 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 						add_user = (const u08bits*)"";
 					}
 					if(add_user[0]) {
-						add_realm = (const u08bits*)get_http_header_value(hr, HR_ADD_USER_REALM);
+						add_realm = (const u08bits*)get_http_header_value(hr, HR_ADD_REALM);
 						if(!add_realm) {
 							add_realm=(const u08bits*)"";
 						}
@@ -2620,6 +2779,82 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 					}
 
 					write_users_page(s,add_user,add_realm,msg);
+
+				} else {
+					write_https_logon_page(s);
+				}
+				break;
+			}
+			case AS_FORM_SS: {
+				if(s->as_ok) {
+					{
+						const char *realm0 = get_http_header_value(hr, HR_REALM);
+						if(!realm0)
+							realm0="";
+						if(!is_superuser())
+							realm0 = current_socket->as_realm;
+						STRCPY(current_socket->as_eff_realm,realm0);
+					}
+
+					{
+						const u08bits *secret = (const u08bits*)get_http_header_value(hr, HR_DELETE_SECRET);
+						if(secret && secret[0]) {
+							const u08bits *realm = (const u08bits*)get_http_header_value(hr, HR_DELETE_REALM);
+							if(!is_superuser()) {
+								realm = (const u08bits*)current_socket->as_realm;
+							}
+							if(realm && realm[0]) {
+								const turn_dbdriver_t * dbd = get_dbdriver();
+								if (dbd && dbd->del_secret) {
+									u08bits ss[AUTH_SECRET_SIZE+1];
+									u08bits r[STUN_MAX_REALM_SIZE+1];
+									STRCPY(ss,secret);
+									STRCPY(r,realm);
+									dbd->del_secret(ss,r);
+								}
+							}
+						}
+					}
+
+					const u08bits *add_realm = (const u08bits*)current_socket->as_eff_realm;
+					const u08bits *add_secret = (const u08bits*)get_http_header_value(hr, HR_ADD_SECRET);
+					const char* msg = "";
+					if(!add_secret) add_secret = (const u08bits*)"";
+					if(wrong_html_name((const char*)add_secret)) {
+						msg = "Error: wrong secret value";
+						add_secret = (const u08bits*)"";
+					}
+					if(add_secret[0]) {
+						add_realm = (const u08bits*)get_http_header_value(hr, HR_ADD_REALM);
+						if(!add_realm) {
+							add_realm=(const u08bits*)"";
+						}
+						if(!is_superuser()) {
+							add_realm = (const u08bits*)current_socket->as_realm;
+						}
+						if(!add_realm[0]) {
+							add_realm=(const u08bits*)current_socket->as_eff_realm;
+						}
+						if(wrong_html_name((const char*)add_realm)) {
+							msg = "Error: wrong realm name";
+							add_realm = (const u08bits*)"";
+						}
+						if(add_realm[0]) {
+							const turn_dbdriver_t * dbd = get_dbdriver();
+							if (dbd && dbd->set_secret) {
+								u08bits ss[AUTH_SECRET_SIZE+1];
+								u08bits r[STUN_MAX_REALM_SIZE+1];
+								STRCPY(ss,add_secret);
+								STRCPY(r,add_realm);
+								(*dbd->set_secret)(ss, r);
+							}
+
+							add_secret=(const u08bits*)"";
+							add_realm=(const u08bits*)"";
+						}
+					}
+
+					write_shared_secrets_page(s,(const char*)add_secret,(const char*)add_realm,msg);
 
 				} else {
 					write_https_logon_page(s);
