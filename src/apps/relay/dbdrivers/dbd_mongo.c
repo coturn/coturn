@@ -750,71 +750,82 @@ static int mongo_del_origin(u08bits *origin) {
   return ret;
 }
   
-static int mongo_list_origins(u08bits *realm) {
-  mongoc_collection_t * collection = mongo_get_collection("realm"); 
+static int mongo_list_origins(u08bits *realm, secrets_list_t *origins, secrets_list_t *realms)
+{
+	mongoc_collection_t * collection = mongo_get_collection("realm");
 
 	if(!collection)
-    return -1;
+		return -1;
 
-  bson_t query, child;
-  bson_init(&query);
-  bson_append_document_begin(&query, "$orderby", -1, &child);
-  BSON_APPEND_INT32(&child, "realm", 1);
-  bson_append_document_end(&query, &child);
-  bson_append_document_begin(&query, "$query", -1, &child);
-  if (realm && realm[0]) {
-    BSON_APPEND_UTF8(&child, "realm", (const char *)realm);
-  }
-  bson_append_document_end(&query, &child);
+	u08bits realm0[STUN_MAX_REALM_SIZE+1] = "\0";
+	if(!realm) realm=realm0;
 
-  bson_t fields;
-  bson_init(&fields);
-  BSON_APPEND_INT32(&fields, "origin", 1);
-  BSON_APPEND_INT32(&fields, "realm", 1);
+	bson_t query, child;
+	bson_init(&query);
+	bson_append_document_begin(&query, "$orderby", -1, &child);
+	BSON_APPEND_INT32(&child, "realm", 1);
+	bson_append_document_end(&query, &child);
+	bson_append_document_begin(&query, "$query", -1, &child);
+	if (realm && realm[0]) {
+		BSON_APPEND_UTF8(&child, "realm", (const char *)realm);
+	}
+	bson_append_document_end(&query, &child);
+
+	bson_t fields;
+	bson_init(&fields);
+	BSON_APPEND_INT32(&fields, "origin", 1);
+	BSON_APPEND_INT32(&fields, "realm", 1);
   
-  mongoc_cursor_t * cursor;
-  cursor = mongoc_collection_find(collection, MONGOC_QUERY_NONE, 0, 0, 0, &query, &fields, NULL);
+	mongoc_cursor_t * cursor;
+	cursor = mongoc_collection_find(collection, MONGOC_QUERY_NONE, 0, 0, 0, &query, &fields, NULL);
 
-  int ret = -1;
+	int ret = -1;
   
-  if (!cursor) {
+	if (!cursor) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error querying MongoDB collection 'realm'\n");
-  } else {
-    const bson_t * item;
-    uint32_t length;
-    bson_iter_t iter;
+	} else {
+		const bson_t * item;
+		uint32_t length;
+		bson_iter_t iter;
 
-    while (mongoc_cursor_next(cursor, &item)) {
-    	if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "realm") && BSON_ITER_HOLDS_UTF8(&iter)) {
-        const char * _realm = bson_iter_utf8(&iter, &length);
+		while (mongoc_cursor_next(cursor, &item)) {
+			if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "realm") && BSON_ITER_HOLDS_UTF8(&iter)) {
+				const char * _realm = bson_iter_utf8(&iter, &length);
 
-        if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "origin") && BSON_ITER_HOLDS_ARRAY(&iter)) {
-          const uint8_t *docbuf = NULL;
-          uint32_t doclen = 0;
-          bson_t origin_array;
-          bson_iter_t origin_iter;
+				if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "origin") && BSON_ITER_HOLDS_ARRAY(&iter)) {
+					const uint8_t *docbuf = NULL;
+					uint32_t doclen = 0;
+					bson_t origin_array;
+					bson_iter_t origin_iter;
 
-          bson_iter_array(&iter, &doclen, &docbuf);
-          bson_init_static(&origin_array, docbuf, doclen);
+					bson_iter_array(&iter, &doclen, &docbuf);
+					bson_init_static(&origin_array, docbuf, doclen);
 
-          if (bson_iter_init(&origin_iter, &origin_array)) {
-            while(bson_iter_next(&origin_iter)) {
-              if (BSON_ITER_HOLDS_UTF8(&origin_iter)) {
-                const char * _origin = bson_iter_utf8(&origin_iter, &length);
-  							printf("%s ==>> %s\n", _realm, _origin);
-              }
-            }
-          }
-        }
-      }
-    }
-    mongoc_cursor_destroy(cursor);
-    ret = 0;
-  }
-  mongoc_collection_destroy(collection);
-  bson_destroy(&query);
-  bson_destroy(&fields);
-  return ret;
+					if (bson_iter_init(&origin_iter, &origin_array)) {
+						while(bson_iter_next(&origin_iter)) {
+							if (BSON_ITER_HOLDS_UTF8(&origin_iter)) {
+								const char * _origin = bson_iter_utf8(&origin_iter, &length);
+								if(origins) {
+									add_to_secrets_list(origins,_origin);
+									if(realms) {
+										add_to_secrets_list(realms,_realm);
+									}
+								} else {
+									printf("%s ==>> %s\n", _realm, _origin);
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		mongoc_cursor_destroy(cursor);
+		ret = 0;
+	}
+	mongoc_collection_destroy(collection);
+	bson_destroy(&query);
+	bson_destroy(&fields);
+	return ret;
 }
   
 static int mongo_set_realm_option_one(u08bits *realm, unsigned long value, const char* opt) {

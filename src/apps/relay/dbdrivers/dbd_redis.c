@@ -840,9 +840,15 @@ static int redis_del_origin(u08bits *origin) {
   return ret;
 }
   
-static int redis_list_origins(u08bits *realm) {
-  int ret = -1;
+static int redis_list_origins(u08bits *realm, secrets_list_t *origins, secrets_list_t *realms)
+{
+	int ret = -1;
+
+	u08bits realm0[STUN_MAX_REALM_SIZE+1] = "\0";
+	if(!realm) realm=realm0;
+
 	donot_print_connection_success = 1;
+
 	redisContext *rc = get_redis_connection();
 	if(rc) {
 		secrets_list_t keys;
@@ -873,6 +879,7 @@ static int redis_list_origins(u08bits *realm) {
 		}
 
 		for(isz=0;isz<keys.sz;++isz) {
+
 			char *o = keys.secrets[isz];
 
 			reply = (redisReply*)redisCommand(rc, "get turn/origin/%s",o);
@@ -885,7 +892,14 @@ static int redis_list_origins(u08bits *realm) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", reply->type);
 				} else {
 					if(!(realm && realm[0] && strcmp((char*)realm,reply->str))) {
-						printf("%s ==>> %s\n",o,reply->str);
+						if(origins) {
+							add_to_secrets_list(origins,o);
+							if(realms) {
+								add_to_secrets_list(realms,reply->str);
+							}
+						} else {
+							printf("%s ==>> %s\n",o,reply->str);
+						}
 					}
 				}
 				turnFreeRedisReply(reply);
@@ -893,9 +907,9 @@ static int redis_list_origins(u08bits *realm) {
 		}
 
 		clean_secrets_list(&keys);
-    ret = 0;
+		ret = 0;
 	}
-  return ret;
+	return ret;
 }
   
 static int redis_set_realm_option_one(u08bits *realm, unsigned long value, const char* opt) {

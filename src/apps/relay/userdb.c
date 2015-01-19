@@ -828,9 +828,9 @@ static int add_origin(u08bits *origin0, u08bits *realm)
 
 	get_canonic_origin((const char *)origin0, (char *)origin, sizeof(origin)-1);
 
-  const turn_dbdriver_t * dbd = get_dbdriver();
-  if (dbd && dbd->add_origin) {
-    (*dbd->add_origin)(origin, realm);
+	const turn_dbdriver_t * dbd = get_dbdriver();
+	if (dbd && dbd->add_origin) {
+		(*dbd->add_origin)(origin, realm);
 	}
 
 	return 0;
@@ -842,9 +842,9 @@ static int del_origin(u08bits *origin0)
 
 	get_canonic_origin((const char *)origin0, (char *)origin, sizeof(origin)-1);
 
-  const turn_dbdriver_t * dbd = get_dbdriver();
-  if (dbd && dbd->del_origin) {
-    (*dbd->del_origin)(origin);
+	const turn_dbdriver_t * dbd = get_dbdriver();
+	if (dbd && dbd->del_origin) {
+		(*dbd->del_origin)(origin);
 	}
 
 	return 0;
@@ -854,10 +854,10 @@ static int list_origins(u08bits *realm)
 {
   const turn_dbdriver_t * dbd = get_dbdriver();
   if (dbd && dbd->list_origins) {
-    (*dbd->list_origins)(realm);
-	}
+    (*dbd->list_origins)(realm,NULL,NULL);
+  }
 
-	return 0;
+  return 0;
 }
 
 static int set_realm_option_one(u08bits *realm, unsigned long value, const char* opt)
@@ -865,9 +865,9 @@ static int set_realm_option_one(u08bits *realm, unsigned long value, const char*
 	if(value == (unsigned long)-1)
 		return 0;
 
-  const turn_dbdriver_t * dbd = get_dbdriver();
-  if (dbd && dbd->set_realm_option_one) {
-    (*dbd->set_realm_option_one)(realm, value, opt);
+	const turn_dbdriver_t * dbd = get_dbdriver();
+	if (dbd && dbd->set_realm_option_one) {
+		(*dbd->set_realm_option_one)(realm, value, opt);
 	}
 
 	return 0;
