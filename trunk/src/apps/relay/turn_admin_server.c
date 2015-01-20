@@ -2871,7 +2871,8 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 
 	if(turn_params.verbose) {
 		if(nbh) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: HTTPS connection input: %.40s\n", __FUNCTION__, (char*)ioa_network_buffer_data(nbh));
+			((char*)ioa_network_buffer_data(nbh))[ioa_network_buffer_get_size(nbh)] = 0;
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: HTTPS connection input: %s\n", __FUNCTION__, (char*)ioa_network_buffer_data(nbh));
 		} else {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: HTTPS connection initial input\n", __FUNCTION__);
 		}

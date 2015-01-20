@@ -6,6 +6,7 @@ Version 4.4.1.1 'Ardee West':
 	- OpenSSL 1.1.0 supported;
 	- shared secrets fixed in MongoDB: multiple secrets per realm allowed;
 	- shared secrets admin fixed in Redis;
+	- --oauth option now strictly requires oAuth authentication;
 
 12/24/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.3.3.1 'Tolomei':

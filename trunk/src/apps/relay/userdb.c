@@ -527,7 +527,7 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, u08bits *u
 		}
 	}
 
-	if(out_oauth && *out_oauth) {
+	if(in_oauth) {
 		return ret;
 	}
 
