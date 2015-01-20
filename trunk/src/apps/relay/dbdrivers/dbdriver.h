@@ -63,6 +63,7 @@ typedef struct _turn_dbdriver_t {
   int (*list_realm_options)(u08bits *realm);
   void (*auth_ping)(void * rch);
   int (*get_ip_list)(const char *kind, ip_range_list_t * list);
+  int (*set_permission_ip)(const char *kind, u08bits *realm, const char* ip, int delete);
   void (*reread_realms)(secrets_list_t * realms_list);
   int (*set_oauth_key)(oauth_key_data_raw *key);
   int (*get_oauth_key)(const u08bits *kid, oauth_key_data_raw *key);

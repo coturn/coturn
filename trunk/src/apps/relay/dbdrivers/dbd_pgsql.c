@@ -245,7 +245,7 @@ static int pgsql_set_user_key(u08bits *usname, u08bits *realm, const char *key) 
 			if(res) {
 				PQclear(res);
 			}
-		  snprintf(statement,sizeof(statement),"update turnusers_lt set hmackey='%s' where name='%s' and realm='%s'",key,usname,realm);
+			snprintf(statement,sizeof(statement),"update turnusers_lt set hmackey='%s' where name='%s' and realm='%s'",key,usname,realm);
 			res = PQexec(pqc, statement);
 			if(!res || (PQresultStatus(res) != PGRES_COMMAND_OK)) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error inserting/updating user information: %s\n",PQerrorMessage(pqc));
@@ -449,13 +449,13 @@ static int pgsql_del_secret(u08bits *secret, u08bits *realm) {
 static int pgsql_set_secret(u08bits *secret, u08bits *realm) {
   int ret = -1;
 	donot_print_connection_success = 1;
-  char statement[TURN_LONG_STRING_SIZE];
+	char statement[TURN_LONG_STRING_SIZE];
 	PGconn *pqc = get_pqdb_connection();
 	if (pqc) {
 	  snprintf(statement,sizeof(statement),"insert into turn_secret (realm,value) values('%s','%s')",realm,secret);
 	  PGresult *res = PQexec(pqc, statement);
 	  if (!res || (PQresultStatus(res) != PGRES_COMMAND_OK)) {
-	    TURN_LOG_FUNC(
+		  TURN_LOG_FUNC(
 			  TURN_LOG_LEVEL_ERROR,
 			  "Error inserting/updating secret key information: %s\n",
 			  PQerrorMessage(pqc));
@@ -467,7 +467,45 @@ static int pgsql_set_secret(u08bits *secret, u08bits *realm) {
 	  }
 	}
 
-  return ret;
+	return ret;
+}
+
+static int pgsql_set_permission_ip(const char *kind, u08bits *realm, const char* ip, int delete)
+{
+	int ret = -1;
+
+	u08bits realm0[STUN_MAX_REALM_SIZE+1] = "\0";
+	if(!realm) realm=realm0;
+
+	donot_print_connection_success = 1;
+
+	char statement[TURN_LONG_STRING_SIZE];
+
+	PGconn *pqc = get_pqdb_connection();
+
+	if (pqc) {
+
+		if(delete) {
+			snprintf(statement, sizeof(statement), "delete from %s_peer_ip where realm = '%s'  and ip_range = '%s'", kind, (char*)realm, ip);
+		} else {
+			snprintf(statement, sizeof(statement), "insert into %s_peer_ip (realm,ip_range) values('%s','%s')", kind, (char*)realm, ip);
+		}
+
+		PGresult *res = PQexec(pqc, statement);
+		if (!res || (PQresultStatus(res) != PGRES_COMMAND_OK)) {
+			TURN_LOG_FUNC(
+				TURN_LOG_LEVEL_ERROR,
+				"Error inserting ip permission information: %s\n",
+				PQerrorMessage(pqc));
+	  } else {
+	    ret = 0;
+	  }
+	  if (res) {
+	    PQclear(res);
+	  }
+	}
+
+	return ret;
 }
   
 static int pgsql_add_origin(u08bits *origin, u08bits *realm) {
@@ -913,6 +951,7 @@ static const turn_dbdriver_t driver = {
   &pgsql_list_realm_options,
   &pgsql_auth_ping,
   &pgsql_get_ip_list,
+  &pgsql_set_permission_ip,
   &pgsql_reread_realms,
   &pgsql_set_oauth_key,
   &pgsql_get_oauth_key,

@@ -238,8 +238,8 @@ static void free_headers_list(struct headers_list *h) {
 	}
 }
 
-const char *get_http_header_value(const struct http_request *request, const char* key) {
-	const char *ret = NULL;
+const char *get_http_header_value(const struct http_request *request, const char* key, const char* default_value) {
+	const char *ret = default_value;
 	if(key && key[0] && request && request->headers) {
 		if(request->headers->uri_headers) {
 			ret = evhttp_find_header(request->headers->uri_headers,key);
@@ -247,6 +247,7 @@ const char *get_http_header_value(const struct http_request *request, const char
 		if(!ret && request->headers->post_headers) {
 			ret = get_headers_list_value(request->headers->post_headers,key);
 		}
+		if(!ret) ret = default_value;
 	}
 	return ret;
 }

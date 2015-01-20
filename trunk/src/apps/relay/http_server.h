@@ -63,7 +63,7 @@ struct http_request {
 };
 
 struct http_request* parse_http_request(char* request);
-const char *get_http_header_value(const struct http_request *request, const char* key);
+const char *get_http_header_value(const struct http_request *request, const char* key, const char* def);
 void free_http_request(struct http_request *request);
 
 ////////////////////////////////////////////

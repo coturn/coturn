@@ -8,6 +8,7 @@ db.turnusers_lt.ensureIndex({ realm: 1, name: 1 }, { unique: 1 });
 db.turn_secret.ensureIndex({ realm: 1, value:1 }, { unique: 1 });
 db.realm.ensureIndex({ realm: 1 }, { unique: 1 });
 db.oauth_key.ensureIndex({ kid: 1 }, {unique: 1 });
+db.admin_user.ensureIndex({ name: 1 }, {unique: 1 });
 
 db.turnusers_lt.insert({ realm: 'north.gov', name: 'ninefingers', hmackey: 'bc807ee29df3c9ffa736523fb2c4e8ee' });
 db.turnusers_lt.insert({ realm: 'north.gov', name: 'gorst', hmackey: '7da2270ccfa49786e0115366d3a3d14d' });

@@ -959,6 +959,45 @@ static int sqlite_get_ip_list(const char *kind, ip_range_list_t * list)
 	return ret;
 }
 
+static int sqlite_set_permission_ip(const char *kind, u08bits *realm, const char* ip, int delete)
+{
+	int ret = -1;
+
+	u08bits realm0[STUN_MAX_REALM_SIZE+1] = "\0";
+	if(!realm) realm=realm0;
+
+	char statement[TURN_LONG_STRING_SIZE];
+
+	sqlite3_stmt *st = NULL;
+	int rc = 0;
+
+	donot_print_connection_success=1;
+
+	sqlite3 *sqliteconnection = get_sqlite_connection();
+	if (sqliteconnection) {
+
+		sqlite_lock(1);
+
+		if(delete) {
+			snprintf(statement, sizeof(statement), "delete from %s_peer_ip where realm = '%s'  and ip_range = '%s'", kind, (char*)realm, ip);
+		} else {
+			snprintf(statement, sizeof(statement), "insert or replace into %s_peer_ip (realm,ip_range) values('%s','%s')", kind, (char*)realm, ip);
+		}
+
+		if ((rc = sqlite3_prepare(sqliteconnection, statement, -1, &st, 0)) == SQLITE_OK) {
+			sqlite3_step(st);
+			ret = 0;
+		} else {
+			const char* errmsg = sqlite3_errmsg(sqliteconnection);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error updating SQLite DB information: %s\n", errmsg);
+		}
+		sqlite3_finalize(st);
+
+		sqlite_unlock(1);
+	}
+	return ret;
+}
+
 static void sqlite_reread_realms(secrets_list_t * realms_list)
 {
 	sqlite3 *sqliteconnection = get_sqlite_connection();
@@ -1254,6 +1293,7 @@ static const turn_dbdriver_t driver = {
   &sqlite_list_realm_options,
   &sqlite_auth_ping,
   &sqlite_get_ip_list,
+  &sqlite_set_permission_ip,
   &sqlite_reread_realms,
   &sqlite_set_oauth_key,
   &sqlite_get_oauth_key,

@@ -1384,6 +1384,13 @@ typedef enum _AS_FORM AS_FORM;
 #define HR_DELETE_REALM "dr"
 #define HR_DELETE_SECRET "ds"
 #define HR_DELETE_ORIGIN "do"
+#define HR_DELETE_IP "dip"
+#define HR_DELETE_IP_REALM "dipr"
+#define HR_DELETE_IP_KIND "dipk"
+#define HR_ADD_IP "aip"
+#define HR_ADD_IP_REALM "aipr"
+#define HR_ADD_IP_KIND "aipk"
+#define HR_UPDATE_PARAMETER "togglepar"
 
 struct form_name {
 	AS_FORM form;
@@ -1571,7 +1578,7 @@ static void sbprintf(struct str_buffer *sb, const char *format, ...)
 	if(sb && format) {
 		va_list args;
 		va_start (args, format);
-		static char s[1025]="\0";
+		char s[1025]="\0";
 		vsnprintf(s,sizeof(s)-1,format, args);
 		str_buffer_append(sb,s);
 		va_end (args);
@@ -1586,7 +1593,7 @@ static void https_print_flag(struct str_buffer* sb, int flag, const char* name, 
 		if(!param_name) {
 			sbprintf(sb,"<tr><td>%s</td><td>%s</td></tr>\r\n",name,get_flag(flag));
 		} else {
-			sbprintf(sb,"<tr><td>%s</td><td><a href=\"/toggle?parameter=%s\">%s</a></td></tr>\r\n",name,param_name,get_flag(flag));
+			sbprintf(sb,"<tr><td>%s</td><td><a href=\"/toggle?%s=%s\">%s</a></td></tr>\r\n",name,HR_UPDATE_PARAMETER,param_name,get_flag(flag));
 		}
 	}
 }
@@ -1604,9 +1611,9 @@ static void https_print_uint(struct str_buffer* sb, unsigned long value, const c
 			}
 		} else {
 			if(value) {
-				sbprintf(sb,"<tr><td>%s</td><td> <form action=\"/update?parameter=%s\" method=\"POST\"><input type=\"text\" name=\"%s\" value=\"%lu\"><input type=\"submit\" value=\"Update\"></form> </td></tr>\r\n",name,param_name,param_name,value);
+				sbprintf(sb,"<tr><td>%s</td><td> <form action=\"%s?%s=%s\" method=\"POST\"><input type=\"text\" name=\"%s\" value=\"%lu\"><input type=\"submit\" value=\"Update\"></form> </td></tr>\r\n",name,form_names[AS_FORM_UPDATE].name,HR_UPDATE_PARAMETER,param_name,param_name,value);
 			} else {
-				sbprintf(sb,"<tr><td>%s</td><td> <form action=\"/update?parameter=%s\" method=\"POST\"><input type=\"text\" name=\"%s\" value=\"\"><input type=\"submit\" value=\"Update\"></form> </td></tr>\r\n",name,param_name,param_name);
+				sbprintf(sb,"<tr><td>%s</td><td> <form action=\"%s?%s=%s\" method=\"POST\"><input type=\"text\" name=\"%s\" value=\"\"><input type=\"submit\" value=\"Update\"></form> </td></tr>\r\n",name,form_names[AS_FORM_UPDATE].name,HR_UPDATE_PARAMETER,param_name,param_name);
 			}
 		}
 	}
@@ -1620,7 +1627,7 @@ static void https_print_str(struct str_buffer* sb, const char *value, const char
 		if(!param_name) {
 			sbprintf(sb,"<tr><td>%s</td><td>%s</td></tr>\r\n",name,value);
 		} else {
-			sbprintf(sb,"<tr><td>%s</td><td> <form action=\"/update?parameter=%s\" method=\"POST\"><input type=\"text\" name=\"%s\" value=\"%s\"><input type=\"submit\" value=\"Update\"></form> </td></tr>\r\n",name,param_name,param_name,value);
+			sbprintf(sb,"<tr><td>%s</td><td> <form action=\"%s?%s=%s\" method=\"POST\"><input type=\"text\" name=\"%s\" value=\"%s\"><input type=\"submit\" value=\"Update\"></form> </td></tr>\r\n",name,form_names[AS_FORM_UPDATE].name,HR_UPDATE_PARAMETER,param_name,param_name,value);
 		}
 	}
 }
@@ -1666,20 +1673,56 @@ static size_t https_print_addr_list(struct str_buffer* sb, turn_server_addrs_lis
 	return 0;
 }
 
-static void https_print_ip_range_list(struct str_buffer* sb, ip_range_list_t *value, const char* name)
+static const char* change_ip_addr_html(int dynamic,const char* kind,const char* ip,const char *realm, char *buffer, size_t sz)
 {
-	if(sb && name && value && value->ranges_number && value->rs) {
-		size_t i;
-		for(i=0;i<value->ranges_number;++i) {
-			if(value->rs[i].realm[0]) {
-				if(get_eff_realm()[0] && strcmp(get_eff_realm(),value->rs[i].realm)) {
-					continue;
-				} else {
-					sbprintf(sb,"<tr><td>  %s</td><td> %s (%s)</td></tr>\r\n",name,value->rs[i].str,value->rs[i].realm);
-				}
+	if(!buffer || !sz) {
+		return "";
+	} else {
+		buffer[0]=0;
+		if(dynamic && kind && ip) {
+
+			if(!realm) realm="";
+
+			if(current_socket->as_realm[0] && strcmp(current_socket->as_realm,realm)) {
+				//delete forbidden
 			} else {
-				sbprintf(sb,"<tr><td>  %s</td><td> %s</td></tr>\r\n",name,value->rs[i].str);
+				char *eip = evhttp_encode_uri(ip);
+				snprintf(buffer,sz-1,"<a href=\"%s?%s=%s&%s=%s&%s=%s\">delete</a>",form_names[AS_FORM_UPDATE].name,HR_DELETE_IP_KIND,kind,HR_DELETE_IP_REALM,realm,HR_DELETE_IP,eip);
+				free(eip);
 			}
+		}
+		return buffer;
+	}
+}
+
+static void https_print_ip_range_list(struct str_buffer* sb, ip_range_list_t *value, const char* name, const char* kind, int dynamic)
+{
+	if(sb && name) {
+		if(value && value->rs) {
+			size_t i;
+			char buffer[1025];
+			for(i=0;i<value->ranges_number;++i) {
+				if(value->rs[i].realm[0]) {
+					if(get_eff_realm()[0] && strcmp(get_eff_realm(),value->rs[i].realm)) {
+						continue;
+					} else {
+						sbprintf(sb,"<tr><td>  %s</td><td> %s [%s] %s</td></tr>\r\n",name,value->rs[i].str,value->rs[i].realm, change_ip_addr_html(dynamic,kind,value->rs[i].str,value->rs[i].realm,buffer,sizeof(buffer)));
+					}
+				} else {
+					sbprintf(sb,"<tr><td>  %s</td><td> %s %s</td></tr>\r\n",name,value->rs[i].str, change_ip_addr_html(dynamic,kind,value->rs[i].str,value->rs[i].realm,buffer,sizeof(buffer)));
+				}
+			}
+		}
+
+		if(dynamic) {
+			sbprintf(sb,"<tr><td>  %s</td><td>",name);
+			sbprintf(sb,"<form action=\"%s?%s=%s\" method=\"POST\">IP range:<input type=\"text\" name=\"%s\" value=\"\">",form_names[AS_FORM_UPDATE].name,HR_ADD_IP_KIND,kind,HR_ADD_IP);
+			sbprintf(sb,"Realm: <input type=\"text\" name=\"%s\" value=\"%s\" ",HR_ADD_IP_REALM,current_socket->as_eff_realm);
+			if(!is_superuser()) {
+				sbprintf(sb," disabled ");
+			}
+			sbprintf(sb,">");
+			sbprintf(sb,"<input type=\"submit\" value=\"Add IP\"></form> </td></tr>\r\n");
 		}
 	}
 }
@@ -1868,17 +1911,17 @@ static void write_pc_page(ioa_socket_handle s)
 				https_print_uint(sb,(unsigned long)turn_params.min_port,"min-port",0);
 				https_print_uint(sb,(unsigned long)turn_params.max_port,"max-port",0);
 
-				https_print_ip_range_list(sb,&turn_params.ip_whitelist,"Whitelist IP (static)");
+				https_print_ip_range_list(sb,&turn_params.ip_whitelist,"Whitelist IP (static)",NULL,0);
 				{
 					ip_range_list_t* l = get_ip_list("allowed");
-					https_print_ip_range_list(sb,l,"Whitelist IP (dynamic)");
+					https_print_ip_range_list(sb,l,"Whitelist IP (dynamic)","allowed",1);
 					ip_list_free(l);
 				}
 
-				https_print_ip_range_list(sb,&turn_params.ip_blacklist,"Blacklist IP (static)");
+				https_print_ip_range_list(sb,&turn_params.ip_blacklist,"Blacklist IP (static)", NULL, 0);
 				{
 					ip_range_list_t* l = get_ip_list("denied");
-					https_print_ip_range_list(sb,l,"Blacklist IP (dynamic)");
+					https_print_ip_range_list(sb,l,"Blacklist IP (dynamic)", "denied", 1);
 					ip_list_free(l);
 				}
 
@@ -2713,7 +2756,7 @@ static void write_origins_page(ioa_socket_handle s, const char* add_origin, cons
 static void handle_toggle_request(ioa_socket_handle s, struct http_request* hr)
 {
 	if(s && hr) {
-		const char *param = get_http_header_value(hr, "parameter");
+		const char *param = get_http_header_value(hr, HR_UPDATE_PARAMETER, NULL);
 		toggle_param(param);
 	}
 }
@@ -2721,9 +2764,67 @@ static void handle_toggle_request(ioa_socket_handle s, struct http_request* hr)
 static void handle_update_request(ioa_socket_handle s, struct http_request* hr)
 {
 	if(s && hr) {
-		const char *param = get_http_header_value(hr, "parameter");
-		if(param) {
-			update_param(param,get_http_header_value(hr,param));
+		{
+			const char *param = get_http_header_value(hr, HR_UPDATE_PARAMETER, NULL);
+			if(param) {
+				update_param(param,get_http_header_value(hr,param,""));
+			}
+		}
+
+		{
+			const char* eip = get_http_header_value(hr, HR_DELETE_IP, NULL);
+			if(eip && eip[0]) {
+				char* ip = evhttp_decode_uri(eip);
+				const char* r = get_http_header_value(hr, HR_DELETE_IP_REALM,"");
+				const char* kind = get_http_header_value(hr, HR_DELETE_IP_KIND,"");
+
+				const turn_dbdriver_t * dbd = get_dbdriver();
+				if (dbd && dbd->set_permission_ip) {
+
+					if(!r || !r[0]) {
+						r = current_socket->as_realm;
+					}
+
+					if(current_socket->as_realm[0] && strcmp(current_socket->as_realm,r)) {
+						//forbidden
+					} else {
+
+						u08bits realm[STUN_MAX_REALM_SIZE+1]="\0";
+						STRCPY(realm,r);
+
+						dbd->set_permission_ip(kind, realm, ip, 1);
+					}
+				}
+				free(ip);
+			}
+		}
+
+		{
+			const char* eip = get_http_header_value(hr, HR_ADD_IP,NULL);
+			if(eip && eip[0]) {
+				char* ip = evhttp_decode_uri(eip);
+				const char* r = get_http_header_value(hr, HR_ADD_IP_REALM,"");
+				const char* kind = get_http_header_value(hr, HR_ADD_IP_KIND,"");
+
+				const turn_dbdriver_t * dbd = get_dbdriver();
+				if (dbd && dbd->set_permission_ip) {
+
+					if(!r || !r[0]) {
+						r = current_socket->as_realm;
+					}
+
+					if(current_socket->as_realm[0] && strcmp(current_socket->as_realm,r)) {
+						//forbidden
+					} else {
+
+						u08bits realm[STUN_MAX_REALM_SIZE+1]="\0";
+						STRCPY(realm,r);
+
+						dbd->set_permission_ip(kind, realm, ip, 0);
+					}
+				}
+				free(ip);
+			}
 		}
 	}
 }
@@ -2731,15 +2832,15 @@ static void handle_update_request(ioa_socket_handle s, struct http_request* hr)
 static void handle_logon_request(ioa_socket_handle s, struct http_request* hr)
 {
 	if(s && hr) {
-		const char *uname = get_http_header_value(hr, HR_USERNAME);
-		const char *pwd = get_http_header_value(hr, HR_PASSWORD);
+		const char *uname = get_http_header_value(hr, HR_USERNAME, NULL);
+		const char *pwd = get_http_header_value(hr, HR_PASSWORD, NULL);
 
 		if(!(s->as_ok) && uname && pwd) {
 			const turn_dbdriver_t * dbd = get_dbdriver();
 			if (dbd && dbd->get_admin_user) {
 
 				password_t password;
-				char realm[STUN_MAX_REALM_SIZE]="\0";
+				char realm[STUN_MAX_REALM_SIZE+1]="\0";
 				if((*(dbd->get_admin_user))((const u08bits*)uname,(u08bits*)realm,password)>=0) {
 					if(!strcmp(pwd,(char*)password)) {
 						STRCPY(s->as_login,uname);
@@ -2791,9 +2892,7 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 			switch(form) {
 			case AS_FORM_PC: {
 				if(s->as_ok) {
-					const char *realm0 = get_http_header_value(hr, HR_REALM);
-					if(!realm0)
-						realm0="";
+					const char *realm0 = get_http_header_value(hr, HR_REALM, current_socket->as_realm);
 					if(!is_superuser())
 						realm0 = current_socket->as_realm;
 					STRCPY(current_socket->as_eff_realm,realm0);
@@ -2805,28 +2904,24 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 			}
 			case AS_FORM_PS: {
 				if(s->as_ok) {
-					const char *realm0 = get_http_header_value(hr, HR_REALM);
-					if(!realm0)
-						realm0="";
+					const char *realm0 = get_http_header_value(hr, HR_REALM, current_socket->as_realm);
 					if(!is_superuser())
 						realm0 = current_socket->as_realm;
 					STRCPY(current_socket->as_eff_realm,realm0);
 
-					const char* client_protocol = get_http_header_value(hr, HR_CLIENT_PROTOCOL);
-					if(!client_protocol) client_protocol="";
+					const char* client_protocol = get_http_header_value(hr, HR_CLIENT_PROTOCOL, "");
 
-					const char* user_pattern = get_http_header_value(hr, HR_USER_PATTERN);
-					if(!user_pattern) user_pattern="";
+					const char* user_pattern = get_http_header_value(hr, HR_USER_PATTERN, "");
 
 					turnsession_id csid=0;
-					const char* ssid = get_http_header_value(hr, HR_CANCEL_SESSION);
+					const char* ssid = get_http_header_value(hr, HR_CANCEL_SESSION, NULL);
 					if(ssid) {
 						https_cancel_session(ssid);
 						csid = (turnsession_id)strtoull(ssid,NULL,10);
 					}
 
 					size_t max_sessions = cli_max_output_sessions;
-					const char* s_max_sessions = get_http_header_value(hr, HR_MAX_SESSIONS);
+					const char* s_max_sessions = get_http_header_value(hr, HR_MAX_SESSIONS,NULL);
 					if(s_max_sessions) {
 						max_sessions=strtoul(s_max_sessions,NULL,10);
 						if(!max_sessions) max_sessions = cli_max_output_sessions;
@@ -2843,18 +2938,16 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 			case AS_FORM_USERS: {
 				if(s->as_ok) {
 					{
-						const char *realm0 = get_http_header_value(hr, HR_REALM);
-						if(!realm0)
-							realm0="";
+						const char *realm0 = get_http_header_value(hr, HR_REALM, current_socket->as_realm);
 						if(!is_superuser())
 							realm0 = current_socket->as_realm;
 						STRCPY(current_socket->as_eff_realm,realm0);
 					}
 
 					{
-						const u08bits *user = (const u08bits*)get_http_header_value(hr, HR_DELETE_USER);
+						const u08bits *user = (const u08bits*)get_http_header_value(hr, HR_DELETE_USER, NULL);
 						if(user && user[0]) {
-							const u08bits *realm = (const u08bits*)get_http_header_value(hr, HR_DELETE_REALM);
+							const u08bits *realm = (const u08bits*)get_http_header_value(hr, HR_DELETE_REALM, "");
 							if(!is_superuser()) {
 								realm = (const u08bits*)current_socket->as_realm;
 							}
@@ -2872,18 +2965,14 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 					}
 
 					const u08bits *add_realm = (const u08bits*)current_socket->as_eff_realm;
-					const u08bits *add_user = (const u08bits*)get_http_header_value(hr, HR_ADD_USER);
+					const u08bits *add_user = (const u08bits*)get_http_header_value(hr, HR_ADD_USER,"");
 					const char* msg = "";
-					if(!add_user) add_user = (const u08bits*)"";
 					if(wrong_html_name((const char*)add_user)) {
 						msg = "Error: wrong user name";
 						add_user = (const u08bits*)"";
 					}
 					if(add_user[0]) {
-						add_realm = (const u08bits*)get_http_header_value(hr, HR_ADD_REALM);
-						if(!add_realm) {
-							add_realm=(const u08bits*)"";
-						}
+						add_realm = (const u08bits*)get_http_header_value(hr, HR_ADD_REALM, current_socket->as_realm);
 						if(!is_superuser()) {
 							add_realm = (const u08bits*)current_socket->as_realm;
 						}
@@ -2898,8 +2987,8 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 							add_realm = (const u08bits*)"";
 						}
 						if(add_realm[0]) {
-							const u08bits *pwd = (const u08bits*)get_http_header_value(hr, HR_PASSWORD);
-							const u08bits *pwd1 = (const u08bits*)get_http_header_value(hr, HR_PASSWORD1);
+							const u08bits *pwd = (const u08bits*)get_http_header_value(hr, HR_PASSWORD, NULL);
+							const u08bits *pwd1 = (const u08bits*)get_http_header_value(hr, HR_PASSWORD1, NULL);
 							if(pwd && pwd1 && pwd[0] && pwd1[0] && !strcmp((const char*)pwd,(const char*)pwd1)) {
 
 								const turn_dbdriver_t * dbd = get_dbdriver();
@@ -2949,18 +3038,16 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 			case AS_FORM_SS: {
 				if(s->as_ok) {
 					{
-						const char *realm0 = get_http_header_value(hr, HR_REALM);
-						if(!realm0)
-							realm0="";
+						const char *realm0 = get_http_header_value(hr, HR_REALM, current_socket->as_realm);
 						if(!is_superuser())
 							realm0 = current_socket->as_realm;
 						STRCPY(current_socket->as_eff_realm,realm0);
 					}
 
 					{
-						const u08bits *secret = (const u08bits*)get_http_header_value(hr, HR_DELETE_SECRET);
+						const u08bits *secret = (const u08bits*)get_http_header_value(hr, HR_DELETE_SECRET, NULL);
 						if(secret && secret[0]) {
-							const u08bits *realm = (const u08bits*)get_http_header_value(hr, HR_DELETE_REALM);
+							const u08bits *realm = (const u08bits*)get_http_header_value(hr, HR_DELETE_REALM, NULL);
 							if(!is_superuser()) {
 								realm = (const u08bits*)current_socket->as_realm;
 							}
@@ -2978,18 +3065,14 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 					}
 
 					const u08bits *add_realm = (const u08bits*)current_socket->as_eff_realm;
-					const u08bits *add_secret = (const u08bits*)get_http_header_value(hr, HR_ADD_SECRET);
+					const u08bits *add_secret = (const u08bits*)get_http_header_value(hr, HR_ADD_SECRET, "");
 					const char* msg = "";
-					if(!add_secret) add_secret = (const u08bits*)"";
 					if(wrong_html_name((const char*)add_secret)) {
 						msg = "Error: wrong secret value";
 						add_secret = (const u08bits*)"";
 					}
 					if(add_secret[0]) {
-						add_realm = (const u08bits*)get_http_header_value(hr, HR_ADD_REALM);
-						if(!add_realm) {
-							add_realm=(const u08bits*)"";
-						}
+						add_realm = (const u08bits*)get_http_header_value(hr, HR_ADD_REALM, current_socket->as_realm);
 						if(!is_superuser()) {
 							add_realm = (const u08bits*)current_socket->as_realm;
 						}
@@ -3028,16 +3111,14 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 			case AS_FORM_OS: {
 				if(s->as_ok) {
 					{
-						const char *realm0 = get_http_header_value(hr, HR_REALM);
-						if(!realm0)
-							realm0="";
+						const char *realm0 = get_http_header_value(hr, HR_REALM, current_socket->as_realm);
 						if(!is_superuser())
 							realm0 = current_socket->as_realm;
 						STRCPY(current_socket->as_eff_realm,realm0);
 					}
 
 					if(is_superuser()) {
-						const u08bits *origin = (const u08bits*)get_http_header_value(hr, HR_DELETE_ORIGIN);
+						const u08bits *origin = (const u08bits*)get_http_header_value(hr, HR_DELETE_ORIGIN, NULL);
 						if(origin && origin[0]) {
 							const turn_dbdriver_t * dbd = get_dbdriver();
 							if (dbd && dbd->del_origin) {
@@ -3052,16 +3133,12 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 					}
 
 					const u08bits *add_realm = (const u08bits*)current_socket->as_eff_realm;
-					const u08bits *add_origin = (const u08bits*)get_http_header_value(hr, HR_ADD_ORIGIN);
+					const u08bits *add_origin = (const u08bits*)get_http_header_value(hr, HR_ADD_ORIGIN, "");
 					const char* msg = "";
-					if(!add_origin) add_origin = (const u08bits*)"";
 					u08bits corigin[STUN_MAX_ORIGIN_SIZE+1];
 					get_canonic_origin((const char *)add_origin, (char *)corigin, sizeof(corigin)-1);
 					if(corigin[0]) {
-						add_realm = (const u08bits*)get_http_header_value(hr, HR_ADD_REALM);
-						if(!add_realm) {
-							add_realm=(const u08bits*)"";
-						}
+						add_realm = (const u08bits*)get_http_header_value(hr, HR_ADD_REALM, current_socket->as_realm);
 						if(!is_superuser()) {
 							add_realm = (const u08bits*)current_socket->as_realm;
 						}
