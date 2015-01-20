@@ -75,23 +75,14 @@
 	deeply "hidden" in the network infrastructure that the 
 	significant code complication may be unjustified.
 
-2) HTTP or GUI status monitor and management.
-
-	For enterprise users, a management (configuration, status 
-	and statistics) GUI has to be implemented. Currently, all 
-	these features are available through the shell command 
-	line, telnet client and through Redis command line.
-
-3) Traffic recording (for selected allocations).
+2) Traffic recording (for selected allocations).
 
 	That would be a helpful feature for a large enterprise 
 	(for testing and security purposes). 
 
-4) Ganglia monitoring.
+3) Ganglia monitoring.
 
-5) Web API to the database (oAuth keys, for example).
-
-6) Key exchange mechanism for oAuth.
+4) Key exchange mechanism for oAuth.
 
 ==================================================================
 
