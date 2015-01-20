@@ -35,6 +35,8 @@
 #include <event2/http.h>
 #include <event2/keyvalq_struct.h>
 
+#include <time.h>
+
 //////////////////////////////////////
 
 struct headers_list {
@@ -62,7 +64,7 @@ static void write_http_echo(ioa_socket_handle s)
 			char content_http[1025];
 			const char* title = "TURN Server";
 			snprintf(content_http,sizeof(content_http)-1,"<!DOCTYPE html>\r\n<html>\r\n  <head>\r\n    <title>%s</title>\r\n  </head>\r\n  <body>\r\n    <b>%s</b> <br> <b><i>use https connection for the admin session</i></b>\r\n  </body>\r\n</html>\r\n",title,title);
-			snprintf(data_http,sizeof(data_http)-1,"HTTP/1.1 200 OK\r\nServer: %s\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Length: %d\r\n\r\n%s",TURN_SOFTWARE,(int)strlen(content_http),content_http);
+			snprintf(data_http,sizeof(data_http)-1,"HTTP/1.0 200 OK\r\nServer: %s\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Length: %d\r\n\r\n%s",TURN_SOFTWARE,(int)strlen(content_http),content_http);
 			len_http = strlen(data_http);
 			ns_bcopy(data_http,data,len_http);
 			ioa_network_buffer_set_size(nbh_http,len_http);
@@ -73,6 +75,28 @@ static void write_http_echo(ioa_socket_handle s)
 
 void handle_http_echo(ioa_socket_handle s) {
 	write_http_echo(s);
+}
+
+const char* get_http_date_header()
+{
+	static char buffer_date[256];
+	static char buffer_header[1025];
+	static const char* wds[]={"Sun","Mon","Tue","Wed","Thu","Fri","Sat"};
+	static const char* mons[]={"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"};
+
+	time_t now = time(NULL);
+	struct tm *gmtm = gmtime(&now);
+
+	buffer_header[0]=0;
+	buffer_date[0]=0;
+	if(gmtm) {
+		snprintf(buffer_date,sizeof(buffer_date)-1,"%s, %d %s %d %d:%d:%d GMT",wds[gmtm->tm_wday], gmtm->tm_mday, mons[gmtm->tm_mon], gmtm->tm_year+1900, gmtm->tm_hour, gmtm->tm_min, gmtm->tm_sec);
+		buffer_date[sizeof(buffer_date)-1]=0;
+		snprintf(buffer_header,sizeof(buffer_header)-1,"Date: %s\r\n",buffer_date);
+		buffer_header[sizeof(buffer_header)-1]=0;
+	}
+
+	return buffer_header;
 }
 
 ///////////////////////////////////////////////
@@ -177,6 +201,9 @@ struct http_request* parse_http_request(char* request) {
 		if(strstr(request,"GET ") == request) {
 			ret->rtype = HRT_GET;
 			ret = parse_http_request_1(ret,request+4,0);
+		} else if(strstr(request,"HEAD ") == request) {
+			ret->rtype = HRT_HEAD;
+			ret = parse_http_request_1(ret,request+5,0);
 		} else if(strstr(request,"POST ") == request) {
 			ret->rtype = HRT_POST;
 			ret = parse_http_request_1(ret,request+5,1);

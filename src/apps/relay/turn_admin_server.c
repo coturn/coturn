@@ -1485,7 +1485,9 @@ static void write_https_logon_page(ioa_socket_handle s)
 
 		str_buffer_append(sb_http,"HTTP/1.1 200 OK\r\nServer: ");
 		str_buffer_append(sb_http,TURN_SOFTWARE);
-		str_buffer_append(sb_http,"\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Length: ");
+		str_buffer_append(sb_http,"\r\n");
+		str_buffer_append(sb_http,get_http_date_header());
+		str_buffer_append(sb_http,"Content-Type: text/html; charset=UTF-8\r\nContent-Length: ");
 		str_buffer_append_sz(sb_http,str_buffer_get_str_len(sb));
 		str_buffer_append(sb_http,"\r\n\r\n");
 		str_buffer_append(sb_http,str_buffer_get_str(sb));
@@ -1561,7 +1563,9 @@ static void write_https_home_page(ioa_socket_handle s)
 
 			send_str_from_ioa_socket_tcp(s,"HTTP/1.1 200 OK\r\nServer: ");
 			send_str_from_ioa_socket_tcp(s,TURN_SOFTWARE);
-			send_str_from_ioa_socket_tcp(s,"\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Length: ");
+			send_str_from_ioa_socket_tcp(s,"\r\n");
+			send_str_from_ioa_socket_tcp(s,get_http_date_header());
+			send_str_from_ioa_socket_tcp(s,"Content-Type: text/html; charset=UTF-8\r\nContent-Length: ");
 
 			send_ulong_from_ioa_socket_tcp(s,str_buffer_get_str_len(sb));
 
@@ -2026,7 +2030,9 @@ static void write_pc_page(ioa_socket_handle s)
 
 			send_str_from_ioa_socket_tcp(s,"HTTP/1.1 200 OK\r\nServer: ");
 			send_str_from_ioa_socket_tcp(s,TURN_SOFTWARE);
-			send_str_from_ioa_socket_tcp(s,"\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Length: ");
+			send_str_from_ioa_socket_tcp(s,"\r\n");
+			send_str_from_ioa_socket_tcp(s,get_http_date_header());
+			send_str_from_ioa_socket_tcp(s,"Content-Type: text/html; charset=UTF-8\r\nContent-Length: ");
 
 			send_ulong_from_ioa_socket_tcp(s,str_buffer_get_str_len(sb));
 
@@ -2275,7 +2281,9 @@ static void write_ps_page(ioa_socket_handle s, const char* client_protocol, cons
 
 			send_str_from_ioa_socket_tcp(s,"HTTP/1.1 200 OK\r\nServer: ");
 			send_str_from_ioa_socket_tcp(s,TURN_SOFTWARE);
-			send_str_from_ioa_socket_tcp(s,"\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Length: ");
+			send_str_from_ioa_socket_tcp(s,"\r\n");
+			send_str_from_ioa_socket_tcp(s,get_http_date_header());
+			send_str_from_ioa_socket_tcp(s,"Content-Type: text/html; charset=UTF-8\r\nContent-Length: ");
 
 			send_ulong_from_ioa_socket_tcp(s,str_buffer_get_str_len(sb));
 
@@ -2440,7 +2448,9 @@ static void write_users_page(ioa_socket_handle s, const u08bits *add_user, const
 
 			send_str_from_ioa_socket_tcp(s,"HTTP/1.1 200 OK\r\nServer: ");
 			send_str_from_ioa_socket_tcp(s,TURN_SOFTWARE);
-			send_str_from_ioa_socket_tcp(s,"\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Length: ");
+			send_str_from_ioa_socket_tcp(s,"\r\n");
+			send_str_from_ioa_socket_tcp(s,get_http_date_header());
+			send_str_from_ioa_socket_tcp(s,"Content-Type: text/html; charset=UTF-8\r\nContent-Length: ");
 
 			send_ulong_from_ioa_socket_tcp(s,str_buffer_get_str_len(sb));
 
@@ -2591,7 +2601,9 @@ static void write_shared_secrets_page(ioa_socket_handle s, const char* add_secre
 
 			send_str_from_ioa_socket_tcp(s,"HTTP/1.1 200 OK\r\nServer: ");
 			send_str_from_ioa_socket_tcp(s,TURN_SOFTWARE);
-			send_str_from_ioa_socket_tcp(s,"\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Length: ");
+			send_str_from_ioa_socket_tcp(s,"\r\n");
+			send_str_from_ioa_socket_tcp(s,get_http_date_header());
+			send_str_from_ioa_socket_tcp(s,"Content-Type: text/html; charset=UTF-8\r\nContent-Length: ");
 
 			send_ulong_from_ioa_socket_tcp(s,str_buffer_get_str_len(sb));
 
@@ -2741,7 +2753,9 @@ static void write_origins_page(ioa_socket_handle s, const char* add_origin, cons
 
 			send_str_from_ioa_socket_tcp(s,"HTTP/1.1 200 OK\r\nServer: ");
 			send_str_from_ioa_socket_tcp(s,TURN_SOFTWARE);
-			send_str_from_ioa_socket_tcp(s,"\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Length: ");
+			send_str_from_ioa_socket_tcp(s,"\r\n");
+			send_str_from_ioa_socket_tcp(s,get_http_date_header());
+			send_str_from_ioa_socket_tcp(s,"Content-Type: text/html; charset=UTF-8\r\nContent-Length: ");
 
 			send_ulong_from_ioa_socket_tcp(s,str_buffer_get_str_len(sb));
 
