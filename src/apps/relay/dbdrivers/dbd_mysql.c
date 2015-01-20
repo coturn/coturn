@@ -701,6 +701,37 @@ static int mysql_set_secret(u08bits *secret, u08bits *realm) {
 	}
   return ret;
 }
+
+static int mysql_set_permission_ip(const char *kind, u08bits *realm, const char* ip, int delete)
+{
+	int ret = -1;
+
+	u08bits realm0[STUN_MAX_REALM_SIZE+1] = "\0";
+	if(!realm) realm=realm0;
+
+	donot_print_connection_success = 1;
+
+	char statement[TURN_LONG_STRING_SIZE];
+
+	MYSQL * myc = get_mydb_connection();
+	if (myc) {
+		if(delete) {
+			snprintf(statement, sizeof(statement), "delete from %s_peer_ip where realm = '%s'  and ip_range = '%s'", kind, (char*)realm, ip);
+		} else {
+			snprintf(statement, sizeof(statement), "insert into %s_peer_ip (realm,ip_range) values('%s','%s')", kind, (char*)realm, ip);
+		}
+		int res = mysql_query(myc, statement);
+		if (res) {
+			TURN_LOG_FUNC(
+			  TURN_LOG_LEVEL_ERROR,
+			  "Error inserting permission ip information: %s\n",
+			  mysql_error(myc));
+		} else {
+			ret = 0;
+		}
+	}
+	return ret;
+}
   
 static int mysql_add_origin(u08bits *origin, u08bits *realm) {
   int ret = -1;
@@ -1196,6 +1227,7 @@ static const turn_dbdriver_t driver = {
   &mysql_list_realm_options,
   &mysql_auth_ping,
   &mysql_get_ip_list,
+  &mysql_set_permission_ip,
   &mysql_reread_realms,
   &mysql_set_oauth_key,
   &mysql_get_oauth_key,

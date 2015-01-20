@@ -809,6 +809,32 @@ static int redis_set_secret(u08bits *secret, u08bits *realm)
 	}
 	return ret;
 }
+
+static int redis_set_permission_ip(const char *kind, u08bits *realm, const char* ip, int delete)
+{
+	int ret = -1;
+
+	u08bits realm0[STUN_MAX_REALM_SIZE+1] = "\0";
+	if(!realm) realm=realm0;
+
+	donot_print_connection_success = 1;
+
+	redisContext *rc = get_redis_connection();
+	if (rc) {
+		char s[TURN_LONG_STRING_SIZE];
+
+		if(delete) {
+			snprintf(s, sizeof(s), "srem turn/realm/%s/%s-peer-ip %s", (char*) realm, kind, ip);
+		} else {
+			snprintf(s, sizeof(s), "sadd turn/realm/%s/%s-peer-ip %s", (char*) realm, kind, ip);
+		}
+
+		turnFreeRedisReply(redisCommand(rc, s));
+		turnFreeRedisReply(redisCommand(rc, "save"));
+		ret = 0;
+	}
+	return ret;
+}
   
 static int redis_add_origin(u08bits *origin, u08bits *realm) {
   int ret = -1;
@@ -1315,6 +1341,7 @@ static const turn_dbdriver_t driver = {
   &redis_list_realm_options,
   &redis_auth_ping,
   &redis_get_ip_list,
+  &redis_set_permission_ip,
   &redis_reread_realms,
   &redis_set_oauth_key,
   &redis_get_oauth_key,

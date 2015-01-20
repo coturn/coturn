@@ -666,7 +666,7 @@ static int mongo_del_secret(u08bits *secret, u08bits *realm) {
   BSON_APPEND_UTF8(&query, "realm", (const char *)realm);
 	if(secret && (secret[0]!=0)) {
     BSON_APPEND_UTF8(&query, "value", (const char *)secret);
-	}
+  }
 
   mongoc_collection_delete(collection, MONGOC_DELETE_NONE, &query, NULL, NULL);
   mongoc_collection_destroy(collection);
@@ -696,38 +696,89 @@ static int mongo_set_secret(u08bits *secret, u08bits *realm) {
     return 0;
   }
 }
-  
-static int mongo_add_origin(u08bits *origin, u08bits *realm) {
-  mongoc_collection_t * collection = mongo_get_collection("realm"); 
+
+static int mongo_set_permission_ip(const char *kind, u08bits *realm, const char* ip, int delete)
+{
+	char sub_collection_name[129];
+	snprintf(sub_collection_name,sizeof(sub_collection_name)-1,"%s_peer_ip",kind);
+
+	mongoc_collection_t * collection = mongo_get_collection("realm");
 
 	if(!collection)
-    return -1;
-    
-  int ret = -1;
-  
-  bson_t query, doc, child;
-  bson_init(&query);
-  BSON_APPEND_UTF8(&query, "realm", (const char *)realm);
-  bson_init(&doc);
-  bson_append_document_begin(&doc, "$addToSet", -1, &child);
-  BSON_APPEND_UTF8(&child, "origin", (const char *)origin);
-  bson_append_document_end(&doc, &child);
+		return -1;
 
-  if (!mongoc_collection_update(collection, MONGOC_UPDATE_UPSERT, &query, &doc, NULL, NULL)) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error inserting/updating realm origin information\n");
-  } else {
-    ret = 0;
-  }
-  mongoc_collection_destroy(collection);
-  bson_destroy(&query);
-  bson_destroy(&doc);
-  return ret;
+	int ret = -1;
+
+	u08bits realm0[STUN_MAX_REALM_SIZE+1] = "\0";
+	if(!realm) realm=realm0;
+
+	bson_t query, doc, child;
+	bson_init(&query);
+	BSON_APPEND_UTF8(&query, "realm", (const char *)realm);
+	bson_init(&doc);
+	if(delete) {
+		bson_append_document_begin(&doc, "$pull", -1, &child);
+	} else {
+		bson_append_document_begin(&doc, "$addToSet", -1, &child);
+	}
+	BSON_APPEND_UTF8(&child, sub_collection_name, (const char *)ip);
+	bson_append_document_end(&doc, &child);
+
+	mongoc_update_flags_t flags = 0;
+
+	if(delete) {
+		flags = MONGOC_UPDATE_MULTI_UPDATE;
+	} else {
+		flags = MONGOC_UPDATE_UPSERT;
+	}
+
+	if (!mongoc_collection_update(collection, flags, &query, &doc, NULL, NULL)) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error inserting permission ip information\n");
+	} else {
+		ret = 0;
+	}
+	mongoc_collection_destroy(collection);
+	bson_destroy(&query);
+	bson_destroy(&doc);
+	return ret;
 }
   
-static int mongo_del_origin(u08bits *origin) {
-  mongoc_collection_t * collection = mongo_get_collection("realm"); 
+static int mongo_add_origin(u08bits *origin, u08bits *realm)
+{
+	mongoc_collection_t * collection = mongo_get_collection("realm");
 
 	if(!collection)
+		return -1;
+    
+	int ret = -1;
+
+	u08bits realm0[STUN_MAX_REALM_SIZE+1] = "\0";
+	if(!realm) realm=realm0;
+  
+	bson_t query, doc, child;
+	bson_init(&query);
+	BSON_APPEND_UTF8(&query, "realm", (const char *)realm);
+	bson_init(&doc);
+	bson_append_document_begin(&doc, "$addToSet", -1, &child);
+	BSON_APPEND_UTF8(&child, "origin", (const char *)origin);
+	bson_append_document_end(&doc, &child);
+
+	if (!mongoc_collection_update(collection, MONGOC_UPDATE_UPSERT, &query, &doc, NULL, NULL)) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error inserting/updating realm origin information\n");
+	} else {
+		ret = 0;
+	}
+	mongoc_collection_destroy(collection);
+	bson_destroy(&query);
+	bson_destroy(&doc);
+	return ret;
+}
+  
+static int mongo_del_origin(u08bits *origin)
+{
+  mongoc_collection_t * collection = mongo_get_collection("realm"); 
+
+  if(!collection)
     return -1;
     
   int ret = -1;
@@ -1327,6 +1378,7 @@ static const turn_dbdriver_t driver = {
   &mongo_list_realm_options,
   &mongo_auth_ping,
   &mongo_get_ip_list,
+  &mongo_set_permission_ip,
   &mongo_reread_realms,
   &mongo_set_oauth_key,
   &mongo_get_oauth_key,
