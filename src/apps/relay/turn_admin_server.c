@@ -1363,6 +1363,7 @@ enum _AS_FORM {
 	AS_FORM_USERS,
 	AS_FORM_SS,
 	AS_FORM_OS,
+	AS_FORM_OAUTH,
 	AS_FORM_UNKNOWN
 };
 
@@ -1408,6 +1409,7 @@ static struct form_name form_names[] = {
 				{AS_FORM_USERS,"/us"},
 				{AS_FORM_SS,"/ss"},
 				{AS_FORM_OS,"/os"},
+				{AS_FORM_OAUTH,"/oauth"},
 				{AS_FORM_UNKNOWN,NULL}
 };
 
@@ -1554,6 +1556,10 @@ static void write_https_home_page(ioa_socket_handle s)
 
 			str_buffer_append(sb,"<br><input type=\"submit\" value=\"Origins\" formaction=\"");
 			str_buffer_append(sb,form_names[AS_FORM_OS].name);
+			str_buffer_append(sb,"\">");
+
+			str_buffer_append(sb,"<br><input type=\"submit\" value=\"oAuth keys\" formaction=\"");
+			str_buffer_append(sb,form_names[AS_FORM_OAUTH].name);
 			str_buffer_append(sb,"\">");
 
 			str_buffer_append(sb,"</fieldset>\r\n");
@@ -3185,6 +3191,15 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 
 					write_origins_page(s,(const char*)add_origin,(const char*)add_realm,msg);
 
+				} else {
+					write_https_logon_page(s);
+				}
+				break;
+			}
+			case AS_FORM_OAUTH: {
+				if(s->as_ok) {
+					//TODO
+					write_https_home_page(s);
 				} else {
 					write_https_logon_page(s);
 				}

@@ -447,7 +447,7 @@ static int sqlite_set_oauth_key(oauth_key_data_raw *key)
 			ret = 0;
 		} else {
 			const char* errmsg = sqlite3_errmsg(sqliteconnection);
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving SQLite DB information: %s\n", errmsg);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error updating SQLite DB information: %s\n", errmsg);
 		}
 		sqlite3_finalize(st);
 
