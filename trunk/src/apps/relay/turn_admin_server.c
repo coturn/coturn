@@ -1808,7 +1808,7 @@ static void write_pc_page(ioa_socket_handle s)
 			str_buffer_append(sb,"<br>\r\n");
 			str_buffer_append(sb,home_link);
 			str_buffer_append(sb,"<br>\r\n");
-			str_buffer_append(sb,"Configuration Parameters:<br><table  style=\"width:100%\">\r\n");
+			str_buffer_append(sb,"<b>Configuration Parameters:</b><br><br><table  style=\"width:100%\">\r\n");
 			str_buffer_append(sb,"<tr><th>Parameter</th><th>Value</th></tr>\r\n");
 
 			{
@@ -2266,7 +2266,7 @@ static void write_ps_page(ioa_socket_handle s, const char* client_protocol, cons
 			str_buffer_append(sb,"</fieldset>\r\n");
 			str_buffer_append(sb,"</form>\r\n");
 
-			str_buffer_append(sb,"TURN Sessions:<br><table>\r\n");
+			str_buffer_append(sb,"<br><b>TURN Sessions:</b><br><br><table>\r\n");
 			str_buffer_append(sb,"<tr><th>N</th><th>Session ID</th><th>User</th><th>Realm</th><th>Origin</th><th>Age, secs</th><th>Expires, secs</th><th>Client protocol</th><th>Relay protocol</th><th>Client addr</th><th>Server addr</th><th>Relay addr (IPv4)</th><th>Relay addr (IPv6)</th><th>Fingerprints</th><th>Mobile</th><th>TLS method</th><th>TLS cipher</th><th>BPS (allocated)</th><th>Packets</th><th>Rate</th><th>Peers</th></tr>\r\n");
 
 			size_t total_sz = https_print_sessions(sb,client_protocol,user_pattern,max_sessions,cs);
@@ -2420,14 +2420,19 @@ static void write_users_page(ioa_socket_handle s, const u08bits *add_user, const
 			str_buffer_append(sb,"\" value=\"");
 			str_buffer_append(sb,"");
 			str_buffer_append(sb,"\"");
-			str_buffer_append(sb,"><br>\r\n");
+			str_buffer_append(sb,"><br><br>\r\n");
+
+			if(turn_params.shatype == SHATYPE_SHA256)
+				str_buffer_append(sb,"SHA type: SHA256<br>\r\n");
+			else
+				str_buffer_append(sb,"SHA type: SHA1<br>\r\n");
 
 			str_buffer_append(sb,"<br><input type=\"submit\" value=\"Add user\">");
 
 			str_buffer_append(sb,"</fieldset>\r\n");
 			str_buffer_append(sb,"</form>\r\n");
 
-			str_buffer_append(sb,"Users:<br>\r\n");
+			str_buffer_append(sb,"<br><b>Users:</b><br><br>\r\n");
 			str_buffer_append(sb,"<table>\r\n");
 			str_buffer_append(sb,"<tr><th>N</th><th>Name</th>");
 			if(!current_socket->as_eff_realm[0]) {
@@ -2580,7 +2585,7 @@ static void write_shared_secrets_page(ioa_socket_handle s, const char* add_secre
 			str_buffer_append(sb,"</fieldset>\r\n");
 			str_buffer_append(sb,"</form>\r\n");
 
-			str_buffer_append(sb,"Secrets:<br>\r\n");
+			str_buffer_append(sb,"<br><b>Shared secrets:</b><br><br>\r\n");
 			str_buffer_append(sb,"<table>\r\n");
 			str_buffer_append(sb,"<tr><th>N</th><th>Value</th>");
 			if(!current_socket->as_eff_realm[0]) {
@@ -2730,7 +2735,7 @@ static void write_origins_page(ioa_socket_handle s, const char* add_origin, cons
 				str_buffer_append(sb,"</form>\r\n");
 			}
 
-			str_buffer_append(sb,"Origins:<br>\r\n");
+			str_buffer_append(sb,"<br><b>Origins:</b><br><br>\r\n");
 			str_buffer_append(sb,"<table>\r\n");
 			str_buffer_append(sb,"<tr><th>N</th><th>Value</th>");
 			if(!current_socket->as_eff_realm[0]) {
@@ -3019,9 +3024,9 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 										STRCPY(u,add_user);
 										STRCPY(r,add_realm);
 										STRCPY(p,pwd);
-										stun_produce_integrity_key_str(u, r, p, key, SHATYPE_DEFAULT);
+										stun_produce_integrity_key_str(u, r, p, key, turn_params.shatype);
 										size_t i = 0;
-										size_t sz = get_hmackey_size(SHATYPE_DEFAULT);
+										size_t sz = get_hmackey_size(turn_params.shatype);
 										int maxsz = (int) (sz * 2) + 1;
 										char *s = skey;
 										for (i = 0; (i < sz) && (maxsz > 2); i++) {
