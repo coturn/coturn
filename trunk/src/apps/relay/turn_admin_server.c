@@ -1481,9 +1481,9 @@ static void write_https_logon_page(ioa_socket_handle s)
 		str_buffer_append(sb,"<form action=\"");
 		str_buffer_append(sb,form_names[AS_FORM_LOGON].name);
 		str_buffer_append(sb,"\" method=\"POST\">\r\n");
-		str_buffer_append(sb,"  <fieldset><legend>Admin user information:</legend>  user name:<br><input type=\"text\" name=\"");
+		str_buffer_append(sb,"  <fieldset><legend>Admin user information:</legend>  user name:<br><input required type=\"text\" name=\"");
 		str_buffer_append(sb,HR_USERNAME);
-		str_buffer_append(sb,"\" value=\"\"><br>password:<br><input type=\"password\" name=\"");
+		str_buffer_append(sb,"\" value=\"\"><br>password:<br><input required type=\"password\" name=\"");
 		str_buffer_append(sb,HR_PASSWORD);
 		str_buffer_append(sb,"\" value=\"\"><br><br><input type=\"submit\" value=\"Login\"></fieldset>\r\n");
 		str_buffer_append(sb,"</form>\r\n");
@@ -1734,7 +1734,7 @@ static void https_print_ip_range_list(struct str_buffer* sb, ip_range_list_t *va
 
 		if(dynamic) {
 			sbprintf(sb,"<tr><td>  %s</td><td>",name);
-			sbprintf(sb,"<form action=\"%s?%s=%s\" method=\"POST\">IP range:<input type=\"text\" name=\"%s\" value=\"\">",form_names[AS_FORM_UPDATE].name,HR_ADD_IP_KIND,kind,HR_ADD_IP);
+			sbprintf(sb,"<form action=\"%s?%s=%s\" method=\"POST\">IP range:<input required type=\"text\" name=\"%s\" value=\"\">",form_names[AS_FORM_UPDATE].name,HR_ADD_IP_KIND,kind,HR_ADD_IP);
 			sbprintf(sb,"Realm: <input type=\"text\" name=\"%s\" value=\"%s\" ",HR_ADD_IP_REALM,current_socket->as_eff_realm);
 			if(!is_superuser()) {
 				sbprintf(sb," disabled ");
@@ -2415,21 +2415,21 @@ static void write_users_page(ioa_socket_handle s, const u08bits *add_user, const
 			}
 			str_buffer_append(sb,"><br>\r\n");
 
-			str_buffer_append(sb,"  <br>User name: <input type=\"text\" name=\"");
+			str_buffer_append(sb,"  <br>User name: <input required type=\"text\" name=\"");
 			str_buffer_append(sb,HR_ADD_USER);
 			str_buffer_append(sb,"\" value=\"");
 			str_buffer_append(sb,(const char*)add_user);
 			str_buffer_append(sb,"\"");
 			str_buffer_append(sb,"><br>\r\n");
 
-			str_buffer_append(sb,"  <br>Password: <input type=\"password\" name=\"");
+			str_buffer_append(sb,"  <br>Password: <input required type=\"password\" name=\"");
 			str_buffer_append(sb,HR_PASSWORD);
 			str_buffer_append(sb,"\" value=\"");
 			str_buffer_append(sb,"");
 			str_buffer_append(sb,"\"");
 			str_buffer_append(sb,"><br>\r\n");
 
-			str_buffer_append(sb,"  <br>Confirm password: <input type=\"password\" name=\"");
+			str_buffer_append(sb,"  <br>Confirm password: <input required type=\"password\" name=\"");
 			str_buffer_append(sb,HR_PASSWORD1);
 			str_buffer_append(sb,"\" value=\"");
 			str_buffer_append(sb,"");
@@ -2587,7 +2587,7 @@ static void write_shared_secrets_page(ioa_socket_handle s, const char* add_secre
 			}
 			str_buffer_append(sb,"><br>\r\n");
 
-			str_buffer_append(sb,"  <br>Secret: <input type=\"text\" name=\"");
+			str_buffer_append(sb,"  <br>Secret: <input required type=\"text\" name=\"");
 			str_buffer_append(sb,HR_ADD_SECRET);
 			str_buffer_append(sb,"\" value=\"");
 			str_buffer_append(sb,(const char*)add_secret);
@@ -2729,14 +2729,14 @@ static void write_origins_page(ioa_socket_handle s, const char* add_origin, cons
 					str_buffer_append(sb,"</th></table><br>");
 				}
 
-				str_buffer_append(sb,"  <br>Realm name: <input type=\"text\" name=\"");
+				str_buffer_append(sb,"  <br>Realm name: <input required type=\"text\" name=\"");
 				str_buffer_append(sb,HR_ADD_REALM);
 				str_buffer_append(sb,"\" value=\"");
 				str_buffer_append(sb,(const char*)add_realm);
 				str_buffer_append(sb,"\"");
 				str_buffer_append(sb,"><br>\r\n");
 
-				str_buffer_append(sb,"  <br>Origin: <input type=\"text\" name=\"");
+				str_buffer_append(sb,"  <br>Origin: <input required type=\"text\" name=\"");
 				str_buffer_append(sb,HR_ADD_ORIGIN);
 				str_buffer_append(sb,"\" value=\"");
 				str_buffer_append(sb,(const char*)add_origin);
@@ -2877,21 +2877,21 @@ static void write_https_oauth_page(ioa_socket_handle s, const char* add_kid, con
 				{
 					if(!add_kid) add_kid="";
 
-					str_buffer_append(sb,"  <br>KID: <input type=\"text\" name=\"");
+					str_buffer_append(sb,"  <br>KID: <input required type=\"text\" name=\"");
 					str_buffer_append(sb,HR_ADD_OAUTH_KID);
 					str_buffer_append(sb,"\" value=\"");
 					str_buffer_append(sb,(const char*)add_kid);
-					str_buffer_append(sb,"\"");
+					str_buffer_append(sb,"\" required ");
 					str_buffer_append(sb,"><br>\r\n");
 				}
 				{
 					if(!add_ikm) add_ikm = "";
 
-					str_buffer_append(sb,"  <br>Base64-encoded input keying material: <input type=\"text\" name=\"");
+					str_buffer_append(sb,"  <br>Base64-encoded input keying material: <input required type=\"text\" name=\"");
 					str_buffer_append(sb,HR_ADD_OAUTH_IKM);
 					str_buffer_append(sb,"\" value=\"");
 					str_buffer_append(sb,(const char*)add_ikm);
-					str_buffer_append(sb,"\" maxlength=256 size=48 ");
+					str_buffer_append(sb,"\" maxlength=256 size=48 required ");
 					str_buffer_append(sb,"><br>\r\n");
 				}
 				{
