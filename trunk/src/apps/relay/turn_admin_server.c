@@ -1437,8 +1437,45 @@ static int wrong_html_name(const char* s)
 	return ret;
 }
 
+static int is_as_ok(ioa_socket_handle s) {
+	return (s && s->special_session &&
+			((struct admin_session*)s->special_session)->as_ok);
+}
+
 static int is_superuser(void) {
-	return !(current_socket->as_realm[0]);
+	return (is_as_ok(current_socket) &&
+			(!((struct admin_session*)current_socket->special_session)->as_realm[0]));
+}
+
+static char* current_realm(void) {
+	if(current_socket && current_socket->special_session && ((struct admin_session*)current_socket->special_session)->as_ok) {
+		return ((struct admin_session*)current_socket->special_session)->as_realm;
+	} else {
+		static char bad_realm[1025] = "_ERROR:UNKNOWN_REALM__";
+		return bad_realm;
+	}
+}
+
+static char* current_eff_realm(void) {
+	if(current_socket && current_socket->special_session && ((struct admin_session*)current_socket->special_session)->as_ok) {
+		return ((struct admin_session*)current_socket->special_session)->as_eff_realm;
+	} else {
+		static char bad_eff_realm[1025] = "_ERROR:UNKNOWN_REALM__";
+		return bad_eff_realm;
+	}
+}
+
+static size_t current_max_output_sessions(void) {
+	if(current_socket && current_socket->special_session && ((struct admin_session*)current_socket->special_session)->as_ok) {
+		return ((struct admin_session*)current_socket->special_session)->number_of_user_sessions;
+	}
+	return DEFAULT_CLI_MAX_OUTPUT_SESSIONS;
+}
+
+static void set_current_max_output_sessions(size_t value) {
+	if(current_socket && current_socket->special_session && ((struct admin_session*)current_socket->special_session)->as_ok) {
+		((struct admin_session*)current_socket->special_session)->number_of_user_sessions = value;
+	}
 }
 
 static void https_cancel_session(const char* ssid)
@@ -1447,12 +1484,6 @@ static void https_cancel_session(const char* ssid)
 		turnsession_id sid = (turnsession_id)strtoull(ssid,NULL,10);
 		send_session_cancellation_to_relay(sid);
 	}
-}
-
-static char* get_eff_realm(void) {
-	if(current_socket->as_realm[0])
-		return current_socket->as_realm;
-	return current_socket->as_eff_realm;
 }
 
 static AS_FORM get_form(const char* path) {
@@ -1512,7 +1543,7 @@ static void write_https_home_page(ioa_socket_handle s)
 {
 	if(s && !ioa_socket_tobeclosed(s)) {
 
-		if(!(s->as_ok)) {
+		if(!is_as_ok(s)) {
 			write_https_logon_page(s);
 		} else {
 
@@ -1533,7 +1564,7 @@ static void write_https_home_page(ioa_socket_handle s)
 			str_buffer_append(sb,"  Realm name: <input type=\"text\" name=\"");
 			str_buffer_append(sb,HR_REALM);
 			str_buffer_append(sb,"\" value=\"");
-			str_buffer_append(sb,get_eff_realm());
+			str_buffer_append(sb,current_eff_realm());
 			str_buffer_append(sb,"\"");
 			if(!is_superuser()) {
 				str_buffer_append(sb," disabled ");
@@ -1549,7 +1580,7 @@ static void write_https_home_page(ioa_socket_handle s)
 			str_buffer_append(sb,"?");
 			str_buffer_append(sb,HR_MAX_SESSIONS);
 			str_buffer_append(sb,"=");
-			str_buffer_append_sz(sb,cli_max_output_sessions);
+			str_buffer_append_sz(sb,current_max_output_sessions());
 			str_buffer_append(sb,"\">");
 
 			str_buffer_append(sb,"<br><input type=\"submit\" value=\"Users\" formaction=\"");
@@ -1701,7 +1732,7 @@ static const char* change_ip_addr_html(int dynamic,const char* kind,const char* 
 
 			if(!realm) realm="";
 
-			if(current_socket->as_realm[0] && strcmp(current_socket->as_realm,realm)) {
+			if(current_realm()[0] && strcmp(current_realm(),realm)) {
 				//delete forbidden
 			} else {
 				char *eip = evhttp_encode_uri(ip);
@@ -1721,7 +1752,7 @@ static void https_print_ip_range_list(struct str_buffer* sb, ip_range_list_t *va
 			char buffer[1025];
 			for(i=0;i<value->ranges_number;++i) {
 				if(value->rs[i].realm[0]) {
-					if(get_eff_realm()[0] && strcmp(get_eff_realm(),value->rs[i].realm)) {
+					if(current_eff_realm()[0] && strcmp(current_eff_realm(),value->rs[i].realm)) {
 						continue;
 					} else {
 						sbprintf(sb,"<tr><td>  %s</td><td> %s [%s] %s</td></tr>\r\n",name,value->rs[i].str,value->rs[i].realm, change_ip_addr_html(dynamic,kind,value->rs[i].str,value->rs[i].realm,buffer,sizeof(buffer)));
@@ -1735,7 +1766,7 @@ static void https_print_ip_range_list(struct str_buffer* sb, ip_range_list_t *va
 		if(dynamic) {
 			sbprintf(sb,"<tr><td>  %s</td><td>",name);
 			sbprintf(sb,"<form action=\"%s?%s=%s\" method=\"POST\">IP range:<input required type=\"text\" name=\"%s\" value=\"\">",form_names[AS_FORM_UPDATE].name,HR_ADD_IP_KIND,kind,HR_ADD_IP);
-			sbprintf(sb,"Realm: <input type=\"text\" name=\"%s\" value=\"%s\" ",HR_ADD_IP_REALM,current_socket->as_eff_realm);
+			sbprintf(sb,"Realm: <input type=\"text\" name=\"%s\" value=\"%s\" ",HR_ADD_IP_REALM,current_eff_realm());
 			if(!is_superuser()) {
 				sbprintf(sb," disabled ");
 			}
@@ -1778,7 +1809,7 @@ static void update_param(const char* pn, const char *value)
 			}
 		}
 		{
-			realm_params_t *rp = get_realm(get_eff_realm());
+			realm_params_t *rp = get_realm(current_eff_realm());
 			if(!rp) rp = get_realm(NULL);
 
 			const turn_dbdriver_t * dbd = get_dbdriver();
@@ -1809,7 +1840,7 @@ static void write_pc_page(ioa_socket_handle s)
 {
 	if(s && !ioa_socket_tobeclosed(s)) {
 
-		if(!(s->as_ok)) {
+		if(!is_as_ok(s)) {
 			write_https_logon_page(s);
 		} else {
 
@@ -2018,7 +2049,7 @@ static void write_pc_page(ioa_socket_handle s)
 						https_print_str(sb,rn,"Default realm",0);
 				}
 
-				realm_params_t *rp = get_realm(get_eff_realm());
+				realm_params_t *rp = get_realm(current_eff_realm());
 				if(!rp) rp = get_realm(NULL);
 
 				https_print_str(sb,rp->options.name,"Admin session (current) realm",0);
@@ -2075,7 +2106,7 @@ static int https_print_session(ur_map_key_type key, ur_map_value_type value, voi
 		struct str_buffer* sb = csarg->sb;
 		struct turn_session_info *tsi = (struct turn_session_info *)value;
 
-		if(get_eff_realm()[0] && strcmp(get_eff_realm(),tsi->realm))
+		if(current_eff_realm()[0] && strcmp(current_eff_realm(),tsi->realm))
 			return 0;
 
 		if(csarg->user_pattern[0]) {
@@ -2225,7 +2256,7 @@ static void write_ps_page(ioa_socket_handle s, const char* client_protocol, cons
 {
 	if(s && !ioa_socket_tobeclosed(s)) {
 
-		if(!(s->as_ok)) {
+		if(!is_as_ok(s)) {
 			write_https_logon_page(s);
 		} else {
 
@@ -2247,7 +2278,7 @@ static void write_ps_page(ioa_socket_handle s, const char* client_protocol, cons
 			str_buffer_append(sb,"  <br>Realm name: <input type=\"text\" name=\"");
 			str_buffer_append(sb,HR_REALM);
 			str_buffer_append(sb,"\" value=\"");
-			str_buffer_append(sb,get_eff_realm());
+			str_buffer_append(sb,current_eff_realm());
 			str_buffer_append(sb,"\"");
 			if(!is_superuser()) {
 				str_buffer_append(sb," disabled ");
@@ -2317,7 +2348,7 @@ static size_t https_print_users(struct str_buffer* sb)
 		secrets_list_t users,realms;
 		init_secrets_list(&users);
 		init_secrets_list(&realms);
-		dbd->list_users((u08bits*)current_socket->as_eff_realm,&users,&realms);
+		dbd->list_users((u08bits*)current_eff_realm(),&users,&realms);
 
 		size_t sz = get_secrets_list_size(&users);
 		size_t i;
@@ -2328,7 +2359,7 @@ static size_t https_print_users(struct str_buffer* sb)
 			str_buffer_append(sb,"<td>");
 			str_buffer_append(sb,get_secrets_list_elem(&users,i));
 			str_buffer_append(sb,"</td>");
-			if(!current_socket->as_eff_realm[0]) {
+			if(!current_eff_realm()[0]) {
 				str_buffer_append(sb,"<td>");
 				str_buffer_append(sb,get_secrets_list_elem(&realms,i));
 				str_buffer_append(sb,"</td>");
@@ -2360,7 +2391,7 @@ static void write_users_page(ioa_socket_handle s, const u08bits *add_user, const
 {
 	if(s && !ioa_socket_tobeclosed(s)) {
 
-		if(!(s->as_ok)) {
+		if(!is_as_ok(s)) {
 			write_https_logon_page(s);
 		} else {
 
@@ -2382,7 +2413,7 @@ static void write_users_page(ioa_socket_handle s, const u08bits *add_user, const
 			str_buffer_append(sb,"  <br>Realm name: <input type=\"text\" name=\"");
 			str_buffer_append(sb,HR_REALM);
 			str_buffer_append(sb,"\" value=\"");
-			str_buffer_append(sb,get_eff_realm());
+			str_buffer_append(sb,current_eff_realm());
 			str_buffer_append(sb,"\"");
 			if(!is_superuser()) {
 				str_buffer_append(sb," disabled ");
@@ -2449,7 +2480,7 @@ static void write_users_page(ioa_socket_handle s, const u08bits *add_user, const
 			str_buffer_append(sb,"<br><b>Users:</b><br><br>\r\n");
 			str_buffer_append(sb,"<table>\r\n");
 			str_buffer_append(sb,"<tr><th>N</th><th>Name</th>");
-			if(!current_socket->as_eff_realm[0]) {
+			if(!current_eff_realm()[0]) {
 				str_buffer_append(sb,"<th>Realm</th>");
 			}
 			str_buffer_append(sb,"<th> </th>");
@@ -2489,7 +2520,7 @@ static size_t https_print_secrets(struct str_buffer* sb)
 		secrets_list_t secrets,realms;
 		init_secrets_list(&secrets);
 		init_secrets_list(&realms);
-		dbd->list_secrets((u08bits*)current_socket->as_eff_realm,&secrets,&realms);
+		dbd->list_secrets((u08bits*)current_eff_realm(),&secrets,&realms);
 
 		size_t sz = get_secrets_list_size(&secrets);
 		size_t i;
@@ -2500,7 +2531,7 @@ static size_t https_print_secrets(struct str_buffer* sb)
 			str_buffer_append(sb,"<td>");
 			str_buffer_append(sb,get_secrets_list_elem(&secrets,i));
 			str_buffer_append(sb,"</td>");
-			if(!current_socket->as_eff_realm[0]) {
+			if(!current_eff_realm()[0]) {
 				str_buffer_append(sb,"<td>");
 				str_buffer_append(sb,get_secrets_list_elem(&realms,i));
 				str_buffer_append(sb,"</td>");
@@ -2532,7 +2563,7 @@ static void write_shared_secrets_page(ioa_socket_handle s, const char* add_secre
 {
 	if(s && !ioa_socket_tobeclosed(s)) {
 
-		if(!(s->as_ok)) {
+		if(!is_as_ok(s)) {
 			write_https_logon_page(s);
 		} else {
 
@@ -2554,7 +2585,7 @@ static void write_shared_secrets_page(ioa_socket_handle s, const char* add_secre
 			str_buffer_append(sb,"  <br>Realm name: <input type=\"text\" name=\"");
 			str_buffer_append(sb,HR_REALM);
 			str_buffer_append(sb,"\" value=\"");
-			str_buffer_append(sb,get_eff_realm());
+			str_buffer_append(sb,current_eff_realm());
 			str_buffer_append(sb,"\"");
 			if(!is_superuser()) {
 				str_buffer_append(sb," disabled ");
@@ -2602,7 +2633,7 @@ static void write_shared_secrets_page(ioa_socket_handle s, const char* add_secre
 			str_buffer_append(sb,"<br><b>Shared secrets:</b><br><br>\r\n");
 			str_buffer_append(sb,"<table>\r\n");
 			str_buffer_append(sb,"<tr><th>N</th><th>Value</th>");
-			if(!current_socket->as_eff_realm[0]) {
+			if(!current_eff_realm()[0]) {
 				str_buffer_append(sb,"<th>Realm</th>");
 			}
 			str_buffer_append(sb,"<th> </th>");
@@ -2642,7 +2673,7 @@ static size_t https_print_origins(struct str_buffer* sb)
 		secrets_list_t origins,realms;
 		init_secrets_list(&origins);
 		init_secrets_list(&realms);
-		dbd->list_origins((u08bits*)current_socket->as_eff_realm,&origins,&realms);
+		dbd->list_origins((u08bits*)current_eff_realm(),&origins,&realms);
 
 		size_t sz = get_secrets_list_size(&origins);
 		size_t i;
@@ -2653,7 +2684,7 @@ static size_t https_print_origins(struct str_buffer* sb)
 			str_buffer_append(sb,"<td>");
 			str_buffer_append(sb,get_secrets_list_elem(&origins,i));
 			str_buffer_append(sb,"</td>");
-			if(!current_socket->as_eff_realm[0]) {
+			if(!current_eff_realm()[0]) {
 				str_buffer_append(sb,"<td>");
 				str_buffer_append(sb,get_secrets_list_elem(&realms,i));
 				str_buffer_append(sb,"</td>");
@@ -2683,7 +2714,7 @@ static void write_origins_page(ioa_socket_handle s, const char* add_origin, cons
 {
 	if(s && !ioa_socket_tobeclosed(s)) {
 
-		if(!(s->as_ok)) {
+		if(!is_as_ok(s)) {
 			write_https_logon_page(s);
 		} else {
 
@@ -2705,7 +2736,7 @@ static void write_origins_page(ioa_socket_handle s, const char* add_origin, cons
 			str_buffer_append(sb,"  <br>Realm name: <input type=\"text\" name=\"");
 			str_buffer_append(sb,HR_REALM);
 			str_buffer_append(sb,"\" value=\"");
-			str_buffer_append(sb,get_eff_realm());
+			str_buffer_append(sb,current_eff_realm());
 			str_buffer_append(sb,"\"");
 			if(!is_superuser()) {
 				str_buffer_append(sb," disabled ");
@@ -2752,7 +2783,7 @@ static void write_origins_page(ioa_socket_handle s, const char* add_origin, cons
 			str_buffer_append(sb,"<br><b>Origins:</b><br><br>\r\n");
 			str_buffer_append(sb,"<table>\r\n");
 			str_buffer_append(sb,"<tr><th>N</th><th>Value</th>");
-			if(!current_socket->as_eff_realm[0]) {
+			if(!current_eff_realm()[0]) {
 				str_buffer_append(sb,"<th>Realm</th>");
 			}
 			if(is_superuser()) {
@@ -2846,7 +2877,7 @@ static void write_https_oauth_page(ioa_socket_handle s, const char* add_kid, con
 {
 	if(s && !ioa_socket_tobeclosed(s)) {
 
-		if(!(s->as_ok)) {
+		if(!is_as_ok(s)) {
 			write_https_logon_page(s);
 		} else if(!is_superuser()) {
 			write_https_home_page(s);
@@ -3055,10 +3086,10 @@ static void handle_update_request(ioa_socket_handle s, struct http_request* hr)
 				if (dbd && dbd->set_permission_ip) {
 
 					if(!r || !r[0]) {
-						r = current_socket->as_realm;
+						r = current_realm();
 					}
 
-					if(current_socket->as_realm[0] && strcmp(current_socket->as_realm,r)) {
+					if(current_realm()[0] && strcmp(current_realm(),r)) {
 						//forbidden
 					} else {
 
@@ -3083,10 +3114,10 @@ static void handle_update_request(ioa_socket_handle s, struct http_request* hr)
 				if (dbd && dbd->set_permission_ip) {
 
 					if(!r || !r[0]) {
-						r = current_socket->as_realm;
+						r = current_realm();
 					}
 
-					if(current_socket->as_realm[0] && strcmp(current_socket->as_realm,r)) {
+					if(current_realm()[0] && strcmp(current_realm(),r)) {
 						//forbidden
 					} else {
 
@@ -3108,7 +3139,15 @@ static void handle_logon_request(ioa_socket_handle s, struct http_request* hr)
 		const char *uname = get_http_header_value(hr, HR_USERNAME, NULL);
 		const char *pwd = get_http_header_value(hr, HR_PASSWORD, NULL);
 
-		if(!(s->as_ok) && uname && pwd) {
+		struct admin_session* as = (struct admin_session*)s->special_session;
+		if(!as) {
+			as = (struct admin_session*)turn_malloc(sizeof(struct admin_session));
+			ns_bzero(as,sizeof(struct admin_session));
+			s->special_session = as;
+			s->special_session_size = sizeof(struct admin_session);
+		}
+
+		if(!(as->as_ok) && uname && pwd) {
 			const turn_dbdriver_t * dbd = get_dbdriver();
 			if (dbd && dbd->get_admin_user) {
 
@@ -3116,10 +3155,11 @@ static void handle_logon_request(ioa_socket_handle s, struct http_request* hr)
 				char realm[STUN_MAX_REALM_SIZE+1]="\0";
 				if((*(dbd->get_admin_user))((const u08bits*)uname,(u08bits*)realm,password)>=0) {
 					if(!strcmp(pwd,(char*)password)) {
-						STRCPY(s->as_login,uname);
-						STRCPY(s->as_realm,realm);
-						s->as_eff_realm[0]=0;
-						s->as_ok = 1;
+						STRCPY(as->as_login,uname);
+						STRCPY(as->as_realm,realm);
+						as->as_eff_realm[0]=0;
+						as->as_ok = 1;
+						as->number_of_user_sessions = DEFAULT_CLI_MAX_OUTPUT_SESSIONS;
 					}
 				}
 			}
@@ -3131,10 +3171,13 @@ static void handle_logout_request(ioa_socket_handle s, struct http_request* hr)
 {
 	UNUSED_ARG(hr);
 	if(s) {
-		s->as_login[0] = 0;
-		s->as_ok = 0;
-		s->as_realm[0] = 0;
-		s->as_eff_realm[0] = 0;
+		struct admin_session* as = (struct admin_session*)s->special_session;
+		if(as) {
+			as->as_login[0] = 0;
+			as->as_ok = 0;
+			as->as_realm[0] = 0;
+			as->as_eff_realm[0] = 0;
+		}
 	}
 }
 
@@ -3165,11 +3208,11 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 
 			switch(form) {
 			case AS_FORM_PC: {
-				if(s->as_ok) {
-					const char *realm0 = get_http_header_value(hr, HR_REALM, current_socket->as_realm);
+				if(is_as_ok(s)) {
+					const char *realm0 = get_http_header_value(hr, HR_REALM, current_realm());
 					if(!is_superuser())
-						realm0 = current_socket->as_realm;
-					STRCPY(current_socket->as_eff_realm,realm0);
+						realm0 = current_realm();
+					STRCPY(current_eff_realm(),realm0);
 					write_pc_page(s);
 				} else {
 					write_https_logon_page(s);
@@ -3177,11 +3220,11 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 				break;
 			}
 			case AS_FORM_PS: {
-				if(s->as_ok) {
-					const char *realm0 = get_http_header_value(hr, HR_REALM, current_socket->as_realm);
+				if(is_as_ok(s)) {
+					const char *realm0 = get_http_header_value(hr, HR_REALM, current_realm());
 					if(!is_superuser())
-						realm0 = current_socket->as_realm;
-					STRCPY(current_socket->as_eff_realm,realm0);
+						realm0 = current_realm();
+					STRCPY(current_eff_realm(),realm0);
 
 					const char* client_protocol = get_http_header_value(hr, HR_CLIENT_PROTOCOL, "");
 
@@ -3194,11 +3237,12 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 						csid = (turnsession_id)strtoull(ssid,NULL,10);
 					}
 
-					size_t max_sessions = cli_max_output_sessions;
+					size_t max_sessions = current_max_output_sessions();
 					const char* s_max_sessions = get_http_header_value(hr, HR_MAX_SESSIONS,NULL);
 					if(s_max_sessions) {
 						max_sessions=strtoul(s_max_sessions,NULL,10);
-						if(!max_sessions) max_sessions = cli_max_output_sessions;
+						if(!max_sessions) max_sessions = current_max_output_sessions();
+						set_current_max_output_sessions(max_sessions);
 					}
 
 					if(!max_sessions) max_sessions = DEFAULT_CLI_MAX_OUTPUT_SESSIONS;
@@ -3210,12 +3254,12 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 				break;
 			}
 			case AS_FORM_USERS: {
-				if(s->as_ok) {
+				if(is_as_ok(s)) {
 					{
-						const char *realm0 = get_http_header_value(hr, HR_REALM, current_socket->as_realm);
+						const char *realm0 = get_http_header_value(hr, HR_REALM, current_realm());
 						if(!is_superuser())
-							realm0 = current_socket->as_realm;
-						STRCPY(current_socket->as_eff_realm,realm0);
+							realm0 = current_realm();
+						STRCPY(current_eff_realm(),realm0);
 					}
 
 					{
@@ -3223,7 +3267,7 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 						if(user && user[0]) {
 							const u08bits *realm = (const u08bits*)get_http_header_value(hr, HR_DELETE_REALM, "");
 							if(!is_superuser()) {
-								realm = (const u08bits*)current_socket->as_realm;
+								realm = (const u08bits*)current_realm();
 							}
 							if(realm && realm[0]) {
 								const turn_dbdriver_t * dbd = get_dbdriver();
@@ -3238,7 +3282,7 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 						}
 					}
 
-					const u08bits *add_realm = (const u08bits*)current_socket->as_eff_realm;
+					const u08bits *add_realm = (const u08bits*)current_eff_realm();
 					const u08bits *add_user = (const u08bits*)get_http_header_value(hr, HR_ADD_USER,"");
 					const char* msg = "";
 					if(wrong_html_name((const char*)add_user)) {
@@ -3246,12 +3290,12 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 						add_user = (const u08bits*)"";
 					}
 					if(add_user[0]) {
-						add_realm = (const u08bits*)get_http_header_value(hr, HR_ADD_REALM, current_socket->as_realm);
+						add_realm = (const u08bits*)get_http_header_value(hr, HR_ADD_REALM, current_realm());
 						if(!is_superuser()) {
-							add_realm = (const u08bits*)current_socket->as_realm;
+							add_realm = (const u08bits*)current_realm();
 						}
 						if(!add_realm[0]) {
-							add_realm=(const u08bits*)current_socket->as_eff_realm;
+							add_realm=(const u08bits*)current_eff_realm();
 						}
 						if(!add_realm[0]) {
 							add_realm = (const u08bits*)get_realm(NULL)->options.name;
@@ -3310,12 +3354,12 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 				break;
 			}
 			case AS_FORM_SS: {
-				if(s->as_ok) {
+				if(is_as_ok(s)) {
 					{
-						const char *realm0 = get_http_header_value(hr, HR_REALM, current_socket->as_realm);
+						const char *realm0 = get_http_header_value(hr, HR_REALM, current_realm());
 						if(!is_superuser())
-							realm0 = current_socket->as_realm;
-						STRCPY(current_socket->as_eff_realm,realm0);
+							realm0 = current_realm();
+						STRCPY(current_eff_realm(),realm0);
 					}
 
 					{
@@ -3323,7 +3367,7 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 						if(secret && secret[0]) {
 							const u08bits *realm = (const u08bits*)get_http_header_value(hr, HR_DELETE_REALM, NULL);
 							if(!is_superuser()) {
-								realm = (const u08bits*)current_socket->as_realm;
+								realm = (const u08bits*)current_realm();
 							}
 							if(realm && realm[0]) {
 								const turn_dbdriver_t * dbd = get_dbdriver();
@@ -3338,7 +3382,7 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 						}
 					}
 
-					const u08bits *add_realm = (const u08bits*)current_socket->as_eff_realm;
+					const u08bits *add_realm = (const u08bits*)current_eff_realm();
 					const u08bits *add_secret = (const u08bits*)get_http_header_value(hr, HR_ADD_SECRET, "");
 					const char* msg = "";
 					if(wrong_html_name((const char*)add_secret)) {
@@ -3346,12 +3390,12 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 						add_secret = (const u08bits*)"";
 					}
 					if(add_secret[0]) {
-						add_realm = (const u08bits*)get_http_header_value(hr, HR_ADD_REALM, current_socket->as_realm);
+						add_realm = (const u08bits*)get_http_header_value(hr, HR_ADD_REALM, current_realm());
 						if(!is_superuser()) {
-							add_realm = (const u08bits*)current_socket->as_realm;
+							add_realm = (const u08bits*)current_realm();
 						}
 						if(!add_realm[0]) {
-							add_realm=(const u08bits*)current_socket->as_eff_realm;
+							add_realm=(const u08bits*)current_eff_realm();
 						}
 						if(!add_realm[0]) {
 							add_realm = (const u08bits*)get_realm(NULL)->options.name;
@@ -3383,12 +3427,12 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 				break;
 			}
 			case AS_FORM_OS: {
-				if(s->as_ok) {
+				if(is_as_ok(s)) {
 					{
-						const char *realm0 = get_http_header_value(hr, HR_REALM, current_socket->as_realm);
+						const char *realm0 = get_http_header_value(hr, HR_REALM, current_realm());
 						if(!is_superuser())
-							realm0 = current_socket->as_realm;
-						STRCPY(current_socket->as_eff_realm,realm0);
+							realm0 = current_realm();
+						STRCPY(current_eff_realm(),realm0);
 					}
 
 					if(is_superuser()) {
@@ -3406,18 +3450,18 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 						}
 					}
 
-					const u08bits *add_realm = (const u08bits*)current_socket->as_eff_realm;
+					const u08bits *add_realm = (const u08bits*)current_eff_realm();
 					const u08bits *add_origin = (const u08bits*)get_http_header_value(hr, HR_ADD_ORIGIN, "");
 					const char* msg = "";
 					u08bits corigin[STUN_MAX_ORIGIN_SIZE+1];
 					get_canonic_origin((const char *)add_origin, (char *)corigin, sizeof(corigin)-1);
 					if(corigin[0]) {
-						add_realm = (const u08bits*)get_http_header_value(hr, HR_ADD_REALM, current_socket->as_realm);
+						add_realm = (const u08bits*)get_http_header_value(hr, HR_ADD_REALM, current_realm());
 						if(!is_superuser()) {
-							add_realm = (const u08bits*)current_socket->as_realm;
+							add_realm = (const u08bits*)current_realm();
 						}
 						if(!add_realm[0]) {
-							add_realm=(const u08bits*)current_socket->as_eff_realm;
+							add_realm=(const u08bits*)current_eff_realm();
 						}
 						if(!add_realm[0]) {
 							add_realm = (const u08bits*)get_realm(NULL)->options.name;
@@ -3445,7 +3489,7 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 				break;
 			}
 			case AS_FORM_OAUTH: {
-				if(!s->as_ok) {
+				if(!is_as_ok(s)) {
 					write_https_logon_page(s);
 				} else if(!is_superuser()) {
 					write_https_home_page(s);
@@ -3506,7 +3550,7 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 				break;
 			}
 			case AS_FORM_TOGGLE:
-				if(s->as_ok) {
+				if(is_as_ok(s)) {
 					handle_toggle_request(s,hr);
 					write_pc_page(s);
 				} else {
@@ -3514,7 +3558,7 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 				}
 				break;
 			case AS_FORM_UPDATE:
-				if(s->as_ok) {
+				if(is_as_ok(s)) {
 					handle_update_request(s,hr);
 					write_pc_page(s);
 				} else {
@@ -3522,9 +3566,9 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 				}
 				break;
 			case AS_FORM_LOGON:
-				if(!(s->as_ok)) {
+				if(!is_as_ok(s)) {
 					handle_logon_request(s,hr);
-					if(s->as_ok) {
+					if(is_as_ok(s)) {
 						write_https_home_page(s);
 					} else {
 						write_https_logon_page(s);
