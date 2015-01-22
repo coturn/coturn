@@ -402,7 +402,7 @@ static int mysql_get_oauth_key(const u08bits *kid, oauth_key_data_raw *key) {
 	return ret;
 }
 
-static int mysql_list_oauth_keys(void) {
+static int mysql_list_oauth_keys(secrets_list_t *kids,secrets_list_t *hkdfs,secrets_list_t *teas,secrets_list_t *aas) {
 
 	oauth_key_data_raw key_;
 	oauth_key_data_raw *key=&key_;
@@ -457,9 +457,16 @@ static int mysql_list_oauth_keys(void) {
 						ns_bcopy(row[8],key->kid,lengths[8]);
 						key->kid[lengths[8]]=0;
 
-						printf("  kid=%s, ikm_key=%s, timestamp=%llu, lifetime=%lu, hkdf_hash_func=%s, as_rs_alg=%s, as_rs_key=%s, auth_alg=%s, auth_key=%s\n",
+						if(kids) {
+							add_to_secrets_list(kids,key->kid);
+							add_to_secrets_list(hkdfs,key->hkdf_hash_func);
+							add_to_secrets_list(teas,key->as_rs_alg);
+							add_to_secrets_list(aas,key->auth_alg);
+						} else {
+							printf("  kid=%s, ikm_key=%s, timestamp=%llu, lifetime=%lu, hkdf_hash_func=%s, as_rs_alg=%s, as_rs_key=%s, auth_alg=%s, auth_key=%s\n",
 								key->kid, key->ikm_key, (unsigned long long)key->timestamp, (unsigned long)key->lifetime, key->hkdf_hash_func,
 								key->as_rs_alg, key->as_rs_key, key->auth_alg, key->auth_key);
+						}
 					}
 					row = mysql_fetch_row(mres);
 				}
@@ -496,8 +503,9 @@ static int mysql_set_user_key(u08bits *usname, u08bits *realm, const char *key)
   return ret;
 }
 
-static int mysql_set_oauth_key(oauth_key_data_raw *key) {
-  int ret = -1;
+static int mysql_set_oauth_key(oauth_key_data_raw *key)
+{
+	int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
 	MYSQL * myc = get_mydb_connection();
 	if(myc) {
@@ -511,10 +519,14 @@ static int mysql_set_oauth_key(oauth_key_data_raw *key) {
 			res = mysql_query(myc, statement);
 			if(res) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error inserting/updating oauth key information: %s\n",mysql_error(myc));
+			} else {
+				ret = 0;
 			}
+		} else {
+			ret = 0;
 		}
 	}
-  return ret;
+	return ret;
 }
   
 static int mysql_del_user(u08bits *usname, u08bits *realm) {

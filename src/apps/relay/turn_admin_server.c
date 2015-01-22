@@ -1392,6 +1392,12 @@ typedef enum _AS_FORM AS_FORM;
 #define HR_ADD_IP_REALM "aipr"
 #define HR_ADD_IP_KIND "aipk"
 #define HR_UPDATE_PARAMETER "togglepar"
+#define HR_ADD_OAUTH_KID "oauth_kid"
+#define HR_ADD_OAUTH_IKM "oauth_ikm"
+#define HR_ADD_OAUTH_HKDF "oauth_hkdf"
+#define HR_ADD_OAUTH_TEA "oauth_tea"
+#define HR_ADD_OAUTH_AA "oauth_aa"
+#define HR_DELETE_OAUTH_KID "oauth_kid_del"
 
 struct form_name {
 	AS_FORM form;
@@ -1558,9 +1564,11 @@ static void write_https_home_page(ioa_socket_handle s)
 			str_buffer_append(sb,form_names[AS_FORM_OS].name);
 			str_buffer_append(sb,"\">");
 
-			str_buffer_append(sb,"<br><input type=\"submit\" value=\"oAuth keys\" formaction=\"");
-			str_buffer_append(sb,form_names[AS_FORM_OAUTH].name);
-			str_buffer_append(sb,"\">");
+			if(is_superuser()) {
+				str_buffer_append(sb,"<br><input type=\"submit\" value=\"oAuth keys\" formaction=\"");
+				str_buffer_append(sb,form_names[AS_FORM_OAUTH].name);
+				str_buffer_append(sb,"\">");
+			}
 
 			str_buffer_append(sb,"</fieldset>\r\n");
 			str_buffer_append(sb,"</form>\r\n");
@@ -2778,6 +2786,246 @@ static void write_origins_page(ioa_socket_handle s, const char* add_origin, cons
 	}
 }
 
+static size_t https_print_oauth_keys(struct str_buffer* sb)
+{
+	size_t ret = 0;
+	const turn_dbdriver_t * dbd = get_dbdriver();
+	if (dbd && dbd->list_oauth_keys) {
+		secrets_list_t kids,hkdfs,teas,aas;
+		init_secrets_list(&kids);
+		init_secrets_list(&hkdfs);
+		init_secrets_list(&teas);
+		init_secrets_list(&aas);
+		dbd->list_oauth_keys(&kids,&hkdfs,&teas,&aas);
+
+		size_t sz = get_secrets_list_size(&kids);
+		size_t i;
+		for(i=0;i<sz;++i) {
+			str_buffer_append(sb,"<tr><td>");
+			str_buffer_append_sz(sb,i+1);
+			str_buffer_append(sb,"</td>");
+			str_buffer_append(sb,"<td>");
+			str_buffer_append(sb,get_secrets_list_elem(&kids,i));
+			str_buffer_append(sb,"</td>");
+			str_buffer_append(sb,"<td>");
+			str_buffer_append(sb,get_secrets_list_elem(&hkdfs,i));
+			str_buffer_append(sb,"</td>");
+			str_buffer_append(sb,"<td>");
+			str_buffer_append(sb,get_secrets_list_elem(&teas,i));
+			str_buffer_append(sb,"</td>");
+			str_buffer_append(sb,"<td>");
+			str_buffer_append(sb,get_secrets_list_elem(&aas,i));
+			str_buffer_append(sb,"</td>");
+
+			{
+				str_buffer_append(sb,"<td> <a href=\"");
+				str_buffer_append(sb,form_names[AS_FORM_OAUTH].name);
+				str_buffer_append(sb,"?");
+				str_buffer_append(sb,HR_DELETE_OAUTH_KID);
+				str_buffer_append(sb,"=");
+				str_buffer_append(sb,get_secrets_list_elem(&kids,i));
+				str_buffer_append(sb,"\">delete</a>");
+				str_buffer_append(sb,"</td>");
+			}
+			str_buffer_append(sb,"</tr>");
+			++ret;
+		}
+
+		clean_secrets_list(&kids);
+		clean_secrets_list(&hkdfs);
+		clean_secrets_list(&teas);
+		clean_secrets_list(&aas);
+	}
+
+	return ret;
+}
+
+static void write_https_oauth_page(ioa_socket_handle s, const char* add_kid, const char* add_ikm,
+				const char* add_hkdf_hash_func, const char* add_tea, const char* add_aa,
+				const char* msg)
+{
+	if(s && !ioa_socket_tobeclosed(s)) {
+
+		if(!(s->as_ok)) {
+			write_https_logon_page(s);
+		} else if(!is_superuser()) {
+			write_https_home_page(s);
+		} else {
+
+			struct str_buffer* sb = str_buffer_new();
+
+			str_buffer_append(sb,"<!DOCTYPE html>\r\n<html>\r\n  <head>\r\n    <title>");
+			str_buffer_append(sb,admin_title);
+			str_buffer_append(sb,"</title>\r\n <style> table, th, td { border: 1px solid black; } table#msg th { color: red; background-color: white; } </style> </head>\r\n  <body>\r\n    ");
+			str_buffer_append(sb,bold_admin_title);
+			str_buffer_append(sb,"<br>\r\n");
+			str_buffer_append(sb,home_link);
+			str_buffer_append(sb,"<br>\r\n");
+
+			{
+				str_buffer_append(sb,"<form action=\"");
+				str_buffer_append(sb,form_names[AS_FORM_OAUTH].name);
+				str_buffer_append(sb,"\" method=\"POST\">\r\n");
+				str_buffer_append(sb,"  <fieldset><legend>oAuth key:</legend>\r\n");
+
+				if(msg && msg[0]) {
+					str_buffer_append(sb,"<br><table id=\"msg\"><th>");
+					str_buffer_append(sb,msg);
+					str_buffer_append(sb,"</th></table><br>");
+				}
+
+				{
+					if(!add_kid) add_kid="";
+
+					str_buffer_append(sb,"  <br>KID: <input type=\"text\" name=\"");
+					str_buffer_append(sb,HR_ADD_OAUTH_KID);
+					str_buffer_append(sb,"\" value=\"");
+					str_buffer_append(sb,(const char*)add_kid);
+					str_buffer_append(sb,"\"");
+					str_buffer_append(sb,"><br>\r\n");
+				}
+				{
+					if(!add_ikm) add_ikm = "";
+
+					str_buffer_append(sb,"  <br>Base64-encoded input keying material: <input type=\"text\" name=\"");
+					str_buffer_append(sb,HR_ADD_OAUTH_IKM);
+					str_buffer_append(sb,"\" value=\"");
+					str_buffer_append(sb,(const char*)add_ikm);
+					str_buffer_append(sb,"\"");
+					str_buffer_append(sb,"><br>\r\n");
+				}
+				{
+					str_buffer_append(sb,"><br>Hash key derivation function:<br>\r\n");
+
+					if(!add_hkdf_hash_func || !add_hkdf_hash_func[0])
+						add_hkdf_hash_func = "SHA-256";
+
+					str_buffer_append(sb,"<input type=\"radio\" name=\"");
+					str_buffer_append(sb,HR_ADD_OAUTH_HKDF);
+					str_buffer_append(sb,"\" value=\"SHA-1\" ");
+					if(!strcmp("SHA-1",add_hkdf_hash_func)) {
+						str_buffer_append(sb," checked ");
+					}
+					str_buffer_append(sb,">SHA-1\r\n<br>\r\n");
+
+					str_buffer_append(sb,"<input type=\"radio\" name=\"");
+					str_buffer_append(sb,HR_ADD_OAUTH_HKDF);
+					str_buffer_append(sb,"\" value=\"SHA-256\" ");
+					if(strcmp("SHA-1",add_hkdf_hash_func)) {
+						str_buffer_append(sb," checked ");
+					}
+					str_buffer_append(sb,">SHA-256\r\n<br>\r\n");
+				}
+				{
+					str_buffer_append(sb,"><br>Token encryption algorithm:<br>\r\n");
+
+					if(!add_tea || !add_tea[0])
+						add_tea = "AES-256-CBC";
+
+					str_buffer_append(sb,"<input type=\"radio\" name=\"");
+					str_buffer_append(sb,HR_ADD_OAUTH_TEA);
+					str_buffer_append(sb,"\" value=\"AES-128-CBC\" ");
+					if(!strcmp("AES-128-CBC",add_tea)) {
+						str_buffer_append(sb," checked ");
+					}
+					str_buffer_append(sb,">AES-128-CBC\r\n<br>\r\n");
+
+					str_buffer_append(sb,"<input type=\"radio\" name=\"");
+					str_buffer_append(sb,HR_ADD_OAUTH_TEA);
+					str_buffer_append(sb,"\" value=\"AES-256-CBC\" ");
+					if(!strcmp("AES-256-CBC",add_tea)) {
+						str_buffer_append(sb," checked ");
+					}
+					str_buffer_append(sb,">AES-256-CBC\r\n<br>\r\n");
+
+					str_buffer_append(sb,"<input type=\"radio\" name=\"");
+					str_buffer_append(sb,HR_ADD_OAUTH_TEA);
+					str_buffer_append(sb,"\" value=\"AEAD-AES-128-GCM\" ");
+					if(!strcmp("AEAD-AES-128-GCM",add_tea)) {
+						str_buffer_append(sb," checked ");
+					}
+					str_buffer_append(sb,">AEAD-AES-128-GCM\r\n<br>\r\n");
+
+					str_buffer_append(sb,"<input type=\"radio\" name=\"");
+					str_buffer_append(sb,HR_ADD_OAUTH_TEA);
+					str_buffer_append(sb,"\" value=\"AEAD-AES-256-GCM\" ");
+					if(!strcmp("AEAD-AES-256-GCM",add_tea)) {
+						str_buffer_append(sb," checked ");
+					}
+					str_buffer_append(sb,">AEAD-AES-256-GCM\r\n<br>\r\n");
+				}
+				{
+					str_buffer_append(sb,"><br>Token authentication algorithm:<br>\r\n");
+
+					if(!add_aa || !add_aa[0])
+						add_aa = "HMAC-SHA-256-128";
+
+					str_buffer_append(sb,"<input type=\"radio\" name=\"");
+					str_buffer_append(sb,HR_ADD_OAUTH_AA);
+					str_buffer_append(sb,"\" value=\"HMAC-SHA-256-128\" ");
+					if(!strcmp("HMAC-SHA-256-128",add_aa)) {
+						str_buffer_append(sb," checked ");
+					}
+					str_buffer_append(sb,">HMAC-SHA-256-128\r\n<br>\r\n");
+
+					str_buffer_append(sb,"<input type=\"radio\" name=\"");
+					str_buffer_append(sb,HR_ADD_OAUTH_AA);
+					str_buffer_append(sb,"\" value=\"HMAC-SHA-256\" ");
+					if(!strcmp("HMAC-SHA-256",add_aa)) {
+						str_buffer_append(sb," checked ");
+					}
+					str_buffer_append(sb,">HMAC-SHA-256\r\n<br>\r\n");
+
+					str_buffer_append(sb,"<input type=\"radio\" name=\"");
+					str_buffer_append(sb,HR_ADD_OAUTH_AA);
+					str_buffer_append(sb,"\" value=\"HMAC-SHA-1\" ");
+					if(!strcmp("HMAC-SHA-1",add_aa)) {
+						str_buffer_append(sb," checked ");
+					}
+					str_buffer_append(sb,">HMAC-SHA-1\r\n<br>\r\n");
+				}
+
+				str_buffer_append(sb,"<br><input type=\"submit\" value=\"Add key\">");
+
+				str_buffer_append(sb,"</fieldset>\r\n");
+				str_buffer_append(sb,"</form>\r\n");
+			}
+
+			str_buffer_append(sb,"<br><b>OAuth keys:</b><br><br>\r\n");
+			str_buffer_append(sb,"<table>\r\n");
+			str_buffer_append(sb,"<tr><th>N</th><th>KID</th>");
+			str_buffer_append(sb,"<th>Hash key derivation function</th>");
+			str_buffer_append(sb,"<th>Token encryption algorithm</th>");
+			str_buffer_append(sb,"<th>Token authentication algorithm</th>");
+			str_buffer_append(sb,"<th> </th>");
+			str_buffer_append(sb,"</tr>\r\n");
+
+			size_t total_sz = https_print_oauth_keys(sb);
+
+			str_buffer_append(sb,"\r\n</table>\r\n");
+
+			str_buffer_append(sb,"<br>Total oAuth keys = ");
+			str_buffer_append_sz(sb,total_sz);
+			str_buffer_append(sb,"<br>\r\n");
+
+			str_buffer_append(sb,"</body>\r\n</html>\r\n");
+
+			send_str_from_ioa_socket_tcp(s,"HTTP/1.1 200 OK\r\nServer: ");
+			send_str_from_ioa_socket_tcp(s,TURN_SOFTWARE);
+			send_str_from_ioa_socket_tcp(s,"\r\n");
+			send_str_from_ioa_socket_tcp(s,get_http_date_header());
+			send_str_from_ioa_socket_tcp(s,"Content-Type: text/html; charset=UTF-8\r\nContent-Length: ");
+
+			send_ulong_from_ioa_socket_tcp(s,str_buffer_get_str_len(sb));
+
+			send_str_from_ioa_socket_tcp(s,"\r\n\r\n");
+			send_str_from_ioa_socket_tcp(s,str_buffer_get_str(sb));
+
+			str_buffer_free(sb);
+		}
+	}
+}
+
 static void handle_toggle_request(ioa_socket_handle s, struct http_request* hr)
 {
 	if(s && hr) {
@@ -3197,11 +3445,63 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 				break;
 			}
 			case AS_FORM_OAUTH: {
-				if(s->as_ok) {
-					//TODO
+				if(!s->as_ok) {
+					write_https_logon_page(s);
+				} else if(!is_superuser()) {
 					write_https_home_page(s);
 				} else {
-					write_https_logon_page(s);
+
+					{
+						const char* del_kid = get_http_header_value(hr,HR_DELETE_OAUTH_KID,"");
+						if(del_kid[0]) {
+							const turn_dbdriver_t * dbd = get_dbdriver();
+							if (dbd && dbd->del_oauth_key) {
+								(*dbd->del_oauth_key)((const u08bits*)del_kid);
+							}
+						}
+					}
+
+					const char* add_kid = "";
+					const char* add_ikm = "";
+					const char* add_hkdf_hash_func = "";
+					const char* add_tea = "";
+					const char* add_aa = "";
+					const char* msg = "";
+
+					add_kid = get_http_header_value(hr,HR_ADD_OAUTH_KID,"");
+					if(add_kid[0]) {
+						add_ikm = get_http_header_value(hr,HR_ADD_OAUTH_IKM,"");
+						if(add_ikm[0]) {
+							add_hkdf_hash_func = get_http_header_value(hr,HR_ADD_OAUTH_HKDF,"");
+							add_tea = get_http_header_value(hr,HR_ADD_OAUTH_TEA,"");
+							add_aa = get_http_header_value(hr,HR_ADD_OAUTH_AA,"");
+
+							oauth_key_data_raw key;
+							ns_bzero(&key,sizeof(key));
+							STRCPY(key.kid,add_kid);
+							STRCPY(key.ikm_key,add_ikm);
+							STRCPY(key.hkdf_hash_func,add_hkdf_hash_func);
+							STRCPY(key.as_rs_alg,add_tea);
+							STRCPY(key.auth_alg,add_aa);
+
+							if(strstr(key.as_rs_alg,"AEAD")) key.auth_alg[0]=0;
+
+							const turn_dbdriver_t * dbd = get_dbdriver();
+							if (dbd && dbd->set_oauth_key) {
+								if((*dbd->set_oauth_key)(&key)<0) {
+									msg = "Cannot insert oAuth key into the database";
+								} else {
+									add_kid = "";
+									add_ikm = "";
+									add_hkdf_hash_func = "";
+									add_tea = "";
+									add_aa = "";
+								}
+							}
+						}
+					}
+
+					write_https_oauth_page(s,add_kid,add_ikm,add_hkdf_hash_func,add_tea,add_aa,msg);
 				}
 				break;
 			}

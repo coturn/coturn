@@ -187,7 +187,7 @@ static int pgsql_get_oauth_key(const u08bits *kid, oauth_key_data_raw *key) {
 	return ret;
 }
 
-static int pgsql_list_oauth_keys(void) {
+static int pgsql_list_oauth_keys(secrets_list_t *kids,secrets_list_t *hkdfs,secrets_list_t *teas,secrets_list_t *aas) {
 
 	oauth_key_data_raw key_;
 	oauth_key_data_raw *key=&key_;
@@ -217,9 +217,16 @@ static int pgsql_list_oauth_keys(void) {
 				STRCPY((char*)key->auth_key,PQgetvalue(res,i,7));
 				STRCPY((char*)key->kid,PQgetvalue(res,i,8));
 
-				printf("  kid=%s, ikm_key=%s, timestamp=%llu, lifetime=%lu, hkdf_hash_func=%s, as_rs_alg=%s, as_rs_key=%s, auth_alg=%s, auth_key=%s\n",
+				if(kids) {
+					add_to_secrets_list(kids,key->kid);
+					add_to_secrets_list(hkdfs,key->hkdf_hash_func);
+					add_to_secrets_list(teas,key->as_rs_alg);
+					add_to_secrets_list(aas,key->auth_alg);
+				} else {
+					printf("  kid=%s, ikm_key=%s, timestamp=%llu, lifetime=%lu, hkdf_hash_func=%s, as_rs_alg=%s, as_rs_key=%s, auth_alg=%s, auth_key=%s\n",
 						key->kid, key->ikm_key, (unsigned long long)key->timestamp, (unsigned long)key->lifetime, key->hkdf_hash_func,
 						key->as_rs_alg, key->as_rs_key, key->auth_alg, key->auth_key);
+				}
 
 				ret = 0;
 			}
@@ -283,7 +290,10 @@ static int pgsql_set_oauth_key(oauth_key_data_raw *key) {
 		  } else {
 			  ret = 0;
 		  }
+	  } else {
+		  ret = 0;
 	  }
+
 	  if(res) {
 		  PQclear(res);
 	  }

@@ -757,7 +757,7 @@ The oauth_key table fields meanings are:
 		explicitly in the database;
 		
 	timestamp - (optional) the timestamp (in seconds) when the key 
-		lifetime started;
+		lifetime starts;
 	
 	lifetime - (optional) the key lifetime in seconds; the default value 
 		is 0 - unlimited lifetime.
