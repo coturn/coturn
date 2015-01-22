@@ -1659,6 +1659,12 @@ void close_ioa_socket(ioa_socket_handle s)
 					&(s->local_addr));
 		}
 
+		if(s->special_session) {
+			turn_free(s->special_session,s->special_session_size);
+			s->special_session = NULL;
+		}
+		s->special_session_size = 0;
+
 		delete_socket_from_map(s);
 		delete_socket_from_parent(s);
 
@@ -2599,6 +2605,12 @@ void close_ioa_socket_after_processing_if_necessary(ioa_socket_handle s)
 {
 	if (s && ioa_socket_tobeclosed(s)) {
 
+		if(s->special_session) {
+			turn_free(s->special_session,s->special_session_size);
+			s->special_session = NULL;
+		}
+		s->special_session_size = 0;
+
 		if(!(s->session) && !(s->sub_session)) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s https server socket closed: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(long)s, get_ioa_socket_type(s), get_ioa_socket_app_type(s));
 			IOA_CLOSE_SOCKET(s);
@@ -2612,6 +2624,7 @@ void close_ioa_socket_after_processing_if_necessary(ioa_socket_handle s)
 			tcp_connection *tc = s->sub_session;
 			if (tc) {
 				delete_tcp_connection(tc);
+				s->sub_session = NULL;
 			}
 		}
 			break;
@@ -2778,6 +2791,12 @@ static void eventcb_bev(struct bufferevent *bev, short events, void *arg)
 
 			s->tobeclosed = 1;
 
+			if(s->special_session) {
+				turn_free(s->special_session,s->special_session_size);
+				s->special_session = NULL;
+			}
+			s->special_session_size = 0;
+
 			if(!(s->session) && !(s->sub_session)) {
 				char sraddr[129]="\0";
 				addr_to_string(&(s->remote_addr),(u08bits*)sraddr);
@@ -2793,6 +2812,7 @@ static void eventcb_bev(struct bufferevent *bev, short events, void *arg)
 				tcp_connection *tc = s->sub_session;
 				if (tc) {
 					delete_tcp_connection(tc);
+					s->sub_session = NULL;
 				}
 			}
 				break;

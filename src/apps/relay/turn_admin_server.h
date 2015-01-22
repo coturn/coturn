@@ -51,6 +51,16 @@ extern "C" {
 
 ////////////////////////////////////////////
 
+#define ADMIN_USER_MAX_LENGTH (32)
+
+struct admin_session {
+	int as_ok;
+	char as_login[ADMIN_USER_MAX_LENGTH + 1];
+	char as_realm[STUN_MAX_REALM_SIZE + 1];
+	char as_eff_realm[STUN_MAX_REALM_SIZE + 1];
+	size_t number_of_user_sessions;
+};
+
 struct admin_server {
 	evutil_socket_t listen_fd;
 	struct event_base* event_base;

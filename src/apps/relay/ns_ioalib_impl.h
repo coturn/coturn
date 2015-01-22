@@ -66,8 +66,6 @@ extern "C" {
 #define MAX_BUFFER_QUEUE_SIZE_PER_ENGINE (64)
 #define MAX_SOCKET_BUFFER_BACKLOG (16)
 
-#define ADMIN_USER_MAX_LENGTH (32)
-
 #define BUFFEREVENT_HIGH_WATERMARK (128<<10)
 #define BUFFEREVENT_MAX_UDP_TO_TCP_WRITE (64<<9)
 #define BUFFEREVENT_MAX_TCP_TO_TCP_WRITE (192<<10)
@@ -225,11 +223,8 @@ struct _ioa_socket
 	accept_cb acb;
 	void *acbarg;
 	/* <<== RFC 6062 */
-	//Admin server:
-	int as_ok;
-	char as_login[ADMIN_USER_MAX_LENGTH + 1];
-	char as_realm[STUN_MAX_REALM_SIZE + 1];
-	char as_eff_realm[STUN_MAX_REALM_SIZE + 1];
+	void *special_session;
+	size_t special_session_size;
 };
 
 typedef struct _timer_event
