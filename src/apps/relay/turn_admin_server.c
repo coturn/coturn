@@ -2891,7 +2891,7 @@ static void write_https_oauth_page(ioa_socket_handle s, const char* add_kid, con
 					str_buffer_append(sb,HR_ADD_OAUTH_IKM);
 					str_buffer_append(sb,"\" value=\"");
 					str_buffer_append(sb,(const char*)add_ikm);
-					str_buffer_append(sb,"\"");
+					str_buffer_append(sb,"\" maxlength=256 size=48 ");
 					str_buffer_append(sb,"><br>\r\n");
 				}
 				{
