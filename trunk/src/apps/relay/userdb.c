@@ -405,7 +405,7 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, u08bits *u
 	if(max_session_time)
 		*max_session_time = 0;
 
-	if(in_oauth && out_oauth && usname && usname[0] && realm && realm[0]) {
+	if(in_oauth && out_oauth && usname && usname[0]) {
 
 		stun_attr_ref sar = stun_attr_get_first_by_type_str(ioa_network_buffer_data(nbh),
 								ioa_network_buffer_get_size(nbh),
@@ -471,6 +471,10 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, u08bits *u
 					const char* server_name = (char*)turn_params.oauth_server_name;
 					if(!(server_name && server_name[0])) {
 						server_name = (char*)realm;
+						if(!(server_name && server_name[0])) {
+							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot determine oAuth server name");
+							return -1;
+						}
 					}
 
 					if (decode_oauth_token((const u08bits *) server_name, &etoken,&okey, &dot) < 0) {

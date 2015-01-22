@@ -329,7 +329,7 @@ static int sqlite_get_oauth_key(const u08bits *kid, oauth_key_data_raw *key) {
 	return ret;
 }
 
-static int sqlite_list_oauth_keys(void) {
+static int sqlite_list_oauth_keys(secrets_list_t *kids,secrets_list_t *hkdfs,secrets_list_t *teas,secrets_list_t *aas) {
 
 	oauth_key_data_raw key_;
 	oauth_key_data_raw *key=&key_;
@@ -363,11 +363,18 @@ static int sqlite_list_oauth_keys(void) {
 					STRCPY((char*)key->as_rs_key,sqlite3_column_text(st, 5));
 					STRCPY((char*)key->auth_alg,sqlite3_column_text(st, 6));
 					STRCPY((char*)key->auth_key,sqlite3_column_text(st, 7));
-					STRCPY((char*)key->kid,sqlite3_column_text(st, 7));
+					STRCPY((char*)key->kid,sqlite3_column_text(st, 8));
 
-					printf("  kid=%s, ikm_key=%s, timestamp=%llu, lifetime=%lu, hkdf_hash_func=%s, as_rs_alg=%s, as_rs_key=%s, auth_alg=%s, auth_key=%s\n",
-						key->kid, key->ikm_key, (unsigned long long)key->timestamp, (unsigned long)key->lifetime, key->hkdf_hash_func,
-						key->as_rs_alg, key->as_rs_key, key->auth_alg, key->auth_key);
+					if(kids) {
+						add_to_secrets_list(kids,key->kid);
+						add_to_secrets_list(hkdfs,key->hkdf_hash_func);
+						add_to_secrets_list(teas,key->as_rs_alg);
+						add_to_secrets_list(aas,key->auth_alg);
+					} else {
+						printf("  kid=%s, ikm_key=%s, timestamp=%llu, lifetime=%lu, hkdf_hash_func=%s, as_rs_alg=%s, as_rs_key=%s, auth_alg=%s, auth_key=%s\n",
+										key->kid, key->ikm_key, (unsigned long long)key->timestamp, (unsigned long)key->lifetime, key->hkdf_hash_func,
+										key->as_rs_alg, key->as_rs_key, key->auth_alg, key->auth_key);
+					}
 
 				} else if (res == SQLITE_DONE) {
 					break;
