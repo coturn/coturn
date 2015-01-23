@@ -1421,7 +1421,7 @@ static struct form_name form_names[] = {
 
 #define admin_title "TURN Server (https admin connection)"
 #define bold_admin_title "<b>"admin_title"</b>"
-static const char* home_link = "<br><a href=\"/home\">home page</a><br>\r\n<br><a href=\"/logout\">Logout</a><br><br>\r\n";
+static const char* home_link = "<br><a href=\"/home\">home page</a><br>\r\n<br><a href=\"/logout\">Logout</a><br>\r\n";
 static const char* logout_link = "<br><a href=\"/logout\">Logout</a><br><br>\r\n";
 
 static ioa_socket_handle current_socket = NULL;
@@ -1848,7 +1848,7 @@ static void write_pc_page(ioa_socket_handle s)
 
 			str_buffer_append(sb,"<!DOCTYPE html>\r\n<html>\r\n  <head>\r\n    <title>");
 			str_buffer_append(sb,admin_title);
-			str_buffer_append(sb,"</title>\r\n <style> table, th, td { border: 1px solid black; } </style> </head>\r\n  <body>\r\n    ");
+			str_buffer_append(sb,"</title>\r\n <style> table, th, td { border: 1px solid black; border-collapse: collapse; padding: 5px;} </style> </head>\r\n  <body>\r\n    ");
 			str_buffer_append(sb,bold_admin_title);
 			str_buffer_append(sb,"<br>\r\n");
 			str_buffer_append(sb,home_link);
@@ -2268,7 +2268,7 @@ static void write_ps_page(ioa_socket_handle s, const char* client_protocol, cons
 
 			str_buffer_append(sb,"<!DOCTYPE html>\r\n<html>\r\n  <head>\r\n    <title>");
 			str_buffer_append(sb,admin_title);
-			str_buffer_append(sb,"</title>\r\n <style> table, th, td { border: 1px solid black; } </style> </head>\r\n  <body>\r\n    ");
+			str_buffer_append(sb,"</title>\r\n <style> table, th, td { border: 1px solid black; border-collapse: collapse; padding: 5px;} </style> </head>\r\n  <body>\r\n    ");
 			str_buffer_append(sb,bold_admin_title);
 			str_buffer_append(sb,"<br>\r\n");
 			str_buffer_append(sb,home_link);
@@ -2403,7 +2403,7 @@ static void write_users_page(ioa_socket_handle s, const u08bits *add_user, const
 
 			str_buffer_append(sb,"<!DOCTYPE html>\r\n<html>\r\n  <head>\r\n    <title>");
 			str_buffer_append(sb,admin_title);
-			str_buffer_append(sb,"</title>\r\n <style> table, th, td { border: 1px solid black; } table#msg th { color: red; background-color: white; } </style> </head>\r\n  <body>\r\n    ");
+			str_buffer_append(sb,"</title>\r\n <style> table, th, td { border: 1px solid black; border-collapse: collapse; padding: 5px;} table#msg th { color: red; background-color: white; } </style> </head>\r\n  <body>\r\n    ");
 			str_buffer_append(sb,bold_admin_title);
 			str_buffer_append(sb,"<br>\r\n");
 			str_buffer_append(sb,home_link);
@@ -2575,7 +2575,7 @@ static void write_shared_secrets_page(ioa_socket_handle s, const char* add_secre
 
 			str_buffer_append(sb,"<!DOCTYPE html>\r\n<html>\r\n  <head>\r\n    <title>");
 			str_buffer_append(sb,admin_title);
-			str_buffer_append(sb,"</title>\r\n <style> table, th, td { border: 1px solid black; } table#msg th { color: red; background-color: white; } </style> </head>\r\n  <body>\r\n    ");
+			str_buffer_append(sb,"</title>\r\n <style> table, th, td { border: 1px solid black; border-collapse: collapse; padding: 5px;} table#msg th { color: red; background-color: white; } </style> </head>\r\n  <body>\r\n    ");
 			str_buffer_append(sb,bold_admin_title);
 			str_buffer_append(sb,"<br>\r\n");
 			str_buffer_append(sb,home_link);
@@ -2726,7 +2726,7 @@ static void write_origins_page(ioa_socket_handle s, const char* add_origin, cons
 
 			str_buffer_append(sb,"<!DOCTYPE html>\r\n<html>\r\n  <head>\r\n    <title>");
 			str_buffer_append(sb,admin_title);
-			str_buffer_append(sb,"</title>\r\n <style> table, th, td { border: 1px solid black; } table#msg th { color: red; background-color: white; } </style> </head>\r\n  <body>\r\n    ");
+			str_buffer_append(sb,"</title>\r\n <style> table, th, td { border: 1px solid black; border-collapse: collapse; padding: 5px;} table#msg th { color: red; background-color: white; } </style> </head>\r\n  <body>\r\n    ");
 			str_buffer_append(sb,bold_admin_title);
 			str_buffer_append(sb,"<br>\r\n");
 			str_buffer_append(sb,home_link);
@@ -2891,7 +2891,7 @@ static void write_https_oauth_page(ioa_socket_handle s, const char* add_kid, con
 
 			str_buffer_append(sb,"<!DOCTYPE html>\r\n<html>\r\n  <head>\r\n    <title>");
 			str_buffer_append(sb,admin_title);
-			str_buffer_append(sb,"</title>\r\n <style> table, th, td { border: 1px solid black; } table#msg th { color: red; background-color: white; } </style> </head>\r\n  <body>\r\n    ");
+			str_buffer_append(sb,"</title>\r\n <style> table, th, td { border: 1px solid black; border-collapse: collapse; text-align: left; padding: 15px; } table#msg th { color: red; background-color: white; } </style> </head>\r\n  <body>\r\n    ");
 			str_buffer_append(sb,bold_admin_title);
 			str_buffer_append(sb,"<br>\r\n");
 			str_buffer_append(sb,home_link);
@@ -2909,6 +2909,8 @@ static void write_https_oauth_page(ioa_socket_handle s, const char* add_kid, con
 					str_buffer_append(sb,"</th></table><br>");
 				}
 
+				str_buffer_append(sb,"<table><tr><td>");
+
 				{
 					if(!add_kid) add_kid="";
 
@@ -2916,21 +2918,26 @@ static void write_https_oauth_page(ioa_socket_handle s, const char* add_kid, con
 					str_buffer_append(sb,HR_ADD_OAUTH_KID);
 					str_buffer_append(sb,"\" value=\"");
 					str_buffer_append(sb,(const char*)add_kid);
-					str_buffer_append(sb,"\" required ");
-					str_buffer_append(sb,"><br>\r\n");
+					str_buffer_append(sb,"\"><br>\r\n");
 				}
+
+				str_buffer_append(sb,"</td><td colspan=2>");
+
 				{
 					if(!add_ikm) add_ikm = "";
 
-					str_buffer_append(sb,"  <br>Base64-encoded input keying material: <input required type=\"text\" name=\"");
+					str_buffer_append(sb,"  <br>Base64-encoded input keying material:<br><textarea required wrap=\"soft\" cols=70 rows=4 name=\"");
 					str_buffer_append(sb,HR_ADD_OAUTH_IKM);
-					str_buffer_append(sb,"\" value=\"");
+					str_buffer_append(sb,"\" maxLength=256 >");
 					str_buffer_append(sb,(const char*)add_ikm);
-					str_buffer_append(sb,"\" maxlength=256 size=64 ");
-					str_buffer_append(sb,"><br>\r\n");
+					str_buffer_append(sb,"</textarea>");
+					str_buffer_append(sb,"<br>\r\n");
 				}
+
+				str_buffer_append(sb,"</td></tr>\r\n<tr><td>");
+
 				{
-					str_buffer_append(sb,"><br>Hash key derivation function:<br>\r\n");
+					str_buffer_append(sb,"<br>Hash key derivation function:<br>\r\n");
 
 					if(!add_hkdf_hash_func || !add_hkdf_hash_func[0])
 						add_hkdf_hash_func = "SHA-256";
@@ -2951,8 +2958,11 @@ static void write_https_oauth_page(ioa_socket_handle s, const char* add_kid, con
 					}
 					str_buffer_append(sb,">SHA-256\r\n<br>\r\n");
 				}
+
+				str_buffer_append(sb,"</td><td>");
+
 				{
-					str_buffer_append(sb,"><br>Token encryption algorithm:<br>\r\n");
+					str_buffer_append(sb,"<br>Token encryption algorithm:<br>\r\n");
 
 					if(!add_tea || !add_tea[0])
 						add_tea = "AES-256-CBC";
@@ -2989,8 +2999,11 @@ static void write_https_oauth_page(ioa_socket_handle s, const char* add_kid, con
 					}
 					str_buffer_append(sb,">AEAD-AES-256-GCM\r\n<br>\r\n");
 				}
+
+				str_buffer_append(sb,"</td><td>");
+
 				{
-					str_buffer_append(sb,"><br>Token authentication algorithm:<br>\r\n");
+					str_buffer_append(sb,"<br>Token authentication algorithm:<br>\r\n");
 
 					if(!add_aa || !add_aa[0])
 						add_aa = "HMAC-SHA-256-128";
@@ -3019,6 +3032,8 @@ static void write_https_oauth_page(ioa_socket_handle s, const char* add_kid, con
 					}
 					str_buffer_append(sb,">HMAC-SHA-1\r\n<br>\r\n");
 				}
+
+				str_buffer_append(sb,"</td></tr></table>\r\n");
 
 				str_buffer_append(sb,"<br><input type=\"submit\" value=\"Add key\">");
 
