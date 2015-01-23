@@ -202,6 +202,7 @@ int add_static_user_account(char *user);
 int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, u08bits *origin, TURNADMIN_COMMAND_TYPE ct, perf_options_t* po, int is_admin);
 
 int add_ip_list_range(const char* range, const char* realm, ip_range_list_t * list);
+int check_ip_list_range(const char* range);
 ip_range_list_t* get_ip_list(const char *kind);
 void ip_list_free(ip_range_list_t *l);
 

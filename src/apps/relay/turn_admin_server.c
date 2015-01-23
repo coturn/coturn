@@ -1765,7 +1765,7 @@ static void https_print_ip_range_list(struct str_buffer* sb, ip_range_list_t *va
 
 		if(dynamic) {
 			sbprintf(sb,"<tr><td>  %s</td><td>",name);
-			sbprintf(sb,"<form action=\"%s?%s=%s\" method=\"POST\">IP range:<input required type=\"text\" name=\"%s\" value=\"\">",form_names[AS_FORM_UPDATE].name,HR_ADD_IP_KIND,kind,HR_ADD_IP);
+			sbprintf(sb,"<form action=\"%s?%s=%s\" method=\"POST\">IP range:<input required type=\"text\" name=\"%s\" value=\"\" >",form_names[AS_FORM_UPDATE].name,HR_ADD_IP_KIND,kind,HR_ADD_IP);
 			sbprintf(sb,"Realm: <input type=\"text\" name=\"%s\" value=\"%s\" ",HR_ADD_IP_REALM,current_eff_realm());
 			if(!is_superuser()) {
 				sbprintf(sb," disabled ");
@@ -1960,20 +1960,6 @@ static void write_pc_page(ioa_socket_handle s)
 				https_print_uint(sb,(unsigned long)turn_params.min_port,"min-port",0);
 				https_print_uint(sb,(unsigned long)turn_params.max_port,"max-port",0);
 
-				https_print_ip_range_list(sb,&turn_params.ip_whitelist,"Whitelist IP (static)",NULL,0);
-				{
-					ip_range_list_t* l = get_ip_list("allowed");
-					https_print_ip_range_list(sb,l,"Whitelist IP (dynamic)","allowed",1);
-					ip_list_free(l);
-				}
-
-				https_print_ip_range_list(sb,&turn_params.ip_blacklist,"Blacklist IP (static)", NULL, 0);
-				{
-					ip_range_list_t* l = get_ip_list("denied");
-					https_print_ip_range_list(sb,l,"Blacklist IP (dynamic)", "denied", 1);
-					ip_list_free(l);
-				}
-
 				https_print_flag(sb,turn_params.no_multicast_peers,"no-multicast-peers","no-multicast-peers");
 				https_print_flag(sb,turn_params.no_loopback_peers,"no-loopback-peers","no-loopback-peers");
 
@@ -2069,6 +2055,24 @@ static void write_pc_page(ioa_socket_handle s)
 				https_print_uint(sb,(unsigned long)get_bps_capacity(),"Total bps-capacity (per server)","bps-capacity");
 				https_print_uint(sb,(unsigned long)get_bps_capacity_allocated(),"Allocated bps-capacity (per server)",0);
 				https_print_uint(sb,(unsigned long)get_max_bps(),"Default max-bps (per session)","max-bps");
+
+				https_print_empty_row(sb,2);
+
+				https_print_ip_range_list(sb,&turn_params.ip_whitelist,"Whitelist IP (static)",NULL,0);
+				{
+					ip_range_list_t* l = get_ip_list("allowed");
+					https_print_ip_range_list(sb,l,"Whitelist IP (dynamic)","allowed",1);
+					ip_list_free(l);
+				}
+
+				https_print_empty_row(sb,2);
+
+				https_print_ip_range_list(sb,&turn_params.ip_blacklist,"Blacklist IP (static)", NULL, 0);
+				{
+					ip_range_list_t* l = get_ip_list("denied");
+					https_print_ip_range_list(sb,l,"Blacklist IP (dynamic)", "denied", 1);
+					ip_list_free(l);
+				}
 			}
 
 			str_buffer_append(sb,"\r\n</table>  </body>\r\n</html>\r\n");
@@ -2922,7 +2926,7 @@ static void write_https_oauth_page(ioa_socket_handle s, const char* add_kid, con
 					str_buffer_append(sb,HR_ADD_OAUTH_IKM);
 					str_buffer_append(sb,"\" value=\"");
 					str_buffer_append(sb,(const char*)add_ikm);
-					str_buffer_append(sb,"\" maxlength=256 size=48 required ");
+					str_buffer_append(sb,"\" maxlength=256 size=64 ");
 					str_buffer_append(sb,"><br>\r\n");
 				}
 				{
@@ -3107,24 +3111,30 @@ static void handle_update_request(ioa_socket_handle s, struct http_request* hr)
 			const char* eip = get_http_header_value(hr, HR_ADD_IP,NULL);
 			if(eip && eip[0]) {
 				char* ip = evhttp_decode_uri(eip);
-				const char* r = get_http_header_value(hr, HR_ADD_IP_REALM,"");
-				const char* kind = get_http_header_value(hr, HR_ADD_IP_KIND,"");
 
-				const turn_dbdriver_t * dbd = get_dbdriver();
-				if (dbd && dbd->set_permission_ip) {
+				if(check_ip_list_range(ip)<0) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong address range format: %s\n", ip);
+				} else {
 
-					if(!r || !r[0]) {
-						r = current_realm();
-					}
+					const char* r = get_http_header_value(hr, HR_ADD_IP_REALM,"");
+					const char* kind = get_http_header_value(hr, HR_ADD_IP_KIND,"");
 
-					if(current_realm()[0] && strcmp(current_realm(),r)) {
-						//forbidden
-					} else {
+					const turn_dbdriver_t * dbd = get_dbdriver();
+					if (dbd && dbd->set_permission_ip) {
 
-						u08bits realm[STUN_MAX_REALM_SIZE+1]="\0";
-						STRCPY(realm,r);
+						if(!r || !r[0]) {
+							r = current_realm();
+						}
 
-						dbd->set_permission_ip(kind, realm, ip, 0);
+						if(current_realm()[0] && strcmp(current_realm(),r)) {
+							//forbidden
+						} else {
+
+							u08bits realm[STUN_MAX_REALM_SIZE+1]="\0";
+							STRCPY(realm,r);
+
+							dbd->set_permission_ip(kind, realm, ip, 0);
+						}
 					}
 				}
 				free(ip);
