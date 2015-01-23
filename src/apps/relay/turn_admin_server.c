@@ -1771,7 +1771,7 @@ static void https_print_ip_range_list(struct str_buffer* sb, ip_range_list_t *va
 		}
 
 		if(dynamic) {
-			sbprintf(sb,"<tr><td>  %s</td><td>",name);
+			sbprintf(sb,"<tr><td> Add %s</td><td>",name);
 			sbprintf(sb,"<form action=\"%s?%s=%s\" method=\"POST\">IP range:<input required type=\"text\" name=\"%s\" value=\"\" >",form_names[AS_FORM_UPDATE].name,HR_ADD_IP_KIND,kind,HR_ADD_IP);
 			sbprintf(sb,"Realm: <input type=\"text\" name=\"%s\" value=\"%s\" ",HR_ADD_IP_REALM,current_eff_realm());
 			if(!is_superuser()) {
