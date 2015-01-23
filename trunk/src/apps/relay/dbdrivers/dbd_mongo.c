@@ -497,7 +497,7 @@ static int mongo_list_users(u08bits *realm, secrets_list_t *users, secrets_list_
   return ret;
 }
 
-static int mongo_list_oauth_keys(secrets_list_t *kids,secrets_list_t *hkdfs,secrets_list_t *teas,secrets_list_t *aas) {
+static int mongo_list_oauth_keys(secrets_list_t *kids,secrets_list_t *hkdfs,secrets_list_t *teas,secrets_list_t *aas,secrets_list_t *tss,secrets_list_t *lts) {
 
   const char * collection_name = "oauth_key";
   mongoc_collection_t * collection = mongo_get_collection(collection_name);
@@ -575,6 +575,16 @@ static int mongo_list_oauth_keys(secrets_list_t *kids,secrets_list_t *hkdfs,secr
     		add_to_secrets_list(hkdfs,key->hkdf_hash_func);
     		add_to_secrets_list(teas,key->as_rs_alg);
     		add_to_secrets_list(aas,key->auth_alg);
+			{
+				char ts[256];
+				snprintf(ts,sizeof(ts)-1,"%llu",(unsigned long long)key->timestamp);
+				add_to_secrets_list(tss,ts);
+			}
+			{
+				char lt[256];
+				snprintf(lt,sizeof(lt)-1,"%lu",(unsigned long)key->lifetime);
+				add_to_secrets_list(lts,lt);
+			}
     	} else {
     		printf("  kid=%s, ikm_key=%s, timestamp=%llu, lifetime=%lu, hkdf_hash_func=%s, as_rs_alg=%s, as_rs_key=%s, auth_alg=%s, auth_key=%s\n",
     						key->kid, key->ikm_key, (unsigned long long)key->timestamp, (unsigned long)key->lifetime, key->hkdf_hash_func,

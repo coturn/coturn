@@ -68,7 +68,7 @@ typedef struct _turn_dbdriver_t {
   int (*set_oauth_key)(oauth_key_data_raw *key);
   int (*get_oauth_key)(const u08bits *kid, oauth_key_data_raw *key);
   int (*del_oauth_key)(const u08bits *kid);
-  int (*list_oauth_keys)(secrets_list_t *kids,secrets_list_t *hkdfs,secrets_list_t *teas,secrets_list_t *aas);
+  int (*list_oauth_keys)(secrets_list_t *kids,secrets_list_t *hkdfs,secrets_list_t *teas,secrets_list_t *aas,secrets_list_t *tss,secrets_list_t *lts);
   int (*get_admin_user)(const u08bits *usname, u08bits *realm, password_t pwd);
   int (*set_admin_user)(const u08bits *usname, const u08bits *realm, const password_t pwd);
   int (*del_admin_user)(const u08bits *usname);
