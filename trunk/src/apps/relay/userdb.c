@@ -1266,6 +1266,43 @@ int add_ip_list_range(const char * range0, const char * realm, ip_range_list_t *
 	return 0;
 }
 
+int check_ip_list_range(const char * range0)
+{
+	char *range = turn_strdup(range0);
+
+	char* separator = strchr(range, '-');
+
+	if (separator) {
+		*separator = '\0';
+	}
+
+	ioa_addr min, max;
+
+	if (make_ioa_addr((const u08bits*) range, 0, &min) < 0) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong address range format: %s\n", range);
+		turn_free(range,0);
+		return -1;
+	}
+
+	if (separator) {
+		if (make_ioa_addr((const u08bits*) separator + 1, 0, &max) < 0) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong address range format: %s\n", separator + 1);
+			turn_free(range,0);
+			return -1;
+		}
+	} else {
+		// Doesn't have a '-' character in it, so assume that this is a single address
+		addr_cpy(&max, &min);
+	}
+
+	if (separator)
+		*separator = '-';
+
+	turn_free(range,0);
+
+	return 0;
+}
+
 /////////// REALM //////////////
 
 void reread_realms(void)
