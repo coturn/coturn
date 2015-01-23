@@ -1895,6 +1895,8 @@ int convert_oauth_key_data(const oauth_key_data *oakd0, oauth_key *key, char *er
 			key->auth_alg = AUTH_ALG_ERROR;
 			OAUTH_ERROR("Wrong oAuth token hash algorithm: %s (2)\n",oakd->auth_alg);
 			return -1;
+		} else {
+			key->auth_alg = AUTH_ALG_UNDEFINED;
 		}
 
 		key->as_rs_alg = ENC_ALG_DEFAULT;
@@ -1904,8 +1906,10 @@ int convert_oauth_key_data(const oauth_key_data *oakd0, oauth_key *key, char *er
 			key->as_rs_alg = AES_256_CBC;
 		} else if(!strcmp(oakd->as_rs_alg,"AEAD-AES-128-GCM")) {
 			key->as_rs_alg = AEAD_AES_128_GCM;
+			key->auth_alg = AUTH_ALG_UNDEFINED;
 		} else if(!strcmp(oakd->as_rs_alg,"AEAD-AES-256-GCM")) {
 			key->as_rs_alg = AEAD_AES_256_GCM;
+			key->auth_alg = AUTH_ALG_UNDEFINED;
 		} else if(oakd->as_rs_alg[0]) {
 			if(err_msg) {
 				snprintf(err_msg,err_msg_size,"Wrong oAuth token encryption algorithm: %s (2)\n",oakd->as_rs_alg);
