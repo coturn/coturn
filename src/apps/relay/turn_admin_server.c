@@ -1429,7 +1429,6 @@ static struct form_name form_names[] = {
 #define admin_title "TURN Server (https admin connection)"
 #define __bold_admin_title "<b>TURN Server</b><br><i>https admin connection</i><br>\r\n"
 #define bold_admin_title get_bold_admin_title()
-static const char* home_link = "<br><a href=\"/home\">home page</a><br>\r\n<br><a href=\"/logout\">logout</a><br>\r\n";
 
 static ioa_socket_handle current_socket = NULL;
 
@@ -1529,7 +1528,11 @@ static void https_print_top_page_header(struct str_buffer *sb)
 static void https_print_page_header(struct str_buffer *sb)
 {
 	https_print_top_page_header(sb);
-	str_buffer_append(sb,home_link);
+	str_buffer_append(sb,"<br><a href=\"/home?");
+	str_buffer_append(sb,HR_REALM);
+	str_buffer_append(sb,"=");
+	str_buffer_append(sb,current_eff_realm());
+	str_buffer_append(sb,"\">home page</a><br>\r\n<br><a href=\"/logout\">logout</a><br>\r\n");
 	str_buffer_append(sb,"<br>\r\n");
 }
 
@@ -1609,38 +1612,65 @@ static void write_https_home_page(ioa_socket_handle s)
 			str_buffer_append(sb,current_eff_realm());
 			str_buffer_append(sb,"\"");
 			if(!is_superuser()) {
-				str_buffer_append(sb," disabled ");
+			  str_buffer_append(sb," disabled >");
+			} else {
+			  str_buffer_append(sb,"> <input type=\"submit\" value=\"Set Admin Session Realm\" >");
 			}
-			str_buffer_append(sb,"><br>");
 
-			str_buffer_append(sb,"<br><input type=\"submit\" value=\"Configuration Parameters\" formaction=\"");
+			str_buffer_append(sb,"<br>");
+
+			str_buffer_append(sb,"<br><a href=\"");
 			str_buffer_append(sb,form_names[AS_FORM_PC].name);
-			str_buffer_append(sb,"\">");
+			str_buffer_append(sb,"?");
+			str_buffer_append(sb,HR_REALM);
+			str_buffer_append(sb,"=");
+			str_buffer_append(sb,current_eff_realm());
+			str_buffer_append(sb,"\">Configuration Parameters</a>");
 
-			str_buffer_append(sb,"<br><input type=\"submit\" value=\"TURN sessions\" formaction=\"");
+			str_buffer_append(sb,"<br><a href=\"");
 			str_buffer_append(sb,form_names[AS_FORM_PS].name);
 			str_buffer_append(sb,"?");
+			str_buffer_append(sb,HR_REALM);
+			str_buffer_append(sb,"=");
+			str_buffer_append(sb,current_eff_realm());
+			str_buffer_append(sb,"&");
 			str_buffer_append(sb,HR_MAX_SESSIONS);
 			str_buffer_append(sb,"=");
 			str_buffer_append_sz(sb,current_max_output_sessions());
-			str_buffer_append(sb,"\">");
+			str_buffer_append(sb,"\">TURN Sessions</a>");
 
-			str_buffer_append(sb,"<br><input type=\"submit\" value=\"Users\" formaction=\"");
+			str_buffer_append(sb,"<br><a href=\"");
 			str_buffer_append(sb,form_names[AS_FORM_USERS].name);
-			str_buffer_append(sb,"\">");
+			str_buffer_append(sb,"?");
+			str_buffer_append(sb,HR_REALM);
+			str_buffer_append(sb,"=");
+			str_buffer_append(sb,current_eff_realm());
+			str_buffer_append(sb,"\">Users</a>");
 
-			str_buffer_append(sb,"<br><input type=\"submit\" value=\"Shared Secrets (for TURN REST API)\" formaction=\"");
+			str_buffer_append(sb,"<br><a href=\"");
 			str_buffer_append(sb,form_names[AS_FORM_SS].name);
-			str_buffer_append(sb,"\">");
+			str_buffer_append(sb,"?");
+			str_buffer_append(sb,HR_REALM);
+			str_buffer_append(sb,"=");
+			str_buffer_append(sb,current_eff_realm());
+			str_buffer_append(sb,"\">Shared Secrets (for TURN REST API)</a>");
 
-			str_buffer_append(sb,"<br><input type=\"submit\" value=\"Origins\" formaction=\"");
+			str_buffer_append(sb,"<br><a href=\"");
 			str_buffer_append(sb,form_names[AS_FORM_OS].name);
-			str_buffer_append(sb,"\">");
+			str_buffer_append(sb,"?");
+			str_buffer_append(sb,HR_REALM);
+			str_buffer_append(sb,"=");
+			str_buffer_append(sb,current_eff_realm());
+			str_buffer_append(sb,"\">Origins</a>");
 
 			if(is_superuser()) {
-				str_buffer_append(sb,"<br><input type=\"submit\" value=\"oAuth keys\" formaction=\"");
-				str_buffer_append(sb,form_names[AS_FORM_OAUTH].name);
-				str_buffer_append(sb,"\">");
+			  str_buffer_append(sb,"<br><a href=\"");
+			  str_buffer_append(sb,form_names[AS_FORM_OAUTH].name);
+			  str_buffer_append(sb,"?");
+			  str_buffer_append(sb,HR_REALM);
+			  str_buffer_append(sb,"=");
+			  str_buffer_append(sb,current_eff_realm());
+			  str_buffer_append(sb,"\">oAuth keys</a>");
 			}
 
 			str_buffer_append(sb,"</fieldset>\r\n");
@@ -3728,8 +3758,13 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 				handle_logout_request(s,hr);
 				write_https_logon_page(s);
 				break;
-			default:
-				write_https_home_page(s);
+			default: {
+			  const char *realm0 = get_http_header_value(hr, HR_REALM, current_realm());
+			  if(!is_superuser())
+			    realm0 = current_realm();
+			  STRCPY(current_eff_realm(),realm0);
+			  write_https_home_page(s);
+			}
 			};
 			free_http_request(hr);
 		}
