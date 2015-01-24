@@ -305,15 +305,15 @@ static int sqlite_get_oauth_key(const u08bits *kid, oauth_key_data_raw *key) {
 			int res = sqlite3_step(st);
 			if (res == SQLITE_ROW) {
 
-				STRCPY((char*)key->ikm_key,sqlite3_column_text(st, 0));
+				STRCPY(key->ikm_key,sqlite3_column_text(st, 0));
 				key->timestamp = (u64bits)strtoll((const char*)sqlite3_column_text(st, 1),NULL,10);
 				key->lifetime = (u32bits)strtol((const char*)sqlite3_column_text(st, 2),NULL,10);
-				STRCPY((char*)key->hkdf_hash_func,sqlite3_column_text(st, 3));
-				STRCPY((char*)key->as_rs_alg,sqlite3_column_text(st, 4));
-				STRCPY((char*)key->as_rs_key,sqlite3_column_text(st, 5));
-				STRCPY((char*)key->auth_alg,sqlite3_column_text(st, 6));
-				STRCPY((char*)key->auth_key,sqlite3_column_text(st, 7));
-				STRCPY((char*)key->kid,kid);
+				STRCPY(key->hkdf_hash_func,sqlite3_column_text(st, 3));
+				STRCPY(key->as_rs_alg,sqlite3_column_text(st, 4));
+				STRCPY(key->as_rs_key,sqlite3_column_text(st, 5));
+				STRCPY(key->auth_alg,sqlite3_column_text(st, 6));
+				STRCPY(key->auth_key,sqlite3_column_text(st, 7));
+				STRCPY(key->kid,kid);
 				ret = 0;
 			}
 		} else {
@@ -355,15 +355,15 @@ static int sqlite_list_oauth_keys(secrets_list_t *kids,secrets_list_t *hkdfs,sec
 				int res = sqlite3_step(st);
 				if (res == SQLITE_ROW) {
 
-					STRCPY((char*)key->ikm_key,sqlite3_column_text(st, 0));
+					STRCPY(key->ikm_key,sqlite3_column_text(st, 0));
 					key->timestamp = (u64bits)strtoll((const char*)sqlite3_column_text(st, 1),NULL,10);
 					key->lifetime = (u32bits)strtol((const char*)sqlite3_column_text(st, 2),NULL,10);
-					STRCPY((char*)key->hkdf_hash_func,sqlite3_column_text(st, 3));
-					STRCPY((char*)key->as_rs_alg,sqlite3_column_text(st, 4));
-					STRCPY((char*)key->as_rs_key,sqlite3_column_text(st, 5));
-					STRCPY((char*)key->auth_alg,sqlite3_column_text(st, 6));
-					STRCPY((char*)key->auth_key,sqlite3_column_text(st, 7));
-					STRCPY((char*)key->kid,sqlite3_column_text(st, 8));
+					STRCPY(key->hkdf_hash_func,sqlite3_column_text(st, 3));
+					STRCPY(key->as_rs_alg,sqlite3_column_text(st, 4));
+					STRCPY(key->as_rs_key,sqlite3_column_text(st, 5));
+					STRCPY(key->auth_alg,sqlite3_column_text(st, 6));
+					STRCPY(key->auth_key,sqlite3_column_text(st, 7));
+					STRCPY(key->kid,sqlite3_column_text(st, 8));
 
 					if(kids) {
 						add_to_secrets_list(kids,key->kid);
