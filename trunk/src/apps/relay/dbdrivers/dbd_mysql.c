@@ -361,7 +361,7 @@ static int mysql_get_oauth_key(const u08bits *kid, oauth_key_data_raw *key) {
 				if(row && row[0]) {
 					unsigned long *lengths = mysql_fetch_lengths(mres);
 					if(lengths) {
-						STRCPY((char*)key->kid,kid);
+						STRCPY(key->kid,kid);
 						ns_bcopy(row[0],key->ikm_key,lengths[0]);
 						key->ikm_key[lengths[0]]=0;
 

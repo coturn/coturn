@@ -167,15 +167,15 @@ static int pgsql_get_oauth_key(const u08bits *kid, oauth_key_data_raw *key) {
 		if(!res || (PQresultStatus(res) != PGRES_TUPLES_OK) || (PQntuples(res)!=1)) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving PostgreSQL DB information: %s\n",PQerrorMessage(pqc));
 		} else {
-			STRCPY((char*)key->ikm_key,PQgetvalue(res,0,0));
+			STRCPY(key->ikm_key,PQgetvalue(res,0,0));
 			key->timestamp = (u64bits)strtoll(PQgetvalue(res,0,1),NULL,10);
 			key->lifetime = (u32bits)strtol(PQgetvalue(res,0,2),NULL,10);
-			STRCPY((char*)key->hkdf_hash_func,PQgetvalue(res,0,3));
-			STRCPY((char*)key->as_rs_alg,PQgetvalue(res,0,4));
-			STRCPY((char*)key->as_rs_key,PQgetvalue(res,0,5));
-			STRCPY((char*)key->auth_alg,PQgetvalue(res,0,6));
-			STRCPY((char*)key->auth_key,PQgetvalue(res,0,7));
-			STRCPY((char*)key->kid,kid);
+			STRCPY(key->hkdf_hash_func,PQgetvalue(res,0,3));
+			STRCPY(key->as_rs_alg,PQgetvalue(res,0,4));
+			STRCPY(key->as_rs_key,PQgetvalue(res,0,5));
+			STRCPY(key->auth_alg,PQgetvalue(res,0,6));
+			STRCPY(key->auth_key,PQgetvalue(res,0,7));
+			STRCPY(key->kid,kid);
 			ret = 0;
 		}
 
@@ -207,15 +207,15 @@ static int pgsql_list_oauth_keys(secrets_list_t *kids,secrets_list_t *hkdfs,secr
 			int i = 0;
 			for(i=0;i<PQntuples(res);i++) {
 
-				STRCPY((char*)key->ikm_key,PQgetvalue(res,i,0));
+				STRCPY(key->ikm_key,PQgetvalue(res,i,0));
 				key->timestamp = (u64bits)strtoll(PQgetvalue(res,i,1),NULL,10);
 				key->lifetime = (u32bits)strtol(PQgetvalue(res,i,2),NULL,10);
-				STRCPY((char*)key->hkdf_hash_func,PQgetvalue(res,i,3));
-				STRCPY((char*)key->as_rs_alg,PQgetvalue(res,i,4));
-				STRCPY((char*)key->as_rs_key,PQgetvalue(res,i,5));
-				STRCPY((char*)key->auth_alg,PQgetvalue(res,i,6));
-				STRCPY((char*)key->auth_key,PQgetvalue(res,i,7));
-				STRCPY((char*)key->kid,PQgetvalue(res,i,8));
+				STRCPY(key->hkdf_hash_func,PQgetvalue(res,i,3));
+				STRCPY(key->as_rs_alg,PQgetvalue(res,i,4));
+				STRCPY(key->as_rs_key,PQgetvalue(res,i,5));
+				STRCPY(key->auth_alg,PQgetvalue(res,i,6));
+				STRCPY(key->auth_key,PQgetvalue(res,i,7));
+				STRCPY(key->kid,PQgetvalue(res,i,8));
 
 				if(kids) {
 					add_to_secrets_list(kids,key->kid);
