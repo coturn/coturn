@@ -827,7 +827,7 @@ static int redis_set_secret(u08bits *secret, u08bits *realm)
 	return ret;
 }
 
-static int redis_set_permission_ip(const char *kind, u08bits *realm, const char* ip, int delete)
+static int redis_set_permission_ip(const char *kind, u08bits *realm, const char* ip, int del)
 {
 	int ret = -1;
 
@@ -840,7 +840,7 @@ static int redis_set_permission_ip(const char *kind, u08bits *realm, const char*
 	if (rc) {
 		char s[TURN_LONG_STRING_SIZE];
 
-		if(delete) {
+		if(del) {
 			snprintf(s, sizeof(s), "srem turn/realm/%s/%s-peer-ip %s", (char*) realm, kind, ip);
 		} else {
 			snprintf(s, sizeof(s), "sadd turn/realm/%s/%s-peer-ip %s", (char*) realm, kind, ip);

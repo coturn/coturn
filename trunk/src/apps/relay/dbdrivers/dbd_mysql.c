@@ -724,7 +724,7 @@ static int mysql_set_secret(u08bits *secret, u08bits *realm) {
   return ret;
 }
 
-static int mysql_set_permission_ip(const char *kind, u08bits *realm, const char* ip, int delete)
+static int mysql_set_permission_ip(const char *kind, u08bits *realm, const char* ip, int del)
 {
 	int ret = -1;
 
@@ -737,7 +737,7 @@ static int mysql_set_permission_ip(const char *kind, u08bits *realm, const char*
 
 	MYSQL * myc = get_mydb_connection();
 	if (myc) {
-		if(delete) {
+		if(del) {
 			snprintf(statement, sizeof(statement), "delete from %s_peer_ip where realm = '%s'  and ip_range = '%s'", kind, (char*)realm, ip);
 		} else {
 			snprintf(statement, sizeof(statement), "insert into %s_peer_ip (realm,ip_range) values('%s','%s')", kind, (char*)realm, ip);
