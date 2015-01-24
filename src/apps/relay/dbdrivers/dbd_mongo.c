@@ -714,7 +714,7 @@ static int mongo_set_secret(u08bits *secret, u08bits *realm) {
   }
 }
 
-static int mongo_set_permission_ip(const char *kind, u08bits *realm, const char* ip, int delete)
+static int mongo_set_permission_ip(const char *kind, u08bits *realm, const char* ip, int del)
 {
 	char sub_collection_name[129];
 	snprintf(sub_collection_name,sizeof(sub_collection_name)-1,"%s_peer_ip",kind);
@@ -733,7 +733,7 @@ static int mongo_set_permission_ip(const char *kind, u08bits *realm, const char*
 	bson_init(&query);
 	BSON_APPEND_UTF8(&query, "realm", (const char *)realm);
 	bson_init(&doc);
-	if(delete) {
+	if(del) {
 		bson_append_document_begin(&doc, "$pull", -1, &child);
 	} else {
 		bson_append_document_begin(&doc, "$addToSet", -1, &child);
@@ -741,9 +741,9 @@ static int mongo_set_permission_ip(const char *kind, u08bits *realm, const char*
 	BSON_APPEND_UTF8(&child, sub_collection_name, (const char *)ip);
 	bson_append_document_end(&doc, &child);
 
-	mongoc_update_flags_t flags = 0;
+	mongoc_update_flags_t flags = MONGOC_UPDATE_NONE;
 
-	if(delete) {
+	if(del) {
 		flags = MONGOC_UPDATE_MULTI_UPDATE;
 	} else {
 		flags = MONGOC_UPDATE_UPSERT;

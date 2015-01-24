@@ -3257,7 +3257,11 @@ int send_data_from_ioa_socket_tcp(ioa_socket_handle s, const void *data, size_t 
 
 int send_str_from_ioa_socket_tcp(ioa_socket_handle s, const void *data)
 {
-	return send_data_from_ioa_socket_tcp(s, data, strlen(data));
+	if(data) {
+		return send_data_from_ioa_socket_tcp(s, data, strlen((const char*)data));
+	} else {
+		return 0;
+	}
 }
 
 int send_ulong_from_ioa_socket_tcp(ioa_socket_handle s, size_t data)

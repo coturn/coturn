@@ -976,7 +976,7 @@ static int sqlite_get_ip_list(const char *kind, ip_range_list_t * list)
 	return ret;
 }
 
-static int sqlite_set_permission_ip(const char *kind, u08bits *realm, const char* ip, int delete)
+static int sqlite_set_permission_ip(const char *kind, u08bits *realm, const char* ip, int del)
 {
 	int ret = -1;
 
@@ -995,7 +995,7 @@ static int sqlite_set_permission_ip(const char *kind, u08bits *realm, const char
 
 		sqlite_lock(1);
 
-		if(delete) {
+		if(del) {
 			snprintf(statement, sizeof(statement), "delete from %s_peer_ip where realm = '%s'  and ip_range = '%s'", kind, (char*)realm, ip);
 		} else {
 			snprintf(statement, sizeof(statement), "insert or replace into %s_peer_ip (realm,ip_range) values('%s','%s')", kind, (char*)realm, ip);

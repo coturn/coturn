@@ -104,7 +104,7 @@ const char* get_http_date_header()
 static struct headers_list * post_parse(char *data, size_t data_len)
 {
 	while((*data=='\r')||(*data=='\n')) ++data;
-	char *post_data = calloc(data_len + 1, sizeof(char));
+	char *post_data = (char*)calloc(data_len + 1, sizeof(char));
 	memcpy(post_data, data, data_len);
 	char *fmarker = NULL;
 	char *fsplit = strtok_r(post_data, "&", &fmarker);
@@ -114,7 +114,9 @@ static struct headers_list * post_parse(char *data, size_t data_len)
 		char *vmarker = NULL;
 		char *key = strtok_r(fsplit, "=", &vmarker);
 		char *value = strtok_r(NULL, "=", &vmarker);
-		value = value ? value : "";
+		char empty[1];
+		empty[0]=0;
+		value = value ? value : empty;
 		value = evhttp_decode_uri(value);
 		char *p = value;
 		while (*p) {
