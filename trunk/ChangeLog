@@ -1,4 +1,4 @@
-1/12/2015 Oleg Moskalenko <mom040267@gmail.com>
+1/24/2015 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.4.1.1 'Ardee West':
 	- https admin server;
 	- SSLv2 support removed (security concern fixed);
