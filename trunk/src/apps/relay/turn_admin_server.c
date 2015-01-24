@@ -1427,11 +1427,34 @@ static struct form_name form_names[] = {
 };
 
 #define admin_title "TURN Server (https admin connection)"
-#define bold_admin_title "<b>"admin_title"</b>"
-static const char* home_link = "<br><a href=\"/home\">home page</a><br>\r\n<br><a href=\"/logout\">Logout</a><br>\r\n";
-static const char* logout_link = "<br><a href=\"/logout\">Logout</a><br><br>\r\n";
+#define __bold_admin_title "<b>TURN Server</b><br><i>https admin connection</i><br>\r\n"
+#define bold_admin_title get_bold_admin_title()
+static const char* home_link = "<br><a href=\"/home\">home page</a><br>\r\n<br><a href=\"/logout\">logout</a><br>\r\n";
 
 static ioa_socket_handle current_socket = NULL;
+
+static char *get_bold_admin_title(void)
+{
+	static char sbat[1025];
+	STRCPY(sbat,__bold_admin_title);
+	if(current_socket && current_socket->special_session) {
+		struct admin_session* as = (struct admin_session*)current_socket->special_session;
+		if(as->as_ok) {
+			if(as->as_login[0]) {
+				char *dst=sbat+strlen(sbat);
+				snprintf(dst,ADMIN_USER_MAX_LENGTH*2," admin user: <b><i>%s</i></b><br>\r\n",as->as_login);
+			}
+			if(as->as_realm[0]) {
+				char *dst=sbat+strlen(sbat);
+				snprintf(dst,STUN_MAX_REALM_SIZE*2," admin session realm: <b><i>%s</i></b><br>\r\n",as->as_realm);
+			} else if(as->as_eff_realm[0]) {
+				char *dst=sbat+strlen(sbat);
+				snprintf(dst,STUN_MAX_REALM_SIZE*2," admin session realm: <b><i>%s</i></b><br>\r\n",as->as_eff_realm);
+			}
+		}
+	}
+	return sbat;
+}
 
 static int wrong_html_name(const char* s)
 {
@@ -1464,7 +1487,9 @@ static char* current_realm(void) {
 }
 
 static char* current_eff_realm(void) {
-	if(current_socket && current_socket->special_session && ((struct admin_session*)current_socket->special_session)->as_ok) {
+	char* r = current_realm();
+	if(r && r[0]) return r;
+	else if(current_socket && current_socket->special_session && ((struct admin_session*)current_socket->special_session)->as_ok) {
 		return ((struct admin_session*)current_socket->special_session)->as_eff_realm;
 	} else {
 		static char bad_eff_realm[1025] = "_ERROR:UNKNOWN_REALM__";
@@ -1493,6 +1518,39 @@ static void https_cancel_session(const char* ssid)
 	}
 }
 
+static void https_print_top_page_header(struct str_buffer *sb)
+{
+	str_buffer_append(sb,"<!DOCTYPE html>\r\n<html>\r\n  <head>\r\n    <title>");
+	str_buffer_append(sb,admin_title);
+	str_buffer_append(sb,"</title>\r\n <style> table, th, td { border: 1px solid black; border-collapse: collapse; text-align: left; padding: 5px;} table#msg th { color: red; background-color: white; } </style> </head>\r\n  <body>\r\n    ");
+	str_buffer_append(sb,bold_admin_title);
+}
+
+static void https_print_page_header(struct str_buffer *sb)
+{
+	https_print_top_page_header(sb);
+	str_buffer_append(sb,home_link);
+	str_buffer_append(sb,"<br>\r\n");
+}
+
+static void https_finish_page(struct str_buffer *sb, ioa_socket_handle s)
+{
+	str_buffer_append(sb,"</body>\r\n</html>\r\n");
+
+	send_str_from_ioa_socket_tcp(s,"HTTP/1.1 200 OK\r\nServer: ");
+	send_str_from_ioa_socket_tcp(s,TURN_SOFTWARE);
+	send_str_from_ioa_socket_tcp(s,"\r\n");
+	send_str_from_ioa_socket_tcp(s,get_http_date_header());
+	send_str_from_ioa_socket_tcp(s,"Content-Type: text/html; charset=UTF-8\r\nContent-Length: ");
+
+	send_ulong_from_ioa_socket_tcp(s,str_buffer_get_str_len(sb));
+
+	send_str_from_ioa_socket_tcp(s,"\r\n\r\n");
+	send_str_from_ioa_socket_tcp(s,str_buffer_get_str(sb));
+
+	str_buffer_free(sb);
+}
+
 static AS_FORM get_form(const char* path) {
 	if(path) {
 		size_t i = 0;
@@ -1511,10 +1569,8 @@ static void write_https_logon_page(ioa_socket_handle s)
 
 		struct str_buffer* sb = str_buffer_new();
 
-		str_buffer_append(sb,"<!DOCTYPE html>\r\n<html>\r\n  <head>\r\n    <title>");
-		str_buffer_append(sb,admin_title);
-		str_buffer_append(sb,"</title>\r\n  </head>\r\n  <body>\r\n    ");
-		str_buffer_append(sb,bold_admin_title);
+		https_print_top_page_header(sb);
+
 		str_buffer_append(sb,"<br><br>\r\n");
 		str_buffer_append(sb,"<form action=\"");
 		str_buffer_append(sb,form_names[AS_FORM_LOGON].name);
@@ -1525,24 +1581,8 @@ static void write_https_logon_page(ioa_socket_handle s)
 		str_buffer_append(sb,HR_PASSWORD);
 		str_buffer_append(sb,"\" value=\"\"><br><br><input type=\"submit\" value=\"Login\"></fieldset>\r\n");
 		str_buffer_append(sb,"</form>\r\n");
-		str_buffer_append(sb,"\r\n  </body>\r\n</html>\r\n");
 
-		struct str_buffer* sb_http = str_buffer_new();
-
-		str_buffer_append(sb_http,"HTTP/1.1 200 OK\r\nServer: ");
-		str_buffer_append(sb_http,TURN_SOFTWARE);
-		str_buffer_append(sb_http,"\r\n");
-		str_buffer_append(sb_http,get_http_date_header());
-		str_buffer_append(sb_http,"Content-Type: text/html; charset=UTF-8\r\nContent-Length: ");
-		str_buffer_append_sz(sb_http,str_buffer_get_str_len(sb));
-		str_buffer_append(sb_http,"\r\n\r\n");
-		str_buffer_append(sb_http,str_buffer_get_str(sb));
-
-		str_buffer_free(sb);
-
-		send_data_from_ioa_socket_tcp(s, str_buffer_get_str(sb_http), str_buffer_get_str_len(sb_http));
-
-		str_buffer_free(sb_http);
+		https_finish_page(sb,s);
 	}
 }
 
@@ -1556,12 +1596,7 @@ static void write_https_home_page(ioa_socket_handle s)
 
 			struct str_buffer* sb = str_buffer_new();
 
-			str_buffer_append(sb,"<!DOCTYPE html>\r\n<html>\r\n  <head>\r\n    <title>");
-			str_buffer_append(sb,admin_title);
-			str_buffer_append(sb,"</title>\r\n  </head>\r\n  <body>\r\n    ");
-			str_buffer_append(sb,bold_admin_title);
-			str_buffer_append(sb,"<br><br>\r\n");
-			str_buffer_append(sb,logout_link);
+			https_print_page_header(sb);
 
 			str_buffer_append(sb,"<form action=\"");
 			str_buffer_append(sb,form_names[AS_FORM_HOME].name);
@@ -1611,20 +1646,7 @@ static void write_https_home_page(ioa_socket_handle s)
 			str_buffer_append(sb,"</fieldset>\r\n");
 			str_buffer_append(sb,"</form>\r\n");
 
-			str_buffer_append(sb,"\r\n  </body>\r\n</html>\r\n");
-
-			send_str_from_ioa_socket_tcp(s,"HTTP/1.1 200 OK\r\nServer: ");
-			send_str_from_ioa_socket_tcp(s,TURN_SOFTWARE);
-			send_str_from_ioa_socket_tcp(s,"\r\n");
-			send_str_from_ioa_socket_tcp(s,get_http_date_header());
-			send_str_from_ioa_socket_tcp(s,"Content-Type: text/html; charset=UTF-8\r\nContent-Length: ");
-
-			send_ulong_from_ioa_socket_tcp(s,str_buffer_get_str_len(sb));
-
-			send_str_from_ioa_socket_tcp(s,"\r\n\r\n");
-			send_str_from_ioa_socket_tcp(s,str_buffer_get_str(sb));
-
-			str_buffer_free(sb);
+			https_finish_page(sb,s);
 		}
 	}
 }
@@ -1853,12 +1875,8 @@ static void write_pc_page(ioa_socket_handle s)
 
 			struct str_buffer* sb = str_buffer_new();
 
-			str_buffer_append(sb,"<!DOCTYPE html>\r\n<html>\r\n  <head>\r\n    <title>");
-			str_buffer_append(sb,admin_title);
-			str_buffer_append(sb,"</title>\r\n <style> table, th, td { border: 1px solid black; border-collapse: collapse; padding: 5px;} </style> </head>\r\n  <body>\r\n    ");
-			str_buffer_append(sb,bold_admin_title);
-			str_buffer_append(sb,"<br>\r\n");
-			str_buffer_append(sb,home_link);
+			https_print_page_header(sb);
+
 			str_buffer_append(sb,"<br>\r\n");
 			str_buffer_append(sb,"<b>Configuration Parameters:</b><br><br><table  style=\"width:100%\">\r\n");
 			str_buffer_append(sb,"<tr><th>Parameter</th><th>Value</th></tr>\r\n");
@@ -2082,20 +2100,9 @@ static void write_pc_page(ioa_socket_handle s)
 				}
 			}
 
-			str_buffer_append(sb,"\r\n</table>  </body>\r\n</html>\r\n");
+			str_buffer_append(sb,"\r\n</table>\r\n");
 
-			send_str_from_ioa_socket_tcp(s,"HTTP/1.1 200 OK\r\nServer: ");
-			send_str_from_ioa_socket_tcp(s,TURN_SOFTWARE);
-			send_str_from_ioa_socket_tcp(s,"\r\n");
-			send_str_from_ioa_socket_tcp(s,get_http_date_header());
-			send_str_from_ioa_socket_tcp(s,"Content-Type: text/html; charset=UTF-8\r\nContent-Length: ");
-
-			send_ulong_from_ioa_socket_tcp(s,str_buffer_get_str_len(sb));
-
-			send_str_from_ioa_socket_tcp(s,"\r\n\r\n");
-			send_str_from_ioa_socket_tcp(s,str_buffer_get_str(sb));
-
-			str_buffer_free(sb);
+			https_finish_page(sb,s);
 		}
 	}
 }
@@ -2273,13 +2280,7 @@ static void write_ps_page(ioa_socket_handle s, const char* client_protocol, cons
 
 			struct str_buffer* sb = str_buffer_new();
 
-			str_buffer_append(sb,"<!DOCTYPE html>\r\n<html>\r\n  <head>\r\n    <title>");
-			str_buffer_append(sb,admin_title);
-			str_buffer_append(sb,"</title>\r\n <style> table, th, td { border: 1px solid black; border-collapse: collapse; padding: 5px;} </style> </head>\r\n  <body>\r\n    ");
-			str_buffer_append(sb,bold_admin_title);
-			str_buffer_append(sb,"<br>\r\n");
-			str_buffer_append(sb,home_link);
-			str_buffer_append(sb,"<br>\r\n");
+			https_print_page_header(sb);
 
 			str_buffer_append(sb,"<form action=\"");
 			str_buffer_append(sb,form_names[AS_FORM_PS].name);
@@ -2333,20 +2334,7 @@ static void write_ps_page(ioa_socket_handle s, const char* client_protocol, cons
 			str_buffer_append_sz(sb,total_sz);
 			str_buffer_append(sb,"<br>\r\n");
 
-			str_buffer_append(sb,"</body>\r\n</html>\r\n");
-
-			send_str_from_ioa_socket_tcp(s,"HTTP/1.1 200 OK\r\nServer: ");
-			send_str_from_ioa_socket_tcp(s,TURN_SOFTWARE);
-			send_str_from_ioa_socket_tcp(s,"\r\n");
-			send_str_from_ioa_socket_tcp(s,get_http_date_header());
-			send_str_from_ioa_socket_tcp(s,"Content-Type: text/html; charset=UTF-8\r\nContent-Length: ");
-
-			send_ulong_from_ioa_socket_tcp(s,str_buffer_get_str_len(sb));
-
-			send_str_from_ioa_socket_tcp(s,"\r\n\r\n");
-			send_str_from_ioa_socket_tcp(s,str_buffer_get_str(sb));
-
-			str_buffer_free(sb);
+			https_finish_page(sb,s);
 		}
 	}
 }
@@ -2408,13 +2396,7 @@ static void write_users_page(ioa_socket_handle s, const u08bits *add_user, const
 
 			struct str_buffer* sb = str_buffer_new();
 
-			str_buffer_append(sb,"<!DOCTYPE html>\r\n<html>\r\n  <head>\r\n    <title>");
-			str_buffer_append(sb,admin_title);
-			str_buffer_append(sb,"</title>\r\n <style> table, th, td { border: 1px solid black; border-collapse: collapse; padding: 5px;} table#msg th { color: red; background-color: white; } </style> </head>\r\n  <body>\r\n    ");
-			str_buffer_append(sb,bold_admin_title);
-			str_buffer_append(sb,"<br>\r\n");
-			str_buffer_append(sb,home_link);
-			str_buffer_append(sb,"<br>\r\n");
+			https_print_page_header(sb);
 
 			str_buffer_append(sb,"<form action=\"");
 			str_buffer_append(sb,form_names[AS_FORM_USERS].name);
@@ -2505,20 +2487,7 @@ static void write_users_page(ioa_socket_handle s, const u08bits *add_user, const
 			str_buffer_append_sz(sb,total_sz);
 			str_buffer_append(sb,"<br>\r\n");
 
-			str_buffer_append(sb,"</body>\r\n</html>\r\n");
-
-			send_str_from_ioa_socket_tcp(s,"HTTP/1.1 200 OK\r\nServer: ");
-			send_str_from_ioa_socket_tcp(s,TURN_SOFTWARE);
-			send_str_from_ioa_socket_tcp(s,"\r\n");
-			send_str_from_ioa_socket_tcp(s,get_http_date_header());
-			send_str_from_ioa_socket_tcp(s,"Content-Type: text/html; charset=UTF-8\r\nContent-Length: ");
-
-			send_ulong_from_ioa_socket_tcp(s,str_buffer_get_str_len(sb));
-
-			send_str_from_ioa_socket_tcp(s,"\r\n\r\n");
-			send_str_from_ioa_socket_tcp(s,str_buffer_get_str(sb));
-
-			str_buffer_free(sb);
+			https_finish_page(sb,s);
 		}
 	}
 }
@@ -2580,13 +2549,7 @@ static void write_shared_secrets_page(ioa_socket_handle s, const char* add_secre
 
 			struct str_buffer* sb = str_buffer_new();
 
-			str_buffer_append(sb,"<!DOCTYPE html>\r\n<html>\r\n  <head>\r\n    <title>");
-			str_buffer_append(sb,admin_title);
-			str_buffer_append(sb,"</title>\r\n <style> table, th, td { border: 1px solid black; border-collapse: collapse; padding: 5px;} table#msg th { color: red; background-color: white; } </style> </head>\r\n  <body>\r\n    ");
-			str_buffer_append(sb,bold_admin_title);
-			str_buffer_append(sb,"<br>\r\n");
-			str_buffer_append(sb,home_link);
-			str_buffer_append(sb,"<br>\r\n");
+			https_print_page_header(sb);
 
 			str_buffer_append(sb,"<form action=\"");
 			str_buffer_append(sb,form_names[AS_FORM_SS].name);
@@ -2658,20 +2621,7 @@ static void write_shared_secrets_page(ioa_socket_handle s, const char* add_secre
 			str_buffer_append_sz(sb,total_sz);
 			str_buffer_append(sb,"<br>\r\n");
 
-			str_buffer_append(sb,"</body>\r\n</html>\r\n");
-
-			send_str_from_ioa_socket_tcp(s,"HTTP/1.1 200 OK\r\nServer: ");
-			send_str_from_ioa_socket_tcp(s,TURN_SOFTWARE);
-			send_str_from_ioa_socket_tcp(s,"\r\n");
-			send_str_from_ioa_socket_tcp(s,get_http_date_header());
-			send_str_from_ioa_socket_tcp(s,"Content-Type: text/html; charset=UTF-8\r\nContent-Length: ");
-
-			send_ulong_from_ioa_socket_tcp(s,str_buffer_get_str_len(sb));
-
-			send_str_from_ioa_socket_tcp(s,"\r\n\r\n");
-			send_str_from_ioa_socket_tcp(s,str_buffer_get_str(sb));
-
-			str_buffer_free(sb);
+			https_finish_page(sb,s);
 		}
 	}
 }
@@ -2731,13 +2681,7 @@ static void write_origins_page(ioa_socket_handle s, const char* add_origin, cons
 
 			struct str_buffer* sb = str_buffer_new();
 
-			str_buffer_append(sb,"<!DOCTYPE html>\r\n<html>\r\n  <head>\r\n    <title>");
-			str_buffer_append(sb,admin_title);
-			str_buffer_append(sb,"</title>\r\n <style> table, th, td { border: 1px solid black; border-collapse: collapse; padding: 5px;} table#msg th { color: red; background-color: white; } </style> </head>\r\n  <body>\r\n    ");
-			str_buffer_append(sb,bold_admin_title);
-			str_buffer_append(sb,"<br>\r\n");
-			str_buffer_append(sb,home_link);
-			str_buffer_append(sb,"<br>\r\n");
+			https_print_page_header(sb);
 
 			str_buffer_append(sb,"<form action=\"");
 			str_buffer_append(sb,form_names[AS_FORM_OS].name);
@@ -2810,20 +2754,7 @@ static void write_origins_page(ioa_socket_handle s, const char* add_origin, cons
 			str_buffer_append_sz(sb,total_sz);
 			str_buffer_append(sb,"<br>\r\n");
 
-			str_buffer_append(sb,"</body>\r\n</html>\r\n");
-
-			send_str_from_ioa_socket_tcp(s,"HTTP/1.1 200 OK\r\nServer: ");
-			send_str_from_ioa_socket_tcp(s,TURN_SOFTWARE);
-			send_str_from_ioa_socket_tcp(s,"\r\n");
-			send_str_from_ioa_socket_tcp(s,get_http_date_header());
-			send_str_from_ioa_socket_tcp(s,"Content-Type: text/html; charset=UTF-8\r\nContent-Length: ");
-
-			send_ulong_from_ioa_socket_tcp(s,str_buffer_get_str_len(sb));
-
-			send_str_from_ioa_socket_tcp(s,"\r\n\r\n");
-			send_str_from_ioa_socket_tcp(s,str_buffer_get_str(sb));
-
-			str_buffer_free(sb);
+			https_finish_page(sb,s);
 		}
 	}
 }
@@ -2911,16 +2842,11 @@ static void write_https_oauth_show_keys(ioa_socket_handle s, const char* kid)
 
 			struct str_buffer* sb = str_buffer_new();
 
-			str_buffer_append(sb,"<!DOCTYPE html>\r\n<html>\r\n  <head>\r\n    <title>");
-			str_buffer_append(sb,admin_title);
-			str_buffer_append(sb,"</title>\r\n <style> table, th, td { border: 1px solid black; border-collapse: collapse; text-align: left; padding: 15px; } table#msg th { color: red; background-color: white; } </style> </head>\r\n  <body>\r\n    ");
-			str_buffer_append(sb,bold_admin_title);
-			str_buffer_append(sb,"<br>\r\n");
-			str_buffer_append(sb,"<br><a href=\"");
+			https_print_page_header(sb);
+
+			str_buffer_append(sb,"<a href=\"");
 			str_buffer_append(sb,form_names[AS_FORM_OAUTH].name);
-			str_buffer_append(sb,"\">back to oauth list</a><br>\r\n");
-			str_buffer_append(sb,home_link);
-			str_buffer_append(sb,"<br>\r\n");
+			str_buffer_append(sb,"\">back to oauth list</a><br><br>\r\n");
 
 			if(kid && kid[0]) {
 				const turn_dbdriver_t * dbd = get_dbdriver();
@@ -2981,20 +2907,7 @@ static void write_https_oauth_show_keys(ioa_socket_handle s, const char* kid)
 				}
 			}
 
-			str_buffer_append(sb,"</body>\r\n</html>\r\n");
-
-			send_str_from_ioa_socket_tcp(s,"HTTP/1.1 200 OK\r\nServer: ");
-			send_str_from_ioa_socket_tcp(s,TURN_SOFTWARE);
-			send_str_from_ioa_socket_tcp(s,"\r\n");
-			send_str_from_ioa_socket_tcp(s,get_http_date_header());
-			send_str_from_ioa_socket_tcp(s,"Content-Type: text/html; charset=UTF-8\r\nContent-Length: ");
-
-			send_ulong_from_ioa_socket_tcp(s,str_buffer_get_str_len(sb));
-
-			send_str_from_ioa_socket_tcp(s,"\r\n\r\n");
-			send_str_from_ioa_socket_tcp(s,str_buffer_get_str(sb));
-
-			str_buffer_free(sb);
+			https_finish_page(sb,s);
 		}
 	}
 }
@@ -3015,13 +2928,7 @@ static void write_https_oauth_page(ioa_socket_handle s, const char* add_kid, con
 
 			struct str_buffer* sb = str_buffer_new();
 
-			str_buffer_append(sb,"<!DOCTYPE html>\r\n<html>\r\n  <head>\r\n    <title>");
-			str_buffer_append(sb,admin_title);
-			str_buffer_append(sb,"</title>\r\n <style> table, th, td { border: 1px solid black; border-collapse: collapse; text-align: left; padding: 15px; } table#msg th { color: red; background-color: white; } </style> </head>\r\n  <body>\r\n    ");
-			str_buffer_append(sb,bold_admin_title);
-			str_buffer_append(sb,"<br>\r\n");
-			str_buffer_append(sb,home_link);
-			str_buffer_append(sb,"<br>\r\n");
+			https_print_page_header(sb);
 
 			{
 				str_buffer_append(sb,"<form action=\"");
@@ -3236,20 +3143,7 @@ static void write_https_oauth_page(ioa_socket_handle s, const char* add_kid, con
 			str_buffer_append_sz(sb,total_sz);
 			str_buffer_append(sb,"<br>\r\n");
 
-			str_buffer_append(sb,"</body>\r\n</html>\r\n");
-
-			send_str_from_ioa_socket_tcp(s,"HTTP/1.1 200 OK\r\nServer: ");
-			send_str_from_ioa_socket_tcp(s,TURN_SOFTWARE);
-			send_str_from_ioa_socket_tcp(s,"\r\n");
-			send_str_from_ioa_socket_tcp(s,get_http_date_header());
-			send_str_from_ioa_socket_tcp(s,"Content-Type: text/html; charset=UTF-8\r\nContent-Length: ");
-
-			send_ulong_from_ioa_socket_tcp(s,str_buffer_get_str_len(sb));
-
-			send_str_from_ioa_socket_tcp(s,"\r\n\r\n");
-			send_str_from_ioa_socket_tcp(s,str_buffer_get_str(sb));
-
-			str_buffer_free(sb);
+			https_finish_page(sb,s);
 		}
 	}
 }
