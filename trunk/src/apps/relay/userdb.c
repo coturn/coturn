@@ -775,7 +775,7 @@ static int list_users(u08bits *realm, int is_admin)
   if (dbd) {
 	  if(is_admin) {
 		  if(dbd->list_admin_users) {
-		  	(*dbd->list_admin_users)();
+		  	(*dbd->list_admin_users)(0);
 		  }
 	  } else {
 		  if(dbd->list_users) {

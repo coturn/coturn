@@ -1241,7 +1241,7 @@ static int sqlite_del_admin_user(const u08bits *usname)
 	return ret;
 }
 
-static int sqlite_list_admin_users(void)
+static int sqlite_list_admin_users(int no_print)
 {
 	int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
@@ -1266,11 +1266,15 @@ static int sqlite_list_admin_users(void)
 					const char* kval = (const char*) sqlite3_column_text(st, 0);
 					const char* rval = (const char*) sqlite3_column_text(st, 1);
 
-					if (rval && *rval) {
-						printf("%s[%s]\n", kval, rval);
-					} else {
-						printf("%s\n", kval);
+					if(!no_print) {
+						if (rval && *rval) {
+							printf("%s[%s]\n", kval, rval);
+						} else {
+							printf("%s\n", kval);
+						}
 					}
+
+					++ret;
 
 				} else if (res == SQLITE_DONE) {
 					break;

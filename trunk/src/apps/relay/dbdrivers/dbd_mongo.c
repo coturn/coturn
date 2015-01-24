@@ -1318,7 +1318,7 @@ static int mongo_del_admin_user(const u08bits *usname)
 	return ret;
 }
 
-static int mongo_list_admin_users(void)
+static int mongo_list_admin_users(int no_print)
 {
 	const char * collection_name = "admin_user";
 	mongoc_collection_t * collection = mongo_get_collection(collection_name);
@@ -1352,6 +1352,7 @@ static int mongo_list_admin_users(void)
 		bson_iter_t iter;
 		bson_iter_t iter_realm;
 		const char * value;
+		ret = 0;
 		while (mongoc_cursor_next(cursor, &item)) {
 			if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "name") && BSON_ITER_HOLDS_UTF8(&iter)) {
 				value = bson_iter_utf8(&iter, &length);
@@ -1360,16 +1361,18 @@ static int mongo_list_admin_users(void)
 					if (bson_iter_init(&iter_realm, item) && bson_iter_find(&iter_realm, "realm") && BSON_ITER_HOLDS_UTF8(&iter_realm)) {
 						realm = bson_iter_utf8(&iter_realm, &length);
 					}
-					if(realm && *realm) {
-						printf("%s[%s]\n", value, realm);
-					} else {
-						printf("%s\n", value);
+					++ret;
+					if(!no_print) {
+						if(realm && *realm) {
+							printf("%s[%s]\n", value, realm);
+						} else {
+							printf("%s\n", value);
+						}
 					}
 				}
 			}
 		}
 		mongoc_cursor_destroy(cursor);
-		ret = 0;
 	}
 	mongoc_collection_destroy(collection);
 	bson_destroy(&query);

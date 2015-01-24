@@ -1288,7 +1288,7 @@ static int redis_del_admin_user(const u08bits *usname) {
   return ret;
 }
 
-static int redis_list_admin_users(void)
+static int redis_list_admin_users(int no_print)
 {
   int ret = -1;
   donot_print_connection_success = 1;
@@ -1320,22 +1320,25 @@ static int redis_list_admin_users(void)
 	}
   }
 
+  ret = 0;
   for(isz=0;isz<keys.sz;++isz) {
 	char *s = keys.secrets[isz];
 	s += strlen("turn/admin_user/");
 	u08bits realm[STUN_MAX_REALM_SIZE];
 	password_t pwd;
 	if(redis_get_admin_user((const u08bits*)s,realm,pwd) == 0) {
-		if(realm[0]) {
-			printf("%s[%s]\n",s,realm);
-		} else {
-			printf("%s\n",s);
+		++ret;
+		if(!no_print) {
+			if(realm[0]) {
+				printf("%s[%s]\n",s,realm);
+			} else {
+				printf("%s\n",s);
+			}
 		}
 	}
   }
 
   clean_secrets_list(&keys);
-  ret = 0;
 
   return ret;
 }
