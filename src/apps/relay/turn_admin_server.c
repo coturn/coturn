@@ -3355,7 +3355,7 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 					const char *realm0 = get_http_header_value(hr, HR_REALM, current_realm());
 					if(!is_superuser())
 						realm0 = current_realm();
-					STRCPY(current_eff_realm(),realm0);
+					strncpy(current_eff_realm(),realm0,STUN_MAX_REALM_SIZE);
 					write_pc_page(s);
 				} else {
 					write_https_logon_page(s);
@@ -3367,7 +3367,7 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 					const char *realm0 = get_http_header_value(hr, HR_REALM, current_realm());
 					if(!is_superuser())
 						realm0 = current_realm();
-					STRCPY(current_eff_realm(),realm0);
+					strncpy(current_eff_realm(),realm0,STUN_MAX_REALM_SIZE);
 
 					const char* client_protocol = get_http_header_value(hr, HR_CLIENT_PROTOCOL, "");
 
@@ -3402,7 +3402,7 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 						const char *realm0 = get_http_header_value(hr, HR_REALM, current_realm());
 						if(!is_superuser())
 							realm0 = current_realm();
-						STRCPY(current_eff_realm(),realm0);
+						strncpy(current_eff_realm(),realm0,STUN_MAX_REALM_SIZE);
 					}
 
 					{
@@ -3502,7 +3502,7 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 						const char *realm0 = get_http_header_value(hr, HR_REALM, current_realm());
 						if(!is_superuser())
 							realm0 = current_realm();
-						STRCPY(current_eff_realm(),realm0);
+						strncpy(current_eff_realm(),realm0,STUN_MAX_REALM_SIZE);
 					}
 
 					{
@@ -3575,7 +3575,7 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 						const char *realm0 = get_http_header_value(hr, HR_REALM, current_realm());
 						if(!is_superuser())
 							realm0 = current_realm();
-						STRCPY(current_eff_realm(),realm0);
+						strncpy(current_eff_realm(),realm0,STUN_MAX_REALM_SIZE);
 					}
 
 					if(is_superuser()) {
@@ -3778,7 +3778,7 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 			  const char *realm0 = get_http_header_value(hr, HR_REALM, current_realm());
 			  if(!is_superuser())
 			    realm0 = current_realm();
-			  STRCPY(current_eff_realm(),realm0);
+			  strncpy(current_eff_realm(),realm0,STUN_MAX_REALM_SIZE);
 			  write_https_home_page(s);
 			}
 			};
