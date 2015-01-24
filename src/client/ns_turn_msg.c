@@ -615,7 +615,7 @@ static inline int sheadof(const char *head, const char* full, int ignore_case)
 {
 	while(*head) {
 		if(*head != *full) {
-			if(ignore_case && (tolower(*head)==tolower(*full))) {
+		  if(ignore_case && (tolower((int)*head)==tolower((int)*full))) {
 				//OK
 			} else {
 				return 0;
