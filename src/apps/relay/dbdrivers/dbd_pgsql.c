@@ -920,7 +920,7 @@ static int pgsql_del_admin_user(const u08bits *usname)
 	return ret;
 }
 
-static int pgsql_list_admin_users(void)
+static int pgsql_list_admin_users(int no_print)
 {
 	int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
@@ -934,9 +934,11 @@ static int pgsql_list_admin_users(void)
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving PostgreSQL DB information: %s\n",PQerrorMessage(pqc));
 	} else {
 		int i = 0;
+		ret = 0;
 		for(i=0;i<PQntuples(res);i++) {
 			char *kval = PQgetvalue(res,i,0);
-			if(kval) {
+			++ret;
+			if(kval && !no_print) {
 				char *rval = PQgetvalue(res,i,1);
 				if(rval && *rval) {
 					printf("%s[%s]\n",kval,rval);
@@ -945,7 +947,6 @@ static int pgsql_list_admin_users(void)
 				}
 			}
 		}
-		ret = 0;
 	}
 	if(res) {
 		PQclear(res);

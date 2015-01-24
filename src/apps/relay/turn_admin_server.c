@@ -1536,7 +1536,7 @@ static void https_print_page_header(struct str_buffer *sb)
 	str_buffer_append(sb,"<br>\r\n");
 }
 
-static void https_finish_page(struct str_buffer *sb, ioa_socket_handle s)
+static void https_finish_page(struct str_buffer *sb, ioa_socket_handle s, int cclose)
 {
 	str_buffer_append(sb,"</body>\r\n</html>\r\n");
 
@@ -1544,6 +1544,9 @@ static void https_finish_page(struct str_buffer *sb, ioa_socket_handle s)
 	send_str_from_ioa_socket_tcp(s,TURN_SOFTWARE);
 	send_str_from_ioa_socket_tcp(s,"\r\n");
 	send_str_from_ioa_socket_tcp(s,get_http_date_header());
+	if(cclose) {
+		send_str_from_ioa_socket_tcp(s,"Connection: close");
+	}
 	send_str_from_ioa_socket_tcp(s,"Content-Type: text/html; charset=UTF-8\r\nContent-Length: ");
 
 	send_ulong_from_ioa_socket_tcp(s,str_buffer_get_str_len(sb));
@@ -1574,18 +1577,31 @@ static void write_https_logon_page(ioa_socket_handle s)
 
 		https_print_top_page_header(sb);
 
-		str_buffer_append(sb,"<br><br>\r\n");
-		str_buffer_append(sb,"<form action=\"");
-		str_buffer_append(sb,form_names[AS_FORM_LOGON].name);
-		str_buffer_append(sb,"\" method=\"POST\">\r\n");
-		str_buffer_append(sb,"  <fieldset><legend>Admin user information:</legend>  user name:<br><input required type=\"text\" name=\"");
-		str_buffer_append(sb,HR_USERNAME);
-		str_buffer_append(sb,"\" value=\"\"><br>password:<br><input required type=\"password\" name=\"");
-		str_buffer_append(sb,HR_PASSWORD);
-		str_buffer_append(sb,"\" value=\"\"><br><br><input type=\"submit\" value=\"Login\"></fieldset>\r\n");
-		str_buffer_append(sb,"</form>\r\n");
+		int we_have_admin_users = 0;
+		const turn_dbdriver_t * dbd = get_dbdriver();
+		if (dbd && dbd->list_admin_users) {
+			int ausers = dbd->list_admin_users(1);
+			if(ausers>0) {
+				we_have_admin_users = 1;
+			}
+		}
 
-		https_finish_page(sb,s);
+		if(!we_have_admin_users) {
+			str_buffer_append(sb,"<br>To use the HTTPS admin connection, you have to set the database table <b><i>admin_user</i></b> with the admin user accounts.<br>\r\n");
+		} else {
+			str_buffer_append(sb,"<br><br>\r\n");
+			str_buffer_append(sb,"<form action=\"");
+			str_buffer_append(sb,form_names[AS_FORM_LOGON].name);
+			str_buffer_append(sb,"\" method=\"POST\">\r\n");
+			str_buffer_append(sb,"  <fieldset><legend>Admin user information:</legend>  user name:<br><input required type=\"text\" name=\"");
+			str_buffer_append(sb,HR_USERNAME);
+			str_buffer_append(sb,"\" value=\"\"><br>password:<br><input required type=\"password\" name=\"");
+			str_buffer_append(sb,HR_PASSWORD);
+			str_buffer_append(sb,"\" value=\"\"><br><br><input type=\"submit\" value=\"Login\"></fieldset>\r\n");
+			str_buffer_append(sb,"</form>\r\n");
+		}
+
+		https_finish_page(sb,s,!we_have_admin_users);
 	}
 }
 
@@ -1676,7 +1692,7 @@ static void write_https_home_page(ioa_socket_handle s)
 			str_buffer_append(sb,"</fieldset>\r\n");
 			str_buffer_append(sb,"</form>\r\n");
 
-			https_finish_page(sb,s);
+			https_finish_page(sb,s,0);
 		}
 	}
 }
@@ -2132,7 +2148,7 @@ static void write_pc_page(ioa_socket_handle s)
 
 			str_buffer_append(sb,"\r\n</table>\r\n");
 
-			https_finish_page(sb,s);
+			https_finish_page(sb,s,0);
 		}
 	}
 }
@@ -2364,7 +2380,7 @@ static void write_ps_page(ioa_socket_handle s, const char* client_protocol, cons
 			str_buffer_append_sz(sb,total_sz);
 			str_buffer_append(sb,"<br>\r\n");
 
-			https_finish_page(sb,s);
+			https_finish_page(sb,s,0);
 		}
 	}
 }
@@ -2517,7 +2533,7 @@ static void write_users_page(ioa_socket_handle s, const u08bits *add_user, const
 			str_buffer_append_sz(sb,total_sz);
 			str_buffer_append(sb,"<br>\r\n");
 
-			https_finish_page(sb,s);
+			https_finish_page(sb,s,0);
 		}
 	}
 }
@@ -2651,7 +2667,7 @@ static void write_shared_secrets_page(ioa_socket_handle s, const char* add_secre
 			str_buffer_append_sz(sb,total_sz);
 			str_buffer_append(sb,"<br>\r\n");
 
-			https_finish_page(sb,s);
+			https_finish_page(sb,s,0);
 		}
 	}
 }
@@ -2784,7 +2800,7 @@ static void write_origins_page(ioa_socket_handle s, const char* add_origin, cons
 			str_buffer_append_sz(sb,total_sz);
 			str_buffer_append(sb,"<br>\r\n");
 
-			https_finish_page(sb,s);
+			https_finish_page(sb,s,0);
 		}
 	}
 }
@@ -2937,7 +2953,7 @@ static void write_https_oauth_show_keys(ioa_socket_handle s, const char* kid)
 				}
 			}
 
-			https_finish_page(sb,s);
+			https_finish_page(sb,s,0);
 		}
 	}
 }
@@ -3173,7 +3189,7 @@ static void write_https_oauth_page(ioa_socket_handle s, const char* add_kid, con
 			str_buffer_append_sz(sb,total_sz);
 			str_buffer_append(sb,"<br>\r\n");
 
-			https_finish_page(sb,s);
+			https_finish_page(sb,s,0);
 		}
 	}
 }

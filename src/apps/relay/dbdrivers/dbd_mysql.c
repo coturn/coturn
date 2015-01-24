@@ -1189,7 +1189,7 @@ static int mysql_del_admin_user(const u08bits *usname)
 	return ret;
 }
 
-static int mysql_list_admin_users(void)
+static int mysql_list_admin_users(int no_print)
 {
 	int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
@@ -1207,12 +1207,14 @@ static int mysql_list_admin_users(void)
 			} else if(mysql_field_count(myc)!=2) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown error retrieving MySQL DB information: %s\n",statement);
 			} else {
+				ret = 0;
 				for(;;) {
 					MYSQL_ROW row = mysql_fetch_row(mres);
 					if(!row) {
 						break;
 					} else {
-						if(row[0]) {
+						++ret;
+						if(row[0] && !no_print) {
 							if(row[1] && row[1][0]) {
 								printf("%s[%s]\n",row[0],row[1]);
 							} else {
@@ -1221,7 +1223,6 @@ static int mysql_list_admin_users(void)
 						}
 					}
 				}
-				ret = 0;
 			}
 
 			if(mres)
