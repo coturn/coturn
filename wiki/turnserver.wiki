@@ -514,6 +514,19 @@ The "keep alive" functionality can be implemented in several ways:
   # For the HTTP-style "keep-alive", the TCP listening endpoints (default ports 3478 and 5349) are able to accept HTTP GET request and reply with HTTP 200 OK response.
   # On UDP listening endpoints, STUN BINDING indication or STUN BINDING request can be used as stateless "keep-alive" communication dialog.
 
+=== HTTPS MANAGEMENT INTERFACE ===
+
+The turnserver process provides an HTTPS Web access as statistics and basic
+management interface. The turnserver listens to incoming HTTPS admin 
+connections on the same ports as the main TURN/STUN listener. The Web admin
+pages are basic and self-explanatory.
+
+To make the HTTPS interface active, the database table admin_user must be
+populated with the admin user account(s). An admin user can be a superuser
+(if not assigned to a particular realm) or a restricted user (if assigned to
+a realm). The restricted admin users can perform only limited actions, within
+their corresponding realms.
+
 === TELNET CLI ===
 
 The turnserver process provides a telnet CLI access as statistics and basic management interface. By default, the turnserver starts a telnet CLI listener on IP 127.0.0.1 and port 5766. That can be changed by the command-cline options of the turnserver process (see --cli-ip and --cli-port options). The full list of telnet CLI commands is provided in "help" command output in the telnet CLI.
