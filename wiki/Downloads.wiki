@@ -1,12 +1,16 @@
 #summary Downloads Page
-#labels Version-4.3.3.1,Featured
+#labels Version-4.4.1.1,Featured
 
-== Latest official recommended version - 4.3.3.1: ==
+== Latest official recommended version - 4.4.1.1: ==
 
-  * multiple authentication threads;
-  * database code cleaned;
+  * HTTPS web admin server;
+  * SSLv2 support cancelled (security concern fixed);
+  * The server-side short-term credentials mechanism support cancelled;
+  * OpenSSL 1.1.0 supported;
+  * Shared secrets fixed in MongoDB: multiple secrets per realm allowed;
+  * Shared secrets admin fixed in Redis;
 
-[http://turnserver.open-sys.org/downloads/v4.3.3.1/ 4.3.3.1 Version Downloads (full source and platform builds)]
+[http://turnserver.open-sys.org/downloads/v4.4.1.1/ 4.4.1.1 Version Downloads (full source and platform builds)]
 
 [http://turnserver.open-sys.org/downloads/ Main Downloads Page (with all recent versions)]
 
@@ -15,6 +19,13 @@
 [http://turnserver.open-sys.org/downloads/extradocs/ Extra Docs ]
 
 == Older versions ==
+
+=== 4.3.3.1: ===
+
+  * multiple authentication threads;
+  * database code cleaned;
+
+[http://turnserver.open-sys.org/downloads/v4.3.3.1/ v4.3.3.1]
 
 === 4.3.2.2: ===
 
