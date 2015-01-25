@@ -1,5 +1,5 @@
 #summary Difference between rfc5766-turn-server and coturn.
-#labels Version-4.3.3.1
+#labels Version-4.4.1.1
 
 = Introduction =
 
@@ -55,3 +55,15 @@ For ALPN support, Coturn has to be compiled with OpenSSL 1.0.2+.
 == Authentication threading model ==
 
 Coturn, starting with version 4.3.3.1, uses multiple authentication threads. rfc5766-turn-server uses a single authentication thread, always.
+
+== Coturn does not support SSLv2 ==
+
+Because of the security concerns, we cancelled SSLv2 support in Coturn.
+
+== Coturn does not support short-term credentials mechanism ==
+
+Because there is no popular use case for the short-term credentials mechanism in the TURN Server, for simplification, we cancelled the short-term credentials support in Coturn.
+
+== Coturn has HTTPS Web admin interface ==
+
+Both rfc5766-turn-server and coturn provide telnet-based CLI admin interface. But only Coturn has web admin interface.
