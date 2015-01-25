@@ -669,7 +669,7 @@ The schema description:
 # Table for long-term credentials mechanism authorization:
 #
 CREATE TABLE turnusers_lt (
-    realm varchar(512) default '',
+    realm varchar(127) default '',
     name varchar(512),
     hmackey char(128),
     PRIMARY KEY (realm,name)
@@ -684,27 +684,20 @@ used for the HMAC key generation.
 The key must be 32 characters (HEX representation of 16 bytes) for SHA1,
 or 64 characters (HEX representation of 32 bytes) for SHA256.
 
-# Table for short-term credentials mechanism authorisation:
-#
-CREATE TABLE turnusers_st (
-    name varchar(512) PRIMARY KEY,
-    password varchar(512)
-);
-
 # Table holding shared secrets for secret-based authorization
 # (REST API). It can only be used together with the long-term 
 # mechanism:
 #
 CREATE TABLE turn_secret (
-	realm varchar(512) default '',
-    value varchar(512),
+	realm varchar(127) default '',
+    value varchar(127),
 	primary key (realm,value)
 );
 
 # Table holding "white" allowed peer IP ranges.
 #
 CREATE TABLE allowed_peer_ip (
-	realm varchar(512) default '',
+	realm varchar(127) default '',
 	ip_range varchar(256),
 	primary key (realm,ip_range)
 );
@@ -712,7 +705,7 @@ CREATE TABLE allowed_peer_ip (
 # Table holding "black" denied peer IP ranges.
 #
 CREATE TABLE denied_peer_ip (
-	realm varchar(512) default '',
+	realm varchar(127) default '',
 	ip_range varchar(256),
 	primary key (realm,ip_range)
 );
@@ -723,8 +716,8 @@ CREATE TABLE denied_peer_ip (
 # then the default realm is used.
 #
 CREATE TABLE turn_origin_to_realm (
-	origin varchar(512),
-	realm varchar(512),
+	origin varchar(127),
+	realm varchar(127),
 	primary key (origin,realm)
 );
 
@@ -734,7 +727,7 @@ CREATE TABLE turn_origin_to_realm (
 # Values for them are integers (in text form).
 #
 CREATE TABLE turn_realm_option (
-	realm varchar(512) default '',
+	realm varchar(127) default '',
 	opt varchar(32),
 	value varchar(128),
 	primary key (realm,opt)
@@ -753,7 +746,7 @@ CREATE TABLE oauth_key (
 	auth_alg varchar(64) default '',
 	auth_key varchar(256) default '',
 	primary key (kid)
-);
+); 
 
 The oauth_key table fields meanings are:
 
@@ -764,7 +757,7 @@ The oauth_key table fields meanings are:
 		explicitly in the database;
 		
 	timestamp - (optional) the timestamp (in seconds) when the key 
-		lifetime started;
+		lifetime starts;
 	
 	lifetime - (optional) the key lifetime in seconds; the default value 
 		is 0 - unlimited lifetime.
@@ -791,6 +784,17 @@ The oauth_key table fields meanings are:
 		calculated with ikm_key and hkdf_hash_func. The auth_key length 
 		is defined by auth_alg.
 
+# Https access admin users.
+# Leave this table empty if you do not want 
+# remote https access to the admin functions.
+#
+CREATE TABLE admin_user (
+	name varchar(32),
+	realm varchar(127),
+	password varchar(127),
+	primary key (name)
+);
+
 You can use turnadmin program to manage the database - you can either use 
 turnadmin to add/modify/delete users, or you can use turnadmin to produce 
 the hmac keys and modify the database with your favorite tools.
@@ -816,10 +820,10 @@ Fill in users, for example:
   Long-term credentials mechanism with SHA256 extension:
   $ bin/turnadmin -a -b "/var/db/turndb" -u bethod -r north.gov -p king-of-north --sha256
   
-  Short-term credentials mechanism:
+  Admin users:
    
   $ bin/turnadmin -A -b "/var/db/turndb" -u gorst -p hero
-  $ bin/turnadmin -A -b "/var/db/turndb" -u ninefingers -p youhavetoberealistic 
+  $ bin/turnadmin -A -b "/var/db/turndb" -u ninefingers -p youhavetoberealistic -r north.gov 
 
 XVI. PostgreSQL setup
 
@@ -888,8 +892,6 @@ PREFIX/share/turnserver/schema.sql file after the turnserver installation:
 $ cat turndb/schema.sql | psql -U turn turn
 	NOTICE:  CREATE TABLE / PRIMARY KEY will create implicit index "turnusers_lt_pkey" for table "turnusers_lt"
 	CREATE TABLE
-	NOTICE:  CREATE TABLE / PRIMARY KEY will create implicit index "turnusers_st_pkey" for table "turnusers_st"
-	CREATE TABLE
 	CREATE TABLE
 
 See the SQLite section for the detailed database schema explanation.
@@ -940,10 +942,10 @@ Fill in users, for example:
   Long-term credentials mechanism with SHA256 extension:
   $ bin/turnadmin -a -e "host=localhost dbname=coturn user=turn password=turn" -u bethod -r north.gov -p king-of-north --sha256
   
-  Short-term credentials mechanism:
+  Admin users:
    
   $ bin/turnadmin -A -e "host=localhost dbname=coturn user=turn password=turn" -u gorst -p hero
-  $ bin/turnadmin -A -e "host=localhost dbname=coturn user=turn password=turn" -u ninefingers -p youhavetoberealistic 
+  $ bin/turnadmin -A -e "host=localhost dbname=coturn user=turn password=turn" -u ninefingers -p youhavetoberealistic -r north.gov
 
 XVII. MySQL (MariaDB) setup
 
@@ -995,10 +997,10 @@ the root account.
   Long-term credentials mechanism with SHA256 extension:
   $ bin/turnadmin -a -M "host=localhost dbname=coturn user=turn password=turn" -u bethod -r north.gov -p king-of-north --sha256
   
-  Short-term credentials mechanism:
+  Admin users:
    
   $ bin/turnadmin -A -M "host=localhost dbname=coturn user=turn password=turn" -u gorst -p hero
-  $ bin/turnadmin -A -M "host=localhost dbname=coturn user=turn password=turn" -u ninefingers -p youhavetoberealistic 
+  $ bin/turnadmin -A -M "host=localhost dbname=coturn user=turn password=turn" -u ninefingers -p youhavetoberealistic -r north.gov
 
 7) Now we can use mysql in the turnserver.
 
@@ -1124,10 +1126,10 @@ Redis TURN admin commands:
   Long-term credentials mechanism with SHA256 extension:
   $ bin/turnadmin -a -N "host=localhost dbname=2 user=turn password=turn" -u bethod -r north.gov -p king-of-north --sha256
   
-  Short-term credentials mechanism:
+  Admin users:
    
   $ bin/turnadmin -A -N "host=localhost dbname=2 user=turn password=turn" -u gorst -p hero
-  $ bin/turnadmin -A -N "host=localhost dbname=2 user=turn password=turn" -u ninefingers -p youhavetoberealistic 
+  $ bin/turnadmin -A -N "host=localhost dbname=2 user=turn password=turn" -u ninefingers -p youhavetoberealistic -r north.gov
   
 See the file testredisdbsetup.sh for the data structure examples.
 
@@ -1144,7 +1146,19 @@ Read the project wiki pages: http://code.google.com/p/coturn/w/list
 Also, check the project from page links to the TURN/WebRTC configuration examples.
 It may give you an idea how it can be done.
 
-XXII. Management interface
+XXII. HTTPS Management Interface
+
+The turnserver process provides an HTTPS Web access as statistics and basic management
+interface. The turnserver listens to incoming HTTPS admin connections on the same ports
+as the main TURN/STUN listener. The Web admin pages are basic and self-explanatory.
+
+To make the HTTPS interface active, the database table admin_user must be
+populated with the admin user account(s). An admin user can be a superuser
+(if not assigned to a particular realm) or a restricted user (if assigned to
+a realm). The restricted admin users can perform only limited actions, within
+their corresponding realms.
+
+XXIII. Telnet CLI management interface
 
 You have a telnet interface (enabled by default) to access the turnserver process, 
 to view its state, to gather some statistical information, and to make some changes 
@@ -1152,7 +1166,7 @@ on-the-fly.
 
 You can access that CLI interface with telnet or putty program (in telnet mode). 
 The process by default listens to port 5766 on IP address 127.0.0.1 for the telnet
-connections. 
+connections.
 
 WARNING: all telnet communications are going unencrypted over the network. For
 security reasons, we advise using the loopback IP addresses for CLI (127.0.0.1 
@@ -1161,7 +1175,7 @@ transferred over the network unencrypted, too. So sticking to the local system
 CLI access, and accessing the turnserver system terminal with ssh only, would 
 be a wise decision.
 
-XXIII. ALPN support.
+XXIV. ALPN support.
 
 Starting with version 4.3.2.1, the TURN server supports the ALPN STUN 
 specifications (http://tools.ietf.org/html/draft-ietf-tram-alpn-08).

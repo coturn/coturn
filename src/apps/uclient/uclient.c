@@ -678,12 +678,6 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 		   }
 		} else if (stun_is_indication(&(elem->in_buffer))) {
 
-			if(use_short_term) {
-
-				if(check_integrity(&(elem->pinfo), &(elem->in_buffer))<0)
-					return -1;
-			}
-
 			uint16_t method = stun_get_method(&elem->in_buffer);
 
 			if((method == STUN_METHOD_CONNECTION_ATTEMPT)&& is_TCP_relay()) {
@@ -733,7 +727,7 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 
 		} else if (stun_is_success_response(&(elem->in_buffer))) {
 
-			if(elem->pinfo.nonce[0] || use_short_term) {
+			if(elem->pinfo.nonce[0]) {
 				if(check_integrity(&(elem->pinfo), &(elem->in_buffer))<0)
 					return -1;
 			}
@@ -907,10 +901,6 @@ static int client_write(app_ur_session *elem) {
     stun_attr_add_addr(&(elem->out_buffer),STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &(elem->pinfo.peer_addr));
     if(dont_fragment)
 	    stun_attr_add(&(elem->out_buffer), STUN_ATTRIBUTE_DONT_FRAGMENT, NULL, 0);
-
-    if (use_short_term) {
-	    if(add_integrity(&(elem->pinfo), &(elem->out_buffer))<0) return -1;
-    }
 
     if(use_fingerprints)
 	    stun_attr_add_fingerprint_str(elem->out_buffer.buf,(size_t*)&(elem->out_buffer.len));
@@ -1590,19 +1580,12 @@ void start_mclient(const char *remote_address, int port,
 
 turn_credential_type get_turn_credentials_type(void)
 {
-	if(use_short_term)
-		return TURN_CREDENTIALS_SHORT_TERM;
 	return TURN_CREDENTIALS_LONG_TERM;
 }
 
 int add_integrity(app_ur_conn_info *clnet_info, stun_buffer *message)
 {
-	if(use_short_term) {
-		if(stun_attr_add_integrity_by_user_short_term_str(message->buf, (size_t*)&(message->len), g_uname, g_upwd, clnet_info->shatype)<0) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO," Cannot add integrity to the message\n");
-			return -1;
-		}
-	} else if(clnet_info->nonce[0]) {
+	if(clnet_info->nonce[0]) {
 
 		if(oauth && clnet_info->oauth) {
 
@@ -1654,7 +1637,7 @@ int add_integrity(app_ur_conn_info *clnet_info, stun_buffer *message)
 
 			//self-test:
 			{
-				st_password_t pwd;
+				password_t pwd;
 				if(stun_check_message_integrity_by_key_str(get_turn_credentials_type(),
 								message->buf, (size_t)(message->len), clnet_info->key, pwd, clnet_info->shatype, NULL)<1) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR," Self-test of integrity does not comple correctly !\n");
@@ -1679,7 +1662,7 @@ int check_integrity(app_ur_conn_info *clnet_info, stun_buffer *message)
 
 	if(oauth && clnet_info->oauth) {
 
-		st_password_t pwd;
+		password_t pwd;
 
 		return stun_check_message_integrity_by_key_str(get_turn_credentials_type(),
 				message->buf, (size_t)(message->len), clnet_info->key, pwd, sht, NULL);

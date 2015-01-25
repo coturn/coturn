@@ -85,8 +85,8 @@ User database settings:
 		/usr/local/var/db/turndb or /var/lib/turn/turndb).
 				  
 -e, --psql-userdb	User database connection string for PostgreSQL.
-		This database can be used for long-term and short-term 
-		credentials mechanisms, and it can store the secret value 
+		This database can be used for long-term credentials mechanism,
+		and it can store the secret value 
 		for secret-based timed authentication in TURN RESP API.
 		The connection string format is like that:
 		 
@@ -103,8 +103,8 @@ User database settings:
 		Also, see http://www.PostgreSQL.org for full PostgreSQL documentation.
 				  
 -M, --mysql-userdb	User database connection string for MySQL or MariaDB. 
-		This database can be used for long-term and short-term 
-		credentials mechanisms, and it can store the secret value for 
+		This database can be used for long-term credentials mechanism,
+		and it can store the secret value for 
 		secret-based timed authentication in TURN RESP API.
 		The connection string format is like that:
 		 
@@ -121,8 +121,8 @@ User database settings:
 		command options description).
 		
 -J, --mongo-userdb	User database connection string for MongoDB. 
-		This database can be used for long-term and short-term 
-		credentials mechanisms, and it can store the secret value 
+		This database can be used for long-term credentials mechanism,
+		and it can store the secret value 
 		for secret-based timed authentication in TURN RESP API.
 		The connection string format is like that:
 		 
@@ -134,8 +134,8 @@ User database settings:
 		for full MongoDB documentation.
 		
 -N, --redis-userdb	User database connection string for Redis. 
-		This database can be used for long-term and short-term
-		credentials mechanisms, and it can store the secret 
+		This database can be used for long-term	credentials mechanism,
+		and it can store the secret 
 		value for secret-based timed authentication in TURN RESP API.
 		The connection string format is like that:
 		 
@@ -160,8 +160,6 @@ Flags:
 
 -a, --lt-cred-mech	Use long-term credentials mechanism (this one you need for WebRTC usage).
 
--A, --st-cred-mech	Use the short-term credentials mechanism.
-
 -z, --no-auth		Do not use any credentials mechanism, allow anonymous access. 
 			Opposite to -a and -A options. This is default option when no 
 			authentication-related options are set.
@@ -182,16 +180,12 @@ Flags:
 			This option is just turns on secret-based authentication.
 			The actual value of the secret is defined either by option static-auth-secret,
 			or can be found in the turn_secret table in the database.
-			This option can be used with long-term credentials mechanisms only -
-			it does not make much sense with the short-term mechanism.
 			
 --oauth			Support oAuth authentication, as in the third-party TURN specs document.
 			
 --dh566			Use 566 bits predefined DH TLS key. Default size of the key is 1066.
 
 --dh2066		Use 2066 bits predefined DH TLS key. Default size of the key is 1066.
-
---no-sslv2		Do not allow SSLv2 protocol.
 
 --no-sslv3		Do not allow SSLv3 protocol.
 
@@ -300,7 +294,7 @@ Options with required values:
 			endpoints (the "plain" one and the "tls" one) are equivalent in terms of
 			functionality; but we keep both endpoints to satisfy the RFC 5766 specs.
 			For secure TCP connections, we currently support SSL version 3 and 
-			TLS versions 1.0, 1.1, 1.2. SSL2 "encapsulation mode" is also supported.
+			TLS versions 1.0, 1.1, 1.2.
 			For secure UDP connections, we support DTLS version 1.
 
 --alt-listening-port	Alternative listening port for UDP and TCP listeners;
@@ -382,8 +376,7 @@ Options with required values:
 			the key must be prepended with 0x symbols.
 			The key is calculated over the user name, 
 			the user realm, and the user password.
-			This setting may not be used with TURN REST API or
-			with short-term credentials mechanism.
+			This setting may not be used with TURN REST API.
 
 -r, --realm		The default realm to be used for the users when no explicit 
 			origin/realm relationship was found in the database, or if the TURN
@@ -560,8 +553,8 @@ WEBRTC USAGE
 This is a set of notes for the WebRTC users:
 
 1) WebRTC uses long-term authentication mechanism, so you have to use -a 
-option (or --lt-cred-mech). WebRTC relaying will not work with anonymous access 
-or with short-term authentication. With -a option, do not forget to set the 
+option (or --lt-cred-mech). WebRTC relaying will not work with anonymous
+access. With -a option, do not forget to set the 
 default realm (-r option). You will also have to set up the user accounts, 
 for that you have a number of options:
 
@@ -733,9 +726,7 @@ For long-term credentials, you have to set the "keys" for the users; the "keys" 
 by the turnadmin utility. For the key generation, you need username, password and the realm. 
 All users in the database must use the same realm value; if down the road you will decide 
 to change the realm name, then you will have to re-generate all user keys (that can be done 
-in a batch script). If you are using short-term credentials, then you use open passwords 
-in the database; you will have to make sure that nobody can access the database outside of 
-the TURN server box. See the file turndb/testsqldbsetup.sql as an example.
+in a batch script). See the file turndb/testsqldbsetup.sql as an example.
 
 4) The same is true for MySQL database. The same schema file is applicable. 
 The same considerations are applicable. 
@@ -744,8 +735,7 @@ The same considerations are applicable.
 it can be found (in the form of explanation) in schema.userdb.redis. 
 Also, in Redis you can store both "keys" and open passwords (for long term credentials) - 
 the "open password" option is less secure but more convenient for low-security environments. 
-For short-term credentials, you will use open passwords only. See the file 
-turndb/testredisdbsetup.sh as an example. 
+See the file turndb/testredisdbsetup.sh as an example. 
 
 6) If a database is used, then users can be divided into multiple independent realms. Each realm
 can be administered separately, and each realm can have its own set of users and its own
@@ -832,7 +822,23 @@ in the following directories:
 If all efforts failed (due to the system permission settings) then all 
 log messages are sent only to the standard output of the process.
 
-This behavior can be controlled by --log-file, --syslog and --no-stdout-log options.
+This behavior can be controlled by --log-file, --syslog and --no-stdout-log
+options.
+
+=================================
+
+HTTPS MANAGEMENT INTERFACE
+
+The turnserver process provides an HTTPS Web access as statistics and basic
+management interface. The turnserver listens to incoming HTTPS admin 
+connections on the same ports as the main TURN/STUN listener. The Web admin
+pages are basic and self-explanatory.
+
+To make the HTTPS interface active, the database table admin_user must be
+populated with the admin user account(s). An admin user can be a superuser
+(if not assigned to a particular realm) or a restricted user (if assigned to
+a realm). The restricted admin users can perform only limited actions, within
+their corresponding realms.
 
 =================================
 
@@ -941,7 +947,7 @@ https://groups.google.com/forum/?fromgroups=#!forum/turn-server-project-rfc5766-
 	
 	Po-sheng Lin <personlin118@gmail.com>
 	
-	Peter Dunkley <peter.dunkley@crocodilertc.net>
+	Peter Dunkley <peter.dunkley@acision.com>
 	
 	Mutsutoshi Yoshimoto <mutsutoshi.yoshimoto@mixi.co.jp>
 

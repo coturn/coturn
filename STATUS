@@ -112,6 +112,13 @@ compatibility.
 48) DTLS1.2 supported.
 
 49) ALPN stun.turn and stun.nat-discovery supported.
+
+50) SSLv2 support cancelled.
+
+51) The short-term credentials server-side support cancelled (still
+supported in the client library).
+
+52) Web HTTPS admin interface implemented.
  
 Things to be implemented in future (the development roadmap) 
 are described in the TODO file.

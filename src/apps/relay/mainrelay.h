@@ -65,12 +65,14 @@
 #include <openssl/rand.h>
 #include <openssl/crypto.h>
 #include <openssl/opensslv.h>
+#include <openssl/dh.h>
+#include <openssl/bn.h>
 
 #include "ns_turn_utils.h"
 #include "ns_turn_khash.h"
 
 #include "userdb.h"
-#include "turncli.h"
+#include "turn_admin_server.h"
 
 #include "tls_listener.h"
 #include "dtls_listener.h"
@@ -197,7 +199,6 @@ typedef struct _turn_params_ {
   char tls_password[513];
   char dh_file[1025];
   
-  int no_sslv2;
   int no_sslv3;
   int no_tlsv1;
   int no_tlsv1_1;

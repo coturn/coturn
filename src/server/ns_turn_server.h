@@ -90,12 +90,13 @@ typedef enum {
 struct _turn_turnserver;
 typedef struct _turn_turnserver turn_turnserver;
 
-typedef void (*get_username_resume_cb)(int success, int oauth, int max_session_time, hmackey_t hmackey, st_password_t pwd, turn_turnserver *server, u64bits ctxkey, ioa_net_data *in_buffer);
+typedef void (*get_username_resume_cb)(int success, int oauth, int max_session_time, hmackey_t hmackey, password_t pwd, turn_turnserver *server, u64bits ctxkey, ioa_net_data *in_buffer);
 typedef u08bits *(*get_user_key_cb)(turnserver_id id, turn_credential_type ct, int in_oauth, int *out_oauth, u08bits *uname, u08bits *realm, get_username_resume_cb resume, ioa_net_data *in_buffer, u64bits ctxkey, int *postpone_reply);
 typedef int (*check_new_allocation_quota_cb)(u08bits *username, int oauth, u08bits *realm);
 typedef void (*release_allocation_quota_cb)(u08bits *username, int oauth, u08bits *realm);
 typedef int (*send_socket_to_relay_cb)(turnserver_id id, u64bits cid, stun_tid *tid, ioa_socket_handle s, int message_integrity, MESSAGE_TO_RELAY_TYPE rmt, ioa_net_data *nd, int can_resume);
 typedef int (*send_turn_session_info_cb)(struct turn_session_info *tsi);
+typedef void (*send_https_socket_cb)(ioa_socket_handle s);
 
 typedef band_limit_t (*allocate_bps_cb)(band_limit_t bps, int positive);
 
@@ -131,6 +132,7 @@ struct _turn_turnserver {
 	vintp no_loopback_peers;
 	vintp no_multicast_peers;
 	send_turn_session_info_cb send_turn_session_info;
+	send_https_socket_cb send_https_socket;
 
 	/* RFC 6062 ==>> */
 	vintp no_udp_relay;
@@ -199,6 +201,7 @@ void init_turn_server(turn_turnserver* server,
 				    vintp mobility,
 				    int server_relay,
 				    send_turn_session_info_cb send_turn_session_info,
+				    send_https_socket_cb send_https_socket,
 				    allocate_bps_cb allocate_bps_func,
 				    int oauth,
 				    const char* oauth_server_name);

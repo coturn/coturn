@@ -185,19 +185,35 @@ int addr_eq_no_port(const ioa_addr* a1, const ioa_addr *a2) {
   return 0;
 }
 
-int make_ioa_addr(const u08bits* saddr, int port, ioa_addr *addr) {
+int make_ioa_addr(const u08bits* saddr0, int port, ioa_addr *addr) {
 
-  if(!saddr || !addr) return -1;
+  if(!saddr0 || !addr) return -1;
+
+  char ssaddr[257];
+  STRCPY(ssaddr,saddr0);
+
+  char* saddr=ssaddr;
+  while(*saddr == ' ') ++saddr;
+
+  size_t len=strlen(saddr);
+  while(len>0) {
+	  if(saddr[len-1]==' ') {
+		  saddr[len-1]=0;
+		  --len;
+	  } else {
+		  break;
+	  }
+  }
 
   ns_bzero(addr, sizeof(ioa_addr));
-  if((strlen((const s08bits*)saddr) == 0)||
-     (inet_pton(AF_INET, (const s08bits*)saddr, &addr->s4.sin_addr) == 1)) {
+  if((len == 0)||
+     (inet_pton(AF_INET, saddr, &addr->s4.sin_addr) == 1)) {
     addr->s4.sin_family = AF_INET;
 #if defined(TURN_HAS_SIN_LEN) /* tested when configured */
     addr->s4.sin_len = sizeof(struct sockaddr_in);
 #endif
     addr->s4.sin_port = nswap16(port);
-  } else if (inet_pton(AF_INET6, (const s08bits*)saddr, &addr->s6.sin6_addr) == 1) {
+  } else if (inet_pton(AF_INET6, saddr, &addr->s6.sin6_addr) == 1) {
     addr->s6.sin6_family = AF_INET6;
 #if defined(SIN6_LEN) /* this define is required by IPv6 if used */
     addr->s6.sin6_len = sizeof(struct sockaddr_in6);
@@ -217,7 +233,7 @@ int make_ioa_addr(const u08bits* saddr, int port, ioa_addr *addr) {
     addr_hints.ai_addr = NULL;
     addr_hints.ai_next = NULL;
 
-    err = getaddrinfo((const char*)saddr, NULL, &addr_hints, &addr_result);
+    err = getaddrinfo(saddr, NULL, &addr_hints, &addr_result);
     if ((err != 0)||(!addr_result)) {
       fprintf(stderr,"error resolving '%s' hostname: %s\n",saddr,gai_strerror(err));
       return -1;

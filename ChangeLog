@@ -1,3 +1,12 @@
+1/24/2015 Oleg Moskalenko <mom040267@gmail.com>
+Version 4.4.1.1 'Ardee West':
+	- https admin server;
+	- SSLv2 support cancelled (security concern fixed);
+	- The server-side short-term credentials mechanism support cancelled;
+	- OpenSSL 1.1.0 supported;
+	- shared secrets fixed in MongoDB: multiple secrets per realm allowed;
+	- shared secrets admin fixed in Redis;
+
 12/24/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.3.3.1 'Tolomei':
 	- multiple authentication threads;
@@ -458,9 +467,9 @@ Version 2.6.1.1 'Harding Grim':
 			= In REST API timestamp, we are now using
 				the expiration time (Issue 31).
 		* Configurable cipher suite in the TURN server.
-		* SSL3 support.
+		* SSLv3 support.
 		* TLS 1.1 and 1.2 support.
-		* SSL2 "encapsulation" mode support.
+		* SSLv2 "encapsulation" mode support.
 		* NULL OpenSSL cipher is allowed to be negotiated between
 			server and client.
 		* -U option (NULL cipher) added to the test client.

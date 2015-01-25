@@ -152,34 +152,6 @@ static int pgsql_get_user_key(u08bits *usname, u08bits *realm, hmackey_t key) {
 	}
   return ret;
 }
-  
-static int pgsql_get_user_pwd(u08bits *usname, st_password_t pwd) {
-  int ret = -1;
-	char statement[TURN_LONG_STRING_SIZE];
-	snprintf(statement,sizeof(statement),"select password from turnusers_st where name='%s'",usname);
-
-	PGconn * pqc = get_pqdb_connection();
-	if(pqc) {
-		PGresult *res = PQexec(pqc, statement);
-
-		if(!res || (PQresultStatus(res) != PGRES_TUPLES_OK) || (PQntuples(res)!=1)) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving PostgreSQL DB information: %s\n",PQerrorMessage(pqc));
-		} else {
-			char *kval = PQgetvalue(res,0,0);
-			if(kval) {
-				strncpy((char*)pwd,kval,sizeof(st_password_t));
-				ret = 0;
-			} else {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong password data for user %s: NULL\n",usname);
-			}
-		}
-
-		if(res) {
-			PQclear(res);
-		}
-	}
-  return ret;
-}
 
 static int pgsql_get_oauth_key(const u08bits *kid, oauth_key_data_raw *key) {
 
@@ -195,15 +167,15 @@ static int pgsql_get_oauth_key(const u08bits *kid, oauth_key_data_raw *key) {
 		if(!res || (PQresultStatus(res) != PGRES_TUPLES_OK) || (PQntuples(res)!=1)) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving PostgreSQL DB information: %s\n",PQerrorMessage(pqc));
 		} else {
-			STRCPY((char*)key->ikm_key,PQgetvalue(res,0,0));
+			STRCPY(key->ikm_key,PQgetvalue(res,0,0));
 			key->timestamp = (u64bits)strtoll(PQgetvalue(res,0,1),NULL,10);
 			key->lifetime = (u32bits)strtol(PQgetvalue(res,0,2),NULL,10);
-			STRCPY((char*)key->hkdf_hash_func,PQgetvalue(res,0,3));
-			STRCPY((char*)key->as_rs_alg,PQgetvalue(res,0,4));
-			STRCPY((char*)key->as_rs_key,PQgetvalue(res,0,5));
-			STRCPY((char*)key->auth_alg,PQgetvalue(res,0,6));
-			STRCPY((char*)key->auth_key,PQgetvalue(res,0,7));
-			STRCPY((char*)key->kid,kid);
+			STRCPY(key->hkdf_hash_func,PQgetvalue(res,0,3));
+			STRCPY(key->as_rs_alg,PQgetvalue(res,0,4));
+			STRCPY(key->as_rs_key,PQgetvalue(res,0,5));
+			STRCPY(key->auth_alg,PQgetvalue(res,0,6));
+			STRCPY(key->auth_key,PQgetvalue(res,0,7));
+			STRCPY(key->kid,kid);
 			ret = 0;
 		}
 
@@ -215,7 +187,7 @@ static int pgsql_get_oauth_key(const u08bits *kid, oauth_key_data_raw *key) {
 	return ret;
 }
 
-static int pgsql_list_oauth_keys(void) {
+static int pgsql_list_oauth_keys(secrets_list_t *kids,secrets_list_t *hkdfs,secrets_list_t *teas,secrets_list_t *aas,secrets_list_t *tss,secrets_list_t *lts) {
 
 	oauth_key_data_raw key_;
 	oauth_key_data_raw *key=&key_;
@@ -235,19 +207,36 @@ static int pgsql_list_oauth_keys(void) {
 			int i = 0;
 			for(i=0;i<PQntuples(res);i++) {
 
-				STRCPY((char*)key->ikm_key,PQgetvalue(res,i,0));
+				STRCPY(key->ikm_key,PQgetvalue(res,i,0));
 				key->timestamp = (u64bits)strtoll(PQgetvalue(res,i,1),NULL,10);
 				key->lifetime = (u32bits)strtol(PQgetvalue(res,i,2),NULL,10);
-				STRCPY((char*)key->hkdf_hash_func,PQgetvalue(res,i,3));
-				STRCPY((char*)key->as_rs_alg,PQgetvalue(res,i,4));
-				STRCPY((char*)key->as_rs_key,PQgetvalue(res,i,5));
-				STRCPY((char*)key->auth_alg,PQgetvalue(res,i,6));
-				STRCPY((char*)key->auth_key,PQgetvalue(res,i,7));
-				STRCPY((char*)key->kid,PQgetvalue(res,i,8));
+				STRCPY(key->hkdf_hash_func,PQgetvalue(res,i,3));
+				STRCPY(key->as_rs_alg,PQgetvalue(res,i,4));
+				STRCPY(key->as_rs_key,PQgetvalue(res,i,5));
+				STRCPY(key->auth_alg,PQgetvalue(res,i,6));
+				STRCPY(key->auth_key,PQgetvalue(res,i,7));
+				STRCPY(key->kid,PQgetvalue(res,i,8));
 
-				printf("  kid=%s, ikm_key=%s, timestamp=%llu, lifetime=%lu, hkdf_hash_func=%s, as_rs_alg=%s, as_rs_key=%s, auth_alg=%s, auth_key=%s\n",
+				if(kids) {
+					add_to_secrets_list(kids,key->kid);
+					add_to_secrets_list(hkdfs,key->hkdf_hash_func);
+					add_to_secrets_list(teas,key->as_rs_alg);
+					add_to_secrets_list(aas,key->auth_alg);
+					{
+						char ts[256];
+						snprintf(ts,sizeof(ts)-1,"%llu",(unsigned long long)key->timestamp);
+						add_to_secrets_list(tss,ts);
+					}
+					{
+						char lt[256];
+						snprintf(lt,sizeof(lt)-1,"%lu",(unsigned long)key->lifetime);
+						add_to_secrets_list(lts,lt);
+					}
+				} else {
+					printf("  kid=%s, ikm_key=%s, timestamp=%llu, lifetime=%lu, hkdf_hash_func=%s, as_rs_alg=%s, as_rs_key=%s, auth_alg=%s, auth_key=%s\n",
 						key->kid, key->ikm_key, (unsigned long long)key->timestamp, (unsigned long)key->lifetime, key->hkdf_hash_func,
 						key->as_rs_alg, key->as_rs_key, key->auth_alg, key->auth_key);
+				}
 
 				ret = 0;
 			}
@@ -273,7 +262,7 @@ static int pgsql_set_user_key(u08bits *usname, u08bits *realm, const char *key) 
 			if(res) {
 				PQclear(res);
 			}
-		  snprintf(statement,sizeof(statement),"update turnusers_lt set hmackey='%s' where name='%s' and realm='%s'",key,usname,realm);
+			snprintf(statement,sizeof(statement),"update turnusers_lt set hmackey='%s' where name='%s' and realm='%s'",key,usname,realm);
 			res = PQexec(pqc, statement);
 			if(!res || (PQresultStatus(res) != PGRES_COMMAND_OK)) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error inserting/updating user information: %s\n",PQerrorMessage(pqc));
@@ -311,50 +300,23 @@ static int pgsql_set_oauth_key(oauth_key_data_raw *key) {
 		  } else {
 			  ret = 0;
 		  }
+	  } else {
+		  ret = 0;
 	  }
+
 	  if(res) {
 		  PQclear(res);
 	  }
   }
   return ret;
 }
-
-static int pgsql_set_user_pwd(u08bits *usname, st_password_t pwd) {
-  int ret = -1;
-	char statement[TURN_LONG_STRING_SIZE];
-	PGconn *pqc = get_pqdb_connection();
-	if(pqc) {
-	  snprintf(statement,sizeof(statement),"insert into turnusers_st values('%s','%s')",usname,pwd);
-    PGresult *res = PQexec(pqc, statement);
-		if(!res || (PQresultStatus(res) != PGRES_COMMAND_OK)) {
-			if(res) {
-				PQclear(res);
-			}
-		  snprintf(statement,sizeof(statement),"update turnusers_st set password='%s' where name='%s'",pwd,usname);
-			res = PQexec(pqc, statement);
-			if(!res || (PQresultStatus(res) != PGRES_COMMAND_OK)) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error inserting/updating user information: %s\n",PQerrorMessage(pqc));
-			} else {
-			  ret = 0;
-			}
-		}
-		if(res) {
-			PQclear(res);
-		}
-	}
-  return ret;
-}
   
-static int pgsql_del_user(u08bits *usname, int is_st, u08bits *realm) {
+static int pgsql_del_user(u08bits *usname, u08bits *realm) {
   int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
 	PGconn *pqc = get_pqdb_connection();
 	if(pqc) {
-		if(is_st) {
-		  snprintf(statement,sizeof(statement),"delete from turnusers_st where name='%s'",usname);
-		} else {
-		  snprintf(statement,sizeof(statement),"delete from turnusers_lt where name='%s' and realm='%s'",usname,realm);
-		}
+		snprintf(statement,sizeof(statement),"delete from turnusers_lt where name='%s' and realm='%s'",usname,realm);
 		PGresult *res = PQexec(pqc, statement);
 		if(res) {
 			PQclear(res);
@@ -385,17 +347,20 @@ static int pgsql_del_oauth_key(const u08bits *kid) {
   return ret;
 }
   
-static int pgsql_list_users(int is_st, u08bits *realm) {
-  int ret = -1;
+static int pgsql_list_users(u08bits *realm, secrets_list_t *users, secrets_list_t *realms)
+{
+	int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
+
+	u08bits realm0[STUN_MAX_REALM_SIZE+1] = "\0";
+	if(!realm) realm=realm0;
+
 	PGconn *pqc = get_pqdb_connection();
 	if(pqc) {
-		if(is_st) {
-		  snprintf(statement,sizeof(statement),"select name,'' from turnusers_st order by name");
-		} else if(realm && realm[0]) {
+		if(realm[0]) {
 		  snprintf(statement,sizeof(statement),"select name,realm from turnusers_lt where realm='%s' order by name",realm);
 		} else {
-		  snprintf(statement,sizeof(statement),"select name,realm from turnusers_lt order by name");
+		  snprintf(statement,sizeof(statement),"select name,realm from turnusers_lt order by realm,name");
 		}
 		PGresult *res = PQexec(pqc, statement);
 		if(!res || (PQresultStatus(res) != PGRES_TUPLES_OK)) {
@@ -406,10 +371,19 @@ static int pgsql_list_users(int is_st, u08bits *realm) {
 				char *kval = PQgetvalue(res,i,0);
 				if(kval) {
 					char *rval = PQgetvalue(res,i,1);
-					if(rval && *rval) {
-						printf("%s[%s]\n",kval,rval);
-					} else {
-						printf("%s\n",kval);
+					if(rval) {
+						if(users) {
+							add_to_secrets_list(users,kval);
+							if(realms) {
+								if(rval && *rval) {
+									add_to_secrets_list(realms,rval);
+								} else {
+									add_to_secrets_list(realms,(char*)realm);
+								}
+							}
+						} else {
+							printf("%s[%s]\n", kval, rval);
+						}
 					}
 				}
 			}
@@ -422,10 +396,19 @@ static int pgsql_list_users(int is_st, u08bits *realm) {
   return ret;
 }
   
-static int pgsql_show_secret(u08bits *realm) {
-  int ret = -1;
+static int pgsql_list_secrets(u08bits *realm, secrets_list_t *secrets, secrets_list_t *realms)
+{
+	int ret = -1;
+
+	u08bits realm0[STUN_MAX_REALM_SIZE+1] = "\0";
+	if(!realm) realm=realm0;
+
 	char statement[TURN_LONG_STRING_SIZE];
-	snprintf(statement,sizeof(statement)-1,"select value from turn_secret where realm='%s'",realm);
+	if (realm[0]) {
+		snprintf(statement, sizeof(statement), "select value,realm from turn_secret where realm='%s' order by value", realm);
+	} else {
+		snprintf(statement, sizeof(statement), "select value,realm from turn_secret order by realm,value");
+	}
 
 	donot_print_connection_success=1;
 
@@ -439,16 +422,28 @@ static int pgsql_show_secret(u08bits *realm) {
 			for(i=0;i<PQntuples(res);i++) {
 				char *kval = PQgetvalue(res,i,0);
 				if(kval) {
-					printf("%s\n",kval);
+					char* rval = PQgetvalue(res,i,1);
+					if(secrets) {
+						add_to_secrets_list(secrets,kval);
+						if(realms) {
+							if(rval && *rval) {
+								add_to_secrets_list(realms,rval);
+							} else {
+								add_to_secrets_list(realms,(char*)realm);
+							}
+						}
+					} else {
+						printf("%s[%s]\n",kval,rval);
+					}
 				}
 			}
-      ret = 0;
+			ret = 0;
 		}
 		if(res) {
 			PQclear(res);
 		}
 	}
-  return ret;
+	return ret;
 }
   
 static int pgsql_del_secret(u08bits *secret, u08bits *realm) {
@@ -474,13 +469,13 @@ static int pgsql_del_secret(u08bits *secret, u08bits *realm) {
 static int pgsql_set_secret(u08bits *secret, u08bits *realm) {
   int ret = -1;
 	donot_print_connection_success = 1;
-  char statement[TURN_LONG_STRING_SIZE];
+	char statement[TURN_LONG_STRING_SIZE];
 	PGconn *pqc = get_pqdb_connection();
 	if (pqc) {
 	  snprintf(statement,sizeof(statement),"insert into turn_secret (realm,value) values('%s','%s')",realm,secret);
 	  PGresult *res = PQexec(pqc, statement);
 	  if (!res || (PQresultStatus(res) != PGRES_COMMAND_OK)) {
-	    TURN_LOG_FUNC(
+		  TURN_LOG_FUNC(
 			  TURN_LOG_LEVEL_ERROR,
 			  "Error inserting/updating secret key information: %s\n",
 			  PQerrorMessage(pqc));
@@ -492,7 +487,45 @@ static int pgsql_set_secret(u08bits *secret, u08bits *realm) {
 	  }
 	}
 
-  return ret;
+	return ret;
+}
+
+static int pgsql_set_permission_ip(const char *kind, u08bits *realm, const char* ip, int del)
+{
+	int ret = -1;
+
+	u08bits realm0[STUN_MAX_REALM_SIZE+1] = "\0";
+	if(!realm) realm=realm0;
+
+	donot_print_connection_success = 1;
+
+	char statement[TURN_LONG_STRING_SIZE];
+
+	PGconn *pqc = get_pqdb_connection();
+
+	if (pqc) {
+
+		if(del) {
+			snprintf(statement, sizeof(statement), "delete from %s_peer_ip where realm = '%s'  and ip_range = '%s'", kind, (char*)realm, ip);
+		} else {
+			snprintf(statement, sizeof(statement), "insert into %s_peer_ip (realm,ip_range) values('%s','%s')", kind, (char*)realm, ip);
+		}
+
+		PGresult *res = PQexec(pqc, statement);
+		if (!res || (PQresultStatus(res) != PGRES_COMMAND_OK)) {
+			TURN_LOG_FUNC(
+				TURN_LOG_LEVEL_ERROR,
+				"Error inserting ip permission information: %s\n",
+				PQerrorMessage(pqc));
+	  } else {
+	    ret = 0;
+	  }
+	  if (res) {
+	    PQclear(res);
+	  }
+	}
+
+	return ret;
 }
   
 static int pgsql_add_origin(u08bits *origin, u08bits *realm) {
@@ -533,16 +566,25 @@ static int pgsql_del_origin(u08bits *origin) {
   return ret;
 }
   
-static int pgsql_list_origins(u08bits *realm) {
-  int ret = -1;
+static int pgsql_list_origins(u08bits *realm, secrets_list_t *origins, secrets_list_t *realms)
+{
+	int ret = -1;
+
+	u08bits realm0[STUN_MAX_REALM_SIZE+1] = "\0";
+	if(!realm) realm=realm0;
+
 	donot_print_connection_success = 1;
-	char statement[TURN_LONG_STRING_SIZE];
+
 	PGconn *pqc = get_pqdb_connection();
+
 	if(pqc) {
+
+		char statement[TURN_LONG_STRING_SIZE];
+
 		if(realm && realm[0]) {
 		  snprintf(statement,sizeof(statement),"select origin,realm from turn_origin_to_realm where realm='%s' order by origin",realm);
 		} else {
-		  snprintf(statement,sizeof(statement),"select origin,realm from turn_origin_to_realm order by origin,realm");
+		  snprintf(statement,sizeof(statement),"select origin,realm from turn_origin_to_realm order by realm,origin");
 		}
 		PGresult *res = PQexec(pqc, statement);
 		if(!res || (PQresultStatus(res) != PGRES_TUPLES_OK)) {
@@ -550,21 +592,32 @@ static int pgsql_list_origins(u08bits *realm) {
 		} else {
 			int i = 0;
 			for(i=0;i<PQntuples(res);i++) {
-				char *oval = PQgetvalue(res,i,0);
-				if(oval) {
+				char *kval = PQgetvalue(res,i,0);
+				if(kval) {
 					char *rval = PQgetvalue(res,i,1);
 					if(rval) {
-						printf("%s ==>> %s\n",oval,rval);
+						if(origins) {
+							add_to_secrets_list(origins,kval);
+							if(realms) {
+								if(rval && *rval) {
+									add_to_secrets_list(realms,rval);
+								} else {
+									add_to_secrets_list(realms,(char*)realm);
+								}
+							}
+						} else {
+							printf("%s ==>> %s\n",kval,rval);
+						}
 					}
 				}
 			}
-      ret = 0;
+			ret = 0;
 		}
 		if(res) {
 			PQclear(res);
 		}
 	}
-  return ret;
+	return ret;
 }
   
 static int pgsql_set_realm_option_one(u08bits *realm, unsigned long value, const char* opt) {
@@ -785,17 +838,131 @@ static void pgsql_reread_realms(secrets_list_t * realms_list) {
 	}
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////
+
+static int pgsql_get_admin_user(const u08bits *usname, u08bits *realm, password_t pwd)
+{
+	int ret = -1;
+
+	realm[0]=0;
+	pwd[0]=0;
+
+	PGconn * pqc = get_pqdb_connection();
+	if(pqc) {
+		char statement[TURN_LONG_STRING_SIZE];
+		snprintf(statement,sizeof(statement),"select realm,password from admin_user where name='%s'",usname);
+		PGresult *res = PQexec(pqc, statement);
+
+		if(!res || (PQresultStatus(res) != PGRES_TUPLES_OK) || (PQntuples(res)!=1)) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving PostgreSQL DB information: %s\n",PQerrorMessage(pqc));
+		} else {
+			const char *kval = PQgetvalue(res,0,0);
+			if(kval) {
+				strncpy((char*)realm,kval,STUN_MAX_REALM_SIZE);
+			}
+			kval = (const char*) PQgetvalue(res,0,1);
+			if(kval) {
+				strncpy((char*)pwd,kval,STUN_MAX_PWD_SIZE);
+			}
+			ret = 0;
+		}
+
+		if(res)
+			PQclear(res);
+
+	}
+	return ret;
+}
+
+static int pgsql_set_admin_user(const u08bits *usname, const u08bits *realm, const password_t pwd)
+{
+	int ret = -1;
+	char statement[TURN_LONG_STRING_SIZE];
+	donot_print_connection_success=1;
+	PGconn *pqc = get_pqdb_connection();
+	if(pqc) {
+	  snprintf(statement,sizeof(statement),"insert into admin_user (realm,name,password) values('%s','%s','%s')",realm,usname,pwd);
+
+	  PGresult *res = PQexec(pqc, statement);
+	  if(!res || (PQresultStatus(res) != PGRES_COMMAND_OK)) {
+		if(res) {
+			PQclear(res);
+		}
+		snprintf(statement,sizeof(statement),"update admin_user set password='%s',realm='%s' where name='%s'",pwd,realm,usname);
+		res = PQexec(pqc, statement);
+		if(!res || (PQresultStatus(res) != PGRES_COMMAND_OK)) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error inserting/updating user information: %s\n",PQerrorMessage(pqc));
+		} else {
+		  ret = 0;
+		}
+	  }
+	  if(res) {
+		PQclear(res);
+	  }
+	}
+	return ret;
+}
+
+static int pgsql_del_admin_user(const u08bits *usname)
+{
+	int ret = -1;
+	char statement[TURN_LONG_STRING_SIZE];
+	donot_print_connection_success=1;
+	PGconn *pqc = get_pqdb_connection();
+	if(pqc) {
+		snprintf(statement,sizeof(statement),"delete from admin_user where name='%s'",usname);
+		PGresult *res = PQexec(pqc, statement);
+		if(res) {
+			PQclear(res);
+			ret = 0;
+		}
+	}
+	return ret;
+}
+
+static int pgsql_list_admin_users(int no_print)
+{
+	int ret = -1;
+	char statement[TURN_LONG_STRING_SIZE];
+	donot_print_connection_success=1;
+	PGconn *pqc = get_pqdb_connection();
+	if(pqc) {
+		snprintf(statement,sizeof(statement),"select name,realm,password from admin_user order by realm,name");
+	}
+	PGresult *res = PQexec(pqc, statement);
+	if(!res || (PQresultStatus(res) != PGRES_TUPLES_OK)) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving PostgreSQL DB information: %s\n",PQerrorMessage(pqc));
+	} else {
+		int i = 0;
+		ret = 0;
+		for(i=0;i<PQntuples(res);i++) {
+			char *kval = PQgetvalue(res,i,0);
+			++ret;
+			if(kval && !no_print) {
+				char *rval = PQgetvalue(res,i,1);
+				if(rval && *rval) {
+					printf("%s[%s]\n",kval,rval);
+				} else {
+					printf("%s\n",kval);
+				}
+			}
+		}
+	}
+	if(res) {
+		PQclear(res);
+	}
+	return ret;
+}
+
+/////////////////////////////////////////////////////////////
 
 static const turn_dbdriver_t driver = {
   &pgsql_get_auth_secrets,
   &pgsql_get_user_key,
-  &pgsql_get_user_pwd,
   &pgsql_set_user_key,
-  &pgsql_set_user_pwd,
   &pgsql_del_user,
   &pgsql_list_users,
-  &pgsql_show_secret,
+  &pgsql_list_secrets,
   &pgsql_del_secret,
   &pgsql_set_secret,
   &pgsql_add_origin,
@@ -805,11 +972,16 @@ static const turn_dbdriver_t driver = {
   &pgsql_list_realm_options,
   &pgsql_auth_ping,
   &pgsql_get_ip_list,
+  &pgsql_set_permission_ip,
   &pgsql_reread_realms,
   &pgsql_set_oauth_key,
   &pgsql_get_oauth_key,
   &pgsql_del_oauth_key,
-  &pgsql_list_oauth_keys
+  &pgsql_list_oauth_keys,
+  &pgsql_get_admin_user,
+  &pgsql_set_admin_user,
+  &pgsql_del_admin_user,
+  &pgsql_list_admin_users
 };
 
 const turn_dbdriver_t * get_pgsql_dbdriver(void) {

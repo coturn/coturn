@@ -1633,6 +1633,7 @@ void detach_socket_net_data(ioa_socket_handle s)
 void close_ioa_socket(ioa_socket_handle s)
 {
 	if (s) {
+
 		if(s->magic != SOCKET_MAGIC) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s wrong magic on socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(long)s, s->st, s->sat);
 			return;
@@ -1657,6 +1658,12 @@ void close_ioa_socket(ioa_socket_handle s)
 					((s->st == TCP_SOCKET) ? STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE : STUN_ATTRIBUTE_TRANSPORT_UDP_VALUE),
 					&(s->local_addr));
 		}
+
+		if(s->special_session) {
+			turn_free(s->special_session,s->special_session_size);
+			s->special_session = NULL;
+		}
+		s->special_session_size = 0;
 
 		delete_socket_from_map(s);
 		delete_socket_from_parent(s);
@@ -2263,13 +2270,11 @@ static TURN_TLS_TYPE check_tentative_tls(ioa_socket_raw fd)
 		if((s[0]==22)&&(s[1]==3)&&(s[5]==1)&&(s[9]==3)) {
 			char max_supported = (char)(TURN_TLS_TOTAL-2);
 			if(s[10] >= max_supported)
-				ret = (TURN_TLS_TYPE)((((int)TURN_TLS_TOTAL)-1));
+				ret = TURN_TLS_SSL23; /* compatibility mode */
 			else
 				ret = (TURN_TLS_TYPE)(s[10]+1);
 		} else if((s[2]==1)&&(s[3]==3)) {
 			ret = TURN_TLS_SSL23; /* compatibility mode */
-		} else if((s[2]==1)&&(s[3]==0)&&(s[4]==2)) {
-			ret = TURN_TLS_SSL23; /* old mode */
 		}
 	}
 
@@ -2403,11 +2408,11 @@ static int socket_input_worker(ioa_socket_handle s)
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s on socket: 0x%lx, st=%d, sat=%d: bev already exist\n", __FUNCTION__,(long)s, s->st, s->sat);
 			}
 			s->bev = bufferevent_socket_new(s->e->event_base,
-							s->fd,
-							TURN_BUFFEREVENTS_OPTIONS);
+						s->fd,
+						TURN_BUFFEREVENTS_OPTIONS);
 			debug_ptr_add(s->bev);
 			bufferevent_setcb(s->bev, socket_input_handler_bev, socket_output_handler_bev,
-					eventcb_bev, s);
+				eventcb_bev, s);
 			bufferevent_setwatermark(s->bev, EV_READ|EV_WRITE, 0, BUFFEREVENT_HIGH_WATERMARK);
 			bufferevent_enable(s->bev, EV_READ|EV_WRITE); /* Start reading. */
 		}
@@ -2599,6 +2604,19 @@ static void socket_input_handler(evutil_socket_t fd, short what, void* arg)
 void close_ioa_socket_after_processing_if_necessary(ioa_socket_handle s)
 {
 	if (s && ioa_socket_tobeclosed(s)) {
+
+		if(s->special_session) {
+			turn_free(s->special_session,s->special_session_size);
+			s->special_session = NULL;
+		}
+		s->special_session_size = 0;
+
+		if(!(s->session) && !(s->sub_session)) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s https server socket closed: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(long)s, get_ioa_socket_type(s), get_ioa_socket_app_type(s));
+			IOA_CLOSE_SOCKET(s);
+			return;
+		}
+
 		switch (s->sat){
 		case TCP_CLIENT_DATA_SOCKET:
 		case TCP_RELAY_DATA_SOCKET:
@@ -2606,6 +2624,7 @@ void close_ioa_socket_after_processing_if_necessary(ioa_socket_handle s)
 			tcp_connection *tc = s->sub_session;
 			if (tc) {
 				delete_tcp_connection(tc);
+				s->sub_session = NULL;
 			}
 		}
 			break;
@@ -2772,6 +2791,20 @@ static void eventcb_bev(struct bufferevent *bev, short events, void *arg)
 
 			s->tobeclosed = 1;
 
+			if(s->special_session) {
+				turn_free(s->special_session,s->special_session_size);
+				s->special_session = NULL;
+			}
+			s->special_session_size = 0;
+
+			if(!(s->session) && !(s->sub_session)) {
+				char sraddr[129]="\0";
+				addr_to_string(&(s->remote_addr),(u08bits*)sraddr);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s https server socket closed: 0x%lx, st=%d, sat=%d, remote addr=%s\n", __FUNCTION__,(long)s, get_ioa_socket_type(s), get_ioa_socket_app_type(s),sraddr);
+				IOA_CLOSE_SOCKET(s);
+				return;
+			}
+
 			switch (s->sat){
 			case TCP_CLIENT_DATA_SOCKET:
 			case TCP_RELAY_DATA_SOCKET:
@@ -2779,6 +2812,7 @@ static void eventcb_bev(struct bufferevent *bev, short events, void *arg)
 				tcp_connection *tc = s->sub_session;
 				if (tc) {
 					delete_tcp_connection(tc);
+					s->sub_session = NULL;
 				}
 			}
 				break;
@@ -3176,6 +3210,68 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 	return ret;
 }
 
+int send_data_from_ioa_socket_tcp(ioa_socket_handle s, const void *data, size_t sz)
+{
+	int ret = -1;
+
+	if(s && data) {
+
+		if (s->done || (s->fd == -1) || ioa_socket_tobeclosed(s) || !(s->e)) {
+			TURN_LOG_FUNC(
+				TURN_LOG_LEVEL_INFO,
+				"!!! %s: (1) Trying to send data from bad socket: 0x%lx (1): done=%d, fd=%d, st=%d, sat=%d\n",
+				__FUNCTION__, (long) s, (int) s->done,
+				(int) s->fd, s->st, s->sat);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s socket: 0x%lx was closed\n", __FUNCTION__,(long)s);
+
+		} else if (s->connected && s->bev) {
+			if (s->st == TLS_SOCKET) {
+#if TLS_SUPPORTED
+				SSL *ctx = bufferevent_openssl_get_ssl(s->bev);
+				if (!ctx || SSL_get_shutdown(ctx)) {
+					s->tobeclosed = 1;
+					ret = 0;
+				}
+#endif
+			}
+
+			if (!(s->tobeclosed)) {
+
+				ret = (int)sz;
+
+				s->in_write = 1;
+				if (bufferevent_write(s->bev, data, sz) < 0) {
+					ret = -1;
+					perror("bufev send");
+					log_socket_event(s, "socket write failed, to be closed", 1);
+					s->tobeclosed = 1;
+					s->broken = 1;
+				}
+				s->in_write = 0;
+			}
+		}
+	}
+
+	return ret;
+}
+
+int send_str_from_ioa_socket_tcp(ioa_socket_handle s, const void *data)
+{
+	if(data) {
+		return send_data_from_ioa_socket_tcp(s, data, strlen((const char*)data));
+	} else {
+		return 0;
+	}
+}
+
+int send_ulong_from_ioa_socket_tcp(ioa_socket_handle s, size_t data)
+{
+	char str[129];
+	snprintf(str,sizeof(str)-1,"%lu",(unsigned long)data);
+
+	return send_str_from_ioa_socket_tcp(s,str);
+}
+
 int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, int event_type, ioa_net_event_handler cb, void* ctx, int clean_preexisting)
 {
 	if(s) {
@@ -3227,14 +3323,19 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 							return -1;
 						}
 					} else {
-						s->bev = bufferevent_socket_new(s->e->event_base,
+						if(check_tentative_tls(s->fd)) {
+							s->tobeclosed = 1;
+							return -1;
+						} else {
+							s->bev = bufferevent_socket_new(s->e->event_base,
 										s->fd,
 										TURN_BUFFEREVENTS_OPTIONS);
-						debug_ptr_add(s->bev);
-						bufferevent_setcb(s->bev, socket_input_handler_bev, socket_output_handler_bev,
-							eventcb_bev, s);
-						bufferevent_setwatermark(s->bev, EV_READ|EV_WRITE, 0, BUFFEREVENT_HIGH_WATERMARK);
-						bufferevent_enable(s->bev, EV_READ|EV_WRITE); /* Start reading. */
+							debug_ptr_add(s->bev);
+							bufferevent_setcb(s->bev, socket_input_handler_bev, socket_output_handler_bev,
+											eventcb_bev, s);
+							bufferevent_setwatermark(s->bev, EV_READ|EV_WRITE, 0, BUFFEREVENT_HIGH_WATERMARK);
+							bufferevent_enable(s->bev, EV_READ|EV_WRITE); /* Start reading. */
+						}
 					}
 					break;
 				case TLS_SOCKET:
