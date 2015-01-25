@@ -148,14 +148,14 @@ static void fix_user_directory(char *dir0) {
 static void init_sqlite_database(sqlite3 *sqliteconnection) {
 
 	const char * statements[] = {
-		"CREATE TABLE turnusers_lt ( realm varchar(512) default '', name varchar(512), hmackey char(128), PRIMARY KEY (realm,name))",
-		"CREATE TABLE turnusers_st (name varchar(512) PRIMARY KEY, password varchar(512))",
-		"CREATE TABLE turn_secret (realm varchar(512) default '', value varchar(512), primary key (realm,value))",
-		"CREATE TABLE allowed_peer_ip (realm varchar(512) default '', ip_range varchar(256), primary key (realm,ip_range))",
-		"CREATE TABLE denied_peer_ip (realm varchar(512) default '', ip_range varchar(256), primary key (realm,ip_range))",
-		"CREATE TABLE turn_origin_to_realm (origin varchar(512),realm varchar(512),primary key (origin))",
-		"CREATE TABLE turn_realm_option (realm varchar(512) default '',	opt varchar(32),	value varchar(128),	primary key (realm,opt))",
+		"CREATE TABLE turnusers_lt ( realm varchar(127) default '', name varchar(512), hmackey char(128), PRIMARY KEY (realm,name))",
+		"CREATE TABLE turn_secret (realm varchar(127) default '', value varchar(127), primary key (realm,value))",
+		"CREATE TABLE allowed_peer_ip (realm varchar(127) default '', ip_range varchar(256), primary key (realm,ip_range))",
+		"CREATE TABLE denied_peer_ip (realm varchar(127) default '', ip_range varchar(256), primary key (realm,ip_range))",
+		"CREATE TABLE turn_origin_to_realm (origin varchar(127),realm varchar(127),primary key (origin))",
+		"CREATE TABLE turn_realm_option (realm varchar(127) default '',	opt varchar(32),	value varchar(128),	primary key (realm,opt))",
 		"CREATE TABLE oauth_key (kid varchar(128),ikm_key varchar(256) default '',timestamp bigint default 0,lifetime integer default 0,hkdf_hash_func varchar(64) default '',as_rs_alg varchar(64) default '',as_rs_key varchar(256) default '',auth_alg varchar(64) default '',auth_key varchar(256) default '',primary key (kid))",
+		"CREATE TABLE admin_user (uname varchar(32), realm varchar(127), password varchar(127), primary key (uname))",
 		NULL
 	};
 
@@ -188,10 +188,12 @@ static sqlite3 * get_sqlite_connection(void) {
 				sqliteconnection=NULL;
 			}
 			turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_UNKNOWN;
-		} else if(!donot_print_connection_success){
+		} else {
 			init_sqlite_database(sqliteconnection);
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "SQLite DB connection success: %s\n",pud->userdb);
-			donot_print_connection_success = 1;
+			if(!donot_print_connection_success){
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "SQLite DB connection success: %s\n",pud->userdb);
+				donot_print_connection_success = 1;
+			}
 		}
 		if(sqliteconnection) {
 			(void) pthread_setspecific(connection_key, sqliteconnection);
@@ -284,42 +286,6 @@ static int sqlite_get_user_key(u08bits *usname, u08bits *realm, hmackey_t key)
 	return ret;
 }
 
-static int sqlite_get_user_pwd(u08bits *usname, st_password_t pwd)
-{
-	int ret = -1;
-	char statement[TURN_LONG_STRING_SIZE];
-	sqlite3_stmt *st = NULL;
-	int rc = 0;
-	snprintf(statement, sizeof(statement), "select password from turnusers_st where name='%s'", usname);
-
-	sqlite3 *sqliteconnection = get_sqlite_connection();
-	if (sqliteconnection) {
-
-		sqlite_lock(0);
-
-		if ((rc = sqlite3_prepare(sqliteconnection, statement, -1, &st, 0)) == SQLITE_OK) {
-			int res = sqlite3_step(st);
-			if (res == SQLITE_ROW) {
-				const char *kval = (const char*) sqlite3_column_text(st, 0);
-				if (kval) {
-					strncpy((char*) pwd, kval, sizeof(st_password_t));
-					ret = 0;
-				} else {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong password data for user %s: NULL\n", usname);
-				}
-			}
-		} else {
-			const char* errmsg = sqlite3_errmsg(sqliteconnection);
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving SQLite DB information: %s\n", errmsg);
-		}
-
-		sqlite3_finalize(st);
-
-		sqlite_unlock(0);
-	}
-	return ret;
-}
-
 static int sqlite_get_oauth_key(const u08bits *kid, oauth_key_data_raw *key) {
 
 	int ret = -1;
@@ -339,15 +305,15 @@ static int sqlite_get_oauth_key(const u08bits *kid, oauth_key_data_raw *key) {
 			int res = sqlite3_step(st);
 			if (res == SQLITE_ROW) {
 
-				STRCPY((char*)key->ikm_key,sqlite3_column_text(st, 0));
+				STRCPY(key->ikm_key,sqlite3_column_text(st, 0));
 				key->timestamp = (u64bits)strtoll((const char*)sqlite3_column_text(st, 1),NULL,10);
 				key->lifetime = (u32bits)strtol((const char*)sqlite3_column_text(st, 2),NULL,10);
-				STRCPY((char*)key->hkdf_hash_func,sqlite3_column_text(st, 3));
-				STRCPY((char*)key->as_rs_alg,sqlite3_column_text(st, 4));
-				STRCPY((char*)key->as_rs_key,sqlite3_column_text(st, 5));
-				STRCPY((char*)key->auth_alg,sqlite3_column_text(st, 6));
-				STRCPY((char*)key->auth_key,sqlite3_column_text(st, 7));
-				STRCPY((char*)key->kid,kid);
+				STRCPY(key->hkdf_hash_func,sqlite3_column_text(st, 3));
+				STRCPY(key->as_rs_alg,sqlite3_column_text(st, 4));
+				STRCPY(key->as_rs_key,sqlite3_column_text(st, 5));
+				STRCPY(key->auth_alg,sqlite3_column_text(st, 6));
+				STRCPY(key->auth_key,sqlite3_column_text(st, 7));
+				STRCPY(key->kid,kid);
 				ret = 0;
 			}
 		} else {
@@ -363,7 +329,7 @@ static int sqlite_get_oauth_key(const u08bits *kid, oauth_key_data_raw *key) {
 	return ret;
 }
 
-static int sqlite_list_oauth_keys(void) {
+static int sqlite_list_oauth_keys(secrets_list_t *kids,secrets_list_t *hkdfs,secrets_list_t *teas,secrets_list_t *aas,secrets_list_t *tss,secrets_list_t *lts) {
 
 	oauth_key_data_raw key_;
 	oauth_key_data_raw *key=&key_;
@@ -389,19 +355,36 @@ static int sqlite_list_oauth_keys(void) {
 				int res = sqlite3_step(st);
 				if (res == SQLITE_ROW) {
 
-					STRCPY((char*)key->ikm_key,sqlite3_column_text(st, 0));
+					STRCPY(key->ikm_key,sqlite3_column_text(st, 0));
 					key->timestamp = (u64bits)strtoll((const char*)sqlite3_column_text(st, 1),NULL,10);
 					key->lifetime = (u32bits)strtol((const char*)sqlite3_column_text(st, 2),NULL,10);
-					STRCPY((char*)key->hkdf_hash_func,sqlite3_column_text(st, 3));
-					STRCPY((char*)key->as_rs_alg,sqlite3_column_text(st, 4));
-					STRCPY((char*)key->as_rs_key,sqlite3_column_text(st, 5));
-					STRCPY((char*)key->auth_alg,sqlite3_column_text(st, 6));
-					STRCPY((char*)key->auth_key,sqlite3_column_text(st, 7));
-					STRCPY((char*)key->kid,sqlite3_column_text(st, 7));
+					STRCPY(key->hkdf_hash_func,sqlite3_column_text(st, 3));
+					STRCPY(key->as_rs_alg,sqlite3_column_text(st, 4));
+					STRCPY(key->as_rs_key,sqlite3_column_text(st, 5));
+					STRCPY(key->auth_alg,sqlite3_column_text(st, 6));
+					STRCPY(key->auth_key,sqlite3_column_text(st, 7));
+					STRCPY(key->kid,sqlite3_column_text(st, 8));
 
-					printf("  kid=%s, ikm_key=%s, timestamp=%llu, lifetime=%lu, hkdf_hash_func=%s, as_rs_alg=%s, as_rs_key=%s, auth_alg=%s, auth_key=%s\n",
-						key->kid, key->ikm_key, (unsigned long long)key->timestamp, (unsigned long)key->lifetime, key->hkdf_hash_func,
-						key->as_rs_alg, key->as_rs_key, key->auth_alg, key->auth_key);
+					if(kids) {
+						add_to_secrets_list(kids,key->kid);
+						add_to_secrets_list(hkdfs,key->hkdf_hash_func);
+						add_to_secrets_list(teas,key->as_rs_alg);
+						add_to_secrets_list(aas,key->auth_alg);
+						{
+							char ts[256];
+							snprintf(ts,sizeof(ts)-1,"%llu",(unsigned long long)key->timestamp);
+							add_to_secrets_list(tss,ts);
+						}
+						{
+							char lt[256];
+							snprintf(lt,sizeof(lt)-1,"%lu",(unsigned long)key->lifetime);
+							add_to_secrets_list(lts,lt);
+						}
+					} else {
+						printf("  kid=%s, ikm_key=%s, timestamp=%llu, lifetime=%lu, hkdf_hash_func=%s, as_rs_alg=%s, as_rs_key=%s, auth_alg=%s, auth_key=%s\n",
+										key->kid, key->ikm_key, (unsigned long long)key->timestamp, (unsigned long)key->lifetime, key->hkdf_hash_func,
+										key->as_rs_alg, key->as_rs_key, key->auth_alg, key->auth_key);
+					}
 
 				} else if (res == SQLITE_DONE) {
 					break;
@@ -481,7 +464,7 @@ static int sqlite_set_oauth_key(oauth_key_data_raw *key)
 			ret = 0;
 		} else {
 			const char* errmsg = sqlite3_errmsg(sqliteconnection);
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving SQLite DB information: %s\n", errmsg);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error updating SQLite DB information: %s\n", errmsg);
 		}
 		sqlite3_finalize(st);
 
@@ -490,7 +473,7 @@ static int sqlite_set_oauth_key(oauth_key_data_raw *key)
 	return ret;
 }
 
-static int sqlite_set_user_pwd(u08bits *usname, st_password_t pwd)
+static int sqlite_del_user(u08bits *usname, u08bits *realm)
 {
 	int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
@@ -501,40 +484,7 @@ static int sqlite_set_user_pwd(u08bits *usname, st_password_t pwd)
 
 	sqlite3 *sqliteconnection = get_sqlite_connection();
 	if (sqliteconnection) {
-		snprintf(statement, sizeof(statement), "insert or replace into turnusers_st values('%s','%s')", usname, pwd);
-
-		sqlite_lock(1);
-
-		if ((rc = sqlite3_prepare(sqliteconnection, statement, -1, &st, 0)) == SQLITE_OK) {
-			sqlite3_step(st);
-			ret = 0;
-		} else {
-			const char* errmsg = sqlite3_errmsg(sqliteconnection);
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving SQLite DB information: %s\n", errmsg);
-		}
-		sqlite3_finalize(st);
-
-		sqlite_unlock(1);
-	}
-	return ret;
-}
-
-static int sqlite_del_user(u08bits *usname, int is_st, u08bits *realm)
-{
-	int ret = -1;
-	char statement[TURN_LONG_STRING_SIZE];
-	sqlite3_stmt *st = NULL;
-	int rc = 0;
-
-	donot_print_connection_success=1;
-
-	sqlite3 *sqliteconnection = get_sqlite_connection();
-	if (sqliteconnection) {
-		if (is_st) {
-			snprintf(statement, sizeof(statement), "delete from turnusers_st where name='%s'", usname);
-		} else {
-			snprintf(statement, sizeof(statement), "delete from turnusers_lt where name='%s' and realm='%s'", usname, realm);
-		}
+		snprintf(statement, sizeof(statement), "delete from turnusers_lt where name='%s' and realm='%s'", usname, realm);
 
 		sqlite_lock(1);
 
@@ -583,23 +533,24 @@ static int sqlite_del_oauth_key(const u08bits *kid)
 }
 
 
-static int sqlite_list_users(int is_st, u08bits *realm)
+static int sqlite_list_users(u08bits *realm, secrets_list_t *users, secrets_list_t *realms)
 {
 	int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
 	sqlite3_stmt *st = NULL;
 	int rc = 0;
 
+	u08bits realm0[STUN_MAX_REALM_SIZE+1] = "\0";
+	if(!realm) realm=realm0;
+
 	donot_print_connection_success=1;
 
 	sqlite3 *sqliteconnection = get_sqlite_connection();
 	if (sqliteconnection) {
-		if (is_st) {
-			snprintf(statement, sizeof(statement), "select name,'' from turnusers_st order by name");
-		} else if (realm && realm[0]) {
+		if (realm[0]) {
 			snprintf(statement, sizeof(statement), "select name,realm from turnusers_lt where realm='%s' order by name", realm);
 		} else {
-			snprintf(statement, sizeof(statement), "select name,realm from turnusers_lt order by name");
+			snprintf(statement, sizeof(statement), "select name,realm from turnusers_lt order by realm,name");
 		}
 
 		sqlite_lock(0);
@@ -614,10 +565,17 @@ static int sqlite_list_users(int is_st, u08bits *realm)
 					const char* kval = (const char*) sqlite3_column_text(st, 0);
 					const char* rval = (const char*) sqlite3_column_text(st, 1);
 
-					if (rval && *rval) {
-						printf("%s[%s]\n", kval, rval);
+					if(users) {
+						add_to_secrets_list(users,kval);
+						if(realms) {
+							if(rval && *rval) {
+								add_to_secrets_list(realms,rval);
+							} else {
+								add_to_secrets_list(realms,(char*)realm);
+							}
+						}
 					} else {
-						printf("%s\n", kval);
+						printf("%s[%s]\n", kval, rval);
 					}
 
 				} else if (res == SQLITE_DONE) {
@@ -640,13 +598,22 @@ static int sqlite_list_users(int is_st, u08bits *realm)
 	return ret;
 }
 
-static int sqlite_show_secret(u08bits *realm)
+static int sqlite_list_secrets(u08bits *realm, secrets_list_t *secrets, secrets_list_t *realms)
 {
 	int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
+
+	u08bits realm0[STUN_MAX_REALM_SIZE+1] = "\0";
+	if(!realm) realm=realm0;
+
 	sqlite3_stmt *st = NULL;
 	int rc = 0;
-	snprintf(statement,sizeof(statement)-1,"select value from turn_secret where realm='%s'",realm);
+
+	if (realm[0]) {
+		snprintf(statement, sizeof(statement), "select value,realm from turn_secret where realm='%s' order by value", realm);
+	} else {
+		snprintf(statement, sizeof(statement), "select value,realm from turn_secret order by realm,value");
+	}
 
 	donot_print_connection_success=1;
 
@@ -656,17 +623,37 @@ static int sqlite_show_secret(u08bits *realm)
 		sqlite_lock(0);
 
 		if ((rc = sqlite3_prepare(sqliteconnection, statement, -1, &st, 0)) == SQLITE_OK) {
-			int res = sqlite3_step(st);
-			if (res == SQLITE_ROW) {
-				ret = 0;
-				const char* kval = (const char*) sqlite3_column_text(st, 0);
-				if(kval) {
-					printf("%s\n",kval);
+
+			int res = 0;
+			while(1) {
+				res = sqlite3_step(st);
+				if (res == SQLITE_ROW) {
+					ret = 0;
+					const char* kval = (const char*) sqlite3_column_text(st, 0);
+					if(kval) {
+						const char* rval = (const char*) sqlite3_column_text(st, 1);
+						if(secrets) {
+							add_to_secrets_list(secrets,kval);
+							if(realms) {
+								if(rval && *rval) {
+									add_to_secrets_list(realms,rval);
+								} else {
+									add_to_secrets_list(realms,(char*)realm);
+								}
+							}
+						} else {
+							printf("%s[%s]\n",kval,rval);
+						}
+					}
+				} else if (res == SQLITE_DONE) {
+					break;
+				} else {
+					const char* errmsg = sqlite3_errmsg(sqliteconnection);
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving SQLite DB information: %s\n", errmsg);
+					ret = -1;
+					break;
 				}
 			}
-		} else {
-			const char* errmsg = sqlite3_errmsg(sqliteconnection);
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving SQLite DB information: %s\n", errmsg);
 		}
 		sqlite3_finalize(st);
 
@@ -791,20 +778,25 @@ static int sqlite_del_origin(u08bits *origin)
 	return ret;
 }
 
-static int sqlite_list_origins(u08bits *realm)
+static int sqlite_list_origins(u08bits *realm, secrets_list_t *origins, secrets_list_t *realms)
 {
 	int ret = -1;
+
+	u08bits realm0[STUN_MAX_REALM_SIZE+1] = "\0";
+	if(!realm) realm=realm0;
+
 	donot_print_connection_success = 1;
-	char statement[TURN_LONG_STRING_SIZE];
+
 	sqlite3_stmt *st = NULL;
 	int rc = 0;
 
 	sqlite3 *sqliteconnection = get_sqlite_connection();
 	if (sqliteconnection) {
+		char statement[TURN_LONG_STRING_SIZE];
 		if (realm && realm[0]) {
 			snprintf(statement, sizeof(statement), "select origin,realm from turn_origin_to_realm where realm='%s' order by origin", realm);
 		} else {
-			snprintf(statement, sizeof(statement), "select origin,realm from turn_origin_to_realm order by origin,realm");
+			snprintf(statement, sizeof(statement), "select origin,realm from turn_origin_to_realm order by realm,origin");
 		}
 
 		sqlite_lock(0);
@@ -819,8 +811,18 @@ static int sqlite_list_origins(u08bits *realm)
 					const char* kval = (const char*) sqlite3_column_text(st, 0);
 					const char* rval = (const char*) sqlite3_column_text(st, 1);
 
-					printf("%s ==>> %s\n",kval,rval);
-
+					if(origins) {
+						add_to_secrets_list(origins,kval);
+						if(realms) {
+							if(rval && *rval) {
+								add_to_secrets_list(realms,rval);
+							} else {
+								add_to_secrets_list(realms,(char*)realm);
+							}
+						}
+					} else {
+						printf("%s ==>> %s\n",kval,rval);
+					}
 				} else if (res == SQLITE_DONE) {
 					break;
 				} else {
@@ -974,6 +976,45 @@ static int sqlite_get_ip_list(const char *kind, ip_range_list_t * list)
 	return ret;
 }
 
+static int sqlite_set_permission_ip(const char *kind, u08bits *realm, const char* ip, int del)
+{
+	int ret = -1;
+
+	u08bits realm0[STUN_MAX_REALM_SIZE+1] = "\0";
+	if(!realm) realm=realm0;
+
+	char statement[TURN_LONG_STRING_SIZE];
+
+	sqlite3_stmt *st = NULL;
+	int rc = 0;
+
+	donot_print_connection_success=1;
+
+	sqlite3 *sqliteconnection = get_sqlite_connection();
+	if (sqliteconnection) {
+
+		sqlite_lock(1);
+
+		if(del) {
+			snprintf(statement, sizeof(statement), "delete from %s_peer_ip where realm = '%s'  and ip_range = '%s'", kind, (char*)realm, ip);
+		} else {
+			snprintf(statement, sizeof(statement), "insert or replace into %s_peer_ip (realm,ip_range) values('%s','%s')", kind, (char*)realm, ip);
+		}
+
+		if ((rc = sqlite3_prepare(sqliteconnection, statement, -1, &st, 0)) == SQLITE_OK) {
+			sqlite3_step(st);
+			ret = 0;
+		} else {
+			const char* errmsg = sqlite3_errmsg(sqliteconnection);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error updating SQLite DB information: %s\n", errmsg);
+		}
+		sqlite3_finalize(st);
+
+		sqlite_unlock(1);
+	}
+	return ret;
+}
+
 static void sqlite_reread_realms(secrets_list_t * realms_list)
 {
 	sqlite3 *sqliteconnection = get_sqlite_connection();
@@ -1098,17 +1139,172 @@ static void sqlite_reread_realms(secrets_list_t * realms_list)
 	}
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////
+
+static int sqlite_get_admin_user(const u08bits *usname, u08bits *realm, password_t pwd)
+{
+	int ret = -1;
+
+	realm[0]=0;
+	pwd[0]=0;
+
+	sqlite3 *sqliteconnection = get_sqlite_connection();
+	if (sqliteconnection) {
+		char statement[TURN_LONG_STRING_SIZE];
+		sqlite3_stmt *st = NULL;
+		int rc = 0;
+		snprintf(statement, sizeof(statement), "select realm,password from admin_user where name='%s'", usname);
+
+		sqlite_lock(0);
+
+		if ((rc = sqlite3_prepare(sqliteconnection, statement, -1, &st, 0)) == SQLITE_OK) {
+			int res = sqlite3_step(st);
+			if (res == SQLITE_ROW) {
+				const char *kval = (const char*) sqlite3_column_text(st, 0);
+				if(kval) {
+					strncpy((char*)realm,kval,STUN_MAX_REALM_SIZE);
+				}
+				kval = (const char*) sqlite3_column_text(st, 1);
+				if(kval) {
+					strncpy((char*)pwd,kval,STUN_MAX_PWD_SIZE);
+				}
+				ret = 0;
+			}
+		} else {
+			const char* errmsg = sqlite3_errmsg(sqliteconnection);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving SQLite DB information: %s\n", errmsg);
+		}
+
+		sqlite3_finalize(st);
+
+		sqlite_unlock(0);
+	}
+	return ret;
+}
+
+static int sqlite_set_admin_user(const u08bits *usname, const u08bits *realm, const password_t pwd)
+{
+	int ret = -1;
+	char statement[TURN_LONG_STRING_SIZE];
+	sqlite3_stmt *st = NULL;
+	int rc = 0;
+
+	donot_print_connection_success=1;
+
+	sqlite3 *sqliteconnection = get_sqlite_connection();
+	if (sqliteconnection) {
+
+		sqlite_lock(1);
+
+		snprintf(statement, sizeof(statement), "insert or replace into admin_user (realm,name,password) values('%s','%s','%s')", realm, usname, pwd);
+
+		if ((rc = sqlite3_prepare(sqliteconnection, statement, -1, &st, 0)) == SQLITE_OK) {
+			sqlite3_step(st);
+			ret = 0;
+		} else {
+			const char* errmsg = sqlite3_errmsg(sqliteconnection);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving SQLite DB information: %s\n", errmsg);
+		}
+		sqlite3_finalize(st);
+
+		sqlite_unlock(1);
+	}
+	return ret;
+}
+
+static int sqlite_del_admin_user(const u08bits *usname)
+{
+	int ret = -1;
+	char statement[TURN_LONG_STRING_SIZE];
+	sqlite3_stmt *st = NULL;
+	int rc = 0;
+
+	donot_print_connection_success=1;
+
+	sqlite3 *sqliteconnection = get_sqlite_connection();
+	if (sqliteconnection) {
+		snprintf(statement, sizeof(statement), "delete from admin_user where name='%s'", usname);
+
+		sqlite_lock(1);
+
+		if ((rc = sqlite3_prepare(sqliteconnection, statement, -1, &st, 0)) == SQLITE_OK) {
+			sqlite3_step(st);
+			ret = 0;
+		} else {
+			const char* errmsg = sqlite3_errmsg(sqliteconnection);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving SQLite DB information: %s\n", errmsg);
+		}
+		sqlite3_finalize(st);
+
+		sqlite_unlock(1);
+	}
+	return ret;
+}
+
+static int sqlite_list_admin_users(int no_print)
+{
+	int ret = -1;
+	char statement[TURN_LONG_STRING_SIZE];
+	sqlite3_stmt *st = NULL;
+	int rc = 0;
+
+	donot_print_connection_success=1;
+
+	sqlite3 *sqliteconnection = get_sqlite_connection();
+	if (sqliteconnection) {
+		snprintf(statement, sizeof(statement), "select name,realm from admin_user order by realm,name");
+
+		sqlite_lock(0);
+
+		if ((rc = sqlite3_prepare(sqliteconnection, statement, -1, &st, 0)) == SQLITE_OK) {
+
+			ret = 0;
+			while (1) {
+				int res = sqlite3_step(st);
+				if (res == SQLITE_ROW) {
+
+					const char* kval = (const char*) sqlite3_column_text(st, 0);
+					const char* rval = (const char*) sqlite3_column_text(st, 1);
+
+					if(!no_print) {
+						if (rval && *rval) {
+							printf("%s[%s]\n", kval, rval);
+						} else {
+							printf("%s\n", kval);
+						}
+					}
+
+					++ret;
+
+				} else if (res == SQLITE_DONE) {
+					break;
+				} else {
+					const char* errmsg = sqlite3_errmsg(sqliteconnection);
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving SQLite DB information: %s\n", errmsg);
+					ret = -1;
+					break;
+				}
+			}
+		} else {
+			const char* errmsg = sqlite3_errmsg(sqliteconnection);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving SQLite DB information: %s\n", errmsg);
+		}
+		sqlite3_finalize(st);
+
+		sqlite_unlock(0);
+	}
+	return ret;
+}
+
+///////////////////////////////////////////////////////
 
 static const turn_dbdriver_t driver = {
   &sqlite_get_auth_secrets,
   &sqlite_get_user_key,
-  &sqlite_get_user_pwd,
   &sqlite_set_user_key,
-  &sqlite_set_user_pwd,
   &sqlite_del_user,
   &sqlite_list_users,
-  &sqlite_show_secret,
+  &sqlite_list_secrets,
   &sqlite_del_secret,
   &sqlite_set_secret,
   &sqlite_add_origin,
@@ -1118,11 +1314,16 @@ static const turn_dbdriver_t driver = {
   &sqlite_list_realm_options,
   &sqlite_auth_ping,
   &sqlite_get_ip_list,
+  &sqlite_set_permission_ip,
   &sqlite_reread_realms,
   &sqlite_set_oauth_key,
   &sqlite_get_oauth_key,
   &sqlite_del_oauth_key,
-  &sqlite_list_oauth_keys
+  &sqlite_list_oauth_keys,
+  &sqlite_get_admin_user,
+  &sqlite_set_admin_user,
+  &sqlite_del_admin_user,
+  &sqlite_list_admin_users
 };
 
 //////////////////////////////////////////////////

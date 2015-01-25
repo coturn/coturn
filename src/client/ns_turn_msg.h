@@ -63,11 +63,7 @@ typedef enum {
  */
 typedef u08bits hmackey_t[64];
 
-/**
- * Short-term credentials password
- */
-#define SHORT_TERM_PASSWORD_SIZE (512)
-typedef u08bits st_password_t[SHORT_TERM_PASSWORD_SIZE+1];
+typedef u08bits password_t[STUN_MAX_PWD_SIZE+1];
 typedef unsigned int band_limit_t;
 
 ///////////////////////////////////
@@ -180,12 +176,12 @@ void print_bin_func(const char *name, size_t len, const void *s, const char *fun
 /*
  * Return -1 if failure, 0 if the integrity is not correct, 1 if OK
  */
-int stun_check_message_integrity_by_key_str(turn_credential_type ct, u08bits *buf, size_t len, hmackey_t key, st_password_t pwd, SHATYPE shatype, int *too_weak);
+int stun_check_message_integrity_by_key_str(turn_credential_type ct, u08bits *buf, size_t len, hmackey_t key, password_t pwd, SHATYPE shatype, int *too_weak);
 int stun_check_message_integrity_str(turn_credential_type ct, u08bits *buf, size_t len, u08bits *uname, u08bits *realm, u08bits *upwd, SHATYPE shatype);
-int stun_attr_add_integrity_str(turn_credential_type ct, u08bits *buf, size_t *len, hmackey_t key, st_password_t pwd, SHATYPE shatype);
+int stun_attr_add_integrity_str(turn_credential_type ct, u08bits *buf, size_t *len, hmackey_t key, password_t pwd, SHATYPE shatype);
 int stun_attr_add_integrity_by_key_str(u08bits *buf, size_t *len, u08bits *uname, u08bits *realm, hmackey_t key, u08bits *nonce, SHATYPE shatype);
 int stun_attr_add_integrity_by_user_str(u08bits *buf, size_t *len, u08bits *uname, u08bits *realm, u08bits *upwd, u08bits *nonce, SHATYPE shatype);
-int stun_attr_add_integrity_by_user_short_term_str(u08bits *buf, size_t *len, u08bits *uname, st_password_t pwd, SHATYPE shatype);
+int stun_attr_add_integrity_by_user_short_term_str(u08bits *buf, size_t *len, u08bits *uname, password_t pwd, SHATYPE shatype);
 size_t get_hmackey_size(SHATYPE shatype);
 
 /*
@@ -207,7 +203,7 @@ int stun_attr_get_padding_len_str(stun_attr_ref attr);
 int stun_attr_add_padding_str(u08bits *buf, size_t *len, u16bits padding_len);
 
 /* HTTP */
-int is_http_get(const char *s, size_t blen);
+int is_http(const char *s, size_t blen);
 
 /* OAUTH */
 int convert_oauth_key_data(const oauth_key_data *oakd, oauth_key *key, char *err_msg, size_t err_msg_size);

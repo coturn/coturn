@@ -402,17 +402,7 @@ static void auth_server_receive_message(struct bufferevent *bev, void *ptr)
       continue;
     }
     
-    if(am.ct == TURN_CREDENTIALS_SHORT_TERM) {
-      st_password_t pwd;
-      am.in_oauth = 0;
-      am.out_oauth = 0;
-      if(get_user_pwd(am.username,pwd)<0) {
-    	  am.success = 0;
-      } else {
-    	  ns_bcopy(pwd,am.pwd,sizeof(st_password_t));
-    	  am.success = 1;
-      }
-    } else {
+    {
       hmackey_t key;
       if(get_user_key(am.in_oauth,&(am.out_oauth),&(am.max_session_time),am.username,am.realm,key,am.in_buffer.nbh)<0) {
     	  am.success = 0;
@@ -752,7 +742,10 @@ static int handle_relay_message(relay_server_handle rs, struct message_to_relay 
 				sm->m.sm.s = NULL;
 			} else {
 				s->e = rs->ioa_eng;
-				open_client_connection_session(&(rs->server), &(sm->m.sm));
+				if(open_client_connection_session(&(rs->server), &(sm->m.sm))<0) {
+					IOA_CLOSE_SOCKET(s);
+					sm->m.sm.s = NULL;
+				}
 			}
 
 			ioa_network_buffer_delete(rs->ioa_eng, sm->m.sm.nd.nbh);
@@ -790,7 +783,10 @@ static int handle_relay_message(relay_server_handle rs, struct message_to_relay 
 				sm->m.sm.s = NULL;
 			} else {
 				s->e = rs->ioa_eng;
-				open_client_connection_session(&(rs->server), &(sm->m.sm));
+				if(open_client_connection_session(&(rs->server), &(sm->m.sm))<0) {
+					IOA_CLOSE_SOCKET(s);
+					sm->m.sm.s = NULL;
+				}
 			}
 
 			ioa_network_buffer_delete(rs->ioa_eng, sm->m.sm.nd.nbh);
@@ -1649,6 +1645,7 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
 			 &turn_params.secure_stun, turn_params.shatype, &turn_params.mobility,
 			 turn_params.server_relay,
 			 send_turn_session_info,
+			 send_https_socket,
 			 allocate_bps,
 			 turn_params.oauth, turn_params.oauth_server_name);
 	
@@ -1776,33 +1773,33 @@ static void setup_auth_server(struct auth_server *as)
 	pthread_detach(as->thr);
 }
 
-static void* run_cli_server_thread(void *arg)
+static void* run_admin_server_thread(void *arg)
 {
 	ignore_sigpipe();
 
-	setup_cli_thread();
+	setup_admin_thread();
 
 	barrier_wait();
 
-	while(cliserver.event_base) {
-		run_events(cliserver.event_base,NULL);
+	while(adminserver.event_base) {
+		run_events(adminserver.event_base,NULL);
 	}
 
 	return arg;
 }
 
-static void setup_cli_server(void)
+static void setup_admin_server(void)
 {
-	ns_bzero(&cliserver,sizeof(struct cli_server));
-	cliserver.listen_fd = -1;
-	cliserver.verbose = turn_params.verbose;
+	ns_bzero(&adminserver,sizeof(struct admin_server));
+	adminserver.listen_fd = -1;
+	adminserver.verbose = turn_params.verbose;
 
-	if(pthread_create(&(cliserver.thr), NULL, run_cli_server_thread, &cliserver)<0) {
+	if(pthread_create(&(adminserver.thr), NULL, run_admin_server_thread, &adminserver)<0) {
 		perror("Cannot create cli thread\n");
 		exit(-1);
 	}
 
-	pthread_detach(cliserver.thr);
+	pthread_detach(adminserver.thr);
 }
 
 void setup_server(void)
@@ -1818,12 +1815,9 @@ void setup_server(void)
 #if !defined(TURN_NO_THREAD_BARRIERS)
 
 	/* relay threads plus auth threads plus main listener thread */
+	/* plus admin thread */
 	/* udp address listener thread(s) will start later */
-	barrier_count = turn_params.general_relay_servers_number+authserver_number+1;
-
-	if(use_cli) {
-		barrier_count += 1;
-	}
+	barrier_count = turn_params.general_relay_servers_number+authserver_number+1+1;
 
 #endif
 
@@ -1870,8 +1864,7 @@ void setup_server(void)
 		}
 	}
 
-	if(use_cli)
-		setup_cli_server();
+	setup_admin_server();
 
 	barrier_wait();
 }

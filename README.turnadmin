@@ -51,15 +51,15 @@ Commands:
 
 -a, --add       	Add or update a long-term user.
 
--A, --add-st    	Add or update a short-term credentials mechanism user.
+-A, --add-admin    	Add or update an admin user.
 
 -d, --delete		Delete a long-term user.
 
--D, --delete-st		Delete a short-term user.
+-D, --delete-admin		Delete an admin user.
 
 -l, --list		List long-term users in the database.
 
--L, --list-st		List short-term users in the database.
+-L, --list-admin		List admin users in the database.
 
 -s, --set-secret=<value> Add shared secret for TURN RESP API
 
@@ -92,7 +92,7 @@ Options with required values:
 -N, --redis-userdb	Redis user database connection string.
 			See the --redis-userdb option in the turnserver section.
 -u, --user		User name.
--r, --realm		Realm, for long-term credentials mechanism only.
+-r, --realm		Realm.
 -p, --password		Password.
 -o, --origin		Origin
 -H, --sha256	Use SHA256 as the keys hash function (a non-standard feature). 
@@ -119,7 +119,7 @@ List all long-term users in MySQL database:
 
 $ turnadmin -l --mysql-userdb="<db-connection-string>" -r <realm>
 
-List all short-term users in Redis database:
+List all admin users in Redis database:
 
 $ turnadmin -L --redis-userdb="<db-connection-string>"
 
@@ -233,7 +233,7 @@ to see the man page.
 	
 	Po-sheng Lin <personlin118@gmail.com>
 	
-	Peter Dunkley <peter.dunkley@crocodilertc.net>
+	Peter Dunkley <peter.dunkley@acision.com>
 	
 	Mutsutoshi Yoshimoto <mutsutoshi.yoshimoto@mixi.co.jp>
 

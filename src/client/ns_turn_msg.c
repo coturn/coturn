@@ -611,17 +611,22 @@ int stun_is_channel_message_str(const u08bits *buf, size_t *blen, u16bits* chnum
 
 ////////// STUN message ///////////////////////////////
 
-static inline int sheadof(const char *head, const char* full)
+static inline int sheadof(const char *head, const char* full, int ignore_case)
 {
 	while(*head) {
-		if(*head != *full)
-			return 0;
+		if(*head != *full) {
+		  if(ignore_case && (tolower((int)*head)==tolower((int)*full))) {
+				//OK
+			} else {
+				return 0;
+			}
+		}
 		++head;++full;
 	}
 	return 1;
 }
 
-static inline const char* findstr(const char *hay, size_t slen, const char *needle)
+static inline const char* findstr(const char *hay, size_t slen, const char *needle, int ignore_case)
 {
 	const char *ret = NULL;
 
@@ -632,7 +637,7 @@ static inline const char* findstr(const char *hay, size_t slen, const char *need
 			size_t i;
 			const char *sp = hay;
 			for(i=0;i<smax;++i) {
-				if(sheadof(needle,sp+i)) {
+				if(sheadof(needle,sp+i,ignore_case)) {
 					ret = sp+i;
 					break;
 				}
@@ -643,28 +648,36 @@ static inline const char* findstr(const char *hay, size_t slen, const char *need
 	return ret;
 }
 
-static inline int is_http_get_inline(const char *s, size_t blen) {
+static inline int is_http_inline(const char *s, size_t blen) {
 	if(s && blen>=12) {
-		if((s[0]=='G')&&(s[1]=='E')&&(s[2]=='T')&&(s[3]==' ')) {
-			const char *sp=findstr(s+4,blen-4,"HTTP");
+		if((strstr(s,"GET ")==s) ||(strstr(s,"POST ")==s) || (strstr(s,"DELETE ")==s) || (strstr(s,"PUT ")==s)) {
+			const char *sp=findstr(s+4,blen-4," HTTP/",0);
 			if(sp) {
-				sp += 4;
+				sp += 6;
 				size_t diff_blen = sp-s;
 				if(diff_blen+4 <= blen) {
-					sp=findstr(sp,blen-diff_blen,"\r\n\r\n");
+					sp=findstr(sp,blen-diff_blen,"\r\n\r\n",0);
 					if(sp) {
-						return (int)(sp-s+4);
+						int ret_len = (int)(sp-s+4);
+						const char* clheader = "content-length: ";
+						const char* cl = findstr(s,sp-s,clheader,1);
+						if(cl) {
+							unsigned long clen = strtoul(cl+strlen(clheader),NULL,10);
+							if(clen>0 && clen<(0x0FFFFFFF)) {
+								ret_len += (int)clen;
+							}
+						}
+						return ret_len;
 					}
 				}
 			}
-
 		}
 	}
 	return 0;
 }
 
-int is_http_get(const char *s, size_t blen) {
-	return is_http_get_inline(s, blen);
+int is_http(const char *s, size_t blen) {
+	return is_http_inline(s, blen);
 }
 
 int stun_get_message_len_str(u08bits *buf, size_t blen, int padding, size_t *app_len) {
@@ -690,7 +703,7 @@ int stun_get_message_len_str(u08bits *buf, size_t blen, int padding, size_t *app
 
 		//HTTP request ?
 		{
-			int http_len = is_http_get_inline(((char*)buf), blen);
+			int http_len = is_http_inline(((char*)buf), blen);
 			if((http_len>0) && ((size_t)http_len<=blen)) {
 				*app_len = (size_t)http_len;
 				return http_len;
@@ -1452,7 +1465,7 @@ void print_bin_func(const char *name, size_t len, const void *s, const char *fun
 	printf("]\n");
 }
 
-int stun_attr_add_integrity_str(turn_credential_type ct, u08bits *buf, size_t *len, hmackey_t key, st_password_t pwd, SHATYPE shatype)
+int stun_attr_add_integrity_str(turn_credential_type ct, u08bits *buf, size_t *len, hmackey_t key, password_t pwd, SHATYPE shatype)
 {
 	u08bits hmac[MAXSHASIZE];
 
@@ -1491,7 +1504,7 @@ int stun_attr_add_integrity_by_key_str(u08bits *buf, size_t *len, u08bits *uname
 	if(stun_attr_add_str(buf, len, STUN_ATTRIBUTE_REALM, realm, strlen((s08bits*)realm))<0)
 			return -1;
 
-	st_password_t p;
+	password_t p;
 	return stun_attr_add_integrity_str(TURN_CREDENTIALS_LONG_TERM, buf, len, key, p, shatype);
 }
 
@@ -1505,7 +1518,7 @@ int stun_attr_add_integrity_by_user_str(u08bits *buf, size_t *len, u08bits *unam
 	return stun_attr_add_integrity_by_key_str(buf, len, uname, realm, key, nonce, shatype);
 }
 
-int stun_attr_add_integrity_by_user_short_term_str(u08bits *buf, size_t *len, u08bits *uname, st_password_t pwd, SHATYPE shatype)
+int stun_attr_add_integrity_by_user_short_term_str(u08bits *buf, size_t *len, u08bits *uname, password_t pwd, SHATYPE shatype)
 {
 	if(stun_attr_add_str(buf, len, STUN_ATTRIBUTE_USERNAME, uname, strlen((s08bits*)uname))<0)
 			return -1;
@@ -1527,7 +1540,7 @@ void print_hmac(const char *name, const void *s, size_t len)
 /*
  * Return -1 if failure, 0 if the integrity is not correct, 1 if OK
  */
-int stun_check_message_integrity_by_key_str(turn_credential_type ct, u08bits *buf, size_t len, hmackey_t key, st_password_t pwd, SHATYPE shatype, int *too_weak)
+int stun_check_message_integrity_by_key_str(turn_credential_type ct, u08bits *buf, size_t len, hmackey_t key, password_t pwd, SHATYPE shatype, int *too_weak)
 {
 	int res = 0;
 	u08bits new_hmac[MAXSHASIZE];
@@ -1595,10 +1608,10 @@ int stun_check_message_integrity_by_key_str(turn_credential_type ct, u08bits *bu
 int stun_check_message_integrity_str(turn_credential_type ct, u08bits *buf, size_t len, u08bits *uname, u08bits *realm, u08bits *upwd, SHATYPE shatype)
 {
 	hmackey_t key;
-	st_password_t pwd;
+	password_t pwd;
 
 	if(ct == TURN_CREDENTIALS_SHORT_TERM)
-		strncpy((char*)pwd,(char*)upwd,sizeof(st_password_t));
+		strncpy((char*)pwd,(char*)upwd,sizeof(password_t));
 	else if (stun_produce_integrity_key_str(uname, realm, upwd, key, shatype) < 0)
 		return -1;
 
@@ -1882,6 +1895,8 @@ int convert_oauth_key_data(const oauth_key_data *oakd0, oauth_key *key, char *er
 			key->auth_alg = AUTH_ALG_ERROR;
 			OAUTH_ERROR("Wrong oAuth token hash algorithm: %s (2)\n",oakd->auth_alg);
 			return -1;
+		} else {
+			key->auth_alg = AUTH_ALG_UNDEFINED;
 		}
 
 		key->as_rs_alg = ENC_ALG_DEFAULT;
@@ -1891,8 +1906,10 @@ int convert_oauth_key_data(const oauth_key_data *oakd0, oauth_key *key, char *er
 			key->as_rs_alg = AES_256_CBC;
 		} else if(!strcmp(oakd->as_rs_alg,"AEAD-AES-128-GCM")) {
 			key->as_rs_alg = AEAD_AES_128_GCM;
+			key->auth_alg = AUTH_ALG_UNDEFINED;
 		} else if(!strcmp(oakd->as_rs_alg,"AEAD-AES-256-GCM")) {
 			key->as_rs_alg = AEAD_AES_256_GCM;
+			key->auth_alg = AUTH_ALG_UNDEFINED;
 		} else if(oakd->as_rs_alg[0]) {
 			if(err_msg) {
 				snprintf(err_msg,err_msg_size,"Wrong oAuth token encryption algorithm: %s (2)\n",oakd->as_rs_alg);

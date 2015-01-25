@@ -448,7 +448,7 @@ static int clnet_allocate(int verbose,
 						allocate_received = 1;
 						allocate_finished = 1;
 
-						if(clnet_info->nonce[0] || use_short_term) {
+						if(clnet_info->nonce[0]) {
 							if(check_integrity(clnet_info, &response_message)<0)
 								return -1;
 						}
@@ -528,16 +528,11 @@ static int clnet_allocate(int verbose,
 						goto beg_allocate;
 					} else if (stun_is_error_response(&response_message, &err_code,err_msg,sizeof(err_msg))) {
 
-						if(err_code == SHA_TOO_WEAK_ERROR_CODE && (clnet_info->shatype == SHATYPE_SHA1) && use_short_term) {
-							clnet_info->shatype = SHATYPE_SHA256;
-							goto beg_allocate;
-						}
-
 						allocate_received = 1;
 
 						if(err_code == 300) {
 
-							if(clnet_info->nonce[0] || use_short_term) {
+							if(clnet_info->nonce[0]) {
 								if(check_integrity(clnet_info, &response_message)<0)
 									return -1;
 							}
@@ -797,7 +792,7 @@ static int turn_channel_bind(int verbose, uint16_t *chn,
 
 					cb_received = 1;
 
-					if(clnet_info->nonce[0] || use_short_term) {
+					if(clnet_info->nonce[0]) {
 						if(check_integrity(clnet_info, &response_message)<0)
 							return -1;
 					}
@@ -906,7 +901,7 @@ static int turn_create_permission(int verbose, app_ur_conn_info *clnet_info,
 
 					cp_received = 1;
 
-					if(clnet_info->nonce[0] || use_short_term) {
+					if(clnet_info->nonce[0]) {
 						if(check_integrity(clnet_info, &response_message)<0)
 							return -1;
 					}
@@ -1481,7 +1476,7 @@ static int turn_tcp_connection_bind(int verbose, app_ur_conn_info *clnet_info, a
 				u08bits err_msg[129];
 				if (stun_is_success_response(&response_message)) {
 
-					if(clnet_info->nonce[0] || use_short_term) {
+					if(clnet_info->nonce[0]) {
 						if(check_integrity(clnet_info, &response_message)<0)
 							return -1;
 					}

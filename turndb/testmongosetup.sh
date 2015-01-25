@@ -5,23 +5,23 @@ mongo $* <<EOF
 use coturn;
 
 db.turnusers_lt.ensureIndex({ realm: 1, name: 1 }, { unique: 1 });
-db.turnusers_st.ensureIndex({ name: 1 }, { unique: 1 });
-db.turn_secret.ensureIndex({ realm: 1 }, { unique: 1 });
+db.turn_secret.ensureIndex({ realm: 1, value:1 }, { unique: 1 });
 db.realm.ensureIndex({ realm: 1 }, { unique: 1 });
 db.oauth_key.ensureIndex({ kid: 1 }, {unique: 1 });
+db.admin_user.ensureIndex({ name: 1 }, {unique: 1 });
 
 db.turnusers_lt.insert({ realm: 'north.gov', name: 'ninefingers', hmackey: 'bc807ee29df3c9ffa736523fb2c4e8ee' });
 db.turnusers_lt.insert({ realm: 'north.gov', name: 'gorst', hmackey: '7da2270ccfa49786e0115366d3a3d14d' });
 db.turnusers_lt.insert({ realm: 'crinna.org', name: 'whirrun', hmackey: '6972e85e51f36e53b0b61759c5a5219a' });
 db.turnusers_lt.insert({ realm: 'crinna.org', name: 'stranger-come-knocking', hmackey: 'd43cb678560259a1839bff61c19de15e' });
 
-db.turnusers_st.insert({ name: 'ninefingers', password: 'youhavetoberealistic'});
-db.turnusers_st.insert({ name: 'gorst', password: 'hero'});
-db.turnusers_st.insert({ name: 'whirrun', password: 'sword'});
-db.turnusers_st.insert({ name: 'stranger-come-knocking', password: 'civilization'});
-
 db.turn_secret.insert({ realm: 'north.gov', value: 'logen' });
+db.turn_secret.insert({ realm: 'north.gov', value: 'bloody9' });
 db.turn_secret.insert({ realm: 'crinna.org', value: 'north' });
+db.turn_secret.insert({ realm: 'crinna.org', value: 'library' });
+
+db.admin_user.insert({ name: 'skarling', realm: 'north.gov', password: 'hoodless' });
+db.admin_user.insert({ name: 'bayaz', realm: '', password: 'magi' });
 
 db.realm.insert({
   realm: 'north.gov',

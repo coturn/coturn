@@ -56,14 +56,13 @@ int c2c=0;
 int clnet_verbose=TURN_VERBOSE_NONE;
 int use_tcp=0;
 int use_secure=0;
-int use_short_term=0;
 int hang_on=0;
 ioa_addr peer_addr;
 int no_rtcp = 0;
 int default_address_family = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT;
 int dont_fragment = 0;
 u08bits g_uname[STUN_MAX_USERNAME_SIZE+1];
-st_password_t g_upwd;
+password_t g_upwd;
 char g_auth_secret[1025]="\0";
 int g_use_auth_secret_with_timestamp = 0;
 int use_fingerprints = 1;
@@ -125,8 +124,6 @@ static char Usage[] =
   "	-x	IPv6 relay address requested.\n"
   "	-X	IPv4 relay address explicitly requested.\n"
   "	-g	Include DONT_FRAGMENT option.\n"
-  "	-A	Use short-term credentials mechanism. By default, the program uses\n"
-  "		the long-term credentials mechanism if authentication is required.\n"
   "	-D	Mandatory channel padding (like in pjnath).\n"
   "	-N	Negative tests (some limited cases only).\n"
   "	-R	Negative protocol tests.\n"
@@ -139,7 +136,7 @@ static char Usage[] =
   "	-G	Generate extra requests (create permissions, channel bind).\n"
   "	-B	Random disconnect after a few initial packets.\n"
   "	-Z	Dual allocation.\n"
-  "	-J	Use oAuth with default test key kid='north'.\n"
+  "	-J	Use oAuth with default test key kid='north' or 'oldempire'.\n"
   "Options:\n"
   "	-l	Message length (Default: 100 Bytes).\n"
   "	-i	Certificate file (for secure connections only, optional).\n"
@@ -219,11 +216,6 @@ int main(int argc, char **argv)
 
 			oauth = 1;
 
-			if(use_short_term) {
-				fprintf(stderr,"Short-term mechanism cannot be used together with oAuth.\n");
-				exit(-1);
-			}
-
 			oauth_key_data okd_array[2];
 			convert_oauth_key_data_raw(&okdr_array[0], &okd_array[0]);
 			convert_oauth_key_data_raw(&okdr_array[1], &okd_array[1]);
@@ -296,13 +288,6 @@ int main(int argc, char **argv)
 			break;
 		case 'Z':
 			dual_allocation = 1;
-			break;
-		case 'A':
-			if(oauth) {
-				fprintf(stderr,"Short-term mechanism cannot be used together with oAuth.\n");
-				exit(-1);
-			}
-			use_short_term = 1;
 			break;
 		case 'u':
 			STRCPY(g_uname, optarg);
@@ -409,10 +394,6 @@ int main(int argc, char **argv)
 
 	if(g_use_auth_secret_with_timestamp) {
 
-		if(use_short_term) {
-			fprintf(stderr,"ERROR: You cannot use authentication secret (REST API) with short-term credentials mechanism.\n");
-			exit(-1);
-		}
 		{
 			char new_uname[1025];
 			const unsigned long exp_time = 3600 * 24; /* one day */
@@ -496,18 +477,13 @@ int main(int argc, char **argv)
 		SSL_load_error_strings();
 		OpenSSL_add_ssl_algorithms();
 
-		const char *csuite = "ALL:SSLv2"; //"AES256-SHA" "DH"
+		const char *csuite = "ALL"; //"AES256-SHA" "DH"
 		if(use_null_cipher)
 			csuite = "eNULL";
 		else if(cipher_suite[0])
 			csuite=cipher_suite;
 
 		if(use_tcp) {
-#ifndef OPENSSL_NO_SSL2
-		  root_tls_ctx[root_tls_ctx_num] = SSL_CTX_new(SSLv2_client_method());
-		  SSL_CTX_set_cipher_list(root_tls_ctx[root_tls_ctx_num], csuite);
-		  root_tls_ctx_num++;
-#endif
 		  root_tls_ctx[root_tls_ctx_num] = SSL_CTX_new(SSLv23_client_method());
 		  SSL_CTX_set_cipher_list(root_tls_ctx[root_tls_ctx_num], csuite);
 		  root_tls_ctx_num++;

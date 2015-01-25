@@ -223,6 +223,8 @@ struct _ioa_socket
 	accept_cb acb;
 	void *acbarg;
 	/* <<== RFC 6062 */
+	void *special_session;
+	size_t special_session_size;
 };
 
 typedef struct _timer_event
@@ -296,6 +298,10 @@ int set_socket_options_fd(evutil_socket_t fd, int tcp, int family);
 int set_socket_options(ioa_socket_handle s);
 
 int send_session_cancellation_to_relay(turnsession_id sid);
+
+int send_data_from_ioa_socket_tcp(ioa_socket_handle s, const void *data, size_t sz);
+int send_str_from_ioa_socket_tcp(ioa_socket_handle s, const void *data);
+int send_ulong_from_ioa_socket_tcp(ioa_socket_handle s, size_t data);
 
 ///////////////////////// SUPER MEMORY ////////
 

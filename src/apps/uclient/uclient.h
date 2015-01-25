@@ -36,6 +36,8 @@
 #include "session.h"
 
 #include <openssl/ssl.h>
+#include <openssl/dh.h>
+#include <openssl/bn.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -51,7 +53,6 @@ extern int do_not_use_channel;
 extern int clnet_verbose;
 extern int use_tcp;
 extern int use_secure;
-extern int use_short_term;
 extern char cert_file[1025];
 extern char pkey_file[1025];
 extern int hang_on;
@@ -61,7 +62,7 @@ extern int no_rtcp;
 extern int default_address_family;
 extern int dont_fragment;
 extern u08bits g_uname[STUN_MAX_USERNAME_SIZE+1];
-extern st_password_t g_upwd;
+extern password_t g_upwd;
 extern char g_auth_secret[1025];
 extern int g_use_auth_secret_with_timestamp;
 extern int use_fingerprints;

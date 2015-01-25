@@ -2148,13 +2148,6 @@ static void tcp_peer_accept_connection(ioa_socket_handle s, void *arg)
 			ioa_network_buffer_set_size(nbh, len);
 		}
 
-		/* We add integrity for short-term indication messages, only */
-		if(server->ct == TURN_CREDENTIALS_SHORT_TERM)
-		{
-			stun_attr_add_integrity_str(server->ct,ioa_network_buffer_data(nbh),&len,ss->hmackey,ss->pwd,server->shatype);
-			ioa_network_buffer_set_size(nbh,len);
-		}
-
 		if ((server->fingerprint) || ss->enforce_fingerprints) {
 			size_t len = ioa_network_buffer_get_size(nbh);
 			stun_attr_add_fingerprint_str(ioa_network_buffer_data(nbh), &len);
@@ -3118,8 +3111,6 @@ static int need_stun_authentication(turn_turnserver *server, ts_ur_super_session
 		switch(server->ct) {
 		case TURN_CREDENTIALS_LONG_TERM:
 			return 1;
-		case TURN_CREDENTIALS_SHORT_TERM:
-			return 1;
 		default:
 			;
 		};
@@ -3164,7 +3155,7 @@ static int create_challenge_response(ts_ur_super_session *ss, stun_tid *tid, int
 #define min(a,b) ((a)<=(b) ? (a) : (b))
 #endif
 
-static void resume_processing_after_username_check(int success,  int oauth, int max_session_time, hmackey_t hmackey, st_password_t pwd, turn_turnserver *server, u64bits ctxkey, ioa_net_data *in_buffer)
+static void resume_processing_after_username_check(int success,  int oauth, int max_session_time, hmackey_t hmackey, password_t pwd, turn_turnserver *server, u64bits ctxkey, ioa_net_data *in_buffer)
 {
 
 	if(server && in_buffer && in_buffer->nbh) {
@@ -3178,7 +3169,7 @@ static void resume_processing_after_username_check(int success,  int oauth, int 
 				ss->hmackey_set = 1;
 				ss->oauth = oauth;
 				ss->max_session_time_auth = (turn_time_t)max_session_time;
-				ns_bcopy(pwd,ss->pwd,sizeof(st_password_t));
+				ns_bcopy(pwd,ss->pwd,sizeof(password_t));
 			}
 
 			read_client_connection(server,ss,in_buffer,0,0);
@@ -3252,11 +3243,7 @@ static int check_stun_auth(turn_turnserver *server,
 	if(!sar) {
 		*err_code = 401;
 		*reason = (const u08bits*)"Unauthorised";
-		if(server->ct != TURN_CREDENTIALS_SHORT_TERM) {
-			return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
-		} else {
-			return -1;
-		}
+		return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
 	}
 
 	{
@@ -3280,7 +3267,7 @@ static int check_stun_auth(turn_turnserver *server,
 		};
 	}
 
-	if(server->ct != TURN_CREDENTIALS_SHORT_TERM) {
+	{
 
 		/* REALM ATTR: */
 
@@ -3351,7 +3338,7 @@ static int check_stun_auth(turn_turnserver *server,
 		set_realm_hash(ss->client_socket,(u08bits*)ss->realm_options.name);
 	}
 
-	if(server->ct != TURN_CREDENTIALS_SHORT_TERM) {
+	{
 		/* NONCE ATTR: */
 
 		sar = stun_attr_get_first_by_type_str(ioa_network_buffer_data(in_buffer->nbh),
@@ -3391,18 +3378,14 @@ static int check_stun_auth(turn_turnserver *server,
 				return 0;
 			}
 		}
-		/* we always return NULL for short-term credentials here */
+
 		/* direct user pattern is supported only for long-term credentials */
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
 				"%s: Cannot find credentials of user <%s>\n",
 				__FUNCTION__, (char*)usname);
 		*err_code = 401;
 		*reason = (const u08bits*)"Unauthorised";
-		if(server->ct != TURN_CREDENTIALS_SHORT_TERM) {
-			return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
-		} else {
-			return -1;
-		}
+		return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
 	}
 
 	/* Check integrity */
@@ -3420,11 +3403,7 @@ static int check_stun_auth(turn_turnserver *server,
 									__FUNCTION__, (char*)usname);
 					*err_code = SHA_TOO_WEAK_ERROR_CODE;
 					*reason = (const u08bits*)"Unauthorised: weak SHA function is used";
-					if(server->ct != TURN_CREDENTIALS_SHORT_TERM) {
-						return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
-					} else {
-						return -1;
-					}
+					return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
 		}
 
 		if(can_resume) {
@@ -3439,11 +3418,7 @@ static int check_stun_auth(turn_turnserver *server,
 				__FUNCTION__, (char*)usname);
 		*err_code = 401;
 		*reason = (const u08bits*)"Unauthorised";
-		if(server->ct != TURN_CREDENTIALS_SHORT_TERM) {
-			return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
-		} else {
-			return -1;
-		}
+		return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
 	}
 
 	*message_integrity = 1;
@@ -3791,10 +3766,6 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 
 		no_response = 1;
 		int postpone = 0;
-
-		if(server->ct == TURN_CREDENTIALS_SHORT_TERM) {
-			check_stun_auth(server, ss, &tid, resp_constructed, &err_code, &reason, in_buffer, nbh, method, &message_integrity, &postpone, can_resume);
-		}
 
 		if (!postpone && !err_code) {
 
@@ -4349,8 +4320,9 @@ static int create_relay_connection(turn_turnserver* server,
 			set_do_not_use_df(newelem->s);
 
 		if(get_ioa_socket_type(newelem->s) != TCP_SOCKET) {
-			register_callback_on_ioa_socket(server->e, newelem->s, IOA_EV_READ,
-				peer_input_handler, ss, 0);
+			if(register_callback_on_ioa_socket(server->e, newelem->s, IOA_EV_READ,peer_input_handler, ss, 0)<0) {
+				return -1;
+			}
 		}
 
 		if (lifetime<1)
@@ -4441,13 +4413,15 @@ static int read_client_connection(turn_turnserver *server,
 
 	if(sat == HTTP_CLIENT_SOCKET) {
 
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: HTTP connection input: %s\n", __FUNCTION__, (char*)ioa_network_buffer_data(in_buffer->nbh));
-		write_http_echo(ss->client_socket);
+		if(server->verbose) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: HTTP connection input: %s\n", __FUNCTION__, (char*)ioa_network_buffer_data(in_buffer->nbh));
+		}
+
+		handle_http_echo(ss->client_socket);
 
 	} else if(sat == HTTPS_CLIENT_SOCKET) {
 
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: HTTPS connection input: %s\n", __FUNCTION__, (char*)ioa_network_buffer_data(in_buffer->nbh));
-		handle_https(ss->client_socket,in_buffer->nbh);
+		//???
 
 	} else if (stun_is_channel_message_str(ioa_network_buffer_data(in_buffer->nbh),
 					&blen,
@@ -4536,17 +4510,28 @@ static int read_client_connection(turn_turnserver *server,
 	} else {
 		SOCKET_TYPE st = get_ioa_socket_type(ss->client_socket);
 		if((st == TCP_SOCKET)||(st==TLS_SOCKET)||(st==TENTATIVE_TCP_SOCKET)) {
-			if(is_http_get((char*)ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh))) {
+			if(is_http((char*)ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh))) {
 				const char *proto = "HTTP";
+				ioa_network_buffer_data(in_buffer->nbh)[ioa_network_buffer_get_size(in_buffer->nbh)] = 0;
 				if(st==TLS_SOCKET) {
 					proto = "HTTPS";
 					set_ioa_socket_app_type(ss->client_socket,HTTPS_CLIENT_SOCKET);
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s (%s %s) request: %s\n", __FUNCTION__, proto, get_ioa_socket_cipher(ss->client_socket), get_ioa_socket_ssl_method(ss->client_socket), (char*)ioa_network_buffer_data(in_buffer->nbh));
-					handle_https(ss->client_socket,in_buffer->nbh);
+					if(server->send_https_socket) {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s socket to be detached: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(long)ss->client_socket, get_ioa_socket_type(ss->client_socket), get_ioa_socket_app_type(ss->client_socket));
+						ioa_socket_handle new_s = detach_ioa_socket(ss->client_socket);
+						if(new_s) {
+							TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s new detached socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(long)new_s, get_ioa_socket_type(new_s), get_ioa_socket_app_type(new_s));
+							server->send_https_socket(new_s);
+						}
+						ss->to_be_closed = 1;
+					}
 				} else {
 					set_ioa_socket_app_type(ss->client_socket,HTTP_CLIENT_SOCKET);
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s request: %s\n", __FUNCTION__, proto, (char*)ioa_network_buffer_data(in_buffer->nbh));
-					write_http_echo(ss->client_socket);
+					if(server->verbose) {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s request: %s\n", __FUNCTION__, proto, (char*)ioa_network_buffer_data(in_buffer->nbh));
+					}
+					handle_http_echo(ss->client_socket);
 				}
 				return 0;
 			}
@@ -4572,8 +4557,10 @@ static int attach_socket_to_session(turn_turnserver* server, ioa_socket_handle s
 
 			ss->client_socket = s;
 
-			register_callback_on_ioa_socket(server->e, s, IOA_EV_READ,
-					client_input_handler, ss, 0);
+			if(register_callback_on_ioa_socket(server->e, s, IOA_EV_READ,
+					client_input_handler, ss, 0)<0) {
+				return -1;
+			}
 
 			set_ioa_socket_session(s, ss);
 		}
@@ -4599,8 +4586,10 @@ int open_client_connection_session(turn_turnserver* server,
 
 	ss->client_socket = sm->s;
 
-	register_callback_on_ioa_socket(server->e, ss->client_socket, IOA_EV_READ,
-			client_input_handler, ss, 0);
+	if(register_callback_on_ioa_socket(server->e, ss->client_socket, IOA_EV_READ,
+			client_input_handler, ss, 0)<0) {
+		return -1;
+	}
 
 	set_ioa_socket_session(ss->client_socket, ss);
 
@@ -4722,13 +4711,6 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 					ioa_network_buffer_set_size(nbh, len);
 				}
 
-				/* We add integrity for short-term indication messages, only */
-				if(server->ct == TURN_CREDENTIALS_SHORT_TERM)
-				{
-					stun_attr_add_integrity_str(server->ct,ioa_network_buffer_data(nbh),&len,ss->hmackey,ss->pwd,server->shatype);
-					ioa_network_buffer_set_size(nbh,len);
-				}
-
 				if ((server->fingerprint) || ss->enforce_fingerprints) {
 					size_t len = ioa_network_buffer_get_size(nbh);
 					stun_attr_add_fingerprint_str(ioa_network_buffer_data(nbh), &len);
@@ -4802,6 +4784,7 @@ void init_turn_server(turn_turnserver* server,
 		send_socket_to_relay_cb send_socket_to_relay,
 		vintp secure_stun, SHATYPE shatype, vintp mobility, int server_relay,
 		send_turn_session_info_cb send_turn_session_info,
+		send_https_socket_cb send_https_socket,
 		allocate_bps_cb allocate_bps_func,
 		int oauth, const char* oauth_server_name) {
 
@@ -4827,6 +4810,7 @@ void init_turn_server(turn_turnserver* server,
 	server->mobility = mobility;
 	server->server_relay = server_relay;
 	server->send_turn_session_info = send_turn_session_info;
+	server->send_https_socket = send_https_socket;
 	server->oauth = oauth;
 	if(oauth)
 		server->oauth_server_name = oauth_server_name;

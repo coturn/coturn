@@ -46,10 +46,6 @@
 extern "C" {
 #endif
 
-//////////// Defines //////////////////////////////
-
-#define AUTH_SECRET_SIZE (512)
-
 //////////// REALM //////////////
 
 struct _realm_status_t;
@@ -90,7 +86,7 @@ struct auth_message {
 	u08bits username[STUN_MAX_USERNAME_SIZE + 1];
 	u08bits realm[STUN_MAX_REALM_SIZE + 1];
 	hmackey_t key;
-	st_password_t pwd;
+	password_t pwd;
 	get_username_resume_cb resume_func;
 	ioa_net_data in_buffer;
 	u64bits ctxkey;
@@ -153,7 +149,6 @@ typedef struct _secrets_list secrets_list_t;
 typedef struct _ram_users_db_t {
 	size_t users_number;
 	ur_string_map *static_accounts;
-	ur_string_map *dynamic_accounts;
 	secrets_list_t static_auth_secrets;
 } ram_users_db_t;
 
@@ -191,7 +186,6 @@ void add_to_secrets_list(secrets_list_t *sl, const char* elem);
 /////////// USER DB CHECK //////////////////
 
 int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, u08bits *uname, u08bits *realm, hmackey_t key, ioa_network_buffer_handle nbh);
-int get_user_pwd(u08bits *uname, st_password_t pwd);
 u08bits *start_user_check(turnserver_id id, turn_credential_type ct, int in_oauth, int *out_oauth, u08bits *uname, u08bits *realm, get_username_resume_cb resume, ioa_net_data *in_buffer, u64bits ctxkey, int *postpone_reply);
 int check_new_allocation_quota(u08bits *username, int oauth, u08bits *realm);
 void release_allocation_quota(u08bits *username, int oauth, u08bits *realm);
@@ -204,10 +198,11 @@ void release_allocation_quota(u08bits *username, int oauth, u08bits *realm);
 
 void auth_ping(redis_context_handle rch);
 void reread_realms(void);
-int add_user_account(char *user, int dynamic);
-int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, u08bits *origin, TURNADMIN_COMMAND_TYPE ct, int is_st, perf_options_t* po);
+int add_static_user_account(char *user);
+int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, u08bits *origin, TURNADMIN_COMMAND_TYPE ct, perf_options_t* po, int is_admin);
 
 int add_ip_list_range(const char* range, const char* realm, ip_range_list_t * list);
+int check_ip_list_range(const char* range);
 ip_range_list_t* get_ip_list(const char *kind);
 void ip_list_free(ip_range_list_t *l);
 

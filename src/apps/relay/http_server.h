@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012, 2013 Citrix Systems
+ * Copyright (C) 2011, 2012, 2013, 2014 Citrix Systems
  *
  * All rights reserved.
  *
@@ -28,66 +28,62 @@
  * SUCH DAMAGE.
  */
 
-#ifndef __TURNCLI__
-#define __TURNCLI__
+#ifndef __TURN_HTTP_SERVER__
+#define __TURN_HTTP_SERVER__
+
+#include "ns_turn_utils.h"
+#include "ns_turn_server.h"
+#include "apputils.h"
 
 #include <stdlib.h>
 #include <stdio.h>
-
-#include <pthread.h>
-
-#include <event2/bufferevent.h>
-#include <event2/buffer.h>
-
-#include "ns_turn_utils.h"
-#include "ns_turn_maps.h"
-#include "ns_turn_server.h"
-
-#include "apputils.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-////////////////////////////////////////////
+/////////  HTTP REQUEST //////////
 
-struct cli_server {
-	evutil_socket_t listen_fd;
-	struct event_base* event_base;
-	int verbose;
-	struct evconnlistener *l;
-	struct bufferevent *in_buf;
-	struct bufferevent *out_buf;
-	ur_map *sessions;
-	pthread_t thr;
+enum _HTTP_REQUEST_TYPE {
+	HRT_UNKNOWN=0,
+	HRT_GET,
+	HRT_HEAD,
+	HRT_POST,
+	HRT_PUT,
+	HRT_DELETE
 };
 
-///////////////////////////////////////////
+typedef enum _HTTP_REQUEST_TYPE HTTP_REQUEST_TYPE;
 
-extern struct cli_server cliserver;
+struct http_headers;
 
-extern int use_cli;
+struct http_request {
+	HTTP_REQUEST_TYPE rtype;
+	char *path;
+	struct http_headers *headers;
+};
 
-#define CLI_DEFAULT_IP ("127.0.0.1")
-extern ioa_addr cli_addr;
-extern int cli_addr_set;
+struct http_request* parse_http_request(char* request);
+const char *get_http_header_value(const struct http_request *request, const char* key, const char* def);
+void free_http_request(struct http_request *request);
 
-#define CLI_DEFAULT_PORT (5766)
-extern int cli_port;
-
-#define CLI_PASSWORD_LENGTH (129)
-extern char cli_password[CLI_PASSWORD_LENGTH];
-
-#define DEFAULT_CLI_MAX_OUTPUT_SESSIONS (256)
-extern int cli_max_output_sessions;
+const char* get_http_date_header(void);
 
 ////////////////////////////////////////////
 
-void setup_cli_thread(void);
+struct str_buffer;
 
-void cli_server_receive_message(struct bufferevent *bev, void *ptr);
+struct str_buffer* str_buffer_new(void);
+void str_buffer_append(struct str_buffer* sb, const char* str);
+void str_buffer_append_sz(struct str_buffer* sb, size_t sz);
+void str_buffer_append_sid(struct str_buffer* sb, turnsession_id sid);
+const char* str_buffer_get_str(const struct str_buffer *sb);
+size_t str_buffer_get_str_len(const struct str_buffer *sb);
+void str_buffer_free(struct str_buffer *sb);
 
-int send_turn_session_info(struct turn_session_info* tsi);
+////////////////////////////////////////////
+
+void handle_http_echo(ioa_socket_handle s);
 
 ////////////////////////////////////////////
 
@@ -96,5 +92,5 @@ int send_turn_session_info(struct turn_session_info* tsi);
 #endif
 
 #endif
-/// __TURNCLI__///
+/// __TURN_HTTP_SERVER__///
 
