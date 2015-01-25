@@ -52,7 +52,6 @@ purposes, several accounting options are possible:
 	    (see TURN REST API docs);
 	  - Third-party authorization extension for the
 	    long-term credentials mechanism;
-	  - short-term authentication mechanism (see RFC5766);
 
 If you are installing the TURN server for WebRTC usage, then you must set 
 the long term credentials mechanism option and add user accounts - 

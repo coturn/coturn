@@ -1,3 +1,9 @@
+coturn (4.4.1.1-1) unstable; urgency=low
+
+  * Sync to 4.4.1.1: security fixes; https web admin connection.
+
+ -- Oleg Moskalenko <mom040267@gmail.com>  Sun, 25 Jan 2015 01:50:44 -0800
+
 coturn (4.3.3.1-1) unstable; urgency=low
 
   * Sync to 4.3.3.1

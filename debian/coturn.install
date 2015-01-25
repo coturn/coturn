@@ -61,9 +61,6 @@ examples/scripts/restapi/secure_relay_secret_with_db_mongo.sh usr/share/coturn/e
 examples/scripts/restapi/secure_relay_secret_with_db_sqlite.sh usr/share/coturn/examples/scripts/restapi
 examples/scripts/restapi/secure_udp_client_with_secret.sh usr/share/coturn/examples/scripts/restapi
 examples/scripts/restapi/shared_secret_maintainer.pl usr/share/coturn/examples/scripts/restapi
-examples/scripts/shorttermsecure/secure_tcp_client_c2c_tcp_relay_short_term.sh usr/share/coturn/examples/scripts/shorttermsecure
-examples/scripts/shorttermsecure/secure_udp_client_short_term.sh usr/share/coturn/examples/scripts/shorttermsecure
-examples/scripts/shorttermsecure/secure_relay_short_term_mech.sh usr/share/coturn/examples/scripts/shorttermsecure
 include/turn/ns_turn_defs.h usr/include/turn
 include/turn/client/TurnMsgLib.h usr/include/turn
 include/turn/client/ns_turn_ioaddr.h usr/include/turn

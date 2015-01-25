@@ -54,9 +54,10 @@ Description: TURN and STUN server for VoIP
  .
  SQLite, MySQL, PostgreSQL and Redis are supported for the user
  repository (if authentication is required).
- Both short-term and long-term credentials mechanisms are supported.
+ The long-term credentials mechanism is supported.
  For WebRTC applications, the TURN server REST API for time-limited
- secret-based authentication is implemented.
+ secret-based authentication is implemented. The third-party authentication
+ specs (oAuth-based) are supported, too.
  .
  Load balancing can be implemented either by DNS round-robin mechanism, or with
  the external networking tools, or by
