@@ -1,5 +1,12 @@
 #summary News log
-#labels Version-4.3.3.1
+#labels Version-4.4.1.1
+
+== 01/24/2015 ==
+=== Version 4.4.1.1 ===
+
+HTTPS Web admin interface to the TURN server.
+SSLv2 is no longer supported.
+Short-term credentials are no longer supported in the TURN server.
 
 == 12/24/2014 ==
 === Version 4.3.3.1 ===
