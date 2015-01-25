@@ -32,11 +32,12 @@ following options:
 	g) shared secret for REST API is set as "north", for the realm 
 	"crinna.org" (but REST API is not activated in /etc/turnserver.conf).
 
-	h) The same four users are pre-set for the short-term authentication mechanism,
-	but the short-term mechanism is not activated in /etc/turnserver.conf.
+	h) two https web admin users are pre-set: superusers user "bayaz" with
+	password "magi" and restricted (realm) admin user "skarling" with
+	password "hoodless".
 
 	You will have to choose the authentication option (long-term,
-	or long-term with REST API, or short-term, or no authentication).
+	or long-term with REST API, or no authentication).
 	Then you will have to choose the user database option: 
 	SQLite (pre-set by default here), or MySQL, 
 	or PostgreSQL, or Redis, or MongoDB. 
