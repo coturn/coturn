@@ -1,8 +1,8 @@
 1/24/2015 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.4.1.1 'Ardee West':
 	- https admin server;
-	- SSLv2 support removed (security concern fixed);
-	- The server-side short-term credentials mechanism support removed;
+	- SSLv2 support cancelled (security concern fixed);
+	- The server-side short-term credentials mechanism support cancelled;
 	- OpenSSL 1.1.0 supported;
 	- shared secrets fixed in MongoDB: multiple secrets per realm allowed;
 	- shared secrets admin fixed in Redis;
