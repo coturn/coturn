@@ -1,5 +1,5 @@
 #summary turnutils_uclient wiki page
-#labels Version-4.2.3.1
+#labels Version-4.4.1.1
 
 == turnutils_uclient application (for test purposes only)==
   It was designed to simulate multiple clients. It uses asynch IO API in  libevent to  handle  multiple  clients. A  client connects to the relay, negotiates the session, and sends	multiple  (configured  number) messages	to  the	 server	 (relay), expecting the	same number of replies. The length of the messages is configurable.   The  message is an arbitrary octet stream, but it	can be configured as a string.  The number of the messages to send is configurable.
@@ -25,7 +25,6 @@ When an unreliable protocol is used for the client-TURN-server communications (U
  *      *-x*     Request IPv6 relay address (RFC6156).
  *      *-X*     Explicitly request IPv4 relay address.
  *      *-g*     Set DONT_FRAGMENT	parameter in TURN requests.
- *      *-A*     Use short-term credentials mechanism for authentication. By default, the program uses the long-term credentials mechanism if authentication is required.
  *      *-D*     Mandatory channels padding (like in *pjnath*).
  *      *-N*     Negative tests (some limited cases only).
  *      *-R*     Negative protocol tests.
