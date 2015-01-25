@@ -1,7 +1,7 @@
 # $FreeBSD$
 
 PORTNAME=	turnserver
-PORTVERSION=	4.3.3.1
+PORTVERSION=	4.4.1.1
 CATEGORIES=	net
 MASTER_SITES=	http://turnserver.open-sys.org/downloads/v${PORTVERSION}/:prog \
 		http://turnserver.open-sys.org/downloads/extradocs/:xdocs \
@@ -79,9 +79,6 @@ _SCRIPT_EXAMPLES=	peer.sh	\
 	restapi/secure_udp_client_with_secret.sh \
 	restapi/secure_relay_secret_with_db_psql.sh \
 	restapi/shared_secret_maintainer.pl \
-	shorttermsecure/secure_tcp_client_c2c_tcp_relay_short_term.sh \
-	shorttermsecure/secure_udp_client_short_term.sh \
-	shorttermsecure/secure_relay_short_term_mech.sh \
 	selfloadbalance/secure_dos_attack.sh \
 	selfloadbalance/secure_relay.sh
 
@@ -145,7 +142,6 @@ do-install:
 	${MKDIR} ${STAGEDIR}${EXAMPLESDIR}/scripts/longtermsecure
 	${MKDIR} ${STAGEDIR}${EXAMPLESDIR}/scripts/longtermsecuredb
 	${MKDIR} ${STAGEDIR}${EXAMPLESDIR}/scripts/restapi
-	${MKDIR} ${STAGEDIR}${EXAMPLESDIR}/scripts/shorttermsecure
 	${MKDIR} ${STAGEDIR}${EXAMPLESDIR}/scripts/selfloadbalance
 	${MKDIR} ${STAGEDIR}${EXAMPLESDIR}/etc
 	${INSTALL_MAN} ${WRKSRC}/examples/scripts/readme.txt ${STAGEDIR}${EXAMPLESDIR}/scripts
