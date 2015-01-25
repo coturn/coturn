@@ -7,8 +7,8 @@
 
 redis-cli <<!
 
-SELECT 2
 AUTH turn
+SELECT 2
 
 set turn/realm/north.gov/user/ninefingers/key "bc807ee29df3c9ffa736523fb2c4e8ee"
 set turn/realm/north.gov/user/gorst/key "7da2270ccfa49786e0115366d3a3d14d"
