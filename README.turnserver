@@ -822,7 +822,23 @@ in the following directories:
 If all efforts failed (due to the system permission settings) then all 
 log messages are sent only to the standard output of the process.
 
-This behavior can be controlled by --log-file, --syslog and --no-stdout-log options.
+This behavior can be controlled by --log-file, --syslog and --no-stdout-log
+options.
+
+=================================
+
+HTTPS MANAGEMENT INTERFACE
+
+The turnserver process provides an HTTPS Web access as statistics and basic
+management interface. The turnserver listens to incoming HTTPS admin 
+connections on the same ports as the main TURN/STUN listener. The Web admin
+pages are basic and self-explanatory.
+
+To make the HTTPS interface active, the database table admin_user must be
+populated with the admin user account(s). An admin user can be a superuser
+(if not assigned to a particular realm) or a restricted user (if assigned to
+a realm). The restricted admin users can perform only limited actions, within
+their corresponding realms.
 
 =================================
 
