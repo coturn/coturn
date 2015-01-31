@@ -245,24 +245,26 @@ int make_ioa_addr(const u08bits* saddr0, int port, ioa_addr *addr) {
 
     beg_af:
 
-    while(!found && addr_result) {
+    while(addr_result) {
 
     	if(addr_result->ai_family == family) {
-    		ns_bcopy(addr_result->ai_addr, addr, addr_result->ai_addrlen);
     		if (addr_result->ai_family == AF_INET) {
+    			ns_bcopy(addr_result->ai_addr, addr, addr_result->ai_addrlen);
     			addr->s4.sin_port = nswap16(port);
 #if defined(TURN_HAS_SIN_LEN) /* tested when configured */
     			addr->s4.sin_len = sizeof(struct sockaddr_in);
 #endif
+    			found = 1;
+    			break;
     		} else if (addr_result->ai_family == AF_INET6) {
+    			ns_bcopy(addr_result->ai_addr, addr, addr_result->ai_addrlen);
     			addr->s6.sin6_port = nswap16(port);
 #if defined(SIN6_LEN) /* this define is required by IPv6 if used */
     			addr->s6.sin6_len = sizeof(struct sockaddr_in6);
 #endif
-    		} else {
-    			continue;
+    			found = 1;
+    			break;
     		}
-    		found = 1;
     	}
 
     	addr_result = addr_result->ai_next;
