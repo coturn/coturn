@@ -914,6 +914,10 @@ static int handle_turn_allocate(turn_turnserver *server,
 				int *err_code, 	const u08bits **reason, u16bits *unknown_attrs, u16bits *ua_num,
 				ioa_net_data *in_buffer, ioa_network_buffer_handle nbh) {
 
+
+	int err_code4 = 0;
+	int err_code6 = 0;
+
 	allocation* alloc = get_allocation_ss(ss);
 
 	if (is_allocation_valid(alloc)) {
@@ -1033,15 +1037,15 @@ static int handle_turn_allocate(turn_turnserver *server,
 					const u08bits* value = stun_attr_get_value(sar);
 					if (value) {
 						transport = get_transport_value(value);
-						if (!transport || value[1] || value[2] || value[3]) {
+						if (!transport) {
 							*err_code = 442;
 							*reason = (const u08bits *)"Unsupported Transport Protocol";
 						}
 						if((transport == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE) && *(server->no_tcp_relay)) {
-							*err_code = 403;
+							*err_code = 442;
 							*reason = (const u08bits *)"TCP Transport is not allowed by the TURN Server configuration";
 						} else if((transport == STUN_ATTRIBUTE_TRANSPORT_UDP_VALUE) && *(server->no_udp_relay)) {
-							*err_code = 403;
+							*err_code = 442;
 							*reason = (const u08bits *)"UDP Transport is not allowed by the TURN Server configuration";
 						} else if(ss->client_socket) {
 							SOCKET_TYPE cst = get_ioa_socket_type(ss->client_socket);
@@ -1113,17 +1117,29 @@ static int handle_turn_allocate(turn_turnserver *server,
 			  }
 			}
 			  break;
+			case STUN_ATTRIBUTE_ADDITIONAL_ADDRESS_FAMILY:
 			case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY: {
 				if(in_reservation_token) {
 					*err_code = 400;
 					*reason = (const u08bits *)"Address family attribute can not be used with reservation token request";
+				} else if(af4 || af6) {
+					*err_code = 400;
+					*reason = (const u08bits *)"Extra address family attribute can not be used in the request";
 				} else {
 					int af_req = stun_get_requested_address_family(sar);
 					switch (af_req) {
 					case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4:
-						af4 = af_req;
+						if(attr_type == STUN_ATTRIBUTE_ADDITIONAL_ADDRESS_FAMILY) {
+							*err_code = 400;
+							*reason = (const u08bits *)"Invalid value of the additional address family attribute";
+						} else {
+							af4 = af_req;
+						}
 						break;
 					case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6:
+						if(attr_type == STUN_ATTRIBUTE_ADDITIONAL_ADDRESS_FAMILY) {
+							af4 = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4;
+						}
 						af6 = af_req;
 						break;
 					default:
@@ -1248,9 +1264,9 @@ static int handle_turn_allocate(turn_turnserver *server,
 							}
 						}
 					} else {
-						int err_code4 = 0;
 						const u08bits *reason4 = NULL;
-						if(af4) {
+						const u08bits *reason6 = NULL;
+						{
 							int af4res = create_relay_connection(server, ss, lifetime,
 									af4, transport,
 									even_port, in_reservation_token, &out_reservation_token,
@@ -1263,9 +1279,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 								}
 							}
 						}
-						int err_code6 = 0;
-						const u08bits *reason6 = NULL;
-						if(af6) {
+						{
 							int af6res = create_relay_connection(server, ss, lifetime,
 												af6, transport,
 												even_port, in_reservation_token, &out_reservation_token,
@@ -1371,6 +1385,19 @@ static int handle_turn_allocate(turn_turnserver *server,
 		stun_set_allocate_response_str(ioa_network_buffer_data(nbh), &len, tid, NULL, NULL, NULL, 0, *err_code, *reason, 0, ss->s_mobile_id);
 		ioa_network_buffer_set_size(nbh,len);
 		*resp_constructed = 1;
+	}
+
+	if(*resp_constructed && !(*err_code)) {
+		if(err_code4) {
+			size_t len = ioa_network_buffer_get_size(nbh);
+			stun_attr_add_address_error_code(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4, (u08bits)err_code4);
+			ioa_network_buffer_set_size(nbh,len);
+		}
+		if(err_code6) {
+			size_t len = ioa_network_buffer_get_size(nbh);
+			stun_attr_add_address_error_code(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6, (u08bits)err_code6);
+			ioa_network_buffer_set_size(nbh,len);
+		}
 	}
 
 	return 0;

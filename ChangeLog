@@ -1,6 +1,8 @@
 1/31/2015 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.4.1.2 'Ardee West':
 	- hostname-to-IP-address resolution fix;
+	- SSODA updates according to turnbis specs;
+	- TRANSPORT attribute handling fixed;
 
 1/24/2015 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.4.1.1 'Ardee West':

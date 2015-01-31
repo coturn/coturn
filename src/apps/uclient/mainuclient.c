@@ -392,6 +392,10 @@ int main(int argc, char **argv)
 		}
 	}
 
+	if(dual_allocation) {
+		no_rtcp = 1;
+	}
+
 	if(g_use_auth_secret_with_timestamp) {
 
 		{
