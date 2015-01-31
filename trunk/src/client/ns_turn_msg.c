@@ -737,7 +737,7 @@ int stun_get_message_len_str(u08bits *buf, size_t blen, int padding, size_t *app
 ////////// ALLOCATE ///////////////////////////////////
 
 int stun_set_allocate_request_str(u08bits* buf, size_t *len, u32bits lifetime, int af4, int af6,
-				u08bits transport, int mobile) {
+				u08bits transport, int mobile, const char* rt, int ep) {
 
   stun_init_request_str(STUN_METHOD_ALLOCATE, buf, len);
 
@@ -758,28 +758,49 @@ int stun_set_allocate_request_str(u08bits* buf, size_t *len, u32bits lifetime, i
     if(stun_attr_add_str(buf,len,STUN_ATTRIBUTE_LIFETIME,(u08bits*)(&field),sizeof(field))<0) return -1;
   }
 
-  if(mobile) {
-	  if(stun_attr_add_str(buf,len,STUN_ATTRIBUTE_MOBILITY_TICKET,(const u08bits*)"",0)<0) return -1;
-  }
+  if(rt) {
 
-  //ADRESS-FAMILY
-  if (af4) {
-	  u08bits field[4];
-	  field[0] = (u08bits)STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4;
-	  field[1]=0;
-	  field[2]=0;
-	  field[3]=0;
-	  if(stun_attr_add_str(buf,len,STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY,field,sizeof(field))<0) return -1;
-  }
+	  stun_attr_add_str(buf,len, STUN_ATTRIBUTE_RESERVATION_TOKEN, (const u08bits*) rt, 8);
 
-  if (af6) {
-  	  u08bits field[4];
-  	  field[0] = (u08bits)STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6;
-  	  field[1]=0;
-  	  field[2]=0;
-  	  field[3]=0;
-  	  if(stun_attr_add_str(buf,len,STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY,field,sizeof(field))<0) return -1;
-  };
+  } else {
+
+	  if(mobile) {
+		  if(stun_attr_add_str(buf,len,STUN_ATTRIBUTE_MOBILITY_TICKET,(const u08bits*)"",0)<0) return -1;
+	  }
+
+	  if(ep) {
+		  uint8_t value = 0x80;
+		  if(stun_attr_add_str(buf,len,STUN_ATTRIBUTE_EVEN_PORT,(const u08bits*)&value,1)<0) return -1;
+	  }
+
+	  //ADRESS-FAMILY
+	  if (af4 && !af6) {
+		  u08bits field[4];
+		  field[0] = (u08bits)STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4;
+		  field[1]=0;
+		  field[2]=0;
+		  field[3]=0;
+		  if(stun_attr_add_str(buf,len,STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY,field,sizeof(field))<0) return -1;
+	  }
+
+	  if (af6 && !af4) {
+		  u08bits field[4];
+		  field[0] = (u08bits)STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6;
+		  field[1]=0;
+		  field[2]=0;
+		  field[3]=0;
+		  if(stun_attr_add_str(buf,len,STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY,field,sizeof(field))<0) return -1;
+	  }
+
+	  if (af4 && af6) {
+	  	u08bits field[4];
+	  	field[0] = (u08bits)STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6;
+	  	field[1]=0;
+	  	field[2]=0;
+	  	field[3]=0;
+	  	if(stun_attr_add_str(buf,len,STUN_ATTRIBUTE_ADDITIONAL_ADDRESS_FAMILY,field,sizeof(field))<0) return -1;
+	  }
+  }
 
   return 0;
 }
@@ -1246,7 +1267,7 @@ int stun_attr_get_first_addr_str(const u08bits *buf, size_t len, u16bits attr_ty
   while(attr) {
     if(stun_attr_is_addr(attr) && (attr_type == stun_attr_get_type(attr))) {
       if(stun_attr_get_addr_str(buf,len,attr,ca,default_addr)==0) {
-	return 0;
+    	  return 0;
       }
     }
     attr=stun_attr_get_next_str(buf,len,attr);
@@ -1273,6 +1294,48 @@ int stun_attr_add_bandwidth_str(u08bits* buf, size_t *len, band_limit_t bps0) {
 	return stun_attr_add_str(buf,len,STUN_ATTRIBUTE_NEW_BANDWIDTH,(u08bits*)(&field),sizeof(field));
 }
 
+int stun_attr_add_address_error_code(u08bits* buf, size_t *len, int requested_address_family, u08bits error_code)
+{
+	u08bits field[4];
+	field[0]=(u08bits)requested_address_family;
+	field[1]=error_code;
+	field[2]=0;
+	field[3]=0;
+	return stun_attr_add_str(buf,len,STUN_ATTRIBUTE_ADDRESS_ERROR_CODE,field,sizeof(field));
+}
+
+int stun_attr_get_address_error_code(u08bits* buf, size_t len, int *requested_address_family, u08bits *error_code)
+{
+	if(requested_address_family) {
+		*requested_address_family = 0;
+	}
+	if(error_code) {
+		*error_code = 0;
+	}
+	if(buf && len) {
+		stun_attr_ref sar = stun_attr_get_first_by_type_str(buf, len, STUN_ATTRIBUTE_ADDRESS_ERROR_CODE);
+		if(sar) {
+			const u08bits* value = stun_attr_get_value(sar);
+			if(!value) {
+				return -1;
+			} else {
+				int alen = stun_attr_get_len(sar);
+				if(alen != 4) {
+					return -1;
+				}
+				if(requested_address_family) {
+					*requested_address_family = value[0];
+				}
+				if(error_code) {
+					*error_code = value[1];
+				}
+				return 0;
+			}
+		}
+	}
+	return 0;
+}
+
 u16bits stun_attr_get_first_channel_number_str(const u08bits *buf, size_t len) {
 
   stun_attr_ref attr=stun_attr_get_first_str(buf,len);
@@ -1280,7 +1343,7 @@ u16bits stun_attr_get_first_channel_number_str(const u08bits *buf, size_t len) {
     if(stun_attr_get_type(attr) == STUN_ATTRIBUTE_CHANNEL_NUMBER) {
       u16bits ret = stun_attr_get_channel_number(attr);
       if(STUN_VALID_CHANNEL(ret)) {
-	return ret;
+    	  return ret;
       }
     }
     attr=stun_attr_get_next_str(buf,len,attr);
