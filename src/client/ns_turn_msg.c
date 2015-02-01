@@ -758,20 +758,22 @@ int stun_set_allocate_request_str(u08bits* buf, size_t *len, u32bits lifetime, i
     if(stun_attr_add_str(buf,len,STUN_ATTRIBUTE_LIFETIME,(u08bits*)(&field),sizeof(field))<0) return -1;
   }
 
+  //MICE
+  if(mobile) {
+	  if(stun_attr_add_str(buf,len,STUN_ATTRIBUTE_MOBILITY_TICKET,(const u08bits*)"",0)<0) return -1;
+  }
+
+  if(ep>-1) {
+	  uint8_t value = ep ? 0x80 : 0x00;
+	  if(stun_attr_add_str(buf,len,STUN_ATTRIBUTE_EVEN_PORT,(const u08bits*)&value,1)<0) return -1;
+  }
+
+  //RESERVATION-TOKEN, EVEN-PORT and DUAL-ALLOCATION are mutually exclusive:
   if(rt) {
 
 	  stun_attr_add_str(buf,len, STUN_ATTRIBUTE_RESERVATION_TOKEN, (const u08bits*) rt, 8);
 
   } else {
-
-	  if(mobile) {
-		  if(stun_attr_add_str(buf,len,STUN_ATTRIBUTE_MOBILITY_TICKET,(const u08bits*)"",0)<0) return -1;
-	  }
-
-	  if(ep) {
-		  uint8_t value = 0x80;
-		  if(stun_attr_add_str(buf,len,STUN_ATTRIBUTE_EVEN_PORT,(const u08bits*)&value,1)<0) return -1;
-	  }
 
 	  //ADRESS-FAMILY
 	  if (af4 && !af6) {
