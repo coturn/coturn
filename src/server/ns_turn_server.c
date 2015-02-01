@@ -1512,7 +1512,8 @@ static int handle_turn_refresh(turn_turnserver *server,
 				}
 			}
 				break;
-			case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY: {
+			case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY: /* <<== ??? */
+			case STUN_ATTRIBUTE_ADDITIONAL_ADDRESS_FAMILY: {
 				int af_req = stun_get_requested_address_family(sar);
 				{
 					int is_err = 0;
@@ -1537,7 +1538,7 @@ static int handle_turn_refresh(turn_turnserver *server,
 
 					if(is_err) {
 						*err_code = 443;
-						*reason = (const u08bits *)"Peer Address Family Mismatch";
+						*reason = (const u08bits *)"Peer Address Family Mismatch (1)";
 					}
 				}
 			}
@@ -2231,7 +2232,7 @@ static int handle_turn_connect(turn_turnserver *server,
 				} else {
 					if(!get_relay_socket(a,peer_addr.ss.sa_family)) {
 						*err_code = 443;
-						*reason = (const u08bits *)"Peer Address Family Mismatch";
+						*reason = (const u08bits *)"Peer Address Family Mismatch (2)";
 					}
 
 					peer_found = 1;
@@ -2552,7 +2553,7 @@ static int handle_turn_channel_bind(turn_turnserver *server,
 
 				if(!get_relay_socket(a,peer_addr.ss.sa_family)) {
 					*err_code = 443;
-					*reason = (const u08bits *)"Peer Address Family Mismatch";
+					*reason = (const u08bits *)"Peer Address Family Mismatch (3)";
 				}
 
 				if(addr_get_port(&peer_addr) < 1) {
@@ -3050,7 +3051,7 @@ static int handle_turn_create_permission(turn_turnserver *server,
 
 					if(!get_relay_socket(a,peer_addr.ss.sa_family)) {
 						*err_code = 443;
-						*reason = (const u08bits *)"Peer Address Family Mismatch";
+						*reason = (const u08bits *)"Peer Address Family Mismatch (4)";
 					} else if(!good_peer_addr(server, ss->realm_options.name, &peer_addr)) {
 						*err_code = 403;
 						*reason = (const u08bits *) "Forbidden IP";
