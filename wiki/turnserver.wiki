@@ -207,7 +207,7 @@ http://tools.ietf.org/html/rfc5389#section-10.2
 http://tools.ietf.org/html/rfc5389#section-15.4
 
 For authentication, each user must know two things: the username and the 
-password. Optionally, the user must supply the ORIGIN value, so that the 
+password. Optionally, the user may supply the ORIGIN value, so that the 
 server can figure out the realm to be used for the user. The nonce and the realm values are supplied by the TURN server. But LTCM is not saying anything about the nature and about the persistence of the username and of the password; and this is used by the REST API.
 
 In the TURN REST API, there is no persistent passwords for users. A user has 
@@ -243,8 +243,7 @@ Once the temporary username and password are obtained by the client (browser)
 application, then the rest is just 'classic" long-term credentials mechanism.
 For developers, we are going to describe it step-by-step below:
 
-  # a new TURN client sends a request command to the TURN server. Optionally, 
-  it adds the ORIGIN field to it.
+  # a new TURN client sends a request command to the TURN server. Optionally, the client adds the ORIGIN field to it.
   # TURN server sees that this is a new client and the message is not authenticated.
   # the TURN server generates a random nonce string, and return the error 401 to the client, with nonce and realm included. If the ORIGIN field was present in the client request, it may affect the realm value that the server chooses for the client.
   # the client sees the 401 error and it extracts two values from the error response: the nonce and the realm.
