@@ -1088,11 +1088,14 @@ static int handle_turn_allocate(turn_turnserver *server,
 			  if (in_reservation_token) {
 			    *err_code = 400;
 			    *reason = (const u08bits *)"Even Port and Reservation Token cannot be used together";
-			  } else if (even_port >= 0) {
-			    *err_code = 400;
-			    *reason = (const u08bits *)"Even Port cannot be used in this request";
 			  } else {
 			    even_port = stun_attr_get_even_port(sar);
+			    if(even_port) {
+			    	if (af4 && af6) {
+			    		*err_code = 400;
+			    		*reason = (const u08bits *)"Even Port cannot be used with Dual Allocation";
+			    	}
+			    }
 			  }
 			}
 			  break;
@@ -1118,6 +1121,11 @@ static int handle_turn_allocate(turn_turnserver *server,
 			}
 			  break;
 			case STUN_ATTRIBUTE_ADDITIONAL_ADDRESS_FAMILY:
+				if(even_port>0) {
+					*err_code = 400;
+					*reason = (const u08bits *)"Even Port cannot be used with Dual Allocation";
+					break;
+				}
 			case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY: {
 				if(in_reservation_token) {
 					*err_code = 400;
@@ -1220,7 +1228,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 						*err_code = 440;
 						*reason = (const u08bits *)"Dual allocation cannot be supported in the current server configuration";
 					}
-					if(even_port >= 0) {
+					if(even_port > 0) {
 						*err_code = 440;
 						*reason = (const u08bits *)"Dual allocation cannot be supported with even-port functionality";
 					}

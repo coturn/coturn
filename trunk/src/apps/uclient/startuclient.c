@@ -375,13 +375,22 @@ static int clnet_allocate(int verbose,
 
 		uint64_t reservation_token = 0;
 		char* rt = NULL;
-		int ep = !no_rtcp;
+		int ep = !no_rtcp && !dual_allocation;
 
 		if(!no_rtcp) {
 			if (!never_allocate_rtcp && allocate_rtcp) {
 				reservation_token = ioa_ntoh64(current_reservation_token);
 				rt = (char*) (&reservation_token);
 			}
+		}
+
+		if(is_TCP_relay()) {
+			ep = -1;
+		} else if(rt) {
+			ep = -1;
+		} else if(!ep) {
+			ep = (((u08bits)random()) % 2);
+			ep = ep-1;
 		}
 
 		if(!dos)
