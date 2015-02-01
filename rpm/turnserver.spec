@@ -288,7 +288,7 @@ fi
 %{_includedir}/turn/client/TurnMsgLib.h
 
 %changelog
-* Sat Jan 31 2015 Oleg Moskalenko <mom040267@gmail.com>
+* Sun Feb 1 2015 Oleg Moskalenko <mom040267@gmail.com>
   - Sync to 4.4.1.2
 * Sat Jan 24 2015 Oleg Moskalenko <mom040267@gmail.com>
   - Sync to 4.4.1.1
