@@ -649,6 +649,18 @@ static int clnet_allocate(int verbose,
 				stun_attr_add(&request_message, STUN_ATTRIBUTE_MOBILITY_TICKET, (const char*)clnet_info->s_mobile_id, strlen(clnet_info->s_mobile_id));
 			}
 
+			if(dual_allocation && !mobility) {
+				int t = ((u08bits)random())%3;
+				if(t) {
+					u08bits field[4];
+					field[0] = (t==1) ? (u08bits)STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4 : (u08bits)STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6;
+					field[1]=0;
+					field[2]=0;
+					field[3]=0;
+					stun_attr_add(&request_message, STUN_ATTRIBUTE_ADDITIONAL_ADDRESS_FAMILY, (const char*) field, 4);
+				}
+			}
+
 			add_origin(&request_message);
 
 			if(add_integrity(clnet_info, &request_message)<0) return -1;
