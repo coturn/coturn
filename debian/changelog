@@ -1,3 +1,9 @@
+coturn (4.4.1.2-1) unstable; urgency=low
+
+  * Sync to 4.4.1.2 upstream
+
+ -- Oleg Moskalenko <mom040267@gmail.com>  Sun, 01 Feb 2015 20:43:30 -0800
+
 coturn (4.4.1.1-2) unstable; urgency=low
 
   * source control info fixed
