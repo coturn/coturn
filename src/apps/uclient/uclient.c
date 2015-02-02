@@ -1232,6 +1232,19 @@ static int refresh_channel(app_ur_session* elem, u16bits method, uint32_t lt)
 		stun_init_request(STUN_METHOD_REFRESH, &message);
 		lt = htonl(lt);
 		stun_attr_add(&message, STUN_ATTRIBUTE_LIFETIME, (const char*) &lt, 4);
+
+		if(dual_allocation && !mobility) {
+			int t = ((u08bits)random())%3;
+			if(t) {
+				u08bits field[4];
+				field[0] = (t==1) ? (u08bits)STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4 : (u08bits)STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6;
+				field[1]=0;
+				field[2]=0;
+				field[3]=0;
+				stun_attr_add(&message, STUN_ATTRIBUTE_ADDITIONAL_ADDRESS_FAMILY, (const char*) field, 4);
+			}
+		}
+
 		add_origin(&message);
 		if(add_integrity(clnet_info, &message)<0) return -1;
 		if(use_fingerprints)

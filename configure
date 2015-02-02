@@ -867,6 +867,8 @@ if ! [ ${ER} -eq 0 ] ; then
 fi
 testlib wldap64
 testlib intl
+testlib nsl
+testlib resolv
 
 ###########################
 # Test sockets compilation

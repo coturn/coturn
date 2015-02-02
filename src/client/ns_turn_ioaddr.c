@@ -245,24 +245,26 @@ int make_ioa_addr(const u08bits* saddr0, int port, ioa_addr *addr) {
 
     beg_af:
 
-    while(!found && addr_result) {
+    while(addr_result) {
 
     	if(addr_result->ai_family == family) {
-    		ns_bcopy(addr_result->ai_addr, addr, addr_result->ai_addrlen);
     		if (addr_result->ai_family == AF_INET) {
+    			ns_bcopy(addr_result->ai_addr, addr, addr_result->ai_addrlen);
     			addr->s4.sin_port = nswap16(port);
 #if defined(TURN_HAS_SIN_LEN) /* tested when configured */
     			addr->s4.sin_len = sizeof(struct sockaddr_in);
 #endif
+    			found = 1;
+    			break;
     		} else if (addr_result->ai_family == AF_INET6) {
+    			ns_bcopy(addr_result->ai_addr, addr, addr_result->ai_addrlen);
     			addr->s6.sin6_port = nswap16(port);
 #if defined(SIN6_LEN) /* this define is required by IPv6 if used */
     			addr->s6.sin6_len = sizeof(struct sockaddr_in6);
 #endif
-    		} else {
-    			continue;
+    			found = 1;
+    			break;
     		}
-    		found = 1;
     	}
 
     	addr_result = addr_result->ai_next;
@@ -322,14 +324,14 @@ int make_ioa_addr_from_full_string(const u08bits* saddr, int default_port, ioa_a
 
 	int ret = -1;
 	int port = 0;
-	char* s = strdup((const char*)saddr);
+	char* s = turn_strdup((const char*)saddr);
 	char *sa = get_addr_string_and_port(s,&port);
 	if(sa) {
 		if(port<1)
 			port = default_port;
 		ret = make_ioa_addr((u08bits*)sa,port,addr);
 	}
-	free(s);
+	turn_free(s,strlen(s)+1);
 	return ret;
 }
 
@@ -509,10 +511,10 @@ static size_t msz = 0;
 void ioa_addr_add_mapping(ioa_addr *apub, ioa_addr *apriv)
 {
 	size_t new_size = msz + sizeof(ioa_addr*);
-	public_addrs = (ioa_addr**)realloc(public_addrs, new_size);
-	private_addrs = (ioa_addr**)realloc(private_addrs, new_size);
-	public_addrs[mcount]=(ioa_addr*)malloc(sizeof(ioa_addr));
-	private_addrs[mcount]=(ioa_addr*)malloc(sizeof(ioa_addr));
+	public_addrs = (ioa_addr**)turn_realloc(public_addrs, msz, new_size);
+	private_addrs = (ioa_addr**)turn_realloc(private_addrs, msz, new_size);
+	public_addrs[mcount]=(ioa_addr*)turn_malloc(sizeof(ioa_addr));
+	private_addrs[mcount]=(ioa_addr*)turn_malloc(sizeof(ioa_addr));
 	addr_cpy(public_addrs[mcount],apub);
 	addr_cpy(private_addrs[mcount],apriv);
 	++mcount;

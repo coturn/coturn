@@ -135,7 +135,7 @@ static char Usage[] =
   "		(for testing the non-standard server relay functionality).\n"
   "	-G	Generate extra requests (create permissions, channel bind).\n"
   "	-B	Random disconnect after a few initial packets.\n"
-  "	-Z	Dual allocation.\n"
+  "	-Z	Dual allocation (implies -c).\n"
   "	-J	Use oAuth with default test key kid='north' or 'oldempire'.\n"
   "Options:\n"
   "	-l	Message length (Default: 100 Bytes).\n"
@@ -392,6 +392,10 @@ int main(int argc, char **argv)
 		}
 	}
 
+	if(dual_allocation) {
+		no_rtcp = 1;
+	}
+
 	if(g_use_auth_secret_with_timestamp) {
 
 		{
@@ -463,10 +467,16 @@ int main(int argc, char **argv)
 	}
 
 	if (!c2c) {
-		if (make_ioa_addr((const u08bits*) peer_address, peer_port, &peer_addr) < 0)
+
+		if (make_ioa_addr((const u08bits*) peer_address, peer_port, &peer_addr) < 0) {
 			return -1;
-		if(peer_addr.ss.sa_family == AF_INET6)
+		}
+
+		if(peer_addr.ss.sa_family == AF_INET6) {
 			default_address_family = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6;
+		} else if(peer_addr.ss.sa_family == AF_INET) {
+			default_address_family = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4;
+		}
 
 	}
 
