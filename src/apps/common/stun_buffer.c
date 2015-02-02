@@ -153,8 +153,8 @@ int stun_is_channel_message(stun_buffer* buf, u16bits* chnumber, int is_padding_
 
 ///////////////////////////////////////////////////////////////////////////////
 
-int stun_set_allocate_request(stun_buffer* buf, u32bits lifetime, int af4, int af6, u08bits transport, int mobile) {
-  return stun_set_allocate_request_str(buf->buf, (size_t*)(&(buf->len)), lifetime, af4, af6, transport, mobile);
+int stun_set_allocate_request(stun_buffer* buf, u32bits lifetime, int af4, int af6, u08bits transport, int mobile, const char *rt, int ep) {
+  return stun_set_allocate_request_str(buf->buf, (size_t*)(&(buf->len)), lifetime, af4, af6, transport, mobile, rt, ep);
 }
 
 int stun_set_allocate_response(stun_buffer* buf, stun_tid* tid, 

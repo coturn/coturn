@@ -1,3 +1,10 @@
+2/1/2015 Oleg Moskalenko <mom040267@gmail.com>
+Version 4.4.1.2 'Ardee West':
+	- SSODA updates according to turnbis specs;
+	- TRANSPORT attribute handling fixed;
+	- hostname-to-IP-address resolution fix;
+	- updates for Solaris (name resolution libraries);
+
 1/24/2015 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.4.1.1 'Ardee West':
 	- https admin server;

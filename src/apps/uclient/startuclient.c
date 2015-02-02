@@ -370,39 +370,39 @@ static int clnet_allocate(int verbose,
 			reopen_socket = 0;
 		}
 
-		if(current_reservation_token) {
-			af = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT;
-		}
-
 		int af4 = dual_allocation || (af == STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4);
 		int af6 = dual_allocation || (af == STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6);
 
+		uint64_t reservation_token = 0;
+		char* rt = NULL;
+		int ep = !no_rtcp && !dual_allocation;
+
 		if(!no_rtcp) {
 			if (!never_allocate_rtcp && allocate_rtcp) {
-				af4 = 0;
-				af6 = 0;
+				reservation_token = ioa_ntoh64(current_reservation_token);
+				rt = (char*) (&reservation_token);
 			}
 		}
 
+		if(is_TCP_relay()) {
+			ep = -1;
+		} else if(rt) {
+			ep = -1;
+		} else if(!ep) {
+			ep = (((u08bits)random()) % 2);
+			ep = ep-1;
+		}
+
 		if(!dos)
-			stun_set_allocate_request(&request_message, UCLIENT_SESSION_LIFETIME, af4, af6, relay_transport, mobility);
+			stun_set_allocate_request(&request_message, UCLIENT_SESSION_LIFETIME, af4, af6, relay_transport, mobility, rt, ep);
 		else
-			stun_set_allocate_request(&request_message, UCLIENT_SESSION_LIFETIME/3, af4, af6, relay_transport, mobility);
+			stun_set_allocate_request(&request_message, UCLIENT_SESSION_LIFETIME/3, af4, af6, relay_transport, mobility, rt, ep);
 
 		if(bps)
 			stun_attr_add_bandwidth_str(request_message.buf, (size_t*)(&(request_message.len)), bps);
 
 		if(dont_fragment)
 			stun_attr_add(&request_message, STUN_ATTRIBUTE_DONT_FRAGMENT, NULL, 0);
-		if(!no_rtcp) {
-		  if (!never_allocate_rtcp && allocate_rtcp) {
-		    uint64_t reservation_token = ioa_ntoh64(current_reservation_token);
-		    stun_attr_add(&request_message, STUN_ATTRIBUTE_RESERVATION_TOKEN,
-				  (char*) (&reservation_token), 8);
-		  } else {
-		    stun_attr_add_even_port(&request_message, 1);
-		  }
-		}
 
 		add_origin(&request_message);
 
@@ -647,6 +647,18 @@ static int clnet_allocate(int verbose,
 
 			if(clnet_info->s_mobile_id[0]) {
 				stun_attr_add(&request_message, STUN_ATTRIBUTE_MOBILITY_TICKET, (const char*)clnet_info->s_mobile_id, strlen(clnet_info->s_mobile_id));
+			}
+
+			if(dual_allocation && !mobility) {
+				int t = ((u08bits)random())%3;
+				if(t) {
+					u08bits field[4];
+					field[0] = (t==1) ? (u08bits)STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4 : (u08bits)STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6;
+					field[1]=0;
+					field[2]=0;
+					field[3]=0;
+					stun_attr_add(&request_message, STUN_ATTRIBUTE_ADDITIONAL_ADDRESS_FAMILY, (const char*) field, 4);
+				}
 			}
 
 			add_origin(&request_message);

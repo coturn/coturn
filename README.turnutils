@@ -104,7 +104,7 @@ Flags:
 
 -B  	Random disconnect after a few initial packets.
 
--Z	Dual allocation (SSODA draft support).
+-Z	Dual allocation (SSODA). Implies -c option.
 
 -J	Use oAuth with default test key kid='north'.
 
