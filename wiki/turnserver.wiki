@@ -1,5 +1,5 @@
 #summary turnserver wiki page
-#labels Version-4.4.1.1
+#labels Version-4.4.1.2
 
 ==turnserver application: a TURN relay server implementation==
 
@@ -543,3 +543,7 @@ compiled with OpenSSL 1.0.2 or newer. If the server receives a TLS/DTLS
 server chooses the first {{{stun.*}}} label and sends it back (in the {{{ServerHello}}})
 in the ALPN extension field. If no {{{stun.*}}} label is found, then the server
 does not include the ALPN information into the {{{ServerHello}}}.
+
+=== TURN-bis draft ===
+
+TURN-bis with dual allocation (http://tools.ietf.org/html/draft-ietf-tram-turnbis-01) is implemented. At the present moment, the two new dual-allocation-related STUN attributes have no assigned type (by IANA); so we are using tentative numbers: ADDITIONAL-ADDRESS-FAMILY attribute has type 0x8032, and ADDRESS-ERROR-CODE has type 0x8033.
