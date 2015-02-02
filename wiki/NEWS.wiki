@@ -1,5 +1,10 @@
 #summary News log
-#labels Version-4.4.1.1
+#labels Version-4.4.1.2
+
+== 02/01/2015 ==
+=== Version 4.4.1.2 ===
+
+TURN-bis draft impleented (with new dual allocation specs)
 
 == 01/24/2015 ==
 === Version 4.4.1.1 ===
