@@ -36,6 +36,7 @@ sadd turn/realm/north.gov/denied-peer-ip "172.17.13.133-172.17.14.56" "172.17.17
 sadd turn/realm/crinna.org/denied-peer-ip "123::77"
 
 hmset turn/oauth/kid/north ikm_key 'Y2FybGVvbg==' hkdf_hash_func 'SHA-256' as_rs_alg 'AES-256-CBC' auth_alg 'HMAC-SHA-256-128'
+hmset turn/oauth/kid/union ikm_key 'aGVyb2Q=' hkdf_hash_func 'SHA-256' as_rs_alg 'AES-256-CBC' auth_alg 'HMAC-SHA-512'
 hmset turn/oauth/kid/oldempire ikm_key 'YXVsY3Vz' hkdf_hash_func 'SHA-256' as_rs_alg 'AEAD-AES-256-GCM'
 
 hmset turn/admin_user/skarling realm 'north.gov' password 'hoodless'

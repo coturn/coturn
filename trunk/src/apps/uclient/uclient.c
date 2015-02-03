@@ -1609,8 +1609,7 @@ int add_integrity(app_ur_conn_info *clnet_info, stun_buffer *message)
 			if(((method == STUN_METHOD_ALLOCATE) || (method == STUN_METHOD_REFRESH)) || !(clnet_info->key_set))
 			{
 
-				cok=(random())%2;
-				if(cok<0) cok=-cok;
+				cok=((unsigned short)random())%3;
 				clnet_info->cok = cok;
 				oauth_token otoken;
 				encoded_oauth_token etoken;
@@ -1627,6 +1626,8 @@ int add_integrity(app_ur_conn_info *clnet_info, stun_buffer *message)
 				otoken.enc_block.timestamp = ((uint64_t)turn_time()) << 16;
 				if(shatype == SHATYPE_SHA256) {
 					otoken.enc_block.key_length = 32;
+				} else if(shatype == SHATYPE_SHA512) {
+					otoken.enc_block.key_length = 64;
 				} else {
 					otoken.enc_block.key_length = 20;
 				}

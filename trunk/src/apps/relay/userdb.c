@@ -495,6 +495,12 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, u08bits *u
 							return -1;
 						}
 						break;
+					case SHA512SIZEBYTES:
+						if(turn_params.shatype != SHATYPE_SHA512) {
+							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong size of the MAC key in oAuth token(3): %d\n",(int)dot.enc_block.key_length);
+							return -1;
+						}
+						break;
 					default:
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong size of the MAC key in oAuth token(3): %d\n",(int)dot.enc_block.key_length);
 						return -1;
@@ -574,6 +580,11 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, u08bits *u
 				if(turn_params.shatype != SHATYPE_SHA256)
 					return -1;
 				hmac_len = SHA256SIZEBYTES;
+				break;
+			case SHA512SIZEBYTES:
+				if(turn_params.shatype != SHATYPE_SHA512)
+					return -1;
+				hmac_len = SHA512SIZEBYTES;
 				break;
 			default:
 				return -1;
