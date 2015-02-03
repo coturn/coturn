@@ -126,6 +126,15 @@ int stun_calculate_hmac(const u08bits *buf, size_t len, const u08bits *key, size
 	  fprintf(stderr,"SHA256 is not supported\n");
 	  return -1;
 #endif
+	} else if(shatype == SHATYPE_SHA512) {
+#if !defined(OPENSSL_NO_SHA512) && defined(SHA512_DIGEST_LENGTH)
+	  if (!HMAC(EVP_sha512(), key, keylen, buf, len, hmac, hmac_len)) {
+	    return -1;
+	  }
+#else
+	  fprintf(stderr,"SHA512 is not supported\n");
+	  return -1;
+#endif
 	} else
 	  if (!HMAC(EVP_sha1(), key, keylen, buf, len, hmac, hmac_len)) {
 	    return -1;
@@ -163,6 +172,18 @@ int stun_produce_integrity_key_str(u08bits *uname, u08bits *realm, u08bits *upwd
 		EVP_MD_CTX_cleanup(&ctx);
 #else
 		fprintf(stderr,"SHA256 is not supported\n");
+		return -1;
+#endif
+	} else if(shatype == SHATYPE_SHA512) {
+#if !defined(OPENSSL_NO_SHA512) && defined(SHA512_DIGEST_LENGTH)
+		unsigned int keylen = 0;
+		EVP_MD_CTX ctx;
+		EVP_DigestInit(&ctx,EVP_sha512());
+		EVP_DigestUpdate(&ctx,str,strl);
+		EVP_DigestFinal(&ctx,key,&keylen);
+		EVP_MD_CTX_cleanup(&ctx);
+#else
+		fprintf(stderr,"SHA512 is not supported\n");
 		return -1;
 #endif
 	} else {
@@ -1517,6 +1538,8 @@ size_t get_hmackey_size(SHATYPE shatype)
 {
 	if(shatype == SHATYPE_SHA256)
 		return 32;
+	if(shatype == SHATYPE_SHA512)
+		return 64;
 	return 16;
 }
 
@@ -1539,6 +1562,9 @@ int stun_attr_add_integrity_str(turn_credential_type ct, u08bits *buf, size_t *l
 	switch(shatype) {
 	case SHATYPE_SHA256:
 		shasize = SHA256SIZEBYTES;
+		break;
+	case SHATYPE_SHA512:
+		shasize = SHA512SIZEBYTES;
 		break;
 	default:
 		shasize = SHA1SIZEBYTES;
@@ -1622,6 +1648,11 @@ int stun_check_message_integrity_by_key_str(turn_credential_type ct, u08bits *bu
 	case SHA256SIZEBYTES:
 		shasize = SHA256SIZEBYTES;
 		if(shatype != SHATYPE_SHA256)
+			return -1;
+		break;
+	case SHA512SIZEBYTES:
+		shasize = SHA512SIZEBYTES;
+		if(shatype != SHATYPE_SHA512)
 			return -1;
 		break;
 	case SHA1SIZEBYTES:
@@ -1818,6 +1849,8 @@ static size_t calculate_auth_key_length(AUTH_ALG a)
 		return 32;
 	case AUTH_ALG_HMAC_SHA_256:
 		return 32;
+	case AUTH_ALG_HMAC_SHA_512:
+		return 64;
 	default:
 		break;
 	};
@@ -1834,6 +1867,8 @@ static size_t calculate_auth_output_length(AUTH_ALG a)
 		return 16;
 	case AUTH_ALG_HMAC_SHA_256:
 		return 32;
+	case AUTH_ALG_HMAC_SHA_512:
+		return 64;
 	default:
 		break;
 	};
@@ -1852,25 +1887,44 @@ static int calculate_key(char *key, size_t key_size, char *new_key, size_t new_k
 	//Expand:
 	u08bits buf[128];
 	buf[0]=1;
-	u08bits hmac[128];
-	unsigned int hmac_len = 0;
-	stun_calculate_hmac((const u08bits *)buf, 1, prk, prk_len, hmac, &hmac_len, shatype);
-	ns_bcopy(hmac,new_key,hmac_len);
+	u08bits hmac1[128];
+	unsigned int hmac1_len = 0;
+	stun_calculate_hmac((const u08bits *)buf, 1, prk, prk_len, hmac1, &hmac1_len, shatype);
+	ns_bcopy(hmac1,new_key,hmac1_len);
 
 	//Check
-	if(new_key_size>hmac_len) {
-		ns_bcopy(hmac,buf,hmac_len);
-		buf[hmac_len]=2;
-		u08bits hmac1[128];
-		unsigned int hmac1_len = 0;
-		stun_calculate_hmac((const u08bits *)buf, hmac_len+1, prk, prk_len, hmac1, &hmac1_len, shatype);
-		ns_bcopy(hmac1,new_key+hmac_len,hmac1_len);
-		if(new_key_size > (hmac_len + hmac1_len)) {
-			if(err_msg) {
-				snprintf(err_msg,err_msg_size,"Wrong HKDF procedure (key sizes): output.sz=%lu, hmac(1)=%lu, hmac(2)=%lu",(unsigned long)new_key_size,(unsigned long)hmac_len,(unsigned long)hmac1_len);
+	if(new_key_size>hmac1_len) {
+		ns_bcopy(hmac1,buf,hmac1_len);
+		buf[hmac1_len]=2;
+		u08bits hmac2[128];
+		unsigned int hmac2_len = 0;
+		stun_calculate_hmac((const u08bits *)buf, hmac1_len+1, prk, prk_len, hmac2, &hmac2_len, shatype);
+		ns_bcopy(hmac2,new_key+hmac1_len,hmac2_len);
+		if(new_key_size > (hmac1_len + hmac2_len)) {
+
+			ns_bcopy(hmac2,buf,hmac2_len);
+			buf[hmac2_len]=3;
+			u08bits hmac3[128];
+			unsigned int hmac3_len = 0;
+			stun_calculate_hmac((const u08bits *)buf, hmac2_len+1, prk, prk_len, hmac3, &hmac3_len, shatype);
+			ns_bcopy(hmac3,new_key+hmac1_len+hmac2_len,hmac3_len);
+			if(new_key_size > (hmac1_len + hmac2_len + hmac3_len)) {
+
+				ns_bcopy(hmac3,buf,hmac3_len);
+				buf[hmac3_len]=4;
+				u08bits hmac4[128];
+				unsigned int hmac4_len = 0;
+				stun_calculate_hmac((const u08bits *)buf, hmac3_len+1, prk, prk_len, hmac4, &hmac4_len, shatype);
+				ns_bcopy(hmac4,new_key+hmac1_len+hmac2_len+hmac3_len,hmac4_len);
+				if(new_key_size > (hmac1_len + hmac2_len + hmac3_len + hmac4_len)) {
+
+					if(err_msg) {
+						snprintf(err_msg,err_msg_size,"Wrong HKDF procedure (key sizes): output.sz=%lu, hmac(1)=%lu, hmac(2)=%lu",(unsigned long)new_key_size,(unsigned long)hmac1_len,(unsigned long)hmac2_len);
+					}
+					OAUTH_ERROR("Wrong HKDF procedure (key sizes): output.sz=%lu, hmac(1)=%lu, hmac(2)=%lu",(unsigned long)new_key_size,(unsigned long)hmac1_len,(unsigned long)hmac2_len);
+					return -1;
+				}
 			}
-			OAUTH_ERROR("Wrong HKDF procedure (key sizes): output.sz=%lu, hmac(1)=%lu, hmac(2)=%lu",(unsigned long)new_key_size,(unsigned long)hmac_len,(unsigned long)hmac1_len);
-			return -1;
 		}
 	}
 
@@ -1938,6 +1992,8 @@ int convert_oauth_key_data(const oauth_key_data *oakd0, oauth_key *key, char *er
 			key->hkdf_hash_func = SHATYPE_SHA1;
 		} else if(!strcmp(oakd->hkdf_hash_func,"SHA256") || !strcmp(oakd->hkdf_hash_func,"SHA-256")) {
 			key->hkdf_hash_func = SHATYPE_SHA256;
+		} else if(!strcmp(oakd->hkdf_hash_func,"SHA512") || !strcmp(oakd->hkdf_hash_func,"SHA-512")) {
+			key->hkdf_hash_func = SHATYPE_SHA512;
 		} else if(oakd->hkdf_hash_func[0]) {
 			if(err_msg) {
 				snprintf(err_msg,err_msg_size,"Wrong HKDF hash function algorithm: %s",oakd->hkdf_hash_func);
@@ -1951,6 +2007,8 @@ int convert_oauth_key_data(const oauth_key_data *oakd0, oauth_key *key, char *er
 			key->auth_alg = AUTH_ALG_HMAC_SHA_1;
 		} else if(!strcmp(oakd->auth_alg,"HMAC-SHA-256")) {
 			key->auth_alg = AUTH_ALG_HMAC_SHA_256;
+		} else if(!strcmp(oakd->auth_alg,"HMAC-SHA-512")) {
+			key->auth_alg = AUTH_ALG_HMAC_SHA_512;
 		} else if(!strcmp(oakd->auth_alg,"HMAC-SHA-256-128")) {
 			key->auth_alg = AUTH_ALG_HMAC_SHA_256_128;
 		} else if(oakd->auth_alg[0]) {
@@ -2034,6 +2092,10 @@ static const EVP_MD *get_auth_type(AUTH_ALG aa)
 	case AUTH_ALG_HMAC_SHA_256_128:
 	case AUTH_ALG_HMAC_SHA_256:
 		return EVP_sha256();
+#if !defined(OPENSSL_NO_SHA512) && defined(SHA512_DIGEST_LENGTH)
+	case AUTH_ALG_HMAC_SHA_512:
+		return EVP_sha512();
+#endif
 #endif
 	default:
 		break;

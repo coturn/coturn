@@ -712,6 +712,8 @@ static void cli_print_configuration(struct cli_session* cs)
 
 		if(turn_params.shatype == SHATYPE_SHA256)
 			cli_print_str(cs,"SHA256","SHA type",0);
+		else if(turn_params.shatype == SHATYPE_SHA512)
+			cli_print_str(cs,"SHA512","SHA type",0);
 		else
 			cli_print_str(cs,"SHA1","SHA type",0);
 		myprintf(cs,"\n");
@@ -1979,6 +1981,8 @@ static void write_pc_page(ioa_socket_handle s)
 
 				if(turn_params.shatype == SHATYPE_SHA256)
 					https_print_str(sb,"SHA256","SHA type",0);
+				else if(turn_params.shatype == SHATYPE_SHA512)
+					https_print_str(sb,"SHA512","SHA type",0);
 				else
 					https_print_str(sb,"SHA1","SHA type",0);
 
@@ -2508,6 +2512,8 @@ static void write_users_page(ioa_socket_handle s, const u08bits *add_user, const
 
 			if(turn_params.shatype == SHATYPE_SHA256)
 				str_buffer_append(sb,"SHA type: SHA256<br>\r\n");
+			else if(turn_params.shatype == SHATYPE_SHA512)
+				str_buffer_append(sb,"SHA type: SHA512<br>\r\n");
 			else
 				str_buffer_append(sb,"SHA type: SHA1<br>\r\n");
 
@@ -3043,10 +3049,18 @@ static void write_https_oauth_page(ioa_socket_handle s, const char* add_kid, con
 					str_buffer_append(sb,"<input type=\"radio\" name=\"");
 					str_buffer_append(sb,HR_ADD_OAUTH_HKDF);
 					str_buffer_append(sb,"\" value=\"SHA-256\" ");
-					if(strcmp("SHA-1",add_hkdf_hash_func)) {
+					if(!strcmp("SHA-256",add_hkdf_hash_func)) {
 						str_buffer_append(sb," checked ");
 					}
 					str_buffer_append(sb,">SHA-256\r\n<br>\r\n");
+
+					str_buffer_append(sb,"<input type=\"radio\" name=\"");
+					str_buffer_append(sb,HR_ADD_OAUTH_HKDF);
+					str_buffer_append(sb,"\" value=\"SHA-512\" ");
+					if(!strcmp("SHA-512",add_hkdf_hash_func)) {
+						str_buffer_append(sb," checked ");
+					}
+					str_buffer_append(sb,">SHA-512\r\n<br>\r\n");
 				}
 
 				str_buffer_append(sb,"</td><td colspan=\"2\">");
@@ -3139,6 +3153,14 @@ static void write_https_oauth_page(ioa_socket_handle s, const char* add_kid, con
 						str_buffer_append(sb," checked ");
 					}
 					str_buffer_append(sb,">HMAC-SHA-256\r\n<br>\r\n");
+
+					str_buffer_append(sb,"<input type=\"radio\" name=\"");
+					str_buffer_append(sb,HR_ADD_OAUTH_AA);
+					str_buffer_append(sb,"\" value=\"HMAC-SHA-512\" ");
+					if(!strcmp("HMAC-SHA-512",add_aa)) {
+						str_buffer_append(sb," checked ");
+					}
+					str_buffer_append(sb,">HMAC-SHA-512\r\n<br>\r\n");
 
 					str_buffer_append(sb,"<input type=\"radio\" name=\"");
 					str_buffer_append(sb,HR_ADD_OAUTH_AA);

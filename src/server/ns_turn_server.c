@@ -3297,6 +3297,12 @@ static int check_stun_auth(turn_turnserver *server,
 				return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
 			}
 			break;
+		case SHA512SIZEBYTES:
+			if(server->shatype != SHATYPE_SHA512) {
+				*err_code = 401;
+				return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
+			}
+			break;
 		default:
 			*err_code = 401;
 			return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);

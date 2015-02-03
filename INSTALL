@@ -763,7 +763,7 @@ The oauth_key table fields meanings are:
 		is 0 - unlimited lifetime.
 	
 	hkdf_hash_func - (optional) hash function for HKDF procedure; the 
-		valid values are SHA-1 and SHA-256, with SHA-256 as default;
+		valid values are SHA-1, SHA-256 and SHA-512, with SHA-256 as default;
 		The hkdf_hash_func is not needed if the as_rs_key and auth_key 
 		are defined explicitly in the database;
 		
@@ -777,7 +777,7 @@ The oauth_key table fields meanings are:
 		is defined by as_rs_alg.
 		
 	auth_alg - (optional) oAuth token authentication algorithm; the valid values are
-		"HMAC-SHA-256-128", "HMAC-SHA-256" and "HMAC-SHA-1".		  
+		"HMAC-SHA-256-128", "HMAC-SHA-256", "HMAC-SHA-512" and "HMAC-SHA-1".		  
 		The default value is "HMAC-SHA-256-128".
 		
 	auth_key - (optional) base64-encoded AUTH key. If not defined, then 

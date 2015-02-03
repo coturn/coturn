@@ -45,6 +45,9 @@ static const char* shas[]={"SHA1",
 #if !defined(OPENSSL_NO_SHA256) && defined(SHA256_DIGEST_LENGTH)
 			   "SHA256",
 #endif
+#if !defined(OPENSSL_NO_SHA512) && defined(SHA512_DIGEST_LENGTH)
+			   "SHA512",
+#endif
 			   NULL};
 static const char* encs[]={"AES-256-CBC","AES-128-CBC",
 #if !defined(TURN_NO_GCM)
@@ -54,6 +57,9 @@ static const char* encs[]={"AES-256-CBC","AES-128-CBC",
 static const char* hmacs[]={"HMAC-SHA-1",
 #if !defined(OPENSSL_NO_SHA256) && defined(SHA256_DIGEST_LENGTH)
 			    "HMAC-SHA-256","HMAC-SHA-256-128",
+#endif
+#if !defined(OPENSSL_NO_SHA512) && defined(SHA512_DIGEST_LENGTH)
+			    "HMAC-SHA-512",
 #endif
 			    NULL};
 
