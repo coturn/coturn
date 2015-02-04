@@ -762,6 +762,9 @@ static int create_server_socket(dtls_listener_relay_server_type* server, int rep
 		  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Cannot bind listener socket to device %s\n",server->ifname);
 	  }
 
+	  set_raw_socket_ttl_options(udp_listen_fd, server->addr.ss.sa_family);
+	  set_raw_socket_tos_options(udp_listen_fd, server->addr.ss.sa_family);
+
 	  {
 		  const int max_binding_time = 60;
 		  int addr_bind_cycle = 0;

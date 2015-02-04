@@ -1605,6 +1605,8 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s)
 				close(udp_fd);
 				return ret;
 			}
+			set_raw_socket_ttl_options(udp_fd, s->local_addr.ss.sa_family);
+			set_raw_socket_tos_options(udp_fd, s->local_addr.ss.sa_family);
 		}
 
 		detach_socket_net_data(s);
