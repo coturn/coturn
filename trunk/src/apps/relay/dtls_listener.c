@@ -638,14 +638,14 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void* arg)
 
 	addr_set_any(&(server->sm.m.sm.nd.src_addr));
 
-	int slen = server->slen0;
 	ssize_t bsize = 0;
 
-	int flags = 0;
+	int flags = MSG_DONTWAIT;
 
-	do {
-		bsize = recvfrom(fd, ioa_network_buffer_data(elem), ioa_network_buffer_get_capacity_udp(), flags, (struct sockaddr*) &(server->sm.m.sm.nd.src_addr), (socklen_t*) &slen);
-	} while (bsize < 0 && (errno == EINTR));
+	bsize = udp_recvfrom(fd, &(server->sm.m.sm.nd.src_addr), &(server->addr),
+			(s08bits*)ioa_network_buffer_data(elem), (int)ioa_network_buffer_get_capacity_udp(),
+			&(server->sm.m.sm.nd.recv_ttl), &(server->sm.m.sm.nd.recv_tos),
+			server->e->cmsg, flags, NULL);
 
 	int conn_reset = is_connreset();
 	int to_block = would_block();
@@ -668,6 +668,7 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void* arg)
 		ioa_addr orig_addr;
 		int ttl = 0;
 		int tos = 0;
+		int slen = server->slen0;
 		udp_recvfrom(fd, &orig_addr, &(server->addr), buffer,
 					(int) sizeof(buffer), &ttl, &tos, server->e->cmsg, eflags,
 					&errcode);
