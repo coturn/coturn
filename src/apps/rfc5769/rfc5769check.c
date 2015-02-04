@@ -82,12 +82,12 @@ static int check_oauth(void) {
 
 	size_t i_hmacs,i_shas,i_encs;
 
-	const char long_term_password[33] = "HGkj32KJGiuy098sdfaqbNjOiaz71923";
+	const char long_term_key[33] = "HGkj32KJGiuy098sdfaqbNjOiaz71923";
 
 	size_t ltp_output_length=0;
 
-	const char* base64encoded_ltp = base64_encode((const unsigned char *)long_term_password,
-						      strlen(long_term_password),
+	const char* base64encoded_ltp = base64_encode((const unsigned char *)long_term_key,
+						      strlen(long_term_key),
 						      &ltp_output_length);
 
 	const char mac_key[33] = "ZksjpweoixXmvn67534m";
