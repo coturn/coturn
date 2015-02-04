@@ -242,6 +242,9 @@ static int clnet_connect(uint16_t clnet_remote_port, const char *remote_address,
 
 	set_sock_buf_size(clnet_fd, UR_CLIENT_SOCK_BUF_SIZE);
 
+	set_raw_socket_tos(clnet_fd, remote_addr.ss.sa_family, 0x22);
+	set_raw_socket_ttl(clnet_fd, remote_addr.ss.sa_family, 47);
+
 	if(clnet_info->is_peer && (*local_address==0)) {
 
 		if(remote_addr.ss.sa_family == AF_INET6) {
