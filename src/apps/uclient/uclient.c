@@ -753,7 +753,10 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 							clnet_info->server_name, &(clnet_info->oauth))) {
 			if(err_code == SHA_TOO_WEAK_ERROR_CODE && (elem->pinfo.shatype == SHATYPE_SHA1)) {
 				elem->pinfo.shatype = SHATYPE_SHA256;
-				recalculate_restapi_hmac();
+				recalculate_restapi_hmac(elem->pinfo.shatype);
+			} else if(err_code == SHA_TOO_WEAK_ERROR_CODE && (elem->pinfo.shatype == SHATYPE_SHA256)) {
+				elem->pinfo.shatype = SHATYPE_SHA512;
+				recalculate_restapi_hmac(elem->pinfo.shatype);
 			}
 
 			if(is_TCP_relay() && (stun_get_method(&(elem->in_buffer)) == STUN_METHOD_CONNECT)) {

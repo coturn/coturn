@@ -95,7 +95,10 @@ Options with required values:
 -r, --realm		Realm.
 -p, --password		Password.
 -o, --origin		Origin
--H, --sha256	Use SHA256 as the keys hash function (a non-standard feature). 
+-H, --sha256		Use SHA256 as the keys hash function (a non-standard feature). 
+				By default, MD5 is used for the key storage encryption 
+				(as required by the current STUN/TURNstandards).
+-K, --sha512		Use SHA512 as the keys hash function (a non-standard feature). 
 				By default, MD5 is used for the key storage encryption 
 				(as required by the current STUN/TURNstandards).
 --max-bps		Set value of realm's max-bps parameter.

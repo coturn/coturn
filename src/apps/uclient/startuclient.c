@@ -526,7 +526,10 @@ static int clnet_allocate(int verbose,
 									clnet_info->server_name, &(clnet_info->oauth))) {
 						if(err_code == SHA_TOO_WEAK_ERROR_CODE && (clnet_info->shatype == SHATYPE_SHA1)) {
 							clnet_info->shatype = SHATYPE_SHA256;
-							recalculate_restapi_hmac();
+							recalculate_restapi_hmac(clnet_info->shatype);
+						} else if(err_code == SHA_TOO_WEAK_ERROR_CODE && (clnet_info->shatype == SHATYPE_SHA256)) {
+							clnet_info->shatype = SHATYPE_SHA512;
+							recalculate_restapi_hmac(clnet_info->shatype);
 						}
 						goto beg_allocate;
 					} else if (stun_is_error_response(&response_message, &err_code,err_msg,sizeof(err_msg))) {
@@ -724,7 +727,10 @@ static int clnet_allocate(int verbose,
 										clnet_info->server_name, &(clnet_info->oauth))) {
 						if(err_code == SHA_TOO_WEAK_ERROR_CODE && (clnet_info->shatype == SHATYPE_SHA1)) {
 							clnet_info->shatype = SHATYPE_SHA256;
-							recalculate_restapi_hmac();
+							recalculate_restapi_hmac(clnet_info->shatype);
+						} else if(err_code == SHA_TOO_WEAK_ERROR_CODE && (clnet_info->shatype == SHATYPE_SHA256)) {
+							clnet_info->shatype = SHATYPE_SHA512;
+							recalculate_restapi_hmac(clnet_info->shatype);
 						}
 						goto beg_refresh;
 					} else if (stun_is_error_response(&response_message, &err_code,err_msg,sizeof(err_msg))) {
@@ -822,7 +828,10 @@ static int turn_channel_bind(int verbose, uint16_t *chn,
 										clnet_info->server_name, &(clnet_info->oauth))) {
 					if(err_code == SHA_TOO_WEAK_ERROR_CODE && (clnet_info->shatype == SHATYPE_SHA1)) {
 						clnet_info->shatype = SHATYPE_SHA256;
-						recalculate_restapi_hmac();
+						recalculate_restapi_hmac(clnet_info->shatype);
+					} else if(err_code == SHA_TOO_WEAK_ERROR_CODE && (clnet_info->shatype == SHATYPE_SHA256)) {
+						clnet_info->shatype = SHATYPE_SHA512;
+						recalculate_restapi_hmac(clnet_info->shatype);
 					}
 					goto beg_bind;
 				} else if (stun_is_error_response(&response_message, &err_code,err_msg,sizeof(err_msg))) {
@@ -930,7 +939,10 @@ static int turn_create_permission(int verbose, app_ur_conn_info *clnet_info,
 									clnet_info->server_name, &(clnet_info->oauth))) {
 					if(err_code == SHA_TOO_WEAK_ERROR_CODE && (clnet_info->shatype == SHATYPE_SHA1)) {
 						clnet_info->shatype = SHATYPE_SHA256;
-						recalculate_restapi_hmac();
+						recalculate_restapi_hmac(clnet_info->shatype);
+					} else if(err_code == SHA_TOO_WEAK_ERROR_CODE && (clnet_info->shatype == SHATYPE_SHA256)) {
+						clnet_info->shatype = SHATYPE_SHA512;
+						recalculate_restapi_hmac(clnet_info->shatype);
 					}
 					goto beg_cp;
 				} else if (stun_is_error_response(&response_message, &err_code,err_msg,sizeof(err_msg))) {
@@ -1509,7 +1521,10 @@ static int turn_tcp_connection_bind(int verbose, app_ur_conn_info *clnet_info, a
 										clnet_info->server_name, &(clnet_info->oauth))) {
 					if(err_code == SHA_TOO_WEAK_ERROR_CODE && (clnet_info->shatype == SHATYPE_SHA1)) {
 						clnet_info->shatype = SHATYPE_SHA256;
-						recalculate_restapi_hmac();
+						recalculate_restapi_hmac(clnet_info->shatype);
+					} else if(err_code == SHA_TOO_WEAK_ERROR_CODE && (clnet_info->shatype == SHATYPE_SHA256)) {
+						clnet_info->shatype = SHATYPE_SHA512;
+						recalculate_restapi_hmac(clnet_info->shatype);
 					}
 					goto beg_cb;
 				} else if (stun_is_error_response(&response_message, &err_code,err_msg,sizeof(err_msg))) {

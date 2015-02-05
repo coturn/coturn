@@ -119,6 +119,8 @@ compatibility.
 supported in the client library).
 
 52) Web HTTPS admin interface implemented.
+
+53) SHA512 support added (experimental).
  
 Things to be implemented in future (the development roadmap) 
 are described in the TODO file.

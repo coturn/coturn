@@ -94,6 +94,8 @@ Flags:
 
 -H	SHA256 digest function for message integrity calculation.
 	Without this option, by default, SHA1 is used.
+
+-K	SHA512 digest function for message integrity calculation.
 		
 -M	Use TURN ICE Mobility.
 
