@@ -109,7 +109,7 @@ turn_credential_type get_turn_credentials_type(void);
 int add_integrity(app_ur_conn_info *clnet_info, stun_buffer *message);
 int check_integrity(app_ur_conn_info *clnet_info, stun_buffer *message);
 
-void recalculate_restapi_hmac(void);
+void recalculate_restapi_hmac(SHATYPE st);
 
 ////////////////////////////////////////////
 

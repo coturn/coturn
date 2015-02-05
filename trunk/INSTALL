@@ -470,14 +470,15 @@ libevent2 from their web site. It was tested with older *NIXes
 
 NOTE: SQLite must be of version 3.x.
 
-NOTE: For extra security features (DTLS and SHA256) support, OpenSSL version 
-1.0.0a or newer is recommended. Older versions do not support DTLS, reliably, 
-in some cases. For example, the Debian 'Squeeze' Linux supplies 0.9.8 version 
-of OpenSSL, that does not work correctly with DTLS over IPv6. If your system 
-already has an older version of OpenSSL installed (usually in directory /usr) 
-then you may want to install your newer OpenSSL "over" the old one (because it 
-will most probably will not allow removal of the old one). When installing 
-the newer OpenSSL, run the OpenSSL's configure command like this:
+NOTE: For extra security features (DTLS and SHA256 and SHA512) support, OpenSSL 
+version 1.0.0a or newer is recommended. Older versions do not support DTLS,
+reliably, in some cases. For example, the Debian 'Squeeze' Linux supplies
+0.9.8 version of OpenSSL, that does not work correctly with DTLS over IPv6.
+If your system already has an older version of OpenSSL installed (usually
+in directory /usr) then you may want to install your newer OpenSSL "over"
+the old one (because it will most probably will not allow removal of the
+old one). When installing the newer OpenSSL, run the OpenSSL's configure
+command like this:
 
     $ ./config --prefix=/usr
 
@@ -676,13 +677,14 @@ CREATE TABLE turnusers_lt (
 );
 
 The field hmackey contains HEX string representation of the key.
-We do not store the user open passwords for long-term credentials, for security reasons.
-Storing only the HMAC key has its own implications - if you change the realm,
-you will have to update the HMAC keys of all users, because the realm is 
-used for the HMAC key generation.
+We do not store the user open passwords for long-term credentials, for
+security reasons. Storing only the HMAC key has its own implications - 
+if you change the realm, you will have to update the HMAC keys of all 
+users, because the realm is used for the HMAC key generation.
 
-The key must be 32 characters (HEX representation of 16 bytes) for SHA1,
-or 64 characters (HEX representation of 32 bytes) for SHA256.
+The key must be up to 32 characters (HEX representation of 16 bytes) for SHA1,
+or up to 64 characters (HEX representation of 32 bytes) for SHA256,
+or up to 128 characters (HEX representation of 64 bytes) for SHA512:
 
 # Table holding shared secrets for secret-based authorization
 # (REST API). It can only be used together with the long-term 

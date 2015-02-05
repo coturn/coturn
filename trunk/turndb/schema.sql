@@ -8,7 +8,7 @@ CREATE TABLE turnusers_lt (
 
 CREATE TABLE turn_secret (
 	realm varchar(127) default '',
-    value varchar(127),
+	value varchar(256),
 	primary key (realm,value)
 );
 
