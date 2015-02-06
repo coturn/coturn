@@ -172,6 +172,12 @@ void turn_permission_clean(turn_permission_info* tinfo)
 {
 	if (tinfo && tinfo->allocated) {
 
+		if(tinfo->verbose) {
+			char s[257]="\0";
+			addr_to_string(&(tinfo->addr),(u08bits*)s);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: peer %s deleted\n",tinfo->session_id,s);
+		}
+
 		if(!(tinfo->lifetime_ev)) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s: strange (1) permission to be cleaned\n",__FUNCTION__);
 		}
