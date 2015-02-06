@@ -1647,21 +1647,33 @@ int stun_check_message_integrity_by_key_str(turn_credential_type ct, u08bits *bu
 	switch(sarlen) {
 	case SHA256SIZEBYTES:
 		shasize = SHA256SIZEBYTES;
+		if(shatype > SHATYPE_SHA256) {
+			if(too_weak)
+				*too_weak = 1;
+				return -1;
+		}
 		if(shatype != SHATYPE_SHA256)
 			return -1;
 		break;
 	case SHA512SIZEBYTES:
 		shasize = SHA512SIZEBYTES;
+		if(shatype > SHATYPE_SHA512) {
+			if(too_weak)
+				*too_weak = 1;
+				return -1;
+		}
 		if(shatype != SHATYPE_SHA512)
 			return -1;
 		break;
 	case SHA1SIZEBYTES:
 		shasize = SHA1SIZEBYTES;
-		if(shatype != SHATYPE_SHA1) {
+		if(shatype > SHATYPE_SHA1) {
 			if(too_weak)
 				*too_weak = 1;
 			return -1;
 		}
+		if(shatype != SHATYPE_SHA1)
+			return -1;
 		break;
 	default:
 		return -1;
