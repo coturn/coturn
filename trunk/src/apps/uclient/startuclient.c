@@ -528,6 +528,9 @@ static int clnet_allocate(int verbose,
 							clnet_info->shatype = SHATYPE_SHA256;
 							recalculate_restapi_hmac(clnet_info->shatype);
 						} else if(err_code == SHA_TOO_WEAK_ERROR_CODE && (clnet_info->shatype == SHATYPE_SHA256)) {
+							clnet_info->shatype = SHATYPE_SHA384;
+							recalculate_restapi_hmac(clnet_info->shatype);
+						} else if(err_code == SHA_TOO_WEAK_ERROR_CODE && (clnet_info->shatype == SHATYPE_SHA384)) {
 							clnet_info->shatype = SHATYPE_SHA512;
 							recalculate_restapi_hmac(clnet_info->shatype);
 						}
@@ -729,6 +732,9 @@ static int clnet_allocate(int verbose,
 							clnet_info->shatype = SHATYPE_SHA256;
 							recalculate_restapi_hmac(clnet_info->shatype);
 						} else if(err_code == SHA_TOO_WEAK_ERROR_CODE && (clnet_info->shatype == SHATYPE_SHA256)) {
+							clnet_info->shatype = SHATYPE_SHA384;
+							recalculate_restapi_hmac(clnet_info->shatype);
+						} else if(err_code == SHA_TOO_WEAK_ERROR_CODE && (clnet_info->shatype == SHATYPE_SHA384)) {
 							clnet_info->shatype = SHATYPE_SHA512;
 							recalculate_restapi_hmac(clnet_info->shatype);
 						}
@@ -830,6 +836,9 @@ static int turn_channel_bind(int verbose, uint16_t *chn,
 						clnet_info->shatype = SHATYPE_SHA256;
 						recalculate_restapi_hmac(clnet_info->shatype);
 					} else if(err_code == SHA_TOO_WEAK_ERROR_CODE && (clnet_info->shatype == SHATYPE_SHA256)) {
+						clnet_info->shatype = SHATYPE_SHA384;
+						recalculate_restapi_hmac(clnet_info->shatype);
+					} else if(err_code == SHA_TOO_WEAK_ERROR_CODE && (clnet_info->shatype == SHATYPE_SHA384)) {
 						clnet_info->shatype = SHATYPE_SHA512;
 						recalculate_restapi_hmac(clnet_info->shatype);
 					}
@@ -941,6 +950,9 @@ static int turn_create_permission(int verbose, app_ur_conn_info *clnet_info,
 						clnet_info->shatype = SHATYPE_SHA256;
 						recalculate_restapi_hmac(clnet_info->shatype);
 					} else if(err_code == SHA_TOO_WEAK_ERROR_CODE && (clnet_info->shatype == SHATYPE_SHA256)) {
+						clnet_info->shatype = SHATYPE_SHA384;
+						recalculate_restapi_hmac(clnet_info->shatype);
+					} else if(err_code == SHA_TOO_WEAK_ERROR_CODE && (clnet_info->shatype == SHATYPE_SHA384)) {
 						clnet_info->shatype = SHATYPE_SHA512;
 						recalculate_restapi_hmac(clnet_info->shatype);
 					}
@@ -1523,6 +1535,9 @@ static int turn_tcp_connection_bind(int verbose, app_ur_conn_info *clnet_info, a
 						clnet_info->shatype = SHATYPE_SHA256;
 						recalculate_restapi_hmac(clnet_info->shatype);
 					} else if(err_code == SHA_TOO_WEAK_ERROR_CODE && (clnet_info->shatype == SHATYPE_SHA256)) {
+						clnet_info->shatype = SHATYPE_SHA384;
+						recalculate_restapi_hmac(clnet_info->shatype);
+					} else if(err_code == SHA_TOO_WEAK_ERROR_CODE && (clnet_info->shatype == SHATYPE_SHA384)) {
 						clnet_info->shatype = SHATYPE_SHA512;
 						recalculate_restapi_hmac(clnet_info->shatype);
 					}

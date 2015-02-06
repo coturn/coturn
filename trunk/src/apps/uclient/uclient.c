@@ -755,6 +755,9 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 				elem->pinfo.shatype = SHATYPE_SHA256;
 				recalculate_restapi_hmac(elem->pinfo.shatype);
 			} else if(err_code == SHA_TOO_WEAK_ERROR_CODE && (elem->pinfo.shatype == SHATYPE_SHA256)) {
+				elem->pinfo.shatype = SHATYPE_SHA384;
+				recalculate_restapi_hmac(elem->pinfo.shatype);
+			} else if(err_code == SHA_TOO_WEAK_ERROR_CODE && (elem->pinfo.shatype == SHATYPE_SHA384)) {
 				elem->pinfo.shatype = SHATYPE_SHA512;
 				recalculate_restapi_hmac(elem->pinfo.shatype);
 			}
@@ -1629,6 +1632,8 @@ int add_integrity(app_ur_conn_info *clnet_info, stun_buffer *message)
 				otoken.enc_block.timestamp = ((uint64_t)turn_time()) << 16;
 				if(shatype == SHATYPE_SHA256) {
 					otoken.enc_block.key_length = 32;
+				} else if(shatype == SHATYPE_SHA384) {
+					otoken.enc_block.key_length = 48;
 				} else if(shatype == SHATYPE_SHA512) {
 					otoken.enc_block.key_length = 64;
 				} else {

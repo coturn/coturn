@@ -131,6 +131,7 @@ static char Usage[] =
   "	-O	DOS attack mode (quick connect and exit).\n"
   "	-H	SHA256 digest function for message integrity calculation.\n"
   "		Without this option, by default, SHA1 is used.\n"
+  "	-Y	SHA384 digest function for message integrity calculation.\n"
   "	-K	SHA512 digest function for message integrity calculation.\n"
   "	-M	ICE Mobility engaged.\n"
   "	-I	Do not set permissions on TURN relay endpoints\n"
@@ -172,6 +173,8 @@ void recalculate_restapi_hmac(SHATYPE st) {
 
 		if(st == SHATYPE_SHA256)
 		  hmac_len = SHA256SIZEBYTES;
+		else if(st == SHATYPE_SHA384)
+		  hmac_len = SHA384SIZEBYTES;
 		else if(st == SHATYPE_SHA512)
 		  hmac_len = SHA512SIZEBYTES;
 
@@ -215,7 +218,7 @@ int main(int argc, char **argv)
 
 	ns_bzero(local_addr, sizeof(local_addr));
 
-	while ((c = getopt(argc, argv, "a:d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:E:F:o:ZvsyhcxXgtTSAPDNOUHKMRIGBJ")) != -1) {
+	while ((c = getopt(argc, argv, "a:d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:E:F:o:ZvsyhcxXgtTSAPDNOUHYKMRIGBJ")) != -1) {
 		switch (c){
 		case 'J': {
 
@@ -268,6 +271,9 @@ int main(int argc, char **argv)
 			break;
 		case 'H':
 			shatype = SHATYPE_SHA256;
+			break;
+		case 'Y':
+			shatype = SHATYPE_SHA384;
 			break;
 		case 'K':
 			shatype = SHATYPE_SHA512;
@@ -429,6 +435,9 @@ int main(int argc, char **argv)
 			switch(shatype) {
 			case SHATYPE_SHA256:
 				hmac_len = SHA256SIZEBYTES;
+				break;
+			case SHATYPE_SHA384:
+				hmac_len = SHA384SIZEBYTES;
 				break;
 			case SHATYPE_SHA512:
 				hmac_len = SHA512SIZEBYTES;
