@@ -242,6 +242,9 @@ Flags:
 			SHA256 hash function if this option is used. If the server obtains a message 
 			from the client with a weaker (SHA1) hash function then the server returns 
 			error code 426.
+
+--sha384		Require SHA384 digest function to be used for the message integrity.
+
 --sha512		Require SHA512 digest function to be used for the message integrity.
 			
 --mobility		Mobility with ICE (MICE) specs support.

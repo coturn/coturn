@@ -48,6 +48,7 @@
 
 #define SHA1SIZEBYTES (20)
 #define SHA256SIZEBYTES (32)
+#define SHA384SIZEBYTES (48)
 #define SHA512SIZEBYTES (64)
 
 #define MAXSHASIZE (128)
@@ -57,12 +58,13 @@ enum _SHATYPE {
 	SHATYPE_DEFAULT=0,
 	SHATYPE_SHA1=SHATYPE_DEFAULT,
 	SHATYPE_SHA256,
+	SHATYPE_SHA384,
 	SHATYPE_SHA512
 };
 
 typedef enum _SHATYPE SHATYPE;
 
-#define shatype_name(sht) ((sht == SHATYPE_SHA1) ? "SHA1" : ((sht == SHATYPE_SHA256) ? "SHA256" : ((sht == SHATYPE_SHA512) ? "SHA512" : "SHA UNKNOWN")))
+#define shatype_name(sht) ((sht == SHATYPE_SHA1) ? "SHA1" : ((sht == SHATYPE_SHA256) ? "SHA256" : ((sht == SHATYPE_SHA384) ? "SHA384" : "SHA512")))
 
 #define SHA_TOO_WEAK_ERROR_CODE (426)
 #define SHA_TOO_WEAK_ERROR_REASON ((const u08bits*)("credentials too weak"))
@@ -94,6 +96,7 @@ enum _AUTH_ALG {
 	AUTH_ALG_HMAC_SHA_256_128 = AUTH_ALG_DEFAULT,
 	AUTH_ALG_HMAC_SHA_1,
 	AUTH_ALG_HMAC_SHA_256,
+	AUTH_ALG_HMAC_SHA_384,
 	AUTH_ALG_HMAC_SHA_512
 };
 

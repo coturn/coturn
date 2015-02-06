@@ -3316,6 +3316,17 @@ static int check_stun_auth(turn_turnserver *server,
 				return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
 			}
 			break;
+		case SHA384SIZEBYTES:
+			if(server->shatype > SHATYPE_SHA384) {
+				*err_code = SHA_TOO_WEAK_ERROR_CODE;
+				*reason = SHA_TOO_WEAK_ERROR_REASON;
+				return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
+			}
+			if(server->shatype != SHATYPE_SHA384) {
+				*err_code = 401;
+				return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
+			}
+			break;
 		case SHA512SIZEBYTES:
 			if(server->shatype > SHATYPE_SHA512) {
 				*err_code = SHA_TOO_WEAK_ERROR_CODE;

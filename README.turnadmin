@@ -98,9 +98,8 @@ Options with required values:
 -H, --sha256		Use SHA256 as the keys hash function (a non-standard feature). 
 				By default, MD5 is used for the key storage encryption 
 				(as required by the current STUN/TURNstandards).
--K, --sha512		Use SHA512 as the keys hash function (a non-standard feature). 
-				By default, MD5 is used for the key storage encryption 
-				(as required by the current STUN/TURNstandards).
+-Y, --sha384		Use SHA384 as the keys hash function (a non-standard feature).
+-K, --sha512		Use SHA512 as the keys hash function (a non-standard feature).
 --max-bps		Set value of realm's max-bps parameter.
 --total-quota	Set value of realm's total-quota parameter.
 --user-quota	Set value of realm's user-quota parameter. 
