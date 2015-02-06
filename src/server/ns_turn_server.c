@@ -856,6 +856,14 @@ static int update_turn_permission_lifetime(ts_ur_super_session *ss, turn_permiss
 							client_ss_perm_timeout_handler, tinfo, 0,
 							"client_ss_channel_timeout_handler");
 
+			if(server->verbose) {
+				tinfo->verbose = 1;
+				tinfo->session_id = ss->id;
+				char s[257]="\0";
+				addr_to_string(&(tinfo->addr),(u08bits*)s);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: peer %s lifetime updated: %lu\n",(unsigned long long)ss->id,s,(unsigned long)time_delta);
+			}
+
 			return 0;
 		}
 	}
