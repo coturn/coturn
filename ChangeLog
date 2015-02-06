@@ -3,6 +3,7 @@ Version 4.4.2.1 'Ardee West':
 	- (HMAC-)SHA-512 algorithms added;
 	- TOS (DiffServer) and TTL IP header field handling fixed;
 	- updates according to the new third-party-auth draft (oauth);
+	- peer logging added;
 	
 2/1/2015 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.4.1.2 'Ardee West':
