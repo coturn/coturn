@@ -3292,20 +3292,36 @@ static int check_stun_auth(turn_turnserver *server,
 
 	{
 		int sarlen = stun_attr_get_len(sar);
+
 		switch(sarlen) {
 		case SHA1SIZEBYTES:
-			if(server->shatype != SHATYPE_SHA1) {
+			if(server->shatype > SHATYPE_SHA1) {
 				*err_code = SHA_TOO_WEAK_ERROR_CODE;
+				*reason = SHA_TOO_WEAK_ERROR_REASON;
+				return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
+			}
+			if(server->shatype != SHATYPE_SHA1) {
+				*err_code = 401;
 				return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
 			}
 			break;
 		case SHA256SIZEBYTES:
+			if(server->shatype > SHATYPE_SHA256) {
+				*err_code = SHA_TOO_WEAK_ERROR_CODE;
+				*reason = SHA_TOO_WEAK_ERROR_REASON;
+				return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
+			}
 			if(server->shatype != SHATYPE_SHA256) {
 				*err_code = 401;
 				return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
 			}
 			break;
 		case SHA512SIZEBYTES:
+			if(server->shatype > SHATYPE_SHA512) {
+				*err_code = SHA_TOO_WEAK_ERROR_CODE;
+				*reason = SHA_TOO_WEAK_ERROR_REASON;
+				return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
+			}
 			if(server->shatype != SHATYPE_SHA512) {
 				*err_code = 401;
 				return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
@@ -3452,6 +3468,7 @@ static int check_stun_auth(turn_turnserver *server,
 							"%s: user %s credentials are incorrect: SHA function is too weak\n",
 									__FUNCTION__, (char*)usname);
 					*err_code = SHA_TOO_WEAK_ERROR_CODE;
+					*reason = SHA_TOO_WEAK_ERROR_REASON;
 					*reason = (const u08bits*)"Unauthorised: weak SHA function is used";
 					return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
 		}

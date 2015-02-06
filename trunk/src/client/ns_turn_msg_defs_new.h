@@ -65,6 +65,7 @@ typedef enum _SHATYPE SHATYPE;
 #define shatype_name(sht) ((sht == SHATYPE_SHA1) ? "SHA1" : ((sht == SHATYPE_SHA256) ? "SHA256" : ((sht == SHATYPE_SHA512) ? "SHA512" : "SHA UNKNOWN")))
 
 #define SHA_TOO_WEAK_ERROR_CODE (426)
+#define SHA_TOO_WEAK_ERROR_REASON ((const u08bits*)("credentials too weak"))
 
 /* <<== SHA AGILITY */
 
