@@ -77,7 +77,7 @@ void print_field5769(const char* name, const void* f0, size_t len) {
   printf("\nfield %s %lu==>>\n",name,(unsigned long)len);
   size_t i;
   for(i = 0;i<len;++i) {
-    printf("\\x%x",(unsigned int)f[i]);
+    printf("\\x%02x",(unsigned int)f[i]);
   }
   printf("\n<<==field %s\n",name);
 }

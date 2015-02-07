@@ -1928,8 +1928,11 @@ static size_t calculate_auth_output_length(AUTH_ALG a)
 	return 32;
 }
 
-static int calculate_key(char *key, size_t key_size, char *new_key, size_t new_key_size, SHATYPE shatype,
-		char *err_msg, size_t err_msg_size)
+static int calculate_key(char *key, size_t key_size,
+						char *new_key, size_t new_key_size,
+						SHATYPE shatype,
+						char *err_msg, size_t err_msg_size,
+						const char *info)
 {
 	//Extract:
 	u08bits prk[128];
@@ -1937,36 +1940,41 @@ static int calculate_key(char *key, size_t key_size, char *new_key, size_t new_k
 	stun_calculate_hmac((const u08bits *)key, key_size, (const u08bits *)"", 0, prk, &prk_len, shatype);
 
 	//Expand:
-	u08bits buf[128];
-	buf[0]=1;
+	size_t info_len = strlen(info);
+	u08bits buf[256];
+	ns_bcopy(info,buf,info_len);
+	buf[info_len]=0x01;
 	u08bits hmac1[128];
 	unsigned int hmac1_len = 0;
-	stun_calculate_hmac((const u08bits *)buf, 1, prk, prk_len, hmac1, &hmac1_len, shatype);
+	stun_calculate_hmac((const u08bits *)buf, info_len+1, prk, prk_len, hmac1, &hmac1_len, shatype);
 	ns_bcopy(hmac1,new_key,hmac1_len);
 
 	//Check
 	if(new_key_size>hmac1_len) {
 		ns_bcopy(hmac1,buf,hmac1_len);
-		buf[hmac1_len]=2;
+		ns_bcopy(info,buf+hmac1_len,info_len);
+		buf[hmac1_len+info_len]=0x02;
 		u08bits hmac2[128];
 		unsigned int hmac2_len = 0;
-		stun_calculate_hmac((const u08bits *)buf, hmac1_len+1, prk, prk_len, hmac2, &hmac2_len, shatype);
+		stun_calculate_hmac((const u08bits *)buf, hmac1_len+info_len+1, prk, prk_len, hmac2, &hmac2_len, shatype);
 		ns_bcopy(hmac2,new_key+hmac1_len,hmac2_len);
 		if(new_key_size > (hmac1_len + hmac2_len)) {
 
 			ns_bcopy(hmac2,buf,hmac2_len);
-			buf[hmac2_len]=3;
+			ns_bcopy(info,buf+hmac2_len,info_len);
+			buf[hmac2_len+info_len]=0x03;
 			u08bits hmac3[128];
 			unsigned int hmac3_len = 0;
-			stun_calculate_hmac((const u08bits *)buf, hmac2_len+1, prk, prk_len, hmac3, &hmac3_len, shatype);
+			stun_calculate_hmac((const u08bits *)buf, hmac2_len+info_len+1, prk, prk_len, hmac3, &hmac3_len, shatype);
 			ns_bcopy(hmac3,new_key+hmac1_len+hmac2_len,hmac3_len);
 			if(new_key_size > (hmac1_len + hmac2_len + hmac3_len)) {
 
 				ns_bcopy(hmac3,buf,hmac3_len);
-				buf[hmac3_len]=4;
+				ns_bcopy(info,buf+hmac3_len,info_len);
+				buf[hmac3_len+info_len]=0x04;
 				u08bits hmac4[128];
 				unsigned int hmac4_len = 0;
-				stun_calculate_hmac((const u08bits *)buf, hmac3_len+1, prk, prk_len, hmac4, &hmac4_len, shatype);
+				stun_calculate_hmac((const u08bits *)buf, hmac3_len+info_len+1, prk, prk_len, hmac4, &hmac4_len, shatype);
 				ns_bcopy(hmac4,new_key+hmac1_len+hmac2_len+hmac3_len,hmac4_len);
 				if(new_key_size > (hmac1_len + hmac2_len + hmac3_len + hmac4_len)) {
 
@@ -2103,14 +2111,14 @@ int convert_oauth_key_data(const oauth_key_data *oakd0, oauth_key *key, char *er
 			key->auth_key[0] = 0;
 		} else if(!(key->auth_key_size)) {
 			key->auth_key_size = calculate_auth_key_length(key->auth_alg);
-			if(calculate_key(key->ikm_key,key->ikm_key_size,key->auth_key,key->auth_key_size,key->hkdf_hash_func,err_msg,err_msg_size)<0) {
+			if(calculate_key(key->ikm_key,key->ikm_key_size,key->auth_key,key->auth_key_size,key->hkdf_hash_func,err_msg,err_msg_size,"AUTH key")<0) {
 				return -1;
 			}
 		}
 
 		if(!(key->as_rs_key_size)) {
 			key->as_rs_key_size = calculate_enc_key_length(key->as_rs_alg);
-			if(calculate_key(key->ikm_key,key->ikm_key_size,key->as_rs_key,key->as_rs_key_size,key->hkdf_hash_func,err_msg,err_msg_size)<0) {
+			if(calculate_key(key->ikm_key,key->ikm_key_size,key->as_rs_key,key->as_rs_key_size,key->hkdf_hash_func,err_msg,err_msg_size,"AS-RS key")<0) {
 				return -1;
 			}
 		}
