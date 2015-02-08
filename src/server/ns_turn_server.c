@@ -856,6 +856,14 @@ static int update_turn_permission_lifetime(ts_ur_super_session *ss, turn_permiss
 							client_ss_perm_timeout_handler, tinfo, 0,
 							"client_ss_channel_timeout_handler");
 
+			if(server->verbose) {
+				tinfo->verbose = 1;
+				tinfo->session_id = ss->id;
+				char s[257]="\0";
+				addr_to_string(&(tinfo->addr),(u08bits*)s);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: peer %s lifetime updated: %lu\n",(unsigned long long)ss->id,s,(unsigned long)time_delta);
+			}
+
 			return 0;
 		}
 	}
@@ -3284,15 +3292,48 @@ static int check_stun_auth(turn_turnserver *server,
 
 	{
 		int sarlen = stun_attr_get_len(sar);
+
 		switch(sarlen) {
 		case SHA1SIZEBYTES:
-			if(server->shatype != SHATYPE_SHA1) {
+			if(server->shatype > SHATYPE_SHA1) {
 				*err_code = SHA_TOO_WEAK_ERROR_CODE;
+				*reason = SHA_TOO_WEAK_ERROR_REASON;
+				return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
+			}
+			if(server->shatype != SHATYPE_SHA1) {
+				*err_code = 401;
 				return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
 			}
 			break;
 		case SHA256SIZEBYTES:
+			if(server->shatype > SHATYPE_SHA256) {
+				*err_code = SHA_TOO_WEAK_ERROR_CODE;
+				*reason = SHA_TOO_WEAK_ERROR_REASON;
+				return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
+			}
 			if(server->shatype != SHATYPE_SHA256) {
+				*err_code = 401;
+				return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
+			}
+			break;
+		case SHA384SIZEBYTES:
+			if(server->shatype > SHATYPE_SHA384) {
+				*err_code = SHA_TOO_WEAK_ERROR_CODE;
+				*reason = SHA_TOO_WEAK_ERROR_REASON;
+				return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
+			}
+			if(server->shatype != SHATYPE_SHA384) {
+				*err_code = 401;
+				return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
+			}
+			break;
+		case SHA512SIZEBYTES:
+			if(server->shatype > SHATYPE_SHA512) {
+				*err_code = SHA_TOO_WEAK_ERROR_CODE;
+				*reason = SHA_TOO_WEAK_ERROR_REASON;
+				return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
+			}
+			if(server->shatype != SHATYPE_SHA512) {
 				*err_code = 401;
 				return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
 			}
@@ -3438,6 +3479,7 @@ static int check_stun_auth(turn_turnserver *server,
 							"%s: user %s credentials are incorrect: SHA function is too weak\n",
 									__FUNCTION__, (char*)usname);
 					*err_code = SHA_TOO_WEAK_ERROR_CODE;
+					*reason = SHA_TOO_WEAK_ERROR_REASON;
 					*reason = (const u08bits*)"Unauthorised: weak SHA function is used";
 					return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
 		}

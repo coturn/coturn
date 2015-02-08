@@ -98,10 +98,11 @@ band_limit_t bps = 0;
 int dual_allocation = 0;
 
 int oauth = 0;
-oauth_key okey_array[2];
+oauth_key okey_array[3];
 
-static oauth_key_data_raw okdr_array[2] = {
+static oauth_key_data_raw okdr_array[3] = {
 		{"north","Y2FybGVvbg==",0,0,"SHA-256","AES-256-CBC","","HMAC-SHA-256-128",""},
+		{"union","aGVyb2Q=",0,0,"SHA-256","AES-256-CBC","","HMAC-SHA-512",""},
 		{"oldempire","YXVsY3Vz",0,0,"SHA-256","AEAD-AES-256-GCM","","",""}
 };
 
@@ -130,6 +131,8 @@ static char Usage[] =
   "	-O	DOS attack mode (quick connect and exit).\n"
   "	-H	SHA256 digest function for message integrity calculation.\n"
   "		Without this option, by default, SHA1 is used.\n"
+  "	-Y	SHA384 digest function for message integrity calculation.\n"
+  "	-K	SHA512 digest function for message integrity calculation.\n"
   "	-M	ICE Mobility engaged.\n"
   "	-I	Do not set permissions on TURN relay endpoints\n"
   "		(for testing the non-standard server relay functionality).\n"
@@ -161,20 +164,25 @@ static char Usage[] =
 
 //////////////////////////////////////////////////
 
-void recalculate_restapi_hmac(void) {
+void recalculate_restapi_hmac(SHATYPE st) {
 
 	if (g_use_auth_secret_with_timestamp) {
 
 		u08bits hmac[MAXSHASIZE];
-		unsigned int hmac_len;
+		unsigned int hmac_len = 0;
 
-		hmac_len = SHA256SIZEBYTES;
+		if(st == SHATYPE_SHA256)
+		  hmac_len = SHA256SIZEBYTES;
+		else if(st == SHATYPE_SHA384)
+		  hmac_len = SHA384SIZEBYTES;
+		else if(st == SHATYPE_SHA512)
+		  hmac_len = SHA512SIZEBYTES;
 
 		hmac[0] = 0;
 
 		if (stun_calculate_hmac(g_uname, strlen((char*) g_uname),
 				(u08bits*) g_auth_secret, strlen(g_auth_secret), hmac,
-				&hmac_len, SHATYPE_SHA256) >= 0) {
+				&hmac_len, st) >= 0) {
 			size_t pwd_length = 0;
 			char *pwd = base64_encode(hmac, hmac_len, &pwd_length);
 
@@ -210,15 +218,16 @@ int main(int argc, char **argv)
 
 	ns_bzero(local_addr, sizeof(local_addr));
 
-	while ((c = getopt(argc, argv, "a:d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:E:F:o:ZvsyhcxXgtTSAPDNOUHMRIGBJ")) != -1) {
+	while ((c = getopt(argc, argv, "a:d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:E:F:o:ZvsyhcxXgtTSAPDNOUHYKMRIGBJ")) != -1) {
 		switch (c){
 		case 'J': {
 
 			oauth = 1;
 
-			oauth_key_data okd_array[2];
+			oauth_key_data okd_array[3];
 			convert_oauth_key_data_raw(&okdr_array[0], &okd_array[0]);
 			convert_oauth_key_data_raw(&okdr_array[1], &okd_array[1]);
+			convert_oauth_key_data_raw(&okdr_array[2], &okd_array[2]);
 
 			char err_msg[1025] = "\0";
 			size_t err_msg_size = sizeof(err_msg) - 1;
@@ -229,6 +238,11 @@ int main(int argc, char **argv)
 			}
 
 			if (convert_oauth_key_data(&okd_array[1], &okey_array[1], err_msg, err_msg_size) < 0) {
+				fprintf(stderr, "%s\n", err_msg);
+				exit(-1);
+			}
+
+			if (convert_oauth_key_data(&okd_array[2], &okey_array[2], err_msg, err_msg_size) < 0) {
 				fprintf(stderr, "%s\n", err_msg);
 				exit(-1);
 			}
@@ -257,6 +271,12 @@ int main(int argc, char **argv)
 			break;
 		case 'H':
 			shatype = SHATYPE_SHA256;
+			break;
+		case 'Y':
+			shatype = SHATYPE_SHA384;
+			break;
+		case 'K':
+			shatype = SHATYPE_SHA512;
 			break;
 		case 'E':
 		{
@@ -415,6 +435,12 @@ int main(int argc, char **argv)
 			switch(shatype) {
 			case SHATYPE_SHA256:
 				hmac_len = SHA256SIZEBYTES;
+				break;
+			case SHATYPE_SHA384:
+				hmac_len = SHA384SIZEBYTES;
+				break;
+			case SHATYPE_SHA512:
+				hmac_len = SHA512SIZEBYTES;
 				break;
 			default:
 				hmac_len = SHA1SIZEBYTES;

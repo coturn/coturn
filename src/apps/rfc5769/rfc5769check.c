@@ -45,6 +45,12 @@ static const char* shas[]={"SHA1",
 #if !defined(OPENSSL_NO_SHA256) && defined(SHA256_DIGEST_LENGTH)
 			   "SHA256",
 #endif
+#if !defined(OPENSSL_NO_SHA384) && defined(SHA384_DIGEST_LENGTH)
+			   "SHA384",
+#endif
+#if !defined(OPENSSL_NO_SHA512) && defined(SHA512_DIGEST_LENGTH)
+			   "SHA512",
+#endif
 			   NULL};
 static const char* encs[]={"AES-256-CBC","AES-128-CBC",
 #if !defined(TURN_NO_GCM)
@@ -54,6 +60,12 @@ static const char* encs[]={"AES-256-CBC","AES-128-CBC",
 static const char* hmacs[]={"HMAC-SHA-1",
 #if !defined(OPENSSL_NO_SHA256) && defined(SHA256_DIGEST_LENGTH)
 			    "HMAC-SHA-256","HMAC-SHA-256-128",
+#endif
+#if !defined(OPENSSL_NO_SHA384) && defined(SHA384_DIGEST_LENGTH)
+			    "HMAC-SHA-384",
+#endif
+#if !defined(OPENSSL_NO_SHA512) && defined(SHA512_DIGEST_LENGTH)
+			    "HMAC-SHA-512",
 #endif
 			    NULL};
 
@@ -65,7 +77,7 @@ void print_field5769(const char* name, const void* f0, size_t len) {
   printf("\nfield %s %lu==>>\n",name,(unsigned long)len);
   size_t i;
   for(i = 0;i<len;++i) {
-    printf("\\x%x",(unsigned int)f[i]);
+    printf("\\x%02x",(unsigned int)f[i]);
   }
   printf("\n<<==field %s\n",name);
 }
@@ -76,12 +88,12 @@ static int check_oauth(void) {
 
 	size_t i_hmacs,i_shas,i_encs;
 
-	const char long_term_password[33] = "HGkj32KJGiuy098sdfaqbNjOiaz71923";
+	const char long_term_key[33] = "HGkj32KJGiuy098sdfaqbNjOiaz71923";
 
 	size_t ltp_output_length=0;
 
-	const char* base64encoded_ltp = base64_encode((const unsigned char *)long_term_password,
-						      strlen(long_term_password),
+	const char* base64encoded_ltp = base64_encode((const unsigned char *)long_term_key,
+						      strlen(long_term_key),
 						      &ltp_output_length);
 
 	const char mac_key[33] = "ZksjpweoixXmvn67534m";

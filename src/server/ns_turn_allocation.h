@@ -147,6 +147,8 @@ typedef struct _turn_permission_info {
 	turn_time_t expiration_time;
 	ioa_timer_handle lifetime_ev;
 	void* owner; //a
+	int verbose;
+	unsigned long long session_id;
 } turn_permission_info;
 
 typedef struct _turn_permission_slot {

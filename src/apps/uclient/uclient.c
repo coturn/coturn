@@ -753,7 +753,13 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 							clnet_info->server_name, &(clnet_info->oauth))) {
 			if(err_code == SHA_TOO_WEAK_ERROR_CODE && (elem->pinfo.shatype == SHATYPE_SHA1)) {
 				elem->pinfo.shatype = SHATYPE_SHA256;
-				recalculate_restapi_hmac();
+				recalculate_restapi_hmac(elem->pinfo.shatype);
+			} else if(err_code == SHA_TOO_WEAK_ERROR_CODE && (elem->pinfo.shatype == SHATYPE_SHA256)) {
+				elem->pinfo.shatype = SHATYPE_SHA384;
+				recalculate_restapi_hmac(elem->pinfo.shatype);
+			} else if(err_code == SHA_TOO_WEAK_ERROR_CODE && (elem->pinfo.shatype == SHATYPE_SHA384)) {
+				elem->pinfo.shatype = SHATYPE_SHA512;
+				recalculate_restapi_hmac(elem->pinfo.shatype);
 			}
 
 			if(is_TCP_relay() && (stun_get_method(&(elem->in_buffer)) == STUN_METHOD_CONNECT)) {
@@ -1609,8 +1615,7 @@ int add_integrity(app_ur_conn_info *clnet_info, stun_buffer *message)
 			if(((method == STUN_METHOD_ALLOCATE) || (method == STUN_METHOD_REFRESH)) || !(clnet_info->key_set))
 			{
 
-				cok=(random())%2;
-				if(cok<0) cok=-cok;
+				cok=((unsigned short)random())%3;
 				clnet_info->cok = cok;
 				oauth_token otoken;
 				encoded_oauth_token etoken;
@@ -1627,6 +1632,10 @@ int add_integrity(app_ur_conn_info *clnet_info, stun_buffer *message)
 				otoken.enc_block.timestamp = ((uint64_t)turn_time()) << 16;
 				if(shatype == SHATYPE_SHA256) {
 					otoken.enc_block.key_length = 32;
+				} else if(shatype == SHATYPE_SHA384) {
+					otoken.enc_block.key_length = 48;
+				} else if(shatype == SHATYPE_SHA512) {
+					otoken.enc_block.key_length = 64;
 				} else {
 					otoken.enc_block.key_length = 20;
 				}
