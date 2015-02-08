@@ -1,3 +1,10 @@
+coturn (4.4.2.1-1) unstable; urgency=low
+
+  * Sync to the new upstream version: updated according to the new draft
+    specs; bug fixes.
+
+ -- Oleg Moskalenko <mom040267@gmail.com>  Sun, 08 Feb 2015 13:04:20 -0800
+
 coturn (4.4.1.2-1) unstable; urgency=low
 
   * Sync to 4.4.1.2 upstream
