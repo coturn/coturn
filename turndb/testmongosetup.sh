@@ -51,6 +51,12 @@ db.oauth_key.insert({ kid: 'north',
 					hkdf_hash_func: 'SHA-256', 
 					as_rs_alg: 'AES-256-CBC', 
 					auth_alg: 'HMAC-SHA-256-128' });
+
+db.oauth_key.insert({ kid: 'union', 
+					ikm_key: 'aGVyb2Q=', 
+					hkdf_hash_func: 'SHA-256', 
+					as_rs_alg: 'AES-256-CBC', 
+					auth_alg: 'HMAC-SHA-512' });
 					
 db.oauth_key.insert({ kid: 'oldempire', 
 					ikm_key: 'YXVsY3Vz', 

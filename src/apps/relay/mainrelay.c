@@ -569,6 +569,8 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						support SHA256 hash function if this option is used. If the server obtains\n"
 "						a message from the client with a weaker (SHA1) hash function then the server\n"
 "						returns error code 426.\n"
+" --sha384					Require SHA384 digest function to be used for the message integrity.\n"
+" --sha512					Require SHA512 digest function to be used for the message integrity.\n"
 " --proc-user <user-name>			User name to run the turnserver process.\n"
 "						After the initialization, the turnserver process\n"
 "						will make an attempt to change the current user ID to that user.\n"
@@ -638,6 +640,8 @@ static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
 #endif
 	"	-H, --sha256			Use SHA256 digest function to be used for the message integrity.\n"
 	"					By default, the server SHA1 (as per TURN standard specs).\n"
+	"	-Y, --sha384			Use SHA384 digest function to be used for the message integrity.\n"
+	"	-K, --sha512			Use SHA512 digest function to be used for the message integrity.\n"
 	"	--max-bps			Set value of realm's max-bps parameter.\n"
 	"					Setting to zero value means removal of the option.\n"
 	"	--total-quota			Set value of realm's total-quota parameter.\n"
@@ -648,7 +652,7 @@ static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
 
 #define OPTIONS "c:d:p:L:E:X:i:m:l:r:u:b:B:e:M:J:N:O:q:Q:s:C:vVofhznaAS"
   
-#define ADMIN_OPTIONS "gGORIHlLkaADSdb:e:M:J:N:u:r:p:s:X:o:h"
+#define ADMIN_OPTIONS "gGORIHKYlLkaADSdb:e:M:J:N:u:r:p:s:X:o:h"
 
 enum EXTRA_OPTS {
 	NO_UDP_OPT=256,
@@ -688,6 +692,8 @@ enum EXTRA_OPTS {
 	CA_FILE_OPT,
 	DH_FILE_OPT,
 	SHA256_OPT,
+	SHA384_OPT,
+	SHA512_OPT,
 	NO_STUN_OPT,
 	PROC_USER_OPT,
 	PROC_GROUP_OPT,
@@ -811,6 +817,8 @@ static const struct myoption long_options[] = {
 				{ "CA-file", required_argument, NULL, CA_FILE_OPT },
 				{ "dh-file", required_argument, NULL, DH_FILE_OPT },
 				{ "sha256", optional_argument, NULL, SHA256_OPT },
+				{ "sha384", optional_argument, NULL, SHA384_OPT },
+				{ "sha512", optional_argument, NULL, SHA512_OPT },
 				{ "proc-user", required_argument, NULL, PROC_USER_OPT },
 				{ "proc-group", required_argument, NULL, PROC_GROUP_OPT },
 				{ "mobility", optional_argument, NULL, MOBILITY_OPT },
@@ -865,6 +873,8 @@ static const struct myoption admin_long_options[] = {
 				{ "realm", required_argument, NULL, 'r' },
 				{ "password", required_argument, NULL, 'p' },
 				{ "sha256", no_argument, NULL, 'H' },
+				{ "sha384", no_argument, NULL, 'Y' },
+				{ "sha512", no_argument, NULL, 'K' },
 				{ "add-origin", no_argument, NULL, 'O' },
 				{ "del-origin", no_argument, NULL, 'R' },
 				{ "list-origins", required_argument, NULL, 'I' },
@@ -1031,8 +1041,14 @@ static void set_option(int c, char *value)
 	case SHA256_OPT:
 		if(get_bool_value(value))
 			turn_params.shatype = SHATYPE_SHA256;
-		else
-			turn_params.shatype = SHATYPE_SHA1;
+		break;
+	case SHA384_OPT:
+		if(get_bool_value(value))
+			turn_params.shatype = SHATYPE_SHA384;
+		break;
+	case SHA512_OPT:
+		if(get_bool_value(value))
+			turn_params.shatype = SHATYPE_SHA512;
 		break;
 	case NO_MULTICAST_PEERS_OPT:
 		turn_params.no_multicast_peers = get_bool_value(value);
@@ -1554,8 +1570,14 @@ static int adminmain(int argc, char **argv)
 		case 'H':
 			if(get_bool_value(optarg))
 				turn_params.shatype = SHATYPE_SHA256;
-			else
-				turn_params.shatype = SHATYPE_SHA1;
+			break;
+		case 'Y':
+			if(get_bool_value(optarg))
+				turn_params.shatype = SHATYPE_SHA384;
+			break;
+		case 'K':
+			if(get_bool_value(optarg))
+				turn_params.shatype = SHATYPE_SHA512;
 			break;
 		case 'h':
 			printf("\n%s\n", AdminUsage);

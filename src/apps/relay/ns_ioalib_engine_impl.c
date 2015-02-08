@@ -355,16 +355,16 @@ ioa_engine_handle create_ioa_engine(super_memory_t *sm,
 #if !defined(CMSG_SPACE)
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "On this platform, I am using alternative behavior of TTL/TOS according to RFC 5766.\n");
 #endif
-#if !defined(IP_RECVTTL)
+#if !defined(IP_RECVTTL) || !defined(IP_TTL)
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "IPv4: On this platform, I am using alternative behavior of TTL according to RFC 5766.\n");
 #endif
-#if !defined(IPV6_RECVHOPLIMIT)
+#if !defined(IPV6_RECVHOPLIMIT) || !defined(IPV6_HOPLIMIT)
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "IPv6: On this platform, I am using alternative behavior of TTL (HOPLIMIT) according to RFC 6156.\n");
 #endif
-#if !defined(IP_RECVTOS)
+#if !defined(IP_RECVTOS) || !defined(IP_TOS)
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "IPv4: On this platform, I am using alternative behavior of TOS according to RFC 5766.\n");
 #endif
-#if !defined(IPV6_RECVTCLASS)
+#if !defined(IPV6_RECVTCLASS) || !defined(IPV6_TCLASS)
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "IPv6: On this platform, I am using alternative behavior of TRAFFIC CLASS according to RFC 6156.\n");
 #endif
 	}
@@ -705,134 +705,6 @@ int get_ioa_socket_from_reservation(ioa_engine_handle e, u64bits in_reservation_
 }
 
 /* Socket options helpers ==>> */
-
-#define CORRECT_RAW_TTL(ttl) do { if(ttl<0 || ttl>255) ttl=TTL_DEFAULT; } while(0)
-#define CORRECT_RAW_TOS(tos) do { if(tos<0 || tos>255) tos=TOS_DEFAULT; } while(0)
-
-static int get_raw_socket_ttl(evutil_socket_t fd, int family)
-{
-	int ttl = 0;
-
-	if(family == AF_INET6) {
-#if !defined(IPV6_RECVHOPLIMIT)
-		UNUSED_ARG(fd);
-		do { return TTL_IGNORE; } while(0);
-#else
-		socklen_t slen = (socklen_t)sizeof(ttl);
-		if(getsockopt(fd, IPPROTO_IPV6, IPV6_UNICAST_HOPS, &ttl,&slen)<0) {
-			perror("get HOPLIMIT on socket");
-			return TTL_IGNORE;
-		}
-#endif
-	} else {
-#if !defined(IP_RECVTTL)
-		UNUSED_ARG(fd);
-		do { return TTL_IGNORE; } while(0);
-#else
-		socklen_t slen = (socklen_t)sizeof(ttl);
-		if(getsockopt(fd, IPPROTO_IP, IP_TTL, &ttl,&slen)<0) {
-			perror("get TTL on socket");
-			return TTL_IGNORE;
-		}
-#endif
-	}
-
-	CORRECT_RAW_TTL(ttl);
-
-	return ttl;
-}
-
-static int get_raw_socket_tos(evutil_socket_t fd, int family)
-{
-	int tos = 0;
-
-	if(family == AF_INET6) {
-#if !defined(IPV6_RECVTCLASS)
-		UNUSED_ARG(fd);
-		do { return TOS_IGNORE; } while(0);
-#else
-		socklen_t slen = (socklen_t)sizeof(tos);
-		if(getsockopt(fd, IPPROTO_IPV6, IPV6_TCLASS, &tos,&slen)<0) {
-			perror("get TCLASS on socket");
-			return -1;
-		}
-#endif
-	} else {
-#if !defined(IP_RECVTOS)
-		UNUSED_ARG(fd);
-		do { return TOS_IGNORE; } while(0);
-#else
-		socklen_t slen = (socklen_t)sizeof(tos);
-		if(getsockopt(fd, IPPROTO_IP, IP_TOS, &tos,&slen)<0) {
-			perror("get TOS on socket");
-			return -1;
-		}
-#endif
-	}
-
-	CORRECT_RAW_TOS(tos);
-
-	return tos;
-}
-
-static int set_raw_socket_ttl(evutil_socket_t fd, int family, int ttl)
-{
-
-	if(family == AF_INET6) {
-#if !defined(IPV6_RECVHOPLIMIT)
-		UNUSED_ARG(fd);
-		UNUSED_ARG(ttl);
-#else
-		CORRECT_RAW_TTL(ttl);
-		if(setsockopt(fd, IPPROTO_IPV6, IPV6_UNICAST_HOPS, &ttl,sizeof(ttl))<0) {
-			perror("set HOPLIMIT on socket");
-			return -1;
-		}
-#endif
-	} else {
-#if !defined(IP_RECVTTL)
-		UNUSED_ARG(fd);
-		UNUSED_ARG(ttl);
-#else
-		CORRECT_RAW_TTL(ttl);
-		if(setsockopt(fd, IPPROTO_IP, IP_TTL, &ttl,sizeof(ttl))<0) {
-			perror("set TTL on socket");
-			return -1;
-		}
-#endif
-	}
-
-	return 0;
-}
-
-static int set_raw_socket_tos(evutil_socket_t fd, int family, int tos)
-{
-
-	if(family == AF_INET6) {
-#if !defined(IPV6_RECVTCLASS)
-		UNUSED_ARG(fd);
-		UNUSED_ARG(tos);
-#else
-		CORRECT_RAW_TOS(tos);
-		if(setsockopt(fd, IPPROTO_IPV6, IPV6_TCLASS, &tos,sizeof(tos))<0) {
-			perror("set TCLASS on socket");
-			return -1;
-		}
-#endif
-	} else {
-#if !defined(IPV6_RECVTOS)
-		UNUSED_ARG(fd);
-		UNUSED_ARG(tos);
-#else
-		if(setsockopt(fd, IPPROTO_IP, IP_TOS, &tos,sizeof(tos))<0) {
-			perror("set TOS on socket");
-			return -1;
-		}
-#endif
-	}
-
-	return 0;
-}
 
 static int set_socket_ttl(ioa_socket_handle s, int ttl)
 {
@@ -1733,6 +1605,8 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s)
 				close(udp_fd);
 				return ret;
 			}
+			set_raw_socket_ttl_options(udp_fd, s->local_addr.ss.sa_family);
+			set_raw_socket_tos_options(udp_fd, s->local_addr.ss.sa_family);
 		}
 
 		detach_socket_net_data(s);

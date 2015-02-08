@@ -186,6 +186,14 @@ int addr_get_from_sock(evutil_socket_t fd, ioa_addr *addr);
 
 int handle_socket_error(void);
 
+#define CORRECT_RAW_TTL(ttl) do { if(ttl<0 || ttl>255) ttl=TTL_DEFAULT; } while(0)
+#define CORRECT_RAW_TOS(tos) do { if(tos<0 || tos>255) tos=TOS_DEFAULT; } while(0)
+
+int set_raw_socket_tos(evutil_socket_t fd, int family, int tos);
+int set_raw_socket_ttl(evutil_socket_t fd, int family, int ttl);
+int get_raw_socket_tos(evutil_socket_t fd, int family);
+int get_raw_socket_ttl(evutil_socket_t fd, int family);
+
 /////////////////////// SYS /////////////////////
 
 void ignore_sigpipe(void);

@@ -470,14 +470,15 @@ libevent2 from their web site. It was tested with older *NIXes
 
 NOTE: SQLite must be of version 3.x.
 
-NOTE: For extra security features (DTLS and SHA256) support, OpenSSL version 
-1.0.0a or newer is recommended. Older versions do not support DTLS, reliably, 
-in some cases. For example, the Debian 'Squeeze' Linux supplies 0.9.8 version 
-of OpenSSL, that does not work correctly with DTLS over IPv6. If your system 
-already has an older version of OpenSSL installed (usually in directory /usr) 
-then you may want to install your newer OpenSSL "over" the old one (because it 
-will most probably will not allow removal of the old one). When installing 
-the newer OpenSSL, run the OpenSSL's configure command like this:
+NOTE: For extra security features (DTLS and SHA256 and and SHA384 and SHA512)
+support, OpenSSL version 1.0.0a or newer is recommended. Older versions do 
+not support DTLS, reliably, in some cases. For example, the Debian 'Squeeze'
+Linux supplies 0.9.8 version of OpenSSL, that does not work correctly with
+DTLS over IPv6. If your system already has an older version of OpenSSL
+installed (usually in directory /usr) then you may want to install your
+newer OpenSSL "over" the old one (because it will most probably will not allow
+removal of the old one). When installing the newer OpenSSL, run the OpenSSL's
+configure command like this:
 
     $ ./config --prefix=/usr
 
@@ -676,13 +677,15 @@ CREATE TABLE turnusers_lt (
 );
 
 The field hmackey contains HEX string representation of the key.
-We do not store the user open passwords for long-term credentials, for security reasons.
-Storing only the HMAC key has its own implications - if you change the realm,
-you will have to update the HMAC keys of all users, because the realm is 
-used for the HMAC key generation.
+We do not store the user open passwords for long-term credentials, for
+security reasons. Storing only the HMAC key has its own implications - 
+if you change the realm, you will have to update the HMAC keys of all 
+users, because the realm is used for the HMAC key generation.
 
-The key must be 32 characters (HEX representation of 16 bytes) for SHA1,
-or 64 characters (HEX representation of 32 bytes) for SHA256.
+The key must be up to 32 characters (HEX representation of 16 bytes) for SHA1,
+or up to 64 characters (HEX representation of 32 bytes) for SHA256,
+or up to 96 characters (HEX representation of 48 bytes) for SHA384,
+or up to 128 characters (HEX representation of 64 bytes) for SHA512:
 
 # Table holding shared secrets for secret-based authorization
 # (REST API). It can only be used together with the long-term 
@@ -763,9 +766,10 @@ The oauth_key table fields meanings are:
 		is 0 - unlimited lifetime.
 	
 	hkdf_hash_func - (optional) hash function for HKDF procedure; the 
-		valid values are SHA-1 and SHA-256, with SHA-256 as default;
-		The hkdf_hash_func is not needed if the as_rs_key and auth_key 
-		are defined explicitly in the database;
+		valid values are SHA-1, SHA-256, SHA-384 and SHA-512, 
+		with SHA-256 as default. The hkdf_hash_func is not needed
+		if the as_rs_key and auth_key are defined explicitly
+		in the database;
 		
 	as_rs_alg - oAuth token encryption algorithm; the valid values are
 		"AES-128-CBC" and "AES-256-CBC", , "AEAD-AES-128-GCM",
@@ -777,7 +781,8 @@ The oauth_key table fields meanings are:
 		is defined by as_rs_alg.
 		
 	auth_alg - (optional) oAuth token authentication algorithm; the valid values are
-		"HMAC-SHA-256-128", "HMAC-SHA-256" and "HMAC-SHA-1".		  
+		"HMAC-SHA-256-128", "HMAC-SHA-256", "HMAC-SHA-384",
+		"HMAC-SHA-512" and "HMAC-SHA-1".		  
 		The default value is "HMAC-SHA-256-128".
 		
 	auth_key - (optional) base64-encoded AUTH key. If not defined, then 

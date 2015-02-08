@@ -88,7 +88,7 @@ extern int dual_allocation;
 extern char origin[STUN_MAX_ORIGIN_SIZE+1];
 
 extern int oauth;
-extern oauth_key okey_array[2];
+extern oauth_key okey_array[3];
 
 #define UCLIENT_SESSION_LIFETIME (777)
 #define OAUTH_SESSION_LIFETIME (555)
@@ -109,7 +109,7 @@ turn_credential_type get_turn_credentials_type(void);
 int add_integrity(app_ur_conn_info *clnet_info, stun_buffer *message);
 int check_integrity(app_ur_conn_info *clnet_info, stun_buffer *message);
 
-void recalculate_restapi_hmac(void);
+void recalculate_restapi_hmac(SHATYPE st);
 
 ////////////////////////////////////////////
 
