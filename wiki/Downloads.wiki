@@ -4,7 +4,7 @@
 == Latest official recommended version - 4.4.2.1: ==
 
   * (HMAC-)SHA-512 and -384 algorithms added;
-  * TOS (DiffServer) and TTL IP header field handling fixed;
+  * TOS (DiffServer) and TTL IP header field handling fixed (Issue 9 fixed);
   * updates according to the new third-party-auth draft (oauth);
   * peer logging added.
 
