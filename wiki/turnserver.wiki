@@ -1,5 +1,5 @@
 #summary turnserver wiki page
-#labels Version-4.4.1.2
+#labels Version-4.4.2.1
 
 ==turnserver application: a TURN relay server implementation==
 
@@ -42,6 +42,8 @@
    * *-S,* *--stun-only* Run as STUN server only, all TURN requests will be ignored. Option to suppress TURN functionality, only STUN requests will be processed.
    * *--no-stun*	Run as TURN server only, all STUN requests will be ignored. Option to suppress STUN functionality, only TURN requests will be processed.
    * *--sha256*	Require SHA256 digest function to be used for the message integrity. By default, the server uses SHA1 hashes. With this option, the server requires the stronger SHA256 hashes. The client application must support SHA256 hash function if this option is used. If the server obtains a message from the client with a weaker (SHA1) hash function then the server returns error code 426.
+   * *--sha384*	Require SHA384 digest function to be used for the message integrity.
+   * *--sha512*	Require SHA512 digest function to be used for the message integrity.
    * *--mobility*    Mobility with ICE (MICE) specs support.
    * *--no-cli*      Turn OFF the CLI support. By default it is always ON, and the process turnserver accepts the telnet client connections on IP address 127.0.0.1, port 5766. See also options *--cli-ip*, *--cli-port* and *--cli-password*.
    * *--server-relay*   Server relay. *NON-STANDARD AND DANGEROUS OPTION*. Only for an application that want to run a server on the relay endpoints. This option eliminates the IP permissions check on the packets incoming to the relay endpoints. That makes the system vulnerable to DOS attack, for example, among other bad things. The rule is: if you do not understand what is this option about and why would you need it, *then you absolutely must NOT use it under any circumstances*. See http://tools.ietf.org/search/rfc5766#section-17.2.3 .
