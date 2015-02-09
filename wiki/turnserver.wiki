@@ -311,7 +311,9 @@ you will have to update the HMAC keys of all users, because the realm is
 used for the HMAC key generation.
 
 The key must be 32 characters (HEX representation of 16 bytes) for SHA1,
-or 64 characters (HEX representation of 32 bytes) for SHA256.
+or 64 characters (HEX representation of 32 bytes) for SHA256,
+or 96 characters (HEX representation of 48 bytes) for SHA384,
+or 128 characters (HEX representation of 96 bytes) for SHA512.
 
 # Table holding shared secrets for secret-based authorization
 # (REST API). It can only be used together with the long-term 
@@ -319,7 +321,7 @@ or 64 characters (HEX representation of 32 bytes) for SHA256.
 #
 CREATE TABLE turn_secret (
 	realm varchar(127) default '',
-        value varchar(127),
+        value varchar(128),
 	primary key (realm,value)
 );
 
@@ -383,11 +385,11 @@ CREATE TABLE oauth_key (
 #	The ikm_key is not needed if the as_rs_key and auth_key are defined explicitly in the database;
 #  timestamp - (optional) the timestamp (in seconds) when the key lifetime started;	
 #  lifetime - (optional) the key lifetime in seconds; the default value is 0 - unlimited lifetime.
-#  hkdf_hash_func - (optional) hash function for HKDF procedure; the valid values are SHA-1 and SHA-256, with SHA-256 as default;
+#  hkdf_hash_func - (optional) hash function for HKDF procedure; the valid values are SHA-1, SHA-256, SHA-384, SHA-512 with SHA-256 as default;
       The hkdf_hash_func is not needed if the as_rs_key and auth_key are defined explicitly in the database;
 #  as_rs_alg - oAuth token encryption algorithm; the valid values are "AES-128-CBC" and "AES-256-CBC", , "AEAD-AES-128-GCM", "AEAD-AES-256-GCM". The default value is "AES-256-CBC";
 #  as_rs_key - (optional) base64-encoded AS-RS key. If not defined, then calculated with ikm_key and hkdf_hash_func. The as_rs_key length is defined by as_rs_alg.
-#  auth_alg - (optional) oAuth token authentication algorithm; the valid values are "HMAC-SHA-256-128", "HMAC-SHA-256" and "HMAC-SHA-1". The default value is "HMAC-SHA-256-128".
+#  auth_alg - (optional) oAuth token authentication algorithm; the valid values are "HMAC-SHA-256-128", "HMAC-SHA-256", "HMAC-SHA-384", "HMAC-SHA-512" and "HMAC-SHA-1". The default value is "HMAC-SHA-256-128".
 #  auth_key - (optional) base64-encoded AUTH key. If not defined, then calculated with ikm_key and hkdf_hash_func. The auth_key length is defined by auth_alg.
 #
 
@@ -527,9 +529,9 @@ their corresponding realms.
 
 The turnserver process provides a telnet CLI access as statistics and basic management interface. By default, the turnserver starts a telnet CLI listener on IP 127.0.0.1 and port 5766. That can be changed by the command-cline options of the turnserver process (see --cli-ip and --cli-port options). The full list of telnet CLI commands is provided in "help" command output in the telnet CLI.
 
-=== SHA256 extension ===
+=== SHA256, SHA384, SHA512 extensions ===
 
-The existing STUN/TURN standards require HMAC-SHA1 function for the message integrity digest calculation, and MD5 for the password hash (key) calculation. As an extension for stronger protection, optionally, this server can use (with option *--sha256*) HMAC-SHA256 for the message integrity digest calculation, and SHA256 for the password hash (key) calculation. Of course, the TURN client has to implement the same extension. 
+The existing STUN/TURN standards require HMAC-SHA1 function for the message integrity digest calculation, and MD5 for the password hash (key) calculation. As an extension for stronger protection, optionally, this server can use (with options *--sha256*, *--sha384* or *--sha512*) a stronger SHA function for the message integrity digest calculation and for the password hash (key) calculation (instead of SHA-1 and MD5). Of course, the TURN client has to implement the same extension. 
 
 === TURN connection with Proxy ===
 
