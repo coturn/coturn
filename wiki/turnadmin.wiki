@@ -1,5 +1,5 @@
 #summary turnadmin wiki page
-#labels Version-4.4.1.1
+#labels Version-4.4.2.1
 
 == turnadmin application: a TURN relay administration tool==
 
@@ -36,6 +36,8 @@
  * *-p,* *--password* {{{<password>}}} Password.
  * *-o,* *--origin* {{{origin}}} Fully-formed origin, for example {{{https://crinna.org:443}}}.
  * *-H,* *--sha256*	Use SHA256 as the keys hash function (a non-standard feature). By default, MD5 is used for the key storage encryption (as required by the current STUN/TURNstandards).
+ * *-Y*     SHA384 digest function for message integrity calculation.
+ * *-K*     SHA512 digest function for message integrity calculation.
  * *--max-bps* Set value of realm's max-bps parameter. _Setting to zero value means removal of the option._
  * *--total-quota* Set value of realm's total-quota parameter. _Setting to zero value means removal of the option._
  * *--user-quota* Set value of realm's user-quota parameter. _Setting to zero value means removal of the option._
