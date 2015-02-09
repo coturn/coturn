@@ -1,4 +1,4 @@
-Current Amazon TURN Server public AMI: ami-5decb46d.
+Current Amazon TURN Server public AMI: ami-736a4f43.
 This image is available in US West (Oregon) region:
 
 search by "coturn" string or by the AMI name.
