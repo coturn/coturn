@@ -1,5 +1,5 @@
 #summary turnutils_uclient wiki page
-#labels Version-4.4.1.2
+#labels Version-4.4.2.1
 
 == turnutils_uclient application (for test purposes only)==
   It was designed to simulate multiple clients. It uses asynch IO API in  libevent to  handle  multiple  clients. A  client connects to the relay, negotiates the session, and sends	multiple  (configured  number) messages	to  the	 server	 (relay), expecting the	same number of replies. The length of the messages is configurable.   The  message is an arbitrary octet stream, but it	can be configured as a string.  The number of the messages to send is configurable.
@@ -30,6 +30,8 @@ When an unreliable protocol is used for the client-TURN-server communications (U
  *      *-R*     Negative protocol tests.
  *      *-O*     "DOS attack" intense mode.
  *      *-H*     SHA256 digest function for message integrity calculation. Without this option, by default, SHA1 is used.
+ *      *-Y*     SHA384 digest function for message integrity calculation.
+ *      *-K*     SHA512 digest function for message integrity calculation.
  *      *-M*	Use TURN ICE Mobility.
  *      *-I*	Do not set permissions on TURN relay endpoints (for testing the non-standard server relay functionality).
  *      *-G*    Generate extra requests (create permissions, channel bind).
