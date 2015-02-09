@@ -18,7 +18,7 @@
    * *-a,* *--lt-cred-mech* Use long-term credentials mechanism (this one you need for WebRTC usage).
    * *-z,* *--no-auth* Do not use any credentials mechanism, allow anonymous access. Opposite to *-a* and *-A* options.
    * *--use-auth-secret* TURN REST API flag. Flag that sets a special WebRTC authorization option that is based upon authentication secret. This feature purpose is to support "TURN Server REST API" as described in TURNServerRESTAPI.pdf in the docs. This option is used with long-term credentials mechanism.
-   * *--oauth* Support oAuth authentication, as in the third-party TURN specs document: http://tools.ietf.org/html/draft-ietf-tram-turn-third-party-authz-05. The oAuth keys must be stored in the database, and handled by an external program. The TURN server expects the keys to be present in the database, and the TURN server does not handle the keys by itself. In the specs document, section 4.1, several key-management schemes are proposed and to be followed by the external key-management program.
+   * *--oauth* Support oAuth authentication, as in the third-party TURN specs document: http://tools.ietf.org/html/draft-ietf-tram-turn-third-party-authz-10. The oAuth keys must be stored in the database, and handled by an external program. The TURN server expects the keys to be present in the database, and the TURN server does not handle the keys by itself. In the specs document, section 4.1, several key-management schemes are proposed and to be followed by the external key-management program.
    * *--dh566*	Use 566 bits DH TLS key. Default size of the key is 1066.
    * *--dh2066*	Use 2066 bits DH TLS key. Default size of the key is 1066.
    * *--no-sslv3*  Do not allow SSLv3 protocol.
@@ -283,7 +283,7 @@ different for different clients and different sessions.
 
 === THIRD-PARTY AUTHORIZATION/AUTHENTICATION SUPPORT (with oAuth) ===
 
-Starting with version 4.2.1.2, the TURN server supports the third-party authorization (when the option --oauth is used), in the way how it is described in the document http://tools.ietf.org/html/draft-ietf-tram-turn-third-party-authz-05. The TURN server takes all oAuth key information from its database; it assumes that a separate program handles the keys. The keys can be handled by any algorithm described in the specs document - the only requirement is that the external program has to update the key database, correctly. The external program has to follow one or more key management schemes described in the section 4.1 of the specs document.
+Starting with version 4.2.1.2, the TURN server supports the third-party authorization (when the option --oauth is used), in the way how it is described in the document http://tools.ietf.org/html/draft-ietf-tram-turn-third-party-authz-10. The TURN server takes all oAuth key information from its database; it assumes that a separate program handles the keys. The keys can be handled by any algorithm described in the specs document - the only requirement is that the external program has to update the key database, correctly. The external program has to follow one or more key management schemes described in the section 4.1 of the specs document.
 
 As IANA has not assigned the attribute numbers, yet, we are using the unassigned values 0x8031 and 0x0031 for the THIRD_PARTY_AUTHORIZATION and OAUTH_ACCESS_TOKEN attributes.
 
