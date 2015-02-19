@@ -1,5 +1,5 @@
 #summary turnserver wiki page
-#labels Version-4.4.2.1
+#labels Version-4.4.2.2
 
 ==turnserver application: a TURN relay server implementation==
 
@@ -228,7 +228,7 @@ seconds sinse 1970 - the same value as time(NULL) function returns. The timestam
 The temporary password is obtained as HMAC-SHA1 function over the temporary
 username, with shared secret as the HMAC key, and then the result is encoded:
 
-{{{temporary-password = base64_encode(hmac-sha1(shared-secret, temporary-username))}}}
+{{{temporary-password = base64_encode(hmac-sha1(input = temporary-username, key = secret-key))}}}
 
 Both the TURN server and the web server know the same shared secret. How the
 shared secret is distributed among the involved entities is left to the WebRTC
