@@ -59,6 +59,10 @@
 
 2) Redirect draft.
 
+3) STUN-Bis: 
+	a. SCTP
+	b. New integrity attribute, algorithms
+
 ==================================================================
 
 ###   VII. MISC FEATURES   ###
