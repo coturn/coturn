@@ -42,14 +42,19 @@ following options:
 	SQLite (pre-set by default here), or MySQL, 
 	or PostgreSQL, or Redis, or MongoDB. 
 	All five possible options are pre-set with the same data.
-	Then you will have to remove the test users (manually or with the turnadmin 
-	utility), and add  the real users.
+	Then you will have to remove the test users (manually or with the
+	turnadmin utility), and add  the real users.
 	The turnadmin utility must be called with -b option for SQLite,
 	-M option for MySQL, 
 	-e option for PostgreSQL, -N option for Redis, -J for MongoDB.
 
-3) Choose loging option. By default, the log file is /var/log/turn_*.log, in verbose mode. 
-You can choose a different file prefix, or redirect the log into syslog. 
+3) Choose loging option. The initial configuration in /etc/turnserver.conf
+redirects the log into syslog. For syslog, rsyslogd is used. Its configuration
+is located in /etc/rsyslog.conf. The syslog for TURN is configured as simply
+/var/log/messages, but you can reconfigure it. The file /var/log/messages is
+rotated according to the rules defined in /etc/logrotate.conf and in
+/etc/logrotate.d/syslog. You are free to change those rules according to your
+requirements.
 
 All question are to be sent to:
 
