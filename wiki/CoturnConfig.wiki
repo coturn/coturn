@@ -1,4 +1,4 @@
-#labels v4.4.2.1
+#labels Version-4.4.2.2
 #This page describes the Coturn server setup, with stress on WebRTC usage.
 
 = Introduction =
