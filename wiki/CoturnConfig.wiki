@@ -1,0 +1,11 @@
+#labels v4.4.2.1
+#This page describes the Coturn server setup, with stress on WebRTC usage.
+
+= Introduction =
+
+Coturn has multiple options and the configuration can be complex. The good thing is that most default values of the options are what most people need to use. Still, a simple introductory set-up guide is useful, and it is provided by this page.
+
+
+= Details =
+
+TODO
