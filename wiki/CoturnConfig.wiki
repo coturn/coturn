@@ -23,11 +23,13 @@ $ wget https://github.com/downloads/libevent/libevent/libevent-2.0.21-stable.tar
 
 As root, build and install the library with the usual:
 
+{{{
 $ tar xvfz libevent-2.0.21-stable.tar.gz
 $ cd libevent-2.0.21-stable
 $ ./configure
 $ make
 $ make install
+}}}
 
 Default setup assumes that you are using sqlite as the database engine, that is sufficient for most purposes. If your project requires a different database (mysql, postgresql, mongodb, redis) then check the INSTALL file for the instructions.
 
@@ -39,10 +41,12 @@ We assume that you are installing the Coturn from the sources.
 
 Download the TURN server from https://code.google.com/p/coturn/wiki/Downloads. Build and install with:
 
+{{{
 $ tar xvfz turnserver-<...>.tar.gz
 $ ./configure
 $ make
 $ make install
+}}}
 
 Check the INSTALL and README files with the server. They contain lots of useful information.
 
@@ -58,7 +62,9 @@ sudo bin/turnadmin -A -u bayaz -p magi
 
 In your Javascript code where the RTCPeerConnection is created, reference the TURN server as follows:
 {{{
-        var pc_config = {"iceServers": [{"url": "stun:stun.l.google.com:19302"},            {"url":"turn:my_username@<turn_server_ip_address>", "credential":"my_password"}]};
+        var pc_config = {"iceServers": [{"url": "stun:stun.l.google.com:19302"},
+                        {"url":"turn:my_username@<turn_server_ip_address>", 
+                                          "credential":"my_password"}]};
         pc_new = new webkitRTCPeerConnection(pc_config);
 }}}
 
@@ -66,7 +72,7 @@ Embedding a visible password in your Javascript code may allow someone else to u
 
 Since the server is publicly accessible, access to it should be restricted as much as possible. Minimally, port 3478 (STUN) should be opened for TCP and UDP. Assuming that we are using CentOS, the most convenient way to do this on CentOS is to use the firewall configuration option of "setup". Select Customize and Forward until the Other Ports screen is found.  There, add 3478:tcp and 3478:upd. Close and save, then restart the firewall with:
 
-> service iptables restart
+$ service iptables restart
 
 Check the firewall with:
 {{{
