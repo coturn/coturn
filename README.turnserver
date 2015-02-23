@@ -174,7 +174,7 @@ Flags:
 			This option uses timestamp as part of combined username:
 			usercombo -> "timestamp:username",
 			turn user -> usercombo,
-			turn password -> base64(hmac(secret key, usercombo)).
+			turn password -> base64(hmac(input_buffer = usercombo, key = shared-secret)).
 			This allows TURN credentials to be accounted for a specific user id.
 			If you don't have a suitable id, the timestamp alone can be used.
 			This option is just turns on secret-based authentication.

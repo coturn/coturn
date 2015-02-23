@@ -856,7 +856,12 @@ connection string format.
 
 Below are the steps to setup the PostgreSQL database server from scratch:
 
-1) Install PostgreSQL server.
+1) Install PostgreSQL server. After the installation, do not forget to
+initialize the postgres root database directory:
+
+	$ sudo bash
+	$ su -l pgsql
+	$ initdb -D /usr/local/pgsql/data
 
 2) Find and edit Postgres' pg_hba.conf file to set the access options 
 (see docs). On different systems, it may be located in different places.
