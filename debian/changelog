@@ -1,3 +1,9 @@
+coturn (4.4.2.2-1) unstable; urgency=low
+
+  * Sync to upstream 4.4.2.2: SQLite db schema bug fixed
+
+ -- Oleg Moskalenko <mom040267@gmail.com>  Sun, 22 Feb 2015 21:14:19 -0800
+
 coturn (4.4.2.1-1) unstable; urgency=low
 
   * Sync to the new upstream version: updated according to the new draft
