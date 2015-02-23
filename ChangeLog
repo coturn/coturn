@@ -1,3 +1,9 @@
+2/18/2015 Oleg Moskalenko <mom040267@gmail.com>
+Version 4.4.2.2 'Ardee West':
+	- admin_user table schema fixed;
+	- REST API docs fixed;
+	- Amazon AWS uses syslog;
+	
 2/3/2015 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.4.2.1 'Ardee West':
 	- (HMAC-)SHA-512 and -384 algorithms added;
