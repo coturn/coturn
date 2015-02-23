@@ -1,14 +1,13 @@
 #summary Downloads Page
-#labels Version-4.4.2.1,Featured
+#labels Version-4.4.2.2,Featured
 
-== Latest official recommended version - 4.4.2.1: ==
+== Latest official recommended version - 4.4.2.2: ==
 
-  * (HMAC-)SHA-512 and -384 algorithms added;
-  * TOS (DiffServer) and TTL IP header field handling fixed (Issue 9 fixed);
-  * updates according to the new third-party-auth draft (oauth);
-  * peer logging added.
+  * admin_user SQLite table schema fixed;
+  * REST API docs fixed;
+  * Amazon AWS uses syslog;
 
-[http://turnserver.open-sys.org/downloads/v4.4.2.1/ 4.4.2.1 Version Downloads (full source and platform builds)]
+[http://turnserver.open-sys.org/downloads/v4.4.2.2/ 4.4.2.2 Version Downloads (full source and platform builds)]
 
 [http://turnserver.open-sys.org/downloads/ Main Downloads Page (with all recent versions)]
 
@@ -17,6 +16,16 @@
 [http://turnserver.open-sys.org/downloads/extradocs/ Extra Docs ]
 
 == Older versions ==
+
+=== 4.4.2.1: ===
+
+  * (HMAC-)SHA-512 and -384 algorithms added;
+  * TOS (DiffServer) and TTL IP header field handling fixed (Issue 9 fixed);
+  * updates according to the new third-party-auth draft (oauth);
+  * peer logging added.
+
+
+[http://turnserver.open-sys.org/downloads/v4.4.2.1/ v4.4.2.1]
 
 === 4.4.1.2: ===
 
