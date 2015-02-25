@@ -2,7 +2,7 @@
 
 # Common settings script.
 
-TURNVERSION=4.4.2.2
+TURNVERSION=4.4.2.3
 BUILDDIR=~/rpmbuild
 ARCH=`uname -p`
 TURNSERVER_SVN_URL=http://coturn.googlecode.com/svn
