@@ -637,7 +637,7 @@ void delete_ioa_timer(ioa_timer_handle th)
 
 /************** SOCKETS HELPERS ***********************/
 
-static int ioa_socket_check_bandwidth(ioa_socket_handle s, size_t sz, int read)
+int ioa_socket_check_bandwidth(ioa_socket_handle s, size_t sz, int read)
 {
 	if(s && (s->e) && sz && ((s->sat == CLIENT_SOCKET) || (s->sat == LISTENER_SOCKET)) && (s->session)) {
 
