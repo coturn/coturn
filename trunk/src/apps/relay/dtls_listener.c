@@ -367,18 +367,20 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server,
 			}
 		}
 
-		if (s && s->read_cb && sm->m.sm.nd.nbh) {
+		if(ioa_socket_check_bandwidth(s,ioa_network_buffer_get_size(sm->m.sm.nd.nbh),1)) {
 			s->e = ioa_eng;
-			s->read_cb(s, IOA_EV_READ, &(sm->m.sm.nd), s->read_ctx, 1);
-			ioa_network_buffer_delete(ioa_eng, sm->m.sm.nd.nbh);
-			sm->m.sm.nd.nbh = NULL;
+			if (s && s->read_cb && sm->m.sm.nd.nbh) {
+				s->read_cb(s, IOA_EV_READ, &(sm->m.sm.nd), s->read_ctx, 1);
+				ioa_network_buffer_delete(ioa_eng, sm->m.sm.nd.nbh);
+				sm->m.sm.nd.nbh = NULL;
 
-			if (ioa_socket_tobeclosed(s)) {
-				ts_ur_super_session *ss = (ts_ur_super_session *) s->session;
-				if (ss) {
-					turn_turnserver *server = (turn_turnserver *) ss->server;
-					if (server) {
-						shutdown_client_connection(server, ss, 0, "UDP packet processing error");
+				if (ioa_socket_tobeclosed(s)) {
+					ts_ur_super_session *ss = (ts_ur_super_session *) s->session;
+					if (ss) {
+						turn_turnserver *server = (turn_turnserver *) ss->server;
+						if (server) {
+							shutdown_client_connection(server, ss, 0, "UDP packet processing error");
+						}
 					}
 				}
 			}

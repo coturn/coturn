@@ -303,6 +303,8 @@ int send_data_from_ioa_socket_tcp(ioa_socket_handle s, const void *data, size_t 
 int send_str_from_ioa_socket_tcp(ioa_socket_handle s, const void *data);
 int send_ulong_from_ioa_socket_tcp(ioa_socket_handle s, size_t data);
 
+int ioa_socket_check_bandwidth(ioa_socket_handle s, size_t sz, int read);
+
 ///////////////////////// SUPER MEMORY ////////
 
 #define allocate_super_memory_engine(e,size) allocate_super_memory_engine_func(e, size, __FILE__, __FUNCTION__, __LINE__)
