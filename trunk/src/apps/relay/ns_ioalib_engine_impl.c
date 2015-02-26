@@ -326,8 +326,6 @@ static void free_blist_elem(ioa_engine_handle e, stun_buffer_list_elem *buf_elem
 
 /************** ENGINE *************************/
 
-#define TURN_JIFFIE_SIZE (3)
-
 static void timer_handler(ioa_engine_handle e, void* arg) {
 
   UNUSED_ARG(arg);
@@ -335,7 +333,7 @@ static void timer_handler(ioa_engine_handle e, void* arg) {
   _log_time_value = turn_time();
   _log_time_value_set = 1;
 
-  e->jiffie = _log_time_value >> TURN_JIFFIE_SIZE;
+  e->jiffie = _log_time_value;
 }
 
 ioa_engine_handle create_ioa_engine(super_memory_t *sm,
@@ -641,14 +639,12 @@ void delete_ioa_timer(ioa_timer_handle th)
 
 static int ioa_socket_check_bandwidth(ioa_socket_handle s, size_t sz, int read)
 {
-	if(s && (s->e) && sz && (s->sat == CLIENT_SOCKET) && (s->session)) {
+	if(s && (s->e) && sz && ((s->sat == CLIENT_SOCKET) || (s->sat == LISTENER_SOCKET)) && (s->session)) {
 
 		band_limit_t max_bps = s->session->bps;
 
 		if(max_bps<1)
 			return 1;
-
-		max_bps = max_bps<<TURN_JIFFIE_SIZE;
 
 		band_limit_t bsz = (band_limit_t)sz;
 
@@ -2965,7 +2961,7 @@ int udp_send(ioa_socket_handle s, const ioa_addr* dest_addr, const s08bits* buff
 
 int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 				ioa_network_buffer_handle nbh,
-				int ttl, int tos)
+				int ttl, int tos, int *skip)
 {
 	int ret = -1;
 
@@ -2986,6 +2982,7 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 		if(!ioa_socket_check_bandwidth(s,ioa_network_buffer_get_size(nbh),0)) {
 			/* Bandwidth exhausted, we pretend everything is fine: */
 			ret = (int)(ioa_network_buffer_get_size(nbh));
+			if(skip) *skip = 1;
 		} else {
 			if (!ioa_socket_tobeclosed(s) && s->e) {
 
