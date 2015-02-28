@@ -1,6 +1,7 @@
 2/25/2015 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.4.2.3 'Ardee West':
-	- bandwidth limitation fixes;
+	- bandwidth control fixed;
+	- redis operations with the realm options fixed;
 	
 2/18/2015 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.4.2.2 'Ardee West':
