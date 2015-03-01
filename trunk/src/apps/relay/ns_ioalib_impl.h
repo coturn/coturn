@@ -303,7 +303,7 @@ int send_data_from_ioa_socket_tcp(ioa_socket_handle s, const void *data, size_t 
 int send_str_from_ioa_socket_tcp(ioa_socket_handle s, const void *data);
 int send_ulong_from_ioa_socket_tcp(ioa_socket_handle s, size_t data);
 
-int ioa_socket_check_bandwidth(ioa_socket_handle s, size_t sz, int read);
+int ioa_socket_check_bandwidth(ioa_socket_handle s, ioa_network_buffer_handle nbh, int read);
 
 ///////////////////////// SUPER MEMORY ////////
 
