@@ -672,11 +672,9 @@ int ioa_socket_check_bandwidth(ioa_socket_handle s, ioa_network_buffer_handle nb
 					s->jiffie_bytes_read = bsz;
 				else
 					s->jiffie_bytes_write = bsz;
-
 				return 1;
 			}
 		} else {
-
 			band_limit_t nsz;
 			if(read)
 				nsz = s->jiffie_bytes_read + bsz;
