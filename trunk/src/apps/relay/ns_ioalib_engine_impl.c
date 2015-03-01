@@ -652,8 +652,11 @@ int ioa_socket_check_bandwidth(ioa_socket_handle s, ioa_network_buffer_handle nb
 
 		if(s->sat == CLIENT_SOCKET) {
 			u08bits *buf = ioa_network_buffer_data(nbh);
-			if((read && stun_is_request_str(buf,sz)) || (!read && stun_is_response_str(buf,sz))) {
-				return 1;
+			if(stun_is_command_message_str(buf,sz)) {
+				u16bits method = stun_get_method_str(buf,sz);
+				if((method != STUN_METHOD_SEND) && (method != STUN_METHOD_DATA)) {
+					return 1;
+				}
 			}
 		}
 
