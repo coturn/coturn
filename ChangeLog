@@ -1,4 +1,4 @@
-2/25/2015 Oleg Moskalenko <mom040267@gmail.com>
+2/28/2015 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.4.2.3 'Ardee West':
 	- bandwidth control fixed;
 	- STUN/TURN control traffic excluded from the bandwidth limitation;
