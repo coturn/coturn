@@ -1178,24 +1178,21 @@ static void mongo_reread_realms(secrets_list_t * realms_list) {
 					if (bson_iter_init(&options_iter, &options)) {
 						while (bson_iter_next(&options_iter)) {
 							const char * _k = bson_iter_key(&options_iter);
-							int32_t _v = 0;
+							uint64_t _v = 0;
 							if (BSON_ITER_HOLDS_DOUBLE(&options_iter)) {
-								_v = (int32_t) bson_iter_double(&options_iter);
+								_v = (uint64_t) bson_iter_double(&options_iter);
 							} else if (BSON_ITER_HOLDS_INT32(&options_iter)) {
-								_v = bson_iter_int32(&options_iter);
+								_v = (uint64_t)bson_iter_int32(&options_iter);
 							} else if (BSON_ITER_HOLDS_INT64(&options_iter)) {
-								_v = (int32_t) bson_iter_int64(&options_iter);
+								_v = (uint64_t) bson_iter_int64(&options_iter);
 							}
 							if (_v) {
 								if (!strcmp(_k, "max-bps"))
-									rp->options.perf_options.max_bps
-											= (band_limit_t) _v;
+									rp->options.perf_options.max_bps = (band_limit_t) _v;
 								else if (!strcmp(_k, "total-quota"))
-									rp->options.perf_options.total_quota
-											= (vint) _v;
+									rp->options.perf_options.total_quota = (vint) _v;
 								else if (!strcmp(_k, "user-quota"))
-									rp->options.perf_options.user_quota
-											= (vint) _v;
+									rp->options.perf_options.user_quota = (vint) _v;
 								else {
 									TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
 											"Unknown realm option: %s\n", _k);

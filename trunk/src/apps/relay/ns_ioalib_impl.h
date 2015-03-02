@@ -171,6 +171,11 @@ struct _ioa_engine
 
 #define SOCKET_MAGIC (0xABACADEF)
 
+struct traffic_bytes {
+	band_limit_t jiffie_bytes_read;
+	band_limit_t jiffie_bytes_write;
+};
+
 struct _ioa_socket
 {
 	evutil_socket_t fd;
@@ -207,8 +212,8 @@ struct _ioa_socket
 	int current_tos;
 	stun_buffer_list bufs;
 	turn_time_t jiffie; /* bandwidth check interval */
-	band_limit_t jiffie_bytes_read;
-	band_limit_t jiffie_bytes_write;
+	struct traffic_bytes data_traffic;
+	struct traffic_bytes control_traffic;
 	/* RFC 6062 ==>> */
 	//Connection session:
 	tcp_connection *sub_session;
