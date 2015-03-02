@@ -64,7 +64,7 @@ typedef enum {
 typedef u08bits hmackey_t[64];
 
 typedef u08bits password_t[STUN_MAX_PWD_SIZE+1];
-typedef unsigned int band_limit_t;
+typedef unsigned long band_limit_t;
 
 ///////////////////////////////////
 

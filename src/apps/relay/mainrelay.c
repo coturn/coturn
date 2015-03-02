@@ -1203,12 +1203,12 @@ static void set_option(int c, char *value)
 		get_realm(NULL)->options.perf_options.total_quota = atoi(value);
 		break;
 	case 's':
-		turn_params.max_bps = (band_limit_t)atoi(value);
-		get_realm(NULL)->options.perf_options.max_bps = atoi(value);
+		turn_params.max_bps = (band_limit_t)strtoul(value,NULL,10);
+		get_realm(NULL)->options.perf_options.max_bps = (band_limit_t)strtoul(value,NULL,10);
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%lu bytes per second allowed per session\n",(unsigned long)turn_params.max_bps);
 		break;
 	case 'B':
-		turn_params.bps_capacity = (band_limit_t)atoi(value);
+		turn_params.bps_capacity = (band_limit_t)strtoul(value,NULL,10);
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%lu bytes per second allowed, combined server capacity\n",(unsigned long)turn_params.bps_capacity);
 		break;
 	case CHECK_ORIGIN_CONSISTENCY_OPT:

@@ -382,11 +382,11 @@ static void change_cli_param(struct cli_session* cs, const char* pn)
 			cli_print_uint(cs,(unsigned long)turn_params.user_quota,"user-quota",2);
 			return;
 		} else if(strstr(pn,"max-bps")==pn) {
-			set_max_bps((band_limit_t)atol(pn+strlen("max-bps")));
+			set_max_bps((band_limit_t)strtoul(pn+strlen("max-bps"),NULL,10));
 			cli_print_uint(cs,(unsigned long)get_max_bps(),"max-bps",2);
 			return;
 		} else if(strstr(pn,"bps-capacity")==pn) {
-			set_bps_capacity((band_limit_t)atol(pn+strlen("bps-capacity")));
+			set_bps_capacity((band_limit_t)strtoul(pn+strlen("bps-capacity"),NULL,10));
 			cli_print_uint(cs,(unsigned long)get_bps_capacity(),"bps-capacity",2);
 			return;
 		} else if(strstr(pn,"cli-max-output-sessions")==pn) {
@@ -1882,9 +1882,9 @@ static void update_param(const char* pn, const char *value)
 			} else if(strstr(pn,"user-quota")==pn) {
 				turn_params.user_quota = atoi(value);
 			} else if(strstr(pn,"max-bps")==pn) {
-				set_max_bps((band_limit_t)atol(value));
+				set_max_bps((band_limit_t)strtoul(value,NULL,10));
 			} else if(strstr(pn,"bps-capacity")==pn) {
-				set_bps_capacity((band_limit_t)atol(value));
+				set_bps_capacity((band_limit_t)strtoul(value,NULL,10));
 			}
 		}
 		{
@@ -1900,7 +1900,7 @@ static void update_param(const char* pn, const char *value)
 					rp->options.perf_options.user_quota = atoi(value);
 					dbd->set_realm_option_one((u08bits*)rp->options.name,rp->options.perf_options.user_quota,"user-quota");
 				} else if(strstr(pn,"cr-max-bps")==pn) {
-					rp->options.perf_options.max_bps = (band_limit_t)atol(value);
+					rp->options.perf_options.max_bps = (band_limit_t)strtoul(value,NULL,10);
 					dbd->set_realm_option_one((u08bits*)rp->options.name,rp->options.perf_options.max_bps,"max-bps");
 				}
 			}

@@ -650,12 +650,14 @@ int ioa_socket_check_bandwidth(ioa_socket_handle s, ioa_network_buffer_handle nb
 		if(max_bps<1)
 			return 1;
 
+		struct traffic_bytes *traffic = &(s->data_traffic);
+
 		if(s->sat == CLIENT_SOCKET) {
 			u08bits *buf = ioa_network_buffer_data(nbh);
 			if(stun_is_command_message_str(buf,sz)) {
 				u16bits method = stun_get_method_str(buf,sz);
 				if((method != STUN_METHOD_SEND) && (method != STUN_METHOD_DATA)) {
-					return 1;
+					traffic = &(s->control_traffic);
 				}
 			}
 		}
@@ -665,31 +667,31 @@ int ioa_socket_check_bandwidth(ioa_socket_handle s, ioa_network_buffer_handle nb
 		if(s->jiffie != s->e->jiffie) {
 
 			s->jiffie = s->e->jiffie;
-			s->jiffie_bytes_read = 0;
-			s->jiffie_bytes_write = 0;
+			traffic->jiffie_bytes_read = 0;
+			traffic->jiffie_bytes_write = 0;
 
 			if(bsz > max_bps) {
 				return 0;
 			} else {
 				if(read)
-					s->jiffie_bytes_read = bsz;
+					traffic->jiffie_bytes_read = bsz;
 				else
-					s->jiffie_bytes_write = bsz;
+					traffic->jiffie_bytes_write = bsz;
 				return 1;
 			}
 		} else {
 			band_limit_t nsz;
 			if(read)
-				nsz = s->jiffie_bytes_read + bsz;
+				nsz = traffic->jiffie_bytes_read + bsz;
 			else
-				nsz = s->jiffie_bytes_write + bsz;
+				nsz = traffic->jiffie_bytes_write + bsz;
 			if(nsz > max_bps) {
 				return 0;
 			} else {
 				if(read)
-					s->jiffie_bytes_read = nsz;
+					traffic->jiffie_bytes_read = nsz;
 				else
-					s->jiffie_bytes_write = nsz;
+					traffic->jiffie_bytes_write = nsz;
 				return 1;
 			}
 		}

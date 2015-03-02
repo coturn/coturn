@@ -1,7 +1,9 @@
 2/28/2015 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.4.2.3 'Ardee West':
 	- bandwidth control fixed;
-	- STUN/TURN control traffic excluded from the bandwidth limitation;
+	- STUN/TURN control traffic counted separately from data traffic,
+	for the sake of the bandwidth control;
+	- higher bandwidth limit capacity on 64 bits systems;
 	- redis operations with the realm options fixed;
 	
 2/18/2015 Oleg Moskalenko <mom040267@gmail.com>
