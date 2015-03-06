@@ -68,7 +68,7 @@ static void write_http_echo(ioa_socket_handle s)
 			len_http = strlen(data_http);
 			ns_bcopy(data_http,data,len_http);
 			ioa_network_buffer_set_size(nbh_http,len_http);
-			send_data_from_ioa_socket_nbh(s, NULL, nbh_http, TTL_IGNORE, TOS_IGNORE);
+			send_data_from_ioa_socket_nbh(s, NULL, nbh_http, TTL_IGNORE, TOS_IGNORE,NULL);
 		}
 	}
 }

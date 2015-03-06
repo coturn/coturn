@@ -1109,7 +1109,7 @@ static void sqlite_reread_realms(secrets_list_t * realms_list)
 
 						realm_params_t* rp = get_realm(rval);
 						if(!strcmp(oval,"max-bps"))
-							rp->options.perf_options.max_bps = (band_limit_t)atol(vval);
+							rp->options.perf_options.max_bps = (band_limit_t)strtoul(vval,NULL,10);
 						else if(!strcmp(oval,"total-quota"))
 							rp->options.perf_options.total_quota = (vint)atoi(vval);
 						else if(!strcmp(oval,"user-quota"))

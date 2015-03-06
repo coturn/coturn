@@ -171,6 +171,11 @@ struct _ioa_engine
 
 #define SOCKET_MAGIC (0xABACADEF)
 
+struct traffic_bytes {
+	band_limit_t jiffie_bytes_read;
+	band_limit_t jiffie_bytes_write;
+};
+
 struct _ioa_socket
 {
 	evutil_socket_t fd;
@@ -207,8 +212,8 @@ struct _ioa_socket
 	int current_tos;
 	stun_buffer_list bufs;
 	turn_time_t jiffie; /* bandwidth check interval */
-	band_limit_t jiffie_bytes_read;
-	band_limit_t jiffie_bytes_write;
+	struct traffic_bytes data_traffic;
+	struct traffic_bytes control_traffic;
 	/* RFC 6062 ==>> */
 	//Connection session:
 	tcp_connection *sub_session;
@@ -302,6 +307,8 @@ int send_session_cancellation_to_relay(turnsession_id sid);
 int send_data_from_ioa_socket_tcp(ioa_socket_handle s, const void *data, size_t sz);
 int send_str_from_ioa_socket_tcp(ioa_socket_handle s, const void *data);
 int send_ulong_from_ioa_socket_tcp(ioa_socket_handle s, size_t data);
+
+int ioa_socket_check_bandwidth(ioa_socket_handle s, ioa_network_buffer_handle nbh, int read);
 
 ///////////////////////// SUPER MEMORY ////////
 

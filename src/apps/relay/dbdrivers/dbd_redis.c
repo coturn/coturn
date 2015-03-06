@@ -1176,7 +1176,7 @@ static void redis_reread_realms(secrets_list_t * realms_list) {
 
 			clean_secrets_list(&keys);
 
-      update_o_to_realm(o_to_realm_new);
+			update_o_to_realm(o_to_realm_new);
 
 			turnFreeRedisReply(reply);
 		}
@@ -1192,25 +1192,36 @@ static void redis_reread_realms(secrets_list_t * realms_list) {
 			for (i = 0; i<rlsz; ++i) {
 				char *realm = realms_list->secrets[i];
 				realm_params_t* rp = get_realm(realm);
-				unsigned long value = 0;
-				if(!set_redis_realm_opt(realm,"max-bps",&value)) {
-					lock_realms();
-					rp->options.perf_options.max_bps = turn_params.max_bps;
-					unlock_realms();
+				{
+					unsigned long value = 0;
+					if(!set_redis_realm_opt(realm,"max-bps",&value)) {
+						lock_realms();
+						rp->options.perf_options.max_bps = turn_params.max_bps;
+						unlock_realms();
+					} else {
+						rp->options.perf_options.max_bps = (band_limit_t)value;
+					}
 				}
-				rp->options.perf_options.max_bps = (band_limit_t)value;
-				if(!set_redis_realm_opt(realm,"total-quota",&value)) {
-					lock_realms();
-					rp->options.perf_options.total_quota = turn_params.total_quota;
-					unlock_realms();
+				{
+					unsigned long value = 0;
+					if(!set_redis_realm_opt(realm,"total-quota",&value)) {
+						lock_realms();
+						rp->options.perf_options.total_quota = turn_params.total_quota;
+						unlock_realms();
+					} else {
+						rp->options.perf_options.total_quota = (vint)value;
+					}
 				}
-				rp->options.perf_options.total_quota = (vint)value;
-				if(!set_redis_realm_opt(realm,"user-quota",&value)) {
-					lock_realms();
-					rp->options.perf_options.user_quota = turn_params.user_quota;
-					unlock_realms();
+				{
+					unsigned long value = 0;
+					if(!set_redis_realm_opt(realm,"user-quota",&value)) {
+						lock_realms();
+						rp->options.perf_options.user_quota = turn_params.user_quota;
+						unlock_realms();
+					} else {
+						rp->options.perf_options.user_quota = (vint)value;
+					}
 				}
-				rp->options.perf_options.user_quota = (vint)value;
 			}
 		}
 	}
