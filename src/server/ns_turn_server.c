@@ -1838,7 +1838,7 @@ static void tcp_deliver_delayed_buffer(unsent_buffer *ub, ioa_socket_handle s, t
 
 			u32bits bytes = (u32bits)ioa_network_buffer_get_size(nbh);
 
-			int ret = send_data_from_ioa_socket_nbh(s, NULL, nbh, TTL_IGNORE, TOS_IGNORE);
+			int ret = send_data_from_ioa_socket_nbh(s, NULL, nbh, TTL_IGNORE, TOS_IGNORE, NULL);
 			if (ret < 0) {
 				set_ioa_socket_tobeclosed(s);
 			} else {
@@ -1877,7 +1877,7 @@ static void tcp_peer_input_handler(ioa_socket_handle s, int event_type, ioa_net_
 
 	u32bits bytes = (u32bits)ioa_network_buffer_get_size(nbh);
 
-	int ret = send_data_from_ioa_socket_nbh(tc->client_s, NULL, nbh, TTL_IGNORE, TOS_IGNORE);
+	int ret = send_data_from_ioa_socket_nbh(tc->client_s, NULL, nbh, TTL_IGNORE, TOS_IGNORE, NULL);
 	if (ret < 0) {
 		set_ioa_socket_tobeclosed(s);
 	} else if(ss) {
@@ -1917,7 +1917,7 @@ static void tcp_client_input_handler_rfc6062data(ioa_socket_handle s, int event_
 		ss->received_bytes += bytes;
 	}
 
-	int ret = send_data_from_ioa_socket_nbh(tc->peer_s, NULL, nbh, TTL_IGNORE, TOS_IGNORE);
+	int ret = send_data_from_ioa_socket_nbh(tc->peer_s, NULL, nbh, TTL_IGNORE, TOS_IGNORE, NULL);
 	if (ret < 0) {
 		set_ioa_socket_tobeclosed(s);
 	}
@@ -2009,7 +2009,7 @@ static void tcp_peer_connection_completed_callback(int success, void *arg)
 				len_test = strlen(data_test);
 				ns_bcopy(data_test,data,len_test);
 				ioa_network_buffer_set_size(nbh_test,len_test);
-				send_data_from_ioa_socket_nbh(tc->peer_s, NULL, nbh_test, TTL_IGNORE, TOS_IGNORE);
+				send_data_from_ioa_socket_nbh(tc->peer_s, NULL, nbh_test, TTL_IGNORE, TOS_IGNORE, NULL);
 			}
 		}
 	}
@@ -2490,7 +2490,7 @@ int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_co
 		}
 
 		if(ss && !err_code) {
-			send_data_from_ioa_socket_nbh(s, NULL, nbh, TTL_IGNORE, TOS_IGNORE);
+			send_data_from_ioa_socket_nbh(s, NULL, nbh, TTL_IGNORE, TOS_IGNORE, NULL);
 			tcp_deliver_delayed_buffer(&(tc->ub_to_client),s,ss);
 			IOA_CLOSE_SOCKET(s_to_delete);
 			FUNCEND;
@@ -2501,7 +2501,7 @@ int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_co
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: cannot set TCP tmp client data input callback\n", __FUNCTION__);
 				ioa_network_buffer_delete(server->e, nbh);
 			} else {
-				send_data_from_ioa_socket_nbh(s, NULL, nbh, TTL_IGNORE, TOS_IGNORE);
+				send_data_from_ioa_socket_nbh(s, NULL, nbh, TTL_IGNORE, TOS_IGNORE, NULL);
 			}
 		}
 	}
@@ -2978,7 +2978,7 @@ static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss,
 					ioa_network_buffer_set_size(nbh,len);
 				}
 				ioa_network_buffer_header_init(nbh);
-				send_data_from_ioa_socket_nbh(get_relay_socket_ss(ss,peer_addr.ss.sa_family), &peer_addr, nbh, in_buffer->recv_ttl-1, in_buffer->recv_tos);
+				send_data_from_ioa_socket_nbh(get_relay_socket_ss(ss,peer_addr.ss.sa_family), &peer_addr, nbh, in_buffer->recv_ttl-1, in_buffer->recv_tos, NULL);
 				in_buffer->nbh = NULL;
 			}
 
@@ -4103,7 +4103,7 @@ static int write_to_peerchannel(ts_ur_super_session* ss, u16bits chnum, ioa_net_
 
 			ioa_network_buffer_header_init(nbh);
 
-			rc = send_data_from_ioa_socket_nbh(get_relay_socket_ss(ss, chn->peer_addr.ss.sa_family), &(chn->peer_addr), nbh, in_buffer->recv_ttl-1, in_buffer->recv_tos);
+			rc = send_data_from_ioa_socket_nbh(get_relay_socket_ss(ss, chn->peer_addr.ss.sa_family), &(chn->peer_addr), nbh, in_buffer->recv_ttl-1, in_buffer->recv_tos, NULL);
 			in_buffer->nbh = NULL;
 		}
 	}
@@ -4248,17 +4248,20 @@ static int write_client_connection(turn_turnserver *server, ts_ur_super_session*
 		return -1;
 	} else {
 
-		++(ss->sent_packets);
-		ss->sent_bytes += (u32bits)ioa_network_buffer_get_size(nbh);
-		turn_report_session_usage(ss);
-
 		if (eve(server->verbose)) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
 				"%s: prepare to write to s 0x%lx\n", __FUNCTION__,
 				(long) (ss->client_socket));
 		}
 
-		int ret = send_data_from_ioa_socket_nbh(ss->client_socket, NULL, nbh, ttl, tos);
+		int skip = 0;
+		int ret = send_data_from_ioa_socket_nbh(ss->client_socket, NULL, nbh, ttl, tos, &skip);
+
+		if(!skip) {
+			++(ss->sent_packets);
+			ss->sent_bytes += (u32bits)ioa_network_buffer_get_size(nbh);
+			turn_report_session_usage(ss);
+		}
 
 		FUNCEND;
 		return ret;

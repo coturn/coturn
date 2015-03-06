@@ -249,7 +249,7 @@ int main(int argc, char **argv)
 		}
 			break;
 		case 'a':
-			bps = (band_limit_t)atol(optarg);
+			bps = (band_limit_t)strtoul(optarg,NULL,10);
 			break;
 		case 'o':
 			STRCPY(origin,optarg);
