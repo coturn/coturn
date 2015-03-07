@@ -1,13 +1,14 @@
 #summary Downloads Page
-#labels Version-4.4.2.2,Featured
+#labels Version-4.4.2.3,Featured
 
-== Latest official recommended version - 4.4.2.2: ==
+== Latest official recommended version - 4.4.2.3: ==
 
-  * admin_user SQLite table schema fixed;
-  * REST API docs fixed;
-  * Amazon AWS uses syslog;
+  * bandwidth control fixed;
+  * STUN/TURN control traffic counted separately from data traffic, for the sake of the bandwidth control;
+  * higher bandwidth limit capacity on 64 bits systems;
+  * redis operations with the realm options fixed;
 
-[http://turnserver.open-sys.org/downloads/v4.4.2.2/ 4.4.2.2 Version Downloads (full source and platform builds)]
+[http://turnserver.open-sys.org/downloads/v4.4.2.3/ 4.4.2.3 Version Downloads (full source and platform builds)]
 
 [http://turnserver.open-sys.org/downloads/ Main Downloads Page (with all recent versions)]
 
@@ -16,6 +17,15 @@
 [http://turnserver.open-sys.org/downloads/extradocs/ Extra Docs ]
 
 == Older versions ==
+
+=== 4.4.2.2: ===
+
+  * admin_user SQLite table schema fixed;
+  * REST API docs fixed;
+  * Amazon AWS uses syslog;
+
+
+[http://turnserver.open-sys.org/downloads/v4.4.2.2/ v4.4.2.2]
 
 === 4.4.2.1: ===
 
