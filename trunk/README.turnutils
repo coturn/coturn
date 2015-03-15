@@ -56,12 +56,15 @@ Flags:
 
 -t      Use TCP for communications between client and TURN server (default is UDP).
 
+-b      Use SCTP for communications between client and TURN server (default is UDP).
+
 -T      Use TCP for the relay transport (default - UDP). Implies options -t, -y, -c, 
-    	and ignores flags and options -s, -e, -r and -g.
+    	and ignores flags and options -s, -e, -r and -g. Can be used together
+    	with -b.
     	
 -P      Passive TCP (RFC6062 with active peer). Implies -T.
 
--S      Secure SSL connection: SSL/TLS for TCP, DTLS for UDP.
+-S      Secure SSL connection: SSL/TLS for TCP, DTLS for UDP, TLS/SCTP for SCTP.
 
 -U      Secure unencrypted connection (suite eNULL): SSL/TLS for TCP, DTLS for UDP.
 

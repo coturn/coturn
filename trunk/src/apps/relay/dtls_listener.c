@@ -777,13 +777,13 @@ static int create_server_socket(dtls_listener_relay_server_type* server, int rep
 			  perror("Cannot bind local socket to addr");
 			  char saddr[129];
 			  addr_to_string(&server->addr,(u08bits*)saddr);
-			  TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,"Cannot bind UDP/DTLS listener socket to addr %s\n",saddr);
+			  TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,"Cannot bind DTLS/UDP listener socket to addr %s\n",saddr);
 			  if(addr_bind_cycle++<max_binding_time) {
-				  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Trying to bind UDP/DTLS listener socket to addr %s, again...\n",saddr);
+				  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Trying to bind DTLS/UDP listener socket to addr %s, again...\n",saddr);
 				  sleep(1);
 				  goto retry_addr_bind;
 			  }
-			  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Fatal final failure: cannot bind UDP/DTLS listener socket to addr %s\n",saddr);
+			  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Fatal final failure: cannot bind DTLS/UDP listener socket to addr %s\n",saddr);
 			  exit(-1);
 		  }
 	  }
@@ -797,7 +797,7 @@ static int create_server_socket(dtls_listener_relay_server_type* server, int rep
 
   if(report_creation) {
 	  if(!turn_params.no_udp && !turn_params.no_dtls)
-		  addr_debug_print(server->verbose, &server->addr,"UDP/DTLS listener opened on");
+		  addr_debug_print(server->verbose, &server->addr,"DTLS/UDP listener opened on");
 	  else if(!turn_params.no_dtls)
 		  addr_debug_print(server->verbose, &server->addr,"DTLS listener opened on");
 	  else if(!turn_params.no_udp)
@@ -868,7 +868,7 @@ static int reopen_server_socket(dtls_listener_relay_server_type* server, evutil_
 
 	if (!turn_params.no_udp && !turn_params.no_dtls)
 		addr_debug_print(server->verbose, &server->addr,
-					"UDP/DTLS listener opened on ");
+					"DTLS/UDP listener opened on ");
 	else if (!turn_params.no_dtls)
 		addr_debug_print(server->verbose, &server->addr,
 					"DTLS listener opened on ");
@@ -920,7 +920,7 @@ static int init_server(dtls_listener_relay_server_type* server,
   if(ifname) STRCPY(server->ifname,ifname);
 
   if(make_ioa_addr((const u08bits*)local_address, port, &server->addr)<0) {
-	  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot create a UDP/DTLS listener for address: %s\n",local_address);
+	  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot create a DTLS/UDP listener for address: %s\n",local_address);
 	  return -1;
   }
 

@@ -859,16 +859,12 @@ int set_socket_options_fd(evutil_socket_t fd, int tcp, int family)
 
 	} else {
 
-		if(CLIENT_STREAM_SOCKET_PROTOCOL == IPPROTO_IP) {
-			int flag = 1;
-			int result = setsockopt(fd, /* socket affected */
-					IPPROTO_TCP, /* set option at TCP level */
-					TCP_NODELAY, /* name of option */
-					(char*)&flag, /* value */
-					sizeof(int)); /* length of option value */
-			if (result < 0)
-				perror("TCP_NODELAY");
-		}
+		int flag = 1;
+		setsockopt(fd, /* socket affected */
+				IPPROTO_TCP, /* set option at TCP level */
+				TCP_NODELAY, /* name of option */
+				(char*)&flag, /* value */
+				sizeof(int)); /* length of option value */
 
 		socket_tcp_set_keepalive(fd);
 	}
@@ -2714,7 +2710,7 @@ static void eventcb_bev(struct bufferevent *bev, short events, void *arg)
 							addr_to_string(&(s->remote_addr),(u08bits*)sraddr);
 							if (events & BEV_EVENT_EOF) {
 								if(server->verbose)
-									TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"session %018llu: TCP socket closed remotely %s\n",(unsigned long long)(ss->id),sraddr);
+									TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"session %018llu: TCP (or SCTP) socket closed remotely %s\n",(unsigned long long)(ss->id),sraddr);
 								if(s == ss->client_socket) {
 									shutdown_client_connection(server, ss, 0, "TCP connection closed by client (callback)");
 								} else if(s == ss->alloc.relay_sessions[ALLOC_IPV4_INDEX].s) {
@@ -2726,12 +2722,12 @@ static void eventcb_bev(struct bufferevent *bev, short events, void *arg)
 								}
 							} else if (events & BEV_EVENT_ERROR) {
 								if(EVUTIL_SOCKET_ERROR()) {
-									TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"session %018llu: TCP socket error: %s %s\n",(unsigned long long)(ss->id),
+									TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"session %018llu: TCP (or SCTP) socket error: %s %s\n",(unsigned long long)(ss->id),
 												evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()), sraddr);
 								} else if(server->verbose) {
-									TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"session %018llu: TCP socket disconnected: %s\n",(unsigned long long)(ss->id),sraddr);
+									TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"session %018llu: TCP (or SCTP) socket disconnected: %s\n",(unsigned long long)(ss->id),sraddr);
 								}
-								shutdown_client_connection(server, ss, 0, "TCP socket buffer operation error (callback)");
+								shutdown_client_connection(server, ss, 0, "TCP (or SCTP) socket buffer operation error (callback)");
 							 }
 						}
 					}

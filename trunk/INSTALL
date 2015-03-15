@@ -1194,16 +1194,9 @@ newer has to be used. See OPENSSL section for the OpenSSL upgrade hints.
 
 XXV. SCTP support
 
-Starting with version 4.4.3.1, the TURN server can have 'native' SCTP support
-compiling in (if the platform supports SCTP). If compiled with TURN_SCTP
-environment variable set to a non-empty value, then SCTP replaces TCP in the
-TURN client - TURN server communications:
-
-  $ TURN_SCTP=1 ./configure
-  $ make
-
-With this option, on the client side, the TURN server will support UDP, DTLS,
-SCTP and TLS-over-SCTP. 
+Starting with version 4.4.3.1, the TURN server supports 'native' SCTP.
+On the client side, the TURN server, additionally, supports SCTP and 
+TLS-over-SCTP. 
 
 The relay side is not changing - the relay communications will still be UDP
 or TCP.
