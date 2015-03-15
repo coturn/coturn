@@ -258,7 +258,7 @@ static int run_stunclient(const char* rip, int rport, int *port, int *rfc5780, i
 		err(-1, NULL);
 
 	if (udp_fd < 0) {
-		udp_fd = socket(remote_addr.ss.sa_family, SOCK_DGRAM, 0);
+		udp_fd = socket(remote_addr.ss.sa_family, CLIENT_DGRAM_SOCKET_TYPE, CLIENT_DGRAM_SOCKET_PROTOCOL);
 		if (udp_fd < 0)
 			err(-1, NULL);
 
@@ -270,7 +270,7 @@ static int run_stunclient(const char* rip, int rport, int *port, int *rfc5780, i
 
 	if (response_port >= 0) {
 
-		new_udp_fd = socket(remote_addr.ss.sa_family, SOCK_DGRAM, 0);
+		new_udp_fd = socket(remote_addr.ss.sa_family, CLIENT_DGRAM_SOCKET_TYPE, CLIENT_DGRAM_SOCKET_PROTOCOL);
 		if (new_udp_fd < 0)
 			err(-1, NULL);
 

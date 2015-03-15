@@ -229,7 +229,9 @@ static int clnet_connect(uint16_t clnet_remote_port, const char *remote_address,
 
 	ns_bzero(&local_addr, sizeof(ioa_addr));
 
-	clnet_fd = socket(remote_addr.ss.sa_family, use_tcp ? SOCK_STREAM : SOCK_DGRAM, 0);
+	clnet_fd = socket(remote_addr.ss.sa_family,
+			use_tcp ? CLIENT_STREAM_SOCKET_TYPE : CLIENT_DGRAM_SOCKET_TYPE,
+			use_tcp ? CLIENT_STREAM_SOCKET_PROTOCOL : CLIENT_DGRAM_SOCKET_PROTOCOL);
 	if (clnet_fd < 0) {
 		perror("socket");
 		exit(-1);
@@ -1570,7 +1572,7 @@ void tcp_data_connect(app_ur_session *elem, u32bits cid)
 
 	again:
 
-	clnet_fd = socket(elem->pinfo.remote_addr.ss.sa_family, SOCK_STREAM, 0);
+	clnet_fd = socket(elem->pinfo.remote_addr.ss.sa_family, CLIENT_STREAM_SOCKET_TYPE, CLIENT_STREAM_SOCKET_PROTOCOL);
 	if (clnet_fd < 0) {
 		perror("socket");
 		exit(-1);
@@ -1606,7 +1608,7 @@ void tcp_data_connect(app_ur_session *elem, u32bits cid)
 	    if (addr_connect(clnet_fd, &(elem->pinfo.remote_addr),&err) < 0) {
 	      if(err == EADDRINUSE) {
 	    	  socket_closesocket(clnet_fd);
-	    	  clnet_fd = socket(elem->pinfo.remote_addr.ss.sa_family, SOCK_STREAM, 0);
+	    	  clnet_fd = socket(elem->pinfo.remote_addr.ss.sa_family, CLIENT_STREAM_SOCKET_TYPE, CLIENT_STREAM_SOCKET_PROTOCOL);
 	    	  if (clnet_fd < 0) {
 	    		  perror("socket");
 	    		  exit(-1);

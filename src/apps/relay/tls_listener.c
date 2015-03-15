@@ -130,7 +130,7 @@ static int create_server_listener(tls_listener_relay_server_type* server) {
 
   evutil_socket_t tls_listen_fd = -1;
 
-  tls_listen_fd = socket(server->addr.ss.sa_family, SOCK_STREAM, 0);
+  tls_listen_fd = socket(server->addr.ss.sa_family, CLIENT_STREAM_SOCKET_TYPE, CLIENT_STREAM_SOCKET_PROTOCOL);
   if (tls_listen_fd < 0) {
       perror("socket");
       return -1;

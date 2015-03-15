@@ -1690,7 +1690,11 @@ static void set_network_engine(void)
 	turn_params.net_engine_version = NEV_UDP_SOCKET_PER_ENDPOINT;
 #if defined(SO_REUSEPORT)
 #if defined(__linux__) || defined(__LINUX__) || defined(__linux) || defined(linux__) || defined(LINUX) || defined(__LINUX) || defined(LINUX__)
-	turn_params.net_engine_version = NEV_UDP_SOCKET_PER_THREAD;
+	if(CLIENT_STREAM_SOCKET_PROTOCOL == IPPROTO_IP) {
+		turn_params.net_engine_version = NEV_UDP_SOCKET_PER_THREAD;
+	} else {
+		turn_params.net_engine_version = NEV_UDP_SOCKET_PER_SESSION;
+	}
 #else /* BSD ? */
 	turn_params.net_engine_version = NEV_UDP_SOCKET_PER_SESSION;
 #endif /* Linux */

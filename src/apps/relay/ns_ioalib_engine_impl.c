@@ -892,14 +892,14 @@ int set_socket_options(ioa_socket_handle s)
 
 /* <<== Socket options helpers */
 
-ioa_socket_handle create_unbound_ioa_socket(ioa_engine_handle e, int family, SOCKET_TYPE st, SOCKET_APP_TYPE sat)
+ioa_socket_handle create_unbound_relay_ioa_socket(ioa_engine_handle e, int family, SOCKET_TYPE st, SOCKET_APP_TYPE sat)
 {
 	evutil_socket_t fd = -1;
 	ioa_socket_handle ret = NULL;
 
 	switch (st){
 	case UDP_SOCKET:
-		fd = socket(family, SOCK_DGRAM, 0);
+		fd = socket(family, RELAY_DGRAM_SOCKET_TYPE, RELAY_DGRAM_SOCKET_PROTOCOL);
 		if (fd < 0) {
 			perror("UDP socket");
 			return NULL;
@@ -907,7 +907,7 @@ ioa_socket_handle create_unbound_ioa_socket(ioa_engine_handle e, int family, SOC
 		set_sock_buf_size(fd, UR_CLIENT_SOCK_BUF_SIZE);
 		break;
 	case TCP_SOCKET:
-		fd = socket(family, SOCK_STREAM, 0);
+		fd = socket(family, RELAY_STREAM_SOCKET_TYPE, RELAY_STREAM_SOCKET_PROTOCOL);
 		if (fd < 0) {
 			perror("TCP socket");
 			return NULL;
@@ -1016,7 +1016,7 @@ int create_relay_ioa_sockets(ioa_engine_handle e,
 				if (port >= 0 && even_port > 0) {
 
 					IOA_CLOSE_SOCKET(*rtcp_s);
-					*rtcp_s = create_unbound_ioa_socket(e, relay_addr.ss.sa_family, UDP_SOCKET, RELAY_RTCP_SOCKET);
+					*rtcp_s = create_unbound_relay_ioa_socket(e, relay_addr.ss.sa_family, UDP_SOCKET, RELAY_RTCP_SOCKET);
 					if (*rtcp_s == NULL) {
 						perror("socket");
 						IOA_CLOSE_SOCKET(*rtp_s);
@@ -1052,7 +1052,7 @@ int create_relay_ioa_sockets(ioa_engine_handle e,
 
 				IOA_CLOSE_SOCKET(*rtp_s);
 
-				*rtp_s = create_unbound_ioa_socket(e, relay_addr.ss.sa_family,
+				*rtp_s = create_unbound_relay_ioa_socket(e, relay_addr.ss.sa_family,
 										(transport == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE) ? TCP_SOCKET : UDP_SOCKET,
 										RELAY_SOCKET);
 				if (*rtp_s == NULL) {
@@ -1224,7 +1224,7 @@ static void connect_eventcb(struct bufferevent *bev, short events, void *ptr)
 
 ioa_socket_handle ioa_create_connecting_tcp_relay_socket(ioa_socket_handle s, ioa_addr *peer_addr, connect_cb cb, void *arg)
 {
-	ioa_socket_handle ret = create_unbound_ioa_socket(s->e, s->family, s->st, TCP_RELAY_DATA_SOCKET);
+	ioa_socket_handle ret = create_unbound_relay_ioa_socket(s->e, s->family, s->st, TCP_RELAY_DATA_SOCKET);
 
 	if(!ret) {
 		return NULL;
@@ -1590,7 +1590,7 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s)
 		evutil_socket_t udp_fd = -1;
 
 		if(s->parent_s) {
-			udp_fd = socket(s->local_addr.ss.sa_family, SOCK_DGRAM, 0);
+			udp_fd = socket(s->local_addr.ss.sa_family, CLIENT_DGRAM_SOCKET_TYPE, CLIENT_DGRAM_SOCKET_PROTOCOL);
 			if (udp_fd < 0) {
 				perror("socket");
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"%s: Cannot allocate new socket\n",__FUNCTION__);

@@ -1263,7 +1263,7 @@ void setup_admin_thread(void)
 
 		addr_set_port(&cli_addr,cli_port);
 
-		adminserver.listen_fd = socket(cli_addr.ss.sa_family, SOCK_STREAM, 0);
+		adminserver.listen_fd = socket(cli_addr.ss.sa_family, ADMIN_STREAM_SOCKET_TYPE, ADMIN_STREAM_SOCKET_PROTOCOL);
 		if (adminserver.listen_fd < 0) {
 			perror("socket");
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot open CLI socket\n");
