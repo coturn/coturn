@@ -206,7 +206,7 @@ void stop_ioa_timer(ioa_timer_handle th);
 void delete_ioa_timer(ioa_timer_handle th);
 #define IOA_EVENT_DEL(E) do { if(E) { delete_ioa_timer(E); E = NULL; } } while(0)
 
-ioa_socket_handle create_unbound_ioa_socket(ioa_engine_handle e, int family, SOCKET_TYPE st, SOCKET_APP_TYPE sat);
+ioa_socket_handle create_unbound_relay_ioa_socket(ioa_engine_handle e, int family, SOCKET_TYPE st, SOCKET_APP_TYPE sat);
 
 void inc_ioa_socket_ref_counter(ioa_socket_handle s);
 

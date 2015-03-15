@@ -474,7 +474,7 @@ static int create_new_connected_udp_socket(
 		dtls_listener_relay_server_type* server, ioa_socket_handle s)
 {
 
-	evutil_socket_t udp_fd = socket(s->local_addr.ss.sa_family, SOCK_DGRAM, 0);
+	evutil_socket_t udp_fd = socket(s->local_addr.ss.sa_family, CLIENT_DGRAM_SOCKET_TYPE, CLIENT_DGRAM_SOCKET_PROTOCOL);
 	if (udp_fd < 0) {
 		perror("socket");
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Cannot allocate new socket\n",
@@ -751,7 +751,7 @@ static int create_server_socket(dtls_listener_relay_server_type* server, int rep
   {
 	  ioa_socket_raw udp_listen_fd = -1;
 
-	  udp_listen_fd = socket(server->addr.ss.sa_family, SOCK_DGRAM, 0);
+	  udp_listen_fd = socket(server->addr.ss.sa_family, CLIENT_DGRAM_SOCKET_TYPE, CLIENT_DGRAM_SOCKET_PROTOCOL);
 	  if (udp_listen_fd < 0) {
 		  perror("socket");
 		  return -1;
@@ -830,7 +830,7 @@ static int reopen_server_socket(dtls_listener_relay_server_type* server, evutil_
 			return create_server_socket(server,1);
 		}
 
-		ioa_socket_raw udp_listen_fd = socket(server->addr.ss.sa_family, SOCK_DGRAM, 0);
+		ioa_socket_raw udp_listen_fd = socket(server->addr.ss.sa_family, CLIENT_DGRAM_SOCKET_TYPE, CLIENT_DGRAM_SOCKET_PROTOCOL);
 		if (udp_listen_fd < 0) {
 			perror("socket");
 			FUNCEND;
