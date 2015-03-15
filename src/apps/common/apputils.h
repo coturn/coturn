@@ -180,7 +180,7 @@ int socket_tcp_set_keepalive(evutil_socket_t fd);
 
 int addr_connect(evutil_socket_t fd, const ioa_addr* addr, int *out_errno);
 
-int addr_bind(evutil_socket_t fd, const ioa_addr* addr, int reusable);
+int addr_bind(evutil_socket_t fd, const ioa_addr* addr, int reusable, int debug);
 
 int addr_get_from_sock(evutil_socket_t fd, ioa_addr *addr);
 
