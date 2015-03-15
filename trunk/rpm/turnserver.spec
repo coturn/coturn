@@ -228,6 +228,7 @@ fi
 %{_datadir}/%{name}/scripts/longtermsecure/secure_tls_client_c2c_tcp_relay.sh
 %{_datadir}/%{name}/scripts/longtermsecure/secure_udp_c2c.sh
 %{_datadir}/%{name}/scripts/longtermsecure/secure_udp_client.sh
+%{_datadir}/%{name}/scripts/longtermsecure/secure_sctp_client.sh
 %dir %{_datadir}/%{name}/scripts/longtermsecuredb
 %{_datadir}/%{name}/scripts/longtermsecuredb/secure_relay_with_db_mysql.sh
 %{_datadir}/%{name}/scripts/longtermsecuredb/secure_relay_with_db_mysql_ssl.sh
