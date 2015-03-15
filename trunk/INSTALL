@@ -1191,4 +1191,19 @@ Starting with version 4.3.2.1, the TURN server supports the ALPN STUN
 specifications (http://tools.ietf.org/html/draft-ietf-tram-alpn-08).
 If the ALPN functionality is needed, then OpenSSL version 1.0.2 or 
 newer has to be used. See OPENSSL section for the OpenSSL upgrade hints.
-  
+
+XXV. SCTP support
+
+Starting with version 4.4.3.1, the TURN server can have 'native' SCTP support
+compiling in (if the platform supports SCTP). If compiled with TURN_SCTP
+environment variable set to a non-empty value, then SCTP replaces TCP in the
+TURN client - TURN server communications:
+
+  $ TURN_SCTP=1 ./configure
+  $ make
+
+With this option, on the client side, the TURN server will support UDP, DTLS,
+SCTP and TLS-over-SCTP. 
+
+The relay side is not changing - the relay communications will still be UDP
+or TCP.

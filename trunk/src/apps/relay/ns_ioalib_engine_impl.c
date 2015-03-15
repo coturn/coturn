@@ -810,7 +810,6 @@ int set_raw_socket_tos_options(evutil_socket_t fd, int family)
 
 int set_socket_options_fd(evutil_socket_t fd, int tcp, int family)
 {
-
 	if(fd<0)
 		return 0;
 
@@ -859,14 +858,17 @@ int set_socket_options_fd(evutil_socket_t fd, int tcp, int family)
 #endif
 
 	} else {
-		int flag = 1;
-		int result = setsockopt(fd, /* socket affected */
+
+		if(CLIENT_STREAM_SOCKET_PROTOCOL == IPPROTO_IP) {
+			int flag = 1;
+			int result = setsockopt(fd, /* socket affected */
 					IPPROTO_TCP, /* set option at TCP level */
 					TCP_NODELAY, /* name of option */
 					(char*)&flag, /* value */
 					sizeof(int)); /* length of option value */
-		if (result < 0)
-			perror("TCP_NODELAY");
+			if (result < 0)
+				perror("TCP_NODELAY");
+		}
 
 		socket_tcp_set_keepalive(fd);
 	}
