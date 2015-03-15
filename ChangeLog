@@ -1,6 +1,6 @@
 3/15/2015 Oleg Moskalenko <mom040267@gmail.com>
-Version 4.4.3.1 'Ardee West':
-	- SCTP support compilation option;
+Version 4.4.4.1 'Ardee West':
+	- 'native' SCTP support;
 
 2/28/2015 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.4.2.3 'Ardee West':

@@ -230,8 +230,8 @@ static int clnet_connect(uint16_t clnet_remote_port, const char *remote_address,
 	ns_bzero(&local_addr, sizeof(ioa_addr));
 
 	clnet_fd = socket(remote_addr.ss.sa_family,
-			use_tcp ? CLIENT_STREAM_SOCKET_TYPE : CLIENT_DGRAM_SOCKET_TYPE,
-			use_tcp ? CLIENT_STREAM_SOCKET_PROTOCOL : CLIENT_DGRAM_SOCKET_PROTOCOL);
+			use_sctp ? SCTP_CLIENT_STREAM_SOCKET_TYPE : (use_tcp ? CLIENT_STREAM_SOCKET_TYPE : CLIENT_DGRAM_SOCKET_TYPE),
+			use_sctp ? SCTP_CLIENT_STREAM_SOCKET_PROTOCOL : (use_tcp ? CLIENT_STREAM_SOCKET_PROTOCOL : CLIENT_DGRAM_SOCKET_PROTOCOL));
 	if (clnet_fd < 0) {
 		perror("socket");
 		exit(-1);

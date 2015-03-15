@@ -38,6 +38,8 @@
 
 #include <event2/listener.h>
 
+#include <netinet/sctp.h>
+
 ///////////////////////////////////////////////////
 
 #define FUNCSTART if(server && eve(server->verbose)) TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s:%d:start\n",__FUNCTION__,__LINE__)
@@ -50,6 +52,7 @@ struct tls_listener_relay_server_info
 	ioa_engine_handle e;
 	int verbose;
 	struct evconnlistener *l;
+	struct evconnlistener *sctp_l;
 	struct message_to_relay sm;
 	ioa_engine_new_connection_event_handler connect_cb;
 	struct relay_server *relay_server;
@@ -149,13 +152,13 @@ static int create_server_listener(tls_listener_relay_server_type* server) {
   		perror("Cannot bind local socket to addr");
   		char saddr[129];
   		addr_to_string(&server->addr,(u08bits*)saddr);
-  		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,"Cannot bind TCP/TLS listener socket to addr %s\n",saddr);
+  		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,"Cannot bind TLS/TCP listener socket to addr %s\n",saddr);
   		if(addr_bind_cycle++<max_binding_time) {
-  		  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Trying to bind TCP/TLS listener socket to addr %s, again...\n",saddr);
+  		  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Trying to bind TLS/TCP listener socket to addr %s, again...\n",saddr);
   		  sleep(1);
   		  goto retry_addr_bind;
   		}
-  		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Fatal final failure: cannot bind TCP/TLS listener socket to addr %s\n",saddr);
+  		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Fatal final failure: cannot bind TLS/TCP listener socket to addr %s\n",saddr);
   		exit(-1);
   	 }
    }
@@ -176,7 +179,7 @@ static int create_server_listener(tls_listener_relay_server_type* server) {
   }
 
   if(!turn_params.no_tcp && !turn_params.no_tls)
-	  addr_debug_print(server->verbose, &server->addr,"TCP/TLS listener opened on ");
+	  addr_debug_print(server->verbose, &server->addr,"TLS/TCP listener opened on ");
   else if(!turn_params.no_tls)
 	  addr_debug_print(server->verbose, &server->addr,"TLS listener opened on ");
   else if(!turn_params.no_tcp)
@@ -184,6 +187,78 @@ static int create_server_listener(tls_listener_relay_server_type* server) {
 
   FUNCEND;
   
+  return 0;
+}
+
+static int sctp_create_server_listener(tls_listener_relay_server_type* server) {
+
+  FUNCSTART;
+
+  if(!server) return -1;
+
+  evutil_socket_t tls_listen_fd = -1;
+
+  tls_listen_fd = socket(server->addr.ss.sa_family, SCTP_CLIENT_STREAM_SOCKET_TYPE, SCTP_CLIENT_STREAM_SOCKET_PROTOCOL);
+  if (tls_listen_fd < 0) {
+      perror("socket");
+      return -1;
+  }
+
+  if(sock_bind_to_device(tls_listen_fd, (unsigned char*)server->ifname)<0) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Cannot bind listener socket to device %s\n",server->ifname);
+  }
+
+  if(addr_bind(tls_listen_fd,&server->addr,1)<0) {
+	  close(tls_listen_fd);
+	  return -1;
+   }
+
+  socket_tcp_set_keepalive(tls_listen_fd);
+
+  socket_set_nonblocking(tls_listen_fd);
+
+  {
+	  struct sctp_paddrparams heartbeat;
+	  ns_bzero(&heartbeat, sizeof(struct sctp_paddrparams));
+
+	  heartbeat.spp_flags = SPP_HB_ENABLE;
+	  heartbeat.spp_hbinterval = 5000;
+	  heartbeat.spp_pathmaxrxt = 5;
+
+	  /*Set Heartbeats*/
+	  if(setsockopt(tls_listen_fd, IPPROTO_SCTP, SCTP_PEER_ADDR_PARAMS , &heartbeat, sizeof(heartbeat)) != 0)
+		  perror("setsockopt");
+  }
+
+  {
+	  struct sctp_rtoinfo rtoinfo;
+	  ns_bzero(&rtoinfo, sizeof(struct sctp_rtoinfo));
+
+	  rtoinfo.srto_max = 5000;
+
+	  /*Set rto_max*/
+	  if(setsockopt(tls_listen_fd, IPPROTO_SCTP, SCTP_RTOINFO , &rtoinfo, sizeof(rtoinfo)) != 0)
+		  perror("setsockopt");
+  }
+
+  server->sctp_l = evconnlistener_new(server->e->event_base,
+		  server_input_handler, server,
+		  LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE,
+		  1024, tls_listen_fd);
+
+  if(!(server->sctp_l)) {
+	  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Cannot create SCTP listener\n");
+	  socket_closesocket(tls_listen_fd);
+	  return -1;
+  }
+
+  if (!turn_params.no_tls)
+	addr_debug_print(server->verbose, &server->addr, "TLS/SCTP listener opened on ");
+  else
+	addr_debug_print(server->verbose, &server->addr, "SCTP listener opened on ");
+
+  FUNCEND;
+
   return 0;
 }
 
@@ -212,6 +287,8 @@ static int init_server(tls_listener_relay_server_type* server,
   
   server->e = e;
   
+  sctp_create_server_listener(server);
+
   return create_server_listener(server);
 }
 

@@ -1614,7 +1614,7 @@ static void print_features(unsigned long mfn)
 {
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\nRFC 3489/5389/5766/5780/6062/6156 STUN/TURN Server\nVersion %s\n",TURN_SOFTWARE);
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\nMax number of open files/sockets allowed for this process: %lu\n",mfn);
-	if(turn_params.net_engine_version == 1)
+	if(turn_params.net_engine_version == NEV_UDP_SOCKET_PER_ENDPOINT)
 		mfn = mfn/3;
 	else
 		mfn = mfn/2;
@@ -1690,11 +1690,7 @@ static void set_network_engine(void)
 	turn_params.net_engine_version = NEV_UDP_SOCKET_PER_ENDPOINT;
 #if defined(SO_REUSEPORT)
 #if defined(__linux__) || defined(__LINUX__) || defined(__linux) || defined(linux__) || defined(LINUX) || defined(__LINUX) || defined(LINUX__)
-	if(CLIENT_STREAM_SOCKET_PROTOCOL == IPPROTO_IP) {
-		turn_params.net_engine_version = NEV_UDP_SOCKET_PER_THREAD;
-	} else {
-		turn_params.net_engine_version = NEV_UDP_SOCKET_PER_SESSION;
-	}
+	turn_params.net_engine_version = NEV_UDP_SOCKET_PER_THREAD;
 #else /* BSD ? */
 	turn_params.net_engine_version = NEV_UDP_SOCKET_PER_SESSION;
 #endif /* Linux */
