@@ -86,7 +86,7 @@ static int udp_create_server_socket(server_type* server,
 
   set_sock_buf_size(udp_fd,UR_SERVER_SOCK_BUF_SIZE);
   
-  if(addr_bind(udp_fd,server_addr,1)<0) return -1;
+  if(addr_bind(udp_fd,server_addr,1,1)<0) return -1;
   
   socket_set_nonblocking(udp_fd);
 

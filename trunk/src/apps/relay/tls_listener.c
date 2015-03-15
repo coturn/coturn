@@ -38,7 +38,11 @@
 
 #include <event2/listener.h>
 
+#if defined(__linux__) || defined(__LINUX__) || defined(__linux) || defined(linux__) || defined(LINUX) || defined(__LINUX) || defined(LINUX__)
+#include <linux/sctp.h>
+#else
 #include <netinet/sctp.h>
+#endif
 
 ///////////////////////////////////////////////////
 
@@ -148,7 +152,7 @@ static int create_server_listener(tls_listener_relay_server_type* server) {
   	 int addr_bind_cycle = 0;
   	 retry_addr_bind:
 
-  	 if(addr_bind(tls_listen_fd,&server->addr,1)<0) {
+  	 if(addr_bind(tls_listen_fd,&server->addr,1,1)<0) {
   		perror("Cannot bind local socket to addr");
   		char saddr[129];
   		addr_to_string(&server->addr,(u08bits*)saddr);
@@ -208,10 +212,10 @@ static int sctp_create_server_listener(tls_listener_relay_server_type* server) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Cannot bind listener socket to device %s\n",server->ifname);
   }
 
-  if(addr_bind(tls_listen_fd,&server->addr,1)<0) {
+  if(addr_bind(tls_listen_fd,&server->addr,1,0)<0) {
 	  close(tls_listen_fd);
 	  return -1;
-   }
+  }
 
   socket_tcp_set_keepalive(tls_listen_fd);
 

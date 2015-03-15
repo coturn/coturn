@@ -1270,7 +1270,7 @@ void setup_admin_thread(void)
 			return;
 		}
 
-		if(addr_bind(adminserver.listen_fd,&cli_addr,1)<0) {
+		if(addr_bind(adminserver.listen_fd,&cli_addr,1,1)<0) {
 			perror("Cannot bind CLI socket to addr");
 			char saddr[129];
 			addr_to_string(&cli_addr,(u08bits*)saddr);

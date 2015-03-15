@@ -940,7 +940,7 @@ static int bind_ioa_socket(ioa_socket_handle s, const ioa_addr* local_addr, int 
 
 	if (s && s->fd >= 0 && s->e && local_addr) {
 
-		int res = addr_bind(s->fd, local_addr, reusable);
+		int res = addr_bind(s->fd, local_addr, reusable,1);
 		if (res >= 0) {
 			s->bound = 1;
 			addr_cpy(&(s->local_addr), local_addr);
@@ -1598,7 +1598,7 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s)
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot bind udp server socket to device %s\n",(char*)(s->e->relay_ifname));
 			}
 
-			if(addr_bind(udp_fd,&(s->local_addr),1)<0) {
+			if(addr_bind(udp_fd,&(s->local_addr),1,1)<0) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot bind new detached udp server socket to local addr\n");
 				close(udp_fd);
 				return ret;
