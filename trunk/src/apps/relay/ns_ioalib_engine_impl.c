@@ -50,6 +50,13 @@
 #include "hiredis_libevent2.h"
 #endif
 
+#if defined(__linux__) || defined(__LINUX__) || defined(__linux) || defined(linux__) || defined(LINUX) || defined(__LINUX) || defined(LINUX__)
+#include <linux/sctp.h>
+#else
+#include <netinet/sctp.h>
+#endif
+
+
 /* Compilation test:
 #if defined(IP_RECVTTL)
 #undef IP_RECVTTL
@@ -867,6 +874,12 @@ int set_socket_options_fd(evutil_socket_t fd, int tcp, int family)
 		setsockopt(fd, /* socket affected */
 				IPPROTO_TCP, /* set option at TCP level */
 				TCP_NODELAY, /* name of option */
+				(char*)&flag, /* value */
+				sizeof(int)); /* length of option value */
+
+		setsockopt(fd, /* socket affected */
+				IPPROTO_SCTP, /* set option at TCP level */
+				SCTP_NODELAY, /* name of option */
 				(char*)&flag, /* value */
 				sizeof(int)); /* length of option value */
 
