@@ -127,6 +127,69 @@ static void server_input_handler(struct evconnlistener *l, evutil_socket_t fd,
 	FUNCEND	;
 }
 
+static void sctp_server_input_handler(struct evconnlistener *l, evutil_socket_t fd,
+				struct sockaddr *sa, int socklen, void *arg)
+{
+
+	UNUSED_ARG(l);
+
+	tls_listener_relay_server_type * server = (tls_listener_relay_server_type*) arg;
+
+	if(!(server->connect_cb)) {
+		socket_closesocket(fd);
+		return;
+	}
+
+	FUNCSTART;
+
+	if (!server)
+		return;
+
+	ns_bcopy(sa,&(server->sm.m.sm.nd.src_addr),socklen);
+
+	addr_debug_print(server->verbose, &(server->sm.m.sm.nd.src_addr),"tcp or tls connected to");
+
+	SOCKET_TYPE st = TENTATIVE_SCTP_SOCKET;
+
+	if(turn_params.no_tls)
+		st = SCTP_SOCKET;
+	else if(turn_params.no_tcp)
+		st = TLS_SCTP_SOCKET;
+
+	ioa_socket_handle ioas =
+				create_ioa_socket_from_fd(
+							server->e,
+							fd,
+							NULL,
+							st,
+							CLIENT_SOCKET,
+							&(server->sm.m.sm.nd.src_addr),
+							&(server->addr));
+
+	if (ioas) {
+
+		server->sm.m.sm.nd.recv_ttl = TTL_IGNORE;
+		server->sm.m.sm.nd.recv_tos = TOS_IGNORE;
+		server->sm.m.sm.nd.nbh = NULL;
+		server->sm.m.sm.s = ioas;
+		server->sm.m.sm.can_resume = 1;
+		server->sm.relay_server = server->relay_server;
+
+		int rc = server->connect_cb(server->e, &(server->sm));
+
+		if (rc < 0) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+					"Cannot create sctp or tls/sctp session\n");
+		}
+	} else {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+				"Cannot create ioa_socket from FD\n");
+		socket_closesocket(fd);
+	}
+
+	FUNCEND	;
+}
+
 ///////////////////// operations //////////////////////////
 
 static int create_server_listener(tls_listener_relay_server_type* server) {
@@ -246,7 +309,7 @@ static int sctp_create_server_listener(tls_listener_relay_server_type* server) {
   }
 
   server->sctp_l = evconnlistener_new(server->e->event_base,
-		  server_input_handler, server,
+		  sctp_server_input_handler, server,
 		  LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE,
 		  1024, tls_listen_fd);
 

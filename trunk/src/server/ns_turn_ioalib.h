@@ -87,7 +87,10 @@ enum _SOCKET_TYPE {
 	TCP_SOCKET=6,
 	UDP_SOCKET=17,
 	TLS_SOCKET=56,
+	SCTP_SOCKET=132,
+	TLS_SCTP_SOCKET=133,
 	DTLS_SOCKET=250,
+	TENTATIVE_SCTP_SOCKET=254,
 	TENTATIVE_TCP_SOCKET=255
 };
 
@@ -227,6 +230,7 @@ ioa_socket_handle  ioa_create_connecting_tcp_relay_socket(ioa_socket_handle s, i
 int get_ioa_socket_from_reservation(ioa_engine_handle e, u64bits in_reservation_token, ioa_socket_handle *s, u08bits *realm);
 
 int get_ioa_socket_address_family(ioa_socket_handle s);
+int is_stream_socket(int st);
 const char* get_ioa_socket_cipher(ioa_socket_handle s);
 const char* get_ioa_socket_ssl_method(ioa_socket_handle s);
 SOCKET_TYPE get_ioa_socket_type(ioa_socket_handle s);

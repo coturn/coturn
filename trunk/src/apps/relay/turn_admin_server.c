@@ -419,14 +419,20 @@ static const char* pname(SOCKET_TYPE st)
 	switch(st) {
 	case TCP_SOCKET:
 		return "TCP";
+	case SCTP_SOCKET:
+		return "SCTP";
 	case UDP_SOCKET:
 		return "UDP";
 	case TLS_SOCKET:
-		return "TLS";
+		return "TLS/TCP";
+	case TLS_SCTP_SOCKET:
+		return "TLS/SCTP";
 	case DTLS_SOCKET:
 		return "DTLS";
 	case TENTATIVE_TCP_SOCKET:
-		return "TCP/TLS";
+		return "TLS/TCP ?";
+	case TENTATIVE_SCTP_SOCKET:
+		return "TLS/SCTP ?";
 	default:
 		;
 	};
@@ -451,13 +457,13 @@ static int print_session(ur_map_key_type key, ur_map_value_type value, void *arg
 			const char *pn=csarg->pname;
 			if(pn[0]) {
 				if(!strcmp(pn,"TLS") || !strcmp(pn,"tls") || !strcmp(pn,"Tls")) {
-					if(tsi->client_protocol != TLS_SOCKET)
+					if((tsi->client_protocol != TLS_SOCKET)||(tsi->client_protocol != TLS_SCTP_SOCKET))
 						return 0;
 				} else if(!strcmp(pn,"DTLS") || !strcmp(pn,"dtls") || !strcmp(pn,"Dtls")) {
 					if(tsi->client_protocol != DTLS_SOCKET)
 						return 0;
 				} else if(!strcmp(pn,"TCP") || !strcmp(pn,"tcp") || !strcmp(pn,"Tcp")) {
-					if(tsi->client_protocol != TCP_SOCKET)
+					if((tsi->client_protocol != TCP_SOCKET)||(tsi->client_protocol != SCTP_SOCKET))
 						return 0;
 				} else if(!strcmp(pn,"UDP") || !strcmp(pn,"udp") || !strcmp(pn,"Udp")) {
 					if(tsi->client_protocol != UDP_SOCKET)
@@ -2195,13 +2201,13 @@ static int https_print_session(ur_map_key_type key, ur_map_value_type value, voi
 			const char *pn=csarg->client_protocol;
 			if(pn[0]) {
 				if(!strcmp(pn,"TLS") || !strcmp(pn,"tls") || !strcmp(pn,"Tls")) {
-					if(tsi->client_protocol != TLS_SOCKET)
+					if((tsi->client_protocol != TLS_SOCKET)||(tsi->client_protocol != TLS_SCTP_SOCKET))
 						return 0;
 					} else if(!strcmp(pn,"DTLS") || !strcmp(pn,"dtls") || !strcmp(pn,"Dtls")) {
 						if(tsi->client_protocol != DTLS_SOCKET)
 							return 0;
 					} else if(!strcmp(pn,"TCP") || !strcmp(pn,"tcp") || !strcmp(pn,"Tcp")) {
-						if(tsi->client_protocol != TCP_SOCKET)
+						if((tsi->client_protocol != TCP_SOCKET)||(tsi->client_protocol != SCTP_SOCKET))
 							return 0;
 					} else if(!strcmp(pn,"UDP") || !strcmp(pn,"udp") || !strcmp(pn,"Udp")) {
 						if(tsi->client_protocol != UDP_SOCKET)
