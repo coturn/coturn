@@ -1057,8 +1057,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 							*reason = (const u08bits *)"UDP Transport is not allowed by the TURN Server configuration";
 						} else if(ss->client_socket) {
 							SOCKET_TYPE cst = get_ioa_socket_type(ss->client_socket);
-							if((transport == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE) &&
-											(cst!=TCP_SOCKET) && (cst!=TLS_SOCKET)) {
+							if((transport == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE) && !is_stream_socket(cst)) {
 								*err_code = 400;
 								*reason = (const u08bits *)"Wrong Transport Data";
 							} else {
@@ -2304,7 +2303,7 @@ static int handle_turn_connection_bind(turn_turnserver *server,
 		*err_code = 400;
 		*reason = (const u08bits *)"Bad request: CONNECTION_BIND cannot be issued after allocation";
 
-	} else if((get_ioa_socket_type(ss->client_socket)!=TCP_SOCKET) && (get_ioa_socket_type(ss->client_socket)!=TLS_SOCKET)) {
+	} else if(!is_stream_socket(get_ioa_socket_type(ss->client_socket))) {
 
 		*err_code = 400;
 		*reason = (const u08bits *)"Bad request: CONNECTION_BIND only possible with TCP/TLS";
@@ -2666,7 +2665,8 @@ static int handle_turn_channel_bind(turn_turnserver *server,
 
 				  if(!(ss->is_mobile)) {
 					  if(get_ioa_socket_type(ss->client_socket) == UDP_SOCKET ||
-							  get_ioa_socket_type(ss->client_socket) == TCP_SOCKET) {
+							  get_ioa_socket_type(ss->client_socket) == TCP_SOCKET ||
+							  get_ioa_socket_type(ss->client_socket) == SCTP_SOCKET) {
 						  if(get_ioa_socket_type(get_relay_socket(&(ss->alloc),peer_addr.ss.sa_family)) == UDP_SOCKET) {
 							  chn->kernel_channel = CREATE_TURN_CHANNEL_KERNEL(chn->chnum,
 								  get_ioa_socket_address_family(ss->client_socket),
@@ -3605,7 +3605,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 					if(((cst == UDP_SOCKET)||(cst == DTLS_SOCKET)) && server->self_udp_balance &&
 							server->aux_servers_list && server->aux_servers_list->size) {
 						asl = server->aux_servers_list;
-					} else if(((cst == TLS_SOCKET) || (cst == DTLS_SOCKET)) &&
+					} else if(((cst == TLS_SOCKET) || (cst == DTLS_SOCKET) ||(cst == TLS_SCTP_SOCKET)) &&
 							server->tls_alternate_servers_list && server->tls_alternate_servers_list->size) {
 						asl = server->tls_alternate_servers_list;
 					}
@@ -4490,7 +4490,7 @@ static int read_client_connection(turn_turnserver *server,
 	size_t orig_blen = blen;
 	SOCKET_TYPE st = get_ioa_socket_type(ss->client_socket);
 	SOCKET_APP_TYPE sat = get_ioa_socket_app_type(ss->client_socket);
-	int is_padding_mandatory = ((st == TCP_SOCKET)||(st==TLS_SOCKET)||(st==TENTATIVE_TCP_SOCKET));
+	int is_padding_mandatory = is_stream_socket(st);
 
 	if(sat == HTTP_CLIENT_SOCKET) {
 
@@ -4590,7 +4590,7 @@ static int read_client_connection(turn_turnserver *server,
 
 	} else {
 		SOCKET_TYPE st = get_ioa_socket_type(ss->client_socket);
-		if((st == TCP_SOCKET)||(st==TLS_SOCKET)||(st==TENTATIVE_TCP_SOCKET)) {
+		if(is_stream_socket(st)) {
 			if(is_http((char*)ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh))) {
 				const char *proto = "HTTP";
 				ioa_network_buffer_data(in_buffer->nbh)[ioa_network_buffer_get_size(in_buffer->nbh)] = 0;
@@ -4761,7 +4761,7 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 				ioa_network_buffer_header_init(nbh);
 
 				SOCKET_TYPE st = get_ioa_socket_type(ss->client_socket);
-				int do_padding = ((st == TCP_SOCKET)||(st==TLS_SOCKET)||(st==TENTATIVE_TCP_SOCKET));
+				int do_padding = is_stream_socket(st);
 
 				stun_init_channel_message_str(chnum, ioa_network_buffer_data(nbh), &len, len, do_padding);
 				ioa_network_buffer_set_size(nbh,len);
