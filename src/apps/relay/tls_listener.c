@@ -38,12 +38,6 @@
 
 #include <event2/listener.h>
 
-#if defined(__linux__) || defined(__LINUX__) || defined(__linux) || defined(linux__) || defined(LINUX) || defined(__LINUX) || defined(LINUX__)
-#include <linux/sctp.h>
-#else
-#include <netinet/sctp.h>
-#endif
-
 ///////////////////////////////////////////////////
 
 #define FUNCSTART if(server && eve(server->verbose)) TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s:%d:start\n",__FUNCTION__,__LINE__)
@@ -283,30 +277,6 @@ static int sctp_create_server_listener(tls_listener_relay_server_type* server) {
   socket_tcp_set_keepalive(tls_listen_fd);
 
   socket_set_nonblocking(tls_listen_fd);
-
-  {
-	  struct sctp_paddrparams heartbeat;
-	  ns_bzero(&heartbeat, sizeof(struct sctp_paddrparams));
-
-	  heartbeat.spp_flags = SPP_HB_ENABLE;
-	  heartbeat.spp_hbinterval = 5000;
-	  heartbeat.spp_pathmaxrxt = 5;
-
-	  /*Set Heartbeats*/
-	  if(setsockopt(tls_listen_fd, IPPROTO_SCTP, SCTP_PEER_ADDR_PARAMS , &heartbeat, sizeof(heartbeat)) != 0)
-		  perror("setsockopt");
-  }
-
-  {
-	  struct sctp_rtoinfo rtoinfo;
-	  ns_bzero(&rtoinfo, sizeof(struct sctp_rtoinfo));
-
-	  rtoinfo.srto_max = 5000;
-
-	  /*Set rto_max*/
-	  if(setsockopt(tls_listen_fd, IPPROTO_SCTP, SCTP_RTOINFO , &rtoinfo, sizeof(rtoinfo)) != 0)
-		  perror("setsockopt");
-  }
 
   server->sctp_l = evconnlistener_new(server->e->event_base,
 		  sctp_server_input_handler, server,
