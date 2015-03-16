@@ -871,17 +871,18 @@ int set_socket_options_fd(evutil_socket_t fd, int tcp, int family)
 	} else {
 
 		int flag = 1;
-		setsockopt(fd, /* socket affected */
+		if(setsockopt(fd, /* socket affected */
 				IPPROTO_TCP, /* set option at TCP level */
 				TCP_NODELAY, /* name of option */
 				(char*)&flag, /* value */
-				sizeof(int)); /* length of option value */
+				sizeof(int))<0) { /* length of option value */
 
-		setsockopt(fd, /* socket affected */
-				IPPROTO_SCTP, /* set option at TCP level */
-				SCTP_NODELAY, /* name of option */
-				(char*)&flag, /* value */
-				sizeof(int)); /* length of option value */
+			setsockopt(fd, /* socket affected */
+						IPPROTO_SCTP, /* set option at TCP level */
+						SCTP_NODELAY, /* name of option */
+						(char*)&flag, /* value */
+						sizeof(int)); /* length of option value */
+		}
 
 		socket_tcp_set_keepalive(fd);
 	}
