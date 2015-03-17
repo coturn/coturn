@@ -414,31 +414,6 @@ struct ps_arg {
 	size_t users_number;
 };
 
-static const char* pname(SOCKET_TYPE st)
-{
-	switch(st) {
-	case TCP_SOCKET:
-		return "TCP";
-	case SCTP_SOCKET:
-		return "SCTP";
-	case UDP_SOCKET:
-		return "UDP";
-	case TLS_SOCKET:
-		return "TLS/TCP";
-	case TLS_SCTP_SOCKET:
-		return "TLS/SCTP";
-	case DTLS_SOCKET:
-		return "DTLS";
-	case TENTATIVE_TCP_SOCKET:
-		return "TLS/TCP ?";
-	case TENTATIVE_SCTP_SOCKET:
-		return "TLS/SCTP ?";
-	default:
-		;
-	};
-	return "UNKNOWN";
-}
-
 static int print_session(ur_map_key_type key, ur_map_value_type value, void *arg)
 {
 	if(key && value && arg) {
@@ -518,7 +493,7 @@ static int print_session(ur_map_key_type key, ur_map_value_type value, void *arg
 				} else {
 					myprintf(cs,"      expiring in %lu secs\n",(unsigned long)(tsi->expiration_time - csarg->ct));
 				}
-				myprintf(cs,"      client protocol %s, relay protocol %s\n",pname(tsi->client_protocol),pname(tsi->peer_protocol));
+				myprintf(cs,"      client protocol %s, relay protocol %s\n",socket_type_name(tsi->client_protocol),socket_type_name(tsi->peer_protocol));
 				{
 					if(!tsi->local_addr_data.saddr[0])
 						addr_to_string(&(tsi->local_addr_data.addr),(u08bits*)tsi->local_addr_data.saddr);
@@ -2247,9 +2222,9 @@ static int https_print_session(ur_map_key_type key, ur_map_value_type value, voi
 				str_buffer_append_sz(sb,(size_t)(tsi->expiration_time - csarg->ct));
 			}
 			str_buffer_append(sb,"</td><td>");
-			str_buffer_append(sb,pname(tsi->client_protocol));
+			str_buffer_append(sb,socket_type_name(tsi->client_protocol));
 			str_buffer_append(sb,"</td><td>");
-			str_buffer_append(sb,pname(tsi->peer_protocol));
+			str_buffer_append(sb,socket_type_name(tsi->peer_protocol));
 			str_buffer_append(sb,"</td><td>");
 			{
 				if(!tsi->local_addr_data.saddr[0])

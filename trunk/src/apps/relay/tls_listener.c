@@ -121,6 +121,8 @@ static void server_input_handler(struct evconnlistener *l, evutil_socket_t fd,
 	FUNCEND	;
 }
 
+#if !defined(TURN_NO_SCTP)
+
 static void sctp_server_input_handler(struct evconnlistener *l, evutil_socket_t fd,
 				struct sockaddr *sa, int socklen, void *arg)
 {
@@ -183,6 +185,8 @@ static void sctp_server_input_handler(struct evconnlistener *l, evutil_socket_t 
 
 	FUNCEND	;
 }
+
+#endif
 
 ///////////////////// operations //////////////////////////
 
@@ -251,6 +255,8 @@ static int create_server_listener(tls_listener_relay_server_type* server) {
   return 0;
 }
 
+#if !defined(TURN_NO_SCTP)
+
 static int sctp_create_server_listener(tls_listener_relay_server_type* server) {
 
   FUNCSTART;
@@ -299,6 +305,8 @@ static int sctp_create_server_listener(tls_listener_relay_server_type* server) {
   return 0;
 }
 
+#endif
+
 static int init_server(tls_listener_relay_server_type* server,
 		       const char* ifname,
 		       const char *local_address, 
@@ -323,8 +331,10 @@ static int init_server(tls_listener_relay_server_type* server,
   server->verbose=verbose;
   
   server->e = e;
-  
+
+#if !defined(TURN_NO_SCTP)
   sctp_create_server_listener(server);
+#endif
 
   return create_server_listener(server);
 }

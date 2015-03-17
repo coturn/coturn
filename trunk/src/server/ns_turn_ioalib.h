@@ -231,6 +231,7 @@ int get_ioa_socket_from_reservation(ioa_engine_handle e, u64bits in_reservation_
 
 int get_ioa_socket_address_family(ioa_socket_handle s);
 int is_stream_socket(int st);
+  const char* socket_type_name(SOCKET_TYPE st);
 const char* get_ioa_socket_cipher(ioa_socket_handle s);
 const char* get_ioa_socket_ssl_method(ioa_socket_handle s);
 SOCKET_TYPE get_ioa_socket_type(ioa_socket_handle s);

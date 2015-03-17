@@ -50,12 +50,13 @@
 #include "hiredis_libevent2.h"
 #endif
 
+#if !defined(TURN_NO_SCTP)
 #if defined(__linux__) || defined(__LINUX__) || defined(__linux) || defined(linux__) || defined(LINUX) || defined(__LINUX) || defined(LINUX__)
 #include <linux/sctp.h>
 #else
 #include <netinet/sctp.h>
 #endif
-
+#endif
 
 /* Compilation test:
 #if defined(IP_RECVTTL)
@@ -877,11 +878,14 @@ int set_socket_options_fd(evutil_socket_t fd, int tcp, int family)
 				(char*)&flag, /* value */
 				sizeof(int))<0) { /* length of option value */
 
+#if defined(SCTP_NODELAY)
 			setsockopt(fd, /* socket affected */
 						IPPROTO_SCTP, /* set option at TCP level */
 						SCTP_NODELAY, /* name of option */
 						(char*)&flag, /* value */
 						sizeof(int)); /* length of option value */
+#endif
+
 		}
 
 		socket_tcp_set_keepalive(fd);
@@ -919,6 +923,31 @@ int is_stream_socket(int st) {
 		;
 	}
 	return 0;
+}
+
+const char* socket_type_name(SOCKET_TYPE st)
+{
+	switch(st) {
+	case TCP_SOCKET:
+		return "TCP";
+	case SCTP_SOCKET:
+		return "SCTP";
+	case UDP_SOCKET:
+		return "UDP";
+	case TLS_SOCKET:
+		return "TLS/TCP";
+	case TLS_SCTP_SOCKET:
+		return "TLS/SCTP";
+	case DTLS_SOCKET:
+		return "DTLS";
+	case TENTATIVE_TCP_SOCKET:
+		return "TLS/TCP ?";
+	case TENTATIVE_SCTP_SOCKET:
+		return "TLS/SCTP ?";
+	default:
+		;
+	};
+	return "UNKNOWN";
 }
 
 /* <<== Socket options helpers */
@@ -2811,24 +2840,36 @@ static void eventcb_bev(struct bufferevent *bev, short events, void *arg)
 							addr_to_string(&(s->remote_addr),(u08bits*)sraddr);
 							if (events & BEV_EVENT_EOF) {
 								if(server->verbose)
-									TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"session %018llu: stream (TCP or SCTP) socket closed remotely %s\n",(unsigned long long)(ss->id),sraddr);
+								  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"session %018llu: %s socket closed remotely %s\n",
+										(unsigned long long)(ss->id),socket_type_name(s->st),sraddr);
 								if(s == ss->client_socket) {
-									shutdown_client_connection(server, ss, 0, "Stream (TCP or SCTP) connection closed by client (callback)");
+								  char msg[256];
+								  snprintf(msg,sizeof(msg)-1,"%s connection closed by client (callback)",socket_type_name(s->st));
+								  shutdown_client_connection(server, ss, 0, msg);
 								} else if(s == ss->alloc.relay_sessions[ALLOC_IPV4_INDEX].s) {
-									shutdown_client_connection(server, ss, 0, "Stream (TCP or SCTP) connection closed by peer (ipv4 callback)");
+								  char msg[256];
+								  snprintf(msg,sizeof(msg)-1,"%s connection closed by peer (ipv4 callback)",socket_type_name(s->st));
+								  shutdown_client_connection(server, ss, 0, msg);
 								} else if(s == ss->alloc.relay_sessions[ALLOC_IPV6_INDEX].s) {
-									shutdown_client_connection(server, ss, 0, "Stream (TCP or SCTP) connection closed by peer (ipv6 callback)");
+								  char msg[256];
+								  snprintf(msg,sizeof(msg)-1,"%s connection closed by peer (ipv6 callback)",socket_type_name(s->st));
+								  shutdown_client_connection(server, ss, 0, msg);
 								} else {
-									shutdown_client_connection(server, ss, 0, "Stream (TCP or SCTP) connection closed by remote party (callback)");
+								  char msg[256];
+								  snprintf(msg,sizeof(msg)-1,"%s connection closed by remote party (callback)",socket_type_name(s->st));
+								  shutdown_client_connection(server, ss, 0, msg);
 								}
 							} else if (events & BEV_EVENT_ERROR) {
 								if(EVUTIL_SOCKET_ERROR()) {
-									TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"session %018llu: TCP (or SCTP) socket error: %s %s\n",(unsigned long long)(ss->id),
-												evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()), sraddr);
+									TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"session %018llu: %s socket error: %s %s\n",(unsigned long long)(ss->id),
+										      socket_type_name(s->st),evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()), sraddr);
 								} else if(server->verbose) {
-									TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"session %018llu: stream (TCP or SCTP) socket disconnected: %s\n",(unsigned long long)(ss->id),sraddr);
+									TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"session %018llu: %s socket disconnected: %s\n",
+										      (unsigned long long)(ss->id),socket_type_name(s->st),sraddr);
 								}
-								shutdown_client_connection(server, ss, 0, "Stream (TCP or SCTP) socket buffer operation error (callback)");
+								char msg[256];
+								snprintf(msg,sizeof(msg)-1,"%s socket buffer operation error (callback)",socket_type_name(s->st));
+								shutdown_client_connection(server, ss, 0, msg);
 							 }
 						}
 					}
