@@ -1167,7 +1167,7 @@ if [ -z "${TURN_NO_SCTP}" ] ; then
     	if [ -z "${TURN_SCTP_INCLUDE}" ] ; then
 			TURN_NO_SCTP="-DTURN_NO_SCTP"
 		else
-			TURN_SCTP_INCLUDE="-DTURN_SCTP_INCLUDE=${TURN_SCTP_INCLUDE}"
+			TURN_SCTP_INCLUDE="-DTURN_SCTP_INCLUDE=\"\\\"${TURN_SCTP_INCLUDE}\\\"\""
     	fi
     fi
 else
