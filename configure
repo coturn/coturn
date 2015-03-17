@@ -1162,10 +1162,13 @@ fi
 ###############################
 
 if [ -z "${TURN_NO_SCTP}" ] ; then
-    if ! [ -f "/usr/include/linux/sctp.h" ] ; then
-	if ! [ -f "/usr/include/netinet/sctp.h" ] ; then
-	    TURN_NO_SCTP="-DTURN_NO_SCTP"
-	fi
+	if [ -z "${TURN_SCTP_INCLUDE}" ] ; then
+		TURN_SCTP_INCLUDE=`find /usr/include/ -name sctp.h`
+    	if [ -z "${TURN_SCTP_INCLUDE}" ] ; then
+			TURN_NO_SCTP="-DTURN_NO_SCTP"
+		else
+			TURN_SCTP_INCLUDE="-DTURN_SCTP_INCLUDE=${TURN_SCTP_INCLUDE}"
+    	fi
     fi
 else
     TURN_NO_SCTP="-DTURN_NO_SCTP"
@@ -1175,7 +1178,7 @@ fi
 # So, what we have now:
 ###############################
 
-OSCFLAGS="${OSCFLAGS} ${TURN_NO_SCTP} ${TURN_NO_THREAD_BARRIERS} ${TURN_NO_DTLS} ${TURN_NO_GCM} ${TURN_NO_TLS} -DINSTALL_PREFIX=${PREFIX} -DTURNDB=${TURNDBDIR}/turndb"
+OSCFLAGS="${OSCFLAGS} ${TURN_NO_SCTP} ${TURN_SCTP_INCLUDE} ${TURN_NO_THREAD_BARRIERS} ${TURN_NO_DTLS} ${TURN_NO_GCM} ${TURN_NO_TLS} -DINSTALL_PREFIX=${PREFIX} -DTURNDB=${TURNDBDIR}/turndb"
 
 if ! [ -z "${TURN_ACCEPT_RPATH}" ] ; then
   if [ -z "${TURN_DISABLE_RPATH}" ] ; then
