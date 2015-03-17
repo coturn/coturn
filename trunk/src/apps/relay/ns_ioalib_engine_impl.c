@@ -50,12 +50,10 @@
 #include "hiredis_libevent2.h"
 #endif
 
-#if !defined(TURN_NO_SCTP)
-#if defined(__linux__) || defined(__LINUX__) || defined(__linux) || defined(linux__) || defined(LINUX) || defined(__LINUX) || defined(LINUX__)
-#include <linux/sctp.h>
-#else
-#include <netinet/sctp.h>
-#endif
+#if !defined(TURN_NO_SCTP) && defined(TURN_SCTP_INCLUDE)
+#define Q(x) #x
+#define QUOTE(x) Q(x)
+#include QUOTE(TURN_SCTP_INCLUDE)
 #endif
 
 /* Compilation test:
