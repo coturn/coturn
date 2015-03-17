@@ -51,9 +51,7 @@
 #endif
 
 #if !defined(TURN_NO_SCTP) && defined(TURN_SCTP_INCLUDE)
-#define Q(x) #x
-#define QUOTE(x) Q(x)
-#include QUOTE(TURN_SCTP_INCLUDE)
+#include TURN_SCTP_INCLUDE
 #endif
 
 /* Compilation test:
