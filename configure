@@ -175,6 +175,7 @@ pthread_testlib() {
 
     if [ "${SYSTEM}" = "DragonFly" ] ; then
 	OSLIBS="${OSLIBS} -pthread"
+	TURN_NO_SCTP=1
     fi
 
     ISBSD=`uname | grep -i bsd`
