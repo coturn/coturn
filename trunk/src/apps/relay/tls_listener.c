@@ -267,8 +267,8 @@ static int sctp_create_server_listener(tls_listener_relay_server_type* server) {
 
   tls_listen_fd = socket(server->addr.ss.sa_family, SCTP_CLIENT_STREAM_SOCKET_TYPE, SCTP_CLIENT_STREAM_SOCKET_PROTOCOL);
   if (tls_listen_fd < 0) {
-      perror("socket");
-      return -1;
+    perror("socket");
+    return -1;
   }
 
   if(sock_bind_to_device(tls_listen_fd, (unsigned char*)server->ifname)<0) {
@@ -290,7 +290,6 @@ static int sctp_create_server_listener(tls_listener_relay_server_type* server) {
 		  1024, tls_listen_fd);
 
   if(!(server->sctp_l)) {
-	  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Cannot create SCTP listener\n");
 	  socket_closesocket(tls_listen_fd);
 	  return -1;
   }
