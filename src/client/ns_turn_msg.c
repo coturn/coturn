@@ -45,6 +45,10 @@
 
 ///////////
 
+static void generate_random_nonce(unsigned char *nonce, size_t sz);
+
+///////////
+
 int stun_method_str(u16bits method, char *smethod)
 {
 	int ret = 0;
@@ -217,6 +221,90 @@ int stun_produce_integrity_key_str(u08bits *uname, u08bits *realm, u08bits *upwd
 	turn_free(str,sz+1);
 
 	return 0;
+}
+
+#define PWD_SALT_SIZE (8)
+
+static void readable_string(unsigned char *orig, unsigned char *out, size_t sz)
+{
+    size_t i = 0;
+    out[0]=0;
+
+    for(i = 0; i < sz; ++i) {
+        sprintf((char*)(out + (i * 2)), "%02x", (unsigned int)orig[i]);
+    }
+}
+
+static void generate_enc_password(const char* pwd, char *result, const unsigned char *orig_salt)
+{
+	unsigned char salt[PWD_SALT_SIZE+1];
+	if(!orig_salt) {
+		generate_random_nonce(salt, PWD_SALT_SIZE);
+	} else {
+		ns_bcopy(orig_salt,salt,PWD_SALT_SIZE);
+		salt[PWD_SALT_SIZE]=0;
+	}
+	unsigned char rsalt[PWD_SALT_SIZE*2+1];
+	readable_string(salt,rsalt,PWD_SALT_SIZE);
+	result[0]='$';
+	result[1]='5';
+	result[2]='$';
+	ns_bcopy((char*)rsalt,result+3,PWD_SALT_SIZE+PWD_SALT_SIZE);
+	result[3+PWD_SALT_SIZE+PWD_SALT_SIZE]='$';
+	unsigned char* out = (unsigned char*)(result+3+PWD_SALT_SIZE+PWD_SALT_SIZE+1);
+	{
+		EVP_MD_CTX ctx;
+#if !defined(OPENSSL_NO_SHA256) && defined(SHA256_DIGEST_LENGTH)
+		EVP_DigestInit(&ctx,EVP_sha256());
+#else
+		EVP_DigestInit(&ctx,EVP_sha1());
+#endif
+		EVP_DigestUpdate(&ctx,salt,PWD_SALT_SIZE);
+		EVP_DigestUpdate(&ctx,pwd,strlen(pwd));
+		{
+			unsigned char hash[129];
+			unsigned int keylen = 0;
+			EVP_DigestFinal(&ctx,hash,&keylen);
+			readable_string(hash,out,keylen);
+		}
+		EVP_MD_CTX_cleanup(&ctx);
+	}
+}
+
+void generate_new_enc_password(const char* pwd, char *result)
+{
+	generate_enc_password(pwd, result, NULL);
+}
+
+static int encrypted_password(const char* pin, unsigned char* salt)
+{
+	size_t min_len = 3+PWD_SALT_SIZE+PWD_SALT_SIZE+1+32;
+	if(strlen(pin)>=min_len) {
+		if((pin[0]=='$') && (pin[1]=='5') && (pin[2]=='$') && (pin[3+PWD_SALT_SIZE+PWD_SALT_SIZE]=='$')) {
+			size_t i = 0;
+			for(i=0;i<PWD_SALT_SIZE;++i) {
+				const char* c = pin+3+i+i;
+				char sc[3];
+				sc[0]=c[0];
+				sc[1]=c[1];
+				sc[2]=0;
+				salt[i] = (unsigned char)strtoul(sc,NULL,16);
+			}
+			return 1;
+		}
+	}
+	return 0;
+}
+
+int check_password(const char* pin, const char* pwd)
+{
+	unsigned char salt[PWD_SALT_SIZE];
+	if(!encrypted_password(pwd,salt)) {
+		return strcmp(pin,pwd);
+	}
+	char enc_pin[257];
+	generate_enc_password(pin, enc_pin, salt);
+	return strcmp(enc_pin,pwd);
 }
 
 /////////////////////////////////////////////////////////////////
@@ -2377,8 +2465,6 @@ static int decode_oauth_token_normal(const u08bits *server_name, const encoded_o
 	return -1;
 }
 
-#if !defined(TURN_NO_GCM)
-
 static void generate_random_nonce(unsigned char *nonce, size_t sz) {
 	if(!RAND_bytes(nonce, sz)) {
 		size_t i;
@@ -2387,6 +2473,8 @@ static void generate_random_nonce(unsigned char *nonce, size_t sz) {
 		}
 	}
 }
+
+#if !defined(TURN_NO_GCM)
 
 static int encode_oauth_token_aead(const u08bits *server_name, encoded_oauth_token *etoken, const oauth_key *key, const oauth_token *dtoken, const u08bits* nonce0)
 {
