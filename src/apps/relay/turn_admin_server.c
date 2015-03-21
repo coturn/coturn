@@ -959,7 +959,7 @@ static int run_cli_input(struct cli_session* cs, const char *buf0, unsigned int 
 		if(sl) {
 			cs->cmds += 1;
 			if(cli_password[0] && !(cs->auth_completed)) {
-				if(strcmp(cmd,cli_password)) {
+				if(check_password(cmd,cli_password)) {
 					if(cs->cmds>=CLI_PASSWORD_TRY_NUMBER) {
 						addr_debug_print(1, &(cs->addr),"CLI authentication error");
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"CLI authentication error\n");
