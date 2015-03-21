@@ -599,6 +599,11 @@ static char Usage[] = "Usage: turnserver [options]\n"
 
 static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
 	"\nCommands:\n\n"
+	"	-P, --generate-encrypted-password	Generate and print to the standard\n"
+	"					output an encrypted form of a password\n"
+	"					(for web admin user, or shared\n"
+	"					secret, or CLI). See wiki, README or man\n"
+	"					pages for more detailed description.\n"
 	"	-k, --key			generate long-term credential mechanism key for a user\n"
 	"	-a, --add			add/update a long-term mechanism user\n"
 	"	-A, --add-admin			add/update a web admin user\n"
@@ -652,7 +657,7 @@ static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
 
 #define OPTIONS "c:d:p:L:E:X:i:m:l:r:u:b:B:e:M:J:N:O:q:Q:s:C:vVofhznaAS"
   
-#define ADMIN_OPTIONS "gGORIHKYlLkaADSdb:e:M:J:N:u:r:p:s:X:o:h"
+#define ADMIN_OPTIONS "PgGORIHKYlLkaADSdb:e:M:J:N:u:r:p:s:X:o:h"
 
 enum EXTRA_OPTS {
 	NO_UDP_OPT=256,
@@ -841,6 +846,7 @@ static const struct myoption long_options[] = {
 };
 
 static const struct myoption admin_long_options[] = {
+				{"generate-encrypted-password", no_argument, NULL, 'P' },
 				{ "key", no_argument, NULL, 'k' },
 				{ "add", no_argument, NULL, 'a' },
 				{ "delete", no_argument, NULL, 'd' },
@@ -1437,18 +1443,29 @@ static int adminmain(int argc, char **argv)
 
 	int is_admin = 0;
 
-	u08bits user[STUN_MAX_USERNAME_SIZE+1]="";
-	u08bits realm[STUN_MAX_REALM_SIZE+1]="";
-	u08bits pwd[STUN_MAX_PWD_SIZE+1]="";
-	u08bits secret[AUTH_SECRET_SIZE+1]="";
-	u08bits origin[STUN_MAX_ORIGIN_SIZE+1]="";
+	u08bits user[STUN_MAX_USERNAME_SIZE+1]="\0";
+	u08bits realm[STUN_MAX_REALM_SIZE+1]="\0";
+	u08bits pwd[STUN_MAX_PWD_SIZE+1]="\0";
+	u08bits secret[AUTH_SECRET_SIZE+1]="\0";
+	u08bits origin[STUN_MAX_ORIGIN_SIZE+1]="\0";
 	perf_options_t po = {(band_limit_t)-1,-1,-1};
 
 	struct uoptions uo;
 	uo.u.m = admin_long_options;
 
+	int print_enc_password = 0;
+
 	while (((c = getopt_long(argc, argv, ADMIN_OPTIONS, uo.u.o, NULL)) != -1)) {
 		switch (c){
+		case 'P':
+			if(pwd[0]) {
+				char result[257];
+				generate_new_enc_password((char*)pwd, result);
+				printf("%s\n",result);
+				exit(0);
+			}
+			print_enc_password = 1;
+			break;
 		case 'g':
 			ct = TA_SET_REALM_OPTION;
 			break;
@@ -1565,6 +1582,12 @@ static int adminmain(int argc, char **argv)
 			if(SASLprep((u08bits*)pwd)<0) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong password: %s\n",pwd);
 				exit(-1);
+			}
+			if(print_enc_password) {
+				char result[257];
+				generate_new_enc_password((char*)pwd, result);
+				printf("%s\n",result);
+				exit(0);
 			}
 			break;
 		case 'H':
