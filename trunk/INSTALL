@@ -689,7 +689,9 @@ or up to 96 characters (HEX representation of 48 bytes) for SHA384,
 or up to 128 characters (HEX representation of 64 bytes) for SHA512:
 
 # Table holding shared secrets for secret-based authorization
-# (REST API). It can only be used together with the long-term 
+# (REST API). Shared secret can be stored either in unsecure open
+# plain form, or in encrypted form (see turnadmin docs).
+# It can only be used together with the long-term 
 # mechanism:
 #
 CREATE TABLE turn_secret (
@@ -793,6 +795,8 @@ The oauth_key table fields meanings are:
 # Https access admin users.
 # Leave this table empty if you do not want 
 # remote https access to the admin functions.
+# Web user password can be stored either in unsecure open
+# plain form, or in encrypted form (see turnadmin docs).
 #
 CREATE TABLE admin_user (
 	name varchar(32),
@@ -900,7 +904,7 @@ The database schema for the TURN server is very minimalistic and is located
 in project's turndb/schema.sql file, or in the system's 
 PREFIX/share/turnserver/schema.sql file after the turnserver installation:
 
-$ cat turndb/schema.sql | psql -U turn turn
+$ cat turndb/schema.sql | psql -U turn -d turn
 	NOTICE:  CREATE TABLE / PRIMARY KEY will create implicit index "turnusers_lt_pkey" for table "turnusers_lt"
 	CREATE TABLE
 	CREATE TABLE

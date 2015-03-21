@@ -4,6 +4,9 @@
 # gorst:password: hero
 # whirrun:password: sword
 # stranger-come-knocking:password: civilization
+#
+# bayaz admin user password: magi
+# skarling admin user password: hoodless
 
 redis-cli <<!
 
@@ -39,8 +42,8 @@ hmset turn/oauth/kid/north ikm_key 'Y2FybGVvbg==' hkdf_hash_func 'SHA-256' as_rs
 hmset turn/oauth/kid/union ikm_key 'aGVyb2Q=' hkdf_hash_func 'SHA-256' as_rs_alg 'AES-256-CBC' auth_alg 'HMAC-SHA-512'
 hmset turn/oauth/kid/oldempire ikm_key 'YXVsY3Vz' hkdf_hash_func 'SHA-256' as_rs_alg 'AEAD-AES-256-GCM'
 
-hmset turn/admin_user/skarling realm 'north.gov' password 'hoodless'
-hmset turn/admin_user/bayaz password 'magi'
+hmset turn/admin_user/skarling realm 'north.gov' password '\$5\$6fc35c3b0c7d4633\$27fca7574f9b79d0cb93ae03e45379470cbbdfcacdd6401f97ebc620f31f54f2'
+hmset turn/admin_user/bayaz password '\$5\$e018513e9de69e73\$5cbdd2e29e04ca46aeb022268a7460d3a3468de193dcb2b95f064901769f455f'
 
 save
 
