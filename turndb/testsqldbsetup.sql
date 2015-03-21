@@ -9,8 +9,8 @@ insert into turn_secret (realm,value) values('north.gov','bloody9');
 insert into turn_secret (realm,value) values('crinna.org','north');
 insert into turn_secret (realm,value) values('crinna.org','library');
 
-insert into admin_user (name, realm, password) values('skarling','north.gov','hoodless');
-insert into admin_user (name, realm, password) values('bayaz','','magi');
+insert into admin_user (name, realm, password) values('skarling','north.gov','$5$6fc35c3b0c7d4633$27fca7574f9b79d0cb93ae03e45379470cbbdfcacdd6401f97ebc620f31f54f2');
+insert into admin_user (name, realm, password) values('bayaz','','$5$e018513e9de69e73$5cbdd2e29e04ca46aeb022268a7460d3a3468de193dcb2b95f064901769f455f');
 
 insert into turn_origin_to_realm (origin,realm) values('http://crinna.org:80','crinna.org');
 insert into turn_origin_to_realm (origin,realm) values('https://bligh.edu:443','crinna.org');

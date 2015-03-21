@@ -3318,7 +3318,6 @@ static void handle_logon_request(ioa_socket_handle s, struct http_request* hr)
 		if(!(as->as_ok) && uname && pwd) {
 			const turn_dbdriver_t * dbd = get_dbdriver();
 			if (dbd && dbd->get_admin_user) {
-
 				password_t password;
 				char realm[STUN_MAX_REALM_SIZE+1]="\0";
 				if((*(dbd->get_admin_user))((const u08bits*)uname,(u08bits*)realm,password)>=0) {
@@ -3356,7 +3355,9 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 	if(turn_params.verbose) {
 		if(nbh) {
 			((char*)ioa_network_buffer_data(nbh))[ioa_network_buffer_get_size(nbh)] = 0;
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: HTTPS connection input: %s\n", __FUNCTION__, (char*)ioa_network_buffer_data(nbh));
+			if(!strstr((char*)ioa_network_buffer_data(nbh),"pwd")) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: HTTPS connection input: %s\n", __FUNCTION__, (char*)ioa_network_buffer_data(nbh));
+			}
 		} else {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: HTTPS connection initial input\n", __FUNCTION__);
 		}
