@@ -1,6 +1,9 @@
 3/15/2015 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.4.4.1 'Ardee West':
 	- 'native' SCTP support;
+	- option of encrypted passwords for web admin users;
+	- option of encrypted password for CLI user;
+	- option of encrypted shared secrets;
 
 2/28/2015 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.4.2.3 'Ardee West':
