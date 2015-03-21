@@ -536,6 +536,9 @@ Options with required values:
 --cli-port		CLI management interface listening port. Default is 5766.
 
 --cli-password		CLI access password. Default is empty (no password).
+			For the security reasons, it is recommended to use the encrypted
+			form of the password (see the -P command in the turnadmin
+			utility). The dollar signs in the encrypted form must be escaped.
 
 --cli-max-output-sessions	Maximum number of output sessions in ps CLI command.
 			This value can be changed on-the-fly in CLI. The default value is 256.
