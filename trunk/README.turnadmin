@@ -48,8 +48,8 @@ $ turnadmin [ -h | --help]
 Commands:  
 
 -P, --generate-encrypted-password	Generate and print to the standard
-output an encrypted form of a password (for web admin user, or shared
-secret, or CLI). The value then can be used as a safe key for the password
+output an encrypted form of a password (for web admin user or CLI).
+The value then can be used as a safe key for the password
 storage on disk or in the database. Every invocation for the same password
 produces a different result. The for mat of the encrypted password is:
 $5$<...salt...>$<...sha256(salt+password)...>. Salt is 16 characters,
