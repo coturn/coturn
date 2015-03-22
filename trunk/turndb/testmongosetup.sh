@@ -1,5 +1,13 @@
 #!/bin/sh
 
+# ninefingers:password: youhavetoberealistic
+# gorst:password: hero
+# whirrun:password: sword
+# stranger-come-knocking:password: civilization
+#
+# bayaz admin user password: magi
+# skarling admin user password: hoodless
+
 mongo $* <<EOF
 
 use coturn;
