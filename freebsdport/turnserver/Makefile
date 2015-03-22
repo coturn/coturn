@@ -1,7 +1,7 @@
 # $FreeBSD$
 
 PORTNAME=	turnserver
-PORTVERSION=	4.4.2.3
+PORTVERSION=	4.4.4.1
 CATEGORIES=	net
 MASTER_SITES=	http://turnserver.open-sys.org/downloads/v${PORTVERSION}/:prog \
 		http://turnserver.open-sys.org/downloads/extradocs/:xdocs \
@@ -63,7 +63,8 @@ _SCRIPT_EXAMPLES=	peer.sh	\
 	longtermsecure/secure_tcp_client_c2c_tcp_relay.sh longtermsecure/secure_tcp_client.sh \
 	longtermsecure/secure_tls_client_c2c_tcp_relay.sh longtermsecure/secure_tls_client.sh \
 	longtermsecure/secure_udp_c2c.sh longtermsecure/secure_udp_client.sh \
-	longtermsecure/secure_dos_attack.sh longtermsecure/secure_udp_client.sh \
+	longtermsecure/secure_sctp_client.sh \
+	longtermsecure/secure_dos_attack.sh \
 	longtermsecuredb/secure_relay_with_db_psql.sh \
 	longtermsecuredb/secure_relay_with_db_mysql.sh \
 	longtermsecuredb/secure_relay_with_db_mysql_ssl.sh \
