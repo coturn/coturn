@@ -1011,7 +1011,7 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, u08b
 				must_set_admin_pwd(pwd);
 				if (dbd->set_admin_user) {
 					password_t password;
-					STRCPY(password,pwd);
+					generate_new_enc_password((char*)pwd,(char*)password);
 					(*dbd->set_admin_user)(user, realm, password);
 				}
 			} else {

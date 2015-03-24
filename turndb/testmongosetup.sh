@@ -1,5 +1,13 @@
 #!/bin/sh
 
+# ninefingers:password: youhavetoberealistic
+# gorst:password: hero
+# whirrun:password: sword
+# stranger-come-knocking:password: civilization
+#
+# bayaz admin user password: magi
+# skarling admin user password: hoodless
+
 mongo $* <<EOF
 
 use coturn;
@@ -20,8 +28,8 @@ db.turn_secret.insert({ realm: 'north.gov', value: 'bloody9' });
 db.turn_secret.insert({ realm: 'crinna.org', value: 'north' });
 db.turn_secret.insert({ realm: 'crinna.org', value: 'library' });
 
-db.admin_user.insert({ name: 'skarling', realm: 'north.gov', password: 'hoodless' });
-db.admin_user.insert({ name: 'bayaz', realm: '', password: 'magi' });
+db.admin_user.insert({ name: 'skarling', realm: 'north.gov', password: '$5$6fc35c3b0c7d4633$27fca7574f9b79d0cb93ae03e45379470cbbdfcacdd6401f97ebc620f31f54f2' });
+db.admin_user.insert({ name: 'bayaz', realm: '', password: '$5$e018513e9de69e73$5cbdd2e29e04ca46aeb022268a7460d3a3468de193dcb2b95f064901769f455f' });
 
 db.realm.insert({
   realm: 'north.gov',

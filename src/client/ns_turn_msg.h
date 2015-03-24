@@ -213,6 +213,10 @@ int convert_oauth_key_data(const oauth_key_data *oakd, oauth_key *key, char *err
 int decode_oauth_token(const u08bits *server_name, const encoded_oauth_token *etoken, const oauth_key *key, oauth_token *dtoken);
 int encode_oauth_token(const u08bits *server_name, encoded_oauth_token *etoken, const oauth_key *key, const oauth_token *dtoken, const u08bits *nonce);
 
+/* Encrypted password */
+void generate_new_enc_password(const char* pwd, char *result);
+int check_password(const char* pin, const char* pwd);
+
 ///////////////////////////////////////////////////////////////
 
 #ifdef __cplusplus

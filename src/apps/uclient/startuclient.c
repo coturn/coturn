@@ -229,7 +229,9 @@ static int clnet_connect(uint16_t clnet_remote_port, const char *remote_address,
 
 	ns_bzero(&local_addr, sizeof(ioa_addr));
 
-	clnet_fd = socket(remote_addr.ss.sa_family, use_tcp ? SOCK_STREAM : SOCK_DGRAM, 0);
+	clnet_fd = socket(remote_addr.ss.sa_family,
+			use_sctp ? SCTP_CLIENT_STREAM_SOCKET_TYPE : (use_tcp ? CLIENT_STREAM_SOCKET_TYPE : CLIENT_DGRAM_SOCKET_TYPE),
+			use_sctp ? SCTP_CLIENT_STREAM_SOCKET_PROTOCOL : (use_tcp ? CLIENT_STREAM_SOCKET_PROTOCOL : CLIENT_DGRAM_SOCKET_PROTOCOL));
 	if (clnet_fd < 0) {
 		perror("socket");
 		exit(-1);
@@ -257,7 +259,7 @@ static int clnet_connect(uint16_t clnet_remote_port, const char *remote_address,
 			}
 		}
 
-		addr_bind(clnet_fd, &local_addr, 0);
+		addr_bind(clnet_fd, &local_addr, 0, 1);
 
 	} else if (strlen(local_address) > 0) {
 
@@ -265,7 +267,7 @@ static int clnet_connect(uint16_t clnet_remote_port, const char *remote_address,
 			    &local_addr) < 0)
 			return -1;
 
-		addr_bind(clnet_fd, &local_addr,0);
+		addr_bind(clnet_fd, &local_addr,0,1);
 	}
 
 	if(clnet_info->is_peer) {
@@ -1570,7 +1572,7 @@ void tcp_data_connect(app_ur_session *elem, u32bits cid)
 
 	again:
 
-	clnet_fd = socket(elem->pinfo.remote_addr.ss.sa_family, SOCK_STREAM, 0);
+	clnet_fd = socket(elem->pinfo.remote_addr.ss.sa_family, CLIENT_STREAM_SOCKET_TYPE, CLIENT_STREAM_SOCKET_PROTOCOL);
 	if (clnet_fd < 0) {
 		perror("socket");
 		exit(-1);
@@ -1595,7 +1597,7 @@ void tcp_data_connect(app_ur_session *elem, u32bits cid)
 
 	addr_set_port(&(elem->pinfo.tcp_conn[i]->tcp_data_local_addr),0);
 
-	addr_bind(clnet_fd, &(elem->pinfo.tcp_conn[i]->tcp_data_local_addr), 1);
+	addr_bind(clnet_fd, &(elem->pinfo.tcp_conn[i]->tcp_data_local_addr), 1, 1);
 
 	addr_get_from_sock(clnet_fd,&(elem->pinfo.tcp_conn[i]->tcp_data_local_addr));
 
@@ -1606,7 +1608,7 @@ void tcp_data_connect(app_ur_session *elem, u32bits cid)
 	    if (addr_connect(clnet_fd, &(elem->pinfo.remote_addr),&err) < 0) {
 	      if(err == EADDRINUSE) {
 	    	  socket_closesocket(clnet_fd);
-	    	  clnet_fd = socket(elem->pinfo.remote_addr.ss.sa_family, SOCK_STREAM, 0);
+	    	  clnet_fd = socket(elem->pinfo.remote_addr.ss.sa_family, CLIENT_STREAM_SOCKET_TYPE, CLIENT_STREAM_SOCKET_PROTOCOL);
 	    	  if (clnet_fd < 0) {
 	    		  perror("socket");
 	    		  exit(-1);
@@ -1623,7 +1625,7 @@ void tcp_data_connect(app_ur_session *elem, u32bits cid)
 
 	    	  addr_set_port(&(elem->pinfo.tcp_conn[i]->tcp_data_local_addr),0);
 
-	    	  addr_bind(clnet_fd, &(elem->pinfo.tcp_conn[i]->tcp_data_local_addr),1);
+	    	  addr_bind(clnet_fd, &(elem->pinfo.tcp_conn[i]->tcp_data_local_addr),1,1);
 
 	    	  addr_get_from_sock(clnet_fd,&(elem->pinfo.tcp_conn[i]->tcp_data_local_addr));
 

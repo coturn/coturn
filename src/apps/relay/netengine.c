@@ -1842,16 +1842,20 @@ void setup_server(void)
 		if(udp_relay_servers[0]) {
 			tot = get_real_udp_relay_servers_number();
 		}
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Total UDP servers: %d\n",(int)tot);
+		if(tot) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Total UDP servers: %d\n",(int)tot);
+		}
 	}
 
 	{
 		int tot = get_real_general_relay_servers_number();
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Total General servers: %d\n",(int)tot);
-		int i;
-		for(i = 0;i<tot;i++) {
-			if(!(general_relay_servers[i])) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"General server %d is not initialized !\n",(int)i);
+		if(tot) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Total General servers: %d\n",(int)tot);
+			int i;
+			for(i = 0;i<tot;i++) {
+				if(!(general_relay_servers[i])) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"General server %d is not initialized !\n",(int)i);
+				}
 			}
 		}
 	}
