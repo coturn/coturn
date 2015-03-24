@@ -74,7 +74,7 @@ static int udp_create_server_socket(server_type* server,
 
   if(make_ioa_addr((const u08bits*)local_address, port, server_addr)<0) return -1;
   
-  udp_fd = socket(server_addr->ss.sa_family, SOCK_DGRAM, 0);
+  udp_fd = socket(server_addr->ss.sa_family, RELAY_DGRAM_SOCKET_TYPE, RELAY_DGRAM_SOCKET_PROTOCOL);
   if (udp_fd < 0) {
     perror("socket");
     return -1;
@@ -86,7 +86,7 @@ static int udp_create_server_socket(server_type* server,
 
   set_sock_buf_size(udp_fd,UR_SERVER_SOCK_BUF_SIZE);
   
-  if(addr_bind(udp_fd,server_addr,1)<0) return -1;
+  if(addr_bind(udp_fd,server_addr,1,1)<0) return -1;
   
   socket_set_nonblocking(udp_fd);
 

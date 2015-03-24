@@ -414,25 +414,6 @@ struct ps_arg {
 	size_t users_number;
 };
 
-static const char* pname(SOCKET_TYPE st)
-{
-	switch(st) {
-	case TCP_SOCKET:
-		return "TCP";
-	case UDP_SOCKET:
-		return "UDP";
-	case TLS_SOCKET:
-		return "TLS";
-	case DTLS_SOCKET:
-		return "DTLS";
-	case TENTATIVE_TCP_SOCKET:
-		return "TCP/TLS";
-	default:
-		;
-	};
-	return "UNKNOWN";
-}
-
 static int print_session(ur_map_key_type key, ur_map_value_type value, void *arg)
 {
 	if(key && value && arg) {
@@ -451,13 +432,13 @@ static int print_session(ur_map_key_type key, ur_map_value_type value, void *arg
 			const char *pn=csarg->pname;
 			if(pn[0]) {
 				if(!strcmp(pn,"TLS") || !strcmp(pn,"tls") || !strcmp(pn,"Tls")) {
-					if(tsi->client_protocol != TLS_SOCKET)
+					if((tsi->client_protocol != TLS_SOCKET)||(tsi->client_protocol != TLS_SCTP_SOCKET))
 						return 0;
 				} else if(!strcmp(pn,"DTLS") || !strcmp(pn,"dtls") || !strcmp(pn,"Dtls")) {
 					if(tsi->client_protocol != DTLS_SOCKET)
 						return 0;
 				} else if(!strcmp(pn,"TCP") || !strcmp(pn,"tcp") || !strcmp(pn,"Tcp")) {
-					if(tsi->client_protocol != TCP_SOCKET)
+					if((tsi->client_protocol != TCP_SOCKET)||(tsi->client_protocol != SCTP_SOCKET))
 						return 0;
 				} else if(!strcmp(pn,"UDP") || !strcmp(pn,"udp") || !strcmp(pn,"Udp")) {
 					if(tsi->client_protocol != UDP_SOCKET)
@@ -512,7 +493,7 @@ static int print_session(ur_map_key_type key, ur_map_value_type value, void *arg
 				} else {
 					myprintf(cs,"      expiring in %lu secs\n",(unsigned long)(tsi->expiration_time - csarg->ct));
 				}
-				myprintf(cs,"      client protocol %s, relay protocol %s\n",pname(tsi->client_protocol),pname(tsi->peer_protocol));
+				myprintf(cs,"      client protocol %s, relay protocol %s\n",socket_type_name(tsi->client_protocol),socket_type_name(tsi->peer_protocol));
 				{
 					if(!tsi->local_addr_data.saddr[0])
 						addr_to_string(&(tsi->local_addr_data.addr),(u08bits*)tsi->local_addr_data.saddr);
@@ -978,7 +959,7 @@ static int run_cli_input(struct cli_session* cs, const char *buf0, unsigned int 
 		if(sl) {
 			cs->cmds += 1;
 			if(cli_password[0] && !(cs->auth_completed)) {
-				if(strcmp(cmd,cli_password)) {
+				if(check_password(cmd,cli_password)) {
 					if(cs->cmds>=CLI_PASSWORD_TRY_NUMBER) {
 						addr_debug_print(1, &(cs->addr),"CLI authentication error");
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"CLI authentication error\n");
@@ -1263,14 +1244,14 @@ void setup_admin_thread(void)
 
 		addr_set_port(&cli_addr,cli_port);
 
-		adminserver.listen_fd = socket(cli_addr.ss.sa_family, SOCK_STREAM, 0);
+		adminserver.listen_fd = socket(cli_addr.ss.sa_family, ADMIN_STREAM_SOCKET_TYPE, ADMIN_STREAM_SOCKET_PROTOCOL);
 		if (adminserver.listen_fd < 0) {
 			perror("socket");
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot open CLI socket\n");
 			return;
 		}
 
-		if(addr_bind(adminserver.listen_fd,&cli_addr,1)<0) {
+		if(addr_bind(adminserver.listen_fd,&cli_addr,1,1)<0) {
 			perror("Cannot bind CLI socket to addr");
 			char saddr[129];
 			addr_to_string(&cli_addr,(u08bits*)saddr);
@@ -2195,13 +2176,13 @@ static int https_print_session(ur_map_key_type key, ur_map_value_type value, voi
 			const char *pn=csarg->client_protocol;
 			if(pn[0]) {
 				if(!strcmp(pn,"TLS") || !strcmp(pn,"tls") || !strcmp(pn,"Tls")) {
-					if(tsi->client_protocol != TLS_SOCKET)
+					if((tsi->client_protocol != TLS_SOCKET)||(tsi->client_protocol != TLS_SCTP_SOCKET))
 						return 0;
 					} else if(!strcmp(pn,"DTLS") || !strcmp(pn,"dtls") || !strcmp(pn,"Dtls")) {
 						if(tsi->client_protocol != DTLS_SOCKET)
 							return 0;
 					} else if(!strcmp(pn,"TCP") || !strcmp(pn,"tcp") || !strcmp(pn,"Tcp")) {
-						if(tsi->client_protocol != TCP_SOCKET)
+						if((tsi->client_protocol != TCP_SOCKET)||(tsi->client_protocol != SCTP_SOCKET))
 							return 0;
 					} else if(!strcmp(pn,"UDP") || !strcmp(pn,"udp") || !strcmp(pn,"Udp")) {
 						if(tsi->client_protocol != UDP_SOCKET)
@@ -2241,9 +2222,9 @@ static int https_print_session(ur_map_key_type key, ur_map_value_type value, voi
 				str_buffer_append_sz(sb,(size_t)(tsi->expiration_time - csarg->ct));
 			}
 			str_buffer_append(sb,"</td><td>");
-			str_buffer_append(sb,pname(tsi->client_protocol));
+			str_buffer_append(sb,socket_type_name(tsi->client_protocol));
 			str_buffer_append(sb,"</td><td>");
-			str_buffer_append(sb,pname(tsi->peer_protocol));
+			str_buffer_append(sb,socket_type_name(tsi->peer_protocol));
 			str_buffer_append(sb,"</td><td>");
 			{
 				if(!tsi->local_addr_data.saddr[0])
@@ -3337,11 +3318,10 @@ static void handle_logon_request(ioa_socket_handle s, struct http_request* hr)
 		if(!(as->as_ok) && uname && pwd) {
 			const turn_dbdriver_t * dbd = get_dbdriver();
 			if (dbd && dbd->get_admin_user) {
-
 				password_t password;
 				char realm[STUN_MAX_REALM_SIZE+1]="\0";
 				if((*(dbd->get_admin_user))((const u08bits*)uname,(u08bits*)realm,password)>=0) {
-					if(!strcmp(pwd,(char*)password)) {
+					if(!check_password(pwd,(char*)password)) {
 						STRCPY(as->as_login,uname);
 						STRCPY(as->as_realm,realm);
 						as->as_eff_realm[0]=0;
@@ -3375,7 +3355,9 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 	if(turn_params.verbose) {
 		if(nbh) {
 			((char*)ioa_network_buffer_data(nbh))[ioa_network_buffer_get_size(nbh)] = 0;
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: HTTPS connection input: %s\n", __FUNCTION__, (char*)ioa_network_buffer_data(nbh));
+			if(!strstr((char*)ioa_network_buffer_data(nbh),"pwd")) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: HTTPS connection input: %s\n", __FUNCTION__, (char*)ioa_network_buffer_data(nbh));
+			}
 		} else {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: HTTPS connection initial input\n", __FUNCTION__);
 		}

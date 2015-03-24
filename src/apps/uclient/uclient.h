@@ -52,6 +52,7 @@ extern int clmessage_length;
 extern int do_not_use_channel;
 extern int clnet_verbose;
 extern int use_tcp;
+extern int use_sctp;
 extern int use_secure;
 extern char cert_file[1025];
 extern char pkey_file[1025];

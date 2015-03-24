@@ -175,6 +175,7 @@ pthread_testlib() {
 
     if [ "${SYSTEM}" = "DragonFly" ] ; then
 	OSLIBS="${OSLIBS} -pthread"
+	TURN_NO_SCTP=1
     fi
 
     ISBSD=`uname | grep -i bsd`
@@ -291,6 +292,10 @@ cleanup
 
 if [ -z "${ECHO_CMD}" ] ; then
 	ECHO_CMD=echo 
+fi
+
+if [ -z "${FIND_CMD}" ] ; then
+	FIND_CMD=find 
 fi
 
 if [ -z "${PORTNAME}" ] ; then
@@ -622,6 +627,7 @@ if [ "${SYSTEM}" = "SunOS" ] ; then
 # Solaris ? is this you ?!
     OSCFLAGS="${OSCFLAGS} -D__EXTENSIONS__ -D_XOPEN_SOURCE=500 -DTURN_NO_GETDOMAINNAME"
     OSLIBS="${OSLIBS} -lnsl"
+    TURN_NO_SCTP=1
 fi
 
 #########################
@@ -1157,12 +1163,49 @@ if [ -z "${LDCONFIG}" ] ; then
 	fi
 fi
 
+###############################
+# SCTP
+###############################
+
+if [ -z "${TURN_NO_SCTP}" ] ; then
+    if [ -z "${TURN_SCTP_INCLUDE}" ] ; then
+	if [ -f /usr/include/linux/sctp.h ] ; then
+	    TURN_SCTP_INCLUDE="-DTURN_SCTP_INCLUDE=\"\\\"/usr/include/linux/sctp.h\\\"\""
+	elif [ -f /usr/include/netinet/sctp.h ] ; then
+	    TURN_SCTP_INCLUDE="-DTURN_SCTP_INCLUDE=\"</usr/include/netinet/sctp.h>\""
+	else
+	    if ! [ "${PREFIX}" = "/usr" ] ; then
+		if ! [ "${PREFIX}" = "/usr/local" ] ; then
+		    TURN_SCTP_INCLUDE=`${FIND_CMD} ${PREFIX}/include/ -name sctp.h`
+		fi
+	    fi
+	    if [ -z "${TURN_SCTP_INCLUDE}" ] ; then
+		TURN_SCTP_INCLUDE=`${FIND_CMD} /usr/local/include/ -name sctp.h`
+	    fi
+	    if [ -z "${TURN_SCTP_INCLUDE}" ] ; then
+		TURN_SCTP_INCLUDE=`${FIND_CMD} /usr/include/ -name sctp.h`
+	    fi
+	    if [ -z "${TURN_SCTP_INCLUDE}" ] ; then
+		TURN_NO_SCTP="-DTURN_NO_SCTP"
+	    else
+		for ip in ${TURN_SCTP_INCLUDE} ; do
+		    TURN_SCTP_INCLUDE="-DTURN_SCTP_INCLUDE=\"\\\"${ip}\\\"\""
+		    break
+		done
+	    fi
+	fi
+    else
+	TURN_SCTP_INCLUDE="-DTURN_SCTP_INCLUDE=\"\\\"${TURN_SCTP_INCLUDE}\\\"\""
+    fi
+else
+    TURN_NO_SCTP="-DTURN_NO_SCTP"
+fi
 
 ###############################
 # So, what we have now:
 ###############################
 
-OSCFLAGS="${OSCFLAGS} ${TURN_NO_THREAD_BARRIERS} ${TURN_NO_DTLS} ${TURN_NO_GCM} ${TURN_NO_TLS} -DINSTALL_PREFIX=${PREFIX} -DTURNDB=${TURNDBDIR}/turndb"
+OSCFLAGS="${OSCFLAGS} ${TURN_NO_SCTP} ${TURN_SCTP_INCLUDE} ${TURN_NO_THREAD_BARRIERS} ${TURN_NO_DTLS} ${TURN_NO_GCM} ${TURN_NO_TLS} -DINSTALL_PREFIX=${PREFIX} -DTURNDB=${TURNDBDIR}/turndb"
 
 if ! [ -z "${TURN_ACCEPT_RPATH}" ] ; then
   if [ -z "${TURN_DISABLE_RPATH}" ] ; then

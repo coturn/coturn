@@ -229,7 +229,7 @@ int addr_connect(evutil_socket_t fd, const ioa_addr* addr, int *out_errno)
 	}
 }
 
-int addr_bind(evutil_socket_t fd, const ioa_addr* addr, int reusable)
+int addr_bind(evutil_socket_t fd, const ioa_addr* addr, int reusable, int debug)
 {
 	if (!addr || fd < 0) {
 
@@ -255,11 +255,13 @@ int addr_bind(evutil_socket_t fd, const ioa_addr* addr, int reusable)
 			return -1;
 		}
 		if(ret<0) {
-			int err = errno;
-			perror("bind");
-			char str[129];
-			addr_to_string(addr,(u08bits*)str);
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Trying to bind fd %d to <%s>: errno=%d\n", fd, str, err);
+			if(debug) {
+				int err = errno;
+				perror("bind");
+				char str[129];
+				addr_to_string(addr,(u08bits*)str);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Trying to bind fd %d to <%s>: errno=%d\n", fd, str, err);
+			}
 		}
 		return ret;
 	}

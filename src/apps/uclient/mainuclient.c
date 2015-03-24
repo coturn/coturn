@@ -55,6 +55,7 @@ int do_not_use_channel=0;
 int c2c=0;
 int clnet_verbose=TURN_VERBOSE_NONE;
 int use_tcp=0;
+int use_sctp=0;
 int use_secure=0;
 int hang_on=0;
 ioa_addr peer_addr;
@@ -112,8 +113,9 @@ static char Usage[] =
   "Usage: uclient [flags] [options] turn-server-ip-address\n"
   "Flags:\n"
   "	-t	TCP (default - UDP).\n"
+  "	-b	SCTP (default - UDP).\n"
   "	-T	TCP relay transport (default - UDP). Implies options -t, -y, -c, and ignores \n"
-  "		options -s, -e, -r and -g.\n"
+  "		options -s, -e, -r and -g. Can be used together with -b\n"
   "	-P	Passive TCP (RFC6062 with active peer). Implies -T.\n"
   "	-S	Secure connection: TLS for TCP, DTLS for UDP.\n"
   "	-U	Secure connection with eNULL cipher.\n"
@@ -218,7 +220,7 @@ int main(int argc, char **argv)
 
 	ns_bzero(local_addr, sizeof(local_addr));
 
-	while ((c = getopt(argc, argv, "a:d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:E:F:o:ZvsyhcxXgtTSAPDNOUHYKMRIGBJ")) != -1) {
+	while ((c = getopt(argc, argv, "a:d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:E:F:o:bZvsyhcxXgtTSAPDNOUHYKMRIGBJ")) != -1) {
 		switch (c){
 		case 'J': {
 
@@ -364,6 +366,10 @@ int main(int argc, char **argv)
 			c2c = 1;
 			break;
 		case 't':
+			use_tcp = 1;
+			break;
+		case 'b':
+			use_sctp = 1;
 			use_tcp = 1;
 			break;
 		case 'P':
