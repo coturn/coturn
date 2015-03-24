@@ -1,3 +1,9 @@
+coturn (4.4.4.1-2) unstable; urgency=low
+
+  * sctp example script added to install
+
+ -- Oleg Moskalenko <mom040267@gmail.com>  Mon, 23 Mar 2015 23:44:00 -0700
+
 coturn (4.4.4.1-1) unstable; urgency=low
 
   * Sync to 4.4.4.1: SCTP support and encrypted admin passwords support.

@@ -45,6 +45,7 @@ examples/scripts/longtermsecure/secure_tls_client_c2c_tcp_relay.sh usr/share/cot
 examples/scripts/longtermsecure/secure_tls_client.sh usr/share/coturn/examples/scripts/longtermsecure
 examples/scripts/longtermsecure/secure_udp_c2c.sh usr/share/coturn/examples/scripts/longtermsecure
 examples/scripts/longtermsecure/secure_udp_client.sh usr/share/coturn/examples/scripts/longtermsecure
+examples/scripts/longtermsecure/secure_sctp_client.sh usr/share/coturn/examples/scripts/longtermsecure
 examples/scripts/longtermsecuredb/secure_relay_with_db_psql.sh usr/share/coturn/examples/scripts/longtermsecuredb
 examples/scripts/longtermsecuredb/secure_relay_with_db_mysql.sh usr/share/coturn/examples/scripts/longtermsecuredb
 examples/scripts/longtermsecuredb/secure_relay_with_db_mysql_ssl.sh usr/share/coturn/examples/scripts/longtermsecuredb
