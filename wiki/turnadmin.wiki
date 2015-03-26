@@ -44,6 +44,10 @@
  * *--user-quota* Set value of realm's user-quota parameter. _Setting to zero value means removal of the option._
  * *-h,* *--help* Help.
 
+===Generate an encrypted form of a password:===
+{{{
+       $ turnadmin -P -p <password>
+}}}
 ===Generate a key:===
 {{{
        $ turnadmin -k -u <username> -r <realm> -p <password>
