@@ -1,5 +1,5 @@
 #summary Difference between rfc5766-turn-server and coturn.
-#labels Version-4.4.1.1
+#labels Version-4.4.4.1
 
 = Introduction =
 
@@ -63,3 +63,7 @@ Because there is no popular use case for the short-term credentials mechanism in
 == Coturn has HTTPS Web admin interface ==
 
 Both rfc5766-turn-server and coturn provide telnet-based CLI admin interface. But only Coturn has web admin interface.
+
+== Coturn supports SCTP ==
+
+Experimental implementation of 'native' SCTP added to the client-side communications.
