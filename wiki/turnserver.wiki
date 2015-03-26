@@ -399,7 +399,7 @@ CREATE TABLE oauth_key (
 # 
 # The password may be stored in encrypted form
 # $5$<...salt...>$<...sha256(salt+password)...>
-# The encrypted form can be generated with turn_admin utility.
+# The encrypted form can be generated with turnadmin utility.
 #
 CREATE TABLE admin_user (
 	name varchar(32),
