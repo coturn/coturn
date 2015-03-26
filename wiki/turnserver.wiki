@@ -163,7 +163,7 @@ The "white" and "black" peer IP ranges can be dynamically changed in the databas
     *   *--proc-group*	Group name to run the process. After the initialization, the turnserver process will make an attempt to change the current group ID to that group.
     *   *--cli-ip* Local system IP address to be used for CLI management interface. The turnserver process accepts telnet client connections at this IP address and on the CLI port (see the next parameter). Default IP value is 127.0.0.1, port 5766. You can use telnet or putty (in telnet mode) to access the CLI management interface. See also the parameter *--no-cli*.
     *   *--cli-port* CLI management interface listening port. Default is 5766.
-    *   *--cli-password* CLI access password. Default is empty (no password).
+    *   *--cli-password* CLI access password. Default is empty (no password). For the security reasons, it is recommended to use the encrypted form of the password (see the -P command in the turnadmin utility). The dollar signs in the encrypted form must be escaped.
     *   *--cli-max-output-sessions* Maximum number of output sessions in ps CLI command. This value can be changed on-the-fly in CLI. The default value is 256.
     *   *--ne=[1|2|3]* Set network engine type for the process (for internal purposes).
     
