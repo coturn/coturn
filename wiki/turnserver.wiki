@@ -1,5 +1,5 @@
 #summary turnserver wiki page
-#labels Version-4.4.2.2
+#labels Version-4.4.4.1
 
 ==turnserver application: a TURN relay server implementation==
 
@@ -396,6 +396,10 @@ CREATE TABLE oauth_key (
 # Https access admin users.
 # Leave this table empty if you do not want 
 # remote https access to the admin functions.
+# 
+# The password may be stored in encrypted form
+# $5$<...salt...>$<...sha256(salt+password)...>
+# The encrypted form can be generated with turn_admin utility.
 #
 CREATE TABLE admin_user (
 	name varchar(32),
@@ -448,8 +452,9 @@ sadd turn/realm/crinna.org/denied-peer-ip "123::77"
 hmset turn/oauth/kid/north ikm_key 'Y2FybGVvbg==' hkdf_hash_func 'SHA-256' as_rs_alg 'AES-256-CBC' auth_alg 'HMAC-SHA-256-128'
 hmset turn/oauth/kid/oldempire ikm_key 'YXVsY3Vz' hkdf_hash_func 'SHA-256' as_rs_alg 'AEAD-AES-256-GCM'
 
-hmset turn/admin_user/skarling realm 'north.gov' password 'hoodless'
-hmset turn/admin_user/bayaz password 'magi'
+hmset turn/admin_user/skarling realm 'north.gov' password '\$5\$6fc35c3b0c7d4633\$27fca7574f9b79d0cb93ae03e45379470cbbdfcacdd6401f97ebc620f31f54f2'
+hmset turn/admin_user/bayaz password '\$5\$e018513e9de69e73\$5cbdd2e29e04ca46aeb022268a7460d3a3468de193dcb2b95f064901769f455f'
+
 save
 
 !
