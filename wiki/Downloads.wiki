@@ -1,14 +1,13 @@
 #summary Downloads Page
-#labels Version-4.4.2.3,Featured
+#labels Version-4.4.4.1,Featured
 
-== Latest official recommended version - 4.4.2.3: ==
+== Latest official recommended version - 4.4.4.1: ==
 
-  * bandwidth control fixed;
-  * STUN/TURN control traffic counted separately from data traffic, for the sake of the bandwidth control;
-  * higher bandwidth limit capacity on 64 bits systems;
-  * redis operations with the realm options fixed;
+  * 'native' SCTP support (experimental);
+  * option of encrypted stored passwords for web admin users;
+  * option of encrypted stored password for CLI user;
 
-[http://turnserver.open-sys.org/downloads/v4.4.2.3/ 4.4.2.3 Version Downloads (full source and platform builds)]
+[http://turnserver.open-sys.org/downloads/v4.4.4.1/ 4.4.4.1 Version Downloads (full source and platform builds)]
 
 [http://turnserver.open-sys.org/downloads/ Main Downloads Page (with all recent versions)]
 
@@ -17,6 +16,16 @@
 [http://turnserver.open-sys.org/downloads/extradocs/ Extra Docs ]
 
 == Older versions ==
+
+=== 4.4.2.3: ===
+
+  * bandwidth control fixed;
+  * STUN/TURN control traffic counted separately from data traffic, for the sake of the bandwidth control;
+  * higher bandwidth limit capacity on 64 bits systems;
+  * redis operations with the realm options fixed;
+
+
+[http://turnserver.open-sys.org/downloads/v4.4.2.3/ v4.4.2.3]
 
 === 4.4.2.2: ===
 
