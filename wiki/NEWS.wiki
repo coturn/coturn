@@ -1,5 +1,12 @@
 #summary News log
-#labels Version-4.4.1.2
+#labels Version-4.4.4.1
+
+== 03/25/2015 ==
+=== Version 4.4.4.1 ===
+
+SCTP supported.
+
+Encrypted form of admin passwords supported.
 
 == 02/01/2015 ==
 === Version 4.4.1.2 ===
