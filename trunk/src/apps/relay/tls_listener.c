@@ -143,7 +143,7 @@ static void sctp_server_input_handler(struct evconnlistener *l, evutil_socket_t 
 
 	ns_bcopy(sa,&(server->sm.m.sm.nd.src_addr),socklen);
 
-	addr_debug_print(server->verbose, &(server->sm.m.sm.nd.src_addr),"tcp or tls connected to");
+	addr_debug_print(server->verbose, &(server->sm.m.sm.nd.src_addr),"sctp or tls/sctp connected to");
 
 	SOCKET_TYPE st = TENTATIVE_SCTP_SOCKET;
 
