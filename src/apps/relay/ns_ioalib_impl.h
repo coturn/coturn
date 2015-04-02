@@ -299,7 +299,7 @@ int ssl_read(evutil_socket_t fd, SSL* ssl, ioa_network_buffer_handle nbh, int ve
 int set_raw_socket_ttl_options(evutil_socket_t fd, int family);
 int set_raw_socket_tos_options(evutil_socket_t fd, int family);
 
-int set_socket_options_fd(evutil_socket_t fd, int tcp, int family);
+int set_socket_options_fd(evutil_socket_t fd, SOCKET_TYPE st, int family);
 int set_socket_options(ioa_socket_handle s);
 
 int send_session_cancellation_to_relay(turnsession_id sid);
