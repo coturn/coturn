@@ -213,7 +213,7 @@ static int create_server_listener(tls_listener_relay_server_type* server) {
   	 int addr_bind_cycle = 0;
   	 retry_addr_bind:
 
-  	 if(addr_bind(tls_listen_fd,&server->addr,1,1)<0) {
+  	 if(addr_bind(tls_listen_fd,&server->addr,1,1,TCP_SOCKET)<0) {
   		perror("Cannot bind local socket to addr");
   		char saddr[129];
   		addr_to_string(&server->addr,(u08bits*)saddr);
@@ -228,7 +228,7 @@ static int create_server_listener(tls_listener_relay_server_type* server) {
   	 }
    }
 
-  socket_tcp_set_keepalive(tls_listen_fd);
+  socket_tcp_set_keepalive(tls_listen_fd,TCP_SOCKET);
 
   socket_set_nonblocking(tls_listen_fd);
 
@@ -275,12 +275,12 @@ static int sctp_create_server_listener(tls_listener_relay_server_type* server) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Cannot bind listener socket to device %s\n",server->ifname);
   }
 
-  if(addr_bind(tls_listen_fd,&server->addr,1,0)<0) {
+  if(addr_bind(tls_listen_fd,&server->addr,1,0,SCTP_SOCKET)<0) {
 	  close(tls_listen_fd);
 	  return -1;
   }
 
-  socket_tcp_set_keepalive(tls_listen_fd);
+  socket_tcp_set_keepalive(tls_listen_fd,SCTP_SOCKET);
 
   socket_set_nonblocking(tls_listen_fd);
 

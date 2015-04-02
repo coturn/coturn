@@ -263,7 +263,7 @@ static int run_stunclient(const char* rip, int rport, int *port, int *rfc5780, i
 			err(-1, NULL);
 
 		if (!addr_any(&real_local_addr)) {
-			if (addr_bind(udp_fd, &real_local_addr,0,1) < 0)
+			if (addr_bind(udp_fd, &real_local_addr,0,1,UDP_SOCKET) < 0)
 				err(-1, NULL);
 		}
 	}
@@ -276,7 +276,7 @@ static int run_stunclient(const char* rip, int rport, int *port, int *rfc5780, i
 
 		addr_set_port(&real_local_addr, response_port);
 
-		if (addr_bind(new_udp_fd, &real_local_addr,0,1) < 0)
+		if (addr_bind(new_udp_fd, &real_local_addr,0,1,UDP_SOCKET) < 0)
 			err(-1, NULL);
 	}
 

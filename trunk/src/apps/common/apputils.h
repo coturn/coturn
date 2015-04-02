@@ -37,6 +37,7 @@
 
 #include "ns_turn_ioaddr.h"
 #include "ns_turn_msg_defs.h"
+#include "ns_turn_ioalib.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -173,14 +174,14 @@ void read_spare_buffer(evutil_socket_t fd);
 
 int set_sock_buf_size(evutil_socket_t fd, int sz);
 
-int socket_set_reusable(evutil_socket_t fd, int reusable);
+int socket_set_reusable(evutil_socket_t fd, int reusable, SOCKET_TYPE st);
 int sock_bind_to_device(evutil_socket_t fd, const unsigned char* ifname);
 int socket_set_nonblocking(evutil_socket_t fd);
-int socket_tcp_set_keepalive(evutil_socket_t fd);
+int socket_tcp_set_keepalive(evutil_socket_t fd, SOCKET_TYPE st);
 
 int addr_connect(evutil_socket_t fd, const ioa_addr* addr, int *out_errno);
 
-int addr_bind(evutil_socket_t fd, const ioa_addr* addr, int reusable, int debug);
+int addr_bind(evutil_socket_t fd, const ioa_addr* addr, int reusable, int debug, SOCKET_TYPE st);
 
 int addr_get_from_sock(evutil_socket_t fd, ioa_addr *addr);
 

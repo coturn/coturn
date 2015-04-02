@@ -56,6 +56,10 @@
 #include <sys/stat.h>
 #include <sys/resource.h>
 
+#if !defined(TURN_NO_SCTP) && defined(TURN_SCTP_INCLUDE)
+#include TURN_SCTP_INCLUDE
+#endif
+
 /************************/
 
 int IS_TURN_SERVER = 0;
@@ -119,16 +123,18 @@ int set_sock_buf_size(evutil_socket_t fd, int sz0)
 	return 0;
 }
 
-int socket_tcp_set_keepalive(evutil_socket_t fd)
+int socket_tcp_set_keepalive(evutil_socket_t fd,SOCKET_TYPE st)
 {
+	UNUSED_ARG(st);
+
 #ifdef SO_KEEPALIVE
     /* Set the keepalive option active */
-    {
-	    int on = 1;
-	    setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, (const void*)&on, (socklen_t) sizeof(on));
-    }
+	{
+		int on = 1;
+		setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, (const void*)&on, (socklen_t) sizeof(on));
+	}
 #else
-    UNUSED_ARG(fd);
+		UNUSED_ARG(fd);
 #endif
 
 #ifdef SO_NOSIGPIPE
@@ -141,8 +147,9 @@ int socket_tcp_set_keepalive(evutil_socket_t fd)
     return 0;
 }
 
-int socket_set_reusable(evutil_socket_t fd, int flag)
+int socket_set_reusable(evutil_socket_t fd, int flag, SOCKET_TYPE st)
 {
+	UNUSED_ARG(st);
 
 	if (fd < 0)
 		return -1;
@@ -167,6 +174,17 @@ int socket_set_reusable(evutil_socket_t fd, int flag)
 			int ret = setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (const void*) &on, (socklen_t) sizeof(on));
 			if (ret < 0)
 				perror("SO_REUSEADDR");
+		}
+#endif
+
+#if defined(SCTP_REUSE_PORT)
+		if (use_reuseaddr) {
+			if((st == SCTP_SOCKET)||(st==TLS_SCTP_SOCKET)||(st==TENTATIVE_SCTP_SOCKET)) {
+				int on = flag;
+				int ret = setsockopt(fd, IPPROTO_SCTP, SCTP_REUSE_PORT, (const void*) &on, (socklen_t) sizeof(on));
+				if (ret < 0)
+					perror("SCTP_REUSE_PORT");
+			}
 		}
 #endif
 
@@ -229,7 +247,7 @@ int addr_connect(evutil_socket_t fd, const ioa_addr* addr, int *out_errno)
 	}
 }
 
-int addr_bind(evutil_socket_t fd, const ioa_addr* addr, int reusable, int debug)
+int addr_bind(evutil_socket_t fd, const ioa_addr* addr, int reusable, int debug, SOCKET_TYPE st)
 {
 	if (!addr || fd < 0) {
 
@@ -239,7 +257,7 @@ int addr_bind(evutil_socket_t fd, const ioa_addr* addr, int reusable, int debug)
 
 		int ret = -1;
 
-		socket_set_reusable(fd, reusable);
+		socket_set_reusable(fd, reusable, st);
 
 		if (addr->ss.sa_family == AF_INET) {
 			do {
