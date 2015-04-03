@@ -823,7 +823,7 @@ int set_socket_options_fd(evutil_socket_t fd, SOCKET_TYPE st, int family)
 
 	set_sock_buf_size(fd,UR_CLIENT_SOCK_BUF_SIZE);
 
-	if(is_stream_socket(st)) {
+	if(is_tcp_socket(st)) { /* <<== FREEBSD fix */
 		struct linger so_linger;
 		so_linger.l_onoff = 1;
 		so_linger.l_linger = 0;
@@ -869,7 +869,7 @@ int set_socket_options_fd(evutil_socket_t fd, SOCKET_TYPE st, int family)
 
 		int flag = 1;
 
-		if((st == TENTATIVE_TCP_SOCKET)||(st == TCP_SOCKET)||(st == TLS_SOCKET)) {
+		if(is_tcp_socket(st)) {
 			setsockopt(fd, /* socket affected */
 				IPPROTO_TCP, /* set option at TCP level */
 				TCP_NODELAY, /* name of option */
@@ -878,7 +878,7 @@ int set_socket_options_fd(evutil_socket_t fd, SOCKET_TYPE st, int family)
 		} else {
 #if defined(SCTP_NODELAY)
 			setsockopt(fd, /* socket affected */
-						IPPROTO_SCTP, /* set option at TCP level */
+						IPPROTO_SCTP, /* set option at SCTP level */
 						SCTP_NODELAY, /* name of option */
 						(char*)&flag, /* value */
 						sizeof(int)); /* length of option value */
@@ -905,46 +905,6 @@ int set_socket_options(ioa_socket_handle s)
 	s->current_tos = s->default_tos;
 
 	return 0;
-}
-
-int is_stream_socket(int st) {
-	switch(st) {
-	case TCP_SOCKET:
-	case TLS_SOCKET:
-	case TENTATIVE_TCP_SOCKET:
-	case SCTP_SOCKET:
-	case TLS_SCTP_SOCKET:
-	case TENTATIVE_SCTP_SOCKET:
-		return 1;
-	default:
-		;
-	}
-	return 0;
-}
-
-const char* socket_type_name(SOCKET_TYPE st)
-{
-	switch(st) {
-	case TCP_SOCKET:
-		return "TCP";
-	case SCTP_SOCKET:
-		return "SCTP";
-	case UDP_SOCKET:
-		return "UDP";
-	case TLS_SOCKET:
-		return "TLS/TCP";
-	case TLS_SCTP_SOCKET:
-		return "TLS/SCTP";
-	case DTLS_SOCKET:
-		return "DTLS";
-	case TENTATIVE_TCP_SOCKET:
-		return "TLS/TCP ?";
-	case TENTATIVE_SCTP_SOCKET:
-		return "TLS/SCTP ?";
-	default:
-		;
-	};
-	return "UNKNOWN";
 }
 
 /* <<== Socket options helpers */
@@ -3171,6 +3131,11 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 									s->tobeclosed = 1;
 									s->broken = 1;
 								}
+								/*
+								bufferevent_flush(s->bev,
+												EV_READ|EV_WRITE,
+												BEV_FLUSH);
+												*/
 								s->in_write = 0;
 							} else {
 								//drop the packet

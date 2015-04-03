@@ -161,13 +161,6 @@ int socket_set_reusable(evutil_socket_t fd, int flag, SOCKET_TYPE st)
 		int use_reuseaddr = 1;
 #endif
 
-#if defined(SO_REUSEPORT)
-		if (use_reuseaddr) {
-			int on = flag;
-			setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, (const void*) &on, (socklen_t) sizeof(on));
-		}
-#endif
-
 #if defined(SO_REUSEADDR)
 		if (use_reuseaddr) {
 			int on = flag;
@@ -177,14 +170,23 @@ int socket_set_reusable(evutil_socket_t fd, int flag, SOCKET_TYPE st)
 		}
 #endif
 
+#if !defined(TURN_NO_SCTP)
 #if defined(SCTP_REUSE_PORT)
 		if (use_reuseaddr) {
-			if((st == SCTP_SOCKET)||(st==TLS_SCTP_SOCKET)||(st==TENTATIVE_SCTP_SOCKET)) {
+			if(is_sctp_socket(st)) {
 				int on = flag;
 				int ret = setsockopt(fd, IPPROTO_SCTP, SCTP_REUSE_PORT, (const void*) &on, (socklen_t) sizeof(on));
 				if (ret < 0)
 					perror("SCTP_REUSE_PORT");
 			}
+		}
+#endif
+#endif
+
+#if defined(SO_REUSEPORT)
+		if (use_reuseaddr) {
+			int on = flag;
+			setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, (const void*) &on, (socklen_t) sizeof(on));
 		}
 #endif
 
@@ -432,6 +434,70 @@ int set_raw_socket_tos(evutil_socket_t fd, int family, int tos)
 	}
 
 	return 0;
+}
+
+int is_stream_socket(int st) {
+	switch(st) {
+	case TCP_SOCKET:
+	case TLS_SOCKET:
+	case TENTATIVE_TCP_SOCKET:
+	case SCTP_SOCKET:
+	case TLS_SCTP_SOCKET:
+	case TENTATIVE_SCTP_SOCKET:
+		return 1;
+	default:
+		;
+	}
+	return 0;
+}
+
+int is_tcp_socket(int st) {
+	switch(st) {
+	case TCP_SOCKET:
+	case TLS_SOCKET:
+	case TENTATIVE_TCP_SOCKET:
+		return 1;
+	default:
+		;
+	}
+	return 0;
+}
+
+int is_sctp_socket(int st) {
+	switch(st) {
+	case SCTP_SOCKET:
+	case TLS_SCTP_SOCKET:
+	case TENTATIVE_SCTP_SOCKET:
+		return 1;
+	default:
+		;
+	}
+	return 0;
+}
+
+const char* socket_type_name(SOCKET_TYPE st)
+{
+	switch(st) {
+	case TCP_SOCKET:
+		return "TCP";
+	case SCTP_SOCKET:
+		return "SCTP";
+	case UDP_SOCKET:
+		return "UDP";
+	case TLS_SOCKET:
+		return "TLS/TCP";
+	case TLS_SCTP_SOCKET:
+		return "TLS/SCTP";
+	case DTLS_SOCKET:
+		return "DTLS";
+	case TENTATIVE_TCP_SOCKET:
+		return "TLS/TCP ?";
+	case TENTATIVE_SCTP_SOCKET:
+		return "TLS/SCTP ?";
+	default:
+		;
+	};
+	return "UNKNOWN";
 }
 
 /////////////////// MTU /////////////////////////////////////////
