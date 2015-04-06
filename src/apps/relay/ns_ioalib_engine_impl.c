@@ -816,14 +816,14 @@ int set_raw_socket_tos_options(evutil_socket_t fd, int family)
 	return 0;
 }
 
-int set_socket_options_fd(evutil_socket_t fd, int tcp, int family)
+int set_socket_options_fd(evutil_socket_t fd, SOCKET_TYPE st, int family)
 {
 	if(fd<0)
 		return 0;
 
 	set_sock_buf_size(fd,UR_CLIENT_SOCK_BUF_SIZE);
 
-	if(tcp) {
+	if(is_tcp_socket(st)) { /* <<== FREEBSD fix */
 		struct linger so_linger;
 		so_linger.l_onoff = 1;
 		so_linger.l_linger = 0;
@@ -839,7 +839,7 @@ int set_socket_options_fd(evutil_socket_t fd, int tcp, int family)
 
 	socket_set_nonblocking(fd);
 
-	if (!tcp) {
+	if (!is_stream_socket(st)) {
 		set_raw_socket_ttl_options(fd, family);
 		set_raw_socket_tos_options(fd, family);
 
@@ -868,23 +868,24 @@ int set_socket_options_fd(evutil_socket_t fd, int tcp, int family)
 	} else {
 
 		int flag = 1;
-		if(setsockopt(fd, /* socket affected */
+
+		if(is_tcp_socket(st)) {
+			setsockopt(fd, /* socket affected */
 				IPPROTO_TCP, /* set option at TCP level */
 				TCP_NODELAY, /* name of option */
 				(char*)&flag, /* value */
-				sizeof(int))<0) { /* length of option value */
-
+				sizeof(int)); /* length of option value */
+		} else {
 #if defined(SCTP_NODELAY)
 			setsockopt(fd, /* socket affected */
-						IPPROTO_SCTP, /* set option at TCP level */
+						IPPROTO_SCTP, /* set option at SCTP level */
 						SCTP_NODELAY, /* name of option */
 						(char*)&flag, /* value */
 						sizeof(int)); /* length of option value */
 #endif
-
 		}
 
-		socket_tcp_set_keepalive(fd);
+		socket_tcp_set_keepalive(fd,st);
 	}
 
 	return 0;
@@ -895,7 +896,7 @@ int set_socket_options(ioa_socket_handle s)
 	if(!s || (s->parent_s))
 		return 0;
 
-	set_socket_options_fd(s->fd,is_stream_socket(s->st),s->family);
+	set_socket_options_fd(s->fd,s->st,s->family);
 
 	s->default_ttl = get_raw_socket_ttl(s->fd, s->family);
 	s->current_ttl = s->default_ttl;
@@ -904,46 +905,6 @@ int set_socket_options(ioa_socket_handle s)
 	s->current_tos = s->default_tos;
 
 	return 0;
-}
-
-int is_stream_socket(int st) {
-	switch(st) {
-	case TCP_SOCKET:
-	case TLS_SOCKET:
-	case TENTATIVE_TCP_SOCKET:
-	case SCTP_SOCKET:
-	case TLS_SCTP_SOCKET:
-	case TENTATIVE_SCTP_SOCKET:
-		return 1;
-	default:
-		;
-	}
-	return 0;
-}
-
-const char* socket_type_name(SOCKET_TYPE st)
-{
-	switch(st) {
-	case TCP_SOCKET:
-		return "TCP";
-	case SCTP_SOCKET:
-		return "SCTP";
-	case UDP_SOCKET:
-		return "UDP";
-	case TLS_SOCKET:
-		return "TLS/TCP";
-	case TLS_SCTP_SOCKET:
-		return "TLS/SCTP";
-	case DTLS_SOCKET:
-		return "DTLS";
-	case TENTATIVE_TCP_SOCKET:
-		return "TLS/TCP ?";
-	case TENTATIVE_SCTP_SOCKET:
-		return "TLS/SCTP ?";
-	default:
-		;
-	};
-	return "UNKNOWN";
 }
 
 /* <<== Socket options helpers */
@@ -998,7 +959,7 @@ static int bind_ioa_socket(ioa_socket_handle s, const ioa_addr* local_addr, int 
 
 	if (s && s->fd >= 0 && s->e && local_addr) {
 
-		int res = addr_bind(s->fd, local_addr, reusable,1);
+		int res = addr_bind(s->fd, local_addr, reusable,1,s->st);
 		if (res >= 0) {
 			s->bound = 1;
 			addr_cpy(&(s->local_addr), local_addr);
@@ -1656,7 +1617,7 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s)
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot bind udp server socket to device %s\n",(char*)(s->e->relay_ifname));
 			}
 
-			if(addr_bind(udp_fd,&(s->local_addr),1,1)<0) {
+			if(addr_bind(udp_fd,&(s->local_addr),1,1,UDP_SOCKET)<0) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot bind new detached udp server socket to local addr\n");
 				close(udp_fd);
 				return ret;
@@ -3170,6 +3131,11 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 									s->tobeclosed = 1;
 									s->broken = 1;
 								}
+								/*
+								bufferevent_flush(s->bev,
+												EV_READ|EV_WRITE,
+												BEV_FLUSH);
+												*/
 								s->in_write = 0;
 							} else {
 								//drop the packet

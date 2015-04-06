@@ -1702,5 +1702,27 @@ int check_integrity(app_ur_conn_info *clnet_info, stun_buffer *message)
 	return 0;
 }
 
+SOCKET_TYPE get_socket_type()
+{
+	if(use_sctp) {
+		if(use_secure) {
+			return TLS_SCTP_SOCKET;
+		} else {
+			return SCTP_SOCKET;
+		}
+	} else if(use_tcp) {
+		if(use_secure) {
+			return TLS_SOCKET;
+		} else {
+			return TCP_SOCKET;
+		}
+	} else {
+		if(use_secure) {
+			return DTLS_SOCKET;
+		} else {
+			return UDP_SOCKET;
+		}
+	}
+}
 ///////////////////////////////////////////
 

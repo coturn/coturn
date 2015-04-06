@@ -259,7 +259,7 @@ static int clnet_connect(uint16_t clnet_remote_port, const char *remote_address,
 			}
 		}
 
-		addr_bind(clnet_fd, &local_addr, 0, 1);
+		addr_bind(clnet_fd, &local_addr, 0, 1, get_socket_type());
 
 	} else if (strlen(local_address) > 0) {
 
@@ -267,7 +267,7 @@ static int clnet_connect(uint16_t clnet_remote_port, const char *remote_address,
 			    &local_addr) < 0)
 			return -1;
 
-		addr_bind(clnet_fd, &local_addr,0,1);
+		addr_bind(clnet_fd, &local_addr,0,1,get_socket_type());
 	}
 
 	if(clnet_info->is_peer) {
@@ -1597,7 +1597,7 @@ void tcp_data_connect(app_ur_session *elem, u32bits cid)
 
 	addr_set_port(&(elem->pinfo.tcp_conn[i]->tcp_data_local_addr),0);
 
-	addr_bind(clnet_fd, &(elem->pinfo.tcp_conn[i]->tcp_data_local_addr), 1, 1);
+	addr_bind(clnet_fd, &(elem->pinfo.tcp_conn[i]->tcp_data_local_addr), 1, 1, TCP_SOCKET);
 
 	addr_get_from_sock(clnet_fd,&(elem->pinfo.tcp_conn[i]->tcp_data_local_addr));
 
@@ -1625,7 +1625,7 @@ void tcp_data_connect(app_ur_session *elem, u32bits cid)
 
 	    	  addr_set_port(&(elem->pinfo.tcp_conn[i]->tcp_data_local_addr),0);
 
-	    	  addr_bind(clnet_fd, &(elem->pinfo.tcp_conn[i]->tcp_data_local_addr),1,1);
+	    	  addr_bind(clnet_fd, &(elem->pinfo.tcp_conn[i]->tcp_data_local_addr),1,1,TCP_SOCKET);
 
 	    	  addr_get_from_sock(clnet_fd,&(elem->pinfo.tcp_conn[i]->tcp_data_local_addr));
 
