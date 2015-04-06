@@ -1,3 +1,9 @@
+coturn (4.4.4.2-1) unstable; urgency=low
+
+  * SCTP fixes.
+
+ -- Oleg Moskalenko <mom040267@gmail.com>  Sun, 05 Apr 2015 21:24:55 -0700
+
 coturn (4.4.4.1-2) unstable; urgency=low
 
   * sctp example script added to install
