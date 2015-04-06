@@ -1,13 +1,11 @@
 #summary Downloads Page
-#labels Version-4.4.4.1,Featured
+#labels Version-4.4.4.2,Featured
 
-== Latest official recommended version - 4.4.4.1: ==
+== Latest official recommended version - 4.4.4.2: ==
 
-  * 'native' SCTP support (experimental);
-  * option of encrypted stored passwords for web admin users;
-  * option of encrypted stored password for CLI user;
+  * SCTP fixes: Issue 10 .
 
-[http://turnserver.open-sys.org/downloads/v4.4.4.1/ 4.4.4.1 Version Downloads (full source and platform builds)]
+[http://turnserver.open-sys.org/downloads/v4.4.4.2/ 4.4.4.2 Version Downloads (full source and platform builds)]
 
 [http://turnserver.open-sys.org/downloads/ Main Downloads Page (with all recent versions)]
 
@@ -16,6 +14,15 @@
 [http://turnserver.open-sys.org/downloads/extradocs/ Extra Docs ]
 
 == Older versions ==
+
+=== 4.4.4.1: ===
+
+  * 'native' SCTP support (experimental);
+  * option of encrypted stored passwords for web admin users;
+  * option of encrypted stored password for CLI user;
+
+
+[http://turnserver.open-sys.org/downloads/v4.4.4.1/ v4.4.4.1]
 
 === 4.4.2.3: ===
 
