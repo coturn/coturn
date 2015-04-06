@@ -1163,7 +1163,7 @@ static void cliserver_input_handler(struct evconnlistener *l, evutil_socket_t fd
 
 	clisession->rp = get_realm(NULL);
 
-	set_socket_options_fd(fd, 1, sa->sa_family);
+	set_socket_options_fd(fd, TCP_SOCKET, sa->sa_family);
 
 	clisession->fd = fd;
 
@@ -1251,7 +1251,7 @@ void setup_admin_thread(void)
 			return;
 		}
 
-		if(addr_bind(adminserver.listen_fd,&cli_addr,1,1)<0) {
+		if(addr_bind(adminserver.listen_fd,&cli_addr,1,1,TCP_SOCKET)<0) {
 			perror("Cannot bind CLI socket to addr");
 			char saddr[129];
 			addr_to_string(&cli_addr,(u08bits*)saddr);
@@ -1260,7 +1260,7 @@ void setup_admin_thread(void)
 			return;
 		}
 
-		socket_tcp_set_keepalive(adminserver.listen_fd);
+		socket_tcp_set_keepalive(adminserver.listen_fd,TCP_SOCKET);
 
 		socket_set_nonblocking(adminserver.listen_fd);
 

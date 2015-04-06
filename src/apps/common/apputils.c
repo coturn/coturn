@@ -56,6 +56,10 @@
 #include <sys/stat.h>
 #include <sys/resource.h>
 
+#if !defined(TURN_NO_SCTP) && defined(TURN_SCTP_INCLUDE)
+#include TURN_SCTP_INCLUDE
+#endif
+
 /************************/
 
 int IS_TURN_SERVER = 0;
@@ -119,16 +123,18 @@ int set_sock_buf_size(evutil_socket_t fd, int sz0)
 	return 0;
 }
 
-int socket_tcp_set_keepalive(evutil_socket_t fd)
+int socket_tcp_set_keepalive(evutil_socket_t fd,SOCKET_TYPE st)
 {
+	UNUSED_ARG(st);
+
 #ifdef SO_KEEPALIVE
     /* Set the keepalive option active */
-    {
-	    int on = 1;
-	    setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, (const void*)&on, (socklen_t) sizeof(on));
-    }
+	{
+		int on = 1;
+		setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, (const void*)&on, (socklen_t) sizeof(on));
+	}
 #else
-    UNUSED_ARG(fd);
+		UNUSED_ARG(fd);
 #endif
 
 #ifdef SO_NOSIGPIPE
@@ -141,8 +147,9 @@ int socket_tcp_set_keepalive(evutil_socket_t fd)
     return 0;
 }
 
-int socket_set_reusable(evutil_socket_t fd, int flag)
+int socket_set_reusable(evutil_socket_t fd, int flag, SOCKET_TYPE st)
 {
+	UNUSED_ARG(st);
 
 	if (fd < 0)
 		return -1;
@@ -154,19 +161,32 @@ int socket_set_reusable(evutil_socket_t fd, int flag)
 		int use_reuseaddr = 1;
 #endif
 
-#if defined(SO_REUSEPORT)
-		if (use_reuseaddr) {
-			int on = flag;
-			setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, (const void*) &on, (socklen_t) sizeof(on));
-		}
-#endif
-
 #if defined(SO_REUSEADDR)
 		if (use_reuseaddr) {
 			int on = flag;
 			int ret = setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (const void*) &on, (socklen_t) sizeof(on));
 			if (ret < 0)
 				perror("SO_REUSEADDR");
+		}
+#endif
+
+#if !defined(TURN_NO_SCTP)
+#if defined(SCTP_REUSE_PORT)
+		if (use_reuseaddr) {
+			if(is_sctp_socket(st)) {
+				int on = flag;
+				int ret = setsockopt(fd, IPPROTO_SCTP, SCTP_REUSE_PORT, (const void*) &on, (socklen_t) sizeof(on));
+				if (ret < 0)
+					perror("SCTP_REUSE_PORT");
+			}
+		}
+#endif
+#endif
+
+#if defined(SO_REUSEPORT)
+		if (use_reuseaddr) {
+			int on = flag;
+			setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, (const void*) &on, (socklen_t) sizeof(on));
 		}
 #endif
 
@@ -229,7 +249,7 @@ int addr_connect(evutil_socket_t fd, const ioa_addr* addr, int *out_errno)
 	}
 }
 
-int addr_bind(evutil_socket_t fd, const ioa_addr* addr, int reusable, int debug)
+int addr_bind(evutil_socket_t fd, const ioa_addr* addr, int reusable, int debug, SOCKET_TYPE st)
 {
 	if (!addr || fd < 0) {
 
@@ -239,7 +259,7 @@ int addr_bind(evutil_socket_t fd, const ioa_addr* addr, int reusable, int debug)
 
 		int ret = -1;
 
-		socket_set_reusable(fd, reusable);
+		socket_set_reusable(fd, reusable, st);
 
 		if (addr->ss.sa_family == AF_INET) {
 			do {
@@ -414,6 +434,70 @@ int set_raw_socket_tos(evutil_socket_t fd, int family, int tos)
 	}
 
 	return 0;
+}
+
+int is_stream_socket(int st) {
+	switch(st) {
+	case TCP_SOCKET:
+	case TLS_SOCKET:
+	case TENTATIVE_TCP_SOCKET:
+	case SCTP_SOCKET:
+	case TLS_SCTP_SOCKET:
+	case TENTATIVE_SCTP_SOCKET:
+		return 1;
+	default:
+		;
+	}
+	return 0;
+}
+
+int is_tcp_socket(int st) {
+	switch(st) {
+	case TCP_SOCKET:
+	case TLS_SOCKET:
+	case TENTATIVE_TCP_SOCKET:
+		return 1;
+	default:
+		;
+	}
+	return 0;
+}
+
+int is_sctp_socket(int st) {
+	switch(st) {
+	case SCTP_SOCKET:
+	case TLS_SCTP_SOCKET:
+	case TENTATIVE_SCTP_SOCKET:
+		return 1;
+	default:
+		;
+	}
+	return 0;
+}
+
+const char* socket_type_name(SOCKET_TYPE st)
+{
+	switch(st) {
+	case TCP_SOCKET:
+		return "TCP";
+	case SCTP_SOCKET:
+		return "SCTP";
+	case UDP_SOCKET:
+		return "UDP";
+	case TLS_SOCKET:
+		return "TLS/TCP";
+	case TLS_SCTP_SOCKET:
+		return "TLS/SCTP";
+	case DTLS_SOCKET:
+		return "DTLS";
+	case TENTATIVE_TCP_SOCKET:
+		return "TLS/TCP ?";
+	case TENTATIVE_SCTP_SOCKET:
+		return "TLS/SCTP ?";
+	default:
+		;
+	};
+	return "UNKNOWN";
 }
 
 /////////////////// MTU /////////////////////////////////////////

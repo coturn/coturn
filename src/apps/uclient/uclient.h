@@ -112,6 +112,8 @@ int check_integrity(app_ur_conn_info *clnet_info, stun_buffer *message);
 
 void recalculate_restapi_hmac(SHATYPE st);
 
+SOCKET_TYPE get_socket_type(void);
+
 ////////////////////////////////////////////
 
 #ifdef __cplusplus
