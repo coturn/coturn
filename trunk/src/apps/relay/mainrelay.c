@@ -1650,6 +1650,17 @@ static void print_features(unsigned long mfn)
 
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\n\n==== Show him the instruments, Practical Frost: ====\n\n");
 
+/*
+	Frost stepped forward and opened the polished case with a theatrical
+	flourish. It was a masterful piece of craftsmanship. As the lid was
+	pulled back, the many trays inside lifted and fanned out, displaying
+	Glokta’s tools in all their gruesome glory. There were blades of every
+	size and shape, needles curved and straight, bottles of oil and acid,
+	nails and screws, clamps and pliers, saws, hammers, chisels. Metal, wood
+	and glass glittered in the bright lamplight, all polished to mirror
+	brightness and honed to a murderous sharpness.
+*/
+
 #if !TLS_SUPPORTED
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS is not supported\n");
 #else
@@ -1660,13 +1671,28 @@ static void print_features(unsigned long mfn)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS is not supported\n");
 #else
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS supported\n");
+#if DTLSv1_2_SUPPORTED
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS 1.2 supported\n");
+#else
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS 1.2 is not supported\n");
+#endif
+#endif
+
+#if ALPN_SUPPORTED
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TURN/STUN ALPN supported\n");
+#else
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TURN/STUN ALPN is not supported\n");
 #endif
 
 #if defined(TURN_NO_GCM)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "AEAD is not supported\n");
 #else
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "AEAD supported\n");
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "AEAD GCM supported\n");
 #endif
+
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "OpenSSL compile-time version: %s\n",OPENSSL_VERSION_TEXT);
+
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\n");
 
 #if !defined(TURN_NO_SQLITE)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "SQLite supported, default database location is %s\n",DEFAULT_USERDB_FILE);
@@ -1698,7 +1724,13 @@ static void print_features(unsigned long mfn)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "MongoDB is not supported\n");
 #endif
 
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "OpenSSL compile-time version: %s\n",OPENSSL_VERSION_TEXT);
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\n");
+
+#if !defined(TURN_NO_SCTP)
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "SCTP supported\n");
+#else
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "SCTP is not supported\n");
+#endif
 
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Default Net Engine version: %d (%s)\n\n=====================================================\n\n", (int)turn_params.net_engine_version, turn_params.net_engine_version_txt[(int)turn_params.net_engine_version]);
 
@@ -2657,7 +2689,7 @@ static void openssl_setup(void)
 #if DTLSv1_2_SUPPORTED
 		turn_params.dtls_ctx = SSL_CTX_new(DTLS_server_method());
 		turn_params.dtls_ctx_v1_2 = SSL_CTX_new(DTLSv1_2_server_method());
-		set_ctx(turn_params.dtls_ctx_v1_2,"DTLS1,2");
+		set_ctx(turn_params.dtls_ctx_v1_2,"DTLS1.2");
 		SSL_CTX_set_read_ahead(turn_params.dtls_ctx_v1_2, 1);
 #else
 		turn_params.dtls_ctx = SSL_CTX_new(DTLSv1_server_method());
