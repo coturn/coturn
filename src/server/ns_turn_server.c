@@ -1519,8 +1519,8 @@ static int handle_turn_refresh(turn_turnserver *server,
 				}
 			}
 				break;
-			case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY: /* <<== ??? */
-			case STUN_ATTRIBUTE_ADDITIONAL_ADDRESS_FAMILY: {
+			case STUN_ATTRIBUTE_ADDITIONAL_ADDRESS_FAMILY: /* deprecated, for backward compatibility with older versions of TURN-bis */
+			case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY: {
 				int af_req = stun_get_requested_address_family(sar);
 				{
 					int is_err = 0;

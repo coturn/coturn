@@ -668,7 +668,7 @@ static int clnet_allocate(int verbose,
 					field[1]=0;
 					field[2]=0;
 					field[3]=0;
-					stun_attr_add(&request_message, STUN_ATTRIBUTE_ADDITIONAL_ADDRESS_FAMILY, (const char*) field, 4);
+					stun_attr_add(&request_message, STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY, (const char*) field, 4);
 				}
 			}
 
