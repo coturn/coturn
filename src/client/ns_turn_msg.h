@@ -151,9 +151,9 @@ int stun_attr_get_addr_str(const u08bits *buf, size_t len, stun_attr_ref attr, i
 int stun_attr_get_first_addr_str(const u08bits *buf, size_t len, u16bits attr_type, ioa_addr* ca, const ioa_addr *default_addr);
 int stun_attr_add_channel_number_str(u08bits* buf, size_t *len, u16bits chnumber);
 int stun_attr_add_bandwidth_str(u08bits* buf, size_t *len, band_limit_t bps);
-int stun_attr_add_address_error_code(u08bits* buf, size_t *len, int requested_address_family, u08bits error_code);
+int stun_attr_add_address_error_code(u08bits* buf, size_t *len, int requested_address_family, int error_code);
 /* return +1 if present, 0 if not, -1 if error: */
-int stun_attr_get_address_error_code(u08bits* buf, size_t len, int *requested_address_family, u08bits *error_code);
+int stun_attr_get_address_error_code(u08bits* buf, size_t len, int *requested_address_family, int *error_code);
 u16bits stun_attr_get_first_channel_number_str(const u08bits *buf, size_t len);
 
 int stun_set_allocate_request_str(u08bits* buf, size_t *len, u32bits lifetime, int af4, int af6, u08bits transport, int mobile, const char* rt, int ep);
