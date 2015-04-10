@@ -1290,7 +1290,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 							if(af4res<0) {
 								set_relay_session_failure(alloc,AF_INET);
 								if(!err_code4) {
-									err_code4 = 437;
+									err_code4 = 440;
 								}
 							}
 						}
@@ -1303,7 +1303,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 							if(af6res<0) {
 								set_relay_session_failure(alloc,AF_INET6);
 								if(!err_code6) {
-									err_code6 = 437;
+									err_code6 = 440;
 								}
 							}
 						}
@@ -1405,12 +1405,12 @@ static int handle_turn_allocate(turn_turnserver *server,
 	if(*resp_constructed && !(*err_code)) {
 		if(err_code4) {
 			size_t len = ioa_network_buffer_get_size(nbh);
-			stun_attr_add_address_error_code(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4, (u08bits)err_code4);
+			stun_attr_add_address_error_code(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4, err_code4);
 			ioa_network_buffer_set_size(nbh,len);
 		}
 		if(err_code6) {
 			size_t len = ioa_network_buffer_get_size(nbh);
-			stun_attr_add_address_error_code(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6, (u08bits)err_code6);
+			stun_attr_add_address_error_code(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6, err_code6);
 			ioa_network_buffer_set_size(nbh,len);
 		}
 	}

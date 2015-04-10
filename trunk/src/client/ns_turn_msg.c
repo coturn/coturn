@@ -441,20 +441,20 @@ int stun_is_error_response_str(const u08bits* buf, size_t len, int *err_code, u0
     if(err_code) {
       stun_attr_ref sar = stun_attr_get_first_by_type_str(buf, len, STUN_ATTRIBUTE_ERROR_CODE);
       if(sar) {
-	if(stun_attr_get_len(sar)>=4) {
-	  const u08bits* val = (const u08bits*)stun_attr_get_value(sar);
-	  *err_code=(int)(val[2]*100 + val[3]);
-	  if(err_msg && err_msg_size>0) {
-	    err_msg[0]=0;
-	    if(stun_attr_get_len(sar)>4) { 
-	      size_t msg_len = stun_attr_get_len(sar) - 4;
-	      if(msg_len>(err_msg_size-1))
-		msg_len=err_msg_size - 1;
-	      ns_bcopy(val+4, err_msg, msg_len);
-	      err_msg[msg_len]=0;
-	    }
-	  }
-	}
+    	  if(stun_attr_get_len(sar)>=4) {
+    		  const u08bits* val = (const u08bits*)stun_attr_get_value(sar);
+    		  *err_code=(int)(val[2]*100 + val[3]);
+    		  if(err_msg && err_msg_size>0) {
+    			  err_msg[0]=0;
+    			  if(stun_attr_get_len(sar)>4) {
+    				  size_t msg_len = stun_attr_get_len(sar) - 4;
+    				  if(msg_len>(err_msg_size-1))
+    					  msg_len=err_msg_size - 1;
+    				  ns_bcopy(val+4, err_msg, msg_len);
+    				  err_msg[msg_len]=0;
+    			  }
+    		  }
+    	  }
       }
     }
     return 1;
@@ -608,17 +608,41 @@ static void stun_init_error_response_common_str(u08bits* buf, size_t *len,
 		case 401:
 			reason = (const u08bits *) "Unauthorized";
 			break;
+		case 403:
+			reason = (const u08bits *) "Forbidden";
+			break;
 		case 404:
 			reason = (const u08bits *) "Not Found";
 			break;
 		case 420:
 			reason = (const u08bits *) "Unknown Attribute";
 			break;
+		case 437:
+			reason = (const u08bits *) "Allocation Mismatch";
+			break;
 		case 438:
 			reason = (const u08bits *) "Stale Nonce";
 			break;
+		case 440:
+			reason = (const u08bits *) "Address Family not Supported";
+			break;
+		case 441:
+			reason = (const u08bits *) "Wrong Credentials";
+			break;
+		case 442:
+			reason = (const u08bits *) "Unsupported Transport Protocol";
+			break;
+		case 443:
+			reason = (const u08bits *) "Peer Address Family Mismatch";
+			break;
+		case 486:
+			reason = (const u08bits *) "Allocation Quota Reached";
+			break;
 		case 500:
 			reason = (const u08bits *) "Server Error";
+			break;
+		case 508:
+			reason = (const u08bits *) "Insufficient Capacity";
 			break;
 		default:
 			reason = (const u08bits *) "Unknown Error";
@@ -1426,17 +1450,51 @@ int stun_attr_add_bandwidth_str(u08bits* buf, size_t *len, band_limit_t bps0) {
 	return stun_attr_add_str(buf,len,STUN_ATTRIBUTE_NEW_BANDWIDTH,(u08bits*)(&field),sizeof(field));
 }
 
-int stun_attr_add_address_error_code(u08bits* buf, size_t *len, int requested_address_family, u08bits error_code)
+int stun_attr_add_address_error_code(u08bits* buf, size_t *len, int requested_address_family, int error_code)
 {
-	u08bits field[4];
-	field[0]=(u08bits)requested_address_family;
-	field[1]=error_code;
-	field[2]=0;
-	field[3]=0;
-	return stun_attr_add_str(buf,len,STUN_ATTRIBUTE_ADDRESS_ERROR_CODE,field,sizeof(field));
+	const u08bits *reason = NULL;
+
+	switch (error_code){
+	case 440:
+		reason = (const u08bits *) "Address Family not Supported";
+		break;
+	case 486:
+		reason = (const u08bits *) "Allocation Quota Reached";
+		break;
+	case 500:
+		reason = (const u08bits *) "Server Error";
+		break;
+	case 508:
+		reason = (const u08bits *) "Insufficient Capacity";
+		break;
+	default:
+		reason = (const u08bits *) "Unknown Error";
+		break;
+	};
+
+	u08bits avalue[513];
+	avalue[0] = (u08bits)requested_address_family;
+	avalue[1] = 0;
+	avalue[2] = (u08bits) (error_code / 100);
+	avalue[3] = (u08bits) (error_code % 100);
+	strncpy((s08bits*) (avalue + 4), (const s08bits*) reason, sizeof(avalue)-4);
+	avalue[sizeof(avalue)-1]=0;
+	int alen = 4 + strlen((const s08bits*) (avalue+4));
+
+	//"Manual" padding for compatibility with classic old stun:
+	{
+		int rem = alen % 4;
+		if(rem) {
+			alen +=(4-rem);
+		}
+	}
+
+	stun_attr_add_str(buf, len, STUN_ATTRIBUTE_ADDRESS_ERROR_CODE, (u08bits*) avalue, alen);
+
+	return 0;
 }
 
-int stun_attr_get_address_error_code(u08bits* buf, size_t len, int *requested_address_family, u08bits *error_code)
+int stun_attr_get_address_error_code(u08bits* buf, size_t len, int *requested_address_family, int *error_code)
 {
 	if(requested_address_family) {
 		*requested_address_family = 0;
@@ -1459,7 +1517,7 @@ int stun_attr_get_address_error_code(u08bits* buf, size_t len, int *requested_ad
 					*requested_address_family = value[0];
 				}
 				if(error_code) {
-					*error_code = value[1];
+					*error_code = (int)(value[2]*100+value[3]);
 				}
 				return 0;
 			}
