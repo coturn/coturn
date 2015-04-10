@@ -1,5 +1,6 @@
-4/6/2015 Oleg Moskalenko <mom040267@gmail.com>
-Version 4.4.4.3 'Ardee West':
+4/9/2015 Oleg Moskalenko <mom040267@gmail.com>
+Version 4.4.5.1 'Ardee West':
+	- dual allocation adjusted according to the new TURN-bis draft;
 	- C++ fixes;
 	- cosmetic fixes;
 

@@ -1247,7 +1247,7 @@ static int refresh_channel(app_ur_session* elem, u16bits method, uint32_t lt)
 				field[1]=0;
 				field[2]=0;
 				field[3]=0;
-				stun_attr_add(&message, STUN_ATTRIBUTE_ADDITIONAL_ADDRESS_FAMILY, (const char*) field, 4);
+				stun_attr_add(&message, STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY, (const char*) field, 4);
 			}
 		}
 
