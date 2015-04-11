@@ -484,29 +484,10 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, u08bits *u
 
 					switch(dot.enc_block.key_length) {
 					case SHA1SIZEBYTES:
-						if(turn_params.shatype != SHATYPE_SHA1) {
-							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong size of the MAC key in oAuth token(1): %d\n",(int)dot.enc_block.key_length);
-							return -1;
-						}
 						break;
 					case SHA256SIZEBYTES:
-						if(turn_params.shatype != SHATYPE_SHA256) {
-							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong size of the MAC key in oAuth token(2): %d\n",(int)dot.enc_block.key_length);
-							return -1;
-						}
-						break;
 					case SHA384SIZEBYTES:
-						if(turn_params.shatype != SHATYPE_SHA384) {
-							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong size of the MAC key in oAuth token(3): %d\n",(int)dot.enc_block.key_length);
-							return -1;
-						}
-						break;
 					case SHA512SIZEBYTES:
-						if(turn_params.shatype != SHATYPE_SHA512) {
-							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong size of the MAC key in oAuth token(3): %d\n",(int)dot.enc_block.key_length);
-							return -1;
-						}
-						break;
 					default:
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong size of the MAC key in oAuth token(3): %d\n",(int)dot.enc_block.key_length);
 						return -1;
@@ -518,7 +499,7 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, u08bits *u
 								ioa_network_buffer_get_size(nbh),
 								dot.enc_block.mac_key,
 								pwdtmp,
-								turn_params.shatype,NULL)>0) {
+								SHATYPE_DEFAULT)>0) {
 
 						turn_time_t lifetime = (turn_time_t)(dot.enc_block.lifetime);
 						if(lifetime) {
@@ -578,25 +559,11 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, u08bits *u
 			int sarlen = stun_attr_get_len(sar);
 			switch(sarlen) {
 			case SHA1SIZEBYTES:
-				if(turn_params.shatype != SHATYPE_SHA1)
-					return -1;
 				hmac_len = SHA1SIZEBYTES;
 				break;
 			case SHA256SIZEBYTES:
-				if(turn_params.shatype != SHATYPE_SHA256)
-					return -1;
-				hmac_len = SHA256SIZEBYTES;
-				break;
 			case SHA384SIZEBYTES:
-				if(turn_params.shatype != SHATYPE_SHA384)
-					return -1;
-				hmac_len = SHA384SIZEBYTES;
-				break;
 			case SHA512SIZEBYTES:
-				if(turn_params.shatype != SHATYPE_SHA512)
-					return -1;
-				hmac_len = SHA512SIZEBYTES;
-				break;
 			default:
 				return -1;
 			};
@@ -606,7 +573,7 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, u08bits *u
 				const char* secret = get_secrets_list_elem(&sl,sll);
 
 				if(secret) {
-					if(stun_calculate_hmac(usname, strlen((char*)usname), (const u08bits*)secret, strlen(secret), hmac, &hmac_len, turn_params.shatype)>=0) {
+					if(stun_calculate_hmac(usname, strlen((char*)usname), (const u08bits*)secret, strlen(secret), hmac, &hmac_len, SHATYPE_DEFAULT)>=0) {
 						size_t pwd_length = 0;
 						char *pwd = base64_encode(hmac,hmac_len,&pwd_length);
 
@@ -614,14 +581,14 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, u08bits *u
 							if(pwd_length<1) {
 								turn_free(pwd,strlen(pwd)+1);
 							} else {
-								if(stun_produce_integrity_key_str((u08bits*)usname, realm, (u08bits*)pwd, key, turn_params.shatype)>=0) {
+								if(stun_produce_integrity_key_str((u08bits*)usname, realm, (u08bits*)pwd, key, SHATYPE_DEFAULT)>=0) {
 
 									if(stun_check_message_integrity_by_key_str(TURN_CREDENTIALS_LONG_TERM,
 										ioa_network_buffer_data(nbh),
 										ioa_network_buffer_get_size(nbh),
 										key,
 										pwdtmp,
-										turn_params.shatype,NULL)>0) {
+										SHATYPE_DEFAULT)>0) {
 
 										ret = 0;
 									}
@@ -650,7 +617,7 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, u08bits *u
 	ur_string_map_unlock(turn_params.default_users_db.ram_db.static_accounts);
 
 	if(ret==0) {
-		size_t sz = get_hmackey_size(turn_params.shatype);
+		size_t sz = get_hmackey_size(SHATYPE_DEFAULT);
 		ns_bcopy(ukey,key,sz);
 		return 0;
 	}
@@ -762,7 +729,7 @@ int add_static_user_account(char *user)
 			hmackey_t *key = (hmackey_t*)turn_malloc(sizeof(hmackey_t));
 			if(strstr(s,"0x")==s) {
 				char *keysource = s + 2;
-				size_t sz = get_hmackey_size(turn_params.shatype);
+				size_t sz = get_hmackey_size(SHATYPE_DEFAULT);
 				if(strlen(keysource)<sz*2) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key format: %s\n",s);
 				} if(convert_string_key_to_binary(keysource, *key, sz)<0) {
@@ -773,7 +740,7 @@ int add_static_user_account(char *user)
 				}
 			} else {
 				//this is only for default realm
-				stun_produce_integrity_key_str((u08bits*)usname, (u08bits*)get_realm(NULL)->options.name, (u08bits*)s, *key, turn_params.shatype);
+				stun_produce_integrity_key_str((u08bits*)usname, (u08bits*)get_realm(NULL)->options.name, (u08bits*)s, *key, SHATYPE_DEFAULT);
 			}
 			{
 				ur_string_map_lock(turn_params.default_users_db.ram_db.static_accounts);
@@ -973,9 +940,9 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, u08b
 		must_set_admin_pwd(pwd);
 
 		{
-			stun_produce_integrity_key_str(user, realm, pwd, key, turn_params.shatype);
+			stun_produce_integrity_key_str(user, realm, pwd, key, SHATYPE_DEFAULT);
 			size_t i = 0;
-			size_t sz = get_hmackey_size(turn_params.shatype);
+			size_t sz = get_hmackey_size(SHATYPE_DEFAULT);
 			int maxsz = (int) (sz * 2) + 1;
 			char *s = skey;
 			for (i = 0; (i < sz) && (maxsz > 2); i++) {

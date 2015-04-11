@@ -315,7 +315,7 @@ static int mysql_get_user_key(u08bits *usname, u08bits *realm, hmackey_t key) {
 				if(row && row[0]) {
 					unsigned long *lengths = mysql_fetch_lengths(mres);
 					if(lengths) {
-						size_t sz = get_hmackey_size(turn_params.shatype)*2;
+						size_t sz = get_hmackey_size(SHATYPE_DEFAULT)*2;
 						if(lengths[0]<sz) {
 							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key format: string length=%d (must be %d): user %s\n",(int)lengths[0],(int)sz,usname);
 						} else {

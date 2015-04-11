@@ -117,7 +117,7 @@ LOW_DEFAULT_PORTS_BOUNDARY,HIGH_DEFAULT_PORTS_BOUNDARY,0,0,0,"",
 /////////////// stop server ////////////////
 0,
 /////////////// MISC PARAMS ////////////////
-0,0,0,0,0,SHATYPE_SHA1,':',0,0,TURN_CREDENTIALS_NONE,0,0,0,0,0,0,
+0,0,0,0,0,':',0,0,TURN_CREDENTIALS_NONE,0,0,0,0,0,0,
 ///////////// Users DB //////////////
 { (TURN_USERDB_TYPE)0, {"\0"}, {0,NULL, {NULL,0}} },
 ///////////// CPUs //////////////////
@@ -562,15 +562,6 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						/var/tmp/turnserver.pid .\n"
 " --secure-stun					Require authentication of the STUN Binding request.\n"
 "						By default, the clients are allowed anonymous access to the STUN Binding functionality.\n"
-" --sha256					Require SHA256 digest function to be used for the message integrity.\n"
-"						By default, the server SHA1 (as per TURN standard specs).\n"
-"						With this option, the server\n"
-"						requires the stronger SHA256 function. The client application must\n"
-"						support SHA256 hash function if this option is used. If the server obtains\n"
-"						a message from the client with a weaker (SHA1) hash function then the server\n"
-"						returns error code 426.\n"
-" --sha384					Require SHA384 digest function to be used for the message integrity.\n"
-" --sha512					Require SHA512 digest function to be used for the message integrity.\n"
 " --proc-user <user-name>			User name to run the turnserver process.\n"
 "						After the initialization, the turnserver process\n"
 "						will make an attempt to change the current user ID to that user.\n"
@@ -645,10 +636,6 @@ static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
 #if !defined(TURN_NO_SQLITE) || !defined(TURN_NO_PQ) || !defined(TURN_NO_MYSQL) || !defined(TURN_NO_MONGO) || !defined(TURN_NO_HIREDIS)
 	"	-o, --origin			Origin\n"
 #endif
-	"	-H, --sha256			Use SHA256 digest function to be used for the message integrity.\n"
-	"					By default, the server SHA1 (as per TURN standard specs).\n"
-	"	-Y, --sha384			Use SHA384 digest function to be used for the message integrity.\n"
-	"	-K, --sha512			Use SHA512 digest function to be used for the message integrity.\n"
 	"	--max-bps			Set value of realm's max-bps parameter.\n"
 	"					Setting to zero value means removal of the option.\n"
 	"	--total-quota			Set value of realm's total-quota parameter.\n"
@@ -698,9 +685,6 @@ enum EXTRA_OPTS {
 	SECURE_STUN_OPT,
 	CA_FILE_OPT,
 	DH_FILE_OPT,
-	SHA256_OPT,
-	SHA384_OPT,
-	SHA512_OPT,
 	NO_STUN_OPT,
 	PROC_USER_OPT,
 	PROC_GROUP_OPT,
@@ -823,9 +807,6 @@ static const struct myoption long_options[] = {
 				{ "secure-stun", optional_argument, NULL, SECURE_STUN_OPT },
 				{ "CA-file", required_argument, NULL, CA_FILE_OPT },
 				{ "dh-file", required_argument, NULL, DH_FILE_OPT },
-				{ "sha256", optional_argument, NULL, SHA256_OPT },
-				{ "sha384", optional_argument, NULL, SHA384_OPT },
-				{ "sha512", optional_argument, NULL, SHA512_OPT },
 				{ "proc-user", required_argument, NULL, PROC_USER_OPT },
 				{ "proc-group", required_argument, NULL, PROC_GROUP_OPT },
 				{ "mobility", optional_argument, NULL, MOBILITY_OPT },
@@ -880,9 +861,6 @@ static const struct myoption admin_long_options[] = {
 				{ "user", required_argument, NULL, 'u' },
 				{ "realm", required_argument, NULL, 'r' },
 				{ "password", required_argument, NULL, 'p' },
-				{ "sha256", no_argument, NULL, 'H' },
-				{ "sha384", no_argument, NULL, 'Y' },
-				{ "sha512", no_argument, NULL, 'K' },
 				{ "add-origin", no_argument, NULL, 'O' },
 				{ "del-origin", no_argument, NULL, 'R' },
 				{ "list-origins", required_argument, NULL, 'I' },
@@ -1045,18 +1023,6 @@ static void set_option(int c, char *value)
 		break;
 	case SECURE_STUN_OPT:
 		turn_params.secure_stun = get_bool_value(value);
-		break;
-	case SHA256_OPT:
-		if(get_bool_value(value))
-			turn_params.shatype = SHATYPE_SHA256;
-		break;
-	case SHA384_OPT:
-		if(get_bool_value(value))
-			turn_params.shatype = SHATYPE_SHA384;
-		break;
-	case SHA512_OPT:
-		if(get_bool_value(value))
-			turn_params.shatype = SHATYPE_SHA512;
 		break;
 	case NO_MULTICAST_PEERS_OPT:
 		turn_params.no_multicast_peers = get_bool_value(value);
@@ -1591,18 +1557,6 @@ static int adminmain(int argc, char **argv)
 				printf("%s\n",result);
 				exit(0);
 			}
-			break;
-		case 'H':
-			if(get_bool_value(optarg))
-				turn_params.shatype = SHATYPE_SHA256;
-			break;
-		case 'Y':
-			if(get_bool_value(optarg))
-				turn_params.shatype = SHATYPE_SHA384;
-			break;
-		case 'K':
-			if(get_bool_value(optarg))
-				turn_params.shatype = SHATYPE_SHA512;
 			break;
 		case 'h':
 			printf("\n%s\n", AdminUsage);

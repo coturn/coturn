@@ -118,7 +118,6 @@ struct _turn_turnserver {
 	vintp stun_only;
 	vintp no_stun;
 	vintp secure_stun;
-	SHATYPE shatype;
 	turn_credential_type ct;
 	get_alt_addr_cb alt_addr_cb;
 	send_message_cb sm_cb;
@@ -197,7 +196,6 @@ void init_turn_server(turn_turnserver* server,
 				    ip_range_list_t* ip_blacklist,
 				    send_socket_to_relay_cb send_socket_to_relay,
 				    vintp secure_stun,
-				    SHATYPE shatype,
 				    vintp mobility,
 				    int server_relay,
 				    send_turn_session_info_cb send_turn_session_info,

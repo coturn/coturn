@@ -439,7 +439,7 @@ static int redis_get_user_key(u08bits *usname, u08bits *realm, hmackey_t key) {
 				if (rget->type != REDIS_REPLY_NIL)
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", rget->type);
 			} else {
-				size_t sz = get_hmackey_size(turn_params.shatype);
+				size_t sz = get_hmackey_size(SHATYPE_DEFAULT);
 				if(strlen(rget->str)<sz*2) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key format: %s, user %s\n",rget->str,usname);
 				} else if(convert_string_key_to_binary(rget->str, key, sz)<0) {

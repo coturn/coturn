@@ -84,7 +84,7 @@ int negative_protocol_test = 0;
 int dos = 0;
 int random_disconnect = 0;
 
-SHATYPE shatype = SHATYPE_SHA1;
+SHATYPE shatype = SHATYPE_DEFAULT;
 
 int mobility = 0;
 
