@@ -467,7 +467,7 @@ int stun_is_challenge_response_str(const u08bits* buf, size_t len, int *err_code
 {
 	int ret = stun_is_error_response_str(buf, len, err_code, err_msg, err_msg_size);
 
-	if(ret && (((*err_code) == 401) || ((*err_code) == 438) || ((*err_code) == SHA_TOO_WEAK_ERROR_CODE))) {
+	if(ret && (((*err_code) == 401) || ((*err_code) == 438) )) {
 
 		stun_attr_ref sar = stun_attr_get_first_by_type_str(buf,len,STUN_ATTRIBUTE_REALM);
 		if(sar) {
@@ -1801,7 +1801,7 @@ void print_hmac(const char *name, const void *s, size_t len)
 /*
  * Return -1 if failure, 0 if the integrity is not correct, 1 if OK
  */
-int stun_check_message_integrity_by_key_str(turn_credential_type ct, u08bits *buf, size_t len, hmackey_t key, password_t pwd, SHATYPE shatype, int *too_weak)
+int stun_check_message_integrity_by_key_str(turn_credential_type ct, u08bits *buf, size_t len, hmackey_t key, password_t pwd, SHATYPE shatype)
 {
 	int res = 0;
 	u08bits new_hmac[MAXSHASIZE];
@@ -1817,41 +1817,21 @@ int stun_check_message_integrity_by_key_str(turn_credential_type ct, u08bits *bu
 	switch(sarlen) {
 	case SHA256SIZEBYTES:
 		shasize = SHA256SIZEBYTES;
-		if(shatype > SHATYPE_SHA256) {
-			if(too_weak)
-				*too_weak = 1;
-				return -1;
-		}
 		if(shatype != SHATYPE_SHA256)
 			return -1;
 		break;
 	case SHA384SIZEBYTES:
 		shasize = SHA384SIZEBYTES;
-		if(shatype > SHATYPE_SHA384) {
-			if(too_weak)
-				*too_weak = 1;
-				return -1;
-		}
 		if(shatype != SHATYPE_SHA384)
 			return -1;
 		break;
 	case SHA512SIZEBYTES:
 		shasize = SHA512SIZEBYTES;
-		if(shatype > SHATYPE_SHA512) {
-			if(too_weak)
-				*too_weak = 1;
-				return -1;
-		}
 		if(shatype != SHATYPE_SHA512)
 			return -1;
 		break;
 	case SHA1SIZEBYTES:
 		shasize = SHA1SIZEBYTES;
-		if(shatype > SHATYPE_SHA1) {
-			if(too_weak)
-				*too_weak = 1;
-			return -1;
-		}
 		if(shatype != SHATYPE_SHA1)
 			return -1;
 		break;
@@ -1903,7 +1883,7 @@ int stun_check_message_integrity_str(turn_credential_type ct, u08bits *buf, size
 	else if (stun_produce_integrity_key_str(uname, realm, upwd, key, shatype) < 0)
 		return -1;
 
-	return stun_check_message_integrity_by_key_str(ct, buf, len, key, pwd, shatype, NULL);
+	return stun_check_message_integrity_by_key_str(ct, buf, len, key, pwd, shatype);
 }
 
 /* RFC 5780 */

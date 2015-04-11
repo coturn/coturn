@@ -216,7 +216,7 @@ static int mongo_get_user_key(u08bits *usname, u08bits *realm, hmackey_t key) {
     if (mongoc_cursor_next(cursor, &item)) {
     	if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "hmackey") && BSON_ITER_HOLDS_UTF8(&iter)) {
         value = bson_iter_utf8(&iter, &length);
-				size_t sz = get_hmackey_size(turn_params.shatype) * 2;
+				size_t sz = get_hmackey_size(SHATYPE_DEFAULT) * 2;
 				if(length < sz) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key format: string length=%d (must be %d): user %s\n", (int)length, (int)sz, usname);
 				} else {

@@ -181,7 +181,7 @@ void print_bin_func(const char *name, size_t len, const void *s, const char *fun
 /*
  * Return -1 if failure, 0 if the integrity is not correct, 1 if OK
  */
-int stun_check_message_integrity_by_key_str(turn_credential_type ct, u08bits *buf, size_t len, hmackey_t key, password_t pwd, SHATYPE shatype, int *too_weak);
+int stun_check_message_integrity_by_key_str(turn_credential_type ct, u08bits *buf, size_t len, hmackey_t key, password_t pwd, SHATYPE shatype);
 int stun_check_message_integrity_str(turn_credential_type ct, u08bits *buf, size_t len, u08bits *uname, u08bits *realm, u08bits *upwd, SHATYPE shatype);
 int stun_attr_add_integrity_str(turn_credential_type ct, u08bits *buf, size_t *len, hmackey_t key, password_t pwd, SHATYPE shatype);
 int stun_attr_add_integrity_by_key_str(u08bits *buf, size_t *len, u08bits *uname, u08bits *realm, hmackey_t key, u08bits *nonce, SHATYPE shatype);

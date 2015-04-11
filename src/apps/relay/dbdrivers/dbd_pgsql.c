@@ -133,7 +133,7 @@ static int pgsql_get_user_key(u08bits *usname, u08bits *realm, hmackey_t key) {
 			char *kval = PQgetvalue(res,0,0);
 			int len = PQgetlength(res,0,0);
 			if(kval) {
-				size_t sz = get_hmackey_size(turn_params.shatype);
+				size_t sz = get_hmackey_size(SHATYPE_DEFAULT);
 				if(((size_t)len<sz*2)||(strlen(kval)<sz*2)) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key format: %s, user %s\n",kval,usname);
 				} else if(convert_string_key_to_binary(kval, key, sz)<0) {

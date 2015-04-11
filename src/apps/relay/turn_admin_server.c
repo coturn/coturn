@@ -691,16 +691,6 @@ static void cli_print_configuration(struct cli_session* cs)
 		cli_print_str(cs,turn_params.cert_file,"Certificate file",0);
 		cli_print_str(cs,turn_params.pkey_file,"Private Key file",0);
 
-		if(turn_params.shatype == SHATYPE_SHA256)
-			cli_print_str(cs,"SHA256","SHA type",0);
-		else if(turn_params.shatype == SHATYPE_SHA384)
-			cli_print_str(cs,"SHA384","SHA type",0);
-		else if(turn_params.shatype == SHATYPE_SHA512)
-			cli_print_str(cs,"SHA512","SHA type",0);
-		else
-			cli_print_str(cs,"SHA1","SHA type",0);
-		myprintf(cs,"\n");
-
 		cli_print_str_array(cs,turn_params.listener.addrs,turn_params.listener.addrs_number,"Listener addr",0);
 
 		if(turn_params.listener_ifname[0])
@@ -1962,15 +1952,6 @@ static void write_pc_page(ioa_socket_handle s)
 				https_print_str(sb,turn_params.cert_file,"Certificate file",0);
 				https_print_str(sb,turn_params.pkey_file,"Private Key file",0);
 
-				if(turn_params.shatype == SHATYPE_SHA256)
-					https_print_str(sb,"SHA256","SHA type",0);
-				else if(turn_params.shatype == SHATYPE_SHA384)
-					https_print_str(sb,"SHA384","SHA type",0);
-				else if(turn_params.shatype == SHATYPE_SHA512)
-					https_print_str(sb,"SHA512","SHA type",0);
-				else
-					https_print_str(sb,"SHA1","SHA type",0);
-
 				https_print_empty_row(sb,2);
 
 				https_print_str_array(sb,turn_params.listener.addrs,turn_params.listener.addrs_number,"Listener addr");
@@ -2494,15 +2475,6 @@ static void write_users_page(ioa_socket_handle s, const u08bits *add_user, const
 			str_buffer_append(sb,"");
 			str_buffer_append(sb,"\"");
 			str_buffer_append(sb,"><br><br>\r\n");
-
-			if(turn_params.shatype == SHATYPE_SHA256)
-				str_buffer_append(sb,"SHA type: SHA256<br>\r\n");
-			else if(turn_params.shatype == SHATYPE_SHA384)
-				str_buffer_append(sb,"SHA type: SHA384<br>\r\n");
-			else if(turn_params.shatype == SHATYPE_SHA512)
-				str_buffer_append(sb,"SHA type: SHA512<br>\r\n");
-			else
-				str_buffer_append(sb,"SHA type: SHA1<br>\r\n");
 
 			str_buffer_append(sb,"<br><input type=\"submit\" value=\"Add user\">");
 
@@ -3491,9 +3463,9 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 										STRCPY(u,add_user);
 										STRCPY(r,add_realm);
 										STRCPY(p,pwd);
-										stun_produce_integrity_key_str(u, r, p, key, turn_params.shatype);
+										stun_produce_integrity_key_str(u, r, p, key, SHATYPE_DEFAULT);
 										size_t i = 0;
-										size_t sz = get_hmackey_size(turn_params.shatype);
+										size_t sz = get_hmackey_size(SHATYPE_DEFAULT);
 										int maxsz = (int) (sz * 2) + 1;
 										char *s = skey;
 										for (i = 0; (i < sz) && (maxsz > 2); i++) {

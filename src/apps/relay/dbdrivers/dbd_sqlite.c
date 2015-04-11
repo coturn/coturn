@@ -266,7 +266,7 @@ static int sqlite_get_user_key(u08bits *usname, u08bits *realm, hmackey_t key)
 			int res = sqlite3_step(st);
 			if (res == SQLITE_ROW) {
 				char *kval = turn_strdup((const char*) sqlite3_column_text(st, 0));
-				size_t sz = get_hmackey_size(turn_params.shatype);
+				size_t sz = get_hmackey_size(SHATYPE_DEFAULT);
 				if (convert_string_key_to_binary(kval, key, sz) < 0) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key: %s, user %s\n", kval, usname);
 				} else {

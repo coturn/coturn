@@ -44,7 +44,7 @@
 
 /* <<== Bandwidth */
 
-/* SHA AGILITY ==>> */
+/* SHA ==>> */
 
 #define SHA1SIZEBYTES (20)
 #define SHA256SIZEBYTES (32)
@@ -66,10 +66,7 @@ typedef enum _SHATYPE SHATYPE;
 
 #define shatype_name(sht) ((sht == SHATYPE_SHA1) ? "SHA1" : ((sht == SHATYPE_SHA256) ? "SHA256" : ((sht == SHATYPE_SHA384) ? "SHA384" : "SHA512")))
 
-#define SHA_TOO_WEAK_ERROR_CODE (426)
-#define SHA_TOO_WEAK_ERROR_REASON ((const u08bits*)("credentials too weak"))
-
-/* <<== SHA AGILITY */
+/* <<== SHA */
 
 /* OAUTH TOKEN ENC ALG ==> */
 
