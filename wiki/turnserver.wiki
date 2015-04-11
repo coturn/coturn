@@ -41,9 +41,6 @@
    * *--secure-stun*	Require authentication of the STUN Binding request. By default, the clients are allowed anonymous access to the STUN Binding functionality.
    * *-S,* *--stun-only* Run as STUN server only, all TURN requests will be ignored. Option to suppress TURN functionality, only STUN requests will be processed.
    * *--no-stun*	Run as TURN server only, all STUN requests will be ignored. Option to suppress STUN functionality, only TURN requests will be processed.
-   * *--sha256*	Require SHA256 digest function to be used for the message integrity. By default, the server uses SHA1 hashes. With this option, the server requires the stronger SHA256 hashes. The client application must support SHA256 hash function if this option is used. If the server obtains a message from the client with a weaker (SHA1) hash function then the server returns error code 426.
-   * *--sha384*	Require SHA384 digest function to be used for the message integrity.
-   * *--sha512*	Require SHA512 digest function to be used for the message integrity.
    * *--mobility*    Mobility with ICE (MICE) specs support.
    * *--no-cli*      Turn OFF the CLI support. By default it is always ON, and the process turnserver accepts the telnet client connections on IP address 127.0.0.1, port 5766. See also options *--cli-ip*, *--cli-port* and *--cli-password*.
    * *--server-relay*   Server relay. *NON-STANDARD AND DANGEROUS OPTION*. Only for an application that want to run a server on the relay endpoints. This option eliminates the IP permissions check on the packets incoming to the relay endpoints. That makes the system vulnerable to DOS attack, for example, among other bad things. The rule is: if you do not understand what is this option about and why would you need it, *then you absolutely must NOT use it under any circumstances*. See http://tools.ietf.org/search/rfc5766#section-17.2.3 .
@@ -310,10 +307,7 @@ Storing only the HMAC key has its own implications - if you change the realm,
 you will have to update the HMAC keys of all users, because the realm is 
 used for the HMAC key generation.
 
-The key must be 32 characters (HEX representation of 16 bytes) for SHA1,
-or 64 characters (HEX representation of 32 bytes) for SHA256,
-or 96 characters (HEX representation of 48 bytes) for SHA384,
-or 128 characters (HEX representation of 96 bytes) for SHA512.
+The key must be 32 characters (HEX representation of 16 bytes) for SHA1.
 
 # Table holding shared secrets for secret-based authorization
 # (REST API). It can only be used together with the long-term 
@@ -533,10 +527,6 @@ their corresponding realms.
 === TELNET CLI ===
 
 The turnserver process provides a telnet CLI access as statistics and basic management interface. By default, the turnserver starts a telnet CLI listener on IP 127.0.0.1 and port 5766. That can be changed by the command-cline options of the turnserver process (see --cli-ip and --cli-port options). The full list of telnet CLI commands is provided in "help" command output in the telnet CLI.
-
-=== SHA256, SHA384, SHA512 extensions ===
-
-The existing STUN/TURN standards require HMAC-SHA1 function for the message integrity digest calculation, and MD5 for the password hash (key) calculation. As an extension for stronger protection, optionally, this server can use (with options *--sha256*, *--sha384* or *--sha512*) a stronger SHA function for the message integrity digest calculation and for the password hash (key) calculation (instead of SHA-1 and MD5). Of course, the TURN client has to implement the same extension. 
 
 === TURN connection with Proxy ===
 
