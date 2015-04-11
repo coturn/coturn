@@ -591,63 +591,79 @@ void old_stun_init_success_response_str(u16bits method, u08bits* buf, size_t *le
   }
 }
 
+const u08bits* get_default_reason(int error_code)
+{
+	const u08bits* reason = (const u08bits *) "Unknown error";
+
+	switch (error_code){
+	case 300:
+		reason = (const u08bits *) "Try Alternate";
+		break;
+	case 400:
+		reason = (const u08bits *) "Bad Request";
+		break;
+	case 401:
+		reason = (const u08bits *) "Unauthorized";
+		break;
+	case 403:
+		reason = (const u08bits *) "Forbidden";
+		break;
+	case 404:
+		reason = (const u08bits *) "Not Found";
+		break;
+	case 420:
+		reason = (const u08bits *) "Unknown Attribute";
+		break;
+	case 437:
+		reason = (const u08bits *) "Allocation Mismatch";
+		break;
+	case 438:
+		reason = (const u08bits *) "Stale Nonce";
+		break;
+	case 440:
+		reason = (const u08bits *) "Address Family not Supported";
+		break;
+	case 441:
+		reason = (const u08bits *) "Wrong Credentials";
+		break;
+	case 442:
+		reason = (const u08bits *) "Unsupported Transport Protocol";
+		break;
+	case 443:
+		reason = (const u08bits *) "Peer Address Family Mismatch";
+		break;
+	case 446:
+		reason = (const u08bits *) "Connection Already Exists";
+		break;
+	case 447:
+		reason = (const u08bits *) "Connection Timeout or Failure";
+		break;
+	case 486:
+		reason = (const u08bits *) "Allocation Quota Reached";
+		break;
+	case 487:
+		reason = (const u08bits *) "Role Conflict";
+		break;
+	case 500:
+		reason = (const u08bits *) "Server Error";
+		break;
+	case 508:
+		reason = (const u08bits *) "Insufficient Capacity";
+		break;
+	default:
+		;
+	};
+
+	return reason;
+}
+
 static void stun_init_error_response_common_str(u08bits* buf, size_t *len,
 				u16bits error_code, const u08bits *reason,
 				stun_tid* id)
 {
 
 	if (!reason) {
-
-		switch (error_code){
-		case 300:
-			reason = (const u08bits *) "Try Alternate";
-			break;
-		case 400:
-			reason = (const u08bits *) "Bad Request";
-			break;
-		case 401:
-			reason = (const u08bits *) "Unauthorized";
-			break;
-		case 403:
-			reason = (const u08bits *) "Forbidden";
-			break;
-		case 404:
-			reason = (const u08bits *) "Not Found";
-			break;
-		case 420:
-			reason = (const u08bits *) "Unknown Attribute";
-			break;
-		case 437:
-			reason = (const u08bits *) "Allocation Mismatch";
-			break;
-		case 438:
-			reason = (const u08bits *) "Stale Nonce";
-			break;
-		case 440:
-			reason = (const u08bits *) "Address Family not Supported";
-			break;
-		case 441:
-			reason = (const u08bits *) "Wrong Credentials";
-			break;
-		case 442:
-			reason = (const u08bits *) "Unsupported Transport Protocol";
-			break;
-		case 443:
-			reason = (const u08bits *) "Peer Address Family Mismatch";
-			break;
-		case 486:
-			reason = (const u08bits *) "Allocation Quota Reached";
-			break;
-		case 500:
-			reason = (const u08bits *) "Server Error";
-			break;
-		case 508:
-			reason = (const u08bits *) "Insufficient Capacity";
-			break;
-		default:
-			reason = (const u08bits *) "Unknown Error";
-			break;
-		};
+		reason = get_default_reason(error_code);
 	}
 
 	u08bits avalue[513];
@@ -1452,25 +1468,7 @@ int stun_attr_add_bandwidth_str(u08bits* buf, size_t *len, band_limit_t bps0) {
 
 int stun_attr_add_address_error_code(u08bits* buf, size_t *len, int requested_address_family, int error_code)
 {
-	const u08bits *reason = NULL;
-
-	switch (error_code){
-	case 440:
-		reason = (const u08bits *) "Address Family not Supported";
-		break;
-	case 486:
-		reason = (const u08bits *) "Allocation Quota Reached";
-		break;
-	case 500:
-		reason = (const u08bits *) "Server Error";
-		break;
-	case 508:
-		reason = (const u08bits *) "Insufficient Capacity";
-		break;
-	default:
-		reason = (const u08bits *) "Unknown Error";
-		break;
-	};
+	const u08bits *reason = get_default_reason(error_code);
 
 	u08bits avalue[513];
 	avalue[0] = (u08bits)requested_address_family;
