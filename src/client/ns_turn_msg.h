@@ -134,6 +134,8 @@ void stun_tid_generate_in_message_str(u08bits* buf, stun_tid* id);
 
 int stun_get_command_message_len_str(const u08bits* buf, size_t len);
 
+const u08bits* get_default_reason(int error_code);
+
 int stun_attr_is_addr(stun_attr_ref attr);
 int stun_attr_get_type(stun_attr_ref attr);
 int stun_attr_get_len(stun_attr_ref attr);
