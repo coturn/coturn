@@ -30,9 +30,6 @@ When an unreliable protocol is used for the client-TURN-server communications (U
  *      *-N*     Negative tests (some limited cases only).
  *      *-R*     Negative protocol tests.
  *      *-O*     "DOS attack" intense mode.
- *      *-H*     SHA256 digest function for message integrity calculation. Without this option, by default, SHA1 is used.
- *      *-Y*     SHA384 digest function for message integrity calculation.
- *      *-K*     SHA512 digest function for message integrity calculation.
  *      *-M*	Use TURN ICE Mobility.
  *      *-I*	Do not set permissions on TURN relay endpoints (for testing the non-standard server relay functionality).
  *      *-G*    Generate extra requests (create permissions, channel bind).
