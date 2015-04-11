@@ -131,10 +131,6 @@ static char Usage[] =
   "	-N	Negative tests (some limited cases only).\n"
   "	-R	Negative protocol tests.\n"
   "	-O	DOS attack mode (quick connect and exit).\n"
-  "	-H	SHA256 digest function for message integrity calculation.\n"
-  "		Without this option, by default, SHA1 is used.\n"
-  "	-Y	SHA384 digest function for message integrity calculation.\n"
-  "	-K	SHA512 digest function for message integrity calculation.\n"
   "	-M	ICE Mobility engaged.\n"
   "	-I	Do not set permissions on TURN relay endpoints\n"
   "		(for testing the non-standard server relay functionality).\n"
@@ -166,39 +162,6 @@ static char Usage[] =
 
 //////////////////////////////////////////////////
 
-void recalculate_restapi_hmac(SHATYPE st) {
-
-	if (g_use_auth_secret_with_timestamp) {
-
-		u08bits hmac[MAXSHASIZE];
-		unsigned int hmac_len = 0;
-
-		if(st == SHATYPE_SHA256)
-		  hmac_len = SHA256SIZEBYTES;
-		else if(st == SHATYPE_SHA384)
-		  hmac_len = SHA384SIZEBYTES;
-		else if(st == SHATYPE_SHA512)
-		  hmac_len = SHA512SIZEBYTES;
-
-		hmac[0] = 0;
-
-		if (stun_calculate_hmac(g_uname, strlen((char*) g_uname),
-				(u08bits*) g_auth_secret, strlen(g_auth_secret), hmac,
-				&hmac_len, st) >= 0) {
-			size_t pwd_length = 0;
-			char *pwd = base64_encode(hmac, hmac_len, &pwd_length);
-
-			if (pwd) {
-				if (pwd_length > 0) {
-					ns_bcopy(pwd,g_upwd,pwd_length);
-					g_upwd[pwd_length] = 0;
-				}
-			}
-			turn_free(pwd,strlen(pwd)+1);
-		}
-	}
-}
-
 int main(int argc, char **argv)
 {
 	int port = 0;
@@ -220,7 +183,7 @@ int main(int argc, char **argv)
 
 	ns_bzero(local_addr, sizeof(local_addr));
 
-	while ((c = getopt(argc, argv, "a:d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:E:F:o:bZvsyhcxXgtTSAPDNOUHYKMRIGBJ")) != -1) {
+	while ((c = getopt(argc, argv, "a:d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:E:F:o:bZvsyhcxXgtTSAPDNOUMRIGBJ")) != -1) {
 		switch (c){
 		case 'J': {
 
@@ -270,15 +233,6 @@ int main(int argc, char **argv)
 			break;
 		case 'M':
 			mobility = 1;
-			break;
-		case 'H':
-			shatype = SHATYPE_SHA256;
-			break;
-		case 'Y':
-			shatype = SHATYPE_SHA384;
-			break;
-		case 'K':
-			shatype = SHATYPE_SHA512;
 			break;
 		case 'E':
 		{
