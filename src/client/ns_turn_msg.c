@@ -2045,15 +2045,8 @@ int convert_oauth_key_data(const oauth_key_data *oakd0, oauth_key *key, char *er
 		oauth_key_data *oakd = &oakd_obj;
 
 		if(!(oakd->ikm_key_size)) {
-			if(!(oakd->as_rs_key_size)) {
-				if(err_msg) {
-					snprintf(err_msg,err_msg_size,"AS-RS key is not defined");
-				}
-				OAUTH_ERROR("AS-RS key is not defined\n");
-				return -1;
-			}
-			if(!(oakd->auth_key_size)) {
-				//AEAD ?
+			if(err_msg) {
+				snprintf(err_msg,err_msg_size,"key is not defined");
 			}
 		}
 
@@ -2075,10 +2068,6 @@ int convert_oauth_key_data(const oauth_key_data *oakd0, oauth_key *key, char *er
 
 		STRCPY(key->kid,oakd->kid);
 
-		ns_bcopy(oakd->as_rs_key,key->as_rs_key,sizeof(key->as_rs_key));
-		key->as_rs_key_size = oakd->as_rs_key_size;
-		ns_bcopy(oakd->auth_key,key->auth_key,sizeof(key->auth_key));
-		key->auth_key_size = oakd->auth_key_size;
 		ns_bcopy(oakd->ikm_key,key->ikm_key,sizeof(key->ikm_key));
 		key->ikm_key_size = oakd->ikm_key_size;
 
@@ -2108,20 +2097,16 @@ int convert_oauth_key_data(const oauth_key_data *oakd0, oauth_key *key, char *er
 			return -1;
 		}
 
-		if(!(key->auth_key_size)) {
-			key->auth_key_size = calculate_auth_key_length(key->as_rs_alg);
-			if(key->auth_key_size) {
-				if(calculate_key(key->ikm_key,key->ikm_key_size,key->auth_key,key->auth_key_size)<0) {
-					return -1;
-				}
+		key->auth_key_size = calculate_auth_key_length(key->as_rs_alg);
+		if(key->auth_key_size) {
+			if(calculate_key(key->ikm_key,key->ikm_key_size,key->auth_key,key->auth_key_size)<0) {
+				return -1;
 			}
 		}
 
-		if(!(key->as_rs_key_size)) {
-			key->as_rs_key_size = calculate_enc_key_length(key->as_rs_alg);
-			if(calculate_key(key->ikm_key,key->ikm_key_size,key->as_rs_key,key->as_rs_key_size)<0) {
-				return -1;
-			}
+		key->as_rs_key_size = calculate_enc_key_length(key->as_rs_alg);
+		if(calculate_key(key->ikm_key,key->ikm_key_size,key->as_rs_key,key->as_rs_key_size)<0) {
+			return -1;
 		}
 	}
 

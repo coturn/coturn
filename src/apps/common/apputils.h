@@ -142,8 +142,6 @@ struct _oauth_key_data_raw {
 	u64bits timestamp;
 	u32bits lifetime;
 	char as_rs_alg[OAUTH_ALG_SIZE+1];
-	char as_rs_key[OAUTH_KEY_SIZE+1];
-	char auth_key[OAUTH_KEY_SIZE+1];
 };
 
 typedef struct _oauth_key_data_raw oauth_key_data_raw;

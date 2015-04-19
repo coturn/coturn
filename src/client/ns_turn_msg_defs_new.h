@@ -112,10 +112,6 @@ struct _oauth_key_data {
 	turn_time_t timestamp;
 	turn_time_t lifetime;
 	char as_rs_alg[OAUTH_ALG_SIZE+1];
-	char as_rs_key[OAUTH_KEY_SIZE+1];
-	size_t as_rs_key_size;
-	char auth_key[OAUTH_KEY_SIZE+1];
-	size_t auth_key_size;
 };
 
 typedef struct _oauth_key_data oauth_key_data;

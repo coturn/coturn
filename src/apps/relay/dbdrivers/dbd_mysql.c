@@ -343,7 +343,7 @@ static int mysql_get_oauth_key(const u08bits *kid, oauth_key_data_raw *key) {
 
 	int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
-	snprintf(statement,sizeof(statement),"select ikm_key,timestamp,lifetime,as_rs_alg,as_rs_key,auth_key from oauth_key where kid='%s'",(const char*)kid);
+	snprintf(statement,sizeof(statement),"select ikm_key,timestamp,lifetime,as_rs_alg from oauth_key where kid='%s'",(const char*)kid);
 
 	MYSQL * myc = get_mydb_connection();
 	if(myc) {
@@ -354,7 +354,7 @@ static int mysql_get_oauth_key(const u08bits *kid, oauth_key_data_raw *key) {
 			MYSQL_RES *mres = mysql_store_result(myc);
 			if(!mres) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n",mysql_error(myc));
-			} else if(mysql_field_count(myc)!=6) {
+			} else if(mysql_field_count(myc)!=4) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown error retrieving MySQL DB information: %s\n",statement);
 			} else {
 				MYSQL_ROW row = mysql_fetch_row(mres);
@@ -378,12 +378,6 @@ static int mysql_get_oauth_key(const u08bits *kid, oauth_key_data_raw *key) {
 						ns_bcopy(row[3],key->as_rs_alg,lengths[3]);
 						key->as_rs_alg[lengths[3]]=0;
 
-						ns_bcopy(row[4],key->as_rs_key,lengths[4]);
-						key->as_rs_key[lengths[4]]=0;
-
-						ns_bcopy(row[5],key->auth_key,lengths[5]);
-						key->auth_key[lengths[5]]=0;
-
 						ret = 0;
 					}
 				}
@@ -402,7 +396,7 @@ static int mysql_list_oauth_keys(secrets_list_t *kids,secrets_list_t *teas,secre
 	oauth_key_data_raw *key=&key_;
 	int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
-	snprintf(statement,sizeof(statement),"select ikm_key,timestamp,lifetime,as_rs_alg,as_rs_key,auth_key,kid from oauth_key order by kid");
+	snprintf(statement,sizeof(statement),"select ikm_key,timestamp,lifetime,as_rs_alg,kid from oauth_key order by kid");
 
 	MYSQL * myc = get_mydb_connection();
 	if(myc) {
@@ -413,7 +407,7 @@ static int mysql_list_oauth_keys(secrets_list_t *kids,secrets_list_t *teas,secre
 			MYSQL_RES *mres = mysql_store_result(myc);
 			if(!mres) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n",mysql_error(myc));
-			} else if(mysql_field_count(myc)!=7) {
+			} else if(mysql_field_count(myc)!=5) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown error retrieving MySQL DB information: %s\n",statement);
 			} else {
 				MYSQL_ROW row = mysql_fetch_row(mres);
@@ -437,14 +431,8 @@ static int mysql_list_oauth_keys(secrets_list_t *kids,secrets_list_t *teas,secre
 						ns_bcopy(row[3],key->as_rs_alg,lengths[3]);
 						key->as_rs_alg[lengths[3]]=0;
 
-						ns_bcopy(row[4],key->as_rs_key,lengths[4]);
-						key->as_rs_key[lengths[4]]=0;
-
-						ns_bcopy(row[5],key->auth_key,lengths[5]);
-						key->auth_key[lengths[5]]=0;
-
 						ns_bcopy(row[6],key->kid,lengths[6]);
-						key->kid[lengths[6]]=0;
+						key->kid[lengths[4]]=0;
 
 						if(kids) {
 							add_to_secrets_list(kids,key->kid);
@@ -460,9 +448,9 @@ static int mysql_list_oauth_keys(secrets_list_t *kids,secrets_list_t *teas,secre
 								add_to_secrets_list(lts,lt);
 							}
 						} else {
-							printf("  kid=%s, ikm_key=%s, timestamp=%llu, lifetime=%lu, as_rs_alg=%s, as_rs_key=%s, auth_key=%s\n",
+							printf("  kid=%s, ikm_key=%s, timestamp=%llu, lifetime=%lu, as_rs_alg=%s\n",
 								key->kid, key->ikm_key, (unsigned long long)key->timestamp, (unsigned long)key->lifetime,
-								key->as_rs_alg, key->as_rs_key, key->auth_key);
+								key->as_rs_alg);
 						}
 					}
 					row = mysql_fetch_row(mres);
@@ -506,13 +494,13 @@ static int mysql_set_oauth_key(oauth_key_data_raw *key)
 	char statement[TURN_LONG_STRING_SIZE];
 	MYSQL * myc = get_mydb_connection();
 	if(myc) {
-		snprintf(statement,sizeof(statement),"insert into oauth_key (kid,ikm_key,timestamp,lifetime,as_rs_alg,as_rs_key,auth_key) values('%s','%s',%llu,%lu,'%s','%s','%s')",
+		snprintf(statement,sizeof(statement),"insert into oauth_key (kid,ikm_key,timestamp,lifetime,as_rs_alg) values('%s','%s',%llu,%lu,'%s')",
 					  key->kid,key->ikm_key,(unsigned long long)key->timestamp,(unsigned long)key->lifetime,
-					  key->as_rs_alg,key->as_rs_key,key->auth_key);
+					  key->as_rs_alg);
 		int res = mysql_query(myc, statement);
 		if(res) {
-			snprintf(statement,sizeof(statement),"update oauth_key set ikm_key='%s',timestamp=%lu,lifetime=%lu, as_rs_alg='%s',as_rs_key='%s',auth_key='%s' where kid='%s'",key->ikm_key,(unsigned long)key->timestamp,(unsigned long)key->lifetime,
-							  key->as_rs_alg,key->as_rs_key,key->auth_key,key->kid);
+			snprintf(statement,sizeof(statement),"update oauth_key set ikm_key='%s',timestamp=%lu,lifetime=%lu, as_rs_alg='%s' where kid='%s'",key->ikm_key,(unsigned long)key->timestamp,(unsigned long)key->lifetime,
+							  key->as_rs_alg,key->kid);
 			res = mysql_query(myc, statement);
 			if(res) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error inserting/updating oauth key information: %s\n",mysql_error(myc));
