@@ -38,9 +38,9 @@ sadd turn/realm/crinna.org/allowed-peer-ip "172.17.13.202"
 sadd turn/realm/north.gov/denied-peer-ip "172.17.13.133-172.17.14.56" "172.17.17.133-172.17.19.56" "123::45"
 sadd turn/realm/crinna.org/denied-peer-ip "123::77"
 
-hmset turn/oauth/kid/north ikm_key 'MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDEK' as_rs_alg 'A256GCMKW'
-hmset turn/oauth/kid/union ikm_key 'MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5OTkK' as_rs_alg 'A128GCMKW'
-hmset turn/oauth/kid/oldempire ikm_key 'MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIK' as_rs_alg 'A256GCMKW'
+hmset turn/oauth/kid/north ikm_key 'MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDEK' as_rs_alg 'A256GCM'
+hmset turn/oauth/kid/union ikm_key 'MTIzNDU2Nzg5MDEyMzQ1Ngo=' as_rs_alg 'A128GCM'
+hmset turn/oauth/kid/oldempire ikm_key 'MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIK' as_rs_alg 'A256GCM'
 
 hmset turn/admin_user/skarling realm 'north.gov' password '\$5\$6fc35c3b0c7d4633\$27fca7574f9b79d0cb93ae03e45379470cbbdfcacdd6401f97ebc620f31f54f2'
 hmset turn/admin_user/bayaz password '\$5\$e018513e9de69e73\$5cbdd2e29e04ca46aeb022268a7460d3a3468de193dcb2b95f064901769f455f'

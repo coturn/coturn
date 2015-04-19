@@ -2973,23 +2973,23 @@ static void write_https_oauth_page(ioa_socket_handle s, const char* add_kid, con
 					str_buffer_append(sb,"<br>Token encryption algorithm (required):<br>\r\n");
 
 					if(!add_tea || !add_tea[0])
-						add_tea = "A256GCMKW";
+						add_tea = "A256GCM";
 
 					str_buffer_append(sb,"<input type=\"radio\" name=\"");
 					str_buffer_append(sb,HR_ADD_OAUTH_TEA);
-					str_buffer_append(sb,"\" value=\"A128GCMKW\" ");
-					if(!strcmp("A128GCMKW",add_tea)) {
+					str_buffer_append(sb,"\" value=\"A128GCM\" ");
+					if(!strcmp("A128GCM",add_tea)) {
 						str_buffer_append(sb," checked ");
 					}
-					str_buffer_append(sb,">A128GCMKW\r\n<br>\r\n");
+					str_buffer_append(sb,">A128GCM\r\n<br>\r\n");
 
 					str_buffer_append(sb,"<input type=\"radio\" name=\"");
 					str_buffer_append(sb,HR_ADD_OAUTH_TEA);
-					str_buffer_append(sb,"\" value=\"A256GCMKW\" ");
-					if(!strcmp("A256GCMKW",add_tea)) {
+					str_buffer_append(sb,"\" value=\"A256GCM\" ");
+					if(!strcmp("A256GCM",add_tea)) {
 						str_buffer_append(sb," checked ");
 					}
-					str_buffer_append(sb,">A256GCMKW\r\n<br>\r\n");
+					str_buffer_append(sb,">A256GCM\r\n<br>\r\n");
 				}
 
 				str_buffer_append(sb,"</td></tr>\r\n</table>\r\n");
