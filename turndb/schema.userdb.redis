@@ -43,30 +43,18 @@ and they will be almost immediately "seen" by the turnserver process.
 	
 	lifetime - (optional) the key lifetime in seconds; the default value 
 		is 0 - unlimited lifetime.
-	
-	hkdf_hash_func - (optional) hash function for HKDF procedure; the 
-		valid values are SHA-1, SHA-256, SHA-384 and SHA-512,
-		with SHA-256 as default. The hkdf_hash_func is not needed
-		if the as_rs_key and auth_key are defined explicitly
-		in the database;
 		
 	as_rs_alg - oAuth token encryption algorithm; the valid values are
-		"AES-128-CBC" and "AES-256-CBC", , "AEAD-AES-128-GCM",
-		"AEAD-AES-256-GCM".
-		The default value is "AES-256-CBC";
+		"A256GCMKW", "A128GCMKW" (see 
+		http://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms-40#section-4.1).
+		The default value is "A256GCMKW";
 		
 	as_rs_key - (optional) base64-encoded AS-RS key. If not defined, then 
-		calculated with ikm_key and hkdf_hash_func. The as_rs_key length 
+		calculated with ikm_key. The as_rs_key length 
 		is defined by as_rs_alg.
 		
-	auth_alg - (optional) oAuth token authentication algorithm; the valid values are
-		"HMAC-SHA-256-128", "HMAC-SHA-256", "HMAC-SHA-384",
-		"HMAC-SHA-512" and "HMAC-SHA-1".		  
-		The default value is "HMAC-SHA-256-128".
-		
 	auth_key - (optional) base64-encoded AUTH key. If not defined, then 
-		calculated with ikm_key and hkdf_hash_func. The auth_key length 
-		is defined by auth_alg.
+		calculated with ikm_key. Not used with AEAD algorithms.
 		
 5) admin users (over https interface) are maintained as keys of form:
 "turn/admin_user/<username> with hash members "password" and,
@@ -137,8 +125,7 @@ sadd turn/realm/crinna.org/allowed-peer-ip "172.17.13.202"
 sadd turn/realm/north.gov/denied-peer-ip "172.17.13.133-172.17.14.56" "172.17.17.133-172.17.19.56" "123::45"
 sadd turn/realm/crinna.org/denied-peer-ip "123::77"
 
-hmset turn/oauth/kid/north ikm_key 'Y2FybGVvbg==' hkdf_hash_func 'SHA-256' as_rs_alg 'AES-128-CBC' auth_alg 'HMAC-SHA-256-128'
-hmset turn/oauth/kid/oldempire ikm_key 'YXVsY3Vz' hkdf_hash_func 'SHA-256' as_rs_alg 'AEAD-AES-256-GCM'
+hmset turn/oauth/kid/oldempire ikm_key 'YXVsY3Vz' as_rs_alg 'A256GCMKW'
 
 hmset turn/admin_user/skarling realm 'north.gov' password 'hoodless'
 hmset turn/admin_user/bayaz password 'magi'
