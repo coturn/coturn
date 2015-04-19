@@ -2871,7 +2871,7 @@ static void write_https_oauth_show_keys(ioa_socket_handle s, const char* kid)
 							str_buffer_append(sb,"<table>\r\n");
 
 							if(key.ikm_key[0]) {
-								str_buffer_append(sb,"<tr><td>Input Keying Material:</td><td>");
+								str_buffer_append(sb,"<tr><td>Base64-encoded Input Keying Material:</td><td>");
 								str_buffer_append(sb,key.ikm_key);
 								str_buffer_append(sb,"</td></tr>\r\n");
 							}
@@ -2959,7 +2959,7 @@ static void write_https_oauth_page(ioa_socket_handle s, const char* add_kid, con
 				{
 					if(!add_ikm) add_ikm = "";
 
-					str_buffer_append(sb,"  <br>Base64-encoded input keying material (optional):<br><textarea wrap=\"soft\" cols=70 rows=4 name=\"");
+					str_buffer_append(sb,"  <br>Base64-encoded input keying material (required):<br><textarea wrap=\"soft\" cols=70 rows=4 name=\"");
 					str_buffer_append(sb,HR_ADD_OAUTH_IKM);
 					str_buffer_append(sb,"\" maxLength=256 >");
 					str_buffer_append(sb,(const char*)add_ikm);
@@ -2967,7 +2967,7 @@ static void write_https_oauth_page(ioa_socket_handle s, const char* add_kid, con
 					str_buffer_append(sb,"<br>\r\n");
 				}
 
-				str_buffer_append(sb,"</td></tr>\r\n<tr><td>");
+				str_buffer_append(sb,"</td><td>");
 
 				{
 					str_buffer_append(sb,"<br>Token encryption algorithm (required):<br>\r\n");

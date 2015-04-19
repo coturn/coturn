@@ -431,7 +431,7 @@ static int mysql_list_oauth_keys(secrets_list_t *kids,secrets_list_t *teas,secre
 						ns_bcopy(row[3],key->as_rs_alg,lengths[3]);
 						key->as_rs_alg[lengths[3]]=0;
 
-						ns_bcopy(row[6],key->kid,lengths[6]);
+						ns_bcopy(row[4],key->kid,lengths[4]);
 						key->kid[lengths[4]]=0;
 
 						if(kids) {
