@@ -34,12 +34,10 @@ and they will be almost immediately "seen" by the turnserver process.
 4) For the oAuth authentication, there is a hash structure with the key 
 "turn/oauth/kid/<kid-value>". The kid structure fields are:
  
-	ikm_key - (optional) base64-encoded key ("input keying material");
-		The ikm_key is not needed if the as_rs_key and auth_key are defined
-		explicitly in the database;
+	ikm_key - (optional) base64-encoded key ("input keying material").
 		
 	timestamp - (optional) the timestamp (in seconds) when the key 
-		lifetime started;
+		lifetime started.
 	
 	lifetime - (optional) the key lifetime in seconds; the default value 
 		is 0 - unlimited lifetime.
@@ -47,14 +45,7 @@ and they will be almost immediately "seen" by the turnserver process.
 	as_rs_alg - oAuth token encryption algorithm; the valid values are
 		"A256GCMKW", "A128GCMKW" (see 
 		http://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms-40#section-4.1).
-		The default value is "A256GCMKW";
-		
-	as_rs_key - (optional) base64-encoded AS-RS key. If not defined, then 
-		calculated with ikm_key. The as_rs_key length 
-		is defined by as_rs_alg.
-		
-	auth_key - (optional) base64-encoded AUTH key. If not defined, then 
-		calculated with ikm_key. Not used with AEAD algorithms.
+		The default value is "A256GCMKW".
 		
 5) admin users (over https interface) are maintained as keys of form:
 "turn/admin_user/<username> with hash members "password" and,
