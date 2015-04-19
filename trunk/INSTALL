@@ -760,9 +760,9 @@ The oauth_key table fields meanings are:
 		is 0 - unlimited lifetime.
 		
 	as_rs_alg - oAuth token encryption algorithm; the valid values are
-		"A256GCMKW", "A128GCMKW" (see 
-		http://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms-40#section-4.1).
-		The default value is "A256GCMKW";
+		"A256GCM", "A128GCM" (see 
+		http://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms-40#section-5.1).
+		The default value is "A256GCM";
 
 # Https access admin users.
 # Leave this table empty if you do not want 

@@ -43,7 +43,7 @@
 
 static const char* encs[]={
 #if !defined(TURN_NO_GCM)
-		"A128GCMKW", "A256GCMKW",
+		"A128GCM", "A256GCM",
 #endif
 		NULL};
 

@@ -56,13 +56,13 @@ db.realm.insert({
 
 db.oauth_key.insert({ kid: 'north', 
 					ikm_key: 'MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDEK', 
-					as_rs_alg: 'A256GCMKW'});
+					as_rs_alg: 'A256GCM'});
 db.oauth_key.insert({ kid: 'union', 
-					ikm_key: 'MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5OTkK', 
-					as_rs_alg: 'A128GCMKW'});
+					ikm_key: 'MTIzNDU2Nzg5MDEyMzQ1Ngo=', 
+					as_rs_alg: 'A128GCM'});
 db.oauth_key.insert({ kid: 'oldempire', 
 					ikm_key: 'MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIK', 
-					as_rs_alg: 'A256GCMKW'});
+					as_rs_alg: 'A256GCM'});
 
 exit
 

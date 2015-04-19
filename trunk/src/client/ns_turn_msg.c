@@ -2002,7 +2002,7 @@ static void normalize_algorithm(char *s)
 static size_t calculate_enc_key_length(ENC_ALG a)
 {
 	switch(a) {
-	case A128GCMKW:
+	case A128GCM:
 		return 16;
 	default:
 		break;
@@ -2015,8 +2015,8 @@ static size_t calculate_auth_key_length(ENC_ALG a)
 {
 	switch(a) {
 #if !defined(TURN_NO_GCM)
-	case A256GCMKW:
-	case A128GCMKW:
+	case A256GCM:
+	case A128GCM:
 		return 0;
 #endif
 	default:
@@ -2079,12 +2079,12 @@ int convert_oauth_key_data(const oauth_key_data *oakd0, oauth_key *key, char *er
 
 		key->as_rs_alg = ENC_ALG_DEFAULT;
 #if !defined(TURN_NO_GCM)
-		if(!strcmp(oakd->as_rs_alg,"A128GCMKW")) {
-			key->as_rs_alg = A128GCMKW;
+		if(!strcmp(oakd->as_rs_alg,"A128GCM")) {
+			key->as_rs_alg = A128GCM;
 			key->auth_key_size = 0;
 			key->auth_key[0] = 0;
-		} else if(!strcmp(oakd->as_rs_alg,"A256GCMKW")) {
-			key->as_rs_alg = A256GCMKW;
+		} else if(!strcmp(oakd->as_rs_alg,"A256GCM")) {
+			key->as_rs_alg = A256GCM;
 			key->auth_key_size = 0;
 			key->auth_key[0] = 0;
 		} else if(oakd->as_rs_alg[0])
@@ -2117,9 +2117,9 @@ static const EVP_CIPHER *get_cipher_type(ENC_ALG enc_alg)
 {
 	switch(enc_alg) {
 #if !defined(TURN_NO_GCM)
-	case A128GCMKW:
+	case A128GCM:
 		return EVP_aes_128_gcm();
-	case A256GCMKW:
+	case A256GCM:
 		return EVP_aes_256_gcm();
 #endif
 	default:
@@ -2546,8 +2546,8 @@ int encode_oauth_token(const u08bits *server_name, encoded_oauth_token *etoken, 
 	if(server_name && etoken && key && dtoken) {
 		switch(key->as_rs_alg) {
 #if !defined(TURN_NO_GCM)
-		case A256GCMKW:
-		case A128GCMKW:
+		case A256GCM:
+		case A128GCM:
 			return encode_oauth_token_aead(server_name, etoken,key,dtoken,nonce);
 #endif
 		default:
@@ -2563,8 +2563,8 @@ int decode_oauth_token(const u08bits *server_name, const encoded_oauth_token *et
 	if(server_name && etoken && key && dtoken) {
 		switch(key->as_rs_alg) {
 #if !defined(TURN_NO_GCM)
-		case A256GCMKW:
-		case A128GCMKW:
+		case A256GCM:
+		case A128GCM:
 			return decode_oauth_token_aead(server_name, etoken,key,dtoken);
 #endif
 		default:

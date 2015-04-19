@@ -102,9 +102,9 @@ int oauth = 0;
 oauth_key okey_array[3];
 
 static oauth_key_data_raw okdr_array[3] = {
-		{"north","MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDEK",0,0,"A256GCMKW"},
-		{"union","MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5OTkK",0,0,"A128GCMKW"},
-		{"oldempire","MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIK",0,0,"A256GCMKW"}
+		{"north","MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDEK",0,0,"A256GCM"},
+		{"union","MTIzNDU2Nzg5MDEyMzQ1Ngo=",0,0,"A128GCM"},
+		{"oldempire","MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIK",0,0,"A256GCM"}
 };
 
 //////////////// local definitions /////////////////
