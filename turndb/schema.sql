@@ -39,7 +39,7 @@ CREATE TABLE turn_realm_option (
 
 CREATE TABLE oauth_key (
 	kid varchar(128),
-	ikm_key varchar(256) default '',
+	ikm_key varchar(256),
 	timestamp bigint default 0,
 	lifetime integer default 0,
 	as_rs_alg varchar(64) default '',

@@ -81,7 +81,8 @@ This example sets user database for:
   * The realm performance parameters: "max_bps", 
   	"total_quota" and "user_quota" (same names as the turnserver 
   	configuration options, with the same meanings).
-  * The oAuth data for the key with kid "north" and key value "carleon".
+  * The oAuth data for the key with kid "oldempire" and key value
+  "12345678901234567890123456789012".
   * The admin user 'skarling', realm 'north.gov', with password 'hoodless';
   * The global admin user 'bayaz' with password 'magi';  
   
@@ -116,7 +117,7 @@ sadd turn/realm/crinna.org/allowed-peer-ip "172.17.13.202"
 sadd turn/realm/north.gov/denied-peer-ip "172.17.13.133-172.17.14.56" "172.17.17.133-172.17.19.56" "123::45"
 sadd turn/realm/crinna.org/denied-peer-ip "123::77"
 
-hmset turn/oauth/kid/oldempire ikm_key 'YXVsY3Vz' as_rs_alg 'A256GCMKW'
+hmset turn/oauth/kid/oldempire ikm_key 'MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIK' as_rs_alg 'A256GCMKW'
 
 hmset turn/admin_user/skarling realm 'north.gov' password 'hoodless'
 hmset turn/admin_user/bayaz password 'magi'
