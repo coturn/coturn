@@ -73,33 +73,16 @@ typedef enum _SHATYPE SHATYPE;
 enum _ENC_ALG {
 	ENC_ALG_ERROR=-1,
 	ENC_ALG_DEFAULT=0,
-	AES_256_CBC=ENC_ALG_DEFAULT,
-	AES_128_CBC,
-	AEAD_AES_128_GCM,
-	AEAD_AES_256_GCM,
+#if !defined(TURN_NO_GCM)
+	A256GCMKW=ENC_ALG_DEFAULT,
+	A128GCMKW,
+#endif
 	ENG_ALG_NUM
 };
 
 typedef enum _ENC_ALG ENC_ALG;
 
 /* <<== OAUTH TOKEN ENC ALG */
-
-/* OAUTH TOKEN AUTH ALG ==> */
-
-enum _AUTH_ALG {
-	AUTH_ALG_ERROR = -1,
-	AUTH_ALG_UNDEFINED = 0,
-	AUTH_ALG_DEFAULT = 1,
-	AUTH_ALG_HMAC_SHA_256_128 = AUTH_ALG_DEFAULT,
-	AUTH_ALG_HMAC_SHA_1,
-	AUTH_ALG_HMAC_SHA_256,
-	AUTH_ALG_HMAC_SHA_384,
-	AUTH_ALG_HMAC_SHA_512
-};
-
-typedef enum _AUTH_ALG AUTH_ALG;
-
-/* <<== OAUTH TOKEN AUTH ALG */
 
 /**
  * oAuth struct
@@ -113,6 +96,7 @@ typedef enum _AUTH_ALG AUTH_ALG;
 #define OAUTH_ALG_SIZE (64)
 #define OAUTH_KEY_SIZE (256)
 #define OAUTH_AEAD_NONCE_SIZE (12)
+#define OAUTH_MAX_NONCE_SIZE (256)
 #define OAUTH_AEAD_TAG_SIZE (16)
 #define OAUTH_ENC_ALG_BLOCK_SIZE (16)
 
@@ -127,11 +111,9 @@ struct _oauth_key_data {
 	size_t ikm_key_size;
 	turn_time_t timestamp;
 	turn_time_t lifetime;
-	char hkdf_hash_func[OAUTH_HASH_FUNC_SIZE+1];
 	char as_rs_alg[OAUTH_ALG_SIZE+1];
 	char as_rs_key[OAUTH_KEY_SIZE+1];
 	size_t as_rs_key_size;
-	char auth_alg[OAUTH_ALG_SIZE+1];
 	char auth_key[OAUTH_KEY_SIZE+1];
 	size_t auth_key_size;
 };
@@ -144,11 +126,9 @@ struct _oauth_key {
 	size_t ikm_key_size;
 	turn_time_t timestamp;
 	turn_time_t lifetime;
-	SHATYPE hkdf_hash_func;
 	ENC_ALG as_rs_alg;
 	char as_rs_key[OAUTH_KEY_SIZE+1];
 	size_t as_rs_key_size;
-	AUTH_ALG auth_alg;
 	char auth_key[OAUTH_KEY_SIZE+1];
 	size_t auth_key_size;
 };
@@ -156,6 +136,8 @@ struct _oauth_key {
 typedef struct _oauth_key oauth_key;
 
 struct _oauth_encrypted_block {
+	uint16_t nonce_length;
+	uint8_t nonce[OAUTH_MAX_NONCE_SIZE];
 	uint16_t key_length;
 	uint8_t mac_key[MAXSHASIZE];
 	uint64_t timestamp;

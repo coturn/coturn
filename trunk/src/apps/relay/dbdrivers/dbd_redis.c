@@ -481,12 +481,8 @@ static int redis_get_oauth_key(const u08bits *kid, oauth_key_data_raw *key) {
 						STRCPY(key->as_rs_key,val);
 					} else if(!strcmp(kw,"auth_key")) {
 						STRCPY(key->auth_key,val);
-					} else if(!strcmp(kw,"auth_alg")) {
-						STRCPY(key->auth_alg,val);
 					} else if(!strcmp(kw,"ikm_key")) {
 						STRCPY(key->ikm_key,val);
-					} else if(!strcmp(kw,"hkdf_hash_func")) {
-						STRCPY(key->hkdf_hash_func,val);
 					} else if(!strcmp(kw,"timestamp")) {
 						key->timestamp = (u64bits)strtoull(val,NULL,10);
 					} else if(!strcmp(kw,"lifetime")) {
@@ -520,8 +516,8 @@ static int redis_set_oauth_key(oauth_key_data_raw *key) {
   redisContext *rc = get_redis_connection();
   if(rc) {
 	char statement[TURN_LONG_STRING_SIZE];
-	snprintf(statement,sizeof(statement),"hmset turn/oauth/kid/%s ikm_key %s hkdf_hash_func %s as_rs_alg %s as_rs_key %s auth_alg %s auth_key %s timestamp %llu lifetime %lu",
-			key->kid,key->ikm_key,key->hkdf_hash_func,key->as_rs_alg,key->as_rs_key,key->auth_alg,key->auth_key,(unsigned long long)key->timestamp,(unsigned long)key->lifetime);
+	snprintf(statement,sizeof(statement),"hmset turn/oauth/kid/%s ikm_key %s as_rs_alg %s as_rs_key %s auth_key %s timestamp %llu lifetime %lu",
+			key->kid,key->ikm_key,key->as_rs_alg,key->as_rs_key,key->auth_key,(unsigned long long)key->timestamp,(unsigned long)key->lifetime);
 	turnFreeRedisReply(redisCommand(rc, statement));
 	turnFreeRedisReply(redisCommand(rc, "save"));
     ret = 0;
@@ -637,7 +633,7 @@ static int redis_list_users(u08bits *realm, secrets_list_t *users, secrets_list_
 	return ret;
 }
 
-static int redis_list_oauth_keys(secrets_list_t *kids,secrets_list_t *hkdfs,secrets_list_t *teas,secrets_list_t *aas,secrets_list_t *tss,secrets_list_t *lts) {
+static int redis_list_oauth_keys(secrets_list_t *kids,secrets_list_t *teas,secrets_list_t *tss,secrets_list_t *lts) {
   int ret = -1;
   redisContext *rc = get_redis_connection();
   secrets_list_t keys;
@@ -675,9 +671,7 @@ static int redis_list_oauth_keys(secrets_list_t *kids,secrets_list_t *hkdfs,secr
 	if(redis_get_oauth_key((const u08bits*)s,key) == 0) {
 		if(kids) {
 			add_to_secrets_list(kids,key->kid);
-			add_to_secrets_list(hkdfs,key->hkdf_hash_func);
 			add_to_secrets_list(teas,key->as_rs_alg);
-			add_to_secrets_list(aas,key->auth_alg);
 			{
 				char ts[256];
 				snprintf(ts,sizeof(ts)-1,"%llu",(unsigned long long)key->timestamp);
@@ -689,9 +683,9 @@ static int redis_list_oauth_keys(secrets_list_t *kids,secrets_list_t *hkdfs,secr
 				add_to_secrets_list(lts,lt);
 			}
 		} else {
-			printf("  kid=%s, ikm_key=%s, timestamp=%llu, lifetime=%lu, hkdf_hash_func=%s, as_rs_alg=%s, as_rs_key=%s, auth_alg=%s, auth_key=%s\n",
-							key->kid, key->ikm_key, (unsigned long long)key->timestamp, (unsigned long)key->lifetime, key->hkdf_hash_func,
-							key->as_rs_alg, key->as_rs_key, key->auth_alg, key->auth_key);
+			printf("  kid=%s, ikm_key=%s, timestamp=%llu, lifetime=%lu, as_rs_alg=%s, as_rs_key=%s, auth_key=%s\n",
+							key->kid, key->ikm_key, (unsigned long long)key->timestamp, (unsigned long)key->lifetime,
+							key->as_rs_alg, key->as_rs_key, key->auth_key);
 		}
 	}
   }

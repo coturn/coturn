@@ -1125,8 +1125,6 @@ void convert_oauth_key_data_raw(const oauth_key_data_raw *raw, oauth_key_data *o
 		oakd->lifetime = raw->lifetime;
 
 		ns_bcopy(raw->as_rs_alg,oakd->as_rs_alg,sizeof(oakd->as_rs_alg));
-		ns_bcopy(raw->auth_alg,oakd->auth_alg,sizeof(oakd->auth_alg));
-		ns_bcopy(raw->hkdf_hash_func,oakd->hkdf_hash_func,sizeof(oakd->hkdf_hash_func));
 		ns_bcopy(raw->kid,oakd->kid,sizeof(oakd->kid));
 
 		if(raw->ikm_key[0]) {

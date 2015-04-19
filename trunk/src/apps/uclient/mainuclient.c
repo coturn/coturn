@@ -102,9 +102,9 @@ int oauth = 0;
 oauth_key okey_array[3];
 
 static oauth_key_data_raw okdr_array[3] = {
-		{"north","Y2FybGVvbg==",0,0,"SHA-256","AES-256-CBC","","HMAC-SHA-256-128",""},
-		{"union","aGVyb2Q=",0,0,"SHA-256","AES-256-CBC","","HMAC-SHA-512",""},
-		{"oldempire","YXVsY3Vz",0,0,"SHA-256","AEAD-AES-256-GCM","","",""}
+		{"north","Y2FybGVvbg==",0,0,"A256GCMKW","",""},
+		{"union","aGVyb2Q=",0,0,"A128GCMKW","",""},
+		{"oldempire","YXVsY3Vz",0,0,"A256GCMKW","",""}
 };
 
 //////////////// local definitions /////////////////

@@ -3398,7 +3398,6 @@ static int check_stun_auth(turn_turnserver *server,
 			}
 		}
 
-		/* direct user pattern is supported only for long-term credentials */
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
 				"%s: Cannot find credentials of user <%s>\n",
 				__FUNCTION__, (char*)usname);

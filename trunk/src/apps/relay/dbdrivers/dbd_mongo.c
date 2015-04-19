@@ -256,9 +256,7 @@ static int mongo_get_oauth_key(const u08bits *kid, oauth_key_data_raw *key) {
 	BSON_APPEND_INT32(&fields, "timestamp", 1);
 	BSON_APPEND_INT32(&fields, "as_rs_alg", 1);
 	BSON_APPEND_INT32(&fields, "as_rs_key", 1);
-	BSON_APPEND_INT32(&fields, "auth_alg", 1);
 	BSON_APPEND_INT32(&fields, "auth_key", 1);
-	BSON_APPEND_INT32(&fields, "hkdf_hash_func", 1);
 	BSON_APPEND_INT32(&fields, "ikm_key", 1);
 
 	mongoc_cursor_t * cursor;
@@ -284,17 +282,11 @@ static int mongo_get_oauth_key(const u08bits *kid, oauth_key_data_raw *key) {
 			if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "as_rs_key") && BSON_ITER_HOLDS_UTF8(&iter)) {
 				STRCPY(key->as_rs_key,bson_iter_utf8(&iter, &length));
 			}
-			if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "auth_alg") && BSON_ITER_HOLDS_UTF8(&iter)) {
-				STRCPY(key->auth_alg,bson_iter_utf8(&iter, &length));
-			}
 			if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "auth_key") && BSON_ITER_HOLDS_UTF8(&iter)) {
 				STRCPY(key->auth_key,bson_iter_utf8(&iter, &length));
 			}
 			if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "ikm_key") && BSON_ITER_HOLDS_UTF8(&iter)) {
 				STRCPY(key->ikm_key,bson_iter_utf8(&iter, &length));
-			}
-			if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "hkdf_hash_func") && BSON_ITER_HOLDS_UTF8(&iter)) {
-				STRCPY(key->hkdf_hash_func,bson_iter_utf8(&iter, &length));
 			}
 			if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "timestamp") && BSON_ITER_HOLDS_INT64(&iter)) {
 				key->timestamp = (u64bits)bson_iter_int64(&iter);
@@ -358,9 +350,7 @@ static int mongo_set_oauth_key(oauth_key_data_raw *key) {
   BSON_APPEND_UTF8(&doc, "kid", (const char *)key->kid);
   BSON_APPEND_UTF8(&doc, "as_rs_alg", (const char *)key->as_rs_alg);
   BSON_APPEND_UTF8(&doc, "as_rs_key", (const char *)key->as_rs_key);
-  BSON_APPEND_UTF8(&doc, "auth_alg", (const char *)key->auth_alg);
   BSON_APPEND_UTF8(&doc, "auth_key", (const char *)key->auth_key);
-  BSON_APPEND_UTF8(&doc, "hkdf_hash_func", (const char *)key->hkdf_hash_func);
   BSON_APPEND_UTF8(&doc, "ikm_key", (const char *)key->ikm_key);
   BSON_APPEND_INT64(&doc, "timestamp", (int64_t)key->timestamp);
   BSON_APPEND_INT32(&doc, "lifetime", (int32_t)key->lifetime);
@@ -497,7 +487,7 @@ static int mongo_list_users(u08bits *realm, secrets_list_t *users, secrets_list_
   return ret;
 }
 
-static int mongo_list_oauth_keys(secrets_list_t *kids,secrets_list_t *hkdfs,secrets_list_t *teas,secrets_list_t *aas,secrets_list_t *tss,secrets_list_t *lts) {
+static int mongo_list_oauth_keys(secrets_list_t *kids,secrets_list_t *teas,secrets_list_t *tss,secrets_list_t *lts) {
 
   const char * collection_name = "oauth_key";
   mongoc_collection_t * collection = mongo_get_collection(collection_name);
@@ -522,9 +512,7 @@ static int mongo_list_oauth_keys(secrets_list_t *kids,secrets_list_t *hkdfs,secr
   BSON_APPEND_INT32(&fields, "timestamp", 1);
   BSON_APPEND_INT32(&fields, "as_rs_alg", 1);
   BSON_APPEND_INT32(&fields, "as_rs_key", 1);
-  BSON_APPEND_INT32(&fields, "auth_alg", 1);
   BSON_APPEND_INT32(&fields, "auth_key", 1);
-  BSON_APPEND_INT32(&fields, "hkdf_hash_func", 1);
   BSON_APPEND_INT32(&fields, "ikm_key", 1);
 
   mongoc_cursor_t * cursor;
@@ -552,17 +540,11 @@ static int mongo_list_oauth_keys(secrets_list_t *kids,secrets_list_t *hkdfs,secr
     	if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "as_rs_key") && BSON_ITER_HOLDS_UTF8(&iter)) {
     		STRCPY(key->as_rs_key,bson_iter_utf8(&iter, &length));
     	}
-    	if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "auth_alg") && BSON_ITER_HOLDS_UTF8(&iter)) {
-    		STRCPY(key->auth_alg,bson_iter_utf8(&iter, &length));
-    	}
     	if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "auth_key") && BSON_ITER_HOLDS_UTF8(&iter)) {
     		STRCPY(key->auth_key,bson_iter_utf8(&iter, &length));
     	}
     	if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "ikm_key") && BSON_ITER_HOLDS_UTF8(&iter)) {
     		STRCPY(key->ikm_key,bson_iter_utf8(&iter, &length));
-    	}
-    	if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "hkdf_hash_func") && BSON_ITER_HOLDS_UTF8(&iter)) {
-    		STRCPY(key->hkdf_hash_func,bson_iter_utf8(&iter, &length));
     	}
     	if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "timestamp") && BSON_ITER_HOLDS_INT64(&iter)) {
     		key->timestamp = (u64bits)bson_iter_int64(&iter);
@@ -572,9 +554,7 @@ static int mongo_list_oauth_keys(secrets_list_t *kids,secrets_list_t *hkdfs,secr
     	}
     	if(kids) {
     		add_to_secrets_list(kids,key->kid);
-    		add_to_secrets_list(hkdfs,key->hkdf_hash_func);
     		add_to_secrets_list(teas,key->as_rs_alg);
-    		add_to_secrets_list(aas,key->auth_alg);
 			{
 				char ts[256];
 				snprintf(ts,sizeof(ts)-1,"%llu",(unsigned long long)key->timestamp);
@@ -586,9 +566,9 @@ static int mongo_list_oauth_keys(secrets_list_t *kids,secrets_list_t *hkdfs,secr
 				add_to_secrets_list(lts,lt);
 			}
     	} else {
-    		printf("  kid=%s, ikm_key=%s, timestamp=%llu, lifetime=%lu, hkdf_hash_func=%s, as_rs_alg=%s, as_rs_key=%s, auth_alg=%s, auth_key=%s\n",
-    						key->kid, key->ikm_key, (unsigned long long)key->timestamp, (unsigned long)key->lifetime, key->hkdf_hash_func,
-    						key->as_rs_alg, key->as_rs_key, key->auth_alg, key->auth_key);
+    		printf("  kid=%s, ikm_key=%s, timestamp=%llu, lifetime=%lu, as_rs_alg=%s, as_rs_key=%s, auth_key=%s\n",
+    						key->kid, key->ikm_key, (unsigned long long)key->timestamp, (unsigned long)key->lifetime,
+    						key->as_rs_alg, key->as_rs_key, key->auth_key);
     	}
     }
     mongoc_cursor_destroy(cursor);

@@ -1,7 +1,9 @@
 4/9/2015 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.4.5.1 'Ardee West':
 	- dual allocation adjusted according to the new TURN-bis draft;
-	- options sha256, sha384, sha512 retired as non-standard ones;
+	- options sha256, sha384, sha512 retired as non-standard;
+	- third-party authorization (oAuth) updated according to the
+	version 14 of the draft;
 	- C++ fixes;
 	- cosmetic fixes;
 

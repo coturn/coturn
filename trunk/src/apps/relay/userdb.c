@@ -1018,17 +1018,15 @@ void run_db_test(void)
 		oauth_key_data_raw key_;
 		oauth_key_data_raw *key=&key_;
 		dbd->get_oauth_key((const u08bits*)"north",key);
-		printf("  kid=%s, ikm_key=%s, timestamp=%llu, lifetime=%lu, hkdf_hash_func=%s, as_rs_alg=%s, as_rs_key=%s, auth_alg=%s, auth_key=%s\n",
-		    		key->kid, key->ikm_key, (unsigned long long)key->timestamp, (unsigned long)key->lifetime, key->hkdf_hash_func,
-		    		key->as_rs_alg, key->as_rs_key, key->auth_alg, key->auth_key);
+		printf("  kid=%s, ikm_key=%s, timestamp=%llu, lifetime=%lu, as_rs_alg=%s, as_rs_key=%s, auth_key=%s\n",
+		    		key->kid, key->ikm_key, (unsigned long long)key->timestamp, (unsigned long)key->lifetime,
+		    		key->as_rs_alg, key->as_rs_key, key->auth_key);
 
 		printf("DB TEST 3:\n");
 
 		STRCPY(key->as_rs_alg,"as_rs_alg");
 		STRCPY(key->as_rs_key,"as_rs_key");
-		STRCPY(key->auth_alg,"auth_alg");
 		STRCPY(key->auth_key,"auth_key");
-		STRCPY(key->hkdf_hash_func,"hkdf");
 		STRCPY(key->ikm_key,"ikm_key");
 		STRCPY(key->kid,"kid");
 		key->timestamp = 123;
@@ -1039,9 +1037,9 @@ void run_db_test(void)
 
 		printf("DB TEST 4:\n");
 		dbd->get_oauth_key((const u08bits*)"kid",key);
-		printf("  kid=%s, ikm_key=%s, timestamp=%llu, lifetime=%lu, hkdf_hash_func=%s, as_rs_alg=%s, as_rs_key=%s, auth_alg=%s, auth_key=%s\n",
-		    		key->kid, key->ikm_key, (unsigned long long)key->timestamp, (unsigned long)key->lifetime, key->hkdf_hash_func,
-		    		key->as_rs_alg, key->as_rs_key, key->auth_alg, key->auth_key);
+		printf("  kid=%s, ikm_key=%s, timestamp=%llu, lifetime=%lu, as_rs_alg=%s, as_rs_key=%s, auth_key=%s\n",
+		    		key->kid, key->ikm_key, (unsigned long long)key->timestamp, (unsigned long)key->lifetime,
+		    		key->as_rs_alg, key->as_rs_key, key->auth_key);
 
 		printf("DB TEST 5:\n");
 		dbd->del_oauth_key((const u08bits*)"kid");
@@ -1053,9 +1051,9 @@ void run_db_test(void)
 
 		oauth_key_data oakd;
 		convert_oauth_key_data_raw(key, &oakd);
-		printf("  kid=%s, ikm_key=%s, timestamp=%llu, lifetime=%lu, hkdf_hash_func=%s, as_rs_alg=%s, as_rs_key_size=%d, auth_alg=%s, auth_key_size=%d\n",
-				    		oakd.kid, oakd.ikm_key, (unsigned long long)oakd.timestamp, (unsigned long)oakd.lifetime, oakd.hkdf_hash_func,
-				    		oakd.as_rs_alg, (int)oakd.as_rs_key_size, oakd.auth_alg, (int)oakd.auth_key_size);
+		printf("  kid=%s, ikm_key=%s, timestamp=%llu, lifetime=%lu, as_rs_alg=%s, as_rs_key_size=%d, auth_key_size=%d\n",
+				    		oakd.kid, oakd.ikm_key, (unsigned long long)oakd.timestamp, (unsigned long)oakd.lifetime,
+				    		oakd.as_rs_alg, (int)oakd.as_rs_key_size, (int)oakd.auth_key_size);
 
 		oauth_key oak;
 		char err_msg[1025];
