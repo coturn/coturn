@@ -83,7 +83,7 @@ static int check_oauth(void) {
 	const turn_time_t key_timestamp = 1234567890;
 	const turn_time_t key_lifetime = 3600;
 
-	const char aead_nonce[OAUTH_AEAD_NONCE_SIZE+1] = "h4j3k2l2n4b5";
+	const char gcm_nonce[OAUTH_GCM_NONCE_SIZE+1] = "h4j3k2l2n4b5";
 
 	{
 		{
@@ -144,7 +144,7 @@ static int check_oauth(void) {
 					ns_bzero(&etoken,sizeof(etoken));
 
 					if (encode_oauth_token((const u08bits *) server_name, &etoken,
-							&key, &ot, (const u08bits*)aead_nonce) < 0) {
+							&key, &ot, (const u08bits*)gcm_nonce) < 0) {
 						fprintf(stderr, "%s: cannot encode oauth token\n",
 								__FUNCTION__);
 						return -1;

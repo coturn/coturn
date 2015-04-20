@@ -1639,9 +1639,9 @@ static void print_features(unsigned long mfn)
 #endif
 
 #if defined(TURN_NO_GCM)
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "AEAD is not supported\n");
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "GCM (AEAD) is not supported\n");
 #else
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "AEAD GCM supported\n");
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "GCM (AEAD) supported\n");
 #endif
 
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "OpenSSL compile-time version: %s\n",OPENSSL_VERSION_TEXT);

@@ -21,7 +21,7 @@
 # 8) "--pkey=example_turn_server_pkey.pem" sets the OpenSSL private key name.
 # 9) "--log-file=stdout" means that all log output will go to the stdout.
 # 10) --cipher-list=ALL means that we support all OpenSSL ciphers
-# 11) --oauth - mandate oAuth security dialog
+# 11) --oauth - support oAuth security dialog
 # Other parameters (config file name, etc) are default.
 
 if [ -d examples ] ; then
