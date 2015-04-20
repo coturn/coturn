@@ -2348,13 +2348,13 @@ static void generate_random_nonce(unsigned char *nonce, size_t sz) {
 
 #if !defined(TURN_NO_GCM)
 
-static int encode_oauth_token_aead(const u08bits *server_name, encoded_oauth_token *etoken, const oauth_key *key, const oauth_token *dtoken, const u08bits* nonce0) {
+static int encode_oauth_token_gcm(const u08bits *server_name, encoded_oauth_token *etoken, const oauth_key *key, const oauth_token *dtoken, const u08bits* nonce0) {
 	if(server_name && etoken && key && dtoken && (dtoken->enc_block.key_length<=MAXSHASIZE)) {
 
 		unsigned char orig_field[MAX_ENCODED_OAUTH_TOKEN_SIZE];
 		ns_bzero(orig_field,sizeof(orig_field));
 
-		unsigned char nonce[OAUTH_AEAD_NONCE_SIZE];
+		unsigned char nonce[OAUTH_GCM_NONCE_SIZE];
 		if(nonce0) {
 			ns_bcopy(nonce0,nonce,sizeof(nonce));
 		} else {
@@ -2363,11 +2363,11 @@ static int encode_oauth_token_aead(const u08bits *server_name, encoded_oauth_tok
 
 		size_t len = 0;
 
-		*((uint16_t*)(orig_field+len)) = nswap16(OAUTH_AEAD_NONCE_SIZE);
+		*((uint16_t*)(orig_field+len)) = nswap16(OAUTH_GCM_NONCE_SIZE);
 		len +=2;
 
-		ns_bcopy(nonce,orig_field+len,OAUTH_AEAD_NONCE_SIZE);
-		len += OAUTH_AEAD_NONCE_SIZE;
+		ns_bcopy(nonce,orig_field+len,OAUTH_GCM_NONCE_SIZE);
+		len += OAUTH_GCM_NONCE_SIZE;
 
 		*((uint16_t*)(orig_field+len)) = nswap16(dtoken->enc_block.key_length);
 		len +=2;
@@ -2395,7 +2395,7 @@ static int encode_oauth_token_aead(const u08bits *server_name, encoded_oauth_tok
 		EVP_CIPHER_CTX_set_padding(&ctx,1);
 
 		/* Set IV length if default 12 bytes (96 bits) is not appropriate */
-		if(1 != EVP_CIPHER_CTX_ctrl(&ctx, EVP_CTRL_GCM_SET_IVLEN, OAUTH_AEAD_NONCE_SIZE, NULL))
+		if(1 != EVP_CIPHER_CTX_ctrl(&ctx, EVP_CTRL_GCM_SET_IVLEN, OAUTH_GCM_NONCE_SIZE, NULL))
 			return -1;
 
 		/* Initialize key and IV */
@@ -2413,10 +2413,10 @@ static int encode_oauth_token_aead(const u08bits *server_name, encoded_oauth_tok
 
 		outl=0;
 		unsigned char *encoded_field = (unsigned char*)etoken->token;
-		ns_bcopy(orig_field,encoded_field,OAUTH_AEAD_NONCE_SIZE + 2);
-		encoded_field += OAUTH_AEAD_NONCE_SIZE + 2;
-		unsigned char *start_field = orig_field + OAUTH_AEAD_NONCE_SIZE + 2;
-		len -= OAUTH_AEAD_NONCE_SIZE + 2;
+		ns_bcopy(orig_field,encoded_field,OAUTH_GCM_NONCE_SIZE + 2);
+		encoded_field += OAUTH_GCM_NONCE_SIZE + 2;
+		unsigned char *start_field = orig_field + OAUTH_GCM_NONCE_SIZE + 2;
+		len -= OAUTH_GCM_NONCE_SIZE + 2;
 
 		if(1 != my_EVP_EncryptUpdate(&ctx, encoded_field, &outl, start_field, (int)len))
 			return -1;
@@ -2425,10 +2425,10 @@ static int encode_oauth_token_aead(const u08bits *server_name, encoded_oauth_tok
 		EVP_EncryptFinal_ex(&ctx, encoded_field + outl, &tmp_outl);
 		outl += tmp_outl;
 
-		EVP_CIPHER_CTX_ctrl(&ctx, EVP_CTRL_GCM_GET_TAG, OAUTH_AEAD_TAG_SIZE, encoded_field + outl);
-		outl += OAUTH_AEAD_TAG_SIZE;
+		EVP_CIPHER_CTX_ctrl(&ctx, EVP_CTRL_GCM_GET_TAG, OAUTH_GCM_TAG_SIZE, encoded_field + outl);
+		outl += OAUTH_GCM_TAG_SIZE;
 
-		etoken->size = 2 + OAUTH_AEAD_NONCE_SIZE + outl;
+		etoken->size = 2 + OAUTH_GCM_NONCE_SIZE + outl;
 
 		EVP_CIPHER_CTX_cleanup(&ctx);
 
@@ -2437,7 +2437,7 @@ static int encode_oauth_token_aead(const u08bits *server_name, encoded_oauth_tok
 	return -1;
 }
 
-static int decode_oauth_token_aead(const u08bits *server_name, const encoded_oauth_token *etoken, const oauth_key *key, oauth_token *dtoken)
+static int decode_oauth_token_gcm(const u08bits *server_name, const encoded_oauth_token *etoken, const oauth_key *key, oauth_token *dtoken)
 {
 	if(server_name && etoken && key && dtoken) {
 
@@ -2447,17 +2447,17 @@ static int decode_oauth_token_aead(const u08bits *server_name, const encoded_oau
 
 		uint16_t nonce_len = nswap16(*((const uint16_t*)csnl));
 
-		size_t min_encoded_field_size = 2+4+8+nonce_len+2+OAUTH_AEAD_TAG_SIZE+1;
+		size_t min_encoded_field_size = 2+4+8+nonce_len+2+OAUTH_GCM_TAG_SIZE+1;
 		if(etoken->size < min_encoded_field_size) {
 			OAUTH_ERROR("%s: token size too small: %d\n",__FUNCTION__,(int)etoken->size);
 			return -1;
 		}
 
 		const unsigned char* encoded_field = (const unsigned char*)(etoken->token + nonce_len + 2);
-		unsigned int encoded_field_size = (unsigned int)etoken->size - nonce_len - 2 - OAUTH_AEAD_TAG_SIZE;
+		unsigned int encoded_field_size = (unsigned int)etoken->size - nonce_len - 2 - OAUTH_GCM_TAG_SIZE;
 		const unsigned char* nonce = ((const unsigned char*)etoken->token + 2);
 
-		unsigned char tag[OAUTH_AEAD_TAG_SIZE];
+		unsigned char tag[OAUTH_GCM_TAG_SIZE];
 		ns_bcopy(((const unsigned char*)etoken->token) + nonce_len + 2 + encoded_field_size, tag ,sizeof(tag));
 
 		unsigned char decoded_field[MAX_ENCODED_OAUTH_TOKEN_SIZE];
@@ -2492,7 +2492,7 @@ static int decode_oauth_token_aead(const u08bits *server_name, const encoded_oau
 
 		/* Set expected tag value. A restriction in OpenSSL 1.0.1c and earlier
 		  +         * required the tag before any AAD or ciphertext */
-		EVP_CIPHER_CTX_ctrl (&ctx, EVP_CTRL_GCM_SET_TAG, OAUTH_AEAD_TAG_SIZE, tag);
+		EVP_CIPHER_CTX_ctrl (&ctx, EVP_CTRL_GCM_SET_TAG, OAUTH_GCM_TAG_SIZE, tag);
 
 		int outl=0;
 		size_t sn_len = strlen((const char*)server_name);
@@ -2548,7 +2548,7 @@ int encode_oauth_token(const u08bits *server_name, encoded_oauth_token *etoken, 
 #if !defined(TURN_NO_GCM)
 		case A256GCM:
 		case A128GCM:
-			return encode_oauth_token_aead(server_name, etoken,key,dtoken,nonce);
+			return encode_oauth_token_gcm(server_name, etoken,key,dtoken,nonce);
 #endif
 		default:
 			fprintf(stderr,"Unsupported AS_RS algorithm: %d\n",(int)key->as_rs_alg);
@@ -2565,7 +2565,7 @@ int decode_oauth_token(const u08bits *server_name, const encoded_oauth_token *et
 #if !defined(TURN_NO_GCM)
 		case A256GCM:
 		case A128GCM:
-			return decode_oauth_token_aead(server_name, etoken,key,dtoken);
+			return decode_oauth_token_gcm(server_name, etoken,key,dtoken);
 #endif
 		default:
 			fprintf(stderr,"Unsupported AS_RS algorithm: %d\n",(int)key->as_rs_alg);
