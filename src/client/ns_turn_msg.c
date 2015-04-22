@@ -2002,8 +2002,10 @@ static void normalize_algorithm(char *s)
 static size_t calculate_enc_key_length(ENC_ALG a)
 {
 	switch(a) {
+#if !defined(TURN_NO_GCM)
 	case A128GCM:
 		return 16;
+#endif
 	default:
 		break;
 	};
@@ -2114,7 +2116,8 @@ int convert_oauth_key_data(const oauth_key_data *oakd0, oauth_key *key, char *er
 	return 0;
 }
 
-static const EVP_CIPHER *get_cipher_type(ENC_ALG enc_alg)
+const EVP_CIPHER *get_cipher_type(ENC_ALG enc_alg);
+const EVP_CIPHER *get_cipher_type(ENC_ALG enc_alg)
 {
 	switch(enc_alg) {
 #if !defined(TURN_NO_GCM)
@@ -2130,7 +2133,9 @@ static const EVP_CIPHER *get_cipher_type(ENC_ALG enc_alg)
 	return NULL;
 }
 
-static int my_EVP_EncryptUpdate(EVP_CIPHER_CTX *ctx, unsigned char *out,
+int my_EVP_EncryptUpdate(EVP_CIPHER_CTX *ctx, unsigned char *out,
+			 int *outl, const unsigned char *in, int inl);
+int my_EVP_EncryptUpdate(EVP_CIPHER_CTX *ctx, unsigned char *out,
 		int *outl, const unsigned char *in, int inl)
 {
 	int cycle = 0;
@@ -2149,7 +2154,9 @@ static int my_EVP_EncryptUpdate(EVP_CIPHER_CTX *ctx, unsigned char *out,
 	return 1;
 }
 
-static int my_EVP_DecryptUpdate(EVP_CIPHER_CTX *ctx, unsigned char *out,
+int my_EVP_DecryptUpdate(EVP_CIPHER_CTX *ctx, unsigned char *out,
+			 int *outl, const unsigned char *in, int inl);
+int my_EVP_DecryptUpdate(EVP_CIPHER_CTX *ctx, unsigned char *out,
 		int *outl, const unsigned char *in, int inl)
 {
 	int cycle = 0;
