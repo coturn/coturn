@@ -2077,8 +2077,9 @@ int convert_oauth_key_data(const oauth_key_data *oakd0, oauth_key *key, char *er
 		if(!(key->timestamp)) key->timestamp = OAUTH_DEFAULT_TIMESTAMP;
 		if(!(key->lifetime)) key->lifetime = OAUTH_DEFAULT_LIFETIME;
 
-		key->as_rs_alg = ENC_ALG_DEFAULT;
+		key->as_rs_alg = ENC_ALG_ERROR;
 #if !defined(TURN_NO_GCM)
+		key->as_rs_alg = ENC_ALG_DEFAULT;
 		if(!strcmp(oakd->as_rs_alg,"A128GCM")) {
 			key->as_rs_alg = A128GCM;
 			key->auth_key_size = 0;

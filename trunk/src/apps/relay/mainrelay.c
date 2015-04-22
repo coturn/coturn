@@ -897,7 +897,11 @@ static void set_option(int c, char *value)
 	  STRCPY(turn_params.oauth_server_name,value);
 	  break;
   case OAUTH_OPT:
-	  turn_params.oauth = get_bool_value(value);
+	  if(!ENC_ALG_NUM) {
+		  TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: option --oauth is not supported; ignored.\n");
+	  } else {
+		  turn_params.oauth = get_bool_value(value);
+	  }
 	  break;
   case NO_SSLV2_OPT:
     //deprecated
@@ -1638,11 +1642,16 @@ static void print_features(unsigned long mfn)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TURN/STUN ALPN is not supported\n");
 #endif
 
+	if(!ENC_ALG_NUM) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Third-party authorization (oAuth) is not supported\n");
+	} else {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Third-party authorization (oAuth) supported\n");
 #if defined(TURN_NO_GCM)
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "GCM (AEAD) is not supported\n");
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "GCM (AEAD) is not supported\n");
 #else
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "GCM (AEAD) supported\n");
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "GCM (AEAD) supported\n");
 #endif
+	}
 
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "OpenSSL compile-time version: %s\n",OPENSSL_VERSION_TEXT);
 
