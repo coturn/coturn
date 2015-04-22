@@ -72,12 +72,12 @@ typedef enum _SHATYPE SHATYPE;
 
 enum _ENC_ALG {
 	ENC_ALG_ERROR=-1,
-	ENC_ALG_DEFAULT=0,
 #if !defined(TURN_NO_GCM)
+	ENC_ALG_DEFAULT=0,
 	A256GCM=ENC_ALG_DEFAULT,
 	A128GCM,
 #endif
-	ENG_ALG_NUM
+	ENC_ALG_NUM
 };
 
 typedef enum _ENC_ALG ENC_ALG;

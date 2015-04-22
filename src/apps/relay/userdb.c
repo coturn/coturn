@@ -622,10 +622,10 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, u08bits *u
 		return 0;
 	}
 
-  const turn_dbdriver_t * dbd = get_dbdriver();
-  if (dbd && dbd->get_user_key) {
-    ret = (*(dbd->get_user_key))(usname, realm, key);
-  }
+	const turn_dbdriver_t * dbd = get_dbdriver();
+	if (dbd && dbd->get_user_key) {
+		ret = (*(dbd->get_user_key))(usname, realm, key);
+	}
 
 	return ret;
 }

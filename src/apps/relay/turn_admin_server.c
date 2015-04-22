@@ -1650,7 +1650,7 @@ static void write_https_home_page(ioa_socket_handle s)
 			str_buffer_append(sb,current_eff_realm());
 			str_buffer_append(sb,"\">Origins</a>");
 
-			if(is_superuser()) {
+			if(is_superuser() && ENC_ALG_NUM) {
 			  str_buffer_append(sb,"<br><a href=\"");
 			  str_buffer_append(sb,form_names[AS_FORM_OAUTH].name);
 			  str_buffer_append(sb,"?");
@@ -2871,7 +2871,7 @@ static void write_https_oauth_show_keys(ioa_socket_handle s, const char* kid)
 							str_buffer_append(sb,"<table>\r\n");
 
 							if(key.ikm_key[0]) {
-								str_buffer_append(sb,"<tr><td>Base64-encoded Input Keying Material:</td><td>");
+								str_buffer_append(sb,"<tr><td>Base64-encoded key:</td><td>");
 								str_buffer_append(sb,key.ikm_key);
 								str_buffer_append(sb,"</td></tr>\r\n");
 							}
