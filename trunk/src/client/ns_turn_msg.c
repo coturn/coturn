@@ -2090,7 +2090,7 @@ int convert_oauth_key_data(const oauth_key_data *oakd0, oauth_key *key, char *er
 			key->as_rs_alg = A256GCM;
 			key->auth_key_size = 0;
 			key->auth_key[0] = 0;
-		} else if(oakd->as_rs_alg[0])
+		} else 
 #endif
 		{
 			if(err_msg) {
@@ -2099,6 +2099,8 @@ int convert_oauth_key_data(const oauth_key_data *oakd0, oauth_key *key, char *er
 			OAUTH_ERROR("Wrong oAuth token encryption algorithm: %s (3)\n",oakd->as_rs_alg);
 			return -1;
 		}
+
+#if !defined(TURN_NO_GCM)
 
 		key->auth_key_size = calculate_auth_key_length(key->as_rs_alg);
 		if(key->auth_key_size) {
@@ -2111,6 +2113,7 @@ int convert_oauth_key_data(const oauth_key_data *oakd0, oauth_key *key, char *er
 		if(calculate_key(key->ikm_key,key->ikm_key_size,key->as_rs_key,key->as_rs_key_size)<0) {
 			return -1;
 		}
+#endif
 	}
 
 	return 0;
