@@ -1999,7 +1999,8 @@ static void normalize_algorithm(char *s)
 	}
 }
 
-static size_t calculate_enc_key_length(ENC_ALG a)
+size_t calculate_enc_key_length(ENC_ALG a);
+size_t calculate_enc_key_length(ENC_ALG a)
 {
 	switch(a) {
 #if !defined(TURN_NO_GCM)
@@ -2013,7 +2014,8 @@ static size_t calculate_enc_key_length(ENC_ALG a)
 	return 32;
 }
 
-static size_t calculate_auth_key_length(ENC_ALG a)
+size_t calculate_auth_key_length(ENC_ALG a);
+size_t calculate_auth_key_length(ENC_ALG a)
 {
 	switch(a) {
 #if !defined(TURN_NO_GCM)
@@ -2028,8 +2030,10 @@ static size_t calculate_auth_key_length(ENC_ALG a)
 	return 0;
 }
 
-static int calculate_key(char *key, size_t key_size,
-						char *new_key, size_t new_key_size)
+int calculate_key(char *key, size_t key_size,
+		char *new_key, size_t new_key_size);
+int calculate_key(char *key, size_t key_size,
+		char *new_key, size_t new_key_size)
 {
 	UNUSED_ARG(key_size);
 
