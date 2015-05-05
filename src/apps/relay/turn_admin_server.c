@@ -1650,14 +1650,16 @@ static void write_https_home_page(ioa_socket_handle s)
 			str_buffer_append(sb,current_eff_realm());
 			str_buffer_append(sb,"\">Origins</a>");
 
-			if(is_superuser() && ENC_ALG_NUM) {
-			  str_buffer_append(sb,"<br><a href=\"");
-			  str_buffer_append(sb,form_names[AS_FORM_OAUTH].name);
-			  str_buffer_append(sb,"?");
-			  str_buffer_append(sb,HR_REALM);
-			  str_buffer_append(sb,"=");
-			  str_buffer_append(sb,current_eff_realm());
-			  str_buffer_append(sb,"\">oAuth keys</a>");
+			if(is_superuser()) {
+			  if(ENC_ALG_NUM>0) {
+			  	str_buffer_append(sb,"<br><a href=\"");
+			  	str_buffer_append(sb,form_names[AS_FORM_OAUTH].name);
+			  	str_buffer_append(sb,"?");
+			  	str_buffer_append(sb,HR_REALM);
+			  	str_buffer_append(sb,"=");
+			  	str_buffer_append(sb,current_eff_realm());
+			  	str_buffer_append(sb,"\">oAuth keys</a>");
+			  }
 			}
 
 			str_buffer_append(sb,"</fieldset>\r\n");
