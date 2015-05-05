@@ -743,10 +743,8 @@ static const struct myoption long_options[] = {
 				{ "lt-cred-mech", optional_argument, NULL, 'a' },
 				{ "no-auth", optional_argument, NULL, 'z' },
 				{ "user", required_argument, NULL, 'u' },
-#if !defined(TURN_NO_SQLITE)
 				{ "userdb", required_argument, NULL, 'b' },
 				{ "db", required_argument, NULL, 'b' },
-#endif
 #if !defined(TURN_NO_PQ)
 				{ "psql-userdb", required_argument, NULL, 'e' },
 				{ "sql-userdb", required_argument, NULL, 'e' },
@@ -1125,12 +1123,14 @@ static void set_option(int c, char *value)
 	case 'u':
 		add_static_user_account(value);
 		break;
-#if !defined(TURN_NO_SQLITE)
 	case 'b':
+#if defined(TURN_NO_SQLITE)
+	  TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: Options -b, --userdb and --db are not supported because SQLite is not supported in this build.\n");
+#else
 		STRCPY(turn_params.default_users_db.persistent_users_db.userdb, value);
 		turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_SQLITE;
-		break;
 #endif
+		break;
 #if !defined(TURN_NO_PQ)
 	case 'e':
 		STRCPY(turn_params.default_users_db.persistent_users_db.userdb, value);
