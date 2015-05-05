@@ -231,7 +231,7 @@ static void readable_string(unsigned char *orig, unsigned char *out, size_t sz)
     out[0]=0;
 
     for(i = 0; i < sz; ++i) {
-        sprintf((char*)(out + (i * 2)), "%02x", (unsigned int)orig[i]);
+      snprintf((char*)(out + (i * 2)), 4, "%02x", (unsigned int)orig[i]);
     }
 }
 
