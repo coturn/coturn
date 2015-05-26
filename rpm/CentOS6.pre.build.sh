@@ -8,7 +8,6 @@ CPWD=`pwd`
 
 cd ${CPWD}
 
-EPELRPM=epel-release-6-8.noarch.rpm
 LIBEVENT_MAJOR_VERSION=2
 LIBEVENT_VERSION=${LIBEVENT_MAJOR_VERSION}.0.21
 LIBEVENT_DISTRO=libevent-${LIBEVENT_VERSION}-stable.tar.gz
@@ -78,12 +77,12 @@ fi
 # EPEL (for hiredis)
 
 cd ${CPWD}
-./epel.install.sh
+./epel6.install.sh
  
 # Platform file
 
 echo "CentOS6.6" > ${BUILDDIR}/platform
 
-cp ${CPWD}/epel.install.sh ${BUILDDIR}/install.sh
+cp ${CPWD}/epel6.install.sh ${BUILDDIR}/install.sh
 
 cd ${CPWD}

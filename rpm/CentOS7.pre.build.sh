@@ -8,8 +8,6 @@ CPWD=`pwd`
 
 cd ${CPWD}
 
-EPELRPM=epel-release-6-8.noarch.rpm
-
 # Common packs
 
 PACKS="libevent-devel mariadb-devel sqlite sqlite-devel"
@@ -24,12 +22,12 @@ fi
 # EPEL (for hiredis)
 
 cd ${CPWD}
-./epel.install.sh
+./epel7.install.sh
  
 # Platform file
 
-echo "CentOS7" > ${BUILDDIR}/platform
+echo "CentOS7.1" > ${BUILDDIR}/platform
 
-cp ${CPWD}/epel.install.sh ${BUILDDIR}/install.sh
+cp ${CPWD}/epel7.install.sh ${BUILDDIR}/install.sh
 
 cd ${CPWD}
