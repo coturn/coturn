@@ -470,7 +470,7 @@ libevent2 from their web site. It was tested with older *NIXes
 
 NOTE: SQLite must be of version 3.x.
 
-NOTE: For extra security features (DTLS and SHA256 and and SHA384 and SHA512)
+NOTE: For extra security features (like DTLS)
 support, OpenSSL version 1.0.0a or newer is recommended. Older versions do 
 not support DTLS, reliably, in some cases. For example, the Debian 'Squeeze'
 Linux supplies 0.9.8 version of OpenSSL, that does not work correctly with
@@ -683,10 +683,7 @@ security reasons. Storing only the HMAC key has its own implications -
 if you change the realm, you will have to update the HMAC keys of all 
 users, because the realm is used for the HMAC key generation.
 
-The key must be up to 32 characters (HEX representation of 16 bytes) for SHA1,
-or up to 64 characters (HEX representation of 32 bytes) for SHA256,
-or up to 96 characters (HEX representation of 48 bytes) for SHA384,
-or up to 128 characters (HEX representation of 64 bytes) for SHA512:
+The key must be up to 32 characters (HEX representation of 16 bytes) for SHA1:
 
 # Table holding shared secrets for secret-based authorization
 # (REST API). Shared secret can be stored either in unsecure open
@@ -743,14 +740,10 @@ CREATE TABLE turn_realm_option (
 #
 CREATE TABLE oauth_key (
 	kid varchar(128), 
-	ikm_key varchar(256) default '',
+	ikm_key varchar(256),
 	timestamp bigint default 0,
 	lifetime integer default 0,
-	hkdf_hash_func varchar(64) default '',
 	as_rs_alg varchar(64) default '',
-	as_rs_key varchar(256) default '',
-	auth_alg varchar(64) default '',
-	auth_key varchar(256) default '',
 	primary key (kid)
 ); 
 
@@ -759,38 +752,17 @@ The oauth_key table fields meanings are:
 	kid: the kid of the key;
 
 	ikm_key - (optional) base64-encoded key ("input keying material");
-		The ikm_key is not needed if the as_rs_key and auth_key are defined
-		explicitly in the database;
 		
 	timestamp - (optional) the timestamp (in seconds) when the key 
 		lifetime starts;
 	
 	lifetime - (optional) the key lifetime in seconds; the default value 
 		is 0 - unlimited lifetime.
-	
-	hkdf_hash_func - (optional) hash function for HKDF procedure; the 
-		valid values are SHA-1, SHA-256, SHA-384 and SHA-512, 
-		with SHA-256 as default. The hkdf_hash_func is not needed
-		if the as_rs_key and auth_key are defined explicitly
-		in the database;
 		
 	as_rs_alg - oAuth token encryption algorithm; the valid values are
-		"AES-128-CBC" and "AES-256-CBC", , "AEAD-AES-128-GCM",
-		"AEAD-AES-256-GCM".
-		The default value is "AES-256-CBC";
-		
-	as_rs_key - (optional) base64-encoded AS-RS key. If not defined, then 
-		calculated with ikm_key and hkdf_hash_func. The as_rs_key length 
-		is defined by as_rs_alg.
-		
-	auth_alg - (optional) oAuth token authentication algorithm; the valid values are
-		"HMAC-SHA-256-128", "HMAC-SHA-256", "HMAC-SHA-384",
-		"HMAC-SHA-512" and "HMAC-SHA-1".		  
-		The default value is "HMAC-SHA-256-128".
-		
-	auth_key - (optional) base64-encoded AUTH key. If not defined, then 
-		calculated with ikm_key and hkdf_hash_func. The auth_key length 
-		is defined by auth_alg.
+		"A256GCM", "A128GCM" (see 
+		http://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms-40#section-5.1).
+		The default value is "A256GCM";
 
 # Https access admin users.
 # Leave this table empty if you do not want 
@@ -826,9 +798,6 @@ Fill in users, for example:
   
   $ bin/turnadmin -a -b "/var/db/turndb" -u gorst -r north.gov -p hero
   $ bin/turnadmin -a -b "/var/db/turndb" -u ninefingers -r north.gov -p youhavetoberealistic
-  
-  Long-term credentials mechanism with SHA256 extension:
-  $ bin/turnadmin -a -b "/var/db/turndb" -u bethod -r north.gov -p king-of-north --sha256
   
   Admin users:
    
@@ -954,9 +923,6 @@ Fill in users, for example:
   $ bin/turnadmin -a -e "host=localhost dbname=coturn user=turn password=turn" -u gorst -r north.gov -p hero
   $ bin/turnadmin -a -e "host=localhost dbname=coturn user=turn password=turn" -u ninefingers -r north.gov -p youhavetoberealistic
   
-  Long-term credentials mechanism with SHA256 extension:
-  $ bin/turnadmin -a -e "host=localhost dbname=coturn user=turn password=turn" -u bethod -r north.gov -p king-of-north --sha256
-  
   Admin users:
    
   $ bin/turnadmin -A -e "host=localhost dbname=coturn user=turn password=turn" -u gorst -p hero
@@ -1008,9 +974,6 @@ the root account.
   
   $ bin/turnadmin -a -M "host=localhost dbname=coturn user=turn password=turn" -u gorst -r north.gov -p hero
   $ bin/turnadmin -a -M "host=localhost dbname=coturn user=turn password=turn" -u ninefingers -r north.gov -p youhavetoberealistic
-  
-  Long-term credentials mechanism with SHA256 extension:
-  $ bin/turnadmin -a -M "host=localhost dbname=coturn user=turn password=turn" -u bethod -r north.gov -p king-of-north --sha256
   
   Admin users:
    
@@ -1137,9 +1100,6 @@ Redis TURN admin commands:
   
   $ bin/turnadmin -a -N "host=localhost dbname=2 user=turn password=turn" -u gorst -r north.gov -p hero
   $ bin/turnadmin -a -N "host=localhost dbname=2 user=turn password=turn" -u ninefingers -r north.gov -p youhavetoberealistic
-  
-  Long-term credentials mechanism with SHA256 extension:
-  $ bin/turnadmin -a -N "host=localhost dbname=2 user=turn password=turn" -u bethod -r north.gov -p king-of-north --sha256
   
   Admin users:
    

@@ -236,17 +236,6 @@ Flags:
 --no-multicast-peers	Disallow peers on well-known broadcast addresses 
 			(224.0.0.0 and above, and FFXX:*).
 
---sha256		Require SHA256 digest function to be used for the message integrity.
-			By default, the server uses SHA1 hashes. With this option, the server 
-			requires the stronger SHA256 hashes. The client application must support
-			SHA256 hash function if this option is used. If the server obtains a message 
-			from the client with a weaker (SHA1) hash function then the server returns 
-			error code 426.
-
---sha384		Require SHA384 digest function to be used for the message integrity.
-
---sha512		Require SHA512 digest function to be used for the message integrity.
-			
 --mobility		Mobility with ICE (MICE) specs support.
 
 --no-cli		Turn OFF the CLI support. By default it is always ON.

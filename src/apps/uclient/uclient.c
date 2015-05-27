@@ -119,7 +119,6 @@ static app_ur_session* init_app_session(app_ur_session *ss) {
   if(ss) {
     ns_bzero(ss,sizeof(app_ur_session));
     ss->pinfo.fd=-1;
-    ss->pinfo.shatype = shatype;
   }
   return ss;
 }
@@ -751,17 +750,6 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 							&err_code,err_msg,sizeof(err_msg),
 							clnet_info->realm,clnet_info->nonce,
 							clnet_info->server_name, &(clnet_info->oauth))) {
-			if(err_code == SHA_TOO_WEAK_ERROR_CODE && (elem->pinfo.shatype == SHATYPE_SHA1)) {
-				elem->pinfo.shatype = SHATYPE_SHA256;
-				recalculate_restapi_hmac(elem->pinfo.shatype);
-			} else if(err_code == SHA_TOO_WEAK_ERROR_CODE && (elem->pinfo.shatype == SHATYPE_SHA256)) {
-				elem->pinfo.shatype = SHATYPE_SHA384;
-				recalculate_restapi_hmac(elem->pinfo.shatype);
-			} else if(err_code == SHA_TOO_WEAK_ERROR_CODE && (elem->pinfo.shatype == SHATYPE_SHA384)) {
-				elem->pinfo.shatype = SHATYPE_SHA512;
-				recalculate_restapi_hmac(elem->pinfo.shatype);
-			}
-
 			if(is_TCP_relay() && (stun_get_method(&(elem->in_buffer)) == STUN_METHOD_CONNECT)) {
 				turn_tcp_connect(clnet_verbose, &(elem->pinfo), &(elem->pinfo.peer_addr));
 			} else if(stun_get_method(&(elem->in_buffer)) == STUN_METHOD_REFRESH) {
@@ -1008,7 +996,6 @@ static int start_client(const char *remote_address, int port,
   app_ur_conn_info clnet_info_probe; /* for load balancing probe */
   ns_bzero(&clnet_info_probe,sizeof(clnet_info_probe));
   clnet_info_probe.fd = -1;
-  clnet_info_probe.shatype = shatype;
 
   app_ur_conn_info *clnet_info=&(ss->pinfo);
   app_ur_conn_info *clnet_info_rtcp=NULL;
@@ -1103,7 +1090,6 @@ static int start_c2c(const char *remote_address, int port,
   app_ur_conn_info clnet_info_probe; /* for load balancing probe */
   ns_bzero(&clnet_info_probe,sizeof(clnet_info_probe));
   clnet_info_probe.fd = -1;
-  clnet_info_probe.shatype = shatype;
 
   app_ur_conn_info *clnet_info1=&(ss1->pinfo);
   app_ur_conn_info *clnet_info1_rtcp=NULL;
@@ -1247,7 +1233,7 @@ static int refresh_channel(app_ur_session* elem, u16bits method, uint32_t lt)
 				field[1]=0;
 				field[2]=0;
 				field[3]=0;
-				stun_attr_add(&message, STUN_ATTRIBUTE_ADDITIONAL_ADDRESS_FAMILY, (const char*) field, 4);
+				stun_attr_add(&message, STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY, (const char*) field, 4);
 			}
 		}
 
@@ -1652,7 +1638,7 @@ int add_integrity(app_ur_conn_info *clnet_info, stun_buffer *message)
 			}
 
 			if(stun_attr_add_integrity_by_key_str(message->buf, (size_t*)&(message->len), (u08bits*)okey_array[cok].kid,
-					clnet_info->realm, clnet_info->key, clnet_info->nonce, clnet_info->shatype)<0) {
+					clnet_info->realm, clnet_info->key, clnet_info->nonce, shatype)<0) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO," Cannot add integrity to the message\n");
 				return -1;
 			}
@@ -1661,14 +1647,14 @@ int add_integrity(app_ur_conn_info *clnet_info, stun_buffer *message)
 			{
 				password_t pwd;
 				if(stun_check_message_integrity_by_key_str(get_turn_credentials_type(),
-								message->buf, (size_t)(message->len), clnet_info->key, pwd, clnet_info->shatype, NULL)<1) {
+								message->buf, (size_t)(message->len), clnet_info->key, pwd, shatype)<1) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR," Self-test of integrity does not comple correctly !\n");
 					return -1;
 				}
 			}
 		} else {
 			if(stun_attr_add_integrity_by_user_str(message->buf, (size_t*)&(message->len), g_uname,
-					clnet_info->realm, g_upwd, clnet_info->nonce, clnet_info->shatype)<0) {
+					clnet_info->realm, g_upwd, clnet_info->nonce, shatype)<0) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO," Cannot add integrity to the message\n");
 				return -1;
 			}
@@ -1680,14 +1666,14 @@ int add_integrity(app_ur_conn_info *clnet_info, stun_buffer *message)
 
 int check_integrity(app_ur_conn_info *clnet_info, stun_buffer *message)
 {
-	SHATYPE sht = clnet_info->shatype;
+	SHATYPE sht = shatype;
 
 	if(oauth && clnet_info->oauth) {
 
 		password_t pwd;
 
 		return stun_check_message_integrity_by_key_str(get_turn_credentials_type(),
-				message->buf, (size_t)(message->len), clnet_info->key, pwd, sht, NULL);
+				message->buf, (size_t)(message->len), clnet_info->key, pwd, sht);
 
 	} else {
 

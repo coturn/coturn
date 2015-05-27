@@ -41,33 +41,11 @@
 
 //////////// OAUTH //////////////////
 
-static const char* shas[]={"SHA1",
-#if !defined(OPENSSL_NO_SHA256) && defined(SHA256_DIGEST_LENGTH)
-			   "SHA256",
-#endif
-#if !defined(OPENSSL_NO_SHA384) && defined(SHA384_DIGEST_LENGTH)
-			   "SHA384",
-#endif
-#if !defined(OPENSSL_NO_SHA512) && defined(SHA512_DIGEST_LENGTH)
-			   "SHA512",
-#endif
-			   NULL};
-static const char* encs[]={"AES-256-CBC","AES-128-CBC",
+static const char* encs[]={
 #if !defined(TURN_NO_GCM)
-		"AEAD_AES_128_GCM", "AEAD_AES_256_GCM",
+		"A128GCM", "A256GCM",
 #endif
 		NULL};
-static const char* hmacs[]={"HMAC-SHA-1",
-#if !defined(OPENSSL_NO_SHA256) && defined(SHA256_DIGEST_LENGTH)
-			    "HMAC-SHA-256","HMAC-SHA-256-128",
-#endif
-#if !defined(OPENSSL_NO_SHA384) && defined(SHA384_DIGEST_LENGTH)
-			    "HMAC-SHA-384",
-#endif
-#if !defined(OPENSSL_NO_SHA512) && defined(SHA512_DIGEST_LENGTH)
-			    "HMAC-SHA-512",
-#endif
-			    NULL};
 
 static int print_extra = 0;
 
@@ -86,7 +64,7 @@ static int check_oauth(void) {
 
 	const char server_name[33] = "blackdow.carleon.gov";
 
-	size_t i_hmacs,i_shas,i_encs;
+	size_t i_encs;
 
 	const char long_term_key[33] = "HGkj32KJGiuy098sdfaqbNjOiaz71923";
 
@@ -105,20 +83,20 @@ static int check_oauth(void) {
 	const turn_time_t key_timestamp = 1234567890;
 	const turn_time_t key_lifetime = 3600;
 
-	const char aead_nonce[OAUTH_AEAD_NONCE_SIZE+1] = "h4j3k2l2n4b5";
+	const char gcm_nonce[OAUTH_GCM_NONCE_SIZE+1] = "h4j3k2l2n4b5";
 
-	for (i_hmacs = 0; hmacs[i_hmacs]; ++i_hmacs) {
-
-		for (i_shas = 0; shas[i_shas]; ++i_shas) {
+	{
+		{
 
 			for (i_encs = 0; encs[i_encs]; ++i_encs) {
 
-				printf("oauth token %s:%s:%s:",hmacs[i_hmacs],shas[i_shas],encs[i_encs]);
+				printf("oauth token %s:",encs[i_encs]);
 
 				if(print_extra)
 					printf("\n");
 
 				oauth_token ot;
+				ns_bzero(&ot,sizeof(ot));
 				ot.enc_block.key_length = (uint16_t)mac_key_length;
 				STRCPY(ot.enc_block.mac_key,mac_key);
 				ot.enc_block.timestamp = token_timestamp;
@@ -140,8 +118,6 @@ static int check_oauth(void) {
 						STRCPY(okdr.kid,kid);
 						STRCPY(okdr.ikm_key,base64encoded_ltp);
 						STRCPY(okdr.as_rs_alg, encs[i_encs]);
-						STRCPY(okdr.auth_alg, hmacs[i_hmacs]);
-						STRCPY(okdr.hkdf_hash_func, shas[i_shas]);
 						okdr.timestamp = key_timestamp;
 						okdr.lifetime = key_lifetime;
 
@@ -168,7 +144,7 @@ static int check_oauth(void) {
 					ns_bzero(&etoken,sizeof(etoken));
 
 					if (encode_oauth_token((const u08bits *) server_name, &etoken,
-							&key, &ot, (const u08bits*)aead_nonce) < 0) {
+							&key, &ot, (const u08bits*)gcm_nonce) < 0) {
 						fprintf(stderr, "%s: cannot encode oauth token\n",
 								__FUNCTION__);
 						return -1;

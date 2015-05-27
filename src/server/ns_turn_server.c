@@ -1047,7 +1047,6 @@ static int handle_turn_allocate(turn_turnserver *server,
 						transport = get_transport_value(value);
 						if (!transport) {
 							*err_code = 442;
-							*reason = (const u08bits *)"Unsupported Transport Protocol";
 						}
 						if((transport == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE) && *(server->no_tcp_relay)) {
 							*err_code = 442;
@@ -1159,7 +1158,6 @@ static int handle_turn_allocate(turn_turnserver *server,
 						break;
 					default:
 						*err_code = 440;
-						*reason = (const u08bits *)"Unsupported address family requested";
 					}
 				}
 			}
@@ -1182,8 +1180,6 @@ static int handle_turn_allocate(turn_turnserver *server,
 		} else if (*ua_num > 0) {
 
 		  *err_code = 420;
-		  if(!(*reason))
-		    *reason = (const u08bits *)"Unknown attribute";
 
 		} else if (*err_code) {
 
@@ -1209,7 +1205,6 @@ static int handle_turn_allocate(turn_turnserver *server,
 			if(inc_quota(ss, username)<0) {
 
 				*err_code = 486;
-				*reason = (const u08bits *)"Allocation Quota Reached";
 
 			} else {
 
@@ -1290,7 +1285,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 							if(af4res<0) {
 								set_relay_session_failure(alloc,AF_INET);
 								if(!err_code4) {
-									err_code4 = 437;
+									err_code4 = 440;
 								}
 							}
 						}
@@ -1303,7 +1298,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 							if(af6res<0) {
 								set_relay_session_failure(alloc,AF_INET6);
 								if(!err_code6) {
-									err_code6 = 437;
+									err_code6 = 440;
 								}
 							}
 						}
@@ -1405,12 +1400,12 @@ static int handle_turn_allocate(turn_turnserver *server,
 	if(*resp_constructed && !(*err_code)) {
 		if(err_code4) {
 			size_t len = ioa_network_buffer_get_size(nbh);
-			stun_attr_add_address_error_code(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4, (u08bits)err_code4);
+			stun_attr_add_address_error_code(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4, err_code4);
 			ioa_network_buffer_set_size(nbh,len);
 		}
 		if(err_code6) {
 			size_t len = ioa_network_buffer_get_size(nbh);
-			stun_attr_add_address_error_code(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6, (u08bits)err_code6);
+			stun_attr_add_address_error_code(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6, err_code6);
 			ioa_network_buffer_set_size(nbh,len);
 		}
 	}
@@ -1519,8 +1514,8 @@ static int handle_turn_refresh(turn_turnserver *server,
 				}
 			}
 				break;
-			case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY: /* <<== ??? */
-			case STUN_ATTRIBUTE_ADDITIONAL_ADDRESS_FAMILY: {
+			case STUN_ATTRIBUTE_ADDITIONAL_ADDRESS_FAMILY: /* deprecated, for backward compatibility with older versions of TURN-bis */
+			case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY: {
 				int af_req = stun_get_requested_address_family(sar);
 				{
 					int is_err = 0;
@@ -1561,7 +1556,6 @@ static int handle_turn_refresh(turn_turnserver *server,
 		if (*ua_num > 0) {
 
 			*err_code = 420;
-			*reason = (const u08bits *)"Unknown attribute";
 
 		} else if (*err_code) {
 
@@ -1723,7 +1717,7 @@ static int handle_turn_refresh(turn_turnserver *server,
 										}
 
 										if(message_integrity) {
-											stun_attr_add_integrity_str(server->ct,ioa_network_buffer_data(nbh),&len,ss->hmackey,ss->pwd,server->shatype);
+											stun_attr_add_integrity_str(server->ct,ioa_network_buffer_data(nbh),&len,ss->hmackey,ss->pwd,SHATYPE_DEFAULT);
 											ioa_network_buffer_set_size(nbh,len);
 										}
 
@@ -1980,14 +1974,13 @@ static void tcp_peer_connection_completed_callback(int success, void *arg)
 				addr_to_string(&(tc->peer_addr),(u08bits*)rs);
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: failure to connect from %s to %s\n", __FUNCTION__, ls,rs);
 			}
-			const u08bits *reason = (const u08bits *)"Connection Timeout or Failure";
-			stun_init_error_response_str(STUN_METHOD_CONNECT, ioa_network_buffer_data(nbh), &len, err_code, reason, &(tc->tid));
+			stun_init_error_response_str(STUN_METHOD_CONNECT, ioa_network_buffer_data(nbh), &len, err_code, NULL, &(tc->tid));
 		}
 
 		ioa_network_buffer_set_size(nbh,len);
 
 		if(need_stun_authentication(server, ss)) {
-			stun_attr_add_integrity_str(server->ct,ioa_network_buffer_data(nbh),&len,ss->hmackey,ss->pwd,server->shatype);
+			stun_attr_add_integrity_str(server->ct,ioa_network_buffer_data(nbh),&len,ss->hmackey,ss->pwd,SHATYPE_DEFAULT);
 			ioa_network_buffer_set_size(nbh,len);
 		}
 
@@ -2051,7 +2044,6 @@ static int tcp_start_connection_to_peer(turn_turnserver *server, ts_ur_super_ses
 	tcp_connection *tc = get_tcp_connection_by_peer(a, peer_addr);
 	if(tc) {
 		*err_code = 446;
-		*reason = (const u08bits *)"Connection Already Exists";
 		FUNCEND;
 		return -1;
 	}
@@ -2219,7 +2211,6 @@ static int handle_turn_connect(turn_turnserver *server,
 		*reason = (const u08bits *)"Connect cannot be used with UDP relay";
 	} else if (!is_allocation_valid(a)) {
 		*err_code = 437;
-		*reason = (const u08bits *)"Allocation mismatch";
 	} else {
 
 		stun_attr_ref sar = stun_attr_get_first_str(ioa_network_buffer_data(in_buffer->nbh),
@@ -2258,7 +2249,6 @@ static int handle_turn_connect(turn_turnserver *server,
 		if (*ua_num > 0) {
 
 			*err_code = 420;
-			*reason = (const u08bits *)"Unknown attribute";
 
 		} else if (*err_code) {
 
@@ -2296,7 +2286,6 @@ static int handle_turn_connection_bind(turn_turnserver *server,
 	if(ss->to_be_closed) {
 
 		*err_code = 400;
-		*reason = (const u08bits *)"Bad request";
 
 	} else if (is_allocation_valid(a)) {
 
@@ -2343,7 +2332,6 @@ static int handle_turn_connection_bind(turn_turnserver *server,
 		if (*ua_num > 0) {
 
 			*err_code = 420;
-			*reason = (const u08bits *)"Unknown attribute";
 
 		} else if (*err_code) {
 
@@ -2474,7 +2462,7 @@ int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_co
 
 		if(message_integrity && ss) {
 			size_t len = ioa_network_buffer_get_size(nbh);
-			stun_attr_add_integrity_str(server->ct,ioa_network_buffer_data(nbh),&len,ss->hmackey,ss->pwd,server->shatype);
+			stun_attr_add_integrity_str(server->ct,ioa_network_buffer_data(nbh),&len,ss->hmackey,ss->pwd,SHATYPE_DEFAULT);
 			ioa_network_buffer_set_size(nbh,len);
 		}
 
@@ -2584,7 +2572,6 @@ static int handle_turn_channel_bind(turn_turnserver *server,
 		if (*ua_num > 0) {
 
 			*err_code = 420;
-			*reason = (const u08bits *)"Unknown attribute";
 
 		} else if (*err_code) {
 
@@ -2798,7 +2785,6 @@ static int handle_turn_binding(turn_turnserver *server,
 	if (*ua_num > 0) {
 
 		*err_code = 420;
-		*reason = (const u08bits *)"Unknown attribute";
 
 	} else if (*err_code) {
 
@@ -3286,7 +3272,6 @@ static int check_stun_auth(turn_turnserver *server,
 
 	if(!sar) {
 		*err_code = 401;
-		*reason = (const u08bits*)"Unauthorised";
 		return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
 	}
 
@@ -3295,49 +3280,10 @@ static int check_stun_auth(turn_turnserver *server,
 
 		switch(sarlen) {
 		case SHA1SIZEBYTES:
-			if(server->shatype > SHATYPE_SHA1) {
-				*err_code = SHA_TOO_WEAK_ERROR_CODE;
-				*reason = SHA_TOO_WEAK_ERROR_REASON;
-				return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
-			}
-			if(server->shatype != SHATYPE_SHA1) {
-				*err_code = 401;
-				return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
-			}
 			break;
 		case SHA256SIZEBYTES:
-			if(server->shatype > SHATYPE_SHA256) {
-				*err_code = SHA_TOO_WEAK_ERROR_CODE;
-				*reason = SHA_TOO_WEAK_ERROR_REASON;
-				return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
-			}
-			if(server->shatype != SHATYPE_SHA256) {
-				*err_code = 401;
-				return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
-			}
-			break;
 		case SHA384SIZEBYTES:
-			if(server->shatype > SHATYPE_SHA384) {
-				*err_code = SHA_TOO_WEAK_ERROR_CODE;
-				*reason = SHA_TOO_WEAK_ERROR_REASON;
-				return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
-			}
-			if(server->shatype != SHATYPE_SHA384) {
-				*err_code = 401;
-				return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
-			}
-			break;
 		case SHA512SIZEBYTES:
-			if(server->shatype > SHATYPE_SHA512) {
-				*err_code = SHA_TOO_WEAK_ERROR_CODE;
-				*reason = SHA_TOO_WEAK_ERROR_REASON;
-				return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
-			}
-			if(server->shatype != SHATYPE_SHA512) {
-				*err_code = 401;
-				return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
-			}
-			break;
 		default:
 			*err_code = 401;
 			return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
@@ -3354,7 +3300,6 @@ static int check_stun_auth(turn_turnserver *server,
 
 		if(!sar) {
 			*err_code = 400;
-			*reason = (const u08bits*)"Bad request";
 			return -1;
 		}
 
@@ -3386,7 +3331,6 @@ static int check_stun_auth(turn_turnserver *server,
 
 	if(!sar) {
 		*err_code = 400;
-		*reason = (const u08bits*)"Bad request";
 		return -1;
 	}
 
@@ -3405,7 +3349,6 @@ static int check_stun_auth(turn_turnserver *server,
 					*reason = (const u08bits*)"Allocation mismatch: wrong credentials";
 				} else {
 					*err_code = 441;
-					*reason = (const u08bits*)"Wrong credentials";
 				}
 				return -1;
 			}
@@ -3424,7 +3367,6 @@ static int check_stun_auth(turn_turnserver *server,
 
 		if(!sar) {
 			*err_code = 400;
-			*reason = (const u08bits*)"Bad request";
 			return -1;
 		}
 
@@ -3456,33 +3398,19 @@ static int check_stun_auth(turn_turnserver *server,
 			}
 		}
 
-		/* direct user pattern is supported only for long-term credentials */
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
 				"%s: Cannot find credentials of user <%s>\n",
 				__FUNCTION__, (char*)usname);
 		*err_code = 401;
-		*reason = (const u08bits*)"Unauthorised";
 		return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
 	}
 
 	/* Check integrity */
-	int too_weak = 0;
 	if(stun_check_message_integrity_by_key_str(server->ct,ioa_network_buffer_data(in_buffer->nbh),
 					  ioa_network_buffer_get_size(in_buffer->nbh),
 					  ss->hmackey,
 					  ss->pwd,
-					  server->shatype,
-					  &too_weak)<1) {
-
-		if(too_weak) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
-							"%s: user %s credentials are incorrect: SHA function is too weak\n",
-									__FUNCTION__, (char*)usname);
-					*err_code = SHA_TOO_WEAK_ERROR_CODE;
-					*reason = SHA_TOO_WEAK_ERROR_REASON;
-					*reason = (const u08bits*)"Unauthorised: weak SHA function is used";
-					return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
-		}
+					  SHATYPE_DEFAULT)<1) {
 
 		if(can_resume) {
 			(server->userkeycb)(server->id, server->ct, server->oauth, &(ss->oauth), usname, realm, resume_processing_after_username_check, in_buffer, ss->id, postpone_reply);
@@ -3495,7 +3423,6 @@ static int check_stun_auth(turn_turnserver *server,
 				"%s: user %s credentials are incorrect\n",
 				__FUNCTION__, (char*)usname);
 		*err_code = 401;
-		*reason = (const u08bits*)"Unauthorised";
 		return create_challenge_response(ss,tid,resp_constructed,err_code,reason,nbh,method);
 	}
 
@@ -3528,7 +3455,6 @@ static void set_alternate_server(turn_server_addrs_list_t *asl, const ioa_addr *
 			if(addr->ss.sa_family == local_addr->ss.sa_family) {
 
 				*err_code = 300;
-				*reason = (const u08bits *)"Redirect";
 
 				size_t len = ioa_network_buffer_get_size(nbh);
 				stun_init_error_response_str(method, ioa_network_buffer_data(nbh), &len, *err_code, *reason, tid);
@@ -3930,7 +3856,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 
 		if(message_integrity) {
 			size_t len = ioa_network_buffer_get_size(nbh);
-			stun_attr_add_integrity_str(server->ct,ioa_network_buffer_data(nbh),&len,ss->hmackey,ss->pwd,server->shatype);
+			stun_attr_add_integrity_str(server->ct,ioa_network_buffer_data(nbh),&len,ss->hmackey,ss->pwd,SHATYPE_DEFAULT);
 			ioa_network_buffer_set_size(nbh,len);
 		}
 
@@ -4329,7 +4255,7 @@ static int create_relay_connection(turn_turnserver* server,
 				ioa_socket_tobeclosed(s)) {
 
 				IOA_CLOSE_SOCKET(s);
-				*err_code = 508;
+				*err_code = 404;
 				*reason = (const u08bits *)"Cannot find reserved socket";
 				return -1;
 			}
@@ -4389,7 +4315,7 @@ static int create_relay_connection(turn_turnserver* server,
 			} else {
 				IOA_CLOSE_SOCKET(newelem->s);
 				IOA_CLOSE_SOCKET(rtcp_s);
-				*err_code = 508;
+				*err_code = 500;
 				*reason = (const u08bits *)"Wrong reservation tokens (internal error)";
 				return -1;
 			}
@@ -4863,7 +4789,7 @@ void init_turn_server(turn_turnserver* server,
 		vintp no_multicast_peers, vintp no_loopback_peers,
 		ip_range_list_t* ip_whitelist, ip_range_list_t* ip_blacklist,
 		send_socket_to_relay_cb send_socket_to_relay,
-		vintp secure_stun, SHATYPE shatype, vintp mobility, int server_relay,
+		vintp secure_stun, vintp mobility, int server_relay,
 		send_turn_session_info_cb send_turn_session_info,
 		send_https_socket_cb send_https_socket,
 		allocate_bps_cb allocate_bps_func,
@@ -4887,7 +4813,6 @@ void init_turn_server(turn_turnserver* server,
 	server->no_multicast_peers = no_multicast_peers;
 	server->no_loopback_peers = no_loopback_peers;
 	server->secure_stun = secure_stun;
-	server->shatype = shatype;
 	server->mobility = mobility;
 	server->server_relay = server_relay;
 	server->send_turn_session_info = send_turn_session_info;

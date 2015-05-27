@@ -133,7 +133,7 @@ static int pgsql_get_user_key(u08bits *usname, u08bits *realm, hmackey_t key) {
 			char *kval = PQgetvalue(res,0,0);
 			int len = PQgetlength(res,0,0);
 			if(kval) {
-				size_t sz = get_hmackey_size(turn_params.shatype);
+				size_t sz = get_hmackey_size(SHATYPE_DEFAULT);
 				if(((size_t)len<sz*2)||(strlen(kval)<sz*2)) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key format: %s, user %s\n",kval,usname);
 				} else if(convert_string_key_to_binary(kval, key, sz)<0) {
@@ -158,7 +158,7 @@ static int pgsql_get_oauth_key(const u08bits *kid, oauth_key_data_raw *key) {
 	int ret = -1;
 
 	char statement[TURN_LONG_STRING_SIZE];
-	snprintf(statement,sizeof(statement),"select ikm_key,timestamp,lifetime,hkdf_hash_func,as_rs_alg,as_rs_key,auth_alg,auth_key from oauth_key where kid='%s'",(const char*)kid);
+	snprintf(statement,sizeof(statement),"select ikm_key,timestamp,lifetime,as_rs_alg from oauth_key where kid='%s'",(const char*)kid);
 
 	PGconn * pqc = get_pqdb_connection();
 	if(pqc) {
@@ -170,11 +170,7 @@ static int pgsql_get_oauth_key(const u08bits *kid, oauth_key_data_raw *key) {
 			STRCPY(key->ikm_key,PQgetvalue(res,0,0));
 			key->timestamp = (u64bits)strtoll(PQgetvalue(res,0,1),NULL,10);
 			key->lifetime = (u32bits)strtol(PQgetvalue(res,0,2),NULL,10);
-			STRCPY(key->hkdf_hash_func,PQgetvalue(res,0,3));
-			STRCPY(key->as_rs_alg,PQgetvalue(res,0,4));
-			STRCPY(key->as_rs_key,PQgetvalue(res,0,5));
-			STRCPY(key->auth_alg,PQgetvalue(res,0,6));
-			STRCPY(key->auth_key,PQgetvalue(res,0,7));
+			STRCPY(key->as_rs_alg,PQgetvalue(res,0,3));
 			STRCPY(key->kid,kid);
 			ret = 0;
 		}
@@ -187,7 +183,7 @@ static int pgsql_get_oauth_key(const u08bits *kid, oauth_key_data_raw *key) {
 	return ret;
 }
 
-static int pgsql_list_oauth_keys(secrets_list_t *kids,secrets_list_t *hkdfs,secrets_list_t *teas,secrets_list_t *aas,secrets_list_t *tss,secrets_list_t *lts) {
+static int pgsql_list_oauth_keys(secrets_list_t *kids,secrets_list_t *teas,secrets_list_t *tss,secrets_list_t *lts) {
 
 	oauth_key_data_raw key_;
 	oauth_key_data_raw *key=&key_;
@@ -195,7 +191,7 @@ static int pgsql_list_oauth_keys(secrets_list_t *kids,secrets_list_t *hkdfs,secr
 	int ret = -1;
 
 	char statement[TURN_LONG_STRING_SIZE];
-	snprintf(statement,sizeof(statement),"select ikm_key,timestamp,lifetime,hkdf_hash_func,as_rs_alg,as_rs_key,auth_alg,auth_key,kid from oauth_key order by kid");
+	snprintf(statement,sizeof(statement),"select ikm_key,timestamp,lifetime,as_rs_alg,kid from oauth_key order by kid");
 
 	PGconn * pqc = get_pqdb_connection();
 	if(pqc) {
@@ -210,18 +206,12 @@ static int pgsql_list_oauth_keys(secrets_list_t *kids,secrets_list_t *hkdfs,secr
 				STRCPY(key->ikm_key,PQgetvalue(res,i,0));
 				key->timestamp = (u64bits)strtoll(PQgetvalue(res,i,1),NULL,10);
 				key->lifetime = (u32bits)strtol(PQgetvalue(res,i,2),NULL,10);
-				STRCPY(key->hkdf_hash_func,PQgetvalue(res,i,3));
-				STRCPY(key->as_rs_alg,PQgetvalue(res,i,4));
-				STRCPY(key->as_rs_key,PQgetvalue(res,i,5));
-				STRCPY(key->auth_alg,PQgetvalue(res,i,6));
-				STRCPY(key->auth_key,PQgetvalue(res,i,7));
-				STRCPY(key->kid,PQgetvalue(res,i,8));
+				STRCPY(key->as_rs_alg,PQgetvalue(res,i,3));
+				STRCPY(key->kid,PQgetvalue(res,i,4));
 
 				if(kids) {
 					add_to_secrets_list(kids,key->kid);
-					add_to_secrets_list(hkdfs,key->hkdf_hash_func);
 					add_to_secrets_list(teas,key->as_rs_alg);
-					add_to_secrets_list(aas,key->auth_alg);
 					{
 						char ts[256];
 						snprintf(ts,sizeof(ts)-1,"%llu",(unsigned long long)key->timestamp);
@@ -233,9 +223,9 @@ static int pgsql_list_oauth_keys(secrets_list_t *kids,secrets_list_t *hkdfs,secr
 						add_to_secrets_list(lts,lt);
 					}
 				} else {
-					printf("  kid=%s, ikm_key=%s, timestamp=%llu, lifetime=%lu, hkdf_hash_func=%s, as_rs_alg=%s, as_rs_key=%s, auth_alg=%s, auth_key=%s\n",
-						key->kid, key->ikm_key, (unsigned long long)key->timestamp, (unsigned long)key->lifetime, key->hkdf_hash_func,
-						key->as_rs_alg, key->as_rs_key, key->auth_alg, key->auth_key);
+					printf("  kid=%s, ikm_key=%s, timestamp=%llu, lifetime=%lu, as_rs_alg=%s\n",
+						key->kid, key->ikm_key, (unsigned long long)key->timestamp, (unsigned long)key->lifetime,
+						key->as_rs_alg);
 				}
 
 				ret = 0;
@@ -283,17 +273,17 @@ static int pgsql_set_oauth_key(oauth_key_data_raw *key) {
   char statement[TURN_LONG_STRING_SIZE];
   PGconn *pqc = get_pqdb_connection();
   if(pqc) {
-	  snprintf(statement,sizeof(statement),"insert into oauth_key (kid,ikm_key,timestamp,lifetime,hkdf_hash_func,as_rs_alg,as_rs_key,auth_alg,auth_key) values('%s','%s',%llu,%lu,'%s','%s','%s','%s','%s')",
+	  snprintf(statement,sizeof(statement),"insert into oauth_key (kid,ikm_key,timestamp,lifetime,as_rs_alg) values('%s','%s',%llu,%lu,'%s')",
 			  key->kid,key->ikm_key,(unsigned long long)key->timestamp,(unsigned long)key->lifetime,
-			  key->hkdf_hash_func,key->as_rs_alg,key->as_rs_key,key->auth_alg,key->auth_key);
+			  key->as_rs_alg);
 
 	  PGresult *res = PQexec(pqc, statement);
 	  if(!res || (PQresultStatus(res) != PGRES_COMMAND_OK)) {
 		  if(res) {
 			PQclear(res);
 		  }
-		  snprintf(statement,sizeof(statement),"update oauth_key set ikm_key='%s',timestamp=%lu,lifetime=%lu, hkdf_hash_func = '%s', as_rs_alg='%s',as_rs_key='%s',auth_alg='%s',auth_key='%s' where kid='%s'",key->ikm_key,(unsigned long)key->timestamp,(unsigned long)key->lifetime,
-				  key->hkdf_hash_func,key->as_rs_alg,key->as_rs_key,key->auth_alg,key->auth_key,key->kid);
+		  snprintf(statement,sizeof(statement),"update oauth_key set ikm_key='%s',timestamp=%lu,lifetime=%lu, as_rs_alg='%s' where kid='%s'",key->ikm_key,(unsigned long)key->timestamp,(unsigned long)key->lifetime,
+				  key->as_rs_alg,key->kid);
 		  res = PQexec(pqc, statement);
 		  if(!res || (PQresultStatus(res) != PGRES_COMMAND_OK)) {
 			  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error inserting/updating oauth_key information: %s\n",PQerrorMessage(pqc));
