@@ -31,6 +31,6 @@ insert into denied_peer_ip (ip_range) values('123::45');
 insert into denied_peer_ip (realm,ip_range) values('north.gov','172.17.17.133-172.17.19.56');
 insert into denied_peer_ip (realm,ip_range) values('crinna.org','123::77');
 
-insert into oauth_key (kid,ikm_key,timestamp,lifetime,hkdf_hash_func,as_rs_alg,as_rs_key,auth_alg,auth_key) values('north','Y2FybGVvbg==',0,0,'SHA-256','AES-256-CBC','','HMAC-SHA-256-128','');
-insert into oauth_key (kid,ikm_key,timestamp,lifetime,hkdf_hash_func,as_rs_alg,as_rs_key,auth_alg,auth_key) values('union','aGVyb2Q=',0,0,'SHA-256','AES-256-CBC','','HMAC-SHA-512','');
-insert into oauth_key (kid,ikm_key,timestamp,lifetime,hkdf_hash_func,as_rs_alg,as_rs_key,auth_alg,auth_key) values('oldempire','YXVsY3Vz',0,0,'SHA-256','AEAD-AES-256-GCM','','','');
+insert into oauth_key (kid,ikm_key,timestamp,lifetime,as_rs_alg) values('north','MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDEK',0,0,'A256GCM');
+insert into oauth_key (kid,ikm_key,timestamp,lifetime,as_rs_alg) values('union','MTIzNDU2Nzg5MDEyMzQ1Ngo=',0,0,'A128GCM');
+insert into oauth_key (kid,ikm_key,timestamp,lifetime,as_rs_alg) values('oldempire','MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIK',0,0,'A256GCM');

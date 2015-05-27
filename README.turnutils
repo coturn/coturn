@@ -94,13 +94,6 @@ Flags:
 -R	do negative protocol tests.
 
 -O	DOS attack mode.
-
--H	SHA256 digest function for message integrity calculation.
-	Without this option, by default, SHA1 is used.
-
--Y	SHA384 digest function for message integrity calculation.
-
--K	SHA512 digest function for message integrity calculation.
 		
 -M	Use TURN ICE Mobility.
 

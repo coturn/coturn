@@ -35,4 +35,4 @@ fi
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib/:/usr/local/mysql/lib/
 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/usr/local/lib/:/usr/local/mysql/lib/
 
-PATH="./bin/:../bin/:../../bin/:${PATH}" turnserver --syslog -a -L 127.0.0.1 -L ::1 -E 127.0.0.1 -E ::1 --max-bps=3000000 -f -m 10 --min-port=32355 --max-port=65535 --user=ninefingers:youhavetoberealistic --user=bolt:kwyjibo -r bolt.co --cert=turn_server_cert.pem --pkey=turn_server_pkey.pem --CA-file=turn_server_cert.pem --log-file=stdout -v --cipher-list="ALL:!eNULL:!aNULL:!NULL" $@
+PATH="./bin/:../bin/:../../bin/:${PATH}" turnserver --syslog -a -L 127.0.0.1 -L ::1 -E 127.0.0.1 -E ::1 --max-bps=3000000 -f -m 10 --min-port=32355 --max-port=65535 --user=ninefingers:youhavetoberealistic --user=bolt:kwyjibo -r bolt.co --cert=turn_server_cert.pem --pkey=turn_server_pkey.pem --CA-file=turn_server_cert.pem --log-file=stdout -v --cipher-list="ALL:!eNULL:!aNULL:!NULL" --db=var/db/turndb $@

@@ -117,7 +117,7 @@ LOW_DEFAULT_PORTS_BOUNDARY,HIGH_DEFAULT_PORTS_BOUNDARY,0,0,0,"",
 /////////////// stop server ////////////////
 0,
 /////////////// MISC PARAMS ////////////////
-0,0,0,0,0,SHATYPE_SHA1,':',0,0,TURN_CREDENTIALS_NONE,0,0,0,0,0,0,
+0,0,0,0,0,':',0,0,TURN_CREDENTIALS_NONE,0,0,0,0,0,0,
 ///////////// Users DB //////////////
 { (TURN_USERDB_TYPE)0, {"\0"}, {0,NULL, {NULL,0}} },
 ///////////// CPUs //////////////////
@@ -562,15 +562,6 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						/var/tmp/turnserver.pid .\n"
 " --secure-stun					Require authentication of the STUN Binding request.\n"
 "						By default, the clients are allowed anonymous access to the STUN Binding functionality.\n"
-" --sha256					Require SHA256 digest function to be used for the message integrity.\n"
-"						By default, the server SHA1 (as per TURN standard specs).\n"
-"						With this option, the server\n"
-"						requires the stronger SHA256 function. The client application must\n"
-"						support SHA256 hash function if this option is used. If the server obtains\n"
-"						a message from the client with a weaker (SHA1) hash function then the server\n"
-"						returns error code 426.\n"
-" --sha384					Require SHA384 digest function to be used for the message integrity.\n"
-" --sha512					Require SHA512 digest function to be used for the message integrity.\n"
 " --proc-user <user-name>			User name to run the turnserver process.\n"
 "						After the initialization, the turnserver process\n"
 "						will make an attempt to change the current user ID to that user.\n"
@@ -645,10 +636,6 @@ static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
 #if !defined(TURN_NO_SQLITE) || !defined(TURN_NO_PQ) || !defined(TURN_NO_MYSQL) || !defined(TURN_NO_MONGO) || !defined(TURN_NO_HIREDIS)
 	"	-o, --origin			Origin\n"
 #endif
-	"	-H, --sha256			Use SHA256 digest function to be used for the message integrity.\n"
-	"					By default, the server SHA1 (as per TURN standard specs).\n"
-	"	-Y, --sha384			Use SHA384 digest function to be used for the message integrity.\n"
-	"	-K, --sha512			Use SHA512 digest function to be used for the message integrity.\n"
 	"	--max-bps			Set value of realm's max-bps parameter.\n"
 	"					Setting to zero value means removal of the option.\n"
 	"	--total-quota			Set value of realm's total-quota parameter.\n"
@@ -698,9 +685,6 @@ enum EXTRA_OPTS {
 	SECURE_STUN_OPT,
 	CA_FILE_OPT,
 	DH_FILE_OPT,
-	SHA256_OPT,
-	SHA384_OPT,
-	SHA512_OPT,
 	NO_STUN_OPT,
 	PROC_USER_OPT,
 	PROC_GROUP_OPT,
@@ -759,10 +743,8 @@ static const struct myoption long_options[] = {
 				{ "lt-cred-mech", optional_argument, NULL, 'a' },
 				{ "no-auth", optional_argument, NULL, 'z' },
 				{ "user", required_argument, NULL, 'u' },
-#if !defined(TURN_NO_SQLITE)
 				{ "userdb", required_argument, NULL, 'b' },
 				{ "db", required_argument, NULL, 'b' },
-#endif
 #if !defined(TURN_NO_PQ)
 				{ "psql-userdb", required_argument, NULL, 'e' },
 				{ "sql-userdb", required_argument, NULL, 'e' },
@@ -823,9 +805,6 @@ static const struct myoption long_options[] = {
 				{ "secure-stun", optional_argument, NULL, SECURE_STUN_OPT },
 				{ "CA-file", required_argument, NULL, CA_FILE_OPT },
 				{ "dh-file", required_argument, NULL, DH_FILE_OPT },
-				{ "sha256", optional_argument, NULL, SHA256_OPT },
-				{ "sha384", optional_argument, NULL, SHA384_OPT },
-				{ "sha512", optional_argument, NULL, SHA512_OPT },
 				{ "proc-user", required_argument, NULL, PROC_USER_OPT },
 				{ "proc-group", required_argument, NULL, PROC_GROUP_OPT },
 				{ "mobility", optional_argument, NULL, MOBILITY_OPT },
@@ -880,9 +859,6 @@ static const struct myoption admin_long_options[] = {
 				{ "user", required_argument, NULL, 'u' },
 				{ "realm", required_argument, NULL, 'r' },
 				{ "password", required_argument, NULL, 'p' },
-				{ "sha256", no_argument, NULL, 'H' },
-				{ "sha384", no_argument, NULL, 'Y' },
-				{ "sha512", no_argument, NULL, 'K' },
 				{ "add-origin", no_argument, NULL, 'O' },
 				{ "del-origin", no_argument, NULL, 'R' },
 				{ "list-origins", required_argument, NULL, 'I' },
@@ -919,7 +895,11 @@ static void set_option(int c, char *value)
 	  STRCPY(turn_params.oauth_server_name,value);
 	  break;
   case OAUTH_OPT:
-	  turn_params.oauth = get_bool_value(value);
+	  if(!ENC_ALG_NUM) {
+		  TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: option --oauth is not supported; ignored.\n");
+	  } else {
+		  turn_params.oauth = get_bool_value(value);
+	  }
 	  break;
   case NO_SSLV2_OPT:
     //deprecated
@@ -1046,18 +1026,6 @@ static void set_option(int c, char *value)
 	case SECURE_STUN_OPT:
 		turn_params.secure_stun = get_bool_value(value);
 		break;
-	case SHA256_OPT:
-		if(get_bool_value(value))
-			turn_params.shatype = SHATYPE_SHA256;
-		break;
-	case SHA384_OPT:
-		if(get_bool_value(value))
-			turn_params.shatype = SHATYPE_SHA384;
-		break;
-	case SHA512_OPT:
-		if(get_bool_value(value))
-			turn_params.shatype = SHATYPE_SHA512;
-		break;
 	case NO_MULTICAST_PEERS_OPT:
 		turn_params.no_multicast_peers = get_bool_value(value);
 		break;
@@ -1155,12 +1123,14 @@ static void set_option(int c, char *value)
 	case 'u':
 		add_static_user_account(value);
 		break;
-#if !defined(TURN_NO_SQLITE)
 	case 'b':
+#if defined(TURN_NO_SQLITE)
+	  TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: Options -b, --userdb and --db are not supported because SQLite is not supported in this build.\n");
+#else
 		STRCPY(turn_params.default_users_db.persistent_users_db.userdb, value);
 		turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_SQLITE;
-		break;
 #endif
+		break;
 #if !defined(TURN_NO_PQ)
 	case 'e':
 		STRCPY(turn_params.default_users_db.persistent_users_db.userdb, value);
@@ -1592,18 +1562,6 @@ static int adminmain(int argc, char **argv)
 				exit(0);
 			}
 			break;
-		case 'H':
-			if(get_bool_value(optarg))
-				turn_params.shatype = SHATYPE_SHA256;
-			break;
-		case 'Y':
-			if(get_bool_value(optarg))
-				turn_params.shatype = SHATYPE_SHA384;
-			break;
-		case 'K':
-			if(get_bool_value(optarg))
-				turn_params.shatype = SHATYPE_SHA512;
-			break;
 		case 'h':
 			printf("\n%s\n", AdminUsage);
 			exit(0);
@@ -1650,6 +1608,17 @@ static void print_features(unsigned long mfn)
 
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\n\n==== Show him the instruments, Practical Frost: ====\n\n");
 
+/*
+	Frost stepped forward and opened the polished case with a theatrical
+	flourish. It was a masterful piece of craftsmanship. As the lid was
+	pulled back, the many trays inside lifted and fanned out, displaying
+	Glokta’s tools in all their gruesome glory. There were blades of every
+	size and shape, needles curved and straight, bottles of oil and acid,
+	nails and screws, clamps and pliers, saws, hammers, chisels. Metal, wood
+	and glass glittered in the bright lamplight, all polished to mirror
+	brightness and honed to a murderous sharpness.
+*/
+
 #if !TLS_SUPPORTED
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS is not supported\n");
 #else
@@ -1660,13 +1629,33 @@ static void print_features(unsigned long mfn)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS is not supported\n");
 #else
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS supported\n");
+#if DTLSv1_2_SUPPORTED
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS 1.2 supported\n");
+#else
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS 1.2 is not supported\n");
+#endif
 #endif
 
-#if defined(TURN_NO_GCM)
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "AEAD is not supported\n");
+#if ALPN_SUPPORTED
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TURN/STUN ALPN supported\n");
 #else
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "AEAD supported\n");
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TURN/STUN ALPN is not supported\n");
 #endif
+
+	if(!ENC_ALG_NUM) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Third-party authorization (oAuth) is not supported\n");
+	} else {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Third-party authorization (oAuth) supported\n");
+#if defined(TURN_NO_GCM)
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "GCM (AEAD) is not supported\n");
+#else
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "GCM (AEAD) supported\n");
+#endif
+	}
+
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "OpenSSL compile-time version: %s\n",OPENSSL_VERSION_TEXT);
+
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\n");
 
 #if !defined(TURN_NO_SQLITE)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "SQLite supported, default database location is %s\n",DEFAULT_USERDB_FILE);
@@ -1698,7 +1687,13 @@ static void print_features(unsigned long mfn)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "MongoDB is not supported\n");
 #endif
 
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "OpenSSL compile-time version: %s\n",OPENSSL_VERSION_TEXT);
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\n");
+
+#if !defined(TURN_NO_SCTP)
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "SCTP supported\n");
+#else
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "SCTP is not supported\n");
+#endif
 
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Default Net Engine version: %d (%s)\n\n=====================================================\n\n", (int)turn_params.net_engine_version, turn_params.net_engine_version_txt[(int)turn_params.net_engine_version]);
 
@@ -2657,7 +2652,7 @@ static void openssl_setup(void)
 #if DTLSv1_2_SUPPORTED
 		turn_params.dtls_ctx = SSL_CTX_new(DTLS_server_method());
 		turn_params.dtls_ctx_v1_2 = SSL_CTX_new(DTLSv1_2_server_method());
-		set_ctx(turn_params.dtls_ctx_v1_2,"DTLS1,2");
+		set_ctx(turn_params.dtls_ctx_v1_2,"DTLS1.2");
 		SSL_CTX_set_read_ahead(turn_params.dtls_ctx_v1_2, 1);
 #else
 		turn_params.dtls_ctx = SSL_CTX_new(DTLSv1_server_method());

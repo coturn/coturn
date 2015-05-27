@@ -154,7 +154,7 @@ static void init_sqlite_database(sqlite3 *sqliteconnection) {
 		"CREATE TABLE denied_peer_ip (realm varchar(127) default '', ip_range varchar(256), primary key (realm,ip_range))",
 		"CREATE TABLE turn_origin_to_realm (origin varchar(127),realm varchar(127),primary key (origin))",
 		"CREATE TABLE turn_realm_option (realm varchar(127) default '',	opt varchar(32),	value varchar(128),	primary key (realm,opt))",
-		"CREATE TABLE oauth_key (kid varchar(128),ikm_key varchar(256) default '',timestamp bigint default 0,lifetime integer default 0,hkdf_hash_func varchar(64) default '',as_rs_alg varchar(64) default '',as_rs_key varchar(256) default '',auth_alg varchar(64) default '',auth_key varchar(256) default '',primary key (kid))",
+		"CREATE TABLE oauth_key (kid varchar(128),ikm_key varchar(256),timestamp bigint default 0,lifetime integer default 0,as_rs_alg varchar(64) default '',primary key (kid))",
 		"CREATE TABLE admin_user (name varchar(32), realm varchar(127), password varchar(127), primary key (name))",
 		NULL
 	};
@@ -266,7 +266,7 @@ static int sqlite_get_user_key(u08bits *usname, u08bits *realm, hmackey_t key)
 			int res = sqlite3_step(st);
 			if (res == SQLITE_ROW) {
 				char *kval = turn_strdup((const char*) sqlite3_column_text(st, 0));
-				size_t sz = get_hmackey_size(turn_params.shatype);
+				size_t sz = get_hmackey_size(SHATYPE_DEFAULT);
 				if (convert_string_key_to_binary(kval, key, sz) < 0) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key: %s, user %s\n", kval, usname);
 				} else {
@@ -293,7 +293,7 @@ static int sqlite_get_oauth_key(const u08bits *kid, oauth_key_data_raw *key) {
 	char statement[TURN_LONG_STRING_SIZE];
 	sqlite3_stmt *st = NULL;
 	int rc = 0;
-	snprintf(statement,sizeof(statement),"select ikm_key,timestamp,lifetime,hkdf_hash_func,as_rs_alg,as_rs_key,auth_alg,auth_key from oauth_key where kid='%s'",(const char*)kid);
+	snprintf(statement,sizeof(statement),"select ikm_key,timestamp,lifetime,as_rs_alg from oauth_key where kid='%s'",(const char*)kid);
 
 	sqlite3 *sqliteconnection = get_sqlite_connection();
 	if(sqliteconnection) {
@@ -308,11 +308,7 @@ static int sqlite_get_oauth_key(const u08bits *kid, oauth_key_data_raw *key) {
 				STRCPY(key->ikm_key,sqlite3_column_text(st, 0));
 				key->timestamp = (u64bits)strtoll((const char*)sqlite3_column_text(st, 1),NULL,10);
 				key->lifetime = (u32bits)strtol((const char*)sqlite3_column_text(st, 2),NULL,10);
-				STRCPY(key->hkdf_hash_func,sqlite3_column_text(st, 3));
-				STRCPY(key->as_rs_alg,sqlite3_column_text(st, 4));
-				STRCPY(key->as_rs_key,sqlite3_column_text(st, 5));
-				STRCPY(key->auth_alg,sqlite3_column_text(st, 6));
-				STRCPY(key->auth_key,sqlite3_column_text(st, 7));
+				STRCPY(key->as_rs_alg,sqlite3_column_text(st, 3));
 				STRCPY(key->kid,kid);
 				ret = 0;
 			}
@@ -329,7 +325,7 @@ static int sqlite_get_oauth_key(const u08bits *kid, oauth_key_data_raw *key) {
 	return ret;
 }
 
-static int sqlite_list_oauth_keys(secrets_list_t *kids,secrets_list_t *hkdfs,secrets_list_t *teas,secrets_list_t *aas,secrets_list_t *tss,secrets_list_t *lts) {
+static int sqlite_list_oauth_keys(secrets_list_t *kids,secrets_list_t *teas,secrets_list_t *tss,secrets_list_t *lts) {
 
 	oauth_key_data_raw key_;
 	oauth_key_data_raw *key=&key_;
@@ -341,7 +337,7 @@ static int sqlite_list_oauth_keys(secrets_list_t *kids,secrets_list_t *hkdfs,sec
 	char statement[TURN_LONG_STRING_SIZE];
 	sqlite3_stmt *st = NULL;
 	int rc = 0;
-	snprintf(statement,sizeof(statement),"select ikm_key,timestamp,lifetime,hkdf_hash_func,as_rs_alg,as_rs_key,auth_alg,auth_key,kid from oauth_key order by kid");
+	snprintf(statement,sizeof(statement),"select ikm_key,timestamp,lifetime,as_rs_alg,kid from oauth_key order by kid");
 
 	sqlite3 *sqliteconnection = get_sqlite_connection();
 	if(sqliteconnection) {
@@ -358,18 +354,12 @@ static int sqlite_list_oauth_keys(secrets_list_t *kids,secrets_list_t *hkdfs,sec
 					STRCPY(key->ikm_key,sqlite3_column_text(st, 0));
 					key->timestamp = (u64bits)strtoll((const char*)sqlite3_column_text(st, 1),NULL,10);
 					key->lifetime = (u32bits)strtol((const char*)sqlite3_column_text(st, 2),NULL,10);
-					STRCPY(key->hkdf_hash_func,sqlite3_column_text(st, 3));
-					STRCPY(key->as_rs_alg,sqlite3_column_text(st, 4));
-					STRCPY(key->as_rs_key,sqlite3_column_text(st, 5));
-					STRCPY(key->auth_alg,sqlite3_column_text(st, 6));
-					STRCPY(key->auth_key,sqlite3_column_text(st, 7));
-					STRCPY(key->kid,sqlite3_column_text(st, 8));
+					STRCPY(key->as_rs_alg,sqlite3_column_text(st, 3));
+					STRCPY(key->kid,sqlite3_column_text(st, 4));
 
 					if(kids) {
 						add_to_secrets_list(kids,key->kid);
-						add_to_secrets_list(hkdfs,key->hkdf_hash_func);
 						add_to_secrets_list(teas,key->as_rs_alg);
-						add_to_secrets_list(aas,key->auth_alg);
 						{
 							char ts[256];
 							snprintf(ts,sizeof(ts)-1,"%llu",(unsigned long long)key->timestamp);
@@ -381,9 +371,9 @@ static int sqlite_list_oauth_keys(secrets_list_t *kids,secrets_list_t *hkdfs,sec
 							add_to_secrets_list(lts,lt);
 						}
 					} else {
-						printf("  kid=%s, ikm_key=%s, timestamp=%llu, lifetime=%lu, hkdf_hash_func=%s, as_rs_alg=%s, as_rs_key=%s, auth_alg=%s, auth_key=%s\n",
-										key->kid, key->ikm_key, (unsigned long long)key->timestamp, (unsigned long)key->lifetime, key->hkdf_hash_func,
-										key->as_rs_alg, key->as_rs_key, key->auth_alg, key->auth_key);
+						printf("  kid=%s, ikm_key=%s, timestamp=%llu, lifetime=%lu, as_rs_alg=%s\n",
+										key->kid, key->ikm_key, (unsigned long long)key->timestamp, (unsigned long)key->lifetime,
+										key->as_rs_alg);
 					}
 
 				} else if (res == SQLITE_DONE) {
@@ -453,9 +443,8 @@ static int sqlite_set_oauth_key(oauth_key_data_raw *key)
 		snprintf(
 						statement,
 						sizeof(statement),
-						"insert or replace into oauth_key (kid,ikm_key,timestamp,lifetime,hkdf_hash_func,as_rs_alg,as_rs_key,auth_alg,auth_key) values('%s','%s',%llu,%lu,'%s','%s','%s','%s','%s')",
-						key->kid, key->ikm_key, (unsigned long long) key->timestamp, (unsigned long) key->lifetime, key->hkdf_hash_func, key->as_rs_alg, key->as_rs_key, key->auth_alg,
-						key->auth_key);
+						"insert or replace into oauth_key (kid,ikm_key,timestamp,lifetime,as_rs_alg) values('%s','%s',%llu,%lu,'%s')",
+						key->kid, key->ikm_key, (unsigned long long) key->timestamp, (unsigned long) key->lifetime, key->as_rs_alg);
 
 		sqlite_lock(1);
 

@@ -59,9 +59,9 @@
 
 2) Redirect draft.
 
-3) STUN-Bis: 
-	a. SCTP
-	b. New integrity attribute, algorithms
+3) STUN-bis: new integrity attribute, algorithms.
+
+4) Third-party authorization updates.
 
 ==================================================================
 

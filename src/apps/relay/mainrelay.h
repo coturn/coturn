@@ -291,7 +291,6 @@ typedef struct _turn_params_ {
   vint secure_stun;
   int server_relay;
   int fingerprint;
-  SHATYPE shatype;
   char rest_api_separator;
   vint stale_nonce;
   vint mobility;

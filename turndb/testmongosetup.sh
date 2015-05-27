@@ -55,22 +55,14 @@ db.realm.insert({
 });
 
 db.oauth_key.insert({ kid: 'north', 
-					ikm_key: 'Y2FybGVvbg==', 
-					hkdf_hash_func: 'SHA-256', 
-					as_rs_alg: 'AES-256-CBC', 
-					auth_alg: 'HMAC-SHA-256-128' });
-
+					ikm_key: 'MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDEK', 
+					as_rs_alg: 'A256GCM'});
 db.oauth_key.insert({ kid: 'union', 
-					ikm_key: 'aGVyb2Q=', 
-					hkdf_hash_func: 'SHA-256', 
-					as_rs_alg: 'AES-256-CBC', 
-					auth_alg: 'HMAC-SHA-512' });
-					
+					ikm_key: 'MTIzNDU2Nzg5MDEyMzQ1Ngo=', 
+					as_rs_alg: 'A128GCM'});
 db.oauth_key.insert({ kid: 'oldempire', 
-					ikm_key: 'YXVsY3Vz', 
-					hkdf_hash_func: 'SHA-256', 
-					as_rs_alg: 'AEAD-AES-256-GCM', 
-					auth_alg: '' });
+					ikm_key: 'MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIK', 
+					as_rs_alg: 'A256GCM'});
 
 exit
 
