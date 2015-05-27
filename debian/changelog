@@ -1,3 +1,9 @@
+coturn (4.4.5.1-1) unstable; urgency=low
+
+  * Sync to 4.4.5.1 upstream
+
+ -- Oleg Moskalenko <mom040267@gmail.com>  Wed, 27 May 2015 00:17:29 -0700
+
 coturn (4.4.4.2-1) unstable; urgency=low
 
   * SCTP fixes.
