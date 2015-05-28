@@ -309,7 +309,7 @@ void add_listener_addr(const char* addr) {
 
 		size_t i = 0;
 		for(i=0;i<turn_params.listener.addrs_number;++i) {
-			if(addr_eq(turn_params.listener.encaddrs[turn_params.listener.addrs_number-1],&baddr)) {
+			if(addr_eq(turn_params.listener.encaddrs[i],&baddr)) {
 				return;
 			}
 		}
