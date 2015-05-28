@@ -1169,33 +1169,11 @@ fi
 
 if [ -z "${TURN_NO_SCTP}" ] ; then
     if [ -z "${TURN_SCTP_INCLUDE}" ] ; then
-	if [ -f /usr/include/linux/sctp.h ] ; then
-	    TURN_SCTP_INCLUDE="-DTURN_SCTP_INCLUDE=\"\\\"/usr/include/linux/sctp.h\\\"\""
-	elif [ -f /usr/include/netinet/sctp.h ] ; then
-	    TURN_SCTP_INCLUDE="-DTURN_SCTP_INCLUDE=\"</usr/include/netinet/sctp.h>\""
-	else
-	    if ! [ "${PREFIX}" = "/usr" ] ; then
-		if ! [ "${PREFIX}" = "/usr/local" ] ; then
-		    TURN_SCTP_INCLUDE=`${FIND_CMD} ${PREFIX}/include/ -name sctp.h`
+		if [ -f /usr/include/netinet/sctp.h ] ; then
+	    	TURN_SCTP_INCLUDE="-DTURN_SCTP_INCLUDE=\"</usr/include/netinet/sctp.h>\""
 		fi
-	    fi
-	    if [ -z "${TURN_SCTP_INCLUDE}" ] ; then
-		TURN_SCTP_INCLUDE=`${FIND_CMD} /usr/local/include/ -name sctp.h`
-	    fi
-	    if [ -z "${TURN_SCTP_INCLUDE}" ] ; then
-		TURN_SCTP_INCLUDE=`${FIND_CMD} /usr/include/ -name sctp.h`
-	    fi
-	    if [ -z "${TURN_SCTP_INCLUDE}" ] ; then
-		TURN_NO_SCTP="-DTURN_NO_SCTP"
-	    else
-		for ip in ${TURN_SCTP_INCLUDE} ; do
-		    TURN_SCTP_INCLUDE="-DTURN_SCTP_INCLUDE=\"\\\"${ip}\\\"\""
-		    break
-		done
-	    fi
-	fi
     else
-	TURN_SCTP_INCLUDE="-DTURN_SCTP_INCLUDE=\"\\\"${TURN_SCTP_INCLUDE}\\\"\""
+		TURN_SCTP_INCLUDE="-DTURN_SCTP_INCLUDE=\"\\\"${TURN_SCTP_INCLUDE}\\\"\""
     fi
 else
     TURN_NO_SCTP="-DTURN_NO_SCTP"
