@@ -218,6 +218,10 @@ typedef u32bits turn_time_t;
 
 ////////////////////////////////////////////////////////
 
+#if !defined(IPPROTO_SCTP)
+#define TURN_NO_SCTP
+#endif
+
 #define CLIENT_DGRAM_SOCKET_TYPE SOCK_DGRAM
 #define CLIENT_DGRAM_SOCKET_PROTOCOL IPPROTO_IP
 
