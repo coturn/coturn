@@ -6,7 +6,9 @@ Version 4.4.5.2 'Ardee West':
 	version 14 of the draft;
 	- C++ compilation fixes;
 	- cosmetic fixes;
-	- support for older RedHat release 5.x added.
+	- fixed binary package for CentOS 7.1;
+	- support for older SQLite versions added;  
+	- compilation support for older CentOS release 5.x added.
 
 3/31/2015 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.4.4.2 'Ardee West':
