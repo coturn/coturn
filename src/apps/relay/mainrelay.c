@@ -1689,12 +1689,6 @@ static void print_features(unsigned long mfn)
 
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\n");
 
-#if !defined(TURN_NO_SCTP)
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "SCTP supported\n");
-#else
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "SCTP is not supported\n");
-#endif
-
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Default Net Engine version: %d (%s)\n\n=====================================================\n\n", (int)turn_params.net_engine_version, turn_params.net_engine_version_txt[(int)turn_params.net_engine_version]);
 
 }
