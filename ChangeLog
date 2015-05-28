@@ -8,7 +8,9 @@ Version 4.4.5.2 'Ardee West':
 	- cosmetic fixes;
 	- fixed binary package for CentOS 7.1;
 	- support for older SQLite versions added;  
-	- compilation support for older CentOS release 5.x added.
+	- compilation support for older CentOS release 5.x added;
+	- Issue 11 fixed;
+	- Issue 12 fixed.
 
 3/31/2015 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.4.4.2 'Ardee West':
