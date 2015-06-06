@@ -31,7 +31,7 @@
 #ifndef __IOADEFS__
 #define __IOADEFS__
 
-#define TURN_SERVER_VERSION "4.4.5.1"
+#define TURN_SERVER_VERSION "4.4.5.2"
 #define TURN_SERVER_VERSION_NAME "Ardee West"
 #define TURN_SOFTWARE "Coturn-" TURN_SERVER_VERSION " '" TURN_SERVER_VERSION_NAME "'"
 
@@ -217,6 +217,10 @@ typedef u32bits turn_time_t;
 #endif
 
 ////////////////////////////////////////////////////////
+
+#if !defined(IPPROTO_SCTP)
+#define TURN_NO_SCTP
+#endif
 
 #define CLIENT_DGRAM_SOCKET_TYPE SOCK_DGRAM
 #define CLIENT_DGRAM_SOCKET_PROTOCOL IPPROTO_IP
