@@ -309,7 +309,7 @@ void add_listener_addr(const char* addr) {
 
 		size_t i = 0;
 		for(i=0;i<turn_params.listener.addrs_number;++i) {
-			if(addr_eq(turn_params.listener.encaddrs[turn_params.listener.addrs_number-1],&baddr)) {
+			if(addr_eq(turn_params.listener.encaddrs[i],&baddr)) {
 				return;
 			}
 		}
@@ -336,7 +336,7 @@ int add_relay_addr(const char* addr) {
 
 		size_t i = 0;
 		for(i=0;i<turn_params.relays_number;++i) {
-			if(!strcmp(turn_params.relay_addrs[turn_params.relays_number-1],sbaddr)) {
+			if(!strcmp(turn_params.relay_addrs[i],sbaddr)) {
 				return 0;
 			}
 		}

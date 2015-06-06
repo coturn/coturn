@@ -97,6 +97,8 @@ static void redisLibeventReadEvent(int fd, short event, void *arg) {
 	  if(redis_le_valid(e)) {
 		  redisAsyncHandleRead(e->context);
 	  }
+  } else {
+	  redis_reconnect(e);
   }
 }
 

@@ -97,6 +97,8 @@ static void sqlite_unlock(int write)
 
 static int sqlite_init_multithreaded(void) {
 
+#if defined(SQLITE_CONFIG_MULTITHREAD)
+
 	sqlite3_shutdown();
 
 	if (sqlite3_threadsafe() > 0) {
@@ -112,6 +114,7 @@ static int sqlite_init_multithreaded(void) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Your SQLite database is not compiled to be threadsafe.\n");
 		return -1;
 	}
+#endif
 
 	return 0;
 }
