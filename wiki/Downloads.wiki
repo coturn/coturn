@@ -1,5 +1,5 @@
 #summary Downloads Page
-#labels Version-4.4.4.2,Featured
+#labels Version-4.4.5.2,Featured
 
 == Latest official recommended version - 4.4.5.2: ==
 
