@@ -1,5 +1,11 @@
 #summary News log
-#labels Version-4.4.4.1
+#labels Version-4.4.5.2
+
+== 06/06/2015 ==
+=== Version 4.4.5.2 ===
+
+  * support for some non-standard features dropped (long-term credentials with sha256, sha384 and sha512);
+  * oAuth support re-engineered significantly.
 
 == 03/25/2015 ==
 === Version 4.4.4.1 ===
