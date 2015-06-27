@@ -31,7 +31,7 @@
 #ifndef __LIB_TURN_MSG_DEFS__
 #define __LIB_TURN_MSG_DEFS__
 
-#include "ns_turn_msg_defs_new.h"
+#include "ns_turn_msg_defs_experimental.h"
 
 ///////////////////////////////////////////
 // http://www.iana.org/assignments/stun-parameters/stun-parameters.xhtml

@@ -284,7 +284,7 @@ fi
 %{_includedir}/turn/client/ns_turn_ioaddr.h
 %{_includedir}/turn/client/ns_turn_msg_addr.h
 %{_includedir}/turn/client/ns_turn_msg_defs.h
-%{_includedir}/turn/client/ns_turn_msg_defs_new.h
+%{_includedir}/turn/client/ns_turn_msg_defs_experimental.h
 %{_includedir}/turn/client/ns_turn_msg.h
 %{_includedir}/turn/client/TurnMsgLib.h
 
