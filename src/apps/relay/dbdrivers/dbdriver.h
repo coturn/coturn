@@ -34,7 +34,7 @@
 
 #include "../userdb.h"
 
-#include "ns_turn_msg_defs_new.h"
+#include "ns_turn_msg_defs.h"
 
 #include <pthread.h>
 
