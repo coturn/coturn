@@ -1,3 +1,6 @@
+SECURITY WARNING: after the installation, follow the instructions 
+in Appendix C "Secirity Notes".
+
 This is Amazon EC2 system dedicated for Coturn TURN Server.
 Before using it, you have to set the following parameters in 
 /etc/turnserver.conf:
@@ -122,3 +125,25 @@ And in the project web page:
 
 https://code.google.com/p/coturn/
 
+Appendix C. Security Notes
+
+The default AMI contains five databases: SQLite, MySQL, Redis, MongoDB
+and PostgreSQL. All of them are pre-set and can be used. The default
+TURN Server configuration points to the SQLite database. You can change
+that in the turnserver.conf file.
+
+After you have chosen the database option, you have to do the following
+actions, to secure your TURN Server properly:
+
+1) Remove the unused databases.
+2) After the testing stage, remove the example users accounts from the
+database.
+(the below actions are applicable if you are not using SQLite):
+3) Change the administrator password for the database. The default
+password for all databases is "turn" and it has to be changed.
+4) If you do not use the remote TURN database access by a third-party
+program, close the remote access point to the database. Normally, the
+database has to be accessed only within the TURN server, unless you do
+some external database management.
+5) You you do need the external database access, then ask a
+professional database administrator to secure you database, properly.
