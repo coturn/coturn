@@ -300,6 +300,7 @@ static int mysql_get_user_key(u08bits *usname, u08bits *realm, hmackey_t key) {
 	MYSQL * myc = get_mydb_connection();
 	if(myc) {
 		char statement[TURN_LONG_STRING_SIZE];
+		/* direct user input eliminated - there is no SQL injection problem (since version 4.4.5.3) */
 		snprintf(statement,sizeof(statement),"select hmackey from turnusers_lt where name='%s' and realm='%s'",usname,realm);
 		int res = mysql_query(myc, statement);
 		if(res) {
@@ -343,6 +344,7 @@ static int mysql_get_oauth_key(const u08bits *kid, oauth_key_data_raw *key) {
 
 	int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
+	/* direct user input eliminated - there is no SQL injection problem (since version 4.4.5.3) */
 	snprintf(statement,sizeof(statement),"select ikm_key,timestamp,lifetime,as_rs_alg from oauth_key where kid='%s'",(const char*)kid);
 
 	MYSQL * myc = get_mydb_connection();
