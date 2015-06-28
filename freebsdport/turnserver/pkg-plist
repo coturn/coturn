@@ -69,4 +69,4 @@ include/turn/client/ns_turn_ioaddr.h
 include/turn/client/ns_turn_msg.h
 include/turn/client/ns_turn_msg_addr.h
 include/turn/client/ns_turn_msg_defs.h
-include/turn/client/ns_turn_msg_defs_new.h
+include/turn/client/ns_turn_msg_defs_experimental.h
