@@ -861,21 +861,23 @@ char *turn_strdup_func(const char* s, const char* function, int line) {
 
 ////////////////////////////////
 
-int secure_username(u08bits *username)
+int is_secure_username(const u08bits *username)
 {
-	int ret = -1;
+	int ret = 0;
 	if(username) {
-		unsigned char *s = (unsigned char*)turn_strdup((char*)username);
+		unsigned char *s0 = (unsigned char*)turn_strdup((const char*)username);
+		unsigned char *s = s0;
 		while(*s) {
 			*s = (unsigned char)tolower((int)*s);
 			++s;
 		}
-		if(strstr((char*)s," ")||strstr((char*)s,"\t")||strstr((char*)s,"'")) {
-			username[0]=0;
-		} else if(strstr((char*)s,"and")&&strstr((char*)s,"union")&&strstr((char*)s,"select")) {
-			username[0]=0;
+		s = s0;
+		if(strstr((char*)s," ")||strstr((char*)s,"\t")||strstr((char*)s,"'")||strstr((char*)s,"\"")||strstr((char*)s,"\n")||strstr((char*)s,"\r")||strstr((char*)s,"\\")) {
+			;
+		} else if(strstr((char*)s,"union")&&strstr((char*)s,"select")) {
+			;
 		} else {
-			ret = 0;
+			ret = 1;
 		}
 		turn_free(s,strlen((char*)s));
 	}
@@ -883,3 +885,4 @@ int secure_username(u08bits *username)
 }
 
 //////////////////////////////////////////////////////////////////
+
