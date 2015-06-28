@@ -1,7 +1,8 @@
 6/20/2015 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.4.5.3 'Ardee West':
-	- third-party authorization STUn attributes adjusted according to the
-	values assigned by IANA.
+	- third-party authorization STUN attributes adjusted according
+		to the values assigned by IANA.
+	- SQL injection security hole fixed.
 	
 5/29/2015 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.4.5.2 'Ardee West':

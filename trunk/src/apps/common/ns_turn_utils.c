@@ -859,4 +859,27 @@ char *turn_strdup_func(const char* s, const char* function, int line) {
 #endif
 #endif
 
+////////////////////////////////
+
+int secure_username(u08bits *username)
+{
+	int ret = -1;
+	if(username) {
+		unsigned char *s = (unsigned char*)turn_strdup((char*)username);
+		while(*s) {
+			*s = (unsigned char)tolower((int)*s);
+			++s;
+		}
+		if(strstr((char*)s," ")||strstr((char*)s,"\t")||strstr((char*)s,"'")) {
+			username[0]=0;
+		} else if(strstr((char*)s,"and")&&strstr((char*)s,"union")&&strstr((char*)s,"select")) {
+			username[0]=0;
+		} else {
+			ret = 0;
+		}
+		turn_free(s,strlen((char*)s));
+	}
+	return ret;
+}
+
 //////////////////////////////////////////////////////////////////
