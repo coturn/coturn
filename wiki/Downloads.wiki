@@ -1,7 +1,23 @@
 #summary Downloads Page
-#labels Version-4.4.5.2,Featured
+#labels Version-4.4.5.3,Featured
 
-== Latest official recommended version - 4.4.5.2: ==
+== Latest official recommended version - 4.4.5.3: ==
+
+  * third-party authorization STUN attributes adjusted according to the values assigned by IANA;
+  * SQL injection security hole fixed;
+  * Amazon EC2 AMI security strengthened.
+
+[http://turnserver.open-sys.org/downloads/v4.4.5.3/ 4.4.5.3 Version Downloads (full source and platform builds)]
+
+[http://turnserver.open-sys.org/downloads/ Main Downloads Page (with all recent versions)]
+
+[http://coturn.net/turnserver/ Backup Downloads Page]
+
+[http://turnserver.open-sys.org/downloads/extradocs/ Extra Docs ]
+
+== Older versions ==
+
+=== 4.4.5.2: ===
 
   * dual allocation adjusted according to the new TURN-bis draft;
   * options sha256, sha384, sha512 retired as non-standard;
@@ -12,17 +28,9 @@
   * support for older SQLite versions added;  
   * compilation support for older CentOS release 5.x added;
   * Issue 11 fixed;
-  * Issue 12 fixed..
+  * Issue 12 fixed.
 
-[http://turnserver.open-sys.org/downloads/v4.4.5.2/ 4.4.5.2 Version Downloads (full source and platform builds)]
-
-[http://turnserver.open-sys.org/downloads/ Main Downloads Page (with all recent versions)]
-
-[http://coturn.net/turnserver/ Backup Downloads Page]
-
-[http://turnserver.open-sys.org/downloads/extradocs/ Extra Docs ]
-
-== Older versions ==
+[http://turnserver.open-sys.org/downloads/v4.4.5.2/ v4.4.5.2]
 
 === 4.4.4.2: ===
 
