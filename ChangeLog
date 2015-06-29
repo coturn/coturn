@@ -1,9 +1,15 @@
+6/20/2015 Oleg Moskalenko <mom040267@gmail.com>
+Version 4.4.5.3 'Ardee West':
+	- third-party authorization STUN attributes adjusted according
+		to the values assigned by IANA.
+	- SQL injection security hole fixed.
+	
 5/29/2015 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.4.5.2 'Ardee West':
 	- dual allocation adjusted according to the new TURN-bis draft;
 	- options sha256, sha384, sha512 retired as non-standard;
 	- third-party authorization (oAuth) updated according to the
-	version 14 of the draft;
+	version 16 of the draft;
 	- C++ compilation fixes;
 	- cosmetic fixes;
 	- fixed binary package for CentOS 7.1;

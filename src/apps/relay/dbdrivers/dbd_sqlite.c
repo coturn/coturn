@@ -261,6 +261,7 @@ static int sqlite_get_user_key(u08bits *usname, u08bits *realm, hmackey_t key)
 		char statement[TURN_LONG_STRING_SIZE];
 		sqlite3_stmt *st = NULL;
 		int rc = 0;
+		/* direct user input eliminated - there is no SQL injection problem (since version 4.4.5.3) */
 		snprintf(statement, sizeof(statement), "select hmackey from turnusers_lt where name='%s' and realm='%s'", usname, realm);
 
 		sqlite_lock(0);
@@ -296,6 +297,8 @@ static int sqlite_get_oauth_key(const u08bits *kid, oauth_key_data_raw *key) {
 	char statement[TURN_LONG_STRING_SIZE];
 	sqlite3_stmt *st = NULL;
 	int rc = 0;
+
+	/* direct user input eliminated - there is no SQL injection problem (since version 4.4.5.3) */
 	snprintf(statement,sizeof(statement),"select ikm_key,timestamp,lifetime,as_rs_alg from oauth_key where kid='%s'",(const char*)kid);
 
 	sqlite3 *sqliteconnection = get_sqlite_connection();

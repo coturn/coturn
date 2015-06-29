@@ -751,7 +751,7 @@ The oauth_key table fields meanings are:
 
 	kid: the kid of the key;
 
-	ikm_key - (optional) base64-encoded key ("input keying material");
+	ikm_key - base64-encoded key ("input keying material");
 		
 	timestamp - (optional) the timestamp (in seconds) when the key 
 		lifetime starts;
