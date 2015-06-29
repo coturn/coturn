@@ -1,5 +1,10 @@
 #summary News log
-#labels Version-4.4.5.2
+#labels Version-4.4.5.3
+
+== 06/28/2015 ==
+=== Version 4.4.5.3 ===
+  * third-party STUN attributes at last assigned official IANA values and moved from experimental to supported;
+  * a big SQL injection security hole fixed.
 
 == 06/06/2015 ==
 === Version 4.4.5.2 ===
