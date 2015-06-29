@@ -28,62 +28,25 @@
  * SUCH DAMAGE.
  */
 
-#ifndef __TURN_ULIB__
-#define __TURN_ULIB__
+#ifndef __LIB_TURN_MSG_DEFS_NEW__
+#define __LIB_TURN_MSG_DEFS_NEW__
 
-#if !defined(TURN_LOG_FUNC)
-//#define TURN_LOG_FUNC(level, ...) printf (__VA_ARGS__)
-#define TURN_LOG_FUNC turn_log_func_default
-#endif
+/***** POST-RFC5766 FRESH SPECS ***********/
 
-#include "ns_turn_ioaddr.h"
+/* Origin ==>> */
+#define STUN_MAX_ORIGIN_SIZE (127)
+#define STUN_ATTRIBUTE_ORIGIN (0x802F)
+/* <<== Origin */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+/* Bandwidth */
 
-//////////////////////// LOG //////////////////////////
+#define STUN_ATTRIBUTE_NEW_BANDWIDTH (0x8000 + STUN_ATTRIBUTE_BANDWIDTH)
 
-typedef enum {
-  TURN_LOG_LEVEL_INFO = 0,
-  TURN_LOG_LEVEL_CONTROL,
-  TURN_LOG_LEVEL_WARNING,
-  TURN_LOG_LEVEL_ERROR
-} TURN_LOG_LEVEL;
+/* <<== Bandwidth */
 
-#define TURN_VERBOSE_NONE (0)
-#define TURN_VERBOSE_NORMAL (1)
-#define TURN_VERBOSE_EXTRA (2)
+////////////// SSODA ///////////////////
 
-#define eve(v) ((v)==TURN_VERBOSE_EXTRA)
+#define STUN_ATTRIBUTE_ADDITIONAL_ADDRESS_FAMILY (0x8032)
+#define STUN_ATTRIBUTE_ADDRESS_ERROR_CODE (0x8033)
 
-void set_no_stdout_log(int val);
-void set_log_to_syslog(int val);
-void set_simple_log(int val);
-
-void turn_log_func_default(TURN_LOG_LEVEL level, const s08bits* format, ...);
-
-void addr_debug_print(int verbose, const ioa_addr *addr, const s08bits* s);
-
-/* Log */
-
-extern volatile int _log_time_value_set;
-extern volatile turn_time_t _log_time_value;
-
-void rtpprintf(const char *format, ...);
-int vrtpprintf(TURN_LOG_LEVEL level, const char *format, va_list args);
-void reset_rtpprintf(void);
-void set_logfile(const char *fn);
-void rollover_logfile(void);
-
-///////////////////////////////////////////////////////
-
-int is_secure_username(const u08bits *username);
-
-///////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif //__TURN_ULIB__
+#endif //__LIB_TURN_MSG_DEFS_NEW__

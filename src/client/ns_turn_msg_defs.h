@@ -31,7 +31,7 @@
 #ifndef __LIB_TURN_MSG_DEFS__
 #define __LIB_TURN_MSG_DEFS__
 
-#include "ns_turn_msg_defs_new.h"
+#include "ns_turn_msg_defs_experimental.h"
 
 ///////////////////////////////////////////
 // http://www.iana.org/assignments/stun-parameters/stun-parameters.xhtml
@@ -153,6 +153,119 @@
 #define STUN_ATTRIBUTE_MOBILITY_EVENT (0x802)
 #define STUN_ATTRIBUTE_MOBILITY_SUPPORT (0x8000)
 /* <<== Mobility */
+
+/* SHA ==>> */
+
+#define SHA1SIZEBYTES (20)
+#define SHA256SIZEBYTES (32)
+#define SHA384SIZEBYTES (48)
+#define SHA512SIZEBYTES (64)
+
+#define MAXSHASIZE (128)
+
+enum _SHATYPE {
+	SHATYPE_ERROR = -1,
+	SHATYPE_DEFAULT=0,
+	SHATYPE_SHA1=SHATYPE_DEFAULT,
+	SHATYPE_SHA256,
+	SHATYPE_SHA384,
+	SHATYPE_SHA512
+};
+
+typedef enum _SHATYPE SHATYPE;
+
+#define shatype_name(sht) ((sht == SHATYPE_SHA1) ? "SHA1" : ((sht == SHATYPE_SHA256) ? "SHA256" : ((sht == SHATYPE_SHA384) ? "SHA384" : "SHA512")))
+
+/* <<== SHA */
+
+/* OAUTH TOKEN ENC ALG ==> */
+
+enum _ENC_ALG {
+	ENC_ALG_ERROR=-1,
+#if !defined(TURN_NO_GCM)
+	ENC_ALG_DEFAULT=0,
+	A256GCM=ENC_ALG_DEFAULT,
+	A128GCM,
+#endif
+	ENC_ALG_NUM
+};
+
+typedef enum _ENC_ALG ENC_ALG;
+
+/* <<== OAUTH TOKEN ENC ALG */
+
+/**
+ * oAuth struct
+ */
+
+#define STUN_ATTRIBUTE_THIRD_PARTY_AUTHORIZATION (0x802E)
+#define STUN_ATTRIBUTE_OAUTH_ACCESS_TOKEN (0x001B)
+
+#define OAUTH_KID_SIZE (128)
+#define OAUTH_HASH_FUNC_SIZE (64)
+#define OAUTH_ALG_SIZE (64)
+#define OAUTH_KEY_SIZE (256)
+#define OAUTH_GCM_NONCE_SIZE (12)
+#define OAUTH_MAX_NONCE_SIZE (256)
+#define OAUTH_GCM_TAG_SIZE (16)
+#define OAUTH_ENC_ALG_BLOCK_SIZE (16)
+
+#define OAUTH_DEFAULT_LIFETIME (0)
+#define OAUTH_DEFAULT_TIMESTAMP (turn_time())
+
+#define OAUTH_TIME_DELTA (5)
+
+struct _oauth_key_data {
+	char kid[OAUTH_KID_SIZE+1];
+	char ikm_key[OAUTH_KEY_SIZE+1];
+	size_t ikm_key_size;
+	turn_time_t timestamp;
+	turn_time_t lifetime;
+	char as_rs_alg[OAUTH_ALG_SIZE+1];
+};
+
+typedef struct _oauth_key_data oauth_key_data;
+
+struct _oauth_key {
+	char kid[OAUTH_KID_SIZE+1];
+	char ikm_key[OAUTH_KEY_SIZE+1];
+	size_t ikm_key_size;
+	turn_time_t timestamp;
+	turn_time_t lifetime;
+	ENC_ALG as_rs_alg;
+	char as_rs_key[OAUTH_KEY_SIZE+1];
+	size_t as_rs_key_size;
+	char auth_key[OAUTH_KEY_SIZE+1];
+	size_t auth_key_size;
+};
+
+typedef struct _oauth_key oauth_key;
+
+struct _oauth_encrypted_block {
+	uint16_t nonce_length;
+	uint8_t nonce[OAUTH_MAX_NONCE_SIZE];
+	uint16_t key_length;
+	uint8_t mac_key[MAXSHASIZE];
+	uint64_t timestamp;
+	uint32_t lifetime;
+};
+
+typedef struct _oauth_encrypted_block oauth_encrypted_block;
+
+struct _oauth_token {
+	oauth_encrypted_block enc_block;
+};
+
+typedef struct _oauth_token oauth_token;
+
+#define MAX_ENCODED_OAUTH_TOKEN_SIZE (1024)
+
+struct _encoded_oauth_token {
+	char token[MAX_ENCODED_OAUTH_TOKEN_SIZE];
+	size_t size;
+};
+
+typedef struct _encoded_oauth_token encoded_oauth_token;
 
 ////////////////////////////////////////////////
 

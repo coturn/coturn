@@ -49,7 +49,7 @@ It was designed to simulate multiple clients. It uses asynch IO API in
 libevent to handle multiple clients. A client connects to the relay, 
 negotiates the session, and sends multiple (configured number) messages to the server (relay), 
 expecting the same number of replies. The length of the messages is configurable. 
-The message is an arbitrary octet stream, but it can be configured as a string. 
+The message is an arbitrary octet stream. 
 The number of the messages to send is configurable.
 
 Flags:   

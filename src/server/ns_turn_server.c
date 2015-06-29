@@ -1015,6 +1015,12 @@ static int handle_turn_allocate(turn_turnserver *server,
 					}
 					ns_bcopy(value,username,ulen);
 					username[ulen]=0;
+					if(!is_secure_username(username)) {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: wrong username: %s\n", __FUNCTION__, (char*)username);
+						username[0]=0;
+						*err_code = 400;
+						break;
+					}
 				}
 			}
 
@@ -3338,7 +3344,12 @@ static int check_stun_auth(turn_turnserver *server,
 	ns_bcopy(stun_attr_get_value(sar),usname,alen);
 	usname[alen]=0;
 
-	if(ss->username[0]) {
+	if(!is_secure_username(usname)) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: wrong username: %s\n", __FUNCTION__, (char*)usname);
+		usname[0]=0;
+		*err_code = 400;
+		return -1;
+	} else if(ss->username[0]) {
 		if(strcmp((char*)ss->username,(char*)usname)) {
 			if(ss->oauth) {
 				ss->hmackey_set = 0;
