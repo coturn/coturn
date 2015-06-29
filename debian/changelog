@@ -1,3 +1,9 @@
+coturn (4.4.5.3-1) unstable; urgency=low
+
+  * sync to 4.4.5.3: security fix
+
+ -- Oleg Moskalenko <mom040267@gmail.com>  Sun, 28 Jun 2015 20:35:15 -0700
+
 coturn (4.4.5.2-1) unstable; urgency=low
 
   * Sync to upstream 4.4.5.2
