@@ -4,7 +4,7 @@
 == Latest official recommended version - 4.4.5.3: ==
 
   * third-party authorization STUN attributes adjusted according to the values assigned by IANA;
-  * SQL injection security hole fixed;
+  * SQL injection security hole fixed; reported by Alex Inführ and Mario Heiderich from Cure53 (https://cure53.de/)
   * Amazon EC2 AMI security strengthened.
 
 [http://turnserver.open-sys.org/downloads/v4.4.5.3/ 4.4.5.3 Version Downloads (full source and platform builds)]
