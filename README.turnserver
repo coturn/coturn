@@ -540,7 +540,7 @@ LOAD BALANCE AND PERFORMANCE TUNING
 
 This topic is covered in the wiki page:
 
-http://code.google.com/p/coturn/wiki/turn_performance_and_load_balance
+https://github.com/coturn/coturn/wiki/turn_performance_and_load_balance
 	 
 ===================================
 
@@ -638,7 +638,7 @@ knowledge of the shared secret, a new temporary password cannot be generated.
 
 This is all formally described in Justin's Uberti TURN REST API document
 that can be obtained following the link "TURN REST API" in the TURN Server
-project's page http://code.google.com/p/coturn/.
+project's page https://github.com/coturn/coturn/.
 
 Once the temporary username and password are obtained by the client (browser)
 application, then the rest is just 'classic" long-term credentials mechanism.
@@ -911,11 +911,11 @@ SEE ALSO
 
 project page:
 
-http://code.google.com/p/coturn/
+https://github.com/coturn/coturn/
 
 Wiki page:
 
-http://code.google.com/p/coturn/wiki/Readme
+https://github.com/coturn/coturn/wiki
 
 forum:
 
