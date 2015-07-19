@@ -33,7 +33,7 @@ if ! [ -f ${BUILDDIR}/SPECS/${LIBEVENT_SPEC_FILE} ] ; then
     rm -rf ${LIBEVENT_SPEC_DIR}
     mkdir ${LIBEVENT_SPEC_DIR}
     cd ${LIBEVENT_SPEC_DIR}
-    wget --quiet --no-check-certificate ${LIBEVENT_SPEC_GIT_URL}/${LIBEVENT_SPEC_FILE}
+    wget ${WGETOPTIONS} ${LIBEVENT_SPEC_GIT_URL}/${LIBEVENT_SPEC_FILE}
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
 	cd ${CPWD}
