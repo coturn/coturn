@@ -5,7 +5,7 @@ Summary:	Coturn TURN Server
 
 Group:		System Environment/Libraries
 License:	BSD
-URL:		https://code.google.com/p/coturn/ 
+URL:		https://github.com/coturn/coturn/ 
 Source0:	http://turnserver.open-sys.org/downloads/v%{version}/%{name}-%{version}.tar.gz
 
 BuildRequires:	gcc, make, redhat-rpm-config, sqlite-devel

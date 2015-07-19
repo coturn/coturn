@@ -39,6 +39,12 @@ if ! [ -f ${BUILDDIR}/SPECS/${LIBEVENT_SPEC_FILE} ] ; then
 	cd ${CPWD}
 	exit -1
     fi
+    wget ${WGETOPTIONS} ${LIBEVENT_SPEC_GIT_URL}/${LIBEVENT_DISTRO}
+    ER=$?
+    if ! [ ${ER} -eq 0 ] ; then
+	cd ${CPWD}
+	exit -1
+    fi
     cd ..
     
     if ! [ -f ${LIBEVENT_SPEC_DIR}/${LIBEVENT_SPEC_FILE} ] ; then
