@@ -588,7 +588,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "\n"
 " For more information, see the wiki pages:\n"
 "\n"
-"	http://code.google.com/p/coturn/w/list\n"
+"	https://github.com/coturn/coturn/wiki/\n"
 "\n";
 
 static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"

@@ -2,11 +2,10 @@
 
 # Common settings script.
 
-TURNVERSION=4.4.5.3
+TURNVERSION=4.4.5.4
 BUILDDIR=~/rpmbuild
 ARCH=`uname -p`
-TURNSERVER_SVN_URL=http://coturn.googlecode.com/svn
-TURNSERVER_SVN_URL_VER=trunk
+TURNSERVER_GIT_URL=git@github.com:coturn/coturn.git
 
 WGETOPTIONS="--no-check-certificate"
 RPMOPTIONS="-ivh --force"

@@ -16,7 +16,7 @@ mkdir -p ${BUILDDIR}/tmp
 
 # Common packs
 
-PACKS="make gcc redhat-rpm-config rpm-build doxygen openssl-devel svn"
+PACKS="make gcc redhat-rpm-config rpm-build doxygen openssl-devel git"
 sudo yum -y install ${PACKS}
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then

@@ -1112,11 +1112,11 @@ XX. Performance tuning
 
 This topic is covered in the wiki page:
 
-http://code.google.com/p/coturn/wiki/turn_performance_and_load_balance
+https://github.com/coturn/coturn/wiki/TURN-Performance-and-Load-Balance
 
 XXI. TURN Server setup
 
-Read the project wiki pages: http://code.google.com/p/coturn/w/list
+Read the project wiki pages: https://github.com/coturn/coturn/wiki
 
 Also, check the project from page links to the TURN/WebRTC configuration examples.
 It may give you an idea how it can be done.
