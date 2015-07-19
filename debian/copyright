@@ -1,7 +1,7 @@
 Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: coturn
 Upstream-Contact: mom040267@gmail.com
-Source: http://code.google.com/p/coturn/
+Source: https://github.com/coturn/coturn/
 
 Files: *
 Copyright: 2011, 2012, 2013, 2014 Citrix Systems
