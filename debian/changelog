@@ -1,3 +1,9 @@
+coturn (4.4.5.4-1) unstable; urgency=low
+
+  * Migrated to Github
+
+ -- Oleg Moskalenko <mom040267@gmail.com>  Sun, 19 Jul 2015 14:00:45 -0700
+
 coturn (4.4.5.3-1) unstable; urgency=low
 
   * sync to 4.4.5.3: security fix
