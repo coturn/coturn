@@ -1,11 +1,11 @@
 Name:		turnserver
-Version:	4.4.5.3
+Version:	4.4.5.4
 Release:	0%{dist}
 Summary:	Coturn TURN Server
 
 Group:		System Environment/Libraries
 License:	BSD
-URL:		https://code.google.com/p/coturn/ 
+URL:		https://github.com/coturn/coturn/ 
 Source0:	http://turnserver.open-sys.org/downloads/v%{version}/%{name}-%{version}.tar.gz
 
 BuildRequires:	gcc, make, redhat-rpm-config, sqlite-devel
@@ -289,6 +289,8 @@ fi
 %{_includedir}/turn/client/TurnMsgLib.h
 
 %changelog
+* Sat Jul 18 2015 Oleg Moskalenko <mom040267@gmail.com>
+  - Sync to 4.4.5.4
 * Sat Jun 20 2015 Oleg Moskalenko <mom040267@gmail.com>
   - Sync to 4.4.5.3
 * Wed May 29 2015 Oleg Moskalenko <mom040267@gmail.com>

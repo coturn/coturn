@@ -26,7 +26,7 @@ To build the TURN server:
        	mysql-devel (or mariadb-devel), postgresql-devel, hiredis-devel
     4) $ mkdir ~/rpmbuild
     5) $ mkdir ~/rpmbuild/SOURCES
-    6) Export the TURN server from SVN, "svn export http://coturn.googlecode.com/svn/trunk/ turnserver-2.6.7.0"
+    6) Export the TURN server from Github, "git clone https://github.com/coturn/coturn.git"
     7) Create a tarball, "tar zcf ~/rpmbuild/SOURCES/turnserver-2.6.7.0.tar.gz turnserver-2.6.7.0"
     8) Build the RPMs, "rpmbuild -ta ~/rpmbuild/SOURCES/turnserver-2.6.7.0.tar.gz"
 
