@@ -852,6 +852,9 @@ may be located in different places.
 
   $ sudo /etc/init.d/postgresql stop
   $ sudo /etc/init.d/postgresql start
+  
+  The scripts may also be in /usr/local/etc/init.d, or in /etc/rc.d/, or
+  in /usr/local/etc/rc.d/ .
 
 5) Check /etc/passwd file to find out which user account is used for the 
 PostgreSQL admin access on your system (it may be "pgsql", or "postgres", 
