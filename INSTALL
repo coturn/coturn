@@ -862,10 +862,10 @@ or "postgresql"). Let's assume that this is "postgres" account.
 
 6) Create a database for the TURN purposes, with name, say, "turn":
 
-   $ createdb -U postgres turn
+   $ createdb -U postgres coturn
 
 7) Create a user for the TURN with name, say, "turn":
-   $ psql -U postgres turn
+   $ psql -U postgres coturn
      turn=# create user turn with password 'turn';
      turn=# 
      Ctrl-D
@@ -876,12 +876,16 @@ The database schema for the TURN server is very minimalistic and is located
 in project's turndb/schema.sql file, or in the system's 
 PREFIX/share/turnserver/schema.sql file after the turnserver installation:
 
-$ cat turndb/schema.sql | psql -U turn -d turn
+$ cat turndb/schema.sql | psql -U turn -d coturn
 	NOTICE:  CREATE TABLE / PRIMARY KEY will create implicit index "turnusers_lt_pkey" for table "turnusers_lt"
 	CREATE TABLE
 	CREATE TABLE
 
 See the SQLite section for the detailed database schema explanation.
+
+To fill the database with test data:
+
+cat turndb/testsqldbsetup.sql | psql -U turn -d coturn
 
 You can use turnadmin program to manage the database - you can either use 
 turnadmin to add/modify/delete users, or you can use turnadmin to produce 
