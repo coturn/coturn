@@ -1029,11 +1029,11 @@ struct _ur_string_map {
   TURN_MUTEX_DECLARE(mutex)
 };
 
-static unsigned long string_hash(const ur_string_map_key_type key) {
+static u32bits string_hash(const ur_string_map_key_type key) {
 
   u08bits *str=(u08bits*)key;
 
-  unsigned long hash = 0;
+  u32bits hash = 0;
   int c = 0;
 
   while ((c = *str++))
