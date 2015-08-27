@@ -38,6 +38,13 @@
 #define STUN_ATTRIBUTE_ORIGIN (0x802F)
 /* <<== Origin */
 
+/* Mobility ==>> */
+/* conflicts with third-party authorization ! 0x802E is used for third-party authorization now */
+#define STUN_ATTRIBUTE_MOBILITY_TICKET (0x8888)
+#define STUN_ATTRIBUTE_MOBILITY_EVENT (0x802)
+#define STUN_ATTRIBUTE_MOBILITY_SUPPORT (0x8000)
+/* <<== Mobility */
+
 /* Bandwidth */
 
 #define STUN_ATTRIBUTE_NEW_BANDWIDTH (0x8000 + STUN_ATTRIBUTE_BANDWIDTH)
