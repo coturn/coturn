@@ -40,9 +40,7 @@
 
 /* Mobility ==>> */
 /* conflicts with third-party authorization ! 0x802E is used for third-party authorization now */
-#define STUN_ATTRIBUTE_MOBILITY_TICKET (0x8040)
-#define STUN_ATTRIBUTE_MOBILITY_EVENT (0x802)
-#define STUN_ATTRIBUTE_MOBILITY_SUPPORT (0x8000)
+#define STUN_ATTRIBUTE_MOBILITY_TICKET (0x8030)
 /* <<== Mobility */
 
 /* Bandwidth */
