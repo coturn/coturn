@@ -236,6 +236,7 @@ static int to_syslog = 0;
 static int simple_log = 0;
 static char log_fn[FILE_STR_LEN]="\0";
 static char log_fn_base[FILE_STR_LEN]="\0";
+static volatile int to_reset_log_file = 0;
 
 static turn_mutex log_mutex;
 static int log_mutex_inited = 0;
@@ -344,13 +345,18 @@ static void set_log_file_name_func(char *base, char *f, size_t fsz)
 static void sighup_callback_handler(int signum)
 {
 	if(signum == SIGHUP) {
-		printf("%s: resetting the log file\n",__FUNCTION__);
-		reset_rtpprintf();
+		to_reset_log_file = 1;
 	}
 }
 
 static void set_rtpfile(void)
 {
+	if(to_reset_log_file) {
+		printf("%s: resetting the log file\n",__FUNCTION__);
+		reset_rtpprintf();
+		to_reset_log_file = 0;
+	}
+
 	if(to_syslog) {
 		return;
 	} else if (!_rtpfile) {
