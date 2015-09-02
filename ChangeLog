@@ -1,6 +1,7 @@
 8/26/2015 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.4.5.5 'Ardee West':
 	- STUN attributes conflict resolution.
+	- SIGHUP handler fixed.
 	
 7/18/2015 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.4.5.4 'Ardee West':
