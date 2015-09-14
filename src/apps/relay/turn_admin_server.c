@@ -2773,12 +2773,13 @@ static size_t https_print_oauth_keys(struct str_buffer* sb)
 	size_t ret = 0;
 	const turn_dbdriver_t * dbd = get_dbdriver();
 	if (dbd && dbd->list_oauth_keys) {
-		secrets_list_t kids,teas,tss,lts;
+		secrets_list_t kids,teas,tss,lts,realms;
 		init_secrets_list(&kids);
 		init_secrets_list(&teas);
 		init_secrets_list(&tss);
 		init_secrets_list(&lts);
-		dbd->list_oauth_keys(&kids,&teas,&tss,&lts);
+		init_secrets_list(&realms);
+		dbd->list_oauth_keys(&kids,&teas,&tss,&lts,&realms);
 
 		size_t sz = get_secrets_list_size(&kids);
 		size_t i;
@@ -2824,6 +2825,9 @@ static size_t https_print_oauth_keys(struct str_buffer* sb)
 
 		clean_secrets_list(&kids);
 		clean_secrets_list(&teas);
+		clean_secrets_list(&tss);
+		clean_secrets_list(&lts);
+		clean_secrets_list(&realms);
 	}
 
 	return ret;

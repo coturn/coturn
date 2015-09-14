@@ -744,6 +744,7 @@ CREATE TABLE oauth_key (
 	timestamp bigint default 0,
 	lifetime integer default 0,
 	as_rs_alg varchar(64) default '',
+	realm varchar(127) default '',
 	primary key (kid)
 ); 
 
@@ -763,6 +764,8 @@ The oauth_key table fields meanings are:
 		"A256GCM", "A128GCM" (see 
 		http://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms-40#section-5.1).
 		The default value is "A256GCM";
+	
+	realm - (optional) can be used to set the user realm (if the field is not empty).
 
 # Https access admin users.
 # Leave this table empty if you do not want 

@@ -43,6 +43,7 @@ CREATE TABLE oauth_key (
 	timestamp bigint default 0,
 	lifetime integer default 0,
 	as_rs_alg varchar(64) default '',
+	realm varchar(127),
 	primary key (kid)
 );
 

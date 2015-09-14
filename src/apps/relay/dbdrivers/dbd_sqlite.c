@@ -157,7 +157,7 @@ static void init_sqlite_database(sqlite3 *sqliteconnection) {
 		"CREATE TABLE denied_peer_ip (realm varchar(127) default '', ip_range varchar(256), primary key (realm,ip_range))",
 		"CREATE TABLE turn_origin_to_realm (origin varchar(127),realm varchar(127),primary key (origin))",
 		"CREATE TABLE turn_realm_option (realm varchar(127) default '',	opt varchar(32),	value varchar(128),	primary key (realm,opt))",
-		"CREATE TABLE oauth_key (kid varchar(128),ikm_key varchar(256),timestamp bigint default 0,lifetime integer default 0,as_rs_alg varchar(64) default '',primary key (kid))",
+		"CREATE TABLE oauth_key (kid varchar(128),ikm_key varchar(256),timestamp bigint default 0,lifetime integer default 0,as_rs_alg varchar(64) default '',realm varchar(127) default '',primary key (kid))",
 		"CREATE TABLE admin_user (name varchar(32), realm varchar(127), password varchar(127), primary key (name))",
 		NULL
 	};
@@ -299,7 +299,7 @@ static int sqlite_get_oauth_key(const u08bits *kid, oauth_key_data_raw *key) {
 	int rc = 0;
 
 	/* direct user input eliminated - there is no SQL injection problem (since version 4.4.5.3) */
-	snprintf(statement,sizeof(statement),"select ikm_key,timestamp,lifetime,as_rs_alg from oauth_key where kid='%s'",(const char*)kid);
+	snprintf(statement,sizeof(statement),"select ikm_key,timestamp,lifetime,as_rs_alg,realm from oauth_key where kid='%s'",(const char*)kid);
 
 	sqlite3 *sqliteconnection = get_sqlite_connection();
 	if(sqliteconnection) {
@@ -315,6 +315,7 @@ static int sqlite_get_oauth_key(const u08bits *kid, oauth_key_data_raw *key) {
 				key->timestamp = (u64bits)strtoll((const char*)sqlite3_column_text(st, 1),NULL,10);
 				key->lifetime = (u32bits)strtol((const char*)sqlite3_column_text(st, 2),NULL,10);
 				STRCPY(key->as_rs_alg,sqlite3_column_text(st, 3));
+				STRCPY(key->realm,sqlite3_column_text(st, 4));
 				STRCPY(key->kid,kid);
 				ret = 0;
 			}
@@ -331,7 +332,7 @@ static int sqlite_get_oauth_key(const u08bits *kid, oauth_key_data_raw *key) {
 	return ret;
 }
 
-static int sqlite_list_oauth_keys(secrets_list_t *kids,secrets_list_t *teas,secrets_list_t *tss,secrets_list_t *lts) {
+static int sqlite_list_oauth_keys(secrets_list_t *kids,secrets_list_t *teas,secrets_list_t *tss,secrets_list_t *lts,secrets_list_t *realms) {
 
 	oauth_key_data_raw key_;
 	oauth_key_data_raw *key=&key_;
@@ -343,7 +344,7 @@ static int sqlite_list_oauth_keys(secrets_list_t *kids,secrets_list_t *teas,secr
 	char statement[TURN_LONG_STRING_SIZE];
 	sqlite3_stmt *st = NULL;
 	int rc = 0;
-	snprintf(statement,sizeof(statement),"select ikm_key,timestamp,lifetime,as_rs_alg,kid from oauth_key order by kid");
+	snprintf(statement,sizeof(statement),"select ikm_key,timestamp,lifetime,as_rs_alg,realm,kid from oauth_key order by kid");
 
 	sqlite3 *sqliteconnection = get_sqlite_connection();
 	if(sqliteconnection) {
@@ -361,11 +362,13 @@ static int sqlite_list_oauth_keys(secrets_list_t *kids,secrets_list_t *teas,secr
 					key->timestamp = (u64bits)strtoll((const char*)sqlite3_column_text(st, 1),NULL,10);
 					key->lifetime = (u32bits)strtol((const char*)sqlite3_column_text(st, 2),NULL,10);
 					STRCPY(key->as_rs_alg,sqlite3_column_text(st, 3));
-					STRCPY(key->kid,sqlite3_column_text(st, 4));
+					STRCPY(key->realm,sqlite3_column_text(st, 4));
+					STRCPY(key->kid,sqlite3_column_text(st, 5));
 
 					if(kids) {
 						add_to_secrets_list(kids,key->kid);
 						add_to_secrets_list(teas,key->as_rs_alg);
+						add_to_secrets_list(realms,key->realm);
 						{
 							char ts[256];
 							snprintf(ts,sizeof(ts)-1,"%llu",(unsigned long long)key->timestamp);
@@ -449,8 +452,8 @@ static int sqlite_set_oauth_key(oauth_key_data_raw *key)
 		snprintf(
 						statement,
 						sizeof(statement),
-						"insert or replace into oauth_key (kid,ikm_key,timestamp,lifetime,as_rs_alg) values('%s','%s',%llu,%lu,'%s')",
-						key->kid, key->ikm_key, (unsigned long long) key->timestamp, (unsigned long) key->lifetime, key->as_rs_alg);
+						"insert or replace into oauth_key (kid,ikm_key,timestamp,lifetime,as_rs_alg,realm) values('%s','%s',%llu,%lu,'%s','%s')",
+						key->kid, key->ikm_key, (unsigned long long) key->timestamp, (unsigned long) key->lifetime, key->as_rs_alg, key->realm);
 
 		sqlite_lock(1);
 
