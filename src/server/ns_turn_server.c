@@ -77,7 +77,7 @@ static inline void log_method(ts_ur_super_session* ss, const char *method, int e
 				(unsigned long long)(ss->id), (const char*)(ss->realm_options.name),(const char*)(ss->username),method);
 		}
 	  } else {
-		  if(!reason) reason=(const u08bits*)"Unknown error";
+		  if(!reason) reason=get_default_reason(err_code);
 		  if(ss->origin[0]) {
 			  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
 					  "session %018llu: origin <%s> realm <%s> user <%s>: incoming packet %s processed, error %d: %s\n",
@@ -3191,7 +3191,7 @@ static int create_challenge_response(ts_ur_super_session *ss, stun_tid *tid, int
 #define min(a,b) ((a)<=(b) ? (a) : (b))
 #endif
 
-static void resume_processing_after_username_check(int success,  int oauth, int max_session_time, hmackey_t hmackey, password_t pwd, turn_turnserver *server, u64bits ctxkey, ioa_net_data *in_buffer)
+static void resume_processing_after_username_check(int success,  int oauth, int max_session_time, hmackey_t hmackey, password_t pwd, turn_turnserver *server, u64bits ctxkey, ioa_net_data *in_buffer, u08bits *realm)
 {
 
 	if(server && in_buffer && in_buffer->nbh) {
@@ -3206,6 +3206,9 @@ static void resume_processing_after_username_check(int success,  int oauth, int 
 				ss->oauth = oauth;
 				ss->max_session_time_auth = (turn_time_t)max_session_time;
 				ns_bcopy(pwd,ss->pwd,sizeof(password_t));
+				if(realm && realm[0]) {
+					get_realm_options_by_name((char*)realm, &(ss->realm_options));
+				}
 			}
 
 			read_client_connection(server,ss,in_buffer,0,0);
@@ -3318,14 +3321,18 @@ static int check_stun_auth(turn_turnserver *server,
 			get_realm_options_by_name((char *)realm, &(ss->realm_options));
 
 		} else if(strcmp((char*)realm, (char*)(ss->realm_options.name))) {
-			if(method == STUN_METHOD_ALLOCATE) {
-				*err_code = 437;
-				*reason = (const u08bits*)"Allocation mismatch: wrong credentials: the realm value is incorrect";
+			if(!(ss->oauth)){
+				if(method == STUN_METHOD_ALLOCATE) {
+					*err_code = 437;
+					*reason = (const u08bits*)"Allocation mismatch: wrong credentials: the realm value is incorrect";
+				} else {
+					*err_code = 441;
+					*reason = (const u08bits*)"Wrong credentials: the realm value is incorrect";
+				}
+				return -1;
 			} else {
-				*err_code = 441;
-				*reason = (const u08bits*)"Wrong credentials: the realm value is incorrect";
+				ns_bcopy(ss->realm_options.name,realm,sizeof(ss->realm_options.name));
 			}
-			return -1;
 		}
 	}
 
@@ -4261,7 +4268,7 @@ static int create_relay_connection(turn_turnserver* server,
 
 			ioa_socket_handle s = NULL;
 
-			if ((get_ioa_socket_from_reservation(server->e, in_reservation_token,&s,(u08bits*)ss->realm_options.name) < 0)||
+			if ((get_ioa_socket_from_reservation(server->e, in_reservation_token,&s) < 0)||
 				!s ||
 				ioa_socket_tobeclosed(s)) {
 

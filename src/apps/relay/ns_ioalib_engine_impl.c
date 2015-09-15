@@ -708,10 +708,10 @@ int ioa_socket_check_bandwidth(ioa_socket_handle s, ioa_network_buffer_handle nb
 	return 1;
 }
 
-int get_ioa_socket_from_reservation(ioa_engine_handle e, u64bits in_reservation_token, ioa_socket_handle *s, u08bits *realm)
+int get_ioa_socket_from_reservation(ioa_engine_handle e, u64bits in_reservation_token, ioa_socket_handle *s)
 {
   if (e && in_reservation_token && s) {
-    *s = rtcp_map_get(e->map_rtcp, in_reservation_token, realm);
+    *s = rtcp_map_get(e->map_rtcp, in_reservation_token);
     if (*s) {
       return 0;
     }

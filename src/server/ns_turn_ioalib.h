@@ -227,7 +227,7 @@ int create_relay_ioa_sockets(ioa_engine_handle e, ioa_socket_handle client_s,
 
 ioa_socket_handle  ioa_create_connecting_tcp_relay_socket(ioa_socket_handle s, ioa_addr *peer_addr, connect_cb cb, void *arg);
 
-int get_ioa_socket_from_reservation(ioa_engine_handle e, u64bits in_reservation_token, ioa_socket_handle *s, u08bits *realm);
+int get_ioa_socket_from_reservation(ioa_engine_handle e, u64bits in_reservation_token, ioa_socket_handle *s);
 
 int get_ioa_socket_address_family(ioa_socket_handle s);
 int is_stream_socket(int st);
