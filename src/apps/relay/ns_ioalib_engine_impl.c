@@ -1652,8 +1652,6 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s)
 
 		ret->magic = SOCKET_MAGIC;
 
-		ret->realm_hash = s->realm_hash;
-
 		SSL* ssl = s->ssl;
 		set_socket_ssl(s,NULL);
 		set_socket_ssl(ret,ssl);
@@ -3415,38 +3413,6 @@ void set_ioa_socket_tobeclosed(ioa_socket_handle s)
 {
 	if(s)
 		s->tobeclosed = 1;
-}
-
-static u32bits string_hash(const u08bits *str) {
-
-  u32bits hash = 0;
-  int c = 0;
-
-  while ((c = *str++))
-    hash = c + (hash << 6) + (hash << 16) - hash;
-
-  return hash;
-}
-
-int check_realm_hash(ioa_socket_handle s, u08bits *realm)
-{
-	if(s) {
-		if(realm && realm[0]) {
-			if(s->realm_hash != string_hash(realm)) {
-				return 0;
-			}
-		}
-	}
-	return 1;
-}
-
-void set_realm_hash(ioa_socket_handle s, u08bits *realm)
-{
-	if(s) {
-		if(realm && realm[0]) {
-			s->realm_hash = string_hash(realm);
-		}
-	}
 }
 
 /*

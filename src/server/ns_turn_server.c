@@ -3373,7 +3373,6 @@ static int check_stun_auth(turn_turnserver *server,
 		}
 	} else {
 		STRCPY(ss->username,usname);
-		set_realm_hash(ss->client_socket,(u08bits*)ss->realm_options.name);
 	}
 
 	{
@@ -4324,11 +4323,8 @@ static int create_relay_connection(turn_turnserver* server,
 			return -1;
 		}
 
-		set_realm_hash(newelem->s,(u08bits*)ss->realm_options.name);
-
 		if (rtcp_s) {
 			if (out_reservation_token && *out_reservation_token) {
-				set_realm_hash(rtcp_s,(u08bits*)ss->realm_options.name);
 				/* OK */
 			} else {
 				IOA_CLOSE_SOCKET(newelem->s);
