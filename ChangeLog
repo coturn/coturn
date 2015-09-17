@@ -1,5 +1,5 @@
 9/13/2015 Oleg Moskalenko <mom040267@gmail.com>
-Version 4.4.6.0 'Ardee West':
+Version 4.5.0.1 'dan Eider':
 	- multiple realms based on oAuth (third-party authorization);
 	- STUN attributes conflict resolution;
 	- SIGHUP handler fixed;
