@@ -3206,8 +3206,10 @@ static void resume_processing_after_username_check(int success,  int oauth, int 
 				ss->oauth = oauth;
 				ss->max_session_time_auth = (turn_time_t)max_session_time;
 				ns_bcopy(pwd,ss->pwd,sizeof(password_t));
-				if(realm && realm[0]) {
+				if(realm && realm[0] && strcmp((char*)realm,ss->realm_options.name)) {
+					dec_quota(ss);
 					get_realm_options_by_name((char*)realm, &(ss->realm_options));
+					inc_quota(ss,ss->username);
 				}
 			}
 
