@@ -221,8 +221,6 @@ struct _ioa_socket
 	struct bufferevent *conn_bev;
 	connect_cb conn_cb;
 	void *conn_arg;
-	//Transferable sockets user data
-	u32bits realm_hash;
 	//Accept:
 	struct evconnlistener *list_ev;
 	accept_cb acb;

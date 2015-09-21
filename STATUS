@@ -123,6 +123,9 @@ supported in the client library).
 53) SHA384 and SHA512 support added (experimental).
 
 54) native SCTP experimental support.
+
+55) Multi-tenant implementation based upon third-party authorization
+(oAuth).
  
 Things to be implemented in future (the development roadmap) 
 are described in the TODO file.

@@ -46,6 +46,9 @@ and they will be almost immediately "seen" by the turnserver process.
 		"A256GCM", "A128GCM" (see 
 		http://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms-40#section-5.1).
 		The default value is "A256GCM".
+
+	realm - optionally, a kid can be assigned to a realm that is different
+		from the default realm.
 		
 5) admin users (over https interface) are maintained as keys of form:
 "turn/admin_user/<username> with hash members "password" and,
@@ -54,15 +57,21 @@ optionally, "realm".
 II. Extra realms data in the database
 
 We can use more than one realm with the same instance of the TURN server.
-This is done through the ORIGIN mechanism - users with different ORIGINS
-are placed into different realms. The database includes information about the
-relationships between the ORIGIN and realms, and about the extra realms
-database numbers.
+This is done in two ways:
+
+  1) through the third-party authentication option. An oAuth kid can be optionally
+  assigned to a realm. When the user provides kid, and the database record
+  for that kid contains a non-empty non-default realm, then the user is treated
+  as belonging to that realm.
+  2) the ORIGIN mechanism - users with different ORIGINS
+  are placed into different realms. The database includes information about the
+  relationships between the ORIGIN and realms, and about the extra realms
+  database numbers.
 	The relationship between ORIGIN and realm is set as keys of form:
-"turn/origin/<origin>" with the realm-names as the value. Many different
-ORIGIN keys may have the same realm. If the ORIGIN value is not found in 
-the database or the ORIGIN field is missed in the initial allocate 
-request, then the default realm is assumed.
+	"turn/origin/<origin>" with the realm-names as the value. Many different
+	ORIGIN keys may have the same realm. If the ORIGIN value is not found in 
+	the database or the ORIGIN field is missed in the initial allocate 
+	request, then the default realm is assumed.
 
 III) Example of a Redis default user database setup.
 
@@ -82,7 +91,7 @@ This example sets user database for:
   	"total_quota" and "user_quota" (same names as the turnserver 
   	configuration options, with the same meanings).
   * The oAuth data for the key with kid "oldempire" and key value
-  "12345678901234567890123456789012".
+  "12345678901234567890123456789012", and default realm.
   * The admin user 'skarling', realm 'north.gov', with password 'hoodless';
   * The global admin user 'bayaz' with password 'magi';  
   

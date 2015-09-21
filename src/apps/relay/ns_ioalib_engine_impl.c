@@ -708,10 +708,10 @@ int ioa_socket_check_bandwidth(ioa_socket_handle s, ioa_network_buffer_handle nb
 	return 1;
 }
 
-int get_ioa_socket_from_reservation(ioa_engine_handle e, u64bits in_reservation_token, ioa_socket_handle *s, u08bits *realm)
+int get_ioa_socket_from_reservation(ioa_engine_handle e, u64bits in_reservation_token, ioa_socket_handle *s)
 {
   if (e && in_reservation_token && s) {
-    *s = rtcp_map_get(e->map_rtcp, in_reservation_token, realm);
+    *s = rtcp_map_get(e->map_rtcp, in_reservation_token);
     if (*s) {
       return 0;
     }
@@ -1651,8 +1651,6 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s)
 		ns_bzero(ret,sizeof(ioa_socket));
 
 		ret->magic = SOCKET_MAGIC;
-
-		ret->realm_hash = s->realm_hash;
 
 		SSL* ssl = s->ssl;
 		set_socket_ssl(s,NULL);
@@ -3415,38 +3413,6 @@ void set_ioa_socket_tobeclosed(ioa_socket_handle s)
 {
 	if(s)
 		s->tobeclosed = 1;
-}
-
-static u32bits string_hash(const u08bits *str) {
-
-  u32bits hash = 0;
-  int c = 0;
-
-  while ((c = *str++))
-    hash = c + (hash << 6) + (hash << 16) - hash;
-
-  return hash;
-}
-
-int check_realm_hash(ioa_socket_handle s, u08bits *realm)
-{
-	if(s) {
-		if(realm && realm[0]) {
-			if(s->realm_hash != string_hash(realm)) {
-				return 0;
-			}
-		}
-	}
-	return 1;
-}
-
-void set_realm_hash(ioa_socket_handle s, u08bits *realm)
-{
-	if(s) {
-		if(realm && realm[0]) {
-			s->realm_hash = string_hash(realm);
-		}
-	}
 }
 
 /*

@@ -744,6 +744,7 @@ CREATE TABLE oauth_key (
 	timestamp bigint default 0,
 	lifetime integer default 0,
 	as_rs_alg varchar(64) default '',
+	realm varchar(127) default '',
 	primary key (kid)
 ); 
 
@@ -763,6 +764,8 @@ The oauth_key table fields meanings are:
 		"A256GCM", "A128GCM" (see 
 		http://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms-40#section-5.1).
 		The default value is "A256GCM";
+	
+	realm - (optional) can be used to set the user realm (if the field is not empty).
 
 # Https access admin users.
 # Leave this table empty if you do not want 
@@ -852,6 +855,9 @@ may be located in different places.
 
   $ sudo /etc/init.d/postgresql stop
   $ sudo /etc/init.d/postgresql start
+  
+  The scripts may also be in /usr/local/etc/init.d, or in /etc/rc.d/, or
+  in /usr/local/etc/rc.d/ .
 
 5) Check /etc/passwd file to find out which user account is used for the 
 PostgreSQL admin access on your system (it may be "pgsql", or "postgres", 
@@ -859,10 +865,10 @@ or "postgresql"). Let's assume that this is "postgres" account.
 
 6) Create a database for the TURN purposes, with name, say, "turn":
 
-   $ createdb -U postgres turn
+   $ createdb -U postgres coturn
 
 7) Create a user for the TURN with name, say, "turn":
-   $ psql -U postgres turn
+   $ psql -U postgres coturn
      turn=# create user turn with password 'turn';
      turn=# 
      Ctrl-D
@@ -873,12 +879,16 @@ The database schema for the TURN server is very minimalistic and is located
 in project's turndb/schema.sql file, or in the system's 
 PREFIX/share/turnserver/schema.sql file after the turnserver installation:
 
-$ cat turndb/schema.sql | psql -U turn -d turn
+$ cat turndb/schema.sql | psql -U turn -d coturn
 	NOTICE:  CREATE TABLE / PRIMARY KEY will create implicit index "turnusers_lt_pkey" for table "turnusers_lt"
 	CREATE TABLE
 	CREATE TABLE
 
 See the SQLite section for the detailed database schema explanation.
+
+To fill the database with test data:
+
+cat turndb/testsqldbsetup.sql | psql -U turn -d coturn
 
 You can use turnadmin program to manage the database - you can either use 
 turnadmin to add/modify/delete users, or you can use turnadmin to produce 
@@ -930,13 +940,13 @@ Fill in users, for example:
 
 XVII. MySQL (MariaDB) setup
 
-The MySQL setup is similar to PostgreSQL (same idea), and is well documented 
+The MySQL setup is similar to PostgreSQL (the same idea), and is well documented 
 on their site http://www.mysql.org. The TURN Server database schema is the 
 same as for PostgreSQL and you can find it in turndb/schema.sql file, or 
 in the system's PREFIX/share/turnserver/schema.sql file after the turnserver 
 installation.
 
-The general setup idea is the same as for PostgreSQL:
+The general setup is similar to PostgreSQL setup procedure:
 
 1) Check that the mysql server access is OK. Immediately after the MySQL server 
 installation, it must be accessible, at the very minimum, at the localhost with
@@ -945,24 +955,31 @@ the root account.
 2) Login into mysql console from root account:
 
   $ sudo bash
-  # mysql -p mysql
+  # mysql mysql
+  
+(or mysql -p mysql if mysql account password set)
   
 3) Add 'turn' user with 'turn' password (for example):
 
   > create user 'turn'@'localhost' identified by 'turn';
   
-4) Create database 'turn' (for example) and grant privileges to user 'turn':
+4) Create database 'coturn' (for example) and grant privileges to user 'turn':
 
-  > create database turn;
-  > grant all on turn.* to 'turn'@'localhost';
+  > create database coturn;
+  > grant all on coturn.* to 'turn'@'localhost';
   > flush privileges;
   Ctrl-D
   
 5) Create database schema:
 
-  $ mysql -p -u turn turn < turndb/schema.sql
+  $ mysql -p -u turn coturn < turndb/schema.sql
   Enter password: turn
   $
+  
+  Fill in test database data, if this is a test database
+  (not a production database):
+  
+  $ mysql -p -u turn coturn < turndb/testsqldbsetup.sql
   
 6) Fill in users, for example:
 

@@ -1,5 +1,9 @@
 **_This project evolved from rfc5766-turn-server project (https://code.google.com/p/rfc5766-turn-server/). There are many new advanced TURN specs which are going far beyond the original RFC 5766 document. This project takes the code of rfc5766-turn-server as the starter, and adds new advanced features to it._**
 
+[Downloads page](https://github.com/coturn/coturn/wiki/Downloads)
+
+[Wiki pages](https://github.com/coturn/coturn/wiki/)
+
 # Free open source implementation of TURN and STUN Server #
 
 The TURN Server is a VoIP media traffic NAT traversal server and gateway. It can be used as a general-purpose network traffic TURN server and gateway, too.
@@ -16,13 +20,13 @@ TURN specs:
   * RFC 6062 - TCP relaying TURN extension
   * RFC 6156 - IPv6 extension for TURN
   * RFC 7443 - ALPN support for STUN & TURN
+  * RFC 7635 - oAuth third-party TURN/STUN authorization
   * DTLS support (http://tools.ietf.org/html/draft-petithuguenin-tram-turn-dtls-00).
   * Mobile ICE (MICE) support (http://tools.ietf.org/html/draft-wing-tram-turn-mobility-02).
   * TURN REST API (http://tools.ietf.org/html/draft-uberti-behave-turn-rest-00)
   * Origin field in TURN (Multi-tenant TURN Server) (https://tools.ietf.org/html/draft-ietf-tram-stun-origin-05)
   * TURN Bandwidth draft specs (http://tools.ietf.org/html/draft-thomson-tram-turn-bandwidth-01)
-  * TURN-bis (with dual allocation) draft specs (http://tools.ietf.org/html/draft-ietf-tram-turnbis-04)
-  * Third-party authorization support (http://tools.ietf.org/html/draft-ietf-tram-turn-third-party-authz-16).
+  * TURN-bis (with dual allocation) draft specs (http://tools.ietf.org/html/draft-ietf-tram-turnbis-04).
 
 STUN specs:
 
@@ -31,6 +35,7 @@ STUN specs:
   * RFC 5769 - test vectors for STUN protocol testing
   * RFC 5780 - NAT behavior discovery support
   * RFC 7443 - ALPN support for STUN & TURN
+  * RFC 7635 - oAuth third-party TURN/STUN authorization
 
 Supported ICE and related specs:
 

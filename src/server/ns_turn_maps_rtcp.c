@@ -214,7 +214,7 @@ int rtcp_map_put(rtcp_map* map, rtcp_token_type token, ioa_socket_handle s) {
  * >=0 - success
  * <0 - not found
  */
-ioa_socket_handle rtcp_map_get(rtcp_map* map, rtcp_token_type token, u08bits *realm) {
+ioa_socket_handle rtcp_map_get(rtcp_map* map, rtcp_token_type token) {
 	ioa_socket_handle s = NULL;
 	if (rtcp_map_valid(map)) {
 		ur_map_value_type value;
@@ -224,11 +224,7 @@ ioa_socket_handle rtcp_map_get(rtcp_map* map, rtcp_token_type token, u08bits *re
 			rtcp_alloc_type* rval = (rtcp_alloc_type*) value;
 			if (rval) {
 				s = rval->s;
-				if(!check_realm_hash(s,realm)) {
-					s = NULL;
-				} else {
-					rtcp_map_del_savefd(map, token);
-				}
+				rtcp_map_del_savefd(map, token);
 			}
 		}
 		TURN_MUTEX_UNLOCK(&map->mutex);
