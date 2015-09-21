@@ -102,9 +102,9 @@ int oauth = 0;
 oauth_key okey_array[3];
 
 static oauth_key_data_raw okdr_array[3] = {
-		{"north","MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDEK",0,0,"A256GCM"},
-		{"union","MTIzNDU2Nzg5MDEyMzQ1Ngo=",0,0,"A128GCM"},
-		{"oldempire","MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIK",0,0,"A256GCM"}
+		{"north","MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDEK",0,0,"A256GCM","crinna.org"},
+		{"union","MTIzNDU2Nzg5MDEyMzQ1Ngo=",0,0,"A128GCM","north.gov"},
+		{"oldempire","MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIK",0,0,"A256GCM",""}
 };
 
 //////////////// local definitions /////////////////
@@ -137,7 +137,7 @@ static char Usage[] =
   "	-G	Generate extra requests (create permissions, channel bind).\n"
   "	-B	Random disconnect after a few initial packets.\n"
   "	-Z	Dual allocation (implies -c).\n"
-  "	-J	Use oAuth with default test key kid='north' or 'oldempire'.\n"
+  "	-J	Use oAuth with default test keys kid='north', 'union' or 'oldempire'.\n"
   "Options:\n"
   "	-l	Message length (Default: 100 Bytes).\n"
   "	-i	Certificate file (for secure connections only, optional).\n"

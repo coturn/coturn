@@ -160,7 +160,7 @@ static int pgsql_get_oauth_key(const u08bits *kid, oauth_key_data_raw *key) {
 
 	char statement[TURN_LONG_STRING_SIZE];
 	/* direct user input eliminated - there is no SQL injection problem (since version 4.4.5.3) */
-	snprintf(statement,sizeof(statement),"select ikm_key,timestamp,lifetime,as_rs_alg from oauth_key where kid='%s'",(const char*)kid);
+	snprintf(statement,sizeof(statement),"select ikm_key,timestamp,lifetime,as_rs_alg,realm from oauth_key where kid='%s'",(const char*)kid);
 
 	PGconn * pqc = get_pqdb_connection();
 	if(pqc) {
@@ -173,6 +173,7 @@ static int pgsql_get_oauth_key(const u08bits *kid, oauth_key_data_raw *key) {
 			key->timestamp = (u64bits)strtoll(PQgetvalue(res,0,1),NULL,10);
 			key->lifetime = (u32bits)strtol(PQgetvalue(res,0,2),NULL,10);
 			STRCPY(key->as_rs_alg,PQgetvalue(res,0,3));
+			STRCPY(key->realm,PQgetvalue(res,0,4));
 			STRCPY(key->kid,kid);
 			ret = 0;
 		}
@@ -185,7 +186,7 @@ static int pgsql_get_oauth_key(const u08bits *kid, oauth_key_data_raw *key) {
 	return ret;
 }
 
-static int pgsql_list_oauth_keys(secrets_list_t *kids,secrets_list_t *teas,secrets_list_t *tss,secrets_list_t *lts) {
+static int pgsql_list_oauth_keys(secrets_list_t *kids,secrets_list_t *teas,secrets_list_t *tss,secrets_list_t *lts,secrets_list_t *realms) {
 
 	oauth_key_data_raw key_;
 	oauth_key_data_raw *key=&key_;
@@ -193,7 +194,7 @@ static int pgsql_list_oauth_keys(secrets_list_t *kids,secrets_list_t *teas,secre
 	int ret = -1;
 
 	char statement[TURN_LONG_STRING_SIZE];
-	snprintf(statement,sizeof(statement),"select ikm_key,timestamp,lifetime,as_rs_alg,kid from oauth_key order by kid");
+	snprintf(statement,sizeof(statement),"select ikm_key,timestamp,lifetime,as_rs_alg,realm,kid from oauth_key order by kid");
 
 	PGconn * pqc = get_pqdb_connection();
 	if(pqc) {
@@ -209,11 +210,13 @@ static int pgsql_list_oauth_keys(secrets_list_t *kids,secrets_list_t *teas,secre
 				key->timestamp = (u64bits)strtoll(PQgetvalue(res,i,1),NULL,10);
 				key->lifetime = (u32bits)strtol(PQgetvalue(res,i,2),NULL,10);
 				STRCPY(key->as_rs_alg,PQgetvalue(res,i,3));
-				STRCPY(key->kid,PQgetvalue(res,i,4));
+				STRCPY(key->realm,PQgetvalue(res,i,4));
+				STRCPY(key->kid,PQgetvalue(res,i,5));
 
 				if(kids) {
 					add_to_secrets_list(kids,key->kid);
 					add_to_secrets_list(teas,key->as_rs_alg);
+					add_to_secrets_list(realms,key->realm);
 					{
 						char ts[256];
 						snprintf(ts,sizeof(ts)-1,"%llu",(unsigned long long)key->timestamp);
@@ -225,9 +228,9 @@ static int pgsql_list_oauth_keys(secrets_list_t *kids,secrets_list_t *teas,secre
 						add_to_secrets_list(lts,lt);
 					}
 				} else {
-					printf("  kid=%s, ikm_key=%s, timestamp=%llu, lifetime=%lu, as_rs_alg=%s\n",
+					printf("  kid=%s, ikm_key=%s, timestamp=%llu, lifetime=%lu, as_rs_alg=%s, realm=%s\n",
 						key->kid, key->ikm_key, (unsigned long long)key->timestamp, (unsigned long)key->lifetime,
-						key->as_rs_alg);
+						key->as_rs_alg,key->realm);
 				}
 
 				ret = 0;
@@ -275,17 +278,17 @@ static int pgsql_set_oauth_key(oauth_key_data_raw *key) {
   char statement[TURN_LONG_STRING_SIZE];
   PGconn *pqc = get_pqdb_connection();
   if(pqc) {
-	  snprintf(statement,sizeof(statement),"insert into oauth_key (kid,ikm_key,timestamp,lifetime,as_rs_alg) values('%s','%s',%llu,%lu,'%s')",
+	  snprintf(statement,sizeof(statement),"insert into oauth_key (kid,ikm_key,timestamp,lifetime,as_rs_alg,realm) values('%s','%s',%llu,%lu,'%s','%s')",
 			  key->kid,key->ikm_key,(unsigned long long)key->timestamp,(unsigned long)key->lifetime,
-			  key->as_rs_alg);
+			  key->as_rs_alg,key->realm);
 
 	  PGresult *res = PQexec(pqc, statement);
 	  if(!res || (PQresultStatus(res) != PGRES_COMMAND_OK)) {
 		  if(res) {
 			PQclear(res);
 		  }
-		  snprintf(statement,sizeof(statement),"update oauth_key set ikm_key='%s',timestamp=%lu,lifetime=%lu, as_rs_alg='%s' where kid='%s'",key->ikm_key,(unsigned long)key->timestamp,(unsigned long)key->lifetime,
-				  key->as_rs_alg,key->kid);
+		  snprintf(statement,sizeof(statement),"update oauth_key set ikm_key='%s',timestamp=%lu,lifetime=%lu, as_rs_alg='%s', realm='%s' where kid='%s'",key->ikm_key,(unsigned long)key->timestamp,(unsigned long)key->lifetime,
+				  key->as_rs_alg,key->realm,key->kid);
 		  res = PQexec(pqc, statement);
 		  if(!res || (PQresultStatus(res) != PGRES_COMMAND_OK)) {
 			  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error inserting/updating oauth_key information: %s\n",PQerrorMessage(pqc));

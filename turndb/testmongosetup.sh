@@ -28,8 +28,8 @@ db.turn_secret.insert({ realm: 'north.gov', value: 'bloody9' });
 db.turn_secret.insert({ realm: 'crinna.org', value: 'north' });
 db.turn_secret.insert({ realm: 'crinna.org', value: 'library' });
 
-db.admin_user.insert({ name: 'skarling', realm: 'north.gov', password: '$5$6fc35c3b0c7d4633$27fca7574f9b79d0cb93ae03e45379470cbbdfcacdd6401f97ebc620f31f54f2' });
-db.admin_user.insert({ name: 'bayaz', realm: '', password: '$5$e018513e9de69e73$5cbdd2e29e04ca46aeb022268a7460d3a3468de193dcb2b95f064901769f455f' });
+db.admin_user.insert({ name: 'skarling', realm: 'north.gov', password: '\$5\$6fc35c3b0c7d4633\$27fca7574f9b79d0cb93ae03e45379470cbbdfcacdd6401f97ebc620f31f54f2' });
+db.admin_user.insert({ name: 'bayaz', realm: '', password: '\$5\$e018513e9de69e73\$5cbdd2e29e04ca46aeb022268a7460d3a3468de193dcb2b95f064901769f455f' });
 
 db.realm.insert({
   realm: 'north.gov',
@@ -56,10 +56,12 @@ db.realm.insert({
 
 db.oauth_key.insert({ kid: 'north', 
 					ikm_key: 'MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDEK', 
-					as_rs_alg: 'A256GCM'});
+					as_rs_alg: 'A256GCM',
+					realm: 'crinna.org'});
 db.oauth_key.insert({ kid: 'union', 
 					ikm_key: 'MTIzNDU2Nzg5MDEyMzQ1Ngo=', 
-					as_rs_alg: 'A128GCM'});
+					as_rs_alg: 'A128GCM',
+					realm: 'north.gov'});
 db.oauth_key.insert({ kid: 'oldempire', 
 					ikm_key: 'MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIK', 
 					as_rs_alg: 'A256GCM'});

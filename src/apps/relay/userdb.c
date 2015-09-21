@@ -517,6 +517,10 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, u08bits *u
 
 						ns_bcopy(dot.enc_block.mac_key,key,dot.enc_block.key_length);
 
+						if(rawKey.realm[0]) {
+							ns_bcopy(rawKey.realm,realm,sizeof(rawKey.realm));
+						}
+
 						ret = 0;
 					}
 				}

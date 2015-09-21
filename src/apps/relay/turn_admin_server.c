@@ -1369,6 +1369,7 @@ typedef enum _AS_FORM AS_FORM;
 #define HR_ADD_IP_KIND "aipk"
 #define HR_UPDATE_PARAMETER "togglepar"
 #define HR_ADD_OAUTH_KID "oauth_kid"
+#define HR_ADD_OAUTH_REALM "oauth_realm"
 #define HR_ADD_OAUTH_TS "oauth_ts"
 #define HR_ADD_OAUTH_LT "oauth_lt"
 #define HR_ADD_OAUTH_IKM "oauth_ikm"
@@ -2773,12 +2774,13 @@ static size_t https_print_oauth_keys(struct str_buffer* sb)
 	size_t ret = 0;
 	const turn_dbdriver_t * dbd = get_dbdriver();
 	if (dbd && dbd->list_oauth_keys) {
-		secrets_list_t kids,teas,tss,lts;
+		secrets_list_t kids,teas,tss,lts,realms;
 		init_secrets_list(&kids);
 		init_secrets_list(&teas);
 		init_secrets_list(&tss);
 		init_secrets_list(&lts);
-		dbd->list_oauth_keys(&kids,&teas,&tss,&lts);
+		init_secrets_list(&realms);
+		dbd->list_oauth_keys(&kids,&teas,&tss,&lts,&realms);
 
 		size_t sz = get_secrets_list_size(&kids);
 		size_t i;
@@ -2807,6 +2809,9 @@ static size_t https_print_oauth_keys(struct str_buffer* sb)
 			str_buffer_append(sb,"<td>");
 			str_buffer_append(sb,get_secrets_list_elem(&teas,i));
 			str_buffer_append(sb,"</td>");
+			str_buffer_append(sb,"<td>");
+			str_buffer_append(sb,get_secrets_list_elem(&realms,i));
+			str_buffer_append(sb,"</td>");
 
 			{
 				str_buffer_append(sb,"<td> <a href=\"");
@@ -2824,6 +2829,9 @@ static size_t https_print_oauth_keys(struct str_buffer* sb)
 
 		clean_secrets_list(&kids);
 		clean_secrets_list(&teas);
+		clean_secrets_list(&tss);
+		clean_secrets_list(&lts);
+		clean_secrets_list(&realms);
 	}
 
 	return ret;
@@ -2889,9 +2897,13 @@ static void write_https_oauth_show_keys(ioa_socket_handle s, const char* kid)
 	}
 }
 
-static void write_https_oauth_page(ioa_socket_handle s, const char* add_kid, const char* add_ikm,
+static void write_https_oauth_page(ioa_socket_handle s,
+				const char* add_kid,
+				const char* add_ikm,
 				const char* add_tea,
-				const char *add_ts, const char* add_lt,
+				const char *add_ts,
+				const char* add_lt,
+				const char* add_realm,
 				const char* msg)
 {
 	if(s && !ioa_socket_tobeclosed(s)) {
@@ -2956,17 +2968,29 @@ static void write_https_oauth_page(ioa_socket_handle s, const char* add_kid, con
 
 				str_buffer_append(sb,"</td></tr>\r\n");
 
-				str_buffer_append(sb,"<tr><td colspan=\"2\">");
+				str_buffer_append(sb,"<tr><td colspan=\"1\">");
 
 				{
 					if(!add_ikm) add_ikm = "";
 
-					str_buffer_append(sb,"  <br>Base64-encoded input keying material (required):<br><textarea wrap=\"soft\" cols=70 rows=4 name=\"");
+					str_buffer_append(sb,"  <br>Base64-encoded input keying material (required):<br><textarea wrap=\"soft\" cols=40 rows=4 name=\"");
 					str_buffer_append(sb,HR_ADD_OAUTH_IKM);
 					str_buffer_append(sb,"\" maxLength=256 >");
 					str_buffer_append(sb,(const char*)add_ikm);
 					str_buffer_append(sb,"</textarea>");
 					str_buffer_append(sb,"<br>\r\n");
+				}
+
+				str_buffer_append(sb,"</td><td>");
+
+				{
+					if(!add_realm) add_realm = "";
+
+					str_buffer_append(sb,"  <br>Realm (optional): <input type=\"text\" name=\"");
+					str_buffer_append(sb,HR_ADD_OAUTH_REALM);
+					str_buffer_append(sb,"\" value=\"");
+					str_buffer_append(sb,(const char*)add_realm);
+					str_buffer_append(sb,"\"><br>\r\n");
 				}
 
 				str_buffer_append(sb,"</td><td>");
@@ -3008,6 +3032,7 @@ static void write_https_oauth_page(ioa_socket_handle s, const char* add_kid, con
 			str_buffer_append(sb,"<th>Timestamp, secs</th>");
 			str_buffer_append(sb,"<th>Lifetime,secs</th>");
 			str_buffer_append(sb,"<th>Token encryption algorithm</th>");
+			str_buffer_append(sb,"<th>Realm</th>");
 			str_buffer_append(sb,"<th> </th>");
 			str_buffer_append(sb,"</tr>\r\n");
 
@@ -3495,6 +3520,7 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 					const char* add_lt = "0";
 					const char* add_ikm = "";
 					const char* add_tea = "";
+					const char* add_realm = "";
 					const char* msg = "";
 
 					add_kid = get_http_header_value(hr,HR_ADD_OAUTH_KID,"");
@@ -3503,6 +3529,7 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 						add_ts = get_http_header_value(hr,HR_ADD_OAUTH_TS,"");
 						add_lt = get_http_header_value(hr,HR_ADD_OAUTH_LT,"");
 						add_tea = get_http_header_value(hr,HR_ADD_OAUTH_TEA,"");
+						add_realm = get_http_header_value(hr,HR_ADD_OAUTH_REALM,"");
 
 						int keys_ok = (add_ikm[0] != 0);
 						if(!keys_ok) {
@@ -3526,6 +3553,8 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 								key.timestamp = (u64bits)strtoull(add_ts,NULL,10);
 							}
 
+							if(add_realm && add_realm[0]) STRCPY(key.realm,add_realm);
+
 							STRCPY(key.ikm_key,add_ikm);
 							STRCPY(key.as_rs_alg,add_tea);
 
@@ -3539,12 +3568,13 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 									add_lt = "0";
 									add_ikm = "";
 									add_tea = "";
+									add_realm = "";
 								}
 							}
 						}
 					}
 
-					write_https_oauth_page(s,add_kid,add_ikm,add_tea,add_ts,add_lt,msg);
+					write_https_oauth_page(s,add_kid,add_ikm,add_tea,add_ts,add_lt,add_realm,msg);
 				}
 				break;
 			}

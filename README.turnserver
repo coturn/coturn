@@ -181,7 +181,7 @@ Flags:
 			The actual value of the secret is defined either by option static-auth-secret,
 			or can be found in the turn_secret table in the database.
 			
---oauth			Support oAuth authentication, as in the third-party TURN specs document.
+--oauth			Support oAuth authentication, as in the third-party STUN/TURN RFC 7635.
 			
 --dh566			Use 566 bits predefined DH TLS key. Default size of the key is 1066.
 
