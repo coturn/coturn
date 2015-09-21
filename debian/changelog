@@ -1,3 +1,9 @@
+coturn (4.5.0.1-1) unstable; urgency=low
+
+  * Sync to upstream 4.5.0.1
+
+ -- Oleg Moskalenko <mom040267@gmail.com>  Sun, 20 Sep 2015 21:58:30 -0700
+
 coturn (4.4.5.4-2) unstable; urgency=low
 
   * Github migration
