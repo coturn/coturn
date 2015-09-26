@@ -32,10 +32,11 @@ Description: TURN and STUN server for VoIP
   * RFC 5766 - base TURN specs;
   * RFC 6062 - TCP relaying TURN extension;
   * RFC 6156 - IPv6 extension for TURN;
+  * RFC 7635 - oAuth third-party TURN/STUN authorization;
   * DTLS support as client protocol 
     http://tools.ietf.org/html/draft-petithuguenin-tram-turn-dtls-00
   * Mobile ICE (MICE) support
-    http://datatracker.ietf.org/doc/draft-wing-mmusic-ice-mobility
+    http://tools.ietf.org/html/draft-wing-tram-turn-mobility-03
   * TURN ORIGIN specs for multi-tenant servers
     http://tools.ietf.org/html/draft-johnston-tram-stun-origin-02
   * TURN Bandwidth draft specs
@@ -55,8 +56,10 @@ Description: TURN and STUN server for VoIP
  SQLite, MySQL, PostgreSQL and Redis are supported for the user
  repository (if authentication is required).
  The long-term credentials mechanism is supported.
- For WebRTC applications, the TURN server REST API for time-limited
- secret-based authentication is implemented. The third-party authentication
+ For WebRTC applications,
+ the TURN server REST API for time-limited
+ secret-based authentication is implemented.
+ The third-party authentication
  specs (oAuth-based) are supported, too.
  .
  Load balancing can be implemented either by DNS round-robin mechanism, or with

@@ -1,3 +1,9 @@
+coturn (4.5.0.1-2) unstable; urgency=medium
+
+  * Specs adjusted
+
+ -- Oleg Moskalenko <mom040267@gmail.com>  Sat, 26 Sep 2015 15:03:38 -0700
+
 coturn (4.5.0.1-1) unstable; urgency=low
 
   * Sync to upstream 4.5.0.1
