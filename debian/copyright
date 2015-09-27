@@ -10,8 +10,8 @@ Comment:
  This is a BSD license.
 
 Files: src/apps/relay/dbdrivers/*
-Copyright: COMBINED-CITRIX-VIVOCHA-BSD
-License: GPL-3+
+Copyright: 2014 Vivocha S.p.A.
+License: COMBINED-CITRIX-VIVOCHA-BSD
 Comment:
   This is a BSD license.
 
