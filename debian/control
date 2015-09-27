@@ -32,7 +32,7 @@ Description: TURN and STUN server for VoIP
   * RFC 5766 - base TURN specs;
   * RFC 6062 - TCP relaying TURN extension;
   * RFC 6156 - IPv6 extension for TURN;
-  * RFC 7635 - oAuth third-party TURN/STUN authorization;
+  * RFC 7635 - OAuth third-party TURN/STUN authorization;
   * DTLS support as client protocol 
     http://tools.ietf.org/html/draft-petithuguenin-tram-turn-dtls-00
   * Mobile ICE (MICE) support
@@ -60,7 +60,7 @@ Description: TURN and STUN server for VoIP
  the TURN server REST API for time-limited
  secret-based authentication is implemented.
  The third-party authentication
- specs (oAuth-based) are supported, too.
+ specs (OAuth-based) are supported, too.
  .
  Load balancing can be implemented either by DNS round-robin mechanism, or with
  the external networking tools, or by
