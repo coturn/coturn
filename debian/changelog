@@ -1,3 +1,9 @@
+coturn (4.5.0.1-5) unstable; urgency=medium
+
+  * Package for Sid
+
+ -- Oleg Moskalenko <mom040267@gmail.com>  Mon, 28 Sep 2015 00:17:13 -0700
+
 coturn (4.5.0.1-4) unstable; urgency=medium
 
   * Copyright fixed
