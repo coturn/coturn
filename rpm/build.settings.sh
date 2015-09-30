@@ -2,7 +2,7 @@
 
 # Common settings script.
 
-TURNVERSION=4.5.0.1
+TURNVERSION=4.5.0.2
 BUILDDIR=~/rpmbuild
 ARCH=`uname -p`
 TURNSERVER_GIT_URL=https://github.com/coturn/coturn.git
