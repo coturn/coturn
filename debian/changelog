@@ -1,3 +1,9 @@
+coturn (4.5.0.2-1) unstable; urgency=medium
+
+  * DTLS segfault fixed
+
+ -- Oleg Moskalenko <mom040267@gmail.com>  Wed, 30 Sep 2015 00:25:00 -0700
+
 coturn (4.5.0.1-5) unstable; urgency=medium
 
   * Package for Sid
