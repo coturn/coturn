@@ -58,10 +58,6 @@ extern int IS_TURN_SERVER;
 
 #define OPENSSL_FIRST_ALPN_VERSION (0x10002003L)
 
-#define STUN_ALPN "stun.nat-discovery"
-#define TURN_ALPN "stun.turn"
-#define HTTP_ALPN "http/1.1"
-
 #if OPENSSL_VERSION_NUMBER >= OPENSSL_FIRST_ALPN_VERSION
 #define ALPN_SUPPORTED 1
 #else

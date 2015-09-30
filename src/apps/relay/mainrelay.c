@@ -35,6 +35,16 @@
 static int use_lt_credentials = 0;
 static int anon_credentials = 0;
 
+////// ALPN //////////
+
+#if ALPN_SUPPORTED
+
+char STUN_ALPN[128] = "stun.nat-discovery";
+char TURN_ALPN[128] = "stun.turn";
+char HTTP_ALPN[128] = "http/1.1";
+
+#endif
+
 ////// TURNDB //////////////
 
 #if defined(TURNDB)
