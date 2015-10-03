@@ -1,3 +1,9 @@
+coturn (4.5.0.2-3) unstable; urgency=medium
+
+  * Telnet package dependency fixed
+
+ -- Oleg Moskalenko <mom040267@gmail.com>  Fri, 02 Oct 2015 23:47:29 -0700
+
 coturn (4.5.0.2-1) unstable; urgency=medium
 
   * DTLS segfault fixed
