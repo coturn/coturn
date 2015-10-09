@@ -1,3 +1,9 @@
+coturn (4.5.0.2-3~bpo8+1) jessie-backports; urgency=medium
+
+  * Build for jessie-backports.
+
+ -- Daniel Pocock <daniel@pocock.pro>  Fri, 09 Oct 2015 22:14:50 +0200
+
 coturn (4.5.0.2-3) unstable; urgency=medium
 
   * Telnet package dependency fixed
