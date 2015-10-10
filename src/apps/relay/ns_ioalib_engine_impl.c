@@ -71,16 +71,12 @@
 
 #define MAX_ERRORS_IN_UDP_BATCH (1024)
 
-struct turn_sock_extended_err {
-	uint32_t ee_errno; /* error number */
-	uint8_t ee_origin; /* where the error originated */
-	uint8_t ee_type; /* type */
-	uint8_t ee_code; /* code */
-	uint8_t ee_pad; /* padding */
-	uint32_t ee_info; /* additional information */
-	uint32_t ee_data; /* other data */
-/* More data may follow */
-};
+#if defined(IP_RECVERR)
+#if defined(__linux__) || defined(__LINUX__) || defined(__linux) || defined(linux__) || defined(LINUX) || defined(__LINUX) || defined(LINUX__)
+#define SOCK_EXTENDED_ERR_DEFINED 1
+#include <linux/errqueue.h>
+#endif
+#endif
 
 #define TRIAL_EFFORTS_TO_SEND (2)
 
@@ -2089,11 +2085,15 @@ int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr *like_a
 #endif
 #if defined(IP_RECVERR)
 				case IP_RECVERR:
+#if defined(SOCK_EXTENDED_ERR_DEFINED)
 				{
-					struct turn_sock_extended_err *e=(struct turn_sock_extended_err*) CMSG_DATA(cmsgh);
-					if(errcode)
-						*errcode = e->ee_errno;
+					struct sock_extended_err *e=(struct sock_extended_err*) CMSG_DATA(cmsgh);
+					if(e) {
+						if(errcode)
+							*errcode = e->ee_errno;
+					}
 				}
+#endif
 					break;
 #endif
 				default:
@@ -2117,11 +2117,15 @@ int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr *like_a
 #endif
 #if defined(IPV6_RECVERR)
 				case IPV6_RECVERR:
+#if defined(SOCK_EXTENDED_ERR_DEFINED)
 				{
-					struct turn_sock_extended_err *e=(struct turn_sock_extended_err*) CMSG_DATA(cmsgh);
-					if(errcode)
-						*errcode = e->ee_errno;
+					struct sock_extended_err *e=(struct sock_extended_err*) CMSG_DATA(cmsgh);
+					if(e) {
+						if(errcode)
+							*errcode = e->ee_errno;
+					}
 				}
+#endif
 					break;
 #endif
 				default:
