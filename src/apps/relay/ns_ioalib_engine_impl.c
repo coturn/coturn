@@ -2068,6 +2068,8 @@ int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr *like_a
 			int l = cmsgh->cmsg_level;
 			int t = cmsgh->cmsg_type;
 
+			if(!((l==41) && ((t == 52) || (t == 67)))) printf("%s: 111.000: %d:%d\n",__FUNCTION__,(int)t,(int)l);
+
 			switch(l) {
 			case IPPROTO_IP:
 				switch(t) {
@@ -2091,6 +2093,7 @@ int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr *like_a
 					if(e) {
 						if(errcode)
 							*errcode = e->ee_errno;
+						printf("%s: 111.111: %d:%d\n",__FUNCTION__,(int)e->ee_type,(int)e->ee_code);
 					}
 				}
 #endif
@@ -2123,6 +2126,7 @@ int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr *like_a
 					if(e) {
 						if(errcode)
 							*errcode = e->ee_errno;
+						printf("%s: 111.222: %d:%d\n",__FUNCTION__,(int)e->ee_type,(int)e->ee_code);
 					}
 				}
 #endif
