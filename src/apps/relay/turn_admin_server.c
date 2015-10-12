@@ -1153,7 +1153,7 @@ static void cliserver_input_handler(struct evconnlistener *l, evutil_socket_t fd
 
 	clisession->rp = get_realm(NULL);
 
-	set_socket_options_fd(fd, TCP_SOCKET, sa->sa_family);
+	set_socket_options_fd(fd, TCP_SOCKET, CLIENT_SOCKET, sa->sa_family);
 
 	clisession->fd = fd;
 

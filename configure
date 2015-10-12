@@ -899,14 +899,6 @@ else
 	TURN_NO_THREAD_BARRIERS="-DTURN_NO_THREAD_BARRIERS"
 fi
 
-if [ -z ${TURN_IP_RECVERR} ] ; then 
-	${ECHO_CMD} "Ignore IP_RECVERR"
-else 
-	${ECHO_CMD} "Use IP_RECVERR"
-	TURN_IP_RECVERR="-DTURN_IP_RECVERR"
-	OSCFLAGS="${OSCFLAGS} ${TURN_IP_RECVERR}"
-fi
-
 ###########################
 # Can we use daemon ?
 ###########################

@@ -812,8 +812,10 @@ int set_raw_socket_tos_options(evutil_socket_t fd, int family)
 	return 0;
 }
 
-int set_socket_options_fd(evutil_socket_t fd, SOCKET_TYPE st, int family)
+int set_socket_options_fd(evutil_socket_t fd, SOCKET_TYPE st, SOCKET_APP_TYPE sat, int family)
 {
+	UNUSED_ARG(sat);
+
 	if(fd<0)
 		return 0;
 
@@ -842,9 +844,7 @@ int set_socket_options_fd(evutil_socket_t fd, SOCKET_TYPE st, int family)
 #ifdef IP_RECVERR
 		if (family != AF_INET6) {
 			int on = 0;
-#ifdef TURN_IP_RECVERR
-			on = 1;
-#endif
+			on = ((sat == RELAY_SOCKET) || (sat == RELAY_RTCP_SOCKET));
 			if(setsockopt(fd, IPPROTO_IP, IP_RECVERR, (void *)&on, sizeof(on))<0)
 				perror("IP_RECVERR");
 		}
@@ -853,9 +853,7 @@ int set_socket_options_fd(evutil_socket_t fd, SOCKET_TYPE st, int family)
 #ifdef IPV6_RECVERR
 		if (family == AF_INET6) {
 			int on = 0;
-#ifdef TURN_IP_RECVERR
-			on = 1;
-#endif
+			on = ((sat == RELAY_SOCKET) || (sat == RELAY_RTCP_SOCKET));
 			if(setsockopt(fd, IPPROTO_IPV6, IPV6_RECVERR, (void *)&on, sizeof(on))<0)
 				perror("IPV6_RECVERR");
 		}
@@ -892,7 +890,7 @@ int set_socket_options(ioa_socket_handle s)
 	if(!s || (s->parent_s))
 		return 0;
 
-	set_socket_options_fd(s->fd,s->st,s->family);
+	set_socket_options_fd(s->fd,s->st,s->sat,s->family);
 
 	s->default_ttl = get_raw_socket_ttl(s->fd, s->family);
 	s->current_ttl = s->default_ttl;
@@ -1990,6 +1988,17 @@ static int socket_readerr(evutil_socket_t fd, ioa_addr *orig_addr)
 	return 0;
 }
 
+#if defined(IP_RECVERR) && defined(SOCK_EXTENDED_ERR_DEFINED)
+static void handle_icmp(struct sock_extended_err *e, u32bits *errcode, int isIpv6)
+{
+	if(e) {
+		if(errcode)
+			*errcode = e->ee_errno;
+		printf("%s: 111.111: %d:%d: ipv6=%d\n",__FUNCTION__,(int)e->ee_type,(int)e->ee_code,isIpv6);
+	}
+}
+#endif
+
 typedef unsigned char recv_ttl_t;
 typedef unsigned char recv_tos_t;
 
@@ -2042,10 +2051,6 @@ int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr *like_a
 
 #if defined(MSG_ERRQUEUE)
 
-	if(flags & MSG_ERRQUEUE) {
-			if((len>0)&&(try_cycle++<MAX_ERRORS_IN_UDP_BATCH)) goto try_again;
-	}
-
 	if((len<0) && (!(flags & MSG_ERRQUEUE))) {
 		//Linux
 		int eflags = MSG_ERRQUEUE | MSG_DONTWAIT;
@@ -2068,8 +2073,6 @@ int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr *like_a
 			int l = cmsgh->cmsg_level;
 			int t = cmsgh->cmsg_type;
 
-			if(!((l==41) && ((t == 52) || (t == 67)))) printf("%s: 111.000: %d:%d\n",__FUNCTION__,(int)t,(int)l);
-
 			switch(l) {
 			case IPPROTO_IP:
 				switch(t) {
@@ -2085,18 +2088,9 @@ int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr *like_a
 					recv_tos = *((recv_tos_t *) CMSG_DATA(cmsgh));
 					break;
 #endif
-#if defined(IP_RECVERR)
+#if defined(IP_RECVERR) && defined(SOCK_EXTENDED_ERR_DEFINED)
 				case IP_RECVERR:
-#if defined(SOCK_EXTENDED_ERR_DEFINED)
-				{
-					struct sock_extended_err *e=(struct sock_extended_err*) CMSG_DATA(cmsgh);
-					if(e) {
-						if(errcode)
-							*errcode = e->ee_errno;
-						printf("%s: 111.111: %d:%d\n",__FUNCTION__,(int)e->ee_type,(int)e->ee_code);
-					}
-				}
-#endif
+					handle_icmp((struct sock_extended_err*) CMSG_DATA(cmsgh), errcode, 0);
 					break;
 #endif
 				default:
@@ -2118,18 +2112,9 @@ int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr *like_a
 					recv_tos = *((recv_tos_t *) CMSG_DATA(cmsgh));
 					break;
 #endif
-#if defined(IPV6_RECVERR)
+#if defined(IPV6_RECVERR) && defined(SOCK_EXTENDED_ERR_DEFINED)
 				case IPV6_RECVERR:
-#if defined(SOCK_EXTENDED_ERR_DEFINED)
-				{
-					struct sock_extended_err *e=(struct sock_extended_err*) CMSG_DATA(cmsgh);
-					if(e) {
-						if(errcode)
-							*errcode = e->ee_errno;
-						printf("%s: 111.222: %d:%d\n",__FUNCTION__,(int)e->ee_type,(int)e->ee_code);
-					}
-				}
-#endif
+					handle_icmp((struct sock_extended_err*) CMSG_DATA(cmsgh), errcode, 1);
 					break;
 #endif
 				default:
@@ -2142,6 +2127,10 @@ int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr *like_a
 				/* no break */
 			};
 		}
+	}
+
+	if(flags & MSG_ERRQUEUE) {
+			if((len>0)&&(try_cycle++<MAX_ERRORS_IN_UDP_BATCH)) goto try_again;
 	}
 
 #endif
@@ -2880,10 +2869,6 @@ static int ssl_send(ioa_socket_handle s, const s08bits* buffer, int len, int ver
 	int rc = 0;
 	int try_again = 1;
 
-#if !defined(TURN_IP_RECVERR)
-	try_again = 0;
-#endif
-
 	try_start:
 
 	do {
@@ -3025,12 +3010,7 @@ int udp_send(ioa_socket_handle s, const ioa_addr* dest_addr, const s08bits* buff
 	if(fd>=0) {
 
 		int try_again = 1;
-
 		int cycle;
-
-#if !defined(TURN_IP_RECVERR)
-		try_again = 0;
-#endif
 
 		try_start:
 
