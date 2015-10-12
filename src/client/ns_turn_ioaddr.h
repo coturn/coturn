@@ -64,6 +64,7 @@ int addr_any_no_port(const ioa_addr* addr);
 u32bits addr_hash(const ioa_addr *addr);
 u32bits addr_hash_no_port(const ioa_addr *addr);
 void addr_cpy(ioa_addr* dst, const ioa_addr* src);
+void addr_cpy10(ioa_addr* dst, const struct sockaddr* src);
 void addr_cpy4(ioa_addr* dst, const struct sockaddr_in* src);
 void addr_cpy6(ioa_addr* dst, const struct sockaddr_in6* src);
 int addr_eq(const ioa_addr* a1, const ioa_addr *a2);

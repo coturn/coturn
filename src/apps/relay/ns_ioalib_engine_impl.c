@@ -1989,12 +1989,24 @@ static int socket_readerr(evutil_socket_t fd, ioa_addr *orig_addr)
 }
 
 #if defined(IP_RECVERR) && defined(SOCK_EXTENDED_ERR_DEFINED)
-static void handle_icmp(struct sock_extended_err *e, u32bits *errcode, int isIpv6)
+static void handle_icmp(struct sock_extended_err *e, u32bits *errcode, int isIpv6, int len, size_t clen)
 {
-	if(e) {
+	if(e && ((!isIpv6 && (e->ee_origin ==  SO_EE_ORIGIN_ICMP)) || (isIpv6 && (e->ee_origin ==  SO_EE_ORIGIN_ICMP6)))) {
 		if(errcode)
 			*errcode = e->ee_errno;
-		printf("%s: 111.111: %d:%d: ipv6=%d\n",__FUNCTION__,(int)e->ee_type,(int)e->ee_code,isIpv6);
+
+		struct sockaddr* badaddr = SO_EE_OFFENDER(e);
+		if(badaddr) {
+			ioa_addr ibadaddr;
+			addr_cpy10(&ibadaddr,badaddr);
+			char saddr[129];
+			addr_to_string(&ibadaddr, (u08bits*)saddr);
+			clen -= (sizeof (struct cmsghdr));
+			printf("%s: 111.111: %d:%d: ipv6=%d, addr=%s, port=%d, info=%lu, data=%lu, len=%lu, clen=%lu\n",__FUNCTION__,(int)e->ee_type,(int)e->ee_code,isIpv6,saddr,
+					ntohs(((struct sockaddr_in*)badaddr)->sin_port),
+					(unsigned long)(e->ee_info),(unsigned long)(e->ee_data),
+					(unsigned long)len, (unsigned long)clen);
+		}
 	}
 }
 #endif
@@ -2072,6 +2084,7 @@ int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr *like_a
 						= CMSG_NXTHDR(&msg,cmsgh)) {
 			int l = cmsgh->cmsg_level;
 			int t = cmsgh->cmsg_type;
+			size_t clen = cmsgh->cmsg_len;
 
 			switch(l) {
 			case IPPROTO_IP:
@@ -2090,7 +2103,7 @@ int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr *like_a
 #endif
 #if defined(IP_RECVERR) && defined(SOCK_EXTENDED_ERR_DEFINED)
 				case IP_RECVERR:
-					handle_icmp((struct sock_extended_err*) CMSG_DATA(cmsgh), errcode, 0);
+					handle_icmp((struct sock_extended_err*) CMSG_DATA(cmsgh), errcode, 0, len, clen);
 					break;
 #endif
 				default:
@@ -2114,7 +2127,7 @@ int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr *like_a
 #endif
 #if defined(IPV6_RECVERR) && defined(SOCK_EXTENDED_ERR_DEFINED)
 				case IPV6_RECVERR:
-					handle_icmp((struct sock_extended_err*) CMSG_DATA(cmsgh), errcode, 1);
+					handle_icmp((struct sock_extended_err*) CMSG_DATA(cmsgh), errcode, 1, len, clen);
 					break;
 #endif
 				default:

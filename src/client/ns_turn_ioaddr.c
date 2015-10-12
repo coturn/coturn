@@ -132,6 +132,11 @@ void addr_cpy(ioa_addr* dst, const ioa_addr* src) {
 		ns_bcopy(src,dst,sizeof(ioa_addr));
 }
 
+void addr_cpy10(ioa_addr* dst, const struct sockaddr* src) {
+	if(src && dst)
+		ns_bcopy(src,dst,sizeof(struct sockaddr));
+}
+
 void addr_cpy4(ioa_addr* dst, const struct sockaddr_in* src) {
 	if(src && dst)
 		ns_bcopy(src,dst,sizeof(struct sockaddr_in));
