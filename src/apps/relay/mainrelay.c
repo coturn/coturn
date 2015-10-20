@@ -47,8 +47,6 @@ char HTTP_ALPN[128] = "http/1.1";
 
 ////// TURNDB //////////////
 
-#if defined(TURNDB)
-
 #if defined(Q)
 #undef Q
 #endif
@@ -62,12 +60,6 @@ char HTTP_ALPN[128] = "http/1.1";
 #define QUOTE(x) Q(x)
 
 #define DEFAULT_USERDB_FILE QUOTE(TURNDB)
-
-#else
-
-#define DEFAULT_USERDB_FILE "/usr/local/var/db/turndb"
-
-#endif
 
 //////TURN PARAMS STRUCTURE DEFINITION //////
 
