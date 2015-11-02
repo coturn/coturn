@@ -521,19 +521,7 @@ if [ -z "${ARCHIVERCMD}" ] ; then
 fi
 
 if [ -z "${MORECMD}" ]; then
-	type more 2>>/dev/null
-	ER=$?
-	if [ ${ER} -eq 0 ] ; then
-		MORECMD="more"
-	else
-		type less 2>>/dev/null
-		ER=$?
-		if [ ${ER} -eq 0 ] ; then
-			MORECMD="less"
-		else
-			MORECMD="cat"
-		fi
-	fi
+	MORECMD="cat"
 fi
 
 OSCFLAGS="-I${INCLUDEDIR} -I${PREFIX}/include/ -I/usr/local/include ${CFLAGS}"

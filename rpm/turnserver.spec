@@ -101,7 +101,7 @@ This package contains the TURN client development headers.
 
 %build
 PREFIX=%{_prefix} CONFDIR=%{_sysconfdir}/%{name} EXAMPLESDIR=%{_datadir}/%{name} \
-	MANPREFIX=%{_datadir} LIBDIR=%{_libdir} MORECMD=cat ./configure
+	MANPREFIX=%{_datadir} LIBDIR=%{_libdir} ./configure
 make
 
 %install
