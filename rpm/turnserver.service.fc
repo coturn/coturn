@@ -4,9 +4,11 @@ Documentation=man:coturn(1) man:turnadmin(1) man:turnserver(1)
 After=syslog.target network.target
 
 [Service]
+User=turnserver
+Group=turnserver
 Type=forking
 EnvironmentFile=/etc/sysconfig/turnserver
-PIDFile=/var/run/turnserver.pid
+PIDFile=/var/run/turnserver/turnserver.pid
 ExecStart=/usr/bin/turnserver -o -c /etc/turnserver/turnserver.conf $EXTRA_OPTIONS
 ExecStopPost=/usr/bin/rm -f /var/run/turnserver.pid
 Restart=on-abort
