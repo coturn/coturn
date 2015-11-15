@@ -2,8 +2,10 @@
 Version 4.5.0.3 'dan Eider':
 	- Compatibility with OpenSSL distributions or clones
 	that does not support SSLv3 (like LibreSSL 2.3.0).
-	- compilation and configuration cleaning.
-	- fix for non-interactive shells.
+	- Compilation and configuration cleaning.
+	- Fix for non-interactive shells.
+	- Fixed mongo-c-driver include path (by Sergey Safarov).
+	- Fixed startup daemon as non root user (by Sergey Safarov).
 
 9/29/2015 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.5.0.2 'dan Eider':
