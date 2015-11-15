@@ -7,7 +7,7 @@ Version 4.5.0.3 'dan Eider':
 	- Fix for non-interactive shells.
 	- RPM: Fixed mongo-c-driver include path (by Sergey Safarov).
 	- RPM: Fixed startup daemon as non root user (by Sergey Safarov).
-	- RPM: Systemd optimized for high-volume network traffic (by Sergey Safarov)
+	- RPM: Systemd optimized for high-volume network traffic (by Sergey Safarov).
 
 9/29/2015 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.5.0.2 'dan Eider':
