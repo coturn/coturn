@@ -142,7 +142,7 @@ testlibmysql() {
 }
 
 testlibmongoc() {
-    for inc in ${PREFIX}/libmongoc-1.0 ${PREFIX}/libbson-1.0 /usr/local/include/libmongoc-1.0 /usr/local/include/libbson-1.0 /usr/libmongoc-1.0 -I/usr/libbson-1.0
+    for inc in ${PREFIX}/libmongoc-1.0 ${PREFIX}/libbson-1.0 /usr/local/include/libmongoc-1.0 /usr/local/include/libbson-1.0 /usr/libmongoc-1.0 /usr/libbson-1.0 /usr/include/libbson-1.0/ /usr/include/libmongoc-1.0/
     do
       if [ -d ${inc} ] ; then
         MONGO_CFLAGS="${MONGO_CFLAGS} -I${inc}"
