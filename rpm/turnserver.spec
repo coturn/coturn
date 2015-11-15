@@ -110,25 +110,24 @@ DESTDIR=$RPM_BUILD_ROOT make install
 mkdir -p $RPM_BUILD_ROOT/%{_sysconfdir}/sysconfig
 install -m644 rpm/turnserver.sysconfig \
 		$RPM_BUILD_ROOT/%{_sysconfdir}/sysconfig/turnserver
+sed -i -e "s/#syslog/syslog/g" \
+    -e "s/#no-stdout-log/no-stdout-log/g" \
+    $RPM_BUILD_ROOT/%{_sysconfdir}/%{name}/turnserver.conf.default
 %if 0%{?el6}
-cat $RPM_BUILD_ROOT/%{_sysconfdir}/%{name}/turnserver.conf.default | \
-    sed s/#syslog/syslog/g | \
-    sed s/#no-stdout-log/no-stdout-log/g > \
-    $RPM_BUILD_ROOT/%{_sysconfdir}/%{name}/turnserver.conf
 mkdir -p $RPM_BUILD_ROOT/%{_sysconfdir}/rc.d/init.d
 install -m755 rpm/turnserver.init.el \
 		$RPM_BUILD_ROOT/%{_sysconfdir}/rc.d/init.d/turnserver
 %else
-cat $RPM_BUILD_ROOT/%{_sysconfdir}/%{name}/turnserver.conf.default | \
-    sed s/#syslog/syslog/g | \
-    sed s/#no-stdout-log/no-stdout-log/g | \
-    sed s/#pidfile/pidfile/g > \
-    $RPM_BUILD_ROOT/%{_sysconfdir}/%{name}/turnserver.conf
+sed -i -e "s/#pidfile/pidfile/g" \
+    -e "s:/var/run/turnserver.pid:/var/run/turnserver/turnserver.pid:g" \
+    $RPM_BUILD_ROOT/%{_sysconfdir}/%{name}/turnserver.conf.default
 mkdir -p $RPM_BUILD_ROOT/%{_unitdir}
 install -m755 rpm/turnserver.service.fc \
 		$RPM_BUILD_ROOT/%{_unitdir}/turnserver.service
 %endif
-rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/%{name}/turnserver.conf.default
+mv $RPM_BUILD_ROOT/%{_sysconfdir}/%{name}/turnserver.conf.default $RPM_BUILD_ROOT/%{_sysconfdir}/%{name}/turnserver.conf
+%{__install} -Dpm 0644 rpm/turnserver-tmpfiles.conf %{buildroot}%{_tmpfilesdir}/turnserver.conf
+mkdir -p %{buildroot}%{_localstatedir}/run/turnserver
 
 %clean
 rm -rf "$RPM_BUILD_ROOT"
@@ -171,11 +170,13 @@ fi
 %{_mandir}/man1/turnadmin.1.gz
 %dir %attr(-,turnserver,turnserver) %{_sysconfdir}/%{name}
 %config(noreplace) %attr(0644,turnserver,turnserver) %{_sysconfdir}/%{name}/turnserver.conf
+%attr(0750,turnserver,turnserver) %{_localstatedir}/run/turnserver
 %config(noreplace) %{_sysconfdir}/sysconfig/turnserver
 %if 0%{?el6}
 %config %{_sysconfdir}/rc.d/init.d/turnserver
 %else
 %config %{_unitdir}/turnserver.service
+%{_tmpfilesdir}/turnserver.conf
 %endif
 %dir %{_docdir}/%{name}
 %{_docdir}/%{name}/LICENSE
