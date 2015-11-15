@@ -11,5 +11,16 @@ ExecStart=/usr/bin/turnserver -o -c /etc/turnserver/turnserver.conf $EXTRA_OPTIO
 ExecStopPost=/usr/bin/rm -f /var/run/turnserver.pid
 Restart=on-abort
 
+LimitCORE=infinity
+LimitNOFILE=999999
+LimitNPROC=60000
+LimitRTPRIO=infinity
+LimitRTTIME=7000000
+IOSchedulingClass=realtime
+IOSchedulingPriority=2
+CPUSchedulingPolicy=fifo
+CPUSchedulingPriority=1
+UMask=0007
+
 [Install]
 WantedBy=multi-user.target
