@@ -1,5 +1,5 @@
 Name:		turnserver
-Version:	4.5.0.2
+Version:	4.5.0.3
 Release:	0%{dist}
 Summary:	Coturn TURN Server
 
@@ -44,7 +44,7 @@ STUN specs:
 The implementation fully supports the following client-to-TURN-server protocols:
 - UDP (per RFC 5766)
 - TCP (per RFC 5766 and RFC 6062)
-- TLS (per RFC 5766 and RFC 6062); SSL3/TLS1.0/TLS1.1/TLS1.2
+- TLS (per RFC 5766 and RFC 6062); TLS1.0/TLS1.1/TLS1.2
 - DTLS (experimental non-standard feature)
 
 Supported relay protocols:
@@ -101,7 +101,7 @@ This package contains the TURN client development headers.
 
 %build
 PREFIX=%{_prefix} CONFDIR=%{_sysconfdir}/%{name} EXAMPLESDIR=%{_datadir}/%{name} \
-	MANPREFIX=%{_datadir} LIBDIR=%{_libdir} MORECMD=cat ./configure
+	MANPREFIX=%{_datadir} LIBDIR=%{_libdir} ./configure
 make
 
 %install
@@ -110,25 +110,24 @@ DESTDIR=$RPM_BUILD_ROOT make install
 mkdir -p $RPM_BUILD_ROOT/%{_sysconfdir}/sysconfig
 install -m644 rpm/turnserver.sysconfig \
 		$RPM_BUILD_ROOT/%{_sysconfdir}/sysconfig/turnserver
+sed -i -e "s/#syslog/syslog/g" \
+    -e "s/#no-stdout-log/no-stdout-log/g" \
+    $RPM_BUILD_ROOT/%{_sysconfdir}/%{name}/turnserver.conf.default
 %if 0%{?el6}
-cat $RPM_BUILD_ROOT/%{_sysconfdir}/%{name}/turnserver.conf.default | \
-    sed s/#syslog/syslog/g | \
-    sed s/#no-stdout-log/no-stdout-log/g > \
-    $RPM_BUILD_ROOT/%{_sysconfdir}/%{name}/turnserver.conf
 mkdir -p $RPM_BUILD_ROOT/%{_sysconfdir}/rc.d/init.d
 install -m755 rpm/turnserver.init.el \
 		$RPM_BUILD_ROOT/%{_sysconfdir}/rc.d/init.d/turnserver
 %else
-cat $RPM_BUILD_ROOT/%{_sysconfdir}/%{name}/turnserver.conf.default | \
-    sed s/#syslog/syslog/g | \
-    sed s/#no-stdout-log/no-stdout-log/g | \
-    sed s/#pidfile/pidfile/g > \
-    $RPM_BUILD_ROOT/%{_sysconfdir}/%{name}/turnserver.conf
+sed -i -e "s/#pidfile/pidfile/g" \
+    -e "s:/var/run/turnserver.pid:/var/run/turnserver/turnserver.pid:g" \
+    $RPM_BUILD_ROOT/%{_sysconfdir}/%{name}/turnserver.conf.default
 mkdir -p $RPM_BUILD_ROOT/%{_unitdir}
 install -m755 rpm/turnserver.service.fc \
 		$RPM_BUILD_ROOT/%{_unitdir}/turnserver.service
 %endif
-rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/%{name}/turnserver.conf.default
+mv $RPM_BUILD_ROOT/%{_sysconfdir}/%{name}/turnserver.conf.default $RPM_BUILD_ROOT/%{_sysconfdir}/%{name}/turnserver.conf
+%{__install} -Dpm 0644 rpm/turnserver-tmpfiles.conf %{buildroot}%{_tmpfilesdir}/turnserver.conf
+mkdir -p %{buildroot}%{_localstatedir}/run/turnserver
 
 %clean
 rm -rf "$RPM_BUILD_ROOT"
@@ -165,17 +164,19 @@ fi
 %defattr(-,root,root)
 %{_bindir}/turnserver
 %{_bindir}/turnadmin
-%{_localstatedir}/db/turndb
+%attr(0640,turnserver,turnserver) %{_localstatedir}/db/turndb
 %{_mandir}/man1/coturn.1.gz
 %{_mandir}/man1/turnserver.1.gz
 %{_mandir}/man1/turnadmin.1.gz
 %dir %attr(-,turnserver,turnserver) %{_sysconfdir}/%{name}
 %config(noreplace) %attr(0644,turnserver,turnserver) %{_sysconfdir}/%{name}/turnserver.conf
+%dir %attr(0750,turnserver,turnserver) %{_localstatedir}/run/turnserver
 %config(noreplace) %{_sysconfdir}/sysconfig/turnserver
 %if 0%{?el6}
 %config %{_sysconfdir}/rc.d/init.d/turnserver
 %else
 %config %{_unitdir}/turnserver.service
+%{_tmpfilesdir}/turnserver.conf
 %endif
 %dir %{_docdir}/%{name}
 %{_docdir}/%{name}/LICENSE
@@ -289,6 +290,8 @@ fi
 %{_includedir}/turn/client/TurnMsgLib.h
 
 %changelog
+* Sun Oct 11 2015 Oleg Moskalenko <mom040267@gmail.com>
+  - Sync to 4.5.0.3
 * Tue Sep 29 2015 Oleg Moskalenko <mom040267@gmail.com>
   - Sync to 4.5.0.2
 * Sun Sep 13 2015 Oleg Moskalenko <mom040267@gmail.com>

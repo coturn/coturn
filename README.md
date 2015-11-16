@@ -24,7 +24,7 @@ TURN specs:
   * DTLS support (http://tools.ietf.org/html/draft-petithuguenin-tram-turn-dtls-00).
   * Mobile ICE (MICE) support (http://tools.ietf.org/html/draft-wing-tram-turn-mobility-02).
   * TURN REST API (http://tools.ietf.org/html/draft-uberti-behave-turn-rest-00)
-  * Origin field in TURN (Multi-tenant TURN Server) (https://tools.ietf.org/html/draft-ietf-tram-stun-origin-05)
+  * Origin field in TURN (Multi-tenant TURN Server) (https://tools.ietf.org/html/draft-ietf-tram-stun-origin-06)
   * TURN Bandwidth draft specs (http://tools.ietf.org/html/draft-thomson-tram-turn-bandwidth-01)
   * TURN-bis (with dual allocation) draft specs (http://tools.ietf.org/html/draft-ietf-tram-turnbis-04).
 
@@ -49,7 +49,7 @@ The implementation fully supports the following client-to-TURN-server protocols:
 
   * UDP (per RFC 5766)
   * TCP (per RFC 5766 and RFC 6062)
-  * TLS (per RFC 5766 and RFC 6062): SSL3/TLS1.0/TLS1.1/TLS1.2; ECDHE is supported.
+  * TLS (per RFC 5766 and RFC 6062): TLS1.0/TLS1.1/TLS1.2; ECDHE is supported.
   * DTLS  (http://tools.ietf.org/html/draft-petithuguenin-tram-turn-dtls-00): DTLS versions 1.0 and 1.2.
   * SCTP (experimental implementation).
 

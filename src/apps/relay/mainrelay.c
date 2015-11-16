@@ -47,8 +47,6 @@ char HTTP_ALPN[128] = "http/1.1";
 
 ////// TURNDB //////////////
 
-#if defined(TURNDB)
-
 #if defined(Q)
 #undef Q
 #endif
@@ -62,12 +60,6 @@ char HTTP_ALPN[128] = "http/1.1";
 #define QUOTE(x) Q(x)
 
 #define DEFAULT_USERDB_FILE QUOTE(TURNDB)
-
-#else
-
-#define DEFAULT_USERDB_FILE "/usr/local/var/db/turndb"
-
-#endif
 
 //////TURN PARAMS STRUCTURE DEFINITION //////
 
@@ -90,7 +82,7 @@ NULL,
 
 DH_1066, "", "", "",
 "turn_server_cert.pem","turn_server_pkey.pem", "", "",
-0,0,0,0,
+0,0,0,
 #if !TLS_SUPPORTED
 1,
 #else
@@ -526,7 +518,6 @@ static char Usage[] = "Usage: turnserver [options]\n"
 " --dh2066					Use 2066 bits predefined DH TLS key. Default size of the predefined key is 1066.\n"
 " --dh-file	<dh-file-name>			Use custom DH TLS key, stored in PEM format in the file.\n"
 "						Flags --dh566 and --dh2066 are ignored when the DH key is taken from a file.\n"
-" --no-sslv3					Do not allow SSLv3 protocol.\n"
 " --no-tlsv1					Do not allow TLSv1/DTLSv1 protocol.\n"
 " --no-tlsv1_1					Do not allow TLSv1.1 protocol.\n"
 " --no-tlsv1_2					Do not allow TLSv1.2/DTLSv1.2 protocol.\n"
@@ -710,7 +701,7 @@ enum EXTRA_OPTS {
 	DH2066_OPT,
 	NE_TYPE_OPT,
 	NO_SSLV2_OPT, /*deprecated*/
-	NO_SSLV3_OPT,
+	NO_SSLV3_OPT, /*deprecated*/
 	NO_TLSV1_OPT,
 	NO_TLSV1_1_OPT,
 	NO_TLSV1_2_OPT,
@@ -829,7 +820,7 @@ static const struct myoption long_options[] = {
 				{ "dh2066", optional_argument, NULL, DH2066_OPT },
 				{ "ne", required_argument, NULL, NE_TYPE_OPT },
 				{ "no-sslv2", optional_argument, NULL, NO_SSLV2_OPT }, /* deprecated */
-				{ "no-sslv3", optional_argument, NULL, NO_SSLV3_OPT },
+				{ "no-sslv3", optional_argument, NULL, NO_SSLV3_OPT }, /* deprecated */
 				{ "no-tlsv1", optional_argument, NULL, NO_TLSV1_OPT },
 				{ "no-tlsv1_1", optional_argument, NULL, NO_TLSV1_1_OPT },
 				{ "no-tlsv1_2", optional_argument, NULL, NO_TLSV1_2_OPT },
@@ -915,7 +906,7 @@ static void set_option(int c, char *value)
     //deprecated
 	  break;
   case NO_SSLV3_OPT:
-	  turn_params.no_sslv3 = get_bool_value(value);
+	  //deprecated
 	  break;
   case NO_TLSV1_OPT:
 	  turn_params.no_tlsv1 = get_bool_value(value);
@@ -2556,8 +2547,9 @@ static void set_ctx(SSL_CTX* ctx, const char *protocol)
 		op |= SSL_OP_NO_SSLv2;
 #endif
 
-		if(turn_params.no_sslv3)
+#if defined(SSL_OP_NO_SSLv2)
 			op |= SSL_OP_NO_SSLv3;
+#endif
 
 		if(turn_params.no_tlsv1)
 			op |= SSL_OP_NO_TLSv1;
