@@ -1,3 +1,9 @@
+coturn (4.5.0.3-1) unstable; urgency=medium
+
+  * SSLv3 support removed, closes: #804440
+
+ -- Oleg Moskalenko <mom040267@gmail.com>  Sun, 15 Nov 2015 23:38:46 -0800
+
 coturn (4.5.0.2-3) unstable; urgency=medium
 
   * Telnet package dependency fixed
