@@ -44,7 +44,7 @@ STUN specs:
 The implementation fully supports the following client-to-TURN-server protocols:
 - UDP (per RFC 5766)
 - TCP (per RFC 5766 and RFC 6062)
-- TLS (per RFC 5766 and RFC 6062); SSL3/TLS1.0/TLS1.1/TLS1.2
+- TLS (per RFC 5766 and RFC 6062); TLS1.0/TLS1.1/TLS1.2
 - DTLS (experimental non-standard feature)
 
 Supported relay protocols:
@@ -164,13 +164,13 @@ fi
 %defattr(-,root,root)
 %{_bindir}/turnserver
 %{_bindir}/turnadmin
-%{_localstatedir}/db/turndb
+%attr(0640,turnserver,turnserver) %{_localstatedir}/db/turndb
 %{_mandir}/man1/coturn.1.gz
 %{_mandir}/man1/turnserver.1.gz
 %{_mandir}/man1/turnadmin.1.gz
 %dir %attr(-,turnserver,turnserver) %{_sysconfdir}/%{name}
 %config(noreplace) %attr(0644,turnserver,turnserver) %{_sysconfdir}/%{name}/turnserver.conf
-%attr(0750,turnserver,turnserver) %{_localstatedir}/run/turnserver
+%dir %attr(0750,turnserver,turnserver) %{_localstatedir}/run/turnserver
 %config(noreplace) %{_sysconfdir}/sysconfig/turnserver
 %if 0%{?el6}
 %config %{_sysconfdir}/rc.d/init.d/turnserver

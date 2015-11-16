@@ -49,7 +49,7 @@ The implementation fully supports the following client-to-TURN-server protocols:
 
   * UDP (per RFC 5766)
   * TCP (per RFC 5766 and RFC 6062)
-  * TLS (per RFC 5766 and RFC 6062): SSL3/TLS1.0/TLS1.1/TLS1.2; ECDHE is supported.
+  * TLS (per RFC 5766 and RFC 6062): TLS1.0/TLS1.1/TLS1.2; ECDHE is supported.
   * DTLS  (http://tools.ietf.org/html/draft-petithuguenin-tram-turn-dtls-00): DTLS versions 1.0 and 1.2.
   * SCTP (experimental implementation).
 
