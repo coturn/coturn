@@ -22,7 +22,7 @@
 TURN=/usr/bin/turnserver
 PROG=turnserver
 TURNCFG=/etc/turnserver/$PROG.conf
-PID_FILE=/var/run/$PROG.pid
+PID_FILE=/var/run/turnserver/$PROG.pid
 LOCK_FILE=/var/lock/subsys/$PROG
 DEFAULTS=/etc/sysconfig/$PROG
 RETVAL=0
