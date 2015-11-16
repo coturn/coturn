@@ -4,12 +4,25 @@ Documentation=man:coturn(1) man:turnadmin(1) man:turnserver(1)
 After=syslog.target network.target
 
 [Service]
+User=turnserver
+Group=turnserver
 Type=forking
 EnvironmentFile=/etc/sysconfig/turnserver
-PIDFile=/var/run/turnserver.pid
+PIDFile=/var/run/turnserver/turnserver.pid
 ExecStart=/usr/bin/turnserver -o -c /etc/turnserver/turnserver.conf $EXTRA_OPTIONS
-ExecStopPost=/usr/bin/rm -f /var/run/turnserver.pid
+ExecStopPost=/usr/bin/rm -f /var/run/turnserver/turnserver.pid
 Restart=on-abort
+
+LimitCORE=infinity
+LimitNOFILE=999999
+LimitNPROC=60000
+LimitRTPRIO=infinity
+LimitRTTIME=7000000
+IOSchedulingClass=realtime
+IOSchedulingPriority=2
+CPUSchedulingPolicy=fifo
+CPUSchedulingPriority=1
+UMask=0007
 
 [Install]
 WantedBy=multi-user.target

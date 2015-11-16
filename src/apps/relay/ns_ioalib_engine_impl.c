@@ -1416,7 +1416,10 @@ ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e,
 static void ssl_info_callback(SSL *ssl, int where, int ret) {
 
     UNUSED_ARG(ret);
+    UNUSED_ARG(ssl);
+    UNUSED_ARG(where);
 
+#if defined(SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS)
     if (0 != (where & SSL_CB_HANDSHAKE_START)) {
     	ioa_socket_handle s = (ioa_socket_handle)SSL_get_app_data(ssl);
     	if(s) {
@@ -1432,6 +1435,7 @@ static void ssl_info_callback(SSL *ssl, int where, int ret) {
     		}
     	}
     }
+#endif
 }
 
 typedef void (*ssl_info_callback_t)(const SSL *ssl,int type,int val);

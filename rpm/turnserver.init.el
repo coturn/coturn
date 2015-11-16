@@ -6,7 +6,7 @@
 # description: RFC 5766 TURN Server
 #
 # processname: turnserver
-# pidfile: /var/run/turnserver.pid
+# pidfile: /var/run/turnserver/turnserver.pid
 # config: /etc/turnserver/turnserver.conf
 #
 ### BEGIN INIT INFO
@@ -22,7 +22,7 @@
 TURN=/usr/bin/turnserver
 PROG=turnserver
 TURNCFG=/etc/turnserver/$PROG.conf
-PID_FILE=/var/run/$PROG.pid
+PID_FILE=/var/run/turnserver/$PROG.pid
 LOCK_FILE=/var/lock/subsys/$PROG
 DEFAULTS=/etc/sysconfig/$PROG
 RETVAL=0

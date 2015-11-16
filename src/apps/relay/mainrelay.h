@@ -198,8 +198,7 @@ typedef struct _turn_params_ {
   char pkey_file[1025];
   char tls_password[513];
   char dh_file[1025];
-  
-  int no_sslv3;
+
   int no_tlsv1;
   int no_tlsv1_1;
   int no_tlsv1_2;
