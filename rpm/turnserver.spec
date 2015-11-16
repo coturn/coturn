@@ -170,7 +170,7 @@ fi
 %{_mandir}/man1/turnadmin.1.gz
 %dir %attr(-,turnserver,turnserver) %{_sysconfdir}/%{name}
 %config(noreplace) %attr(0644,turnserver,turnserver) %{_sysconfdir}/%{name}/turnserver.conf
-$dir %attr(0750,turnserver,turnserver) %{_localstatedir}/run/turnserver
+%dir %attr(0750,turnserver,turnserver) %{_localstatedir}/run/turnserver
 %config(noreplace) %{_sysconfdir}/sysconfig/turnserver
 %if 0%{?el6}
 %config %{_sysconfdir}/rc.d/init.d/turnserver
