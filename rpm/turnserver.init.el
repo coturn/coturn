@@ -6,7 +6,7 @@
 # description: RFC 5766 TURN Server
 #
 # processname: turnserver
-# pidfile: /var/run/turnserver.pid
+# pidfile: /var/run/turnserver/turnserver.pid
 # config: /etc/turnserver/turnserver.conf
 #
 ### BEGIN INIT INFO
