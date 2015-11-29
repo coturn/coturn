@@ -1162,10 +1162,14 @@ static void set_option(int c, char *value)
 #endif
 	case AUTH_SECRET_OPT:
 		turn_params.use_auth_secret_with_timestamp = 1;
+		turn_params.ct = TURN_CREDENTIALS_LONG_TERM;
+		use_lt_credentials = 1;
 		break;
 	case STATIC_AUTH_SECRET_VAL_OPT:
 		add_to_secrets_list(&turn_params.default_users_db.ram_db.static_auth_secrets,value);
 		turn_params.use_auth_secret_with_timestamp = 1;
+		turn_params.ct = TURN_CREDENTIALS_LONG_TERM;
+		use_lt_credentials = 1;
 		break;
 	case AUTH_SECRET_TS_EXP:
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: Option --secret-ts-exp-time deprecated and has no effect.\n");
