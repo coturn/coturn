@@ -75,9 +75,9 @@ NULL, NULL,
 #endif
 #if DTLS_SUPPORTED
 NULL,
-#endif
 #if DTLSv1_2_SUPPORTED
 NULL,
+#endif
 #endif
 NULL,
 DH_1066, "", "", "",
