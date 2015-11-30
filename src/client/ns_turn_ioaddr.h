@@ -74,6 +74,7 @@ void addr_set_port(ioa_addr* addr, int port);
 int addr_get_port(const ioa_addr* addr);
 int addr_to_string(const ioa_addr* addr, u08bits* saddr);
 int addr_to_string_no_port(const ioa_addr* addr, u08bits* saddr);
+void split_url_into_domain_or_ip_and_path(s08bits* s0, s08bits* domain_or_ip, s08bits* path);
 
 u32bits hash_int32(u32bits a);
 u64bits hash_int64(u64bits a);

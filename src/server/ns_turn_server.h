@@ -31,6 +31,7 @@
 #ifndef __TURN_SERVER__
 #define __TURN_SERVER__
 
+#include <openssl/ssl.h>
 #include "ns_turn_utils.h"
 #include "ns_turn_session.h"
 
@@ -165,6 +166,12 @@ struct _turn_turnserver {
 	/* oAuth: */
 	int oauth;
 	const char* oauth_server_name;
+	
+	/* stats server */
+	SSL_CTX* stats_server_ctx;
+	char stats_server_domain_or_ip[1024];
+	char stats_server_uri_path[1024];
+	int stats_server_port;
 };
 
 ///////////////////////////////////////////
@@ -202,7 +209,10 @@ void init_turn_server(turn_turnserver* server,
 				    send_https_socket_cb send_https_socket,
 				    allocate_bps_cb allocate_bps_func,
 				    int oauth,
-				    const char* oauth_server_name);
+				    const char* oauth_server_name,
+				    SSL_CTX* stats_server_ctx,
+				    char* stats_server,
+				    int stats_server_port);
 
 ioa_engine_handle turn_server_get_engine(turn_turnserver *s);
 

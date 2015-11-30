@@ -205,6 +205,7 @@ void set_allocation_valid(allocation* a, int value);
 turn_permission_info* allocation_get_permission(allocation* a, const ioa_addr *addr);
 turn_permission_hashtable* allocation_get_turn_permission_hashtable(allocation *a);
 turn_permission_info* allocation_add_permission(allocation *a, const ioa_addr* addr);
+turn_permission_info* get_permission_info(turn_permission_hashtable *map);
 
 ch_info* allocation_get_new_ch_info(allocation* a, u16bits chnum, ioa_addr* peer_addr);
 ch_info* allocation_get_ch_info(allocation* a, u16bits chnum);

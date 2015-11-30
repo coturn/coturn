@@ -233,6 +233,40 @@ static void free_turn_permission_hashtable(turn_permission_hashtable *map)
 	}
 }
 
+turn_permission_info* get_permission_info(turn_permission_hashtable *map)
+{
+	if(map) {
+		size_t i;
+		for(i=0;i<TURN_PERMISSION_HASHTABLE_SIZE;++i) {
+
+			turn_permission_array *parray = &(map->table[i]);
+
+			{
+				size_t j;
+				for(j=0;j<TURN_PERMISSION_ARRAY_SIZE;++j) {
+					turn_permission_slot *slot = &(parray->main_slots[j]);
+					if(slot->info.allocated) {
+						return &(slot->info);
+					}
+				}
+			}
+
+			if(parray->extra_slots) {
+				size_t j;
+				for(j=0;j<parray->extra_sz;++j) {
+					turn_permission_slot *slot = parray->extra_slots[j];
+					if(slot) {
+						if(slot->info.allocated) {
+							return &(slot->info);
+						}
+					}
+				}
+			}
+		}
+	}
+	return NULL;
+}
+
 static turn_permission_info* get_from_turn_permission_hashtable(turn_permission_hashtable *map, const ioa_addr *addr)
 {
 	if (!addr || !map)

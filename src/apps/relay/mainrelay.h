@@ -188,6 +188,8 @@ typedef struct _turn_params_ {
 #endif
 #endif
   
+  SSL_CTX *stats_server_ctx;
+  
   DH_KEY_SIZE dh_key_size;
   
   char cipher_list[1025];
@@ -300,6 +302,8 @@ typedef struct _turn_params_ {
   band_limit_t bps_capacity_allocated;
   vint total_quota;
   vint user_quota;
+  char stats_server[1024];
+  int stats_server_port;
 
 /////// Users DB ///////////
 

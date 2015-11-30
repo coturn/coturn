@@ -4809,7 +4809,11 @@ void init_turn_server(turn_turnserver* server,
 		send_turn_session_info_cb send_turn_session_info,
 		send_https_socket_cb send_https_socket,
 		allocate_bps_cb allocate_bps_func,
-		int oauth, const char* oauth_server_name) {
+		int oauth, const char* oauth_server_name,
+		SSL_CTX* stats_server_ctx,
+		char* stats_server,
+		int stats_server_port
+		) {
 
 	if (!server)
 		return;
@@ -4873,6 +4877,10 @@ void init_turn_server(turn_turnserver* server,
 	server->allocate_bps_func = allocate_bps_func;
 
 	set_ioa_timer(server->e, 1, 0, timer_timeout_handler, server, 1, "timer_timeout_handler");
+	//stats server
+	server->stats_server_ctx = stats_server_ctx;
+	split_url_into_domain_or_ip_and_path(stats_server, server->stats_server_domain_or_ip, server->stats_server_uri_path);
+	server->stats_server_port = stats_server_port;
 }
 
 ioa_engine_handle turn_server_get_engine(turn_turnserver *s) {

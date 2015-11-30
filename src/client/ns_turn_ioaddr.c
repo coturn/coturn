@@ -317,6 +317,28 @@ static char* get_addr_string_and_port(char* s0, int *port)
 	return NULL;
 }
 
+// Extracts the fqdn or ip and the resource or path from the URL
+// This method assumes the scheme to be either http or https
+void split_url_into_domain_or_ip_and_path(s08bits* s0, s08bits* domain_or_ip, s08bits* path)
+{
+	int offset=0;
+	s08bits* p = NULL;
+	s08bits* s = s0;
+	offset = (strstr(s0, "http://") == NULL) ? ((strstr(s0, "https://") == NULL) ? 0 : 8) : 7;
+	s += offset;
+	p = strstr(s, "/");
+	if (p) {
+		// copy domain or ip
+		strncpy(domain_or_ip, (s08bits*)s, p - s);
+		domain_or_ip[p-s] = '\0';
+		// copy path
+		STRCPY(path, p);
+	} else {
+		STRCPY(domain_or_ip, s);
+		path[0] = '\0';	// no path in url
+	}
+}
+
 int make_ioa_addr_from_full_string(const u08bits* saddr, int default_port, ioa_addr *addr)
 {
 	if(!addr)

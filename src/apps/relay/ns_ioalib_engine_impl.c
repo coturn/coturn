@@ -37,6 +37,7 @@
 #include "apputils.h"
 
 #include "ns_ioalib_impl.h"
+#include "mainrelay.h"
 
 #if TLS_SUPPORTED
 #include <event2/bufferevent_ssl.h>
@@ -102,6 +103,10 @@ static int send_ssl_backlog_buffers(ioa_socket_handle s);
 static int set_accept_cb(ioa_socket_handle s, accept_cb acb, void *arg);
 
 static void close_socket_net_data(ioa_socket_handle s);
+
+static int create_and_connect_tcp_socket_to_stats_server(turnsession_id ss_id, char username[], char domain_or_addr[], int port);
+static int http_post_to_stats_server(turnsession_id ss_id, char username[], int port, char domain[], char http_post_data[]);
+static int https_post_to_stats_server(turnsession_id ss_id,  char username[], SSL_CTX *ctx, char domain[], char http_post_data[]);
 
 /************** Utils **************************/
 
@@ -3571,9 +3576,40 @@ void turn_report_allocation_delete(void *a)
 		if(ss) {
 			turn_turnserver *server = (turn_turnserver*)ss->server;
 			if(server) {
+				// calculate final stats
+				ss->t_received_packets += ss->received_packets;
+				ss->t_received_bytes += ss->received_bytes;
+				ss->t_sent_packets += ss->sent_packets;
+				ss->t_sent_bytes += ss->sent_bytes;
+				{
+					turn_time_t ct = get_turn_server_time(server);
+					if(ct != ss->start_time) {
+						ct = ct - ss->start_time;
+						ss->received_rate = (u32bits)(ss->t_received_bytes / ct);
+						ss->sent_rate = (u32bits)(ss->t_sent_bytes / ct);
+						ss->total_rate = ss->received_rate + ss->sent_rate;
+					}
+				}
 				ioa_engine_handle e = turn_server_get_engine(server);
 				if(e && e->verbose) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"session %018llu: delete: realm=<%s>, username=<%s>\n", (unsigned long long)ss->id, (char*)ss->realm_options.name, (char*)ss->username);
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"session %018llu: delete: realm=<%s>, username=<%s>, t_rp=%lu, t_rb=%lu, t_sp=%lu, t_sb=%lu\n", (unsigned long long)(ss->id), (char*)ss->realm_options.name, (char*)ss->username, (unsigned long)(ss->t_received_packets), (unsigned long)(ss->t_received_bytes),(unsigned long)(ss->t_sent_packets),(unsigned long)(ss->t_sent_bytes));
+				}
+				if (server->stats_server_domain_or_ip[0] != '\0') {
+					// Check if permission exists for this session. This is an indicator that
+					// the this session, for a given user, holds the stats for the media packets
+					// sent and received.
+					turn_permission_info *tinfo = get_permission_info(&(((allocation*)a)->addr_to_perm));
+					if (tinfo && tinfo->allocated) {
+						char http_post_data[2048];
+						char http_content[1024];
+						snprintf(http_content,sizeof(http_content)-1,"username=%s&received_packets=%lu&received_bytes=%lu&sent_packets=%lu&sent_bytes=%lu", (char*)ss->username, (unsigned long)(ss->t_received_packets), (unsigned long)(ss->t_received_bytes),(unsigned long)(ss->t_sent_packets),(unsigned long)(ss->t_sent_bytes));
+						snprintf(http_post_data,sizeof(http_post_data)-1,"POST %s HTTP/1.1 \r\nHost: %s\r\nContent-Type: application/x-www-form-urlencoded; charset=UTF-8\r\nContent-Length: %d\r\n\r\n%s",server->stats_server_uri_path, server->stats_server_domain_or_ip, (int)strlen(http_content),http_content);
+						if (server->stats_server_port == 443) {
+							https_post_to_stats_server(ss->id, (char*)ss->username, server->stats_server_ctx, server->stats_server_domain_or_ip, http_post_data);
+						} else {
+							http_post_to_stats_server(ss->id, (char*)ss->username, server->stats_server_port, server->stats_server_domain_or_ip, http_post_data);
+						}
+					}
 				}
 #if !defined(TURN_NO_HIREDIS)
 				{
@@ -3781,6 +3817,147 @@ void* allocate_super_memory_engine_func(ioa_engine_handle e, size_t size, const 
 	if(e)
 		return allocate_super_memory_region_func(e->sm,size,file,func,line);
 	return allocate_super_memory_region_func(NULL,size,file,func,line);
+}
+
+
+// Creates a TCP socket and connects to the stats server
+// The input is either a domain or IP (v4 or v6) address and the TCP port
+static int create_and_connect_tcp_socket_to_stats_server(turnsession_id ss_id, char username[], char domain_or_addr[], int port) {
+	char straddr[INET6_ADDRSTRLEN];
+	int sockfd = -1;
+	ioa_addr addr;
+	
+	if(make_ioa_addr((const u08bits*)domain_or_addr, port, &addr)!=0) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: username: <%s>: Wrong full address format: %s\n", ss_id, username, domain_or_addr);
+		return -2;
+	}
+	printf("addr.ss.sa_family: %d\n", addr.ss.sa_family);
+	switch (addr.ss.sa_family) {
+	case AF_INET:
+		sockfd = socket(AF_INET, SOCK_STREAM, 0);
+		if ( connect(sockfd, (struct sockaddr *) &addr.s4, sizeof(struct sockaddr)) == -1 ) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: username: <%s>: Error (%s): Cannot connect to host %s on port %d.\n", ss_id, username, strerror(errno), inet_ntop(AF_INET, &addr.s4.sin_addr, straddr, sizeof(straddr)), port);
+			close(sockfd);
+			return -3;
+		}
+	break;
+	case AF_INET6:
+		sockfd = socket(AF_INET6, SOCK_STREAM, 0);
+		if ( connect(sockfd, (struct sockaddr *) &addr.s6, sizeof(struct sockaddr_in6)) == -1 ) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: username: <%s>: Error (%s): Cannot connect to host %s on port %d.\n", ss_id, username, strerror(errno), inet_ntop(AF_INET6, &addr.s6.sin6_addr, straddr, sizeof(straddr)), port);
+			close(sockfd);
+			return -4;
+		}
+	break;
+	default:
+		return -5;
+	}
+	return sockfd;
+}
+
+// send stats to stats server via HTTPS POST
+static int https_post_to_stats_server(turnsession_id ss_id, char username[], SSL_CTX *ctx, char domain[], char http_post_data[]) {
+	X509 *cert = NULL;
+	int sockfd = -1;
+	size_t len_http_data = strlen(http_post_data), sent = 0, bytes = 0;
+	char response[1024];
+	
+	// create a new SSL structure for a connection
+	SSL *ssl = SSL_new(ctx);
+	if (ssl) {
+		// create and connect socket
+		if ((sockfd = create_and_connect_tcp_socket_to_stats_server(ss_id, username, domain, 443)) > 0) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: username: <%s>: Successfully made the TCP socket connection to: %s\n", ss_id, username, domain);
+		} else {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: username: <%s>: ERROR - TCP socket connection to: %s failed\n", ss_id, username, domain);
+			SSL_free(ssl);
+			return -1;
+		}
+	
+		// set the socket descriptor as input/output for the TLS/SSL (encrypted) side of ssl
+		SSL_set_fd(ssl, sockfd);
+		
+		// initiate TLS/SSL handshake with the TLS/SSL server
+		if ( SSL_connect(ssl) != 1 ) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: username: <%s>: Could not build a SSL session to: %s\n", ss_id, username, domain);
+			SSL_free(ssl);
+			close(sockfd);
+			sockfd = -1;
+			return -2;
+		} else {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: username: <%s>: Successfully enabled SSL/TLS session to: %s\n", ss_id, username, domain);
+		}
+		// get the X509 certificate of the stats server
+		if ((cert = SSL_get_peer_certificate(ssl)) == NULL) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: username: <%s>: Error - Could not get a certificate from: %s\n", ss_id, username, domain);
+			SSL_free(ssl);
+			close(sockfd);
+			sockfd = -1;
+			return -4;
+		} else {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: username: <%s>: Retrieved the server's certificate from: %s\n", ss_id, username, domain);
+			X509_free(cert);
+		}
+		// POST stats to server
+		while(len_http_data){
+			bytes = SSL_write(ssl, http_post_data+sent , len_http_data);
+			switch(SSL_get_error(ssl, bytes)){
+			case SSL_ERROR_NONE:
+				len_http_data -= bytes;
+				sent += bytes;
+			break;
+			default:
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: username: <%s>: ERROR - SSL write problem\n", ss_id, username);
+				SSL_free(ssl);
+				close(sockfd);
+				return -5;
+			}
+		}
+		/* receive the response */
+		memset(response, '\0', sizeof(response));
+		bytes = SSL_read(ssl, response, sizeof(response));
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: username: <%s>: response: %s\n", ss_id, username, response);
+		SSL_free(ssl);
+		close(sockfd);
+	} else {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: username: <%s>: ERROR - unable to create a new SSL structure for a connection\n", ss_id, username);
+	}
+	return 0;
+}
+
+// send stats to stats server via HTTP POST
+static int http_post_to_stats_server(turnsession_id ss_id, char username[], int port, char domain[], char http_post_data[]) {
+	int sockfd = -1;
+	int len_http_data = strlen(http_post_data), sent = 0, bytes = 0;
+	char response[1024];
+
+	// create a new SSL structure for a connection
+	if ((sockfd = create_and_connect_tcp_socket_to_stats_server(ss_id, username, domain, port)) > 0) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: username: <%s>: Successfully made the TCP connection to: %s\n", ss_id, username, domain);
+	} else {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: username: <%s>: ERROR - TCP connection to: %si failed\n", ss_id, username, domain);
+		return -1;
+	}
+	// POST stats to server
+	if (sockfd > 0) {
+		do {
+			bytes = write(sockfd, http_post_data+sent, len_http_data-sent);
+			if (bytes < 0)
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: username: <%s>: ERROR (%s) writing message to socket\n", ss_id, username, strerror(errno));
+				return -2;
+			if (bytes == 0)
+				break;
+			len_http_data -= bytes;
+			sent+=bytes;
+		} while (sent < len_http_data);
+		
+		/* receive the response */
+		memset(response, '\0', sizeof(response));
+		bytes = read(sockfd,response,sizeof(response));
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: username: <%s>: response: %s\n", ss_id, username, response);
+		close(sockfd);
+	}
+	return 0;
 }
 
 //////////////////////////////////////////////////
