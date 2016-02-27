@@ -168,12 +168,12 @@ static struct http_request* parse_http_request_1(struct http_request* ret, char*
 				}
 
 				const char *path = evhttp_uri_get_path(uri);
-				if(path)
+				if(path && ret)
 					ret->path = strdup(path);
 
 				evhttp_uri_free(uri);
 
-				if(parse_post) {
+				if(parse_post && ret) {
 					char *body = strstr(s+1,"\r\n\r\n");
 					if(body && body[0]) {
 						if(!ret->headers) {
