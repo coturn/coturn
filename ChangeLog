@@ -5,6 +5,7 @@ Version 4.5.0.4 'dan Eider':
 	- RPM: Systemd optimization.
 	- REST API option fixed.
 	- Thread creation error handling fixed.
+	- Issue #36 fixed.
 
 11/15/2015 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.5.0.3 'dan Eider':
