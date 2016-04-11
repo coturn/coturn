@@ -513,7 +513,7 @@ int main(int argc, char **argv)
 	  }
   }
   if (!filtering && !mapping) {
-  	printf("Please use either -f or -m parameter for Filtering or Mapping behavior discovery.");
+  	printf("Please use either -f or -m parameter for Filtering or Mapping behavior discovery.\n");
   }
   socket_closesocket(udp_fd);
 
