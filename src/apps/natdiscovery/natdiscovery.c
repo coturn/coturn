@@ -53,7 +53,7 @@ static int counter = 0;
 
 static int run_stunclient(ioa_addr *remote_addr, ioa_addr *reflexive_addr, ioa_addr *other_addr, int *port, int *rfc5780, int response_port, int change_ip, int change_port, int padding)
 {
-
+	int ret=0;
 
 	if (response_port >= 0) {
 		addr_set_port(&real_local_addr, response_port);
@@ -149,6 +149,12 @@ static int run_stunclient(ioa_addr *remote_addr, ioa_addr *reflexive_addr, ioa_a
 		u08bits *ptr = buf.buf;
 		int recvd = 0;
 		const int to_recv = sizeof(buf.buf);
+		struct timeval tv;
+
+		tv.tv_sec = 3;  /* 3 Secs Timeout */
+		tv.tv_usec = 0;  // Not init'ing this can cause strange errors
+
+		setsockopt(udp_fd, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv,sizeof(struct timeval));
 
 		do {
 			len = recv(udp_fd, ptr, to_recv - recvd, 0);
@@ -213,18 +219,19 @@ static int run_stunclient(ioa_addr *remote_addr, ioa_addr *reflexive_addr, ioa_a
 			}
 		} catch(...) {
 			printf("The response is not a well formed STUN message\n");
+                        ret=1;
 		}
 	}
 	close(udp_fd);
 
-	return 0;
+	return ret;
 }
 
 #else
 
 static int run_stunclient(ioa_addr *remote_addr, ioa_addr *reflexive_addr, ioa_addr *other_addr, int *port, int *rfc5780, int response_port, int change_ip, int change_port, int padding)
 {
-
+	int ret=0;
 	stun_buffer buf;
 
 	udp_fd = socket(remote_addr->ss.sa_family, CLIENT_DGRAM_SOCKET_TYPE, CLIENT_DGRAM_SOCKET_PROTOCOL);
@@ -280,6 +287,12 @@ static int run_stunclient(ioa_addr *remote_addr, ioa_addr *reflexive_addr, ioa_a
 		u08bits *ptr = buf.buf;
 		int recvd = 0;
 		const int to_recv = sizeof(buf.buf);
+		struct timeval tv;
+
+		tv.tv_sec = 3;  /* 3 Secs Timeout */
+		tv.tv_usec = 0;  // Not init'ing this can cause strange errors
+
+		setsockopt(udp_fd, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv,sizeof(struct timeval));
 
 		do {
 			len = recv(udp_fd, ptr, to_recv - recvd, 0);
@@ -288,7 +301,14 @@ static int run_stunclient(ioa_addr *remote_addr, ioa_addr *reflexive_addr, ioa_a
 				ptr += len;
 				break;
 			}
-		} while (len < 0 && ((errno == EINTR) || (errno == EAGAIN)));
+			if (errno == EINTR) 
+				printf("EINTR");
+			if (errno == EAGAIN) 
+				printf("EAGAIN");
+			if (errno == EWOULDBLOCK) 
+				printf("EWOULDBLOCK");
+			
+		} while (len < 0 && (errno == EINTR));
 
 		if (recvd > 0)
 			len = recvd;
@@ -339,34 +359,62 @@ static int run_stunclient(ioa_addr *remote_addr, ioa_addr *reflexive_addr, ioa_a
 				}
 			} else {
 				printf("The response is not a reponse message\n");
+				ret=1;
 			}
 		} else {
 			printf("The response is not a STUN message\n");
+			ret=1;
 		}
 	}
 
 	socket_closesocket(udp_fd);
-	return 0;
+	return ret;
 }
 #endif
 
 //////////////// local definitions /////////////////
 
 static char Usage[] =
-  "Usage: stunclient [options] address\n"
+  "Usage: natdiscovery [options] address\n"
   "Options:\n"
+  "        -m      NAT mapping behavior discovery\n"
+  "        -f      NAT filtering behavior discovery\n"
   "        -p      STUN server port (Default: 3478)\n"
-  "        -L      Local address to use (optional)\n"
-  "        -f      Force RFC 5780 processing\n";
+  "        -L      Local address to use (optional)\n";
 
 //////////////////////////////////////////////////
+
+static void init(ioa_addr *real_local_addr,ioa_addr *remote_addr,int *local_port,int port, int *rfc5780, char* local_addr, char* remote_param)
+{
+  addr_set_any(real_local_addr);
+
+  if(local_addr[0]) {
+      if(make_ioa_addr((const u08bits*)local_addr, 0, real_local_addr)<0) {
+        err(-1,NULL);
+      }
+  }
+
+  *local_port = -1;
+  *rfc5780 = 0;
+
+  if (make_ioa_addr((const u08bits*)remote_param, port, remote_addr) < 0)
+		err(-1, NULL);
+}
+
+static void discoveryresult(const char *decision){
+	printf("\n========================================\n");
+	printf("%s",decision);
+	printf("\n========================================\n");
+}
 
 int main(int argc, char **argv)
 {
   int port = DEFAULT_STUN_PORT;
   char local_addr[256]="\0";
   int c=0;
-  int forceRfc5780 = 0;
+  int mapping = 0;
+  int filtering = 0;
+  int local_port, rfc5780;
   ioa_addr other_addr, reflexive_addr, tmp_addr, remote_addr;
   
 
@@ -379,12 +427,14 @@ int main(int argc, char **argv)
   addr_set_any(&reflexive_addr);
   addr_set_any(&tmp_addr);
 
-
-  while ((c = getopt(argc, argv, "p:L:f")) != -1) {
+  while ((c = getopt(argc, argv, "mfp:L:")) != -1) {
     switch(c) {
+    case 'm':
+      mapping=1;
+      break;
     case 'f':
-	    forceRfc5780 = 1;
-	    break;
+      filtering=1;
+      break;
     case 'p':
       port = atoi(optarg);
       break;
@@ -402,50 +452,68 @@ int main(int argc, char **argv)
     exit(-1);
   }
 
-  addr_set_any(&real_local_addr);
+  init(&real_local_addr, &remote_addr, &local_port, port, &rfc5780, local_addr, argv[optind]);
 
-  if(local_addr[0]) {
-      if(make_ioa_addr((const u08bits*)local_addr, 0, &real_local_addr)<0) {
-        err(-1,NULL);
-      }
+  if (mapping) {
+	run_stunclient(&remote_addr, &reflexive_addr, &other_addr, &local_port, &rfc5780,-1,0,0,0);
+	if (addr_eq(&real_local_addr,&reflexive_addr)){
+		discoveryresult("No NAT! (Endpoint Independent Mapping)");
+	}
+	if(rfc5780) {
+		if(!addr_any(&other_addr)){
+			addr_cpy(&tmp_addr, &reflexive_addr);
+
+			addr_cpy(&remote_addr, &other_addr);
+			addr_set_port(&remote_addr, port);
+
+			run_stunclient(&remote_addr, &reflexive_addr, &other_addr, &local_port, &rfc5780,-1,0,0,0);
+
+			if(addr_eq(&tmp_addr,&reflexive_addr)){
+				discoveryresult("NAT with Enpoint Independent Mapping!"); 
+			} else {
+				addr_cpy(&tmp_addr, &reflexive_addr);
+				addr_cpy(&remote_addr, &other_addr);
+				run_stunclient(&remote_addr, &reflexive_addr, &other_addr, &local_port, &rfc5780,-1,0,0,0);
+				if(addr_eq(&tmp_addr,&reflexive_addr)){
+					discoveryresult("NAT with Address Dependent Mapping!"); 
+				} else {
+					discoveryresult("NAT with Address and Port Dependent Mapping!"); 
+				}
+			};
+
+		  }
+	  }
   }
+  
+  init(&real_local_addr, &remote_addr, &local_port, port, &rfc5780, local_addr, argv[optind]);
 
-  int local_port = -1;
-  int rfc5780 = 0;
+  if (filtering) {
+  	run_stunclient(&remote_addr, &reflexive_addr, &other_addr, &local_port, &rfc5780,-1,0,0,0);
+	if (addr_eq(&real_local_addr,&reflexive_addr)){
+		discoveryresult("No NAT! (Endpoint Independent Mapping)");
+	}
+	if(rfc5780) {
+		if(!addr_any(&other_addr)){
+			int res=0;
+			res=run_stunclient(&remote_addr, &reflexive_addr, &other_addr, &local_port, &rfc5780,-1,1,1,0);
+			if (!res) {
+				discoveryresult("NAT with Enpoint Independent Filtering!"); 
+			} else {
+				res=0;
+				res=run_stunclient(&remote_addr, &reflexive_addr, &other_addr, &local_port, &rfc5780,-1,0,1,0);
+				if(!res){
+					discoveryresult("NAT with Address Dependent Filtering!"); 
+				} else {
+					discoveryresult("NAT with Address and Port Dependent Filtering!"); 
+				}
+			};
 
-  if (make_ioa_addr((const u08bits*)argv[optind], port, &remote_addr) < 0)
-		err(-1, NULL);
-
-
-  run_stunclient(&remote_addr, &reflexive_addr, &other_addr, &local_port, &rfc5780,-1,0,0,0);
-  if (addr_eq(&real_local_addr,&reflexive_addr)){
-  	printf("No NAT! (Endpoint Independent Mapping)");
+		  }
+	  }
   }
-  if(rfc5780 || forceRfc5780) {
-          if(!addr_any(&other_addr)){
-
-  		  addr_cpy(&tmp_addr, &reflexive_addr);
-
-  		  addr_cpy(&remote_addr, &other_addr);
-                  addr_set_port(&remote_addr, port);
-
-	          run_stunclient(&remote_addr, &reflexive_addr, &other_addr, &local_port, &rfc5780,-1,0,0,0);
-
-                  if(addr_eq(&tmp_addr,&reflexive_addr)){
-                          printf("NAT with Enpoint Independent Mapping!\n"); 
-                  } else {
-  		  	  addr_cpy(&tmp_addr, &reflexive_addr);
-  		          addr_cpy(&remote_addr, &other_addr);
-	          	  run_stunclient(&remote_addr, &reflexive_addr, &other_addr, &local_port, &rfc5780,-1,0,0,0);
-			  if(addr_eq(&tmp_addr,&reflexive_addr)){
-				printf("NAT with Address Dependent Mapping!\n"); 
-			  } else {
-				printf("NAT with Address and Port Dependent Mapping!\n"); 
-			  }
-                  };
-          }
+  if (!filtering && !mapping) {
+  	printf("Please use either -f or -m parameter for Filtering or Mapping behavior discovery.");
   }
-
   socket_closesocket(udp_fd);
 
   return 0;
