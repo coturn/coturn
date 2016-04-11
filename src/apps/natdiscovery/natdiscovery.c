@@ -218,7 +218,11 @@ static int run_stunclient(ioa_addr *remote_addr, ioa_addr *reflexive_addr, ioa_a
 				printf("The response is not a reponse message\n");
 			}
 		} catch(...) {
-			printf("The response is not a well formed STUN message\n");
+			if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) {
+				printf("STUN receive timeout..\n");
+			}else{
+				printf("The response is not a well formed STUN message\n");
+			}
                         ret=1;
 		}
 	}
@@ -301,13 +305,6 @@ static int run_stunclient(ioa_addr *remote_addr, ioa_addr *reflexive_addr, ioa_a
 				ptr += len;
 				break;
 			}
-			if (errno == EINTR) 
-				printf("EINTR");
-			if (errno == EAGAIN) 
-				printf("EAGAIN");
-			if (errno == EWOULDBLOCK) 
-				printf("EWOULDBLOCK");
-			
 		} while (len < 0 && (errno == EINTR));
 
 		if (recvd > 0)
@@ -362,7 +359,11 @@ static int run_stunclient(ioa_addr *remote_addr, ioa_addr *reflexive_addr, ioa_a
 				ret=1;
 			}
 		} else {
-			printf("The response is not a STUN message\n");
+			if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) {
+				printf("STUN receive timeout..\n");
+			}else{
+				printf("The response is not a STUN message\n");
+			}
 			ret=1;
 		}
 	}
