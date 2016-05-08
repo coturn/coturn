@@ -4,7 +4,7 @@ CPWD=`pwd`
 
 # Epel installation script
 
-EPEL=epel-release-7-5.noarch
+EPEL=epel-release-7-6.noarch
 EPELRPM=${EPEL}.rpm
 BUILDDIR=~/rpmbuild
 WGETOPTIONS="--no-check-certificate"
