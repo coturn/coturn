@@ -1177,11 +1177,11 @@ static void set_option(int c, char *value)
 	case 'r':
 		set_default_realm_name(value);
 		break;
-	case 'q':
+	case 'Q':
 		turn_params.total_quota = (vint)atoi(value);
 		get_realm(NULL)->options.perf_options.user_quota = atoi(value);
 		break;
-	case 'Q':
+	case 'q':
 		turn_params.user_quota = (vint)atoi(value);
 		get_realm(NULL)->options.perf_options.total_quota = atoi(value);
 		break;
