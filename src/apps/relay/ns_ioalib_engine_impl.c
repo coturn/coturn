@@ -3313,19 +3313,20 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 							return -1;
 						}
 					} else {
+#if TLS_SUPPORTED
 						if(check_tentative_tls(s->fd)) {
 							s->tobeclosed = 1;
 							return -1;
-						} else {
-							s->bev = bufferevent_socket_new(s->e->event_base,
-										s->fd,
-										TURN_BUFFEREVENTS_OPTIONS);
-							debug_ptr_add(s->bev);
-							bufferevent_setcb(s->bev, socket_input_handler_bev, socket_output_handler_bev,
-											eventcb_bev, s);
-							bufferevent_setwatermark(s->bev, EV_READ|EV_WRITE, 0, BUFFEREVENT_HIGH_WATERMARK);
-							bufferevent_enable(s->bev, EV_READ|EV_WRITE); /* Start reading. */
 						}
+#endif
+						s->bev = bufferevent_socket_new(s->e->event_base,
+									s->fd,
+									TURN_BUFFEREVENTS_OPTIONS);
+						debug_ptr_add(s->bev);
+						bufferevent_setcb(s->bev, socket_input_handler_bev, socket_output_handler_bev,
+										eventcb_bev, s);
+						bufferevent_setwatermark(s->bev, EV_READ|EV_WRITE, 0, BUFFEREVENT_HIGH_WATERMARK);
+						bufferevent_enable(s->bev, EV_READ|EV_WRITE); /* Start reading. */
 					}
 					break;
 				case TLS_SCTP_SOCKET:
