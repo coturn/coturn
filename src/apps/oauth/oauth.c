@@ -114,7 +114,10 @@ static int encode_token(const char* server_name,
         encoded_oauth_token etoken;
         ns_bzero(&etoken,sizeof(etoken));
 
-        if (encode_oauth_token((const u08bits *) server_name, &etoken, &key, &ot, (const u08bits*)gcm_nonce) < 0) {
+        // TODO: avoid this hack
+        if (!*gcm_nonce) gcm_nonce='\0';
+
+        if (encode_oauth_token((const u08bits *) server_name, &etoken, &key, &ot,(const u08bits *) gcm_nonce) < 0) {
                 fprintf(stderr, "%s: cannot encode oauth token\n",
                                 __FUNCTION__);
                 return -1;
@@ -152,6 +155,12 @@ static int validate_decode_token(const char* server_name,
 
 static void print_token_body(oauth_token* dot) {
         printf("\n");
+        printf("Token non-encrpyted body:\n");
+        printf("{\n");
+        size_t base64encoded_nonce_length;
+        const char *base64encoded_nonce = base64_encode((unsigned char *)dot->enc_block.nonce, dot->enc_block.nonce_length,&base64encoded_nonce_length); 
+        printf("    nonce: %s\n", base64encoded_nonce);
+        printf("    nonce length: %d\n", (int) dot->enc_block.nonce_length);
         printf("Token encrpyted body:\n");
         printf("{\n");
         printf("    mac key: %s\n", (char*) dot->enc_block.mac_key);
