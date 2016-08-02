@@ -436,7 +436,7 @@ int main(int argc, char **argv)
             printf("{\n");
             printf("    \"access_token\":\"%s\",\n",base64encoded_etoken);
             printf("    \"token_type\":\"pop\",\n");
-            printf("    \"expires\":%d,\n",token_lifetime);
+            printf("    \"expires_in\":%d,\n",token_lifetime);
             printf("    \"kid\":\"%s\",\n",kid);
             printf("    \"key\":\"%s\",\n",mac_key);
             printf("    \"alg\":\%s\n",hmac_alg);
