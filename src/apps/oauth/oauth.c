@@ -192,7 +192,9 @@ const char Usage[] =
   "        -n, --long-term-key-as-rs-alg    Authorization Server Resource Server encryption algorithm\n"
   "        -o, --token-nonce                base64 encoded nonce base64(12 octet) = 16 char\n"
   "        -p, --token-mac-key              base64 encoded MAC key base64(32 octet) = 44 char\n"
-  "        -q, --token-timestamp            timestamp in sec (sec since epoch, Default: actual gmtime)\n"
+  "        -q, --token-timestamp            timestamp in format 64 bit unsigned (Native format - Unix),\n" 
+  "                                         so 48 bit for secs since epoch UTC + 16 bit for 1/64000 fractions of a second.\n" 
+  "                                         An example: 16 bit left shift the unixtimestamp. (Default: actual gmtime)\n"
   "        -r, --token-lifetime             lifetime in sec (Default: 3600)\n"
   "        -t, --token                      base64 encoded encrypted token for validation and decryption\n"
   "        -u, --hmac-alg                   stun client hmac algorithm\n";
@@ -207,8 +209,12 @@ int main(int argc, char **argv)
 
   //init vars with default values
   char gcm_nonce[OAUTH_GCM_NONCE_SIZE+1]="";
+
   char mac_key[OAUTH_MAC_KEY_SIZE+1]="";
-  uint64_t token_timestamp = (unsigned long long)time(NULL) << 16;
+
+  time_t current_time = time(NULL);
+  struct tm* gmt = gmtime(&current_time);
+  uint64_t token_timestamp = (unsigned long long)mktime(gmt) << 16;
   uint32_t token_lifetime = OAUTH_TOKEN_LIFETIME;
  
   //oauth_key
