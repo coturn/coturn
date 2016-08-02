@@ -390,7 +390,7 @@ int main(int argc, char **argv)
   }
 
   if (!(encrypt_flag || decrypt_flag)){
-        fprintf(stderr, "Hey, encrypt or decrypt?\n");
+        fprintf(stderr, "Hey, encrypt or decrypt?\nPlease use -h or --help for the detailed help\n");
          exit(-1);
   }
  
