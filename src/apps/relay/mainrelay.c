@@ -2096,7 +2096,8 @@ static char some_buffer[65536];
 static pthread_mutex_t mutex_buf[256];
 static int mutex_buf_initialized = 0;
 
-static void locking_function(int mode, int n, const char *file, int line) {
+void coturn_locking_function(int mode, int n, const char *file, int line);
+void coturn_locking_function(int mode, int n, const char *file, int line) {
   UNUSED_ARG(file);
   UNUSED_ARG(line);
   if(mutex_buf_initialized && (n < CRYPTO_num_locks())) {
@@ -2108,12 +2109,15 @@ static void locking_function(int mode, int n, const char *file, int line) {
 }
 
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L
-static void id_function(CRYPTO_THREADID *ctid)
+void coturn_id_function(CRYPTO_THREADID *ctid);
+void coturn_id_function(CRYPTO_THREADID *ctid)
 {
+	UNUSED_ARG(ctid);
     CRYPTO_THREADID_set_numeric(ctid, (unsigned long)pthread_self());
 }
 #else
-static unsigned long id_function(void)
+unsigned long coturn_id_function(void);
+unsigned long coturn_id_function(void)
 {
     return (unsigned long)pthread_self();
 }
@@ -2136,12 +2140,12 @@ static int THREAD_setup(void) {
 	mutex_buf_initialized = 1;
 
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L
-	CRYPTO_THREADID_set_callback(id_function);
+	CRYPTO_THREADID_set_callback(coturn_id_function);
 #else
-	CRYPTO_set_id_callback(id_function);
+	CRYPTO_set_id_callback(coturn_id_function);
 #endif
 
-	CRYPTO_set_locking_callback(locking_function);
+	CRYPTO_set_locking_callback(coturn_locking_function);
 #endif
 
 	return 1;
@@ -2230,8 +2234,8 @@ static void adjust_key_file_names(void)
 	if(turn_params.dh_file[0])
 		adjust_key_file_name(turn_params.dh_file,"DH key",0);
 }
-
 static DH *get_dh566(void) {
+
 
 	unsigned char dh566_p[] = {
 					0x36,0x53,0xA8,0x9C,0x3C,0xF1,0xD1,0x1B,0x2D,0xA2,0x64,0xDE,
@@ -2252,9 +2256,13 @@ static DH *get_dh566(void) {
 
 	if ((dh = DH_new()) == NULL )
 		return (NULL );
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 	dh->p = BN_bin2bn(dh566_p, sizeof(dh566_p), NULL );
 	dh->g = BN_bin2bn(dh566_g, sizeof(dh566_g), NULL );
 	if ((dh->p == NULL )|| (dh->g == NULL)){ DH_free(dh); return(NULL);}
+#else
+	DH_set0_pqg(dh, BN_bin2bn(dh566_p, sizeof(dh566_p), NULL ), NULL, BN_bin2bn(dh566_g, sizeof(dh566_g), NULL ));
+#endif
 	return (dh);
 }
 
@@ -2286,9 +2294,13 @@ static DH *get_dh1066(void) {
 
 	if ((dh = DH_new()) == NULL )
 		return (NULL );
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 	dh->p = BN_bin2bn(dh1066_p, sizeof(dh1066_p), NULL );
 	dh->g = BN_bin2bn(dh1066_g, sizeof(dh1066_g), NULL );
 	if ((dh->p == NULL )|| (dh->g == NULL)){ DH_free(dh); return(NULL);}
+#else
+	DH_set0_pqg(dh, BN_bin2bn(dh1066_p, sizeof(dh1066_p), NULL ), NULL, BN_bin2bn(dh1066_g, sizeof(dh1066_g), NULL ));
+#endif
 	return (dh);
 }
 
@@ -2333,9 +2345,13 @@ static DH *get_dh2066(void) {
 
 	if ((dh = DH_new()) == NULL )
 		return (NULL );
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 	dh->p = BN_bin2bn(dh2066_p, sizeof(dh2066_p), NULL );
 	dh->g = BN_bin2bn(dh2066_g, sizeof(dh2066_g), NULL );
 	if ((dh->p == NULL )|| (dh->g == NULL)){ DH_free(dh); return(NULL);}
+#else
+	DH_set0_pqg(dh, BN_bin2bn(dh2066_p, sizeof(dh2066_p), NULL ), NULL, BN_bin2bn(dh2066_g, sizeof(dh2066_g), NULL ));
+#endif
 	return (dh);
 }
 
@@ -2494,7 +2510,9 @@ static void set_ctx(SSL_CTX* ctx, const char *protocol)
 
 		if(set_auto_curve) {
 #if SSL_SESSION_ECDH_AUTO_SUPPORTED
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 			SSL_CTX_set_ecdh_auto(ctx,1);
+#endif
 #endif
 			set_auto_curve = 0;
 		}
