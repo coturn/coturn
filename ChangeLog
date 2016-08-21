@@ -1,6 +1,7 @@
 08/20/2016 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.5.0.4 'dan Eider':
 	- OpenSSL 1.1.0 support added.
+	- CentOS 7 installation updated.
 	- hiredis and mongo compilation configuration fixed
 	(fix provided by Harsha Bellur).
 	- RPM: Systemd optimization.
