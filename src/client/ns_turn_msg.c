@@ -2537,8 +2537,8 @@ static int decode_oauth_token_gcm(const u08bits *server_name, const encoded_oaut
 		}
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
-		EVP_CIPHER_CTX *ctxp = &ctx;
 		EVP_CIPHER_CTX ctx;
+		EVP_CIPHER_CTX *ctxp = &ctx;
 #else
 		EVP_CIPHER_CTX *ctxp = EVP_CIPHER_CTX_new();
 #endif

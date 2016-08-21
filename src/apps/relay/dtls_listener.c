@@ -208,7 +208,11 @@ static int generate_cookie(SSL *ssl, unsigned char *cookie, unsigned int *cookie
   return 1;
 }
 
-static int verify_cookie(SSL *ssl, const unsigned char *cookie, unsigned int cookie_len)
+static int verify_cookie(SSL *ssl,
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+		const
+#endif
+		unsigned char *cookie, unsigned int cookie_len)
 {
   unsigned int resultlength=0;
   unsigned char result[COOKIE_SECRET_LENGTH];
