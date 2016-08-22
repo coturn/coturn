@@ -1,3 +1,9 @@
+coturn (4.5.0.4-1) unstable; urgency=medium
+
+  * OpenSSL compatibility (closes: #828271)
+
+ -- Oleg Moskalenko <mom040267@gmail.com>  Mon, 22 Aug 2016 00:10:03 -0700
+
 coturn (4.5.0.3-1) unstable; urgency=medium
 
   * SSLv3 support removed, closes: #804440
