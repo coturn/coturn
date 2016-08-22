@@ -154,7 +154,7 @@ static char Usage[] =
   "	-z	Per-session packet interval in milliseconds (default is 20 ms).\n"
   "	-u	STUN/TURN user name.\n"
   "	-w	STUN/TURN user password.\n"
-  "	-W	TURN REST API authentication secret. Is not compatible with -A option.\n"
+  "	-W	TURN REST API \"plain text\" secret.\n"
   "	-C	TURN REST API timestamp/username separator symbol (character). The default value is ':'.\n"
   "	-F	<cipher-suite> Cipher suite for TLS/DTLS. Default value is DEFAULT.\n"
   "	-o	<origin> - the ORIGIN STUN attribute value.\n"

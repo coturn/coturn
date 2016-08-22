@@ -1,5 +1,5 @@
 Name:		turnserver
-Version:	4.5.0.3
+Version:	4.5.0.4
 Release:	0%{dist}
 Summary:	Coturn TURN Server
 
@@ -290,6 +290,8 @@ fi
 %{_includedir}/turn/client/TurnMsgLib.h
 
 %changelog
+* Sat Aug 20 2016 Oleg Moskalenko <mom040267@gmail.com>
+  - Sync to 4.5.0.4
 * Sun Oct 11 2015 Oleg Moskalenko <mom040267@gmail.com>
   - Sync to 4.5.0.3
 * Tue Sep 29 2015 Oleg Moskalenko <mom040267@gmail.com>
@@ -300,7 +302,7 @@ fi
   - Sync to 4.4.5.4
 * Sat Jun 20 2015 Oleg Moskalenko <mom040267@gmail.com>
   - Sync to 4.4.5.3
-* Wed May 29 2015 Oleg Moskalenko <mom040267@gmail.com>
+* Fri May 29 2015 Oleg Moskalenko <mom040267@gmail.com>
   - Sync to 4.4.5.2
 * Tue Mar 31 2015 Oleg Moskalenko <mom040267@gmail.com>
   - Sync to 4.4.4.2
@@ -322,11 +324,11 @@ fi
   - Sync to 4.3.2.2
 * Sat Nov 29 2014 Oleg Moskalenko <mom040267@gmail.com>
   - Sync to 4.3.1.3
-* Mon Nov 23 2014 Oleg Moskalenko <mom040267@gmail.com>
+* Mon Nov 24 2014 Oleg Moskalenko <mom040267@gmail.com>
   - Sync to 4.3.1.2
-* Mon Nov 22 2014 Oleg Moskalenko <mom040267@gmail.com>
+* Sat Nov 22 2014 Oleg Moskalenko <mom040267@gmail.com>
   - Sync to 4.3.1.1
-* Thu Nov 07 2014 Oleg Moskalenko <mom040267@gmail.com>
+* Fri Nov 07 2014 Oleg Moskalenko <mom040267@gmail.com>
   - Sync to 4.2.3.1
 * Sun Oct 26 2014 Oleg Moskalenko <mom040267@gmail.com>
   - Sync to 4.2.2.2

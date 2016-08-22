@@ -488,7 +488,7 @@ int recv_buffer(app_ur_conn_info *clnet_info, stun_buffer* message, int sync, in
 
 			if (SSL_get_shutdown(ssl))
 				return -1;
-				rc = 0;
+			rc = 0;
 			do {
 				rc = SSL_read(ssl, message->buf, sizeof(message->buf) - 1);
 				if (rc < 0 && errno == EAGAIN && sync)

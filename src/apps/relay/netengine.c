@@ -1184,7 +1184,7 @@ static void setup_socket_per_endpoint_udp_listener_servers(void)
 			if(turn_params.general_relay_servers_number>1) {
 				++udp_relay_server_index;
 				pthread_t thr;
-				if(pthread_create(&thr, NULL, run_udp_listener_thread, turn_params.listener.aux_udp_services[index][0])<0) {
+				if(pthread_create(&thr, NULL, run_udp_listener_thread, turn_params.listener.aux_udp_services[index][0])) {
 					perror("Cannot create aux listener thread\n");
 					exit(-1);
 				}
@@ -1207,7 +1207,7 @@ static void setup_socket_per_endpoint_udp_listener_servers(void)
 			if(turn_params.general_relay_servers_number>1) {
 				++udp_relay_server_index;
 				pthread_t thr;
-				if(pthread_create(&thr, NULL, run_udp_listener_thread, turn_params.listener.udp_services[index][0])<0) {
+				if(pthread_create(&thr, NULL, run_udp_listener_thread, turn_params.listener.udp_services[index][0])) {
 					perror("Cannot create listener thread\n");
 					exit(-1);
 				}
@@ -1222,7 +1222,7 @@ static void setup_socket_per_endpoint_udp_listener_servers(void)
 				if(turn_params.general_relay_servers_number>1) {
 					++udp_relay_server_index;
 					pthread_t thr;
-					if(pthread_create(&thr, NULL, run_udp_listener_thread, turn_params.listener.udp_services[index+1][0])<0) {
+					if(pthread_create(&thr, NULL, run_udp_listener_thread, turn_params.listener.udp_services[index+1][0])) {
 						perror("Cannot create listener thread\n");
 						exit(-1);
 					}
@@ -1242,7 +1242,7 @@ static void setup_socket_per_endpoint_udp_listener_servers(void)
 			if(turn_params.general_relay_servers_number>1) {
 				++udp_relay_server_index;
 				pthread_t thr;
-				if(pthread_create(&thr, NULL, run_udp_listener_thread, turn_params.listener.dtls_services[index][0])<0) {
+				if(pthread_create(&thr, NULL, run_udp_listener_thread, turn_params.listener.dtls_services[index][0])) {
 					perror("Cannot create listener thread\n");
 					exit(-1);
 				}
@@ -1257,7 +1257,7 @@ static void setup_socket_per_endpoint_udp_listener_servers(void)
 				if(turn_params.general_relay_servers_number>1) {
 					++udp_relay_server_index;
 					pthread_t thr;
-					if(pthread_create(&thr, NULL, run_udp_listener_thread, turn_params.listener.dtls_services[index+1][0])<0) {
+					if(pthread_create(&thr, NULL, run_udp_listener_thread, turn_params.listener.dtls_services[index+1][0])) {
 						perror("Cannot create listener thread\n");
 						exit(-1);
 					}
@@ -1697,7 +1697,7 @@ static void setup_general_relay_servers(void)
 			general_relay_servers[i] = (struct relay_server*)allocate_super_memory_region(sm,sizeof(struct relay_server));
 			general_relay_servers[i]->id = (turnserver_id)i;
 			general_relay_servers[i]->sm = sm;
-			if(pthread_create(&(general_relay_servers[i]->thr), NULL, run_general_relay_thread, general_relay_servers[i])<0) {
+			if(pthread_create(&(general_relay_servers[i]->thr), NULL, run_general_relay_thread, general_relay_servers[i])) {
 				perror("Cannot create relay thread\n");
 				exit(-1);
 			}
@@ -1766,7 +1766,7 @@ static void* run_auth_server_thread(void *arg)
 
 static void setup_auth_server(struct auth_server *as)
 {
-	if(pthread_create(&(as->thr), NULL, run_auth_server_thread, as)<0) {
+	if(pthread_create(&(as->thr), NULL, run_auth_server_thread, as)) {
 		perror("Cannot create auth thread\n");
 		exit(-1);
 	}
@@ -1794,7 +1794,7 @@ static void setup_admin_server(void)
 	adminserver.listen_fd = -1;
 	adminserver.verbose = turn_params.verbose;
 
-	if(pthread_create(&(adminserver.thr), NULL, run_admin_server_thread, &adminserver)<0) {
+	if(pthread_create(&(adminserver.thr), NULL, run_admin_server_thread, &adminserver)) {
 		perror("Cannot create cli thread\n");
 		exit(-1);
 	}

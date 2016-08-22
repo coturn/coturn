@@ -23,8 +23,12 @@ rm -rf turnserver-${TURNVERSION}
 git clone ${TURNSERVER_GIT_URL} --branch ${TURNVERSION} turnserver-${TURNVERSION}
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then
-    cd ${CPWD}
-    exit -1
+	git clone ${TURNSERVER_GIT_URL} turnserver-${TURNVERSION}
+	ER=$?
+	if ! [ ${ER} -eq 0 ] ; then
+    	cd ${CPWD}
+    	exit -1
+    fi
 fi
 
 tar zcf ${BUILDDIR}/SOURCES/turnserver-${TURNVERSION}.tar.gz turnserver-${TURNVERSION}

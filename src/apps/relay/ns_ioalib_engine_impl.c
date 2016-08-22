@@ -1419,6 +1419,7 @@ static void ssl_info_callback(SSL *ssl, int where, int ret) {
     UNUSED_ARG(ssl);
     UNUSED_ARG(where);
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 #if defined(SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS)
     if (0 != (where & SSL_CB_HANDSHAKE_START)) {
     	ioa_socket_handle s = (ioa_socket_handle)SSL_get_app_data(ssl);
@@ -1435,6 +1436,7 @@ static void ssl_info_callback(SSL *ssl, int where, int ret) {
     		}
     	}
     }
+#endif
 #endif
 }
 
@@ -1856,7 +1858,11 @@ int ssl_read(evutil_socket_t fd, SSL* ssl, ioa_network_buffer_handle nbh, int ve
 	BIO* rbio = BIO_new_mem_buf(buffer, old_buffer_len);
 	BIO_set_mem_eof_return(rbio, -1);
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 	ssl->rbio = rbio;
+#else
+	SSL_set0_rbio(ssl,rbio);
+#endif
 
 	int if1 = SSL_is_init_finished(ssl);
 
@@ -1949,7 +1955,11 @@ int ssl_read(evutil_socket_t fd, SSL* ssl, ioa_network_buffer_handle nbh, int ve
 	}
 
 	BIO_free(rbio);
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 	ssl->rbio = NULL;
+#else
+	SSL_set0_rbio(ssl,NULL);
+#endif
 
 	return ret;
 }
@@ -3313,19 +3323,20 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 							return -1;
 						}
 					} else {
+#if TLS_SUPPORTED
 						if(check_tentative_tls(s->fd)) {
 							s->tobeclosed = 1;
 							return -1;
-						} else {
-							s->bev = bufferevent_socket_new(s->e->event_base,
-										s->fd,
-										TURN_BUFFEREVENTS_OPTIONS);
-							debug_ptr_add(s->bev);
-							bufferevent_setcb(s->bev, socket_input_handler_bev, socket_output_handler_bev,
-											eventcb_bev, s);
-							bufferevent_setwatermark(s->bev, EV_READ|EV_WRITE, 0, BUFFEREVENT_HIGH_WATERMARK);
-							bufferevent_enable(s->bev, EV_READ|EV_WRITE); /* Start reading. */
 						}
+#endif
+						s->bev = bufferevent_socket_new(s->e->event_base,
+									s->fd,
+									TURN_BUFFEREVENTS_OPTIONS);
+						debug_ptr_add(s->bev);
+						bufferevent_setcb(s->bev, socket_input_handler_bev, socket_output_handler_bev,
+										eventcb_bev, s);
+						bufferevent_setwatermark(s->bev, EV_READ|EV_WRITE, 0, BUFFEREVENT_HIGH_WATERMARK);
+						bufferevent_enable(s->bev, EV_READ|EV_WRITE); /* Start reading. */
 					}
 					break;
 				case TLS_SCTP_SOCKET:

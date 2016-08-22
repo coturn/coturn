@@ -139,7 +139,10 @@ Options with required values:
 
 -w      STUN/TURN user password.
 
--W      TURN REST API authentication secret. Is not compatible with -A flag.
+-W       TURN REST API secret. The "plain text" secret e.g. "north"
+	that is stored in the value column of the turn_secret
+	table in the database if dynamic, or the static-auth-secret
+	value set in the configuration file if using static.
 
 -C  	This is the timestamp/username separator symbol (character) in 
 	TURN REST API. The default value is :.

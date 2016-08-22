@@ -150,6 +150,8 @@ static int generate_cookie(SSL *ssl, unsigned char *cookie, unsigned int *cookie
   /* Read peer information */
   (void) BIO_dgram_get_peer(SSL_get_wbio(ssl), &peer);
   
+  //TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: family=%u(1)\n",__FUNCTION__,(unsigned)peer.ss.sa_family);
+
   /* Create buffer with peer's address and port */
   length = 0;
   switch (peer.ss.sa_family) {
@@ -171,6 +173,8 @@ static int generate_cookie(SSL *ssl, unsigned char *cookie, unsigned int *cookie
     return 0;
   }
   
+  //TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: family=%u(2)\n",__FUNCTION__,(unsigned)peer.ss.sa_family);
+
   switch (peer.ss.sa_family) {
   case AF_INET:
     memcpy(buffer,
@@ -204,7 +208,11 @@ static int generate_cookie(SSL *ssl, unsigned char *cookie, unsigned int *cookie
   return 1;
 }
 
-static int verify_cookie(SSL *ssl, unsigned char *cookie, unsigned int cookie_len)
+static int verify_cookie(SSL *ssl,
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+		const
+#endif
+		unsigned char *cookie, unsigned int cookie_len)
 {
   unsigned int resultlength=0;
   unsigned char result[COOKIE_SECRET_LENGTH];
@@ -212,11 +220,12 @@ static int verify_cookie(SSL *ssl, unsigned char *cookie, unsigned int cookie_le
   generate_cookie(ssl, result, &resultlength);
   
   if (cookie_len == resultlength && memcmp(result, cookie, resultlength) == 0) {
-    //TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: cookies are OK, length=%u\n",__FUNCTION__,cookie_len);
-    return 1;
+	  //TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: cookies are OK, length=%u\n",__FUNCTION__,cookie_len);
+	  return 1;
+  } else {
+	  //TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: cookies are OK, length=%u\n",__FUNCTION__,cookie_len);
+	  return  0;
   }
-  
-  return 0;
 }
 
 /////////////// io handlers ///////////////////
