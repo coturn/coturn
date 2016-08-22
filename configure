@@ -63,9 +63,14 @@ testlibevent2_comp() {
 }
 
 testhiredis() {
-    HIREDISCFLAGS=
+    for inc in ${INCLUDEDIR}/hiredis /usr/local/include/hiredis /usr/hiredis /usr/include/hiredis
+    do
+        if [ -d ${inc} ] ; then
+            HIREDISCFLAGS="${HIREDISCFLAGS} -I${inc}"
+        fi
+    done
     HIREDISLIBS=-lhiredis
-    ${CC} ${HR_TMPCPROGC} -o ${HR_TMPCPROGB} ${OSCFLAGS} ${DBLIBS} ${HIREDISCFLAGS} ${HIREDISLIBS} 2>>/dev/null
+    ${CC} ${HR_TMPCPROGC} -o ${HR_TMPCPROGB} ${OSCFLAGS} ${DBLIBS} ${HIREDISCFLAGS} ${HIREDISLIBS} ${OSLIBS} 2>>/dev/null
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
 		${ECHO_CMD}
@@ -142,7 +147,7 @@ testlibmysql() {
 }
 
 testlibmongoc() {
-    for inc in ${PREFIX}/libmongoc-1.0 ${PREFIX}/libbson-1.0 /usr/local/include/libmongoc-1.0 /usr/local/include/libbson-1.0 /usr/libmongoc-1.0 /usr/libbson-1.0 /usr/include/libbson-1.0/ /usr/include/libmongoc-1.0/
+    for inc in ${INCLUDEDIR}/libmongoc-1.0 ${INCLUDEDIR}/libbson-1.0 /usr/local/include/libmongoc-1.0 /usr/local/include/libbson-1.0 /usr/libmongoc-1.0 /usr/libbson-1.0 /usr/include/libbson-1.0/ /usr/include/libmongoc-1.0/
     do
       if [ -d ${inc} ] ; then
         MONGO_CFLAGS="${MONGO_CFLAGS} -I${inc}"

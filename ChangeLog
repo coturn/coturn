@@ -1,8 +1,19 @@
+08/20/2016 Oleg Moskalenko <mom040267@gmail.com>
+Version 4.5.0.4 'dan Eider':
+	- OpenSSL 1.1.0 support added.
+	- CentOS 7 installation updated.
+	- hiredis and mongo compilation configuration fixed
+	(fix provided by Harsha Bellur).
+	- RPM: Systemd optimization.
+	- REST API option fixed.
+	- Thread creation error handling fixed.
+	- Issue #36 fixed.
+
 11/15/2015 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.5.0.3 'dan Eider':
 	- SSLv3 support removed. That provides extra security and
 	compatibility with OpenSSL distributions or clones
-	that does not support SSLv3 (like LibreSSL 2.3.0).
+	that do not support SSLv3 (like LibreSSL 2.3.0).
 	This fix is required for fresh FreeBSD and for Debian unstable.
 	- Compilation and configuration cleaning.
 	- Fix for non-interactive shells.

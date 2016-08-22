@@ -90,7 +90,7 @@ extern int IS_TURN_SERVER;
 
 #endif
 
-#if defined(TURN_NO_DTLS) || !defined(DTLS_CTRL_LISTEN)
+#if defined(TURN_NO_DTLS) || (!defined(DTLS_CTRL_LISTEN) && (OPENSSL_VERSION_NUMBER < 0x10100000L))
 
 	#define DTLS_SUPPORTED 0
 	#define DTLSv1_2_SUPPORTED 0

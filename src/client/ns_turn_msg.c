@@ -176,19 +176,28 @@ int stun_produce_integrity_key_str(u08bits *uname, u08bits *realm, u08bits *upwd
 	str[strl]=0;
 
 	if(shatype == SHATYPE_SHA256) {
-#if !defined(OPENSSL_NO_SHA256) && defined(SHA256_DIGEST_LENGTH)
 		unsigned int keylen = 0;
+#if !defined(OPENSSL_NO_SHA256) && defined(SHA256_DIGEST_LENGTH)
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 		EVP_MD_CTX ctx;
 		EVP_DigestInit(&ctx,EVP_sha256());
 		EVP_DigestUpdate(&ctx,str,strl);
 		EVP_DigestFinal(&ctx,key,&keylen);
 		EVP_MD_CTX_cleanup(&ctx);
 #else
+		EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+		EVP_DigestInit(ctx,EVP_sha256());
+		EVP_DigestUpdate(ctx,str,strl);
+		EVP_DigestFinal(ctx,key,&keylen);
+		EVP_MD_CTX_free(ctx);
+#endif
+#else
 		fprintf(stderr,"SHA256 is not supported\n");
 		return -1;
 #endif
 	} else if(shatype == SHATYPE_SHA384) {
 #if !defined(OPENSSL_NO_SHA384) && defined(SHA384_DIGEST_LENGTH)
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 		unsigned int keylen = 0;
 		EVP_MD_CTX ctx;
 		EVP_DigestInit(&ctx,EVP_sha384());
@@ -196,17 +205,34 @@ int stun_produce_integrity_key_str(u08bits *uname, u08bits *realm, u08bits *upwd
 		EVP_DigestFinal(&ctx,key,&keylen);
 		EVP_MD_CTX_cleanup(&ctx);
 #else
+		unsigned int keylen = 0;
+		EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+		EVP_DigestInit(ctx,EVP_sha384());
+		EVP_DigestUpdate(ctx,str,strl);
+		EVP_DigestFinal(ctx,key,&keylen);
+		EVP_MD_CTX_free(ctx);
+#endif
+#else
 		fprintf(stderr,"SHA384 is not supported\n");
 		return -1;
 #endif
 	} else if(shatype == SHATYPE_SHA512) {
 #if !defined(OPENSSL_NO_SHA512) && defined(SHA512_DIGEST_LENGTH)
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 		unsigned int keylen = 0;
 		EVP_MD_CTX ctx;
 		EVP_DigestInit(&ctx,EVP_sha512());
 		EVP_DigestUpdate(&ctx,str,strl);
 		EVP_DigestFinal(&ctx,key,&keylen);
 		EVP_MD_CTX_cleanup(&ctx);
+#else
+		unsigned int keylen = 0;
+		EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+		EVP_DigestInit(ctx,EVP_sha512());
+		EVP_DigestUpdate(ctx,str,strl);
+		EVP_DigestFinal(ctx,key,&keylen);
+		EVP_MD_CTX_free(ctx);
+#endif
 #else
 		fprintf(stderr,"SHA512 is not supported\n");
 		return -1;
@@ -253,6 +279,7 @@ static void generate_enc_password(const char* pwd, char *result, const unsigned 
 	result[3+PWD_SALT_SIZE+PWD_SALT_SIZE]='$';
 	unsigned char* out = (unsigned char*)(result+3+PWD_SALT_SIZE+PWD_SALT_SIZE+1);
 	{
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 		EVP_MD_CTX ctx;
 #if !defined(OPENSSL_NO_SHA256) && defined(SHA256_DIGEST_LENGTH)
 		EVP_DigestInit(&ctx,EVP_sha256());
@@ -268,6 +295,23 @@ static void generate_enc_password(const char* pwd, char *result, const unsigned 
 			readable_string(hash,out,keylen);
 		}
 		EVP_MD_CTX_cleanup(&ctx);
+#else
+		EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+#if !defined(OPENSSL_NO_SHA256) && defined(SHA256_DIGEST_LENGTH)
+		EVP_DigestInit(ctx,EVP_sha256());
+#else
+		EVP_DigestInit(ctx,EVP_sha1());
+#endif
+		EVP_DigestUpdate(ctx,salt,PWD_SALT_SIZE);
+		EVP_DigestUpdate(ctx,pwd,strlen(pwd));
+		{
+			unsigned char hash[129];
+			unsigned int keylen = 0;
+			EVP_DigestFinal(ctx,hash,&keylen);
+			readable_string(hash,out,keylen);
+		}
+		EVP_MD_CTX_free(ctx);
+#endif
 	}
 }
 
@@ -2400,21 +2444,26 @@ static int encode_oauth_token_gcm(const u08bits *server_name, encoded_oauth_toke
 		if(!cipher)
 			return -1;
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 		EVP_CIPHER_CTX ctx;
-		EVP_CIPHER_CTX_init(&ctx);
+		EVP_CIPHER_CTX *ctxp = &ctx;
+#else
+		EVP_CIPHER_CTX *ctxp = EVP_CIPHER_CTX_new();
+#endif
+		EVP_CIPHER_CTX_init(ctxp);
 
 		/* Initialize the encryption operation. */
-		if(1 != EVP_EncryptInit_ex(&ctx, cipher, NULL, NULL, NULL))
+		if(1 != EVP_EncryptInit_ex(ctxp, cipher, NULL, NULL, NULL))
 			return -1;
 
-		EVP_CIPHER_CTX_set_padding(&ctx,1);
+		EVP_CIPHER_CTX_set_padding(ctxp,1);
 
 		/* Set IV length if default 12 bytes (96 bits) is not appropriate */
-		if(1 != EVP_CIPHER_CTX_ctrl(&ctx, EVP_CTRL_GCM_SET_IVLEN, OAUTH_GCM_NONCE_SIZE, NULL))
+		if(1 != EVP_CIPHER_CTX_ctrl(ctxp, EVP_CTRL_GCM_SET_IVLEN, OAUTH_GCM_NONCE_SIZE, NULL))
 			return -1;
 
 		/* Initialize key and IV */
-		if(1 != EVP_EncryptInit_ex(&ctx, NULL, NULL, (const unsigned char *)key->as_rs_key, nonce))
+		if(1 != EVP_EncryptInit_ex(ctxp, NULL, NULL, (const unsigned char *)key->as_rs_key, nonce))
 			return -1;
 
 		int outl=0;
@@ -2423,7 +2472,7 @@ static int encode_oauth_token_gcm(const u08bits *server_name, encoded_oauth_toke
 		/* Provide any AAD data. This can be called zero or more times as
 		 * required
 		 */
-		if(1 != my_EVP_EncryptUpdate(&ctx, NULL, &outl, server_name, (int)sn_len))
+		if(1 != my_EVP_EncryptUpdate(ctxp, NULL, &outl, server_name, (int)sn_len))
 			return -1;
 
 		outl=0;
@@ -2433,19 +2482,23 @@ static int encode_oauth_token_gcm(const u08bits *server_name, encoded_oauth_toke
 		unsigned char *start_field = orig_field + OAUTH_GCM_NONCE_SIZE + 2;
 		len -= OAUTH_GCM_NONCE_SIZE + 2;
 
-		if(1 != my_EVP_EncryptUpdate(&ctx, encoded_field, &outl, start_field, (int)len))
+		if(1 != my_EVP_EncryptUpdate(ctxp, encoded_field, &outl, start_field, (int)len))
 			return -1;
 
 		int tmp_outl = 0;
-		EVP_EncryptFinal_ex(&ctx, encoded_field + outl, &tmp_outl);
+		EVP_EncryptFinal_ex(ctxp, encoded_field + outl, &tmp_outl);
 		outl += tmp_outl;
 
-		EVP_CIPHER_CTX_ctrl(&ctx, EVP_CTRL_GCM_GET_TAG, OAUTH_GCM_TAG_SIZE, encoded_field + outl);
+		EVP_CIPHER_CTX_ctrl(ctxp, EVP_CTRL_GCM_GET_TAG, OAUTH_GCM_TAG_SIZE, encoded_field + outl);
 		outl += OAUTH_GCM_TAG_SIZE;
 
 		etoken->size = 2 + OAUTH_GCM_NONCE_SIZE + outl;
 
-		EVP_CIPHER_CTX_cleanup(&ctx);
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+		EVP_CIPHER_CTX_cleanup(ctxp);
+#else
+		EVP_CIPHER_CTX_free(ctxp);
+#endif
 
 		return 0;
 	}
@@ -2483,10 +2536,15 @@ static int decode_oauth_token_gcm(const u08bits *server_name, const encoded_oaut
 			return -1;
 		}
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 		EVP_CIPHER_CTX ctx;
-		EVP_CIPHER_CTX_init(&ctx);
+		EVP_CIPHER_CTX *ctxp = &ctx;
+#else
+		EVP_CIPHER_CTX *ctxp = EVP_CIPHER_CTX_new();
+#endif
+		EVP_CIPHER_CTX_init(ctxp);
 		/* Initialize the decryption operation. */
-		if(1 != EVP_DecryptInit_ex(&ctx, cipher, NULL, NULL, NULL)) {
+		if(1 != EVP_DecryptInit_ex(ctxp, cipher, NULL, NULL, NULL)) {
 			OAUTH_ERROR("%s: Cannot initialize decryption\n",__FUNCTION__);
 			return -1;
 		}
@@ -2494,20 +2552,20 @@ static int decode_oauth_token_gcm(const u08bits *server_name, const encoded_oaut
 		//EVP_CIPHER_CTX_set_padding(&ctx,1);
 
 		/* Set IV length if default 12 bytes (96 bits) is not appropriate */
-		if(1 != EVP_CIPHER_CTX_ctrl(&ctx, EVP_CTRL_GCM_SET_IVLEN, nonce_len, NULL)) {
+		if(1 != EVP_CIPHER_CTX_ctrl(ctxp, EVP_CTRL_GCM_SET_IVLEN, nonce_len, NULL)) {
 			OAUTH_ERROR("%s: Cannot set nonce length\n",__FUNCTION__);
 			return -1;
 		}
 
 		/* Initialize key and IV */
-		if(1 != EVP_DecryptInit_ex(&ctx, NULL, NULL, (const unsigned char *)key->as_rs_key, nonce)) {
+		if(1 != EVP_DecryptInit_ex(ctxp, NULL, NULL, (const unsigned char *)key->as_rs_key, nonce)) {
 			OAUTH_ERROR("%s: Cannot set nonce\n",__FUNCTION__);
 			return -1;
 		}
 
 		/* Set expected tag value. A restriction in OpenSSL 1.0.1c and earlier
 		  +         * required the tag before any AAD or ciphertext */
-		EVP_CIPHER_CTX_ctrl (&ctx, EVP_CTRL_GCM_SET_TAG, OAUTH_GCM_TAG_SIZE, tag);
+		EVP_CIPHER_CTX_ctrl (ctxp, EVP_CTRL_GCM_SET_TAG, OAUTH_GCM_TAG_SIZE, tag);
 
 		int outl=0;
 		size_t sn_len = strlen((const char*)server_name);
@@ -2515,24 +2573,32 @@ static int decode_oauth_token_gcm(const u08bits *server_name, const encoded_oaut
 		/* Provide any AAD data. This can be called zero or more times as
 		 * required
 		 */
-		if(1 != my_EVP_DecryptUpdate(&ctx, NULL, &outl, server_name, (int)sn_len)) {
+		if(1 != my_EVP_DecryptUpdate(ctxp, NULL, &outl, server_name, (int)sn_len)) {
 			OAUTH_ERROR("%s: Cannot decrypt update server_name: %s, len=%d\n",__FUNCTION__,server_name,(int)sn_len);
 			return -1;
 		}
-		if(1 != my_EVP_DecryptUpdate(&ctx, decoded_field, &outl, encoded_field, (int)encoded_field_size)) {
+		if(1 != my_EVP_DecryptUpdate(ctxp, decoded_field, &outl, encoded_field, (int)encoded_field_size)) {
 			OAUTH_ERROR("%s: Cannot decrypt update\n",__FUNCTION__);
 			return -1;
 		}
 
 		int tmp_outl = 0;
-		if(EVP_DecryptFinal_ex(&ctx, decoded_field + outl, &tmp_outl)<1) {
-			EVP_CIPHER_CTX_cleanup(&ctx);
+		if(EVP_DecryptFinal_ex(ctxp, decoded_field + outl, &tmp_outl)<1) {
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+			EVP_CIPHER_CTX_cleanup(ctxp);
+#else
+			EVP_CIPHER_CTX_free(ctxp);
+#endif
 			OAUTH_ERROR("%s: token integrity check failed\n",__FUNCTION__);
 			return -1;
 		}
 		outl += tmp_outl;
 
-		EVP_CIPHER_CTX_cleanup(&ctx);
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+			EVP_CIPHER_CTX_cleanup(ctxp);
+#else
+			EVP_CIPHER_CTX_free(ctxp);
+#endif
 
 		size_t len = 0;
 
