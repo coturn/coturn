@@ -1,3 +1,9 @@
+coturn (4.5.0.4-4) unstable; urgency=medium
+
+  * trying to fix piuparts report
+
+ -- Oleg Moskalenko <mom040267@gmail.com>  Tue, 23 Aug 2016 22:03:18 -0700
+
 coturn (4.5.0.4-3) unstable; urgency=medium
 
   * trying to fix piuparts report
