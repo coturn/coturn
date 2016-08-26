@@ -226,6 +226,7 @@ static MYSQL *get_mydb_connection(void) {
 			} else {
 				if(co->connect_timeout)
 					mysql_options(mydbconnection,MYSQL_OPT_CONNECT_TIMEOUT,&(co->connect_timeout));
+					mysql_options(mydbconnection,MYSQL_OPT_READ_TIMEOUT,&(co->connect_timeout));
 				if(co->ca || co->capath || co->cert || co->cipher || co->key) {
 					mysql_ssl_set(mydbconnection, co->key, co->cert, co->ca, co->capath, co->cipher);
 				}
