@@ -234,7 +234,7 @@ static int run_stunclient(const char* rip, int rport, int *port, int *rfc5780, i
 					printf("The response is an error %d (%s)\n", err_code, reason.c_str());
 				}
 			} else {
-				printf("The response is not a reponse message\n");
+				printf("The response is not a response message\n");
 			}
 		} catch(...) {
 			printf("The response is not a well formed STUN message\n");
@@ -386,7 +386,7 @@ static int run_stunclient(const char* rip, int rport, int *port, int *rfc5780, i
 					}
 				}
 			} else {
-				printf("The response is not a reponse message\n");
+				printf("The response is not a response message\n");
 			}
 		} else {
 			printf("The response is not a STUN message\n");

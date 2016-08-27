@@ -161,7 +161,7 @@ See the examples in the "examples/scripts" directory.
     
 turnutils_peer - a simple UDP-only echo backend server.  
   
-  SYNOPSYS
+  SYNOPSIS
 
 $ turnutils_peer [-v] [options]
   

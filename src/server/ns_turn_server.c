@@ -2610,7 +2610,7 @@ static int handle_turn_channel_bind(turn_turnserver *server,
 					} else {
 						if (!addr_eq_no_port(&peer_addr, &(tinfo->addr))) {
 							*err_code = 500;
-							*reason = (const u08bits *)"Wrong permission info and peer addr conbination";
+							*reason = (const u08bits *)"Wrong permission info and peer addr combination";
 						} else if (chn->port != addr_get_port(&peer_addr)) {
 							*err_code = 500;
 							*reason = (const u08bits *)"Wrong port number";
