@@ -48,6 +48,11 @@
 #include <openssl/opensslv.h>
 #include <openssl/rand.h>
 
+#if (defined LIBRESSL_VERSION_NUMBER && OPENSSL_VERSION_NUMBER == 0x20000000L)
+#undef OPENSSL_VERSION_NUMBER
+#define OPENSSL_VERSION_NUMBER 0x1000107FL
+#endif
+
 /////////////// extern definitions /////////////////////
 
 int clmessage_length=100;

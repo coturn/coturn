@@ -30,6 +30,11 @@
 
 #include "mainrelay.h"
 
+#if (defined LIBRESSL_VERSION_NUMBER && OPENSSL_VERSION_NUMBER == 0x20000000L)
+#undef OPENSSL_VERSION_NUMBER
+#define OPENSSL_VERSION_NUMBER 0x1000107FL
+#endif
+
 ////// TEMPORARY data //////////
 
 static int use_lt_credentials = 0;
@@ -1662,7 +1667,7 @@ static void print_features(unsigned long mfn)
 #endif
 	}
 
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "OpenSSL compile-time version: %s\n",OPENSSL_VERSION_TEXT);
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "OpenSSL compile-time version: %s (0x%lx)\n",OPENSSL_VERSION_TEXT,OPENSSL_VERSION_NUMBER);
 
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\n");
 

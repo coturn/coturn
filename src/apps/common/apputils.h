@@ -39,6 +39,11 @@
 #include "ns_turn_msg_defs.h"
 #include "ns_turn_ioalib.h"
 
+#if (defined LIBRESSL_VERSION_NUMBER && OPENSSL_VERSION_NUMBER == 0x20000000L)
+#undef OPENSSL_VERSION_NUMBER
+#define OPENSSL_VERSION_NUMBER 0x1000107FL
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
