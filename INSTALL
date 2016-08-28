@@ -1006,18 +1006,18 @@ have such a feature as "connection string", the TURN server parses the
 connection string and converts it into MySQL database connection parameter. 
 The format of the MySQL connection string is:
 
-"host=<host> dbname=<database-name> user=<database-user> password=<database-user-password> port=<port> connect_timeout=<seconds>"
+"host=<host> dbname=<database-name> user=<database-user> password=<database-user-password> port=<port> connect_timeout=<seconds> read_timeout=<seconds>"
 
 (all parameters are optional)
 
 So, an example of the MySQL database parameter in the TURN server command 
 line would be:
 
---mysql-userdb="host=localhost dbname=coturn user=turn password=turn connect_timeout=30"
+--mysql-userdb="host=localhost dbname=coturn user=turn password=turn connect_timeout=30 read_timeout=30"
 
 Or in the turnserver.conf file:
 
-mysql-userdb="host=localhost dbname=coturn user=turn password=turn connect_timeout=30"
+mysql-userdb="host=localhost dbname=coturn user=turn password=turn connect_timeout=30 read_timeout=30"
 
 If you have to use a secure MySQL connection (SSL) then you have to use also
 the optional connection string parameters for the secure communications:

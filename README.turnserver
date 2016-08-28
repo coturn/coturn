@@ -108,7 +108,7 @@ User database settings:
 		secret-based timed authentication in TURN RESP API.
 		The connection string format is like that:
 		 
-		"host=<host> dbname=<dbname> user=<db-user> password=<db-user-password> connect_timeout=<seconds>"
+		"host=<host> dbname=<dbname> user=<db-user> password=<db-user-password> connect_timeout=<seconds> read_timeout=<seconds>"
 
 		See the INSTALL file for more explanations and examples.
 		

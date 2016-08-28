@@ -1,7 +1,8 @@
 08/27/2016 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.5.0.5 'dan Eider':
 	- Typos in the text fixed.
-	- LibreSSL compatibility fixed. 
+	- LibreSSL compatibility fixed.
+	- "read_timeout" option support for MySQL. 
 	
 08/20/2016 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.5.0.4 'dan Eider':
