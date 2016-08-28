@@ -41,7 +41,7 @@
 
 #include <event2/thread.h>
 
-#include <openssl/ssl.h>
+#include "ns_turn_openssl.h"
 
 #include "ns_turn_ioalib.h"
 #include "turn_ports.h"

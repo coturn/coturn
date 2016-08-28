@@ -44,7 +44,7 @@
 
 #include <event2/listener.h>
 
-#include <openssl/err.h>
+#include "ns_turn_openssl.h"
 
 #if !defined(TURN_NO_HIREDIS)
 #include "hiredis_libevent2.h"
@@ -52,11 +52,6 @@
 
 #if !defined(TURN_NO_SCTP) && defined(TURN_SCTP_INCLUDE)
 #include TURN_SCTP_INCLUDE
-#endif
-
-#if (defined LIBRESSL_VERSION_NUMBER && OPENSSL_VERSION_NUMBER == 0x20000000L)
-#undef OPENSSL_VERSION_NUMBER
-#define OPENSSL_VERSION_NUMBER 0x1000107FL
 #endif
 
 /* Compilation test:

@@ -33,16 +33,7 @@
 
 ///////////// Security functions implementation from ns_turn_msg.h ///////////
 
-#include <openssl/md5.h>
-#include <openssl/hmac.h>
-#include <openssl/ssl.h>
-#include <openssl/err.h>
-#include <openssl/rand.h>
-
-#if (defined LIBRESSL_VERSION_NUMBER && OPENSSL_VERSION_NUMBER == 0x20000000L)
-#undef OPENSSL_VERSION_NUMBER
-#define OPENSSL_VERSION_NUMBER 0x1000107FL
-#endif
+#include "ns_turn_openssl.h"
 
 ///////////
 

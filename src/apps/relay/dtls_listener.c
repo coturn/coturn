@@ -34,15 +34,7 @@
 #include "dtls_listener.h"
 #include "ns_ioalib_impl.h"
 
-#include <openssl/ssl.h>
-#include <openssl/bio.h>
-#include <openssl/err.h>
-#include <openssl/rand.h>
-
-#if (defined LIBRESSL_VERSION_NUMBER && OPENSSL_VERSION_NUMBER == 0x20000000L)
-#undef OPENSSL_VERSION_NUMBER
-#define OPENSSL_VERSION_NUMBER 0x1000107FL
-#endif
+#include "ns_turn_openssl.h"
 
 #include <pthread.h>
 
