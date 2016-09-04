@@ -25,13 +25,17 @@ The compiled binary image of this program is located in bin/ subdirectory.
 STUN/TURN protocol implementation. This utility is used only for the compilation
 check procedure, it is not copied to the installation destination.
 
-
 In the "examples/scripts" subdirectory, you will find the examples of command lines to be used 
 to run the programs. The scripts are meant to be run from examples/ subdirectory, for example:
 
 $ cd examples
 
 $ ./scripts/secure_relay.sh
+
+5.	turnutils_natdiscovery: a utility that provides NAT behavior discovery 
+according RFC5780. This utility discovers the actual NAT Mapping and Filtering 
+behavior. Be aweare that at least two different listening IP addresses should 
+be configured to be able to work properly!
 
 =====================================
     
@@ -230,6 +234,43 @@ Usage:
 
 $ turnutils_rfc5769check
 
+=====================================
+
+  NAME
+
+turnutils_natdiscovery - a utility that discovers NAT mapping and filtering 
+behavior according RFC5780.
+
+  SYNOPSIS
+
+$ turnutils_natdiscovery [options] <STUN-Server-FQDN-or-IP-address>
+
+  DESCRIPTION
+
+turnutils_natdiscovery discovers the NAT Mapping and Filtering behavior, to 
+determine if that NAT is currently using Endpoint-Independent, 
+Address-Dependent, or Address and Port-Dependent Mapping and/or to determine if 
+that NAT is currently using Endpoint-Independent, Address-Dependent, or Address 
+and Port-Dependent Filtering. 
+
+Use either -m and/or -f flag to discover NAT Mapping and/or Filtering.
+
+Flags:
+
+-m  NAT mapping behavior discovery
+
+-f  NAT filtering behavior discovery
+
+Options with required values:
+
+-p  STUN server port (Default: 3478)
+
+-L  Local address to use (optional)
+
+Usage:
+
+$ turnutils_natdiscovery -m -f stun.example.com
+
 ===================================
  
 DOCS
@@ -335,3 +376,5 @@ SEE ALSO
 	Federico Pinna <fpinna@vivocha.com>
 
 	Bradley T. Hughes <bradleythughes@fastmail.fm>
+
+        Mihaly Meszaros <bakfitty@gmail.com>
