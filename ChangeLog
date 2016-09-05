@@ -1,12 +1,9 @@
-09/04/2016 Mihaly Meszaros <bakfitty@gmail.com>
-Version 4.5.0.6 'dan Eider':
-	- new NAT behavior discovery utilty.
-
 08/27/2016 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.5.0.5 'dan Eider':
 	- Typos in the text fixed.
 	- LibreSSL compatibility fixed.
-	- "read_timeout" option support for MySQL. 
+	- "read_timeout" option support for MySQL.
+	- new NAT behavior discovery utilty. 
 
 08/20/2016 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.5.0.4 'dan Eider':
