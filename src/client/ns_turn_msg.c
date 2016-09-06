@@ -172,15 +172,16 @@ int stun_produce_integrity_key_str(u08bits *uname, u08bits *realm, u08bits *upwd
 	str[strl]=0;
 
 	if(shatype == SHATYPE_SHA256) {
-		unsigned int keylen = 0;
 #if !defined(OPENSSL_NO_SHA256) && defined(SHA256_DIGEST_LENGTH)
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
+		unsigned int keylen = 0;
 		EVP_MD_CTX ctx;
 		EVP_DigestInit(&ctx,EVP_sha256());
 		EVP_DigestUpdate(&ctx,str,strl);
 		EVP_DigestFinal(&ctx,key,&keylen);
 		EVP_MD_CTX_cleanup(&ctx);
 #else
+		unsigned int keylen = 0;
 		EVP_MD_CTX *ctx = EVP_MD_CTX_new();
 		EVP_DigestInit(ctx,EVP_sha256());
 		EVP_DigestUpdate(ctx,str,strl);
