@@ -37,6 +37,16 @@ according RFC5780. This utility discovers the actual NAT Mapping and Filtering
 behavior. Be aweare that at least two different listening IP addresses should 
 be configured to be able to work properly!
 
+6.	turnutils_oauth: a utility that provides OAuth access_token 
+generation(AEAD encryption), validation and decryption. This utility inputs 
+all the keys and lifetimes and any related informations that needed for 
+creation and validationi of an access_token. It outputs a JSON with all OAuth 
+PoP parameters that need to pass to the client. Output is generated accoriding 
+RFC7635 Appendix B, Figure 8. 
+
+For more details, and for the access_token structure, read rfc7635.
+
+
 =====================================
     
   NAME
@@ -270,6 +280,71 @@ Options with required values:
 Usage:
 
 $ turnutils_natdiscovery -m -f stun.example.com
+
+=====================================
+
+  NAME
+
+turnutils_oauth - a utility that helps OAuth access_token generation/encryption and validation/decyption
+
+  SYNOPSIS
+
+$ turnutils_oauth [options]
+
+  DESCRIPTION
+
+turnutils_oauth utilitiy provides help in OAuth access_token encryption and/or 
+decryption with AEAD (Atuthenticated Encryption with Associated Data). It helps 
+for an Auth Server in access_token creation, and also for debuging purposes it 
+helps the access_token validation and decryption. This utility inputs all the 
+keys and lifetimes and any related informations that are needed for encryption 
+or decryption of an access_token. It outputs a JSON with all OAuth PoP 
+parameters that need to pass to the client. Output is generated accoriding 
+RFC7635 Appendix B, Figure 8. For more details, and for the access_token 
+structure, read rfc7635.
+
+Use either -e and/or -d flag to encrypt or decrypt access_token.
+
+Flags:
+
+-h, --help     usage
+
+-v, --verbose  verbose mode
+
+-e, --encrypt  encrypt token
+
+-d, --decrypt  decrypt validate token
+
+Options with required values:
+
+-i, --server-name              server name (max. 255 char)
+
+-j, --long-term-key-id         long term key id (max. 32 char)
+
+-k, --long-term-key            base64 encoded long term key
+
+-l  --long-term-key-timestamp  long term key timestamp (sec since epoch)
+
+-m, --long-term-key-lifetime   long term key lifetime in sec
+
+-n, --long-term-key-as-rs-alg  Authorization Server Resource Server encryption algorithm
+
+-o, --token-nonce              base64 encoded nonce base64(12 octet) = 16 char
+
+-p, --token-mac-key            base64 encoded MAC key base64(32 octet) = 44 char
+
+-q, --token-timestamp          timestamp in format 64 bit unsigned (Native format - Unix),
+                               so 48 bit for secs since epoch UTC + 16 bit for 1/64000 fractions of a second.
+                               An example: 16 bit left shift the unixtimestamp. (Default: actual gmtime)
+-r, --token-lifetime           lifetime in sec (Default: 3600)
+
+-t, --token                    base64 encoded encrypted token for validation and decryption
+
+-u, --hmac-alg                 stun client hmac algorithm
+
+Usage:
+
+$ turnutils_natdiscovery
 
 ===================================
  
