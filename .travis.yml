@@ -1,0 +1,38 @@
+language: c
+
+addons:
+  apt:
+    packages:
+    - debhelper
+    - dpkg-dev
+    - libssl-dev
+    - libevent-dev
+    - sqlite3
+    - libsqlite3-dev
+    - postgresql-client
+    - libpq-dev
+    - mysql-client
+    - libmysqlclient-dev
+    - libhiredis-dev
+
+before_install:
+- if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; brew outdated openssl ||
+  brew upgrade openssl; brew install libevent mysql sqlite hiredis; fi
+
+matrix:
+  include:
+  - os: linux
+    sudo: required
+  - os: linux
+    dist: trusty
+    sudo: required
+  - os: osx
+    osx_image: xcode7
+  - os: osx
+    osx_image: xcode6
+
+notifications:
+  slack:
+    secure: N12+BCGiTDzfKkYnjF+666ZhREuBncfPpWge9AdG6DwusyGza+hNrjfRRHjF8WfGQj+X8ogFoF1lVFDC27lwH1ElOv4GJHShnGbtsWv10Va1GdDafDeC5JorUNWHlsDHC1AZkNUj9n2KAZTSbN076gUaNhwsXob/B1MEnNKXibitDdyE2FC6wCRu6ckXM4UiEXoG/a7lHS4m9dKt2xDUNK8vwhtRdCkip9YW8rUFdiwqMScdr9OdF8YWiKJIUYV7LC7eXF0YqslWTJkeIMEEnvotLs4JNytFz1wNPzTiY8hM4nPM0YwC1oPhFWlBodQ1x+dBX3vxitnque0gVhj/p6Eij0amM3tirgONw/r2V9JToE6vfh6ERAWIVzI/+tmqcEbZZvwcgafZphlT9W/8Gzy/av/zTpdfaTUEYnsuQRCA87FPIFAAVjzSmT3llY6WQXFB+UU0T0ZE42PkPqhR3zpjqt7nDXf2g1ZY5ZRkWRvznyqBdrVx0Ld8AKnv/Ynk/KqiJqV94DUMhGzAadqbYrDL/87eiDtW4lBpCl7cQnfEI7besdduNzWlgmJ93CU1kyruK37/w+D1jyBnc1ppQTj1+B2GanB0weY7ViNqyQmN+tam7EmM+9R8VKMi8EO0xlvb1YFL18NtrCMMMEsZRHj823g68lFntUWs5oGsFMI=
+    # on_success: [always|never|change] # default: always
+    # on_failure: [always|never|change] # default: always
