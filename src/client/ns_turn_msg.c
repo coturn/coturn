@@ -2511,6 +2511,7 @@ static int decode_oauth_token_gcm(const u08bits *server_name, const encoded_oaut
 		const unsigned char *csnl = snl;
 
 		uint16_t nonce_len = nswap16(*((const uint16_t*)csnl));
+                dtoken->enc_block.nonce_length = nonce_len;
 
 		size_t min_encoded_field_size = 2+4+8+nonce_len+2+OAUTH_GCM_TAG_SIZE+1;
 		if(etoken->size < min_encoded_field_size) {
@@ -2521,6 +2522,7 @@ static int decode_oauth_token_gcm(const u08bits *server_name, const encoded_oaut
 		const unsigned char* encoded_field = (const unsigned char*)(etoken->token + nonce_len + 2);
 		unsigned int encoded_field_size = (unsigned int)etoken->size - nonce_len - 2 - OAUTH_GCM_TAG_SIZE;
 		const unsigned char* nonce = ((const unsigned char*)etoken->token + 2);
+                ns_bcopy(nonce,dtoken->enc_block.nonce,nonce_len);
 
 		unsigned char tag[OAUTH_GCM_TAG_SIZE];
 		ns_bcopy(((const unsigned char*)etoken->token) + nonce_len + 2 + encoded_field_size, tag ,sizeof(tag));

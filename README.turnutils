@@ -37,6 +37,17 @@ according RFC5780. This utility discovers the actual NAT Mapping and Filtering
 behavior. Be aweare that at least two different listening IP addresses should 
 be configured to be able to work properly!
 
+6.	turnutils_oauth: a utility that provides OAuth access_token 
+generation(AEAD encryption), validation and decryption. This utility inputs 
+all the keys and lifetimes and any related informations that needed for 
+creation and validationi of an access_token. It outputs a JSON with all OAuth 
+PoP parameters that need to pass to the client. Output is generated accoriding 
+RFC7635 Appendix B, Figure 8. 
+
+For more details, and for the access_token structure, read rfc7635, and see
+script in examples/scripts/oauth.sh.
+
+
 =====================================
     
   NAME
@@ -270,6 +281,74 @@ Options with required values:
 Usage:
 
 $ turnutils_natdiscovery -m -f stun.example.com
+
+=====================================
+
+  NAME
+
+turnutils_oauth - a utility that helps OAuth access_token generation/encryption and validation/decyption
+
+  SYNOPSIS
+
+$ turnutils_oauth [options]
+
+  DESCRIPTION
+
+turnutils_oauth utilitiy provides help in OAuth access_token encryption and/or 
+decryption with AEAD (Atuthenticated Encryption with Associated Data). It helps 
+for an Auth Server in access_token creation, and also for debuging purposes it 
+helps the access_token validation and decryption. This utility inputs all the 
+keys and lifetimes and any related informations that are needed for encryption 
+or decryption of an access_token. It outputs a JSON with all OAuth PoP 
+parameters that need to pass to the client. Output is generated accoriding 
+RFC7635 Appendix B, Figure 8. This utility could help to build an Auth Server 
+service, but be awere that this utility does not generate "session key" / 
+"mac_key" and not verifies lifetime of "session key" / "mac_key" or "Auth key".
+For more details, and for the access_token structure, read rfc7635, and see
+the example in examples/scripts/oauth.sh.
+
+Use either -e and/or -d flag to encrypt or decrypt access_token.
+
+Flags:
+
+-h, --help     usage
+
+-v, --verbose  verbose mode
+
+-e, --encrypt  encrypt token
+
+-d, --decrypt  decrypt validate token
+
+Options with required values:
+
+-i, --server-name              server name (max. 255 char)
+
+-j, --auth-key-id              Auth key id (max. 32 char)
+
+-k, --auth-key                 base64 encoded Auth key
+
+-l  --auth-key-timestamp       Auth key timestamp (sec since epoch)
+
+-m, --auth-key-lifetime        Auth key lifetime in sec
+
+-n, --auth-key-as-rs-alg       Authorization Server(AS) - Resource Server(RS) encryption algorithm
+
+-o, --token-nonce              base64 encoded nonce base64(12 octet) = 16 char
+
+-p, --token-mac-key            base64 encoded MAC key base64(32 octet) = 44 char
+
+-q, --token-timestamp          timestamp in format 64 bit unsigned (Native format - Unix),
+                               so 48 bit for secs since epoch UTC + 16 bit for 1/64000 fractions of a second.
+                               e.g.: the actual unixtimestamp 16 bit left shifted. (Default: actual gmtime)
+-r, --token-lifetime           lifetime in sec (Default: 3600)
+
+-t, --token                    base64 encoded encrypted token for validation and decryption
+
+-u, --hmac-alg                 stun client hmac algorithm
+
+Usage:
+
+$ turnutils_natdiscovery
 
 ===================================
  
