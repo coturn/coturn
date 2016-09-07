@@ -58,7 +58,8 @@ creation and validationi of an access_token. It outputs a JSON with all OAuth
 PoP parameters that need to pass to the client. Output is generated accoriding 
 RFC7635 Appendix B, Figure 8. 
 .PP
-For more details, and for the access_token structure, read rfc7635.
+For more details, and for the access_token structure, read rfc7635, and see
+script in examples/scripts/oauth.sh.
 .RE
 .PP
 
@@ -455,8 +456,8 @@ parameters that need to pass to the client. Output is generated accoriding
 RFC7635 Appendix B, Figure 8. This utility could help to build an Auth Server 
 service, but be awere that this utility does not generate "session key" / 
 "mac_key" and not verifies lifetime of "session key" / "mac_key" or "Auth key".
-.PP
-For more details, and for the access_token structure, read rfc7635. 
+For more details, and for the access_token structure, read rfc7635, and see
+the example in examples/scripts/oauth.sh.
 .PP
 Use either \fB\-e\fP and/or \fB\-d\fP flag to encrypt or decrypt access_token.
 .PP
@@ -485,24 +486,24 @@ Options with required values:
 server name (max. 255 char)
 .TP
 .B
-\fB\-j\fP, \fB\-\-long\-term\-key\-id\fP
-long term key id (max. 32 char)
+\fB\-j\fP, \fB\-\-auth\-key\-id\fP
+Auth key id (max. 32 char)
 .TP
 .B
-\fB\-k\fP, \fB\-\-long\-term\-key\fP
-base64 encoded long term key
+\fB\-k\fP, \fB\-\-auth\-key\fP
+base64 encoded Auth key
 .TP
 .B
 \fB\-l\fP
-\fB\-\-long\-term\-key\-timestamp\fP  long term key timestamp (sec since epoch)
+\fB\-\-auth\-key\-timestamp\fP       Auth key timestamp (sec since epoch)
 .TP
 .B
-\fB\-m\fP, \fB\-\-long\-term\-key\-lifetime\fP
-long term key lifetime in sec
+\fB\-m\fP, \fB\-\-auth\-key\-lifetime\fP
+Auth key lifetime in sec
 .TP
 .B
-\fB\-n\fP, \fB\-\-long\-term\-key\-as\-rs\-alg\fP
-Authorization Server Resource Server encryption algorithm
+\fB\-n\fP, \fB\-\-auth\-key\-as\-rs\-alg\fP
+Authorization \fBServer\fP(AS) \- Resource \fBServer\fP(RS) encryption algorithm
 .TP
 .B
 \fB\-o\fP, \fB\-\-token\-nonce\fP

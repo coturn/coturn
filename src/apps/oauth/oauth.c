@@ -168,7 +168,7 @@ static void print_token_body(oauth_token* dot) {
         time_t time=dot->enc_block.timestamp>>16;
         unsigned msec=(dot->enc_block.timestamp & 0xFFFF)*64;
         printf("    timestamp:\n");
-        printf("        unixtime: %s", ctime(&time));
+        printf("        unixtime: %u (localtime: %s )", (unsigned int)time, ctime(&time));
         printf("        msec:%u\n", msec);
         printf("    lifetime: %lu\n", (unsigned long) dot->enc_block.lifetime);
         printf("}\n");
@@ -185,11 +185,11 @@ const char Usage[] =
   "        -e, --encrypt                    encrypt token\n"
   "        -d, --decrypt                    decrypt validate token\n\n"
   "        -i, --server-name                server name (max. 255 char)\n"
-  "        -j, --long-term-key-id           long term key id (max. 32 char)\n"
-  "        -k, --long-term-key              base64 encoded long term key\n"
-  "        -l  --long-term-key-timestamp    long term key timestamp (sec since epoch)\n"
-  "        -m, --long-term-key-lifetime     long term key lifetime in sec\n"
-  "        -n, --long-term-key-as-rs-alg    Authorization Server Resource Server encryption algorithm\n"
+  "        -j, --auth-key-id                Auth key id (max. 32 char)\n"
+  "        -k, --auth-key                   base64 encoded Auth key\n"
+  "        -l  --auth-key-timestamp         Auth key timestamp (sec since epoch)\n"
+  "        -m, --auth-key-lifetime          Auth key lifetime in sec\n"
+  "        -n, --auth-key-as-rs-alg         Authorization Server(AS) - Resource Server (RS) encryption algorithm\n"
   "        -o, --token-nonce                base64 encoded nonce base64(12 octet) = 16 char\n"
   "        -p, --token-mac-key              base64 encoded MAC key base64(32 octet) = 44 char\n"
   "        -q, --token-timestamp            timestamp in format 64 bit unsigned (Native format - Unix),\n" 
@@ -242,11 +242,11 @@ int main(int argc, char **argv)
      {"decrypt",                  no_argument,       &decrypt_flag, 1},
      {"help",                     no_argument,       0, 'h'},
      {"server-name",              required_argument, 0, 'i'},
-     {"long-term-key-id",         required_argument, 0, 'j'},
-     {"long-term-key",            required_argument, 0, 'k'},
-     {"long-term-key-timestamp",  required_argument, 0, 'l'},
-     {"long-term-key-lifetime",   required_argument, 0, 'm'},
-     {"long-term-key-as-rs-alg",  required_argument, 0, 'n'},
+     {"auth-key-id",         required_argument, 0, 'j'},
+     {"auth-key",            required_argument, 0, 'k'},
+     {"auth-key-timestamp",  required_argument, 0, 'l'},
+     {"auth-key-lifetime",   required_argument, 0, 'm'},
+     {"auth-key-as-rs-alg",  required_argument, 0, 'n'},
      {"token-nonce",              required_argument, 0, 'o'},
      {"token-mac-key",            required_argument, 0, 'p'},
      {"token-timestamp",          required_argument, 0, 'q'},
@@ -297,7 +297,7 @@ int main(int argc, char **argv)
       }
       break;
    case 'j':
-      //long-term-key-id
+      //auth-key-id
       if ( strlen(optarg) <= OAUTH_LTK_ID_SIZE ) {
         STRCPY(kid,optarg);
       } else {
@@ -306,7 +306,7 @@ int main(int argc, char **argv)
       }
       break;
     case 'k':
-      //long-term-key
+      //auth-key
       if ( strlen(optarg) <= OAUTH_LTK_BASE64ENCODED_SIZE ) {
         STRCPY(base64encoded_ltk,optarg);
       } else {
@@ -315,15 +315,15 @@ int main(int argc, char **argv)
       }
       break;
     case 'l':
-      //long-term-key-timestamp
+      //auth-key-timestamp
       key_timestamp = atoi(optarg);
       break;
     case 'm':
-      //long-term-key-lifetime
+      //auth-key-lifetime
       key_lifetime=atoi(optarg);
       break;
     case 'n':
-      //long-term-key-as-rs-alg
+      //auth-key-as-rs-alg
       if ( strlen(optarg) <= OAUTH_AS_RS_ALG_SIZE ) {
         STRCPY(as_rs_alg,optarg);
       } else {
@@ -403,19 +403,19 @@ int main(int argc, char **argv)
     }
     
     if (strlen(kid) == 0){
-        fprintf(stderr, "For encode/decode  --long-term-key-id/-j is mandatory \n");
+        fprintf(stderr, "For encode/decode  --auth-key-id/-j is mandatory \n");
         exit(-1);
     }
      if (strlen(base64encoded_ltk) == 0){
-        fprintf(stderr, "For encode/decode  --long-term-key/-k is mandatory \n");
+        fprintf(stderr, "For encode/decode  --auth-key/-k is mandatory \n");
         exit(-1);
     }
     if (key_timestamp == 0){
-        fprintf(stderr, "For encode/decode  --long-term-key-timestamp/-l is mandatory \n");
+        fprintf(stderr, "For encode/decode  --auth-key-timestamp/-l is mandatory \n");
         exit(-1);
     }
     if (key_lifetime == 0){
-        fprintf(stderr, "For encode/decode  --long-term-key-lifetime/-m is mandatory \n");
+        fprintf(stderr, "For encode/decode  --auth-key-lifetime/-m is mandatory \n");
         exit(-1);
     }
 
@@ -428,7 +428,22 @@ int main(int argc, char **argv)
         fprintf(stderr, "For decode --token/-t is mandatory \n");
         exit(-1);
     }
-
+    
+    // Expiry warnings
+    if ( (unsigned long long)key_timestamp<<16 > token_timestamp  +((unsigned long long)token_lifetime << 16)  ) {
+        fprintf(stderr,"\nWARNING: Token expiry is earlear then Auth key life time start timestamp!!\n\n");
+    } else {
+        if( (unsigned long long)key_timestamp<<16 > token_timestamp) {
+            fprintf(stderr,"\nWARNING: Token life time start timestamp is earlier then Auth key start timestamp!!\n\n");
+        }
+    }
+    if( (unsigned long long)( key_timestamp + key_lifetime )<<16 < token_timestamp ) {
+        fprintf(stderr,"\nWARNING: Auth key will expire before token lifetime start timestamp!!\n\n");
+    } else {
+        if( (unsigned long long)( key_timestamp + key_lifetime)<<16 < token_timestamp + ((unsigned long long)token_lifetime << 16) ) {
+            fprintf(stderr,"\nWARNING: Auth key will expire before token expiry!!\n\n");
+        }  
+    }
 
     if ( setup_ikm_key(kid, base64encoded_ltk, key_timestamp, key_lifetime, as_rs_alg, &key) == 0 ) {
           if(encrypt_flag) {
