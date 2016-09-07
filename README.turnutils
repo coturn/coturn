@@ -300,8 +300,11 @@ helps the access_token validation and decryption. This utility inputs all the
 keys and lifetimes and any related informations that are needed for encryption 
 or decryption of an access_token. It outputs a JSON with all OAuth PoP 
 parameters that need to pass to the client. Output is generated accoriding 
-RFC7635 Appendix B, Figure 8. For more details, and for the access_token 
-structure, read rfc7635.
+RFC7635 Appendix B, Figure 8. This utility could help to build an Auth Server 
+service, but be awere that this utility does not generate "session key" / 
+"mac_key" and not verifies lifetime of "session key" / "mac_key" or "Auth key".
+
+For more details, and for the access_token structure, read rfc7635. 
 
 Use either -e and/or -d flag to encrypt or decrypt access_token.
 
@@ -335,7 +338,7 @@ Options with required values:
 
 -q, --token-timestamp          timestamp in format 64 bit unsigned (Native format - Unix),
                                so 48 bit for secs since epoch UTC + 16 bit for 1/64000 fractions of a second.
-                               An example: 16 bit left shift the unixtimestamp. (Default: actual gmtime)
+                               e.g.: the actual unixtimestamp 16 bit left shifted. (Default: actual gmtime)
 -r, --token-lifetime           lifetime in sec (Default: 3600)
 
 -t, --token                    base64 encoded encrypted token for validation and decryption

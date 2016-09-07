@@ -194,7 +194,7 @@ const char Usage[] =
   "        -p, --token-mac-key              base64 encoded MAC key base64(32 octet) = 44 char\n"
   "        -q, --token-timestamp            timestamp in format 64 bit unsigned (Native format - Unix),\n" 
   "                                         so 48 bit for secs since epoch UTC + 16 bit for 1/64000 fractions of a second.\n" 
-  "                                         An example: 16 bit left shift the unixtimestamp. (Default: actual gmtime)\n"
+  "                                         e.g.: the actual unixtimestamp 16 bit left shifted. (Default: actual gmtime)\n"
   "        -r, --token-lifetime             lifetime in sec (Default: 3600)\n"
   "        -t, --token                      base64 encoded encrypted token for validation and decryption\n"
   "        -u, --hmac-alg                   stun client hmac algorithm\n";
@@ -390,7 +390,7 @@ int main(int argc, char **argv)
   }
 
   if (!(encrypt_flag || decrypt_flag)){
-        fprintf(stderr, "Hey, encrypt or decrypt?\nPlease use -h or --help for the detailed help\n");
+        fprintf(stderr, "Use either encrypt or decrypt.\nPlease use -h or --help for the detailed help\n");
          exit(-1);
   }
  
