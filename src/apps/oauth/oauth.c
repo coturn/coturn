@@ -115,7 +115,7 @@ static int encode_token(const char* server_name,
         ns_bzero(&etoken,sizeof(etoken));
 
         // TODO: avoid this hack
-        if (!*gcm_nonce) gcm_nonce='\0';
+        if (!*gcm_nonce) gcm_nonce=NULL;
 
         if (encode_oauth_token((const u08bits *) server_name, &etoken, &key, &ot,(const u08bits *) gcm_nonce) < 0) {
                 fprintf(stderr, "%s: cannot encode oauth token\n",
