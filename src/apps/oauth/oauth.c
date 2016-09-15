@@ -454,7 +454,7 @@ int main(int argc, char **argv)
             printf("    \"expires_in\":%d,\n",token_lifetime);
             printf("    \"kid\":\"%s\",\n",kid);
             printf("    \"key\":\"%s\",\n",mac_key);
-            printf("    \"alg\":\%s\n",hmac_alg);
+            printf("    \"alg\":\"%s\"\n",hmac_alg);
             printf("}\n");
           } else {
             fprintf(stderr, "Error during token encode\n");
