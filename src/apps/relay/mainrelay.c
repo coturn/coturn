@@ -124,7 +124,7 @@ LOW_DEFAULT_PORTS_BOUNDARY,HIGH_DEFAULT_PORTS_BOUNDARY,0,0,0,"",
 /////////////// stop server ////////////////
 0,
 /////////////// MISC PARAMS ////////////////
-0,0,0,0,0,':',0,0,TURN_CREDENTIALS_NONE,0,0,0,0,0,0,
+0,0,0,0,0,':',0,0,0,TURN_CREDENTIALS_NONE,0,0,0,0,0,0,
 ///////////// Users DB //////////////
 { (TURN_USERDB_TYPE)0, {"\0"}, {0,NULL, {NULL,0}} },
 ///////////// CPUs //////////////////
@@ -548,6 +548,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						name will be constructed as-is, without PID and date appendage.\n"
 "						This option can be used, for example, together with the logrotate tool.\n"
 " --stale-nonce					Use extra security with nonce value having limited lifetime (600 secs).\n"
+" --max-allocate-lifetime	<value>		Set the maximum value for the allocation lifetime. Default to 3600 secs.\n"
 " -S, --stun-only				Option to set standalone STUN operation only, all TURN requests will be ignored.\n"
 "     --no-stun					Option to suppress STUN functionality, only TURN requests will be processed.\n"
 " --alternate-server		<ip:port>	Set the TURN server to redirect the allocate requests (UDP and TCP services).\n"
@@ -670,6 +671,7 @@ enum EXTRA_OPTS {
 	MIN_PORT_OPT,
 	MAX_PORT_OPT,
 	STALE_NONCE_OPT,
+	MAX_ALLOCATE_LIFETIME_OPT,
 	AUTH_SECRET_OPT,
 	DEL_ALL_AUTH_SECRETS_OPT,
 	STATIC_AUTH_SECRET_VAL_OPT,
@@ -787,6 +789,7 @@ static const struct myoption long_options[] = {
 				{ "no-udp-relay", optional_argument, NULL, NO_UDP_RELAY_OPT },
 				{ "no-tcp-relay", optional_argument, NULL, NO_TCP_RELAY_OPT },
 				{ "stale-nonce", optional_argument, NULL, STALE_NONCE_OPT },
+				{ "max-allocate-lifetime", optional_argument, NULL, MAX_ALLOCATE_LIFETIME_OPT },
 				{ "stun-only", optional_argument, NULL, 'S' },
 				{ "no-stun", optional_argument, NULL, NO_STUN_OPT },
 				{ "cert", required_argument, NULL, CERT_FILE_OPT },
@@ -1047,6 +1050,9 @@ static void set_option(int c, char *value)
 		break;
 	case STALE_NONCE_OPT:
 		turn_params.stale_nonce = get_bool_value(value);
+		break;
+	case MAX_ALLOCATE_LIFETIME_OPT:
+		turn_params.max_allocate_lifetime = get_int_value(value, STUN_DEFAULT_MAX_ALLOCATE_LIFETIME);
 		break;
 	case MAX_ALLOCATE_TIMEOUT_OPT:
 		TURN_MAX_ALLOCATE_TIMEOUT = atoi(value);
