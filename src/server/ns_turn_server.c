@@ -848,7 +848,7 @@ static int update_turn_permission_lifetime(ts_ur_super_session *ss, turn_permiss
 
 		if (server) {
 
-			if(!time_delta) time_delta = STUN_PERMISSION_LIFETIME;
+			if(!time_delta) time_delta = *(server->permission_lifetime);
 			tinfo->expiration_time = server->ctime + time_delta;
 
 			IOA_EVENT_DEL(tinfo->lifetime_ev);
@@ -4796,6 +4796,7 @@ void init_turn_server(turn_turnserver* server,
 		vintp no_tcp_relay,
 		vintp no_udp_relay,
 		vintp stale_nonce,
+		vintp permission_lifetime,
 		vintp stun_only,
 		vintp no_stun,
 		turn_server_addrs_list_t *alternate_servers_list,
@@ -4851,6 +4852,7 @@ void init_turn_server(turn_turnserver* server,
 	server->self_udp_balance = self_udp_balance;
 
 	server->stale_nonce = stale_nonce;
+	server->permission_lifetime = permission_lifetime;
 	server->stun_only = stun_only;
 	server->no_stun = no_stun;
 

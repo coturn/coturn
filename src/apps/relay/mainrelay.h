@@ -285,6 +285,7 @@ typedef struct _turn_params_ {
   int fingerprint;
   char rest_api_separator;
   vint stale_nonce;
+  vint permission_lifetime;
   vint mobility;
   turn_credential_type ct;
   int use_auth_secret_with_timestamp;
