@@ -878,6 +878,13 @@ static const struct myoption admin_long_options[] = {
 				{ NULL, no_argument, NULL, 0 }
 };
 
+static int get_int_value(const char* s, int default_value)
+{
+	if (!s || !(s[0]))
+		return default_value;
+	return atoi(s);
+}
+
 static int get_bool_value(const char* s)
 {
 	if(!s || !(s[0])) return 1;
