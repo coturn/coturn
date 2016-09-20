@@ -1633,6 +1633,7 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
 			 &turn_params.no_tcp_relay,
 			 &turn_params.no_udp_relay,
 			 &turn_params.stale_nonce,
+			 &turn_params.channel_lifetime,
 			 &turn_params.stun_only,
 			 &turn_params.no_stun,
 			 &turn_params.alternate_servers_list,

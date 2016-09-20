@@ -883,13 +883,13 @@ static int update_channel_lifetime(ts_ur_super_session *ss, ch_info* chn)
 
 			if (server) {
 
-				if (update_turn_permission_lifetime(ss, tinfo, STUN_CHANNEL_LIFETIME) < 0)
+				if (update_turn_permission_lifetime(ss, tinfo, *(server->channel_lifetime)) < 0)
 					return -1;
 
-				chn->expiration_time = server->ctime + STUN_CHANNEL_LIFETIME;
+				chn->expiration_time = server->ctime + *(server->channel_lifetime);
 
 				IOA_EVENT_DEL(chn->lifetime_ev);
-				chn->lifetime_ev = set_ioa_timer(server->e, STUN_CHANNEL_LIFETIME, 0,
+				chn->lifetime_ev = set_ioa_timer(server->e, *(server->channel_lifetime), 0,
 								client_ss_channel_timeout_handler,
 								chn, 0,
 								"client_ss_channel_timeout_handler");
@@ -4796,6 +4796,7 @@ void init_turn_server(turn_turnserver* server,
 		vintp no_tcp_relay,
 		vintp no_udp_relay,
 		vintp stale_nonce,
+		vintp channel_lifetime,
 		vintp stun_only,
 		vintp no_stun,
 		turn_server_addrs_list_t *alternate_servers_list,
@@ -4851,6 +4852,7 @@ void init_turn_server(turn_turnserver* server,
 	server->self_udp_balance = self_udp_balance;
 
 	server->stale_nonce = stale_nonce;
+	server->channel_lifetime = channel_lifetime;
 	server->stun_only = stun_only;
 	server->no_stun = no_stun;
 
