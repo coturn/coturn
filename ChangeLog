@@ -4,7 +4,9 @@ Version 4.5.0.5 'dan Eider':
 	- LibreSSL compatibility fixed.
 	- "read_timeout" option support for MySQL.
 	- new NAT behavior discovery utilty. 
-	- new OAuth access_token encrypt/decrypt utilty. 
+	- new OAuth access_token encrypt/decrypt utilty.
+	- improved configurability: added parameters for
+	allocate, channel and permission lifetimes.
 
 08/20/2016 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.5.0.4 'dan Eider':
