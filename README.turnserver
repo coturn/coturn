@@ -360,7 +360,7 @@ Options with required values:
 
 -u, --user		Long-term security mechanism credentials user account, 
 			in the column-separated form username:key. 
-			Multiple user accounts may used in the command line.
+			Multiple user accounts may be used in the command line.
 			The key is either the user password, or
 			the key is generated
 			by turnadmin command. In the second case,
