@@ -977,7 +977,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 							tid,
 							pxor_relayed_addr1, pxor_relayed_addr2,
 							get_remote_addr_from_ioa_socket(ss->client_socket),
-							lifetime, 0, NULL, 0,
+							lifetime,*(server->max_allocate_lifetime), 0, NULL, 0,
 							ss->s_mobile_id);
 				ioa_network_buffer_set_size(nbh,len);
 				*resp_constructed = 1;
@@ -1205,7 +1205,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 				}
 			}
 
-			lifetime = stun_adjust_allocate_lifetime(lifetime, ss->max_session_time_auth);
+			lifetime = stun_adjust_allocate_lifetime(lifetime, *(server->max_allocate_lifetime), ss->max_session_time_auth);
 			u64bits out_reservation_token = 0;
 
 			if(inc_quota(ss, username)<0) {
@@ -1373,7 +1373,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 						stun_set_allocate_response_str(ioa_network_buffer_data(nbh), &len, tid,
 									pxor_relayed_addr1, pxor_relayed_addr2,
 									get_remote_addr_from_ioa_socket(ss->client_socket), lifetime,
-									0,NULL,
+									*(server->max_allocate_lifetime),0,NULL,
 									out_reservation_token,
 									ss->s_mobile_id);
 
@@ -1398,7 +1398,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 		}
 
 		size_t len = ioa_network_buffer_get_size(nbh);
-		stun_set_allocate_response_str(ioa_network_buffer_data(nbh), &len, tid, NULL, NULL, NULL, 0, *err_code, *reason, 0, ss->s_mobile_id);
+		stun_set_allocate_response_str(ioa_network_buffer_data(nbh), &len, tid, NULL, NULL, NULL, 0, *(server->max_allocate_lifetime), *err_code, *reason, 0, ss->s_mobile_id);
 		ioa_network_buffer_set_size(nbh,len);
 		*resp_constructed = 1;
 	}
@@ -1644,7 +1644,7 @@ static int handle_turn_refresh(turn_turnserver *server,
 							if (to_delete)
 								lifetime = 0;
 							else {
-								lifetime = stun_adjust_allocate_lifetime(lifetime, ss->max_session_time_auth);
+								lifetime = stun_adjust_allocate_lifetime(lifetime, *(server->max_allocate_lifetime), ss->max_session_time_auth);
 							}
 
 							if (af4c && refresh_relay_connection(server, orig_ss, lifetime, 0, 0, 0,
@@ -1757,7 +1757,7 @@ static int handle_turn_refresh(turn_turnserver *server,
 			if (to_delete)
 				lifetime = 0;
 			else {
-				lifetime = stun_adjust_allocate_lifetime(lifetime, ss->max_session_time_auth);
+				lifetime = stun_adjust_allocate_lifetime(lifetime, *(server->max_allocate_lifetime), ss->max_session_time_auth);
 			}
 
 			if(!af4 && !af6) {
@@ -4350,8 +4350,8 @@ static int create_relay_connection(turn_turnserver* server,
 
 		if (lifetime<1)
 			lifetime = STUN_DEFAULT_ALLOCATE_LIFETIME;
-		else if(lifetime>STUN_MAX_ALLOCATE_LIFETIME)
-			lifetime = STUN_MAX_ALLOCATE_LIFETIME;
+		else if(lifetime>(u32bits)*(server->max_allocate_lifetime))
+			lifetime = (u32bits)*(server->max_allocate_lifetime);
 
 		ioa_timer_handle ev = set_ioa_timer(server->e, lifetime, 0,
 				client_ss_allocation_timeout_handler, newelem, 0,
@@ -4796,6 +4796,7 @@ void init_turn_server(turn_turnserver* server,
 		vintp no_tcp_relay,
 		vintp no_udp_relay,
 		vintp stale_nonce,
+		vintp max_allocate_lifetime,
 		vintp stun_only,
 		vintp no_stun,
 		turn_server_addrs_list_t *alternate_servers_list,
@@ -4851,6 +4852,7 @@ void init_turn_server(turn_turnserver* server,
 	server->self_udp_balance = self_udp_balance;
 
 	server->stale_nonce = stale_nonce;
+	server->max_allocate_lifetime = max_allocate_lifetime;
 	server->stun_only = stun_only;
 	server->no_stun = no_stun;
 
