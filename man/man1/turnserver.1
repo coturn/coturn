@@ -314,10 +314,6 @@ Do not allow TCP relay endpoints defined in RFC 6062,
 use only UDP relay endpoints as defined in RFC 5766. 
 .TP
 .B
-\fB\-\-stale\-nonce\fP
-Use extra security with nonce value having limited lifetime (600 secs). 
-.TP
-.B
 \fB\-\-no\-stdout\-log\fP
 Flag to prevent stdout log messages.
 By default, all log messages are going to both stdout and to
@@ -397,6 +393,10 @@ Help.
 .TP
 .B
 Options with required values:
+.TP
+.B
+\fB\-\-stale\-nonce\fP[=600]
+Use extra security with nonce value having limited lifetime (default 600 secs).
 .TP
 .B
 \fB\-d\fP, \fB\-\-listening\-device\fP

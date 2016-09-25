@@ -207,8 +207,6 @@ Flags:
 --no-tcp-relay		Do not allow TCP relay endpoints defined in RFC 6062, 
 			use only UDP relay endpoints as defined in RFC 5766. 
 
---stale-nonce		Use extra security with nonce value having limited lifetime (600 secs). 
-
 --no-stdout-log		Flag to prevent stdout log messages.
 			By default, all log messages are going to both stdout and to
 			the configured log file. With this option everything will be going to 
@@ -260,6 +258,8 @@ Flags:
 -h			Help.
     
 Options with required values:  
+
+--stale-nonce[=600]		Use extra security with nonce value having limited lifetime (default 600 secs).
 
 -d, --listening-device	Listener interface device.
 			(NOT RECOMMENDED. Optional functionality, Linux only). 
