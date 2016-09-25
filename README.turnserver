@@ -259,11 +259,18 @@ Flags:
     
 Options with values:  
 
---stale-nonce[=<value>]		Use extra security with nonce value having limited lifetime, in seconds (default 600 secs).
+--stale-nonce[=<value>]		Use extra security with nonce value having
+							limited lifetime, in seconds (default 600 secs).
 
---max-allocate-lifetime		Set the maximum value for the allocation lifetime. Default to 3600 secs.
+--max-allocate-lifetime		Set the maximum value for the allocation lifetime.
+							Default to 3600 secs.
 
---channel-lifetime 	Set the lifetime for channel binding, default to 600 secs. This value MUST not be changed for production purposes.
+--channel-lifetime 	Set the lifetime for channel binding, default to 600 secs.
+					This value MUST not be changed for production purposes.
+
+--permission-lifetime	Set the value for the lifetime of the permission.
+					Default to 300 secs.
+					This MUST not be changed for production purposes.
 
 -d, --listening-device	Listener interface device.
 			(NOT RECOMMENDED. Optional functionality, Linux only). 
