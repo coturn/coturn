@@ -878,6 +878,13 @@ static const struct myoption admin_long_options[] = {
 				{ NULL, no_argument, NULL, 0 }
 };
 
+static int get_int_value(const char* s, int default_value)
+{
+	if (!s || !(s[0]))
+		return default_value;
+	return atoi(s);
+}
+
 static int get_bool_value(const char* s)
 {
 	if(!s || !(s[0])) return 1;
@@ -1039,7 +1046,7 @@ static void set_option(int c, char *value)
 		turn_params.no_loopback_peers = get_bool_value(value);
 		break;
 	case STALE_NONCE_OPT:
-		turn_params.stale_nonce = get_bool_value(value);
+		turn_params.stale_nonce = get_int_value(value, STUN_DEFAULT_NONCE_EXPIRATION_TIME);
 		break;
 	case MAX_ALLOCATE_TIMEOUT_OPT:
 		TURN_MAX_ALLOCATE_TIMEOUT = atoi(value);

@@ -3271,7 +3271,7 @@ static int check_stun_auth(turn_turnserver *server,
 					snprintf((s08bits*)s, NONCE_MAX_SIZE-4*i, "%04x",(unsigned int)rand);
 				}
 			}
-			ss->nonce_expiration_time = server->ctime + STUN_NONCE_EXPIRATION_TIME;
+			ss->nonce_expiration_time = server->ctime + *(server->stale_nonce);
 		}
 	}
 
