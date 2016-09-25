@@ -124,7 +124,7 @@ LOW_DEFAULT_PORTS_BOUNDARY,HIGH_DEFAULT_PORTS_BOUNDARY,0,0,0,"",
 /////////////// stop server ////////////////
 0,
 /////////////// MISC PARAMS ////////////////
-0,0,0,0,0,':',0,0,0,0,TURN_CREDENTIALS_NONE,0,0,0,0,0,0,
+0,0,0,0,0,':',0,0,0,0,0,TURN_CREDENTIALS_NONE,0,0,0,0,0,0,
 ///////////// Users DB //////////////
 { (TURN_USERDB_TYPE)0, {"\0"}, {0,NULL, {NULL,0}} },
 ///////////// CPUs //////////////////
@@ -551,6 +551,8 @@ static char Usage[] = "Usage: turnserver [options]\n"
 " --max-allocate-lifetime	<value>		Set the maximum value for the allocation lifetime. Default to 3600 secs.\n"
 " --channel-lifetime		<value>		Set the lifetime for channel binding, default to 600 secs.\n"
 "						This value MUST not be changed for production purposes.\n"
+" --permission-lifetime		<value>		Set the value for the lifetime of the permission. Default to 300 secs.\n"
+"						This MUST not be changed for production purposes.\n"
 " -S, --stun-only				Option to set standalone STUN operation only, all TURN requests will be ignored.\n"
 "     --no-stun					Option to suppress STUN functionality, only TURN requests will be processed.\n"
 " --alternate-server		<ip:port>	Set the TURN server to redirect the allocate requests (UDP and TCP services).\n"
@@ -675,6 +677,7 @@ enum EXTRA_OPTS {
 	STALE_NONCE_OPT,
 	MAX_ALLOCATE_LIFETIME_OPT,
 	CHANNEL_LIFETIME_OPT,
+	PERMISSION_LIFETIME_OPT,
 	AUTH_SECRET_OPT,
 	DEL_ALL_AUTH_SECRETS_OPT,
 	STATIC_AUTH_SECRET_VAL_OPT,
@@ -794,6 +797,7 @@ static const struct myoption long_options[] = {
 				{ "stale-nonce", optional_argument, NULL, STALE_NONCE_OPT },
 				{ "max-allocate-lifetime", optional_argument, NULL, MAX_ALLOCATE_LIFETIME_OPT },
 				{ "channel-lifetime", optional_argument, NULL, CHANNEL_LIFETIME_OPT },
+				{ "permission-lifetime", optional_argument, NULL, PERMISSION_LIFETIME_OPT },
 				{ "stun-only", optional_argument, NULL, 'S' },
 				{ "no-stun", optional_argument, NULL, NO_STUN_OPT },
 				{ "cert", required_argument, NULL, CERT_FILE_OPT },
@@ -1060,6 +1064,9 @@ static void set_option(int c, char *value)
 		break;
 	case CHANNEL_LIFETIME_OPT:
 		turn_params.channel_lifetime = get_int_value(value, STUN_DEFAULT_CHANNEL_LIFETIME);
+		break;
+	case PERMISSION_LIFETIME_OPT:
+		turn_params.permission_lifetime = get_int_value(value, STUN_DEFAULT_PERMISSION_LIFETIME);
 		break;
 	case MAX_ALLOCATE_TIMEOUT_OPT:
 		TURN_MAX_ALLOCATE_TIMEOUT = atoi(value);
