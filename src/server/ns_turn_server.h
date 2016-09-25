@@ -116,6 +116,7 @@ struct _turn_turnserver {
 	vintp check_origin;
 	vintp stale_nonce;
         vintp max_allocate_lifetime;
+        vintp channel_lifetime;
 	vintp stun_only;
 	vintp no_stun;
 	vintp secure_stun;
@@ -186,6 +187,7 @@ void init_turn_server(turn_turnserver* server,
 				    vintp no_udp_relay,
 				    vintp stale_nonce,
                                     vintp max_allocate_lifetime,
+                                    vintp channel_lifetime,
 				    vintp stun_only,
 				    vintp no_stun,
 				    turn_server_addrs_list_t *alternate_servers_list,
