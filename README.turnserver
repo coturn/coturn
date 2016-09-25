@@ -259,7 +259,9 @@ Flags:
     
 Options with required values:  
 
---stale-nonce[=600]		Use extra security with nonce value having limited lifetime (default 600 secs).
+--stale-nonce[=<value>]		Use extra security with nonce value having limited lifetime (default 600 secs).
+
+--max-allocate-lifetime	<value>		Set the maximum value for the allocation lifetime. Default to 3600 secs.
 
 -d, --listening-device	Listener interface device.
 			(NOT RECOMMENDED. Optional functionality, Linux only). 
