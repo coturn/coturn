@@ -86,7 +86,7 @@ u16bits stun_make_error_response(u16bits method);
 
 ///////////////////////////////////////////////////////////////
 
-turn_time_t stun_adjust_allocate_lifetime(turn_time_t lifetime, turn_time_t max_lifetime);
+turn_time_t stun_adjust_allocate_lifetime(turn_time_t lifetime, turn_time_t max_allowed_lifetime, turn_time_t max_lifetime);
 
 ///////////// STR ////////////////////////////////////////////////
 
@@ -162,7 +162,7 @@ int stun_set_allocate_request_str(u08bits* buf, size_t *len, u32bits lifetime, i
 int stun_set_allocate_response_str(u08bits* buf, size_t *len, stun_tid* tid, 
 				   const ioa_addr *relayed_addr1, const ioa_addr *relayed_addr2,
 				   const ioa_addr *reflexive_addr,
-				   u32bits lifetime, int error_code, const u08bits *reason,
+				   u32bits lifetime, u32bits max_lifetime, int error_code, const u08bits *reason,
 				   u64bits reservation_token, char *mobile_id);
 
 u16bits stun_set_channel_bind_request_str(u08bits* buf, size_t *len,
