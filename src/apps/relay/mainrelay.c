@@ -124,7 +124,24 @@ LOW_DEFAULT_PORTS_BOUNDARY,HIGH_DEFAULT_PORTS_BOUNDARY,0,0,0,"",
 /////////////// stop server ////////////////
 0,
 /////////////// MISC PARAMS ////////////////
-0,0,0,0,0,':',0,0,0,0,0,TURN_CREDENTIALS_NONE,0,0,0,0,0,0,
+0, /* stun_only */
+0, /* no_stun */
+0, /* secure_stun */
+0, /* server_relay */
+0, /* fingerprint */
+':', /* rest_api_separator */
+STUN_DEFAULT_NONCE_EXPIRATION_TIME, /* stale_nonce */
+STUN_DEFAULT_MAX_ALLOCATE_LIFETIME, /* max_allocate_lifetime */
+STUN_DEFAULT_CHANNEL_LIFETIME, /* channel_lifetime */
+STUN_DEFAULT_PERMISSION_LIFETIME, /* permission_lifetime */
+0, /* mobility */
+TURN_CREDENTIALS_NONE, /* ct */
+0, /* use_auth_secret_with_timestamp */
+0, /* max_bps */
+0, /* bps_capacity */
+0, /* bps_capacity_allocated */
+0, /* total_quota */
+0, /* user_quota */
 ///////////// Users DB //////////////
 { (TURN_USERDB_TYPE)0, {"\0"}, {0,NULL, {NULL,0}} },
 ///////////// CPUs //////////////////
