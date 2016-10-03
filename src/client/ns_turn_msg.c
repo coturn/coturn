@@ -1439,7 +1439,8 @@ int stun_attr_get_addr_str(const u08bits *buf, size_t len, stun_attr_ref attr, i
   stun_tid_from_message_str(buf, len, &tid);
   ioa_addr public_addr;
 
-  ns_bzero(ca,sizeof(ioa_addr));
+  ns_bzero(ca, sizeof(ioa_addr));
+  ns_bzero(&public_addr, sizeof(ioa_addr));
 
   int attr_type = stun_attr_get_type(attr);
   if(attr_type<0) return -1;
