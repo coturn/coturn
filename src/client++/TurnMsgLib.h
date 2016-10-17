@@ -1021,7 +1021,7 @@ public:
 		stun_set_allocate_response_str(_buffer, &_sz, &tid,
 						   &relayed_addr1, &relayed_addr2,
 						   &reflexive_addr,
-						   lifetime, error_code, reason,
+						   lifetime, STUN_DEFAULT_MAX_ALLOCATE_LIFETIME, error_code, reason,
 						   reservation_token, mobile_id);
 	}
 

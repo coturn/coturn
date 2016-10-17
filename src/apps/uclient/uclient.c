@@ -37,8 +37,7 @@
 #include <unistd.h>
 #include <time.h>
 
-#include <openssl/err.h>
-#include <openssl/rand.h>
+#include "ns_turn_openssl.h"
 
 #include <sys/select.h>
 

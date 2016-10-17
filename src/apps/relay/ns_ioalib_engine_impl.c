@@ -44,7 +44,7 @@
 
 #include <event2/listener.h>
 
-#include <openssl/err.h>
+#include "ns_turn_openssl.h"
 
 #if !defined(TURN_NO_HIREDIS)
 #include "hiredis_libevent2.h"

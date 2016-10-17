@@ -46,6 +46,7 @@ struct _Myconninfo {
 	char *password;
 	unsigned int port;
 	unsigned int connect_timeout;
+	unsigned int read_timeout;
 	/* SSL ==>> */
 	char *key;
 	char *ca;
@@ -139,6 +140,8 @@ static Myconninfo *MyconninfoParse(char *userdb, char **errmsg) {
 				co->connect_timeout = (unsigned int)atoi(seq+1);
 			else if(!strcmp(s,"timeout"))
 				co->connect_timeout = (unsigned int)atoi(seq+1);
+			else if(!strcmp(s,"read_timeout"))
+				co->read_timeout = (unsigned int)atoi(seq+1);
 			else if(!strcmp(s,"key"))
 				co->key = turn_strdup(seq+1);
 			else if(!strcmp(s,"ssl-key"))
@@ -226,6 +229,8 @@ static MYSQL *get_mydb_connection(void) {
 			} else {
 				if(co->connect_timeout)
 					mysql_options(mydbconnection,MYSQL_OPT_CONNECT_TIMEOUT,&(co->connect_timeout));
+				if(co->read_timeout)
+					mysql_options(mydbconnection,MYSQL_OPT_READ_TIMEOUT,&(co->read_timeout));
 				if(co->ca || co->capath || co->cert || co->cipher || co->key) {
 					mysql_ssl_set(mydbconnection, co->key, co->cert, co->ca, co->capath, co->cipher);
 				}

@@ -40,14 +40,18 @@ Peter Dunkley <peter.dunkley@acision.com> :
 	CentOS/Fedora port
 	(since v2.6.6.1)
 
-Mutsutoshi Yoshimoto <mutsutoshi.yoshimoto@mixi.co.jp>
+Mutsutoshi Yoshimoto <mutsutoshi.yoshimoto@mixi.co.jp> :
 	TCP routing: testing and bug fixes
 	(since v3.2.2.7)
 
-Federico Pinna <fpinna@vivocha.com>
+Federico Pinna <fpinna@vivocha.com> :
 	MongoDB support
 	(since v4.1.0.1)
 
-Bradley T. Hughes <bradleythughes@fastmail.fm>
+Bradley T. Hughes <bradleythughes@fastmail.fm> :
 	FreeBSD port
 	(since v4.1.2.1)
+
+Mészáros Mihály <bakfitty@gmail.com> :
+        OAuth utility, NAT behavior Discovery
+        (since v4.5.0.4)

@@ -59,14 +59,7 @@
 #include <event2/bufferevent.h>
 #include <event2/buffer.h>
 
-#include <openssl/ssl.h>
-#include <openssl/bio.h>
-#include <openssl/err.h>
-#include <openssl/rand.h>
-#include <openssl/crypto.h>
-#include <openssl/opensslv.h>
-#include <openssl/dh.h>
-#include <openssl/bn.h>
+#include "ns_turn_openssl.h"
 
 #include "ns_turn_utils.h"
 #include "ns_turn_khash.h"
@@ -292,6 +285,9 @@ typedef struct _turn_params_ {
   int fingerprint;
   char rest_api_separator;
   vint stale_nonce;
+  vint max_allocate_lifetime;
+  vint channel_lifetime;
+  vint permission_lifetime;
   vint mobility;
   turn_credential_type ct;
   int use_auth_secret_with_timestamp;

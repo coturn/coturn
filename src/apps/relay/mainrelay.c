@@ -30,6 +30,11 @@
 
 #include "mainrelay.h"
 
+#if (defined LIBRESSL_VERSION_NUMBER && OPENSSL_VERSION_NUMBER == 0x20000000L)
+#undef OPENSSL_VERSION_NUMBER
+#define OPENSSL_VERSION_NUMBER 0x1000107FL
+#endif
+
 ////// TEMPORARY data //////////
 
 static int use_lt_credentials = 0;
@@ -119,7 +124,24 @@ LOW_DEFAULT_PORTS_BOUNDARY,HIGH_DEFAULT_PORTS_BOUNDARY,0,0,0,"",
 /////////////// stop server ////////////////
 0,
 /////////////// MISC PARAMS ////////////////
-0,0,0,0,0,':',0,0,TURN_CREDENTIALS_NONE,0,0,0,0,0,0,
+0, /* stun_only */
+0, /* no_stun */
+0, /* secure_stun */
+0, /* server_relay */
+0, /* fingerprint */
+':', /* rest_api_separator */
+STUN_DEFAULT_NONCE_EXPIRATION_TIME, /* stale_nonce */
+STUN_DEFAULT_MAX_ALLOCATE_LIFETIME, /* max_allocate_lifetime */
+STUN_DEFAULT_CHANNEL_LIFETIME, /* channel_lifetime */
+STUN_DEFAULT_PERMISSION_LIFETIME, /* permission_lifetime */
+0, /* mobility */
+TURN_CREDENTIALS_NONE, /* ct */
+0, /* use_auth_secret_with_timestamp */
+0, /* max_bps */
+0, /* bps_capacity */
+0, /* bps_capacity_allocated */
+0, /* total_quota */
+0, /* user_quota */
 ///////////// Users DB //////////////
 { (TURN_USERDB_TYPE)0, {"\0"}, {0,NULL, {NULL,0}} },
 ///////////// CPUs //////////////////
@@ -457,7 +479,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "	                                	This database can be used for long-term credentials mechanism users,\n"
 "		                                and it can store the secret value(s) for secret-based timed authentication in TURN RESP API.\n"
 "						The connection string my be space-separated list of parameters:\n"
-"	        	          		\"host=<ip-addr> dbname=<database-name> user=<database-user> \\\n								password=<database-user-password> port=<db-port> connect_timeout=<seconds>\".\n\n"
+"	        	          		\"host=<ip-addr> dbname=<database-name> user=<database-user> \\\n								password=<database-user-password> port=<db-port> connect_timeout=<seconds> read_timeout=<seconds>\".\n\n"
 "						The connection string parameters for the secure communications (SSL):\n"
 "						ca, capath, cert, key, cipher\n"
 "						(see http://dev.mysql.com/doc/refman/5.1/en/ssl-options.html for the\n"
@@ -542,7 +564,12 @@ static char Usage[] = "Usage: turnserver [options]\n"
 " --simple-log					This flag means that no log file rollover will be used, and the log file\n"
 "						name will be constructed as-is, without PID and date appendage.\n"
 "						This option can be used, for example, together with the logrotate tool.\n"
-" --stale-nonce					Use extra security with nonce value having limited lifetime (600 secs).\n"
+" --stale-nonce[=<value>]			Use extra security with nonce value having limited lifetime (default 600 secs).\n"
+" --max-allocate-lifetime	<value>		Set the maximum value for the allocation lifetime. Default to 3600 secs.\n"
+" --channel-lifetime		<value>		Set the lifetime for channel binding, default to 600 secs.\n"
+"						This value MUST not be changed for production purposes.\n"
+" --permission-lifetime		<value>		Set the value for the lifetime of the permission. Default to 300 secs.\n"
+"						This MUST not be changed for production purposes.\n"
 " -S, --stun-only				Option to set standalone STUN operation only, all TURN requests will be ignored.\n"
 "     --no-stun					Option to suppress STUN functionality, only TURN requests will be processed.\n"
 " --alternate-server		<ip:port>	Set the TURN server to redirect the allocate requests (UDP and TCP services).\n"
@@ -665,6 +692,9 @@ enum EXTRA_OPTS {
 	MIN_PORT_OPT,
 	MAX_PORT_OPT,
 	STALE_NONCE_OPT,
+	MAX_ALLOCATE_LIFETIME_OPT,
+	CHANNEL_LIFETIME_OPT,
+	PERMISSION_LIFETIME_OPT,
 	AUTH_SECRET_OPT,
 	DEL_ALL_AUTH_SECRETS_OPT,
 	STATIC_AUTH_SECRET_VAL_OPT,
@@ -782,6 +812,9 @@ static const struct myoption long_options[] = {
 				{ "no-udp-relay", optional_argument, NULL, NO_UDP_RELAY_OPT },
 				{ "no-tcp-relay", optional_argument, NULL, NO_TCP_RELAY_OPT },
 				{ "stale-nonce", optional_argument, NULL, STALE_NONCE_OPT },
+				{ "max-allocate-lifetime", optional_argument, NULL, MAX_ALLOCATE_LIFETIME_OPT },
+				{ "channel-lifetime", optional_argument, NULL, CHANNEL_LIFETIME_OPT },
+				{ "permission-lifetime", optional_argument, NULL, PERMISSION_LIFETIME_OPT },
 				{ "stun-only", optional_argument, NULL, 'S' },
 				{ "no-stun", optional_argument, NULL, NO_STUN_OPT },
 				{ "cert", required_argument, NULL, CERT_FILE_OPT },
@@ -872,6 +905,13 @@ static const struct myoption admin_long_options[] = {
 				{ "help", no_argument, NULL, 'h' },
 				{ NULL, no_argument, NULL, 0 }
 };
+
+static int get_int_value(const char* s, int default_value)
+{
+	if (!s || !(s[0]))
+		return default_value;
+	return atoi(s);
+}
 
 static int get_bool_value(const char* s)
 {
@@ -1034,7 +1074,16 @@ static void set_option(int c, char *value)
 		turn_params.no_loopback_peers = get_bool_value(value);
 		break;
 	case STALE_NONCE_OPT:
-		turn_params.stale_nonce = get_bool_value(value);
+		turn_params.stale_nonce = get_int_value(value, STUN_DEFAULT_NONCE_EXPIRATION_TIME);
+		break;
+	case MAX_ALLOCATE_LIFETIME_OPT:
+		turn_params.max_allocate_lifetime = get_int_value(value, STUN_DEFAULT_MAX_ALLOCATE_LIFETIME);
+		break;
+	case CHANNEL_LIFETIME_OPT:
+		turn_params.channel_lifetime = get_int_value(value, STUN_DEFAULT_CHANNEL_LIFETIME);
+		break;
+	case PERMISSION_LIFETIME_OPT:
+		turn_params.permission_lifetime = get_int_value(value, STUN_DEFAULT_PERMISSION_LIFETIME);
 		break;
 	case MAX_ALLOCATE_TIMEOUT_OPT:
 		TURN_MAX_ALLOCATE_TIMEOUT = atoi(value);
@@ -1662,7 +1711,7 @@ static void print_features(unsigned long mfn)
 #endif
 	}
 
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "OpenSSL compile-time version: %s\n",OPENSSL_VERSION_TEXT);
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "OpenSSL compile-time version: %s (0x%lx)\n",OPENSSL_VERSION_TEXT,OPENSSL_VERSION_NUMBER);
 
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\n");
 

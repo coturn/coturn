@@ -108,7 +108,7 @@ User database settings:
 		secret-based timed authentication in TURN RESP API.
 		The connection string format is like that:
 		 
-		"host=<host> dbname=<dbname> user=<db-user> password=<db-user-password> connect_timeout=<seconds>"
+		"host=<host> dbname=<dbname> user=<db-user> password=<db-user-password> connect_timeout=<seconds> read_timeout=<seconds>"
 
 		See the INSTALL file for more explanations and examples.
 		
@@ -207,8 +207,6 @@ Flags:
 --no-tcp-relay		Do not allow TCP relay endpoints defined in RFC 6062, 
 			use only UDP relay endpoints as defined in RFC 5766. 
 
---stale-nonce		Use extra security with nonce value having limited lifetime (600 secs). 
-
 --no-stdout-log		Flag to prevent stdout log messages.
 			By default, all log messages are going to both stdout and to
 			the configured log file. With this option everything will be going to 
@@ -259,7 +257,20 @@ Flags:
 
 -h			Help.
     
-Options with required values:  
+Options with values:  
+
+--stale-nonce[=<value>]		Use extra security with nonce value having
+							limited lifetime, in seconds (default 600 secs).
+
+--max-allocate-lifetime		Set the maximum value for the allocation lifetime.
+							Default to 3600 secs.
+
+--channel-lifetime 	Set the lifetime for channel binding, default to 600 secs.
+					This value MUST not be changed for production purposes.
+
+--permission-lifetime	Set the value for the lifetime of the permission.
+					Default to 300 secs.
+					This MUST not be changed for production purposes.
 
 -d, --listening-device	Listener interface device.
 			(NOT RECOMMENDED. Optional functionality, Linux only). 
@@ -360,7 +371,7 @@ Options with required values:
 
 -u, --user		Long-term security mechanism credentials user account, 
 			in the column-separated form username:key. 
-			Multiple user accounts may used in the command line.
+			Multiple user accounts may be used in the command line.
 			The key is either the user password, or
 			the key is generated
 			by turnadmin command. In the second case,
@@ -948,3 +959,5 @@ https://groups.google.com/forum/?fromgroups=#!forum/turn-server-project-rfc5766-
 	Federico Pinna <fpinna@vivocha.com>
 
 	Bradley T. Hughes <bradleythughes@fastmail.fm>
+
+        Mihaly Meszaros <bakfitty@gmail.com>

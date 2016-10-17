@@ -33,7 +33,7 @@
 
 #include <event2/event.h>
 
-#include <openssl/ssl.h>
+#include "ns_turn_openssl.h"
 
 #include "ns_turn_ioaddr.h"
 #include "ns_turn_msg_defs.h"

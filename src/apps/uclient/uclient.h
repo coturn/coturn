@@ -35,9 +35,7 @@
 #include "stun_buffer.h"
 #include "session.h"
 
-#include <openssl/ssl.h>
-#include <openssl/dh.h>
-#include <openssl/bn.h>
+#include "ns_turn_openssl.h"
 
 #ifdef __cplusplus
 extern "C" {
