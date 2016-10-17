@@ -135,12 +135,14 @@ install:	all ${MAKE_DEPS}
 	${INSTALL_PROGRAM} bin/turnutils_uclient ${DESTDIR}${BINDIR}
 	${INSTALL_PROGRAM} bin/turnutils_peer ${DESTDIR}${BINDIR}
 	${INSTALL_PROGRAM} bin/turnutils_stunclient ${DESTDIR}${BINDIR}
+	${INSTALL_PROGRAM} bin/turnutils_oauth ${DESTDIR}${BINDIR}
 	${INSTALL_PROGRAM} bin/turnutils_natdiscovery ${DESTDIR}${BINDIR}
 	${INSTALL_MAN} man/man1/turnserver.1 ${DESTDIR}${MANPREFIX}/man/man1/
 	${INSTALL_MAN} man/man1/turnadmin.1 ${DESTDIR}${MANPREFIX}/man/man1/
 	${INSTALL_MAN} man/man1/turnutils.1 ${DESTDIR}${MANPREFIX}/man/man1/
 	${INSTALL_MAN} man/man1/turnutils_uclient.1 ${DESTDIR}${MANPREFIX}/man/man1/
 	${INSTALL_MAN} man/man1/turnutils_stunclient.1 ${DESTDIR}${MANPREFIX}/man/man1/
+	${INSTALL_MAN} man/man1/turnutils_oauth.1 ${DESTDIR}${MANPREFIX}/man/man1/
 	${INSTALL_MAN} man/man1/turnutils_natdiscovery.1 ${DESTDIR}${MANPREFIX}/man/man1/
 	${INSTALL_MAN} man/man1/turnutils_peer.1 ${DESTDIR}${MANPREFIX}/man/man1/
 	${INSTALL_MAN} man/man1/coturn.1 ${DESTDIR}${MANPREFIX}/man/man1/
@@ -181,12 +183,14 @@ deinstall:	${MAKE_DEPS}
 	${RMCMD} ${DESTDIR}${BINDIR}/turnutils_peer
 	${RMCMD} ${DESTDIR}${BINDIR}/turnutils_uclient
 	${RMCMD} ${DESTDIR}${BINDIR}/turnutils_stunclient
+	${RMCMD} ${DESTDIR}${BINDIR}/turnutils_oauth
 	${RMCMD} ${DESTDIR}${BINDIR}/turnutils_natdiscovery
 	${RMCMD} ${DESTDIR}${MANPREFIX}/man/man1/turnserver.1
 	${RMCMD} ${DESTDIR}${MANPREFIX}/man/man1/turnadmin.1
 	${RMCMD} ${DESTDIR}${MANPREFIX}/man/man1/turnutils.1
 	${RMCMD} ${DESTDIR}${MANPREFIX}/man/man1/turnutils_uclient.1
 	${RMCMD} ${DESTDIR}${MANPREFIX}/man/man1/turnutils_stunclient.1
+	${RMCMD} ${DESTDIR}${MANPREFIX}/man/man1/turnutils_oauth.1
 	${RMCMD} ${DESTDIR}${MANPREFIX}/man/man1/turnutils_natdiscovery.1
 	${RMCMD} ${DESTDIR}${MANPREFIX}/man/man1/turnutils_peer.1
 	${RMCMD} ${DESTDIR}${MANPREFIX}/man/man1/coturn.1
