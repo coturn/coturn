@@ -39,7 +39,7 @@ be configured to be able to work properly!
 
 6.	turnutils_oauth: a utility that provides OAuth access_token 
 generation(AEAD encryption), validation and decryption. This utility inputs 
-all the keys and lifetimes and any related informations that needed for 
+all the keys and lifetimes and any related information that needed for 
 creation and validationi of an access_token. It outputs a JSON with all OAuth 
 PoP parameters that need to pass to the client. Output is generated accoriding 
 RFC7635 Appendix B, Figure 8. 
@@ -298,7 +298,7 @@ turnutils_oauth utilitiy provides help in OAuth access_token encryption and/or
 decryption with AEAD (Atuthenticated Encryption with Associated Data). It helps 
 for an Auth Server in access_token creation, and also for debuging purposes it 
 helps the access_token validation and decryption. This utility inputs all the 
-keys and lifetimes and any related informations that are needed for encryption 
+keys and lifetimes and any related information that are needed for encryption 
 or decryption of an access_token. It outputs a JSON with all OAuth PoP 
 parameters that need to pass to the client. Output is generated accoriding 
 RFC7635 Appendix B, Figure 8. This utility could help to build an Auth Server 
