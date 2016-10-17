@@ -1,3 +1,9 @@
+coturn (4.5.0.5-1) unstable; urgency=medium
+
+  * Sync to upstream 4.5.0.5
+
+ -- Oleg Moskalenko <mom040267@gmail.com>  Sun, 16 Oct 2016 23:38:04 -0700
+
 coturn (4.5.0.4-4) unstable; urgency=medium
 
   * trying to fix piuparts report

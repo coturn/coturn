@@ -3,6 +3,8 @@ bin/turnadmin usr/bin
 bin/turnutils_peer usr/bin
 bin/turnutils_stunclient usr/bin
 bin/turnutils_uclient usr/bin
+bin/turnutils_oauth usr/bin
+bin/turnutils_natdiscovery usr/bin
 lib/libturnclient.a usr/lib
 turndb/schema.sql usr/share/coturn
 turndb/schema.sql usr/share/doc/coturn
