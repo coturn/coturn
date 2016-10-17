@@ -33,11 +33,7 @@
 
 ///////////// Security functions implementation from ns_turn_msg.h ///////////
 
-#include <openssl/md5.h>
-#include <openssl/hmac.h>
-#include <openssl/ssl.h>
-#include <openssl/err.h>
-#include <openssl/rand.h>
+#include "ns_turn_openssl.h"
 
 ///////////
 
@@ -176,15 +172,16 @@ int stun_produce_integrity_key_str(u08bits *uname, u08bits *realm, u08bits *upwd
 	str[strl]=0;
 
 	if(shatype == SHATYPE_SHA256) {
-		unsigned int keylen = 0;
 #if !defined(OPENSSL_NO_SHA256) && defined(SHA256_DIGEST_LENGTH)
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
+		unsigned int keylen = 0;
 		EVP_MD_CTX ctx;
 		EVP_DigestInit(&ctx,EVP_sha256());
 		EVP_DigestUpdate(&ctx,str,strl);
 		EVP_DigestFinal(&ctx,key,&keylen);
 		EVP_MD_CTX_cleanup(&ctx);
 #else
+		unsigned int keylen = 0;
 		EVP_MD_CTX *ctx = EVP_MD_CTX_new();
 		EVP_DigestInit(ctx,EVP_sha256());
 		EVP_DigestUpdate(ctx,str,strl);
@@ -1024,7 +1021,7 @@ int stun_set_allocate_request_str(u08bits* buf, size_t *len, u32bits lifetime, i
 int stun_set_allocate_response_str(u08bits* buf, size_t *len, stun_tid* tid, 
 				   const ioa_addr *relayed_addr1, const ioa_addr *relayed_addr2,
 				   const ioa_addr *reflexive_addr,
-				   u32bits lifetime, int error_code, const u08bits *reason,
+				   u32bits lifetime, u32bits max_lifetime, int error_code, const u08bits *reason,
 				   u64bits reservation_token, char* mobile_id) {
 
   if(!error_code) {
@@ -1050,7 +1047,7 @@ int stun_set_allocate_response_str(u08bits* buf, size_t *len, stun_tid* tid,
 
     {
       if(lifetime<1) lifetime=STUN_DEFAULT_ALLOCATE_LIFETIME;
-      else if(lifetime>STUN_MAX_ALLOCATE_LIFETIME) lifetime = STUN_MAX_ALLOCATE_LIFETIME;
+      else if(lifetime>max_lifetime) lifetime = max_lifetime;
 
       u32bits field=nswap32(lifetime);
       if(stun_attr_add_str(buf,len,STUN_ATTRIBUTE_LIFETIME,(u08bits*)(&field),sizeof(field))<0) return -1;
@@ -1218,11 +1215,11 @@ void stun_tid_generate_in_message_str(u08bits* buf, stun_tid* id) {
 
 /////////////////// TIME ////////////////////////////////////////////////////////
 
-turn_time_t stun_adjust_allocate_lifetime(turn_time_t lifetime, turn_time_t max_lifetime) {
+turn_time_t stun_adjust_allocate_lifetime(turn_time_t lifetime, turn_time_t max_allowed_lifetime, turn_time_t max_lifetime) {
 
   if(!lifetime) lifetime = STUN_DEFAULT_ALLOCATE_LIFETIME;
   else if(lifetime<STUN_MIN_ALLOCATE_LIFETIME) lifetime = STUN_MIN_ALLOCATE_LIFETIME;
-  else if(lifetime>STUN_MAX_ALLOCATE_LIFETIME) lifetime = STUN_MAX_ALLOCATE_LIFETIME;
+  else if(lifetime>max_allowed_lifetime) lifetime = max_allowed_lifetime;
 
   if(max_lifetime && (max_lifetime < lifetime)) {
   	lifetime = max_lifetime;
@@ -1442,7 +1439,8 @@ int stun_attr_get_addr_str(const u08bits *buf, size_t len, stun_attr_ref attr, i
   stun_tid_from_message_str(buf, len, &tid);
   ioa_addr public_addr;
 
-  ns_bzero(ca,sizeof(ioa_addr));
+  addr_set_any(ca);
+  addr_set_any(&public_addr);
 
   int attr_type = stun_attr_get_type(attr);
   if(attr_type<0) return -1;
@@ -2514,6 +2512,7 @@ static int decode_oauth_token_gcm(const u08bits *server_name, const encoded_oaut
 		const unsigned char *csnl = snl;
 
 		uint16_t nonce_len = nswap16(*((const uint16_t*)csnl));
+                dtoken->enc_block.nonce_length = nonce_len;
 
 		size_t min_encoded_field_size = 2+4+8+nonce_len+2+OAUTH_GCM_TAG_SIZE+1;
 		if(etoken->size < min_encoded_field_size) {
@@ -2524,6 +2523,7 @@ static int decode_oauth_token_gcm(const u08bits *server_name, const encoded_oaut
 		const unsigned char* encoded_field = (const unsigned char*)(etoken->token + nonce_len + 2);
 		unsigned int encoded_field_size = (unsigned int)etoken->size - nonce_len - 2 - OAUTH_GCM_TAG_SIZE;
 		const unsigned char* nonce = ((const unsigned char*)etoken->token + 2);
+                ns_bcopy(nonce,dtoken->enc_block.nonce,nonce_len);
 
 		unsigned char tag[OAUTH_GCM_TAG_SIZE];
 		ns_bcopy(((const unsigned char*)etoken->token) + nonce_len + 2 + encoded_field_size, tag ,sizeof(tag));

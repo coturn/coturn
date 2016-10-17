@@ -44,9 +44,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-#include <openssl/ssl.h>
-#include <openssl/opensslv.h>
-#include <openssl/rand.h>
+#include "ns_turn_openssl.h"
 
 /////////////// extern definitions /////////////////////
 

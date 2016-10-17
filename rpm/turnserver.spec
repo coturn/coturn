@@ -1,5 +1,5 @@
 Name:		turnserver
-Version:	4.5.0.4
+Version:	4.5.0.5
 Release:	0%{dist}
 Summary:	Coturn TURN Server
 
@@ -202,6 +202,7 @@ fi
 %{_datadir}/%{name}/etc/turnserver.conf
 %dir %{_datadir}/%{name}/scripts
 %{_datadir}/%{name}/scripts/peer.sh
+%{_datadir}/%{name}/scripts/oauth.sh
 %{_datadir}/%{name}/scripts/readme.txt
 %dir %{_datadir}/%{name}/scripts/basic
 %{_datadir}/%{name}/scripts/basic/dos_attack.sh
@@ -261,10 +262,14 @@ fi
 %{_bindir}/turnutils_peer
 %{_bindir}/turnutils_stunclient
 %{_bindir}/turnutils_uclient
+%{_bindir}/turnutils_oauth
+%{_bindir}/turnutils_natdiscovery
 %{_mandir}/man1/turnutils.1.gz
 %{_mandir}/man1/turnutils_peer.1.gz
 %{_mandir}/man1/turnutils_stunclient.1.gz
 %{_mandir}/man1/turnutils_uclient.1.gz
+%{_mandir}/man1/turnutils_oauth.1.gz
+%{_mandir}/man1/turnutils_natdiscovery.1.gz
 %dir %{_docdir}/%{name}
 %{_docdir}/%{name}/LICENSE
 %{_docdir}/%{name}/README.turnutils
@@ -290,6 +295,8 @@ fi
 %{_includedir}/turn/client/TurnMsgLib.h
 
 %changelog
+* Sat Aug 27 2016 Oleg Moskalenko <mom040267@gmail.com>
+  - Sync to 4.5.0.5
 * Sat Aug 20 2016 Oleg Moskalenko <mom040267@gmail.com>
   - Sync to 4.5.0.4
 * Sun Oct 11 2015 Oleg Moskalenko <mom040267@gmail.com>

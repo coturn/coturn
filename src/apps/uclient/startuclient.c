@@ -37,7 +37,7 @@
 #include "uclient.h"
 #include "session.h"
 
-#include <openssl/err.h>
+#include "ns_turn_openssl.h"
 
 /////////////////////////////////////////
 

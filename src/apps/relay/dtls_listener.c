@@ -34,10 +34,7 @@
 #include "dtls_listener.h"
 #include "ns_ioalib_impl.h"
 
-#include <openssl/ssl.h>
-#include <openssl/bio.h>
-#include <openssl/err.h>
-#include <openssl/rand.h>
+#include "ns_turn_openssl.h"
 
 #include <pthread.h>
 

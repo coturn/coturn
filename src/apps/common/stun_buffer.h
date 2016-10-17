@@ -105,7 +105,7 @@ int stun_set_allocate_request(stun_buffer* buf, u32bits lifetime, int af4, int a
 int stun_set_allocate_response(stun_buffer* buf, stun_tid* tid, 
 			       const ioa_addr *relayed_addr1, const ioa_addr *relayed_addr2,
 			       const ioa_addr *reflexive_addr,
-			       u32bits lifetime,
+			       u32bits lifetime, u32bits max_lifetime,
 			       int error_code, const u08bits *reason,
 			       u64bits reservation_token, char *mobile_id);
 

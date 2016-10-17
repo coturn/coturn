@@ -848,7 +848,7 @@ static int update_turn_permission_lifetime(ts_ur_super_session *ss, turn_permiss
 
 		if (server) {
 
-			if(!time_delta) time_delta = STUN_PERMISSION_LIFETIME;
+			if(!time_delta) time_delta = *(server->permission_lifetime);
 			tinfo->expiration_time = server->ctime + time_delta;
 
 			IOA_EVENT_DEL(tinfo->lifetime_ev);
@@ -883,13 +883,13 @@ static int update_channel_lifetime(ts_ur_super_session *ss, ch_info* chn)
 
 			if (server) {
 
-				if (update_turn_permission_lifetime(ss, tinfo, STUN_CHANNEL_LIFETIME) < 0)
+				if (update_turn_permission_lifetime(ss, tinfo, *(server->channel_lifetime)) < 0)
 					return -1;
 
-				chn->expiration_time = server->ctime + STUN_CHANNEL_LIFETIME;
+				chn->expiration_time = server->ctime + *(server->channel_lifetime);
 
 				IOA_EVENT_DEL(chn->lifetime_ev);
-				chn->lifetime_ev = set_ioa_timer(server->e, STUN_CHANNEL_LIFETIME, 0,
+				chn->lifetime_ev = set_ioa_timer(server->e, *(server->channel_lifetime), 0,
 								client_ss_channel_timeout_handler,
 								chn, 0,
 								"client_ss_channel_timeout_handler");
@@ -977,7 +977,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 							tid,
 							pxor_relayed_addr1, pxor_relayed_addr2,
 							get_remote_addr_from_ioa_socket(ss->client_socket),
-							lifetime, 0, NULL, 0,
+							lifetime,*(server->max_allocate_lifetime), 0, NULL, 0,
 							ss->s_mobile_id);
 				ioa_network_buffer_set_size(nbh,len);
 				*resp_constructed = 1;
@@ -1205,7 +1205,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 				}
 			}
 
-			lifetime = stun_adjust_allocate_lifetime(lifetime, ss->max_session_time_auth);
+			lifetime = stun_adjust_allocate_lifetime(lifetime, *(server->max_allocate_lifetime), ss->max_session_time_auth);
 			u64bits out_reservation_token = 0;
 
 			if(inc_quota(ss, username)<0) {
@@ -1373,7 +1373,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 						stun_set_allocate_response_str(ioa_network_buffer_data(nbh), &len, tid,
 									pxor_relayed_addr1, pxor_relayed_addr2,
 									get_remote_addr_from_ioa_socket(ss->client_socket), lifetime,
-									0,NULL,
+									*(server->max_allocate_lifetime),0,NULL,
 									out_reservation_token,
 									ss->s_mobile_id);
 
@@ -1398,7 +1398,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 		}
 
 		size_t len = ioa_network_buffer_get_size(nbh);
-		stun_set_allocate_response_str(ioa_network_buffer_data(nbh), &len, tid, NULL, NULL, NULL, 0, *err_code, *reason, 0, ss->s_mobile_id);
+		stun_set_allocate_response_str(ioa_network_buffer_data(nbh), &len, tid, NULL, NULL, NULL, 0, *(server->max_allocate_lifetime), *err_code, *reason, 0, ss->s_mobile_id);
 		ioa_network_buffer_set_size(nbh,len);
 		*resp_constructed = 1;
 	}
@@ -1644,7 +1644,7 @@ static int handle_turn_refresh(turn_turnserver *server,
 							if (to_delete)
 								lifetime = 0;
 							else {
-								lifetime = stun_adjust_allocate_lifetime(lifetime, ss->max_session_time_auth);
+								lifetime = stun_adjust_allocate_lifetime(lifetime, *(server->max_allocate_lifetime), ss->max_session_time_auth);
 							}
 
 							if (af4c && refresh_relay_connection(server, orig_ss, lifetime, 0, 0, 0,
@@ -1757,7 +1757,7 @@ static int handle_turn_refresh(turn_turnserver *server,
 			if (to_delete)
 				lifetime = 0;
 			else {
-				lifetime = stun_adjust_allocate_lifetime(lifetime, ss->max_session_time_auth);
+				lifetime = stun_adjust_allocate_lifetime(lifetime, *(server->max_allocate_lifetime), ss->max_session_time_auth);
 			}
 
 			if(!af4 && !af6) {
@@ -2610,7 +2610,7 @@ static int handle_turn_channel_bind(turn_turnserver *server,
 					} else {
 						if (!addr_eq_no_port(&peer_addr, &(tinfo->addr))) {
 							*err_code = 500;
-							*reason = (const u08bits *)"Wrong permission info and peer addr conbination";
+							*reason = (const u08bits *)"Wrong permission info and peer addr combination";
 						} else if (chn->port != addr_get_port(&peer_addr)) {
 							*err_code = 500;
 							*reason = (const u08bits *)"Wrong port number";
@@ -3271,7 +3271,7 @@ static int check_stun_auth(turn_turnserver *server,
 					snprintf((s08bits*)s, NONCE_MAX_SIZE-4*i, "%04x",(unsigned int)rand);
 				}
 			}
-			ss->nonce_expiration_time = server->ctime + STUN_NONCE_EXPIRATION_TIME;
+			ss->nonce_expiration_time = server->ctime + *(server->stale_nonce);
 		}
 	}
 
@@ -4350,8 +4350,8 @@ static int create_relay_connection(turn_turnserver* server,
 
 		if (lifetime<1)
 			lifetime = STUN_DEFAULT_ALLOCATE_LIFETIME;
-		else if(lifetime>STUN_MAX_ALLOCATE_LIFETIME)
-			lifetime = STUN_MAX_ALLOCATE_LIFETIME;
+		else if(lifetime>(u32bits)*(server->max_allocate_lifetime))
+			lifetime = (u32bits)*(server->max_allocate_lifetime);
 
 		ioa_timer_handle ev = set_ioa_timer(server->e, lifetime, 0,
 				client_ss_allocation_timeout_handler, newelem, 0,
@@ -4796,6 +4796,9 @@ void init_turn_server(turn_turnserver* server,
 		vintp no_tcp_relay,
 		vintp no_udp_relay,
 		vintp stale_nonce,
+		vintp max_allocate_lifetime,
+		vintp channel_lifetime,
+		vintp permission_lifetime,
 		vintp stun_only,
 		vintp no_stun,
 		turn_server_addrs_list_t *alternate_servers_list,
@@ -4851,6 +4854,9 @@ void init_turn_server(turn_turnserver* server,
 	server->self_udp_balance = self_udp_balance;
 
 	server->stale_nonce = stale_nonce;
+	server->max_allocate_lifetime = max_allocate_lifetime;
+	server->channel_lifetime = channel_lifetime;
+	server->permission_lifetime = permission_lifetime;
 	server->stun_only = stun_only;
 	server->no_stun = no_stun;
 

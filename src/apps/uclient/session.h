@@ -40,7 +40,7 @@
 #include "stun_buffer.h"
 #include "apputils.h"
 
-#include <openssl/ssl.h>
+#include "ns_turn_openssl.h"
 
 #ifdef __cplusplus
 extern "C" {
