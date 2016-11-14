@@ -678,7 +678,6 @@ static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
 #define ADMIN_OPTIONS "PgGORIHKYlLkaADSdb:e:M:J:N:u:r:p:s:X:o:h"
 
 enum EXTRA_OPTS {
-	PROD_OPT,
 	NO_UDP_OPT=256,
 	NO_TCP_OPT,
 	NO_TLS_OPT,
@@ -742,7 +741,8 @@ enum EXTRA_OPTS {
 	ADMIN_TOTAL_QUOTA_OPT,
 	ADMIN_USER_QUOTA_OPT,
 	SERVER_NAME_OPT,
-	OAUTH_OPT
+	OAUTH_OPT,
+	PROD_OPT
 };
 
 struct myoption {
