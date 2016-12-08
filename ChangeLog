@@ -1,6 +1,7 @@
 10/17/2016 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.5.0.6 'dan Eider':
 	- Typos in the text fixed.
+	- TLS1.2 support fixed.
 
 08/27/2016 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.5.0.5 'dan Eider':
