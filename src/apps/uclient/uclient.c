@@ -285,7 +285,7 @@ int send_buffer(app_ur_conn_info *clnet_info, stun_buffer* message, int data_con
 		while (left > 0) {
 			do {
 				rc = send(fd, buffer, left, 0);
-			} while (rc < 0 && ((errno == EINTR) || (errno == ENOBUFS)));
+			} while (rc <= 0 && ((errno == EINTR) || (errno == ENOBUFS) || (errno == EAGAIN)));
 			if (rc > 0) {
 				left -= (size_t) rc;
 				buffer += rc;
