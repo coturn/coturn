@@ -1495,7 +1495,6 @@ static int turn_tcp_connection_bind(int verbose, app_ur_conn_info *clnet_info, a
 										clnet_info->server_name, &(clnet_info->oauth))) {
 					goto beg_cb;
 				} else if (stun_is_error_response(&response_message, &err_code,err_msg,sizeof(err_msg))) {
-					cb_received = 1;
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "connection bind error %d (%s)\n",
 							      err_code,(char*)err_msg);
 					return -1;
