@@ -34,6 +34,7 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include <assert.h>
 
 #include "ns_turn_utils.h"
 #include "apputils.h"
@@ -563,11 +564,25 @@ int main(int argc, const char **argv)
 			}
 		}
 	}
-
+	
+    
+	
+    
 	{
 		if(check_oauth()<0)
 			exit(-1);
 	}
+
+    char foo[256];
+    char bar[256];
+    
+    foo[0] ='a';
+    foo[1] = '\0';
+    bar[0] ='z';
+    bar[1] = '\0';
+
+	assert( get_canonic_origin(foo, NULL, 1) == -1);
+	assert( get_canonic_origin(NULL, bar, 1) == -1);
 
 	return 0;
 }
