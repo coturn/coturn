@@ -2456,7 +2456,7 @@ static int ServerALPNCallback(SSL *ssl,
 		}
 		if((current_len == ha_len) && (memcmp(ptr+1,HTTP_ALPN,ha_len)==0)) {
 			*out = ptr+1;
-			*outlen = ta_len;
+			*outlen = ha_len;
 			SSL_set_app_data(ssl,HTTP_ALPN);
 			found_http = 1;
 		}
