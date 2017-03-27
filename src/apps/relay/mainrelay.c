@@ -100,7 +100,7 @@ DH_1066, "", "", "",
 0,
 #endif
 
-TURN_VERBOSE_NONE,0,0,
+TURN_VERBOSE_NONE,0,0,0,
 "/var/run/turnserver.pid",
 DEFAULT_STUN_PORT,DEFAULT_STUN_TLS_PORT,0,0,1,
 0,0,0,0,
@@ -435,6 +435,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 " -v, --verbose					'Moderate' verbose mode.\n"
 " -V, --Verbose					Extra verbose mode, very annoying (for debug purposes only).\n"
 " -o, --daemon					Start process as daemon (detach from current shell).\n"
+" --prod       	 				Production mode: hide the software version.\n"
 " -f, --fingerprint				Use fingerprints in the TURN messages.\n"
 " -a, --lt-cred-mech				Use the long-term credential mechanism.\n"
 " -z, --no-auth					Do not use any credential mechanism, allow anonymous access.\n"
@@ -740,7 +741,8 @@ enum EXTRA_OPTS {
 	ADMIN_TOTAL_QUOTA_OPT,
 	ADMIN_USER_QUOTA_OPT,
 	SERVER_NAME_OPT,
-	OAUTH_OPT
+	OAUTH_OPT,
+	PROD_OPT
 };
 
 struct myoption {
@@ -803,6 +805,7 @@ static const struct myoption long_options[] = {
 				{ "verbose", optional_argument, NULL, 'v' },
 				{ "Verbose", optional_argument, NULL, 'V' },
 				{ "daemon", optional_argument, NULL, 'o' },
+				{ "prod", optional_argument, NULL, PROD_OPT },
 				{ "fingerprint", optional_argument, NULL, 'f' },
 				{ "check-origin-consistency", optional_argument, NULL, CHECK_ORIGIN_CONSISTENCY_OPT },
 				{ "no-udp", optional_argument, NULL, NO_UDP_OPT },
@@ -1166,6 +1169,9 @@ static void set_option(int c, char *value)
 			turn_params.ct = TURN_CREDENTIALS_NONE;
 			anon_credentials = 1;
 		}
+		break;
+	case PROD_OPT:
+		turn_params.prod = get_bool_value(value);
 		break;
 	case 'f':
 		turn_params.fingerprint = get_bool_value(value);
@@ -2450,7 +2456,7 @@ static int ServerALPNCallback(SSL *ssl,
 		}
 		if((current_len == ha_len) && (memcmp(ptr+1,HTTP_ALPN,ha_len)==0)) {
 			*out = ptr+1;
-			*outlen = ta_len;
+			*outlen = ha_len;
 			SSL_set_app_data(ssl,HTTP_ALPN);
 			found_http = 1;
 		}

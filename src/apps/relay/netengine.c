@@ -1638,6 +1638,7 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
 			 &turn_params.permission_lifetime,
 			 &turn_params.stun_only,
 			 &turn_params.no_stun,
+			 &turn_params.prod,
 			 &turn_params.alternate_servers_list,
 			 &turn_params.tls_alternate_servers_list,
 			 &turn_params.aux_servers_list,
