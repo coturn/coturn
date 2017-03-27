@@ -1,3 +1,9 @@
+coturn (4.5.0.6-1) unstable; urgency=medium
+
+  * Incompatibility with BoringSSL fixed
+
+ -- Oleg Moskalenko <mom040267@gmail.com>  Sun, 26 Mar 2017 22:09:04 -0700
+
 coturn (4.5.0.5-1) unstable; urgency=medium
 
   * Sync to upstream 4.5.0.5
