@@ -651,11 +651,11 @@ int get_canonic_origin(const char* o, char *co, int sz)
 			}
 			evhttp_uri_free(uri);
 		}
-	}
 
-	if(ret<0) {
-		strncpy(co,o,sz);
-		co[sz]=0;
+		if(ret<0) {
+			strncpy(co,o,sz);
+			co[sz]=0;
+		}
 	}
 
 	return ret;

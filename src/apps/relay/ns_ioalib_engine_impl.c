@@ -2179,7 +2179,7 @@ static TURN_TLS_TYPE check_tentative_tls(ioa_socket_raw fd)
 	if(len>0 && ((size_t)len == sizeof(s))) {
 		if((s[0]==22)&&(s[1]==3)&&(s[5]==1)&&(s[9]==3)) {
 			char max_supported = (char)(TURN_TLS_TOTAL-2);
-			if(s[10] >= max_supported)
+			if(s[10] > max_supported)
 				ret = TURN_TLS_SSL23; /* compatibility mode */
 			else
 				ret = (TURN_TLS_TYPE)(s[10]+1);

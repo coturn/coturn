@@ -57,6 +57,14 @@ static inline int get_family(int stun_family) {
 
 ////////////////////////////////////////////////
 
+const char * get_version(turn_turnserver *server) {
+	if(server && !server->prod) {
+		return (const char *) TURN_SOFTWARE;
+	} else {
+		return (const char *) "None";
+	}
+}
+
 #define MAX_NUMBER_OF_UNKNOWN_ATTRS (128)
 
 int TURN_MAX_ALLOCATE_TIMEOUT = 60;
@@ -1715,8 +1723,8 @@ static int handle_turn_refresh(turn_turnserver *server,
 										ioa_network_buffer_set_size(nbh,len);
 
 										{
-											static const u08bits *field = (const u08bits *) TURN_SOFTWARE;
-											static const size_t fsz = sizeof(TURN_SOFTWARE)-1;
+											const u08bits *field = (const u08bits *) get_version(server);
+											size_t fsz = strlen(get_version(server));
 											size_t len = ioa_network_buffer_get_size(nbh);
 											stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_SOFTWARE, field, fsz);
 											ioa_network_buffer_set_size(nbh, len);
@@ -2182,8 +2190,8 @@ static void tcp_peer_accept_connection(ioa_socket_handle s, void *arg)
 		ioa_network_buffer_set_size(nbh,len);
 
 		{
-			static const u08bits *field = (const u08bits *) TURN_SOFTWARE;
-			static const size_t fsz = sizeof(TURN_SOFTWARE)-1;
+			const u08bits *field = (const u08bits *) get_version(server);
+			size_t fsz = strlen(get_version(server));
 			size_t len = ioa_network_buffer_get_size(nbh);
 			stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_SOFTWARE, field, fsz);
 			ioa_network_buffer_set_size(nbh, len);
@@ -2459,8 +2467,8 @@ int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_co
 		}
 
 		{
-			static const u08bits *field = (const u08bits *) TURN_SOFTWARE;
-			static const size_t fsz = sizeof(TURN_SOFTWARE)-1;
+			size_t fsz = strlen(get_version(server));
+			const u08bits *field = (const u08bits *) get_version(server);
 			size_t len = ioa_network_buffer_get_size(nbh);
 			stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_SOFTWARE, field, fsz);
 			ioa_network_buffer_set_size(nbh, len);
@@ -3765,8 +3773,8 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 					}
 
 					{
-						static const u08bits *field = (const u08bits *) TURN_SOFTWARE;
-						static const size_t fsz = sizeof(TURN_SOFTWARE)-1;
+						const u08bits *field = (const u08bits *) get_version(server);
+						size_t fsz = strlen(get_version(server));
 						size_t len = ioa_network_buffer_get_size(nbh);
 						stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_SOFTWARE, field, fsz);
 						ioa_network_buffer_set_size(nbh, len);
@@ -3866,8 +3874,8 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 		}
 
 		{
-			static const u08bits *field = (const u08bits *) TURN_SOFTWARE;
-			static const size_t fsz = sizeof(TURN_SOFTWARE)-1;
+			const u08bits *field = (const u08bits *) get_version(server);
+			size_t fsz = strlen(get_version(server));
 			size_t len = ioa_network_buffer_get_size(nbh);
 			stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_SOFTWARE, field, fsz);
 			ioa_network_buffer_set_size(nbh, len);
@@ -3947,11 +3955,13 @@ static int handle_old_stun_command(turn_turnserver *server, ts_ur_super_session 
 				}
 
 				{
-					size_t newsz = (((sizeof(TURN_SOFTWARE))>>2) + 1)<<2;
+					size_t oldsz = strlen(get_version(server));
+					size_t newsz = (((oldsz)>>2) + 1)<<2;
 					u08bits software[120];
+					ns_bzero(software,sizeof(software));
 					if(newsz>sizeof(software))
 						newsz = sizeof(software);
-					ns_bcopy(TURN_SOFTWARE,software,newsz);
+					ns_bcopy(get_version(server),software,oldsz);
 					size_t len = ioa_network_buffer_get_size(nbh);
 					stun_attr_add_str(ioa_network_buffer_data(nbh), &len, OLD_STUN_ATTRIBUTE_SERVER, software, newsz);
 					ioa_network_buffer_set_size(nbh, len);
@@ -3999,11 +4009,13 @@ static int handle_old_stun_command(turn_turnserver *server, ts_ur_super_session 
 		}
 
 		{
-			size_t newsz = (((sizeof(TURN_SOFTWARE))>>2) + 1)<<2;
+			size_t oldsz = strlen(get_version(server));
+			size_t newsz = (((oldsz)>>2) + 1)<<2;
 			u08bits software[120];
+			ns_bzero(software,sizeof(software));
 			if(newsz>sizeof(software))
 				newsz = sizeof(software);
-			ns_bcopy(TURN_SOFTWARE,software,newsz);
+			ns_bcopy(get_version(server),software,oldsz);
 			size_t len = ioa_network_buffer_get_size(nbh);
 			stun_attr_add_str(ioa_network_buffer_data(nbh), &len, OLD_STUN_ATTRIBUTE_SERVER, software, newsz);
 			ioa_network_buffer_set_size(nbh, len);
@@ -4727,8 +4739,8 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 				ioa_network_buffer_set_size(nbh,len);
 
 				{
-					static const u08bits *field = (const u08bits *) TURN_SOFTWARE;
-					static const size_t fsz = sizeof(TURN_SOFTWARE)-1;
+					const u08bits *field = (const u08bits *) get_version(server);
+					size_t fsz = strlen(get_version(server));
 					size_t len = ioa_network_buffer_get_size(nbh);
 					stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_SOFTWARE, field, fsz);
 					ioa_network_buffer_set_size(nbh, len);
@@ -4801,6 +4813,7 @@ void init_turn_server(turn_turnserver* server,
 		vintp permission_lifetime,
 		vintp stun_only,
 		vintp no_stun,
+		vintp prod,
 		turn_server_addrs_list_t *alternate_servers_list,
 		turn_server_addrs_list_t *tls_alternate_servers_list,
 		turn_server_addrs_list_t *aux_servers_list,
@@ -4859,6 +4872,7 @@ void init_turn_server(turn_turnserver* server,
 	server->permission_lifetime = permission_lifetime;
 	server->stun_only = stun_only;
 	server->no_stun = no_stun;
+	server->prod = prod;
 
 	server->dont_fragment = dont_fragment;
 	server->fingerprint = fingerprint;
