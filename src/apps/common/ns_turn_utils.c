@@ -603,8 +603,10 @@ int get_default_protocol_port(const char* scheme, size_t slen)
 int get_canonic_origin(const char* o, char *co, int sz)
 {
 	int ret = -1;
+	if(o == NULL || co == NULL)
+		return ret;
 
-	if(o && o[0] && co) {
+	if(o[0]) {
 		co[0]=0;
 		struct evhttp_uri *uri = evhttp_uri_parse(o);
 		if(uri) {
