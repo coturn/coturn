@@ -598,6 +598,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						After the initialization, the turnserver process\n"
 "						will make an attempt to change the current group ID to that group.\n"
 " --mobility					Mobility with ICE (MICE) specs support.\n"
+" --no-http					Turn OFF the HTTP-Admin-Interface. By default it is always ON.\n"
 " --no-cli					Turn OFF the CLI support. By default it is always ON.\n"
 " --cli-ip=<IP>					Local system IP address to be used for CLI server endpoint. Default value\n"
 "						is 127.0.0.1.\n"
@@ -742,7 +743,8 @@ enum EXTRA_OPTS {
 	ADMIN_USER_QUOTA_OPT,
 	SERVER_NAME_OPT,
 	OAUTH_OPT,
-	PROD_OPT
+	PROD_OPT,
+	NO_HTTP_OPT
 };
 
 struct myoption {
@@ -849,6 +851,7 @@ static const struct myoption long_options[] = {
 				{ "cli-ip", required_argument, NULL, CLI_IP_OPT },
 				{ "cli-port", required_argument, NULL, CLI_PORT_OPT },
 				{ "cli-password", required_argument, NULL, CLI_PASSWORD_OPT },
+				{ "no-http", optional_argument, NULL, NO_HTTP_OPT },
 				{ "server-relay", optional_argument, NULL, SERVER_RELAY_OPT },
 				{ "cli-max-output-sessions", required_argument, NULL, CLI_MAX_SESSIONS_OPT },
 				{ "ec-curve-name", required_argument, NULL, EC_CURVE_NAME_OPT },
@@ -991,6 +994,9 @@ static void set_option(int c, char *value)
 	  break;
   case NO_CLI_OPT:
 	  use_cli = !get_bool_value(value);
+	  break;
+  case NO_HTTP_OPT:
+	  use_http = !get_bool_value(value);
 	  break;
   case CLI_IP_OPT:
 	  if(make_ioa_addr((const u08bits*)value,0,&cli_addr)<0) {
