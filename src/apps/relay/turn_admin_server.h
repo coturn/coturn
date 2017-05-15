@@ -94,6 +94,16 @@ extern char cli_password[CLI_PASSWORD_LENGTH];
 #define DEFAULT_CLI_MAX_OUTPUT_SESSIONS (256)
 extern int cli_max_output_sessions;
 
+
+extern int use_web_admin;
+
+#define WEB_ADMIN_DEFAULT_IP ("127.0.0.1")
+extern  ioa_addr web_admin_addr;
+extern int web_admin_addr_set;
+
+#define WEB_ADMIN_DEFAULT_PORT (8080)
+extern int web_admin_port;
+
 ////////////////////////////////////////////
 
 void setup_admin_thread(void);
