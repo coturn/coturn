@@ -334,7 +334,7 @@ static void update_ssl_ctx(evutil_socket_t sock, short events, update_ssl_ctx_cb
 	UNUSED_ARG(events);
 }
 
-static void set_ssl_ctx(ioa_engine_handle e, turn_params_t *params)
+void set_ssl_ctx(ioa_engine_handle e, turn_params_t *params)
 {
 	update_ssl_ctx_cb_args_t *args = (update_ssl_ctx_cb_args_t *)turn_malloc(sizeof(update_ssl_ctx_cb_args_t));
 	args->engine = e;

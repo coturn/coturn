@@ -349,6 +349,9 @@ void del_tls_alternate_server(const char *saddr);
 void add_listener_addr(const char* addr);
 int add_relay_addr(const char* addr);
 
+////////// SSL CTX ////////////////////
+void set_ssl_ctx(ioa_engine_handle e, turn_params_t *params);
+
 ///////// Auth ////////////////
 
 void send_auth_message_to_auth_server(struct auth_message *am);

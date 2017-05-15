@@ -71,6 +71,8 @@
 
 #include "dbdrivers/dbdriver.h"
 
+#include "tls_listener.h"
+
 ///////////////////////////////
 
 struct admin_server adminserver;
@@ -85,6 +87,14 @@ int cli_port = CLI_DEFAULT_PORT;
 char cli_password[CLI_PASSWORD_LENGTH] = "";
 
 int cli_max_output_sessions = DEFAULT_CLI_MAX_OUTPUT_SESSIONS;
+
+
+int use_web_admin = 1;
+
+ioa_addr web_admin_addr;
+int web_admin_addr_set = 0;
+
+int web_admin_port = WEB_ADMIN_DEFAULT_PORT;
 
 ///////////////////////////////
 
@@ -1186,6 +1196,129 @@ static void cliserver_input_handler(struct evconnlistener *l, evutil_socket_t fd
 	}
 }
 
+static void web_admin_input_handler(ioa_socket_handle s, int event_type,
+                                 ioa_net_data *in_buffer, void *arg, int can_resume) {
+	
+	if (!arg)
+		return;
+	
+	UNUSED_ARG(event_type);
+	UNUSED_ARG(can_resume);
+	
+	ts_ur_super_session* ss = (ts_ur_super_session*)arg;
+	
+	if (ss->client_socket != s) {
+		return;
+	}
+	
+	int buffer_size = (int)ioa_network_buffer_get_size(in_buffer->nbh);
+	if (buffer_size > 0) {
+		
+		SOCKET_TYPE st = get_ioa_socket_type(ss->client_socket);
+		
+		if(is_stream_socket(st)) {
+			if(is_http((char*)ioa_network_buffer_data(in_buffer->nbh), buffer_size)) {
+				const char *proto = "HTTP";
+				ioa_network_buffer_data(in_buffer->nbh)[buffer_size] = 0;
+				if(st == TLS_SOCKET) {
+					proto = "HTTPS";
+					set_ioa_socket_app_type(ss->client_socket, HTTPS_CLIENT_SOCKET);
+
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s (%s %s) request: %s\n", __FUNCTION__, proto, get_ioa_socket_cipher(ss->client_socket), get_ioa_socket_ssl_method(ss->client_socket), (char*)ioa_network_buffer_data(in_buffer->nbh));
+
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s socket to be detached: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(long)ss->client_socket, get_ioa_socket_type(ss->client_socket), get_ioa_socket_app_type(ss->client_socket));
+
+					ioa_socket_handle new_s = detach_ioa_socket(ss->client_socket);
+					if(new_s) {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s new detached socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(long)new_s, get_ioa_socket_type(new_s), get_ioa_socket_app_type(new_s));
+	
+						send_https_socket(new_s);
+					}
+					ss->to_be_closed = 1;
+					
+				} else {
+					set_ioa_socket_app_type(ss->client_socket, HTTP_CLIENT_SOCKET);
+					if(adminserver.verbose) {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s request: %s\n", __FUNCTION__, proto, (char*)ioa_network_buffer_data(in_buffer->nbh));
+					}
+					handle_http_echo(ss->client_socket);
+				}
+			}
+		}
+	}
+
+	if (ss->to_be_closed) {
+		if(adminserver.verbose) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+						  "session %018llu: web-admin socket to be closed in client handler: ss=0x%lx\n", (unsigned long long)(ss->id), (long)ss);
+		}
+		set_ioa_socket_tobeclosed(s);
+	}
+}
+
+static int send_socket_to_admin_server(ioa_engine_handle e, struct message_to_relay *sm)
+{
+	// sm->relay_server is null for us.
+
+	sm->t = RMT_SOCKET;
+
+	if (sm->m.sm.s->defer_nbh) {
+		if (!sm->m.sm.nd.nbh) {
+			sm->m.sm.nd.nbh = sm->m.sm.s->defer_nbh;
+			sm->m.sm.s->defer_nbh = NULL;
+		} else {
+			ioa_network_buffer_delete(e, sm->m.sm.s->defer_nbh);
+			sm->m.sm.s->defer_nbh = NULL;
+		}
+	}
+
+	ioa_socket_handle s = sm->m.sm.s;
+
+	if (!s) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: web-admin socket EMPTY\n", __FUNCTION__);
+	
+	} else if (s->read_event || s->bev) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+					  "%s: web-admin socket wrongly preset: 0x%lx : 0x%lx\n",
+					  __FUNCTION__, (long) s->read_event, (long) s->bev);
+	
+		IOA_CLOSE_SOCKET(s);
+		sm->m.sm.s = NULL;
+	} else {
+		s->e = e;
+	
+		struct socket_message *msg = &(sm->m.sm);
+	
+		ts_ur_super_session *ss = (ts_ur_super_session*)turn_malloc(sizeof(ts_ur_super_session));
+		ns_bzero(ss, sizeof(ts_ur_super_session));
+	
+		ss->client_socket = msg->s;
+	
+		if(register_callback_on_ioa_socket(e, ss->client_socket, IOA_EV_READ,
+										   web_admin_input_handler, ss, 0) < 0) {
+		
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: Failed to register callback on web-admin ioa socket\n", __FUNCTION__);
+			IOA_CLOSE_SOCKET(s);
+			sm->m.sm.s = NULL;
+		
+		} else {
+	
+			set_ioa_socket_session(ss->client_socket, ss);
+		
+			if(msg->nd.nbh) {
+				web_admin_input_handler(ss->client_socket, IOA_EV_READ, &(msg->nd), ss, msg->can_resume);
+				ioa_network_buffer_delete(e, msg->nd.nbh);
+				msg->nd.nbh = NULL;
+			}
+		}
+	}
+
+	ioa_network_buffer_delete(e, sm->m.sm.nd.nbh);
+	sm->m.sm.nd.nbh = NULL;
+
+	return 0;
+}
+
 void setup_admin_thread(void)
 {
 	adminserver.event_base = turn_event_base_new();
@@ -1197,6 +1330,12 @@ void setup_admin_thread(void)
 	#endif
 		);
 
+	if(use_web_admin) {
+		// Support encryption on this ioa engine
+		// because the web-admin needs HTTPS
+		set_ssl_ctx(adminserver.e, &turn_params);
+	}
+    
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"IO method (admin thread): %s\n",event_base_get_method(adminserver.event_base));
 
 	{
@@ -1223,6 +1362,31 @@ void setup_admin_thread(void)
 		bufferevent_enable(adminserver.https_in_buf, EV_READ);
 	}
 
+    
+	// Setup the web-admin server
+	if(use_web_admin) {
+		if(!web_admin_addr_set) {
+			if(make_ioa_addr((const u08bits*)WEB_ADMIN_DEFAULT_IP, 0, &web_admin_addr) < 0) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot set web-admin address %s\n", WEB_ADMIN_DEFAULT_IP);
+				return;
+			}
+		}
+	
+		addr_set_port(&web_admin_addr, web_admin_port);
+	
+		char saddr[129];
+		addr_to_string_no_port(&web_admin_addr,(u08bits*)saddr);
+	
+		tls_listener_relay_server_type *tls_service = create_tls_listener_server(turn_params.listener_ifname, saddr, web_admin_port, turn_params.verbose, adminserver.e, send_socket_to_admin_server, NULL);
+	
+		if (tls_service == NULL) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot create web-admin listener\n");
+			return;
+		}
+	
+		addr_debug_print(adminserver.verbose, &web_admin_addr, "web-admin listener opened on ");
+	}
+    
 	if(use_cli) {
 		if(!cli_addr_set) {
 			if(make_ioa_addr((const u08bits*)CLI_DEFAULT_IP,0,&cli_addr)<0) {
