@@ -201,6 +201,7 @@ static int run_stunclient(ioa_addr *remote_addr, ioa_addr *reflexive_addr, ioa_a
 								addr_debug_print(1, other_addr, "Other addr: ");
 							}
 							addr_debug_print(1, reflexive_addr, "UDP reflexive addr");
+                                                        addr_debug_print(1, &real_local_addr, "Local addr: ");
 
 						} else {
 							printf("Cannot read the response\n");
@@ -337,6 +338,7 @@ static int run_stunclient(ioa_addr *remote_addr, ioa_addr *reflexive_addr, ioa_a
 								addr_debug_print(1, other_addr, "Other addr: ");
 							}
 							addr_debug_print(1, reflexive_addr, "UDP reflexive addr");
+                                                        addr_debug_print(1, &real_local_addr, "Local addr: ");
 
 						} else {
 							printf("Cannot read the response\n");
