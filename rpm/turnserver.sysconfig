@@ -2,4 +2,4 @@
 # TURN Server startup options
 #
 
-EXTRA_OPTIONS=""
+EXTRA_OPTIONS="--prod"
