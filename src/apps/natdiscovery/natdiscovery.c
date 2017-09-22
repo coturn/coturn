@@ -46,24 +46,23 @@
 ////////////////////////////////////////////////////
 
 static int udp_fd = -1;
-static ioa_addr real_local_addr;
 static int counter = 0;
 
 #ifdef __cplusplus
 
-static int run_stunclient(ioa_addr *remote_addr, ioa_addr *reflexive_addr, ioa_addr *other_addr, int *port, int *rfc5780, int response_port, int change_ip, int change_port, int padding)
+static int run_stunclient(ioa_addr *local_addr, ioa_addr *remote_addr, ioa_addr *reflexive_addr, ioa_addr *other_addr, int *port, int *rfc5780, int response_port, int change_ip, int change_port, int padding)
 {
 	int ret=0;
 
 	if (response_port >= 0) {
-		addr_set_port(&real_local_addr, response_port);
+		addr_set_port(local_addr, response_port);
 	}
 	udp_fd = socket(remote_addr->ss.sa_family, SOCK_DGRAM, 0);
 	if (udp_fd < 0)
 		err(-1, NULL);
 
-	if (!addr_any(&real_local_addr)) {
-		if (addr_bind(udp_fd, &real_local_addr,0,1,UDP_SOCKET) < 0)
+	if (!addr_any(local_addr)) {
+		if (addr_bind(udp_fd, local_addr,0,1,UDP_SOCKET) < 0)
 			err(-1, NULL);
 	}
 
@@ -137,10 +136,10 @@ static int run_stunclient(ioa_addr *remote_addr, ioa_addr *reflexive_addr, ioa_a
 
 	}
 
-	if (addr_get_from_sock(udp_fd, &real_local_addr) < 0) {
+	if (addr_get_from_sock(udp_fd, local_addr) < 0) {
 		printf("%s: Cannot get address from local socket\n", __FUNCTION__);
 	} else {
-		*port = addr_get_port(&real_local_addr);
+		*port = addr_get_port(local_addr);
 	}
 
 	{
@@ -201,7 +200,7 @@ static int run_stunclient(ioa_addr *remote_addr, ioa_addr *reflexive_addr, ioa_a
 								addr_debug_print(1, other_addr, "Other addr: ");
 							}
 							addr_debug_print(1, reflexive_addr, "UDP reflexive addr");
-
+                                                        addr_debug_print(1, local_addr, "Local addr: ");
 						} else {
 							printf("Cannot read the response\n");
 						}
@@ -233,7 +232,7 @@ static int run_stunclient(ioa_addr *remote_addr, ioa_addr *reflexive_addr, ioa_a
 
 #else
 
-static int run_stunclient(ioa_addr *remote_addr, ioa_addr *reflexive_addr, ioa_addr *other_addr, int *port, int *rfc5780, int response_port, int change_ip, int change_port, int padding)
+static int run_stunclient(ioa_addr *local_addr, ioa_addr *remote_addr, ioa_addr *reflexive_addr, ioa_addr *other_addr, int *port, int *rfc5780, int response_port, int change_ip, int change_port, int padding)
 {
 	int ret=0;
 	stun_buffer buf;
@@ -242,11 +241,11 @@ static int run_stunclient(ioa_addr *remote_addr, ioa_addr *reflexive_addr, ioa_a
 	if (udp_fd < 0)
 		err(-1, NULL);
 
-	if (!addr_any(&real_local_addr)) {
+	if (!addr_any(local_addr)) {
 		if (response_port >= 0) {
-			addr_set_port(&real_local_addr, response_port);
+			addr_set_port(local_addr, response_port);
                 } 
-		if (addr_bind(udp_fd, &real_local_addr,0,1,UDP_SOCKET) < 0) {
+		if (addr_bind(udp_fd, local_addr,0,1,UDP_SOCKET) < 0) {
 			err(-1, NULL);
                 }
 	}
@@ -279,10 +278,10 @@ static int run_stunclient(ioa_addr *remote_addr, ioa_addr *reflexive_addr, ioa_a
 
 	}
 
-	if (addr_get_from_sock(udp_fd, &real_local_addr) < 0) {
+	if (addr_get_from_sock(udp_fd, local_addr) < 0) {
 		printf("%s: Cannot get address from local socket\n", __FUNCTION__);
 	} else {
-		*port = addr_get_port(&real_local_addr);
+		*port = addr_get_port(local_addr);
 	}
 
 	
@@ -337,7 +336,7 @@ static int run_stunclient(ioa_addr *remote_addr, ioa_addr *reflexive_addr, ioa_a
 								addr_debug_print(1, other_addr, "Other addr: ");
 							}
 							addr_debug_print(1, reflexive_addr, "UDP reflexive addr");
-
+                                                        addr_debug_print(1, local_addr, "Local addr: ");
 						} else {
 							printf("Cannot read the response\n");
 						}
@@ -380,17 +379,21 @@ static char Usage[] =
   "Options:\n"
   "        -m      NAT mapping behavior discovery\n"
   "        -f      NAT filtering behavior discovery\n"
+  "        -c      NAT collision behavior discovery\n"
+  "                Requires an alternative IP address (-A)\n"
   "        -p      STUN server port (Default: 3478)\n"
-  "        -L      Local address to use (optional)\n";
+  "        -L      Local address to use (optional)\n"
+  "        -A      Local alrernative address to use\n"
+  "                Used by collision behavior Discovery\n";
 
 //////////////////////////////////////////////////
 
-static void init(ioa_addr *real_local_addr,ioa_addr *remote_addr,int *local_port,int port, int *rfc5780, char* local_addr, char* remote_param)
+static void init(ioa_addr *local_addr,ioa_addr *remote_addr,int *local_port,int port, int *rfc5780, char* local_addr_string, char* remote_param)
 {
-  addr_set_any(real_local_addr);
+  addr_set_any(local_addr);
 
-  if(local_addr[0]) {
-      if(make_ioa_addr((const u08bits*)local_addr, 0, real_local_addr)<0) {
+  if(local_addr_string[0]) {
+      if(make_ioa_addr((const u08bits*)local_addr_string, 0, local_addr)<0) {
         err(-1,NULL);
       }
   }
@@ -411,24 +414,27 @@ static void discoveryresult(const char *decision){
 int main(int argc, char **argv)
 {
   int port = DEFAULT_STUN_PORT;
-  char local_addr[256]="\0";
+  char local_addr_string[256]="\0";
+  char local2_addr_string[256]="\0";
   int c=0;
   int mapping = 0;
   int filtering = 0;
+  int collision = 0;
   int local_port, rfc5780;
-  ioa_addr other_addr, reflexive_addr, tmp_addr, remote_addr;
+  ioa_addr other_addr, reflexive_addr, tmp_addr, remote_addr, local_addr, local2_addr;
   
 
   set_logfile("stdout");
   set_system_parameters(0);
   
-  ns_bzero(local_addr, sizeof(local_addr));
+  ns_bzero(local_addr_string, sizeof(local_addr_string));
+  ns_bzero(local2_addr_string, sizeof(local2_addr_string));
   addr_set_any(&remote_addr);
   addr_set_any(&other_addr);
   addr_set_any(&reflexive_addr);
   addr_set_any(&tmp_addr);
 
-  while ((c = getopt(argc, argv, "mfp:L:")) != -1) {
+  while ((c = getopt(argc, argv, "mfcp:L:A:")) != -1) {
     switch(c) {
     case 'm':
       mapping=1;
@@ -436,11 +442,17 @@ int main(int argc, char **argv)
     case 'f':
       filtering=1;
       break;
+    case 'c':
+      collision=1;
+      break;
     case 'p':
       port = atoi(optarg);
       break;
     case 'L':
-      STRCPY(local_addr, optarg);
+      STRCPY(local_addr_string, optarg);
+      break;
+    case 'A':
+      STRCPY(local2_addr_string, optarg);
       break;
     default:
       fprintf(stderr,"%s\n", Usage);
@@ -452,12 +464,18 @@ int main(int argc, char **argv)
     fprintf(stderr, "%s\n", Usage);
     exit(-1);
   }
+  
+  if(collision && local2_addr_string == '\0'){
+    fprintf(stderr, "Use \"-A\" to add an Alternative local IP address.\n");
+    fprintf(stderr, "It is mandatory with \"-c\" collision behavior detection..\n");
+    exit(-1);
+  }
 
-  init(&real_local_addr, &remote_addr, &local_port, port, &rfc5780, local_addr, argv[optind]);
+  init(&local_addr, &remote_addr, &local_port, port, &rfc5780, local_addr_string, argv[optind]);
 
-  if (mapping) {
-	run_stunclient(&remote_addr, &reflexive_addr, &other_addr, &local_port, &rfc5780,-1,0,0,0);
-	if (addr_eq(&real_local_addr,&reflexive_addr)){
+  if(mapping) {
+	run_stunclient(&local_addr, &remote_addr, &reflexive_addr, &other_addr, &local_port, &rfc5780,-1,0,0,0);
+	if (addr_eq(&local_addr,&reflexive_addr)){
 		discoveryresult("No NAT! (Endpoint Independent Mapping)");
 	}
 	if(rfc5780) {
@@ -467,14 +485,14 @@ int main(int argc, char **argv)
 			addr_cpy(&remote_addr, &other_addr);
 			addr_set_port(&remote_addr, port);
 
-			run_stunclient(&remote_addr, &reflexive_addr, &other_addr, &local_port, &rfc5780,-1,0,0,0);
+			run_stunclient(&local_addr, &remote_addr, &reflexive_addr, &other_addr, &local_port, &rfc5780,-1,0,0,0);
 
 			if(addr_eq(&tmp_addr,&reflexive_addr)){
 				discoveryresult("NAT with Enpoint Independent Mapping!"); 
 			} else {
 				addr_cpy(&tmp_addr, &reflexive_addr);
 				addr_cpy(&remote_addr, &other_addr);
-				run_stunclient(&remote_addr, &reflexive_addr, &other_addr, &local_port, &rfc5780,-1,0,0,0);
+				run_stunclient(&local_addr, &remote_addr, &reflexive_addr, &other_addr, &local_port, &rfc5780,-1,0,0,0);
 				if(addr_eq(&tmp_addr,&reflexive_addr)){
 					discoveryresult("NAT with Address Dependent Mapping!"); 
 				} else {
@@ -486,22 +504,22 @@ int main(int argc, char **argv)
 	  }
   }
   
-  init(&real_local_addr, &remote_addr, &local_port, port, &rfc5780, local_addr, argv[optind]);
+  init(&local_addr, &remote_addr, &local_port, port, &rfc5780, local_addr_string, argv[optind]);
 
-  if (filtering) {
-  	run_stunclient(&remote_addr, &reflexive_addr, &other_addr, &local_port, &rfc5780,-1,0,0,0);
-	if (addr_eq(&real_local_addr,&reflexive_addr)){
+  if(filtering) {
+  	run_stunclient(&local_addr, &remote_addr, &reflexive_addr, &other_addr, &local_port, &rfc5780,-1,0,0,0);
+	if(addr_eq(&local_addr, &reflexive_addr)){
 		discoveryresult("No NAT! (Endpoint Independent Mapping)");
 	}
 	if(rfc5780) {
 		if(!addr_any(&other_addr)){
 			int res=0;
-			res=run_stunclient(&remote_addr, &reflexive_addr, &other_addr, &local_port, &rfc5780,-1,1,1,0);
+			res=run_stunclient(&local_addr, &remote_addr, &reflexive_addr, &other_addr, &local_port, &rfc5780,-1,1,1,0);
 			if (!res) {
 				discoveryresult("NAT with Enpoint Independent Filtering!"); 
 			} else {
 				res=0;
-				res=run_stunclient(&remote_addr, &reflexive_addr, &other_addr, &local_port, &rfc5780,-1,0,1,0);
+				res=run_stunclient(&local_addr, &remote_addr, &reflexive_addr, &other_addr, &local_port, &rfc5780,-1,0,1,0);
 				if(!res){
 					discoveryresult("NAT with Address Dependent Filtering!"); 
 				} else {
@@ -512,8 +530,26 @@ int main(int argc, char **argv)
 		  }
 	  }
   }
-  if (!filtering && !mapping) {
-  	printf("Please use either -f or -m parameter for Filtering or Mapping behavior discovery.\n");
+
+  init(&local_addr, &remote_addr, &local_port, port, &rfc5780, local_addr_string, argv[optind]);
+
+  if(collision) {
+      addr_set_any(&local2_addr);
+
+      if(local2_addr_string[0]) {
+          if(make_ioa_addr((const u08bits*)local2_addr_string, 0, &local2_addr)<0) {
+            err(-1,NULL);
+          }
+      }
+
+       run_stunclient(&local_addr, &remote_addr, &reflexive_addr, &other_addr, &local_port, &rfc5780,-1,0,0,0);
+       addr_set_port(&local2_addr,addr_get_port(&local_addr));
+       run_stunclient(&local2_addr, &remote_addr, &reflexive_addr, &other_addr, &local_port, &rfc5780,-1,0,0,0);
+  }
+
+  if (!filtering && !mapping && !collision) {
+  	printf("Please use either -f or -c or -m parameter for Filtering or Mapping behavior discovery.\n");
+
   }
   socket_closesocket(udp_fd);
 
