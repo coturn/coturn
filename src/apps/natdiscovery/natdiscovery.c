@@ -381,7 +381,9 @@ static char Usage[] =
   "        -f      NAT filtering behavior discovery\n"
   "        -c      NAT collision behavior discovery\n"
   "                Requires an alternative IP address (-A)\n"
-  "        -p      STUN server port (Default: 3478)\n"
+  "        -P      Add 1500 byte Padding to the behavior discovery\n"
+	"                Applicable with all except NAT Binding Lifetime discovery\n"
+	"        -p      STUN server port (Default: 3478)\n"
   "        -L      Local address to use (optional)\n"
   "        -A      Local alrernative address to use\n"
   "                Used by collision behavior Discovery\n";
@@ -420,6 +422,7 @@ int main(int argc, char **argv)
   int mapping = 0;
   int filtering = 0;
   int collision = 0;
+	int padding = 0;
   int local_port, rfc5780;
   ioa_addr other_addr, reflexive_addr, tmp_addr, remote_addr, local_addr, local2_addr;
   
@@ -434,7 +437,7 @@ int main(int argc, char **argv)
   addr_set_any(&reflexive_addr);
   addr_set_any(&tmp_addr);
 
-  while ((c = getopt(argc, argv, "mfcp:L:A:")) != -1) {
+  while ((c = getopt(argc, argv, "mfcPp:L:A:")) != -1) {
     switch(c) {
     case 'm':
       mapping=1;
@@ -444,6 +447,9 @@ int main(int argc, char **argv)
       break;
     case 'c':
       collision=1;
+      break;
+		case 'P':
+      padding=1;
       break;
     case 'p':
       port = atoi(optarg);
@@ -474,59 +480,57 @@ int main(int argc, char **argv)
   init(&local_addr, &remote_addr, &local_port, port, &rfc5780, local_addr_string, argv[optind]);
 
   if(mapping) {
-	run_stunclient(&local_addr, &remote_addr, &reflexive_addr, &other_addr, &local_port, &rfc5780,-1,0,0,0);
-	if (addr_eq(&local_addr,&reflexive_addr)){
-		discoveryresult("No NAT! (Endpoint Independent Mapping)");
-	}
-	if(rfc5780) {
-		if(!addr_any(&other_addr)){
-			addr_cpy(&tmp_addr, &reflexive_addr);
-
-			addr_cpy(&remote_addr, &other_addr);
-			addr_set_port(&remote_addr, port);
-
-			run_stunclient(&local_addr, &remote_addr, &reflexive_addr, &other_addr, &local_port, &rfc5780,-1,0,0,0);
-
-			if(addr_eq(&tmp_addr,&reflexive_addr)){
-				discoveryresult("NAT with Enpoint Independent Mapping!"); 
-			} else {
+		run_stunclient(&local_addr, &remote_addr, &reflexive_addr, &other_addr, &local_port, &rfc5780,-1,0,0,padding);
+		if (addr_eq(&local_addr,&reflexive_addr)){
+			discoveryresult("No NAT! (Endpoint Independent Mapping)");
+		}
+		if(rfc5780) {
+			if(!addr_any(&other_addr)){
 				addr_cpy(&tmp_addr, &reflexive_addr);
-				addr_cpy(&remote_addr, &other_addr);
-				run_stunclient(&local_addr, &remote_addr, &reflexive_addr, &other_addr, &local_port, &rfc5780,-1,0,0,0);
-				if(addr_eq(&tmp_addr,&reflexive_addr)){
-					discoveryresult("NAT with Address Dependent Mapping!"); 
-				} else {
-					discoveryresult("NAT with Address and Port Dependent Mapping!"); 
-				}
-			};
 
+				addr_cpy(&remote_addr, &other_addr);
+				addr_set_port(&remote_addr, port);
+
+				run_stunclient(&local_addr, &remote_addr, &reflexive_addr, &other_addr, &local_port, &rfc5780,-1,0,0,padding);
+
+				if(addr_eq(&tmp_addr,&reflexive_addr)){
+					discoveryresult("NAT with Enpoint Independent Mapping!");
+				} else {
+					addr_cpy(&tmp_addr, &reflexive_addr);
+					addr_cpy(&remote_addr, &other_addr);
+					run_stunclient(&local_addr, &remote_addr, &reflexive_addr, &other_addr, &local_port, &rfc5780,-1,0,0,padding);
+					if(addr_eq(&tmp_addr,&reflexive_addr)){
+						discoveryresult("NAT with Address Dependent Mapping!");
+					} else {
+						discoveryresult("NAT with Address and Port Dependent Mapping!");
+					}
+				}
 		  }
 	  }
   }
   
-  init(&local_addr, &remote_addr, &local_port, port, &rfc5780, local_addr_string, argv[optind]);
+	init(&local_addr, &remote_addr, &local_port, port, &rfc5780, local_addr_string, argv[optind]);
 
   if(filtering) {
-  	run_stunclient(&local_addr, &remote_addr, &reflexive_addr, &other_addr, &local_port, &rfc5780,-1,0,0,0);
-	if(addr_eq(&local_addr, &reflexive_addr)){
-		discoveryresult("No NAT! (Endpoint Independent Mapping)");
-	}
-	if(rfc5780) {
-		if(!addr_any(&other_addr)){
-			int res=0;
-			res=run_stunclient(&local_addr, &remote_addr, &reflexive_addr, &other_addr, &local_port, &rfc5780,-1,1,1,0);
-			if (!res) {
-				discoveryresult("NAT with Enpoint Independent Filtering!"); 
-			} else {
-				res=0;
-				res=run_stunclient(&local_addr, &remote_addr, &reflexive_addr, &other_addr, &local_port, &rfc5780,-1,0,1,0);
-				if(!res){
-					discoveryresult("NAT with Address Dependent Filtering!"); 
+		run_stunclient(&local_addr, &remote_addr, &reflexive_addr, &other_addr, &local_port, &rfc5780,-1,0,0,padding);
+		if(addr_eq(&local_addr, &reflexive_addr)){
+			discoveryresult("No NAT! (Endpoint Independent Mapping)");
+		}
+		if(rfc5780) {
+			if(!addr_any(&other_addr)){
+				int res=0;
+				res=run_stunclient(&local_addr, &remote_addr, &reflexive_addr, &other_addr, &local_port, &rfc5780,-1,1,1,padding);
+				if (!res) {
+					discoveryresult("NAT with Enpoint Independent Filtering!");
 				} else {
-					discoveryresult("NAT with Address and Port Dependent Filtering!"); 
+					res=0;
+					res=run_stunclient(&local_addr, &remote_addr, &reflexive_addr, &other_addr, &local_port, &rfc5780,-1,0,1,padding);
+					if(!res){
+						discoveryresult("NAT with Address Dependent Filtering!");
+					} else {
+						discoveryresult("NAT with Address and Port Dependent Filtering!");
+					}
 				}
-			};
-
 		  }
 	  }
   }
@@ -534,22 +538,21 @@ int main(int argc, char **argv)
   init(&local_addr, &remote_addr, &local_port, port, &rfc5780, local_addr_string, argv[optind]);
 
   if(collision) {
-      addr_set_any(&local2_addr);
+    addr_set_any(&local2_addr);
 
-      if(local2_addr_string[0]) {
-          if(make_ioa_addr((const u08bits*)local2_addr_string, 0, &local2_addr)<0) {
-            err(-1,NULL);
-          }
+    if(local2_addr_string[0]) {
+      if(make_ioa_addr((const u08bits*)local2_addr_string, 0, &local2_addr)<0) {
+        err(-1,NULL);
       }
+    }
 
-       run_stunclient(&local_addr, &remote_addr, &reflexive_addr, &other_addr, &local_port, &rfc5780,-1,0,0,0);
-       addr_set_port(&local2_addr,addr_get_port(&local_addr));
-       run_stunclient(&local2_addr, &remote_addr, &reflexive_addr, &other_addr, &local_port, &rfc5780,-1,0,0,0);
+		run_stunclient(&local_addr, &remote_addr, &reflexive_addr, &other_addr, &local_port, &rfc5780,-1,0,0,padding);
+    addr_set_port(&local2_addr,addr_get_port(&local_addr));
+    run_stunclient(&local2_addr, &remote_addr, &reflexive_addr, &other_addr, &local_port, &rfc5780,-1,0,0,padding);
   }
 
   if (!filtering && !mapping && !collision) {
   	printf("Please use either -f or -c or -m parameter for Filtering or Mapping behavior discovery.\n");
-
   }
   socket_closesocket(udp_fd);
 
