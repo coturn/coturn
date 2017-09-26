@@ -253,7 +253,7 @@ Address-Dependent, or Address and Port-Dependent Mapping and/or to determine if
 that NAT is currently using Endpoint-Independent, Address-Dependent, or Address 
 and Port-Dependent Filtering. 
 
-Use either -m and/or -f flag to discover NAT Mapping and/or Filtering.
+Use either -m, -f, -c flag to discover NAT behavior.
 
 Flags:
 
@@ -261,11 +261,16 @@ Flags:
 
 -f  NAT filtering behavior discovery
 
+-c  NAT collision behavior discovery
+
 Options with required values:
 
 -p  STUN server port (Default: 3478)
 
 -L  Local address to use (optional)
+
+-A  Secondary Local address (optional)
+    Required for collision discovery
 
 Usage:
 
