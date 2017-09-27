@@ -196,11 +196,24 @@ static int run_stunclient(ioa_addr *local_addr, ioa_addr *remote_addr, ioa_addr 
 									turn::StunAttrAddr addr2(iter2);
 									addr2.getAddr(response_origin);
 									addr_debug_print(1, &response_origin, "Response origin: ");
-								}
+
+									turn::StunAttrIterator iter3(res,STUN_ATTRIBUTE_MAPPED_ADDRESS);
+									if (!iter3.eof()) {
+										ioa_addr mapped_addr;
+						                addr_set_any(mapped_addr);
+										turn::StunAttrAddr addr3(iter3);
+										addr3.getAddr(mapped_addr);
+										if (!addr_eq(mapped_addr,reflexive_addr)){
+											printf("\n -= ALG detected! Mapped and XOR-Mapped differ! =-\n");
+											addr_debug_print(1, &response_origin, "Mapped Address: ");											
+										}
+									} else {
+										printf("Not received mapped address attribute!\n");
+									}	
 								addr_debug_print(1, other_addr, "Other addr: ");
 							}
 							addr_debug_print(1, reflexive_addr, "UDP reflexive addr");
-                                                        addr_debug_print(1, local_addr, "Local addr: ");
+              				addr_debug_print(1, local_addr, "Local addr: ");
 						} else {
 							printf("Cannot read the response\n");
 						}
@@ -222,7 +235,7 @@ static int run_stunclient(ioa_addr *local_addr, ioa_addr *remote_addr, ioa_addr 
 			}else{
 				printf("The response is not a well formed STUN message\n");
 			}
-                        ret=1;
+      	ret=1;
 		}
 	}
 	close(udp_fd);
@@ -331,12 +344,23 @@ static int run_stunclient(ioa_addr *local_addr, ioa_addr *remote_addr, ioa_addr 
 								if (sar) {
 									ioa_addr response_origin;
 									stun_attr_get_addr_str((u08bits *) buf.buf, (size_t) buf.len, sar, &response_origin, NULL);
-									addr_debug_print(1, &response_origin, "Response origin: ");
+									addr_debug_print(1, &response_origin, "Response origin: ");																		
+									ioa_addr mapped_addr;
+									addr_set_any(&mapped_addr);
+									if (stun_attr_get_first_addr(&buf, STUN_ATTRIBUTE_MAPPED_ADDRESS, &mapped_addr, NULL) >= 0) {
+										if (!addr_eq(&mapped_addr,reflexive_addr)){
+											printf("\n -= ALG detected! Mapped and XOR-Mapped differ! =-\n");
+											addr_debug_print(1, &response_origin, "Mapped Address: ");
+										}
+									} else {
+										printf("Not received mapped address attribute!\n");	
+									}
+
 								}
 								addr_debug_print(1, other_addr, "Other addr: ");
 							}
 							addr_debug_print(1, reflexive_addr, "UDP reflexive addr");
-                                                        addr_debug_print(1, local_addr, "Local addr: ");
+                            addr_debug_print(1, local_addr, "Local addr: ");
 						} else {
 							printf("Cannot read the response\n");
 						}
