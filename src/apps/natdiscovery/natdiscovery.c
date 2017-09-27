@@ -188,7 +188,21 @@ static int run_stunclient(ioa_addr *local_addr, ioa_addr *remote_addr, ioa_addr 
 								*rfc5780 = 1;
 								printf("\n========================================\n");
 								printf("RFC 5780 response %d\n",++counter);
-								turn::StunAttrAddr addr1(iter1);
+								turn::StunAttrIterator iter0(res,STUN_ATTRIBUTE_MAPPED_ADDRESS);
+								if (!iter0.eof()) {
+									ioa_addr mapped_addr;
+									addr_set_any(mapped_addr);
+									turn::StunAttrAddr addr0(iter0);
+									addr0.getAddr(mapped_addr);
+									if (!addr_eq(mapped_addr,reflexive_addr)){
+										printf("-= ALG detected! Mapped and XOR-Mapped differ! =-\n");
+										addr_debug_print(1, &mapped_addr, "Mapped Address: ");											
+									} else {
+										printf("No ALG: Mapped and XOR-Mapped is equal.\n");
+									}
+								} else {
+									printf("Not received mapped address attribute!\n");
+								}									turn::StunAttrAddr addr1(iter1);
 								addr1.getAddr(*other_addr);
 								turn::StunAttrIterator iter2(res,STUN_ATTRIBUTE_RESPONSE_ORIGIN);
 								if (!iter2.eof()) {
@@ -197,19 +211,7 @@ static int run_stunclient(ioa_addr *local_addr, ioa_addr *remote_addr, ioa_addr 
 									addr2.getAddr(response_origin);
 									addr_debug_print(1, &response_origin, "Response origin: ");
 
-									turn::StunAttrIterator iter3(res,STUN_ATTRIBUTE_MAPPED_ADDRESS);
-									if (!iter3.eof()) {
-										ioa_addr mapped_addr;
-						                addr_set_any(mapped_addr);
-										turn::StunAttrAddr addr3(iter3);
-										addr3.getAddr(mapped_addr);
-										if (!addr_eq(mapped_addr,reflexive_addr)){
-											printf("\n -= ALG detected! Mapped and XOR-Mapped differ! =-\n");
-											addr_debug_print(1, &response_origin, "Mapped Address: ");											
-										}
-									} else {
-										printf("Not received mapped address attribute!\n");
-									}	
+									
 								addr_debug_print(1, other_addr, "Other addr: ");
 							}
 							addr_debug_print(1, reflexive_addr, "UDP reflexive addr");
@@ -339,23 +341,24 @@ static int run_stunclient(ioa_addr *local_addr, ioa_addr *remote_addr, ioa_addr 
 								*rfc5780 = 1;
 								printf("\n========================================\n");
 								printf("RFC 5780 response %d\n",++counter);
+								ioa_addr mapped_addr;
+								addr_set_any(&mapped_addr);
+								if (stun_attr_get_first_addr(&buf, STUN_ATTRIBUTE_MAPPED_ADDRESS, &mapped_addr, NULL) >= 0) {
+									if (!addr_eq(&mapped_addr,reflexive_addr)){
+										printf("-= ALG detected! Mapped and XOR-Mapped differ! =-\n");
+										addr_debug_print(1, &mapped_addr, "Mapped Address: ");
+									}else {
+										printf("No ALG: Mapped and XOR-Mapped is equal.\n");
+									}
+								} else {
+									printf("Not received mapped address attribute.\n");	
+								}
 								stun_attr_get_addr_str((u08bits *) buf.buf, (size_t) buf.len, sar, other_addr, NULL);
 								sar = stun_attr_get_first_by_type_str(buf.buf, buf.len, STUN_ATTRIBUTE_RESPONSE_ORIGIN);
 								if (sar) {
 									ioa_addr response_origin;
 									stun_attr_get_addr_str((u08bits *) buf.buf, (size_t) buf.len, sar, &response_origin, NULL);
 									addr_debug_print(1, &response_origin, "Response origin: ");																		
-									ioa_addr mapped_addr;
-									addr_set_any(&mapped_addr);
-									if (stun_attr_get_first_addr(&buf, STUN_ATTRIBUTE_MAPPED_ADDRESS, &mapped_addr, NULL) >= 0) {
-										if (!addr_eq(&mapped_addr,reflexive_addr)){
-											printf("\n -= ALG detected! Mapped and XOR-Mapped differ! =-\n");
-											addr_debug_print(1, &response_origin, "Mapped Address: ");
-										}
-									} else {
-										printf("Not received mapped address attribute!\n");	
-									}
-
 								}
 								addr_debug_print(1, other_addr, "Other addr: ");
 							}
