@@ -190,7 +190,7 @@ static int stunclient_receive(int sockfd, ioa_addr *local_addr, ioa_addr *reflex
 										printf("-= ALG detected! Mapped and XOR-Mapped differ! =-\n");
 										addr_debug_print(1, &mapped_addr, "Mapped Address: ");
 									} else {
-										printf("No ALG: Mapped and XOR-Mapped is equal.\n");
+										printf("No ALG: Mapped == XOR-Mapped\n");
 									}
 								} else {
 									printf("Not received mapped address attribute!\n");
@@ -344,7 +344,7 @@ static int stunclient_receive(int sockfd, ioa_addr *local_addr, ioa_addr *reflex
 											printf("-= ALG detected! Mapped and XOR-Mapped differ! =-\n");
 											addr_debug_print(1, &mapped_addr, "Mapped Address: ");
 										}else {
-											printf("No ALG: Mapped and XOR-Mapped is equal.\n");
+											printf("No ALG: Mapped == XOR-Mapped\n");
 										}
 									} else {
 										printf("Not received mapped address attribute.\n");
