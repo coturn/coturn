@@ -520,6 +520,7 @@ static int stunclient_receive(int sockfd, ioa_addr *local_addr, ioa_addr *reflex
 	"        -f      NAT filtering behavior discovery\n"
 	"        -c      NAT collision behavior discovery\n"
 	"                Requires an alternative IP address (-A)\n"
+	"        -H      NAT hairpinning behavior discovery\n"
 	"        -P      Add 1500 byte Padding to the behavior discovery\n"
 	"                Applicable with all except NAT Binding Lifetime discovery\n"
 	"        -p      STUN server port (Default: 3478)\n"
