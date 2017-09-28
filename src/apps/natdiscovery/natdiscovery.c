@@ -260,15 +260,7 @@ static int stunclient_receive(int sockfd, ioa_addr *local_addr, ioa_addr *reflex
 	static int run_stunclient(ioa_addr *local_addr, ioa_addr *remote_addr, ioa_addr *reflexive_addr, ioa_addr *other_addr, int *port, int *rfc5780,	int change_ip, int change_port, int padding){
 		int ret=0;
 
-		udp_fd = socket(remote_addr->ss.sa_family, SOCK_DGRAM, 0);
-		if (udp_fd < 0)
-		err(-1, NULL);
-
-		if (!addr_any(local_addr)) {
-			if (addr_bind(udp_fd, local_addr,0,1,UDP_SOCKET) < 0)
-			err(-1, NULL);
-		}
-
+		ret=init_socket(udp_fd, local_addr, local_port, remote_addr){
 		ret=stunclient_send(udp_fd, remote_addr, change_ip, change_port, padding, -1);
 		ret=stunclient_receive(udp_fd, local_addr, reflexive_addr, other_addr, port, rfc5780);
 		close(udp_fd);
