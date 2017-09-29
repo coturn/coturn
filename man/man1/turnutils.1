@@ -46,8 +46,8 @@ $ ./scripts/secure_relay.sh
 5.
 \fIturnutils_natdiscovery\fP: a utility that provides NAT behavior discovery
 according RFC5780. This utility discovers the actual NAT Mapping and Filtering
-behavior. Be aweare that at least two different listening IP addresses should
-be configured to be able to work properly!
+behavior, etc. Be aware that on TURN server side two different listening IP
+addresses should be configured to be able to work properly!
 .TP
 .B
 6.
@@ -418,12 +418,22 @@ NAT mapping behavior discovery
 NAT filtering behavior discovery
 .TP
 .B
+\fB\-t\fP
+NAT mapping lifetime behavior discovery
+Requires a timer (\fB\-T\fP)
+.TP
+.B
 \fB\-c\fP
 NAT collision behavior discovery
 .TP
 .B
 \fB\-H\fP
 NAT hairpinning behavior discovery
+.TP
+.B
+\fB\-P\fP
+Add 1500 byte Padding to the behavior discovery
+Applicable with all except NAT mapping Lifetime discovery
 .PP
 Options with required values:
 .TP
@@ -436,9 +446,18 @@ STUN server port (Default: 3478)
 Local address to use (optional)
 .TP
 .B
+\fB\-l\fP
+Local port to use (use with \fB\-L\fP)
+.TP
+.B
 \fB\-A\fP
 Secondary Local address (optional)
 Required for collision discovery
+.TP
+.B
+\fB\-T\fP
+Mapping lifetime timer (sec)
+Used by mapping lifetime behavior discovery
 .PP
 Usage:
 .PP
@@ -650,5 +669,6 @@ Mutsutoshi Yoshimoto <mutsutoshi.yoshimoto@mixi.co.jp>
 Federico Pinna <fpinna@vivocha.com>
 .PP
 Bradley T. Hughes <bradleythughes@fastmail.fm>
+.RE
 .PP
 Mihaly Meszaros <bakfitty@gmail.com>
