@@ -34,8 +34,8 @@ $ ./scripts/secure_relay.sh
 
 5.	turnutils_natdiscovery: a utility that provides NAT behavior discovery
 according RFC5780. This utility discovers the actual NAT Mapping and Filtering
-behavior. Be aweare that at least two different listening IP addresses should
-be configured to be able to work properly!
+behavior, etc. Be aware that on TURN server side two different listening IP
+addresses should be configured to be able to work properly!
 
 =====================================
 
@@ -261,9 +261,15 @@ Flags:
 
 -f  NAT filtering behavior discovery
 
+-t  NAT mapping lifetime behavior discovery
+    Requires a timer (-T)
+
 -c  NAT collision behavior discovery
 
 -H  NAT hairpinning behavior discovery
+
+-P  Add 1500 byte Padding to the behavior discovery
+    Applicable with all except NAT mapping Lifetime discovery
 
 Options with required values:
 
@@ -271,8 +277,13 @@ Options with required values:
 
 -L  Local address to use (optional)
 
+-l  Local port to use (use with -L)
+
 -A  Secondary Local address (optional)
     Required for collision discovery
+
+-T  Mapping lifetime timer (sec)
+    Used by mapping lifetime behavior discovery
 
 Usage:
 
