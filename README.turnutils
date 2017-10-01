@@ -1,41 +1,41 @@
 GENERAL INFORMATION
 
 A set of turnutils_* programs provides some utility functionality to be used
-for testing and for setting up the TURN server. 
-  
-1.	turnutils_uclient: emulates multiple UDP,TCP,TLS or DTLS clients. 
+for testing and for setting up the TURN server.
+
+1.	turnutils_uclient: emulates multiple UDP,TCP,TLS or DTLS clients.
 (this program is provided for the testing purposes only !)
-The compiled binary image of this program is located in bin/ 
+The compiled binary image of this program is located in bin/
 sub-directory.
 
-2.	turnutils_peer: a simple stateless UDP-only "echo" server, 
-to be used as the final server in relay pattern ("peer"). For every incoming 
+2.	turnutils_peer: a simple stateless UDP-only "echo" server,
+to be used as the final server in relay pattern ("peer"). For every incoming
 UDP packet, it simply echoes it back.
-(this program is provided for the testing purposes only !) 
-When the test clients are communicating in the client-to-client manner 
-(when the "turnutils_uclient" program is used with "-y" option) then the 
+(this program is provided for the testing purposes only !)
+When the test clients are communicating in the client-to-client manner
+(when the "turnutils_uclient" program is used with "-y" option) then the
 turnutils_peer is not needed.
-	
+
 The compiled binary image of this program is located in bin/ subdirectory.
-   
-3.	turnutils_stunclient: a simple STUN client example. 
+
+3.	turnutils_stunclient: a simple STUN client example.
 The compiled binary image of this program is located in bin/ subdirectory.
-  
-4.	turnutils_rfc5769check: a utility that checks the correctness of the 
+
+4.	turnutils_rfc5769check: a utility that checks the correctness of the
 STUN/TURN protocol implementation. This utility is used only for the compilation
 check procedure, it is not copied to the installation destination.
 
-In the "examples/scripts" subdirectory, you will find the examples of command lines to be used 
+In the "examples/scripts" subdirectory, you will find the examples of command lines to be used
 to run the programs. The scripts are meant to be run from examples/ subdirectory, for example:
 
 $ cd examples
 
 $ ./scripts/secure_relay.sh
 
-5.	turnutils_natdiscovery: a utility that provides NAT behavior discovery 
-according RFC5780. This utility discovers the actual NAT Mapping and Filtering 
-behavior. Be aweare that at least two different listening IP addresses should 
-be configured to be able to work properly!
+5.	turnutils_natdiscovery: a utility that provides NAT behavior discovery
+according RFC5780. This utility discovers the actual NAT Mapping and Filtering
+behavior, etc. Be aware that on TURN server side two different listening IP
+addresses should be configured to be able to work properly!
 
 6.	turnutils_oauth: a utility that provides OAuth access_token 
 generation(AEAD encryption), validation and decryption. This utility inputs 
@@ -49,34 +49,34 @@ script in examples/scripts/oauth.sh.
 
 
 =====================================
-    
+
   NAME
-  
+
 turnutils_uclient - this client emulation application is supplied for the test purposes only.
- 
-  SYNOPSIS  
+
+  SYNOPSIS
 
 $ turnutils_uclient [-tTSvsyhcxg] [options] <TURN-Server-IP-address>
-  
+
   DESCRIPTION
-  
-It was designed to simulate multiple clients. It uses asynch IO API in 
-libevent to handle multiple clients. A client connects to the relay, 
-negotiates the session, and sends multiple (configured number) messages to the server (relay), 
-expecting the same number of replies. The length of the messages is configurable. 
-The message is an arbitrary octet stream. 
+
+It was designed to simulate multiple clients. It uses asynch IO API in
+libevent to handle multiple clients. A client connects to the relay,
+negotiates the session, and sends multiple (configured number) messages to the server (relay),
+expecting the same number of replies. The length of the messages is configurable.
+The message is an arbitrary octet stream.
 The number of the messages to send is configurable.
 
-Flags:   
+Flags:
 
 -t      Use TCP for communications between client and TURN server (default is UDP).
 
 -b      Use SCTP for communications between client and TURN server (default is UDP).
 
--T      Use TCP for the relay transport (default - UDP). Implies options -t, -y, -c, 
+-T      Use TCP for the relay transport (default - UDP). Implies options -t, -y, -c,
     	and ignores flags and options -s, -e, -r and -g. Can be used together
     	with -b.
-    	
+
 -P      Passive TCP (RFC6062 with active peer). Implies -T.
 
 -S      Secure SSL connection: SSL/TLS for TCP, DTLS for UDP, TLS/SCTP for SCTP.
@@ -87,11 +87,11 @@ Flags:
 
 -s      Use "Send" method in TURN; by default, it uses TURN Channels.
 
--y      Use client-to-client connections: 
+-y      Use client-to-client connections:
     	RTP/RTCP pair of channels to another RTP/RTCP pair of channels.
     	with this option the turnutils_peer application is not used,
     	as the allocated relay endpoints are talking to each other.
-    	 
+
 -h      Hang on indefinitely after the last sent packet.
 
 -c      Do not create rtcp connections.
@@ -109,12 +109,12 @@ Flags:
 -R	do negative protocol tests.
 
 -O	DOS attack mode.
-		
+
 -M	Use TURN ICE Mobility.
 
 -I	Do not set permissions on TURN relay endpoints
 	(for testing the non-standard server relay functionality).
-		
+
 -G	Generate extra requests (create permissions, channel bind).
 
 -B  	Random disconnect after a few initial packets.
@@ -123,7 +123,7 @@ Flags:
 
 -J	Use oAuth with default test key kid='north'.
 
-Options with required values:  
+Options with required values:
 
 -l      Message length (Default: 100 Bytes).
 
@@ -159,7 +159,7 @@ Options with required values:
 	table in the database if dynamic, or the static-auth-secret
 	value set in the configuration file if using static.
 
--C  	This is the timestamp/username separator symbol (character) in 
+-C  	This is the timestamp/username separator symbol (character) in
 	TURN REST API. The default value is :.
 
 -F	Cipher suite for TLS/DTLS. Default value is DEFAULT.
@@ -171,23 +171,23 @@ Options with required values:
 See the examples in the "examples/scripts" directory.
 
 ======================================
-  
+
   NAME
-    
-turnutils_peer - a simple UDP-only echo backend server.  
-  
+
+turnutils_peer - a simple UDP-only echo backend server.
+
   SYNOPSIS
 
 $ turnutils_peer [-v] [options]
-  
+
   DESCRIPTION
-  
+
 This application is used for the test purposes only, as a peer for the turnutils_uclient application.
 
-Options with required values:  
+Options with required values:
 
 -p  Listening UDP port (Default: 3480).
- 
+
 -d  Listening interface device (optional)
 
 -L  Listening address of turnutils_peer server. Multiple listening addresses can be used, IPv4 and IPv6.
@@ -198,50 +198,50 @@ If no listener address(es) defined, then it listens on all IPv4 and IPv6 address
 ========================================
 
   NAME
-  
-turnutils_stunclient -  a basic STUN client. 
-  
+
+turnutils_stunclient -  a basic STUN client.
+
   SYNOPSIS
 
 $ turnutils_stunclient [options] <STUN-Server-IP-address>
-  
+
   DESCRIPTION
-  
+
 It sends a "new" STUN RFC 5389 request (over UDP) and shows the reply information.
 
-Options with required values:  
+Options with required values:
 
 -p  STUN server port (Default: 3478).
- 
+
 -L  Local address to use (optional).
 
 -f  Force RFC 5780 processing.
 
-The turnutils_stunclient program checks the results of the first request, 
-and if it finds that the STUN server supports RFC 5780 
-(the binding response reveals that) then the turnutils_stunclient makes a couple more 
+The turnutils_stunclient program checks the results of the first request,
+and if it finds that the STUN server supports RFC 5780
+(the binding response reveals that) then the turnutils_stunclient makes a couple more
 requests with different parameters, to demonstrate the NAT discovery capabilities.
 
 This utility does not support the "old" "classic" STUN protocol (RFC 3489).
-  
+
 =====================================
 
   NAME
-  
-turnutils_rfc5769check - a utility that tests the correctness of STUN protocol implementation.   
-  
+
+turnutils_rfc5769check - a utility that tests the correctness of STUN protocol implementation.
+
   SYNOPSIS
-  
+
   $ turnutils_rfc5769check
-  
+
   DESCRIPTION
 
-turnutils_rfc5769check tests the correctness of STUN protocol implementation 
-against the test vectors predefined in RFC 5769 and prints the results of the 
+turnutils_rfc5769check tests the correctness of STUN protocol implementation
+against the test vectors predefined in RFC 5769 and prints the results of the
 tests on the screen. This utility is used only for the compilation
 check procedure, it is not copied to the installation destination.
-	
-Usage:  
+
+Usage:
 
 $ turnutils_rfc5769check
 
@@ -249,7 +249,7 @@ $ turnutils_rfc5769check
 
   NAME
 
-turnutils_natdiscovery - a utility that discovers NAT mapping and filtering 
+turnutils_natdiscovery - a utility that discovers NAT mapping and filtering
 behavior according RFC5780.
 
   SYNOPSIS
@@ -258,13 +258,13 @@ $ turnutils_natdiscovery [options] <STUN-Server-FQDN-or-IP-address>
 
   DESCRIPTION
 
-turnutils_natdiscovery discovers the NAT Mapping and Filtering behavior, to 
-determine if that NAT is currently using Endpoint-Independent, 
-Address-Dependent, or Address and Port-Dependent Mapping and/or to determine if 
-that NAT is currently using Endpoint-Independent, Address-Dependent, or Address 
-and Port-Dependent Filtering. 
+turnutils_natdiscovery discovers the NAT Mapping and Filtering behavior, to
+determine if that NAT is currently using Endpoint-Independent,
+Address-Dependent, or Address and Port-Dependent Mapping and/or to determine if
+that NAT is currently using Endpoint-Independent, Address-Dependent, or Address
+and Port-Dependent Filtering.
 
-Use either -m and/or -f flag to discover NAT Mapping and/or Filtering.
+Use either -m, -f, -c, -H flag to discover NAT behavior.
 
 Flags:
 
@@ -272,11 +272,29 @@ Flags:
 
 -f  NAT filtering behavior discovery
 
+-t  NAT mapping lifetime behavior discovery
+    Requires a timer (-T)
+
+-c  NAT collision behavior discovery
+
+-H  NAT hairpinning behavior discovery
+
+-P  Add 1500 byte Padding to the behavior discovery
+    Applicable with all except NAT mapping Lifetime discovery
+
 Options with required values:
 
 -p  STUN server port (Default: 3478)
 
 -L  Local address to use (optional)
+
+-l  Local port to use (use with -L)
+
+-A  Secondary Local address (optional)
+    Required for collision discovery
+
+-T  Mapping lifetime timer (sec)
+    Used by mapping lifetime behavior discovery
 
 Usage:
 
@@ -351,7 +369,7 @@ Usage:
 $ turnutils_natdiscovery
 
 ===================================
- 
+
 DOCS
 
 After installation, run the command:
@@ -397,7 +415,7 @@ new STUN RFC 5389
 TURN RFC 5766
 
 TURN-TCP extension RFC 6062
- 
+
 TURN IPv6 extension RFC 6156
 
 STUN/TURN test vectors RFC 5769
@@ -443,17 +461,17 @@ SEE ALSO
 	Erik Johnston <erikj@openmarket.com>
 
 	Roman Lisagor <roman@demonware.net>
-	
+
 	Vladimir Tsanev <tsachev@gmail.com>
-	
+
 	Po-sheng Lin <personlin118@gmail.com>
-	
+
 	Peter Dunkley <peter.dunkley@acision.com>
-	
+
 	Mutsutoshi Yoshimoto <mutsutoshi.yoshimoto@mixi.co.jp>
-	
+
 	Federico Pinna <fpinna@vivocha.com>
 
 	Bradley T. Hughes <bradleythughes@fastmail.fm>
 
-        Mihaly Meszaros <bakfitty@gmail.com>
+    Mihaly Meszaros <bakfitty@gmail.com>
