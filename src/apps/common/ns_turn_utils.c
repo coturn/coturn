@@ -867,11 +867,11 @@ char *turn_strdup_func(const char* s, const char* function, int line) {
 
 ////////////////////////////////
 
-int is_secure_username(const u08bits *username)
+int is_secure_string(const u08bits *string)
 {
 	int ret = 0;
-	if(username) {
-		unsigned char *s0 = (unsigned char*)turn_strdup((const char*)username);
+	if(string) {
+		unsigned char *s0 = (unsigned char*)turn_strdup((const char*)string);
 		unsigned char *s = s0;
 		while(*s) {
 			*s = (unsigned char)tolower((int)*s);
@@ -891,4 +891,3 @@ int is_secure_username(const u08bits *username)
 }
 
 //////////////////////////////////////////////////////////////////
-
