@@ -16,6 +16,12 @@ The keys are "turn/user/<username>/allocation/<id>/traffic". The application tha
 in the traffic information must subscribe to the events as:
 
 	psubscribe turn/realm/*/user/*/allocation/*/traffic
+
+Total traffic information is also reported when the allocation is deleted. The keys are
+"turn/user/<username>/allocation/<id>/total_traffic". Applications interested in the total amount
+of traffic per allocation can subscribe to these events as:
+
+	psubscribe turn/realm/*/user/*/allocation/*/total_traffic
 	
 Or, to receive all allocation events:
 
