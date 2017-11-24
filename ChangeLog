@@ -4,7 +4,8 @@ Version 4.5.0.6 'dan Eider':
 	- TLS1.2 support fixed.
 	- uclient minor performance tweak.
 	- Issue #113 fixed (by David Benjamin)
-        - Report total traffic used per allocation via Redis
+	- Report total traffic used per allocation via Redis (by Bradley T. Hughes)
+	- Add the realm parameter in the example config file (by Domenico)
 
 08/27/2016 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.5.0.5 'dan Eider':
