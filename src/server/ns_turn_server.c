@@ -3348,6 +3348,13 @@ static int check_stun_auth(turn_turnserver *server,
 		ns_bcopy(stun_attr_get_value(sar),realm,alen);
 		realm[alen]=0;
 
+		if(!is_secure_string(realm)) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: wrong realm: %s\n", __FUNCTION__, (char*)realm);
+			realm[0]=0;
+			*err_code = 400;
+			return -1;
+		}
+		
 		if(method == STUN_METHOD_CONNECTION_BIND) {
 
 			get_realm_options_by_name((char *)realm, &(ss->realm_options));
