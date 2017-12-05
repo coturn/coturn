@@ -434,13 +434,13 @@ static int print_session(ur_map_key_type key, ur_map_value_type value, void *arg
 			const char *pn=csarg->pname;
 			if(pn[0]) {
 				if(!strcmp(pn,"TLS") || !strcmp(pn,"tls") || !strcmp(pn,"Tls")) {
-					if((tsi->client_protocol != TLS_SOCKET)||(tsi->client_protocol != TLS_SCTP_SOCKET))
+					if((tsi->client_protocol != TLS_SOCKET)&&(tsi->client_protocol != TLS_SCTP_SOCKET))
 						return 0;
 				} else if(!strcmp(pn,"DTLS") || !strcmp(pn,"dtls") || !strcmp(pn,"Dtls")) {
 					if(tsi->client_protocol != DTLS_SOCKET)
 						return 0;
 				} else if(!strcmp(pn,"TCP") || !strcmp(pn,"tcp") || !strcmp(pn,"Tcp")) {
-					if((tsi->client_protocol != TCP_SOCKET)||(tsi->client_protocol != SCTP_SOCKET))
+					if((tsi->client_protocol != TCP_SOCKET)&&(tsi->client_protocol != SCTP_SOCKET))
 						return 0;
 				} else if(!strcmp(pn,"UDP") || !strcmp(pn,"udp") || !strcmp(pn,"Udp")) {
 					if(tsi->client_protocol != UDP_SOCKET)
@@ -2157,13 +2157,13 @@ static int https_print_session(ur_map_key_type key, ur_map_value_type value, voi
 			const char *pn=csarg->client_protocol;
 			if(pn[0]) {
 				if(!strcmp(pn,"TLS") || !strcmp(pn,"tls") || !strcmp(pn,"Tls")) {
-					if((tsi->client_protocol != TLS_SOCKET)||(tsi->client_protocol != TLS_SCTP_SOCKET))
+					if((tsi->client_protocol != TLS_SOCKET)&&(tsi->client_protocol != TLS_SCTP_SOCKET))
 						return 0;
 					} else if(!strcmp(pn,"DTLS") || !strcmp(pn,"dtls") || !strcmp(pn,"Dtls")) {
 						if(tsi->client_protocol != DTLS_SOCKET)
 							return 0;
 					} else if(!strcmp(pn,"TCP") || !strcmp(pn,"tcp") || !strcmp(pn,"Tcp")) {
-						if((tsi->client_protocol != TCP_SOCKET)||(tsi->client_protocol != SCTP_SOCKET))
+						if((tsi->client_protocol != TCP_SOCKET)&&(tsi->client_protocol != SCTP_SOCKET))
 							return 0;
 					} else if(!strcmp(pn,"UDP") || !strcmp(pn,"udp") || !strcmp(pn,"Udp")) {
 						if(tsi->client_protocol != UDP_SOCKET)
