@@ -34,4 +34,4 @@ fi
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib/:/usr/local/mysql/lib/
 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/usr/local/lib/:/usr/local/mysql/lib/
 
-PATH="./bin/:../bin/:../../bin/:${PATH}" turnserver --syslog -a -L 127.0.0.1 -E 127.0.0.1 --max-bps=3000000 -f -m 3 --min-port=20000 --max-port=29999 --user=ninefingers:0xbc807ee29df3c9ffa736523fb2c4e8ee --user=gorst:hero -r north.gov --log-file=stdout -v --no-dtls --no-tls -p 4444 --cli-port=5768 $@
+PATH="./bin/:../bin/:../../bin/:${PATH}" turnserver --syslog -a -L 127.0.0.1 -E 127.0.0.1 --allow-loopback-peers --max-bps=3000000 -f -m 3 --min-port=20000 --max-port=29999 --user=ninefingers:0xbc807ee29df3c9ffa736523fb2c4e8ee --user=gorst:hero -r north.gov --log-file=stdout -v --no-dtls --no-tls -p 4444 --cli-port=5768 $@

@@ -1659,7 +1659,7 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
 			 &turn_params.tls_alternate_servers_list,
 			 &turn_params.aux_servers_list,
 			 turn_params.udp_self_balance,
-			 &turn_params.no_multicast_peers, &turn_params.no_loopback_peers,
+			 &turn_params.no_multicast_peers, &turn_params.allow_loopback_peers,
 			 &turn_params.ip_whitelist, &turn_params.ip_blacklist,
 			 send_socket_to_relay,
 			 &turn_params.secure_stun, &turn_params.mobility,

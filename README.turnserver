@@ -234,7 +234,7 @@ Flags:
 --no-stun		Run as TURN server only, all STUN requests will be ignored. 
 			Option to suppress STUN functionality, only TURN requests will be processed.
 
---no-loopback-peers	Disallow peers on the loopback addresses (127.x.x.x and ::1).
+--allow-loopback-peers	Allow peers on the loopback addresses (127.x.x.x and ::1).
 
 --no-multicast-peers	Disallow peers on well-known broadcast addresses 
 			(224.0.0.0 and above, and FFXX:*).

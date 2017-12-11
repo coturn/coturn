@@ -181,7 +181,7 @@ struct toggleable_command tcmds[] = {
 				{"no-udp-relay",&turn_params.no_udp_relay},
 				{"no-tcp-relay",&turn_params.no_tcp_relay},
 				{"no-multicast-peers",&turn_params.no_multicast_peers},
-				{"no-loopback-peers",&turn_params.no_loopback_peers},
+				{"allow-loopback-peers",&turn_params.allow_loopback_peers},
 				{"mobility",&turn_params.mobility},
 				{NULL,NULL}
 };
@@ -750,7 +750,7 @@ static void cli_print_configuration(struct cli_session* cs)
 		}
 
 		cli_print_flag(cs,turn_params.no_multicast_peers,"no-multicast-peers",1);
-		cli_print_flag(cs,turn_params.no_loopback_peers,"no-loopback-peers",1);
+		cli_print_flag(cs,turn_params.allow_loopback_peers,"allow-loopback-peers",1);
 
 		myprintf(cs,"\n");
 
@@ -2002,7 +2002,7 @@ static void write_pc_page(ioa_socket_handle s)
 				https_print_uint(sb,(unsigned long)turn_params.max_port,"max-port",0);
 
 				https_print_flag(sb,turn_params.no_multicast_peers,"no-multicast-peers","no-multicast-peers");
-				https_print_flag(sb,turn_params.no_loopback_peers,"no-loopback-peers","no-loopback-peers");
+				https_print_flag(sb,turn_params.allow_loopback_peers,"allow-loopback-peers","allow-loopback-peers");
 
 				https_print_empty_row(sb,2);
 

@@ -271,7 +271,7 @@ static int good_peer_addr(turn_turnserver *server, const char* realm, ioa_addr *
 	if(server && peer_addr) {
 		if(*(server->no_multicast_peers) && ioa_addr_is_multicast(peer_addr))
 			return 0;
-		if(*(server->no_loopback_peers) && ioa_addr_is_loopback(peer_addr))
+		if( !*(server->allow_loopback_peers) && ioa_addr_is_loopback(peer_addr))
 			return 0;
 
 		{
@@ -4851,7 +4851,7 @@ void init_turn_server(turn_turnserver* server,
 		turn_server_addrs_list_t *tls_alternate_servers_list,
 		turn_server_addrs_list_t *aux_servers_list,
 		int self_udp_balance,
-		vintp no_multicast_peers, vintp no_loopback_peers,
+		vintp no_multicast_peers, vintp allow_loopback_peers,
 		ip_range_list_t* ip_whitelist, ip_range_list_t* ip_blacklist,
 		send_socket_to_relay_cb send_socket_to_relay,
 		vintp secure_stun, vintp mobility, int server_relay,
@@ -4879,7 +4879,7 @@ void init_turn_server(turn_turnserver* server,
 	server->chquotacb = chquotacb;
 	server->raqcb = raqcb;
 	server->no_multicast_peers = no_multicast_peers;
-	server->no_loopback_peers = no_loopback_peers;
+	server->allow_loopback_peers = allow_loopback_peers;
 	server->secure_stun = secure_stun;
 	server->mobility = mobility;
 	server->server_relay = server_relay;

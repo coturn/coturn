@@ -251,7 +251,7 @@ typedef struct _turn_params_ {
   vint check_origin;
 
   vint no_multicast_peers;
-  vint no_loopback_peers;
+  vint allow_loopback_peers;
 
   char relay_ifname[1025];
 

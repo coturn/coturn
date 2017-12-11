@@ -430,7 +430,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						In more complex case when more than one IP address is involved,\n"
 "						that option must be used several times in the command line, each entry must\n"
 "						have form \"-X public-ip/private-ip\", to map all involved addresses.\n"
-" --no-loopback-peers				Disallow peers on the loopback addresses (127.x.x.x and ::1).\n"
+" --allow-loopback-peers			Allow peers on the loopback addresses (127.x.x.x and ::1).\n"
 " --no-multicast-peers				Disallow peers on well-known broadcast addresses (224.0.0.0 and above, and FFXX:*).\n"
 " -m, --relay-threads		<number>	Number of relay threads to handle the established connections\n"
 "						(in addition to authentication thread and the listener thread).\n"
@@ -733,7 +733,7 @@ enum EXTRA_OPTS {
 	ALTERNATE_SERVER_OPT,
 	TLS_ALTERNATE_SERVER_OPT,
 	NO_MULTICAST_PEERS_OPT,
-	NO_LOOPBACK_PEERS_OPT,
+	ALLOW_LOOPBACK_PEERS_OPT,
 	MAX_ALLOCATE_TIMEOUT_OPT,
 	ALLOWED_PEER_IPS,
 	DENIED_PEER_IPS,
@@ -861,7 +861,7 @@ static const struct myoption long_options[] = {
 				{ "rest-api-separator", required_argument, NULL, 'C' },
 				{ "max-allocate-timeout", required_argument, NULL, MAX_ALLOCATE_TIMEOUT_OPT },
 				{ "no-multicast-peers", optional_argument, NULL, NO_MULTICAST_PEERS_OPT },
-				{ "no-loopback-peers", optional_argument, NULL, NO_LOOPBACK_PEERS_OPT },
+				{ "allow-loopback-peers", optional_argument, NULL, ALLOW_LOOPBACK_PEERS_OPT },
 				{ "allowed-peer-ip", required_argument, NULL, ALLOWED_PEER_IPS },
 				{ "denied-peer-ip", required_argument, NULL, DENIED_PEER_IPS },
 				{ "cipher-list", required_argument, NULL, CIPHER_LIST_OPT },
@@ -1249,8 +1249,8 @@ static void set_option(int c, char *value)
 	case NO_MULTICAST_PEERS_OPT:
 		turn_params.no_multicast_peers = get_bool_value(value);
 		break;
-	case NO_LOOPBACK_PEERS_OPT:
-		turn_params.no_loopback_peers = get_bool_value(value);
+	case ALLOW_LOOPBACK_PEERS_OPT:
+		turn_params.allow_loopback_peers = get_bool_value(value);
 		break;
 	case STALE_NONCE_OPT:
 		turn_params.stale_nonce = get_int_value(value, STUN_DEFAULT_NONCE_EXPIRATION_TIME);
