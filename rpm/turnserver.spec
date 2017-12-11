@@ -1,5 +1,5 @@
 Name:		turnserver
-Version:	4.5.0.6
+Version:	4.5.0.7
 Release:	0%{dist}
 Summary:	Coturn TURN Server
 
@@ -295,6 +295,8 @@ fi
 %{_includedir}/turn/client/TurnMsgLib.h
 
 %changelog
+* Sun Dec 10 2017 Oleg Moskalenko <mom040267@gmail.com>
+  - Sync to 4.5.0.7
 * Mon Oct 17 2016 Oleg Moskalenko <mom040267@gmail.com>
   - Sync to 4.5.0.6
 * Sat Aug 27 2016 Oleg Moskalenko <mom040267@gmail.com>
