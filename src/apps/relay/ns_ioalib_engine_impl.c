@@ -3596,6 +3596,14 @@ void turn_report_allocation_delete(void *a)
 					}
 					send_message_to_redis(e->rch, "del", key, "");
 					send_message_to_redis(e->rch, "publish", key, "deleted");
+
+					// report total traffic usage for this allocation
+					if(ss->realm_options.name[0]) {
+						snprintf(key, sizeof(key), "turn/realm/%s/user/%s/allocation/%018llu/total_traffic", ss->realm_options.name, (char*)ss->username, (unsigned long long)ss->id);
+					} else {
+						snprintf(key, sizeof(key), "turn/user/%s/allocation/%018llu/total_traffic", (char*)ss->username, (unsigned long long)ss->id);
+					}
+					send_message_to_redis(e->rch, "publish", key, "rcvp=%lu, rcvb=%lu, sentp=%lu, sentb=%lu", (unsigned long)(ss->t_received_packets), (unsigned long)(ss->t_received_bytes), (unsigned long)(ss->t_sent_packets), (unsigned long)(ss->t_sent_bytes));
 				}
 #endif
 			}

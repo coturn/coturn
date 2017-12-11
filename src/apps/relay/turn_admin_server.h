@@ -81,6 +81,8 @@ extern struct admin_server adminserver;
 
 extern int use_cli;
 
+extern int use_http;
+
 #define CLI_DEFAULT_IP ("127.0.0.1")
 extern ioa_addr cli_addr;
 extern int cli_addr_set;
