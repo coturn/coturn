@@ -246,7 +246,7 @@ static int stunclient_receive(int sockfd, ioa_addr *local_addr, ioa_addr *reflex
 					printf("The response is an error %d (%s)\n", err_code, reason.c_str());
 				}
 			} else {
-				printf("The response is not a reponse message\n");
+				printf("The response is not a response message\n");
 			}
 		} catch(...) {
 			turn::StunMsgRequest msg(buf.buf, sizeof(buf.buf), (size_t)buf.len, true);
@@ -474,7 +474,7 @@ static int stunclient_receive(stun_buffer *buf, int sockfd, ioa_addr *local_addr
 			} else if (stun_is_request(buf)) {
 				printf("Received a request (maybe a successful hairpinning)\n");
 			} else {
-				printf("The response is not a reponse message\n");
+				printf("The response is not a response message\n");
 				ret=1;
 			}
 		} else {
