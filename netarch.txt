@@ -50,7 +50,7 @@ open_client_connection_session() and where and how it is called in various cases
 for reference.
 
 The listeners (and the relay servers) configuration is initiated in the function
-setup_servers() in netengine.c. First, setup_listener() creates the necessary generic 
+setup_server() in netengine.c. First, setup_listener() creates the necessary generic 
 data structures for the listeners. Second, network-engine-specific functions associate 
 listeners with the execution threads and with the relay servers.
 
