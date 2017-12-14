@@ -360,6 +360,10 @@ Option to suppress STUN functionality, only TURN requests will be processed.
 .B
 \fB\-\-allow\-loopback\-peers\fP
 Allow peers on the loopback addresses (127.x.x.x and ::1).
+Allow it only for testing in a development environment! 
+In production it adds a possible security vulnerability, 
+and so due to security reasons, it is not allowed 
+using it together with empty cli\-password.
 .TP
 .B
 \fB\-\-no\-multicast\-peers\fP
