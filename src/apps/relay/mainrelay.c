@@ -2205,6 +2205,13 @@ int main(int argc, char **argv)
                        "Be aware that you could not mix the username/password and the shared secret based auth methohds. \n"
                        "Shared secret overrides username/password based auth method. Check your configuration!\n");
     }
+	if(turn_params.allow_loopback_peers) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "CONFIG WARNING: allow_loopback_peers opens a possible security vulnerability. Do not use in production!!\n");
+		if(cli_password[0]==0) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nCONFIG ERROR: allow_loopback_peers and empty cli password cannot be used together.\n");
+			exit(-1);			
+		}
+	}
 
 	if(!use_lt_credentials && !anon_credentials) {
 		if(turn_params.default_users_db.ram_db.users_number) {
