@@ -2235,17 +2235,23 @@ int main(int argc, char **argv)
 		exit(-1);
 	}
 
-    if(use_ltc && use_tltc) {
+	if(use_ltc && use_tltc) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "\nCONFIGURATION ALERT: You specified --lt-cred-mech and --use-auth-secret in the same time.\n"
                        "Be aware that you could not mix the username/password and the shared secret based auth methohds. \n"
                        "Shared secret overrides username/password based auth method. Check your configuration!\n");
-    }
+	}
+
 	if(turn_params.allow_loopback_peers) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "CONFIG WARNING: allow_loopback_peers opens a possible security vulnerability. Do not use in production!!\n");
 		if(cli_password[0]==0) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nCONFIG ERROR: allow_loopback_peers and empty cli password cannot be used together.\n");
-			exit(-1);			
+			exit(-1);
 		}
+        }
+
+	if(cli_password[0]==0) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nCONFIG ERROR: Empty cli-password, and so telnet cli interface is disabled! Please set a non empty cli-password!\n");
+		use_cli = 0;
 	}
 
 	if(!use_lt_credentials && !anon_credentials) {
