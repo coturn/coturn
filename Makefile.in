@@ -92,15 +92,15 @@ lib/libturnclient.a:	${LIBCLIENTTURN_OBJS} ${LIBCLIENTTURN_DEPS}
 	${MKBUILDDIR} lib
 	${ARCHIVERCMD} $@ ${LIBCLIENTTURN_OBJS}
 
-build/obj/ns_turn_ioaddr.o:	src/client/ns_turn_ioaddr.c ${LUBCLIENTTURN_DEPS}
+build/obj/ns_turn_ioaddr.o:	src/client/ns_turn_ioaddr.c ${LIBCLIENTTURN_DEPS}
 	${MKBUILDDIR} build/obj
 	${CC} ${CPPFLAGS} ${CFLAGS} -c src/client/ns_turn_ioaddr.c -o $@
 
-build/obj/ns_turn_msg_addr.o:	src/client/ns_turn_msg_addr.c ${LUBCLIENTTURN_DEPS}
+build/obj/ns_turn_msg_addr.o:	src/client/ns_turn_msg_addr.c ${LIBCLIENTTURN_DEPS}
 	${MKBUILDDIR} build/obj
 	${CC} ${CPPFLAGS} ${CFLAGS} -c src/client/ns_turn_msg_addr.c -o $@
 
-build/obj/ns_turn_msg.o:	src/client/ns_turn_msg.c ${LUBCLIENTTURN_DEPS}
+build/obj/ns_turn_msg.o:	src/client/ns_turn_msg.c ${LIBCLIENTTURN_DEPS}
 	${MKBUILDDIR} build/obj
 	${CC} ${CPPFLAGS} ${CFLAGS} -c src/client/ns_turn_msg.c -o $@
 
