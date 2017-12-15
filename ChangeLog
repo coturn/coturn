@@ -1,7 +1,8 @@
 12/11/2017 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.5.0.8 'dan Eider':
 	- Spelling fixes.
-	
+	- Add a warning if --lt-cred-mech and --use-auth-secret both presents.
+
 12/10/2017 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.5.0.7 'dan Eider':
 	- Misc security improvements.

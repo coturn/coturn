@@ -39,8 +39,10 @@
 
 static int use_lt_credentials = 0;
 static int anon_credentials = 0;
-static int use_lt_credentials_only = 0;
-static int timestamp_credentials = 0;
+//long term credential
+static int use_ltc = 0;
+//timelimited long term credential
+static int use_tltc = 0;
 
 ////// ALPN //////////
 
@@ -1164,7 +1166,7 @@ static void set_option(int c, char *value)
 		if (get_bool_value(value)) {
 			turn_params.ct = TURN_CREDENTIALS_LONG_TERM;
 			use_lt_credentials=1;
-            use_lt_credentials_only=1;
+            use_ltc=1;
 		} else {
 			turn_params.ct = TURN_CREDENTIALS_UNDEFINED;
 			use_lt_credentials=0;
@@ -1226,14 +1228,14 @@ static void set_option(int c, char *value)
 #endif
 	case AUTH_SECRET_OPT:
 		turn_params.use_auth_secret_with_timestamp = 1;
-        timestamp_credentials = 1;
+        use_tltc = 1;
 		turn_params.ct = TURN_CREDENTIALS_LONG_TERM;
 		use_lt_credentials = 1;
 		break;
 	case STATIC_AUTH_SECRET_VAL_OPT:
 		add_to_secrets_list(&turn_params.default_users_db.ram_db.static_auth_secrets,value);
 		turn_params.use_auth_secret_with_timestamp = 1;
-        timestamp_credentials = 1;
+        use_tltc = 1;
 		turn_params.ct = TURN_CREDENTIALS_LONG_TERM;
 		use_lt_credentials = 1;
 		break;
@@ -1994,8 +1996,10 @@ int main(int argc, char **argv)
 		exit(-1);
 	}
 
-    if(use_lt_credentials_only && timestamp_credentials) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nCONFIGURATION ALERT: you specified --lt-cred-mech and --use-auth-secret both. Check your configuration.\n");
+    if(use_ltc && use_tltc) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "\nCONFIGURATION ALERT: You specified --lt-cred-mech and --use-auth-secret in the same time.\n"
+                       "Be aware that you could not mix the username/password and the shared secret based auth methohds. \n"
+                       "Shared secret overrides username/password based auth method. Check your configuration!\n");
     }
 
 	if(!use_lt_credentials && !anon_credentials) {
