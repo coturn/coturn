@@ -1148,10 +1148,12 @@ static void set_option(int c, char *value)
 		}
 		break;
 	case 'v':
-		if(get_bool_value(value)) {
-			turn_params.verbose = TURN_VERBOSE_NORMAL;
-		} else {
-			turn_params.verbose = TURN_VERBOSE_NONE;
+		if(turn_params.verbose != TURN_VERBOSE_EXTRA){
+			if(get_bool_value(value)) {
+				turn_params.verbose = TURN_VERBOSE_NORMAL;
+			} else {
+				turn_params.verbose = TURN_VERBOSE_NONE;
+			}
 		}
 		break;
 	case 'V':
