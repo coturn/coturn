@@ -1669,7 +1669,6 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
 			 allocate_bps,
 			 turn_params.oauth,
 			 turn_params.oauth_server_name,
-			 use_http,
 			 turn_params.keep_address_family);
 	
 	if(to_set_rfc5780) {
