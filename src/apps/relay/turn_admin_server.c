@@ -89,7 +89,7 @@ char cli_password[CLI_PASSWORD_LENGTH] = "";
 int cli_max_output_sessions = DEFAULT_CLI_MAX_OUTPUT_SESSIONS;
 
 
-int use_web_admin = 1;
+int use_web_admin = 0;
 
 ioa_addr web_admin_addr;
 int web_admin_addr_set = 0;

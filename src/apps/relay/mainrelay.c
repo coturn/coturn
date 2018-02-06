@@ -625,7 +625,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						For the security reasons, it is recommended to use the encrypted\n"
 "						for of the password (see the -P command in the turnadmin utility).\n"
 "						The dollar signs in the encrypted form must be escaped.\n"
-" --no-web-admin					Turn OFF the Web-admin support. By default it is always ON.\n"
+" --web-admin					Enable Turn Web-admin support. By default it is disabled.\n"
 " --web-admin-ip=<IP>				Local system IP address to be used for Web-admin server endpoint. Default value\n"
 "						is 127.0.0.1.\n"
 " --web-admin-port=<port>			Web-admin server port. Default is 8080.\n"
@@ -753,7 +753,7 @@ enum EXTRA_OPTS {
 	CLI_IP_OPT,
 	CLI_PORT_OPT,
 	CLI_PASSWORD_OPT,
-	NO_WEB_ADMIN_OPT,
+	WEB_ADMIN_OPT,
 	WEB_ADMIN_IP_OPT,
 	WEB_ADMIN_PORT_OPT,
 	SERVER_RELAY_OPT,
@@ -882,7 +882,7 @@ static const struct myoption long_options[] = {
 				{ "cli-ip", required_argument, NULL, CLI_IP_OPT },
 				{ "cli-port", required_argument, NULL, CLI_PORT_OPT },
 				{ "cli-password", required_argument, NULL, CLI_PASSWORD_OPT },
-				{ "no-web-admin", optional_argument, NULL, NO_WEB_ADMIN_OPT },
+				{ "web-admin", optional_argument, NULL, WEB_ADMIN_OPT },
 				{ "web-admin-ip", required_argument, NULL, WEB_ADMIN_IP_OPT },
 				{ "web-admin-port", required_argument, NULL, WEB_ADMIN_PORT_OPT },
 				{ "server-relay", optional_argument, NULL, SERVER_RELAY_OPT },
@@ -1186,8 +1186,8 @@ static void set_option(int c, char *value)
   case CLI_PASSWORD_OPT:
 	  STRCPY(cli_password,value);
 	  break;
-  case NO_WEB_ADMIN_OPT:
-	  use_web_admin = !get_bool_value(value);
+  case WEB_ADMIN_OPT:
+	  use_web_admin = get_bool_value(value);
 	  break;
   case WEB_ADMIN_IP_OPT:
 	  if(make_ioa_addr((const u08bits*)value, 0, &web_admin_addr) < 0) {
