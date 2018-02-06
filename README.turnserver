@@ -556,6 +556,12 @@ Options with values:
 --cli-max-output-sessions	Maximum number of output sessions in ps CLI command.
 			This value can be changed on-the-fly in CLI. The default value is 256.
 
+--web-admin		Enable Turn Web-admin support. By default it is disabled.
+
+--web-admin-ip=<IP>	Local system IP address to be used for Web-admin server endpoint. Default value is 127.0.0.1.
+
+--web-admin-port=<port>  Web-admin server port. Default is 8080.
+
 --ne=[1|2|3]		Set network engine type for the process (for internal purposes).
 
 ==================================
