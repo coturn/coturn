@@ -1851,7 +1851,7 @@ static void tcp_deliver_delayed_buffer(unsent_buffer *ub, ioa_socket_handle s, t
 			} else {
 				++(ss->sent_packets);
 				ss->sent_bytes += bytes;
-				turn_report_session_usage(ss);
+				turn_report_session_usage(ss, 0);
 			}
 			pop_unsent_buffer(ub);
 		} while(!ioa_socket_tobeclosed(s) && ((i++)<MAX_UNSENT_BUFFER_SIZE));
@@ -1890,7 +1890,7 @@ static void tcp_peer_input_handler(ioa_socket_handle s, int event_type, ioa_net_
 	} else if(ss) {
 		++(ss->sent_packets);
 		ss->sent_bytes += bytes;
-		turn_report_session_usage(ss);
+		turn_report_session_usage(ss, 0);
 	}
 }
 
@@ -1929,7 +1929,7 @@ static void tcp_client_input_handler_rfc6062data(ioa_socket_handle s, int event_
 		set_ioa_socket_tobeclosed(s);
 	}
 
-	turn_report_session_usage(ss);
+	turn_report_session_usage(ss, 0);
 }
 
 static void tcp_conn_bind_timeout_handler(ioa_engine_handle e, void *arg)
@@ -4082,7 +4082,7 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
 	if (!ss)
 		return -1;
 
-	report_turn_session_info(server,ss,1);
+	turn_report_session_usage(ss, 1);
 	dec_quota(ss);
 	dec_bps(ss);
 
@@ -4217,7 +4217,7 @@ static int write_client_connection(turn_turnserver *server, ts_ur_super_session*
 		if(!skip) {
 			++(ss->sent_packets);
 			ss->sent_bytes += (u32bits)ioa_network_buffer_get_size(nbh);
-			turn_report_session_usage(ss);
+			turn_report_session_usage(ss, 0);
 		}
 
 		FUNCEND;
@@ -4427,7 +4427,7 @@ static int read_client_connection(turn_turnserver *server,
 	if(count_usage) {
 		++(ss->received_packets);
 		ss->received_bytes += (u32bits)ioa_network_buffer_get_size(in_buffer->nbh);
-		turn_report_session_usage(ss);
+		turn_report_session_usage(ss, 0);
 	}
 
 	if (eve(server->verbose)) {
