@@ -556,7 +556,7 @@ type ginstall 2>>/dev/null
 ER=$?
 if [ ${ER} -eq 0 ] ; then
 	INSTALL_PROGRAM="ginstall"
-	INSTALL_MAN="ginstall"
+	INSTALL_MAN="ginstall -m 0644"
 	INSTALL_SCRIPT="ginstall"
 	INSTALL_SHARED_LIB="ginstall"
 	INSTALL_STATIC_LIB="ginstall"
@@ -567,7 +567,7 @@ else
 	ER=$?
 	if [ ${ER} -eq 0 ] ; then
 		INSTALL_PROGRAM="install"
-		INSTALL_MAN="install"
+		INSTALL_MAN="install -m 0644"
 		INSTALL_SCRIPT="install"
 		INSTALL_SHARED_LIB="install"
 		INSTALL_STATIC_LIB="install"
