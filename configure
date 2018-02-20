@@ -559,7 +559,7 @@ if [ ${ER} -eq 0 ] ; then
 	INSTALL_MAN="ginstall -m 0644"
 	INSTALL_SCRIPT="ginstall"
 	INSTALL_SHARED_LIB="ginstall"
-	INSTALL_STATIC_LIB="ginstall"
+	INSTALL_STATIC_LIB="ginstall -m 0644"
 	INSTALL_DATA="ginstall"
 	MKDIR="ginstall -d"
 else
@@ -570,7 +570,7 @@ else
 		INSTALL_MAN="install -m 0644"
 		INSTALL_SCRIPT="install"
 		INSTALL_SHARED_LIB="install"
-		INSTALL_STATIC_LIB="install"
+		INSTALL_STATIC_LIB="install -m 0644"
 		INSTALL_DATA="install"
 		MKDIR="install -d"
 	else
