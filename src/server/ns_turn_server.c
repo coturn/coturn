@@ -64,7 +64,7 @@ static inline int get_family(int stun_family, ioa_engine_handle e, ioa_socket_ha
 ////////////////////////////////////////////////
 
 const char * get_version(turn_turnserver *server) {
-	if(server && !server->prod) {
+	if(server && !*server->prod) {
 		return (const char *) TURN_SOFTWARE;
 	} else {
 		return (const char *) "None";
