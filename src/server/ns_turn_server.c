@@ -4572,7 +4572,35 @@ static int read_client_connection(turn_turnserver *server,
 			ioa_network_buffer_delete(server->e, nbh);
 			return 0;
 		}
-
+	} else if (*server->web_admin_listen_on_workers){
+		SOCKET_TYPE st = get_ioa_socket_type(ss->client_socket);
+		if(is_stream_socket(st)) {
+			if(is_http((char*)ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh))) {
+				const char *proto = "HTTP";
+				ioa_network_buffer_data(in_buffer->nbh)[ioa_network_buffer_get_size(in_buffer->nbh)] = 0;
+				if(st==TLS_SOCKET) {
+					proto = "HTTPS";
+					set_ioa_socket_app_type(ss->client_socket,HTTPS_CLIENT_SOCKET);
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s (%s %s) request: %s\n", __FUNCTION__, proto, get_ioa_socket_cipher(ss->client_socket), get_ioa_socket_ssl_method(ss->client_socket), (char*)ioa_network_buffer_data(in_buffer->nbh));
+					if(server->send_https_socket) {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s socket to be detached: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(long)ss->client_socket, get_ioa_socket_type(ss->client_socket), get_ioa_socket_app_type(ss->client_socket));
+						ioa_socket_handle new_s = detach_ioa_socket(ss->client_socket);
+						if(new_s) {
+							TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s new detached socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(long)new_s, get_ioa_socket_type(new_s), get_ioa_socket_app_type(new_s));
+							server->send_https_socket(new_s);
+						}
+						ss->to_be_closed = 1;
+					}
+				} else {
+					set_ioa_socket_app_type(ss->client_socket,HTTP_CLIENT_SOCKET);
+					if(server->verbose) {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s request: %s\n", __FUNCTION__, proto, (char*)ioa_network_buffer_data(in_buffer->nbh));
+					}
+					handle_http_echo(ss->client_socket);
+				}
+				return 0;
+			}
+		}
 	}
     
 	//Unrecognized message received, ignore it
@@ -4816,6 +4844,7 @@ void init_turn_server(turn_turnserver* server,
 		vintp stun_only,
 		vintp no_stun,
 		vintp prod,
+    vintp web_admin_listen_on_workers,
 		turn_server_addrs_list_t *alternate_servers_list,
 		turn_server_addrs_list_t *tls_alternate_servers_list,
 		turn_server_addrs_list_t *aux_servers_list,
@@ -4877,6 +4906,7 @@ void init_turn_server(turn_turnserver* server,
 	server->stun_only = stun_only;
 	server->no_stun = no_stun;
 	server->prod = prod;
+	server-> web_admin_listen_on_workers = web_admin_listen_on_workers;
 
 	server->dont_fragment = dont_fragment;
 	server->fingerprint = fingerprint;

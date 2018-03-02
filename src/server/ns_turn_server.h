@@ -121,6 +121,7 @@ struct _turn_turnserver {
 	vintp stun_only;
 	vintp no_stun;
 	vintp prod;
+	vintp web_admin_listen_on_workers;
 	vintp secure_stun;
 	turn_credential_type ct;
 	get_alt_addr_cb alt_addr_cb;
@@ -199,6 +200,7 @@ void init_turn_server(turn_turnserver* server,
 				    vintp stun_only,
 				    vintp no_stun,
 				    vintp prod,
+				    vintp web_admin_listen_on_workers,
 				    turn_server_addrs_list_t *alternate_servers_list,
 				    turn_server_addrs_list_t *tls_alternate_servers_list,
 				    turn_server_addrs_list_t *aux_servers_list,

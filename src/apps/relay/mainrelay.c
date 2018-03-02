@@ -106,7 +106,8 @@ DH_1066, "", "", "",
 
 NULL, PTHREAD_MUTEX_INITIALIZER,
 
-TURN_VERBOSE_NONE,0,0,0,
+//////////////// Common params ////////////////////
+TURN_VERBOSE_NONE,0,0,0,0,
 "/var/run/turnserver.pid",
 DEFAULT_STUN_PORT,DEFAULT_STUN_TLS_PORT,0,0,1,
 0,0,0,0,
@@ -629,6 +630,9 @@ static char Usage[] = "Usage: turnserver [options]\n"
 " --web-admin-ip=<IP>				Local system IP address to be used for Web-admin server endpoint. Default value\n"
 "						is 127.0.0.1.\n"
 " --web-admin-port=<port>			Web-admin server port. Default is 8080.\n"
+" --web-admin-listen-on-workers		Enable for web-admin server to listens on STUN/TURN workers STUN/TURN ports.\n"
+"						By default it is disabled for security resons!\n"
+"						(This beahvior used to be the default bahavior, and was enabled by default.)\n"
 " --server-relay					Server relay. NON-STANDARD AND DANGEROUS OPTION. Only for those applications\n"
 "						when we want to run server applications on the relay endpoints.\n"
 "						This option eliminates the IP permissions check on the packets\n"
@@ -756,6 +760,7 @@ enum EXTRA_OPTS {
 	WEB_ADMIN_OPT,
 	WEB_ADMIN_IP_OPT,
 	WEB_ADMIN_PORT_OPT,
+	WEB_ADMIN_LISTEN_ON_WORKERS_OPT,
 	SERVER_RELAY_OPT,
 	CLI_MAX_SESSIONS_OPT,
 	EC_CURVE_NAME_OPT,
@@ -885,6 +890,7 @@ static const struct myoption long_options[] = {
 				{ "web-admin", optional_argument, NULL, WEB_ADMIN_OPT },
 				{ "web-admin-ip", required_argument, NULL, WEB_ADMIN_IP_OPT },
 				{ "web-admin-port", required_argument, NULL, WEB_ADMIN_PORT_OPT },
+				{ "web-admin-listen-on-workers", optional_argument, NULL, WEB_ADMIN_LISTEN_ON_WORKERS_OPT },
 				{ "server-relay", optional_argument, NULL, SERVER_RELAY_OPT },
 				{ "cli-max-output-sessions", required_argument, NULL, CLI_MAX_SESSIONS_OPT },
 				{ "ec-curve-name", required_argument, NULL, EC_CURVE_NAME_OPT },
@@ -1198,6 +1204,9 @@ static void set_option(int c, char *value)
 	  break;
   case WEB_ADMIN_PORT_OPT:
 	  web_admin_port = atoi(value);
+	  break;
+  case WEB_ADMIN_LISTEN_ON_WORKERS_OPT:
+	  turn_params.web_admin_listen_on_workers = get_bool_value(value);
 	  break;
   case PROC_USER_OPT: {
 	  struct passwd* pwd = getpwnam(value);
