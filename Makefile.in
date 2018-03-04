@@ -105,9 +105,10 @@ build/obj/ns_turn_msg.o:	src/client/ns_turn_msg.c ${LUBCLIENTTURN_DEPS}
 ### Clean all:
 
 clean:	
-	${RMCMD} bin build lib obj *bak *~ */*~ */*/*~ */*/*/*~ *core */*core */*/*core include Makefile tmp sqlite
+	${RMCMD} bin build lib obj *bak *~ */*~ */*/*~ */*/*/*~ *core */*core */*/*core include tmp sqlite
 
 distclean:	clean
+	${RMCMD} Makefile
 
 ### SQLite empty database:
 sqlite_empty_db	:	sqlite/turndb
