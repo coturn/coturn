@@ -258,23 +258,6 @@ ioa_engine_handle create_ioa_engine(super_memory_t *sm,
 #endif
 				);
 
-void set_ssl_ctx(ioa_engine_handle e,
-		SSL_CTX *tls_ctx_ssl23,
-		SSL_CTX *tls_ctx_v1_0
-#if TLSv1_1_SUPPORTED
-		 ,SSL_CTX *tls_ctx_v1_1
-#if TLSv1_2_SUPPORTED
-		 ,SSL_CTX *tls_ctx_v1_2
-#endif
-#endif
-#if DTLS_SUPPORTED
-		 ,SSL_CTX *dtls_ctx
-#endif
-#if DTLSv1_2_SUPPORTED
-		,SSL_CTX *dtls_ctx_v1_2
-#endif
-);
-
 void ioa_engine_set_rtcp_map(ioa_engine_handle e, rtcp_map *rtcpmap);
 
 ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e, ioa_socket_raw fd, ioa_socket_handle parent_s, SOCKET_TYPE st, SOCKET_APP_TYPE sat, const ioa_addr *remote_addr, const ioa_addr *local_addr);
