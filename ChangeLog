@@ -6,7 +6,8 @@ Version 4.5.0.8 'dan Eider':
 	- Fix for Verbose config file option -v cli option overridea
 	- Add a Notice to config about realm default value is the domain name.
 	- Update total allocation usage on client shutdown
-        - fix total and user quota mix-up
+	- fix total and user quota mix-up
+	- Fixed typos in postinstall.txt (by Prashanth Rajaram)
 
 12/10/2017 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.5.0.7 'dan Eider':
