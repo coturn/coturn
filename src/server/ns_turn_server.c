@@ -1252,12 +1252,15 @@ static int handle_turn_allocate(turn_turnserver *server,
 
 				if(!(*err_code)) {
 					if(!af4 && !af6) {
-						int af4res = create_relay_connection(server, ss, lifetime,
-							STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT, transport,
+						int a_family = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT;
+						if(get_ioa_socket_address_family(ss->client_socket) == AF_INET6)
+							a_family = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6;
+						int res = create_relay_connection(server, ss, lifetime,
+							a_family, transport,
 							even_port, in_reservation_token, &out_reservation_token,
 							err_code, reason,
 							tcp_peer_accept_connection);
-						if(af4res<0) {
+						if(res<0) {
 							set_relay_session_failure(alloc,AF_INET);
 							if(!(*err_code)) {
 								*err_code = 437;
