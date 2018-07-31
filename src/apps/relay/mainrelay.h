@@ -77,6 +77,11 @@
 
 #include "ns_ioalib_impl.h"
 
+#include <openssl/evp.h>
+#include <openssl/aes.h>
+#include <openssl/err.h>
+#include <openssl/pem.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -306,6 +311,11 @@ typedef struct _turn_params_ {
 
   unsigned long cpus;
 
+  ///////// Encryption /////////
+  char secret_key_file[1025];
+  char secret_key[1025];
+  int allow_encoding;
+
 } turn_params_t;
 
 extern turn_params_t turn_params;
@@ -353,6 +363,14 @@ band_limit_t get_bps_capacity(void);
 void set_bps_capacity(band_limit_t value);
 band_limit_t get_max_bps(void);
 void set_max_bps(band_limit_t value);
+
+///////// AES ENCRYPTION AND DECRYPTION ////////
+
+void generate_aes_128_key(char* filePath, char* returnedKey);
+unsigned char *base64encode (const void *b64_encode_this, int encode_this_many_bytes);
+void encrypt(char* in, char* mykey);
+unsigned char *base64decode (const void *b64_decode_this, int decode_this_many_bytes);
+void decrypt(char* in, char* mykey);
 
 ///////////////////////////////
 
