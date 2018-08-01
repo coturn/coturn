@@ -1,6 +1,11 @@
 12/11/2017 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.5.0.8 'dan Eider':
-	- Fix WebRTC client IPv6 stuck connection. (issue #217) 
+	- reload-tls-certs PR#236 (by Arne Georg Gisnås Gleditsch)
+	- minor fixe PR#223 (by Pavel Kretov)
+	  move rm Makefile to distclean
+	  list all phony targets
+	- fix typo PR#253 (by Orsiris de Jong)
+	- Fix WebRTC client IPv6 stuck connection. (issue #217)
 	  THX toq damencho, vol4iniche
 	- Spelling fixes.
 	- Add a warning if --lt-cred-mech and --use-auth-secret both presents.
