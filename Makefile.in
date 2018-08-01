@@ -36,6 +36,8 @@ SERVERAPP_DEPS = ${SERVERTURN_MODS} ${SERVERTURN_DEPS} ${SERVERAPP_MODS} ${SERVE
 
 TURN_BUILD_RESULTS = bin/turnutils_oauth bin/turnutils_natdiscovery bin/turnutils_stunclient bin/turnutils_rfc5769check bin/turnutils_uclient bin/turnserver bin/turnutils_peer lib/libturnclient.a include/turn/ns_turn_defs.h sqlite_empty_db
 
+.PHONY: all test check clean distclean sqlite_empty_db install deinstall uninstall reinstall
+
 all:	${TURN_BUILD_RESULTS}
 
 test:	check
@@ -105,9 +107,10 @@ build/obj/ns_turn_msg.o:	src/client/ns_turn_msg.c ${LUBCLIENTTURN_DEPS}
 ### Clean all:
 
 clean:	
-	${RMCMD} bin build lib obj *bak *~ */*~ */*/*~ */*/*/*~ *core */*core */*/*core include Makefile tmp sqlite
+	${RMCMD} bin build lib obj *bak *~ */*~ */*/*~ */*/*/*~ *core */*core */*/*core include tmp sqlite
 
 distclean:	clean
+	${RMCMD} Makefile
 
 ### SQLite empty database:
 sqlite_empty_db	:	sqlite/turndb
