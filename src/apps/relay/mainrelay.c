@@ -104,6 +104,8 @@ DH_1066, "", "", "",
 0,
 #endif
 
+NULL, PTHREAD_MUTEX_INITIALIZER,
+
 TURN_VERBOSE_NONE,0,0,0,
 "/var/run/turnserver.pid",
 DEFAULT_STUN_PORT,DEFAULT_STUN_TLS_PORT,0,0,1,
@@ -175,6 +177,7 @@ static char procgroupname[1025]="\0";
 ////////////// Configuration functionality ////////////////////////////////
 
 static void read_config_file(int argc, char **argv, int pass);
+static void reload_ssl_certs(evutil_socket_t sock, short events, void *args);
 
 //////////////////////////////////////////////////
 
@@ -2155,6 +2158,9 @@ int main(int argc, char **argv)
 
 	setup_server();
 
+	struct event *ev = evsignal_new(turn_params.listener.event_base, SIGUSR2, reload_ssl_certs, NULL);
+	event_add(ev, NULL);
+
 	drop_privileges();
 
 	run_listener_server(&(turn_params.listener));
@@ -2492,8 +2498,10 @@ static int ServerALPNCallback(SSL *ssl,
 
 #endif
 
-static void set_ctx(SSL_CTX* ctx, const char *protocol)
+static void set_ctx(SSL_CTX** out, const char *protocol, const SSL_METHOD* method)
 {
+	SSL_CTX* ctx = SSL_CTX_new(method);
+	int err = 0;
 #if ALPN_SUPPORTED
 	SSL_CTX_set_alpn_select_cb(ctx, ServerALPNCallback, NULL);
 #endif
@@ -2510,6 +2518,7 @@ static void set_ctx(SSL_CTX* ctx, const char *protocol)
 
 	if (!SSL_CTX_use_certificate_chain_file(ctx, turn_params.cert_file)) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: no certificate found\n", protocol);
+		err = 1;
 	} else {
 		print_abs_file_name(protocol, ": Certificate", turn_params.cert_file);
 	}
@@ -2517,6 +2526,7 @@ static void set_ctx(SSL_CTX* ctx, const char *protocol)
 	if (!SSL_CTX_use_PrivateKey_file(ctx, turn_params.pkey_file, SSL_FILETYPE_PEM)) {
 		if (!SSL_CTX_use_RSAPrivateKey_file(ctx, turn_params.pkey_file, SSL_FILETYPE_PEM)) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: no valid private key found, or invalid private key password provided\n", protocol);
+			err = 1;
 		} else {
 			print_abs_file_name(protocol, ": Private RSA key", turn_params.pkey_file);
 		}
@@ -2526,12 +2536,14 @@ static void set_ctx(SSL_CTX* ctx, const char *protocol)
 
 	if (!SSL_CTX_check_private_key(ctx)) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: invalid private key\n", protocol);
+		err = 1;
 	}
 
 	if(turn_params.ca_cert_file[0]) {
 
 		if (!SSL_CTX_load_verify_locations(ctx, turn_params.ca_cert_file, NULL )) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot load CA from file: %s\n", turn_params.ca_cert_file);
+			err = 1;
 		}
 
 		SSL_CTX_set_client_CA_list(ctx,SSL_load_client_CA_file(turn_params.ca_cert_file));
@@ -2629,10 +2641,12 @@ static void set_ctx(SSL_CTX* ctx, const char *protocol)
 		*/
 
 		if(!dh) {
-		  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: cannot allocate DH suite\n",__FUNCTION__);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: cannot allocate DH suite\n",__FUNCTION__);
+			err = 1;
 		} else {
 			if (1 != SSL_CTX_set_tmp_dh (ctx, dh)) {
-			  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: cannot set DH\n",__FUNCTION__);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: cannot set DH\n",__FUNCTION__);
+				err = 1;
 			}
 			DH_free (dh);
 		}
@@ -2686,8 +2700,17 @@ static void set_ctx(SSL_CTX* ctx, const char *protocol)
 
 		SSL_CTX_set_options(ctx, op);
 	}
+
+	if (*out == NULL) {
+		// Always initialize, even if issues were encountered
+		*out = ctx;
+	} else if (!err) {
+		SSL_CTX_free(*out);
+		*out = ctx;
+	}
 }
 
+static void openssl_load_certificates(void);
 static void openssl_setup(void)
 {
 	THREAD_setup();
@@ -2717,22 +2740,24 @@ static void openssl_setup(void)
 		adjust_key_file_names();
 	}
 
+	openssl_load_certificates();
+}
+
+static void openssl_load_certificates(void)
+{
+	pthread_mutex_lock(&turn_params.tls_mutex);
 	if(!turn_params.no_tls) {
-		turn_params.tls_ctx_ssl23 = SSL_CTX_new(SSLv23_server_method()); /*compatibility mode */
-		set_ctx(turn_params.tls_ctx_ssl23,"SSL23");
+		set_ctx(&turn_params.tls_ctx_ssl23,"SSL23",SSLv23_server_method()); /*compatibility mode */
 		if(!turn_params.no_tlsv1) {
-			turn_params.tls_ctx_v1_0 = SSL_CTX_new(TLSv1_server_method());
-			set_ctx(turn_params.tls_ctx_v1_0,"TLS1.0");
+			set_ctx(&turn_params.tls_ctx_v1_0,"TLS1.0",TLSv1_server_method());
 		}
 #if TLSv1_1_SUPPORTED
 		if(!turn_params.no_tlsv1_1) {
-			turn_params.tls_ctx_v1_1 = SSL_CTX_new(TLSv1_1_server_method());
-			set_ctx(turn_params.tls_ctx_v1_1,"TLS1.1");
+			set_ctx(&turn_params.tls_ctx_v1_1,"TLS1.1",TLSv1_1_server_method());
 		}
 #if TLSv1_2_SUPPORTED
 		if(!turn_params.no_tlsv1_2) {
-			turn_params.tls_ctx_v1_2 = SSL_CTX_new(TLSv1_2_server_method());
-			set_ctx(turn_params.tls_ctx_v1_2,"TLS1.2");
+			set_ctx(&turn_params.tls_ctx_v1_2,"TLS1.2",TLSv1_2_server_method());
 		}
 #endif
 #endif
@@ -2748,20 +2773,31 @@ static void openssl_setup(void)
 		}
 
 #if DTLSv1_2_SUPPORTED
-		turn_params.dtls_ctx = SSL_CTX_new(DTLS_server_method());
-		turn_params.dtls_ctx_v1_2 = SSL_CTX_new(DTLSv1_2_server_method());
-		set_ctx(turn_params.dtls_ctx_v1_2,"DTLS1.2");
+		set_ctx(&turn_params.dtls_ctx,"DTLS",DTLS_server_method());
+		set_ctx(&turn_params.dtls_ctx_v1_2,"DTLS1.2",DTLSv1_2_server_method());
 		SSL_CTX_set_read_ahead(turn_params.dtls_ctx_v1_2, 1);
 #else
-		turn_params.dtls_ctx = SSL_CTX_new(DTLSv1_server_method());
+		set_ctx(&turn_params.dtls_ctx,"DTLS",DTLSv1_server_method());
 #endif
-		set_ctx(turn_params.dtls_ctx,"DTLS");
 		SSL_CTX_set_read_ahead(turn_params.dtls_ctx, 1);
 
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS cipher suite: %s\n",turn_params.cipher_list);
 
 #endif
 	}
+	pthread_mutex_unlock(&turn_params.tls_mutex);
+}
+
+static void reload_ssl_certs(evutil_socket_t sock, short events, void *args)
+{
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Reloading TLS certificates and keys");
+	openssl_load_certificates();
+	if (turn_params.tls_ctx_update_ev != NULL)
+		event_active(turn_params.tls_ctx_update_ev, EV_READ, 0);
+
+	UNUSED_ARG(sock);
+	UNUSED_ARG(events);
+	UNUSED_ARG(args);
 }
 
 ///////////////////////////////
