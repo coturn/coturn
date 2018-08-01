@@ -1152,6 +1152,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 					*reason = (const u08bits *)"Even Port cannot be used with Dual Allocation";
 					break;
 				}
+				__attribute__((fallthrough));
 			case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY: {
 				if(in_reservation_token) {
 					*err_code = 400;

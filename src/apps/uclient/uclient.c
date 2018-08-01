@@ -261,6 +261,8 @@ int send_buffer(app_ur_conn_info *clnet_info, stun_buffer* message, int data_con
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Socket write error 111.666: \n");
 					if (handle_socket_error())
 						break;
+
+					__attribute__((fallthrough));
 				case SSL_ERROR_SSL:
 				{
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "SSL write error: \n");
@@ -269,6 +271,8 @@ int send_buffer(app_ur_conn_info *clnet_info, stun_buffer* message, int data_con
 						"%s (%d)\n",
 						ERR_error_string(ERR_get_error(),buf),
 						SSL_get_error(ssl, len));
+
+					__attribute__((fallthrough));
 				}
 				default:
 					clnet_info->broken = 1;
@@ -457,12 +461,16 @@ int recv_buffer(app_ur_conn_info *clnet_info, stun_buffer* message, int sync, in
 							"Socket read error 111.999: \n");
 					if (handle_socket_error())
 						break;
+
+					__attribute__((fallthrough));
 				case SSL_ERROR_SSL: {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "SSL write error: \n");
 					char buf[1024];
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s (%d)\n",
 							ERR_error_string(ERR_get_error(), buf),
 							SSL_get_error(ssl, rc));
+
+					__attribute__((fallthrough));
 				}
 				default:
 					clnet_info->broken = 1;
@@ -525,12 +533,16 @@ int recv_buffer(app_ur_conn_info *clnet_info, stun_buffer* message, int sync, in
 							"Socket read error 111.999: \n");
 					if (handle_socket_error())
 						break;
+
+					__attribute__((fallthrough));
 				case SSL_ERROR_SSL: {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "SSL write error: \n");
 					char buf[1024];
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s (%d)\n",
 							ERR_error_string(ERR_get_error(), buf),
 							SSL_get_error(ssl, rc));
+
+					__attribute__((fallthrough));
 				}
 				default:
 					clnet_info->broken = 1;
