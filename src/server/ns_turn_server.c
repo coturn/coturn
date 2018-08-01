@@ -34,6 +34,7 @@
 #include "ns_turn_allocation.h"
 #include "ns_turn_msg_addr.h"
 #include "ns_turn_ioalib.h"
+#include "../apps/relay/ns_ioalib_impl.h"
 
 ///////////////////////////////////////////
 
@@ -42,14 +43,19 @@
 
 ////////////////////////////////////////////////
 
-static inline int get_family(int stun_family) {
+static inline int get_family(int stun_family, ioa_engine_handle e, ioa_socket_handle client_socket) {
 	switch(stun_family) {
 	case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4:
 		return AF_INET;
+		break;
 	case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6:
 		return AF_INET6;
+		break;
 	case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT:
-		return AF_INET;
+		if(e->default_relays && get_ioa_socket_address_family(client_socket) == AF_INET6)
+				return AF_INET6;
+		else
+				return AF_INET;
 	default:
 		return AF_INET;
 	};
@@ -1252,12 +1258,15 @@ static int handle_turn_allocate(turn_turnserver *server,
 
 				if(!(*err_code)) {
 					if(!af4 && !af6) {
-						int af4res = create_relay_connection(server, ss, lifetime,
-							STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT, transport,
+						int a_family = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT;
+						if(get_ioa_socket_address_family(ss->client_socket) == AF_INET6)
+							a_family = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6;
+						int res = create_relay_connection(server, ss, lifetime,
+							a_family, transport,
 							even_port, in_reservation_token, &out_reservation_token,
 							err_code, reason,
 							tcp_peer_accept_connection);
-						if(af4res<0) {
+						if(res<0) {
 							set_relay_session_failure(alloc,AF_INET);
 							if(!(*err_code)) {
 								*err_code = 437;
@@ -4306,8 +4315,10 @@ static int create_relay_connection(turn_turnserver* server,
 			addr_debug_print(server->verbose, get_local_addr_from_ioa_socket(newelem->s), "Local relay addr (RTCP)");
 
 		} else {
+			int family = get_family(address_family,server->e,ss->client_socket);
 
-			newelem = get_relay_session_ss(ss,get_family(address_family));
+			newelem = get_relay_session_ss(ss,family);
+
 
 			IOA_CLOSE_SOCKET(newelem->s);
 

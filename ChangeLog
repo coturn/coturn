@@ -1,5 +1,7 @@
 12/11/2017 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.5.0.8 'dan Eider':
+	- Fix WebRTC client IPv6 stuck connection. (issue #217) 
+	  THX toq damencho, vol4iniche
 	- Spelling fixes.
 	- Add a warning if --lt-cred-mech and --use-auth-secret both presents.
 	- Revert "Add the realm parameter in the example config file (by Domenico)"
