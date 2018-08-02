@@ -1452,7 +1452,7 @@ static void read_config_file(int argc, char **argv, int pass)
 				if (!s[0])
 					continue;
 				size_t slen = strlen(s);
-				while (slen && ((s[slen - 1] == 10) || (s[slen - 1] == 13)))
+				while (slen && ((s[slen - 1] == 10) || (s[slen - 1] == 13) || (s[slen - 1] == 59)))
 					s[--slen] = 0;
 				if (slen) {
 					int c = 0;
