@@ -328,13 +328,15 @@ int main(int argc, char **argv)
 			passive_tcp = 1;
 			/* implies 'T': */
 			/* no break */
+			/* Falls through. */
 		case 'T':
 			relay_transport = STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE;
 			break;
 		case 'U':
-		  use_null_cipher = 1;
-		  /* implies 'S' */
-		  /* no break */
+			use_null_cipher = 1;
+			/* implies 'S' */
+			/* no break */
+			/* Falls through. */
 		case 'S':
 			use_secure = 1;
 			break;
