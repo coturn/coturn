@@ -1,5 +1,7 @@
 12/11/2017 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.5.0.8 'dan Eider':
+	- merge travis branch
+	- hint with comment fallthrough to avoid warning
 	- reload-tls-certs PR#236 (by Arne Georg Gisnås Gleditsch)
 	- minor fixe PR#223 (by Pavel Kretov)
 	  move rm Makefile to distclean
