@@ -4,7 +4,7 @@ language: cpp
 before_install:
   - export CPPFLAGS="$CPPFLAGS -I/usr/local/opt/openssl/include"
   - export LDFLAGS="$LDFLAGS -L/usr/local/opt/openssl/lib"
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; brew outdated openssl || brew upgrade openssl; brew install mysql sqlite hiredis; brew outdated sqlite || brew upgrade sqlite;  fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; brew outdated openssl || brew upgrade openssl; brew install mysql sqlite hiredis; fi
 
 matrix:
   include:
@@ -43,13 +43,13 @@ matrix:
         - libmysqlclient-dev
         - libhiredis-dev
   - os: osx
-    osx_image: xcode9
+    osx_image: xcode9.4
   - os: osx
-    osx_image: xcode8
+    osx_image: xcode8.3
   - os: osx
-    osx_image: xcode7
+    osx_image: xcode7.3
   - os: osx
-    osx_image: xcode6
+    osx_image: xcode6.4
 
 notifications:
   slack:
