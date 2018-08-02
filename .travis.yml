@@ -9,6 +9,7 @@ before_install:
 matrix:
   include:
   - os: linux
+    dist: precise
     sudo: required
     addons:
       apt:
