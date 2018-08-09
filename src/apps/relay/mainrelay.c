@@ -1034,16 +1034,13 @@ unsigned char *base64decode (const void *b64_decode_this, int decode_this_many_b
 }
 void decrypt(char* in, char* mykey){
 
-
 	char iv[8] = {0}; //changed
 	AES_KEY key;
 	char outdata[256];	//changed
 	AES_set_encrypt_key(mykey, 128, &key);
 	int size=0;
 	int bytes_to_decode = strlen(in);
-	//printf("byte_to_decode: %d\n",bytes_to_decode);
-	 char *encryptedText = base64decode(in, bytes_to_decode); //changed
-	//printf("encryptedText: %s\n",encryptedText);
+	char *encryptedText = base64decode(in, bytes_to_decode); //changed
 	char temp[256];
 	char last[1024]="";
 	int i=0;
@@ -1642,7 +1639,7 @@ static int adminmain(int argc, char **argv)
 
 	int is_admin = 0;
 	FILE* fptr;
-	char generated_key[20]; //changed
+	char generated_key[16]; //changed
 	int counter;
 	char ch;
 
@@ -1800,13 +1797,11 @@ static int adminmain(int argc, char **argv)
                 printf("%s\n",result);
                 exit(0);
             }
-
             if(print_enc_aes_password){
-                encrypt((unsigned char*)pwd, generated_key);
+				encrypt((unsigned char*)pwd, generated_key);
                 exit(0);
             }
             break;
-
         case 'x':
             generate_aes_128_key(optarg, generated_key);
             exit(0);
@@ -1817,14 +1812,13 @@ static int adminmain(int argc, char **argv)
                 printf("No such file like %s\n", (char*)optarg);
             }
             else{
-                for(counter = 0; (ch = fgetc(fptr)) != EOF; counter++){
-                    generated_key[counter] = ch;
-                }
-                fclose(fptr);
+				fseek (fptr, 0, SEEK_SET);
+				fread (generated_key, sizeof(char), 16, fptr);
+				fclose (fptr);
             }
             break;
         case 'v':
-            decrypt((char*)optarg, generated_key);
+			decrypt((char*)optarg, generated_key);
             exit(0);
         case 'h':
             printf("\n%s\n", AdminUsage);
@@ -2834,9 +2828,7 @@ static void set_ctx(SSL_CTX* ctx, const char *protocol)
 				fseek (f, 0, SEEK_SET);
 				fread (turn_params.secret_key, sizeof(char), 16, f);
 				fclose (f);
-
 			}
-
 		}
 	}
 
