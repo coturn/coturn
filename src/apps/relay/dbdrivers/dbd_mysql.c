@@ -83,38 +83,30 @@ struct ctr_state {
 
 struct ctr_state state;
 
-char* decryptPassword(unsigned char* in, unsigned char* mykey){
 
-	unsigned char* out;
-	unsigned char iv[8] = {0};
+char* decryptPassword(char* in, char* mykey){
+
+	char *out;
+	int j=0,k=0;
+	int remainder,loop_count;
+	char iv[8] = {0}; //changed
 	AES_KEY key;
-	unsigned char outdata[256];
+	char outdata[256];	//changed
 	AES_set_encrypt_key(mykey, 128, &key);
-	char total[256] = "";
 	int size=0;
+	int newTotalSize=decodedTextSize(in);
 	int bytes_to_decode = strlen(in);
-	unsigned char *encryptedText = base64decode(in, bytes_to_decode);
+	char *encryptedText = base64decode(in, bytes_to_decode); //changed
 	char temp[256];
 	char last[1024]="";
 	int i=0;
-
-	while(1){
-		init_ctr(&state, iv);
-		memset(temp,'\0', sizeof(temp));
-		sprintf(temp,"%.16s",&encryptedText[i*16]);
-		size=strlen(temp);
-		if(size==0){break;}
-		AES_ctr128_encrypt(temp, outdata, strlen(temp), &key, state.ivec, state.ecount, &state.num);
-		strcat(last,outdata);
-		++i;
-		if (size < 16){break;}
-		memset(outdata,'\0', sizeof(outdata));
-	}
-
+	init_ctr(&state, iv);
+	memset(outdata,'\0', sizeof(outdata));
+	AES_ctr128_encrypt(encryptedText, outdata, newTotalSize, &key, state.ivec, state.ecount, &state.num);
+	strcat(last,outdata);
+	out=malloc(sizeof(char)*strlen(last));
 	strcpy(out,last);
-
 	return out;
-
 }
 
 
@@ -279,9 +271,11 @@ static MYSQL *get_mydb_connection(void) {
 				if(co->ca || co->capath || co->cert || co->cipher || co->key) {
 					mysql_ssl_set(mydbconnection, co->key, co->cert, co->ca, co->capath, co->cipher);
 				}
+
 				if(turn_params.allow_encoding){
 					co->password = decryptPassword(co->password, turn_params.secret_key);
 				}
+
 				MYSQL *conn = mysql_real_connect(mydbconnection, co->host, co->user, co->password, co->dbname, co->port, NULL, CLIENT_IGNORE_SIGPIPE);
 				if(!conn) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open MySQL DB connection: <%s>, runtime error\n",pud->userdb);

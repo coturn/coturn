@@ -371,6 +371,7 @@ unsigned char *base64encode (const void *b64_encode_this, int encode_this_many_b
 void encrypt(char* in, char* mykey);
 unsigned char *base64decode (const void *b64_decode_this, int decode_this_many_bytes);
 void decrypt(char* in, char* mykey);
+int decodedTextSize(char *input);
 
 ///////////////////////////////
 

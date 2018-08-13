@@ -960,13 +960,14 @@ unsigned char *base64encode (const void *b64_encode_this, int encode_this_many_b
 }
 void encrypt(char* in, char* mykey){
 
-
+    int j=0,k=0;
+    int totalSize=0;
 	AES_KEY key;
 	int size=0;
 	char iv[8] = {0}; //changed
 	char out[256]; //changed
 	AES_set_encrypt_key(mykey, 128, &key);
-	char total[256]="";
+	char total[256];
 	char tempinput[20];
 	int i=0;
 	while(1){
@@ -975,14 +976,17 @@ void encrypt(char* in, char* mykey){
 		size=strlen(tempinput);
 		if(size==0){break;}
 		AES_ctr128_encrypt(tempinput, out, strlen(tempinput), &key, state.ivec, state.ecount, &state.num);
-		strcat(total,out);
+		totalSize += strlen(tempinput);
+        for (j = 0;  j< strlen(tempinput); j++) {
+            total[k++]=out[j];
+        }
 		++i;
 		if (size <16){ break;}
 	}
 
-	int bytes_to_encode = strlen((char*)total);
-	signed char *base64_encoded = base64encode(total, bytes_to_encode);
+	unsigned char *base64_encoded = base64encode(total, totalSize);
 	printf("%s\n",base64_encoded);
+
 }
 void generate_aes_128_key(char* filePath, char* returnedKey){
 	int i;
@@ -1032,31 +1036,38 @@ unsigned char *base64decode (const void *b64_decode_this, int decode_this_many_b
 	BIO_free_all(b64_bio);  //Destroys all BIOs in chain, starting with b64 (i.e. the 1st one).
 	return base64_decoded;        //Returns base-64 decoded data with trailing null terminator.
 }
+int decodedTextSize(char *input){
+    int i=0;
+    int result=0,padding=0;
+    for (i = 0; i < strlen(input); ++i) {
+        if(input[i]=='='){
+            padding++;
+        }
+    }
+    result=(strlen(input)/4*3)-padding;
+    return result;
+
+}
 void decrypt(char* in, char* mykey){
 
-	char iv[8] = {0}; //changed
-	AES_KEY key;
-	char outdata[256];	//changed
-	AES_set_encrypt_key(mykey, 128, &key);
-	int size=0;
-	int bytes_to_decode = strlen(in);
-	char *encryptedText = base64decode(in, bytes_to_decode); //changed
-	char temp[256];
-	char last[1024]="";
-	int i=0;
-	while(1){
-		init_ctr(&state, iv);
-		sprintf(temp,"%.16s",&encryptedText[i*16]);
-		size=strlen(temp);
-		if(size==0){break;}
-		AES_ctr128_encrypt(temp, outdata, strlen(temp), &key, state.ivec, state.ecount, &state.num);
-		strcat(last,outdata);
-		++i;
-		if (size < 16){break;}
-	}
-
-	printf("%s\n",last);
-
+    int j=0,k=0;
+    int remainder,loop_count;
+    char iv[8] = {0}; //changed
+    AES_KEY key;
+    char outdata[256];	//changed
+    AES_set_encrypt_key(mykey, 128, &key);
+    int size=0;
+    int newTotalSize=decodedTextSize(in);
+    int bytes_to_decode = strlen(in);
+    char *encryptedText = base64decode(in, bytes_to_decode); //changed
+    char temp[256];
+    char last[1024]="";
+    int i=0;
+    init_ctr(&state, iv);
+    memset(outdata,'\0', sizeof(outdata));
+    AES_ctr128_encrypt(encryptedText, outdata, newTotalSize, &key, state.ivec, state.ecount, &state.num);
+    strcat(last,outdata);
+    printf("%s\n",last);
 }
 
 static int get_int_value(const char* s, int default_value)
@@ -2126,6 +2137,10 @@ int main(int argc, char **argv)
 
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Domain name: %s\n",turn_params.domain);
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Default realm: %s\n",get_realm(NULL)->options.name);
+    if(turn_params.allow_encoding){
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "allow-encoding-with-aes activated.\n");
+    }
+
 	if(turn_params.oauth && turn_params.oauth_server_name[0]) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "oAuth server name: %s\n",turn_params.oauth_server_name);
 	}
