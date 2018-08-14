@@ -34,7 +34,7 @@
 
 #if !defined(TURN_NO_MYSQL)
 #include <mysql.h>
-#include <openssl/aes.h>
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -73,37 +73,22 @@ static void MyconninfoFree(Myconninfo *co) {
 		ns_bzero(co,sizeof(Myconninfo));
 	}
 }
-
-struct ctr_state {
-	unsigned char ivec[16];
-	unsigned int num;
-	unsigned char ecount[16];
-};
-
-
 struct ctr_state state;
-
-
-char* decryptPassword(char* in, char* mykey){
+char* decryptPassword(char* in, const unsigned char* mykey){
 
 	char *out;
-	int j=0,k=0;
-	int remainder,loop_count;
-	char iv[8] = {0}; //changed
+	unsigned char iv[8] = {0}; //changed
 	AES_KEY key;
-	char outdata[256];	//changed
+	unsigned char outdata[256];	//changed
 	AES_set_encrypt_key(mykey, 128, &key);
-	int size=0;
 	int newTotalSize=decodedTextSize(in);
 	int bytes_to_decode = strlen(in);
-	char *encryptedText = base64decode(in, bytes_to_decode); //changed
-	char temp[256];
+	unsigned char *encryptedText = base64decode(in, bytes_to_decode); //changed
 	char last[1024]="";
-	int i=0;
 	init_ctr(&state, iv);
 	memset(outdata,'\0', sizeof(outdata));
 	AES_ctr128_encrypt(encryptedText, outdata, newTotalSize, &key, state.ivec, state.ecount, &state.num);
-	strcat(last,outdata);
+	strcat(last,(char*)outdata);
 	out=malloc(sizeof(char)*strlen(last));
 	strcpy(out,last);
 	return out;

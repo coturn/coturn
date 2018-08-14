@@ -930,17 +930,13 @@ static const struct myoption admin_long_options[] = {
 };
 
 
-struct ctr_state {
-	unsigned char ivec[16];
-	unsigned int num;
-	unsigned char ecount[16];
-};
 struct ctr_state state;
 int init_ctr(struct ctr_state *state, const unsigned char iv[8]){
 	state->num = 0;
 	memset(state->ecount, 0, 16);
 	memset(state->ivec + 8, 0, 8);
 	memcpy(state->ivec, iv, 8);
+	return 1;
 }
 unsigned char *base64encode (const void *b64_encode_this, int encode_this_many_bytes){
 	BIO *b64_bio, *mem_bio;      //Declares two OpenSSL BIOs: a base64 filter and a memory BIO.
@@ -956,39 +952,31 @@ unsigned char *base64encode (const void *b64_encode_this, int encode_this_many_b
 	BIO_free_all(b64_bio);  //Destroys all BIOs in chain, starting with b64 (i.e. the 1st one).
 	BUF_MEM_grow(mem_bio_mem_ptr, (*mem_bio_mem_ptr).length + 1);   //Makes space for end null.
 	(*mem_bio_mem_ptr).data[(*mem_bio_mem_ptr).length] = '\0';  //Adds null-terminator to tail.
-	return (*mem_bio_mem_ptr).data; //Returns base-64 encoded data. (See: "buf_mem_st" struct).
+	return (unsigned char*)(*mem_bio_mem_ptr).data; //Returns base-64 encoded data. (See: "buf_mem_st" struct).
 }
-void encrypt(char* in, char* mykey){
+void encrypt(unsigned  char* in, const unsigned char* mykey){
 
     int j=0,k=0;
     int totalSize=0;
 	AES_KEY key;
-	int size=0;
-	char iv[8] = {0}; //changed
-	char out[256]; //changed
+	unsigned char iv[8] = {0}; //changed
+	unsigned char out[1024]; //changed
 	AES_set_encrypt_key(mykey, 128, &key);
 	char total[256];
-	char tempinput[20];
-	int i=0;
-	while(1){
-		init_ctr(&state, iv);
-		sprintf(tempinput,"%.16s",&in[i*16]);
-		size=strlen(tempinput);
-		if(size==0){break;}
-		AES_ctr128_encrypt(tempinput, out, strlen(tempinput), &key, state.ivec, state.ecount, &state.num);
-		totalSize += strlen(tempinput);
-        for (j = 0;  j< strlen(tempinput); j++) {
-            total[k++]=out[j];
-        }
-		++i;
-		if (size <16){ break;}
-	}
+    int size=0;
+    init_ctr(&state, iv);
+    AES_ctr128_encrypt(in, out, strlen((char*)in), &key, state.ivec, state.ecount, &state.num);
+    totalSize += strlen((char*)in);
+    size = strlen((char*)in);
+    for (j = 0;  j< size; j++) {
+        total[k++]=out[j];
+    }
 
 	unsigned char *base64_encoded = base64encode(total, totalSize);
 	printf("%s\n",base64_encoded);
 
 }
-void generate_aes_128_key(char* filePath, char* returnedKey){
+void generate_aes_128_key(char* filePath, unsigned char* returnedKey){
 	int i;
 	int part;
 	FILE* fptr;
@@ -997,7 +985,7 @@ void generate_aes_128_key(char* filePath, char* returnedKey){
 	clock_gettime(CLOCK_REALTIME,&times);
 	srand(times.tv_nsec);
 
-	for (i = 0; i < sizeof(key); i++) {
+	for (i = 0; i < 16; i++) {
 		part = (rand() % 3);
 		if(part == 0){
 			key[i] = (rand() % 10) + 48;
@@ -1015,7 +1003,7 @@ void generate_aes_128_key(char* filePath, char* returnedKey){
 	for(i = 0; i < 16; i++){
 		fputc(key[i], fptr);
 	}
-	strcpy(returnedKey, key);
+	strcpy((char*)returnedKey, key);
 	fclose(fptr);
 
 
@@ -1023,7 +1011,7 @@ void generate_aes_128_key(char* filePath, char* returnedKey){
 
 unsigned char *base64decode (const void *b64_decode_this, int decode_this_many_bytes){
 	BIO *b64_bio, *mem_bio;      //Declares two OpenSSL BIOs: a base64 filter and a memory BIO.
-	char *base64_decoded = calloc( (decode_this_many_bytes*3)/4+1, sizeof(char) ); //+1 = null.
+	unsigned char *base64_decoded = calloc( (decode_this_many_bytes*3)/4+1, sizeof(char) ); //+1 = null.
 	b64_bio = BIO_new(BIO_f_base64());                      //Initialize our base64 filter BIO.
 	mem_bio = BIO_new(BIO_s_mem());                         //Initialize our memory source BIO.
 	BIO_write(mem_bio, b64_decode_this, decode_this_many_bytes); //Base64 data saved in source.
@@ -1039,34 +1027,30 @@ unsigned char *base64decode (const void *b64_decode_this, int decode_this_many_b
 int decodedTextSize(char *input){
     int i=0;
     int result=0,padding=0;
-    for (i = 0; i < strlen(input); ++i) {
+    int size=strlen(input);
+    for (i = 0; i < size; ++i) {
         if(input[i]=='='){
             padding++;
         }
     }
     result=(strlen(input)/4*3)-padding;
     return result;
-
 }
-void decrypt(char* in, char* mykey){
+void decrypt(char* in, const unsigned char* mykey){
 
-    int j=0,k=0;
-    int remainder,loop_count;
-    char iv[8] = {0}; //changed
+    unsigned char iv[8] = {0};
     AES_KEY key;
-    char outdata[256];	//changed
+    unsigned char outdata[256];
     AES_set_encrypt_key(mykey, 128, &key);
-    int size=0;
     int newTotalSize=decodedTextSize(in);
     int bytes_to_decode = strlen(in);
-    char *encryptedText = base64decode(in, bytes_to_decode); //changed
-    char temp[256];
+    unsigned char *encryptedText = base64decode(in, bytes_to_decode);
     char last[1024]="";
     int i=0;
     init_ctr(&state, iv);
     memset(outdata,'\0', sizeof(outdata));
     AES_ctr128_encrypt(encryptedText, outdata, newTotalSize, &key, state.ivec, state.ecount, &state.num);
-    strcat(last,outdata);
+    strcat(last,(char*)outdata);
     printf("%s\n",last);
 }
 
@@ -1650,9 +1634,7 @@ static int adminmain(int argc, char **argv)
 
 	int is_admin = 0;
 	FILE* fptr;
-	char generated_key[16]; //changed
-	int counter;
-	char ch;
+	unsigned char generated_key[16]; //changed
 
 	u08bits user[STUN_MAX_USERNAME_SIZE+1]="\0";
 	u08bits realm[STUN_MAX_REALM_SIZE+1]="\0";
@@ -1809,7 +1791,7 @@ static int adminmain(int argc, char **argv)
                 exit(0);
             }
             if(print_enc_aes_password){
-				encrypt((unsigned char*)pwd, generated_key);
+				encrypt(pwd, generated_key);
                 exit(0);
             }
             break;
