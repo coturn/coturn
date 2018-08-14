@@ -965,7 +965,13 @@ void encrypt(unsigned  char* in, const unsigned char* mykey){
 	char total[256];
     int size=0;
     init_ctr(&state, iv);
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    CRYPTO_ctr128_encrypt(in, out, strlen((char*)in), &key, state.ivec, state.ecount, &state.num,(block128_f)AES_encrypt);
+#else
     AES_ctr128_encrypt(in, out, strlen((char*)in), &key, state.ivec, state.ecount, &state.num);
+#endif
+
     totalSize += strlen((char*)in);
     size = strlen((char*)in);
     for (j = 0;  j< size; j++) {
@@ -1046,10 +1052,15 @@ void decrypt(char* in, const unsigned char* mykey){
     int bytes_to_decode = strlen(in);
     unsigned char *encryptedText = base64decode(in, bytes_to_decode);
     char last[1024]="";
-    int i=0;
     init_ctr(&state, iv);
     memset(outdata,'\0', sizeof(outdata));
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    CRYPTO_ctr128_encrypt(encryptedText,outdata,newTotalSize,&key, state.ivec, state.ecount, &state.num,(block128_f)AES_encrypt));
+#else
     AES_ctr128_encrypt(encryptedText, outdata, newTotalSize, &key, state.ivec, state.ecount, &state.num);
+#endif
+
     strcat(last,(char*)outdata);
     printf("%s\n",last);
 }
