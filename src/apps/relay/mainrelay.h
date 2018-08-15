@@ -375,9 +375,9 @@ struct ctr_state {
 };
 void generate_aes_128_key(char* filePath, unsigned char* returnedKey);
 unsigned char *base64encode (const void *b64_encode_this, int encode_this_many_bytes);
-void encrypt(unsigned char* in, const unsigned char* mykey);
+void encrypt_aes_128(unsigned char* in, const unsigned char* mykey);
 unsigned char *base64decode (const void *b64_decode_this, int decode_this_many_bytes);
-void decrypt(char* in, const unsigned char* mykey);
+void decrypt_aes_128(char* in, const unsigned char* mykey);
 int decodedTextSize(char *input);
 char* decryptPassword(char* in, const unsigned char* mykey);
 int init_ctr(struct ctr_state *state, const unsigned char iv[8]);

@@ -961,7 +961,7 @@ unsigned char *base64encode (const void *b64_encode_this, int encode_this_many_b
 	(*mem_bio_mem_ptr).data[(*mem_bio_mem_ptr).length] = '\0';  //Adds null-terminator to tail.
 	return (unsigned char*)(*mem_bio_mem_ptr).data; //Returns base-64 encoded data. (See: "buf_mem_st" struct).
 }
-void encrypt(unsigned  char* in, const unsigned char* mykey){
+void encrypt_aes_128(unsigned  char* in, const unsigned char* mykey){
 
     int j=0,k=0;
     int totalSize=0;
@@ -1049,7 +1049,7 @@ int decodedTextSize(char *input){
     result=(strlen(input)/4*3)-padding;
     return result;
 }
-void decrypt(char* in, const unsigned char* mykey){
+void decrypt_aes_128(char* in, const unsigned char* mykey){
 
     unsigned char iv[8] = {0};
     AES_KEY key;
@@ -1809,7 +1809,7 @@ static int adminmain(int argc, char **argv)
                 exit(0);
             }
             if(print_enc_aes_password){
-				encrypt(pwd, generated_key);
+				encrypt_aes_128(pwd, generated_key);
                 exit(0);
             }
             break;
@@ -1829,7 +1829,7 @@ static int adminmain(int argc, char **argv)
             }
             break;
         case 'v':
-			decrypt((char*)optarg, generated_key);
+			decrypt_aes_128((char*)optarg, generated_key);
             exit(0);
         case 'h':
             printf("\n%s\n", AdminUsage);
