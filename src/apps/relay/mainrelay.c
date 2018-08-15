@@ -970,7 +970,7 @@ void encrypt(unsigned  char* in, const unsigned char* mykey){
     init_ctr(&state, iv);
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
-    CRYPTO_ctr128_encrypt(in, out, strlen((char*)in), &key, state.ivec, state.ecount, &state.num,(block128_f)AES_encrypt);
+    CRYPTO_ctr128_encrypt(in, out, strlen((char*)in), &key, state.ivec, state.ecount, &state.num, (block128_f)AES_encrypt);
 #else
     AES_ctr128_encrypt(in, out, strlen((char*)in), &key, state.ivec, state.ecount, &state.num);
 #endif
@@ -1059,7 +1059,7 @@ void decrypt(char* in, const unsigned char* mykey){
     memset(outdata,'\0', sizeof(outdata));
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
-    CRYPTO_ctr128_encrypt(encryptedText,outdata,newTotalSize,&key, state.ivec, state.ecount, &state.num,(block128_f)AES_encrypt));
+    CRYPTO_ctr128_encrypt(encryptedText,outdata,newTotalSize,&key, state.ivec, state.ecount, &state.num, (block128_f)AES_encrypt);
 #else
     AES_ctr128_encrypt(encryptedText, outdata, newTotalSize, &key, state.ivec, state.ecount, &state.num);
 #endif
