@@ -80,6 +80,7 @@
 #include <openssl/aes.h>
 #include <openssl/err.h>
 #include <openssl/pem.h>
+#include <openssl/modes.h>
 
 #ifdef __cplusplus
 extern "C" {
