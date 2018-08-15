@@ -180,6 +180,18 @@ command \fIoptions\fP description).
 .RE
 .TP
 .B
+\fB\-\-secret\-key\-file\fP
+If you want to use password as encrpyted in the mysql connection string MySQL encrypted connection, this is key path.
+This is the file path which contain secret key of aes encryption while using password encryption.
+This attribute should be use if allow\-encoding\-with\-aes set to 1.
+.TP
+.B
+\fB\-\-allow\-encoding\-with\-aes\fP
+If you want to use password as encrpyted in the mysql connection string. Set allow\-encoding\-with\-aes to 1.
+If you want to use clearteaxt password in the mysql connection string. Set allow\-encoding\-with\-aes to 0.
+You have to enable secret\-key\-file attribute above as a key location.
+.TP
+.B
 \fB\-J\fP, \fB\-\-mongo\-userdb\fP
 User database connection string for MongoDB. 
 This database can be used for long\-term credentials mechanism,
