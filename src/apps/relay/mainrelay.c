@@ -151,7 +151,11 @@ TURN_CREDENTIALS_NONE, /* ct */
 ///////////// Users DB //////////////
 { (TURN_USERDB_TYPE)0, {"\0"}, {0,NULL, {NULL,0}} },
 ///////////// CPUs //////////////////
-DEFAULT_CPUS_NUMBER
+DEFAULT_CPUS_NUMBER,
+///////// Encryption /////////
+"", /* secret_key_file */
+"", /* secret_key */
+0   /* allow_encoding */
 };
 
 //////////////// OpenSSL Init //////////////////////
