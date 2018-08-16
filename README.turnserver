@@ -120,6 +120,12 @@ User database settings:
 		(see http://dev.mysql.com/doc/refman/5.1/en/ssl-options.html for the 
 		command options description).
 		
+--secret-key-file 	If you want to use password as encrpyted in the mysql connection string MySQL encrypted connection, this is key path.
+			This is the file path which contain secret key of aes encryption while using password encryption.
+			This attribute should be use if allow-encoding-with-aes set to 1.
+--allow-encoding-with-aes	If you want to use password as encrpyted in the mysql connection string. Set allow-encoding-with-aes to 1.
+				If you want to use clearteaxt password in the mysql connection string. Set allow-encoding-with-aes to 0.
+				You have to enable secret-key-file attribute above as a key location.
 -J, --mongo-userdb	User database connection string for MongoDB. 
 		This database can be used for long-term credentials mechanism,
 		and it can store the secret value 
