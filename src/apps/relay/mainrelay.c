@@ -1433,7 +1433,7 @@ static void read_config_file(int argc, char **argv, int pass)
 		FILE *f = NULL;
 		char *full_path_to_config_file = NULL;
 
-		full_path_to_config_file = find_config_file(config_file, 1);
+		full_path_to_config_file = find_config_file(config_file, pass);
 		if (full_path_to_config_file)
 			f = fopen(full_path_to_config_file, "r");
 
@@ -1926,12 +1926,6 @@ int main(int argc, char **argv)
 	if(strstr(argv[0],"turnadmin"))
 		return adminmain(argc,argv);
 
-	{
-		unsigned long mfn = set_system_parameters(1);
-
-		print_features(mfn);
-	}
-
 	read_config_file(argc,argv,0);
 
 	struct uoptions uo;
@@ -1943,6 +1937,12 @@ int main(int argc, char **argv)
 	}
 
 	read_config_file(argc,argv,1);
+
+	{
+		unsigned long mfn = set_system_parameters(1);
+
+		print_features(mfn);
+	}
 
 	if(!get_realm(NULL)->options.name[0]) {
 		STRCPY(get_realm(NULL)->options.name,turn_params.domain);
