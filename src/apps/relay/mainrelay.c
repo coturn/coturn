@@ -1639,6 +1639,10 @@ static void read_config_file(int argc, char **argv, int pass)
 					} else if((pass > 0) && (c == 'u')) {
 					  set_option(c, value);
 					}
+					if (s[slen - 1] == 59) {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Check config! The following line ends with semicolon: \"%s\" \n",s);
+					}
+
 				}
 			}
 
