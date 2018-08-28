@@ -614,10 +614,10 @@ fi
 # Adjustments for Solaris
 #############################
 
-SYSTEM=`uname`
+echo | $CC -E -xdumpmacros - | grep __SUNPRO_C
 
-if [ "${SYSTEM}" = "SunOS" ] ; then
-# Solaris ? is this you ?!
+if [ $@ ] ; then
+# Detect Sun Studio Compiler
     OSCFLAGS="${OSCFLAGS} -D__EXTENSIONS__ -D_XOPEN_SOURCE=500 -DTURN_NO_GETDOMAINNAME"
     OSLIBS="${OSLIBS} -lnsl"
     TURN_NO_SCTP=1
