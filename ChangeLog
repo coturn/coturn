@@ -18,6 +18,9 @@ Version 4.5.0.8 'dan Eider':
 	- fix total and user quota mix-up
 	- Fixed typos in postinstall.txt (by Prashanth Rajaram)
 	- MySQL password encryption (by Mustafa Bingül & Erdem Duman)
+	- Do not write to log before logging configuration is read from a config file (by eiver)
+	- Add more explanation on use-auth-secret / REST in example config (by Krithin Sitaram)
+	- Add a Warning if lines in config file ends with semicolon (by heyheyjc)n
 
 12/10/2017 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.5.0.7 'dan Eider':
