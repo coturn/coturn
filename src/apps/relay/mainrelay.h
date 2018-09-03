@@ -317,7 +317,6 @@ typedef struct _turn_params_ {
   ///////// Encryption /////////
   char secret_key_file[1025];
   unsigned char secret_key[1025];
-  int allow_encoding;
 
 } turn_params_t;
 
