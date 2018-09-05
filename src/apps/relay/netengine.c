@@ -1786,11 +1786,13 @@ static void* run_auth_server_thread(void *arg)
 
 static void setup_auth_server(struct auth_server *as)
 {
-	if(pthread_create(&(as->thr), NULL, run_auth_server_thread, as)) {
+	pthread_attr_t attr;
+	if(pthread_attr_init(&attr) ||
+	   pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED) ||
+	   pthread_create(&(as->thr), &attr, run_auth_server_thread, as)) {
 		perror("Cannot create auth thread\n");
 		exit(-1);
 	}
-	pthread_detach(as->thr);
 }
 
 static void* run_admin_server_thread(void *arg)

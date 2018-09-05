@@ -22,6 +22,7 @@ Version 4.5.0.8 'dan Eider':
 	- Add more explanation on use-auth-secret / REST in example config (by Krithin Sitaram)
 	- Add a Warning if lines in config file ends with semicolon (by heyheyjc)
 	- Fix --prod pointer bug
+	- Fix auth server thread detach race (by weishuyin)
 
 12/10/2017 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.5.0.7 'dan Eider':
