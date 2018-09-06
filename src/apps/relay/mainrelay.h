@@ -318,6 +318,7 @@ typedef struct _turn_params_ {
   char secret_key_file[1025];
   unsigned char secret_key[1025];
   int allow_encoding;
+  int keep_address_family;
 
 } turn_params_t;
 

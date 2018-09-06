@@ -1260,13 +1260,25 @@ static int handle_turn_allocate(turn_turnserver *server,
 				if(!(*err_code)) {
 					if(!af4 && !af6) {
 						int a_family = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT;
-						if(get_ioa_socket_address_family(ss->client_socket) == AF_INET6)
-							a_family = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6;
+						if (server->keep_address_family) {
+							switch(get_ioa_socket_address_family(ss->client_socket)) {
+								case AF_INET6 :
+									a_family = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6;
+									break;
+								case AF_INET :
+									a_family = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4;
+									break;
+							}
+							if(get_ioa_socket_address_family(ss->client_socket) == AF_INET6)
+								a_family = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6;
+						}
+
 						int res = create_relay_connection(server, ss, lifetime,
-							a_family, transport,
-							even_port, in_reservation_token, &out_reservation_token,
-							err_code, reason,
-							tcp_peer_accept_connection);
+						a_family, transport,
+						even_port, in_reservation_token, &out_reservation_token,
+						err_code, reason,
+						tcp_peer_accept_connection);
+
 						if(res<0) {
 							set_relay_session_failure(alloc,AF_INET);
 							if(!(*err_code)) {
@@ -4839,7 +4851,10 @@ void init_turn_server(turn_turnserver* server,
 		send_turn_session_info_cb send_turn_session_info,
 		send_https_socket_cb send_https_socket,
 		allocate_bps_cb allocate_bps_func,
-		int oauth, const char* oauth_server_name, int use_http) {
+		int oauth,
+		const char* oauth_server_name,
+		int use_http,
+		int keep_address_family) {
 
 	if (!server)
 		return;
@@ -4907,6 +4922,8 @@ void init_turn_server(turn_turnserver* server,
 	server->allocate_bps_func = allocate_bps_func;
 
 	server->use_http = use_http;
+
+	server->keep_address_family = keep_address_family;
 
 	set_ioa_timer(server->e, 1, 0, timer_timeout_handler, server, 1, "timer_timeout_handler");
 }

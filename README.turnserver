@@ -532,7 +532,11 @@ Options with values:
 	
 --proc-group		Group name to run the process. After the initialization, the turnserver process
 			will make an attempt to change the current group ID to that group.
-			
+
+-K, --keep-address-family		TURN server allocates address family according TURN
+			Client <=> Server communication address family.
+			!! It breaks RFC6156 section-4.2 (violates default IPv4) !!
+
 --cli-ip		Local system IP address to be used for CLI management interface.
 			The turnserver process can be accessed for management with telnet,
 			at this IP address and on the CLI port (see the next parameter). 

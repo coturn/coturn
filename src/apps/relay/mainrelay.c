@@ -155,7 +155,8 @@ DEFAULT_CPUS_NUMBER,
 ///////// Encryption /////////
 "", /* secret_key_file */
 "", /* secret_key */
-0   /* allow_encoding */
+0,  /* allow_encoding */
+0   /* keep_address_family */
 };
 
 //////////////// OpenSSL Init //////////////////////
@@ -616,6 +617,9 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						will make an attempt to change the current group ID to that group.\n"
 " --mobility					Mobility with ICE (MICE) specs support.\n"
 " --no-http					Turn OFF the HTTP-Admin-Interface. By default it is always ON.\n"
+" -K, --keep-address-family			TURN server allocates address family according TURN\n"
+"						Client <=> Server communication address family. \n"
+"						!! It breaks RFC6156 section-4.2 (violates default IPv4) !!\n"
 " --no-cli					Turn OFF the CLI support. By default it is always ON.\n"
 " --cli-ip=<IP>					Local system IP address to be used for CLI server endpoint. Default value\n"
 "						is 127.0.0.1.\n"
@@ -696,7 +700,7 @@ static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
 	"					Setting to zero value means removal of the option.\n"
 	"	-h, --help			Help\n";
 
-#define OPTIONS "c:d:p:L:E:X:i:m:l:r:u:b:B:e:M:J:N:O:q:Q:s:C:vVofhznaAS"
+#define OPTIONS "c:d:p:L:E:X:i:m:l:r:u:b:B:e:M:J:N:O:q:Q:s:C:K:vVofhznaAS"
 
 #define ADMIN_OPTIONS "PEgGORIHKYlLkaADSdb:e:M:J:N:u:r:p:s:X:o:h:x:v:f:"
 
@@ -889,6 +893,7 @@ static const struct myoption long_options[] = {
 				{ "no-tlsv1_2", optional_argument, NULL, NO_TLSV1_2_OPT },
 				{ "secret-key-file", required_argument, NULL, SECRET_KEY_OPT },
 				{ "allow-encoding-with-aes", required_argument, NULL, ALLOW_ENCODING_OPT},
+				{ "keep-address-family", optional_argument, NULL, 'K' },
 				{ NULL, no_argument, NULL, 0 }
 };
 
@@ -1104,6 +1109,9 @@ static void set_option(int c, char *value)
   }
 
   switch (c) {
+	case 'K':
+		turn_params.keep_address_family = get_bool_value(value);
+		break;
   case SERVER_NAME_OPT:
 	  STRCPY(turn_params.oauth_server_name,value);
 	  break;
