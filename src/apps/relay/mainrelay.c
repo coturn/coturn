@@ -155,7 +155,6 @@ DEFAULT_CPUS_NUMBER,
 ///////// Encryption /////////
 "", /* secret_key_file */
 "", /* secret_key */
-0,  /* allow_encoding */
 0   /* keep_address_family */
 };
 
@@ -498,12 +497,11 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						(see http://dev.mysql.com/doc/refman/5.1/en/ssl-options.html for the\n"
 "						command options description).\n\n"
 "	        	          		All connection-string parameters are optional.\n\n"
-"--secret-key-file	<filename>		If you want to use password as encrpyted in the mysql connection string MySQL encrypted connection, this is key path.\n"
-"						This is the file path which contain secret key of aes encryption while using password encryption.\n"
-"						This attribute should be use if allow-encoding-with-aes set to 1.\n"
-"--allow-encoding-with-aes	<1/0>		If you want to use password as encrpyted in the mysql connection string. Set allow-encoding-with-aes to 1.\n"
-"						If you want to use clearteaxt password in the mysql connection string. Set allow-encoding-with-aes to 0.\n"
-"						You have to enable secret-key-file attribute above as a key location.\n"
+"--secret-key-file	<filename>		This is the file path which contain secret key of aes encryption while using MySQL password encryption.\n"
+"						If you want to use in the MySQL connection string the password in encrypted format,\n"
+"						then set in this option the file path of the secret key. The key which is used to encrypt MySQL password.\n"
+"						Warning: If this option is set, then MySQL password must be set in \"mysql-userdb\" option in encrypted format!\n"
+"						If you want to use cleartext password then do not set this option!\n"
 #endif
 #if !defined(TURN_NO_MONGO)
 " -J, --mongo-userdb	<connection-string>	MongoDB connection string, if used (default - empty, no MongoDB used).\n"
@@ -771,8 +769,7 @@ enum EXTRA_OPTS {
 	OAUTH_OPT,
 	PROD_OPT,
 	NO_HTTP_OPT,
-	SECRET_KEY_OPT,
-	ALLOW_ENCODING_OPT
+	SECRET_KEY_OPT
 };
 
 struct myoption {
@@ -892,7 +889,6 @@ static const struct myoption long_options[] = {
 				{ "no-tlsv1_1", optional_argument, NULL, NO_TLSV1_1_OPT },
 				{ "no-tlsv1_2", optional_argument, NULL, NO_TLSV1_2_OPT },
 				{ "secret-key-file", required_argument, NULL, SECRET_KEY_OPT },
-				{ "allow-encoding-with-aes", required_argument, NULL, ALLOW_ENCODING_OPT},
 				{ "keep-address-family", optional_argument, NULL, 'K' },
 				{ NULL, no_argument, NULL, 0 }
 };
@@ -1475,9 +1471,6 @@ static void set_option(int c, char *value)
 	case SECRET_KEY_OPT:
 		 STRCPY(turn_params.secret_key_file,value);
 		 break;
-  	case ALLOW_ENCODING_OPT:
-  		turn_params.allow_encoding = atoi(value);
-  		break;
 	case PKEY_FILE_OPT:
 		STRCPY(turn_params.pkey_file,value);
 		break;
@@ -2155,9 +2148,6 @@ int main(int argc, char **argv)
 
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Domain name: %s\n",turn_params.domain);
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Default realm: %s\n",get_realm(NULL)->options.name);
-    if(turn_params.allow_encoding){
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "allow-encoding-with-aes activated.\n");
-    }
 
 	if(turn_params.oauth && turn_params.oauth_server_name[0]) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "oAuth server name: %s\n",turn_params.oauth_server_name);

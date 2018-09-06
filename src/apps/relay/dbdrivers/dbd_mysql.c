@@ -263,7 +263,7 @@ static MYSQL *get_mydb_connection(void) {
 					mysql_ssl_set(mydbconnection, co->key, co->cert, co->ca, co->capath, co->cipher);
 				}
 
-				if(turn_params.allow_encoding){
+				if(turn_params.secret_key_file[0]){
 					co->password = decryptPassword(co->password, turn_params.secret_key);
 				}
 
@@ -278,8 +278,10 @@ static MYSQL *get_mydb_connection(void) {
 					mydbconnection=NULL;
 				} else if(!donot_print_connection_success) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "MySQL DB connection success: %s\n",pud->userdb);
-					if(turn_params.allow_encoding)
-					    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Connection is secure.\n");
+					if(turn_params.secret_key_file[0]) {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Encryption with AES is activated.\n");
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Connection is secure.\n");
+					}
 					else
                         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Connection is not secure.\n");
 					donot_print_connection_success = 1;
