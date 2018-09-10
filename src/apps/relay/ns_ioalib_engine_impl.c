@@ -1920,10 +1920,9 @@ int ssl_read(evutil_socket_t fd, SSL* ssl, ioa_network_buffer_handle nbh, int ve
 	if(ret>0) {
 		ioa_network_buffer_add_offset_size(nbh, (u16bits)buf_size, 0, (size_t)ret);
 	}
-
-	BIO_free(rbio);
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
 	ssl->rbio = NULL;
+	BIO_free(rbio);
 #else
 	SSL_set0_rbio(ssl,NULL);
 #endif
