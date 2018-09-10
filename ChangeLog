@@ -1,12 +1,12 @@
 12/11/2017 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.5.0.8 'dan Eider':
-	- merge travis branch
+	- Travis CI integration
 	- hint with comment fallthrough to avoid warning
 	- reload-tls-certs PR#236 (by Arne Georg Gisnås Gleditsch)
 	- minor fixe PR#223 (by Pavel Kretov)
 	  move rm Makefile to distclean
 	  list all phony targets
-	- fix typo PR#253 (by Orsiris de Jong)
+	- Fix typo PR#253 (by Orsiris de Jong)
 	- Fix WebRTC client IPv6 stuck connection. (issue #217)
 	  THX to damencho, vol4iniche
 	- Spelling fixes.
@@ -15,7 +15,7 @@ Version 4.5.0.8 'dan Eider':
 	- Fix for Verbose config file option -v cli option overridea
 	- Add a Notice to config about realm default value is the domain name.
 	- Update total allocation usage on client shutdown
-	- fix total and user quota mix-up
+	- Fix total and user quota mix-up
 	- Fixed typos in postinstall.txt (by Prashanth Rajaram)
 	- MySQL password encryption (by Mustafa Bingül & Erdem Duman)
 	- Do not write to log before logging configuration is read from a config file (by eiver)
@@ -25,6 +25,7 @@ Version 4.5.0.8 'dan Eider':
 	- Fix auth server thread detach race (by weishuyin)
 	- New Feature: Add -K --keep-address-family 
 	  Be aware if you enable it, then it breaks rfc6156 section-4.2 (default IPv4 family)
+	- Fix dtls double free crash
 
 12/10/2017 Oleg Moskalenko <mom040267@gmail.com>
 Version 4.5.0.7 'dan Eider':
