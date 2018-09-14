@@ -1,0 +1,15 @@
+[Unit]
+Description=coturn TURN Server
+Before=multi-user.target
+Before=graphical.target
+After=network-online.target
+After=remote-fs.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/local/bin/turnserver
+
+[Install]
+WantedBy=multi-user.target
+Alias=turnserver.service
+
