@@ -960,9 +960,9 @@ unsigned char *base64encode (const void *b64_encode_this, int encode_this_many_b
 	BIO_push(b64_bio, mem_bio);            //Link the BIOs by creating a filter-sink BIO chain.
 	BIO_set_flags(b64_bio, BIO_FLAGS_BASE64_NO_NL);  //No newlines every 64 characters or less.
 	BIO_write(b64_bio, b64_encode_this, encode_this_many_bytes); //Records base64 encoded data.
-	BIO_flush(b64_bio);   //Flush data.  Necessary for b64 encoding, because of pad characters.
+	(void)BIO_flush(b64_bio); //Flush data. Necessary for b64 encoding, because of pad characters.
 	BIO_get_mem_ptr(mem_bio, &mem_bio_mem_ptr);  //Store address of mem_bio's memory structure.
-	BIO_set_close(mem_bio, BIO_NOCLOSE);   //Permit access to mem_ptr after BIOs are destroyed.
+	(void)BIO_set_close(mem_bio, BIO_NOCLOSE); //Permit access to mem_ptr after BIOs are destroyed.
 	BIO_free_all(b64_bio);  //Destroys all BIOs in chain, starting with b64 (i.e. the 1st one).
 	BUF_MEM_grow(mem_bio_mem_ptr, (*mem_bio_mem_ptr).length + 1);   //Makes space for end null.
 	(*mem_bio_mem_ptr).data[(*mem_bio_mem_ptr).length] = '\0';  //Adds null-terminator to tail.
