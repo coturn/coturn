@@ -80,7 +80,10 @@
 #include <openssl/aes.h>
 #include <openssl/err.h>
 #include <openssl/pem.h>
-#include <openssl/modes.h>
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+  #include <openssl/modes.h>
+#endif
 
 #ifdef __cplusplus
 extern "C" {
