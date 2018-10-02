@@ -1198,23 +1198,16 @@ static void cliserver_input_handler(struct evconnlistener *l, evutil_socket_t fd
 
 static void web_admin_input_handler(ioa_socket_handle s, int event_type,
                                  ioa_net_data *in_buffer, void *arg, int can_resume) {
-	
-	if (!arg)
-		return;
-	
 	UNUSED_ARG(event_type);
 	UNUSED_ARG(can_resume);
-	
-	ts_ur_super_session* ss = (ts_ur_super_session*)arg;
-	
-	if (ss->client_socket != s) {
-		return;
-	}
-	
+	UNUSED_ARG(arg);
+
+	int to_be_closed = 0;
+
 	int buffer_size = (int)ioa_network_buffer_get_size(in_buffer->nbh);
 	if (buffer_size > 0) {
 		
-		SOCKET_TYPE st = get_ioa_socket_type(ss->client_socket);
+		SOCKET_TYPE st = get_ioa_socket_type(s);
 		
 		if(is_stream_socket(st)) {
 			if(is_http((char*)ioa_network_buffer_data(in_buffer->nbh), buffer_size)) {
@@ -1222,35 +1215,35 @@ static void web_admin_input_handler(ioa_socket_handle s, int event_type,
 				ioa_network_buffer_data(in_buffer->nbh)[buffer_size] = 0;
 				if(st == TLS_SOCKET) {
 					proto = "HTTPS";
-					set_ioa_socket_app_type(ss->client_socket, HTTPS_CLIENT_SOCKET);
+					set_ioa_socket_app_type(s, HTTPS_CLIENT_SOCKET);
 
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s (%s %s) request: %s\n", __FUNCTION__, proto, get_ioa_socket_cipher(ss->client_socket), get_ioa_socket_ssl_method(ss->client_socket), (char*)ioa_network_buffer_data(in_buffer->nbh));
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s (%s %s) request: %s\n", __FUNCTION__, proto, get_ioa_socket_cipher(s), get_ioa_socket_ssl_method(s), (char*)ioa_network_buffer_data(in_buffer->nbh));
 
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s socket to be detached: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(long)ss->client_socket, get_ioa_socket_type(ss->client_socket), get_ioa_socket_app_type(ss->client_socket));
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s socket to be detached: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(long)s, get_ioa_socket_type(s), get_ioa_socket_app_type(s));
 
-					ioa_socket_handle new_s = detach_ioa_socket(ss->client_socket);
+					ioa_socket_handle new_s = detach_ioa_socket(s);
 					if(new_s) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s new detached socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(long)new_s, get_ioa_socket_type(new_s), get_ioa_socket_app_type(new_s));
 	
 						send_https_socket(new_s);
 					}
-					ss->to_be_closed = 1;
+					to_be_closed = 1;
 					
 				} else {
-					set_ioa_socket_app_type(ss->client_socket, HTTP_CLIENT_SOCKET);
+					set_ioa_socket_app_type(s, HTTP_CLIENT_SOCKET);
 					if(adminserver.verbose) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s request: %s\n", __FUNCTION__, proto, (char*)ioa_network_buffer_data(in_buffer->nbh));
 					}
-					handle_http_echo(ss->client_socket);
+					handle_http_echo(s);
 				}
 			}
 		}
 	}
 
-	if (ss->to_be_closed) {
+	if (to_be_closed) {
 		if(adminserver.verbose) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-						  "session %018llu: web-admin socket to be closed in client handler: ss=0x%lx\n", (unsigned long long)(ss->id), (long)ss);
+						  "%s: web-admin socket to be closed in client handler: s=0x%lx\n", __FUNCTION__, (long)s);
 		}
 		set_ioa_socket_tobeclosed(s);
 	}
@@ -1289,13 +1282,8 @@ static int send_socket_to_admin_server(ioa_engine_handle e, struct message_to_re
 	
 		struct socket_message *msg = &(sm->m.sm);
 	
-		ts_ur_super_session *ss = (ts_ur_super_session*)turn_malloc(sizeof(ts_ur_super_session));
-		ns_bzero(ss, sizeof(ts_ur_super_session));
-	
-		ss->client_socket = msg->s;
-	
-		if(register_callback_on_ioa_socket(e, ss->client_socket, IOA_EV_READ,
-										   web_admin_input_handler, ss, 0) < 0) {
+		if(register_callback_on_ioa_socket(e, msg->s, IOA_EV_READ,
+										   web_admin_input_handler, NULL, 0) < 0) {
 		
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: Failed to register callback on web-admin ioa socket\n", __FUNCTION__);
 			IOA_CLOSE_SOCKET(s);
@@ -1303,10 +1291,8 @@ static int send_socket_to_admin_server(ioa_engine_handle e, struct message_to_re
 		
 		} else {
 	
-			set_ioa_socket_session(ss->client_socket, ss);
-		
 			if(msg->nd.nbh) {
-				web_admin_input_handler(ss->client_socket, IOA_EV_READ, &(msg->nd), ss, msg->can_resume);
+				web_admin_input_handler(msg->s, IOA_EV_READ, &(msg->nd), NULL, msg->can_resume);
 				ioa_network_buffer_delete(e, msg->nd.nbh);
 				msg->nd.nbh = NULL;
 			}
