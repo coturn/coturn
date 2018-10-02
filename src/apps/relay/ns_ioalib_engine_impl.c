@@ -3570,6 +3570,13 @@ void turn_report_allocation_delete(void *a)
 						snprintf(key, sizeof(key), "turn/user/%s/allocation/%018llu/total_traffic", (char*)ss->username, (unsigned long long)ss->id);
 					}
 					send_message_to_redis(e->rch, "publish", key, "rcvp=%lu, rcvb=%lu, sentp=%lu, sentb=%lu", (unsigned long)(ss->t_received_packets), (unsigned long)(ss->t_received_bytes), (unsigned long)(ss->t_sent_packets), (unsigned long)(ss->t_sent_bytes));
+					if (ss->realm_options.name[0]) {
+						snprintf(key, sizeof(key), "turn/realm/%s/user/%s/allocation/%018llu/total_traffic/peer", ss->realm_options.name, (char*)ss->username, (unsigned long long)(ss->id));
+					}
+					else {
+						snprintf(key, sizeof(key), "turn/user/%s/allocation/%018llu/total_traffic/peer", (char*)ss->username, (unsigned long long)(ss->id));
+					}
+					send_message_to_redis(e->rch, "publish", key, "rcvp=%lu, rcvb=%lu, sentp=%lu, sentb=%lu", (unsigned long)(ss->t_peer_received_packets), (unsigned long)(ss->t_peer_received_bytes), (unsigned long)(ss->t_peer_sent_packets), (unsigned long)(ss->t_peer_sent_bytes));
 				}
 #endif
 			}
@@ -3584,9 +3591,10 @@ void turn_report_session_usage(void *session, int force_invalid)
 		turn_turnserver *server = (turn_turnserver*)ss->server;
 		if(server && (ss->received_packets || ss->sent_packets || force_invalid)) {
 			ioa_engine_handle e = turn_server_get_engine(server);
-			if(((ss->received_packets+ss->sent_packets)&2047)==0 || force_invalid) {
+			if(((ss->received_packets+ss->sent_packets+ss->peer_received_packets+ss->peer_sent_packets)&4095)==0 || force_invalid) {
 				if(e && e->verbose) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"session %018llu: usage: realm=<%s>, username=<%s>, rp=%lu, rb=%lu, sp=%lu, sb=%lu\n", (unsigned long long)(ss->id), (char*)ss->realm_options.name, (char*)ss->username, (unsigned long)(ss->received_packets), (unsigned long)(ss->received_bytes),(unsigned long)(ss->sent_packets),(unsigned long)(ss->sent_bytes));
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: peer usage: realm=<%s>, username=<%s>, rp=%lu, rb=%lu, sp=%lu, sb=%lu\n", (unsigned long long)(ss->id), (char*)ss->realm_options.name, (char*)ss->username, (unsigned long)(ss->peer_received_packets), (unsigned long)(ss->peer_received_bytes), (unsigned long)(ss->peer_sent_packets), (unsigned long)(ss->peer_sent_bytes));
 				}
 #if !defined(TURN_NO_HIREDIS)
 				{
@@ -3597,12 +3605,23 @@ void turn_report_session_usage(void *session, int force_invalid)
 						snprintf(key,sizeof(key),"turn/user/%s/allocation/%018llu/traffic",(char*)ss->username, (unsigned long long)(ss->id));
 					}
 					send_message_to_redis(e->rch, "publish", key, "rcvp=%lu, rcvb=%lu, sentp=%lu, sentb=%lu",(unsigned long)(ss->received_packets), (unsigned long)(ss->received_bytes),(unsigned long)(ss->sent_packets),(unsigned long)(ss->sent_bytes));
+					if (ss->realm_options.name[0]) {
+						snprintf(key, sizeof(key), "turn/realm/%s/user/%s/allocation/%018llu/traffic/peer", ss->realm_options.name, (char*)ss->username, (unsigned long long)(ss->id));
+					}
+					else {
+						snprintf(key, sizeof(key), "turn/user/%s/allocation/%018llu/traffic/peer", (char*)ss->username, (unsigned long long)(ss->id));
+					}
+					send_message_to_redis(e->rch, "publish", key, "rcvp=%lu, rcvb=%lu, sentp=%lu, sentb=%lu", (unsigned long)(ss->peer_received_packets), (unsigned long)(ss->peer_received_bytes), (unsigned long)(ss->peer_sent_packets), (unsigned long)(ss->peer_sent_bytes));
 				}
 #endif
 				ss->t_received_packets += ss->received_packets;
 				ss->t_received_bytes += ss->received_bytes;
 				ss->t_sent_packets += ss->sent_packets;
 				ss->t_sent_bytes += ss->sent_bytes;
+				ss->t_peer_received_packets += ss->peer_received_packets;
+				ss->t_peer_received_bytes += ss->peer_received_bytes;
+				ss->t_peer_sent_packets += ss->peer_sent_packets;
+				ss->t_peer_sent_bytes += ss->peer_sent_bytes;
 
 				{
 					turn_time_t ct = get_turn_server_time(server);
@@ -3611,6 +3630,9 @@ void turn_report_session_usage(void *session, int force_invalid)
 						ss->received_rate = (u32bits)(ss->t_received_bytes / ct);
 						ss->sent_rate = (u32bits)(ss->t_sent_bytes / ct);
 						ss->total_rate = ss->received_rate + ss->sent_rate;
+						ss->peer_received_rate = (u32bits)(ss->t_peer_received_bytes / ct);
+						ss->peer_sent_rate = (u32bits)(ss->t_peer_sent_bytes / ct);
+						ss->peer_total_rate = ss->peer_received_rate + ss->peer_sent_rate;
 					}
 				}
 
@@ -3620,6 +3642,10 @@ void turn_report_session_usage(void *session, int force_invalid)
 				ss->received_bytes=0;
 				ss->sent_packets=0;
 				ss->sent_bytes=0;
+				ss->peer_received_packets = 0;
+				ss->peer_received_bytes = 0;
+				ss->peer_sent_packets = 0;
+				ss->peer_sent_bytes = 0;
 			}
 		}
 	}
