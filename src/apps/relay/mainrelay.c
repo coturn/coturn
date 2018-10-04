@@ -1655,7 +1655,7 @@ static void read_config_file(int argc, char **argv, int pass)
 				config_file);
 
 		if (full_path_to_config_file) {
-			free(full_path_to_config_file);
+			turn_free(full_path_to_config_file, strlen(full_path_to_config_file)+1);
 			full_path_to_config_file = NULL;
 		}
 	}
