@@ -783,22 +783,28 @@ int main(int argc, char** argv) {
 ##########################
 
 if [ -z "${CC}" ] ; then
-    CC=cc
+    for CC in cc gcc clang; do
+        ${CC} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>>/dev/null
+        ER=$?
+        if [ ${ER} -eq 0 ] ; then
+            break
+        fi
+        CC=
+    done
+
+    if [ -z "$CC" ] ; then
+        ${ECHO_CMD} "ERROR: failed to a find working C compiler"
+        cleanup
+        exit
+    fi
+else
     ${CC} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>>/dev/null
-	ER=$?
-	if ! [ ${ER} -eq 0 ] ; then
-		CC=gcc
-    	${CC} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>>/dev/null
-		ER=$?
-		if ! [ ${ER} -eq 0 ] ; then
-			CC=clang
-    		${CC} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>>/dev/null
-			ER=$?
-			if ! [ ${ER} -eq 0 ] ; then
-				CC=unknown
-			fi
-		fi
-	fi
+    ER=$?
+    if ! [ ${ER} -eq 0 ] ; then
+        ${ECHO_CMD} "ERROR: cannot use compiler ${CC} properly"
+        cleanup
+        exit
+    fi
 fi
 
 ${ECHO_CMD} "Compiler: ${CC}"
@@ -809,14 +815,6 @@ if [ -z "${TURN_ACCEPT_RPATH}" ] ; then
     if [ ${ER} -eq 0 ] ; then
 	TURN_ACCEPT_RPATH=1
     fi
-fi
-
-${CC} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>>/dev/null
-ER=$?
-if ! [ ${ER} -eq 0 ] ; then
-    ${ECHO_CMD} "ERROR: cannot use compiler ${CC} properly"
-    cleanup
-    exit
 fi
 
 ###########################
