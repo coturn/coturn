@@ -534,15 +534,8 @@ if [ -z "${MORECMD}" ]; then
 	MORECMD="cat"
 fi
 
-OSCFLAGS="-I${INCLUDEDIR} -I${PREFIX}/include/ -I/usr/local/include ${CFLAGS}"
+OSCFLAGS="${CFLAGS}"
 OSLIBS="${LDFLAGS}"
-for ilib in ${PREFIX}/lib/event2/ ${PREFIX}/lib/ /usr/local/lib/event2/ /usr/local/lib/ ${PREFIX}/lib64/event2/ ${PREFIX}/lib64/ /usr/local/lib64/event2/ /usr/local/lib64/ 
-do
-    if [ -d ${ilib} ] ; then
-		OSLIBS="${OSLIBS} -L${ilib}"
-		TURN_RPATH="${TURN_RPATH} -Wl,-rpath,${ilib}"
-    fi
-done
 
 SYSTEM=`uname`
 if [ "${SYSTEM}" = "NetBSD" ] ; then
