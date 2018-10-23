@@ -1,0 +1,63 @@
+version: "3"
+services:
+
+# MongoDB
+  mongodb:
+    image: mongo
+    restart: unless-stopped
+    volumes:
+      - mongodb-data:/data/db
+    env_file: 
+      - mongodb/mongodb.env
+    networks:
+      - backend
+
+
+# coTURN
+  coturn:
+    build:
+      context: ./coturn
+    restart: always
+    volumes:
+      - ${PWD}/coturn/turnserver.conf:/etc/turnserver.conf
+      - ${PWD}/coturn/privkey.pem:/etc/ssl/private/privkey.pem
+      - ${PWD}/coturn/cert.pem:/etc/ssl/certs/cert.pem
+    ports:
+## STUN/TURN
+      - "3478:3478"
+      - "3478:3478/udp"
+      - "3479:3479"
+      - "3479:3479/udp"
+      - "80:80"
+      - "80:80/udp"
+## STUN/TURN SSL
+      - "5349:5349"
+      - "5349:5349/udp"
+      - "5350:5350"
+      - "5350:5350/udp"
+      - "443:443"
+      - "443:443/udp"
+# Relay Ports
+#      - "49152-65535:49152-65535"
+#      - "49152-65535:49152-65535/udp"
+    networks:
+      - frontend
+      - backend
+    depends_on:
+      - mongodb
+    env_file:
+      - coturn/coturn.env
+# DB
+      - mongodb/mongodb.env
+volumes:
+  mongodb-data:
+
+networks:
+  frontend:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.16.238.0/24
+  backend:
+    internal: true
