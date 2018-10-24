@@ -321,7 +321,10 @@ typedef struct _turn_params_ {
   char secret_key_file[1025];
   unsigned char secret_key[1025];
   int keep_address_family;
-
+  
+  //// UDP Notifier ////
+  int udp_notifier;
+  char udp_notifier_params[1025];
 } turn_params_t;
 
 extern turn_params_t turn_params;

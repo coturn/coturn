@@ -155,7 +155,10 @@ DEFAULT_CPUS_NUMBER,
 ///////// Encryption /////////
 "", /* secret_key_file */
 "", /* secret_key */
-0   /* keep_address_family */
+0 ,  /* keep_address_family */
+///// UDP NOTIFIER /////
+0,
+""
 };
 
 //////////////// OpenSSL Init //////////////////////
@@ -633,6 +636,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 " --cli-max-output-sessions			Maximum number of output sessions in ps CLI command.\n"
 "						This value can be changed on-the-fly in CLI. The default value is 256.\n"
 " --ne=[1|2|3]					Set network engine type for the process (for internal purposes).\n"
+" --udp-notifier					Send notification messages to target device via UDP interface.\n"
 " -h						Help\n"
 "\n"
 " For more information, see the wiki pages:\n"
@@ -769,7 +773,8 @@ enum EXTRA_OPTS {
 	OAUTH_OPT,
 	PROD_OPT,
 	NO_HTTP_OPT,
-	SECRET_KEY_OPT
+	SECRET_KEY_OPT,
+        UDP_NOTIFIER_OPT
 };
 
 struct myoption {
@@ -890,6 +895,7 @@ static const struct myoption long_options[] = {
 				{ "no-tlsv1_2", optional_argument, NULL, NO_TLSV1_2_OPT },
 				{ "secret-key-file", required_argument, NULL, SECRET_KEY_OPT },
 				{ "keep-address-family", optional_argument, NULL, 'K' },
+				{ "udp-notifier", required_argument, NULL, UDP_NOTIFIER_OPT },
 				{ NULL, no_argument, NULL, 0 }
 };
 
@@ -1507,6 +1513,10 @@ static void set_option(int c, char *value)
 			turn_params.rest_api_separator=*value;
 		}
 		break;
+        case UDP_NOTIFIER_OPT:
+                turn_params.udp_notifier = 1;
+                STRCPY(turn_params.udp_notifier_params,value);
+                break;
 	/* these options have been already taken care of before: */
 	case 'l':
 	case NO_STDOUT_LOG_OPT:
