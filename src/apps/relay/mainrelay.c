@@ -1631,7 +1631,7 @@ static void read_config_file(int argc, char **argv, int pass)
 		if (full_path_to_config_file)
 			f = fopen(full_path_to_config_file, "r");
 
-		if (f && full_path_to_config_file) {
+		if (f) {
 
 			char sbuf[1025];
 			char sarg[1035];
@@ -1680,6 +1680,11 @@ static void read_config_file(int argc, char **argv, int pass)
 		} else
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: Cannot find config file: %s. Default and command-line settings will be used.\n",
 				config_file);
+
+		if (full_path_to_config_file) {
+			turn_free(full_path_to_config_file, strlen(full_path_to_config_file)+1);
+			full_path_to_config_file = NULL;
+		}
 	}
 }
 
