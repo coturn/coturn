@@ -73,7 +73,7 @@ static void MyconninfoFree(Myconninfo *co) {
 		ns_bzero(co,sizeof(Myconninfo));
 	}
 }
-struct ctr_state state;
+
 char* decryptPassword(char* in, const unsigned char* mykey){
 
 	char *out;
@@ -85,6 +85,7 @@ char* decryptPassword(char* in, const unsigned char* mykey){
 	int bytes_to_decode = strlen(in);
 	unsigned char *encryptedText = base64decode(in, bytes_to_decode); //changed
 	char last[1024]="";
+	struct ctr_state state;
 	init_ctr(&state, iv);
 	memset(outdata,'\0', sizeof(outdata));
 
@@ -95,7 +96,7 @@ char* decryptPassword(char* in, const unsigned char* mykey){
 #endif
 
 	strcat(last,(char*)outdata);
-	out=malloc(sizeof(char)*strlen(last));
+	out=(char*)malloc(sizeof(char)*strlen(last));
 	strcpy(out,last);
 	return out;
 }

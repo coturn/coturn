@@ -1269,8 +1269,6 @@ static int handle_turn_allocate(turn_turnserver *server,
 									a_family = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4;
 									break;
 							}
-							if(get_ioa_socket_address_family(ss->client_socket) == AF_INET6)
-								a_family = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6;
 						}
 
 						int res = create_relay_connection(server, ss, lifetime,
