@@ -737,7 +737,7 @@ int main(int argc, char **argv)
 				run_stunclient(&local_addr, &remote_addr, &reflexive_addr, &other_addr, &local_port, &rfc5780,0,0,padding);
 
 				if(addr_eq(&tmp_addr,&reflexive_addr)){
-					discoveryresult("NAT with Enpoint Independent Mapping!");
+					discoveryresult("NAT with Endpoint Independent Mapping!");
 				} else {
 					addr_cpy(&tmp_addr, &reflexive_addr);
 					addr_cpy(&remote_addr, &other_addr);
@@ -767,7 +767,7 @@ int main(int argc, char **argv)
 				int res=0;
 				res=run_stunclient(&local_addr, &remote_addr, &reflexive_addr, &other_addr, &local_port, &rfc5780,1,1,padding);
 				if (!res) {
-					discoveryresult("NAT with Enpoint Independent Filtering!");
+					discoveryresult("NAT with Endpoint Independent Filtering!");
 				} else {
 					res=0;
 					res=run_stunclient(&local_addr, &remote_addr, &reflexive_addr, &other_addr, &local_port, &rfc5780,0,1,padding);
