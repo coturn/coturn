@@ -17,8 +17,7 @@ typedef struct _udp_subs_ltd{
     char* host;
     unsigned int port;
     int sockfd;
-    struct sockaddr_in server_addr; 
-    struct hostent *hostent;
+    ioa_addr addr;
 }udp_subs_ltd_t;
 
 subs_long_term_data_t udp_init(void);
@@ -101,20 +100,19 @@ subs_long_term_data_t udp_init( void ){
         return NULL;
     }
     
-    data->hostent = gethostbyname(data->host);
-    if ( data->hostent == NULL) { 
-        return NULL;
-    }
-    
-    data->sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-    if (data->sockfd == -1) {
+    if(make_ioa_addr((const u08bits*)data->host,0,&(data->addr))<0) {
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot set address %s\n",data->host);
         return NULL;
     }
 
-    data->server_addr.sin_family = AF_INET;
-    data->server_addr.sin_port = htons(data->port);
-    data->server_addr.sin_addr = *((struct in_addr *)data->hostent->h_addr);
-    bzero(&(data->server_addr.sin_zero), 8);
+    addr_set_port(&(data->addr),data->port);
+    
+    data->sockfd = socket(data->addr.ss.sa_family, SOCK_DGRAM, 0);
+    if (data->sockfd < 0) {
+        perror("socket");
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot open socket\n");
+        return NULL;
+    }
     
     return (subs_long_term_data_t)data;
 }
@@ -124,11 +122,14 @@ int udp_notify( subs_long_term_data_t long_term_data, TURN_NTFY_LEVEL level , co
     UNUSED_ARG(level);
     
     udp_subs_ltd_t* data = (udp_subs_ltd_t*)long_term_data;
+    int slen=0;
     
     if(!data)
         return -1;
+    
+    slen = get_ioa_addr_len((const ioa_addr*)&(data->addr));
       
-    return (int) sendto(data->sockfd, message, strlen(message), 0,(struct sockaddr *)&data->server_addr, sizeof(struct sockaddr));
+    return (int) sendto(data->sockfd, message, strlen(message), 0,(const struct sockaddr*)&(data->addr), (socklen_t) slen);
 }
 
 int udp_remove( subs_long_term_data_t long_term_data){
@@ -138,7 +139,6 @@ int udp_remove( subs_long_term_data_t long_term_data){
     close(data->sockfd);
     
     turn_free(data->host,strlen(data->host));
-    turn_free(data->hostent,sizeof(struct hostent));
     turn_free(data,sizeof(udp_subs_ltd_t));
     
     return 0;
