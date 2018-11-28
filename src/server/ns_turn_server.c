@@ -3918,7 +3918,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 		*resp_constructed = 0;
 	}
         
-	if(TURN_NTFY_CHECK){
+	if((*resp_constructed)&&(TURN_NTFY_CHECK)){
             
 		ioa_addr remote;
 		u08bits ip_port[256];
