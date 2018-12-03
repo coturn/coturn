@@ -1,8 +1,8 @@
 README.turnadmin
 README.turnserver
 README.turnutils
-turndb/schema.sql
-turndb/schema.mongo.sh
-turndb/schema.userdb.redis
-turndb/schema.stats.redis
 examples/scripts/readme.txt
+turndb/schema.mongo.sh
+turndb/schema.sql
+turndb/schema.stats.redis
+turndb/schema.userdb.redis

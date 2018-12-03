@@ -1,9 +1,9 @@
-man/man1/turnserver.1
+man/man1/coturn.1
 man/man1/turnadmin.1
+man/man1/turnserver.1
 man/man1/turnutils.1
-man/man1/turnutils_uclient.1
-man/man1/turnutils_oauth.1
 man/man1/turnutils_natdiscovery.1
+man/man1/turnutils_oauth.1
 man/man1/turnutils_peer.1
 man/man1/turnutils_stunclient.1
-man/man1/coturn.1
+man/man1/turnutils_uclient.1
