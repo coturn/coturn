@@ -1,15 +1,16 @@
 [Unit]
 Description=coTURN STUN/TURN Server
 Documentation=man:coturn(1) man:turnadmin(1) man:turnserver(1)
-After=network-online.target
+After=network.target
+#After=network-online.target
 
 [Service]
 User=turnserver
 Group=turnserver
 Type=forking
 PIDFile=/run/turnserver/turnserver.pid
+RuntimeDirectory=turnserver
 ExecStart=/usr/bin/turnserver -o -c /etc/turnserver.conf
-ExecStopPost=/usr/bin/rm -f /run/turnserver/turnserver.pid
 Restart=on-failure
 
 InaccessibleDirectories=/home
