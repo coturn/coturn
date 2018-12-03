@@ -1,4 +1,4 @@
 # Compulsory line, this is a version 3 file
 version=3
 # New downloads:
-http://coturn.net/turnserver/v(\d[\d.]*)/turnserver-(\d[\d.]*)\.(?:zip|tgz|tbz2|txz|tar\.gz|tar\.bz2|tar\.xz)
+https://coturn.net/turnserver/v(\d[\d.]*)/turnserver-(\d[\d.]*)\.(?:zip|tgz|tbz2|txz|tar\.gz|tar\.bz2|tar\.xz)

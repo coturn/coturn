@@ -2,19 +2,19 @@ Source: coturn
 Section: net
 Priority: optional
 Maintainer: Debian VoIP Team <pkg-voip-maintainers@lists.alioth.debian.org>
-Uploaders: Daniel Pocock <daniel@pocock.pro>, 
+Uploaders: Daniel Pocock <daniel@pocock.pro>,
 	   Oleg Moskalenko <mom040267@gmail.com>,
 	   Mészáros Mihály <misi@majd.eu>
-Build-Depends: debhelper (>= 9.0.0), dpkg-dev (>= 1.16.1~), 
-	       libssl-dev (>= 1.0.0~), libevent-dev (>= 2.0.1~), 
+Build-Depends: debhelper (>=11.0.0), dpkg-dev (>= 1.16.1~),
+	       libssl-dev (>= 1.0.0~), libevent-dev (>= 2.0.1~),
 	       sqlite3, libsqlite3-dev,
-	       postgresql-client, libpq-dev, 
-	       default-mysql-client, default-libmysqlclient-dev, 
+	       postgresql-client, libpq-dev,
+	       default-mysql-client, default-libmysqlclient-dev,
 	       libhiredis-dev
-Standards-Version: 4.1.2
+Standards-Version: 4.2.1
 Homepage: https://github.com/coturn/coturn/
-Vcs-Git: git://anonscm.debian.org/pkg-voip/coturn.git
-Vcs-Browser: http://anonscm.debian.org/cgit/pkg-voip/coturn.git
+Vcs-Git: https://github.com/coturn/coturn.git -b debian/sid
+Vcs-Browser: https://github.com/coturn/coturn/tree/debian/sid
 
 Package: coturn
 Architecture: any
@@ -24,7 +24,7 @@ Depends: ${shlibs:Depends}, ${misc:Depends},
 Conflicts: turnserver, rfc5766-turn-server
 Suggests: sip-router, xmpp-server
 Provides: stun-server, turn-server
-Description: TURN and STUN server for VoIP 
+Description: TURN and STUN server for VoIP
  STUN (Session Traversal Utilities for NAT) and TURN (Traversal Using Relays
  around NAT) are protocols that can be used to provide NAT traversal for VoIP
  and WebRTC. This package provides a VoIP media traffic NAT traversal server
@@ -36,7 +36,7 @@ Description: TURN and STUN server for VoIP
   * RFC 6062 - TCP relaying TURN extension;
   * RFC 6156 - IPv6 extension for TURN;
   * RFC 7635 - OAuth third-party TURN/STUN authorization;
-  * DTLS support as client protocol 
+  * DTLS support as client protocol
     http://tools.ietf.org/html/draft-petithuguenin-tram-turn-dtls-00
   * Mobile ICE (MICE) support
     http://tools.ietf.org/html/draft-wing-tram-turn-mobility-03
@@ -70,5 +70,5 @@ Description: TURN and STUN server for VoIP
  the built-in ALTERNATE-SERVER mechanism.
  .
  The implementation is intended to be simple to install and configure.
- The project focuses on performance, scalability, and simplicity. 
+ The project focuses on performance, scalability, and simplicity.
  The aim is to provide an enterprise-grade TURN solution.

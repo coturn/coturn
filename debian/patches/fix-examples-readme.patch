@@ -1,0 +1,11 @@
+Slight change in readme due to it is moved to documentation directory.
+--- a/examples/scripts/readme.txt
++++ b/examples/scripts/readme.txt
+@@ -1,5 +1,5 @@
+-This directory contains various example scripts for the TURN server 
+-functionality illustration.
++The /usr/share/coturn/examples/scripts directory contains various example
++scripts for the TURN server functionality illustration.
+ 
+ 1) peer.sh starts the "peer" application that serves as a peer for all examples.
+ 

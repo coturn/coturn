@@ -10,6 +10,12 @@ export DH_VERBOSE=1
 # This has to be exported to make some magic below work.
 export DH_OPTIONS
 
+override_dh_installexamples:
+	dh_installexamples -X readme.txt
+
+override_dh_install:
+	dh_install -X examples/scripts/readme.txt
+
 override_dh_auto_install:
 	true
 
