@@ -18,4 +18,3 @@ PrivateTmp=yes
 
 [Install]
 WantedBy=multi-user.target
-Alias=turnserver.service
