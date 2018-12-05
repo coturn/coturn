@@ -9,6 +9,7 @@ Group=turnserver
 Type=forking
 RuntimeDirectory=turnserver
 ExecStart=/usr/bin/turnserver --daemon -c /etc/turnserver.conf
+ExecStartPost=sleep 2
 Restart=on-failure
 InaccessibleDirectories=/home
 PrivateTmp=yes
