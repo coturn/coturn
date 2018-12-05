@@ -10,6 +10,7 @@ Type=forking
 RuntimeDirectory=turnserver
 PIDFile=/run/turnserver/turnserver.pid
 ExecStart=/usr/bin/turnserver --daemon -c /etc/turnserver.conf --pidfile /run/turnserver/turnserver.pid
+#FixMe: turnserver exit faster than it is finshing the setup and ready for handling the connection.
 ExecStartPost=sleep 2
 Restart=on-failure
 InaccessibleDirectories=/home
