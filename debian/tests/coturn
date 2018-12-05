@@ -5,6 +5,5 @@ set -ex
 cp debian/tests/turnserver.conf /etc/turnserver.conf
 cp examples/var/db/turndb /var/lib/turn/turndb
 systemctl restart coturn
-sleep 3
 /usr/share/coturn/examples/scripts/longtermsecure/secure_udp_c2c.sh
 /usr/share/coturn/examples/scripts/longtermsecure/secure_tcp_client_c2c_tcp_relay.sh
