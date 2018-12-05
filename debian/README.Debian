@@ -44,6 +44,15 @@ Coturn does not recognize UNIX accounts and requires accounts
 to be defined in it's own config file. By default, the TURN server 
 uses anonymous access. 
 
+6) Systemd:
+   In some configurations you may need to add the
+
+   After=network-online.target
+
+   line to the/etc/systemd/system/coturn.service.d/network.conf or
+   simillar systemd config file.
+
+
 Traditional STUN doesn't require an account. For TURN relay
 purposes, several accounting options are possible:
 	  - anonymous access (the default option);
@@ -61,4 +70,5 @@ you can add TURN REST API on top of long-term credentials mechanism.
 
 Please see the README.* files for details.
 
+ -- Mészáros Mihály <misi@majd.eu>  Tue, 27 Nov 2018 12:32:02 +0000
  -- Oleg Moskalenko <mom040267@gmail.com>  Wed, 29 Oct 2014 11:47:00 -0700
