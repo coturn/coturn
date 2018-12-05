@@ -2,17 +2,14 @@
 Description=coTURN STUN/TURN Server
 Documentation=man:coturn(1) man:turnadmin(1) man:turnserver(1)
 After=network.target
-#After=network-online.target
 
 [Service]
 User=turnserver
 Group=turnserver
-Type=forking
-PIDFile=/run/turnserver/turnserver.pid
+Type=simple
 RuntimeDirectory=turnserver
-ExecStart=/usr/bin/turnserver -o -c /etc/turnserver.conf
+ExecStart=/usr/bin/turnserver -c /etc/turnserver.conf
 Restart=on-failure
-
 InaccessibleDirectories=/home
 PrivateTmp=yes
 
