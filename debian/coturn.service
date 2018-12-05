@@ -6,9 +6,9 @@ After=network.target
 [Service]
 User=turnserver
 Group=turnserver
-Type=simple
+Type=forking
 RuntimeDirectory=turnserver
-ExecStart=/usr/bin/turnserver -c /etc/turnserver.conf
+ExecStart=/usr/bin/turnserver --daemon -c /etc/turnserver.conf
 Restart=on-failure
 InaccessibleDirectories=/home
 PrivateTmp=yes
