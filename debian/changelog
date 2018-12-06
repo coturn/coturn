@@ -1,3 +1,9 @@
+coturn (4.5.1.0-1) UNRELEASED; urgency=medium
+
+  * Sync to upstream 4.5.1.0
+
+ -- Mészáros Mihály <misi@majd.eu>  Thu, 06 Dec 2018 09:47:16 +0000
+
 coturn (4.5.0.8-1) unstable; urgency=medium
 
   [ Ferenc Wágner ]
