@@ -1,6 +1,24 @@
-coturn (4.5.1.0-1) UNRELEASED; urgency=medium
+coturn (4.5.1.0-1) unstable; urgency=medium
 
   * Sync to upstream 4.5.1.0
+  * Fix CVE-2018-4058
+    coTURN unsafe loopback forwarding default configuration vulnerability
+  * by default loopback disabled
+  * no-loopback option removed!
+  * allow-loopback-peers option added
+  * Fix CVE-2018-4056
+    coTURN Administrator Web Portal SQL injection vulnerability
+  * Web admin disabled by default
+  * Web admin could listen on separated IP and port
+  * web-admin-ip option added
+  * web-admin-port option added
+  * Web admin is disabled on STUN/TURN ports.
+  * web-admin-listen-on-workers option added
+    to enable web-admin STUN/TURN ports
+  * Fix CVE-2018-4059
+    coTURN server unsafe telnet admin portal default configuration vulnerability
+  * An empty cli-password with an allow-loopback-peers option is prohibited.
+  * fix memory leak in read_config_file
 
  -- Mészáros Mihály <misi@majd.eu>  Thu, 06 Dec 2018 09:47:16 +0000
 
