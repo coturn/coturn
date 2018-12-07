@@ -340,7 +340,7 @@ int addr_to_string(const ioa_addr* addr, u08bits* saddr)
 
 	if (addr && saddr) {
 
-		s08bits addrtmp[MAX_IOA_ADDR_STRING];
+		s08bits addrtmp[INET6_ADDRSTRLEN];
 
 		if (addr->ss.sa_family == AF_INET) {
 			inet_ntop(AF_INET, &addr->s4.sin_addr, addrtmp, INET_ADDRSTRLEN);
