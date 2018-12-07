@@ -1,7 +1,7 @@
 README.turnadmin
 README.turnserver
 README.turnutils
-examples/scripts/readme.txt
+examples
 turndb/schema.mongo.sh
 turndb/schema.sql
 turndb/schema.stats.redis
