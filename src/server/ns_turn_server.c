@@ -1029,7 +1029,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 					}
 					ns_bcopy(value,username,ulen);
 					username[ulen]=0;
-					if(!is_secure_string(username)) {
+					if(!is_secure_string(username,1)) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: wrong username: %s\n", __FUNCTION__, (char*)username);
 						username[0]=0;
 						*err_code = 400;
@@ -3346,7 +3346,7 @@ static int check_stun_auth(turn_turnserver *server,
 		ns_bcopy(stun_attr_get_value(sar),realm,alen);
 		realm[alen]=0;
 
-		if(!is_secure_string(realm)) {
+		if(!is_secure_string(realm,0)) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: wrong realm: %s\n", __FUNCTION__, (char*)realm);
 			realm[0]=0;
 			*err_code = 400;
@@ -3388,7 +3388,7 @@ static int check_stun_auth(turn_turnserver *server,
 	ns_bcopy(stun_attr_get_value(sar),usname,alen);
 	usname[alen]=0;
 
-	if(!is_secure_string(usname)) {
+	if(!is_secure_string(usname,1)) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: wrong username: %s\n", __FUNCTION__, (char*)usname);
 		usname[0]=0;
 		*err_code = 400;

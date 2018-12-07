@@ -78,7 +78,7 @@ void rollover_logfile(void);
 
 ///////////////////////////////////////////////////////
 
-int is_secure_string(const u08bits *string);
+int is_secure_string(const u08bits *string, int sanitizesql);
 
 ///////////////////////////////////////////////////////
 

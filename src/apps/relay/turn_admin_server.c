@@ -3295,7 +3295,7 @@ static void handle_logon_request(ioa_socket_handle s, struct http_request* hr)
 			s->special_session_size = sizeof(struct admin_session);
 		}
 
-		if(!(as->as_ok) && uname && is_secure_string((const u08bits*)uname) && pwd && is_secure_string((const u08bits*)pwd)) {
+		if(!(as->as_ok) && uname && is_secure_string((const u08bits*)uname,1)) {
 			const turn_dbdriver_t * dbd = get_dbdriver();
 			if (dbd && dbd->get_admin_user) {
 				password_t password;

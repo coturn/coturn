@@ -1823,7 +1823,7 @@ static int adminmain(int argc, char **argv)
 #endif
         case 'u':
             STRCPY(user,optarg);
-            if(!is_secure_string((u08bits*)user)) {
+            if(!is_secure_string((u08bits*)user,1)) {
                 TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong user name structure or symbols, choose another name: %s\n",user);
                 exit(-1);
             }

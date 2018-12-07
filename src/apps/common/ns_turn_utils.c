@@ -867,7 +867,7 @@ char *turn_strdup_func(const char* s, const char* function, int line) {
 
 ////////////////////////////////
 
-int is_secure_string(const u08bits *string)
+int is_secure_string(const u08bits *string, int sanitizesql)
 {
 	int ret = 0;
 	if(string) {
@@ -880,7 +880,7 @@ int is_secure_string(const u08bits *string)
 		s = s0;
 		if(strstr((char*)s," ")||strstr((char*)s,"\t")||strstr((char*)s,"'")||strstr((char*)s,"\"")||strstr((char*)s,"\n")||strstr((char*)s,"\r")||strstr((char*)s,"\\")) {
 			;
-		} else if(strstr((char*)s,"union")&&strstr((char*)s,"select")) {
+		} else if(sanitizesql && strstr((char*)s,"union")&&strstr((char*)s,"select")) {
 			;
 		} else {
 			ret = 1;
