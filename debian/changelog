@@ -1,3 +1,37 @@
+coturn (4.5.0.8-1) unstable; urgency=medium
+
+  [ Ferenc Wágner ]
+  * [2239059] Adopt DEP-14 repo structure
+  * [f670437] New upstream release (4.5.0.8)
+  * [455044e] Remove misplaced example files
+
+  [ Mészáros Mihály ]
+  * [924e374] Add myself to uploader
+  * [5505174] updated debian package
+    - add misi@majd.eu to uploaders
+    - add upstream metadata
+    - add systemd service file
+    - update according policy to 4.2.1
+    - update urls from http to https
+    - update override
+    - update compat from 9 to 10
+    - install readme.txt to doc
+  * [bc46839] wrap-and-sort -an
+  * [a468320] Review systemd starter
+  * [2db2918] Add info about systemd to README
+  * [e932875] Service type change to simple
+  * [a9e2953] Add autopkgtest
+  * [8d6976e] change back to fork
+  * [26f2b19] coturn daemon need few sec to setup listeners.
+    It returns elaier after fork, than it has finsihed all listener setup.
+  * [0c93a39] remove sleep from test
+  * [6096e86] Configure pid
+  * [232176f] Add comment why we need to sleep 2 sec
+  * [0a32440] Remove turnserver alias
+  * [36f88e7] Add full path to sleep (for backward compatibility).
+
+ -- Mészáros Mihály <misi@majd.eu>  Tue, 18 Dec 2018 14:43:33 +0100
+
 coturn (4.5.0.7-1) unstable; urgency=medium
 
   * Sync to upstream 4.5.0.7
