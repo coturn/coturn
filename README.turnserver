@@ -120,6 +120,11 @@ User database settings:
 		(see http://dev.mysql.com/doc/refman/5.1/en/ssl-options.html for the 
 		command options description).
 		
+--secret-key-file 	This is the file path which contain secret key of aes encryption while using MySQL password encryption.
+			If you want to use in the MySQL connection string the password in encrypted format,
+			then set in this option the file path of the secret key. The key which is used to encrypt MySQL password.
+			Warning: If this option is set, then MySQL password must be set in "mysql-userdb" option in encrypted format! 
+			If you want to use cleartext password then do not set this option!
 -J, --mongo-userdb	User database connection string for MongoDB. 
 		This database can be used for long-term credentials mechanism,
 		and it can store the secret value 
@@ -526,7 +531,11 @@ Options with values:
 	
 --proc-group		Group name to run the process. After the initialization, the turnserver process
 			will make an attempt to change the current group ID to that group.
-			
+
+-K, --keep-address-family		TURN server allocates address family according TURN
+			Client <=> Server communication address family.
+			!! It breaks RFC6156 section-4.2 (violates default IPv4) !!
+
 --cli-ip		Local system IP address to be used for CLI management interface.
 			The turnserver process can be accessed for management with telnet,
 			at this IP address and on the CLI port (see the next parameter). 
@@ -962,4 +971,4 @@ https://groups.google.com/forum/?fromgroups=#!forum/turn-server-project-rfc5766-
 
 	Bradley T. Hughes <bradleythughes@fastmail.fm>
 
-        Mihaly Meszaros <bakfitty@gmail.com>
+        Mihaly Meszaros <misi@majd.eu>

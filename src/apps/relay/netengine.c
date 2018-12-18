@@ -298,6 +298,63 @@ void del_tls_alternate_server(const char *saddr)
 
 //////////////////////////////////////////////////
 
+typedef struct update_ssl_ctx_cb_args {
+	ioa_engine_handle engine;
+	turn_params_t *params;
+	struct event *next;
+} update_ssl_ctx_cb_args_t;
+
+static void update_ssl_ctx(evutil_socket_t sock, short events, update_ssl_ctx_cb_args_t *args)
+{
+	ioa_engine_handle e = args->engine;
+	turn_params_t *params = args->params;
+
+	pthread_mutex_lock(&turn_params.tls_mutex);
+	e->tls_ctx_ssl23 = params->tls_ctx_ssl23;
+	e->tls_ctx_v1_0 = params->tls_ctx_v1_0;
+#if TLSv1_1_SUPPORTED
+	e->tls_ctx_v1_1 = params->tls_ctx_v1_1;
+#if TLSv1_2_SUPPORTED
+	e->tls_ctx_v1_2 = params->tls_ctx_v1_2;
+#endif
+#endif
+#if DTLS_SUPPORTED
+	e->dtls_ctx = params->dtls_ctx;
+#endif
+#if DTLSv1_2_SUPPORTED
+	e->dtls_ctx_v1_2 = params->dtls_ctx_v1_2;
+#endif
+	struct event *next = args->next;
+	pthread_mutex_unlock(&turn_params.tls_mutex);
+
+	if (next != NULL)
+		event_active(next, EV_READ, 0);
+
+	UNUSED_ARG(sock);
+	UNUSED_ARG(events);
+}
+
+static void set_ssl_ctx(ioa_engine_handle e, turn_params_t *params)
+{
+	update_ssl_ctx_cb_args_t *args = (update_ssl_ctx_cb_args_t *)turn_malloc(sizeof(update_ssl_ctx_cb_args_t));
+	args->engine = e;
+	args->params = params;
+	args->next = NULL;
+
+	update_ssl_ctx(-1, 0, args);
+
+	struct event_base *base = e->event_base;
+	if (base != NULL) {
+		struct event *ev = event_new(base, -1, EV_PERSIST, (event_callback_fn)update_ssl_ctx, (void *)args);
+		pthread_mutex_lock(&turn_params.tls_mutex);
+		args->next = params->tls_ctx_update_ev;
+		params->tls_ctx_update_ev = ev;
+		pthread_mutex_unlock(&turn_params.tls_mutex);
+	}
+}
+
+//////////////////////////////////////////////////
+
 void add_listener_addr(const char* addr) {
 	ioa_addr baddr;
 	if(make_ioa_addr((const u08bits*)addr,0,&baddr)<0) {
@@ -962,20 +1019,7 @@ static ioa_engine_handle create_new_listener_engine(void)
 			,turn_params.redis_statsdb
 #endif
 	);
-	set_ssl_ctx(e, turn_params.tls_ctx_ssl23, turn_params.tls_ctx_v1_0
-#if TLSv1_1_SUPPORTED
-		    ,turn_params.tls_ctx_v1_1
-#if TLSv1_2_SUPPORTED
-		    ,turn_params.tls_ctx_v1_2
-#endif
-#endif
-#if DTLS_SUPPORTED
-		    ,turn_params.dtls_ctx
-#endif
-#if DTLSv1_2_SUPPORTED
-		    ,turn_params.dtls_ctx_v1_2
-#endif
-	);
+	set_ssl_ctx(e, &turn_params);
 	ioa_engine_set_rtcp_map(e, turn_params.listener.rtcpmap);
 	return e;
 }
@@ -1018,23 +1062,8 @@ static void setup_listener(void)
 	if(!turn_params.listener.ioa_eng)
 		exit(-1);
 
-	set_ssl_ctx(turn_params.listener.ioa_eng, turn_params.tls_ctx_ssl23, turn_params.tls_ctx_v1_0
-#if TLSv1_1_SUPPORTED
-		    ,turn_params.tls_ctx_v1_1
-#if TLSv1_2_SUPPORTED
-		    ,turn_params.tls_ctx_v1_2
-#endif
-#endif
-#if DTLS_SUPPORTED
-		    ,turn_params.dtls_ctx
-#endif
-#if DTLSv1_2_SUPPORTED
-		    ,turn_params.dtls_ctx_v1_2
-#endif
-	);
-
+	set_ssl_ctx(turn_params.listener.ioa_eng, &turn_params);
 	turn_params.listener.rtcpmap = rtcp_map_create(turn_params.listener.ioa_eng);
-
 	ioa_engine_set_rtcp_map(turn_params.listener.ioa_eng, turn_params.listener.rtcpmap);
 
 	{
@@ -1592,20 +1621,7 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
 			,turn_params.redis_statsdb
 #endif
 		);
-		set_ssl_ctx(rs->ioa_eng, turn_params.tls_ctx_ssl23, turn_params.tls_ctx_v1_0
-#if TLSv1_1_SUPPORTED
-			    ,turn_params.tls_ctx_v1_1
-#if TLSv1_2_SUPPORTED
-			    ,turn_params.tls_ctx_v1_2
-#endif
-#endif
-#if DTLS_SUPPORTED
-			    ,turn_params.dtls_ctx
-#endif
-#if DTLSv1_2_SUPPORTED
-			    ,turn_params.dtls_ctx_v1_2
-#endif
-		);
+		set_ssl_ctx(rs->ioa_eng, &turn_params);
 		ioa_engine_set_rtcp_map(rs->ioa_eng, turn_params.listener.rtcpmap);
 	}
 
@@ -1651,7 +1667,10 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
 			 send_turn_session_info,
 			 send_https_socket,
 			 allocate_bps,
-			 turn_params.oauth, turn_params.oauth_server_name, use_http);
+			 turn_params.oauth,
+			 turn_params.oauth_server_name,
+			 use_http,
+			 turn_params.keep_address_family);
 	
 	if(to_set_rfc5780) {
 		set_rfc5780(&(rs->server), get_alt_addr, send_message_from_listener_to_client);
@@ -1770,11 +1789,13 @@ static void* run_auth_server_thread(void *arg)
 
 static void setup_auth_server(struct auth_server *as)
 {
-	if(pthread_create(&(as->thr), NULL, run_auth_server_thread, as)) {
+	pthread_attr_t attr;
+	if(pthread_attr_init(&attr) ||
+	   pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED) ||
+	   pthread_create(&(as->thr), &attr, run_auth_server_thread, as)) {
 		perror("Cannot create auth thread\n");
 		exit(-1);
 	}
-	pthread_detach(as->thr);
 }
 
 static void* run_admin_server_thread(void *arg)
