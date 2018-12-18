@@ -35,6 +35,7 @@
 #if !defined(TURN_NO_MYSQL)
 #include <mysql.h>
 
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 static int donot_print_connection_success = 0;
@@ -72,6 +73,34 @@ static void MyconninfoFree(Myconninfo *co) {
 		ns_bzero(co,sizeof(Myconninfo));
 	}
 }
+
+char* decryptPassword(char* in, const unsigned char* mykey){
+
+	char *out;
+	unsigned char iv[8] = {0}; //changed
+	AES_KEY key;
+	unsigned char outdata[256];	//changed
+	AES_set_encrypt_key(mykey, 128, &key);
+	int newTotalSize=decodedTextSize(in);
+	int bytes_to_decode = strlen(in);
+	unsigned char *encryptedText = base64decode(in, bytes_to_decode); //changed
+	char last[1024]="";
+	struct ctr_state state;
+	init_ctr(&state, iv);
+	memset(outdata,'\0', sizeof(outdata));
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+	CRYPTO_ctr128_encrypt(encryptedText, outdata, newTotalSize, &key, state.ivec, state.ecount, &state.num,(block128_f)AES_encrypt);
+#else
+	AES_ctr128_encrypt(encryptedText, outdata, newTotalSize, &key, state.ivec, state.ecount, &state.num);
+#endif
+
+	strcat(last,(char*)outdata);
+	out=(char*)malloc(sizeof(char)*strlen(last));
+	strcpy(out,last);
+	return out;
+}
+
 
 static Myconninfo *MyconninfoParse(char *userdb, char **errmsg) {
 	Myconninfo *co = (Myconninfo*)turn_malloc(sizeof(Myconninfo));
@@ -234,6 +263,11 @@ static MYSQL *get_mydb_connection(void) {
 				if(co->ca || co->capath || co->cert || co->cipher || co->key) {
 					mysql_ssl_set(mydbconnection, co->key, co->cert, co->ca, co->capath, co->cipher);
 				}
+
+				if(turn_params.secret_key_file[0]){
+					co->password = decryptPassword(co->password, turn_params.secret_key);
+				}
+
 				MYSQL *conn = mysql_real_connect(mydbconnection, co->host, co->user, co->password, co->dbname, co->port, NULL, CLIENT_IGNORE_SIGPIPE);
 				if(!conn) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open MySQL DB connection: <%s>, runtime error\n",pud->userdb);
@@ -245,6 +279,12 @@ static MYSQL *get_mydb_connection(void) {
 					mydbconnection=NULL;
 				} else if(!donot_print_connection_success) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "MySQL DB connection success: %s\n",pud->userdb);
+					if(turn_params.secret_key_file[0]) {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Encryption with AES is activated.\n");
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Connection is secure.\n");
+					}
+					else
+                        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Connection is not secure.\n");
 					donot_print_connection_success = 1;
 				}
 			}

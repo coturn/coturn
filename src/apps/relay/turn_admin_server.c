@@ -1413,7 +1413,7 @@ static char *get_bold_admin_title(void)
 		if(as->as_ok) {
 			if(as->as_login[0]) {
 				char *dst=sbat+strlen(sbat);
-				snprintf(dst,ADMIN_USER_MAX_LENGTH*2," admin user: <b><i>%s</i></b><br>\r\n",as->as_login);
+				snprintf(dst,ADMIN_USER_MAX_LENGTH*2+2," admin user: <b><i>%s</i></b><br>\r\n",as->as_login);
 			}
 			if(as->as_realm[0]) {
 				char *dst=sbat+strlen(sbat);

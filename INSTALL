@@ -965,7 +965,7 @@ the root account.
   
 4) Create database 'coturn' (for example) and grant privileges to user 'turn':
 
-  > create database coturn;
+  > create database coturn character set latin1;
   > grant all on coturn.* to 'turn'@'localhost';
   > flush privileges;
   Ctrl-D

@@ -436,39 +436,6 @@ ioa_engine_handle create_ioa_engine(super_memory_t *sm,
 	}
 }
 
-void set_ssl_ctx(ioa_engine_handle e,
-		SSL_CTX *tls_ctx_ssl23,
-		SSL_CTX *tls_ctx_v1_0
-#if TLSv1_1_SUPPORTED
-		 ,SSL_CTX *tls_ctx_v1_1
-#if TLSv1_2_SUPPORTED
-		 ,SSL_CTX *tls_ctx_v1_2
-#endif
-#endif
-#if DTLS_SUPPORTED
-		 ,SSL_CTX *dtls_ctx
-#endif
-#if DTLSv1_2_SUPPORTED
-		,SSL_CTX *dtls_ctx_v1_2
-#endif
-)
-{
-	e->tls_ctx_ssl23 = tls_ctx_ssl23;
-	e->tls_ctx_v1_0 = tls_ctx_v1_0;
-#if TLSv1_1_SUPPORTED
-	e->tls_ctx_v1_1 = tls_ctx_v1_1;
-#if TLSv1_2_SUPPORTED
-	e->tls_ctx_v1_2 = tls_ctx_v1_2;
-#endif
-#endif
-#if DTLS_SUPPORTED
-	e->dtls_ctx = dtls_ctx;
-#endif
-#if DTLSv1_2_SUPPORTED
-	e->dtls_ctx_v1_2 = dtls_ctx_v1_2;
-#endif
-}
-
 void ioa_engine_set_rtcp_map(ioa_engine_handle e, rtcp_map *rtcpmap)
 {
 	if(e)
@@ -1953,10 +1920,9 @@ int ssl_read(evutil_socket_t fd, SSL* ssl, ioa_network_buffer_handle nbh, int ve
 	if(ret>0) {
 		ioa_network_buffer_add_offset_size(nbh, (u16bits)buf_size, 0, (size_t)ret);
 	}
-
-	BIO_free(rbio);
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
 	ssl->rbio = NULL;
+	BIO_free(rbio);
 #else
 	SSL_set0_rbio(ssl,NULL);
 #endif
@@ -3611,14 +3577,14 @@ void turn_report_allocation_delete(void *a)
 	}
 }
 
-void turn_report_session_usage(void *session)
+void turn_report_session_usage(void *session, int force_invalid)
 {
 	if(session) {
 		ts_ur_super_session *ss = (ts_ur_super_session *)session;
 		turn_turnserver *server = (turn_turnserver*)ss->server;
-		if(server && (ss->received_packets || ss->sent_packets)) {
+		if(server && (ss->received_packets || ss->sent_packets || force_invalid)) {
 			ioa_engine_handle e = turn_server_get_engine(server);
-			if(((ss->received_packets+ss->sent_packets)&2047)==0) {
+			if(((ss->received_packets+ss->sent_packets)&2047)==0 || force_invalid) {
 				if(e && e->verbose) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"session %018llu: usage: realm=<%s>, username=<%s>, rp=%lu, rb=%lu, sp=%lu, sb=%lu\n", (unsigned long long)(ss->id), (char*)ss->realm_options.name, (char*)ss->username, (unsigned long)(ss->received_packets), (unsigned long)(ss->received_bytes),(unsigned long)(ss->sent_packets),(unsigned long)(ss->sent_bytes));
 				}
@@ -3648,7 +3614,7 @@ void turn_report_session_usage(void *session)
 					}
 				}
 
-				report_turn_session_info(server,ss,0);
+				report_turn_session_info(server,ss,force_invalid);
 
 				ss->received_packets=0;
 				ss->received_bytes=0;

@@ -18,7 +18,7 @@ sockets, and relaying those packets, through the relay sockets, to the Peer appl
 relay sockets, and relaying those packets, through the Client sockets, to the Client
 application.
 
-There are other, secondary, interations:
+There are other, secondary, interactions:
 
 1) Communications with the database servers.
 2) Communications with the telnet admin console.
@@ -50,8 +50,8 @@ open_client_connection_session() and where and how it is called in various cases
 for reference.
 
 The listeners (and the relay servers) configuration is initiated in the function
-setup_servers() in netengine.c. First, setup_listener() creates the necessary generic 
-data structures for the listeners. Second, network-engine-specific functions accosiate 
+setup_server() in netengine.c. First, setup_listener() creates the necessary generic 
+data structures for the listeners. Second, network-engine-specific functions associate 
 listeners with the execution threads and with the relay servers.
 
 There may be multiple listeners in the server, and they may be running in different

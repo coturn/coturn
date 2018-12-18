@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/coturn/coturn.svg?branch=master)](https://travis-ci.org/coturn/coturn)
+
 **_This project evolved from rfc5766-turn-server project (https://code.google.com/p/rfc5766-turn-server/). There are many new advanced TURN specs which are going far beyond the original RFC 5766 document. This project takes the code of rfc5766-turn-server as the starter, and adds new advanced features to it._**
 
 [Downloads page](https://github.com/coturn/coturn/wiki/Downloads)

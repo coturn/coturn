@@ -314,7 +314,7 @@ $ turnutils_oauth [options]
 
 turnutils_oauth utilitiy provides help in OAuth access_token encryption and/or 
 decryption with AEAD (Atuthenticated Encryption with Associated Data). It helps 
-for an Auth Server in access_token creation, and also for debuging purposes it 
+for an Auth Server in access_token creation, and also for debugging purposes it 
 helps the access_token validation and decryption. This utility inputs all the 
 keys and lifetimes and any related information that are needed for encryption 
 or decryption of an access_token. It outputs a JSON with all OAuth PoP 
@@ -474,4 +474,4 @@ SEE ALSO
 
 	Bradley T. Hughes <bradleythughes@fastmail.fm>
 
-    Mihaly Meszaros <bakfitty@gmail.com>
+        Mihaly Meszaros <misi@majd.eu>
