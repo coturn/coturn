@@ -1619,7 +1619,9 @@ static void read_config_file(int argc, char **argv, int pass)
 				if (!s[0])
 					continue;
 				size_t slen = strlen(s);
-				while (slen && ((s[slen - 1] == 10) || (s[slen - 1] == 13)))
+
+				// strip white-spaces from config file lines end, use arg="value " syntax if you need space at the end
+				while (slen && ((s[slen - 1] == 10) || (s[slen - 1] == 13) || (s[slen - 1] == ' ')))
 					s[--slen] = 0;
 				if (slen) {
 					int c = 0;
