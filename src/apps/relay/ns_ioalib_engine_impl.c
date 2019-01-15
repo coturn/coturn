@@ -2055,7 +2055,7 @@ int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr *like_a
 			switch(l) {
 			case IPPROTO_IP:
 				switch(t) {
-#if defined(IP_RECVTTL)
+#if defined(IP_RECVTTL) && !defined(__sparc_v9__)
 				case IP_RECVTTL:
 				case IP_TTL:
 					recv_ttl = *((recv_ttl_t *) CMSG_DATA(cmsgh));
@@ -2083,7 +2083,7 @@ int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr *like_a
 				break;
 			case IPPROTO_IPV6:
 				switch(t) {
-#if defined(IPV6_RECVHOPLIMIT)
+#if defined(IPV6_RECVHOPLIMIT) && !defined(__sparc_v9__)
 				case IPV6_RECVHOPLIMIT:
 				case IPV6_HOPLIMIT:
 					recv_ttl = *((recv_ttl_t *) CMSG_DATA(cmsgh));
