@@ -16,5 +16,8 @@ override_dh_auto_install:
 override_dh_auto_configure:
 	dh_auto_configure -- --disable-rpath --turndbdir=/var/lib/turn
 
+override_dh_auto_test:
+	-dh_auto_test
+
 %:
 	dh $@  --builddirectory=.
