@@ -1,0 +1,25 @@
+From: =?utf-8?b?TcOpc3rDoXJvcyBNaWjDoWx5?= <misi@majd.eu>
+Date: Thu, 10 Jan 2019 09:58:18 +0100
+Subject: Disable Web admin interface due Security Vulnerability.
+
+---
+ src/server/ns_turn_server.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/src/server/ns_turn_server.c b/src/server/ns_turn_server.c
+index 791d207..e4a4476 100644
+--- a/src/server/ns_turn_server.c
++++ b/src/server/ns_turn_server.c
+@@ -4534,6 +4534,12 @@ static int read_client_connection(turn_turnserver *server,
+ 		SOCKET_TYPE st = get_ioa_socket_type(ss->client_socket);
+ 		if(is_stream_socket(st)) {
+ 			if(is_http((char*)ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh))) {
++
++				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,  "HTTPS connection has been disabled due Vulnerability in the Web interface !!!\n", __FUNCTION__);
++				ss->to_be_closed = 1;
++				return 0;
++
++
+ 				const char *proto = "HTTP";
+ 				ioa_network_buffer_data(in_buffer->nbh)[ioa_network_buffer_get_size(in_buffer->nbh)] = 0;
+ 				if(st==TLS_SOCKET) {
