@@ -24,6 +24,7 @@
 # 11) "-v" means normal verbose mode (with some moderate logging).
 # 12) "--mobility" turns on the Mobile ICE TURN functionality.
 # 13) --cipher-list=ALL means that we support all OpenSSL ciphers
+# 14) --cli-password=secret means that cli password set to "secret"
 # Other parameters (config file name, etc) are default.
 
 if [ -d examples ] ; then
@@ -33,4 +34,4 @@ fi
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib/:/usr/local/mysql/lib/
 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/usr/local/lib/:/usr/local/mysql/lib/
 
-PATH="./bin/:../bin/:../../bin/:${PATH}" turnserver --syslog -a -L 127.0.0.1 -L ::1 -E 127.0.0.1 -E ::1 --max-bps=3000000 -f -m 10 --min-port=32355 --max-port=65535 --user=ninefingers:0xbc807ee29df3c9ffa736523fb2c4e8ee --user=gorst:hero -r north.gov --cert=turn_server_cert.pem --pkey=turn_server_pkey.pem --log-file=stdout -v --mobility --cipher-list=ALL $@
+PATH="./bin/:../bin/:../../bin/:${PATH}" turnserver --syslog -a -L 127.0.0.1 -L ::1 -E 127.0.0.1 -E ::1 --allow-loopback-peers --max-bps=3000000 -f -m 10 --min-port=32355 --max-port=65535 --user=ninefingers:0xbc807ee29df3c9ffa736523fb2c4e8ee --user=gorst:hero -r north.gov --cert=turn_server_cert.pem --pkey=turn_server_pkey.pem --log-file=stdout -v --mobility --cipher-list=ALL --cli-password=secret $@
