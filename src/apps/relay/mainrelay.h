@@ -214,6 +214,7 @@ typedef struct _turn_params_ {
   int verbose;
   int turn_daemon;
   int prod;
+  int web_admin_listen_on_workers;
 
   int do_not_use_config_file;
 
@@ -254,7 +255,7 @@ typedef struct _turn_params_ {
   vint check_origin;
 
   vint no_multicast_peers;
-  vint no_loopback_peers;
+  vint allow_loopback_peers;
 
   char relay_ifname[1025];
 
@@ -351,6 +352,9 @@ void del_tls_alternate_server(const char *saddr);
 
 void add_listener_addr(const char* addr);
 int add_relay_addr(const char* addr);
+
+////////// SSL CTX ////////////////////
+void set_ssl_ctx(ioa_engine_handle e, turn_params_t *params);
 
 ///////// Auth ////////////////
 

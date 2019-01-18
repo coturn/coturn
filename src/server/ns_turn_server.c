@@ -271,7 +271,7 @@ static int good_peer_addr(turn_turnserver *server, const char* realm, ioa_addr *
 	if(server && peer_addr) {
 		if(*(server->no_multicast_peers) && ioa_addr_is_multicast(peer_addr))
 			return 0;
-		if(*(server->no_loopback_peers) && ioa_addr_is_loopback(peer_addr))
+		if( !*(server->allow_loopback_peers) && ioa_addr_is_loopback(peer_addr))
 			return 0;
 
 		{
@@ -1029,7 +1029,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 					}
 					ns_bcopy(value,username,ulen);
 					username[ulen]=0;
-					if(!is_secure_username(username)) {
+					if(!is_secure_string(username,1)) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: wrong username: %s\n", __FUNCTION__, (char*)username);
 						username[0]=0;
 						*err_code = 400;
@@ -3346,6 +3346,13 @@ static int check_stun_auth(turn_turnserver *server,
 		ns_bcopy(stun_attr_get_value(sar),realm,alen);
 		realm[alen]=0;
 
+		if(!is_secure_string(realm,0)) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: wrong realm: %s\n", __FUNCTION__, (char*)realm);
+			realm[0]=0;
+			*err_code = 400;
+			return -1;
+		}
+		
 		if(method == STUN_METHOD_CONNECTION_BIND) {
 
 			get_realm_options_by_name((char *)realm, &(ss->realm_options));
@@ -3381,7 +3388,7 @@ static int check_stun_auth(turn_turnserver *server,
 	ns_bcopy(stun_attr_get_value(sar),usname,alen);
 	usname[alen]=0;
 
-	if(!is_secure_username(usname)) {
+	if(!is_secure_string(usname,1)) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: wrong username: %s\n", __FUNCTION__, (char*)usname);
 		usname[0]=0;
 		*err_code = 400;
@@ -4563,14 +4570,13 @@ static int read_client_connection(turn_turnserver *server,
 			ioa_network_buffer_delete(server->e, nbh);
 			return 0;
 		}
-
 	} else {
-		if (server->use_http) {
-			SOCKET_TYPE st = get_ioa_socket_type(ss->client_socket);
-			if(is_stream_socket(st)) {
-				if(is_http((char*)ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh))) {
-					const char *proto = "HTTP";
-					ioa_network_buffer_data(in_buffer->nbh)[ioa_network_buffer_get_size(in_buffer->nbh)] = 0;
+		SOCKET_TYPE st = get_ioa_socket_type(ss->client_socket);
+		if(is_stream_socket(st)) {
+			if(is_http((char*)ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh))) {
+				const char *proto = "HTTP";
+				ioa_network_buffer_data(in_buffer->nbh)[ioa_network_buffer_get_size(in_buffer->nbh)] = 0;
+				if (*server->web_admin_listen_on_workers) {
 					if(st==TLS_SOCKET) {
 						proto = "HTTPS";
 						set_ioa_socket_app_type(ss->client_socket,HTTPS_CLIENT_SOCKET);
@@ -4592,11 +4598,14 @@ static int read_client_connection(turn_turnserver *server,
 						handle_http_echo(ss->client_socket);
 					}
 					return 0;
+				} else {
+					ss->to_be_closed = 1;
+					return 0;
 				}
 			}
 		}
 	}
-
+    
 	//Unrecognized message received, ignore it
 
 	FUNCEND;
@@ -4838,11 +4847,12 @@ void init_turn_server(turn_turnserver* server,
 		vintp stun_only,
 		vintp no_stun,
 		vintp prod,
+    vintp web_admin_listen_on_workers,
 		turn_server_addrs_list_t *alternate_servers_list,
 		turn_server_addrs_list_t *tls_alternate_servers_list,
 		turn_server_addrs_list_t *aux_servers_list,
 		int self_udp_balance,
-		vintp no_multicast_peers, vintp no_loopback_peers,
+		vintp no_multicast_peers, vintp allow_loopback_peers,
 		ip_range_list_t* ip_whitelist, ip_range_list_t* ip_blacklist,
 		send_socket_to_relay_cb send_socket_to_relay,
 		vintp secure_stun, vintp mobility, int server_relay,
@@ -4851,7 +4861,6 @@ void init_turn_server(turn_turnserver* server,
 		allocate_bps_cb allocate_bps_func,
 		int oauth,
 		const char* oauth_server_name,
-		int use_http,
 		int keep_address_family) {
 
 	if (!server)
@@ -4870,7 +4879,7 @@ void init_turn_server(turn_turnserver* server,
 	server->chquotacb = chquotacb;
 	server->raqcb = raqcb;
 	server->no_multicast_peers = no_multicast_peers;
-	server->no_loopback_peers = no_loopback_peers;
+	server->allow_loopback_peers = allow_loopback_peers;
 	server->secure_stun = secure_stun;
 	server->mobility = mobility;
 	server->server_relay = server_relay;
@@ -4900,6 +4909,7 @@ void init_turn_server(turn_turnserver* server,
 	server->stun_only = stun_only;
 	server->no_stun = no_stun;
 	server->prod = prod;
+	server-> web_admin_listen_on_workers = web_admin_listen_on_workers;
 
 	server->dont_fragment = dont_fragment;
 	server->fingerprint = fingerprint;
@@ -4918,8 +4928,6 @@ void init_turn_server(turn_turnserver* server,
 	server->send_socket_to_relay = send_socket_to_relay;
 
 	server->allocate_bps_func = allocate_bps_func;
-
-	server->use_http = use_http;
 
 	server->keep_address_family = keep_address_family;
 

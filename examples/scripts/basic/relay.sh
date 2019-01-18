@@ -14,6 +14,7 @@
 # --no-auth means that no authentication to be used, 
 # allow anonymous users. 
 # start TLS and DTLS services.
+# --cli-password=secret means that cli password set to "secret"
 # Other parameters (config file name, etc) are default.
   
 if [ -d examples ] ; then
@@ -23,8 +24,4 @@ fi
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib/:/usr/local/mysql/lib/
 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/usr/local/lib/:/usr/local/mysql/lib/
 
-PATH="bin:../bin:../../bin:${PATH}" turnserver -v --syslog -L 127.0.0.1 -L ::1 -E 127.0.0.1 -E ::1 --max-bps=3000000 -f -m 3 --min-port=32355 --max-port=65535 --no-tls --no-dtls --no-auth --db="var/db/turndb" $@
-
-
-
-
+PATH="bin:../bin:../../bin:${PATH}" turnserver -v --syslog -L 127.0.0.1 -L ::1 -E 127.0.0.1 -E ::1 --allow-loopback-peers --cli-password secred --max-bps=3000000 -f -m 3 --min-port=32355 --max-port=65535 --no-tls --no-dtls --no-auth --db="var/db/turndb" $@
