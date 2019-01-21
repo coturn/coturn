@@ -1,3 +1,28 @@
+coturn (4.5.0.5-1+deb9u1) stretch-security; urgency=high
+
+  *  HotFix: for 3 Vulnerability
+
+    For more details see:
+    - CVE-2018-4056 
+        coTURN Administrator Web Portal SQL injection vulnerability
+    - CVE-2018-4058
+        coTURN TURN server unsafe loopback forwarding default configuration
+       vulnerability
+    - CVE-2018-4059
+        coTURN server unsafe telnet admin portal default configuration
+        vulnerability
+
+    These 3 patches hotfix the 3 CVE above:
+    - Disable-Web-admin-interface-due-Security-Vulnerability.patch
+        It disables hardcocded web admin interface until 4.5.1.0,
+        where it will be fixed more correctly.
+    - Disable-loopback-peers-due-Vulnerability.patch
+        Disable by default loopback-peer functionality.
+    - empty-cli-password-not-allowed-disable-telnet-cli.patch
+        Disable telnet cli if the cli-password is empty.
+
+ -- Mészáros Mihály <misi@majd.eu>  Mon, 21 Jan 2019 09:31:26 +0100
+
 coturn (4.5.0.5-1) unstable; urgency=medium
 
   * Sync to upstream 4.5.0.5
