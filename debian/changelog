@@ -1,3 +1,10 @@
+coturn (4.5.1.0-1~bpo9+1) stretch-backports; urgency=medium
+
+  * Rebuild for stretch-backports.
+  * gbp.conf debian-branch update
+
+ -- Mészáros Mihály <misi@majd.eu>  Mon, 28 Jan 2019 17:18:10 +0100
+
 coturn (4.5.1.0-1) unstable; urgency=medium
 
   * Sync to upstream 4.5.1.0
