@@ -1,3 +1,11 @@
+10/02/2019 Oleg Moskalenko <mom040267@gmail.com> Mihály Mészáros <misi@majd.eu>
+Version 4.5.1.1 'dan Eider':
+	- merge PR #330 missing \r\n after http Connection:close (by gribunin)
+	- merge PR #303 fix typo enpoint (by Majid Motallebikashani)
+	- merge PR #129 seperate http web-admin listener (by Thibaut ACKERMANN)
+	- readd pwd check - regression from 4.5.1.0
+	- merge docker branch
+
 24/11/2018 Oleg Moskalenko <mom040267@gmail.com> Mihály Mészáros <misi@majd.eu>
 Version 4.5.1.0 'dan Eider':
 	Consider to change config file after upgrade, because it contains some 
