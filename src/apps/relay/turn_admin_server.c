@@ -1668,7 +1668,7 @@ static void https_finish_page(struct str_buffer *sb, ioa_socket_handle s, int cc
 	send_str_from_ioa_socket_tcp(s,"\r\n");
 	send_str_from_ioa_socket_tcp(s,get_http_date_header());
 	if(cclose) {
-		send_str_from_ioa_socket_tcp(s,"Connection: close");
+		send_str_from_ioa_socket_tcp(s,"Connection: close\r\n");
 	}
 	send_str_from_ioa_socket_tcp(s,"Content-Type: text/html; charset=UTF-8\r\nContent-Length: ");
 
