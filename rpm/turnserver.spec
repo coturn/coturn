@@ -204,6 +204,7 @@ fi
 %{_datadir}/%{name}/scripts/peer.sh
 %{_datadir}/%{name}/scripts/oauth.sh
 %{_datadir}/%{name}/scripts/readme.txt
+%{_datadir}/%{name}/scripts/pack.sh
 %dir %{_datadir}/%{name}/scripts/basic
 %{_datadir}/%{name}/scripts/basic/dos_attack.sh
 %{_datadir}/%{name}/scripts/basic/relay.sh
