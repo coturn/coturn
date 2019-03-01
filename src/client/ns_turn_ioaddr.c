@@ -109,7 +109,7 @@ u32bits addr_hash(const ioa_addr *addr)
 		u64bits a[2];
 		ns_bcopy(&(addr->s6.sin6_addr), &a, sizeof(addr->s6.sin6_addr));
 		ret = (u32bits)((hash_int64(a[0])<<3) + (hash_int64(a[1] + addr->s6.sin6_port)));
-		}
+	}
 	return ret;
 }
 
