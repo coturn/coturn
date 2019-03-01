@@ -6,6 +6,7 @@ bin/turnutils_peer usr/bin
 bin/turnutils_stunclient usr/bin
 bin/turnutils_uclient usr/bin
 debian/etc/ufw/applications.d/turnserver etc/ufw/applications.d
+examples/etc/turnserver.conf etc
 include/turn/client/TurnMsgLib.h usr/include/turn
 include/turn/client/ns_turn_ioaddr.h usr/include/turn
 include/turn/client/ns_turn_msg.h usr/include/turn
