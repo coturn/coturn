@@ -673,7 +673,6 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 		uint16_t chnumber = 0;
 
 		message_info mi;
-		ns_bzero(&mi, sizeof(message_info));
 		int miset=0;
 		size_t buffers = 1;
 
