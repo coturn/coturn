@@ -107,7 +107,7 @@ u32bits addr_hash(const ioa_addr *addr)
 		ret = hash_int32(addr->s4.sin_addr.s_addr + addr->s4.sin_port);
 	} else {
 		u64bits a[2];
-		ns_bcopy(&(addr->s6.sin6_addr), &a, sizeof(addr->s6.sin6_addr));
+		ns_bcopy(&(addr->s6.sin6_addr), &a, sizeof(a));
 		ret = (u32bits)((hash_int64(a[0])<<3) + (hash_int64(a[1] + addr->s6.sin6_port)));
 	}
 	return ret;
@@ -123,7 +123,7 @@ u32bits addr_hash_no_port(const ioa_addr *addr)
 		ret = hash_int32(addr->s4.sin_addr.s_addr);
 	} else {
 		u64bits a[2];
-		ns_bcopy(&(addr->s6.sin6_addr), &a, sizeof(addr->s6.sin6_addr));
+		ns_bcopy(&(addr->s6.sin6_addr), &a, sizeof(a));
 		ret = (u32bits)((hash_int64(a[0])<<3) + (hash_int64(a[1])));
 	}
 	return ret;

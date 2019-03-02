@@ -2435,8 +2435,8 @@ static int encode_oauth_token_gcm(const u08bits *server_name, encoded_oauth_toke
 		len += dtoken->enc_block.key_length;
 
 		uint64_t ts = nswap64(dtoken->enc_block.timestamp);
-		ns_bcopy( &ts, (orig_field+len), 8);
-		len += 8;
+		ns_bcopy( &ts, (orig_field+len), sizeof(ts));
+		len += sizeof(ts);
 
 		*((uint32_t*)(orig_field+len)) = nswap32(dtoken->enc_block.lifetime);
 		len += 4;
@@ -2612,14 +2612,14 @@ static int decode_oauth_token_gcm(const u08bits *server_name, const encoded_oaut
 		len += dtoken->enc_block.key_length;
 
 		uint64_t ts;
-		ns_bcopy((decoded_field+len),&ts,8);
+		ns_bcopy((decoded_field+len),&ts,sizeof(ts));
 		dtoken->enc_block.timestamp = nswap64(ts);
-		len += 8;
+		len += sizeof(ts);
 
 		uint32_t lt;
-		ns_bcopy((decoded_field+len),&lt,4);
+		ns_bcopy((decoded_field+len),&lt,sizeof(lt));
 		dtoken->enc_block.lifetime = nswap32(lt);
-		len += 4;
+		len += sizeof(lt);
 
 		return 0;
 	}

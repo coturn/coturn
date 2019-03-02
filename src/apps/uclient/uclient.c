@@ -799,7 +799,6 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 			printf("%s: 111.111: msgnum=%d, rmsgnum=%d, sent=%lu, recv=%lu\n",__FUNCTION__,
 				mi->msgnum,elem->recvmsgnum,(unsigned long)mi->mstime,(unsigned long)current_mstime);
 				*/
-
 			if(mi.msgnum != elem->recvmsgnum+1)
 				++(elem->loss);
 			else {
