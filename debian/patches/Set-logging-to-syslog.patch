@@ -1,0 +1,21 @@
+From: =?utf-8?b?TcOpc3rDoXJvcyBNaWjDoWx5?= <misi@majd.eu>
+Date: Sat, 2 Mar 2019 23:26:55 +0100
+Subject: Set logging to syslog
+
+---
+ examples/etc/turnserver.conf | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/examples/etc/turnserver.conf b/examples/etc/turnserver.conf
+index df2535c..778c2bb 100644
+--- a/examples/etc/turnserver.conf
++++ b/examples/etc/turnserver.conf
+@@ -506,7 +506,7 @@
+ 
+ # Option to redirect all log output into system log (syslog).
+ #
+-#syslog
++syslog
+ 
+ # This flag means that no log file rollover will be used, and the log file
+ # name will be constructed as-is, without PID and date appendage.
