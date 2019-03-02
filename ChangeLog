@@ -1,10 +1,18 @@
-10/02/2019 Oleg Moskalenko <mom040267@gmail.com> Mihály Mészáros <misi@majd.eu>
+02/03/2019 Oleg Moskalenko <mom040267@gmail.com> Mihály Mészáros <misi@majd.eu>
 Version 4.5.1.1 'dan Eider':
 	- merge PR #330 missing \r\n after http Connection:close (by gribunin)
 	- merge PR #303 fix typo enpoint (by Majid Motallebikashani)
 	- merge PR #129 seperate http web-admin listener (by Thibaut ACKERMANN)
-	- readd pwd check - regression from 4.5.1.0
+	- regression from 4.5.1.0
+		* readd pwd check
+		* add to config missing web-admin-listen-on-workers option
 	- merge docker branch
+		* Add Docker file for all database backend.
+	- merge sparc64 branch
+		* Fix mem alingment issue on 64 bit architecture
+		That issue caused earlier "bus error" on sparc64 and armhf
+	- merge PR #336 Clarify Debian install (by David-dp-)
+	- merge PR #339 RPM build fix (by Peter Hudec )
 
 24/11/2018 Oleg Moskalenko <mom040267@gmail.com> Mihály Mészáros <misi@majd.eu>
 Version 4.5.1.0 'dan Eider':
