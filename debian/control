@@ -16,7 +16,7 @@ Build-Depends: debhelper (>=11.0.0),
                libssl-dev (>= 1.0.0~),
                postgresql-client,
                sqlite3
-Standards-Version: 4.2.1
+Standards-Version: 4.3.0
 Homepage: https://github.com/coturn/coturn/
 Vcs-Git: https://github.com/coturn/coturn.git -b debian/sid
 Vcs-Browser: https://github.com/coturn/coturn/tree/debian/sid
