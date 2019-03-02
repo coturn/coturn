@@ -1296,7 +1296,9 @@ u64bits stun_attr_get_reservation_token_value(stun_attr_ref attr)  {
   if(attr) {
     const u08bits* value = stun_attr_get_value(attr);
     if(value && (stun_attr_get_len(attr) == 8)) {
-      return nswap64(((const u64bits*)value)[0]);
+      u64bits token;
+      ns_bcopy(value, &token, sizeof(u64bits));
+      return nswap64(token);
     }
   }
   return 0;
@@ -2432,8 +2434,9 @@ static int encode_oauth_token_gcm(const u08bits *server_name, encoded_oauth_toke
 		ns_bcopy(dtoken->enc_block.mac_key,orig_field+len,dtoken->enc_block.key_length);
 		len += dtoken->enc_block.key_length;
 
-		*((uint64_t*)(orig_field+len)) = nswap64(dtoken->enc_block.timestamp);
-		len += 8;
+		uint64_t ts = nswap64(dtoken->enc_block.timestamp);
+		ns_bcopy( &ts, (orig_field+len), sizeof(ts));
+		len += sizeof(ts);
 
 		*((uint32_t*)(orig_field+len)) = nswap32(dtoken->enc_block.lifetime);
 		len += 4;
@@ -2608,11 +2611,15 @@ static int decode_oauth_token_gcm(const u08bits *server_name, const encoded_oaut
 		ns_bcopy(decoded_field+len,dtoken->enc_block.mac_key,dtoken->enc_block.key_length);
 		len += dtoken->enc_block.key_length;
 
-		dtoken->enc_block.timestamp = nswap64(*((uint64_t*)(decoded_field+len)));
-		len += 8;
+		uint64_t ts;
+		ns_bcopy((decoded_field+len),&ts,sizeof(ts));
+		dtoken->enc_block.timestamp = nswap64(ts);
+		len += sizeof(ts);
 
-		dtoken->enc_block.lifetime = nswap32(*((uint32_t*)(decoded_field+len)));
-		len += 4;
+		uint32_t lt;
+		ns_bcopy((decoded_field+len),&lt,sizeof(lt));
+		dtoken->enc_block.lifetime = nswap32(lt);
+		len += sizeof(lt);
 
 		return 0;
 	}
