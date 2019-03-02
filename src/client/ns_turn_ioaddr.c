@@ -106,7 +106,8 @@ u32bits addr_hash(const ioa_addr *addr)
 	if (addr->ss.sa_family == AF_INET) {
 		ret = hash_int32(addr->s4.sin_addr.s_addr + addr->s4.sin_port);
 	} else {
-		const u64bits *a = (const u64bits *) (&(addr->s6.sin6_addr));
+		u64bits a[2];
+		ns_bcopy(&(addr->s6.sin6_addr), &a, sizeof(a));
 		ret = (u32bits)((hash_int64(a[0])<<3) + (hash_int64(a[1] + addr->s6.sin6_port)));
 	}
 	return ret;
@@ -121,7 +122,8 @@ u32bits addr_hash_no_port(const ioa_addr *addr)
 	if (addr->ss.sa_family == AF_INET) {
 		ret = hash_int32(addr->s4.sin_addr.s_addr);
 	} else {
-		const u64bits *a = (const u64bits *) (&(addr->s6.sin6_addr));
+		u64bits a[2];
+		ns_bcopy(&(addr->s6.sin6_addr), &a, sizeof(a));
 		ret = (u32bits)((hash_int64(a[0])<<3) + (hash_int64(a[1])));
 	}
 	return ret;
@@ -153,10 +155,8 @@ int addr_eq(const ioa_addr* a1, const ioa_addr *a2) {
 	return 1;
       }
     } else if(a1->ss.sa_family == AF_INET6 && a1->s6.sin6_port == a2->s6.sin6_port) {
-      const u64bits *p1=(const u64bits *)(&(a1->s6.sin6_addr));
-      const u64bits *p2=(const u64bits *)(&(a2->s6.sin6_addr));
-      if(p1[0]==p2[0] && p1[1]==p2[1]) {
-	return 1;
+        if( memcmp(&(a1->s6.sin6_addr), &(a2->s6.sin6_addr) ,sizeof(struct in6_addr)) == 0 ) {
+        return 1;
       }
     }
   }
@@ -175,11 +175,9 @@ int addr_eq_no_port(const ioa_addr* a1, const ioa_addr *a2) {
 	return 1;
       }
     } else if(a1->ss.sa_family == AF_INET6) {
-	const u64bits *p1=(const u64bits *)(&(a1->s6.sin6_addr));
-	const u64bits *p2=(const u64bits *)(&(a2->s6.sin6_addr));
-	if(p1[0]==p2[0] && p1[1]==p2[1]) {
-	  return 1;
-	}
+      if( memcmp(&(a1->s6.sin6_addr), &(a2->s6.sin6_addr) ,sizeof(struct in6_addr)) == 0 ) {
+        return 1;
+      }
     }
   }
   return 0;

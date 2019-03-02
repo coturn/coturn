@@ -1668,7 +1668,7 @@ static void https_finish_page(struct str_buffer *sb, ioa_socket_handle s, int cc
 	send_str_from_ioa_socket_tcp(s,"\r\n");
 	send_str_from_ioa_socket_tcp(s,get_http_date_header());
 	if(cclose) {
-		send_str_from_ioa_socket_tcp(s,"Connection: close");
+		send_str_from_ioa_socket_tcp(s,"Connection: close\r\n");
 	}
 	send_str_from_ioa_socket_tcp(s,"Content-Type: text/html; charset=UTF-8\r\nContent-Length: ");
 
@@ -3295,7 +3295,7 @@ static void handle_logon_request(ioa_socket_handle s, struct http_request* hr)
 			s->special_session_size = sizeof(struct admin_session);
 		}
 
-		if(!(as->as_ok) && uname && is_secure_string((const u08bits*)uname,1)) {
+		if(!(as->as_ok) && uname && is_secure_string((const u08bits*)uname,1) && pwd) {
 			const turn_dbdriver_t * dbd = get_dbdriver();
 			if (dbd && dbd->get_admin_user) {
 				password_t password;

@@ -7,5 +7,4 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     libsqlite3-dev \
     libevent-dev \
     g++ \
-    libboost-dev \
-    libevent-dev
+    libboost-dev

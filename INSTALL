@@ -6,7 +6,9 @@ At the present time, several operation systems have this project pre-packaged:
 
 http://packages.qa.debian.org/r/coturn.html
 
-If you are using the Debian package from the project download site, 
+which can be installed the usual way: apt install coturn
+
+If instead you are using the Debian package from the project download site, 
 then follow these instructions:
 
 Unpack the archive:
