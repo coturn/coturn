@@ -678,10 +678,10 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 		size_t buffers = 1;
 
 		if(is_tcp_data) {
-		  if ((int)elem->in_buffer.len == clmessage_length) {
-		    ns_bcopy((elem->in_buffer.buf), &mi, sizeof(message_info));
-		    miset=1;
-		  }
+		   if ((int)elem->in_buffer.len == clmessage_length) {
+		     ns_bcopy((elem->in_buffer.buf), &mi, sizeof(message_info));
+		     miset=1;
+		   }
 		} else if (stun_is_indication(&(elem->in_buffer))) {
 
 			uint16_t method = stun_get_method(&elem->in_buffer);
