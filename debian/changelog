@@ -1,3 +1,14 @@
+coturn (4.5.1.1-1) unstable; urgency=medium
+
+  * [a13ba45] Fix: missing /etc/turnserver.conf
+  * [8a03c32] Revert "Temporary prevent from failing"
+    This reverts commit 218987f4256a8894e06d7876c434b1f37fd0785f.
+  * [96ca6cb] New upstream release (4.5.1.1) (Closes: #916919)
+  * [f399223] Set log to syslog
+  * [7b135b2] Upgrde to debian-policy 4.3
+
+ -- Mészáros Mihály <misi@majd.eu>  Sun, 03 Mar 2019 00:38:30 +0100
+
 coturn (4.5.1.0-1) unstable; urgency=medium
 
   * Sync to upstream 4.5.1.0
