@@ -828,16 +828,6 @@ void turn_free_func(void *ptr, size_t sz, const char* function, int line) {
   free(ptr);
 }
 
-extern "C" void turn_free_simple(void *ptr);
-void turn_free_simple(void *ptr) {
-
-  tm_init();
-
-  del_tm_ptr(ptr,__FUNCTION__);
-
-  free(ptr);
-}
-
 extern "C" void *turn_calloc_func(size_t number, size_t size, const char* function, int line);
 void *turn_calloc_func(size_t number, size_t size, const char* function, int line) {
   

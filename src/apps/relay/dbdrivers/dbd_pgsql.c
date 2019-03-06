@@ -748,7 +748,7 @@ static void pgsql_reread_realms(secrets_list_t * realms_list) {
 
 			if(res && (PQresultStatus(res) == PGRES_TUPLES_OK)) {
 
-				ur_string_map *o_to_realm_new = ur_string_map_create(turn_free_simple);
+				ur_string_map *o_to_realm_new = ur_string_map_create(free);
 
 				int i = 0;
 				for(i=0;i<PQntuples(res);i++) {

@@ -1124,7 +1124,7 @@ static void redis_reread_realms(secrets_list_t * realms_list) {
 		redisReply *reply = (redisReply*) redisCommand(rc, "keys turn/origin/*");
 		if (reply) {
 
-			ur_string_map *o_to_realm_new = ur_string_map_create(turn_free_simple);
+			ur_string_map *o_to_realm_new = ur_string_map_create(free);
 
 			secrets_list_t keys;
 

@@ -105,7 +105,7 @@ void create_default_realm()
 	/* init everything: */
 	TURN_MUTEX_INIT_RECURSIVE(&o_to_realm_mutex);
 	init_secrets_list(&realms_list);
-	o_to_realm = ur_string_map_create(turn_free_simple);
+	o_to_realm = ur_string_map_create(free);
 	default_realm_params_ptr = &_default_realm_params;
 	realms = ur_string_map_create(NULL);
 	lock_realms();

@@ -1031,7 +1031,7 @@ static void mysql_reread_realms(secrets_list_t * realms_list) {
 				MYSQL_RES *mres = mysql_store_result(myc);
 				if(mres && mysql_field_count(myc)==2) {
 
-					ur_string_map *o_to_realm_new = ur_string_map_create(turn_free_simple);
+					ur_string_map *o_to_realm_new = ur_string_map_create(free);
 
 					for(;;) {
 						MYSQL_ROW row = mysql_fetch_row(mres);

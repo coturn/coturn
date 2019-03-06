@@ -1027,7 +1027,7 @@ static void sqlite_reread_realms(secrets_list_t * realms_list)
 
 			if ((rc = sqlite3_prepare(sqliteconnection, statement, -1, &st, 0)) == SQLITE_OK) {
 
-				ur_string_map *o_to_realm_new = ur_string_map_create(turn_free_simple);
+				ur_string_map *o_to_realm_new = ur_string_map_create(free);
 
 				while (1) {
 					int res = sqlite3_step(st);

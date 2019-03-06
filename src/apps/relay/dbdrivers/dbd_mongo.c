@@ -1089,7 +1089,7 @@ static void mongo_reread_realms(secrets_list_t * realms_list) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
 				"Error querying MongoDB collection 'realm'\n");
 	} else {
-		ur_string_map *o_to_realm_new = ur_string_map_create(turn_free_simple);
+		ur_string_map *o_to_realm_new = ur_string_map_create(free);
 
 		const bson_t * item;
 		uint32_t length;
