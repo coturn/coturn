@@ -185,7 +185,7 @@ static void add_aux_server_list(const char *saddr, turn_server_addrs_list_t *lis
 		if(make_ioa_addr_from_full_string((const u08bits*)saddr, 0, &addr)!=0) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong full address format: %s\n",saddr);
 		} else {
-		  list->addrs = (ioa_addr*)turn_realloc(list->addrs,0,sizeof(ioa_addr)*(list->size+1));
+		  list->addrs = (ioa_addr*)realloc(list->addrs,sizeof(ioa_addr)*(list->size+1));
 			addr_cpy(&(list->addrs[(list->size)++]),&addr);
 			{
 				u08bits s[1025];
@@ -213,7 +213,7 @@ static void add_alt_server(const char *saddr, int default_port, turn_server_addr
 		if(make_ioa_addr_from_full_string((const u08bits*)saddr, default_port, &addr)!=0) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong IP address format: %s\n",saddr);
 		} else {
-		  list->addrs = (ioa_addr*)turn_realloc(list->addrs,0,sizeof(ioa_addr)*(list->size+1));
+		  list->addrs = (ioa_addr*)realloc(list->addrs,sizeof(ioa_addr)*(list->size+1));
 			addr_cpy(&(list->addrs[(list->size)++]),&addr);
 			{
 				u08bits s[1025];
@@ -372,9 +372,9 @@ void add_listener_addr(const char* addr) {
 		}
 		++turn_params.listener.addrs_number;
 		++turn_params.listener.services_number;
-		turn_params.listener.addrs = (char**)turn_realloc(turn_params.listener.addrs, 0, sizeof(char*)*turn_params.listener.addrs_number);
+		turn_params.listener.addrs = (char**)realloc(turn_params.listener.addrs, sizeof(char*)*turn_params.listener.addrs_number);
 		turn_params.listener.addrs[turn_params.listener.addrs_number-1]=turn_strdup(sbaddr);
-		turn_params.listener.encaddrs = (ioa_addr**)turn_realloc(turn_params.listener.encaddrs, 0, sizeof(ioa_addr*)*turn_params.listener.addrs_number);
+		turn_params.listener.encaddrs = (ioa_addr**)realloc(turn_params.listener.encaddrs, sizeof(ioa_addr*)*turn_params.listener.addrs_number);
 		turn_params.listener.encaddrs[turn_params.listener.addrs_number-1]=(ioa_addr*)malloc(sizeof(ioa_addr));
 		addr_cpy(turn_params.listener.encaddrs[turn_params.listener.addrs_number-1],&baddr);
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Listener address to use: %s\n",sbaddr);
@@ -399,7 +399,7 @@ int add_relay_addr(const char* addr) {
 		}
 
 		++turn_params.relays_number;
-		turn_params.relay_addrs = (char**)turn_realloc(turn_params.relay_addrs, 0, sizeof(char*)*turn_params.relays_number);
+		turn_params.relay_addrs = (char**)realloc(turn_params.relay_addrs, sizeof(char*)*turn_params.relays_number);
 		turn_params.relay_addrs[turn_params.relays_number-1]=turn_strdup(sbaddr);
 
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Relay address to use: %s\n",sbaddr);

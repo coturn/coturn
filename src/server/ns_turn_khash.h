@@ -171,10 +171,10 @@ static const double __ac_HASH_UPPER = 0.77;
 			  new_flags = (u32bits*)malloc(new_flags_size);	\
 			  memset(new_flags, 0xaa, new_flags_size); \
 			  if (h->n_buckets < new_n_buckets) {		\
-			    h->keys = (khkey_t*)turn_realloc(h->keys, h->keys_size, new_n_buckets * sizeof(khkey_t)); \
+			    h->keys = (khkey_t*)realloc(h->keys, new_n_buckets * sizeof(khkey_t)); \
 			    h->keys_size = new_n_buckets * sizeof(khkey_t); \
 			    if (kh_is_map)	{			\
-			      h->vals = (khval_t*)turn_realloc(h->vals, h->vals_size, new_n_buckets * sizeof(khval_t)); \
+			      h->vals = (khval_t*)realloc(h->vals, new_n_buckets * sizeof(khval_t)); \
 			      h->vals_size = new_n_buckets * sizeof(khval_t); \
 			    } \
 			  }						\
@@ -210,10 +210,10 @@ static const double __ac_HASH_UPPER = 0.77;
 				}														\
 			}															\
 			if (h->n_buckets > new_n_buckets) {							\
-			  h->keys = (khkey_t*)turn_realloc(h->keys, h->keys_size, new_n_buckets * sizeof(khkey_t)); \
+			  h->keys = (khkey_t*)realloc(h->keys, new_n_buckets * sizeof(khkey_t)); \
 			  h->keys_size = new_n_buckets * sizeof(khkey_t); \
 			  if (kh_is_map)	{			\
-			    h->vals = (khval_t*)turn_realloc(h->vals, h->vals_size, new_n_buckets * sizeof(khval_t)); \
+			    h->vals = (khval_t*)realloc(h->vals, new_n_buckets * sizeof(khval_t)); \
 			    h->vals_size = new_n_buckets * sizeof(khval_t); \
 			  } \
 			}															\

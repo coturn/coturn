@@ -406,7 +406,7 @@ void turn_session_info_add_peer(struct turn_session_info* tsi, ioa_addr *peer)
 				}
 			}
 		}
-		tsi->extra_peers_data = (addr_data*)turn_realloc(tsi->extra_peers_data,tsi->extra_peers_size*sizeof(addr_data),(tsi->extra_peers_size+1)*sizeof(addr_data));
+		tsi->extra_peers_data = (addr_data*)realloc(tsi->extra_peers_data,(tsi->extra_peers_size+1)*sizeof(addr_data));
 		addr_cpy(&(tsi->extra_peers_data[tsi->extra_peers_size].addr),peer);
 		addr_to_string(&(tsi->extra_peers_data[tsi->extra_peers_size].addr),
 			       (u08bits*)tsi->extra_peers_data[tsi->extra_peers_size].saddr);

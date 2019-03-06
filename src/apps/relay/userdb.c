@@ -291,7 +291,7 @@ const char* get_secrets_list_elem(secrets_list_t *sl, size_t i)
 void add_to_secrets_list(secrets_list_t *sl, const char* elem)
 {
 	if(sl && elem) {
-	  sl->secrets = (char**)turn_realloc(sl->secrets,0,(sizeof(char*)*(sl->sz+1)));
+	  sl->secrets = (char**)realloc(sl->secrets,(sizeof(char*)*(sl->sz+1)));
 	  sl->secrets[sl->sz] = turn_strdup(elem);
 	  sl->sz += 1;
 	}
@@ -1240,7 +1240,7 @@ int add_ip_list_range(const char * range0, const char * realm, ip_range_list_t *
 		*separator = '-';
 
 	++(list->ranges_number);
-	list->rs = (ip_range_t*) turn_realloc(list->rs, 0, sizeof(ip_range_t) * list->ranges_number);
+	list->rs = (ip_range_t*) realloc(list->rs, sizeof(ip_range_t) * list->ranges_number);
 	STRCPY(list->rs[list->ranges_number - 1].str,range);
 	if(realm)
 		STRCPY(list->rs[list->ranges_number - 1].realm,realm);

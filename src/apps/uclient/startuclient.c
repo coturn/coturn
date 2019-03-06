@@ -1536,7 +1536,7 @@ void tcp_data_connect(app_ur_session *elem, u32bits cid)
 
 	++elem->pinfo.tcp_conn_number;
 	int i = (int)(elem->pinfo.tcp_conn_number-1);
-	elem->pinfo.tcp_conn=(app_tcp_conn_info**)turn_realloc(elem->pinfo.tcp_conn,0,elem->pinfo.tcp_conn_number*sizeof(app_tcp_conn_info*));
+	elem->pinfo.tcp_conn=(app_tcp_conn_info**)realloc(elem->pinfo.tcp_conn,elem->pinfo.tcp_conn_number*sizeof(app_tcp_conn_info*));
 	elem->pinfo.tcp_conn[i]=(app_tcp_conn_info*)malloc(sizeof(app_tcp_conn_info));
 	ns_bzero(elem->pinfo.tcp_conn[i],sizeof(app_tcp_conn_info));
 

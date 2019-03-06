@@ -308,12 +308,12 @@ int lm_map_put(lm_map* map, ur_map_key_type key, ur_map_value_type value)
 
 		size_t old_sz = esz;
 		size_t old_sz_mem = esz * sizeof(ur_map_key_type*);
-		a->extra_keys = (ur_map_key_type**)turn_realloc(a->extra_keys,old_sz_mem,old_sz_mem + sizeof(ur_map_key_type*));
+		a->extra_keys = (ur_map_key_type**)realloc(a->extra_keys,old_sz_mem + sizeof(ur_map_key_type*));
 		a->extra_keys[old_sz] = (ur_map_key_type*)malloc(sizeof(ur_map_key_type));
 		*(a->extra_keys[old_sz]) = key;
 
 		old_sz_mem = esz * sizeof(ur_map_value_type*);
-		a->extra_values = (ur_map_value_type**)turn_realloc(a->extra_values,old_sz_mem,old_sz_mem + sizeof(ur_map_value_type*));
+		a->extra_values = (ur_map_value_type**)realloc(a->extra_values,old_sz_mem + sizeof(ur_map_value_type*));
 		a->extra_values[old_sz] = (ur_map_value_type*)malloc(sizeof(ur_map_value_type));
 		*(a->extra_values[old_sz]) = value;
 
@@ -620,7 +620,7 @@ static void addr_list_add(addr_list_header* slh, const ioa_addr* key,  ur_addr_m
   if(!elem) {
 	  size_t old_sz = slh->extra_sz;
 	  size_t old_sz_mem = old_sz * sizeof(addr_elem);
-	  slh->extra_list = (addr_elem*)turn_realloc(slh->extra_list, old_sz_mem, old_sz_mem + sizeof(addr_elem));
+	  slh->extra_list = (addr_elem*)realloc(slh->extra_list, old_sz_mem + sizeof(addr_elem));
 	  elem = &(slh->extra_list[old_sz]);
 	  slh->extra_sz += 1;
   }

@@ -3731,10 +3731,10 @@ void* allocate_super_memory_region_func(super_memory_t *r, size_t size, const ch
 
 		if(!region) {
 			r->sm_chunk += 1;
-			r->super_memory = (char**)turn_realloc(r->super_memory,0, (r->sm_chunk+1) * sizeof(char*));
+			r->super_memory = (char**)realloc(r->super_memory,(r->sm_chunk+1) * sizeof(char*));
 			r->super_memory[r->sm_chunk] = (char*)malloc(TURN_SM_SIZE);
 			ns_bzero(r->super_memory[r->sm_chunk],TURN_SM_SIZE);
-			r->sm_allocated = (size_t*)turn_realloc(r->sm_allocated,0,(r->sm_chunk+1) * sizeof(size_t*));
+			r->sm_allocated = (size_t*)realloc(r->sm_allocated,(r->sm_chunk+1) * sizeof(size_t*));
 			r->sm_allocated[r->sm_chunk] = 0;
 			region = r->super_memory[r->sm_chunk];
 			rsz = r->sm_allocated + r->sm_chunk;

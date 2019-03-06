@@ -427,8 +427,8 @@ turn_permission_info* allocation_add_permission(allocation *a, const ioa_addr* a
 
 			if(!slot) {
 				size_t old_sz_mem = old_sz * sizeof(turn_permission_slot*);
-				parray->extra_slots = (turn_permission_slot **) turn_realloc(parray->extra_slots,
-						old_sz_mem, old_sz_mem + sizeof(turn_permission_slot*));
+				parray->extra_slots = (turn_permission_slot **) realloc(parray->extra_slots,
+						old_sz_mem + sizeof(turn_permission_slot*));
 				slots = parray->extra_slots;
 				parray->extra_sz = old_sz + 1;
 				slots[old_sz] = (turn_permission_slot *)malloc(sizeof(turn_permission_slot));
@@ -485,7 +485,7 @@ ch_info *ch_map_get(ch_map* map, u16bits chnum, int new_chn)
 
 		if(new_chn) {
 			size_t old_sz_mem = old_sz * sizeof(ch_info*);
-			a->extra_chns = (ch_info**)turn_realloc(a->extra_chns,old_sz_mem,old_sz_mem + sizeof(ch_info*));
+			a->extra_chns = (ch_info**)realloc(a->extra_chns,old_sz_mem + sizeof(ch_info*));
 			a->extra_chns[old_sz] = (ch_info*)malloc(sizeof(ch_info));
 			ns_bzero(a->extra_chns[old_sz],sizeof(ch_info));
 			a->extra_sz += 1;
@@ -596,7 +596,7 @@ tcp_connection *create_tcp_connection(u08bits server_id, allocation *a, stun_tid
 
 	if(!found) {
 		size_t old_sz_mem = a->tcs.sz * sizeof(tcp_connection*);
-		a->tcs.elems = (tcp_connection**)turn_realloc(a->tcs.elems,old_sz_mem,old_sz_mem+sizeof(tcp_connection*));
+		a->tcs.elems = (tcp_connection**)realloc(a->tcs.elems,old_sz_mem+sizeof(tcp_connection*));
 		a->tcs.elems[a->tcs.sz] = tc;
 		a->tcs.sz += 1;
 		tcl = &(a->tcs);
@@ -723,7 +723,7 @@ void add_unsent_buffer(unsent_buffer *ub, ioa_network_buffer_handle nbh)
 	if(!ub || (ub->sz >= MAX_UNSENT_BUFFER_SIZE)) {
 		ioa_network_buffer_delete(NULL, nbh);
 	} else {
-		ub->bufs = (ioa_network_buffer_handle*)turn_realloc(ub->bufs, sizeof(ioa_network_buffer_handle) * ub->sz, sizeof(ioa_network_buffer_handle) * (ub->sz+1));
+		ub->bufs = (ioa_network_buffer_handle*)realloc(ub->bufs, sizeof(ioa_network_buffer_handle) * (ub->sz+1));
 		ub->bufs[ub->sz] = nbh;
 		ub->sz +=1;
 	}

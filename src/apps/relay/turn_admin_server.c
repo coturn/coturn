@@ -462,11 +462,9 @@ static int print_session(ur_map_key_type key, ur_map_value_type value, void *arg
 			if(!ur_string_map_get(csarg->users, (ur_string_map_key_type)(char*)tsi->username, &value)) {
 				value = (ur_string_map_value_type)csarg->users_number;
 				csarg->users_number += 1;
-				csarg->user_counters = (size_t*)turn_realloc(csarg->user_counters,
-						(size_t)value * sizeof(size_t),
+				csarg->user_counters = (size_t*)realloc(csarg->user_counters,
 						csarg->users_number * sizeof(size_t));
-				csarg->user_names = (char**)turn_realloc(csarg->user_names,
-						(size_t)value * sizeof(char*),
+				csarg->user_names = (char**)realloc(csarg->user_names,
 						csarg->users_number * sizeof(char*));
 				csarg->user_names[(size_t)value] = turn_strdup((char*)tsi->username);
 				csarg->user_counters[(size_t)value] = 0;

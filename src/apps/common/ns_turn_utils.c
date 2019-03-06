@@ -787,23 +787,6 @@ void tm_print_func(void) {
   pthread_mutex_unlock(&tm);
 } 
 
-extern "C" void *turn_realloc_func(void *ptr, size_t old_sz, size_t new_sz, const char* function, int line);
-void *turn_realloc_func(void *ptr, size_t old_sz, size_t new_sz, const char* function, int line) {
-
-  UNUSED_ARG(old_sz);
-
-  TM_START();
-
-  if(ptr)
-	  del_tm_ptr(ptr,id);
-
-  ptr = realloc(ptr,new_sz);
-
-  add_tm_ptr(ptr,id);
-
-  return ptr;
-}
-
 extern "C" void turn_free_func(void *ptr, size_t sz, const char* function, int line);
 void turn_free_func(void *ptr, size_t sz, const char* function, int line) {
 
