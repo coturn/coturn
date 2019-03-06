@@ -66,7 +66,7 @@ static void RyconninfoFree(Ryconninfo *co) {
 }
 
 static Ryconninfo *RyconninfoParse(const char *userdb, char **errmsg) {
-	Ryconninfo *co = (Ryconninfo*) turn_malloc(sizeof(Ryconninfo));
+	Ryconninfo *co = (Ryconninfo*) malloc(sizeof(Ryconninfo));
 	ns_bzero(co,sizeof(Ryconninfo));
 	if (userdb) {
 		char *s0 = turn_strdup(userdb);

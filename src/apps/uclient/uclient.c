@@ -125,7 +125,7 @@ static app_ur_session* init_app_session(app_ur_session *ss) {
 static app_ur_session* create_new_ss(void)
 {
 	++current_clients_number;
-	return init_app_session((app_ur_session*) turn_malloc(sizeof(app_ur_session)));
+	return init_app_session((app_ur_session*) malloc(sizeof(app_ur_session)));
 }
 
 static void uc_delete_session_elem_data(app_ur_session* cdi) {
@@ -1388,7 +1388,7 @@ void start_mclient(const char *remote_address, int port,
 	      ++mclient;
 	}
 
-	elems = (app_ur_session**)turn_malloc(sizeof(app_ur_session)*((mclient*2)+1)+sizeof(void*));
+	elems = (app_ur_session**)malloc(sizeof(app_ur_session)*((mclient*2)+1)+sizeof(void*));
 
 	__turn_getMSTime();
 	u32bits stime = current_time;

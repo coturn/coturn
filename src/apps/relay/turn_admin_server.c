@@ -935,7 +935,7 @@ static int run_cli_input(struct cli_session* cs, const char *buf0, unsigned int 
 
 	if(cs && buf0 && cs->ts && cs->bev) {
 
-		char *buf = (char*)turn_malloc(len+1);
+		char *buf = (char*)malloc(len+1);
 		ns_bcopy(buf0,buf,len);
 		buf[len]=0;
 
@@ -1157,7 +1157,7 @@ static void cliserver_input_handler(struct evconnlistener *l, evutil_socket_t fd
 
 	addr_debug_print(adminserver.verbose, (ioa_addr*)sa,"CLI connected to");
 
-	struct cli_session *clisession = (struct cli_session*)turn_malloc(sizeof(struct cli_session));
+	struct cli_session *clisession = (struct cli_session*)malloc(sizeof(struct cli_session));
 	ns_bzero(clisession,sizeof(struct cli_session));
 
 	clisession->rp = get_realm(NULL);
@@ -1424,7 +1424,7 @@ void admin_server_receive_message(struct bufferevent *bev, void *ptr)
 {
 	UNUSED_ARG(ptr);
 
-	struct turn_session_info *tsi = (struct turn_session_info*)turn_malloc(sizeof(struct turn_session_info));
+	struct turn_session_info *tsi = (struct turn_session_info*)malloc(sizeof(struct turn_session_info));
 	turn_session_info_init(tsi);
 	int n = 0;
 	struct evbuffer *input = bufferevent_get_input(bev);
@@ -1445,7 +1445,7 @@ void admin_server_receive_message(struct bufferevent *bev, void *ptr)
 
 		if(tsi->valid) {
 			ur_map_put(adminserver.sessions, (ur_map_key_type)tsi->id, (ur_map_value_type)tsi);
-			tsi = (struct turn_session_info*)turn_malloc(sizeof(struct turn_session_info));
+			tsi = (struct turn_session_info*)malloc(sizeof(struct turn_session_info));
 			turn_session_info_init(tsi);
 		} else {
 			turn_session_info_clean(tsi);
@@ -3289,7 +3289,7 @@ static void handle_logon_request(ioa_socket_handle s, struct http_request* hr)
 
 		struct admin_session* as = (struct admin_session*)s->special_session;
 		if(!as) {
-			as = (struct admin_session*)turn_malloc(sizeof(struct admin_session));
+			as = (struct admin_session*)malloc(sizeof(struct admin_session));
 			ns_bzero(as,sizeof(struct admin_session));
 			s->special_session = as;
 			s->special_session_size = sizeof(struct admin_session);

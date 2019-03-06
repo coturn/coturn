@@ -118,7 +118,6 @@ static inline u64bits _ioa_ntoh64(u64bits v)
 #define TURN_LOG_FUNC(level, ...) printf (__VA_ARGS__)
 
   void tm_print_func(void);
-  void *turn_malloc_func(size_t sz, const char* function, int line);
   void *turn_realloc_func(void *ptr, size_t old_sz, size_t new_sz, const char* function, int line);
   void turn_free_func(void *ptr, size_t sz, const char* function, int line);
   void *turn_calloc_func(size_t number, size_t size, const char* function, int line);
@@ -129,7 +128,6 @@ static inline u64bits _ioa_ntoh64(u64bits v)
 #define debug_ptr_add(ptr) debug_ptr_add_func((ptr),__FUNCTION__,__LINE__)
 #define debug_ptr_del(ptr) debug_ptr_del_func((ptr),__FUNCTION__,__LINE__)
 #define tm_print() tm_print_func()
-#define turn_malloc(sz) turn_malloc_func((size_t)(sz),__FUNCTION__,__LINE__)
 #define turn_free(ptr,sz) turn_free_func((ptr),(size_t)(sz),__FUNCTION__,__LINE__)
 #define turn_realloc(ptr, old_sz, new_sz) turn_realloc_func((ptr),(size_t)(old_sz),(size_t)(new_sz),__FUNCTION__,__LINE__)
 #define turn_calloc(number, sz) turn_calloc_func((number),(size_t)(sz),__FUNCTION__,__LINE__)
@@ -142,7 +140,6 @@ static inline u64bits _ioa_ntoh64(u64bits v)
 #define debug_ptr_add(ptr)
 #define debug_ptr_del(ptr)
 #define tm_print() 
-#define turn_malloc(sz) malloc((size_t)(sz))
 #define turn_free(ptr,sz) free((ptr))
 #define turn_realloc(ptr, old_sz, new_sz) realloc((ptr),(size_t)(new_sz))
 #define turn_calloc(number, sz) calloc((number),(size_t)(sz))

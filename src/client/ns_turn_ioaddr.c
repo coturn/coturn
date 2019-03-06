@@ -511,8 +511,8 @@ void ioa_addr_add_mapping(ioa_addr *apub, ioa_addr *apriv)
 	size_t new_size = msz + sizeof(ioa_addr*);
 	public_addrs = (ioa_addr**)turn_realloc(public_addrs, msz, new_size);
 	private_addrs = (ioa_addr**)turn_realloc(private_addrs, msz, new_size);
-	public_addrs[mcount]=(ioa_addr*)turn_malloc(sizeof(ioa_addr));
-	private_addrs[mcount]=(ioa_addr*)turn_malloc(sizeof(ioa_addr));
+	public_addrs[mcount]=(ioa_addr*)malloc(sizeof(ioa_addr));
+	private_addrs[mcount]=(ioa_addr*)malloc(sizeof(ioa_addr));
 	addr_cpy(public_addrs[mcount],apub);
 	addr_cpy(private_addrs[mcount],apriv);
 	++mcount;

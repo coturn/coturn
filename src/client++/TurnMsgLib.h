@@ -209,7 +209,7 @@ public:
 			throw WrongStunAttrFormatException();
 		_attr_type = (u16bits)at;
 		_sz = sz;
-		_value=(u08bits*)turn_malloc(_sz);
+		_value=(u08bits*)malloc(_sz);
 		if(ptr)
 			ns_bcopy(ptr,_value,_sz);
 	}
@@ -239,7 +239,7 @@ public:
 		if(_value)
 			turn_free(_value,_sz);
 		_sz = sz;
-		_value=(u08bits*)turn_malloc(_sz);
+		_value=(u08bits*)malloc(_sz);
 		if(value)
 			ns_bcopy(value,_value,_sz);
 	}
@@ -569,7 +569,7 @@ public:
 	 */
 	StunMsg() {
 		_allocated_sz = 0xFFFF;
-		_buffer = (u08bits*)turn_malloc(_allocated_sz);
+		_buffer = (u08bits*)malloc(_allocated_sz);
 		_deallocate = true;
 		_sz = 0;
 		_constructed = 0;

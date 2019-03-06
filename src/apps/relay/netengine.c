@@ -250,7 +250,7 @@ static void del_alt_server(const char *saddr, int default_port, turn_server_addr
 			if(found) {
 
 				size_t j;
-				ioa_addr *new_addrs = (ioa_addr*)turn_malloc(sizeof(ioa_addr)*(list->size-1));
+				ioa_addr *new_addrs = (ioa_addr*)malloc(sizeof(ioa_addr)*(list->size-1));
 				for(j=0;j<i;++j) {
 					addr_cpy(&(new_addrs[j]),&(list->addrs[j]));
 				}
@@ -336,7 +336,7 @@ static void update_ssl_ctx(evutil_socket_t sock, short events, update_ssl_ctx_cb
 
 void set_ssl_ctx(ioa_engine_handle e, turn_params_t *params)
 {
-	update_ssl_ctx_cb_args_t *args = (update_ssl_ctx_cb_args_t *)turn_malloc(sizeof(update_ssl_ctx_cb_args_t));
+	update_ssl_ctx_cb_args_t *args = (update_ssl_ctx_cb_args_t *)malloc(sizeof(update_ssl_ctx_cb_args_t));
 	args->engine = e;
 	args->params = params;
 	args->next = NULL;
@@ -375,7 +375,7 @@ void add_listener_addr(const char* addr) {
 		turn_params.listener.addrs = (char**)turn_realloc(turn_params.listener.addrs, 0, sizeof(char*)*turn_params.listener.addrs_number);
 		turn_params.listener.addrs[turn_params.listener.addrs_number-1]=turn_strdup(sbaddr);
 		turn_params.listener.encaddrs = (ioa_addr**)turn_realloc(turn_params.listener.encaddrs, 0, sizeof(ioa_addr*)*turn_params.listener.addrs_number);
-		turn_params.listener.encaddrs[turn_params.listener.addrs_number-1]=(ioa_addr*)turn_malloc(sizeof(ioa_addr));
+		turn_params.listener.encaddrs[turn_params.listener.addrs_number-1]=(ioa_addr*)malloc(sizeof(ioa_addr));
 		addr_cpy(turn_params.listener.encaddrs[turn_params.listener.addrs_number-1],&baddr);
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Listener address to use: %s\n",sbaddr);
 	}

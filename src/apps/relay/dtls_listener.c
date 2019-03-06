@@ -495,7 +495,7 @@ static int create_new_connected_udp_socket(
 				(char*) (s->e->relay_ifname));
 	}
 
-	ioa_socket_handle ret = (ioa_socket*) turn_malloc(sizeof(ioa_socket));
+	ioa_socket_handle ret = (ioa_socket*) malloc(sizeof(ioa_socket));
 	if (!ret) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
 				"%s: Cannot allocate new socket structure\n", __FUNCTION__);

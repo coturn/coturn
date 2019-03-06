@@ -141,7 +141,7 @@ realm_params_t* get_realm(char* name)
 			unlock_realms();
 			return (realm_params_t*)value;
 		} else {
-			realm_params_t *ret = (realm_params_t*)turn_malloc(sizeof(realm_params_t));
+			realm_params_t *ret = (realm_params_t*)malloc(sizeof(realm_params_t));
 			ns_bcopy(default_realm_params_ptr,ret,sizeof(realm_params_t));
 			STRCPY(ret->options.name,name);
 			value = (ur_string_map_value_type)ret;
@@ -721,7 +721,7 @@ int add_static_user_account(char *user)
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong user account: %s\n",user);
 		} else {
 			size_t ulen = s-user;
-			char *usname = (char*)turn_malloc(sizeof(char)*(ulen+1));
+			char *usname = (char*)malloc(sizeof(char)*(ulen+1));
 			strncpy(usname,user,ulen);
 			usname[ulen]=0;
 			if(SASLprep((u08bits*)usname)<0) {
@@ -730,7 +730,7 @@ int add_static_user_account(char *user)
 				return -1;
 			}
 			s = skip_blanks(s+1);
-			hmackey_t *key = (hmackey_t*)turn_malloc(sizeof(hmackey_t));
+			hmackey_t *key = (hmackey_t*)malloc(sizeof(hmackey_t));
 			if(strstr(s,"0x")==s) {
 				char *keysource = s + 2;
 				size_t sz = get_hmackey_size(SHATYPE_DEFAULT);
@@ -1084,10 +1084,10 @@ static ip_range_list_t* ipblacklist = NULL;
 void init_dynamic_ip_lists(void)
 {
 #if !defined(TURN_NO_RWLOCK)
-	whitelist_rwlock = (pthread_rwlock_t*) turn_malloc(sizeof(pthread_rwlock_t));
+	whitelist_rwlock = (pthread_rwlock_t*) malloc(sizeof(pthread_rwlock_t));
 	pthread_rwlock_init(whitelist_rwlock, NULL);
 
-	blacklist_rwlock = (pthread_rwlock_t*) turn_malloc(sizeof(pthread_rwlock_t));
+	blacklist_rwlock = (pthread_rwlock_t*) malloc(sizeof(pthread_rwlock_t));
 	pthread_rwlock_init(blacklist_rwlock, NULL);
 #else
 	turn_mutex_init(&whitelist_mutex);
@@ -1163,7 +1163,7 @@ const ip_range_list_t* ioa_get_blacklist(ioa_engine_handle e)
 
 ip_range_list_t* get_ip_list(const char *kind)
 {
-	ip_range_list_t *ret = (ip_range_list_t*) turn_malloc(sizeof(ip_range_list_t));
+	ip_range_list_t *ret = (ip_range_list_t*) malloc(sizeof(ip_range_list_t));
 	ns_bzero(ret,sizeof(ip_range_list_t));
 
 	const turn_dbdriver_t * dbd = get_dbdriver();

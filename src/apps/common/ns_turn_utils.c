@@ -98,7 +98,7 @@ int turn_mutex_unlock(const turn_mutex *mutex) {
 int turn_mutex_init(turn_mutex* mutex) {
   if(mutex) {
     mutex->data=MAGIC_CODE;
-    mutex->mutex=turn_malloc(sizeof(pthread_mutex_t));
+    mutex->mutex=malloc(sizeof(pthread_mutex_t));
     pthread_mutex_init((pthread_mutex_t*)mutex->mutex,NULL);
     return 0;
   } else {
@@ -116,7 +116,7 @@ int turn_mutex_init_recursive(turn_mutex* mutex) {
 			if (pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE) < 0) {
 				perror("Cannot set type on mutex attr");
 			} else {
-				mutex->mutex = turn_malloc(sizeof(pthread_mutex_t));
+				mutex->mutex = malloc(sizeof(pthread_mutex_t));
 				mutex->data = MAGIC_CODE;
 				if ((ret = pthread_mutex_init((pthread_mutex_t*) mutex->mutex,
 						&attr)) < 0) {
@@ -786,18 +786,6 @@ void tm_print_func(void) {
   printf("=============================================\n");
   pthread_mutex_unlock(&tm);
 } 
-
-extern "C" void *turn_malloc_func(size_t sz, const char* function, int line);
-void *turn_malloc_func(size_t sz, const char* function, int line) {
-
-  TM_START();
-
-  void *ptr = malloc(sz);
-  
-  add_tm_ptr(ptr,id);
-
-  return ptr;
-}
 
 extern "C" void *turn_realloc_func(void *ptr, size_t old_sz, size_t new_sz, const char* function, int line);
 void *turn_realloc_func(void *ptr, size_t old_sz, size_t new_sz, const char* function, int line) {

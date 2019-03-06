@@ -88,7 +88,7 @@ static MONGO * get_mongodb_connection(void) {
 		mongoc_init();
 		mongoc_log_set_handler(&mongo_logger, NULL);
 
-		mydbconnection = (MONGO *) turn_malloc(sizeof(MONGO));
+		mydbconnection = (MONGO *) malloc(sizeof(MONGO));
 		mydbconnection->uri = mongoc_uri_new(pud->userdb);
 
 		if (!mydbconnection->uri) {
@@ -880,7 +880,7 @@ static int mongo_set_realm_option_one(u08bits *realm, unsigned long value, const
   bson_init(&doc);
   
   size_t klen = 9 + strlen(opt);
-  char * _k = (char *)turn_malloc(klen);
+  char * _k = (char *)malloc(klen);
   strcpy(_k, "options.");
   strcat(_k, opt);
   

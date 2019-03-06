@@ -824,7 +824,7 @@ char* find_config_file(const char *config_file, int print_file_name)
 			while (config_file_search_dirs[i]) {
 				size_t dirlen = strlen(config_file_search_dirs[i]);
 				size_t fnsz = sizeof(char) * (dirlen + cflen + 10);
-				char *fn = (char*)turn_malloc(fnsz+1);
+				char *fn = (char*)malloc(fnsz+1);
 				strncpy(fn, config_file_search_dirs[i], fnsz);
 				strncpy(fn + dirlen, config_file, fnsz-dirlen);
 				fn[fnsz]=0;
@@ -842,7 +842,7 @@ char* find_config_file(const char *config_file, int print_file_name)
 				   c_execdir && c_execdir[0]) {
 					size_t celen = strlen(c_execdir);
 					fnsz = sizeof(char) * (dirlen + cflen + celen + 10);
-					fn = (char*)turn_malloc(fnsz+1);
+					fn = (char*)malloc(fnsz+1);
 					strncpy(fn,c_execdir,fnsz);
 					size_t fnlen=strlen(fn);
 					if(fnlen<fnsz) {
@@ -950,7 +950,7 @@ char *base64_encode(const unsigned char *data,
 
     *output_length = 4 * ((input_length + 2) / 3);
 
-    char *encoded_data = (char*)turn_malloc(*output_length+1);
+    char *encoded_data = (char*)malloc(*output_length+1);
     if (encoded_data == NULL) return NULL;
 
     size_t i,j;
@@ -978,7 +978,7 @@ char *base64_encode(const unsigned char *data,
 
 void build_base64_decoding_table() {
 
-    decoding_table = (char*)turn_malloc(256);
+    decoding_table = (char*)malloc(256);
     ns_bzero(decoding_table,256);
 
     int i;
@@ -998,7 +998,7 @@ unsigned char *base64_decode(const char *data,
     if (data[input_length - 1] == '=') (*output_length)--;
     if (data[input_length - 2] == '=') (*output_length)--;
 
-    unsigned char *decoded_data = (unsigned char*)turn_malloc(*output_length);
+    unsigned char *decoded_data = (unsigned char*)malloc(*output_length);
     if (decoded_data == NULL) return NULL;
 
     int i;

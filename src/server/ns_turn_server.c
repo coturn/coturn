@@ -770,7 +770,7 @@ static ts_ur_super_session* create_new_ss(turn_turnserver* server) {
 	//
 	//printf("%s: 111.111: session size=%lu\n",__FUNCTION__,(unsigned long)sizeof(ts_ur_super_session));
 	//
-	ts_ur_super_session *ss = (ts_ur_super_session*)turn_malloc(sizeof(ts_ur_super_session));
+	ts_ur_super_session *ss = (ts_ur_super_session*)malloc(sizeof(ts_ur_super_session));
 	ns_bzero(ss,sizeof(ts_ur_super_session));
 	ss->server = server;
 	get_default_realm_options(&(ss->realm_options));
@@ -3611,10 +3611,10 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 						int sarlen = stun_attr_get_len(sar);
 						if(sarlen>0) {
 							++norigins;
-							char *o = (char*)turn_malloc(sarlen+1);
+							char *o = (char*)malloc(sarlen+1);
 							ns_bcopy(stun_attr_get_value(sar),o,sarlen);
 							o[sarlen]=0;
-							char *corigin = (char*)turn_malloc(STUN_MAX_ORIGIN_SIZE+1);
+							char *corigin = (char*)malloc(STUN_MAX_ORIGIN_SIZE+1);
 							corigin[0]=0;
 							if(get_canonic_origin(o,corigin,STUN_MAX_ORIGIN_SIZE)<0) {
 								TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
@@ -3667,10 +3667,10 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 					if(stun_attr_get_type(sar) == STUN_ATTRIBUTE_ORIGIN) {
 						int sarlen = stun_attr_get_len(sar);
 						if(sarlen>0) {
-							char *o = (char*)turn_malloc(sarlen+1);
+							char *o = (char*)malloc(sarlen+1);
 							ns_bcopy(stun_attr_get_value(sar),o,sarlen);
 							o[sarlen]=0;
-							char *corigin = (char*)turn_malloc(STUN_MAX_ORIGIN_SIZE+1);
+							char *corigin = (char*)malloc(STUN_MAX_ORIGIN_SIZE+1);
 							corigin[0]=0;
 							if(get_canonic_origin(o,corigin,STUN_MAX_ORIGIN_SIZE)<0) {
 								TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,

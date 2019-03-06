@@ -168,7 +168,7 @@ static const double __ac_HASH_UPPER = 0.77;
 			if (h->size >= (khint_t)(new_n_buckets * __ac_HASH_UPPER + 0.5)) j = 0;	\
 			else {			\
 			  new_flags_size = ((new_n_buckets>>4) + 1) * sizeof(u32bits); \
-			  new_flags = (u32bits*)turn_malloc(new_flags_size);	\
+			  new_flags = (u32bits*)malloc(new_flags_size);	\
 			  memset(new_flags, 0xaa, new_flags_size); \
 			  if (h->n_buckets < new_n_buckets) {		\
 			    h->keys = (khkey_t*)turn_realloc(h->keys, h->keys_size, new_n_buckets * sizeof(khkey_t)); \

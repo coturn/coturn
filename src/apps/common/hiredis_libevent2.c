@@ -246,7 +246,7 @@ redis_context_handle redisLibeventAttach(struct event_base *base, char *ip0, int
   }
 
   /* Create container for context and r/w events */
-  e = (struct redisLibeventEvents*)turn_malloc(sizeof(struct redisLibeventEvents));
+  e = (struct redisLibeventEvents*)malloc(sizeof(struct redisLibeventEvents));
   ns_bzero(e,sizeof(struct redisLibeventEvents));
 
   e->allocated = 1;

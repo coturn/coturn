@@ -140,7 +140,7 @@ static void fix_user_directory(char *dir0) {
 		}
 		size_t szh = strlen(home);
 		size_t sz = strlen(dir0)+1+szh;
-		char* dir_fixed = (char*)turn_malloc(sz);
+		char* dir_fixed = (char*)malloc(sz);
 		strncpy(dir_fixed,home,szh);
 		strncpy(dir_fixed+szh,dir+1,(sz-szh-1));
 		strncpy(dir0,dir_fixed,sz);

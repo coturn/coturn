@@ -292,7 +292,7 @@ static stun_buffer_list_elem *new_blist_elem(ioa_engine_handle e)
 	stun_buffer_list_elem *ret = get_elem_from_buffer_list(&(e->bufs));
 
 	if(!ret) {
-	  ret = (stun_buffer_list_elem *)turn_malloc(sizeof(stun_buffer_list_elem));
+	  ret = (stun_buffer_list_elem *)malloc(sizeof(stun_buffer_list_elem));
 	  ret->buf.len = 0;
 	  ret->buf.offset = 0;
 	  ret->buf.coffset = 0;
@@ -312,7 +312,7 @@ static inline void add_elem_to_buffer_list(stun_buffer_list *bufs, stun_buffer_l
 static void add_buffer_to_buffer_list(stun_buffer_list *bufs, s08bits *buf, size_t len)
 {
 	if(bufs && buf && (bufs->tsz<MAX_SOCKET_BUFFER_BACKLOG)) {
-	  stun_buffer_list_elem *buf_elem = (stun_buffer_list_elem *)turn_malloc(sizeof(stun_buffer_list_elem));
+	  stun_buffer_list_elem *buf_elem = (stun_buffer_list_elem *)malloc(sizeof(stun_buffer_list_elem));
 	  ns_bcopy(buf,buf_elem->buf.buf,len);
 	  buf_elem->buf.len = len;
 	  buf_elem->buf.offset = 0;
@@ -549,7 +549,7 @@ ioa_timer_handle set_ioa_timer(ioa_engine_handle e, int secs, int ms, ioa_timer_
 
 	if (e && cb && secs > 0) {
 
-		timer_event * te = (timer_event*) turn_malloc(sizeof(timer_event));
+		timer_event * te = (timer_event*) malloc(sizeof(timer_event));
 		int flags = EV_TIMEOUT;
 		if (persist)
 			flags |= EV_PERSIST;
@@ -903,7 +903,7 @@ ioa_socket_handle create_unbound_relay_ioa_socket(ioa_engine_handle e, int famil
 		return NULL;
 	}
 
-	ret = (ioa_socket*)turn_malloc(sizeof(ioa_socket));
+	ret = (ioa_socket*)malloc(sizeof(ioa_socket));
 	ns_bzero(ret,sizeof(ioa_socket));
 
 	ret->magic = SOCKET_MAGIC;
@@ -1348,7 +1348,7 @@ ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e,
 		return NULL;
 	}
 
-	ret = (ioa_socket*)turn_malloc(sizeof(ioa_socket));
+	ret = (ioa_socket*)malloc(sizeof(ioa_socket));
 	ns_bzero(ret,sizeof(ioa_socket));
 
 	ret->magic = SOCKET_MAGIC;
@@ -1613,7 +1613,7 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s)
 
 		ioa_network_buffer_delete(s->e, s->defer_nbh);
 
-		ret = (ioa_socket*)turn_malloc(sizeof(ioa_socket));
+		ret = (ioa_socket*)malloc(sizeof(ioa_socket));
 		if(!ret) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"%s: Cannot allocate new socket structure\n",__FUNCTION__);
 			if(udp_fd>=0)
@@ -3660,11 +3660,11 @@ static void init_super_memory_region(super_memory_t *r)
 	if(r) {
 		ns_bzero(r,sizeof(super_memory_t));
 
-		r->super_memory = (char**)turn_malloc(sizeof(char*));
-		r->super_memory[0] = (char*)turn_malloc(TURN_SM_SIZE);
+		r->super_memory = (char**)malloc(sizeof(char*));
+		r->super_memory[0] = (char*)malloc(TURN_SM_SIZE);
 		ns_bzero(r->super_memory[0],TURN_SM_SIZE);
 
-		r->sm_allocated = (size_t*)turn_malloc(sizeof(size_t*));
+		r->sm_allocated = (size_t*)malloc(sizeof(size_t*));
 		r->sm_allocated[0] = 0;
 
 		r->sm_total_sz = TURN_SM_SIZE;
@@ -3684,7 +3684,7 @@ void init_super_memory(void)
 
 super_memory_t* new_super_memory_region(void)
 {
-	super_memory_t* r = (super_memory_t*)turn_malloc(sizeof(super_memory_t));
+	super_memory_t* r = (super_memory_t*)malloc(sizeof(super_memory_t));
 	init_super_memory_region(r);
 	return r;
 }
@@ -3698,7 +3698,7 @@ void* allocate_super_memory_region_func(super_memory_t *r, size_t size, const ch
 	void *ret = NULL;
 
 	if(!r) {
-		ret = turn_malloc(size);
+		ret = malloc(size);
 		ns_bzero(ret, size);
 		return ret;
 	}
@@ -3732,7 +3732,7 @@ void* allocate_super_memory_region_func(super_memory_t *r, size_t size, const ch
 		if(!region) {
 			r->sm_chunk += 1;
 			r->super_memory = (char**)turn_realloc(r->super_memory,0, (r->sm_chunk+1) * sizeof(char*));
-			r->super_memory[r->sm_chunk] = (char*)turn_malloc(TURN_SM_SIZE);
+			r->super_memory[r->sm_chunk] = (char*)malloc(TURN_SM_SIZE);
 			ns_bzero(r->super_memory[r->sm_chunk],TURN_SM_SIZE);
 			r->sm_allocated = (size_t*)turn_realloc(r->sm_allocated,0,(r->sm_chunk+1) * sizeof(size_t*));
 			r->sm_allocated[r->sm_chunk] = 0;
@@ -3754,7 +3754,7 @@ void* allocate_super_memory_region_func(super_memory_t *r, size_t size, const ch
 	pthread_mutex_unlock(&r->mutex_sm);
 
 	if(!ret) {
-		ret = turn_malloc(size);
+		ret = malloc(size);
 		ns_bzero(ret, size);
 	}
 

@@ -68,7 +68,7 @@ static int udp_create_server_socket(server_type* server,
   if(!server) return -1;
 
   evutil_socket_t udp_fd = -1;
-  ioa_addr *server_addr = (ioa_addr*)turn_malloc(sizeof(ioa_addr));
+  ioa_addr *server_addr = (ioa_addr*)malloc(sizeof(ioa_addr));
 
   STRCPY(server->ifname,ifname);
 
@@ -102,7 +102,7 @@ static int udp_create_server_socket(server_type* server,
 
 static server_type* init_server(int verbose, const char* ifname, char **local_addresses, size_t las, int port) {
 
-  server_type* server=(server_type*)turn_malloc(sizeof(server_type));
+  server_type* server=(server_type*)malloc(sizeof(server_type));
 
   if(!server) return server;
 

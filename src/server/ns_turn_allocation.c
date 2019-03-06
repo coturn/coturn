@@ -431,7 +431,7 @@ turn_permission_info* allocation_add_permission(allocation *a, const ioa_addr* a
 						old_sz_mem, old_sz_mem + sizeof(turn_permission_slot*));
 				slots = parray->extra_slots;
 				parray->extra_sz = old_sz + 1;
-				slots[old_sz] = (turn_permission_slot *)turn_malloc(sizeof(turn_permission_slot));
+				slots[old_sz] = (turn_permission_slot *)malloc(sizeof(turn_permission_slot));
 				slot = slots[old_sz];
 			}
 		}
@@ -486,7 +486,7 @@ ch_info *ch_map_get(ch_map* map, u16bits chnum, int new_chn)
 		if(new_chn) {
 			size_t old_sz_mem = old_sz * sizeof(ch_info*);
 			a->extra_chns = (ch_info**)turn_realloc(a->extra_chns,old_sz_mem,old_sz_mem + sizeof(ch_info*));
-			a->extra_chns[old_sz] = (ch_info*)turn_malloc(sizeof(ch_info));
+			a->extra_chns[old_sz] = (ch_info*)malloc(sizeof(ch_info));
 			ns_bzero(a->extra_chns[old_sz],sizeof(ch_info));
 			a->extra_sz += 1;
 
@@ -574,7 +574,7 @@ tcp_connection *create_tcp_connection(u08bits server_id, allocation *a, stun_tid
 			}
 		}
 	}
-	tcp_connection *tc = (tcp_connection*)turn_malloc(sizeof(tcp_connection));
+	tcp_connection *tc = (tcp_connection*)malloc(sizeof(tcp_connection));
 	ns_bzero(tc,sizeof(tcp_connection));
 	addr_cpy(&(tc->peer_addr),peer_addr);
 	if(tid)

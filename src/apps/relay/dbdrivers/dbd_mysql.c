@@ -103,7 +103,7 @@ char* decryptPassword(char* in, const unsigned char* mykey){
 
 
 static Myconninfo *MyconninfoParse(char *userdb, char **errmsg) {
-	Myconninfo *co = (Myconninfo*)turn_malloc(sizeof(Myconninfo));
+	Myconninfo *co = (Myconninfo*)malloc(sizeof(Myconninfo));
 	ns_bzero(co,sizeof(Myconninfo));
 	if(userdb) {
 		char *s0=turn_strdup(userdb);
