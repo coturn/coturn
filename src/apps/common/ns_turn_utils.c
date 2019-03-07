@@ -787,18 +787,6 @@ void tm_print_func(void) {
   pthread_mutex_unlock(&tm);
 } 
 
-extern "C" void *turn_calloc_func(size_t number, size_t size, const char* function, int line);
-void *turn_calloc_func(size_t number, size_t size, const char* function, int line) {
-  
-  TM_START();
-
-  void *ptr = calloc(number,size);
-
-  add_tm_ptr(ptr,id);
-
-  return ptr;
-}
-
 extern "C" char *turn_strdup_func(const char* s, const char* function, int line);
 char *turn_strdup_func(const char* s, const char* function, int line) {
 
