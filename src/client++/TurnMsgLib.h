@@ -211,7 +211,7 @@ public:
 		_sz = sz;
 		_value=(u08bits*)malloc(_sz);
 		if(ptr)
-			ns_bcopy(ptr,_value,_sz);
+			bcopy(ptr,_value,_sz);
 	}
 
 	/**
@@ -241,7 +241,7 @@ public:
 		_sz = sz;
 		_value=(u08bits*)malloc(_sz);
 		if(value)
-			ns_bcopy(value,_value,_sz);
+			bcopy(value,_value,_sz);
 	}
 
 	/**

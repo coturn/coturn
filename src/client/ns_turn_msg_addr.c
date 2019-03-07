@@ -96,7 +96,7 @@ int stun_addr_encode(const ioa_addr* ca, u08bits *cfield, int *clen, int xor_ed,
       ((u16bits*)cfield)[1]=ca->s6.sin6_port;
       
       /* Address */
-      ns_bcopy(&ca->s6.sin6_addr, ((u08bits*)cfield)+4, 16);
+      bcopy(&ca->s6.sin6_addr, ((u08bits*)cfield)+4, 16);
     }
 
   } else {
@@ -149,7 +149,7 @@ int stun_addr_decode(ioa_addr* ca, const u08bits *cfield, int len, int xor_ed, u
     ca->s6.sin6_port = ((const u16bits*)cfield)[1];
 
     /* Address */
-    ns_bcopy(((const u08bits*)cfield)+4, &ca->s6.sin6_addr, 16);
+    bcopy(((const u08bits*)cfield)+4, &ca->s6.sin6_addr, 16);
 
     if (xor_ed) {
 

@@ -117,7 +117,7 @@ void get_default_realm_options(realm_options_t* ro)
 {
 	if(ro) {
 		lock_realms();
-		ns_bcopy(&(default_realm_params_ptr->options),ro,sizeof(realm_options_t));
+		bcopy(&(default_realm_params_ptr->options),ro,sizeof(realm_options_t));
 		unlock_realms();
 	}
 }
@@ -142,7 +142,7 @@ realm_params_t* get_realm(char* name)
 			return (realm_params_t*)value;
 		} else {
 			realm_params_t *ret = (realm_params_t*)malloc(sizeof(realm_params_t));
-			ns_bcopy(default_realm_params_ptr,ret,sizeof(realm_params_t));
+			bcopy(default_realm_params_ptr,ret,sizeof(realm_params_t));
 			STRCPY(ret->options.name,name);
 			value = (ur_string_map_value_type)ret;
 			ur_string_map_put(realms, key, value);
@@ -159,7 +159,7 @@ realm_params_t* get_realm(char* name)
 int get_realm_data(char* name, realm_params_t* rp)
 {
 	lock_realms();
-	ns_bcopy(get_realm(name),rp,sizeof(realm_params_t));
+	bcopy(get_realm(name),rp,sizeof(realm_params_t));
 	unlock_realms();
 	return 0;
 }
@@ -173,7 +173,7 @@ int get_realm_options_by_origin(char *origin, realm_options_t* ro)
 		TURN_MUTEX_UNLOCK(&o_to_realm_mutex);
 		realm_params_t rp;
 		get_realm_data(realm, &rp);
-		ns_bcopy(&(rp.options),ro,sizeof(realm_options_t));
+		bcopy(&(rp.options),ro,sizeof(realm_options_t));
 		free(realm);
 		return 1;
 	} else {
@@ -187,7 +187,7 @@ void get_realm_options_by_name(char *realm, realm_options_t* ro)
 {
 	realm_params_t rp;
 	get_realm_data(realm, &rp);
-	ns_bcopy(&(rp.options),ro,sizeof(realm_options_t));
+	bcopy(&(rp.options),ro,sizeof(realm_options_t));
 }
 
 int change_total_quota(char *realm, int value)
@@ -251,7 +251,7 @@ static void must_set_admin_origin(void *origin0)
 void init_secrets_list(secrets_list_t *sl)
 {
 	if(sl) {
-		ns_bzero(sl,sizeof(secrets_list_t));
+		bzero(sl,sizeof(secrets_list_t));
 	}
 }
 
@@ -424,7 +424,7 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, u08bits *u
 				if (dbd && dbd->get_oauth_key) {
 
 					oauth_key_data_raw rawKey;
-					ns_bzero(&rawKey,sizeof(rawKey));
+					bzero(&rawKey,sizeof(rawKey));
 
 					int gres = (*(dbd->get_oauth_key))(usname,&rawKey);
 					if(gres<0)
@@ -440,7 +440,7 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, u08bits *u
 					}
 
 					oauth_key_data okd;
-					ns_bzero(&okd,sizeof(okd));
+					bzero(&okd,sizeof(okd));
 
 					convert_oauth_key_data_raw(&rawKey, &okd);
 
@@ -448,7 +448,7 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, u08bits *u
 					size_t err_msg_size = sizeof(err_msg) - 1;
 
 					oauth_key okey;
-					ns_bzero(&okey,sizeof(okey));
+					bzero(&okey,sizeof(okey));
 
 					if (convert_oauth_key_data(&okd, &okey, err_msg, err_msg_size) < 0) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s\n", err_msg);
@@ -456,16 +456,16 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, u08bits *u
 					}
 
 					oauth_token dot;
-					ns_bzero((&dot),sizeof(dot));
+					bzero((&dot),sizeof(dot));
 
 					encoded_oauth_token etoken;
-					ns_bzero(&etoken,sizeof(etoken));
+					bzero(&etoken,sizeof(etoken));
 
 					if((size_t)len > sizeof(etoken.token)) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Encoded oAuth token is too large\n");
 						return -1;
 					}
-					ns_bcopy(value,etoken.token,(size_t)len);
+					bcopy(value,etoken.token,(size_t)len);
 					etoken.size = (size_t)len;
 
 					const char* server_name = (char*)turn_params.oauth_server_name;
@@ -515,10 +515,10 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, u08bits *u
 							}
 						}
 
-						ns_bcopy(dot.enc_block.mac_key,key,dot.enc_block.key_length);
+						bcopy(dot.enc_block.mac_key,key,dot.enc_block.key_length);
 
 						if(rawKey.realm[0]) {
-							ns_bcopy(rawKey.realm,realm,sizeof(rawKey.realm));
+							bcopy(rawKey.realm,realm,sizeof(rawKey.realm));
 						}
 
 						ret = 0;
@@ -622,7 +622,7 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, u08bits *u
 
 	if(ret==0) {
 		size_t sz = get_hmackey_size(SHATYPE_DEFAULT);
-		ns_bcopy(ukey,key,sz);
+		bcopy(ukey,key,sz);
 		return 0;
 	}
 
@@ -639,7 +639,7 @@ u08bits *start_user_check(turnserver_id id, turn_credential_type ct, int in_oaut
 	*postpone_reply = 1;
 
 	struct auth_message am;
-	ns_bzero(&am,sizeof(struct auth_message));
+	bzero(&am,sizeof(struct auth_message));
 	am.id = id;
 	am.ct = ct;
 	am.in_oauth = in_oauth;
@@ -1164,7 +1164,7 @@ const ip_range_list_t* ioa_get_blacklist(ioa_engine_handle e)
 ip_range_list_t* get_ip_list(const char *kind)
 {
 	ip_range_list_t *ret = (ip_range_list_t*) malloc(sizeof(ip_range_list_t));
-	ns_bzero(ret,sizeof(ip_range_list_t));
+	bzero(ret,sizeof(ip_range_list_t));
 
 	const turn_dbdriver_t * dbd = get_dbdriver();
 	if (dbd && dbd->get_ip_list) {

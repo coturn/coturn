@@ -365,7 +365,7 @@ static inline ioa_socket_handle get_relay_socket_ss(ts_ur_super_session *ss, int
 
 void turn_session_info_init(struct turn_session_info* tsi) {
 	if(tsi) {
-		ns_bzero(tsi,sizeof(struct turn_session_info));
+		bzero(tsi,sizeof(struct turn_session_info));
 	}
 }
 
@@ -619,7 +619,7 @@ static int mobile_id_to_string(mobile_id_t mid, char *dst, size_t dst_sz)
 		return -1;
 	}
 
-	ns_bcopy(s, dst, output_length);
+	bcopy(s, dst, output_length);
 
 	free(s);
 
@@ -771,7 +771,7 @@ static ts_ur_super_session* create_new_ss(turn_turnserver* server) {
 	//printf("%s: 111.111: session size=%lu\n",__FUNCTION__,(unsigned long)sizeof(ts_ur_super_session));
 	//
 	ts_ur_super_session *ss = (ts_ur_super_session*)malloc(sizeof(ts_ur_super_session));
-	ns_bzero(ss,sizeof(ts_ur_super_session));
+	bzero(ss,sizeof(ts_ur_super_session));
 	ss->server = server;
 	get_default_realm_options(&(ss->realm_options));
 	put_session_into_map(ss);
@@ -1027,7 +1027,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 						*reason = (const u08bits *)"User name is too long";
 						break;
 					}
-					ns_bcopy(value,username,ulen);
+					bcopy(value,username,ulen);
 					username[ulen]=0;
 					if(!is_secure_string(username,1)) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: wrong username: %s\n", __FUNCTION__, (char*)username);
@@ -1450,16 +1450,16 @@ static int handle_turn_allocate(turn_turnserver *server,
 static void copy_auth_parameters(ts_ur_super_session *orig_ss, ts_ur_super_session *ss) {
 	if(orig_ss && ss) {
 		dec_quota(ss);
-		ns_bcopy(orig_ss->nonce,ss->nonce,sizeof(ss->nonce));
+		bcopy(orig_ss->nonce,ss->nonce,sizeof(ss->nonce));
 		ss->nonce_expiration_time = orig_ss->nonce_expiration_time;
-		ns_bcopy(&(orig_ss->realm_options),&(ss->realm_options),sizeof(ss->realm_options));
-		ns_bcopy(orig_ss->username,ss->username,sizeof(ss->username));
+		bcopy(&(orig_ss->realm_options),&(ss->realm_options),sizeof(ss->realm_options));
+		bcopy(orig_ss->username,ss->username,sizeof(ss->username));
 		ss->hmackey_set = orig_ss->hmackey_set;
-		ns_bcopy(orig_ss->hmackey,ss->hmackey,sizeof(ss->hmackey));
+		bcopy(orig_ss->hmackey,ss->hmackey,sizeof(ss->hmackey));
 		ss->oauth = orig_ss->oauth;
-		ns_bcopy(orig_ss->origin,ss->origin,sizeof(ss->origin));
+		bcopy(orig_ss->origin,ss->origin,sizeof(ss->origin));
 		ss->origin_set = orig_ss->origin_set;
-		ns_bcopy(orig_ss->pwd,ss->pwd,sizeof(ss->pwd));
+		bcopy(orig_ss->pwd,ss->pwd,sizeof(ss->pwd));
 		ss->max_session_time_auth = orig_ss->max_session_time_auth;
 		inc_quota(ss,ss->username);
 	}
@@ -1517,7 +1517,7 @@ static int handle_turn_refresh(turn_turnserver *server,
 					if(smid_len>0 && (((size_t)smid_len)<sizeof(smid))) {
 						const u08bits* smid_val = stun_attr_get_value(sar);
 						if(smid_val) {
-							ns_bcopy(smid_val, smid, (size_t)smid_len);
+							bcopy(smid_val, smid, (size_t)smid_len);
 							mid = string_to_mobile_id(smid);
 							if(is_allocation_valid(a) && (mid != ss->old_mobile_id)) {
 								*err_code = 400;
@@ -2033,7 +2033,7 @@ static void tcp_peer_connection_completed_callback(int success, void *arg)
 				u08bits *data = ioa_network_buffer_data(nbh_test);
 				const char* data_test="111.111.111.111.111";
 				len_test = strlen(data_test);
-				ns_bcopy(data_test,data,len_test);
+				bcopy(data_test,data,len_test);
 				ioa_network_buffer_set_size(nbh_test,len_test);
 				send_data_from_ioa_socket_nbh(tc->peer_s, NULL, nbh_test, TTL_IGNORE, TOS_IGNORE, NULL);
 			}
@@ -2170,7 +2170,7 @@ static void tcp_peer_accept_connection(ioa_socket_handle s, void *arg)
 		}
 
 		stun_tid tid;
-		ns_bzero(&tid,sizeof(stun_tid));
+		bzero(&tid,sizeof(stun_tid));
 		int err_code=0;
 		tc = create_tcp_connection(server->id, a, &tid, peer_addr, &err_code);
 		if(!tc) {
@@ -3229,11 +3229,11 @@ static void resume_processing_after_username_check(int success,  int oauth, int 
 			turn_turnserver *server = (turn_turnserver *)ss->server;
 
 			if(success) {
-				ns_bcopy(hmackey,ss->hmackey,sizeof(hmackey_t));
+				bcopy(hmackey,ss->hmackey,sizeof(hmackey_t));
 				ss->hmackey_set = 1;
 				ss->oauth = oauth;
 				ss->max_session_time_auth = (turn_time_t)max_session_time;
-				ns_bcopy(pwd,ss->pwd,sizeof(password_t));
+				bcopy(pwd,ss->pwd,sizeof(password_t));
 				if(realm && realm[0] && strcmp((char*)realm,ss->realm_options.name)) {
 					dec_quota(ss);
 					get_realm_options_by_name((char*)realm, &(ss->realm_options));
@@ -3343,7 +3343,7 @@ static int check_stun_auth(turn_turnserver *server,
 		}
 
 		alen = min((size_t)stun_attr_get_len(sar),sizeof(realm)-1);
-		ns_bcopy(stun_attr_get_value(sar),realm,alen);
+		bcopy(stun_attr_get_value(sar),realm,alen);
 		realm[alen]=0;
 
 		if(!is_secure_string(realm,0)) {
@@ -3368,7 +3368,7 @@ static int check_stun_auth(turn_turnserver *server,
 				}
 				return -1;
 			} else {
-				ns_bcopy(ss->realm_options.name,realm,sizeof(ss->realm_options.name));
+				bcopy(ss->realm_options.name,realm,sizeof(ss->realm_options.name));
 			}
 		}
 	}
@@ -3385,7 +3385,7 @@ static int check_stun_auth(turn_turnserver *server,
 	}
 
 	alen = min((size_t)stun_attr_get_len(sar),sizeof(usname)-1);
-	ns_bcopy(stun_attr_get_value(sar),usname,alen);
+	bcopy(stun_attr_get_value(sar),usname,alen);
 	usname[alen]=0;
 
 	if(!is_secure_string(usname,1)) {
@@ -3425,7 +3425,7 @@ static int check_stun_auth(turn_turnserver *server,
 		}
 
 		alen = min((size_t)stun_attr_get_len(sar),sizeof(nonce)-1);
-		ns_bcopy(stun_attr_get_value(sar),nonce,alen);
+		bcopy(stun_attr_get_value(sar),nonce,alen);
 		nonce[alen]=0;
 
 		/* Stale Nonce check: */
@@ -3612,7 +3612,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 						if(sarlen>0) {
 							++norigins;
 							char *o = (char*)malloc(sarlen+1);
-							ns_bcopy(stun_attr_get_value(sar),o,sarlen);
+							bcopy(stun_attr_get_value(sar),o,sarlen);
 							o[sarlen]=0;
 							char *corigin = (char*)malloc(STUN_MAX_ORIGIN_SIZE+1);
 							corigin[0]=0;
@@ -3668,7 +3668,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 						int sarlen = stun_attr_get_len(sar);
 						if(sarlen>0) {
 							char *o = (char*)malloc(sarlen+1);
-							ns_bcopy(stun_attr_get_value(sar),o,sarlen);
+							bcopy(stun_attr_get_value(sar),o,sarlen);
 							o[sarlen]=0;
 							char *corigin = (char*)malloc(STUN_MAX_ORIGIN_SIZE+1);
 							corigin[0]=0;
@@ -3985,10 +3985,10 @@ static int handle_old_stun_command(turn_turnserver *server, ts_ur_super_session 
 					size_t oldsz = strlen(get_version(server));
 					size_t newsz = (((oldsz)>>2) + 1)<<2;
 					u08bits software[120];
-					ns_bzero(software,sizeof(software));
+					bzero(software,sizeof(software));
 					if(newsz>sizeof(software))
 						newsz = sizeof(software);
-					ns_bcopy(get_version(server),software,oldsz);
+					bcopy(get_version(server),software,oldsz);
 					size_t len = ioa_network_buffer_get_size(nbh);
 					stun_attr_add_str(ioa_network_buffer_data(nbh), &len, OLD_STUN_ATTRIBUTE_SERVER, software, newsz);
 					ioa_network_buffer_set_size(nbh, len);
@@ -4039,10 +4039,10 @@ static int handle_old_stun_command(turn_turnserver *server, ts_ur_super_session 
 			size_t oldsz = strlen(get_version(server));
 			size_t newsz = (((oldsz)>>2) + 1)<<2;
 			u08bits software[120];
-			ns_bzero(software,sizeof(software));
+			bzero(software,sizeof(software));
 			if(newsz>sizeof(software))
 				newsz = sizeof(software);
-			ns_bcopy(get_version(server),software,oldsz);
+			bcopy(get_version(server),software,oldsz);
 			size_t len = ioa_network_buffer_get_size(nbh);
 			stun_attr_add_str(ioa_network_buffer_data(nbh), &len, OLD_STUN_ATTRIBUTE_SERVER, software, newsz);
 			ioa_network_buffer_set_size(nbh, len);
@@ -4326,7 +4326,7 @@ static int create_relay_connection(turn_turnserver* server,
 
 				IOA_CLOSE_SOCKET(newelem->s);
 
-				ns_bzero(newelem, sizeof(relay_endpoint_session));
+				bzero(newelem, sizeof(relay_endpoint_session));
 				newelem->s = s;
 			}
 
@@ -4340,7 +4340,7 @@ static int create_relay_connection(turn_turnserver* server,
 
 			IOA_CLOSE_SOCKET(newelem->s);
 
-			ns_bzero(newelem, sizeof(relay_endpoint_session));
+			bzero(newelem, sizeof(relay_endpoint_session));
 			newelem->s = NULL;
 
 			int res = create_relay_ioa_sockets(server->e,
@@ -4866,7 +4866,7 @@ void init_turn_server(turn_turnserver* server,
 	if (!server)
 		return;
 
-	ns_bzero(server,sizeof(turn_turnserver));
+	bzero(server,sizeof(turn_turnserver));
 
 	server->e = e;
 	server->id = id;

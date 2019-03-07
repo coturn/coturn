@@ -62,14 +62,14 @@ static int setup_ikm_key(const char *kid,
                         const char *as_rs_alg, 
                         oauth_key *key) { 
 
-        ns_bzero(key,sizeof(*key));
+        bzero(key,sizeof(*key));
 
         oauth_key_data okd;
-        ns_bzero(&okd,sizeof(okd));
+        bzero(&okd,sizeof(okd));
 
         {
                 oauth_key_data_raw okdr;
-                ns_bzero(&okdr,sizeof(okdr));
+                bzero(&okdr,sizeof(okdr));
 
                 STRCPY(okdr.kid,kid);
                 STRCPY(okdr.ikm_key,ikm_key);
@@ -103,7 +103,7 @@ static int encode_token(const char* server_name,
 
 
         oauth_token ot;
-        ns_bzero(&ot,sizeof(ot));
+        bzero(&ot,sizeof(ot));
 
         const size_t mac_key_length=strlen(mac_key);
         ot.enc_block.key_length = (uint16_t)mac_key_length;
@@ -112,7 +112,7 @@ static int encode_token(const char* server_name,
         ot.enc_block.lifetime = token_lifetime;
 
         encoded_oauth_token etoken;
-        ns_bzero(&etoken,sizeof(etoken));
+        bzero(&etoken,sizeof(etoken));
 
         // TODO: avoid this hack
         if (!*gcm_nonce) gcm_nonce=NULL;
@@ -135,10 +135,10 @@ static int validate_decode_token(const char* server_name,
                         const char* base64encoded_etoken, oauth_token* dot) {
 
         
-        ns_bzero((dot),sizeof(*dot));
+        bzero((dot),sizeof(*dot));
 
         encoded_oauth_token etoken;
-        ns_bzero(&etoken,sizeof(etoken));
+        bzero(&etoken,sizeof(etoken));
 
         const size_t base64encoded_etoken_length=strlen(base64encoded_etoken);
         const unsigned char *tmp = base64_decode(base64encoded_etoken,base64encoded_etoken_length,&etoken.size);

@@ -72,10 +72,6 @@ extern "C" {
 #define	u32bits	uint32_t
 #define	u64bits	uint64_t
 
-#define ns_bcopy(src,dst,sz) bcopy((src),(dst),(sz))
-#define ns_bzero(ptr,sz) bzero((ptr),(sz))
-#define ns_bcmp(ptr1,ptr2,sz) bcmp((ptr1),(ptr2),(sz))
-
 #define nswap16(s) ntohs(s)
 #define nswap32(ul) ntohl(ul)
 #define nswap64(ull) ioa_ntoh64(ull)

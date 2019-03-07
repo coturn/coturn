@@ -116,7 +116,7 @@ static int refresh_channel(app_ur_session* elem, u16bits method, uint32_t lt);
 
 static app_ur_session* init_app_session(app_ur_session *ss) {
   if(ss) {
-    ns_bzero(ss,sizeof(app_ur_session));
+    bzero(ss,sizeof(app_ur_session));
     ss->pinfo.fd=-1;
   }
   return ss;
@@ -678,7 +678,7 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 
 		if(is_tcp_data) {
 		  if ((int)elem->in_buffer.len == clmessage_length) {
-		    ns_bcopy((elem->in_buffer.buf), &mi, sizeof(message_info));
+		    bcopy((elem->in_buffer.buf), &mi, sizeof(message_info));
 		    miset=1;
 		  }
 		} else if (stun_is_indication(&(elem->in_buffer))) {
@@ -727,7 +727,7 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 
 				const u08bits* data = stun_attr_get_value(sar);
 
-				ns_bcopy(data, &mi, sizeof(message_info));
+				bcopy(data, &mi, sizeof(message_info));
 				miset=1;
 			}
 
@@ -783,7 +783,7 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 					return rc;
 				}
 
-				ns_bcopy(elem->in_buffer.buf + 4, &mi, sizeof(message_info));
+				bcopy(elem->in_buffer.buf + 4, &mi, sizeof(message_info));
 				miset=1;
 				applen = elem->in_buffer.len -4;
 			}
@@ -1002,7 +1002,7 @@ static int start_client(const char *remote_address, int port,
     ss_rtcp = create_new_ss();
 
   app_ur_conn_info clnet_info_probe; /* for load balancing probe */
-  ns_bzero(&clnet_info_probe,sizeof(clnet_info_probe));
+  bzero(&clnet_info_probe,sizeof(clnet_info_probe));
   clnet_info_probe.fd = -1;
 
   app_ur_conn_info *clnet_info=&(ss->pinfo);
@@ -1096,7 +1096,7 @@ static int start_c2c(const char *remote_address, int port,
     ss2_rtcp = create_new_ss();
 
   app_ur_conn_info clnet_info_probe; /* for load balancing probe */
-  ns_bzero(&clnet_info_probe,sizeof(clnet_info_probe));
+  bzero(&clnet_info_probe,sizeof(clnet_info_probe));
   clnet_info_probe.fd = -1;
 
   app_ur_conn_info *clnet_info1=&(ss1->pinfo);
@@ -1641,7 +1641,7 @@ int add_integrity(app_ur_conn_info *clnet_info, stun_buffer *message)
 				stun_attr_add_str(message->buf, (size_t*)&(message->len), STUN_ATTRIBUTE_OAUTH_ACCESS_TOKEN,
 					(const u08bits*)etoken.token, (int)etoken.size);
 
-				ns_bcopy(otoken.enc_block.mac_key,clnet_info->key,otoken.enc_block.key_length);
+				bcopy(otoken.enc_block.mac_key,clnet_info->key,otoken.enc_block.key_length);
 				clnet_info->key_set = 1;
 			}
 

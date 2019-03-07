@@ -222,12 +222,12 @@ static int clnet_connect(uint16_t clnet_remote_port, const char *remote_address,
 	clnet_fd = -1;
 	connect_err = 0;
 
-	ns_bzero(&remote_addr, sizeof(ioa_addr));
+	bzero(&remote_addr, sizeof(ioa_addr));
 	if (make_ioa_addr((const u08bits*) remote_address, clnet_remote_port,
 			&remote_addr) < 0)
 		return -1;
 
-	ns_bzero(&local_addr, sizeof(ioa_addr));
+	bzero(&local_addr, sizeof(ioa_addr));
 
 	clnet_fd = socket(remote_addr.ss.sa_family,
 			use_sctp ? SCTP_CLIENT_STREAM_SOCKET_TYPE : (use_tcp ? CLIENT_STREAM_SOCKET_TYPE : CLIENT_DGRAM_SOCKET_TYPE),
@@ -317,7 +317,7 @@ int read_mobility_ticket(app_ur_conn_info *clnet_info, stun_buffer *message)
 			if(smid_len>0 && (((size_t)smid_len)<sizeof(clnet_info->s_mobile_id))) {
 				const u08bits* smid_val = stun_attr_get_value(s_mobile_id_sar);
 				if(smid_val) {
-					ns_bcopy(smid_val, clnet_info->s_mobile_id, (size_t)smid_len);
+					bcopy(smid_val, clnet_info->s_mobile_id, (size_t)smid_len);
 					clnet_info->s_mobile_id[smid_len] = 0;
 					if (clnet_verbose)
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
@@ -610,7 +610,7 @@ static int clnet_allocate(int verbose,
 		  }
 
 		  app_ur_conn_info ci;
-		  ns_bcopy(clnet_info,&ci,sizeof(ci));
+		  bcopy(clnet_info,&ci,sizeof(ci));
 		  ci.fd = -1;
 		  ci.ssl = NULL;
 		  clnet_info->fd = -1;
@@ -1538,7 +1538,7 @@ void tcp_data_connect(app_ur_session *elem, u32bits cid)
 	int i = (int)(elem->pinfo.tcp_conn_number-1);
 	elem->pinfo.tcp_conn=(app_tcp_conn_info**)realloc(elem->pinfo.tcp_conn,elem->pinfo.tcp_conn_number*sizeof(app_tcp_conn_info*));
 	elem->pinfo.tcp_conn[i]=(app_tcp_conn_info*)malloc(sizeof(app_tcp_conn_info));
-	ns_bzero(elem->pinfo.tcp_conn[i],sizeof(app_tcp_conn_info));
+	bzero(elem->pinfo.tcp_conn[i],sizeof(app_tcp_conn_info));
 
 	elem->pinfo.tcp_conn[i]->tcp_data_fd = clnet_fd;
 	elem->pinfo.tcp_conn[i]->cid = cid;

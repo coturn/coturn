@@ -934,7 +934,7 @@ static int run_cli_input(struct cli_session* cs, const char *buf0, unsigned int 
 	if(cs && buf0 && cs->ts && cs->bev) {
 
 		char *buf = (char*)malloc(len+1);
-		ns_bcopy(buf0,buf,len);
+		bcopy(buf0,buf,len);
 		buf[len]=0;
 
 		char *cmd = buf;
@@ -1156,7 +1156,7 @@ static void cliserver_input_handler(struct evconnlistener *l, evutil_socket_t fd
 	addr_debug_print(adminserver.verbose, (ioa_addr*)sa,"CLI connected to");
 
 	struct cli_session *clisession = (struct cli_session*)malloc(sizeof(struct cli_session));
-	ns_bzero(clisession,sizeof(struct cli_session));
+	bzero(clisession,sizeof(struct cli_session));
 
 	clisession->rp = get_realm(NULL);
 
@@ -3012,7 +3012,7 @@ static void write_https_oauth_show_keys(ioa_socket_handle s, const char* kid)
 					} else {
 
 						oauth_key_data okd;
-						ns_bzero(&okd,sizeof(okd));
+						bzero(&okd,sizeof(okd));
 
 						convert_oauth_key_data_raw(&key, &okd);
 
@@ -3020,7 +3020,7 @@ static void write_https_oauth_show_keys(ioa_socket_handle s, const char* kid)
 						size_t err_msg_size = sizeof(err_msg) - 1;
 
 						oauth_key okey;
-						ns_bzero(&okey,sizeof(okey));
+						bzero(&okey,sizeof(okey));
 
 						if (convert_oauth_key_data(&okd, &okey, err_msg, err_msg_size) < 0) {
 							str_buffer_append(sb,err_msg);
@@ -3288,7 +3288,7 @@ static void handle_logon_request(ioa_socket_handle s, struct http_request* hr)
 		struct admin_session* as = (struct admin_session*)s->special_session;
 		if(!as) {
 			as = (struct admin_session*)malloc(sizeof(struct admin_session));
-			ns_bzero(as,sizeof(struct admin_session));
+			bzero(as,sizeof(struct admin_session));
 			s->special_session = as;
 			s->special_session_size = sizeof(struct admin_session);
 		}
@@ -3685,7 +3685,7 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 							msg = "You must enter the key value.";
 						} else {
 							oauth_key_data_raw key;
-							ns_bzero(&key,sizeof(key));
+							bzero(&key,sizeof(key));
 							STRCPY(key.kid,add_kid);
 
 							if(add_lt && add_lt[0]) {

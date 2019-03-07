@@ -631,8 +631,8 @@ int main(int argc, char **argv)
 	set_logfile("stdout");
 	set_system_parameters(0);
 
-	ns_bzero(local_addr_string, sizeof(local_addr_string));
-	ns_bzero(local2_addr_string, sizeof(local2_addr_string));
+	bzero(local_addr_string, sizeof(local_addr_string));
+	bzero(local2_addr_string, sizeof(local2_addr_string));
 	addr_set_any(&remote_addr);
 	addr_set_any(&other_addr);
 	addr_set_any(&reflexive_addr);

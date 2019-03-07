@@ -464,7 +464,7 @@ static void auth_server_receive_message(struct bufferevent *bev, void *ptr)
       if(get_user_key(am.in_oauth,&(am.out_oauth),&(am.max_session_time),am.username,am.realm,key,am.in_buffer.nbh)<0) {
     	  am.success = 0;
       } else {
-    	  ns_bcopy(key,am.key,sizeof(hmackey_t));
+    	  bcopy(key,am.key,sizeof(hmackey_t));
     	  am.success = 1;
       }
     }
@@ -567,7 +567,7 @@ static int send_socket_to_relay(turnserver_id id, u64bits cid, stun_tid *tid, io
 	int ret = -1;
 
 	struct message_to_relay sm;
-	ns_bzero(&sm,sizeof(struct message_to_relay));
+	bzero(&sm,sizeof(struct message_to_relay));
 	sm.t = rmt;
 
 	ioa_socket_handle s_to_delete = s;
@@ -698,7 +698,7 @@ int send_session_cancellation_to_relay(turnsession_id sid)
 	int ret = 0;
 
 	struct message_to_relay sm;
-	ns_bzero(&sm,sizeof(struct message_to_relay));
+	bzero(&sm,sizeof(struct message_to_relay));
 	sm.t = RMT_CANCEL_SESSION;
 
 	turnserver_id id = (turnserver_id)(sid / TURN_SESSION_ID_FACTOR);
@@ -914,7 +914,7 @@ static int send_message_from_listener_to_client(ioa_engine_handle e, ioa_network
 	addr_cpy(&(mm.m.tc.destination),destination);
 	mm.m.tc.nbh = ioa_network_buffer_allocate(e);
 	ioa_network_buffer_header_init(mm.m.tc.nbh);
-	ns_bcopy(ioa_network_buffer_data(nbh),ioa_network_buffer_data(mm.m.tc.nbh),ioa_network_buffer_get_size(nbh));
+	bcopy(ioa_network_buffer_data(nbh),ioa_network_buffer_data(mm.m.tc.nbh),ioa_network_buffer_get_size(nbh));
 	ioa_network_buffer_set_size(mm.m.tc.nbh,ioa_network_buffer_get_size(nbh));
 
 	struct evbuffer *output = bufferevent_get_output(turn_params.listener.out_buf);
@@ -1757,7 +1757,7 @@ static void* run_auth_server_thread(void *arg)
 
 	} else {
 
-		ns_bzero(as,sizeof(struct auth_server));
+		bzero(as,sizeof(struct auth_server));
 
 		as->id = id;
 
@@ -1815,7 +1815,7 @@ static void* run_admin_server_thread(void *arg)
 
 static void setup_admin_server(void)
 {
-	ns_bzero(&adminserver,sizeof(struct admin_server));
+	bzero(&adminserver,sizeof(struct admin_server));
 	adminserver.listen_fd = -1;
 	adminserver.verbose = turn_params.verbose;
 
@@ -1900,7 +1900,7 @@ void setup_server(void)
 
 void init_listener(void)
 {
-	ns_bzero(&turn_params.listener,sizeof(struct listener_server));
+	bzero(&turn_params.listener,sizeof(struct listener_server));
 }
 
 ///////////////////////////////

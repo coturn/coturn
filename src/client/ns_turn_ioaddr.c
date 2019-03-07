@@ -44,7 +44,7 @@ u32bits get_ioa_addr_len(const ioa_addr* addr) {
 
 void addr_set_any(ioa_addr *addr) {
 	if(addr)
-		ns_bzero(addr,sizeof(ioa_addr));
+		bzero(addr,sizeof(ioa_addr));
 }
 
 int addr_any(const ioa_addr* addr) {
@@ -107,7 +107,7 @@ u32bits addr_hash(const ioa_addr *addr)
 		ret = hash_int32(addr->s4.sin_addr.s_addr + addr->s4.sin_port);
 	} else {
 		u64bits a[2];
-		ns_bcopy(&(addr->s6.sin6_addr), &a, sizeof(a));
+		bcopy(&(addr->s6.sin6_addr), &a, sizeof(a));
 		ret = (u32bits)((hash_int64(a[0])<<3) + (hash_int64(a[1] + addr->s6.sin6_port)));
 	}
 	return ret;
@@ -123,7 +123,7 @@ u32bits addr_hash_no_port(const ioa_addr *addr)
 		ret = hash_int32(addr->s4.sin_addr.s_addr);
 	} else {
 		u64bits a[2];
-		ns_bcopy(&(addr->s6.sin6_addr), &a, sizeof(a));
+		bcopy(&(addr->s6.sin6_addr), &a, sizeof(a));
 		ret = (u32bits)((hash_int64(a[0])<<3) + (hash_int64(a[1])));
 	}
 	return ret;
@@ -131,17 +131,17 @@ u32bits addr_hash_no_port(const ioa_addr *addr)
 
 void addr_cpy(ioa_addr* dst, const ioa_addr* src) {
 	if(dst && src)
-		ns_bcopy(src,dst,sizeof(ioa_addr));
+		bcopy(src,dst,sizeof(ioa_addr));
 }
 
 void addr_cpy4(ioa_addr* dst, const struct sockaddr_in* src) {
 	if(src && dst)
-		ns_bcopy(src,dst,sizeof(struct sockaddr_in));
+		bcopy(src,dst,sizeof(struct sockaddr_in));
 }
 
 void addr_cpy6(ioa_addr* dst, const struct sockaddr_in6* src) {
 	if(src && dst)
-		ns_bcopy(src,dst,sizeof(struct sockaddr_in6));
+		bcopy(src,dst,sizeof(struct sockaddr_in6));
 }
 
 int addr_eq(const ioa_addr* a1, const ioa_addr *a2) {
@@ -203,7 +203,7 @@ int make_ioa_addr(const u08bits* saddr0, int port, ioa_addr *addr) {
 	  }
   }
 
-  ns_bzero(addr, sizeof(ioa_addr));
+  bzero(addr, sizeof(ioa_addr));
   if((len == 0)||
      (inet_pton(AF_INET, saddr, &addr->s4.sin_addr) == 1)) {
     addr->s4.sin_family = AF_INET;
@@ -247,7 +247,7 @@ int make_ioa_addr(const u08bits* saddr0, int port, ioa_addr *addr) {
 
     	if(addr_result->ai_family == family) {
     		if (addr_result->ai_family == AF_INET) {
-    			ns_bcopy(addr_result->ai_addr, addr, addr_result->ai_addrlen);
+    			bcopy(addr_result->ai_addr, addr, addr_result->ai_addrlen);
     			addr->s4.sin_port = nswap16(port);
 #if defined(TURN_HAS_SIN_LEN) /* tested when configured */
     			addr->s4.sin_len = sizeof(struct sockaddr_in);
@@ -255,7 +255,7 @@ int make_ioa_addr(const u08bits* saddr0, int port, ioa_addr *addr) {
     			found = 1;
     			break;
     		} else if (addr_result->ai_family == AF_INET6) {
-    			ns_bcopy(addr_result->ai_addr, addr, addr_result->ai_addrlen);
+    			bcopy(addr_result->ai_addr, addr, addr_result->ai_addrlen);
     			addr->s6.sin6_port = nswap16(port);
 #if defined(SIN6_LEN) /* this define is required by IPv6 if used */
     			addr->s6.sin6_len = sizeof(struct sockaddr_in6);

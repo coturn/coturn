@@ -179,7 +179,7 @@ int main(int argc, char **argv)
 
 	set_system_parameters(0);
 
-	ns_bzero(local_addr, sizeof(local_addr));
+	bzero(local_addr, sizeof(local_addr));
 
 	while ((c = getopt(argc, argv, "a:d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:E:F:o:bZvsyhcxXgtTSAPDNOUMRIGBJ")) != -1) {
 		switch (c){
@@ -414,7 +414,7 @@ int main(int argc, char **argv)
 
 				if(pwd) {
 					if(pwd_length>0) {
-						ns_bcopy(pwd,g_upwd,pwd_length);
+						bcopy(pwd,g_upwd,pwd_length);
 						g_upwd[pwd_length]=0;
 					}
 				}

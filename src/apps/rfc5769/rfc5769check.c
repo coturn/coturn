@@ -96,24 +96,24 @@ static int check_oauth(void) {
 					printf("\n");
 
 				oauth_token ot;
-				ns_bzero(&ot,sizeof(ot));
+				bzero(&ot,sizeof(ot));
 				ot.enc_block.key_length = (uint16_t)mac_key_length;
 				STRCPY(ot.enc_block.mac_key,mac_key);
 				ot.enc_block.timestamp = token_timestamp;
 				ot.enc_block.lifetime = token_lifetime;
 
 				oauth_token dot;
-				ns_bzero((&dot),sizeof(dot));
+				bzero((&dot),sizeof(dot));
 				oauth_key key;
-				ns_bzero(&key,sizeof(key));
+				bzero(&key,sizeof(key));
 
 				{
 					oauth_key_data okd;
-					ns_bzero(&okd,sizeof(okd));
+					bzero(&okd,sizeof(okd));
 
 					{
 					  oauth_key_data_raw okdr;
-					  ns_bzero(&okdr,sizeof(okdr));
+					  bzero(&okdr,sizeof(okdr));
 
 						STRCPY(okdr.kid,kid);
 						STRCPY(okdr.ikm_key,base64encoded_ltp);
@@ -141,7 +141,7 @@ static int check_oauth(void) {
 
 				{
 					encoded_oauth_token etoken;
-					ns_bzero(&etoken,sizeof(etoken));
+					bzero(&etoken,sizeof(etoken));
 
 					if (encode_oauth_token((const u08bits *) server_name, &etoken,
 							&key, &ot, (const u08bits*)gcm_nonce) < 0) {

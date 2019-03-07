@@ -61,13 +61,13 @@ static void RyconninfoFree(Ryconninfo *co) {
 		if(co->host) free(co->host);
 		if(co->dbname) free(co->dbname);
 		if(co->password) free(co->password);
-		ns_bzero(co,sizeof(Ryconninfo));
+		bzero(co,sizeof(Ryconninfo));
 	}
 }
 
 static Ryconninfo *RyconninfoParse(const char *userdb, char **errmsg) {
 	Ryconninfo *co = (Ryconninfo*) malloc(sizeof(Ryconninfo));
-	ns_bzero(co,sizeof(Ryconninfo));
+	bzero(co,sizeof(Ryconninfo));
 	if (userdb) {
 		char *s0 = strdup(userdb);
 		char *s = s0;
@@ -459,7 +459,7 @@ static int redis_get_oauth_key(const u08bits *kid, oauth_key_data_raw *key) {
   redisContext * rc = get_redis_connection();
   if(rc) {
 	char s[TURN_LONG_STRING_SIZE];
-	ns_bzero(key,sizeof(oauth_key_data_raw));
+	bzero(key,sizeof(oauth_key_data_raw));
 	STRCPY(key->kid,kid);
 	snprintf(s,sizeof(s),"hgetall turn/oauth/kid/%s", (const char*)kid);
 	redisReply *reply = (redisReply *)redisCommand(rc, s);

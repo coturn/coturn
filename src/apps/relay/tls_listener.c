@@ -76,7 +76,7 @@ static void server_input_handler(struct evconnlistener *l, evutil_socket_t fd,
 	if (!server)
 		return;
 
-	ns_bcopy(sa,&(server->sm.m.sm.nd.src_addr),socklen);
+	bcopy(sa,&(server->sm.m.sm.nd.src_addr),socklen);
 
 	addr_debug_print(server->verbose, &(server->sm.m.sm.nd.src_addr),"tcp or tls connected to");
 
@@ -141,7 +141,7 @@ static void sctp_server_input_handler(struct evconnlistener *l, evutil_socket_t 
 	if (!server)
 		return;
 
-	ns_bcopy(sa,&(server->sm.m.sm.nd.src_addr),socklen);
+	bcopy(sa,&(server->sm.m.sm.nd.src_addr),socklen);
 
 	addr_debug_print(server->verbose, &(server->sm.m.sm.nd.src_addr),"sctp or tls/sctp connected to");
 

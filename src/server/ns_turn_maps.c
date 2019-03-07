@@ -239,7 +239,7 @@ int ur_map_unlock(const ur_map* map) {
 void lm_map_init(lm_map *map)
 {
 	if(map) {
-		ns_bzero(map,sizeof(lm_map));
+		bzero(map,sizeof(lm_map));
 	}
 }
 
@@ -590,7 +590,7 @@ static void addr_list_free(addr_list_header* slh) {
     if(slh->extra_list) {
       free(slh->extra_list);
     }
-    ns_bzero(slh,sizeof(addr_list_header));
+    bzero(slh,sizeof(addr_list_header));
   }
 }
     
@@ -802,7 +802,7 @@ static const addr_elem* addr_list_get_const(const addr_list_header* slh, const i
 
 void ur_addr_map_init(ur_addr_map* map) {
   if(map) {
-    ns_bzero(map,sizeof(ur_addr_map));
+    bzero(map,sizeof(ur_addr_map));
     map->magic=MAGIC_HASH;
   }
 }
@@ -813,7 +813,7 @@ void ur_addr_map_clean(ur_addr_map* map) {
     for(i=0;i<ADDR_MAP_SIZE;i++) {
       addr_list_free(&(map->lists[i]));
     }
-    ns_bzero(map,sizeof(ur_addr_map));
+    bzero(map,sizeof(ur_addr_map));
   }
 }
 
@@ -983,7 +983,7 @@ static string_list* string_list_add(string_list* sl, const ur_string_map_key_typ
   elem->list.next=sl;
   elem->key_size = strlen(key)+1;
   elem->key=(s08bits*)malloc(elem->key_size);
-  ns_bcopy(key,elem->key,elem->key_size);
+  bcopy(key,elem->key,elem->key_size);
   elem->value=value;
   return &(elem->list);
 }
@@ -1052,7 +1052,7 @@ static string_list_header* get_string_list_header(ur_string_map *map, const ur_s
 
 static int ur_string_map_init(ur_string_map* map) {
   if(map) {
-    ns_bzero(map,sizeof(ur_string_map));
+    bzero(map,sizeof(ur_string_map));
     map->magic=MAGIC_HASH;
 
     TURN_MUTEX_INIT_RECURSIVE(&(map->mutex));
