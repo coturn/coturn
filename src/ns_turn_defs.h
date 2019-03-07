@@ -105,31 +105,7 @@ static inline u64bits _ioa_ntoh64(u64bits v)
 #define ioa_ntoh64 _ioa_ntoh64
 #define ioa_hton64 _ioa_ntoh64
 
-#if defined(TURN_MEMORY_DEBUG)
-
-#if defined(TURN_LOG_FUNC)
-#undef TURN_LOG_FUNC
-#endif
-
-#define TURN_LOG_FUNC(level, ...) printf (__VA_ARGS__)
-
-  void tm_print_func(void);
-  void* debug_ptr_add_func(void *ptr, const char* function, int line);
-  void debug_ptr_del_func(void *ptr, const char* function, int line);
-
-#define debug_ptr_add(ptr) debug_ptr_add_func((ptr),__FUNCTION__,__LINE__)
-#define debug_ptr_del(ptr) debug_ptr_del_func((ptr),__FUNCTION__,__LINE__)
-#define tm_print() tm_print_func()
-
-#else
-
-#define debug_ptr_add(ptr)
-#define debug_ptr_del(ptr)
-#define tm_print() 
-
-#endif
-
-#define BUFFEREVENT_FREE(be) do { if(be) { debug_ptr_del(be); bufferevent_flush(be,EV_READ|EV_WRITE,BEV_FLUSH); bufferevent_disable(be,EV_READ|EV_WRITE); bufferevent_free(be); be = NULL;} } while(0)
+#define BUFFEREVENT_FREE(be) do { if(be) { bufferevent_flush(be,EV_READ|EV_WRITE,BEV_FLUSH); bufferevent_disable(be,EV_READ|EV_WRITE); bufferevent_free(be); be = NULL;} } while(0)
 
 #define turn_time() ((turn_time_t)time(NULL))
 

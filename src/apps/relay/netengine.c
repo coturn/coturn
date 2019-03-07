@@ -1599,9 +1599,6 @@ void run_listener_server(struct listener_server *ls)
 		run_events(ls->event_base, ls->ioa_eng);
 
 		rollover_logfile();
-
-		tm_print();
-
 	}
 }
 
