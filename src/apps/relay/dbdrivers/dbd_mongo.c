@@ -74,7 +74,7 @@ static void MongoFree(MONGO * info) {
 	if(info) {
 		if(info->uri) mongoc_uri_destroy(info->uri);
 		if(info->client) mongoc_client_destroy(info->client);
-		turn_free(info, sizeof(MONGO));
+		free(info);
 	}
 }
 
@@ -893,7 +893,7 @@ static int mongo_set_realm_option_one(u08bits *realm, unsigned long value, const
     BSON_APPEND_INT32(&child, _k, 1);
     bson_append_document_end(&doc, &child);
   }
-  turn_free(_k,klen);
+  free(_k);
   
   int ret = -1;
   
@@ -1124,7 +1124,7 @@ static void mongo_reread_realms(secrets_list_t * realms_list) {
 								ur_string_map_put(o_to_realm_new,
 										(const ur_string_map_key_type) _origin,
 										value);
-								turn_free(_origin,strlen(_origin)+1);
+								free(_origin);
 							}
 						}
 					}
@@ -1173,7 +1173,7 @@ static void mongo_reread_realms(secrets_list_t * realms_list) {
 						}
 					}
 				}
-				turn_free(_realm,strlen(_realm)+1);
+				free(_realm);
 			}
 		}
 		update_o_to_realm(o_to_realm_new);

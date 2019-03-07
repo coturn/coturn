@@ -281,7 +281,7 @@ static void pop_elem_from_buffer_list(stun_buffer_list *bufs)
 		stun_buffer_list_elem *ret = bufs->head;
 		bufs->head=ret->next;
 		--bufs->tsz;
-		turn_free(ret,sizeof(stun_buffer_list_elem));
+		free(ret);
 	}
 }
 
@@ -327,7 +327,7 @@ static void free_blist_elem(ioa_engine_handle e, stun_buffer_list_elem *buf_elem
 		if(e && (e->bufs.tsz<MAX_BUFFER_QUEUE_SIZE_PER_ENGINE)) {
 			add_elem_to_buffer_list(&(e->bufs), buf_elem);
 		} else {
-			turn_free(buf_elem,sizeof(stun_buffer_list_elem));
+			free(buf_elem);
 		}
 	}
 }
@@ -603,10 +603,10 @@ void delete_ioa_timer(ioa_timer_handle th)
 		stop_ioa_timer(th);
 		timer_event *te = (timer_event *)th;
 		if(te->txt) {
-			turn_free(te->txt,strlen(te->txt)+1);
+			free(te->txt);
 			te->txt = NULL;
 		}
-		turn_free(th,sizeof(timer_event));
+		free(th);
 	}
 }
 
@@ -1529,7 +1529,7 @@ void close_ioa_socket(ioa_socket_handle s)
 		}
 
 		if(s->special_session) {
-			turn_free(s->special_session,s->special_session_size);
+			free(s->special_session);
 			s->special_session = NULL;
 		}
 		s->special_session_size = 0;
@@ -1543,7 +1543,7 @@ void close_ioa_socket(ioa_socket_handle s)
 		s->sub_session = NULL;
 		s->magic = 0;
 
-		turn_free(s,sizeof(ioa_socket));
+		free(s);
 	}
 }
 
@@ -2552,7 +2552,7 @@ void close_ioa_socket_after_processing_if_necessary(ioa_socket_handle s)
 	if (s && ioa_socket_tobeclosed(s)) {
 
 		if(s->special_session) {
-			turn_free(s->special_session,s->special_session_size);
+			free(s->special_session);
 			s->special_session = NULL;
 		}
 		s->special_session_size = 0;
@@ -2738,7 +2738,7 @@ static void eventcb_bev(struct bufferevent *bev, short events, void *arg)
 			s->tobeclosed = 1;
 
 			if(s->special_session) {
-				turn_free(s->special_session,s->special_session_size);
+				free(s->special_session);
 				s->special_session = NULL;
 			}
 			s->special_session_size = 0;

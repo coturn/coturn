@@ -329,7 +329,7 @@ int make_ioa_addr_from_full_string(const u08bits* saddr, int default_port, ioa_a
 			port = default_port;
 		ret = make_ioa_addr((u08bits*)sa,port,addr);
 	}
-	turn_free(s,strlen(s)+1);
+	free(s);
 	return ret;
 }
 

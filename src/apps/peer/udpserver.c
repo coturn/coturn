@@ -123,7 +123,7 @@ static server_type* init_server(int verbose, const char* ifname, char **local_ad
 static int clean_server(server_type* server) {
   if(server) {
     if(server->event_base) event_base_free(server->event_base);
-    turn_free(server,sizeof(server_type));
+    free(server);
   }
   return 0;
 }

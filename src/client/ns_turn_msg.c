@@ -241,7 +241,7 @@ int stun_produce_integrity_key_str(u08bits *uname, u08bits *realm, u08bits *upwd
 		MD5_Final(key,&ctx);
 	}
 
-	turn_free(str,sz+1);
+	free(str);
 
 	return 0;
 }

@@ -631,14 +631,14 @@ static void print_sessions(struct cli_session* cs, const char* pn, int exact_mat
 		}
 
 		if(arg.user_counters)
-			turn_free(arg.user_counters,sizeof(size_t)*arg.users_number);
+			free(arg.user_counters);
 		if(arg.user_names) {
 			size_t i;
 			for(i=0;i<arg.users_number;++i) {
 				if(arg.user_names[i])
-					turn_free(arg.user_names[i],strlen(arg.user_names[i])+1);
+					free(arg.user_names[i]);
 			}
-			turn_free(arg.user_names,sizeof(char*) * arg.users_number);
+			free(arg.user_names);
 		}
 		if(arg.users)
 			ur_string_map_free(&arg.users);
@@ -888,7 +888,7 @@ static void close_cli_session(struct cli_session* cs)
 			cs->fd = -1;
 		}
 
-		turn_free(cs,sizeof(struct cli_session));
+		free(cs);
 	}
 }
 
@@ -1072,7 +1072,7 @@ static int run_cli_input(struct cli_session* cs, const char *buf0, unsigned int 
 			type_cli_cursor(cs);
 		}
 
-		turn_free(buf,len+1);
+		free(buf);
 	}
 
 	return ret;
@@ -1437,7 +1437,7 @@ void admin_server_receive_message(struct bufferevent *bev, void *ptr)
 		if (ur_map_get(adminserver.sessions, (ur_map_key_type)tsi->id, &t) && t) {
 			struct turn_session_info *old = (struct turn_session_info*)t;
 			turn_session_info_clean(old);
-			turn_free(old,sizeof(struct turn_session_info));
+			free(old);
 			ur_map_del(adminserver.sessions, (ur_map_key_type)tsi->id, NULL);
 		}
 
@@ -1452,7 +1452,7 @@ void admin_server_receive_message(struct bufferevent *bev, void *ptr)
 
 	if(tsi) {
 		turn_session_info_clean(tsi);
-		turn_free(tsi,sizeof(struct turn_session_info));
+		free(tsi);
 	}
 }
 

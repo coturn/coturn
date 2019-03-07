@@ -372,7 +372,7 @@ void turn_session_info_init(struct turn_session_info* tsi) {
 void turn_session_info_clean(struct turn_session_info* tsi) {
 	if(tsi) {
 		if(tsi->extra_peers_data) {
-			turn_free(tsi->extra_peers_data, sizeof(addr_data)*(tsi->extra_peers_size));
+			free(tsi->extra_peers_data);
 		}
 		turn_session_info_init(tsi);
 	}
@@ -615,13 +615,13 @@ static int mobile_id_to_string(mobile_id_t mid, char *dst, size_t dst_sz)
 		return -1;
 
 	if(!output_length || (output_length+1 > dst_sz)) {
-		turn_free(s, output_length);
+		free(s);
 		return -1;
 	}
 
 	ns_bcopy(s, dst, output_length);
 
-	turn_free(s, output_length);
+	free(s);
 
 	dst[output_length] = 0;
 
@@ -644,7 +644,7 @@ static mobile_id_t string_to_mobile_id(char* src)
 				mid = *((mobile_id_t*)out);
 			}
 
-			turn_free(out, output_length);
+			free(out);
 		}
 	}
 
@@ -786,7 +786,7 @@ static void delete_ur_map_ss(void *p) {
 		IOA_CLOSE_SOCKET(ss->client_socket);
 		clear_allocation(get_allocation_ss(ss));
 		IOA_EVENT_DEL(ss->to_be_allocated_timeout_ev);
-		turn_free(p,sizeof(ts_ur_super_session));
+		free(p);
 	}
 }
 
@@ -3624,8 +3624,8 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 							if(!strncmp(ss->origin,corigin,STUN_MAX_ORIGIN_SIZE)) {
 								origin_found = 1;
 							}
-							turn_free(corigin,sarlen+1);
-							turn_free(o,sarlen+1);
+							free(corigin);
+							free(o);
 						}
 					}
 					sar = stun_attr_get_next_str(ioa_network_buffer_data(in_buffer->nbh),
@@ -3678,8 +3678,8 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 									__FUNCTION__, o);
 							}
 							strncpy(ss->origin,corigin,STUN_MAX_ORIGIN_SIZE);
-							turn_free(corigin,sarlen+1);
-							turn_free(o,sarlen+1);
+							free(corigin);
+							free(o);
 							origin_found = get_realm_options_by_origin(ss->origin,&(ss->realm_options));
 						}
 					}

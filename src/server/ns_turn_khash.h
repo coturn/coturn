@@ -130,9 +130,9 @@ static const double __ac_HASH_UPPER = 0.77;
 	static inline void kh_destroy_##name(kh_##name##_t *h)				\
 	{																	\
 		if (h) {														\
-		  turn_free(h->keys,h->keys_size); turn_free(h->flags,h->flags_size); \
-		  turn_free(h->vals, h->vals_size);					\
-		  turn_free(h, sizeof(kh_##name##_t));			\
+		  free(h->keys); free(h->flags); \
+		  free(h->vals);					\
+		  free(h);			\
 		}											   \
 	}																	\
 	static inline void kh_clear_##name(kh_##name##_t *h)				\
@@ -217,7 +217,7 @@ static const double __ac_HASH_UPPER = 0.77;
 			    h->vals_size = new_n_buckets * sizeof(khval_t); \
 			  } \
 			}															\
-			turn_free(h->flags, h->flags_size);				\
+			free(h->flags);				\
 			h->flags = new_flags; \
                         h->flags_size = new_flags_size;						\
 			h->n_buckets = new_n_buckets;								\

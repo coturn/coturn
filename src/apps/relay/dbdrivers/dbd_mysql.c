@@ -61,15 +61,15 @@ typedef struct _Myconninfo Myconninfo;
 
 static void MyconninfoFree(Myconninfo *co) {
 	if(co) {
-		if(co->host) turn_free(co->host,strlen(co->host)+1);
-		if(co->dbname) turn_free(co->dbname, strlen(co->dbname)+1);
-		if(co->user) turn_free(co->user, strlen(co->user)+1);
-		if(co->password) turn_free(co->password, strlen(co->password)+1);
-		if(co->key) turn_free(co->key, strlen(co->key)+1);
-		if(co->ca) turn_free(co->ca, strlen(co->ca)+1);
-		if(co->cert) turn_free(co->cert, strlen(co->cert)+1);
-		if(co->capath) turn_free(co->capath, strlen(co->capath)+1);
-		if(co->cipher) turn_free(co->cipher, strlen(co->cipher)+1);
+		if(co->host) free(co->host);
+		if(co->dbname) free(co->dbname);
+		if(co->user) free(co->user);
+		if(co->password) free(co->password);
+		if(co->key) free(co->key);
+		if(co->ca) free(co->ca);
+		if(co->cert) free(co->cert);
+		if(co->capath) free(co->capath);
+		if(co->cipher) free(co->cipher);
 		ns_bzero(co,sizeof(Myconninfo));
 	}
 }
@@ -203,7 +203,7 @@ static Myconninfo *MyconninfoParse(char *userdb, char **errmsg) {
 			s = snext;
 		}
 
-		turn_free(s0, strlen(s0)+1);
+		free(s0);
 	}
 
 	if(co) {
@@ -240,13 +240,13 @@ static MYSQL *get_mydb_connection(void) {
 		if(!co) {
 			if(errmsg) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open MySQL DB connection <%s>, connection string format error: %s\n",pud->userdb,errmsg);
-				turn_free(errmsg,strlen(errmsg)+1);
+				free(errmsg);
 			} else {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open MySQL DB connection <%s>, connection string format error\n",pud->userdb);
 			}
 		} else if(errmsg) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open MySQL DB connection <%s>, connection string format error: %s\n",pud->userdb,errmsg);
-			turn_free(errmsg,strlen(errmsg)+1);
+			free(errmsg);
 			MyconninfoFree(co);
 		} else if(!(co->dbname)) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "MySQL Database name is not provided: <%s>\n",pud->userdb);

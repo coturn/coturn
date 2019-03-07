@@ -174,7 +174,7 @@ int get_realm_options_by_origin(char *origin, realm_options_t* ro)
 		realm_params_t rp;
 		get_realm_data(realm, &rp);
 		ns_bcopy(&(rp.options),ro,sizeof(realm_options_t));
-		turn_free(realm,strlen(realm)+1);
+		free(realm);
 		return 1;
 	} else {
 		TURN_MUTEX_UNLOCK(&o_to_realm_mutex);
@@ -262,10 +262,10 @@ void clean_secrets_list(secrets_list_t *sl)
 			size_t i = 0;
 			for(i = 0;i<sl->sz;++i) {
 				if(sl->secrets[i]) {
-					turn_free(sl->secrets[i], strlen(sl->secrets[i])+1);
+					free(sl->secrets[i]);
 				}
 			}
-			turn_free(sl->secrets,(sl->sz)*sizeof(char*));
+			free(sl->secrets);
 			sl->secrets = NULL;
 			sl->sz = 0;
 		}
@@ -583,7 +583,7 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, u08bits *u
 
 						if(pwd) {
 							if(pwd_length<1) {
-								turn_free(pwd,strlen(pwd)+1);
+								free(pwd);
 							} else {
 								if(stun_produce_integrity_key_str((u08bits*)usname, realm, (u08bits*)pwd, key, SHATYPE_DEFAULT)>=0) {
 
@@ -597,7 +597,7 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, u08bits *u
 										ret = 0;
 									}
 								}
-								turn_free(pwd,pwd_length);
+								free(pwd);
 
 								if(ret==0)
 									break;
@@ -683,7 +683,7 @@ int check_new_allocation_quota(u08bits *user, int oauth, u08bits *realm)
 		} else {
 			++(rp->status.total_current_allocs);
 		}
-		turn_free(username,strlen((char*)username)+1);
+		free(username);
 		ur_string_map_unlock(rp->status.alloc_counters);
 	}
 	return ret;
@@ -706,7 +706,7 @@ void release_allocation_quota(u08bits *user, int oauth, u08bits *realm)
 		if (rp->status.total_current_allocs)
 			--(rp->status.total_current_allocs);
 		ur_string_map_unlock(rp->status.alloc_counters);
-		turn_free(username, strlen((char*)username)+1);
+		free(username);
 	}
 }
 
@@ -726,7 +726,7 @@ int add_static_user_account(char *user)
 			usname[ulen]=0;
 			if(SASLprep((u08bits*)usname)<0) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong user name: %s\n",user);
-				turn_free(usname,sizeof(char)*(ulen+1));
+				free(usname);
 				return -1;
 			}
 			s = skip_blanks(s+1);
@@ -738,8 +738,8 @@ int add_static_user_account(char *user)
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key format: %s\n",s);
 				} if(convert_string_key_to_binary(keysource, *key, sz)<0) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key: %s\n",s);
-					turn_free(usname,strlen(usname)+1);
-					turn_free(key,sizeof(hmackey_t));
+					free(usname);
+					free(key);
 					return -1;
 				}
 			} else {
@@ -752,7 +752,7 @@ int add_static_user_account(char *user)
 				ur_string_map_unlock(turn_params.default_users_db.ram_db.static_accounts);
 			}
 			turn_params.default_users_db.ram_db.users_number++;
-			turn_free(usname,strlen(usname)+1);
+			free(usname);
 			return 0;
 		}
 	}
@@ -1178,8 +1178,8 @@ void ip_list_free(ip_range_list_t *l)
 {
 	if(l) {
 		if(l->rs)
-		  turn_free(l->rs,l->ranges_number * sizeof(ip_range_t));
-		turn_free(l,sizeof(ip_range_list_t));
+		  free(l->rs);
+		free(l);
 	}
 }
 
@@ -1221,14 +1221,14 @@ int add_ip_list_range(const char * range0, const char * realm, ip_range_list_t *
 
 	if (make_ioa_addr((const u08bits*) range, 0, &min) < 0) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong address format: %s\n", range);
-		turn_free(range,0);
+		free(range);
 		return -1;
 	}
 
 	if (separator) {
 		if (make_ioa_addr((const u08bits*) separator + 1, 0, &max) < 0) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong address format: %s\n", separator + 1);
-			turn_free(range,0);
+			free(range);
 			return -1;
 		}
 	} else {
@@ -1246,7 +1246,7 @@ int add_ip_list_range(const char * range0, const char * realm, ip_range_list_t *
 		STRCPY(list->rs[list->ranges_number - 1].realm,realm);
 	else
 		list->rs[list->ranges_number - 1].realm[0]=0;
-	turn_free(range,0);
+	free(range);
 	ioa_addr_range_set(&(list->rs[list->ranges_number - 1].enc), &min, &max);
 
 	return 0;
@@ -1266,14 +1266,14 @@ int check_ip_list_range(const char * range0)
 
 	if (make_ioa_addr((const u08bits*) range, 0, &min) < 0) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong address range format: %s\n", range);
-		turn_free(range,0);
+		free(range);
 		return -1;
 	}
 
 	if (separator) {
 		if (make_ioa_addr((const u08bits*) separator + 1, 0, &max) < 0) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong address range format: %s\n", separator + 1);
-			turn_free(range,0);
+			free(range);
 			return -1;
 		}
 	} else {
@@ -1284,7 +1284,7 @@ int check_ip_list_range(const char * range0)
 	if (separator)
 		*separator = '-';
 
-	turn_free(range,0);
+	free(range);
 
 	return 0;
 }

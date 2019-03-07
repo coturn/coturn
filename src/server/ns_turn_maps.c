@@ -61,7 +61,7 @@ static int ur_map_init(ur_map* map) {
 ur_map* ur_map_create() {
   ur_map *map=(ur_map*)malloc(sizeof(ur_map));
   if(ur_map_init(map)<0) {
-    turn_free(map,sizeof(ur_map));
+    free(map);
     return NULL;
   }
   return map;
@@ -173,7 +173,7 @@ void ur_map_free(ur_map** map) {
     (*map)->h=NULL;
     (*map)->magic=0;
     TURN_MUTEX_DESTROY(&((*map)->mutex));
-    turn_free(*map,sizeof(ur_map));
+    free(*map);
     *map=NULL;
   }
 }
@@ -444,10 +444,10 @@ void lm_map_clean(lm_map* map)
 					ur_map_key_type *keyp = a->extra_keys[i];
 					if(keyp) {
 						*keyp = 0;
-						turn_free(keyp,sizeof(ur_map_key_type));
+						free(keyp);
 					}
 				}
-				turn_free(a->extra_keys,esz * sizeof(ur_map_key_type));
+				free(a->extra_keys);
 				a->extra_keys = NULL;
 			}
 			if(a->extra_values) {
@@ -455,10 +455,10 @@ void lm_map_clean(lm_map* map)
 					ur_map_value_type *valuep = a->extra_values[i];
 					if(valuep) {
 						*valuep = 0;
-						turn_free(valuep,sizeof(ur_map_value_type));
+						free(valuep);
 					}
 				}
-				turn_free(a->extra_values,esz * sizeof(ur_map_value_type));
+				free(a->extra_values);
 				a->extra_values = NULL;
 			}
 		}
@@ -588,7 +588,7 @@ int lm_map_foreach_arg(lm_map* map, foreachcb_arg_type func, void* arg)
 static void addr_list_free(addr_list_header* slh) {
   if(slh) {
     if(slh->extra_list) {
-      turn_free(slh->extra_list,sizeof(addr_elem)*(slh->extra_sz));
+      free(slh->extra_list);
     }
     ns_bzero(slh,sizeof(addr_list_header));
   }
@@ -967,10 +967,10 @@ static void string_list_free(string_list_header* slh, ur_string_map_func del_val
     while(list) {
       string_elem *elem=(string_elem*)list;
       string_list* tail=elem->list.next;
-      if(elem->key) turn_free(elem->key,elem->key_size);
+      if(elem->key) free(elem->key);
       if(del_value_func && elem->value)
 	      del_value_func(elem->value);
-      turn_free(elem,sizeof(string_elem));
+      free(elem);
       list=tail;
     }
     slh->list=NULL;
@@ -994,10 +994,10 @@ static string_list* string_list_remove(string_list* sl, const ur_string_map_key_
   string_elem *elem=(string_elem*)sl;
   string_list* tail=elem->list.next;
   if(strcmp(elem->key,key)==0) {
-    turn_free(elem->key,elem->key_size);
+    free(elem->key);
     if(del_value_func)
 	    del_value_func(elem->value);
-    turn_free(elem,sizeof(string_elem));
+    free(elem);
     if(counter) *counter+=1;
     sl=string_list_remove(tail, key, del_value_func, counter);
   } else {
@@ -1069,7 +1069,7 @@ static int ur_string_map_valid(const ur_string_map *map) {
 ur_string_map* ur_string_map_create(ur_string_map_func del_value_func) {
   ur_string_map *map=(ur_string_map*)malloc(sizeof(ur_string_map));
   if(ur_string_map_init(map)<0) {
-    turn_free(map,sizeof(ur_string_map));
+    free(map);
     return NULL;
   }
   map->del_value_func = del_value_func;
@@ -1166,7 +1166,7 @@ void ur_string_map_free(ur_string_map** map) {
     }
     (*map)->magic=0;
     TURN_MUTEX_DESTROY(&((*map)->mutex));
-    turn_free(*map,sizeof(ur_string_map));
+    free(*map);
     *map=NULL;
   }
 }

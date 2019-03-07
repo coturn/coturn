@@ -148,14 +148,14 @@ static void uc_delete_session_elem_data(app_ur_session* cdi) {
 	    	socket_closesocket(cdi->pinfo.tcp_conn[i]->tcp_data_fd);
 	      cdi->pinfo.tcp_conn[i]->tcp_data_fd=-1;
 	    }
-	    turn_free(cdi->pinfo.tcp_conn[i], 111);
+	    free(cdi->pinfo.tcp_conn[i]);
 	    cdi->pinfo.tcp_conn[i]=NULL;
 	  }
 	}
       }
       cdi->pinfo.tcp_conn_number=0;
       if(cdi->pinfo.tcp_conn) {
-    	  turn_free(cdi->pinfo.tcp_conn, 111);
+    	  free(cdi->pinfo.tcp_conn);
     	  cdi->pinfo.tcp_conn=NULL;
       }
     }
@@ -1586,7 +1586,7 @@ void start_mclient(const char *remote_address, int port,
 				(unsigned long)min_jitter,
 				(unsigned long)max_jitter);
 
-	turn_free(elems,0);
+	free(elems);
 }
 
 ///////////////////////////////////////////

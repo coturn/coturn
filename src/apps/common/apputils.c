@@ -769,9 +769,9 @@ void set_execdir(void)
     else
       edir = dirname(_var);
     if(c_execdir)
-      turn_free(c_execdir,strlen(c_execdir)+1);
+      free(c_execdir);
     c_execdir = turn_strdup(edir);
-    turn_free(_var,strlen(_var)+1);
+    free(_var);
   }
 }
 
@@ -836,7 +836,7 @@ char* find_config_file(const char *config_file, int print_file_name)
 					full_path_to_config_file = fn;
 					break;
 				}
-				turn_free(fn,fnsz+1);
+				free(fn);
 				if(config_file_search_dirs[i][0]!='/' && 
 				   config_file_search_dirs[i][0]!='.' &&
 				   c_execdir && c_execdir[0]) {
@@ -867,7 +867,7 @@ char* find_config_file(const char *config_file, int print_file_name)
 					    break;
 					  }
 					}
-					turn_free(fn,fnsz+1);
+					free(fn);
 				}
 				++i;
 			}
@@ -1128,7 +1128,7 @@ void convert_oauth_key_data_raw(const oauth_key_data_raw *raw, oauth_key_data *o
 			if(ikm_key) {
 				ns_bcopy(ikm_key,oakd->ikm_key,ikm_key_size);
 				oakd->ikm_key_size = ikm_key_size;
-				turn_free(ikm_key,ikm_key_size);
+				free(ikm_key);
 			}
 		}
 	}

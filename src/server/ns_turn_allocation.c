@@ -64,7 +64,7 @@ void clear_allocation(allocation *a)
 					a->tcs.elems[i] = NULL;
 				}
 			}
-			turn_free(a->tcs.elems,sz*sizeof(tcp_connection*));
+			free(a->tcs.elems);
 			a->tcs.elems = NULL;
 		}
 		a->tcs.sz = 0;
@@ -222,10 +222,10 @@ static void free_turn_permission_hashtable(turn_permission_hashtable *map)
 						if(slot->info.allocated) {
 							turn_permission_clean(&(slot->info));
 						}
-						turn_free(slot,sizeof(turn_permission_slot));
+						free(slot);
 					}
 				}
-				turn_free(parray->extra_slots, parray->extra_sz * sizeof(turn_permission_slot*));
+				free(parray->extra_slots);
 				parray->extra_slots = NULL;
 			}
 			parray->extra_sz = 0;
@@ -521,11 +521,11 @@ void ch_map_clean(ch_map* map)
 						if(chi->allocated) {
 							ch_info_clean(chi);
 						}
-						turn_free(chi,sizeof(ch_info));
+						free(chi);
 						a->extra_chns[i] = NULL;
 					}
 				}
-				turn_free(a->extra_chns, sizeof(ch_info*)*sz);
+				free(a->extra_chns);
 				a->extra_chns = NULL;
 			}
 			a->extra_sz = 0;
@@ -638,7 +638,7 @@ void delete_tcp_connection(tcp_connection *tc)
 		}
 		IOA_CLOSE_SOCKET(tc->client_s);
 		IOA_CLOSE_SOCKET(tc->peer_s);
-		turn_free(tc,sizeof(tcp_connection));
+		free(tc);
 	}
 }
 
@@ -711,7 +711,7 @@ void clear_unsent_buffer(unsent_buffer *ub)
 					ub->bufs[sz] = NULL;
 				}
 			}
-			turn_free(ub->bufs,sizeof(ioa_network_buffer_handle) * ub->sz);
+			free(ub->bufs);
 			ub->bufs = NULL;
 		}
 		ub->sz = 0;

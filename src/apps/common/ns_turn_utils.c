@@ -122,7 +122,7 @@ int turn_mutex_init_recursive(turn_mutex* mutex) {
 						&attr)) < 0) {
 					perror("Cannot init mutex");
 					mutex->data = 0;
-					turn_free(mutex->mutex,sizeof(pthread_mutex_t));
+					free(mutex->mutex);
 					mutex->mutex = NULL;
 				}
 			}
@@ -136,7 +136,7 @@ int turn_mutex_destroy(turn_mutex* mutex) {
   if(mutex && mutex->mutex && mutex->data == MAGIC_CODE) {
     int ret = 0;
     ret = pthread_mutex_destroy((pthread_mutex_t*)(mutex->mutex));
-    turn_free(mutex->mutex, sizeof(pthread_mutex_t));
+    free(mutex->mutex);
     mutex->mutex=NULL;
     mutex->data=0;
     return ret;
@@ -319,11 +319,11 @@ static void set_log_file_name_func(char *base, char *f, size_t fsz)
 		if(base1[len]=='/')
 			break;
 		else if(base1[len]=='.') {
-			turn_free(tail,strlen(tail)+1);
+			free(tail);
 			tail=turn_strdup(base1+len);
 			base1[len]=0;
 			if(strlen(tail)<2) {
-				turn_free(tail,strlen(tail)+1);
+				free(tail);
 				tail = turn_strdup(".log");
 			}
 			break;
@@ -338,8 +338,8 @@ static void set_log_file_name_func(char *base, char *f, size_t fsz)
 	  snprintf(f, FILE_STR_LEN, "%s%s%s", base1,logdate,tail);
 	}
 
-	turn_free(base1,strlen(base1)+1);
-	turn_free(tail,strlen(tail)+1);
+	free(base1);
+	free(tail);
 }
 
 static void sighup_callback_handler(int signum)
@@ -787,18 +787,6 @@ void tm_print_func(void) {
   pthread_mutex_unlock(&tm);
 } 
 
-extern "C" void turn_free_func(void *ptr, size_t sz, const char* function, int line);
-void turn_free_func(void *ptr, size_t sz, const char* function, int line) {
-
-  UNUSED_ARG(sz);
-
-  TM_START();
-
-  del_tm_ptr(ptr,id);
-
-  free(ptr);
-}
-
 extern "C" void *turn_calloc_func(size_t number, size_t size, const char* function, int line);
 void *turn_calloc_func(size_t number, size_t size, const char* function, int line) {
   
@@ -846,7 +834,7 @@ int is_secure_string(const u08bits *string, int sanitizesql)
 		} else {
 			ret = 1;
 		}
-		turn_free(s,strlen((char*)s));
+		free(s);
 	}
 	return ret;
 }

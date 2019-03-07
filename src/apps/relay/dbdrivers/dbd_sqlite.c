@@ -144,7 +144,7 @@ static void fix_user_directory(char *dir0) {
 		strncpy(dir_fixed,home,szh);
 		strncpy(dir_fixed+szh,dir+1,(sz-szh-1));
 		strncpy(dir0,dir_fixed,sz);
-		turn_free(dir_fixed,sz);
+		free(dir_fixed);
 	}
 }
 
@@ -276,7 +276,7 @@ static int sqlite_get_user_key(u08bits *usname, u08bits *realm, hmackey_t key)
 				} else {
 					ret = 0;
 				}
-				turn_free(kval,strlen(kval)+1);
+				free(kval);
 			}
 		} else {
 			const char* errmsg = sqlite3_errmsg(sqliteconnection);
@@ -1040,7 +1040,7 @@ static void sqlite_reread_realms(secrets_list_t * realms_list)
 						ur_string_map_value_type value = rval;
 						ur_string_map_put(o_to_realm_new, (const ur_string_map_key_type) oval, value);
 
-						turn_free(oval,strlen(oval)+1);
+						free(oval);
 
 					} else if (res == SQLITE_DONE) {
 						break;
@@ -1116,7 +1116,7 @@ static void sqlite_reread_realms(secrets_list_t * realms_list)
 							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown realm option: %s\n", oval);
 						}
 
-						turn_free(rval,strlen(rval)+1);
+						free(rval);
 
 					} else if (res == SQLITE_DONE) {
 						break;

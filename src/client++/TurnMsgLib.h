@@ -219,7 +219,7 @@ public:
 	 */
 	virtual ~StunAttr() {
 		if(_value)
-			turn_free(_value,_sz);
+			free(_value,_sz);
 	}
 
 	/**
@@ -237,7 +237,7 @@ public:
 		if(sz>0xFFFF)
 			throw WrongStunAttrFormatException();
 		if(_value)
-			turn_free(_value,_sz);
+			free(_value,_sz);
 		_sz = sz;
 		_value=(u08bits*)malloc(_sz);
 		if(value)
@@ -588,7 +588,7 @@ public:
 	 */
 	virtual ~StunMsg() {
 		if(_deallocate && _buffer) {
-			turn_free(_buffer, _allocated_sz);
+			free(_buffer, _allocated_sz);
 		}
 	}
 

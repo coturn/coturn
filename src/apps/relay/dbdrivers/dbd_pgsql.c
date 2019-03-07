@@ -58,14 +58,14 @@ static PGconn *get_pqdb_connection(void) {
 		if(!co) {
 			if(errmsg) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open PostgreSQL DB connection <%s>, connection string format error: %s\n",pud->userdb,errmsg);
-				turn_free(errmsg,strlen(errmsg)+1);
+				free(errmsg);
 			} else {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open PostgreSQL DB connection: <%s>, unknown connection string format error\n",pud->userdb);
 			}
 		} else {
 			PQconninfoFree(co);
 			if(errmsg)
-				turn_free(errmsg,strlen(errmsg)+1);
+				free(errmsg);
 			pqdbconnection = PQconnectdb(pud->userdb);
 			if(!pqdbconnection) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open PostgreSQL DB connection: <%s>, runtime error\n",pud->userdb);

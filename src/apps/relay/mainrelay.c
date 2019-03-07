@@ -1326,7 +1326,7 @@ static void set_option(int c, char *value)
 						ioa_addr_add_mapping(&apub,&apriv);
 					}
 				}
-				turn_free(nval,strlen(nval)+1);
+				free(nval);
 			} else {
 				if(turn_params.external_ip) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "You cannot define external IP more than once in the configuration\n");
@@ -1334,7 +1334,7 @@ static void set_option(int c, char *value)
 					turn_params.external_ip = (ioa_addr*)allocate_super_memory_engine(turn_params.listener.ioa_eng, sizeof(ioa_addr));
 					if(make_ioa_addr((const u08bits*)value,0,turn_params.external_ip)<0) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"-X : Wrong address format: %s\n",value);
-						turn_free(turn_params.external_ip,sizeof(ioa_addr));
+						free(turn_params.external_ip);
 						turn_params.external_ip = NULL;
 					}
 				}
@@ -1682,7 +1682,7 @@ static void read_config_file(int argc, char **argv, int pass)
 				config_file);
 
 		if (full_path_to_config_file) {
-			turn_free(full_path_to_config_file, strlen(full_path_to_config_file)+1);
+			free(full_path_to_config_file);
 			full_path_to_config_file = NULL;
 		}
 	}
@@ -2537,7 +2537,7 @@ static void adjust_key_file_name(char *fn, const char* file_title, int critical)
 	  fn[sizeof(turn_params.cert_file)-1]=0;
 
 	  if(full_path_to_file)
-	    turn_free(full_path_to_file,strlen(full_path_to_file)+1);
+	    free(full_path_to_file);
 	  return;
 	}
 
@@ -2549,7 +2549,7 @@ static void adjust_key_file_name(char *fn, const char* file_title, int critical)
 			  TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,"WARNING: cannot start TLS and DTLS listeners because %s file is not set properly\n",file_title);
 		}
 		if(full_path_to_file)
-			turn_free(full_path_to_file,strlen(full_path_to_file)+1);
+			free(full_path_to_file);
 		return;
 	}
 }

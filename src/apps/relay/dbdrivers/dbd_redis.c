@@ -58,9 +58,9 @@ typedef struct _Ryconninfo Ryconninfo;
 
 static void RyconninfoFree(Ryconninfo *co) {
 	if(co) {
-		if(co->host) turn_free(co->host, strlen(co->host)+1);
-		if(co->dbname) turn_free(co->dbname, strlen(co->dbname)+1);
-		if(co->password) turn_free(co->password, strlen(co->password)+1);
+		if(co->host) free(co->host);
+		if(co->dbname) free(co->dbname);
+		if(co->password) free(co->password);
 		ns_bzero(co,sizeof(Ryconninfo));
 	}
 }
@@ -145,7 +145,7 @@ static Ryconninfo *RyconninfoParse(const char *userdb, char **errmsg) {
 			s = snext;
 		}
 
-		turn_free(s0, strlen(s0)+1);
+		free(s0);
 	}
 
 	if(co) {
@@ -170,13 +170,13 @@ redis_context_handle get_redis_async_connection(struct event_base *base, const c
 		if (!co) {
 			if (errmsg) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open Redis DB connection <%s>, connection string format error: %s\n", connection_string, errmsg);
-				turn_free(errmsg,strlen(errmsg)+1);
+				free(errmsg);
 			} else {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open Redis DB connection <%s>, connection string format error\n", connection_string);
 			}
 		} else if (errmsg) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open Redis DB connection <%s>, connection string format error: %s\n", connection_string, errmsg);
-			turn_free(errmsg,strlen(errmsg)+1);
+			free(errmsg);
 			RyconninfoFree(co);
 		} else {
 
@@ -284,13 +284,13 @@ static redisContext *get_redis_connection(void) {
 		if (!co) {
 			if (errmsg) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open Redis DB connection <%s>, connection string format error: %s\n", pud->userdb, errmsg);
-				turn_free(errmsg,strlen(errmsg)+1);
+				free(errmsg);
 			} else {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open Redis DB connection <%s>, connection string format error\n", pud->userdb);
 			}
 		} else if (errmsg) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open Redis DB connection <%s>, connection string format error: %s\n", pud->userdb, errmsg);
-			turn_free(errmsg,strlen(errmsg)+1);
+			free(errmsg);
 			RyconninfoFree(co);
 		} else {
 			char ip[256] = "\0";

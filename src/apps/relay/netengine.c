@@ -258,7 +258,7 @@ static void del_alt_server(const char *saddr, int default_port, turn_server_addr
 					addr_cpy(&(new_addrs[j]),&(list->addrs[j+1]));
 				}
 
-				turn_free(list->addrs,0);
+				free(list->addrs);
 				list->addrs = new_addrs;
 				list->size -= 1;
 
