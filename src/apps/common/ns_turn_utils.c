@@ -296,11 +296,11 @@ static void set_log_file_name_func(char *base, char *f, size_t fsz)
 	}
 
 	char logdate[125];
-	char *tail=turn_strdup(".log");
+	char *tail=strdup(".log");
 
 	get_date(logdate,sizeof(logdate));
 
-	char *base1=turn_strdup(base);
+	char *base1=strdup(base);
 
 	int len=(int)strlen(base1);
 
@@ -320,11 +320,11 @@ static void set_log_file_name_func(char *base, char *f, size_t fsz)
 			break;
 		else if(base1[len]=='.') {
 			free(tail);
-			tail=turn_strdup(base1+len);
+			tail=strdup(base1+len);
 			base1[len]=0;
 			if(strlen(tail)<2) {
 				free(tail);
-				tail = turn_strdup(".log");
+				tail = strdup(".log");
 			}
 			break;
 		}
@@ -787,18 +787,6 @@ void tm_print_func(void) {
   pthread_mutex_unlock(&tm);
 } 
 
-extern "C" char *turn_strdup_func(const char* s, const char* function, int line);
-char *turn_strdup_func(const char* s, const char* function, int line) {
-
-  TM_START();
-
-  char *ptr = strdup(s);
-
-  add_tm_ptr(ptr,id);
-
-  return ptr;
-}
-
 #endif
 #endif
 
@@ -808,7 +796,7 @@ int is_secure_string(const u08bits *string, int sanitizesql)
 {
 	int ret = 0;
 	if(string) {
-		unsigned char *s0 = (unsigned char*)turn_strdup((const char*)string);
+		unsigned char *s0 = (unsigned char*)strdup((const char*)string);
 		unsigned char *s = s0;
 		while(*s) {
 			*s = (unsigned char)tolower((int)*s);

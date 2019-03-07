@@ -373,7 +373,7 @@ void add_listener_addr(const char* addr) {
 		++turn_params.listener.addrs_number;
 		++turn_params.listener.services_number;
 		turn_params.listener.addrs = (char**)realloc(turn_params.listener.addrs, sizeof(char*)*turn_params.listener.addrs_number);
-		turn_params.listener.addrs[turn_params.listener.addrs_number-1]=turn_strdup(sbaddr);
+		turn_params.listener.addrs[turn_params.listener.addrs_number-1]=strdup(sbaddr);
 		turn_params.listener.encaddrs = (ioa_addr**)realloc(turn_params.listener.encaddrs, sizeof(ioa_addr*)*turn_params.listener.addrs_number);
 		turn_params.listener.encaddrs[turn_params.listener.addrs_number-1]=(ioa_addr*)malloc(sizeof(ioa_addr));
 		addr_cpy(turn_params.listener.encaddrs[turn_params.listener.addrs_number-1],&baddr);
@@ -400,7 +400,7 @@ int add_relay_addr(const char* addr) {
 
 		++turn_params.relays_number;
 		turn_params.relay_addrs = (char**)realloc(turn_params.relay_addrs, sizeof(char*)*turn_params.relays_number);
-		turn_params.relay_addrs[turn_params.relays_number-1]=turn_strdup(sbaddr);
+		turn_params.relay_addrs[turn_params.relays_number-1]=strdup(sbaddr);
 
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Relay address to use: %s\n",sbaddr);
 		return 1;

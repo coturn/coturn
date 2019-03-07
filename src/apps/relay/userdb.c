@@ -169,7 +169,7 @@ int get_realm_options_by_origin(char *origin, realm_options_t* ro)
 	ur_string_map_value_type value = 0;
 	TURN_MUTEX_LOCK(&o_to_realm_mutex);
 	if (ur_string_map_get(o_to_realm, (ur_string_map_key_type) origin, &value) && value) {
-		char *realm = turn_strdup((char*)value);
+		char *realm = strdup((char*)value);
 		TURN_MUTEX_UNLOCK(&o_to_realm_mutex);
 		realm_params_t rp;
 		get_realm_data(realm, &rp);
@@ -292,7 +292,7 @@ void add_to_secrets_list(secrets_list_t *sl, const char* elem)
 {
 	if(sl && elem) {
 	  sl->secrets = (char**)realloc(sl->secrets,(sizeof(char*)*(sl->sz+1)));
-	  sl->secrets[sl->sz] = turn_strdup(elem);
+	  sl->secrets[sl->sz] = strdup(elem);
 	  sl->sz += 1;
 	}
 }
@@ -384,7 +384,7 @@ static char *get_real_username(char *usname)
 					usname = col+1;
 				} else {
 					*col=0;
-					usname = turn_strdup(usname);
+					usname = strdup(usname);
 					*col=turn_params.rest_api_separator;
 					return usname;
 				}
@@ -392,7 +392,7 @@ static char *get_real_username(char *usname)
 		}
 	}
 
-	return turn_strdup(usname);
+	return strdup(usname);
 }
 
 /*
@@ -660,7 +660,7 @@ int check_new_allocation_quota(u08bits *user, int oauth, u08bits *realm)
 {
 	int ret = 0;
 	if (user || oauth) {
-		u08bits *username = oauth ? (u08bits*)turn_strdup("") : (u08bits*)get_real_username((char*)user);
+		u08bits *username = oauth ? (u08bits*)strdup("") : (u08bits*)get_real_username((char*)user);
 		realm_params_t *rp = get_realm((char*)realm);
 		ur_string_map_lock(rp->status.alloc_counters);
 		if (rp->options.perf_options.total_quota && (rp->status.total_current_allocs >= rp->options.perf_options.total_quota)) {
@@ -692,7 +692,7 @@ int check_new_allocation_quota(u08bits *user, int oauth, u08bits *realm)
 void release_allocation_quota(u08bits *user, int oauth, u08bits *realm)
 {
 	if (user) {
-		u08bits *username = oauth ? (u08bits*)turn_strdup("") : (u08bits*)get_real_username((char*)user);
+		u08bits *username = oauth ? (u08bits*)strdup("") : (u08bits*)get_real_username((char*)user);
 		realm_params_t *rp = get_realm((char*)realm);
 		ur_string_map_lock(rp->status.alloc_counters);
 		if(username[0]) {
@@ -1209,7 +1209,7 @@ void update_white_and_black_lists(void)
 
 int add_ip_list_range(const char * range0, const char * realm, ip_range_list_t * list)
 {
-	char *range = turn_strdup(range0);
+	char *range = strdup(range0);
 
 	char* separator = strchr(range, '-');
 
@@ -1254,7 +1254,7 @@ int add_ip_list_range(const char * range0, const char * realm, ip_range_list_t *
 
 int check_ip_list_range(const char * range0)
 {
-	char *range = turn_strdup(range0);
+	char *range = strdup(range0);
 
 	char* separator = strchr(range, '-');
 

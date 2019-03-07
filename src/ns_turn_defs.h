@@ -118,14 +118,12 @@ static inline u64bits _ioa_ntoh64(u64bits v)
 #define TURN_LOG_FUNC(level, ...) printf (__VA_ARGS__)
 
   void tm_print_func(void);
-  char *turn_strdup_func(const char* s, const char* function, int line);
   void* debug_ptr_add_func(void *ptr, const char* function, int line);
   void debug_ptr_del_func(void *ptr, const char* function, int line);
 
 #define debug_ptr_add(ptr) debug_ptr_add_func((ptr),__FUNCTION__,__LINE__)
 #define debug_ptr_del(ptr) debug_ptr_del_func((ptr),__FUNCTION__,__LINE__)
 #define tm_print() tm_print_func()
-#define turn_strdup(s) turn_strdup_func((s),__FUNCTION__,__LINE__)
 
 #define SSL_NEW(ctx) ((SSL*)debug_ptr_add(SSL_new(ctx)))
 
@@ -134,7 +132,6 @@ static inline u64bits _ioa_ntoh64(u64bits v)
 #define debug_ptr_add(ptr)
 #define debug_ptr_del(ptr)
 #define tm_print() 
-#define turn_strdup(s) strdup((s))
 
 #define SSL_NEW(ctx) SSL_new(ctx)
 

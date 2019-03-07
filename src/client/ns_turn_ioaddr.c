@@ -322,7 +322,7 @@ int make_ioa_addr_from_full_string(const u08bits* saddr, int default_port, ioa_a
 
 	int ret = -1;
 	int port = 0;
-	char* s = turn_strdup((const char*)saddr);
+	char* s = strdup((const char*)saddr);
 	char *sa = get_addr_string_and_port(s,&port);
 	if(sa) {
 		if(port<1)

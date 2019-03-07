@@ -562,7 +562,7 @@ ioa_timer_handle set_ioa_timer(ioa_engine_handle e, int secs, int ms, ioa_timer_
 		te->e = e;
 		te->ev = ev;
 		te->cb = cb;
-		te->txt = turn_strdup(txt);
+		te->txt = strdup(txt);
 
 		if(!ms) {
 			tv.tv_usec = 0;

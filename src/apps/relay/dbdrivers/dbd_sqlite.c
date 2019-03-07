@@ -269,7 +269,7 @@ static int sqlite_get_user_key(u08bits *usname, u08bits *realm, hmackey_t key)
 		if ((rc = sqlite3_prepare(sqliteconnection, statement, -1, &st, 0)) == SQLITE_OK) {
 			int res = sqlite3_step(st);
 			if (res == SQLITE_ROW) {
-				char *kval = turn_strdup((const char*) sqlite3_column_text(st, 0));
+				char *kval = strdup((const char*) sqlite3_column_text(st, 0));
 				size_t sz = get_hmackey_size(SHATYPE_DEFAULT);
 				if (convert_string_key_to_binary(kval, key, sz) < 0) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key: %s, user %s\n", kval, usname);
@@ -1033,8 +1033,8 @@ static void sqlite_reread_realms(secrets_list_t * realms_list)
 					int res = sqlite3_step(st);
 					if (res == SQLITE_ROW) {
 
-						char* oval = turn_strdup((const char*) sqlite3_column_text(st, 0));
-						char* rval = turn_strdup((const char*) sqlite3_column_text(st, 1));
+						char* oval = strdup((const char*) sqlite3_column_text(st, 0));
+						char* rval = strdup((const char*) sqlite3_column_text(st, 1));
 
 						get_realm(rval);
 						ur_string_map_value_type value = rval;
@@ -1101,7 +1101,7 @@ static void sqlite_reread_realms(secrets_list_t * realms_list)
 					int res = sqlite3_step(st);
 					if (res == SQLITE_ROW) {
 
-						char* rval = turn_strdup((const char*) sqlite3_column_text(st, 0));
+						char* rval = strdup((const char*) sqlite3_column_text(st, 0));
 						const char* oval = (const char*) sqlite3_column_text(st, 1);
 						const char* vval = (const char*) sqlite3_column_text(st, 2);
 

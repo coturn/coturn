@@ -760,7 +760,7 @@ void set_execdir(void)
   /* On some systems, this may give us the execution path */
   char *_var = getenv("_");
   if(_var && *_var) {
-    _var = turn_strdup(_var);
+    _var = strdup(_var);
     char *edir=_var;
     if(edir[0]!='.') 
       edir = strstr(edir,"/");
@@ -770,7 +770,7 @@ void set_execdir(void)
       edir = dirname(_var);
     if(c_execdir)
       free(c_execdir);
-    c_execdir = turn_strdup(edir);
+    c_execdir = strdup(edir);
     free(_var);
   }
 }
@@ -815,7 +815,7 @@ char* find_config_file(const char *config_file, int print_file_name)
 			FILE *f = fopen(config_file, "r");
 			if (f) {
 				fclose(f);
-				full_path_to_config_file = turn_strdup(config_file);
+				full_path_to_config_file = strdup(config_file);
 			}
 		} else {
 			int i = 0;
