@@ -89,7 +89,7 @@ static SSL* tls_connect(ioa_socket_raw fd, ioa_addr *remote_addr, int *try_again
 
 	SSL *ssl;
 
-	ssl = SSL_NEW(root_tls_ctx[ctxtype]);
+	ssl = SSL_new(root_tls_ctx[ctxtype]);
 
 #if ALPN_SUPPORTED
 	SSL_set_alpn_protos(ssl, kALPNProtos, kALPNProtosLen);
@@ -161,7 +161,7 @@ static SSL* tls_connect(ioa_socket_raw fd, ioa_addr *remote_addr, int *try_again
 								(int)ERR_get_error(), ERR_error_string(ERR_get_error(), buf), (int)SSL_get_error(ssl, rc));
 				if(connect_cycle<MAX_TLS_CYCLES) {
 					if(try_again) {
-						SSL_FREE(ssl);
+						SSL_free(ssl);
 						*try_again = 1;
 						return NULL;
 					}
@@ -600,7 +600,7 @@ static int clnet_allocate(int verbose,
 			  int close_socket = (int)(random()%2);
 			  if(ssl && !close_socket) {
 				  SSL_shutdown(ssl);
-				  SSL_FREE(ssl);
+				  SSL_free(ssl);
 				  fd = -1;
 			  } else if(fd>=0) {
 				  close(fd);
@@ -624,7 +624,7 @@ static int clnet_allocate(int verbose,
 
 		  if(ssl) {
 			  SSL_shutdown(ssl);
-		  	  SSL_FREE(ssl);
+		  	  SSL_free(ssl);
 		  } else if(fd>=0) {
 		  	  close(fd);
 		  }

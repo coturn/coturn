@@ -1470,7 +1470,7 @@ static void close_socket_net_data(ioa_socket_handle s)
 					log_socket_event(s, "SSL shutdown received, socket to be closed",0);
 				}
 			}
-			SSL_FREE(s->ssl);
+			SSL_free(s->ssl);
 		}
 
 		if (s->fd >= 0) {
@@ -2240,25 +2240,25 @@ static int socket_input_worker(ioa_socket_handle s)
 #if TLSv1_2_SUPPORTED
 			case TURN_TLS_v1_2:
 				if(s->e->tls_ctx_v1_2) {
-					set_socket_ssl(s,SSL_NEW(s->e->tls_ctx_v1_2));
+					set_socket_ssl(s,SSL_new(s->e->tls_ctx_v1_2));
 				}
 				break;
 #endif
 #if TLSv1_1_SUPPORTED
 			case TURN_TLS_v1_1:
 				if(s->e->tls_ctx_v1_1) {
-					set_socket_ssl(s,SSL_NEW(s->e->tls_ctx_v1_1));
+					set_socket_ssl(s,SSL_new(s->e->tls_ctx_v1_1));
 				}
 				break;
 #endif
 			case TURN_TLS_v1_0:
 				if(s->e->tls_ctx_v1_0) {
-					set_socket_ssl(s,SSL_NEW(s->e->tls_ctx_v1_0));
+					set_socket_ssl(s,SSL_new(s->e->tls_ctx_v1_0));
 				}
 				break;
 			default:
 				if(s->e->tls_ctx_ssl23) {
-					set_socket_ssl(s,SSL_NEW(s->e->tls_ctx_ssl23));
+					set_socket_ssl(s,SSL_new(s->e->tls_ctx_ssl23));
 				} else {
 					s->tobeclosed = 1;
 					return 0;
@@ -2308,25 +2308,25 @@ static int socket_input_worker(ioa_socket_handle s)
 #if TLSv1_2_SUPPORTED
 			case TURN_TLS_v1_2:
 				if(s->e->tls_ctx_v1_2) {
-					set_socket_ssl(s,SSL_NEW(s->e->tls_ctx_v1_2));
+					set_socket_ssl(s,SSL_new(s->e->tls_ctx_v1_2));
 				}
 				break;
 #endif
 #if TLSv1_1_SUPPORTED
 			case TURN_TLS_v1_1:
 				if(s->e->tls_ctx_v1_1) {
-					set_socket_ssl(s,SSL_NEW(s->e->tls_ctx_v1_1));
+					set_socket_ssl(s,SSL_new(s->e->tls_ctx_v1_1));
 				}
 				break;
 #endif
 			case TURN_TLS_v1_0:
 				if(s->e->tls_ctx_v1_0) {
-					set_socket_ssl(s,SSL_NEW(s->e->tls_ctx_v1_0));
+					set_socket_ssl(s,SSL_new(s->e->tls_ctx_v1_0));
 				}
 				break;
 			default:
 				if(s->e->tls_ctx_ssl23) {
-					set_socket_ssl(s,SSL_NEW(s->e->tls_ctx_ssl23));
+					set_socket_ssl(s,SSL_new(s->e->tls_ctx_ssl23));
 				} else {
 					s->tobeclosed = 1;
 					return 0;
@@ -3317,7 +3317,7 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 #if TLS_SUPPORTED
 						if(!(s->ssl)) {
 							//??? how we can get to this point ???
-							set_socket_ssl(s,SSL_NEW(e->tls_ctx_ssl23));
+							set_socket_ssl(s,SSL_new(e->tls_ctx_ssl23));
 							s->bev = bufferevent_openssl_socket_new(s->e->event_base,
 											s->fd,
 											s->ssl,

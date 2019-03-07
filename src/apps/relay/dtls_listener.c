@@ -288,13 +288,13 @@ static ioa_socket_handle dtls_server_input_handler(dtls_listener_relay_server_ty
 #if DTLSv1_2_SUPPORTED
 	if(get_dtls_version(ioa_network_buffer_data(nbh),
 							(int)ioa_network_buffer_get_size(nbh)) == 1) {
-		connecting_ssl = SSL_NEW(server->dtls_ctx_v1_2);
+		connecting_ssl = SSL_new(server->dtls_ctx_v1_2);
 	} else {
-		connecting_ssl = SSL_NEW(server->dtls_ctx);
+		connecting_ssl = SSL_new(server->dtls_ctx);
 	}
 #else
 	{
-		connecting_ssl = SSL_NEW(server->dtls_ctx);
+		connecting_ssl = SSL_new(server->dtls_ctx);
 	}
 #endif
 
@@ -315,7 +315,7 @@ static ioa_socket_handle dtls_server_input_handler(dtls_listener_relay_server_ty
 			SSL_set_shutdown(connecting_ssl, SSL_RECEIVED_SHUTDOWN);
 			SSL_shutdown(connecting_ssl);
 		}
-		SSL_FREE(connecting_ssl);
+		SSL_free(connecting_ssl);
 	}
 
 	return rc;
@@ -573,13 +573,13 @@ static int create_new_connected_udp_socket(
 #if DTLSv1_2_SUPPORTED
 		if(get_dtls_version(ioa_network_buffer_data(server->sm.m.sm.nd.nbh),
 							(int)ioa_network_buffer_get_size(server->sm.m.sm.nd.nbh)) == 1) {
-			connecting_ssl = SSL_NEW(server->dtls_ctx_v1_2);
+			connecting_ssl = SSL_new(server->dtls_ctx_v1_2);
 		} else {
-			connecting_ssl = SSL_NEW(server->dtls_ctx);
+			connecting_ssl = SSL_new(server->dtls_ctx);
 		}
 #else
 		{
-			connecting_ssl = SSL_NEW(server->dtls_ctx);
+			connecting_ssl = SSL_new(server->dtls_ctx);
 		}
 #endif
 
@@ -597,7 +597,7 @@ static int create_new_connected_udp_socket(
 				SSL_set_shutdown(connecting_ssl, SSL_RECEIVED_SHUTDOWN);
 				SSL_shutdown(connecting_ssl);
 			}
-			SSL_FREE(connecting_ssl);
+			SSL_free(connecting_ssl);
 			IOA_CLOSE_SOCKET(ret);
 			return -1;
 		}

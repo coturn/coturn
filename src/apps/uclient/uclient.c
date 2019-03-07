@@ -142,7 +142,7 @@ static void uc_delete_session_elem_data(app_ur_session* cdi) {
 	      SSL_shutdown(cdi->pinfo.tcp_conn[i]->tcp_data_ssl);
 	    }
 	    if(cdi->pinfo.tcp_conn[i]->tcp_data_ssl) {
-	      SSL_FREE(cdi->pinfo.tcp_conn[i]->tcp_data_ssl);
+	      SSL_free(cdi->pinfo.tcp_conn[i]->tcp_data_ssl);
 	    }
 	    if(cdi->pinfo.tcp_conn[i]->tcp_data_fd>=0) {
 	    	socket_closesocket(cdi->pinfo.tcp_conn[i]->tcp_data_fd);
@@ -166,7 +166,7 @@ static void uc_delete_session_elem_data(app_ur_session* cdi) {
 	    }
     }
     if(cdi->pinfo.ssl) {
-	    SSL_FREE(cdi->pinfo.ssl);
+	    SSL_free(cdi->pinfo.ssl);
     }
     if(cdi->pinfo.fd>=0) {
     	socket_closesocket(cdi->pinfo.fd);
@@ -1022,7 +1022,7 @@ static int start_client(const char *remote_address, int port,
 		   clnet_info_rtcp, &chnum_rtcp);
 		   
   if(clnet_info_probe.ssl) {
-  	SSL_FREE(clnet_info_probe.ssl);
+  	SSL_free(clnet_info_probe.ssl);
   	clnet_info_probe.fd = -1;
   } else if(clnet_info_probe.fd != -1) {
 	  socket_closesocket(clnet_info_probe.fd);
@@ -1126,7 +1126,7 @@ static int start_c2c(const char *remote_address, int port,
 		       clnet_info2_rtcp, &chnum2_rtcp);
 		       
   if(clnet_info_probe.ssl) {
-	SSL_FREE(clnet_info_probe.ssl);
+	SSL_free(clnet_info_probe.ssl);
 	clnet_info_probe.fd = -1;
   } else if(clnet_info_probe.fd != -1) {
 	  socket_closesocket(clnet_info_probe.fd);

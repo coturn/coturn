@@ -125,19 +125,14 @@ static inline u64bits _ioa_ntoh64(u64bits v)
 #define debug_ptr_del(ptr) debug_ptr_del_func((ptr),__FUNCTION__,__LINE__)
 #define tm_print() tm_print_func()
 
-#define SSL_NEW(ctx) ((SSL*)debug_ptr_add(SSL_new(ctx)))
-
 #else
 
 #define debug_ptr_add(ptr)
 #define debug_ptr_del(ptr)
 #define tm_print() 
 
-#define SSL_NEW(ctx) SSL_new(ctx)
-
 #endif
 
-#define SSL_FREE(ssl) do { debug_ptr_del(ssl); SSL_free(ssl); ssl = NULL; } while(0)
 #define BUFFEREVENT_FREE(be) do { if(be) { debug_ptr_del(be); bufferevent_flush(be,EV_READ|EV_WRITE,BEV_FLUSH); bufferevent_disable(be,EV_READ|EV_WRITE); bufferevent_free(be); be = NULL;} } while(0)
 
 #define turn_time() ((turn_time_t)time(NULL))
