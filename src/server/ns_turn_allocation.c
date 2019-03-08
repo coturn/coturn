@@ -174,7 +174,7 @@ void turn_permission_clean(turn_permission_info* tinfo)
 
 		if(tinfo->verbose) {
 			char s[257]="\0";
-			addr_to_string(&(tinfo->addr),(u08bits*)s);
+			addr_to_string(&(tinfo->addr),(uint8_t*)s);
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: peer %s deleted\n",tinfo->session_id,s);
 		}
 
@@ -238,7 +238,7 @@ static turn_permission_info* get_from_turn_permission_hashtable(turn_permission_
 	if (!addr || !map)
 		return NULL;
 
-	u32bits index = addr_hash_no_port(addr) & (TURN_PERMISSION_HASHTABLE_SIZE-1);
+	uint32_t index = addr_hash_no_port(addr) & (TURN_PERMISSION_HASHTABLE_SIZE-1);
 	turn_permission_array *parray = &(map->table[index]);
 
 	{
@@ -300,7 +300,7 @@ void turn_channel_delete(ch_info* chn)
 		int port = addr_get_port(&(chn->peer_addr));
 		if(port<1) {
 			char s[129];
-			addr_to_string(&(chn->peer_addr),(u08bits*)s);
+			addr_to_string(&(chn->peer_addr),(uint8_t*)s);
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s: strange (1) channel to be cleaned: port is empty: %s\n",__FUNCTION__,s);
 		}
 		{
@@ -315,7 +315,7 @@ void turn_channel_delete(ch_info* chn)
 	}
 }
 
-ch_info* allocation_get_new_ch_info(allocation* a, u16bits chnum, ioa_addr* peer_addr)
+ch_info* allocation_get_new_ch_info(allocation* a, uint16_t chnum, ioa_addr* peer_addr)
 {
 
 	turn_permission_info* tinfo = get_from_turn_permission_hashtable(&(a->addr_to_perm), peer_addr);
@@ -336,7 +336,7 @@ ch_info* allocation_get_new_ch_info(allocation* a, u16bits chnum, ioa_addr* peer
 	return chn;
 }
 
-ch_info* allocation_get_ch_info(allocation* a, u16bits chnum) {
+ch_info* allocation_get_ch_info(allocation* a, uint16_t chnum) {
 	return ch_map_get(&(a->chns), chnum, 0);
 }
 
@@ -348,7 +348,7 @@ ch_info* allocation_get_ch_info_by_peer_addr(allocation* a, ioa_addr* peer_addr)
 	return NULL;
 }
 
-u16bits get_turn_channel_number(turn_permission_info* tinfo, ioa_addr *addr)
+uint16_t get_turn_channel_number(turn_permission_info* tinfo, ioa_addr *addr)
 {
 	if (tinfo) {
 		ur_map_value_type t = 0;
@@ -388,7 +388,7 @@ turn_permission_info* allocation_add_permission(allocation *a, const ioa_addr* a
 	if (a && addr) {
 
 		turn_permission_hashtable *map = &(a->addr_to_perm);
-		u32bits hash = addr_hash_no_port(addr);
+		uint32_t hash = addr_hash_no_port(addr);
 		size_t fds = (size_t) (hash & (TURN_PERMISSION_HASHTABLE_SIZE-1));
 
 		turn_permission_array *parray = &(map->table[fds]);
@@ -448,7 +448,7 @@ turn_permission_info* allocation_add_permission(allocation *a, const ioa_addr* a
 	}
 }
 
-ch_info *ch_map_get(ch_map* map, u16bits chnum, int new_chn)
+ch_info *ch_map_get(ch_map* map, uint16_t chnum, int new_chn)
 {
 	ch_info *ret = NULL;
 	if(map) {
@@ -535,16 +535,16 @@ void ch_map_clean(ch_map* map)
 
 ////////////////// TCP connections ///////////////////////////////
 
-static void set_new_tc_id(u08bits server_id, tcp_connection *tc) {
+static void set_new_tc_id(uint8_t server_id, tcp_connection *tc) {
 	allocation *a = (allocation*)(tc->owner);
 	ur_map *map = a->tcp_connections;
-	u32bits newid;
-	u32bits sid = server_id;
+	uint32_t newid;
+	uint32_t sid = server_id;
 	sid = sid<<24;
 	do {
 		newid = 0;
 		while (!newid) {
-			newid = (u32bits)turn_random();
+			newid = (uint32_t)turn_random();
 			if(!newid) {
 				continue;
 			}
@@ -559,7 +559,7 @@ static void set_new_tc_id(u08bits server_id, tcp_connection *tc) {
 	ur_map_put(map, (ur_map_key_type)newid, (ur_map_value_type)tc);
 }
 
-tcp_connection *create_tcp_connection(u08bits server_id, allocation *a, stun_tid *tid, ioa_addr *peer_addr, int *err_code)
+tcp_connection *create_tcp_connection(uint8_t server_id, allocation *a, stun_tid *tid, ioa_addr *peer_addr, int *err_code)
 {
 	tcp_connection_list *tcl = &(a->tcs);
 	if(tcl->elems) {

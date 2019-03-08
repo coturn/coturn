@@ -34,7 +34,7 @@
 
 //////////////////////////////////////////////////////////////
 
-u32bits get_ioa_addr_len(const ioa_addr* addr) {
+uint32_t get_ioa_addr_len(const ioa_addr* addr) {
   if(addr->ss.sa_family == AF_INET) return sizeof(struct sockaddr_in);
   else if(addr->ss.sa_family == AF_INET6) return sizeof(struct sockaddr_in6);
   return 0;
@@ -59,7 +59,7 @@ int addr_any(const ioa_addr* addr) {
     else {
       size_t i;
       for(i=0;i<sizeof(addr->s6.sin6_addr);i++) 
-	if(((const s08bits*)&(addr->s6.sin6_addr))[i]) return 0;
+	if(((const char*)&(addr->s6.sin6_addr))[i]) return 0;
     }
   }
 
@@ -75,13 +75,13 @@ int addr_any_no_port(const ioa_addr* addr) {
   } else if(addr->ss.sa_family == AF_INET6) {
     size_t i;
     for(i=0;i<sizeof(addr->s6.sin6_addr);i++) 
-      if(((const s08bits*)(&(addr->s6.sin6_addr)))[i]) return 0;
+      if(((const char*)(&(addr->s6.sin6_addr)))[i]) return 0;
   }
 
   return 1;
 }
 
-u32bits hash_int32(u32bits a)
+uint32_t hash_int32(uint32_t a)
 {
 	a = a ^ (a>>4);
 	a = (a^0xdeadbeef) + (a<<5);
@@ -89,7 +89,7 @@ u32bits hash_int32(u32bits a)
 	return a;
 }
 
-u64bits hash_int64(u64bits a)
+uint64_t hash_int64(uint64_t a)
 {
 	a = a ^ (a>>4);
 	a = (a^0xdeadbeefdeadbeefLL) + (a<<5);
@@ -97,34 +97,34 @@ u64bits hash_int64(u64bits a)
 	return a;
 }
 
-u32bits addr_hash(const ioa_addr *addr)
+uint32_t addr_hash(const ioa_addr *addr)
 {
 	if(!addr)
 		return 0;
 
-	u32bits ret = 0;
+	uint32_t ret = 0;
 	if (addr->ss.sa_family == AF_INET) {
 		ret = hash_int32(addr->s4.sin_addr.s_addr + addr->s4.sin_port);
 	} else {
-		u64bits a[2];
+		uint64_t a[2];
 		bcopy(&(addr->s6.sin6_addr), &a, sizeof(a));
-		ret = (u32bits)((hash_int64(a[0])<<3) + (hash_int64(a[1] + addr->s6.sin6_port)));
+		ret = (uint32_t)((hash_int64(a[0])<<3) + (hash_int64(a[1] + addr->s6.sin6_port)));
 	}
 	return ret;
 }
 
-u32bits addr_hash_no_port(const ioa_addr *addr)
+uint32_t addr_hash_no_port(const ioa_addr *addr)
 {
 	if(!addr)
 		return 0;
 
-	u32bits ret = 0;
+	uint32_t ret = 0;
 	if (addr->ss.sa_family == AF_INET) {
 		ret = hash_int32(addr->s4.sin_addr.s_addr);
 	} else {
-		u64bits a[2];
+		uint64_t a[2];
 		bcopy(&(addr->s6.sin6_addr), &a, sizeof(a));
-		ret = (u32bits)((hash_int64(a[0])<<3) + (hash_int64(a[1])));
+		ret = (uint32_t)((hash_int64(a[0])<<3) + (hash_int64(a[1])));
 	}
 	return ret;
 }
@@ -183,7 +183,7 @@ int addr_eq_no_port(const ioa_addr* a1, const ioa_addr *a2) {
   return 0;
 }
 
-int make_ioa_addr(const u08bits* saddr0, int port, ioa_addr *addr) {
+int make_ioa_addr(const uint8_t* saddr0, int port, ioa_addr *addr) {
 
   if(!saddr0 || !addr) return -1;
 
@@ -315,7 +315,7 @@ static char* get_addr_string_and_port(char* s0, int *port)
 	return NULL;
 }
 
-int make_ioa_addr_from_full_string(const u08bits* saddr, int default_port, ioa_addr *addr)
+int make_ioa_addr_from_full_string(const uint8_t* saddr, int default_port, ioa_addr *addr)
 {
 	if(!addr)
 		return -1;
@@ -327,31 +327,31 @@ int make_ioa_addr_from_full_string(const u08bits* saddr, int default_port, ioa_a
 	if(sa) {
 		if(port<1)
 			port = default_port;
-		ret = make_ioa_addr((u08bits*)sa,port,addr);
+		ret = make_ioa_addr((uint8_t*)sa,port,addr);
 	}
 	free(s);
 	return ret;
 }
 
-int addr_to_string(const ioa_addr* addr, u08bits* saddr)
+int addr_to_string(const ioa_addr* addr, uint8_t* saddr)
 {
 
 	if (addr && saddr) {
 
-		s08bits addrtmp[INET6_ADDRSTRLEN];
+		char addrtmp[INET6_ADDRSTRLEN];
 
 		if (addr->ss.sa_family == AF_INET) {
 			inet_ntop(AF_INET, &addr->s4.sin_addr, addrtmp, INET_ADDRSTRLEN);
 			if(addr_get_port(addr)>0)
-			  snprintf((s08bits*)saddr, MAX_IOA_ADDR_STRING, "%s:%d", addrtmp, addr_get_port(addr));
+			  snprintf((char*)saddr, MAX_IOA_ADDR_STRING, "%s:%d", addrtmp, addr_get_port(addr));
 			else
-			  strncpy((s08bits*)saddr, addrtmp, MAX_IOA_ADDR_STRING);
+			  strncpy((char*)saddr, addrtmp, MAX_IOA_ADDR_STRING);
 		} else if (addr->ss.sa_family == AF_INET6) {
 			inet_ntop(AF_INET6, &addr->s6.sin6_addr, addrtmp, INET6_ADDRSTRLEN);
 			if(addr_get_port(addr)>0)
-			  snprintf((s08bits*)saddr, MAX_IOA_ADDR_STRING, "[%s]:%d", addrtmp, addr_get_port(addr));
+			  snprintf((char*)saddr, MAX_IOA_ADDR_STRING, "[%s]:%d", addrtmp, addr_get_port(addr));
 			else
-			  strncpy((s08bits*)saddr, addrtmp, MAX_IOA_ADDR_STRING);
+			  strncpy((char*)saddr, addrtmp, MAX_IOA_ADDR_STRING);
 		} else {
 			return -1;
 		}
@@ -362,19 +362,19 @@ int addr_to_string(const ioa_addr* addr, u08bits* saddr)
 	return -1;
 }
 
-int addr_to_string_no_port(const ioa_addr* addr, u08bits* saddr)
+int addr_to_string_no_port(const ioa_addr* addr, uint8_t* saddr)
 {
 
 	if (addr && saddr) {
 
-		s08bits addrtmp[MAX_IOA_ADDR_STRING];
+		char addrtmp[MAX_IOA_ADDR_STRING];
 
 		if (addr->ss.sa_family == AF_INET) {
 			inet_ntop(AF_INET, &addr->s4.sin_addr, addrtmp, INET_ADDRSTRLEN);
-			strncpy((s08bits*)saddr, addrtmp, MAX_IOA_ADDR_STRING);
+			strncpy((char*)saddr, addrtmp, MAX_IOA_ADDR_STRING);
 		} else if (addr->ss.sa_family == AF_INET6) {
 			inet_ntop(AF_INET6, &addr->s6.sin6_addr, addrtmp, INET6_ADDRSTRLEN);
-			strncpy((s08bits*)saddr, addrtmp, MAX_IOA_ADDR_STRING);
+			strncpy((char*)saddr, addrtmp, MAX_IOA_ADDR_STRING);
 		} else {
 			return -1;
 		}
@@ -425,11 +425,11 @@ int addr_less_eq(const ioa_addr* addr1, const ioa_addr* addr2) {
   else {
     if(addr1->ss.sa_family != addr2->ss.sa_family) return (addr1->ss.sa_family < addr2->ss.sa_family);
     else if(addr1->ss.sa_family == AF_INET) {
-      return ((u32bits)nswap32(addr1->s4.sin_addr.s_addr) <= (u32bits)nswap32(addr2->s4.sin_addr.s_addr));
+      return ((uint32_t)nswap32(addr1->s4.sin_addr.s_addr) <= (uint32_t)nswap32(addr2->s4.sin_addr.s_addr));
     } else if(addr1->ss.sa_family == AF_INET6) {
       int i;
       for(i=0;i<16;i++) {
-	if((u08bits)(((const s08bits*)&(addr1->s6.sin6_addr))[i]) > (u08bits)(((const s08bits*)&(addr2->s6.sin6_addr))[i])) 
+	if((uint8_t)(((const char*)&(addr1->s6.sin6_addr))[i]) > (uint8_t)(((const char*)&(addr2->s6.sin6_addr))[i])) 
 	  return 0;
       }
       return 1;
@@ -465,10 +465,10 @@ int ioa_addr_is_multicast(ioa_addr *addr)
 {
 	if(addr) {
 		if(addr->ss.sa_family == AF_INET) {
-			const u08bits *u = ((const u08bits*)&(addr->s4.sin_addr));
+			const uint8_t *u = ((const uint8_t*)&(addr->s4.sin_addr));
 			return (u[0] > 223);
 		} else if(addr->ss.sa_family == AF_INET6) {
-			u08bits u = ((const u08bits*)&(addr->s6.sin6_addr))[0];
+			uint8_t u = ((const uint8_t*)&(addr->s6.sin6_addr))[0];
 			return (u == 255);
 		}
 	}
@@ -479,10 +479,10 @@ int ioa_addr_is_loopback(ioa_addr *addr)
 {
 	if(addr) {
 		if(addr->ss.sa_family == AF_INET) {
-			const u08bits *u = ((const u08bits*)&(addr->s4.sin_addr));
+			const uint8_t *u = ((const uint8_t*)&(addr->s4.sin_addr));
 			return (u[0] == 127);
 		} else if(addr->ss.sa_family == AF_INET6) {
-			const u08bits *u = ((const u08bits*)&(addr->s6.sin6_addr));
+			const uint8_t *u = ((const uint8_t*)&(addr->s6.sin6_addr));
 			if(u[7] == 1) {
 				int i;
 				for(i=0;i<7;++i) {

@@ -54,29 +54,29 @@ typedef struct {
 
 ////////////////////////////
 
-u32bits get_ioa_addr_len(const ioa_addr* addr);
+uint32_t get_ioa_addr_len(const ioa_addr* addr);
 
 ////////////////////////////
 
 void addr_set_any(ioa_addr *addr);
 int addr_any(const ioa_addr* addr);
 int addr_any_no_port(const ioa_addr* addr);
-u32bits addr_hash(const ioa_addr *addr);
-u32bits addr_hash_no_port(const ioa_addr *addr);
+uint32_t addr_hash(const ioa_addr *addr);
+uint32_t addr_hash_no_port(const ioa_addr *addr);
 void addr_cpy(ioa_addr* dst, const ioa_addr* src);
 void addr_cpy4(ioa_addr* dst, const struct sockaddr_in* src);
 void addr_cpy6(ioa_addr* dst, const struct sockaddr_in6* src);
 int addr_eq(const ioa_addr* a1, const ioa_addr *a2);
 int addr_eq_no_port(const ioa_addr* a1, const ioa_addr *a2);
-int make_ioa_addr(const u08bits* saddr, int port, ioa_addr *addr);
-int make_ioa_addr_from_full_string(const u08bits* saddr, int default_port, ioa_addr *addr);
+int make_ioa_addr(const uint8_t* saddr, int port, ioa_addr *addr);
+int make_ioa_addr_from_full_string(const uint8_t* saddr, int default_port, ioa_addr *addr);
 void addr_set_port(ioa_addr* addr, int port);
 int addr_get_port(const ioa_addr* addr);
-int addr_to_string(const ioa_addr* addr, u08bits* saddr);
-int addr_to_string_no_port(const ioa_addr* addr, u08bits* saddr);
+int addr_to_string(const ioa_addr* addr, uint8_t* saddr);
+int addr_to_string_no_port(const ioa_addr* addr, uint8_t* saddr);
 
-u32bits hash_int32(u32bits a);
-u64bits hash_int64(u64bits a);
+uint32_t hash_int32(uint32_t a);
+uint64_t hash_int64(uint64_t a);
 
 ///////////////////////////////////////////
 

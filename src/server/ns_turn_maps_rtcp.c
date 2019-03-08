@@ -42,7 +42,7 @@
 ////////////////////////////////////////////
 
 struct _rtcp_map {
-  u32bits magic;
+  uint32_t magic;
   ur_map *map;
   ioa_timer_handle timer_ev;
   TURN_MUTEX_DECLARE(mutex)

@@ -397,7 +397,7 @@ static int set_redis_realm_opt(char *realm, const char* key, unsigned long *valu
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static int redis_get_auth_secrets(secrets_list_t *sl, u08bits *realm)
+static int redis_get_auth_secrets(secrets_list_t *sl, uint8_t *realm)
 {
 	int ret = -1;
 	redisContext *rc = get_redis_connection();
@@ -425,7 +425,7 @@ static int redis_get_auth_secrets(secrets_list_t *sl, u08bits *realm)
 	return ret;
 }
   
-static int redis_get_user_key(u08bits *usname, u08bits *realm, hmackey_t key) {
+static int redis_get_user_key(uint8_t *usname, uint8_t *realm, hmackey_t key) {
   int ret = -1;
 	redisContext * rc = get_redis_connection();
 	if(rc) {
@@ -454,7 +454,7 @@ static int redis_get_user_key(u08bits *usname, u08bits *realm, hmackey_t key) {
   return ret;
 }
 
-static int redis_get_oauth_key(const u08bits *kid, oauth_key_data_raw *key) {
+static int redis_get_oauth_key(const uint8_t *kid, oauth_key_data_raw *key) {
   int ret = -1;
   redisContext * rc = get_redis_connection();
   if(rc) {
@@ -482,9 +482,9 @@ static int redis_get_oauth_key(const u08bits *kid, oauth_key_data_raw *key) {
 					} else if(!strcmp(kw,"ikm_key")) {
 						STRCPY(key->ikm_key,val);
 					} else if(!strcmp(kw,"timestamp")) {
-						key->timestamp = (u64bits)strtoull(val,NULL,10);
+						key->timestamp = (uint64_t)strtoull(val,NULL,10);
 					} else if(!strcmp(kw,"lifetime")) {
-						key->lifetime = (u32bits)strtoul(val,NULL,10);
+						key->lifetime = (uint32_t)strtoul(val,NULL,10);
 					}
 				}
 			}
@@ -496,7 +496,7 @@ static int redis_get_oauth_key(const u08bits *kid, oauth_key_data_raw *key) {
   return ret;
 }
   
-static int redis_set_user_key(u08bits *usname, u08bits *realm, const char *key) {
+static int redis_set_user_key(uint8_t *usname, uint8_t *realm, const char *key) {
   int ret = -1;
 	redisContext *rc = get_redis_connection();
 	if(rc) {
@@ -523,7 +523,7 @@ static int redis_set_oauth_key(oauth_key_data_raw *key) {
   return ret;
 }
   
-static int redis_del_user(u08bits *usname, u08bits *realm) {
+static int redis_del_user(uint8_t *usname, uint8_t *realm) {
   int ret = -1;
 	redisContext *rc = get_redis_connection();
 	if(rc) {
@@ -539,7 +539,7 @@ static int redis_del_user(u08bits *usname, u08bits *realm) {
   return ret;
 }
 
-static int redis_del_oauth_key(const u08bits *kid) {
+static int redis_del_oauth_key(const uint8_t *kid) {
   int ret = -1;
   redisContext *rc = get_redis_connection();
   if(rc) {
@@ -552,12 +552,12 @@ static int redis_del_oauth_key(const u08bits *kid) {
   return ret;
 }
   
-static int redis_list_users(u08bits *realm, secrets_list_t *users, secrets_list_t *realms)
+static int redis_list_users(uint8_t *realm, secrets_list_t *users, secrets_list_t *realms)
 {
 	int ret = -1;
 	redisContext *rc = get_redis_connection();
 
-	u08bits realm0[STUN_MAX_REALM_SIZE+1] = "\0";
+	uint8_t realm0[STUN_MAX_REALM_SIZE+1] = "\0";
 	if(!realm) realm=realm0;
 
 	if(rc) {
@@ -666,7 +666,7 @@ static int redis_list_oauth_keys(secrets_list_t *kids,secrets_list_t *teas,secre
 	s += strlen("turn/oauth/kid/");
 	oauth_key_data_raw key_;
 	oauth_key_data_raw *key=&key_;
-	if(redis_get_oauth_key((const u08bits*)s,key) == 0) {
+	if(redis_get_oauth_key((const uint8_t*)s,key) == 0) {
 		if(kids) {
 			add_to_secrets_list(kids,key->kid);
 			add_to_secrets_list(teas,key->as_rs_alg);
@@ -696,11 +696,11 @@ static int redis_list_oauth_keys(secrets_list_t *kids,secrets_list_t *teas,secre
 }
   
 
-static int redis_list_secrets(u08bits *realm, secrets_list_t *secrets, secrets_list_t *realms)
+static int redis_list_secrets(uint8_t *realm, secrets_list_t *secrets, secrets_list_t *realms)
 {
 	int ret = -1;
 
-	u08bits realm0[STUN_MAX_REALM_SIZE+1] = "\0";
+	uint8_t realm0[STUN_MAX_REALM_SIZE+1] = "\0";
 	if(!realm) realm=realm0;
 
 	donot_print_connection_success = 1;
@@ -787,7 +787,7 @@ static int redis_list_secrets(u08bits *realm, secrets_list_t *secrets, secrets_l
 }
   
 
-static int redis_del_secret(u08bits *secret, u08bits *realm)
+static int redis_del_secret(uint8_t *secret, uint8_t *realm)
 {
 	int ret = -1;
 	donot_print_connection_success = 1;
@@ -801,7 +801,7 @@ static int redis_del_secret(u08bits *secret, u08bits *realm)
 }
   
 
-static int redis_set_secret(u08bits *secret, u08bits *realm)
+static int redis_set_secret(uint8_t *secret, uint8_t *realm)
 {
 	int ret = -1;
 	donot_print_connection_success = 1;
@@ -820,11 +820,11 @@ static int redis_set_secret(u08bits *secret, u08bits *realm)
 	return ret;
 }
 
-static int redis_set_permission_ip(const char *kind, u08bits *realm, const char* ip, int del)
+static int redis_set_permission_ip(const char *kind, uint8_t *realm, const char* ip, int del)
 {
 	int ret = -1;
 
-	u08bits realm0[STUN_MAX_REALM_SIZE+1] = "\0";
+	uint8_t realm0[STUN_MAX_REALM_SIZE+1] = "\0";
 	if(!realm) realm=realm0;
 
 	donot_print_connection_success = 1;
@@ -846,7 +846,7 @@ static int redis_set_permission_ip(const char *kind, u08bits *realm, const char*
 	return ret;
 }
   
-static int redis_add_origin(u08bits *origin, u08bits *realm) {
+static int redis_add_origin(uint8_t *origin, uint8_t *realm) {
   int ret = -1;
 	redisContext *rc = get_redis_connection();
 	if(rc) {
@@ -861,7 +861,7 @@ static int redis_add_origin(u08bits *origin, u08bits *realm) {
   return ret;
 }
   
-static int redis_del_origin(u08bits *origin) {
+static int redis_del_origin(uint8_t *origin) {
   int ret = -1;
 	redisContext *rc = get_redis_connection();
 	if(rc) {
@@ -876,11 +876,11 @@ static int redis_del_origin(u08bits *origin) {
   return ret;
 }
   
-static int redis_list_origins(u08bits *realm, secrets_list_t *origins, secrets_list_t *realms)
+static int redis_list_origins(uint8_t *realm, secrets_list_t *origins, secrets_list_t *realms)
 {
 	int ret = -1;
 
-	u08bits realm0[STUN_MAX_REALM_SIZE+1] = "\0";
+	uint8_t realm0[STUN_MAX_REALM_SIZE+1] = "\0";
 	if(!realm) realm=realm0;
 
 	donot_print_connection_success = 1;
@@ -948,7 +948,7 @@ static int redis_list_origins(u08bits *realm, secrets_list_t *origins, secrets_l
 	return ret;
 }
   
-static int redis_set_realm_option_one(u08bits *realm, unsigned long value, const char* opt) {
+static int redis_set_realm_option_one(uint8_t *realm, unsigned long value, const char* opt) {
   int ret = -1;
 	redisContext *rc = get_redis_connection();
 	if(rc) {
@@ -966,7 +966,7 @@ static int redis_set_realm_option_one(u08bits *realm, unsigned long value, const
   return ret;
 }
   
-static int redis_list_realm_options(u08bits *realm) {
+static int redis_list_realm_options(uint8_t *realm) {
   int ret = -1;
 	donot_print_connection_success = 1;
 	redisContext *rc = get_redis_connection();
@@ -1222,7 +1222,7 @@ static void redis_reread_realms(secrets_list_t * realms_list) {
 
 /////////////////////////////////////////////////////
 
-static int redis_get_admin_user(const u08bits *usname, u08bits *realm, password_t pwd)
+static int redis_get_admin_user(const uint8_t *usname, uint8_t *realm, password_t pwd)
 {
 	int ret = -1;
 	redisContext * rc = get_redis_connection();
@@ -1259,7 +1259,7 @@ static int redis_get_admin_user(const u08bits *usname, u08bits *realm, password_
 	  return ret;
 }
 
-static int redis_set_admin_user(const u08bits *usname, const u08bits *realm, const password_t pwd)
+static int redis_set_admin_user(const uint8_t *usname, const uint8_t *realm, const password_t pwd)
 {
   int ret = -1;
   donot_print_connection_success = 1;
@@ -1278,7 +1278,7 @@ static int redis_set_admin_user(const u08bits *usname, const u08bits *realm, con
   return ret;
 }
 
-static int redis_del_admin_user(const u08bits *usname) {
+static int redis_del_admin_user(const uint8_t *usname) {
   int ret = -1;
   donot_print_connection_success = 1;
   redisContext *rc = get_redis_connection();
@@ -1328,9 +1328,9 @@ static int redis_list_admin_users(int no_print)
   for(isz=0;isz<keys.sz;++isz) {
 	char *s = keys.secrets[isz];
 	s += strlen("turn/admin_user/");
-	u08bits realm[STUN_MAX_REALM_SIZE];
+	uint8_t realm[STUN_MAX_REALM_SIZE];
 	password_t pwd;
-	if(redis_get_admin_user((const u08bits*)s,realm,pwd) == 0) {
+	if(redis_get_admin_user((const uint8_t*)s,realm,pwd) == 0) {
 		++ret;
 		if(!no_print) {
 			if(realm[0]) {

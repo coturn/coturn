@@ -46,6 +46,7 @@
 #include <arpa/inet.h>
 #include <net/if.h>
 #include <ctype.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -60,29 +61,17 @@
 extern "C" {
 #endif
 
-/* NS types: */
-
-#define	s08bits	char
-#define	s16bits	int16_t
-#define	s32bits	int32_t
-#define	s64bits	int64_t
-
-#define	u08bits	unsigned char
-#define	u16bits uint16_t
-#define	u32bits	uint32_t
-#define	u64bits	uint64_t
-
 #define nswap16(s) ntohs(s)
 #define nswap32(ul) ntohl(ul)
 #define nswap64(ull) ioa_ntoh64(ull)
 
-static inline u64bits _ioa_ntoh64(u64bits v)
+static inline uint64_t _ioa_ntoh64(uint64_t v)
 {
 #if BYTE_ORDER == LITTLE_ENDIAN
-	u08bits *src = (u08bits*) &v;
-	u08bits* dst = src + 7;
+	uint8_t *src = (uint8_t*) &v;
+	uint8_t* dst = src + 7;
 	while (src < dst) {
-		u08bits vdst = *dst;
+		uint8_t vdst = *dst;
 		*(dst--) = *src;
 		*(src++) = vdst;
 	}
@@ -112,9 +101,9 @@ static inline u64bits _ioa_ntoh64(u64bits v)
 typedef int vint;
 typedef vint* vintp;
 
-typedef u32bits turn_time_t;
+typedef uint32_t turn_time_t;
 
-#define turn_time_before(t1,t2) ((((s32bits)(t1))-((s32bits)(t2))) < 0)
+#define turn_time_before(t1,t2) ((((int32_t)(t1))-((int32_t)(t2))) < 0)
 
 #if !defined(UNUSED_ARG)
 #define UNUSED_ARG(A) do { A=A; } while(0)

@@ -59,7 +59,7 @@ static void write_http_echo(ioa_socket_handle s)
 		if((sat == HTTP_CLIENT_SOCKET) || (sat == HTTPS_CLIENT_SOCKET)) {
 			ioa_network_buffer_handle nbh_http = ioa_network_buffer_allocate(s->e);
 			size_t len_http = ioa_network_buffer_get_size(nbh_http);
-			u08bits *data = ioa_network_buffer_data(nbh_http);
+			uint8_t *data = ioa_network_buffer_data(nbh_http);
 			char data_http[1025];
 			char content_http[1025];
 			const char* title = "TURN Server";

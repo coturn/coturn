@@ -36,11 +36,11 @@
 
 KHASH_MAP_INIT_INT64(3, ur_map_value_type)
 
-#define MAGIC_HASH ((u64bits)(0x90ABCDEFL))
+#define MAGIC_HASH ((uint64_t)(0x90ABCDEFL))
 
 struct _ur_map {
   khash_t(3) *h;
-  u64bits magic;
+  uint64_t magic;
   TURN_MUTEX_DECLARE(mutex)
 };
 
@@ -809,7 +809,7 @@ void ur_addr_map_init(ur_addr_map* map) {
 
 void ur_addr_map_clean(ur_addr_map* map) {
   if(map && ur_addr_map_valid(map)) {
-    u32bits i=0;
+    uint32_t i=0;
     for(i=0;i<ADDR_MAP_SIZE;i++) {
       addr_list_free(&(map->lists[i]));
     }
@@ -895,7 +895,7 @@ void ur_addr_map_foreach(ur_addr_map* map, ur_addr_map_func func) {
 
   if(ur_addr_map_valid(map)) {
 
-    u32bits i=0;
+    uint32_t i=0;
     for(i=0;i<ADDR_MAP_SIZE;i++) {
       
       addr_list_header* slh = &(map->lists[i]);
@@ -910,7 +910,7 @@ size_t ur_addr_map_num_elements(const ur_addr_map* map) {
 	size_t ret = 0;
 
 	if (ur_addr_map_valid(map)) {
-		u32bits i = 0;
+		uint32_t i = 0;
 		for (i = 0; i < ADDR_MAP_SIZE; i++) {
 
 			const addr_list_header* slh = &(map->lists[i]);
@@ -927,7 +927,7 @@ size_t ur_addr_map_size(const ur_addr_map* map) {
 	size_t ret = 0;
 
 	if (ur_addr_map_valid(map)) {
-		u32bits i = 0;
+		uint32_t i = 0;
 		for (i = 0; i < ADDR_MAP_SIZE; i++) {
 
 			const addr_list_header* slh = &(map->lists[i]);
@@ -948,7 +948,7 @@ typedef struct _string_list {
 typedef struct _string_elem {
   string_list list;
   ur_string_map_key_type key;
-  u32bits key_size;
+  uint32_t key_size;
   ur_string_map_value_type value;
 } string_elem;
 
@@ -982,7 +982,7 @@ static string_list* string_list_add(string_list* sl, const ur_string_map_key_typ
   string_elem *elem=(string_elem*)malloc(sizeof(string_elem));
   elem->list.next=sl;
   elem->key_size = strlen(key)+1;
-  elem->key=(s08bits*)malloc(elem->key_size);
+  elem->key=(char*)malloc(elem->key_size);
   bcopy(key,elem->key,elem->key_size);
   elem->value=value;
   return &(elem->list);
@@ -1024,16 +1024,16 @@ static string_elem* string_list_get(string_list* sl, const ur_string_map_key_typ
 
 struct _ur_string_map {
   string_list_header lists[STRING_MAP_SIZE];
-  u64bits magic;
+  uint64_t magic;
   ur_string_map_func del_value_func;
   TURN_MUTEX_DECLARE(mutex)
 };
 
-static u32bits string_hash(const ur_string_map_key_type key) {
+static uint32_t string_hash(const ur_string_map_key_type key) {
 
-  u08bits *str=(u08bits*)key;
+  uint8_t *str=(uint8_t*)key;
 
-  u32bits hash = 0;
+  uint32_t hash = 0;
   int c = 0;
 
   while ((c = *str++))

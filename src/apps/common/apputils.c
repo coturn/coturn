@@ -279,7 +279,7 @@ int addr_bind(evutil_socket_t fd, const ioa_addr* addr, int reusable, int debug,
 				int err = errno;
 				perror("bind");
 				char str[129];
-				addr_to_string(addr,(u08bits*)str);
+				addr_to_string(addr,(uint8_t*)str);
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Trying to bind fd %d to <%s>: errno=%d\n", fd, str, err);
 			}
 		}
@@ -893,15 +893,15 @@ void ignore_sigpipe(void)
 	}
 }
 
-static u64bits turn_getRandTime(void) {
+static uint64_t turn_getRandTime(void) {
   struct timespec tp={0,0};
 #if defined(CLOCK_REALTIME)
   clock_gettime(CLOCK_REALTIME, &tp);
 #else
   tp.tv_sec = time(NULL);
 #endif
-  u64bits current_time = (u64bits)(tp.tv_sec);
-  u64bits current_mstime = (u64bits)(current_time + (tp.tv_nsec));
+  uint64_t current_time = (uint64_t)(tp.tv_sec);
+  uint64_t current_mstime = (uint64_t)(current_time + (tp.tv_nsec));
 
   return current_mstime;
 }
@@ -956,11 +956,11 @@ char *base64_encode(const unsigned char *data,
     size_t i,j;
     for (i = 0, j = 0; i < input_length;) {
 
-        u32bits octet_a = i < input_length ? data[i++] : 0;
-        u32bits octet_b = i < input_length ? data[i++] : 0;
-        u32bits octet_c = i < input_length ? data[i++] : 0;
+        uint32_t octet_a = i < input_length ? data[i++] : 0;
+        uint32_t octet_b = i < input_length ? data[i++] : 0;
+        uint32_t octet_c = i < input_length ? data[i++] : 0;
 
-        u32bits triple = (octet_a << 0x10) + (octet_b << 0x08) + octet_c;
+        uint32_t triple = (octet_a << 0x10) + (octet_b << 0x08) + octet_c;
 
         encoded_data[j++] = encoding_table[(triple >> 3 * 6) & 0x3F];
         encoded_data[j++] = encoding_table[(triple >> 2 * 6) & 0x3F];

@@ -359,7 +359,7 @@ int get_a_local_relay(int family, ioa_addr *relay_addr)
 				} else
 					continue;
 
-				if (make_ioa_addr((const u08bits*) saddr, 0, relay_addr) < 0) {
+				if (make_ioa_addr((const uint8_t*) saddr, 0, relay_addr) < 0) {
 					continue;
 				} else {
 					ret = 0;
@@ -1181,7 +1181,7 @@ static void set_option(int c, char *value)
 	  use_cli = !get_bool_value(value);
 	  break;
   case CLI_IP_OPT:
-	  if(make_ioa_addr((const u08bits*)value,0,&cli_addr)<0) {
+	  if(make_ioa_addr((const uint8_t*)value,0,&cli_addr)<0) {
 		  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot set cli address: %s\n",value);
 	  } else{
 		  cli_addr_set = 1;
@@ -1197,7 +1197,7 @@ static void set_option(int c, char *value)
 	  use_web_admin = get_bool_value(value);
 	  break;
   case WEB_ADMIN_IP_OPT:
-	  if(make_ioa_addr((const u08bits*)value, 0, &web_admin_addr) < 0) {
+	  if(make_ioa_addr((const uint8_t*)value, 0, &web_admin_addr) < 0) {
 		  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot set web-admin address: %s\n", value);
 	  } else {
 		  web_admin_addr_set = 1;
@@ -1317,10 +1317,10 @@ static void set_option(int c, char *value)
 				div[0]=0;
 				++div;
 				ioa_addr apub,apriv;
-				if(make_ioa_addr((const u08bits*)nval,0,&apub)<0) {
+				if(make_ioa_addr((const uint8_t*)nval,0,&apub)<0) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"-X : Wrong address format: %s\n",nval);
 				} else {
-					if(make_ioa_addr((const u08bits*)div,0,&apriv)<0) {
+					if(make_ioa_addr((const uint8_t*)div,0,&apriv)<0) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"-X : Wrong address format: %s\n",div);
 					} else {
 						ioa_addr_add_mapping(&apub,&apriv);
@@ -1332,7 +1332,7 @@ static void set_option(int c, char *value)
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "You cannot define external IP more than once in the configuration\n");
 				} else {
 					turn_params.external_ip = (ioa_addr*)allocate_super_memory_engine(turn_params.listener.ioa_eng, sizeof(ioa_addr));
-					if(make_ioa_addr((const u08bits*)value,0,turn_params.external_ip)<0) {
+					if(make_ioa_addr((const uint8_t*)value,0,turn_params.external_ip)<0) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"-X : Wrong address format: %s\n",value);
 						free(turn_params.external_ip);
 						turn_params.external_ip = NULL;
@@ -1698,11 +1698,11 @@ static int adminmain(int argc, char **argv)
 	FILE* fptr;
 	unsigned char generated_key[16]; //changed
 
-	u08bits user[STUN_MAX_USERNAME_SIZE+1]="\0";
-	u08bits realm[STUN_MAX_REALM_SIZE+1]="\0";
-	u08bits pwd[STUN_MAX_PWD_SIZE+1]="\0";
-	u08bits secret[AUTH_SECRET_SIZE+1]="\0";
-	u08bits origin[STUN_MAX_ORIGIN_SIZE+1]="\0";
+	uint8_t user[STUN_MAX_USERNAME_SIZE+1]="\0";
+	uint8_t realm[STUN_MAX_REALM_SIZE+1]="\0";
+	uint8_t pwd[STUN_MAX_PWD_SIZE+1]="\0";
+	uint8_t secret[AUTH_SECRET_SIZE+1]="\0";
+	uint8_t origin[STUN_MAX_ORIGIN_SIZE+1]="\0";
 	perf_options_t po = {(band_limit_t)-1,-1,-1};
 
 	struct uoptions uo;
@@ -1823,11 +1823,11 @@ static int adminmain(int argc, char **argv)
 #endif
         case 'u':
             STRCPY(user,optarg);
-            if(!is_secure_string((u08bits*)user,1)) {
+            if(!is_secure_string((uint8_t*)user,1)) {
                 TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong user name structure or symbols, choose another name: %s\n",user);
                 exit(-1);
             }
-            if(SASLprep((u08bits*)user)<0) {
+            if(SASLprep((uint8_t*)user)<0) {
                 TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong user name: %s\n",user);
                 exit(-1);
             }
@@ -1835,14 +1835,14 @@ static int adminmain(int argc, char **argv)
         case 'r':
             set_default_realm_name(optarg);
             STRCPY(realm,optarg);
-            if(SASLprep((u08bits*)realm)<0) {
+            if(SASLprep((uint8_t*)realm)<0) {
                 TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong realm: %s\n",realm);
                 exit(-1);
             }
             break;
         case 'p':
             STRCPY(pwd,optarg);
-            if(SASLprep((u08bits*)pwd)<0) {
+            if(SASLprep((uint8_t*)pwd)<0) {
                 TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong password: %s\n",pwd);
                 exit(-1);
             }
@@ -2336,7 +2336,7 @@ int main(int argc, char **argv)
 				const char* sra = (const char*)turn_params.relay_addrs[ir];
 				if((strstr(sra,"127.0.0.1") != sra)&&(strstr(sra,"::1")!=sra)) {
 					ioa_addr ra;
-					if(make_ioa_addr((const u08bits*)sra,0,&ra)<0) {
+					if(make_ioa_addr((const uint8_t*)sra,0,&ra)<0) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"-X : Wrong address format: %s\n",sra);
 					} else if(ra.ss.sa_family == turn_params.external_ip->ss.sa_family) {
 						ioa_addr_add_mapping(turn_params.external_ip,&ra);

@@ -299,7 +299,7 @@ void add_to_secrets_list(secrets_list_t *sl, const char* elem)
 
 ////////////////////////////////////////////
 
-static int get_auth_secrets(secrets_list_t *sl, u08bits *realm)
+static int get_auth_secrets(secrets_list_t *sl, uint8_t *realm)
 {
 	int ret = -1;
   const turn_dbdriver_t * dbd = get_dbdriver();
@@ -398,7 +398,7 @@ static char *get_real_username(char *usname)
 /*
  * Password retrieval
  */
-int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, u08bits *usname, u08bits *realm, hmackey_t key, ioa_network_buffer_handle nbh)
+int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *usname, uint8_t *realm, hmackey_t key, ioa_network_buffer_handle nbh)
 {
 	int ret = -1;
 
@@ -413,7 +413,7 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, u08bits *u
 		if(sar) {
 
 			int len = stun_attr_get_len(sar);
-			const u08bits *value = stun_attr_get_value(sar);
+			const uint8_t *value = stun_attr_get_value(sar);
 
 			*out_oauth = 1;
 
@@ -477,7 +477,7 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, u08bits *u
 						}
 					}
 
-					if (decode_oauth_token((const u08bits *) server_name, &etoken,&okey, &dot) < 0) {
+					if (decode_oauth_token((const uint8_t *) server_name, &etoken,&okey, &dot) < 0) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot decode oauth token\n");
 						return -1;
 					}
@@ -548,7 +548,7 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, u08bits *u
 
 		if(!turn_time_before(ts, ctime)) {
 
-			u08bits hmac[MAXSHASIZE];
+			uint8_t hmac[MAXSHASIZE];
 			unsigned int hmac_len;
 			password_t pwdtmp;
 
@@ -577,7 +577,7 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, u08bits *u
 				const char* secret = get_secrets_list_elem(&sl,sll);
 
 				if(secret) {
-					if(stun_calculate_hmac(usname, strlen((char*)usname), (const u08bits*)secret, strlen(secret), hmac, &hmac_len, SHATYPE_DEFAULT)>=0) {
+					if(stun_calculate_hmac(usname, strlen((char*)usname), (const uint8_t*)secret, strlen(secret), hmac, &hmac_len, SHATYPE_DEFAULT)>=0) {
 						size_t pwd_length = 0;
 						char *pwd = base64_encode(hmac,hmac_len,&pwd_length);
 
@@ -585,7 +585,7 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, u08bits *u
 							if(pwd_length<1) {
 								free(pwd);
 							} else {
-								if(stun_produce_integrity_key_str((u08bits*)usname, realm, (u08bits*)pwd, key, SHATYPE_DEFAULT)>=0) {
+								if(stun_produce_integrity_key_str((uint8_t*)usname, realm, (uint8_t*)pwd, key, SHATYPE_DEFAULT)>=0) {
 
 									if(stun_check_message_integrity_by_key_str(TURN_CREDENTIALS_LONG_TERM,
 										ioa_network_buffer_data(nbh),
@@ -634,7 +634,7 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, u08bits *u
 	return ret;
 }
 
-u08bits *start_user_check(turnserver_id id, turn_credential_type ct, int in_oauth, int *out_oauth, u08bits *usname, u08bits *realm, get_username_resume_cb resume, ioa_net_data *in_buffer, u64bits ctxkey, int *postpone_reply)
+uint8_t *start_user_check(turnserver_id id, turn_credential_type ct, int in_oauth, int *out_oauth, uint8_t *usname, uint8_t *realm, get_username_resume_cb resume, ioa_net_data *in_buffer, uint64_t ctxkey, int *postpone_reply)
 {
 	*postpone_reply = 1;
 
@@ -656,11 +656,11 @@ u08bits *start_user_check(turnserver_id id, turn_credential_type ct, int in_oaut
 	return NULL;
 }
 
-int check_new_allocation_quota(u08bits *user, int oauth, u08bits *realm)
+int check_new_allocation_quota(uint8_t *user, int oauth, uint8_t *realm)
 {
 	int ret = 0;
 	if (user || oauth) {
-		u08bits *username = oauth ? (u08bits*)strdup("") : (u08bits*)get_real_username((char*)user);
+		uint8_t *username = oauth ? (uint8_t*)strdup("") : (uint8_t*)get_real_username((char*)user);
 		realm_params_t *rp = get_realm((char*)realm);
 		ur_string_map_lock(rp->status.alloc_counters);
 		if (rp->options.perf_options.total_quota && (rp->status.total_current_allocs >= rp->options.perf_options.total_quota)) {
@@ -689,10 +689,10 @@ int check_new_allocation_quota(u08bits *user, int oauth, u08bits *realm)
 	return ret;
 }
 
-void release_allocation_quota(u08bits *user, int oauth, u08bits *realm)
+void release_allocation_quota(uint8_t *user, int oauth, uint8_t *realm)
 {
 	if (user) {
-		u08bits *username = oauth ? (u08bits*)strdup("") : (u08bits*)get_real_username((char*)user);
+		uint8_t *username = oauth ? (uint8_t*)strdup("") : (uint8_t*)get_real_username((char*)user);
 		realm_params_t *rp = get_realm((char*)realm);
 		ur_string_map_lock(rp->status.alloc_counters);
 		if(username[0]) {
@@ -724,7 +724,7 @@ int add_static_user_account(char *user)
 			char *usname = (char*)malloc(sizeof(char)*(ulen+1));
 			strncpy(usname,user,ulen);
 			usname[ulen]=0;
-			if(SASLprep((u08bits*)usname)<0) {
+			if(SASLprep((uint8_t*)usname)<0) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong user name: %s\n",user);
 				free(usname);
 				return -1;
@@ -744,7 +744,7 @@ int add_static_user_account(char *user)
 				}
 			} else {
 				//this is only for default realm
-				stun_produce_integrity_key_str((u08bits*)usname, (u08bits*)get_realm(NULL)->options.name, (u08bits*)s, *key, SHATYPE_DEFAULT);
+				stun_produce_integrity_key_str((uint8_t*)usname, (uint8_t*)get_realm(NULL)->options.name, (uint8_t*)s, *key, SHATYPE_DEFAULT);
 			}
 			{
 				ur_string_map_lock(turn_params.default_users_db.ram_db.static_accounts);
@@ -762,7 +762,7 @@ int add_static_user_account(char *user)
 
 ////////////////// Admin /////////////////////////
 
-static int list_users(u08bits *realm, int is_admin)
+static int list_users(uint8_t *realm, int is_admin)
 {
   const turn_dbdriver_t * dbd = get_dbdriver();
   if (dbd) {
@@ -780,7 +780,7 @@ static int list_users(u08bits *realm, int is_admin)
   return 0;
 }
 
-static int show_secret(u08bits *realm)
+static int show_secret(uint8_t *realm)
 {
   const turn_dbdriver_t * dbd = get_dbdriver();
   if (dbd && dbd->list_secrets) {
@@ -790,7 +790,7 @@ static int show_secret(u08bits *realm)
   return 0;
 }
 
-static int del_secret(u08bits *secret, u08bits *realm) {
+static int del_secret(uint8_t *secret, uint8_t *realm) {
 
 	must_set_admin_realm(realm);
 
@@ -802,7 +802,7 @@ static int del_secret(u08bits *secret, u08bits *realm) {
 	return 0;
 }
 
-static int set_secret(u08bits *secret, u08bits *realm) {
+static int set_secret(uint8_t *secret, uint8_t *realm) {
 
 	if(!secret || (secret[0]==0))
 		return 0;
@@ -819,9 +819,9 @@ static int set_secret(u08bits *secret, u08bits *realm) {
 	return 0;
 }
 
-static int add_origin(u08bits *origin0, u08bits *realm)
+static int add_origin(uint8_t *origin0, uint8_t *realm)
 {
-	u08bits origin[STUN_MAX_ORIGIN_SIZE+1];
+	uint8_t origin[STUN_MAX_ORIGIN_SIZE+1];
 
 	get_canonic_origin((const char *)origin0, (char *)origin, sizeof(origin)-1);
 
@@ -833,9 +833,9 @@ static int add_origin(u08bits *origin0, u08bits *realm)
 	return 0;
 }
 
-static int del_origin(u08bits *origin0)
+static int del_origin(uint8_t *origin0)
 {
-	u08bits origin[STUN_MAX_ORIGIN_SIZE+1];
+	uint8_t origin[STUN_MAX_ORIGIN_SIZE+1];
 
 	get_canonic_origin((const char *)origin0, (char *)origin, sizeof(origin)-1);
 
@@ -847,7 +847,7 @@ static int del_origin(u08bits *origin0)
 	return 0;
 }
 
-static int list_origins(u08bits *realm)
+static int list_origins(uint8_t *realm)
 {
   const turn_dbdriver_t * dbd = get_dbdriver();
   if (dbd && dbd->list_origins) {
@@ -857,7 +857,7 @@ static int list_origins(u08bits *realm)
   return 0;
 }
 
-static int set_realm_option_one(u08bits *realm, unsigned long value, const char* opt)
+static int set_realm_option_one(uint8_t *realm, unsigned long value, const char* opt)
 {
 	if(value == (unsigned long)-1)
 		return 0;
@@ -870,7 +870,7 @@ static int set_realm_option_one(u08bits *realm, unsigned long value, const char*
 	return 0;
 }
 
-static int set_realm_option(u08bits *realm, perf_options_t *po)
+static int set_realm_option(uint8_t *realm, perf_options_t *po)
 {
 	set_realm_option_one(realm,(unsigned long)po->max_bps,"max-bps");
 	set_realm_option_one(realm,(unsigned long)po->user_quota,"user-quota");
@@ -878,7 +878,7 @@ static int set_realm_option(u08bits *realm, perf_options_t *po)
 	return 0;
 }
 
-static int list_realm_options(u08bits *realm)
+static int list_realm_options(uint8_t *realm)
 {
   const turn_dbdriver_t * dbd = get_dbdriver();
   if (dbd && dbd->list_realm_options) {
@@ -888,7 +888,7 @@ static int list_realm_options(u08bits *realm)
 	return 0;
 }
 
-int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, u08bits *origin, TURNADMIN_COMMAND_TYPE ct, perf_options_t *po, int is_admin)
+int adminuser(uint8_t *user, uint8_t *realm, uint8_t *pwd, uint8_t *secret, uint8_t *origin, TURNADMIN_COMMAND_TYPE ct, perf_options_t *po, int is_admin)
 {
 	hmackey_t key;
 	char skey[sizeof(hmackey_t) * 2 + 1];
@@ -1021,7 +1021,7 @@ void run_db_test(void)
 		printf("DB TEST 2:\n");
 		oauth_key_data_raw key_;
 		oauth_key_data_raw *key=&key_;
-		dbd->get_oauth_key((const u08bits*)"north",key);
+		dbd->get_oauth_key((const uint8_t*)"north",key);
 		printf("  kid=%s, ikm_key=%s, timestamp=%llu, lifetime=%lu, as_rs_alg=%s\n",
 		    		key->kid, key->ikm_key, (unsigned long long)key->timestamp, (unsigned long)key->lifetime, key->as_rs_alg);
 
@@ -1032,22 +1032,22 @@ void run_db_test(void)
 		STRCPY(key->kid,"kid");
 		key->timestamp = 123;
 		key->lifetime = 456;
-		dbd->del_oauth_key((const u08bits*)"kid");
+		dbd->del_oauth_key((const uint8_t*)"kid");
 		dbd->set_oauth_key(key);
 		dbd->list_oauth_keys();
 
 		printf("DB TEST 4:\n");
-		dbd->get_oauth_key((const u08bits*)"kid",key);
+		dbd->get_oauth_key((const uint8_t*)"kid",key);
 		printf("  kid=%s, ikm_key=%s, timestamp=%llu, lifetime=%lu, as_rs_alg=%s\n",
 		    		key->kid, key->ikm_key, (unsigned long long)key->timestamp, (unsigned long)key->lifetime, key->as_rs_alg);
 
 		printf("DB TEST 5:\n");
-		dbd->del_oauth_key((const u08bits*)"kid");
+		dbd->del_oauth_key((const uint8_t*)"kid");
 		dbd->list_oauth_keys();
 
 		printf("DB TEST 6:\n");
 
-		dbd->get_oauth_key((const u08bits*)"north",key);
+		dbd->get_oauth_key((const uint8_t*)"north",key);
 
 		oauth_key_data oakd;
 		convert_oauth_key_data_raw(key, &oakd);
@@ -1219,14 +1219,14 @@ int add_ip_list_range(const char * range0, const char * realm, ip_range_list_t *
 
 	ioa_addr min, max;
 
-	if (make_ioa_addr((const u08bits*) range, 0, &min) < 0) {
+	if (make_ioa_addr((const uint8_t*) range, 0, &min) < 0) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong address format: %s\n", range);
 		free(range);
 		return -1;
 	}
 
 	if (separator) {
-		if (make_ioa_addr((const u08bits*) separator + 1, 0, &max) < 0) {
+		if (make_ioa_addr((const uint8_t*) separator + 1, 0, &max) < 0) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong address format: %s\n", separator + 1);
 			free(range);
 			return -1;
@@ -1264,14 +1264,14 @@ int check_ip_list_range(const char * range0)
 
 	ioa_addr min, max;
 
-	if (make_ioa_addr((const u08bits*) range, 0, &min) < 0) {
+	if (make_ioa_addr((const uint8_t*) range, 0, &min) < 0) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong address range format: %s\n", range);
 		free(range);
 		return -1;
 	}
 
 	if (separator) {
-		if (make_ioa_addr((const u08bits*) separator + 1, 0, &max) < 0) {
+		if (make_ioa_addr((const uint8_t*) separator + 1, 0, &max) < 0) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong address range format: %s\n", separator + 1);
 			free(range);
 			return -1;

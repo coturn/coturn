@@ -117,7 +117,7 @@ static int encode_token(const char* server_name,
         // TODO: avoid this hack
         if (!*gcm_nonce) gcm_nonce=NULL;
 
-        if (encode_oauth_token((const u08bits *) server_name, &etoken, &key, &ot,(const u08bits *) gcm_nonce) < 0) {
+        if (encode_oauth_token((const uint8_t *) server_name, &etoken, &key, &ot,(const uint8_t *) gcm_nonce) < 0) {
                 fprintf(stderr, "%s: cannot encode oauth token\n",
                                 __FUNCTION__);
                 return -1;
@@ -144,7 +144,7 @@ static int validate_decode_token(const char* server_name,
         const unsigned char *tmp = base64_decode(base64encoded_etoken,base64encoded_etoken_length,&etoken.size);
         memcpy(etoken.token,tmp,etoken.size);
                         
-        if (decode_oauth_token((const u08bits *) server_name, &etoken, &key, dot) < 0) {
+        if (decode_oauth_token((const uint8_t *) server_name, &etoken, &key, dot) < 0) {
                 fprintf(stderr, "%s: cannot decode oauth token\n",
                                 __FUNCTION__);
                 return -1;

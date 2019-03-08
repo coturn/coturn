@@ -72,7 +72,7 @@ static int udp_create_server_socket(server_type* server,
 
   STRCPY(server->ifname,ifname);
 
-  if(make_ioa_addr((const u08bits*)local_address, port, server_addr)<0) return -1;
+  if(make_ioa_addr((const uint8_t*)local_address, port, server_addr)<0) return -1;
   
   udp_fd = socket(server_addr->ss.sa_family, RELAY_DGRAM_SOCKET_TYPE, RELAY_DGRAM_SOCKET_PROTOCOL);
   if (udp_fd < 0) {

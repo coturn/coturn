@@ -148,7 +148,7 @@ int turn_mutex_destroy(turn_mutex* mutex) {
 ///////////////////////// LOG ///////////////////////////////////
 
 #if defined(TURN_LOG_FUNC_IMPL)
-extern void TURN_LOG_FUNC_IMPL(TURN_LOG_LEVEL level, const s08bits* format, va_list args);
+extern void TURN_LOG_FUNC_IMPL(TURN_LOG_LEVEL level, const char* format, va_list args);
 #endif
 
 static int no_stdout_log = 0;
@@ -158,7 +158,7 @@ void set_no_stdout_log(int val)
 	no_stdout_log = val;
 }
 
-void turn_log_func_default(TURN_LOG_LEVEL level, const s08bits* format, ...)
+void turn_log_func_default(TURN_LOG_LEVEL level, const char* format, ...)
 {
 #if !defined(TURN_LOG_FUNC_IMPL)
 	{
@@ -194,13 +194,13 @@ void turn_log_func_default(TURN_LOG_LEVEL level, const s08bits* format, ...)
 	}
 }
 
-void addr_debug_print(int verbose, const ioa_addr *addr, const s08bits* s)
+void addr_debug_print(int verbose, const ioa_addr *addr, const char* s)
 {
 	if (verbose) {
 		if (!addr) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: EMPTY\n", s);
 		} else {
-			s08bits addrbuf[INET6_ADDRSTRLEN];
+			char addrbuf[INET6_ADDRSTRLEN];
 			if (!s)
 				s = "";
 			if (addr->ss.sa_family == AF_INET) {
@@ -663,7 +663,7 @@ int get_canonic_origin(const char* o, char *co, int sz)
 
 //////////////////////////////////////////////////////////////////
 
-int is_secure_string(const u08bits *string, int sanitizesql)
+int is_secure_string(const uint8_t *string, int sanitizesql)
 {
 	int ret = 0;
 	if(string) {
