@@ -1,6 +1,18 @@
 02/03/2019 Oleg Moskalenko <mom040267@gmail.com> Mihály Mészáros <misi@majd.eu>
 Version 4.5.1.2 'dan Eider':
-	- merge regrssion fix: Do not display empty CLI passwd alert if no CLI
+	- merge regression fix: (by Mathieu Brunot)
+		* Do not display empty CLI passwd alert if CLI is not enabled
+	- merge PR #359: (by bradleythughes)
+		* Remove turn_free_simple
+		* Remove turn_malloc()
+		* Remote turn_realloc()
+		* Remote turn_free()
+		* Remove turn_calloc()
+		* Remove turn_strdup()
+		* Remove SSL_NEW() and SSL_FREE()
+		* Remove pointer debugging machinery
+		* Remove ns_bzero(), ns_bcopy(), and ns_bcmp()
+		* Remove [su]{08,16,32,64}bits type defines		
 
 02/03/2019 Oleg Moskalenko <mom040267@gmail.com> Mihály Mészáros <misi@majd.eu>
 Version 4.5.1.1 'dan Eider':
