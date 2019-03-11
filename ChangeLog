@@ -1,4 +1,8 @@
 02/03/2019 Oleg Moskalenko <mom040267@gmail.com> Mihály Mészáros <misi@majd.eu>
+Version 4.5.1.2 'dan Eider':
+	- merge regrssion fix: Do not display empty CLI passwd alert if no CLI
+
+02/03/2019 Oleg Moskalenko <mom040267@gmail.com> Mihály Mészáros <misi@majd.eu>
 Version 4.5.1.1 'dan Eider':
 	- merge PR #330 missing \r\n after http Connection:close (by gribunin)
 	- merge PR #303 fix typo enpoint (by Majid Motallebikashani)
