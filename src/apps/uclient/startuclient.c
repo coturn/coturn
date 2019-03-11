@@ -89,7 +89,7 @@ static SSL* tls_connect(ioa_socket_raw fd, ioa_addr *remote_addr, int *try_again
 
 	SSL *ssl;
 
-	ssl = SSL_NEW(root_tls_ctx[ctxtype]);
+	ssl = SSL_new(root_tls_ctx[ctxtype]);
 
 #if ALPN_SUPPORTED
 	SSL_set_alpn_protos(ssl, kALPNProtos, kALPNProtosLen);
@@ -161,7 +161,7 @@ static SSL* tls_connect(ioa_socket_raw fd, ioa_addr *remote_addr, int *try_again
 								(int)ERR_get_error(), ERR_error_string(ERR_get_error(), buf), (int)SSL_get_error(ssl, rc));
 				if(connect_cycle<MAX_TLS_CYCLES) {
 					if(try_again) {
-						SSL_FREE(ssl);
+						SSL_free(ssl);
 						*try_again = 1;
 						return NULL;
 					}
@@ -222,12 +222,12 @@ static int clnet_connect(uint16_t clnet_remote_port, const char *remote_address,
 	clnet_fd = -1;
 	connect_err = 0;
 
-	ns_bzero(&remote_addr, sizeof(ioa_addr));
-	if (make_ioa_addr((const u08bits*) remote_address, clnet_remote_port,
+	bzero(&remote_addr, sizeof(ioa_addr));
+	if (make_ioa_addr((const uint8_t*) remote_address, clnet_remote_port,
 			&remote_addr) < 0)
 		return -1;
 
-	ns_bzero(&local_addr, sizeof(ioa_addr));
+	bzero(&local_addr, sizeof(ioa_addr));
 
 	clnet_fd = socket(remote_addr.ss.sa_family,
 			use_sctp ? SCTP_CLIENT_STREAM_SOCKET_TYPE : (use_tcp ? CLIENT_STREAM_SOCKET_TYPE : CLIENT_DGRAM_SOCKET_TYPE),
@@ -250,11 +250,11 @@ static int clnet_connect(uint16_t clnet_remote_port, const char *remote_address,
 	if(clnet_info->is_peer && (*local_address==0)) {
 
 		if(remote_addr.ss.sa_family == AF_INET6) {
-			if (make_ioa_addr((const u08bits*) "::1", 0, &local_addr) < 0) {
+			if (make_ioa_addr((const uint8_t*) "::1", 0, &local_addr) < 0) {
 			    return -1;
 			}
 		} else {
-			if (make_ioa_addr((const u08bits*) "127.0.0.1", 0, &local_addr) < 0) {
+			if (make_ioa_addr((const uint8_t*) "127.0.0.1", 0, &local_addr) < 0) {
 			    return -1;
 			}
 		}
@@ -263,7 +263,7 @@ static int clnet_connect(uint16_t clnet_remote_port, const char *remote_address,
 
 	} else if (strlen(local_address) > 0) {
 
-		if (make_ioa_addr((const u08bits*) local_address, 0,
+		if (make_ioa_addr((const uint8_t*) local_address, 0,
 			    &local_addr) < 0)
 			return -1;
 
@@ -315,9 +315,9 @@ int read_mobility_ticket(app_ur_conn_info *clnet_info, stun_buffer *message)
 		if(s_mobile_id_sar) {
 			int smid_len = stun_attr_get_len(s_mobile_id_sar);
 			if(smid_len>0 && (((size_t)smid_len)<sizeof(clnet_info->s_mobile_id))) {
-				const u08bits* smid_val = stun_attr_get_value(s_mobile_id_sar);
+				const uint8_t* smid_val = stun_attr_get_value(s_mobile_id_sar);
 				if(smid_val) {
-					ns_bcopy(smid_val, clnet_info->s_mobile_id, (size_t)smid_len);
+					bcopy(smid_val, clnet_info->s_mobile_id, (size_t)smid_len);
 					clnet_info->s_mobile_id[smid_len] = 0;
 					if (clnet_verbose)
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
@@ -348,7 +348,7 @@ static int clnet_allocate(int verbose,
 		app_ur_conn_info *clnet_info,
 		ioa_addr *relay_addr,
 		int af,
-		char *turn_addr, u16bits *turn_port) {
+		char *turn_addr, uint16_t *turn_port) {
 
 	int af_cycle = 0;
 	int reopen_socket = 0;
@@ -368,7 +368,7 @@ static int clnet_allocate(int verbose,
 		if(reopen_socket && !use_tcp) {
 			socket_closesocket(clnet_info->fd);
 			clnet_info->fd = -1;
-			if (clnet_connect(addr_get_port(&(clnet_info->remote_addr)), clnet_info->rsaddr, (u08bits*)clnet_info->ifname, clnet_info->lsaddr,
+			if (clnet_connect(addr_get_port(&(clnet_info->remote_addr)), clnet_info->rsaddr, (uint8_t*)clnet_info->ifname, clnet_info->lsaddr,
 					verbose, clnet_info) < 0) {
 				exit(-1);
 			}
@@ -394,7 +394,7 @@ static int clnet_allocate(int verbose,
 		} else if(rt) {
 			ep = -1;
 		} else if(!ep) {
-			ep = (((u08bits)random()) % 2);
+			ep = (((uint8_t)random()) % 2);
 			ep = ep-1;
 		}
 
@@ -448,7 +448,7 @@ static int clnet_allocate(int verbose,
 					}
 					response_message.len = len;
 					int err_code = 0;
-					u08bits err_msg[129];
+					uint8_t err_msg[129];
 					if (stun_is_success_response(&response_message)) {
 						allocate_received = 1;
 						allocate_finished = 1;
@@ -542,8 +542,8 @@ static int clnet_allocate(int verbose,
 							if(stun_attr_get_first_addr(&response_message, STUN_ATTRIBUTE_ALTERNATE_SERVER, &alternate_server, NULL)==-1) {
 								//error
 							} else if(turn_addr && turn_port){
-								addr_to_string_no_port(&alternate_server, (u08bits*)turn_addr);
-								*turn_port = (u16bits)addr_get_port(&alternate_server);
+								addr_to_string_no_port(&alternate_server, (uint8_t*)turn_addr);
+								*turn_port = (uint16_t)addr_get_port(&alternate_server);
 							}
 
 						}
@@ -600,7 +600,7 @@ static int clnet_allocate(int verbose,
 			  int close_socket = (int)(random()%2);
 			  if(ssl && !close_socket) {
 				  SSL_shutdown(ssl);
-				  SSL_FREE(ssl);
+				  SSL_free(ssl);
 				  fd = -1;
 			  } else if(fd>=0) {
 				  close(fd);
@@ -610,7 +610,7 @@ static int clnet_allocate(int verbose,
 		  }
 
 		  app_ur_conn_info ci;
-		  ns_bcopy(clnet_info,&ci,sizeof(ci));
+		  bcopy(clnet_info,&ci,sizeof(ci));
 		  ci.fd = -1;
 		  ci.ssl = NULL;
 		  clnet_info->fd = -1;
@@ -624,7 +624,7 @@ static int clnet_allocate(int verbose,
 
 		  if(ssl) {
 			  SSL_shutdown(ssl);
-		  	  SSL_FREE(ssl);
+		  	  SSL_free(ssl);
 		  } else if(fd>=0) {
 		  	  close(fd);
 		  }
@@ -651,10 +651,10 @@ static int clnet_allocate(int verbose,
 			}
 
 			if(dual_allocation && !mobility) {
-				int t = ((u08bits)random())%3;
+				int t = ((uint8_t)random())%3;
 				if(t) {
-					u08bits field[4];
-					field[0] = (t==1) ? (u08bits)STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4 : (u08bits)STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6;
+					uint8_t field[4];
+					field[0] = (t==1) ? (uint8_t)STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4 : (uint8_t)STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6;
 					field[1]=0;
 					field[2]=0;
 					field[3]=0;
@@ -709,7 +709,7 @@ static int clnet_allocate(int verbose,
 					}
 					response_message.len = len;
 					int err_code = 0;
-					u08bits err_msg[129];
+					uint8_t err_msg[129];
 					if (stun_is_success_response(&response_message)) {
 						read_mobility_ticket(clnet_info, &response_message);
 						refresh_received = 1;
@@ -753,7 +753,7 @@ static int turn_channel_bind(int verbose, uint16_t *chn,
 		int cb_sent = 0;
 
 		if(negative_test) {
-			*chn = stun_set_channel_bind_request(&request_message, peer_addr, (u16bits)random());
+			*chn = stun_set_channel_bind_request(&request_message, peer_addr, (uint16_t)random());
 		} else {
 			*chn = stun_set_channel_bind_request(&request_message, peer_addr, *chn);
 		}
@@ -796,7 +796,7 @@ static int turn_channel_bind(int verbose, uint16_t *chn,
 							"cb response received: \n");
 				}
 				int err_code = 0;
-				u08bits err_msg[129];
+				uint8_t err_msg[129];
 				if (stun_is_success_response(&response_message)) {
 
 					cb_received = 1;
@@ -844,7 +844,7 @@ static int turn_create_permission(int verbose, app_ur_conn_info *clnet_info,
 
 	char saddr[129]="\0";
 	if (verbose) {
-		addr_to_string(peer_addr,(u08bits*)saddr);
+		addr_to_string(peer_addr,(uint8_t*)saddr);
 	}
 
 	stun_buffer request_message, response_message;
@@ -901,7 +901,7 @@ static int turn_create_permission(int verbose, app_ur_conn_info *clnet_info,
 							"cp response received: \n");
 				}
 				int err_code = 0;
-				u08bits err_msg[129];
+				uint8_t err_msg[129];
 				if (stun_is_success_response(&response_message)) {
 
 					cp_received = 1;
@@ -1031,18 +1031,18 @@ int start_connection(uint16_t clnet_remote_port0,
 				if(random() % 2 == 0)
 					sarbaddr = "2001::172";
 				ioa_addr arbaddr;
-				make_ioa_addr((const u08bits*)sarbaddr, 333, &arbaddr);
+				make_ioa_addr((const uint8_t*)sarbaddr, 333, &arbaddr);
 				int i;
 				int maxi = (unsigned short)random() % EXTRA_CREATE_PERMS;
 				for(i=0;i<maxi;i++) {
-					u16bits chni=0;
+					uint16_t chni=0;
 					int port = (unsigned short)random();
 					if(port<1024) port += 1024;
 					addr_set_port(&arbaddr, port);
-					u08bits *u=(u08bits*)&(arbaddr.s4.sin_addr);
+					uint8_t *u=(uint8_t*)&(arbaddr.s4.sin_addr);
 					u[(unsigned short)random()%4] = u[(unsigned short)random()%4] + 1;
 					//char sss[128];
-					//addr_to_string(&arbaddr,(u08bits*)sss);
+					//addr_to_string(&arbaddr,(uint8_t*)sss);
 					//printf("%s: 111.111: %s\n",__FUNCTION__,sss);
 					turn_channel_bind(verbose, &chni, clnet_info, &arbaddr);
 				}
@@ -1061,17 +1061,17 @@ int start_connection(uint16_t clnet_remote_port0,
 				if(random() % 2 == 0)
 					sarbaddr = "2001::172";
 				ioa_addr arbaddr[EXTRA_CREATE_PERMS];
-				make_ioa_addr((const u08bits*)sarbaddr, 333, &arbaddr[0]);
+				make_ioa_addr((const uint8_t*)sarbaddr, 333, &arbaddr[0]);
 				int i;
 				int maxi = (unsigned short)random() % EXTRA_CREATE_PERMS;
 				for(i=0;i<maxi;i++) {
 					if(i>0)
 						addr_cpy(&arbaddr[i],&arbaddr[0]);
 					addr_set_port(&arbaddr[i], (unsigned short)random());
-					u08bits *u=(u08bits*)&(arbaddr[i].s4.sin_addr);
+					uint8_t *u=(uint8_t*)&(arbaddr[i].s4.sin_addr);
 					u[(unsigned short)random()%4] = u[(unsigned short)random()%4] + 1;
 					//char sss[128];
-					//addr_to_string(&arbaddr[i],(u08bits*)sss);
+					//addr_to_string(&arbaddr[i],(uint8_t*)sss);
 					//printf("%s: 111.111: %s\n",__FUNCTION__,sss);
 				}
 				turn_create_permission(verbose, clnet_info, arbaddr, maxi);
@@ -1097,17 +1097,17 @@ int start_connection(uint16_t clnet_remote_port0,
 				if(random() % 2 == 0)
 					sarbaddr = "2001::172";
 				ioa_addr arbaddr[EXTRA_CREATE_PERMS];
-				make_ioa_addr((const u08bits*)sarbaddr, 333, &arbaddr[0]);
+				make_ioa_addr((const uint8_t*)sarbaddr, 333, &arbaddr[0]);
 				int i;
 				int maxi = (unsigned short)random() % EXTRA_CREATE_PERMS;
 				for(i=0;i<maxi;i++) {
 					if(i>0)
 						addr_cpy(&arbaddr[i],&arbaddr[0]);
 					addr_set_port(&arbaddr[i], (unsigned short)random());
-					u08bits *u=(u08bits*)&(arbaddr[i].s4.sin_addr);
+					uint8_t *u=(uint8_t*)&(arbaddr[i].s4.sin_addr);
 					u[(unsigned short)random()%4] = u[(unsigned short)random()%4] + 1;
 					//char sss[128];
-					//addr_to_string(&arbaddr,(u08bits*)sss);
+					//addr_to_string(&arbaddr,(uint8_t*)sss);
 					//printf("%s: 111.111: %s\n",__FUNCTION__,sss);
 				}
 				turn_create_permission(verbose, clnet_info, arbaddr, maxi);
@@ -1269,18 +1269,18 @@ int start_c2c_connection(uint16_t clnet_remote_port0,
 			if(random() % 2 == 0)
 				sarbaddr = "2001::172";
 			ioa_addr arbaddr;
-			make_ioa_addr((const u08bits*)sarbaddr, 333, &arbaddr);
+			make_ioa_addr((const uint8_t*)sarbaddr, 333, &arbaddr);
 			int i;
 			int maxi = (unsigned short)random() % EXTRA_CREATE_PERMS;
 			for(i=0;i<maxi;i++) {
-				u16bits chni=0;
+				uint16_t chni=0;
 				int port = (unsigned short)random();
 				if(port<1024) port += 1024;
 				addr_set_port(&arbaddr, port);
-				u08bits *u=(u08bits*)&(arbaddr.s4.sin_addr);
+				uint8_t *u=(uint8_t*)&(arbaddr.s4.sin_addr);
 				u[(unsigned short)random()%4] = u[(unsigned short)random()%4] + 1;
 				//char sss[128];
-				//addr_to_string(&arbaddr,(u08bits*)sss);
+				//addr_to_string(&arbaddr,(uint8_t*)sss);
 				//printf("%s: 111.111: %s\n",__FUNCTION__,sss);
 				turn_channel_bind(verbose, &chni, clnet_info1, &arbaddr);
 			}
@@ -1293,17 +1293,17 @@ int start_c2c_connection(uint16_t clnet_remote_port0,
 			if(random() % 2 == 0)
 				sarbaddr = "2001::172";
 			ioa_addr arbaddr[EXTRA_CREATE_PERMS];
-			make_ioa_addr((const u08bits*)sarbaddr, 333, &arbaddr[0]);
+			make_ioa_addr((const uint8_t*)sarbaddr, 333, &arbaddr[0]);
 			int i;
 			int maxi = (unsigned short)random() % EXTRA_CREATE_PERMS;
 			for(i=0;i<maxi;i++) {
 				if(i>0)
 					addr_cpy(&arbaddr[i],&arbaddr[0]);
 				addr_set_port(&arbaddr[i], (unsigned short)random());
-				u08bits *u=(u08bits*)&(arbaddr[i].s4.sin_addr);
+				uint8_t *u=(uint8_t*)&(arbaddr[i].s4.sin_addr);
 				u[(unsigned short)random()%4] = u[(unsigned short)random()%4] + 1;
 				//char sss[128];
-				//addr_to_string(&arbaddr[i],(u08bits*)sss);
+				//addr_to_string(&arbaddr[i],(uint8_t*)sss);
 				//printf("%s: 111.111: %s\n",__FUNCTION__,sss);
 			}
 			turn_create_permission(verbose, clnet_info1, arbaddr, maxi);
@@ -1336,15 +1336,15 @@ int start_c2c_connection(uint16_t clnet_remote_port0,
 			if(random() % 2 == 0)
 				sarbaddr = "2001::172";
 			ioa_addr arbaddr;
-			make_ioa_addr((const u08bits*)sarbaddr, 333, &arbaddr);
+			make_ioa_addr((const uint8_t*)sarbaddr, 333, &arbaddr);
 			int i;
 			int maxi = (unsigned short)random() % EXTRA_CREATE_PERMS;
 			for(i=0;i<maxi;i++) {
 				addr_set_port(&arbaddr, (unsigned short)random());
-				u08bits *u=(u08bits*)&(arbaddr.s4.sin_addr);
+				uint8_t *u=(uint8_t*)&(arbaddr.s4.sin_addr);
 				u[(unsigned short)random()%4] = u[(unsigned short)random()%4] + 1;
 				//char sss[128];
-				//addr_to_string(&arbaddr,(u08bits*)sss);
+				//addr_to_string(&arbaddr,(uint8_t*)sss);
 				//printf("%s: 111.111: %s\n",__FUNCTION__,sss);
 				turn_create_permission(verbose, clnet_info1, &arbaddr, 1);
 			}
@@ -1427,11 +1427,11 @@ static int turn_tcp_connection_bind(int verbose, app_ur_conn_info *clnet_info, a
 	{
 		int cb_sent = 0;
 
-		u32bits cid = atc->cid;
+		uint32_t cid = atc->cid;
 
 		stun_init_request(STUN_METHOD_CONNECTION_BIND, &request_message);
 
-		stun_attr_add(&request_message, STUN_ATTRIBUTE_CONNECTION_ID, (const s08bits*)&cid,4);
+		stun_attr_add(&request_message, STUN_ATTRIBUTE_CONNECTION_ID, (const char*)&cid,4);
 
 		add_origin(&request_message);
 
@@ -1474,7 +1474,7 @@ static int turn_tcp_connection_bind(int verbose, app_ur_conn_info *clnet_info, a
 							"connect bind response received: \n");
 				}
 				int err_code = 0;
-				u08bits err_msg[129];
+				uint8_t err_msg[129];
 				if (stun_is_success_response(&response_message)) {
 
 					if(clnet_info->nonce[0]) {
@@ -1515,7 +1515,7 @@ static int turn_tcp_connection_bind(int verbose, app_ur_conn_info *clnet_info, a
 	return 0;
 }
 
-void tcp_data_connect(app_ur_session *elem, u32bits cid)
+void tcp_data_connect(app_ur_session *elem, uint32_t cid)
 {
 	int clnet_fd;
 	int connect_cycle = 0;
@@ -1536,9 +1536,9 @@ void tcp_data_connect(app_ur_session *elem, u32bits cid)
 
 	++elem->pinfo.tcp_conn_number;
 	int i = (int)(elem->pinfo.tcp_conn_number-1);
-	elem->pinfo.tcp_conn=(app_tcp_conn_info**)turn_realloc(elem->pinfo.tcp_conn,0,elem->pinfo.tcp_conn_number*sizeof(app_tcp_conn_info*));
-	elem->pinfo.tcp_conn[i]=(app_tcp_conn_info*)turn_malloc(sizeof(app_tcp_conn_info));
-	ns_bzero(elem->pinfo.tcp_conn[i],sizeof(app_tcp_conn_info));
+	elem->pinfo.tcp_conn=(app_tcp_conn_info**)realloc(elem->pinfo.tcp_conn,elem->pinfo.tcp_conn_number*sizeof(app_tcp_conn_info*));
+	elem->pinfo.tcp_conn[i]=(app_tcp_conn_info*)malloc(sizeof(app_tcp_conn_info));
+	bzero(elem->pinfo.tcp_conn[i],sizeof(app_tcp_conn_info));
 
 	elem->pinfo.tcp_conn[i]->tcp_data_fd = clnet_fd;
 	elem->pinfo.tcp_conn[i]->cid = cid;

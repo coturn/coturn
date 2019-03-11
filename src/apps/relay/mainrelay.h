@@ -98,7 +98,7 @@ extern "C" {
 
 #define DEFAULT_EC_CURVE_NAME "prime256v1"
 
-#define MAX_NUMBER_OF_GENERAL_RELAY_SERVERS ((u08bits)(0x80))
+#define MAX_NUMBER_OF_GENERAL_RELAY_SERVERS ((uint8_t)(0x80))
 
 #define TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP MAX_NUMBER_OF_GENERAL_RELAY_SERVERS
 #define TURNSERVER_ID_BOUNDARY_BETWEEN_UDP_AND_TCP TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP
@@ -249,8 +249,8 @@ typedef struct _turn_params_ {
 
 //////////////// Relay servers /////////////
 
-  u16bits min_port;
-  u16bits max_port;
+  uint16_t min_port;
+  uint16_t max_port;
 
   vint check_origin;
 

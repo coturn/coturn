@@ -53,7 +53,7 @@ typedef struct _tcp_connection tcp_connection;
 ////////////// Mutexes /////////////////////
 
 struct _turn_mutex {
-  u32bits data;
+  uint32_t data;
   void* mutex;
 };
 
@@ -172,14 +172,14 @@ const ip_range_list_t* ioa_get_blacklist(ioa_engine_handle e);
  */
 ioa_network_buffer_handle ioa_network_buffer_allocate(ioa_engine_handle e);
 void ioa_network_buffer_header_init(ioa_network_buffer_handle nbh);
-u08bits *ioa_network_buffer_data(ioa_network_buffer_handle nbh);
+uint8_t *ioa_network_buffer_data(ioa_network_buffer_handle nbh);
 size_t ioa_network_buffer_get_size(ioa_network_buffer_handle nbh);
 size_t ioa_network_buffer_get_capacity(ioa_network_buffer_handle nbh);
 size_t ioa_network_buffer_get_capacity_udp(void);
 void ioa_network_buffer_set_size(ioa_network_buffer_handle nbh, size_t len);
-void ioa_network_buffer_add_offset_size(ioa_network_buffer_handle nbh, u16bits offset, u08bits coffset, size_t len);
-u16bits ioa_network_buffer_get_offset(ioa_network_buffer_handle nbh);
-u08bits ioa_network_buffer_get_coffset(ioa_network_buffer_handle nbh);
+void ioa_network_buffer_add_offset_size(ioa_network_buffer_handle nbh, uint16_t offset, uint8_t coffset, size_t len);
+uint16_t ioa_network_buffer_get_offset(ioa_network_buffer_handle nbh);
+uint8_t ioa_network_buffer_get_coffset(ioa_network_buffer_handle nbh);
 void ioa_network_buffer_delete(ioa_engine_handle e, ioa_network_buffer_handle nbh);
 
 /*
@@ -204,7 +204,7 @@ typedef void (*ioa_timer_event_handler)(ioa_engine_handle e, void *ctx);
 
 /* timers */
 
-ioa_timer_handle set_ioa_timer(ioa_engine_handle e, int secs, int ms, ioa_timer_event_handler cb, void *ctx, int persist, const s08bits *txt);
+ioa_timer_handle set_ioa_timer(ioa_engine_handle e, int secs, int ms, ioa_timer_event_handler cb, void *ctx, int persist, const char *txt);
 void stop_ioa_timer(ioa_timer_handle th);
 void delete_ioa_timer(ioa_timer_handle th);
 #define IOA_EVENT_DEL(E) do { if(E) { delete_ioa_timer(E); E = NULL; } } while(0)
@@ -220,14 +220,14 @@ void inc_ioa_socket_ref_counter(ioa_socket_handle s);
  * even_port == +1: reserve and bind rtcp.
  */
 int create_relay_ioa_sockets(ioa_engine_handle e, ioa_socket_handle client_s,
-				int address_family, u08bits transport,
+				int address_family, uint8_t transport,
 				int even_port, ioa_socket_handle *rtp_s, ioa_socket_handle *rtcp_s,
-				u64bits *out_reservation_token, int *err_code, const u08bits **reason,
+				uint64_t *out_reservation_token, int *err_code, const uint8_t **reason,
 				accept_cb acb, void *acbarg);
 
 ioa_socket_handle  ioa_create_connecting_tcp_relay_socket(ioa_socket_handle s, ioa_addr *peer_addr, connect_cb cb, void *arg);
 
-int get_ioa_socket_from_reservation(ioa_engine_handle e, u64bits in_reservation_token, ioa_socket_handle *s);
+int get_ioa_socket_from_reservation(ioa_engine_handle e, uint64_t in_reservation_token, ioa_socket_handle *s);
 
 int get_ioa_socket_address_family(ioa_socket_handle s);
 int is_stream_socket(int st);

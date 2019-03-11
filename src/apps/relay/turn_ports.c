@@ -39,38 +39,38 @@
 ////////// DATA ////////////////////////////////////////////
 
 #define PORTS_SIZE (0xFFFF+1)
-#define TPS_OUT_OF_RANGE ((u32bits)(-1))
-#define TPS_TAKEN_SINGLE ((u32bits)(-2))
-#define TPS_TAKEN_EVEN ((u32bits)(-3))
-#define TPS_TAKEN_ODD ((u32bits)(-4))
+#define TPS_OUT_OF_RANGE ((uint32_t)(-1))
+#define TPS_TAKEN_SINGLE ((uint32_t)(-2))
+#define TPS_TAKEN_EVEN ((uint32_t)(-3))
+#define TPS_TAKEN_ODD ((uint32_t)(-4))
 
 struct _turnports {
-  u32bits status[PORTS_SIZE];
-  u32bits low;
-  u32bits high;
-  u16bits range_start;
-  u16bits range_stop;
-  u16bits ports[PORTS_SIZE];
+  uint32_t status[PORTS_SIZE];
+  uint32_t low;
+  uint32_t high;
+  uint16_t range_start;
+  uint16_t range_stop;
+  uint16_t ports[PORTS_SIZE];
   TURN_MUTEX_DECLARE(mutex)
 };
 typedef struct _turnports turnports;
 
 /////////////// TURNPORTS statics //////////////////////////
 
-static turnports* turnports_create(super_memory_t *sm, u16bits start, u16bits end);
-static u16bits turnports_size(turnports* tp);
+static turnports* turnports_create(super_memory_t *sm, uint16_t start, uint16_t end);
+static uint16_t turnports_size(turnports* tp);
 
 static int turnports_allocate(turnports* tp);
-static int turnports_allocate_even(turnports* tp, int allocate_rtcp, u64bits *reservation_token);
+static int turnports_allocate_even(turnports* tp, int allocate_rtcp, uint64_t *reservation_token);
 
-static void turnports_release(turnports* tp, u16bits port);
+static void turnports_release(turnports* tp, uint16_t port);
 
-static int turnports_is_allocated(turnports* tp, u16bits port);
-static int turnports_is_available(turnports* tp, u16bits port);
+static int turnports_is_allocated(turnports* tp, uint16_t port);
+static int turnports_is_available(turnports* tp, uint16_t port);
 
 /////////////// UTILS //////////////////////////////////////
 
-static int is_taken(u32bits status) {
+static int is_taken(uint32_t status) {
 	int ret = -1;
 	switch (status) {
 	case TPS_TAKEN_SINGLE :
@@ -90,26 +90,26 @@ static void turnports_randomize(turnports* tp) {
     unsigned int i=0;
     unsigned int cycles=size*10;
     for(i=0;i<cycles;i++) {
-      u16bits port1 = (u16bits)(tp->low + (u16bits)(((unsigned long)random())%((unsigned long)size)));
-      u16bits port2 = (u16bits)(tp->low + (u16bits)(((unsigned long)random())%((unsigned long)size)));
+      uint16_t port1 = (uint16_t)(tp->low + (uint16_t)(((unsigned long)random())%((unsigned long)size)));
+      uint16_t port2 = (uint16_t)(tp->low + (uint16_t)(((unsigned long)random())%((unsigned long)size)));
       if(port1!=port2) {
     	  int pos1=tp->status[port1];
     	  int pos2=tp->status[port2];
     	  int tmp=(int)tp->status[port1];
     	  tp->status[port1]=tp->status[port2];
-    	  tp->status[port2]=(u32bits)tmp;
+    	  tp->status[port2]=(uint32_t)tmp;
     	  tmp=(int)tp->ports[pos1];
     	  tp->ports[pos1]=tp->ports[pos2];
-    	  tp->ports[pos2]=(u16bits)tmp;
+    	  tp->ports[pos2]=(uint16_t)tmp;
       }
     }
   }
 }   
 
-static void turnports_init(turnports* tp, u16bits start, u16bits end) {
+static void turnports_init(turnports* tp, uint16_t start, uint16_t end) {
 
   tp->low=start;
-  tp->high=((u32bits)end)+1;
+  tp->high=((uint32_t)end)+1;
 
   tp->range_start=start;
   tp->range_stop=end;
@@ -117,15 +117,15 @@ static void turnports_init(turnports* tp, u16bits start, u16bits end) {
   int i=0;
   for(i=0;i<start;i++) {
     tp->status[i]=TPS_OUT_OF_RANGE;
-    tp->ports[i]=(u16bits)i;
+    tp->ports[i]=(uint16_t)i;
   }
   for(i=start;i<=end;i++) {
-    tp->status[i]=(u32bits)i;
-    tp->ports[i]=(u16bits)i;
+    tp->status[i]=(uint32_t)i;
+    tp->ports[i]=(uint16_t)i;
   }
   for(i=((int)end)+1;i<PORTS_SIZE;i++) {
     tp->status[i]=TPS_OUT_OF_RANGE;
-    tp->ports[i]=(u16bits)i;
+    tp->ports[i]=(uint16_t)i;
   }
 
   turnports_randomize(tp);
@@ -135,7 +135,7 @@ static void turnports_init(turnports* tp, u16bits start, u16bits end) {
 
 /////////////// FUNC ///////////////////////////////////////
 
-turnports* turnports_create(super_memory_t *sm, u16bits start, u16bits end) {
+turnports* turnports_create(super_memory_t *sm, uint16_t start, uint16_t end) {
 
   if(start>end) return NULL;
 
@@ -145,11 +145,11 @@ turnports* turnports_create(super_memory_t *sm, u16bits start, u16bits end) {
   return ret;
 }
 
-u16bits turnports_size(turnports* tp) {
+uint16_t turnports_size(turnports* tp) {
   if(!tp) return 0;
   else {
     TURN_MUTEX_LOCK(&tp->mutex);
-    u16bits ret = (u16bits)((tp->high-tp->low));
+    uint16_t ret = (uint16_t)((tp->high-tp->low));
     TURN_MUTEX_UNLOCK(&tp->mutex);
     return ret;
   }
@@ -170,7 +170,7 @@ int turnports_allocate(turnports* tp) {
     	  return -1;
       }
       
-      int position=(u16bits)(tp->low & 0x0000FFFF);
+      int position=(uint16_t)(tp->low & 0x0000FFFF);
       
       port=(int)tp->ports[position];
       if(port<(int)(tp->range_start) || port>((int)(tp->range_stop))) {
@@ -196,10 +196,10 @@ int turnports_allocate(turnports* tp) {
   return port;
 }
 
-void turnports_release(turnports* tp, u16bits port) {
+void turnports_release(turnports* tp, uint16_t port) {
   TURN_MUTEX_LOCK(&tp->mutex);
   if(tp && port>=tp->range_start && port<=tp->range_stop) {
-    u16bits position=(u16bits)(tp->high & 0x0000FFFF);
+    uint16_t position=(uint16_t)(tp->high & 0x0000FFFF);
     if(is_taken(tp->status[port])) {
       tp->status[port]=tp->high;
       tp->ports[position]=port;
@@ -209,12 +209,12 @@ void turnports_release(turnports* tp, u16bits port) {
   TURN_MUTEX_UNLOCK(&tp->mutex);
 }
 
-int turnports_allocate_even(turnports* tp, int allocate_rtcp, u64bits *reservation_token) {
+int turnports_allocate_even(turnports* tp, int allocate_rtcp, uint64_t *reservation_token) {
   if(tp) {
     TURN_MUTEX_LOCK(&tp->mutex);
-    u16bits size = turnports_size(tp);
+    uint16_t size = turnports_size(tp);
     if(size>1) {
-      u16bits i=0;
+      uint16_t i=0;
       for(i=0;i<size;i++) {
     	  int port=turnports_allocate(tp);
     	  if(port & 0x00000001) {
@@ -233,11 +233,11 @@ int turnports_allocate_even(turnports* tp, int allocate_rtcp, u64bits *reservati
     				  tp->status[port]=TPS_TAKEN_EVEN;
     				  tp->status[rtcp_port]=TPS_TAKEN_ODD;
     				  if(reservation_token) {
-    					  u16bits *v16=(u16bits*)reservation_token;
-    					  u32bits *v32=(u32bits*)reservation_token;
-    					  v16[0]=(u16bits)(tp->ports[(u16bits)(tp->low & 0x0000FFFF)]);
-    					  v16[1]=(u16bits)(tp->ports[(u16bits)(tp->high & 0x0000FFFF)]);
-    					  v32[1]=(u32bits)turn_random();
+    					  uint16_t *v16=(uint16_t*)reservation_token;
+    					  uint32_t *v32=(uint32_t*)reservation_token;
+    					  v16[0]=(uint16_t)(tp->ports[(uint16_t)(tp->low & 0x0000FFFF)]);
+    					  v16[1]=(uint16_t)(tp->ports[(uint16_t)(tp->high & 0x0000FFFF)]);
+    					  v32[1]=(uint32_t)turn_random();
     				  }
     				  TURN_MUTEX_UNLOCK(&tp->mutex);
     				  return port;
@@ -251,7 +251,7 @@ int turnports_allocate_even(turnports* tp, int allocate_rtcp, u64bits *reservati
   return -1;
 }
 
-int turnports_is_allocated(turnports* tp, u16bits port) {
+int turnports_is_allocated(turnports* tp, uint16_t port) {
   if(!tp) return 0;
   else {
     TURN_MUTEX_LOCK(&tp->mutex);
@@ -261,12 +261,12 @@ int turnports_is_allocated(turnports* tp, u16bits port) {
   }
 }
 
-int turnports_is_available(turnports* tp, u16bits port) {
+int turnports_is_available(turnports* tp, uint16_t port) {
   if(tp) {
     TURN_MUTEX_LOCK(&tp->mutex);
-    u32bits status = tp->status[port];
+    uint32_t status = tp->status[port];
     if((status!=TPS_OUT_OF_RANGE) && !is_taken(status)) {
-      u16bits position=(u16bits)(status & 0x0000FFFF);
+      uint16_t position=(uint16_t)(status & 0x0000FFFF);
       if(tp->ports[position]==port) {
     	  TURN_MUTEX_UNLOCK(&tp->mutex);
     	  return 1;
@@ -282,8 +282,8 @@ int turnports_is_available(turnports* tp, u16bits port) {
 struct _turnipports
 {
 	super_memory_t *sm;
-	u16bits start;
-	u16bits end;
+	uint16_t start;
+	uint16_t end;
 	ur_addr_map ip_to_turnports_udp;
 	ur_addr_map ip_to_turnports_tcp;
 	TURN_MUTEX_DECLARE(mutex)
@@ -291,7 +291,7 @@ struct _turnipports
 
 //////////////////////////////////////////////////
 
-static ur_addr_map *get_map(turnipports *tp, u08bits transport)
+static ur_addr_map *get_map(turnipports *tp, uint8_t transport)
 {
 	if(transport == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE)
 		return &(tp->ip_to_turnports_tcp);
@@ -301,7 +301,7 @@ static ur_addr_map *get_map(turnipports *tp, u08bits transport)
 
 static turnipports* turnipports_singleton = NULL;
 
-turnipports* turnipports_create(super_memory_t *sm, u16bits start, u16bits end)
+turnipports* turnipports_create(super_memory_t *sm, uint16_t start, uint16_t end)
 {
 	turnipports *ret = (turnipports*) allocate_super_memory_region(sm, sizeof(turnipports));
 	ret->sm = sm;
@@ -314,7 +314,7 @@ turnipports* turnipports_create(super_memory_t *sm, u16bits start, u16bits end)
 	return ret;
 }
 
-static turnports* turnipports_add(turnipports* tp, u08bits transport, const ioa_addr *backend_addr)
+static turnports* turnipports_add(turnipports* tp, uint8_t transport, const ioa_addr *backend_addr)
 {
 	ur_addr_map_value_type t = 0;
 	if (tp && backend_addr) {
@@ -331,12 +331,12 @@ static turnports* turnipports_add(turnipports* tp, u08bits transport, const ioa_
 	return (turnports*) t;
 }
 
-void turnipports_add_ip(u08bits transport, const ioa_addr *backend_addr)
+void turnipports_add_ip(uint8_t transport, const ioa_addr *backend_addr)
 {
 	turnipports_add(turnipports_singleton, transport, backend_addr);
 }
 
-int turnipports_allocate(turnipports* tp, u08bits transport, const ioa_addr *backend_addr)
+int turnipports_allocate(turnipports* tp, uint8_t transport, const ioa_addr *backend_addr)
 {
 	int ret = -1;
 	if (tp && backend_addr) {
@@ -349,7 +349,7 @@ int turnipports_allocate(turnipports* tp, u08bits transport, const ioa_addr *bac
 }
 
 int turnipports_allocate_even(turnipports* tp, const ioa_addr *backend_addr, int allocate_rtcp,
-				u64bits *reservation_token)
+				uint64_t *reservation_token)
 {
 	int ret = -1;
 	if (tp && backend_addr) {
@@ -361,7 +361,7 @@ int turnipports_allocate_even(turnipports* tp, const ioa_addr *backend_addr, int
 	return ret;
 }
 
-void turnipports_release(turnipports* tp, u08bits transport, const ioa_addr *socket_addr)
+void turnipports_release(turnipports* tp, uint8_t transport, const ioa_addr *socket_addr)
 {
 	if (tp && socket_addr) {
 		ioa_addr ba;
@@ -376,7 +376,7 @@ void turnipports_release(turnipports* tp, u08bits transport, const ioa_addr *soc
 	}
 }
 
-int turnipports_is_allocated(turnipports* tp, u08bits transport, const ioa_addr *backend_addr, u16bits port)
+int turnipports_is_allocated(turnipports* tp, uint8_t transport, const ioa_addr *backend_addr, uint16_t port)
 {
 	int ret = 0;
 	if (tp && backend_addr) {
@@ -393,7 +393,7 @@ int turnipports_is_allocated(turnipports* tp, u08bits transport, const ioa_addr 
 	return ret;
 }
 
-int turnipports_is_available(turnipports* tp, u08bits transport, const ioa_addr *backend_addr, u16bits port)
+int turnipports_is_available(turnipports* tp, uint8_t transport, const ioa_addr *backend_addr, uint16_t port)
 {
 	int ret = 0;
 	if (tp && backend_addr) {

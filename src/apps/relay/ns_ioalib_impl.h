@@ -157,11 +157,11 @@ struct _ioa_engine
 #endif
   turn_time_t jiffie; /* bandwidth check interval */
   ioa_timer_handle timer_ev;
-  s08bits cmsg[TURN_CMSG_SZ+1];
+  char cmsg[TURN_CMSG_SZ+1];
   int predef_timer_intervals[PREDEF_TIMERS_NUM];
   struct timeval predef_timers[PREDEF_TIMERS_NUM];
   /* Relays */
-  s08bits relay_ifname[1025];
+  char relay_ifname[1025];
   int default_relays;
   size_t relays_number;
   size_t relay_addr_counter;
@@ -180,7 +180,7 @@ struct _ioa_socket
 {
 	evutil_socket_t fd;
 	struct _ioa_socket *parent_s;
-	u32bits magic;
+	uint32_t magic;
 	ur_addr_map *sockets_container; /* relay container for UDP sockets */
 	struct bufferevent *bev;
 	ioa_network_buffer_handle defer_nbh;
@@ -188,7 +188,7 @@ struct _ioa_socket
 	SOCKET_TYPE st;
 	SOCKET_APP_TYPE sat;
 	SSL* ssl;
-	u32bits ssl_renegs;
+	uint32_t ssl_renegs;
 	int in_write;
 	int bound;
 	int local_addr_known;
@@ -236,7 +236,7 @@ typedef struct _timer_event
 	ioa_engine_handle e;
 	ioa_timer_event_handler cb;
 	void *ctx;
-	s08bits* txt;
+	char* txt;
 } timer_event;
 
 ///////////////////////////////////
@@ -250,8 +250,8 @@ int get_realm_data(char* name, realm_params_t* rp);
 
 ioa_engine_handle create_ioa_engine(super_memory_t *sm,
 				struct event_base *eb, turnipports* tp,
-				const s08bits* relay_if,
-				size_t relays_number, s08bits **relay_addrs, int default_relays,
+				const char* relay_if,
+				size_t relays_number, char **relay_addrs, int default_relays,
 				int verbose
 #if !defined(TURN_NO_HIREDIS)
 				,const char* redis_report_connection_string
@@ -273,8 +273,8 @@ void delete_socket_from_map(ioa_socket_handle s);
 
 int is_connreset(void);
 int would_block(void);
-int udp_send(ioa_socket_handle s, const ioa_addr* dest_addr, const s08bits* buffer, int len);
-int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr *like_addr, s08bits* buffer, int buf_size, int *ttl, int *tos, s08bits *ecmsg, int flags, u32bits *errcode);
+int udp_send(ioa_socket_handle s, const ioa_addr* dest_addr, const char* buffer, int len);
+int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr *like_addr, char* buffer, int buf_size, int *ttl, int *tos, char *ecmsg, int flags, uint32_t *errcode);
 int ssl_read(evutil_socket_t fd, SSL* ssl, ioa_network_buffer_handle nbh, int verbose);
 
 int set_raw_socket_ttl_options(evutil_socket_t fd, int family);

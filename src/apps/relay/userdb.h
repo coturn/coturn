@@ -83,13 +83,13 @@ struct auth_message {
 	int in_oauth;
 	int out_oauth;
 	int max_session_time;
-	u08bits username[STUN_MAX_USERNAME_SIZE + 1];
-	u08bits realm[STUN_MAX_REALM_SIZE + 1];
+	uint8_t username[STUN_MAX_USERNAME_SIZE + 1];
+	uint8_t realm[STUN_MAX_REALM_SIZE + 1];
 	hmackey_t key;
 	password_t pwd;
 	get_username_resume_cb resume_func;
 	ioa_net_data in_buffer;
-	u64bits ctxkey;
+	uint64_t ctxkey;
 	int success;
 };
 
@@ -185,10 +185,10 @@ void add_to_secrets_list(secrets_list_t *sl, const char* elem);
 
 /////////// USER DB CHECK //////////////////
 
-int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, u08bits *uname, u08bits *realm, hmackey_t key, ioa_network_buffer_handle nbh);
-u08bits *start_user_check(turnserver_id id, turn_credential_type ct, int in_oauth, int *out_oauth, u08bits *uname, u08bits *realm, get_username_resume_cb resume, ioa_net_data *in_buffer, u64bits ctxkey, int *postpone_reply);
-int check_new_allocation_quota(u08bits *username, int oauth, u08bits *realm);
-void release_allocation_quota(u08bits *username, int oauth, u08bits *realm);
+int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *uname, uint8_t *realm, hmackey_t key, ioa_network_buffer_handle nbh);
+uint8_t *start_user_check(turnserver_id id, turn_credential_type ct, int in_oauth, int *out_oauth, uint8_t *uname, uint8_t *realm, get_username_resume_cb resume, ioa_net_data *in_buffer, uint64_t ctxkey, int *postpone_reply);
+int check_new_allocation_quota(uint8_t *username, int oauth, uint8_t *realm);
+void release_allocation_quota(uint8_t *username, int oauth, uint8_t *realm);
 
 /////////// Handle user DB /////////////////
 
@@ -199,7 +199,7 @@ void release_allocation_quota(u08bits *username, int oauth, u08bits *realm);
 void auth_ping(redis_context_handle rch);
 void reread_realms(void);
 int add_static_user_account(char *user);
-int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, u08bits *origin, TURNADMIN_COMMAND_TYPE ct, perf_options_t* po, int is_admin);
+int adminuser(uint8_t *user, uint8_t *realm, uint8_t *pwd, uint8_t *secret, uint8_t *origin, TURNADMIN_COMMAND_TYPE ct, perf_options_t* po, int is_admin);
 
 int add_ip_list_range(const char* range, const char* realm, ip_range_list_t * list);
 int check_ip_list_range(const char* range);
