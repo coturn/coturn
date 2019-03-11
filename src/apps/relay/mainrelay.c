@@ -2249,7 +2249,7 @@ int main(int argc, char **argv)
 		}
         }
 
-	if(cli_password[0]==0) {
+	if(use_cli && cli_password[0]==0) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nCONFIG ERROR: Empty cli-password, and so telnet cli interface is disabled! Please set a non empty cli-password!\n");
 		use_cli = 0;
 	}
