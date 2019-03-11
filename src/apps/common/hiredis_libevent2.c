@@ -277,7 +277,7 @@ redis_context_handle redisLibeventAttach(struct event_base *base, char *ip0, int
   		     e);
 
   if (e->rev == NULL || e->wev == NULL) {
-	  free(e, sizeof(struct redisLibeventEvents));
+	  free(e);
 	  return NULL;
   }
   
