@@ -1347,6 +1347,15 @@ static int redis_list_admin_users(int no_print)
   return ret;
 }
 
+static void redis_disconnect(void) {
+	redisContext *redisconnection = (redisContext*)pthread_getspecific(connection_key);
+	if (redisconnection) {
+		redisFree(redisconnection);
+		redisconnection = NULL;
+	}
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Redis connection was closed.\n");
+}
+
 //////////////////////////////////////////////////////
 
 static const turn_dbdriver_t driver = {
@@ -1374,7 +1383,8 @@ static const turn_dbdriver_t driver = {
   &redis_get_admin_user,
   &redis_set_admin_user,
   &redis_del_admin_user,
-  &redis_list_admin_users
+  &redis_list_admin_users,
+  &redis_disconnect
 };
 
 const turn_dbdriver_t * get_redis_dbdriver(void) {

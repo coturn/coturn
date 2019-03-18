@@ -1349,6 +1349,15 @@ static int mongo_list_admin_users(int no_print)
 	return ret;
 }
 
+static void mongo_disconnect(void) {
+	MONGO * mongoconnection = (MONGO *) pthread_getspecific(connection_key);
+	if (mongoconnection) {
+		MongoFree(mongoconnection);
+		mongoconnection = NULL;
+	}
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "MongoDB connection was closed.\n");
+}
+
 //////////////////////////////////////////////////////////
 
 static const turn_dbdriver_t driver = {
@@ -1376,7 +1385,8 @@ static const turn_dbdriver_t driver = {
   &mongo_get_admin_user,
   &mongo_set_admin_user,
   &mongo_del_admin_user,
-  &mongo_list_admin_users
+  &mongo_list_admin_users,
+  &mongo_disconnect
 };
 
 const turn_dbdriver_t * get_mongo_dbdriver(void) {
