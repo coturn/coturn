@@ -44,7 +44,7 @@ typedef struct _ur_map ur_map;
 
 //////////////// Common Definitions //////
 
-typedef u64bits ur_map_key_type;
+typedef uint64_t ur_map_key_type;
 typedef unsigned long ur_map_value_type;
 
 typedef void (*ur_map_del_func)(ur_map_value_type);
@@ -176,7 +176,7 @@ typedef struct _addr_list_header {
 
 struct _ur_addr_map {
   addr_list_header lists[ADDR_MAP_SIZE];
-  u64bits magic;
+  uint64_t magic;
 };
 
 struct _ur_addr_map;
@@ -221,7 +221,7 @@ size_t ur_addr_map_size(const ur_addr_map* map);
 
 //////////////// UR STRING MAP //////////////////
 
-typedef s08bits* ur_string_map_key_type;
+typedef char* ur_string_map_key_type;
 typedef void* ur_string_map_value_type;
 struct _ur_string_map;
 typedef struct _ur_string_map ur_string_map;

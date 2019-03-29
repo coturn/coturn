@@ -182,13 +182,13 @@ static void add_aux_server_list(const char *saddr, turn_server_addrs_list_t *lis
 {
 	if(saddr && list) {
 		ioa_addr addr;
-		if(make_ioa_addr_from_full_string((const u08bits*)saddr, 0, &addr)!=0) {
+		if(make_ioa_addr_from_full_string((const uint8_t*)saddr, 0, &addr)!=0) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong full address format: %s\n",saddr);
 		} else {
-		  list->addrs = (ioa_addr*)turn_realloc(list->addrs,0,sizeof(ioa_addr)*(list->size+1));
+		  list->addrs = (ioa_addr*)realloc(list->addrs,sizeof(ioa_addr)*(list->size+1));
 			addr_cpy(&(list->addrs[(list->size)++]),&addr);
 			{
-				u08bits s[1025];
+				uint8_t s[1025];
 				addr_to_string(&addr, s);
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Aux server: %s\n",s);
 			}
@@ -210,13 +210,13 @@ static void add_alt_server(const char *saddr, int default_port, turn_server_addr
 
 		turn_mutex_lock(&(list->m));
 
-		if(make_ioa_addr_from_full_string((const u08bits*)saddr, default_port, &addr)!=0) {
+		if(make_ioa_addr_from_full_string((const uint8_t*)saddr, default_port, &addr)!=0) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong IP address format: %s\n",saddr);
 		} else {
-		  list->addrs = (ioa_addr*)turn_realloc(list->addrs,0,sizeof(ioa_addr)*(list->size+1));
+		  list->addrs = (ioa_addr*)realloc(list->addrs,sizeof(ioa_addr)*(list->size+1));
 			addr_cpy(&(list->addrs[(list->size)++]),&addr);
 			{
-				u08bits s[1025];
+				uint8_t s[1025];
 				addr_to_string(&addr, s);
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Alternate server added: %s\n",s);
 			}
@@ -234,7 +234,7 @@ static void del_alt_server(const char *saddr, int default_port, turn_server_addr
 
 		turn_mutex_lock(&(list->m));
 
-		if(make_ioa_addr_from_full_string((const u08bits*)saddr, default_port, &addr)!=0) {
+		if(make_ioa_addr_from_full_string((const uint8_t*)saddr, default_port, &addr)!=0) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong IP address format: %s\n",saddr);
 		} else {
 
@@ -250,7 +250,7 @@ static void del_alt_server(const char *saddr, int default_port, turn_server_addr
 			if(found) {
 
 				size_t j;
-				ioa_addr *new_addrs = (ioa_addr*)turn_malloc(sizeof(ioa_addr)*(list->size-1));
+				ioa_addr *new_addrs = (ioa_addr*)malloc(sizeof(ioa_addr)*(list->size-1));
 				for(j=0;j<i;++j) {
 					addr_cpy(&(new_addrs[j]),&(list->addrs[j]));
 				}
@@ -258,12 +258,12 @@ static void del_alt_server(const char *saddr, int default_port, turn_server_addr
 					addr_cpy(&(new_addrs[j]),&(list->addrs[j+1]));
 				}
 
-				turn_free(list->addrs,0);
+				free(list->addrs);
 				list->addrs = new_addrs;
 				list->size -= 1;
 
 				{
-					u08bits s[1025];
+					uint8_t s[1025];
 					addr_to_string(&addr, s);
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Alternate server removed: %s\n",s);
 				}
@@ -334,9 +334,9 @@ static void update_ssl_ctx(evutil_socket_t sock, short events, update_ssl_ctx_cb
 	UNUSED_ARG(events);
 }
 
-static void set_ssl_ctx(ioa_engine_handle e, turn_params_t *params)
+void set_ssl_ctx(ioa_engine_handle e, turn_params_t *params)
 {
-	update_ssl_ctx_cb_args_t *args = (update_ssl_ctx_cb_args_t *)turn_malloc(sizeof(update_ssl_ctx_cb_args_t));
+	update_ssl_ctx_cb_args_t *args = (update_ssl_ctx_cb_args_t *)malloc(sizeof(update_ssl_ctx_cb_args_t));
 	args->engine = e;
 	args->params = params;
 	args->next = NULL;
@@ -357,12 +357,12 @@ static void set_ssl_ctx(ioa_engine_handle e, turn_params_t *params)
 
 void add_listener_addr(const char* addr) {
 	ioa_addr baddr;
-	if(make_ioa_addr((const u08bits*)addr,0,&baddr)<0) {
+	if(make_ioa_addr((const uint8_t*)addr,0,&baddr)<0) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot add a listener address: %s\n",addr);
 	} else {
 
 	  char sbaddr[129];
-	  addr_to_string_no_port(&baddr,(u08bits*)sbaddr);
+	  addr_to_string_no_port(&baddr,(uint8_t*)sbaddr);
 
 		size_t i = 0;
 		for(i=0;i<turn_params.listener.addrs_number;++i) {
@@ -372,10 +372,10 @@ void add_listener_addr(const char* addr) {
 		}
 		++turn_params.listener.addrs_number;
 		++turn_params.listener.services_number;
-		turn_params.listener.addrs = (char**)turn_realloc(turn_params.listener.addrs, 0, sizeof(char*)*turn_params.listener.addrs_number);
-		turn_params.listener.addrs[turn_params.listener.addrs_number-1]=turn_strdup(sbaddr);
-		turn_params.listener.encaddrs = (ioa_addr**)turn_realloc(turn_params.listener.encaddrs, 0, sizeof(ioa_addr*)*turn_params.listener.addrs_number);
-		turn_params.listener.encaddrs[turn_params.listener.addrs_number-1]=(ioa_addr*)turn_malloc(sizeof(ioa_addr));
+		turn_params.listener.addrs = (char**)realloc(turn_params.listener.addrs, sizeof(char*)*turn_params.listener.addrs_number);
+		turn_params.listener.addrs[turn_params.listener.addrs_number-1]=strdup(sbaddr);
+		turn_params.listener.encaddrs = (ioa_addr**)realloc(turn_params.listener.encaddrs, sizeof(ioa_addr*)*turn_params.listener.addrs_number);
+		turn_params.listener.encaddrs[turn_params.listener.addrs_number-1]=(ioa_addr*)malloc(sizeof(ioa_addr));
 		addr_cpy(turn_params.listener.encaddrs[turn_params.listener.addrs_number-1],&baddr);
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Listener address to use: %s\n",sbaddr);
 	}
@@ -383,13 +383,13 @@ void add_listener_addr(const char* addr) {
 
 int add_relay_addr(const char* addr) {
 	ioa_addr baddr;
-	if(make_ioa_addr((const u08bits*)addr,0,&baddr)<0) {
+	if(make_ioa_addr((const uint8_t*)addr,0,&baddr)<0) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot add a relay address: %s\n",addr);
 		return -1;
 	} else {
 
 		char sbaddr[129];
-		addr_to_string_no_port(&baddr,(u08bits*)sbaddr);
+		addr_to_string_no_port(&baddr,(uint8_t*)sbaddr);
 
 		size_t i = 0;
 		for(i=0;i<turn_params.relays_number;++i) {
@@ -399,8 +399,8 @@ int add_relay_addr(const char* addr) {
 		}
 
 		++turn_params.relays_number;
-		turn_params.relay_addrs = (char**)turn_realloc(turn_params.relay_addrs, 0, sizeof(char*)*turn_params.relays_number);
-		turn_params.relay_addrs[turn_params.relays_number-1]=turn_strdup(sbaddr);
+		turn_params.relay_addrs = (char**)realloc(turn_params.relay_addrs, sizeof(char*)*turn_params.relays_number);
+		turn_params.relay_addrs[turn_params.relays_number-1]=strdup(sbaddr);
 
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Relay address to use: %s\n",sbaddr);
 		return 1;
@@ -412,7 +412,7 @@ static void allocate_relay_addrs_ports(void) {
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Wait for relay ports initialization...\n");
 	for(i=0;i<(int)turn_params.relays_number;i++) {
 		ioa_addr baddr;
-		if(make_ioa_addr((const u08bits*)turn_params.relay_addrs[i],0,&baddr)>=0) {
+		if(make_ioa_addr((const uint8_t*)turn_params.relay_addrs[i],0,&baddr)>=0) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "  relay %s initialization...\n",turn_params.relay_addrs[i]);
 			turnipports_add_ip(STUN_ATTRIBUTE_TRANSPORT_UDP_VALUE, &baddr);
 			turnipports_add_ip(STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE, &baddr);
@@ -464,7 +464,7 @@ static void auth_server_receive_message(struct bufferevent *bev, void *ptr)
       if(get_user_key(am.in_oauth,&(am.out_oauth),&(am.max_session_time),am.username,am.realm,key,am.in_buffer.nbh)<0) {
     	  am.success = 0;
       } else {
-    	  ns_bcopy(key,am.key,sizeof(hmackey_t));
+    	  bcopy(key,am.key,sizeof(hmackey_t));
     	  am.success = 1;
       }
     }
@@ -560,14 +560,14 @@ static int send_socket_to_general_relay(ioa_engine_handle e, struct message_to_r
 	return 0;
 }
 
-static int send_socket_to_relay(turnserver_id id, u64bits cid, stun_tid *tid, ioa_socket_handle s, 
+static int send_socket_to_relay(turnserver_id id, uint64_t cid, stun_tid *tid, ioa_socket_handle s, 
 				int message_integrity, MESSAGE_TO_RELAY_TYPE rmt, ioa_net_data *nd,
 				int can_resume)
 {
 	int ret = -1;
 
 	struct message_to_relay sm;
-	ns_bzero(&sm,sizeof(struct message_to_relay));
+	bzero(&sm,sizeof(struct message_to_relay));
 	sm.t = rmt;
 
 	ioa_socket_handle s_to_delete = s;
@@ -698,7 +698,7 @@ int send_session_cancellation_to_relay(turnsession_id sid)
 	int ret = 0;
 
 	struct message_to_relay sm;
-	ns_bzero(&sm,sizeof(struct message_to_relay));
+	bzero(&sm,sizeof(struct message_to_relay));
 	sm.t = RMT_CANCEL_SESSION;
 
 	turnserver_id id = (turnserver_id)(sid / TURN_SESSION_ID_FACTOR);
@@ -914,7 +914,7 @@ static int send_message_from_listener_to_client(ioa_engine_handle e, ioa_network
 	addr_cpy(&(mm.m.tc.destination),destination);
 	mm.m.tc.nbh = ioa_network_buffer_allocate(e);
 	ioa_network_buffer_header_init(mm.m.tc.nbh);
-	ns_bcopy(ioa_network_buffer_data(nbh),ioa_network_buffer_data(mm.m.tc.nbh),ioa_network_buffer_get_size(nbh));
+	bcopy(ioa_network_buffer_data(nbh),ioa_network_buffer_data(mm.m.tc.nbh),ioa_network_buffer_get_size(nbh));
 	ioa_network_buffer_set_size(mm.m.tc.nbh,ioa_network_buffer_get_size(nbh));
 
 	struct evbuffer *output = bufferevent_get_output(turn_params.listener.out_buf);
@@ -996,7 +996,7 @@ static void listener_receive_message(struct bufferevent *bev, void *ptr)
 		}
 
 		if(!found) {
-			u08bits saddr[129];
+			uint8_t saddr[129];
 			addr_to_string(&mm.m.tc.origin, saddr);
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"%s: Cannot find local source %s\n",__FUNCTION__,saddr);
 		}
@@ -1205,7 +1205,7 @@ static void setup_socket_per_endpoint_udp_listener_servers(void)
 			char saddr[129];
 			addr_cpy(&addr,&turn_params.aux_servers_list.addrs[i]);
 			int port = (int)addr_get_port(&addr);
-			addr_to_string_no_port(&addr,(u08bits*)saddr);
+			addr_to_string_no_port(&addr,(uint8_t*)saddr);
 
 			turn_params.listener.aux_udp_services[index] = (dtls_listener_relay_server_type**)allocate_super_memory_engine(udp_relay_servers[udp_relay_server_index]->ioa_eng, sizeof(dtls_listener_relay_server_type*));
 			turn_params.listener.aux_udp_services[index][0] = create_dtls_listener_server(turn_params.listener_ifname, saddr, port, turn_params.verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng, &(udp_relay_servers[udp_relay_server_index]->server), 1, NULL);
@@ -1324,7 +1324,7 @@ static void setup_socket_per_thread_udp_listener_servers(void)
 			char saddr[129];
 			addr_cpy(&addr,&turn_params.aux_servers_list.addrs[i]);
 			int port = (int)addr_get_port(&addr);
-			addr_to_string_no_port(&addr,(u08bits*)saddr);
+			addr_to_string_no_port(&addr,(uint8_t*)saddr);
 
 			turn_params.listener.aux_udp_services[index] = (dtls_listener_relay_server_type**)allocate_super_memory_engine(turn_params.listener.ioa_eng, sizeof(dtls_listener_relay_server_type*) * get_real_general_relay_servers_number());
 
@@ -1405,7 +1405,7 @@ static void setup_socket_per_session_udp_listener_servers(void)
 			char saddr[129];
 			addr_cpy(&addr,&turn_params.aux_servers_list.addrs[i]);
 			int port = (int)addr_get_port(&addr);
-			addr_to_string_no_port(&addr,(u08bits*)saddr);
+			addr_to_string_no_port(&addr,(uint8_t*)saddr);
 
 			turn_params.listener.aux_udp_services[index] = (dtls_listener_relay_server_type**)allocate_super_memory_engine(turn_params.listener.ioa_eng, sizeof(dtls_listener_relay_server_type*));
 
@@ -1481,7 +1481,7 @@ static void setup_tcp_listener_servers(ioa_engine_handle e, struct relay_server 
 			char saddr[129];
 			addr_cpy(&addr,&turn_params.aux_servers_list.addrs[i]);
 			int port = (int)addr_get_port(&addr);
-			addr_to_string_no_port(&addr,(u08bits*)saddr);
+			addr_to_string_no_port(&addr,(uint8_t*)saddr);
 
 			aux_tcp_services[i] = create_tls_listener_server(turn_params.listener_ifname, saddr, port, turn_params.verbose, e, send_socket_to_general_relay, relay_server);
 		}
@@ -1599,9 +1599,6 @@ void run_listener_server(struct listener_server *ls)
 		run_events(ls->event_base, ls->ioa_eng);
 
 		rollover_logfile();
-
-		tm_print();
-
 	}
 }
 
@@ -1655,11 +1652,12 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
 			 &turn_params.stun_only,
 			 &turn_params.no_stun,
 			 &turn_params.prod,
+			 &turn_params.web_admin_listen_on_workers,
 			 &turn_params.alternate_servers_list,
 			 &turn_params.tls_alternate_servers_list,
 			 &turn_params.aux_servers_list,
 			 turn_params.udp_self_balance,
-			 &turn_params.no_multicast_peers, &turn_params.no_loopback_peers,
+			 &turn_params.no_multicast_peers, &turn_params.allow_loopback_peers,
 			 &turn_params.ip_whitelist, &turn_params.ip_blacklist,
 			 send_socket_to_relay,
 			 &turn_params.secure_stun, &turn_params.mobility,
@@ -1669,7 +1667,6 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
 			 allocate_bps,
 			 turn_params.oauth,
 			 turn_params.oauth_server_name,
-			 use_http,
 			 turn_params.keep_address_family);
 	
 	if(to_set_rfc5780) {
@@ -1757,7 +1754,7 @@ static void* run_auth_server_thread(void *arg)
 
 	} else {
 
-		ns_bzero(as,sizeof(struct auth_server));
+		bzero(as,sizeof(struct auth_server));
 
 		as->id = id;
 
@@ -1815,7 +1812,7 @@ static void* run_admin_server_thread(void *arg)
 
 static void setup_admin_server(void)
 {
-	ns_bzero(&adminserver,sizeof(struct admin_server));
+	bzero(&adminserver,sizeof(struct admin_server));
 	adminserver.listen_fd = -1;
 	adminserver.verbose = turn_params.verbose;
 
@@ -1900,7 +1897,7 @@ void setup_server(void)
 
 void init_listener(void)
 {
-	ns_bzero(&turn_params.listener,sizeof(struct listener_server));
+	bzero(&turn_params.listener,sizeof(struct listener_server));
 }
 
 ///////////////////////////////

@@ -1,5 +1,5 @@
 Name:		turnserver
-Version:	4.5.0.8
+Version:	4.5.1.1
 Release:	0%{dist}
 Summary:	Coturn TURN Server
 
@@ -204,6 +204,7 @@ fi
 %{_datadir}/%{name}/scripts/peer.sh
 %{_datadir}/%{name}/scripts/oauth.sh
 %{_datadir}/%{name}/scripts/readme.txt
+%{_datadir}/%{name}/scripts/pack.sh
 %dir %{_datadir}/%{name}/scripts/basic
 %{_datadir}/%{name}/scripts/basic/dos_attack.sh
 %{_datadir}/%{name}/scripts/basic/relay.sh
@@ -295,6 +296,10 @@ fi
 %{_includedir}/turn/client/TurnMsgLib.h
 
 %changelog
+* Sat Mar 2 2019 Mészáros Mihály <misi@majd.eu>
+  - Sync to 4.5.1.1
+* Thu Dec 6 2018 Mészáros Mihály <misi@majd.eu>
+  - Sync to 4.5.1.0
 * Thu Sep 27 2018 Oleg Moskalenko <mom040267@gmail.com>
   - Sync to 4.5.0.8
 * Sun Dec 10 2017 Oleg Moskalenko <mom040267@gmail.com>

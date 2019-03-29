@@ -60,7 +60,7 @@ ioa_addr peer_addr;
 int no_rtcp = 0;
 int default_address_family = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT;
 int dont_fragment = 0;
-u08bits g_uname[STUN_MAX_USERNAME_SIZE+1];
+uint8_t g_uname[STUN_MAX_USERNAME_SIZE+1];
 password_t g_upwd;
 char g_auth_secret[1025]="\0";
 int g_use_auth_secret_with_timestamp = 0;
@@ -73,7 +73,7 @@ char pkey_file[1025]="";
 SSL_CTX *root_tls_ctx[32];
 int root_tls_ctx_num = 0;
 
-u08bits relay_transport = STUN_ATTRIBUTE_TRANSPORT_UDP_VALUE;
+uint8_t relay_transport = STUN_ATTRIBUTE_TRANSPORT_UDP_VALUE;
 unsigned char client_ifname[1025] = "";
 int passive_tcp = 0;
 int mandatory_channel_padding = 0;
@@ -179,7 +179,7 @@ int main(int argc, char **argv)
 
 	set_system_parameters(0);
 
-	ns_bzero(local_addr, sizeof(local_addr));
+	bzero(local_addr, sizeof(local_addr));
 
 	while ((c = getopt(argc, argv, "a:d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:E:F:o:bZvsyhcxXgtTSAPDNOUMRIGBJ")) != -1) {
 		switch (c){
@@ -389,7 +389,7 @@ int main(int argc, char **argv)
 			STRCPY(g_uname,new_uname);
 		}
 		{
-			u08bits hmac[MAXSHASIZE];
+			uint8_t hmac[MAXSHASIZE];
 			unsigned int hmac_len;
 
 			switch(shatype) {
@@ -408,13 +408,13 @@ int main(int argc, char **argv)
 
 			hmac[0]=0;
 
-			if(stun_calculate_hmac(g_uname, strlen((char*)g_uname), (u08bits*)g_auth_secret, strlen(g_auth_secret), hmac, &hmac_len, shatype)>=0) {
+			if(stun_calculate_hmac(g_uname, strlen((char*)g_uname), (uint8_t*)g_auth_secret, strlen(g_auth_secret), hmac, &hmac_len, shatype)>=0) {
 				size_t pwd_length = 0;
 				char *pwd = base64_encode(hmac,hmac_len,&pwd_length);
 
 				if(pwd) {
 					if(pwd_length>0) {
-						ns_bcopy(pwd,g_upwd,pwd_length);
+						bcopy(pwd,g_upwd,pwd_length);
 						g_upwd[pwd_length]=0;
 					}
 				}
@@ -454,7 +454,7 @@ int main(int argc, char **argv)
 
 	if (!c2c) {
 
-		if (make_ioa_addr((const u08bits*) peer_address, peer_port, &peer_addr) < 0) {
+		if (make_ioa_addr((const uint8_t*) peer_address, peer_port, &peer_addr) < 0) {
 			return -1;
 		}
 

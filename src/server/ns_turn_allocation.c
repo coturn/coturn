@@ -40,7 +40,7 @@ static turn_permission_info* get_from_turn_permission_hashtable(turn_permission_
 
 void init_allocation(void *owner, allocation* a, ur_map *tcp_connections) {
   if(a) {
-    ns_bzero(a,sizeof(allocation));
+    bzero(a,sizeof(allocation));
     a->owner = owner;
     a->tcp_connections = tcp_connections;
     init_turn_permission_hashtable(&(a->addr_to_perm));
@@ -64,7 +64,7 @@ void clear_allocation(allocation *a)
 					a->tcs.elems[i] = NULL;
 				}
 			}
-			turn_free(a->tcs.elems,sz*sizeof(tcp_connection*));
+			free(a->tcs.elems);
 			a->tcs.elems = NULL;
 		}
 		a->tcs.sz = 0;
@@ -174,7 +174,7 @@ void turn_permission_clean(turn_permission_info* tinfo)
 
 		if(tinfo->verbose) {
 			char s[257]="\0";
-			addr_to_string(&(tinfo->addr),(u08bits*)s);
+			addr_to_string(&(tinfo->addr),(uint8_t*)s);
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: peer %s deleted\n",tinfo->session_id,s);
 		}
 
@@ -185,14 +185,14 @@ void turn_permission_clean(turn_permission_info* tinfo)
 		IOA_EVENT_DEL(tinfo->lifetime_ev);
 		lm_map_foreach(&(tinfo->chns), (foreachcb_type) delete_channel_info_from_allocation_map);
 		lm_map_clean(&(tinfo->chns));
-		ns_bzero(tinfo,sizeof(turn_permission_info));
+		bzero(tinfo,sizeof(turn_permission_info));
 	}
 }
 
 static void init_turn_permission_hashtable(turn_permission_hashtable *map)
 {
 	if (map)
-		ns_bzero(map,sizeof(turn_permission_hashtable));
+		bzero(map,sizeof(turn_permission_hashtable));
 }
 
 static void free_turn_permission_hashtable(turn_permission_hashtable *map)
@@ -222,10 +222,10 @@ static void free_turn_permission_hashtable(turn_permission_hashtable *map)
 						if(slot->info.allocated) {
 							turn_permission_clean(&(slot->info));
 						}
-						turn_free(slot,sizeof(turn_permission_slot));
+						free(slot);
 					}
 				}
-				turn_free(parray->extra_slots, parray->extra_sz * sizeof(turn_permission_slot*));
+				free(parray->extra_slots);
 				parray->extra_slots = NULL;
 			}
 			parray->extra_sz = 0;
@@ -238,7 +238,7 @@ static turn_permission_info* get_from_turn_permission_hashtable(turn_permission_
 	if (!addr || !map)
 		return NULL;
 
-	u32bits index = addr_hash_no_port(addr) & (TURN_PERMISSION_HASHTABLE_SIZE-1);
+	uint32_t index = addr_hash_no_port(addr) & (TURN_PERMISSION_HASHTABLE_SIZE-1);
 	turn_permission_array *parray = &(map->table[index]);
 
 	{
@@ -273,7 +273,7 @@ static void ch_info_clean(ch_info* c) {
 			c->kernel_channel = 0;
 		}
 		IOA_EVENT_DEL(c->lifetime_ev);
-		ns_bzero(c,sizeof(ch_info));
+		bzero(c,sizeof(ch_info));
 	}
 }
 
@@ -300,7 +300,7 @@ void turn_channel_delete(ch_info* chn)
 		int port = addr_get_port(&(chn->peer_addr));
 		if(port<1) {
 			char s[129];
-			addr_to_string(&(chn->peer_addr),(u08bits*)s);
+			addr_to_string(&(chn->peer_addr),(uint8_t*)s);
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s: strange (1) channel to be cleaned: port is empty: %s\n",__FUNCTION__,s);
 		}
 		{
@@ -315,7 +315,7 @@ void turn_channel_delete(ch_info* chn)
 	}
 }
 
-ch_info* allocation_get_new_ch_info(allocation* a, u16bits chnum, ioa_addr* peer_addr)
+ch_info* allocation_get_new_ch_info(allocation* a, uint16_t chnum, ioa_addr* peer_addr)
 {
 
 	turn_permission_info* tinfo = get_from_turn_permission_hashtable(&(a->addr_to_perm), peer_addr);
@@ -336,7 +336,7 @@ ch_info* allocation_get_new_ch_info(allocation* a, u16bits chnum, ioa_addr* peer
 	return chn;
 }
 
-ch_info* allocation_get_ch_info(allocation* a, u16bits chnum) {
+ch_info* allocation_get_ch_info(allocation* a, uint16_t chnum) {
 	return ch_map_get(&(a->chns), chnum, 0);
 }
 
@@ -348,7 +348,7 @@ ch_info* allocation_get_ch_info_by_peer_addr(allocation* a, ioa_addr* peer_addr)
 	return NULL;
 }
 
-u16bits get_turn_channel_number(turn_permission_info* tinfo, ioa_addr *addr)
+uint16_t get_turn_channel_number(turn_permission_info* tinfo, ioa_addr *addr)
 {
 	if (tinfo) {
 		ur_map_value_type t = 0;
@@ -388,7 +388,7 @@ turn_permission_info* allocation_add_permission(allocation *a, const ioa_addr* a
 	if (a && addr) {
 
 		turn_permission_hashtable *map = &(a->addr_to_perm);
-		u32bits hash = addr_hash_no_port(addr);
+		uint32_t hash = addr_hash_no_port(addr);
 		size_t fds = (size_t) (hash & (TURN_PERMISSION_HASHTABLE_SIZE-1));
 
 		turn_permission_array *parray = &(map->table[fds]);
@@ -427,16 +427,16 @@ turn_permission_info* allocation_add_permission(allocation *a, const ioa_addr* a
 
 			if(!slot) {
 				size_t old_sz_mem = old_sz * sizeof(turn_permission_slot*);
-				parray->extra_slots = (turn_permission_slot **) turn_realloc(parray->extra_slots,
-						old_sz_mem, old_sz_mem + sizeof(turn_permission_slot*));
+				parray->extra_slots = (turn_permission_slot **) realloc(parray->extra_slots,
+						old_sz_mem + sizeof(turn_permission_slot*));
 				slots = parray->extra_slots;
 				parray->extra_sz = old_sz + 1;
-				slots[old_sz] = (turn_permission_slot *)turn_malloc(sizeof(turn_permission_slot));
+				slots[old_sz] = (turn_permission_slot *)malloc(sizeof(turn_permission_slot));
 				slot = slots[old_sz];
 			}
 		}
 
-		ns_bzero(slot,sizeof(turn_permission_slot));
+		bzero(slot,sizeof(turn_permission_slot));
 		slot->info.allocated = 1;
 		turn_permission_info *elem = &(slot->info);
 		addr_cpy(&(elem->addr), addr);
@@ -448,7 +448,7 @@ turn_permission_info* allocation_add_permission(allocation *a, const ioa_addr* a
 	}
 }
 
-ch_info *ch_map_get(ch_map* map, u16bits chnum, int new_chn)
+ch_info *ch_map_get(ch_map* map, uint16_t chnum, int new_chn)
 {
 	ch_info *ret = NULL;
 	if(map) {
@@ -485,9 +485,9 @@ ch_info *ch_map_get(ch_map* map, u16bits chnum, int new_chn)
 
 		if(new_chn) {
 			size_t old_sz_mem = old_sz * sizeof(ch_info*);
-			a->extra_chns = (ch_info**)turn_realloc(a->extra_chns,old_sz_mem,old_sz_mem + sizeof(ch_info*));
-			a->extra_chns[old_sz] = (ch_info*)turn_malloc(sizeof(ch_info));
-			ns_bzero(a->extra_chns[old_sz],sizeof(ch_info));
+			a->extra_chns = (ch_info**)realloc(a->extra_chns,old_sz_mem + sizeof(ch_info*));
+			a->extra_chns[old_sz] = (ch_info*)malloc(sizeof(ch_info));
+			bzero(a->extra_chns[old_sz],sizeof(ch_info));
 			a->extra_sz += 1;
 
 			return a->extra_chns[old_sz];
@@ -521,11 +521,11 @@ void ch_map_clean(ch_map* map)
 						if(chi->allocated) {
 							ch_info_clean(chi);
 						}
-						turn_free(chi,sizeof(ch_info));
+						free(chi);
 						a->extra_chns[i] = NULL;
 					}
 				}
-				turn_free(a->extra_chns, sizeof(ch_info*)*sz);
+				free(a->extra_chns);
 				a->extra_chns = NULL;
 			}
 			a->extra_sz = 0;
@@ -535,16 +535,16 @@ void ch_map_clean(ch_map* map)
 
 ////////////////// TCP connections ///////////////////////////////
 
-static void set_new_tc_id(u08bits server_id, tcp_connection *tc) {
+static void set_new_tc_id(uint8_t server_id, tcp_connection *tc) {
 	allocation *a = (allocation*)(tc->owner);
 	ur_map *map = a->tcp_connections;
-	u32bits newid;
-	u32bits sid = server_id;
+	uint32_t newid;
+	uint32_t sid = server_id;
 	sid = sid<<24;
 	do {
 		newid = 0;
 		while (!newid) {
-			newid = (u32bits)turn_random();
+			newid = (uint32_t)turn_random();
 			if(!newid) {
 				continue;
 			}
@@ -559,7 +559,7 @@ static void set_new_tc_id(u08bits server_id, tcp_connection *tc) {
 	ur_map_put(map, (ur_map_key_type)newid, (ur_map_value_type)tc);
 }
 
-tcp_connection *create_tcp_connection(u08bits server_id, allocation *a, stun_tid *tid, ioa_addr *peer_addr, int *err_code)
+tcp_connection *create_tcp_connection(uint8_t server_id, allocation *a, stun_tid *tid, ioa_addr *peer_addr, int *err_code)
 {
 	tcp_connection_list *tcl = &(a->tcs);
 	if(tcl->elems) {
@@ -574,11 +574,11 @@ tcp_connection *create_tcp_connection(u08bits server_id, allocation *a, stun_tid
 			}
 		}
 	}
-	tcp_connection *tc = (tcp_connection*)turn_malloc(sizeof(tcp_connection));
-	ns_bzero(tc,sizeof(tcp_connection));
+	tcp_connection *tc = (tcp_connection*)malloc(sizeof(tcp_connection));
+	bzero(tc,sizeof(tcp_connection));
 	addr_cpy(&(tc->peer_addr),peer_addr);
 	if(tid)
-		ns_bcopy(tid,&(tc->tid),sizeof(stun_tid));
+		bcopy(tid,&(tc->tid),sizeof(stun_tid));
 	tc->owner = a;
 
 	int found = 0;
@@ -596,7 +596,7 @@ tcp_connection *create_tcp_connection(u08bits server_id, allocation *a, stun_tid
 
 	if(!found) {
 		size_t old_sz_mem = a->tcs.sz * sizeof(tcp_connection*);
-		a->tcs.elems = (tcp_connection**)turn_realloc(a->tcs.elems,old_sz_mem,old_sz_mem+sizeof(tcp_connection*));
+		a->tcs.elems = (tcp_connection**)realloc(a->tcs.elems,old_sz_mem+sizeof(tcp_connection*));
 		a->tcs.elems[a->tcs.sz] = tc;
 		a->tcs.sz += 1;
 		tcl = &(a->tcs);
@@ -638,7 +638,7 @@ void delete_tcp_connection(tcp_connection *tc)
 		}
 		IOA_CLOSE_SOCKET(tc->client_s);
 		IOA_CLOSE_SOCKET(tc->peer_s);
-		turn_free(tc,sizeof(tcp_connection));
+		free(tc);
 	}
 }
 
@@ -711,7 +711,7 @@ void clear_unsent_buffer(unsent_buffer *ub)
 					ub->bufs[sz] = NULL;
 				}
 			}
-			turn_free(ub->bufs,sizeof(ioa_network_buffer_handle) * ub->sz);
+			free(ub->bufs);
 			ub->bufs = NULL;
 		}
 		ub->sz = 0;
@@ -723,7 +723,7 @@ void add_unsent_buffer(unsent_buffer *ub, ioa_network_buffer_handle nbh)
 	if(!ub || (ub->sz >= MAX_UNSENT_BUFFER_SIZE)) {
 		ioa_network_buffer_delete(NULL, nbh);
 	} else {
-		ub->bufs = (ioa_network_buffer_handle*)turn_realloc(ub->bufs, sizeof(ioa_network_buffer_handle) * ub->sz, sizeof(ioa_network_buffer_handle) * (ub->sz+1));
+		ub->bufs = (ioa_network_buffer_handle*)realloc(ub->bufs, sizeof(ioa_network_buffer_handle) * (ub->sz+1));
 		ub->bufs[ub->sz] = nbh;
 		ub->sz +=1;
 	}

@@ -76,7 +76,7 @@ static void server_input_handler(struct evconnlistener *l, evutil_socket_t fd,
 	if (!server)
 		return;
 
-	ns_bcopy(sa,&(server->sm.m.sm.nd.src_addr),socklen);
+	bcopy(sa,&(server->sm.m.sm.nd.src_addr),socklen);
 
 	addr_debug_print(server->verbose, &(server->sm.m.sm.nd.src_addr),"tcp or tls connected to");
 
@@ -141,7 +141,7 @@ static void sctp_server_input_handler(struct evconnlistener *l, evutil_socket_t 
 	if (!server)
 		return;
 
-	ns_bcopy(sa,&(server->sm.m.sm.nd.src_addr),socklen);
+	bcopy(sa,&(server->sm.m.sm.nd.src_addr),socklen);
 
 	addr_debug_print(server->verbose, &(server->sm.m.sm.nd.src_addr),"sctp or tls/sctp connected to");
 
@@ -216,7 +216,7 @@ static int create_server_listener(tls_listener_relay_server_type* server) {
   	 if(addr_bind(tls_listen_fd,&server->addr,1,1,TCP_SOCKET)<0) {
   		perror("Cannot bind local socket to addr");
   		char saddr[129];
-  		addr_to_string(&server->addr,(u08bits*)saddr);
+  		addr_to_string(&server->addr,(uint8_t*)saddr);
   		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,"Cannot bind TLS/TCP listener socket to addr %s\n",saddr);
   		if(addr_bind_cycle++<max_binding_time) {
   		  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Trying to bind TLS/TCP listener socket to addr %s, again...\n",saddr);
@@ -322,7 +322,7 @@ static int init_server(tls_listener_relay_server_type* server,
 
   if(ifname) STRCPY(server->ifname,ifname);
 
-  if(make_ioa_addr((const u08bits*)local_address, port, &server->addr)<0) {
+  if(make_ioa_addr((const uint8_t*)local_address, port, &server->addr)<0) {
 	  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot create a TCP/TLS listener for address: %s\n",local_address);
 	  return -1;
   }

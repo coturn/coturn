@@ -98,7 +98,7 @@ int turn_mutex_unlock(const turn_mutex *mutex) {
 int turn_mutex_init(turn_mutex* mutex) {
   if(mutex) {
     mutex->data=MAGIC_CODE;
-    mutex->mutex=turn_malloc(sizeof(pthread_mutex_t));
+    mutex->mutex=malloc(sizeof(pthread_mutex_t));
     pthread_mutex_init((pthread_mutex_t*)mutex->mutex,NULL);
     return 0;
   } else {
@@ -116,13 +116,13 @@ int turn_mutex_init_recursive(turn_mutex* mutex) {
 			if (pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE) < 0) {
 				perror("Cannot set type on mutex attr");
 			} else {
-				mutex->mutex = turn_malloc(sizeof(pthread_mutex_t));
+				mutex->mutex = malloc(sizeof(pthread_mutex_t));
 				mutex->data = MAGIC_CODE;
 				if ((ret = pthread_mutex_init((pthread_mutex_t*) mutex->mutex,
 						&attr)) < 0) {
 					perror("Cannot init mutex");
 					mutex->data = 0;
-					turn_free(mutex->mutex,sizeof(pthread_mutex_t));
+					free(mutex->mutex);
 					mutex->mutex = NULL;
 				}
 			}
@@ -136,7 +136,7 @@ int turn_mutex_destroy(turn_mutex* mutex) {
   if(mutex && mutex->mutex && mutex->data == MAGIC_CODE) {
     int ret = 0;
     ret = pthread_mutex_destroy((pthread_mutex_t*)(mutex->mutex));
-    turn_free(mutex->mutex, sizeof(pthread_mutex_t));
+    free(mutex->mutex);
     mutex->mutex=NULL;
     mutex->data=0;
     return ret;
@@ -148,7 +148,7 @@ int turn_mutex_destroy(turn_mutex* mutex) {
 ///////////////////////// LOG ///////////////////////////////////
 
 #if defined(TURN_LOG_FUNC_IMPL)
-extern void TURN_LOG_FUNC_IMPL(TURN_LOG_LEVEL level, const s08bits* format, va_list args);
+extern void TURN_LOG_FUNC_IMPL(TURN_LOG_LEVEL level, const char* format, va_list args);
 #endif
 
 static int no_stdout_log = 0;
@@ -158,7 +158,7 @@ void set_no_stdout_log(int val)
 	no_stdout_log = val;
 }
 
-void turn_log_func_default(TURN_LOG_LEVEL level, const s08bits* format, ...)
+void turn_log_func_default(TURN_LOG_LEVEL level, const char* format, ...)
 {
 #if !defined(TURN_LOG_FUNC_IMPL)
 	{
@@ -194,13 +194,13 @@ void turn_log_func_default(TURN_LOG_LEVEL level, const s08bits* format, ...)
 	}
 }
 
-void addr_debug_print(int verbose, const ioa_addr *addr, const s08bits* s)
+void addr_debug_print(int verbose, const ioa_addr *addr, const char* s)
 {
 	if (verbose) {
 		if (!addr) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: EMPTY\n", s);
 		} else {
-			s08bits addrbuf[INET6_ADDRSTRLEN];
+			char addrbuf[INET6_ADDRSTRLEN];
 			if (!s)
 				s = "";
 			if (addr->ss.sa_family == AF_INET) {
@@ -296,11 +296,11 @@ static void set_log_file_name_func(char *base, char *f, size_t fsz)
 	}
 
 	char logdate[125];
-	char *tail=turn_strdup(".log");
+	char *tail=strdup(".log");
 
 	get_date(logdate,sizeof(logdate));
 
-	char *base1=turn_strdup(base);
+	char *base1=strdup(base);
 
 	int len=(int)strlen(base1);
 
@@ -319,12 +319,12 @@ static void set_log_file_name_func(char *base, char *f, size_t fsz)
 		if(base1[len]=='/')
 			break;
 		else if(base1[len]=='.') {
-			turn_free(tail,strlen(tail)+1);
-			tail=turn_strdup(base1+len);
+			free(tail);
+			tail=strdup(base1+len);
 			base1[len]=0;
 			if(strlen(tail)<2) {
-				turn_free(tail,strlen(tail)+1);
-				tail = turn_strdup(".log");
+				free(tail);
+				tail = strdup(".log");
 			}
 			break;
 		}
@@ -338,8 +338,8 @@ static void set_log_file_name_func(char *base, char *f, size_t fsz)
 	  snprintf(f, FILE_STR_LEN, "%s%s%s", base1,logdate,tail);
 	}
 
-	turn_free(base1,strlen(base1)+1);
-	turn_free(tail,strlen(tail)+1);
+	free(base1);
+	free(tail);
 }
 
 static void sighup_callback_handler(int signum)
@@ -615,7 +615,7 @@ int get_canonic_origin(const char* o, char *co, int sz)
 					const char *host = evhttp_uri_get_host(uri);
 					if(host && host[0]) {
 						char otmp[STUN_MAX_ORIGIN_SIZE+STUN_MAX_ORIGIN_SIZE];
-						ns_bcopy(scheme,otmp,schlen);
+						bcopy(scheme,otmp,schlen);
 						otmp[schlen]=0;
 
 						{
@@ -663,215 +663,11 @@ int get_canonic_origin(const char* o, char *co, int sz)
 
 //////////////////////////////////////////////////////////////////
 
-#ifdef __cplusplus
-#if defined(TURN_MEMORY_DEBUG)
-
-#include <map>
-#include <set>
-#include <string>
-
-static volatile int tmm_init = 0;
-static pthread_mutex_t tm;
-
-typedef void* ptrtype;
-typedef std::set<ptrtype> ptrs_t;
-typedef std::map<std::string,ptrs_t> str_to_ptrs_t;
-typedef std::map<ptrtype,std::string> ptr_to_str_t;
-
-static str_to_ptrs_t str_to_ptrs;
-static ptr_to_str_t ptr_to_str;
-
-static void tm_init(void) {
-  if(!tmm_init) {
-    pthread_mutex_init(&tm,NULL);
-    tmm_init = 1;
-  }
-}
-
-static void add_tm_ptr(void *ptr, const char *id) {
-
-  UNUSED_ARG(ptr);
-  UNUSED_ARG(id);
-
-  if(!ptr)
-    return;
-
-  std::string sid(id);
-
-  str_to_ptrs_t::iterator iter;
-
-  pthread_mutex_lock(&tm);
-
-  iter = str_to_ptrs.find(sid);
-
-  if(iter == str_to_ptrs.end()) {
-    std::set<ptrtype> sp;
-    sp.insert(ptr);
-    str_to_ptrs[sid]=sp;
-  } else {
-	iter->second.insert(ptr);
-  }
-
-  ptr_to_str[ptr]=sid;
-
-  pthread_mutex_unlock(&tm);
-}
-
-static void del_tm_ptr(void *ptr, const char *id) {
-
-  UNUSED_ARG(ptr);
-  UNUSED_ARG(id);
-
-  if(!ptr)
-    return;
-
-  pthread_mutex_lock(&tm);
-
-  ptr_to_str_t::iterator pts_iter = ptr_to_str.find(ptr);
-  if(pts_iter == ptr_to_str.end()) {
-
-	  printf("Tring to free unknown pointer (1): %s\n",id);
-
-  } else {
-
-    std::string sid = pts_iter->second;
-    ptr_to_str.erase(pts_iter);
-
-    str_to_ptrs_t::iterator iter = str_to_ptrs.find(sid);
-
-    if(iter == str_to_ptrs.end()) {
-
-    	printf("Tring to free unknown pointer (2): %s\n",id);
-
-    } else {
-
-      iter->second.erase(ptr);
-
-    }
-  }
-
-  pthread_mutex_unlock(&tm);
-}
-
-static void tm_id(char *id, const char* function, int line) {
-  sprintf(id,"%s:%d",function,line);
-}
-
-#define TM_START() char id[128];tm_id(id,function,line);tm_init()
-
-extern "C" void* debug_ptr_add_func(void *ptr, const char* function, int line) {
-
-	TM_START();
-
-	add_tm_ptr(ptr,id);
-
-	return ptr;
-}
-
-extern "C" void debug_ptr_del_func(void *ptr, const char* function, int line) {
-
-	TM_START();
-
-	del_tm_ptr(ptr,id);
-}
-
-extern "C" void tm_print_func(void);
-void tm_print_func(void) {
-  pthread_mutex_lock(&tm);
-  printf("=============================================\n");
-  for(str_to_ptrs_t::const_iterator iter=str_to_ptrs.begin();iter != str_to_ptrs.end();++iter) {
-	  if(iter->second.size())
-		  printf("%s: %s: %d\n",__FUNCTION__,iter->first.c_str(),(int)(iter->second.size()));
-  }
-  printf("=============================================\n");
-  pthread_mutex_unlock(&tm);
-} 
-
-extern "C" void *turn_malloc_func(size_t sz, const char* function, int line);
-void *turn_malloc_func(size_t sz, const char* function, int line) {
-
-  TM_START();
-
-  void *ptr = malloc(sz);
-  
-  add_tm_ptr(ptr,id);
-
-  return ptr;
-}
-
-extern "C" void *turn_realloc_func(void *ptr, size_t old_sz, size_t new_sz, const char* function, int line);
-void *turn_realloc_func(void *ptr, size_t old_sz, size_t new_sz, const char* function, int line) {
-
-  UNUSED_ARG(old_sz);
-
-  TM_START();
-
-  if(ptr)
-	  del_tm_ptr(ptr,id);
-
-  ptr = realloc(ptr,new_sz);
-
-  add_tm_ptr(ptr,id);
-
-  return ptr;
-}
-
-extern "C" void turn_free_func(void *ptr, size_t sz, const char* function, int line);
-void turn_free_func(void *ptr, size_t sz, const char* function, int line) {
-
-  UNUSED_ARG(sz);
-
-  TM_START();
-
-  del_tm_ptr(ptr,id);
-
-  free(ptr);
-}
-
-extern "C" void turn_free_simple(void *ptr);
-void turn_free_simple(void *ptr) {
-
-  tm_init();
-
-  del_tm_ptr(ptr,__FUNCTION__);
-
-  free(ptr);
-}
-
-extern "C" void *turn_calloc_func(size_t number, size_t size, const char* function, int line);
-void *turn_calloc_func(size_t number, size_t size, const char* function, int line) {
-  
-  TM_START();
-
-  void *ptr = calloc(number,size);
-
-  add_tm_ptr(ptr,id);
-
-  return ptr;
-}
-
-extern "C" char *turn_strdup_func(const char* s, const char* function, int line);
-char *turn_strdup_func(const char* s, const char* function, int line) {
-
-  TM_START();
-
-  char *ptr = strdup(s);
-
-  add_tm_ptr(ptr,id);
-
-  return ptr;
-}
-
-#endif
-#endif
-
-////////////////////////////////
-
-int is_secure_username(const u08bits *username)
+int is_secure_string(const uint8_t *string, int sanitizesql)
 {
 	int ret = 0;
-	if(username) {
-		unsigned char *s0 = (unsigned char*)turn_strdup((const char*)username);
+	if(string) {
+		unsigned char *s0 = (unsigned char*)strdup((const char*)string);
 		unsigned char *s = s0;
 		while(*s) {
 			*s = (unsigned char)tolower((int)*s);
@@ -880,15 +676,14 @@ int is_secure_username(const u08bits *username)
 		s = s0;
 		if(strstr((char*)s," ")||strstr((char*)s,"\t")||strstr((char*)s,"'")||strstr((char*)s,"\"")||strstr((char*)s,"\n")||strstr((char*)s,"\r")||strstr((char*)s,"\\")) {
 			;
-		} else if(strstr((char*)s,"union")&&strstr((char*)s,"select")) {
+		} else if(sanitizesql && strstr((char*)s,"union")&&strstr((char*)s,"select")) {
 			;
 		} else {
 			ret = 1;
 		}
-		turn_free(s,strlen((char*)s));
+		free(s);
 	}
 	return ret;
 }
 
 //////////////////////////////////////////////////////////////////
-

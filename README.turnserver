@@ -234,7 +234,11 @@ Flags:
 --no-stun		Run as TURN server only, all STUN requests will be ignored. 
 			Option to suppress STUN functionality, only TURN requests will be processed.
 
---no-loopback-peers	Disallow peers on the loopback addresses (127.x.x.x and ::1).
+--allow-loopback-peers	Allow peers on the loopback addresses (127.x.x.x and ::1).
+             Allow it only for testing in a development environment! 
+             In production it adds a possible security vulnerability, 
+             and so due to security reasons, it is not allowed 
+             using it together with empty cli-password.
 
 --no-multicast-peers	Disallow peers on well-known broadcast addresses 
 			(224.0.0.0 and above, and FFXX:*).
@@ -554,6 +558,15 @@ Options with values:
 
 --udp-notifier		Send  notification  messages to target device via UDP interface.
 			"host=<host> port=<port>"
+      
+--web-admin		Enable Turn Web-admin support. By default it is disabled.
+
+--web-admin-ip=<IP>	Local system IP address to be used for Web-admin server endpoint. Default value is 127.0.0.1.
+
+--web-admin-port=<port>  Web-admin server port. Default is 8080.
+--web-admin-listen-on-workers   Enable for web-admin server to listens on STUN/TURN workers STUN/TURN ports.
+			By default it is disabled for security resons!
+			(This behavior used to be the default behavior, and was enabled by default.)
 
 --ne=[1|2|3]		Set network engine type for the process (for internal purposes).
 

@@ -1,5 +1,79 @@
-27/09/2018 Oleg Moskalenko <mom040267@gmail.com> Mihály Mészáros <misi@majd.eu>
-Version 4.5.0.9 'dan Eider':
+02/03/2019 Oleg Moskalenko <mom040267@gmail.com> Mihály Mészáros <misi@majd.eu>
+Version 4.5.1.2 'dan Eider':
+	- merge regression fix: (by Mathieu Brunot)
+		* Do not display empty CLI passwd alert if CLI is not enabled
+	- merge PR #359: (by bradleythughes)
+		* Remove turn_free_simple
+		* Remove turn_malloc()
+		* Remote turn_realloc()
+		* Remote turn_free()
+		* Remove turn_calloc()
+		* Remove turn_strdup()
+		* Remove SSL_NEW() and SSL_FREE()
+		* Remove pointer debugging machinery
+		* Remove ns_bzero(), ns_bcopy(), and ns_bcmp()
+		* Remove [su]{08,16,32,64}bits type defines
+	- merge PR #327 (by Alexander Terczka)
+		* Strip white-spaces from config file lines end
+
+02/03/2019 Oleg Moskalenko <mom040267@gmail.com> Mihály Mészáros <misi@majd.eu>
+Version 4.5.1.1 'dan Eider':
+	- merge PR #330 missing \r\n after http Connection:close (by gribunin)
+	- merge PR #303 fix typo enpoint (by Majid Motallebikashani)
+	- merge PR #129 seperate http web-admin listener (by Thibaut ACKERMANN)
+	- regression from 4.5.1.0
+		* readd pwd check
+		* add to config missing web-admin-listen-on-workers option
+	- merge docker branch
+		* Add Docker file for all database backend.
+	- merge sparc64 branch
+		* Fix mem alingment issue on 64 bit architecture
+		That issue caused earlier "bus error" on sparc64 and armhf
+	- merge PR #336 Clarify Debian install (by David-dp-)
+	- merge PR #339 RPM build fix (by Peter Hudec )
+
+24/11/2018 Oleg Moskalenko <mom040267@gmail.com> Mihály Mészáros <misi@majd.eu>
+Version 4.5.1.0 'dan Eider':
+	Consider to change config file after upgrade, because it contains some 
+	not backward compatible breaking changes !!
+	- Security fixes 
+	  Many thanks to Nicolas Edet (Cisco) !!
+	  who reported all of the following issues:
+		* DB/SQL injection in stun realm. Fix: add extra string validation.
+		* DB/SQL injection in web-admin interface lack of admin user validation. 
+		  Fix: add extra string validation.
+	 	* Fix for earlier unsafe default settings: 
+			o HTTPS administrator interface should be disabled by default
+			  It could be enbled with "web-admin" option.
+			o Default configuration allowed earlier forwarding traffic 
+			  from an external interface to loopback interface. Now it
+			  has been changed and option name is also changed!
+
+			  !!BREAKING change!! Don't forget to change config!!
+			  "no-loopback-peers" replaced by "allow-loopback-peers"
+
+			o Unauthenticated telnet admin interface runs on the 
+			  loopback interface, which can be accessed by exploiting the
+			  loopback relay that was enabled by default.
+		*  Add username string sanity check on web admin interface to
+		   avoid any sql-injection attacks.
+	- Admin portal does not list TCP session ( reported and fixed by Nicolas Edet )
+	- Fix memory leak in read_config_file (by Thibaut Ackermann)
+	- Add a release helper script.
+	- Web Admin interface use own listener (it is disableb by default) (by Thibaut ACKERMANN)
+
+	  !!BREAKING change!! Don't forget to change/review config!!
+
+		* Add new option "web-admin-ip" to set listener ip. By default (127.0.0.1)
+		* Add new option "web-admin-port" to set webadmin listen port
+		* Add new option "web-admin-listen-on-workers" to change back to earlier 
+		  behaviour and listen web admin on all worker processes and ports.
+	- Not allow to start server if "allow-loopback-peers" set without "cli-password"
+
+	  !!BREAKING change!! Don't forget to change config!!
+
+	  Added a warning if cli-password is empty or missing, but allow-loopback-peers
+	  set, and so loopback allocation is enalbed.
 
 27/09/2018 Oleg Moskalenko <mom040267@gmail.com> Mihály Mészáros <misi@majd.eu>
 Version 4.5.0.8 'dan Eider':

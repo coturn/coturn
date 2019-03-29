@@ -98,7 +98,7 @@ extern "C" {
 
 #define DEFAULT_EC_CURVE_NAME "prime256v1"
 
-#define MAX_NUMBER_OF_GENERAL_RELAY_SERVERS ((u08bits)(0x80))
+#define MAX_NUMBER_OF_GENERAL_RELAY_SERVERS ((uint8_t)(0x80))
 
 #define TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP MAX_NUMBER_OF_GENERAL_RELAY_SERVERS
 #define TURNSERVER_ID_BOUNDARY_BETWEEN_UDP_AND_TCP TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP
@@ -214,6 +214,7 @@ typedef struct _turn_params_ {
   int verbose;
   int turn_daemon;
   int prod;
+  int web_admin_listen_on_workers;
 
   int do_not_use_config_file;
 
@@ -248,13 +249,13 @@ typedef struct _turn_params_ {
 
 //////////////// Relay servers /////////////
 
-  u16bits min_port;
-  u16bits max_port;
+  uint16_t min_port;
+  uint16_t max_port;
 
   vint check_origin;
 
   vint no_multicast_peers;
-  vint no_loopback_peers;
+  vint allow_loopback_peers;
 
   char relay_ifname[1025];
 
@@ -354,6 +355,9 @@ void del_tls_alternate_server(const char *saddr);
 
 void add_listener_addr(const char* addr);
 int add_relay_addr(const char* addr);
+
+////////// SSL CTX ////////////////////
+void set_ssl_ctx(ioa_engine_handle e, turn_params_t *params);
 
 ///////// Auth ////////////////
 

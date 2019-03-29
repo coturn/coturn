@@ -61,9 +61,9 @@ void set_no_stdout_log(int val);
 void set_log_to_syslog(int val);
 void set_simple_log(int val);
 
-void turn_log_func_default(TURN_LOG_LEVEL level, const s08bits* format, ...);
+void turn_log_func_default(TURN_LOG_LEVEL level, const char* format, ...);
 
-void addr_debug_print(int verbose, const ioa_addr *addr, const s08bits* s);
+void addr_debug_print(int verbose, const ioa_addr *addr, const char* s);
 
 /* Log */
 
@@ -78,7 +78,7 @@ void rollover_logfile(void);
 
 ///////////////////////////////////////////////////////
 
-int is_secure_username(const u08bits *username);
+int is_secure_string(const uint8_t *string, int sanitizesql);
 
 ///////////////////////////////////////////////////////
 

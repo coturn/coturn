@@ -58,7 +58,7 @@ static int run_stunclient(const char* rip, int rport, int *port, int *rfc5780, i
 	int new_udp_fd = -1;
 
 	memset((void *) &remote_addr, 0, sizeof(ioa_addr));
-	if (make_ioa_addr((const u08bits*) rip, rport, &remote_addr) < 0)
+	if (make_ioa_addr((const uint8_t*) rip, rport, &remote_addr) < 0)
 		err(-1, NULL);
 
 	if (udp_fd < 0) {
@@ -90,7 +90,7 @@ static int run_stunclient(const char* rip, int rport, int *port, int *rfc5780, i
 
 	if (response_port >= 0) {
 	  turn::StunAttrResponsePort rpa;
-		rpa.setResponsePort((u16bits)response_port);
+		rpa.setResponsePort((uint16_t)response_port);
 		try {
 			req.addAttr(rpa);
 		} catch(turn::WrongStunAttrFormatException &ex1) {
@@ -168,7 +168,7 @@ static int run_stunclient(const char* rip, int rport, int *port, int *rfc5780, i
 	{
 		int len = 0;
 		stun_buffer buf;
-		u08bits *ptr = buf.buf;
+		uint8_t *ptr = buf.buf;
 		int recvd = 0;
 		const int to_recv = sizeof(buf.buf);
 
@@ -253,8 +253,8 @@ static int run_stunclient(const char* rip, int rport, int *port, int *rfc5780, i
 	int new_udp_fd = -1;
 	stun_buffer buf;
 
-	ns_bzero(&remote_addr, sizeof(remote_addr));
-	if (make_ioa_addr((const u08bits*) rip, rport, &remote_addr) < 0)
+	bzero(&remote_addr, sizeof(remote_addr));
+	if (make_ioa_addr((const uint8_t*) rip, rport, &remote_addr) < 0)
 		err(-1, NULL);
 
 	if (udp_fd < 0) {
@@ -283,13 +283,13 @@ static int run_stunclient(const char* rip, int rport, int *port, int *rfc5780, i
 	stun_prepare_binding_request(&buf);
 
 	if (response_port >= 0) {
-		stun_attr_add_response_port_str((u08bits*) (buf.buf), (size_t*) &(buf.len), (u16bits) response_port);
+		stun_attr_add_response_port_str((uint8_t*) (buf.buf), (size_t*) &(buf.len), (uint16_t) response_port);
 	}
 	if (change_ip || change_port) {
-		stun_attr_add_change_request_str((u08bits*) buf.buf, (size_t*) &(buf.len), change_ip, change_port);
+		stun_attr_add_change_request_str((uint8_t*) buf.buf, (size_t*) &(buf.len), change_ip, change_port);
 	}
 	if (padding) {
-		if(stun_attr_add_padding_str((u08bits*) buf.buf, (size_t*) &(buf.len), 1500)<0) {
+		if(stun_attr_add_padding_str((uint8_t*) buf.buf, (size_t*) &(buf.len), 1500)<0) {
 			printf("%s: ERROR: Cannot add padding\n",__FUNCTION__);
 		}
 	}
@@ -323,7 +323,7 @@ static int run_stunclient(const char* rip, int rport, int *port, int *rfc5780, i
 
 	{
 		int len = 0;
-		u08bits *ptr = buf.buf;
+		uint8_t *ptr = buf.buf;
 		int recvd = 0;
 		const int to_recv = sizeof(buf.buf);
 
@@ -358,11 +358,11 @@ static int run_stunclient(const char* rip, int rport, int *port, int *rfc5780, i
 								printf("\n========================================\n");
 								printf("RFC 5780 response %d\n",++counter);
 								ioa_addr other_addr;
-								stun_attr_get_addr_str((u08bits *) buf.buf, (size_t) buf.len, sar, &other_addr, NULL);
+								stun_attr_get_addr_str((uint8_t *) buf.buf, (size_t) buf.len, sar, &other_addr, NULL);
 								sar = stun_attr_get_first_by_type_str(buf.buf, buf.len, STUN_ATTRIBUTE_RESPONSE_ORIGIN);
 								if (sar) {
 									ioa_addr response_origin;
-									stun_attr_get_addr_str((u08bits *) buf.buf, (size_t) buf.len, sar, &response_origin, NULL);
+									stun_attr_get_addr_str((uint8_t *) buf.buf, (size_t) buf.len, sar, &response_origin, NULL);
 									addr_debug_print(1, &response_origin, "Response origin: ");
 								}
 								addr_debug_print(1, &other_addr, "Other addr: ");
@@ -377,7 +377,7 @@ static int run_stunclient(const char* rip, int rport, int *port, int *rfc5780, i
 					}
 				} else {
 					int err_code = 0;
-					u08bits err_msg[1025] = "\0";
+					uint8_t err_msg[1025] = "\0";
 					size_t err_msg_size = sizeof(err_msg);
 					if (stun_is_error_response(&buf, &err_code, err_msg, err_msg_size)) {
 						printf("The response is an error %d (%s)\n", err_code, (char*) err_msg);
@@ -418,7 +418,7 @@ int main(int argc, char **argv)
   set_logfile("stdout");
   set_system_parameters(0);
   
-  ns_bzero(local_addr, sizeof(local_addr));
+  bzero(local_addr, sizeof(local_addr));
 
   while ((c = getopt(argc, argv, "p:L:f")) != -1) {
     switch(c) {
@@ -445,7 +445,7 @@ int main(int argc, char **argv)
   addr_set_any(&real_local_addr);
 
   if(local_addr[0]) {
-      if(make_ioa_addr((const u08bits*)local_addr, 0, &real_local_addr)<0) {
+      if(make_ioa_addr((const uint8_t*)local_addr, 0, &real_local_addr)<0) {
         err(-1,NULL);
       }
   }

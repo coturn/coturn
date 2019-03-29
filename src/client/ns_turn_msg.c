@@ -45,7 +45,7 @@ static void generate_random_nonce(unsigned char *nonce, size_t sz);
 
 ///////////
 
-int stun_method_str(u16bits method, char *smethod)
+int stun_method_str(uint16_t method, char *smethod)
 {
 	int ret = 0;
 
@@ -87,7 +87,7 @@ int stun_method_str(u16bits method, char *smethod)
 	};
 
 	if(smethod) {
-		ns_bcopy(s,smethod,strlen(s)+1);
+		bcopy(s,smethod,strlen(s)+1);
 	}
 
 	return ret;
@@ -103,16 +103,16 @@ long turn_random(void)
 
 static void turn_random_tid_size(void *id)
 {
-	u32bits *ar=(u32bits*)id;
+	uint32_t *ar=(uint32_t*)id;
 	if(!RAND_pseudo_bytes((unsigned char *)ar,12)) {
 		size_t i;
 		for(i=0;i<3;++i) {
-			ar[i] = (u32bits)random();
+			ar[i] = (uint32_t)random();
 		}
 	}
 }
 
-int stun_calculate_hmac(const u08bits *buf, size_t len, const u08bits *key, size_t keylen, u08bits *hmac, unsigned int *hmac_len, SHATYPE shatype)
+int stun_calculate_hmac(const uint8_t *buf, size_t len, const uint8_t *key, size_t keylen, uint8_t *hmac, unsigned int *hmac_len, SHATYPE shatype)
 {
 	ERR_clear_error();
 	UNUSED_ARG(shatype);
@@ -152,23 +152,23 @@ int stun_calculate_hmac(const u08bits *buf, size_t len, const u08bits *key, size
 	return 0;
 }
 
-int stun_produce_integrity_key_str(u08bits *uname, u08bits *realm, u08bits *upwd, hmackey_t key, SHATYPE shatype)
+int stun_produce_integrity_key_str(uint8_t *uname, uint8_t *realm, uint8_t *upwd, hmackey_t key, SHATYPE shatype)
 {
 	ERR_clear_error();
 	UNUSED_ARG(shatype);
 
-	size_t ulen = strlen((s08bits*)uname);
-	size_t rlen = strlen((s08bits*)realm);
-	size_t plen = strlen((s08bits*)upwd);
+	size_t ulen = strlen((char*)uname);
+	size_t rlen = strlen((char*)realm);
+	size_t plen = strlen((char*)upwd);
 	size_t sz = ulen+1+rlen+1+plen+1+10;
 	size_t strl = ulen+1+rlen+1+plen;
-	u08bits *str = (u08bits*)turn_malloc(sz+1);
+	uint8_t *str = (uint8_t*)malloc(sz+1);
 
-	strncpy((s08bits*)str,(s08bits*)uname,sz);
+	strncpy((char*)str,(char*)uname,sz);
 	str[ulen]=':';
-	strncpy((s08bits*)str+ulen+1,(s08bits*)realm,sz-ulen-1);
+	strncpy((char*)str+ulen+1,(char*)realm,sz-ulen-1);
 	str[ulen+1+rlen]=':';
-	strncpy((s08bits*)str+ulen+1+rlen+1,(s08bits*)upwd,sz-ulen-1-rlen-1);
+	strncpy((char*)str+ulen+1+rlen+1,(char*)upwd,sz-ulen-1-rlen-1);
 	str[strl]=0;
 
 	if(shatype == SHATYPE_SHA256) {
@@ -241,7 +241,7 @@ int stun_produce_integrity_key_str(u08bits *uname, u08bits *realm, u08bits *upwd
 		MD5_Final(key,&ctx);
 	}
 
-	turn_free(str,sz+1);
+	free(str);
 
 	return 0;
 }
@@ -264,7 +264,7 @@ static void generate_enc_password(const char* pwd, char *result, const unsigned 
 	if(!orig_salt) {
 		generate_random_nonce(salt, PWD_SALT_SIZE);
 	} else {
-		ns_bcopy(orig_salt,salt,PWD_SALT_SIZE);
+		bcopy(orig_salt,salt,PWD_SALT_SIZE);
 		salt[PWD_SALT_SIZE]=0;
 	}
 	unsigned char rsalt[PWD_SALT_SIZE*2+1];
@@ -272,7 +272,7 @@ static void generate_enc_password(const char* pwd, char *result, const unsigned 
 	result[0]='$';
 	result[1]='5';
 	result[2]='$';
-	ns_bcopy((char*)rsalt,result+3,PWD_SALT_SIZE+PWD_SALT_SIZE);
+	bcopy((char*)rsalt,result+3,PWD_SALT_SIZE+PWD_SALT_SIZE);
 	result[3+PWD_SALT_SIZE+PWD_SALT_SIZE]='$';
 	unsigned char* out = (unsigned char*)(result+3+PWD_SALT_SIZE+PWD_SALT_SIZE+1);
 	{
@@ -350,61 +350,61 @@ int check_password(const char* pin, const char* pwd)
 
 /////////////////////////////////////////////////////////////////
 
-static u32bits ns_crc32(const u08bits *buffer, u32bits len);
+static uint32_t ns_crc32(const uint8_t *buffer, uint32_t len);
 
 void print_hmac(const char *name, const void *s, size_t len);
 
 /////////////////////////////////////////////////////////////////
 
-int stun_get_command_message_len_str(const u08bits* buf, size_t len)
+int stun_get_command_message_len_str(const uint8_t* buf, size_t len)
 {
 	if (len < STUN_HEADER_LENGTH)
 		return -1;
-	return (int) (nswap16(((const u16bits*)(buf))[1]) + STUN_HEADER_LENGTH);
+	return (int) (nswap16(((const uint16_t*)(buf))[1]) + STUN_HEADER_LENGTH);
 }
 
-static int stun_set_command_message_len_str(u08bits* buf, int len) {
+static int stun_set_command_message_len_str(uint8_t* buf, int len) {
   if(len<STUN_HEADER_LENGTH) return -1;
-  ((u16bits*)buf)[1]=nswap16((u16bits)(len-STUN_HEADER_LENGTH));
+  ((uint16_t*)buf)[1]=nswap16((uint16_t)(len-STUN_HEADER_LENGTH));
   return 0;
 }
 
 ///////////  Low-level binary //////////////////////////////////////////////
 
-u16bits stun_make_type(u16bits method) {
+uint16_t stun_make_type(uint16_t method) {
   method = method & 0x0FFF;
   return ((method & 0x000F) | ((method & 0x0070)<<1) | 
 	  ((method & 0x0380)<<2) | ((method & 0x0C00)<<2));
 }
 
-u16bits stun_get_method_str(const u08bits *buf, size_t len) {
-  if(!buf || len<2) return (u16bits)-1;
+uint16_t stun_get_method_str(const uint8_t *buf, size_t len) {
+  if(!buf || len<2) return (uint16_t)-1;
 
-  u16bits tt = nswap16(((const u16bits*)buf)[0]);
+  uint16_t tt = nswap16(((const uint16_t*)buf)[0]);
   
   return (tt & 0x000F) | ((tt & 0x00E0)>>1) | 
     ((tt & 0x0E00)>>2) | ((tt & 0x3000)>>2);
 }
 
-u16bits stun_get_msg_type_str(const u08bits *buf, size_t len) {
-  if(!buf || len<2) return (u16bits)-1;
-  return ((nswap16(((const u16bits*)buf)[0])) & 0x3FFF);
+uint16_t stun_get_msg_type_str(const uint8_t *buf, size_t len) {
+  if(!buf || len<2) return (uint16_t)-1;
+  return ((nswap16(((const uint16_t*)buf)[0])) & 0x3FFF);
 }
 
-int is_channel_msg_str(const u08bits* buf, size_t blen) {
-  return (buf && blen>=4 && STUN_VALID_CHANNEL(nswap16(((const u16bits*)buf)[0])));
+int is_channel_msg_str(const uint8_t* buf, size_t blen) {
+  return (buf && blen>=4 && STUN_VALID_CHANNEL(nswap16(((const uint16_t*)buf)[0])));
 }
 
 /////////////// message types /////////////////////////////////
 
-int stun_is_command_message_str(const u08bits* buf, size_t blen)
+int stun_is_command_message_str(const uint8_t* buf, size_t blen)
 {
 	if (buf && blen >= STUN_HEADER_LENGTH) {
-		if (!STUN_VALID_CHANNEL(nswap16(((const u16bits*)buf)[0]))) {
-			if ((((u08bits) buf[0]) & ((u08bits) (0xC0))) == 0) {
-				if (nswap32(((const u32bits*)(buf))[1])
+		if (!STUN_VALID_CHANNEL(nswap16(((const uint16_t*)buf)[0]))) {
+			if ((((uint8_t) buf[0]) & ((uint8_t) (0xC0))) == 0) {
+				if (nswap32(((const uint32_t*)(buf))[1])
 						== STUN_MAGIC_COOKIE) {
-					u16bits len = nswap16(((const u16bits*)(buf))[1]);
+					uint16_t len = nswap16(((const uint16_t*)(buf))[1]);
 					if ((len & 0x0003) == 0) {
 						if ((size_t) (len + STUN_HEADER_LENGTH) == blen) {
 							return 1;
@@ -417,17 +417,17 @@ int stun_is_command_message_str(const u08bits* buf, size_t blen)
 	return 0;
 }
 
-int old_stun_is_command_message_str(const u08bits* buf, size_t blen, u32bits *cookie)
+int old_stun_is_command_message_str(const uint8_t* buf, size_t blen, uint32_t *cookie)
 {
 	if (buf && blen >= STUN_HEADER_LENGTH) {
-		if (!STUN_VALID_CHANNEL(nswap16(((const u16bits*)buf)[0]))) {
-			if ((((u08bits) buf[0]) & ((u08bits) (0xC0))) == 0) {
-				if (nswap32(((const u32bits*)(buf))[1])
+		if (!STUN_VALID_CHANNEL(nswap16(((const uint16_t*)buf)[0]))) {
+			if ((((uint8_t) buf[0]) & ((uint8_t) (0xC0))) == 0) {
+				if (nswap32(((const uint32_t*)(buf))[1])
 						!= STUN_MAGIC_COOKIE) {
-					u16bits len = nswap16(((const u16bits*)(buf))[1]);
+					uint16_t len = nswap16(((const uint16_t*)(buf))[1]);
 					if ((len & 0x0003) == 0) {
 						if ((size_t) (len + STUN_HEADER_LENGTH) == blen) {
-							*cookie = nswap32(((const u32bits*)(buf))[1]);
+							*cookie = nswap32(((const uint32_t*)(buf))[1]);
 							return 1;
 						}
 					}
@@ -438,7 +438,7 @@ int old_stun_is_command_message_str(const u08bits* buf, size_t blen, u32bits *co
 	return 0;
 }
 
-int stun_is_command_message_full_check_str(const u08bits* buf, size_t blen, int must_check_fingerprint, int *fingerprint_present) {
+int stun_is_command_message_full_check_str(const uint8_t* buf, size_t blen, int must_check_fingerprint, int *fingerprint_present) {
 	if(!stun_is_command_message_str(buf,blen))
 		return 0;
 	stun_attr_ref sar = stun_attr_get_first_by_type_str(buf, blen, STUN_ATTRIBUTE_FINGERPRINT);
@@ -452,38 +452,38 @@ int stun_is_command_message_full_check_str(const u08bits* buf, size_t blen, int 
 	}
 	if(stun_attr_get_len(sar) != 4)
 		return 0;
-	const u32bits* fingerprint = (const u32bits*)stun_attr_get_value(sar);
+	const uint32_t* fingerprint = (const uint32_t*)stun_attr_get_value(sar);
 	if(!fingerprint)
 		return !must_check_fingerprint;
-	u32bits crc32len = (u32bits)((((const u08bits*)fingerprint)-buf)-4);
-	int ret = (*fingerprint == nswap32(ns_crc32(buf,crc32len) ^ ((u32bits)0x5354554e)));
+	uint32_t crc32len = (uint32_t)((((const uint8_t*)fingerprint)-buf)-4);
+	int ret = (*fingerprint == nswap32(ns_crc32(buf,crc32len) ^ ((uint32_t)0x5354554e)));
 	if(ret && fingerprint_present)
 		*fingerprint_present = ret;
 	return ret;
 }
 
-int stun_is_command_message_offset_str(const u08bits* buf, size_t blen, int offset) {
+int stun_is_command_message_offset_str(const uint8_t* buf, size_t blen, int offset) {
   return stun_is_command_message_str(buf + offset, blen);
 }
 
-int stun_is_request_str(const u08bits* buf, size_t len) {
+int stun_is_request_str(const uint8_t* buf, size_t len) {
   if(is_channel_msg_str(buf,len)) return 0;
   return IS_STUN_REQUEST(stun_get_msg_type_str(buf,len));
 }
 
-int stun_is_success_response_str(const u08bits* buf, size_t len) {
+int stun_is_success_response_str(const uint8_t* buf, size_t len) {
   if(is_channel_msg_str(buf,len)) return 0;
   return IS_STUN_SUCCESS_RESP(stun_get_msg_type_str(buf,len));
 }
 
-int stun_is_error_response_str(const u08bits* buf, size_t len, int *err_code, u08bits *err_msg, size_t err_msg_size) {
+int stun_is_error_response_str(const uint8_t* buf, size_t len, int *err_code, uint8_t *err_msg, size_t err_msg_size) {
   if(is_channel_msg_str(buf,len)) return 0;
   if(IS_STUN_ERR_RESP(stun_get_msg_type_str(buf,len))) {
     if(err_code) {
       stun_attr_ref sar = stun_attr_get_first_by_type_str(buf, len, STUN_ATTRIBUTE_ERROR_CODE);
       if(sar) {
     	  if(stun_attr_get_len(sar)>=4) {
-    		  const u08bits* val = (const u08bits*)stun_attr_get_value(sar);
+    		  const uint8_t* val = (const uint8_t*)stun_attr_get_value(sar);
     		  *err_code=(int)(val[2]*100 + val[3]);
     		  if(err_msg && err_msg_size>0) {
     			  err_msg[0]=0;
@@ -491,7 +491,7 @@ int stun_is_error_response_str(const u08bits* buf, size_t len, int *err_code, u0
     				  size_t msg_len = stun_attr_get_len(sar) - 4;
     				  if(msg_len>(err_msg_size-1))
     					  msg_len=err_msg_size - 1;
-    				  ns_bcopy(val+4, err_msg, msg_len);
+    				  bcopy(val+4, err_msg, msg_len);
     				  err_msg[msg_len]=0;
     			  }
     		  }
@@ -503,8 +503,8 @@ int stun_is_error_response_str(const u08bits* buf, size_t len, int *err_code, u0
   return 0;
 }
 
-int stun_is_challenge_response_str(const u08bits* buf, size_t len, int *err_code, u08bits *err_msg, size_t err_msg_size,
-				u08bits *realm, u08bits *nonce, u08bits *server_name, int *oauth)
+int stun_is_challenge_response_str(const uint8_t* buf, size_t len, int *err_code, uint8_t *err_msg, size_t err_msg_size,
+				uint8_t *realm, uint8_t *nonce, uint8_t *server_name, int *oauth)
 {
 	int ret = stun_is_error_response_str(buf, len, err_code, err_msg, err_msg_size);
 
@@ -515,21 +515,21 @@ int stun_is_challenge_response_str(const u08bits* buf, size_t len, int *err_code
 
 			int found_oauth = 0;
 
-			const u08bits *value = stun_attr_get_value(sar);
+			const uint8_t *value = stun_attr_get_value(sar);
 			if(value) {
 				size_t vlen = (size_t)stun_attr_get_len(sar);
-				ns_bcopy(value,realm,vlen);
+				bcopy(value,realm,vlen);
 				realm[vlen]=0;
 
 				{
 					stun_attr_ref sar = stun_attr_get_first_by_type_str(buf,len,STUN_ATTRIBUTE_THIRD_PARTY_AUTHORIZATION);
 					if(sar) {
-						const u08bits *value = stun_attr_get_value(sar);
+						const uint8_t *value = stun_attr_get_value(sar);
 						if(value) {
 							size_t vlen = (size_t)stun_attr_get_len(sar);
 							if(vlen>0) {
 								if(server_name) {
-									ns_bcopy(value,server_name,vlen);
+									bcopy(value,server_name,vlen);
 								}
 								found_oauth = 1;
 							}
@@ -542,7 +542,7 @@ int stun_is_challenge_response_str(const u08bits* buf, size_t len, int *err_code
 					value = stun_attr_get_value(sar);
 					if(value) {
 						vlen = (size_t)stun_attr_get_len(sar);
-						ns_bcopy(value,nonce,vlen);
+						bcopy(value,nonce,vlen);
 						nonce[vlen]=0;
 						if(oauth) {
 							*oauth = found_oauth;
@@ -557,139 +557,139 @@ int stun_is_challenge_response_str(const u08bits* buf, size_t len, int *err_code
 	return 0;
 }
 
-int stun_is_response_str(const u08bits* buf, size_t len) {
+int stun_is_response_str(const uint8_t* buf, size_t len) {
   if(is_channel_msg_str(buf,len)) return 0;
   if(IS_STUN_SUCCESS_RESP(stun_get_msg_type_str(buf,len))) return 1;
   if(IS_STUN_ERR_RESP(stun_get_msg_type_str(buf,len))) return 1;
   return 0;
 }
 
-int stun_is_indication_str(const u08bits* buf, size_t len) {
+int stun_is_indication_str(const uint8_t* buf, size_t len) {
   if(is_channel_msg_str(buf,len)) return 0;
   return IS_STUN_INDICATION(stun_get_msg_type_str(buf,len));
 }
 
-u16bits stun_make_request(u16bits method) {
+uint16_t stun_make_request(uint16_t method) {
   return GET_STUN_REQUEST(stun_make_type(method));
 }
 
-u16bits stun_make_indication(u16bits method) {
+uint16_t stun_make_indication(uint16_t method) {
   return GET_STUN_INDICATION(stun_make_type(method));
 }
 
-u16bits stun_make_success_response(u16bits method) {
+uint16_t stun_make_success_response(uint16_t method) {
   return GET_STUN_SUCCESS_RESP(stun_make_type(method));
 }
 
-u16bits stun_make_error_response(u16bits method) {
+uint16_t stun_make_error_response(uint16_t method) {
   return GET_STUN_ERR_RESP(stun_make_type(method));
 }
 
 //////////////// INIT ////////////////////////////////////////////
 
-void stun_init_buffer_str(u08bits *buf, size_t *len) {
+void stun_init_buffer_str(uint8_t *buf, size_t *len) {
   *len=STUN_HEADER_LENGTH;
-  ns_bzero(buf,*len);
+  bzero(buf,*len);
 }
 
-void stun_init_command_str(u16bits message_type, u08bits* buf, size_t *len) {
+void stun_init_command_str(uint16_t message_type, uint8_t* buf, size_t *len) {
   stun_init_buffer_str(buf,len);
-  message_type &= (u16bits)(0x3FFF);
-  ((u16bits*)buf)[0]=nswap16(message_type);
-  ((u16bits*)buf)[1]=0;
-  ((u32bits*)buf)[1]=nswap32(STUN_MAGIC_COOKIE);
+  message_type &= (uint16_t)(0x3FFF);
+  ((uint16_t*)buf)[0]=nswap16(message_type);
+  ((uint16_t*)buf)[1]=0;
+  ((uint32_t*)buf)[1]=nswap32(STUN_MAGIC_COOKIE);
   stun_tid_generate_in_message_str(buf,NULL);
 }
 
-void old_stun_init_command_str(u16bits message_type, u08bits* buf, size_t *len, u32bits cookie) {
+void old_stun_init_command_str(uint16_t message_type, uint8_t* buf, size_t *len, uint32_t cookie) {
   stun_init_buffer_str(buf,len);
-  message_type &= (u16bits)(0x3FFF);
-  ((u16bits*)buf)[0]=nswap16(message_type);
-  ((u16bits*)buf)[1]=0;
-  ((u32bits*)buf)[1]=nswap32(cookie);
+  message_type &= (uint16_t)(0x3FFF);
+  ((uint16_t*)buf)[0]=nswap16(message_type);
+  ((uint16_t*)buf)[1]=0;
+  ((uint32_t*)buf)[1]=nswap32(cookie);
   stun_tid_generate_in_message_str(buf,NULL);
 }
 
-void stun_init_request_str(u16bits method, u08bits* buf, size_t *len) {
+void stun_init_request_str(uint16_t method, uint8_t* buf, size_t *len) {
   stun_init_command_str(stun_make_request(method), buf, len);
 }
 
-void stun_init_indication_str(u16bits method, u08bits* buf, size_t *len) {
+void stun_init_indication_str(uint16_t method, uint8_t* buf, size_t *len) {
   stun_init_command_str(stun_make_indication(method), buf, len);
 }
 
-void stun_init_success_response_str(u16bits method, u08bits* buf, size_t *len, stun_tid* id) {
+void stun_init_success_response_str(uint16_t method, uint8_t* buf, size_t *len, stun_tid* id) {
   stun_init_command_str(stun_make_success_response(method), buf, len);
   if(id) {
     stun_tid_message_cpy(buf, id);
   }
 }
 
-void old_stun_init_success_response_str(u16bits method, u08bits* buf, size_t *len, stun_tid* id, u32bits cookie) {
+void old_stun_init_success_response_str(uint16_t method, uint8_t* buf, size_t *len, stun_tid* id, uint32_t cookie) {
   old_stun_init_command_str(stun_make_success_response(method), buf, len, cookie);
   if(id) {
     stun_tid_message_cpy(buf, id);
   }
 }
 
-const u08bits* get_default_reason(int error_code)
+const uint8_t* get_default_reason(int error_code)
 {
-	const u08bits* reason = (const u08bits *) "Unknown error";
+	const uint8_t* reason = (const uint8_t *) "Unknown error";
 
 	switch (error_code){
 	case 300:
-		reason = (const u08bits *) "Try Alternate";
+		reason = (const uint8_t *) "Try Alternate";
 		break;
 	case 400:
-		reason = (const u08bits *) "Bad Request";
+		reason = (const uint8_t *) "Bad Request";
 		break;
 	case 401:
-		reason = (const u08bits *) "Unauthorized";
+		reason = (const uint8_t *) "Unauthorized";
 		break;
 	case 403:
-		reason = (const u08bits *) "Forbidden";
+		reason = (const uint8_t *) "Forbidden";
 		break;
 	case 404:
-		reason = (const u08bits *) "Not Found";
+		reason = (const uint8_t *) "Not Found";
 		break;
 	case 420:
-		reason = (const u08bits *) "Unknown Attribute";
+		reason = (const uint8_t *) "Unknown Attribute";
 		break;
 	case 437:
-		reason = (const u08bits *) "Allocation Mismatch";
+		reason = (const uint8_t *) "Allocation Mismatch";
 		break;
 	case 438:
-		reason = (const u08bits *) "Stale Nonce";
+		reason = (const uint8_t *) "Stale Nonce";
 		break;
 	case 440:
-		reason = (const u08bits *) "Address Family not Supported";
+		reason = (const uint8_t *) "Address Family not Supported";
 		break;
 	case 441:
-		reason = (const u08bits *) "Wrong Credentials";
+		reason = (const uint8_t *) "Wrong Credentials";
 		break;
 	case 442:
-		reason = (const u08bits *) "Unsupported Transport Protocol";
+		reason = (const uint8_t *) "Unsupported Transport Protocol";
 		break;
 	case 443:
-		reason = (const u08bits *) "Peer Address Family Mismatch";
+		reason = (const uint8_t *) "Peer Address Family Mismatch";
 		break;
 	case 446:
-		reason = (const u08bits *) "Connection Already Exists";
+		reason = (const uint8_t *) "Connection Already Exists";
 		break;
 	case 447:
-		reason = (const u08bits *) "Connection Timeout or Failure";
+		reason = (const uint8_t *) "Connection Timeout or Failure";
 		break;
 	case 486:
-		reason = (const u08bits *) "Allocation Quota Reached";
+		reason = (const uint8_t *) "Allocation Quota Reached";
 		break;
 	case 487:
-		reason = (const u08bits *) "Role Conflict";
+		reason = (const uint8_t *) "Role Conflict";
 		break;
 	case 500:
-		reason = (const u08bits *) "Server Error";
+		reason = (const uint8_t *) "Server Error";
 		break;
 	case 508:
-		reason = (const u08bits *) "Insufficient Capacity";
+		reason = (const uint8_t *) "Insufficient Capacity";
 		break;
 	default:
 		;
@@ -698,8 +698,8 @@ const u08bits* get_default_reason(int error_code)
 	return reason;
 }
 
-static void stun_init_error_response_common_str(u08bits* buf, size_t *len,
-				u16bits error_code, const u08bits *reason,
+static void stun_init_error_response_common_str(uint8_t* buf, size_t *len,
+				uint16_t error_code, const uint8_t *reason,
 				stun_tid* id)
 {
 
@@ -707,14 +707,14 @@ static void stun_init_error_response_common_str(u08bits* buf, size_t *len,
 		reason = get_default_reason(error_code);
 	}
 
-	u08bits avalue[513];
+	uint8_t avalue[513];
 	avalue[0] = 0;
 	avalue[1] = 0;
-	avalue[2] = (u08bits) (error_code / 100);
-	avalue[3] = (u08bits) (error_code % 100);
-	strncpy((s08bits*) (avalue + 4), (const s08bits*) reason, sizeof(avalue)-4);
+	avalue[2] = (uint8_t) (error_code / 100);
+	avalue[3] = (uint8_t) (error_code % 100);
+	strncpy((char*) (avalue + 4), (const char*) reason, sizeof(avalue)-4);
 	avalue[sizeof(avalue)-1]=0;
-	int alen = 4 + strlen((const s08bits*) (avalue+4));
+	int alen = 4 + strlen((const char*) (avalue+4));
 
 	//"Manual" padding for compatibility with classic old stun:
 	{
@@ -724,15 +724,15 @@ static void stun_init_error_response_common_str(u08bits* buf, size_t *len,
 		}
 	}
 
-	stun_attr_add_str(buf, len, STUN_ATTRIBUTE_ERROR_CODE, (u08bits*) avalue, alen);
+	stun_attr_add_str(buf, len, STUN_ATTRIBUTE_ERROR_CODE, (uint8_t*) avalue, alen);
 	if (id) {
 		stun_tid_message_cpy(buf, id);
 	}
 }
 
-void old_stun_init_error_response_str(u16bits method, u08bits* buf, size_t *len,
-				u16bits error_code, const u08bits *reason,
-				stun_tid* id, u32bits cookie)
+void old_stun_init_error_response_str(uint16_t method, uint8_t* buf, size_t *len,
+				uint16_t error_code, const uint8_t *reason,
+				stun_tid* id, uint32_t cookie)
 {
 
 	old_stun_init_command_str(stun_make_error_response(method), buf, len, cookie);
@@ -742,8 +742,8 @@ void old_stun_init_error_response_str(u16bits method, u08bits* buf, size_t *len,
 					id);
 }
 
-void stun_init_error_response_str(u16bits method, u08bits* buf, size_t *len,
-				u16bits error_code, const u08bits *reason,
+void stun_init_error_response_str(uint16_t method, uint8_t* buf, size_t *len,
+				uint16_t error_code, const uint8_t *reason,
 				stun_tid* id)
 {
 
@@ -756,13 +756,13 @@ void stun_init_error_response_str(u16bits method, u08bits* buf, size_t *len,
 
 /////////// CHANNEL ////////////////////////////////////////////////
 
-int stun_init_channel_message_str(u16bits chnumber, u08bits* buf, size_t *len, int length, int do_padding)
+int stun_init_channel_message_str(uint16_t chnumber, uint8_t* buf, size_t *len, int length, int do_padding)
 {
-	u16bits rlen = (u16bits)length;
+	uint16_t rlen = (uint16_t)length;
 
 	if(length<0 || (MAX_STUN_MESSAGE_SIZE<(4+length))) return -1;
-	((u16bits*)(buf))[0]=nswap16(chnumber);
-	((u16bits*)(buf))[1]=nswap16((u16bits)length);
+	((uint16_t*)(buf))[0]=nswap16(chnumber);
+	((uint16_t*)(buf))[1]=nswap16((uint16_t)length);
 
 	if(do_padding && (rlen & 0x0003))
 		rlen = ((rlen>>2)+1)<<2;
@@ -772,23 +772,23 @@ int stun_init_channel_message_str(u16bits chnumber, u08bits* buf, size_t *len, i
 	return 0;
 }
 
-int stun_is_channel_message_str(const u08bits *buf, size_t *blen, u16bits* chnumber, int mandatory_padding)
+int stun_is_channel_message_str(const uint8_t *buf, size_t *blen, uint16_t* chnumber, int mandatory_padding)
 {
-	u16bits datalen_header;
-	u16bits datalen_actual;
+	uint16_t datalen_header;
+	uint16_t datalen_actual;
 
 	if (!blen || (*blen < 4))
 		return 0;
 
-	u16bits chn = nswap16(((const u16bits*)(buf))[0]);
+	uint16_t chn = nswap16(((const uint16_t*)(buf))[0]);
 	if (!STUN_VALID_CHANNEL(chn))
 		return 0;
 
-	if(*blen>(u16bits)-1)
-		*blen=(u16bits)-1;
+	if(*blen>(uint16_t)-1)
+		*blen=(uint16_t)-1;
 
-	datalen_actual = (u16bits)(*blen) - 4;
-	datalen_header = ((const u16bits*)buf)[1];
+	datalen_actual = (uint16_t)(*blen) - 4;
+	datalen_header = ((const uint16_t*)buf)[1];
 	datalen_header = nswap16(datalen_header);
 
 	if (datalen_header > datalen_actual)
@@ -805,7 +805,7 @@ int stun_is_channel_message_str(const u08bits *buf, size_t *blen, u16bits* chnum
 			} else if ((datalen_actual < datalen_header) || (datalen_header == 0)) {
 				return 0;
 			} else {
-				u16bits diff = datalen_actual - datalen_header;
+				uint16_t diff = datalen_actual - datalen_header;
 				if (diff > 3)
 					return 0;
 			}
@@ -891,15 +891,15 @@ int is_http(const char *s, size_t blen) {
 	return is_http_inline(s, blen);
 }
 
-int stun_get_message_len_str(u08bits *buf, size_t blen, int padding, size_t *app_len) {
+int stun_get_message_len_str(uint8_t *buf, size_t blen, int padding, size_t *app_len) {
 	if (buf && blen) {
 		/* STUN request/response ? */
 		if (buf && blen >= STUN_HEADER_LENGTH) {
-			if (!STUN_VALID_CHANNEL(nswap16(((const u16bits*)buf)[0]))) {
-				if ((((u08bits) buf[0]) & ((u08bits) (0xC0))) == 0) {
-					if (nswap32(((const u32bits*)(buf))[1])
+			if (!STUN_VALID_CHANNEL(nswap16(((const uint16_t*)buf)[0]))) {
+				if ((((uint8_t) buf[0]) & ((uint8_t) (0xC0))) == 0) {
+					if (nswap32(((const uint32_t*)(buf))[1])
 							== STUN_MAGIC_COOKIE) {
-						u16bits len = nswap16(((const u16bits*)(buf))[1]);
+						uint16_t len = nswap16(((const uint16_t*)(buf))[1]);
 						if ((len & 0x0003) == 0) {
 							len += STUN_HEADER_LENGTH;
 							if ((size_t) len <= blen) {
@@ -923,10 +923,10 @@ int stun_get_message_len_str(u08bits *buf, size_t blen, int padding, size_t *app
 
 		/* STUN channel ? */
 		if(blen>=4) {
-			u16bits chn=nswap16(((const u16bits*)(buf))[0]);
+			uint16_t chn=nswap16(((const uint16_t*)(buf))[0]);
 			if(STUN_VALID_CHANNEL(chn)) {
 
-				u16bits bret = (4+(nswap16(((const u16bits*)(buf))[1])));
+				uint16_t bret = (4+(nswap16(((const uint16_t*)(buf))[1])));
 
 				*app_len = bret;
 
@@ -947,14 +947,14 @@ int stun_get_message_len_str(u08bits *buf, size_t blen, int padding, size_t *app
 
 ////////// ALLOCATE ///////////////////////////////////
 
-int stun_set_allocate_request_str(u08bits* buf, size_t *len, u32bits lifetime, int af4, int af6,
-				u08bits transport, int mobile, const char* rt, int ep) {
+int stun_set_allocate_request_str(uint8_t* buf, size_t *len, uint32_t lifetime, int af4, int af6,
+				uint8_t transport, int mobile, const char* rt, int ep) {
 
   stun_init_request_str(STUN_METHOD_ALLOCATE, buf, len);
 
   //REQUESTED-TRANSPORT
   {
-    u08bits field[4];
+    uint8_t field[4];
     field[0]=transport;
     field[1]=0;
     field[2]=0;
@@ -965,31 +965,31 @@ int stun_set_allocate_request_str(u08bits* buf, size_t *len, u32bits lifetime, i
   //LIFETIME
   {
     if(lifetime<1) lifetime=STUN_DEFAULT_ALLOCATE_LIFETIME;
-    u32bits field=nswap32(lifetime);
-    if(stun_attr_add_str(buf,len,STUN_ATTRIBUTE_LIFETIME,(u08bits*)(&field),sizeof(field))<0) return -1;
+    uint32_t field=nswap32(lifetime);
+    if(stun_attr_add_str(buf,len,STUN_ATTRIBUTE_LIFETIME,(uint8_t*)(&field),sizeof(field))<0) return -1;
   }
 
   //MICE
   if(mobile) {
-	  if(stun_attr_add_str(buf,len,STUN_ATTRIBUTE_MOBILITY_TICKET,(const u08bits*)"",0)<0) return -1;
+	  if(stun_attr_add_str(buf,len,STUN_ATTRIBUTE_MOBILITY_TICKET,(const uint8_t*)"",0)<0) return -1;
   }
 
   if(ep>-1) {
 	  uint8_t value = ep ? 0x80 : 0x00;
-	  if(stun_attr_add_str(buf,len,STUN_ATTRIBUTE_EVEN_PORT,(const u08bits*)&value,1)<0) return -1;
+	  if(stun_attr_add_str(buf,len,STUN_ATTRIBUTE_EVEN_PORT,(const uint8_t*)&value,1)<0) return -1;
   }
 
   //RESERVATION-TOKEN, EVEN-PORT and DUAL-ALLOCATION are mutually exclusive:
   if(rt) {
 
-	  stun_attr_add_str(buf,len, STUN_ATTRIBUTE_RESERVATION_TOKEN, (const u08bits*) rt, 8);
+	  stun_attr_add_str(buf,len, STUN_ATTRIBUTE_RESERVATION_TOKEN, (const uint8_t*) rt, 8);
 
   } else {
 
 	  //ADRESS-FAMILY
 	  if (af4 && !af6) {
-		  u08bits field[4];
-		  field[0] = (u08bits)STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4;
+		  uint8_t field[4];
+		  field[0] = (uint8_t)STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4;
 		  field[1]=0;
 		  field[2]=0;
 		  field[3]=0;
@@ -997,8 +997,8 @@ int stun_set_allocate_request_str(u08bits* buf, size_t *len, u32bits lifetime, i
 	  }
 
 	  if (af6 && !af4) {
-		  u08bits field[4];
-		  field[0] = (u08bits)STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6;
+		  uint8_t field[4];
+		  field[0] = (uint8_t)STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6;
 		  field[1]=0;
 		  field[2]=0;
 		  field[3]=0;
@@ -1006,8 +1006,8 @@ int stun_set_allocate_request_str(u08bits* buf, size_t *len, u32bits lifetime, i
 	  }
 
 	  if (af4 && af6) {
-	  	u08bits field[4];
-	  	field[0] = (u08bits)STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6;
+	  	uint8_t field[4];
+	  	field[0] = (uint8_t)STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6;
 	  	field[1]=0;
 	  	field[2]=0;
 	  	field[3]=0;
@@ -1018,11 +1018,11 @@ int stun_set_allocate_request_str(u08bits* buf, size_t *len, u32bits lifetime, i
   return 0;
 }
 
-int stun_set_allocate_response_str(u08bits* buf, size_t *len, stun_tid* tid, 
+int stun_set_allocate_response_str(uint8_t* buf, size_t *len, stun_tid* tid, 
 				   const ioa_addr *relayed_addr1, const ioa_addr *relayed_addr2,
 				   const ioa_addr *reflexive_addr,
-				   u32bits lifetime, u32bits max_lifetime, int error_code, const u08bits *reason,
-				   u64bits reservation_token, char* mobile_id) {
+				   uint32_t lifetime, uint32_t max_lifetime, int error_code, const uint8_t *reason,
+				   uint64_t reservation_token, char* mobile_id) {
 
   if(!error_code) {
 
@@ -1042,19 +1042,19 @@ int stun_set_allocate_response_str(u08bits* buf, size_t *len, stun_tid* tid,
 
     if(reservation_token) {
       reservation_token=nswap64(reservation_token);
-      stun_attr_add_str(buf,len,STUN_ATTRIBUTE_RESERVATION_TOKEN,(u08bits*)(&reservation_token),8);
+      stun_attr_add_str(buf,len,STUN_ATTRIBUTE_RESERVATION_TOKEN,(uint8_t*)(&reservation_token),8);
     }
 
     {
       if(lifetime<1) lifetime=STUN_DEFAULT_ALLOCATE_LIFETIME;
       else if(lifetime>max_lifetime) lifetime = max_lifetime;
 
-      u32bits field=nswap32(lifetime);
-      if(stun_attr_add_str(buf,len,STUN_ATTRIBUTE_LIFETIME,(u08bits*)(&field),sizeof(field))<0) return -1;
+      uint32_t field=nswap32(lifetime);
+      if(stun_attr_add_str(buf,len,STUN_ATTRIBUTE_LIFETIME,(uint8_t*)(&field),sizeof(field))<0) return -1;
     }
 
     if(mobile_id && *mobile_id) {
-	    if(stun_attr_add_str(buf,len,STUN_ATTRIBUTE_MOBILITY_TICKET,(u08bits*)mobile_id,strlen(mobile_id))<0) return -1;
+	    if(stun_attr_add_str(buf,len,STUN_ATTRIBUTE_MOBILITY_TICKET,(uint8_t*)mobile_id,strlen(mobile_id))<0) return -1;
     }
 
   } else {
@@ -1066,11 +1066,11 @@ int stun_set_allocate_response_str(u08bits* buf, size_t *len, stun_tid* tid,
 
 /////////////// CHANNEL BIND ///////////////////////////////////////
 
-u16bits stun_set_channel_bind_request_str(u08bits* buf, size_t *len,
-					   const ioa_addr* peer_addr, u16bits channel_number) {
+uint16_t stun_set_channel_bind_request_str(uint8_t* buf, size_t *len,
+					   const ioa_addr* peer_addr, uint16_t channel_number) {
 
   if(!STUN_VALID_CHANNEL(channel_number)) {
-    channel_number = 0x4000 + ((u16bits)(((u32bits)turn_random())%(0x7FFF-0x4000+1)));
+    channel_number = 0x4000 + ((uint16_t)(((uint32_t)turn_random())%(0x7FFF-0x4000+1)));
   }
   
   stun_init_request_str(STUN_METHOD_CHANNEL_BIND, buf, len);
@@ -1079,7 +1079,7 @@ u16bits stun_set_channel_bind_request_str(u08bits* buf, size_t *len,
   
   if(!peer_addr) {
     ioa_addr ca;
-    ns_bzero(&ca,sizeof(ioa_addr));
+    bzero(&ca,sizeof(ioa_addr));
     
     if(stun_attr_add_addr_str(buf,len,STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &ca)<0) return 0;
   } else {
@@ -1089,7 +1089,7 @@ u16bits stun_set_channel_bind_request_str(u08bits* buf, size_t *len,
   return channel_number;
 }
 
-void stun_set_channel_bind_response_str(u08bits* buf, size_t *len, stun_tid* tid, int error_code, const u08bits *reason) {
+void stun_set_channel_bind_response_str(uint8_t* buf, size_t *len, stun_tid* tid, int error_code, const uint8_t *reason) {
   if(!error_code) {
     stun_init_success_response_str(STUN_METHOD_CHANNEL_BIND, buf, len, tid);
   } else {
@@ -1099,13 +1099,13 @@ void stun_set_channel_bind_response_str(u08bits* buf, size_t *len, stun_tid* tid
 
 /////////////// BINDING ///////////////////////////////////////
 
-void stun_set_binding_request_str(u08bits* buf, size_t *len) {
+void stun_set_binding_request_str(uint8_t* buf, size_t *len) {
   stun_init_request_str(STUN_METHOD_BINDING, buf, len);
 }
 
-int stun_set_binding_response_str(u08bits* buf, size_t *len, stun_tid* tid, 
-				  const ioa_addr *reflexive_addr, int error_code, const u08bits *reason,
-				  u32bits cookie, int old_stun)
+int stun_set_binding_response_str(uint8_t* buf, size_t *len, stun_tid* tid, 
+				  const ioa_addr *reflexive_addr, int error_code, const uint8_t *reason,
+				  uint32_t cookie, int old_stun)
 
 {
 	if (!error_code) {
@@ -1131,7 +1131,7 @@ int stun_set_binding_response_str(u08bits* buf, size_t *len, stun_tid* tid,
 	return 0;
 }
 
-int stun_is_binding_request_str(const u08bits* buf, size_t len, size_t offset)
+int stun_is_binding_request_str(const uint8_t* buf, size_t len, size_t offset)
 {
   if(offset < len) {
     buf += offset;
@@ -1145,7 +1145,7 @@ int stun_is_binding_request_str(const u08bits* buf, size_t len, size_t offset)
   return 0;
 }
 
-int stun_is_binding_response_str(const u08bits* buf, size_t len) {
+int stun_is_binding_response_str(const uint8_t* buf, size_t len) {
   if(stun_is_command_message_str(buf,len) &&
      (stun_get_method_str(buf,len)==STUN_METHOD_BINDING)) {
     if(stun_is_response_str(buf,len)) {
@@ -1174,27 +1174,27 @@ int stun_tid_equals(const stun_tid *id1, const stun_tid *id2) {
 void stun_tid_cpy(stun_tid *id1, const stun_tid *id2) {
   if(!id1) return;
   if(!id2) return;
-  ns_bcopy((const void*)(id2->tsx_id),(void*)(id1->tsx_id),STUN_TID_SIZE);
+  bcopy((const void*)(id2->tsx_id),(void*)(id1->tsx_id),STUN_TID_SIZE);
 }
 
-static void stun_tid_string_cpy(u08bits* s, const stun_tid* id) {
+static void stun_tid_string_cpy(uint8_t* s, const stun_tid* id) {
   if(s && id) {
-    ns_bcopy((const void*)(id->tsx_id),s,STUN_TID_SIZE);
+    bcopy((const void*)(id->tsx_id),s,STUN_TID_SIZE);
   }
 }
 
-static void stun_tid_from_string(const u08bits* s, stun_tid* id) {
+static void stun_tid_from_string(const uint8_t* s, stun_tid* id) {
   if(s && id) {
-    ns_bcopy(s,(void*)(id->tsx_id),STUN_TID_SIZE);
+    bcopy(s,(void*)(id->tsx_id),STUN_TID_SIZE);
   }
 }
 
-void stun_tid_from_message_str(const u08bits* buf, size_t len, stun_tid* id) {
+void stun_tid_from_message_str(const uint8_t* buf, size_t len, stun_tid* id) {
 	UNUSED_ARG(len);
 	stun_tid_from_string(buf+8, id);
 }
 
-void stun_tid_message_cpy(u08bits* buf, const stun_tid* id) {
+void stun_tid_message_cpy(uint8_t* buf, const stun_tid* id) {
   if(buf && id) {
     stun_tid_string_cpy(buf+8, id);
   }
@@ -1206,7 +1206,7 @@ void stun_tid_generate(stun_tid* id) {
   }
 }
 
-void stun_tid_generate_in_message_str(u08bits* buf, stun_tid* id) {
+void stun_tid_generate_in_message_str(uint8_t* buf, stun_tid* id) {
   stun_tid tmp;
   if(!id) id=&tmp;
   stun_tid_generate(id);
@@ -1232,21 +1232,21 @@ turn_time_t stun_adjust_allocate_lifetime(turn_time_t lifetime, turn_time_t max_
 
 int stun_attr_get_type(stun_attr_ref attr) {
   if(attr)
-    return (int)(nswap16(((const u16bits*)attr)[0]));
+    return (int)(nswap16(((const uint16_t*)attr)[0]));
   return -1;
 }
 
 int stun_attr_get_len(stun_attr_ref attr) {
   if(attr)
-    return (int)(nswap16(((const u16bits*)attr)[1]));
+    return (int)(nswap16(((const uint16_t*)attr)[1]));
   return -1;
 }
 
-const u08bits* stun_attr_get_value(stun_attr_ref attr) {
+const uint8_t* stun_attr_get_value(stun_attr_ref attr) {
   if(attr) {
-    int len = (int)(nswap16(((const u16bits*)attr)[1]));
+    int len = (int)(nswap16(((const uint16_t*)attr)[1]));
     if(len<1) return NULL;
-    return ((const u08bits*)attr)+4;
+    return ((const uint8_t*)attr)+4;
   }
   return NULL;
 }
@@ -1254,10 +1254,10 @@ const u08bits* stun_attr_get_value(stun_attr_ref attr) {
 int stun_get_requested_address_family(stun_attr_ref attr)
 {
 	if (attr) {
-		int len = (int) (nswap16(((const u16bits*)attr)[1]));
+		int len = (int) (nswap16(((const uint16_t*)attr)[1]));
 		if (len != 4)
 			return STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_INVALID;
-		int val = ((const u08bits*) attr)[4];
+		int val = ((const uint8_t*) attr)[4];
 		switch (val){
 		case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4:
 			return val;
@@ -1270,11 +1270,11 @@ int stun_get_requested_address_family(stun_attr_ref attr)
 	return STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT;
 }
 
-u16bits stun_attr_get_channel_number(stun_attr_ref attr) {
+uint16_t stun_attr_get_channel_number(stun_attr_ref attr) {
   if(attr) {
-    const u08bits* value = stun_attr_get_value(attr);
+    const uint8_t* value = stun_attr_get_value(attr);
     if(value && (stun_attr_get_len(attr) >= 2)) {
-      u16bits cn=nswap16(((const u16bits*)value)[0]);
+      uint16_t cn=nswap16(((const uint16_t*)value)[0]);
       if(STUN_VALID_CHANNEL(cn)) return cn;
     }
   }
@@ -1283,20 +1283,22 @@ u16bits stun_attr_get_channel_number(stun_attr_ref attr) {
 
 band_limit_t stun_attr_get_bandwidth(stun_attr_ref attr) {
   if(attr) {
-    const u08bits* value = stun_attr_get_value(attr);
+    const uint8_t* value = stun_attr_get_value(attr);
     if(value && (stun_attr_get_len(attr) >= 4)) {
-      u32bits bps=nswap32(((const u32bits*)value)[0]);
+      uint32_t bps=nswap32(((const uint32_t*)value)[0]);
       return (band_limit_t)(bps << 7);
     }
   }
   return 0;
 }
 
-u64bits stun_attr_get_reservation_token_value(stun_attr_ref attr)  {
+uint64_t stun_attr_get_reservation_token_value(stun_attr_ref attr)  {
   if(attr) {
-    const u08bits* value = stun_attr_get_value(attr);
+    const uint8_t* value = stun_attr_get_value(attr);
     if(value && (stun_attr_get_len(attr) == 8)) {
-      return nswap64(((const u64bits*)value)[0]);
+      uint64_t token;
+      bcopy(value, &token, sizeof(uint64_t));
+      return nswap64(token);
     }
   }
   return 0;
@@ -1326,17 +1328,17 @@ int stun_attr_is_addr(stun_attr_ref attr) {
   return 0;
 }
 
-u08bits stun_attr_get_even_port(stun_attr_ref attr) {
+uint8_t stun_attr_get_even_port(stun_attr_ref attr) {
   if(attr) {
-    const u08bits* value=stun_attr_get_value(attr);
+    const uint8_t* value=stun_attr_get_value(attr);
     if(value) {
-      if((u08bits)(value[0]) > 0x7F) return 1;
+      if((uint8_t)(value[0]) > 0x7F) return 1;
     }
   }
   return 0;
 }
 
-stun_attr_ref stun_attr_get_first_by_type_str(const u08bits* buf, size_t len, u16bits attr_type) {
+stun_attr_ref stun_attr_get_first_by_type_str(const uint8_t* buf, size_t len, uint16_t attr_type) {
 
   stun_attr_ref attr=stun_attr_get_first_str(buf,len);
   while(attr) {
@@ -1349,7 +1351,7 @@ stun_attr_ref stun_attr_get_first_by_type_str(const u08bits* buf, size_t len, u1
   return NULL;
 }
 
-stun_attr_ref stun_attr_get_first_str(const u08bits* buf, size_t len) {
+stun_attr_ref stun_attr_get_first_str(const uint8_t* buf, size_t len) {
 
   if(stun_get_command_message_len_str(buf,len)>STUN_HEADER_LENGTH) {
     return (stun_attr_ref)(buf+STUN_HEADER_LENGTH);
@@ -1358,25 +1360,25 @@ stun_attr_ref stun_attr_get_first_str(const u08bits* buf, size_t len) {
   return NULL;
 }
 
-stun_attr_ref stun_attr_get_next_str(const u08bits* buf, size_t len, stun_attr_ref prev) {
+stun_attr_ref stun_attr_get_next_str(const uint8_t* buf, size_t len, stun_attr_ref prev) {
 
   if(!prev) return stun_attr_get_first_str(buf,len);
   else {
-    const u08bits* end = buf + stun_get_command_message_len_str(buf,len);
+    const uint8_t* end = buf + stun_get_command_message_len_str(buf,len);
     int attrlen=stun_attr_get_len(prev);
-    u16bits rem4 = ((u16bits)attrlen) & 0x0003;
+    uint16_t rem4 = ((uint16_t)attrlen) & 0x0003;
     if(rem4) {
       attrlen = attrlen+4-(int)rem4;
     }
-    const u08bits* attr_end=(const u08bits*)prev+4+attrlen;
+    const uint8_t* attr_end=(const uint8_t*)prev+4+attrlen;
     if(attr_end<end) return attr_end;
     return NULL;
   }
 }
 
-int stun_attr_add_str(u08bits* buf, size_t *len, u16bits attr, const u08bits* avalue, int alen) {
+int stun_attr_add_str(uint8_t* buf, size_t *len, uint16_t attr, const uint8_t* avalue, int alen) {
   if(alen<0) alen=0;
-  u08bits tmp[1];
+  uint8_t tmp[1];
   if(!avalue) {
     alen=0;
     avalue=tmp;
@@ -1389,21 +1391,21 @@ int stun_attr_add_str(u08bits* buf, size_t *len, u16bits attr, const u08bits* av
   }
   if(newlen>=MAX_STUN_MESSAGE_SIZE) return -1;
   else {
-    u08bits* attr_start=buf+clen;
+    uint8_t* attr_start=buf+clen;
     
-    u16bits *attr_start_16t=(u16bits*)attr_start;
+    uint16_t *attr_start_16t=(uint16_t*)attr_start;
     
     stun_set_command_message_len_str(buf,newlen);
     *len = newlen;
     
     attr_start_16t[0]=nswap16(attr);
     attr_start_16t[1]=nswap16(alen);
-    if(alen>0) ns_bcopy(avalue,attr_start+4,alen);
+    if(alen>0) bcopy(avalue,attr_start+4,alen);
     return 0;
   }
 }
 
-int stun_attr_add_addr_str(u08bits *buf, size_t *len, u16bits attr_type, const ioa_addr* ca) {
+int stun_attr_add_addr_str(uint8_t *buf, size_t *len, uint16_t attr_type, const ioa_addr* ca) {
 
   stun_tid tid;
   stun_tid_from_message_str(buf, *len, &tid);
@@ -1422,18 +1424,18 @@ int stun_attr_add_addr_str(u08bits *buf, size_t *len, u16bits attr_type, const i
   ioa_addr public_addr;
   map_addr_from_private_to_public(ca,&public_addr);
 
-  u08bits cfield[64];
+  uint8_t cfield[64];
   int clen=0;
   if(stun_addr_encode(&public_addr, cfield, &clen, xor_ed, STUN_MAGIC_COOKIE, tid.tsx_id)<0) {
     return -1;
   }
 
-  if(stun_attr_add_str(buf,len,attr_type,(u08bits*)(&cfield),clen)<0) return -1;
+  if(stun_attr_add_str(buf,len,attr_type,(uint8_t*)(&cfield),clen)<0) return -1;
 
   return 0;
 }
 
-int stun_attr_get_addr_str(const u08bits *buf, size_t len, stun_attr_ref attr, ioa_addr* ca, const ioa_addr *default_addr) {
+int stun_attr_get_addr_str(const uint8_t *buf, size_t len, stun_attr_ref attr, ioa_addr* ca, const ioa_addr *default_addr) {
 
   stun_tid tid;
   stun_tid_from_message_str(buf, len, &tid);
@@ -1456,7 +1458,7 @@ int stun_attr_get_addr_str(const u08bits *buf, size_t len, stun_attr_ref attr, i
     ;
   };
 
-  const u08bits *cfield=stun_attr_get_value(attr);
+  const uint8_t *cfield=stun_attr_get_value(attr);
   if(!cfield) return -1;
 
   if(stun_addr_decode(&public_addr, cfield, stun_attr_get_len(attr), xor_ed, STUN_MAGIC_COOKIE, tid.tsx_id)<0) {
@@ -1474,7 +1476,7 @@ int stun_attr_get_addr_str(const u08bits *buf, size_t len, stun_attr_ref attr, i
   return 0;
 }
 
-int stun_attr_get_first_addr_str(const u08bits *buf, size_t len, u16bits attr_type, ioa_addr* ca, const ioa_addr *default_addr) {
+int stun_attr_get_first_addr_str(const uint8_t *buf, size_t len, uint16_t attr_type, ioa_addr* ca, const ioa_addr *default_addr) {
 
   stun_attr_ref attr=stun_attr_get_first_str(buf,len);
 
@@ -1490,36 +1492,36 @@ int stun_attr_get_first_addr_str(const u08bits *buf, size_t len, u16bits attr_ty
   return -1;
 }
 
-int stun_attr_add_channel_number_str(u08bits* buf, size_t *len, u16bits chnumber) {
+int stun_attr_add_channel_number_str(uint8_t* buf, size_t *len, uint16_t chnumber) {
 
-  u16bits field[2];
+  uint16_t field[2];
   field[0]=nswap16(chnumber);
   field[1]=0;
   
-  return stun_attr_add_str(buf,len,STUN_ATTRIBUTE_CHANNEL_NUMBER,(u08bits*)(field),sizeof(field));
+  return stun_attr_add_str(buf,len,STUN_ATTRIBUTE_CHANNEL_NUMBER,(uint8_t*)(field),sizeof(field));
 }
 
-int stun_attr_add_bandwidth_str(u08bits* buf, size_t *len, band_limit_t bps0) {
+int stun_attr_add_bandwidth_str(uint8_t* buf, size_t *len, band_limit_t bps0) {
 
-	u32bits bps = (band_limit_t)(bps0 >> 7);
+	uint32_t bps = (band_limit_t)(bps0 >> 7);
 
-	u32bits field=nswap32(bps);
+	uint32_t field=nswap32(bps);
 
-	return stun_attr_add_str(buf,len,STUN_ATTRIBUTE_NEW_BANDWIDTH,(u08bits*)(&field),sizeof(field));
+	return stun_attr_add_str(buf,len,STUN_ATTRIBUTE_NEW_BANDWIDTH,(uint8_t*)(&field),sizeof(field));
 }
 
-int stun_attr_add_address_error_code(u08bits* buf, size_t *len, int requested_address_family, int error_code)
+int stun_attr_add_address_error_code(uint8_t* buf, size_t *len, int requested_address_family, int error_code)
 {
-	const u08bits *reason = get_default_reason(error_code);
+	const uint8_t *reason = get_default_reason(error_code);
 
-	u08bits avalue[513];
-	avalue[0] = (u08bits)requested_address_family;
+	uint8_t avalue[513];
+	avalue[0] = (uint8_t)requested_address_family;
 	avalue[1] = 0;
-	avalue[2] = (u08bits) (error_code / 100);
-	avalue[3] = (u08bits) (error_code % 100);
-	strncpy((s08bits*) (avalue + 4), (const s08bits*) reason, sizeof(avalue)-4);
+	avalue[2] = (uint8_t) (error_code / 100);
+	avalue[3] = (uint8_t) (error_code % 100);
+	strncpy((char*) (avalue + 4), (const char*) reason, sizeof(avalue)-4);
 	avalue[sizeof(avalue)-1]=0;
-	int alen = 4 + strlen((const s08bits*) (avalue+4));
+	int alen = 4 + strlen((const char*) (avalue+4));
 
 	//"Manual" padding for compatibility with classic old stun:
 	{
@@ -1529,12 +1531,12 @@ int stun_attr_add_address_error_code(u08bits* buf, size_t *len, int requested_ad
 		}
 	}
 
-	stun_attr_add_str(buf, len, STUN_ATTRIBUTE_ADDRESS_ERROR_CODE, (u08bits*) avalue, alen);
+	stun_attr_add_str(buf, len, STUN_ATTRIBUTE_ADDRESS_ERROR_CODE, (uint8_t*) avalue, alen);
 
 	return 0;
 }
 
-int stun_attr_get_address_error_code(u08bits* buf, size_t len, int *requested_address_family, int *error_code)
+int stun_attr_get_address_error_code(uint8_t* buf, size_t len, int *requested_address_family, int *error_code)
 {
 	if(requested_address_family) {
 		*requested_address_family = 0;
@@ -1545,7 +1547,7 @@ int stun_attr_get_address_error_code(u08bits* buf, size_t len, int *requested_ad
 	if(buf && len) {
 		stun_attr_ref sar = stun_attr_get_first_by_type_str(buf, len, STUN_ATTRIBUTE_ADDRESS_ERROR_CODE);
 		if(sar) {
-			const u08bits* value = stun_attr_get_value(sar);
+			const uint8_t* value = stun_attr_get_value(sar);
 			if(!value) {
 				return -1;
 			} else {
@@ -1566,12 +1568,12 @@ int stun_attr_get_address_error_code(u08bits* buf, size_t len, int *requested_ad
 	return 0;
 }
 
-u16bits stun_attr_get_first_channel_number_str(const u08bits *buf, size_t len) {
+uint16_t stun_attr_get_first_channel_number_str(const uint8_t *buf, size_t len) {
 
   stun_attr_ref attr=stun_attr_get_first_str(buf,len);
   while(attr) {
     if(stun_attr_get_type(attr) == STUN_ATTRIBUTE_CHANNEL_NUMBER) {
-      u16bits ret = stun_attr_get_channel_number(attr);
+      uint16_t ret = stun_attr_get_channel_number(attr);
       if(STUN_VALID_CHANNEL(ret)) {
     	  return ret;
       }
@@ -1584,21 +1586,21 @@ u16bits stun_attr_get_first_channel_number_str(const u08bits *buf, size_t len) {
 
 ////////////// FINGERPRINT ////////////////////////////
 
-int stun_attr_add_fingerprint_str(u08bits *buf, size_t *len)
+int stun_attr_add_fingerprint_str(uint8_t *buf, size_t *len)
 {
-	u32bits crc32 = 0;
-	stun_attr_add_str(buf, len, STUN_ATTRIBUTE_FINGERPRINT, (u08bits*)&crc32, 4);
+	uint32_t crc32 = 0;
+	stun_attr_add_str(buf, len, STUN_ATTRIBUTE_FINGERPRINT, (uint8_t*)&crc32, 4);
 	crc32 = ns_crc32(buf,*len-8);
-	*((u32bits*)(buf+*len-4)) = nswap32(crc32 ^ ((u32bits)0x5354554e));
+	*((uint32_t*)(buf+*len-4)) = nswap32(crc32 ^ ((uint32_t)0x5354554e));
 	return 0;
 }
 ////////////// CRC ///////////////////////////////////////////////
 
 #define CRC_MASK    0xFFFFFFFFUL
 
-#define UPDATE_CRC(crc, c)  crc = crctable[(u08bits)crc ^ (u08bits)(c)] ^ (crc >> 8)
+#define UPDATE_CRC(crc, c)  crc = crctable[(uint8_t)crc ^ (uint8_t)(c)] ^ (crc >> 8)
 
-static const u32bits crctable[256] = {
+static const uint32_t crctable[256] = {
   0x00000000, 0x77073096, 0xee0e612c, 0x990951ba,
   0x076dc419, 0x706af48f, 0xe963a535, 0x9e6495a3,
   0x0edb8832, 0x79dcb8a4, 0xe0d5e91e, 0x97d2d988,
@@ -1674,7 +1676,7 @@ reversed 0x04C11DB7
 static void make_crctable(void)
 {
 	uint i, j;
-	u32bits r;
+	uint32_t r;
 
 	for (i = 0; i < 256; ++i) {
 		r = i;
@@ -1689,9 +1691,9 @@ static void make_crctable(void)
 }
 */
 
-static u32bits ns_crc32(const u08bits *buffer, u32bits len)
+static uint32_t ns_crc32(const uint8_t *buffer, uint32_t len)
 {
-	u32bits crc = CRC_MASK;
+	uint32_t crc = CRC_MASK;
 	while ( len-- ) UPDATE_CRC( crc, *buffer++ );
 	return (~crc);
 }
@@ -1700,13 +1702,13 @@ static u32bits ns_crc32(const u08bits *buffer, u32bits len)
 
 /* We support only basic ASCII table */
 
-int SASLprep(u08bits *s)
+int SASLprep(uint8_t *s)
 {
 	if(s) {
-		u08bits *strin = s;
-		u08bits *strout = s;
+		uint8_t *strin = s;
+		uint8_t *strout = s;
 		for(;;) {
-			u08bits c = *strin;
+			uint8_t c = *strin;
 			if(!c) {
 				*strout=0;
 				break;
@@ -1757,14 +1759,14 @@ void print_bin_func(const char *name, size_t len, const void *s, const char *fun
 	printf("<%s>:<%s>:len=%d:[",func,name,(int)len);
 	size_t i;
 	for(i=0;i<len;i++) {
-		printf("%02x",(int)((const u08bits*)s)[i]);
+		printf("%02x",(int)((const uint8_t*)s)[i]);
 	}
 	printf("]\n");
 }
 
-int stun_attr_add_integrity_str(turn_credential_type ct, u08bits *buf, size_t *len, hmackey_t key, password_t pwd, SHATYPE shatype)
+int stun_attr_add_integrity_str(turn_credential_type ct, uint8_t *buf, size_t *len, hmackey_t key, password_t pwd, SHATYPE shatype)
 {
-	u08bits hmac[MAXSHASIZE];
+	uint8_t hmac[MAXSHASIZE];
 
 	unsigned int shasize;
 
@@ -1796,22 +1798,22 @@ int stun_attr_add_integrity_str(turn_credential_type ct, u08bits *buf, size_t *l
 	return 0;
 }
 
-int stun_attr_add_integrity_by_key_str(u08bits *buf, size_t *len, u08bits *uname, u08bits *realm, hmackey_t key, u08bits *nonce, SHATYPE shatype)
+int stun_attr_add_integrity_by_key_str(uint8_t *buf, size_t *len, uint8_t *uname, uint8_t *realm, hmackey_t key, uint8_t *nonce, SHATYPE shatype)
 {
-	if(stun_attr_add_str(buf, len, STUN_ATTRIBUTE_USERNAME, uname, strlen((s08bits*)uname))<0)
+	if(stun_attr_add_str(buf, len, STUN_ATTRIBUTE_USERNAME, uname, strlen((char*)uname))<0)
 			return -1;
 
-	if(stun_attr_add_str(buf, len, STUN_ATTRIBUTE_NONCE, nonce, strlen((s08bits*)nonce))<0)
+	if(stun_attr_add_str(buf, len, STUN_ATTRIBUTE_NONCE, nonce, strlen((char*)nonce))<0)
 		return -1;
 
-	if(stun_attr_add_str(buf, len, STUN_ATTRIBUTE_REALM, realm, strlen((s08bits*)realm))<0)
+	if(stun_attr_add_str(buf, len, STUN_ATTRIBUTE_REALM, realm, strlen((char*)realm))<0)
 			return -1;
 
 	password_t p;
 	return stun_attr_add_integrity_str(TURN_CREDENTIALS_LONG_TERM, buf, len, key, p, shatype);
 }
 
-int stun_attr_add_integrity_by_user_str(u08bits *buf, size_t *len, u08bits *uname, u08bits *realm, u08bits *upwd, u08bits *nonce, SHATYPE shatype)
+int stun_attr_add_integrity_by_user_str(uint8_t *buf, size_t *len, uint8_t *uname, uint8_t *realm, uint8_t *upwd, uint8_t *nonce, SHATYPE shatype)
 {
 	hmackey_t key;
 
@@ -1821,9 +1823,9 @@ int stun_attr_add_integrity_by_user_str(u08bits *buf, size_t *len, u08bits *unam
 	return stun_attr_add_integrity_by_key_str(buf, len, uname, realm, key, nonce, shatype);
 }
 
-int stun_attr_add_integrity_by_user_short_term_str(u08bits *buf, size_t *len, u08bits *uname, password_t pwd, SHATYPE shatype)
+int stun_attr_add_integrity_by_user_short_term_str(uint8_t *buf, size_t *len, uint8_t *uname, password_t pwd, SHATYPE shatype)
 {
-	if(stun_attr_add_str(buf, len, STUN_ATTRIBUTE_USERNAME, uname, strlen((s08bits*)uname))<0)
+	if(stun_attr_add_str(buf, len, STUN_ATTRIBUTE_USERNAME, uname, strlen((char*)uname))<0)
 			return -1;
 
 	hmackey_t key;
@@ -1835,7 +1837,7 @@ void print_hmac(const char *name, const void *s, size_t len)
 	printf("%s:len=%d:[",name,(int)len);
 	size_t i;
 	for(i=0;i<len;i++) {
-		printf("%02x",(int)((const u08bits*)s)[i]);
+		printf("%02x",(int)((const uint8_t*)s)[i]);
 	}
 	printf("]\n");
 }
@@ -1843,12 +1845,12 @@ void print_hmac(const char *name, const void *s, size_t len)
 /*
  * Return -1 if failure, 0 if the integrity is not correct, 1 if OK
  */
-int stun_check_message_integrity_by_key_str(turn_credential_type ct, u08bits *buf, size_t len, hmackey_t key, password_t pwd, SHATYPE shatype)
+int stun_check_message_integrity_by_key_str(turn_credential_type ct, uint8_t *buf, size_t len, hmackey_t key, password_t pwd, SHATYPE shatype)
 {
 	int res = 0;
-	u08bits new_hmac[MAXSHASIZE];
+	uint8_t new_hmac[MAXSHASIZE];
 	unsigned int shasize;
-	const u08bits *old_hmac = NULL;
+	const uint8_t *old_hmac = NULL;
 
 	stun_attr_ref sar = stun_attr_get_first_by_type_str(buf, len, STUN_ATTRIBUTE_MESSAGE_INTEGRITY);
 	if (!sar)
@@ -1885,7 +1887,7 @@ int stun_check_message_integrity_by_key_str(turn_credential_type ct, u08bits *bu
 	if (orig_len < 0)
 		return -1;
 
-	int new_len = ((const u08bits*) sar - buf) + 4 + shasize;
+	int new_len = ((const uint8_t*) sar - buf) + 4 + shasize;
 	if (new_len > orig_len)
 		return -1;
 
@@ -1915,7 +1917,7 @@ int stun_check_message_integrity_by_key_str(turn_credential_type ct, u08bits *bu
 /*
  * Return -1 if failure, 0 if the integrity is not correct, 1 if OK
  */
-int stun_check_message_integrity_str(turn_credential_type ct, u08bits *buf, size_t len, u08bits *uname, u08bits *realm, u08bits *upwd, SHATYPE shatype)
+int stun_check_message_integrity_str(turn_credential_type ct, uint8_t *buf, size_t len, uint8_t *uname, uint8_t *realm, uint8_t *upwd, SHATYPE shatype)
 {
 	hmackey_t key;
 	password_t pwd;
@@ -1933,19 +1935,19 @@ int stun_check_message_integrity_str(turn_credential_type ct, u08bits *buf, size
 int stun_attr_get_change_request_str(stun_attr_ref attr, int *change_ip, int *change_port)
 {
 	if(stun_attr_get_len(attr) == 4) {
-		const u08bits* value = stun_attr_get_value(attr);
+		const uint8_t* value = stun_attr_get_value(attr);
 		if(value) {
-			*change_ip = (value[3] & (u08bits)0x04);
-			*change_port = (value[3] & (u08bits)0x02);
+			*change_ip = (value[3] & (uint8_t)0x04);
+			*change_port = (value[3] & (uint8_t)0x02);
 			return 0;
 		}
 	}
 	return -1;
 }
 
-int stun_attr_add_change_request_str(u08bits *buf, size_t *len, int change_ip, int change_port)
+int stun_attr_add_change_request_str(uint8_t *buf, size_t *len, int change_ip, int change_port)
 {
-	u08bits avalue[4]={0,0,0,0};
+	uint8_t avalue[4]={0,0,0,0};
 
 	if(change_ip) {
 		if(change_port) {
@@ -1963,18 +1965,18 @@ int stun_attr_add_change_request_str(u08bits *buf, size_t *len, int change_ip, i
 int stun_attr_get_response_port_str(stun_attr_ref attr)
 {
 	if(stun_attr_get_len(attr) >= 2) {
-		const u08bits* value = stun_attr_get_value(attr);
+		const uint8_t* value = stun_attr_get_value(attr);
 		if(value) {
-			return nswap16(((const u16bits*)value)[0]);
+			return nswap16(((const uint16_t*)value)[0]);
 		}
 	}
 	return -1;
 }
 
-int stun_attr_add_response_port_str(u08bits *buf, size_t *len, u16bits port)
+int stun_attr_add_response_port_str(uint8_t *buf, size_t *len, uint16_t port)
 {
-	u08bits avalue[4]={0,0,0,0};
-	u16bits *port_ptr = (u16bits*)avalue;
+	uint8_t avalue[4]={0,0,0,0};
+	uint16_t *port_ptr = (uint16_t*)avalue;
 
 	*port_ptr = nswap16(port);
 
@@ -1985,13 +1987,13 @@ int stun_attr_get_padding_len_str(stun_attr_ref attr) {
 	int len = stun_attr_get_len(attr);
 	if(len<0)
 		return -1;
-	return (u16bits)len;
+	return (uint16_t)len;
 }
 
-int stun_attr_add_padding_str(u08bits *buf, size_t *len, u16bits padding_len)
+int stun_attr_add_padding_str(uint8_t *buf, size_t *len, uint16_t padding_len)
 {
-	u08bits avalue[0xFFFF];
-	ns_bzero(avalue,padding_len);
+	uint8_t avalue[0xFFFF];
+	bzero(avalue,padding_len);
 
 	return stun_attr_add_str(buf, len, STUN_ATTRIBUTE_PADDING, avalue, padding_len);
 }
@@ -2079,7 +2081,7 @@ int calculate_key(char *key, size_t key_size,
 {
 	UNUSED_ARG(key_size);
 
-	ns_bcopy(key,new_key,new_key_size);
+	bcopy(key,new_key,new_key_size);
 
 	return 0;
 }
@@ -2089,7 +2091,7 @@ int convert_oauth_key_data(const oauth_key_data *oakd0, oauth_key *key, char *er
 	if(oakd0 && key) {
 
 		oauth_key_data oakd_obj;
-		ns_bcopy(oakd0,&oakd_obj,sizeof(oauth_key_data));
+		bcopy(oakd0,&oakd_obj,sizeof(oauth_key_data));
 		oauth_key_data *oakd = &oakd_obj;
 
 		if(!(oakd->ikm_key_size)) {
@@ -2112,11 +2114,11 @@ int convert_oauth_key_data(const oauth_key_data *oakd0, oauth_key *key, char *er
 			return -1;
 		}
 
-		ns_bzero(key,sizeof(oauth_key));
+		bzero(key,sizeof(oauth_key));
 
 		STRCPY(key->kid,oakd->kid);
 
-		ns_bcopy(oakd->ikm_key,key->ikm_key,sizeof(key->ikm_key));
+		bcopy(oakd->ikm_key,key->ikm_key,sizeof(key->ikm_key));
 		key->ikm_key_size = oakd->ikm_key_size;
 
 		key->timestamp = oakd->timestamp;
@@ -2234,8 +2236,8 @@ void print_field(const char* name, const unsigned char* f, size_t len) {
 	printf("\n<<==field %s\n",name);
 }
 
-int encode_oauth_token_normal(const u08bits *server_name, encoded_oauth_token *etoken, const oauth_key *key, const oauth_token *dtoken);
-int encode_oauth_token_normal(const u08bits *server_name, encoded_oauth_token *etoken, const oauth_key *key, const oauth_token *dtoken)
+int encode_oauth_token_normal(const uint8_t *server_name, encoded_oauth_token *etoken, const oauth_key *key, const oauth_token *dtoken);
+int encode_oauth_token_normal(const uint8_t *server_name, encoded_oauth_token *etoken, const oauth_key *key, const oauth_token *dtoken)
 {
 	UNUSED_ARG(server_name);
 	UNUSED_ARG(etoken);
@@ -2246,13 +2248,13 @@ int encode_oauth_token_normal(const u08bits *server_name, encoded_oauth_token *e
 	if(server_name && etoken && key && dtoken && (dtoken->enc_block.key_length<=128)) {
 
 		unsigned char orig_field[MAX_ENCODED_OAUTH_TOKEN_SIZE];
-		ns_bzero(orig_field,sizeof(orig_field));
+		bzero(orig_field,sizeof(orig_field));
 
 		size_t len = 0;
 		*((uint16_t*)(orig_field+len)) = nswap16(dtoken->enc_block.key_length);
 		len +=2;
 
-		ns_bcopy(dtoken->enc_block.mac_key,orig_field+len,dtoken->enc_block.key_length);
+		bcopy(dtoken->enc_block.mac_key,orig_field+len,dtoken->enc_block.key_length);
 		len += dtoken->enc_block.key_length;
 
 		*((uint64_t*)(orig_field+len)) = nswap64(dtoken->enc_block.timestamp);
@@ -2282,7 +2284,7 @@ int encode_oauth_token_normal(const u08bits *server_name, encoded_oauth_token *e
 		EVP_CIPHER_CTX_cleanup(&ctx);
 
 		size_t sn_len = strlen((const char*)server_name);
-		ns_bcopy(server_name,encoded_field+outl,sn_len);
+		bcopy(server_name,encoded_field+outl,sn_len);
 		outl += sn_len;
 
 		const EVP_MD *md = get_auth_type(key->auth_alg);
@@ -2296,7 +2298,7 @@ int encode_oauth_token_normal(const u08bits *server_name, encoded_oauth_token *e
 
 		update_hmac_len(key->auth_alg, &hmac_len);
 
-		ns_bcopy(encoded_field + outl, encoded_field + outl - sn_len, hmac_len);
+		bcopy(encoded_field + outl, encoded_field + outl - sn_len, hmac_len);
 		outl -= sn_len;
 		outl += hmac_len; //encoded+hmac
 
@@ -2308,8 +2310,8 @@ int encode_oauth_token_normal(const u08bits *server_name, encoded_oauth_token *e
 	return -1;
 }
 
-int decode_oauth_token_normal(const u08bits *server_name, const encoded_oauth_token *etoken, const oauth_key *key, oauth_token *dtoken);
-int decode_oauth_token_normal(const u08bits *server_name, const encoded_oauth_token *etoken, const oauth_key *key, oauth_token *dtoken)
+int decode_oauth_token_normal(const uint8_t *server_name, const encoded_oauth_token *etoken, const oauth_key *key, oauth_token *dtoken);
+int decode_oauth_token_normal(const uint8_t *server_name, const encoded_oauth_token *etoken, const oauth_key *key, oauth_token *dtoken)
 {
 	UNUSED_ARG(server_name);
 	UNUSED_ARG(etoken);
@@ -2342,14 +2344,14 @@ int decode_oauth_token_normal(const u08bits *server_name, const encoded_oauth_to
        		}
        		unsigned char efield[MAX_ENCODED_OAUTH_TOKEN_SIZE];
        		unsigned char check_mac[MAXSHASIZE];
-       		ns_bcopy(encoded_field,efield,encoded_field_size);
+       		bcopy(encoded_field,efield,encoded_field_size);
        		size_t sn_len = strlen((const char*)server_name);
-       		ns_bcopy(server_name,efield+encoded_field_size,sn_len);
+       		bcopy(server_name,efield+encoded_field_size,sn_len);
 		    if (!HMAC(md, key->auth_key, key->auth_key_size, efield, encoded_field_size+sn_len, check_mac, &hmac_len)) {
 		    	return -1;
 		    }
 
-		    if(ns_bcmp(check_mac,mac,mac_size)) {
+		    if(bcmp(check_mac,mac,mac_size)) {
 		    	OAUTH_ERROR("%s: token integrity check failed\n",__FUNCTION__);
 		    	return -1;
 		    }
@@ -2379,7 +2381,7 @@ int decode_oauth_token_normal(const u08bits *server_name, const encoded_oauth_to
 		dtoken->enc_block.key_length = nswap16(*((uint16_t*)(decoded_field+len)));
 		len += 2;
 
-		ns_bcopy(decoded_field+len,dtoken->enc_block.mac_key,dtoken->enc_block.key_length);
+		bcopy(decoded_field+len,dtoken->enc_block.mac_key,dtoken->enc_block.key_length);
 		len += dtoken->enc_block.key_length;
 
 		dtoken->enc_block.timestamp = nswap64(*((uint64_t*)(decoded_field+len)));
@@ -2405,15 +2407,15 @@ static void generate_random_nonce(unsigned char *nonce, size_t sz) {
 
 #if !defined(TURN_NO_GCM)
 
-static int encode_oauth_token_gcm(const u08bits *server_name, encoded_oauth_token *etoken, const oauth_key *key, const oauth_token *dtoken, const u08bits* nonce0) {
+static int encode_oauth_token_gcm(const uint8_t *server_name, encoded_oauth_token *etoken, const oauth_key *key, const oauth_token *dtoken, const uint8_t* nonce0) {
 	if(server_name && etoken && key && dtoken && (dtoken->enc_block.key_length<=MAXSHASIZE)) {
 
 		unsigned char orig_field[MAX_ENCODED_OAUTH_TOKEN_SIZE];
-		ns_bzero(orig_field,sizeof(orig_field));
+		bzero(orig_field,sizeof(orig_field));
 
 		unsigned char nonce[OAUTH_GCM_NONCE_SIZE];
 		if(nonce0) {
-			ns_bcopy(nonce0,nonce,sizeof(nonce));
+			bcopy(nonce0,nonce,sizeof(nonce));
 		} else {
 			generate_random_nonce(nonce, sizeof(nonce));
 		}
@@ -2423,17 +2425,18 @@ static int encode_oauth_token_gcm(const u08bits *server_name, encoded_oauth_toke
 		*((uint16_t*)(orig_field+len)) = nswap16(OAUTH_GCM_NONCE_SIZE);
 		len +=2;
 
-		ns_bcopy(nonce,orig_field+len,OAUTH_GCM_NONCE_SIZE);
+		bcopy(nonce,orig_field+len,OAUTH_GCM_NONCE_SIZE);
 		len += OAUTH_GCM_NONCE_SIZE;
 
 		*((uint16_t*)(orig_field+len)) = nswap16(dtoken->enc_block.key_length);
 		len +=2;
 
-		ns_bcopy(dtoken->enc_block.mac_key,orig_field+len,dtoken->enc_block.key_length);
+		bcopy(dtoken->enc_block.mac_key,orig_field+len,dtoken->enc_block.key_length);
 		len += dtoken->enc_block.key_length;
 
-		*((uint64_t*)(orig_field+len)) = nswap64(dtoken->enc_block.timestamp);
-		len += 8;
+		uint64_t ts = nswap64(dtoken->enc_block.timestamp);
+		bcopy( &ts, (orig_field+len), sizeof(ts));
+		len += sizeof(ts);
 
 		*((uint32_t*)(orig_field+len)) = nswap32(dtoken->enc_block.lifetime);
 		len += 4;
@@ -2475,7 +2478,7 @@ static int encode_oauth_token_gcm(const u08bits *server_name, encoded_oauth_toke
 
 		outl=0;
 		unsigned char *encoded_field = (unsigned char*)etoken->token;
-		ns_bcopy(orig_field,encoded_field,OAUTH_GCM_NONCE_SIZE + 2);
+		bcopy(orig_field,encoded_field,OAUTH_GCM_NONCE_SIZE + 2);
 		encoded_field += OAUTH_GCM_NONCE_SIZE + 2;
 		unsigned char *start_field = orig_field + OAUTH_GCM_NONCE_SIZE + 2;
 		len -= OAUTH_GCM_NONCE_SIZE + 2;
@@ -2503,12 +2506,12 @@ static int encode_oauth_token_gcm(const u08bits *server_name, encoded_oauth_toke
 	return -1;
 }
 
-static int decode_oauth_token_gcm(const u08bits *server_name, const encoded_oauth_token *etoken, const oauth_key *key, oauth_token *dtoken)
+static int decode_oauth_token_gcm(const uint8_t *server_name, const encoded_oauth_token *etoken, const oauth_key *key, oauth_token *dtoken)
 {
 	if(server_name && etoken && key && dtoken) {
 
 		unsigned char snl[2];
-		ns_bcopy((const unsigned char*)(etoken->token),snl,2);
+		bcopy((const unsigned char*)(etoken->token),snl,2);
 		const unsigned char *csnl = snl;
 
 		uint16_t nonce_len = nswap16(*((const uint16_t*)csnl));
@@ -2523,10 +2526,10 @@ static int decode_oauth_token_gcm(const u08bits *server_name, const encoded_oaut
 		const unsigned char* encoded_field = (const unsigned char*)(etoken->token + nonce_len + 2);
 		unsigned int encoded_field_size = (unsigned int)etoken->size - nonce_len - 2 - OAUTH_GCM_TAG_SIZE;
 		const unsigned char* nonce = ((const unsigned char*)etoken->token + 2);
-                ns_bcopy(nonce,dtoken->enc_block.nonce,nonce_len);
+                bcopy(nonce,dtoken->enc_block.nonce,nonce_len);
 
 		unsigned char tag[OAUTH_GCM_TAG_SIZE];
-		ns_bcopy(((const unsigned char*)etoken->token) + nonce_len + 2 + encoded_field_size, tag ,sizeof(tag));
+		bcopy(((const unsigned char*)etoken->token) + nonce_len + 2 + encoded_field_size, tag ,sizeof(tag));
 
 		unsigned char decoded_field[MAX_ENCODED_OAUTH_TOKEN_SIZE];
 
@@ -2605,14 +2608,18 @@ static int decode_oauth_token_gcm(const u08bits *server_name, const encoded_oaut
 		dtoken->enc_block.key_length = nswap16(*((uint16_t*)(decoded_field+len)));
 		len += 2;
 
-		ns_bcopy(decoded_field+len,dtoken->enc_block.mac_key,dtoken->enc_block.key_length);
+		bcopy(decoded_field+len,dtoken->enc_block.mac_key,dtoken->enc_block.key_length);
 		len += dtoken->enc_block.key_length;
 
-		dtoken->enc_block.timestamp = nswap64(*((uint64_t*)(decoded_field+len)));
-		len += 8;
+		uint64_t ts;
+		bcopy((decoded_field+len),&ts,sizeof(ts));
+		dtoken->enc_block.timestamp = nswap64(ts);
+		len += sizeof(ts);
 
-		dtoken->enc_block.lifetime = nswap32(*((uint32_t*)(decoded_field+len)));
-		len += 4;
+		uint32_t lt;
+		bcopy((decoded_field+len),&lt,sizeof(lt));
+		dtoken->enc_block.lifetime = nswap32(lt);
+		len += sizeof(lt);
 
 		return 0;
 	}
@@ -2621,7 +2628,7 @@ static int decode_oauth_token_gcm(const u08bits *server_name, const encoded_oaut
 
 #endif
 
-int encode_oauth_token(const u08bits *server_name, encoded_oauth_token *etoken, const oauth_key *key, const oauth_token *dtoken, const u08bits *nonce)
+int encode_oauth_token(const uint8_t *server_name, encoded_oauth_token *etoken, const oauth_key *key, const oauth_token *dtoken, const uint8_t *nonce)
 {
 	UNUSED_ARG(nonce);
 	if(server_name && etoken && key && dtoken) {
@@ -2639,7 +2646,7 @@ int encode_oauth_token(const u08bits *server_name, encoded_oauth_token *etoken, 
 	return -1;
 }
 
-int decode_oauth_token(const u08bits *server_name, const encoded_oauth_token *etoken, const oauth_key *key, oauth_token *dtoken)
+int decode_oauth_token(const uint8_t *server_name, const encoded_oauth_token *etoken, const oauth_key *key, oauth_token *dtoken)
 {
 	if(server_name && etoken && key && dtoken) {
 		switch(key->as_rs_alg) {

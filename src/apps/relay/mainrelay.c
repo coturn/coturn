@@ -106,7 +106,8 @@ DH_1066, "", "", "",
 
 NULL, PTHREAD_MUTEX_INITIALIZER,
 
-TURN_VERBOSE_NONE,0,0,0,
+//////////////// Common params ////////////////////
+TURN_VERBOSE_NONE,0,0,0,0,
 "/var/run/turnserver.pid",
 DEFAULT_STUN_PORT,DEFAULT_STUN_TLS_PORT,0,0,1,
 0,0,0,0,
@@ -361,7 +362,7 @@ int get_a_local_relay(int family, ioa_addr *relay_addr)
 				} else
 					continue;
 
-				if (make_ioa_addr((const u08bits*) saddr, 0, relay_addr) < 0) {
+				if (make_ioa_addr((const uint8_t*) saddr, 0, relay_addr) < 0) {
 					continue;
 				} else {
 					ret = 0;
@@ -433,7 +434,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						In more complex case when more than one IP address is involved,\n"
 "						that option must be used several times in the command line, each entry must\n"
 "						have form \"-X public-ip/private-ip\", to map all involved addresses.\n"
-" --no-loopback-peers				Disallow peers on the loopback addresses (127.x.x.x and ::1).\n"
+" --allow-loopback-peers				Allow peers on the loopback addresses (127.x.x.x and ::1).\n"
 " --no-multicast-peers				Disallow peers on well-known broadcast addresses (224.0.0.0 and above, and FFXX:*).\n"
 " -m, --relay-threads		<number>	Number of relay threads to handle the established connections\n"
 "						(in addition to authentication thread and the listener thread).\n"
@@ -617,7 +618,6 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						After the initialization, the turnserver process\n"
 "						will make an attempt to change the current group ID to that group.\n"
 " --mobility					Mobility with ICE (MICE) specs support.\n"
-" --no-http					Turn OFF the HTTP-Admin-Interface. By default it is always ON.\n"
 " -K, --keep-address-family			TURN server allocates address family according TURN\n"
 "						Client <=> Server communication address family. \n"
 "						!! It breaks RFC6156 section-4.2 (violates default IPv4) !!\n"
@@ -629,6 +629,13 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						For the security reasons, it is recommended to use the encrypted\n"
 "						for of the password (see the -P command in the turnadmin utility).\n"
 "						The dollar signs in the encrypted form must be escaped.\n"
+" --web-admin					Enable Turn Web-admin support. By default it is disabled.\n"
+" --web-admin-ip=<IP>				Local system IP address to be used for Web-admin server endpoint. Default value\n"
+"						is 127.0.0.1.\n"
+" --web-admin-port=<port>			Web-admin server port. Default is 8080.\n"
+" --web-admin-listen-on-workers			Enable for web-admin server to listens on STUN/TURN workers STUN/TURN ports.\n"
+"						By default it is disabled for security resons!\n"
+"						(This behavior used to be the default behavior, and was enabled by default.)\n"
 " --server-relay					Server relay. NON-STANDARD AND DANGEROUS OPTION. Only for those applications\n"
 "						when we want to run server applications on the relay endpoints.\n"
 "						This option eliminates the IP permissions check on the packets\n"
@@ -737,7 +744,7 @@ enum EXTRA_OPTS {
 	ALTERNATE_SERVER_OPT,
 	TLS_ALTERNATE_SERVER_OPT,
 	NO_MULTICAST_PEERS_OPT,
-	NO_LOOPBACK_PEERS_OPT,
+	ALLOW_LOOPBACK_PEERS_OPT,
 	MAX_ALLOCATE_TIMEOUT_OPT,
 	ALLOWED_PEER_IPS,
 	DENIED_PEER_IPS,
@@ -754,6 +761,10 @@ enum EXTRA_OPTS {
 	CLI_IP_OPT,
 	CLI_PORT_OPT,
 	CLI_PASSWORD_OPT,
+	WEB_ADMIN_OPT,
+	WEB_ADMIN_IP_OPT,
+	WEB_ADMIN_PORT_OPT,
+	WEB_ADMIN_LISTEN_ON_WORKERS_OPT,
 	SERVER_RELAY_OPT,
 	CLI_MAX_SESSIONS_OPT,
 	EC_CURVE_NAME_OPT,
@@ -866,7 +877,7 @@ static const struct myoption long_options[] = {
 				{ "rest-api-separator", required_argument, NULL, 'C' },
 				{ "max-allocate-timeout", required_argument, NULL, MAX_ALLOCATE_TIMEOUT_OPT },
 				{ "no-multicast-peers", optional_argument, NULL, NO_MULTICAST_PEERS_OPT },
-				{ "no-loopback-peers", optional_argument, NULL, NO_LOOPBACK_PEERS_OPT },
+				{ "allow-loopback-peers", optional_argument, NULL, ALLOW_LOOPBACK_PEERS_OPT },
 				{ "allowed-peer-ip", required_argument, NULL, ALLOWED_PEER_IPS },
 				{ "denied-peer-ip", required_argument, NULL, DENIED_PEER_IPS },
 				{ "cipher-list", required_argument, NULL, CIPHER_LIST_OPT },
@@ -881,7 +892,10 @@ static const struct myoption long_options[] = {
 				{ "cli-ip", required_argument, NULL, CLI_IP_OPT },
 				{ "cli-port", required_argument, NULL, CLI_PORT_OPT },
 				{ "cli-password", required_argument, NULL, CLI_PASSWORD_OPT },
-				{ "no-http", optional_argument, NULL, NO_HTTP_OPT },
+				{ "web-admin", optional_argument, NULL, WEB_ADMIN_OPT },
+				{ "web-admin-ip", required_argument, NULL, WEB_ADMIN_IP_OPT },
+				{ "web-admin-port", required_argument, NULL, WEB_ADMIN_PORT_OPT },
+				{ "web-admin-listen-on-workers", optional_argument, NULL, WEB_ADMIN_LISTEN_ON_WORKERS_OPT },
 				{ "server-relay", optional_argument, NULL, SERVER_RELAY_OPT },
 				{ "cli-max-output-sessions", required_argument, NULL, CLI_MAX_SESSIONS_OPT },
 				{ "ec-curve-name", required_argument, NULL, EC_CURVE_NAME_OPT },
@@ -1172,11 +1186,8 @@ static void set_option(int c, char *value)
   case NO_CLI_OPT:
 	  use_cli = !get_bool_value(value);
 	  break;
-  case NO_HTTP_OPT:
-	  use_http = !get_bool_value(value);
-	  break;
   case CLI_IP_OPT:
-	  if(make_ioa_addr((const u08bits*)value,0,&cli_addr)<0) {
+	  if(make_ioa_addr((const uint8_t*)value,0,&cli_addr)<0) {
 		  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot set cli address: %s\n",value);
 	  } else{
 		  cli_addr_set = 1;
@@ -1187,6 +1198,22 @@ static void set_option(int c, char *value)
 	  break;
   case CLI_PASSWORD_OPT:
 	  STRCPY(cli_password,value);
+	  break;
+  case WEB_ADMIN_OPT:
+	  use_web_admin = get_bool_value(value);
+	  break;
+  case WEB_ADMIN_IP_OPT:
+	  if(make_ioa_addr((const uint8_t*)value, 0, &web_admin_addr) < 0) {
+		  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot set web-admin address: %s\n", value);
+	  } else {
+		  web_admin_addr_set = 1;
+	  }
+	  break;
+  case WEB_ADMIN_PORT_OPT:
+	  web_admin_port = atoi(value);
+	  break;
+  case WEB_ADMIN_LISTEN_ON_WORKERS_OPT:
+	  turn_params.web_admin_listen_on_workers = get_bool_value(value);
 	  break;
   case PROC_USER_OPT: {
 	  struct passwd* pwd = getpwnam(value);
@@ -1256,8 +1283,8 @@ static void set_option(int c, char *value)
 	case NO_MULTICAST_PEERS_OPT:
 		turn_params.no_multicast_peers = get_bool_value(value);
 		break;
-	case NO_LOOPBACK_PEERS_OPT:
-		turn_params.no_loopback_peers = get_bool_value(value);
+	case ALLOW_LOOPBACK_PEERS_OPT:
+		turn_params.allow_loopback_peers = get_bool_value(value);
 		break;
 	case STALE_NONCE_OPT:
 		turn_params.stale_nonce = get_int_value(value, STUN_DEFAULT_NONCE_EXPIRATION_TIME);
@@ -1291,29 +1318,29 @@ static void set_option(int c, char *value)
 		if(value) {
 			char *div = strchr(value,'/');
 			if(div) {
-				char *nval=turn_strdup(value);
+				char *nval=strdup(value);
 				div = strchr(nval,'/');
 				div[0]=0;
 				++div;
 				ioa_addr apub,apriv;
-				if(make_ioa_addr((const u08bits*)nval,0,&apub)<0) {
+				if(make_ioa_addr((const uint8_t*)nval,0,&apub)<0) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"-X : Wrong address format: %s\n",nval);
 				} else {
-					if(make_ioa_addr((const u08bits*)div,0,&apriv)<0) {
+					if(make_ioa_addr((const uint8_t*)div,0,&apriv)<0) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"-X : Wrong address format: %s\n",div);
 					} else {
 						ioa_addr_add_mapping(&apub,&apriv);
 					}
 				}
-				turn_free(nval,strlen(nval)+1);
+				free(nval);
 			} else {
 				if(turn_params.external_ip) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "You cannot define external IP more than once in the configuration\n");
 				} else {
 					turn_params.external_ip = (ioa_addr*)allocate_super_memory_engine(turn_params.listener.ioa_eng, sizeof(ioa_addr));
-					if(make_ioa_addr((const u08bits*)value,0,turn_params.external_ip)<0) {
+					if(make_ioa_addr((const uint8_t*)value,0,turn_params.external_ip)<0) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"-X : Wrong address format: %s\n",value);
-						turn_free(turn_params.external_ip,sizeof(ioa_addr));
+						free(turn_params.external_ip);
 						turn_params.external_ip = NULL;
 					}
 				}
@@ -1614,7 +1641,7 @@ static void read_config_file(int argc, char **argv, int pass)
 		if (full_path_to_config_file)
 			f = fopen(full_path_to_config_file, "r");
 
-		if (f && full_path_to_config_file) {
+		if (f) {
 
 			char sbuf[1025];
 			char sarg[1035];
@@ -1629,7 +1656,9 @@ static void read_config_file(int argc, char **argv, int pass)
 				if (!s[0])
 					continue;
 				size_t slen = strlen(s);
-				while (slen && ((s[slen - 1] == 10) || (s[slen - 1] == 13)))
+
+				// strip white-spaces from config file lines end
+				while (slen && isspace(s[slen - 1]))
 					s[--slen] = 0;
 				if (slen) {
 					int c = 0;
@@ -1663,6 +1692,11 @@ static void read_config_file(int argc, char **argv, int pass)
 		} else
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: Cannot find config file: %s. Default and command-line settings will be used.\n",
 				config_file);
+
+		if (full_path_to_config_file) {
+			free(full_path_to_config_file);
+			full_path_to_config_file = NULL;
+		}
 	}
 }
 
@@ -1676,11 +1710,11 @@ static int adminmain(int argc, char **argv)
 	FILE* fptr;
 	unsigned char generated_key[16]; //changed
 
-	u08bits user[STUN_MAX_USERNAME_SIZE+1]="\0";
-	u08bits realm[STUN_MAX_REALM_SIZE+1]="\0";
-	u08bits pwd[STUN_MAX_PWD_SIZE+1]="\0";
-	u08bits secret[AUTH_SECRET_SIZE+1]="\0";
-	u08bits origin[STUN_MAX_ORIGIN_SIZE+1]="\0";
+	uint8_t user[STUN_MAX_USERNAME_SIZE+1]="\0";
+	uint8_t realm[STUN_MAX_REALM_SIZE+1]="\0";
+	uint8_t pwd[STUN_MAX_PWD_SIZE+1]="\0";
+	uint8_t secret[AUTH_SECRET_SIZE+1]="\0";
+	uint8_t origin[STUN_MAX_ORIGIN_SIZE+1]="\0";
 	perf_options_t po = {(band_limit_t)-1,-1,-1};
 
 	struct uoptions uo;
@@ -1801,11 +1835,11 @@ static int adminmain(int argc, char **argv)
 #endif
         case 'u':
             STRCPY(user,optarg);
-            if(!is_secure_username((u08bits*)user)) {
+            if(!is_secure_string((uint8_t*)user,1)) {
                 TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong user name structure or symbols, choose another name: %s\n",user);
                 exit(-1);
             }
-            if(SASLprep((u08bits*)user)<0) {
+            if(SASLprep((uint8_t*)user)<0) {
                 TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong user name: %s\n",user);
                 exit(-1);
             }
@@ -1813,14 +1847,14 @@ static int adminmain(int argc, char **argv)
         case 'r':
             set_default_realm_name(optarg);
             STRCPY(realm,optarg);
-            if(SASLprep((u08bits*)realm)<0) {
+            if(SASLprep((uint8_t*)realm)<0) {
                 TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong realm: %s\n",realm);
                 exit(-1);
             }
             break;
         case 'p':
             STRCPY(pwd,optarg);
-            if(SASLprep((u08bits*)pwd)<0) {
+            if(SASLprep((uint8_t*)pwd)<0) {
                 TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong password: %s\n",pwd);
                 exit(-1);
             }
@@ -1846,7 +1880,9 @@ static int adminmain(int argc, char **argv)
             }
             else{
 				fseek (fptr, 0, SEEK_SET);
-				fread (generated_key, sizeof(char), 16, fptr);
+				if( fread(generated_key, sizeof(char), 16, fptr) !=0 ){
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: Secret-Key file is empty\n",__FUNCTION__);
+				}
 				fclose (fptr);
             }
             break;
@@ -2129,8 +2165,8 @@ int main(int argc, char **argv)
 
 #endif
 
-	ns_bzero(&turn_params.default_users_db,sizeof(default_users_db_t));
-	turn_params.default_users_db.ram_db.static_accounts = ur_string_map_create(turn_free_simple);
+	bzero(&turn_params.default_users_db,sizeof(default_users_db_t));
+	turn_params.default_users_db.ram_db.static_accounts = ur_string_map_create(free);
 
 	if(strstr(argv[0],"turnadmin"))
 		return adminmain(argc,argv);
@@ -2211,11 +2247,24 @@ int main(int argc, char **argv)
 		exit(-1);
 	}
 
-    if(use_ltc && use_tltc) {
+	if(use_ltc && use_tltc) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "\nCONFIGURATION ALERT: You specified --lt-cred-mech and --use-auth-secret in the same time.\n"
                        "Be aware that you could not mix the username/password and the shared secret based auth methohds. \n"
                        "Shared secret overrides username/password based auth method. Check your configuration!\n");
-    }
+	}
+
+	if(turn_params.allow_loopback_peers) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "CONFIG WARNING: allow_loopback_peers opens a possible security vulnerability. Do not use in production!!\n");
+		if(cli_password[0]==0) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nCONFIG ERROR: allow_loopback_peers and empty cli password cannot be used together.\n");
+			exit(-1);
+		}
+        }
+
+	if(use_cli && cli_password[0]==0) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nCONFIG ERROR: Empty cli-password, and so telnet cli interface is disabled! Please set a non empty cli-password!\n");
+		use_cli = 0;
+	}
 
 	if(!use_lt_credentials && !anon_credentials) {
 		if(turn_params.default_users_db.ram_db.users_number) {
@@ -2299,7 +2348,7 @@ int main(int argc, char **argv)
 				const char* sra = (const char*)turn_params.relay_addrs[ir];
 				if((strstr(sra,"127.0.0.1") != sra)&&(strstr(sra,"::1")!=sra)) {
 					ioa_addr ra;
-					if(make_ioa_addr((const u08bits*)sra,0,&ra)<0) {
+					if(make_ioa_addr((const uint8_t*)sra,0,&ra)<0) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"-X : Wrong address format: %s\n",sra);
 					} else if(ra.ss.sa_family == turn_params.external_ip->ss.sa_family) {
 						ioa_addr_add_mapping(turn_params.external_ip,&ra);
@@ -2500,7 +2549,7 @@ static void adjust_key_file_name(char *fn, const char* file_title, int critical)
 	  fn[sizeof(turn_params.cert_file)-1]=0;
 
 	  if(full_path_to_file)
-	    turn_free(full_path_to_file,strlen(full_path_to_file)+1);
+	    free(full_path_to_file);
 	  return;
 	}
 
@@ -2512,7 +2561,7 @@ static void adjust_key_file_name(char *fn, const char* file_title, int critical)
 			  TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,"WARNING: cannot start TLS and DTLS listeners because %s file is not set properly\n",file_title);
 		}
 		if(full_path_to_file)
-			turn_free(full_path_to_file,strlen(full_path_to_file)+1);
+			free(full_path_to_file);
 		return;
 	}
 }
@@ -2871,7 +2920,9 @@ static void set_ctx(SSL_CTX** out, const char *protocol, const SSL_METHOD* metho
 				perror("Cannot open Secret-Key file");
 			} else {
 				fseek (f, 0, SEEK_SET);
-				fread (turn_params.secret_key, sizeof(char), 16, f);
+				if ( fread(turn_params.secret_key, sizeof(char), 16, f) != 0 ){
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: Secret-Key file is empty\n",__FUNCTION__);
+				}
 				fclose (f);
 			}
 		}

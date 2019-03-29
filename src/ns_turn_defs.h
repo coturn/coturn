@@ -31,7 +31,7 @@
 #ifndef __IOADEFS__
 #define __IOADEFS__
 
-#define TURN_SERVER_VERSION "4.5.0.8"
+#define TURN_SERVER_VERSION "4.5.1.1"
 #define TURN_SERVER_VERSION_NAME "dan Eider"
 #define TURN_SOFTWARE "Coturn-" TURN_SERVER_VERSION " '" TURN_SERVER_VERSION_NAME "'"
 
@@ -46,6 +46,7 @@
 #include <arpa/inet.h>
 #include <net/if.h>
 #include <ctype.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -60,33 +61,17 @@
 extern "C" {
 #endif
 
-/* NS types: */
-
-#define	s08bits	char
-#define	s16bits	int16_t
-#define	s32bits	int32_t
-#define	s64bits	int64_t
-
-#define	u08bits	unsigned char
-#define	u16bits uint16_t
-#define	u32bits	uint32_t
-#define	u64bits	uint64_t
-
-#define ns_bcopy(src,dst,sz) bcopy((src),(dst),(sz))
-#define ns_bzero(ptr,sz) bzero((ptr),(sz))
-#define ns_bcmp(ptr1,ptr2,sz) bcmp((ptr1),(ptr2),(sz))
-
 #define nswap16(s) ntohs(s)
 #define nswap32(ul) ntohl(ul)
 #define nswap64(ull) ioa_ntoh64(ull)
 
-static inline u64bits _ioa_ntoh64(u64bits v)
+static inline uint64_t _ioa_ntoh64(uint64_t v)
 {
 #if BYTE_ORDER == LITTLE_ENDIAN
-	u08bits *src = (u08bits*) &v;
-	u08bits* dst = src + 7;
+	uint8_t *src = (uint8_t*) &v;
+	uint8_t* dst = src + 7;
 	while (src < dst) {
-		u08bits vdst = *dst;
+		uint8_t vdst = *dst;
 		*(dst--) = *src;
 		*(src++) = vdst;
 	}
@@ -109,62 +94,16 @@ static inline u64bits _ioa_ntoh64(u64bits v)
 #define ioa_ntoh64 _ioa_ntoh64
 #define ioa_hton64 _ioa_ntoh64
 
-#if defined(TURN_MEMORY_DEBUG)
-
-#if defined(TURN_LOG_FUNC)
-#undef TURN_LOG_FUNC
-#endif
-
-#define TURN_LOG_FUNC(level, ...) printf (__VA_ARGS__)
-
-  void tm_print_func(void);
-  void *turn_malloc_func(size_t sz, const char* function, int line);
-  void *turn_realloc_func(void *ptr, size_t old_sz, size_t new_sz, const char* function, int line);
-  void turn_free_func(void *ptr, size_t sz, const char* function, int line);
-  void turn_free_simple(void *ptr);
-  void *turn_calloc_func(size_t number, size_t size, const char* function, int line);
-  char *turn_strdup_func(const char* s, const char* function, int line);
-  void* debug_ptr_add_func(void *ptr, const char* function, int line);
-  void debug_ptr_del_func(void *ptr, const char* function, int line);
-
-#define debug_ptr_add(ptr) debug_ptr_add_func((ptr),__FUNCTION__,__LINE__)
-#define debug_ptr_del(ptr) debug_ptr_del_func((ptr),__FUNCTION__,__LINE__)
-#define tm_print() tm_print_func()
-#define turn_malloc(sz) turn_malloc_func((size_t)(sz),__FUNCTION__,__LINE__)
-#define turn_free(ptr,sz) turn_free_func((ptr),(size_t)(sz),__FUNCTION__,__LINE__)
-#define turn_realloc(ptr, old_sz, new_sz) turn_realloc_func((ptr),(size_t)(old_sz),(size_t)(new_sz),__FUNCTION__,__LINE__)
-#define turn_calloc(number, sz) turn_calloc_func((number),(size_t)(sz),__FUNCTION__,__LINE__)
-#define turn_strdup(s) turn_strdup_func((s),__FUNCTION__,__LINE__)
-
-#define SSL_NEW(ctx) ((SSL*)debug_ptr_add(SSL_new(ctx)))
-
-#else
-
-#define debug_ptr_add(ptr)
-#define debug_ptr_del(ptr)
-#define tm_print() 
-#define turn_malloc(sz) malloc((size_t)(sz))
-#define turn_free(ptr,sz) free((ptr))
-#define turn_realloc(ptr, old_sz, new_sz) realloc((ptr),(size_t)(new_sz))
-#define turn_calloc(number, sz) calloc((number),(size_t)(sz))
-#define turn_strdup(s) strdup((s))
-#define turn_free_simple free
-
-#define SSL_NEW(ctx) SSL_new(ctx)
-
-#endif
-
-#define SSL_FREE(ssl) do { debug_ptr_del(ssl); SSL_free(ssl); ssl = NULL; } while(0)
-#define BUFFEREVENT_FREE(be) do { if(be) { debug_ptr_del(be); bufferevent_flush(be,EV_READ|EV_WRITE,BEV_FLUSH); bufferevent_disable(be,EV_READ|EV_WRITE); bufferevent_free(be); be = NULL;} } while(0)
+#define BUFFEREVENT_FREE(be) do { if(be) { bufferevent_flush(be,EV_READ|EV_WRITE,BEV_FLUSH); bufferevent_disable(be,EV_READ|EV_WRITE); bufferevent_free(be); be = NULL;} } while(0)
 
 #define turn_time() ((turn_time_t)time(NULL))
 
 typedef int vint;
 typedef vint* vintp;
 
-typedef u32bits turn_time_t;
+typedef uint32_t turn_time_t;
 
-#define turn_time_before(t1,t2) ((((s32bits)(t1))-((s32bits)(t2))) < 0)
+#define turn_time_before(t1,t2) ((((int32_t)(t1))-((int32_t)(t2))) < 0)
 
 #if !defined(UNUSED_ARG)
 #define UNUSED_ARG(A) do { A=A; } while(0)

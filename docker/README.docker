@@ -1,0 +1,19 @@
+Before you begin
+ * copy db schema run ./cp_schema.sh
+ * edit turnserver/turnserver.cfg according your db selection (mysql or postgresql or redis or mongodb)
+
+# start
+
+  docker-compose -f docker-compose-all.yml up --build --detach
+
+# restart
+Notice: May restart needed for coturn container, if it could not access database yet, due initialization delay.
+  docker restart docker_coturn_1
+
+# stop
+  docker-compose -f docker-compose-all.yml down
+
+
+# Or Stop with volume removal
+  docker-compose down --volumes
+
