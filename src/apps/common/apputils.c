@@ -1031,67 +1031,13 @@ unsigned char *base64_decode(const char *data,
 
 ////////////////// SSL /////////////////////
 
-static const char* turn_get_method(const SSL_METHOD *method, const char* mdefault)
-{
-	{
-		if(!method)
-			return mdefault;
-		else {
-			if(method == SSLv23_server_method()) {
-					return "SSLv23";
-			} else if(method == SSLv23_client_method()) {
-					return "SSLv23";
-			} else if(method == TLSv1_server_method()) {
-					return "TLSv1.0";
-			} else if(method == TLSv1_client_method()) {
-				return "TLSv1.0";
-#if TLSv1_1_SUPPORTED
-			} else if(method == TLSv1_1_server_method()) {
-					return "TLSv1.1";
-			} else if(method == TLSv1_1_client_method()) {
-				return "TLSv1.1";
-#if TLSv1_2_SUPPORTED
-			} else if(method == TLSv1_2_server_method()) {
-					return "TLSv1.2";
-			} else if(method == TLSv1_2_client_method()) {
-				return "TLSv1.2";
-#endif
-#endif
-#if DTLS_SUPPORTED
-
-			} else if(method == DTLSv1_server_method()) {
-				return "DTLSv1.0";
-			} else if(method == DTLSv1_client_method()) {
-				return "DTLSv1.0";
-
-#if DTLSv1_2_SUPPORTED
-			} else if(method == DTLSv1_2_server_method()) {
-				return "DTLSv1.2";
-			} else if(method == DTLSv1_2_client_method()) {
-				return "DTLSv1.2";
-#endif
-#endif
-			} else {
-				if(mdefault)
-					return mdefault;
-				return "UNKNOWN";
-			}
-		}
-	}
-}
-
 const char* turn_get_ssl_method(SSL *ssl, const char* mdefault)
 {
 	const char* ret = "unknown";
 	if(!ssl) {
 		ret = mdefault;
 	} else {
-		const SSL_METHOD *method = SSL_get_ssl_method(ssl);
-		if(!method) {
-			ret = mdefault;
-		} else {
-			ret = turn_get_method(method, mdefault);
-		}
+		ret = SSL_get_version(ssl);
 	}
 
 	return ret;
