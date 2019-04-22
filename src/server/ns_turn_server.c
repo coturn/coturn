@@ -3928,10 +3928,10 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 	if((*resp_constructed)&&(TURN_NTFY_CHECK)){
             
 		ioa_addr remote;
-		u08bits ip_port[256];
+		char ip_port[256];
                 
 		addr_cpy(&remote, get_remote_addr_from_ioa_socket(ss->client_socket));
-		addr_to_string(&remote, ip_port);
+		addr_to_string(&remote, (uint8_t*)ip_port);
                 
 		TURN_NTFY_FUNC(TURN_NTFY_LEVEL_INFO,"[Turn Server Command Execution Notification: {\"session\": \"%018llu\", \"user\": \"%s\", \"connection\": \"%s\", \"method\": \"%d\", \"response\": \"%d\", \"reason\": \"%s\"}]",
 						(unsigned long long)(ss->id),                                   /* session id */ 
@@ -3939,7 +3939,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 						((char*)ip_port == (char*)NULL ? "":(char*)ip_port),            /* ip:port */
 						method,                                                         /* turn command method */
 						err_code,                                                       /* response error code */
-						(err_code == 0) ? (const u08bits*)"Success" : get_default_reason(err_code));    /* response reason */
+						(err_code == 0) ? (const char*)"Success" : (const char*)get_default_reason(err_code));    /* response reason */
 	}
 
 	return 0;

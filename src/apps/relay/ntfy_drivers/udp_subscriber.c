@@ -21,7 +21,7 @@ typedef struct _udp_subs_ltd{
 }udp_subs_ltd_t;
 
 subs_long_term_data_t udp_init(void);
-int udp_notify( subs_long_term_data_t long_term_data, TURN_NTFY_LEVEL level , const s08bits* message );
+int udp_notify( subs_long_term_data_t long_term_data, TURN_NTFY_LEVEL level , const char* message );
 int udp_remove( subs_long_term_data_t long_term_data);
 
 int udp_subscriber_flag(){
@@ -35,7 +35,7 @@ static char* udp_subs_config_str( void ){
 static int udp_subs_config_parse( udp_subs_ltd_t* data ){
     	
     int ret = 0;
-    char *s0=turn_strdup(data->config_string);
+    char *s0=strdup(data->config_string);
     char *s = s0;
 
     while(s && *s) {
@@ -55,15 +55,15 @@ static int udp_subs_config_parse( udp_subs_ltd_t* data ){
 
             *seq = 0;
             if(!strcmp(s,"host"))
-                    data->host = turn_strdup(seq+1);
+                    data->host = strdup(seq+1);
             else if(!strcmp(s,"ip"))
-                    data->host = turn_strdup(seq+1);
+                    data->host = strdup(seq+1);
             else if(!strcmp(s,"addr"))
-                    data->host = turn_strdup(seq+1);
+                    data->host = strdup(seq+1);
             else if(!strcmp(s,"ipaddr"))
-                    data->host = turn_strdup(seq+1);
+                    data->host = strdup(seq+1);
             else if(!strcmp(s,"hostaddr"))
-                    data->host = turn_strdup(seq+1);
+                    data->host = strdup(seq+1);
             else if(!strcmp(s,"port"))
                     data->port = (unsigned int)atoi(seq+1);
             else if(!strcmp(s,"p"))
@@ -76,7 +76,7 @@ static int udp_subs_config_parse( udp_subs_ltd_t* data ){
             s = snext;
     }
 
-    turn_free(s0, strlen(s0)+1);
+    free(s0);
     
     if ( ret == 0 ){
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"UDP notifier parameters: host=%s port=%d\n",data->host,data->port);
@@ -89,10 +89,10 @@ static int udp_subs_config_parse( udp_subs_ltd_t* data ){
 
 subs_long_term_data_t udp_init( void ){
         
-    udp_subs_ltd_t* data=(udp_subs_ltd_t*)turn_malloc(sizeof(udp_subs_ltd_t));
+    udp_subs_ltd_t* data=(udp_subs_ltd_t*)malloc(sizeof(udp_subs_ltd_t));
         if(!data) return data;
 
-    ns_bzero(data,sizeof(udp_subs_ltd_t));
+    bzero(data,sizeof(udp_subs_ltd_t));
         
     STRCPY(data->config_string, udp_subs_config_str());
     
@@ -100,7 +100,7 @@ subs_long_term_data_t udp_init( void ){
         return NULL;
     }
     
-    if(make_ioa_addr((const u08bits*)data->host,0,&(data->addr))<0) {
+    if(make_ioa_addr((const uint8_t*)data->host,0,&(data->addr))<0) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot set address %s\n",data->host);
         return NULL;
     }
@@ -117,7 +117,7 @@ subs_long_term_data_t udp_init( void ){
     return (subs_long_term_data_t)data;
 }
 
-int udp_notify( subs_long_term_data_t long_term_data, TURN_NTFY_LEVEL level , const s08bits* message ){
+int udp_notify( subs_long_term_data_t long_term_data, TURN_NTFY_LEVEL level , const char* message ){
     
     UNUSED_ARG(level);
     
@@ -138,17 +138,18 @@ int udp_remove( subs_long_term_data_t long_term_data){
     
     close(data->sockfd);
     
-    turn_free(data->host,strlen(data->host));
-    turn_free(data,sizeof(udp_subs_ltd_t));
+    free(data->host);
+    free(data);
     
     return 0;
 }
 
 static turn_ntfy_subscriber_if_t subscriber = {
-    .name="udp",
-    .init=udp_init,
-    .notify=udp_notify,
-    .remove=udp_remove
+    /*name*/    "udp",
+    /*date*/    NULL,
+    /*init*/    udp_init,
+    /*notify*/  udp_notify,
+    /*remove*/  udp_remove
 };
 
 turn_ntfy_subscriber_if_t* udp_subscriber_inferface_get(){

@@ -27,10 +27,10 @@ extern pthread_once_t notifier_key_once;
 typedef void* subs_long_term_data_t;
 
 typedef struct _turn_ntfy_subscriber_if_t {
-  s08bits* name;
+  char* name;
   subs_long_term_data_t long_term_data;
   subs_long_term_data_t (*init)(void);
-  int (*notify)( subs_long_term_data_t, TURN_NTFY_LEVEL, const s08bits*);
+  int (*notify)( subs_long_term_data_t, TURN_NTFY_LEVEL, const char*);
   int (*remove)( subs_long_term_data_t);
 } turn_ntfy_subscriber_if_t;
 
@@ -38,7 +38,7 @@ typedef struct _turn_ntfy_subscriber_if_t {
 #define TURN_NTFY_FUNC turn_ntfy_func_default
 
 int turn_ntfy_check(void);
-void turn_ntfy_func_default(TURN_NTFY_LEVEL level, const s08bits* format, ...);
+void turn_ntfy_func_default(TURN_NTFY_LEVEL level, const char* format, ...);
 
 #ifdef __cplusplus
 }

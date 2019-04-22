@@ -25,7 +25,7 @@ static void make_notifier_key(void)
 static void subscriber_add(turn_notifier_t* notifier, turn_ntfy_subscriber_if_t* subscriber)
 {
 	if(notifier && subscriber) {
-	  notifier->subscribers = (turn_ntfy_subscriber_if_t**)turn_realloc(notifier->subscribers,0,(sizeof(turn_ntfy_subscriber_if_t*)*(notifier->subscriber_count+1)));
+	  notifier->subscribers = (turn_ntfy_subscriber_if_t**)realloc(notifier->subscribers,(sizeof(turn_ntfy_subscriber_if_t*)*(notifier->subscriber_count+1)));
 	  notifier->subscribers[notifier->subscriber_count] = subscriber;
 	  notifier->subscriber_count += 1;
 	}
@@ -42,7 +42,7 @@ static void subscribers_init(turn_notifier_t *notifier){
     }
 }
 
-static void subscribers_notify(turn_notifier_t *notifier, TURN_NTFY_LEVEL level, const s08bits* string){
+static void subscribers_notify(turn_notifier_t *notifier, TURN_NTFY_LEVEL level, const char* string){
     
     size_t i;
     
@@ -72,10 +72,10 @@ static turn_notifier_t* notifier_interface_get(void){
     
     if(!notifier){
         
-        turn_notifier_t* notifier=(turn_notifier_t*)turn_malloc(sizeof(turn_notifier_t));
+        turn_notifier_t* notifier=(turn_notifier_t*)malloc(sizeof(turn_notifier_t));
         if(!notifier) return notifier;
         
-        ns_bzero(notifier,sizeof(turn_notifier_t));
+        bzero(notifier,sizeof(turn_notifier_t));
 
         subscriber_add(notifier,udp_subscriber_inferface_get());
       
@@ -94,7 +94,7 @@ static void notifier_interface_remove(void*notifier_p){
 
         subscribers_remove(notifier);
 
-        turn_free(notifier,sizeof(turn_notifier_t));
+        free(notifier);
     }
 }
 
@@ -109,7 +109,7 @@ int turn_ntfy_check(){
     return 0;
 }
 
-void turn_ntfy_func_default(TURN_NTFY_LEVEL level, const s08bits* format, ...){
+void turn_ntfy_func_default(TURN_NTFY_LEVEL level, const char* format, ...){
     
 #define MAX_RTPPRINTF_BUFFER_SIZE (1024)
 	char string[MAX_RTPPRINTF_BUFFER_SIZE+1];
