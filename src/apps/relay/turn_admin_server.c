@@ -3230,6 +3230,8 @@ static void handle_update_request(ioa_socket_handle s, struct http_request* hr)
 
 					if(current_realm()[0] && strcmp(current_realm(),r)) {
 						//forbidden
+					} else if (strcmp(kind, "allowed") != 0 && strcmp(kind, "denied") != 0) {
+						//forbidden
 					} else {
 
 						uint8_t realm[STUN_MAX_REALM_SIZE+1]="\0";
@@ -3262,6 +3264,8 @@ static void handle_update_request(ioa_socket_handle s, struct http_request* hr)
 						}
 
 						if(current_realm()[0] && strcmp(current_realm(),r)) {
+							//forbidden
+						} else if (strcmp(kind, "allowed") != 0 && strcmp(kind, "denied") != 0) {
 							//forbidden
 						} else {
 
