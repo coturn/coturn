@@ -1870,7 +1870,7 @@ static int adminmain(int argc, char **argv)
             }
             else{
 				fseek (fptr, 0, SEEK_SET);
-				if( fread(generated_key, sizeof(char), 16, fptr) !=0 ){
+				if( fread(generated_key, sizeof(char), 16, fptr) != 16 ){
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: Secret-Key file is empty\n",__FUNCTION__);
 				}
 				fclose (fptr);
@@ -2910,7 +2910,7 @@ static void set_ctx(SSL_CTX** out, const char *protocol, const SSL_METHOD* metho
 				perror("Cannot open Secret-Key file");
 			} else {
 				fseek (f, 0, SEEK_SET);
-				if ( fread(turn_params.secret_key, sizeof(char), 16, f) != 0 ){
+				if ( fread(turn_params.secret_key, sizeof(char), 16, f) != 16 ){
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: Secret-Key file is empty\n",__FUNCTION__);
 				}
 				fclose (f);
