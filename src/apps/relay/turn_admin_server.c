@@ -3664,8 +3664,8 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 					}
 
 					const char* add_kid = "";
-					const char* add_ts = "0";
-					const char* add_lt = "0";
+					const char* add_ts = "";
+					const char* add_lt = "";
 					const char* add_ikm = "";
 					const char* add_tea = "";
 					const char* add_realm = "";
@@ -3712,8 +3712,8 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
 									msg = "Cannot insert oAuth key into the database";
 								} else {
 									add_kid = "";
-									add_ts = "0";
-									add_lt = "0";
+									add_ts = "";
+									add_lt = "";
 									add_ikm = "";
 									add_tea = "";
 									add_realm = "";
