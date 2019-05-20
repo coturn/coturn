@@ -15,6 +15,12 @@ Version 4.5.1.2 'dan Eider':
 		* Remove [su]{08,16,32,64}bits type defines
 	- merge PR #327 (by Alexander Terczka)
 		* Strip white-spaces from config file lines end
+	- merge PR #386 (by Thibaut ACKERMANN)
+		* fix the webadmin ip permission add/delete sql injection
+	- merge PR #390 (by Thibaut ACKERMANN)
+		* fix mongo driver crash when invalid connection string is used
+	- merge PR #392 enhanced fread return length check (by islamoglus)
+	- merge PR #367 disconnect database gracefully (by Shu Muto)
 
 02/03/2019 Oleg Moskalenko <mom040267@gmail.com> Mihály Mészáros <misi@majd.eu>
 Version 4.5.1.1 'dan Eider':
