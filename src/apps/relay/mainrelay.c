@@ -1693,6 +1693,7 @@ static void read_config_file(int argc, char **argv, int pass)
 static int adminmain(int argc, char **argv)
 {
 	int c = 0;
+	int rc = 0;
 
 	TURNADMIN_COMMAND_TYPE ct = TA_COMMAND_UNKNOWN;
 
@@ -1870,8 +1871,14 @@ static int adminmain(int argc, char **argv)
             }
             else{
 				fseek (fptr, 0, SEEK_SET);
-				if( fread(generated_key, sizeof(char), 16, fptr) !=0 ){
+				rc = fread(generated_key, sizeof(char), 16, fptr);
+				if( rc == 0 ){
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: Secret-Key file is empty\n",__FUNCTION__);
+				}
+				else{
+					if( rc != 16 ){
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: Secret-Key length is not enough\n",__FUNCTION__);
+					}
 				}
 				fclose (fptr);
             }
@@ -2751,6 +2758,7 @@ static void set_ctx(SSL_CTX** out, const char *protocol, const SSL_METHOD* metho
 {
 	SSL_CTX* ctx = SSL_CTX_new(method);
 	int err = 0;
+	int rc = 0;
 #if ALPN_SUPPORTED
 	SSL_CTX_set_alpn_select_cb(ctx, ServerALPNCallback, NULL);
 #endif
@@ -2910,8 +2918,14 @@ static void set_ctx(SSL_CTX** out, const char *protocol, const SSL_METHOD* metho
 				perror("Cannot open Secret-Key file");
 			} else {
 				fseek (f, 0, SEEK_SET);
-				if ( fread(turn_params.secret_key, sizeof(char), 16, f) != 0 ){
+				rc = fread(turn_params.secret_key, sizeof(char), 16, f);
+				if( rc == 0 ){
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: Secret-Key file is empty\n",__FUNCTION__);
+				}
+				else{
+					if( rc != 16 ){
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: Secret-Key length is not enough\n",__FUNCTION__);
+					}
 				}
 				fclose (f);
 			}
