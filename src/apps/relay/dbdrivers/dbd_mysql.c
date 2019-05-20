@@ -1261,6 +1261,15 @@ static int mysql_list_admin_users(int no_print)
 	return ret;
 }
 
+static void mysql_disconnect(void) {
+	MYSQL *mydbconnection = (MYSQL*)pthread_getspecific(connection_key);
+	if (mydbconnection) {
+		mysql_close(mydbconnection);
+		mydbconnection=NULL;
+	}
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "MySQL connection was closed.\n");
+}
+
 //////////////////////////////////////////////////////
 
 static const turn_dbdriver_t driver = {
@@ -1288,7 +1297,8 @@ static const turn_dbdriver_t driver = {
   &mysql_get_admin_user,
   &mysql_set_admin_user,
   &mysql_del_admin_user,
-  &mysql_list_admin_users
+  &mysql_list_admin_users,
+  &mysql_disconnect
 };
 
 const turn_dbdriver_t * get_mysql_dbdriver(void) {

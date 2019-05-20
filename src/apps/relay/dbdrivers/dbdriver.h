@@ -73,6 +73,7 @@ typedef struct _turn_dbdriver_t {
   int (*set_admin_user)(const uint8_t *usname, const uint8_t *realm, const password_t pwd);
   int (*del_admin_user)(const uint8_t *usname);
   int (*list_admin_users)(int no_print);
+  void (*disconnect)(void);
 } turn_dbdriver_t;
 
 /////////// USER DB CHECK //////////////////
