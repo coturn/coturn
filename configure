@@ -63,18 +63,15 @@ testlibevent2_comp() {
 }
 
 testhiredis() {
-    if [ -n "${HIREDIS_CFLAGS}" ] && [ -n "${HIREDIS_LIBS}" ]; then
-    	P_DBCFLAGS="${P_DBCFLAGS} ${HIREDIS_CFLAGS}"
-    	P_DBLIBS="${P_DBLIBS} ${HIREDIS_LIBS}"
-    	return 1
+    if [ -z "${HIREDIS_CFLAGS}" ] || [ -z "${HIREDIS_LIBS}" ]; then
+        for inc in ${INCLUDEDIR}/hiredis /usr/local/include/hiredis /usr/hiredis /usr/include/hiredis
+        do
+            if [ -d ${inc} ] ; then
+                HIREDIS_CFLAGS="${HIREDIS_CFLAGS} -I${inc}"
+            fi
+        done
+        HIREDIS_LIBS=-lhiredis
     fi
-    for inc in ${INCLUDEDIR}/hiredis /usr/local/include/hiredis /usr/hiredis /usr/include/hiredis
-    do
-        if [ -d ${inc} ] ; then
-            HIREDIS_CFLAGS="${HIREDIS_CFLAGS} -I${inc}"
-        fi
-    done
-    HIREDIS_LIBS=-lhiredis
     ${CC} ${HR_TMPCPROGC} -o ${HR_TMPCPROGB} ${OSCFLAGS} ${DBLIBS} ${HIREDIS_CFLAGS} ${HIREDIS_LIBS} ${OSLIBS} 2>>/dev/null
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
@@ -92,24 +89,21 @@ testhiredis() {
 }
 
 testlibpq() {
-    if [ -n "${PSQL_CFLAGS}" ] && [ -n "${PSQL_LIBS}" ]; then
-    	P_DBCFLAGS="${P_DBCFLAGS} ${PSQL_CFLAGS}"
-    	P_DBLIBS="${P_DBLIBS} ${PSQL_LIBS}"
-    	return 1
-    fi
-    PSQL_CFLAGS="-I${PREFIX}/pgsql/include -I${PREFIX}/include/pgsql/ -I${PREFIX}/include/postgres/ -I${PREFIX}/postgres/include/ -I${PREFIX}/include/postgresql/ -I${PREFIX}/postgresql/include/"
-    PSQL_CFLAGS="${PSQL_CFLAGS} -I/usr/local/pgsql/include -I/usr/local/include/pgsql/ -I/usr/local/include/postgres/ -I/usr/local/postgres/include/ -I/usr/local/include/postgresql/ -I/usr/local/postgresql/include/"
-    PSQL_CFLAGS="${PSQL_CFLAGS} -I/usr/pgsql/include -I/usr/include/pgsql/ -I/usr/include/postgres/ -I/usr/postgres/include/ -I/usr/include/postgresql/ -I/usr/postgresql/include/"
-    for ilib in ${PREFIX}/pgsql/lib ${PREFIX}/lib/pgsql ${PREFIX}/lib64/pgsql /usr/local/pgsql/lib /usr/local/lib/pgsql /usr/local/lib64/pgsql /usr/pgsql/lib /usr/lib/pgsql /usr/lib64/pgsql ${PREFIX}/postgres/lib ${PREFIX}/lib/postgres ${PREFIX}/lib64/postgres /usr/local/postgres/lib /usr/local/lib/postgres /usr/local/lib64/postgres /usr/postgres/lib /usr/lib/postgres /usr/lib64/postgres ${PREFIX}/postgresql/lib ${PREFIX}/lib/postgresql ${PREFIX}/lib64/postgresql /usr/local/postgresql/lib /usr/local/lib/postgresql /usr/local/lib64/postgresql /usr/postgresql/lib /usr/lib/postgresql /usr/lib64/postgresql
-    do
-	if [ -d ${ilib} ] ; then
-    	    PSQL_LIBS="${PSQL_LIBS} -L${ilib}"
-	    if ! [ -z "${TURN_ACCEPT_RPATH}" ] ; then
-		TURN_RPATH="${TURN_RPATH} -Wl,-rpath,${ilib}"
+    if [ -z "${PSQL_CFLAGS}" ] || [ -z "${PSQL_LIBS}" ]; then
+        PSQL_CFLAGS="-I${PREFIX}/pgsql/include -I${PREFIX}/include/pgsql/ -I${PREFIX}/include/postgres/ -I${PREFIX}/postgres/include/ -I${PREFIX}/include/postgresql/ -I${PREFIX}/postgresql/include/"
+        PSQL_CFLAGS="${PSQL_CFLAGS} -I/usr/local/pgsql/include -I/usr/local/include/pgsql/ -I/usr/local/include/postgres/ -I/usr/local/postgres/include/ -I/usr/local/include/postgresql/ -I/usr/local/postgresql/include/"
+        PSQL_CFLAGS="${PSQL_CFLAGS} -I/usr/pgsql/include -I/usr/include/pgsql/ -I/usr/include/postgres/ -I/usr/postgres/include/ -I/usr/include/postgresql/ -I/usr/postgresql/include/"
+        for ilib in ${PREFIX}/pgsql/lib ${PREFIX}/lib/pgsql ${PREFIX}/lib64/pgsql /usr/local/pgsql/lib /usr/local/lib/pgsql /usr/local/lib64/pgsql /usr/pgsql/lib /usr/lib/pgsql /usr/lib64/pgsql ${PREFIX}/postgres/lib ${PREFIX}/lib/postgres ${PREFIX}/lib64/postgres /usr/local/postgres/lib /usr/local/lib/postgres /usr/local/lib64/postgres /usr/postgres/lib /usr/lib/postgres /usr/lib64/postgres ${PREFIX}/postgresql/lib ${PREFIX}/lib/postgresql ${PREFIX}/lib64/postgresql /usr/local/postgresql/lib /usr/local/lib/postgresql /usr/local/lib64/postgresql /usr/postgresql/lib /usr/lib/postgresql /usr/lib64/postgresql
+        do
+	    if [ -d ${ilib} ] ; then
+    	        PSQL_LIBS="${PSQL_LIBS} -L${ilib}"
+	        if ! [ -z "${TURN_ACCEPT_RPATH}" ] ; then
+		    TURN_RPATH="${TURN_RPATH} -Wl,-rpath,${ilib}"
+	        fi
 	    fi
-	fi
-    done
-    PSQL_LIBS="${OSLIBS} ${PSQL_LIBS} -lpq"
+        done
+        PSQL_LIBS="${OSLIBS} ${PSQL_LIBS} -lpq"
+    fi
     ${CC} ${PQ_TMPCPROGC} -o ${PQ_TMPCPROGB} ${OSCFLAGS} ${DBCFLAGS} ${PSQL_CFLAGS} ${DBLIBS} ${PSQL_LIBS} ${OSLIBS} 2>>/dev/null 
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
@@ -127,24 +121,21 @@ testlibpq() {
 }
 
 testlibmysql() {
-    if [ -n "${MYSQL_CFLAGS}" ] && [ -n "${MYSQL_LIBS}" ]; then
-    	P_DBCFLAGS="${P_DBCFLAGS} ${MYSQL_CFLAGS}"
-    	P_DBLIBS="${P_DBLIBS} ${MYSQL_LIBS}"
-    	return 1
+    if [ -z "${MYSQL_CFLAGS}" ] || [ -z "${MYSQL_LIBS}" ]; then
+        MYSQL_CFLAGS="-I${PREFIX}/mysql/include -I${PREFIX}/include/mysql/"
+        MYSQL_CFLAGS="${MYSQL_CFLAGS} -I/usr/local/mysql/include -I/usr/local/include/mysql/"
+        MYSQL_CFLAGS="${MYSQL_CFLAGS} -I/usr/mysql/include -I/usr/include/mysql/"
+        for ilib in ${PREFIX}/mysql/lib ${PREFIX}/lib/mysql ${PREFIX}/lib64/mysql /usr/local/mysql/lib /usr/local/lib/mysql /usr/local/lib64/mysql /usr/mysql/lib /usr/lib/mysql /usr/lib64/mysql
+        do
+            if [ -d ${ilib} ] ; then
+                MYSQL_LIBS="${MYSQL_LIBS} -L${ilib}"
+                if ! [ -z "${TURN_ACCEPT_RPATH}" ] ; then
+                    TURN_RPATH="${TURN_RPATH} -Wl,-rpath,${ilib}"
+                fi
+            fi
+        done
+        MYSQL_LIBS="${OSLIBS} ${MYSQL_LIBS} -lmysqlclient"
     fi
-    MYSQL_CFLAGS="-I${PREFIX}/mysql/include -I${PREFIX}/include/mysql/"
-    MYSQL_CFLAGS="${MYSQL_CFLAGS} -I/usr/local/mysql/include -I/usr/local/include/mysql/"
-    MYSQL_CFLAGS="${MYSQL_CFLAGS} -I/usr/mysql/include -I/usr/include/mysql/"
-    for ilib in ${PREFIX}/mysql/lib ${PREFIX}/lib/mysql ${PREFIX}/lib64/mysql /usr/local/mysql/lib /usr/local/lib/mysql /usr/local/lib64/mysql /usr/mysql/lib /usr/lib/mysql /usr/lib64/mysql
-    do
-      if [ -d ${ilib} ] ; then
-        MYSQL_LIBS="${MYSQL_LIBS} -L${ilib}"
-	if ! [ -z "${TURN_ACCEPT_RPATH}" ] ; then
-	    TURN_RPATH="${TURN_RPATH} -Wl,-rpath,${ilib}"
-	fi
-      fi
-    done
-    MYSQL_LIBS="${OSLIBS} ${MYSQL_LIBS} -lmysqlclient"
     ${CC} ${MYSQL_TMPCPROGC} -o ${MYSQL_TMPCPROGB} ${OSCFLAGS} ${DBCFLAGS} ${DBLIBS} ${MYSQL_CFLAGS} ${MYSQL_LIBS} ${OSLIBS} 2>>/dev/null
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
@@ -162,18 +153,15 @@ testlibmysql() {
 }
 
 testlibmongoc() {
-    if [ -n "${MONGO_CFLAGS}" ] && [ -n "${MONGO_LIBS}" ]; then
-    	P_DBCFLAGS="${P_DBCFLAGS} ${MONGO_CFLAGS}"
-    	P_DBLIBS="${P_DBLIBS} ${MONGO_LIBS}"
-    	return 1
+    if [ -z "${MONGO_CFLAGS}" ] || [ -z "${MONGO_LIBS}" ]; then
+        for inc in ${INCLUDEDIR}/libmongoc-1.0 ${INCLUDEDIR}/libbson-1.0 /usr/local/include/libmongoc-1.0 /usr/local/include/libbson-1.0 /usr/libmongoc-1.0 /usr/libbson-1.0 /usr/include/libbson-1.0/ /usr/include/libmongoc-1.0/
+        do
+            if [ -d ${inc} ] ; then
+                MONGO_CFLAGS="${MONGO_CFLAGS} -I${inc}"
+            fi
+        done
+        MONGO_LIBS="-lmongoc-1.0 -lbson-1.0"
     fi
-    for inc in ${INCLUDEDIR}/libmongoc-1.0 ${INCLUDEDIR}/libbson-1.0 /usr/local/include/libmongoc-1.0 /usr/local/include/libbson-1.0 /usr/libmongoc-1.0 /usr/libbson-1.0 /usr/include/libbson-1.0/ /usr/include/libmongoc-1.0/
-    do
-      if [ -d ${inc} ] ; then
-        MONGO_CFLAGS="${MONGO_CFLAGS} -I${inc}"
-      fi
-    done
-    MONGO_LIBS="-lmongoc-1.0 -lbson-1.0"
     ${CC} ${MONGO_TMPCPROGC} -o ${MONGO_TMPCPROGB} ${OSCFLAGS} ${DBCFLAGS} ${DBLIBS} ${MONGO_CFLAGS} ${MONGO_LIBS} ${OSLIBS} 2>>/dev/null
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
@@ -931,8 +919,15 @@ testdaemon
 ###########################
 
 if [ -n "${SSL_CFLAGS}" ] && [ -n "${SSL_LIBS}" ]; then
-    P_CFLAGS="${P_CFLAGS} ${SSL_CFLAGS}"
-    P_LDFLAGS="${P_LDFLAGS} ${SSL_LIBS}"
+    ${CC} ${TMPCPROGC} ${SSL_CFLAGS} -o ${TMPCPROGB} ${OSCFLAGS} ${OSLIBS} ${SSL_LIBS} 2>>/dev/null
+    ER=$?
+    if ! [ ${ER} -eq 0 ] ; then
+        ${ECHO_CMD} "Private SSL Library option cannot be used"
+        exit
+    else
+        OSCFLAGS="${OSCFLAGS} ${SSL_CFLAGS}"
+        OSLIBS="${OSLIBS} ${SSL_LIBS}"
+    fi
 else
     testlib crypto
     ER=$?
@@ -978,8 +973,15 @@ fi
 # Test Libevent2 setup
 ###########################
 if [ -n "${EVENT_CFLAGS}" ] && [ -n "${EVENT_LIBS}" ]; then
-    P_CFLAGS="${P_CFLAGS} ${EVENT_CFLAGS}"
-    P_LDFLAGS="${P_LDFLAGS} ${EVENT_LIBS}"
+    ${CC} ${TMPCPROGC} ${EVENT_CFLAGS} -o ${TMPCPROGB} ${OSCFLAGS} ${OSLIBS} ${EVENT_LIBS} 2>>/dev/null
+    ER=$?
+    if ! [ ${ER} -eq 0 ] ; then
+        ${ECHO_CMD} "Private Event Library option cannot be used"
+        exit
+    else
+        OSCFLAGS="${OSCFLAGS} ${EVENT_CFLAGS}"
+        OSLIBS="${OSLIBS} ${EVENT_LIBS}"
+    fi
 else
     testlibevent2_comp
     ER=$?
@@ -1225,11 +1227,11 @@ ${ECHO_CMD} "# Generated by configure script #" >> Makefile
 ${ECHO_CMD} "#################################" >> Makefile
 ${ECHO_CMD} "ECHO_CMD = ${ECHO_CMD}" >> Makefile
 ${ECHO_CMD} "CC = ${CC}" >> Makefile
-${ECHO_CMD} "LDFLAGS += ${P_LDFLAGS} ${OSLIBS}" >> Makefile
-${ECHO_CMD} "DBLIBS += ${P_DBLIBS} ${DBLIBS}" >> Makefile
-${ECHO_CMD} "CFLAGS += ${P_CFLAGS} ${OSCFLAGS}" >> Makefile
+${ECHO_CMD} "LDFLAGS += ${OSLIBS}" >> Makefile
+${ECHO_CMD} "DBLIBS += ${DBLIBS}" >> Makefile
+${ECHO_CMD} "CFLAGS += ${OSCFLAGS}" >> Makefile
 ${ECHO_CMD} "CPPFLAGS = ${CPPFLAGS}" >> Makefile
-${ECHO_CMD} "DBCFLAGS += ${P_DBCFLAGS} ${DBCFLAGS} ${TURN_NO_PQ} ${TURN_NO_MYSQL} ${TURN_NO_SQLITE} ${TURN_NO_MONGO} ${TURN_NO_HIREDIS}" >> Makefile
+${ECHO_CMD} "DBCFLAGS += ${DBCFLAGS} ${TURN_NO_PQ} ${TURN_NO_MYSQL} ${TURN_NO_SQLITE} ${TURN_NO_MONGO} ${TURN_NO_HIREDIS}" >> Makefile
 ${ECHO_CMD} "#" >> Makefile
 ${ECHO_CMD} "PORTNAME = ${PORTNAME}" >> Makefile
 ${ECHO_CMD} "PREFIX = ${PREFIX}" >> Makefile
