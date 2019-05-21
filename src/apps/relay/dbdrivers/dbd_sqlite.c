@@ -1294,7 +1294,7 @@ static int sqlite_list_admin_users(int no_print)
 	return ret;
 }
 
-static void *sqlite_disconnect(void) {
+static void sqlite_disconnect(void) {
 	sqlite3 *sqliteconnection = (sqlite3 *)pthread_getspecific(connection_key);
 	if (sqliteconnection) {
 		sqlite3_close(sqliteconnection);
