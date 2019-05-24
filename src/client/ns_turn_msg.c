@@ -235,10 +235,21 @@ int stun_produce_integrity_key_str(uint8_t *uname, uint8_t *realm, uint8_t *upwd
 		return -1;
 #endif
 	} else {
-		MD5_CTX ctx;
-		MD5_Init(&ctx);
-		MD5_Update(&ctx,str,strl);
-		MD5_Final(key,&ctx);
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+		unsigned int keylen = 0;
+		EVP_MD_CTX ctx;
+		EVP_DigestInit(&ctx,EVP_md5());
+		EVP_DigestUpdate(&ctx,str,strl);
+		EVP_DigestFinal(&ctx,key,&keylen);
+		EVP_MD_CTX_cleanup(&ctx);
+#else
+		unsigned int keylen = 0;
+		EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+		EVP_DigestInit(ctx,EVP_md5());
+		EVP_DigestUpdate(ctx,str,strl);
+		EVP_DigestFinal(ctx,key,&keylen);
+		EVP_MD_CTX_free(ctx);
+#endif
 	}
 
 	free(str);
