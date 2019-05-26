@@ -239,11 +239,9 @@ int stun_produce_integrity_key_str(uint8_t *uname, uint8_t *realm, uint8_t *upwd
 		unsigned int keylen = 0;
 		EVP_MD_CTX ctx;
 		EVP_MD_CTX_init(&ctx);
-#ifdef OPENSSL_FIPS
 		if (FIPS_mode()) {
 			EVP_MD_CTX_set_flags(&ctx,EVP_MD_CTX_FLAG_NON_FIPS_ALLOW);
 		}
-#endif
 		EVP_DigestInit_ex(&ctx,EVP_md5(), NULL);
 		EVP_DigestUpdate(&ctx,str,strl);
 		EVP_DigestFinal(&ctx,key,&keylen);
@@ -251,11 +249,9 @@ int stun_produce_integrity_key_str(uint8_t *uname, uint8_t *realm, uint8_t *upwd
 #else
 		unsigned int keylen = 0;
 		EVP_MD_CTX *ctx = EVP_MD_CTX_new();
-#ifdef OPENSSL_FIPS
 		if (FIPS_mode()) {
 			EVP_MD_CTX_set_flags(ctx, EVP_MD_CTX_FLAG_NON_FIPS_ALLOW);
 		}
-#endif
 		EVP_DigestInit_ex(ctx,EVP_md5(), NULL);
 		EVP_DigestUpdate(ctx,str,strl);
 		EVP_DigestFinal(ctx,key,&keylen);
