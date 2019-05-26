@@ -24,6 +24,7 @@ Vcs-Browser: https://github.com/coturn/coturn/tree/debian/master
 Package: coturn
 Architecture: any
 Depends: adduser,
+         sqlite3,
          lsb-base (>= 3.0-6),
          telnet | telnet-client,
          ${misc:Depends},

@@ -15,7 +15,6 @@ include/turn/client/ns_turn_msg_defs.h usr/include/turn
 include/turn/client/ns_turn_msg_defs_experimental.h usr/include/turn
 include/turn/ns_turn_defs.h usr/include/turn
 lib/libturnclient.a usr/lib
-sqlite/turndb var/lib/turn
 turndb/schema.mongo.sh usr/share/coturn
 turndb/schema.mongo.sh usr/share/doc/coturn
 turndb/schema.sql usr/share/coturn

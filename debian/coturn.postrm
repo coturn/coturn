@@ -12,6 +12,8 @@ if [ "$1" = "purge" ] ; then
         if getent group $TURNSERVER_GROUP >/dev/null; then
                 groupdel $TURNSERVER_GROUP
         fi
+
+        rm -f /var/lib/turn/turndb
 fi
 
 

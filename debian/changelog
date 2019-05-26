@@ -1,3 +1,12 @@
+coturn (4.5.1.1-1.1) unstable; urgency=medium
+
+  * Non-maintainer upload.
+  * Don't ship the (empty) /var/lib/turn/turndb SQLite database and generate it
+    on-demand in the postinst instead, avoiding overwriting it on
+    upgrade/reinstall. (Closes: #929269)
+
+ -- Chris Lamb <lamby@debian.org>  Sun, 26 May 2019 15:11:04 +0100
+
 coturn (4.5.1.1-1) unstable; urgency=medium
 
   * [a13ba45] Fix: missing /etc/turnserver.conf

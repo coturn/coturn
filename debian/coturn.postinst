@@ -35,6 +35,15 @@ install() {
                "$TURNSERVER_USER" || exit 1
     fi
 
+    # Don't ship the empty database; generate it on-demand. (#929269)
+    TURNDB_SQLITE=/var/lib/turn/turndb
+    TURNDB_SCHEMA=/usr/share/doc/coturn/schema.sql
+
+    if [ ! -e "$TURNDB_SQLITE" ] && [ -e "$TURNDB_SCHEMA" ]; then
+        echo "I: Creating $TURNDB_SQLITE from $TURNDB_SCHEMA" >&2
+        mkdir -p "$(dirname "$TURNDB_SQLITE")"
+        sqlite3 "$TURNDB_SQLITE" < "$TURNDB_SCHEMA"
+    fi
 }
 
 case "$1" in
