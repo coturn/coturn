@@ -370,7 +370,7 @@ static void set_rtpfile(void)
 				no_stdout_log = 1;
 			} else {
 				set_log_file_name(log_fn_base,log_fn);
-				_rtpfile = fopen(log_fn, "w");
+				_rtpfile = fopen(log_fn, "a");
 				if(_rtpfile)
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "log file opened: %s\n", log_fn);
 			}
@@ -397,32 +397,32 @@ static void set_rtpfile(void)
 
 		set_log_file_name(logbase, logf);
 
-		_rtpfile = fopen(logf, "w");
+		_rtpfile = fopen(logf, "a");
 		if(_rtpfile)
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "log file opened: %s\n", logf);
 		else {
 			snprintf(logbase, FILE_STR_LEN, "/var/log/%s", logtail);
 
 			set_log_file_name(logbase, logf);
-			_rtpfile = fopen(logf, "w");
+			_rtpfile = fopen(logf, "a");
 			if(_rtpfile)
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "log file opened: %s\n", logf);
 			else {
 				snprintf(logbase, FILE_STR_LEN, "/var/tmp/%s", logtail);
 				set_log_file_name(logbase, logf);
-				_rtpfile = fopen(logf, "w");
+				_rtpfile = fopen(logf, "a");
 				if(_rtpfile)
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "log file opened: %s\n", logf);
 				else {
 					snprintf(logbase, FILE_STR_LEN, "/tmp/%s", logtail);
 					set_log_file_name(logbase, logf);
-					_rtpfile = fopen(logf, "w");
+					_rtpfile = fopen(logf, "a");
 					if(_rtpfile)
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "log file opened: %s\n", logf);
 					else {
 						snprintf(logbase, FILE_STR_LEN, "%s", logtail);
 						set_log_file_name(logbase, logf);
-						_rtpfile = fopen(logf, "w");
+						_rtpfile = fopen(logf, "a");
 						if(_rtpfile)
 							TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "log file opened: %s\n", logf);
 						else {
