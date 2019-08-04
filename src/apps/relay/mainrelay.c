@@ -2260,7 +2260,7 @@ int main(int argc, char **argv)
 
 	if(use_ltc && use_tltc) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "\nCONFIGURATION ALERT: You specified --lt-cred-mech and --use-auth-secret in the same time.\n"
-                       "Be aware that you could not mix the username/password and the shared secret based auth methohds. \n"
+                       "Be aware that you could not mix the username/password and the shared secret based auth methods. \n"
                        "Shared secret overrides username/password based auth method. Check your configuration!\n");
 	}
 
