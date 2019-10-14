@@ -653,7 +653,7 @@ The temporary user is generated as:
 temporary-username="timestamp" + ":" + "username"
 
 where username is the persistent user name, and the timestamp format is just 
-seconds sinse 1970 - the same value as time(NULL) function returns.
+seconds since 1970 - the same value as time(NULL) function returns.
 
 The temporary password is obtained as HMAC-SHA1 function over the temporary
 username, with shared secret as the HMAC key, and then the result is encoded:
@@ -717,7 +717,7 @@ The TURN server may use "--stale-nonce" option for extra security: in
 some time, the nonce expires and the client will obtain 438 error response
 with the new nonce, and the client will have to start using the new nonce.
 
-In subsequent communications, the sever and the client will always assume 
+In subsequent communications, the server and the client will always assume 
 the same password - the original password becomes the session parameter and 
 is never expiring. So the password is not changing while the session is valid
 and unexpired. So, if the session is properly maintained, it may go forever, 
