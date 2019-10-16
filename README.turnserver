@@ -87,7 +87,7 @@ User database settings:
 -e, --psql-userdb	User database connection string for PostgreSQL.
 		This database can be used for long-term credentials mechanism,
 		and it can store the secret value 
-		for secret-based timed authentication in TURN RESP API.
+		for secret-based timed authentication in TURN REST API.
 		The connection string format is like that:
 		 
 		"host=<host> dbname=<dbname> user=<db-user> password=<db-user-password> connect_timeout=<seconds>" 
@@ -105,7 +105,7 @@ User database settings:
 -M, --mysql-userdb	User database connection string for MySQL or MariaDB. 
 		This database can be used for long-term credentials mechanism,
 		and it can store the secret value for 
-		secret-based timed authentication in TURN RESP API.
+		secret-based timed authentication in TURN REST API.
 		The connection string format is like that:
 		 
 		"host=<host> dbname=<dbname> user=<db-user> password=<db-user-password> connect_timeout=<seconds> read_timeout=<seconds>"
@@ -128,7 +128,7 @@ User database settings:
 -J, --mongo-userdb	User database connection string for MongoDB. 
 		This database can be used for long-term credentials mechanism,
 		and it can store the secret value 
-		for secret-based timed authentication in TURN RESP API.
+		for secret-based timed authentication in TURN REST API.
 		The connection string format is like that:
 		 
 		"mongodb://username:password@host:port/database?options"
@@ -141,7 +141,7 @@ User database settings:
 -N, --redis-userdb	User database connection string for Redis. 
 		This database can be used for long-term	credentials mechanism,
 		and it can store the secret 
-		value for secret-based timed authentication in TURN RESP API.
+		value for secret-based timed authentication in TURN REST API.
 		The connection string format is like that:
 		 
 		"ip=<ip-addr> dbname=<db-number> password=<db-password> connect_timeout=<seconds>"

@@ -70,7 +70,7 @@ Only sha256 is supported as the hash function.
 
 -L, --list-admin		List admin users in the database.
 
--s, --set-secret=<value> Add shared secret for TURN RESP API
+-s, --set-secret=<value> Add shared secret for TURN REST API
 
 -S, --show-secret	Show stored shared secrets for TURN REST API
 
