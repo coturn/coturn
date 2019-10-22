@@ -30,6 +30,7 @@ Version 4.5.1.2 'dan Eider':
 	- merge PR #284 Add bandwidth usage reporting packet/bandwidth usage by peers
 	- merge PR #381 Modifying configure to enable compile with private libraries
 	- merge PR #455 Typo corrected (by chanduthedev)
+	- merge PR #417 Append only to log files rather to override them (by robert-scheck)
 
 02/03/2019 Oleg Moskalenko <mom040267@gmail.com> Mihály Mészáros <misi@majd.eu>
 Version 4.5.1.1 'dan Eider':
