@@ -140,7 +140,7 @@ SQLite user database file name (default \- /var/db/turndb or
 User database connection string for PostgreSQL.
 This database can be used for long\-term credentials mechanism,
 and it can store the secret value 
-for secret\-based timed authentication in TURN RESP API.
+for secret\-based timed authentication in TURN REST API.
 The connection string format is like that:
 .RS
 .PP
@@ -162,7 +162,7 @@ Also, see http://www.PostgreSQL.org for full PostgreSQL documentation.
 User database connection string for MySQL or MariaDB. 
 This database can be used for long\-term credentials mechanism,
 and it can store the secret value for 
-secret\-based timed authentication in TURN RESP API.
+secret\-based timed authentication in TURN REST API.
 The connection string format is like that:
 .RS
 .PP
@@ -192,7 +192,7 @@ If you want to use cleartext password then do not set this option!
 User database connection string for MongoDB. 
 This database can be used for long\-term credentials mechanism,
 and it can store the secret value 
-for secret\-based timed authentication in TURN RESP API.
+for secret\-based timed authentication in TURN REST API.
 The connection string format is like that:
 .RS
 .PP
@@ -209,7 +209,7 @@ for full MongoDB documentation.
 User database connection string for Redis. 
 This database can be used for long\-term credentials mechanism,
 and it can store the secret 
-value for secret\-based timed authentication in TURN RESP API.
+value for secret\-based timed authentication in TURN REST API.
 The connection string format is like that:
 .RS
 .PP
@@ -907,7 +907,7 @@ The temporary user is generated as:
 temporary\-username="timestamp" + ":" + "username"
 .PP
 where username is the persistent user name, and the timestamp format is just 
-seconds sinse 1970 \- the same value as \fBtime\fP(NULL) function returns.
+seconds since 1970 \- the same value as \fBtime\fP(NULL) function returns.
 .PP
 The temporary password is obtained as HMAC\-SHA1 function over the temporary
 username, with shared secret as the HMAC key, and then the result is encoded:
@@ -987,7 +987,7 @@ The TURN server may use "\fB\-\-stale\-nonce\fP" option for extra security: in
 some time, the nonce expires and the client will obtain 438 error response
 with the new nonce, and the client will have to start using the new nonce.
 .PP
-In subsequent communications, the sever and the client will always assume 
+In subsequent communications, the server and the client will always assume 
 the same password \- the original password becomes the session parameter and 
 is never expiring. So the password is not changing while the session is valid
 and unexpired. So, if the session is properly maintained, it may go forever, 
