@@ -556,7 +556,7 @@ int get_default_protocol_port(const char* scheme, size_t slen)
 				return 21;
 			if(!memcmp("svn",scheme,3))
 				return 3690;
-			if(!memcmp("ssh",scheme,4))
+			if(!memcmp("ssh",scheme,3))
 				return 22;
 			if(!memcmp("sip",scheme,3))
 				return 5060;
