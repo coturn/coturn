@@ -393,11 +393,11 @@ int main(int argc, char **argv)
         fprintf(stderr, "Use either encrypt or decrypt.\nPlease use -h or --help for the detailed help\n");
          exit(-1);
   }
- 
-  //check if we have required params 
-  //TODO: more compact warnning handling
+
+  //check if we have required params
+  //TODO: more compact warning handling
   if (encrypt_flag || decrypt_flag){
-    if (strlen(server_name) == 0) { 
+    if (strlen(server_name) == 0) {
         fprintf(stderr, "For encode/decode  --server-name/-i is mandatory \n");
          exit(-1);
     }
@@ -428,22 +428,7 @@ int main(int argc, char **argv)
         fprintf(stderr, "For decode --token/-t is mandatory \n");
         exit(-1);
     }
-    
-    // Expiry warnings
-    if ( (unsigned long long)key_timestamp<<16 > token_timestamp  +((unsigned long long)token_lifetime << 16)  ) {
-        fprintf(stderr,"\nWARNING: Token expiry is earlear then Auth key life time start timestamp!!\n\n");
-    } else {
-        if( (unsigned long long)key_timestamp<<16 > token_timestamp) {
-            fprintf(stderr,"\nWARNING: Token life time start timestamp is earlier then Auth key start timestamp!!\n\n");
-        }
-    }
-    if( (unsigned long long)( key_timestamp + key_lifetime )<<16 < token_timestamp ) {
-        fprintf(stderr,"\nWARNING: Auth key will expire before token lifetime start timestamp!!\n\n");
-    } else {
-        if( (unsigned long long)( key_timestamp + key_lifetime)<<16 < token_timestamp + ((unsigned long long)token_lifetime << 16) ) {
-            fprintf(stderr,"\nWARNING: Auth key will expire before token expiry!!\n\n");
-        }  
-    }
+
 
     if ( setup_ikm_key(kid, base64encoded_ltk, key_timestamp, key_lifetime, as_rs_alg, &key) == 0 ) {
           if(encrypt_flag) {
@@ -465,6 +450,8 @@ int main(int argc, char **argv)
           oauth_token dot;
           if ( validate_decode_token(server_name, key, base64encoded_etoken,&dot) == 0) {
             printf("-=Valid token!=-\n");
+            token_timestamp=(long long unsigned)dot.enc_block.timestamp;
+            token_lifetime=(unsigned long)dot.enc_block.lifetime;
               if (verbose_flag) print_token_body(&dot);
           } else {
             fprintf(stderr, "Error during token validation and decoding\n");
@@ -476,6 +463,21 @@ int main(int argc, char **argv)
          exit(-1);
     }
 
+    // Expiry warnings
+    if ( (unsigned long long)key_timestamp<<16 > token_timestamp  +((unsigned long long)token_lifetime << 16)  ) {
+      fprintf(stderr,"\nWARNING: Token expiry is earlear then Auth key life time start timestamp!!\n\n");
+    } else {
+      if( (unsigned long long)key_timestamp<<16 > token_timestamp) {
+        fprintf(stderr,"\nWARNING: Token life time start timestamp is earlier then Auth key start timestamp!!\n\n");
+      }
+    }
+    if( (unsigned long long)( key_timestamp + key_lifetime )<<16 < token_timestamp ) {
+      fprintf(stderr,"\nWARNING: Auth key will expire before token lifetime start timestamp!!\n\n");
+    } else {
+	  if( (unsigned long long)( key_timestamp + key_lifetime)<<16 < token_timestamp + ((unsigned long long)token_lifetime << 16) ) {
+		fprintf(stderr,"\nWARNING: Auth key will expire before token expiry!!\n\n");
+	  }
+    }
   }
 
   return 0;
