@@ -201,7 +201,7 @@ static int check_oauth(void) {
 
 //////////////////////////////////////////////////
 
-static SHATYPE shatype = SHATYPE_SHA1;
+static SHATYPE shatype = SHATYPE_DEFAULT;
 
 int main(int argc, const char **argv)
 {

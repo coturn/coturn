@@ -1599,9 +1599,9 @@ turn_credential_type get_turn_credentials_type(void)
 int add_integrity(app_ur_conn_info *clnet_info, stun_buffer *message)
 {
 	if(clnet_info->nonce[0]) {
-
+		SHATYPE sht = shatype;
 		if(oauth && clnet_info->oauth) {
-
+			sht = SHATYPE_SHA1_OAUTH;
 			uint16_t method = stun_get_method_str(message->buf, message->len);
 
 			int cok = clnet_info->cok;
@@ -1646,7 +1646,7 @@ int add_integrity(app_ur_conn_info *clnet_info, stun_buffer *message)
 			}
 
 			if(stun_attr_add_integrity_by_key_str(message->buf, (size_t*)&(message->len), (uint8_t*)okey_array[cok].kid,
-					clnet_info->realm, clnet_info->key, clnet_info->nonce, shatype)<0) {
+					clnet_info->realm, clnet_info->key, clnet_info->nonce, sht)<0) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO," Cannot add integrity to the message\n");
 				return -1;
 			}
@@ -1678,6 +1678,7 @@ int check_integrity(app_ur_conn_info *clnet_info, stun_buffer *message)
 
 	if(oauth && clnet_info->oauth) {
 
+		sht = SHATYPE_SHA1_OAUTH;
 		password_t pwd;
 
 		return stun_check_message_integrity_by_key_str(get_turn_credentials_type(),

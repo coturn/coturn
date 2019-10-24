@@ -736,14 +736,13 @@ public:
 	/**
 	 * Check message integrity, in secure communications.
 	 */
-	bool checkMessageIntegrity(turn_credential_type ct, std::string &uname, std::string &realm, std::string &upwd) const
+	bool checkMessageIntegrity(turn_credential_type ct, std::string &uname, std::string &realm, std::string &upwd, SHATYPE sht) const
 		throw(WrongStunBufferFormatException) {
 		if(!_constructed || !isCommand())
 			throw WrongStunBufferFormatException();
 		uint8_t *suname=(uint8_t*)strdup(uname.c_str());
 		uint8_t *srealm=(uint8_t*)strdup(realm.c_str());
 		uint8_t *supwd=(uint8_t*)strdup(upwd.c_str());
-		SHATYPE sht = SHATYPE_SHA1;
 		bool ret = (0< stun_check_message_integrity_str(ct,_buffer, _sz, suname, srealm, supwd, sht));
 		free(suname);
 		free(srealm);
@@ -765,7 +764,7 @@ public:
 		uint8_t *supwd=(uint8_t*)strdup(upwd.c_str());
 		uint8_t *snonce=(uint8_t*)strdup(nonce.c_str());
 
-		stun_attr_add_integrity_by_user_str(_buffer, &_sz, suname, srealm, supwd, snonce, SHATYPE_SHA1);
+		stun_attr_add_integrity_by_user_str(_buffer, &_sz, suname, srealm, supwd, snonce, SHATYPE_DEFAULT);
 
 		free(suname);
 		free(srealm);
@@ -785,7 +784,7 @@ public:
 		uint8_t *suname=(uint8_t*)strdup(uname.c_str());
 		uint8_t *supwd=(uint8_t*)strdup(upwd.c_str());
 
-		stun_attr_add_integrity_by_user_short_term_str(_buffer, &_sz, suname, supwd, SHATYPE_SHA1);
+		stun_attr_add_integrity_by_user_short_term_str(_buffer, &_sz, suname, supwd, SHATYPE_DEFAULT);
 
 		free(suname);
 		free(supwd);

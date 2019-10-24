@@ -1751,6 +1751,8 @@ size_t get_hmackey_size(SHATYPE shatype)
 		return 48;
 	if(shatype == SHATYPE_SHA512)
 		return 64;
+	if(shatype == SHATYPE_SHA1_OAUTH)
+		return 20;
 	return 16;
 }
 
@@ -1876,7 +1878,7 @@ int stun_check_message_integrity_by_key_str(turn_credential_type ct, uint8_t *bu
 		break;
 	case SHA1SIZEBYTES:
 		shasize = SHA1SIZEBYTES;
-		if(shatype != SHATYPE_SHA1)
+		if(shatype != SHATYPE_SHA1_MD5 && shatype != SHATYPE_SHA1_OAUTH)
 			return -1;
 		break;
 	default:

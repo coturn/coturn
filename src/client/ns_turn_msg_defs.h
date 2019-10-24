@@ -160,7 +160,8 @@
 enum _SHATYPE {
 	SHATYPE_ERROR = -1,
 	SHATYPE_DEFAULT=0,
-	SHATYPE_SHA1=SHATYPE_DEFAULT,
+	SHATYPE_SHA1_MD5=SHATYPE_DEFAULT,
+	SHATYPE_SHA1_OAUTH,
 	SHATYPE_SHA256,
 	SHATYPE_SHA384,
 	SHATYPE_SHA512
@@ -168,7 +169,7 @@ enum _SHATYPE {
 
 typedef enum _SHATYPE SHATYPE;
 
-#define shatype_name(sht) ((sht == SHATYPE_SHA1) ? "SHA1" : ((sht == SHATYPE_SHA256) ? "SHA256" : ((sht == SHATYPE_SHA384) ? "SHA384" : "SHA512")))
+#define shatype_name(sht) ((sht == SHATYPE_SHA1_MD5) ? "SHA1-MD5" : ((sht == SHATYPE_SHA1_OAUTH) ? "SHA1-OAUTH" : ((sht == SHATYPE_SHA256) ? "SHA256" : ((sht == SHATYPE_SHA384) ? "SHA384" : "SHA512")))
 
 /* <<== SHA */
 
