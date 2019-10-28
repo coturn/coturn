@@ -33,6 +33,8 @@ Version 4.5.1.2 'dan Eider':
 	- merge PR #417 Append only to log files rather to override them (by robert-scheck)
 	- merge PR #442 Updated incorrect string length check for 'ssh' (by chanduthedev)
 	- merge PR #449 Fix Dockerfile for latest Debian (by rao-donut)
+	- fix OAuth SHA1 HMAC key length issue #189
+	- fix OAuth utility expiry warning
 
 02/03/2019 Oleg Moskalenko <mom040267@gmail.com> Mihály Mészáros <misi@majd.eu>
 Version 4.5.1.1 'dan Eider':
