@@ -1358,10 +1358,34 @@ stun_attr_ref stun_attr_get_first_by_type_str(const uint8_t* buf, size_t len, ui
   return NULL;
 }
 
+static stun_attr_ref stun_attr_check_valid(stun_attr_ref attr, size_t remaining) {
+
+  if(remaining >= 4) {
+    /* Read the size of the attribute */
+    int attrlen = stun_attr_get_len(attr);
+    remaining -= 4;
+
+    /* Round to boundary */
+    uint16_t rem4 = ((uint16_t)attrlen) & 0x0003;
+    if(rem4) {
+      attrlen = attrlen+4-(int)rem4;
+    }
+
+    /* Check that there's enough space remaining */
+    if(attrlen <= remaining) {
+      return attr;
+    }
+  }
+
+  return NULL;
+}
+
 stun_attr_ref stun_attr_get_first_str(const uint8_t* buf, size_t len) {
 
-  if(stun_get_command_message_len_str(buf,len)>STUN_HEADER_LENGTH) {
-    return (stun_attr_ref)(buf+STUN_HEADER_LENGTH);
+  int bufLen = stun_get_command_message_len_str(buf,len);
+  if(bufLen > STUN_HEADER_LENGTH) {
+    stun_attr_ref attr = (stun_attr_ref)(buf+STUN_HEADER_LENGTH);
+    return stun_attr_check_valid(attr, bufLen - STUN_HEADER_LENGTH);
   }
 
   return NULL;
@@ -1377,8 +1401,11 @@ stun_attr_ref stun_attr_get_next_str(const uint8_t* buf, size_t len, stun_attr_r
     if(rem4) {
       attrlen = attrlen+4-(int)rem4;
     }
-    const uint8_t* attr_end=(const uint8_t*)prev+4+attrlen;
-    if(attr_end<end) return attr_end;
+    /* Note the order here: operations on attrlen are untrusted as they may overflow */
+    if(attrlen < end - (const uint8_t*)prev - 4) {
+      const uint8_t* attr_end=(const uint8_t*)prev+4+attrlen;
+      return stun_attr_check_valid(attr_end, end - attr_end);
+    }
     return NULL;
   }
 }
