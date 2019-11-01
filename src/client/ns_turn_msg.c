@@ -119,7 +119,7 @@ int stun_calculate_hmac(const uint8_t *buf, size_t len, const uint8_t *key, size
 
 	if(shatype == SHATYPE_SHA256) {
 #if !defined(OPENSSL_NO_SHA256) && defined(SHA256_DIGEST_LENGTH)
-	  if (!HMAC(EVP_sha256(), key, keylen, buf, len, hmac, hmac_len)) {
+	  if (!HMAC(EVP_sha256(), key, (int)keylen, buf, len, hmac, hmac_len)) {
 	    return -1;
 	  }
 #else
@@ -128,7 +128,7 @@ int stun_calculate_hmac(const uint8_t *buf, size_t len, const uint8_t *key, size
 #endif
 	} else if(shatype == SHATYPE_SHA384) {
 #if !defined(OPENSSL_NO_SHA384) && defined(SHA384_DIGEST_LENGTH)
-	  if (!HMAC(EVP_sha384(), key, keylen, buf, len, hmac, hmac_len)) {
+	  if (!HMAC(EVP_sha384(), key, (int)keylen, buf, len, hmac, hmac_len)) {
 	    return -1;
 	  }
 #else
@@ -137,7 +137,7 @@ int stun_calculate_hmac(const uint8_t *buf, size_t len, const uint8_t *key, size
 #endif
 	} else if(shatype == SHATYPE_SHA512) {
 #if !defined(OPENSSL_NO_SHA512) && defined(SHA512_DIGEST_LENGTH)
-	  if (!HMAC(EVP_sha512(), key, keylen, buf, len, hmac, hmac_len)) {
+	  if (!HMAC(EVP_sha512(), key, (int)keylen, buf, len, hmac, hmac_len)) {
 	    return -1;
 	  }
 #else
@@ -145,7 +145,7 @@ int stun_calculate_hmac(const uint8_t *buf, size_t len, const uint8_t *key, size
 	  return -1;
 #endif
 	} else
-	  if (!HMAC(EVP_sha1(), key, keylen, buf, len, hmac, hmac_len)) {
+	  if (!HMAC(EVP_sha1(), key, (int)keylen, buf, len, hmac, hmac_len)) {
 	    return -1;
 	  }
 
@@ -714,7 +714,7 @@ static void stun_init_error_response_common_str(uint8_t* buf, size_t *len,
 	avalue[3] = (uint8_t) (error_code % 100);
 	strncpy((char*) (avalue + 4), (const char*) reason, sizeof(avalue)-4);
 	avalue[sizeof(avalue)-1]=0;
-	int alen = 4 + strlen((const char*) (avalue+4));
+	int alen = 4 + (int)strlen((const char*) (avalue+4));
 
 	//"Manual" padding for compatibility with classic old stun:
 	{
@@ -1054,7 +1054,7 @@ int stun_set_allocate_response_str(uint8_t* buf, size_t *len, stun_tid* tid,
     }
 
     if(mobile_id && *mobile_id) {
-	    if(stun_attr_add_str(buf,len,STUN_ATTRIBUTE_MOBILITY_TICKET,(uint8_t*)mobile_id,strlen(mobile_id))<0) return -1;
+	    if(stun_attr_add_str(buf,len,STUN_ATTRIBUTE_MOBILITY_TICKET,(uint8_t*)mobile_id,(int)strlen(mobile_id))<0) return -1;
     }
 
   } else {
@@ -1503,7 +1503,7 @@ int stun_attr_add_channel_number_str(uint8_t* buf, size_t *len, uint16_t chnumbe
 
 int stun_attr_add_bandwidth_str(uint8_t* buf, size_t *len, band_limit_t bps0) {
 
-	uint32_t bps = (band_limit_t)(bps0 >> 7);
+	uint32_t bps = (uint32_t)(band_limit_t)(bps0 >> 7);
 
 	uint32_t field=nswap32(bps);
 
@@ -1521,7 +1521,7 @@ int stun_attr_add_address_error_code(uint8_t* buf, size_t *len, int requested_ad
 	avalue[3] = (uint8_t) (error_code % 100);
 	strncpy((char*) (avalue + 4), (const char*) reason, sizeof(avalue)-4);
 	avalue[sizeof(avalue)-1]=0;
-	int alen = 4 + strlen((const char*) (avalue+4));
+	int alen = 4 + (int)strlen((const char*) (avalue+4));
 
 	//"Manual" padding for compatibility with classic old stun:
 	{
@@ -1590,7 +1590,7 @@ int stun_attr_add_fingerprint_str(uint8_t *buf, size_t *len)
 {
 	uint32_t crc32 = 0;
 	stun_attr_add_str(buf, len, STUN_ATTRIBUTE_FINGERPRINT, (uint8_t*)&crc32, 4);
-	crc32 = ns_crc32(buf,*len-8);
+	crc32 = ns_crc32(buf,(int)*len-8);
 	*((uint32_t*)(buf+*len-4)) = nswap32(crc32 ^ ((uint32_t)0x5354554e));
 	return 0;
 }
@@ -1800,13 +1800,13 @@ int stun_attr_add_integrity_str(turn_credential_type ct, uint8_t *buf, size_t *l
 
 int stun_attr_add_integrity_by_key_str(uint8_t *buf, size_t *len, const uint8_t *uname, const uint8_t *realm, hmackey_t key, const uint8_t *nonce, SHATYPE shatype)
 {
-	if(stun_attr_add_str(buf, len, STUN_ATTRIBUTE_USERNAME, uname, strlen((const char*)uname))<0)
+	if(stun_attr_add_str(buf, len, STUN_ATTRIBUTE_USERNAME, uname, (int)strlen((const char*)uname))<0)
 			return -1;
 
-	if(stun_attr_add_str(buf, len, STUN_ATTRIBUTE_NONCE, nonce, strlen((const char*)nonce))<0)
+	if(stun_attr_add_str(buf, len, STUN_ATTRIBUTE_NONCE, nonce, (int)strlen((const char*)nonce))<0)
 		return -1;
 
-	if(stun_attr_add_str(buf, len, STUN_ATTRIBUTE_REALM, realm, strlen((const char*)realm))<0)
+	if(stun_attr_add_str(buf, len, STUN_ATTRIBUTE_REALM, realm, (int)strlen((const char*)realm))<0)
 			return -1;
 
 	password_t p;
@@ -1825,7 +1825,7 @@ int stun_attr_add_integrity_by_user_str(uint8_t *buf, size_t *len, const uint8_t
 
 int stun_attr_add_integrity_by_user_short_term_str(uint8_t *buf, size_t *len, const uint8_t *uname, password_t pwd, SHATYPE shatype)
 {
-	if(stun_attr_add_str(buf, len, STUN_ATTRIBUTE_USERNAME, uname, strlen((const char*)uname))<0)
+	if(stun_attr_add_str(buf, len, STUN_ATTRIBUTE_USERNAME, uname, (int)strlen((const char*)uname))<0)
 			return -1;
 
 	hmackey_t key;
@@ -1887,7 +1887,7 @@ int stun_check_message_integrity_by_key_str(turn_credential_type ct, uint8_t *bu
 	if (orig_len < 0)
 		return -1;
 
-	int new_len = ((const uint8_t*) sar - buf) + 4 + shasize;
+	int new_len = (int)((const uint8_t*) sar - buf) + 4 + shasize;
 	if (new_len > orig_len)
 		return -1;
 
@@ -2397,7 +2397,7 @@ int decode_oauth_token_normal(const uint8_t *server_name, const encoded_oauth_to
 }
 
 static void generate_random_nonce(unsigned char *nonce, size_t sz) {
-	if(!RAND_bytes(nonce, sz)) {
+	if(!RAND_bytes(nonce, (int)sz)) {
 		size_t i;
 		for(i=0;i<sz;++i) {
 			nonce[i] = (unsigned char)random();
