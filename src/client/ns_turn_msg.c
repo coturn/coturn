@@ -152,23 +152,23 @@ int stun_calculate_hmac(const uint8_t *buf, size_t len, const uint8_t *key, size
 	return 0;
 }
 
-int stun_produce_integrity_key_str(uint8_t *uname, uint8_t *realm, uint8_t *upwd, hmackey_t key, SHATYPE shatype)
+int stun_produce_integrity_key_str(const uint8_t *uname, const uint8_t *realm, const uint8_t *upwd, hmackey_t key, SHATYPE shatype)
 {
 	ERR_clear_error();
 	UNUSED_ARG(shatype);
 
-	size_t ulen = strlen((char*)uname);
-	size_t rlen = strlen((char*)realm);
-	size_t plen = strlen((char*)upwd);
+	size_t ulen = strlen((const char*)uname);
+	size_t rlen = strlen((const char*)realm);
+	size_t plen = strlen((const char*)upwd);
 	size_t sz = ulen+1+rlen+1+plen+1+10;
 	size_t strl = ulen+1+rlen+1+plen;
 	uint8_t *str = (uint8_t*)malloc(sz+1);
 
-	strncpy((char*)str,(char*)uname,sz);
+	strncpy((char*)str,(const char*)uname,sz);
 	str[ulen]=':';
-	strncpy((char*)str+ulen+1,(char*)realm,sz-ulen-1);
+	strncpy((char*)str+ulen+1,(const char*)realm,sz-ulen-1);
 	str[ulen+1+rlen]=':';
-	strncpy((char*)str+ulen+1+rlen+1,(char*)upwd,sz-ulen-1-rlen-1);
+	strncpy((char*)str+ulen+1+rlen+1,(const char*)upwd,sz-ulen-1-rlen-1);
 	str[strl]=0;
 
 	if(shatype == SHATYPE_SHA256) {
@@ -1798,22 +1798,22 @@ int stun_attr_add_integrity_str(turn_credential_type ct, uint8_t *buf, size_t *l
 	return 0;
 }
 
-int stun_attr_add_integrity_by_key_str(uint8_t *buf, size_t *len, uint8_t *uname, uint8_t *realm, hmackey_t key, uint8_t *nonce, SHATYPE shatype)
+int stun_attr_add_integrity_by_key_str(uint8_t *buf, size_t *len, const uint8_t *uname, const uint8_t *realm, hmackey_t key, const uint8_t *nonce, SHATYPE shatype)
 {
-	if(stun_attr_add_str(buf, len, STUN_ATTRIBUTE_USERNAME, uname, strlen((char*)uname))<0)
+	if(stun_attr_add_str(buf, len, STUN_ATTRIBUTE_USERNAME, uname, strlen((const char*)uname))<0)
 			return -1;
 
-	if(stun_attr_add_str(buf, len, STUN_ATTRIBUTE_NONCE, nonce, strlen((char*)nonce))<0)
+	if(stun_attr_add_str(buf, len, STUN_ATTRIBUTE_NONCE, nonce, strlen((const char*)nonce))<0)
 		return -1;
 
-	if(stun_attr_add_str(buf, len, STUN_ATTRIBUTE_REALM, realm, strlen((char*)realm))<0)
+	if(stun_attr_add_str(buf, len, STUN_ATTRIBUTE_REALM, realm, strlen((const char*)realm))<0)
 			return -1;
 
 	password_t p;
 	return stun_attr_add_integrity_str(TURN_CREDENTIALS_LONG_TERM, buf, len, key, p, shatype);
 }
 
-int stun_attr_add_integrity_by_user_str(uint8_t *buf, size_t *len, uint8_t *uname, uint8_t *realm, uint8_t *upwd, uint8_t *nonce, SHATYPE shatype)
+int stun_attr_add_integrity_by_user_str(uint8_t *buf, size_t *len, const uint8_t *uname, const uint8_t *realm, const uint8_t *upwd, const uint8_t *nonce, SHATYPE shatype)
 {
 	hmackey_t key;
 
@@ -1823,9 +1823,9 @@ int stun_attr_add_integrity_by_user_str(uint8_t *buf, size_t *len, uint8_t *unam
 	return stun_attr_add_integrity_by_key_str(buf, len, uname, realm, key, nonce, shatype);
 }
 
-int stun_attr_add_integrity_by_user_short_term_str(uint8_t *buf, size_t *len, uint8_t *uname, password_t pwd, SHATYPE shatype)
+int stun_attr_add_integrity_by_user_short_term_str(uint8_t *buf, size_t *len, const uint8_t *uname, password_t pwd, SHATYPE shatype)
 {
-	if(stun_attr_add_str(buf, len, STUN_ATTRIBUTE_USERNAME, uname, strlen((char*)uname))<0)
+	if(stun_attr_add_str(buf, len, STUN_ATTRIBUTE_USERNAME, uname, strlen((const char*)uname))<0)
 			return -1;
 
 	hmackey_t key;
@@ -1917,13 +1917,13 @@ int stun_check_message_integrity_by_key_str(turn_credential_type ct, uint8_t *bu
 /*
  * Return -1 if failure, 0 if the integrity is not correct, 1 if OK
  */
-int stun_check_message_integrity_str(turn_credential_type ct, uint8_t *buf, size_t len, uint8_t *uname, uint8_t *realm, uint8_t *upwd, SHATYPE shatype)
+int stun_check_message_integrity_str(turn_credential_type ct, uint8_t *buf, size_t len, const uint8_t *uname, const uint8_t *realm, const uint8_t *upwd, SHATYPE shatype)
 {
 	hmackey_t key;
 	password_t pwd;
 
 	if(ct == TURN_CREDENTIALS_SHORT_TERM)
-		strncpy((char*)pwd,(char*)upwd,sizeof(password_t));
+		strncpy((char*)pwd,(const char*)upwd,sizeof(password_t));
 	else if (stun_produce_integrity_key_str(uname, realm, upwd, key, shatype) < 0)
 		return -1;
 
