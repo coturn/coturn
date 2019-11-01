@@ -522,11 +522,11 @@ int stun_is_challenge_response_str(const uint8_t* buf, size_t len, int *err_code
 				realm[vlen]=0;
 
 				{
-					stun_attr_ref sar = stun_attr_get_first_by_type_str(buf,len,STUN_ATTRIBUTE_THIRD_PARTY_AUTHORIZATION);
+					sar = stun_attr_get_first_by_type_str(buf,len,STUN_ATTRIBUTE_THIRD_PARTY_AUTHORIZATION);
 					if(sar) {
-						const uint8_t *value = stun_attr_get_value(sar);
+						value = stun_attr_get_value(sar);
 						if(value) {
-							size_t vlen = (size_t)stun_attr_get_len(sar);
+							vlen = (size_t)stun_attr_get_len(sar);
 							if(vlen>0) {
 								if(server_name) {
 									bcopy(value,server_name,vlen);
