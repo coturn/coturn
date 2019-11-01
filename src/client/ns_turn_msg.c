@@ -154,6 +154,8 @@ int stun_calculate_hmac(const uint8_t *buf, size_t len, const uint8_t *key, size
 
 int stun_produce_integrity_key_str(uint8_t *uname, uint8_t *realm, uint8_t *upwd, hmackey_t key, SHATYPE shatype)
 {
+	int ret;
+
 	ERR_clear_error();
 	UNUSED_ARG(shatype);
 
@@ -188,9 +190,10 @@ int stun_produce_integrity_key_str(uint8_t *uname, uint8_t *realm, uint8_t *upwd
 		EVP_DigestFinal(ctx,key,&keylen);
 		EVP_MD_CTX_free(ctx);
 #endif
+		ret = 0;
 #else
 		fprintf(stderr,"SHA256 is not supported\n");
-		return -1;
+		ret = -1;
 #endif
 	} else if(shatype == SHATYPE_SHA384) {
 #if !defined(OPENSSL_NO_SHA384) && defined(SHA384_DIGEST_LENGTH)
@@ -209,9 +212,10 @@ int stun_produce_integrity_key_str(uint8_t *uname, uint8_t *realm, uint8_t *upwd
 		EVP_DigestFinal(ctx,key,&keylen);
 		EVP_MD_CTX_free(ctx);
 #endif
+		ret = 0;
 #else
 		fprintf(stderr,"SHA384 is not supported\n");
-		return -1;
+		ret = -1;
 #endif
 	} else if(shatype == SHATYPE_SHA512) {
 #if !defined(OPENSSL_NO_SHA512) && defined(SHA512_DIGEST_LENGTH)
@@ -230,20 +234,22 @@ int stun_produce_integrity_key_str(uint8_t *uname, uint8_t *realm, uint8_t *upwd
 		EVP_DigestFinal(ctx,key,&keylen);
 		EVP_MD_CTX_free(ctx);
 #endif
+		ret = 0;
 #else
 		fprintf(stderr,"SHA512 is not supported\n");
-		return -1;
+		ret = -1;
 #endif
 	} else {
 		MD5_CTX ctx;
 		MD5_Init(&ctx);
 		MD5_Update(&ctx,str,strl);
 		MD5_Final(key,&ctx);
+		ret = 0;
 	}
 
 	free(str);
 
-	return 0;
+	return ret;
 }
 
 #define PWD_SALT_SIZE (8)
