@@ -360,7 +360,14 @@ int stun_get_command_message_len_str(const uint8_t* buf, size_t len)
 {
 	if (len < STUN_HEADER_LENGTH)
 		return -1;
-	return (int) (nswap16(((const uint16_t*)(buf))[1]) + STUN_HEADER_LENGTH);
+
+	/* Validate the size the buffer claims to be */
+	int bufLen = (int) (nswap16(((const uint16_t*)(buf))[1]) + STUN_HEADER_LENGTH);
+	if (bufLen > len) {
+		return -1;
+	}
+
+	return bufLen;
 }
 
 static int stun_set_command_message_len_str(uint8_t* buf, int len) {
