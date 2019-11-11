@@ -786,7 +786,7 @@ void print_abs_file_name(const char *msg1, const char *msg2, const char *fn)
       if(fn[0]=='/') {
 	STRCPY(absfn,fn);
       } else {
-	if(fn[0]=='.' && fn[1]=='/')
+	if(fn[0]=='.' && fn[1] && fn[1]=='/')
 	  fn+=2;
 	if(!getcwd(absfn,sizeof(absfn)-1))
 	  absfn[0]=0;
