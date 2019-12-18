@@ -82,7 +82,9 @@ static void server_input_handler(struct evconnlistener *l, evutil_socket_t fd,
 
 	SOCKET_TYPE st = TENTATIVE_TCP_SOCKET;
 
-	if(turn_params.no_tls)
+	if(turn_params.tcp_use_proxy)
+		st = TCP_SOCKET_PROXY;
+	else if(turn_params.no_tls)
 		st = TCP_SOCKET;
 	else if(turn_params.no_tcp)
 		st = TLS_SOCKET;
