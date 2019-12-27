@@ -39,12 +39,12 @@
 #include "dbd_mysql.h"
 #include "dbd_mongo.h"
 #include "dbd_redis.h"
+#include "dbd_rest.h"
 
 static void make_connection_key(void)
 {
     (void) pthread_key_create(&connection_key, NULL);
 }
-
 
 pthread_key_t connection_key;
 pthread_once_t connection_key_once = PTHREAD_ONCE_INIT;
@@ -102,6 +102,12 @@ const turn_dbdriver_t * get_dbdriver()
 #if !defined(TURN_NO_HIREDIS)
 		case TURN_USERDB_TYPE_REDIS:
 			_driver = get_redis_dbdriver();
+			break;
+#endif
+
+#if !defined(TURN_NO_REST)
+		case TURN_USERDB_TYPE_REST:
+			_driver = get_rest_dbdriver();
 			break;
 #endif
 		default:

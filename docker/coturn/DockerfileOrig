@@ -6,12 +6,12 @@ ENV BUILD_PREFIX /usr/local/src
 # Install build dependencies
 RUN export DEBIAN_FRONTEND=noninteractive && \
 	apt-get update && \
-	apt-get install -y build-essential git debhelper dpkg-dev libssl-dev libevent-dev sqlite3 libsqlite3-dev postgresql-client libpq-dev default-mysql-client default-libmysqlclient-dev libhiredis-dev libmongoc-dev libbson-devs
+	apt-get install -y build-essential git debhelper dpkg-dev libssl-dev libevent-dev sqlite3 libsqlite3-dev postgresql-client libpq-dev default-mysql-client default-libmysqlclient-dev libhiredis-dev libmongoc-dev libbson-dev libcurl4-openssl-dev libjson-c-dev
 
 RUN find / -name curl.h
 # Clone coTURN
 WORKDIR ${BUILD_PREFIX}
-RUN git clone -b https://github.com/coturn/coturn.git
+RUN git clone https://github.com/coturn/coturn.git
 
 # Build coTURN
 WORKDIR coturn
@@ -36,9 +36,16 @@ COPY --from=coturn-build ${BUILD_PREFIX}/coturn/turndb ${INSTALL_PREFIX}/turndb
 RUN export DEBIAN_FRONTEND=noninteractive && \
 	apt-get update && \
 	apt-get install -y libc6>=2.15 libevent-core-2.1-6>=libevent-core-2.1-6 libevent-extra-2.1-6>=2.1.8-stable-4 libevent-openssl-2.1-6>=2.1.8-stable-4 libevent-pthreads-2.1-6>=2.1.8-stable-4 libhiredis0.14>=0.14.0 libmariadbclient-dev>=10.3.17 libpq5>=8.4~ libsqlite3-0>=3.6.0 libssl1.1>=1.1.0 libmongoc-1.0 libbson-1.0
+RUN apt-get install -y default-mysql-client postgresql-client redis-tools
 
-#Install kamailiodb extension deps
-RUN apt-get install libcurl4-openssl-dev libjson-c-dev
+# Install MongoDB
+RUN apt-get update && \
+  apt-get install -y wget gnupg && \
+  wget -qO - https://www.mongodb.org/static/pgp/server-4.0.asc | apt-key add - && \
+  echo "deb http://repo.mongodb.org/apt/debian stretch/mongodb-org/4.0 main" | tee /etc/apt/sources.list.d/mongodb-org-4.0.list && \
+  echo "deb http://deb.debian.org/debian/ stretch main" | tee /etc/apt/sources.list.d/debian-stretch.list && \
+  apt-get update && \
+  apt-get install -y libcurl3 mongodb-org mongodb-org-server mongodb-org
 
 RUN if ! getent group "$TURNSERVER_GROUP" >/dev/null; then \
         addgroup --system "$TURNSERVER_GROUP" || exit 1 ;\

@@ -238,7 +238,7 @@ typedef struct _turn_params_ {
 
   char redis_statsdb[1025];
   int use_redis_statsdb;
-
+  
   struct listener_server listener;
 
   ip_range_list_t ip_whitelist;
@@ -322,6 +322,10 @@ typedef struct _turn_params_ {
   char secret_key_file[1025];
   unsigned char secret_key[1025];
   int keep_address_family;
+
+  ///////// REST //////////
+  char rest_client_content_type[64];
+  int use_remote_auth_api;
 
 } turn_params_t;
 
