@@ -182,11 +182,11 @@ void print_bin_func(const char *name, size_t len, const void *s, const char *fun
  * Return -1 if failure, 0 if the integrity is not correct, 1 if OK
  */
 int stun_check_message_integrity_by_key_str(turn_credential_type ct, uint8_t *buf, size_t len, hmackey_t key, password_t pwd, SHATYPE shatype);
-int stun_check_message_integrity_str(turn_credential_type ct, uint8_t *buf, size_t len, uint8_t *uname, uint8_t *realm, uint8_t *upwd, SHATYPE shatype);
+int stun_check_message_integrity_str(turn_credential_type ct, uint8_t *buf, size_t len, const uint8_t *uname, const uint8_t *realm, const uint8_t *upwd, SHATYPE shatype);
 int stun_attr_add_integrity_str(turn_credential_type ct, uint8_t *buf, size_t *len, hmackey_t key, password_t pwd, SHATYPE shatype);
-int stun_attr_add_integrity_by_key_str(uint8_t *buf, size_t *len, uint8_t *uname, uint8_t *realm, hmackey_t key, uint8_t *nonce, SHATYPE shatype);
-int stun_attr_add_integrity_by_user_str(uint8_t *buf, size_t *len, uint8_t *uname, uint8_t *realm, uint8_t *upwd, uint8_t *nonce, SHATYPE shatype);
-int stun_attr_add_integrity_by_user_short_term_str(uint8_t *buf, size_t *len, uint8_t *uname, password_t pwd, SHATYPE shatype);
+int stun_attr_add_integrity_by_key_str(uint8_t *buf, size_t *len, const uint8_t *uname, const uint8_t *realm, hmackey_t key, const uint8_t *nonce, SHATYPE shatype);
+int stun_attr_add_integrity_by_user_str(uint8_t *buf, size_t *len, const uint8_t *uname, const uint8_t *realm, const uint8_t *upwd, const uint8_t *nonce, SHATYPE shatype);
+int stun_attr_add_integrity_by_user_short_term_str(uint8_t *buf, size_t *len, const uint8_t *uname, password_t pwd, SHATYPE shatype);
 size_t get_hmackey_size(SHATYPE shatype);
 
 /*
@@ -196,7 +196,7 @@ size_t get_hmackey_size(SHATYPE shatype);
 #define TURN_RANDOM_SIZE (sizeof(long))
 long turn_random(void);
 
-int stun_produce_integrity_key_str(uint8_t *uname, uint8_t *realm, uint8_t *upwd, hmackey_t key, SHATYPE shatype);
+int stun_produce_integrity_key_str(const uint8_t *uname, const uint8_t *realm, const uint8_t *upwd, hmackey_t key, SHATYPE shatype);
 int stun_calculate_hmac(const uint8_t *buf, size_t len, const uint8_t *key, size_t sz, uint8_t *hmac, unsigned int *hmac_len, SHATYPE shatype);
 
 /* RFC 5780 */
