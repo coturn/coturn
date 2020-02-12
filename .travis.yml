@@ -13,7 +13,7 @@ matrix:
   include:
   - os: linux
     arch: amd64
-    dist: xenial
+    dist: bionic
     sudo: required
     addons:
       apt:
@@ -31,7 +31,7 @@ matrix:
         - libhiredis-dev
   - os: linux
     arch: arm64
-    dist: precise
+    dist: bionic
     sudo: required
     addons:
       apt:
