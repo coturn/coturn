@@ -103,7 +103,7 @@ const char* get_http_date_header()
 
 static struct headers_list * post_parse(char *data, size_t data_len)
 {
-	while((*data=='\r')||(*data=='\n')) ++data;
+	while((*data=='\r')||(*data=='\n')) { ++data; --data_len; }
 	char *post_data = (char*)calloc(data_len + 1, sizeof(char));
 	memcpy(post_data, data, data_len);
 	char *fmarker = NULL;
