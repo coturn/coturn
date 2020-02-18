@@ -240,10 +240,28 @@ int stun_produce_integrity_key_str(const uint8_t *uname, const uint8_t *realm, c
 		ret = -1;
 #endif
 	} else {
-		MD5_CTX ctx;
-		MD5_Init(&ctx);
-		MD5_Update(&ctx,str,strl);
-		MD5_Final(key,&ctx);
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+		unsigned int keylen = 0;
+		EVP_MD_CTX ctx;
+		EVP_MD_CTX_init(&ctx);
+		if (FIPS_mode()) {
+			EVP_MD_CTX_set_flags(&ctx,EVP_MD_CTX_FLAG_NON_FIPS_ALLOW);
+		}
+		EVP_DigestInit_ex(&ctx,EVP_md5(), NULL);
+		EVP_DigestUpdate(&ctx,str,strl);
+		EVP_DigestFinal(&ctx,key,&keylen);
+		EVP_MD_CTX_cleanup(&ctx);
+#else
+		unsigned int keylen = 0;
+		EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+		if (FIPS_mode()) {
+			EVP_MD_CTX_set_flags(ctx, EVP_MD_CTX_FLAG_NON_FIPS_ALLOW);
+		}
+		EVP_DigestInit_ex(ctx,EVP_md5(), NULL);
+		EVP_DigestUpdate(ctx,str,strl);
+		EVP_DigestFinal(ctx,key,&keylen);
+		EVP_MD_CTX_free(ctx);
+#endif
 		ret = 0;
 	}
 
