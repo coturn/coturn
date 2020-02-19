@@ -103,36 +103,45 @@ const char* get_http_date_header()
 
 static struct headers_list * post_parse(char *data, size_t data_len)
 {
-	while((*data=='\r')||(*data=='\n')) ++data;
-	char *post_data = (char*)calloc(data_len + 1, sizeof(char));
-	memcpy(post_data, data, data_len);
-	char *fmarker = NULL;
-	char *fsplit = strtok_r(post_data, "&", &fmarker);
-	struct headers_list *list = (struct headers_list*)malloc(sizeof(struct headers_list));
-	bzero(list,sizeof(struct headers_list));
-	while (fsplit != NULL) {
-		char *vmarker = NULL;
-		char *key = strtok_r(fsplit, "=", &vmarker);
-		char *value = strtok_r(NULL, "=", &vmarker);
-		char empty[1];
-		empty[0]=0;
-		value = value ? value : empty;
-		value = evhttp_decode_uri(value);
-		char *p = value;
-		while (*p) {
-			if (*p == '+')
-				*p = ' ';
-			p++;
+	while((*data=='\r')||(*data=='\n')) { ++data; --data_len; }
+	if (data_len) {
+		char *post_data = (char*)calloc(data_len + 1, sizeof(char));
+		if (post_data != NULL) {
+			memcpy(post_data, data, data_len);
+			char *fmarker = NULL;
+			char *fsplit = strtok_r(post_data, "&", &fmarker);
+			struct headers_list *list = (struct headers_list*)malloc(sizeof(struct headers_list));
+			bzero(list,sizeof(struct headers_list));
+			while (fsplit != NULL) {
+				char *vmarker = NULL;
+				char *key = strtok_r(fsplit, "=", &vmarker);
+				if (key == NULL)
+					break;
+				else {
+					char *value = strtok_r(NULL, "=", &vmarker);
+					char empty[1];
+					empty[0]=0;
+					value = value ? value : empty;
+					value = evhttp_decode_uri(value);
+					char *p = value;
+					while (*p) {
+						if (*p == '+')
+							*p = ' ';
+						p++;
+					}
+					list->keys = (char**)realloc(list->keys,sizeof(char*)*(list->n+1));
+					list->keys[list->n] = strdup(key);
+					list->values = (char**)realloc(list->values,sizeof(char*)*(list->n+1));
+					list->values[list->n] = value;
+					++(list->n);
+					fsplit = strtok_r(NULL, "&", &fmarker);
+				}
+			}
+			free(post_data);
+			return list;
 		}
-		list->keys = (char**)realloc(list->keys,sizeof(char*)*(list->n+1));
-		list->keys[list->n] = strdup(key);
-		list->values = (char**)realloc(list->values,sizeof(char*)*(list->n+1));
-		list->values[list->n] = value;
-		++(list->n);
-		fsplit = strtok_r(NULL, "&", &fmarker);
 	}
-	free(post_data);
-	return list;
+	return NULL;
 }
 
 static struct http_request* parse_http_request_1(struct http_request* ret, char* request, int parse_post)
