@@ -393,7 +393,8 @@ static void set_rtpfile(void)
 		else
 			snprintf(logtail, FILE_STR_LEN, "turn_%d_", (int)getpid());
 
-		snprintf(logbase, FILE_STR_LEN, "/var/log/turnserver/%s", logtail);
+		if (snprintf(logbase, FILE_STR_LEN, "/var/log/turnserver/%s", logtail)<0)
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "String truncation occured.\n");
 
 		set_log_file_name(logbase, logf);
 
@@ -401,20 +402,24 @@ static void set_rtpfile(void)
 		if(_rtpfile)
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "log file opened: %s\n", logf);
 		else {
-			snprintf(logbase, FILE_STR_LEN, "/var/log/%s", logtail);
+			if (snprintf(logbase, FILE_STR_LEN, "/var/log/%s", logtail)<0)
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "String truncation occured.\n");
 
 			set_log_file_name(logbase, logf);
 			_rtpfile = fopen(logf, "a");
 			if(_rtpfile)
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "log file opened: %s\n", logf);
 			else {
-				snprintf(logbase, FILE_STR_LEN, "/var/tmp/%s", logtail);
+				if (snprintf(logbase, FILE_STR_LEN, "/var/tmp/%s", logtail)<0)
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "String truncation occured.\n");
+
 				set_log_file_name(logbase, logf);
 				_rtpfile = fopen(logf, "a");
 				if(_rtpfile)
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "log file opened: %s\n", logf);
 				else {
-					snprintf(logbase, FILE_STR_LEN, "/tmp/%s", logtail);
+					if (snprintf(logbase, FILE_STR_LEN, "/tmp/%s", logtail)<0)
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "String truncation occured.\n");
 					set_log_file_name(logbase, logf);
 					_rtpfile = fopen(logf, "a");
 					if(_rtpfile)

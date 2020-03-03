@@ -386,7 +386,7 @@ int stun_get_command_message_len_str(const uint8_t* buf, size_t len)
 		return -1;
 
 	/* Validate the size the buffer claims to be */
-	int bufLen = (int) (nswap16(((const uint16_t*)(buf))[1]) + STUN_HEADER_LENGTH);
+	size_t bufLen = (size_t) (nswap16(((const uint16_t*)(buf))[1]) + STUN_HEADER_LENGTH);
 	if (bufLen > len) {
 		return -1;
 	}
@@ -1386,7 +1386,7 @@ static stun_attr_ref stun_attr_check_valid(stun_attr_ref attr, size_t remaining)
 
   if(remaining >= 4) {
     /* Read the size of the attribute */
-    int attrlen = stun_attr_get_len(attr);
+    size_t attrlen = stun_attr_get_len(attr);
     remaining -= 4;
 
     /* Round to boundary */
