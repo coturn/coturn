@@ -448,7 +448,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 " -v, --verbose					'Moderate' verbose mode.\n"
 " -V, --Verbose					Extra verbose mode, very annoying (for debug purposes only).\n"
 " -o, --daemon					Start process as daemon (detach from current shell).\n"
-" --prod       	 				Production mode: hide the software version.\n"
+" --no-software-attribute	 		Production mode: hide the software version (formerly --prod).\n"
 " -f, --fingerprint				Use fingerprints in the TURN messages.\n"
 " -a, --lt-cred-mech				Use the long-term credential mechanism.\n"
 " -z, --no-auth					Do not use any credential mechanism, allow anonymous access.\n"
@@ -779,7 +779,7 @@ enum EXTRA_OPTS {
 	ADMIN_USER_QUOTA_OPT,
 	SERVER_NAME_OPT,
 	OAUTH_OPT,
-	PROD_OPT,
+	NO_SOFTWARE_ATTRIBUTE_OPT,
 	NO_HTTP_OPT,
 	SECRET_KEY_OPT
 };
@@ -844,7 +844,8 @@ static const struct myoption long_options[] = {
 				{ "verbose", optional_argument, NULL, 'v' },
 				{ "Verbose", optional_argument, NULL, 'V' },
 				{ "daemon", optional_argument, NULL, 'o' },
-				{ "prod", optional_argument, NULL, PROD_OPT },
+/* deprecated: */		{ "prod", optional_argument, NULL, NO_SOFTWARE_ATTRIBUTE_OPT },
+				{ "no-software-attribute", optional_argument, NULL, NO_SOFTWARE_ATTRIBUTE_OPT },
 				{ "fingerprint", optional_argument, NULL, 'f' },
 				{ "check-origin-consistency", optional_argument, NULL, CHECK_ORIGIN_CONSISTENCY_OPT },
 				{ "no-udp", optional_argument, NULL, NO_UDP_OPT },
@@ -1378,8 +1379,8 @@ static void set_option(int c, char *value)
 			anon_credentials = 1;
 		}
 		break;
-	case PROD_OPT:
-		turn_params.prod = get_bool_value(value);
+	case NO_SOFTWARE_ATTRIBUTE_OPT:
+		turn_params.no_software_attribute = get_bool_value(value);
 		break;
 	case 'f':
 		turn_params.fingerprint = get_bool_value(value);

@@ -158,7 +158,7 @@ Flags:
 
 -o, --daemon		Run server as daemon.
 
---prod       	 	Production mode: hide the software version.
+--no-software-attribute	Production mode: hide the software version.
 
 -f, --fingerprint	Use fingerprints in the TURN messages. If an incoming request
 			contains a fingerprint, then TURN server will always add 
