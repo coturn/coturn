@@ -530,10 +530,10 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						The connection string has the same parameters as redis-userdb connection string.\n"
 #endif
 #if !defined(TURN_NO_REST)
-" --rest-userdb				<connection-string>	REST server connection string that will be used as callback for 3d party REST server\n"
+" --http-backend-userdb	<connection-string>	HTTP server connection string that will be used as callback for 3d party HTTP server\n"
 "						must contain <http(s)://URL/postfix> that configured on 3d patry service\n"
-" --rest-content-type			[json|xml|urlencoded]	(!!!ONLY json supported for now!!!) Type of the response body\n"
-" 						that will be sent from 3d party REST server and must be parsed by coturn\n"
+" --http-backend-content-type   [json|xml|urlencoded]	(!!!ONLY json supported for now!!!) Type of the response body\n"
+" 						        that will be sent from 3d party HTTP server and must be parsed by coturn\n"
 " --use-remote-auth-api 				Flag that says that server have to use 3-d party server to get secrets\n" 
 "						(!!! Do not use is together with --use-auth-secret	and --static-auth-secret keys)\n"
 #endif
@@ -720,7 +720,7 @@ static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
 	"					Setting to zero value means removal of the option.\n"
 	"	-h, --help			Help\n";
 
-#define OPTIONS "c:d:p:L:E:X:i:m:l:r:u:b:B:e:M:J:N:O:q:Q:s:C:K:vVofhznaAS"
+#define OPTIONS "c:d:p:L:E:X:i:m:l:r:u:b:B:e:M:J:N:W:O:q:Q:s:C:K:vVofhznaAS"
 
 #define ADMIN_OPTIONS "PEgGORIHKYlLkaADSdb:e:M:J:N:u:r:p:s:X:o:h:x:v:f:"
 
@@ -847,8 +847,8 @@ static const struct myoption long_options[] = {
 				{ "redis-statsdb", required_argument, NULL, 'O' },
 #endif
 #if !defined(TURN_NO_REST)
-				{ "rest-userdb", required_argument, NULL, 'W' },
-				{ "rest-content-type", required_argument, NULL, 'w' },
+				{ "http-backend-userdb", required_argument, NULL, 'W' },
+				{ "http-backend-content-type", required_argument, NULL, 'w' },
 				{ "use-remote-auth-api", optional_argument, NULL, REMOTE_AUTH_API },
 #endif
 				{ "use-auth-secret", optional_argument, NULL, AUTH_SECRET_OPT },
