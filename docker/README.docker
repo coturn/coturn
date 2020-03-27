@@ -1,5 +1,5 @@
 Before you begin
- * copy db schema run ./cp_schema.sh
+ * copy db schema run ./cp-schema.sh
  * edit turnserver/turnserver.cfg according your db selection (mysql or postgresql or redis or mongodb)
 
 # start

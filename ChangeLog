@@ -33,6 +33,24 @@ Version 4.5.1.2 'dan Eider':
 	- merge PR #417 Append only to log files rather to override them (by robert-scheck)
 	- merge PR #442 Updated incorrect string length check for 'ssh' (by chanduthedev)
 	- merge PR #449 Fix Dockerfile for latest Debian (by rao-donut)
+	- http server NULL dereference
+		* Reported (by quarkslab.com, cisco/talos)
+		* CVE-2020-6061 / TALOS-2020-0984
+	- http server out of bound read
+		* Reported (by quarkslab.com, cisco/talos)
+		* CVE-2020-6061 / TALOS-2020-0984
+	- merge PR #472 STUN input validation (by bobsayshilol)
+	- merge PR #398 FIPS (by  byronclark)
+	- merge PR #478 prod (by alepolidori)
+	- merge PR #463 fix typos and grammar (by xthursdayx)
+	- update travis config ubuntu/mac images
+	- merge PR #466 added null check for second char (by chanduthedev)
+	- merge PR #470 compiler warning fixes (by bobsayshilol)
+	- merge PR #475 Update README.docker (by raksonibs)
+	- merge PR #471 Fix a memory leak when an SHATYPE isn't supported (by bobsayshilol)
+	- merge PR #488 Fix typos about INSTALL filenames (by raccoonback)
+	- fix compiler warning comparison between signed and unsigned integer expressions
+	- fix compiler warning string truncation
 
 02/03/2019 Oleg Moskalenko <mom040267@gmail.com> Mihály Mészáros <misi@majd.eu>
 Version 4.5.1.1 'dan Eider':

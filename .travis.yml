@@ -13,7 +13,7 @@ matrix:
   include:
   - os: linux
     arch: amd64
-    dist: xenial
+    dist: bionic
     sudo: required
     addons:
       apt:
@@ -31,7 +31,7 @@ matrix:
         - libhiredis-dev
   - os: linux
     arch: arm64
-    dist: precise
+    dist: bionic
     sudo: required
     addons:
       apt:
@@ -65,7 +65,7 @@ matrix:
         - libmysqlclient-dev
         - libhiredis-dev
   - os: osx
-    osx_image: xcode10.3
+    osx_image: xcode11.3
 #  - os: osx
 #    osx_image: xcode9.4
 
