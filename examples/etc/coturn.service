@@ -1,5 +1,5 @@
 [Unit]
-Description=coTURN STUN/TURN Server
+Description=Coturn STUN/TURN Server
 Documentation=man:coturn(1) man:turnadmin(1) man:turnserver(1)
 After=network.target
 After=network-online.target
