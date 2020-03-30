@@ -37,12 +37,12 @@ according RFC5780. This utility discovers the actual NAT Mapping and Filtering
 behavior, etc. Be aware that on TURN server side two different listening IP
 addresses should be configured to be able to work properly!
 
-6.	turnutils_oauth: a utility that provides OAuth access_token 
-generation(AEAD encryption), validation and decryption. This utility inputs 
-all the keys and lifetimes and any related information that needed for 
-creation and validationi of an access_token. It outputs a JSON with all OAuth 
-PoP parameters that need to pass to the client. Output is generated accoriding 
-RFC7635 Appendix B, Figure 8. 
+6.	turnutils_oauth: a utility that provides OAuth access_token
+generation(AEAD encryption), validation and decryption. This utility inputs
+all the keys and lifetimes and any related information that needed for
+creation and validationi of an access_token. It outputs a JSON with all OAuth
+PoP parameters that need to pass to the client. Output is generated accoriding
+RFC7635 Appendix B, Figure 8.
 
 For more details, and for the access_token structure, read rfc7635, and see
 script in examples/scripts/oauth.sh.
@@ -312,15 +312,15 @@ $ turnutils_oauth [options]
 
   DESCRIPTION
 
-turnutils_oauth utilitiy provides help in OAuth access_token encryption and/or 
-decryption with AEAD (Atuthenticated Encryption with Associated Data). It helps 
-for an Auth Server in access_token creation, and also for debugging purposes it 
-helps the access_token validation and decryption. This utility inputs all the 
-keys and lifetimes and any related information that are needed for encryption 
-or decryption of an access_token. It outputs a JSON with all OAuth PoP 
-parameters that need to pass to the client. Output is generated accoriding 
-RFC7635 Appendix B, Figure 8. This utility could help to build an Auth Server 
-service, but be awere that this utility does not generate "session key" / 
+turnutils_oauth utilitiy provides help in OAuth access_token encryption and/or
+decryption with AEAD (Atuthenticated Encryption with Associated Data). It helps
+for an Auth Server in access_token creation, and also for debugging purposes it
+helps the access_token validation and decryption. This utility inputs all the
+keys and lifetimes and any related information that are needed for encryption
+or decryption of an access_token. It outputs a JSON with all OAuth PoP
+parameters that need to pass to the client. Output is generated accoriding
+RFC7635 Appendix B, Figure 8. This utility could help to build an Auth Server
+service, but be awere that this utility does not generate "session key" /
 "mac_key" and not verifies lifetime of "session key" / "mac_key" or "Auth key".
 For more details, and for the access_token structure, read rfc7635, and see
 the example in examples/scripts/oauth.sh.
