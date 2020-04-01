@@ -30,6 +30,8 @@
 
 #include "mainrelay.h"
 #include "dbdrivers/dbdriver.h"
+#include "prom_server.h"
+
 
 #if (defined LIBRESSL_VERSION_NUMBER && OPENSSL_VERSION_NUMBER == 0x20000000L)
 #undef OPENSSL_VERSION_NUMBER
@@ -2432,6 +2434,7 @@ int main(int argc, char **argv)
 	event_add(ev, NULL);
 
 	drop_privileges();
+	start_prometheus_server();
 
 	run_listener_server(&(turn_params.listener));
 
