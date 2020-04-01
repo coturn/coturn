@@ -30,8 +30,8 @@ HIREDIS_MODS = src/apps/common/hiredis_libevent2.c
 USERDB_HEADERS = src/apps/relay/dbdrivers/dbdriver.h src/apps/relay/dbdrivers/dbd_sqlite.h src/apps/relay/dbdrivers/dbd_pgsql.h src/apps/relay/dbdrivers/dbd_mysql.h src/apps/relay/dbdrivers/dbd_mongo.h src/apps/relay/dbdrivers/dbd_redis.h
 USERDB_MODS = src/apps/relay/dbdrivers/dbdriver.c src/apps/relay/dbdrivers/dbd_sqlite.c src/apps/relay/dbdrivers/dbd_pgsql.c src/apps/relay/dbdrivers/dbd_mysql.c src/apps/relay/dbdrivers/dbd_mongo.c src/apps/relay/dbdrivers/dbd_redis.c
 
-SERVERAPP_HEADERS = src/apps/relay/userdb.h src/apps/relay/tls_listener.h src/apps/relay/mainrelay.h src/apps/relay/turn_admin_server.h src/apps/relay/dtls_listener.h src/apps/relay/libtelnet.h ${HIREDIS_HEADERS} ${USERDB_HEADERS}
-SERVERAPP_MODS = src/apps/relay/mainrelay.c src/apps/relay/netengine.c src/apps/relay/libtelnet.c src/apps/relay/turn_admin_server.c src/apps/relay/userdb.c src/apps/relay/tls_listener.c src/apps/relay/dtls_listener.c ${HIREDIS_MODS} ${USERDB_MODS}
+SERVERAPP_HEADERS = src/apps/relay/userdb.h src/apps/relay/tls_listener.h src/apps/relay/mainrelay.h src/apps/relay/turn_admin_server.h src/apps/relay/dtls_listener.h src/apps/relay/libtelnet.h src/apps/relay/prom_server.h ${HIREDIS_HEADERS} ${USERDB_HEADERS}
+SERVERAPP_MODS = src/apps/relay/mainrelay.c src/apps/relay/netengine.c src/apps/relay/libtelnet.c src/apps/relay/turn_admin_server.c src/apps/relay/userdb.c src/apps/relay/tls_listener.c src/apps/relay/dtls_listener.c src/apps/relay/prom_server.c ${HIREDIS_MODS} ${USERDB_MODS}
 SERVERAPP_DEPS = ${SERVERTURN_MODS} ${SERVERTURN_DEPS} ${SERVERAPP_MODS} ${SERVERAPP_HEADERS} ${COMMON_DEPS} ${IMPL_DEPS} lib/libturnclient.a
 
 TURN_BUILD_RESULTS = bin/turnutils_oauth bin/turnutils_natdiscovery bin/turnutils_stunclient bin/turnutils_rfc5769check bin/turnutils_uclient bin/turnserver bin/turnutils_peer lib/libturnclient.a include/turn/ns_turn_defs.h sqlite_empty_db

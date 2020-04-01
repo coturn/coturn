@@ -876,6 +876,9 @@ testlib wldap64
 testlib intl
 testlib nsl
 testlib resolv
+testlib prom
+testlib promhttp
+testlib microhttpd
 
 ###########################
 # Test sockets compilation
