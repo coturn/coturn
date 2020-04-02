@@ -30,7 +30,10 @@
 
 #include "mainrelay.h"
 #include "dbdrivers/dbdriver.h"
+
+#if !defined(TURN_NO_PROMETHEUS)
 #include "prom_server.h"
+#endif
 
 
 #if (defined LIBRESSL_VERSION_NUMBER && OPENSSL_VERSION_NUMBER == 0x20000000L)
@@ -2434,7 +2437,10 @@ int main(int argc, char **argv)
 	event_add(ev, NULL);
 
 	drop_privileges();
+#if !defined(TURN_NO_PROMETHEUS)
 	start_prometheus_server();
+#endif
+
 
 	run_listener_server(&(turn_params.listener));
 

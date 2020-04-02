@@ -1,3 +1,5 @@
+#if !defined(TURN_NO_PROMETHEUS)
+
 #include "prom_server.h"
 
 int start_prometheus_server(void){
@@ -90,3 +92,5 @@ void prom_set_total_traffic(const char* realm, const char* user, unsigned long l
     prom_gauge_set(turn_total_traffic_sentb, sentb, (const char *[]) { realm , user, allocation_chars });
   }
 }
+
+#endif /* TURN_NO_PROMETHEUS */

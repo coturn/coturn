@@ -876,9 +876,6 @@ testlib wldap64
 testlib intl
 testlib nsl
 testlib resolv
-testlib prom
-testlib promhttp
-testlib microhttpd
 
 ###########################
 # Test sockets compilation
@@ -1052,6 +1049,47 @@ else
         ${ECHO_CMD} "ERROR: Libevent2 development libraries are not compiled with threads support."
         exit
     fi
+fi
+
+###########################
+# Test Prometheus
+###########################
+
+if [ -z "${TURN_NO_PROMETHEUS}" ] ; then
+
+	testlib prom
+	ER=$?
+	if ! [ ${ER} -eq 0 ] ; then
+		${ECHO_CMD} "Prometheus lib found."
+		testlib promhttp
+		ER=$?
+		if ! [ ${ER} -eq 0 ] ; then
+			${ECHO_CMD} "Prometheus http lib found."
+			testlib microhttpd
+			ER=$?
+			if ! [ ${ER} -eq 0 ] ; then
+				${ECHO_CMD} "Microhttpd lib found."
+			else
+				${ECHO_CMD} "ERROR: microhttpd development libraries are not installed properly in required location."
+				${ECHO_CMD} "Prometheus support will be disabled."
+				${ECHO_CMD} "See the INSTALL file."
+				OSCFLAGS="${OSCFLAGS} -DTURN_NO_PROMETHEUS"
+			fi
+		else
+			${ECHO_CMD} "ERROR: Libpromhttp development libraries are not installed properly in required location."
+			${ECHO_CMD} "Prometheus support will be disabled."
+        	${ECHO_CMD} "See the INSTALL file."
+			OSCFLAGS="${OSCFLAGS} -DTURN_NO_PROMETHEUS"
+		fi
+	else
+        ${ECHO_CMD} "ERROR: Libprom development libraries are not installed properly in required location."
+		${ECHO_CMD} "Prometheus support will be disabled."
+        ${ECHO_CMD} "See the INSTALL file."
+		OSCFLAGS="${OSCFLAGS} -DTURN_NO_PROMETHEUS"
+	fi
+		
+else
+	OSCFLAGS="${OSCFLAGS} -DTURN_NO_PROMETHEUS"
 fi
 
 ###########################
