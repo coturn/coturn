@@ -45,6 +45,7 @@ int start_prometheus_server(void);
 void prom_set_status(const char* realm, const char* user, unsigned long long allocation, const char* status, unsigned long lifetime);
 void prom_del_status(const char* realm, const char* user, unsigned long long allocation, const char* status);
 void prom_set_traffic(const char* realm, const char* user, unsigned long long allocation, unsigned long rsvp, unsigned long rsvb, unsigned long sentp, unsigned long sentb, bool peer);
+void prom_set_total_traffic(const char* realm, const char* user, unsigned long long allocation, unsigned long rsvp, unsigned long rsvb, unsigned long sentp, unsigned long sentb, bool peer);
 
 
 #ifdef __cplusplus
