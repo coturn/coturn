@@ -3620,25 +3620,11 @@ void turn_report_session_usage(void *session, int force_invalid)
 				}
 #endif
 				if(ss->realm_options.name[0]){
-					prom_set_rcvp(ss->realm_options.name, (const char *)ss->username, (unsigned long long)(ss->id), (unsigned long)(ss->received_packets));
-					prom_set_rcvb(ss->realm_options.name, (const char *)ss->username, (unsigned long long)(ss->id), (unsigned long)(ss->received_bytes));
-					prom_set_sentp(ss->realm_options.name, (const char *)ss->username, (unsigned long long)(ss->id), (unsigned long)(ss->sent_packets));
-					prom_set_sentb(ss->realm_options.name, (const char *)ss->username, (unsigned long long)(ss->id), (unsigned long)(ss->sent_bytes));
-
-					prom_set_peer_rcvp(ss->realm_options.name, (const char *)ss->username, (unsigned long long)(ss->id), (unsigned long)(ss->peer_received_packets));
-					prom_set_peer_rcvb(ss->realm_options.name, (const char *)ss->username, (unsigned long long)(ss->id), (unsigned long)(ss->peer_received_bytes));
-					prom_set_peer_sentp(ss->realm_options.name, (const char *)ss->username, (unsigned long long)(ss->id), (unsigned long)(ss->peer_sent_packets));
-					prom_set_peer_sentb(ss->realm_options.name, (const char *)ss->username, (unsigned long long)(ss->id), (unsigned long)(ss->peer_sent_bytes));
+					prom_set_traffic(ss->realm_options.name, (const char *)ss->username, (unsigned long long)(ss->id), (unsigned long)(ss->received_packets), (unsigned long)(ss->received_bytes), (unsigned long)(ss->sent_packets), (unsigned long)(ss->sent_bytes), false);
+					prom_set_traffic(ss->realm_options.name, (const char *)ss->username, (unsigned long long)(ss->id), (unsigned long)(ss->peer_received_packets), (unsigned long)(ss->peer_received_bytes), (unsigned long)(ss->peer_sent_packets), (unsigned long)(ss->peer_sent_bytes), true);
 				} else {
-					prom_set_rcvp(NULL, (const char *)ss->username, (unsigned long long)(ss->id), (unsigned long)(ss->received_packets));
-					prom_set_rcvb(NULL, (const char *)ss->username, (unsigned long long)(ss->id), (unsigned long)(ss->received_bytes));
-					prom_set_sentp(NULL, (const char *)ss->username, (unsigned long long)(ss->id), (unsigned long)(ss->sent_packets));
-					prom_set_sentb(NULL, (const char *)ss->username, (unsigned long long)(ss->id), (unsigned long)(ss->sent_bytes));
-
-					prom_set_peer_rcvp(NULL, (const char *)ss->username, (unsigned long long)(ss->id), (unsigned long)(ss->peer_received_packets));
-					prom_set_peer_rcvb(NULL, (const char *)ss->username, (unsigned long long)(ss->id), (unsigned long)(ss->peer_received_bytes));
-					prom_set_peer_sentp(NULL, (const char *)ss->username, (unsigned long long)(ss->id), (unsigned long)(ss->peer_sent_packets));
-					prom_set_peer_sentb(NULL, (const char *)ss->username, (unsigned long long)(ss->id), (unsigned long)(ss->peer_sent_bytes));
+					prom_set_traffic(NULL, (const char *)ss->username, (unsigned long long)(ss->id), (unsigned long)(ss->received_packets), (unsigned long)(ss->received_bytes), (unsigned long)(ss->sent_packets), (unsigned long)(ss->sent_bytes), false);
+					prom_set_traffic(NULL, (const char *)ss->username, (unsigned long long)(ss->id), (unsigned long)(ss->peer_received_packets), (unsigned long)(ss->peer_received_bytes), (unsigned long)(ss->peer_sent_packets), (unsigned long)(ss->peer_sent_bytes), true);
 				}
 				
 				ss->t_received_packets += ss->received_packets;
