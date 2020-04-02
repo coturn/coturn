@@ -1,0 +1,10 @@
+{
+    "files.associations": {
+        "prom_server.h": "c",
+        "stdlib.h": "c",
+        "stdio.h": "c",
+        "signal.h": "c",
+        "prom.h": "c",
+        "unistd.h": "c"
+    }
+}
