@@ -1882,7 +1882,8 @@ void setup_server(void)
 		}
 	}
 
-	{
+	// do not run auth server for remote auth api
+	if (!turn_params.use_remote_auth_api) {
 		authserver_id sn = 0;
 		for(sn = 0; sn < authserver_number;++sn) {
 			authserver[sn].id = sn;

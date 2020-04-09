@@ -1134,8 +1134,16 @@ static int get_bool_value(const char* s)
 	exit(-1);
 }
 
+static void switch_use_auth_secret_with_timestamp (int switcher) {
+	turn_params.use_auth_secret_with_timestamp = switcher;
+	use_tltc = switcher;
+	turn_params.ct = TURN_CREDENTIALS_LONG_TERM;
+	use_lt_credentials = switcher;
+}
+
 static void set_option(int c, char *value)
 {
+  
   if(value && value[0]=='=') {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: option -%c is possibly used incorrectly. The short form of the option must be used as this: -%c <value>, no \'equals\' sign may be used, that sign is used only with long form options (like --user=<username>).\n",(char)c,(char)c);
   }
@@ -1454,20 +1462,20 @@ static void set_option(int c, char *value)
 	case REMOTE_AUTH_API:
 		turn_params.use_remote_auth_api = 1;
 		turn_params.oauth = 0;
+		// Drop usage of auth_secret if it was passed
+		switch_use_auth_secret_with_timestamp(0);
 		break;
 #endif
 	case AUTH_SECRET_OPT:
-		turn_params.use_auth_secret_with_timestamp = 1;
-        use_tltc = 1;
-		turn_params.ct = TURN_CREDENTIALS_LONG_TERM;
-		use_lt_credentials = 1;
+		if ( turn_params.use_remote_auth_api == 1 ) 
+			break;
+		switch_use_auth_secret_with_timestamp(1);
 		break;
 	case STATIC_AUTH_SECRET_VAL_OPT:
+		if ( turn_params.use_remote_auth_api == 1 ) 
+			break;
 		add_to_secrets_list(&turn_params.default_users_db.ram_db.static_auth_secrets,value);
-		turn_params.use_auth_secret_with_timestamp = 1;
-        use_tltc = 1;
-		turn_params.ct = TURN_CREDENTIALS_LONG_TERM;
-		use_lt_credentials = 1;
+		switch_use_auth_secret_with_timestamp(1);
 		break;
 	case AUTH_SECRET_TS_EXP:
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: Option --secret-ts-exp-time deprecated and has no effect.\n");
