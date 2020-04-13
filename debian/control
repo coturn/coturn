@@ -2,8 +2,7 @@ Source: coturn
 Section: net
 Priority: optional
 Maintainer: Debian VoIP Team <pkg-voip-maintainers@lists.alioth.debian.org>
-Uploaders: Daniel Pocock <daniel@pocock.pro>,
-           Oleg Moskalenko <mom040267@gmail.com>,
+Uploaders: Oleg Moskalenko <mom040267@gmail.com>,
            Mészáros Mihály <misi@majd.eu>
 Build-Depends: debhelper (>=11.0.0),
                default-libmysqlclient-dev,

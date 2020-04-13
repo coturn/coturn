@@ -1,3 +1,12 @@
+coturn (4.5.1.1-1.2) unstable; urgency=medium
+
+  * Non-maintainer upload.
+  * Update Uploaders. (Closes: #953466)
+  * Fix "CVE-2020-6061 CVE-2020-6062" by applying upstream patch.
+    (Closes: #951876)
+
+ -- Tobias Frost <tobi@debian.org>  Mon, 13 Apr 2020 18:49:12 +0200
+
 coturn (4.5.1.1-1.1) unstable; urgency=medium
 
   * Non-maintainer upload.
