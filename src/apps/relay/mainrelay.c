@@ -2155,7 +2155,7 @@ static int check_http_backend_api_setup(void) {
 		turn_params.ct = TURN_CREDENTIALS_LONG_TERM;
 		use_lt_credentials = 0;
 		use_tltc = 0;
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"\nIMPORTANT NOTE: Switching TURN REST API OFF as REMOTE AUTH API used instead\n");
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,"\nIMPORTANT NOTE: Switching TURN REST API OFF as REMOTE AUTH API used instead\n");
 	}
 
 	return 1;
