@@ -1882,15 +1882,18 @@ void setup_server(void)
 		}
 	}
 
-	// do not run auth server for remote auth api
-	if (!turn_params.use_remote_auth_api) {
+	// // do not run auth server for remote auth api
+	// if (!turn_params.use_remote_auth_api) 
+	{
 		authserver_id sn = 0;
 		for(sn = 0; sn < authserver_number;++sn) {
 			authserver[sn].id = sn;
 			setup_auth_server(&(authserver[sn]));
 		}
 	}
-
+	// else {
+	// 	TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,"Remote Auth api usage switched on, auth server will not be started\n");
+	// }
 	setup_admin_server();
 
 	barrier_wait();

@@ -1134,13 +1134,6 @@ static int get_bool_value(const char* s)
 	exit(-1);
 }
 
-static void switch_use_auth_secret_with_timestamp (int switcher) {
-	turn_params.use_auth_secret_with_timestamp = switcher;
-	use_tltc = switcher;
-	turn_params.ct = TURN_CREDENTIALS_LONG_TERM;
-	use_lt_credentials = switcher;
-}
-
 static void set_option(int c, char *value)
 {
   
@@ -1462,20 +1455,20 @@ static void set_option(int c, char *value)
 	case REMOTE_AUTH_API:
 		turn_params.use_remote_auth_api = 1;
 		turn_params.oauth = 0;
-		// Drop usage of auth_secret if it was passed
-		switch_use_auth_secret_with_timestamp(0);
 		break;
 #endif
 	case AUTH_SECRET_OPT:
-		if ( turn_params.use_remote_auth_api == 1 ) 
-			break;
-		switch_use_auth_secret_with_timestamp(1);
+		turn_params.use_auth_secret_with_timestamp = 1;
+		use_tltc = 1;
+		turn_params.ct = TURN_CREDENTIALS_LONG_TERM;
+		use_lt_credentials = 1;
 		break;
 	case STATIC_AUTH_SECRET_VAL_OPT:
-		if ( turn_params.use_remote_auth_api == 1 ) 
-			break;
 		add_to_secrets_list(&turn_params.default_users_db.ram_db.static_auth_secrets,value);
-		switch_use_auth_secret_with_timestamp(1);
+		turn_params.use_auth_secret_with_timestamp = 1;
+		use_tltc = 1;
+		turn_params.ct = TURN_CREDENTIALS_LONG_TERM;
+		use_lt_credentials = 1;
 		break;
 	case AUTH_SECRET_TS_EXP:
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: Option --secret-ts-exp-time deprecated and has no effect.\n");
@@ -2146,15 +2139,26 @@ static void init_domain(void)
 #endif
 }
 
-static void check_rest_api_setup(void) {
+static int check_http_backend_api_setup(void) {
 	if (turn_params.use_remote_auth_api == 1 && turn_params.default_users_db.userdb_type != TURN_USERDB_TYPE_REST) {
 		turn_params.use_remote_auth_api = 0;
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "\nCONFIGURATION ALERT: Remote authentication availible only with --rest-userdb option for now. Switching --use-remote-auth-api option off\n");
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "\nCONFIGURATION ALERT: Remote authentication availible only with --http-backend-userdb option for now. Switching --use-remote-auth-api option off\n");
 	}
 
 	if (turn_params.use_remote_auth_api == 0 && turn_params.default_users_db.userdb_type == TURN_USERDB_TYPE_REST) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nCONFIG ERROR:  I can not use --rest-userdb  without --use-remote-auth-api. --rest-userdb implemented only for that purpose for now\n");
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nCONFIG ERROR:  I can not use --http-backend-userdb  without --use-remote-auth-api. --http-backend-userdb implemented only for that purpose for now\n");
+		return 0;
 	}
+
+	if (turn_params.use_remote_auth_api) {
+		turn_params.use_auth_secret_with_timestamp = 0;
+		turn_params.ct = TURN_CREDENTIALS_LONG_TERM;
+		use_lt_credentials = 0;
+		use_tltc = 0;
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"\nIMPORTANT NOTE: Switching TURN REST API OFF as REMOTE AUTH API used instead\n");
+	}
+
+	return 1;
 }
 
 int main(int argc, char **argv)
@@ -2363,8 +2367,11 @@ int main(int argc, char **argv)
 		}
 	}
 
-	check_rest_api_setup();
-
+	if (!check_http_backend_api_setup()) {
+		exit(-1);
+		fprintf(stderr,"\n%s\n", Usage);
+	}
+	
 	openssl_setup();
 
 	int local_listeners = 0;
