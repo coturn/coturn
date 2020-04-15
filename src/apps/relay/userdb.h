@@ -112,6 +112,9 @@ enum _TURN_USERDB_TYPE {
 #if !defined(TURN_NO_HIREDIS)
 	,TURN_USERDB_TYPE_REDIS
 #endif
+#if !defined(TURN_NO_REST)
+	,TURN_USERDB_TYPE_REST
+#endif
 };
 
 typedef enum _TURN_USERDB_TYPE TURN_USERDB_TYPE;

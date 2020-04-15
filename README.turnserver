@@ -57,7 +57,7 @@ turnserver - a TURN relay server implementation.
   
   SYNOPSIS
   
-$ turnserver [-n | -c <config-file> ] [flags] [ --userdb=<userdb-file> | --psql-userdb=<db-conn-string> | --mysql-userdb=<db-conn-string>  | --mongo-userdb=<db-conn-string>  | --redis-userdb=<db-conn-string> ] [-z | --no-auth | -a | --lt-cred-mech ] [options]
+$ turnserver [-n | -c <config-file> ] [flags] [ --userdb=<userdb-file> | --psql-userdb=<db-conn-string> | --mysql-userdb=<db-conn-string>  | --mongo-userdb=<db-conn-string>  | --redis-userdb=<db-conn-string> ] | --http-backend-userdb=<rest-conn-string> [-z | --no-auth | -a | --lt-cred-mech ] [options]
 $ turnserver -h
   
   DESCRIPTION						
@@ -149,6 +149,9 @@ User database settings:
 		See the INSTALL file for more explanations and examples.
 		
 		Also, see http://redis.io for full Redis documentation.
+
+-W, --http-backend-userdb   HTTP server (usually REST) connection string that will be used as callback for 3d party HTTP server
+                            must contain <http(s)://URL/postfix> that configured on 3d party service
 
 Flags:   
 
@@ -564,6 +567,11 @@ Options with values:
 --web-admin-listen-on-workers   Enable for web-admin server to listens on STUN/TURN workers STUN/TURN ports.
 			By default it is disabled for security resons!
 			(This behavior used to be the default behavior, and was enabled by default.)
+
+--http-backend-content-type Type of the response body [json|xml|urlencoded] that will be sent from 3d party HTTP server
+                            and must be parsed by coturn
+--use-remote-auth-api   Flag that says that server have to use 3-d party server to get secrets
+                        !! Do not use is together with --use-auth-secret and --static-auth-secret keys !!
 
 --ne=[1|2|3]		Set network engine type for the process (for internal purposes).
 

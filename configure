@@ -2,6 +2,18 @@
 
 # Proprietary configure script of Coturn project
 
+prepare() {
+	#clean and ini JSON_PATH
+	# rm -rf /usr/local/include/json-c/*
+	# rm -rf /usr/local/include/json-c
+	JSON_LINK_PATH=""
+	JSON_PATH=/usr/local/include/json-c
+	if [ ! -d ${JSON_PATH} ]; then
+		${ECHO_CMD} "${JSON_PATH}  does not exists. Creating it"
+    	JSON_LINK_PATH="ln -s /usr/include/json-c  /usr/local/include"
+	fi
+}
+
 cleanup() {
 	rm -rf ${TMPCPROGC}
 	rm -rf ${TMPCPROGB}
@@ -23,7 +35,10 @@ cleanup() {
 	rm -rf ${E_TMPCPROGO}
 	rm -rf ${HR_TMPCPROGC}
 	rm -rf ${HR_TMPCPROGB}
+	rm -rf ${REST_TMPCPROGC}
+	rm -rf ${REST_TMPCPROGB}
 	rm -rf ${TMPCADDRPROGO}
+	prepare
 }
 
 testlibraw() {
@@ -84,6 +99,38 @@ testhiredis() {
     else
 		DBCFLAGS="${DBCFLAGS} ${HIREDIS_CFLAGS}"
 		DBLIBS="${DBLIBS} ${HIREDIS_LIBS}"
+		return 1
+    fi
+}
+
+testrest() {
+
+    if [ -z "${REST_CFLAGS}" ] || [ -z "${REST_LIBS}" ]; then
+		REST_CFLAGS="-I${PREFIX}/curl/ -I${PREFIX}/json-c/ -I${PREFIX}/include/curl/ -I${PREFIX}/include/c-json/"
+		REST_CFLAGS="${REST_CFLAGS} -I/usr/include/curl/ -I/usr/include/c-json/ -I/usr/local/include/curl/ -I/usr/local/include/json-c/"
+        REST_CFLAGS="${REST_CFLAGS} -I/usr/include/curl -I/usr/include/c-json -I/usr/local/include/curl -I/usr/local/include/json-c"
+		
+		for inc in ${INCLUDEDIR}/curl /usr/local/include/curl/ /usr/include/curl/ ${INCLUDEDIR}/json-c/ /usr/local/include/json-c/ /usr/include/json-c/
+        do
+            if [ -d ${inc} ] ; then
+                REST_CFLAGS="${REST_CFLAGS} -I${inc}"
+            fi
+        done
+        REST_LIBS="-lcurl -ljson-c"
+	fi
+
+    ${CC} ${REST_TMPCPROGC} -o ${REST_TMPCPROGB} ${OSCFLAGS} ${DBLIBS} ${REST_CFLAGS} ${REST_LIBS} ${OSLIBS} 2>>/dev/null
+    ER=$?
+    if ! [ ${ER} -eq 0 ] ; then
+		${ECHO_CMD}
+		${ECHO_CMD} "REST DEVELOPMENT LIBRARIES (curl.* , json-c.*) AND/OR HEADERS (curl/curl*.h , json-c/cjson.*h)"
+		${ECHO_CMD} "	ARE NOT INSTALLED PROPERLY ON THIS SYSTEM."
+		${ECHO_CMD} "	THAT'S OK BUT THE TURN SERVER IS BUILDING WITHOUT REST SUPPORT."
+		${ECHO_CMD}
+		return 0
+    else
+		DBCFLAGS="${DBCFLAGS} ${REST_CFLAGS}"
+		DBLIBS="${DBLIBS} ${REST_LIBS}"
 		return 1
     fi
 }
@@ -739,6 +786,20 @@ int main(int argc, char** argv) {
 }
 !
 
+REST_TMPCPROG=__test__ccomp__rest__$$
+REST_TMPCPROGC=${TMPDIR}/${REST_TMPCPROG}.c
+REST_TMPCPROGB=${TMPDIR}/${REST_TMPCPROG}
+
+cat > ${REST_TMPCPROGC} <<!
+#include <stdlib.h>
+#include <json.h>
+#include <curl/curl.h>
+int main(int argc, char** argv) {
+	printf("rest found dep libs");
+    return (int)(argv[argc][0]);
+}
+!
+
 PQ_TMPCPROG=__test__ccomp__libpq__$$
 PQ_TMPCPROGC=${TMPDIR}/${PQ_TMPCPROG}.c
 PQ_TMPCPROGB=${TMPDIR}/${PQ_TMPCPROG}
@@ -1164,6 +1225,26 @@ else
 
 fi
 
+###########################
+# Test REST
+###########################
+
+if [ -z "${TURN_NO_REST}" ] ; then
+
+	testrest
+
+	ER=$?
+	if ! [ ${ER} -eq 0 ] ; then
+  		${ECHO_CMD} "rest found."
+	else
+  		TURN_NO_REST="-DTURN_NO_REST"
+	fi
+
+else
+	TURN_NO_REST="-DTURN_NO_REST"
+
+fi
+
 ###############################
 # LDCONFIG
 ###############################
@@ -1231,7 +1312,7 @@ ${ECHO_CMD} "LDFLAGS += ${OSLIBS}" >> Makefile
 ${ECHO_CMD} "DBLIBS += ${DBLIBS}" >> Makefile
 ${ECHO_CMD} "CFLAGS += ${OSCFLAGS}" >> Makefile
 ${ECHO_CMD} "CPPFLAGS = ${CPPFLAGS}" >> Makefile
-${ECHO_CMD} "DBCFLAGS += ${DBCFLAGS} ${TURN_NO_PQ} ${TURN_NO_MYSQL} ${TURN_NO_SQLITE} ${TURN_NO_MONGO} ${TURN_NO_HIREDIS}" >> Makefile
+${ECHO_CMD} "DBCFLAGS += ${DBCFLAGS} ${TURN_NO_PQ} ${TURN_NO_MYSQL} ${TURN_NO_SQLITE} ${TURN_NO_MONGO} ${TURN_NO_HIREDIS} ${TURN_NO_REST}" >> Makefile
 ${ECHO_CMD} "#" >> Makefile
 ${ECHO_CMD} "PORTNAME = ${PORTNAME}" >> Makefile
 ${ECHO_CMD} "PREFIX = ${PREFIX}" >> Makefile
@@ -1274,6 +1355,7 @@ ${ECHO_CMD} "MKBUILDDIR = ${MKBUILDDIR}" >> Makefile
 ${ECHO_CMD} "RMCMD = ${RMCMD}" >> Makefile
 ${ECHO_CMD} "MORECMD = ${MORECMD}" >> Makefile
 ${ECHO_CMD} "LDCONFIG=${LDCONFIG}" >> Makefile
+${ECHO_CMD} "JSON_LINK_PATH"=${JSON_LINK_PATH} >> Makefile
 ${ECHO_CMD} "################################" >> Makefile
 ${ECHO_CMD} "" >> Makefile
 cat Makefile.in >> Makefile

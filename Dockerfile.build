@@ -1,4 +1,6 @@
-FROM ubuntu:16.04
+FROM debian:stretch-slim
+RUN apt-get update
+RUN apt-get install -y wget
 
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     emacs-nox \
@@ -6,5 +8,7 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     libssl-dev sqlite3 \
     libsqlite3-dev \
     libevent-dev \
-    g++ \
-    libboost-dev
+    gcc \
+    libboost-dev \
+    libcurl4-openssl-dev \
+    libjson-c-dev \

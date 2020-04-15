@@ -31,6 +31,10 @@
 #include "mainrelay.h"
 #include "dbdrivers/dbdriver.h"
 
+#if !defined(TURN_NO_REST)
+	#include "dbdrivers/dbd_rest.h"
+#endif
+
 #if (defined LIBRESSL_VERSION_NUMBER && OPENSSL_VERSION_NUMBER == 0x20000000L)
 #undef OPENSSL_VERSION_NUMBER
 #define OPENSSL_VERSION_NUMBER 0x1000107FL
@@ -157,7 +161,9 @@ DEFAULT_CPUS_NUMBER,
 ///////// Encryption /////////
 "", /* secret_key_file */
 "", /* secret_key */
-0   /* keep_address_family */
+0,   /* keep_address_family */
+"", /* rest_client_content_type */
+0, /*use_remote_auth_api*/
 };
 
 //////////////// OpenSSL Init //////////////////////
@@ -523,6 +529,14 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "		                                and delivering traffic and allocation event notifications.\n"
 "						The connection string has the same parameters as redis-userdb connection string.\n"
 #endif
+#if !defined(TURN_NO_REST)
+" --http-backend-userdb	<connection-string>	HTTP server connection string that will be used as callback for 3d party HTTP server\n"
+"						must contain <http(s)://URL/postfix> that configured on 3d patry service\n"
+" --http-backend-content-type   [json|xml|urlencoded]	(!!!ONLY json supported for now!!!) Type of the response body\n"
+" 						        that will be sent from 3d party HTTP server and must be parsed by coturn\n"
+" --use-remote-auth-api 				Flag that says that server have to use 3-d party server to get secrets\n" 
+"						(!!! Do not use is together with --use-auth-secret	and --static-auth-secret keys)\n"
+#endif
 " --use-auth-secret				TURN REST API flag.\n"
 "						Flag that sets a special authorization option that is based upon authentication secret\n"
 "						(TURN Server REST API, see TURNServerRESTAPI.pdf). This option is used with timestamp.\n"
@@ -706,7 +720,7 @@ static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
 	"					Setting to zero value means removal of the option.\n"
 	"	-h, --help			Help\n";
 
-#define OPTIONS "c:d:p:L:E:X:i:m:l:r:u:b:B:e:M:J:N:O:q:Q:s:C:K:vVofhznaAS"
+#define OPTIONS "c:d:p:L:E:X:i:m:l:r:u:b:B:e:M:J:N:W:O:q:Q:s:C:K:vVofhznaAS"
 
 #define ADMIN_OPTIONS "PEgGORIHKYlLkaADSdb:e:M:J:N:u:r:p:s:X:o:h:x:v:f:"
 
@@ -781,7 +795,8 @@ enum EXTRA_OPTS {
 	OAUTH_OPT,
 	PROD_OPT,
 	NO_HTTP_OPT,
-	SECRET_KEY_OPT
+	SECRET_KEY_OPT,
+	REMOTE_AUTH_API,
 };
 
 struct myoption {
@@ -830,6 +845,11 @@ static const struct myoption long_options[] = {
 #if !defined(TURN_NO_HIREDIS)
 				{ "redis-userdb", required_argument, NULL, 'N' },
 				{ "redis-statsdb", required_argument, NULL, 'O' },
+#endif
+#if !defined(TURN_NO_REST)
+				{ "http-backend-userdb", required_argument, NULL, 'W' },
+				{ "http-backend-content-type", required_argument, NULL, 'w' },
+				{ "use-remote-auth-api", optional_argument, NULL, REMOTE_AUTH_API },
 #endif
 				{ "use-auth-secret", optional_argument, NULL, AUTH_SECRET_OPT },
 				{ "static-auth-secret", required_argument, NULL, STATIC_AUTH_SECRET_VAL_OPT },
@@ -1116,6 +1136,7 @@ static int get_bool_value(const char* s)
 
 static void set_option(int c, char *value)
 {
+  
   if(value && value[0]=='=') {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: option -%c is possibly used incorrectly. The short form of the option must be used as this: -%c <value>, no \'equals\' sign may be used, that sign is used only with long form options (like --user=<username>).\n",(char)c,(char)c);
   }
@@ -1423,16 +1444,29 @@ static void set_option(int c, char *value)
 		turn_params.use_redis_statsdb = 1;
 		break;
 #endif
+#if !defined(TURN_NO_REST)
+	case 'W':
+		STRCPY(turn_params.default_users_db.persistent_users_db.userdb, value);
+		turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_REST;
+		break;
+	case 'w':
+		STRCPY(turn_params.rest_client_content_type,value);
+		break;
+	case REMOTE_AUTH_API:
+		turn_params.use_remote_auth_api = 1;
+		turn_params.oauth = 0;
+		break;
+#endif
 	case AUTH_SECRET_OPT:
 		turn_params.use_auth_secret_with_timestamp = 1;
-        use_tltc = 1;
+		use_tltc = 1;
 		turn_params.ct = TURN_CREDENTIALS_LONG_TERM;
 		use_lt_credentials = 1;
 		break;
 	case STATIC_AUTH_SECRET_VAL_OPT:
 		add_to_secrets_list(&turn_params.default_users_db.ram_db.static_auth_secrets,value);
 		turn_params.use_auth_secret_with_timestamp = 1;
-        use_tltc = 1;
+		use_tltc = 1;
 		turn_params.ct = TURN_CREDENTIALS_LONG_TERM;
 		use_lt_credentials = 1;
 		break;
@@ -2007,6 +2041,12 @@ static void print_features(unsigned long mfn)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Redis is not supported\n");
 #endif
 
+#if !defined(TURN_NO_REST)
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "REST-client supported\n");
+#else
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "REST-client is not supported\n");
+#endif
+
 #if !defined(TURN_NO_PQ)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "PostgreSQL supported\n");
 #else
@@ -2099,6 +2139,28 @@ static void init_domain(void)
 #endif
 }
 
+static int check_http_backend_api_setup(void) {
+	if (turn_params.use_remote_auth_api == 1 && turn_params.default_users_db.userdb_type != TURN_USERDB_TYPE_REST) {
+		turn_params.use_remote_auth_api = 0;
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "\nCONFIGURATION ALERT: Remote authentication availible only with --http-backend-userdb option for now. Switching --use-remote-auth-api option off\n");
+	}
+
+	if (turn_params.use_remote_auth_api == 0 && turn_params.default_users_db.userdb_type == TURN_USERDB_TYPE_REST) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nCONFIG ERROR:  I can not use --http-backend-userdb  without --use-remote-auth-api. --http-backend-userdb implemented only for that purpose for now\n");
+		return 0;
+	}
+
+	if (turn_params.use_remote_auth_api) {
+		turn_params.use_auth_secret_with_timestamp = 0;
+		turn_params.ct = TURN_CREDENTIALS_LONG_TERM;
+		use_lt_credentials = 0;
+		use_tltc = 0;
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,"\nIMPORTANT NOTE: Switching TURN REST API OFF as REMOTE AUTH API used instead\n");
+	}
+
+	return 1;
+}
+
 int main(int argc, char **argv)
 {
 	int c = 0;
@@ -2111,6 +2173,9 @@ int main(int argc, char **argv)
 
 #if !defined(TURN_NO_HIREDIS)
 	redis_async_init();
+#endif
+#if !defined(TURN_NO_REST)
+	rest_client_global_init();
 #endif
 
 	init_domain();
@@ -2302,6 +2367,11 @@ int main(int argc, char **argv)
 		}
 	}
 
+	if (!check_http_backend_api_setup()) {
+		exit(-1);
+		fprintf(stderr,"\n%s\n", Usage);
+	}
+	
 	openssl_setup();
 
 	int local_listeners = 0;
@@ -2436,6 +2506,10 @@ int main(int argc, char **argv)
 	run_listener_server(&(turn_params.listener));
 
 	disconnect_database();
+
+#if !defined(TURN_NO_REST)
+	rest_client_global_shutdown();
+#endif
 
 	return 0;
 }

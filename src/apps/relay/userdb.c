@@ -540,12 +540,12 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
 		size_t sll = 0;
 
 		init_secrets_list(&sl);
-
+	
 		if(get_auth_secrets(&sl, realm)<0)
 			return ret;
 
 		ts = get_rest_api_timestamp((char*)usname);
-
+		
 		if(!turn_time_before(ts, ctime)) {
 
 			uint8_t hmac[MAXSHASIZE];
@@ -610,6 +610,71 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
 
 		clean_secrets_list(&sl);
 
+		return ret;
+	}
+
+	if (turn_params.use_remote_auth_api) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Using remote api for auth\n");
+		char *secret = calloc(257,sizeof(char));
+
+		const turn_dbdriver_t * dbd = get_dbdriver();
+		
+		if (dbd && dbd->get_auth_secret) {
+			if ((*(dbd->get_auth_secret))(usname, secret) != 0 ) {
+				return -1;
+			}
+		}
+		
+		uint8_t hmac[MAXSHASIZE];
+		unsigned int hmac_len;
+	
+		hmac[0] = 0;
+
+		stun_attr_ref sar = stun_attr_get_first_by_type_str(ioa_network_buffer_data(nbh),
+						ioa_network_buffer_get_size(nbh),
+						STUN_ATTRIBUTE_MESSAGE_INTEGRITY);
+		if (!sar)
+			return -1;
+
+		int sarlen = stun_attr_get_len(sar);
+		switch(sarlen) {
+		case SHA1SIZEBYTES:
+			hmac_len = SHA1SIZEBYTES;
+			break;
+		case SHA256SIZEBYTES:
+		case SHA384SIZEBYTES:
+		case SHA512SIZEBYTES:
+		default:
+			return -1;
+		};
+
+		password_t  pwdtmp;
+
+		if (secret) {
+			if(stun_calculate_hmac(usname, strlen((char*)usname), (const uint8_t*)secret, strlen(secret), hmac, &hmac_len, SHATYPE_DEFAULT)>=0) {
+	
+				size_t pwd_length = 0;
+				char *pwd = base64_encode(hmac,hmac_len,&pwd_length);
+
+				if(pwd) {
+					if(pwd_length<1) {
+						free(pwd);
+					} else {
+						if(stun_produce_integrity_key_str((uint8_t*)usname, realm, (uint8_t*)pwd, key, SHATYPE_DEFAULT)>=0) {
+							if(stun_check_message_integrity_by_key_str(TURN_CREDENTIALS_LONG_TERM,
+								ioa_network_buffer_data(nbh),
+								ioa_network_buffer_get_size(nbh),
+								key,
+								pwdtmp,
+								SHATYPE_DEFAULT)>0) {
+									ret = 0;
+							}
+						}
+						free(pwd);
+					}
+				}
+			}
+		}
 		return ret;
 	}
 
