@@ -1167,7 +1167,7 @@ ip_range_list_t* get_ip_list(const char *kind)
 	bzero(ret,sizeof(ip_range_list_t));
 
 	const turn_dbdriver_t * dbd = get_dbdriver();
-	if (dbd && dbd->get_ip_list) {
+	if (dbd && dbd->get_ip_list && !turn_params.no_dynamic_ip_list) {
 		(*dbd->get_ip_list)(kind, ret);
 	}
 
@@ -1303,7 +1303,7 @@ void reread_realms(void)
 	}
 
 	const turn_dbdriver_t * dbd = get_dbdriver();
-	if (dbd && dbd->reread_realms) {
+	if (dbd && dbd->reread_realms && !turn_params.no_dynamic_realms) {
 		(*dbd->reread_realms)(&realms_list);
 	}
 }

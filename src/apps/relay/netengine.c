@@ -1776,7 +1776,10 @@ static void* run_auth_server_thread(void *arg)
 		barrier_wait();
 
 		while(run_auth_server_flag) {
-			auth_ping(as->rch);
+			if (!turn_params.no_auth_pings) {
+				auth_ping(as->rch);
+			}
+
 			run_events(as->event_base,NULL);
 		}
 	}
