@@ -19,6 +19,7 @@ Supported RFCs:
 TURN specs:
 
   * RFC 5766 - base TURN specs
+  * RFC 5928 - TURN Resolution Mechanism
   * RFC 6062 - TCP relaying TURN extension
   * RFC 6156 - IPv6 extension for TURN
   * RFC 7443 - ALPN support for STUN & TURN
@@ -45,7 +46,6 @@ Supported ICE and related specs:
   * RFC 5768 – ICE–SIP
   * RFC 6336 – ICE–IANA Registry
   * RFC 6544 – ICE–TCP
-  * RFC 5928 - TURN Resolution Mechanism
 
 The implementation fully supports the following client-to-TURN-server protocols:
 
