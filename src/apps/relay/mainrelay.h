@@ -226,10 +226,12 @@ typedef struct _turn_params_ {
   int tls_listener_port;
   int alt_listener_port;
   int alt_tls_listener_port;
+  int tcp_proxy_port;
   int rfc5780;
 
   int no_udp;
   int no_tcp;
+  int tcp_use_proxy;
   
   vint no_tcp_relay;
   vint no_udp_relay;

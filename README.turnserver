@@ -321,6 +321,10 @@ Options with values:
 
 --alt-tls-listening-port	Alternative listening port for TLS and DTLS protocols.
 			Default (or zero) value means "TLS listening port plus one".
+
+--tcp-proxy-port	Support connections from TCP loadbalancer on this port. The loadbalancer
+			should use the binary proxy protocol.
+			(https://www.haproxy.org/download/1.8/doc/proxy-protocol.txt)
 				
 --aux-server		Auxiliary STUN/TURN server listening endpoint.
 			Aux servers have almost full TURN and STUN functionality.

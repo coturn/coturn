@@ -110,8 +110,8 @@ NULL, PTHREAD_MUTEX_INITIALIZER,
 //////////////// Common params ////////////////////
 TURN_VERBOSE_NONE,0,0,0,0,
 "/var/run/turnserver.pid",
-DEFAULT_STUN_PORT,DEFAULT_STUN_TLS_PORT,0,0,1,
-0,0,0,0,
+DEFAULT_STUN_PORT,DEFAULT_STUN_TLS_PORT,0,0,0,1,
+0,0,0,0,0,
 "",
 "",0,
 {
@@ -402,6 +402,8 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "                                                or in old RFC 3489 sense, default is \"listening port plus one\").\n"
 " --alt-tls-listening-port	<port>		Alternative listening port for TLS and DTLS,\n"
 " 						the default is \"TLS/DTLS port plus one\".\n"
+" --tcp-proxy-port		<port>		Support connections from TCP loadbalancer on this port. The loadbalancer should\n"
+"						use the binary proxy protocol (https://www.haproxy.org/download/1.8/doc/proxy-protocol.txt)\n"
 " -L, --listening-ip		<ip>		Listener IP address of relay server. Multiple listeners can be specified.\n"
 " --aux-server			<ip:port>	Auxiliary STUN/TURN server listening endpoint.\n"
 "						Auxiliary servers do not have alternative ports and\n"
@@ -713,6 +715,7 @@ static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
 enum EXTRA_OPTS {
 	NO_UDP_OPT=256,
 	NO_TCP_OPT,
+	TCP_PROXY_PORT_OPT,
 	NO_TLS_OPT,
 	NO_DTLS_OPT,
 	NO_UDP_RELAY_OPT,
@@ -805,6 +808,7 @@ static const struct myoption long_options[] = {
 				{ "tls-listening-port", required_argument, NULL, TLS_PORT_OPT },
 				{ "alt-listening-port", required_argument, NULL, ALT_PORT_OPT },
 				{ "alt-tls-listening-port", required_argument, NULL, ALT_TLS_PORT_OPT },
+				{ "tcp-proxy-port", required_argument, NULL, TCP_PROXY_PORT_OPT },
 				{ "listening-ip", required_argument, NULL, 'L' },
 				{ "relay-device", required_argument, NULL, 'i' },
 				{ "relay-ip", required_argument, NULL, 'E' },
@@ -1266,6 +1270,10 @@ static void set_option(int c, char *value)
 		break;
 	case ALT_TLS_PORT_OPT:
 		turn_params.alt_tls_listener_port = atoi(value);
+		break;
+	case TCP_PROXY_PORT_OPT:
+		turn_params.tcp_proxy_port = atoi(value);
+		turn_params.tcp_use_proxy = 1;
 		break;
 	case MIN_PORT_OPT:
 		turn_params.min_port = atoi(value);

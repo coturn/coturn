@@ -481,6 +481,12 @@ Alternative listening port for TLS and DTLS protocols.
 Default (or zero) value means "TLS listening port plus one".
 .TP
 .B
+\fB\-\-tcp\-proxy\-port\fP
+Support connections from TCP loadbalancer on this port. The loadbalancer
+should use the binary proxy protocol.
+(https://www.haproxy.org/download/1.8/doc/proxy\-protocol.txt)
+.TP
+.B
 \fB\-\-aux\-server\fP
 Auxiliary STUN/TURN server listening endpoint.
 Aux servers have almost full TURN and STUN functionality.
