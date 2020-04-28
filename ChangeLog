@@ -51,6 +51,12 @@ Version 4.5.1.2 'dan Eider':
 	- merge PR #488 Fix typos about INSTALL filenames (by raccoonback)
 	- fix compiler warning comparison between signed and unsigned integer expressions
 	- fix compiler warning string truncation
+	- change Diffie Hellman default key length from 1066 to 2066
+	- merge PR #522 drop of supplementary group IDs (by weberhofer)
+	- merge PR #514 Unify spelling of Coturn (by paulmenzel)
+	- merge PR#506 Rename "prod" config option to "no-software-attribute" (by dbrgn)
+	- merge PR #519 fix config extension in README.docker (by ooookai)
+	- merge PR #516 change sql data dir in docker-compose-all.yml (by raghumuppa) 
 
 02/03/2019 Oleg Moskalenko <mom040267@gmail.com> Mihály Mészáros <misi@majd.eu>
 Version 4.5.1.1 'dan Eider':

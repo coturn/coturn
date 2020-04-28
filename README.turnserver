@@ -158,7 +158,7 @@ Flags:
 
 -o, --daemon		Run server as daemon.
 
---prod       	 	Production mode: hide the software version.
+--no-software-attribute	Production mode: hide the software version.
 
 -f, --fingerprint	Use fingerprints in the TURN messages. If an incoming request
 			contains a fingerprint, then TURN server will always add
@@ -190,9 +190,9 @@ Flags:
 
 --oauth			Support oAuth authentication, as in the third-party STUN/TURN RFC 7635.
 
---dh566			Use 566 bits predefined DH TLS key. Default size of the key is 1066.
+--dh566			Use 566 bits predefined DH TLS key. Default size of the key is 2066.
 
---dh2066		Use 2066 bits predefined DH TLS key. Default size of the key is 1066.
+--dh1066		Use 1066 bits predefined DH TLS key. Default size of the key is 2066.
 
 --no-tlsv1		Do not allow TLSv1/DTLSv1 protocol.
 
@@ -322,6 +322,10 @@ Options with values:
 --alt-tls-listening-port	Alternative listening port for TLS and DTLS protocols.
 			Default (or zero) value means "TLS listening port plus one".
 
+--tcp-proxy-port	Support connections from TCP loadbalancer on this port. The loadbalancer
+			should use the binary proxy protocol.
+			(https://www.haproxy.org/download/1.8/doc/proxy-protocol.txt)
+				
 --aux-server		Auxiliary STUN/TURN server listening endpoint.
 			Aux servers have almost full TURN and STUN functionality.
 			The (minor) limitations are:
@@ -457,7 +461,7 @@ Options with values:
 			by this option.
 
 --dh-file		Use custom DH TLS key, stored in PEM format in the file.
-			Flags --dh566 and --dh2066 are ignored when the DH key is taken from a file.
+			Flags --dh566 and --dh1066 are ignored when the DH key is taken from a file.
 
 -l, --log-file		Option to set the full path name of the log file.
 			By default, the turnserver tries to open a log file in
