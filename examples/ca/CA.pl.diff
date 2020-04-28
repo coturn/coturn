@@ -1,0 +1,22 @@
+--- CA.pl	2019-10-12 19:56:43.000000000 +0000
++++ CA.pl	2020-03-05 07:58:41.112690266 +0000
+@@ -25,8 +25,8 @@
+ my $verbose = 1;
+ 
+ my $OPENSSL_CONFIG = $ENV{"OPENSSL_CONFIG"} || "";
+-my $DAYS = "-days 365";
+-my $CADAYS = "-days 1095";	# 3 years
++my $DAYS = "-days 36500";
++my $CADAYS = "-days 365000";	# 1000 years
+ my $REQ = "$openssl req $OPENSSL_CONFIG";
+ my $CA = "$openssl ca $OPENSSL_CONFIG";
+ my $VERIFY = "$openssl verify";
+@@ -34,7 +34,7 @@
+ my $PKCS12 = "$openssl pkcs12";
+ 
+ # default openssl.cnf file has setup as per the following
+-my $CATOP = "./demoCA";
++my $CATOP = "./CA";
+ my $CAKEY = "cakey.pem";
+ my $CAREQ = "careq.pem";
+ my $CACERT = "cacert.pem";

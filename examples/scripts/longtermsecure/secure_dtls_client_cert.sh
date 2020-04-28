@@ -32,5 +32,5 @@ fi
 
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib/
 
-PATH=examples/bin/:../bin:./bin/:${PATH} turnutils_uclient -S -i turn_server_cert.pem -k turn_server_pkey.pem -E turn_server_cert.pem -n 1000 -m 10 -l 170 -e 127.0.0.1 -g -u bolt -w kwyjibo -s -X $@ 127.0.0.1
+PATH=examples/bin/:../bin:./bin/:${PATH} turnutils_uclient -S -i turn_server_cert.pem -k turn_server_pkey.pem -E cacert.pem -n 1000 -m 10 -l 170 -e 127.0.0.1 -g -u bolt -w kwyjibo -s -X $@ 127.0.0.1
 
