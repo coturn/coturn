@@ -2061,6 +2061,7 @@ static void set_network_engine(void)
 
 static void drop_privileges(void)
 {
+	setgroups(0, NULL);
 	if(procgroupid_set) {
 		if(getgid() != procgroupid) {
 			if (setgid(procgroupid) != 0) {
