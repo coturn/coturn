@@ -14,7 +14,7 @@ services:
       - backend
 
 
-# coTURN
+# Coturn
   coturn:
     build:
       context: ./coturn
