@@ -2276,13 +2276,13 @@ int main(int argc, char **argv)
 
 	if(turn_params.allow_loopback_peers) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "CONFIG WARNING: allow_loopback_peers opens a possible security vulnerability. Do not use in production!!\n");
-		if(cli_password[0]==0) {
+		if(cli_password[0]==0 && use_cli) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nCONFIG ERROR: allow_loopback_peers and empty cli password cannot be used together.\n");
 			exit(-1);
 		}
         }
 
-	if(use_cli && cli_password[0]==0) {
+	if(use_cli && cli_password[0]==0 && use_cli) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nCONFIG ERROR: Empty cli-password, and so telnet cli interface is disabled! Please set a non empty cli-password!\n");
 		use_cli = 0;
 	}
