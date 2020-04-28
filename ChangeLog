@@ -51,6 +51,7 @@ Version 4.5.1.2 'dan Eider':
 	- merge PR #488 Fix typos about INSTALL filenames (by raccoonback)
 	- fix compiler warning comparison between signed and unsigned integer expressions
 	- fix compiler warning string truncation
+	- change Diffie Hellman default key length from 1066 to 2066
 
 02/03/2019 Oleg Moskalenko <mom040267@gmail.com> Mihály Mészáros <misi@majd.eu>
 Version 4.5.1.1 'dan Eider':
