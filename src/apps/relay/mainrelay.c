@@ -90,7 +90,7 @@ NULL,
 NULL,
 #endif
 
-DH_1066, "", "", "",
+DH_2066, "", "", "",
 "turn_server_cert.pem","turn_server_pkey.pem", "", "",
 0,0,0,
 #if !TLS_SUPPORTED
@@ -450,7 +450,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 " -v, --verbose					'Moderate' verbose mode.\n"
 " -V, --Verbose					Extra verbose mode, very annoying (for debug purposes only).\n"
 " -o, --daemon					Start process as daemon (detach from current shell).\n"
-" --prod       	 				Production mode: hide the software version.\n"
+" --no-software-attribute	 		Production mode: hide the software version (formerly --prod).\n"
 " -f, --fingerprint				Use fingerprints in the TURN messages.\n"
 " -a, --lt-cred-mech				Use the long-term credential mechanism.\n"
 " -z, --no-auth					Do not use any credential mechanism, allow anonymous access.\n"
@@ -557,10 +557,10 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						if pre-OpenSSL 1.0.2 is used. With OpenSSL 1.0.2+,\n"
 "						an optimal curve will be automatically calculated, if not defined\n"
 "						by this option.\n"
-" --dh566					Use 566 bits predefined DH TLS key. Default size of the predefined key is 1066.\n"
-" --dh2066					Use 2066 bits predefined DH TLS key. Default size of the predefined key is 1066.\n"
+" --dh566					Use 566 bits predefined DH TLS key. Default size of the predefined key is 2066.\n"
+" --dh1066					Use 1066 bits predefined DH TLS key. Default size of the predefined key is 2066.\n"
 " --dh-file	<dh-file-name>			Use custom DH TLS key, stored in PEM format in the file.\n"
-"						Flags --dh566 and --dh2066 are ignored when the DH key is taken from a file.\n"
+"						Flags --dh566 and --dh1066 are ignored when the DH key is taken from a file.\n"
 " --no-tlsv1					Do not allow TLSv1/DTLSv1 protocol.\n"
 " --no-tlsv1_1					Do not allow TLSv1.1 protocol.\n"
 " --no-tlsv1_2					Do not allow TLSv1.2/DTLSv1.2 protocol.\n"
@@ -769,7 +769,7 @@ enum EXTRA_OPTS {
 	CLI_MAX_SESSIONS_OPT,
 	EC_CURVE_NAME_OPT,
 	DH566_OPT,
-	DH2066_OPT,
+	DH1066_OPT,
 	NE_TYPE_OPT,
 	NO_SSLV2_OPT, /*deprecated*/
 	NO_SSLV3_OPT, /*deprecated*/
@@ -782,7 +782,7 @@ enum EXTRA_OPTS {
 	ADMIN_USER_QUOTA_OPT,
 	SERVER_NAME_OPT,
 	OAUTH_OPT,
-	PROD_OPT,
+	NO_SOFTWARE_ATTRIBUTE_OPT,
 	NO_HTTP_OPT,
 	SECRET_KEY_OPT
 };
@@ -848,7 +848,8 @@ static const struct myoption long_options[] = {
 				{ "verbose", optional_argument, NULL, 'v' },
 				{ "Verbose", optional_argument, NULL, 'V' },
 				{ "daemon", optional_argument, NULL, 'o' },
-				{ "prod", optional_argument, NULL, PROD_OPT },
+/* deprecated: */		{ "prod", optional_argument, NULL, NO_SOFTWARE_ATTRIBUTE_OPT },
+				{ "no-software-attribute", optional_argument, NULL, NO_SOFTWARE_ATTRIBUTE_OPT },
 				{ "fingerprint", optional_argument, NULL, 'f' },
 				{ "check-origin-consistency", optional_argument, NULL, CHECK_ORIGIN_CONSISTENCY_OPT },
 				{ "no-udp", optional_argument, NULL, NO_UDP_OPT },
@@ -900,7 +901,7 @@ static const struct myoption long_options[] = {
 				{ "cli-max-output-sessions", required_argument, NULL, CLI_MAX_SESSIONS_OPT },
 				{ "ec-curve-name", required_argument, NULL, EC_CURVE_NAME_OPT },
 				{ "dh566", optional_argument, NULL, DH566_OPT },
-				{ "dh2066", optional_argument, NULL, DH2066_OPT },
+				{ "dh1066", optional_argument, NULL, DH1066_OPT },
 				{ "ne", required_argument, NULL, NE_TYPE_OPT },
 				{ "no-sslv2", optional_argument, NULL, NO_SSLV2_OPT }, /* deprecated */
 				{ "no-sslv3", optional_argument, NULL, NO_SSLV3_OPT }, /* deprecated */
@@ -1166,9 +1167,9 @@ static void set_option(int c, char *value)
 	  if(get_bool_value(value))
 		  turn_params.dh_key_size = DH_566;
 	  break;
-  case DH2066_OPT:
+  case DH1066_OPT:
 	  if(get_bool_value(value))
-		  turn_params.dh_key_size = DH_2066;
+		  turn_params.dh_key_size = DH_1066;
 	  break;
   case EC_CURVE_NAME_OPT:
 	  STRCPY(turn_params.ec_curve_name,value);
@@ -1386,8 +1387,8 @@ static void set_option(int c, char *value)
 			anon_credentials = 1;
 		}
 		break;
-	case PROD_OPT:
-		turn_params.prod = get_bool_value(value);
+	case NO_SOFTWARE_ATTRIBUTE_OPT:
+		turn_params.no_software_attribute = get_bool_value(value);
 		break;
 	case 'f':
 		turn_params.fingerprint = get_bool_value(value);
@@ -2069,6 +2070,7 @@ static void set_network_engine(void)
 
 static void drop_privileges(void)
 {
+	setgroups(0, NULL);
 	if(procgroupid_set) {
 		if(getgid() != procgroupid) {
 			if (setgid(procgroupid) != 0) {
@@ -2907,10 +2909,10 @@ static void set_ctx(SSL_CTX** out, const char *protocol, const SSL_METHOD* metho
 		if(!dh) {
 			if(turn_params.dh_key_size == DH_566)
 				dh = get_dh566();
-			else if(turn_params.dh_key_size == DH_2066)
-				dh = get_dh2066();
-			else
+			else if(turn_params.dh_key_size == DH_1066)
 				dh = get_dh1066();
+			else
+				dh = get_dh2066();
 		}
 
 		/*

@@ -119,7 +119,7 @@ int stun_calculate_hmac(const uint8_t *buf, size_t len, const uint8_t *key, size
 
 	if(shatype == SHATYPE_SHA256) {
 #if !defined(OPENSSL_NO_SHA256) && defined(SHA256_DIGEST_LENGTH)
-	  if (!HMAC(EVP_sha256(), key, keylen, buf, len, hmac, hmac_len)) {
+	  if (!HMAC(EVP_sha256(), key, (int)keylen, buf, len, hmac, hmac_len)) {
 	    return -1;
 	  }
 #else
@@ -128,7 +128,7 @@ int stun_calculate_hmac(const uint8_t *buf, size_t len, const uint8_t *key, size
 #endif
 	} else if(shatype == SHATYPE_SHA384) {
 #if !defined(OPENSSL_NO_SHA384) && defined(SHA384_DIGEST_LENGTH)
-	  if (!HMAC(EVP_sha384(), key, keylen, buf, len, hmac, hmac_len)) {
+	  if (!HMAC(EVP_sha384(), key, (int)keylen, buf, len, hmac, hmac_len)) {
 	    return -1;
 	  }
 #else
@@ -137,7 +137,7 @@ int stun_calculate_hmac(const uint8_t *buf, size_t len, const uint8_t *key, size
 #endif
 	} else if(shatype == SHATYPE_SHA512) {
 #if !defined(OPENSSL_NO_SHA512) && defined(SHA512_DIGEST_LENGTH)
-	  if (!HMAC(EVP_sha512(), key, keylen, buf, len, hmac, hmac_len)) {
+	  if (!HMAC(EVP_sha512(), key, (int)keylen, buf, len, hmac, hmac_len)) {
 	    return -1;
 	  }
 #else
@@ -145,30 +145,32 @@ int stun_calculate_hmac(const uint8_t *buf, size_t len, const uint8_t *key, size
 	  return -1;
 #endif
 	} else
-	  if (!HMAC(EVP_sha1(), key, keylen, buf, len, hmac, hmac_len)) {
+	  if (!HMAC(EVP_sha1(), key, (int)keylen, buf, len, hmac, hmac_len)) {
 	    return -1;
 	  }
 
 	return 0;
 }
 
-int stun_produce_integrity_key_str(uint8_t *uname, uint8_t *realm, uint8_t *upwd, hmackey_t key, SHATYPE shatype)
+int stun_produce_integrity_key_str(const uint8_t *uname, const uint8_t *realm, const uint8_t *upwd, hmackey_t key, SHATYPE shatype)
 {
+	int ret;
+
 	ERR_clear_error();
 	UNUSED_ARG(shatype);
 
-	size_t ulen = strlen((char*)uname);
-	size_t rlen = strlen((char*)realm);
-	size_t plen = strlen((char*)upwd);
+	size_t ulen = strlen((const char*)uname);
+	size_t rlen = strlen((const char*)realm);
+	size_t plen = strlen((const char*)upwd);
 	size_t sz = ulen+1+rlen+1+plen+1+10;
 	size_t strl = ulen+1+rlen+1+plen;
 	uint8_t *str = (uint8_t*)malloc(sz+1);
 
-	strncpy((char*)str,(char*)uname,sz);
+	strncpy((char*)str,(const char*)uname,sz);
 	str[ulen]=':';
-	strncpy((char*)str+ulen+1,(char*)realm,sz-ulen-1);
+	strncpy((char*)str+ulen+1,(const char*)realm,sz-ulen-1);
 	str[ulen+1+rlen]=':';
-	strncpy((char*)str+ulen+1+rlen+1,(char*)upwd,sz-ulen-1-rlen-1);
+	strncpy((char*)str+ulen+1+rlen+1,(const char*)upwd,sz-ulen-1-rlen-1);
 	str[strl]=0;
 
 	if(shatype == SHATYPE_SHA256) {
@@ -188,9 +190,10 @@ int stun_produce_integrity_key_str(uint8_t *uname, uint8_t *realm, uint8_t *upwd
 		EVP_DigestFinal(ctx,key,&keylen);
 		EVP_MD_CTX_free(ctx);
 #endif
+		ret = 0;
 #else
 		fprintf(stderr,"SHA256 is not supported\n");
-		return -1;
+		ret = -1;
 #endif
 	} else if(shatype == SHATYPE_SHA384) {
 #if !defined(OPENSSL_NO_SHA384) && defined(SHA384_DIGEST_LENGTH)
@@ -209,9 +212,10 @@ int stun_produce_integrity_key_str(uint8_t *uname, uint8_t *realm, uint8_t *upwd
 		EVP_DigestFinal(ctx,key,&keylen);
 		EVP_MD_CTX_free(ctx);
 #endif
+		ret = 0;
 #else
 		fprintf(stderr,"SHA384 is not supported\n");
-		return -1;
+		ret = -1;
 #endif
 	} else if(shatype == SHATYPE_SHA512) {
 #if !defined(OPENSSL_NO_SHA512) && defined(SHA512_DIGEST_LENGTH)
@@ -230,20 +234,40 @@ int stun_produce_integrity_key_str(uint8_t *uname, uint8_t *realm, uint8_t *upwd
 		EVP_DigestFinal(ctx,key,&keylen);
 		EVP_MD_CTX_free(ctx);
 #endif
+		ret = 0;
 #else
 		fprintf(stderr,"SHA512 is not supported\n");
-		return -1;
+		ret = -1;
 #endif
 	} else {
-		MD5_CTX ctx;
-		MD5_Init(&ctx);
-		MD5_Update(&ctx,str,strl);
-		MD5_Final(key,&ctx);
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+		unsigned int keylen = 0;
+		EVP_MD_CTX ctx;
+		EVP_MD_CTX_init(&ctx);
+		if (FIPS_mode()) {
+			EVP_MD_CTX_set_flags(&ctx,EVP_MD_CTX_FLAG_NON_FIPS_ALLOW);
+		}
+		EVP_DigestInit_ex(&ctx,EVP_md5(), NULL);
+		EVP_DigestUpdate(&ctx,str,strl);
+		EVP_DigestFinal(&ctx,key,&keylen);
+		EVP_MD_CTX_cleanup(&ctx);
+#else
+		unsigned int keylen = 0;
+		EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+		if (FIPS_mode()) {
+			EVP_MD_CTX_set_flags(ctx, EVP_MD_CTX_FLAG_NON_FIPS_ALLOW);
+		}
+		EVP_DigestInit_ex(ctx,EVP_md5(), NULL);
+		EVP_DigestUpdate(ctx,str,strl);
+		EVP_DigestFinal(ctx,key,&keylen);
+		EVP_MD_CTX_free(ctx);
+#endif
+		ret = 0;
 	}
 
 	free(str);
 
-	return 0;
+	return ret;
 }
 
 #define PWD_SALT_SIZE (8)
@@ -360,7 +384,14 @@ int stun_get_command_message_len_str(const uint8_t* buf, size_t len)
 {
 	if (len < STUN_HEADER_LENGTH)
 		return -1;
-	return (int) (nswap16(((const uint16_t*)(buf))[1]) + STUN_HEADER_LENGTH);
+
+	/* Validate the size the buffer claims to be */
+	size_t bufLen = (size_t) (nswap16(((const uint16_t*)(buf))[1]) + STUN_HEADER_LENGTH);
+	if (bufLen > len) {
+		return -1;
+	}
+
+	return bufLen;
 }
 
 static int stun_set_command_message_len_str(uint8_t* buf, int len) {
@@ -522,11 +553,11 @@ int stun_is_challenge_response_str(const uint8_t* buf, size_t len, int *err_code
 				realm[vlen]=0;
 
 				{
-					stun_attr_ref sar = stun_attr_get_first_by_type_str(buf,len,STUN_ATTRIBUTE_THIRD_PARTY_AUTHORIZATION);
+					sar = stun_attr_get_first_by_type_str(buf,len,STUN_ATTRIBUTE_THIRD_PARTY_AUTHORIZATION);
 					if(sar) {
-						const uint8_t *value = stun_attr_get_value(sar);
+						value = stun_attr_get_value(sar);
 						if(value) {
-							size_t vlen = (size_t)stun_attr_get_len(sar);
+							vlen = (size_t)stun_attr_get_len(sar);
 							if(vlen>0) {
 								if(server_name) {
 									bcopy(value,server_name,vlen);
@@ -714,7 +745,7 @@ static void stun_init_error_response_common_str(uint8_t* buf, size_t *len,
 	avalue[3] = (uint8_t) (error_code % 100);
 	strncpy((char*) (avalue + 4), (const char*) reason, sizeof(avalue)-4);
 	avalue[sizeof(avalue)-1]=0;
-	int alen = 4 + strlen((const char*) (avalue+4));
+	int alen = 4 + (int)strlen((const char*) (avalue+4));
 
 	//"Manual" padding for compatibility with classic old stun:
 	{
@@ -1054,7 +1085,7 @@ int stun_set_allocate_response_str(uint8_t* buf, size_t *len, stun_tid* tid,
     }
 
     if(mobile_id && *mobile_id) {
-	    if(stun_attr_add_str(buf,len,STUN_ATTRIBUTE_MOBILITY_TICKET,(uint8_t*)mobile_id,strlen(mobile_id))<0) return -1;
+	    if(stun_attr_add_str(buf,len,STUN_ATTRIBUTE_MOBILITY_TICKET,(uint8_t*)mobile_id,(int)strlen(mobile_id))<0) return -1;
     }
 
   } else {
@@ -1351,10 +1382,34 @@ stun_attr_ref stun_attr_get_first_by_type_str(const uint8_t* buf, size_t len, ui
   return NULL;
 }
 
+static stun_attr_ref stun_attr_check_valid(stun_attr_ref attr, size_t remaining) {
+
+  if(remaining >= 4) {
+    /* Read the size of the attribute */
+    size_t attrlen = stun_attr_get_len(attr);
+    remaining -= 4;
+
+    /* Round to boundary */
+    uint16_t rem4 = ((uint16_t)attrlen) & 0x0003;
+    if(rem4) {
+      attrlen = attrlen+4-(int)rem4;
+    }
+
+    /* Check that there's enough space remaining */
+    if(attrlen <= remaining) {
+      return attr;
+    }
+  }
+
+  return NULL;
+}
+
 stun_attr_ref stun_attr_get_first_str(const uint8_t* buf, size_t len) {
 
-  if(stun_get_command_message_len_str(buf,len)>STUN_HEADER_LENGTH) {
-    return (stun_attr_ref)(buf+STUN_HEADER_LENGTH);
+  int bufLen = stun_get_command_message_len_str(buf,len);
+  if(bufLen > STUN_HEADER_LENGTH) {
+    stun_attr_ref attr = (stun_attr_ref)(buf+STUN_HEADER_LENGTH);
+    return stun_attr_check_valid(attr, bufLen - STUN_HEADER_LENGTH);
   }
 
   return NULL;
@@ -1370,8 +1425,11 @@ stun_attr_ref stun_attr_get_next_str(const uint8_t* buf, size_t len, stun_attr_r
     if(rem4) {
       attrlen = attrlen+4-(int)rem4;
     }
-    const uint8_t* attr_end=(const uint8_t*)prev+4+attrlen;
-    if(attr_end<end) return attr_end;
+    /* Note the order here: operations on attrlen are untrusted as they may overflow */
+    if(attrlen < end - (const uint8_t*)prev - 4) {
+      const uint8_t* attr_end=(const uint8_t*)prev+4+attrlen;
+      return stun_attr_check_valid(attr_end, end - attr_end);
+    }
     return NULL;
   }
 }
@@ -1503,7 +1561,7 @@ int stun_attr_add_channel_number_str(uint8_t* buf, size_t *len, uint16_t chnumbe
 
 int stun_attr_add_bandwidth_str(uint8_t* buf, size_t *len, band_limit_t bps0) {
 
-	uint32_t bps = (band_limit_t)(bps0 >> 7);
+	uint32_t bps = (uint32_t)(band_limit_t)(bps0 >> 7);
 
 	uint32_t field=nswap32(bps);
 
@@ -1521,7 +1579,7 @@ int stun_attr_add_address_error_code(uint8_t* buf, size_t *len, int requested_ad
 	avalue[3] = (uint8_t) (error_code % 100);
 	strncpy((char*) (avalue + 4), (const char*) reason, sizeof(avalue)-4);
 	avalue[sizeof(avalue)-1]=0;
-	int alen = 4 + strlen((const char*) (avalue+4));
+	int alen = 4 + (int)strlen((const char*) (avalue+4));
 
 	//"Manual" padding for compatibility with classic old stun:
 	{
@@ -1590,7 +1648,7 @@ int stun_attr_add_fingerprint_str(uint8_t *buf, size_t *len)
 {
 	uint32_t crc32 = 0;
 	stun_attr_add_str(buf, len, STUN_ATTRIBUTE_FINGERPRINT, (uint8_t*)&crc32, 4);
-	crc32 = ns_crc32(buf,*len-8);
+	crc32 = ns_crc32(buf,(int)*len-8);
 	*((uint32_t*)(buf+*len-4)) = nswap32(crc32 ^ ((uint32_t)0x5354554e));
 	return 0;
 }
@@ -1798,22 +1856,22 @@ int stun_attr_add_integrity_str(turn_credential_type ct, uint8_t *buf, size_t *l
 	return 0;
 }
 
-int stun_attr_add_integrity_by_key_str(uint8_t *buf, size_t *len, uint8_t *uname, uint8_t *realm, hmackey_t key, uint8_t *nonce, SHATYPE shatype)
+int stun_attr_add_integrity_by_key_str(uint8_t *buf, size_t *len, const uint8_t *uname, const uint8_t *realm, hmackey_t key, const uint8_t *nonce, SHATYPE shatype)
 {
-	if(stun_attr_add_str(buf, len, STUN_ATTRIBUTE_USERNAME, uname, strlen((char*)uname))<0)
+	if(stun_attr_add_str(buf, len, STUN_ATTRIBUTE_USERNAME, uname, (int)strlen((const char*)uname))<0)
 			return -1;
 
-	if(stun_attr_add_str(buf, len, STUN_ATTRIBUTE_NONCE, nonce, strlen((char*)nonce))<0)
+	if(stun_attr_add_str(buf, len, STUN_ATTRIBUTE_NONCE, nonce, (int)strlen((const char*)nonce))<0)
 		return -1;
 
-	if(stun_attr_add_str(buf, len, STUN_ATTRIBUTE_REALM, realm, strlen((char*)realm))<0)
+	if(stun_attr_add_str(buf, len, STUN_ATTRIBUTE_REALM, realm, (int)strlen((const char*)realm))<0)
 			return -1;
 
 	password_t p;
 	return stun_attr_add_integrity_str(TURN_CREDENTIALS_LONG_TERM, buf, len, key, p, shatype);
 }
 
-int stun_attr_add_integrity_by_user_str(uint8_t *buf, size_t *len, uint8_t *uname, uint8_t *realm, uint8_t *upwd, uint8_t *nonce, SHATYPE shatype)
+int stun_attr_add_integrity_by_user_str(uint8_t *buf, size_t *len, const uint8_t *uname, const uint8_t *realm, const uint8_t *upwd, const uint8_t *nonce, SHATYPE shatype)
 {
 	hmackey_t key;
 
@@ -1823,9 +1881,9 @@ int stun_attr_add_integrity_by_user_str(uint8_t *buf, size_t *len, uint8_t *unam
 	return stun_attr_add_integrity_by_key_str(buf, len, uname, realm, key, nonce, shatype);
 }
 
-int stun_attr_add_integrity_by_user_short_term_str(uint8_t *buf, size_t *len, uint8_t *uname, password_t pwd, SHATYPE shatype)
+int stun_attr_add_integrity_by_user_short_term_str(uint8_t *buf, size_t *len, const uint8_t *uname, password_t pwd, SHATYPE shatype)
 {
-	if(stun_attr_add_str(buf, len, STUN_ATTRIBUTE_USERNAME, uname, strlen((char*)uname))<0)
+	if(stun_attr_add_str(buf, len, STUN_ATTRIBUTE_USERNAME, uname, (int)strlen((const char*)uname))<0)
 			return -1;
 
 	hmackey_t key;
@@ -1887,7 +1945,7 @@ int stun_check_message_integrity_by_key_str(turn_credential_type ct, uint8_t *bu
 	if (orig_len < 0)
 		return -1;
 
-	int new_len = ((const uint8_t*) sar - buf) + 4 + shasize;
+	int new_len = (int)((const uint8_t*) sar - buf) + 4 + shasize;
 	if (new_len > orig_len)
 		return -1;
 
@@ -1917,13 +1975,13 @@ int stun_check_message_integrity_by_key_str(turn_credential_type ct, uint8_t *bu
 /*
  * Return -1 if failure, 0 if the integrity is not correct, 1 if OK
  */
-int stun_check_message_integrity_str(turn_credential_type ct, uint8_t *buf, size_t len, uint8_t *uname, uint8_t *realm, uint8_t *upwd, SHATYPE shatype)
+int stun_check_message_integrity_str(turn_credential_type ct, uint8_t *buf, size_t len, const uint8_t *uname, const uint8_t *realm, const uint8_t *upwd, SHATYPE shatype)
 {
 	hmackey_t key;
 	password_t pwd;
 
 	if(ct == TURN_CREDENTIALS_SHORT_TERM)
-		strncpy((char*)pwd,(char*)upwd,sizeof(password_t));
+		strncpy((char*)pwd,(const char*)upwd,sizeof(password_t));
 	else if (stun_produce_integrity_key_str(uname, realm, upwd, key, shatype) < 0)
 		return -1;
 
@@ -2397,7 +2455,7 @@ int decode_oauth_token_normal(const uint8_t *server_name, const encoded_oauth_to
 }
 
 static void generate_random_nonce(unsigned char *nonce, size_t sz) {
-	if(!RAND_bytes(nonce, sz)) {
+	if(!RAND_bytes(nonce, (int)sz)) {
 		size_t i;
 		for(i=0;i<sz;++i) {
 			nonce[i] = (unsigned char)random();
