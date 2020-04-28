@@ -429,11 +429,11 @@ Options with values:
 			that other mode is dynamic. Multiple shared secrets can be used
 			(both in the database and in the "static" fashion).
 
- --no-auth-pings			Disable periodic health checks to 'dynamic' auth secret tables.\n"
+ --no-auth-pings			Disable periodic health checks to 'dynamic' auth secret tables.
 
- --no-dynamic-ip-list	Do not use dynamic allowed/denied peer ip list.\n"
+ --no-dynamic-ip-list	Do not use dynamic allowed/denied peer ip list.
 
- --no-dynamic-realms	Do not use dynamic realm assignment and options.\n"
+ --no-dynamic-realms	Do not use dynamic realm assignment and options.
 			
 --server-name		Server name used for
 			the oAuth authentication purposes.
