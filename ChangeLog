@@ -54,6 +54,7 @@ Version 4.5.1.2 'dan Eider':
 	- change Diffie Hellman default key length from 1066 to 2066
 	- merge PR #522 drop of supplementary group IDs (by weberhofer)
 	- merge PR #514 Unify spelling of Coturn (by paulmenzel)
+	- merge PR#506 Rename "prod" config option to "no-software-attribute"
 
 02/03/2019 Oleg Moskalenko <mom040267@gmail.com> Mihály Mészáros <misi@majd.eu>
 Version 4.5.1.1 'dan Eider':
