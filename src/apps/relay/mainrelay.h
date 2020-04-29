@@ -324,6 +324,9 @@ typedef struct _turn_params_ {
   char secret_key_file[1025];
   unsigned char secret_key[1025];
   int keep_address_family;
+  int no_auth_pings;
+  int no_dynamic_ip_list;
+  int no_dynamic_realms;
 
 } turn_params_t;
 
