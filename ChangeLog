@@ -1,4 +1,7 @@
-02/03/2019 Oleg Moskalenko <mom040267@gmail.com> Mihály Mészáros <misi@majd.eu>
+30/04/2020 Oleg Moskalenko <mom040267@gmail.com> Mihály Mészáros <misi@majd.eu>
+Version 4.5.2.0 'dan Eider':
+
+30/04/2020 Oleg Moskalenko <mom040267@gmail.com> Mihály Mészáros <misi@majd.eu>
 Version 4.5.1.2 'dan Eider':
 	- merge regression fix: (by Mathieu Brunot)
 		* Do not display empty CLI passwd alert if CLI is not enabled
