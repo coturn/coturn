@@ -680,6 +680,9 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 		  if ((int)elem->in_buffer.len == clmessage_length) {
 		    bcopy((elem->in_buffer.buf), &mi, sizeof(message_info));
 		    miset=1;
+		  } else {
+			/* TODO: make a more clean fix */ 
+			buffers=(int)elem->in_buffer.len / clmessage_length;
 		  }
 		} else if (stun_is_indication(&(elem->in_buffer))) {
 
