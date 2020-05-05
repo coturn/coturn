@@ -64,7 +64,7 @@ static inline int get_family(int stun_family, ioa_engine_handle e, ioa_socket_ha
 ////////////////////////////////////////////////
 
 const char * get_version(turn_turnserver *server) {
-	if(server && !*server->prod) {
+	if(server && !*server->no_software_attribute) {
 		return (const char *) TURN_SOFTWARE;
 	} else {
 		return (const char *) "None";
@@ -4900,7 +4900,7 @@ void init_turn_server(turn_turnserver* server,
 		vintp permission_lifetime,
 		vintp stun_only,
 		vintp no_stun,
-		vintp prod,
+		vintp no_software_attribute,
     vintp web_admin_listen_on_workers,
 		turn_server_addrs_list_t *alternate_servers_list,
 		turn_server_addrs_list_t *tls_alternate_servers_list,
@@ -4962,7 +4962,7 @@ void init_turn_server(turn_turnserver* server,
 	server->permission_lifetime = permission_lifetime;
 	server->stun_only = stun_only;
 	server->no_stun = no_stun;
-	server->prod = prod;
+	server->no_software_attribute = no_software_attribute;
 	server-> web_admin_listen_on_workers = web_admin_listen_on_workers;
 
 	server->dont_fragment = dont_fragment;

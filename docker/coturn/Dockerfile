@@ -8,11 +8,11 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
 	apt-get update && \
 	apt-get install -y build-essential git debhelper dpkg-dev libssl-dev libevent-dev sqlite3 libsqlite3-dev postgresql-client libpq-dev default-mysql-client default-libmysqlclient-dev libhiredis-dev libmongoc-dev libbson-dev
 
-# Clone coTURN
+# Clone Coturn
 WORKDIR ${BUILD_PREFIX}
 RUN git clone https://github.com/coturn/coturn.git
 
-# Build coTURN
+# Build Coturn
 WORKDIR coturn
 RUN ./configure
 RUN make

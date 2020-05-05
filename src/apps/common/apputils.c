@@ -439,6 +439,7 @@ int set_raw_socket_tos(evutil_socket_t fd, int family, int tos)
 int is_stream_socket(int st) {
 	switch(st) {
 	case TCP_SOCKET:
+	case TCP_SOCKET_PROXY:
 	case TLS_SOCKET:
 	case TENTATIVE_TCP_SOCKET:
 	case SCTP_SOCKET:
