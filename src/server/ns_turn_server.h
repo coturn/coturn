@@ -171,6 +171,9 @@ struct _turn_turnserver {
 	int oauth;
 	const char* oauth_server_name;
 
+	/* ACME redirect URL */
+	const char* acme_redirect;
+
 	/* Keep Address Family */
 	int keep_address_family;
 };
@@ -218,6 +221,7 @@ void init_turn_server(turn_turnserver* server,
 				    allocate_bps_cb allocate_bps_func,
 				    int oauth,
 				    const char* oauth_server_name,
+					const char* acme_redirect,
 					int keep_address_family);
 
 ioa_engine_handle turn_server_get_engine(turn_turnserver *s);
