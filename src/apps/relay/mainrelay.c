@@ -109,7 +109,7 @@ NULL, PTHREAD_MUTEX_INITIALIZER,
 
 //////////////// Common params ////////////////////
 TURN_VERBOSE_NONE,0,0,0,0,
-"/var/run/turnserver.pid",
+"/var/run/turnserver.pid","",
 DEFAULT_STUN_PORT,DEFAULT_STUN_TLS_PORT,0,0,0,1,
 0,0,0,0,0,
 "",
@@ -615,6 +615,8 @@ static char Usage[] = "Usage: turnserver [options]\n"
 " --pidfile <\"pid-file-name\">			File name to store the pid of the process.\n"
 "						Default is /var/run/turnserver.pid (if superuser account is used) or\n"
 "						/var/tmp/turnserver.pid .\n"
+" --acme-redirect <\"URL\">        Redirect HTTP GET requests matching '^/.well-known/acme-challenge/(.*)' to '<\"URL\">$1'\n"
+"                      Default is '', i.e. no special handling for such requests.\n"
 " --secure-stun					Require authentication of the STUN Binding request.\n"
 "						By default, the clients are allowed anonymous access to the STUN Binding functionality.\n"
 " --proc-user <user-name>			User name to run the turnserver process.\n"
@@ -793,7 +795,8 @@ enum EXTRA_OPTS {
 	OAUTH_OPT,
 	NO_SOFTWARE_ATTRIBUTE_OPT,
 	NO_HTTP_OPT,
-	SECRET_KEY_OPT
+	SECRET_KEY_OPT,
+	ACME_REDIRECT_OPT
 };
 
 struct myoption {
@@ -922,6 +925,7 @@ static const struct myoption long_options[] = {
 				{ "no-tlsv1_2", optional_argument, NULL, NO_TLSV1_2_OPT },
 				{ "secret-key-file", required_argument, NULL, SECRET_KEY_OPT },
 				{ "keep-address-family", optional_argument, NULL, 'K' },
+				{ "acme-redirect", required_argument, NULL, ACME_REDIRECT_OPT },
 				{ NULL, no_argument, NULL, 0 }
 };
 
@@ -1559,6 +1563,9 @@ static void set_option(int c, char *value)
 		break;
 	case PIDFILE_OPT:
 		STRCPY(turn_params.pidfile,value);
+		break;
+	case ACME_REDIRECT_OPT:
+		STRCPY(turn_params.acme_redirect,value);
 		break;
 	case 'C':
 		if(value && *value) {
@@ -2238,6 +2245,9 @@ int main(int argc, char **argv)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Domain name: %s\n",turn_params.domain);
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Default realm: %s\n",get_realm(NULL)->options.name);
 
+	if(turn_params.acme_redirect[0]) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "ACME redirect URL: %s\n",turn_params.acme_redirect);
+	}
 	if(turn_params.oauth && turn_params.oauth_server_name[0]) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "oAuth server name: %s\n",turn_params.oauth_server_name);
 	}

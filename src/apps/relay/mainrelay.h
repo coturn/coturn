@@ -219,6 +219,7 @@ typedef struct _turn_params_ {
   int do_not_use_config_file;
 
   char pidfile[1025];
+  char acme_redirect[1025];
 
   ////////////////  Listener server /////////////////
 
