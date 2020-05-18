@@ -285,6 +285,7 @@ int get_default_protocol_port(const char* scheme, size_t slen);
 ///////////// HTTP ////////////////////
 
 void handle_http_echo(ioa_socket_handle s);
+int try_acme_redirect(char *req, size_t len, const char *url, ioa_socket_handle s);
 
 ///////////// ACME /////////////////////
 

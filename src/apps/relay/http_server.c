@@ -99,6 +99,83 @@ const char* get_http_date_header()
 	return buffer_header;
 }
 
+static int is_acme_req(char *req, size_t len) {
+	static const char *A = "                                             -  0123456789       ABCDEFGHIJKLMNOPQRSTUVWXYZ    _ abcdefghijklmnopqrstuvwxyz     ";
+	int c, i, k;
+
+	// Check first request line. Should be like: GET path HTTP/1.x
+	if (strncmp(req, "GET /.well-known/acme-challenge/", 32))
+		return -1;
+	// Usually (for LE) the "method path" is 32 + 43 = 55 chars. But other
+	// implementations may choose longer pathes. We define PATHMAX = 127 chars
+	// to be prepared for "DoS" attacks (STUN msg size max. is ~ 64K).
+	len =- 21;					// min size of trailing headers
+	if (len > 131)
+		len = 131;
+	for (i=32; i < (int) len; i++) {
+		// find the end of the path
+		if (req[i] != ' ')
+			continue;
+		// consider path < 10 chars invalid. Also we wanna see a "trailer".
+		if (i < 42 || strncmp(req + i, " HTTP/1.", 8))
+			return -2;
+		// finally check for allowed chars
+		for (k=32; k < i; k++) {
+			c = req[k];
+			if ((c > 127) || (A[c] == ' '))
+				return -3;
+		}
+		// all checks passed: sufficient for us to answer with a redirect
+		return i;
+	}
+	return -4;		// end of path not found
+}
+
+int try_acme_redirect(char *req, size_t len, const char *url,
+	ioa_socket_handle s)
+{
+	static const char *HTML = "<html><head><title>301 Moved Permanently</title></head><body><h1>301 Moved Permanently</h1></body></html>";
+	char http_response[1024];
+	int plen, rlen;
+
+	if (url == NULL || url[0] == '\0' || req == NULL || s == 0 )
+		return 1;
+	if (len < 64 || len > 512 || (plen = is_acme_req(req, len)) < 33)
+		return 2;
+
+	req[plen] = '\0';
+	snprintf(http_response, sizeof(http_response) - 1,
+		"HTTP/1.1 301 Moved Permanently\r\n"
+		"Content-Type: text/html\r\n"
+		"Content-Length: %ld\r\n"
+		"Connection: close\r\n"
+		"Location: %s%s\r\n"
+		"\r\n%s", strlen(HTML), url, req + 32, HTML);
+
+	rlen = strlen(http_response);
+
+	// Variant A: direkt write, no eventbuf stuff
+	if (write(s->fd, http_response, rlen) == -1) {
+		perror("Sending redirect failed");
+	} else if (((turn_turnserver *)s->session->server)->verbose) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "ACME redirect to %s%s\n",
+			url, req + 32);
+	}
+
+	req[plen] = ' ';
+
+	// Variant B: via eventbuf does not send anything for whatever reason
+	/*
+	set_ioa_socket_app_type(s, HTTP_CLIENT_SOCKET);
+	ioa_network_buffer_handle nbh = ioa_network_buffer_allocate(s->e);
+	uint8_t *data = ioa_network_buffer_data(nbh);
+	bcopy(http_response, data, rlen);
+	ioa_network_buffer_set_size(nbh, rlen);
+	send_data_from_ioa_socket_nbh(s, NULL, nbh, TTL_IGNORE, TOS_IGNORE, NULL);
+	*/
+
+	return 0;
+}
 ///////////////////////////////////////////////
 
 static struct headers_list * post_parse(char *data, size_t data_len)

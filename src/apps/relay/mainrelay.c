@@ -1673,25 +1673,25 @@ static void read_config_file(int argc, char **argv, int pass)
 
 	if(pass == 0) {
 
-	  if (argv) {
-	    int i = 0;
-	    for (i = 0; i < argc; i++) {
-	      if (!strcmp(argv[i], "-c")) {
-		if (i < argc - 1) {
-		  STRCPY(config_file, argv[i + 1]);
-		} else {
-		  TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Wrong usage of -c option\n");
+		if (argv) {
+			int i = 0;
+			for (i = 0; i < argc; i++) {
+				if (!strcmp(argv[i], "-c")) {
+					if (i < argc - 1) {
+						STRCPY(config_file, argv[i + 1]);
+					} else {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Wrong usage of -c option\n");
+					}
+				} else if (!strcmp(argv[i], "-n")) {
+					turn_params.do_not_use_config_file = 1;
+					config_file[0]=0;
+					return;
+				} else if (!strcmp(argv[i], "-h")) {
+					printf("\n%s\n",Usage);
+					exit(0);
+				}
+			}
 		}
-	      } else if (!strcmp(argv[i], "-n")) {
-		turn_params.do_not_use_config_file = 1;
-		config_file[0]=0;
-		return;
-	      } else if (!strcmp(argv[i], "-h")) {
-		printf("\n%s\n",Usage);
-		exit(0);
-	      }
-	    }
-	  }
 	}
 
 	if (!turn_params.do_not_use_config_file && config_file[0]) {
@@ -1728,7 +1728,7 @@ static void read_config_file(int argc, char **argv, int pass)
 					STRCPY(sarg, s);
 					if (parse_arg_string(sarg, &c, &value) < 0) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Bad configuration format: %s\n",
-							sarg);
+								sarg);
 					} else if((pass == 0) && (c == 'l')) {
 						set_logfile(value);
 					} else if((pass==0) && (c==NO_STDOUT_LOG_OPT)) {
@@ -1742,9 +1742,9 @@ static void read_config_file(int argc, char **argv, int pass)
 					} else if ((pass==0) && (c==NEW_LOG_TIMESTAMP_FORMAT_OPT)) {
 						set_turn_log_timestamp_format(value);
 					} else if((pass == 0) && (c != 'u')) {
-					  set_option(c, value);
+						set_option(c, value);
 					} else if((pass > 0) && (c == 'u')) {
-					  set_option(c, value);
+						set_option(c, value);
 					}
 					if (s[slen - 1] == 59) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Check config! The following line ends with semicolon: \"%s\" \n",s);
@@ -1757,7 +1757,7 @@ static void read_config_file(int argc, char **argv, int pass)
 
 		} else
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: Cannot find config file: %s. Default and command-line settings will be used.\n",
-				config_file);
+					config_file);
 
 		if (full_path_to_config_file) {
 			free(full_path_to_config_file);
@@ -1770,7 +1770,7 @@ static int disconnect_database(void)
 {
 	const turn_dbdriver_t * dbd = get_dbdriver();
 	if (dbd && dbd->disconnect) {
-			dbd->disconnect();
+		dbd->disconnect();
 	}
 	return 0;
 }
@@ -1801,183 +1801,183 @@ static int adminmain(int argc, char **argv)
 
 	while (((c = getopt_long(argc, argv, ADMIN_OPTIONS, uo.u.o, NULL)) != -1)) {
 		switch (c){
-        case 'P':
-            if(pwd[0]) {
-                char result[257];
-                generate_new_enc_password((char*)pwd, result);
-                printf("%s\n",result);
-                exit(0);
-            }
-            print_enc_password = 1;
-            break;
-        case 'E':
-            print_enc_aes_password = 1;
-            break;
-        case 'g':
-            ct = TA_SET_REALM_OPTION;
-            break;
-        case 'G':
-            ct = TA_LIST_REALM_OPTIONS;
-            break;
-        case ADMIN_USER_QUOTA_OPT:
-            po.user_quota = (vint)atoi(optarg);
-            break;
-        case ADMIN_TOTAL_QUOTA_OPT:
-            po.total_quota = (vint)atoi(optarg);
-            break;
-        case ADMIN_MAX_BPS_OPT:
-            po.max_bps = (vint)atoi(optarg);
-            break;
-        case 'O':
-            ct = TA_ADD_ORIGIN;
-            break;
-        case 'R':
-            ct = TA_DEL_ORIGIN;
-            break;
-        case 'I':
-            ct = TA_LIST_ORIGINS;
-            break;
-        case 'o':
-            STRCPY(origin,optarg);
-            break;
-        case 'k':
-            ct = TA_PRINT_KEY;
-            break;
-        case 'a':
-            ct = TA_UPDATE_USER;
-            break;
-        case 'd':
-            ct = TA_DELETE_USER;
-            break;
-        case 'A':
-            ct = TA_UPDATE_USER;
-            is_admin = 1;
-            break;
-        case 'D':
-            ct = TA_DELETE_USER;
-            is_admin = 1;
-            break;
-        case 'l':
-            ct = TA_LIST_USERS;
-            break;
-        case 'L':
-            ct = TA_LIST_USERS;
-            is_admin = 1;
-            break;
-        case 's':
-            ct = TA_SET_SECRET;
-            STRCPY(secret,optarg);
-            break;
-        case 'S':
-            ct = TA_SHOW_SECRET;
-            break;
-        case 'X':
-            ct = TA_DEL_SECRET;
-            if(optarg)
-                STRCPY(secret,optarg);
-            break;
-        case DEL_ALL_AUTH_SECRETS_OPT:
-            ct = TA_DEL_SECRET;
-            break;
+			case 'P':
+				if(pwd[0]) {
+					char result[257];
+					generate_new_enc_password((char*)pwd, result);
+					printf("%s\n",result);
+					exit(0);
+				}
+				print_enc_password = 1;
+				break;
+			case 'E':
+				print_enc_aes_password = 1;
+				break;
+			case 'g':
+				ct = TA_SET_REALM_OPTION;
+				break;
+			case 'G':
+				ct = TA_LIST_REALM_OPTIONS;
+				break;
+			case ADMIN_USER_QUOTA_OPT:
+				po.user_quota = (vint)atoi(optarg);
+				break;
+			case ADMIN_TOTAL_QUOTA_OPT:
+				po.total_quota = (vint)atoi(optarg);
+				break;
+			case ADMIN_MAX_BPS_OPT:
+				po.max_bps = (vint)atoi(optarg);
+				break;
+			case 'O':
+				ct = TA_ADD_ORIGIN;
+				break;
+			case 'R':
+				ct = TA_DEL_ORIGIN;
+				break;
+			case 'I':
+				ct = TA_LIST_ORIGINS;
+				break;
+			case 'o':
+				STRCPY(origin,optarg);
+				break;
+			case 'k':
+				ct = TA_PRINT_KEY;
+				break;
+			case 'a':
+				ct = TA_UPDATE_USER;
+				break;
+			case 'd':
+				ct = TA_DELETE_USER;
+				break;
+			case 'A':
+				ct = TA_UPDATE_USER;
+				is_admin = 1;
+				break;
+			case 'D':
+				ct = TA_DELETE_USER;
+				is_admin = 1;
+				break;
+			case 'l':
+				ct = TA_LIST_USERS;
+				break;
+			case 'L':
+				ct = TA_LIST_USERS;
+				is_admin = 1;
+				break;
+			case 's':
+				ct = TA_SET_SECRET;
+				STRCPY(secret,optarg);
+				break;
+			case 'S':
+				ct = TA_SHOW_SECRET;
+				break;
+			case 'X':
+				ct = TA_DEL_SECRET;
+				if(optarg)
+					STRCPY(secret,optarg);
+				break;
+			case DEL_ALL_AUTH_SECRETS_OPT:
+				ct = TA_DEL_SECRET;
+				break;
 #if !defined(TURN_NO_SQLITE)
-		case 'b':
-		  STRCPY(turn_params.default_users_db.persistent_users_db.userdb,optarg);
-		  turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_SQLITE;
-		  break;
+			case 'b':
+				STRCPY(turn_params.default_users_db.persistent_users_db.userdb,optarg);
+				turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_SQLITE;
+				break;
 #endif
 #if !defined(TURN_NO_PQ)
-		case 'e':
-		  STRCPY(turn_params.default_users_db.persistent_users_db.userdb,optarg);
-		  turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_PQ;
-		  break;
+			case 'e':
+				STRCPY(turn_params.default_users_db.persistent_users_db.userdb,optarg);
+				turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_PQ;
+				break;
 #endif
 #if !defined(TURN_NO_MYSQL)
-		case 'M':
-		  STRCPY(turn_params.default_users_db.persistent_users_db.userdb,optarg);
-		  turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_MYSQL;
-		  break;
+			case 'M':
+				STRCPY(turn_params.default_users_db.persistent_users_db.userdb,optarg);
+				turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_MYSQL;
+				break;
 #endif
 #if !defined(TURN_NO_MONGO)
-		case 'J':
-		  STRCPY(turn_params.default_users_db.persistent_users_db.userdb,optarg);
-		  turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_MONGO;
-		  break;
+			case 'J':
+				STRCPY(turn_params.default_users_db.persistent_users_db.userdb,optarg);
+				turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_MONGO;
+				break;
 #endif
 #if !defined(TURN_NO_HIREDIS)
-		case 'N':
-		  STRCPY(turn_params.default_users_db.persistent_users_db.userdb,optarg);
-		  turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_REDIS;
-		  break;
+			case 'N':
+				STRCPY(turn_params.default_users_db.persistent_users_db.userdb,optarg);
+				turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_REDIS;
+				break;
 #endif
-        case 'u':
-            STRCPY(user,optarg);
-            if(!is_secure_string((uint8_t*)user,1)) {
-                TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong user name structure or symbols, choose another name: %s\n",user);
-                exit(-1);
-            }
-            if(SASLprep((uint8_t*)user)<0) {
-                TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong user name: %s\n",user);
-                exit(-1);
-            }
-            break;
-        case 'r':
-            set_default_realm_name(optarg);
-            STRCPY(realm,optarg);
-            if(SASLprep((uint8_t*)realm)<0) {
-                TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong realm: %s\n",realm);
-                exit(-1);
-            }
-            break;
-        case 'p':
-            STRCPY(pwd,optarg);
-            if(SASLprep((uint8_t*)pwd)<0) {
-                TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong password: %s\n",pwd);
-                exit(-1);
-            }
-            if(print_enc_password) {
-                char result[257];
-                generate_new_enc_password((char*)pwd, result);
-                printf("%s\n",result);
-                exit(0);
-            }
-            if(print_enc_aes_password){
-				encrypt_aes_128(pwd, generated_key);
-                exit(0);
-            }
-            break;
-        case 'x':
-            generate_aes_128_key(optarg, generated_key);
-            exit(0);
-            break;
-        case 'f':
-            fptr = fopen((char*)optarg, "r");
-            if(fptr == NULL){
-                printf("No such file like %s\n", (char*)optarg);
-            }
-            else{
-				fseek (fptr, 0, SEEK_SET);
-				rc = fread(generated_key, sizeof(char), 16, fptr);
-				if( rc == 0 ){
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: Secret-Key file is empty\n",__FUNCTION__);
+			case 'u':
+				STRCPY(user,optarg);
+				if(!is_secure_string((uint8_t*)user,1)) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong user name structure or symbols, choose another name: %s\n",user);
+					exit(-1);
+				}
+				if(SASLprep((uint8_t*)user)<0) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong user name: %s\n",user);
+					exit(-1);
+				}
+				break;
+			case 'r':
+				set_default_realm_name(optarg);
+				STRCPY(realm,optarg);
+				if(SASLprep((uint8_t*)realm)<0) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong realm: %s\n",realm);
+					exit(-1);
+				}
+				break;
+			case 'p':
+				STRCPY(pwd,optarg);
+				if(SASLprep((uint8_t*)pwd)<0) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong password: %s\n",pwd);
+					exit(-1);
+				}
+				if(print_enc_password) {
+					char result[257];
+					generate_new_enc_password((char*)pwd, result);
+					printf("%s\n",result);
+					exit(0);
+				}
+				if(print_enc_aes_password){
+					encrypt_aes_128(pwd, generated_key);
+					exit(0);
+				}
+				break;
+			case 'x':
+				generate_aes_128_key(optarg, generated_key);
+				exit(0);
+				break;
+			case 'f':
+				fptr = fopen((char*)optarg, "r");
+				if(fptr == NULL){
+					printf("No such file like %s\n", (char*)optarg);
 				}
 				else{
-					if( rc != 16 ){
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: Secret-Key length is not enough\n",__FUNCTION__);
+					fseek (fptr, 0, SEEK_SET);
+					rc = fread(generated_key, sizeof(char), 16, fptr);
+					if( rc == 0 ){
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: Secret-Key file is empty\n",__FUNCTION__);
 					}
+					else{
+						if( rc != 16 ){
+							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: Secret-Key length is not enough\n",__FUNCTION__);
+						}
+					}
+					fclose (fptr);
 				}
-				fclose (fptr);
-            }
-            break;
-        case 'v':
-			decrypt_aes_128((char*)optarg, generated_key);
-            exit(0);
-        case 'h':
-            printf("\n%s\n", AdminUsage);
-            exit(0);
-            break;
-        default:
-            fprintf(stderr,"\n%s\n", AdminUsage);
-            exit(-1);
+				break;
+			case 'v':
+				decrypt_aes_128((char*)optarg, generated_key);
+				exit(0);
+			case 'h':
+				printf("\n%s\n", AdminUsage);
+				exit(0);
+				break;
+			default:
+				fprintf(stderr,"\n%s\n", AdminUsage);
+				exit(-1);
 		}
 	}
 
@@ -2021,16 +2021,16 @@ static void print_features(unsigned long mfn)
 
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\n\n==== Show him the instruments, Practical Frost: ====\n\n");
 
-/*
-	Frost stepped forward and opened the polished case with a theatrical
-	flourish. It was a masterful piece of craftsmanship. As the lid was
-	pulled back, the many trays inside lifted and fanned out, displaying
-	Glokta’s tools in all their gruesome glory. There were blades of every
-	size and shape, needles curved and straight, bottles of oil and acid,
-	nails and screws, clamps and pliers, saws, hammers, chisels. Metal, wood
-	and glass glittered in the bright lamplight, all polished to mirror
-	brightness and honed to a murderous sharpness.
-*/
+	/*
+	   Frost stepped forward and opened the polished case with a theatrical
+	   flourish. It was a masterful piece of craftsmanship. As the lid was
+	   pulled back, the many trays inside lifted and fanned out, displaying
+	   Glokta’s tools in all their gruesome glory. There were blades of every
+	   size and shape, needles curved and straight, bottles of oil and acid,
+	   nails and screws, clamps and pliers, saws, hammers, chisels. Metal, wood
+	   and glass glittered in the bright lamplight, all polished to mirror
+	   brightness and honed to a murderous sharpness.
+	   */
 
 #if !TLS_SUPPORTED
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS is not supported\n");
