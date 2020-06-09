@@ -197,6 +197,8 @@ fi
 %{_datadir}/%{name}/testmongosetup.sh
 %{_datadir}/%{name}/testsqldbsetup.sql
 %dir %{_datadir}/%{name}/etc
+%{_datadir}/%{name}/etc/cacert.pem
+%{_datadir}/%{name}/etc/coturn.service
 %{_datadir}/%{name}/etc/turn_server_cert.pem
 %{_datadir}/%{name}/etc/turn_server_pkey.pem
 %{_datadir}/%{name}/etc/turnserver.conf
