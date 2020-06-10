@@ -7,7 +7,7 @@ services:
       context: ./mysql
     restart: unless-stopped
     volumes:
-      - mysql-data:/var/lib/mysql/data
+      - mysql-data:/var/lib/mysql
     env_file: 
       - mysql/mysql.env
     networks:
@@ -19,7 +19,7 @@ services:
       context: ./postgresql
     restart: unless-stopped
     volumes:
-      - postgresql-data:/var/lib/postgresql/data
+      - postgresql-data:/var/lib/postgresql
     env_file: 
       - postgresql/postgresql.env
     networks:
@@ -49,7 +49,7 @@ services:
       - backend
 
 
-# coTURN
+# Coturn
   coturn:
     build:
       context: ./coturn

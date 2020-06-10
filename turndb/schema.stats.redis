@@ -17,11 +17,17 @@ in the traffic information must subscribe to the events as:
 
 	psubscribe turn/realm/*/user/*/allocation/*/traffic
 
+Additionally peer traffic is available with the key "turn/user/<username>/allocation/<id>/traffic/peer". 
+The application that is interested in the peer traffic information must subscribe to the events as:
+
+	psubscribe turn/realm/*/user/*/allocation/*/traffic/peer
+
 Total traffic information is also reported when the allocation is deleted. The keys are
-"turn/user/<username>/allocation/<id>/total_traffic". Applications interested in the total amount
-of traffic per allocation can subscribe to these events as:
+"turn/user/<username>/allocation/<id>/total_traffic" or "turn/user/<username>/allocation/<id>/total_traffic/peer". 
+Applications interested in the total amount of traffic per allocation can subscribe to these events as:
 
 	psubscribe turn/realm/*/user/*/allocation/*/total_traffic
+	psubscribe turn/realm/*/user/*/allocation/*/total_traffic/peer
 	
 Or, to receive all allocation events:
 

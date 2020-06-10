@@ -370,7 +370,7 @@ static void set_rtpfile(void)
 				no_stdout_log = 1;
 			} else {
 				set_log_file_name(log_fn_base,log_fn);
-				_rtpfile = fopen(log_fn, "w");
+				_rtpfile = fopen(log_fn, "a");
 				if(_rtpfile)
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "log file opened: %s\n", log_fn);
 			}
@@ -393,36 +393,41 @@ static void set_rtpfile(void)
 		else
 			snprintf(logtail, FILE_STR_LEN, "turn_%d_", (int)getpid());
 
-		snprintf(logbase, FILE_STR_LEN, "/var/log/turnserver/%s", logtail);
+		if (snprintf(logbase, FILE_STR_LEN, "/var/log/turnserver/%s", logtail)<0)
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "String truncation occured.\n");
 
 		set_log_file_name(logbase, logf);
 
-		_rtpfile = fopen(logf, "w");
+		_rtpfile = fopen(logf, "a");
 		if(_rtpfile)
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "log file opened: %s\n", logf);
 		else {
-			snprintf(logbase, FILE_STR_LEN, "/var/log/%s", logtail);
+			if (snprintf(logbase, FILE_STR_LEN, "/var/log/%s", logtail)<0)
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "String truncation occured.\n");
 
 			set_log_file_name(logbase, logf);
-			_rtpfile = fopen(logf, "w");
+			_rtpfile = fopen(logf, "a");
 			if(_rtpfile)
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "log file opened: %s\n", logf);
 			else {
-				snprintf(logbase, FILE_STR_LEN, "/var/tmp/%s", logtail);
+				if (snprintf(logbase, FILE_STR_LEN, "/var/tmp/%s", logtail)<0)
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "String truncation occured.\n");
+
 				set_log_file_name(logbase, logf);
-				_rtpfile = fopen(logf, "w");
+				_rtpfile = fopen(logf, "a");
 				if(_rtpfile)
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "log file opened: %s\n", logf);
 				else {
-					snprintf(logbase, FILE_STR_LEN, "/tmp/%s", logtail);
+					if (snprintf(logbase, FILE_STR_LEN, "/tmp/%s", logtail)<0)
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "String truncation occured.\n");
 					set_log_file_name(logbase, logf);
-					_rtpfile = fopen(logf, "w");
+					_rtpfile = fopen(logf, "a");
 					if(_rtpfile)
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "log file opened: %s\n", logf);
 					else {
 						snprintf(logbase, FILE_STR_LEN, "%s", logtail);
 						set_log_file_name(logbase, logf);
-						_rtpfile = fopen(logf, "w");
+						_rtpfile = fopen(logf, "a");
 						if(_rtpfile)
 							TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "log file opened: %s\n", logf);
 						else {
@@ -556,7 +561,7 @@ int get_default_protocol_port(const char* scheme, size_t slen)
 				return 21;
 			if(!memcmp("svn",scheme,3))
 				return 3690;
-			if(!memcmp("ssh",scheme,4))
+			if(!memcmp("ssh",scheme,3))
 				return 22;
 			if(!memcmp("sip",scheme,3))
 				return 5060;

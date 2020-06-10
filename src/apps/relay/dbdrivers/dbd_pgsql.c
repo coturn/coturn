@@ -949,6 +949,15 @@ static int pgsql_list_admin_users(int no_print)
 	return ret;
 }
 
+static void pgsql_disconnect(void) {
+	PGconn *pqdbconnection = (PGconn*)pthread_getspecific(connection_key);
+	if (pqdbconnection) {
+		PQfinish(pqdbconnection);
+		pqdbconnection=NULL;
+	}
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "PostgreSQL connection was closed.\n");
+}
+
 /////////////////////////////////////////////////////////////
 
 static const turn_dbdriver_t driver = {
@@ -976,7 +985,8 @@ static const turn_dbdriver_t driver = {
   &pgsql_get_admin_user,
   &pgsql_set_admin_user,
   &pgsql_del_admin_user,
-  &pgsql_list_admin_users
+  &pgsql_list_admin_users,
+  &pgsql_disconnect
 };
 
 const turn_dbdriver_t * get_pgsql_dbdriver(void) {

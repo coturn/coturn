@@ -65,7 +65,7 @@ static inline int get_family(int stun_family, ioa_engine_handle e, ioa_socket_ha
 ////////////////////////////////////////////////
 
 const char * get_version(turn_turnserver *server) {
-	if(server && !*server->prod) {
+	if(server && !*server->no_software_attribute) {
 		return (const char *) TURN_SOFTWARE;
 	} else {
 		return (const char *) "None";
@@ -505,10 +505,33 @@ int turn_session_info_copy_from(struct turn_session_info* tsi, ts_ur_super_sessi
 			else
 				tsi->sent_bytes = ss->sent_bytes;
 
+			if (ss->t_peer_received_packets > ss->peer_received_packets)
+				tsi->peer_received_packets = ss->t_peer_received_packets;
+			else
+				tsi->peer_received_packets = ss->peer_received_packets;
+
+			if (ss->t_peer_sent_packets > ss->peer_sent_packets)
+				tsi->peer_sent_packets = ss->t_peer_sent_packets;
+			else
+				tsi->peer_sent_packets = ss->peer_sent_packets;
+
+			if (ss->t_peer_received_bytes > ss->peer_received_bytes)
+				tsi->peer_received_bytes = ss->t_peer_received_bytes;
+			else
+				tsi->peer_received_bytes = ss->peer_received_bytes;
+
+			if (ss->t_peer_sent_bytes > ss->peer_sent_bytes)
+				tsi->peer_sent_bytes = ss->t_peer_sent_bytes;
+			else
+				tsi->peer_sent_bytes = ss->peer_sent_bytes;
+
 			{
 				tsi->received_rate = ss->received_rate;
 				tsi->sent_rate = ss->sent_rate;
 				tsi->total_rate = tsi->received_rate + tsi->sent_rate;
+				tsi->peer_received_rate = ss->peer_received_rate;
+				tsi->peer_sent_rate = ss->peer_sent_rate;
+				tsi->peer_total_rate = tsi->peer_received_rate + tsi->peer_sent_rate;
 			}
 
 			tsi->is_mobile = ss->is_mobile;
@@ -1905,12 +1928,20 @@ static void tcp_peer_input_handler(ioa_socket_handle s, int event_type, ioa_net_
 
 	uint32_t bytes = (uint32_t)ioa_network_buffer_get_size(nbh);
 
+	if (ss) {
+		++(ss->peer_received_packets);
+		ss->peer_received_bytes += bytes;
+	}
+
 	int ret = send_data_from_ioa_socket_nbh(tc->client_s, NULL, nbh, TTL_IGNORE, TOS_IGNORE, NULL);
 	if (ret < 0) {
 		set_ioa_socket_tobeclosed(s);
 	} else if(ss) {
 		++(ss->sent_packets);
 		ss->sent_bytes += bytes;
+	}
+
+	if (ss) {
 		turn_report_session_usage(ss, 0);
 	}
 }
@@ -1939,15 +1970,21 @@ static void tcp_client_input_handler_rfc6062data(ioa_socket_handle s, int event_
 	ioa_network_buffer_handle nbh = in_buffer->nbh;
 	in_buffer->nbh = NULL;
 
+	uint32_t bytes = (uint32_t)ioa_network_buffer_get_size(nbh);
 	if(ss) {
-		uint32_t bytes = (uint32_t)ioa_network_buffer_get_size(nbh);
 		++(ss->received_packets);
 		ss->received_bytes += bytes;
 	}
 
-	int ret = send_data_from_ioa_socket_nbh(tc->peer_s, NULL, nbh, TTL_IGNORE, TOS_IGNORE, NULL);
+	int skip = 0;
+	int ret = send_data_from_ioa_socket_nbh(tc->peer_s, NULL, nbh, TTL_IGNORE, TOS_IGNORE, &skip);
 	if (ret < 0) {
 		set_ioa_socket_tobeclosed(s);
+	}
+
+	if (!skip) {
+		++(ss->peer_sent_packets);
+		ss->peer_sent_bytes += bytes;
 	}
 
 	turn_report_session_usage(ss, 0);
@@ -2999,7 +3036,13 @@ static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss,
 					ioa_network_buffer_set_size(nbh,len);
 				}
 				ioa_network_buffer_header_init(nbh);
-				send_data_from_ioa_socket_nbh(get_relay_socket_ss(ss,peer_addr.ss.sa_family), &peer_addr, nbh, in_buffer->recv_ttl-1, in_buffer->recv_tos, NULL);
+				int skip = 0;
+				send_data_from_ioa_socket_nbh(get_relay_socket_ss(ss,peer_addr.ss.sa_family), &peer_addr, nbh, in_buffer->recv_ttl-1, in_buffer->recv_tos, &skip);
+				if (!skip) {
+					++(ss->peer_sent_packets);
+					ss->peer_sent_bytes += len;
+					turn_report_session_usage(ss, 0);
+				}
 				in_buffer->nbh = NULL;
 			}
 
@@ -4105,7 +4148,15 @@ static int write_to_peerchannel(ts_ur_super_session* ss, uint16_t chnum, ioa_net
 
 			ioa_network_buffer_header_init(nbh);
 
-			rc = send_data_from_ioa_socket_nbh(get_relay_socket_ss(ss, chn->peer_addr.ss.sa_family), &(chn->peer_addr), nbh, in_buffer->recv_ttl-1, in_buffer->recv_tos, NULL);
+			int skip = 0;
+			rc = send_data_from_ioa_socket_nbh(get_relay_socket_ss(ss, chn->peer_addr.ss.sa_family), &(chn->peer_addr), nbh, in_buffer->recv_ttl-1, in_buffer->recv_tos, &skip);
+
+			if (!skip) {
+				++(ss->peer_sent_packets);
+				ss->peer_sent_bytes += (uint32_t)ioa_network_buffer_get_size(in_buffer->nbh);
+				turn_report_session_usage(ss, 0);
+			}
+
 			in_buffer->nbh = NULL;
 		}
 	}
@@ -4736,6 +4787,9 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 			(int)(ioa_network_buffer_get_capacity_udp() - offset));
 
 	if (ilen >= 0) {
+		++(ss->peer_received_packets);
+		ss->peer_received_bytes += ilen;
+		turn_report_session_usage(ss, 0);
 
 		allocation* a = get_allocation_ss(ss);
 		if (is_allocation_valid(a)) {
@@ -4864,7 +4918,7 @@ void init_turn_server(turn_turnserver* server,
 		vintp permission_lifetime,
 		vintp stun_only,
 		vintp no_stun,
-		vintp prod,
+		vintp no_software_attribute,
     vintp web_admin_listen_on_workers,
 		turn_server_addrs_list_t *alternate_servers_list,
 		turn_server_addrs_list_t *tls_alternate_servers_list,
@@ -4926,7 +4980,7 @@ void init_turn_server(turn_turnserver* server,
 	server->permission_lifetime = permission_lifetime;
 	server->stun_only = stun_only;
 	server->no_stun = no_stun;
-	server->prod = prod;
+	server->no_software_attribute = no_software_attribute;
 	server-> web_admin_listen_on_workers = web_admin_listen_on_workers;
 
 	server->dont_fragment = dont_fragment;

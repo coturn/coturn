@@ -1,4 +1,4 @@
-02/03/2019 Oleg Moskalenko <mom040267@gmail.com> Mihály Mészáros <misi@majd.eu>
+30/04/2020 Oleg Moskalenko <mom040267@gmail.com> Mihály Mészáros <misi@majd.eu>
 Version 4.5.1.2 'dan Eider':
 	- merge regression fix: (by Mathieu Brunot)
 		* Do not display empty CLI passwd alert if CLI is not enabled
@@ -15,6 +15,50 @@ Version 4.5.1.2 'dan Eider':
 		* Remove [su]{08,16,32,64}bits type defines
 	- merge PR #327 (by Alexander Terczka)
 		* Strip white-spaces from config file lines end
+	- merge PR #386 (by Thibaut ACKERMANN)
+		* fix the webadmin ip permission add/delete sql injection
+	- merge PR #390 (by Thibaut ACKERMANN)
+		* fix mongo driver crash when invalid connection string is used
+	- merge PR #392 enhanced fread return length check (by islamoglus)
+	- merge PR #367 disconnect database gracefully (by Shu Muto)
+	- merge PR #382 (by islamoglus)
+		* Using SSL_get_version method for BoringSSL compatibility
+		* Now we put in turn_session_info->tls_method the real TLS version.
+		  Earlier we put UNKNOWN in this field if it was a TLS protocol
+		  that was not defined supportel TLS protocol during compile time.
+	- merge PR #276 Add systemd service example (by Liberasys)
+	- merge PR #284 Add bandwidth usage reporting packet/bandwidth usage by peers
+	- merge PR #381 Modifying configure to enable compile with private libraries
+	- merge PR #455 Typo corrected (by chanduthedev)
+	- merge PR #417 Append only to log files rather to override them (by robert-scheck)
+	- merge PR #442 Updated incorrect string length check for 'ssh' (by chanduthedev)
+	- merge PR #449 Fix Dockerfile for latest Debian (by rao-donut)
+	- http server NULL dereference
+		* Reported (by quarkslab.com, cisco/talos)
+		* CVE-2020-6061 / TALOS-2020-0984
+	- http server out of bound read
+		* Reported (by quarkslab.com, cisco/talos)
+		* CVE-2020-6061 / TALOS-2020-0984
+	- merge PR #472 STUN input validation (by bobsayshilol)
+	- merge PR #398 FIPS (by  byronclark)
+	- merge PR #478 prod (by alepolidori)
+	- merge PR #463 fix typos and grammar (by xthursdayx)
+	- update travis config ubuntu/mac images
+	- merge PR #466 added null check for second char (by chanduthedev)
+	- merge PR #470 compiler warning fixes (by bobsayshilol)
+	- merge PR #475 Update README.docker (by raksonibs)
+	- merge PR #471 Fix a memory leak when an SHATYPE isn't supported (by bobsayshilol)
+	- merge PR #488 Fix typos about INSTALL filenames (by raccoonback)
+	- fix compiler warning comparison between signed and unsigned integer expressions
+	- fix compiler warning string truncation
+	- change Diffie Hellman default key length from 1066 to 2066
+	- merge PR #522 drop of supplementary group IDs (by weberhofer)
+	- merge PR #514 Unify spelling of Coturn (by paulmenzel)
+	- merge PR#506 Rename "prod" config option to "no-software-attribute" (by dbrgn)
+	- merge PR #519 fix config extension in README.docker (by ooookai)
+	- merge PR #516 change sql data dir in docker-compose-all.yml (by raghumuppa)
+	- merge PR #513 remove trailing spaces from READMEs (by paulmenzel)
+	- merge PR #525 add flags to disable periodic use of dynamic tables (by gfodor)
 
 02/03/2019 Oleg Moskalenko <mom040267@gmail.com> Mihály Mészáros <misi@majd.eu>
 Version 4.5.1.1 'dan Eider':

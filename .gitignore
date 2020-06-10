@@ -4,3 +4,4 @@ build
 include
 lib
 sqlite
+examples/ca/CA.pl

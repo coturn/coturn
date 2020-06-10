@@ -1294,6 +1294,15 @@ static int sqlite_list_admin_users(int no_print)
 	return ret;
 }
 
+static void sqlite_disconnect(void) {
+	sqlite3 *sqliteconnection = (sqlite3 *)pthread_getspecific(connection_key);
+	if (sqliteconnection) {
+		sqlite3_close(sqliteconnection);
+		sqliteconnection=NULL;
+	}
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "SQLite connection was closed.\n");
+}
+
 ///////////////////////////////////////////////////////
 
 static const turn_dbdriver_t driver = {
@@ -1321,7 +1330,8 @@ static const turn_dbdriver_t driver = {
   &sqlite_get_admin_user,
   &sqlite_set_admin_user,
   &sqlite_del_admin_user,
-  &sqlite_list_admin_users
+  &sqlite_list_admin_users,
+  &sqlite_disconnect
 };
 
 //////////////////////////////////////////////////

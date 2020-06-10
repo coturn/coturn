@@ -1473,7 +1473,7 @@ static void setup_tcp_listener_servers(ioa_engine_handle e, struct relay_server 
 	/* Create listeners */
 
 	/* Aux TCP servers */
-	if(!turn_params.no_tls || !turn_params.no_tcp) {
+	if(!turn_params.tcp_use_proxy && (!turn_params.no_tls || !turn_params.no_tcp)) {
 
 		for(i=0; i<turn_params.aux_servers_list.size; i++) {
 
@@ -1494,15 +1494,15 @@ static void setup_tcp_listener_servers(ioa_engine_handle e, struct relay_server 
 
 		/* TCP: */
 		if(!turn_params.no_tcp) {
-			tcp_services[index] = create_tls_listener_server(turn_params.listener_ifname, turn_params.listener.addrs[i], turn_params.listener_port, turn_params.verbose, e, send_socket_to_general_relay, relay_server);
+			tcp_services[index] = create_tls_listener_server(turn_params.listener_ifname, turn_params.listener.addrs[i], turn_params.tcp_use_proxy?turn_params.tcp_proxy_port:turn_params.listener_port, turn_params.verbose, e, send_socket_to_general_relay, relay_server);
 			if(turn_params.rfc5780)
-				tcp_services[index+1] = create_tls_listener_server(turn_params.listener_ifname, turn_params.listener.addrs[i], get_alt_listener_port(), turn_params.verbose, e, send_socket_to_general_relay, relay_server);
+				tcp_services[index+1] = turn_params.tcp_use_proxy?NULL:create_tls_listener_server(turn_params.listener_ifname, turn_params.listener.addrs[i], get_alt_listener_port(), turn_params.verbose, e, send_socket_to_general_relay, relay_server);
 		} else {
 			tcp_services[index] = NULL;
 			if(turn_params.rfc5780)
 				tcp_services[index+1] = NULL;
 		}
-		if(!turn_params.no_tls && (turn_params.no_tcp || (turn_params.listener_port != turn_params.tls_listener_port))) {
+		if(!turn_params.no_tls && !turn_params.tcp_use_proxy && (turn_params.no_tcp || (turn_params.listener_port != turn_params.tls_listener_port))) {
 			tls_services[index] = create_tls_listener_server(turn_params.listener_ifname, turn_params.listener.addrs[i], turn_params.tls_listener_port, turn_params.verbose, e, send_socket_to_general_relay, relay_server);
 			if(turn_params.rfc5780)
 				tls_services[index+1] = create_tls_listener_server(turn_params.listener_ifname, turn_params.listener.addrs[i], get_alt_tls_listener_port(), turn_params.verbose, e, send_socket_to_general_relay, relay_server);
@@ -1651,7 +1651,7 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
 			 &turn_params.permission_lifetime,
 			 &turn_params.stun_only,
 			 &turn_params.no_stun,
-			 &turn_params.prod,
+			 &turn_params.no_software_attribute,
 			 &turn_params.web_admin_listen_on_workers,
 			 &turn_params.alternate_servers_list,
 			 &turn_params.tls_alternate_servers_list,
@@ -1776,7 +1776,10 @@ static void* run_auth_server_thread(void *arg)
 		barrier_wait();
 
 		while(run_auth_server_flag) {
-			auth_ping(as->rch);
+			if (!turn_params.no_auth_pings) {
+				auth_ping(as->rch);
+			}
+
 			run_events(as->event_base,NULL);
 		}
 	}

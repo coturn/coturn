@@ -2157,6 +2157,67 @@ static TURN_TLS_TYPE check_tentative_tls(ioa_socket_raw fd)
 }
 #endif
 
+static ssize_t socket_parse_proxy_v2(ioa_socket_handle s, uint8_t *buf, size_t len)
+{
+	if(len < 16){
+		return 0 ;
+	}
+
+	/* Check for proxy-v2 magic field */
+	char magic[] = {0x0D, 0x0A, 0x0D, 0x0A, 0x00, 0x0D, 0x0A, 0x51, 0x55, 0x49, 0x54, 0x0A};
+	if(memcmp(magic, buf, sizeof(magic))){
+		return -1;
+	}
+
+	/* Check version */
+	uint8_t version = buf[12] >> 4;
+	if(version != 2) return -1;
+
+	/* Read data */
+	uint8_t command = buf[12] & 0xF;
+	uint8_t family  = buf[13] >> 4;
+	uint8_t proto   = buf[13] & 0xF;
+	size_t plen   = ((size_t)buf[14] << 8) | buf[15];
+
+	size_t tlen = 16 + plen;
+	if(len < tlen) return 0;
+
+	/* A local connection is used by the proxy itself and does not carry a valid address */
+	if(command == 0) return tlen;
+
+	/* Accept only proxied TCP connections */
+	if(command != 1 || proto != 1) return -1;
+
+	/* Read the address */
+	if(family == 1 && plen >= 12){ /* IPv4 */
+		struct sockaddr_in remote, local;
+		remote.sin_family = local.sin_family = AF_INET;
+		memcpy(&remote.sin_addr.s_addr, &buf[16], 4);
+		memcpy(&local.sin_addr.s_addr,  &buf[20], 4);
+		memcpy(&remote.sin_port, &buf[24], 2);
+		memcpy(&local.sin_port,  &buf[26], 2);
+
+		addr_cpy4(&(s->local_addr),  &local);
+		addr_cpy4(&(s->remote_addr), &remote);
+
+	}else if(family == 2 && plen >= 36){ /* IPv6 */
+		struct sockaddr_in6 remote, local;
+		remote.sin6_family = local.sin6_family = AF_INET6;
+		memcpy(&remote.sin6_addr.s6_addr, &buf[16], 16);
+		memcpy(&local.sin6_addr.s6_addr,  &buf[32], 16);
+		memcpy(&remote.sin6_port, &buf[48], 2);
+		memcpy(&local.sin6_port,  &buf[50], 2);
+
+		addr_cpy6(&(s->local_addr),  &local);
+		addr_cpy6(&(s->remote_addr), &remote);
+
+        }else{
+		return -1;
+	}
+
+	return tlen;
+}
+
 static int socket_input_worker(ioa_socket_handle s)
 {
 	int len = 0;
@@ -2372,39 +2433,57 @@ static int socket_input_worker(ioa_socket_handle s)
 		struct evbuffer *inbuf = bufferevent_get_input(s->bev);
 		if(inbuf) {
 			ev_ssize_t blen = evbuffer_copyout(inbuf, buf_elem->buf.buf, STUN_BUFFER_SIZE);
+
 			if(blen>0) {
 				int mlen = 0;
 
 				if(blen>(ev_ssize_t)STUN_BUFFER_SIZE)
 				  blen=(ev_ssize_t)STUN_BUFFER_SIZE;
 
-				if(is_stream_socket(s->st) && ((s->sat == TCP_CLIENT_DATA_SOCKET)||(s->sat==TCP_RELAY_DATA_SOCKET))) {
-					mlen = blen;
-				} else {
-					mlen = stun_get_message_len_str(buf_elem->buf.buf, blen, 1, &app_msg_len);
-				}
-
-				if(mlen>0 && mlen<=(int)blen) {
-					len = (int)bufferevent_read(s->bev, buf_elem->buf.buf, mlen);
-					if(len < 0) {
-						ret = -1;
+				if(s->st == TCP_SOCKET_PROXY){
+					ssize_t tlen = socket_parse_proxy_v2(s, buf_elem->buf.buf, blen);
+					blen = 0;
+					if (tlen < 0){
 						s->tobeclosed = 1;
 						s->broken = 1;
-						log_socket_event(s, "socket read failed, to be closed",1);
-					} else if((s->st == TLS_SOCKET)||(s->st == TLS_SCTP_SOCKET)) {
-#if TLS_SUPPORTED
-						SSL *ctx = bufferevent_openssl_get_ssl(s->bev);
-						if(!ctx || SSL_get_shutdown(ctx)) {
-							ret = -1;
-							s->tobeclosed = 1;
-						}
-#endif
-					}
-					if(ret != -1) {
-						ret = len;
+						ret = -1;
+						log_socket_event(s, "proxy protocol violated",1);
+					}else if(tlen > 0){
+						bufferevent_read(s->bev, buf_elem->buf.buf, tlen);
+
+						blen = evbuffer_copyout(inbuf, buf_elem->buf.buf, STUN_BUFFER_SIZE);
+						s->st = TCP_SOCKET;
 					}
 				}
 
+				if(blen){
+					if(is_stream_socket(s->st) && ((s->sat == TCP_CLIENT_DATA_SOCKET)||(s->sat==TCP_RELAY_DATA_SOCKET))) {
+						mlen = blen;
+					} else {
+						mlen = stun_get_message_len_str(buf_elem->buf.buf, blen, 1, &app_msg_len);
+					}
+
+					if(mlen>0 && mlen<=(int)blen) {
+						len = (int)bufferevent_read(s->bev, buf_elem->buf.buf, mlen);
+						if(len < 0) {
+							ret = -1;
+							s->tobeclosed = 1;
+							s->broken = 1;
+							log_socket_event(s, "socket read failed, to be closed",1);
+						} else if((s->st == TLS_SOCKET)||(s->st == TLS_SCTP_SOCKET)) {
+#if TLS_SUPPORTED
+							SSL *ctx = bufferevent_openssl_get_ssl(s->bev);
+							if(!ctx || SSL_get_shutdown(ctx)) {
+								ret = -1;
+								s->tobeclosed = 1;
+							}
+#endif
+						}
+						if(ret != -1) {
+							ret = len;
+						}
+					}
+				}
 			} else if(blen<0) {
 				s->tobeclosed = 1;
 				s->broken = 1;
@@ -3277,6 +3356,7 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 					break;
 				case SCTP_SOCKET:
 				case TCP_SOCKET:
+				case TCP_SOCKET_PROXY:
 					if(s->bev) {
 						if(!clean_preexisting) {
 							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
@@ -3562,6 +3642,13 @@ void turn_report_allocation_delete(void *a)
 						snprintf(key, sizeof(key), "turn/user/%s/allocation/%018llu/total_traffic", (char*)ss->username, (unsigned long long)ss->id);
 					}
 					send_message_to_redis(e->rch, "publish", key, "rcvp=%lu, rcvb=%lu, sentp=%lu, sentb=%lu", (unsigned long)(ss->t_received_packets), (unsigned long)(ss->t_received_bytes), (unsigned long)(ss->t_sent_packets), (unsigned long)(ss->t_sent_bytes));
+					if (ss->realm_options.name[0]) {
+						snprintf(key, sizeof(key), "turn/realm/%s/user/%s/allocation/%018llu/total_traffic/peer", ss->realm_options.name, (char*)ss->username, (unsigned long long)(ss->id));
+					}
+					else {
+						snprintf(key, sizeof(key), "turn/user/%s/allocation/%018llu/total_traffic/peer", (char*)ss->username, (unsigned long long)(ss->id));
+					}
+					send_message_to_redis(e->rch, "publish", key, "rcvp=%lu, rcvb=%lu, sentp=%lu, sentb=%lu", (unsigned long)(ss->t_peer_received_packets), (unsigned long)(ss->t_peer_received_bytes), (unsigned long)(ss->t_peer_sent_packets), (unsigned long)(ss->t_peer_sent_bytes));
 				}
 #endif
 			}
@@ -3576,9 +3663,10 @@ void turn_report_session_usage(void *session, int force_invalid)
 		turn_turnserver *server = (turn_turnserver*)ss->server;
 		if(server && (ss->received_packets || ss->sent_packets || force_invalid)) {
 			ioa_engine_handle e = turn_server_get_engine(server);
-			if(((ss->received_packets+ss->sent_packets)&2047)==0 || force_invalid) {
+			if(((ss->received_packets+ss->sent_packets+ss->peer_received_packets+ss->peer_sent_packets)&4095)==0 || force_invalid) {
 				if(e && e->verbose) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"session %018llu: usage: realm=<%s>, username=<%s>, rp=%lu, rb=%lu, sp=%lu, sb=%lu\n", (unsigned long long)(ss->id), (char*)ss->realm_options.name, (char*)ss->username, (unsigned long)(ss->received_packets), (unsigned long)(ss->received_bytes),(unsigned long)(ss->sent_packets),(unsigned long)(ss->sent_bytes));
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: peer usage: realm=<%s>, username=<%s>, rp=%lu, rb=%lu, sp=%lu, sb=%lu\n", (unsigned long long)(ss->id), (char*)ss->realm_options.name, (char*)ss->username, (unsigned long)(ss->peer_received_packets), (unsigned long)(ss->peer_received_bytes), (unsigned long)(ss->peer_sent_packets), (unsigned long)(ss->peer_sent_bytes));
 				}
 #if !defined(TURN_NO_HIREDIS)
 				{
@@ -3589,12 +3677,23 @@ void turn_report_session_usage(void *session, int force_invalid)
 						snprintf(key,sizeof(key),"turn/user/%s/allocation/%018llu/traffic",(char*)ss->username, (unsigned long long)(ss->id));
 					}
 					send_message_to_redis(e->rch, "publish", key, "rcvp=%lu, rcvb=%lu, sentp=%lu, sentb=%lu",(unsigned long)(ss->received_packets), (unsigned long)(ss->received_bytes),(unsigned long)(ss->sent_packets),(unsigned long)(ss->sent_bytes));
+					if (ss->realm_options.name[0]) {
+						snprintf(key, sizeof(key), "turn/realm/%s/user/%s/allocation/%018llu/traffic/peer", ss->realm_options.name, (char*)ss->username, (unsigned long long)(ss->id));
+					}
+					else {
+						snprintf(key, sizeof(key), "turn/user/%s/allocation/%018llu/traffic/peer", (char*)ss->username, (unsigned long long)(ss->id));
+					}
+					send_message_to_redis(e->rch, "publish", key, "rcvp=%lu, rcvb=%lu, sentp=%lu, sentb=%lu", (unsigned long)(ss->peer_received_packets), (unsigned long)(ss->peer_received_bytes), (unsigned long)(ss->peer_sent_packets), (unsigned long)(ss->peer_sent_bytes));
 				}
 #endif
 				ss->t_received_packets += ss->received_packets;
 				ss->t_received_bytes += ss->received_bytes;
 				ss->t_sent_packets += ss->sent_packets;
 				ss->t_sent_bytes += ss->sent_bytes;
+				ss->t_peer_received_packets += ss->peer_received_packets;
+				ss->t_peer_received_bytes += ss->peer_received_bytes;
+				ss->t_peer_sent_packets += ss->peer_sent_packets;
+				ss->t_peer_sent_bytes += ss->peer_sent_bytes;
 
 				{
 					turn_time_t ct = get_turn_server_time(server);
@@ -3603,6 +3702,9 @@ void turn_report_session_usage(void *session, int force_invalid)
 						ss->received_rate = (uint32_t)(ss->t_received_bytes / ct);
 						ss->sent_rate = (uint32_t)(ss->t_sent_bytes / ct);
 						ss->total_rate = ss->received_rate + ss->sent_rate;
+						ss->peer_received_rate = (uint32_t)(ss->t_peer_received_bytes / ct);
+						ss->peer_sent_rate = (uint32_t)(ss->t_peer_sent_bytes / ct);
+						ss->peer_total_rate = ss->peer_received_rate + ss->peer_sent_rate;
 					}
 				}
 
@@ -3612,6 +3714,10 @@ void turn_report_session_usage(void *session, int force_invalid)
 				ss->received_bytes=0;
 				ss->sent_packets=0;
 				ss->sent_bytes=0;
+				ss->peer_received_packets = 0;
+				ss->peer_received_bytes = 0;
+				ss->peer_sent_packets = 0;
+				ss->peer_sent_bytes = 0;
 			}
 		}
 	}
