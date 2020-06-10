@@ -3976,8 +3976,10 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 		addr_cpy(&remote, get_remote_addr_from_ioa_socket(ss->client_socket));
 		addr_to_string(&remote, (uint8_t*)ip_port);
                 
-		TURN_NTFY_FUNC(TURN_NTFY_LEVEL_INFO,"[Turn Server Command Execution Notification: {\"session\": \"%018llu\", \"user\": \"%s\", \"connection\": \"%s\", \"method\": \"%d\", \"response\": \"%d\", \"reason\": \"%s\"}]",
+		TURN_NTFY_FUNC(TURN_NTFY_LEVEL_INFO,"[Turn Server Command Execution Notification: {\"session\": \"%018llu\", \"origin\": \"%s\", \"realm\": \"%s\", \"user\": \"%s\", \"connection\": \"%s\", \"method\": \"%d\", \"response\": \"%d\", \"reason\": \"%s\"}]",
 						(unsigned long long)(ss->id),                                   /* session id */ 
+						((char*)ss->origin == (char*)NULL ? "":(char*)ss->origin),      /* origin */
+						((char*)ss->realm_options.name == (char*)NULL ? "":(char*)ss->realm_options.name),  /* realm */
 						((char*)ss->username == (char*)NULL ? "":(char*)ss->username),  /* username */
 						((char*)ip_port == (char*)NULL ? "":(char*)ip_port),            /* ip:port */
 						method,                                                         /* turn command method */
