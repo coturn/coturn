@@ -293,11 +293,6 @@ static stun_buffer_list_elem *new_blist_elem(ioa_engine_handle e)
 
 	if(!ret) {
 	  ret = (stun_buffer_list_elem *)malloc(sizeof(stun_buffer_list_elem));
-	  /* init bzero below will solve all of these in one step
-	  ret->buf.len = 0;
-	  ret->buf.offset = 0;
-	  ret->buf.coffset = 0;
-	  */
 	  ret->next = NULL;
 	  if (!ret) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Cannot allocate memory for STUN buffer!\n", __FUNCTION__);
