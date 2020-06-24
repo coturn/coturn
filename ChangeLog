@@ -1,3 +1,16 @@
+26/04/2020 Oleg Moskalenko <mom040267@gmail.com> Mihály Mészáros <misi@majd.eu>
+Version 4.5.1.3 'dan Eider':
+	- merge PR #575: (by osterik)
+		* fix rpm packaging
+	- merge PR #576: (by osterik)
+		* tell tar to not include the metadata into release
+	- merge PR #574: (by DevRockstarZ)
+		* change Docker turnserver.conf to latest turnserver.conf
+	- merge PR #566: (by bpcurse)
+		* Remove reference to SSLv3
+	- merge PR #579: (by islamoglus)
+		*Ignore MD5 for BoringSSL #579
+
 30/04/2020 Oleg Moskalenko <mom040267@gmail.com> Mihály Mészáros <misi@majd.eu>
 Version 4.5.1.2 'dan Eider':
 	- merge regression fix: (by Mathieu Brunot)
