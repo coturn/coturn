@@ -18,18 +18,11 @@ fi
 
 # TURN
 
+#create archive from local folder
 cd ${BUILDDIR}/tmp
 rm -rf turnserver-${TURNVERSION}
-git clone ${TURNSERVER_GIT_URL} --branch ${TURNVERSION} turnserver-${TURNVERSION}
-ER=$?
-if ! [ ${ER} -eq 0 ] ; then
-	git clone ${TURNSERVER_GIT_URL} turnserver-${TURNVERSION}
-	ER=$?
-	if ! [ ${ER} -eq 0 ] ; then
-    	cd ${CPWD}
-    	exit -1
-    fi
-fi
+mkdir -p ${BUILDDIR}/tmp/turnserver-${TURNVERSION}
+cp -R ${CPWD}/.. ${BUILDDIR}/tmp/turnserver-${TURNVERSION}
 
 tar zcf ${BUILDDIR}/SOURCES/turnserver-${TURNVERSION}.tar.gz turnserver-${TURNVERSION}
 ER=$?
@@ -38,6 +31,7 @@ if ! [ ${ER} -eq 0 ] ; then
     exit -1
 fi
 
+#build package from archive
 rpmbuild -ta ${BUILDDIR}/SOURCES/turnserver-${TURNVERSION}.tar.gz
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then
