@@ -16,7 +16,8 @@ mkdir tmp
 cd tmp
 mkdir ${DDIR}
 cp -R ${SRCDIR}/* ${DDIR}/
-tar cvfz ../${DDIR}.tar.gz ${DDIR}
+#tell tar to not include the metadata
+COPYFILE_DISABLE=1 tar cvfz ../${DDIR}.tar.gz ${DDIR}
 cd ..
 rm -rf tmp
 
