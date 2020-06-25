@@ -140,11 +140,11 @@ static void fix_user_directory(char *dir0) {
 		}
 		size_t szh = strlen(home);
 		size_t sz = strlen(dir0)+1+szh;
-		char* dir_fixed = (char*)turn_malloc(sz);
+		char* dir_fixed = (char*)malloc(sz);
 		strncpy(dir_fixed,home,szh);
 		strncpy(dir_fixed+szh,dir+1,(sz-szh-1));
 		strncpy(dir0,dir_fixed,sz);
-		turn_free(dir_fixed,sz);
+		free(dir_fixed);
 	}
 }
 
@@ -207,7 +207,7 @@ static sqlite3 * get_sqlite_connection(void) {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static int sqlite_get_auth_secrets(secrets_list_t *sl, u08bits *realm)
+static int sqlite_get_auth_secrets(secrets_list_t *sl, uint8_t *realm)
 {
 	int ret = -1;
 	sqlite3 *sqliteconnection = get_sqlite_connection();
@@ -253,7 +253,7 @@ static int sqlite_get_auth_secrets(secrets_list_t *sl, u08bits *realm)
 	return ret;
 }
 
-static int sqlite_get_user_key(u08bits *usname, u08bits *realm, hmackey_t key)
+static int sqlite_get_user_key(uint8_t *usname, uint8_t *realm, hmackey_t key)
 {
 	int ret = -1;
 	sqlite3 *sqliteconnection = get_sqlite_connection();
@@ -269,14 +269,14 @@ static int sqlite_get_user_key(u08bits *usname, u08bits *realm, hmackey_t key)
 		if ((rc = sqlite3_prepare(sqliteconnection, statement, -1, &st, 0)) == SQLITE_OK) {
 			int res = sqlite3_step(st);
 			if (res == SQLITE_ROW) {
-				char *kval = turn_strdup((const char*) sqlite3_column_text(st, 0));
+				char *kval = strdup((const char*) sqlite3_column_text(st, 0));
 				size_t sz = get_hmackey_size(SHATYPE_DEFAULT);
 				if (convert_string_key_to_binary(kval, key, sz) < 0) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key: %s, user %s\n", kval, usname);
 				} else {
 					ret = 0;
 				}
-				turn_free(kval,strlen(kval)+1);
+				free(kval);
 			}
 		} else {
 			const char* errmsg = sqlite3_errmsg(sqliteconnection);
@@ -290,7 +290,7 @@ static int sqlite_get_user_key(u08bits *usname, u08bits *realm, hmackey_t key)
 	return ret;
 }
 
-static int sqlite_get_oauth_key(const u08bits *kid, oauth_key_data_raw *key) {
+static int sqlite_get_oauth_key(const uint8_t *kid, oauth_key_data_raw *key) {
 
 	int ret = -1;
 
@@ -312,8 +312,8 @@ static int sqlite_get_oauth_key(const u08bits *kid, oauth_key_data_raw *key) {
 			if (res == SQLITE_ROW) {
 
 				STRCPY(key->ikm_key,sqlite3_column_text(st, 0));
-				key->timestamp = (u64bits)strtoll((const char*)sqlite3_column_text(st, 1),NULL,10);
-				key->lifetime = (u32bits)strtol((const char*)sqlite3_column_text(st, 2),NULL,10);
+				key->timestamp = (uint64_t)strtoll((const char*)sqlite3_column_text(st, 1),NULL,10);
+				key->lifetime = (uint32_t)strtol((const char*)sqlite3_column_text(st, 2),NULL,10);
 				STRCPY(key->as_rs_alg,sqlite3_column_text(st, 3));
 				STRCPY(key->realm,sqlite3_column_text(st, 4));
 				STRCPY(key->kid,kid);
@@ -359,8 +359,8 @@ static int sqlite_list_oauth_keys(secrets_list_t *kids,secrets_list_t *teas,secr
 				if (res == SQLITE_ROW) {
 
 					STRCPY(key->ikm_key,sqlite3_column_text(st, 0));
-					key->timestamp = (u64bits)strtoll((const char*)sqlite3_column_text(st, 1),NULL,10);
-					key->lifetime = (u32bits)strtol((const char*)sqlite3_column_text(st, 2),NULL,10);
+					key->timestamp = (uint64_t)strtoll((const char*)sqlite3_column_text(st, 1),NULL,10);
+					key->lifetime = (uint32_t)strtol((const char*)sqlite3_column_text(st, 2),NULL,10);
 					STRCPY(key->as_rs_alg,sqlite3_column_text(st, 3));
 					STRCPY(key->realm,sqlite3_column_text(st, 4));
 					STRCPY(key->kid,sqlite3_column_text(st, 5));
@@ -407,7 +407,7 @@ static int sqlite_list_oauth_keys(secrets_list_t *kids,secrets_list_t *teas,secr
 	return ret;
 }
 
-static int sqlite_set_user_key(u08bits *usname, u08bits *realm, const char *key)
+static int sqlite_set_user_key(uint8_t *usname, uint8_t *realm, const char *key)
 {
 	int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
@@ -471,7 +471,7 @@ static int sqlite_set_oauth_key(oauth_key_data_raw *key)
 	return ret;
 }
 
-static int sqlite_del_user(u08bits *usname, u08bits *realm)
+static int sqlite_del_user(uint8_t *usname, uint8_t *realm)
 {
 	int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
@@ -500,7 +500,7 @@ static int sqlite_del_user(u08bits *usname, u08bits *realm)
 	return ret;
 }
 
-static int sqlite_del_oauth_key(const u08bits *kid)
+static int sqlite_del_oauth_key(const uint8_t *kid)
 {
 	int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
@@ -531,14 +531,14 @@ static int sqlite_del_oauth_key(const u08bits *kid)
 }
 
 
-static int sqlite_list_users(u08bits *realm, secrets_list_t *users, secrets_list_t *realms)
+static int sqlite_list_users(uint8_t *realm, secrets_list_t *users, secrets_list_t *realms)
 {
 	int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
 	sqlite3_stmt *st = NULL;
 	int rc = 0;
 
-	u08bits realm0[STUN_MAX_REALM_SIZE+1] = "\0";
+	uint8_t realm0[STUN_MAX_REALM_SIZE+1] = "\0";
 	if(!realm) realm=realm0;
 
 	donot_print_connection_success=1;
@@ -596,12 +596,12 @@ static int sqlite_list_users(u08bits *realm, secrets_list_t *users, secrets_list
 	return ret;
 }
 
-static int sqlite_list_secrets(u08bits *realm, secrets_list_t *secrets, secrets_list_t *realms)
+static int sqlite_list_secrets(uint8_t *realm, secrets_list_t *secrets, secrets_list_t *realms)
 {
 	int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
 
-	u08bits realm0[STUN_MAX_REALM_SIZE+1] = "\0";
+	uint8_t realm0[STUN_MAX_REALM_SIZE+1] = "\0";
 	if(!realm) realm=realm0;
 
 	sqlite3_stmt *st = NULL;
@@ -660,7 +660,7 @@ static int sqlite_list_secrets(u08bits *realm, secrets_list_t *secrets, secrets_
 	return ret;
 }
   
-static int sqlite_del_secret(u08bits *secret, u08bits *realm)
+static int sqlite_del_secret(uint8_t *secret, uint8_t *realm)
 {
 	int ret = -1;
 	donot_print_connection_success=1;
@@ -691,7 +691,7 @@ static int sqlite_del_secret(u08bits *secret, u08bits *realm)
 	return ret;
 }
   
-static int sqlite_set_secret(u08bits *secret, u08bits *realm)
+static int sqlite_set_secret(uint8_t *secret, uint8_t *realm)
 {
 	int ret = -1;
 	donot_print_connection_success = 1;
@@ -720,7 +720,7 @@ static int sqlite_set_secret(u08bits *secret, u08bits *realm)
 	return ret;
 }
   
-static int sqlite_add_origin(u08bits *origin, u08bits *realm)
+static int sqlite_add_origin(uint8_t *origin, uint8_t *realm)
 {
 	int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
@@ -748,7 +748,7 @@ static int sqlite_add_origin(u08bits *origin, u08bits *realm)
 	return ret;
 }
   
-static int sqlite_del_origin(u08bits *origin)
+static int sqlite_del_origin(uint8_t *origin)
 {
 	int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
@@ -776,11 +776,11 @@ static int sqlite_del_origin(u08bits *origin)
 	return ret;
 }
 
-static int sqlite_list_origins(u08bits *realm, secrets_list_t *origins, secrets_list_t *realms)
+static int sqlite_list_origins(uint8_t *realm, secrets_list_t *origins, secrets_list_t *realms)
 {
 	int ret = -1;
 
-	u08bits realm0[STUN_MAX_REALM_SIZE+1] = "\0";
+	uint8_t realm0[STUN_MAX_REALM_SIZE+1] = "\0";
 	if(!realm) realm=realm0;
 
 	donot_print_connection_success = 1;
@@ -841,7 +841,7 @@ static int sqlite_list_origins(u08bits *realm, secrets_list_t *origins, secrets_
 	return ret;
 }
   
-static int sqlite_set_realm_option_one(u08bits *realm, unsigned long value, const char* opt)
+static int sqlite_set_realm_option_one(uint8_t *realm, unsigned long value, const char* opt)
 {
 	int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
@@ -871,7 +871,7 @@ static int sqlite_set_realm_option_one(u08bits *realm, unsigned long value, cons
 	return ret;
 }
   
-static int sqlite_list_realm_options(u08bits *realm)
+static int sqlite_list_realm_options(uint8_t *realm)
 {
 	int ret = -1;
 	donot_print_connection_success = 1;
@@ -974,11 +974,11 @@ static int sqlite_get_ip_list(const char *kind, ip_range_list_t * list)
 	return ret;
 }
 
-static int sqlite_set_permission_ip(const char *kind, u08bits *realm, const char* ip, int del)
+static int sqlite_set_permission_ip(const char *kind, uint8_t *realm, const char* ip, int del)
 {
 	int ret = -1;
 
-	u08bits realm0[STUN_MAX_REALM_SIZE+1] = "\0";
+	uint8_t realm0[STUN_MAX_REALM_SIZE+1] = "\0";
 	if(!realm) realm=realm0;
 
 	char statement[TURN_LONG_STRING_SIZE];
@@ -1027,20 +1027,20 @@ static void sqlite_reread_realms(secrets_list_t * realms_list)
 
 			if ((rc = sqlite3_prepare(sqliteconnection, statement, -1, &st, 0)) == SQLITE_OK) {
 
-				ur_string_map *o_to_realm_new = ur_string_map_create(turn_free_simple);
+				ur_string_map *o_to_realm_new = ur_string_map_create(free);
 
 				while (1) {
 					int res = sqlite3_step(st);
 					if (res == SQLITE_ROW) {
 
-						char* oval = turn_strdup((const char*) sqlite3_column_text(st, 0));
-						char* rval = turn_strdup((const char*) sqlite3_column_text(st, 1));
+						char* oval = strdup((const char*) sqlite3_column_text(st, 0));
+						char* rval = strdup((const char*) sqlite3_column_text(st, 1));
 
 						get_realm(rval);
 						ur_string_map_value_type value = rval;
 						ur_string_map_put(o_to_realm_new, (const ur_string_map_key_type) oval, value);
 
-						turn_free(oval,strlen(oval)+1);
+						free(oval);
 
 					} else if (res == SQLITE_DONE) {
 						break;
@@ -1101,7 +1101,7 @@ static void sqlite_reread_realms(secrets_list_t * realms_list)
 					int res = sqlite3_step(st);
 					if (res == SQLITE_ROW) {
 
-						char* rval = turn_strdup((const char*) sqlite3_column_text(st, 0));
+						char* rval = strdup((const char*) sqlite3_column_text(st, 0));
 						const char* oval = (const char*) sqlite3_column_text(st, 1);
 						const char* vval = (const char*) sqlite3_column_text(st, 2);
 
@@ -1116,7 +1116,7 @@ static void sqlite_reread_realms(secrets_list_t * realms_list)
 							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown realm option: %s\n", oval);
 						}
 
-						turn_free(rval,strlen(rval)+1);
+						free(rval);
 
 					} else if (res == SQLITE_DONE) {
 						break;
@@ -1139,7 +1139,7 @@ static void sqlite_reread_realms(secrets_list_t * realms_list)
 
 ////////////////////////////////////////////////////
 
-static int sqlite_get_admin_user(const u08bits *usname, u08bits *realm, password_t pwd)
+static int sqlite_get_admin_user(const uint8_t *usname, uint8_t *realm, password_t pwd)
 {
 	int ret = -1;
 
@@ -1180,7 +1180,7 @@ static int sqlite_get_admin_user(const u08bits *usname, u08bits *realm, password
 	return ret;
 }
 
-static int sqlite_set_admin_user(const u08bits *usname, const u08bits *realm, const password_t pwd)
+static int sqlite_set_admin_user(const uint8_t *usname, const uint8_t *realm, const password_t pwd)
 {
 	int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
@@ -1210,7 +1210,7 @@ static int sqlite_set_admin_user(const u08bits *usname, const u08bits *realm, co
 	return ret;
 }
 
-static int sqlite_del_admin_user(const u08bits *usname)
+static int sqlite_del_admin_user(const uint8_t *usname)
 {
 	int ret = -1;
 	char statement[TURN_LONG_STRING_SIZE];
@@ -1294,6 +1294,15 @@ static int sqlite_list_admin_users(int no_print)
 	return ret;
 }
 
+static void sqlite_disconnect(void) {
+	sqlite3 *sqliteconnection = (sqlite3 *)pthread_getspecific(connection_key);
+	if (sqliteconnection) {
+		sqlite3_close(sqliteconnection);
+		sqliteconnection=NULL;
+	}
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "SQLite connection was closed.\n");
+}
+
 ///////////////////////////////////////////////////////
 
 static const turn_dbdriver_t driver = {
@@ -1321,7 +1330,8 @@ static const turn_dbdriver_t driver = {
   &sqlite_get_admin_user,
   &sqlite_set_admin_user,
   &sqlite_del_admin_user,
-  &sqlite_list_admin_users
+  &sqlite_list_admin_users,
+  &sqlite_disconnect
 };
 
 //////////////////////////////////////////////////

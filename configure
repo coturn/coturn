@@ -63,14 +63,16 @@ testlibevent2_comp() {
 }
 
 testhiredis() {
-    for inc in ${INCLUDEDIR}/hiredis /usr/local/include/hiredis /usr/hiredis /usr/include/hiredis
-    do
-        if [ -d ${inc} ] ; then
-            HIREDISCFLAGS="${HIREDISCFLAGS} -I${inc}"
-        fi
-    done
-    HIREDISLIBS=-lhiredis
-    ${CC} ${HR_TMPCPROGC} -o ${HR_TMPCPROGB} ${OSCFLAGS} ${DBLIBS} ${HIREDISCFLAGS} ${HIREDISLIBS} ${OSLIBS} 2>>/dev/null
+    if [ -z "${HIREDIS_CFLAGS}" ] || [ -z "${HIREDIS_LIBS}" ]; then
+        for inc in ${INCLUDEDIR}/hiredis /usr/local/include/hiredis /usr/hiredis /usr/include/hiredis
+        do
+            if [ -d ${inc} ] ; then
+                HIREDIS_CFLAGS="${HIREDIS_CFLAGS} -I${inc}"
+            fi
+        done
+        HIREDIS_LIBS=-lhiredis
+    fi
+    ${CC} ${HR_TMPCPROGC} -o ${HR_TMPCPROGB} ${OSCFLAGS} ${DBLIBS} ${HIREDIS_CFLAGS} ${HIREDIS_LIBS} ${OSLIBS} 2>>/dev/null
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
 		${ECHO_CMD}
@@ -80,27 +82,29 @@ testhiredis() {
 		${ECHO_CMD}
 		return 0
     else
-		DBCFLAGS="${DBCFLAGS} ${HIREDISCFLAGS}"
-		DBLIBS="${DBLIBS} ${HIREDISLIBS}"
+		DBCFLAGS="${DBCFLAGS} ${HIREDIS_CFLAGS}"
+		DBLIBS="${DBLIBS} ${HIREDIS_LIBS}"
 		return 1
     fi
 }
 
 testlibpq() {
-    POSTCFLAGS="-I${PREFIX}/pgsql/include -I${PREFIX}/include/pgsql/ -I${PREFIX}/include/postgres/ -I${PREFIX}/postgres/include/ -I${PREFIX}/include/postgresql/ -I${PREFIX}/postgresql/include/"
-    POSTCFLAGS="${POSTCFLAGS} -I/usr/local/pgsql/include -I/usr/local/include/pgsql/ -I/usr/local/include/postgres/ -I/usr/local/postgres/include/ -I/usr/local/include/postgresql/ -I/usr/local/postgresql/include/"
-    POSTCFLAGS="${POSTCFLAGS} -I/usr/pgsql/include -I/usr/include/pgsql/ -I/usr/include/postgres/ -I/usr/postgres/include/ -I/usr/include/postgresql/ -I/usr/postgresql/include/"
-    for ilib in ${PREFIX}/pgsql/lib ${PREFIX}/lib/pgsql ${PREFIX}/lib64/pgsql /usr/local/pgsql/lib /usr/local/lib/pgsql /usr/local/lib64/pgsql /usr/pgsql/lib /usr/lib/pgsql /usr/lib64/pgsql ${PREFIX}/postgres/lib ${PREFIX}/lib/postgres ${PREFIX}/lib64/postgres /usr/local/postgres/lib /usr/local/lib/postgres /usr/local/lib64/postgres /usr/postgres/lib /usr/lib/postgres /usr/lib64/postgres ${PREFIX}/postgresql/lib ${PREFIX}/lib/postgresql ${PREFIX}/lib64/postgresql /usr/local/postgresql/lib /usr/local/lib/postgresql /usr/local/lib64/postgresql /usr/postgresql/lib /usr/lib/postgresql /usr/lib64/postgresql
-    do
-	if [ -d ${ilib} ] ; then
-    	    POSTLIBS="${POSTLIBS} -L${ilib}"
-	    if ! [ -z "${TURN_ACCEPT_RPATH}" ] ; then
-		TURN_RPATH="${TURN_RPATH} -Wl,-rpath,${ilib}"
+    if [ -z "${PSQL_CFLAGS}" ] || [ -z "${PSQL_LIBS}" ]; then
+        PSQL_CFLAGS="-I${PREFIX}/pgsql/include -I${PREFIX}/include/pgsql/ -I${PREFIX}/include/postgres/ -I${PREFIX}/postgres/include/ -I${PREFIX}/include/postgresql/ -I${PREFIX}/postgresql/include/"
+        PSQL_CFLAGS="${PSQL_CFLAGS} -I/usr/local/pgsql/include -I/usr/local/include/pgsql/ -I/usr/local/include/postgres/ -I/usr/local/postgres/include/ -I/usr/local/include/postgresql/ -I/usr/local/postgresql/include/"
+        PSQL_CFLAGS="${PSQL_CFLAGS} -I/usr/pgsql/include -I/usr/include/pgsql/ -I/usr/include/postgres/ -I/usr/postgres/include/ -I/usr/include/postgresql/ -I/usr/postgresql/include/"
+        for ilib in ${PREFIX}/pgsql/lib ${PREFIX}/lib/pgsql ${PREFIX}/lib64/pgsql /usr/local/pgsql/lib /usr/local/lib/pgsql /usr/local/lib64/pgsql /usr/pgsql/lib /usr/lib/pgsql /usr/lib64/pgsql ${PREFIX}/postgres/lib ${PREFIX}/lib/postgres ${PREFIX}/lib64/postgres /usr/local/postgres/lib /usr/local/lib/postgres /usr/local/lib64/postgres /usr/postgres/lib /usr/lib/postgres /usr/lib64/postgres ${PREFIX}/postgresql/lib ${PREFIX}/lib/postgresql ${PREFIX}/lib64/postgresql /usr/local/postgresql/lib /usr/local/lib/postgresql /usr/local/lib64/postgresql /usr/postgresql/lib /usr/lib/postgresql /usr/lib64/postgresql
+        do
+	    if [ -d ${ilib} ] ; then
+    	        PSQL_LIBS="${PSQL_LIBS} -L${ilib}"
+	        if ! [ -z "${TURN_ACCEPT_RPATH}" ] ; then
+		    TURN_RPATH="${TURN_RPATH} -Wl,-rpath,${ilib}"
+	        fi
 	    fi
-	fi
-    done
-    POSTLIBS="${OSLIBS} ${POSTLIBS} -lpq"
-    ${CC} ${PQ_TMPCPROGC} -o ${PQ_TMPCPROGB} ${OSCFLAGS} ${DBCFLAGS} ${POSTCFLAGS} ${DBLIBS} ${POSTLIBS} ${OSLIBS} 2>>/dev/null 
+        done
+        PSQL_LIBS="${OSLIBS} ${PSQL_LIBS} -lpq"
+    fi
+    ${CC} ${PQ_TMPCPROGC} -o ${PQ_TMPCPROGB} ${OSCFLAGS} ${DBCFLAGS} ${PSQL_CFLAGS} ${DBLIBS} ${PSQL_LIBS} ${OSLIBS} 2>>/dev/null 
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
     	${ECHO_CMD}
@@ -110,26 +114,28 @@ testlibpq() {
 		${ECHO_CMD}
 		return 0
     else
-		DBCFLAGS="${DBCFLAGS} ${POSTCFLAGS}"
-		DBLIBS="${DBLIBS} ${POSTLIBS}"
+		DBCFLAGS="${DBCFLAGS} ${PSQL_CFLAGS}"
+		DBLIBS="${DBLIBS} ${PSQL_LIBS}"
 		return 1
     fi
 }
 
 testlibmysql() {
-    MYSQL_CFLAGS="-I${PREFIX}/mysql/include -I${PREFIX}/include/mysql/"
-    MYSQL_CFLAGS="${MYSQL_CFLAGS} -I/usr/local/mysql/include -I/usr/local/include/mysql/"
-    MYSQL_CFLAGS="${MYSQL_CFLAGS} -I/usr/mysql/include -I/usr/include/mysql/"
-    for ilib in ${PREFIX}/mysql/lib ${PREFIX}/lib/mysql ${PREFIX}/lib64/mysql /usr/local/mysql/lib /usr/local/lib/mysql /usr/local/lib64/mysql /usr/mysql/lib /usr/lib/mysql /usr/lib64/mysql
-    do
-      if [ -d ${ilib} ] ; then
-        MYSQL_LIBS="${MYSQL_LIBS} -L${ilib}"
-	if ! [ -z "${TURN_ACCEPT_RPATH}" ] ; then
-	    TURN_RPATH="${TURN_RPATH} -Wl,-rpath,${ilib}"
-	fi
-      fi
-    done
-    MYSQL_LIBS="${OSLIBS} ${MYSQL_LIBS} -lmysqlclient"
+    if [ -z "${MYSQL_CFLAGS}" ] || [ -z "${MYSQL_LIBS}" ]; then
+        MYSQL_CFLAGS="-I${PREFIX}/mysql/include -I${PREFIX}/include/mysql/"
+        MYSQL_CFLAGS="${MYSQL_CFLAGS} -I/usr/local/mysql/include -I/usr/local/include/mysql/"
+        MYSQL_CFLAGS="${MYSQL_CFLAGS} -I/usr/mysql/include -I/usr/include/mysql/"
+        for ilib in ${PREFIX}/mysql/lib ${PREFIX}/lib/mysql ${PREFIX}/lib64/mysql /usr/local/mysql/lib /usr/local/lib/mysql /usr/local/lib64/mysql /usr/mysql/lib /usr/lib/mysql /usr/lib64/mysql
+        do
+            if [ -d ${ilib} ] ; then
+                MYSQL_LIBS="${MYSQL_LIBS} -L${ilib}"
+                if ! [ -z "${TURN_ACCEPT_RPATH}" ] ; then
+                    TURN_RPATH="${TURN_RPATH} -Wl,-rpath,${ilib}"
+                fi
+            fi
+        done
+        MYSQL_LIBS="${OSLIBS} ${MYSQL_LIBS} -lmysqlclient"
+    fi
     ${CC} ${MYSQL_TMPCPROGC} -o ${MYSQL_TMPCPROGB} ${OSCFLAGS} ${DBCFLAGS} ${DBLIBS} ${MYSQL_CFLAGS} ${MYSQL_LIBS} ${OSLIBS} 2>>/dev/null
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
@@ -147,13 +153,15 @@ testlibmysql() {
 }
 
 testlibmongoc() {
-    for inc in ${INCLUDEDIR}/libmongoc-1.0 ${INCLUDEDIR}/libbson-1.0 /usr/local/include/libmongoc-1.0 /usr/local/include/libbson-1.0 /usr/libmongoc-1.0 /usr/libbson-1.0 /usr/include/libbson-1.0/ /usr/include/libmongoc-1.0/
-    do
-      if [ -d ${inc} ] ; then
-        MONGO_CFLAGS="${MONGO_CFLAGS} -I${inc}"
-      fi
-    done
-    MONGO_LIBS="-lmongoc-1.0 -lbson-1.0"
+    if [ -z "${MONGO_CFLAGS}" ] || [ -z "${MONGO_LIBS}" ]; then
+        for inc in ${INCLUDEDIR}/libmongoc-1.0 ${INCLUDEDIR}/libbson-1.0 /usr/local/include/libmongoc-1.0 /usr/local/include/libbson-1.0 /usr/libmongoc-1.0 /usr/libbson-1.0 /usr/include/libbson-1.0/ /usr/include/libmongoc-1.0/
+        do
+            if [ -d ${inc} ] ; then
+                MONGO_CFLAGS="${MONGO_CFLAGS} -I${inc}"
+            fi
+        done
+        MONGO_LIBS="-lmongoc-1.0 -lbson-1.0"
+    fi
     ${CC} ${MONGO_TMPCPROGC} -o ${MONGO_TMPCPROGB} ${OSCFLAGS} ${DBCFLAGS} ${DBLIBS} ${MONGO_CFLAGS} ${MONGO_LIBS} ${OSLIBS} 2>>/dev/null
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
@@ -910,28 +918,39 @@ testdaemon
 # Test OpenSSL installation
 ###########################
 
-testlib crypto
-ER=$?
-if ! [ ${ER} -eq 0 ] ; then
-    ${ECHO_CMD} "Crypto SSL lib found."
+if [ -n "${SSL_CFLAGS}" ] && [ -n "${SSL_LIBS}" ]; then
+    ${CC} ${TMPCPROGC} ${SSL_CFLAGS} -o ${TMPCPROGB} ${OSCFLAGS} ${OSLIBS} ${SSL_LIBS} 2>>/dev/null
+    ER=$?
+    if ! [ ${ER} -eq 0 ] ; then
+        ${ECHO_CMD} "Private SSL Library option cannot be used"
+        exit
+    else
+        OSCFLAGS="${OSCFLAGS} ${SSL_CFLAGS}"
+        OSLIBS="${OSLIBS} ${SSL_LIBS}"
+    fi
 else
-    ${ECHO_CMD} "ERROR: OpenSSL Crypto development libraries are not installed properly in required location."
-    ${ECHO_CMD} "Abort."
-    cleanup
-    exit
-fi
+    testlib crypto
+    ER=$?
+    if ! [ ${ER} -eq 0 ] ; then
+        ${ECHO_CMD} "Crypto SSL lib found."
+    else
+        ${ECHO_CMD} "ERROR: OpenSSL Crypto development libraries are not installed properly in required location."
+        ${ECHO_CMD} "Abort."
+        cleanup
+        exit
+    fi
 
-testlib ssl
-ER=$?
-if ! [ ${ER} -eq 0 ] ; then
-    ${ECHO_CMD} "SSL lib found."
-else
-    ${ECHO_CMD} "ERROR: OpenSSL development libraries are not installed properly in required location."
-    ${ECHO_CMD} "Abort."
-    cleanup
-    exit
+    testlib ssl
+    ER=$?
+    if ! [ ${ER} -eq 0 ] ; then
+        ${ECHO_CMD} "SSL lib found."
+    else
+        ${ECHO_CMD} "ERROR: OpenSSL development libraries are not installed properly in required location."
+        ${ECHO_CMD} "Abort."
+        cleanup
+        exit
+    fi
 fi
-
 ###########################
 # Can we use GCM cipher ?
 ###########################
@@ -953,71 +972,83 @@ fi
 ###########################
 # Test Libevent2 setup
 ###########################
-testlibevent2_comp
-ER=$?
-if ! [ ${ER} -eq 0 ] ; then
-    ${ECHO_CMD} "Libevent2 development found."
-else
-    ${ECHO_CMD} "ERROR: Libevent2 development libraries are not installed properly in required location."
-    ${ECHO_CMD} "ERROR: may be you have just too old libevent tool - then you have to upgrade it."
-    ${ECHO_CMD} "See the INSTALL file."
-    ${ECHO_CMD} "Abort."
-    cleanup
-    exit
-fi
-
-testlib event_core
-ER=$?
-if ! [ ${ER} -eq 0 ] ; then
-    ${ECHO_CMD} "Libevent2 runtime found."
-    testlib event_extra
+if [ -n "${EVENT_CFLAGS}" ] && [ -n "${EVENT_LIBS}" ]; then
+    ${CC} ${TMPCPROGC} ${EVENT_CFLAGS} -o ${TMPCPROGB} ${OSCFLAGS} ${OSLIBS} ${EVENT_LIBS} 2>>/dev/null
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
-	${ECHO_CMD} "Libevent2 runtime 'extra' found."
+        ${ECHO_CMD} "Private Event Library option cannot be used"
+        exit
     else
-	${ECHO_CMD} "ERROR: Libevent2 'extra' runtime library is not installed properly in required location."
-	${ECHO_CMD} "See the INSTALL file."
-	${ECHO_CMD} "Abort."
-	cleanup
-	exit
+        OSCFLAGS="${OSCFLAGS} ${EVENT_CFLAGS}"
+        OSLIBS="${OSLIBS} ${EVENT_LIBS}"
     fi
 else
-    testlib event
+    testlibevent2_comp
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
-		${ECHO_CMD} "Libevent2 runtime found (old style)."
+        ${ECHO_CMD} "Libevent2 development found."
     else
-		${ECHO_CMD} "ERROR: Libevent2 runtime libraries are not installed properly in required location."
-		${ECHO_CMD} "See the INSTALL file."
-		${ECHO_CMD} "Abort."
-		cleanup
-		exit
+        ${ECHO_CMD} "ERROR: Libevent2 development libraries are not installed properly in required location."
+        ${ECHO_CMD} "ERROR: may be you have just too old libevent tool - then you have to upgrade it."
+        ${ECHO_CMD} "See the INSTALL file."
+        ${ECHO_CMD} "Abort."
+        cleanup
+        exit
     fi
-fi
 
-if [ -z "${TURN_NO_TLS}" ] ; then
+    testlib event_core
+    ER=$?
+    if ! [ ${ER} -eq 0 ] ; then
+        ${ECHO_CMD} "Libevent2 runtime found."
+        testlib event_extra
+        ER=$?
+        if ! [ ${ER} -eq 0 ] ; then
+	    ${ECHO_CMD} "Libevent2 runtime 'extra' found."
+        else
+	    ${ECHO_CMD} "ERROR: Libevent2 'extra' runtime library is not installed properly in required location."
+	    ${ECHO_CMD} "See the INSTALL file."
+	    ${ECHO_CMD} "Abort."
+	    cleanup
+	    exit
+        fi
+    else
+        testlib event
+        ER=$?
+        if ! [ ${ER} -eq 0 ] ; then
+            ${ECHO_CMD} "Libevent2 runtime found (old style)."
+        else
+            ${ECHO_CMD} "ERROR: Libevent2 runtime libraries are not installed properly in required location."
+            ${ECHO_CMD} "See the INSTALL file."
+            ${ECHO_CMD} "Abort."
+            cleanup
+            exit
+        fi
+    fi
+
+    if [ -z "${TURN_NO_TLS}" ] ; then
 
 	testlib event_openssl
 	ER=$?
 	if ! [ ${ER} -eq 0 ] ; then
-    	${ECHO_CMD} "Libevent2 openssl found."
+    	    ${ECHO_CMD} "Libevent2 openssl found."
 	else
-    	${ECHO_CMD} "ERROR: Libevent2 development libraries are not compiled with OpenSSL support."
-    	${ECHO_CMD} "TLS will be disabled."
-    	TURN_NO_TLS="-DTURN_NO_TLS"
+    	    ${ECHO_CMD} "ERROR: Libevent2 development libraries are not compiled with OpenSSL support."
+    	    ${ECHO_CMD} "TLS will be disabled."
+    	    TURN_NO_TLS="-DTURN_NO_TLS"
 	fi
 
-else
+    else
 	TURN_NO_TLS="-DTURN_NO_TLS"
-fi
+    fi
 
-testlib event_pthreads
-ER=$?
-if ! [ ${ER} -eq 0 ] ; then
-	${ECHO_CMD} "Libevent2 pthreads found."
-else
-   	${ECHO_CMD} "ERROR: Libevent2 development libraries are not compiled with threads support."
-	exit
+    testlib event_pthreads
+    ER=$?
+    if ! [ ${ER} -eq 0 ] ; then
+        ${ECHO_CMD} "Libevent2 pthreads found."
+    else
+        ${ECHO_CMD} "ERROR: Libevent2 development libraries are not compiled with threads support."
+        exit
+    fi
 fi
 
 ###########################

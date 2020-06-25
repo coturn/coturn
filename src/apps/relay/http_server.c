@@ -59,14 +59,14 @@ static void write_http_echo(ioa_socket_handle s)
 		if((sat == HTTP_CLIENT_SOCKET) || (sat == HTTPS_CLIENT_SOCKET)) {
 			ioa_network_buffer_handle nbh_http = ioa_network_buffer_allocate(s->e);
 			size_t len_http = ioa_network_buffer_get_size(nbh_http);
-			u08bits *data = ioa_network_buffer_data(nbh_http);
+			uint8_t *data = ioa_network_buffer_data(nbh_http);
 			char data_http[1025];
 			char content_http[1025];
 			const char* title = "TURN Server";
 			snprintf(content_http,sizeof(content_http)-1,"<!DOCTYPE html>\r\n<html>\r\n  <head>\r\n    <title>%s</title>\r\n  </head>\r\n  <body>\r\n    <b>%s</b> <br> <b><i>use https connection for the admin session</i></b>\r\n  </body>\r\n</html>\r\n",title,title);
 			snprintf(data_http,sizeof(data_http)-1,"HTTP/1.0 200 OK\r\nServer: %s\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Length: %d\r\n\r\n%.906s",TURN_SOFTWARE,(int)strlen(content_http),content_http);
 			len_http = strlen(data_http);
-			ns_bcopy(data_http,data,len_http);
+			bcopy(data_http,data,len_http);
 			ioa_network_buffer_set_size(nbh_http,len_http);
 			send_data_from_ioa_socket_nbh(s, NULL, nbh_http, TTL_IGNORE, TOS_IGNORE,NULL);
 		}
@@ -103,36 +103,45 @@ const char* get_http_date_header()
 
 static struct headers_list * post_parse(char *data, size_t data_len)
 {
-	while((*data=='\r')||(*data=='\n')) ++data;
-	char *post_data = (char*)calloc(data_len + 1, sizeof(char));
-	memcpy(post_data, data, data_len);
-	char *fmarker = NULL;
-	char *fsplit = strtok_r(post_data, "&", &fmarker);
-	struct headers_list *list = (struct headers_list*)malloc(sizeof(struct headers_list));
-	ns_bzero(list,sizeof(struct headers_list));
-	while (fsplit != NULL) {
-		char *vmarker = NULL;
-		char *key = strtok_r(fsplit, "=", &vmarker);
-		char *value = strtok_r(NULL, "=", &vmarker);
-		char empty[1];
-		empty[0]=0;
-		value = value ? value : empty;
-		value = evhttp_decode_uri(value);
-		char *p = value;
-		while (*p) {
-			if (*p == '+')
-				*p = ' ';
-			p++;
+	while((*data=='\r')||(*data=='\n')) { ++data; --data_len; }
+	if (data_len) {
+		char *post_data = (char*)calloc(data_len + 1, sizeof(char));
+		if (post_data != NULL) {
+			memcpy(post_data, data, data_len);
+			char *fmarker = NULL;
+			char *fsplit = strtok_r(post_data, "&", &fmarker);
+			struct headers_list *list = (struct headers_list*)malloc(sizeof(struct headers_list));
+			bzero(list,sizeof(struct headers_list));
+			while (fsplit != NULL) {
+				char *vmarker = NULL;
+				char *key = strtok_r(fsplit, "=", &vmarker);
+				if (key == NULL)
+					break;
+				else {
+					char *value = strtok_r(NULL, "=", &vmarker);
+					char empty[1];
+					empty[0]=0;
+					value = value ? value : empty;
+					value = evhttp_decode_uri(value);
+					char *p = value;
+					while (*p) {
+						if (*p == '+')
+							*p = ' ';
+						p++;
+					}
+					list->keys = (char**)realloc(list->keys,sizeof(char*)*(list->n+1));
+					list->keys[list->n] = strdup(key);
+					list->values = (char**)realloc(list->values,sizeof(char*)*(list->n+1));
+					list->values[list->n] = value;
+					++(list->n);
+					fsplit = strtok_r(NULL, "&", &fmarker);
+				}
+			}
+			free(post_data);
+			return list;
 		}
-		list->keys = (char**)realloc(list->keys,sizeof(char*)*(list->n+1));
-		list->keys[list->n] = strdup(key);
-		list->values = (char**)realloc(list->values,sizeof(char*)*(list->n+1));
-		list->values[list->n] = value;
-		++(list->n);
-		fsplit = strtok_r(NULL, "&", &fmarker);
 	}
-	free(post_data);
-	return list;
+	return NULL;
 }
 
 static struct http_request* parse_http_request_1(struct http_request* ret, char* request, int parse_post)
@@ -156,13 +165,13 @@ static struct http_request* parse_http_request_1(struct http_request* ret, char*
 				const char *query = evhttp_uri_get_query(uri);
 				if(query) {
 					struct evkeyvalq* kv = (struct evkeyvalq*)malloc(sizeof(struct evkeyvalq));
-					ns_bzero(kv,sizeof(struct evkeyvalq));
+					bzero(kv,sizeof(struct evkeyvalq));
 					if(evhttp_parse_query_str(query, kv)<0) {
 						free(ret);
 						ret = NULL;
 					} else {
 						ret->headers = (struct http_headers*)malloc(sizeof(struct http_headers));
-						ns_bzero(ret->headers,sizeof(struct http_headers));
+						bzero(ret->headers,sizeof(struct http_headers));
 						ret->headers->uri_headers = kv;
 					}
 				}
@@ -178,7 +187,7 @@ static struct http_request* parse_http_request_1(struct http_request* ret, char*
 					if(body && body[0]) {
 						if(!ret->headers) {
 							ret->headers = (struct http_headers*)malloc(sizeof(struct http_headers));
-							ns_bzero(ret->headers,sizeof(struct http_headers));
+							bzero(ret->headers,sizeof(struct http_headers));
 						}
 						ret->headers->post_headers = post_parse(body,strlen(body));
 					}
@@ -199,7 +208,7 @@ struct http_request* parse_http_request(char* request) {
 	if(request) {
 
 		ret = (struct http_request*)malloc(sizeof(struct http_request));
-		ns_bzero(ret,sizeof(struct http_request));
+		bzero(ret,sizeof(struct http_request));
 
 		if(strstr(request,"GET ") == request) {
 			ret->rtype = HRT_GET;
@@ -318,7 +327,7 @@ struct str_buffer {
 struct str_buffer* str_buffer_new(void)
 {
 	struct str_buffer* ret = (struct str_buffer*)malloc(sizeof(struct str_buffer));
-	ns_bzero(ret,sizeof(struct str_buffer));
+	bzero(ret,sizeof(struct str_buffer));
 	ret->buffer = (char*)malloc(1);
 	ret->buffer[0] = 0;
 	ret->capacity = 1;
@@ -333,7 +342,7 @@ void str_buffer_append(struct str_buffer* sb, const char* str)
 			sb->capacity += len + 1024;
 			sb->buffer = (char*)realloc(sb->buffer,sb->capacity);
 		}
-		ns_bcopy(str,sb->buffer+sb->sz,len+1);
+		bcopy(str,sb->buffer+sb->sz,len+1);
 		sb->sz += len;
 	}
 }

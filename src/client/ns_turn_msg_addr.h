@@ -39,8 +39,8 @@ extern "C" {
 
 ///////////////////////////////////////////
 
-int stun_addr_encode(const ioa_addr* ca, u08bits *cfield, int *clen, int xor_ed, u32bits mc, const u08bits *tsx_id);
-int stun_addr_decode(ioa_addr* ca, const u08bits *cfield, int len, int xor_ed, u32bits mc, const u08bits *tsx_id);
+int stun_addr_encode(const ioa_addr* ca, uint8_t *cfield, int *clen, int xor_ed, uint32_t mc, const uint8_t *tsx_id);
+int stun_addr_decode(ioa_addr* ca, const uint8_t *cfield, int len, int xor_ed, uint32_t mc, const uint8_t *tsx_id);
 
 ///////////////////////////////////////////
 

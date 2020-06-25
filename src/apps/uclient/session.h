@@ -61,7 +61,7 @@ typedef enum _UR_STATE UR_STATE;
 typedef struct
 {
 	/* RFC 6062 */
-	u32bits cid;
+	uint32_t cid;
 	ioa_addr tcp_data_local_addr;
 	ioa_socket_raw tcp_data_fd;
 	SSL *tcp_data_ssl;
@@ -79,11 +79,11 @@ typedef struct {
   ioa_socket_raw fd;
   SSL *ssl;
   int broken;
-  u08bits nonce[STUN_MAX_NONCE_SIZE+1];
-  u08bits realm[STUN_MAX_REALM_SIZE+1];
+  uint8_t nonce[STUN_MAX_NONCE_SIZE+1];
+  uint8_t realm[STUN_MAX_REALM_SIZE+1];
   /* oAuth */
   int oauth;
-  u08bits server_name[STUN_MAX_SERVER_NAME_SIZE+1];
+  uint8_t server_name[STUN_MAX_SERVER_NAME_SIZE+1];
   hmackey_t key;
   int key_set;
   int cok;
@@ -106,26 +106,26 @@ typedef struct {
   struct event *input_tcp_data_ev;
   stun_buffer in_buffer;
   stun_buffer out_buffer;
-  u32bits refresh_time;
-  u32bits finished_time;
+  uint32_t refresh_time;
+  uint32_t finished_time;
   //Msg counters:
   int tot_msgnum;
   int wmsgnum;
   int rmsgnum;
   int recvmsgnum;
-  u32bits recvtimems;
-  u32bits to_send_timems;
+  uint32_t recvtimems;
+  uint32_t to_send_timems;
   //Statistics:
   size_t loss;
-  u64bits latency;
-  u64bits jitter;
+  uint64_t latency;
+  uint64_t jitter;
 } app_ur_session;
 
 ///////////////////////////////////////////////////////
 
 typedef struct _message_info {
 	int msgnum;
-	u64bits mstime;
+	uint64_t mstime;
 } message_info;
 
 ///////////////////////////////////////////////////////////////////////////////

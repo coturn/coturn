@@ -52,18 +52,18 @@ typedef struct _perf_options_t {
 
 struct _realm_options_t {
 
-	s08bits name[STUN_MAX_REALM_SIZE + 1];
+	char name[STUN_MAX_REALM_SIZE + 1];
 
 	perf_options_t perf_options;
 };
 
 //////////////// session info //////////////////////
 
-typedef u64bits turnsession_id;
+typedef uint64_t turnsession_id;
 
 #define NONCE_MAX_SIZE (NONCE_LENGTH_32BITS*4+1)
 
-typedef u64bits mobile_id_t;
+typedef uint64_t mobile_id_t;
 
 struct _ts_ur_super_session {
   void* server; 
@@ -76,9 +76,9 @@ struct _ts_ur_super_session {
   int is_tcp_relay;
   int to_be_closed;
   /* Auth */
-  u08bits nonce[NONCE_MAX_SIZE];
+  uint8_t nonce[NONCE_MAX_SIZE];
   turn_time_t nonce_expiration_time;
-  u08bits username[STUN_MAX_USERNAME_SIZE+1];
+  uint8_t username[STUN_MAX_USERNAME_SIZE+1];
   hmackey_t hmackey;
   int hmackey_set;
   password_t pwd;
@@ -88,19 +88,30 @@ struct _ts_ur_super_session {
   /* Realm */
   realm_options_t realm_options;
   int origin_set;
-  s08bits origin[STUN_MAX_ORIGIN_SIZE + 1];
+  char origin[STUN_MAX_ORIGIN_SIZE + 1];
   /* Stats */
-  u32bits received_packets;
-  u32bits sent_packets;
-  u32bits received_bytes;
-  u32bits sent_bytes;
-  u64bits t_received_packets;
-  u64bits t_sent_packets;
-  u64bits t_received_bytes;
-  u64bits t_sent_bytes;
-  u64bits received_rate;
+  uint32_t received_packets;
+  uint32_t sent_packets;
+  uint32_t received_bytes;
+  uint32_t sent_bytes;
+  uint64_t t_received_packets;
+  uint64_t t_sent_packets;
+  uint64_t t_received_bytes;
+  uint64_t t_sent_bytes;
+  uint64_t received_rate;
   size_t sent_rate;
   size_t total_rate;
+  uint32_t peer_received_packets;
+  uint32_t peer_sent_packets;
+  uint32_t peer_received_bytes;
+  uint32_t peer_sent_bytes;
+  uint32_t t_peer_received_packets;
+  uint32_t t_peer_sent_packets;
+  uint32_t t_peer_received_bytes;
+  uint32_t t_peer_sent_bytes;
+  uint64_t peer_received_rate;
+  size_t peer_sent_rate;
+  size_t peer_total_rate;
   /* Mobile */
   int is_mobile;
   mobile_id_t mobile_id;
@@ -133,16 +144,23 @@ struct turn_session_info {
 	addr_data remote_addr_data;
 	addr_data relay_addr_data_ipv4;
 	addr_data relay_addr_data_ipv6;
-	u08bits username[STUN_MAX_USERNAME_SIZE+1];
+	uint8_t username[STUN_MAX_USERNAME_SIZE+1];
 	int enforce_fingerprints;
 /* Stats */
-	u64bits received_packets;
-	u64bits sent_packets;
-	u64bits received_bytes;
-	u64bits sent_bytes;
-	u32bits received_rate;
-	u32bits sent_rate;
-	u32bits total_rate;
+	uint64_t received_packets;
+	uint64_t sent_packets;
+	uint64_t received_bytes;
+	uint64_t sent_bytes;
+	uint32_t received_rate;
+	uint32_t sent_rate;
+	uint32_t total_rate;
+	uint64_t peer_received_packets;
+	uint64_t peer_sent_packets;
+	uint64_t peer_received_bytes;
+	uint64_t peer_sent_bytes;
+	uint32_t peer_received_rate;
+	uint32_t peer_sent_rate;
+	uint32_t peer_total_rate;
 /* Mobile */
 	int is_mobile;
 /* Peers */

@@ -32,7 +32,7 @@
   An example:
 
 #include "khash.h"
-KHASH_MAP_INIT_INT(32, s08bits)
+KHASH_MAP_INIT_INT(32, char)
 int main() {
 	int ret, is_missing;
 	khiter_t k;
@@ -87,16 +87,16 @@ int main() {
 
 #include "ns_turn_defs.h"
 
-typedef u32bits khint_t;
+typedef uint32_t khint_t;
 typedef khint_t khiter_t;
 
 typedef struct _str_chunk_t {
-    const s08bits *str;
+    const char *str;
     size_t      len;
 } str_chunk_t;
 
 #define __ac_HASH_PRIME_SIZE 32
-static const u32bits __ac_prime_list[__ac_HASH_PRIME_SIZE] =
+static const uint32_t __ac_prime_list[__ac_HASH_PRIME_SIZE] =
 {
   0ul,          3ul,          11ul,         23ul,         53ul,
   97ul,         193ul,        389ul,        769ul,        1543ul,
@@ -120,25 +120,25 @@ static const double __ac_HASH_UPPER = 0.77;
 #define KHASH_INIT(name, khkey_t, khval_t, kh_is_map, __hash_func, __hash_equal) \
 	typedef struct {													\
 		khint_t n_buckets, size, n_occupied, upper_bound;				\
-		u32bits *flags;	u32bits flags_size;			\
-		khkey_t *keys; u32bits keys_size;			\
-		khval_t *vals; u32bits vals_size; 			\
+		uint32_t *flags;	uint32_t flags_size;			\
+		khkey_t *keys; uint32_t keys_size;			\
+		khval_t *vals; uint32_t vals_size; 			\
 	} kh_##name##_t;													\
 	static inline kh_##name##_t *kh_init_##name(void) {					\
-		return (kh_##name##_t*)turn_calloc(1, sizeof(kh_##name##_t));		\
+		return (kh_##name##_t*)calloc(1, sizeof(kh_##name##_t));		\
 	}																	\
 	static inline void kh_destroy_##name(kh_##name##_t *h)				\
 	{																	\
 		if (h) {														\
-		  turn_free(h->keys,h->keys_size); turn_free(h->flags,h->flags_size); \
-		  turn_free(h->vals, h->vals_size);					\
-		  turn_free(h, sizeof(kh_##name##_t));			\
+		  free(h->keys); free(h->flags); \
+		  free(h->vals);					\
+		  free(h);			\
 		}											   \
 	}																	\
 	static inline void kh_clear_##name(kh_##name##_t *h)				\
 	{																	\
 		if (h && h->flags) { \
-			memset(h->flags, 0xaa, ((h->n_buckets>>4) + 1) * sizeof(u32bits)); \
+			memset(h->flags, 0xaa, ((h->n_buckets>>4) + 1) * sizeof(uint32_t)); \
 			h->size = h->n_occupied = 0;								\
 		}																\
 	}																	\
@@ -158,8 +158,8 @@ static const double __ac_HASH_UPPER = 0.77;
 	}																	\
 	static inline void kh_resize_##name(kh_##name##_t *h, khint_t new_n_buckets) \
 	{																	\
-		u32bits *new_flags = 0;		\
-		u32bits new_flags_size = 0;	\
+		uint32_t *new_flags = 0;		\
+		uint32_t new_flags_size = 0;	\
 		khint_t j = 1;													\
 		{																\
 			khint_t t = __ac_HASH_PRIME_SIZE - 1;						\
@@ -167,14 +167,14 @@ static const double __ac_HASH_UPPER = 0.77;
 			new_n_buckets = __ac_prime_list[t+1];						\
 			if (h->size >= (khint_t)(new_n_buckets * __ac_HASH_UPPER + 0.5)) j = 0;	\
 			else {			\
-			  new_flags_size = ((new_n_buckets>>4) + 1) * sizeof(u32bits); \
-			  new_flags = (u32bits*)turn_malloc(new_flags_size);	\
+			  new_flags_size = ((new_n_buckets>>4) + 1) * sizeof(uint32_t); \
+			  new_flags = (uint32_t*)malloc(new_flags_size);	\
 			  memset(new_flags, 0xaa, new_flags_size); \
 			  if (h->n_buckets < new_n_buckets) {		\
-			    h->keys = (khkey_t*)turn_realloc(h->keys, h->keys_size, new_n_buckets * sizeof(khkey_t)); \
+			    h->keys = (khkey_t*)realloc(h->keys, new_n_buckets * sizeof(khkey_t)); \
 			    h->keys_size = new_n_buckets * sizeof(khkey_t); \
 			    if (kh_is_map)	{			\
-			      h->vals = (khval_t*)turn_realloc(h->vals, h->vals_size, new_n_buckets * sizeof(khval_t)); \
+			      h->vals = (khval_t*)realloc(h->vals, new_n_buckets * sizeof(khval_t)); \
 			      h->vals_size = new_n_buckets * sizeof(khval_t); \
 			    } \
 			  }						\
@@ -210,14 +210,14 @@ static const double __ac_HASH_UPPER = 0.77;
 				}														\
 			}															\
 			if (h->n_buckets > new_n_buckets) {							\
-			  h->keys = (khkey_t*)turn_realloc(h->keys, h->keys_size, new_n_buckets * sizeof(khkey_t)); \
+			  h->keys = (khkey_t*)realloc(h->keys, new_n_buckets * sizeof(khkey_t)); \
 			  h->keys_size = new_n_buckets * sizeof(khkey_t); \
 			  if (kh_is_map)	{			\
-			    h->vals = (khval_t*)turn_realloc(h->vals, h->vals_size, new_n_buckets * sizeof(khval_t)); \
+			    h->vals = (khval_t*)realloc(h->vals, new_n_buckets * sizeof(khval_t)); \
 			    h->vals_size = new_n_buckets * sizeof(khval_t); \
 			  } \
 			}															\
-			turn_free(h->flags, h->flags_size);				\
+			free(h->flags);				\
 			h->flags = new_flags; \
                         h->flags_size = new_flags_size;						\
 			h->n_buckets = new_n_buckets;								\
@@ -273,12 +273,12 @@ static const double __ac_HASH_UPPER = 0.77;
 
 /* --- BEGIN OF HASH FUNCTIONS --- */
 
-#define kh_int_hash_func(key) (u32bits)((key<<3) + nswap32(key>>7))
+#define kh_int_hash_func(key) (uint32_t)((key<<3) + nswap32(key>>7))
 #define kh_int_hash_equal(a, b) (a == b)
-#define kh_int64_hash_func(key) (u32bits)((key)>>33^(key)^(key)<<11)
+#define kh_int64_hash_func(key) (uint32_t)((key)>>33^(key)^(key)<<11)
 #define kh_int64_hash_equal(a, b) (a == b)
 
-static inline khint_t __ac_X31_hash_string(const s08bits *s)
+static inline khint_t __ac_X31_hash_string(const char *s)
 {
 	khint_t h = *s;
 	if (h)
@@ -286,7 +286,7 @@ static inline khint_t __ac_X31_hash_string(const s08bits *s)
 			h = (h << 5) - h + *s;
 	return h;
 }
-static inline khint_t __ac_X31_hash_cstring(const s08bits *s)
+static inline khint_t __ac_X31_hash_cstring(const char *s)
 {
 	khint_t h = tolower((int)*s);
 	if (h)
@@ -349,39 +349,39 @@ static inline khint_t __ac_X31_hash_ncstring(const str_chunk_t *s)
 /* More convenient interfaces */
 
 #define KHASH_SET_INIT_INT(name)										\
-	KHASH_INIT(name, u32bits, s08bits, 0, kh_int_hash_func, kh_int_hash_equal)
+	KHASH_INIT(name, uint32_t, char, 0, kh_int_hash_func, kh_int_hash_equal)
 
 #define KHASH_MAP_INIT_INT(name, khval_t)								\
-	KHASH_INIT(name, u32bits, khval_t, 1, kh_int_hash_func, kh_int_hash_equal)
+	KHASH_INIT(name, uint32_t, khval_t, 1, kh_int_hash_func, kh_int_hash_equal)
 
 #define KHASH_SET_INIT_INT64(name)										\
-	KHASH_INIT(name, u64bits, s08bits, 0, kh_int64_hash_func, kh_int64_hash_equal)
+	KHASH_INIT(name, uint64_t, char, 0, kh_int64_hash_func, kh_int64_hash_equal)
 
 #define KHASH_MAP_INIT_INT64(name, khval_t)								\
-	KHASH_INIT(name, u64bits, khval_t, 1, kh_int64_hash_func, kh_int64_hash_equal)
+	KHASH_INIT(name, uint64_t, khval_t, 1, kh_int64_hash_func, kh_int64_hash_equal)
 
-typedef const s08bits *kh_cstr_t;
+typedef const char *kh_cstr_t;
 typedef const str_chunk_t *kh_ncstr_t;
 #define KHASH_SET_INIT_STR(name)										\
-	KHASH_INIT(name, kh_cstr_t, s08bits, 0, kh_str_hash_func, kh_str_hash_equal)
+	KHASH_INIT(name, kh_cstr_t, char, 0, kh_str_hash_func, kh_str_hash_equal)
 
 #define KHASH_MAP_INIT_STR(name, khval_t)								\
 	KHASH_INIT(name, kh_cstr_t, khval_t, 1, kh_str_hash_func, kh_str_hash_equal)
 
 #define KHASH_SET_INIT_CSTR(name)										\
-	KHASH_INIT(name, kh_cstr_t, s08bits, 0, kh_cstr_hash_func, kh_cstr_hash_equal)
+	KHASH_INIT(name, kh_cstr_t, char, 0, kh_cstr_hash_func, kh_cstr_hash_equal)
 
 #define KHASH_MAP_INIT_CSTR(name, khval_t)								\
 	KHASH_INIT(name, kh_cstr_t, khval_t, 1, kh_cstr_hash_func, kh_cstr_hash_equal)
 
 #define KHASH_SET_INIT_NSTR(name)										\
-	KHASH_INIT(name, kh_ncstr_t, s08bits, 0, kh_nstr_hash_func, kh_nstr_hash_equal)
+	KHASH_INIT(name, kh_ncstr_t, char, 0, kh_nstr_hash_func, kh_nstr_hash_equal)
 
 #define KHASH_MAP_INIT_NSTR(name, khval_t)								\
 	KHASH_INIT(name, kh_ncstr_t, khval_t, 1, kh_nstr_hash_func, kh_nstr_hash_equal)
 
 #define KHASH_SET_INIT_NCSTR(name)										\
-	KHASH_INIT(name, kh_ncstr_t, s08bits, 0, kh_ncstr_hash_func, kh_ncstr_hash_equal)
+	KHASH_INIT(name, kh_ncstr_t, char, 0, kh_ncstr_hash_func, kh_ncstr_hash_equal)
 
 #define KHASH_MAP_INIT_NCSTR(name, khval_t)								\
 	KHASH_INIT(name, kh_ncstr_t, khval_t, 1, kh_ncstr_hash_func, kh_ncstr_hash_equal)

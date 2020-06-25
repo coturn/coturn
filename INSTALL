@@ -15,7 +15,7 @@ Unpack the archive:
 
  $ tar xvfz turnserver-<...>.tar.gz
  
-Read the INSTALl file:
+Read the INSTALL file:
 
  $ cat INSTALL
  

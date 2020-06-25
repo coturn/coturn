@@ -246,16 +246,16 @@ redis_context_handle redisLibeventAttach(struct event_base *base, char *ip0, int
   }
 
   /* Create container for context and r/w events */
-  e = (struct redisLibeventEvents*)turn_malloc(sizeof(struct redisLibeventEvents));
-  ns_bzero(e,sizeof(struct redisLibeventEvents));
+  e = (struct redisLibeventEvents*)malloc(sizeof(struct redisLibeventEvents));
+  bzero(e,sizeof(struct redisLibeventEvents));
 
   e->allocated = 1;
   e->context = ac;
   e->base = base;
-  e->ip = turn_strdup(ip);
+  e->ip = strdup(ip);
   e->port = port;
   if(pwd)
-	  e->pwd = turn_strdup(pwd);
+	  e->pwd = strdup(pwd);
   e->db = db;
 
   /* Register functions to start/stop listening for events */
@@ -277,7 +277,7 @@ redis_context_handle redisLibeventAttach(struct event_base *base, char *ip0, int
   		     e);
 
   if (e->rev == NULL || e->wev == NULL) {
-	  turn_free(e, sizeof(struct redisLibeventEvents));
+	  free(e);
 	  return NULL;
   }
   
