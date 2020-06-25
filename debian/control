@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: Debian VoIP Team <pkg-voip-maintainers@lists.alioth.debian.org>
 Uploaders: Oleg Moskalenko <mom040267@gmail.com>,
            Mészáros Mihály <misi@majd.eu>
-Build-Depends: debhelper (>=11.0.0),
+Build-Depends: debhelper-compat (= 13),
                default-libmysqlclient-dev,
                default-mysql-client,
                dpkg-dev (>= 1.16.1~),
@@ -15,7 +15,7 @@ Build-Depends: debhelper (>=11.0.0),
                libssl-dev (>= 1.0.0~),
                postgresql-client,
                sqlite3
-Standards-Version: 4.3.0
+Standards-Version: 4.5.0
 Homepage: https://github.com/coturn/coturn/
 Vcs-Git: https://github.com/coturn/coturn.git -b debian/master
 Vcs-Browser: https://github.com/coturn/coturn/tree/debian/master
