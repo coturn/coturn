@@ -13,6 +13,20 @@ export DH_OPTIONS
 override_dh_auto_install:
 	true
 
+override_dh_installexamples:
+	dh_installexamples -X ca/CA/ \
+		-X ca/turn_client_cert.pem \
+		-X ca/turn_client_pkey.pem \
+		-X ca/turn_server_cert.pem \
+		-X ca/turn_server_pkey.pem
+
+override_dh_installdocs:
+	dh_installdocs -X ca/CA/ \
+		-X ca/turn_client_cert.pem \
+		-X ca/turn_client_pkey.pem \
+		-X ca/turn_server_cert.pem \
+		-X ca/turn_server_pkey.pem
+
 override_dh_auto_configure:
 	dh_auto_configure -- --disable-rpath --turndbdir=/var/lib/turn
 
