@@ -279,7 +279,7 @@ int addr_bind(evutil_socket_t fd, const ioa_addr* addr, int reusable, int debug,
 				int err = errno;
 				perror("bind");
 				char str[129];
-				addr_to_string(addr,(u08bits*)str);
+				addr_to_string(addr,(uint8_t*)str);
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Trying to bind fd %d to <%s>: errno=%d\n", fd, str, err);
 			}
 		}
@@ -439,6 +439,7 @@ int set_raw_socket_tos(evutil_socket_t fd, int family, int tos)
 int is_stream_socket(int st) {
 	switch(st) {
 	case TCP_SOCKET:
+	case TCP_SOCKET_PROXY:
 	case TLS_SOCKET:
 	case TENTATIVE_TCP_SOCKET:
 	case SCTP_SOCKET:
@@ -760,7 +761,7 @@ void set_execdir(void)
   /* On some systems, this may give us the execution path */
   char *_var = getenv("_");
   if(_var && *_var) {
-    _var = turn_strdup(_var);
+    _var = strdup(_var);
     char *edir=_var;
     if(edir[0]!='.') 
       edir = strstr(edir,"/");
@@ -769,9 +770,9 @@ void set_execdir(void)
     else
       edir = dirname(_var);
     if(c_execdir)
-      turn_free(c_execdir,strlen(c_execdir)+1);
-    c_execdir = turn_strdup(edir);
-    turn_free(_var,strlen(_var)+1);
+      free(c_execdir);
+    c_execdir = strdup(edir);
+    free(_var);
   }
 }
 
@@ -786,7 +787,7 @@ void print_abs_file_name(const char *msg1, const char *msg2, const char *fn)
       if(fn[0]=='/') {
 	STRCPY(absfn,fn);
       } else {
-	if(fn[0]=='.' && fn[1]=='/')
+	if(fn[0]=='.' && fn[1] && fn[1]=='/')
 	  fn+=2;
 	if(!getcwd(absfn,sizeof(absfn)-1))
 	  absfn[0]=0;
@@ -815,7 +816,7 @@ char* find_config_file(const char *config_file, int print_file_name)
 			FILE *f = fopen(config_file, "r");
 			if (f) {
 				fclose(f);
-				full_path_to_config_file = turn_strdup(config_file);
+				full_path_to_config_file = strdup(config_file);
 			}
 		} else {
 			int i = 0;
@@ -824,7 +825,7 @@ char* find_config_file(const char *config_file, int print_file_name)
 			while (config_file_search_dirs[i]) {
 				size_t dirlen = strlen(config_file_search_dirs[i]);
 				size_t fnsz = sizeof(char) * (dirlen + cflen + 10);
-				char *fn = (char*)turn_malloc(fnsz+1);
+				char *fn = (char*)malloc(fnsz+1);
 				strncpy(fn, config_file_search_dirs[i], fnsz);
 				strncpy(fn + dirlen, config_file, fnsz-dirlen);
 				fn[fnsz]=0;
@@ -836,13 +837,13 @@ char* find_config_file(const char *config_file, int print_file_name)
 					full_path_to_config_file = fn;
 					break;
 				}
-				turn_free(fn,fnsz+1);
+				free(fn);
 				if(config_file_search_dirs[i][0]!='/' && 
 				   config_file_search_dirs[i][0]!='.' &&
 				   c_execdir && c_execdir[0]) {
 					size_t celen = strlen(c_execdir);
 					fnsz = sizeof(char) * (dirlen + cflen + celen + 10);
-					fn = (char*)turn_malloc(fnsz+1);
+					fn = (char*)malloc(fnsz+1);
 					strncpy(fn,c_execdir,fnsz);
 					size_t fnlen=strlen(fn);
 					if(fnlen<fnsz) {
@@ -867,7 +868,7 @@ char* find_config_file(const char *config_file, int print_file_name)
 					    break;
 					  }
 					}
-					turn_free(fn,fnsz+1);
+					free(fn);
 				}
 				++i;
 			}
@@ -893,15 +894,15 @@ void ignore_sigpipe(void)
 	}
 }
 
-static u64bits turn_getRandTime(void) {
+static uint64_t turn_getRandTime(void) {
   struct timespec tp={0,0};
 #if defined(CLOCK_REALTIME)
   clock_gettime(CLOCK_REALTIME, &tp);
 #else
   tp.tv_sec = time(NULL);
 #endif
-  u64bits current_time = (u64bits)(tp.tv_sec);
-  u64bits current_mstime = (u64bits)(current_time + (tp.tv_nsec));
+  uint64_t current_time = (uint64_t)(tp.tv_sec);
+  uint64_t current_mstime = (uint64_t)(current_time + (tp.tv_nsec));
 
   return current_mstime;
 }
@@ -950,17 +951,17 @@ char *base64_encode(const unsigned char *data,
 
     *output_length = 4 * ((input_length + 2) / 3);
 
-    char *encoded_data = (char*)turn_malloc(*output_length+1);
+    char *encoded_data = (char*)malloc(*output_length+1);
     if (encoded_data == NULL) return NULL;
 
     size_t i,j;
     for (i = 0, j = 0; i < input_length;) {
 
-        u32bits octet_a = i < input_length ? data[i++] : 0;
-        u32bits octet_b = i < input_length ? data[i++] : 0;
-        u32bits octet_c = i < input_length ? data[i++] : 0;
+        uint32_t octet_a = i < input_length ? data[i++] : 0;
+        uint32_t octet_b = i < input_length ? data[i++] : 0;
+        uint32_t octet_c = i < input_length ? data[i++] : 0;
 
-        u32bits triple = (octet_a << 0x10) + (octet_b << 0x08) + octet_c;
+        uint32_t triple = (octet_a << 0x10) + (octet_b << 0x08) + octet_c;
 
         encoded_data[j++] = encoding_table[(triple >> 3 * 6) & 0x3F];
         encoded_data[j++] = encoding_table[(triple >> 2 * 6) & 0x3F];
@@ -978,8 +979,8 @@ char *base64_encode(const unsigned char *data,
 
 void build_base64_decoding_table() {
 
-    decoding_table = (char*)turn_malloc(256);
-    ns_bzero(decoding_table,256);
+    decoding_table = (char*)malloc(256);
+    bzero(decoding_table,256);
 
     int i;
     for (i = 0; i < 64; i++)
@@ -998,7 +999,7 @@ unsigned char *base64_decode(const char *data,
     if (data[input_length - 1] == '=') (*output_length)--;
     if (data[input_length - 2] == '=') (*output_length)--;
 
-    unsigned char *decoded_data = (unsigned char*)turn_malloc(*output_length);
+    unsigned char *decoded_data = (unsigned char*)malloc(*output_length);
     if (decoded_data == NULL) return NULL;
 
     int i;
@@ -1031,67 +1032,13 @@ unsigned char *base64_decode(const char *data,
 
 ////////////////// SSL /////////////////////
 
-static const char* turn_get_method(const SSL_METHOD *method, const char* mdefault)
-{
-	{
-		if(!method)
-			return mdefault;
-		else {
-			if(method == SSLv23_server_method()) {
-					return "SSLv23";
-			} else if(method == SSLv23_client_method()) {
-					return "SSLv23";
-			} else if(method == TLSv1_server_method()) {
-					return "TLSv1.0";
-			} else if(method == TLSv1_client_method()) {
-				return "TLSv1.0";
-#if TLSv1_1_SUPPORTED
-			} else if(method == TLSv1_1_server_method()) {
-					return "TLSv1.1";
-			} else if(method == TLSv1_1_client_method()) {
-				return "TLSv1.1";
-#if TLSv1_2_SUPPORTED
-			} else if(method == TLSv1_2_server_method()) {
-					return "TLSv1.2";
-			} else if(method == TLSv1_2_client_method()) {
-				return "TLSv1.2";
-#endif
-#endif
-#if DTLS_SUPPORTED
-
-			} else if(method == DTLSv1_server_method()) {
-				return "DTLSv1.0";
-			} else if(method == DTLSv1_client_method()) {
-				return "DTLSv1.0";
-
-#if DTLSv1_2_SUPPORTED
-			} else if(method == DTLSv1_2_server_method()) {
-				return "DTLSv1.2";
-			} else if(method == DTLSv1_2_client_method()) {
-				return "DTLSv1.2";
-#endif
-#endif
-			} else {
-				if(mdefault)
-					return mdefault;
-				return "UNKNOWN";
-			}
-		}
-	}
-}
-
 const char* turn_get_ssl_method(SSL *ssl, const char* mdefault)
 {
 	const char* ret = "unknown";
 	if(!ssl) {
 		ret = mdefault;
 	} else {
-		const SSL_METHOD *method = SSL_get_ssl_method(ssl);
-		if(!method) {
-			ret = mdefault;
-		} else {
-			ret = turn_get_method(method, mdefault);
-		}
+		ret = SSL_get_version(ssl);
 	}
 
 	return ret;
@@ -1114,21 +1061,21 @@ void convert_oauth_key_data_raw(const oauth_key_data_raw *raw, oauth_key_data *o
 {
 	if(raw && oakd) {
 
-		ns_bzero(oakd,sizeof(oauth_key_data));
+		bzero(oakd,sizeof(oauth_key_data));
 
 		oakd->timestamp = (turn_time_t)raw->timestamp;
 		oakd->lifetime = raw->lifetime;
 
-		ns_bcopy(raw->as_rs_alg,oakd->as_rs_alg,sizeof(oakd->as_rs_alg));
-		ns_bcopy(raw->kid,oakd->kid,sizeof(oakd->kid));
+		bcopy(raw->as_rs_alg,oakd->as_rs_alg,sizeof(oakd->as_rs_alg));
+		bcopy(raw->kid,oakd->kid,sizeof(oakd->kid));
 
 		if(raw->ikm_key[0]) {
 			size_t ikm_key_size = 0;
 			char *ikm_key = (char*)base64_decode(raw->ikm_key,strlen(raw->ikm_key),&ikm_key_size);
 			if(ikm_key) {
-				ns_bcopy(ikm_key,oakd->ikm_key,ikm_key_size);
+				bcopy(ikm_key,oakd->ikm_key,ikm_key_size);
 				oakd->ikm_key_size = ikm_key_size;
-				turn_free(ikm_key,ikm_key_size);
+				free(ikm_key);
 			}
 		}
 	}

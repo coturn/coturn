@@ -42,7 +42,7 @@
 ////////////////////////////////////////////
 
 struct _rtcp_map {
-  u32bits magic;
+  uint32_t magic;
   ur_map *map;
   ioa_timer_handle timer_ev;
   TURN_MUTEX_DECLARE(mutex)
@@ -90,7 +90,7 @@ static void rtcp_alloc_free(ur_map_value_type value)
 	rtcp_alloc_type *at = (rtcp_alloc_type *)value;
 	if (at) {
 		IOA_CLOSE_SOCKET(at->s);
-		turn_free(at,sizeof(rtcp_alloc_type));
+		free(at);
 	}
 }
 
@@ -98,7 +98,7 @@ static void rtcp_alloc_free_savefd(ur_map_value_type value)
 {
 	rtcp_alloc_type *at = (rtcp_alloc_type *) value;
 	if (at) {
-		turn_free(at,sizeof(rtcp_alloc_type));
+		free(at);
 	}
 }
 
@@ -177,10 +177,10 @@ static int rtcp_map_init(rtcp_map* map, ioa_engine_handle e) {
 }
 
 rtcp_map* rtcp_map_create(ioa_engine_handle e) {
-  rtcp_map *map=(rtcp_map*)turn_malloc(sizeof(rtcp_map));
-  ns_bzero(map,sizeof(rtcp_map));
+  rtcp_map *map=(rtcp_map*)malloc(sizeof(rtcp_map));
+  bzero(map,sizeof(rtcp_map));
   if(rtcp_map_init(map,e)<0) {
-    turn_free(map,sizeof(rtcp_map));
+    free(map);
     return NULL;
   }
   return map;
@@ -194,9 +194,9 @@ rtcp_map* rtcp_map_create(ioa_engine_handle e) {
 int rtcp_map_put(rtcp_map* map, rtcp_token_type token, ioa_socket_handle s) {
   if(!rtcp_map_valid(map)) return -1;
   else {
-    rtcp_alloc_type *value=(rtcp_alloc_type*)turn_malloc(sizeof(rtcp_alloc_type));
+    rtcp_alloc_type *value=(rtcp_alloc_type*)malloc(sizeof(rtcp_alloc_type));
     if(!value) return -1;
-    ns_bzero(value,sizeof(rtcp_alloc_type));
+    bzero(value,sizeof(rtcp_alloc_type));
     value->s=s;
     value->t=turn_time() + RTCP_TIMEOUT;
     value->token=token;
@@ -204,7 +204,7 @@ int rtcp_map_put(rtcp_map* map, rtcp_token_type token, ioa_socket_handle s) {
     int ret = ur_map_put(map->map,token,(ur_map_value_type)value);
     //TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: 111.111: ret=%d, token=%llu\n",__FUNCTION__,ret,token);
     TURN_MUTEX_UNLOCK(&map->mutex);
-    if(ret<0) turn_free(value,sizeof(rtcp_alloc_type));
+    if(ret<0) free(value);
     return ret;
   }
 }
@@ -241,7 +241,7 @@ void rtcp_map_free(rtcp_map** map) {
     (*map)->magic=0;
     TURN_MUTEX_UNLOCK(&((*map)->mutex));
     TURN_MUTEX_DESTROY(&((*map)->mutex));
-    turn_free(*map,sizeof(rtcp_map));
+    free(*map);
     *map=NULL;
   }
 }

@@ -75,7 +75,7 @@ enum _TC_STATE {
 
 typedef enum _TC_STATE TC_STATE;
 
-typedef u32bits tcp_connection_id;
+typedef uint32_t tcp_connection_id;
 
 typedef struct {
 	size_t sz;
@@ -110,9 +110,9 @@ typedef struct _tcp_connection_list {
 struct _allocation;
 
 typedef struct _ch_info {
-  u16bits chnum;
+  uint16_t chnum;
   int allocated;
-  u16bits port;
+  uint16_t port;
   ioa_addr peer_addr;
   turn_time_t expiration_time;
   ioa_timer_handle lifetime_ev;
@@ -135,7 +135,7 @@ typedef struct _ch_map {
 	ch_map_array table[CH_MAP_HASH_SIZE];
 } ch_map;
 
-ch_info *ch_map_get(ch_map* map, u16bits chnum, int new_chn);
+ch_info *ch_map_get(ch_map* map, uint16_t chnum, int new_chn);
 void ch_map_clean(ch_map* map);
 
 ////////////////////////////
@@ -187,7 +187,7 @@ typedef struct _allocation {
 
 //////////// CHANNELS ////////////////////
 
-u16bits get_turn_channel_number(turn_permission_info* tinfo, ioa_addr *addr);
+uint16_t get_turn_channel_number(turn_permission_info* tinfo, ioa_addr *addr);
 ch_info *get_turn_channel(turn_permission_info* tinfo, ioa_addr *addr);
 
 void turn_channel_delete(ch_info* chn);
@@ -206,8 +206,8 @@ turn_permission_info* allocation_get_permission(allocation* a, const ioa_addr *a
 turn_permission_hashtable* allocation_get_turn_permission_hashtable(allocation *a);
 turn_permission_info* allocation_add_permission(allocation *a, const ioa_addr* addr);
 
-ch_info* allocation_get_new_ch_info(allocation* a, u16bits chnum, ioa_addr* peer_addr);
-ch_info* allocation_get_ch_info(allocation* a, u16bits chnum);
+ch_info* allocation_get_new_ch_info(allocation* a, uint16_t chnum, ioa_addr* peer_addr);
+ch_info* allocation_get_ch_info(allocation* a, uint16_t chnum);
 ch_info* allocation_get_ch_info_by_peer_addr(allocation* a, ioa_addr* peer_addr);
 
 relay_endpoint_session *get_relay_session(allocation *a, int family);
@@ -220,7 +220,7 @@ tcp_connection *get_and_clean_tcp_connection_by_id(ur_map *map, tcp_connection_i
 tcp_connection *get_tcp_connection_by_id(ur_map *map, tcp_connection_id id);
 tcp_connection *get_tcp_connection_by_peer(allocation *a, ioa_addr *peer_addr);
 int can_accept_tcp_connection_from_peer(allocation *a, ioa_addr *peer_addr, int server_relay);
-tcp_connection *create_tcp_connection(u08bits server_id, allocation *a, stun_tid *tid, ioa_addr *peer_addr, int *err_code);
+tcp_connection *create_tcp_connection(uint8_t server_id, allocation *a, stun_tid *tid, ioa_addr *peer_addr, int *err_code);
 void delete_tcp_connection(tcp_connection *tc);
 
 void clear_unsent_buffer(unsent_buffer *ub);

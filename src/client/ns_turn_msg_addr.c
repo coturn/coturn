@@ -32,7 +32,7 @@
 
 //////////////////////////////////////////////////////////////////////////////
 
-int stun_addr_encode(const ioa_addr* ca, u08bits *cfield, int *clen, int xor_ed, u32bits mc, const u08bits *tsx_id) {
+int stun_addr_encode(const ioa_addr* ca, uint8_t *cfield, int *clen, int xor_ed, uint32_t mc, const uint8_t *tsx_id) {
 
   if(!cfield || !clen || !ca || !tsx_id) return -1;
 
@@ -48,18 +48,18 @@ int stun_addr_encode(const ioa_addr* ca, u08bits *cfield, int *clen, int xor_ed,
     if (xor_ed) {
 
       /* Port */
-      ((u16bits*)cfield)[1] = (ca->s4.sin_port) ^ nswap16(mc >> 16);
+      ((uint16_t*)cfield)[1] = (ca->s4.sin_port) ^ nswap16(mc >> 16);
 
       /* Address */
-      ((u32bits*)cfield)[1] = (ca->s4.sin_addr.s_addr) ^ nswap32(mc);
+      ((uint32_t*)cfield)[1] = (ca->s4.sin_addr.s_addr) ^ nswap32(mc);
 
     } else {
 
       /* Port */
-      ((u16bits*)cfield)[1]=ca->s4.sin_port;
+      ((uint16_t*)cfield)[1]=ca->s4.sin_port;
 
       /* Address */
-      ((u32bits*)cfield)[1]=ca->s4.sin_addr.s_addr;
+      ((uint32_t*)cfield)[1]=ca->s4.sin_addr.s_addr;
     }
 
   } else if (ca->ss.sa_family == AF_INET6) {
@@ -74,29 +74,29 @@ int stun_addr_encode(const ioa_addr* ca, u08bits *cfield, int *clen, int xor_ed,
     if (xor_ed) {
 
       unsigned int i;
-      u08bits *dst = ((u08bits*)cfield)+4;
-      const u08bits *src = (const u08bits*)&(ca->s6.sin6_addr);
-      u32bits magic = nswap32(mc);
+      uint8_t *dst = ((uint8_t*)cfield)+4;
+      const uint8_t *src = (const uint8_t*)&(ca->s6.sin6_addr);
+      uint32_t magic = nswap32(mc);
 
       /* Port */
-      ((u16bits*)cfield)[1] = ca->s6.sin6_port ^ nswap16(mc >> 16);
+      ((uint16_t*)cfield)[1] = ca->s6.sin6_port ^ nswap16(mc >> 16);
 
       /* Address */
 
       for (i=0; i<4; ++i) {
-	dst[i] = (u08bits)(src[i] ^ ((const u08bits*)&magic)[i]);
+	dst[i] = (uint8_t)(src[i] ^ ((const uint8_t*)&magic)[i]);
       }
       for (i=0; i<12; ++i) {
-	dst[i+4] = (u08bits)(src[i+4] ^ tsx_id[i]);
+	dst[i+4] = (uint8_t)(src[i+4] ^ tsx_id[i]);
       }
 
     } else {
 
       /* Port */
-      ((u16bits*)cfield)[1]=ca->s6.sin6_port;
+      ((uint16_t*)cfield)[1]=ca->s6.sin6_port;
       
       /* Address */
-      ns_bcopy(&ca->s6.sin6_addr, ((u08bits*)cfield)+4, 16);
+      bcopy(&ca->s6.sin6_addr, ((uint8_t*)cfield)+4, 16);
     }
 
   } else {
@@ -106,7 +106,7 @@ int stun_addr_encode(const ioa_addr* ca, u08bits *cfield, int *clen, int xor_ed,
   return 0;
 }
 
-int stun_addr_decode(ioa_addr* ca, const u08bits *cfield, int len, int xor_ed, u32bits mc, const u08bits *tsx_id) {
+int stun_addr_decode(ioa_addr* ca, const uint8_t *cfield, int len, int xor_ed, uint32_t mc, const uint8_t *tsx_id) {
 
   if(!cfield || !len || !ca || !tsx_id || (len<8)) return -1;
 
@@ -129,10 +129,10 @@ int stun_addr_decode(ioa_addr* ca, const u08bits *cfield, int len, int xor_ed, u
     /* IPv4 address */
 
     /* Port */
-    ca->s4.sin_port=((const u16bits*)cfield)[1];
+    ca->s4.sin_port=((const uint16_t*)cfield)[1];
 
     /* Address */
-    ca->s4.sin_addr.s_addr=((const u32bits*)cfield)[1];
+    ca->s4.sin_addr.s_addr=((const uint32_t*)cfield)[1];
     
     if (xor_ed) {
       ca->s4.sin_port ^= nswap16(mc >> 16);
@@ -146,29 +146,29 @@ int stun_addr_decode(ioa_addr* ca, const u08bits *cfield, int len, int xor_ed, u
     if(len!=20) return -1;
 
     /* Port */
-    ca->s6.sin6_port = ((const u16bits*)cfield)[1];
+    ca->s6.sin6_port = ((const uint16_t*)cfield)[1];
 
     /* Address */
-    ns_bcopy(((const u08bits*)cfield)+4, &ca->s6.sin6_addr, 16);
+    bcopy(((const uint8_t*)cfield)+4, &ca->s6.sin6_addr, 16);
 
     if (xor_ed) {
 
       unsigned int i;
-      u08bits *dst;
-      const u08bits *src;
-      u32bits magic = nswap32(mc);
+      uint8_t *dst;
+      const uint8_t *src;
+      uint32_t magic = nswap32(mc);
 
       /* Port */
       ca->s6.sin6_port ^= nswap16(mc >> 16);
 
       /* Address */
-      src = ((const u08bits*)cfield)+4;
-      dst = (u08bits*)&ca->s6.sin6_addr;
+      src = ((const uint8_t*)cfield)+4;
+      dst = (uint8_t*)&ca->s6.sin6_addr;
       for (i=0; i<4; ++i) {
-	dst[i] = (u08bits)(src[i] ^ ((const u08bits*)&magic)[i]);
+	dst[i] = (uint8_t)(src[i] ^ ((const uint8_t*)&magic)[i]);
       }
       for (i=0; i<12; ++i) {
-	dst[i+4] = (u08bits)(src[i+4] ^ tsx_id[i]);
+	dst[i+4] = (uint8_t)(src[i+4] ^ tsx_id[i]);
       }
     }
 

@@ -96,24 +96,24 @@ static int check_oauth(void) {
 					printf("\n");
 
 				oauth_token ot;
-				ns_bzero(&ot,sizeof(ot));
+				bzero(&ot,sizeof(ot));
 				ot.enc_block.key_length = (uint16_t)mac_key_length;
 				STRCPY(ot.enc_block.mac_key,mac_key);
 				ot.enc_block.timestamp = token_timestamp;
 				ot.enc_block.lifetime = token_lifetime;
 
 				oauth_token dot;
-				ns_bzero((&dot),sizeof(dot));
+				bzero((&dot),sizeof(dot));
 				oauth_key key;
-				ns_bzero(&key,sizeof(key));
+				bzero(&key,sizeof(key));
 
 				{
 					oauth_key_data okd;
-					ns_bzero(&okd,sizeof(okd));
+					bzero(&okd,sizeof(okd));
 
 					{
 					  oauth_key_data_raw okdr;
-					  ns_bzero(&okdr,sizeof(okdr));
+					  bzero(&okdr,sizeof(okdr));
 
 						STRCPY(okdr.kid,kid);
 						STRCPY(okdr.ikm_key,base64encoded_ltp);
@@ -141,10 +141,10 @@ static int check_oauth(void) {
 
 				{
 					encoded_oauth_token etoken;
-					ns_bzero(&etoken,sizeof(etoken));
+					bzero(&etoken,sizeof(etoken));
 
-					if (encode_oauth_token((const u08bits *) server_name, &etoken,
-							&key, &ot, (const u08bits*)gcm_nonce) < 0) {
+					if (encode_oauth_token((const uint8_t *) server_name, &etoken,
+							&key, &ot, (const uint8_t*)gcm_nonce) < 0) {
 						fprintf(stderr, "%s: cannot encode oauth token\n",
 								__FUNCTION__);
 						return -1;
@@ -154,7 +154,7 @@ static int check_oauth(void) {
 						print_field5769("encoded token",etoken.token,etoken.size);
 					}
 
-					if (decode_oauth_token((const u08bits *) server_name, &etoken,
+					if (decode_oauth_token((const uint8_t *) server_name, &etoken,
 							&key, &dot) < 0) {
 						fprintf(stderr, "%s: cannot decode oauth token\n",
 								__FUNCTION__);
@@ -235,7 +235,7 @@ int main(int argc, const char **argv)
 					     "\x80\x28\x00\x04"
 					       "\xe5\x7a\x3b\xcf";
 
-		u08bits buf[sizeof(reqstc)];
+		uint8_t buf[sizeof(reqstc)];
 		memcpy(buf, reqstc, sizeof(reqstc));
 
 		{//fingerprintfs etc
@@ -252,9 +252,9 @@ int main(int argc, const char **argv)
 		}
 
 		{//short-term credentials
-			u08bits uname[33];
-			u08bits realm[33];
-			u08bits upwd[33];
+			uint8_t uname[33];
+			uint8_t realm[33];
+			uint8_t upwd[33];
 			strcpy((char*) upwd, "VOkJxbRl1RmTxUk/WvJxBt");
 
 			res = stun_check_message_integrity_str(TURN_CREDENTIALS_SHORT_TERM, buf, sizeof(reqstc) - 1, uname, realm, upwd, shatype);
@@ -303,17 +303,17 @@ int main(int argc, const char **argv)
 			"\xf6\x70\x24\x65\x6d\xd6\x4a\x3e\x02\xb8\xe0\x71"
 			"\x2e\x85\xc9\xa2\x8c\xa8\x96\x66";
 
-		u08bits user[] = "\xe3\x83\x9e\xe3\x83\x88\xe3\x83\xaa\xe3\x83\x83"
+		uint8_t user[] = "\xe3\x83\x9e\xe3\x83\x88\xe3\x83\xaa\xe3\x83\x83"
 			"\xe3\x82\xaf\xe3\x82\xb9";
 
-		u08bits realm[33];
-		u08bits nonce[29];
-		u08bits upwd[33];
+		uint8_t realm[33];
+		uint8_t nonce[29];
+		uint8_t upwd[33];
 
-		u08bits buf[sizeof(reqltc)];
+		uint8_t buf[sizeof(reqltc)];
 		memcpy(buf, reqltc, sizeof(reqltc));
 
-		u08bits uname[sizeof(user)];
+		uint8_t uname[sizeof(user)];
 		memcpy(uname, user, sizeof(user));
 
 		strcpy((char*) realm, "example.org");
@@ -338,13 +338,13 @@ int main(int argc, const char **argv)
 		{ //encoding test
 			printf("RFC 5769 message encoding test result: ");
 			size_t len = 0;
-			u16bits message_type = STUN_METHOD_BINDING;
+			uint16_t message_type = STUN_METHOD_BINDING;
 			stun_tid tid;
-			u16bits *buf16 = (u16bits*)buf;
-			u32bits *buf32 = (u32bits*)buf;
+			uint16_t *buf16 = (uint16_t*)buf;
+			uint32_t *buf32 = (uint32_t*)buf;
 			memcpy(tid.tsx_id,"\x78\xad\x34\x33\xc6\xad\x72\xc0\x29\xda\x41\x2e",12);
 			stun_init_buffer_str(buf,&len);
-			message_type &= (u16bits)(0x3FFF);
+			message_type &= (uint16_t)(0x3FFF);
 			buf16[0]=nswap16(message_type);
 			buf16[1]=0;
 			buf32[1]=nswap32(STUN_MAGIC_COOKIE);
@@ -363,7 +363,7 @@ int main(int argc, const char **argv)
 					int cols = 4;
 					for(line = 0;line<lines;line++) {
 						for(col = 0; col<cols; col++) {
-							u08bits c = buf[line*4+col];
+							uint8_t c = buf[line*4+col];
 							printf(" %2x",(int)c);
 						}
 						printf("\n");
@@ -403,7 +403,7 @@ int main(int argc, const char **argv)
 			"\x80\x28\x00\x04"
 			"\xc0\x7d\x4c\x96";
 
-		u08bits buf[sizeof(respv4)];
+		uint8_t buf[sizeof(respv4)];
 		memcpy(buf, respv4, sizeof(respv4));
 
 		{//fingerprintfs etc
@@ -420,9 +420,9 @@ int main(int argc, const char **argv)
 		}
 
 		{//short-term credentials
-			u08bits uname[33];
-			u08bits realm[33];
-			u08bits upwd[33];
+			uint8_t uname[33];
+			uint8_t realm[33];
+			uint8_t upwd[33];
 			strcpy((char*) upwd, "VOkJxbRl1RmTxUk/WvJxBt");
 
 			res = stun_check_message_integrity_str(TURN_CREDENTIALS_SHORT_TERM, buf, sizeof(respv4) - 1, uname, realm, upwd, shatype);
@@ -465,7 +465,7 @@ int main(int argc, const char **argv)
 				exit(-1);
 			}
 
-			make_ioa_addr((const u08bits*)"192.0.2.1", 32853, &addr4_test);
+			make_ioa_addr((const uint8_t*)"192.0.2.1", 32853, &addr4_test);
 			if(addr_eq(&addr4,&addr4_test)) {
 				printf("success\n");
 			} else {
@@ -491,7 +491,7 @@ int main(int argc, const char **argv)
 						     "\x80\x28\x00\x04"
 						       "\xc8\xfb\x0b\x4c";
 
-		u08bits buf[sizeof(respv6)];
+		uint8_t buf[sizeof(respv6)];
 
 		{ //decoding test
 			memcpy(buf, respv6, sizeof(respv6));
@@ -508,9 +508,9 @@ int main(int argc, const char **argv)
 		}
 
 		{//short-term credentials test
-			u08bits uname[33];
-			u08bits realm[33];
-			u08bits upwd[33];
+			uint8_t uname[33];
+			uint8_t realm[33];
+			uint8_t upwd[33];
 			strcpy((char*) upwd, "VOkJxbRl1RmTxUk/WvJxBt");
 
 			res = stun_check_message_integrity_str(TURN_CREDENTIALS_SHORT_TERM, buf, sizeof(respv6) - 1, uname, realm, upwd, shatype);
@@ -554,7 +554,7 @@ int main(int argc, const char **argv)
 				exit(-1);
 			}
 
-			make_ioa_addr((const u08bits*) "2001:db8:1234:5678:11:2233:4455:6677", 32853, &addr6_test);
+			make_ioa_addr((const uint8_t*) "2001:db8:1234:5678:11:2233:4455:6677", 32853, &addr6_test);
 			if (addr_eq(&addr6, &addr6_test)) {
 				printf("success\n");
 			} else {

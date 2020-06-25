@@ -2,7 +2,7 @@
 
 # Run it from the root of the coturn source tree
 
-V=4.5.1.0
+V=4.5.1.3
 
 PACKDIR=`pwd`/../coturn-releases/
 SRCDIR=`pwd`
@@ -16,7 +16,8 @@ mkdir tmp
 cd tmp
 mkdir ${DDIR}
 cp -R ${SRCDIR}/* ${DDIR}/
-tar cvfz ../${DDIR}.tar.gz ${DDIR}
+#tell tar to not include the metadata
+COPYFILE_DISABLE=1 tar cvfz ../${DDIR}.tar.gz ${DDIR}
 cd ..
 rm -rf tmp
 

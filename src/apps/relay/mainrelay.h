@@ -98,7 +98,7 @@ extern "C" {
 
 #define DEFAULT_EC_CURVE_NAME "prime256v1"
 
-#define MAX_NUMBER_OF_GENERAL_RELAY_SERVERS ((u08bits)(0x80))
+#define MAX_NUMBER_OF_GENERAL_RELAY_SERVERS ((uint8_t)(0x80))
 
 #define TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP MAX_NUMBER_OF_GENERAL_RELAY_SERVERS
 #define TURNSERVER_ID_BOUNDARY_BETWEEN_UDP_AND_TCP TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP
@@ -213,7 +213,7 @@ typedef struct _turn_params_ {
 
   int verbose;
   int turn_daemon;
-  int prod;
+  int no_software_attribute;
   int web_admin_listen_on_workers;
 
   int do_not_use_config_file;
@@ -226,10 +226,12 @@ typedef struct _turn_params_ {
   int tls_listener_port;
   int alt_listener_port;
   int alt_tls_listener_port;
+  int tcp_proxy_port;
   int rfc5780;
 
   int no_udp;
   int no_tcp;
+  int tcp_use_proxy;
   
   vint no_tcp_relay;
   vint no_udp_relay;
@@ -249,8 +251,8 @@ typedef struct _turn_params_ {
 
 //////////////// Relay servers /////////////
 
-  u16bits min_port;
-  u16bits max_port;
+  uint16_t min_port;
+  uint16_t max_port;
 
   vint check_origin;
 
@@ -322,6 +324,9 @@ typedef struct _turn_params_ {
   char secret_key_file[1025];
   unsigned char secret_key[1025];
   int keep_address_family;
+  int no_auth_pings;
+  int no_dynamic_ip_list;
+  int no_dynamic_realms;
 
 } turn_params_t;
 

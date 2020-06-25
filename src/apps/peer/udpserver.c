@@ -68,11 +68,11 @@ static int udp_create_server_socket(server_type* server,
   if(!server) return -1;
 
   evutil_socket_t udp_fd = -1;
-  ioa_addr *server_addr = (ioa_addr*)turn_malloc(sizeof(ioa_addr));
+  ioa_addr *server_addr = (ioa_addr*)malloc(sizeof(ioa_addr));
 
   STRCPY(server->ifname,ifname);
 
-  if(make_ioa_addr((const u08bits*)local_address, port, server_addr)<0) return -1;
+  if(make_ioa_addr((const uint8_t*)local_address, port, server_addr)<0) return -1;
   
   udp_fd = socket(server_addr->ss.sa_family, RELAY_DGRAM_SOCKET_TYPE, RELAY_DGRAM_SOCKET_PROTOCOL);
   if (udp_fd < 0) {
@@ -102,11 +102,11 @@ static int udp_create_server_socket(server_type* server,
 
 static server_type* init_server(int verbose, const char* ifname, char **local_addresses, size_t las, int port) {
 
-  server_type* server=(server_type*)turn_malloc(sizeof(server_type));
+  server_type* server=(server_type*)malloc(sizeof(server_type));
 
   if(!server) return server;
 
-  ns_bzero(server,sizeof(server_type));
+  bzero(server,sizeof(server_type));
 
   server->verbose=verbose;
 
@@ -123,7 +123,7 @@ static server_type* init_server(int verbose, const char* ifname, char **local_ad
 static int clean_server(server_type* server) {
   if(server) {
     if(server->event_base) event_base_free(server->event_base);
-    turn_free(server,sizeof(server_type));
+    free(server);
   }
   return 0;
 }

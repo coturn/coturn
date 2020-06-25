@@ -71,7 +71,7 @@ int start_connection(uint16_t clnet_remote_port,
 
 int turn_tcp_connect(int verbose, app_ur_conn_info *clnet_info, ioa_addr *peer_addr);
 
-void tcp_data_connect(app_ur_session *elem, u32bits cid);
+void tcp_data_connect(app_ur_session *elem, uint32_t cid);
 
 int socket_connect(evutil_socket_t clnet_fd, ioa_addr *remote_addr, int *connect_err);
 
