@@ -22,6 +22,7 @@ Vcs-Browser: https://github.com/coturn/coturn/tree/debian/master
 
 Package: coturn
 Architecture: any
+Pre-Depends: ${misc:Pre-Depends}
 Depends: adduser,
          sqlite3,
          lsb-base (>= 3.0-6),
