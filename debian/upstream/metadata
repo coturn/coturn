@@ -1,3 +1,10 @@
 Name: coturn
 Contact: https://groups.google.com/forum/#!forum/turn-server-project-rfc5766-turn-server
 Changelog: https://github.com/coturn/coturn/blob/master/ChangeLog
+Donation: https://coturn.net/
+Documentation: https://github.com/coturn/coturn
+Bug-Submit: https://github.com/coturn/coturn/issues/new
+Bug-Database: https://github.com/coturn/coturn/issues/
+Repository: https://github.com/coturn/coturn.git
+Repository-Browse: https://github.com/coturn/coturn
+
