@@ -1,7 +1,7 @@
 Source: coturn
 Section: net
 Priority: optional
-Maintainer: Debian VoIP Team <pkg-voip-maintainers@lists.alioth.debian.org>
+Maintainer: Debian VoIP Team <pkg-voip-maintainers@alioth-lists.debian.net>
 Uploaders: Oleg Moskalenko <mom040267@gmail.com>,
            Mészáros Mihály <misi@majd.eu>
 Build-Depends: debhelper-compat (= 13),
