@@ -1,1 +1,2 @@
 usr/bin/turnutils_uclient usr/bin/turnutils
+usr/bin/turnserver usr/bin/coturn
