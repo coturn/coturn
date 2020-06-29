@@ -163,7 +163,10 @@ DEFAULT_CPUS_NUMBER,
 ///////// Encryption /////////
 "", /* secret_key_file */
 "", /* secret_key */
-0   /* keep_address_family */
+0,  /* keep_address_family */
+0,  /* no_auth_pings */
+0,  /* no_dynamic_ip_list */
+0   /* no_dynamic_realms */
 };
 
 //////////////// OpenSSL Init //////////////////////
@@ -544,6 +547,9 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						That database value can be changed on-the-fly\n"
 "						by a separate program, so this is why it is 'dynamic'.\n"
 "						Multiple shared secrets can be used (both in the database and in the \"static\" fashion).\n"
+" --no-auth-pings				Disable periodic health checks to 'dynamic' auth secret tables.\n"
+" --no-dynamic-ip-list				Do not use dynamic allowed/denied peer ip list.\n"
+" --no-dynamic-realms				Do not use dynamic realm assignment and options.\n"
 " --server-name					Server name used for\n"
 "						the oAuth authentication purposes.\n"
 "						The default value is the realm name.\n"
@@ -744,6 +750,9 @@ enum EXTRA_OPTS {
 	PERMISSION_LIFETIME_OPT,
 	NO_PROMETHEUS_OPT,
 	AUTH_SECRET_OPT,
+	NO_AUTH_PINGS_OPT,
+	NO_DYNAMIC_IP_LIST_OPT,
+	NO_DYNAMIC_REALMS_OPT,
 	DEL_ALL_AUTH_SECRETS_OPT,
 	STATIC_AUTH_SECRET_VAL_OPT,
 	AUTH_SECRET_TS_EXP, /* deprecated */
@@ -851,6 +860,9 @@ static const struct myoption long_options[] = {
 #endif
 				{ "use-auth-secret", optional_argument, NULL, AUTH_SECRET_OPT },
 				{ "static-auth-secret", required_argument, NULL, STATIC_AUTH_SECRET_VAL_OPT },
+				{ "no-auth-pings", optional_argument, NULL, NO_AUTH_PINGS_OPT },
+				{ "no-dynamic-ip-list", optional_argument, NULL, NO_DYNAMIC_IP_LIST_OPT },
+				{ "no-dynamic-realms", optional_argument, NULL, NO_DYNAMIC_REALMS_OPT },
 /* deprecated: */		{ "secret-ts-exp-time", optional_argument, NULL, AUTH_SECRET_TS_EXP },
 				{ "realm", required_argument, NULL, 'r' },
 				{ "server-name", required_argument, NULL, SERVER_NAME_OPT },
@@ -1456,6 +1468,15 @@ static void set_option(int c, char *value)
         use_tltc = 1;
 		turn_params.ct = TURN_CREDENTIALS_LONG_TERM;
 		use_lt_credentials = 1;
+		break;
+	case NO_AUTH_PINGS_OPT:
+		turn_params.no_auth_pings = 1;
+		break;
+	case NO_DYNAMIC_IP_LIST_OPT:
+		turn_params.no_dynamic_ip_list = 1;
+		break;
+	case NO_DYNAMIC_REALMS_OPT:
+		turn_params.no_dynamic_realms = 1;
 		break;
 	case STATIC_AUTH_SECRET_VAL_OPT:
 		add_to_secrets_list(&turn_params.default_users_db.ram_db.static_auth_secrets,value);

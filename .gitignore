@@ -4,5 +4,5 @@ build
 include
 lib
 sqlite
-.vscode
 examples/ca/CA.pl
+.vscode
