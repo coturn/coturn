@@ -1078,7 +1078,7 @@ if [ -z "${TURN_NO_PROMETHEUS}" ] ; then
 		else
 			${ECHO_CMD} "ERROR: Libpromhttp development libraries are not installed properly in required location."
 			${ECHO_CMD} "Prometheus support will be disabled."
-        	${ECHO_CMD} "See the INSTALL file."
+		${ECHO_CMD} "See the INSTALL file."
 			OSCFLAGS="${OSCFLAGS} -DTURN_NO_PROMETHEUS"
 		fi
 	else
@@ -1087,7 +1087,7 @@ if [ -z "${TURN_NO_PROMETHEUS}" ] ; then
         ${ECHO_CMD} "See the INSTALL file."
 		OSCFLAGS="${OSCFLAGS} -DTURN_NO_PROMETHEUS"
 	fi
-		
+
 else
 	OSCFLAGS="${OSCFLAGS} -DTURN_NO_PROMETHEUS"
 fi

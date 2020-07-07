@@ -36,7 +36,7 @@ int start_prometheus_server(void){
   turn_total_traffic_peer_sentb = prom_collector_registry_must_register_metric(prom_counter_new("turn_total_traffic_peer_sentb", "Represents total peer sent bytes", 3, (const char *[]) {"realm", "user", "allocation" }));
 
   promhttp_set_active_collector_registry(NULL);
-  
+
 
   struct MHD_Daemon *daemon = promhttp_start_daemon(MHD_USE_SELECT_INTERNALLY, DEFAULT_PROM_SERVER_PORT, NULL, NULL);
   if (daemon == NULL) {
@@ -49,7 +49,7 @@ void prom_set_status(const char* realm, const char* user, unsigned long long all
   if (turn_params.prometheus == 1){
     char allocation_chars[1024];
     char lifetime_chars[1024];
-    
+
     snprintf(allocation_chars, sizeof(allocation_chars), "%018llu", allocation);
     snprintf(lifetime_chars, sizeof(lifetime_chars), "%lu", lifetime);
 
