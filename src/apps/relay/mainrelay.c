@@ -31,6 +31,11 @@
 #include "mainrelay.h"
 #include "dbdrivers/dbdriver.h"
 
+#if !defined(TURN_NO_PROMETHEUS)
+#include "prom_server.h"
+#endif
+
+
 #if (defined LIBRESSL_VERSION_NUMBER && OPENSSL_VERSION_NUMBER == 0x20000000L)
 #undef OPENSSL_VERSION_NUMBER
 #define OPENSSL_VERSION_NUMBER 0x1000107FL
@@ -150,6 +155,7 @@ TURN_CREDENTIALS_NONE, /* ct */
 0, /* bps_capacity_allocated */
 0, /* total_quota */
 0, /* user_quota */
+1, /* prometheus enabled by default */
 ///////////// Users DB //////////////
 { (TURN_USERDB_TYPE)0, {"\0"}, {0,NULL, {NULL,0}} },
 ///////////// CPUs //////////////////
@@ -528,6 +534,10 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "		                                and delivering traffic and allocation event notifications.\n"
 "						The connection string has the same parameters as redis-userdb connection string.\n"
 #endif
+#if !defined(TURN_NO_PROMETHEUS)
+" --no-prometheus				Disable prometheus metrics. By default it is enabled and listening on port 9121 unther the path /metrics\n"
+"						also the path / on this port can be used as a health check\n"
+#endif
 " --use-auth-secret				TURN REST API flag.\n"
 "						Flag that sets a special authorization option that is based upon authentication secret\n"
 "						(TURN Server REST API, see TURNServerRESTAPI.pdf). This option is used with timestamp.\n"
@@ -738,6 +748,7 @@ enum EXTRA_OPTS {
 	MAX_ALLOCATE_LIFETIME_OPT,
 	CHANNEL_LIFETIME_OPT,
 	PERMISSION_LIFETIME_OPT,
+	NO_PROMETHEUS_OPT,
 	AUTH_SECRET_OPT,
 	NO_AUTH_PINGS_OPT,
 	NO_DYNAMIC_IP_LIST_OPT,
@@ -843,6 +854,9 @@ static const struct myoption long_options[] = {
 #if !defined(TURN_NO_HIREDIS)
 				{ "redis-userdb", required_argument, NULL, 'N' },
 				{ "redis-statsdb", required_argument, NULL, 'O' },
+#endif
+#if !defined(TURN_NO_PROMETHEUS)
+				{ "no-prometheus", optional_argument, NULL, NO_PROMETHEUS_OPT },
 #endif
 				{ "use-auth-secret", optional_argument, NULL, AUTH_SECRET_OPT },
 				{ "static-auth-secret", required_argument, NULL, STATIC_AUTH_SECRET_VAL_OPT },
@@ -1442,6 +1456,11 @@ static void set_option(int c, char *value)
 	case 'O':
 		STRCPY(turn_params.redis_statsdb, value);
 		turn_params.use_redis_statsdb = 1;
+		break;
+#endif
+#if !defined(TURN_NO_PROMETHEUS)
+	case NO_PROMETHEUS_OPT:
+		turn_params.prometheus = 0;
 		break;
 #endif
 	case AUTH_SECRET_OPT:
@@ -2463,6 +2482,10 @@ int main(int argc, char **argv)
 	event_add(ev, NULL);
 
 	drop_privileges();
+#if !defined(TURN_NO_PROMETHEUS)
+	start_prometheus_server();
+#endif
+
 
 	run_listener_server(&(turn_params.listener));
 
