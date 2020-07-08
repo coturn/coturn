@@ -155,7 +155,9 @@ TURN_CREDENTIALS_NONE, /* ct */
 0, /* bps_capacity_allocated */
 0, /* total_quota */
 0, /* user_quota */
+#if !defined(TURN_NO_PROMETHEUS)
 1, /* prometheus enabled by default */
+#endif
 ///////////// Users DB //////////////
 { (TURN_USERDB_TYPE)0, {"\0"}, {0,NULL, {NULL,0}} },
 ///////////// CPUs //////////////////
