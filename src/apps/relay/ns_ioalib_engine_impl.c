@@ -1828,7 +1828,7 @@ int ssl_read(evutil_socket_t fd, SSL* ssl, ioa_network_buffer_handle nbh, int ve
 	BIO* rbio = BIO_new_mem_buf(buffer, old_buffer_len);
 	BIO_set_mem_eof_return(rbio, -1);
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined LIBRESSL_VERSION_NUMBER
 	ssl->rbio = rbio;
 #else
 	SSL_set0_rbio(ssl,rbio);
@@ -1923,7 +1923,7 @@ int ssl_read(evutil_socket_t fd, SSL* ssl, ioa_network_buffer_handle nbh, int ve
 	if(ret>0) {
 		ioa_network_buffer_add_offset_size(nbh, (uint16_t)buf_size, 0, (size_t)ret);
 	}
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined LIBRESSL_VERSION_NUMBER
 	ssl->rbio = NULL;
 	BIO_free(rbio);
 #else
