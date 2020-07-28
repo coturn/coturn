@@ -244,9 +244,11 @@ int stun_produce_integrity_key_str(const uint8_t *uname, const uint8_t *realm, c
 		unsigned int keylen = 0;
 		EVP_MD_CTX ctx;
 		EVP_MD_CTX_init(&ctx);
+#ifdef EVP_MD_CTX_FLAG_NON_FIPS_ALLOW
 		if (FIPS_mode()) {
 			EVP_MD_CTX_set_flags(&ctx,EVP_MD_CTX_FLAG_NON_FIPS_ALLOW);
 		}
+#endif
 		EVP_DigestInit_ex(&ctx,EVP_md5(), NULL);
 		EVP_DigestUpdate(&ctx,str,strl);
 		EVP_DigestFinal(&ctx,key,&keylen);
@@ -254,9 +256,11 @@ int stun_produce_integrity_key_str(const uint8_t *uname, const uint8_t *realm, c
 #else
 		unsigned int keylen = 0;
 		EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+#ifdef EVP_MD_CTX_FLAG_NON_FIPS_ALLOW
 		if (FIPS_mode()) {
 			EVP_MD_CTX_set_flags(ctx, EVP_MD_CTX_FLAG_NON_FIPS_ALLOW);
 		}
+#endif
 		EVP_DigestInit_ex(ctx,EVP_md5(), NULL);
 		EVP_DigestUpdate(ctx,str,strl);
 		EVP_DigestFinal(ctx,key,&keylen);

@@ -31,7 +31,7 @@
 #ifndef __IOADEFS__
 #define __IOADEFS__
 
-#define TURN_SERVER_VERSION "4.5.1.1"
+#define TURN_SERVER_VERSION "4.5.1.2"
 #define TURN_SERVER_VERSION_NAME "dan Eider"
 #define TURN_SOFTWARE "Coturn-" TURN_SERVER_VERSION " '" TURN_SERVER_VERSION_NAME "'"
 
