@@ -3677,15 +3677,15 @@ void turn_report_allocation_delete(void *a)
 						prom_del_status(ss->realm_options.name, (const char*)ss->username, (unsigned long long)ss->id, (const char *)"deleted");
 
 						// Set prometheus total traffic metrics
-						prom_set_total_traffic(ss->realm_options.name, (const char*)ss->username, (unsigned long long)ss->id, (unsigned long)(ss->t_received_packets), (unsigned long)(ss->t_received_bytes), (unsigned long)(ss->t_sent_packets), (unsigned long)(ss->t_sent_bytes), false);
-						prom_set_total_traffic(ss->realm_options.name, (const char*)ss->username, (unsigned long long)ss->id, (unsigned long)(ss->t_peer_received_packets), (unsigned long)(ss->t_peer_received_bytes), (unsigned long)(ss->t_peer_sent_packets), (unsigned long)(ss->t_peer_sent_bytes), false);
+						prom_set_total_traffic(ss->realm_options.name, (const char*)ss->username, (unsigned long long)ss->id, (unsigned long)(ss->t_received_packets), (unsigned long)(ss->t_received_bytes), (unsigned long)(ss->t_sent_packets), (unsigned long)(ss->t_sent_bytes), true);
+						prom_set_total_traffic(ss->realm_options.name, (const char*)ss->username, (unsigned long long)ss->id, (unsigned long)(ss->t_peer_received_packets), (unsigned long)(ss->t_peer_received_bytes), (unsigned long)(ss->t_peer_sent_packets), (unsigned long)(ss->t_peer_sent_bytes), true);
 					} else {
 						// Set prometheus del metric and update status
 						prom_del_status(NULL, (const char*)ss->username, (unsigned long long)ss->id,  (const char *)"deleted");
 
 						// Set prometheus total traffic metrics
-						prom_set_total_traffic(ss->realm_options.name, (const char*)ss->username, (unsigned long long)ss->id, (unsigned long)(ss->t_received_packets), (unsigned long)(ss->t_received_bytes), (unsigned long)(ss->t_sent_packets), (unsigned long)(ss->t_sent_bytes), true);
-						prom_set_total_traffic(ss->realm_options.name, (const char*)ss->username, (unsigned long long)ss->id, (unsigned long)(ss->t_peer_received_packets), (unsigned long)(ss->t_peer_received_bytes), (unsigned long)(ss->t_peer_sent_packets), (unsigned long)(ss->t_peer_sent_bytes), true);
+						prom_set_total_traffic(NULL, (const char*)ss->username, (unsigned long long)ss->id, (unsigned long)(ss->t_received_packets), (unsigned long)(ss->t_received_bytes), (unsigned long)(ss->t_sent_packets), (unsigned long)(ss->t_sent_bytes), true);
+						prom_set_total_traffic(NULL, (const char*)ss->username, (unsigned long long)ss->id, (unsigned long)(ss->t_peer_received_packets), (unsigned long)(ss->t_peer_received_bytes), (unsigned long)(ss->t_peer_sent_packets), (unsigned long)(ss->t_peer_sent_bytes), true);
 					}
 				}
 #endif
