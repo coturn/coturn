@@ -14,7 +14,7 @@
 #include <prom.h>
 #include <promhttp.h>
 
-#define DEFAULT_PROM_SERVER_PORT (9121)
+#define DEFAULT_PROM_SERVER_PORT (9641)
 
 prom_gauge_t *turn_status;
 
