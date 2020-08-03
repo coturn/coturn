@@ -156,7 +156,7 @@ TURN_CREDENTIALS_NONE, /* ct */
 0, /* total_quota */
 0, /* user_quota */
 #if !defined(TURN_NO_PROMETHEUS)
-1, /* prometheus enabled by default */
+0, /* prometheus disabled by default */
 #endif
 ///////////// Users DB //////////////
 { (TURN_USERDB_TYPE)0, {"\0"}, {0,NULL, {NULL,0}} },
@@ -537,7 +537,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						The connection string has the same parameters as redis-userdb connection string.\n"
 #endif
 #if !defined(TURN_NO_PROMETHEUS)
-" --no-prometheus				Disable prometheus metrics. By default it is enabled and listening on port 9121 unther the path /metrics\n"
+" --prometheus					Enable prometheus metrics. It is disabled by default. If it is enabled it will listen on port 9121 unther the path /metrics\n"
 "						also the path / on this port can be used as a health check\n"
 #endif
 " --use-auth-secret				TURN REST API flag.\n"
@@ -750,7 +750,7 @@ enum EXTRA_OPTS {
 	MAX_ALLOCATE_LIFETIME_OPT,
 	CHANNEL_LIFETIME_OPT,
 	PERMISSION_LIFETIME_OPT,
-	NO_PROMETHEUS_OPT,
+	PROMETHEUS_OPT,
 	AUTH_SECRET_OPT,
 	NO_AUTH_PINGS_OPT,
 	NO_DYNAMIC_IP_LIST_OPT,
@@ -858,7 +858,7 @@ static const struct myoption long_options[] = {
 				{ "redis-statsdb", required_argument, NULL, 'O' },
 #endif
 #if !defined(TURN_NO_PROMETHEUS)
-				{ "no-prometheus", optional_argument, NULL, NO_PROMETHEUS_OPT },
+				{ "prometheus", optional_argument, NULL, PROMETHEUS_OPT },
 #endif
 				{ "use-auth-secret", optional_argument, NULL, AUTH_SECRET_OPT },
 				{ "static-auth-secret", required_argument, NULL, STATIC_AUTH_SECRET_VAL_OPT },
@@ -1461,8 +1461,8 @@ static void set_option(int c, char *value)
 		break;
 #endif
 #if !defined(TURN_NO_PROMETHEUS)
-	case NO_PROMETHEUS_OPT:
-		turn_params.prometheus = 0;
+	case PROMETHEUS_OPT:
+		turn_params.prometheus = 1;
 		break;
 #endif
 	case AUTH_SECRET_OPT:

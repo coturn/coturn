@@ -1070,21 +1070,27 @@ if [ -z "${TURN_NO_PROMETHEUS}" ] ; then
 			if ! [ ${ER} -eq 0 ] ; then
 				${ECHO_CMD} "Microhttpd lib found."
 			else
-				${ECHO_CMD} "ERROR: microhttpd development libraries are not installed properly in required location."
+				${ECHO_CMD}
+				${ECHO_CMD} "Warning: microhttpd development libraries are not installed properly in required location."
 				${ECHO_CMD} "Prometheus support will be disabled."
 				${ECHO_CMD} "See the INSTALL file."
+				${ECHO_CMD}
 				OSCFLAGS="${OSCFLAGS} -DTURN_NO_PROMETHEUS"
 			fi
 		else
-			${ECHO_CMD} "ERROR: Libpromhttp development libraries are not installed properly in required location."
+			${ECHO_CMD}
+			${ECHO_CMD} "Warning: Libpromhttp development libraries are not installed properly in required location."
 			${ECHO_CMD} "Prometheus support will be disabled."
-		${ECHO_CMD} "See the INSTALL file."
+			${ECHO_CMD} "See the INSTALL file."
+			${ECHO_CMD}
 			OSCFLAGS="${OSCFLAGS} -DTURN_NO_PROMETHEUS"
 		fi
 	else
-        ${ECHO_CMD} "\nERROR: Libprom development libraries are not installed properly in required location."
+		${ECHO_CMD}
+		${ECHO_CMD} "Warning: Libprom development libraries are not installed properly in required location."
 		${ECHO_CMD} "Prometheus support will be disabled."
-        ${ECHO_CMD} "See the INSTALL file.\n"
+		${ECHO_CMD} "See the INSTALL file."
+		${ECHO_CMD}
 		OSCFLAGS="${OSCFLAGS} -DTURN_NO_PROMETHEUS"
 	fi
 
