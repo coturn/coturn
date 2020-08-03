@@ -70,7 +70,7 @@ Supported user databases (for user repository, with passwords or keys, if authen
 
 Redis can also be used for status and statistics storage and notification.
 
-By default a [prometheus](https://prometheus.io/) exporter endpoint is disabled, if it is enabeled it will listen on port 9121 under path /metrics
+By default a [prometheus](https://prometheus.io/) exporter endpoint is disabled, if it is enabeled it will listen on port 9641 under path /metrics
 
 Supported message integrity digest algorithms:
 

@@ -537,7 +537,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						The connection string has the same parameters as redis-userdb connection string.\n"
 #endif
 #if !defined(TURN_NO_PROMETHEUS)
-" --prometheus					Enable prometheus metrics. It is disabled by default. If it is enabled it will listen on port 9121 unther the path /metrics\n"
+" --prometheus					Enable prometheus metrics. It is disabled by default. If it is enabled it will listen on port 9641 unther the path /metrics\n"
 "						also the path / on this port can be used as a health check\n"
 #endif
 " --use-auth-secret				TURN REST API flag.\n"

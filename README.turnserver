@@ -266,7 +266,7 @@ Flags:
 			main ORIGIN attribute value (if the ORIGIN was
 			initially used by the session).
  --no-prometheus	Disable prometheus metrics. By default it is
-			enabled and listening on port 9121 unther the path /metrics
+			enabled and listening on port 9641 unther the path /metrics
 			also the path / on this port can be used as a health check
 
 -h			Help.
