@@ -66,8 +66,11 @@ matrix:
         - libhiredis-dev
   - os: osx
     osx_image: xcode11.3
-#  - os: osx
-#    osx_image: xcode9.4
+  - os: osx
+    osx_image: xcode11.6
+  - os: osx
+    osx_image: xcode12
+
 
 notifications:
   slack:
