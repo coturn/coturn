@@ -787,13 +787,6 @@ File name to store the pid of the process.
 Default is /var/run/turnserver.pid (if superuser account is used) or
 /var/tmp/turnserver.pid .
 .TP
-.BI --acme-redirect\  URL
-Redirect ACME/RFC8555 (like Let's Encrypt challenge) requests, i.e.
-HTTP GET requests matching '^/.well-known/acme-challenge/(.*)'
-to \fIURL\fR$1 with $1 == (.*).  No validation of \fIURL\fR will be done,
-so make sure you do not forget the trailing slash. If \fIURL\fR is an empty
-string (the default value), no special handling of such requests will be done.
-.TP
 .B
 \fB\-\-proc\-user\fP
 User name to run the process. After the initialization, the \fIturnserver\fP process
