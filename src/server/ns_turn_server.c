@@ -4624,19 +4624,24 @@ static int read_client_connection(turn_turnserver *server,
 	} else {
 		SOCKET_TYPE st = get_ioa_socket_type(ss->client_socket);
 		if(is_stream_socket(st)) {
-			char *str = (char*)ioa_network_buffer_data(in_buffer->nbh);
-			size_t l = ioa_network_buffer_get_size(in_buffer->nbh);
-			if(is_http(str, l)) {
+			if(is_http((char*)ioa_network_buffer_data(in_buffer->nbh), 
+			ioa_network_buffer_get_size(in_buffer->nbh))) {
+
 				const char *proto = "HTTP";
-				str[l] = 0;
-				if ((st == TCP_SOCKET) && (try_acme_redirect(str, l, server->acme_redirect, ss->client_socket) == 0)) {
+				if ((st == TCP_SOCKET) && 
+					(
+						try_acme_redirect((char*)ioa_network_buffer_data(in_buffer->nbh),
+						ioa_network_buffer_get_size(in_buffer->nbh),
+						server->acme_redirect, ss->client_socket) == 0
+					)
+				) {
 					ss->to_be_closed = 1;
 					return 0;
 				} else if (*server->web_admin_listen_on_workers) {
 					if(st==TLS_SOCKET) {
 						proto = "HTTPS";
 						set_ioa_socket_app_type(ss->client_socket,HTTPS_CLIENT_SOCKET);
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s (%s %s) request: %s\n", __FUNCTION__, proto, get_ioa_socket_cipher(ss->client_socket), get_ioa_socket_ssl_method(ss->client_socket), str);
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s (%s %s) request: %s\n", __FUNCTION__, proto, get_ioa_socket_cipher(ss->client_socket), get_ioa_socket_ssl_method(ss->client_socket), ioa_network_buffer_get_size(in_buffer->nbh));
 						if(server->send_https_socket) {
 							TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s socket to be detached: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(long)ss->client_socket, get_ioa_socket_type(ss->client_socket), get_ioa_socket_app_type(ss->client_socket));
 							ioa_socket_handle new_s = detach_ioa_socket(ss->client_socket);
@@ -4649,7 +4654,7 @@ static int read_client_connection(turn_turnserver *server,
 					} else {
 						set_ioa_socket_app_type(ss->client_socket,HTTP_CLIENT_SOCKET);
 						if(server->verbose) {
-							TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s request: %s\n", __FUNCTION__, proto, str);
+							TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s request: %s\n", __FUNCTION__, proto, ioa_network_buffer_get_size(in_buffer->nbh));
 						}
 						handle_http_echo(ss->client_socket);
 					}

@@ -21,7 +21,7 @@ COMMON_MODS = src/apps/common/apputils.c src/apps/common/ns_turn_utils.c src/app
 COMMON_DEPS = ${LIBCLIENTTURN_DEPS} ${COMMON_MODS} ${COMMON_HEADERS}
 
 IMPL_HEADERS = src/apps/relay/ns_ioalib_impl.h src/apps/relay/ns_sm.h src/apps/relay/turn_ports.h
-IMPL_MODS = src/apps/relay/ns_ioalib_engine_impl.c src/apps/relay/turn_ports.c src/apps/relay/http_server.c
+IMPL_MODS = src/apps/relay/ns_ioalib_engine_impl.c src/apps/relay/turn_ports.c src/apps/relay/http_server.c src/apps/relay/acme.c
 IMPL_DEPS = ${COMMON_DEPS} ${IMPL_HEADERS} ${IMPL_MODS}
 
 HIREDIS_HEADERS = src/apps/common/hiredis_libevent2.h
