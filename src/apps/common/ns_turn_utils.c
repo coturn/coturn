@@ -178,17 +178,12 @@ void turn_log_func_default(TURN_LOG_LEVEL level, const char* format, ...)
 #define MAX_RTPPRINTF_BUFFER_SIZE (1024)
 		char s[MAX_RTPPRINTF_BUFFER_SIZE+1];
 #undef MAX_RTPPRINTF_BUFFER_SIZE
-		if (level == TURN_LOG_LEVEL_ERROR) {
-			snprintf(s,sizeof(s)-100,"%lu: ERROR: ",(unsigned long)log_time());
-			size_t slen = strlen(s);
-			vsnprintf(s+slen,sizeof(s)-slen-1,format, args);
-			fwrite(s,strlen(s),1,stdout);
-		} else if(!no_stdout_log) {
-			snprintf(s,sizeof(s)-100,"%lu: ",(unsigned long)log_time());
-			size_t slen = strlen(s);
-			vsnprintf(s+slen,sizeof(s)-slen-1,format, args);
-			fwrite(s,strlen(s),1,stdout);
-		}
+		struct tm local_now = localtime(time(NULL));
+		strptime(s, sizeof(s)-100, "%Y-%m-%dT%H:%M:%S", &local_now);
+		snprintf(s + 19,sizeof(s)-100,(level == TURN_LOG_LEVEL_ERROR) ? ": ERROR: " : ": ");
+		size_t slen = strlen(s);
+		vsnprintf(s+slen,sizeof(s)-slen-1,format, args);
+		fwrite(s,strlen(s),1,stdout);
 #endif
 		va_end(args);
 	}
