@@ -178,8 +178,8 @@ void turn_log_func_default(TURN_LOG_LEVEL level, const char* format, ...)
 #define MAX_RTPPRINTF_BUFFER_SIZE (1024)
 		char s[MAX_RTPPRINTF_BUFFER_SIZE+1];
 #undef MAX_RTPPRINTF_BUFFER_SIZE
-		struct tm local_now = localtime(time(NULL));
-		strptime(s, sizeof(s)-100, "%Y-%m-%dT%H:%M:%S", &local_now);
+		time_t now = time(NULL);
+		strftime(s, sizeof(s), "%Y-%m-%dT%H:%M:%S", localtime(&now));
 		snprintf(s + 19,sizeof(s)-100,(level == TURN_LOG_LEVEL_ERROR) ? ": ERROR: " : ": ");
 		size_t slen = strlen(s);
 		vsnprintf(s+slen,sizeof(s)-slen-1,format, args);
