@@ -16,27 +16,27 @@
 
 #define DEFAULT_PROM_SERVER_PORT (9641)
 
-prom_gauge_t *turn_status;
+extern prom_gauge_t *turn_status;
 
-prom_gauge_t *turn_traffic_rcvp;
-prom_gauge_t *turn_traffic_rcvb;
-prom_gauge_t *turn_traffic_sentp;
-prom_gauge_t *turn_traffic_sentb;
+extern prom_gauge_t *turn_traffic_rcvp;
+extern prom_gauge_t *turn_traffic_rcvb;
+extern prom_gauge_t *turn_traffic_sentp;
+extern prom_gauge_t *turn_traffic_sentb;
 
-prom_gauge_t *turn_total_traffic_rcvp;
-prom_gauge_t *turn_total_traffic_rcvb;
-prom_gauge_t *turn_total_traffic_sentp;
-prom_gauge_t *turn_total_traffic_sentb;
+extern prom_gauge_t *turn_total_traffic_rcvp;
+extern prom_gauge_t *turn_total_traffic_rcvb;
+extern prom_gauge_t *turn_total_traffic_sentp;
+extern prom_gauge_t *turn_total_traffic_sentb;
 
-prom_gauge_t *turn_traffic_peer_rcvp;
-prom_gauge_t *turn_traffic_peer_rcvb;
-prom_gauge_t *turn_traffic_peer_sentp;
-prom_gauge_t *turn_traffic_peer_sentb;
+extern prom_gauge_t *turn_traffic_peer_rcvp;
+extern prom_gauge_t *turn_traffic_peer_rcvb;
+extern prom_gauge_t *turn_traffic_peer_sentp;
+extern prom_gauge_t *turn_traffic_peer_sentb;
 
-prom_gauge_t *turn_total_traffic_peer_rcvp;
-prom_gauge_t *turn_total_traffic_peer_rcvb;
-prom_gauge_t *turn_total_traffic_peer_sentp;
-prom_gauge_t *turn_total_traffic_peer_sentb;
+extern prom_gauge_t *turn_total_traffic_peer_rcvp;
+extern prom_gauge_t *turn_total_traffic_peer_rcvb;
+extern prom_gauge_t *turn_total_traffic_peer_sentp;
+extern prom_gauge_t *turn_total_traffic_peer_sentb;
 
 #ifdef __cplusplus
 extern "C" {

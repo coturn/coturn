@@ -3,6 +3,28 @@
 #include "mainrelay.h"
 #include "prom_server.h"
 
+prom_gauge_t *turn_status;
+
+prom_gauge_t *turn_traffic_rcvp;
+prom_gauge_t *turn_traffic_rcvb;
+prom_gauge_t *turn_traffic_sentp;
+prom_gauge_t *turn_traffic_sentb;
+
+prom_gauge_t *turn_total_traffic_rcvp;
+prom_gauge_t *turn_total_traffic_rcvb;
+prom_gauge_t *turn_total_traffic_sentp;
+prom_gauge_t *turn_total_traffic_sentb;
+
+prom_gauge_t *turn_traffic_peer_rcvp;
+prom_gauge_t *turn_traffic_peer_rcvb;
+prom_gauge_t *turn_traffic_peer_sentp;
+prom_gauge_t *turn_traffic_peer_sentb;
+
+prom_gauge_t *turn_total_traffic_peer_rcvp;
+prom_gauge_t *turn_total_traffic_peer_rcvb;
+prom_gauge_t *turn_total_traffic_peer_sentp;
+prom_gauge_t *turn_total_traffic_peer_sentb;
+
 int start_prometheus_server(void){
   if (turn_params.prometheus == 0){
     return 0;
