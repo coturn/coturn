@@ -158,6 +158,8 @@ void set_no_stdout_log(int val)
 	no_stdout_log = val;
 }
 
+int use_new_log_timestamp_format = 0;
+
 void turn_log_func_default(TURN_LOG_LEVEL level, const char* format, ...)
 {
 #if !defined(TURN_LOG_FUNC_IMPL)
@@ -178,12 +180,16 @@ void turn_log_func_default(TURN_LOG_LEVEL level, const char* format, ...)
 #define MAX_RTPPRINTF_BUFFER_SIZE (1024)
 		char s[MAX_RTPPRINTF_BUFFER_SIZE+1];
 #undef MAX_RTPPRINTF_BUFFER_SIZE
-		time_t now = time(NULL);
-		strftime(s, sizeof(s), "%Y-%m-%dT%H:%M:%S", localtime(&now));
-		snprintf(s + 19,sizeof(s)-100,(level == TURN_LOG_LEVEL_ERROR) ? ": ERROR: " : ": ");
-		size_t slen = strlen(s);
-		vsnprintf(s+slen,sizeof(s)-slen-1,format, args);
-		fwrite(s,strlen(s),1,stdout);
+		size_t so_far = 0;
+		if (use_new_log_timestamp_format) {
+			time_t now = time(NULL);
+			so_far += strftime(s, sizeof(s), "%Y-%m-%dT%H:%M:%S", localtime(&now));
+		} else {
+			so_far += snprintf(s, sizeof(s), "%lu: ", (unsigned long)log_time());
+		}
+		so_far += snprintf(s + so_far, sizeof(s)-100, (level == TURN_LOG_LEVEL_ERROR) ? ": ERROR: " : ": ");
+		so_far += vsnprintf(s + so_far,sizeof(s) - (so_far+1), format, args);
+		fwrite(s, so_far, 1, stdout);
 #endif
 		va_end(args);
 	}

@@ -69,6 +69,7 @@ void addr_debug_print(int verbose, const ioa_addr *addr, const char* s);
 
 extern volatile int _log_time_value_set;
 extern volatile turn_time_t _log_time_value;
+extern int use_new_log_timestamp_format;
 
 void rtpprintf(const char *format, ...);
 int vrtpprintf(TURN_LOG_LEVEL level, const char *format, va_list args);
