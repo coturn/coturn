@@ -158,6 +158,14 @@ void set_no_stdout_log(int val)
 	no_stdout_log = val;
 }
 
+#define MAX_LOG_TIMESTAMP_FORMAT_LEN 48
+static char turn_log_timestamp_format[MAX_LOG_TIMESTAMP_FORMAT_LEN] = "%Y-%m-%dT%H:%M:%S";
+
+void set_turn_log_timestamp_format(char* new_format)
+{
+	strncpy(turn_log_timestamp_format, new_format, MAX_LOG_TIMESTAMP_FORMAT_LEN-1);
+}
+
 int use_new_log_timestamp_format = 0;
 
 void addr_debug_print(int verbose, const ioa_addr *addr, const char* s)
@@ -492,7 +500,7 @@ void turn_log_func_default(TURN_LOG_LEVEL level, const char* format, ...)
 	size_t so_far = 0;
 	if (use_new_log_timestamp_format) {
 		time_t now = time(NULL);
-		so_far += strftime(s, sizeof(s), "%Y-%m-%dT%H:%M:%S", localtime(&now));
+		so_far += strftime(s, sizeof(s), turn_log_timestamp_format, localtime(&now));
 	} else {
 		so_far += snprintf(s, sizeof(s), "%lu: ", (unsigned long)log_time());
 	}
