@@ -160,41 +160,6 @@ void set_no_stdout_log(int val)
 
 int use_new_log_timestamp_format = 0;
 
-void turn_log_func_default(TURN_LOG_LEVEL level, const char* format, ...)
-{
-#if !defined(TURN_LOG_FUNC_IMPL)
-	{
-		va_list args;
-		va_start(args,format);
-		vrtpprintf(level, format, args);
-		va_end(args);
-	}
-#endif
-
-	{
-		va_list args;
-		va_start(args,format);
-#if defined(TURN_LOG_FUNC_IMPL)
-		TURN_LOG_FUNC_IMPL(level,format,args);
-#else
-#define MAX_RTPPRINTF_BUFFER_SIZE (1024)
-		char s[MAX_RTPPRINTF_BUFFER_SIZE+1];
-#undef MAX_RTPPRINTF_BUFFER_SIZE
-		size_t so_far = 0;
-		if (use_new_log_timestamp_format) {
-			time_t now = time(NULL);
-			so_far += strftime(s, sizeof(s), "%Y-%m-%dT%H:%M:%S", localtime(&now));
-		} else {
-			so_far += snprintf(s, sizeof(s), "%lu: ", (unsigned long)log_time());
-		}
-		so_far += snprintf(s + so_far, sizeof(s)-100, (level == TURN_LOG_LEVEL_ERROR) ? ": ERROR: " : ": ");
-		so_far += vsnprintf(s + so_far,sizeof(s) - (so_far+1), format, args);
-		fwrite(s, so_far, 1, stdout);
-#endif
-		va_end(args);
-	}
-}
-
 void addr_debug_print(int verbose, const ioa_addr *addr, const char* s)
 {
 	if (verbose) {
@@ -513,20 +478,29 @@ static int get_syslog_level(TURN_LOG_LEVEL level)
 	return LOG_INFO;
 }
 
-int vrtpprintf(TURN_LOG_LEVEL level, const char *format, va_list args)
+void turn_log_func_default(TURN_LOG_LEVEL level, const char* format, ...)
 {
+	va_list args;
+	va_start(args,format);
+#if defined(TURN_LOG_FUNC_IMPL)
+	TURN_LOG_FUNC_IMPL(level,format,args);
+#else
 	/* Fix for Issue 24, raised by John Selbie: */
 #define MAX_RTPPRINTF_BUFFER_SIZE (1024)
 	char s[MAX_RTPPRINTF_BUFFER_SIZE+1];
 #undef MAX_RTPPRINTF_BUFFER_SIZE
-
-	size_t sz;
-
-	snprintf(s, sizeof(s), "%lu: ",(unsigned long)log_time());
-	sz=strlen(s);
-	vsnprintf(s+sz, sizeof(s)-1-sz, format, args);
-	s[sizeof(s)-1]=0;
-
+	size_t so_far = 0;
+	if (use_new_log_timestamp_format) {
+		time_t now = time(NULL);
+		so_far += strftime(s, sizeof(s), "%Y-%m-%dT%H:%M:%S", localtime(&now));
+	} else {
+		so_far += snprintf(s, sizeof(s), "%lu: ", (unsigned long)log_time());
+	}
+	so_far += snprintf(s + so_far, sizeof(s)-100, (level == TURN_LOG_LEVEL_ERROR) ? ": ERROR: " : ": ");
+	so_far += vsnprintf(s + so_far,sizeof(s) - (so_far+1), format, args);
+	/* always write to stdout */
+	fwrite(s, so_far, 1, stdout);
+	/* write to syslog or to log file */
 	if(to_syslog) {
 		syslog(get_syslog_level(level),"%s",s);
 	} else {
@@ -539,16 +513,9 @@ int vrtpprintf(TURN_LOG_LEVEL level, const char *format, va_list args)
 		}
 		log_unlock();
 	}
+#endif
+	va_end(args);
 
-	return 0;
-}
-
-void rtpprintf(const char *format, ...)
-{
-	va_list args;
-	va_start (args, format);
-	vrtpprintf(TURN_LOG_LEVEL_INFO, format, args);
-	va_end (args);
 }
 
 ///////////// ORIGIN ///////////////////
