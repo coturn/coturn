@@ -159,7 +159,7 @@ void set_no_stdout_log(int val)
 }
 
 #define MAX_LOG_TIMESTAMP_FORMAT_LEN 48
-static char turn_log_timestamp_format[MAX_LOG_TIMESTAMP_FORMAT_LEN] = "%Y-%m-%dT%H:%M:%S";
+static char turn_log_timestamp_format[MAX_LOG_TIMESTAMP_FORMAT_LEN] = "%FT%T%z";
 
 void set_turn_log_timestamp_format(char* new_format)
 {
