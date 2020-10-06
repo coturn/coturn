@@ -70,7 +70,42 @@ matrix:
     osx_image: xcode11.6
   - os: osx
     osx_image: xcode12
-
+  - os: linux
+    arch: ppc64le
+    dist: xenial
+    sudo: required
+    addons:
+      apt:
+        packages:
+        - mysql-client
+        - debhelper
+        - dpkg-dev
+        - libssl-dev
+        - libevent-dev
+        - sqlite3
+        - libsqlite3-dev
+        - postgresql-client
+        - libpq-dev
+        - libmysqlclient-dev
+        - libhiredis-dev
+  - os: linux
+    arch: ppc64le
+    dist: bionic
+    sudo: required
+    addons:
+      apt:
+        packages:
+        - mysql-client
+        - debhelper
+        - dpkg-dev
+        - libssl-dev
+        - libevent-dev
+        - sqlite3
+        - libsqlite3-dev
+        - postgresql-client
+        - libpq-dev
+        - libmysqlclient-dev
+        - libhiredis-dev
 
 notifications:
   slack:
