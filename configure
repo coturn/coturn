@@ -744,10 +744,8 @@ if [ -n "${SSL_CFLAGS}" ] && [ -n "${SSL_LIBS}" ]; then
         OSLIBS="${OSLIBS} ${SSL_LIBS}"
     fi
 else
-    testlib crypto
-    ER=$?
-    if ! [ ${ER} -eq 0 ] ; then
-        ${ECHO_CMD} "Crypto SSL lib found."
+    if testpkg_common libcrypto; then
+        ${ECHO_CMD} "OpenSSL Crypto lib found."
     else
         ${ECHO_CMD} "ERROR: OpenSSL Crypto development libraries are not installed properly in required location."
         ${ECHO_CMD} "Abort."
@@ -755,10 +753,8 @@ else
         exit
     fi
 
-    testlib ssl
-    ER=$?
-    if ! [ ${ER} -eq 0 ] ; then
-        ${ECHO_CMD} "SSL lib found."
+    if testpkg_common libssl; then
+        ${ECHO_CMD} "OpenSSL lib found."
     else
         ${ECHO_CMD} "ERROR: OpenSSL development libraries are not installed properly in required location."
         ${ECHO_CMD} "Abort."
