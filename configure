@@ -9,8 +9,6 @@ cleanup() {
 	rm -rf ${TH_TMPCPROGB}
 	rm -rf ${GCM_TMPCPROGC}
 	rm -rf ${GCM_TMPCPROGB}
-	rm -rf ${MYSQL_TMPCPROGC}
-	rm -rf ${MYSQL_TMPCPROGB}
 	rm -rf ${MONGO_TMPCPROGC}
 	rm -rf ${MONGO_TMPCPROGB}
 	rm -rf ${D_TMPCPROGC}
@@ -57,38 +55,6 @@ testpkg_common() {
     testpkg "$@" || return $?
     OSCFLAGS="${OSCFLAGS} ${PKG_CFLAGS}"
     OSLIBS="${OSLIBS} ${PKG_LIBS}"
-}
-
-testlibmysql() {
-    if [ -z "${MYSQL_CFLAGS}" ] || [ -z "${MYSQL_LIBS}" ]; then
-        MYSQL_CFLAGS="-I${PREFIX}/mysql/include -I${PREFIX}/include/mysql/"
-        MYSQL_CFLAGS="${MYSQL_CFLAGS} -I/usr/local/mysql/include -I/usr/local/include/mysql/"
-        MYSQL_CFLAGS="${MYSQL_CFLAGS} -I/usr/mysql/include -I/usr/include/mysql/"
-        for ilib in ${PREFIX}/mysql/lib ${PREFIX}/lib/mysql ${PREFIX}/lib64/mysql /usr/local/mysql/lib /usr/local/lib/mysql /usr/local/lib64/mysql /usr/mysql/lib /usr/lib/mysql /usr/lib64/mysql
-        do
-            if [ -d ${ilib} ] ; then
-                MYSQL_LIBS="${MYSQL_LIBS} -L${ilib}"
-                if ! [ -z "${TURN_ACCEPT_RPATH}" ] ; then
-                    TURN_RPATH="${TURN_RPATH} -Wl,-rpath,${ilib}"
-                fi
-            fi
-        done
-        MYSQL_LIBS="${OSLIBS} ${MYSQL_LIBS} -lmysqlclient"
-    fi
-    ${CC} ${MYSQL_TMPCPROGC} -o ${MYSQL_TMPCPROGB} ${OSCFLAGS} ${DBCFLAGS} ${DBLIBS} ${MYSQL_CFLAGS} ${MYSQL_LIBS} ${OSLIBS} 2>>/dev/null
-    ER=$?
-    if ! [ ${ER} -eq 0 ] ; then
-    	${ECHO_CMD}
-		${ECHO_CMD} "MYSQL DEVELOPMENT LIBRARY (libmysqlclient) AND/OR HEADER (mysql.h)"
-		${ECHO_CMD} "	ARE NOT INSTALLED PROPERLY ON THIS SYSTEM."
-		${ECHO_CMD} "	THAT'S OK BUT THE TURN SERVER IS BUILDING WITHOUT MYSQL DATABASE SUPPORT."
-		${ECHO_CMD}
-		return 0
-    else
-		DBCFLAGS="${DBCFLAGS} ${MYSQL_CFLAGS}"
-		DBLIBS="${DBLIBS} ${MYSQL_LIBS}"
-		return 1
-    fi
 }
 
 testlibmongoc() {
@@ -630,20 +596,6 @@ int main(int argc, char** argv) {
 }
 !
 
-MYSQL_TMPCPROG=__test__ccomp__libmysql__$$
-MYSQL_TMPCPROGC=${TMPDIR}/${MYSQL_TMPCPROG}.c
-MYSQL_TMPCPROGB=${TMPDIR}/${MYSQL_TMPCPROG}
-
-cat > ${MYSQL_TMPCPROGC} <<!
-#include <stdlib.h>
-#include <mysql.h>
-int main(int argc, char** argv) {
-    return (argc+
-    	(int)(mysql_real_connect(NULL, NULL, NULL, NULL, NULL, 0, NULL, 0)!=0)+
-    	(int)(argv[0][0]));
-}
-!
-
 MONGO_TMPCPROG=__test__ccomp__libmongoc__$$
 MONGO_TMPCPROGC=${TMPDIR}/${MONGO_TMPCPROG}.c
 MONGO_TMPCPROGB=${TMPDIR}/${MONGO_TMPCPROG}
@@ -986,16 +938,14 @@ fi
 ###########################
 
 if [ -z "${TURN_NO_MYSQL}" ] ; then
-
-	testlibmysql
-	ER=$?
-	if ! [ ${ER} -eq 0 ] ; then
-		${ECHO_CMD} "MySQL found."
-	else
-		TURN_NO_MYSQL="-DTURN_NO_MYSQL"
-	fi
+    if testpkg_server mariadb || testpkg_server mysqlclient ; then
+        ${ECHO_CMD} "MySQL found."
+    else
+        ${ECHO_CMD} "MySQL not found. Building without MySQL support."
+        TURN_NO_MYSQL="-DTURN_NO_MYSQL"
+    fi
 else
-	TURN_NO_MYSQL="-DTURN_NO_MYSQL"
+    TURN_NO_MYSQL="-DTURN_NO_MYSQL"
 fi
 
 ###########################
