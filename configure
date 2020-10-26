@@ -9,8 +9,6 @@ cleanup() {
 	rm -rf ${TH_TMPCPROGB}
 	rm -rf ${GCM_TMPCPROGC}
 	rm -rf ${GCM_TMPCPROGB}
-	rm -rf ${MONGO_TMPCPROGC}
-	rm -rf ${MONGO_TMPCPROGB}
 	rm -rf ${D_TMPCPROGC}
 	rm -rf ${D_TMPCPROGB}
 	rm -rf ${TMPCADDRPROGO}
@@ -55,32 +53,6 @@ testpkg_common() {
     testpkg "$@" || return $?
     OSCFLAGS="${OSCFLAGS} ${PKG_CFLAGS}"
     OSLIBS="${OSLIBS} ${PKG_LIBS}"
-}
-
-testlibmongoc() {
-    if [ -z "${MONGO_CFLAGS}" ] || [ -z "${MONGO_LIBS}" ]; then
-        for inc in ${INCLUDEDIR}/libmongoc-1.0 ${INCLUDEDIR}/libbson-1.0 /usr/local/include/libmongoc-1.0 /usr/local/include/libbson-1.0 /usr/libmongoc-1.0 /usr/libbson-1.0 /usr/include/libbson-1.0/ /usr/include/libmongoc-1.0/
-        do
-            if [ -d ${inc} ] ; then
-                MONGO_CFLAGS="${MONGO_CFLAGS} -I${inc}"
-            fi
-        done
-        MONGO_LIBS="-lmongoc-1.0 -lbson-1.0"
-    fi
-    ${CC} ${MONGO_TMPCPROGC} -o ${MONGO_TMPCPROGB} ${OSCFLAGS} ${DBCFLAGS} ${DBLIBS} ${MONGO_CFLAGS} ${MONGO_LIBS} ${OSLIBS} 2>>/dev/null
-    ER=$?
-    if ! [ ${ER} -eq 0 ] ; then
-    	${ECHO_CMD}
-		${ECHO_CMD} "MONGODB DEVELOPMENT LIBRARIES (libmongoc-1.0 and libbson-1.0) AND/OR HEADER (mongoc.h)"
-		${ECHO_CMD} "	ARE NOT INSTALLED PROPERLY ON THIS SYSTEM."
-		${ECHO_CMD} "	THAT'S OK BUT THE TURN SERVER IS BUILDING WITHOUT MONGODB SUPPORT."
-		${ECHO_CMD}
-		return 0
-    else
-		DBCFLAGS="${DBCFLAGS} ${MONGO_CFLAGS}"
-		DBLIBS="${DBLIBS} ${MONGO_LIBS}"
-		return 1
-    fi
 }
 
 testlib() {
@@ -596,19 +568,6 @@ int main(int argc, char** argv) {
 }
 !
 
-MONGO_TMPCPROG=__test__ccomp__libmongoc__$$
-MONGO_TMPCPROGC=${TMPDIR}/${MONGO_TMPCPROG}.c
-MONGO_TMPCPROGB=${TMPDIR}/${MONGO_TMPCPROG}
-
-cat > ${MONGO_TMPCPROGC} <<!
-#include <mongoc.h>
-int main(int argc, char** argv) {
-    return (argc+
-    	(int)(mongoc_client_new("mongodb://localhost:27017")!=0)+
-    	(int)(argv[0][0]));
-}
-!
-
 ##########################
 # What is our compiler ?
 ##########################
@@ -953,16 +912,14 @@ fi
 ###########################
 
 if [ -z "${TURN_NO_MONGO}" ] ; then
-
-	testlibmongoc
-	ER=$?
-	if ! [ ${ER} -eq 0 ] ; then
-		${ECHO_CMD} "MongoDB found."
-	else
-		TURN_NO_MONGO="-DTURN_NO_MONGO"
-	fi
+    if testpkg_server libmongoc-1.0; then
+        ${ECHO_CMD} "MongoDB found."
+    else
+        ${ECHO_CMD} "MongoDB not found. Building without MongoDB support."
+        TURN_NO_MONGO="-DTURN_NO_MONGO"
+    fi
 else
-	TURN_NO_MONGO="-DTURN_NO_MONGO"
+    TURN_NO_MONGO="-DTURN_NO_MONGO"
 fi
 
 ###########################
