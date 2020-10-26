@@ -19,8 +19,6 @@ cleanup() {
 	rm -rf ${D_TMPCPROGB}
 	rm -rf ${E_TMPCPROGC}
 	rm -rf ${E_TMPCPROGO}
-	rm -rf ${HR_TMPCPROGC}
-	rm -rf ${HR_TMPCPROGB}
 	rm -rf ${TMPCADDRPROGO}
 }
 
@@ -72,32 +70,6 @@ testlibevent2_comp() {
 		${ECHO_CMD} "Libevent2 development is not installed properly"
 		return 0
     else
-		return 1
-    fi
-}
-
-testhiredis() {
-    if [ -z "${HIREDIS_CFLAGS}" ] || [ -z "${HIREDIS_LIBS}" ]; then
-        for inc in ${INCLUDEDIR}/hiredis /usr/local/include/hiredis /usr/hiredis /usr/include/hiredis
-        do
-            if [ -d ${inc} ] ; then
-                HIREDIS_CFLAGS="${HIREDIS_CFLAGS} -I${inc}"
-            fi
-        done
-        HIREDIS_LIBS=-lhiredis
-    fi
-    ${CC} ${HR_TMPCPROGC} -o ${HR_TMPCPROGB} ${OSCFLAGS} ${DBLIBS} ${HIREDIS_CFLAGS} ${HIREDIS_LIBS} ${OSLIBS} 2>>/dev/null
-    ER=$?
-    if ! [ ${ER} -eq 0 ] ; then
-		${ECHO_CMD}
-		${ECHO_CMD} "HIREDIS DEVELOPMENT LIBRARY (libhiredis.*) AND/OR HEADERS (hiredis/*.h)"
-		${ECHO_CMD} "	ARE NOT INSTALLED PROPERLY ON THIS SYSTEM."
-		${ECHO_CMD} "	THAT'S OK BUT THE TURN SERVER IS BUILDING WITHOUT REDIS SUPPORT."
-		${ECHO_CMD}
-		return 0
-    else
-		DBCFLAGS="${DBCFLAGS} ${HIREDIS_CFLAGS}"
-		DBLIBS="${DBLIBS} ${HIREDIS_LIBS}"
 		return 1
     fi
 }
@@ -717,20 +689,6 @@ int main(int argc, char** argv) {
 }
 !
 
-HR_TMPCPROG=__test__ccomp__hiredis__$$
-HR_TMPCPROGC=${TMPDIR}/${HR_TMPCPROG}.c
-HR_TMPCPROGB=${TMPDIR}/${HR_TMPCPROG}
-
-cat > ${HR_TMPCPROGC} <<!
-#include <stdlib.h>
-#include <hiredis/hiredis.h>
-#include <hiredis/async.h>
-int main(int argc, char** argv) {
-	redisAsyncHandleRead(NULL);
-    return (int)(argv[argc][0]);
-}
-!
-
 PQ_TMPCPROG=__test__ccomp__libpq__$$
 PQ_TMPCPROGC=${TMPDIR}/${PQ_TMPCPROG}.c
 PQ_TMPCPROGB=${TMPDIR}/${PQ_TMPCPROG}
@@ -1191,19 +1149,14 @@ fi
 ###########################
 
 if [ -z "${TURN_NO_HIREDIS}" ] ; then
-
-	testhiredis
-
-	ER=$?
-	if ! [ ${ER} -eq 0 ] ; then
-  		${ECHO_CMD} "Hiredis found."
-	else
-  		TURN_NO_HIREDIS="-DTURN_NO_HIREDIS"
-	fi
-
+    if testpkg_db hiredis; then
+        ${ECHO_CMD} "Hiredis found."
+    else
+        ${ECHO_CMD} "Hiredis not found. Building without hiredis support."
+        TURN_NO_HIREDIS="-DTURN_NO_HIREDIS"
+    fi
 else
-	TURN_NO_HIREDIS="-DTURN_NO_HIREDIS"
-
+    TURN_NO_HIREDIS="-DTURN_NO_HIREDIS"
 fi
 
 ###############################
