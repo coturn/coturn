@@ -15,8 +15,6 @@ cleanup() {
 	rm -rf ${MONGO_TMPCPROGB}
 	rm -rf ${D_TMPCPROGC}
 	rm -rf ${D_TMPCPROGB}
-	rm -rf ${E_TMPCPROGC}
-	rm -rf ${E_TMPCPROGO}
 	rm -rf ${TMPCADDRPROGO}
 }
 
@@ -59,17 +57,6 @@ testpkg_common() {
     testpkg "$@" || return $?
     OSCFLAGS="${OSCFLAGS} ${PKG_CFLAGS}"
     OSLIBS="${OSLIBS} ${PKG_LIBS}"
-}
-
-testlibevent2_comp() {
-    ${CC} -c ${E_TMPCPROGC} -o ${E_TMPCPROGO} ${OSCFLAGS} 2>>/dev/null
-    ER=$?
-    if ! [ ${ER} -eq 0 ] ; then
-		${ECHO_CMD} "Libevent2 development is not installed properly"
-		return 0
-    else
-		return 1
-    fi
 }
 
 testlibmysql() {
@@ -643,18 +630,6 @@ int main(int argc, char** argv) {
 }
 !
 
-E_TMPCPROG=__test__ccomp__libevent2__$$
-E_TMPCPROGC=${TMPDIR}/${E_TMPCPROG}.c
-E_TMPCPROGO=${TMPDIR}/${E_TMPCPROG}.o
-
-cat > ${E_TMPCPROGC} <<!
-#include <stdlib.h>
-#include <event2/event.h>
-int main(int argc, char** argv) {
-    return (int)(argv[argc][0]);
-}
-!
-
 MYSQL_TMPCPROG=__test__ccomp__libmysql__$$
 MYSQL_TMPCPROGC=${TMPDIR}/${MYSQL_TMPCPROG}.c
 MYSQL_TMPCPROGB=${TMPDIR}/${MYSQL_TMPCPROG}
@@ -912,70 +887,14 @@ if [ -n "${EVENT_CFLAGS}" ] && [ -n "${EVENT_LIBS}" ]; then
         OSLIBS="${OSLIBS} ${EVENT_LIBS}"
     fi
 else
-    testlibevent2_comp
-    ER=$?
-    if ! [ ${ER} -eq 0 ] ; then
-        ${ECHO_CMD} "Libevent2 development found."
+    if testpkg_common libevent_core libevent_extra libevent_openssl libevent_pthreads || testpkg_common libevent libevent_openssl libevent_pthreads; then
+        ${ECHO_CMD} "Libevent2 runtime found."
     else
         ${ECHO_CMD} "ERROR: Libevent2 development libraries are not installed properly in required location."
         ${ECHO_CMD} "ERROR: may be you have just too old libevent tool - then you have to upgrade it."
         ${ECHO_CMD} "See the INSTALL file."
         ${ECHO_CMD} "Abort."
         cleanup
-        exit
-    fi
-
-    testlib event_core
-    ER=$?
-    if ! [ ${ER} -eq 0 ] ; then
-        ${ECHO_CMD} "Libevent2 runtime found."
-        testlib event_extra
-        ER=$?
-        if ! [ ${ER} -eq 0 ] ; then
-	    ${ECHO_CMD} "Libevent2 runtime 'extra' found."
-        else
-	    ${ECHO_CMD} "ERROR: Libevent2 'extra' runtime library is not installed properly in required location."
-	    ${ECHO_CMD} "See the INSTALL file."
-	    ${ECHO_CMD} "Abort."
-	    cleanup
-	    exit
-        fi
-    else
-        testlib event
-        ER=$?
-        if ! [ ${ER} -eq 0 ] ; then
-            ${ECHO_CMD} "Libevent2 runtime found (old style)."
-        else
-            ${ECHO_CMD} "ERROR: Libevent2 runtime libraries are not installed properly in required location."
-            ${ECHO_CMD} "See the INSTALL file."
-            ${ECHO_CMD} "Abort."
-            cleanup
-            exit
-        fi
-    fi
-
-    if [ -z "${TURN_NO_TLS}" ] ; then
-
-	testlib event_openssl
-	ER=$?
-	if ! [ ${ER} -eq 0 ] ; then
-    	    ${ECHO_CMD} "Libevent2 openssl found."
-	else
-    	    ${ECHO_CMD} "ERROR: Libevent2 development libraries are not compiled with OpenSSL support."
-    	    ${ECHO_CMD} "TLS will be disabled."
-    	    TURN_NO_TLS="-DTURN_NO_TLS"
-	fi
-
-    else
-	TURN_NO_TLS="-DTURN_NO_TLS"
-    fi
-
-    testlib event_pthreads
-    ER=$?
-    if ! [ ${ER} -eq 0 ] ; then
-        ${ECHO_CMD} "Libevent2 pthreads found."
-    else
-        ${ECHO_CMD} "ERROR: Libevent2 development libraries are not compiled with threads support."
         exit
     fi
 fi
