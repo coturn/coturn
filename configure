@@ -183,61 +183,58 @@ testlib() {
 }
 
 pthread_testlib() {
-
-    SYSTEM=`uname`
-
-    if [ "${SYSTEM}" = "DragonFly" ] ; then
-	OSLIBS="${OSLIBS} -pthread"
-	TURN_NO_SCTP=1
+    if [ -n "${PTHREAD_LIBS}" ] ; then
+        OSLIBS="${OSLIBS} ${PTHREAD_LIBS}"
+        return
     fi
 
-    ISBSD=`uname | grep -i bsd`
-    if ! [ -z "${ISBSD}" ] ; then
-	OSLIBS="${OSLIBS} -pthread"
+    if [ "$(uname)" = "DragonFly" ] ; then
+        OSLIBS="${OSLIBS} -pthread"
+        TURN_NO_SCTP=1
+        return
     fi
 
-    if [ -z "${PTHREAD_LIBS}" ] ; then
-    	${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} 2>>/dev/null
-    	ER=$?
-    	if [ ${ER} -eq 0 ] ; then
-    		return 1
-    	else
-    		${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} -pthread 2>>/dev/null
-    		ER=$?
-    		if [ ${ER} -eq 0 ] ; then
-    			OSLIBS="${OSLIBS} -pthread"
-    			return 1
-    		else
-    			${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} -lpthread 2>>/dev/null
-    			ER=$?
-    			if [ ${ER} -eq 0 ] ; then
-    				OSLIBS="${OSLIBS} -lpthread"
-    				return 1
-				fi
-    		fi
-    	fi
-    else
-    	OSLIBS="${OSLIBS} ${PTHREAD_LIBS}"
+    if [ -n "$(uname | grep -i bsd)" ] ; then
+        OSLIBS="${OSLIBS} -pthread"
+        return
     fi
-		
 
     ${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} 2>>/dev/null
     ER=$?
     if [ ${ER} -eq 0 ] ; then
-    	return 1
-    else
-    	${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} -D_GNU_SOURCE 2>>/dev/null
-    	ER=$?
-    	if [ ${ER} -eq 0 ] ; then
-	    	${ECHO_CMD} "Older GNU pthread library found"
-	    	OSCFLAGS="${OSCFLAGS} -D_GNU_SOURCE"
-	    	return 1
-	    else
-    		${ECHO_CMD} "Do not use pthreads" 
-		fi
+        return
     fi
-    
-    return 0
+
+    ${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} -pthread 2>>/dev/null
+    ER=$?
+    if [ ${ER} -eq 0 ] ; then
+        OSLIBS="${OSLIBS} -pthread"
+        return
+    fi
+
+    ${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} -lpthread 2>>/dev/null
+    ER=$?
+    if [ ${ER} -eq 0 ] ; then
+        OSLIBS="${OSLIBS} -lpthread"
+        return
+    fi
+
+    ${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} 2>>/dev/null
+    ER=$?
+    if [ ${ER} -eq 0 ] ; then
+        return
+    fi
+
+    ${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} -D_GNU_SOURCE 2>>/dev/null
+    ER=$?
+    if [ ${ER} -eq 0 ] ; then
+        ${ECHO_CMD} "Older GNU pthread library found"
+        OSCFLAGS="${OSCFLAGS} -D_GNU_SOURCE"
+        return
+    fi
+
+    ${ECHO_CMD} "Do not use pthreads"
+    return 1
 }
 
 pthread_testbarriers() {
@@ -887,9 +884,9 @@ test_sin_len
 
 pthread_testlib
 ER=$?
-if [ ${ER} -eq 0 ] ; then
-	${ECHO_CMD} "ERROR: Cannot find pthread library functions."
-	exit
+if [ ${ER} -ne 0 ] ; then
+    ${ECHO_CMD} "ERROR: Cannot find pthread library functions."
+    exit
 fi
 
 if [ -z ${TURN_NO_THREAD_BARRIERS} ] ; then 
