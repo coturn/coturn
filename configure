@@ -38,6 +38,35 @@ testlibraw() {
     fi
 }
 
+# testpkg pkg1 pkg2 ...
+# If all libraries are found, sets PKG_CFLAGS/PKG_LIBS and returns success.
+# Otherwise, returns failure.
+testpkg() {
+    PKG_LIBS="$($PKGCONFIG --libs "$@" 2>/dev/null)"
+    if [ $? -ne 0 ] ; then
+        return 1
+    fi
+    PKG_CFLAGS="$($PKGCONFIG --cflags "$@")"
+}
+
+# testpkg_db pkg1 pkg2 ...
+# If all libraries are found, adds them to DBCFLAGS/DBLIBS and returns success.
+# Otherwise, returns failure.
+testpkg_db() {
+    testpkg "$@" || return $?
+    DBCFLAGS="${DBCFLAGS} ${PKG_CFLAGS}"
+    DBLIBS="${DBLIBS} ${PKG_LIBS}"
+}
+
+# testpkg_common pkg1 pkg2 ...
+# If all libraries are found, adds them to OSCFLAGS/OSLIBS and returns success.
+# Otherwise, returns failure.
+testpkg_common() {
+    testpkg "$@" || return $?
+    OSCFLAGS="${OSCFLAGS} ${PKG_CFLAGS}"
+    OSLIBS="${OSLIBS} ${PKG_LIBS}"
+}
+
 testsqlite_comp() {
     SQLITE_LIBS=-lsqlite3
     ${CC} -c ${SQL_TMPCPROGC} -o ${SQL_TMPCPROGO} ${OSCFLAGS} 2>>/dev/null
@@ -806,6 +835,33 @@ if [ -z "${TURN_ACCEPT_RPATH}" ] ; then
 	TURN_ACCEPT_RPATH=1
     fi
 fi
+
+##########################
+# Which pkg-config?
+##########################
+
+if [ -z "$PKGCONFIG" ] ; then
+    for PKGCONFIG in pkgconf pkg-config ; do
+        if type "$PKGCONFIG" 2>/dev/null ; then
+            break
+        fi
+        PKGCONFIG=
+    done
+
+    if [ -z "$PKGCONFIG" ] ; then
+        ${ECHO_CMD} "ERROR: pkg-config not found"
+        cleanup
+        exit
+    fi
+else
+    if ! type "$PKGCONFIG" 2>/dev/null ; then
+        ${ECHO_CMD} "ERROR: cannot use $PKGCONFIG"
+        cleanup
+        exit
+    fi
+fi
+
+${ECHO_CMD} "pkg-config: $PKGCONFIG"
 
 ###########################
 # Check if we can use GNU
