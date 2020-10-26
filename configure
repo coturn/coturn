@@ -17,8 +17,6 @@ cleanup() {
 	rm -rf ${MONGO_TMPCPROGB}
 	rm -rf ${D_TMPCPROGC}
 	rm -rf ${D_TMPCPROGB}
-	rm -rf ${SQL_TMPCPROGC}
-	rm -rf ${SQL_TMPCPROGO}
 	rm -rf ${E_TMPCPROGC}
 	rm -rf ${E_TMPCPROGO}
 	rm -rf ${HR_TMPCPROGC}
@@ -65,19 +63,6 @@ testpkg_common() {
     testpkg "$@" || return $?
     OSCFLAGS="${OSCFLAGS} ${PKG_CFLAGS}"
     OSLIBS="${OSLIBS} ${PKG_LIBS}"
-}
-
-testsqlite_comp() {
-    SQLITE_LIBS=-lsqlite3
-    ${CC} -c ${SQL_TMPCPROGC} -o ${SQL_TMPCPROGO} ${OSCFLAGS} 2>>/dev/null
-    ER=$?
-    if ! [ ${ER} -eq 0 ] ; then
-		${ECHO_CMD} "SQLite development is not installed properly"
-		return 0
-    else
-		DBLIBS="${DBLIBS} ${SQLITE_LIBS}"
-		return 1
-    fi
 }
 
 testlibevent2_comp() {
@@ -732,18 +717,6 @@ int main(int argc, char** argv) {
 }
 !
 
-SQL_TMPCPROG=__test__ccomp__sqlite__$$
-SQL_TMPCPROGC=${TMPDIR}/${SQL_TMPCPROG}.c
-SQL_TMPCPROGO=${TMPDIR}/${SQL_TMPCPROG}.o
-
-cat > ${SQL_TMPCPROGC} <<!
-#include <stdlib.h>
-#include <sqlite3.h>
-int main(int argc, char** argv) {
-    return (int)(argv[argc][0]);
-}
-!
-
 HR_TMPCPROG=__test__ccomp__hiredis__$$
 HR_TMPCPROGC=${TMPDIR}/${HR_TMPCPROG}.c
 HR_TMPCPROGB=${TMPDIR}/${HR_TMPCPROG}
@@ -1143,41 +1116,19 @@ else
 fi
 
 ###########################
-# Test SQLite setup
+# Test SQLite3 setup
 ###########################
 
 if [ -z "${TURN_NO_SQLITE}" ] ; then
-
-	testlib sqlite3
-	ER=$?
-	if ! [ ${ER} -eq 0 ] ; then
-   		${ECHO_CMD} "SQLite library found."
-	else
-   		${ECHO_CMD} "SQLite3 development library cannot be found."
-   		TURN_NO_SQLITE="-DTURN_NO_SQLITE"
-	fi
-
-	if [ -z "${TURN_NO_SQLITE}" ] ; then	
-	    testsqlite_comp
-	    ER=$?
-	    if ! [ ${ER} -eq 0 ] ; then
-    		${ECHO_CMD} "SQLite development found."
-	    else
-    		${ECHO_CMD} "SQLite development libraries are not installed properly in required location."
-    		TURN_NO_SQLITE="-DTURN_NO_SQLITE"
-	    fi
-	fi
-
-	if ! [ -z "${TURN_NO_SQLITE}" ] ; then	
-	    ${ECHO_CMD}
-	    ${ECHO_CMD} "SQLite DEVELOPMENT LIBRARY (libsqlite3) AND/OR HEADER (sqlite3.h)"
-	    ${ECHO_CMD} "	ARE NOT INSTALLED PROPERLY ON THIS SYSTEM."
-	    ${ECHO_CMD} "	THAT'S OK BUT THE TURN SERVER IS BUILDING WITHOUT SQLITE SUPPORT."
-	    ${ECHO_CMD}
-	fi
+    if testpkg_db sqlite3; then
+        ${ECHO_CMD} "SQLite3 library found."
+    else
+        ${ECHO_CMD} "SQLite3 development library not found. Building without SQLite3 support."
+        TURN_NO_SQLITE="-DTURN_NO_SQLITE"
+    fi
 else
-	TURN_NO_SQLITE="-DTURN_NO_SQLITE"
-	SQLITE_CMD=${ECHO_CMD}
+    TURN_NO_SQLITE="-DTURN_NO_SQLITE"
+    SQLITE_CMD=${ECHO_CMD}
 fi
 
 if [ -z "${TURNDBDIR}" ] ; then
