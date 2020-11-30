@@ -480,7 +480,7 @@ int ioa_addr_is_loopback(ioa_addr *addr)
 	if(addr) {
 		if(addr->ss.sa_family == AF_INET) {
 			const uint8_t *u = ((const uint8_t*)&(addr->s4.sin_addr));
-			return (u[0] == 127);
+			return (u[0] == 127 || u[0] == 0);
 		} else if(addr->ss.sa_family == AF_INET6) {
 			const uint8_t *u = ((const uint8_t*)&(addr->s6.sin6_addr));
 			if(u[7] == 1) {
