@@ -483,9 +483,9 @@ int ioa_addr_is_loopback(ioa_addr *addr)
 			return (u[0] == 127 || u[0] == 0);
 		} else if(addr->ss.sa_family == AF_INET6) {
 			const uint8_t *u = ((const uint8_t*)&(addr->s6.sin6_addr));
-			if(u[7] == 1) {
+			if(u[15] == 1) {
 				int i;
-				for(i=0;i<7;++i) {
+				for(i=0;i<15;++i) {
 					if(u[i])
 						return 0;
 				}
