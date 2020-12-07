@@ -265,8 +265,8 @@ Flags:
 			check: across the session, all requests must have the same
 			main ORIGIN attribute value (if the ORIGIN was
 			initially used by the session).
- --no-prometheus	Disable prometheus metrics. By default it is
-			enabled and listening on port 9641 unther the path /metrics
+ --prometheus		Enable prometheus metrics. By default it is
+			disabled. Would listen on port 9641 unther the path /metrics
 			also the path / on this port can be used as a health check
 
 -h			Help.
