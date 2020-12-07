@@ -271,7 +271,7 @@ static int good_peer_addr(turn_turnserver *server, const char* realm, ioa_addr *
 	if(server && peer_addr) {
 		if(*(server->no_multicast_peers) && ioa_addr_is_multicast(peer_addr))
 			return 0;
-		if( !*(server->allow_loopback_peers) && ioa_addr_is_loopback(peer_addr) && ioa_addr_is_zero(peer_addr))
+		if( !*(server->allow_loopback_peers) && (ioa_addr_is_loopback(peer_addr) || ioa_addr_is_zero(peer_addr)))
 			return 0;
 
 		{
