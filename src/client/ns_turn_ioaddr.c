@@ -480,10 +480,31 @@ int ioa_addr_is_loopback(ioa_addr *addr)
 	if(addr) {
 		if(addr->ss.sa_family == AF_INET) {
 			const uint8_t *u = ((const uint8_t*)&(addr->s4.sin_addr));
-			return (u[0] == 127 || u[0] == 0);
+			return (u[0] == 127);
 		} else if(addr->ss.sa_family == AF_INET6) {
 			const uint8_t *u = ((const uint8_t*)&(addr->s6.sin6_addr));
-			if(u[15] == 1 || u[15] == 0) {
+			if(u[15] == 1) {
+				int i;
+				for(i=0;i<15;++i) {
+					if(u[i])
+						return 0;
+				}
+				return 1;
+			}
+		}
+	}
+	return 0;
+}
+
+int ioa_addr_is_zero(ioa_addr *addr)
+{
+	if(addr) {
+		if(addr->ss.sa_family == AF_INET) {
+			const uint8_t *u = ((const uint8_t*)&(addr->s4.sin_addr));
+			return (u[0] == 0);
+		} else if(addr->ss.sa_family == AF_INET6) {
+			const uint8_t *u = ((const uint8_t*)&(addr->s6.sin6_addr));
+			if(u[15] == 0) {
 				int i;
 				for(i=0;i<15;++i) {
 					if(u[i])
