@@ -3,6 +3,13 @@ Version 4.5.2 'dan Eider':
 	- fix null pointer dereference in case of out of memory. (thanks to Thomas Moeller for the report)
     - merge PR #517 (by wolmi)
 		* add prometheus metrics
+	- merge PR #637 (by David Florness)
+	    * Delete trailing whitespace in example configuration files
+	- merge PR #631 (by Debabrata Deka)
+	    * Add architecture ppc64le to travis build
+	- merge PR #627 (by Samuel)
+	    * Fix misleading option in doc (prometheus)
+
 24/06/2020 Oleg Moskalenko <mom040267@gmail.com> Mihály Mészáros <misi@majd.eu>
 Version 4.5.1.3 'dan Eider':
 	- merge PR #575: (by osterik)
