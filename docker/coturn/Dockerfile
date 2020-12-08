@@ -13,7 +13,7 @@ WORKDIR ${BUILD_PREFIX}
 RUN git clone https://github.com/coturn/coturn.git
 
 # Build Coturn
-WORKDIR coturn
+WORKDIR ${BUILD_PREFIX}/coturn
 RUN ./configure
 RUN make
 
