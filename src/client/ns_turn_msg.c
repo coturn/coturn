@@ -244,7 +244,7 @@ int stun_produce_integrity_key_str(const uint8_t *uname, const uint8_t *realm, c
 		unsigned int keylen = 0;
 		EVP_MD_CTX ctx;
 		EVP_MD_CTX_init(&ctx);
-#ifdef EVP_MD_CTX_FLAG_NON_FIPS_ALLOW
+#if defined EVP_MD_CTX_FLAG_NON_FIPS_ALLOW && !defined(LIBRESSL_VERSION_NUMBER)
 		if (FIPS_mode()) {
 			EVP_MD_CTX_set_flags(&ctx,EVP_MD_CTX_FLAG_NON_FIPS_ALLOW);
 		}
@@ -256,7 +256,7 @@ int stun_produce_integrity_key_str(const uint8_t *uname, const uint8_t *realm, c
 #else
 		unsigned int keylen = 0;
 		EVP_MD_CTX *ctx = EVP_MD_CTX_new();
-#ifdef EVP_MD_CTX_FLAG_NON_FIPS_ALLOW
+#if defined EVP_MD_CTX_FLAG_NON_FIPS_ALLOW && ! defined(LIBRESSL_VERSION_NUMBER)
 		if (FIPS_mode()) {
 			EVP_MD_CTX_set_flags(ctx, EVP_MD_CTX_FLAG_NON_FIPS_ALLOW);
 		}
