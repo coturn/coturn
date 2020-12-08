@@ -3374,7 +3374,7 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 						}
 					} else {
 #if TLS_SUPPORTED
-						if(check_tentative_tls(s->fd)) {
+						if((s->sat != TCP_CLIENT_DATA_SOCKET) && (s->sat != TCP_RELAY_DATA_SOCKET) && check_tentative_tls(s->fd)) {
 							s->tobeclosed = 1;
 							return -1;
 						}
