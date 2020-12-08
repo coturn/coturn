@@ -225,6 +225,10 @@ Flags:
 			name will be constructed as-is, without PID and date appendage.
 			This option can be used, for example, together with the logrotate tool.
 
+--new-log-timestamp				Enable full ISO-8601 timestamp in all logs.
+
+--new-timestamp_format    	<format>	Set timestamp format (in strftime(1) format)
+
 --secure-stun		Require authentication of the STUN Binding request.
 			By default, the clients are allowed anonymous access to the STUN Binding functionality.
 
