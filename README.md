@@ -121,7 +121,8 @@ Contact information:
 
 https://groups.google.com/forum/#!forum/turn-server-project-rfc5766-turn-server
 
-email:mom040267@gmail.com
+email:misi@majd.eu
+      mom040267@gmail.com
 
 ### Feedback is very welcome (bugs, issues, suggestions, stories, questions). ###
 
