@@ -15,7 +15,7 @@ Version 4.5.2 'dan Eider':
 		* Add support for proxy protocol V1 
 	- merge PR #618 (by Paul Wayper)
 		* Print full date and time in logs
-		* Add new options: "new-log-timestamp" and "new-timestamp_format"
+		* Add new options: "new-log-timestamp" and "new-timestamp-format"
 	- merge PR #599 (by Cédric Krier)
 		* Do not use FIPS and remove hardcode OPENSSL_VERSION_NUMBER with LibreSSL
 	- update Docker mongoDB and fix with workaround the missing systemctl
