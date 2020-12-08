@@ -8,9 +8,15 @@ Version 4.5.2 'dan Eider':
 	- merge PR #631 (by Debabrata Deka)
 	    * Add architecture ppc64le to travis build
 	- merge PR #627 (by Samuel)
-	    * Fix misleading option in doc (prometheus)
+		* Fix misleading option in doc (prometheus)
 	- merge PR #643 (by tupelo-schneck)
-	    * Allow RFC6062 TCP relay data to look like TLS
+		* Allow RFC6062 TCP relay data to look like TLS
+	- merge PR #655 (by plinss)
+		* Add support for proxy protocol V1 
+	- merge PR #618 (by Paul Wayper)
+		* Print full date and time in logs
+	- merge PR #599 (by Cédric Krier)
+		* Do not use FIPS and remove hardcode OPENSSL_VERSION_NUMBER with LibreSSL
 
 24/06/2020 Oleg Moskalenko <mom040267@gmail.com> Mihály Mészáros <misi@majd.eu>
 Version 4.5.1.3 'dan Eider':
