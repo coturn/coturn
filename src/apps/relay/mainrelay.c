@@ -604,7 +604,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						name will be constructed as-is, without PID and date appendage.\n"
 "						This option can be used, for example, together with the logrotate tool.\n"
 " --new-log-timestamp				Enable full ISO-8601 timestamp in all logs.\n"
-" --new-timestamp-format    	<format>	Set timestamp format (in strftime(1) format)\n"
+" --new-log-timestamp-format    	<format>	Set timestamp format (in strftime(1) format)\n"
 " --stale-nonce[=<value>]			Use extra security with nonce value having limited lifetime (default 600 secs).\n"
 " --max-allocate-lifetime	<value>		Set the maximum value for the allocation lifetime. Default to 3600 secs.\n"
 " --channel-lifetime		<value>		Set the lifetime for channel binding, default to 600 secs.\n"
@@ -764,7 +764,7 @@ enum EXTRA_OPTS {
 	SYSLOG_OPT,
 	SIMPLE_LOG_OPT,
 	NEW_LOG_TIMESTAMP_OPT,
-	NEW_TIMESTAMP_FORMAT_OPT,
+	NEW_LOG_TIMESTAMP_FORMAT_OPT,
 	AUX_SERVER_OPT,
 	UDP_SELF_BALANCE_OPT,
 	ALTERNATE_SERVER_OPT,
@@ -904,7 +904,7 @@ static const struct myoption long_options[] = {
 				{ "syslog", optional_argument, NULL, SYSLOG_OPT },
 				{ "simple-log", optional_argument, NULL, SIMPLE_LOG_OPT },
 				{ "new-log-timestamp", optional_argument, NULL, NEW_LOG_TIMESTAMP_OPT },
-				{ "new-timestamp-format", required_argument, NULL, NEW_TIMESTAMP_FORMAT_OPT },
+				{ "new-log-timestamp-format", required_argument, NULL, NEW_LOG_TIMESTAMP_FORMAT_OPT },
 				{ "aux-server", required_argument, NULL, AUX_SERVER_OPT },
 				{ "udp-self-balance", optional_argument, NULL, UDP_SELF_BALANCE_OPT },
 				{ "alternate-server", required_argument, NULL, ALTERNATE_SERVER_OPT },
@@ -1592,6 +1592,13 @@ static void set_option(int c, char *value)
 			turn_params.rest_api_separator=*value;
 		}
 		break;
+	case NEW_LOG_TIMESTAMP_OPT:
+		use_new_log_timestamp_format=1;
+		break;
+	case NEW_LOG_TIMESTAMP_FORMAT_OPT:
+		set_turn_log_timestamp_format(value);
+		break;
+
 	/* these options have been already taken care of before: */
 	case 'l':
 	case NO_STDOUT_LOG_OPT:
@@ -1725,7 +1732,7 @@ static void read_config_file(int argc, char **argv, int pass)
 						set_simple_log(get_bool_value(value));
 					} else if ((pass==0) && (c==NEW_LOG_TIMESTAMP_OPT)) {
 						use_new_log_timestamp_format=1;
-					} else if ((pass==0) && (c==NEW_TIMESTAMP_FORMAT_OPT)) {
+					} else if ((pass==0) && (c==NEW_LOG_TIMESTAMP_FORMAT_OPT)) {
 						set_turn_log_timestamp_format(value);
 					} else if((pass == 0) && (c != 'u')) {
 					  set_option(c, value);
