@@ -75,7 +75,7 @@ public:
 	/**
 	 * Iterator constructor: creates iterator on raw messagebuffer.
 	 */
-	StunAttrIterator(uint8_t *buf, size_t sz) throw (WrongStunBufferFormatException) :
+	StunAttrIterator(uint8_t *buf, size_t sz) :
 		_buf(buf), _sz(sz)  {
 		if(!stun_is_command_message_str(_buf, _sz)) {
 			throw WrongStunBufferFormatException();
@@ -87,7 +87,7 @@ public:
 	 * Iterator constructor: create iterator over message.
 	 */
 	template<class T>
-	StunAttrIterator(T &msg) throw (WrongStunBufferFormatException) :
+	StunAttrIterator(T &msg) :
 		_buf(msg.getRawBuffer()), _sz(msg.getSize())  {
 		if(!stun_is_command_message_str(_buf, _sz)) {
 			throw WrongStunBufferFormatException();
@@ -99,7 +99,7 @@ public:
 	 * Iterator constructor: creates iterator over raw buffer, starting from first
 	 * location of an attribute of particular type.
 	 */
-	StunAttrIterator(uint8_t *buf, size_t sz, uint16_t attr_type) throw (WrongStunBufferFormatException) :
+	StunAttrIterator(uint8_t *buf, size_t sz, uint16_t attr_type) :
 			_buf(buf), _sz(sz)  {
 		if(!stun_is_command_message_str(_buf, _sz)) {
 			throw WrongStunBufferFormatException();
@@ -112,7 +112,7 @@ public:
 	 * location of an attribute of particular type.
 	 */
 	template<class T>
-	StunAttrIterator(T &msg, uint16_t attr_type) throw (WrongStunBufferFormatException) :
+	StunAttrIterator(T &msg, uint16_t attr_type) :
 			_buf(msg.getRawBuffer()), _sz(msg.getSize())  {
 		if(!stun_is_command_message_str(_buf, _sz)) {
 			throw WrongStunBufferFormatException();
@@ -123,7 +123,7 @@ public:
 	/**
 	 * Moves iterator to next attribute location
 	 */
-	void next() throw(EndOfStunMsgException) {
+	void next() {
 		if(!_sar) {
 			throw EndOfStunMsgException();
 		}
@@ -167,7 +167,7 @@ public:
 	 * Return raw memroy field of the attribute value.
 	 * If the attribute value length is zero (0), then return NULL.
 	 */
-	const uint8_t *getRawBuffer(size_t &sz) const throw(WrongStunAttrFormatException) {
+	const uint8_t *getRawBuffer(size_t &sz) const {
 		int len = stun_attr_get_len(_sar);
 		if(len<0)
 			throw WrongStunAttrFormatException();
@@ -196,7 +196,7 @@ public:
 	/**
 	 * Constructs attribute from iterator
 	 */
-	StunAttr(const StunAttrIterator &iter) throw(WrongStunAttrFormatException, EndOfStunMsgException) {
+	StunAttr(const StunAttrIterator &iter) {
 		if(iter.eof()) {
 			throw EndOfStunMsgException();
 		}
@@ -233,7 +233,7 @@ public:
 	/**
 	 * Set raw data value
 	 */
-	void setRawValue(uint8_t *value, size_t sz) throw(WrongStunAttrFormatException) {
+	void setRawValue(uint8_t *value, size_t sz) {
 		if(sz>0xFFFF)
 			throw WrongStunAttrFormatException();
 		if(_value)
@@ -262,7 +262,7 @@ public:
 	 * Add attribute to a message
 	 */
 	template<class T>
-	int addToMsg(T &msg) throw(WrongStunAttrFormatException, WrongStunBufferFormatException) {
+	int addToMsg(T &msg) {
 		if(!_attr_type)
 			throw WrongStunAttrFormatException();
 		uint8_t *buffer = msg.getRawBuffer();
@@ -281,7 +281,7 @@ protected:
 	/**
 	 * Virtual function member to add attribute to a raw buffer
 	 */
-	virtual int addToBuffer(uint8_t *buffer, size_t &sz) throw(WrongStunAttrFormatException, WrongStunBufferFormatException) {
+	virtual int addToBuffer(uint8_t *buffer, size_t &sz) {
 		if(buffer) {
 			if(!_value)
 				throw WrongStunAttrFormatException();
@@ -313,8 +313,7 @@ public:
 	StunAttrChannelNumber() : _cn(0) {
 		setType(STUN_ATTRIBUTE_CHANNEL_NUMBER);
 	}
-	StunAttrChannelNumber(const StunAttrIterator &iter)
-		throw(WrongStunAttrFormatException, EndOfStunMsgException) :
+	StunAttrChannelNumber(const StunAttrIterator &iter) :
 		StunAttr(iter) {
 
 		if(iter.eof())
@@ -331,7 +330,7 @@ public:
 		_cn = cn;
 	}
 protected:
-	virtual int addToBuffer(uint8_t *buffer, size_t &sz) throw(WrongStunAttrFormatException, WrongStunBufferFormatException) {
+	virtual int addToBuffer(uint8_t *buffer, size_t &sz) {
 		return stun_attr_add_channel_number_str(buffer,&sz,_cn);
 	}
 private:
@@ -346,8 +345,7 @@ public:
 	StunAttrEvenPort() : _ep(0) {
 		setType(STUN_ATTRIBUTE_EVEN_PORT);
 	}
-	StunAttrEvenPort(const StunAttrIterator &iter)
-		throw(WrongStunAttrFormatException, EndOfStunMsgException) :
+	StunAttrEvenPort(const StunAttrIterator &iter) :
 		StunAttr(iter) {
 
 		if(iter.eof())
@@ -362,7 +360,7 @@ public:
 		_ep = ep;
 	}
 protected:
-	virtual int addToBuffer(uint8_t *buffer, size_t &sz) throw(WrongStunAttrFormatException, WrongStunBufferFormatException) {
+	virtual int addToBuffer(uint8_t *buffer, size_t &sz) {
 		return stun_attr_add_str(buffer, &sz, STUN_ATTRIBUTE_EVEN_PORT, &_ep, 1);
 	}
 private:
@@ -377,8 +375,7 @@ public:
 	StunAttrReservationToken() : _rt(0) {
 		setType(STUN_ATTRIBUTE_RESERVATION_TOKEN);
 	}
-	StunAttrReservationToken(const StunAttrIterator &iter)
-		throw(WrongStunAttrFormatException, EndOfStunMsgException) :
+	StunAttrReservationToken(const StunAttrIterator &iter) :
 		StunAttr(iter) {
 
 		if(iter.eof())
@@ -393,7 +390,7 @@ public:
 		_rt = rt;
 	}
 protected:
-	virtual int addToBuffer(uint8_t *buffer, size_t &sz) throw(WrongStunAttrFormatException, WrongStunBufferFormatException) {
+	virtual int addToBuffer(uint8_t *buffer, size_t &sz) {
 		uint64_t reservation_token = ioa_ntoh64(_rt);
 		return stun_attr_add_str(buffer, &sz, STUN_ATTRIBUTE_RESERVATION_TOKEN, (uint8_t*) (&reservation_token), 8);
 	}
@@ -410,8 +407,7 @@ public:
 		addr_set_any(&_addr);
 		setType(attr_type);
 	}
-	StunAttrAddr(const StunAttrIterator &iter)
-		throw(WrongStunAttrFormatException, EndOfStunMsgException) :
+	StunAttrAddr(const StunAttrIterator &iter) :
 		StunAttr(iter) {
 
 		if(iter.eof())
@@ -430,7 +426,7 @@ public:
 		addr_cpy(&_addr,&addr);
 	}
 protected:
-	virtual int addToBuffer(uint8_t *buffer, size_t &sz) throw(WrongStunAttrFormatException, WrongStunBufferFormatException) {
+	virtual int addToBuffer(uint8_t *buffer, size_t &sz) {
 		return stun_attr_add_addr_str(buffer, &sz, getType(), &_addr);
 	}
 private:
@@ -445,8 +441,7 @@ public:
 	StunAttrChangeRequest() : _changeIp(0), _changePort(0) {
 		setType(STUN_ATTRIBUTE_CHANGE_REQUEST);
 	}
-	StunAttrChangeRequest(const StunAttrIterator &iter)
-		throw(WrongStunAttrFormatException, EndOfStunMsgException) :
+	StunAttrChangeRequest(const StunAttrIterator &iter) :
 		StunAttr(iter) {
 
 		if(iter.eof())
@@ -476,7 +471,7 @@ public:
 			_changePort = 0;
 	}
 protected:
-	virtual int addToBuffer(uint8_t *buffer, size_t &sz) throw(WrongStunAttrFormatException, WrongStunBufferFormatException) {
+	virtual int addToBuffer(uint8_t *buffer, size_t &sz) {
 		return stun_attr_add_change_request_str(buffer, &sz, _changeIp, _changePort);
 	}
 private:
@@ -492,8 +487,7 @@ public:
 	StunAttrResponsePort() : _rp(0) {
 		setType(STUN_ATTRIBUTE_RESPONSE_PORT);
 	}
-	StunAttrResponsePort(const StunAttrIterator &iter)
-		throw(WrongStunAttrFormatException, EndOfStunMsgException) :
+	StunAttrResponsePort(const StunAttrIterator &iter) :
 		StunAttr(iter) {
 
 		if(iter.eof())
@@ -513,7 +507,7 @@ public:
 		_rp = p;
 	}
 protected:
-	virtual int addToBuffer(uint8_t *buffer, size_t &sz) throw(WrongStunAttrFormatException, WrongStunBufferFormatException) {
+	virtual int addToBuffer(uint8_t *buffer, size_t &sz) {
 		return stun_attr_add_response_port_str(buffer, &sz, _rp);
 	}
 private:
@@ -528,8 +522,7 @@ public:
 	StunAttrPadding() : _p(0) {
 		setType(STUN_ATTRIBUTE_PADDING);
 	}
-	StunAttrPadding(const StunAttrIterator &iter)
-		throw(WrongStunAttrFormatException, EndOfStunMsgException) :
+	StunAttrPadding(const StunAttrIterator &iter) :
 		StunAttr(iter) {
 
 		if(iter.eof())
@@ -552,7 +545,7 @@ public:
 		_p = p;
 	}
 protected:
-	virtual int addToBuffer(uint8_t *buffer, size_t &sz) throw(WrongStunAttrFormatException, WrongStunBufferFormatException) {
+	virtual int addToBuffer(uint8_t *buffer, size_t &sz) {
 		return stun_attr_add_padding_str(buffer, &sz, _p);
 	}
 private:
@@ -623,7 +616,7 @@ public:
 	/**
 	 * Set message size
 	 */
-	void setSize(size_t sz) throw(WrongStunBufferFormatException) {
+	void setSize(size_t sz) {
 		if(sz>_allocated_sz)
 			throw WrongStunBufferFormatException();
 		_sz = sz;
@@ -700,14 +693,14 @@ public:
 	/**
 	 * Add attribute to the message
 	 */
-	int addAttr(StunAttr &attr) throw(WrongStunAttrFormatException, WrongStunBufferFormatException) {
+	int addAttr(StunAttr &attr) {
 		return attr.addToMsg(*this);
 	}
 
 	/**
 	 * Get transaction ID
 	 */
-	virtual stun_tid getTid() const throw(WrongStunBufferFormatException) {
+	virtual stun_tid getTid() const {
 		if(!_constructed || !isCommand())
 			throw WrongStunBufferFormatException();
 		stun_tid tid;
@@ -718,7 +711,7 @@ public:
 	/**
 	 * Set transaction ID
 	 */
-	virtual void setTid(stun_tid &tid) throw(WrongStunBufferFormatException) {
+	virtual void setTid(stun_tid &tid) {
 		if(!_constructed || !isCommand())
 			throw WrongStunBufferFormatException();
 		stun_tid_message_cpy(_buffer, &tid);
@@ -727,7 +720,7 @@ public:
 	/**
 	 * Add fingerprint to the message
 	 */
-	void addFingerprint() throw(WrongStunBufferFormatException) {
+	void addFingerprint() {
 		if(!_constructed || !isCommand())
 			throw WrongStunBufferFormatException();
 		stun_attr_add_fingerprint_str(_buffer,&_sz);
@@ -737,7 +730,7 @@ public:
 	 * Check message integrity, in secure communications.
 	 */
 	bool checkMessageIntegrity(turn_credential_type ct, std::string &uname, std::string &realm, std::string &upwd) const
-		throw(WrongStunBufferFormatException) {
+		{
 		if(!_constructed || !isCommand())
 			throw WrongStunBufferFormatException();
 		uint8_t *suname=(uint8_t*)strdup(uname.c_str());
@@ -755,7 +748,7 @@ public:
 	 * Adds long-term message integrity data to the message.
 	 */
 	void addLTMessageIntegrity(std::string &uname, std::string &realm, std::string &upwd, std::string &nonce)
-		throw(WrongStunBufferFormatException) {
+		{
 
 		if(!_constructed || !isCommand())
 			throw WrongStunBufferFormatException();
@@ -777,7 +770,7 @@ public:
 	 * Adds short-term message integrity data to the message.
 	 */
 	void addSTMessageIntegrity(std::string &uname, std::string &upwd)
-		throw(WrongStunBufferFormatException) {
+		{
 
 		if(!_constructed || !isCommand())
 			throw WrongStunBufferFormatException();
@@ -809,7 +802,7 @@ class StunMsgRequest : public StunMsg {
 public:
 	StunMsgRequest(uint16_t method) : _method(method) {};
 	StunMsgRequest(uint8_t *buffer, size_t total_sz, size_t sz, bool constructed)
-		throw(WrongStunBufferFormatException) :
+		:
 			StunMsg(buffer,total_sz,sz,constructed),_method(0) {
 
 		if(constructed) {
@@ -894,7 +887,7 @@ public:
 
 	};
 	StunMsgResponse(uint8_t *buffer, size_t total_sz, size_t sz, bool constructed)
-		throw(WrongStunBufferFormatException) :
+		:
 			StunMsg(buffer,total_sz,sz,constructed),_method(0),_err(0),_reason("") {
 
 		if(constructed) {
@@ -949,14 +942,14 @@ public:
 	/**
 	 * Set transaction ID
 	 */
-	void setTid(stun_tid &tid) throw(WrongStunBufferFormatException) {
+	void setTid(stun_tid &tid) {
 		_tid = tid;
 	}
 
 	/**
 	 * Get transaction ID
 	 */
-	virtual stun_tid getTid() const throw(WrongStunBufferFormatException) {
+	virtual stun_tid getTid() const {
 		return _tid;
 	}
 
@@ -1075,7 +1068,7 @@ class StunMsgIndication : public StunMsg {
 public:
 	StunMsgIndication(uint16_t method) : _method(method) {};
 	StunMsgIndication(uint8_t *buffer, size_t total_sz, size_t sz, bool constructed)
-		throw(WrongStunBufferFormatException) :
+		:
 			StunMsg(buffer,total_sz,sz,constructed),_method(0) {
 
 		if(constructed) {
@@ -1123,8 +1116,7 @@ private:
 class StunMsgChannel : public StunMsg {
 public:
 	StunMsgChannel(uint16_t cn, int length) : _cn(cn), _len(length) {};
-	StunMsgChannel(uint8_t *buffer, size_t total_sz, size_t sz, bool constructed)
-		throw(WrongStunBufferFormatException) :
+	StunMsgChannel(uint8_t *buffer, size_t total_sz, size_t sz, bool constructed) :
 			StunMsg(buffer,total_sz,sz,constructed),_cn(0) {
 
 		if(constructed) {
