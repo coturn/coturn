@@ -219,7 +219,7 @@ public:
 	 */
 	virtual ~StunAttr() {
 		if(_value)
-			free(_value,_sz);
+			free(_value);
 	}
 
 	/**
@@ -237,7 +237,7 @@ public:
 		if(sz>0xFFFF)
 			throw WrongStunAttrFormatException();
 		if(_value)
-			free(_value,_sz);
+			free(_value);
 		_sz = sz;
 		_value=(uint8_t*)malloc(_sz);
 		if(value)
