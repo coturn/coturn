@@ -581,7 +581,7 @@ public:
 	 */
 	virtual ~StunMsg() {
 		if(_deallocate && _buffer) {
-			free(_buffer, _allocated_sz);
+			free(_buffer);
 		}
 	}
 
