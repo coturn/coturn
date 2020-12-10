@@ -510,14 +510,12 @@ int ioa_addr_is_zero(ioa_addr *addr)
 			return (u[0] == 0);
 		} else if(addr->ss.sa_family == AF_INET6) {
 			const uint8_t *u = ((const uint8_t*)&(addr->s6.sin6_addr));
-			if(u[15] == 0) {
-				int i;
-				for(i=0;i<15;++i) {
-					if(u[i])
-						return 0;
-				}
-				return 1;
+			int i;
+			for(i=0;i<=15;++i) {
+				if(u[i])
+					return 0;
 			}
+			return 1;
 		}
 	}
 	return 0;
