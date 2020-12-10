@@ -33,7 +33,8 @@
 
 #include "ns_turn_ioaddr.h"
 #include "ns_turn_msg.h"
-
+#include <iostream>
+#include <stdexcept>
 #include <string>
 
 namespace turn {
@@ -43,27 +44,27 @@ class StunAttr;
 /**
  * Exception "end of buffer"
  */
-class EndOfStunMsgException {
+class EndOfStunMsgException : public std::runtime_error{
 public:
-	EndOfStunMsgException() {}
+	EndOfStunMsgException(const char* e) :std::runtime_error(e) {}
 	virtual ~EndOfStunMsgException() {}
 };
 
 /**
  * Exception "wrong format of StunAttr"
  */
-class WrongStunAttrFormatException {
+class WrongStunAttrFormatException : public std::runtime_error{
 public:
-	WrongStunAttrFormatException() {}
+	WrongStunAttrFormatException(const char* e) :std::runtime_error(e) {}
 	virtual ~WrongStunAttrFormatException() {}
 };
 
 /**
  * Exception "wrong format of StunBuffer"
  */
-class WrongStunBufferFormatException {
+class WrongStunBufferFormatException : public std::runtime_error {
 public:
-	WrongStunBufferFormatException() {}
+	WrongStunBufferFormatException(const char* e) :std::runtime_error(e) {}
 	virtual ~WrongStunBufferFormatException() {}
 };
 
@@ -75,36 +76,60 @@ public:
 	/**
 	 * Iterator constructor: creates iterator on raw messagebuffer.
 	 */
-	StunAttrIterator(uint8_t *buf, size_t sz) throw (WrongStunBufferFormatException) :
+	StunAttrIterator(uint8_t *buf, size_t sz) :
 		_buf(buf), _sz(sz)  {
+		try {
 		if(!stun_is_command_message_str(_buf, _sz)) {
-			throw WrongStunBufferFormatException();
+				throw WrongStunBufferFormatException("Wrong stun buffer");
 		}
 		_sar = stun_attr_get_first_str(_buf, _sz);
+	}
+		catch (WrongStunBufferFormatException e) {
+			std::cout << "catch an exception in function 'StunAttrIterator::StunAttrIterator(uint8_t *buf, size_t sz)' : " << e.what() << std::endl;
+		}
+		catch (...) {
+			std::cout << "catch an exception (...) in function 'StunAttrIterator::StunAttrIterator(uint8_t *buf, size_t sz)'" << std::endl;
+		}
 	}
 
 	/**
 	 * Iterator constructor: create iterator over message.
 	 */
 	template<class T>
-	StunAttrIterator(T &msg) throw (WrongStunBufferFormatException) :
+	StunAttrIterator(T &msg) :
 		_buf(msg.getRawBuffer()), _sz(msg.getSize())  {
+		try {
 		if(!stun_is_command_message_str(_buf, _sz)) {
-			throw WrongStunBufferFormatException();
+				throw WrongStunBufferFormatException("Wrong stun buffer");
 		}
 		_sar = stun_attr_get_first_str(_buf, _sz);
+	}
+		catch (WrongStunBufferFormatException e) {
+			std::cout << "catch an exception in function 'template<class T> StunAttrIterator::StunAttrIterator(T &msg)' : " << e.what() << std::endl;
+		}
+		catch (...) {
+			std::cout << "catch an exception (...) in function 'template<class T> StunAttrIterator::StunAttrIterator(T &msg)'" << std::endl;
+		}
 	}
 
 	/**
 	 * Iterator constructor: creates iterator over raw buffer, starting from first
 	 * location of an attribute of particular type.
 	 */
-	StunAttrIterator(uint8_t *buf, size_t sz, uint16_t attr_type) throw (WrongStunBufferFormatException) :
+	StunAttrIterator(uint8_t *buf, size_t sz, uint16_t attr_type) :
 			_buf(buf), _sz(sz)  {
+		try {
 		if(!stun_is_command_message_str(_buf, _sz)) {
-			throw WrongStunBufferFormatException();
+				throw WrongStunBufferFormatException("Wrong stun buffer");
 		}
 		_sar = stun_attr_get_first_by_type_str(_buf, _sz, attr_type);
+	}
+		catch (WrongStunBufferFormatException e) {
+			std::cout << "catch an exception in function 'StunAttrIterator::StunAttrIterator(uint8_t *buf, size_t sz, uint16_t attr_type)' : " << e.what() << std::endl;
+		}
+		catch (...) {
+			std::cout << "catch an exception (...) in function 'StunAttrIterator::StunAttrIterator(uint8_t *buf, size_t sz, uint16_t attr_type)'" << std::endl;
+		}
 	}
 
 	/**
@@ -112,22 +137,38 @@ public:
 	 * location of an attribute of particular type.
 	 */
 	template<class T>
-	StunAttrIterator(T &msg, uint16_t attr_type) throw (WrongStunBufferFormatException) :
+	StunAttrIterator(T &msg, uint16_t attr_type) :
 			_buf(msg.getRawBuffer()), _sz(msg.getSize())  {
+		try {
 		if(!stun_is_command_message_str(_buf, _sz)) {
-			throw WrongStunBufferFormatException();
+				throw WrongStunBufferFormatException("Wrong stun buffer");
 		}
 		_sar = stun_attr_get_first_by_type_str(_buf, _sz, attr_type);
+	}
+		catch (WrongStunBufferFormatException e) {
+			std::cout << "catch an exception in function 'template<class T> StunAttrIterator::StunAttrIterator(T &msg, uint16_t attr_type)' : " << e.what() << std::endl;
+		}
+		catch (...) {
+			std::cout << "catch an exception (...) in function 'template<class T> StunAttrIterator::StunAttrIterator(T &msg, uint16_t attr_type)'" << std::endl;
+		}
 	}
 
 	/**
 	 * Moves iterator to next attribute location
 	 */
-	void next() throw(EndOfStunMsgException) {
+	void next() {
+		try {
 		if(!_sar) {
-			throw EndOfStunMsgException();
+				throw EndOfStunMsgException("There is no next iterator");
 		}
 		_sar = stun_attr_get_next_str(_buf,_sz,_sar);
+	}
+		catch (EndOfStunMsgException e) {
+			std::cout << "catch an exception in function 'StunAttrIterator::next()' : " << e.what() << std::endl;
+		}
+		catch (...) {
+			std::cout << "catch an exception (...) in function 'StunAttrIterator::next()'" << std::endl;
+		}
 	}
 
 	/**
@@ -167,13 +208,21 @@ public:
 	 * Return raw memroy field of the attribute value.
 	 * If the attribute value length is zero (0), then return NULL.
 	 */
-	const uint8_t *getRawBuffer(size_t &sz) const throw(WrongStunAttrFormatException) {
+	const uint8_t *getRawBuffer(size_t &sz) const {
+		try {
 		int len = stun_attr_get_len(_sar);
 		if(len<0)
-			throw WrongStunAttrFormatException();
+				throw WrongStunAttrFormatException("Wrong stun attribute");
 		sz = (size_t)len;
 		const uint8_t *value = stun_attr_get_value(_sar);
 		return value;
+	}
+		catch (WrongStunAttrFormatException e) {
+			std::cout << "catch an exception in function 'const uint8_t *StunAttrIterator::getRawBuffer(size_t &sz) const' : " << e.what() << std::endl;
+		}
+		catch (...) {
+			std::cout << "catch an exception (...) in function 'const uint8_t *StunAttrIterator::getRawBuffer(size_t &sz) const'" << std::endl;
+		}
 	}
 	friend class StunAttr;
 private:
@@ -196,22 +245,33 @@ public:
 	/**
 	 * Constructs attribute from iterator
 	 */
-	StunAttr(const StunAttrIterator &iter) throw(WrongStunAttrFormatException, EndOfStunMsgException) {
+	StunAttr(const StunAttrIterator &iter) {
+		try {
 		if(iter.eof()) {
-			throw EndOfStunMsgException();
+				throw EndOfStunMsgException("There is no next iterator");
 		}
 		size_t sz = 0;
 		const uint8_t *ptr = iter.getRawBuffer(sz);
 		if(sz>=0xFFFF)
-			throw WrongStunAttrFormatException();
+				throw WrongStunAttrFormatException("Wrong stun attribute");
 		int at = iter.getType();
 		if(at<0)
-			throw WrongStunAttrFormatException();
+				throw WrongStunAttrFormatException("Wrong stun attribute");
 		_attr_type = (uint16_t)at;
 		_sz = sz;
 		_value=(uint8_t*)malloc(_sz);
 		if(ptr)
 			bcopy(ptr,_value,_sz);
+	}
+		catch (EndOfStunMsgException e) {
+			std::cout << "catch an exception in function 'StunAttr::StunAttr(const StunAttrIterator &iter)' : " << e.what() << std::endl;
+		}
+		catch (WrongStunAttrFormatException e) {
+			std::cout << "catch an exception in function 'StunAttr::StunAttr(const StunAttrIterator &iter)' : " << e.what() << std::endl;
+		}
+		catch (...) {
+			std::cout << "catch an exception (...) in function 'StunAttr::StunAttr(const StunAttrIterator &iter)'" << std::endl;
+		}
 	}
 
 	/**
@@ -233,15 +293,23 @@ public:
 	/**
 	 * Set raw data value
 	 */
-	void setRawValue(uint8_t *value, size_t sz) throw(WrongStunAttrFormatException) {
+	void setRawValue(uint8_t *value, size_t sz) {
+		try {
 		if(sz>0xFFFF)
-			throw WrongStunAttrFormatException();
+				throw WrongStunAttrFormatException("Wrong stun attribute");
 		if(_value)
 			free(_value,_sz);
 		_sz = sz;
 		_value=(uint8_t*)malloc(_sz);
 		if(value)
 			bcopy(value,_value,_sz);
+	}
+		catch (WrongStunAttrFormatException e) {
+			std::cout << "catch an exception in function 'void StunAttr::setRawValue()' : " << e.what() << std::endl;
+		}
+		catch (...) {
+			std::cout << "catch an exception (...) in function 'void StunAttr::setRawValue()'" << std::endl;
+		}
 	}
 
 	/**
@@ -262,35 +330,57 @@ public:
 	 * Add attribute to a message
 	 */
 	template<class T>
-	int addToMsg(T &msg) throw(WrongStunAttrFormatException, WrongStunBufferFormatException) {
+	int addToMsg(T &msg) {
+		try {
 		if(!_attr_type)
-			throw WrongStunAttrFormatException();
+				throw WrongStunAttrFormatException("Wrong stun attribute");
 		uint8_t *buffer = msg.getRawBuffer();
 		if(buffer) {
 			size_t sz = msg.getSize();
 			if(addToBuffer(buffer, sz)<0) {
-				throw WrongStunBufferFormatException();
+					throw WrongStunBufferFormatException("Wrong stun buffer");
 			}
 			msg.setSize(sz);
 			return 0;
 		}
-		throw WrongStunBufferFormatException();
+			throw WrongStunBufferFormatException("Wrong stun buffer");
+	}
+		catch (WrongStunAttrFormatException e) {
+			std::cout << "catch an exception in function 'template<class T> int StunAttr::addToMsg(T &msg)' : " << e.what() << std::endl;
+		}
+		catch (WrongStunBufferFormatException e) {
+			std::cout << "catch an exception in function 'template<class T> int StunAttr::addToMsg(T &msg)' : " << e.what() << std::endl;
+		}
+		catch (...) {
+			std::cout << "catch an exception (...) in function 'template<class T> int StunAttr::addToMsg(T &msg)'" << std::endl;
+		}
 	}
 protected:
 
 	/**
 	 * Virtual function member to add attribute to a raw buffer
 	 */
-	virtual int addToBuffer(uint8_t *buffer, size_t &sz) throw(WrongStunAttrFormatException, WrongStunBufferFormatException) {
+	virtual int addToBuffer(uint8_t *buffer, size_t &sz) {
+		try {
 		if(buffer) {
 			if(!_value)
-				throw WrongStunAttrFormatException();
+					throw WrongStunAttrFormatException("Wrong stun attribute");
 			if(stun_attr_add_str(buffer, &sz, _attr_type, _value, _sz)<0) {
-				throw WrongStunBufferFormatException();
+					throw WrongStunBufferFormatException("Wrong stun buffer");
 			}
 			return 0;
 		}
-		throw WrongStunBufferFormatException();
+			throw WrongStunBufferFormatException("Wrong stun buffer");
+	}
+		catch (WrongStunAttrFormatException e) {
+			std::cout << "catch an exception in function 'virtual int StunAttr::addToBuffer(uint8_t *buffer, size_t &sz)' : " << e.what() << std::endl;
+		}
+		catch (WrongStunBufferFormatException e) {
+			std::cout << "catch an exception in function 'virtual int StunAttr::addToBuffer(uint8_t *buffer, size_t &sz)' : " << e.what() << std::endl;
+		}
+		catch (...) {
+			std::cout << "catch an exception (...) in function 'virtual int StunAttr::addToBuffer(uint8_t *buffer, size_t &sz)'" << std::endl;
+		}
 	}
 
 	/**
@@ -313,15 +403,24 @@ public:
 	StunAttrChannelNumber() : _cn(0) {
 		setType(STUN_ATTRIBUTE_CHANNEL_NUMBER);
 	}
-	StunAttrChannelNumber(const StunAttrIterator &iter)
-		throw(WrongStunAttrFormatException, EndOfStunMsgException) :
+	StunAttrChannelNumber(const StunAttrIterator &iter) :
 		StunAttr(iter) {
-
+		try {
 		if(iter.eof())
-			throw EndOfStunMsgException();
+				throw EndOfStunMsgException("There is no next iterator");
 		_cn = stun_attr_get_channel_number(getSar(iter));
 		if(!_cn)
-			throw WrongStunAttrFormatException();
+				throw WrongStunAttrFormatException("Wrong stun attribute");
+	}
+		catch (EndOfStunMsgException e) {
+			std::cout << "catch an exception in function 'StunAttrChannelNumber::StunAttrChannelNumber(const StunAttrIterator &iter)' : " << e.what() << std::endl;
+		}
+		catch (WrongStunAttrFormatException e) {
+			std::cout << "catch an exception in function 'StunAttrChannelNumber::StunAttrChannelNumber(const StunAttrIterator &iter)' : " << e.what() << std::endl;
+		}
+		catch (...) {
+			std::cout << "catch an exception (...) in function 'StunAttrChannelNumber::StunAttrChannelNumber(const StunAttrIterator &iter)'" << std::endl;
+		}
 	}
 	virtual ~StunAttrChannelNumber() {}
 	uint16_t getChannelNumber() const {
@@ -331,7 +430,7 @@ public:
 		_cn = cn;
 	}
 protected:
-	virtual int addToBuffer(uint8_t *buffer, size_t &sz) throw(WrongStunAttrFormatException, WrongStunBufferFormatException) {
+	virtual int addToBuffer(uint8_t *buffer, size_t &sz) {
 		return stun_attr_add_channel_number_str(buffer,&sz,_cn);
 	}
 private:
@@ -346,13 +445,19 @@ public:
 	StunAttrEvenPort() : _ep(0) {
 		setType(STUN_ATTRIBUTE_EVEN_PORT);
 	}
-	StunAttrEvenPort(const StunAttrIterator &iter)
-		throw(WrongStunAttrFormatException, EndOfStunMsgException) :
+	StunAttrEvenPort(const StunAttrIterator &iter) :
 		StunAttr(iter) {
-
+		try {
 		if(iter.eof())
-			throw EndOfStunMsgException();
+				throw EndOfStunMsgException("There is no next iterator");
 		_ep = stun_attr_get_even_port(getSar(iter));
+	}
+		catch (EndOfStunMsgException e) {
+			std::cout << "catch an exception in function 'StunAttrEvenPort::StunAttrEvenPort(const StunAttrIterator &iter)' : " << e.what() << std::endl;
+		}
+		catch (...) {
+			std::cout << "catch an exception (...) in function 'StunAttrEvenPort::StunAttrEvenPort(const StunAttrIterator &iter)'" << std::endl;
+		}
 	}
 	virtual ~StunAttrEvenPort() {}
 	uint8_t getEvenPort() const {
@@ -362,7 +467,7 @@ public:
 		_ep = ep;
 	}
 protected:
-	virtual int addToBuffer(uint8_t *buffer, size_t &sz) throw(WrongStunAttrFormatException, WrongStunBufferFormatException) {
+	virtual int addToBuffer(uint8_t *buffer, size_t &sz) {
 		return stun_attr_add_str(buffer, &sz, STUN_ATTRIBUTE_EVEN_PORT, &_ep, 1);
 	}
 private:
@@ -377,13 +482,19 @@ public:
 	StunAttrReservationToken() : _rt(0) {
 		setType(STUN_ATTRIBUTE_RESERVATION_TOKEN);
 	}
-	StunAttrReservationToken(const StunAttrIterator &iter)
-		throw(WrongStunAttrFormatException, EndOfStunMsgException) :
+	StunAttrReservationToken(const StunAttrIterator &iter) :
 		StunAttr(iter) {
-
+		try {
 		if(iter.eof())
-			throw EndOfStunMsgException();
+				throw EndOfStunMsgException("There is no next iterator");
 		_rt = stun_attr_get_reservation_token_value(getSar(iter));
+	}
+		catch (EndOfStunMsgException e) {
+			std::cout << "catch an exception in function 'StunAttrReservationToken::StunAttrReservationToken(const StunAttrIterator &iter)' : " << e.what() << std::endl;
+		}
+		catch (...) {
+			std::cout << "catch an exception (...) in function 'StunAttrReservationToken::StunAttrReservationToken(const StunAttrIterator &iter)'" << std::endl;
+		}
 	}
 	virtual ~StunAttrReservationToken() {}
 	uint64_t getReservationToken() const {
@@ -393,7 +504,7 @@ public:
 		_rt = rt;
 	}
 protected:
-	virtual int addToBuffer(uint8_t *buffer, size_t &sz) throw(WrongStunAttrFormatException, WrongStunBufferFormatException) {
+	virtual int addToBuffer(uint8_t *buffer, size_t &sz) {
 		uint64_t reservation_token = ioa_ntoh64(_rt);
 		return stun_attr_add_str(buffer, &sz, STUN_ATTRIBUTE_RESERVATION_TOKEN, (uint8_t*) (&reservation_token), 8);
 	}
@@ -410,16 +521,25 @@ public:
 		addr_set_any(&_addr);
 		setType(attr_type);
 	}
-	StunAttrAddr(const StunAttrIterator &iter)
-		throw(WrongStunAttrFormatException, EndOfStunMsgException) :
+	StunAttrAddr(const StunAttrIterator &iter) :
 		StunAttr(iter) {
-
+		try {
 		if(iter.eof())
-			throw EndOfStunMsgException();
+				throw EndOfStunMsgException("There is no next iterator");
 		size_t sz = 0;
 		const uint8_t *buf = iter.getRawBuffer(sz);
 		if(stun_attr_get_addr_str(buf,sz,getSar(iter),&_addr,NULL)<0) {
-			throw WrongStunAttrFormatException();
+				throw WrongStunAttrFormatException("Wrong stun attribute");
+		}
+	}
+		catch (EndOfStunMsgException e) {
+			std::cout << "catch an exception in function 'StunAttrAddr::StunAttrAddr(const StunAttrIterator &iter)' : " << e.what() << std::endl;
+		}
+		catch (WrongStunAttrFormatException e) {
+			std::cout << "catch an exception in function 'StunAttrAddr::StunAttrAddr(const StunAttrIterator &iter)' : " << e.what() << std::endl;
+		}
+		catch (...) {
+			std::cout << "catch an exception (...) in function 'StunAttrAddr::StunAttrAddr(const StunAttrIterator &iter)'" << std::endl;
 		}
 	}
 	virtual ~StunAttrAddr() {}
@@ -430,7 +550,7 @@ public:
 		addr_cpy(&_addr,&addr);
 	}
 protected:
-	virtual int addToBuffer(uint8_t *buffer, size_t &sz) throw(WrongStunAttrFormatException, WrongStunBufferFormatException) {
+	virtual int addToBuffer(uint8_t *buffer, size_t &sz) {
 		return stun_attr_add_addr_str(buffer, &sz, getType(), &_addr);
 	}
 private:
@@ -445,16 +565,26 @@ public:
 	StunAttrChangeRequest() : _changeIp(0), _changePort(0) {
 		setType(STUN_ATTRIBUTE_CHANGE_REQUEST);
 	}
-	StunAttrChangeRequest(const StunAttrIterator &iter)
-		throw(WrongStunAttrFormatException, EndOfStunMsgException) :
+	StunAttrChangeRequest(const StunAttrIterator &iter) :
 		StunAttr(iter) {
-
+		try {
 		if(iter.eof())
-			throw EndOfStunMsgException();
+				throw EndOfStunMsgException("There is no next iterator");
 
 		if(stun_attr_get_change_request_str(getSar(iter), &_changeIp, &_changePort)<0) {
-			throw WrongStunAttrFormatException();
+				throw WrongStunAttrFormatException("Wrong stun attribute");
+			}
 		}
+		catch (EndOfStunMsgException e) {
+			std::cout << "catch an exception in function 'StunAttrChangeRequest::StunAttrChangeRequest(const StunAttrIterator &iter)' : " << e.what() << std::endl;
+		}
+		catch (WrongStunAttrFormatException e) {
+			std::cout << "catch an exception in function 'StunAttrChangeRequest::StunAttrChangeRequest(const StunAttrIterator &iter)' : " << e.what() << std::endl;
+		}
+		catch (...) {
+			std::cout << "catch an exception (...) in function 'StunAttrChangeRequest::StunAttrChangeRequest(const StunAttrIterator &iter)'" << std::endl;
+		}
+		
 	}
 	virtual ~StunAttrChangeRequest() {}
 	bool getChangeIp() const {
@@ -476,7 +606,7 @@ public:
 			_changePort = 0;
 	}
 protected:
-	virtual int addToBuffer(uint8_t *buffer, size_t &sz) throw(WrongStunAttrFormatException, WrongStunBufferFormatException) {
+	virtual int addToBuffer(uint8_t *buffer, size_t &sz) {
 		return stun_attr_add_change_request_str(buffer, &sz, _changeIp, _changePort);
 	}
 private:
@@ -492,18 +622,27 @@ public:
 	StunAttrResponsePort() : _rp(0) {
 		setType(STUN_ATTRIBUTE_RESPONSE_PORT);
 	}
-	StunAttrResponsePort(const StunAttrIterator &iter)
-		throw(WrongStunAttrFormatException, EndOfStunMsgException) :
+	StunAttrResponsePort(const StunAttrIterator &iter) :
 		StunAttr(iter) {
-
+		try {
 		if(iter.eof())
-			throw EndOfStunMsgException();
+				throw EndOfStunMsgException("There is no next iterator");
 
 		int rp = stun_attr_get_response_port_str(getSar(iter));
 		if(rp<0) {
-			throw WrongStunAttrFormatException();
+				throw WrongStunAttrFormatException("Wrong stun attribute");
 		}
 		_rp = (uint16_t)rp;
+	}
+		catch (EndOfStunMsgException e) {
+			std::cout << "catch an exception in function 'StunAttrResponsePort::StunAttrResponsePort(const StunAttrIterator &iter)' : " << e.what() << std::endl;
+		}
+		catch (WrongStunAttrFormatException e) {
+			std::cout << "catch an exception in function 'StunAttrResponsePort::StunAttrResponsePort(const StunAttrIterator &iter)' : " << e.what() << std::endl;
+		}
+		catch (...) {
+			std::cout << "catch an exception (...) in function 'StunAttrResponsePort::StunAttrResponsePort(const StunAttrIterator &iter)'" << std::endl;
+		}
 	}
 	virtual ~StunAttrResponsePort() {}
 	uint16_t getResponsePort() const {
@@ -513,7 +652,7 @@ public:
 		_rp = p;
 	}
 protected:
-	virtual int addToBuffer(uint8_t *buffer, size_t &sz) throw(WrongStunAttrFormatException, WrongStunBufferFormatException) {
+	virtual int addToBuffer(uint8_t *buffer, size_t &sz) {
 		return stun_attr_add_response_port_str(buffer, &sz, _rp);
 	}
 private:
@@ -528,18 +667,27 @@ public:
 	StunAttrPadding() : _p(0) {
 		setType(STUN_ATTRIBUTE_PADDING);
 	}
-	StunAttrPadding(const StunAttrIterator &iter)
-		throw(WrongStunAttrFormatException, EndOfStunMsgException) :
+	StunAttrPadding(const StunAttrIterator &iter) :
 		StunAttr(iter) {
-
+		try {
 		if(iter.eof())
-			throw EndOfStunMsgException();
+				throw EndOfStunMsgException("There is no next iterator");
 
 		int p = stun_attr_get_padding_len_str(getSar(iter));
 		if(p<0) {
-			throw WrongStunAttrFormatException();
+				throw WrongStunAttrFormatException("Wrong stun attribute");
 		}
 		_p = (uint16_t)p;
+	}
+		catch (EndOfStunMsgException e) {
+			std::cout << "catch an exception in function 'StunAttrPadding::StunAttrPadding(const StunAttrIterator &iter)' : " << e.what() << std::endl;
+		}
+		catch (WrongStunAttrFormatException e) {
+			std::cout << "catch an exception in function 'StunAttrPadding::StunAttrPadding(const StunAttrIterator &iter)' : " << e.what() << std::endl;
+		}
+		catch (...) {
+			std::cout << "catch an exception (...) in function 'StunAttrPadding::StunAttrPadding(const StunAttrIterator &iter)'" << std::endl;
+		}
 	}
 	virtual ~StunAttrPadding() {}
 	uint16_t getPadding() const {
@@ -552,7 +700,7 @@ public:
 		_p = p;
 	}
 protected:
-	virtual int addToBuffer(uint8_t *buffer, size_t &sz) throw(WrongStunAttrFormatException, WrongStunBufferFormatException) {
+	virtual int addToBuffer(uint8_t *buffer, size_t &sz) {
 		return stun_attr_add_padding_str(buffer, &sz, _p);
 	}
 private:
@@ -623,10 +771,18 @@ public:
 	/**
 	 * Set message size
 	 */
-	void setSize(size_t sz) throw(WrongStunBufferFormatException) {
+	void setSize(size_t sz) {
+		try {
 		if(sz>_allocated_sz)
-			throw WrongStunBufferFormatException();
+				throw WrongStunBufferFormatException("Wrong stun buffer");
 		_sz = sz;
+	}
+		catch (WrongStunBufferFormatException e) {
+			std::cout << "catch an exception in function 'void StunMsg::setSize(size_t sz)' : " << e.what() << std::endl;
+		}
+		catch (...) {
+			std::cout << "catch an exception (...) in function 'void StunMsg::setSize(size_t sz)'" << std::endl;
+		}
 	}
 
 	/**
@@ -700,46 +856,71 @@ public:
 	/**
 	 * Add attribute to the message
 	 */
-	int addAttr(StunAttr &attr) throw(WrongStunAttrFormatException, WrongStunBufferFormatException) {
+	int addAttr(StunAttr &attr) {
 		return attr.addToMsg(*this);
 	}
 
 	/**
 	 * Get transaction ID
 	 */
-	virtual stun_tid getTid() const throw(WrongStunBufferFormatException) {
+	virtual stun_tid getTid() const {
+		try {
 		if(!_constructed || !isCommand())
-			throw WrongStunBufferFormatException();
+				throw WrongStunBufferFormatException("Wrong stun buffer");
 		stun_tid tid;
 		stun_tid_from_message_str(_buffer,_sz,&tid);
 		return tid;
+	}
+		catch (WrongStunBufferFormatException e) {
+			std::cout << "catch an exception in function 'virtual stun_tid StunMsg::getTid() const' : " << e.what() << std::endl;
+		}
+		catch (...) {
+			std::cout << "catch an exception (...) in function 'virtual stun_tid StunMsg::getTid() const'" << std::endl;
+		}
 	}
 
 	/**
 	 * Set transaction ID
 	 */
-	virtual void setTid(stun_tid &tid) throw(WrongStunBufferFormatException) {
+	virtual void setTid(stun_tid &tid) {
+		try {
 		if(!_constructed || !isCommand())
-			throw WrongStunBufferFormatException();
+				throw WrongStunBufferFormatException("Wrong stun buffer");
 		stun_tid_message_cpy(_buffer, &tid);
+	}
+		catch (WrongStunBufferFormatException e) {
+			std::cout << "catch an exception in function 'virtual void StunMsg::setTid(stun_tid &tid)' : " << e.what() << std::endl;
+		}
+		catch (...) {
+			std::cout << "catch an exception (...) in function 'virtual void StunMsg::setTid(stun_tid &tid)'" << std::endl;
+		}
 	}
 
 	/**
 	 * Add fingerprint to the message
 	 */
-	void addFingerprint() throw(WrongStunBufferFormatException) {
+	void addFingerprint() {
+		try {
 		if(!_constructed || !isCommand())
-			throw WrongStunBufferFormatException();
+				throw WrongStunBufferFormatException("Wrong stun buffer");
 		stun_attr_add_fingerprint_str(_buffer,&_sz);
+	}
+		catch (WrongStunBufferFormatException e) {
+			std::cout << "catch an exception in function 'void StunMsg::addFingerprint()' : " << e.what() << std::endl;
+		}
+		catch (...) {
+			std::cout << "catch an exception (...) in function 'void StunMsg::addFingerprint()'" << std::endl;
+		}
+		
 	}
 
 	/**
 	 * Check message integrity, in secure communications.
 	 */
-	bool checkMessageIntegrity(turn_credential_type ct, std::string &uname, std::string &realm, std::string &upwd) const
-		throw(WrongStunBufferFormatException) {
+	bool checkMessageIntegrity(turn_credential_type ct, std::string &uname, std::string &realm, std::string &upwd) const {
+		try {
 		if(!_constructed || !isCommand())
-			throw WrongStunBufferFormatException();
+				throw WrongStunBufferFormatException("Wrong stun buffer");
 		uint8_t *suname=(uint8_t*)strdup(uname.c_str());
 		uint8_t *srealm=(uint8_t*)strdup(realm.c_str());
 		uint8_t *supwd=(uint8_t*)strdup(upwd.c_str());
@@ -750,15 +931,21 @@ public:
 		free(supwd);
 		return ret;
 	}
+		catch (WrongStunBufferFormatException e) {
+			std::cout << "catch an exception in function 'bool StunMsg::checkMessageIntegrity(turn_credential_type ct, std::string &uname, std::string &realm, std::string &upwd) const' : " << e.what() << std::endl;
+		}
+		catch (...) {
+			std::cout << "catch an exception (...) in function 'bool StunMsg::checkMessageIntegrity(turn_credential_type ct, std::string &uname, std::string &realm, std::string &upwd) const'" << std::endl;
+		}
+	}
 
 	/**
 	 * Adds long-term message integrity data to the message.
 	 */
-	void addLTMessageIntegrity(std::string &uname, std::string &realm, std::string &upwd, std::string &nonce)
-		throw(WrongStunBufferFormatException) {
-
+	void addLTMessageIntegrity(std::string &uname, std::string &realm, std::string &upwd, std::string &nonce) {
+		try {
 		if(!_constructed || !isCommand())
-			throw WrongStunBufferFormatException();
+				throw WrongStunBufferFormatException("Wrong stun buffer");
 
 		uint8_t *suname=(uint8_t*)strdup(uname.c_str());
 		uint8_t *srealm=(uint8_t*)strdup(realm.c_str());
@@ -772,15 +959,21 @@ public:
 		free(supwd);
 		free(snonce);
 	}
+		catch (WrongStunBufferFormatException e) {
+			std::cout << "catch an exception in function 'void StunMsg::addLTMessageIntegrity(std::string &uname, std::string &realm, std::string &upwd, std::string &nonce)' : " << e.what() << std::endl;
+		}
+		catch (...) {
+			std::cout << "catch an exception (...) in function 'void StunMsg::addLTMessageIntegrity(std::string &uname, std::string &realm, std::string &upwd, std::string &nonce)'" << std::endl;
+		}
+	}
 
 	/**
 	 * Adds short-term message integrity data to the message.
 	 */
-	void addSTMessageIntegrity(std::string &uname, std::string &upwd)
-		throw(WrongStunBufferFormatException) {
-
+	void addSTMessageIntegrity(std::string &uname, std::string &upwd) {
+		try {
 		if(!_constructed || !isCommand())
-			throw WrongStunBufferFormatException();
+				throw WrongStunBufferFormatException("Wrong stun buffer");
 
 		uint8_t *suname=(uint8_t*)strdup(uname.c_str());
 		uint8_t *supwd=(uint8_t*)strdup(upwd.c_str());
@@ -789,6 +982,13 @@ public:
 
 		free(suname);
 		free(supwd);
+	}
+		catch (WrongStunBufferFormatException e) {
+			std::cout << "catch an exception in function 'void StunMsg::addSTMessageIntegrity(std::string &uname, std::string &upwd)' : " << e.what() << std::endl;
+		}
+		catch (...) {
+			std::cout << "catch an exception (...) in function 'void StunMsg::addSTMessageIntegrity(std::string &uname, std::string &upwd)'" << std::endl;
+		}
 	}
 
 protected:
@@ -809,14 +1009,21 @@ class StunMsgRequest : public StunMsg {
 public:
 	StunMsgRequest(uint16_t method) : _method(method) {};
 	StunMsgRequest(uint8_t *buffer, size_t total_sz, size_t sz, bool constructed)
-		throw(WrongStunBufferFormatException) :
+		:
 			StunMsg(buffer,total_sz,sz,constructed),_method(0) {
-
+		try {
 		if(constructed) {
 			if(!stun_is_request_str(buffer,sz)) {
-				throw WrongStunBufferFormatException();
+					throw WrongStunBufferFormatException("Wrong stun buffer");
 			}
 			_method = stun_get_method_str(buffer,sz);
+		}
+	}
+		catch (WrongStunBufferFormatException e) {
+			std::cout << "catch an exception in function 'StunMsgRequest::StunMsgRequest(uint8_t *buffer, size_t total_sz, size_t sz, bool constructed)' : " << e.what() << std::endl;
+		}
+		catch (...) {
+			std::cout << "catch an exception (...) in function 'StunMsgRequest::StunMsgRequest(uint8_t *buffer, size_t total_sz, size_t sz, bool constructed)'" << std::endl;
 		}
 	}
 	virtual ~StunMsgRequest() {}
@@ -894,19 +1101,26 @@ public:
 
 	};
 	StunMsgResponse(uint8_t *buffer, size_t total_sz, size_t sz, bool constructed)
-		throw(WrongStunBufferFormatException) :
+		:
 			StunMsg(buffer,total_sz,sz,constructed),_method(0),_err(0),_reason("") {
-
+		try {
 		if(constructed) {
 			if(!stun_is_success_response_str(buffer,sz)) {
 				uint8_t errtxt[0xFFFF];
 				if(!stun_is_error_response_str(buffer,sz,&_err,errtxt,sizeof(errtxt))) {
-					throw WrongStunBufferFormatException();
+						throw WrongStunBufferFormatException("Wrong stun buffer");
 				}
 				_reason = (char*)errtxt;
 			}
 			_method = stun_get_method_str(buffer,sz);
 			stun_tid_from_message_str(_buffer,_sz,&_tid);
+		}
+	}
+		catch (WrongStunBufferFormatException e) {
+			std::cout << "catch an exception in function 'StunMsgResponse::StunMsgResponse(uint8_t *buffer, size_t total_sz, size_t sz, bool constructed)' : " << e.what() << std::endl;
+		}
+		catch (...) {
+			std::cout << "catch an exception (...) in function 'StunMsgResponse::StunMsgResponse(uint8_t *buffer, size_t total_sz, size_t sz, bool constructed)'" << std::endl;
 		}
 	}
 
@@ -949,14 +1163,14 @@ public:
 	/**
 	 * Set transaction ID
 	 */
-	void setTid(stun_tid &tid) throw(WrongStunBufferFormatException) {
+	void setTid(stun_tid &tid) {
 		_tid = tid;
 	}
 
 	/**
 	 * Get transaction ID
 	 */
-	virtual stun_tid getTid() const throw(WrongStunBufferFormatException) {
+	virtual stun_tid getTid() const {
 		return _tid;
 	}
 
@@ -1043,22 +1257,30 @@ protected:
 	}
 
 	virtual bool check() {
+		try {
 		if(!_constructed)
 			return false;
 		if(!stun_is_success_response_str(_buffer,_sz)) {
 			uint8_t errtxt[0xFFFF];
 			int cerr=0;
 			if(!stun_is_error_response_str(_buffer,_sz,&cerr,errtxt,sizeof(errtxt))) {
-				throw WrongStunBufferFormatException();
+					throw WrongStunBufferFormatException("Wrong stun buffer");
 			}
 			if(cerr != _err) {
-				throw WrongStunBufferFormatException();
+					throw WrongStunBufferFormatException("Wrong stun buffer");
 			}
 		}
 		if(_method != stun_get_method_str(_buffer,_sz)) {
 			return false;
 		}
 		return true;
+	}
+		catch (WrongStunBufferFormatException e) {
+			std::cout << "catch an exception in function 'virtual bool StunMsgResponse::check()' : " << e.what() << std::endl;
+		}
+		catch (...) {
+			std::cout << "catch an exception (...) in function 'virtual bool StunMsgResponse::check()'" << std::endl;
+		}
 	}
 
 private:
@@ -1075,14 +1297,21 @@ class StunMsgIndication : public StunMsg {
 public:
 	StunMsgIndication(uint16_t method) : _method(method) {};
 	StunMsgIndication(uint8_t *buffer, size_t total_sz, size_t sz, bool constructed)
-		throw(WrongStunBufferFormatException) :
+		:
 			StunMsg(buffer,total_sz,sz,constructed),_method(0) {
-
+		try {
 		if(constructed) {
 			if(!stun_is_indication_str(buffer,sz)) {
-				throw WrongStunBufferFormatException();
+					throw WrongStunBufferFormatException("Wrong stun buffer");
 			}
 			_method = stun_get_method_str(buffer,sz);
+		}
+	}
+		catch (WrongStunBufferFormatException e) {
+			std::cout << "catch an exception in function 'StunMsgIndication::StunMsgIndication(uint8_t *buffer, size_t total_sz, size_t sz, bool constructed)' : " << e.what() << std::endl;
+		}
+		catch (...) {
+			std::cout << "catch an exception (...) in function 'StunMsgIndication::StunMsgIndication(uint8_t *buffer, size_t total_sz, size_t sz, bool constructed)'" << std::endl;
 		}
 	}
 	virtual ~StunMsgIndication() {}
@@ -1123,23 +1352,29 @@ private:
 class StunMsgChannel : public StunMsg {
 public:
 	StunMsgChannel(uint16_t cn, int length) : _cn(cn), _len(length) {};
-	StunMsgChannel(uint8_t *buffer, size_t total_sz, size_t sz, bool constructed)
-		throw(WrongStunBufferFormatException) :
+	StunMsgChannel(uint8_t *buffer, size_t total_sz, size_t sz, bool constructed) :
 			StunMsg(buffer,total_sz,sz,constructed),_cn(0) {
-
+		try {
 		if(constructed) {
 			if(!stun_is_channel_message_str(buffer,&_sz,&_cn,0)) {
-				throw WrongStunBufferFormatException();
+					throw WrongStunBufferFormatException("Wrong stun buffer");
 			}
 			if(_sz>0xFFFF || _sz<4)
-				throw WrongStunBufferFormatException();
+					throw WrongStunBufferFormatException("Wrong stun buffer");
 
 			_len = _sz-4;
 		} else {
 			if(total_sz>0xFFFF || total_sz<4)
-				throw WrongStunBufferFormatException();
+					throw WrongStunBufferFormatException("Wrong stun buffer");
 
 			_len = 0;
+		}
+	}
+		catch (WrongStunBufferFormatException e) {
+			std::cout << "catch an exception in function 'StunMsgChannel::StunMsgChannel(uint8_t *buffer, size_t total_sz, size_t sz, bool constructed)' : " << e.what() << std::endl;
+		}
+		catch (...) {
+			std::cout << "catch an exception (...) in function 'StunMsgChannel::StunMsgChannel(uint8_t *buffer, size_t total_sz, size_t sz, bool constructed)'" << std::endl;
 		}
 	}
 	virtual ~StunMsgChannel() {}
