@@ -496,6 +496,12 @@ int ioa_addr_is_loopback(ioa_addr *addr)
 	return 0;
 }
 
+/*
+To avoid a vulnerability this function checks whether the addr is in 0.0.0.0/8 or ::/128.
+Source from (INADDR_ANY) 0.0.0.0/32 and (in6addr_any) ::/128 routed to loopback on Linux systems for old BSD backward compatibility.
+https://github.com/torvalds/linux/blob/a2f5ea9e314ba6778f885c805c921e9362ec0420/net/ipv6/tcp_ipv6.c#L182
+To avoid any trouble we match the whole 0.0.0.0/8 that defined in RFC6890 as local network "this".
+*/
 int ioa_addr_is_zero(ioa_addr *addr)
 {
 	if(addr) {
