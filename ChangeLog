@@ -19,6 +19,8 @@ Version 4.5.2 'dan Eider':
 	- merge PR #599 (by Cédric Krier)
 		* Do not use FIPS and remove hardcode OPENSSL_VERSION_NUMBER with LibreSSL
 	- update Docker mongoDB and fix with workaround the missing systemctl
+	- merge PR #660 (by Camden Narzt)
+		* fix compilation on macOS Big Sur
 
 24/06/2020 Oleg Moskalenko <mom040267@gmail.com> Mihály Mészáros <misi@majd.eu>
 Version 4.5.1.3 'dan Eider':
