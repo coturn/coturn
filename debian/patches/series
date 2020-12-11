@@ -4,3 +4,4 @@
 Fix-CVE-2020-6061-TALOS-2020-0984.patch
 Fix-CVE-2020-6062-TALOS-2020-0985.patch
 init-with-zero-any-new-or-reused-stun-buffers.patch
+Fix-CVE-2020-26262-Enable-Security.patch
