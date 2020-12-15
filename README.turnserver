@@ -547,6 +547,12 @@ Options with values:
 			Default is /var/run/turnserver.pid (if superuser account is used) or
 			/var/tmp/turnserver.pid .
 
+--acme-redirect  <URL>	Redirect ACME/RFC8555 (like Let's Encrypt challenge) requests, i.e.
+			HTTP GET requests matching '^/.well-known/acme-challenge/(.*)'
+			to <URL>$1 with $1 == (.*). No validation of <URL> will be done,
+			so make sure you do not forget the trailing slash. If <URL> is an empty
+			string (the default value), no special handling of such requests will be done.
+
 --proc-user		User name to run the process. After the initialization, the turnserver process
 			will make an attempt to change the current user ID to that user.
 
