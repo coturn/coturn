@@ -1,3 +1,11 @@
+coturn (4.5.1.1-1.1+deb10u2) buster-security; urgency=high
+
+  * [c750a89] Fix-CVE-2020-26262-Enable-Security
+    - Fix ipv6 ::1 loopback check
+    - Not allow allocate peer address 0.0.0.0/8 and ::/128
+
+ -- Mészáros Mihály <misi@majd.eu>  Tue, 15 Dec 2020 17:23:34 +0100
+
 coturn (4.5.1.1-1.1+deb10u1) buster-security; urgency=high
 
   * Non-maintainer upload by the Security Team.
