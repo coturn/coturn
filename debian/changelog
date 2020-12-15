@@ -1,3 +1,10 @@
+coturn (4.5.0.5-1+deb9u3) stretch-security; urgency=high
+
+  * [4ac1f5e] Fix-CVE-2020-26262-Enable-Security
+  * [efb058c] Add misi@majd.eu to uploaders list
+
+ -- Mészáros Mihály <misi@majd.eu>  Tue, 15 Dec 2020 10:55:39 +0100
+
 coturn (4.5.0.5-1+deb9u2) stretch-security; urgency=high
 
   * Non-maintainer upload by the Security Team.
