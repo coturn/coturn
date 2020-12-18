@@ -4630,9 +4630,12 @@ static int read_client_connection(turn_turnserver *server,
 				const char *proto = "HTTP";
 				if ((st == TCP_SOCKET) && 
 					(
-						try_acme_redirect((char*)ioa_network_buffer_data(in_buffer->nbh),
-						ioa_network_buffer_get_size(in_buffer->nbh),
-						server->acme_redirect, ss->client_socket) == 0
+						try_acme_redirect(
+							(char*)ioa_network_buffer_data(in_buffer->nbh),
+							ioa_network_buffer_get_size(in_buffer->nbh),
+							server->acme_redirect, 
+							ss->client_socket
+						) == 0
 					)
 				) {
 					ss->to_be_closed = 1;
