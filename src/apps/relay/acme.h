@@ -44,6 +44,8 @@ extern "C" {
 
 ///////////// ACME /////////////////////
 
+#define GET_WELLKNOWN_ACMECHALLANGE_URL_PREFIX_LENGTH 32
+
 int try_acme_redirect(char *req, size_t len, const char *url, ioa_socket_handle s);
 
 ///////////////////////////////////////

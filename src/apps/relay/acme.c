@@ -67,8 +67,33 @@ static int is_acme_req(char *req, size_t len) {
 int try_acme_redirect(char *req, size_t len, const char *url,
 	ioa_socket_handle s)
 {
-	static const char *HTML = "<html><head><title>301 Moved Permanently</title></head><body><h1>301 Moved Permanently</h1></body></html>";
+	static const char *HTML = 
+		"<html><head><title>301 Moved Permanently</title></head>\
+		<body><h1>301 Moved Permanently</h1></body></html>";
 	char http_response[1024];
+	char req_url[600];
+	char *req_url_end_space, *req_url_end_tab;
+	int path_length;
+	strcpy(req_url, req + GET_WELLKNOWN_ACMECHALLANGE_URL_PREFIX_LENGTH);
+	req_url_end_space=strchr(req_url,' ');
+	req_url_end_tab=strchr(req_url,'\t');
+	if (req_url_end_space != NULL && req_url_end_tab != NULL) {
+		if (req_url_end_space - req_url_end_tab > 0 ){
+			path_length=req_url_end_space - req_url;
+			req_url[path_length]='\0';
+		} else {
+			path_length=req_url_end_tab - req_url;
+			req_url[req_url_end_tab - req_url]='\0';
+		}
+	} else if(req_url_end_space != NULL) {
+		path_length=req_url_end_space - req_url;		
+		req_url[path_length]='\0';
+	}
+	else if(req_url_end_tab != NULL) {
+		path_length=req_url_end_tab - req_url;
+		req_url[path_length]='\0';
+	}
+
 	size_t plen, rlen;
 
 	if (url == NULL || url[0] == '\0' || req == NULL || s == 0 )
@@ -76,31 +101,16 @@ int try_acme_redirect(char *req, size_t len, const char *url,
 	if (len < 64 || len > 512 || (plen = is_acme_req(req, len)) < 33)
 		return 2;
 
-	
 	snprintf(http_response, sizeof(http_response) - 1,
 		"HTTP/1.1 301 Moved Permanently\r\n"
 		"Content-Type: text/html\r\n"
 		"Content-Length: %ld\r\n"
 		"Connection: close\r\n"
 		"Location: %s%s\r\n"
-		"\r\n%s", strlen(HTML), url, req + 32, HTML);
+		"\r\n%s", strlen(HTML), url, req_url, HTML);
 
 	rlen = strlen(http_response);
 
-	// Variant A: direkt write, no eventbuf stuff
-	/*
-	if (write(s->fd, http_response, rlen) == -1) {
-		perror("Sending redirect failed");
-	} else if (((turn_turnserver *)s->session->server)->verbose) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "ACME redirect to %s%s\n",
-			url, req + 32);
-	}
-
-	req[plen] = ' ';
-     */
-	// Variant B: via eventbuf does not send anything for whatever reason
-	
-	//set_ioa_socket_app_type(s, HTTP_CLIENT_SOCKET);
 	ioa_network_buffer_handle nbh_acme = ioa_network_buffer_allocate(s->e);
 	uint8_t *data = ioa_network_buffer_data(nbh_acme);
 	bcopy(http_response, data, rlen);
