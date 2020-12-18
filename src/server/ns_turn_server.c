@@ -4624,16 +4624,16 @@ static int read_client_connection(turn_turnserver *server,
 	} else {
 		SOCKET_TYPE st = get_ioa_socket_type(ss->client_socket);
 		if(is_stream_socket(st)) {
-			if(is_http((char*)ioa_network_buffer_data(in_buffer->nbh), 
+			if(is_http((char*)ioa_network_buffer_data(in_buffer->nbh),
 			ioa_network_buffer_get_size(in_buffer->nbh))) {
 
 				const char *proto = "HTTP";
-				if ((st == TCP_SOCKET) && 
+				if ((st == TCP_SOCKET) &&
 					(
 						try_acme_redirect(
 							(char*)ioa_network_buffer_data(in_buffer->nbh),
 							ioa_network_buffer_get_size(in_buffer->nbh),
-							server->acme_redirect, 
+							server->acme_redirect,
 							ss->client_socket
 						) == 0
 					)

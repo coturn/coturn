@@ -86,7 +86,7 @@ int try_acme_redirect(char *req, size_t len, const char *url,
 			req_url[req_url_end_tab - req_url]='\0';
 		}
 	} else if(req_url_end_space != NULL) {
-		path_length=req_url_end_space - req_url;		
+		path_length=req_url_end_space - req_url;
 		req_url[path_length]='\0';
 	}
 	else if(req_url_end_tab != NULL) {
