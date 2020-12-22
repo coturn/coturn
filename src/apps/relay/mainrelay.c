@@ -1372,7 +1372,8 @@ static void set_option(int c, char *value)
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"-X : Wrong address format: %s\n",div);
 					} else {
 						ioa_addr_add_mapping(&apub,&apriv);
-						if (add_ip_list_range((const char *)div, NULL, &turn_params.ip_whitelist) == 0) TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Whitelisting external-ip private part: %s\n", div);
+						if (add_ip_list_range((const char *)div, NULL, &turn_params.ip_whitelist) == 0)
+							TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Whitelisting external-ip private part: %s\n", div);
 					}
 				}
 				free(nval);
