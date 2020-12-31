@@ -1,5 +1,7 @@
 #!/bin/sh
 
+set -x
+
 # Proprietary configure script of Coturn project
 
 cleanup() {
@@ -562,7 +564,7 @@ if [ -z "${LIBEV_OK}" ]; then
 	LIBEV_OK=1
 	if [ "${SYSTEM}" = "Linux" ]; then
 		OS=$( lsb_release -si 2>/dev/null )
-		[ "${OS}" = "Ubuntu" ] || LIBEV_OK=0
+		[ "${OS}" = "Ubuntu" ] && LIBEV_OK=0
 	fi
 fi
 [ "${LIBEV_OK}" = "1" ] && OSCFLAGS="${OSCFLAGS} -DLIBEV_OK"
