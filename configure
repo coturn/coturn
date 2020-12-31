@@ -1,7 +1,5 @@
 #!/bin/sh
 
-set -x
-
 # Proprietary configure script of Coturn project
 
 cleanup() {
