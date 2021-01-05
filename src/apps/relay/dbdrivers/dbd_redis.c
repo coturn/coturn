@@ -1161,7 +1161,7 @@ static void redis_reread_realms(secrets_list_t * realms_list) {
 					} else {
 						get_realm(rget->str);
 						ur_string_map_value_type value = strdup(rget->str);
-						ur_string_map_put(o_to_realm_new, (const ur_string_map_key_type) origin, value);
+						ur_string_map_put(o_to_realm_new, (ur_string_map_key_type) origin, value);
 					}
 					turnFreeRedisReply(rget);
 				}

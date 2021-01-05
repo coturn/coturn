@@ -1124,7 +1124,7 @@ static void mongo_reread_realms(secrets_list_t * realms_list) {
 								ur_string_map_value_type value =
 										(ur_string_map_value_type) (rval);
 								ur_string_map_put(o_to_realm_new,
-										(const ur_string_map_key_type) _origin,
+										(ur_string_map_key_type) _origin,
 										value);
 								free(_origin);
 							}

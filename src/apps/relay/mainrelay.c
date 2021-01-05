@@ -1173,7 +1173,7 @@ static void set_option(int c, char *value)
 	  STRCPY(turn_params.oauth_server_name,value);
 	  break;
   case OAUTH_OPT:
-	  if(!ENC_ALG_NUM) {
+	  if( ENC_ALG_NUM == 0) {
 		  TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: option --oauth is not supported; ignored.\n");
 	  } else {
 		  turn_params.oauth = get_bool_value(value);
@@ -2062,7 +2062,7 @@ static void print_features(unsigned long mfn)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TURN/STUN ALPN is not supported\n");
 #endif
 
-	if(!ENC_ALG_NUM) {
+	if(ENC_ALG_NUM == 0) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Third-party authorization (oAuth) is not supported\n");
 	} else {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Third-party authorization (oAuth) supported\n");
@@ -2588,7 +2588,7 @@ static int THREAD_setup(void) {
 
 	mutex_buf_initialized = 1;
 
-#if OPENSSL_VERSION_NUMBER >= 0x10000000L
+#if OPENSSL_VERSION_NUMBER >= 0x10000000L && OPENSSL_VERSION_NUMBER <= OPENSSL_VERSION_1_1_1
 	CRYPTO_THREADID_set_callback(coturn_id_function);
 #else
 	CRYPTO_set_id_callback(coturn_id_function);
@@ -2610,7 +2610,7 @@ int THREAD_cleanup(void) {
   if (!mutex_buf_initialized)
     return 0;
 
-#if OPENSSL_VERSION_NUMBER >= 0x10000000L
+#if OPENSSL_VERSION_NUMBER >= 0x10000000L && OPENSSL_VERSION_NUMBER <= OPENSSL_VERSION_1_1_1
 	CRYPTO_THREADID_set_callback(NULL);
 #else
 	CRYPTO_set_id_callback(NULL);
