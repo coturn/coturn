@@ -556,6 +556,17 @@ if [ "${SYSTEM}" = "NetBSD" ] ; then
 	fi
 fi
 
+# If acme_redirect does not work, send_data_from_ioa_socket_nbh() probably
+# does not work. Set LIBEV_OK=1 to use a workaround for it.
+if [ -z "${LIBEV_OK}" ]; then
+	LIBEV_OK=1
+	if [ "${SYSTEM}" = "Linux" ]; then
+		OS=$( lsb_release -si 2>/dev/null )
+		[ "${OS}" = "Ubuntu" ] && LIBEV_OK=0
+	fi
+fi
+[ "${LIBEV_OK}" = "1" ] && OSCFLAGS="${OSCFLAGS} -DLIBEV_OK"
+
 ###########################
 # Install shell commands
 ###########################
