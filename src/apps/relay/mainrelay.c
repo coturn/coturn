@@ -168,7 +168,9 @@ DEFAULT_CPUS_NUMBER,
 0,  /* keep_address_family */
 0,  /* no_auth_pings */
 0,  /* no_dynamic_ip_list */
-0   /* no_dynamic_realms */
+0,  /* no_dynamic_realms */
+
+0   /* log_binding */
 };
 
 //////////////// OpenSSL Init //////////////////////
@@ -605,6 +607,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						This option can be used, for example, together with the logrotate tool.\n"
 " --new-log-timestamp				Enable full ISO-8601 timestamp in all logs.\n"
 " --new-log-timestamp-format    	<format>	Set timestamp format (in strftime(1) format)\n"
+" --log-binding					Log STUN binding request. It is now disabled by default to avoid DoS attacks.\n"
 " --stale-nonce[=<value>]			Use extra security with nonce value having limited lifetime (default 600 secs).\n"
 " --max-allocate-lifetime	<value>		Set the maximum value for the allocation lifetime. Default to 3600 secs.\n"
 " --channel-lifetime		<value>		Set the lifetime for channel binding, default to 600 secs.\n"
@@ -813,7 +816,8 @@ enum EXTRA_OPTS {
 	NO_SOFTWARE_ATTRIBUTE_OPT,
 	NO_HTTP_OPT,
 	SECRET_KEY_OPT,
-	ACME_REDIRECT_OPT
+	ACME_REDIRECT_OPT,
+	LOG_BINDING_OPT
 };
 
 struct myoption {
@@ -948,6 +952,8 @@ static const struct myoption long_options[] = {
 				{ "secret-key-file", required_argument, NULL, SECRET_KEY_OPT },
 				{ "keep-address-family", optional_argument, NULL, 'K' },
 				{ "acme-redirect", required_argument, NULL, ACME_REDIRECT_OPT },
+				{ "log-binding", optional_argument, NULL, LOG_BINDING_OPT },
+
 				{ NULL, no_argument, NULL, 0 }
 };
 
@@ -1606,6 +1612,9 @@ static void set_option(int c, char *value)
 		break;
 	case NEW_LOG_TIMESTAMP_FORMAT_OPT:
 		set_turn_log_timestamp_format(value);
+		break;
+	case LOG_BINDING_OPT:
+		turn_params.log_binding = get_bool_value(value);
 		break;
 
 	/* these options have been already taken care of before: */

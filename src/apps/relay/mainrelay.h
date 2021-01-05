@@ -333,6 +333,8 @@ typedef struct _turn_params_ {
   int no_dynamic_ip_list;
   int no_dynamic_realms;
 
+  vint log_binding;
+  
 } turn_params_t;
 
 extern turn_params_t turn_params;

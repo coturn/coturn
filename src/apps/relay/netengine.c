@@ -1668,7 +1668,8 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
 			 turn_params.oauth,
 			 turn_params.oauth_server_name,
 			 turn_params.acme_redirect,
-			 turn_params.keep_address_family);
+			 turn_params.keep_address_family,
+			 &turn_params.log_binding);
 	
 	if(to_set_rfc5780) {
 		set_rfc5780(&(rs->server), get_alt_addr, send_message_from_listener_to_client);

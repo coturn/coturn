@@ -229,6 +229,8 @@ Flags:
 
 --new-log-timestamp-format    	<format>	Set timestamp format (in strftime(1) format)
 
+--log-binding					Log STUN binding request. It is now disabled by default to avoid DoS attacks.
+
 --secure-stun		Require authentication of the STUN Binding request.
 			By default, the clients are allowed anonymous access to the STUN Binding functionality.
 

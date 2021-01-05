@@ -3832,13 +3832,13 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 							&dest_changed, &response_destination,
 							0, 0);
 
-				if(server->verbose) {
+				if(server->verbose && server->log_binding) {
 				  log_method(ss, "BINDING", err_code, reason);
 				}
 
 				if(*resp_constructed && !err_code && (origin_changed || dest_changed)) {
 
-					if (server->verbose) {
+					if (server->verbose && server->log_binding) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "RFC 5780 request successfully processed\n");
 					}
 
@@ -4014,7 +4014,7 @@ static int handle_old_stun_command(turn_turnserver *server, ts_ur_super_session 
 						&dest_changed, &response_destination,
 						cookie,1);
 
-			if(server->verbose) {
+			if(server->verbose && *(server->log_binding)) {
 			  log_method(ss, "OLD BINDING", err_code, reason);
 			}
 
@@ -4929,7 +4929,8 @@ void init_turn_server(turn_turnserver* server,
 		int oauth,
 		const char* oauth_server_name,
 		const char* acme_redirect,
-		int keep_address_family) {
+		int keep_address_family,
+		vintp log_binding) {
 
 	if (!server)
 		return;
@@ -5001,6 +5002,8 @@ void init_turn_server(turn_turnserver* server,
 	server->keep_address_family = keep_address_family;
 
 	set_ioa_timer(server->e, 1, 0, timer_timeout_handler, server, 1, "timer_timeout_handler");
+
+	server->log_binding = log_binding;
 }
 
 ioa_engine_handle turn_server_get_engine(turn_turnserver *s) {
