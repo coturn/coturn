@@ -669,10 +669,6 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						This value can be changed on-the-fly in CLI. The default value is 256.\n"
 " --ne=[1|2|3]					Set network engine type for the process (for internal purposes).\n"
 " -h						Help\n"
-"\n"
-" For more information, see the wiki pages:\n"
-"\n"
-"	https://github.com/coturn/coturn/wiki/\n"
 "\n";
 
 static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
