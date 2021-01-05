@@ -25,6 +25,8 @@ Version 4.5.2 'dan Eider':
 		* Add ACME redirect url
 	- merge PR #551 (by jelmd)
 		* support of --acme-redirect <URL>
+	- merge PR #672 further acme fixes (by jemld)
+		* fix acme security, redundancy, consistency
 	- Disable binding request logging to avoid DoS attacks. (Breaking change!)
 		* Add new --log-binding option to enable binding request logging
 	- Fix stale-nonce documentation. Resolves #604
