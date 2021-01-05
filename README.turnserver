@@ -281,6 +281,7 @@ Options with values:
 
 --stale-nonce[=<value>]		Use extra security with nonce value having
 							limited lifetime, in seconds (default 600 secs).
+							Set it to 0 for unlimited nonce lifetime.
 
 --max-allocate-lifetime		Set the maximum value for the allocation lifetime.
 							Default to 3600 secs.
