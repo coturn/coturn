@@ -31,6 +31,8 @@ Version 4.5.2 'dan Eider':
 		* Add new --log-binding option to enable binding request logging
 	- Fix stale-nonce documentation. Resolves #604
 	- Version number is changed to semver 2.0
+	- Merge PR #288 (by Hristo Venev)
+		* pkg-config, and various cleanups in connfigure file	
 
 24/06/2020 Oleg Moskalenko <mom040267@gmail.com> Mihály Mészáros <misi@majd.eu>
 Version 4.5.1.3 'dan Eider':

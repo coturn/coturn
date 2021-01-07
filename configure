@@ -904,7 +904,7 @@ fi
 ###########################
 
 if [ -z "${TURN_NO_MYSQL}" ] ; then
-    if testpkg_server mariadb || testpkg_server mysqlclient ; then
+    if testpkg_db mariadb || testpkg_server mysqlclient ; then
         ${ECHO_CMD} "MySQL found."
     else
         ${ECHO_CMD} "MySQL not found. Building without MySQL support."
@@ -919,7 +919,7 @@ fi
 ###########################
 
 if [ -z "${TURN_NO_MONGO}" ] ; then
-    if testpkg_server libmongoc-1.0; then
+    if testpkg_db libmongoc-1.0; then
         ${ECHO_CMD} "MongoDB found."
     else
         ${ECHO_CMD} "MongoDB not found. Building without MongoDB support."
