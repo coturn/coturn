@@ -1603,12 +1603,6 @@ static void set_option(int c, char *value)
 			turn_params.rest_api_separator=*value;
 		}
 		break;
-	case NEW_LOG_TIMESTAMP_OPT:
-		use_new_log_timestamp_format=1;
-		break;
-	case NEW_LOG_TIMESTAMP_FORMAT_OPT:
-		set_turn_log_timestamp_format(value);
-		break;
 	case LOG_BINDING_OPT:
 		turn_params.log_binding = get_bool_value(value);
 		break;
@@ -1618,6 +1612,8 @@ static void set_option(int c, char *value)
 	case NO_STDOUT_LOG_OPT:
 	case SYSLOG_OPT:
 	case SIMPLE_LOG_OPT:
+	case NEW_LOG_TIMESTAMP_OPT:
+	case NEW_LOG_TIMESTAMP_FORMAT_OPT:
 	case 'c':
 	case 'n':
 	case 'h':
@@ -1748,9 +1744,9 @@ static void read_config_file(int argc, char **argv, int pass)
 						use_new_log_timestamp_format=1;
 					} else if ((pass==0) && (c==NEW_LOG_TIMESTAMP_FORMAT_OPT)) {
 						set_turn_log_timestamp_format(value);
-					} else if((pass == 0) && (c != 'u')) {
+					} else if((pass == 1) && (c != 'u')) {
 						set_option(c, value);
-					} else if((pass > 0) && (c == 'u')) {
+					} else if((pass == 2) && (c == 'u')) {
 						set_option(c, value);
 					}
 					if (s[slen - 1] == 59) {
@@ -2228,6 +2224,12 @@ int main(int argc, char **argv)
 			case SIMPLE_LOG_OPT:
 				set_simple_log(get_bool_value(optarg));
 				break;
+			case NEW_LOG_TIMESTAMP_OPT:
+				use_new_log_timestamp_format=1;
+				break;
+			case NEW_LOG_TIMESTAMP_FORMAT_OPT:
+				set_turn_log_timestamp_format(optarg);
+				break;
 			default:
 				;
 			}
@@ -2264,8 +2266,10 @@ int main(int argc, char **argv)
 
 	if(strstr(argv[0],"turnadmin"))
 		return adminmain(argc,argv);
-
+	// Zero pass apply the log options.
 	read_config_file(argc,argv,0);
+	// First pass read other config options
+	read_config_file(argc,argv,1);
 
 	struct uoptions uo;
 	uo.u.m = long_options;
@@ -2275,7 +2279,8 @@ int main(int argc, char **argv)
 			set_option(c,optarg);
 	}
 
-	read_config_file(argc,argv,1);
+	// Second pass read -u options
+	read_config_file(argc,argv,2);
 
 	{
 		unsigned long mfn = set_system_parameters(1);
