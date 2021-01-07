@@ -31,12 +31,16 @@
 #ifndef __IOADEFS__
 #define __IOADEFS__
 
-#define TURN_SERVER_VERSION "4.5.1.3"
+#define TURN_SERVER_VERSION "4.5.2"
 #define TURN_SERVER_VERSION_NAME "dan Eider"
 #define TURN_SOFTWARE "Coturn-" TURN_SERVER_VERSION " '" TURN_SERVER_VERSION_NAME "'"
 
 #if (defined(__unix__) || defined(unix)) && !defined(USG)
 #include <sys/param.h>
+#endif
+
+#if defined(__APPLE__) || defined(__DARWIN__) || defined(__MACH__)
+#define __APPLE_USE_RFC_3542
 #endif
 
 #include <sys/types.h>

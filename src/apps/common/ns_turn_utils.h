@@ -61,6 +61,8 @@ void set_no_stdout_log(int val);
 void set_log_to_syslog(int val);
 void set_simple_log(int val);
 
+void set_turn_log_timestamp_format(char* new_format);
+
 void turn_log_func_default(TURN_LOG_LEVEL level, const char* format, ...);
 
 void addr_debug_print(int verbose, const ioa_addr *addr, const char* s);
@@ -69,6 +71,7 @@ void addr_debug_print(int verbose, const ioa_addr *addr, const char* s);
 
 extern volatile int _log_time_value_set;
 extern volatile turn_time_t _log_time_value;
+extern int use_new_log_timestamp_format;
 
 void rtpprintf(const char *format, ...);
 int vrtpprintf(TURN_LOG_LEVEL level, const char *format, va_list args);

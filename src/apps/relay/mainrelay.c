@@ -114,7 +114,7 @@ NULL, PTHREAD_MUTEX_INITIALIZER,
 
 //////////////// Common params ////////////////////
 TURN_VERBOSE_NONE,0,0,0,0,
-"/var/run/turnserver.pid",
+"/var/run/turnserver.pid","",
 DEFAULT_STUN_PORT,DEFAULT_STUN_TLS_PORT,0,0,0,1,
 0,0,0,0,0,
 "",
@@ -168,7 +168,9 @@ DEFAULT_CPUS_NUMBER,
 0,  /* keep_address_family */
 0,  /* no_auth_pings */
 0,  /* no_dynamic_ip_list */
-0   /* no_dynamic_realms */
+0,  /* no_dynamic_realms */
+
+0   /* log_binding */
 };
 
 //////////////// OpenSSL Init //////////////////////
@@ -603,6 +605,9 @@ static char Usage[] = "Usage: turnserver [options]\n"
 " --simple-log					This flag means that no log file rollover will be used, and the log file\n"
 "						name will be constructed as-is, without PID and date appendage.\n"
 "						This option can be used, for example, together with the logrotate tool.\n"
+" --new-log-timestamp				Enable full ISO-8601 timestamp in all logs.\n"
+" --new-log-timestamp-format    	<format>	Set timestamp format (in strftime(1) format)\n"
+" --log-binding					Log STUN binding request. It is now disabled by default to avoid DoS attacks.\n"
 " --stale-nonce[=<value>]			Use extra security with nonce value having limited lifetime (default 600 secs).\n"
 " --max-allocate-lifetime	<value>		Set the maximum value for the allocation lifetime. Default to 3600 secs.\n"
 " --channel-lifetime		<value>		Set the lifetime for channel binding, default to 600 secs.\n"
@@ -627,6 +632,8 @@ static char Usage[] = "Usage: turnserver [options]\n"
 " --pidfile <\"pid-file-name\">			File name to store the pid of the process.\n"
 "						Default is /var/run/turnserver.pid (if superuser account is used) or\n"
 "						/var/tmp/turnserver.pid .\n"
+" --acme-redirect <URL>				Redirect ACME, i.e. HTTP GET requests matching '^/.well-known/acme-challenge/(.*)' to '<URL>$1'.\n"
+"						Default is '', i.e. no special handling for such requests.\n"
 " --secure-stun					Require authentication of the STUN Binding request.\n"
 "						By default, the clients are allowed anonymous access to the STUN Binding functionality.\n"
 " --proc-user <user-name>			User name to run the turnserver process.\n"
@@ -662,10 +669,6 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						This value can be changed on-the-fly in CLI. The default value is 256.\n"
 " --ne=[1|2|3]					Set network engine type for the process (for internal purposes).\n"
 " -h						Help\n"
-"\n"
-" For more information, see the wiki pages:\n"
-"\n"
-"	https://github.com/coturn/coturn/wiki/\n"
 "\n";
 
 static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
@@ -761,6 +764,8 @@ enum EXTRA_OPTS {
 	NO_STDOUT_LOG_OPT,
 	SYSLOG_OPT,
 	SIMPLE_LOG_OPT,
+	NEW_LOG_TIMESTAMP_OPT,
+	NEW_LOG_TIMESTAMP_FORMAT_OPT,
 	AUX_SERVER_OPT,
 	UDP_SELF_BALANCE_OPT,
 	ALTERNATE_SERVER_OPT,
@@ -806,7 +811,9 @@ enum EXTRA_OPTS {
 	OAUTH_OPT,
 	NO_SOFTWARE_ATTRIBUTE_OPT,
 	NO_HTTP_OPT,
-	SECRET_KEY_OPT
+	SECRET_KEY_OPT,
+	ACME_REDIRECT_OPT,
+	LOG_BINDING_OPT
 };
 
 struct myoption {
@@ -899,6 +906,8 @@ static const struct myoption long_options[] = {
 				{ "no-stdout-log", optional_argument, NULL, NO_STDOUT_LOG_OPT },
 				{ "syslog", optional_argument, NULL, SYSLOG_OPT },
 				{ "simple-log", optional_argument, NULL, SIMPLE_LOG_OPT },
+				{ "new-log-timestamp", optional_argument, NULL, NEW_LOG_TIMESTAMP_OPT },
+				{ "new-log-timestamp-format", required_argument, NULL, NEW_LOG_TIMESTAMP_FORMAT_OPT },
 				{ "aux-server", required_argument, NULL, AUX_SERVER_OPT },
 				{ "udp-self-balance", optional_argument, NULL, UDP_SELF_BALANCE_OPT },
 				{ "alternate-server", required_argument, NULL, ALTERNATE_SERVER_OPT },
@@ -938,6 +947,9 @@ static const struct myoption long_options[] = {
 				{ "no-tlsv1_2", optional_argument, NULL, NO_TLSV1_2_OPT },
 				{ "secret-key-file", required_argument, NULL, SECRET_KEY_OPT },
 				{ "keep-address-family", optional_argument, NULL, 'K' },
+				{ "acme-redirect", required_argument, NULL, ACME_REDIRECT_OPT },
+				{ "log-binding", optional_argument, NULL, LOG_BINDING_OPT },
+
 				{ NULL, no_argument, NULL, 0 }
 };
 
@@ -1161,7 +1173,7 @@ static void set_option(int c, char *value)
 	  STRCPY(turn_params.oauth_server_name,value);
 	  break;
   case OAUTH_OPT:
-	  if(!ENC_ALG_NUM) {
+	  if( ENC_ALG_NUM == 0) {
 		  TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: option --oauth is not supported; ignored.\n");
 	  } else {
 		  turn_params.oauth = get_bool_value(value);
@@ -1362,6 +1374,8 @@ static void set_option(int c, char *value)
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"-X : Wrong address format: %s\n",div);
 					} else {
 						ioa_addr_add_mapping(&apub,&apriv);
+						if (add_ip_list_range((const char *)div, NULL, &turn_params.ip_whitelist) == 0)
+							TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Whitelisting external-ip private part: %s\n", div);
 					}
 				}
 				free(nval);
@@ -1581,16 +1595,25 @@ static void set_option(int c, char *value)
 	case PIDFILE_OPT:
 		STRCPY(turn_params.pidfile,value);
 		break;
+	case ACME_REDIRECT_OPT:
+		STRCPY(turn_params.acme_redirect,value);
+		break;
 	case 'C':
 		if(value && *value) {
 			turn_params.rest_api_separator=*value;
 		}
 		break;
+	case LOG_BINDING_OPT:
+		turn_params.log_binding = get_bool_value(value);
+		break;
+
 	/* these options have been already taken care of before: */
 	case 'l':
 	case NO_STDOUT_LOG_OPT:
 	case SYSLOG_OPT:
 	case SIMPLE_LOG_OPT:
+	case NEW_LOG_TIMESTAMP_OPT:
+	case NEW_LOG_TIMESTAMP_FORMAT_OPT:
 	case 'c':
 	case 'n':
 	case 'h':
@@ -1653,25 +1676,25 @@ static void read_config_file(int argc, char **argv, int pass)
 
 	if(pass == 0) {
 
-	  if (argv) {
-	    int i = 0;
-	    for (i = 0; i < argc; i++) {
-	      if (!strcmp(argv[i], "-c")) {
-		if (i < argc - 1) {
-		  STRCPY(config_file, argv[i + 1]);
-		} else {
-		  TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Wrong usage of -c option\n");
+		if (argv) {
+			int i = 0;
+			for (i = 0; i < argc; i++) {
+				if (!strcmp(argv[i], "-c")) {
+					if (i < argc - 1) {
+						STRCPY(config_file, argv[i + 1]);
+					} else {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Wrong usage of -c option\n");
+					}
+				} else if (!strcmp(argv[i], "-n")) {
+					turn_params.do_not_use_config_file = 1;
+					config_file[0]=0;
+					return;
+				} else if (!strcmp(argv[i], "-h")) {
+					printf("\n%s\n",Usage);
+					exit(0);
+				}
+			}
 		}
-	      } else if (!strcmp(argv[i], "-n")) {
-		turn_params.do_not_use_config_file = 1;
-		config_file[0]=0;
-		return;
-	      } else if (!strcmp(argv[i], "-h")) {
-		printf("\n%s\n",Usage);
-		exit(0);
-	      }
-	    }
-	  }
 	}
 
 	if (!turn_params.do_not_use_config_file && config_file[0]) {
@@ -1708,7 +1731,7 @@ static void read_config_file(int argc, char **argv, int pass)
 					STRCPY(sarg, s);
 					if (parse_arg_string(sarg, &c, &value) < 0) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Bad configuration format: %s\n",
-							sarg);
+								sarg);
 					} else if((pass == 0) && (c == 'l')) {
 						set_logfile(value);
 					} else if((pass==0) && (c==NO_STDOUT_LOG_OPT)) {
@@ -1717,10 +1740,14 @@ static void read_config_file(int argc, char **argv, int pass)
 						set_log_to_syslog(get_bool_value(value));
 					} else if((pass==0) && (c==SIMPLE_LOG_OPT)) {
 						set_simple_log(get_bool_value(value));
-					} else if((pass == 0) && (c != 'u')) {
-					  set_option(c, value);
-					} else if((pass > 0) && (c == 'u')) {
-					  set_option(c, value);
+					} else if ((pass==0) && (c==NEW_LOG_TIMESTAMP_OPT)) {
+						use_new_log_timestamp_format=1;
+					} else if ((pass==0) && (c==NEW_LOG_TIMESTAMP_FORMAT_OPT)) {
+						set_turn_log_timestamp_format(value);
+					} else if((pass == 1) && (c != 'u')) {
+						set_option(c, value);
+					} else if((pass == 2) && (c == 'u')) {
+						set_option(c, value);
 					}
 					if (s[slen - 1] == 59) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Check config! The following line ends with semicolon: \"%s\" \n",s);
@@ -1733,7 +1760,7 @@ static void read_config_file(int argc, char **argv, int pass)
 
 		} else
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: Cannot find config file: %s. Default and command-line settings will be used.\n",
-				config_file);
+					config_file);
 
 		if (full_path_to_config_file) {
 			free(full_path_to_config_file);
@@ -1746,7 +1773,7 @@ static int disconnect_database(void)
 {
 	const turn_dbdriver_t * dbd = get_dbdriver();
 	if (dbd && dbd->disconnect) {
-			dbd->disconnect();
+		dbd->disconnect();
 	}
 	return 0;
 }
@@ -1777,183 +1804,183 @@ static int adminmain(int argc, char **argv)
 
 	while (((c = getopt_long(argc, argv, ADMIN_OPTIONS, uo.u.o, NULL)) != -1)) {
 		switch (c){
-        case 'P':
-            if(pwd[0]) {
-                char result[257];
-                generate_new_enc_password((char*)pwd, result);
-                printf("%s\n",result);
-                exit(0);
-            }
-            print_enc_password = 1;
-            break;
-        case 'E':
-            print_enc_aes_password = 1;
-            break;
-        case 'g':
-            ct = TA_SET_REALM_OPTION;
-            break;
-        case 'G':
-            ct = TA_LIST_REALM_OPTIONS;
-            break;
-        case ADMIN_USER_QUOTA_OPT:
-            po.user_quota = (vint)atoi(optarg);
-            break;
-        case ADMIN_TOTAL_QUOTA_OPT:
-            po.total_quota = (vint)atoi(optarg);
-            break;
-        case ADMIN_MAX_BPS_OPT:
-            po.max_bps = (vint)atoi(optarg);
-            break;
-        case 'O':
-            ct = TA_ADD_ORIGIN;
-            break;
-        case 'R':
-            ct = TA_DEL_ORIGIN;
-            break;
-        case 'I':
-            ct = TA_LIST_ORIGINS;
-            break;
-        case 'o':
-            STRCPY(origin,optarg);
-            break;
-        case 'k':
-            ct = TA_PRINT_KEY;
-            break;
-        case 'a':
-            ct = TA_UPDATE_USER;
-            break;
-        case 'd':
-            ct = TA_DELETE_USER;
-            break;
-        case 'A':
-            ct = TA_UPDATE_USER;
-            is_admin = 1;
-            break;
-        case 'D':
-            ct = TA_DELETE_USER;
-            is_admin = 1;
-            break;
-        case 'l':
-            ct = TA_LIST_USERS;
-            break;
-        case 'L':
-            ct = TA_LIST_USERS;
-            is_admin = 1;
-            break;
-        case 's':
-            ct = TA_SET_SECRET;
-            STRCPY(secret,optarg);
-            break;
-        case 'S':
-            ct = TA_SHOW_SECRET;
-            break;
-        case 'X':
-            ct = TA_DEL_SECRET;
-            if(optarg)
-                STRCPY(secret,optarg);
-            break;
-        case DEL_ALL_AUTH_SECRETS_OPT:
-            ct = TA_DEL_SECRET;
-            break;
+			case 'P':
+				if(pwd[0]) {
+					char result[257];
+					generate_new_enc_password((char*)pwd, result);
+					printf("%s\n",result);
+					exit(0);
+				}
+				print_enc_password = 1;
+				break;
+			case 'E':
+				print_enc_aes_password = 1;
+				break;
+			case 'g':
+				ct = TA_SET_REALM_OPTION;
+				break;
+			case 'G':
+				ct = TA_LIST_REALM_OPTIONS;
+				break;
+			case ADMIN_USER_QUOTA_OPT:
+				po.user_quota = (vint)atoi(optarg);
+				break;
+			case ADMIN_TOTAL_QUOTA_OPT:
+				po.total_quota = (vint)atoi(optarg);
+				break;
+			case ADMIN_MAX_BPS_OPT:
+				po.max_bps = (vint)atoi(optarg);
+				break;
+			case 'O':
+				ct = TA_ADD_ORIGIN;
+				break;
+			case 'R':
+				ct = TA_DEL_ORIGIN;
+				break;
+			case 'I':
+				ct = TA_LIST_ORIGINS;
+				break;
+			case 'o':
+				STRCPY(origin,optarg);
+				break;
+			case 'k':
+				ct = TA_PRINT_KEY;
+				break;
+			case 'a':
+				ct = TA_UPDATE_USER;
+				break;
+			case 'd':
+				ct = TA_DELETE_USER;
+				break;
+			case 'A':
+				ct = TA_UPDATE_USER;
+				is_admin = 1;
+				break;
+			case 'D':
+				ct = TA_DELETE_USER;
+				is_admin = 1;
+				break;
+			case 'l':
+				ct = TA_LIST_USERS;
+				break;
+			case 'L':
+				ct = TA_LIST_USERS;
+				is_admin = 1;
+				break;
+			case 's':
+				ct = TA_SET_SECRET;
+				STRCPY(secret,optarg);
+				break;
+			case 'S':
+				ct = TA_SHOW_SECRET;
+				break;
+			case 'X':
+				ct = TA_DEL_SECRET;
+				if(optarg)
+					STRCPY(secret,optarg);
+				break;
+			case DEL_ALL_AUTH_SECRETS_OPT:
+				ct = TA_DEL_SECRET;
+				break;
 #if !defined(TURN_NO_SQLITE)
-		case 'b':
-		  STRCPY(turn_params.default_users_db.persistent_users_db.userdb,optarg);
-		  turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_SQLITE;
-		  break;
+			case 'b':
+				STRCPY(turn_params.default_users_db.persistent_users_db.userdb,optarg);
+				turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_SQLITE;
+				break;
 #endif
 #if !defined(TURN_NO_PQ)
-		case 'e':
-		  STRCPY(turn_params.default_users_db.persistent_users_db.userdb,optarg);
-		  turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_PQ;
-		  break;
+			case 'e':
+				STRCPY(turn_params.default_users_db.persistent_users_db.userdb,optarg);
+				turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_PQ;
+				break;
 #endif
 #if !defined(TURN_NO_MYSQL)
-		case 'M':
-		  STRCPY(turn_params.default_users_db.persistent_users_db.userdb,optarg);
-		  turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_MYSQL;
-		  break;
+			case 'M':
+				STRCPY(turn_params.default_users_db.persistent_users_db.userdb,optarg);
+				turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_MYSQL;
+				break;
 #endif
 #if !defined(TURN_NO_MONGO)
-		case 'J':
-		  STRCPY(turn_params.default_users_db.persistent_users_db.userdb,optarg);
-		  turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_MONGO;
-		  break;
+			case 'J':
+				STRCPY(turn_params.default_users_db.persistent_users_db.userdb,optarg);
+				turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_MONGO;
+				break;
 #endif
 #if !defined(TURN_NO_HIREDIS)
-		case 'N':
-		  STRCPY(turn_params.default_users_db.persistent_users_db.userdb,optarg);
-		  turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_REDIS;
-		  break;
+			case 'N':
+				STRCPY(turn_params.default_users_db.persistent_users_db.userdb,optarg);
+				turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_REDIS;
+				break;
 #endif
-        case 'u':
-            STRCPY(user,optarg);
-            if(!is_secure_string((uint8_t*)user,1)) {
-                TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong user name structure or symbols, choose another name: %s\n",user);
-                exit(-1);
-            }
-            if(SASLprep((uint8_t*)user)<0) {
-                TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong user name: %s\n",user);
-                exit(-1);
-            }
-            break;
-        case 'r':
-            set_default_realm_name(optarg);
-            STRCPY(realm,optarg);
-            if(SASLprep((uint8_t*)realm)<0) {
-                TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong realm: %s\n",realm);
-                exit(-1);
-            }
-            break;
-        case 'p':
-            STRCPY(pwd,optarg);
-            if(SASLprep((uint8_t*)pwd)<0) {
-                TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong password: %s\n",pwd);
-                exit(-1);
-            }
-            if(print_enc_password) {
-                char result[257];
-                generate_new_enc_password((char*)pwd, result);
-                printf("%s\n",result);
-                exit(0);
-            }
-            if(print_enc_aes_password){
-				encrypt_aes_128(pwd, generated_key);
-                exit(0);
-            }
-            break;
-        case 'x':
-            generate_aes_128_key(optarg, generated_key);
-            exit(0);
-            break;
-        case 'f':
-            fptr = fopen((char*)optarg, "r");
-            if(fptr == NULL){
-                printf("No such file like %s\n", (char*)optarg);
-            }
-            else{
-				fseek (fptr, 0, SEEK_SET);
-				rc = fread(generated_key, sizeof(char), 16, fptr);
-				if( rc == 0 ){
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: Secret-Key file is empty\n",__FUNCTION__);
+			case 'u':
+				STRCPY(user,optarg);
+				if(!is_secure_string((uint8_t*)user,1)) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong user name structure or symbols, choose another name: %s\n",user);
+					exit(-1);
+				}
+				if(SASLprep((uint8_t*)user)<0) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong user name: %s\n",user);
+					exit(-1);
+				}
+				break;
+			case 'r':
+				set_default_realm_name(optarg);
+				STRCPY(realm,optarg);
+				if(SASLprep((uint8_t*)realm)<0) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong realm: %s\n",realm);
+					exit(-1);
+				}
+				break;
+			case 'p':
+				STRCPY(pwd,optarg);
+				if(SASLprep((uint8_t*)pwd)<0) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong password: %s\n",pwd);
+					exit(-1);
+				}
+				if(print_enc_password) {
+					char result[257];
+					generate_new_enc_password((char*)pwd, result);
+					printf("%s\n",result);
+					exit(0);
+				}
+				if(print_enc_aes_password){
+					encrypt_aes_128(pwd, generated_key);
+					exit(0);
+				}
+				break;
+			case 'x':
+				generate_aes_128_key(optarg, generated_key);
+				exit(0);
+				break;
+			case 'f':
+				fptr = fopen((char*)optarg, "r");
+				if(fptr == NULL){
+					printf("No such file like %s\n", (char*)optarg);
 				}
 				else{
-					if( rc != 16 ){
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: Secret-Key length is not enough\n",__FUNCTION__);
+					fseek (fptr, 0, SEEK_SET);
+					rc = fread(generated_key, sizeof(char), 16, fptr);
+					if( rc == 0 ){
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: Secret-Key file is empty\n",__FUNCTION__);
 					}
+					else{
+						if( rc != 16 ){
+							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: Secret-Key length is not enough\n",__FUNCTION__);
+						}
+					}
+					fclose (fptr);
 				}
-				fclose (fptr);
-            }
-            break;
-        case 'v':
-			decrypt_aes_128((char*)optarg, generated_key);
-            exit(0);
-        case 'h':
-            printf("\n%s\n", AdminUsage);
-            exit(0);
-            break;
-        default:
-            fprintf(stderr,"\n%s\n", AdminUsage);
-            exit(-1);
+				break;
+			case 'v':
+				decrypt_aes_128((char*)optarg, generated_key);
+				exit(0);
+			case 'h':
+				printf("\n%s\n", AdminUsage);
+				exit(0);
+				break;
+			default:
+				fprintf(stderr,"\n%s\n", AdminUsage);
+				exit(-1);
 		}
 	}
 
@@ -1997,16 +2024,16 @@ static void print_features(unsigned long mfn)
 
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\n\n==== Show him the instruments, Practical Frost: ====\n\n");
 
-/*
-	Frost stepped forward and opened the polished case with a theatrical
-	flourish. It was a masterful piece of craftsmanship. As the lid was
-	pulled back, the many trays inside lifted and fanned out, displaying
-	Glokta’s tools in all their gruesome glory. There were blades of every
-	size and shape, needles curved and straight, bottles of oil and acid,
-	nails and screws, clamps and pliers, saws, hammers, chisels. Metal, wood
-	and glass glittered in the bright lamplight, all polished to mirror
-	brightness and honed to a murderous sharpness.
-*/
+	/*
+	   Frost stepped forward and opened the polished case with a theatrical
+	   flourish. It was a masterful piece of craftsmanship. As the lid was
+	   pulled back, the many trays inside lifted and fanned out, displaying
+	   Glokta’s tools in all their gruesome glory. There were blades of every
+	   size and shape, needles curved and straight, bottles of oil and acid,
+	   nails and screws, clamps and pliers, saws, hammers, chisels. Metal, wood
+	   and glass glittered in the bright lamplight, all polished to mirror
+	   brightness and honed to a murderous sharpness.
+	   */
 
 #if !TLS_SUPPORTED
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS is not supported\n");
@@ -2031,7 +2058,7 @@ static void print_features(unsigned long mfn)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TURN/STUN ALPN is not supported\n");
 #endif
 
-	if(!ENC_ALG_NUM) {
+	if(ENC_ALG_NUM == 0) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Third-party authorization (oAuth) is not supported\n");
 	} else {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Third-party authorization (oAuth) supported\n");
@@ -2197,6 +2224,12 @@ int main(int argc, char **argv)
 			case SIMPLE_LOG_OPT:
 				set_simple_log(get_bool_value(optarg));
 				break;
+			case NEW_LOG_TIMESTAMP_OPT:
+				use_new_log_timestamp_format=1;
+				break;
+			case NEW_LOG_TIMESTAMP_FORMAT_OPT:
+				set_turn_log_timestamp_format(optarg);
+				break;
 			default:
 				;
 			}
@@ -2233,8 +2266,10 @@ int main(int argc, char **argv)
 
 	if(strstr(argv[0],"turnadmin"))
 		return adminmain(argc,argv);
-
+	// Zero pass apply the log options.
 	read_config_file(argc,argv,0);
+	// First pass read other config options
+	read_config_file(argc,argv,1);
 
 	struct uoptions uo;
 	uo.u.m = long_options;
@@ -2244,7 +2279,8 @@ int main(int argc, char **argv)
 			set_option(c,optarg);
 	}
 
-	read_config_file(argc,argv,1);
+	// Second pass read -u options
+	read_config_file(argc,argv,2);
 
 	{
 		unsigned long mfn = set_system_parameters(1);
@@ -2259,6 +2295,9 @@ int main(int argc, char **argv)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Domain name: %s\n",turn_params.domain);
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Default realm: %s\n",get_realm(NULL)->options.name);
 
+	if(turn_params.acme_redirect[0]) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "ACME redirect URL: %s\n",turn_params.acme_redirect);
+	}
 	if(turn_params.oauth && turn_params.oauth_server_name[0]) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "oAuth server name: %s\n",turn_params.oauth_server_name);
 	}
@@ -2554,7 +2593,7 @@ static int THREAD_setup(void) {
 
 	mutex_buf_initialized = 1;
 
-#if OPENSSL_VERSION_NUMBER >= 0x10000000L
+#if OPENSSL_VERSION_NUMBER >= 0x10000000L && OPENSSL_VERSION_NUMBER <= OPENSSL_VERSION_1_1_1
 	CRYPTO_THREADID_set_callback(coturn_id_function);
 #else
 	CRYPTO_set_id_callback(coturn_id_function);
@@ -2576,7 +2615,7 @@ int THREAD_cleanup(void) {
   if (!mutex_buf_initialized)
     return 0;
 
-#if OPENSSL_VERSION_NUMBER >= 0x10000000L
+#if OPENSSL_VERSION_NUMBER >= 0x10000000L && OPENSSL_VERSION_NUMBER <= OPENSSL_VERSION_1_1_1
 	CRYPTO_THREADID_set_callback(NULL);
 #else
 	CRYPTO_set_id_callback(NULL);

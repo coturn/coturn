@@ -225,6 +225,12 @@ Flags:
 			name will be constructed as-is, without PID and date appendage.
 			This option can be used, for example, together with the logrotate tool.
 
+--new-log-timestamp				Enable full ISO-8601 timestamp in all logs.
+
+--new-log-timestamp-format    	<format>	Set timestamp format (in strftime(1) format)
+
+--log-binding					Log STUN binding request. It is now disabled by default to avoid DoS attacks.
+
 --secure-stun		Require authentication of the STUN Binding request.
 			By default, the clients are allowed anonymous access to the STUN Binding functionality.
 
@@ -265,8 +271,8 @@ Flags:
 			check: across the session, all requests must have the same
 			main ORIGIN attribute value (if the ORIGIN was
 			initially used by the session).
- --no-prometheus	Disable prometheus metrics. By default it is
-			enabled and listening on port 9641 unther the path /metrics
+ --prometheus		Enable prometheus metrics. By default it is
+			disabled. Would listen on port 9641 unther the path /metrics
 			also the path / on this port can be used as a health check
 
 -h			Help.
@@ -275,6 +281,7 @@ Options with values:
 
 --stale-nonce[=<value>]		Use extra security with nonce value having
 							limited lifetime, in seconds (default 600 secs).
+							Set it to 0 for unlimited nonce lifetime.
 
 --max-allocate-lifetime		Set the maximum value for the allocation lifetime.
 							Default to 3600 secs.
@@ -542,6 +549,12 @@ Options with values:
 --pidfile 		File name to store the pid of the process.
 			Default is /var/run/turnserver.pid (if superuser account is used) or
 			/var/tmp/turnserver.pid .
+
+--acme-redirect  <URL>	Redirect ACME/RFC8555 (like Let's Encrypt challenge) requests, i.e.
+			HTTP GET requests matching '^/.well-known/acme-challenge/(.*)'
+			to <URL>$1 with $1 == (.*). No validation of <URL> will be done,
+			so make sure you do not forget the trailing slash. If <URL> is an empty
+			string (the default value), no special handling of such requests will be done.
 
 --proc-user		User name to run the process. After the initialization, the turnserver process
 			will make an attempt to change the current user ID to that user.
@@ -997,4 +1010,8 @@ https://groups.google.com/forum/?fromgroups=#!forum/turn-server-project-rfc5766-
 
 	Bradley T. Hughes <bradleythughes@fastmail.fm>
 
-        Mihaly Meszaros <misi@majd.eu>
+    Mihály Mészáros <misi@majd.eu>
+
+  ACTIVE MAINTAINERS
+
+	Mihály Mészáros <misi@majd.eu>

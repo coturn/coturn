@@ -219,6 +219,7 @@ typedef struct _turn_params_ {
   int do_not_use_config_file;
 
   char pidfile[1025];
+  char acme_redirect[1025];
 
   ////////////////  Listener server /////////////////
 
@@ -332,6 +333,8 @@ typedef struct _turn_params_ {
   int no_dynamic_ip_list;
   int no_dynamic_realms;
 
+  vint log_binding;
+  
 } turn_params_t;
 
 extern turn_params_t turn_params;

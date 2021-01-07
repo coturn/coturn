@@ -1833,7 +1833,7 @@ int ssl_read(evutil_socket_t fd, SSL* ssl, ioa_network_buffer_handle nbh, int ve
 	BIO* rbio = BIO_new_mem_buf(buffer, old_buffer_len);
 	BIO_set_mem_eof_return(rbio, -1);
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined LIBRESSL_VERSION_NUMBER
 	ssl->rbio = rbio;
 #else
 	SSL_set0_rbio(ssl,rbio);
@@ -1928,7 +1928,7 @@ int ssl_read(evutil_socket_t fd, SSL* ssl, ioa_network_buffer_handle nbh, int ve
 	if(ret>0) {
 		ioa_network_buffer_add_offset_size(nbh, (uint16_t)buf_size, 0, (size_t)ret);
 	}
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined LIBRESSL_VERSION_NUMBER
 	ssl->rbio = NULL;
 	BIO_free(rbio);
 #else
@@ -2166,6 +2166,101 @@ static TURN_TLS_TYPE check_tentative_tls(ioa_socket_raw fd)
 }
 #endif
 
+
+static size_t proxy_string_field(char *field, size_t max, uint8_t *buf, size_t index, size_t len)
+{
+	size_t count = 0;
+	while((index < len) && (count < max)) {
+		if((0x20 == buf[index]) || (0x0D == buf[index])) {
+			field[count] = 0x00;
+			return ++index;
+		}
+		field[count++] = buf[index++];
+	}
+	return 0;
+}
+
+static ssize_t socket_parse_proxy_v1(ioa_socket_handle s, uint8_t *buf, size_t len)
+{
+	if(len < 11) {
+		return 0 ;
+	}
+
+	/* Check for proxy-v1 magic field */
+	char magic[] = {0x50, 0x52, 0x4F, 0x58, 0x59, 0x20};
+	if(memcmp(magic, buf, sizeof(magic))) {
+		return -1;
+	}
+
+	/* Read family */
+	char tcp4[] = {0x54, 0x43, 0x50, 0x34, 0x20};
+	char tcp6[] = {0x54, 0x43, 0x50, 0x36, 0x20};
+	int family;
+	if(0 == memcmp(tcp4, &buf[6], sizeof(tcp4))) { /* IPv4 */
+		family = AF_INET;
+	} else if(0 == memcmp(tcp6, &buf[6], sizeof(tcp6))) { /* IPv6 */
+		family = AF_INET6;
+	} else {
+		return -1;
+	}
+
+	char saddr[40];
+	char daddr[40];
+	char sport[6];
+	char dport[6];
+
+	size_t tlen = 11;
+	/* Read source address */
+	tlen = proxy_string_field(saddr, sizeof(saddr), buf, tlen, len);
+	if(0 == tlen) return -1;
+
+	/* Read dest address */
+	tlen = proxy_string_field(daddr, sizeof(daddr), buf, tlen, len);
+	if(0 == tlen) return -1;
+
+	/* Read source port */
+	tlen = proxy_string_field(sport, sizeof(sport), buf, tlen, len);
+	if(0 == tlen) return -1;
+
+	/* Read dest port */
+	tlen = proxy_string_field(dport, sizeof(dport), buf, tlen, len);
+	if(0 == tlen) return -1;
+
+	/* Final line feed */
+	if ((len <= tlen) || (0x0A != buf[tlen])) return -1;
+
+	tlen++;
+
+	int sport_int = atoi(sport);
+	int dport_int = atoi(dport);
+	if((sport_int < 0) || (0xFFFF < sport_int)) return -1;
+	if((dport_int < 0) || (0xFFFF < dport_int)) return -1;
+
+	if (AF_INET == family) {
+		struct sockaddr_in remote, local;
+		remote.sin_family = local.sin_family = AF_INET;
+		if(1 != inet_pton(AF_INET, saddr, &remote.sin_addr.s_addr)) return -1;
+		if(1 != inet_pton(AF_INET, daddr, &local.sin_addr.s_addr)) return -1;
+		remote.sin_port = htons((uint16_t)sport_int);
+		local.sin_port = htons((uint16_t)dport_int);
+
+		addr_cpy4(&(s->local_addr),  &local);
+		addr_cpy4(&(s->remote_addr), &remote);
+
+	} else {
+		struct sockaddr_in6 remote, local;
+		remote.sin6_family = local.sin6_family = AF_INET6;
+		if(1 != inet_pton(AF_INET6, saddr, &remote.sin6_addr.s6_addr)) return -1;
+		if(1 != inet_pton(AF_INET6, daddr, &local.sin6_addr.s6_addr)) return -1;
+		remote.sin6_port = htons((uint16_t)sport_int);
+		local.sin6_port = htons((uint16_t)dport_int);
+
+		addr_cpy6(&(s->local_addr),  &local);
+		addr_cpy6(&(s->remote_addr), &remote);
+	}
+	return tlen;
+}
+
 static ssize_t socket_parse_proxy_v2(ioa_socket_handle s, uint8_t *buf, size_t len)
 {
 	if(len < 16){
@@ -2222,6 +2317,16 @@ static ssize_t socket_parse_proxy_v2(ioa_socket_handle s, uint8_t *buf, size_t l
 
         }else{
 		return -1;
+	}
+
+	return tlen;
+}
+
+static ssize_t socket_parse_proxy(ioa_socket_handle s, uint8_t *buf, size_t len)
+{
+	ssize_t tlen = socket_parse_proxy_v2(s, buf, len);
+	if(-1 == tlen) {
+		tlen = socket_parse_proxy_v1(s, buf, len);
 	}
 
 	return tlen;
@@ -2450,7 +2555,7 @@ static int socket_input_worker(ioa_socket_handle s)
 				  blen=(ev_ssize_t)STUN_BUFFER_SIZE;
 
 				if(s->st == TCP_SOCKET_PROXY){
-					ssize_t tlen = socket_parse_proxy_v2(s, buf_elem->buf.buf, blen);
+					ssize_t tlen = socket_parse_proxy(s, buf_elem->buf.buf, blen);
 					blen = 0;
 					if (tlen < 0){
 						s->tobeclosed = 1;
@@ -3374,7 +3479,7 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 						}
 					} else {
 #if TLS_SUPPORTED
-						if(check_tentative_tls(s->fd)) {
+						if((s->sat != TCP_CLIENT_DATA_SOCKET) && (s->sat != TCP_RELAY_DATA_SOCKET) && check_tentative_tls(s->fd)) {
 							s->tobeclosed = 1;
 							return -1;
 						}
