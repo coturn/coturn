@@ -9,12 +9,10 @@ Wants=network-online.target
 [Service]
 User=turnserver
 Group=turnserver
-Type=forking
+Type=notify
 RuntimeDirectory=turnserver
 PIDFile=/run/turnserver/turnserver.pid
-ExecStart=/usr/bin/turnserver --daemon -c /etc/turnserver.conf --pidfile /run/turnserver/turnserver.pid
-#FixMe: turnserver exit faster than it is finshing the setup and ready for handling the connection.
-ExecStartPost=/bin/sleep 2
+ExecStart=/usr/bin/turnserver --systemd -c /etc/turnserver.conf --pidfile /run/turnserver/turnserver.pid
 Restart=on-failure
 InaccessibleDirectories=/home
 PrivateTmp=yes

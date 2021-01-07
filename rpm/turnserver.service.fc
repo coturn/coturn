@@ -6,10 +6,10 @@ After=syslog.target network.target
 [Service]
 User=turnserver
 Group=turnserver
-Type=forking
+Type=notify
 EnvironmentFile=/etc/sysconfig/turnserver
 PIDFile=/var/run/turnserver/turnserver.pid
-ExecStart=/usr/bin/turnserver -o -c /etc/turnserver/turnserver.conf $EXTRA_OPTIONS
+ExecStart=/usr/bin/turnserver --systemd -c /etc/turnserver/turnserver.conf $EXTRA_OPTIONS
 ExecStopPost=/usr/bin/rm -f /var/run/turnserver/turnserver.pid
 Restart=on-abort
 

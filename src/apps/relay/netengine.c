@@ -1590,6 +1590,11 @@ void run_listener_server(struct listener_server *ls)
 	unsigned int cycle = 0;
 	while (!turn_params.stop_turn_server) {
 
+		#if !defined(TURN_NO_SYSTEMD)
+		if(turn_params.systemd)
+			sd_notify (0, "READY=1");
+		#endif
+
 		if (eve(turn_params.verbose)) {
 			if ((cycle++ & 15) == 0) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: cycle=%u\n", __FUNCTION__, cycle);
@@ -1600,6 +1605,11 @@ void run_listener_server(struct listener_server *ls)
 
 		rollover_logfile();
 	}
+
+	#if !defined(TURN_NO_SYSTEMD)
+	if(turn_params.systemd)
+		sd_notify (0, "STOPPING=1");
+	#endif
 }
 
 static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int to_set_rfc5780)

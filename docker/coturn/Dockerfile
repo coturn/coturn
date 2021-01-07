@@ -6,7 +6,7 @@ ENV BUILD_PREFIX /usr/local/src
 # Install build dependencies
 RUN export DEBIAN_FRONTEND=noninteractive && \
 	apt-get update && \
-	apt-get install -y build-essential git debhelper dpkg-dev libssl-dev libevent-dev sqlite3 libsqlite3-dev postgresql-client libpq-dev default-mysql-client default-libmysqlclient-dev libhiredis-dev libmongoc-dev libbson-dev
+	apt-get install -y build-essential git debhelper dpkg-dev libssl-dev libevent-dev sqlite3 libsqlite3-dev postgresql-client libpq-dev default-mysql-client default-libmysqlclient-dev libhiredis-dev libmongoc-dev libbson-dev libsystemd-dev
 
 # Clone Coturn
 WORKDIR ${BUILD_PREFIX}

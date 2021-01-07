@@ -158,6 +158,8 @@ Flags:
 
 -o, --daemon		Run server as daemon.
 
+--systemd			Notify systemd about server status. (Use only in forground!)
+
 --no-software-attribute	Production mode: hide the software version.
 
 -f, --fingerprint	Use fingerprints in the TURN messages. If an incoming request

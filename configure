@@ -865,6 +865,21 @@ else
 fi
 
 ###########################
+# Test libsystemd
+###########################
+
+if [ -z "${TURN_NO_SYSTEMD}" ] ; then
+    if testpkg_common libsystemd; then
+        ${ECHO_CMD} "Systemd library found."
+    else
+        ${ECHO_CMD} "Systemd library not found. Building without systemd support."
+        TURN_NO_PQ="-DTURN_NO_SYSTEMD"
+    fi
+else
+    TURN_NO_PQ="-DTURN_NO_SYSTEMD"
+fi
+
+###########################
 # Test SQLite3 setup
 ###########################
 

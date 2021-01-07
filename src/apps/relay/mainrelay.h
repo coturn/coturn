@@ -85,6 +85,10 @@
   #include <openssl/modes.h>
 #endif
 
+#if !defined(TURN_NO_SYSTEMD)
+#include <systemd/sd-daemon.h>
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -335,6 +339,8 @@ typedef struct _turn_params_ {
 
   vint log_binding;
   
+  vint systemd;
+
 } turn_params_t;
 
 extern turn_params_t turn_params;
