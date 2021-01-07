@@ -4134,7 +4134,7 @@ static int write_to_peerchannel(ts_ur_super_session* ss, uint16_t chnum, ioa_net
 			int skip = 0;
 			rc = send_data_from_ioa_socket_nbh(get_relay_socket_ss(ss, chn->peer_addr.ss.sa_family), &(chn->peer_addr), nbh, in_buffer->recv_ttl-1, in_buffer->recv_tos, &skip);
 
-			if (!skip) {
+			if (!skip && rc > -1) {
 				++(ss->peer_sent_packets);
 				ss->peer_sent_bytes += (uint32_t)ioa_network_buffer_get_size(in_buffer->nbh);
 				turn_report_session_usage(ss, 0);
