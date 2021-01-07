@@ -1981,12 +1981,13 @@ static void tcp_client_input_handler_rfc6062data(ioa_socket_handle s, int event_
 		set_ioa_socket_tobeclosed(s);
 	}
 
-	if (!skip) {
+	if (!skip && ss) {
 		++(ss->peer_sent_packets);
 		ss->peer_sent_bytes += bytes;
 	}
 
-	turn_report_session_usage(ss, 0);
+	if(ss)
+		turn_report_session_usage(ss, 0);
 }
 
 static void tcp_conn_bind_timeout_handler(ioa_engine_handle e, void *arg)
