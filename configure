@@ -758,19 +758,31 @@ else
     if testpkg_common libcrypto; then
         ${ECHO_CMD} "OpenSSL Crypto lib found."
     else
-        ${ECHO_CMD} "ERROR: OpenSSL Crypto development libraries are not installed properly in required location."
-        ${ECHO_CMD} "Abort."
-        cleanup
-        exit
+	    testlib crypto
+	    ER=$?
+        if ! [ ${ER} -eq 0 ] ; then
+            ${ECHO_CMD} "OpenSSL Crypto lib found."
+        else        
+            ${ECHO_CMD} "ERROR: OpenSSL Crypto development libraries are not installed properly in required location."
+            ${ECHO_CMD} "Abort."
+            cleanup
+            exit
+        fi
     fi
 
     if testpkg_common libssl; then
         ${ECHO_CMD} "OpenSSL lib found."
     else
-        ${ECHO_CMD} "ERROR: OpenSSL development libraries are not installed properly in required location."
-        ${ECHO_CMD} "Abort."
-        cleanup
-        exit
+       testlib ssl
+        ER=$?
+        if ! [ ${ER} -eq 0 ] ; then
+            ${ECHO_CMD} "OpenSSL lib found."
+        else
+            ${ECHO_CMD} "ERROR: OpenSSL development libraries are not installed properly in required location."
+            ${ECHO_CMD} "Abort."
+            cleanup
+            exit
+        fi
     fi
 fi
 ###########################
