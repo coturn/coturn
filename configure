@@ -919,7 +919,7 @@ fi
 ###########################
 
 if [ -z "${TURN_NO_MYSQL}" ] ; then
-    if testpkg_db mariadb || testpkg_server mysqlclient ; then
+    if testpkg_db mariadb || testpkg_db mysqlclient ; then
         ${ECHO_CMD} "MySQL found."
     else
         ${ECHO_CMD} "MySQL not found. Building without MySQL support."
