@@ -32,7 +32,7 @@ Version 4.5.2 'dan Eider':
 	- Fix stale-nonce documentation. Resolves #604
 	- Version number is changed to semver 2.0
 	- Merge PR #288 (by Hristo Venev)
-		* pkg-config, and various cleanups in connfigure file
+		* pkg-config, and various cleanups in configure file
 	- Add systemd notification for better systemd integration
 	- Fix Issue #621 (by ycaibb)
 		* Fix: Null pointer dereference on tcp_client_input_handler_rfc6062data function
