@@ -21,7 +21,7 @@ static int is_acme_req(char *req, size_t len) {
 	// Usually (for LE) the "method path" is 32 + 43 = 55 chars. But other
 	// implementations may choose longer pathes. We define PATHMAX = 127 chars
 	// to be prepared for "DoS" attacks (STUN msg size max. is ~ 64K).
-	len =- 21;					// min size of trailing headers
+	len -= 21;					// min size of trailing headers
 	if (len > 131)
 		len = 131;
 	for (i=GET_ACME_PREFIX_LEN; i < (int) len; i++) {
