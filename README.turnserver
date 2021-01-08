@@ -158,7 +158,7 @@ Flags:
 
 -o, --daemon		Run server as daemon.
 
---systemd			Notify systemd about server status. (Use only in forground!)
+--systemd			Notify systemd about server status. (Use only in foreground!)
 
 --no-software-attribute	Production mode: hide the software version.
 
