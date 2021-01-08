@@ -2,8 +2,8 @@ language: cpp
 
 
 before_install:
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; export SSL_CFLAGS="$SSL_CFLAGS -I/usr/local/opt/openssl/include"
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; export SSL_LIBS="$SSL_LIBS -L/usr/local/opt/openssl/lib"
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export SSL_CFLAGS="$SSL_CFLAGS -I/usr/local/opt/openssl/include"; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export SSL_LIBS="$SSL_LIBS -L/usr/local/opt/openssl/lib"; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew outdated openssl || brew upgrade openssl; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew unlink protobuf; fi
