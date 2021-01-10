@@ -483,14 +483,39 @@ int ioa_addr_is_loopback(ioa_addr *addr)
 			return (u[0] == 127);
 		} else if(addr->ss.sa_family == AF_INET6) {
 			const uint8_t *u = ((const uint8_t*)&(addr->s6.sin6_addr));
-			if(u[7] == 1) {
+			if(u[15] == 1) {
 				int i;
-				for(i=0;i<7;++i) {
+				for(i=0;i<15;++i) {
 					if(u[i])
 						return 0;
 				}
 				return 1;
 			}
+		}
+	}
+	return 0;
+}
+
+/*
+To avoid a vulnerability this function checks whether the addr is in 0.0.0.0/8 or ::/128.
+Source from (INADDR_ANY) 0.0.0.0/32 and (in6addr_any) ::/128 routed to loopback on Linux systems for old BSD backward compatibility.
+https://github.com/torvalds/linux/blob/a2f5ea9e314ba6778f885c805c921e9362ec0420/net/ipv6/tcp_ipv6.c#L182
+To avoid any trouble we match the whole 0.0.0.0/8 that defined in RFC6890 as local network "this".
+*/
+int ioa_addr_is_zero(ioa_addr *addr)
+{
+	if(addr) {
+		if(addr->ss.sa_family == AF_INET) {
+			const uint8_t *u = ((const uint8_t*)&(addr->s4.sin_addr));
+			return (u[0] == 0);
+		} else if(addr->ss.sa_family == AF_INET6) {
+			const uint8_t *u = ((const uint8_t*)&(addr->s6.sin6_addr));
+			int i;
+			for(i=0;i<=15;++i) {
+				if(u[i])
+					return 0;
+			}
+			return 1;
 		}
 	}
 	return 0;

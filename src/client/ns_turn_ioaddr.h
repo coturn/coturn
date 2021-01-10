@@ -89,6 +89,7 @@ void ioa_addr_range_cpy(ioa_addr_range* dest, const ioa_addr_range* src);
 
 int ioa_addr_is_multicast(ioa_addr *a);
 int ioa_addr_is_loopback(ioa_addr *addr);
+int ioa_addr_is_zero(ioa_addr *addr);
 
 /////// Map "public" address to "private" address //////////////
 

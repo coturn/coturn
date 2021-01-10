@@ -273,6 +273,8 @@ static int good_peer_addr(turn_turnserver *server, const char* realm, ioa_addr *
 			return 0;
 		if( !*(server->allow_loopback_peers) && ioa_addr_is_loopback(peer_addr))
 			return 0;
+		if (ioa_addr_is_zero(peer_addr))
+			return 0;
 
 		{
 			int i;
