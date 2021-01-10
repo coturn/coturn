@@ -9,8 +9,48 @@ before_install:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew unlink protobuf; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install mysql sqlite hiredis; fi
 
-matrix:
+jobs:
   include:
+  - name: ubuntu focal AMD64 C
+    os: linux
+    arch: amd64
+    dist: focal
+    sudo: required
+    addons:
+      apt:
+        packages:
+        - mysql-client
+        - debhelper
+        - dpkg-dev
+        - libssl-dev
+        - libevent-dev
+        - sqlite3
+        - libsqlite3-dev
+        - postgresql-client
+        - libpq-dev
+        - libmysqlclient-dev
+        - libhiredis-dev
+  - name: ubuntu Focal AMD64 C++
+    os: linux
+    arch: amd64
+    dist: focal
+    sudo: required
+    env:
+    - CC=g++
+    addons:
+      apt:
+        packages:
+        - mysql-client
+        - debhelper
+        - dpkg-dev
+        - libssl-dev
+        - libevent-dev
+        - sqlite3
+        - libsqlite3-dev
+        - postgresql-client
+        - libpq-dev
+        - libmysqlclient-dev
+        - libhiredis-dev
   - os: linux
     arch: amd64
     dist: bionic
