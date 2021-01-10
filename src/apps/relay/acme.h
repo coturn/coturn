@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012, 2013 Citrix Systems
+ * Copyright (C) 2011, 2012, 2013, 2014 Citrix Systems
  *
  * All rights reserved.
  *
@@ -28,18 +28,30 @@
  * SUCH DAMAGE.
  */
 
-#ifndef __NST_OPENSSL_LIB__
-#define __NST_OPENSSL_LIB__
+#ifndef __TURN_ACME__
+#define __TURN_ACME__
 
-#include <openssl/md5.h>
-#include <openssl/hmac.h>
-#include <openssl/ssl.h>
-#include <openssl/bio.h>
-#include <openssl/err.h>
-#include <openssl/rand.h>
-#include <openssl/crypto.h>
-#include <openssl/opensslv.h>
-#include <openssl/dh.h>
-#include <openssl/bn.h>
+#include "ns_turn_utils.h"
+#include "ns_turn_server.h"
+#include "apputils.h"
 
-#endif //__NST_OPENSSL_LIB__
+#include <stdlib.h>
+#include <stdio.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+///////////// ACME /////////////////////
+
+int try_acme_redirect(char *req, size_t len, const char *url, ioa_socket_handle s);
+
+///////////////////////////////////////
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif
+/// __TURN_ACME__ ///
+

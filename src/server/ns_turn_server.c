@@ -273,6 +273,8 @@ static int good_peer_addr(turn_turnserver *server, const char* realm, ioa_addr *
 			return 0;
 		if( !*(server->allow_loopback_peers) && ioa_addr_is_loopback(peer_addr))
 			return 0;
+		if (ioa_addr_is_zero(peer_addr))
+			return 0;
 
 		{
 			int i;
@@ -1981,12 +1983,13 @@ static void tcp_client_input_handler_rfc6062data(ioa_socket_handle s, int event_
 		set_ioa_socket_tobeclosed(s);
 	}
 
-	if (!skip) {
+	if (!skip && ss) {
 		++(ss->peer_sent_packets);
 		ss->peer_sent_bytes += bytes;
 	}
 
-	turn_report_session_usage(ss, 0);
+	if(ss)
+		turn_report_session_usage(ss, 0);
 }
 
 static void tcp_conn_bind_timeout_handler(ioa_engine_handle e, void *arg)
@@ -3832,13 +3835,13 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 							&dest_changed, &response_destination,
 							0, 0);
 
-				if(server->verbose) {
+				if(server->verbose && server->log_binding) {
 				  log_method(ss, "BINDING", err_code, reason);
 				}
 
 				if(*resp_constructed && !err_code && (origin_changed || dest_changed)) {
 
-					if (server->verbose) {
+					if (server->verbose && server->log_binding) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "RFC 5780 request successfully processed\n");
 					}
 
@@ -4014,7 +4017,7 @@ static int handle_old_stun_command(turn_turnserver *server, ts_ur_super_session 
 						&dest_changed, &response_destination,
 						cookie,1);
 
-			if(server->verbose) {
+			if(server->verbose && *(server->log_binding)) {
 			  log_method(ss, "OLD BINDING", err_code, reason);
 			}
 
@@ -4133,7 +4136,7 @@ static int write_to_peerchannel(ts_ur_super_session* ss, uint16_t chnum, ioa_net
 			int skip = 0;
 			rc = send_data_from_ioa_socket_nbh(get_relay_socket_ss(ss, chn->peer_addr.ss.sa_family), &(chn->peer_addr), nbh, in_buffer->recv_ttl-1, in_buffer->recv_tos, &skip);
 
-			if (!skip) {
+			if (!skip && rc > -1) {
 				++(ss->peer_sent_packets);
 				ss->peer_sent_bytes += (uint32_t)ioa_network_buffer_get_size(in_buffer->nbh);
 				turn_report_session_usage(ss, 0);
@@ -4292,7 +4295,7 @@ static int write_client_connection(turn_turnserver *server, ts_ur_super_session*
 		int skip = 0;
 		int ret = send_data_from_ioa_socket_nbh(ss->client_socket, NULL, nbh, ttl, tos, &skip);
 
-		if(!skip) {
+		if(!skip && ret>-1) {
 			++(ss->sent_packets);
 			ss->sent_bytes += (uint32_t)ioa_network_buffer_get_size(nbh);
 			turn_report_session_usage(ss, 0);
@@ -4624,14 +4627,27 @@ static int read_client_connection(turn_turnserver *server,
 	} else {
 		SOCKET_TYPE st = get_ioa_socket_type(ss->client_socket);
 		if(is_stream_socket(st)) {
-			if(is_http((char*)ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh))) {
+			if(is_http((char*)ioa_network_buffer_data(in_buffer->nbh),
+			ioa_network_buffer_get_size(in_buffer->nbh))) {
+
 				const char *proto = "HTTP";
-				ioa_network_buffer_data(in_buffer->nbh)[ioa_network_buffer_get_size(in_buffer->nbh)] = 0;
-				if (*server->web_admin_listen_on_workers) {
+				if ((st == TCP_SOCKET) &&
+					(
+						try_acme_redirect(
+							(char*)ioa_network_buffer_data(in_buffer->nbh),
+							ioa_network_buffer_get_size(in_buffer->nbh),
+							server->acme_redirect,
+							ss->client_socket
+						) == 0
+					)
+				) {
+					ss->to_be_closed = 1;
+					return 0;
+				} else if (*server->web_admin_listen_on_workers) {
 					if(st==TLS_SOCKET) {
 						proto = "HTTPS";
 						set_ioa_socket_app_type(ss->client_socket,HTTPS_CLIENT_SOCKET);
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s (%s %s) request: %s\n", __FUNCTION__, proto, get_ioa_socket_cipher(ss->client_socket), get_ioa_socket_ssl_method(ss->client_socket), (char*)ioa_network_buffer_data(in_buffer->nbh));
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s (%s %s) request: %s\n", __FUNCTION__, proto, get_ioa_socket_cipher(ss->client_socket), get_ioa_socket_ssl_method(ss->client_socket), ioa_network_buffer_get_size(in_buffer->nbh));
 						if(server->send_https_socket) {
 							TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s socket to be detached: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(long)ss->client_socket, get_ioa_socket_type(ss->client_socket), get_ioa_socket_app_type(ss->client_socket));
 							ioa_socket_handle new_s = detach_ioa_socket(ss->client_socket);
@@ -4644,7 +4660,7 @@ static int read_client_connection(turn_turnserver *server,
 					} else {
 						set_ioa_socket_app_type(ss->client_socket,HTTP_CLIENT_SOCKET);
 						if(server->verbose) {
-							TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s request: %s\n", __FUNCTION__, proto, (char*)ioa_network_buffer_data(in_buffer->nbh));
+							TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s request: %s\n", __FUNCTION__, proto, ioa_network_buffer_get_size(in_buffer->nbh));
 						}
 						handle_http_echo(ss->client_socket);
 					}
@@ -4901,7 +4917,7 @@ void init_turn_server(turn_turnserver* server,
 		vintp stun_only,
 		vintp no_stun,
 		vintp no_software_attribute,
-    vintp web_admin_listen_on_workers,
+		vintp web_admin_listen_on_workers,
 		turn_server_addrs_list_t *alternate_servers_list,
 		turn_server_addrs_list_t *tls_alternate_servers_list,
 		turn_server_addrs_list_t *aux_servers_list,
@@ -4915,7 +4931,9 @@ void init_turn_server(turn_turnserver* server,
 		allocate_bps_cb allocate_bps_func,
 		int oauth,
 		const char* oauth_server_name,
-		int keep_address_family) {
+		const char* acme_redirect,
+		int keep_address_family,
+		vintp log_binding) {
 
 	if (!server)
 		return;
@@ -4944,6 +4962,7 @@ void init_turn_server(turn_turnserver* server,
 		server->oauth_server_name = oauth_server_name;
 	if(mobility)
 		server->mobile_connections_map = ur_map_create();
+	server->acme_redirect = acme_redirect;
 
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"turn server id=%d created\n",(int)id);
 
@@ -4986,6 +5005,8 @@ void init_turn_server(turn_turnserver* server,
 	server->keep_address_family = keep_address_family;
 
 	set_ioa_timer(server->e, 1, 0, timer_timeout_handler, server, 1, "timer_timeout_handler");
+
+	server->log_binding = log_binding;
 }
 
 ioa_engine_handle turn_server_get_engine(turn_turnserver *s) {

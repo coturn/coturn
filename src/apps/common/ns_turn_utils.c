@@ -158,41 +158,15 @@ void set_no_stdout_log(int val)
 	no_stdout_log = val;
 }
 
-void turn_log_func_default(TURN_LOG_LEVEL level, const char* format, ...)
-{
-#if !defined(TURN_LOG_FUNC_IMPL)
-	{
-		va_list args;
-		va_start(args,format);
-		vrtpprintf(level, format, args);
-		va_end(args);
-	}
-#endif
+#define MAX_LOG_TIMESTAMP_FORMAT_LEN 48
+static char turn_log_timestamp_format[MAX_LOG_TIMESTAMP_FORMAT_LEN] = "%FT%T%z";
 
-	{
-		va_list args;
-		va_start(args,format);
-#if defined(TURN_LOG_FUNC_IMPL)
-		TURN_LOG_FUNC_IMPL(level,format,args);
-#else
-#define MAX_RTPPRINTF_BUFFER_SIZE (1024)
-		char s[MAX_RTPPRINTF_BUFFER_SIZE+1];
-#undef MAX_RTPPRINTF_BUFFER_SIZE
-		if (level == TURN_LOG_LEVEL_ERROR) {
-			snprintf(s,sizeof(s)-100,"%lu: ERROR: ",(unsigned long)log_time());
-			size_t slen = strlen(s);
-			vsnprintf(s+slen,sizeof(s)-slen-1,format, args);
-			fwrite(s,strlen(s),1,stdout);
-		} else if(!no_stdout_log) {
-			snprintf(s,sizeof(s)-100,"%lu: ",(unsigned long)log_time());
-			size_t slen = strlen(s);
-			vsnprintf(s+slen,sizeof(s)-slen-1,format, args);
-			fwrite(s,strlen(s),1,stdout);
-		}
-#endif
-		va_end(args);
-	}
+void set_turn_log_timestamp_format(char* new_format)
+{
+	strncpy(turn_log_timestamp_format, new_format, MAX_LOG_TIMESTAMP_FORMAT_LEN-1);
 }
+
+int use_new_log_timestamp_format = 0;
 
 void addr_debug_print(int verbose, const ioa_addr *addr, const char* s)
 {
@@ -512,20 +486,29 @@ static int get_syslog_level(TURN_LOG_LEVEL level)
 	return LOG_INFO;
 }
 
-int vrtpprintf(TURN_LOG_LEVEL level, const char *format, va_list args)
+void turn_log_func_default(TURN_LOG_LEVEL level, const char* format, ...)
 {
+	va_list args;
+	va_start(args,format);
+#if defined(TURN_LOG_FUNC_IMPL)
+	TURN_LOG_FUNC_IMPL(level,format,args);
+#else
 	/* Fix for Issue 24, raised by John Selbie: */
 #define MAX_RTPPRINTF_BUFFER_SIZE (1024)
 	char s[MAX_RTPPRINTF_BUFFER_SIZE+1];
 #undef MAX_RTPPRINTF_BUFFER_SIZE
-
-	size_t sz;
-
-	snprintf(s, sizeof(s), "%lu: ",(unsigned long)log_time());
-	sz=strlen(s);
-	vsnprintf(s+sz, sizeof(s)-1-sz, format, args);
-	s[sizeof(s)-1]=0;
-
+	size_t so_far = 0;
+	if (use_new_log_timestamp_format) {
+		time_t now = time(NULL);
+		so_far += strftime(s, sizeof(s), turn_log_timestamp_format, localtime(&now));
+	} else {
+		so_far += snprintf(s, sizeof(s), "%lu: ", (unsigned long)log_time());
+	}
+	so_far += snprintf(s + so_far, sizeof(s)-100, (level == TURN_LOG_LEVEL_ERROR) ? ": ERROR: " : ": ");
+	so_far += vsnprintf(s + so_far,sizeof(s) - (so_far+1), format, args);
+	/* always write to stdout */
+	fwrite(s, so_far, 1, stdout);
+	/* write to syslog or to log file */
 	if(to_syslog) {
 		syslog(get_syslog_level(level),"%s",s);
 	} else {
@@ -538,16 +521,9 @@ int vrtpprintf(TURN_LOG_LEVEL level, const char *format, va_list args)
 		}
 		log_unlock();
 	}
+#endif
+	va_end(args);
 
-	return 0;
-}
-
-void rtpprintf(const char *format, ...)
-{
-	va_list args;
-	va_start (args, format);
-	vrtpprintf(TURN_LOG_LEVEL_INFO, format, args);
-	va_end (args);
 }
 
 ///////////// ORIGIN ///////////////////

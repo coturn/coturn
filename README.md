@@ -70,6 +70,8 @@ Supported user databases (for user repository, with passwords or keys, if authen
 
 Redis can also be used for status and statistics storage and notification.
 
+By default a [prometheus](https://prometheus.io/) exporter endpoint is disabled, if it is enabeled it will listen on port 9641 under path /metrics
+
 Supported message integrity digest algorithms:
 
   * HMAC-SHA1, with MD5-hashed keys (as required by STUN and TURN standards)
@@ -119,7 +121,8 @@ Contact information:
 
 https://groups.google.com/forum/#!forum/turn-server-project-rfc5766-turn-server
 
-email:mom040267@gmail.com
+email:misi@majd.eu
+      mom040267@gmail.com
 
 ### Feedback is very welcome (bugs, issues, suggestions, stories, questions). ###
 

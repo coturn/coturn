@@ -85,6 +85,10 @@
   #include <openssl/modes.h>
 #endif
 
+#if !defined(TURN_NO_SYSTEMD)
+#include <systemd/sd-daemon.h>
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -219,6 +223,7 @@ typedef struct _turn_params_ {
   int do_not_use_config_file;
 
   char pidfile[1025];
+  char acme_redirect[1025];
 
   ////////////////  Listener server /////////////////
 
@@ -311,6 +316,10 @@ typedef struct _turn_params_ {
   band_limit_t bps_capacity_allocated;
   vint total_quota;
   vint user_quota;
+  #if !defined(TURN_NO_PROMETHEUS)
+  int  prometheus;
+  #endif
+
 
 /////// Users DB ///////////
 
@@ -328,6 +337,7 @@ typedef struct _turn_params_ {
   int no_dynamic_ip_list;
   int no_dynamic_realms;
 
+  vint log_binding;
 } turn_params_t;
 
 extern turn_params_t turn_params;

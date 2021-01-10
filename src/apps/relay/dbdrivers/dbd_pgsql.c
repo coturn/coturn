@@ -758,7 +758,7 @@ static void pgsql_reread_realms(secrets_list_t * realms_list) {
 						if(rval) {
 							get_realm(rval);
 							ur_string_map_value_type value = strdup(rval);
-							ur_string_map_put(o_to_realm_new, (const ur_string_map_key_type) oval, value);
+							ur_string_map_put(o_to_realm_new, (ur_string_map_key_type) oval, value);
 						}
 					}
 				}
