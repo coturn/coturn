@@ -1,3 +1,56 @@
+10/01/2021 Oleg Moskalenko <mom040267@gmail.com> Mihály Mészáros <misi@majd.eu>
+Version 4.5.2 'dan Eider':
+	- fix null pointer dereference in case of out of memory. (thanks to Thomas Moeller for the report)
+	- merge PR #517 (by wolmi)
+		* add prometheus metrics
+	- merge PR #637 (by David Florness)
+	    * Delete trailing whitespace in example configuration files
+	- merge PR #631 (by Debabrata Deka)
+	    * Add architecture ppc64le to travis build
+	- merge PR #627 (by Samuel)
+		* Fix misleading option in doc (prometheus)
+	- merge PR #643 (by tupelo-schneck)
+		* Allow RFC6062 TCP relay data to look like TLS
+	- merge PR #655 (by plinss)
+		* Add support for proxy protocol V1 
+	- merge PR #618 (by Paul Wayper)
+		* Print full date and time in logs
+		* Add new options: "new-log-timestamp" and "new-log-timestamp-format"
+	- merge PR #599 (by Cédric Krier)
+		* Do not use FIPS and remove hardcode OPENSSL_VERSION_NUMBER with LibreSSL
+	- update Docker mongoDB and fix with workaround the missing systemctl
+	- merge PR #660 (by Camden Narzt)
+		* fix compilation on macOS Big Sur
+	- merge PR #546 (by jelmd)
+		* Add ACME redirect url
+	- merge PR #551 (by jelmd)
+		* support of --acme-redirect <URL>
+	- merge PR #672 further acme fixes (by jemld)
+		* fix acme security, redundancy, consistency
+	- Disable binding request logging to avoid DoS attacks. (Breaking change!)
+		* Add new --log-binding option to enable binding request logging
+	- Fix stale-nonce documentation. Resolves #604
+	- Version number is changed to semver 2.0
+	- Merge PR #288 (by Hristo Venev)
+		* pkg-config, and various cleanups in configure file
+	- Add systemd notification for better systemd integration
+	- Fix Issue #621 (by ycaibb)
+		* Fix: Null pointer dereference on tcp_client_input_handler_rfc6062data function
+	- Fix Issue #600 (by ycaibb)
+		* Fix: use-after-free vulnerability on write_to_peerchannel function
+	- Fix Issue #601 (by ycaibb)
+		* Fix: use-after-free vulnerability on write_client_connection function
+	- Little refactoring prometheus
+		* Fix c++ support
+		* Simplify (as agreed in Issue #666)
+			* Remove session id/allocation labels
+			* Remove per session metrics. We should later add more counters.
+	- Fix CVE-2020-26262 (credits: Enable-Security)
+		* Fix ipv6 ::1 loopback check
+		* Not allow allocate peer address 0.0.0.0/8 and ::/128
+		* For more details see the github security advisory:
+			https://github.com/coturn/coturn/security/advisories/GHSA-6g6j-r9rf-cm7p
+
 24/06/2020 Oleg Moskalenko <mom040267@gmail.com> Mihály Mészáros <misi@majd.eu>
 Version 4.5.1.3 'dan Eider':
 	- merge PR #575: (by osterik)

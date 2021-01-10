@@ -456,7 +456,7 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server,
 		sm->m.sm.s = s;
 
 		if (s) {
-			if(verbose) {
+			if(verbose && turn_params.log_binding) {
 				uint8_t saddr[129];
 				uint8_t rsaddr[129];
 				addr_to_string(get_local_addr_from_ioa_socket(s),saddr);

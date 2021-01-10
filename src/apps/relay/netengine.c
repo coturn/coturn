@@ -1590,6 +1590,10 @@ void run_listener_server(struct listener_server *ls)
 	unsigned int cycle = 0;
 	while (!turn_params.stop_turn_server) {
 
+		#if !defined(TURN_NO_SYSTEMD)
+			sd_notify (0, "READY=1");
+		#endif
+
 		if (eve(turn_params.verbose)) {
 			if ((cycle++ & 15) == 0) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: cycle=%u\n", __FUNCTION__, cycle);
@@ -1600,6 +1604,10 @@ void run_listener_server(struct listener_server *ls)
 
 		rollover_logfile();
 	}
+
+	#if !defined(TURN_NO_SYSTEMD)
+		sd_notify (0, "STOPPING=1");
+	#endif
 }
 
 static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int to_set_rfc5780)
@@ -1667,7 +1675,9 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
 			 allocate_bps,
 			 turn_params.oauth,
 			 turn_params.oauth_server_name,
-			 turn_params.keep_address_family);
+			 turn_params.acme_redirect,
+			 turn_params.keep_address_family,
+			 &turn_params.log_binding);
 	
 	if(to_set_rfc5780) {
 		set_rfc5780(&(rs->server), get_alt_addr, send_message_from_listener_to_client);

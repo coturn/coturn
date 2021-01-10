@@ -9,20 +9,8 @@ cleanup() {
 	rm -rf ${TH_TMPCPROGB}
 	rm -rf ${GCM_TMPCPROGC}
 	rm -rf ${GCM_TMPCPROGB}
-	rm -rf ${PQ_TMPCPROGC}
-	rm -rf ${PQ_TMPCPROGB}
-	rm -rf ${MYSQL_TMPCPROGC}
-	rm -rf ${MYSQL_TMPCPROGB}
-	rm -rf ${MONGO_TMPCPROGC}
-	rm -rf ${MONGO_TMPCPROGB}
 	rm -rf ${D_TMPCPROGC}
 	rm -rf ${D_TMPCPROGB}
-	rm -rf ${SQL_TMPCPROGC}
-	rm -rf ${SQL_TMPCPROGO}
-	rm -rf ${E_TMPCPROGC}
-	rm -rf ${E_TMPCPROGO}
-	rm -rf ${HR_TMPCPROGC}
-	rm -rf ${HR_TMPCPROGB}
 	rm -rf ${TMPCADDRPROGO}
 }
 
@@ -38,144 +26,33 @@ testlibraw() {
     fi
 }
 
-testsqlite_comp() {
-    SQLITE_LIBS=-lsqlite3
-    ${CC} -c ${SQL_TMPCPROGC} -o ${SQL_TMPCPROGO} ${OSCFLAGS} 2>>/dev/null
-    ER=$?
-    if ! [ ${ER} -eq 0 ] ; then
-		${ECHO_CMD} "SQLite development is not installed properly"
-		return 0
-    else
-		DBLIBS="${DBLIBS} ${SQLITE_LIBS}"
-		return 1
+# testpkg pkg1 pkg2 ...
+# If all libraries are found, sets PKG_CFLAGS/PKG_LIBS and returns success.
+# Otherwise, returns failure.
+testpkg() {
+    PKG_LIBS="$($PKGCONFIG --libs "$@" 2>/dev/null)"
+    if [ $? -ne 0 ] ; then
+        return 1
     fi
+    PKG_CFLAGS="$($PKGCONFIG --cflags "$@")"
 }
 
-testlibevent2_comp() {
-    ${CC} -c ${E_TMPCPROGC} -o ${E_TMPCPROGO} ${OSCFLAGS} 2>>/dev/null
-    ER=$?
-    if ! [ ${ER} -eq 0 ] ; then
-		${ECHO_CMD} "Libevent2 development is not installed properly"
-		return 0
-    else
-		return 1
-    fi
+# testpkg_db pkg1 pkg2 ...
+# If all libraries are found, adds them to DBCFLAGS/DBLIBS and returns success.
+# Otherwise, returns failure.
+testpkg_db() {
+    testpkg "$@" || return $?
+    DBCFLAGS="${DBCFLAGS} ${PKG_CFLAGS}"
+    DBLIBS="${DBLIBS} ${PKG_LIBS}"
 }
 
-testhiredis() {
-    if [ -z "${HIREDIS_CFLAGS}" ] || [ -z "${HIREDIS_LIBS}" ]; then
-        for inc in ${INCLUDEDIR}/hiredis /usr/local/include/hiredis /usr/hiredis /usr/include/hiredis
-        do
-            if [ -d ${inc} ] ; then
-                HIREDIS_CFLAGS="${HIREDIS_CFLAGS} -I${inc}"
-            fi
-        done
-        HIREDIS_LIBS=-lhiredis
-    fi
-    ${CC} ${HR_TMPCPROGC} -o ${HR_TMPCPROGB} ${OSCFLAGS} ${DBLIBS} ${HIREDIS_CFLAGS} ${HIREDIS_LIBS} ${OSLIBS} 2>>/dev/null
-    ER=$?
-    if ! [ ${ER} -eq 0 ] ; then
-		${ECHO_CMD}
-		${ECHO_CMD} "HIREDIS DEVELOPMENT LIBRARY (libhiredis.*) AND/OR HEADERS (hiredis/*.h)"
-		${ECHO_CMD} "	ARE NOT INSTALLED PROPERLY ON THIS SYSTEM."
-		${ECHO_CMD} "	THAT'S OK BUT THE TURN SERVER IS BUILDING WITHOUT REDIS SUPPORT."
-		${ECHO_CMD}
-		return 0
-    else
-		DBCFLAGS="${DBCFLAGS} ${HIREDIS_CFLAGS}"
-		DBLIBS="${DBLIBS} ${HIREDIS_LIBS}"
-		return 1
-    fi
-}
-
-testlibpq() {
-    if [ -z "${PSQL_CFLAGS}" ] || [ -z "${PSQL_LIBS}" ]; then
-        PSQL_CFLAGS="-I${PREFIX}/pgsql/include -I${PREFIX}/include/pgsql/ -I${PREFIX}/include/postgres/ -I${PREFIX}/postgres/include/ -I${PREFIX}/include/postgresql/ -I${PREFIX}/postgresql/include/"
-        PSQL_CFLAGS="${PSQL_CFLAGS} -I/usr/local/pgsql/include -I/usr/local/include/pgsql/ -I/usr/local/include/postgres/ -I/usr/local/postgres/include/ -I/usr/local/include/postgresql/ -I/usr/local/postgresql/include/"
-        PSQL_CFLAGS="${PSQL_CFLAGS} -I/usr/pgsql/include -I/usr/include/pgsql/ -I/usr/include/postgres/ -I/usr/postgres/include/ -I/usr/include/postgresql/ -I/usr/postgresql/include/"
-        for ilib in ${PREFIX}/pgsql/lib ${PREFIX}/lib/pgsql ${PREFIX}/lib64/pgsql /usr/local/pgsql/lib /usr/local/lib/pgsql /usr/local/lib64/pgsql /usr/pgsql/lib /usr/lib/pgsql /usr/lib64/pgsql ${PREFIX}/postgres/lib ${PREFIX}/lib/postgres ${PREFIX}/lib64/postgres /usr/local/postgres/lib /usr/local/lib/postgres /usr/local/lib64/postgres /usr/postgres/lib /usr/lib/postgres /usr/lib64/postgres ${PREFIX}/postgresql/lib ${PREFIX}/lib/postgresql ${PREFIX}/lib64/postgresql /usr/local/postgresql/lib /usr/local/lib/postgresql /usr/local/lib64/postgresql /usr/postgresql/lib /usr/lib/postgresql /usr/lib64/postgresql
-        do
-	    if [ -d ${ilib} ] ; then
-    	        PSQL_LIBS="${PSQL_LIBS} -L${ilib}"
-	        if ! [ -z "${TURN_ACCEPT_RPATH}" ] ; then
-		    TURN_RPATH="${TURN_RPATH} -Wl,-rpath,${ilib}"
-	        fi
-	    fi
-        done
-        PSQL_LIBS="${OSLIBS} ${PSQL_LIBS} -lpq"
-    fi
-    ${CC} ${PQ_TMPCPROGC} -o ${PQ_TMPCPROGB} ${OSCFLAGS} ${DBCFLAGS} ${PSQL_CFLAGS} ${DBLIBS} ${PSQL_LIBS} ${OSLIBS} 2>>/dev/null 
-    ER=$?
-    if ! [ ${ER} -eq 0 ] ; then
-    	${ECHO_CMD}
-		${ECHO_CMD} "POSTGRESQL DEVELOPMENT LIBRARY (libpq.a) AND/OR HEADER (libpq-fe.h)"
-		${ECHO_CMD} "	ARE NOT INSTALLED PROPERLY ON THIS SYSTEM."
-		${ECHO_CMD} "	THAT'S OK BUT THE TURN SERVER IS BUILDING WITHOUT POSTGRESQL DATABASE SUPPORT."
-		${ECHO_CMD}
-		return 0
-    else
-		DBCFLAGS="${DBCFLAGS} ${PSQL_CFLAGS}"
-		DBLIBS="${DBLIBS} ${PSQL_LIBS}"
-		return 1
-    fi
-}
-
-testlibmysql() {
-    if [ -z "${MYSQL_CFLAGS}" ] || [ -z "${MYSQL_LIBS}" ]; then
-        MYSQL_CFLAGS="-I${PREFIX}/mysql/include -I${PREFIX}/include/mysql/"
-        MYSQL_CFLAGS="${MYSQL_CFLAGS} -I/usr/local/mysql/include -I/usr/local/include/mysql/"
-        MYSQL_CFLAGS="${MYSQL_CFLAGS} -I/usr/mysql/include -I/usr/include/mysql/"
-        for ilib in ${PREFIX}/mysql/lib ${PREFIX}/lib/mysql ${PREFIX}/lib64/mysql /usr/local/mysql/lib /usr/local/lib/mysql /usr/local/lib64/mysql /usr/mysql/lib /usr/lib/mysql /usr/lib64/mysql
-        do
-            if [ -d ${ilib} ] ; then
-                MYSQL_LIBS="${MYSQL_LIBS} -L${ilib}"
-                if ! [ -z "${TURN_ACCEPT_RPATH}" ] ; then
-                    TURN_RPATH="${TURN_RPATH} -Wl,-rpath,${ilib}"
-                fi
-            fi
-        done
-        MYSQL_LIBS="${OSLIBS} ${MYSQL_LIBS} -lmysqlclient"
-    fi
-    ${CC} ${MYSQL_TMPCPROGC} -o ${MYSQL_TMPCPROGB} ${OSCFLAGS} ${DBCFLAGS} ${DBLIBS} ${MYSQL_CFLAGS} ${MYSQL_LIBS} ${OSLIBS} 2>>/dev/null
-    ER=$?
-    if ! [ ${ER} -eq 0 ] ; then
-    	${ECHO_CMD}
-		${ECHO_CMD} "MYSQL DEVELOPMENT LIBRARY (libmysqlclient) AND/OR HEADER (mysql.h)"
-		${ECHO_CMD} "	ARE NOT INSTALLED PROPERLY ON THIS SYSTEM."
-		${ECHO_CMD} "	THAT'S OK BUT THE TURN SERVER IS BUILDING WITHOUT MYSQL DATABASE SUPPORT."
-		${ECHO_CMD}
-		return 0
-    else
-		DBCFLAGS="${DBCFLAGS} ${MYSQL_CFLAGS}"
-		DBLIBS="${DBLIBS} ${MYSQL_LIBS}"
-		return 1
-    fi
-}
-
-testlibmongoc() {
-    if [ -z "${MONGO_CFLAGS}" ] || [ -z "${MONGO_LIBS}" ]; then
-        for inc in ${INCLUDEDIR}/libmongoc-1.0 ${INCLUDEDIR}/libbson-1.0 /usr/local/include/libmongoc-1.0 /usr/local/include/libbson-1.0 /usr/libmongoc-1.0 /usr/libbson-1.0 /usr/include/libbson-1.0/ /usr/include/libmongoc-1.0/
-        do
-            if [ -d ${inc} ] ; then
-                MONGO_CFLAGS="${MONGO_CFLAGS} -I${inc}"
-            fi
-        done
-        MONGO_LIBS="-lmongoc-1.0 -lbson-1.0"
-    fi
-    ${CC} ${MONGO_TMPCPROGC} -o ${MONGO_TMPCPROGB} ${OSCFLAGS} ${DBCFLAGS} ${DBLIBS} ${MONGO_CFLAGS} ${MONGO_LIBS} ${OSLIBS} 2>>/dev/null
-    ER=$?
-    if ! [ ${ER} -eq 0 ] ; then
-    	${ECHO_CMD}
-		${ECHO_CMD} "MONGODB DEVELOPMENT LIBRARIES (libmongoc-1.0 and libbson-1.0) AND/OR HEADER (mongoc.h)"
-		${ECHO_CMD} "	ARE NOT INSTALLED PROPERLY ON THIS SYSTEM."
-		${ECHO_CMD} "	THAT'S OK BUT THE TURN SERVER IS BUILDING WITHOUT MONGODB SUPPORT."
-		${ECHO_CMD}
-		return 0
-    else
-		DBCFLAGS="${DBCFLAGS} ${MONGO_CFLAGS}"
-		DBLIBS="${DBLIBS} ${MONGO_LIBS}"
-		return 1
-    fi
+# testpkg_common pkg1 pkg2 ...
+# If all libraries are found, adds them to OSCFLAGS/OSLIBS and returns success.
+# Otherwise, returns failure.
+testpkg_common() {
+    testpkg "$@" || return $?
+    OSCFLAGS="${OSCFLAGS} ${PKG_CFLAGS}"
+    OSLIBS="${OSLIBS} ${PKG_LIBS}"
 }
 
 testlib() {
@@ -183,61 +60,58 @@ testlib() {
 }
 
 pthread_testlib() {
-
-    SYSTEM=`uname`
-
-    if [ "${SYSTEM}" = "DragonFly" ] ; then
-	OSLIBS="${OSLIBS} -pthread"
-	TURN_NO_SCTP=1
+    if [ -n "${PTHREAD_LIBS}" ] ; then
+        OSLIBS="${OSLIBS} ${PTHREAD_LIBS}"
+        return
     fi
 
-    ISBSD=`uname | grep -i bsd`
-    if ! [ -z "${ISBSD}" ] ; then
-	OSLIBS="${OSLIBS} -pthread"
+    if [ "$(uname)" = "DragonFly" ] ; then
+        OSLIBS="${OSLIBS} -pthread"
+        TURN_NO_SCTP=1
+        return
     fi
 
-    if [ -z "${PTHREAD_LIBS}" ] ; then
-    	${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} 2>>/dev/null
-    	ER=$?
-    	if [ ${ER} -eq 0 ] ; then
-    		return 1
-    	else
-    		${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} -pthread 2>>/dev/null
-    		ER=$?
-    		if [ ${ER} -eq 0 ] ; then
-    			OSLIBS="${OSLIBS} -pthread"
-    			return 1
-    		else
-    			${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} -lpthread 2>>/dev/null
-    			ER=$?
-    			if [ ${ER} -eq 0 ] ; then
-    				OSLIBS="${OSLIBS} -lpthread"
-    				return 1
-				fi
-    		fi
-    	fi
-    else
-    	OSLIBS="${OSLIBS} ${PTHREAD_LIBS}"
+    if [ -n "$(uname | grep -i bsd)" ] ; then
+        OSLIBS="${OSLIBS} -pthread"
+        return
     fi
-		
 
     ${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} 2>>/dev/null
     ER=$?
     if [ ${ER} -eq 0 ] ; then
-    	return 1
-    else
-    	${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} -D_GNU_SOURCE 2>>/dev/null
-    	ER=$?
-    	if [ ${ER} -eq 0 ] ; then
-	    	${ECHO_CMD} "Older GNU pthread library found"
-	    	OSCFLAGS="${OSCFLAGS} -D_GNU_SOURCE"
-	    	return 1
-	    else
-    		${ECHO_CMD} "Do not use pthreads" 
-		fi
+        return
     fi
-    
-    return 0
+
+    ${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} -pthread 2>>/dev/null
+    ER=$?
+    if [ ${ER} -eq 0 ] ; then
+        OSLIBS="${OSLIBS} -pthread"
+        return
+    fi
+
+    ${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} -lpthread 2>>/dev/null
+    ER=$?
+    if [ ${ER} -eq 0 ] ; then
+        OSLIBS="${OSLIBS} -lpthread"
+        return
+    fi
+
+    ${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} 2>>/dev/null
+    ER=$?
+    if [ ${ER} -eq 0 ] ; then
+        return
+    fi
+
+    ${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} -D_GNU_SOURCE 2>>/dev/null
+    ER=$?
+    if [ ${ER} -eq 0 ] ; then
+        ${ECHO_CMD} "Older GNU pthread library found"
+        OSCFLAGS="${OSCFLAGS} -D_GNU_SOURCE"
+        return
+    fi
+
+    ${ECHO_CMD} "Do not use pthreads"
+    return 1
 }
 
 pthread_testbarriers() {
@@ -537,15 +411,8 @@ if [ -z "${MORECMD}" ]; then
 	MORECMD="cat"
 fi
 
-OSCFLAGS="-I${INCLUDEDIR} -I${PREFIX}/include/ -I/usr/local/include ${CFLAGS}"
+OSCFLAGS="${CFLAGS}"
 OSLIBS="${LDFLAGS}"
-for ilib in ${PREFIX}/lib/event2/ ${PREFIX}/lib/ /usr/local/lib/event2/ /usr/local/lib/ ${PREFIX}/lib64/event2/ ${PREFIX}/lib64/ /usr/local/lib64/event2/ /usr/local/lib64/ 
-do
-    if [ -d ${ilib} ] ; then
-		OSLIBS="${OSLIBS} -L${ilib}"
-		TURN_RPATH="${TURN_RPATH} -Wl,-rpath,${ilib}"
-    fi
-done
 
 SYSTEM=`uname`
 if [ "${SYSTEM}" = "NetBSD" ] ; then
@@ -555,6 +422,17 @@ if [ "${SYSTEM}" = "NetBSD" ] ; then
 	    TURN_RPATH="${TURN_RPATH} -Wl,-rpath,/usr/pkg/lib"
 	fi
 fi
+
+# If acme_redirect does not work, send_data_from_ioa_socket_nbh() probably
+# does not work. Set LIBEV_OK=1 to use a workaround for it.
+if [ -z "${LIBEV_OK}" ]; then
+	LIBEV_OK=1
+	if [ "${SYSTEM}" = "Linux" ]; then
+		OS=$( lsb_release -si 2>/dev/null )
+		[ "${OS}" = "Ubuntu" ] && LIBEV_OK=0
+	fi
+fi
+[ "${LIBEV_OK}" = "1" ] && OSCFLAGS="${OSCFLAGS} -DLIBEV_OK"
 
 ###########################
 # Install shell commands
@@ -701,104 +579,33 @@ int main(int argc, char** argv) {
 }
 !
 
-E_TMPCPROG=__test__ccomp__libevent2__$$
-E_TMPCPROGC=${TMPDIR}/${E_TMPCPROG}.c
-E_TMPCPROGO=${TMPDIR}/${E_TMPCPROG}.o
-
-cat > ${E_TMPCPROGC} <<!
-#include <stdlib.h>
-#include <event2/event.h>
-int main(int argc, char** argv) {
-    return (int)(argv[argc][0]);
-}
-!
-
-SQL_TMPCPROG=__test__ccomp__sqlite__$$
-SQL_TMPCPROGC=${TMPDIR}/${SQL_TMPCPROG}.c
-SQL_TMPCPROGO=${TMPDIR}/${SQL_TMPCPROG}.o
-
-cat > ${SQL_TMPCPROGC} <<!
-#include <stdlib.h>
-#include <sqlite3.h>
-int main(int argc, char** argv) {
-    return (int)(argv[argc][0]);
-}
-!
-
-HR_TMPCPROG=__test__ccomp__hiredis__$$
-HR_TMPCPROGC=${TMPDIR}/${HR_TMPCPROG}.c
-HR_TMPCPROGB=${TMPDIR}/${HR_TMPCPROG}
-
-cat > ${HR_TMPCPROGC} <<!
-#include <stdlib.h>
-#include <hiredis/hiredis.h>
-#include <hiredis/async.h>
-int main(int argc, char** argv) {
-	redisAsyncHandleRead(NULL);
-    return (int)(argv[argc][0]);
-}
-!
-
-PQ_TMPCPROG=__test__ccomp__libpq__$$
-PQ_TMPCPROGC=${TMPDIR}/${PQ_TMPCPROG}.c
-PQ_TMPCPROGB=${TMPDIR}/${PQ_TMPCPROG}
-
-cat > ${PQ_TMPCPROGC} <<!
-#include <stdlib.h>
-#include <libpq-fe.h>
-int main(int argc, char** argv) {
-    return (argc+(PQprotocolVersion(NULL))+(int)(argv[0][0]));
-}
-!
-
-MYSQL_TMPCPROG=__test__ccomp__libmysql__$$
-MYSQL_TMPCPROGC=${TMPDIR}/${MYSQL_TMPCPROG}.c
-MYSQL_TMPCPROGB=${TMPDIR}/${MYSQL_TMPCPROG}
-
-cat > ${MYSQL_TMPCPROGC} <<!
-#include <stdlib.h>
-#include <mysql.h>
-int main(int argc, char** argv) {
-    return (argc+
-    	(int)(mysql_real_connect(NULL, NULL, NULL, NULL, NULL, 0, NULL, 0)!=0)+
-    	(int)(argv[0][0]));
-}
-!
-
-MONGO_TMPCPROG=__test__ccomp__libmongoc__$$
-MONGO_TMPCPROGC=${TMPDIR}/${MONGO_TMPCPROG}.c
-MONGO_TMPCPROGB=${TMPDIR}/${MONGO_TMPCPROG}
-
-cat > ${MONGO_TMPCPROGC} <<!
-#include <mongoc.h>
-int main(int argc, char** argv) {
-    return (argc+
-    	(int)(mongoc_client_new("mongodb://localhost:27017")!=0)+
-    	(int)(argv[0][0]));
-}
-!
-
 ##########################
 # What is our compiler ?
 ##########################
 
 if [ -z "${CC}" ] ; then
-    CC=cc
+    for CC in cc gcc clang; do
+        ${CC} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>>/dev/null
+        ER=$?
+        if [ ${ER} -eq 0 ] ; then
+            break
+        fi
+        CC=
+    done
+
+    if [ -z "$CC" ] ; then
+        ${ECHO_CMD} "ERROR: failed to a find working C compiler"
+        cleanup
+        exit
+    fi
+else
     ${CC} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>>/dev/null
-	ER=$?
-	if ! [ ${ER} -eq 0 ] ; then
-		CC=gcc
-    	${CC} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>>/dev/null
-		ER=$?
-		if ! [ ${ER} -eq 0 ] ; then
-			CC=clang
-    		${CC} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>>/dev/null
-			ER=$?
-			if ! [ ${ER} -eq 0 ] ; then
-				CC=unknown
-			fi
-		fi
-	fi
+    ER=$?
+    if ! [ ${ER} -eq 0 ] ; then
+        ${ECHO_CMD} "ERROR: cannot use compiler ${CC} properly"
+        cleanup
+        exit
+    fi
 fi
 
 ${ECHO_CMD} "Compiler: ${CC}"
@@ -811,13 +618,32 @@ if [ -z "${TURN_ACCEPT_RPATH}" ] ; then
     fi
 fi
 
-${CC} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>>/dev/null
-ER=$?
-if ! [ ${ER} -eq 0 ] ; then
-    ${ECHO_CMD} "ERROR: cannot use compiler ${CC} properly"
-    cleanup
-    exit
+##########################
+# Which pkg-config?
+##########################
+
+if [ -z "$PKGCONFIG" ] ; then
+    for PKGCONFIG in pkgconf pkg-config ; do
+        if type "$PKGCONFIG" 2>/dev/null ; then
+            break
+        fi
+        PKGCONFIG=
+    done
+
+    if [ -z "$PKGCONFIG" ] ; then
+        ${ECHO_CMD} "ERROR: pkg-config not found"
+        cleanup
+        exit
+    fi
+else
+    if ! type "$PKGCONFIG" 2>/dev/null ; then
+        ${ECHO_CMD} "ERROR: cannot use $PKGCONFIG"
+        cleanup
+        exit
+    fi
 fi
+
+${ECHO_CMD} "pkg-config: $PKGCONFIG"
 
 ###########################
 # Check if we can use GNU
@@ -889,9 +715,9 @@ test_sin_len
 
 pthread_testlib
 ER=$?
-if [ ${ER} -eq 0 ] ; then
-	${ECHO_CMD} "ERROR: Cannot find pthread library functions."
-	exit
+if [ ${ER} -ne 0 ] ; then
+    ${ECHO_CMD} "ERROR: Cannot find pthread library functions."
+    exit
 fi
 
 if [ -z ${TURN_NO_THREAD_BARRIERS} ] ; then 
@@ -929,26 +755,34 @@ if [ -n "${SSL_CFLAGS}" ] && [ -n "${SSL_LIBS}" ]; then
         OSLIBS="${OSLIBS} ${SSL_LIBS}"
     fi
 else
-    testlib crypto
-    ER=$?
-    if ! [ ${ER} -eq 0 ] ; then
-        ${ECHO_CMD} "Crypto SSL lib found."
+    if testpkg_common libcrypto; then
+        ${ECHO_CMD} "OpenSSL Crypto lib found."
     else
-        ${ECHO_CMD} "ERROR: OpenSSL Crypto development libraries are not installed properly in required location."
-        ${ECHO_CMD} "Abort."
-        cleanup
-        exit
+	    testlib crypto
+	    ER=$?
+        if ! [ ${ER} -eq 0 ] ; then
+            ${ECHO_CMD} "OpenSSL Crypto lib found."
+        else        
+            ${ECHO_CMD} "ERROR: OpenSSL Crypto development libraries are not installed properly in required location."
+            ${ECHO_CMD} "Abort."
+            cleanup
+            exit
+        fi
     fi
 
-    testlib ssl
-    ER=$?
-    if ! [ ${ER} -eq 0 ] ; then
-        ${ECHO_CMD} "SSL lib found."
+    if testpkg_common libssl; then
+        ${ECHO_CMD} "OpenSSL lib found."
     else
-        ${ECHO_CMD} "ERROR: OpenSSL development libraries are not installed properly in required location."
-        ${ECHO_CMD} "Abort."
-        cleanup
-        exit
+       testlib ssl
+        ER=$?
+        if ! [ ${ER} -eq 0 ] ; then
+            ${ECHO_CMD} "OpenSSL lib found."
+        else
+            ${ECHO_CMD} "ERROR: OpenSSL development libraries are not installed properly in required location."
+            ${ECHO_CMD} "Abort."
+            cleanup
+            exit
+        fi
     fi
 fi
 ###########################
@@ -983,10 +817,8 @@ if [ -n "${EVENT_CFLAGS}" ] && [ -n "${EVENT_LIBS}" ]; then
         OSLIBS="${OSLIBS} ${EVENT_LIBS}"
     fi
 else
-    testlibevent2_comp
-    ER=$?
-    if ! [ ${ER} -eq 0 ] ; then
-        ${ECHO_CMD} "Libevent2 development found."
+    if testpkg_common libevent_core libevent_extra libevent_openssl libevent_pthreads || testpkg_common libevent libevent_openssl libevent_pthreads; then
+        ${ECHO_CMD} "Libevent2 runtime found."
     else
         ${ECHO_CMD} "ERROR: Libevent2 development libraries are not installed properly in required location."
         ${ECHO_CMD} "ERROR: may be you have just too old libevent tool - then you have to upgrade it."
@@ -995,98 +827,84 @@ else
         cleanup
         exit
     fi
-
-    testlib event_core
-    ER=$?
-    if ! [ ${ER} -eq 0 ] ; then
-        ${ECHO_CMD} "Libevent2 runtime found."
-        testlib event_extra
-        ER=$?
-        if ! [ ${ER} -eq 0 ] ; then
-	    ${ECHO_CMD} "Libevent2 runtime 'extra' found."
-        else
-	    ${ECHO_CMD} "ERROR: Libevent2 'extra' runtime library is not installed properly in required location."
-	    ${ECHO_CMD} "See the INSTALL file."
-	    ${ECHO_CMD} "Abort."
-	    cleanup
-	    exit
-        fi
-    else
-        testlib event
-        ER=$?
-        if ! [ ${ER} -eq 0 ] ; then
-            ${ECHO_CMD} "Libevent2 runtime found (old style)."
-        else
-            ${ECHO_CMD} "ERROR: Libevent2 runtime libraries are not installed properly in required location."
-            ${ECHO_CMD} "See the INSTALL file."
-            ${ECHO_CMD} "Abort."
-            cleanup
-            exit
-        fi
-    fi
-
-    if [ -z "${TURN_NO_TLS}" ] ; then
-
-	testlib event_openssl
-	ER=$?
-	if ! [ ${ER} -eq 0 ] ; then
-    	    ${ECHO_CMD} "Libevent2 openssl found."
-	else
-    	    ${ECHO_CMD} "ERROR: Libevent2 development libraries are not compiled with OpenSSL support."
-    	    ${ECHO_CMD} "TLS will be disabled."
-    	    TURN_NO_TLS="-DTURN_NO_TLS"
-	fi
-
-    else
-	TURN_NO_TLS="-DTURN_NO_TLS"
-    fi
-
-    testlib event_pthreads
-    ER=$?
-    if ! [ ${ER} -eq 0 ] ; then
-        ${ECHO_CMD} "Libevent2 pthreads found."
-    else
-        ${ECHO_CMD} "ERROR: Libevent2 development libraries are not compiled with threads support."
-        exit
-    fi
 fi
 
 ###########################
-# Test SQLite setup
+# Test Prometheus
+###########################
+
+if [ -z "${TURN_NO_PROMETHEUS}" ] ; then
+
+	testlib prom
+	ER=$?
+	if ! [ ${ER} -eq 0 ] ; then
+		${ECHO_CMD} "Prometheus lib found."
+		testlib promhttp
+		ER=$?
+		if ! [ ${ER} -eq 0 ] ; then
+			${ECHO_CMD} "Prometheus http lib found."
+			testlib microhttpd
+			ER=$?
+			if ! [ ${ER} -eq 0 ] ; then
+				${ECHO_CMD} "Microhttpd lib found."
+			else
+				${ECHO_CMD}
+				${ECHO_CMD} "Warning: microhttpd development libraries are not installed properly in required location."
+				${ECHO_CMD} "Prometheus support will be disabled."
+				${ECHO_CMD} "See the INSTALL file."
+				${ECHO_CMD}
+				OSCFLAGS="${OSCFLAGS} -DTURN_NO_PROMETHEUS"
+			fi
+		else
+			${ECHO_CMD}
+			${ECHO_CMD} "Warning: Libpromhttp development libraries are not installed properly in required location."
+			${ECHO_CMD} "Prometheus support will be disabled."
+			${ECHO_CMD} "See the INSTALL file."
+			${ECHO_CMD}
+			OSCFLAGS="${OSCFLAGS} -DTURN_NO_PROMETHEUS"
+		fi
+	else
+		${ECHO_CMD}
+		${ECHO_CMD} "Warning: Libprom development libraries are not installed properly in required location."
+		${ECHO_CMD} "Prometheus support will be disabled."
+		${ECHO_CMD} "See the INSTALL file."
+		${ECHO_CMD}
+		OSCFLAGS="${OSCFLAGS} -DTURN_NO_PROMETHEUS"
+	fi
+
+else
+	OSCFLAGS="${OSCFLAGS} -DTURN_NO_PROMETHEUS"
+fi
+
+###########################
+# Test libsystemd
+###########################
+
+if [ -z "${TURN_NO_SYSTEMD}" ] ; then
+    if testpkg_common libsystemd; then
+        ${ECHO_CMD} "Systemd library found."
+    else
+        ${ECHO_CMD} "Systemd library not found. Building without systemd support."
+        TURN_NO_SYSTEMD="-DTURN_NO_SYSTEMD"
+    fi
+else
+    TURN_NO_SYSTEMD="-DTURN_NO_SYSTEMD"
+fi
+
+###########################
+# Test SQLite3 setup
 ###########################
 
 if [ -z "${TURN_NO_SQLITE}" ] ; then
-
-	testlib sqlite3
-	ER=$?
-	if ! [ ${ER} -eq 0 ] ; then
-   		${ECHO_CMD} "SQLite library found."
-	else
-   		${ECHO_CMD} "SQLite3 development library cannot be found."
-   		TURN_NO_SQLITE="-DTURN_NO_SQLITE"
-	fi
-
-	if [ -z "${TURN_NO_SQLITE}" ] ; then	
-	    testsqlite_comp
-	    ER=$?
-	    if ! [ ${ER} -eq 0 ] ; then
-    		${ECHO_CMD} "SQLite development found."
-	    else
-    		${ECHO_CMD} "SQLite development libraries are not installed properly in required location."
-    		TURN_NO_SQLITE="-DTURN_NO_SQLITE"
-	    fi
-	fi
-
-	if ! [ -z "${TURN_NO_SQLITE}" ] ; then	
-	    ${ECHO_CMD}
-	    ${ECHO_CMD} "SQLite DEVELOPMENT LIBRARY (libsqlite3) AND/OR HEADER (sqlite3.h)"
-	    ${ECHO_CMD} "	ARE NOT INSTALLED PROPERLY ON THIS SYSTEM."
-	    ${ECHO_CMD} "	THAT'S OK BUT THE TURN SERVER IS BUILDING WITHOUT SQLITE SUPPORT."
-	    ${ECHO_CMD}
-	fi
+    if testpkg_db sqlite3; then
+        ${ECHO_CMD} "SQLite3 library found."
+    else
+        ${ECHO_CMD} "SQLite3 development library not found. Building without SQLite3 support."
+        TURN_NO_SQLITE="-DTURN_NO_SQLITE"
+    fi
 else
-	TURN_NO_SQLITE="-DTURN_NO_SQLITE"
-	SQLITE_CMD=${ECHO_CMD}
+    TURN_NO_SQLITE="-DTURN_NO_SQLITE"
+    SQLITE_CMD=${ECHO_CMD}
 fi
 
 if [ -z "${TURNDBDIR}" ] ; then
@@ -1098,16 +916,14 @@ fi
 ###########################
 
 if [ -z "${TURN_NO_PQ}" ] ; then
-
-	testlibpq
-	ER=$?
-	if ! [ ${ER} -eq 0 ] ; then
-		${ECHO_CMD} "PostgreSQL found."
-	else
-		TURN_NO_PQ="-DTURN_NO_PQ"
-	fi
+    if testpkg_db libpq; then
+        ${ECHO_CMD} "PostgreSQL found."
+    else
+        ${ECHO_CMD} "PostgreSQL not found. Building without PostgreSQL support."
+        TURN_NO_PQ="-DTURN_NO_PQ"
+    fi
 else
-	TURN_NO_PQ="-DTURN_NO_PQ"
+    TURN_NO_PQ="-DTURN_NO_PQ"
 fi
 
 ###########################
@@ -1115,16 +931,14 @@ fi
 ###########################
 
 if [ -z "${TURN_NO_MYSQL}" ] ; then
-
-	testlibmysql
-	ER=$?
-	if ! [ ${ER} -eq 0 ] ; then
-		${ECHO_CMD} "MySQL found."
-	else
-		TURN_NO_MYSQL="-DTURN_NO_MYSQL"
-	fi
+    if testpkg_db mariadb || testpkg_db mysqlclient ; then
+        ${ECHO_CMD} "MySQL found."
+    else
+        ${ECHO_CMD} "MySQL not found. Building without MySQL support."
+        TURN_NO_MYSQL="-DTURN_NO_MYSQL"
+    fi
 else
-	TURN_NO_MYSQL="-DTURN_NO_MYSQL"
+    TURN_NO_MYSQL="-DTURN_NO_MYSQL"
 fi
 
 ###########################
@@ -1132,16 +946,14 @@ fi
 ###########################
 
 if [ -z "${TURN_NO_MONGO}" ] ; then
-
-	testlibmongoc
-	ER=$?
-	if ! [ ${ER} -eq 0 ] ; then
-		${ECHO_CMD} "MongoDB found."
-	else
-		TURN_NO_MONGO="-DTURN_NO_MONGO"
-	fi
+    if testpkg_db libmongoc-1.0; then
+        ${ECHO_CMD} "MongoDB found."
+    else
+        ${ECHO_CMD} "MongoDB not found. Building without MongoDB support."
+        TURN_NO_MONGO="-DTURN_NO_MONGO"
+    fi
 else
-	TURN_NO_MONGO="-DTURN_NO_MONGO"
+    TURN_NO_MONGO="-DTURN_NO_MONGO"
 fi
 
 ###########################
@@ -1149,19 +961,14 @@ fi
 ###########################
 
 if [ -z "${TURN_NO_HIREDIS}" ] ; then
-
-	testhiredis
-
-	ER=$?
-	if ! [ ${ER} -eq 0 ] ; then
-  		${ECHO_CMD} "Hiredis found."
-	else
-  		TURN_NO_HIREDIS="-DTURN_NO_HIREDIS"
-	fi
-
+    if testpkg_db hiredis; then
+        ${ECHO_CMD} "Hiredis found."
+    else
+        ${ECHO_CMD} "Hiredis not found. Building without hiredis support."
+        TURN_NO_HIREDIS="-DTURN_NO_HIREDIS"
+    fi
 else
-	TURN_NO_HIREDIS="-DTURN_NO_HIREDIS"
-
+    TURN_NO_HIREDIS="-DTURN_NO_HIREDIS"
 fi
 
 ###############################
@@ -1231,7 +1038,7 @@ ${ECHO_CMD} "LDFLAGS += ${OSLIBS}" >> Makefile
 ${ECHO_CMD} "DBLIBS += ${DBLIBS}" >> Makefile
 ${ECHO_CMD} "CFLAGS += ${OSCFLAGS}" >> Makefile
 ${ECHO_CMD} "CPPFLAGS = ${CPPFLAGS}" >> Makefile
-${ECHO_CMD} "DBCFLAGS += ${DBCFLAGS} ${TURN_NO_PQ} ${TURN_NO_MYSQL} ${TURN_NO_SQLITE} ${TURN_NO_MONGO} ${TURN_NO_HIREDIS}" >> Makefile
+${ECHO_CMD} "DBCFLAGS += ${DBCFLAGS} ${TURN_NO_PQ} ${TURN_NO_MYSQL} ${TURN_NO_SQLITE} ${TURN_NO_MONGO} ${TURN_NO_HIREDIS} ${TURN_NO_SYSTEMD}" >> Makefile
 ${ECHO_CMD} "#" >> Makefile
 ${ECHO_CMD} "PORTNAME = ${PORTNAME}" >> Makefile
 ${ECHO_CMD} "PREFIX = ${PREFIX}" >> Makefile

@@ -2,7 +2,7 @@
 
 # Common settings script.
 
-TURNVERSION=4.5.1.3
+TURNVERSION=4.5.2
 BUILDDIR=~/rpmbuild
 ARCH=`uname -p`
 
