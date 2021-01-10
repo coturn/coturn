@@ -55,8 +55,6 @@ extern "C" {
 
 int start_prometheus_server(void);
 
-void prom_set_status(int refresh);
-void prom_del_status();
 void prom_set_finished_traffic(const char* realm, const char* user, unsigned long rsvp, unsigned long rsvb, unsigned long sentp, unsigned long sentb, bool peer);
 
 #endif /* TURN_NO_PROMETHEUS */
