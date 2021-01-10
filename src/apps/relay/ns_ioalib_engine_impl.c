@@ -3722,16 +3722,6 @@ void turn_report_allocation_set(void *a, turn_time_t lifetime, int refresh)
 					send_message_to_redis(e->rch, "publish", key, "%s lifetime=%lu", status, (unsigned long)lifetime);
 				}
 #endif
-#if !defined(TURN_NO_PROMETHEUS)
-				{
-					// Set status on prometheus metric
-					if(ss->realm_options.name[0]) {
-						prom_set_status(ss->realm_options.name, (const char*)ss->username, (unsigned long long)ss->id, status, (unsigned long)lifetime);
-					} else {
-						prom_set_status(NULL, (const char*)ss->username, (unsigned long long)ss->id, status, (unsigned long)lifetime);
-					}
-				}
-#endif
 			}
 		}
 	}
@@ -3778,19 +3768,14 @@ void turn_report_allocation_delete(void *a)
 #if !defined(TURN_NO_PROMETHEUS)
 				{
 					if(ss->realm_options.name[0]){
-						// Set prometheus del metric and update status
-						prom_del_status(ss->realm_options.name, (const char*)ss->username, (unsigned long long)ss->id, (const char *)"deleted");
 
-						// Set prometheus total traffic metrics
-						prom_set_total_traffic(ss->realm_options.name, (const char*)ss->username, (unsigned long long)ss->id, (unsigned long)(ss->t_received_packets), (unsigned long)(ss->t_received_bytes), (unsigned long)(ss->t_sent_packets), (unsigned long)(ss->t_sent_bytes), true);
-						prom_set_total_traffic(ss->realm_options.name, (const char*)ss->username, (unsigned long long)ss->id, (unsigned long)(ss->t_peer_received_packets), (unsigned long)(ss->t_peer_received_bytes), (unsigned long)(ss->t_peer_sent_packets), (unsigned long)(ss->t_peer_sent_bytes), true);
+						// Set prometheus traffic metrics
+						prom_set_finished_traffic(ss->realm_options.name, (const char*)ss->username, (unsigned long)(ss->t_received_packets), (unsigned long)(ss->t_received_bytes), (unsigned long)(ss->t_sent_packets), (unsigned long)(ss->t_sent_bytes), false);
+						prom_set_finished_traffic(ss->realm_options.name, (const char*)ss->username, (unsigned long)(ss->t_peer_received_packets), (unsigned long)(ss->t_peer_received_bytes), (unsigned long)(ss->t_peer_sent_packets), (unsigned long)(ss->t_peer_sent_bytes), true);
 					} else {
-						// Set prometheus del metric and update status
-						prom_del_status(NULL, (const char*)ss->username, (unsigned long long)ss->id,  (const char *)"deleted");
-
-						// Set prometheus total traffic metrics
-						prom_set_total_traffic(NULL, (const char*)ss->username, (unsigned long long)ss->id, (unsigned long)(ss->t_received_packets), (unsigned long)(ss->t_received_bytes), (unsigned long)(ss->t_sent_packets), (unsigned long)(ss->t_sent_bytes), true);
-						prom_set_total_traffic(NULL, (const char*)ss->username, (unsigned long long)ss->id, (unsigned long)(ss->t_peer_received_packets), (unsigned long)(ss->t_peer_received_bytes), (unsigned long)(ss->t_peer_sent_packets), (unsigned long)(ss->t_peer_sent_bytes), true);
+						// Set prometheus traffic metrics
+						prom_set_finished_traffic(NULL, (const char*)ss->username, (unsigned long)(ss->t_received_packets), (unsigned long)(ss->t_received_bytes), (unsigned long)(ss->t_sent_packets), (unsigned long)(ss->t_sent_bytes), false);
+						prom_set_finished_traffic(NULL, (const char*)ss->username, (unsigned long)(ss->t_peer_received_packets), (unsigned long)(ss->t_peer_received_bytes), (unsigned long)(ss->t_peer_sent_packets), (unsigned long)(ss->t_peer_sent_bytes), true);
 					}
 				}
 #endif
@@ -3829,19 +3814,6 @@ void turn_report_session_usage(void *session, int force_invalid)
 					send_message_to_redis(e->rch, "publish", key, "rcvp=%lu, rcvb=%lu, sentp=%lu, sentb=%lu", (unsigned long)(ss->peer_received_packets), (unsigned long)(ss->peer_received_bytes), (unsigned long)(ss->peer_sent_packets), (unsigned long)(ss->peer_sent_bytes));
 				}
 #endif
-#if !defined(TURN_NO_PROMETHEUS)
-				{
-					// Set prometheus traffic metrics
-					if(ss->realm_options.name[0]){
-						prom_set_traffic(ss->realm_options.name, (const char *)ss->username, (unsigned long long)(ss->id), (unsigned long)(ss->received_packets), (unsigned long)(ss->received_bytes), (unsigned long)(ss->sent_packets), (unsigned long)(ss->sent_bytes), false);
-						prom_set_traffic(ss->realm_options.name, (const char *)ss->username, (unsigned long long)(ss->id), (unsigned long)(ss->peer_received_packets), (unsigned long)(ss->peer_received_bytes), (unsigned long)(ss->peer_sent_packets), (unsigned long)(ss->peer_sent_bytes), true);
-					} else {
-						prom_set_traffic(NULL, (const char *)ss->username, (unsigned long long)(ss->id), (unsigned long)(ss->received_packets), (unsigned long)(ss->received_bytes), (unsigned long)(ss->sent_packets), (unsigned long)(ss->sent_bytes), false);
-						prom_set_traffic(NULL, (const char *)ss->username, (unsigned long long)(ss->id), (unsigned long)(ss->peer_received_packets), (unsigned long)(ss->peer_received_bytes), (unsigned long)(ss->peer_sent_packets), (unsigned long)(ss->peer_sent_bytes), true);
-					}
-				}
-#endif
-
 				ss->t_received_packets += ss->received_packets;
 				ss->t_received_bytes += ss->received_bytes;
 				ss->t_sent_packets += ss->sent_packets;

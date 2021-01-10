@@ -3,59 +3,59 @@
 #include "mainrelay.h"
 #include "prom_server.h"
 
-prom_gauge_t *turn_status;
 
-prom_gauge_t *turn_traffic_rcvp;
-prom_gauge_t *turn_traffic_rcvb;
-prom_gauge_t *turn_traffic_sentp;
-prom_gauge_t *turn_traffic_sentb;
+prom_counter_t *turn_traffic_rcvp;
+prom_counter_t *turn_traffic_rcvb;
+prom_counter_t *turn_traffic_sentp;
+prom_counter_t *turn_traffic_sentb;
 
-prom_gauge_t *turn_total_traffic_rcvp;
-prom_gauge_t *turn_total_traffic_rcvb;
-prom_gauge_t *turn_total_traffic_sentp;
-prom_gauge_t *turn_total_traffic_sentb;
+prom_counter_t *turn_traffic_peer_rcvp;
+prom_counter_t *turn_traffic_peer_rcvb;
+prom_counter_t *turn_traffic_peer_sentp;
+prom_counter_t *turn_traffic_peer_sentb;
 
-prom_gauge_t *turn_traffic_peer_rcvp;
-prom_gauge_t *turn_traffic_peer_rcvb;
-prom_gauge_t *turn_traffic_peer_sentp;
-prom_gauge_t *turn_traffic_peer_sentb;
+prom_counter_t *turn_total_traffic_rcvp;
+prom_counter_t *turn_total_traffic_rcvb;
+prom_counter_t *turn_total_traffic_sentp;
+prom_counter_t *turn_total_traffic_sentb;
 
-prom_gauge_t *turn_total_traffic_peer_rcvp;
-prom_gauge_t *turn_total_traffic_peer_rcvb;
-prom_gauge_t *turn_total_traffic_peer_sentp;
-prom_gauge_t *turn_total_traffic_peer_sentb;
+prom_counter_t *turn_total_traffic_peer_rcvp;
+prom_counter_t *turn_total_traffic_peer_rcvb;
+prom_counter_t *turn_total_traffic_peer_sentp;
+prom_counter_t *turn_total_traffic_peer_sentb;
+
 
 int start_prometheus_server(void){
   if (turn_params.prometheus == 0){
-    return 0;
+    return 1;
   }
   prom_collector_registry_default_init();
-  // Create status gauge metric
-  turn_status = prom_collector_registry_must_register_metric(prom_gauge_new("turn_status", "Represents status", 5, (const char *[]) {"realm", "user", "allocation", "status", "lifetime" }));
+  
+  const char *label[] = {"realm", "user"};
 
-  // Create traffic gauge metrics
-  turn_traffic_rcvp = prom_collector_registry_must_register_metric(prom_counter_new("turn_traffic_rcvp", "Represents received packets", 3, (const char *[]) {"realm", "user", "allocation" }));
-  turn_traffic_rcvb = prom_collector_registry_must_register_metric(prom_counter_new("turn_traffic_rcvb", "Represents received bytes", 3, (const char *[]) {"realm", "user", "allocation" }));
-  turn_traffic_sentp = prom_collector_registry_must_register_metric(prom_counter_new("turn_traffic_sentp", "Represents sent packets", 3, (const char *[]) {"realm", "user", "allocation" }));
-  turn_traffic_sentb = prom_collector_registry_must_register_metric(prom_counter_new("turn_traffic_sentb", "Represents sent bytes", 3, (const char *[]) {"realm", "user", "allocation" }));
+  // Create traffic counter metrics
+  turn_traffic_rcvp = prom_collector_registry_must_register_metric(prom_counter_new("turn_traffic_rcvp", "Represents finsihed sessions received packets", 2, label));
+  turn_traffic_rcvb = prom_collector_registry_must_register_metric(prom_counter_new("turn_traffic_rcvb", "Represents finsihed sessions received bytes", 2, label));
+  turn_traffic_sentp = prom_collector_registry_must_register_metric(prom_counter_new("turn_traffic_sentp", "Represents finsihed sessions sent packets", 2, label));
+  turn_traffic_sentb = prom_collector_registry_must_register_metric(prom_counter_new("turn_traffic_sentb", "Represents finsihed sessions sent bytes", 2, label));
 
-  // Create traffic for peers gauge metrics
-  turn_traffic_peer_rcvp = prom_collector_registry_must_register_metric(prom_counter_new("turn_traffic_peer_rcvp", "Represents peer received packets", 3, (const char *[]) {"realm", "user", "allocation" }));
-  turn_traffic_peer_rcvb = prom_collector_registry_must_register_metric(prom_counter_new("turn_traffic_peer_rcvb", "Represents peer received bytes", 3, (const char *[]) {"realm", "user", "allocation" }));
-  turn_traffic_peer_sentp = prom_collector_registry_must_register_metric(prom_counter_new("turn_traffic_peer_sentp", "Represents peer sent packets", 3, (const char *[]) {"realm", "user", "allocation" }));
-  turn_traffic_peer_sentb = prom_collector_registry_must_register_metric(prom_counter_new("turn_traffic_peer_sentb", "Represents peer sent bytes", 3, (const char *[]) {"realm", "user", "allocation" }));
+  // Create finsihed sessions traffic for peers counter metrics
+  turn_traffic_peer_rcvp = prom_collector_registry_must_register_metric(prom_counter_new("turn_traffic_peer_rcvp", "Represents finsihed sessions peer received packets", 2, label));
+  turn_traffic_peer_rcvb = prom_collector_registry_must_register_metric(prom_counter_new("turn_traffic_peer_rcvb", "Represents finsihed sessions peer received bytes", 2, label));
+  turn_traffic_peer_sentp = prom_collector_registry_must_register_metric(prom_counter_new("turn_traffic_peer_sentp", "Represents finsihed sessions peer sent packets", 2, label));
+  turn_traffic_peer_sentb = prom_collector_registry_must_register_metric(prom_counter_new("turn_traffic_peer_sentb", "Represents finsihed sessions peer sent bytes", 2, label));
 
-  // Create total traffic gauge metrics
-  turn_total_traffic_rcvp = prom_collector_registry_must_register_metric(prom_counter_new("turn_total_traffic_rcvp", "Represents total received packets", 3, (const char *[]) {"realm", "user", "allocation" }));
-  turn_total_traffic_rcvb = prom_collector_registry_must_register_metric(prom_counter_new("turn_total_traffic_rcvb", "Represents total received bytes", 3, (const char *[]) {"realm", "user", "allocation" }));
-  turn_total_traffic_sentp = prom_collector_registry_must_register_metric(prom_counter_new("turn_total_traffic_sentp", "Represents total sent packets", 3, (const char *[]) {"realm", "user", "allocation" }));
-  turn_total_traffic_sentb = prom_collector_registry_must_register_metric(prom_counter_new("turn_total_traffic_sentb", "Represents total sent bytes", 3, (const char *[]) {"realm", "user", "allocation" }));
+  // Create total finished traffic counter metrics
+  turn_total_traffic_rcvp = prom_collector_registry_must_register_metric(prom_counter_new("turn_total_traffic_rcvp", "Represents total finsihed sessions received packets", 0, NULL));
+  turn_total_traffic_rcvb = prom_collector_registry_must_register_metric(prom_counter_new("turn_total_traffic_rcvb", "Represents total finsihed sessions received bytes", 0, NULL));
+  turn_total_traffic_sentp = prom_collector_registry_must_register_metric(prom_counter_new("turn_total_traffic_sentp", "Represents total finsihed sessions sent packets", 0, NULL));
+  turn_total_traffic_sentb = prom_collector_registry_must_register_metric(prom_counter_new("turn_total_traffic_sentb", "Represents total finsihed sessions sent bytes", 0, NULL));
 
-  // Create tota traffic for peers gauge metrics
-  turn_total_traffic_peer_rcvp = prom_collector_registry_must_register_metric(prom_counter_new("turn_total_traffic_peer_rcvp", "Represents total peer received packets", 3, (const char *[]) {"realm", "user", "allocation" }));
-  turn_total_traffic_peer_rcvb = prom_collector_registry_must_register_metric(prom_counter_new("turn_total_traffic_peer_rcvb", "Represents total peer received bytes", 3, (const char *[]) {"realm", "user", "allocation" }));
-  turn_total_traffic_peer_sentp = prom_collector_registry_must_register_metric(prom_counter_new("turn_total_traffic_peer_sentp", "Represents total peer sent packets", 3, (const char *[]) {"realm", "user", "allocation" }));
-  turn_total_traffic_peer_sentb = prom_collector_registry_must_register_metric(prom_counter_new("turn_total_traffic_peer_sentb", "Represents total peer sent bytes", 3, (const char *[]) {"realm", "user", "allocation" }));
+  // Create total finsihed sessions traffic for peers counter metrics
+  turn_total_traffic_peer_rcvp = prom_collector_registry_must_register_metric(prom_counter_new("turn_total_traffic_peer_rcvp", "Represents total finsihed sessions peer received packets", 0, NULL));
+  turn_total_traffic_peer_rcvb = prom_collector_registry_must_register_metric(prom_counter_new("turn_total_traffic_peer_rcvb", "Represents total finsihed sessions peer received bytes", 0, NULL));
+  turn_total_traffic_peer_sentp = prom_collector_registry_must_register_metric(prom_counter_new("turn_total_traffic_peer_sentp", "Represents total finsihed sessions peer sent packets", 0, NULL));
+  turn_total_traffic_peer_sentb = prom_collector_registry_must_register_metric(prom_counter_new("turn_total_traffic_peer_sentb", "Represents total finsihed sessions peer sent bytes", 0, NULL));
 
   promhttp_set_active_collector_registry(NULL);
 
@@ -67,61 +67,31 @@ int start_prometheus_server(void){
   return 0;
 }
 
-void prom_set_status(const char* realm, const char* user, unsigned long long allocation, const char* status, unsigned long lifetime){
+void prom_set_finished_traffic(const char* realm, const char* user, unsigned long rsvp, unsigned long rsvb, unsigned long sentp, unsigned long sentb, bool peer){
   if (turn_params.prometheus == 1){
-    char allocation_chars[1024];
-    char lifetime_chars[1024];
 
-    snprintf(allocation_chars, sizeof(allocation_chars), "%018llu", allocation);
-    snprintf(lifetime_chars, sizeof(lifetime_chars), "%lu", lifetime);
-
-    prom_gauge_add(turn_status, 1, (const char *[]) { realm , user, allocation_chars, status, lifetime_chars });
-  }
-}
-
-void prom_del_status(const char* realm, const char* user, unsigned long long allocation, const char* status){
-  if (turn_params.prometheus == 0){
-    char allocation_chars[1024];
-    snprintf(allocation_chars, sizeof(allocation_chars), "%018llu", allocation);
-
-    prom_gauge_sub(turn_status, 1, (const char *[]) { realm , user, allocation_chars, (char *)"new", (char *)"600" });
-    prom_gauge_add(turn_status, 1, (const char *[]) { realm , user, allocation_chars, status, NULL });
-  }
-}
-void prom_set_traffic(const char* realm, const char* user, unsigned long long allocation, unsigned long rsvp, unsigned long rsvb, unsigned long sentp, unsigned long sentb, bool peer){
-  if (turn_params.prometheus == 1){
-    char allocation_chars[1024];
-    snprintf(allocation_chars, sizeof(allocation_chars), "%018llu", allocation);
+    const char *label[] = {realm, user};
 
     if (peer){
-      prom_counter_add(turn_traffic_peer_rcvp, rsvp, (const char *[]) { realm , user, allocation_chars });
-      prom_counter_add(turn_traffic_peer_rcvb, rsvb, (const char *[]) { realm , user, allocation_chars });
-      prom_counter_add(turn_traffic_peer_sentp, sentp, (const char *[]) { realm , user, allocation_chars });
-      prom_counter_add(turn_traffic_peer_sentb, sentb, (const char *[]) { realm , user, allocation_chars });
-    } else {
-      prom_counter_add(turn_traffic_rcvp, rsvp, (const char *[]) { realm , user, allocation_chars });
-      prom_counter_add(turn_traffic_rcvb, rsvb, (const char *[]) { realm , user, allocation_chars });
-      prom_counter_add(turn_traffic_sentp, sentp, (const char *[]) { realm , user, allocation_chars });
-      prom_counter_add(turn_traffic_sentb, sentb, (const char *[]) { realm , user, allocation_chars });
-    }
-  }
-}
+      prom_counter_add(turn_traffic_peer_rcvp, rsvp, label);
+      prom_counter_add(turn_traffic_peer_rcvb, rsvb, label);
+      prom_counter_add(turn_traffic_peer_sentp, sentp, label);
+      prom_counter_add(turn_traffic_peer_sentb, sentb, label);
 
-void prom_set_total_traffic(const char* realm, const char* user, unsigned long long allocation, unsigned long rsvp, unsigned long rsvb, unsigned long sentp, unsigned long sentb, bool peer){
-  if (turn_params.prometheus == 1){
-    char allocation_chars[1024];
-    snprintf(allocation_chars, sizeof(allocation_chars), "%018llu", allocation);
-
-    if (peer){
-      prom_counter_add(turn_total_traffic_peer_rcvp, rsvp, (const char *[]) { realm , user, allocation_chars });
-      prom_counter_add(turn_total_traffic_peer_rcvb, rsvb, (const char *[]) { realm , user, allocation_chars });
-      prom_counter_add(turn_total_traffic_peer_sentp, sentp, (const char *[]) { realm , user, allocation_chars });
-      prom_counter_add(turn_total_traffic_peer_sentb, sentb, (const char *[]) { realm , user, allocation_chars });
+      prom_counter_add(turn_total_traffic_peer_rcvp, rsvp, NULL);
+      prom_counter_add(turn_total_traffic_peer_rcvb, rsvb, NULL);
+      prom_counter_add(turn_total_traffic_peer_sentp, sentp, NULL);
+      prom_counter_add(turn_total_traffic_peer_sentb, sentb, NULL);
     } else {
-      prom_counter_add(turn_total_traffic_rcvp, rsvp, (const char *[]) { realm , user, allocation_chars });
-      prom_counter_add(turn_total_traffic_rcvb, rsvb, (const char *[]) { realm , user, allocation_chars });
-      prom_counter_add(turn_total_traffic_sentp, sentp, (const char *[]) { realm , user, allocation_chars });
-      prom_counter_add(turn_total_traffic_sentb, sentb, (const char *[]) { realm , user, allocation_chars });
+      prom_counter_add(turn_traffic_rcvp, rsvp, label);
+      prom_counter_add(turn_traffic_rcvb, rsvb, label);
+      prom_counter_add(turn_traffic_sentp, sentp, label);
+      prom_counter_add(turn_traffic_sentb, sentb, label);
+
+      prom_counter_add(turn_total_traffic_rcvp, rsvp, NULL);
+      prom_counter_add(turn_total_traffic_rcvb, rsvb, NULL);
+      prom_counter_add(turn_total_traffic_sentp, sentp, NULL);
+      prom_counter_add(turn_total_traffic_sentb, sentb, NULL);
     }
   }
 }
