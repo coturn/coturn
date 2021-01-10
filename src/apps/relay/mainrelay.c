@@ -170,8 +170,7 @@ DEFAULT_CPUS_NUMBER,
 0,  /* no_dynamic_ip_list */
 0,  /* no_dynamic_realms */
 
-0,  /* log_binding */
-0   /* systemd */
+0  /* log_binding */
 };
 
 //////////////// OpenSSL Init //////////////////////
@@ -464,7 +463,6 @@ static char Usage[] = "Usage: turnserver [options]\n"
 " -v, --verbose					'Moderate' verbose mode.\n"
 " -V, --Verbose					Extra verbose mode, very annoying (for debug purposes only).\n"
 " -o, --daemon					Start process as daemon (detach from current shell).\n"
-" --systemd					Notify systemd about server status. (Use only in foreground!)\n"
 " --no-software-attribute	 		Production mode: hide the software version (formerly --prod).\n"
 " -f, --fingerprint				Use fingerprints in the TURN messages.\n"
 " -a, --lt-cred-mech				Use the long-term credential mechanism.\n"
@@ -815,8 +813,7 @@ enum EXTRA_OPTS {
 	NO_HTTP_OPT,
 	SECRET_KEY_OPT,
 	ACME_REDIRECT_OPT,
-	LOG_BINDING_OPT,
-	SYSTEMD_OPT
+	LOG_BINDING_OPT
 };
 
 struct myoption {
@@ -952,7 +949,6 @@ static const struct myoption long_options[] = {
 				{ "keep-address-family", optional_argument, NULL, 'K' },
 				{ "acme-redirect", required_argument, NULL, ACME_REDIRECT_OPT },
 				{ "log-binding", optional_argument, NULL, LOG_BINDING_OPT },
-				{ "systemd", optional_argument, NULL, SYSTEMD_OPT },
 
 				{ NULL, no_argument, NULL, 0 }
 };
@@ -1609,9 +1605,6 @@ static void set_option(int c, char *value)
 		break;
 	case LOG_BINDING_OPT:
 		turn_params.log_binding = get_bool_value(value);
-		break;
-	case SYSTEMD_OPT:
-		turn_params.systemd = get_bool_value(value);
 		break;
 
 	/* these options have been already taken care of before: */

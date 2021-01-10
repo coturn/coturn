@@ -8,7 +8,7 @@ User=turnserver
 Group=turnserver
 Type=notify
 EnvironmentFile=/etc/sysconfig/turnserver
-ExecStart=/usr/bin/turnserver --systemd -c /etc/turnserver/turnserver.conf $EXTRA_OPTIONS
+ExecStart=/usr/bin/turnserver -c /etc/turnserver/turnserver.conf $EXTRA_OPTIONS
 ExecStopPost=/usr/bin/rm -f /var/run/turnserver/turnserver.pid
 Restart=on-abort
 

@@ -1591,7 +1591,6 @@ void run_listener_server(struct listener_server *ls)
 	while (!turn_params.stop_turn_server) {
 
 		#if !defined(TURN_NO_SYSTEMD)
-		if(turn_params.systemd)
 			sd_notify (0, "READY=1");
 		#endif
 
@@ -1607,7 +1606,6 @@ void run_listener_server(struct listener_server *ls)
 	}
 
 	#if !defined(TURN_NO_SYSTEMD)
-	if(turn_params.systemd)
 		sd_notify (0, "STOPPING=1");
 	#endif
 }
