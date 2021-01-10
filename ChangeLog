@@ -1,4 +1,4 @@
-24/06/2020 Oleg Moskalenko <mom040267@gmail.com> Mihály Mészáros <misi@majd.eu>
+10/01/2021 Oleg Moskalenko <mom040267@gmail.com> Mihály Mészáros <misi@majd.eu>
 Version 4.5.2 'dan Eider':
 	- fix null pointer dereference in case of out of memory. (thanks to Thomas Moeller for the report)
 	- merge PR #517 (by wolmi)
