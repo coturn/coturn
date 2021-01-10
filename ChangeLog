@@ -45,6 +45,11 @@ Version 4.5.2 'dan Eider':
 		* Simplify (as agreed in Issue #666)
 			* Remove session id/allocation labels
 			* Remove per session metrics. We should later add more counters.
+	- Fix CVE-2020-26262 (credits: Enable-Security)
+		* Fix ipv6 ::1 loopback check
+		* Not allow allocate peer address 0.0.0.0/8 and ::/128
+		* For more details see the github security advisory:
+			https://github.com/coturn/coturn/security/advisories/GHSA-6g6j-r9rf-cm7p
 
 24/06/2020 Oleg Moskalenko <mom040267@gmail.com> Mihály Mészáros <misi@majd.eu>
 Version 4.5.1.3 'dan Eider':
