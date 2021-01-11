@@ -46,6 +46,11 @@ install() {
         chown "$TURNSERVER_USER":"$TURNSERVER_GROUP" "$TURNDB_SQLITE"
         chmod 660 "$TURNDB_SQLITE"
     fi
+
+    TURNSERVER_CONFIG=/etc/turnserver.conf
+    if ! dpkg-statoverride --list "$TURNSERVER_CONFIG" >/dev/null 2>&1; then
+        dpkg-statoverride --update --add root "$TURNSERVER_GROUP" 640 "$TURNSERVER_CONFIG"
+    fi
 }
 
 case "$1" in
