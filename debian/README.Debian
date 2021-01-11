@@ -52,6 +52,21 @@ uses anonymous access.
    line to the/etc/systemd/system/coturn.service.d/network.conf or
    simillar systemd config file.
 
+7) Non privileged ports
+   If you plan to use any privileged ports(ports<1024 e.g. 80 or 443) 
+   add the following for non root privileged port binding to 
+   /etc/systemd/system/coturn.service.d/capability.conf.
+   (After it reload config "systemctl daemon-reload")
+
+    [Service]
+    AmbientCapabilities=CAP_NET_BIND_SERVICE
+
+  Or alternatively create nftables/iptables port forwarding nat rules.
+
+    iptables -t nat -A PREROUTING -p udp -m udp --dport 80 -j REDIRECT --to-ports 3478
+    iptables -t nat -A PREROUTING -p tcp -m tcp --dport 80 -j REDIRECT --to-ports 3478
+    iptables -t nat -A PREROUTING -p udp -m udp --dport 443 -j REDIRECT --to-ports 5349
+    iptables -t nat -A PREROUTING -p tcp -m tcp --dport 443 -j REDIRECT --to-ports 5349
 
 Traditional STUN doesn't require an account. For TURN relay
 purposes, several accounting options are possible:
