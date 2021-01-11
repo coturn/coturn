@@ -506,8 +506,8 @@ void turn_log_func_default(TURN_LOG_LEVEL level, const char* format, ...)
 	}
 	so_far += snprintf(s + so_far, sizeof(s)-100, (level == TURN_LOG_LEVEL_ERROR) ? ": ERROR: " : ": ");
 	so_far += vsnprintf(s + so_far,sizeof(s) - (so_far+1), format, args);
-	/* always write to stdout */
-	fwrite(s, so_far, 1, stdout);
+	if(!no_stdout_log)
+		fwrite(s, so_far, 1, stdout);
 	/* write to syslog or to log file */
 	if(to_syslog) {
 		syslog(get_syslog_level(level),"%s",s);
