@@ -14,6 +14,7 @@ if [ "$1" = "purge" ] ; then
         fi
 
         rm -f /var/lib/turn/turndb
+        rmdir /var/lib/turn
 fi
 
 
