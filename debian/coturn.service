@@ -7,7 +7,7 @@ After=network.target
 User=turnserver
 Group=turnserver
 Type=notify
-ExecStart=/usr/bin/turnserver -c /etc/turnserver.conf
+ExecStart=/usr/bin/turnserver -c /etc/turnserver.conf --pidfile=
 Restart=on-failure
 InaccessibleDirectories=/home
 PrivateTmp=yes
