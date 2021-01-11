@@ -43,6 +43,8 @@ install() {
         echo "I: Creating $TURNDB_SQLITE from $TURNDB_SCHEMA" >&2
         mkdir -p "$(dirname "$TURNDB_SQLITE")"
         sqlite3 "$TURNDB_SQLITE" < "$TURNDB_SCHEMA"
+        chown "$TURNSERVER_USER":"$TURNSERVER_GROUP" "$TURNDB_SQLITE"
+        chmod 660 "$TURNDB_SQLITE"
     fi
 }
 
