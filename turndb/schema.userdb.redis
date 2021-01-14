@@ -6,9 +6,12 @@ has the following schema:
 
 1) For the long-term credentials there must be keys 
 "turn/realm/<realm-name>/user/<username>/key" and the values must be 
-the the hmackeys. For example, for the user "gorst", realm "north.gov" 
+the hmackeys which is an md5 hash of "<username>:<realm-name>:<password>"
+(See STUN RFC: https://tools.ietf.org/html/rfc5389#page-35).
+For example, for the user "gorst", realm "north.gov" 
 and password "hero", there must be key "turn/realm/north.gov/user/gorst/key" 
-with value "7da2270ccfa49786e0115366d3a3d14d".
+and the value should be md5 hash of "gorst:north.gov:hero"
+which will result in "7da2270ccfa49786e0115366d3a3d14d".
 
 2) For the shared secrets (REST API), several key/value pairs 
 may be used (same as in SQL schema). The secrets are stored as members 
