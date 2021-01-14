@@ -1176,7 +1176,7 @@ private:
 	size_t _len;
 };
 
-};
+}
 /* namespace */
 
 #endif
