@@ -1,9 +1,11 @@
 10/01/2021 Oleg Moskalenko <mom040267@gmail.com> Mihály Mészáros <misi@majd.eu>
 Version 4.5.3 'dan Eider':
 	- merge PR #684 (by brevilo)
-	* Define OPENSSL_VERSION_1_1_1 on systems where it doesn't (yet) exist
-	* Regression in 4.5.2 that cause issues in openssl version < 1.1.1.
+		* Define OPENSSL_VERSION_1_1_1 on systems where it doesn't (yet) exist
+		* Regression in 4.5.2 that cause issues in openssl version < 1.1.1.
 	- typo fix in prometheus (by fcecagno)
+	- merge PR #687 (by Wuelber Castillo)
+		* Add hash algorithm for hmackey value to redis userdb schema docs
 10/01/2021 Oleg Moskalenko <mom040267@gmail.com> Mihály Mészáros <misi@majd.eu>
 Version 4.5.2 'dan Eider':
 	- fix null pointer dereference in case of out of memory. (thanks to Thomas Moeller for the report)
