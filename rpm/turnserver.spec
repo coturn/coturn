@@ -298,7 +298,7 @@ fi
 %{_includedir}/turn/client/TurnMsgLib.h
 
 %changelog
-* Sun jan 10 2 2021 Mészáros Mihály <misi@majd.eu>
+* Sun Jan 10 2021 Mészáros Mihály <misi@majd.eu>
   - Sync to 4.5.2
 * Sat Mar 2 2019 Mészáros Mihály <misi@majd.eu>
   - Sync to 4.5.1.1
