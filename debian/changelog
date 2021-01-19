@@ -1,3 +1,10 @@
+coturn (4.5.2-1~bpo10+1) buster-backports; urgency=high
+
+  * Rebuild for buster-backports.
+  * [2803c3f] Update debian-branch in gbp.conf
+
+ -- Mészáros Mihály <misi@majd.eu>  Tue, 19 Jan 2021 10:08:17 +0100
+
 coturn (4.5.2-1) unstable; urgency=high
 
   * [49df393] New upstream release (4.5.2)
