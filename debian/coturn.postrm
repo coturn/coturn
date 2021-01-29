@@ -6,6 +6,11 @@ TURNSERVER_USER=turnserver
 TURNSERVER_GROUP=turnserver
 
 if [ "$1" = "purge" ] ; then
+        TURNSERVER_CONFIG=/etc/turnserver.conf
+        if dpkg-statoverride --list "$TURNSERVER_CONFIG" >/dev/null 2>&1; then
+                dpkg-statoverride --remove "$TURNSERVER_CONFIG"
+        fi
+
         if getent passwd $TURNSERVER_USER >/dev/null; then
                 userdel $TURNSERVER_USER
         fi
@@ -15,11 +20,6 @@ if [ "$1" = "purge" ] ; then
 
         rm -f /var/lib/turn/turndb
         rmdir /var/lib/turn
-
-        TURNSERVER_CONFIG=/etc/turnserver.conf
-        if ! dpkg-statoverride --list "$TURNSERVER_CONFIG" >/dev/null 2>&1; then
-	    dpkg-statoverride --remove "$TURNSERVER_CONFIG"
-        fi
 fi
 
 
