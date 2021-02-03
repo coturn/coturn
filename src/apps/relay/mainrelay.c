@@ -3198,10 +3198,12 @@ static void openssl_load_certificates(void)
 		set_ctx(&turn_params.dtls_ctx,"DTLS",DTLS_server_method());
 		set_ctx(&turn_params.dtls_ctx_v1_2,"DTLS1.2",DTLSv1_2_server_method());
 		SSL_CTX_set_read_ahead(turn_params.dtls_ctx_v1_2, 1);
+		setup_dtls_callbacks(turn_params.dtls_ctx_v1_2);
 #else
 		set_ctx(&turn_params.dtls_ctx,"DTLS",DTLSv1_server_method());
 #endif
 		SSL_CTX_set_read_ahead(turn_params.dtls_ctx, 1);
+		setup_dtls_callbacks(turn_params.dtls_ctx);
 
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS cipher suite: %s\n",turn_params.cipher_list);
 

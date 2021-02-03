@@ -935,36 +935,6 @@ static int init_server(dtls_listener_relay_server_type* server,
   server->verbose=verbose;
   
   server->e = e;
-  
-#if DTLS_SUPPORTED
-  if(server->dtls_ctx) {
-
-#if defined(REQUEST_CLIENT_CERT)
-	  /* If client has to authenticate, then  */
-	  SSL_CTX_set_verify(server->dtls_ctx, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, dtls_verify_callback);
-#endif
-  
-	  SSL_CTX_set_read_ahead(server->dtls_ctx, 1);
-
-	  SSL_CTX_set_cookie_generate_cb(server->dtls_ctx, generate_cookie);
-	  SSL_CTX_set_cookie_verify_cb(server->dtls_ctx, verify_cookie);
-  }
-
-#if DTLSv1_2_SUPPORTED
-  if(server->dtls_ctx_v1_2) {
-
-  #if defined(REQUEST_CLIENT_CERT)
-  	  /* If client has to authenticate, then  */
-  	  SSL_CTX_set_verify(server->dtls_ctx_v1_2, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, dtls_verify_callback);
-  #endif
-
-  	  SSL_CTX_set_read_ahead(server->dtls_ctx_v1_2, 1);
-
-  	  SSL_CTX_set_cookie_generate_cb(server->dtls_ctx_v1_2, generate_cookie);
-  	  SSL_CTX_set_cookie_verify_cb(server->dtls_ctx_v1_2, verify_cookie);
-    }
-#endif
-#endif
 
   return create_server_socket(server, report_creation);
 }
@@ -979,6 +949,23 @@ static int clean_server(dtls_listener_relay_server_type* server) {
 }
 
 ///////////////////////////////////////////////////////////
+
+#if DTLS_SUPPORTED
+void setup_dtls_callbacks(SSL_CTX *ctx) {
+  if (!ctx)
+    return;
+
+#if defined(REQUEST_CLIENT_CERT)
+  /* If client has to authenticate, then  */
+  SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, dtls_verify_callback);
+#endif
+
+  SSL_CTX_set_read_ahead(ctx, 1);
+
+  SSL_CTX_set_cookie_generate_cb(ctx, generate_cookie);
+  SSL_CTX_set_cookie_verify_cb(ctx, verify_cookie);
+}
+#endif
 
 dtls_listener_relay_server_type* create_dtls_listener_server(const char* ifname,
 							     const char *local_address, 
