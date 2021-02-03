@@ -55,12 +55,6 @@ struct dtls_listener_relay_server_info {
   ioa_engine_handle e;
   turn_turnserver *ts;
   int verbose;
-#if DTLS_SUPPORTED
-  SSL_CTX *dtls_ctx;
-#if DTLSv1_2_SUPPORTED
-  SSL_CTX *dtls_ctx_v1_2;
-#endif
-#endif
   struct event *udp_listen_ev;
   ioa_socket_handle udp_listen_s;
   ur_addr_map *children_ss; /* map of socket children on remote addr */
@@ -288,13 +282,13 @@ static ioa_socket_handle dtls_server_input_handler(dtls_listener_relay_server_ty
 #if DTLSv1_2_SUPPORTED
 	if(get_dtls_version(ioa_network_buffer_data(nbh),
 							(int)ioa_network_buffer_get_size(nbh)) == 1) {
-		connecting_ssl = SSL_new(server->dtls_ctx_v1_2);
+		connecting_ssl = SSL_new(server->e->dtls_ctx_v1_2);
 	} else {
-		connecting_ssl = SSL_new(server->dtls_ctx);
+		connecting_ssl = SSL_new(server->e->dtls_ctx);
 	}
 #else
 	{
-		connecting_ssl = SSL_new(server->dtls_ctx);
+		connecting_ssl = SSL_new(server->e->dtls_ctx);
 	}
 #endif
 
@@ -573,13 +567,13 @@ static int create_new_connected_udp_socket(
 #if DTLSv1_2_SUPPORTED
 		if(get_dtls_version(ioa_network_buffer_data(server->sm.m.sm.nd.nbh),
 							(int)ioa_network_buffer_get_size(server->sm.m.sm.nd.nbh)) == 1) {
-			connecting_ssl = SSL_new(server->dtls_ctx_v1_2);
+			connecting_ssl = SSL_new(server->e->dtls_ctx_v1_2);
 		} else {
-			connecting_ssl = SSL_new(server->dtls_ctx);
+			connecting_ssl = SSL_new(server->e->dtls_ctx);
 		}
 #else
 		{
-			connecting_ssl = SSL_new(server->dtls_ctx);
+			connecting_ssl = SSL_new(server->e->dtls_ctx);
 		}
 #endif
 
@@ -911,14 +905,6 @@ static int init_server(dtls_listener_relay_server_type* server,
 		       ioa_engine_new_connection_event_handler send_socket) {
 
   if(!server) return -1;
-
-#if DTLS_SUPPORTED
-  server->dtls_ctx = e->dtls_ctx;
-
-#if DTLSv1_2_SUPPORTED
-  server->dtls_ctx_v1_2 = e->dtls_ctx_v1_2;
-#endif
-#endif
 
   server->ts = ts;
   server->connect_cb = send_socket;
