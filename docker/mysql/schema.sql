@@ -24,6 +24,12 @@ CREATE TABLE denied_peer_ip (
 	primary key (realm,ip_range)
 );
 
+CREATE TABLE stun_denied_peer_ip (
+	realm varchar(127) default '',
+	ip_range varchar(256),
+	primary key (realm,ip_range)
+);
+
 CREATE TABLE turn_origin_to_realm (
 	origin varchar(127),
 	realm varchar(127),

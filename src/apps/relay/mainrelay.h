@@ -250,6 +250,7 @@ typedef struct _turn_params_ {
 
   ip_range_list_t ip_whitelist;
   ip_range_list_t ip_blacklist;
+  ip_range_list_t ip_stunblacklist;
 
   NET_ENG_VERSION net_engine_version;
   const char* net_engine_version_txt[NEV_TOTAL];

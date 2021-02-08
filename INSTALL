@@ -715,6 +715,14 @@ CREATE TABLE denied_peer_ip (
 	primary key (realm,ip_range)
 );
 
+# Table holding STUN denied peer IP ranges.
+#
+CREATE TABLE stun_denied_peer_ip (
+	realm varchar(127) default '',
+	ip_range varchar(256),
+	primary key (realm,ip_range)
+);
+
 # Table to match origin to realm.
 # Multiple origins may have the same realm.
 # If no realm is found or the origin is absent

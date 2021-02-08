@@ -157,6 +157,9 @@ struct _turn_turnserver {
 	ip_range_list_t* ip_whitelist;
 	ip_range_list_t* ip_blacklist;
 
+	/* STUN black listing of address ranges */
+	ip_range_list_t* ip_stunblacklist;
+
 	/* Mobility */
 	vintp mobility;
 	ur_map *mobile_connections_map;
@@ -215,6 +218,7 @@ void init_turn_server(turn_turnserver* server,
 				    vintp allow_loopback_peers,
 				    ip_range_list_t* ip_whitelist,
 				    ip_range_list_t* ip_blacklist,
+				    ip_range_list_t* ip_stunblacklist,
 				    send_socket_to_relay_cb send_socket_to_relay,
 				    vintp secure_stun,
 				    vintp mobility,

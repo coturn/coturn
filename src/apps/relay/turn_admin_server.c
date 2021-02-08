@@ -755,6 +755,13 @@ static void cli_print_configuration(struct cli_session* cs)
 			ip_list_free(l);
 		}
 
+		cli_print_ip_range_list(cs,&turn_params.ip_stunblacklist,"STUN blacklist IP (static)",0);
+		{
+			ip_range_list_t* l = get_ip_list("stun_denied");
+			cli_print_ip_range_list(cs,l,"STUN blacklist IP (dynamic)",0);
+			ip_list_free(l);
+		}
+
 		cli_print_flag(cs,turn_params.no_multicast_peers,"no-multicast-peers",1);
 		cli_print_flag(cs,turn_params.allow_loopback_peers,"allow-loopback-peers",1);
 
@@ -2260,6 +2267,15 @@ static void write_pc_page(ioa_socket_handle s)
 					https_print_ip_range_list(sb,l,"Blacklist IP (dynamic)", "denied", 1);
 					ip_list_free(l);
 				}
+
+				https_print_empty_row(sb,2);
+
+				https_print_ip_range_list(sb,&turn_params.ip_stunblacklist,"STUN denied list IP (static)", NULL, 0);
+				{
+					ip_range_list_t* l = get_ip_list("stun_denied");
+					https_print_ip_range_list(sb,l,"STUN blacklist IP (dynamic)", "stun_denied", 1);
+					ip_list_free(l);
+				}
 			}
 
 			str_buffer_append(sb,"\r\n</table>\r\n");
@@ -3230,7 +3246,7 @@ static void handle_update_request(ioa_socket_handle s, struct http_request* hr)
 
 					if(current_realm()[0] && strcmp(current_realm(),r)) {
 						//forbidden
-					} else if (strcmp(kind, "allowed") != 0 && strcmp(kind, "denied") != 0) {
+					} else if (strcmp(kind, "allowed") != 0 && strcmp(kind, "denied") != 0 && strcmp(kind, "stun_denied") != 0) {
 						//forbidden
 					} else {
 
@@ -3265,7 +3281,7 @@ static void handle_update_request(ioa_socket_handle s, struct http_request* hr)
 
 						if(current_realm()[0] && strcmp(current_realm(),r)) {
 							//forbidden
-						} else if (strcmp(kind, "allowed") != 0 && strcmp(kind, "denied") != 0) {
+						} else if (strcmp(kind, "allowed") != 0 && strcmp(kind, "denied") != 0 && strcmp(kind, "stun_denied") != 0) {
 							//forbidden
 						} else {
 

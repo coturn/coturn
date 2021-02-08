@@ -264,10 +264,10 @@ static int send_turn_message_to(turn_turnserver *server, ioa_network_buffer_hand
 
 /////////////////// Peer addr check /////////////////////////////
 
-static int good_peer_addr(turn_turnserver *server, const char* realm, ioa_addr *peer_addr)
-{
 #define CHECK_REALM(r) if((r)[0] && realm && realm[0] && strcmp((r),realm)) continue
 
+static int good_peer_addr(turn_turnserver *server, const char* realm, ioa_addr *peer_addr)
+{
 	if(server && peer_addr) {
 		if(*(server->no_multicast_peers) && ioa_addr_is_multicast(peer_addr))
 			return 0;
@@ -342,10 +342,44 @@ static int good_peer_addr(turn_turnserver *server, const char* realm, ioa_addr *
 		}
 	}
 
-#undef CHECK_REALM
-
 	return 1;
 }
+
+static int stun_denied_addr(turn_turnserver *server, const char* realm, ioa_addr *reflexive_addr) {
+	if(server && reflexive_addr) {
+		int i;
+
+		if(server->ip_stunblacklist) {
+			// Static STUN black listing of addr ranges
+			for (i = server->ip_stunblacklist->ranges_number - 1; i >= 0; --i) {
+				CHECK_REALM(server->ip_stunblacklist->rs[i].realm);
+				if (ioa_addr_in_range(&(server->ip_stunblacklist->rs[i].enc), reflexive_addr))
+					return 1;
+			}
+		}
+
+		{
+			ioa_lock_stunblacklist(server->e);
+
+			const ip_range_list_t* sbl = ioa_get_stunblacklist(server->e);
+			if(sbl) {
+				// Dynamic STUN black listing of addr ranges
+				for (i = sbl->ranges_number - 1; i >= 0; --i) {
+					CHECK_REALM(sbl->rs[i].realm);
+					if (ioa_addr_in_range(&(sbl->rs[i].enc), reflexive_addr)) {
+						ioa_unlock_stunblacklist(server->e);
+						return 1;
+					}
+				}
+			}
+
+			ioa_unlock_stunblacklist(server->e);
+		}
+	}
+	return 0;
+}
+
+#undef CHECK_REALM
 
 /////////////////// Allocation //////////////////////////////////
 
@@ -1012,10 +1046,14 @@ static int handle_turn_allocate(turn_turnserver *server,
 				} else if(pxor_relayed_addr2) {
 					lifetime = (get_relay_session(alloc,pxor_relayed_addr2->ss.sa_family)->expiration_time - server->ctime);
 				}
+				ioa_addr *reflexive_addr = get_remote_addr_from_ioa_socket(ss->client_socket);
+				if (stun_denied_addr(server, ss->realm_options.name, reflexive_addr)) {
+					reflexive_addr = NULL;
+				}
 				stun_set_allocate_response_str(ioa_network_buffer_data(nbh), &len,
 							tid,
 							pxor_relayed_addr1, pxor_relayed_addr2,
-							get_remote_addr_from_ioa_socket(ss->client_socket),
+							reflexive_addr,
 							lifetime,*(server->max_allocate_lifetime), 0, NULL, 0,
 							ss->s_mobile_id);
 				ioa_network_buffer_set_size(nbh,len);
@@ -1423,9 +1461,13 @@ static int handle_turn_allocate(turn_turnserver *server,
 
 					if(pxor_relayed_addr1 || pxor_relayed_addr2) {
 
+						ioa_addr *reflexive_addr = get_remote_addr_from_ioa_socket(ss->client_socket);
+						if (stun_denied_addr(server, ss->realm_options.name, reflexive_addr)) {
+							reflexive_addr = NULL;
+						}
 						stun_set_allocate_response_str(ioa_network_buffer_data(nbh), &len, tid,
 									pxor_relayed_addr1, pxor_relayed_addr2,
-									get_remote_addr_from_ioa_socket(ss->client_socket), lifetime,
+									reflexive_addr, lifetime,
 									*(server->max_allocate_lifetime),0,NULL,
 									out_reservation_token,
 									ss->s_mobile_id);
@@ -2854,6 +2896,13 @@ static int handle_turn_binding(turn_turnserver *server,
 		sar = stun_attr_get_next_str(ioa_network_buffer_data(in_buffer->nbh),
 					     ioa_network_buffer_get_size(in_buffer->nbh),
 					     sar);
+	}
+
+	if (ss->client_socket &&
+			get_remote_addr_from_ioa_socket(ss->client_socket) &&
+			stun_denied_addr(server, ss->realm_options.name, get_remote_addr_from_ioa_socket(ss->client_socket))) {
+		*err_code = 403;
+		*reason = (const uint8_t *)"STUN forbidden IP";
 	}
 
 	if (*ua_num > 0) {
@@ -4924,6 +4973,7 @@ void init_turn_server(turn_turnserver* server,
 		int self_udp_balance,
 		vintp no_multicast_peers, vintp allow_loopback_peers,
 		ip_range_list_t* ip_whitelist, ip_range_list_t* ip_blacklist,
+		ip_range_list_t* ip_stunblacklist,
 		send_socket_to_relay_cb send_socket_to_relay,
 		vintp secure_stun, vintp mobility, int server_relay,
 		send_turn_session_info_cb send_turn_session_info,
@@ -4997,6 +5047,7 @@ void init_turn_server(turn_turnserver* server,
 
 	server->ip_whitelist = ip_whitelist;
 	server->ip_blacklist = ip_blacklist;
+	server->ip_stunblacklist = ip_stunblacklist;
 
 	server->send_socket_to_relay = send_socket_to_relay;
 

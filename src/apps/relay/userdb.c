@@ -1073,13 +1073,16 @@ void run_db_test(void)
 #if !defined(TURN_NO_RWLOCK)
 static pthread_rwlock_t* whitelist_rwlock = NULL;
 static pthread_rwlock_t* blacklist_rwlock = NULL;
+static pthread_rwlock_t* stunblacklist_rwlock = NULL;
 #else
 static turn_mutex whitelist_mutex;
 static turn_mutex blacklist_mutex;
+static turn_mutex stunblacklist_mutex;
 #endif
 
 static ip_range_list_t* ipwhitelist = NULL;
 static ip_range_list_t* ipblacklist = NULL;
+static ip_range_list_t* ipstunblacklist = NULL;
 
 void init_dynamic_ip_lists(void)
 {
@@ -1089,9 +1092,13 @@ void init_dynamic_ip_lists(void)
 
 	blacklist_rwlock = (pthread_rwlock_t*) malloc(sizeof(pthread_rwlock_t));
 	pthread_rwlock_init(blacklist_rwlock, NULL);
+
+	stunblacklist_rwlock = (pthread_rwlock_t*) malloc(sizeof(pthread_rwlock_t));
+	pthread_rwlock_init(stunblacklist_rwlock, NULL);
 #else
 	turn_mutex_init(&whitelist_mutex);
 	turn_mutex_init(&blacklist_mutex);
+	turn_mutex_init(&stunblacklist_mutex);
 #endif
 }
 
@@ -1161,6 +1168,39 @@ const ip_range_list_t* ioa_get_blacklist(ioa_engine_handle e)
 	return ipblacklist;
 }
 
+void ioa_lock_stunblacklist(ioa_engine_handle e)
+{
+	UNUSED_ARG(e);
+#if !defined(TURN_NO_RWLOCK)
+	pthread_rwlock_rdlock(stunblacklist_rwlock);
+#else
+	turn_mutex_lock(&stunblacklist_mutex);
+#endif
+}
+void ioa_unlock_stunblacklist(ioa_engine_handle e)
+{
+	UNUSED_ARG(e);
+#if !defined(TURN_NO_RWLOCK)
+	pthread_rwlock_unlock(stunblacklist_rwlock);
+#else
+	turn_mutex_unlock(&stunblacklist_mutex);
+#endif
+}
+static void ioa_wrlock_stunblacklist(ioa_engine_handle e)
+{
+	UNUSED_ARG(e);
+#if !defined(TURN_NO_RWLOCK)
+	pthread_rwlock_wrlock(stunblacklist_rwlock);
+#else
+	turn_mutex_lock(&stunblacklist_mutex);
+#endif
+}
+const ip_range_list_t* ioa_get_stunblacklist(ioa_engine_handle e)
+{
+	UNUSED_ARG(e);
+	return ipstunblacklist;
+}
+
 ip_range_list_t* get_ip_list(const char *kind)
 {
 	ip_range_list_t *ret = (ip_range_list_t*) malloc(sizeof(ip_range_list_t));
@@ -1202,6 +1242,15 @@ void update_white_and_black_lists(void)
 		ipblacklist = bl;
 		ioa_unlock_blacklist(NULL);
 		ip_list_free(obl);
+	}
+	{
+		ip_range_list_t *sbl = get_ip_list("stun_denied");
+		ip_range_list_t *osbl = NULL;
+		ioa_wrlock_stunblacklist(NULL);
+		osbl = ipstunblacklist;
+		ipstunblacklist = sbl;
+		ioa_unlock_stunblacklist(NULL);
+		ip_list_free(osbl);
 	}
 }
 
