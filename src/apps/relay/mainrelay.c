@@ -39,9 +39,15 @@
 #if (defined LIBRESSL_VERSION_NUMBER && OPENSSL_VERSION_NUMBER == 0x20000000L)
 #undef OPENSSL_VERSION_NUMBER
 #define OPENSSL_VERSION_NUMBER 0x1000107FL
-#elif (!defined OPENSSL_VERSION_1_1_1)
-#define OPENSSL_VERSION_1_1_1 0x10101000L
 #endif
+
+static void set_crypto_callback(void (*threadid_func)(CRYPTO_THREADID *)) {
+#if OPENSSL_VERSION_NUMBER >= 0x10000000L && OPENSSL_VERSION_NUMBER <= 0x10101000L
+	(void)CRYPTO_THREADID_set_callback(threadid_func);
+#else
+	CRYPTO_set_id_callback(threadid_func);
+#endif
+}
 
 ////// TEMPORARY data //////////
 
@@ -2595,12 +2601,7 @@ static int THREAD_setup(void) {
 
 	mutex_buf_initialized = 1;
 
-#if OPENSSL_VERSION_NUMBER >= 0x10000000L && OPENSSL_VERSION_NUMBER <= OPENSSL_VERSION_1_1_1
-	CRYPTO_THREADID_set_callback(coturn_id_function);
-#else
-	CRYPTO_set_id_callback(coturn_id_function);
-#endif
-
+	set_crypto_callback(coturn_id_function);
 	CRYPTO_set_locking_callback(coturn_locking_function);
 #endif
 
@@ -2617,12 +2618,7 @@ int THREAD_cleanup(void) {
   if (!mutex_buf_initialized)
     return 0;
 
-#if OPENSSL_VERSION_NUMBER >= 0x10000000L && OPENSSL_VERSION_NUMBER <= OPENSSL_VERSION_1_1_1
-	CRYPTO_THREADID_set_callback(NULL);
-#else
-	CRYPTO_set_id_callback(NULL);
-#endif
-
+  set_crypto_callback(NULL);
   CRYPTO_set_locking_callback(NULL);
   for (i = 0; i < CRYPTO_num_locks(); i++) {
 	  pthread_mutex_destroy(&(mutex_buf[i]));
