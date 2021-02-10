@@ -1,1 +1,2 @@
 Set-logging-to-syslog.patch
+Fix-undefinded-OPENSSL_VERSION_1_1_1.patch

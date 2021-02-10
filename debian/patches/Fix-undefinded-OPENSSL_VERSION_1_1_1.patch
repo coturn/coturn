@@ -1,0 +1,30 @@
+From: =?utf-8?b?TcOpc3rDoXJvcyBNaWjDoWx5?= <misi@majd.eu>
+Date: Wed, 10 Feb 2021 18:54:19 +0100
+Subject: Fix undefinded OPENSSL_VERSION_1_1_1
+
+---
+ src/apps/relay/mainrelay.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/apps/relay/mainrelay.c b/src/apps/relay/mainrelay.c
+index 2118b60..bbf7fa3 100644
+--- a/src/apps/relay/mainrelay.c
++++ b/src/apps/relay/mainrelay.c
+@@ -2593,7 +2593,7 @@ static int THREAD_setup(void) {
+ 
+ 	mutex_buf_initialized = 1;
+ 
+-#if OPENSSL_VERSION_NUMBER >= 0x10000000L && OPENSSL_VERSION_NUMBER <= OPENSSL_VERSION_1_1_1
++#if OPENSSL_VERSION_NUMBER >= 0x10000000L && OPENSSL_VERSION_NUMBER <= 0x10101000L
+ 	CRYPTO_THREADID_set_callback(coturn_id_function);
+ #else
+ 	CRYPTO_set_id_callback(coturn_id_function);
+@@ -2615,7 +2615,7 @@ int THREAD_cleanup(void) {
+   if (!mutex_buf_initialized)
+     return 0;
+ 
+-#if OPENSSL_VERSION_NUMBER >= 0x10000000L && OPENSSL_VERSION_NUMBER <= OPENSSL_VERSION_1_1_1
++#if OPENSSL_VERSION_NUMBER >= 0x10000000L && OPENSSL_VERSION_NUMBER <= 0x10101000L
+ 	CRYPTO_THREADID_set_callback(NULL);
+ #else
+ 	CRYPTO_set_id_callback(NULL);
