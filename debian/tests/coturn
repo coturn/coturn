@@ -2,8 +2,23 @@
 
 set -ex
 
+# Cert
+cp examples/etc/cacert.pem /etc/cacert.pem
+cp examples/etc/turn_server_cert.pem /etc/turn_server_cert.pem
+cp examples/etc/turn_server_pkey.pem /etc/turn_server_pkey.pem
+
+# Config
 cp debian/tests/turnserver.conf /etc/turnserver.conf
+
+# Db
 cp examples/var/db/turndb /var/lib/turn/turndb
+
 systemctl restart coturn
+
+# Test udp
 /usr/share/doc/coturn/examples/scripts/longtermsecure/secure_udp_c2c.sh
+# Test tcp
 /usr/share/doc/coturn/examples/scripts/longtermsecure/secure_tcp_client_c2c_tcp_relay.sh
+# Test tls
+turnutils_uclient -T -S -k ./examples/etc/turn_client_pkey.pem -E ./examples/etc/cacert.pem -i ./examples/etc/turn_client_cert.pem -n 1000 -m 10 -l 170 -y -g -u gorst -w hero $@ ::1
+
