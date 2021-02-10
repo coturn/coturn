@@ -1,3 +1,20 @@
+coturn (4.5.2-2) unstable; urgency=medium
+
+  [ Michael Prokop ]
+  * [059ff0a] debian/coturn.postrm: fix check for dpkg-statoverride on package
+    removal. This fixes a regression introduced in commit b9a4a8.
+    While at it, also move the statoverride removal before the account removal.
+    (Closes: #981330)
+
+  [ Ferenc Wágner ]
+  * [e991e26] Enroll to basic Salsa-CI
+
+  [ Mészáros Mihály ]
+  * [3505b22] HotFix upstream undefinded OPENSSL_VERSION_1_1_1
+  * [20f9a9e] Add tls test to debian autopkgtest
+
+ -- Mészáros Mihály <misi@majd.eu>  Wed, 10 Feb 2021 22:03:27 +0100
+
 coturn (4.5.2-1) unstable; urgency=high
 
   * [49df393] New upstream release (4.5.2)
