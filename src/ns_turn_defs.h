@@ -44,11 +44,18 @@
 #endif
 
 #include <sys/types.h>
+
+#if defined(_WINDOWS) || defined(WIN32)
+#include <ws2tcpip.h>
+#include <Windows.h>
+#else
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <net/if.h>
+#endif
+
 #include <ctype.h>
 #include <stdint.h>
 #include <stdio.h>
