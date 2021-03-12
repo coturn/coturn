@@ -1284,31 +1284,30 @@ static int handle_turn_allocate(turn_turnserver *server,
 
 				if(!(*err_code)) {
 					if(!af4 && !af6) {
-						int a_family = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT;
-						if (server->keep_address_family) {
-							switch(get_ioa_socket_address_family(ss->client_socket)) {
-								case AF_INET6 :
-									a_family = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6;
-									break;
-								case AF_INET :
-									a_family = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4;
-									break;
-							}
+						switch (server->allocation_default_address_family) {
+							case ALLOCATION_DEFAULT_ADDRESS_FAMILY_KEEP:
+								switch(get_ioa_socket_address_family(ss->client_socket)) {
+									case AF_INET6 :
+										af6 = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6;
+										break;
+									case AF_INET :
+									default:
+										af4 = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4;
+										break;
+								}
+								break;
+							case ALLOCATION_DEFAULT_ADDRESS_FAMILY_IPV6:
+								af6 = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6;
+								break;
+							case ALLOCATION_DEFAULT_ADDRESS_FAMILY_IPV4:
+								/* no break */
+								/* Falls through. */
+							default:
+								af4 = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4;
+								break;
 						}
-
-						int res = create_relay_connection(server, ss, lifetime,
-						a_family, transport,
-						even_port, in_reservation_token, &out_reservation_token,
-						err_code, reason,
-						tcp_peer_accept_connection);
-
-						if(res<0) {
-							set_relay_session_failure(alloc,AF_INET);
-							if(!(*err_code)) {
-								*err_code = 437;
-							}
-						}
-					} else if(!af4 && af6) {
+					}
+					if(!af4 && af6) {
 						int af6res = create_relay_connection(server, ss, lifetime,
 							af6, transport,
 							even_port, in_reservation_token, &out_reservation_token,
@@ -4932,7 +4931,7 @@ void init_turn_server(turn_turnserver* server,
 		int oauth,
 		const char* oauth_server_name,
 		const char* acme_redirect,
-		int keep_address_family,
+		ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family,
 		vintp log_binding) {
 
 	if (!server)
@@ -5002,7 +5001,7 @@ void init_turn_server(turn_turnserver* server,
 
 	server->allocate_bps_func = allocate_bps_func;
 
-	server->keep_address_family = keep_address_family;
+	server->allocation_default_address_family = allocation_default_address_family;
 
 	set_ioa_timer(server->e, 1, 0, timer_timeout_handler, server, 1, "timer_timeout_handler");
 
