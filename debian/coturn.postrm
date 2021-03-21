@@ -19,7 +19,8 @@ if [ "$1" = "purge" ] ; then
         fi
 
         rm -f /var/lib/turn/turndb
-        rmdir /var/lib/turn
+        rmdir /var/lib/turn || true
+        # we only put turndb in there, but don't fail in any case
 fi
 
 
