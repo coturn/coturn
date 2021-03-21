@@ -41,10 +41,9 @@ install() {
 
     if [ ! -e "$TURNDB_SQLITE" ] && [ -e "$TURNDB_SCHEMA" ]; then
         echo "I: Creating $TURNDB_SQLITE from $TURNDB_SCHEMA" >&2
-        mkdir -p "$(dirname "$TURNDB_SQLITE")"
-        sqlite3 "$TURNDB_SQLITE" < "$TURNDB_SCHEMA"
-        chown "$TURNSERVER_USER":"$TURNSERVER_GROUP" "$TURNDB_SQLITE"
-        chmod 660 "$TURNDB_SQLITE"
+        mkdir -m 775 -p "$(dirname "$TURNDB_SQLITE")"
+        ( umask 007 && sqlite3 "$TURNDB_SQLITE" < "$TURNDB_SCHEMA" )
+        chown "$TURNSERVER_USER":"$TURNSERVER_GROUP" "$TURNDB_SQLITE" "$(dirname "$TURNDB_SQLITE")"
     fi
 
     TURNSERVER_CONFIG=/etc/turnserver.conf
