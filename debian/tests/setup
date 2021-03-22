@@ -1,0 +1,16 @@
+#!/bin/sh
+
+set -ex
+
+# Cert
+cp examples/etc/cacert.pem /etc/cacert.pem
+cp examples/etc/turn_server_cert.pem /etc/turn_server_cert.pem
+cp examples/etc/turn_server_pkey.pem /etc/turn_server_pkey.pem
+
+# Config
+cp debian/tests/turnserver.conf /etc/turnserver.conf
+
+# Db
+cp examples/var/db/turndb /var/lib/turn/turndb
+
+systemctl restart coturn

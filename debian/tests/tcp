@@ -1,0 +1,3 @@
+#!/bin/sh
+
+/usr/share/doc/coturn/examples/scripts/longtermsecure/secure_tcp_client_c2c_tcp_relay.sh

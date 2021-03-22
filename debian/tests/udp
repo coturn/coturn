@@ -1,0 +1,3 @@
+#!/bin/sh
+
+/usr/share/doc/coturn/examples/scripts/longtermsecure/secure_udp_c2c.sh

@@ -1,0 +1,3 @@
+#!/bin/sh
+
+turnutils_uclient -T -S -k ./examples/etc/turn_client_pkey.pem -E ./examples/etc/cacert.pem -i ./examples/etc/turn_client_cert.pem -n 1000 -m 10 -l 170 -y -g -u gorst -w hero $@ ::1
