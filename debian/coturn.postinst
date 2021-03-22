@@ -36,14 +36,17 @@ install() {
     fi
 
     # Don't ship the empty database; generate it on-demand. (#929269)
-    TURNDB_SQLITE=/var/lib/turn/turndb
+    TURNDB_DIR=/var/lib/turn
+    TURNDB_SQLITE=$TURNDB_DIR/turndb
     TURNDB_SCHEMA=/usr/share/coturn/schema.sql
 
     if [ ! -e "$TURNDB_SQLITE" ] && [ -e "$TURNDB_SCHEMA" ]; then
         echo "I: Creating $TURNDB_SQLITE from $TURNDB_SCHEMA" >&2
-        mkdir -m 775 -p "$(dirname "$TURNDB_SQLITE")"
         ( umask 007 && sqlite3 "$TURNDB_SQLITE" < "$TURNDB_SCHEMA" )
-        chown "$TURNSERVER_USER":"$TURNSERVER_GROUP" "$TURNDB_SQLITE" "$(dirname "$TURNDB_SQLITE")"
+        chown "$TURNSERVER_USER":"$TURNSERVER_GROUP" "$TURNDB_SQLITE"
+    fi
+    if ! dpkg-statoverride --list "$TURNDB_DIR" >/dev/null 2>&1; then
+        dpkg-statoverride --update --add "$TURNSERVER_USER" "$TURNSERVER_GROUP" 775 "$TURNDB_DIR"
     fi
 
     TURNSERVER_CONFIG=/etc/turnserver.conf

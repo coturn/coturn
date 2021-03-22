@@ -16,6 +16,11 @@ if [ "$1" = "purge" ] ; then
                 dpkg-statoverride --remove "$TURNSERVER_CONFIG"
         fi
 
+        TURNDB_DIR=/var/lib/turn
+        if dpkg-statoverride --list "$TURNDB_DIR" >/dev/null 2>&1; then
+                dpkg-statoverride --remove "$TURNDB_DIR"
+        fi
+
         if getent passwd $TURNSERVER_USER >/dev/null; then
                 userdel $TURNSERVER_USER
         fi
@@ -23,8 +28,8 @@ if [ "$1" = "purge" ] ; then
                 groupdel $TURNSERVER_GROUP
         fi
 
-        rm -f /var/lib/turn/turndb
-        rmdir /var/lib/turn || true
+        rm -f "$TURNDB_DIR"/turndb
+        rmdir "$TURNDB_DIR" || true
         # we only put turndb in there, but don't fail in any case
 fi
 
