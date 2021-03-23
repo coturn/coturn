@@ -33,6 +33,12 @@ If the systemd development library is available, then it will notify systemd abo
 
 RUNNING THE TURN SERVER
 
+To run the coturn server as a daemon use:
+
+  $ turnserver -o
+
+Note that if you make any changes to the config file the server has to be restarted.
+
 Options note: turnserver has long and short option names, for most options.
 Some options have only long form, some options have only short form. Their syntax
 somewhat different, if an argument is required:
