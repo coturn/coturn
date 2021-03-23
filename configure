@@ -605,7 +605,7 @@ if [ -z "${CC}" ] ; then
     if [ -z "$CC" ] ; then
         ${ECHO_CMD} "ERROR: failed to a find working C compiler"
         cleanup
-        exit
+        exit 1
     fi
 else
     ${CC} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>>/dev/null
@@ -613,7 +613,7 @@ else
     if ! [ ${ER} -eq 0 ] ; then
         ${ECHO_CMD} "ERROR: cannot use compiler ${CC} properly"
         cleanup
-        exit
+        exit 1
     fi
 fi
 
@@ -642,13 +642,13 @@ if [ -z "$PKGCONFIG" ] ; then
     if [ -z "$PKGCONFIG" ] ; then
         ${ECHO_CMD} "ERROR: pkg-config not found"
         cleanup
-        exit
+        exit 1
     fi
 else
     if ! type "$PKGCONFIG" 2>/dev/null ; then
         ${ECHO_CMD} "ERROR: cannot use $PKGCONFIG"
         cleanup
-        exit
+        exit 1
     fi
 fi
 
@@ -726,7 +726,7 @@ pthread_testlib
 ER=$?
 if [ ${ER} -ne 0 ] ; then
     ${ECHO_CMD} "ERROR: Cannot find pthread library functions."
-    exit
+    exit 1
 fi
 
 if [ -z ${TURN_NO_THREAD_BARRIERS} ] ; then 
@@ -758,7 +758,7 @@ if [ -n "${SSL_CFLAGS}" ] && [ -n "${SSL_LIBS}" ]; then
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
         ${ECHO_CMD} "Private SSL Library option cannot be used"
-        exit
+        exit 1
     else
         OSCFLAGS="${OSCFLAGS} ${SSL_CFLAGS}"
         OSLIBS="${OSLIBS} ${SSL_LIBS}"
@@ -775,7 +775,7 @@ else
             ${ECHO_CMD} "ERROR: OpenSSL Crypto development libraries are not installed properly in required location."
             ${ECHO_CMD} "Abort."
             cleanup
-            exit
+            exit 1
         fi
     fi
 
@@ -790,7 +790,7 @@ else
             ${ECHO_CMD} "ERROR: OpenSSL development libraries are not installed properly in required location."
             ${ECHO_CMD} "Abort."
             cleanup
-            exit
+            exit 1
         fi
     fi
 fi
@@ -820,7 +820,7 @@ if [ -n "${EVENT_CFLAGS}" ] && [ -n "${EVENT_LIBS}" ]; then
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
         ${ECHO_CMD} "Private Event Library option cannot be used"
-        exit
+        exit 1
     else
         OSCFLAGS="${OSCFLAGS} ${EVENT_CFLAGS}"
         OSLIBS="${OSLIBS} ${EVENT_LIBS}"
@@ -834,7 +834,7 @@ else
         ${ECHO_CMD} "See the INSTALL file."
         ${ECHO_CMD} "Abort."
         cleanup
-        exit
+        exit 1
     fi
 fi
 
