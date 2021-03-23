@@ -46,6 +46,15 @@ testpkg_db() {
     DBLIBS="${DBLIBS} ${PKG_LIBS}"
 }
 
+# support for older mysql version
+# if mysql_config is found in path adds librairies to DBCFLAGS/DBLIBS and returns success.
+# Otherwise, returns failure.
+test_mysql_config() {
+    which mysql_config &>/dev/null || return $?
+    DBCFLAGS="${DBCFLAGS} $(mysql_config --cflags)"
+    DBLIBS="${DBLIBS} $(mysql_config --libs)"
+}
+
 # testpkg_common pkg1 pkg2 ...
 # If all libraries are found, adds them to OSCFLAGS/OSLIBS and returns success.
 # Otherwise, returns failure.
@@ -931,7 +940,7 @@ fi
 ###########################
 
 if [ -z "${TURN_NO_MYSQL}" ] ; then
-    if testpkg_db mariadb || testpkg_db mysqlclient ; then
+    if testpkg_db mariadb || testpkg_db mysqlclient || test_mysql_config; then
         ${ECHO_CMD} "MySQL found."
     else
         ${ECHO_CMD} "MySQL not found. Building without MySQL support."
