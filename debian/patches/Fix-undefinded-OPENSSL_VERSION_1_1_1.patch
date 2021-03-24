@@ -1,6 +1,7 @@
 From: =?utf-8?b?TcOpc3rDoXJvcyBNaWjDoWx5?= <misi@majd.eu>
 Date: Wed, 10 Feb 2021 18:54:19 +0100
 Subject: Fix undefinded OPENSSL_VERSION_1_1_1
+Forwarded: not-needed
 
 ---
  src/apps/relay/mainrelay.c | 4 ++--
