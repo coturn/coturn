@@ -1,3 +1,26 @@
+coturn (4.5.2-3) unstable; urgency=medium
+
+  [ Ferenc Wágner ]
+  * [50ab417] Don't rely on the documentation being present for creating the DB.
+    Dpkg may be configured to omit installing files under /usr/share/doc.
+    Since the database schema is shipped in a private directory as well,
+    switch to using that instance instead. (Closes: #985054)
+  * [6f94ecb] Let the purge go through under unforeseen circumstances
+  * [d8f0a0a] Let debhelper do its business before the final cleanup
+  * [4033c69] Make the SQLite database writable by the turnserver user and
+    group.
+    File permissions alone aren't enough, the containing directory needs to
+    be writable as well.
+  * [81731d8] Ship the empty /var/lib/turndb directory for better
+    discoverability
+  * [34a2b34] Split up our autopkgtest into several tests
+
+  [ Mészáros Mihály ]
+  * [1666988] Add forwarded not-needed to
+    Fix-undefinded-OPENSSL_VERSION_1_1_1.patch
+
+ -- Mészáros Mihály <misi@majd.eu>  Wed, 24 Mar 2021 20:30:23 +0100
+
 coturn (4.5.2-2) unstable; urgency=medium
 
   [ Michael Prokop ]
