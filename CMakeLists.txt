@@ -85,3 +85,31 @@ ADD_CUSTOM_TARGET(uninstall
 
 add_subdirectory(src)
 
+install(DIRECTORY man DESTINATION .
+    COMPONENT Runtime)
+install(DIRECTORY turndb/
+    DESTINATION share/turnserver
+        COMPONENT Runtime)
+install(DIRECTORY turndb/
+    DESTINATION doc/turnserver
+        COMPONENT Runtime)
+install(FILES
+            LICENSE
+            README.turnserver
+            README.turnadmin
+            README.turnutils
+            INSTALL
+            postinstall.txt
+        DESTINATION doc/turnserver
+            COMPONENT Runtime)
+install(FILES examples/etc/turnserver.conf
+    DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}
+        COMPONENT Runtime
+    RENAME turnserver.conf.default
+    )
+install(DIRECTORY
+            examples/etc
+            examples/scripts
+    DESTINATION share/examples/turnserver
+    PATTERN "rfc5769.sh" EXCLUDE
+    )
