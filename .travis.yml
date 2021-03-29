@@ -12,7 +12,7 @@ before_install:
 script:
   - mkdir build
   - cd build
-  - cmake .. -DCMAKE_INSTALL_PREFIX=`pwd`/install -DCMAKE_VERBOSE_MAKEFILE=TURE
+  - cmake .. -DCMAKE_INSTALL_PREFIX=`pwd`/install
   - cmake --build .
   - cmake --build . --target install
   - cd ..
