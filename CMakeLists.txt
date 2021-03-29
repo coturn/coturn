@@ -5,6 +5,7 @@ cmake_minimum_required(VERSION 3.5)
 project(coturn)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
+# TODO: Modify this when the version is released
 SET(BUILD_VERSION "4.5.2")
 
 # Find Git Version Patch
@@ -60,6 +61,18 @@ include(CheckIncludeFile)
 include(CheckIncludeFileCXX)
 include(CheckFunctionExists)
 
+# Create install runtime target
+add_custom_target(install-runtime
+  COMMAND
+     "${CMAKE_COMMAND}" -DCMAKE_INSTALL_COMPONENT=Runtime 
+     -P "${CMAKE_CURRENT_BINARY_DIR}/cmake_install.cmake"
+)
+# Create uninstall runtime target
+add_custom_target(uninstall-runtime
+  COMMAND
+     "${CMAKE_COMMAND}" -DCMAKE_INSTALL_COMPONENT=Runtime 
+     -P "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
+)
 # Create will be delete files
 CONFIGURE_FILE(
     "${CMAKE_SOURCE_DIR}/cmake/cmake_uninstall.cmake.in"
