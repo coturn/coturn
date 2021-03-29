@@ -9,6 +9,15 @@ before_install:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew unlink protobuf; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install mysql sqlite hiredis; fi
 
+script:
+  - mkdir build
+  - cd build
+  - cmake .. -DCMAKE_INSTALL_PREFIX=`pwd`/install -DCMAKE_VERBOSE_MAKEFILE=TURE
+  - cmake --build .
+  - cmake --build . --target install
+  - cd ..
+  - ./configure && make && make test
+
 jobs:
   include:
   - name: ubuntu focal AMD64 C
@@ -146,6 +155,7 @@ jobs:
         - libpq-dev
         - libmysqlclient-dev
         - libhiredis-dev
+
 
 notifications:
   slack:
