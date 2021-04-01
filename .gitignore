@@ -1,5 +1,5 @@
 Makefile
-bin
+/bin/
 build
 include
 lib
