@@ -11,6 +11,20 @@
   [ "$status" -eq 0 ]
 }
 
+@test "Coturn has correct version" {
+  [ -z "$VERSION" ] && skip
+
+  run docker run --rm --entrypoint sh $IMAGE -c \
+    "turnserver -o --log-file=stdout | grep 'Version Coturn' \
+                                     | cut -d ' ' -f2 \
+                                     | cut -d '-' -f2"
+  [ "$status" -eq 0 ]
+  [ ! "$output" = '' ]
+  actual="$output"
+
+  [ "$actual" = "$VERSION" ]
+}
+
 
 @test "TLS supported" {
   run docker run --rm --entrypoint sh $IMAGE -c \
