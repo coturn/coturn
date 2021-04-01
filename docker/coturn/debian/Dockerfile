@@ -1,8 +1,8 @@
 #
-# Dockerfile of coturn/coturn:alpine Docker image.
+# Dockerfile of coturn/coturn:debian Docker image.
 #
 
-ARG alpine_ver=3.13
+ARG debian_ver=buster
 
 
 
@@ -11,24 +11,23 @@ ARG alpine_ver=3.13
 # Stage 'dist-coturn' creates Coturn distribution.
 #
 
-# https://hub.docker.com/_/alpine
-FROM alpine:${alpine_ver} AS dist-coturn
+# https://hub.docker.com/_/debian
+FROM debian:${debian_ver}-slim AS dist-coturn
 
 ARG coturn_git_ref=HEAD
 
 # Install tools for building.
-RUN apk update \
- && apk add --no-cache \
-        autoconf coreutils g++ git libtool make
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends --no-install-suggests \
+            autoconf coreutils g++ git libtool make pkg-config
 
 # Install Coturn build dependencies.
-RUN apk add --no-cache \
-        linux-headers \
-        libevent-dev \
-        openssl-dev \
-        postgresql-dev mariadb-connector-c-dev sqlite-dev \
-        hiredis-dev \
-        mongo-c-driver-dev
+RUN apt-get install -y --no-install-recommends --no-install-suggests \
+            libevent-dev \
+            libssl-dev \
+            libpq-dev libmariadb-dev libsqlite3-dev \
+            libhiredis-dev \
+            libmongoc-dev
 
 # Prepare local Coturn sources for building.
 COPY CMakeLists.txt \
@@ -78,7 +77,7 @@ RUN mkdir -p /out/ \
  && rm -f /out/etc/coturn/turnserver.conf.default
 
 # Install helper tools of Docker image.
-COPY docker/coturn/alpine/rootfs/ /out/
+COPY docker/coturn/debian/rootfs/ /out/
 RUN chmod +x /out/usr/local/bin/docker-entrypoint.sh \
              /out/usr/local/bin/detect-external-ip.sh
 RUN ln -s /usr/local/bin/detect-external-ip.sh \
@@ -92,35 +91,41 @@ RUN chown -R nobody:nogroup /out/var/lib/coturn/
 # Stage 'runtime' creates final Docker image to use in runtime.
 #
 
-# https://hub.docker.com/_/alpine
-FROM alpine:${alpine_ver} AS runtime
+# https://hub.docker.com/_/debian
+FROM debian:${debian_ver}-slim AS runtime
 
 LABEL org.opencontainers.image.source="https://github.com/coturn/coturn"
 
 # Update system packages.
-RUN apk update \
- && apk upgrade \
- && apk add --no-cache ca-certificates \
+RUN apt-get update \
+ && apt-get upgrade -y \
+ && apt-get install -y --no-install-recommends --no-install-suggests \
+            ca-certificates \
  && update-ca-certificates \
  # Install Coturn dependencies.
- && apk add --no-cache \
-        libevent \
-        libcrypto1.1 libssl1.1 \
-        libpq mariadb-connector-c sqlite-libs \
-        hiredis \
-        mongo-c-driver \
+ && apt-get install -y --no-install-recommends --no-install-suggests \
+            libevent-2.1-6 libevent-core-2.1-6 libevent-extra-2.1-6 \
+            libevent-openssl-2.1-6 libevent-pthreads-2.1-6 \
+            libssl1.1 \
+            libpq5 libmariadb3 libsqlite3-0 \
+            libhiredis0.14 \
+            libmongoc-1.0-0 \
  # Cleanup unnecessary stuff.
- && rm -rf /var/cache/apk/*
+ && rm -rf /var/lib/apt/lists/*
 
 # Install Coturn distribution.
 COPY --from=dist-coturn /out/ /
 
 # Allow non-root using privileged ports.
-RUN apk add --no-cache libcap \
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends --no-install-suggests \
+            libcap2-bin \
  && setcap CAP_NET_BIND_SERVICE=+ep /usr/bin/turnserver \
  # Cleanup unnecessary stuff.
- && apk del libcap \
- && rm -rf /var/cache/apk/*
+ && apt-get purge -y --auto-remove \
+                  -o APT::AutoRemove::RecommendsImportant=false \
+            libcap2-bin \
+ && rm -rf /var/lib/apt/lists/*
 
 USER nobody:nogroup
 
