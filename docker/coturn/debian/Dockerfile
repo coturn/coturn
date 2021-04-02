@@ -8,26 +8,77 @@ ARG debian_ver=buster
 
 
 #
+# Stage 'dist-mongoc' creates mongo-c-driver distribution.
+#
+
+# We compile mongo-c-driver from sources, because buster Debian `libmongoc` packages
+# cointain too old driver version, being not compatible with latest MongoDB versions well.
+#
+# TODO: Reconsider this on next stable Debian version update.
+
+# https://hub.docker.com/_/debian
+FROM debian:${debian_ver}-slim AS dist-mongoc
+
+# Install tools for building.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends --no-install-suggests \
+            ca-certificates cmake g++ gcc git make python \
+ && update-ca-certificates
+
+# Install mongo-c-driver build dependencies.
+RUN apt-get install -y --no-install-recommends --no-install-suggests \
+            libssl-dev
+
+# Prepare mongo-c-driver sources for building.
+ARG mongoc_ver=1.17.4
+RUN mkdir -p /tmp/mongoc/src/ && cd /tmp/mongoc/src/ \
+ && git init \
+ && git remote add origin https://github.com/mongodb/mongo-c-driver \
+ && git fetch --depth=1 origin "${mongoc_ver}" \
+ && git checkout FETCH_HEAD \
+ && python build/calc_release_version.py > VERSION_CURRENT
+
+# Build mongo-c-driver from sources.
+RUN mkdir -p /tmp/mongoc/build/ && cd /tmp/mongoc/build/ \
+ && cmake -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF \
+          -DCMAKE_BUILD_TYPE=Release \
+          /tmp/mongoc/src
+
+# Install mongo-c-driver.
+RUN mkdir -p /out/ && cd /tmp/mongoc/build/ \
+ && DESTDIR=/out cmake --build . --target install
+# Preserve license file.
+RUN mkdir -p /out/usr/share/licenses/mongo-c-driver/ \
+ && cp /out/usr/local/share/mongo-c-driver/COPYING /out/usr/share/licenses/mongo-c-driver/ \
+ # Remove redundant files.
+ && rm -rf /out/usr/local/bin/ \
+           /out/usr/local/share/
+
+
+
+
+#
 # Stage 'dist-coturn' creates Coturn distribution.
 #
 
 # https://hub.docker.com/_/debian
 FROM debian:${debian_ver}-slim AS dist-coturn
 
-ARG coturn_git_ref=HEAD
-
 # Install tools for building.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends --no-install-suggests \
-            autoconf coreutils g++ git libtool make pkg-config
+            autoconf ca-certificates coreutils g++ git libtool make pkg-config \
+ && update-ca-certificates
 
 # Install Coturn build dependencies.
 RUN apt-get install -y --no-install-recommends --no-install-suggests \
             libevent-dev \
             libssl-dev \
             libpq-dev libmariadb-dev libsqlite3-dev \
-            libhiredis-dev \
-            libmongoc-dev
+            libhiredis-dev
+
+# Install mongo-c-driver distribution.
+COPY --from=dist-mongoc /out/ /
 
 # Prepare local Coturn sources for building.
 COPY CMakeLists.txt \
@@ -46,13 +97,14 @@ COPY turndb/ /app/turndb/
 WORKDIR /app/
 
 # Use Coturn sources from Git if `coturn_git_ref` is specified.
+ARG coturn_git_ref=HEAD
 RUN if [ "${coturn_git_ref}" != 'HEAD' ]; then true \
  && rm -rf /app/* \
  && git init \
  && git remote add origin https://github.com/coturn/coturn \
- && git pull origin "${coturn_git_ref}" \
+ && git fetch --depth=1 origin "${coturn_git_ref}" \
+ && git checkout FETCH_HEAD \
  && true; fi
-
 
 # Build Coturn from sources.
 RUN ./configure --prefix=/usr \
@@ -84,6 +136,9 @@ RUN ln -s /usr/local/bin/detect-external-ip.sh \
           /out/usr/local/bin/detect-external-ip
 RUN chown -R nobody:nogroup /out/var/lib/coturn/
 
+# Re-export mongo-c-driver distribution.
+COPY --from=dist-mongoc /out/ /out/
+
 
 
 
@@ -109,7 +164,6 @@ RUN apt-get update \
             libssl1.1 \
             libpq5 libmariadb3 libsqlite3-0 \
             libhiredis0.14 \
-            libmongoc-1.0-0 \
  # Cleanup unnecessary stuff.
  && rm -rf /var/lib/apt/lists/*
 

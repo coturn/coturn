@@ -14,12 +14,11 @@ ARG alpine_ver=3.13
 # https://hub.docker.com/_/alpine
 FROM alpine:${alpine_ver} AS dist-coturn
 
-ARG coturn_git_ref=HEAD
-
 # Install tools for building.
 RUN apk update \
  && apk add --no-cache \
-        autoconf coreutils g++ git libtool make
+        autoconf ca-certificates coreutils g++ git libtool make \
+ && update-ca-certificates
 
 # Install Coturn build dependencies.
 RUN apk add --no-cache \
@@ -47,13 +46,14 @@ COPY turndb/ /app/turndb/
 WORKDIR /app/
 
 # Use Coturn sources from Git if `coturn_git_ref` is specified.
+ARG coturn_git_ref=HEAD
 RUN if [ "${coturn_git_ref}" != 'HEAD' ]; then true \
  && rm -rf /app/* \
  && git init \
  && git remote add origin https://github.com/coturn/coturn \
- && git pull origin "${coturn_git_ref}" \
+ && git fetch --depth=1 origin "${coturn_git_ref}" \
+ && git checkout FETCH_HEAD \
  && true; fi
-
 
 # Build Coturn from sources.
 RUN ./configure --prefix=/usr \
