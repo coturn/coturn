@@ -34,21 +34,21 @@ jobs:
       - uses: docker/setup-buildx-action@v1
 
       - name: Detect correct Git ref for image build
-        id: gitref
+        id: git
         uses: actions/github-script@v3
         with:
-          result-encoding: string
           script: |
-            let ref = 'HEAD';
+            let out = {ref: 'HEAD', ver: ''};
             if ('${{ github.ref }}'.startsWith('refs/tags/docker/')) {
-              ref = '${{ github.ref }}'.substring(17).split('-')[0];
+              out.ref = '${{ github.ref }}'.substring(17).split('-')[0];
+              out.ver = out.ref;
             }
-            return ref;
+            return out;
 
       - name: Pre-build fresh Docker images cache
         run: make docker.build.cache no-cache=yes
                   DOCKERFILE=${{ matrix.dockerfile }}
-                  ref=${{ steps.gitref.outputs.result }}
+                  ref=${{ fromJSON(steps.git.outputs.result).ref }}
         working-directory: ./docker/coturn
         if: ${{ !matrix.cache }}
 
@@ -62,7 +62,7 @@ jobs:
       - name: Pre-build Docker images cache
         run: make docker.build.cache no-cache=no
                   DOCKERFILE=${{ matrix.dockerfile }}
-                  ref=${{ steps.gitref.outputs.result }}
+                  ref=${{ fromJSON(steps.git.outputs.result).ref }}
         working-directory: ./docker/coturn
         if: ${{ matrix.cache }}
 
@@ -76,6 +76,8 @@ jobs:
 
           make npm.install
           make test.docker platforms=@all build=yes DOCKERFILE=${{ matrix.dockerfile }}
+        env:
+          COTURN_VERSION: ${{ fromJSON(steps.git.outputs.result).ver }}
         working-directory: ./docker/coturn
 
       - name: Login to GitHub Container Registry
