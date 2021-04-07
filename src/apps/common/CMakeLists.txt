@@ -43,6 +43,7 @@ add_library(${PROJECT_NAME} ${SOURCE_FILES} ${HEADER_FILES})
 
 target_link_libraries(${PROJECT_NAME} PUBLIC ${COMMON_LIBS})
 target_compile_definitions(${PROJECT_NAME} PUBLIC ${COMMON_DEFINED})
+target_compile_options(${PROJECT_NAME} PUBLIC -Wno-deprecated-declarations)
 
 # See: http://www.it1352.com/478094.html
 target_include_directories(${PROJECT_NAME} PUBLIC
@@ -62,7 +63,9 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 INSTALL(TARGETS ${PROJECT_NAME}
     EXPORT ${PROJECT_NAME}Config
     RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
+        COMPONENT Runtime
     LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+        COMPONENT Runtime
     ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
     INCLUDES DESTINATION
         ${CMAKE_INSTALL_INCLUDEDIR}
