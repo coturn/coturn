@@ -4,21 +4,21 @@ language: cpp
 before_install:
   - export CPPFLAGS="$CPPFLAGS -I/usr/local/opt/openssl/include"
   - export LDFLAGS="$LDFLAGS -L/usr/local/opt/openssl/lib"
-  - export OPENSSL_ROOT_DIR="/usr/local/opt"
-  - export OPENSSL_INCLUDE_DIR="/usr/local/opt/openssl/include"
+ # - export OPENSSL_ROOT_DIR="/usr/local/opt"
+ # - export OPENSSL_INCLUDE_DIR="/usr/local/opt/openssl/include"
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew outdated openssl || brew upgrade openssl; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew unlink protobuf; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install mysql sqlite hiredis; fi
 
-script:
-  - mkdir build
-  - cd build
-  - cmake .. -DCMAKE_INSTALL_PREFIX=`pwd`/install
-  - cmake --build .
-  - cmake --build . --target install
-  - cd ..
-  - ./configure && make && make test
+#script:
+#  - mkdir build
+#  - cd build
+#  - cmake .. -DCMAKE_INSTALL_PREFIX=`pwd`/install
+#  - cmake --build .
+#  - cmake --build . --target install
+#  - cd ..
+#  - ./configure && make && make test
 
 jobs:
   include:
@@ -41,27 +41,27 @@ jobs:
         - libpq-dev
         - libmysqlclient-dev
         - libhiredis-dev
-  #- name: ubuntu Focal AMD64 C++
-  #  os: linux
-  #  arch: amd64
-  #  dist: focal
-  #  sudo: required
-  #  env:
-  #  - CC=g++
-  #  addons:
-  #    apt:
-  #      packages:
-  #      - mysql-client
-  #      - debhelper
-  #      - dpkg-dev
-  #      - libssl-dev
-  #      - libevent-dev
-  #      - sqlite3
-  #      - libsqlite3-dev
-  #      - postgresql-client
-  #      - libpq-dev
-  #      - libmysqlclient-dev
-  #      - libhiredis-dev
+  - name: ubuntu Focal AMD64 C++
+    os: linux
+    arch: amd64
+    dist: focal
+    sudo: required
+    env:
+    - CC=g++
+    addons:
+      apt:
+        packages:
+        - mysql-client
+        - debhelper
+        - dpkg-dev
+        - libssl-dev
+        - libevent-dev
+        - sqlite3
+        - libsqlite3-dev
+        - postgresql-client
+        - libpq-dev
+        - libmysqlclient-dev
+        - libhiredis-dev
   - os: linux
     arch: amd64
     dist: bionic
