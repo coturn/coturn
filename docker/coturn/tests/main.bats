@@ -12,7 +12,7 @@
 }
 
 @test "Coturn has correct version" {
-  [ -z "$VERSION" ] && skip
+  [ -z "$COTURN_VER" ] && skip
 
   run docker run --rm --entrypoint sh $IMAGE -c \
     "turnserver -o --log-file=stdout | grep 'Version Coturn' \
@@ -22,7 +22,7 @@
   [ ! "$output" = '' ]
   actual="$output"
 
-  [ "$actual" = "$VERSION" ]
+  [ "$actual" = "$COTURN_VER" ]
 }
 
 

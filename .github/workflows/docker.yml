@@ -1,0 +1,127 @@
+name: Docker CI
+
+on:
+  pull_request:
+  push:
+  schedule:
+    - cron: '13 13 * * 3'
+
+jobs:
+  buildx:
+    strategy:
+      matrix:
+        include:
+          - dockerfile: debian
+            cache: ${{ github.ref != 'refs/heads/master'
+                       && !startsWith(github.ref, 'refs/tags/docker/') }}
+            publish: ${{ github.event_name == 'push'
+                         && (startsWith(github.ref, 'refs/tags/docker/')
+                             || github.ref == 'refs/heads/master') }}
+            release: ${{ github.event_name == 'push'
+                         && startsWith(github.ref, 'refs/tags/docker/') }}
+          - dockerfile: alpine
+            cache: ${{ github.ref != 'refs/heads/master'
+                       && !startsWith(github.ref, 'refs/tags/docker/') }}
+            publish: ${{ github.event_name == 'push'
+                         && (startsWith(github.ref, 'refs/tags/docker/')
+                             || github.ref == 'refs/heads/master') }}
+            release: ${{ github.event_name == 'push'
+                         && startsWith(github.ref, 'refs/tags/docker/') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: docker/setup-qemu-action@v1
+      - uses: docker/setup-buildx-action@v1
+
+      - name: Detect correct Git ref for image build
+        id: gitref
+        uses: actions/github-script@v3
+        with:
+          result-encoding: string
+          script: |
+            let ref = 'HEAD';
+            if ('${{ github.ref }}'.startsWith('refs/tags/docker/')) {
+              ref = '${{ github.ref }}'.substring(17).split('-')[0];
+            }
+            return ref;
+
+      - name: Pre-build fresh Docker images cache
+        run: make docker.build.cache no-cache=yes
+                  DOCKERFILE=${{ matrix.dockerfile }}
+                  ref=${{ steps.gitref.outputs.result }}
+        working-directory: ./docker/coturn
+        if: ${{ !matrix.cache }}
+
+      - uses: satackey/action-docker-layer-caching@v0.0.11
+        with:
+          key: docker-${{ matrix.dockerfile }}-buildx-{hash}
+          restore-keys: docker-${{ matrix.dockerfile }}-buildx-
+        continue-on-error: true
+        timeout-minutes: 10
+        if: ${{ matrix.cache }}
+      - name: Pre-build Docker images cache
+        run: make docker.build.cache no-cache=no
+                  DOCKERFILE=${{ matrix.dockerfile }}
+                  ref=${{ steps.gitref.outputs.result }}
+        working-directory: ./docker/coturn
+        if: ${{ matrix.cache }}
+
+      - name: Test Docker images
+        run: |
+          # Enable experimental features of Docker Daemon to run multi-arch images.
+          echo "$(cat /etc/docker/daemon.json)" '{"experimental": true}' \
+          | jq --slurp 'reduce .[] as $item ({}; . * $item)' \
+          | sudo tee /etc/docker/daemon.json
+          sudo systemctl restart docker
+
+          make npm.install
+          make test.docker platforms=@all build=yes DOCKERFILE=${{ matrix.dockerfile }}
+        working-directory: ./docker/coturn
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GCR_BOT_PAT }}
+        if: ${{ matrix.publish }}
+      - name: Login to Quay.io
+        uses: docker/login-action@v1
+        with:
+          registry: quay.io
+          username: instrumentisto+bot
+          password: ${{ secrets.QUAYIO_ROBOT_TOKEN }}
+        if: ${{ matrix.publish }}
+      - name: Login to Docker Hub
+        uses: docker/login-action@v1
+        with:
+          username: instrumentistobot
+          password: ${{ secrets.DOCKERHUB_BOT_PASS }}
+        if: ${{ matrix.publish }}
+
+      - run: make docker.push DOCKERFILE=${{ matrix.dockerfile }}
+        working-directory: ./docker/coturn
+        if: ${{ matrix.publish }}
+
+      # On GitHub Container Registry README is automatically updated on pushes.
+      - name: Update README on Quay.io
+        uses: christian-korneck/update-container-description-action@v1
+        env:
+          DOCKER_APIKEY: ${{ secrets.QUAYIO_API_TOKEN }}
+        with:
+          provider: quay
+          destination_container_repo: quay.io/coturn/coturn
+          readme_file: docker/coturn/README.md
+        if: ${{ matrix.publish }}
+      - name: Update README on Docker Hub
+        uses: christian-korneck/update-container-description-action@v1
+        env:
+          DOCKER_USER: ${{ secrets.DOCKERHUB_BOT_USER }}
+          DOCKER_PASS: ${{ secrets.DOCKERHUB_BOT_PASS }}
+        with:
+          provider: dockerhub
+          destination_container_repo: coturn/coturn
+          readme_file: docker/coturn/README.md
+        if: ${{ matrix.publish }}
+
+      #TODO: release
