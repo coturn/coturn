@@ -30,7 +30,7 @@ RUN apt-get install -y --no-install-recommends --no-install-suggests \
             libssl-dev
 
 # Prepare mongo-c-driver sources for building.
-ARG mongoc_ver=1.17.4
+ARG mongoc_ver=1.17.5
 RUN mkdir -p /tmp/mongoc/src/ && cd /tmp/mongoc/src/ \
  && git init \
  && git remote add origin https://github.com/mongodb/mongo-c-driver \
