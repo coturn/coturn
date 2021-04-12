@@ -155,6 +155,11 @@ This image is based on the popular [Alpine Linux project][1], available in [the 
 This variant is highly recommended when final image size being as small as possible is desired. The main caveat to note is that it does use [musl libc][4] instead of [glibc and friends][5], so certain software might run into issues depending on the depth of their libc requirements. However, most software doesn't have an issue with this, so this variant is usually a very safe choice. See [this Hacker News comment thread][6] for more discussion of the issues that might arise and some pro/con comparisons of using Alpine-based images.
 
 
+### `edge`
+
+Contains build of Coturn's latest `master` branch.
+
+
 
 
 ## License
