@@ -5,6 +5,7 @@ cmake_minimum_required(VERSION 3.5)
 project(coturn)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
+# TODO: Modify this when the version is released
 SET(BUILD_VERSION "4.5.2")
 
 # Find Git Version Patch
@@ -35,9 +36,10 @@ message("BUILD_VERSION:${BUILD_VERSION}")
 set(VERSION ${BUILD_VERSION})
 
 if(NOT DEFINED CMAKE_BUILD_TYPE)
-        set(CMAKE_BUILD_TYPE "Release")
+    set(CMAKE_BUILD_TYPE "Release")
 endif(NOT DEFINED CMAKE_BUILD_TYPE)
-if("Debug" STREQUAL CMAKE_BUILD_TYPE)
+string(TOLOWER "${CMAKE_BUILD_TYPE}" build_type)
+if("debug" STREQUAL build_type)
     add_definitions(-D_DEBUG)
 endif()
 
@@ -60,6 +62,18 @@ include(CheckIncludeFile)
 include(CheckIncludeFileCXX)
 include(CheckFunctionExists)
 
+# Create install runtime target
+add_custom_target(install-runtime
+  COMMAND
+     "${CMAKE_COMMAND}" -DCMAKE_INSTALL_COMPONENT=Runtime 
+     -P "${CMAKE_CURRENT_BINARY_DIR}/cmake_install.cmake"
+)
+# Create uninstall runtime target
+add_custom_target(uninstall-runtime
+  COMMAND
+     "${CMAKE_COMMAND}" -DCMAKE_INSTALL_COMPONENT=Runtime 
+     -P "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
+)
 # Create will be delete files
 CONFIGURE_FILE(
     "${CMAKE_SOURCE_DIR}/cmake/cmake_uninstall.cmake.in"
@@ -72,3 +86,31 @@ ADD_CUSTOM_TARGET(uninstall
 
 add_subdirectory(src)
 
+install(DIRECTORY man DESTINATION .
+    COMPONENT Runtime)
+install(DIRECTORY turndb/
+    DESTINATION share/turnserver
+        COMPONENT Runtime)
+install(DIRECTORY turndb/
+    DESTINATION doc/turnserver
+        COMPONENT Runtime)
+install(FILES
+            LICENSE
+            README.turnserver
+            README.turnadmin
+            README.turnutils
+            INSTALL
+            postinstall.txt
+        DESTINATION doc/turnserver
+            COMPONENT Runtime)
+install(FILES examples/etc/turnserver.conf
+    DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}
+        COMPONENT Runtime
+    RENAME turnserver.conf.default
+    )
+install(DIRECTORY
+            examples/etc
+            examples/scripts
+    DESTINATION share/examples/turnserver
+    PATTERN "rfc5769.sh" EXCLUDE
+    )
