@@ -19,8 +19,6 @@ Version 4.5.3 'dan Eider':
 		* Packaging scripts can miss out on these errors (exit code)
 	- merge PR #679 (by rubo77)
 		* Readme.turnserver: how to run server as a daemon
-	- merge PR # #718 (by dcharbonnier)
-		* mongoc version 1.17.4
 
 10/01/2021 Oleg Moskalenko <mom040267@gmail.com> Mihály Mészáros <misi@majd.eu>
 Version 4.5.2 'dan Eider':

@@ -1,0 +1,5 @@
+{
+  "devDependencies": {
+    "bats": "^1.1"
+  }
+}
