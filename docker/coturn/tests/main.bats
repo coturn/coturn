@@ -40,7 +40,7 @@
   [ ! "$output" = '' ]
   actual="$output"
 
-  [ "$actual" = "$COTURN_VER" ]
+  [ "$actual" = "$COTURN_VERSION" ]
 }
 
 
