@@ -1,7 +1,7 @@
 Coturn TURN server Docker image
 ===============================
 
-[![CI](https://github.com/coturn/coturn/workflows/docker/badge.svg?branch=master "CI")](https://github.com/coturn/coturn/actions?query=workflow%3Adocker+branch%3Amaster)
+[![Docker CI](https://github.com/coturn/coturn/actions/workflows/docker.yml/badge.svg  "Docker CI")](https://github.com/coturn/coturn/actions/workflows/docker.yml)
 [![Docker Hub](https://img.shields.io/docker/pulls/coturn/coturn?label=Docker%20Hub%20pulls "Docker Hub pulls")](https://hub.docker.com/r/coturn/coturn)
 
 [Docker Hub](https://hub.docker.com/r/coturn/coturn)
