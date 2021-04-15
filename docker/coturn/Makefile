@@ -109,7 +109,7 @@ endef
 
 docker.build.cache:
 	$(call docker.buildx,$(DOCKERFILE),\
-		instrumentisto,\
+		coturn,\
 		build-cache,\
 		$(ref),\
 		$(shell echo "$(docker-platforms)" | tr -s '[:blank:]' ','),\
@@ -128,7 +128,7 @@ docker.build.cache:
 
 docker.image:
 	$(call docker.buildx,$(DOCKERFILE),\
-		instrumentisto,\
+		coturn,\
 		$(if $(call eq,$(tag),),$(VERSION),$(tag)),\
 		$(ref),\
 		$(if $(call eq,$(platform),),$(MAIN_PLATFORM),$(platform)),\
@@ -193,7 +193,7 @@ define test.docker.do
 	$(if $(call eq,$(build),yes),\
 		@make docker.image DOCKERFILE=$(DOCKERFILE) \
 			no-cache=no tag=$(tag) platform=$(platform) ref=$(ref) ,)
-	IMAGE=instrumentisto/$(NAME):$(tag) PLATFORM=$(platform) \
+	IMAGE=coturn/$(NAME):$(tag) PLATFORM=$(platform) \
 	node_modules/.bin/bats \
 		--timing $(if $(call eq,$(CI),),--pretty,--formatter tap) \
 		tests/main.bats
