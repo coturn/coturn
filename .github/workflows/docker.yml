@@ -92,7 +92,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
-          password: ${{ secrets.GCR_BOT_PAT }}
+          password: ${{ secrets.GITHUB_TOKEN }}
         if: ${{ matrix.publish }}
 
       - name: Login to Quay.io
