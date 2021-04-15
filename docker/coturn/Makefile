@@ -24,7 +24,8 @@ COTURN_MAJ_VER = $(strip $(shell echo $(COTURN_VER) | cut -d '.' -f1))
 BUILD_REV ?= 0
 
 NAMESPACES := coturn \
-              ghcr.io/coturn
+              ghcr.io/coturn \
+              quay.io/coturn
 NAME := coturn
 ALL_IMAGES := \
 	debian:$(COTURN_VER)-r$(BUILD_REV)-debian,$(COTURN_VER)-debian,$(COTURN_MIN_VER)-debian,$(COTURN_MAJ_VER)-debian,debian,$(COTURN_VER)-r$(BUILD_REV),$(COTURN_VER),$(COTURN_MIN_VER),$(COTURN_MAJ_VER),latest \
@@ -70,8 +71,8 @@ test: test.docker
 
 docker-namespaces = $(strip $(if $(call eq,$(namespaces),),\
                             $(NAMESPACES),$(subst $(comma), ,$(namespaces))))
-docker-tags = $(strip $(if $(call eq,$(tags),),\
-                      $(TAGS),$(subst $(comma), ,$(tags))))
+docker-tags = $(subst $(comma), ,$(strip \
+                      $(if $(call eq,$(tags),),$(TAGS),$(tags))))
 docker-platforms = $(strip $(if $(call eq,$(platforms),),\
                            $(PLATFORMS),$(subst $(comma), ,$(platforms))))
 
