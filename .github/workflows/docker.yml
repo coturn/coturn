@@ -1,10 +1,12 @@
 name: Docker CI
 
+
 on:
   pull_request:
   push:
   schedule:
     - cron: '13 13 * * 3'
+
 
 jobs:
   buildx:
@@ -17,8 +19,6 @@ jobs:
             publish: ${{ github.event_name == 'push'
                          && (startsWith(github.ref, 'refs/tags/docker/')
                              || github.ref == 'refs/heads/master') }}
-            release: ${{ github.event_name == 'push'
-                         && startsWith(github.ref, 'refs/tags/docker/') }}
 
           - dockerfile: alpine
             cache: ${{ github.ref != 'refs/heads/master'
@@ -26,8 +26,6 @@ jobs:
             publish: ${{ github.event_name == 'push'
                          && (startsWith(github.ref, 'refs/tags/docker/')
                              || github.ref == 'refs/heads/master') }}
-            release: ${{ github.event_name == 'push'
-                         && startsWith(github.ref, 'refs/tags/docker/') }}
 
     runs-on: ubuntu-latest
     steps:
@@ -115,14 +113,14 @@ jobs:
                   DOCKERFILE=${{ matrix.dockerfile }}
                   ref=${{ fromJSON(steps.git.outputs.result).ref }}
         working-directory: ./docker/coturn
-        if: ${{ matrix.release }}
+        if: ${{ matrix.publish && github.ref != 'refs/heads/master' }}
 
       - name: Publish edge Docker tags
         run: make docker.push tags=edge-${{ matrix.dockerfile }}
                   DOCKERFILE=${{ matrix.dockerfile }}
                   ref=${{ fromJSON(steps.git.outputs.result).ref }}
         working-directory: ./docker/coturn
-        if: ${{ matrix.publish && !matrix.release }}
+        if: ${{ matrix.publish && github.ref == 'refs/heads/master' }}
 
 
       # On GitHub Container Registry README is automatically updated on pushes.
@@ -148,16 +146,22 @@ jobs:
         if: ${{ matrix.publish }}
 
 
+  release:
+    needs: ['buildx']
+    if: ${{ github.event_name == 'push'
+            && startsWith(github.ref, 'refs/tags/docker/') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
       - name: Parse release version from Git tag
         id: release
         run: echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/docker/}
-        if: ${{ matrix.release }}
 
       - name: Parse CHANGELOG link
         id: changelog
         run: echo ::set-output name=LINK::https://github.com/${{ github.repository }}/blob/docker/${{ steps.release.outputs.VERSION }}/docker/coturn/CHANGELOG.md#$(sed -n '/^## \[${{ steps.release.outputs.VERSION }}\]/{s/^## \[\(.*\)\][^0-9]*\([0-9].*\)/\1--\2/;s/[^0-9a-z-]*//g;p;}' CHANGELOG.md)
         working-directory: ./docker/coturn
-        if: ${{ matrix.release }}
 
       - name: Release on GitHub
         uses: actions/create-release@v1
@@ -165,7 +169,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: docker/${{ steps.release.outputs.VERSION }}
-          release_name: ${{ steps.release.outputs.VERSION }}
+          release_name: docker/${{ steps.release.outputs.VERSION }}
           body: |
             [Changelog](${{ steps.changelog.outputs.LINK }})
-        if: ${{ matrix.release }}
