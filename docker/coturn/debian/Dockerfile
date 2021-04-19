@@ -164,6 +164,9 @@ RUN apt-get update \
             libssl1.1 \
             libpq5 libmariadb3 libsqlite3-0 \
             libhiredis0.14 \
+ # Install `dig` tool for `detect-external-ip.sh`.
+ && apt-get install -y --no-install-recommends --no-install-suggests \
+            dnsutils \
  # Cleanup unnecessary stuff.
  && rm -rf /var/lib/apt/lists/*
 

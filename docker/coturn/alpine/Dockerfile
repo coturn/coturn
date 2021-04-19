@@ -109,6 +109,9 @@ RUN apk update \
         libpq mariadb-connector-c sqlite-libs \
         hiredis \
         mongo-c-driver \
+ # Install `dig` tool for `detect-external-ip.sh`.
+ && apk add --no-cache \
+        bind-tools \
  # Cleanup unnecessary stuff.
  && rm -rf /var/cache/apk/*
 
