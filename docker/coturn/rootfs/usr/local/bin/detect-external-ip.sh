@@ -103,7 +103,7 @@ fi
 echo "$COMMANDS" | while read -r COMMAND; do
     if IP="$(eval "$COMMAND")" && is_valid_ip "$IP"; then
         echo "$IP"
-        exit 100 # Exits the pipe subshell.
+        exit 100  # Exits the pipe subshell.
     fi
 done
 
