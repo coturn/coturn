@@ -4,6 +4,18 @@ Coturn TURN server Docker image changelog
 
 
 
+## [4.5.2-r1] · 2021-04-?? · To-be-done
+[4.5.2-r1]: /../../tree/docker/4.5.2-r1
+
+### Changed
+
+- Use DNS requests to discover external IP address in `detect-external-ip` script ([#753]).
+
+[#753]: /../../pull/753
+
+
+
+
 ## [4.5.2-r0] · 2021-04-15
 [4.5.2-r0]: /../../tree/docker/4.5.2-r0
 
