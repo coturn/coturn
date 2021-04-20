@@ -43,16 +43,20 @@ RUN mkdir -p /tmp/mongoc/build/ && cd /tmp/mongoc/build/ \
  && cmake -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF \
           -DCMAKE_BUILD_TYPE=Release \
           /tmp/mongoc/src
+RUN rm -rf /build && mkdir -p /build/ \
+ && cd /tmp/mongoc/build/ \
+ && DESTDIR=/build cmake --build . --target install
 
 # Install mongo-c-driver.
-RUN mkdir -p /out/ && cd /tmp/mongoc/build/ \
- && DESTDIR=/out cmake --build . --target install
-# Preserve license file.
-RUN mkdir -p /out/usr/share/licenses/mongo-c-driver/ \
- && cp /out/usr/local/share/mongo-c-driver/COPYING /out/usr/share/licenses/mongo-c-driver/ \
- # Remove redundant files.
- && rm -rf /out/usr/local/bin/ \
-           /out/usr/local/share/
+RUN LIBS_DIR=/out/$(dirname $(find /usr/ -name libc.so)) \
+ && mkdir -p $LIBS_DIR/ \
+ && cp -rf /build/usr/local/lib/* $LIBS_DIR/ \
+ && mkdir -p /out/usr/include/ \
+ && cp -rf /build/usr/local/include/libbson-1.0/* /out/usr/include/ \
+ && cp -rf /build/usr/local/include/libmongoc-1.0/* /out/usr/include/ \
+ # Preserve license file.
+ && mkdir -p /out/usr/share/licenses/mongo-c-driver/ \
+ && cp /build/usr/local/share/mongo-c-driver/COPYING /out/usr/share/licenses/mongo-c-driver/
 
 
 
