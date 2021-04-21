@@ -8,6 +8,75 @@ ARG debian_ver=buster
 
 
 #
+# Stage 'dist-libprom' creates prometheus-client-c distribution.
+#
+
+# We compile prometheus-client-c from sources, because Alpine doesn't provide
+# it as its package yet.
+#
+# TODO: Re-check this to be present in packages on next Debian major version update.
+
+# https://hub.docker.com/_/debian
+# We use 'bullseye' here due to too old cmake on 'buster'.
+FROM debian:bullseye-slim AS dist-libprom
+
+# Install tools for building.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends --no-install-suggests \
+            ca-certificates cmake g++ git make \
+ && update-ca-certificates
+
+# Install prometheus-client-c build dependencies.
+RUN apt-get install -y --no-install-recommends --no-install-suggests \
+            libmicrohttpd-dev
+
+# Prepare prometheus-client-c sources for building.
+ARG prom_ver=0.1.3
+RUN mkdir -p /build/ && cd /build/ \
+ && git init \
+ && git remote add origin https://github.com/digitalocean/prometheus-client-c \
+ && git fetch --depth=1 origin "v${prom_ver}" \
+ && git checkout FETCH_HEAD
+
+# Build libprom.so from sources.
+RUN mkdir -p /build/prom/build/ && cd /build/prom/build/ \
+ && TEST=0 cmake -v -G "Unix Makefiles" \
+                 -DCMAKE_INSTALL_PREFIX=/usr \
+                 -DCMAKE_SKIP_BUILD_RPATH=TRUE \
+                 -DCMAKE_C_FLAGS="-DPROM_LOG_ENABLE -g -O3" \
+                 .. \
+ && make
+
+# Build libpromhttp.so from sources.
+RUN mkdir -p /build/promhttp/build/ && cd /build/promhttp/build/ \
+ # Fix compiler warning: -Werror=incompatible-pointer-types
+ && sed -i 's/\&promhttp_handler/(MHD_AccessHandlerCallback)\&promhttp_handler/' \
+           /build/promhttp/src/promhttp.c \
+ && TEST=0 cmake -v -G "Unix Makefiles" \
+                 -DCMAKE_INSTALL_PREFIX=/usr \
+                 -DCMAKE_SKIP_BUILD_RPATH=TRUE \
+                 -DCMAKE_C_FLAGS="-g -O3" \
+                 .. \
+ && make VERBOSE=1
+
+# Install prometheus-client-c.
+RUN LIBS_DIR=/out/$(dirname $(find /usr/ -name libc.so)) \
+ && mkdir -p $LIBS_DIR/ \
+ && cp -rf /build/prom/build/libprom.so \
+           /build/promhttp/build/libpromhttp.so \
+       $LIBS_DIR/ \
+ && mkdir -p /out/usr/include/ \
+ && cp -rf /build/prom/include/* \
+           /build/promhttp/include/* \
+       /out/usr/include/ \
+ # Preserve license file.
+ && mkdir -p /out/usr/share/licenses/prometheus-client-c/ \
+ && cp /build/LICENSE /out/usr/share/licenses/prometheus-client-c/
+
+
+
+
+#
 # Stage 'dist-mongoc' creates mongo-c-driver distribution.
 #
 
@@ -79,10 +148,13 @@ RUN apt-get install -y --no-install-recommends --no-install-suggests \
             libevent-dev \
             libssl-dev \
             libpq-dev libmariadb-dev libsqlite3-dev \
-            libhiredis-dev
+            libhiredis-dev \
+            libmicrohttpd-dev
 
 # Install mongo-c-driver distribution.
 COPY --from=dist-mongoc /out/ /
+# Install prometheus-client-c distribution.
+COPY --from=dist-libprom /out/ /
 
 # Prepare local Coturn sources for building.
 COPY CMakeLists.txt \
@@ -142,6 +214,8 @@ RUN chown -R nobody:nogroup /out/var/lib/coturn/
 
 # Re-export mongo-c-driver distribution.
 COPY --from=dist-mongoc /out/ /out/
+# Re-export prometheus-client-c distribution.
+COPY --from=dist-libprom /out/ /out/
 
 
 
@@ -168,6 +242,7 @@ RUN apt-get update \
             libssl1.1 \
             libpq5 libmariadb3 libsqlite3-0 \
             libhiredis0.14 \
+            libmicrohttpd12 \
  # Cleanup unnecessary stuff.
  && rm -rf /var/lib/apt/lists/*
 

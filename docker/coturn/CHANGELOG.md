@@ -7,9 +7,15 @@ Coturn TURN server Docker image changelog
 ## [4.5.2-r1] · 2021-04-?? · To-be-done
 [4.5.2-r1]: /../../tree/docker/4.5.2-r1
 
+### Added
+
+- [Prometheus] support with [prometheus-client-c] 0.1.3: <https://github.com/digitalocean/prometheus-client-c/releases/tag/v0.1.3> ([#754])
+
 ### Fixed
 
 - Incorrect linking with [mongo-c-driver] on [Debian Linux] image.
+
+[#754]: /../../pull/754
 
 
 
@@ -39,3 +45,5 @@ Coturn TURN server Docker image changelog
 [Coturn]: https://haraka.github.io
 [Debian Linux]: https://www.debian.org
 [mongo-c-driver]: https://github.com/mongodb/mongo-c-driver
+[Prometheus]: https://prometheus.io
+[prometheus-client-c]: https://github.com/digitalocean/prometheus-client-c
