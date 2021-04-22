@@ -183,7 +183,9 @@ RUN if [ "${coturn_git_ref}" != 'HEAD' ]; then true \
  && true; fi
 
 # Build Coturn from sources.
-RUN ./configure --prefix=/usr \
+# TODO: Remove `LDFLAGS` with next Coturn release containing `-latomic` flag in `configure`.
+RUN LDFLAGS='-latomic' \
+    ./configure --prefix=/usr \
                 --turndbdir=/var/lib/coturn \
                 --disable-rpath \
                 --sysconfdir=/etc/coturn \
@@ -237,6 +239,7 @@ RUN apt-get update \
  && update-ca-certificates \
  # Install Coturn dependencies.
  && apt-get install -y --no-install-recommends --no-install-suggests \
+            libatomic1 \
             libevent-2.1-6 libevent-core-2.1-6 libevent-extra-2.1-6 \
             libevent-openssl-2.1-6 libevent-pthreads-2.1-6 \
             libssl1.1 \
