@@ -1,0 +1,7 @@
+/node_modules/
+/package-lock.json
+/yarn.lock
+/yarn-error.log
+
+/сert.pem
+/privkey.pem

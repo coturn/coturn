@@ -3,10 +3,10 @@ services:
 
 # PostgreSQL
   postgresql:
-    build:
-      context: ./postgresql
+    image: postgres
     restart: unless-stopped
     volumes:
+      - ./postgresql/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
       - postgresql-data:/var/lib/postgresql/data
     env_file: 
       - postgresql/postgresql.env
@@ -17,12 +17,13 @@ services:
 # Coturn
   coturn:
     build:
-      context: ./coturn
+      context: ../
+      dockerfile: ./docker/coturn/debian/Dockerfile
     restart: always
     volumes:
-      - ${PWD}/coturn/turnserver.conf:/etc/turnserver.conf
-      - ${PWD}/coturn/privkey.pem:/etc/ssl/private/privkey.pem
-      - ${PWD}/coturn/cert.pem:/etc/ssl/certs/cert.pem
+      - ./coturn/turnserver.conf:/etc/turnserver.conf:ro
+      - ./coturn/privkey.pem:/etc/ssl/private/privkey.pem:ro
+      - ./coturn/cert.pem:/etc/ssl/certs/cert.pem:ro
     ports:
 ## STUN/TURN
       - "3478:3478"

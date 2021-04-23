@@ -1,0 +1,174 @@
+name: Docker CI
+
+
+on:
+  pull_request:
+  push:
+  schedule:
+    - cron: '13 13 * * 3'
+
+
+jobs:
+  buildx:
+    strategy:
+      matrix:
+        include:
+          - dockerfile: debian
+            cache: ${{ github.ref != 'refs/heads/master'
+                       && !startsWith(github.ref, 'refs/tags/docker/') }}
+            publish: ${{ github.event_name == 'push'
+                         && (startsWith(github.ref, 'refs/tags/docker/')
+                             || github.ref == 'refs/heads/master') }}
+
+          - dockerfile: alpine
+            cache: ${{ github.ref != 'refs/heads/master'
+                       && !startsWith(github.ref, 'refs/tags/docker/') }}
+            publish: ${{ github.event_name == 'push'
+                         && (startsWith(github.ref, 'refs/tags/docker/')
+                             || github.ref == 'refs/heads/master') }}
+
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: docker/setup-qemu-action@v1
+      - uses: docker/setup-buildx-action@v1
+
+
+      - name: Detect correct Git ref for image build
+        id: git
+        uses: actions/github-script@v3
+        with:
+          script: |
+            let out = {ref: 'HEAD', ver: ''};
+            if ('${{ github.ref }}'.startsWith('refs/tags/docker/')) {
+              out.ref = '${{ github.ref }}'.substring(17).split('-')[0];
+              out.ver = out.ref;
+            }
+            return out;
+
+
+      - name: Pre-build fresh Docker images cache
+        run: make docker.build.cache no-cache=yes
+                  DOCKERFILE=${{ matrix.dockerfile }}
+                  ref=${{ fromJSON(steps.git.outputs.result).ref }}
+        working-directory: ./docker/coturn
+        if: ${{ !matrix.cache }}
+
+      - uses: satackey/action-docker-layer-caching@v0.0.11
+        with:
+          key: docker-${{ matrix.dockerfile }}-buildx-{hash}
+          restore-keys: docker-${{ matrix.dockerfile }}-buildx-
+        continue-on-error: true
+        timeout-minutes: 10
+        if: ${{ matrix.cache }}
+      - name: Pre-build Docker images cache
+        run: make docker.build.cache no-cache=no
+                  DOCKERFILE=${{ matrix.dockerfile }}
+                  ref=${{ fromJSON(steps.git.outputs.result).ref }}
+        working-directory: ./docker/coturn
+        if: ${{ matrix.cache }}
+
+      - name: Test Docker images
+        run: |
+          # Enable experimental features of Docker Daemon to run multi-arch images.
+          echo "$(cat /etc/docker/daemon.json)" '{"experimental": true}' \
+          | jq --slurp 'reduce .[] as $item ({}; . * $item)' \
+          | sudo tee /etc/docker/daemon.json
+          sudo systemctl restart docker
+
+          make npm.install
+          make test.docker platforms=@all build=yes \
+               DOCKERFILE=${{ matrix.dockerfile }} \
+               ref=${{ fromJSON(steps.git.outputs.result).ref }}
+        env:
+          COTURN_VERSION: ${{ fromJSON(steps.git.outputs.result).ver }}
+        working-directory: ./docker/coturn
+
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+        if: ${{ matrix.publish }}
+
+      - name: Login to Quay.io
+        uses: docker/login-action@v1
+        with:
+          registry: quay.io
+          username: ${{ secrets.QUAYIO_ROBOT_USERNAME }}
+          password: ${{ secrets.QUAYIO_ROBOT_TOKEN }}
+        if: ${{ matrix.publish }}
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_BOT_USER }}
+          password: ${{ secrets.DOCKERHUB_BOT_PASS }}
+        if: ${{ matrix.publish }}
+
+      - name: Publish version Docker tags
+        run: make docker.push
+                  DOCKERFILE=${{ matrix.dockerfile }}
+                  ref=${{ fromJSON(steps.git.outputs.result).ref }}
+        working-directory: ./docker/coturn
+        if: ${{ matrix.publish && github.ref != 'refs/heads/master' }}
+
+      - name: Publish edge Docker tags
+        run: make docker.push tags=edge-${{ matrix.dockerfile }}
+                  DOCKERFILE=${{ matrix.dockerfile }}
+                  ref=${{ fromJSON(steps.git.outputs.result).ref }}
+        working-directory: ./docker/coturn
+        if: ${{ matrix.publish && github.ref == 'refs/heads/master' }}
+
+
+      # On GitHub Container Registry README is automatically updated on pushes.
+      - name: Update README on Quay.io
+        uses: christian-korneck/update-container-description-action@v1
+        env:
+          DOCKER_APIKEY: ${{ secrets.QUAYIO_API_TOKEN }}
+        with:
+          provider: quay
+          destination_container_repo: quay.io/coturn/coturn
+          readme_file: docker/coturn/README.md
+        if: ${{ matrix.publish }}
+
+      - name: Update README on Docker Hub
+        uses: christian-korneck/update-container-description-action@v1
+        env:
+          DOCKER_USER: ${{ secrets.DOCKERHUB_BOT_USER }}
+          DOCKER_PASS: ${{ secrets.DOCKERHUB_BOT_PASS }}
+        with:
+          provider: dockerhub
+          destination_container_repo: coturn/coturn
+          readme_file: docker/coturn/README.md
+        if: ${{ matrix.publish }}
+
+
+  release:
+    needs: ['buildx']
+    if: ${{ github.event_name == 'push'
+            && startsWith(github.ref, 'refs/tags/docker/') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Parse release version from Git tag
+        id: release
+        run: echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/docker/}
+
+      - name: Parse CHANGELOG link
+        id: changelog
+        run: echo ::set-output name=LINK::https://github.com/${{ github.repository }}/blob/docker/${{ steps.release.outputs.VERSION }}/docker/coturn/CHANGELOG.md#$(sed -n '/^## \[${{ steps.release.outputs.VERSION }}\]/{s/^## \[\(.*\)\][^0-9]*\([0-9].*\)/\1--\2/;s/[^0-9a-z-]*//g;p;}' CHANGELOG.md)
+        working-directory: ./docker/coturn
+
+      - name: Release on GitHub
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: docker/${{ steps.release.outputs.VERSION }}
+          release_name: docker/${{ steps.release.outputs.VERSION }}
+          body: |
+            [Changelog](${{ steps.changelog.outputs.LINK }})

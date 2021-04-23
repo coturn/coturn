@@ -168,7 +168,7 @@ DEFAULT_CPUS_NUMBER,
 ///////// Encryption /////////
 "", /* secret_key_file */
 "", /* secret_key */
-0,  /* keep_address_family */
+ALLOCATION_DEFAULT_ADDRESS_FAMILY_IPV4,  /* allocation_default_address_family */
 0,  /* no_auth_pings */
 0,  /* no_dynamic_ip_list */
 0,  /* no_dynamic_realms */
@@ -648,9 +648,15 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						After the initialization, the turnserver process\n"
 "						will make an attempt to change the current group ID to that group.\n"
 " --mobility					Mobility with ICE (MICE) specs support.\n"
-" -K, --keep-address-family			TURN server allocates address family according TURN\n"
-"						Client <=> Server communication address family. \n"
+" -K, --keep-address-family			Deprecated in favor of --allocation-default-address-family!!\n"
+"						TURN server allocates address family according TURN\n"
+"						Client <=> Server communication address family.\n"
 "						!! It breaks RFC6156 section-4.2 (violates default IPv4) !!\n"
+" -A --allocation-default-address-family=<ipv4|ipv6|keep> 		Default is IPv4\n"
+"						TURN server allocates address family according TURN client requested address family. \n"
+"						If address family is not requested explicitly by client, then it falls back to this default.\n"
+"						The standard RFC explicitly define actually that this default must be IPv4,\n"
+"                       so use other option values with care!\n"
 " --no-cli					Turn OFF the CLI support. By default it is always ON.\n"
 " --cli-ip=<IP>					Local system IP address to be used for CLI server endpoint. Default value\n"
 "						is 127.0.0.1.\n"
@@ -664,7 +670,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						is 127.0.0.1.\n"
 " --web-admin-port=<port>			Web-admin server port. Default is 8080.\n"
 " --web-admin-listen-on-workers			Enable for web-admin server to listens on STUN/TURN workers STUN/TURN ports.\n"
-"						By default it is disabled for security resons!\n"
+"						By default it is disabled for security reasons!\n"
 "						(This behavior used to be the default behavior, and was enabled by default.)\n"
 " --server-relay					Server relay. NON-STANDARD AND DANGEROUS OPTION. Only for those applications\n"
 "						when we want to run server applications on the relay endpoints.\n"
@@ -734,7 +740,7 @@ static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
 	"					Setting to zero value means removal of the option.\n"
 	"	-h, --help			Help\n";
 
-#define OPTIONS "c:d:p:L:E:X:i:m:l:r:u:b:B:e:M:J:N:O:q:Q:s:C:K:vVofhznaAS"
+#define OPTIONS "c:d:p:L:E:X:i:m:l:r:u:b:B:e:M:J:N:O:q:Q:s:C:K:A:vVofhznaS"
 
 #define ADMIN_OPTIONS "PEgGORIHKYlLkaADSdb:e:M:J:N:u:r:p:s:X:o:h:x:v:f:"
 
@@ -954,6 +960,7 @@ static const struct myoption long_options[] = {
 				{ "no-tlsv1_2", optional_argument, NULL, NO_TLSV1_2_OPT },
 				{ "secret-key-file", required_argument, NULL, SECRET_KEY_OPT },
 				{ "keep-address-family", optional_argument, NULL, 'K' },
+				{ "allocation-default-address-family", required_argument, NULL, 'A' },
 				{ "acme-redirect", required_argument, NULL, ACME_REDIRECT_OPT },
 				{ "log-binding", optional_argument, NULL, LOG_BINDING_OPT },
 
@@ -1174,7 +1181,24 @@ static void set_option(int c, char *value)
 
   switch (c) {
 	case 'K':
-		turn_params.keep_address_family = get_bool_value(value);
+		if (get_bool_value(value))
+			turn_params.allocation_default_address_family = ALLOCATION_DEFAULT_ADDRESS_FAMILY_KEEP;
+		break;
+	case 'A':
+		if (value && strlen(value) > 0) {
+			if(*value == '=') ++value;
+			if (!strcmp(value, "ipv6")) {
+				turn_params.allocation_default_address_family = ALLOCATION_DEFAULT_ADDRESS_FAMILY_IPV6;
+			} else if (!strcmp(value,"keep")) {
+				turn_params.allocation_default_address_family = ALLOCATION_DEFAULT_ADDRESS_FAMILY_KEEP;
+			} else if (!strcmp(value, "ipv4")) {
+				turn_params.allocation_default_address_family = ALLOCATION_DEFAULT_ADDRESS_FAMILY_IPV4;
+			} else {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: invalid allocation_default_address_family parameter\n");
+			}
+		} else {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: invalid allocation_default_address_family parameter\n");
+		}
 		break;
   case SERVER_NAME_OPT:
 	  STRCPY(turn_params.oauth_server_name,value);
@@ -2535,10 +2559,10 @@ int main(int argc, char **argv)
 	drop_privileges();
 #if !defined(TURN_NO_PROMETHEUS)
 	if (start_prometheus_server()){
-	  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nCould not start Prometheus collector!\n");
+	  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Could not start Prometheus collector!\n");
 	}
 	else {
-	  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\nPrometheus collector started sucessfully.\n");
+	  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Prometheus collector started successfully.\n");
 	}
 #endif
 

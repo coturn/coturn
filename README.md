@@ -4,6 +4,8 @@
 
 [Downloads page](https://github.com/coturn/coturn/wiki/Downloads)
 
+[Docker image](https://github.com/coturn/coturn/tree/master/docker/coturn)
+
 [Wiki pages](https://github.com/coturn/coturn/wiki/)
 
 # Free open source implementation of TURN and STUN Server #

@@ -6,6 +6,20 @@ Version 4.5.3 'dan Eider':
 	- typo fix in prometheus (by fcecagno)
 	- merge PR #687 (by Wuelber Castillo)
 		* Add hash algorithm for hmackey value to redis userdb schema docs
+	- replace keep-address-family with allocation-default-address-family (keep-address-family deprecated and will be removed!!)
+	- merge PR #703 (by j4zzc4t)
+		* Restore no_stdout_log behavior
+    - merge PR #727 (by JoKoT3)
+		* Support older mysql client version in configure
+	- merge PR #721 (by KangLin)
+		* Add to support cmake
+	- merge PR #717 (by marcoschum)
+		* Fix typo in turnserver.conf
+	- merge PR #704 (by hills)
+		* Packaging scripts can miss out on these errors (exit code)
+	- merge PR #679 (by rubo77)
+		* Readme.turnserver: how to run server as a daemon
+
 10/01/2021 Oleg Moskalenko <mom040267@gmail.com> Mihály Mészáros <misi@majd.eu>
 Version 4.5.2 'dan Eider':
 	- fix null pointer dereference in case of out of memory. (thanks to Thomas Moeller for the report)

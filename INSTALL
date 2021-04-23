@@ -55,6 +55,8 @@ examples and documentation.
 
 III. BUILD
 
+1) Use autoconfigure build
+
 If you are sure that you system is ready for the build (see the section 
 "Extra libraries and Utilities" below) then you can build the system.
 First, you have to run the configure script:
@@ -151,6 +153,60 @@ clean.
 NOTE: On most modern systems, the build will produce dynamically linked 
 executables. If you want statically linked executables, you have to modify, 
 accordingly, the Makefile.in template file.
+
+2) Use cmake build
+
+If you are sure that you system is ready for the build (see the section 
+"Extra libraries and Utilities" below) and cmake tools then you can build
+the system.
+First, create build directory. you have to run the follow script:
+
+        $ cd coturn
+        $ mkdir build
+
+Then you have to run the configure script:
+
+        $ cmake .. 
+
+It will create a Makefile customized for your system. 
+
+By default, the generated Makefile will install everything to:
+
+	- /usr on Solaris.
+	- /usr/pkg on NetBSD.
+	- /usr/local everywhere else.
+
+The binaries will be copied to the bin subdirectory of the installation 
+destination, config files copied to etc subdirectory. The default SQLite database
+will be created in var/db/turndb. There will be 
+also documents, examples and some other files, in separate directories.
+
+You can change the root configured destination directory by 
+setting CMAKE_INSTALL_PREFIX variable in the 
+configure command line. For example:
+
+        $ cmake .. -DCMAKE_INSTALL_PREFIX=/opt
+
+Build the project:
+
+	$ cmake --build . 
+
+Install all files(runtime programmes and develop library):
+
+        $ cmake --build . --target install
+
+Remove all installed:
+
+        $ cmake --build . --target uninstall
+
+If you want to only install runtime programmes(programmes, configure files,
+script files and database):
+
+        $ cmake --build . --target install-runtime
+
+Remove all installed:
+
+        $ cmake --build . --target uninstall-runtime
 
 IV. OPENSSL
 

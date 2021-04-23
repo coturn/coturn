@@ -33,6 +33,12 @@ If the systemd development library is available, then it will notify systemd abo
 
 RUNNING THE TURN SERVER
 
+To run the coturn server as a daemon use:
+
+  $ turnserver -o
+
+Note that if you make any changes to the config file the server has to be restarted.
+
 Options note: turnserver has long and short option names, for most options.
 Some options have only long form, some options have only short form. Their syntax
 somewhat different, if an argument is required:
@@ -572,9 +578,16 @@ Options with values:
 --proc-group		Group name to run the process. After the initialization, the turnserver process
 			will make an attempt to change the current group ID to that group.
 
--K, --keep-address-family		TURN server allocates address family according TURN
+-K, --keep-address-family			Deprecated and will be removed in favor of --allocation-default-address-family!!
+			TURN server allocates address family according TURN
 			Client <=> Server communication address family.
 			!! It breaks RFC6156 section-4.2 (violates default IPv4) !!
+
+-A --allocation-default-address-family=<ipv4|ipv6|keep> 		Default is IPv4
+			TURN server allocates address family according TURN client requested address family.
+			If address family not requested explicitly by the client, then it falls back to this default.
+			The standard RFC explicitly define that this default must be IPv4, 
+			so use other option values with care!
 
 --cli-ip		Local system IP address to be used for CLI management interface.
 			The turnserver process can be accessed for management with telnet,

@@ -75,6 +75,14 @@ enum _MESSAGE_TO_RELAY_TYPE {
 };
 typedef enum _MESSAGE_TO_RELAY_TYPE MESSAGE_TO_RELAY_TYPE;
 
+///////// ALLOCATION DEFAULT ADDRESS FAMILY TYPES /////////////////////
+enum _ALLOCATION_DEFAULT_ADDRESS_FAMILY {
+	ALLOCATION_DEFAULT_ADDRESS_FAMILY_IPV4 = 0,
+	ALLOCATION_DEFAULT_ADDRESS_FAMILY_IPV6,
+	ALLOCATION_DEFAULT_ADDRESS_FAMILY_KEEP,
+};
+typedef enum _ALLOCATION_DEFAULT_ADDRESS_FAMILY ALLOCATION_DEFAULT_ADDRESS_FAMILY;
+
 struct socket_message {
 	ioa_socket_handle s;
 	ioa_net_data nd;
@@ -177,8 +185,8 @@ struct _turn_turnserver {
 	/* ACME redirect URL */
 	const char* acme_redirect;
 
-	/* Keep Address Family */
-	int keep_address_family;
+	/* Allocation Default Address Family */
+	ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family;
 
 	/* Log Binding Requrest */
 	vintp log_binding;
@@ -229,7 +237,7 @@ void init_turn_server(turn_turnserver* server,
 				    int oauth,
 				    const char* oauth_server_name,
 					const char* acme_redirect,
-					int keep_address_family,
+					ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family,
 					vintp log_binding);
 
 ioa_engine_handle turn_server_get_engine(turn_turnserver *s);

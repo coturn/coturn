@@ -46,6 +46,15 @@ testpkg_db() {
     DBLIBS="${DBLIBS} ${PKG_LIBS}"
 }
 
+# support for older mysql version
+# if mysql_config is found in path adds librairies to DBCFLAGS/DBLIBS and returns success.
+# Otherwise, returns failure.
+test_mysql_config() {
+    which mysql_config &>/dev/null || return $?
+    DBCFLAGS="${DBCFLAGS} $(mysql_config --cflags)"
+    DBLIBS="${DBLIBS} $(mysql_config --libs)"
+}
+
 # testpkg_common pkg1 pkg2 ...
 # If all libraries are found, adds them to OSCFLAGS/OSLIBS and returns success.
 # Otherwise, returns failure.
@@ -596,7 +605,7 @@ if [ -z "${CC}" ] ; then
     if [ -z "$CC" ] ; then
         ${ECHO_CMD} "ERROR: failed to a find working C compiler"
         cleanup
-        exit
+        exit 1
     fi
 else
     ${CC} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>>/dev/null
@@ -604,7 +613,7 @@ else
     if ! [ ${ER} -eq 0 ] ; then
         ${ECHO_CMD} "ERROR: cannot use compiler ${CC} properly"
         cleanup
-        exit
+        exit 1
     fi
 fi
 
@@ -633,13 +642,13 @@ if [ -z "$PKGCONFIG" ] ; then
     if [ -z "$PKGCONFIG" ] ; then
         ${ECHO_CMD} "ERROR: pkg-config not found"
         cleanup
-        exit
+        exit 1
     fi
 else
     if ! type "$PKGCONFIG" 2>/dev/null ; then
         ${ECHO_CMD} "ERROR: cannot use $PKGCONFIG"
         cleanup
-        exit
+        exit 1
     fi
 fi
 
@@ -717,7 +726,7 @@ pthread_testlib
 ER=$?
 if [ ${ER} -ne 0 ] ; then
     ${ECHO_CMD} "ERROR: Cannot find pthread library functions."
-    exit
+    exit 1
 fi
 
 if [ -z ${TURN_NO_THREAD_BARRIERS} ] ; then 
@@ -749,7 +758,7 @@ if [ -n "${SSL_CFLAGS}" ] && [ -n "${SSL_LIBS}" ]; then
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
         ${ECHO_CMD} "Private SSL Library option cannot be used"
-        exit
+        exit 1
     else
         OSCFLAGS="${OSCFLAGS} ${SSL_CFLAGS}"
         OSLIBS="${OSLIBS} ${SSL_LIBS}"
@@ -766,7 +775,7 @@ else
             ${ECHO_CMD} "ERROR: OpenSSL Crypto development libraries are not installed properly in required location."
             ${ECHO_CMD} "Abort."
             cleanup
-            exit
+            exit 1
         fi
     fi
 
@@ -781,7 +790,7 @@ else
             ${ECHO_CMD} "ERROR: OpenSSL development libraries are not installed properly in required location."
             ${ECHO_CMD} "Abort."
             cleanup
-            exit
+            exit 1
         fi
     fi
 fi
@@ -811,7 +820,7 @@ if [ -n "${EVENT_CFLAGS}" ] && [ -n "${EVENT_LIBS}" ]; then
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
         ${ECHO_CMD} "Private Event Library option cannot be used"
-        exit
+        exit 1
     else
         OSCFLAGS="${OSCFLAGS} ${EVENT_CFLAGS}"
         OSLIBS="${OSLIBS} ${EVENT_LIBS}"
@@ -825,7 +834,7 @@ else
         ${ECHO_CMD} "See the INSTALL file."
         ${ECHO_CMD} "Abort."
         cleanup
-        exit
+        exit 1
     fi
 fi
 
@@ -931,7 +940,7 @@ fi
 ###########################
 
 if [ -z "${TURN_NO_MYSQL}" ] ; then
-    if testpkg_db mariadb || testpkg_db mysqlclient ; then
+    if testpkg_db mariadb || testpkg_db mysqlclient || test_mysql_config; then
         ${ECHO_CMD} "MySQL found."
     else
         ${ECHO_CMD} "MySQL not found. Building without MySQL support."
