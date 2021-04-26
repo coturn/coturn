@@ -99,8 +99,6 @@ static int sqlite_init_multithreaded(void) {
 
 #if defined(SQLITE_CONFIG_MULTITHREAD)
 
-	sqlite3_shutdown();
-
 	if (sqlite3_threadsafe() > 0) {
 		int retCode = sqlite3_config(SQLITE_CONFIG_MULTITHREAD);
 		if (retCode != SQLITE_OK) {
