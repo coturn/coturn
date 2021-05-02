@@ -506,6 +506,15 @@ else
 fi
 
 #############################
+# Adjustments for Debian
+#############################
+
+if [ -f "/etc/debian_version" ] ; then
+    # https://github.com/coturn/coturn/pull/754#issuecomment-824693226
+    OSLIBS="${OSLIBS} -latomic"
+fi
+
+#############################
 # Adjustments for Solaris
 #############################
 
