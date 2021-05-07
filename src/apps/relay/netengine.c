@@ -304,25 +304,38 @@ typedef struct update_ssl_ctx_cb_args {
 	struct event *next;
 } update_ssl_ctx_cb_args_t;
 
+static void replace_one_ssl_ctx(SSL_CTX **to, SSL_CTX *from)
+{
+	if (*to)
+		SSL_CTX_free(*to);
+
+	SSL_CTX_up_ref(from);
+	*to = from;
+}
+
+/*
+ * Synchronise the ioa_engine's SSL certificates with the global ones
+ */
 static void update_ssl_ctx(evutil_socket_t sock, short events, update_ssl_ctx_cb_args_t *args)
 {
 	ioa_engine_handle e = args->engine;
 	turn_params_t *params = args->params;
 
+	/* No mutex with "e" as these are only used in the same event loop */
 	pthread_mutex_lock(&turn_params.tls_mutex);
-	e->tls_ctx_ssl23 = params->tls_ctx_ssl23;
-	e->tls_ctx_v1_0 = params->tls_ctx_v1_0;
+	replace_one_ssl_ctx(&e->tls_ctx_ssl23, params->tls_ctx_ssl23);
+	replace_one_ssl_ctx(&e->tls_ctx_v1_0, params->tls_ctx_v1_0);
 #if TLSv1_1_SUPPORTED
-	e->tls_ctx_v1_1 = params->tls_ctx_v1_1;
+	replace_one_ssl_ctx(&e->tls_ctx_v1_1, params->tls_ctx_v1_1);
 #if TLSv1_2_SUPPORTED
-	e->tls_ctx_v1_2 = params->tls_ctx_v1_2;
+	replace_one_ssl_ctx(&e->tls_ctx_v1_2, params->tls_ctx_v1_2);
 #endif
 #endif
 #if DTLS_SUPPORTED
-	e->dtls_ctx = params->dtls_ctx;
+	replace_one_ssl_ctx(&e->dtls_ctx, params->dtls_ctx);
 #endif
 #if DTLSv1_2_SUPPORTED
-	e->dtls_ctx_v1_2 = params->dtls_ctx_v1_2;
+	replace_one_ssl_ctx(&e->dtls_ctx_v1_2, params->dtls_ctx_v1_2);
 #endif
 	struct event *next = args->next;
 	pthread_mutex_unlock(&turn_params.tls_mutex);
