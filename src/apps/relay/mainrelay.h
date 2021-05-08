@@ -80,6 +80,7 @@
 #include <openssl/aes.h>
 #include <openssl/err.h>
 #include <openssl/pem.h>
+#include <openssl/ssl.h>
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
   #include <openssl/modes.h>
