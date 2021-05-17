@@ -90,7 +90,7 @@ define docker.buildx
 	docker buildx build --force-rm $(args) \
 		--platform $(platform) \
 		$(if $(call eq,$(no-cache),yes),--no-cache --pull,) \
-		$(if $(call eq,$(git-ref),),,--build-arg git_ref=$(git-ref)) \
+		$(if $(call eq,$(git-ref),),,--build-arg coturn_git_ref=$(git-ref)) \
 		-f docker/coturn/$(dockerfile)/Dockerfile \
 		-t $(namespace)/$(NAME):$(tag) ./
 endef
