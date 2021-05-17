@@ -100,7 +100,8 @@ else
   }
 fi
 
-IFS=$'\n'; for COMMAND in $COMMANDS; do
+IFS="$(printf '\nx')" && IFS="${IFS%x}"
+for COMMAND in $COMMANDS; do
   if IP="$(eval "$COMMAND")" && is_valid_ip "$IP"; then
     printf '%s' "$IP"
     exit 0
