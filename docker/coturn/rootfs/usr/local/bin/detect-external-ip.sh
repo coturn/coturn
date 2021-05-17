@@ -36,7 +36,7 @@
 
 # Shell options for strict error checking.
 for OPTION in errexit errtrace pipefail nounset; do
-    set -o | grep -wq "$OPTION" && set -o "$OPTION"
+  set -o | grep -wq "$OPTION" && set -o "$OPTION"
 done
 
 # Trace all commands (to stderr).
@@ -48,8 +48,8 @@ done
 # ==========================
 
 if [ -n "${REAL_EXTERNAL_IP:-}" ]; then
-    echo "$REAL_EXTERNAL_IP"
-    exit 0
+  echo "$REAL_EXTERNAL_IP"
+  exit 0
 fi
 
 
@@ -60,15 +60,15 @@ fi
 CFG_IPV4="true"
 
 while [ $# -gt 0 ]; do
-    case "${1-}" in
-        --ipv4) CFG_IPV4="true" ;;
-        --ipv6) CFG_IPV4="false" ;;
-        *)
-            echo "Invalid argument: '${1-}'" >&2
-            exit 1
-            ;;
-    esac
-    shift
+  case "${1-}" in
+    --ipv4) CFG_IPV4="true" ;;
+    --ipv6) CFG_IPV4="false" ;;
+    *)
+      echo "Invalid argument: '${1-}'" >&2
+      exit 1
+      ;;
+  esac
+  shift
 done
 
 
@@ -77,39 +77,35 @@ done
 # ================================
 
 if [ "$CFG_IPV4" = "true" ]; then
-    COMMANDS='dig @resolver1.opendns.com myip.opendns.com A -4 +short
-        dig @ns1.google.com o-o.myaddr.l.google.com TXT -4 +short | tr -d \"
-        dig @1.1.1.1 whoami.cloudflare TXT CH -4 +short | tr -d \"
-        dig @ns1-1.akamaitech.net whoami.akamai.net A -4 +short'
+  COMMANDS='dig @resolver1.opendns.com myip.opendns.com A -4 +short
+            dig @ns1.google.com o-o.myaddr.l.google.com TXT -4 +short | tr -d \"
+            dig @1.1.1.1 whoami.cloudflare TXT CH -4 +short | tr -d \"
+            dig @ns1-1.akamaitech.net whoami.akamai.net A -4 +short'
 
-    is_valid_ip() {
-        # Check if the input looks like an IPv4 address.
-        # Doesn't check if the actual values are valid; assumes they are.
-        echo "$1" | grep -Eq '^([0-9]{1,3}\.){3}[0-9]{1,3}$'
-    }
+  is_valid_ip() {
+    # Check if the input looks like an IPv4 address.
+    # Doesn't check if the actual values are valid; assumes they are.
+    echo "$1" | grep -Eq '^([0-9]{1,3}\.){3}[0-9]{1,3}$'
+  }
 else
-    COMMANDS='dig @resolver1.opendns.com myip.opendns.com AAAA -6 +short
-        dig @ns1.google.com o-o.myaddr.l.google.com TXT -6 +short | tr -d \"
-        dig @2606:4700:4700::1111 whoami.cloudflare TXT CH -6 +short | tr -d \"'
+  COMMANDS='dig @resolver1.opendns.com myip.opendns.com AAAA -6 +short
+            dig @ns1.google.com o-o.myaddr.l.google.com TXT -6 +short | tr -d \"
+            dig @2606:4700:4700::1111 whoami.cloudflare TXT CH -6 +short | tr -d \"'
 
-    is_valid_ip() {
-        # Check if the input looks like an IPv6 address.
-        # It's almost impossible to check the IPv6 representation because it
-        # varies wildly, so just check that there are at least 2 colons.
-        [ "$(echo "$1" | awk -F':' '{print NF-1}')" -ge 2 ]
-    }
+  is_valid_ip() {
+    # Check if the input looks like an IPv6 address.
+    # It's almost impossible to check the IPv6 representation because it
+    # varies wildly, so just check that there are at least 2 colons.
+    [ "$(echo "$1" | awk -F':' '{print NF-1}')" -ge 2 ]
+  }
 fi
 
-echo "$COMMANDS" | while read -r COMMAND; do
-    if IP="$(eval "$COMMAND")" && is_valid_ip "$IP"; then
-        echo "$IP"
-        exit 100  # Exits the pipe subshell.
-    fi
+IFS=$'\n'; for COMMAND in $COMMANDS; do
+  if IP="$(eval "$COMMAND")" && is_valid_ip "$IP"; then
+    printf '%s' "$IP"
+    exit 0
+  fi
 done
 
-if [ $? -eq 100 ]; then
-    exit 0
-else
-    echo "[$0] All providers failed" >&2
-    exit 1
-fi
+echo "[$0] All providers failed" >&2
+exit 1
