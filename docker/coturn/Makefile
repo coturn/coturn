@@ -176,6 +176,7 @@ docker.push:
 #		[( [build=no]
 #		 | build=yes [DOCKERFILE=(debian|alpine)]
 #		             [ref=<git-ref>] )]
+#		[with=ipv6]
 
 test-docker-platforms = $(strip $(if $(call eq,$(platforms),),$(MAIN_PLATFORM),\
                                 $(if $(call eq,$(platforms),@all),$(PLATFORMS),\
@@ -195,6 +196,7 @@ define test.docker.do
 		@make docker.image DOCKERFILE=$(DOCKERFILE) \
 			no-cache=no tag=$(tag) platform=$(platform) ref=$(ref) ,)
 	IMAGE=coturn/$(NAME):$(tag) PLATFORM=$(platform) \
+	$(if $(call eq,$(with),ipv6),TEST_IPV6=1,) \
 	node_modules/.bin/bats \
 		--timing $(if $(call eq,$(CI),),--pretty,--formatter tap) \
 		tests/main.bats

@@ -149,6 +149,8 @@
 }
 
 @test "detect-external-ip returns valid IPv6" {
+  [ -z "$TEST_IPV6" ] && skip
+
   run docker run --rm --platform $PLATFORM --entrypoint sh $IMAGE -c \
     'detect-external-ip --ipv6'
   [ "$status" -eq 0 ]
