@@ -1448,8 +1448,10 @@ int stun_attr_add_str(uint8_t* buf, size_t *len, uint16_t attr, const uint8_t* a
   int clen = stun_get_command_message_len_str(buf,*len);
   int newlen = clen + 4 + alen;
   int newlenrem4=newlen & 0x00000003;
+  int paddinglen = 0;
   if(newlenrem4) {
-    newlen=newlen+(4-newlenrem4);
+	paddinglen=4-newlenrem4;
+    newlen=newlen+paddinglen;
   }
   if(newlen>=MAX_STUN_MESSAGE_SIZE) return -1;
   else {
@@ -1463,6 +1465,10 @@ int stun_attr_add_str(uint8_t* buf, size_t *len, uint16_t attr, const uint8_t* a
     attr_start_16t[0]=nswap16(attr);
     attr_start_16t[1]=nswap16(alen);
     if(alen>0) bcopy(avalue,attr_start+4,alen);
+	
+	// Write 0 padding to not leak data
+	bzero(attr_start+4+alen, paddinglen);
+
     return 0;
   }
 }
