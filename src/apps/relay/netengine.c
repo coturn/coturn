@@ -308,8 +308,8 @@ static void replace_one_ssl_ctx(SSL_CTX **to, SSL_CTX *from)
 {
 	if (*to)
 		SSL_CTX_free(*to);
-
-	SSL_CTX_up_ref(from);
+	if (from)
+		SSL_CTX_up_ref(from);
 	*to = from;
 }
 
