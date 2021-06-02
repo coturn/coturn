@@ -21,6 +21,8 @@ Version 4.5.3 'dan Eider':
 		* Readme.turnserver: how to run server as a daemon
 	- merge PR #739 (by hills)
 		* SSL reload has hidden bugs which cause crashes
+	- Fix regression in PR #739
+	- Add option to disable RFC8750
 
 10/01/2021 Oleg Moskalenko <mom040267@gmail.com> Mihály Mészáros <misi@majd.eu>
 Version 4.5.2 'dan Eider':

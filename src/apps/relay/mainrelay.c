@@ -115,10 +115,24 @@ DH_2066, "", "", "",
 NULL, PTHREAD_MUTEX_INITIALIZER,
 
 //////////////// Common params ////////////////////
-TURN_VERBOSE_NONE,0,0,0,0,
-"/var/run/turnserver.pid","",
-DEFAULT_STUN_PORT,DEFAULT_STUN_TLS_PORT,0,0,0,1,
-0,0,0,0,0,
+TURN_VERBOSE_NONE, /* verbose */
+0, /* turn_daemon */
+0, /* no_software_attribute */
+0, /* web_admin_listen_on_workers */
+0, /* do_not_use_config_file */
+"/var/run/turnserver.pid", /* pidfile */
+"", /* acme_redirect */
+DEFAULT_STUN_PORT, /* listener_port*/
+DEFAULT_STUN_TLS_PORT, /* tls_listener_port */
+0, /* alt_listener_port */
+0, /* alt_tls_listener_port */
+0, /* tcp_proxy_port */
+1, /* rfc5780 */
+0, /* no_udp */
+0, /* no_tcp */
+0, /* tcp_use_proxy */
+0, /* no_tcp_relay */
+0, /* no_udp_relay */
 "",
 "",0,
 {
@@ -676,6 +690,12 @@ static char Usage[] = "Usage: turnserver [options]\n"
 " --cli-max-output-sessions			Maximum number of output sessions in ps CLI command.\n"
 "						This value can be changed on-the-fly in CLI. The default value is 256.\n"
 " --ne=[1|2|3]					Set network engine type for the process (for internal purposes).\n"
+" --no-rfc5780					Disable RFC5780 (NAT behavior discovery).\n"
+"						Originally, if there are more than one listener address from the same\n"
+"						address family, then by default the NAT behavior discovery feature enabled.\n"
+"						This option disables this original behavior, because the NAT behavior discovery\n"
+"						adds attributes to response, and this increase the possibility of an amplification attack.\n"
+"						Strongly encouraged to use this option to decrease gain factor in STUN binding responses.\n"
 " -h						Help\n"
 "\n";
 
@@ -821,7 +841,8 @@ enum EXTRA_OPTS {
 	NO_HTTP_OPT,
 	SECRET_KEY_OPT,
 	ACME_REDIRECT_OPT,
-	LOG_BINDING_OPT
+	LOG_BINDING_OPT,
+	NO_RFC5780
 };
 
 struct myoption {
@@ -958,7 +979,7 @@ static const struct myoption long_options[] = {
 				{ "allocation-default-address-family", required_argument, NULL, 'A' },
 				{ "acme-redirect", required_argument, NULL, ACME_REDIRECT_OPT },
 				{ "log-binding", optional_argument, NULL, LOG_BINDING_OPT },
-
+				{ "no-rfc5780", optional_argument, NULL, NO_RFC5780 },
 				{ NULL, no_argument, NULL, 0 }
 };
 
@@ -1631,6 +1652,9 @@ static void set_option(int c, char *value)
 		break;
 	case LOG_BINDING_OPT:
 		turn_params.log_binding = get_bool_value(value);
+		break;
+	case NO_RFC5780:
+		turn_params.rfc5780 = 0;
 		break;
 
 	/* these options have been already taken care of before: */
