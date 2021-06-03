@@ -4,7 +4,7 @@ Coturn TURN server Docker image changelog
 
 
 
-## [4.5.2-r1] · 2021-04-?? · To-be-done
+## [4.5.2-r1] · 2021-06-03
 [4.5.2-r1]: /../../tree/docker/4.5.2-r1
 
 ### Added
