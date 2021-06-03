@@ -35,7 +35,7 @@
   [ -z "$COTURN_VERSION" ] && skip
 
   run docker run --rm --platform $PLATFORM --entrypoint sh $IMAGE -c \
-    "turnserver -o --log-file=stdout | grep 'Version Coturn' \
+    "turnserver -o --log-file=stdout | grep -m 1 'Version Coturn' \
                                      | cut -d ' ' -f2 \
                                      | cut -d '-' -f2"
   [ "$status" -eq 0 ]
