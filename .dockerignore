@@ -2,6 +2,7 @@
 
 !docker/coturn/alpine/
 !docker/coturn/debian/
+!docker/coturn/rootfs/
 
 !cmake/
 !CMakeLists.txt

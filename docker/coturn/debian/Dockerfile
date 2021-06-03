@@ -207,6 +207,7 @@ RUN mkdir -p /out/ \
  && rm -f /out/etc/coturn/turnserver.conf.default
 
 # Install helper tools of Docker image.
+COPY docker/coturn/rootfs/ /out/
 COPY docker/coturn/debian/rootfs/ /out/
 RUN chmod +x /out/usr/local/bin/docker-entrypoint.sh \
              /out/usr/local/bin/detect-external-ip.sh
@@ -246,6 +247,9 @@ RUN apt-get update \
             libpq5 libmariadb3 libsqlite3-0 \
             libhiredis0.14 \
             libmicrohttpd12 \
+ # Install `dig` tool for `detect-external-ip.sh`.
+ && apt-get install -y --no-install-recommends --no-install-suggests \
+            dnsutils \
  # Cleanup unnecessary stuff.
  && rm -rf /var/lib/apt/lists/*
 

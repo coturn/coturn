@@ -110,6 +110,14 @@ docker run -d --network=host coturn/coturn \
            --relay-ip='$(detect-external-ip)'
 ```
 
+By default, [IPv4] address is discovered. In case you need an [IPv6] one, specify the `--ipv6` flag:
+```bash
+docker run -d --network=host coturn/coturn \
+           -n --log-file=stdout \
+           --external-ip='$(detect-external-ip --ipv6)' \
+           --relay-ip='$(detect-external-ip --ipv6)'
+```
+
 
 ### Persistence
 
@@ -185,6 +193,8 @@ If you have any problems with or questions about this image, please contact us t
 
 
 [DockerHub]: https://hub.docker.com
+[IPv4]: https://en.wikipedia.org/wiki/IPv4
+[IPv6]: https://en.wikipedia.org/wiki/IPv6
 [RFC 5766 Section 6.2]: https://tools.ietf.org/html/rfc5766.html#section-6.2
 
 [1]: http://alpinelinux.org

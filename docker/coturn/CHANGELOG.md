@@ -11,10 +11,15 @@ Coturn TURN server Docker image changelog
 
 - [Prometheus] support with [prometheus-client-c] 0.1.3: <https://github.com/digitalocean/prometheus-client-c/releases/tag/v0.1.3> ([#754])
 
+### Improved
+
+- Use DNS requests to discover external IP address in `detect-external-ip` script ([#753]).
+
 ### Fixed
 
 - Incorrect linking with [mongo-c-driver] on [Debian Linux] image.
 
+[#753]: /../../pull/753
 [#754]: /../../pull/754
 
 

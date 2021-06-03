@@ -150,6 +150,7 @@ RUN mkdir -p /out/ \
  && rm -f /out/etc/coturn/turnserver.conf.default
 
 # Install helper tools of Docker image.
+COPY docker/coturn/rootfs/ /out/
 COPY docker/coturn/alpine/rootfs/ /out/
 RUN chmod +x /out/usr/local/bin/docker-entrypoint.sh \
              /out/usr/local/bin/detect-external-ip.sh
@@ -185,6 +186,9 @@ RUN apk update \
         hiredis \
         mongo-c-driver \
         libmicrohttpd \
+ # Install `dig` tool for `detect-external-ip.sh`.
+ && apk add --no-cache \
+        bind-tools \
  # Cleanup unnecessary stuff.
  && rm -rf /var/cache/apk/*
 
