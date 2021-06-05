@@ -188,6 +188,7 @@ ALLOCATION_DEFAULT_ADDRESS_FAMILY_IPV4,  /* allocation_default_address_family */
 
 0,  /* log_binding */
 0,	/* no_stun_backward_compatibility */
+0	/* response_origin_only_with_rfc5780 */
 };
 
 //////////////// OpenSSL Init //////////////////////
@@ -699,6 +700,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						Strongly encouraged to use this option to decrease gain factor in STUN binding responses.\n"
 " --no-stun-backward-compatibility		Disable handling old STUN Binding requests and disable MAPPED-ADDRESS attribute\n"
 "						in binding response (use only the XOR-MAPPED-ADDRESS).\n"
+" --response-origin-only-with-rfc5780		Only send RESPONSE-ORIGIN attribute in binding response if RFC5780 is enabled.\n"
 " -h						Help\n"
 "\n";
 
@@ -846,7 +848,8 @@ enum EXTRA_OPTS {
 	ACME_REDIRECT_OPT,
 	LOG_BINDING_OPT,
 	NO_RFC5780,
-	NO_STUN_BACKWARD_COMPATIBILITY_OPT
+	NO_STUN_BACKWARD_COMPATIBILITY_OPT,
+	RESPONSE_ORIGIN_ONLY_WITH_RFC5780_OPT
 };
 
 struct myoption {
@@ -985,6 +988,7 @@ static const struct myoption long_options[] = {
 				{ "log-binding", optional_argument, NULL, LOG_BINDING_OPT },
 				{ "no-rfc5780", optional_argument, NULL, NO_RFC5780 },
 				{ "no-stun-backward-compatibility", optional_argument, NULL, NO_STUN_BACKWARD_COMPATIBILITY_OPT },
+				{ "response-origin-only-with-rfc5780", optional_argument, NULL, RESPONSE_ORIGIN_ONLY_WITH_RFC5780_OPT },
 				{ NULL, no_argument, NULL, 0 }
 };
 
@@ -1663,6 +1667,9 @@ static void set_option(int c, char *value)
 		break;
 	case NO_STUN_BACKWARD_COMPATIBILITY_OPT:
 		turn_params.no_stun_backward_compatibility = get_bool_value(value);
+		break;
+	case RESPONSE_ORIGIN_ONLY_WITH_RFC5780_OPT:
+		turn_params.response_origin_only_with_rfc5780 = get_bool_value(value);
 		break;
 
 	/* these options have been already taken care of before: */

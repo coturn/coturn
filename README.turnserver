@@ -616,6 +616,7 @@ Options with values:
                     adds attributes to response, and this increase the possibility of an amplification attack.
                     Strongly encouraged to use this option to decrease gain factor in STUN binding responses.
 --no-stun-backward-compatibility		Disable handling old STUN Binding requests and disable MAPPED-ADDRESS attribute in binding response (use only the XOR-MAPPED-ADDRESS).
+--response-origin-only-with-rfc5780		Only send RESPONSE-ORIGIN attribute in binding response if RFC5780 is enabled.
 					
 
 ==================================

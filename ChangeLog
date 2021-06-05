@@ -23,10 +23,14 @@ Version 4.5.3 'dan Eider':
 		* SSL reload has hidden bugs which cause crashes
 	- Fix regression in PR #739
 	- Try to mitigate amplification attatck 
-		* Add option --no-rfc5780
+		* Add new option --no-rfc5780
 		  to force disable RFC8750
 		* Add new option --no-stun-backward-compatibility
-		  Disable handling old STUN Binding requests and disable MAPPED-ADDRESS attribute in binding response (use only the XOR-MAPPED-ADDRESS).
+		  Disable handling old STUN Binding requests and disable
+		  MAPPED-ADDRESS attribute in binding response (use only the
+		  XOR-MAPPED-ADDRESS)
+		* Add new option --response-origin-only-with-rfc5780
+		  Add RESPONSE_ORIGIN attribute only if rfc5780 is enabled
 
 10/01/2021 Oleg Moskalenko <mom040267@gmail.com> Mihály Mészáros <misi@majd.eu>
 Version 4.5.2 'dan Eider':

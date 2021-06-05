@@ -190,6 +190,9 @@ struct _turn_turnserver {
 
 	/* Disable handling old STUN Binding Requests and disable MAPPED-ADDRESS attribute in response */
 	vintp no_stun_backward_compatibility;
+
+	/* Only send RESPONSE-ORIGIN attribute in response if RFC5780 is enabled */
+	vintp response_origin_only_with_rfc5780;
 };
 
 const char * get_version(turn_turnserver *server);
@@ -238,7 +241,8 @@ void init_turn_server(turn_turnserver* server,
 					const char* acme_redirect,
 					ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family,
 					vintp log_binding,
-					vintp no_stun_backward_compatibility
+					vintp no_stun_backward_compatibility,
+					vintp response_origin_only_with_rfc5780
 					);
 
 ioa_engine_handle turn_server_get_engine(turn_turnserver *s);

@@ -2881,14 +2881,16 @@ static int handle_turn_binding(turn_turnserver *server,
 
 			if(!is_rfc5780(server)) {
 
-				if(old_stun) {
-					stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len,
-								OLD_STUN_ATTRIBUTE_SOURCE_ADDRESS, response_origin);
-					stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len,
-								OLD_STUN_ATTRIBUTE_CHANGED_ADDRESS, response_origin);
-				} else {
-					stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len,
-							STUN_ATTRIBUTE_RESPONSE_ORIGIN, response_origin);
+				if(!(*server->response_origin_only_with_rfc5780)) {
+					if(old_stun) {
+						stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len,
+									OLD_STUN_ATTRIBUTE_SOURCE_ADDRESS, response_origin);
+						stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len,
+									OLD_STUN_ATTRIBUTE_CHANGED_ADDRESS, response_origin);
+					} else {
+						stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len,
+								STUN_ATTRIBUTE_RESPONSE_ORIGIN, response_origin);
+					}
 				}
 
 			} else if(ss->client_socket) {
@@ -4937,7 +4939,8 @@ void init_turn_server(turn_turnserver* server,
 		const char* acme_redirect,
 		ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family,
 		vintp log_binding,
-		vintp no_stun_backward_compatibility) {
+		vintp no_stun_backward_compatibility,
+		vintp response_origin_only_with_rfc5780) {
 
 	if (!server)
 		return;
@@ -5013,6 +5016,8 @@ void init_turn_server(turn_turnserver* server,
 	server->log_binding = log_binding;
 
 	server->no_stun_backward_compatibility = no_stun_backward_compatibility;
+
+	server->response_origin_only_with_rfc5780 = response_origin_only_with_rfc5780;
 }
 
 ioa_engine_handle turn_server_get_engine(turn_turnserver *s) {

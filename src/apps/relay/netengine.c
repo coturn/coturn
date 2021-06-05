@@ -1695,7 +1695,8 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
 		turn_params.acme_redirect,
 		turn_params.allocation_default_address_family,
 		&turn_params.log_binding,
-		&turn_params.no_stun_backward_compatibility
+		&turn_params.no_stun_backward_compatibility,
+		&turn_params.response_origin_only_with_rfc5780
 		);
 	
 	if(to_set_rfc5780) {
