@@ -1766,6 +1766,7 @@ static int handle_turn_refresh(turn_turnserver *server,
 											(uint8_t*)ss->s_mobile_id,strlen(ss->s_mobile_id));
 										ioa_network_buffer_set_size(nbh,len);
 
+										if(!(*server->no_software_attribute))
 										{
 											const uint8_t *field = (const uint8_t *) get_version(server);
 											size_t fsz = strlen(get_version(server));
@@ -2248,6 +2249,7 @@ static void tcp_peer_accept_connection(ioa_socket_handle s, void *arg)
 
 		ioa_network_buffer_set_size(nbh,len);
 
+		if(!(*server->no_software_attribute))
 		{
 			const uint8_t *field = (const uint8_t *) get_version(server);
 			size_t fsz = strlen(get_version(server));
@@ -2525,6 +2527,7 @@ int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_co
 			}
 		}
 
+		if(!(*server->no_software_attribute))
 		{
 			size_t fsz = strlen(get_version(server));
 			const uint8_t *field = (const uint8_t *) get_version(server);
@@ -3846,6 +3849,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "RFC 5780 request successfully processed\n");
 					}
 
+					if(!(*server->no_software_attribute))
 					{
 						const uint8_t *field = (const uint8_t *) get_version(server);
 						size_t fsz = strlen(get_version(server));
@@ -3947,6 +3951,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 			*resp_constructed = 1;
 		}
 
+		if(!(*server->no_software_attribute))
 		{
 			const uint8_t *field = (const uint8_t *) get_version(server);
 			size_t fsz = strlen(get_version(server));
@@ -4846,6 +4851,7 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 						&(in_buffer->src_addr));
 				ioa_network_buffer_set_size(nbh,len);
 
+				if(!(*server->no_software_attribute))
 				{
 					const uint8_t *field = (const uint8_t *) get_version(server);
 					size_t fsz = strlen(get_version(server));
