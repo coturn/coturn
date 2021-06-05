@@ -187,6 +187,9 @@ struct _turn_turnserver {
 
 	/* Log Binding Requrest */
 	vintp log_binding;
+
+	/* Disable handling old STUN Binding Requests and disable MAPPED-ADDRESS attribute in response */
+	vintp no_stun_backward_compatibility;
 };
 
 const char * get_version(turn_turnserver *server);
@@ -234,7 +237,9 @@ void init_turn_server(turn_turnserver* server,
 				    const char* oauth_server_name,
 					const char* acme_redirect,
 					ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family,
-					vintp log_binding);
+					vintp log_binding,
+					vintp no_stun_backward_compatibility
+					);
 
 ioa_engine_handle turn_server_get_engine(turn_turnserver *s);
 

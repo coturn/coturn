@@ -22,7 +22,11 @@ Version 4.5.3 'dan Eider':
 	- merge PR #739 (by hills)
 		* SSL reload has hidden bugs which cause crashes
 	- Fix regression in PR #739
-	- Add option to disable RFC8750
+	- Try to mitigate amplification attatck 
+		* Add option --no-rfc5780
+		  to force disable RFC8750
+		* Add new option --no-stun-backward-compatibility
+		  Disable handling old STUN Binding requests and disable MAPPED-ADDRESS attribute in binding response (use only the XOR-MAPPED-ADDRESS).
 
 10/01/2021 Oleg Moskalenko <mom040267@gmail.com> Mihály Mészáros <misi@majd.eu>
 Version 4.5.2 'dan Eider':

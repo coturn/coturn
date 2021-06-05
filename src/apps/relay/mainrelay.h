@@ -339,6 +339,7 @@ typedef struct _turn_params_ {
   int no_dynamic_realms;
 
   vint log_binding;
+  vint no_stun_backward_compatibility;
 } turn_params_t;
 
 extern turn_params_t turn_params;

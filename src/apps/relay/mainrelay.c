@@ -186,7 +186,8 @@ ALLOCATION_DEFAULT_ADDRESS_FAMILY_IPV4,  /* allocation_default_address_family */
 0,  /* no_dynamic_ip_list */
 0,  /* no_dynamic_realms */
 
-0  /* log_binding */
+0,  /* log_binding */
+0,	/* no_stun_backward_compatibility */
 };
 
 //////////////// OpenSSL Init //////////////////////
@@ -696,6 +697,8 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						This option disables this original behavior, because the NAT behavior discovery\n"
 "						adds attributes to response, and this increase the possibility of an amplification attack.\n"
 "						Strongly encouraged to use this option to decrease gain factor in STUN binding responses.\n"
+" --no-stun-backward-compatibility		Disable handling old STUN Binding requests and disable MAPPED-ADDRESS attribute\n"
+"						in binding response (use only the XOR-MAPPED-ADDRESS).\n"
 " -h						Help\n"
 "\n";
 
@@ -842,7 +845,8 @@ enum EXTRA_OPTS {
 	SECRET_KEY_OPT,
 	ACME_REDIRECT_OPT,
 	LOG_BINDING_OPT,
-	NO_RFC5780
+	NO_RFC5780,
+	NO_STUN_BACKWARD_COMPATIBILITY_OPT
 };
 
 struct myoption {
@@ -980,6 +984,7 @@ static const struct myoption long_options[] = {
 				{ "acme-redirect", required_argument, NULL, ACME_REDIRECT_OPT },
 				{ "log-binding", optional_argument, NULL, LOG_BINDING_OPT },
 				{ "no-rfc5780", optional_argument, NULL, NO_RFC5780 },
+				{ "no-stun-backward-compatibility", optional_argument, NULL, NO_STUN_BACKWARD_COMPATIBILITY_OPT },
 				{ NULL, no_argument, NULL, 0 }
 };
 
@@ -1655,6 +1660,9 @@ static void set_option(int c, char *value)
 		break;
 	case NO_RFC5780:
 		turn_params.rfc5780 = 0;
+		break;
+	case NO_STUN_BACKWARD_COMPATIBILITY_OPT:
+		turn_params.no_stun_backward_compatibility = get_bool_value(value);
 		break;
 
 	/* these options have been already taken care of before: */
