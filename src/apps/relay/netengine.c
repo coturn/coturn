@@ -304,12 +304,17 @@ typedef struct update_ssl_ctx_cb_args {
 	struct event *next;
 } update_ssl_ctx_cb_args_t;
 
+/*
+ * Copy SSL context at "from", which may be NULL if no context in use
+ */
 static void replace_one_ssl_ctx(SSL_CTX **to, SSL_CTX *from)
 {
 	if (*to)
 		SSL_CTX_free(*to);
-	if (from)
+
+	if (from != NULL)
 		SSL_CTX_up_ref(from);
+
 	*to = from;
 }
 
