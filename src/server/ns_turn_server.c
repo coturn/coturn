@@ -3839,13 +3839,13 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 							&dest_changed, &response_destination,
 							0, 0);
 
-				if(server->verbose && server->log_binding) {
+				if(server->verbose && *(server->log_binding)) {
 				  log_method(ss, "BINDING", err_code, reason);
 				}
 
 				if(*resp_constructed && !err_code && (origin_changed || dest_changed)) {
 
-					if (server->verbose && server->log_binding) {
+					if (server->verbose && *(server->log_binding)) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "RFC 5780 request successfully processed\n");
 					}
 
