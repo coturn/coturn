@@ -33,6 +33,8 @@ Version 4.5.3 'dan Eider':
 		Add RESPONSE_ORIGIN attribute only if rfc5780 is enabled
 		* Don't send SOFTWARE attribute if --no-software-attribute
 		set on (BREAKING CHANGE)
+	- merge PR #767 (by ggalperi)
+	    * fix for log_binding (regression)
 
 10/01/2021 Oleg Moskalenko <mom040267@gmail.com> Mihály Mészáros <misi@majd.eu>
 Version 4.5.2 'dan Eider':
