@@ -40,7 +40,7 @@ RUN mkdir -p /build/ && cd /build/ \
 
 # Build libprom.so from sources.
 RUN mkdir -p /build/prom/build/ && cd /build/prom/build/ \
- && TEST=0 cmake -v -G "Unix Makefiles" \
+ && TEST=0 cmake -G "Unix Makefiles" \
                  -DCMAKE_INSTALL_PREFIX=/usr \
                  -DCMAKE_SKIP_BUILD_RPATH=TRUE \
                  -DCMAKE_C_FLAGS="-DPROM_LOG_ENABLE -g -O3" \
@@ -52,7 +52,7 @@ RUN mkdir -p /build/promhttp/build/ && cd /build/promhttp/build/ \
  # Fix compiler warning: -Werror=incompatible-pointer-types
  && sed -i 's/\&promhttp_handler/(MHD_AccessHandlerCallback)\&promhttp_handler/' \
            /build/promhttp/src/promhttp.c \
- && TEST=0 cmake -v -G "Unix Makefiles" \
+ && TEST=0 cmake -G "Unix Makefiles" \
                  -DCMAKE_INSTALL_PREFIX=/usr \
                  -DCMAKE_SKIP_BUILD_RPATH=TRUE \
                  -DCMAKE_C_FLAGS="-g -O3" \

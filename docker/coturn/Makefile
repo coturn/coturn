@@ -21,7 +21,7 @@ COTURN_VER ?= 4.5.2
 COTURN_MIN_VER = $(strip $(shell echo $(COTURN_VER) | cut -d '.' -f1,2))
 COTURN_MAJ_VER = $(strip $(shell echo $(COTURN_VER) | cut -d '.' -f1))
 
-BUILD_REV ?= 1
+BUILD_REV ?= 2
 
 NAMESPACES := coturn \
               ghcr.io/coturn \
