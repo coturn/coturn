@@ -139,6 +139,7 @@ DEFAULT_STUN_TLS_PORT, /* tls_listener_port */
   NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0,0,NULL,NULL,NULL
 },
 {NULL, 0},{NULL, 0},
+{NULL, 0},
 NEV_UNKNOWN,
 { "Unknown", "UDP listening socket per session", "UDP thread per network endpoint", "UDP thread per CPU core" },
 //////////////// Relay servers //////////////////////////////////
@@ -647,6 +648,8 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						turn server. Multiple allowed-peer-ip can be set.\n"
 " --denied-peer-ip=<ip[-ip]> 			Specifies an ip or range of ips that are not allowed to connect to the turn server.\n"
 "						Multiple denied-peer-ip can be set.\n"
+" --stun-denied-peer-ip=<ip[-ip]> 		Specifies an ip or range of ips that are forbidden to receive their reflexive address.\n"
+"						Multiple stun-denied-peer-ip can be set.\n"
 " --pidfile <\"pid-file-name\">			File name to store the pid of the process.\n"
 "						Default is /var/run/turnserver.pid (if superuser account is used) or\n"
 "						/var/tmp/turnserver.pid .\n"
@@ -808,6 +811,7 @@ enum EXTRA_OPTS {
 	MAX_ALLOCATE_TIMEOUT_OPT,
 	ALLOWED_PEER_IPS,
 	DENIED_PEER_IPS,
+	STUN_DENIED_PEER_IPS,
 	CIPHER_LIST_OPT,
 	PIDFILE_OPT,
 	SECURE_STUN_OPT,
@@ -954,6 +958,7 @@ static const struct myoption long_options[] = {
 				{ "allow-loopback-peers", optional_argument, NULL, ALLOW_LOOPBACK_PEERS_OPT },
 				{ "allowed-peer-ip", required_argument, NULL, ALLOWED_PEER_IPS },
 				{ "denied-peer-ip", required_argument, NULL, DENIED_PEER_IPS },
+				{ "stun-denied-peer-ip", required_argument, NULL, STUN_DENIED_PEER_IPS },
 				{ "cipher-list", required_argument, NULL, CIPHER_LIST_OPT },
 				{ "pidfile", required_argument, NULL, PIDFILE_OPT },
 				{ "secure-stun", optional_argument, NULL, SECURE_STUN_OPT },
@@ -1644,6 +1649,9 @@ static void set_option(int c, char *value)
 		break;
 	case DENIED_PEER_IPS:
 		if (add_ip_list_range(value, NULL, &turn_params.ip_blacklist) == 0) TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Black listing: %s\n", value);
+		break;
+	case STUN_DENIED_PEER_IPS:
+		if (add_ip_list_range(value, NULL, &turn_params.ip_stunblacklist) == 0) TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "STUN black listing: %s\n", value);
 		break;
 	case CIPHER_LIST_OPT:
 		STRCPY(turn_params.cipher_list,value);
