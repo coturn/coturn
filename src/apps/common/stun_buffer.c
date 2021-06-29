@@ -239,7 +239,7 @@ int stun_set_binding_response(stun_buffer* buf, stun_tid* tid,
 			      const ioa_addr *reflexive_addr, int error_code, const uint8_t *reason) {
   return stun_set_binding_response_str(buf->buf, (size_t*)(&(buf->len)), tid, 
 				       reflexive_addr, error_code, reason,
-				       0,0);
+				       0,0,1);
 }
 
 void stun_prepare_binding_request(stun_buffer* buf) {

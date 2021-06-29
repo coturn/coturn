@@ -124,7 +124,7 @@ void stun_set_binding_request_str(uint8_t* buf, size_t *len);
 int stun_set_binding_response_str(uint8_t* buf, size_t *len, stun_tid* tid, 
 				  const ioa_addr *reflexive_addr, int error_code,
 				  const uint8_t *reason,
-				  uint32_t cookie, int old_stun);
+				  uint32_t cookie, int old_stun, int no_stun_backward_compatibility);
 int stun_is_binding_request_str(const uint8_t* buf, size_t len, size_t offset);
 int stun_is_binding_response_str(const uint8_t* buf, size_t len);
 

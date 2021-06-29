@@ -21,7 +21,7 @@ COTURN_VER ?= 4.5.2
 COTURN_MIN_VER = $(strip $(shell echo $(COTURN_VER) | cut -d '.' -f1,2))
 COTURN_MAJ_VER = $(strip $(shell echo $(COTURN_VER) | cut -d '.' -f1))
 
-BUILD_REV ?= 0
+BUILD_REV ?= 2
 
 NAMESPACES := coturn \
               ghcr.io/coturn \
@@ -90,7 +90,7 @@ define docker.buildx
 	docker buildx build --force-rm $(args) \
 		--platform $(platform) \
 		$(if $(call eq,$(no-cache),yes),--no-cache --pull,) \
-		$(if $(call eq,$(git-ref),),,--build-arg git_ref=$(git-ref)) \
+		$(if $(call eq,$(git-ref),),,--build-arg coturn_git_ref=$(git-ref)) \
 		-f docker/coturn/$(dockerfile)/Dockerfile \
 		-t $(namespace)/$(NAME):$(tag) ./
 endef
@@ -176,6 +176,7 @@ docker.push:
 #		[( [build=no]
 #		 | build=yes [DOCKERFILE=(debian|alpine)]
 #		             [ref=<git-ref>] )]
+#		[with=ipv6]
 
 test-docker-platforms = $(strip $(if $(call eq,$(platforms),),$(MAIN_PLATFORM),\
                                 $(if $(call eq,$(platforms),@all),$(PLATFORMS),\
@@ -195,6 +196,7 @@ define test.docker.do
 		@make docker.image DOCKERFILE=$(DOCKERFILE) \
 			no-cache=no tag=$(tag) platform=$(platform) ref=$(ref) ,)
 	IMAGE=coturn/$(NAME):$(tag) PLATFORM=$(platform) \
+	$(if $(call eq,$(with),ipv6),TEST_IPV6=1,) \
 	node_modules/.bin/bats \
 		--timing $(if $(call eq,$(CI),),--pretty,--formatter tap) \
 		tests/main.bats

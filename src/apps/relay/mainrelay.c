@@ -115,10 +115,24 @@ DH_2066, "", "", "",
 NULL, PTHREAD_MUTEX_INITIALIZER,
 
 //////////////// Common params ////////////////////
-TURN_VERBOSE_NONE,0,0,0,0,
-"/var/run/turnserver.pid","",
-DEFAULT_STUN_PORT,DEFAULT_STUN_TLS_PORT,0,0,0,1,
-0,0,0,0,0,
+TURN_VERBOSE_NONE, /* verbose */
+0, /* turn_daemon */
+0, /* no_software_attribute */
+0, /* web_admin_listen_on_workers */
+0, /* do_not_use_config_file */
+"/var/run/turnserver.pid", /* pidfile */
+"", /* acme_redirect */
+DEFAULT_STUN_PORT, /* listener_port*/
+DEFAULT_STUN_TLS_PORT, /* tls_listener_port */
+0, /* alt_listener_port */
+0, /* alt_tls_listener_port */
+0, /* tcp_proxy_port */
+1, /* rfc5780 */
+0, /* no_udp */
+0, /* no_tcp */
+0, /* tcp_use_proxy */
+0, /* no_tcp_relay */
+0, /* no_udp_relay */
 "",
 "",0,
 {
@@ -173,7 +187,9 @@ ALLOCATION_DEFAULT_ADDRESS_FAMILY_IPV4,  /* allocation_default_address_family */
 0,  /* no_dynamic_ip_list */
 0,  /* no_dynamic_realms */
 
-0  /* log_binding */
+0,  /* log_binding */
+0,	/* no_stun_backward_compatibility */
+0	/* response_origin_only_with_rfc5780 */
 };
 
 //////////////// OpenSSL Init //////////////////////
@@ -679,6 +695,15 @@ static char Usage[] = "Usage: turnserver [options]\n"
 " --cli-max-output-sessions			Maximum number of output sessions in ps CLI command.\n"
 "						This value can be changed on-the-fly in CLI. The default value is 256.\n"
 " --ne=[1|2|3]					Set network engine type for the process (for internal purposes).\n"
+" --no-rfc5780					Disable RFC5780 (NAT behavior discovery).\n"
+"						Originally, if there are more than one listener address from the same\n"
+"						address family, then by default the NAT behavior discovery feature enabled.\n"
+"						This option disables this original behavior, because the NAT behavior discovery\n"
+"						adds attributes to response, and this increase the possibility of an amplification attack.\n"
+"						Strongly encouraged to use this option to decrease gain factor in STUN binding responses.\n"
+" --no-stun-backward-compatibility		Disable handling old STUN Binding requests and disable MAPPED-ADDRESS attribute\n"
+"						in binding response (use only the XOR-MAPPED-ADDRESS).\n"
+" --response-origin-only-with-rfc5780		Only send RESPONSE-ORIGIN attribute in binding response if RFC5780 is enabled.\n"
 " -h						Help\n"
 "\n";
 
@@ -825,7 +850,10 @@ enum EXTRA_OPTS {
 	NO_HTTP_OPT,
 	SECRET_KEY_OPT,
 	ACME_REDIRECT_OPT,
-	LOG_BINDING_OPT
+	LOG_BINDING_OPT,
+	NO_RFC5780,
+	NO_STUN_BACKWARD_COMPATIBILITY_OPT,
+	RESPONSE_ORIGIN_ONLY_WITH_RFC5780_OPT
 };
 
 struct myoption {
@@ -963,7 +991,9 @@ static const struct myoption long_options[] = {
 				{ "allocation-default-address-family", required_argument, NULL, 'A' },
 				{ "acme-redirect", required_argument, NULL, ACME_REDIRECT_OPT },
 				{ "log-binding", optional_argument, NULL, LOG_BINDING_OPT },
-
+				{ "no-rfc5780", optional_argument, NULL, NO_RFC5780 },
+				{ "no-stun-backward-compatibility", optional_argument, NULL, NO_STUN_BACKWARD_COMPATIBILITY_OPT },
+				{ "response-origin-only-with-rfc5780", optional_argument, NULL, RESPONSE_ORIGIN_ONLY_WITH_RFC5780_OPT },
 				{ NULL, no_argument, NULL, 0 }
 };
 
@@ -1639,6 +1669,15 @@ static void set_option(int c, char *value)
 		break;
 	case LOG_BINDING_OPT:
 		turn_params.log_binding = get_bool_value(value);
+		break;
+	case NO_RFC5780:
+		turn_params.rfc5780 = 0;
+		break;
+	case NO_STUN_BACKWARD_COMPATIBILITY_OPT:
+		turn_params.no_stun_backward_compatibility = get_bool_value(value);
+		break;
+	case RESPONSE_ORIGIN_ONLY_WITH_RFC5780_OPT:
+		turn_params.response_origin_only_with_rfc5780 = get_bool_value(value);
 		break;
 
 	/* these options have been already taken care of before: */
@@ -3206,10 +3245,12 @@ static void openssl_load_certificates(void)
 		set_ctx(&turn_params.dtls_ctx,"DTLS",DTLS_server_method());
 		set_ctx(&turn_params.dtls_ctx_v1_2,"DTLS1.2",DTLSv1_2_server_method());
 		SSL_CTX_set_read_ahead(turn_params.dtls_ctx_v1_2, 1);
+		setup_dtls_callbacks(turn_params.dtls_ctx_v1_2);
 #else
 		set_ctx(&turn_params.dtls_ctx,"DTLS",DTLSv1_server_method());
 #endif
 		SSL_CTX_set_read_ahead(turn_params.dtls_ctx, 1);
+		setup_dtls_callbacks(turn_params.dtls_ctx);
 
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS cipher suite: %s\n",turn_params.cipher_list);
 
