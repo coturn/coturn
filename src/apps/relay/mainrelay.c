@@ -620,6 +620,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						a log file. With this option everything will be going to the log file only\n"
 "						(unless the log file itself is stdout).\n"
 " --syslog					Output all log information into the system log (syslog), do not use the file output.\n"
+" --syslog-facility             <value>          Set syslog facility for syslog messages. Default is ''.\n"
 " --simple-log					This flag means that no log file rollover will be used, and the log file\n"
 "						name will be constructed as-is, without PID and date appendage.\n"
 "						This option can be used, for example, together with the logrotate tool.\n"
@@ -796,6 +797,7 @@ enum EXTRA_OPTS {
 	AUTH_SECRET_TS_EXP, /* deprecated */
 	NO_STDOUT_LOG_OPT,
 	SYSLOG_OPT,
+	SYSLOG_FACILITY_OPT,
 	SIMPLE_LOG_OPT,
 	NEW_LOG_TIMESTAMP_OPT,
 	NEW_LOG_TIMESTAMP_FORMAT_OPT,
