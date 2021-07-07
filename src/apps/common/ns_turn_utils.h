@@ -61,6 +61,8 @@ void set_no_stdout_log(int val);
 void set_log_to_syslog(int val);
 void set_simple_log(int val);
 
+void set_syslog_facility(char *val);
+
 void set_turn_log_timestamp_format(char* new_format);
 
 void turn_log_func_default(TURN_LOG_LEVEL level, const char* format, ...);
