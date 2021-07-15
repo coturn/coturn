@@ -700,7 +700,11 @@ void release_allocation_quota(uint8_t *user, int oauth, uint8_t *realm)
 			ur_string_map_get(rp->status.alloc_counters, (ur_string_map_key_type) username, &value);
 			if (value) {
 				value = (ur_string_map_value_type)(((size_t)value) - 1);
-				ur_string_map_put(rp->status.alloc_counters, (ur_string_map_key_type) username, value);
+				if (value == 0) {
+					ur_string_map_del(rp->status.alloc_counters, (ur_string_map_key_type) username);
+				} else {
+					ur_string_map_put(rp->status.alloc_counters, (ur_string_map_key_type) username, value);
+				}
 			}
 		}
 		if (rp->status.total_current_allocs)
