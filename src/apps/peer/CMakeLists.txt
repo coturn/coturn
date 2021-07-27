@@ -5,6 +5,7 @@ project(turnutils_peer)
 set(SOURCE_FILES
     mainudpserver.c udpserver.c
     )
+source_group("Source Files" FILES "${SOURCE_FILES}")
 
 add_executable(${PROJECT_NAME} ${SOURCE_FILES})
 target_link_libraries(${PROJECT_NAME} PRIVATE turnclient)

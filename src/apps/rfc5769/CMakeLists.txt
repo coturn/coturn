@@ -5,6 +5,7 @@ project(turnutils_rfc5769check)
 set(SOURCE_FILES
     rfc5769check.c
     )
+source_group("Source Files" FILES "${SOURCE_FILES}")
 
 add_executable(${PROJECT_NAME} ${SOURCE_FILES})
 target_link_libraries(${PROJECT_NAME} PRIVATE turnclient)

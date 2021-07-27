@@ -44,22 +44,27 @@
 #endif
 
 #include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <netinet/tcp.h>
-#include <arpa/inet.h>
-#include <net/if.h>
 #include <ctype.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <strings.h>
-#include <unistd.h>
 #include <inttypes.h>
 #include <time.h>
 #include <stdarg.h>
 #include <errno.h>
+
+#if _MSC_VER
+#include <winsock2.h>
+#else
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#include <arpa/inet.h>
+#include <net/if.h>
+#include <strings.h>
+#include <unistd.h>
+#endif
 
 #ifdef __cplusplus
 extern "C" {

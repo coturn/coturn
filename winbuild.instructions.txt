@@ -1,0 +1,7 @@
+Install:
+  - Microsoft Visual Studio
+  - Microsoft vcpkg
+  - Run from Developer Prompt:
+    - `[vcpkg_path]/vcpkg install openssl libevent`
+    - `cmake [path_to_this_repo]`
+    - `cmake --build .`

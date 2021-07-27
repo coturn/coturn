@@ -8,6 +8,7 @@ set(SOURCE_FILES
     ns_turn_maps.c
     ns_turn_server.c
     )
+source_group("Source Files" FILES "${SOURCE_FILES}")
 
 set(HEADER_FILES
     ns_turn_allocation.h
@@ -18,6 +19,7 @@ set(HEADER_FILES
     ns_turn_server.h
     ns_turn_session.h
     )
+source_group("Header Files" FILES "${HEADER_FILES}")
 
 add_library(${PROJECT_NAME} ${SOURCE_FILES} ${HEADER_FILES})
 

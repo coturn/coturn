@@ -43,7 +43,9 @@ add_library(${PROJECT_NAME} ${SOURCE_FILES} ${HEADER_FILES})
 
 target_link_libraries(${PROJECT_NAME} PUBLIC ${COMMON_LIBS})
 target_compile_definitions(${PROJECT_NAME} PUBLIC ${COMMON_DEFINED})
-target_compile_options(${PROJECT_NAME} PUBLIC -Wno-deprecated-declarations)
+if (NOT MSVC)
+  target_compile_options(${PROJECT_NAME} PUBLIC -Wno-deprecated-declarations)
+endif ()
 
 # See: http://www.it1352.com/478094.html
 target_include_directories(${PROJECT_NAME} PUBLIC

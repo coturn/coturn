@@ -13,12 +13,14 @@ set(HEADER_FILES
     ns_turn_msg_defs_experimental.h
     ns_turn_msg_addr.h
     )
+source_group("Header Files" FILES "${HEADER_FILES}")
 
 set(SOURCE_FILES
     ns_turn_ioaddr.c
     ns_turn_msg_addr.c
     ns_turn_msg.c
     )
+source_group("Source Files" FILES "${SOURCE_FILES}")
 
 add_library(${PROJECT_NAME} ${SOURCE_FILES} ${HEADER_FILES})
 
