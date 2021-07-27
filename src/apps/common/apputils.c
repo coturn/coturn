@@ -35,26 +35,34 @@
 
 #include <event2/event.h>
 
+#ifdef _MSC_VER
+#include <WinSock.h>
+#else
+#include <unistd.h>
+#include <ifaddrs.h>
+#include <getopt.h>
+#include <libgen.h>
+
+#include <pthread.h>
+
+#include <sys/time.h>
+
+#include <sys/resource.h>
+#endif
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
-#include <unistd.h>
 #include <limits.h>
-#include <ifaddrs.h>
-#include <getopt.h>
 #include <locale.h>
-#include <libgen.h>
 #include <fcntl.h>
 
-#include <pthread.h>
 
 #include <signal.h>
 
 #include <sys/types.h>
-#include <sys/time.h>
 #include <sys/stat.h>
-#include <sys/resource.h>
 
 #if !defined(TURN_NO_SCTP) && defined(TURN_SCTP_INCLUDE)
 #include TURN_SCTP_INCLUDE
@@ -313,7 +321,7 @@ int addr_get_from_sock(evutil_socket_t fd, ioa_addr *addr)
 
 int get_raw_socket_ttl(evutil_socket_t fd, int family)
 {
-	int ttl = 0;
+    INT_WIN_CHAR_POSIX ttl = 0;
 
 	if(family == AF_INET6) {
 #if !defined(IPV6_UNICAST_HOPS)
@@ -346,7 +354,7 @@ int get_raw_socket_ttl(evutil_socket_t fd, int family)
 
 int get_raw_socket_tos(evutil_socket_t fd, int family)
 {
-	int tos = 0;
+    INT_WIN_CHAR_POSIX tos = 0;
 
 	if(family == AF_INET6) {
 #if !defined(IPV6_TCLASS)
@@ -377,7 +385,7 @@ int get_raw_socket_tos(evutil_socket_t fd, int family)
 	return tos;
 }
 
-int set_raw_socket_ttl(evutil_socket_t fd, int family, int ttl)
+int set_raw_socket_ttl(evutil_socket_t fd, int family, INT_WIN_CHAR_POSIX ttl)
 {
 
 	if(family == AF_INET6) {
@@ -407,7 +415,7 @@ int set_raw_socket_ttl(evutil_socket_t fd, int family, int ttl)
 	return 0;
 }
 
-int set_raw_socket_tos(evutil_socket_t fd, int family, int tos)
+int set_raw_socket_tos(evutil_socket_t fd, int family, INT_WIN_CHAR_POSIX tos)
 {
 
 	if(family == AF_INET6) {
@@ -651,7 +659,7 @@ int get_socket_mtu(evutil_socket_t fd, int family, int verbose)
 	UNUSED_ARG(verbose);
 
 #if defined(IP_MTU)
-	int val = 0;
+    INT_WIN_CHAR_POSIX val = 0;
 	socklen_t slen=sizeof(val);
 	if(family==AF_INET) {
 		ret = getsockopt(fd, IPPROTO_IP, IP_MTU, &val, &slen);
@@ -699,7 +707,11 @@ int handle_socket_error() {
      * Must close connection.
      */
     return 0;
+#ifdef _MSC_VER
+  case WSAEHOSTDOWN:
+#else
   case EHOSTDOWN:
+#endif
     /* Host is down.
      * Just ignore, might be an attacker
      * sending fake ICMP messages.
@@ -980,7 +992,7 @@ char *base64_encode(const unsigned char *data,
 void build_base64_decoding_table() {
 
     decoding_table = (char*)malloc(256);
-    bzero(decoding_table,256);
+    memset(decoding_table, 0, 256);
 
     int i;
     for (i = 0; i < 64; i++)
@@ -1061,19 +1073,19 @@ void convert_oauth_key_data_raw(const oauth_key_data_raw *raw, oauth_key_data *o
 {
 	if(raw && oakd) {
 
-		bzero(oakd,sizeof(oauth_key_data));
+        memset(oakd,0,sizeof(oauth_key_data));
 
 		oakd->timestamp = (turn_time_t)raw->timestamp;
 		oakd->lifetime = raw->lifetime;
 
-		bcopy(raw->as_rs_alg,oakd->as_rs_alg,sizeof(oakd->as_rs_alg));
-		bcopy(raw->kid,oakd->kid,sizeof(oakd->kid));
+        memcpy(oakd->as_rs_alg,raw->as_rs_alg,sizeof(oakd->as_rs_alg));
+        memcpy(oakd->kid,raw->kid,sizeof(oakd->kid));
 
 		if(raw->ikm_key[0]) {
 			size_t ikm_key_size = 0;
 			char *ikm_key = (char*)base64_decode(raw->ikm_key,strlen(raw->ikm_key),&ikm_key_size);
 			if(ikm_key) {
-				bcopy(ikm_key,oakd->ikm_key,ikm_key_size);
+                memcpy(oakd->ikm_key,ikm_key,ikm_key_size);
 				oakd->ikm_key_size = ikm_key_size;
 				free(ikm_key);
 			}

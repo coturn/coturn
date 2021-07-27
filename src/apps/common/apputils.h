@@ -45,6 +45,12 @@ extern "C" {
 
 //////////// Common defines ///////////////////////////
 
+#ifdef _MSC_VER
+#define INT_WIN_CHAR_POSIX char
+#else
+#define INT_WIN_CHAR_POSIX int
+#endif
+
 #define PEER_DEFAULT_PORT (3480)
 
 #define DTLS_MAX_RECV_TIMEOUT (5)
@@ -183,8 +189,8 @@ int handle_socket_error(void);
 #define CORRECT_RAW_TTL(ttl) do { if(ttl<0 || ttl>255) ttl=TTL_DEFAULT; } while(0)
 #define CORRECT_RAW_TOS(tos) do { if(tos<0 || tos>255) tos=TOS_DEFAULT; } while(0)
 
-int set_raw_socket_tos(evutil_socket_t fd, int family, int tos);
-int set_raw_socket_ttl(evutil_socket_t fd, int family, int ttl);
+int set_raw_socket_tos(evutil_socket_t fd, int family, INT_WIN_CHAR_POSIX tos);
+int set_raw_socket_ttl(evutil_socket_t fd, int family, INT_WIN_CHAR_POSIX ttl);
 int get_raw_socket_tos(evutil_socket_t fd, int family);
 int get_raw_socket_ttl(evutil_socket_t fd, int family);
 

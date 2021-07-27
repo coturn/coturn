@@ -54,8 +54,9 @@
 #include <stdarg.h>
 #include <errno.h>
 
-#if _MSC_VER
+#ifdef _MSC_VER
 #include <winsock2.h>
+#include <ws2tcpip.h>
 #else
 #include <sys/socket.h>
 #include <netinet/in.h>
