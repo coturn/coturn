@@ -797,8 +797,6 @@ int set_socket_options_fd(evutil_socket_t fd, SOCKET_TYPE st, int family)
 	if(fd<0)
 		return 0;
 
-	set_sock_buf_size(fd,UR_CLIENT_SOCK_BUF_SIZE);
-
 	if(is_tcp_socket(st)) { /* <<== FREEBSD fix */
 		struct linger so_linger;
 		so_linger.l_onoff = 1;
@@ -897,7 +895,6 @@ ioa_socket_handle create_unbound_relay_ioa_socket(ioa_engine_handle e, int famil
 			perror("UDP socket");
 			return NULL;
 		}
-		set_sock_buf_size(fd, UR_CLIENT_SOCK_BUF_SIZE);
 		break;
 	case TCP_SOCKET:
 		fd = socket(family, RELAY_STREAM_SOCKET_TYPE, RELAY_STREAM_SOCKET_PROTOCOL);
@@ -905,7 +902,6 @@ ioa_socket_handle create_unbound_relay_ioa_socket(ioa_engine_handle e, int famil
 			perror("TCP socket");
 			return NULL;
 		}
-		set_sock_buf_size(fd, UR_CLIENT_SOCK_BUF_SIZE);
 		break;
 	default:
 		/* we do not support other sockets in the relay position */

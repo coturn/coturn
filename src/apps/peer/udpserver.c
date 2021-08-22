@@ -84,8 +84,6 @@ static int udp_create_server_socket(server_type* server,
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Cannot bind udp server socket to device %s\n",server->ifname);
   }
 
-  set_sock_buf_size(udp_fd,UR_SERVER_SOCK_BUF_SIZE);
-  
   if(addr_bind(udp_fd,server_addr,1,1,UDP_SOCKET)<0) return -1;
   
   socket_set_nonblocking(udp_fd);

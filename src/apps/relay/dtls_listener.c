@@ -759,8 +759,6 @@ static int create_server_socket(dtls_listener_relay_server_type* server, int rep
 
 	  server->udp_listen_s = create_ioa_socket_from_fd(server->e, udp_listen_fd, NULL, UDP_SOCKET, LISTENER_SOCKET, NULL, &(server->addr));
 
-	  set_sock_buf_size(udp_listen_fd,UR_SERVER_SOCK_BUF_SIZE);
-
 	  if(sock_bind_to_device(udp_listen_fd, (unsigned char*)server->ifname)<0) {
 		  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Cannot bind listener socket to device %s\n",server->ifname);
 	  }
@@ -842,8 +840,6 @@ static int reopen_server_socket(dtls_listener_relay_server_type* server, evutil_
 		/* some UDP sessions may fail due to the race condition here */
 
 		set_socket_options(server->udp_listen_s);
-
-		set_sock_buf_size(udp_listen_fd, UR_SERVER_SOCK_BUF_SIZE);
 
 		if (sock_bind_to_device(udp_listen_fd, (unsigned char*) server->ifname) < 0) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
