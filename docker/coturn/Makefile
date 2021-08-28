@@ -21,7 +21,7 @@ COTURN_VER ?= 4.5.2
 COTURN_MIN_VER = $(strip $(shell echo $(COTURN_VER) | cut -d '.' -f1,2))
 COTURN_MAJ_VER = $(strip $(shell echo $(COTURN_VER) | cut -d '.' -f1))
 
-BUILD_REV ?= 3
+BUILD_REV ?= 4
 
 NAMESPACES := coturn \
               ghcr.io/coturn \
@@ -71,8 +71,7 @@ test: test.docker
 
 docker-namespaces = $(strip $(if $(call eq,$(namespaces),),\
                             $(NAMESPACES),$(subst $(comma), ,$(namespaces))))
-docker-tags = $(subst $(comma), ,$(strip \
-                      $(if $(call eq,$(tags),),$(TAGS),$(tags))))
+docker-tags = $(subst $(comma), ,$(or $(tags),$(TAGS)))
 docker-platforms = $(strip $(if $(call eq,$(platforms),),\
                            $(PLATFORMS),$(subst $(comma), ,$(platforms))))
 
@@ -130,9 +129,9 @@ docker.build.cache:
 docker.image:
 	$(call docker.buildx,$(DOCKERFILE),\
 		coturn,\
-		$(if $(call eq,$(tag),),$(VERSION),$(tag)),\
+		$(or $(tag),$(VERSION)),\
 		$(ref),\
-		$(if $(call eq,$(platform),),$(MAIN_PLATFORM),$(platform)),\
+		$(or $(platform),$(MAIN_PLATFORM)),\
 		$(no-cache),\
 		--load)
 
@@ -186,9 +185,7 @@ ifeq ($(wildcard node_modules/.bin/bats),)
 	@make npm.install
 endif
 	$(foreach platform,$(test-docker-platforms),\
-		$(call test.docker.do,\
-			$(if $(call eq,$(tag),),$(VERSION),$(tag)),\
-			$(platform)))
+		$(call test.docker.do,$(or $(tag),$(VERSION)),$(platform)))
 define test.docker.do
 	$(eval tag := $(strip $(1)))
 	$(eval platform := $(strip $(2)))
@@ -235,7 +232,7 @@ endif
 # Usage:
 #	make git.release [ver=($(VERSION)|<proj-ver>)]
 
-git-release-tag = docker/$(strip $(if $(call eq,$(ver),),$(VERSION),$(ver)))
+git-release-tag = docker/$(strip $(or $(ver),$(VERSION)))
 
 git.release:
 ifeq ($(shell git rev-parse $(git-release-tag) >/dev/null 2>&1 && echo "ok"),ok)
