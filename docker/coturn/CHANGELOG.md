@@ -9,7 +9,7 @@ Coturn TURN server Docker image changelog
 
 ### Upgraded
 
-- [Debian Linux] "buster": <https://www.debian.org/releases/bullseye/releasenotes>
+- [Debian Linux] "bullseye": <https://www.debian.org/releases/bullseye/releasenotes>
 
 
 
