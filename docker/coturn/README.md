@@ -46,7 +46,7 @@ The TURN Server is a VoIP media traffic NAT traversal server and gateway. It can
 
 To run Coturn TURN server just start the container: 
 ```bash
-docker run -d -p 3478:3478 -p 49152-65535:49152-65535/udp coturn/coturn
+docker run -d -p 3478:3478 -p 3478:3478/udp -p 49152-65535:49152-65535/udp coturn/coturn
 ```
 
 
@@ -56,7 +56,7 @@ As per [RFC 5766 Section 6.2], these are the ports that the TURN server will use
 
 You can change them with `min-port` and `max-port` Coturn configuration options:
 ```bash
-docker run -d -p 3478:3478 -p 49160-49200:49160-49200/udp \
+docker run -d -p 3478:3478 -p 3478:3478/udp -p 49160-49200:49160-49200/udp \
        coturn/coturn -n --log-file=stdout \
                         --external-ip='$(detect-external-ip)' \
                         --min-port=49160 --max-port=49200
