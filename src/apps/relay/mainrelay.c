@@ -2589,8 +2589,12 @@ int main(int argc, char **argv)
 
 	drop_privileges();
 #if !defined(TURN_NO_PROMETHEUS)
-	if (start_prometheus_server()){
+	int prometheus_status = start_prometheus_server();
+	if (prometheus_status < 0) {
 	  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Could not start Prometheus collector!\n");
+	}
+	else if (prometheus_status == 1) {
+	  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Prometheus collector disabled, not started.\n");
 	}
 	else {
 	  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Prometheus collector started successfully.\n");
