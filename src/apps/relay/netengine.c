@@ -304,25 +304,43 @@ typedef struct update_ssl_ctx_cb_args {
 	struct event *next;
 } update_ssl_ctx_cb_args_t;
 
+/*
+ * Copy SSL context at "from", which may be NULL if no context in use
+ */
+static void replace_one_ssl_ctx(SSL_CTX **to, SSL_CTX *from)
+{
+	if (*to)
+		SSL_CTX_free(*to);
+
+	if (from != NULL)
+		SSL_CTX_up_ref(from);
+
+	*to = from;
+}
+
+/*
+ * Synchronise the ioa_engine's SSL certificates with the global ones
+ */
 static void update_ssl_ctx(evutil_socket_t sock, short events, update_ssl_ctx_cb_args_t *args)
 {
 	ioa_engine_handle e = args->engine;
 	turn_params_t *params = args->params;
 
+	/* No mutex with "e" as these are only used in the same event loop */
 	pthread_mutex_lock(&turn_params.tls_mutex);
-	e->tls_ctx_ssl23 = params->tls_ctx_ssl23;
-	e->tls_ctx_v1_0 = params->tls_ctx_v1_0;
+	replace_one_ssl_ctx(&e->tls_ctx_ssl23, params->tls_ctx_ssl23);
+	replace_one_ssl_ctx(&e->tls_ctx_v1_0, params->tls_ctx_v1_0);
 #if TLSv1_1_SUPPORTED
-	e->tls_ctx_v1_1 = params->tls_ctx_v1_1;
+	replace_one_ssl_ctx(&e->tls_ctx_v1_1, params->tls_ctx_v1_1);
 #if TLSv1_2_SUPPORTED
-	e->tls_ctx_v1_2 = params->tls_ctx_v1_2;
+	replace_one_ssl_ctx(&e->tls_ctx_v1_2, params->tls_ctx_v1_2);
 #endif
 #endif
 #if DTLS_SUPPORTED
-	e->dtls_ctx = params->dtls_ctx;
+	replace_one_ssl_ctx(&e->dtls_ctx, params->dtls_ctx);
 #endif
 #if DTLSv1_2_SUPPORTED
-	e->dtls_ctx_v1_2 = params->dtls_ctx_v1_2;
+	replace_one_ssl_ctx(&e->dtls_ctx_v1_2, params->dtls_ctx_v1_2);
 #endif
 	struct event *next = args->next;
 	pthread_mutex_unlock(&turn_params.tls_mutex);
@@ -1076,11 +1094,15 @@ static void setup_listener(void)
 		bufferevent_enable(turn_params.listener.in_buf, EV_READ);
 	}
 
-	if(turn_params.listener.addrs_number<2 || turn_params.external_ip) {
-		turn_params.rfc5780 = 0;
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: I cannot support STUN CHANGE_REQUEST functionality because only one IP address is provided\n");
+	if (turn_params.rfc5780 == 1) {
+		if(turn_params.listener.addrs_number<2 || turn_params.external_ip) {
+			turn_params.rfc5780 = 0;
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: I cannot support STUN CHANGE_REQUEST functionality because only one IP address is provided\n");
+		} else {
+			turn_params.listener.services_number = turn_params.listener.services_number * 2;
+		}
 	} else {
-		turn_params.listener.services_number = turn_params.listener.services_number * 2;
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "INFO: RFC5780 disabled! /NAT behavior discovery/\n");
 	}
 
 	turn_params.listener.udp_services = (dtls_listener_relay_server_type***)allocate_super_memory_engine(turn_params.listener.ioa_eng, sizeof(dtls_listener_relay_server_type**)*turn_params.listener.services_number);
@@ -1643,41 +1665,44 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
 	bufferevent_enable(rs->auth_in_buf, EV_READ);
 
 	init_turn_server(&(rs->server),
-			 rs->id, turn_params.verbose,
-			 rs->ioa_eng, turn_params.ct, 0,
-			 turn_params.fingerprint, DONT_FRAGMENT_SUPPORTED,
-			 start_user_check,
-			 check_new_allocation_quota,
-			 release_allocation_quota,
-			 turn_params.external_ip,
-			 &turn_params.check_origin,
-			 &turn_params.no_tcp_relay,
-			 &turn_params.no_udp_relay,
-			 &turn_params.stale_nonce,
-			 &turn_params.max_allocate_lifetime,
-			 &turn_params.channel_lifetime,
-			 &turn_params.permission_lifetime,
-			 &turn_params.stun_only,
-			 &turn_params.no_stun,
-			 &turn_params.no_software_attribute,
-			 &turn_params.web_admin_listen_on_workers,
-			 &turn_params.alternate_servers_list,
-			 &turn_params.tls_alternate_servers_list,
-			 &turn_params.aux_servers_list,
-			 turn_params.udp_self_balance,
-			 &turn_params.no_multicast_peers, &turn_params.allow_loopback_peers,
-			 &turn_params.ip_whitelist, &turn_params.ip_blacklist,
-			 send_socket_to_relay,
-			 &turn_params.secure_stun, &turn_params.mobility,
-			 turn_params.server_relay,
-			 send_turn_session_info,
-			 send_https_socket,
-			 allocate_bps,
-			 turn_params.oauth,
-			 turn_params.oauth_server_name,
-			 turn_params.acme_redirect,
-			 turn_params.allocation_default_address_family,
-			 &turn_params.log_binding);
+		rs->id, turn_params.verbose,
+		rs->ioa_eng, turn_params.ct, 0,
+		turn_params.fingerprint, DONT_FRAGMENT_SUPPORTED,
+		start_user_check,
+		check_new_allocation_quota,
+		release_allocation_quota,
+		turn_params.external_ip,
+		&turn_params.check_origin,
+		&turn_params.no_tcp_relay,
+		&turn_params.no_udp_relay,
+		&turn_params.stale_nonce,
+		&turn_params.max_allocate_lifetime,
+		&turn_params.channel_lifetime,
+		&turn_params.permission_lifetime,
+		&turn_params.stun_only,
+		&turn_params.no_stun,
+		&turn_params.no_software_attribute,
+		&turn_params.web_admin_listen_on_workers,
+		&turn_params.alternate_servers_list,
+		&turn_params.tls_alternate_servers_list,
+		&turn_params.aux_servers_list,
+		turn_params.udp_self_balance,
+		&turn_params.no_multicast_peers, &turn_params.allow_loopback_peers,
+		&turn_params.ip_whitelist, &turn_params.ip_blacklist,
+		send_socket_to_relay,
+		&turn_params.secure_stun, &turn_params.mobility,
+		turn_params.server_relay,
+		send_turn_session_info,
+		send_https_socket,
+		allocate_bps,
+		turn_params.oauth,
+		turn_params.oauth_server_name,
+		turn_params.acme_redirect,
+		turn_params.allocation_default_address_family,
+		&turn_params.log_binding,
+		&turn_params.no_stun_backward_compatibility,
+		&turn_params.response_origin_only_with_rfc5780
+		);
 	
 	if(to_set_rfc5780) {
 		set_rfc5780(&(rs->server), get_alt_addr, send_message_from_listener_to_client);

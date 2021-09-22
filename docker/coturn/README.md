@@ -15,8 +15,8 @@ Coturn TURN server Docker image
 
 ## Supported tags and respective `Dockerfile` links
 
-- [`4.5.2-r0`, `4.5.2-r0-debian`, `4.5.2`, `4.5.2-debian`, `4.5`, `4.5-debian`, `4`, `4-debian`, `debian`, `latest`][d1]
-- [`4.5.2-r0-alpine`, `4.5.2-alpine`, `4.5-alpine`, `4-alpine`, `alpine`][d2]
+- [`4.5.2-r5`, `4.5.2-r5-debian`, `4.5.2`, `4.5.2-debian`, `4.5`, `4.5-debian`, `4`, `4-debian`, `debian`, `latest`][d1]
+- [`4.5.2-r5-alpine`, `4.5.2-alpine`, `4.5-alpine`, `4-alpine`, `alpine`][d2]
 
 
 
@@ -46,7 +46,7 @@ The TURN Server is a VoIP media traffic NAT traversal server and gateway. It can
 
 To run Coturn TURN server just start the container: 
 ```bash
-docker run -d -p 3478:3478 -p 49152-65535:49152-65535/udp coturn/coturn
+docker run -d -p 3478:3478 -p 3478:3478/udp -p 49152-65535:49152-65535/udp coturn/coturn
 ```
 
 
@@ -56,7 +56,7 @@ As per [RFC 5766 Section 6.2], these are the ports that the TURN server will use
 
 You can change them with `min-port` and `max-port` Coturn configuration options:
 ```bash
-docker run -d -p 3478:3478 -p 49160-49200:49160-49200/udp \
+docker run -d -p 3478:3478 -p 3478:3478/udp -p 49160-49200:49160-49200/udp \
        coturn/coturn -n --log-file=stdout \
                         --external-ip='$(detect-external-ip)' \
                         --min-port=49160 --max-port=49200
@@ -108,6 +108,14 @@ docker run -d --network=host coturn/coturn \
            -n --log-file=stdout \
            --external-ip='$(detect-external-ip)' \
            --relay-ip='$(detect-external-ip)'
+```
+
+By default, [IPv4] address is discovered. In case you need an [IPv6] one, specify the `--ipv6` flag:
+```bash
+docker run -d --network=host coturn/coturn \
+           -n --log-file=stdout \
+           --external-ip='$(detect-external-ip --ipv6)' \
+           --relay-ip='$(detect-external-ip --ipv6)'
 ```
 
 
@@ -185,6 +193,8 @@ If you have any problems with or questions about this image, please contact us t
 
 
 [DockerHub]: https://hub.docker.com
+[IPv4]: https://en.wikipedia.org/wiki/IPv4
+[IPv6]: https://en.wikipedia.org/wiki/IPv6
 [RFC 5766 Section 6.2]: https://tools.ietf.org/html/rfc5766.html#section-6.2
 
 [1]: http://alpinelinux.org

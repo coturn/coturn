@@ -62,7 +62,7 @@ int start_prometheus_server(void){
 
   struct MHD_Daemon *daemon = promhttp_start_daemon(MHD_USE_SELECT_INTERNALLY, DEFAULT_PROM_SERVER_PORT, NULL, NULL);
   if (daemon == NULL) {
-    return 1;
+    return -1;
   }
   return 0;
 }

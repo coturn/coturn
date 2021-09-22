@@ -80,6 +80,7 @@
 #include <openssl/aes.h>
 #include <openssl/err.h>
 #include <openssl/pem.h>
+#include <openssl/ssl.h>
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
   #include <openssl/modes.h>
@@ -338,6 +339,8 @@ typedef struct _turn_params_ {
   int no_dynamic_realms;
 
   vint log_binding;
+  vint no_stun_backward_compatibility;
+  vint response_origin_only_with_rfc5780;
 } turn_params_t;
 
 extern turn_params_t turn_params;

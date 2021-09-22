@@ -1766,6 +1766,7 @@ static int handle_turn_refresh(turn_turnserver *server,
 											(uint8_t*)ss->s_mobile_id,strlen(ss->s_mobile_id));
 										ioa_network_buffer_set_size(nbh,len);
 
+										if(!(*server->no_software_attribute))
 										{
 											const uint8_t *field = (const uint8_t *) get_version(server);
 											size_t fsz = strlen(get_version(server));
@@ -2248,6 +2249,7 @@ static void tcp_peer_accept_connection(ioa_socket_handle s, void *arg)
 
 		ioa_network_buffer_set_size(nbh,len);
 
+		if(!(*server->no_software_attribute))
 		{
 			const uint8_t *field = (const uint8_t *) get_version(server);
 			size_t fsz = strlen(get_version(server));
@@ -2525,6 +2527,7 @@ int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_co
 			}
 		}
 
+		if(!(*server->no_software_attribute))
 		{
 			size_t fsz = strlen(get_version(server));
 			const uint8_t *field = (const uint8_t *) get_version(server);
@@ -2867,7 +2870,7 @@ static int handle_turn_binding(turn_turnserver *server,
 
 		size_t len = ioa_network_buffer_get_size(nbh);
 		if (stun_set_binding_response_str(ioa_network_buffer_data(nbh), &len, tid,
-					get_remote_addr_from_ioa_socket(ss->client_socket), 0, NULL, cookie, old_stun) >= 0) {
+					get_remote_addr_from_ioa_socket(ss->client_socket), 0, NULL, cookie, old_stun, *server->no_stun_backward_compatibility) >= 0) {
 
 			addr_cpy(response_origin, get_local_addr_from_ioa_socket(ss->client_socket));
 
@@ -2881,14 +2884,16 @@ static int handle_turn_binding(turn_turnserver *server,
 
 			if(!is_rfc5780(server)) {
 
-				if(old_stun) {
-					stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len,
-								OLD_STUN_ATTRIBUTE_SOURCE_ADDRESS, response_origin);
-					stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len,
-								OLD_STUN_ATTRIBUTE_CHANGED_ADDRESS, response_origin);
-				} else {
-					stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len,
-							STUN_ATTRIBUTE_RESPONSE_ORIGIN, response_origin);
+				if(!(*server->response_origin_only_with_rfc5780)) {
+					if(old_stun) {
+						stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len,
+									OLD_STUN_ATTRIBUTE_SOURCE_ADDRESS, response_origin);
+						stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len,
+									OLD_STUN_ATTRIBUTE_CHANGED_ADDRESS, response_origin);
+					} else {
+						stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len,
+								STUN_ATTRIBUTE_RESPONSE_ORIGIN, response_origin);
+					}
 				}
 
 			} else if(ss->client_socket) {
@@ -3834,16 +3839,17 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 							&dest_changed, &response_destination,
 							0, 0);
 
-				if(server->verbose && server->log_binding) {
+				if(server->verbose && *(server->log_binding)) {
 				  log_method(ss, "BINDING", err_code, reason);
 				}
 
 				if(*resp_constructed && !err_code && (origin_changed || dest_changed)) {
 
-					if (server->verbose && server->log_binding) {
+					if (server->verbose && *(server->log_binding)) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "RFC 5780 request successfully processed\n");
 					}
 
+					if(!(*server->no_software_attribute))
 					{
 						const uint8_t *field = (const uint8_t *) get_version(server);
 						size_t fsz = strlen(get_version(server));
@@ -3945,6 +3951,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 			*resp_constructed = 1;
 		}
 
+		if(!(*server->no_software_attribute))
 		{
 			const uint8_t *field = (const uint8_t *) get_version(server);
 			size_t fsz = strlen(get_version(server));
@@ -4606,7 +4613,11 @@ static int read_client_connection(turn_turnserver *server,
 			return 0;
 		}
 
-	} else if (old_stun_is_command_message_str(ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh), &old_stun_cookie) && !(*(server->no_stun))) {
+	} else if (
+		old_stun_is_command_message_str(ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh), &old_stun_cookie) &&
+		!(*(server->no_stun)) &&
+		!(*(server->no_stun_backward_compatibility))
+	) {
 
 		ioa_network_buffer_handle nbh = ioa_network_buffer_allocate(server->e);
 		int resp_constructed = 0;
@@ -4840,6 +4851,7 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 						&(in_buffer->src_addr));
 				ioa_network_buffer_set_size(nbh,len);
 
+				if(!(*server->no_software_attribute))
 				{
 					const uint8_t *field = (const uint8_t *) get_version(server);
 					size_t fsz = strlen(get_version(server));
@@ -4932,7 +4944,9 @@ void init_turn_server(turn_turnserver* server,
 		const char* oauth_server_name,
 		const char* acme_redirect,
 		ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family,
-		vintp log_binding) {
+		vintp log_binding,
+		vintp no_stun_backward_compatibility,
+		vintp response_origin_only_with_rfc5780) {
 
 	if (!server)
 		return;
@@ -5006,6 +5020,10 @@ void init_turn_server(turn_turnserver* server,
 	set_ioa_timer(server->e, 1, 0, timer_timeout_handler, server, 1, "timer_timeout_handler");
 
 	server->log_binding = log_binding;
+
+	server->no_stun_backward_compatibility = no_stun_backward_compatibility;
+
+	server->response_origin_only_with_rfc5780 = response_origin_only_with_rfc5780;
 }
 
 ioa_engine_handle turn_server_get_engine(turn_turnserver *s) {

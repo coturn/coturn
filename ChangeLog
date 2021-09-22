@@ -9,7 +9,7 @@ Version 4.5.3 'dan Eider':
 	- replace keep-address-family with allocation-default-address-family (keep-address-family deprecated and will be removed!!)
 	- merge PR #703 (by j4zzc4t)
 		* Restore no_stdout_log behavior
-    - merge PR #727 (by JoKoT3)
+	- merge PR #727 (by JoKoT3)
 		* Support older mysql client version in configure
 	- merge PR #721 (by KangLin)
 		* Add to support cmake
@@ -19,6 +19,22 @@ Version 4.5.3 'dan Eider':
 		* Packaging scripts can miss out on these errors (exit code)
 	- merge PR #679 (by rubo77)
 		* Readme.turnserver: how to run server as a daemon
+	- merge PR #739 (by hills)
+		* SSL reload has hidden bugs which cause crashes
+	- Fix regression in PR #739
+	- Try to mitigate STUN amplification attatck
+		* Add new option --no-rfc5780
+		to force disable RFC8750
+		* Add new option --no-stun-backward-compatibility
+		Disable handling old STUN Binding requests and disable
+		MAPPED-ADDRESS attribute in binding response (use only the
+		XOR-MAPPED-ADDRESS)
+		* Add new option --response-origin-only-with-rfc5780
+		Add RESPONSE_ORIGIN attribute only if rfc5780 is enabled
+		* Don't send SOFTWARE attribute if --no-software-attribute
+		set on (BREAKING CHANGE)
+	- merge PR #767 (by ggalperi)
+	    * fix for log_binding (regression)
 
 10/01/2021 Oleg Moskalenko <mom040267@gmail.com> Mihály Mészáros <misi@majd.eu>
 Version 4.5.2 'dan Eider':
