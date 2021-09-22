@@ -50,6 +50,10 @@ typedef struct dtls_listener_relay_server_info dtls_listener_relay_server_type;
 
 ///////////////////////////////////////////
 
+#if DTLS_SUPPORTED
+void setup_dtls_callbacks(SSL_CTX *ctx);
+#endif
+
 dtls_listener_relay_server_type* create_dtls_listener_server(const char* ifname,
 							     const char *local_address, 
 							     int port,

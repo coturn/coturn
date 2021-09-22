@@ -2,61 +2,75 @@
 # Dockerfile of coturn/coturn:debian Docker image.
 #
 
-ARG debian_ver=buster
+ARG debian_ver=bullseye
 
 
 
 
 #
-# Stage 'dist-mongoc' creates mongo-c-driver distribution.
+# Stage 'dist-libprom' creates prometheus-client-c distribution.
 #
 
-# We compile mongo-c-driver from sources, because buster Debian `libmongoc` packages
-# cointain too old driver version, being not compatible with latest MongoDB versions well.
+# We compile prometheus-client-c from sources, because Debian doesn't provide
+# it as its package yet.
 #
-# TODO: Reconsider this on next stable Debian version update.
+# TODO: Re-check this to be present in packages on next Debian major version update.
 
 # https://hub.docker.com/_/debian
-FROM debian:${debian_ver}-slim AS dist-mongoc
+FROM debian:${debian_ver}-slim AS dist-libprom
 
 # Install tools for building.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends --no-install-suggests \
-            ca-certificates cmake g++ gcc git make python \
+            ca-certificates cmake g++ git make \
  && update-ca-certificates
 
-# Install mongo-c-driver build dependencies.
+# Install prometheus-client-c build dependencies.
 RUN apt-get install -y --no-install-recommends --no-install-suggests \
-            libssl-dev
+            libmicrohttpd-dev
 
-# Prepare mongo-c-driver sources for building.
-ARG mongoc_ver=1.17.5
-RUN mkdir -p /tmp/mongoc/src/ && cd /tmp/mongoc/src/ \
+# Prepare prometheus-client-c sources for building.
+ARG prom_ver=0.1.3
+RUN mkdir -p /build/ && cd /build/ \
  && git init \
- && git remote add origin https://github.com/mongodb/mongo-c-driver \
- && git fetch --depth=1 origin "${mongoc_ver}" \
- && git checkout FETCH_HEAD \
- && python build/calc_release_version.py > VERSION_CURRENT
+ && git remote add origin https://github.com/digitalocean/prometheus-client-c \
+ && git fetch --depth=1 origin "v${prom_ver}" \
+ && git checkout FETCH_HEAD
 
-# Build mongo-c-driver from sources.
-RUN mkdir -p /tmp/mongoc/build/ && cd /tmp/mongoc/build/ \
- && cmake -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF \
-          -DCMAKE_BUILD_TYPE=Release \
-          /tmp/mongoc/src
-RUN rm -rf /build && mkdir -p /build/ \
- && cd /tmp/mongoc/build/ \
- && DESTDIR=/build cmake --build . --target install
+# Build libprom.so from sources.
+RUN mkdir -p /build/prom/build/ && cd /build/prom/build/ \
+ && TEST=0 cmake -G "Unix Makefiles" \
+                 -DCMAKE_INSTALL_PREFIX=/usr \
+                 -DCMAKE_SKIP_BUILD_RPATH=TRUE \
+                 -DCMAKE_C_FLAGS="-DPROM_LOG_ENABLE -g -O3" \
+                 .. \
+ && make
 
-# Install mongo-c-driver.
+# Build libpromhttp.so from sources.
+RUN mkdir -p /build/promhttp/build/ && cd /build/promhttp/build/ \
+ # Fix compiler warning: -Werror=incompatible-pointer-types
+ && sed -i 's/\&promhttp_handler/(MHD_AccessHandlerCallback)\&promhttp_handler/' \
+           /build/promhttp/src/promhttp.c \
+ && TEST=0 cmake -G "Unix Makefiles" \
+                 -DCMAKE_INSTALL_PREFIX=/usr \
+                 -DCMAKE_SKIP_BUILD_RPATH=TRUE \
+                 -DCMAKE_C_FLAGS="-g -O3" \
+                 .. \
+ && make VERBOSE=1
+
+# Install prometheus-client-c.
 RUN LIBS_DIR=/out/$(dirname $(find /usr/ -name libc.so)) \
  && mkdir -p $LIBS_DIR/ \
- && cp -rf /build/usr/local/lib/* $LIBS_DIR/ \
+ && cp -rf /build/prom/build/libprom.so \
+           /build/promhttp/build/libpromhttp.so \
+       $LIBS_DIR/ \
  && mkdir -p /out/usr/include/ \
- && cp -rf /build/usr/local/include/libbson-1.0/* /out/usr/include/ \
- && cp -rf /build/usr/local/include/libmongoc-1.0/* /out/usr/include/ \
+ && cp -rf /build/prom/include/* \
+           /build/promhttp/include/* \
+       /out/usr/include/ \
  # Preserve license file.
- && mkdir -p /out/usr/share/licenses/mongo-c-driver/ \
- && cp /build/usr/local/share/mongo-c-driver/COPYING /out/usr/share/licenses/mongo-c-driver/
+ && mkdir -p /out/usr/share/licenses/prometheus-client-c/ \
+ && cp /build/LICENSE /out/usr/share/licenses/prometheus-client-c/
 
 
 
@@ -79,10 +93,12 @@ RUN apt-get install -y --no-install-recommends --no-install-suggests \
             libevent-dev \
             libssl-dev \
             libpq-dev libmariadb-dev libsqlite3-dev \
-            libhiredis-dev
+            libhiredis-dev \
+            libmongoc-dev \
+            libmicrohttpd-dev
 
-# Install mongo-c-driver distribution.
-COPY --from=dist-mongoc /out/ /
+# Install prometheus-client-c distribution.
+COPY --from=dist-libprom /out/ /
 
 # Prepare local Coturn sources for building.
 COPY CMakeLists.txt \
@@ -109,6 +125,10 @@ RUN if [ "${coturn_git_ref}" != 'HEAD' ]; then true \
  && git fetch --depth=1 origin "${coturn_git_ref}" \
  && git checkout FETCH_HEAD \
  && true; fi
+# TODO: Remove `OSLIBS` line with next Coturn release having it in `configure`.
+RUN if [ "${coturn_git_ref}" = '4.5.2' ]; then true \
+ && sed -i -e '850i\OSLIBS="$\{OSLIBS\} -latomic"' ./configure \
+ && true; fi
 
 # Build Coturn from sources.
 RUN ./configure --prefix=/usr \
@@ -133,6 +153,7 @@ RUN mkdir -p /out/ \
  && rm -f /out/etc/coturn/turnserver.conf.default
 
 # Install helper tools of Docker image.
+COPY docker/coturn/rootfs/ /out/
 COPY docker/coturn/debian/rootfs/ /out/
 RUN chmod +x /out/usr/local/bin/docker-entrypoint.sh \
              /out/usr/local/bin/detect-external-ip.sh
@@ -140,8 +161,8 @@ RUN ln -s /usr/local/bin/detect-external-ip.sh \
           /out/usr/local/bin/detect-external-ip
 RUN chown -R nobody:nogroup /out/var/lib/coturn/
 
-# Re-export mongo-c-driver distribution.
-COPY --from=dist-mongoc /out/ /out/
+# Re-export prometheus-client-c distribution.
+COPY --from=dist-libprom /out/ /out/
 
 
 
@@ -163,11 +184,17 @@ RUN apt-get update \
  && update-ca-certificates \
  # Install Coturn dependencies.
  && apt-get install -y --no-install-recommends --no-install-suggests \
-            libevent-2.1-6 libevent-core-2.1-6 libevent-extra-2.1-6 \
-            libevent-openssl-2.1-6 libevent-pthreads-2.1-6 \
+            libatomic1 \
+            libevent-2.1-7 libevent-core-2.1-7 libevent-extra-2.1-7 \
+            libevent-openssl-2.1-7 libevent-pthreads-2.1-7 \
             libssl1.1 \
             libpq5 libmariadb3 libsqlite3-0 \
             libhiredis0.14 \
+            libmongoc-1.0-0 \
+            libmicrohttpd12 \
+ # Install `dig` tool for `detect-external-ip.sh`.
+ && apt-get install -y --no-install-recommends --no-install-suggests \
+            dnsutils \
  # Cleanup unnecessary stuff.
  && rm -rf /var/lib/apt/lists/*
 

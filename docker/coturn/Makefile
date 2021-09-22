@@ -21,7 +21,7 @@ COTURN_VER ?= 4.5.2
 COTURN_MIN_VER = $(strip $(shell echo $(COTURN_VER) | cut -d '.' -f1,2))
 COTURN_MAJ_VER = $(strip $(shell echo $(COTURN_VER) | cut -d '.' -f1))
 
-BUILD_REV ?= 0
+BUILD_REV ?= 5
 
 NAMESPACES := coturn \
               ghcr.io/coturn \
@@ -71,8 +71,7 @@ test: test.docker
 
 docker-namespaces = $(strip $(if $(call eq,$(namespaces),),\
                             $(NAMESPACES),$(subst $(comma), ,$(namespaces))))
-docker-tags = $(subst $(comma), ,$(strip \
-                      $(if $(call eq,$(tags),),$(TAGS),$(tags))))
+docker-tags = $(subst $(comma), ,$(or $(tags),$(TAGS)))
 docker-platforms = $(strip $(if $(call eq,$(platforms),),\
                            $(PLATFORMS),$(subst $(comma), ,$(platforms))))
 
@@ -90,7 +89,7 @@ define docker.buildx
 	docker buildx build --force-rm $(args) \
 		--platform $(platform) \
 		$(if $(call eq,$(no-cache),yes),--no-cache --pull,) \
-		$(if $(call eq,$(git-ref),),,--build-arg git_ref=$(git-ref)) \
+		$(if $(call eq,$(git-ref),),,--build-arg coturn_git_ref=$(git-ref)) \
 		-f docker/coturn/$(dockerfile)/Dockerfile \
 		-t $(namespace)/$(NAME):$(tag) ./
 endef
@@ -130,9 +129,9 @@ docker.build.cache:
 docker.image:
 	$(call docker.buildx,$(DOCKERFILE),\
 		coturn,\
-		$(if $(call eq,$(tag),),$(VERSION),$(tag)),\
+		$(or $(tag),$(VERSION)),\
 		$(ref),\
-		$(if $(call eq,$(platform),),$(MAIN_PLATFORM),$(platform)),\
+		$(or $(platform),$(MAIN_PLATFORM)),\
 		$(no-cache),\
 		--load)
 
@@ -176,6 +175,7 @@ docker.push:
 #		[( [build=no]
 #		 | build=yes [DOCKERFILE=(debian|alpine)]
 #		             [ref=<git-ref>] )]
+#		[with=ipv6]
 
 test-docker-platforms = $(strip $(if $(call eq,$(platforms),),$(MAIN_PLATFORM),\
                                 $(if $(call eq,$(platforms),@all),$(PLATFORMS),\
@@ -185,9 +185,7 @@ ifeq ($(wildcard node_modules/.bin/bats),)
 	@make npm.install
 endif
 	$(foreach platform,$(test-docker-platforms),\
-		$(call test.docker.do,\
-			$(if $(call eq,$(tag),),$(VERSION),$(tag)),\
-			$(platform)))
+		$(call test.docker.do,$(or $(tag),$(VERSION)),$(platform)))
 define test.docker.do
 	$(eval tag := $(strip $(1)))
 	$(eval platform := $(strip $(2)))
@@ -195,6 +193,7 @@ define test.docker.do
 		@make docker.image DOCKERFILE=$(DOCKERFILE) \
 			no-cache=no tag=$(tag) platform=$(platform) ref=$(ref) ,)
 	IMAGE=coturn/$(NAME):$(tag) PLATFORM=$(platform) \
+	$(if $(call eq,$(with),ipv6),TEST_IPV6=1,) \
 	node_modules/.bin/bats \
 		--timing $(if $(call eq,$(CI),),--pretty,--formatter tap) \
 		tests/main.bats
@@ -233,7 +232,7 @@ endif
 # Usage:
 #	make git.release [ver=($(VERSION)|<proj-ver>)]
 
-git-release-tag = docker/$(strip $(if $(call eq,$(ver),),$(VERSION),$(ver)))
+git-release-tag = docker/$(strip $(or $(ver),$(VERSION)))
 
 git.release:
 ifeq ($(shell git rev-parse $(git-release-tag) >/dev/null 2>&1 && echo "ok"),ok)

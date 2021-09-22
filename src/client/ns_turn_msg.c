@@ -1140,7 +1140,7 @@ void stun_set_binding_request_str(uint8_t* buf, size_t *len) {
 
 int stun_set_binding_response_str(uint8_t* buf, size_t *len, stun_tid* tid, 
 				  const ioa_addr *reflexive_addr, int error_code, const uint8_t *reason,
-				  uint32_t cookie, int old_stun)
+				  uint32_t cookie, int old_stun, int no_stun_backward_compatibility)
 
 {
 	if (!error_code) {
@@ -1154,7 +1154,7 @@ int stun_set_binding_response_str(uint8_t* buf, size_t *len, stun_tid* tid,
 				return -1;
 		}
 		if(reflexive_addr) {
-			if (stun_attr_add_addr_str(buf, len, STUN_ATTRIBUTE_MAPPED_ADDRESS, reflexive_addr) < 0)
+			if (!no_stun_backward_compatibility && stun_attr_add_addr_str(buf, len, STUN_ATTRIBUTE_MAPPED_ADDRESS, reflexive_addr) < 0)
 				return -1;
 		}
 	} else if (!old_stun) {
