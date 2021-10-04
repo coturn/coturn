@@ -1647,7 +1647,7 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s)
 		addr_cpy(&(ret->local_addr),&(s->local_addr));
 		ret->connected = s->connected;
 		addr_cpy(&(ret->remote_addr),&(s->remote_addr));
-		
+
 		delete_socket_from_map(s);
 		delete_socket_from_parent(s);
 
@@ -2778,7 +2778,7 @@ void close_ioa_socket_after_processing_if_necessary(ioa_socket_handle s)
 
 static void socket_output_handler_bev(struct bufferevent *bev, void* arg)
 {
-	
+
 	UNUSED_ARG(bev);
 	UNUSED_ARG(arg);
 
@@ -3346,7 +3346,7 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 							  char sto[129];
 							  addr_to_string(dest_addr, (uint8_t*)sto);
 							  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
-									"%s: network error: address unreachable from %s to %s\n", 
+									"%s: network error: address unreachable from %s to %s\n",
 									__FUNCTION__,sfrom,sto);
 							}
 #endif
@@ -3718,8 +3718,14 @@ void turn_report_allocation_set(void *a, turn_time_t lifetime, int refresh)
 					} else {
 						snprintf(key,sizeof(key),"turn/user/%s/allocation/%018llu/status",(char*)ss->username, (unsigned long long)ss->id);
 					}
-					send_message_to_redis(e->rch, "set", key, "%s lifetime=%lu", status, (unsigned long)lifetime);
-					send_message_to_redis(e->rch, "publish", key, "%s lifetime=%lu", status, (unsigned long)lifetime);
+					uint8_t saddr[129];
+					uint8_t rsaddr[129];
+					addr_to_string(get_local_addr_from_ioa_socket(ss->client_socket), saddr);
+					addr_to_string(get_remote_addr_from_ioa_socket(ss->client_socket), rsaddr);
+					const char *ssl = ss->client_socket->ssl ? turn_get_ssl_method(ss->client_socket->ssl, "UNKNOWN") : "NONE";
+					const char *cipher = ss->client_socket->ssl ? get_ioa_socket_cipher(ss->client_socket) : "NONE";
+					send_message_to_redis(e->rch, "set", key, "%s lifetime=%lu, type=%s, local=%s, remote=%s, ssl=%s, cipher=%s", status, (unsigned long)lifetime, socket_type_name(get_ioa_socket_type(ss->client_socket)), saddr, rsaddr, ssl, cipher);
+					send_message_to_redis(e->rch, "publish", key, "%s lifetime=%lu, type=%s, local=%s, remote=%s, ssl=%s, cipher=%s", status, (unsigned long)lifetime, socket_type_name(get_ioa_socket_type(ss->client_socket)), saddr, rsaddr, ssl, cipher);
 				}
 #endif
 			}
