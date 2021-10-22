@@ -286,6 +286,8 @@ Flags:
 			disabled. Would listen on port 9641 under the path /metrics
 			also the path / on this port can be used as a health check
 
+--prometheus-port	Prometheus listener port (Default: 9641).
+
 -h			Help.
 
 Options with values:
