@@ -2,6 +2,11 @@
 
 project(turnserver)
 
+check_function_exists("pthread_barrier_init" HAVE_THREAD_BARRIERS)
+if(NOT HAVE_THREAD_BARRIERS)
+    list(APPEND turnserver_DEFINED TURN_NO_THREAD_BARRIERS)
+endif()
+
 set(HEAD_FILES
     tls_listener.h
     mainrelay.h

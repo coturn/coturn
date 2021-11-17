@@ -214,7 +214,7 @@ void init_turn_server_addrs_list(turn_server_addrs_list_t *l)
 	if(l) {
 		l->addrs = NULL;
 		l->size = 0;
-		turn_mutex_init(&(l->m));
+		TURN_MUTEX_INIT(&(l->m));
 	}
 }
 
@@ -3641,9 +3641,9 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 					}
 
 					if(asl && asl->size) {
-						turn_mutex_lock(&(asl->m));
+						TURN_MUTEX_LOCK(&(asl->m));
 						set_alternate_server(asl,get_local_addr_from_ioa_socket(ss->client_socket),&(server->as_counter),method,&tid,resp_constructed,&err_code,&reason,nbh);
-						turn_mutex_unlock(&(asl->m));
+						TURN_MUTEX_UNLOCK(&(asl->m));
 					}
 				}
 			}

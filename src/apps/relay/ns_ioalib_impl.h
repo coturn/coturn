@@ -55,7 +55,9 @@
 
 #include "ns_sm.h"
 
+#if defined(__linux__)
 #include <pthread.h>
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -108,7 +110,9 @@ struct relay_server {
 	struct bufferevent *auth_out_buf;
 	ioa_engine_handle ioa_eng;
 	turn_turnserver server;
+#if defined(__linux__)
 	pthread_t thr;
+#endif
 };
 
 struct message_to_relay {

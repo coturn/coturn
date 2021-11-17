@@ -67,7 +67,7 @@
 static realm_params_t *default_realm_params_ptr = NULL;
 
 static ur_string_map *realms = NULL;
-static turn_mutex o_to_realm_mutex;
+static TURN_MUTEX_DECLARE(o_to_realm_mutex);
 static ur_string_map *o_to_realm = NULL;
 static secrets_list_t realms_list;
 
@@ -1074,8 +1074,8 @@ void run_db_test(void)
 static pthread_rwlock_t* whitelist_rwlock = NULL;
 static pthread_rwlock_t* blacklist_rwlock = NULL;
 #else
-static turn_mutex whitelist_mutex;
-static turn_mutex blacklist_mutex;
+static TURN_MUTEX_DECLARE(whitelist_mutex);
+static TURN_MUTEX_DECLARE(blacklist_mutex);
 #endif
 
 static ip_range_list_t* ipwhitelist = NULL;
@@ -1090,8 +1090,8 @@ void init_dynamic_ip_lists(void)
 	blacklist_rwlock = (pthread_rwlock_t*) malloc(sizeof(pthread_rwlock_t));
 	pthread_rwlock_init(blacklist_rwlock, NULL);
 #else
-	turn_mutex_init(&whitelist_mutex);
-	turn_mutex_init(&blacklist_mutex);
+	TURN_MUTEX_INIT(&whitelist_mutex);
+	TURN_MUTEX_INIT(&blacklist_mutex);
 #endif
 }
 
@@ -1101,7 +1101,7 @@ void ioa_lock_whitelist(ioa_engine_handle e)
 #if !defined(TURN_NO_RWLOCK)
 	pthread_rwlock_rdlock(whitelist_rwlock);
 #else
-	turn_mutex_lock(&whitelist_mutex);
+	TURN_MUTEX_LOCK(&whitelist_mutex);
 #endif
 }
 void ioa_unlock_whitelist(ioa_engine_handle e)
@@ -1110,7 +1110,7 @@ void ioa_unlock_whitelist(ioa_engine_handle e)
 #if !defined(TURN_NO_RWLOCK)
 	pthread_rwlock_unlock(whitelist_rwlock);
 #else
-	turn_mutex_unlock(&whitelist_mutex);
+	TURN_MUTEX_UNLOCK(&whitelist_mutex);
 #endif
 }
 static void ioa_wrlock_whitelist(ioa_engine_handle e)
@@ -1119,7 +1119,7 @@ static void ioa_wrlock_whitelist(ioa_engine_handle e)
 #if !defined(TURN_NO_RWLOCK)
 	pthread_rwlock_wrlock(whitelist_rwlock);
 #else
-	turn_mutex_lock(&whitelist_mutex);
+	TURN_MUTEX_LOCK(&whitelist_mutex);
 #endif
 }
 const ip_range_list_t* ioa_get_whitelist(ioa_engine_handle e)
@@ -1134,7 +1134,7 @@ void ioa_lock_blacklist(ioa_engine_handle e)
 #if !defined(TURN_NO_RWLOCK)
 	pthread_rwlock_rdlock(blacklist_rwlock);
 #else
-	turn_mutex_lock(&blacklist_mutex);
+	TURN_MUTEX_LOCK(&blacklist_mutex);
 #endif
 }
 void ioa_unlock_blacklist(ioa_engine_handle e)
@@ -1143,7 +1143,7 @@ void ioa_unlock_blacklist(ioa_engine_handle e)
 #if !defined(TURN_NO_RWLOCK)
 	pthread_rwlock_unlock(blacklist_rwlock);
 #else
-	turn_mutex_unlock(&blacklist_mutex);
+	TURN_MUTEX_UNLOCK(&blacklist_mutex);
 #endif
 }
 static void ioa_wrlock_blacklist(ioa_engine_handle e)
@@ -1152,7 +1152,7 @@ static void ioa_wrlock_blacklist(ioa_engine_handle e)
 #if !defined(TURN_NO_RWLOCK)
 	pthread_rwlock_wrlock(blacklist_rwlock);
 #else
-	turn_mutex_lock(&blacklist_mutex);
+	TURN_MUTEX_LOCK(&blacklist_mutex);
 #endif
 }
 const ip_range_list_t* ioa_get_blacklist(ioa_engine_handle e)

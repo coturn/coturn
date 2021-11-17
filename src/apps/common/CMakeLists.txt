@@ -15,8 +15,9 @@ set(HEADER_FILES
     stun_buffer.h
     )
 
-if(NOT WIN32)
-    set(COMMON_LIBS pthread)
+find_package(Threads)
+if(Threads_FOUND)
+    set(COMMON_LIBS Threads::Threads)
 endif()
 set(libevent_components core extra openssl)
 if(NOT WIN32)

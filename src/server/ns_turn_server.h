@@ -47,7 +47,7 @@ extern "C" {
 struct _turn_server_addrs_list {
 	ioa_addr *addrs;
 	volatile size_t size;
-	turn_mutex m;
+	TURN_MUTEX_DECLARE(m);
 };
 
 typedef struct _turn_server_addrs_list turn_server_addrs_list_t;
