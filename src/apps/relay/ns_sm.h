@@ -37,8 +37,6 @@
 
 #include "ns_turn_ioalib.h"
 
-//TODO: #include <pthread.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif

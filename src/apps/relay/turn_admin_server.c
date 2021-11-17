@@ -39,8 +39,6 @@
 #include <locale.h>
 #include <libgen.h>
 
-#include <pthread.h>
-
 #include <signal.h>
 
 #include "libtelnet.h"

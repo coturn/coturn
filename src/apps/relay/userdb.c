@@ -39,7 +39,9 @@
 #include <locale.h>
 #include <libgen.h>
 
+#if !defined(TURN_NO_RWLOCK)
 #include <pthread.h>
+#endif
 
 #include <signal.h>
 
