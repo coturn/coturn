@@ -4,6 +4,16 @@ Coturn TURN server Docker image changelog
 
 
 
+## [4.5.2-r7] · 2021-11-25
+[4.5.2-r7]: /../../tree/docker/4.5.2-r7
+
+### Upgraded
+
+- [Alpine Linux] 3.15: <https://alpinelinux.org/posts/Alpine-3.15.0-released.html>
+
+
+
+
 ## [4.5.2-r6] · 2021-11-15
 [4.5.2-r6]: /../../tree/docker/4.5.2-r6
 

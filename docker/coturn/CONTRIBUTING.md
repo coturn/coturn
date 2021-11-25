@@ -49,7 +49,7 @@ To produce a new release (version tag) of `coturn/coturn` Docker image, perform 
 
 3. Update [README] with the new version declared in [`Makefile`].
 
-4. Perform a `make release` command inside the`docker/coturn/` directory.
+4. Perform a `make release` command inside the `docker/coturn/` directory.
 
 
 
