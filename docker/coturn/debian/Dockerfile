@@ -214,7 +214,7 @@ RUN apt-get update \
 
 USER nobody:nogroup
 
-EXPOSE 3478 3478/udp
+EXPOSE 3478 3478/udp 5349 5349/udp
 
 VOLUME ["/var/lib/coturn"]
 
