@@ -4,6 +4,18 @@ Coturn TURN server Docker image changelog
 
 
 
+## [4.5.2-r8] · 2021-12-03
+[4.5.2-r8]: /../../tree/docker/4.5.2-r8
+
+### Added
+
+- Default TLS ports. ([#860])
+
+[#860]: /../../pull/860
+
+
+
+
 ## [4.5.2-r7] · 2021-11-25
 [4.5.2-r7]: /../../tree/docker/4.5.2-r7
 
