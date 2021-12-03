@@ -173,6 +173,7 @@ TURN_CREDENTIALS_NONE, /* ct */
 0, /* user_quota */
 #if !defined(TURN_NO_PROMETHEUS)
 0, /* prometheus disabled by default */
+0, /* collect per-user metrics by default */
 #endif
 ///////////// Users DB //////////////
 { (TURN_USERDB_TYPE)0, {"\0"}, {0,NULL, {NULL,0}} },
@@ -559,6 +560,8 @@ static char Usage[] = "Usage: turnserver [options]\n"
 #if !defined(TURN_NO_PROMETHEUS)
 " --prometheus					Enable prometheus metrics. It is disabled by default. If it is enabled it will listen on port 9641 unther the path /metrics\n"
 "						also the path / on this port can be used as a health check\n"
+" --no-user-prom-metrics		Disable prometheus per-user metrics. It is enabled by default. If it is disabled prometheus will collect\n"
+"						only overall total metrics without {realm,user} labels.\n"
 #endif
 " --use-auth-secret				TURN REST API flag.\n"
 "						Flag that sets a special authorization option that is based upon authentication secret\n"
@@ -787,6 +790,7 @@ enum EXTRA_OPTS {
 	CHANNEL_LIFETIME_OPT,
 	PERMISSION_LIFETIME_OPT,
 	PROMETHEUS_OPT,
+	NO_USER_PROM_METRICS_OPT,
 	AUTH_SECRET_OPT,
 	NO_AUTH_PINGS_OPT,
 	NO_DYNAMIC_IP_LIST_OPT,
@@ -902,6 +906,7 @@ static const struct myoption long_options[] = {
 #endif
 #if !defined(TURN_NO_PROMETHEUS)
 				{ "prometheus", optional_argument, NULL, PROMETHEUS_OPT },
+				{ "no-user-prom-metrics", optional_argument, NULL, NO_USER_PROM_METRICS_OPT },
 #endif
 				{ "use-auth-secret", optional_argument, NULL, AUTH_SECRET_OPT },
 				{ "static-auth-secret", required_argument, NULL, STATIC_AUTH_SECRET_VAL_OPT },
@@ -1533,6 +1538,9 @@ static void set_option(int c, char *value)
 #if !defined(TURN_NO_PROMETHEUS)
 	case PROMETHEUS_OPT:
 		turn_params.prometheus = 1;
+		break;
+	case NO_USER_PROM_METRICS_OPT:
+		turn_params.no_user_prom_metrics = 1;
 		break;
 #endif
 	case AUTH_SECRET_OPT:

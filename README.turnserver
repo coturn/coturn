@@ -284,6 +284,9 @@ Flags:
  --prometheus		Enable prometheus metrics. By default it is
 			disabled. Would listen on port 9641 unther the path /metrics
 			also the path / on this port can be used as a health check
+--no-user-prom-metrics		Disable prometheus per-user metrics. It is
+			enabled by default. If it is disabled prometheus will collect
+			only overall total metrics without {realm,user} labels.
 
 -h			Help.
 
