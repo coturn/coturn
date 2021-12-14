@@ -90,6 +90,8 @@ define docker.buildx
 		--platform $(platform) \
 		$(if $(call eq,$(no-cache),yes),--no-cache --pull,) \
 		$(if $(call eq,$(git-ref),),,--build-arg coturn_git_ref=$(git-ref)) \
+		--build-arg coturn_github_server_url=$${GITHUB_SERVER_URL:-https://github.com} \
+		--build-arg coturn_github_repository=$${GITHUB_REPOSITORY:-coturn/coturn} \
 		--label org.opencontainers.image.version=`git describe` \
 		--label org.opencontainers.image.revision=`git show --pretty=format:%H --no-patch` \
 		-f docker/coturn/$(dockerfile)/Dockerfile \

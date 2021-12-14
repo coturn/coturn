@@ -119,10 +119,13 @@ WORKDIR /app/
 
 # Use Coturn sources from Git if `coturn_git_ref` is specified.
 ARG coturn_git_ref=HEAD
+ARG coturn_github_server_url=https://github.com
+ARG coturn_github_repository=coturn/coturn
+
 RUN if [ "${coturn_git_ref}" != 'HEAD' ]; then true \
  && rm -rf /app/* \
  && git init \
- && git remote add origin https://github.com/coturn/coturn \
+ && git remote add origin ${coturn_github_server_url}/${coturn_github_repository} \
  && git fetch --depth=1 origin "${coturn_git_ref}" \
  && git checkout FETCH_HEAD \
  && true; fi
