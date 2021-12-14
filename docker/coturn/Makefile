@@ -90,6 +90,8 @@ define docker.buildx
 		--platform $(platform) \
 		$(if $(call eq,$(no-cache),yes),--no-cache --pull,) \
 		$(if $(call eq,$(git-ref),),,--build-arg coturn_git_ref=$(git-ref)) \
+		--label org.opencontainers.image.version=`git describe` \
+		--label org.opencontainers.image.revision=`git show --pretty=format:%H --no-patch` \
 		-f docker/coturn/$(dockerfile)/Dockerfile \
 		-t $(namespace)/$(NAME):$(tag) ./
 endef
