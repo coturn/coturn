@@ -97,8 +97,8 @@ define docker.buildx
 		--label org.opencontainers.image.source=$(github_url)/$(github_repo) \
 		--label org.opencontainers.image.revision=$(strip \
 			$(shell git show --pretty=format:%H --no-patch)) \
-		--label org.opencontainers.image.version=$(strip \
-			$(shell git describe --tags --dirty --match='docker/*')) \
+		--label org.opencontainers.image.version=$(subst docker/,,$(strip \
+			$(shell git describe --tags --dirty --match='docker/*'))) \
 		-f docker/coturn/$(dockerfile)/Dockerfile \
 		-t $(namespace)/$(NAME):$(tag) ./
 endef
