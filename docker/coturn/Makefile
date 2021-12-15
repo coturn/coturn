@@ -85,11 +85,20 @@ define docker.buildx
 	$(eval platform := $(strip $(5)))
 	$(eval no-cache := $(strip $(6)))
 	$(eval args := $(strip $(7)))
+	$(eval github_url := $(strip $(or $(GITHUB_SERVER_URL),https://github.com)))
+	$(eval github_repo := $(strip $(or $(GITHUB_REPOSITORY),coturn/coturn)))
 	cd ../../ && \
 	docker buildx build --force-rm $(args) \
 		--platform $(platform) \
 		$(if $(call eq,$(no-cache),yes),--no-cache --pull,) \
 		$(if $(call eq,$(git-ref),),,--build-arg coturn_git_ref=$(git-ref)) \
+		--build-arg coturn_github_url=$(github_url) \
+		--build-arg coturn_github_repo=$(github_repo) \
+		--label org.opencontainers.image.source=$(github_url)/$(github_repo) \
+		--label org.opencontainers.image.revision=$(strip \
+			$(shell git show --pretty=format:%H --no-patch)) \
+		--label org.opencontainers.image.version=$(subst docker/,,$(strip \
+			$(shell git describe --tags --dirty --match='docker/*'))) \
 		-f docker/coturn/$(dockerfile)/Dockerfile \
 		-t $(namespace)/$(NAME):$(tag) ./
 endef

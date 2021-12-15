@@ -118,10 +118,13 @@ WORKDIR /app/
 
 # Use Coturn sources from Git if `coturn_git_ref` is specified.
 ARG coturn_git_ref=HEAD
+ARG coturn_github_url=https://github.com
+ARG coturn_github_repo=coturn/coturn
+
 RUN if [ "${coturn_git_ref}" != 'HEAD' ]; then true \
  && rm -rf /app/* \
  && git init \
- && git remote add origin https://github.com/coturn/coturn \
+ && git remote add origin ${coturn_github_url}/${coturn_github_repo} \
  && git fetch --depth=1 origin "${coturn_git_ref}" \
  && git checkout FETCH_HEAD \
  && true; fi
@@ -173,8 +176,6 @@ COPY --from=dist-libprom /out/ /out/
 
 # https://hub.docker.com/_/debian
 FROM debian:${debian_ver}-slim AS runtime
-
-LABEL org.opencontainers.image.source="https://github.com/coturn/coturn"
 
 # Update system packages.
 RUN apt-get update \
