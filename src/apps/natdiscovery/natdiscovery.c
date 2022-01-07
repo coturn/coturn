@@ -580,7 +580,7 @@ static char Usage[] =
 "        -p      STUN server port (Default: 3478)\n"
 "        -L      Local address to use (optional)\n"
 "        -l      Local port to use (use with -L)\n"
-"        -A      Local alrernative address to use\n"
+"        -A      Local alternative address to use\n"
 "                Used by collision behavior discovery\n"
 "        -T      Mapping lifetime timer (sec)\n"
 "                Used by mapping lifetime behavior discovery\n";
