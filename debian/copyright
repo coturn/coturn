@@ -23,7 +23,7 @@ Comment:
 
 Files: debian/*
 Copyright: 2012 Daniel Pocock <daniel@pocock.com.au>
-	   2013, 2014 Oleg Moskalenko <mom040267@gmail.com>
+           2013, 2014 Oleg Moskalenko <mom040267@gmail.com>
 License: GPL-3+
 Comment:
  The GPL can be found in /usr/share/common-licenses/GPL-3
