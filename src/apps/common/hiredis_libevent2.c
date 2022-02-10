@@ -345,7 +345,7 @@ static void redis_reconnect(struct redisLibeventEvents *e)
 
   /* Initialize and install read/write events */
   e->rev = event_new(e->base,e->context->c.fd,
-  		     EV_READ,redisLibeventReadEvent,
+  		     EV_READ|EV_PERSIST,redisLibeventReadEvent,
   		     e);
 
   e->wev = event_new(e->base,e->context->c.fd,
