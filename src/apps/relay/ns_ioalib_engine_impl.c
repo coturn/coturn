@@ -2945,8 +2945,8 @@ static void eventcb_bev(struct bufferevent *bev, short events, void *arg)
 			{
 				tcp_connection *tc = s->sub_session;
 				if (tc) {
-					delete_tcp_connection(tc);
 					s->sub_session = NULL;
+					delete_tcp_connection(tc);
 				}
 			}
 				break;
