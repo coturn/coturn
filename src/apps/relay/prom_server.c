@@ -70,8 +70,7 @@ int start_prometheus_server(void){
 
   promhttp_set_active_collector_registry(NULL);
 
-
-  struct MHD_Daemon *daemon = promhttp_start_daemon(MHD_USE_SELECT_INTERNALLY, turn_params.prometheus_port, NULL, NULL);
+  struct MHD_Daemon *daemon = promhttp_start_daemon(MHD_USE_SELECT_INTERNALLY | MHD_USE_DUAL_STACK, turn_params.prometheus_port, NULL, NULL);
   if (daemon == NULL) {
     return -1;
   }
