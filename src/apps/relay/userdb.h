@@ -182,6 +182,7 @@ void clean_secrets_list(secrets_list_t *sl);
 size_t get_secrets_list_size(secrets_list_t *sl);
 const char* get_secrets_list_elem(secrets_list_t *sl, size_t i);
 void add_to_secrets_list(secrets_list_t *sl, const char* elem);
+void init_zrest_regex(void);
 
 /////////// USER DB CHECK //////////////////
 

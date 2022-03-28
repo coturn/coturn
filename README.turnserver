@@ -198,6 +198,14 @@ Flags:
 			The actual value of the secret is defined either by option static-auth-secret,
 			or can be found in the turn_secret table in the database.
 
+--zrest 		Use the zrest authentication scheme. This scheme is almost the
+			same as the TURN REST API, except it uses a different username
+			format and password derivation algorithm. This flag enables
+			the TURN REST API, as with --use-auth-secret, and uses the
+			same secrets, either given in the configuration file or in the
+			database, but uses the zrest-specific username and password
+			handling.
+
 --oauth			Support oAuth authentication, as in the third-party STUN/TURN RFC 7635.
 
 --dh566			Use 566 bits predefined DH TLS key. Default size of the key is 2066.

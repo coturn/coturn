@@ -38,6 +38,9 @@
 #include <getopt.h>
 #include <locale.h>
 #include <libgen.h>
+#include <errno.h>
+#include <inttypes.h>
+#include <regex.h>
 
 #include <pthread.h>
 
@@ -61,6 +64,14 @@
 #include "ns_turn_maps.h"
 
 #include "apputils.h"
+
+
+#define ZREST_USERNAME_REGEX	"^d=([0-9]+)\\.v=1\\.k=([0-9]+)\\.t=s\\.r=[a-z0-9]*$"
+#define ZREST_USERNAME_CAPTURES	3
+#define ZREST_DEADLINE_CAP	1
+#define ZREST_KEYINDEX_CAP	2
+
+static regex_t zrest_username_regex;
 
 //////////// REALM //////////////
 
@@ -395,6 +406,78 @@ static char *get_real_username(char *usname)
 	return strdup(usname);
 }
 
+static int zrest_validate_username(char *usname, uint32_t *keyindex, turn_time_t *deadline)
+{
+	regmatch_t matches[ZREST_USERNAME_CAPTURES];
+	int ret;
+	unsigned long conv;
+	char *span, *tmp, *endptr;
+	regoff_t span_len;
+
+	ret = -1;
+
+	if(regexec(&zrest_username_regex, usname, ZREST_USERNAME_CAPTURES, matches, 0)!=0) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Username does not match token format: %s\n", usname);
+		goto regout;
+	}
+
+	if(matches[ZREST_DEADLINE_CAP].rm_so == -1 || matches[ZREST_KEYINDEX_CAP].rm_so == -1) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Empty capture groups in valid zrest username\n");
+		goto regout;
+	}
+
+	span = &usname[matches[ZREST_KEYINDEX_CAP].rm_so];
+	span_len = matches[ZREST_KEYINDEX_CAP].rm_eo - matches[ZREST_KEYINDEX_CAP].rm_so;
+	tmp = strndup(span, (size_t) span_len);
+	if(!tmp)
+		goto regout;
+
+	errno = 0;
+	conv = strtoul(span, &endptr, 10);
+	if(!endptr)
+		goto tmpout;
+	if(errno!=0)
+		goto tmpout;
+	if(conv>(unsigned long) UINT32_MAX)
+		goto tmpout;
+
+	*keyindex = (uint32_t) conv;
+	free(tmp);
+
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "zrest authentication version 1 (keyindex=%" PRIu32 ")\n", *keyindex);
+
+	span = &usname[matches[ZREST_DEADLINE_CAP].rm_so];
+	span_len = matches[ZREST_DEADLINE_CAP].rm_eo - matches[ZREST_DEADLINE_CAP].rm_so;
+	tmp = strndup(span, (size_t) span_len);
+	if(!tmp)
+		goto regout;
+
+	errno = 0;
+	conv = strtoul(span, &endptr, 10);
+	if(!endptr)
+		goto tmpout;
+	if(errno!=0)
+		goto tmpout;
+	if(conv>(unsigned long) UINT32_MAX)
+		goto tmpout;
+
+	*deadline = (turn_time_t) conv;
+	ret = 0;
+
+tmpout:
+	free(tmp);
+regout:
+	return ret;
+}
+
+void init_zrest_regex() {
+	if(regcomp(&zrest_username_regex, ZREST_USERNAME_REGEX, REG_EXTENDED)!=0) {
+		fputs("regcomp: could not compile zrest username regex\n", stderr);
+		exit(-1);
+	}
+}
+
+
 /*
  * Password retrieval
  */
@@ -529,6 +612,67 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
 	}
 
 	if(out_oauth && *out_oauth) {
+		return ret;
+	}
+
+	if(turn_params.use_zrest_auth_secret) {
+		uint32_t kidx;
+		turn_time_t deadline, now;
+		secrets_list_t sl;
+		unsigned char hmac[MAXSHASIZE];
+		unsigned int hmac_len;
+		char *pwd;
+		size_t sll = 0, pwd_len;
+		password_t pwdtmp;
+
+		if(zrest_validate_username((char *)usname, &kidx, &deadline)!=0)
+			return ret;
+
+		now = (turn_time_t) time(NULL);
+		if (!turn_time_before(now, deadline)) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "zrest authentication token expired\n");
+			return ret;
+		}
+
+		init_secrets_list(&sl);
+
+		if(get_auth_secrets(&sl, realm)<0)
+			return ret;
+
+		for(sll=0;sll<get_secrets_list_size(&sl);++sll) {
+			const char* secret = get_secrets_list_elem(&sl, sll);
+
+			if(!secret)
+				continue;
+
+			if(stun_calculate_hmac(usname, strlen((char*)usname), (const uint8_t *)secret, strlen(secret), hmac, &hmac_len, SHATYPE_SHA512)!=0)
+				continue;
+
+			pwd = base64_encode(hmac, hmac_len, &pwd_len);
+			if(!pwd)
+				continue;
+			if(pwd_len < 1) {
+				free(pwd);
+				continue;
+			}
+
+			if(stun_produce_integrity_key_str((uint8_t *)usname, realm, (uint8_t *)pwd, key, SHATYPE_DEFAULT)!=0) {
+				free(pwd);
+				continue;
+			}
+
+			if(stun_check_message_integrity_by_key_str(TURN_CREDENTIALS_LONG_TERM, ioa_network_buffer_data(nbh), ioa_network_buffer_get_size(nbh), key, pwdtmp, SHATYPE_DEFAULT)<1) {
+				free(pwd);
+				continue;
+			}
+
+			free(pwd);
+			ret = 0;
+			break;
+		}
+
+		clean_secrets_list(&sl);
+
 		return ret;
 	}
 
@@ -715,7 +859,7 @@ void release_allocation_quota(uint8_t *user, int oauth, uint8_t *realm)
 int add_static_user_account(char *user)
 {
 	/* Realm is either default or empty for users taken from file or command-line */
-	if(user && !turn_params.use_auth_secret_with_timestamp) {
+	if(user && !turn_params.use_auth_secret_with_timestamp && !turn_params.use_zrest_auth_secret) {
 		char *s = strstr(user, ":");
 		if(!s || (s==user) || (strlen(s)<2)) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong user account: %s\n",user);
