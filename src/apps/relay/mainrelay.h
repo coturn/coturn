@@ -312,6 +312,7 @@ typedef struct _turn_params_ {
   vint mobility;
   turn_credential_type ct;
   int use_auth_secret_with_timestamp;
+  int use_zrest_auth_secret;
   band_limit_t max_bps;
   band_limit_t bps_capacity;
   band_limit_t bps_capacity_allocated;
