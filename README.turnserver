@@ -293,12 +293,11 @@ Flags:
 --prometheus		Enable prometheus metrics. By default it is
 			disabled. Would listen on port 9641 under the path /metrics
 			also the path / on this port can be used as a health check
- --prometheus-username-labels	Enable labeling prometheus traffic
+			See also options --prometheus-ip and --prometheus-port.
+--prometheus-username-labels	Enable labeling prometheus traffic
 			metrics with client usernames. Labeling with client usernames is
 			disabled by default, beacuse this may cause memory leaks when using
 			authentication with ephemeral usernames (e.g. TURN REST API).
-
---prometheus-port	Prometheus listener port (Default: 9641).
 
 -h			Help.
 
@@ -597,6 +596,10 @@ Options with values:
 			If address family not requested explicitly by the client, then it falls back to this default.
 			The standard RFC explicitly define that this default must be IPv4, 
 			so use other option values with care!
+
+--prometheus-ip		IP address to bind the Prometheus listener to. Default is the wildcard address.
+
+--prometheus-port	Port to bind the Prometheus listener to. Default is 9641.
 
 --cli-ip		Local system IP address to be used for CLI management interface.
 			The turnserver process can be accessed for management with telnet,
