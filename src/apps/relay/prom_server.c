@@ -3,6 +3,8 @@
 #include "mainrelay.h"
 #include "prom_server.h"
 
+int prometheus_port = DEFAULT_PROM_SERVER_PORT;
+ioa_addr prometheus_addr;
 
 prom_counter_t *turn_traffic_rcvp;
 prom_counter_t *turn_traffic_rcvb;
@@ -26,7 +28,7 @@ prom_counter_t *turn_total_traffic_peer_sentb;
 
 
 int start_prometheus_server(void){
-  if (turn_params.prometheus == 0){
+  if (turn_params.prometheus == PROM_DISABLED){
     return 1;
   }
   prom_collector_registry_default_init();
@@ -59,8 +61,27 @@ int start_prometheus_server(void){
 
   promhttp_set_active_collector_registry(NULL);
 
+  struct MHD_Daemon *daemon;
+  int flags = MHD_USE_SELECT_INTERNALLY;
+  void *arg;
 
-  struct MHD_Daemon *daemon = promhttp_start_daemon(MHD_USE_SELECT_INTERNALLY, DEFAULT_PROM_SERVER_PORT, NULL, NULL);
+  if (turn_params.prometheus == PROM_ENABLED) {
+    daemon = promhttp_start_daemon(flags, prometheus_port, NULL, NULL);
+  } else {
+    // turn_params.prometheus == PROM_ENABLED_WITH_IP
+
+    addr_set_port(&prometheus_addr, prometheus_port);
+
+    if (prometheus_addr.ss.sa_family == AF_INET6) {
+      flags |= MHD_USE_IPv6;
+      arg = &prometheus_addr.s6;
+    } else {
+      arg = &prometheus_addr.s4;
+    }
+
+    daemon = promhttp_start_daemon_with_options(flags, 0, NULL, NULL, MHD_OPTION_SOCK_ADDR, arg, MHD_OPTION_END);
+  }
+
   if (daemon == NULL) {
     return -1;
   }
