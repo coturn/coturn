@@ -183,6 +183,7 @@ typedef struct _allocation {
   void *owner; //ss
   ur_map *tcp_connections; //global (per turn server) reference
   tcp_connection_list tcs; //local reference
+  int relaxed;  // wire specific flag, tagged when allocation user has "sft-" at the start of username.  Allows relaying without permissions.
 } allocation;
 
 //////////// CHANNELS ////////////////////

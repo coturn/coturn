@@ -1054,6 +1054,11 @@ static int handle_turn_allocate(turn_turnserver *server,
 					}
 					bcopy(value,username,ulen);
 					username[ulen]=0;
+
+					// Check if username contains sft token at the start, and tag allocation as "relaxed"
+					if(strstr((char*)username, "sft-") == (char*)username) {
+						alloc->relaxed = 1;
+					}
 					if(!is_secure_string(username,1)) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: wrong username: %s\n", __FUNCTION__, (char*)username);
 						username[0]=0;
@@ -3026,10 +3031,10 @@ static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss,
 
 			turn_permission_info* tinfo = NULL;
 
-			if(!(server->server_relay))
+			if(!server->server_relay && !a->relaxed)
 				tinfo = allocation_get_permission(a, &peer_addr);
 
-			if (tinfo || (server->server_relay)) {
+			if (tinfo || server->server_relay || a->relaxed) {
 
 				set_df_on_ioa_socket(get_relay_socket_ss(ss,peer_addr.ss.sa_family), set_df);
 
@@ -4810,8 +4815,14 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 							&(in_buffer->src_addr));
 			if (tinfo) {
 				chnum = get_turn_channel_number(tinfo, &(in_buffer->src_addr));
-			} else if(!(server->server_relay)) {
+			} else if(!server->server_relay && !a->relaxed) {
 				return;
+			}
+
+			if (!chnum && a->relaxed) {
+				ch_info* chn = allocation_get_new_ch_info(a, 20000, &(in_buffer->src_addr)); // 20000 is a fake channel number, restund code used 9999
+				if (chn)
+					chnum = chn->chnum;
 			}
 
 			if (chnum) {
