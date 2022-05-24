@@ -4,6 +4,20 @@ Coturn TURN server Docker image changelog
 
 
 
+## [4.5.2-r12] · 2022-05-24
+[4.5.2-r12]: /../../tree/docker/4.5.2-r12
+
+### Upgraded
+
+- [Alpine Linux] 3.16: <https://alpinelinux.org/posts/Alpine-3.16.0-released.html>
+
+### Security updated
+
+- [Debian] "bullseye" 20220509: <https://github.com/docker-library/official-images/commit/5e2abb3fc26aa1e16e7e3516580621bef93a64e2>
+
+
+
+
 ## [4.5.2-r11] · 2022-04-06
 [4.5.2-r11]: /../../tree/docker/4.5.2-r11
 
