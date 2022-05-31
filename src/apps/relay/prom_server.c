@@ -34,19 +34,19 @@ int start_prometheus_server(void){
   }
   prom_collector_registry_default_init();
   
-  const char *label[] = {"realm", "user"};
+  const char *label[] = {"realm"};
 
   // Create traffic counter metrics
-  turn_traffic_rcvp = prom_collector_registry_must_register_metric(prom_counter_new("turn_traffic_rcvp", "Represents finished sessions received packets", 2, label));
-  turn_traffic_rcvb = prom_collector_registry_must_register_metric(prom_counter_new("turn_traffic_rcvb", "Represents finished sessions received bytes", 2, label));
-  turn_traffic_sentp = prom_collector_registry_must_register_metric(prom_counter_new("turn_traffic_sentp", "Represents finished sessions sent packets", 2, label));
-  turn_traffic_sentb = prom_collector_registry_must_register_metric(prom_counter_new("turn_traffic_sentb", "Represents finished sessions sent bytes", 2, label));
+  turn_traffic_rcvp = prom_collector_registry_must_register_metric(prom_counter_new("turn_traffic_rcvp", "Represents finished sessions received packets", 1, label));
+  turn_traffic_rcvb = prom_collector_registry_must_register_metric(prom_counter_new("turn_traffic_rcvb", "Represents finished sessions received bytes", 1, label));
+  turn_traffic_sentp = prom_collector_registry_must_register_metric(prom_counter_new("turn_traffic_sentp", "Represents finished sessions sent packets", 1, label));
+  turn_traffic_sentb = prom_collector_registry_must_register_metric(prom_counter_new("turn_traffic_sentb", "Represents finished sessions sent bytes", 1, label));
 
   // Create finished sessions traffic for peers counter metrics
-  turn_traffic_peer_rcvp = prom_collector_registry_must_register_metric(prom_counter_new("turn_traffic_peer_rcvp", "Represents finished sessions peer received packets", 2, label));
-  turn_traffic_peer_rcvb = prom_collector_registry_must_register_metric(prom_counter_new("turn_traffic_peer_rcvb", "Represents finished sessions peer received bytes", 2, label));
-  turn_traffic_peer_sentp = prom_collector_registry_must_register_metric(prom_counter_new("turn_traffic_peer_sentp", "Represents finished sessions peer sent packets", 2, label));
-  turn_traffic_peer_sentb = prom_collector_registry_must_register_metric(prom_counter_new("turn_traffic_peer_sentb", "Represents finished sessions peer sent bytes", 2, label));
+  turn_traffic_peer_rcvp = prom_collector_registry_must_register_metric(prom_counter_new("turn_traffic_peer_rcvp", "Represents finished sessions peer received packets", 1, label));
+  turn_traffic_peer_rcvb = prom_collector_registry_must_register_metric(prom_counter_new("turn_traffic_peer_rcvb", "Represents finished sessions peer received bytes", 1, label));
+  turn_traffic_peer_sentp = prom_collector_registry_must_register_metric(prom_counter_new("turn_traffic_peer_sentp", "Represents finished sessions peer sent packets", 1, label));
+  turn_traffic_peer_sentb = prom_collector_registry_must_register_metric(prom_counter_new("turn_traffic_peer_sentb", "Represents finished sessions peer sent bytes", 1, label));
 
   // Create total finished traffic counter metrics
   turn_total_traffic_rcvp = prom_collector_registry_must_register_metric(prom_counter_new("turn_total_traffic_rcvp", "Represents total finished sessions received packets", 0, NULL));
@@ -93,9 +93,11 @@ int start_prometheus_server(void){
 }
 
 void prom_set_finished_traffic(const char* realm, const char* user, unsigned long rsvp, unsigned long rsvb, unsigned long sentp, unsigned long sentb, bool peer){
+  (void) user;
+
   if (turn_params.prometheus > PROM_DISABLED){
 
-    const char *label[] = {realm, user};
+    const char *label[] = {realm};
 
     if (peer){
       prom_counter_add(turn_traffic_peer_rcvp, rsvp, label);
