@@ -52,6 +52,8 @@ extern prom_counter_t *turn_total_traffic_peer_rcvb;
 extern prom_counter_t *turn_total_traffic_peer_sentp;
 extern prom_counter_t *turn_total_traffic_peer_sentb;
 
+extern prom_gauge_t *turn_active_allocations;
+
 #define TURN_ALLOC_STR_MAX_SIZE (20)
 
 #ifdef __cplusplus
@@ -62,6 +64,9 @@ extern "C" {
 int start_prometheus_server(void);
 
 void prom_set_finished_traffic(const char* realm, const char* user, unsigned long rsvp, unsigned long rsvb, unsigned long sentp, unsigned long sentb, bool peer);
+
+void prom_report_allocation_start(void);
+void prom_report_allocation_finish(void);
 
 #endif /* TURN_NO_PROMETHEUS */
 

@@ -3722,6 +3722,12 @@ void turn_report_allocation_set(void *a, turn_time_t lifetime, int refresh)
 					send_message_to_redis(e->rch, "publish", key, "%s lifetime=%lu", status, (unsigned long)lifetime);
 				}
 #endif
+#if !defined(TURN_NO_PROMETHEUS)
+				{
+					if(!refresh)
+						prom_report_allocation_start();
+				}
+#endif
 			}
 		}
 	}
@@ -3777,6 +3783,8 @@ void turn_report_allocation_delete(void *a)
 						prom_set_finished_traffic(NULL, (const char*)ss->username, (unsigned long)(ss->t_received_packets), (unsigned long)(ss->t_received_bytes), (unsigned long)(ss->t_sent_packets), (unsigned long)(ss->t_sent_bytes), false);
 						prom_set_finished_traffic(NULL, (const char*)ss->username, (unsigned long)(ss->t_peer_received_packets), (unsigned long)(ss->t_peer_received_bytes), (unsigned long)(ss->t_peer_sent_packets), (unsigned long)(ss->t_peer_sent_bytes), true);
 					}
+
+					prom_report_allocation_finish();
 				}
 #endif
 			}

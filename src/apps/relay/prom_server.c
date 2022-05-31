@@ -26,6 +26,7 @@ prom_counter_t *turn_total_traffic_peer_rcvb;
 prom_counter_t *turn_total_traffic_peer_sentp;
 prom_counter_t *turn_total_traffic_peer_sentb;
 
+prom_gauge_t *turn_active_allocations;
 
 int start_prometheus_server(void){
   if (turn_params.prometheus == PROM_DISABLED){
@@ -59,6 +60,9 @@ int start_prometheus_server(void){
   turn_total_traffic_peer_sentp = prom_collector_registry_must_register_metric(prom_counter_new("turn_total_traffic_peer_sentp", "Represents total finished sessions peer sent packets", 0, NULL));
   turn_total_traffic_peer_sentb = prom_collector_registry_must_register_metric(prom_counter_new("turn_total_traffic_peer_sentb", "Represents total finished sessions peer sent bytes", 0, NULL));
 
+  // Create total active allocations gauge
+  turn_active_allocations = prom_collector_registry_must_register_metric(prom_gauge_new("turn_active_allocations", "Number of currently active allocations", 0, NULL));
+
   promhttp_set_active_collector_registry(NULL);
 
   struct MHD_Daemon *daemon;
@@ -89,7 +93,7 @@ int start_prometheus_server(void){
 }
 
 void prom_set_finished_traffic(const char* realm, const char* user, unsigned long rsvp, unsigned long rsvb, unsigned long sentp, unsigned long sentb, bool peer){
-  if (turn_params.prometheus == 1){
+  if (turn_params.prometheus > PROM_DISABLED){
 
     const char *label[] = {realm, user};
 
@@ -114,6 +118,18 @@ void prom_set_finished_traffic(const char* realm, const char* user, unsigned lon
       prom_counter_add(turn_total_traffic_sentp, sentp, NULL);
       prom_counter_add(turn_total_traffic_sentb, sentb, NULL);
     }
+  }
+}
+
+void prom_report_allocation_start(){
+  if (turn_params.prometheus > PROM_DISABLED){
+    prom_gauge_inc(turn_active_allocations, NULL);
+  }
+}
+
+void prom_report_allocation_finish(){
+  if (turn_params.prometheus > PROM_DISABLED){
+    prom_gauge_dec(turn_active_allocations, NULL);
   }
 }
 
