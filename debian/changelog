@@ -1,3 +1,11 @@
+coturn (4.5.2-3.1) unstable; urgency=medium
+
+  * Non-maintainer upload.
+  * [518094e] New No-FIPS-140-mode.patch fixes build against OpenSSL 3.0
+    (Closes: #995659, LP: #1967018)
+
+ -- Nicholas Guriev <guriev-ns@ya.ru>  Thu, 02 Jun 2022 13:36:34 +0300
+
 coturn (4.5.2-3) unstable; urgency=medium
 
   [ Ferenc Wágner ]
