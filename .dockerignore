@@ -3,6 +3,7 @@
 !docker/coturn/alpine/
 !docker/coturn/debian/
 !docker/coturn/rootfs/
+!docker/coturn/wireapp/
 
 !cmake/
 !CMakeLists.txt
