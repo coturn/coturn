@@ -217,6 +217,8 @@ static char procgroupname[1025]="\0";
 static void read_config_file(int argc, char **argv, int pass);
 static void reload_ssl_certs(evutil_socket_t sock, short events, void *args);
 
+static void shutdown_handler(evutil_socket_t sock, short events, void *args);
+
 //////////////////////////////////////////////////
 
 static int make_local_listeners_list(void)
@@ -2623,6 +2625,11 @@ int main(int argc, char **argv)
 	struct event *ev = evsignal_new(turn_params.listener.event_base, SIGUSR2, reload_ssl_certs, NULL);
 	event_add(ev, NULL);
 
+	ev = evsignal_new(turn_params.listener.event_base, SIGTERM, shutdown_handler, NULL);
+	event_add(ev, NULL);
+	ev = evsignal_new(turn_params.listener.event_base, SIGINT, shutdown_handler, NULL);
+	event_add(ev, NULL);
+
 	drop_privileges();
 #if !defined(TURN_NO_PROMETHEUS)
 	int prometheus_status = start_prometheus_server();
@@ -3297,6 +3304,16 @@ static void reload_ssl_certs(evutil_socket_t sock, short events, void *args)
 	openssl_load_certificates();
 	if (turn_params.tls_ctx_update_ev != NULL)
 		event_active(turn_params.tls_ctx_update_ev, EV_READ, 0);
+
+	UNUSED_ARG(sock);
+	UNUSED_ARG(events);
+	UNUSED_ARG(args);
+}
+
+static void shutdown_handler(evutil_socket_t sock, short events, void *args)
+{
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Caught signal, terminating\n");
+	turn_params.stop_turn_server = 1;
 
 	UNUSED_ARG(sock);
 	UNUSED_ARG(events);
