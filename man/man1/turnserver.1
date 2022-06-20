@@ -440,6 +440,13 @@ Enable prometheus metrics. By default it is
 disabled. Would listen on port 9641 unther the path /metrics
 also the path / on this port can be used as a health check.
 See also \fIoptions\fP \fB\-\-prometheus\-ip\fP and \fB\-\-prometheus\-port\fP.
+.TP
+.B
+\fB\-\-prometheus\-no\-username\-labels\fP
+Disable labeling prometheus traffic
+metrics with client usernames. Labeling with client usernames is
+enabled by default, however this may cause memory leaks when using
+authentication with ephemeral usernames (e.g. TURN REST API).
 .RE
 .TP
 .B

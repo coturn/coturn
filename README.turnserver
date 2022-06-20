@@ -293,6 +293,10 @@ Flags:
 			disabled. Would listen on port 9641 unther the path /metrics
 			also the path / on this port can be used as a health check.
 			See also options --prometheus-ip and --prometheus-port.
+ --prometheus-no-username-labels	Disable labeling prometheus traffic
+			metrics with client usernames. Labeling with client usernames is
+			enabled by default, however this may cause memory leaks when using
+			authentication with ephemeral usernames (e.g. TURN REST API).
 
 -h			Help.
 
