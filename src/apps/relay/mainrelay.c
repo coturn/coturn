@@ -173,7 +173,7 @@ TURN_CREDENTIALS_NONE, /* ct */
 0, /* user_quota */
 #if !defined(TURN_NO_PROMETHEUS)
 0, /* prometheus disabled by default */
-1, /* prometheus username labelling enabled by default when prometheus is enabled */
+0, /* prometheus username labelling disabled by default when prometheus is enabled */
 #endif
 ///////////// Users DB //////////////
 { (TURN_USERDB_TYPE)0, {"\0"}, {0,NULL, {NULL,0}} },
@@ -560,7 +560,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 #if !defined(TURN_NO_PROMETHEUS)
 " --prometheus					Enable prometheus metrics. It is disabled by default. If it is enabled it will listen on port 9641 unther the path /metrics\n"
 "						also the path / on this port can be used as a health check\n"
-" --prometheus-no-username-labels		When metrics are enabled, do not label metrics with client usernames.\n"
+" --prometheus-username-labels			When metrics are enabled, add labels with client usernames.\n"
 #endif
 " --use-auth-secret				TURN REST API flag.\n"
 "						Flag that sets a special authorization option that is based upon authentication secret\n"
@@ -789,7 +789,7 @@ enum EXTRA_OPTS {
 	CHANNEL_LIFETIME_OPT,
 	PERMISSION_LIFETIME_OPT,
 	PROMETHEUS_OPT,
-	PROMETHEUS_DISABLE_USERNAMES_OPT,
+	PROMETHEUS_ENABLE_USERNAMES_OPT,
 	AUTH_SECRET_OPT,
 	NO_AUTH_PINGS_OPT,
 	NO_DYNAMIC_IP_LIST_OPT,
@@ -905,7 +905,7 @@ static const struct myoption long_options[] = {
 #endif
 #if !defined(TURN_NO_PROMETHEUS)
 				{ "prometheus", optional_argument, NULL, PROMETHEUS_OPT },
-				{ "prometheus-no-username-labels", optional_argument, NULL, PROMETHEUS_DISABLE_USERNAMES_OPT },
+				{ "prometheus-username-labels", optional_argument, NULL, PROMETHEUS_ENABLE_USERNAMES_OPT },
 #endif
 				{ "use-auth-secret", optional_argument, NULL, AUTH_SECRET_OPT },
 				{ "static-auth-secret", required_argument, NULL, STATIC_AUTH_SECRET_VAL_OPT },
@@ -1538,8 +1538,8 @@ static void set_option(int c, char *value)
 	case PROMETHEUS_OPT:
 		turn_params.prometheus = 1;
 		break;
-	case PROMETHEUS_DISABLE_USERNAMES_OPT:
-		turn_params.prometheus_username_labels = 0;
+	case PROMETHEUS_ENABLE_USERNAMES_OPT:
+		turn_params.prometheus_username_labels = 1;
 		break;
 #endif
 	case AUTH_SECRET_OPT:
