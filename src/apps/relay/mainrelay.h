@@ -318,7 +318,8 @@ typedef struct _turn_params_ {
   vint total_quota;
   vint user_quota;
   #if !defined(TURN_NO_PROMETHEUS)
-  int  prometheus;
+  int prometheus;
+  int prometheus_port;
   #endif
 
 
