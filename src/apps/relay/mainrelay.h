@@ -320,6 +320,7 @@ typedef struct _turn_params_ {
   #if !defined(TURN_NO_PROMETHEUS)
   int prometheus;
   int prometheus_port;
+  int  prometheus_username_labels;
   #endif
 
 

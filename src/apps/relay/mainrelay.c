@@ -174,6 +174,7 @@ TURN_CREDENTIALS_NONE, /* ct */
 #if !defined(TURN_NO_PROMETHEUS)
 0, /* prometheus disabled by default */
 DEFAULT_PROM_SERVER_PORT, /* prometheus port */
+0, /* prometheus username labelling disabled by default when prometheus is enabled */
 #endif
 ///////////// Users DB //////////////
 { (TURN_USERDB_TYPE)0, {"\0"}, {0,NULL, {NULL,0}} },
@@ -561,6 +562,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 " --prometheus					Enable prometheus metrics. It is disabled by default. If it is enabled it will listen on port 9641 under the path /metrics\n"
 "						also the path / on this port can be used as a health check\n"
 " --prometheus-port		<port>		Prometheus metrics port (Default: 9641).\n"
+" --prometheus-username-labels			When metrics are enabled, add labels with client usernames.\n"
 #endif
 " --use-auth-secret				TURN REST API flag.\n"
 "						Flag that sets a special authorization option that is based upon authentication secret\n"
@@ -790,6 +792,7 @@ enum EXTRA_OPTS {
 	PERMISSION_LIFETIME_OPT,
 	PROMETHEUS_OPT,
 	PROMETHEUS_PORT_OPT,
+	PROMETHEUS_ENABLE_USERNAMES_OPT,
 	AUTH_SECRET_OPT,
 	NO_AUTH_PINGS_OPT,
 	NO_DYNAMIC_IP_LIST_OPT,
@@ -906,6 +909,7 @@ static const struct myoption long_options[] = {
 #if !defined(TURN_NO_PROMETHEUS)
 				{ "prometheus", optional_argument, NULL, PROMETHEUS_OPT },
 				{ "prometheus-port", optional_argument, NULL, PROMETHEUS_PORT_OPT },
+				{ "prometheus-username-labels", optional_argument, NULL, PROMETHEUS_ENABLE_USERNAMES_OPT },
 #endif
 				{ "use-auth-secret", optional_argument, NULL, AUTH_SECRET_OPT },
 				{ "static-auth-secret", required_argument, NULL, STATIC_AUTH_SECRET_VAL_OPT },
@@ -1540,6 +1544,9 @@ static void set_option(int c, char *value)
 		break;
 	case PROMETHEUS_PORT_OPT:
 		turn_params.prometheus_port = atoi(value);
+		break;
+	case PROMETHEUS_ENABLE_USERNAMES_OPT:
+		turn_params.prometheus_username_labels = 1;
 		break;
 #endif
 	case AUTH_SECRET_OPT:
