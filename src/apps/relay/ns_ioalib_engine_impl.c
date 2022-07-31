@@ -2757,8 +2757,8 @@ void close_ioa_socket_after_processing_if_necessary(ioa_socket_handle s)
 		{
 			tcp_connection *tc = s->sub_session;
 			if (tc) {
-				delete_tcp_connection(tc);
 				s->sub_session = NULL;
+				delete_tcp_connection(tc);
 			}
 		}
 			break;
@@ -2945,8 +2945,8 @@ static void eventcb_bev(struct bufferevent *bev, short events, void *arg)
 			{
 				tcp_connection *tc = s->sub_session;
 				if (tc) {
-					delete_tcp_connection(tc);
 					s->sub_session = NULL;
+					delete_tcp_connection(tc);
 				}
 			}
 				break;
