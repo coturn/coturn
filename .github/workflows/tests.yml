@@ -29,4 +29,6 @@ jobs:
       run: make
     - name: make check
       run: make check
+    - name: run
+      run: turnserver &
 
