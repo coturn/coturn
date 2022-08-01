@@ -95,28 +95,26 @@ static void sqlite_unlock(int write)
 
 //////////////////////////////////////////////////
 
-static int sqlite_init_multithreaded(void) {
+static void sqlite_init_multithreaded(void) {
 
 #if defined(SQLITE_CONFIG_MULTITHREAD)
-
-	sqlite3_shutdown();
-
 	if (sqlite3_threadsafe() > 0) {
 		int retCode = sqlite3_config(SQLITE_CONFIG_MULTITHREAD);
 		if (retCode != SQLITE_OK) {
 			retCode = sqlite3_config(SQLITE_CONFIG_SERIALIZED);
 			if (retCode != SQLITE_OK) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "setting sqlite thread safe mode to serialized failed!!! return code: %d\n", retCode);
-				return -1;
+				return;
 			}
 		}
+		sqlite3_initialize();
 	} else {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Your SQLite database is not compiled to be threadsafe.\n");
-		return -1;
+		return;
 	}
 #endif
 
-	return 0;
+	return;
 }
 
 static int donot_print_connection_success = 0;
@@ -175,13 +173,15 @@ static void init_sqlite_database(sqlite3 *sqliteconnection) {
 }
 
 static sqlite3 * get_sqlite_connection(void) {
+	static pthread_once_t sqlite_init_once = PTHREAD_ONCE_INIT;
 
 	persistent_users_db_t *pud = get_persistent_users_db();
 
 	sqlite3 *sqliteconnection = (sqlite3 *)pthread_getspecific(connection_key);
 	if(!sqliteconnection) {
+
 		fix_user_directory(pud->userdb);
-		sqlite_init_multithreaded();
+		(void) pthread_once(&sqlite_init_once, sqlite_init_multithreaded);
 		int rc = sqlite3_open(pud->userdb, &sqliteconnection);
 		if(!sqliteconnection || (rc != SQLITE_OK)) {
 			const char* errmsg = sqlite3_errmsg(sqliteconnection);

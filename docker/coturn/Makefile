@@ -21,7 +21,7 @@ COTURN_VER ?= 4.5.2
 COTURN_MIN_VER = $(strip $(shell echo $(COTURN_VER) | cut -d '.' -f1,2))
 COTURN_MAJ_VER = $(strip $(shell echo $(COTURN_VER) | cut -d '.' -f1))
 
-BUILD_REV ?= 2
+BUILD_REV ?= 13
 
 NAMESPACES := coturn \
               ghcr.io/coturn \
@@ -71,8 +71,7 @@ test: test.docker
 
 docker-namespaces = $(strip $(if $(call eq,$(namespaces),),\
                             $(NAMESPACES),$(subst $(comma), ,$(namespaces))))
-docker-tags = $(subst $(comma), ,$(strip \
-                      $(if $(call eq,$(tags),),$(TAGS),$(tags))))
+docker-tags = $(subst $(comma), ,$(or $(tags),$(TAGS)))
 docker-platforms = $(strip $(if $(call eq,$(platforms),),\
                            $(PLATFORMS),$(subst $(comma), ,$(platforms))))
 
@@ -86,11 +85,20 @@ define docker.buildx
 	$(eval platform := $(strip $(5)))
 	$(eval no-cache := $(strip $(6)))
 	$(eval args := $(strip $(7)))
+	$(eval github_url := $(strip $(or $(GITHUB_SERVER_URL),https://github.com)))
+	$(eval github_repo := $(strip $(or $(GITHUB_REPOSITORY),coturn/coturn)))
 	cd ../../ && \
 	docker buildx build --force-rm $(args) \
 		--platform $(platform) \
 		$(if $(call eq,$(no-cache),yes),--no-cache --pull,) \
 		$(if $(call eq,$(git-ref),),,--build-arg coturn_git_ref=$(git-ref)) \
+		--build-arg coturn_github_url=$(github_url) \
+		--build-arg coturn_github_repo=$(github_repo) \
+		--label org.opencontainers.image.source=$(github_url)/$(github_repo) \
+		--label org.opencontainers.image.revision=$(strip \
+			$(shell git show --pretty=format:%H --no-patch)) \
+		--label org.opencontainers.image.version=$(subst docker/,,$(strip \
+			$(shell git describe --tags --dirty --match='docker/*'))) \
 		-f docker/coturn/$(dockerfile)/Dockerfile \
 		-t $(namespace)/$(NAME):$(tag) ./
 endef
@@ -130,9 +138,9 @@ docker.build.cache:
 docker.image:
 	$(call docker.buildx,$(DOCKERFILE),\
 		coturn,\
-		$(if $(call eq,$(tag),),$(VERSION),$(tag)),\
+		$(or $(tag),$(VERSION)),\
 		$(ref),\
-		$(if $(call eq,$(platform),),$(MAIN_PLATFORM),$(platform)),\
+		$(or $(platform),$(MAIN_PLATFORM)),\
 		$(no-cache),\
 		--load)
 
@@ -186,9 +194,7 @@ ifeq ($(wildcard node_modules/.bin/bats),)
 	@make npm.install
 endif
 	$(foreach platform,$(test-docker-platforms),\
-		$(call test.docker.do,\
-			$(if $(call eq,$(tag),),$(VERSION),$(tag)),\
-			$(platform)))
+		$(call test.docker.do,$(or $(tag),$(VERSION)),$(platform)))
 define test.docker.do
 	$(eval tag := $(strip $(1)))
 	$(eval platform := $(strip $(2)))
@@ -235,7 +241,7 @@ endif
 # Usage:
 #	make git.release [ver=($(VERSION)|<proj-ver>)]
 
-git-release-tag = docker/$(strip $(if $(call eq,$(ver),),$(VERSION),$(ver)))
+git-release-tag = docker/$(strip $(or $(ver),$(VERSION)))
 
 git.release:
 ifeq ($(shell git rev-parse $(git-release-tag) >/dev/null 2>&1 && echo "ok"),ok)

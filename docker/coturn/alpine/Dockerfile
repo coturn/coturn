@@ -2,7 +2,7 @@
 # Dockerfile of coturn/coturn:alpine Docker image.
 #
 
-ARG alpine_ver=3.14
+ARG alpine_ver=3.16
 
 
 
@@ -119,10 +119,13 @@ WORKDIR /app/
 
 # Use Coturn sources from Git if `coturn_git_ref` is specified.
 ARG coturn_git_ref=HEAD
+ARG coturn_github_url=https://github.com
+ARG coturn_github_repo=coturn/coturn
+
 RUN if [ "${coturn_git_ref}" != 'HEAD' ]; then true \
  && rm -rf /app/* \
  && git init \
- && git remote add origin https://github.com/coturn/coturn \
+ && git remote add origin ${coturn_github_url}/${coturn_github_repo} \
  && git fetch --depth=1 origin "${coturn_git_ref}" \
  && git checkout FETCH_HEAD \
  && true; fi
@@ -173,8 +176,6 @@ COPY --from=dist-libprom /out/ /out/
 # https://hub.docker.com/_/alpine
 FROM alpine:${alpine_ver} AS runtime
 
-LABEL org.opencontainers.image.source="https://github.com/coturn/coturn"
-
 # Update system packages.
 RUN apk update \
  && apk upgrade \
@@ -206,7 +207,7 @@ RUN apk add --no-cache libcap \
 
 USER nobody:nogroup
 
-EXPOSE 3478 3478/udp
+EXPOSE 3478 3478/udp 5349 5349/udp
 
 VOLUME ["/var/lib/coturn"]
 

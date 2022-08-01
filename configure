@@ -18,11 +18,11 @@ testlibraw() {
     ${CC} ${TMPCPROGC} -o ${TMPCPROGB} ${OSCFLAGS} ${OSLIBS} -${1} 2>>/dev/null
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
-		${ECHO_CMD} "Library option -${1} cannot be used"
-		return 0
+        ${ECHO_CMD} "Library option -${1} cannot be used"
+        return 0
     else
-		OSLIBS="${OSLIBS} -${1}"
-		return 1
+        OSLIBS="${OSLIBS} -${1}"
+        return 1
     fi
 }
 
@@ -187,11 +187,11 @@ cleanup
 #########################
 
 if [ -z "${ECHO_CMD}" ] ; then
-	ECHO_CMD=echo 
+	ECHO_CMD=echo
 fi
 
 if [ -z "${FIND_CMD}" ] ; then
-	FIND_CMD=find 
+	FIND_CMD=find
 fi
 
 if [ -z "${PORTNAME}" ] ; then
@@ -288,12 +288,12 @@ do
   -sysconfdir=* | --sysconfdir=* | --sysconfdi=* | --sysconfd=* | --sysconf=* \
   | --syscon=* | --sysco=* | --sysc=* | --sys=* | --sy=* | -confdir=* | --confdir=*)
     CONFDIR=$ac_optarg ;;
-    
+
   -disable-rpath | --disable-rpath)
   	TURN_DISABLE_RPATH=1 ;;
-    
+
   esac
-      
+
 done
 
 if test -n "$ac_prev"; then
@@ -334,13 +334,13 @@ fi
 
 if [ -z "${LOCALSTATEDIR}" ] ; then
     if [ -z "${localstatedir}" ] ; then
-    
+
     	if [ "${PREFIX}" = "/usr" ] ; then
 			LOCALSTATEDIR=/var
 		else
 			LOCALSTATEDIR=${PREFIX}/var
 		fi
-		
+
     else
 		LOCALSTATEDIR=${localstatedir}
     fi
@@ -503,15 +503,6 @@ else
     else
 		SQLITE_CMD=${ECHO_CMD}
     fi
-fi
-
-#############################
-# Adjustments for Debian
-#############################
-
-if [ -f "/etc/debian_version" ] ; then
-    # https://github.com/coturn/coturn/pull/754#issuecomment-824693226
-    OSLIBS="${OSLIBS} -latomic"
 fi
 
 #############################
@@ -706,7 +697,7 @@ fi
 
 ###########################
 # Test some general-purpose
-# libraries 
+# libraries
 ###########################
 
 testlib socket
@@ -717,7 +708,6 @@ if ! [ ${ER} -eq 0 ] ; then
     echo "CYGWIN ?"
 fi
 testlib wldap64
-testlib intl
 testlib nsl
 testlib resolv
 
@@ -738,15 +728,15 @@ if [ ${ER} -ne 0 ] ; then
     exit 1
 fi
 
-if [ -z ${TURN_NO_THREAD_BARRIERS} ] ; then 
+if [ -z ${TURN_NO_THREAD_BARRIERS} ] ; then
 	pthread_testbarriers
-else 
+else
 	TURN_NO_THREAD_BARRIERS="-DTURN_NO_THREAD_BARRIERS"
 fi
 
-if [ -z ${TURN_IP_RECVERR} ] ; then 
+if [ -z ${TURN_IP_RECVERR} ] ; then
 	${ECHO_CMD} "Ignore IP_RECVERR"
-else 
+else
 	${ECHO_CMD} "Use IP_RECVERR"
 	TURN_IP_RECVERR="-DTURN_IP_RECVERR"
 	OSCFLAGS="${OSCFLAGS} ${TURN_IP_RECVERR}"
@@ -780,7 +770,7 @@ else
 	    ER=$?
         if ! [ ${ER} -eq 0 ] ; then
             ${ECHO_CMD} "OpenSSL Crypto lib found."
-        else        
+        else
             ${ECHO_CMD} "ERROR: OpenSSL Crypto development libraries are not installed properly in required location."
             ${ECHO_CMD} "Abort."
             cleanup
@@ -807,7 +797,7 @@ fi
 # Can we use GCM cipher ?
 ###########################
 
-if [ -z ${TURN_NO_GCM} ] ; then 
+if [ -z ${TURN_NO_GCM} ] ; then
 
 gcm_testlib
 ER=$?
@@ -853,45 +843,50 @@ fi
 
 if [ -z "${TURN_NO_PROMETHEUS}" ] ; then
 
-	testlib prom
-	ER=$?
-	if ! [ ${ER} -eq 0 ] ; then
-		${ECHO_CMD} "Prometheus lib found."
-		testlib promhttp
-		ER=$?
-		if ! [ ${ER} -eq 0 ] ; then
-			${ECHO_CMD} "Prometheus http lib found."
-			testlib microhttpd
-			ER=$?
-			if ! [ ${ER} -eq 0 ] ; then
-				${ECHO_CMD} "Microhttpd lib found."
-			else
-				${ECHO_CMD}
-				${ECHO_CMD} "Warning: microhttpd development libraries are not installed properly in required location."
-				${ECHO_CMD} "Prometheus support will be disabled."
-				${ECHO_CMD} "See the INSTALL file."
-				${ECHO_CMD}
-				OSCFLAGS="${OSCFLAGS} -DTURN_NO_PROMETHEUS"
-			fi
-		else
-			${ECHO_CMD}
-			${ECHO_CMD} "Warning: Libpromhttp development libraries are not installed properly in required location."
-			${ECHO_CMD} "Prometheus support will be disabled."
-			${ECHO_CMD} "See the INSTALL file."
-			${ECHO_CMD}
-			OSCFLAGS="${OSCFLAGS} -DTURN_NO_PROMETHEUS"
-		fi
-	else
-		${ECHO_CMD}
-		${ECHO_CMD} "Warning: Libprom development libraries are not installed properly in required location."
-		${ECHO_CMD} "Prometheus support will be disabled."
-		${ECHO_CMD} "See the INSTALL file."
-		${ECHO_CMD}
-		OSCFLAGS="${OSCFLAGS} -DTURN_NO_PROMETHEUS"
-	fi
+    testlib prom
+    ER=$?
+    if ! [ ${ER} -eq 0 ] ; then
+        ${ECHO_CMD} "Prometheus lib found."
+        testlib promhttp
+        ER=$?
+        if ! [ ${ER} -eq 0 ] ; then
+            ${ECHO_CMD} "Prometheus http lib found."
+            testlib microhttpd
+            ER=$?
+            if ! [ ${ER} -eq 0 ] ; then
+                ${ECHO_CMD} "Microhttpd lib found."
+                # Adjustments for Debian
+                # See: https://github.com/coturn/coturn/pull/754#issuecomment-824693226
+                if [ -f "/etc/debian_version" ] ; then
+                    OSLIBS="${OSLIBS} -latomic"
+                fi
+            else
+                ${ECHO_CMD}
+                ${ECHO_CMD} "Warning: microhttpd development libraries are not installed properly in required location."
+                ${ECHO_CMD} "Prometheus support will be disabled."
+                ${ECHO_CMD} "See the INSTALL file."
+                ${ECHO_CMD}
+                OSCFLAGS="${OSCFLAGS} -DTURN_NO_PROMETHEUS"
+            fi
+        else
+            ${ECHO_CMD}
+            ${ECHO_CMD} "Warning: Libpromhttp development libraries are not installed properly in required location."
+            ${ECHO_CMD} "Prometheus support will be disabled."
+            ${ECHO_CMD} "See the INSTALL file."
+            ${ECHO_CMD}
+            OSCFLAGS="${OSCFLAGS} -DTURN_NO_PROMETHEUS"
+        fi
+    else
+        ${ECHO_CMD}
+        ${ECHO_CMD} "Warning: Libprom development libraries are not installed properly in required location."
+        ${ECHO_CMD} "Prometheus support will be disabled."
+        ${ECHO_CMD} "See the INSTALL file."
+        ${ECHO_CMD}
+        OSCFLAGS="${OSCFLAGS} -DTURN_NO_PROMETHEUS"
+    fi
 
 else
-	OSCFLAGS="${OSCFLAGS} -DTURN_NO_PROMETHEUS"
+    OSCFLAGS="${OSCFLAGS} -DTURN_NO_PROMETHEUS"
 fi
 
 ###########################
@@ -949,7 +944,7 @@ fi
 ###########################
 
 if [ -z "${TURN_NO_MYSQL}" ] ; then
-    if testpkg_db mariadb || testpkg_db mysqlclient || test_mysql_config; then
+    if testpkg_db libmariadb || testpkg_db mariadb || testpkg_db mysqlclient || test_mysql_config; then
         ${ECHO_CMD} "MySQL found."
     else
         ${ECHO_CMD} "MySQL not found. Building without MySQL support."
@@ -997,7 +992,7 @@ if [ -z "${LDCONFIG}" ] ; then
 	ISBSD=`uname | grep -i bsd`
 	if [ -z "${ISBSD}" ] ; then
 		ISLINUX=`uname | grep -i linux`
-		if [ -z "${ISLINUX}" ] ; then 
+		if [ -z "${ISLINUX}" ] ; then
 			SYSTEM=`uname`
 			if [ "${SYSTEM}" = "SunOS" ] ; then
 				LDCONFIG="crle -u -l"

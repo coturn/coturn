@@ -422,13 +422,23 @@ The flag that sets the origin consistency
 check: across the session, all requests must have the same
 main ORIGIN attribute value (if the ORIGIN was
 initially used by the session).
-.RS
 .TP
 .B
 \fB\-\-prometheus\fP
 Enable prometheus metrics. By default it is
-disabled. Would listen on port 9641 unther the path /metrics
+disabled. Would listen on port 9641 under the path /metrics
 also the path / on this port can be used as a health check
+.TP
+.B
+\fB\-\-prometheus\-port\fP
+Prometheus listener port (Default: 9641).
+.TP
+.B
+\fB\-\-prometheus\-username\-labels\fP
+Enable labeling prometheus traffic
+metrics with client usernames. Labeling with client usernames is
+disabled by default, because this may cause memory leaks when using
+authentication with ephemeral usernames (e.g. TURN REST API).
 .RE
 .TP
 .B
@@ -1114,7 +1124,7 @@ in a batch script). See the file turndb/testsqldbsetup.sql as an example.
 The same is true for MySQL database. The same schema file is applicable.
 The same considerations are applicable.
 .IP 5) 4
-The same is true for the Redis database, but the Redis database has aa different schema \-
+The same is true for the Redis database, but the Redis database has a different schema \-
 it can be found (in the form of explanation) in schema.userdb.redis.
 Also, in Redis you can store both "keys" and open passwords (for long term credentials) \-
 the "open password" option is less secure but more convenient for low\-security environments.
