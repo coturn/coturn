@@ -708,7 +708,6 @@ if ! [ ${ER} -eq 0 ] ; then
     echo "CYGWIN ?"
 fi
 testlib wldap64
-testlib intl
 testlib nsl
 testlib resolv
 
