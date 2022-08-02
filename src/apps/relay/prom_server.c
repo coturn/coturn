@@ -24,6 +24,8 @@ prom_counter_t *turn_total_traffic_peer_rcvb;
 prom_counter_t *turn_total_traffic_peer_sentp;
 prom_counter_t *turn_total_traffic_peer_sentb;
 
+prom_gauge_t *turn_total_allocations;
+
 
 int start_prometheus_server(void){
   if (turn_params.prometheus == 0){
@@ -62,6 +64,9 @@ int start_prometheus_server(void){
   turn_total_traffic_peer_rcvb = prom_collector_registry_must_register_metric(prom_counter_new("turn_total_traffic_peer_rcvb", "Represents total finished sessions peer received bytes", 0, NULL));
   turn_total_traffic_peer_sentp = prom_collector_registry_must_register_metric(prom_counter_new("turn_total_traffic_peer_sentp", "Represents total finished sessions peer sent packets", 0, NULL));
   turn_total_traffic_peer_sentb = prom_collector_registry_must_register_metric(prom_counter_new("turn_total_traffic_peer_sentb", "Represents total finished sessions peer sent bytes", 0, NULL));
+
+  // Create total allocations number gauge metric
+  turn_total_allocations = prom_collector_registry_must_register_metric(prom_gauge_new("turn_total_allocations", "Represents current allocations number", 0, NULL));
 
   promhttp_set_active_collector_registry(NULL);
 
@@ -102,6 +107,18 @@ void prom_set_finished_traffic(const char* realm, const char* user, unsigned lon
       prom_counter_add(turn_total_traffic_sentp, sentp, NULL);
       prom_counter_add(turn_total_traffic_sentb, sentb, NULL);
     }
+  }
+}
+
+void prom_inc_allocation(void) {
+  if (turn_params.prometheus == 1){
+    prom_gauge_inc(turn_total_allocations, NULL);
+  }
+}
+
+void prom_dec_allocation(void) {
+  if (turn_params.prometheus == 1){
+    prom_gauge_dec(turn_total_allocations, NULL);
   }
 }
 
