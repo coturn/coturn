@@ -453,6 +453,10 @@ int main(int argc, char **argv)
 	}
 
 	if (!c2c) {
+                if(!peer_address[0]) {
+                        fprintf(stderr,"Either -e peer_address or -y must be specified\n");
+                        return -1;
+                }
 
 		if (make_ioa_addr((const uint8_t*) peer_address, peer_port, &peer_addr) < 0) {
 			return -1;
