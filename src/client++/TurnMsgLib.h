@@ -1010,7 +1010,7 @@ public:
 						   &relayed_addr1, &relayed_addr2,
 						   &reflexive_addr,
 						   lifetime, STUN_DEFAULT_MAX_ALLOCATE_LIFETIME, error_code, reason,
-						   reservation_token, mobile_id);
+						   reservation_token, mobile_id, 0);
 	}
 
 	/**

@@ -163,7 +163,7 @@ int stun_set_allocate_response_str(uint8_t* buf, size_t *len, stun_tid* tid,
 				   const ioa_addr *relayed_addr1, const ioa_addr *relayed_addr2,
 				   const ioa_addr *reflexive_addr,
 				   uint32_t lifetime, uint32_t max_lifetime, int error_code, const uint8_t *reason,
-				   uint64_t reservation_token, char *mobile_id);
+				   uint64_t reservation_token, char *mobile_id, uint16_t federation_cid);
 
 uint16_t stun_set_channel_bind_request_str(uint8_t* buf, size_t *len,
 					  const ioa_addr* peer_addr, uint16_t channel_number);

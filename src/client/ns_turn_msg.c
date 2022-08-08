@@ -1057,7 +1057,7 @@ int stun_set_allocate_response_str(uint8_t* buf, size_t *len, stun_tid* tid,
 				   const ioa_addr *relayed_addr1, const ioa_addr *relayed_addr2,
 				   const ioa_addr *reflexive_addr,
 				   uint32_t lifetime, uint32_t max_lifetime, int error_code, const uint8_t *reason,
-				   uint64_t reservation_token, char* mobile_id) {
+				   uint64_t reservation_token, char* mobile_id, uint16_t federation_cid) {
 
   if(!error_code) {
 
@@ -1091,6 +1091,10 @@ int stun_set_allocate_response_str(uint8_t* buf, size_t *len, stun_tid* tid,
     if(mobile_id && *mobile_id) {
 	    if(stun_attr_add_str(buf,len,STUN_ATTRIBUTE_MOBILITY_TICKET,(uint8_t*)mobile_id,(int)strlen(mobile_id))<0) return -1;
     }
+
+	if(federation_cid) {
+	    if(stun_attr_add_channel_number_str(buf,len,federation_cid)<0) return -1;
+	}
 
   } else {
     stun_init_error_response_str(STUN_METHOD_ALLOCATE, buf, len, error_code, reason, tid);
