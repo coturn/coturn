@@ -45,7 +45,23 @@ extern "C" {
 
 ///////////////////////////////////////////
 
-struct dtls_listener_relay_server_info;
+// federation.c needs access to this
+struct dtls_listener_relay_server_info {
+  char ifname[1025];
+  ioa_addr addr;
+  ioa_engine_handle e;
+  turn_turnserver *ts;
+  int verbose;
+  struct event *udp_listen_ev;
+  ioa_socket_handle udp_listen_s;
+  ur_addr_map *children_ss; /* map of socket children on remote addr */
+  struct message_to_relay sm;
+  int slen0;
+  ioa_engine_new_connection_event_handler connect_cb;
+
+  // New members for federation
+  int federation_listener; // true/false
+};
 typedef struct dtls_listener_relay_server_info dtls_listener_relay_server_type;
 
 ///////////////////////////////////////////
@@ -63,9 +79,26 @@ dtls_listener_relay_server_type* create_dtls_listener_server(const char* ifname,
 							     int report_creation,
 							     ioa_engine_new_connection_event_handler send_socket);
 
+dtls_listener_relay_server_type* create_dtls_federation_listener_server(const char* ifname,
+							     const char *local_address, 
+							     int port,
+							     int verbose,
+							     ioa_engine_handle e,
+							     turn_turnserver *ts,
+							     int report_creation,
+							     ioa_engine_new_connection_event_handler send_socket);
+
 void udp_send_message(dtls_listener_relay_server_type *server, ioa_network_buffer_handle nbh, ioa_addr *dest);
 
 ioa_engine_handle get_engine(dtls_listener_relay_server_type* server);
+
+// federation.c accesses these
+int generate_cookie(SSL *ssl, unsigned char *cookie, unsigned int *cookie_len);
+int verify_cookie(SSL *ssl,
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+		const
+#endif
+		unsigned char *cookie, unsigned int cookie_len);
 
 ///////////////////////////////////////////
 

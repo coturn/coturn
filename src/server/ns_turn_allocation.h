@@ -183,7 +183,10 @@ typedef struct _allocation {
   void *owner; //ss
   ur_map *tcp_connections; //global (per turn server) reference
   tcp_connection_list tcs; //local reference
-  int relaxed;  // wire specific flag, tagged when allocation user has "sft-" at the start of username.  Allows relaying without permissions.
+  int use_federation;  // wire specific flag, tagged when allocation user has "sft-" at the start of username.  Allows access to federaion tunnel without permissions.
+  uint16_t federation_cid;
+  turn_time_t federation_expiration_time;
+  ioa_timer_handle federation_lifetime_ev;
 } allocation;
 
 //////////// CHANNELS ////////////////////
@@ -200,6 +203,7 @@ void clear_allocation(allocation *a);
 
 void turn_permission_clean(turn_permission_info* tinfo);
 
+void set_federation_allocation_lifetime_ev(allocation *a, turn_time_t exp_time, ioa_timer_handle ev);
 void set_allocation_lifetime_ev(allocation *a, turn_time_t exp_time, ioa_timer_handle ev, int family);
 int is_allocation_valid(const allocation* a);
 void set_allocation_valid(allocation* a, int value);

@@ -77,6 +77,7 @@ void clear_allocation(allocation *a)
 				IOA_EVENT_DEL(a->relay_sessions[i].lifetime_ev);
 			}
 		}
+		IOA_EVENT_DEL(a->federation_lifetime_ev);
 
 		/* The order is important here: */
 		free_turn_permission_hashtable(&(a->addr_to_perm));
@@ -136,6 +137,15 @@ void set_allocation_family_invalid(allocation *a, int family)
 			clear_relay_endpoint_session_data(&(a->relay_sessions[index]));
 			IOA_EVENT_DEL(a->relay_sessions[index].lifetime_ev);
 		}
+	}
+}
+
+void set_federation_allocation_lifetime_ev(allocation *a, turn_time_t exp_time, ioa_timer_handle ev)
+{
+	if (a) {
+		IOA_EVENT_DEL(a->federation_lifetime_ev);
+		a->federation_expiration_time = exp_time;
+		a->federation_lifetime_ev = ev;
 	}
 }
 

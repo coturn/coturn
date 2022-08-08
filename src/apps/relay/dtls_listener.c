@@ -33,6 +33,7 @@
 
 #include "dtls_listener.h"
 #include "ns_ioalib_impl.h"
+#include "federation.h"
 
 #include "ns_turn_openssl.h"
 
@@ -49,19 +50,6 @@
 
 #define MAX_SINGLE_UDP_BATCH (16)
 
-struct dtls_listener_relay_server_info {
-  char ifname[1025];
-  ioa_addr addr;
-  ioa_engine_handle e;
-  turn_turnserver *ts;
-  int verbose;
-  struct event *udp_listen_ev;
-  ioa_socket_handle udp_listen_s;
-  ur_addr_map *children_ss; /* map of socket children on remote addr */
-  struct message_to_relay sm;
-  int slen0;
-  ioa_engine_new_connection_event_handler connect_cb;
-};
 
 ///////////// forward declarations ////////
 
@@ -129,7 +117,7 @@ static void calculate_cookie(SSL* ssl, unsigned char *cookie_secret, unsigned in
   for(i=0;i<inum;++i,++ip) *ip=rv;
 }
 
-static int generate_cookie(SSL *ssl, unsigned char *cookie, unsigned int *cookie_len)
+int generate_cookie(SSL *ssl, unsigned char *cookie, unsigned int *cookie_len)
 {
   unsigned char *buffer, result[EVP_MAX_MD_SIZE];
   unsigned int length = 0, resultlength;
@@ -199,7 +187,7 @@ static int generate_cookie(SSL *ssl, unsigned char *cookie, unsigned int *cookie
   return 1;
 }
 
-static int verify_cookie(SSL *ssl,
+int verify_cookie(SSL *ssl,
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
 		const
 #endif
@@ -280,7 +268,9 @@ static ioa_socket_handle dtls_server_input_handler(dtls_listener_relay_server_ty
 	BIO_ctrl(wbio, BIO_CTRL_DGRAM_SET_RECV_TIMEOUT, 0, &timeout);
 
 #if DTLSv1_2_SUPPORTED
-	if(get_dtls_version(ioa_network_buffer_data(nbh),
+	if(server->federation_listener) {
+		connecting_ssl = SSL_new(turn_params.federation_dtls_server_ctx_v1_2);
+	} else if(get_dtls_version(ioa_network_buffer_data(nbh),
 							(int)ioa_network_buffer_get_size(nbh)) == 1) {
 		connecting_ssl = SSL_new(server->e->dtls_ctx_v1_2);
 	} else {
@@ -336,12 +326,30 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server,
 		chs = (ioa_socket_handle) mvt;
 	}
 
+	if(!chs && server->federation_listener && is_dtls_data_message(ioa_network_buffer_data(sm->m.sm.nd.nbh),
+									(int)ioa_network_buffer_get_size(sm->m.sm.nd.nbh))) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "%s: federation_listener: dtls data message but we don't have a DTLS connection from peer, ignoring...\n", __FUNCTION__);
+	}
+
+	if(chs && chs->ssl && server->federation_listener &&
+		SSL_is_init_finished(chs->ssl) &&
+		is_dtls_handshake_message(ioa_network_buffer_data(sm->m.sm.nd.nbh),
+								  (int)ioa_network_buffer_get_size(sm->m.sm.nd.nbh))) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: federation_listener: new handshake on existing DTLS connection, discarding old socket and accepting new...\n", __FUNCTION__);
+
+		// We have a new handshake from peer, close old socket and 
+		// accept new (below)
+		close_ioa_socket(chs);
+		chs = NULL;
+	}
+
 	if (chs && !ioa_socket_tobeclosed(chs)
 			&& (chs->sockets_container == amap)
 			&& (chs->magic == SOCKET_MAGIC)) {
 		s = chs;
 		sm->m.sm.s = s;
 		if(s->ssl) {
+			int init_before = SSL_is_init_finished(s->ssl);
 			int sslret = ssl_read(s->fd, s->ssl, sm->m.sm.nd.nbh, verbose);
 			if(sslret < 0) {
 				ioa_network_buffer_delete(ioa_eng, sm->m.sm.nd.nbh);
@@ -364,6 +372,20 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server,
 			} else {
 				ioa_network_buffer_delete(ioa_eng, sm->m.sm.nd.nbh);
 				sm->m.sm.nd.nbh = NULL;
+			}
+			// If no ssl error, check if handshake just finished, and send backlog now
+			if(sslret >= 0) {
+				int init_after = SSL_is_init_finished(s->ssl);
+				if (!init_before && init_after) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: federation_listener: client connection complete!\n", __FUNCTION__);
+					IOA_EVENT_DEL(s->ssl_client_conn_tmr); // Stop client connection timer
+					send_ssl_backlog_buffers(s); // Send any data packets that have been queued waiting for handshake to finish
+				}
+				// We are still handshaking, free inbound packet, no need for read_cb below
+				if(!init_before) {
+					ioa_network_buffer_delete(ioa_eng, sm->m.sm.nd.nbh);
+					sm->m.sm.nd.nbh = NULL;
+				}
 			}
 		}
 
@@ -432,8 +454,8 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server,
 
 #if DTLS_SUPPORTED
 		if (!turn_params.no_dtls &&
-			is_dtls_handshake_message(ioa_network_buffer_data(sm->m.sm.nd.nbh),
-			(int)ioa_network_buffer_get_size(sm->m.sm.nd.nbh))) {
+			 is_dtls_handshake_message(ioa_network_buffer_data(sm->m.sm.nd.nbh),
+									   (int)ioa_network_buffer_get_size(sm->m.sm.nd.nbh))) {
 			chs = dtls_server_input_handler(server,s, sm->m.sm.nd.nbh);
 			ioa_network_buffer_delete(server->e, sm->m.sm.nd.nbh);
 			sm->m.sm.nd.nbh = NULL;
@@ -441,6 +463,11 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server,
 #endif
 
 		if(!chs) {
+			// Disallow raw UDP if federation_use_dtls or no_udp is enabled
+			if((server->federation_listener && turn_params.federation_use_dtls) ||
+			   (!server->federation_listener && turn_params.no_udp)) {  // TODO SLG - do we want to implement this for TURN client sockets - it changes coturn behavior
+				return -1;
+			}
 			chs = create_ioa_socket_from_fd(ioa_eng, s->fd, s,
 				UDP_SOCKET, CLIENT_SOCKET, &(sm->m.sm.nd.src_addr),
 				get_local_addr_from_ioa_socket(s));
@@ -461,8 +488,22 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server,
 			}
 			s->e = ioa_eng;
 			add_socket_to_map(s, amap);
-			if(open_client_connection_session(ts, &(sm->m.sm))<0) {
-				return -1;
+
+			if(server->federation_listener) {
+				// We have a new federation connection, register the federation_input_handler
+				if(register_callback_on_ioa_socket(server->e, s, IOA_EV_READ, federation_input_handler, server /* ctx */, 0)<0) {
+					return -1;
+				}	
+				if(sm->m.sm.nd.nbh) {
+					federation_input_handler(s,IOA_EV_READ,&(sm->m.sm.nd),server,0 /*can_resume?*/);
+					ioa_network_buffer_delete(server->e, sm->m.sm.nd.nbh);
+					sm->m.sm.nd.nbh = NULL;
+				}
+				return 0;
+			} else {
+				if(open_client_connection_session(ts, &(sm->m.sm))<0) {
+					return -1;
+				}
 			}
 		}
 	}
@@ -565,7 +606,9 @@ static int create_new_connected_udp_socket(
 		BIO_ctrl(wbio, BIO_CTRL_DGRAM_SET_RECV_TIMEOUT, 0, &timeout);
 
 #if DTLSv1_2_SUPPORTED
-		if(get_dtls_version(ioa_network_buffer_data(server->sm.m.sm.nd.nbh),
+		if(server->federation_listener) {
+			connecting_ssl = SSL_new(turn_params.federation_dtls_server_ctx_v1_2);
+		} else if(get_dtls_version(ioa_network_buffer_data(server->sm.m.sm.nd.nbh),
 							(int)ioa_network_buffer_get_size(server->sm.m.sm.nd.nbh)) == 1) {
 			connecting_ssl = SSL_new(server->e->dtls_ctx_v1_2);
 		} else {
@@ -796,7 +839,12 @@ static int create_server_socket(dtls_listener_relay_server_type* server, int rep
   }
 
   if(report_creation) {
-	  if(!turn_params.no_udp && !turn_params.no_dtls)
+	  if(server->federation_listener)
+		if(turn_params.federation_use_dtls) 
+	  	  addr_debug_print(server->verbose, &server->addr,"DTLS federation listener opened on");
+		else
+		  addr_debug_print(server->verbose, &server->addr,"UDP federation listener opened on");
+	  else if(!turn_params.no_udp && !turn_params.no_dtls)
 		  addr_debug_print(server->verbose, &server->addr,"DTLS/UDP listener opened on");
 	  else if(!turn_params.no_dtls)
 		  addr_debug_print(server->verbose, &server->addr,"DTLS listener opened on");
@@ -866,15 +914,17 @@ static int reopen_server_socket(dtls_listener_relay_server_type* server, evutil_
 		event_add(server->udp_listen_ev, NULL );
 	}
 
-	if (!turn_params.no_udp && !turn_params.no_dtls)
-		addr_debug_print(server->verbose, &server->addr,
-					"DTLS/UDP listener opened on ");
+	if(server->federation_listener)
+		if(turn_params.federation_use_dtls) 
+			addr_debug_print(server->verbose, &server->addr,"DTLS federation listener opened on");
+		else
+			addr_debug_print(server->verbose, &server->addr,"UDP federation listener opened on");
+	else if (!turn_params.no_udp && !turn_params.no_dtls)
+		addr_debug_print(server->verbose, &server->addr,"DTLS/UDP listener opened on");
 	else if (!turn_params.no_dtls)
-		addr_debug_print(server->verbose, &server->addr,
-					"DTLS listener opened on ");
+		addr_debug_print(server->verbose, &server->addr,"DTLS listener opened on");
 	else if (!turn_params.no_udp)
-		addr_debug_print(server->verbose, &server->addr,
-				"UDP listener opened on ");
+		addr_debug_print(server->verbose, &server->addr,"UDP listener opened on");
 
 	FUNCEND;
 
@@ -902,12 +952,19 @@ static int init_server(dtls_listener_relay_server_type* server,
 		       ioa_engine_handle e,
 		       turn_turnserver *ts,
 		       int report_creation,
-		       ioa_engine_new_connection_event_handler send_socket) {
+		       ioa_engine_new_connection_event_handler send_socket,
+			   int federation_listener) {
 
   if(!server) return -1;
 
   server->ts = ts;
   server->connect_cb = send_socket;
+  server->federation_listener = federation_listener;
+
+  // Initialize the federation listener
+  if(federation_listener) {
+	federation_init(e);
+  }
 
   if(ifname) STRCPY(server->ifname,ifname);
 
@@ -968,7 +1025,29 @@ dtls_listener_relay_server_type* create_dtls_listener_server(const char* ifname,
   if(init_server(server,
 		 ifname, local_address, port,
 		 verbose,
-		 e, ts, report_creation, send_socket)<0) {
+		 e, ts, report_creation, send_socket, 0 /* federation_listener? */)<0) {
+    return NULL;
+  } else {
+    return server;
+  }
+}
+
+dtls_listener_relay_server_type* create_dtls_federation_listener_server(const char* ifname,
+							     const char *local_address, 
+							     int port, 
+							     int verbose,
+							     ioa_engine_handle e,
+							     turn_turnserver *ts,
+							     int report_creation,
+							     ioa_engine_new_connection_event_handler send_socket) {
+  
+  dtls_listener_relay_server_type* server=(dtls_listener_relay_server_type*)
+		allocate_super_memory_engine(e,sizeof(dtls_listener_relay_server_type));
+
+  if(init_server(server,
+		 ifname, local_address, port,
+		 verbose,
+		 e, ts, report_creation, send_socket, 1 /* federation_listener? */)<0) {
     return NULL;
   } else {
     return server;

@@ -71,7 +71,8 @@ enum _MESSAGE_TO_RELAY_TYPE {
 	RMT_SOCKET,
 	RMT_CB_SOCKET,
 	RMT_MOBILE_SOCKET,
-	RMT_CANCEL_SESSION
+	RMT_CANCEL_SESSION,
+	RMT_FEDERATION_SEND
 };
 typedef enum _MESSAGE_TO_RELAY_TYPE MESSAGE_TO_RELAY_TYPE;
 
@@ -193,6 +194,10 @@ struct _turn_turnserver {
 
 	/* Only send RESPONSE-ORIGIN attribute in response if RFC5780 is enabled */
 	vintp response_origin_only_with_rfc5780;
+
+	/* Federation params */
+	ioa_addr federation_addr;
+	void **federation_service;
 };
 
 const char * get_version(turn_turnserver *server);
