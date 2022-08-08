@@ -77,6 +77,7 @@ typedef struct _stun_buffer_list_elem {
 
 typedef struct _stun_buffer_list {
 	stun_buffer_list_elem *head;
+	stun_buffer_list_elem *tail;
 	size_t tsz;
 } stun_buffer_list;
 
@@ -188,6 +189,7 @@ struct _ioa_socket
 	SOCKET_TYPE st;
 	SOCKET_APP_TYPE sat;
 	SSL* ssl;
+	ioa_timer_handle ssl_client_conn_tmr;
 	uint32_t ssl_renegs;
 	int in_write;
 	int bound;
@@ -270,6 +272,8 @@ void delete_socket_from_parent(ioa_socket_handle s);
 
 void add_socket_to_map(ioa_socket_handle s, ur_addr_map *amap);
 void delete_socket_from_map(ioa_socket_handle s);
+
+int send_ssl_backlog_buffers(ioa_socket_handle s);
 
 int is_connreset(void);
 int would_block(void);

@@ -101,8 +101,6 @@ static void socket_output_handler_bev(struct bufferevent *bev, void* arg);
 static void socket_input_handler_bev(struct bufferevent *bev, void* arg);
 static void eventcb_bev(struct bufferevent *bev, short events, void *arg);
 
-static int send_ssl_backlog_buffers(ioa_socket_handle s);
-
 static int set_accept_cb(ioa_socket_handle s, accept_cb acb, void *arg);
 
 static void close_socket_net_data(ioa_socket_handle s);
@@ -268,6 +266,9 @@ static stun_buffer_list_elem *get_elem_from_buffer_list(stun_buffer_list *bufs)
 		ret=bufs->head;
 		bufs->head=ret->next;
 		--bufs->tsz;
+		if(bufs->tsz == 0) {
+			bufs->tail = NULL;
+		}
 
 		ret->next=NULL;
 		ret->buf.len = 0;
@@ -285,11 +286,12 @@ static void pop_elem_from_buffer_list(stun_buffer_list *bufs)
 		stun_buffer_list_elem *ret = bufs->head;
 		bufs->head=ret->next;
 		--bufs->tsz;
+		if(bufs->tsz == 0) {
+			bufs->tail = NULL;
+		}
 		free(ret);
 	}
 }
-
-
 
 static stun_buffer_list_elem *new_blist_elem(ioa_engine_handle e)
 {
@@ -313,8 +315,14 @@ static stun_buffer_list_elem *new_blist_elem(ioa_engine_handle e)
 
 static inline void add_elem_to_buffer_list(stun_buffer_list *bufs, stun_buffer_list_elem *buf_elem)
 {
-	buf_elem->next = bufs->head;
-	bufs->head = buf_elem;
+	// We want a queue, so add to tail
+	if(bufs->tail) {
+		bufs->tail->next = buf_elem;
+	} else {
+		bufs->head = buf_elem;
+	}
+	buf_elem->next = NULL;
+	bufs->tail = buf_elem;
 	bufs->tsz += 1;
 }
 
@@ -3132,7 +3140,7 @@ static int ssl_send(ioa_socket_handle s, const char* buffer, int len, int verbos
 	}
 }
 
-static int send_ssl_backlog_buffers(ioa_socket_handle s)
+int send_ssl_backlog_buffers(ioa_socket_handle s)
 {
 	int ret = 0;
 	if(s) {
