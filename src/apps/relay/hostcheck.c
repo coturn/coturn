@@ -1,3 +1,4 @@
+// TODO SLG - do we want a copyright block here?
 
 #define __USE_GNU
 #include "hostcheck.h"

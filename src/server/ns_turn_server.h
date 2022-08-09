@@ -269,6 +269,7 @@ int report_turn_session_info(turn_turnserver *server, ts_ur_super_session *ss, i
 turn_time_t get_turn_server_time(turn_turnserver *server);
 
 void turn_cancel_session(turn_turnserver *server, turnsession_id sid);
+void turn_send_federation_data(turn_turnserver *server, turnsession_id sid, ioa_network_buffer_handle nbh, int ttl, int tos);
 
 ///////////////////////////////////////////
 

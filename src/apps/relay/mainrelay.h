@@ -426,7 +426,9 @@ int decodedTextSize(char *input);
 char* decryptPassword(char* in, const unsigned char* mykey);
 int init_ctr(struct ctr_state *state, const unsigned char iv[8]);
 
+////////// Federation ////////////
 
+void send_federation_data_message_to_relay(turnsession_id sid, ioa_network_buffer_handle nbh, int ttl, int tos);
 
 ///////////////////////////////
 

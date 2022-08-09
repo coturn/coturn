@@ -377,7 +377,7 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server,
 			if(sslret >= 0) {
 				int init_after = SSL_is_init_finished(s->ssl);
 				if (!init_before && init_after) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: federation_listener: client connection complete!\n", __FUNCTION__);
+					//TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: federation_listener: DTLS connection complete!\n", __FUNCTION__);
 					IOA_EVENT_DEL(s->ssl_client_conn_tmr); // Stop client connection timer
 					send_ssl_backlog_buffers(s); // Send any data packets that have been queued waiting for handshake to finish
 				}

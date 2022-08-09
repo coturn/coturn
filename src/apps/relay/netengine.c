@@ -62,6 +62,8 @@ static struct auth_server authserver[256];
 static struct relay_server *general_relay_servers[1+((turnserver_id)-1)];
 static struct relay_server *udp_relay_servers[1+((turnserver_id)-1)];
 
+static struct relay_server* get_relay_server(turnserver_id id);
+
 //////////////////////////////////////////////
 
 static void run_events(struct event_base *eb, ioa_engine_handle e);
@@ -449,6 +451,42 @@ static int handle_relay_message(relay_server_handle rs, struct message_to_relay 
 static pthread_mutex_t auth_message_counter_mutex = PTHREAD_MUTEX_INITIALIZER;
 static authserver_id auth_message_counter = 1;
 
+static struct relay_server* get_relay_server(turnserver_id id) {
+	struct relay_server *rs = NULL;
+	if(id>=TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP) {
+		size_t dest = id-TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP;
+		if(dest >= get_real_udp_relay_servers_number()) {
+			TURN_LOG_FUNC(
+					TURN_LOG_LEVEL_ERROR,
+					"%s: Too large UDP relay number: %d, total=%d\n",
+					__FUNCTION__,(int)dest,(int)get_real_udp_relay_servers_number());
+		}
+		rs = udp_relay_servers[dest];
+		if(!rs) {
+			TURN_LOG_FUNC(
+				TURN_LOG_LEVEL_ERROR,
+					"%s: Wrong UDP relay number: %d, total=%d\n",
+					__FUNCTION__,(int)dest,(int)get_real_udp_relay_servers_number());
+		}
+	} else {
+		size_t dest = id;
+		if(dest >= get_real_general_relay_servers_number()) {
+			TURN_LOG_FUNC(
+					TURN_LOG_LEVEL_ERROR,
+					"%s: Too large general relay number: %d, total=%d\n",
+					__FUNCTION__,(int)dest,(int)get_real_general_relay_servers_number());
+		}
+		rs = general_relay_servers[dest];
+		if(!rs) {
+			TURN_LOG_FUNC(
+				TURN_LOG_LEVEL_ERROR,
+				"%s: Wrong general relay number: %d, total=%d\n",
+				__FUNCTION__,(int)dest,(int)get_real_general_relay_servers_number());
+		}
+	}
+	return rs;
+}
+
 void send_auth_message_to_auth_server(struct auth_message *am)
 {
 	pthread_mutex_lock(&auth_message_counter_mutex);
@@ -486,46 +524,19 @@ static void auth_server_receive_message(struct bufferevent *bev, void *ptr)
     	  am.success = 1;
       }
     }
-    
-    size_t dest = am.id;
-    
+
     struct evbuffer *output = NULL;
-    
-    if(dest>=TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP) {
-      dest -= TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP;
-      if(dest >= get_real_udp_relay_servers_number()) {
-    	  TURN_LOG_FUNC(
-		      TURN_LOG_LEVEL_ERROR,
-		      "%s: Too large UDP relay number: %d\n",
-		      __FUNCTION__,(int)dest);
-      } else if(!(udp_relay_servers[dest])) {
-    	  TURN_LOG_FUNC(
-    	  	TURN_LOG_LEVEL_ERROR,
-    	  	"%s: Wrong UDP relay number: %d, total %d\n",
-    	  	__FUNCTION__,(int)dest, (int)get_real_udp_relay_servers_number());
-      } else {
-    	  output = bufferevent_get_output(udp_relay_servers[dest]->auth_out_buf);
-      }
-    } else {
-      if(dest >= get_real_general_relay_servers_number()) {
-    	  TURN_LOG_FUNC(
-		      TURN_LOG_LEVEL_ERROR,
-		      "%s: Too large general relay number: %d, total %d\n",
-		      __FUNCTION__,(int)dest,(int)get_real_general_relay_servers_number());
-      } else if(!(general_relay_servers[dest])) {
-    	  TURN_LOG_FUNC(
-    	  		      TURN_LOG_LEVEL_ERROR,
-    	  		      "%s: Wrong general relay number: %d, total %d\n",
-    	  		      __FUNCTION__,(int)dest,(int)get_real_general_relay_servers_number());
-      } else {
-    	  output = bufferevent_get_output(general_relay_servers[dest]->auth_out_buf);
-      }
-    }
-    
+	struct relay_server* relay_server = get_relay_server(am.id);
+	if(relay_server) {
+		output = bufferevent_get_output(relay_server->auth_out_buf);
+	} else {
+    	  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: can't find relay for turn_server_id: %d\n", __FUNCTION__,(int)am.id);
+	}
+        
     if(output)
       evbuffer_add(output,&am,sizeof(struct auth_message));
     else {
-      ioa_network_buffer_delete(NULL, am.in_buffer.nbh);
+      ioa_network_buffer_delete(relay_server->ioa_eng, am.in_buffer.nbh);
       am.in_buffer.nbh = NULL;
     }
   }
@@ -590,41 +601,10 @@ static int send_socket_to_relay(turnserver_id id, uint64_t cid, stun_tid *tid, i
 
 	ioa_socket_handle s_to_delete = s;
 
-	struct relay_server *rs = NULL;
-	if(id>=TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP) {
-		size_t dest = id-TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP;
-		if(dest >= get_real_udp_relay_servers_number()) {
-			TURN_LOG_FUNC(
-					TURN_LOG_LEVEL_ERROR,
-					"%s: Too large UDP relay number: %d, rmt=%d, total=%d\n",
-					__FUNCTION__,(int)dest,(int)rmt, (int)get_real_udp_relay_servers_number());
-			goto err;
-		}
-		rs = udp_relay_servers[dest];
-		if(!rs) {
-			TURN_LOG_FUNC(
-				TURN_LOG_LEVEL_ERROR,
-					"%s: Wrong UDP relay number: %d, rmt=%d, total=%d\n",
-					__FUNCTION__,(int)dest,(int)rmt, (int)get_real_udp_relay_servers_number());
-			goto err;
-		}
-	} else {
-		size_t dest = id;
-		if(dest >= get_real_general_relay_servers_number()) {
-			TURN_LOG_FUNC(
-					TURN_LOG_LEVEL_ERROR,
-					"%s: Too large general relay number: %d, rmt=%d, total=%d\n",
-					__FUNCTION__,(int)dest,(int)rmt, (int)get_real_general_relay_servers_number());
-			goto err;
-		}
-		rs = general_relay_servers[dest];
-		if(!rs) {
-			TURN_LOG_FUNC(
-				TURN_LOG_LEVEL_ERROR,
-				"%s: Wrong general relay number: %d, rmt=%d, total=%d\n",
-				__FUNCTION__,(int)dest,(int)rmt, (int)get_real_general_relay_servers_number());
-			goto err;
-		}
+	struct relay_server *rs = get_relay_server(id);
+	if(!rs) {
+    	TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: can't find relay for turn_server_id: %d\n", __FUNCTION__,(int)id);
+		goto err;
 	}
 
 	switch (rmt) {
@@ -670,9 +650,8 @@ static int send_socket_to_relay(turnserver_id id, uint64_t cid, stun_tid *tid, i
 
 		break;
 	}
-	default: {
+	default:
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: UNKNOWN RMT message: %d\n",__FUNCTION__,(int)rmt);
-	}
 	}
 
 	if(ret == 0) {
@@ -694,16 +673,16 @@ static int send_socket_to_relay(turnserver_id id, uint64_t cid, stun_tid *tid, i
 
 	IOA_CLOSE_SOCKET(s_to_delete);
 	if(nd && nd->nbh) {
-	  ioa_network_buffer_delete(NULL, nd->nbh);
+	  ioa_network_buffer_delete(rs->ioa_eng, nd->nbh);
 	  nd->nbh = NULL;
 	}
 
 	if(ret<0) {
 	  if(rmt == RMT_MOBILE_SOCKET) {
-	    ioa_network_buffer_delete(NULL, sm.m.sm.nd.nbh);
+	    ioa_network_buffer_delete(rs->ioa_eng, sm.m.sm.nd.nbh);
 	    sm.m.sm.nd.nbh = NULL;
 	  } else if(rmt == RMT_CB_SOCKET) {
-		  ioa_network_buffer_delete(NULL, sm.m.cb_sm.nd.nbh);
+		  ioa_network_buffer_delete(rs->ioa_eng, sm.m.cb_sm.nd.nbh);
 		  sm.m.cb_sm.nd.nbh = NULL;
 	  }
 	}
@@ -721,47 +700,13 @@ int send_session_cancellation_to_relay(turnsession_id sid)
 
 	turnserver_id id = (turnserver_id)(sid / TURN_SESSION_ID_FACTOR);
 
-	struct relay_server *rs = NULL;
-	if(id>=TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP) {
-		size_t dest = id-TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP;
-		if(dest >= get_real_udp_relay_servers_number()) {
-			TURN_LOG_FUNC(
-					TURN_LOG_LEVEL_ERROR,
-					"%s: Too large UDP relay number: %d, total=%d\n",
-					__FUNCTION__,(int)dest,(int)get_real_udp_relay_servers_number());
-			ret = -1;
-			goto err;
-		}
-		rs = udp_relay_servers[dest];
-		if(!rs) {
-			TURN_LOG_FUNC(
-				TURN_LOG_LEVEL_ERROR,
-					"%s: Wrong UDP relay number: %d, total=%d\n",
-					__FUNCTION__,(int)dest,(int)get_real_udp_relay_servers_number());
-			ret = -1;
-			goto err;
-		}
-	} else {
-		size_t dest = id;
-		if(dest >= get_real_general_relay_servers_number()) {
-			TURN_LOG_FUNC(
-					TURN_LOG_LEVEL_ERROR,
-					"%s: Too large general relay number: %d, total=%d\n",
-					__FUNCTION__,(int)dest,(int)get_real_general_relay_servers_number());
-			ret = -1;
-			goto err;
-		}
-		rs = general_relay_servers[dest];
-		if(!rs) {
-			TURN_LOG_FUNC(
-				TURN_LOG_LEVEL_ERROR,
-				"%s: Wrong general relay number: %d, total=%d\n",
-				__FUNCTION__,(int)dest,(int)get_real_general_relay_servers_number());
-			ret = -1;
-			goto err;
-		}
+	struct relay_server *rs = get_relay_server(id);
+	if(!rs) {
+    	TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: can't find relay for turn_server_id: %d\n", __FUNCTION__,(int)id);
+		ret = -1;
+		goto err;
 	}
-
+	
 	sm.relay_server = rs;
 	sm.m.csm.id = sid;
 
@@ -782,16 +727,44 @@ int send_session_cancellation_to_relay(turnsession_id sid)
 	return ret;
 }
 
+void send_federation_data_message_to_relay(turnsession_id sid, ioa_network_buffer_handle nbh, int ttl, int tos) {
+	struct message_to_relay sm;
+	bzero(&sm,sizeof(struct message_to_relay));
+	sm.t = RMT_FEDERATION_SEND;
+
+	turnserver_id id = (turnserver_id)(sid / TURN_SESSION_ID_FACTOR);
+
+	struct relay_server *rs = get_relay_server(id);
+	if(!rs) {
+    	TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: can't find relay for turn_server_id: %d\n", __FUNCTION__,(int)id);
+		ioa_network_buffer_delete(NULL, nbh);
+		return;
+	}
+
+	sm.relay_server = rs;
+	sm.m.fed_send.id = sid;
+	sm.m.fed_send.nbh = nbh;
+	sm.m.fed_send.ttl = ttl;
+	sm.m.fed_send.tos = tos;
+
+	struct evbuffer *output = bufferevent_get_output(rs->out_buf);
+	if(output) {
+		evbuffer_add(output,&sm,sizeof(struct message_to_relay));
+	} else {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Empty output buffer\n", __FUNCTION__);
+		ioa_network_buffer_delete(rs->ioa_eng, nbh);
+	}
+}
+
 static int handle_relay_message(relay_server_handle rs, struct message_to_relay *sm)
 {
 	if(rs && sm) {
 
 		switch (sm->t) {
 
-		case RMT_CANCEL_SESSION: {
+		case RMT_CANCEL_SESSION:
 			turn_cancel_session(&(rs->server),sm->m.csm.id);
-		}
-		break;
+			break;
 		case RMT_SOCKET: {
 
 			if (sm->m.sm.s->defer_nbh) {
@@ -825,8 +798,8 @@ static int handle_relay_message(relay_server_handle rs, struct message_to_relay 
 
 			ioa_network_buffer_delete(rs->ioa_eng, sm->m.sm.nd.nbh);
 			sm->m.sm.nd.nbh = NULL;
-		}
 			break;
+		}
 		case RMT_CB_SOCKET:
 
 			turnserver_accept_tcp_client_data_connection(&(rs->server), sm->m.cb_sm.connection_id,
@@ -869,8 +842,8 @@ static int handle_relay_message(relay_server_handle rs, struct message_to_relay 
 			break;
 		}
 		case RMT_FEDERATION_SEND:
-			// TODO SLG
-		break;
+			turn_send_federation_data(&(rs->server), sm->m.fed_send.id, sm->m.fed_send.nbh, sm->m.fed_send.ttl, sm->m.fed_send.tos);
+			break;
 		default: {
 			perror("Weird buffer type\n");
 		}

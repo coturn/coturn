@@ -781,6 +781,19 @@ void turn_cancel_session(turn_turnserver *server, turnsession_id sid)
 	}
 }
 
+void turn_send_federation_data(turn_turnserver *server, turnsession_id sid, ioa_network_buffer_handle nbh, int ttl, int tos)
+{
+	if(server) {
+		ts_ur_super_session* ss = get_session_from_map(server, sid);
+		if(ss) {
+			addr_debug_print(eve(server->verbose), &ss->client_socket->remote_addr, "Federation data being relayed to");
+			send_data_from_ioa_socket_nbh(ss->client_socket, NULL /* dest_addr */, nbh, ttl, tos, NULL /* skip/ret */);
+		} else {
+			ioa_network_buffer_delete(server->e, nbh);
+		}
+	}
+}
+
 static ts_ur_super_session* get_session_from_mobile_map(turn_turnserver* server, mobile_id_t mid)
 {
 	ts_ur_super_session *ss = NULL;
@@ -3117,11 +3130,11 @@ static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss,
 				ioa_network_buffer_header_init(nbh);
 				int skip = 0;
 				if(a->use_federation && *server->federation_service) {
-					//addr_debug_print(1, &peer_addr, "TURN SendInd using federation to send to");
+					//addr_debug_print(server->verbose, &peer_addr, "TURN SendInd using federation thread to send to");
 					federation_send_data((dtls_listener_relay_server_type*)(*server->federation_service), 
 						&peer_addr, nbh, in_buffer->recv_ttl-1, in_buffer->recv_tos, &skip);
 				} else {
-					//addr_debug_print(1, &peer_addr, "TURN SendInd to send to");
+					//addr_debug_print(server->verbose, &peer_addr, "TURN SendInd to send to");
 					send_data_from_ioa_socket_nbh(get_relay_socket_ss(ss,peer_addr.ss.sa_family), &peer_addr, nbh, in_buffer->recv_ttl-1, in_buffer->recv_tos, &skip);
 				}
 				if (!skip) {

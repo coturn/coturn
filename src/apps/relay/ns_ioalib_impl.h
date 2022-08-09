@@ -99,6 +99,13 @@ struct cancelled_session_message {
 	turnsession_id id;
 };
 
+struct federation_send_message {
+	turnsession_id id;
+	int ttl;
+	int tos;
+	ioa_network_buffer_handle nbh;	
+};
+
 struct relay_server {
 	turnserver_id id;
 	super_memory_t* sm;
@@ -119,6 +126,7 @@ struct message_to_relay {
 		struct socket_message sm;
 		struct cb_socket_message cb_sm;
 		struct cancelled_session_message csm;
+		struct federation_send_message fed_send;
 	} m;
 };
 

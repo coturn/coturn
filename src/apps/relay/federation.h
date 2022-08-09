@@ -14,7 +14,7 @@ extern "C" {
 void federation_init(ioa_engine_handle e);
 uint16_t federation_add_connection(allocation* fed_allocation);
 int federation_remove_connection(uint16_t connection_id);
-int federation_send_data(dtls_listener_relay_server_type* server, ioa_addr* dest_addr,
+void federation_send_data(dtls_listener_relay_server_type* server, ioa_addr* dest_addr,
 				ioa_network_buffer_handle nbh,
 				int ttl, int tos, int* skip);
 void federation_input_handler(ioa_socket_handle s, int event_type,

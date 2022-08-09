@@ -20,24 +20,36 @@ static size_t whitelist_count = 0;
 typedef struct _federation_data {
 	ur_addr_map* federation_client_tuple_to_fed_connection;
 	lm_map federation_cid_to_fed_connection;
+	int use_mutex;    // set to 1 if mutex should be used, otherwise 0
+	turn_mutex mutex; // only initialized if use_mutex is 1
 	struct bufferevent *in_buf;
 	struct bufferevent *out_buf;	
 } federation_data;
 
 federation_data federation_data_singleton = { 0 };  // singleton instance
+#define FED_LOCK() if(federation_data_singleton.use_mutex) turn_mutex_lock(&federation_data_singleton.mutex)
+#define FED_UNLOCK() if(federation_data_singleton.use_mutex) turn_mutex_unlock(&federation_data_singleton.mutex)
+
 typedef struct _federation_connection {
 	uint16_t connection_id;  // channel number
-	allocation* fed_allocation;
+	ioa_addr client_addr;
+	turn_turnserver *server;
+	turnsession_id sid;
 } federation_connection;
 
+#define DTLS_CLIENT_CONNECTION_MAX_TIME_SECS 10
 
 uint16_t federation_add_connection_imp(federation_data* fed_data, allocation* fed_allocation);
 int federation_remove_connection_imp(federation_data* fed_data, uint16_t connection_id);
 federation_connection* federation_get_connection_by_connection_id(uint16_t connection_id);
 federation_connection* federation_get_connection_by_allocation(allocation* client_allocation);
+int federation_get_connection_info_by_connection_id(uint16_t connection_id, turn_turnserver** turn_server, turnsession_id* turn_session_id);
 SSL_CTX* federation_setup_dtls_client_ctx(void);
+int federation_send_data_imp(dtls_listener_relay_server_type* server, ioa_addr* dest_addr,
+				ioa_network_buffer_handle nbh,
+				int ttl, int tos, int* skip);
 
-// TODO SLG - add locking for multi-threaded use
+// WARNING:  make sure this is always called under lock
 federation_connection* federation_get_connection_by_connection_id(uint16_t connection_id) {
 	federation_connection* fed_con = 0;
 	ur_map_value_type mvt = 0;
@@ -47,6 +59,7 @@ federation_connection* federation_get_connection_by_connection_id(uint16_t conne
 	return fed_con;
 }
 
+// WARNING:  make sure this is always called under lock
 federation_connection* federation_get_connection_by_allocation(allocation* client_allocation) {
 	federation_connection* fed_con = 0;
 	ur_addr_map_value_type mvt = 0;
@@ -57,54 +70,101 @@ federation_connection* federation_get_connection_by_allocation(allocation* clien
 	return fed_con;
 }
 
+// returns 1 for success, 0 otherwise
+int federation_get_connection_info_by_connection_id(uint16_t connection_id, turn_turnserver** turn_server, turnsession_id* turn_session_id) {
+	int ret = 0;
+
+	FED_LOCK();
+	
+	federation_connection* fed_con = federation_get_connection_by_connection_id(connection_id);
+	if(fed_con) {
+		ret = 1;
+		if(turn_server) *turn_server = fed_con->server;
+		if(turn_session_id) *turn_session_id = fed_con->sid;
+	}
+
+	FED_UNLOCK();
+
+	return ret;
+}
+
 uint16_t federation_add_connection(allocation* client_allocation) {
+
+	uint16_t connection_id = 0;
+
+	FED_LOCK();
+
 	// Create ur_addr_map if not created yet
 	if(federation_data_singleton.federation_client_tuple_to_fed_connection == 0) {
 		federation_data_singleton.federation_client_tuple_to_fed_connection = (ur_addr_map*)malloc(sizeof(ur_addr_map));
 		ur_addr_map_init(federation_data_singleton.federation_client_tuple_to_fed_connection);
 	}
 
+	if(!client_allocation) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"%s: allocation was NULL\n",__FUNCTION__);
+		goto done;
+	}
+	if(!client_allocation->owner) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"%s: allocation has no owner\n",__FUNCTION__);
+		goto done;
+	}
+
 	// Check if connection for client_addr already exists, if so return it
 	federation_connection* fed_con = federation_get_connection_by_allocation(client_allocation);
 	if(fed_con) {
-		return fed_con->connection_id;
+		connection_id = fed_con->connection_id;
+		goto done;
 	}
-
-    // Create new federation_connection
-	fed_con = (federation_connection*)malloc(sizeof(federation_connection));
 	
 	// Generate Random connection_id and ensure doesn't exist
 	do {
 		// Ensure randomly generated number is in range of a valid RFC TURN channel numbers,
 		// since it is more friendly for the client to demux and for display in wireshark.
-		fed_con->connection_id = (uint16_t)rand() % 0x3FFF + 0x4000;  // Move to valid TURN channel number range
+		connection_id = (uint16_t)rand() % 0x3FFF + 0x4000;  // Move to valid TURN channel number range
 		/* Ensure cid is unique, by looking it up */
-		if (fed_con->connection_id) {			
-			if (federation_get_connection_by_connection_id(fed_con->connection_id)) {
-				fed_con->connection_id = 0;
+		if (connection_id) {			
+			if (federation_get_connection_by_connection_id(connection_id)) {
+				connection_id = 0;
 			}
 		}
-	} while(fed_con->connection_id == 0);
+	} while(connection_id == 0);
 
-	// Assign allocation
-	fed_con->fed_allocation = client_allocation;
+    // Create new federation_connection
+	fed_con = (federation_connection*)malloc(sizeof(federation_connection));
+
+	// Assign info from allocation
+	fed_con->connection_id = connection_id;
+	ts_ur_super_session* ss = (ts_ur_super_session*)client_allocation->owner;
+	memcpy(&fed_con->client_addr, &(ss->client_socket->remote_addr), sizeof(ioa_addr));
+	fed_con->sid = ss->id;
+	fed_con->server = (turn_turnserver*)ss->server;
 
 	// We have a unique connection_id now - add to both maps
-	ioa_addr* client_addr = &(((ts_ur_super_session*)client_allocation->owner)->client_socket->remote_addr);
-	ur_addr_map_put(federation_data_singleton.federation_client_tuple_to_fed_connection, client_addr, (ur_addr_map_value_type)fed_con);
+	ur_addr_map_put(federation_data_singleton.federation_client_tuple_to_fed_connection, &fed_con->client_addr, (ur_addr_map_value_type)fed_con);
 	lm_map_put(&federation_data_singleton.federation_cid_to_fed_connection, fed_con->connection_id, (ur_map_value_type)fed_con);
 
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: added cid=%u\n", __FUNCTION__, fed_con->connection_id);
+	if(fed_con->server->verbose) {
+		char log_buf[128];
+		sprintf(log_buf, "%s: added cid=%u, sid=%018llu, client_addr", __FUNCTION__, fed_con->connection_id, (unsigned long long)fed_con->sid);
+		addr_debug_print(1, &fed_con->client_addr, log_buf);
+	}
 
-	return fed_con->connection_id;
+	done:
+
+	FED_UNLOCK();
+
+	return connection_id;
 }
 
 int federation_remove_connection(uint16_t connection_id) {
+	int ret = EINVAL;
+	
+	FED_LOCK();
+
 	// Get item first, then remove from both maps
 	federation_connection* fed_con = federation_get_connection_by_connection_id(connection_id);
 	if(fed_con != 0) {
-		ioa_addr* client_addr = &(((ts_ur_super_session*)fed_con->fed_allocation->owner)->client_socket->remote_addr);
-		ur_addr_map_del(federation_data_singleton.federation_client_tuple_to_fed_connection, client_addr, NULL);
+		ur_addr_map_del(federation_data_singleton.federation_client_tuple_to_fed_connection, &fed_con->client_addr, NULL);
 		lm_map_del(&federation_data_singleton.federation_cid_to_fed_connection, connection_id, NULL);
 
 		// Release federation_connection memory
@@ -112,9 +172,12 @@ int federation_remove_connection(uint16_t connection_id) {
 
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: removed cid=%u\n", __FUNCTION__, connection_id);
 
-		return 0;
+		ret = 0;
 	}
-	return EINVAL;
+
+	FED_UNLOCK();
+
+	return ret;
 }
 
 // returns -1 if not found, otherwise position in whitelist
@@ -325,31 +388,44 @@ enum _MESSAGE_TO_FEDERATION_TYPE {
 };
 typedef enum _MESSAGE_TO_FEDERATION_TYPE MESSAGE_TO_FEDERATION_TYPE;
 
+struct federation_send_data_message {
+	dtls_listener_relay_server_type* listen_server;
+	ioa_addr dest_addr;
+	int ttl;
+	int tos;
+	ioa_network_buffer_handle nbh;
+};
+
 struct message_to_federation {
 	MESSAGE_TO_FEDERATION_TYPE t;
 	union {
-//		struct socket_message sm;
-//		struct cb_socket_message cb_sm;
-//		struct cancelled_session_message csm;
+		struct federation_send_data_message send_data;
 	} m;
 };
 
 static void federation_receive_message(struct bufferevent *bev, void *ptr)
 {
-	struct message_to_relay sm;
+	struct message_to_federation msg;
 	int n = 0;
 	struct evbuffer *input = bufferevent_get_input(bev);
 	//struct relay_server *rs = (struct relay_server *)ptr;
 	UNUSED_ARG(ptr);
 
-	while ((n = evbuffer_remove(input, &sm, sizeof(struct message_to_federation))) > 0) {
+	while ((n = evbuffer_remove(input, &msg, sizeof(struct message_to_federation))) > 0) {
 
 		if (n != sizeof(struct message_to_federation)) {
 			perror("Weird buffer error\n");
 			continue;
 		}
 
-		//handle_federation_message(rs, &sm);
+		switch(msg.t) {
+			case FMT_SEND_DATA:
+				federation_send_data_imp(msg.m.send_data.listen_server, &msg.m.send_data.dest_addr, msg.m.send_data.nbh, msg.m.send_data.ttl, msg.m.send_data.tos, NULL);
+			break;
+
+			default:
+			break;
+		}
 	}
 }
 
@@ -362,6 +438,14 @@ void federation_init(ioa_engine_handle e) {
 	struct event *ev3 = evsignal_new(turn_params.listener.event_base, SIGQUIT, signal_callback_handler, NULL);
 	event_add(ev3, NULL);
 
+	// Initialize Mutex - if needed
+	if(turn_params.general_relay_servers_number > 1) {
+		turn_mutex_init(&federation_data_singleton.mutex);
+		federation_data_singleton.use_mutex = 1;
+	} else {
+		federation_data_singleton.use_mutex = 0;
+	}
+
 	// Create in/out buffer pair for messaging to the federation thread.  Senders use out_buf to send.  Data arrives
 	// on in_buff via registered callback.
 	struct bufferevent* pair[2];
@@ -373,7 +457,6 @@ void federation_init(ioa_engine_handle e) {
 
 	if(turn_params.federation_use_dtls) {
 		// Initialize the DTLS client CTX
-		// Note: the DTLS server CTX is part of the dtls_listener storage
 		turn_params.federation_dtls_client_ctx_v1_2 = federation_setup_dtls_ctx(DTLSv1_2_client_method());
 		turn_params.federation_dtls_server_ctx_v1_2 = federation_setup_dtls_ctx(DTLSv1_2_server_method());
 	}
@@ -394,10 +477,8 @@ static void federation_client_connect_timeout_handler(ioa_engine_handle e, void*
 	IOA_CLOSE_SOCKET(s);
 }
 
-int federation_send_data(dtls_listener_relay_server_type* server, ioa_addr* dest_addr,
-				ioa_network_buffer_handle nbh,
-				int ttl, int tos, int* skip) {
-
+int federation_send_data_imp(dtls_listener_relay_server_type* server, ioa_addr* dest_addr,
+				ioa_network_buffer_handle nbh, int ttl, int tos, int* skip) {
 	int fd = server->udp_listen_s->fd;
 	if(server->federation_listener && turn_params.federation_use_dtls) {
 		// See if we already have a DTLS connection to the destination
@@ -453,7 +534,7 @@ int federation_send_data(dtls_listener_relay_server_type* server, ioa_addr* dest
 
 			// start a connection timer
 			IOA_EVENT_DEL(chs->ssl_client_conn_tmr);
-			chs->ssl_client_conn_tmr = set_ioa_timer(server->e, 10 /* TODO Define constant */, 0,
+			chs->ssl_client_conn_tmr = set_ioa_timer(server->e, DTLS_CLIENT_CONNECTION_MAX_TIME_SECS, 0,
 							federation_client_connect_timeout_handler, chs, 0,
 							"federation_client_connect_timeout_handler");
 
@@ -464,13 +545,43 @@ int federation_send_data(dtls_listener_relay_server_type* server, ioa_addr* dest
 			}	
 		}
 
+		addr_debug_print(eve(server->verbose), dest_addr, "Federation: relaying data from SendInd to");
+
 		return send_data_from_ioa_socket_nbh(chs, dest_addr, nbh, ttl, tos, skip);
 	}
 	else
 	{
+		addr_debug_print(eve(server->verbose), dest_addr, "Federation: relaying data from SendInd to");
+
 		// Relay UDP data
 		return send_data_from_ioa_socket_nbh(server->udp_listen_s, dest_addr, nbh, ttl, tos, skip);
 	}
+}
+
+void federation_send_data(dtls_listener_relay_server_type* server, ioa_addr* dest_addr,
+				ioa_network_buffer_handle nbh, int ttl, int tos, int* skip) {
+
+	if(turn_params.general_relay_servers_number > 1) {
+		// If muti-threaded, then send info federation thread for sending
+		struct message_to_federation msg;
+		msg.t = FMT_SEND_DATA;
+		msg.m.send_data.listen_server = server;
+		memcpy(&msg.m.send_data.dest_addr, dest_addr, sizeof(ioa_addr));
+		msg.m.send_data.ttl = ttl;
+		msg.m.send_data.tos = tos;
+		msg.m.send_data.nbh = nbh;
+
+		struct evbuffer *output = bufferevent_get_output(federation_data_singleton.out_buf);
+		if(evbuffer_add(output,&msg,sizeof(struct message_to_federation))<0) {
+			fprintf(stderr,"%s: Weird buffer error\n",__FUNCTION__);
+			ioa_network_buffer_delete(server->e, nbh);
+		}
+
+		return;
+	}
+
+	// If single threaded then just send immediately
+	federation_send_data_imp(server, dest_addr, nbh, ttl, tos, skip);
 }
 
 void federation_input_handler(ioa_socket_handle s, int event_type,
@@ -505,38 +616,25 @@ void federation_input_handler(ioa_socket_handle s, int event_type,
 		return;
 	}
 
-	federation_connection* fed_con = federation_get_connection_by_connection_id(cid);
-	if(!fed_con) {
+	turn_turnserver* turn_server = 0;
+	turnsession_id sid = 0;
+	if(!federation_get_connection_info_by_connection_id(cid, &turn_server, &sid)) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "%s: Federation listener received data for invalid cid=%hd ignoring\n", __FUNCTION__, cid);
 		return;
 	}
 
-	allocation* a = fed_con->fed_allocation;
-	if(!is_allocation_valid(a)) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"%s: Federation listener received data for valid cid=%hd, but allocation was not valid\n",__FUNCTION__, cid);
-		return;
-	}
-
-	if(!a->owner) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"%s: Federation listener received data for valid cid=%hd, but allocation has no owner\n",__FUNCTION__, cid);
-		return;
-	}
-
-	ts_ur_super_session* ss = (ts_ur_super_session*)a->owner;
-	if(!ss->client_socket)
-	{
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"%s: Federation listener received data for valid cid=%hd, but allocation owner has no client_socket\n",__FUNCTION__, cid);
-		return;
-	}
-	
     // We are reusing the inbound buffer for outbound sending, NULL it out so caller doesn't free
 	ioa_network_buffer_handle nbh = in_buffer->nbh;
 	in_buffer->nbh = NULL;
 
-	// TODO SLG - eventually comment out
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: Federation listener received data for valid cid=%hd and found mapped allocation, relaying data...\n",__FUNCTION__, cid);
-
-	send_data_from_ioa_socket_nbh(ss->client_socket, NULL /* dest_addr */, nbh, in_buffer->recv_ttl-1, in_buffer->recv_tos, NULL /* skip/ret */);
+	if(turn_params.general_relay_servers_number > 1) {
+		if(eve(turn_server->verbose)) TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: Federation listener received data cid=%hd, relaying data via relay thread...\n",__FUNCTION__, cid);
+	    send_federation_data_message_to_relay(sid, nbh, in_buffer->recv_ttl-1, in_buffer->recv_tos);
+	}
+	else {
+		if(eve(turn_server->verbose)) TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: Federation listener received data cid=%hd, relaying data directly...\n",__FUNCTION__, cid);
+		turn_send_federation_data(turn_server, sid, nbh, in_buffer->recv_ttl-1, in_buffer->recv_tos);
+	}
 }
 
 void federation_whitelist_add(char* hostname, char* issuer)
