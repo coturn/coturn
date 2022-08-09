@@ -991,6 +991,7 @@ static const struct myoption long_options[] = {
 				{ "no-rfc5780", optional_argument, NULL, NO_RFC5780 },
 				{ "no-stun-backward-compatibility", optional_argument, NULL, NO_STUN_BACKWARD_COMPATIBILITY_OPT },
 				{ "response-origin-only-with-rfc5780", optional_argument, NULL, RESPONSE_ORIGIN_ONLY_WITH_RFC5780_OPT },
+				{ "syslog-facility", required_argument, NULL, SYSLOG_FACILITY_OPT },
 				{ NULL, no_argument, NULL, 0 }
 };
 
@@ -1681,6 +1682,7 @@ static void set_option(int c, char *value)
 	case SIMPLE_LOG_OPT:
 	case NEW_LOG_TIMESTAMP_OPT:
 	case NEW_LOG_TIMESTAMP_FORMAT_OPT:
+	case SYSLOG_FACILITY_OPT:
 	case 'c':
 	case 'n':
 	case 'h':
@@ -1811,6 +1813,8 @@ static void read_config_file(int argc, char **argv, int pass)
 						use_new_log_timestamp_format=1;
 					} else if ((pass==0) && (c==NEW_LOG_TIMESTAMP_FORMAT_OPT)) {
 						set_turn_log_timestamp_format(value);
+					} else if((pass==0) && (c==SYSLOG_FACILITY_OPT)) {
+						set_syslog_facility(value);	
 					} else if((pass == 1) && (c != 'u')) {
 						set_option(c, value);
 					} else if((pass == 2) && (c == 'u')) {
@@ -2297,6 +2301,9 @@ int main(int argc, char **argv)
 			case NEW_LOG_TIMESTAMP_FORMAT_OPT:
 				set_turn_log_timestamp_format(optarg);
 				break;
+			case SYSLOG_FACILITY_OPT:
+				set_syslog_facility(optarg);
+				break;				
 			default:
 				;
 			}

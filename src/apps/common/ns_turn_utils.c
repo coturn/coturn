@@ -167,7 +167,7 @@ static int int_fac[]={LOG_AUTH ,  LOG_CRON , LOG_DAEMON ,
 
 static int syslog_facility = 0;
 
-static int str2facility(char *s)
+static int str_to_syslog_facility(char *s)
 {
 	int i;
 	for (i=0; str_fac[i]; i++) {
@@ -182,8 +182,9 @@ void set_syslog_facility(char *val)
 	if(val == NULL){
 		return;
 	}
-	int tmp = str2facility(val);
+	int tmp = str_to_syslog_facility(val);
 	if(tmp == -1){
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: invalid syslog-facility value (%s); ignored.\n", val);
 		return;
 	}
 	syslog_facility = tmp;
