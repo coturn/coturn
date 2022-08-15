@@ -3722,10 +3722,11 @@ void turn_report_allocation_set(void *a, turn_time_t lifetime, int refresh)
 					uint8_t rsaddr[129];
 					addr_to_string(get_local_addr_from_ioa_socket(ss->client_socket), saddr);
 					addr_to_string(get_remote_addr_from_ioa_socket(ss->client_socket), rsaddr);
+					const char *type = socket_type_name(get_ioa_socket_type(ss->client_socket));
 					const char *ssl = ss->client_socket->ssl ? turn_get_ssl_method(ss->client_socket->ssl, "UNKNOWN") : "NONE";
 					const char *cipher = ss->client_socket->ssl ? get_ioa_socket_cipher(ss->client_socket) : "NONE";
-					send_message_to_redis(e->rch, "set", key, "%s lifetime=%lu, type=%s, local=%s, remote=%s, ssl=%s, cipher=%s", status, (unsigned long)lifetime, socket_type_name(get_ioa_socket_type(ss->client_socket)), saddr, rsaddr, ssl, cipher);
-					send_message_to_redis(e->rch, "publish", key, "%s lifetime=%lu, type=%s, local=%s, remote=%s, ssl=%s, cipher=%s", status, (unsigned long)lifetime, socket_type_name(get_ioa_socket_type(ss->client_socket)), saddr, rsaddr, ssl, cipher);
+					send_message_to_redis(e->rch, "set", key, "%s lifetime=%lu, type=%s, local=%s, remote=%s, ssl=%s, cipher=%s", status, (unsigned long)lifetime, type, saddr, rsaddr, ssl, cipher);
+					send_message_to_redis(e->rch, "publish", key, "%s lifetime=%lu, type=%s, local=%s, remote=%s, ssl=%s, cipher=%s", status, (unsigned long)lifetime, type, saddr, rsaddr, ssl, cipher);
 				}
 #endif
 			}
