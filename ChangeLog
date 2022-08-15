@@ -1,5 +1,37 @@
 10/01/2021 Oleg Moskalenko <mom040267@gmail.com> Mihály Mészáros <misi@majd.eu>
 Version 4.5.3 'dan Eider':
+    - merge PR #829 (fancycode)
+		* add more info to redis allocation status
+    - merge PR #938 (eakraly)
+		* update turnserver.conf comment
+    - merge PR #773 (haseebq)
+		* fix performance regression
+    - merge PR #773 (korayvt)
+		* add syslog facility config
+    - merge PR #897 (unicode-it)
+		* add support for dual-stack prom listener
+    - merge PR #984 (rozhuk-im)
+		* fix build with libressl 3.4.0+
+    - merge PR #926 (ggarber)
+		* add ci tests workflow
+    - merge PR #934 (neocat)
+		* show error on invalid config
+    - merge PR #787 (dsmeytis)
+		* add new prom allocations metric
+    - merge PR #869 (micmac1)
+		* don't link in libintl
+    - merge PR #895 (alexnedo)
+		* fix access to freed memory 
+    - merge PR #919 (sysvinit)
+		* configurable prom username labels
+    - merge PR #840 (sysvinit)
+		* configurable prometheus listener port 
+    - merge PR #870 (micmac1)
+		* fix build mariadb connector
+    - merge PR #851 (freedomben)
+		* fix README typo
+    - merge PR #877 (davel)
+		* correct doc typo
 	- merge PR #755(moznuy) and #825(by argggh)
 		* fix sqlite3_shutdown and sqlite3_config race
 	- merge PR #826 (by giavac)
