@@ -1428,6 +1428,7 @@ static void set_socket_ssl(ioa_socket_handle s, SSL *ssl)
 		if(ssl) {
 			SSL_set_app_data(ssl,s);
 			SSL_set_info_callback(ssl, (ssl_info_callback_t)ssl_info_callback);
+			SSL_set_options(ssl, SSL_OP_NO_RENEGOTIATION);
 		}
 	}
 }

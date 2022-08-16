@@ -295,7 +295,7 @@ static ioa_socket_handle dtls_server_input_handler(dtls_listener_relay_server_ty
 	SSL_set_accept_state(connecting_ssl);
 
 	SSL_set_bio(connecting_ssl, NULL, wbio);
-	SSL_set_options(connecting_ssl, SSL_OP_COOKIE_EXCHANGE);
+	SSL_set_options(connecting_ssl, SSL_OP_COOKIE_EXCHANGE | SSL_OP_NO_RENEGOTIATION);
 
 	SSL_set_max_cert_list(connecting_ssl, 655350);
 
@@ -581,7 +581,8 @@ static int create_new_connected_udp_socket(
 
 		SSL_set_bio(connecting_ssl, NULL, wbio);
 
-		SSL_set_options(connecting_ssl, SSL_OP_COOKIE_EXCHANGE);
+		SSL_set_options(connecting_ssl, SSL_OP_COOKIE_EXCHANGE | SSL_OP_NO_RENEGOTIATION);
+
 		SSL_set_max_cert_list(connecting_ssl, 655350);
 		int rc = ssl_read(ret->fd, connecting_ssl, server->sm.m.sm.nd.nbh,
 				server->verbose);
