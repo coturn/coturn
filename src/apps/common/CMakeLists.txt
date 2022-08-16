@@ -37,6 +37,11 @@ if(hiredis_FOUND)
 else()
     list(APPEND COMMON_DEFINED TURN_NO_HIREDIS)
 endif()
+
+find_package(OpenSSL REQUIRED Crypto SSL)
+list(APPEND COMMON_LIBS OpenSSL::Crypto)
+list(APPEND COMMON_LIBS OpenSSL::SSL)
+
 message("COMMON_LIBS:${COMMON_LIBS}")
 
 add_library(${PROJECT_NAME} ${SOURCE_FILES} ${HEADER_FILES})
