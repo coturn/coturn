@@ -1,0 +1,35 @@
+name: CMake
+
+on:
+  push:
+    branches: [ $default-branch ]
+  pull_request:
+    types: [ opened, reopened, synchronize ]
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+            libevent-dev \
+            libssl-dev \
+            libpq-dev libmariadb-dev libsqlite3-dev \
+            libhiredis-dev \
+            libmongoc-dev \
+            libmicrohttpd-dev
+    - uses: actions/checkout@v3
+    - name: Configure CMake
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+    - name: Build
+      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+    - name: apps tests
+      run: cd examples && ./run_tests.sh
+      
