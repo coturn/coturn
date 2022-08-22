@@ -442,10 +442,10 @@ also the path / on this port can be used as a health check.
 See also \fIoptions\fP \fB\-\-prometheus\-ip\fP and \fB\-\-prometheus\-port\fP.
 .TP
 .B
-\fB\-\-prometheus\-no\-username\-labels\fP
-Disable labeling prometheus traffic
+\fB\-\-prometheus\-username\-labels\fP
+Enable labeling prometheus traffic
 metrics with client usernames. Labeling with client usernames is
-enabled by default, however this may cause memory leaks when using
+disabled by default, beacuse this may cause memory leaks when using
 authentication with ephemeral usernames (e.g. TURN REST API).
 .RE
 .TP
