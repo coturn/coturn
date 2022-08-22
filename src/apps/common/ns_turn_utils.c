@@ -154,7 +154,7 @@ static char* str_fac[]={"LOG_AUTH","LOG_CRON","LOG_DAEMON",
 			"LOG_LOCAL2","LOG_LOCAL3","LOG_LOCAL4","LOG_LOCAL5",
 			"LOG_LOCAL6","LOG_LOCAL7","LOG_LPR","LOG_MAIL",
 			"LOG_NEWS","LOG_USER","LOG_UUCP",
-			"LOG_AUTHPRIV","LOG_FTP","LOG_SYSLOG",
+			"LOG_AUTHPRIV","LOG_SYSLOG",
 			0};
 
 static int int_fac[]={LOG_AUTH ,  LOG_CRON , LOG_DAEMON ,
@@ -162,7 +162,7 @@ static int int_fac[]={LOG_AUTH ,  LOG_CRON , LOG_DAEMON ,
 		    LOG_LOCAL2 , LOG_LOCAL3 , LOG_LOCAL4 , LOG_LOCAL5 ,
 		    LOG_LOCAL6 , LOG_LOCAL7 , LOG_LPR , LOG_MAIL ,
 		    LOG_NEWS , LOG_USER , LOG_UUCP,
-		    LOG_AUTHPRIV,LOG_FTP,LOG_SYSLOG,
+		    LOG_AUTHPRIV,LOG_SYSLOG,
 		    0};
 
 static int syslog_facility = 0;
