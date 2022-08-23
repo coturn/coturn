@@ -55,6 +55,10 @@ IF(MSVC)
     add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
 ENDIF(MSVC)
 
+IF(APPLE)
+    add_compile_definitions("TURN_NO_THREAD_BARRIERS=1")
+ENDIF()
+
 include(CMakePackageConfigHelpers)
 include(GNUInstallDirs)
 include(GenerateExportHeader)
