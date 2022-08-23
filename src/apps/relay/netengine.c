@@ -30,6 +30,17 @@
 
 #include "mainrelay.h"
 
+//////////// Backward compatibility with OpenSSL 1.0.x //////////////
+#define HAVE_OPENSSL11_API (!(OPENSSL_VERSION_NUMBER < 0x10100001L || defined LIBRESSL_VERSION_NUMBER))
+
+#ifndef HAVE_SSL_CTX_UP_REF
+#define HAVE_SSL_CTX_UP_REF HAVE_OPENSSL11_API
+#endif
+
+#if !HAVE_SSL_CTX_UP_REF
+#define SSL_CTX_up_ref(ctx) CRYPTO_add(&(ctx)->references, 1, CRYPTO_LOCK_SSL_CTX)
+#endif
+
 //////////// Barrier for the threads //////////////
 
 #if !defined(TURN_NO_THREAD_BARRIERS)
