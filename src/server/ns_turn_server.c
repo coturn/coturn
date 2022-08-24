@@ -4731,12 +4731,12 @@ int open_client_connection_session(turn_turnserver* server,
 
 	ss->client_socket = sm->s;
 
+	set_ioa_socket_session(ss->client_socket, ss);
+
 	if(register_callback_on_ioa_socket(server->e, ss->client_socket, IOA_EV_READ,
 			client_input_handler, ss, 0)<0) {
 		return -1;
 	}
-
-	set_ioa_socket_session(ss->client_socket, ss);
 
 	int at = TURN_MAX_ALLOCATE_TIMEOUT;
 	if(*(server->stun_only))

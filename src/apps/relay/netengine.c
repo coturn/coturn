@@ -829,7 +829,8 @@ static int handle_relay_message(relay_server_handle rs, struct message_to_relay 
 			} else {
 				s->e = rs->ioa_eng;
 				if(open_client_connection_session(&(rs->server), &(sm->m.sm))<0) {
-					IOA_CLOSE_SOCKET(s);
+					ts_ur_super_session *ss = sm->m.sm.s->session;
+					shutdown_client_connection(&(rs->server), ss, 1, "Forceful shutdown");
 					sm->m.sm.s = NULL;
 				}
 			}
@@ -870,7 +871,8 @@ static int handle_relay_message(relay_server_handle rs, struct message_to_relay 
 			} else {
 				s->e = rs->ioa_eng;
 				if(open_client_connection_session(&(rs->server), &(sm->m.sm))<0) {
-					IOA_CLOSE_SOCKET(s);
+					ts_ur_super_session *ss = sm->m.sm.s->session;
+					shutdown_client_connection(&(rs->server), ss, 1, "Forceful shutdown");
 					sm->m.sm.s = NULL;
 				}
 			}

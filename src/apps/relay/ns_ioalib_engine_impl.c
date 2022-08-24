@@ -3482,6 +3482,8 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 #if TLS_SUPPORTED
 						if((s->sat != TCP_CLIENT_DATA_SOCKET) && (s->sat != TCP_RELAY_DATA_SOCKET) && check_tentative_tls(s->fd)) {
 							s->tobeclosed = 1;
+							TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+								"%s: unknown packet format,need to be closed\n", __FUNCTION__);							
 							return -1;
 						}
 #endif
