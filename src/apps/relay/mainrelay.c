@@ -83,13 +83,7 @@ char HTTP_ALPN[128] = "http/1.1";
 #define DEFAULT_GENERAL_RELAY_SERVERS_NUMBER (1)
 
 turn_params_t turn_params = {
-NULL, NULL,
-#if TLSv1_1_SUPPORTED
-	NULL,
-#if TLSv1_2_SUPPORTED
-	NULL,
-#endif
-#endif
+NULL,
 #if DTLS_SUPPORTED
 NULL,
 #endif
@@ -3235,17 +3229,17 @@ static void openssl_load_certificates(void)
 {
 	pthread_mutex_lock(&turn_params.tls_mutex);
 	if(!turn_params.no_tls) {
-		set_ctx(&turn_params.tls_ctx_ssl23,"SSL23",SSLv23_server_method()); /*compatibility mode */
+		set_ctx(&turn_params.tls_ctx,"TLS1.0", TLS_server_method()); /*compatibility mode */
 		if(!turn_params.no_tlsv1) {
-			set_ctx(&turn_params.tls_ctx_v1_0,"TLS1.0",TLSv1_server_method());
+			set_ctx(&turn_params.tls_ctx,"TLS1.0",TLSv1_server_method());
 		}
 #if TLSv1_1_SUPPORTED
 		if(!turn_params.no_tlsv1_1) {
-			set_ctx(&turn_params.tls_ctx_v1_1,"TLS1.1",TLSv1_1_server_method());
+			set_ctx(&turn_params.tls_ctx,"TLS1.1",TLSv1_1_server_method());
 		}
 #if TLSv1_2_SUPPORTED
 		if(!turn_params.no_tlsv1_2) {
-			set_ctx(&turn_params.tls_ctx_v1_2,"TLS1.2",TLSv1_2_server_method());
+			set_ctx(&turn_params.tls_ctx,"TLS1.2",TLSv1_2_server_method());
 		}
 #endif
 #endif

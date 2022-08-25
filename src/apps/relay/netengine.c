@@ -339,14 +339,7 @@ static void update_ssl_ctx(evutil_socket_t sock, short events, update_ssl_ctx_cb
 
 	/* No mutex with "e" as these are only used in the same event loop */
 	pthread_mutex_lock(&turn_params.tls_mutex);
-	replace_one_ssl_ctx(&e->tls_ctx_ssl23, params->tls_ctx_ssl23);
-	replace_one_ssl_ctx(&e->tls_ctx_v1_0, params->tls_ctx_v1_0);
-#if TLSv1_1_SUPPORTED
-	replace_one_ssl_ctx(&e->tls_ctx_v1_1, params->tls_ctx_v1_1);
-#if TLSv1_2_SUPPORTED
-	replace_one_ssl_ctx(&e->tls_ctx_v1_2, params->tls_ctx_v1_2);
-#endif
-#endif
+	replace_one_ssl_ctx(&e->tls_ctx, params->tls_ctx);
 #if DTLS_SUPPORTED
 	replace_one_ssl_ctx(&e->dtls_ctx, params->dtls_ctx);
 #endif

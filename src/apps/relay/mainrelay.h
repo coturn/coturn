@@ -176,16 +176,7 @@ typedef struct _turn_params_ {
 
 //////////////// OpenSSL group //////////////////////
 
-  SSL_CTX *tls_ctx_ssl23;
-  
-  SSL_CTX *tls_ctx_v1_0;
-  
-#if TLSv1_1_SUPPORTED
-  SSL_CTX *tls_ctx_v1_1;
-#if TLSv1_2_SUPPORTED
-  SSL_CTX *tls_ctx_v1_2;
-#endif
-#endif
+  SSL_CTX *tls_ctx;
   
 #if DTLS_SUPPORTED
   SSL_CTX *dtls_ctx;
