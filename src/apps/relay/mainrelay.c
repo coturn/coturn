@@ -3229,17 +3229,17 @@ static void openssl_load_certificates(void)
 {
 	pthread_mutex_lock(&turn_params.tls_mutex);
 	if(!turn_params.no_tls) {
-		set_ctx(&turn_params.tls_ctx,"TLS1.0", TLS_server_method()); /*compatibility mode */
+		set_ctx(&turn_params.tls_ctx,"TLS", TLS_server_method()); /*compatibility mode */
 		if(!turn_params.no_tlsv1) {
-			set_ctx(&turn_params.tls_ctx,"TLS1.0",TLSv1_server_method());
+			SSL_CTX_set_options(&turn_params.tls_ctx, SSL_OP_NO_TLSv1);
 		}
 #if TLSv1_1_SUPPORTED
 		if(!turn_params.no_tlsv1_1) {
-			set_ctx(&turn_params.tls_ctx,"TLS1.1",TLSv1_1_server_method());
+			SSL_CTX_set_options(&turn_params.tls_ctx, SSL_OP_NO_TLSv1_1);
 		}
 #if TLSv1_2_SUPPORTED
 		if(!turn_params.no_tlsv1_2) {
-			set_ctx(&turn_params.tls_ctx,"TLS1.2",TLSv1_2_server_method());
+			SSL_CTX_set_options(&turn_params.tls_ctx, SSL_OP_NO_TLSv1_2);
 		}
 #endif
 #endif
