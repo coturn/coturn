@@ -2425,34 +2425,11 @@ static int socket_input_worker(ioa_socket_handle s)
 			if(s->bev) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s on socket: 0x%lx, st=%d, sat=%d: bev already exist\n", __FUNCTION__,(long)s, s->st, s->sat);
 			}
-			switch(tls_type) {
-#if TLSv1_2_SUPPORTED
-			case TURN_TLS_v1_2:
-				if(s->e->tls_ctx_v1_2) {
-					set_socket_ssl(s,SSL_new(s->e->tls_ctx_v1_2));
-				}
-				break;
-#endif
-#if TLSv1_1_SUPPORTED
-			case TURN_TLS_v1_1:
-				if(s->e->tls_ctx_v1_1) {
-					set_socket_ssl(s,SSL_new(s->e->tls_ctx_v1_1));
-				}
-				break;
-#endif
-			case TURN_TLS_v1_0:
-				if(s->e->tls_ctx_v1_0) {
-					set_socket_ssl(s,SSL_new(s->e->tls_ctx_v1_0));
-				}
-				break;
-			default:
-				if(s->e->tls_ctx_ssl23) {
-					set_socket_ssl(s,SSL_new(s->e->tls_ctx_ssl23));
-				} else {
-					s->tobeclosed = 1;
-					return 0;
-				}
-			};
+
+			if(s->e->tls_ctx) {
+				set_socket_ssl(s,SSL_new(s->e->tls_ctx));
+			}
+
 			if(s->ssl) {
 				s->bev = bufferevent_openssl_socket_new(s->e->event_base,
 								s->fd,
@@ -2491,34 +2468,9 @@ static int socket_input_worker(ioa_socket_handle s)
 			if(s->bev) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s on socket: 0x%lx, st=%d, sat=%d: bev already exist\n", __FUNCTION__,(long)s, s->st, s->sat);
 			}
-			switch(tls_type) {
-#if TLSv1_2_SUPPORTED
-			case TURN_TLS_v1_2:
-				if(s->e->tls_ctx_v1_2) {
-					set_socket_ssl(s,SSL_new(s->e->tls_ctx_v1_2));
-				}
-				break;
-#endif
-#if TLSv1_1_SUPPORTED
-			case TURN_TLS_v1_1:
-				if(s->e->tls_ctx_v1_1) {
-					set_socket_ssl(s,SSL_new(s->e->tls_ctx_v1_1));
-				}
-				break;
-#endif
-			case TURN_TLS_v1_0:
-				if(s->e->tls_ctx_v1_0) {
-					set_socket_ssl(s,SSL_new(s->e->tls_ctx_v1_0));
-				}
-				break;
-			default:
-				if(s->e->tls_ctx_ssl23) {
-					set_socket_ssl(s,SSL_new(s->e->tls_ctx_ssl23));
-				} else {
-					s->tobeclosed = 1;
-					return 0;
-				}
-			};
+			if(s->e->tls_ctx) {
+				set_socket_ssl(s,SSL_new(s->e->tls_ctx));
+			}
 			if(s->ssl) {
 				s->bev = bufferevent_openssl_socket_new(s->e->event_base,
 								s->fd,
@@ -3520,7 +3472,7 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 #if TLS_SUPPORTED
 						if(!(s->ssl)) {
 							//??? how we can get to this point ???
-							set_socket_ssl(s,SSL_new(e->tls_ctx_ssl23));
+							set_socket_ssl(s,SSL_new(e->tls_ctx));
 							s->bev = bufferevent_openssl_socket_new(s->e->event_base,
 											s->fd,
 											s->ssl,
