@@ -4719,7 +4719,7 @@ static int attach_socket_to_session(turn_turnserver* server, ioa_socket_handle s
 
 int open_client_connection_session(turn_turnserver* server,
 				struct socket_message *sm) {
-
+	int ret = 0;
 	FUNCSTART;
 	if (!server)
 		return -1;
@@ -4733,7 +4733,7 @@ int open_client_connection_session(turn_turnserver* server,
 
 	if(register_callback_on_ioa_socket(server->e, ss->client_socket, IOA_EV_READ,
 			client_input_handler, ss, 0)<0) {
-		return -1;
+		ret = -1;
 	}
 
 	set_ioa_socket_session(ss->client_socket, ss);
@@ -4756,7 +4756,7 @@ int open_client_connection_session(turn_turnserver* server,
 
 	FUNCEND;
 
-	return 0;
+	return ret;
 }
 
 /////////////// io handlers ///////////////////
