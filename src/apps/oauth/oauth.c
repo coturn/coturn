@@ -347,7 +347,7 @@ int main(int argc, char **argv)
         mac_key_size=OAUTH_MAC_KEY_SIZE;
       } 
       strncpy(mac_key,mac_key_val,mac_key_size);
-      mac_key[mac_key_size+1]='\0';
+      mac_key[mac_key_size]='\0';
       break;
     case 'q':
       //token-timestamp
@@ -451,7 +451,7 @@ int main(int argc, char **argv)
             printf("{\n");
             printf("    \"access_token\":\"%s\",\n",base64encoded_etoken);
             printf("    \"token_type\":\"pop\",\n");
-            printf("    \"expires_in\":%d,\n",token_lifetime);
+            printf("    \"expires_in\":%u,\n",token_lifetime);
             printf("    \"kid\":\"%s\",\n",kid);
             printf("    \"key\":\"%s\",\n",mac_key);
             printf("    \"alg\":\"%s\"\n",hmac_alg);
