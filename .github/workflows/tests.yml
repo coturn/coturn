@@ -7,10 +7,12 @@ on:
     types: [ opened, reopened, synchronize ]
 
 jobs:
-  build:
-
-    runs-on: ubuntu-latest
-
+  builds:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-20.04, ubuntu-22.04]
+    runs-on: ${{ matrix.os }}
     steps:
     - name: Install dependencies
       run: |
