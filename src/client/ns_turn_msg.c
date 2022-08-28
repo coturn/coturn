@@ -244,7 +244,6 @@ int stun_produce_integrity_key_str(const uint8_t *uname, const uint8_t *realm, c
 		unsigned int keylen = 0;
 		EVP_MD_CTX ctx;
 		EVP_MD_CTX_init(&ctx);
-#if defined EVP_MD_CTX_FLAG_NON_FIPS_ALLOW && !defined(LIBRESSL_VERSION_NUMBER)
 #if defined(OPENSSL_FIPS)
 #if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 		if (EVP_default_properties_is_fips_enabled(NULL)) {
@@ -256,7 +255,6 @@ int stun_produce_integrity_key_str(const uint8_t *uname, const uint8_t *realm, c
 		}
 #endif //(OPENSSL_VERSION_NUMBER >= 0x30000000L)
 #endif //defined(OPENSSL_FIPS)
-#endif //defined EVP_MD_CTX_FLAG_NON_FIPS_ALLOW && !defined(LIBRESSL_VERSION_NUMBER)
 
 		EVP_DigestInit_ex(&ctx,EVP_md5(), NULL);
 		EVP_DigestUpdate(&ctx,str,strl);
@@ -265,7 +263,6 @@ int stun_produce_integrity_key_str(const uint8_t *uname, const uint8_t *realm, c
 #else
 		unsigned int keylen = 0;
 		EVP_MD_CTX *ctx = EVP_MD_CTX_new();
-#if defined EVP_MD_CTX_FLAG_NON_FIPS_ALLOW && !defined(LIBRESSL_VERSION_NUMBER)
 #if defined(OPENSSL_FIPS)
 #if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 		if (EVP_default_properties_is_fips_enabled(NULL)) {
@@ -277,7 +274,6 @@ int stun_produce_integrity_key_str(const uint8_t *uname, const uint8_t *realm, c
 		}
 #endif //(OPENSSL_VERSION_NUMBER >= 0x30000000L)
 #endif //defined(OPENSSL_FIPS)
-#endif //defined EVP_MD_CTX_FLAG_NON_FIPS_ALLOW && !defined(LIBRESSL_VERSION_NUMBER)
 
 		EVP_DigestInit_ex(ctx,EVP_md5(), NULL);
 		EVP_DigestUpdate(ctx,str,strl);
