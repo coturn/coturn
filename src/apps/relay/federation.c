@@ -20,6 +20,7 @@ static size_t whitelist_count = 0;
 typedef struct _federation_data {
 	ur_addr_map* federation_client_tuple_to_fed_connection;
 	lm_map federation_cid_to_fed_connection;
+	int federation_initalized; // set to 1 if federation is configured and initialized
 	int use_mutex;    // set to 1 if mutex should be used, otherwise 0
 	turn_mutex mutex; // only initialized if use_mutex is 1
 	struct bufferevent *in_buf;
@@ -429,6 +430,26 @@ static void federation_receive_message(struct bufferevent *bev, void *ptr)
 	}
 }
 
+void federation_load_certificates(void) {
+	if(turn_params.federation_use_dtls && federation_data_singleton.federation_initalized) {
+		// Store old ctx's so we can free them - at startup these are nulls
+		SSL_CTX* old_client_ctx = turn_params.federation_dtls_client_ctx_v1_2;
+		SSL_CTX* old_server_ctx = turn_params.federation_dtls_server_ctx_v1_2;
+
+		// Create and assign new ctx's.  Pointer set's are atomic so no need for locking.
+		turn_params.federation_dtls_client_ctx_v1_2 = federation_setup_dtls_ctx(DTLSv1_2_client_method());
+		turn_params.federation_dtls_server_ctx_v1_2 = federation_setup_dtls_ctx(DTLSv1_2_server_method());
+
+		// Free old ctx's if defined - only needed for when SIG_USR2 is fired and we are reloading after startup
+		if(old_client_ctx) {
+			SSL_CTX_free(old_client_ctx);
+		}
+		if(old_server_ctx) {
+			SSL_CTX_free(old_server_ctx);
+		}
+	}
+}
+
 void federation_init(ioa_engine_handle e) {
 	//run_wildcard_hostcheck_unit_tests(); // uncomment to test wildcard_hostcheck code
 	
@@ -457,11 +478,10 @@ void federation_init(ioa_engine_handle e) {
 	bufferevent_setcb(federation_data_singleton.in_buf, federation_receive_message, NULL, NULL, NULL);
 	bufferevent_enable(federation_data_singleton.in_buf, EV_READ);
 
-	if(turn_params.federation_use_dtls) {
-		// Initialize the DTLS client CTX
-		turn_params.federation_dtls_client_ctx_v1_2 = federation_setup_dtls_ctx(DTLSv1_2_client_method());
-		turn_params.federation_dtls_server_ctx_v1_2 = federation_setup_dtls_ctx(DTLSv1_2_server_method());
-	}
+	federation_data_singleton.federation_initalized = 1;
+
+	// Load federation certificates and setup federation DTLS contexts
+	federation_load_certificates();
 }
 
 static void federation_client_connect_timeout_handler(ioa_engine_handle e, void* arg) {

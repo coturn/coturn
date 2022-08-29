@@ -3386,6 +3386,7 @@ static void reload_ssl_certs(evutil_socket_t sock, short events, void *args)
 {
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Reloading TLS certificates and keys\n");
 	openssl_load_certificates();
+	federation_load_certificates();
 	if (turn_params.tls_ctx_update_ev != NULL)
 		event_active(turn_params.tls_ctx_update_ev, EV_READ, 0);
 
