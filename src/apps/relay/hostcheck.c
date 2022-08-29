@@ -125,14 +125,15 @@ int wildcard_hostcheck(const char *hostname, const char *pattern) {
 void run_wildcard_hostcheck_unit_tests(void) {
     // Success tests no wildcards in pattern
     assert(wildcard_hostcheck("foo.example.com", "foo.example.COM"));
+    assert(wildcard_hostcheck("hostname", "hostname"));
     assert(wildcard_hostcheck("foo.example.com.", "foo.EXAMPLE.com"));  // trailing dot ignored
     assert(wildcard_hostcheck("FOO.example.com", "foo.Example.com."));  // trailing dot ignored
-    assert(wildcard_hostcheck("XN--BLAH", "xn--blah"));  // 'xn--' in pattern
+    assert(wildcard_hostcheck("xn--MXarccr1ahws", "xn--mxarccr1ahws"));  // 'xn--' in pattern
     assert(wildcard_hostcheck("192.168.0.1", "192.168.0.1")); // ipv4 address
     assert(wildcard_hostcheck("fe80::9c38:259f:1db:e3c7", "fe80::9c38:259f:1db:e3c7")); // ipv6 address
 
     // Success tests with wildcard in pattern
-    assert(wildcard_hostcheck("foo.example.com", "*.example.com."));  // matches one char
+    assert(wildcard_hostcheck("foo.example.com", "*.example.com."));  // matches whole label
     assert(wildcard_hostcheck("foo.example.com", "F*O.example.com."));  // matches one char
     assert(wildcard_hostcheck("PREBLAHPOST.example.COM", "pre*post.example.com.")); // matches middle of first label
     assert(wildcard_hostcheck("preblahpost.example.com", "pre*.example.com."));     // matches end of first label
@@ -140,9 +141,8 @@ void run_wildcard_hostcheck_unit_tests(void) {
 
     // Failure tests no wildcards in pattern
     assert(!wildcard_hostcheck("foo.example.com", "bar.example.COM"));
-    assert(!wildcard_hostcheck("foo.example.com", "bar.example.COM"));
     assert(!wildcard_hostcheck("f*o.example.com", "bar.example.COM")); // wildcard in hostname
-    assert(!wildcard_hostcheck("XN--FOO", "xn--blah"));  // 'xn--' in pattern
+    assert(!wildcard_hostcheck("XN--FOO", "xn--mxarccr1ahws"));  // 'xn--' in pattern
     assert(!wildcard_hostcheck("foo2.foo.example.com", "foo.example.COM"));  // unequal number of dots
     assert(!wildcard_hostcheck("foo.example.com", "foo2.foo.example.COM"));  // unequal number of dots
 
@@ -152,7 +152,7 @@ void run_wildcard_hostcheck_unit_tests(void) {
     assert(!wildcard_hostcheck("foo.example.com", "foo*.example.COM"));  // star must match at least 1 char
     assert(!wildcard_hostcheck("foo.example.com", "fo*o.example.COM"));  // star must match at least 1 char
     assert(!wildcard_hostcheck("foo.example.com", "*foo*.example.COM")); // star must match at least 1 char
-    assert(!wildcard_hostcheck("XN--FOO.test.com", "xn--*.test.com"));  // 'xn--' in pattern
+    assert(!wildcard_hostcheck("xn--mxarccr1ahws", "xn--*ahws"));  // 'xn--' in pattern
     assert(!wildcard_hostcheck("foo.example.com", "*"));  // unequal number of dots
     assert(!wildcard_hostcheck("example.com.", "*.example.com"));  // unequal number of dots
     assert(!wildcard_hostcheck("foo2.foo.example.com", "foo*.example.COM"));  // unequal number of dots
@@ -160,7 +160,7 @@ void run_wildcard_hostcheck_unit_tests(void) {
     assert(!wildcard_hostcheck("foo.example.com", "foo.ex*.COM"));  // star no in first label
     assert(!wildcard_hostcheck("foo1bar2.example.com", "foo*bar*.example.COM"));  // multiple stars in first label
     assert(!wildcard_hostcheck("fooXXbar.example.com", "foo*bar.ex*ple.COM"));  // multiple stars in pattern
-    assert(!wildcard_hostcheck("foobar.example.com", "foobar.ex*pe.C*M"));  // multiple stars in pattern
+    assert(!wildcard_hostcheck("foobar.example.com", "foobar.ex*ple.C*M"));  // multiple stars in pattern
     assert(!wildcard_hostcheck("foobar.example.com", "foo*.bar.COM"));  // no match right of first label
     assert(!wildcard_hostcheck("foblahbar.example.com", "foo*bar.example.COM"));  // no match left of star in first label
     assert(!wildcard_hostcheck("blahbar.example.com", "foo*bar.example.COM"));  // no match left of star in first label
