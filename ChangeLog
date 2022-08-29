@@ -1,5 +1,20 @@
 10/01/2021 Oleg Moskalenko <mom040267@gmail.com> Mihály Mészáros <misi@majd.eu>
 Version 4.5.3 'dan Eider':
+
+    - merge PR #962 (huhaipeng)
+		* fix turn session leak
+    - merge PR #963 (eakraly)
+		* Document dependency of new-log-timestamp-format on new-log-timestamp
+    - merge PR #951 (steffen-moser)
+		* Enable compilation of coturn on Solaris 11.4
+    - merge PR #949 (eakraly)
+		* First step to re-enable compilation with OpenSSL 1.0.x
+    - merge PR #949 (eakraly)
+		* Fix cmake build on macOS
+    - merge PR #942 (eakraly)
+		* Disable SSL renegotiation
+    - merge PR #792 (yfaker)
+		* Fix user quota release #786		
     - merge PR #829 (fancycode)
 		* add more info to redis allocation status
     - merge PR #938 (eakraly)
