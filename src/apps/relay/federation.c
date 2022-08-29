@@ -430,6 +430,8 @@ static void federation_receive_message(struct bufferevent *bev, void *ptr)
 }
 
 void federation_init(ioa_engine_handle e) {
+	//run_wildcard_hostcheck_unit_tests(); // uncomment to test wildcard_hostcheck code
+	
 	// Install signal handlers so that we can terminate federated DTLS connections on program exit
 	struct event *ev = evsignal_new(turn_params.listener.event_base, SIGINT, signal_callback_handler, NULL);
 	event_add(ev, NULL);
