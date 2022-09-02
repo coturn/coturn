@@ -1,4 +1,6 @@
-// TODO SLG - do we want a copyright block here?
+/*
+ * Copyright (C) 2022 Wire Swiss GmbH
+ */
 
 #define __USE_GNU
 #include "hostcheck.h"

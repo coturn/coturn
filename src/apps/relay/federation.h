@@ -1,4 +1,6 @@
-// TODO - do we want a copyright block here?
+/*
+ * Copyright (C) 2022 Wire Swiss GmbH
+ */
 
 #ifndef __FEDERATION__
 #define __FEDERATION__

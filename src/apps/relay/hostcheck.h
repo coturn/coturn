@@ -1,4 +1,6 @@
-// TODO SLG - do we want a copyright block here?
+/*
+ * Copyright (C) 2022 Wire Swiss GmbH
+ */
 
 #ifndef WILDCARD_HOSTCHECK_H
 #define WILDCARD_HOSTCHECK_H

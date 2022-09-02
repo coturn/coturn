@@ -1,4 +1,6 @@
-// TODO SLG - do we want a copyright block here?
+/*
+ * Copyright (C) 2022 Wire Swiss GmbH
+ */
 
 #include "mainrelay.h"
 
