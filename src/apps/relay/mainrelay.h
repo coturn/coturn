@@ -302,11 +302,11 @@ typedef struct _turn_params_ {
 /////////////// FEDERATION SERVER ///////////////
   ioa_addr *federation_listening_ip;
   int federation_listening_port;
-#if DTLSv1_2_SUPPORTED
   int federation_no_dtls;
   char federation_cert_file[1025];
   char federation_pkey_file[1025];
   char federation_pkey_pwd[513];  
+#if DTLSv1_2_SUPPORTED
   SSL_CTX *federation_dtls_client_ctx_v1_2;
   SSL_CTX *federation_dtls_server_ctx_v1_2;
 #endif

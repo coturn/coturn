@@ -156,11 +156,11 @@ LOW_DEFAULT_PORTS_BOUNDARY,HIGH_DEFAULT_PORTS_BOUNDARY,0,0,0,"",
 /////////////// FEDERATION SERVER ///////////////
 0,   // federation_listening_ip
 0,   // federation_listening_port
-#if DTLSv1_2_SUPPORTED
 0,   // federation_no_dtls
 "",  // federation_cert_file
 "",  // federation_pkey_file
-"pwd",  // federation_pkey_pwd
+"",  // federation_pkey_pwd
+#if DTLSv1_2_SUPPORTED
 0,   // federation_dtls_client_ctx_v1_2
 0,   // federation_dtls_server_ctx_v1_2
 #endif
@@ -1763,7 +1763,11 @@ static void set_option(int c, char *value)
 		turn_params.federation_listening_port = atoi(value);
 		break;
 	case FEDERATION_NO_DTLS_OPT:
+#if DTLSv1_2_SUPPORTED
 		turn_params.federation_no_dtls = get_bool_value(value);
+#else
+		turn_params.federation_no_dtls = 1;
+#endif
 		break;
 	case FEDERATION_CERT_OPT:
 		STRCPY(turn_params.federation_cert_file,value);
@@ -1790,7 +1794,6 @@ static void set_option(int c, char *value)
 			}
 		}
 		break;
-
 	/* these options have been already taken care of before: */
 	case 'l':
 	case NO_STDOUT_LOG_OPT:
