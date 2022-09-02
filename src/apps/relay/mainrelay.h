@@ -303,7 +303,7 @@ typedef struct _turn_params_ {
   ioa_addr *federation_listening_ip;
   int federation_listening_port;
 #if DTLSv1_2_SUPPORTED
-  int federation_use_dtls;
+  int federation_no_dtls;
   char federation_cert_file[1025];
   char federation_pkey_file[1025];
   char federation_pkey_pwd[513];  

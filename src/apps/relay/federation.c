@@ -314,6 +314,11 @@ static int federation_cert_verify(X509_STORE_CTX *x509_ctx, void *arg) {
 	return -1;
 }
 
+#if ALPN_SUPPORTED
+static const unsigned char kALPNProtos[] = "\x08http/1.1\x09stun.turn\x12stun.nat-discovery";
+static const size_t kALPNProtosLen = sizeof(kALPNProtos) - 1;
+#endif
+
 static const char *cipherlist = 
 	"ECDHE-RSA-AES128-GCM-SHA256:"
 	"ECDHE-ECDSA-AES128-GCM-SHA256:"
@@ -431,7 +436,7 @@ static void federation_receive_message(struct bufferevent *bev, void *ptr)
 }
 
 void federation_load_certificates(void) {
-	if(turn_params.federation_use_dtls && federation_data_singleton.federation_initalized) {
+	if(!turn_params.federation_no_dtls && federation_data_singleton.federation_initalized) {
 		// Store old ctx's so we can free them - at startup these are nulls
 		SSL_CTX* old_client_ctx = turn_params.federation_dtls_client_ctx_v1_2;
 		SSL_CTX* old_server_ctx = turn_params.federation_dtls_server_ctx_v1_2;
@@ -502,7 +507,7 @@ static void federation_client_connect_timeout_handler(ioa_engine_handle e, void*
 int federation_send_data_imp(dtls_listener_relay_server_type* server, ioa_addr* dest_addr,
 				ioa_network_buffer_handle nbh, int ttl, int tos, int* skip) {
 	int fd = server->udp_listen_s->fd;
-	if(server->federation_listener && turn_params.federation_use_dtls) {
+	if(server->federation_listener && !turn_params.federation_no_dtls) {
 		// See if we already have a DTLS connection to the destination
 		ur_addr_map_value_type mvt = 0;
 		if(!(server->children_ss)) {
@@ -523,10 +528,9 @@ int federation_send_data_imp(dtls_listener_relay_server_type* server, ioa_addr* 
 			SSL* ssl = SSL_new(turn_params.federation_dtls_client_ctx_v1_2);
 			SSL_set_options(ssl, SSL_OP_COOKIE_EXCHANGE);
 
-            // TODO SLG - what is ALPN, do we need it?
-//#if ALPN_SUPPORTED
-//		SSL_set_alpn_protos(ssl, kALPNProtos, kALPNProtosLen);
-//#endif
+#if ALPN_SUPPORTED
+			SSL_set_alpn_protos(ssl, kALPNProtos, kALPNProtosLen);
+#endif
 
 			/* Create BIO, connect and set the peer as the destination */
 			BIO *bio = BIO_new_dgram(fd, BIO_NOCLOSE);   // should we use close or noclose?
@@ -540,7 +544,7 @@ int federation_send_data_imp(dtls_listener_relay_server_type* server, ioa_addr* 
 			timeout.tv_usec = 0;
 			BIO_ctrl(bio, BIO_CTRL_DGRAM_SET_RECV_TIMEOUT, 0, &timeout);
 
-			set_mtu_df(ssl, fd, dest_addr->ss.sa_family, SOSO_MTU, 1, server->verbose);  // TODO SLG - should we be changing MTU and DF on federation listen socket here?  maybe not
+			set_mtu_df(ssl, fd, dest_addr->ss.sa_family, SOSO_MTU, 1, server->verbose);
 
 			SSL_set_max_cert_list(ssl, 655350);
 

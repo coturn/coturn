@@ -157,7 +157,7 @@ LOW_DEFAULT_PORTS_BOUNDARY,HIGH_DEFAULT_PORTS_BOUNDARY,0,0,0,"",
 0,   // federation_listening_ip
 0,   // federation_listening_port
 #if DTLSv1_2_SUPPORTED
-0,   // federation_use_dtls
+0,   // federation_no_dtls
 "",  // federation_cert_file
 "",  // federation_pkey_file
 "pwd",  // federation_pkey_pwd
@@ -461,7 +461,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						The load balancing is using the ALTERNATE-SERVER mechanism.\n"
 "						The TURN client must support 300 ALTERNATE-SERVER response for this functionality.\n"
 " -i, --relay-device		<device-name>	Relay interface device for relay sockets (NOT RECOMMENDED. Optional, Linux only).\n"
-" -E, --relay-ip		<ip>			Relay address (the local IP address that will be used to relay the\n"
+" -E, --relay-ip			<ip>		Relay address (the local IP address that will be used to relay the\n"
 "						packets to the peer).\n"
 "						Multiple relay addresses may be used.\n"
 "						The same IP(s) can be used as both listening IP(s) and relay IP(s).\n"
@@ -481,9 +481,18 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						In more complex case when more than one IP address is involved,\n"
 "						that option must be used several times in the command line, each entry must\n"
 "						have form \"-X public-ip/private-ip\", to map all involved addresses.\n"
-"\n"
-"TODO federate settings need to be added"
-"\n"
+" --federation-listening-ip	<ip>		The IP address to bind to for federated UDP or DTLS traffic\n"
+" --federation-listening-port	<port>		The port to bind to for federated UDP or DTLS traffic\n"
+" --federation-no-dtls				Disables DTLS for federation.  If specified then UDP is used for federation.\n"
+" --federation-cert		<filename>	Federation certificate file, PEM format. Same file search rules\n"
+"						applied as for the configuration file.\n"
+"						If federation-no-dtls is true then this parameter is not needed.\n"
+" --federation-pkey		<filename>	Federation private key file, PEM format. Same file search rules\n"
+"						applied as for the configuration file.\n"
+"						If federation-no-dtls is true then this parameter is not needed.\n"
+" --federation-pkey-pwd		<password>	If the federation private key file is encrypted, then this password will be used.\n"
+" --federation-remote_whilelist  <hostname>[,<issuer>]	List of acceptable certificate hostname and optional issuer name pairs for federation\n"
+"						DTLS mutual authentication validation.\n"
 " --allow-loopback-peers				Allow peers on the loopback addresses (127.x.x.x and ::1).\n"
 " --no-multicast-peers				Disallow peers on well-known broadcast addresses (224.0.0.0 and above, and FFXX:*).\n"
 " -m, --relay-threads		<number>	Number of relay threads to handle the established connections\n"
@@ -528,7 +537,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						for the sessions, combined (input and output network streams are treated separately).\n"
 " -c				<filename>	Configuration file name (default - turnserver.conf).\n"
 #if !defined(TURN_NO_SQLITE)
-" -b, , --db, --userdb	<filename>		SQLite database file name; default - /var/db/turndb or\n"
+" -b, , --db, --userdb		<filename>	SQLite database file name; default - /var/db/turndb or\n"
 "						    /usr/local/var/db/turndb or /var/lib/turn/turndb.\n"
 #endif
 #if !defined(TURN_NO_PQ)
@@ -586,7 +595,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 " --use-auth-secret				TURN REST API flag.\n"
 "						Flag that sets a special authorization option that is based upon authentication secret\n"
 "						(TURN Server REST API, see TURNServerRESTAPI.pdf). This option is used with timestamp.\n"
-" --static-auth-secret		<secret>	'Static' authentication secret value (a string) for TURN REST API only.\n"
+" --static-auth-secret	<secret>		'Static' authentication secret value (a string) for TURN REST API only.\n"
 "						If not set, then the turn server will try to use the 'dynamic' value\n"
 "						in turn_secret table in user database (if present).\n"
 "						That database value can be changed on-the-fly\n"
@@ -609,8 +618,8 @@ static char Usage[] = "Usage: turnserver [options]\n"
 " --pkey			<filename>		Private key file, PEM format. Same file search rules\n"
 "						applied as for the configuration file.\n"
 "						If both --no-tls and --no-dtls options\n"
-" --pkey-pwd		<password>		If the private key file is encrypted, then this password to be used.\n"
-" --cipher-list	<\"cipher-string\">		Allowed OpenSSL cipher list for TLS/DTLS connections.\n"
+" --pkey-pwd		<password>		If the private key file is encrypted, then this password will be used.\n"
+" --cipher-list		<\"cipher-string\">	Allowed OpenSSL cipher list for TLS/DTLS connections.\n"
 "						Default value is \"DEFAULT\".\n"
 " --CA-file		<filename>		CA file in OpenSSL format.\n"
 "						Forces TURN server to verify the client SSL certificates.\n"
@@ -622,7 +631,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						by this option.\n"
 " --dh566					Use 566 bits predefined DH TLS key. Default size of the predefined key is 2066.\n"
 " --dh1066					Use 1066 bits predefined DH TLS key. Default size of the predefined key is 2066.\n"
-" --dh-file	<dh-file-name>			Use custom DH TLS key, stored in PEM format in the file.\n"
+" --dh-file		<dh-file-name>		Use custom DH TLS key, stored in PEM format in the file.\n"
 "						Flags --dh566 and --dh1066 are ignored when the DH key is taken from a file.\n"
 " --no-tlsv1					Do not allow TLSv1/DTLSv1 protocol.\n"
 " --no-tlsv1_1					Do not allow TLSv1.1 protocol.\n"
@@ -658,7 +667,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 " --permission-lifetime		<value>		Set the value for the lifetime of the permission. Default to 300 secs.\n"
 "						This MUST not be changed for production purposes.\n"
 " -S, --stun-only				Option to set standalone STUN operation only, all TURN requests will be ignored.\n"
-"     --no-stun					Option to suppress STUN functionality, only TURN requests will be processed.\n"
+" --no-stun					Option to suppress STUN functionality, only TURN requests will be processed.\n"
 " --alternate-server		<ip:port>	Set the TURN server to redirect the allocate requests (UDP and TCP services).\n"
 "						Multiple alternate-server options can be set for load balancing purposes.\n"
 "						See the docs for more information.\n"
@@ -690,11 +699,11 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						TURN server allocates address family according TURN\n"
 "						Client <=> Server communication address family.\n"
 "						!! It breaks RFC6156 section-4.2 (violates default IPv4) !!\n"
-" -A --allocation-default-address-family=<ipv4|ipv6|keep> 		Default is IPv4\n"
+" -A --allocation-default-address-family=<ipv4|ipv6|keep>	Default is IPv4\n"
 "						TURN server allocates address family according TURN client requested address family. \n"
 "						If address family is not requested explicitly by client, then it falls back to this default.\n"
 "						The standard RFC explicitly define actually that this default must be IPv4,\n"
-"                       so use other option values with care!\n"
+"						so use other option values with care!\n"
 " --no-cli					Turn OFF the CLI support. By default it is always ON.\n"
 " --cli-ip=<IP>					Local system IP address to be used for CLI server endpoint. Default value\n"
 "						is 127.0.0.1.\n"
@@ -881,7 +890,7 @@ enum EXTRA_OPTS {
 	ZREST_AUTH_OPT,
 	FEDERATION_LISTENING_IP_OPT,
 	FEDERATION_LISTENING_PORT_OPT,
-	FEDERATION_USE_DTLS_OPT,
+	FEDERATION_NO_DTLS_OPT,
 	FEDERATION_CERT_OPT,
 	FEDERATION_PKEY_OPT,
 	FEDERATION_PKEY_PWD_OPT,
@@ -916,7 +925,7 @@ static const struct myoption long_options[] = {
 				{ "external-ip", required_argument, NULL, 'X' },
 				{ "federation-listening-ip", required_argument, NULL, FEDERATION_LISTENING_IP_OPT },
 				{ "federation-listening-port", required_argument, NULL, FEDERATION_LISTENING_PORT_OPT },
-				{ "federation-use-dtls", required_argument, NULL, FEDERATION_USE_DTLS_OPT },
+				{ "federation-no-dtls", required_argument, NULL, FEDERATION_NO_DTLS_OPT },
 				{ "federation-cert", required_argument, NULL, FEDERATION_CERT_OPT },
 				{ "federation-pkey", required_argument, NULL, FEDERATION_PKEY_OPT },
 				{ "federation-pkey-pwd", required_argument, NULL, FEDERATION_PKEY_PWD_OPT },
@@ -1753,8 +1762,8 @@ static void set_option(int c, char *value)
 	case FEDERATION_LISTENING_PORT_OPT:
 		turn_params.federation_listening_port = atoi(value);
 		break;
-	case FEDERATION_USE_DTLS_OPT:
-		turn_params.federation_use_dtls = get_bool_value(value);
+	case FEDERATION_NO_DTLS_OPT:
+		turn_params.federation_no_dtls = get_bool_value(value);
 		break;
 	case FEDERATION_CERT_OPT:
 		STRCPY(turn_params.federation_cert_file,value);

@@ -463,9 +463,9 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server,
 #endif
 
 		if(!chs) {
-			// Disallow raw UDP if federation_use_dtls or no_udp is enabled
-			if((server->federation_listener && turn_params.federation_use_dtls) ||
-			   (!server->federation_listener && turn_params.no_udp)) {  // TODO SLG - do we want to implement this for TURN client sockets - it changes coturn behavior
+			// Disallow raw UDP if dtls federation or no_udp is enabled
+			if((server->federation_listener && !turn_params.federation_no_dtls) ||
+			   (!server->federation_listener && turn_params.no_udp)) {
 				return -1;
 			}
 			chs = create_ioa_socket_from_fd(ioa_eng, s->fd, s,
@@ -840,10 +840,10 @@ static int create_server_socket(dtls_listener_relay_server_type* server, int rep
 
   if(report_creation) {
 	  if(server->federation_listener)
-		if(turn_params.federation_use_dtls) 
-	  	  addr_debug_print(server->verbose, &server->addr,"DTLS federation listener opened on");
-		else
+		if(turn_params.federation_no_dtls) 
 		  addr_debug_print(server->verbose, &server->addr,"UDP federation listener opened on");
+		else
+	  	  addr_debug_print(server->verbose, &server->addr,"DTLS federation listener opened on");
 	  else if(!turn_params.no_udp && !turn_params.no_dtls)
 		  addr_debug_print(server->verbose, &server->addr,"DTLS/UDP listener opened on");
 	  else if(!turn_params.no_dtls)
@@ -915,10 +915,10 @@ static int reopen_server_socket(dtls_listener_relay_server_type* server, evutil_
 	}
 
 	if(server->federation_listener)
-		if(turn_params.federation_use_dtls) 
-			addr_debug_print(server->verbose, &server->addr,"DTLS federation listener opened on");
-		else
+		if(turn_params.federation_no_dtls) 
 			addr_debug_print(server->verbose, &server->addr,"UDP federation listener opened on");
+		else
+			addr_debug_print(server->verbose, &server->addr,"DTLS federation listener opened on");
 	else if (!turn_params.no_udp && !turn_params.no_dtls)
 		addr_debug_print(server->verbose, &server->addr,"DTLS/UDP listener opened on");
 	else if (!turn_params.no_dtls)
