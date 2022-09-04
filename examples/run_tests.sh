@@ -8,7 +8,7 @@ echo 'Running peer client'
 sleep 2
 
 echo 'Running turn client TCP'
-../bin/turnutils_uclient -t -e 127.0.0.1 -X -g -u user -W secret -t 127.0.0.1 | grep "start_mclient: tot_send_bytes ~ 1000, tot_recv_bytes ~ 1000" > /dev/null
+../bin/turnutils_uclient -t -e 127.0.0.1 -X -g -u user -W secret 127.0.0.1 | grep "start_mclient: tot_send_bytes ~ 1000, tot_recv_bytes ~ 1000" > /dev/null
 if [ $? -eq 0 ]; then
     echo OK
 else
@@ -17,7 +17,7 @@ else
 fi
 
 echo 'Running turn client UDP'
-../bin/turnutils_uclient -e 127.0.0.1 -X -g -u user -W secret -t 127.0.0.1  | grep "start_mclient: tot_send_bytes ~ 1000, tot_recv_bytes ~ 1000" > /dev/null
+../bin/turnutils_uclient -e 127.0.0.1 -X -g -u user -W secret 127.0.0.1  | grep "start_mclient: tot_send_bytes ~ 1000, tot_recv_bytes ~ 1000" > /dev/null
 if [ $? -eq 0 ]; then
     echo OK
 else
