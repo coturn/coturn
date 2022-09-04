@@ -520,35 +520,47 @@ int main(int argc, char **argv)
 #endif
 #endif
 		}
+	}
 
+	int use_cert = 0;
+	int use_ca_cert = 0;
+	if(cert_file[0] && pkey_file[0])
+	{
+		use_cert = 1;
+	}
+	if(ca_cert_file[0])
+	{
+		use_ca_cert = 1;
+	}
+
+	if(use_cert)
+	{
 		int sslind = 0;
-		for(sslind = 0; sslind<root_tls_ctx_num; sslind++) {
-
-			if(cert_file[0]) {
-				if (!SSL_CTX_use_certificate_chain_file(root_tls_ctx[sslind], cert_file)) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nERROR: no certificate found!\n");
-					exit(-1);
-				}
+		for(sslind = 0; sslind<root_tls_ctx_num; sslind++) 
+		{
+			if (!SSL_CTX_use_certificate_chain_file(root_tls_ctx[sslind], cert_file)) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nERROR: could not load certificate chain file!\n");
+				exit(-1);
 			}
 
 			if (!SSL_CTX_use_PrivateKey_file(root_tls_ctx[sslind], pkey_file,
 						SSL_FILETYPE_PEM)) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nERROR: no private key found!\n");
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nERROR: could not load private key file!\n");
 				exit(-1);
 			}
 
-			if(cert_file[0]) {
-				if (!SSL_CTX_check_private_key(root_tls_ctx[sslind])) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nERROR: invalid private key!\n");
-					exit(-1);
-				}
+			if (!SSL_CTX_check_private_key(root_tls_ctx[sslind])) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nERROR: invalid private key!\n");
+				exit(-1);
 			}
 
-			if (ca_cert_file[0]) {
+			if (use_ca_cert) 
+			{
 				if (!SSL_CTX_load_verify_locations(root_tls_ctx[sslind], ca_cert_file, NULL )) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
-							"ERROR: cannot load CA from file: %s\n",
+							"ERROR: cannot load CA from file\n",
 							ca_cert_file);
+					exit(-1);
 				}
 
 				/* Set to require peer (client) certificate verification */
@@ -556,12 +568,11 @@ int main(int argc, char **argv)
 
 				/* Set the verification depth to 9 */
 				SSL_CTX_set_verify_depth(root_tls_ctx[sslind], 9);
-			} else {
+			} 
+			else 
+			{
 				SSL_CTX_set_verify(root_tls_ctx[sslind], SSL_VERIFY_NONE, NULL );
 			}
-
-			if(!use_tcp)
-				SSL_CTX_set_read_ahead(root_tls_ctx[sslind], 1);
 		}
 	}
 
