@@ -240,7 +240,11 @@ redis_context_handle redisLibeventAttach(struct event_base *base, char *ip0, int
 	  port=port0;
 
   ac = redisAsyncConnect(ip, port);
-  if (ac->err) {
+  if (!ac) {
+  	fprintf(stderr,"Error: redisAsyncConnect returned NULL\n");
+  	return NULL;
+  }
+  else if (ac->err) {
   	fprintf(stderr,"Error: %s:%s\n", ac->errstr, ac->c.errstr);
   	return NULL;
   }
