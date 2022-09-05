@@ -1202,7 +1202,6 @@ static void web_admin_input_handler(ioa_socket_handle s, int event_type,
 	int to_be_closed = 0;
 
 	int buffer_size = (int)ioa_network_buffer_get_size(in_buffer->nbh);
-    buffer_size = UDP_STUN_BUFFER_SIZE+1;
     if (buffer_size >= UDP_STUN_BUFFER_SIZE) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "%s: request is too big: %d\n", __FUNCTION__,  buffer_size);
         to_be_closed = 1;
