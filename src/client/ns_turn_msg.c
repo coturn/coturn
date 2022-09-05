@@ -257,8 +257,8 @@ int stun_produce_integrity_key_str(const uint8_t *uname, const uint8_t *realm, c
 		unsigned int keylen = 0;
 		EVP_MD_CTX *ctx = EVP_MD_CTX_new();
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
-		if (EVP_default_properties_is_fips_enabled(NULL)) {
-			EVP_default_properties_enable_fips(NULL, 1);
+		if (EVP_default_properties_is_fips_enabled(ctx)) {
+			EVP_default_properties_enable_fips(ctx, 0);
 		}
 #endif // OPENSSL_VERSION_NUMBER >= 0x30000000L
 		EVP_DigestInit_ex(ctx,EVP_md5(), NULL);
