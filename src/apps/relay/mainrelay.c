@@ -706,7 +706,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 " --no-stun-backward-compatibility		Disable handling old STUN Binding requests and disable MAPPED-ADDRESS attribute\n"
 "						in binding response (use only the XOR-MAPPED-ADDRESS).\n"
 " --response-origin-only-with-rfc5780		Only send RESPONSE-ORIGIN attribute in binding response if RFC5780 is enabled.\n"
-" --version				Print version (and exit).\n"
+" --version					Print version (and exit).\n"
 " -h						Help\n"
 "\n";
 
@@ -1779,7 +1779,7 @@ static void read_config_file(int argc, char **argv, int pass)
 					printf("\n%s\n",Usage);
 					exit(0);
 				} else if (!strcmp(argv[i], "--version")) {
-                    printf("%s",TURN_SERVER_VERSION);
+                    printf("%s\n",TURN_SERVER_VERSION);
                     exit(0);
                 }
 			}
