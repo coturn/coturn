@@ -706,6 +706,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 " --no-stun-backward-compatibility		Disable handling old STUN Binding requests and disable MAPPED-ADDRESS attribute\n"
 "						in binding response (use only the XOR-MAPPED-ADDRESS).\n"
 " --response-origin-only-with-rfc5780		Only send RESPONSE-ORIGIN attribute in binding response if RFC5780 is enabled.\n"
+" --version					Print version (and exit).\n"
 " -h						Help\n"
 "\n";
 
@@ -857,7 +858,8 @@ enum EXTRA_OPTS {
 	LOG_BINDING_OPT,
 	NO_RFC5780,
 	NO_STUN_BACKWARD_COMPATIBILITY_OPT,
-	RESPONSE_ORIGIN_ONLY_WITH_RFC5780_OPT
+	RESPONSE_ORIGIN_ONLY_WITH_RFC5780_OPT,
+	VERSION_OPT
 };
 
 struct myoption {
@@ -999,6 +1001,7 @@ static const struct myoption long_options[] = {
 				{ "no-rfc5780", optional_argument, NULL, NO_RFC5780 },
 				{ "no-stun-backward-compatibility", optional_argument, NULL, NO_STUN_BACKWARD_COMPATIBILITY_OPT },
 				{ "response-origin-only-with-rfc5780", optional_argument, NULL, RESPONSE_ORIGIN_ONLY_WITH_RFC5780_OPT },
+				{ "version", optional_argument, NULL, VERSION_OPT },
 				{ "syslog-facility", required_argument, NULL, SYSLOG_FACILITY_OPT },
 				{ NULL, no_argument, NULL, 0 }
 };
@@ -1775,7 +1778,10 @@ static void read_config_file(int argc, char **argv, int pass)
 				} else if (!strcmp(argv[i], "-h")) {
 					printf("\n%s\n",Usage);
 					exit(0);
-				}
+				} else if (!strcmp(argv[i], "--version")) {
+                    printf("%s\n",TURN_SERVER_VERSION);
+                    exit(0);
+                }
 			}
 		}
 	}
@@ -1845,7 +1851,7 @@ static void read_config_file(int argc, char **argv, int pass)
 
 		} else
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: Cannot find config file: %s. Default and command-line settings will be used.\n",
-					config_file);
+                          config_file);
 
 		if (full_path_to_config_file) {
 			free(full_path_to_config_file);
