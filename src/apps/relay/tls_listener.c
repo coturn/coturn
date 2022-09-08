@@ -66,15 +66,17 @@ static void server_input_handler(struct evconnlistener *l, evutil_socket_t fd,
 
 	tls_listener_relay_server_type * server = (tls_listener_relay_server_type*) arg;
 
+	if (!server)
+	{
+		return;
+	}
+
 	if(!(server->connect_cb)) {
 		socket_closesocket(fd);
 		return;
 	}
 
 	FUNCSTART;
-
-	if (!server)
-		return;
 
 	bcopy(sa,&(server->sm.m.sm.nd.src_addr),socklen);
 
@@ -133,15 +135,17 @@ static void sctp_server_input_handler(struct evconnlistener *l, evutil_socket_t 
 
 	tls_listener_relay_server_type * server = (tls_listener_relay_server_type*) arg;
 
+	if (!server)
+	{
+		return;
+	}
+
 	if(!(server->connect_cb)) {
 		socket_closesocket(fd);
 		return;
 	}
 
 	FUNCSTART;
-
-	if (!server)
-		return;
 
 	bcopy(sa,&(server->sm.m.sm.nd.src_addr),socklen);
 

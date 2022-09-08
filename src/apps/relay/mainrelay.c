@@ -2457,7 +2457,7 @@ int main(int argc, char **argv)
 		}
         }
 
-	if(use_cli && cli_password[0]==0 && use_cli) {
+	if(use_cli && cli_password[0]==0) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nCONFIG ERROR: Empty cli-password, and so telnet cli interface is disabled! Please set a non empty cli-password!\n");
 		use_cli = 0;
 	}
@@ -2759,8 +2759,7 @@ static void adjust_key_file_name(char *fn, const char* file_title, int critical)
 	  strncpy(fn,full_path_to_file,sizeof(turn_params.cert_file)-1);
 	  fn[sizeof(turn_params.cert_file)-1]=0;
 
-	  if(full_path_to_file)
-	    free(full_path_to_file);
+	  free(full_path_to_file);
 	  return;
 	}
 

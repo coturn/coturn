@@ -837,7 +837,7 @@ int stun_is_channel_message_str(const uint8_t *buf, size_t *blen, uint16_t* chnu
 
 			if(mandatory_padding) {
 				return 0;
-			} else if ((datalen_actual < datalen_header) || (datalen_header == 0)) {
+			} else if (datalen_header == 0) {
 				return 0;
 			} else {
 				uint16_t diff = datalen_actual - datalen_header;
