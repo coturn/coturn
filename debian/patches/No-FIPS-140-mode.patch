@@ -1,0 +1,31 @@
+From: Nicholas Guriev <guriev-ns@ya.ru>
+Date: Thu, 02 Jun 2022 12:34:17 +0300
+Subject: Do not check FIPS 140 mode
+ It is not available in OpenSSL as packaged in Debian. The OPENSSL_FIPS macro
+ appeared in ancient OpenSSL sources but was never defined.
+ https://sources.debian.org/src/openssl/1.1.1n-0%2Bdeb11u2/crypto/o_fips.c/
+
+---
+ src/client/ns_turn_msg.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+--- a/src/client/ns_turn_msg.c
++++ b/src/client/ns_turn_msg.c
+@@ -244,7 +244,7 @@ int stun_produce_integrity_key_str(const
+ 		unsigned int keylen = 0;
+ 		EVP_MD_CTX ctx;
+ 		EVP_MD_CTX_init(&ctx);
+-#if defined EVP_MD_CTX_FLAG_NON_FIPS_ALLOW && !defined(LIBRESSL_VERSION_NUMBER)
++#ifdef OPENSSL_FIPS
+ 		if (FIPS_mode()) {
+ 			EVP_MD_CTX_set_flags(&ctx,EVP_MD_CTX_FLAG_NON_FIPS_ALLOW);
+ 		}
+@@ -256,7 +256,7 @@ int stun_produce_integrity_key_str(const
+ #else
+ 		unsigned int keylen = 0;
+ 		EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+-#if defined EVP_MD_CTX_FLAG_NON_FIPS_ALLOW && ! defined(LIBRESSL_VERSION_NUMBER)
++#ifdef OPENSSL_FIPS
+ 		if (FIPS_mode()) {
+ 			EVP_MD_CTX_set_flags(ctx, EVP_MD_CTX_FLAG_NON_FIPS_ALLOW);
+ 		}
