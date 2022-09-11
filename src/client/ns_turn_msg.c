@@ -253,6 +253,16 @@ int stun_produce_integrity_key_str(const uint8_t *uname, const uint8_t *realm, c
 		EVP_DigestUpdate(&ctx,str,strl);
 		EVP_DigestFinal(&ctx,key,&keylen);
 		EVP_MD_CTX_cleanup(&ctx);
+#elif OPENSSL_VERSION_NUMBER >= 0x30000000L
+		unsigned int keylen = 0;
+		EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+		if (EVP_default_properties_is_fips_enabled(NULL)) {
+			EVP_default_properties_enable_fips(NULL, 0);
+		}
+		EVP_DigestInit_ex(ctx,EVP_md5(), NULL);
+		EVP_DigestUpdate(ctx,str,strl);
+		EVP_DigestFinal(ctx,key,&keylen);
+		EVP_MD_CTX_free(ctx);
 #else // OPENSSL_VERSION_NUMBER < 0x10100000L
 		unsigned int keylen = 0;
 		EVP_MD_CTX *ctx = EVP_MD_CTX_new();
