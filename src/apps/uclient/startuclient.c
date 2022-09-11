@@ -226,12 +226,12 @@ static int clnet_connect(uint16_t clnet_remote_port, const char *remote_address,
 	clnet_fd = -1;
 	connect_err = 0;
 
-	bzero(&remote_addr, sizeof(ioa_addr));
+	memset(&remote_addr, 0, sizeof(ioa_addr));
 	if (make_ioa_addr((const uint8_t*) remote_address, clnet_remote_port,
 			&remote_addr) < 0)
 		return -1;
 
-	bzero(&local_addr, sizeof(ioa_addr));
+	memset(&local_addr, 0, sizeof(ioa_addr));
 
 	clnet_fd = socket(remote_addr.ss.sa_family,
 			use_sctp ? SCTP_CLIENT_STREAM_SOCKET_TYPE : (use_tcp ? CLIENT_STREAM_SOCKET_TYPE : CLIENT_DGRAM_SOCKET_TYPE),
@@ -1542,7 +1542,7 @@ void tcp_data_connect(app_ur_session *elem, uint32_t cid)
 	int i = (int)(elem->pinfo.tcp_conn_number-1);
 	elem->pinfo.tcp_conn=(app_tcp_conn_info**)realloc(elem->pinfo.tcp_conn,elem->pinfo.tcp_conn_number*sizeof(app_tcp_conn_info*));
 	elem->pinfo.tcp_conn[i]=(app_tcp_conn_info*)malloc(sizeof(app_tcp_conn_info));
-	bzero(elem->pinfo.tcp_conn[i],sizeof(app_tcp_conn_info));
+	memset(elem->pinfo.tcp_conn[i],0,sizeof(app_tcp_conn_info));
 
 	elem->pinfo.tcp_conn[i]->tcp_data_fd = clnet_fd;
 	elem->pinfo.tcp_conn[i]->cid = cid;

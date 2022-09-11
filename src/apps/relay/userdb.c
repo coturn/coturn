@@ -251,7 +251,7 @@ static void must_set_admin_origin(void *origin0)
 void init_secrets_list(secrets_list_t *sl)
 {
 	if(sl) {
-		bzero(sl,sizeof(secrets_list_t));
+		memset(sl,0,sizeof(secrets_list_t));
 	}
 }
 
@@ -424,7 +424,7 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
 				if (dbd && dbd->get_oauth_key) {
 
 					oauth_key_data_raw rawKey;
-					bzero(&rawKey,sizeof(rawKey));
+					memset(&rawKey,0,sizeof(rawKey));
 
 					int gres = (*(dbd->get_oauth_key))(usname,&rawKey);
 					if(gres<0)
@@ -440,7 +440,7 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
 					}
 
 					oauth_key_data okd;
-					bzero(&okd,sizeof(okd));
+					memset(&okd,0,sizeof(okd));
 
 					convert_oauth_key_data_raw(&rawKey, &okd);
 
@@ -448,7 +448,7 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
 					size_t err_msg_size = sizeof(err_msg) - 1;
 
 					oauth_key okey;
-					bzero(&okey,sizeof(okey));
+					memset(&okey, 0, sizeof(okey));
 
 					if (convert_oauth_key_data(&okd, &okey, err_msg, err_msg_size) < 0) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s\n", err_msg);
@@ -456,10 +456,10 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
 					}
 
 					oauth_token dot;
-					bzero((&dot),sizeof(dot));
+					memset((&dot), 0, sizeof(dot));
 
 					encoded_oauth_token etoken;
-					bzero(&etoken,sizeof(etoken));
+					memset(&etoken, 0, sizeof(etoken));
 
 					if((size_t)len > sizeof(etoken.token)) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Encoded oAuth token is too large\n");
@@ -639,7 +639,7 @@ uint8_t *start_user_check(turnserver_id id, turn_credential_type ct, int in_oaut
 	*postpone_reply = 1;
 
 	struct auth_message am;
-	bzero(&am,sizeof(struct auth_message));
+	memset(&am, 0, sizeof(struct auth_message));
 	am.id = id;
 	am.ct = ct;
 	am.in_oauth = in_oauth;
@@ -1168,7 +1168,7 @@ const ip_range_list_t* ioa_get_blacklist(ioa_engine_handle e)
 ip_range_list_t* get_ip_list(const char *kind)
 {
 	ip_range_list_t *ret = (ip_range_list_t*) malloc(sizeof(ip_range_list_t));
-	bzero(ret,sizeof(ip_range_list_t));
+	memset(ret,0,sizeof(ip_range_list_t));
 
 	const turn_dbdriver_t * dbd = get_dbdriver();
 	if (dbd && dbd->get_ip_list && !turn_params.no_dynamic_ip_list) {

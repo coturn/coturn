@@ -239,7 +239,7 @@ int ur_map_unlock(const ur_map* map) {
 void lm_map_init(lm_map *map)
 {
 	if(map) {
-		bzero(map,sizeof(lm_map));
+		memset(map, 0, sizeof(lm_map));
 	}
 }
 
@@ -590,7 +590,7 @@ static void addr_list_free(addr_list_header* slh) {
     if(slh->extra_list) {
       free(slh->extra_list);
     }
-    bzero(slh,sizeof(addr_list_header));
+    memset(slh, 0, sizeof(addr_list_header));
   }
 }
     
@@ -802,7 +802,7 @@ static const addr_elem* addr_list_get_const(const addr_list_header* slh, const i
 
 void ur_addr_map_init(ur_addr_map* map) {
   if(map) {
-    bzero(map,sizeof(ur_addr_map));
+    memset(map, 0, sizeof(ur_addr_map));
     map->magic=MAGIC_HASH;
   }
 }
@@ -813,7 +813,7 @@ void ur_addr_map_clean(ur_addr_map* map) {
     for(i=0;i<ADDR_MAP_SIZE;i++) {
       addr_list_free(&(map->lists[i]));
     }
-    bzero(map,sizeof(ur_addr_map));
+    memset(map, 0, sizeof(ur_addr_map));
   }
 }
 
@@ -1052,7 +1052,7 @@ static string_list_header* get_string_list_header(ur_string_map *map, const ur_s
 
 static int ur_string_map_init(ur_string_map* map) {
   if(map) {
-    bzero(map,sizeof(ur_string_map));
+    memset(map, 0, sizeof(ur_string_map));
     map->magic=MAGIC_HASH;
 
     TURN_MUTEX_INIT_RECURSIVE(&(map->mutex));

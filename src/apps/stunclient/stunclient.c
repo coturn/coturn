@@ -253,7 +253,7 @@ static int run_stunclient(const char* rip, int rport, int *port, int *rfc5780, i
 	int new_udp_fd = -1;
 	stun_buffer buf;
 
-	bzero(&remote_addr, sizeof(remote_addr));
+	memset(&remote_addr, 0, sizeof(remote_addr));
 	if (make_ioa_addr((const uint8_t*) rip, rport, &remote_addr) < 0)
 		err(-1, NULL);
 
@@ -418,7 +418,7 @@ int main(int argc, char **argv)
   set_logfile("stdout");
   set_system_parameters(0);
   
-  bzero(local_addr, sizeof(local_addr));
+  memset(local_addr, 0, sizeof(local_addr));
 
   while ((c = getopt(argc, argv, "p:L:f")) != -1) {
     switch(c) {

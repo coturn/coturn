@@ -2355,7 +2355,7 @@ int main(int argc, char **argv)
 
 #endif
 
-	bzero(&turn_params.default_users_db,sizeof(default_users_db_t));
+	memset(&turn_params.default_users_db,0,sizeof(default_users_db_t));
 	turn_params.default_users_db.ram_db.static_accounts = ur_string_map_create(free);
 
 	if(strstr(argv[0],"turnadmin"))

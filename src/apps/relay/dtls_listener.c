@@ -506,7 +506,7 @@ static int create_new_connected_udp_socket(
 		return -1;
 	}
 
-	bzero(ret, sizeof(ioa_socket));
+	memset(ret, 0, sizeof(ioa_socket));
 
 	ret->magic = SOCKET_MAGIC;
 

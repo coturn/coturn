@@ -178,7 +178,7 @@ static int rtcp_map_init(rtcp_map* map, ioa_engine_handle e) {
 
 rtcp_map* rtcp_map_create(ioa_engine_handle e) {
   rtcp_map *map=(rtcp_map*)malloc(sizeof(rtcp_map));
-  bzero(map,sizeof(rtcp_map));
+  memset(map,0,sizeof(rtcp_map));
   if(rtcp_map_init(map,e)<0) {
     free(map);
     return NULL;
@@ -196,7 +196,7 @@ int rtcp_map_put(rtcp_map* map, rtcp_token_type token, ioa_socket_handle s) {
   else {
     rtcp_alloc_type *value=(rtcp_alloc_type*)malloc(sizeof(rtcp_alloc_type));
     if(!value) return -1;
-    bzero(value,sizeof(rtcp_alloc_type));
+    memset(value,0,sizeof(rtcp_alloc_type));
     value->s=s;
     value->t=turn_time() + RTCP_TIMEOUT;
     value->token=token;
