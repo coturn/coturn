@@ -1,6 +1,17 @@
 10/01/2021 Oleg Moskalenko <mom040267@gmail.com> Mihály Mészáros <misi@majd.eu>
 Version 4.5.3 'dan Eider':
-
+	- merge PR #967 (eakraly)
+		* fix small issues reported by cppcheck 
+	- merge PR #974 (eakraly)
+		* fix long log line printing 
+	- merge PR #973 (eakraly)
+		* Print turnserver version with --version 
+	- merge PR #972 (eakraly)
+		* do not write outside of a buffer in admin interface
+	- merge PR #970 (eakraly)
+		* fix uclient certificate loading bug 
+	- merge PR #971 (eakraly)
+		* fix duplicate TCP flag in run_tests.sh script 
     - merge PR #962 (huhaipeng)
 		* fix turn session leak
     - merge PR #963 (eakraly)
