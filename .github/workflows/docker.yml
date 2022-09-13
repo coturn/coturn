@@ -150,17 +150,24 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Parse release version from Git tag
-        id: release
-        run: echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/docker/}
+      - name: Parse semver versions from Git tag
+        id: semver
+        uses: actions-ecosystem/action-regex-match@v2
+        with:
+          text: ${{ github.ref }}
+          regex: '^refs/tags/docker/(((([0-9]+)\.[0-9]+)\.[0-9]+)-(.+))$'
       - name: Parse CHANGELOG link
         id: changelog
-        run: echo ::set-output name=LINK::${{ github.server_url }}/${{ github.repository }}/blob/docker/${{ steps.release.outputs.VERSION }}/docker/coturn/CHANGELOG.md#$(sed -n '/^## \[${{ steps.release.outputs.VERSION }}\]/{s/^## \[\(.*\)\][^0-9]*\([0-9].*\)/\1--\2/;s/[^0-9a-z-]*//g;p;}' CHANGELOG.md)
+        run: echo ::set-output name=link::${{ github.server_url }}/${{ github.repository }}/blob/docker/${{ steps.semver.outputs.group1 }}/docker/coturn/CHANGELOG.md#$(sed -n '/^## \[${{ steps.semver.outputs.group1 }}\]/{s/^## \[\(.*\)\][^0-9]*\([0-9].*\)/\1--\2/;s/[^0-9a-z-]*//g;p;}' CHANGELOG.md)
         working-directory: ./docker/coturn
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v1
         with:
-          name: docker/${{ steps.release.outputs.VERSION }}
+          name: docker/${{ steps.semver.outputs.group1 }}
           body: |
-            [Changelog](${{ steps.changelog.outputs.LINK }})
+            `${{ steps.semver.outputs.group1 }}` Docker image version of ${{ steps.semver.outputs.group2 }} Coturn release.
+
+            [Docker Hub](https://hub.docker.com/r/coturn/coturn) | [GitHub Container Registry](https://github.com/orgs/coturn/packages/container/package/coturn) | [Quay.io](https://quay.io/repository/coturn/coturn)
+
+            [Changelog](${{ steps.changelog.outputs.link }})
