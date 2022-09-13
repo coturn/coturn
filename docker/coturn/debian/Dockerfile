@@ -128,10 +128,6 @@ RUN if [ "${coturn_git_ref}" != 'HEAD' ]; then true \
  && git fetch --depth=1 origin "${coturn_git_ref}" \
  && git checkout FETCH_HEAD \
  && true; fi
-# TODO: Remove `OSLIBS` line with next Coturn release having it in `configure`.
-RUN if [ "${coturn_git_ref}" = '4.5.2' ]; then true \
- && sed -i -e '850i\OSLIBS="$\{OSLIBS\} -latomic"' ./configure \
- && true; fi
 
 # Build Coturn from sources.
 RUN ./configure --prefix=/usr \

@@ -17,11 +17,11 @@ eq = $(if $(or $(1),$(2)),$(and $(findstring $(1),$(2)),\
 # Project parameters #
 ######################
 
-COTURN_VER ?= 4.5.2
+COTURN_VER ?= 4.6.0
 COTURN_MIN_VER = $(strip $(shell echo $(COTURN_VER) | cut -d '.' -f1,2))
 COTURN_MAJ_VER = $(strip $(shell echo $(COTURN_VER) | cut -d '.' -f1))
 
-BUILD_REV ?= 14
+BUILD_REV ?= 0
 
 NAMESPACES := coturn \
               ghcr.io/coturn \

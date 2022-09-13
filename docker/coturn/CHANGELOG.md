@@ -4,13 +4,27 @@ Coturn TURN server Docker image changelog
 
 
 
+## [4.6.0-r0] · 2022-08-13
+[4.6.0-r0]: /../../tree/docker/4.6.0-r0
+
+### Upgraded
+
+- [Coturn] 4.6.0: <https://github.com/coturn/coturn/blob/b7b43edd33c21caf18547243649272d2ada1d112/ChangeLog>
+
+### Security updated
+
+- [Debian Linux] "bullseye" 20220912: <https://github.com/docker-library/official-images/commit/80ce239c006d681e7687e1a73777126db94e9959>
+
+
+
+
 ## [4.5.2-r14] · 2022-08-10
 [4.5.2-r14]: /../../tree/docker/4.5.2-r14
 
 ### Security updated
 
 - [Alpine Linux] 3.16.2: <https://github.com/docker-library/official-images/commit/00214788d0150e2bcf2b2f51f786f92addef2478>
-- [Debian] "bullseye" 20220801: <https://github.com/docker-library/official-images/commit/ce10f6b60289c0c0b5de6f785528b8725f225a58>
+- [Debian Linux] "bullseye" 20220801: <https://github.com/docker-library/official-images/commit/ce10f6b60289c0c0b5de6f785528b8725f225a58>
 
 
 
@@ -21,7 +35,7 @@ Coturn TURN server Docker image changelog
 ### Security updated
 
 - [Alpine Linux] 3.16.1: <https://github.com/docker-library/official-images/commit/dcc1108c96213d2f8cca14c23273526913312146>
-- [Debian] "bullseye" 20220622: <https://github.com/docker-library/official-images/commit/979b8e278e5d921f1bfddf07d1ab56ab6bb9c3f9>
+- [Debian Linux] "bullseye" 20220622: <https://github.com/docker-library/official-images/commit/979b8e278e5d921f1bfddf07d1ab56ab6bb9c3f9>
 
 
 
@@ -35,7 +49,7 @@ Coturn TURN server Docker image changelog
 
 ### Security updated
 
-- [Debian] "bullseye" 20220509: <https://github.com/docker-library/official-images/commit/5e2abb3fc26aa1e16e7e3516580621bef93a64e2>
+- [Debian Linux] "bullseye" 20220509: <https://github.com/docker-library/official-images/commit/5e2abb3fc26aa1e16e7e3516580621bef93a64e2>
 
 
 
@@ -56,7 +70,7 @@ Coturn TURN server Docker image changelog
 ### Security updated
 
 - [Alpine Linux] 3.15.3: <https://github.com/docker-library/official-images/commit/e83c8d565978ce1edf1b7bb565484e8cb4419d24>
-- [Debian] "bullseye" 20220328: <https://github.com/docker-library/official-images/commit/805cd38af6aec5e5a475c0229c6c1c9831af6124>
+- [Debian Linux] "bullseye" 20220328: <https://github.com/docker-library/official-images/commit/805cd38af6aec5e5a475c0229c6c1c9831af6124>
 
 
 
@@ -67,7 +81,7 @@ Coturn TURN server Docker image changelog
 ### Security updated
 
 - [Alpine Linux] 3.15.2: <https://github.com/docker-library/official-images/commit/72599f4196000032663a637e542cd23b4dc68936>
-- [Debian] "bullseye" 20220316: <https://github.com/docker-library/official-images/commit/1e1bb99db26edc6b8605d83eefc22e1288203a20>
+- [Debian Linux] "bullseye" 20220316: <https://github.com/docker-library/official-images/commit/1e1bb99db26edc6b8605d83eefc22e1288203a20>
 
 
 
