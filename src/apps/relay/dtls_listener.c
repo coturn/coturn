@@ -295,8 +295,17 @@ static ioa_socket_handle dtls_server_input_handler(dtls_listener_relay_server_ty
 	SSL_set_accept_state(connecting_ssl);
 
 	SSL_set_bio(connecting_ssl, NULL, wbio);
-	SSL_set_options(connecting_ssl, SSL_OP_COOKIE_EXCHANGE | SSL_OP_NO_RENEGOTIATION);
-
+	SSL_set_options(connecting_ssl, SSL_OP_COOKIE_EXCHANGE
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+#if defined(SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS)
+		| SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS
+#endif
+#else
+#if defined(SSL_OP_NO_RENEGOTIATION)
+		| SSL_OP_NO_RENEGOTIATION
+#endif
+#endif
+	);
 	SSL_set_max_cert_list(connecting_ssl, 655350);
 
 	ioa_socket_handle rc = dtls_accept_client_connection(server, s, connecting_ssl,
@@ -581,7 +590,17 @@ static int create_new_connected_udp_socket(
 
 		SSL_set_bio(connecting_ssl, NULL, wbio);
 
-		SSL_set_options(connecting_ssl, SSL_OP_COOKIE_EXCHANGE | SSL_OP_NO_RENEGOTIATION);
+		SSL_set_options(connecting_ssl, SSL_OP_COOKIE_EXCHANGE
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+#if defined(SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS)
+			| SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS
+#endif
+#else
+#if defined(SSL_OP_NO_RENEGOTIATION)
+			| SSL_OP_NO_RENEGOTIATION
+#endif
+#endif
+		);
 
 		SSL_set_max_cert_list(connecting_ssl, 655350);
 		int rc = ssl_read(ret->fd, connecting_ssl, server->sm.m.sm.nd.nbh,

@@ -1428,7 +1428,17 @@ static void set_socket_ssl(ioa_socket_handle s, SSL *ssl)
 		if(ssl) {
 			SSL_set_app_data(ssl,s);
 			SSL_set_info_callback(ssl, (ssl_info_callback_t)ssl_info_callback);
-			SSL_set_options(ssl, SSL_OP_NO_RENEGOTIATION);
+			SSL_set_options(ssl, 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+#if defined(SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS)
+				SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS
+#endif
+#else
+#if defined(SSL_OP_NO_RENEGOTIATION)
+				SSL_OP_NO_RENEGOTIATION
+#endif
+#endif
+			);
 		}
 	}
 }
