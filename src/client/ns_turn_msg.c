@@ -275,7 +275,6 @@ int stun_produce_integrity_key_str(const uint8_t *uname, const uint8_t *realm, c
 		EVP_DigestUpdate(ctx,str,strl);
 		EVP_DigestFinal(ctx,key,&keylen);
 		EVP_MD_CTX_free(ctx);
-#endif
 #endif // OPENSSL_VERSION_NUMBER < 0X10100000L
 		ret = 0;
 	}
