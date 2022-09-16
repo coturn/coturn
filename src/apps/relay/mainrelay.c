@@ -3236,15 +3236,15 @@ static void openssl_load_certificates(void)
 	if(!turn_params.no_tls) {
 		set_ctx(&turn_params.tls_ctx,"TLS", TLS_server_method()); /*compatibility mode */
 		if(!turn_params.no_tlsv1) {
-			SSL_CTX_set_options(&turn_params.tls_ctx, SSL_OP_NO_TLSv1);
+			SSL_CTX_set_options(turn_params.tls_ctx, SSL_OP_NO_TLSv1);
 		}
 #if TLSv1_1_SUPPORTED
 		if(!turn_params.no_tlsv1_1) {
-			SSL_CTX_set_options(&turn_params.tls_ctx, SSL_OP_NO_TLSv1_1);
+			SSL_CTX_set_options(turn_params.tls_ctx, SSL_OP_NO_TLSv1_1);
 		}
 #if TLSv1_2_SUPPORTED
 		if(!turn_params.no_tlsv1_2) {
-			SSL_CTX_set_options(&turn_params.tls_ctx, SSL_OP_NO_TLSv1_2);
+			SSL_CTX_set_options(turn_params.tls_ctx, SSL_OP_NO_TLSv1_2);
 		}
 #endif
 #endif
