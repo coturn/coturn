@@ -138,7 +138,11 @@ static SSL* tls_connect(ioa_socket_raw fd, ioa_addr *remote_addr, int *try_again
 		if (rc > 0) {
 		  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: client session connected with cipher %s, method=%s\n",__FUNCTION__,
 				  SSL_get_cipher(ssl),turn_get_ssl_method(ssl,NULL));
+#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
+		  if(clnet_verbose && SSL_get1_peer_certificate(ssl)) {
+#else
 		  if(clnet_verbose && SSL_get_peer_certificate(ssl)) {
+#endif
 			  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "------------------------------------------------------------\n");
 		  	X509_NAME_print_ex_fp(stdout, X509_get_subject_name(SSL_get_peer_certificate(ssl)), 1,
 		  						XN_FLAG_MULTILINE);

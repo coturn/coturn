@@ -1868,7 +1868,11 @@ int ssl_read(evutil_socket_t fd, SSL* ssl, ioa_network_buffer_handle nbh, int ve
 
 	} else if (!if1 && if2) {
 
+#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
+		if(verbose && SSL_get1_peer_certificate(ssl)) {
+#else
 		if(verbose && SSL_get_peer_certificate(ssl)) {
+#endif
 		  printf("\n------------------------------------------------------------\n");
 		  X509_NAME_print_ex_fp(stdout, X509_get_subject_name(SSL_get_peer_certificate(ssl)), 1,
 					XN_FLAG_MULTILINE);
