@@ -34,7 +34,7 @@
 
 int stun_init_buffer(stun_buffer *buf) {
   if(!buf) return -1;
-  bzero(buf->buf,sizeof(buf->buf));
+  memset(buf->buf, 0, sizeof(buf->buf));
   buf->len=0;
   buf->offset=0;
   buf->coffset=0;

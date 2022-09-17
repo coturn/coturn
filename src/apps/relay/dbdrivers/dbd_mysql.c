@@ -70,7 +70,7 @@ static void MyconninfoFree(Myconninfo *co) {
 		if(co->cert) free(co->cert);
 		if(co->capath) free(co->capath);
 		if(co->cipher) free(co->cipher);
-		bzero(co,sizeof(Myconninfo));
+		memset(co,0,sizeof(Myconninfo));
 	}
 }
 
@@ -104,7 +104,7 @@ char* decryptPassword(char* in, const unsigned char* mykey){
 
 static Myconninfo *MyconninfoParse(char *userdb, char **errmsg) {
 	Myconninfo *co = (Myconninfo*)malloc(sizeof(Myconninfo));
-	bzero(co,sizeof(Myconninfo));
+	memset(co,0,sizeof(Myconninfo));
 	if(userdb) {
 		char *s0=strdup(userdb);
 		char *s = s0;

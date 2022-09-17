@@ -111,7 +111,7 @@ static struct headers_list * post_parse(char *data, size_t data_len)
 			char *fmarker = NULL;
 			char *fsplit = strtok_r(post_data, "&", &fmarker);
 			struct headers_list *list = (struct headers_list*)malloc(sizeof(struct headers_list));
-			bzero(list,sizeof(struct headers_list));
+			memset(list,0,sizeof(struct headers_list));
 			while (fsplit != NULL) {
 				char *vmarker = NULL;
 				char *key = strtok_r(fsplit, "=", &vmarker);
@@ -165,13 +165,13 @@ static struct http_request* parse_http_request_1(struct http_request* ret, char*
 				const char *query = evhttp_uri_get_query(uri);
 				if(query) {
 					struct evkeyvalq* kv = (struct evkeyvalq*)malloc(sizeof(struct evkeyvalq));
-					bzero(kv,sizeof(struct evkeyvalq));
+					memset(kv,0,sizeof(struct evkeyvalq));
 					if(evhttp_parse_query_str(query, kv)<0) {
 						free(ret);
 						ret = NULL;
 					} else {
 						ret->headers = (struct http_headers*)malloc(sizeof(struct http_headers));
-						bzero(ret->headers,sizeof(struct http_headers));
+						memset(ret->headers,0,sizeof(struct http_headers));
 						ret->headers->uri_headers = kv;
 					}
 				}
@@ -187,7 +187,7 @@ static struct http_request* parse_http_request_1(struct http_request* ret, char*
 					if(body && body[0]) {
 						if(!ret->headers) {
 							ret->headers = (struct http_headers*)malloc(sizeof(struct http_headers));
-							bzero(ret->headers,sizeof(struct http_headers));
+							memset(ret->headers,0,sizeof(struct http_headers));
 						}
 						ret->headers->post_headers = post_parse(body,strlen(body));
 					}
@@ -208,7 +208,7 @@ struct http_request* parse_http_request(char* request) {
 	if(request) {
 
 		ret = (struct http_request*)malloc(sizeof(struct http_request));
-		bzero(ret,sizeof(struct http_request));
+		memset(ret,0,sizeof(struct http_request));
 
 		if(strstr(request,"GET ") == request) {
 			ret->rtype = HRT_GET;
@@ -327,7 +327,7 @@ struct str_buffer {
 struct str_buffer* str_buffer_new(void)
 {
 	struct str_buffer* ret = (struct str_buffer*)malloc(sizeof(struct str_buffer));
-	bzero(ret,sizeof(struct str_buffer));
+	memset(ret,0,sizeof(struct str_buffer));
 	ret->buffer = (char*)malloc(1);
 	ret->buffer[0] = 0;
 	ret->capacity = 1;

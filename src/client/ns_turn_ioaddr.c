@@ -44,7 +44,7 @@ uint32_t get_ioa_addr_len(const ioa_addr* addr) {
 
 void addr_set_any(ioa_addr *addr) {
 	if(addr)
-		bzero(addr,sizeof(ioa_addr));
+		memset(addr, 0, sizeof(ioa_addr));
 }
 
 int addr_any(const ioa_addr* addr) {
@@ -203,7 +203,7 @@ int make_ioa_addr(const uint8_t* saddr0, int port, ioa_addr *addr) {
 	  }
   }
 
-  bzero(addr, sizeof(ioa_addr));
+  memset(addr, 0, sizeof(ioa_addr));
   if((len == 0)||
      (inet_pton(AF_INET, saddr, &addr->s4.sin_addr) == 1)) {
     addr->s4.sin_family = AF_INET;

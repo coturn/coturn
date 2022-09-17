@@ -40,7 +40,7 @@ static turn_permission_info* get_from_turn_permission_hashtable(turn_permission_
 
 void init_allocation(void *owner, allocation* a, ur_map *tcp_connections) {
   if(a) {
-    bzero(a,sizeof(allocation));
+    memset(a, 0, sizeof(allocation));
     a->owner = owner;
     a->tcp_connections = tcp_connections;
     init_turn_permission_hashtable(&(a->addr_to_perm));
@@ -185,14 +185,14 @@ void turn_permission_clean(turn_permission_info* tinfo)
 		IOA_EVENT_DEL(tinfo->lifetime_ev);
 		lm_map_foreach(&(tinfo->chns), (foreachcb_type) delete_channel_info_from_allocation_map);
 		lm_map_clean(&(tinfo->chns));
-		bzero(tinfo,sizeof(turn_permission_info));
+		memset(tinfo, 0, sizeof(turn_permission_info));
 	}
 }
 
 static void init_turn_permission_hashtable(turn_permission_hashtable *map)
 {
 	if (map)
-		bzero(map,sizeof(turn_permission_hashtable));
+		memset(map, 0, sizeof(turn_permission_hashtable));
 }
 
 static void free_turn_permission_hashtable(turn_permission_hashtable *map)
@@ -273,7 +273,7 @@ static void ch_info_clean(ch_info* c) {
 			c->kernel_channel = 0;
 		}
 		IOA_EVENT_DEL(c->lifetime_ev);
-		bzero(c,sizeof(ch_info));
+		memset(c, 0, sizeof(ch_info));
 	}
 }
 
@@ -436,7 +436,7 @@ turn_permission_info* allocation_add_permission(allocation *a, const ioa_addr* a
 			}
 		}
 
-		bzero(slot,sizeof(turn_permission_slot));
+		memset(slot, 0, sizeof(turn_permission_slot));
 		slot->info.allocated = 1;
 		turn_permission_info *elem = &(slot->info);
 		addr_cpy(&(elem->addr), addr);
@@ -487,7 +487,7 @@ ch_info *ch_map_get(ch_map* map, uint16_t chnum, int new_chn)
 			size_t old_sz_mem = old_sz * sizeof(ch_info*);
 			a->extra_chns = (ch_info**)realloc(a->extra_chns,old_sz_mem + sizeof(ch_info*));
 			a->extra_chns[old_sz] = (ch_info*)malloc(sizeof(ch_info));
-			bzero(a->extra_chns[old_sz],sizeof(ch_info));
+			memset(a->extra_chns[old_sz],0,sizeof(ch_info));
 			a->extra_sz += 1;
 
 			return a->extra_chns[old_sz];
@@ -575,7 +575,7 @@ tcp_connection *create_tcp_connection(uint8_t server_id, allocation *a, stun_tid
 		}
 	}
 	tcp_connection *tc = (tcp_connection*)malloc(sizeof(tcp_connection));
-	bzero(tc,sizeof(tcp_connection));
+	memset(tc,0,sizeof(tcp_connection));
 	addr_cpy(&(tc->peer_addr),peer_addr);
 	if(tid)
 		bcopy(tid,&(tc->tid),sizeof(stun_tid));

@@ -980,7 +980,7 @@ char *base64_encode(const unsigned char *data,
 void build_base64_decoding_table() {
 
     decoding_table = (char*)malloc(256);
-    bzero(decoding_table,256);
+    memset(decoding_table, 0, 256);
 
     int i;
     for (i = 0; i < 64; i++)
@@ -1061,7 +1061,7 @@ void convert_oauth_key_data_raw(const oauth_key_data_raw *raw, oauth_key_data *o
 {
 	if(raw && oakd) {
 
-		bzero(oakd,sizeof(oauth_key_data));
+		memset(oakd,0,sizeof(oauth_key_data));
 
 		oakd->timestamp = (turn_time_t)raw->timestamp;
 		oakd->lifetime = raw->lifetime;

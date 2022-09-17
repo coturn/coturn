@@ -590,7 +590,7 @@ static int send_socket_to_relay(turnserver_id id, uint64_t cid, stun_tid *tid, i
 	int ret = -1;
 
 	struct message_to_relay sm;
-	bzero(&sm,sizeof(struct message_to_relay));
+	memset(&sm,0, sizeof(struct message_to_relay));
 	sm.t = rmt;
 
 	ioa_socket_handle s_to_delete = s;
@@ -721,7 +721,7 @@ int send_session_cancellation_to_relay(turnsession_id sid)
 	int ret = 0;
 
 	struct message_to_relay sm;
-	bzero(&sm,sizeof(struct message_to_relay));
+	memset(&sm,0,sizeof(struct message_to_relay));
 	sm.t = RMT_CANCEL_SESSION;
 
 	turnserver_id id = (turnserver_id)(sid / TURN_SESSION_ID_FACTOR);
@@ -1794,7 +1794,7 @@ static void* run_auth_server_thread(void *arg)
 
 	} else {
 
-		bzero(as,sizeof(struct auth_server));
+		memset(as,0,sizeof(struct auth_server));
 
 		as->id = id;
 
@@ -1855,7 +1855,7 @@ static void* run_admin_server_thread(void *arg)
 
 static void setup_admin_server(void)
 {
-	bzero(&adminserver,sizeof(struct admin_server));
+	memset(&adminserver,0,sizeof(struct admin_server));
 	adminserver.listen_fd = -1;
 	adminserver.verbose = turn_params.verbose;
 
@@ -1940,7 +1940,7 @@ void setup_server(void)
 
 void init_listener(void)
 {
-	bzero(&turn_params.listener,sizeof(struct listener_server));
+	memset(&turn_params.listener,0,sizeof(struct listener_server));
 }
 
 ///////////////////////////////

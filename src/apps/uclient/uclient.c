@@ -116,7 +116,7 @@ static int refresh_channel(app_ur_session* elem, uint16_t method, uint32_t lt);
 
 static app_ur_session* init_app_session(app_ur_session *ss) {
   if(ss) {
-    bzero(ss,sizeof(app_ur_session));
+    memset(ss, 0, sizeof(app_ur_session));
     ss->pinfo.fd=-1;
   }
   return ss;
@@ -1005,7 +1005,7 @@ static int start_client(const char *remote_address, int port,
     ss_rtcp = create_new_ss();
 
   app_ur_conn_info clnet_info_probe; /* for load balancing probe */
-  bzero(&clnet_info_probe,sizeof(clnet_info_probe));
+  memset(&clnet_info_probe, 0, sizeof(clnet_info_probe));
   clnet_info_probe.fd = -1;
 
   app_ur_conn_info *clnet_info=&(ss->pinfo);
@@ -1099,7 +1099,7 @@ static int start_c2c(const char *remote_address, int port,
     ss2_rtcp = create_new_ss();
 
   app_ur_conn_info clnet_info_probe; /* for load balancing probe */
-  bzero(&clnet_info_probe,sizeof(clnet_info_probe));
+  memset(&clnet_info_probe, 0, sizeof(clnet_info_probe));
   clnet_info_probe.fd = -1;
 
   app_ur_conn_info *clnet_info1=&(ss1->pinfo);

@@ -913,7 +913,7 @@ ioa_socket_handle create_unbound_relay_ioa_socket(ioa_engine_handle e, int famil
 	}
 
 	ret = (ioa_socket*)malloc(sizeof(ioa_socket));
-	bzero(ret,sizeof(ioa_socket));
+	memset(ret,0,sizeof(ioa_socket));
 
 	ret->magic = SOCKET_MAGIC;
 
@@ -1357,7 +1357,7 @@ ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e,
 	}
 
 	ret = (ioa_socket*)malloc(sizeof(ioa_socket));
-	bzero(ret,sizeof(ioa_socket));
+	memset(ret,0,sizeof(ioa_socket));
 
 	ret->magic = SOCKET_MAGIC;
 
@@ -1640,7 +1640,7 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s)
 			return ret;
 		}
 
-		bzero(ret,sizeof(ioa_socket));
+		memset(ret,0,sizeof(ioa_socket));
 
 		ret->magic = SOCKET_MAGIC;
 
@@ -2669,7 +2669,7 @@ static int socket_input_worker(ioa_socket_handle s)
 			if(s->read_cb) {
 				ioa_net_data nd;
 
-				bzero(&nd,sizeof(ioa_net_data));
+				memset(&nd,0,sizeof(ioa_net_data));
 				addr_cpy(&(nd.src_addr),&remote_addr);
 				nd.nbh = buf_elem;
 				nd.recv_ttl = ttl;
@@ -3913,11 +3913,11 @@ struct _super_memory {
 static void init_super_memory_region(super_memory_t *r)
 {
 	if(r) {
-		bzero(r,sizeof(super_memory_t));
+		memset(r,0,sizeof(super_memory_t));
 
 		r->super_memory = (char**)malloc(sizeof(char*));
 		r->super_memory[0] = (char*)malloc(TURN_SM_SIZE);
-		bzero(r->super_memory[0],TURN_SM_SIZE);
+		memset(r->super_memory[0],0,TURN_SM_SIZE);
 
 		r->sm_allocated = (size_t*)malloc(sizeof(size_t*));
 		r->sm_allocated[0] = 0;
@@ -3954,7 +3954,7 @@ void* allocate_super_memory_region_func(super_memory_t *r, size_t size, const ch
 
 	if(!r) {
 		ret = malloc(size);
-		bzero(ret, size);
+		memset(ret, 0, size);
 		return ret;
 	}
 
@@ -3988,7 +3988,7 @@ void* allocate_super_memory_region_func(super_memory_t *r, size_t size, const ch
 			r->sm_chunk += 1;
 			r->super_memory = (char**)realloc(r->super_memory,(r->sm_chunk+1) * sizeof(char*));
 			r->super_memory[r->sm_chunk] = (char*)malloc(TURN_SM_SIZE);
-			bzero(r->super_memory[r->sm_chunk],TURN_SM_SIZE);
+			memset(r->super_memory[r->sm_chunk],0,TURN_SM_SIZE);
 			r->sm_allocated = (size_t*)realloc(r->sm_allocated,(r->sm_chunk+1) * sizeof(size_t*));
 			r->sm_allocated[r->sm_chunk] = 0;
 			region = r->super_memory[r->sm_chunk];
@@ -3998,7 +3998,7 @@ void* allocate_super_memory_region_func(super_memory_t *r, size_t size, const ch
 		{
 			char* ptr = region + *rsz;
 
-			bzero(ptr, size);
+			memset(ptr, 0, size);
 
 			*rsz += size;
 
@@ -4010,7 +4010,7 @@ void* allocate_super_memory_region_func(super_memory_t *r, size_t size, const ch
 
 	if(!ret) {
 		ret = malloc(size);
-		bzero(ret, size);
+		memset(ret, 0, size);
 	}
 
 	return ret;

@@ -367,7 +367,7 @@ static inline ioa_socket_handle get_relay_socket_ss(ts_ur_super_session *ss, int
 
 void turn_session_info_init(struct turn_session_info* tsi) {
 	if(tsi) {
-		bzero(tsi,sizeof(struct turn_session_info));
+		memset(tsi, 0, sizeof(struct turn_session_info));
 	}
 }
 
@@ -796,7 +796,7 @@ static ts_ur_super_session* create_new_ss(turn_turnserver* server) {
 	//printf("%s: 111.111: session size=%lu\n",__FUNCTION__,(unsigned long)sizeof(ts_ur_super_session));
 	//
 	ts_ur_super_session *ss = (ts_ur_super_session*)malloc(sizeof(ts_ur_super_session));
-	bzero(ss,sizeof(ts_ur_super_session));
+	memset(ss,0,sizeof(ts_ur_super_session));
 	ss->server = server;
 	get_default_realm_options(&(ss->realm_options));
 	put_session_into_map(ss);
@@ -2210,7 +2210,7 @@ static void tcp_peer_accept_connection(ioa_socket_handle s, void *arg)
 		}
 
 		stun_tid tid;
-		bzero(&tid,sizeof(stun_tid));
+		memset(&tid, 0, sizeof(stun_tid));
 		int err_code=0;
 		tc = create_tcp_connection(server->id, a, &tid, peer_addr, &err_code);
 		if(!tc) {
@@ -4037,7 +4037,7 @@ static int handle_old_stun_command(turn_turnserver *server, ts_ur_super_session 
 					size_t oldsz = strlen(get_version(server));
 					size_t newsz = (((oldsz)>>2) + 1)<<2;
 					uint8_t software[120];
-					bzero(software,sizeof(software));
+					memset(software, 0, sizeof(software));
 					if(newsz>sizeof(software))
 						newsz = sizeof(software);
 					bcopy(get_version(server),software,oldsz);
@@ -4091,7 +4091,7 @@ static int handle_old_stun_command(turn_turnserver *server, ts_ur_super_session 
 			size_t oldsz = strlen(get_version(server));
 			size_t newsz = (((oldsz)>>2) + 1)<<2;
 			uint8_t software[120];
-			bzero(software,sizeof(software));
+			memset(software, 0, sizeof(software));
 			if(newsz>sizeof(software))
 				newsz = sizeof(software);
 			bcopy(get_version(server),software,oldsz);
@@ -4386,7 +4386,7 @@ static int create_relay_connection(turn_turnserver* server,
 
 				IOA_CLOSE_SOCKET(newelem->s);
 
-				bzero(newelem, sizeof(relay_endpoint_session));
+				memset(newelem, 0, sizeof(relay_endpoint_session));
 				newelem->s = s;
 			}
 
@@ -4400,7 +4400,7 @@ static int create_relay_connection(turn_turnserver* server,
 
 			IOA_CLOSE_SOCKET(newelem->s);
 
-			bzero(newelem, sizeof(relay_endpoint_session));
+			memset(newelem, 0, sizeof(relay_endpoint_session));
 			newelem->s = NULL;
 
 			int res = create_relay_ioa_sockets(server->e,
@@ -4951,7 +4951,7 @@ void init_turn_server(turn_turnserver* server,
 	if (!server)
 		return;
 
-	bzero(server,sizeof(turn_turnserver));
+	memset(server, 0, sizeof(turn_turnserver));
 
 	server->e = e;
 	server->id = id;
