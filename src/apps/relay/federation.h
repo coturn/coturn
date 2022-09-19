@@ -23,6 +23,7 @@ void federation_send_data(dtls_listener_relay_server_type* server, ioa_addr* des
 void federation_input_handler(ioa_socket_handle s, int event_type,
 				ioa_net_data *in_buffer, void *arg, int can_resume);
 void federation_whitelist_add(char* hostname, char* issuer);
+void federation_start_handshake_timer(ioa_socket_handle s);
 void federation_start_client_heartbeat_timer(ioa_socket_handle s);
 void federation_start_server_heartbeat_timer(ioa_socket_handle s);
 

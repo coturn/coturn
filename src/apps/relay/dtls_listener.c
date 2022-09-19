@@ -378,17 +378,19 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server,
 			if(sslret >= 0) {
 				int init_after = SSL_is_init_finished(s->ssl);
 				if (!init_before && init_after) {
-					//TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: federation_listener: DTLS connection complete!\n", __FUNCTION__);
-					IOA_EVENT_DEL(s->ssl_client_conn_tmr); // Stop client connection timer
-					send_ssl_backlog_buffers(s); // Send any data packets that have been queued waiting for handshake to finish
-
-					// We are connected now - start the heartbeat timer
-					s->federation_heartbeat_pings_outstanding  = 0; 
-					if(SSL_is_server(s->ssl)) {
-						federation_start_server_heartbeat_timer(s);
-					} else {
-						federation_start_client_heartbeat_timer(s);
+					if(server->federation_listener) {
+						//TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: federation_listener: DTLS connection complete!\n", __FUNCTION__);
+						IOA_EVENT_DEL(s->federation_handshake_tmr); // Stop federation handshake timer if running
+						// We are connected now - start the heartbeat timer
+						s->federation_heartbeat_pings_outstanding  = 0; 
+						if(SSL_is_server(s->ssl)) {
+							federation_start_server_heartbeat_timer(s);
+						} else {
+							federation_start_client_heartbeat_timer(s);
+						}
 					}
+					
+					send_ssl_backlog_buffers(s); // Send any data packets that have been queued waiting for handshake to finish
 				}
 				// We are still handshaking, free inbound packet, no need for read_cb below
 				if(!init_before) {
@@ -499,6 +501,7 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server,
 			add_socket_to_map(s, amap);
 
 			if(server->federation_listener) {
+
 				// We have a new federation connection, register the federation_input_handler
 				if(register_callback_on_ioa_socket(server->e, s, IOA_EV_READ, federation_input_handler, server /* ctx */, 0)<0) {
 					return -1;
@@ -508,6 +511,10 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server,
 					ioa_network_buffer_delete(server->e, sm->m.sm.nd.nbh);
 					sm->m.sm.nd.nbh = NULL;
 				}
+
+				// start federation handshake timer
+				federation_start_handshake_timer(chs);
+
 				return 0;
 			} else {
 				if(open_client_connection_session(ts, &(sm->m.sm))<0) {

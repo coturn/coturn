@@ -198,7 +198,7 @@ struct _ioa_socket
 	SOCKET_TYPE st;
 	SOCKET_APP_TYPE sat;
 	SSL* ssl;
-	ioa_timer_handle ssl_client_conn_tmr;
+	ioa_timer_handle federation_handshake_tmr;
 	ioa_timer_handle federation_heartbeat_tmr;
 	int federation_heartbeat_pings_outstanding;
 	uint32_t ssl_renegs;

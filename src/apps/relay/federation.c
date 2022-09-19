@@ -40,7 +40,7 @@ typedef struct _federation_connection {
 	turnsession_id sid;
 } federation_connection;
 
-#define DTLS_CLIENT_CONNECTION_MAX_TIME_SECS       10
+#define FEDERATION_HANDSHAKE_TIMEOUT_SECS          10
 
 #define FEDERATION_HEARTBEAT_TIME_SECS              5  // Send a client ping (\r\n\r\n) every 5 seconds after DTLS handshake
 #define FEDERATION_CLIENT_HEARTBEAT_MAX_OUTSTANDING 1  // Client side: We are allowed to have up to 1 ping that doesn't get ponged - max detection time is 15s
@@ -501,26 +501,6 @@ void federation_init(ioa_engine_handle e) {
 	federation_load_certificates();
 }
 
-#if DTLSv1_2_SUPPORTED
-static void federation_client_connect_timeout_handler(ioa_engine_handle e, void* arg) {
-
-	UNUSED_ARG(e);
-
-	if (!arg) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s: empty federation_client_connection to be cleaned\n",__FUNCTION__);
-		return;
-	}
-
-	ioa_socket_handle s = (ioa_socket_handle) arg;
-
-	if(s->ssl && !SSL_is_init_finished(s->ssl)) {
-		addr_debug_print(1, &s->remote_addr, "DTLS client connection failed to ");
-		// Note: when you close a socket it removes itself from it's containing map as well
-		IOA_CLOSE_SOCKET(s);
-	}
-}
-#endif
-
 int federation_send_data_imp(dtls_listener_relay_server_type* server, ioa_addr* dest_addr,
 				ioa_network_buffer_handle nbh, int ttl, int tos, int* skip) {
 #if DTLSv1_2_SUPPORTED
@@ -576,12 +556,9 @@ int federation_send_data_imp(dtls_listener_relay_server_type* server, ioa_addr* 
 				return -1;
 			}
 
-			// start a client connection timer
-			IOA_EVENT_DEL(chs->ssl_client_conn_tmr);
-			chs->ssl_client_conn_tmr = set_ioa_timer(server->e, DTLS_CLIENT_CONNECTION_MAX_TIME_SECS, 0,
-							federation_client_connect_timeout_handler, chs, 0,
-							"federation_client_connect_timeout_handler");
-
+			// start federation handshake timer
+			federation_start_handshake_timer(chs);
+			
 			add_socket_to_map(chs, server->children_ss);
 
 			if(register_callback_on_ioa_socket(server->e, chs, IOA_EV_READ, federation_input_handler, server /* ctx */, 0)<0) {
@@ -716,6 +693,32 @@ void federation_whitelist_add(char* hostname, char* issuer) {
 	whitelist_hostnames[whitelist_count]=strdup(hostname);
 	whitelist_issuers[whitelist_count]=strdup(issuer);
 	whitelist_count++;
+}
+
+static void federation_handshake_timeout_handler(ioa_engine_handle e, void* arg) {
+
+	UNUSED_ARG(e);
+
+	if (!arg) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s: empty federation_client_connection to be cleaned\n",__FUNCTION__);
+		return;
+	}
+
+	ioa_socket_handle s = (ioa_socket_handle) arg;
+
+	if(s->ssl && !SSL_is_init_finished(s->ssl)) {
+		addr_debug_print(1, &s->remote_addr, "DTLS handshake timedout with ");
+		// Note: when you close a socket it removes itself from it's containing map as well
+		IOA_CLOSE_SOCKET(s);
+	}
+}
+
+void federation_start_handshake_timer(ioa_socket_handle s) {
+	// start a client connection timer
+	IOA_EVENT_DEL(s->federation_handshake_tmr);
+	s->federation_handshake_tmr = set_ioa_timer(s->e, FEDERATION_HANDSHAKE_TIMEOUT_SECS, 0,
+					federation_handshake_timeout_handler, s, 0,
+					"federation_client_connect_timeout_handler");	
 }
 
 static void federation_client_heartbeat_timeout_handler(ioa_engine_handle e, void* arg) {
