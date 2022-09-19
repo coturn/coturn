@@ -542,7 +542,8 @@ int federation_send_data_imp(dtls_listener_relay_server_type* server, ioa_addr* 
 			timeout.tv_usec = 0;
 			BIO_ctrl(bio, BIO_CTRL_DGRAM_SET_RECV_TIMEOUT, 0, &timeout);
 
-			set_mtu_df(ssl, fd, dest_addr->ss.sa_family, SOSO_MTU, 1, server->verbose);
+			//use OS discovered MTU, don't override with call below
+			//set_mtu_df(ssl, fd, dest_addr->ss.sa_family, SOSO_MTU, 1, server->verbose);
 
 			SSL_set_max_cert_list(ssl, 655350);
 

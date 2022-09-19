@@ -332,18 +332,6 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server,
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "%s: federation_listener: dtls data message but we don't have a DTLS connection from peer, ignoring...\n", __FUNCTION__);
 	}
 
-	if(chs && chs->ssl && server->federation_listener &&
-		SSL_is_init_finished(chs->ssl) &&
-		is_dtls_handshake_message(ioa_network_buffer_data(sm->m.sm.nd.nbh),
-								  (int)ioa_network_buffer_get_size(sm->m.sm.nd.nbh))) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: federation_listener: new handshake on existing DTLS connection, discarding old socket and accepting new...\n", __FUNCTION__);
-
-		// We have a new handshake from peer, close old socket and 
-		// accept new (below)
-		close_ioa_socket(chs);
-		chs = NULL;
-	}
-
 	if (chs && !ioa_socket_tobeclosed(chs)
 			&& (chs->sockets_container == amap)
 			&& (chs->magic == SOCKET_MAGIC)) {
@@ -389,11 +377,12 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server,
 							federation_start_client_heartbeat_timer(s);
 						}
 					}
-					
+
 					send_ssl_backlog_buffers(s); // Send any data packets that have been queued waiting for handshake to finish
 				}
-				// We are still handshaking, free inbound packet, no need for read_cb below
-				if(!init_before) {
+				if(sslret == 0 && server->federation_listener) {
+					// For a federated socket - we only process DTLS traffic if s->ssl is set, so if ssl_read returned 0, then release buffer
+					// so it won't be processed further.
 					ioa_network_buffer_delete(ioa_eng, sm->m.sm.nd.nbh);
 					sm->m.sm.nd.nbh = NULL;
 				}
