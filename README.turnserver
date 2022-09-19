@@ -564,7 +564,7 @@ Options with values:
 			fits the address, then it is denied.
 
 --pidfile 		File name to store the pid of the process.
-			Default is /var/run/turnserver.pid (if superuser account is used) or
+			Default is /run/turnserver/turnserver.pid (if superuser account is used) or
 			/var/tmp/turnserver.pid .
 
 --acme-redirect  <URL>	Redirect ACME/RFC8555 (like Let's Encrypt challenge) requests, i.e.

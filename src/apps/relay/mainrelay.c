@@ -120,7 +120,7 @@ TURN_VERBOSE_NONE, /* verbose */
 0, /* no_software_attribute */
 0, /* web_admin_listen_on_workers */
 0, /* do_not_use_config_file */
-"/var/run/turnserver.pid", /* pidfile */
+"/run/turnserver/turnserver.pid", /* pidfile */
 "", /* acme_redirect */
 DEFAULT_STUN_PORT, /* listener_port*/
 DEFAULT_STUN_TLS_PORT, /* tls_listener_port */
@@ -653,7 +653,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 " --denied-peer-ip=<ip[-ip]> 			Specifies an ip or range of ips that are not allowed to connect to the turn server.\n"
 "						Multiple denied-peer-ip can be set.\n"
 " --pidfile <\"pid-file-name\">			File name to store the pid of the process.\n"
-"						Default is /var/run/turnserver.pid (if superuser account is used) or\n"
+"						Default is /run/turnserver/turnserver.pid (if superuser account is used) or\n"
 "						/var/tmp/turnserver.pid .\n"
 " --acme-redirect <URL>				Redirect ACME, i.e. HTTP GET requests matching '^/.well-known/acme-challenge/(.*)' to '<URL>$1'.\n"
 "						Default is '', i.e. no special handling for such requests.\n"
@@ -2584,7 +2584,8 @@ int main(int argc, char **argv)
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "%s\n", s);
 
 			{
-				const char *pfs[] = {"/var/run/turnserver.pid",
+				const char *pfs[] = {"/run/turnserver/turnserver.pid",
+						"/var/run/turnserver.pid",
 						"/var/spool/turnserver.pid",
 						"/var/turnserver.pid",
 						"/var/tmp/turnserver.pid",

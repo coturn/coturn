@@ -119,7 +119,6 @@ install -m755 rpm/turnserver.init.el \
 		$RPM_BUILD_ROOT/%{_sysconfdir}/rc.d/init.d/turnserver
 %else
 sed -i -e "s/#pidfile/pidfile/g" \
-    -e "s:/var/run/turnserver.pid:/var/run/turnserver/turnserver.pid:g" \
     $RPM_BUILD_ROOT/%{_sysconfdir}/%{name}/turnserver.conf.default
 mkdir -p $RPM_BUILD_ROOT/%{_unitdir}
 install -m755 rpm/turnserver.service.fc \

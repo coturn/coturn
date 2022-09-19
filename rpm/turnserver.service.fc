@@ -7,10 +7,10 @@ After=syslog.target network.target
 User=turnserver
 Group=turnserver
 Type=exec
-PIDFile=/var/run/turnserver.pid
+PIDFile=/run/turnserver/turnserver.pid
 EnvironmentFile=/etc/sysconfig/turnserver
 ExecStart=/usr/bin/turnserver -c /etc/turnserver/turnserver.conf $EXTRA_OPTIONS
-ExecStopPost=/usr/bin/rm -f /var/run/turnserver.pid
+ExecStopPost=/usr/bin/rm -f /run/turnserver/turnserver.pid
 Restart=on-abort
 
 LimitCORE=infinity
