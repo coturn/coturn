@@ -40,7 +40,11 @@ typedef struct _federation_connection {
 	turnsession_id sid;
 } federation_connection;
 
-#define DTLS_CLIENT_CONNECTION_MAX_TIME_SECS 10
+#define DTLS_CLIENT_CONNECTION_MAX_TIME_SECS       10
+
+#define FEDERATION_HEARTBEAT_TIME_SECS              5  // Send a client ping (\r\n\r\n) every 5 seconds after DTLS handshake
+#define FEDERATION_CLIENT_HEARTBEAT_MAX_OUTSTANDING 1  // Client side: We are allowed to have up to 1 ping that doesn't get ponged - max detection time is 15s
+#define FEDERATION_SERVER_MAX_MISSING_HEARTBEATS    2  // Server side: We are allowed to have up to 2 5 second intervals with no pings - max detection time is 15s
 
 uint16_t federation_add_connection_imp(federation_data* fed_data, allocation* fed_allocation);
 int federation_remove_connection_imp(federation_data* fed_data, uint16_t connection_id);
@@ -508,9 +512,12 @@ static void federation_client_connect_timeout_handler(ioa_engine_handle e, void*
 	}
 
 	ioa_socket_handle s = (ioa_socket_handle) arg;
-	addr_debug_print(1, &s->remote_addr, "DTLS client connection failed to ");
-	// Note: when you close a socket it removes itself from it's containing map as well
-	IOA_CLOSE_SOCKET(s);
+
+	if(s->ssl && !SSL_is_init_finished(s->ssl)) {
+		addr_debug_print(1, &s->remote_addr, "DTLS client connection failed to ");
+		// Note: when you close a socket it removes itself from it's containing map as well
+		IOA_CLOSE_SOCKET(s);
+	}
 }
 #endif
 
@@ -569,7 +576,7 @@ int federation_send_data_imp(dtls_listener_relay_server_type* server, ioa_addr* 
 				return -1;
 			}
 
-			// start a connection timer
+			// start a client connection timer
 			IOA_EVENT_DEL(chs->ssl_client_conn_tmr);
 			chs->ssl_client_conn_tmr = set_ioa_timer(server->e, DTLS_CLIENT_CONNECTION_MAX_TIME_SECS, 0,
 							federation_client_connect_timeout_handler, chs, 0,
@@ -622,6 +629,8 @@ void federation_send_data(dtls_listener_relay_server_type* server, ioa_addr* des
 	federation_send_data_imp(server, dest_addr, nbh, ttl, tos, skip);
 }
 
+// Note:  No need to call ioa_network_buffer_delete on errors below, since caller will delete buffer
+//        as long as we don't null it out, ie: in_buffer->nbh = NULL;
 void federation_input_handler(ioa_socket_handle s, int event_type,
 		ioa_net_data *in_buffer, void *arg, int can_resume) {
 
@@ -645,9 +654,34 @@ void federation_input_handler(ioa_socket_handle s, int event_type,
 		return;
 	}
 
+	// Check if packet is a heartbeat "ping"
+	uint8_t *data = ioa_network_buffer_data(in_buffer->nbh);
+	if(ioa_network_buffer_get_size(in_buffer->nbh) == 4 && memcmp("\r\n\r\n", data, 4) == 0) {
+		//addr_debug_print(1, &in_buffer->src_addr, "Federation: received heartbeat ping from");
+		// Send pong back to sender - use same buffer, just change size to 2
+		ioa_network_buffer_handle nbh = in_buffer->nbh;
+		// We are reusing the inbound buffer for outbound sending, NULL it out so caller doesn't free
+		in_buffer->nbh = NULL;
+		ioa_network_buffer_set_size(nbh, 2);
+		send_data_from_ioa_socket_nbh(s, &in_buffer->src_addr, nbh, TTL_IGNORE, TOS_IGNORE, NULL /* skip/ret */);
+
+		s->federation_heartbeat_pings_outstanding = 0;  // We have a ping, reset pings outstanding counter
+
+		// Don't process packet any further
+		return;
+	}
+
+	// Check if packet is a hearbeat "pong"
+	if(ioa_network_buffer_get_size(in_buffer->nbh) == 2 && memcmp("\r\n", data, 2) == 0) {
+		//addr_debug_print(1, &in_buffer->src_addr, "Federation: received heartbeat pong from");
+		s->federation_heartbeat_pings_outstanding = 0;  // We have a pong, reset pings outstanding counter
+		// Don't process packet any further
+		return;
+	}
+
 	// Extract the first two bytes to get the federation cid from the message.  We use this to lookup the mapped allocation
 	// so that we can send this data to the client address.
-	uint16_t cid = ntohs(((const uint16_t*)(ioa_network_buffer_data(in_buffer->nbh)))[0]);
+	uint16_t cid = ntohs(((const uint16_t*)data)[0]);
     // We enforce cids to be in valid RFC TURN channel numbers. It is more friendly for the client to demux and for display in wireshark.	
 	if (!STUN_VALID_CHANNEL(cid)) { 
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "%s: Federation listener received data for invalid channel range cid=%hd ignoring\n", __FUNCTION__, cid);
@@ -675,12 +709,87 @@ void federation_input_handler(ioa_socket_handle s, int event_type,
 	}
 }
 
-void federation_whitelist_add(char* hostname, char* issuer)
-{
+void federation_whitelist_add(char* hostname, char* issuer) {
 	size_t new_size = (whitelist_count+1) * sizeof(char*);
 	whitelist_hostnames = (char**)realloc(whitelist_hostnames, new_size);
 	whitelist_issuers = (char**)realloc(whitelist_issuers, new_size);
 	whitelist_hostnames[whitelist_count]=strdup(hostname);
 	whitelist_issuers[whitelist_count]=strdup(issuer);
 	whitelist_count++;
+}
+
+static void federation_client_heartbeat_timeout_handler(ioa_engine_handle e, void* arg) {
+
+	UNUSED_ARG(e);
+	
+	if (!arg) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s: empty socket handle to heartbeat\n",__FUNCTION__);
+		return;
+	}
+
+	ioa_socket_handle s = (ioa_socket_handle) arg;
+
+	if(ioa_socket_tobeclosed(s)) {
+		return;
+	}
+
+	if(s->federation_heartbeat_pings_outstanding <= FEDERATION_CLIENT_HEARTBEAT_MAX_OUTSTANDING) {
+		//addr_debug_print(1, &s->remote_addr, "Federation: sending heartbeat ping to");
+
+		// Build double CRLF as heartbeat ping, expecting keepalive ping (single CRLF) to be returned
+		ioa_network_buffer_handle nbh = ioa_network_buffer_allocate(s->e);
+		uint8_t *data = ioa_network_buffer_data(nbh);
+		bcopy("\r\n\r\n", data, 4);
+		ioa_network_buffer_set_size(nbh, 4);
+		send_data_from_ioa_socket_nbh(s, NULL /* dest_addr */, nbh, TTL_IGNORE, TOS_IGNORE, NULL /* skip/ret */);
+
+		s->federation_heartbeat_pings_outstanding  = s->federation_heartbeat_pings_outstanding + 1;
+
+		// Restart timer
+		federation_start_client_heartbeat_timer(s);
+	} else {
+		addr_debug_print(1, &s->remote_addr, "Federation: keepalive pong not received after pings, terminating connection to");
+		// Previous ping(s), didn't have a pong response.  Mapping is likely dead.  Close socket.
+		close_ioa_socket(s);
+	}
+}
+
+void federation_start_client_heartbeat_timer(ioa_socket_handle s) {
+	IOA_EVENT_DEL(s->federation_heartbeat_tmr);
+	s->federation_heartbeat_tmr = set_ioa_timer(s->e, FEDERATION_HEARTBEAT_TIME_SECS, 0,
+				federation_client_heartbeat_timeout_handler, s, 0,
+			 	"federation_client_heartbeat_timeout_handler");
+}
+
+static void federation_server_heartbeat_timeout_handler(ioa_engine_handle e, void* arg) {
+
+	UNUSED_ARG(e);
+	
+	if (!arg) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s: empty socket handle to heartbeat\n",__FUNCTION__);
+		return;
+	}
+
+	ioa_socket_handle s = (ioa_socket_handle) arg;
+
+	if(ioa_socket_tobeclosed(s)) {
+		return;
+	}
+
+	if(s->federation_heartbeat_pings_outstanding <= FEDERATION_SERVER_MAX_MISSING_HEARTBEATS) {
+		s->federation_heartbeat_pings_outstanding  = s->federation_heartbeat_pings_outstanding + 1;
+
+		// Restart timer
+		federation_start_server_heartbeat_timer(s);
+	} else {
+		addr_debug_print(1, &s->remote_addr, "Federation: keepalive pings not received, terminating connection to");
+		close_ioa_socket(s);
+	}
+}
+
+void federation_start_server_heartbeat_timer(ioa_socket_handle s) {
+	IOA_EVENT_DEL(s->federation_heartbeat_tmr);
+	s->federation_heartbeat_tmr = set_ioa_timer(s->e, FEDERATION_HEARTBEAT_TIME_SECS, 0,
+				federation_server_heartbeat_timeout_handler, s, 0,
+			 	"federation_server_heartbeat_timeout_handler");
 }

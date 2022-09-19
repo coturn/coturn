@@ -381,6 +381,14 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server,
 					//TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: federation_listener: DTLS connection complete!\n", __FUNCTION__);
 					IOA_EVENT_DEL(s->ssl_client_conn_tmr); // Stop client connection timer
 					send_ssl_backlog_buffers(s); // Send any data packets that have been queued waiting for handshake to finish
+
+					// We are connected now - start the heartbeat timer
+					s->federation_heartbeat_pings_outstanding  = 0; 
+					if(SSL_is_server(s->ssl)) {
+						federation_start_server_heartbeat_timer(s);
+					} else {
+						federation_start_client_heartbeat_timer(s);
+					}
 				}
 				// We are still handshaking, free inbound packet, no need for read_cb below
 				if(!init_before) {

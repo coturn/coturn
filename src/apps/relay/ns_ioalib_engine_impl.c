@@ -1556,6 +1556,9 @@ void close_ioa_socket(ioa_socket_handle s)
 
 		close_socket_net_data(s);
 
+		IOA_EVENT_DEL(s->ssl_client_conn_tmr);
+		IOA_EVENT_DEL(s->federation_heartbeat_tmr);
+
 		s->session = NULL;
 		s->sub_session = NULL;
 		s->magic = 0;
