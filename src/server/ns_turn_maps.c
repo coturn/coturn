@@ -983,7 +983,7 @@ static string_list* string_list_add(string_list* sl, const ur_string_map_key_typ
   elem->list.next=sl;
   elem->key_size = strlen(key)+1;
   elem->key=(char*)malloc(elem->key_size);
-  bcopy(key,elem->key,elem->key_size);
+  memcpy(elem->key,key,elem->key_size);
   elem->value=value;
   return &(elem->list);
 }

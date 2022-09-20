@@ -487,7 +487,7 @@ static void auth_server_receive_message(struct bufferevent *bev, void *ptr)
       if(get_user_key(am.in_oauth,&(am.out_oauth),&(am.max_session_time),am.username,am.realm,key,am.in_buffer.nbh)<0) {
     	  am.success = 0;
       } else {
-    	  bcopy(key,am.key,sizeof(hmackey_t));
+    	  memcpy(am.key,key,sizeof(hmackey_t));
     	  am.success = 1;
       }
     }
@@ -937,7 +937,7 @@ static int send_message_from_listener_to_client(ioa_engine_handle e, ioa_network
 	addr_cpy(&(mm.m.tc.destination),destination);
 	mm.m.tc.nbh = ioa_network_buffer_allocate(e);
 	ioa_network_buffer_header_init(mm.m.tc.nbh);
-	bcopy(ioa_network_buffer_data(nbh),ioa_network_buffer_data(mm.m.tc.nbh),ioa_network_buffer_get_size(nbh));
+	memcpy(ioa_network_buffer_data(mm.m.tc.nbh),ioa_network_buffer_data(nbh),ioa_network_buffer_get_size(nbh));
 	ioa_network_buffer_set_size(mm.m.tc.nbh,ioa_network_buffer_get_size(nbh));
 
 	struct evbuffer *output = bufferevent_get_output(turn_params.listener.out_buf);

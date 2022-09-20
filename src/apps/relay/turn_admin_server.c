@@ -934,7 +934,7 @@ static int run_cli_input(struct cli_session* cs, const char *buf0, unsigned int 
 	if(cs && buf0 && cs->ts && cs->bev) {
 
 		char *buf = (char*)malloc(len+1);
-		bcopy(buf0,buf,len);
+		memcpy(buf,buf0,len);
 		buf[len]=0;
 
 		char *cmd = buf;

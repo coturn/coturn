@@ -642,7 +642,7 @@ int get_canonic_origin(const char* o, char *co, int sz)
 					const char *host = evhttp_uri_get_host(uri);
 					if(host && host[0]) {
 						char otmp[STUN_MAX_ORIGIN_SIZE+STUN_MAX_ORIGIN_SIZE];
-						bcopy(scheme,otmp,schlen);
+						memcpy(otmp,scheme,schlen);
 						otmp[schlen]=0;
 
 						{

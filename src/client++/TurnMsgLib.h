@@ -211,7 +211,7 @@ public:
 		_sz = sz;
 		_value=(uint8_t*)malloc(_sz);
 		if(ptr)
-			bcopy(ptr,_value,_sz);
+			memcpy(_value,ptr,_sz);
 	}
 
 	/**
@@ -241,7 +241,7 @@ public:
 		_sz = sz;
 		_value=(uint8_t*)malloc(_sz);
 		if(value)
-			bcopy(value,_value,_sz);
+			memcpy(_value,value,_sz);
 	}
 
 	/**
