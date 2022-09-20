@@ -321,7 +321,7 @@ int read_mobility_ticket(app_ur_conn_info *clnet_info, stun_buffer *message)
 			if(smid_len>0 && (((size_t)smid_len)<sizeof(clnet_info->s_mobile_id))) {
 				const uint8_t* smid_val = stun_attr_get_value(s_mobile_id_sar);
 				if(smid_val) {
-					bcopy(smid_val, clnet_info->s_mobile_id, (size_t)smid_len);
+					memcpy(clnet_info->s_mobile_id, smid_val, (size_t)smid_len);
 					clnet_info->s_mobile_id[smid_len] = 0;
 					if (clnet_verbose)
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
@@ -614,7 +614,7 @@ static int clnet_allocate(int verbose,
 		  }
 
 		  app_ur_conn_info ci;
-		  bcopy(clnet_info,&ci,sizeof(ci));
+		  memcpy(&ci,clnet_info,sizeof(ci));
 		  ci.fd = -1;
 		  ci.ssl = NULL;
 		  clnet_info->fd = -1;

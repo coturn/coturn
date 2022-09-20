@@ -678,7 +678,7 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 
 		if(is_tcp_data) {
 		  if ((int)elem->in_buffer.len == clmessage_length) {
-		    bcopy((elem->in_buffer.buf), &mi, sizeof(message_info));
+		    memcpy(&mi, (elem->in_buffer.buf), sizeof(message_info));
 		    miset=1;
 		  } else {
 			/* TODO: make a more clean fix */ 
@@ -730,7 +730,7 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 
 				const uint8_t* data = stun_attr_get_value(sar);
 
-				bcopy(data, &mi, sizeof(message_info));
+				memcpy(&mi, data, sizeof(message_info));
 				miset=1;
 			}
 
@@ -786,7 +786,7 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 					return rc;
 				}
 
-				bcopy(elem->in_buffer.buf + 4, &mi, sizeof(message_info));
+				memcpy(&mi, elem->in_buffer.buf + 4, sizeof(message_info));
 				miset=1;
 				applen = elem->in_buffer.len -4;
 			}
@@ -1644,7 +1644,7 @@ int add_integrity(app_ur_conn_info *clnet_info, stun_buffer *message)
 				stun_attr_add_str(message->buf, (size_t*)&(message->len), STUN_ATTRIBUTE_OAUTH_ACCESS_TOKEN,
 					(const uint8_t*)etoken.token, (int)etoken.size);
 
-				bcopy(otoken.enc_block.mac_key,clnet_info->key,otoken.enc_block.key_length);
+				memcpy(clnet_info->key,otoken.enc_block.mac_key,otoken.enc_block.key_length);
 				clnet_info->key_set = 1;
 			}
 

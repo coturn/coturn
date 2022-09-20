@@ -66,7 +66,7 @@ static void write_http_echo(ioa_socket_handle s)
 			snprintf(content_http,sizeof(content_http)-1,"<!DOCTYPE html>\r\n<html>\r\n  <head>\r\n    <title>%s</title>\r\n  </head>\r\n  <body>\r\n    <b>%s</b> <br> <b><i>use https connection for the admin session</i></b>\r\n  </body>\r\n</html>\r\n",title,title);
 			snprintf(data_http,sizeof(data_http)-1,"HTTP/1.0 200 OK\r\nServer: %s\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Length: %d\r\n\r\n%.906s",TURN_SOFTWARE,(int)strlen(content_http),content_http);
 			len_http = strlen(data_http);
-			bcopy(data_http,data,len_http);
+			memcpy(data,data_http,len_http);
 			ioa_network_buffer_set_size(nbh_http,len_http);
 			send_data_from_ioa_socket_nbh(s, NULL, nbh_http, TTL_IGNORE, TOS_IGNORE,NULL);
 		}
@@ -342,7 +342,7 @@ void str_buffer_append(struct str_buffer* sb, const char* str)
 			sb->capacity += len + 1024;
 			sb->buffer = (char*)realloc(sb->buffer,sb->capacity);
 		}
-		bcopy(str,sb->buffer+sb->sz,len+1);
+		memcpy(sb->buffer+sb->sz,str,len+1);
 		sb->sz += len;
 	}
 }

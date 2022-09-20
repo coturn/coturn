@@ -323,7 +323,7 @@ static int mysql_get_auth_secrets(secrets_list_t *sl, uint8_t *realm) {
 							if(lengths) {
 								size_t sz = lengths[0];
 								char auth_secret[TURN_LONG_STRING_SIZE];
-								bcopy(row[0],auth_secret,sz);
+								memcpy(auth_secret,row[0],sz);
 								auth_secret[sz]=0;
 								add_to_secrets_list(sl,auth_secret);
 							}
@@ -366,7 +366,7 @@ static int mysql_get_user_key(uint8_t *usname, uint8_t *realm, hmackey_t key) {
 							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key format: string length=%d (must be %d): user %s\n",(int)lengths[0],(int)sz,usname);
 						} else {
 							char kval[sizeof(hmackey_t)+sizeof(hmackey_t)+1];
-							bcopy(row[0],kval,sz);
+							memcpy(kval,row[0],sz);
 							kval[sz]=0;
 							if(convert_string_key_to_binary(kval, key, sz/2)<0) {
 								TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key: %s, user %s\n",kval,usname);
@@ -409,23 +409,23 @@ static int mysql_get_oauth_key(const uint8_t *kid, oauth_key_data_raw *key) {
 					unsigned long *lengths = mysql_fetch_lengths(mres);
 					if(lengths) {
 						STRCPY(key->kid,kid);
-						bcopy(row[0],key->ikm_key,lengths[0]);
+						memcpy(key->ikm_key,row[0],lengths[0]);
 						key->ikm_key[lengths[0]]=0;
 
 						char stimestamp[128];
-						bcopy(row[1],stimestamp,lengths[1]);
+						memcpy(stimestamp,row[1],lengths[1]);
 						stimestamp[lengths[1]]=0;
 						key->timestamp = (uint64_t)strtoull(stimestamp,NULL,10);
 
 						char slifetime[128];
-						bcopy(row[2],slifetime,lengths[2]);
+						memcpy(slifetime,row[2],lengths[2]);
 						slifetime[lengths[2]]=0;
 						key->lifetime = (uint32_t)strtoul(slifetime,NULL,10);
 
-						bcopy(row[3],key->as_rs_alg,lengths[3]);
+						memcpy(key->as_rs_alg,row[3],lengths[3]);
 						key->as_rs_alg[lengths[3]]=0;
 
-						bcopy(row[4],key->realm,lengths[4]);
+						memcpy(key->realm,row[4],lengths[4]);
 						key->realm[lengths[4]]=0;
 
 						ret = 0;
@@ -465,26 +465,26 @@ static int mysql_list_oauth_keys(secrets_list_t *kids,secrets_list_t *teas,secre
 					unsigned long *lengths = mysql_fetch_lengths(mres);
 					if(lengths) {
 
-						bcopy(row[0],key->ikm_key,lengths[0]);
+						memcpy(key->ikm_key,row[0],lengths[0]);
 						key->ikm_key[lengths[0]]=0;
 
 						char stimestamp[128];
-						bcopy(row[1],stimestamp,lengths[1]);
+						memcpy(stimestamp,row[1],lengths[1]);
 						stimestamp[lengths[1]]=0;
 						key->timestamp = (uint64_t)strtoull(stimestamp,NULL,10);
 
 						char slifetime[128];
-						bcopy(row[2],slifetime,lengths[2]);
+						memcpy(slifetime,row[2],lengths[2]);
 						slifetime[lengths[2]]=0;
 						key->lifetime = (uint32_t)strtoul(slifetime,NULL,10);
 
-						bcopy(row[3],key->as_rs_alg,lengths[3]);
+						memcpy(key->as_rs_alg,row[3],lengths[3]);
 						key->as_rs_alg[lengths[3]]=0;
 
-						bcopy(row[4],key->realm,lengths[4]);
+						memcpy(key->realm,row[4],lengths[4]);
 						key->realm[lengths[4]]=0;
 
-						bcopy(row[5],key->kid,lengths[5]);
+						memcpy(key->kid,row[5],lengths[5]);
 						key->kid[lengths[5]]=0;
 
 						if(kids) {
@@ -999,11 +999,11 @@ static int mysql_get_ip_list(const char *kind, ip_range_list_t * list) {
 							if(lengths) {
 								size_t sz = lengths[0];
 								char kval[TURN_LONG_STRING_SIZE];
-								bcopy(row[0],kval,sz);
+								memcpy(kval,row[0],sz);
 								kval[sz]=0;
 								sz = lengths[1];
 								char rval[TURN_LONG_STRING_SIZE];
-								bcopy(row[1],rval,sz);
+								memcpy(rval,row[1],sz);
 								rval[sz]=0;
 								add_ip_list_range(kval,rval,list);
 							}
@@ -1043,7 +1043,7 @@ static void mysql_reread_realms(secrets_list_t * realms_list) {
 								if(lengths) {
 									size_t sz = lengths[0];
 									char oval[513];
-									bcopy(row[0],oval,sz);
+									memcpy(oval,row[0],sz);
 									oval[sz]=0;
 									char *rval=strdup(row[1]);
 									get_realm(rval);
@@ -1106,15 +1106,15 @@ static void mysql_reread_realms(secrets_list_t * realms_list) {
 							if(lengths) {
 								char rval[513];
 								size_t sz = lengths[0];
-								bcopy(row[0],rval,sz);
+								memcpy(rval,row[0],sz);
 								rval[sz]=0;
 								char oval[513];
 								sz = lengths[1];
-								bcopy(row[1],oval,sz);
+								memcpy(oval,row[1],sz);
 								oval[sz]=0;
 								char vval[513];
 								sz = lengths[2];
-								bcopy(row[2],vval,sz);
+								memcpy(vval,row[2],sz);
 								vval[sz]=0;
 								realm_params_t* rp = get_realm(rval);
 								if(!strcmp(oval,"max-bps"))

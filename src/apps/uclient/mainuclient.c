@@ -414,7 +414,7 @@ int main(int argc, char **argv)
 
 				if(pwd) {
 					if(pwd_length>0) {
-						bcopy(pwd,g_upwd,pwd_length);
+						memcpy(g_upwd,pwd,pwd_length);
 						g_upwd[pwd_length]=0;
 					}
 				}

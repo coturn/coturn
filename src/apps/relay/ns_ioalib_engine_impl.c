@@ -322,7 +322,7 @@ static void add_buffer_to_buffer_list(stun_buffer_list *bufs, char *buf, size_t 
 {
 	if(bufs && buf && (bufs->tsz<MAX_SOCKET_BUFFER_BACKLOG)) {
 	  stun_buffer_list_elem *buf_elem = (stun_buffer_list_elem *)malloc(sizeof(stun_buffer_list_elem));
-	  bcopy(buf,buf_elem->buf.buf,len);
+	  memcpy(buf_elem->buf.buf,buf,len);
 	  buf_elem->buf.len = len;
 	  buf_elem->buf.offset = 0;
 	  buf_elem->buf.coffset = 0;
@@ -419,7 +419,7 @@ ioa_engine_handle create_ioa_engine(super_memory_t *sm,
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"FATAL: cannot create preferable timeval for %d secs (%d number)\n",predef_timer_intervals[t],t);
 					exit(-1);
 				} else {
-					bcopy(ptv,&(e->predef_timers[t]),sizeof(struct timeval));
+					memcpy(&(e->predef_timers[t]),ptv,sizeof(struct timeval));
 					e->predef_timer_intervals[t] = predef_timer_intervals[t];
 				}
 			}
@@ -1138,7 +1138,7 @@ static void tcp_listener_input_handler(struct evconnlistener *l, evutil_socket_t
 	ioa_socket_handle list_s = (ioa_socket_handle) arg;
 
 	ioa_addr client_addr;
-	bcopy(sa,&client_addr,socklen);
+	memcpy(&client_addr,sa,socklen);
 
 	addr_debug_print(((list_s->e) && list_s->e->verbose), &client_addr,"tcp accepted from");
 

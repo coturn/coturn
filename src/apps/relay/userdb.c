@@ -117,7 +117,7 @@ void get_default_realm_options(realm_options_t* ro)
 {
 	if(ro) {
 		lock_realms();
-		bcopy(&(default_realm_params_ptr->options),ro,sizeof(realm_options_t));
+		memcpy(ro,&(default_realm_params_ptr->options),sizeof(realm_options_t));
 		unlock_realms();
 	}
 }
@@ -142,7 +142,7 @@ realm_params_t* get_realm(char* name)
 			return (realm_params_t*)value;
 		} else {
 			realm_params_t *ret = (realm_params_t*)malloc(sizeof(realm_params_t));
-			bcopy(default_realm_params_ptr,ret,sizeof(realm_params_t));
+			memcpy(ret,default_realm_params_ptr,sizeof(realm_params_t));
 			STRCPY(ret->options.name,name);
 			value = (ur_string_map_value_type)ret;
 			ur_string_map_put(realms, key, value);
@@ -159,7 +159,7 @@ realm_params_t* get_realm(char* name)
 int get_realm_data(char* name, realm_params_t* rp)
 {
 	lock_realms();
-	bcopy(get_realm(name),rp,sizeof(realm_params_t));
+	memcpy(rp,get_realm(name),sizeof(realm_params_t));
 	unlock_realms();
 	return 0;
 }
@@ -173,7 +173,7 @@ int get_realm_options_by_origin(char *origin, realm_options_t* ro)
 		TURN_MUTEX_UNLOCK(&o_to_realm_mutex);
 		realm_params_t rp;
 		get_realm_data(realm, &rp);
-		bcopy(&(rp.options),ro,sizeof(realm_options_t));
+		memcpy(ro,&(rp.options),sizeof(realm_options_t));
 		free(realm);
 		return 1;
 	} else {
@@ -187,7 +187,7 @@ void get_realm_options_by_name(char *realm, realm_options_t* ro)
 {
 	realm_params_t rp;
 	get_realm_data(realm, &rp);
-	bcopy(&(rp.options),ro,sizeof(realm_options_t));
+	memcpy(ro,&(rp.options),sizeof(realm_options_t));
 }
 
 int change_total_quota(char *realm, int value)
@@ -465,7 +465,7 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Encoded oAuth token is too large\n");
 						return -1;
 					}
-					bcopy(value,etoken.token,(size_t)len);
+					memcpy(etoken.token,value,(size_t)len);
 					etoken.size = (size_t)len;
 
 					const char* server_name = (char*)turn_params.oauth_server_name;
@@ -515,10 +515,10 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
 							}
 						}
 
-						bcopy(dot.enc_block.mac_key,key,dot.enc_block.key_length);
+						memcpy(key,dot.enc_block.mac_key,dot.enc_block.key_length);
 
 						if(rawKey.realm[0]) {
-							bcopy(rawKey.realm,realm,sizeof(rawKey.realm));
+							memcpy(realm,rawKey.realm,sizeof(rawKey.realm));
 						}
 
 						ret = 0;
@@ -622,7 +622,7 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
 
 	if(ret==0) {
 		size_t sz = get_hmackey_size(SHATYPE_DEFAULT);
-		bcopy(ukey,key,sz);
+		memcpy(key,ukey,sz);
 		return 0;
 	}
 
