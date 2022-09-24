@@ -725,7 +725,7 @@ int add_static_user_account(char *user)
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong user account: %s\n",user);
 		} else {
 			size_t ulen = s-user;
-			char *usname = (char*)malloc(sizeof(char)*(ulen+1));
+			char *usname = (char*)calloc(ulen+1, sizeof(char));
 			strncpy(usname,user,ulen);
 			usname[ulen]=0;
 			if(SASLprep((uint8_t*)usname)<0) {
