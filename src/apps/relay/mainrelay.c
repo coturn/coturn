@@ -3234,7 +3234,11 @@ static void openssl_load_certificates(void)
 {
 	pthread_mutex_lock(&turn_params.tls_mutex);
 	if(!turn_params.no_tls) {
-		set_ctx(&turn_params.tls_ctx,"TLS", TLS_server_method()); /*compatibility mode */
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+        set_ctx(&turn_params.tls_ctx,"TLS", TLSv1_2_server_method()); /*openssl-1.0.2 version specific API */
+#else
+        set_ctx(&turn_params.tls_ctx,"TLS", TLS_server_method());
+#endif // OPENSSL_VERSION_NUMBER < 0x10100000L
 		if(!turn_params.no_tlsv1) {
 			SSL_CTX_set_options(turn_params.tls_ctx, SSL_OP_NO_TLSv1);
 		}
