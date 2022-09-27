@@ -274,7 +274,10 @@ int make_ioa_addr(const uint8_t* saddr0, int port, ioa_addr *addr) {
     	goto beg_af;
     }
     
-    freeaddrinfo(addr_result_orig);
+    if (addr_result_orig)
+    {
+        freeaddrinfo(addr_result_orig);
+    }
   }
 
   return 0;
