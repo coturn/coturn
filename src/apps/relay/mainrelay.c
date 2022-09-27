@@ -83,7 +83,7 @@ char HTTP_ALPN[128] = "http/1.1";
 #define DEFAULT_GENERAL_RELAY_SERVERS_NUMBER (1)
 
 turn_params_t turn_params = {
-NULL,
+	NULL,
 #if DTLS_SUPPORTED
 NULL,
 #endif
@@ -3142,6 +3142,14 @@ static void set_ctx(SSL_CTX** out, const char *protocol, const SSL_METHOD* metho
 	{
 		int op = 0;
 
+#if defined(SSL_OP_NO_SSLv2)
+		op |= SSL_OP_NO_SSLv2;
+#endif
+
+#if defined(SSL_OP_NO_SSLv3)
+			op |= SSL_OP_NO_SSLv3;
+#endif
+
 #if defined(SSL_OP_NO_DTLSv1) && DTLS_SUPPORTED
 		if(turn_params.no_tlsv1)
 			op |= SSL_OP_NO_DTLSv1;
@@ -3215,7 +3223,7 @@ static void openssl_load_certificates(void)
 	if(!turn_params.no_tls) {
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
         set_ctx(&turn_params.tls_ctx,"TLS", TLSv1_2_server_method()); /*openssl-1.0.2 version specific API */
-        if(!turn_params.no_tlsv1) {
+		if(!turn_params.no_tlsv1) {
 			SSL_CTX_set_options(turn_params.tls_ctx, SSL_OP_NO_TLSv1);
 		}
 #if TLSv1_1_SUPPORTED
