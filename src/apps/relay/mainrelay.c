@@ -83,13 +83,7 @@ char HTTP_ALPN[128] = "http/1.1";
 #define DEFAULT_GENERAL_RELAY_SERVERS_NUMBER (1)
 
 turn_params_t turn_params = {
-NULL, NULL,
-#if TLSv1_1_SUPPORTED
 	NULL,
-#if TLSv1_2_SUPPORTED
-	NULL,
-#endif
-#endif
 #if DTLS_SUPPORTED
 NULL,
 #endif
@@ -603,9 +597,12 @@ static char Usage[] = "Usage: turnserver [options]\n"
 " --dh1066					Use 1066 bits predefined DH TLS key. Default size of the predefined key is 2066.\n"
 " --dh-file	<dh-file-name>			Use custom DH TLS key, stored in PEM format in the file.\n"
 "						Flags --dh566 and --dh1066 are ignored when the DH key is taken from a file.\n"
-" --no-tlsv1					Do not allow TLSv1/DTLSv1 protocol.\n"
-" --no-tlsv1_1					Do not allow TLSv1.1 protocol.\n"
-" --no-tlsv1_2					Do not allow TLSv1.2/DTLSv1.2 protocol.\n"
+" --no-tlsv1					Set TLSv1_1/DTLSv1.2 as a minimum supported protocol version.\n"
+"								With openssl-1.0.2 and below, do not allow TLSv1/DTLSv1 protocols.\n"
+" --no-tlsv1_1					Set TLSv1_2/DTLSv1.2 as a minimum supported protocol version.\n"
+"								With openssl-1.0.2 and below, do not allow TLSv1.1 protocol.\n"
+" --no-tlsv1_2					Set TLSv1_3/DTLSv1.2 as a minimum supported protocol version.\n"
+"								With openssl-1.0.2 and below, do not allow TLSv1.2/DTLSv1.2 protocols.\n"
 " --no-udp					Do not start UDP client listeners.\n"
 " --no-tcp					Do not start TCP client listeners.\n"
 " --no-tls					Do not start TLS client listeners.\n"
@@ -3152,21 +3149,8 @@ static void set_ctx(SSL_CTX** out, const char *protocol, const SSL_METHOD* metho
 		op |= SSL_OP_NO_SSLv2;
 #endif
 
-#if defined(SSL_OP_NO_SSLv2)
+#if defined(SSL_OP_NO_SSLv3)
 			op |= SSL_OP_NO_SSLv3;
-#endif
-
-		if(turn_params.no_tlsv1)
-			op |= SSL_OP_NO_TLSv1;
-
-#if defined(SSL_OP_NO_TLSv1_1)
-		if(turn_params.no_tlsv1_1)
-			op |= SSL_OP_NO_TLSv1_1;
-#endif
-
-#if defined(SSL_OP_NO_TLSv1_2)
-		if(turn_params.no_tlsv1_2)
-			op |= SSL_OP_NO_TLSv1_2;
 #endif
 
 #if defined(SSL_OP_NO_DTLSv1) && DTLS_SUPPORTED
@@ -3240,20 +3224,35 @@ static void openssl_load_certificates(void)
 {
 	pthread_mutex_lock(&turn_params.tls_mutex);
 	if(!turn_params.no_tls) {
-		set_ctx(&turn_params.tls_ctx_ssl23,"SSL23",SSLv23_server_method()); /*compatibility mode */
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+        set_ctx(&turn_params.tls_ctx,"TLS", TLSv1_2_server_method()); /*openssl-1.0.2 version specific API */
 		if(!turn_params.no_tlsv1) {
-			set_ctx(&turn_params.tls_ctx_v1_0,"TLS1.0",TLSv1_server_method());
+			SSL_CTX_set_options(turn_params.tls_ctx, SSL_OP_NO_TLSv1);
 		}
 #if TLSv1_1_SUPPORTED
 		if(!turn_params.no_tlsv1_1) {
-			set_ctx(&turn_params.tls_ctx_v1_1,"TLS1.1",TLSv1_1_server_method());
+			SSL_CTX_set_options(turn_params.tls_ctx, SSL_OP_NO_TLSv1_1);
 		}
 #if TLSv1_2_SUPPORTED
 		if(!turn_params.no_tlsv1_2) {
-			set_ctx(&turn_params.tls_ctx_v1_2,"TLS1.2",TLSv1_2_server_method());
+			SSL_CTX_set_options(turn_params.tls_ctx, SSL_OP_NO_TLSv1_2);
 		}
 #endif
 #endif
+#else // OPENSSL_VERSION_NUMBER < 0x10100000L
+        set_ctx(&turn_params.tls_ctx,"TLS", TLS_server_method());
+        if(!turn_params.no_tlsv1) {
+            SSL_CTX_set_min_proto_version(turn_params.tls_ctx, TLS1_1_VERSION);
+        }
+        if(!turn_params.no_tlsv1_1) {
+            SSL_CTX_set_min_proto_version(turn_params.tls_ctx, TLS1_2_VERSION);
+        }
+#if TLSv1_3_SUPPORTED
+        if(!turn_params.no_tlsv1_2) {
+            SSL_CTX_set_min_proto_version(turn_params.tls_ctx, TLS1_3_VERSION);
+        }
+#endif
+#endif // OPENSSL_VERSION_NUMBER < 0x10100000L
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS cipher suite: %s\n",turn_params.cipher_list);
 	}
 

@@ -141,14 +141,7 @@ struct _ioa_engine
   turnipports* tp;
   rtcp_map *map_rtcp;
   stun_buffer_list bufs;
-  SSL_CTX *tls_ctx_ssl23;
-  SSL_CTX *tls_ctx_v1_0;
-#if TLSv1_1_SUPPORTED
-  SSL_CTX *tls_ctx_v1_1;
-#if TLSv1_2_SUPPORTED
-  SSL_CTX *tls_ctx_v1_2;
-#endif
-#endif
+  SSL_CTX *tls_ctx;
 #if DTLS_SUPPORTED
   SSL_CTX *dtls_ctx;
 #endif

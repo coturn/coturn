@@ -204,11 +204,14 @@ Flags:
 
 --dh1066		Use 1066 bits predefined DH TLS key. Default size of the key is 2066.
 
---no-tlsv1		Do not allow TLSv1/DTLSv1 protocol.
+--no-tlsv1		Set TLSv1_1/DTLSv1.2 as a minimum supported protocol version.
+				With openssl-1.0.2 and below, do not allow TLSv1.2/DTLSv1.2 protocols.
 
---no-tlsv1_1		Do not allow TLSv1.1 protocol.
+--no-tlsv1_1		Set TLSv1_2/DTLSv1.2 as a minimum supported protocol version.
+					With openssl-1.0.2 and below, do not allow TLSv1.1 protocol.
 
---no-tlsv1_2		Do not allow TLSv1.2/DTLSv1.2 protocol.
+--no-tlsv1_2		Set TLSv1_3/DTLSv1.2 as a minimum supported protocol version.
+					With openssl-1.0.2 and below, do not allow TLSv1.2/DTLSv1.2 protocols.
 
 --no-udp		Do not start UDP client listeners.
 
