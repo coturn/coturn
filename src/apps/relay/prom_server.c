@@ -72,7 +72,11 @@ int start_prometheus_server(void){
 
   unsigned int flags = MHD_USE_DUAL_STACK | MHD_USE_ERROR_LOG;
   if (MHD_is_feature_supported(MHD_FEATURE_EPOLL)) {
+  #if MHD_USE_EPOLL_INTERNAL_THREAD
     flags |= MHD_USE_EPOLL_INTERNAL_THREAD;
+  #else
+    flags |= MHD_USE_EPOLL_INTERNALLY; //ubuntu 16.04
+  #endif
   } else {
     flags |= MHD_USE_SELECT_INTERNALLY;
   }
