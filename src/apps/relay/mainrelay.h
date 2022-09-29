@@ -177,10 +177,7 @@ typedef struct _turn_params_ {
 //////////////// OpenSSL group //////////////////////
 
   SSL_CTX *tls_ctx;
-  
-#if DTLS_SUPPORTED
   SSL_CTX *dtls_ctx;
-#endif
   
   DH_KEY_SIZE dh_key_size;
   

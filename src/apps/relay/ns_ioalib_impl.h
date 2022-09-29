@@ -142,9 +142,7 @@ struct _ioa_engine
   rtcp_map *map_rtcp;
   stun_buffer_list bufs;
   SSL_CTX *tls_ctx;
-#if DTLS_SUPPORTED
   SSL_CTX *dtls_ctx;
-#endif
   turn_time_t jiffie; /* bandwidth check interval */
   ioa_timer_handle timer_ev;
   char cmsg[TURN_CMSG_SZ+1];

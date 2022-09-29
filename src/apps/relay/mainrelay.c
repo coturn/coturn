@@ -83,34 +83,31 @@ char HTTP_ALPN[128] = "http/1.1";
 #define DEFAULT_GENERAL_RELAY_SERVERS_NUMBER (1)
 
 turn_params_t turn_params = {
-	NULL,
-#if DTLS_SUPPORTED
-NULL,
-#endif
-
+NULL, /* tls_ctx */
+NULL, /* dtls_ctx */
 DH_2066, "", "", "",
 "turn_server_cert.pem","turn_server_pkey.pem", "", "",
 0,0,0,
 #if !TLS_SUPPORTED
-1,
+	1,
 #else
-0,
+	0,
 #endif
 
 #if !DTLS_SUPPORTED
-1,
+	1,
 #else
-0,
+	0,
 #endif
 
 NULL, PTHREAD_MUTEX_INITIALIZER,
 
 //////////////// Common params ////////////////////
-TURN_VERBOSE_NONE, /* verbose */
-0, /* turn_daemon */
-0, /* no_software_attribute */
-0, /* web_admin_listen_on_workers */
-0, /* do_not_use_config_file */
+	TURN_VERBOSE_NONE, /* verbose */
+	0, /* turn_daemon */
+	0, /* no_software_attribute */
+	0, /* web_admin_listen_on_workers */
+	0, /* do_not_use_config_file */
 "/var/run/turnserver.pid", /* pidfile */
 "", /* acme_redirect */
 DEFAULT_STUN_PORT, /* listener_port*/
