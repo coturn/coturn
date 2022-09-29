@@ -75,7 +75,7 @@ int start_prometheus_server(void){
   #if MHD_USE_EPOLL_INTERNAL_THREAD
     flags |= MHD_USE_EPOLL_INTERNAL_THREAD;
   #else
-    flags |= MHD_USE_EPOLL_INTERNALLY; //ubuntu 16.04
+    flags |= MHD_USE_SELECT_INTERNALLY; //ubuntu 16.04
   #endif
   } else {
     flags |= MHD_USE_SELECT_INTERNALLY;
