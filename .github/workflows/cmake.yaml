@@ -19,6 +19,7 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y \
+            wget \
             libevent-dev \
             libssl-dev \
             libpq-dev libmariadb-dev libsqlite3-dev \
@@ -26,6 +27,12 @@ jobs:
             libmongoc-dev \
             libmicrohttpd-dev
     - uses: actions/checkout@v3
+    - name: Prometheus support
+      run: |
+        wget https://github.com/digitalocean/prometheus-client-c/releases/download/v0.1.3/libprom-dev-0.1.3-Linux.deb && \
+            wget https://github.com/digitalocean/prometheus-client-c/releases/download/v0.1.3/libpromhttp-dev-0.1.3-Linux.deb && \
+            sudo apt install ./libprom-dev-0.1.3-Linux.deb ./libpromhttp-dev-0.1.3-Linux.deb && \
+            rm ./libprom-dev-0.1.3-Linux.deb ./libpromhttp-dev-0.1.3-Linux.deb
     - name: Configure CMake
       run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
     - name: Build
