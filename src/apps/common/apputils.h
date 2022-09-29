@@ -87,6 +87,12 @@ extern int IS_TURN_SERVER;
 	#else
 		#define TLSv1_2_SUPPORTED 0
 	#endif
+	
+	#if defined(SSL_OP_NO_TLSv1_3)
+		#define TLSv1_3_SUPPORTED 1
+	#else
+		#define TLSv1_3_SUPPORTED 0
+	#endif
 
 #endif
 
