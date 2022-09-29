@@ -2,7 +2,7 @@
 #
 # This is an example of a script to run a "secure" TURN UDP client
 # with the long-term credentials mechanism and with
-# secret-based authorization (see TURNServerRESTAPI.pdf document).
+# secret-based authorization (see https://github.com/coturn/coturn/blob/master/README.turnserver document).
 #
 # Options:
 #

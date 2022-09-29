@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # This is an example how to start a TURN Server in
-# secure 'dynamic' 'secret' mode (see TURNServerRESTAPI.pdf)
+# secure 'dynamic' 'secret' mode (see https://github.com/coturn/coturn/blob/master/README.turnserver)
 # with SQLite database for users information
 # with the long-term credentials mechanism.
 #
