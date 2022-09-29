@@ -1557,7 +1557,7 @@ static ioa_socket_handle current_socket = NULL;
 static char *get_bold_admin_title(void)
 {
 	static char sbat[1025];
-	strncpy(sbat,__bold_admin_title,TURN_LONG_STRING_SIZE);
+	strncpy(sbat,__bold_admin_title,sizeof(sbat));
 
 	if(current_socket && current_socket->special_session) {
 		struct admin_session* as = (struct admin_session*)current_socket->special_session;
