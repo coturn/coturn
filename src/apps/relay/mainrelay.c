@@ -87,9 +87,6 @@ turn_params_t turn_params = {
 #if DTLS_SUPPORTED
 NULL,
 #endif
-#if DTLSv1_2_SUPPORTED
-NULL,
-#endif
 
 DH_2066, "", "", "",
 "turn_server_cert.pem","turn_server_pkey.pem", "", "",
@@ -3100,14 +3097,6 @@ static void set_ctx(SSL_CTX** out, const char *protocol, const SSL_METHOD* metho
 				dh = get_dh2066();
 		}
 
-		/*
-		if(!dh) {
-			dh = DH_new();
-			DH_generate_parameters_ex(dh, 32, DH_GENERATOR_2, 0);
-			DH_generate_key(dh);
-		}
-		*/
-
 		if(!dh) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: cannot allocate DH suite\n",__FUNCTION__);
 			err = 1;
@@ -3260,24 +3249,32 @@ static void openssl_load_certificates(void)
 	if(!turn_params.no_dtls) {
 #if !DTLS_SUPPORTED
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: DTLS is not supported.\n");
-#else
-		if(OPENSSL_VERSION_NUMBER < 0x10000000L) {
+#elif OPENSSL_VERSION_NUMBER < 0x10000000L
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: TURN Server was compiled with rather old OpenSSL version, DTLS may not be working correctly.\n");
-		}
-
-#if DTLSv1_2_SUPPORTED
-		set_ctx(&turn_params.dtls_ctx,"DTLS",DTLS_server_method());
-		set_ctx(&turn_params.dtls_ctx_v1_2,"DTLS1.2",DTLSv1_2_server_method());
-		SSL_CTX_set_read_ahead(turn_params.dtls_ctx_v1_2, 1);
-		setup_dtls_callbacks(turn_params.dtls_ctx_v1_2);
 #else
-		set_ctx(&turn_params.dtls_ctx,"DTLS",DTLSv1_server_method());
+#if OPENSSL_VERSION_NUMBER < 0x10100000L // before openssl-1.1.0 no version independent API
+#if DTLSv1_2_SUPPORTED
+		set_ctx(&turn_params.dtls_ctx,"DTLS",DTLSv1_2_server_method()); // openssl-1.0.2
+        if(!turn_params.no_tlsv1_2) {
+            SSL_CTX_set_options(turn_params.dtls_ctx, SSL_OP_NO_DTLSv1_2);
+        }
+#else
+        set_ctx(&turn_params.dtls_ctx,"DTLS",DTLSv1_server_method()); // < openssl-1.0.2
 #endif
-		SSL_CTX_set_read_ahead(turn_params.dtls_ctx, 1);
+        if(!turn_params.no_tlsv1) {
+            SSL_CTX_set_options(turn_params.dtls_ctx, SSL_OP_NO_DTLSv1);
+        }
+#else // OPENSSL_VERSION_NUMBER < 0x10100000L
+        set_ctx(&turn_params.dtls_ctx,"DTLS",DTLS_server_method());
+        if(!turn_params.no_tlsv1 || !turn_params.no_tlsv1_1) {
+            SSL_CTX_set_min_proto_version(turn_params.tls_ctx, DTLS1_2_VERSION);
+        }
+        if(!turn_params.no_tlsv1_2) {
+            SSL_CTX_set_max_proto_version(turn_params.tls_ctx, DTLS1_VERSION);
+        }
+#endif //OPENSSL_VERSION_NUMBER < 0x10100000L
 		setup_dtls_callbacks(turn_params.dtls_ctx);
-
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS cipher suite: %s\n",turn_params.cipher_list);
-
 #endif
 	}
 	pthread_mutex_unlock(&turn_params.tls_mutex);

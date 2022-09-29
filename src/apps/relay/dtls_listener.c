@@ -279,18 +279,7 @@ static ioa_socket_handle dtls_server_input_handler(dtls_listener_relay_server_ty
 	timeout.tv_usec = 0;
 	BIO_ctrl(wbio, BIO_CTRL_DGRAM_SET_RECV_TIMEOUT, 0, &timeout);
 
-#if DTLSv1_2_SUPPORTED
-	if(get_dtls_version(ioa_network_buffer_data(nbh),
-							(int)ioa_network_buffer_get_size(nbh)) == 1) {
-		connecting_ssl = SSL_new(server->e->dtls_ctx_v1_2);
-	} else {
-		connecting_ssl = SSL_new(server->e->dtls_ctx);
-	}
-#else
-	{
-		connecting_ssl = SSL_new(server->e->dtls_ctx);
-	}
-#endif
+	connecting_ssl = SSL_new(server->e->dtls_ctx);
 
 	SSL_set_accept_state(connecting_ssl);
 
@@ -573,18 +562,7 @@ static int create_new_connected_udp_socket(
 		timeout.tv_usec = 0;
 		BIO_ctrl(wbio, BIO_CTRL_DGRAM_SET_RECV_TIMEOUT, 0, &timeout);
 
-#if DTLSv1_2_SUPPORTED
-		if(get_dtls_version(ioa_network_buffer_data(server->sm.m.sm.nd.nbh),
-							(int)ioa_network_buffer_get_size(server->sm.m.sm.nd.nbh)) == 1) {
-			connecting_ssl = SSL_new(server->e->dtls_ctx_v1_2);
-		} else {
-			connecting_ssl = SSL_new(server->e->dtls_ctx);
-		}
-#else
-		{
-			connecting_ssl = SSL_new(server->e->dtls_ctx);
-		}
-#endif
+		connecting_ssl = SSL_new(server->e->dtls_ctx);
 
 		SSL_set_accept_state(connecting_ssl);
 
@@ -965,8 +943,6 @@ void setup_dtls_callbacks(SSL_CTX *ctx) {
   /* If client has to authenticate, then  */
   SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, dtls_verify_callback);
 #endif
-
-  SSL_CTX_set_read_ahead(ctx, 1);
 
   SSL_CTX_set_cookie_generate_cb(ctx, generate_cookie);
   SSL_CTX_set_cookie_verify_cb(ctx, verify_cookie);

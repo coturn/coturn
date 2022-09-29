@@ -145,9 +145,6 @@ struct _ioa_engine
 #if DTLS_SUPPORTED
   SSL_CTX *dtls_ctx;
 #endif
-#if DTLSv1_2_SUPPORTED
-  SSL_CTX *dtls_ctx_v1_2;
-#endif
   turn_time_t jiffie; /* bandwidth check interval */
   ioa_timer_handle timer_ev;
   char cmsg[TURN_CMSG_SZ+1];
