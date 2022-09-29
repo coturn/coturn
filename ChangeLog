@@ -1232,7 +1232,7 @@ Version 1.7.3.0 'Superior Glokta':
 Version 1.7.2.0 'Superior Glokta':
 
 	- Issue 9 fixed (uclient).
-	- Secret-based authentication implemented (see https://github.com/coturn/coturn/blob/master/README.turnserver#L673).
+	- Secret-based authentication implemented (see https://github.com/coturn/coturn/blob/master/README.turnserver).
 	- Uclient docs fixed.
 	- database schema extended (table for the secret added).
 

@@ -560,7 +560,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 #endif
 " --use-auth-secret				TURN REST API flag.\n"
 "						Flag that sets a special authorization option that is based upon authentication secret\n"
-"						(TURN Server REST API, see https://github.com/coturn/coturn/blob/master/README.turnserver#L673).\n"
+"						(TURN Server REST API, see https://github.com/coturn/coturn/blob/master/README.turnserver).\n"
 "						This option is used with timestamp.\n"
 " --static-auth-secret		<secret>	'Static' authentication secret value (a string) for TURN REST API only.\n"
 "						If not set, then the turn server will try to use the 'dynamic' value\n"
