@@ -70,7 +70,11 @@ int start_prometheus_server(void){
 
   promhttp_set_active_collector_registry(NULL);
 
-  unsigned int flags = MHD_USE_DUAL_STACK | MHD_USE_ERROR_LOG;
+  unsigned int flags = MHD_USE_DUAL_STACK 
+#if MHD_USE_ERROR_LOG
+                     | MHD_USE_ERROR_LOG
+#endif
+                     ;
   if (MHD_is_feature_supported(MHD_FEATURE_EPOLL)) {
   #if MHD_USE_EPOLL_INTERNAL_THREAD
     flags |= MHD_USE_EPOLL_INTERNAL_THREAD;
