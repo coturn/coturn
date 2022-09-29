@@ -7,14 +7,13 @@ Uploaders: Oleg Moskalenko <mom040267@gmail.com>,
 Build-Depends: debhelper-compat (= 13),
                default-libmysqlclient-dev,
                default-mysql-client,
-               dpkg-dev (>= 1.16.1~),
                libsystemd-dev [linux-any],
                pkg-config,
-               libevent-dev (>= 2.0.1~),
+               libevent-dev,
                libhiredis-dev,
                libpq-dev,
                libsqlite3-dev,
-               libssl-dev (>= 1.0.0~),
+               libssl-dev,
                postgresql-client,
                sqlite3
 Standards-Version: 4.6.1
@@ -28,7 +27,7 @@ Architecture: any
 Pre-Depends: ${misc:Pre-Depends}
 Depends: adduser,
          sqlite3,
-         lsb-base (>= 3.0-6),
+         lsb-base,
          telnet | telnet-client,
          ${misc:Depends},
          ${shlibs:Depends}
