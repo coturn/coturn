@@ -189,7 +189,7 @@ redis_context_handle get_redis_async_connection(struct event_base *base, const c
 				if (co->host)
 					STRCPY(ip,co->host);
 				if (!ip[0])
-					STRCPY(ip,"127.0.0.1");
+					strncpy(ip,"127.0.0.1",sizeof(ip));
 
 				if (co->port)
 					port = (int) (co->port);
@@ -298,7 +298,7 @@ static redisContext *get_redis_connection(void) {
 			if (co->host)
 				STRCPY(ip,co->host);
 			if (!ip[0])
-				STRCPY(ip,"127.0.0.1");
+				strncpy(ip,"127.0.0.1",sizeof(ip));
 
 			if (co->port)
 				port = (int) (co->port);

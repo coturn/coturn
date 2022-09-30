@@ -2075,7 +2075,7 @@ static int adminmain(int argc, char **argv)
 
 #if !defined(TURN_NO_SQLITE)
 	if(!strlen(turn_params.default_users_db.persistent_users_db.userdb) && (turn_params.default_users_db.userdb_type == TURN_USERDB_TYPE_SQLITE))
-		STRCPY(turn_params.default_users_db.persistent_users_db.userdb,DEFAULT_USERDB_FILE);
+        strncpy(turn_params.default_users_db.persistent_users_db.userdb,DEFAULT_USERDB_FILE, TURN_LONG_STRING_SIZE);
 #endif
 
 	if(ct == TA_COMMAND_UNKNOWN) {
@@ -2426,7 +2426,7 @@ int main(int argc, char **argv)
 
 #if !defined(TURN_NO_SQLITE)
 	if(!strlen(turn_params.default_users_db.persistent_users_db.userdb) && (turn_params.default_users_db.userdb_type == TURN_USERDB_TYPE_SQLITE))
-			STRCPY(turn_params.default_users_db.persistent_users_db.userdb,DEFAULT_USERDB_FILE);
+            strncpy(turn_params.default_users_db.persistent_users_db.userdb,DEFAULT_USERDB_FILE, TURN_LONG_STRING_SIZE);
 #endif
 
 	argc -= optind;
@@ -2979,7 +2979,7 @@ static void set_ctx(SSL_CTX** out, const char *protocol, const SSL_METHOD* metho
 	SSL_CTX_set_default_passwd_cb(ctx, pem_password_func);
 
 	if(!(turn_params.cipher_list[0]))
-		STRCPY(turn_params.cipher_list,DEFAULT_CIPHER_LIST);
+        strncpy(turn_params.cipher_list,DEFAULT_CIPHER_LIST,TURN_LONG_STRING_SIZE);
 
 	SSL_CTX_set_cipher_list(ctx, turn_params.cipher_list);
 	SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_OFF);
