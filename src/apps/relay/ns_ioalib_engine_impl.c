@@ -322,7 +322,7 @@ static void add_buffer_to_buffer_list(stun_buffer_list *bufs, char *buf, size_t 
 {
 	if(bufs && buf && (bufs->tsz<MAX_SOCKET_BUFFER_BACKLOG)) {
 	  stun_buffer_list_elem *buf_elem = (stun_buffer_list_elem *)malloc(sizeof(stun_buffer_list_elem));
-	  bcopy(buf,buf_elem->buf.buf,len);
+	  memcpy(buf_elem->buf.buf,buf,len);
 	  buf_elem->buf.len = len;
 	  buf_elem->buf.offset = 0;
 	  buf_elem->buf.coffset = 0;
@@ -419,7 +419,7 @@ ioa_engine_handle create_ioa_engine(super_memory_t *sm,
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"FATAL: cannot create preferable timeval for %d secs (%d number)\n",predef_timer_intervals[t],t);
 					exit(-1);
 				} else {
-					bcopy(ptv,&(e->predef_timers[t]),sizeof(struct timeval));
+					memcpy(&(e->predef_timers[t]),ptv,sizeof(struct timeval));
 					e->predef_timer_intervals[t] = predef_timer_intervals[t];
 				}
 			}
@@ -913,7 +913,7 @@ ioa_socket_handle create_unbound_relay_ioa_socket(ioa_engine_handle e, int famil
 	}
 
 	ret = (ioa_socket*)malloc(sizeof(ioa_socket));
-	bzero(ret,sizeof(ioa_socket));
+	memset(ret,0,sizeof(ioa_socket));
 
 	ret->magic = SOCKET_MAGIC;
 
@@ -1138,7 +1138,7 @@ static void tcp_listener_input_handler(struct evconnlistener *l, evutil_socket_t
 	ioa_socket_handle list_s = (ioa_socket_handle) arg;
 
 	ioa_addr client_addr;
-	bcopy(sa,&client_addr,socklen);
+	memcpy(&client_addr,sa,socklen);
 
 	addr_debug_print(((list_s->e) && list_s->e->verbose), &client_addr,"tcp accepted from");
 
@@ -1357,7 +1357,7 @@ ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e,
 	}
 
 	ret = (ioa_socket*)malloc(sizeof(ioa_socket));
-	bzero(ret,sizeof(ioa_socket));
+	memset(ret,0,sizeof(ioa_socket));
 
 	ret->magic = SOCKET_MAGIC;
 
@@ -1640,7 +1640,7 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s)
 			return ret;
 		}
 
-		bzero(ret,sizeof(ioa_socket));
+		memset(ret,0,sizeof(ioa_socket));
 
 		ret->magic = SOCKET_MAGIC;
 
@@ -1868,7 +1868,11 @@ int ssl_read(evutil_socket_t fd, SSL* ssl, ioa_network_buffer_handle nbh, int ve
 
 	} else if (!if1 && if2) {
 
+#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
+		if(verbose && SSL_get1_peer_certificate(ssl)) {
+#else
 		if(verbose && SSL_get_peer_certificate(ssl)) {
+#endif
 		  printf("\n------------------------------------------------------------\n");
 		  X509_NAME_print_ex_fp(stdout, X509_get_subject_name(SSL_get_peer_certificate(ssl)), 1,
 					XN_FLAG_MULTILINE);
@@ -2421,34 +2425,11 @@ static int socket_input_worker(ioa_socket_handle s)
 			if(s->bev) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s on socket: 0x%lx, st=%d, sat=%d: bev already exist\n", __FUNCTION__,(long)s, s->st, s->sat);
 			}
-			switch(tls_type) {
-#if TLSv1_2_SUPPORTED
-			case TURN_TLS_v1_2:
-				if(s->e->tls_ctx_v1_2) {
-					set_socket_ssl(s,SSL_new(s->e->tls_ctx_v1_2));
-				}
-				break;
-#endif
-#if TLSv1_1_SUPPORTED
-			case TURN_TLS_v1_1:
-				if(s->e->tls_ctx_v1_1) {
-					set_socket_ssl(s,SSL_new(s->e->tls_ctx_v1_1));
-				}
-				break;
-#endif
-			case TURN_TLS_v1_0:
-				if(s->e->tls_ctx_v1_0) {
-					set_socket_ssl(s,SSL_new(s->e->tls_ctx_v1_0));
-				}
-				break;
-			default:
-				if(s->e->tls_ctx_ssl23) {
-					set_socket_ssl(s,SSL_new(s->e->tls_ctx_ssl23));
-				} else {
-					s->tobeclosed = 1;
-					return 0;
-				}
-			};
+
+			if(s->e->tls_ctx) {
+				set_socket_ssl(s,SSL_new(s->e->tls_ctx));
+			}
+
 			if(s->ssl) {
 				s->bev = bufferevent_openssl_socket_new(s->e->event_base,
 								s->fd,
@@ -2487,34 +2468,9 @@ static int socket_input_worker(ioa_socket_handle s)
 			if(s->bev) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s on socket: 0x%lx, st=%d, sat=%d: bev already exist\n", __FUNCTION__,(long)s, s->st, s->sat);
 			}
-			switch(tls_type) {
-#if TLSv1_2_SUPPORTED
-			case TURN_TLS_v1_2:
-				if(s->e->tls_ctx_v1_2) {
-					set_socket_ssl(s,SSL_new(s->e->tls_ctx_v1_2));
-				}
-				break;
-#endif
-#if TLSv1_1_SUPPORTED
-			case TURN_TLS_v1_1:
-				if(s->e->tls_ctx_v1_1) {
-					set_socket_ssl(s,SSL_new(s->e->tls_ctx_v1_1));
-				}
-				break;
-#endif
-			case TURN_TLS_v1_0:
-				if(s->e->tls_ctx_v1_0) {
-					set_socket_ssl(s,SSL_new(s->e->tls_ctx_v1_0));
-				}
-				break;
-			default:
-				if(s->e->tls_ctx_ssl23) {
-					set_socket_ssl(s,SSL_new(s->e->tls_ctx_ssl23));
-				} else {
-					s->tobeclosed = 1;
-					return 0;
-				}
-			};
+			if(s->e->tls_ctx) {
+				set_socket_ssl(s,SSL_new(s->e->tls_ctx));
+			}
 			if(s->ssl) {
 				s->bev = bufferevent_openssl_socket_new(s->e->event_base,
 								s->fd,
@@ -2665,7 +2621,7 @@ static int socket_input_worker(ioa_socket_handle s)
 			if(s->read_cb) {
 				ioa_net_data nd;
 
-				bzero(&nd,sizeof(ioa_net_data));
+				memset(&nd,0,sizeof(ioa_net_data));
 				addr_cpy(&(nd.src_addr),&remote_addr);
 				nd.nbh = buf_elem;
 				nd.recv_ttl = ttl;
@@ -3516,7 +3472,7 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 #if TLS_SUPPORTED
 						if(!(s->ssl)) {
 							//??? how we can get to this point ???
-							set_socket_ssl(s,SSL_new(e->tls_ctx_ssl23));
+							set_socket_ssl(s,SSL_new(e->tls_ctx));
 							s->bev = bufferevent_openssl_socket_new(s->e->event_base,
 											s->fd,
 											s->ssl,
@@ -3909,11 +3865,11 @@ struct _super_memory {
 static void init_super_memory_region(super_memory_t *r)
 {
 	if(r) {
-		bzero(r,sizeof(super_memory_t));
+		memset(r,0,sizeof(super_memory_t));
 
 		r->super_memory = (char**)malloc(sizeof(char*));
 		r->super_memory[0] = (char*)malloc(TURN_SM_SIZE);
-		bzero(r->super_memory[0],TURN_SM_SIZE);
+		memset(r->super_memory[0],0,TURN_SM_SIZE);
 
 		r->sm_allocated = (size_t*)malloc(sizeof(size_t*));
 		r->sm_allocated[0] = 0;
@@ -3950,7 +3906,7 @@ void* allocate_super_memory_region_func(super_memory_t *r, size_t size, const ch
 
 	if(!r) {
 		ret = malloc(size);
-		bzero(ret, size);
+		memset(ret, 0, size);
 		return ret;
 	}
 
@@ -3984,7 +3940,7 @@ void* allocate_super_memory_region_func(super_memory_t *r, size_t size, const ch
 			r->sm_chunk += 1;
 			r->super_memory = (char**)realloc(r->super_memory,(r->sm_chunk+1) * sizeof(char*));
 			r->super_memory[r->sm_chunk] = (char*)malloc(TURN_SM_SIZE);
-			bzero(r->super_memory[r->sm_chunk],TURN_SM_SIZE);
+			memset(r->super_memory[r->sm_chunk],0,TURN_SM_SIZE);
 			r->sm_allocated = (size_t*)realloc(r->sm_allocated,(r->sm_chunk+1) * sizeof(size_t*));
 			r->sm_allocated[r->sm_chunk] = 0;
 			region = r->super_memory[r->sm_chunk];
@@ -3994,7 +3950,7 @@ void* allocate_super_memory_region_func(super_memory_t *r, size_t size, const ch
 		{
 			char* ptr = region + *rsz;
 
-			bzero(ptr, size);
+			memset(ptr, 0, size);
 
 			*rsz += size;
 
@@ -4006,7 +3962,7 @@ void* allocate_super_memory_region_func(super_memory_t *r, size_t size, const ch
 
 	if(!ret) {
 		ret = malloc(size);
-		bzero(ret, size);
+		memset(ret, 0, size);
 	}
 
 	return ret;

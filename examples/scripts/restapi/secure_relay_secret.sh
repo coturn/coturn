@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # This is an example how to start a TURN Server in
-# secure 'static' 'secret' mode (see TURNServerRESTAPI.pdf)
+# secure 'static' 'secret' mode (see https://github.com/coturn/coturn/blob/master/README.turnserver)
 # with the long-term credentials mechanism.
 #
 # We start here a TURN Server listening on IPv4 address

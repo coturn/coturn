@@ -70,7 +70,21 @@ int start_prometheus_server(void){
 
   promhttp_set_active_collector_registry(NULL);
 
-  struct MHD_Daemon *daemon = promhttp_start_daemon(MHD_USE_SELECT_INTERNALLY | MHD_USE_DUAL_STACK, turn_params.prometheus_port, NULL, NULL);
+  unsigned int flags = MHD_USE_DUAL_STACK 
+#if MHD_USE_ERROR_LOG
+                     | MHD_USE_ERROR_LOG
+#endif
+                     ;
+  if (MHD_is_feature_supported(MHD_FEATURE_EPOLL)) {
+  #if MHD_USE_EPOLL_INTERNAL_THREAD
+    flags |= MHD_USE_EPOLL_INTERNAL_THREAD;
+  #else
+    flags |= MHD_USE_SELECT_INTERNALLY; //ubuntu 16.04
+  #endif
+  } else {
+    flags |= MHD_USE_SELECT_INTERNALLY;
+  }
+  struct MHD_Daemon *daemon = promhttp_start_daemon(flags, turn_params.prometheus_port, NULL, NULL);
   if (daemon == NULL) {
     return -1;
   }

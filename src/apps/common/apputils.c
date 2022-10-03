@@ -980,7 +980,7 @@ char *base64_encode(const unsigned char *data,
 void build_base64_decoding_table() {
 
     decoding_table = (char*)malloc(256);
-    bzero(decoding_table,256);
+    memset(decoding_table, 0, 256);
 
     int i;
     for (i = 0; i < 64; i++)
@@ -1061,19 +1061,19 @@ void convert_oauth_key_data_raw(const oauth_key_data_raw *raw, oauth_key_data *o
 {
 	if(raw && oakd) {
 
-		bzero(oakd,sizeof(oauth_key_data));
+		memset(oakd,0,sizeof(oauth_key_data));
 
 		oakd->timestamp = (turn_time_t)raw->timestamp;
 		oakd->lifetime = raw->lifetime;
 
-		bcopy(raw->as_rs_alg,oakd->as_rs_alg,sizeof(oakd->as_rs_alg));
-		bcopy(raw->kid,oakd->kid,sizeof(oakd->kid));
+		memcpy(oakd->as_rs_alg,raw->as_rs_alg,sizeof(oakd->as_rs_alg));
+		memcpy(oakd->kid,raw->kid,sizeof(oakd->kid));
 
 		if(raw->ikm_key[0]) {
 			size_t ikm_key_size = 0;
 			char *ikm_key = (char*)base64_decode(raw->ikm_key,strlen(raw->ikm_key),&ikm_key_size);
 			if(ikm_key) {
-				bcopy(ikm_key,oakd->ikm_key,ikm_key_size);
+				memcpy(oakd->ikm_key,ikm_key,ikm_key_size);
 				oakd->ikm_key_size = ikm_key_size;
 				free(ikm_key);
 			}

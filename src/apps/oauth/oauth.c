@@ -62,14 +62,14 @@ static int setup_ikm_key(const char *kid,
                         const char *as_rs_alg, 
                         oauth_key *key) { 
 
-        bzero(key,sizeof(*key));
+        memset(key, 0, sizeof(*key));
 
         oauth_key_data okd;
-        bzero(&okd,sizeof(okd));
+        memset(&okd, 0, sizeof(okd));
 
         {
                 oauth_key_data_raw okdr;
-                bzero(&okdr,sizeof(okdr));
+                memset(&okdr, 0, sizeof(okdr));
 
                 STRCPY(okdr.kid,kid);
                 STRCPY(okdr.ikm_key,ikm_key);
@@ -103,7 +103,7 @@ static int encode_token(const char* server_name,
 
 
         oauth_token ot;
-        bzero(&ot,sizeof(ot));
+        memset(&ot, 0, sizeof(ot));
 
         const size_t mac_key_length=strlen(mac_key);
         ot.enc_block.key_length = (uint16_t)mac_key_length;
@@ -112,7 +112,7 @@ static int encode_token(const char* server_name,
         ot.enc_block.lifetime = token_lifetime;
 
         encoded_oauth_token etoken;
-        bzero(&etoken,sizeof(etoken));
+        memset(&etoken, 0, sizeof(etoken));
 
         // TODO: avoid this hack
         if (!*gcm_nonce) gcm_nonce=NULL;
@@ -135,10 +135,10 @@ static int validate_decode_token(const char* server_name,
                         const char* base64encoded_etoken, oauth_token* dot) {
 
         
-        bzero((dot),sizeof(*dot));
+        memset((dot), 0, sizeof(*dot));
 
         encoded_oauth_token etoken;
-        bzero(&etoken,sizeof(etoken));
+        memset(&etoken, 0, sizeof(etoken));
 
         const size_t base64encoded_etoken_length=strlen(base64encoded_etoken);
         const unsigned char *tmp = base64_decode(base64encoded_etoken,base64encoded_etoken_length,&etoken.size);
@@ -347,7 +347,7 @@ int main(int argc, char **argv)
         mac_key_size=OAUTH_MAC_KEY_SIZE;
       } 
       strncpy(mac_key,mac_key_val,mac_key_size);
-      mac_key[mac_key_size+1]='\0';
+      mac_key[mac_key_size]='\0';
       break;
     case 'q':
       //token-timestamp
@@ -451,7 +451,7 @@ int main(int argc, char **argv)
             printf("{\n");
             printf("    \"access_token\":\"%s\",\n",base64encoded_etoken);
             printf("    \"token_type\":\"pop\",\n");
-            printf("    \"expires_in\":%d,\n",token_lifetime);
+            printf("    \"expires_in\":%u,\n",token_lifetime);
             printf("    \"kid\":\"%s\",\n",kid);
             printf("    \"key\":\"%s\",\n",mac_key);
             printf("    \"alg\":\"%s\"\n",hmac_alg);

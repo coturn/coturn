@@ -73,7 +73,7 @@ int try_acme_redirect(char *req, size_t len, const char *url,
 #ifdef LIBEV_OK
 	ioa_network_buffer_handle nbh_acme = ioa_network_buffer_allocate(s->e);
 	uint8_t *data = ioa_network_buffer_data(nbh_acme);
-	bcopy(http_response, data, rlen);
+	memcpy(data, http_response, rlen);
 	ioa_network_buffer_set_size(nbh_acme, rlen);
 	send_data_from_ioa_socket_nbh(s, NULL, nbh_acme, TTL_IGNORE, TOS_IGNORE, NULL);
 #else

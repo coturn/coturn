@@ -461,12 +461,12 @@ else
 	type install 2>>/dev/null
 	ER=$?
 	if [ ${ER} -eq 0 ] ; then
-		INSTALL_PROGRAM="install"
-		INSTALL_MAN="install"
-		INSTALL_SCRIPT="install"
-		INSTALL_SHARED_LIB="install"
-		INSTALL_STATIC_LIB="install"
-		INSTALL_DATA="install"
+		INSTALL_PROGRAM="install -p"
+		INSTALL_MAN="install -p -m 0644"
+		INSTALL_SCRIPT="install -p"
+		INSTALL_SHARED_LIB="install -p"
+		INSTALL_STATIC_LIB="install -p"
+		INSTALL_DATA="install -p"
 		MKDIR="install -d"
 	else
 		INSTALL_PROGRAM="cp -pf"

@@ -31,13 +31,7 @@
 #include "mainrelay.h"
 
 //////////// Backward compatibility with OpenSSL 1.0.x //////////////
-#define HAVE_OPENSSL11_API (!(OPENSSL_VERSION_NUMBER < 0x10100001L || defined LIBRESSL_VERSION_NUMBER))
-
-#ifndef HAVE_SSL_CTX_UP_REF
-#define HAVE_SSL_CTX_UP_REF HAVE_OPENSSL11_API
-#endif
-
-#if !HAVE_SSL_CTX_UP_REF
+#if (OPENSSL_VERSION_NUMBER < 0x10100001L || defined LIBRESSL_VERSION_NUMBER)
 #define SSL_CTX_up_ref(ctx) CRYPTO_add(&(ctx)->references, 1, CRYPTO_LOCK_SSL_CTX)
 #endif
 
@@ -339,14 +333,7 @@ static void update_ssl_ctx(evutil_socket_t sock, short events, update_ssl_ctx_cb
 
 	/* No mutex with "e" as these are only used in the same event loop */
 	pthread_mutex_lock(&turn_params.tls_mutex);
-	replace_one_ssl_ctx(&e->tls_ctx_ssl23, params->tls_ctx_ssl23);
-	replace_one_ssl_ctx(&e->tls_ctx_v1_0, params->tls_ctx_v1_0);
-#if TLSv1_1_SUPPORTED
-	replace_one_ssl_ctx(&e->tls_ctx_v1_1, params->tls_ctx_v1_1);
-#if TLSv1_2_SUPPORTED
-	replace_one_ssl_ctx(&e->tls_ctx_v1_2, params->tls_ctx_v1_2);
-#endif
-#endif
+	replace_one_ssl_ctx(&e->tls_ctx, params->tls_ctx);
 #if DTLS_SUPPORTED
 	replace_one_ssl_ctx(&e->dtls_ctx, params->dtls_ctx);
 #endif
@@ -493,7 +480,7 @@ static void auth_server_receive_message(struct bufferevent *bev, void *ptr)
       if(get_user_key(am.in_oauth,&(am.out_oauth),&(am.max_session_time),am.username,am.realm,key,am.in_buffer.nbh)<0) {
     	  am.success = 0;
       } else {
-    	  bcopy(key,am.key,sizeof(hmackey_t));
+    	  memcpy(am.key,key,sizeof(hmackey_t));
     	  am.success = 1;
       }
     }
@@ -596,7 +583,7 @@ static int send_socket_to_relay(turnserver_id id, uint64_t cid, stun_tid *tid, i
 	int ret = -1;
 
 	struct message_to_relay sm;
-	bzero(&sm,sizeof(struct message_to_relay));
+	memset(&sm,0, sizeof(struct message_to_relay));
 	sm.t = rmt;
 
 	ioa_socket_handle s_to_delete = s;
@@ -727,7 +714,7 @@ int send_session_cancellation_to_relay(turnsession_id sid)
 	int ret = 0;
 
 	struct message_to_relay sm;
-	bzero(&sm,sizeof(struct message_to_relay));
+	memset(&sm,0,sizeof(struct message_to_relay));
 	sm.t = RMT_CANCEL_SESSION;
 
 	turnserver_id id = (turnserver_id)(sid / TURN_SESSION_ID_FACTOR);
@@ -943,7 +930,7 @@ static int send_message_from_listener_to_client(ioa_engine_handle e, ioa_network
 	addr_cpy(&(mm.m.tc.destination),destination);
 	mm.m.tc.nbh = ioa_network_buffer_allocate(e);
 	ioa_network_buffer_header_init(mm.m.tc.nbh);
-	bcopy(ioa_network_buffer_data(nbh),ioa_network_buffer_data(mm.m.tc.nbh),ioa_network_buffer_get_size(nbh));
+	memcpy(ioa_network_buffer_data(mm.m.tc.nbh),ioa_network_buffer_data(nbh),ioa_network_buffer_get_size(nbh));
 	ioa_network_buffer_set_size(mm.m.tc.nbh,ioa_network_buffer_get_size(nbh));
 
 	struct evbuffer *output = bufferevent_get_output(turn_params.listener.out_buf);
@@ -1800,7 +1787,7 @@ static void* run_auth_server_thread(void *arg)
 
 	} else {
 
-		bzero(as,sizeof(struct auth_server));
+		memset(as,0,sizeof(struct auth_server));
 
 		as->id = id;
 
@@ -1861,7 +1848,7 @@ static void* run_admin_server_thread(void *arg)
 
 static void setup_admin_server(void)
 {
-	bzero(&adminserver,sizeof(struct admin_server));
+	memset(&adminserver,0,sizeof(struct admin_server));
 	adminserver.listen_fd = -1;
 	adminserver.verbose = turn_params.verbose;
 
@@ -1946,7 +1933,7 @@ void setup_server(void)
 
 void init_listener(void)
 {
-	bzero(&turn_params.listener,sizeof(struct listener_server));
+	memset(&turn_params.listener,0,sizeof(struct listener_server));
 }
 
 ///////////////////////////////

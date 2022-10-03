@@ -233,7 +233,7 @@ redis_context_handle redisLibeventAttach(struct event_base *base, char *ip0, int
   if(ip0 && ip0[0])
 	  STRCPY(ip,ip0);
   else
-	  STRCPY(ip,"127.0.0.1");
+	  strncpy(ip,"127.0.0.1",sizeof(ip));
 
   int port = DEFAULT_REDIS_PORT;
   if(port0>0)
@@ -251,7 +251,7 @@ redis_context_handle redisLibeventAttach(struct event_base *base, char *ip0, int
 
   /* Create container for context and r/w events */
   e = (struct redisLibeventEvents*)malloc(sizeof(struct redisLibeventEvents));
-  bzero(e,sizeof(struct redisLibeventEvents));
+  memset(e, 0, sizeof(struct redisLibeventEvents));
 
   e->allocated = 1;
   e->context = ac;

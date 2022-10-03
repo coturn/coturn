@@ -138,7 +138,11 @@ static SSL* tls_connect(ioa_socket_raw fd, ioa_addr *remote_addr, int *try_again
 		if (rc > 0) {
 		  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: client session connected with cipher %s, method=%s\n",__FUNCTION__,
 				  SSL_get_cipher(ssl),turn_get_ssl_method(ssl,NULL));
+#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
+		  if(clnet_verbose && SSL_get1_peer_certificate(ssl)) {
+#else
 		  if(clnet_verbose && SSL_get_peer_certificate(ssl)) {
+#endif
 			  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "------------------------------------------------------------\n");
 		  	X509_NAME_print_ex_fp(stdout, X509_get_subject_name(SSL_get_peer_certificate(ssl)), 1,
 		  						XN_FLAG_MULTILINE);
@@ -222,12 +226,12 @@ static int clnet_connect(uint16_t clnet_remote_port, const char *remote_address,
 	clnet_fd = -1;
 	connect_err = 0;
 
-	bzero(&remote_addr, sizeof(ioa_addr));
+	memset(&remote_addr, 0, sizeof(ioa_addr));
 	if (make_ioa_addr((const uint8_t*) remote_address, clnet_remote_port,
 			&remote_addr) < 0)
 		return -1;
 
-	bzero(&local_addr, sizeof(ioa_addr));
+	memset(&local_addr, 0, sizeof(ioa_addr));
 
 	clnet_fd = socket(remote_addr.ss.sa_family,
 			use_sctp ? SCTP_CLIENT_STREAM_SOCKET_TYPE : (use_tcp ? CLIENT_STREAM_SOCKET_TYPE : CLIENT_DGRAM_SOCKET_TYPE),
@@ -317,7 +321,7 @@ int read_mobility_ticket(app_ur_conn_info *clnet_info, stun_buffer *message)
 			if(smid_len>0 && (((size_t)smid_len)<sizeof(clnet_info->s_mobile_id))) {
 				const uint8_t* smid_val = stun_attr_get_value(s_mobile_id_sar);
 				if(smid_val) {
-					bcopy(smid_val, clnet_info->s_mobile_id, (size_t)smid_len);
+					memcpy(clnet_info->s_mobile_id, smid_val, (size_t)smid_len);
 					clnet_info->s_mobile_id[smid_len] = 0;
 					if (clnet_verbose)
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
@@ -610,7 +614,7 @@ static int clnet_allocate(int verbose,
 		  }
 
 		  app_ur_conn_info ci;
-		  bcopy(clnet_info,&ci,sizeof(ci));
+		  memcpy(&ci,clnet_info,sizeof(ci));
 		  ci.fd = -1;
 		  ci.ssl = NULL;
 		  clnet_info->fd = -1;
@@ -1538,7 +1542,7 @@ void tcp_data_connect(app_ur_session *elem, uint32_t cid)
 	int i = (int)(elem->pinfo.tcp_conn_number-1);
 	elem->pinfo.tcp_conn=(app_tcp_conn_info**)realloc(elem->pinfo.tcp_conn,elem->pinfo.tcp_conn_number*sizeof(app_tcp_conn_info*));
 	elem->pinfo.tcp_conn[i]=(app_tcp_conn_info*)malloc(sizeof(app_tcp_conn_info));
-	bzero(elem->pinfo.tcp_conn[i],sizeof(app_tcp_conn_info));
+	memset(elem->pinfo.tcp_conn[i],0,sizeof(app_tcp_conn_info));
 
 	elem->pinfo.tcp_conn[i]->tcp_data_fd = clnet_fd;
 	elem->pinfo.tcp_conn[i]->cid = cid;

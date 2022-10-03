@@ -87,7 +87,7 @@ int stun_method_str(uint16_t method, char *smethod)
 	};
 
 	if(smethod) {
-		bcopy(s,smethod,strlen(s)+1);
+		memcpy(smethod,s,strlen(s)+1);
 	}
 
 	return ret;
@@ -248,12 +248,22 @@ int stun_produce_integrity_key_str(const uint8_t *uname, const uint8_t *realm, c
 		if (FIPS_mode()) {
 			EVP_MD_CTX_set_flags(&ctx,EVP_MD_CTX_FLAG_NON_FIPS_ALLOW);
 		}
-#endif
+#endif // defined EVP_MD_CTX_FLAG_NON_FIPS_ALLOW && !defined(LIBRESSL_VERSION_NUMBER)
 		EVP_DigestInit_ex(&ctx,EVP_md5(), NULL);
 		EVP_DigestUpdate(&ctx,str,strl);
 		EVP_DigestFinal(&ctx,key,&keylen);
 		EVP_MD_CTX_cleanup(&ctx);
-#else
+#elif OPENSSL_VERSION_NUMBER >= 0x30000000L
+ 		unsigned int keylen = 0;
+ 		EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+		if (EVP_default_properties_is_fips_enabled(NULL)) {
+			EVP_default_properties_enable_fips(NULL, 0);
+ 		}
+ 		EVP_DigestInit_ex(ctx,EVP_md5(), NULL);
+ 		EVP_DigestUpdate(ctx,str,strl);
+ 		EVP_DigestFinal(ctx,key,&keylen);
+ 		EVP_MD_CTX_free(ctx);
+#else // OPENSSL_VERSION_NUMBER < 0x10100000L
 		unsigned int keylen = 0;
 		EVP_MD_CTX *ctx = EVP_MD_CTX_new();
 #if defined EVP_MD_CTX_FLAG_NON_FIPS_ALLOW && ! defined(LIBRESSL_VERSION_NUMBER)
@@ -265,7 +275,7 @@ int stun_produce_integrity_key_str(const uint8_t *uname, const uint8_t *realm, c
 		EVP_DigestUpdate(ctx,str,strl);
 		EVP_DigestFinal(ctx,key,&keylen);
 		EVP_MD_CTX_free(ctx);
-#endif
+#endif // OPENSSL_VERSION_NUMBER < 0X10100000L
 		ret = 0;
 	}
 
@@ -292,7 +302,7 @@ static void generate_enc_password(const char* pwd, char *result, const unsigned 
 	if(!orig_salt) {
 		generate_random_nonce(salt, PWD_SALT_SIZE);
 	} else {
-		bcopy(orig_salt,salt,PWD_SALT_SIZE);
+		memcpy(salt,orig_salt,PWD_SALT_SIZE);
 		salt[PWD_SALT_SIZE]=0;
 	}
 	unsigned char rsalt[PWD_SALT_SIZE*2+1];
@@ -300,7 +310,7 @@ static void generate_enc_password(const char* pwd, char *result, const unsigned 
 	result[0]='$';
 	result[1]='5';
 	result[2]='$';
-	bcopy((char*)rsalt,result+3,PWD_SALT_SIZE+PWD_SALT_SIZE);
+	memcpy(result+3,(char*)rsalt,PWD_SALT_SIZE+PWD_SALT_SIZE);
 	result[3+PWD_SALT_SIZE+PWD_SALT_SIZE]='$';
 	unsigned char* out = (unsigned char*)(result+3+PWD_SALT_SIZE+PWD_SALT_SIZE+1);
 	{
@@ -526,7 +536,7 @@ int stun_is_error_response_str(const uint8_t* buf, size_t len, int *err_code, ui
     				  size_t msg_len = stun_attr_get_len(sar) - 4;
     				  if(msg_len>(err_msg_size-1))
     					  msg_len=err_msg_size - 1;
-    				  bcopy(val+4, err_msg, msg_len);
+    				  memcpy(err_msg, val+4, msg_len);
     				  err_msg[msg_len]=0;
     			  }
     		  }
@@ -553,7 +563,7 @@ int stun_is_challenge_response_str(const uint8_t* buf, size_t len, int *err_code
 			const uint8_t *value = stun_attr_get_value(sar);
 			if(value) {
 				size_t vlen = (size_t)stun_attr_get_len(sar);
-				bcopy(value,realm,vlen);
+				memcpy(realm,value,vlen);
 				realm[vlen]=0;
 
 				{
@@ -564,7 +574,7 @@ int stun_is_challenge_response_str(const uint8_t* buf, size_t len, int *err_code
 							vlen = (size_t)stun_attr_get_len(sar);
 							if(vlen>0) {
 								if(server_name) {
-									bcopy(value,server_name,vlen);
+									memcpy(server_name,value,vlen);
 								}
 								found_oauth = 1;
 							}
@@ -577,7 +587,7 @@ int stun_is_challenge_response_str(const uint8_t* buf, size_t len, int *err_code
 					value = stun_attr_get_value(sar);
 					if(value) {
 						vlen = (size_t)stun_attr_get_len(sar);
-						bcopy(value,nonce,vlen);
+						memcpy(nonce,value,vlen);
 						nonce[vlen]=0;
 						if(oauth) {
 							*oauth = found_oauth;
@@ -624,7 +634,7 @@ uint16_t stun_make_error_response(uint16_t method) {
 
 void stun_init_buffer_str(uint8_t *buf, size_t *len) {
   *len=STUN_HEADER_LENGTH;
-  bzero(buf,*len);
+  memset(buf, 0, *len);
 }
 
 void stun_init_command_str(uint16_t message_type, uint8_t* buf, size_t *len) {
@@ -1114,7 +1124,7 @@ uint16_t stun_set_channel_bind_request_str(uint8_t* buf, size_t *len,
   
   if(!peer_addr) {
     ioa_addr ca;
-    bzero(&ca,sizeof(ioa_addr));
+    memset(&ca, 0, sizeof(ioa_addr));
     
     if(stun_attr_add_addr_str(buf,len,STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &ca)<0) return 0;
   } else {
@@ -1209,18 +1219,18 @@ int stun_tid_equals(const stun_tid *id1, const stun_tid *id2) {
 void stun_tid_cpy(stun_tid *id1, const stun_tid *id2) {
   if(!id1) return;
   if(!id2) return;
-  bcopy((const void*)(id2->tsx_id),(void*)(id1->tsx_id),STUN_TID_SIZE);
+  memcpy((void*)(id1->tsx_id),(const void*)(id2->tsx_id),STUN_TID_SIZE);
 }
 
 static void stun_tid_string_cpy(uint8_t* s, const stun_tid* id) {
   if(s && id) {
-    bcopy((const void*)(id->tsx_id),s,STUN_TID_SIZE);
+    memcpy(s,(const void*)(id->tsx_id),STUN_TID_SIZE);
   }
 }
 
 static void stun_tid_from_string(const uint8_t* s, stun_tid* id) {
   if(s && id) {
-    bcopy(s,(void*)(id->tsx_id),STUN_TID_SIZE);
+    memcpy((void*)(id->tsx_id),s,STUN_TID_SIZE);
   }
 }
 
@@ -1332,7 +1342,7 @@ uint64_t stun_attr_get_reservation_token_value(stun_attr_ref attr)  {
     const uint8_t* value = stun_attr_get_value(attr);
     if(value && (stun_attr_get_len(attr) == 8)) {
       uint64_t token;
-      bcopy(value, &token, sizeof(uint64_t));
+      memcpy(&token, value, sizeof(uint64_t));
       return nswap64(token);
     }
   }
@@ -1464,10 +1474,10 @@ int stun_attr_add_str(uint8_t* buf, size_t *len, uint16_t attr, const uint8_t* a
     
     attr_start_16t[0]=nswap16(attr);
     attr_start_16t[1]=nswap16(alen);
-    if(alen>0) bcopy(avalue,attr_start+4,alen);
+    if(alen>0) memcpy(attr_start+4,avalue,alen);
 	
 	// Write 0 padding to not leak data
-	bzero(attr_start+4+alen, paddinglen);
+	memset(attr_start+4+alen, 0, paddinglen);
 
     return 0;
   }
@@ -2061,7 +2071,7 @@ int stun_attr_get_padding_len_str(stun_attr_ref attr) {
 int stun_attr_add_padding_str(uint8_t *buf, size_t *len, uint16_t padding_len)
 {
 	uint8_t avalue[0xFFFF];
-	bzero(avalue,padding_len);
+	memset(avalue, 0, padding_len);
 
 	return stun_attr_add_str(buf, len, STUN_ATTRIBUTE_PADDING, avalue, padding_len);
 }
@@ -2149,7 +2159,7 @@ int calculate_key(char *key, size_t key_size,
 {
 	UNUSED_ARG(key_size);
 
-	bcopy(key,new_key,new_key_size);
+	memcpy(new_key,key,new_key_size);
 
 	return 0;
 }
@@ -2159,7 +2169,7 @@ int convert_oauth_key_data(const oauth_key_data *oakd0, oauth_key *key, char *er
 	if(oakd0 && key) {
 
 		oauth_key_data oakd_obj;
-		bcopy(oakd0,&oakd_obj,sizeof(oauth_key_data));
+		memcpy(&oakd_obj,oakd0,sizeof(oauth_key_data));
 		oauth_key_data *oakd = &oakd_obj;
 
 		if(!(oakd->ikm_key_size)) {
@@ -2182,11 +2192,11 @@ int convert_oauth_key_data(const oauth_key_data *oakd0, oauth_key *key, char *er
 			return -1;
 		}
 
-		bzero(key,sizeof(oauth_key));
+		memset(key, 0, sizeof(oauth_key));
 
 		STRCPY(key->kid,oakd->kid);
 
-		bcopy(oakd->ikm_key,key->ikm_key,sizeof(key->ikm_key));
+		memcpy(key->ikm_key,oakd->ikm_key,sizeof(key->ikm_key));
 		key->ikm_key_size = oakd->ikm_key_size;
 
 		key->timestamp = oakd->timestamp;
@@ -2316,13 +2326,13 @@ int encode_oauth_token_normal(const uint8_t *server_name, encoded_oauth_token *e
 	if(server_name && etoken && key && dtoken && (dtoken->enc_block.key_length<=128)) {
 
 		unsigned char orig_field[MAX_ENCODED_OAUTH_TOKEN_SIZE];
-		bzero(orig_field,sizeof(orig_field));
+		memset(orig_field, 0, sizeof(orig_field));
 
 		size_t len = 0;
 		*((uint16_t*)(orig_field+len)) = nswap16(dtoken->enc_block.key_length);
 		len +=2;
 
-		bcopy(dtoken->enc_block.mac_key,orig_field+len,dtoken->enc_block.key_length);
+		memcpy(orig_field+len,dtoken->enc_block.mac_key,dtoken->enc_block.key_length);
 		len += dtoken->enc_block.key_length;
 
 		*((uint64_t*)(orig_field+len)) = nswap64(dtoken->enc_block.timestamp);
@@ -2352,7 +2362,7 @@ int encode_oauth_token_normal(const uint8_t *server_name, encoded_oauth_token *e
 		EVP_CIPHER_CTX_cleanup(&ctx);
 
 		size_t sn_len = strlen((const char*)server_name);
-		bcopy(server_name,encoded_field+outl,sn_len);
+		memcpy(encoded_field+outl,server_name,sn_len);
 		outl += sn_len;
 
 		const EVP_MD *md = get_auth_type(key->auth_alg);
@@ -2366,7 +2376,7 @@ int encode_oauth_token_normal(const uint8_t *server_name, encoded_oauth_token *e
 
 		update_hmac_len(key->auth_alg, &hmac_len);
 
-		bcopy(encoded_field + outl, encoded_field + outl - sn_len, hmac_len);
+		memcpy(encoded_field + outl - sn_len, encoded_field + outl, hmac_len);
 		outl -= sn_len;
 		outl += hmac_len; //encoded+hmac
 
@@ -2412,9 +2422,9 @@ int decode_oauth_token_normal(const uint8_t *server_name, const encoded_oauth_to
        		}
        		unsigned char efield[MAX_ENCODED_OAUTH_TOKEN_SIZE];
        		unsigned char check_mac[MAXSHASIZE];
-       		bcopy(encoded_field,efield,encoded_field_size);
+       		memcpy(efield,encoded_field,encoded_field_size);
        		size_t sn_len = strlen((const char*)server_name);
-       		bcopy(server_name,efield+encoded_field_size,sn_len);
+       		memcpy(efield+encoded_field_size,server_name,sn_len);
 		    if (!HMAC(md, key->auth_key, key->auth_key_size, efield, encoded_field_size+sn_len, check_mac, &hmac_len)) {
 		    	return -1;
 		    }
@@ -2449,7 +2459,7 @@ int decode_oauth_token_normal(const uint8_t *server_name, const encoded_oauth_to
 		dtoken->enc_block.key_length = nswap16(*((uint16_t*)(decoded_field+len)));
 		len += 2;
 
-		bcopy(decoded_field+len,dtoken->enc_block.mac_key,dtoken->enc_block.key_length);
+		memcpy(dtoken->enc_block.mac_key,decoded_field+len,dtoken->enc_block.key_length);
 		len += dtoken->enc_block.key_length;
 
 		dtoken->enc_block.timestamp = nswap64(*((uint64_t*)(decoded_field+len)));
@@ -2479,11 +2489,11 @@ static int encode_oauth_token_gcm(const uint8_t *server_name, encoded_oauth_toke
 	if(server_name && etoken && key && dtoken && (dtoken->enc_block.key_length<=MAXSHASIZE)) {
 
 		unsigned char orig_field[MAX_ENCODED_OAUTH_TOKEN_SIZE];
-		bzero(orig_field,sizeof(orig_field));
+		memset(orig_field, 0, sizeof(orig_field));
 
 		unsigned char nonce[OAUTH_GCM_NONCE_SIZE];
 		if(nonce0) {
-			bcopy(nonce0,nonce,sizeof(nonce));
+			memcpy(nonce,nonce0,sizeof(nonce));
 		} else {
 			generate_random_nonce(nonce, sizeof(nonce));
 		}
@@ -2493,17 +2503,17 @@ static int encode_oauth_token_gcm(const uint8_t *server_name, encoded_oauth_toke
 		*((uint16_t*)(orig_field+len)) = nswap16(OAUTH_GCM_NONCE_SIZE);
 		len +=2;
 
-		bcopy(nonce,orig_field+len,OAUTH_GCM_NONCE_SIZE);
+		memcpy(orig_field+len,nonce,OAUTH_GCM_NONCE_SIZE);
 		len += OAUTH_GCM_NONCE_SIZE;
 
 		*((uint16_t*)(orig_field+len)) = nswap16(dtoken->enc_block.key_length);
 		len +=2;
 
-		bcopy(dtoken->enc_block.mac_key,orig_field+len,dtoken->enc_block.key_length);
+		memcpy(orig_field+len,dtoken->enc_block.mac_key,dtoken->enc_block.key_length);
 		len += dtoken->enc_block.key_length;
 
 		uint64_t ts = nswap64(dtoken->enc_block.timestamp);
-		bcopy( &ts, (orig_field+len), sizeof(ts));
+		memcpy( (orig_field+len), &ts, sizeof(ts));
 		len += sizeof(ts);
 
 		*((uint32_t*)(orig_field+len)) = nswap32(dtoken->enc_block.lifetime);
@@ -2546,7 +2556,7 @@ static int encode_oauth_token_gcm(const uint8_t *server_name, encoded_oauth_toke
 
 		outl=0;
 		unsigned char *encoded_field = (unsigned char*)etoken->token;
-		bcopy(orig_field,encoded_field,OAUTH_GCM_NONCE_SIZE + 2);
+		memcpy(encoded_field,orig_field,OAUTH_GCM_NONCE_SIZE + 2);
 		encoded_field += OAUTH_GCM_NONCE_SIZE + 2;
 		unsigned char *start_field = orig_field + OAUTH_GCM_NONCE_SIZE + 2;
 		len -= OAUTH_GCM_NONCE_SIZE + 2;
@@ -2579,7 +2589,7 @@ static int decode_oauth_token_gcm(const uint8_t *server_name, const encoded_oaut
 	if(server_name && etoken && key && dtoken) {
 
 		unsigned char snl[2];
-		bcopy((const unsigned char*)(etoken->token),snl,2);
+		memcpy(snl,(const unsigned char*)(etoken->token),2);
 		const unsigned char *csnl = snl;
 
 		uint16_t nonce_len = nswap16(*((const uint16_t*)csnl));
@@ -2594,10 +2604,10 @@ static int decode_oauth_token_gcm(const uint8_t *server_name, const encoded_oaut
 		const unsigned char* encoded_field = (const unsigned char*)(etoken->token + nonce_len + 2);
 		unsigned int encoded_field_size = (unsigned int)etoken->size - nonce_len - 2 - OAUTH_GCM_TAG_SIZE;
 		const unsigned char* nonce = ((const unsigned char*)etoken->token + 2);
-                bcopy(nonce,dtoken->enc_block.nonce,nonce_len);
+                memcpy(dtoken->enc_block.nonce,nonce,nonce_len);
 
 		unsigned char tag[OAUTH_GCM_TAG_SIZE];
-		bcopy(((const unsigned char*)etoken->token) + nonce_len + 2 + encoded_field_size, tag ,sizeof(tag));
+		memcpy(tag, ((const unsigned char*)etoken->token) + nonce_len + 2 + encoded_field_size, sizeof(tag));
 
 		unsigned char decoded_field[MAX_ENCODED_OAUTH_TOKEN_SIZE];
 
@@ -2676,16 +2686,16 @@ static int decode_oauth_token_gcm(const uint8_t *server_name, const encoded_oaut
 		dtoken->enc_block.key_length = nswap16(*((uint16_t*)(decoded_field+len)));
 		len += 2;
 
-		bcopy(decoded_field+len,dtoken->enc_block.mac_key,dtoken->enc_block.key_length);
+		memcpy(dtoken->enc_block.mac_key,decoded_field+len,dtoken->enc_block.key_length);
 		len += dtoken->enc_block.key_length;
 
 		uint64_t ts;
-		bcopy((decoded_field+len),&ts,sizeof(ts));
+		memcpy(&ts,(decoded_field+len),sizeof(ts));
 		dtoken->enc_block.timestamp = nswap64(ts);
 		len += sizeof(ts);
 
 		uint32_t lt;
-		bcopy((decoded_field+len),&lt,sizeof(lt));
+		memcpy(&lt,(decoded_field+len),sizeof(lt));
 		dtoken->enc_block.lifetime = nswap32(lt);
 		len += sizeof(lt);
 

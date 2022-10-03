@@ -89,7 +89,7 @@ static MONGO * get_mongodb_connection(void) {
 		mongoc_log_set_handler(&mongo_logger, NULL);
 
 		mydbconnection = (MONGO *) malloc(sizeof(MONGO));
-		bzero(mydbconnection, sizeof(MONGO));
+		memset(mydbconnection, 0, sizeof(MONGO));
 
 		mydbconnection->uri = mongoc_uri_new(pud->userdb);
 
@@ -223,7 +223,7 @@ static int mongo_get_user_key(uint8_t *usname, uint8_t *realm, hmackey_t key) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key format: string length=%d (must be %d): user %s\n", (int)length, (int)sz, usname);
 				} else {
 					char kval[sizeof(hmackey_t) + sizeof(hmackey_t) + 1];
-					bcopy(value, kval, sz);
+					memcpy(kval, value, sz);
 					kval[sz] = 0;
 					if(convert_string_key_to_binary(kval, key, sz / 2) < 0) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key: %s, user %s\n", kval, usname);
@@ -266,7 +266,7 @@ static int mongo_get_oauth_key(const uint8_t *kid, oauth_key_data_raw *key) {
 
 	int ret = -1;
 
-	bzero(key,sizeof(oauth_key_data_raw));
+	memset(key, 0, sizeof(oauth_key_data_raw));
 	STRCPY(key->kid,kid);
 
 	if (!cursor) {
@@ -526,7 +526,7 @@ static int mongo_list_oauth_keys(secrets_list_t *kids,secrets_list_t *teas,secre
     bson_iter_t iter;
     while (mongoc_cursor_next(cursor, &item)) {
 
-    	bzero(key,sizeof(oauth_key_data_raw));
+    	memset(key, 0, sizeof(oauth_key_data_raw));
     	if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "kid") && BSON_ITER_HOLDS_UTF8(&iter)) {
     		STRCPY(key->kid,bson_iter_utf8(&iter, &length));
     	}
