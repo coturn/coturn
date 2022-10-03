@@ -6,8 +6,8 @@
 #include "apputils.h"
 #include "stun_buffer.h"
 
-#define kMinInputLength 5
-#define kMaxInputLength 65507
+#define kMinInputLength 10
+#define kMaxInputLength 5120
 
 extern int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {//stunclient.c
 
