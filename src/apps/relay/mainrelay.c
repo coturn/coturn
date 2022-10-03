@@ -3258,7 +3258,7 @@ static void openssl_load_certificates(void)
 #else
         set_ctx(&turn_params.dtls_ctx,"DTLS",DTLSv1_server_method()); // < openssl-1.0.2
 #endif
-        if(!turn_params.no_tlsv1) {
+        if(!turn_params.no_tlsv1 || !turn_params.no_tlsv1_1) {
             SSL_CTX_set_options(turn_params.dtls_ctx, SSL_OP_NO_DTLSv1);
         }
 #else // OPENSSL_VERSION_NUMBER < 0x10100000L
