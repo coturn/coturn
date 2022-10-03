@@ -40,5 +40,5 @@ elif [ "$1" == "Run" ]
 then
    run $2
 else
-  echo "use: ./$0 ASan | UBSan | MSan | run 0 | run 1"
+  echo "use: ./$0 ASan | UBSan | MSan | Run 0 | Run 1"
 fi
