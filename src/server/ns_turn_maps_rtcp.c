@@ -30,7 +30,6 @@
 
 #include "ns_turn_maps_rtcp.h"
 
-#include "ns_turn_utils.h"
 #include "ns_turn_ioaddr.h"
 
 ////////////////////////////////////////////

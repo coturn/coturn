@@ -40,20 +40,12 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-#include <limits.h>
-#include <ifaddrs.h>
-#include <getopt.h>
 #include <locale.h>
 #include <libgen.h>
 #include <fcntl.h>
 
-#include <pthread.h>
-
 #include <signal.h>
 
-#include <sys/types.h>
-#include <sys/time.h>
-#include <sys/stat.h>
 #include <sys/resource.h>
 
 #if !defined(TURN_NO_SCTP) && defined(TURN_SCTP_INCLUDE)
