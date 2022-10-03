@@ -1770,7 +1770,6 @@ static int handle_turn_refresh(turn_turnserver *server,
 										{
 											const uint8_t *field = (const uint8_t *) get_version(server);
 											size_t fsz = strlen(get_version(server));
-											size_t len = ioa_network_buffer_get_size(nbh);
 											stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_SOFTWARE, field, fsz);
 											ioa_network_buffer_set_size(nbh, len);
 										}
