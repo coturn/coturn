@@ -1770,16 +1770,19 @@ static int handle_turn_refresh(turn_turnserver *server,
 										{
 											const uint8_t *field = (const uint8_t *) get_version(server);
 											size_t fsz = strlen(get_version(server));
+											size_t len = ioa_network_buffer_get_size(nbh);
 											stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_SOFTWARE, field, fsz);
 											ioa_network_buffer_set_size(nbh, len);
 										}
 
 										if(message_integrity) {
+											size_t len = ioa_network_buffer_get_size(nbh);
 											stun_attr_add_integrity_str(server->ct,ioa_network_buffer_data(nbh),&len,ss->hmackey,ss->pwd,SHATYPE_DEFAULT);
 											ioa_network_buffer_set_size(nbh,len);
 										}
 
 										if ((server->fingerprint) || ss->enforce_fingerprints) {
+											size_t len = ioa_network_buffer_get_size(nbh);
 											if (stun_attr_add_fingerprint_str(ioa_network_buffer_data(nbh), &len) < 0) {
 												*err_code = 500;
 												ioa_network_buffer_delete(server->e, nbh);
