@@ -337,9 +337,6 @@ static void update_ssl_ctx(evutil_socket_t sock, short events, update_ssl_ctx_cb
 #if DTLS_SUPPORTED
 	replace_one_ssl_ctx(&e->dtls_ctx, params->dtls_ctx);
 #endif
-#if DTLSv1_2_SUPPORTED
-	replace_one_ssl_ctx(&e->dtls_ctx_v1_2, params->dtls_ctx_v1_2);
-#endif
 	struct event *next = args->next;
 	pthread_mutex_unlock(&turn_params.tls_mutex);
 
