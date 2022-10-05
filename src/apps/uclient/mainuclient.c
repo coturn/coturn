@@ -31,7 +31,6 @@
 #include "apputils.h"
 #include "uclient.h"
 #include "ns_turn_utils.h"
-#include "apputils.h"
 #include "session.h"
 #include "stun_buffer.h"
 
@@ -40,9 +39,6 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-
-#include <sys/types.h>
-#include <sys/stat.h>
 
 #include "ns_turn_openssl.h"
 

@@ -28,9 +28,6 @@
  * SUCH DAMAGE.
  */
 
-#include <stdlib.h>
-#include <stdarg.h>
-
 #if !defined(TURN_NO_HIREDIS)
 
 #include "hiredis_libevent2.h"

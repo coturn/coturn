@@ -37,7 +37,6 @@
 #include <sqlite3.h>
 
 #include <unistd.h>
-#include <sys/types.h>
 #include <pwd.h>
 
 #include <pthread.h>

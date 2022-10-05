@@ -32,7 +32,6 @@
 
 #include "ns_turn_utils.h"
 #include "ns_turn_allocation.h"
-#include "ns_turn_msg_addr.h"
 #include "ns_turn_ioalib.h"
 #include "../apps/relay/ns_ioalib_impl.h"
 

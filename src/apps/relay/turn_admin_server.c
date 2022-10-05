@@ -33,21 +33,9 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-#include <limits.h>
-#include <ifaddrs.h>
-#include <getopt.h>
-#include <locale.h>
-#include <libgen.h>
-
-#include <pthread.h>
-
-#include <signal.h>
 
 #include "libtelnet.h"
 
-#include <sys/types.h>
-#include <sys/time.h>
-#include <sys/stat.h>
 #include <sys/resource.h>
 
 #include <event2/bufferevent.h>
