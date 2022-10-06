@@ -1036,8 +1036,6 @@ static void redis_auth_ping(void * rch) {
 	if(rc) {
 		turnFreeRedisReply(redisCommand(rc, "keys turn/origin/*"));
 	}
-	if(rch)
-		send_message_to_redis((redis_context_handle)rch, "publish", "__XXX__", "__YYY__");
 }
   
 
