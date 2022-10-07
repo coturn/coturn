@@ -27,7 +27,14 @@ run(){
    fi   
 }
 
-if [ $1 == "ASan" ]
+help(){
+   echo "use: ./$0 ASan | UBSan | MSan | Run 0 | Run 1"
+}
+
+if [ -z "$1" ]
+then
+   help
+elif [ $1 == "ASan" ]
 then
    build "-O1 -fno-omit-frame-pointer -gline-tables-only -DFUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION -fsanitize=address -fsanitize-address-use-after-scope -fsanitize=fuzzer-no-link"
 elif [ "$1" == "UBSan" ]
@@ -40,5 +47,5 @@ elif [ "$1" == "Run" ]
 then
    run $2
 else
-  echo "use: ./$0 ASan | UBSan | MSan | Run 0 | Run 1"
+  help
 fi
