@@ -286,7 +286,7 @@ static INLINE int _check_telopt(telnet_t *telnet, unsigned char telopt,
 static INLINE telnet_rfc1143_t _get_rfc1143(telnet_t *telnet,
 		unsigned char telopt) {
 	telnet_rfc1143_t empty;
-	int i;
+	unsigned int i;
 
 	/* search for entry */
 	for (i = 0; i != telnet->q_cnt; ++i) {
@@ -305,7 +305,7 @@ static INLINE telnet_rfc1143_t _get_rfc1143(telnet_t *telnet,
 static INLINE void _set_rfc1143(telnet_t *telnet, unsigned char telopt,
 		char us, char him) {
 	telnet_rfc1143_t *qtmp;
-	int i;
+	unsigned int i;
 
 	/* search for entry */
 	for (i = 0; i != telnet->q_cnt; ++i) {
@@ -1463,6 +1463,8 @@ void telnet_begin_compress2(telnet_t *telnet) {
 	ev.type = TELNET_EV_COMPRESS;
 	ev.compress.state = 1;
 	telnet->eh(telnet, &ev, telnet->ud);
+#else
+	(void)telnet;
 #endif /* defined(HAVE_ZLIB) */
 }
 
@@ -1470,7 +1472,7 @@ void telnet_begin_compress2(telnet_t *telnet) {
 int telnet_vprintf(telnet_t *telnet, const char *fmt, va_list va) {
 	char buffer[1024];
 	char *output = buffer;
-	int rs, i, l;
+	unsigned int rs, i, l;
 
 	/* format */
 	va_list va2;
@@ -1539,7 +1541,7 @@ int telnet_printf(telnet_t *telnet, const char *fmt, ...) {
 int telnet_raw_vprintf(telnet_t *telnet, const char *fmt, va_list va) {
 	char buffer[1024];
 	char *output = buffer;
-	int rs;
+	unsigned int rs;
 
 	/* format; allocate more space if necessary */
 	va_list va2;
