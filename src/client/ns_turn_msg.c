@@ -1926,7 +1926,7 @@ void print_hmac(const char *name, const void *s, size_t len)
 int stun_check_message_integrity_by_key_str(turn_credential_type ct, uint8_t *buf, size_t len, hmackey_t key, password_t pwd, SHATYPE shatype)
 {
 	int res = 0;
-	uint8_t new_hmac[MAXSHASIZE];
+	uint8_t new_hmac[MAXSHASIZE] = NULL;
 	unsigned int shasize;
 	const uint8_t *old_hmac = NULL;
 
