@@ -1345,7 +1345,6 @@ static void set_option(int c, char *value)
 		STRCPY(turn_params.relay_ifname, value);
 		break;
 	case 'm':
-#if defined(OPENSSL_THREADS)
 		if(atoi(value)>MAX_NUMBER_OF_GENERAL_RELAY_SERVERS) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: max number of relay threads is 128.\n");
 			turn_params.general_relay_servers_number = MAX_NUMBER_OF_GENERAL_RELAY_SERVERS;
@@ -1354,9 +1353,6 @@ static void set_option(int c, char *value)
 		} else {
 			turn_params.general_relay_servers_number = atoi(value);
 		}
-#else
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: OpenSSL version is too old OR does not support threading,\n I am using single thread for relaying.\n");
-#endif
 		break;
 	case 'd':
 		STRCPY(turn_params.listener_ifname, value);
@@ -2632,15 +2628,12 @@ int main(int argc, char **argv)
 
 ////////// OpenSSL locking ////////////////////////////////////////
 
-#if defined(OPENSSL_THREADS)
-
-static char some_buffer[65536];
+#if OPENSSL_VERSION_NUMBER < OPENSSL_VERSION_1_1_0
 
 //array larger than anything that OpenSSL may need:
 static pthread_mutex_t mutex_buf[256];
 static int mutex_buf_initialized = 0;
 
-void coturn_locking_function(int mode, int n, const char *file, int line);
 void coturn_locking_function(int mode, int n, const char *file, int line) {
   UNUSED_ARG(file);
   UNUSED_ARG(line);
@@ -2652,76 +2645,50 @@ void coturn_locking_function(int mode, int n, const char *file, int line) {
   }
 }
 
-#if OPENSSL_VERSION_NUMBER >= 0x10000000L
-void coturn_id_function(CRYPTO_THREADID *ctid);
 void coturn_id_function(CRYPTO_THREADID *ctid)
 {
 	UNUSED_ARG(ctid);
     CRYPTO_THREADID_set_numeric(ctid, (unsigned long)pthread_self());
 }
-#else
-unsigned long coturn_id_function(void);
-unsigned long coturn_id_function(void)
-{
-    return (unsigned long)pthread_self();
-}
-#endif
-
-#endif
 
 static int THREAD_setup(void) {
-
-#if defined(OPENSSL_THREADS)
-
-	int i;
-
-	some_buffer[0] = 0;
-
+    int i;
 	for (i = 0; i < CRYPTO_num_locks(); i++) {
 		pthread_mutex_init(&(mutex_buf[i]), NULL);
 	}
 
 	mutex_buf_initialized = 1;
-
-#if OPENSSL_VERSION_NUMBER >= 0x10000000L && OPENSSL_VERSION_NUMBER <= OPENSSL_VERSION_1_1_1
 	CRYPTO_THREADID_set_callback(coturn_id_function);
-#else
-	CRYPTO_set_id_callback(coturn_id_function);
-#endif
-
 	CRYPTO_set_locking_callback(coturn_locking_function);
-#endif
-
 	return 1;
 }
 
 int THREAD_cleanup(void);
 int THREAD_cleanup(void) {
+    int i;
 
-#if defined(OPENSSL_THREADS)
+    if (!mutex_buf_initialized)
+        return 0;
 
-  int i;
+    CRYPTO_THREADID_set_callback(NULL);
+    CRYPTO_set_locking_callback(NULL);
+    for (i = 0; i < CRYPTO_num_locks(); i++) {
+        pthread_mutex_destroy(&(mutex_buf[i]));
+    }
 
-  if (!mutex_buf_initialized)
-    return 0;
-
-#if OPENSSL_VERSION_NUMBER >= 0x10000000L && OPENSSL_VERSION_NUMBER <= OPENSSL_VERSION_1_1_1
-	CRYPTO_THREADID_set_callback(NULL);
-#else
-	CRYPTO_set_id_callback(NULL);
-#endif
-
-  CRYPTO_set_locking_callback(NULL);
-  for (i = 0; i < CRYPTO_num_locks(); i++) {
-	  pthread_mutex_destroy(&(mutex_buf[i]));
-  }
-
-  mutex_buf_initialized = 0;
-
-#endif
-
+    mutex_buf_initialized = 0;
   return 1;
 }
+#else
+static int THREAD_setup(void) {
+    return 1;
+}
+
+int THREAD_cleanup(void);
+int THREAD_cleanup(void){
+    return 1;
+}
+#endif
 
 static void adjust_key_file_name(char *fn, const char* file_title, int critical)
 {
