@@ -62,6 +62,7 @@ static void RyconninfoFree(Ryconninfo *co) {
 		if(co->dbname) free(co->dbname);
 		if(co->password) free(co->password);
 		memset(co, 0, sizeof(Ryconninfo));
+		free(co);
 	}
 }
 

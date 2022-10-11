@@ -325,6 +325,7 @@ static void redis_reconnect(struct redisLibeventEvents *e)
   redisAsyncContext *ac = NULL;
 
   if(e->context) {
+	  redisAsyncFree(e->context);
 	  e->context = NULL;
   }
 
