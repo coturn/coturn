@@ -2628,12 +2628,14 @@ int main(int argc, char **argv)
 
 ////////// OpenSSL locking ////////////////////////////////////////
 
+#if defined(OPENSSL_THREADS) 
 #if OPENSSL_VERSION_NUMBER < OPENSSL_VERSION_1_1_0
 
 //array larger than anything that OpenSSL may need:
 static pthread_mutex_t mutex_buf[256];
 static int mutex_buf_initialized = 0;
 
+void coturn_locking_function(int mode, int n, const char *file, int line);
 void coturn_locking_function(int mode, int n, const char *file, int line) {
   UNUSED_ARG(file);
   UNUSED_ARG(line);
@@ -2645,6 +2647,7 @@ void coturn_locking_function(int mode, int n, const char *file, int line) {
   }
 }
 
+void coturn_id_function(CRYPTO_THREADID *ctid);
 void coturn_id_function(CRYPTO_THREADID *ctid)
 {
 	UNUSED_ARG(ctid);
@@ -2688,7 +2691,8 @@ int THREAD_cleanup(void);
 int THREAD_cleanup(void){
     return 1;
 }
-#endif
+#endif /* OPENSSL_VERSION_NUMBER < OPENSSL_VERSION_1_1_0 */
+#endif /* defined(OPENSSL_THREADS) */
 
 static void adjust_key_file_name(char *fn, const char* file_title, int critical)
 {
