@@ -1015,6 +1015,8 @@ if [ -z "${TURN_NO_SCTP}" ] ; then
     if [ -z "${TURN_SCTP_INCLUDE}" ] ; then
 		if [ -f /usr/include/netinet/sctp.h ] ; then
 	    	TURN_SCTP_INCLUDE="-DTURN_SCTP_INCLUDE=\"</usr/include/netinet/sctp.h>\""
+        else
+            TURN_NO_SCTP="-DTURN_NO_SCTP"
 		fi
     else
 		TURN_SCTP_INCLUDE="-DTURN_SCTP_INCLUDE=\"\\\"${TURN_SCTP_INCLUDE}\\\"\""
