@@ -62,6 +62,7 @@ static void RyconninfoFree(Ryconninfo *co) {
 		if(co->dbname) free(co->dbname);
 		if(co->password) free(co->password);
 		memset(co, 0, sizeof(Ryconninfo));
+		free(co);
 	}
 }
 
@@ -1036,8 +1037,6 @@ static void redis_auth_ping(void * rch) {
 	if(rc) {
 		turnFreeRedisReply(redisCommand(rc, "keys turn/origin/*"));
 	}
-	if(rch)
-		send_message_to_redis((redis_context_handle)rch, "publish", "__XXX__", "__YYY__");
 }
   
 

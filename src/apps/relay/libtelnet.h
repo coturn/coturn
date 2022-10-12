@@ -34,13 +34,9 @@
  *
  * \file libtelnet.h
  *
- * \version 0.21
+ * \version 0.23
  *
  * \author Sean Middleditch <sean@sourcemud.org>
- */
-
-/**
- * Minor fixes by Oleg Moskalenko
  */
 
 #if !defined(LIBTELNET_INCLUDE)
@@ -48,6 +44,7 @@
 
 /* standard C headers necessary for the libtelnet API */
 #include <stdarg.h>
+#include <stddef.h>
 
 /* C++ support */
 #if defined(__cplusplus)
@@ -57,9 +54,14 @@ extern "C" {
 /* printf type checking feature in GCC and some other compilers */
 #if __GNUC__
 # define TELNET_GNU_PRINTF(f,a) __attribute__((format(printf, f, a))) /*!< internal helper */
+# define TELNET_GNU_SENTINEL __attribute__((sentinel)) /*!< internal helper */
 #else
 # define TELNET_GNU_PRINTF(f,a) /*!< internal helper */
+# define TELNET_GNU_SENTINEL /*!< internal helper */
 #endif
+
+/* Disable environ macro for Visual C++ 2015. */
+#undef environ
 
 /*! Telnet state tracker object type. */
 typedef struct telnet_t telnet_t;
@@ -139,6 +141,7 @@ typedef struct telnet_telopt_t telnet_telopt_t;
 #define TELNET_TELOPT_ENCRYPT 38
 #define TELNET_TELOPT_NEW_ENVIRON 39
 #define TELNET_TELOPT_MSSP 70
+#define TELNET_TELOPT_COMPRESS 85
 #define TELNET_TELOPT_COMPRESS2 86
 #define TELNET_TELOPT_ZMP 93
 #define TELNET_TELOPT_EXOPL 255
@@ -176,13 +179,13 @@ typedef struct telnet_telopt_t telnet_telopt_t;
 /*@{*/
 /*! Control behavior of telnet state tracker. */
 #define TELNET_FLAG_PROXY (1<<0)
+#define TELNET_FLAG_NVT_EOL (1<<1)
 
+/* Internal-only bits in option flags */
+#define TELNET_FLAG_TRANSMIT_BINARY (1<<5)
+#define TELNET_FLAG_RECEIVE_BINARY (1<<6)
 #define TELNET_PFLAG_DEFLATE (1<<7)
 /*@}*/
-
-#if !defined(UNUSED_ARG)
-#define UNUSED_ARG(A) do { A=A; } while(0)
-#endif
 
 /*! 
  * error codes 
@@ -224,8 +227,8 @@ typedef enum telnet_event_type_t telnet_event_type_t; /*!< Telnet event type. */
  */
 struct telnet_environ_t {
 	unsigned char type; /*!< either TELNET_ENVIRON_VAR or TELNET_ENVIRON_USERVAR */
-	const char *var;          /*!< name of the variable being set */
-	const char *value;        /*!< value of variable being set; empty string if no value */
+	char *var;          /*!< name of the variable being set */
+	char *value;        /*!< value of variable being set; empty string if no value */
 };
 
 /*! 
@@ -376,7 +379,7 @@ struct telnet_t;
  * \param eh        Event handler function called for every event.
  * \param flags     0 or TELNET_FLAG_PROXY.
  * \param user_data Optional data pointer that will be passsed to eh.
- * \return Telent state tracker object.
+ * \return Telnet state tracker object.
  */
 extern telnet_t* telnet_init(const telnet_telopt_t *telopts,
 		telnet_event_handler_t eh, unsigned char flags, void *user_data);
@@ -437,6 +440,17 @@ extern void telnet_negotiate(telnet_t *telnet, unsigned char cmd,
  * \param size   Number of bytes to send.
  */
 extern void telnet_send(telnet_t *telnet,
+		const char *buffer, size_t size);
+
+/*!
+ * Send non-command text (escapes IAC bytes and translates
+ * \\r -> CR-NUL and \\n -> CR-LF unless in BINARY mode.
+ *
+ * \param telnet Telnet state tracker object.
+ * \param buffer Buffer of bytes to send.
+ * \param size   Number of bytes to send.
+ */
+extern void telnet_send_text(telnet_t *telnet,
 		const char *buffer, size_t size);
 
 /*!
@@ -634,7 +648,7 @@ extern void telnet_send_zmp(telnet_t *telnet, size_t argc, const char **argv);
  *
  * \param telnet Telnet state tracker object.
  */
-extern void telnet_send_zmpv(telnet_t *telnet, ...);
+extern void telnet_send_zmpv(telnet_t *telnet, ...) TELNET_GNU_SENTINEL;
 
 /*!
  * \brief Send a ZMP command.

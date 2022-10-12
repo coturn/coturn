@@ -273,7 +273,7 @@ static int sctp_create_server_listener(tls_listener_relay_server_type* server) {
 
   tls_listen_fd = socket(server->addr.ss.sa_family, SCTP_CLIENT_STREAM_SOCKET_TYPE, SCTP_CLIENT_STREAM_SOCKET_PROTOCOL);
   if (tls_listen_fd < 0) {
-    perror("socket");
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot create SCTP socket listener\n");
     return -1;
   }
 
