@@ -93,6 +93,8 @@ else()
     list(APPEND turnserver_DEFINED TURN_NO_PROMETHEUS)
 endif()
 
+list(APPEND turnserver_DEFINED TURN_NO_SCTP)
+
 add_executable(${PROJECT_NAME} ${SOURCE_FILES} ${HEAD_FILES})
 target_link_libraries(${PROJECT_NAME} PRIVATE turn_server ${turnserver_LIBS})
 target_include_directories(${PROJECT_NAME} PRIVATE ${turnserver_include_dirs})
