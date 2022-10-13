@@ -65,35 +65,22 @@ extern int IS_TURN_SERVER;
 #endif
 
 /* TLS */
-
-#if defined(TURN_NO_TLS)
-
-	#define TLS_SUPPORTED 0
-	#define TLSv1_1_SUPPORTED 0
-	#define TLSv1_2_SUPPORTED 0
-
+#if defined(SSL_OP_NO_TLSv1_1)
+    #define TLSv1_1_SUPPORTED 1
 #else
+    #define TLSv1_1_SUPPORTED 0
+#endif
 
-	#define TLS_SUPPORTED 1
+#if defined(SSL_OP_NO_TLSv1_2)
+    #define TLSv1_2_SUPPORTED 1
+#else
+    #define TLSv1_2_SUPPORTED 0
+#endif
 
-	#if defined(SSL_OP_NO_TLSv1_1)
-		#define TLSv1_1_SUPPORTED 1
-	#else
-		#define TLSv1_1_SUPPORTED 0
-	#endif
-
-	#if defined(SSL_OP_NO_TLSv1_2)
-		#define TLSv1_2_SUPPORTED 1
-	#else
-		#define TLSv1_2_SUPPORTED 0
-	#endif
-	
-	#if defined(SSL_OP_NO_TLSv1_3)
-		#define TLSv1_3_SUPPORTED 1
-	#else
-		#define TLSv1_3_SUPPORTED 0
-	#endif
-
+#if defined(SSL_OP_NO_TLSv1_3)
+    #define TLSv1_3_SUPPORTED 1
+#else
+    #define TLSv1_3_SUPPORTED 0
 #endif
 
 #if defined(TURN_NO_DTLS) || (!defined(DTLS_CTRL_LISTEN) && (OPENSSL_VERSION_NUMBER < 0x10100000L))

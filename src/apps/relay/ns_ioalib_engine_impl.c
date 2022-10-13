@@ -42,10 +42,7 @@
 #include "prom_server.h"
 #endif
 
-#if TLS_SUPPORTED
 #include <event2/bufferevent_ssl.h>
-#endif
-
 #include <event2/listener.h>
 
 #include "ns_turn_openssl.h"
@@ -2152,8 +2149,6 @@ int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr *like_a
 	return len;
 }
 
-#if TLS_SUPPORTED
-
 static TURN_TLS_TYPE check_tentative_tls(ioa_socket_raw fd)
 {
 	TURN_TLS_TYPE ret = TURN_TLS_NO;
@@ -2179,8 +2174,6 @@ static TURN_TLS_TYPE check_tentative_tls(ioa_socket_raw fd)
 
 	return ret;
 }
-#endif
-
 
 static size_t proxy_string_field(char *field, size_t max, uint8_t *buf, size_t index, size_t len)
 {
@@ -2396,13 +2389,11 @@ static int socket_input_worker(ioa_socket_handle s)
 	}
 
 	if((s->st == TLS_SOCKET)||(s->st == TLS_SCTP_SOCKET)) {
-#if TLS_SUPPORTED
 		SSL *ctx = bufferevent_openssl_get_ssl(s->bev);
 		if(!ctx || SSL_get_shutdown(ctx)) {
 			s->tobeclosed = 1;
 			return 0;
 		}
-#endif
 	} else if(s->st == DTLS_SOCKET) {
 		if(!(s->ssl) || SSL_get_shutdown(s->ssl)) {
 			s->tobeclosed = 1;
@@ -2415,7 +2406,6 @@ static int socket_input_worker(ioa_socket_handle s)
 
 	if(s->st == TENTATIVE_TCP_SOCKET) {
 		EVENT_DEL(s->read_event);
-#if TLS_SUPPORTED
 		TURN_TLS_TYPE tls_type = check_tentative_tls(s->fd);
 		if(tls_type) {
 			s->st = TLS_SOCKET;
@@ -2442,7 +2432,6 @@ static int socket_input_worker(ioa_socket_handle s)
 				bufferevent_enable(s->bev, EV_READ|EV_WRITE); /* Start reading. */
 			}
 		} else
-#endif //TLS_SUPPORTED
 		{
 			s->st = TCP_SOCKET;
 			if(s->bev) {
@@ -2458,7 +2447,6 @@ static int socket_input_worker(ioa_socket_handle s)
 		}
 	} else if(s->st == TENTATIVE_SCTP_SOCKET) {
 		EVENT_DEL(s->read_event);
-#if TLS_SUPPORTED
 		TURN_TLS_TYPE tls_type = check_tentative_tls(s->fd);
 		if(tls_type) {
 			s->st = TLS_SCTP_SOCKET;
@@ -2483,7 +2471,6 @@ static int socket_input_worker(ioa_socket_handle s)
 				bufferevent_enable(s->bev, EV_READ|EV_WRITE); /* Start reading. */
 			}
 		} else
-#endif //TLS_SUPPORTED
 		{
 			s->st = SCTP_SOCKET;
 			if(s->bev) {
@@ -2552,13 +2539,11 @@ static int socket_input_worker(ioa_socket_handle s)
 							s->broken = 1;
 							log_socket_event(s, "socket read failed, to be closed",1);
 						} else if((s->st == TLS_SOCKET)||(s->st == TLS_SCTP_SOCKET)) {
-#if TLS_SUPPORTED
 							SSL *ctx = bufferevent_openssl_get_ssl(s->bev);
 							if(!ctx || SSL_get_shutdown(ctx)) {
 								ret = -1;
 								s->tobeclosed = 1;
 							}
-#endif
 						}
 						if(ret != -1) {
 							ret = len;
@@ -3236,13 +3221,11 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 
 					if (s->connected && s->bev) {
 						if ((s->st == TLS_SOCKET)||(s->st == TLS_SCTP_SOCKET)) {
-#if TLS_SUPPORTED
 							SSL *ctx = bufferevent_openssl_get_ssl(s->bev);
 							if (!ctx || SSL_get_shutdown(ctx)) {
 								s->tobeclosed = 1;
 								ret = 0;
 							}
-#endif
 						}
 
 						if (!(s->tobeclosed)) {
@@ -3345,13 +3328,11 @@ int send_data_from_ioa_socket_tcp(ioa_socket_handle s, const void *data, size_t 
 
 		} else if (s->connected && s->bev) {
 			if ((s->st == TLS_SOCKET)||(s->st == TLS_SCTP_SOCKET)) {
-#if TLS_SUPPORTED
 				SSL *ctx = bufferevent_openssl_get_ssl(s->bev);
 				if (!ctx || SSL_get_shutdown(ctx)) {
 					s->tobeclosed = 1;
 					ret = 0;
 				}
-#endif
 			}
 
 			if (!(s->tobeclosed)) {
@@ -3445,12 +3426,10 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 							return -1;
 						}
 					} else {
-#if TLS_SUPPORTED
 						if((s->sat != TCP_CLIENT_DATA_SOCKET) && (s->sat != TCP_RELAY_DATA_SOCKET) && check_tentative_tls(s->fd)) {
 							s->tobeclosed = 1;
 							return -1;
 						}
-#endif
 						s->bev = bufferevent_socket_new(s->e->event_base,
 									s->fd,
 									TURN_BUFFEREVENTS_OPTIONS);
@@ -3469,7 +3448,6 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 							return -1;
 						}
 					} else {
-#if TLS_SUPPORTED
 						if(!(s->ssl)) {
 							//??? how we can get to this point ???
 							set_socket_ssl(s,SSL_new(e->tls_ctx));
@@ -3489,7 +3467,6 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 							eventcb_bev, s);
 						bufferevent_setwatermark(s->bev, EV_READ|EV_WRITE, 0, BUFFEREVENT_HIGH_WATERMARK);
 						bufferevent_enable(s->bev, EV_READ|EV_WRITE); /* Start reading. */
-#endif
 					}
 					break;
 				default:

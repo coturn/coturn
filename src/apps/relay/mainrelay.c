@@ -88,12 +88,7 @@ NULL, /* dtls_ctx */
 DH_2066, "", "", "",
 "turn_server_cert.pem","turn_server_pkey.pem", "", "",
 0,0,0,
-#if !TLS_SUPPORTED
-	1,
-#else
 	0,
-#endif
-
 #if !DTLS_SUPPORTED
 	1,
 #else
@@ -1608,11 +1603,7 @@ static void set_option(int c, char *value)
 		turn_params.no_tcp_relay = get_bool_value(value);
 		break;
 	case NO_TLS_OPT:
-#if !TLS_SUPPORTED
-		turn_params.no_tls = 1;
-#else
 		turn_params.no_tls = get_bool_value(value);
-#endif
 		break;
 	case NO_DTLS_OPT:
 #if DTLS_SUPPORTED
@@ -2118,11 +2109,7 @@ static void print_features(unsigned long mfn)
 	   brightness and honed to a murderous sharpness.
 	   */
 
-#if !TLS_SUPPORTED
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS is not supported\n");
-#else
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS supported\n");
-#endif
 
 #if !DTLS_SUPPORTED
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS is not supported\n");
@@ -2323,10 +2310,6 @@ int main(int argc, char **argv)
 	}
 
 	optind = 0;
-
-#if !TLS_SUPPORTED
-	turn_params.no_tls = 1;
-#endif
 
 #if !DTLS_SUPPORTED
 	turn_params.no_dtls = 1;
@@ -3180,13 +3163,6 @@ static void openssl_setup(void)
 	THREAD_setup();
 	SSL_load_error_strings();
 	OpenSSL_add_ssl_algorithms();
-
-#if !TLS_SUPPORTED
-	if(!turn_params.no_tls) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "WARNING: TLS is not supported\n");
-		turn_params.no_tls = 1;
-	}
-#endif
 
 	if(!(turn_params.no_tls && turn_params.no_dtls) && !turn_params.cert_file[0]) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,"\nWARNING: certificate file is not specified, I cannot start TLS/DTLS services.\nOnly 'plain' UDP/TCP listeners can be started.\n");
