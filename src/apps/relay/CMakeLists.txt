@@ -22,6 +22,7 @@ set(HEADER_FILES
     turn_ports.h
     userdb.h
     dbdrivers/dbdriver.h
+    prom_server.h
     )
 
 set(SOURCE_FILES
@@ -37,6 +38,7 @@ set(SOURCE_FILES
     acme.c
     userdb.c
     dbdrivers/dbdriver.c
+    prom_server.c
     )
 
 find_package(SQLite)
