@@ -57,10 +57,10 @@ static PGconn *get_pqdb_connection(void) {
 		PQconninfoOption *co = PQconninfoParse(pud->userdb, &errmsg);
 		if(!co) {
 			if(errmsg) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open PostgreSQL DB connection <%s>, connection string format error: %s\n",pud->userdb,errmsg);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open PostgreSQL DB connection <%s>, connection string format error: %s\n",pud->s_userdb,errmsg);
 				free(errmsg);
 			} else {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open PostgreSQL DB connection: <%s>, unknown connection string format error\n",pud->userdb);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open PostgreSQL DB connection: <%s>, unknown connection string format error\n",pud->s_userdb);
 			}
 		} else {
 			PQconninfoFree(co);
@@ -68,13 +68,13 @@ static PGconn *get_pqdb_connection(void) {
 				free(errmsg);
 			pqdbconnection = PQconnectdb(pud->userdb);
 			if(!pqdbconnection) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open PostgreSQL DB connection: <%s>, runtime error\n",pud->userdb);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open PostgreSQL DB connection: <%s>, runtime error\n",pud->s_userdb);
 			} else {
 				ConnStatusType status = PQstatus(pqdbconnection);
 				if(status != CONNECTION_OK) {
 					PQfinish(pqdbconnection);
 					pqdbconnection = NULL;
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open PostgreSQL DB connection: <%s>, runtime error\n",pud->userdb);
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open PostgreSQL DB connection: <%s>, runtime error\n",pud->s_userdb);
 				} else if(!donot_print_connection_success){
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "PostgreSQL DB connection success: %s\n",pud->userdb);
 					donot_print_connection_success = 1;

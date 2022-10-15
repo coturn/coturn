@@ -154,6 +154,7 @@ typedef struct _ram_users_db_t {
 
 typedef struct _persistent_users_db_t {
 	char userdb[TURN_LONG_STRING_SIZE];
+    char s_userdb[TURN_LONG_STRING_SIZE];
 } persistent_users_db_t;
 
 typedef struct _default_users_db_t

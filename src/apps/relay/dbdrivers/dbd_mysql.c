@@ -239,17 +239,17 @@ static MYSQL *get_mydb_connection(void) {
 		Myconninfo *co=MyconninfoParse(pud->userdb, &errmsg);
 		if(!co) {
 			if(errmsg) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open MySQL DB connection <%s>, connection string format error: %s\n",pud->userdb,errmsg);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open MySQL DB connection <%s>, connection string format error: %s\n",pud->s_userdb,errmsg);
 				free(errmsg);
 			} else {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open MySQL DB connection <%s>, connection string format error\n",pud->userdb);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open MySQL DB connection <%s>, connection string format error\n",pud->s_userdb);
 			}
 		} else if(errmsg) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open MySQL DB connection <%s>, connection string format error: %s\n",pud->userdb,errmsg);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open MySQL DB connection <%s>, connection string format error: %s\n",pud->s_userdb,errmsg);
 			free(errmsg);
 			MyconninfoFree(co);
 		} else if(!(co->dbname)) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "MySQL Database name is not provided: <%s>\n",pud->userdb);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "MySQL Database name is not provided: <%s>\n",pud->s_userdb);
 			MyconninfoFree(co);
 		} else {
 			mydbconnection = mysql_init(NULL);
@@ -270,7 +270,7 @@ static MYSQL *get_mydb_connection(void) {
 
 				MYSQL *conn = mysql_real_connect(mydbconnection, co->host, co->user, co->password, co->dbname, co->port, NULL, CLIENT_IGNORE_SIGPIPE);
 				if(!conn) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open MySQL DB connection: <%s>, runtime error\n",pud->userdb);
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open MySQL DB connection: <%s>, runtime error\n",pud->s_userdb);
 					mysql_close(mydbconnection);
 					mydbconnection=NULL;
 				} else if(mysql_select_db(mydbconnection, co->dbname)) {
@@ -278,7 +278,7 @@ static MYSQL *get_mydb_connection(void) {
 					mysql_close(mydbconnection);
 					mydbconnection=NULL;
 				} else if(!donot_print_connection_success) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "MySQL DB connection success: %s\n",pud->userdb);
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "MySQL DB connection success: %s\n",pud->s_userdb);
 					if(turn_params.secret_key_file[0]) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Encryption with AES is activated.\n");
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Connection is secure.\n");
