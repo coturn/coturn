@@ -111,7 +111,7 @@ const turn_dbdriver_t * get_dbdriver()
 	return _driver;
 }
 
-char* sanitize_users_db_string(char* udb) {
+char* sanitize_userdb_string(char* udb) {
     char * ret = NULL;
     char * pstart;
     char * pend;

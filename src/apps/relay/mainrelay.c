@@ -1507,7 +1507,7 @@ static void set_option(int c, char *value)
 #else
             STRCPY(turn_params.default_users_db.persistent_users_db.userdb, value);
             turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_SQLITE;
-            char *s_userdb = sanitize_users_db_string(turn_params.default_users_db.persistent_users_db.userdb);
+            char *s_userdb = sanitize_userdb_string(turn_params.default_users_db.persistent_users_db.userdb);
             STRCPY(turn_params.default_users_db.persistent_users_db.s_userdb, s_userdb);
             free(s_userdb);
 #endif
@@ -1518,7 +1518,7 @@ static void set_option(int c, char *value)
 		{
             STRCPY(turn_params.default_users_db.persistent_users_db.userdb, value);
             turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_PQ;
-            char * s_userdb = sanitize_users_db_string(turn_params.default_users_db.persistent_users_db.userdb);
+            char * s_userdb = sanitize_userdb_string(turn_params.default_users_db.persistent_users_db.userdb);
             STRCPY(turn_params.default_users_db.persistent_users_db.s_userdb, s_userdb);
             free(s_userdb);
         }
@@ -1529,7 +1529,7 @@ static void set_option(int c, char *value)
         {
             STRCPY(turn_params.default_users_db.persistent_users_db.userdb, value);
             turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_MYSQL;
-            char *s_userdb = sanitize_users_db_string(turn_params.default_users_db.persistent_users_db.userdb);
+            char *s_userdb = sanitize_userdb_string(turn_params.default_users_db.persistent_users_db.userdb);
             STRCPY(turn_params.default_users_db.persistent_users_db.s_userdb, s_userdb);
             free(s_userdb);
         }
@@ -1540,7 +1540,7 @@ static void set_option(int c, char *value)
         {
             STRCPY(turn_params.default_users_db.persistent_users_db.userdb, value);
             turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_MONGO;
-            char * s_userdb = sanitize_users_db_string(turn_params.default_users_db.persistent_users_db.userdb);
+            char * s_userdb = sanitize_userdb_string(turn_params.default_users_db.persistent_users_db.userdb);
             STRCPY(turn_params.default_users_db.persistent_users_db.s_userdb, s_userdb);
             free(s_userdb);
         }
@@ -1551,7 +1551,7 @@ static void set_option(int c, char *value)
         {
             turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_REDIS;
             STRCPY(turn_params.default_users_db.persistent_users_db.userdb, value);
-            char * s_userdb = sanitize_users_db_string(turn_params.default_users_db.persistent_users_db.userdb);
+            char * s_userdb = sanitize_userdb_string(turn_params.default_users_db.persistent_users_db.userdb);
             STRCPY(turn_params.default_users_db.persistent_users_db.s_userdb, s_userdb);
             free(s_userdb);
         }
