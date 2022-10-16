@@ -122,7 +122,7 @@ DEFAULT_STUN_TLS_PORT, /* tls_listener_port */
 0, /* no_tcp_relay */
 0, /* no_udp_relay */
 "",
-"",0,
+"","",0,
 {
   NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0,0,NULL,NULL,NULL
 },
@@ -165,7 +165,7 @@ DEFAULT_PROM_SERVER_PORT, /* prometheus port */
 0, /* prometheus username labelling disabled by default when prometheus is enabled */
 #endif
 ///////////// Users DB //////////////
-{ (TURN_USERDB_TYPE)0, {"\0"}, {0,NULL, {NULL,0}} },
+{ (TURN_USERDB_TYPE)0, {"\0","\0"}, {0,NULL, {NULL,0}} },
 ///////////// CPUs //////////////////
 DEFAULT_CPUS_NUMBER,
 ///////// Encryption /////////
@@ -1507,9 +1507,6 @@ static void set_option(int c, char *value)
 #else
             STRCPY(turn_params.default_users_db.persistent_users_db.userdb, value);
             turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_SQLITE;
-            char *s_userdb = sanitize_userdb_string(turn_params.default_users_db.persistent_users_db.userdb);
-            STRCPY(turn_params.default_users_db.persistent_users_db.s_userdb, s_userdb);
-            free(s_userdb);
 #endif
         }
 		break;
@@ -1518,9 +1515,6 @@ static void set_option(int c, char *value)
 		{
             STRCPY(turn_params.default_users_db.persistent_users_db.userdb, value);
             turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_PQ;
-            char * s_userdb = sanitize_userdb_string(turn_params.default_users_db.persistent_users_db.userdb);
-            STRCPY(turn_params.default_users_db.persistent_users_db.s_userdb, s_userdb);
-            free(s_userdb);
         }
 		break;
 #endif
@@ -1529,9 +1523,6 @@ static void set_option(int c, char *value)
         {
             STRCPY(turn_params.default_users_db.persistent_users_db.userdb, value);
             turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_MYSQL;
-            char *s_userdb = sanitize_userdb_string(turn_params.default_users_db.persistent_users_db.userdb);
-            STRCPY(turn_params.default_users_db.persistent_users_db.s_userdb, s_userdb);
-            free(s_userdb);
         }
       break;
 #endif
@@ -1540,9 +1531,6 @@ static void set_option(int c, char *value)
         {
             STRCPY(turn_params.default_users_db.persistent_users_db.userdb, value);
             turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_MONGO;
-            char * s_userdb = sanitize_userdb_string(turn_params.default_users_db.persistent_users_db.userdb);
-            STRCPY(turn_params.default_users_db.persistent_users_db.s_userdb, s_userdb);
-            free(s_userdb);
         }
         break;
 #endif
@@ -1551,9 +1539,6 @@ static void set_option(int c, char *value)
         {
             turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_REDIS;
             STRCPY(turn_params.default_users_db.persistent_users_db.userdb, value);
-            char * s_userdb = sanitize_userdb_string(turn_params.default_users_db.persistent_users_db.userdb);
-            STRCPY(turn_params.default_users_db.persistent_users_db.s_userdb, s_userdb);
-            free(s_userdb);
         }
         break;
     case 'O':
@@ -1724,6 +1709,17 @@ static void set_option(int c, char *value)
 	default:
 		fprintf(stderr,"\n%s\n", Usage);
 		exit(-1);
+  }
+
+  if (strlen(turn_params.default_users_db.persistent_users_db.userdb)) {
+	char *userdb_sanitized = sanitize_userdb_string(turn_params.default_users_db.persistent_users_db.userdb);
+	STRCPY(turn_params.default_users_db.persistent_users_db.userdb_sanitized, userdb_sanitized);
+	free(userdb_sanitized);
+  }
+  if (strlen(turn_params.redis_statsdb)) {
+	char *userdb_sanitized = sanitize_userdb_string(turn_params.redis_statsdb);
+	STRCPY(turn_params.redis_statsdb_sanitized, userdb_sanitized);
+	free(userdb_sanitized);
   }
 }
 

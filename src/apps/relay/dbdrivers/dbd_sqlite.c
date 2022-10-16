@@ -184,7 +184,7 @@ static sqlite3 * get_sqlite_connection(void) {
 		int rc = sqlite3_open(pud->userdb, &sqliteconnection);
 		if(!sqliteconnection || (rc != SQLITE_OK)) {
 			const char* errmsg = sqlite3_errmsg(sqliteconnection);
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open SQLite DB connection: <%s>, runtime error:\n  %s\n  (If your intention is to use an SQLite database for the TURN server, then\n  check and fix, if necessary, the effective permissions of the TURN server\n  process and of the DB directory and then re-start the TURN server)\n",pud->s_userdb,errmsg);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open SQLite DB connection: <%s>, runtime error:\n  %s\n  (If your intention is to use an SQLite database for the TURN server, then\n  check and fix, if necessary, the effective permissions of the TURN server\n  process and of the DB directory and then re-start the TURN server)\n",pud->userdb_sanitized,errmsg);
 			if(sqliteconnection) {
 				sqlite3_close(sqliteconnection);
 				sqliteconnection=NULL;
@@ -193,7 +193,7 @@ static sqlite3 * get_sqlite_connection(void) {
 		} else {
 			init_sqlite_database(sqliteconnection);
 			if(!donot_print_connection_success){
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "SQLite DB connection success: %s\n",pud->s_userdb);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "SQLite DB connection success: %s\n",pud->userdb_sanitized);
 				donot_print_connection_success = 1;
 			}
 		}

@@ -230,6 +230,7 @@ typedef struct _turn_params_ {
   char listener_ifname[1025];
 
   char redis_statsdb[1025];
+  char redis_statsdb_sanitized[1025];
   int use_redis_statsdb;
 
   struct listener_server listener;
