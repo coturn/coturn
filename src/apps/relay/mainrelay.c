@@ -53,14 +53,9 @@ static int use_ltc = 0;
 static int use_tltc = 0;
 
 ////// ALPN //////////
-
-#if ALPN_SUPPORTED
-
 char STUN_ALPN[128] = "stun.nat-discovery";
 char TURN_ALPN[128] = "stun.turn";
 char HTTP_ALPN[128] = "http/1.1";
-
-#endif
 
 ////// TURNDB //////////////
 
@@ -2122,7 +2117,7 @@ static void print_features(unsigned long mfn)
 #endif
 #endif
 
-#if ALPN_SUPPORTED
+#if OPENSSL_VERSION_NUMBER >= (0x10002003L)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TURN/STUN ALPN supported\n");
 #else
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TURN/STUN ALPN is not supported\n");
@@ -2890,8 +2885,7 @@ static int pem_password_func(char *buf, int size, int rwflag, void *password)
 	return (strlen(buf));
 }
 
-#if ALPN_SUPPORTED
-
+#if OPENSSL_VERSION_NUMBER >= (0x10002003L)
 static int ServerALPNCallback(SSL *ssl,
 				const unsigned char **out,
 				unsigned char *outlen,
@@ -2947,7 +2941,7 @@ static void set_ctx(SSL_CTX** out, const char *protocol, const SSL_METHOD* metho
 	SSL_CTX* ctx = SSL_CTX_new(method);
 	int err = 0;
 	int rc = 0;
-#if ALPN_SUPPORTED
+#if OPENSSL_VERSION_NUMBER >= (0x10002003L)
 	SSL_CTX_set_alpn_select_cb(ctx, ServerALPNCallback, NULL);
 #endif
 
@@ -3192,11 +3186,11 @@ static void openssl_load_certificates(void)
 		if(!turn_params.no_tlsv1) {
 			SSL_CTX_set_options(turn_params.tls_ctx, SSL_OP_NO_TLSv1);
 		}
-#if TLSv1_1_SUPPORTED
+#if defined(SSL_OP_NO_TLSv1_1)
 		if(!turn_params.no_tlsv1_1) {
 			SSL_CTX_set_options(turn_params.tls_ctx, SSL_OP_NO_TLSv1_1);
 		}
-#if TLSv1_2_SUPPORTED
+#if defined(SSL_OP_NO_TLSv1_2)
 		if(!turn_params.no_tlsv1_2) {
 			SSL_CTX_set_options(turn_params.tls_ctx, SSL_OP_NO_TLSv1_2);
 		}
@@ -3210,7 +3204,7 @@ static void openssl_load_certificates(void)
         if(!turn_params.no_tlsv1_1) {
             SSL_CTX_set_min_proto_version(turn_params.tls_ctx, TLS1_2_VERSION);
         }
-#if TLSv1_3_SUPPORTED
+#if defined(SSL_OP_NO_TLSv1_3)
         if(!turn_params.no_tlsv1_2) {
             SSL_CTX_set_min_proto_version(turn_params.tls_ctx, TLS1_3_VERSION);
         }

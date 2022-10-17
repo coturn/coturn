@@ -488,11 +488,11 @@ int main(int argc, char **argv)
 		  SSL_CTX_set_cipher_list(root_tls_ctx[root_tls_ctx_num], csuite);
 		  root_tls_ctx_num++;
 
-#if TLSv1_1_SUPPORTED
+#if defined(SSL_OP_NO_TLSv1_1)
 		  root_tls_ctx[root_tls_ctx_num] = SSL_CTX_new(TLSv1_1_client_method());
 		  SSL_CTX_set_cipher_list(root_tls_ctx[root_tls_ctx_num], csuite);
 		  root_tls_ctx_num++;
-#if TLSv1_2_SUPPORTED
+#if defined(SSL_OP_NO_TLSv1_2)
 		  root_tls_ctx[root_tls_ctx_num] = SSL_CTX_new(TLSv1_2_client_method());
 		  SSL_CTX_set_cipher_list(root_tls_ctx[root_tls_ctx_num], csuite);
 		  root_tls_ctx_num++;
