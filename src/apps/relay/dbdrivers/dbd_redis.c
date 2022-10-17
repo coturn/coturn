@@ -161,22 +161,22 @@ static Ryconninfo *RyconninfoParse(const char *userdb, char **errmsg) {
 	return co;
 }
 
-redis_context_handle get_redis_async_connection(struct event_base *base, const char* connection_string, int delete_keys) {
+redis_context_handle get_redis_async_connection(struct event_base *base, redis_stats_db_t* redis_stats_db, int delete_keys) {
 
 	redis_context_handle ret = NULL;
 
 	char *errmsg = NULL;
-	if(base  && connection_string  && connection_string[0]) {
-		Ryconninfo *co = RyconninfoParse(connection_string, &errmsg);
+	if(base && redis_stats_db->connection_string[0]) {
+		Ryconninfo *co = RyconninfoParse(redis_stats_db->connection_string_sanitized, &errmsg);
 		if (!co) {
 			if (errmsg) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open Redis DB connection <%s>, connection string format error: %s\n", connection_string, errmsg);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open Redis DB connection <%s>, connection string format error: %s\n", redis_stats_db->connection_string_sanitized, errmsg);
 				free(errmsg);
 			} else {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open Redis DB connection <%s>, connection string format error\n", connection_string);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open Redis DB connection <%s>, connection string format error\n", redis_stats_db->connection_string_sanitized);
 			}
 		} else if (errmsg) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open Redis DB connection <%s>, connection string format error: %s\n", connection_string, errmsg);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open Redis DB connection <%s>, connection string format error: %s\n", redis_stats_db->connection_string_sanitized, errmsg);
 			free(errmsg);
 			RyconninfoFree(co);
 		} else {
@@ -254,7 +254,7 @@ redis_context_handle get_redis_async_connection(struct event_base *base, const c
 			if (!ret) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot initialize Redis DB connection\n");
 			} else if (is_redis_asyncconn_good(ret) && !donot_print_connection_success) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Redis DB async connection to be used: %s\n", connection_string);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Redis DB async connection to be used: %s\n", redis_stats_db->connection_string_sanitized);
 				donot_print_connection_success = 1;
 			}
 			RyconninfoFree(co);

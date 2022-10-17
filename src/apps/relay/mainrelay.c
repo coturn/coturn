@@ -122,7 +122,7 @@ DEFAULT_STUN_TLS_PORT, /* tls_listener_port */
 0, /* no_tcp_relay */
 0, /* no_udp_relay */
 "",
-"",0,
+{"",""},0,
 {
   NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0,0,NULL,NULL,NULL
 },
@@ -165,7 +165,7 @@ DEFAULT_PROM_SERVER_PORT, /* prometheus port */
 0, /* prometheus username labelling disabled by default when prometheus is enabled */
 #endif
 ///////////// Users DB //////////////
-{ (TURN_USERDB_TYPE)0, {"\0"}, {0,NULL, {NULL,0}} },
+{ (TURN_USERDB_TYPE)0, {"\0","\0"}, {0,NULL, {NULL,0}} },
 ///////////// CPUs //////////////////
 DEFAULT_CPUS_NUMBER,
 ///////// Encryption /////////
@@ -1501,12 +1501,14 @@ static void set_option(int c, char *value)
 		add_static_user_account(value);
 		break;
 	case 'b':
+        {
 #if defined(TURN_NO_SQLITE)
-	  TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: Options -b, --userdb and --db are not supported because SQLite is not supported in this build.\n");
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: Options -b, --userdb and --db are not supported because SQLite is not supported in this build.\n");
 #else
 		STRCPY(turn_params.default_users_db.persistent_users_db.userdb, value);
 		turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_SQLITE;
 #endif
+        }
 		break;
 #if !defined(TURN_NO_PQ)
 	case 'e':
@@ -1527,14 +1529,14 @@ static void set_option(int c, char *value)
 		break;
 #endif
 #if !defined(TURN_NO_HIREDIS)
-	case 'N':
+    case 'N':
 		STRCPY(turn_params.default_users_db.persistent_users_db.userdb, value);
 		turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_REDIS;
 		break;
-	case 'O':
-		STRCPY(turn_params.redis_statsdb, value);
-		turn_params.use_redis_statsdb = 1;
-		break;
+    case 'O':
+        STRCPY(turn_params.redis_statsdb.connection_string, value);
+        turn_params.use_redis_statsdb = 1;
+        break;
 #endif
 #if !defined(TURN_NO_PROMETHEUS)
 	case PROMETHEUS_OPT:
@@ -1699,6 +1701,17 @@ static void set_option(int c, char *value)
 	default:
 		fprintf(stderr,"\n%s\n", Usage);
 		exit(-1);
+  }
+
+  if (turn_params.default_users_db.persistent_users_db.userdb[0]) {
+	char *userdb_sanitized = sanitize_userdb_string(turn_params.default_users_db.persistent_users_db.userdb);
+	STRCPY(turn_params.default_users_db.persistent_users_db.userdb_sanitized, userdb_sanitized);
+	free(userdb_sanitized);
+  }
+  if (turn_params.redis_statsdb.connection_string[0]) {
+	char *connection_string = sanitize_userdb_string(turn_params.redis_statsdb.connection_string);
+	STRCPY(turn_params.redis_statsdb.connection_string_sanitized, connection_string);
+	free(connection_string);
   }
 }
 

@@ -358,7 +358,7 @@ ioa_engine_handle create_ioa_engine(super_memory_t *sm,
 				size_t relays_number, char **relay_addrs, int default_relays,
 				int verbose
 #if !defined(TURN_NO_HIREDIS)
-				,const char* redis_report_connection_string
+				,redis_stats_db_t* redis_stats_db
 #endif
 				)
 {
@@ -403,9 +403,7 @@ ioa_engine_handle create_ioa_engine(super_memory_t *sm,
 		}
 
 #if !defined(TURN_NO_HIREDIS)
-		if(redis_report_connection_string && *redis_report_connection_string) {
-			e->rch = get_redis_async_connection(e->event_base, redis_report_connection_string, 0);
-		}
+		e->rch = get_redis_async_connection(e->event_base, redis_stats_db, 0);
 #endif
 
 		{
