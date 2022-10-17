@@ -111,3 +111,39 @@ const turn_dbdriver_t * get_dbdriver()
 	return _driver;
 }
 
+char* sanitize_userdb_string(char* udb) {
+    char * ret = NULL;
+    char * pstart;
+    char * pend;
+
+    /* host=localhost dbname=coturn user=turn password=turn connect_timeout=30 */
+    ret = strdup(udb);
+    pstart = strstr (ret,"password=");
+    if (pstart != NULL)
+    {
+        pstart += strlen("password=");
+        pend = strstr (pstart," ");
+        size_t plen = pend - pstart;
+        if (pend == NULL)
+        {
+            plen = strlen(pstart);
+        }
+        memset(pstart,'*',plen);
+    }
+    else
+    {
+        /* postgresql://username:password@/databasename */
+        pstart = strstr (ret,"postgresql://");
+        if (pstart != NULL)
+        {
+            pstart += strlen("postgresql://");
+            pend = strstr (pstart,"@");
+            if (pend != NULL)
+            {
+                size_t plen = pend - pstart;
+                memset(pstart,'*',plen);
+            }
+        }
+    }
+    return ret;
+}

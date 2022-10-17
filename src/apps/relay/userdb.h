@@ -146,6 +146,11 @@ typedef struct _secrets_list secrets_list_t;
 
 #define TURN_LONG_STRING_SIZE (1025)
 
+typedef struct _redis_stats_db_t {
+	char connection_string[TURN_LONG_STRING_SIZE];
+    char connection_string_sanitized[TURN_LONG_STRING_SIZE];
+} redis_stats_db_t;
+
 typedef struct _ram_users_db_t {
 	size_t users_number;
 	ur_string_map *static_accounts;
@@ -154,6 +159,7 @@ typedef struct _ram_users_db_t {
 
 typedef struct _persistent_users_db_t {
 	char userdb[TURN_LONG_STRING_SIZE];
+    char userdb_sanitized[TURN_LONG_STRING_SIZE];
 } persistent_users_db_t;
 
 typedef struct _default_users_db_t
@@ -209,7 +215,7 @@ void ip_list_free(ip_range_list_t *l);
 ///////////// Redis //////////////////////
 
 #if !defined(TURN_NO_HIREDIS)
-redis_context_handle get_redis_async_connection(struct event_base *base, const char* connection_string, int delete_keys);
+redis_context_handle get_redis_async_connection(struct event_base *base, redis_stats_db_t* redis_stats_db, int delete_keys);
 #endif
 
 ////////////////////////////////////////////

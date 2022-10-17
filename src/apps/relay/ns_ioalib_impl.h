@@ -242,7 +242,7 @@ ioa_engine_handle create_ioa_engine(super_memory_t *sm,
 				size_t relays_number, char **relay_addrs, int default_relays,
 				int verbose
 #if !defined(TURN_NO_HIREDIS)
-				,const char* redis_report_connection_string
+				,redis_stats_db_t* redis_stats_db
 #endif
 				);
 
