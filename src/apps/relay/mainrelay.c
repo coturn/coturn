@@ -122,7 +122,7 @@ DEFAULT_STUN_TLS_PORT, /* tls_listener_port */
 0, /* no_tcp_relay */
 0, /* no_udp_relay */
 "",
-"","",0,
+{"",""},0,
 {
   NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0,0,NULL,NULL,NULL
 },
@@ -1503,46 +1503,38 @@ static void set_option(int c, char *value)
 	case 'b':
         {
 #if defined(TURN_NO_SQLITE)
-          TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: Options -b, --userdb and --db are not supported because SQLite is not supported in this build.\n");
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: Options -b, --userdb and --db are not supported because SQLite is not supported in this build.\n");
 #else
-            STRCPY(turn_params.default_users_db.persistent_users_db.userdb, value);
-            turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_SQLITE;
+		STRCPY(turn_params.default_users_db.persistent_users_db.userdb, value);
+		turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_SQLITE;
 #endif
         }
 		break;
 #if !defined(TURN_NO_PQ)
 	case 'e':
-		{
-            STRCPY(turn_params.default_users_db.persistent_users_db.userdb, value);
-            turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_PQ;
-        }
+		STRCPY(turn_params.default_users_db.persistent_users_db.userdb, value);
+		turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_PQ;
 		break;
 #endif
 #if !defined(TURN_NO_MYSQL)
 	case 'M':
-        {
-            STRCPY(turn_params.default_users_db.persistent_users_db.userdb, value);
-            turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_MYSQL;
-        }
-      break;
+		STRCPY(turn_params.default_users_db.persistent_users_db.userdb, value);
+		turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_MYSQL;
+		break;
 #endif
 #if !defined(TURN_NO_MONGO)
 	case 'J':
-        {
-            STRCPY(turn_params.default_users_db.persistent_users_db.userdb, value);
-            turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_MONGO;
-        }
-        break;
+		STRCPY(turn_params.default_users_db.persistent_users_db.userdb, value);
+		turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_MONGO;
+		break;
 #endif
 #if !defined(TURN_NO_HIREDIS)
     case 'N':
-        {
-            turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_REDIS;
-            STRCPY(turn_params.default_users_db.persistent_users_db.userdb, value);
-        }
-        break;
+		STRCPY(turn_params.default_users_db.persistent_users_db.userdb, value);
+		turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_REDIS;
+		break;
     case 'O':
-        STRCPY(turn_params.redis_statsdb, value);
+        STRCPY(turn_params.redis_statsdb.connection_string, value);
         turn_params.use_redis_statsdb = 1;
         break;
 #endif
@@ -1711,15 +1703,15 @@ static void set_option(int c, char *value)
 		exit(-1);
   }
 
-  if (strlen(turn_params.default_users_db.persistent_users_db.userdb)) {
+  if (turn_params.default_users_db.persistent_users_db.userdb[0]) {
 	char *userdb_sanitized = sanitize_userdb_string(turn_params.default_users_db.persistent_users_db.userdb);
 	STRCPY(turn_params.default_users_db.persistent_users_db.userdb_sanitized, userdb_sanitized);
 	free(userdb_sanitized);
   }
-  if (strlen(turn_params.redis_statsdb)) {
-	char *userdb_sanitized = sanitize_userdb_string(turn_params.redis_statsdb);
-	STRCPY(turn_params.redis_statsdb_sanitized, userdb_sanitized);
-	free(userdb_sanitized);
+  if (turn_params.redis_statsdb.connection_string[0]) {
+	char *connection_string = sanitize_userdb_string(turn_params.redis_statsdb.connection_string);
+	STRCPY(turn_params.redis_statsdb.connection_string_sanitized, connection_string);
+	free(connection_string);
   }
 }
 

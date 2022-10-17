@@ -785,8 +785,8 @@ static void cli_print_configuration(struct cli_session* cs)
 		}
 
 #if !defined(TURN_NO_HIREDIS)
-		if(turn_params.use_redis_statsdb && turn_params.redis_statsdb[0])
-			cli_print_str(cs,turn_params.redis_statsdb,"Redis Statistics DB",0);
+		if(turn_params.use_redis_statsdb && turn_params.redis_statsdb.connection_string[0])
+			cli_print_str(cs,turn_params.redis_statsdb.connection_string,"Redis Statistics DB",0);
 #endif
 
 		myprintf(cs,"\n");
@@ -1301,7 +1301,7 @@ void setup_admin_thread(void)
 	adminserver.e = create_ioa_engine(sm, adminserver.event_base, turn_params.listener.tp, turn_params.relay_ifname, turn_params.relays_number, turn_params.relay_addrs,
 				turn_params.default_relays, turn_params.verbose
 	#if !defined(TURN_NO_HIREDIS)
-				,turn_params.redis_statsdb
+				,&turn_params.redis_statsdb
 	#endif
 		);
 
@@ -2185,8 +2185,8 @@ static void write_pc_page(ioa_socket_handle s)
 
 #if !defined(TURN_NO_HIREDIS)
 				if(is_superuser()) {
-					if(turn_params.use_redis_statsdb && turn_params.redis_statsdb[0]) {
-						https_print_str(sb,turn_params.redis_statsdb,"Redis Statistics DB",0);
+					if(turn_params.use_redis_statsdb && turn_params.redis_statsdb.connection_string_sanitized[0]) {
+						https_print_str(sb,turn_params.redis_statsdb.connection_string_sanitized,"Redis Statistics DB",0);
 					}
 				}
 #endif

@@ -1029,7 +1029,7 @@ static ioa_engine_handle create_new_listener_engine(void)
 	ioa_engine_handle e = create_ioa_engine(sm, eb, turn_params.listener.tp, turn_params.relay_ifname, turn_params.relays_number, turn_params.relay_addrs,
 			turn_params.default_relays, turn_params.verbose
 #if !defined(TURN_NO_HIREDIS)
-			,turn_params.redis_statsdb
+			,&turn_params.redis_statsdb
 #endif
 	);
 	set_ssl_ctx(e, &turn_params);
@@ -1068,7 +1068,7 @@ static void setup_listener(void)
 			turn_params.relay_ifname, turn_params.relays_number, turn_params.relay_addrs,
 			turn_params.default_relays, turn_params.verbose
 #if !defined(TURN_NO_HIREDIS)
-			,turn_params.redis_statsdb
+			,&turn_params.redis_statsdb
 #endif
 			);
 
@@ -1634,7 +1634,7 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
 		rs->ioa_eng = create_ioa_engine(rs->sm, rs->event_base, turn_params.listener.tp, turn_params.relay_ifname,
 			turn_params.relays_number, turn_params.relay_addrs, turn_params.default_relays, turn_params.verbose
 #if !defined(TURN_NO_HIREDIS)
-			,turn_params.redis_statsdb
+			,&turn_params.redis_statsdb
 #endif
 		);
 		set_ssl_ctx(rs->ioa_eng, &turn_params);
@@ -1794,7 +1794,7 @@ static void* run_auth_server_thread(void *arg)
 		bufferevent_enable(as->in_buf, EV_READ);
 
 #if !defined(TURN_NO_HIREDIS)
-		as->rch = get_redis_async_connection(as->event_base, turn_params.redis_statsdb, 1);
+		as->rch = get_redis_async_connection(as->event_base, &turn_params.redis_statsdb, 1);
 #endif
 
 		barrier_wait();
