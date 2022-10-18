@@ -99,7 +99,7 @@ const turn_dbdriver_t * get_dbdriver(void)
 			_driver = get_mongo_dbdriver();
 			break;
 #endif
-		case TURN_USERDB_TYPE_HIREDIS:
+		case TURN_USERDB_TYPE_REDIS:
 			_driver = get_redis_dbdriver();
 			break;
 		default:
