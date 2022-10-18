@@ -499,7 +499,7 @@ int main(int argc, char **argv)
 #endif
 #endif
 		} else {
-#if !DTLS_SUPPORTED
+#if !defined(SSL_OP_NO_DTLSv1)
 		  fprintf(stderr,"ERROR: DTLS is not supported.\n");
 		  exit(-1);
 #else
@@ -509,7 +509,7 @@ int main(int argc, char **argv)
 		  root_tls_ctx[root_tls_ctx_num] = SSL_CTX_new(DTLSv1_client_method());
 		  SSL_CTX_set_cipher_list(root_tls_ctx[root_tls_ctx_num], csuite);
 		  root_tls_ctx_num++;
-#if DTLSv1_2_SUPPORTED
+#if defined(SSL_OP_NO_DTLSv1_2)
 		  root_tls_ctx[root_tls_ctx_num] = SSL_CTX_new(DTLSv1_2_client_method());
 		  SSL_CTX_set_cipher_list(root_tls_ctx[root_tls_ctx_num], csuite);
 		  root_tls_ctx_num++;

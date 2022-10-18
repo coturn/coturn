@@ -84,7 +84,7 @@ DH_2066, "", "", "",
 "turn_server_cert.pem","turn_server_pkey.pem", "", "",
 0,0,0,
 	0,
-#if !DTLS_SUPPORTED
+#if !defined(SSL_OP_NO_DTLSv1)
 	1,
 #else
 	0,
@@ -1601,7 +1601,7 @@ static void set_option(int c, char *value)
 		turn_params.no_tls = get_bool_value(value);
 		break;
 	case NO_DTLS_OPT:
-#if DTLS_SUPPORTED
+#if defined(SSL_OP_NO_DTLSv1)
 		turn_params.no_dtls = get_bool_value(value);
 #else
 		turn_params.no_dtls = 1;
@@ -2106,18 +2106,15 @@ static void print_features(unsigned long mfn)
 
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS supported\n");
 
-#if !DTLS_SUPPORTED
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS is not supported\n");
-#else
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS supported\n");
-#if DTLSv1_2_SUPPORTED
+#if defined(SSL_OP_NO_DTLSv1)
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS is supported\n");
+#elif defined(SSL_OP_NO_DTLSv1_2)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS 1.2 supported\n");
 #else
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS 1.2 is not supported\n");
-#endif
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS is not supported\n");
 #endif
 
-#if OPENSSL_VERSION_NUMBER >= (0x10002003L)
+#if OPENSSL_VERSION_NUMBER >= (0x10002003L) /* ALPN support*/
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TURN/STUN ALPN supported\n");
 #else
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TURN/STUN ALPN is not supported\n");
@@ -2306,7 +2303,7 @@ int main(int argc, char **argv)
 
 	optind = 0;
 
-#if !DTLS_SUPPORTED
+#if !defined(SSL_OP_NO_DTLSv1)
 	turn_params.no_dtls = 1;
 #endif
 
@@ -2885,7 +2882,7 @@ static int pem_password_func(char *buf, int size, int rwflag, void *password)
 	return (strlen(buf));
 }
 
-#if OPENSSL_VERSION_NUMBER >= (0x10002003L)
+#if OPENSSL_VERSION_NUMBER >= (0x10002003L) /* ALPN support*/
 static int ServerALPNCallback(SSL *ssl,
 				const unsigned char **out,
 				unsigned char *outlen,
@@ -2941,7 +2938,7 @@ static void set_ctx(SSL_CTX** out, const char *protocol, const SSL_METHOD* metho
 	SSL_CTX* ctx = SSL_CTX_new(method);
 	int err = 0;
 	int rc = 0;
-#if OPENSSL_VERSION_NUMBER >= (0x10002003L)
+#if OPENSSL_VERSION_NUMBER >= (0x10002003L) /* ALPN support*/
 	SSL_CTX_set_alpn_select_cb(ctx, ServerALPNCallback, NULL);
 #endif
 
@@ -3117,12 +3114,12 @@ static void set_ctx(SSL_CTX** out, const char *protocol, const SSL_METHOD* metho
 			op |= SSL_OP_NO_SSLv3;
 #endif
 
-#if defined(SSL_OP_NO_DTLSv1) && DTLS_SUPPORTED
+#if defined(SSL_OP_NO_DTLSv1)
 		if(turn_params.no_tlsv1)
 			op |= SSL_OP_NO_DTLSv1;
 #endif
 
-#if defined(SSL_OP_NO_DTLSv1_2) && DTLSv1_2_SUPPORTED
+#if defined(SSL_OP_NO_DTLSv1_2)
 		if(turn_params.no_tlsv1_2)
 			op |= SSL_OP_NO_DTLSv1_2;
 #endif
@@ -3214,13 +3211,13 @@ static void openssl_load_certificates(void)
 	}
 
 	if(!turn_params.no_dtls) {
-#if !DTLS_SUPPORTED
+#if !defined(SSL_OP_NO_DTLSv1)
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: DTLS is not supported.\n");
 #elif OPENSSL_VERSION_NUMBER < 0x10000000L
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: TURN Server was compiled with rather old OpenSSL version, DTLS may not be working correctly.\n");
 #else
 #if OPENSSL_VERSION_NUMBER < 0x10100000L // before openssl-1.1.0 no version independent API
-#if DTLSv1_2_SUPPORTED
+#if defined(SSL_OP_NO_DTLSv1_2)
 		set_ctx(&turn_params.dtls_ctx,"DTLS",DTLSv1_2_server_method()); // openssl-1.0.2
         if(!turn_params.no_tlsv1_2) {
             SSL_CTX_set_options(turn_params.dtls_ctx, SSL_OP_NO_DTLSv1_2);

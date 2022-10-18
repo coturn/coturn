@@ -54,25 +54,6 @@ extern "C" {
 
 extern int IS_TURN_SERVER;
 
-/* TLS */
-
-#if defined(TURN_NO_DTLS) || (!defined(DTLS_CTRL_LISTEN) && (OPENSSL_VERSION_NUMBER < 0x10100000L))
-
-	#define DTLS_SUPPORTED 0
-	#define DTLSv1_2_SUPPORTED 0
-//SSL_OP_NO_DTLSv1
-#else
-
-	#define DTLS_SUPPORTED 1
-
-#if defined(SSL_OP_NO_DTLSv1_2)
-		#define DTLSv1_2_SUPPORTED 1
-	#else
-		#define DTLSv1_2_SUPPORTED 0
-	#endif
-
-#endif
-
 #if OPENSSL_VERSION_NUMBER >= OPENSSL_FIRST_ALPN_VERSION
 #define SSL_SESSION_ECDH_AUTO_SUPPORTED 1
 #else

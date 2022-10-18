@@ -119,7 +119,7 @@ int get_dtls_version(const unsigned char* buf, int len) {
 
 ///////////// utils /////////////////////
 
-#if DTLS_SUPPORTED
+#if defined(SSL_OP_NO_DTLSv1)
 
 static void calculate_cookie(SSL* ssl, unsigned char *cookie_secret, unsigned int cookie_length) {
   long rv=(long)ssl;
@@ -428,7 +428,7 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server,
 
 		chs = NULL;
 
-#if DTLS_SUPPORTED
+#if defined(SSL_OP_NO_DTLSv1)
 		if (!turn_params.no_dtls &&
 			is_dtls_handshake_message(ioa_network_buffer_data(sm->m.sm.nd.nbh),
 			(int)ioa_network_buffer_get_size(sm->m.sm.nd.nbh))) {
@@ -539,7 +539,7 @@ static int create_new_connected_udp_socket(
 	ret->current_tos = s->current_tos;
 	ret->default_tos = s->default_tos;
 
-#if DTLS_SUPPORTED
+#if defined(SSL_OP_NO_DTLSv1)
 	if (!turn_params.no_dtls
 			&& is_dtls_handshake_message(
 					ioa_network_buffer_data(server->sm.m.sm.nd.nbh),
@@ -934,7 +934,7 @@ static int clean_server(dtls_listener_relay_server_type* server) {
 
 ///////////////////////////////////////////////////////////
 
-#if DTLS_SUPPORTED
+#if defined(SSL_OP_NO_DTLSv1)
 void setup_dtls_callbacks(SSL_CTX *ctx) {
   if (!ctx)
     return;

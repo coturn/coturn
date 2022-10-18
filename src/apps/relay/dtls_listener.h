@@ -50,7 +50,7 @@ typedef struct dtls_listener_relay_server_info dtls_listener_relay_server_type;
 
 ///////////////////////////////////////////
 
-#if DTLS_SUPPORTED
+#if defined(SSL_OP_NO_DTLSv1)
 void setup_dtls_callbacks(SSL_CTX *ctx);
 #endif
 
