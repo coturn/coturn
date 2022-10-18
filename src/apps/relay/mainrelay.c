@@ -2104,12 +2104,22 @@ static void print_features(unsigned long mfn)
 	   brightness and honed to a murderous sharpness.
 	   */
 
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS supported\n");
+#if defined(SSL_OP_NO_TLSv1_3)
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS 1.3 supported\n");
+#elif defined(SSL_OP_NO_TLSv1_2)
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS 1.2 is supported\n");
+#elif defined(SSL_OP_NO_TLSv1_1)
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS 1.1 is supported\n");
+#elif defined(SSL_OP_NO_TLSv1)
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS 1.0 is supported\n");
+#else
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS is not supported\n");
+#endif
 
-#if defined(SSL_OP_NO_DTLSv1)
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS is supported\n");
-#elif defined(SSL_OP_NO_DTLSv1_2)
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS 1.2 supported\n");
+#if defined(SSL_OP_NO_DTLSv1_2)
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS 1.2 supported\n");
+#elif defined(SSL_OP_NO_DTLSv1)
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS is supported\n");
 #else
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS is not supported\n");
 #endif
