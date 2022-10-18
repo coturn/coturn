@@ -63,7 +63,7 @@ int try_acme_redirect(char *req, size_t len, const char *url,
 	snprintf(http_response, sizeof(http_response) - 1,
 		"HTTP/1.1 301 Moved Permanently\r\n"
 		"Content-Type: text/html\r\n"
-		"Content-Length: %ld\r\n"
+		"Content-Length: %zu\r\n"
 		"Connection: close\r\n"
 		"Location: %s%s\r\n"
 		"\r\n%s", strlen(HTML), url, req + GET_ACME_PREFIX_LEN, HTML);
