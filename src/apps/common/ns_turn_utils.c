@@ -46,6 +46,15 @@
 
 #include <signal.h>
 
+#include <unistd.h>
+#include <sys/syscall.h>
+
+#ifndef SYS_gettid
+#error "SYS_gettid unavailable on this system"
+#endif
+
+#define gettid() ((pid_t)syscall(SYS_gettid))
+
 ////////// LOG TIME OPTIMIZATION ///////////
 
 static volatile turn_time_t log_start_time = 0;
@@ -546,7 +555,7 @@ void turn_log_func_default(TURN_LOG_LEVEL level, const char* format, ...)
 	} else {
 		so_far += snprintf(s, sizeof(s), "%lu: ", (unsigned long)log_time());
 	}
-	so_far += snprintf(s + so_far, sizeof(s)-100, (level == TURN_LOG_LEVEL_ERROR) ? ": ERROR: " : ": ");
+	so_far += snprintf(s + so_far, sizeof(s)-100, (level == TURN_LOG_LEVEL_ERROR) ? "(%lu): ERROR: " : "(%lu): ", (unsigned long)gettid());
 	so_far += vsnprintf(s + so_far,sizeof(s) - (so_far+1), format, args);
 	if(so_far > MAX_RTPPRINTF_BUFFER_SIZE+1)
 	{
