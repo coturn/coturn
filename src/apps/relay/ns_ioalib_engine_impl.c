@@ -2631,7 +2631,7 @@ static int socket_input_worker(ioa_socket_handle s)
 		if(s->ssl && (len>0)) { /* DTLS */
 			send_ssl_backlog_buffers(s);
 			buf_elem->buf.len = (size_t)len;
-			ret = ssl_read(s->fd, s->ssl, (ioa_network_buffer_handle)buf_elem, (s->e ? s->e->verbose : 0));
+			ret = ssl_read(s->fd, s->ssl, (ioa_network_buffer_handle)buf_elem, (s->e ? s->e->verbose : TURN_VERBOSE_NONE));
 			addr_cpy(&remote_addr,&(s->remote_addr));
 			if(ret < 0) {
 				len = -1;
@@ -3150,7 +3150,7 @@ int send_ssl_backlog_buffers(ioa_socket_handle s)
 	if(s) {
 		stun_buffer_list_elem *buf_elem = s->bufs.head;
 		while(buf_elem) {
-			int rc = ssl_send(s, (char*)buf_elem->buf.buf + buf_elem->buf.offset - buf_elem->buf.coffset, (size_t)buf_elem->buf.len, (s->e ? s->e->verbose : 0));
+			int rc = ssl_send(s, (char*)buf_elem->buf.buf + buf_elem->buf.offset - buf_elem->buf.coffset, (size_t)buf_elem->buf.len, (s->e ? s->e->verbose : TURN_VERBOSE_NONE));
 			if(rc<1)
 				break;
 			++ret;
@@ -3335,7 +3335,7 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 									s,
 									(char*) ioa_network_buffer_data(nbh),
 									ioa_network_buffer_get_size(nbh),
-									(s->e ? s->e->verbose : 0));
+									(s->e ? s->e->verbose : TURN_VERBOSE_NONE));
 						} else {
 							// Put message in backlog below
 							ret = 0;
