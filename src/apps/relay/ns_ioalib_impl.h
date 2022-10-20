@@ -177,7 +177,6 @@ struct _ioa_socket
 	SOCKET_TYPE st;
 	SOCKET_APP_TYPE sat;
 	SSL* ssl;
-	ioa_timer_handle ssl_client_conn_tmr;
 	uint32_t ssl_renegs;
 	int in_write;
 	int bound;
