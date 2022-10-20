@@ -537,7 +537,7 @@ static void auth_server_receive_message(struct bufferevent *bev, void *ptr)
     if(output)
       evbuffer_add(output,&am,sizeof(struct auth_message));
     else {
-      ioa_network_buffer_delete(relay_server->ioa_eng, am.in_buffer.nbh);
+      ioa_network_buffer_delete(NULL, am.in_buffer.nbh);
       am.in_buffer.nbh = NULL;
     }
   }
@@ -674,16 +674,16 @@ static int send_socket_to_relay(turnserver_id id, uint64_t cid, stun_tid *tid, i
 
 	IOA_CLOSE_SOCKET(s_to_delete);
 	if(nd && nd->nbh) {
-	  ioa_network_buffer_delete(rs->ioa_eng, nd->nbh);
+	  ioa_network_buffer_delete(NULL, nd->nbh);
 	  nd->nbh = NULL;
 	}
 
 	if(ret<0) {
 	  if(rmt == RMT_MOBILE_SOCKET) {
-	    ioa_network_buffer_delete(rs->ioa_eng, sm.m.sm.nd.nbh);
+	    ioa_network_buffer_delete(NULL, sm.m.sm.nd.nbh);
 	    sm.m.sm.nd.nbh = NULL;
 	  } else if(rmt == RMT_CB_SOCKET) {
-		  ioa_network_buffer_delete(rs->ioa_eng, sm.m.cb_sm.nd.nbh);
+		  ioa_network_buffer_delete(NULL, sm.m.cb_sm.nd.nbh);
 		  sm.m.cb_sm.nd.nbh = NULL;
 	  }
 	}
