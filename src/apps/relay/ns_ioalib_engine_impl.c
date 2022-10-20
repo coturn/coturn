@@ -101,6 +101,8 @@ static void socket_output_handler_bev(struct bufferevent *bev, void* arg);
 static void socket_input_handler_bev(struct bufferevent *bev, void* arg);
 static void eventcb_bev(struct bufferevent *bev, short events, void *arg);
 
+static int send_ssl_backlog_buffers(ioa_socket_handle s);
+
 static int set_accept_cb(ioa_socket_handle s, accept_cb acb, void *arg);
 
 static void close_socket_net_data(ioa_socket_handle s);
@@ -3105,7 +3107,7 @@ static int ssl_send(ioa_socket_handle s, const char* buffer, int len, int verbos
 	}
 }
 
-int send_ssl_backlog_buffers(ioa_socket_handle s)
+static int send_ssl_backlog_buffers(ioa_socket_handle s)
 {
 	int ret = 0;
 	if(s) {

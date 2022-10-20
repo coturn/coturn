@@ -261,8 +261,6 @@ void delete_socket_from_parent(ioa_socket_handle s);
 void add_socket_to_map(ioa_socket_handle s, ur_addr_map *amap);
 void delete_socket_from_map(ioa_socket_handle s);
 
-int send_ssl_backlog_buffers(ioa_socket_handle s);
-
 int is_connreset(void);
 int would_block(void);
 int udp_send(ioa_socket_handle s, const ioa_addr* dest_addr, const char* buffer, int len);
