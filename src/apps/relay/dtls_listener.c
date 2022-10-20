@@ -439,6 +439,10 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server,
 #endif
 
 		if(!chs) {
+			// Disallow raw UDP if no_udp is enabled
+			if(turn_params.no_udp) {
+				return -1;
+			}
 			chs = create_ioa_socket_from_fd(ioa_eng, s->fd, s,
 				UDP_SOCKET, CLIENT_SOCKET, &(sm->m.sm.nd.src_addr),
 				get_local_addr_from_ioa_socket(s));
