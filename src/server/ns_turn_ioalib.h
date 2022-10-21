@@ -309,10 +309,6 @@ void handle_http_echo(ioa_socket_handle s);
 
 int try_acme_redirect(char *req, size_t len, const char *url, ioa_socket_handle s);
 
-///////////// ACME /////////////////////
-
-int try_acme_redirect(char *req, size_t len, const char *url, ioa_socket_handle s);
-
 ///////////////////////////////////////
 
 #ifdef __cplusplus
