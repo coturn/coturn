@@ -263,6 +263,10 @@ void convert_oauth_key_data_raw(const oauth_key_data_raw *raw, oauth_key_data *o
 
 struct event_base *turn_event_base_new(void);
 
+//////////// Random /////////////////////
+
+void turn_srandom(void);
+
 ///////////////////////////////////////////////////////
 
 #ifdef __cplusplus

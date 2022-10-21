@@ -1194,9 +1194,19 @@ static uint64_t turn_getRandTime(void) {
   return current_mstime;
 }
 
+void turn_srandom(void)
+{
+#if defined(WINDOWS)
+	srand((unsigned int)(turn_getRandTime() + (unsigned int)((long)(&turn_getRandTime))));
+#else
+	srandom((unsigned int)(turn_getRandTime() + (unsigned int)((long)(&turn_getRandTime))));
+#endif
+}
+
 unsigned long set_system_parameters(int max_resources)
 {
-	srandom((unsigned int) (turn_getRandTime() + (unsigned int)((long)(&turn_getRandTime))));
+	turn_srandom();
+
 	setlocale(LC_ALL, "C");
 
 	build_base64_decoding_table();
