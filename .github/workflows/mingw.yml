@@ -84,12 +84,6 @@ jobs:
         copy /Y ${{env.RUNVCPKG_VCPKG_ROOT}}\installed\${{env.RUNVCPKG_VCPKG_TRIPLET_OUT}}\bin\*.dll install\bin
         7z a coturn_windows_mingw.zip ${{github.workspace}}\build\install\*
         cmake --build . --config ${{matrix.BUILD_TYPE}} --target package
-      
-#    - name: Show fail information
-#      if: ${{ failure() }}
-#      run: |
-#        echo "Show fail information"
-#        type ${{github.workspace}}\build\_CPack_Packages\Windows-AMD64\NSIS\NSISOutput.log 
 
     - name: update 
       if: ${{ matrix.BUILD_TYPE == 'Release' }}

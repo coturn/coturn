@@ -69,11 +69,6 @@ static inline turn_time_t log_time(void)
   return (turn_time() - log_start_time);
 }
 
-static void set_log_file_line(int set)
-{
-	_log_file_line_set = set;
-}
-
 ////////// MUTEXES /////////////
 
 #define MAGIC_CODE (0xEFCD1983)
@@ -306,6 +301,11 @@ void set_logfile(const char *fn)
 		}
 		log_unlock();
 	}
+}
+
+void set_log_file_line(int set)
+{
+	_log_file_line_set = set;
 }
 
 void reset_rtpprintf(void)
@@ -557,6 +557,7 @@ static int get_syslog_level(TURN_LOG_LEVEL level)
 	return level;
 }
 
+#if defined(WINDOWS)
 void err(int eval, const char *format, ...)
 {
     va_list args;
@@ -564,6 +565,7 @@ void err(int eval, const char *format, ...)
     TURN_LOG_FUNC(eval, format, args);
     va_end(args);
 }
+#endif
 
 void turn_log_func_default(char* file, int line, TURN_LOG_LEVEL level, const char* format, ...)
 {
