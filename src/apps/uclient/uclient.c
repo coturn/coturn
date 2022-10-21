@@ -38,7 +38,6 @@
 #include <unistd.h>
 #include <sys/select.h>
 #endif
-#include "ns_turn_openssl.h"
 #include <time.h>
 
 static int verbose_packets=0;
