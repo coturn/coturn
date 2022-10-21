@@ -1,15 +1,18 @@
 /Makefile
 /bin/
-build
+*build*/
 include
 lib
 sqlite
 examples/ca/CA.pl
 .vscode
+.idea
+.vs/
 
 # This file is used to ignore files which are generated
 # ----------------------------------------------------------------------------
 
+*.bak
 *~
 *.autosave
 *.a
@@ -80,4 +83,3 @@ Thumbs.db
 # --------
 *.dll
 *.exe
-
