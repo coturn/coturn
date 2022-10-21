@@ -1033,6 +1033,7 @@ static int redis_list_realm_options(uint8_t *realm) {
 }
   
 static void redis_auth_ping(void * rch) {
+	UNUSED_ARG(rch);
 	redisContext *rc = get_redis_connection();
 	if(rc) {
 		turnFreeRedisReply(redisCommand(rc, "keys turn/origin/*"));
