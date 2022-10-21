@@ -1,4 +1,4 @@
-# Author: Kang Lin (kl222@126.com)
+# Author: Kang Lin <kl222@126.com>
 
 project(coturn)
 
