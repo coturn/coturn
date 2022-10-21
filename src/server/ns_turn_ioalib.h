@@ -49,6 +49,25 @@ typedef struct _ts_ur_super_session ts_ur_super_session;
 struct _tcp_connection;
 typedef struct _tcp_connection tcp_connection;
 
+#if defined(_MSC_VER)
+    #ifndef strtok_r
+        #define strtok_r strtok_s
+    #endif
+
+    #ifndef sleep
+        #define sleep(t) Sleep(t * 1000)
+	#endif
+
+    #ifndef usleep
+        #define usleep Sleep
+    #endif
+
+    #if !defined(ssize_t) && !defined(_SSIZE_T_)
+        #include <BaseTsd.h>
+        typedef SSIZE_T ssize_t;
+    #endif
+    
+#endif
 
 ////////////// Mutexes /////////////////////
 

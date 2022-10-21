@@ -198,6 +198,7 @@ int get_raw_socket_ttl(evutil_socket_t fd, int family);
 
 void ignore_sigpipe(void);
 unsigned long set_system_parameters(int max_resources);
+unsigned long get_system_number_of_cpus();
 
 ///////////////////////// MTU //////////////////////////
 
@@ -215,6 +216,22 @@ int get_socket_mtu(evutil_socket_t fd, int family, int verbose);
 ////////////////// Misc utils /////////////////////////
 
 char *skip_blanks(char* s);
+
+#if defined(_MSC_VER)
+    #define CLOCK_REALTIME 0
+	int clock_gettime(int X, struct timeval* tv);
+	int gettimeofday(struct timeval* tp, void* tzp);
+
+	char* dirname(char* path);
+#endif
+
+#if defined(WINDOWS)
+	int getdomainname(char* name, size_t len);
+	// wchar convert to char
+	char* _WTA(__in wchar_t* pszInBufBuf, __in int nInSize, __out char** pszOutBuf, __out int* pnOutSize);
+	// char convert to wchar
+	wchar_t* _ATW(__in char* pszInBuf, __in int nInSize, __out wchar_t** pszOutBuf, __out int* pnOutSize);
+#endif
 
 ////////////////// File search ////////////////////////
 
