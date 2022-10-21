@@ -110,8 +110,7 @@ static struct headers_list * post_parse(char *data, size_t data_len)
 			memcpy(post_data, data, data_len);
 			char *fmarker = NULL;
 			char *fsplit = strtok_r(post_data, "&", &fmarker);
-			struct headers_list *list = (struct headers_list*)malloc(sizeof(struct headers_list));
-			memset(list,0,sizeof(struct headers_list));
+			struct headers_list *list = (struct headers_list*)calloc(sizeof(struct headers_list), 1);
 			while (fsplit != NULL) {
 				char *vmarker = NULL;
 				char *key = strtok_r(fsplit, "=", &vmarker);
@@ -164,14 +163,12 @@ static struct http_request* parse_http_request_1(struct http_request* ret, char*
 
 				const char *query = evhttp_uri_get_query(uri);
 				if(query) {
-					struct evkeyvalq* kv = (struct evkeyvalq*)malloc(sizeof(struct evkeyvalq));
-					memset(kv,0,sizeof(struct evkeyvalq));
+					struct evkeyvalq* kv = (struct evkeyvalq*)calloc(sizeof(struct evkeyvalq), 1);
 					if(evhttp_parse_query_str(query, kv)<0) {
 						free(ret);
 						ret = NULL;
 					} else {
-						ret->headers = (struct http_headers*)malloc(sizeof(struct http_headers));
-						memset(ret->headers,0,sizeof(struct http_headers));
+						ret->headers = (struct http_headers*)calloc(sizeof(struct http_headers), 1);
 						ret->headers->uri_headers = kv;
 					}
 				}
@@ -186,8 +183,7 @@ static struct http_request* parse_http_request_1(struct http_request* ret, char*
 					char *body = strstr(s+1,"\r\n\r\n");
 					if(body && body[0]) {
 						if(!ret->headers) {
-							ret->headers = (struct http_headers*)malloc(sizeof(struct http_headers));
-							memset(ret->headers,0,sizeof(struct http_headers));
+							ret->headers = (struct http_headers*)calloc(sizeof(struct http_headers), 1);
 						}
 						ret->headers->post_headers = post_parse(body,strlen(body));
 					}
@@ -207,8 +203,7 @@ struct http_request* parse_http_request(char* request) {
 
 	if(request) {
 
-		ret = (struct http_request*)malloc(sizeof(struct http_request));
-		memset(ret,0,sizeof(struct http_request));
+		ret = (struct http_request*)calloc(sizeof(struct http_request), 1);
 
 		if(strstr(request,"GET ") == request) {
 			ret->rtype = HRT_GET;
@@ -326,8 +321,8 @@ struct str_buffer {
 
 struct str_buffer* str_buffer_new(void)
 {
-	struct str_buffer* ret = (struct str_buffer*)malloc(sizeof(struct str_buffer));
-	memset(ret,0,sizeof(struct str_buffer));
+	struct str_buffer* ret = (struct str_buffer*)calloc(sizeof(struct str_buffer), 1);
+
 	ret->buffer = (char*)malloc(1);
 	ret->buffer[0] = 0;
 	ret->capacity = 1;
