@@ -96,8 +96,12 @@ int stun_method_str(uint16_t method, char *smethod)
 long turn_random(void)
 {
 	long ret = 0;
-	if(!RAND_bytes((unsigned char *)&ret,sizeof(ret)))
+	if (!RAND_bytes((unsigned char*)&ret, sizeof(ret)))
+#if defined(WINDOWS)
+		ret = rand();
+#else
 		ret = random();
+#endif
 	return ret;
 }
 
@@ -107,7 +111,7 @@ static void turn_random_tid_size(void *id)
 	if(!RAND_pseudo_bytes((unsigned char *)ar,12)) {
 		size_t i;
 		for(i=0;i<3;++i) {
-			ar[i] = (uint32_t)random();
+			ar[i] = (uint32_t)turn_random();
 		}
 	}
 }
@@ -2478,7 +2482,7 @@ static void generate_random_nonce(unsigned char *nonce, size_t sz) {
 	if(!RAND_bytes(nonce, (int)sz)) {
 		size_t i;
 		for(i=0;i<sz;++i) {
-			nonce[i] = (unsigned char)random();
+			nonce[i] = (unsigned char)turn_random();
 		}
 	}
 }
