@@ -28,12 +28,16 @@
  * SUCH DAMAGE.
  */
 
-#include <err.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+
+#if defined(_MSC_VER)
+#include <getopt.h>
+#else
 #include <unistd.h>
+#endif
 
 #include "ns_turn_utils.h"
 #include "apputils.h"
