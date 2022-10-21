@@ -28,12 +28,18 @@
  * SUCH DAMAGE.
  */
 
-#include <err.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
-#include <unistd.h>
+#if defined(_MSC_VER)
+    #include <getopt.h>
+#else
+    #include <unistd.h>
+    #if !defined(WINDOWS)
+        #include <err.h>
+    #endif
+#endif
 
 #include "ns_turn_utils.h"
 #include "apputils.h"
@@ -414,6 +420,25 @@ int main(int argc, char **argv)
   char local_addr[256]="\0";
   int c=0;
   int forceRfc5780 = 0;
+
+#if defined(WINDOWS)
+  {
+	  WORD wVersionRequested;
+	  WSADATA wsaData;
+	  int err;
+
+	  /* Use the MAKEWORD(lowbyte, highbyte) macro declared in Windef.h */
+	  wVersionRequested = MAKEWORD(2, 2);
+
+	  err = WSAStartup(wVersionRequested, &wsaData);
+	  if (err != 0) {
+		  /* Tell the user that we could not find a usable */
+		  /* Winsock DLL.                                  */
+		  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "WSAStartup failed with error: %d\n", err);
+		  return 1;
+	  }
+  }
+#endif
 
   set_logfile("stdout");
   set_system_parameters(0);
