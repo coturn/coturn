@@ -28,11 +28,14 @@
  * SUCH DAMAGE.
  */
 
+#if defined(__unix__)
+#include <unistd.h>
+#endif
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
-#include <unistd.h>
 #include <getopt.h>
 #include <stddef.h>
 
