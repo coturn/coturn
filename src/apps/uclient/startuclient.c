@@ -28,7 +28,9 @@
  * SUCH DAMAGE.
  */
 
+#if defined(__linux__)
 #include <unistd.h>
+#endif
 
 #include "apputils.h"
 #include "ns_turn_utils.h"
@@ -36,8 +38,6 @@
 #include "ns_turn_msg.h"
 #include "uclient.h"
 #include "session.h"
-
-#include "ns_turn_openssl.h"
 
 /////////////////////////////////////////
 
