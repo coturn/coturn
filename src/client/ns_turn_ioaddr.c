@@ -35,8 +35,6 @@
 	#include <netdb.h>
 #endif
 
-#include <string.h>
-
 //////////////////////////////////////////////////////////////
 
 uint32_t get_ioa_addr_len(const ioa_addr* addr) {
