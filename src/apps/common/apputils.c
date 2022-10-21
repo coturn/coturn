@@ -40,6 +40,8 @@
     #include <ifaddrs.h>
     #include <getopt.h>
     #include <libgen.h>
+#endif
+#if defined(__unix__) || defined(unix)
     #include <pthread.h>
     #include <sys/time.h>
     #include <sys/resource.h>
@@ -95,7 +97,12 @@ void read_spare_buffer(evutil_socket_t fd)
 {
 	if(fd >= 0) {
 		static char buffer[65536];
+#if defined(WINDOWS)
+        //TODO: add set no-block? by Kang Lin <kl222@126.com>
+		recv(fd, buffer, sizeof(buffer), 0);
+#else
 		recv(fd, buffer, sizeof(buffer), MSG_DONTWAIT);
+#endif
 	}
 }
 
@@ -710,12 +717,15 @@ int handle_socket_error(void) {
      * Must close connection.
      */
     return 0;
+#if defined(__unix__) || defined(unix) || defined(__APPLE__) \
+	|| defined(__DARWIN__) || defined(__MACH__)
   case EHOSTDOWN:
     /* Host is down.
      * Just ignore, might be an attacker
      * sending fake ICMP messages.
      */
     return 1;
+#endif
   case ECONNRESET:
   case ECONNREFUSED:
     /* Connection reset by peer. */
@@ -1163,10 +1173,12 @@ char* find_config_file(const char *config_file, int print_file_name)
 
 void ignore_sigpipe(void)
 {
+#if defined(__linux__)
 	/* Ignore SIGPIPE from TCP sockets */
 	if(signal(SIGPIPE, SIG_IGN) == SIG_ERR) {
 		perror("Cannot set SIGPIPE handler");
 	}
+#endif
 }
 
 static uint64_t turn_getRandTime(void) {
@@ -1191,7 +1203,15 @@ unsigned long set_system_parameters(int max_resources)
 
 	ignore_sigpipe();
 
-	if(max_resources) {
+	if (max_resources) {
+#if defined(WINDOWS)
+		int num = 0;
+		//TODO: get max socket? by KangLin <kl222@126.com>
+
+		num = _getmaxstdio();
+		return num;
+#elif defined(__linux__)
+	
 		struct rlimit rlim;
 		if(getrlimit(RLIMIT_NOFILE, &rlim)<0) {
 			perror("Cannot get system limit");
@@ -1202,6 +1222,8 @@ unsigned long set_system_parameters(int max_resources)
 			}
 			return (unsigned long)rlim.rlim_cur;
 		}
+	
+#endif
 	}
 
 	return 0;
