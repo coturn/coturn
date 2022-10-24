@@ -142,7 +142,7 @@ static const char *CLI_HELP_STR[] =
    "  atas ip[:port] - add a TLS alternate server reference",
    "  dtas ip[:port] - delete a TLS alternate server reference",
    "",
-   "  cs <session-id> - cancel session, forcefully"
+   "  cs <session-id> - cancel session, forcefully",
    "",
    NULL};
 
