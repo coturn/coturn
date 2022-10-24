@@ -337,7 +337,7 @@ int main(int argc, char **argv)
         nonce_size=OAUTH_GCM_NONCE_SIZE;
       } 
       strncpy(gcm_nonce,nonce_val,nonce_size);
-      gcm_nonce[ nonce_size + 1 ]='\0';
+      gcm_nonce[ nonce_size ]='\0';
       break;
     case 'p':
       //token-mac-key
