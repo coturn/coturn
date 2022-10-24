@@ -8,6 +8,8 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
 # TODO: Modify this when the version is released
 SET(BUILD_VERSION "4.5.2")
 
+option(FUZZER "Build oss-fuzz fuzzing" OFF)
+
 # Find Git Version Patch
 IF(EXISTS "${CMAKE_SOURCE_DIR}/.git")
     if(NOT GIT)
@@ -118,3 +120,12 @@ install(DIRECTORY
     DESTINATION share/examples/turnserver
     PATTERN "rfc5769.sh" EXCLUDE
     )
+
+if(FUZZER)
+    if (NOT CMAKE_C_COMPILER_ID STREQUAL "Clang")
+        message(FATAL_ERROR "clang is require for libFuzzer")
+    endif()
+
+    add_subdirectory(fuzzing)
+
+endif()
