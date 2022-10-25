@@ -159,7 +159,7 @@ typedef struct _oauth_key_data_raw oauth_key_data_raw;
 
 ///////////////////////// Sockets ///////////////////////////////
 
-#if defined(WIN32)
+#if defined(WINDOWS)
 /** Do the platform-specific call needed to close a socket returned from
     socket() or accept(). */
 #define socket_closesocket(s) closesocket(s)

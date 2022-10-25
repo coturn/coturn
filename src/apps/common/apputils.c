@@ -81,7 +81,7 @@ int IS_TURN_SERVER = 0;
 
 int socket_set_nonblocking(evutil_socket_t fd)
 {
-#if defined(WIN32)
+#if defined(WINDOWS)
 	unsigned long nonblocking = 1;
     ioctlsocket(fd, FIONBIO, (unsigned long*) &nonblocking);
 #else
@@ -173,7 +173,7 @@ int socket_set_reusable(evutil_socket_t fd, int flag, SOCKET_TYPE st)
 		return -1;
 	else {
 
-#if defined(WIN32)
+#if defined(WINDOWS)
 		int use_reuseaddr = IS_TURN_SERVER;
 #else
 		int use_reuseaddr = 1;
@@ -867,7 +867,7 @@ char* dirname(char* path)
 }
 #endif
 
-#if defined(WIN32)
+#if defined(WINDOWS)
 int getdomainname(char* name, size_t len)
 {
 	DSROLE_PRIMARY_DOMAIN_INFO_BASIC* info;
