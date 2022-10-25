@@ -665,7 +665,7 @@ int get_socket_mtu(evutil_socket_t fd, int family, int verbose)
 
 //////////////////// socket error handle ////////////////////
 
-int handle_socket_error() {
+int handle_socket_error(void) {
   switch (errno) {
   case EINTR:
     /* Interrupted system call.
@@ -969,7 +969,7 @@ char *base64_encode(const unsigned char *data,
     return encoded_data;
 }
 
-void build_base64_decoding_table() {
+void build_base64_decoding_table(void) {
 
     decoding_table = (char*)malloc(256);
     memset(decoding_table, 0, 256);
