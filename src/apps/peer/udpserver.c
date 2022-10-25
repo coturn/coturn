@@ -77,6 +77,7 @@ static int udp_create_server_socket(server_type* server,
   udp_fd = socket(server_addr->ss.sa_family, RELAY_DGRAM_SOCKET_TYPE, RELAY_DGRAM_SOCKET_PROTOCOL);
   if (udp_fd < 0) {
     perror("socket");
+    free(server_addr);
     return -1;
   }
 
