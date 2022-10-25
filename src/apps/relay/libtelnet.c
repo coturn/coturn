@@ -744,7 +744,7 @@ static int _mssp_telnet(telnet_t *telnet, char* buffer, size_t size) {
 /* parse ZMP command subnegotiation buffers */
 static int _zmp_telnet(telnet_t *telnet, const char* buffer, size_t size) {
 	telnet_event_t ev;
-	char **argv;
+	const char **argv;
 	const char *c;
 	size_t i, argc;
 
@@ -760,7 +760,7 @@ static int _zmp_telnet(telnet_t *telnet, const char* buffer, size_t size) {
 		c += strlen(c) + 1;
 
 	/* allocate argument array, bail on error */
-	if ((argv = (char **)calloc(argc, sizeof(char *))) == 0) {
+	if ((argv = (const char **)calloc(argc, sizeof(const char *))) == 0) {
 		_error(telnet, __LINE__, __func__, TELNET_ENOMEM, 0,
 				"calloc() failed: %s", strerror(errno));
 		return 0;
@@ -768,13 +768,13 @@ static int _zmp_telnet(telnet_t *telnet, const char* buffer, size_t size) {
 
 	/* populate argument array */
 	for (i = 0, c = buffer; i != argc; ++i) {
-		argv[i] = (char *)c;
+		argv[i] = c;
 		c += strlen(c) + 1;
 	}
 
 	/* invoke event with our arguments */
 	ev.type = TELNET_EV_ZMP;
-	ev.zmp.argv = (const char**)argv;
+	ev.zmp.argv = argv;
 	ev.zmp.argc = argc;
 	telnet->eh(telnet, &ev, telnet->ud);
 
