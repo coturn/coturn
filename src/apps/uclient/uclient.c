@@ -1699,7 +1699,7 @@ int check_integrity(app_ur_conn_info *clnet_info, stun_buffer *message)
 	return 0;
 }
 
-SOCKET_TYPE get_socket_type()
+SOCKET_TYPE get_socket_type(void)
 {
 	if(use_sctp) {
 		if(use_secure) {

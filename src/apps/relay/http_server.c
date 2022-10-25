@@ -77,7 +77,7 @@ void handle_http_echo(ioa_socket_handle s) {
 	write_http_echo(s);
 }
 
-const char* get_http_date_header()
+const char* get_http_date_header(void)
 {
 	static char buffer_date[256];
 	static char buffer_header[1025];

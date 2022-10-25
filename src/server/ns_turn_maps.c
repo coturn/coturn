@@ -58,7 +58,7 @@ static int ur_map_init(ur_map* map) {
 
 #define ur_map_valid(map) ((map) && ((map)->h) && ((map)->magic==MAGIC_HASH))
 
-ur_map* ur_map_create() {
+ur_map* ur_map_create(void) {
   ur_map *map=(ur_map*)malloc(sizeof(ur_map));
   if(ur_map_init(map)<0) {
     free(map);

@@ -73,7 +73,7 @@ void update_o_to_realm(ur_string_map * o_to_realm_new) {
   TURN_MUTEX_UNLOCK(&o_to_realm_mutex);
 }
 
-void create_default_realm()
+void create_default_realm(void)
 {
 	if(default_realm_params_ptr) {
 		return;
