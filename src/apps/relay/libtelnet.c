@@ -21,7 +21,7 @@
 #include <stdarg.h>
 
 /* Win32 compatibility */
-#if defined(_WIN32)
+#if defined(WINDOWS)
 # define vsnprintf _vsnprintf
 # define __func__ __FUNCTION__
 # define ZLIB_WINAPI 1
