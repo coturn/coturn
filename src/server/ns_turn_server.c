@@ -794,8 +794,7 @@ static ts_ur_super_session* create_new_ss(turn_turnserver* server) {
 	//
 	//printf("%s: 111.111: session size=%lu\n",__FUNCTION__,(unsigned long)sizeof(ts_ur_super_session));
 	//
-	ts_ur_super_session *ss = (ts_ur_super_session*)malloc(sizeof(ts_ur_super_session));
-	memset(ss,0,sizeof(ts_ur_super_session));
+	ts_ur_super_session *ss = (ts_ur_super_session*)calloc(sizeof(ts_ur_super_session), 1);
 	ss->server = server;
 	get_default_realm_options(&(ss->realm_options));
 	put_session_into_map(ss);

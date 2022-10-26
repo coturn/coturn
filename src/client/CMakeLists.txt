@@ -18,7 +18,7 @@ set(SOURCE_FILES
     ns_turn_msg.c
     )
 
-add_library(${PROJECT_NAME} ${SOURCE_FILES} ${HEADER_FILES})
+add_library(${PROJECT_NAME} STATIC ${SOURCE_FILES} ${HEADER_FILES})
 
 target_link_libraries(${PROJECT_NAME} PUBLIC turncommon)
 
@@ -42,7 +42,6 @@ INSTALL(TARGETS ${PROJECT_NAME}
     PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/turn/client
 		COMPONENT Development
     INCLUDES DESTINATION
-        ${CMAKE_INSTALL_INCLUDEDIR}
         ${CMAKE_INSTALL_INCLUDEDIR}/turn
         ${CMAKE_INSTALL_INCLUDEDIR}/turn/client
         COMPONENT Development

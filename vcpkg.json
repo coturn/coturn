@@ -8,8 +8,9 @@
     },
     {
       "name": "libevent",
-      "features": [ "openssl" ]
+      "features": [ "openssl", "thread" ]
     },
+    "openssl",
     "sqlite3",
     "libpq",
     "hiredis",

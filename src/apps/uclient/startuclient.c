@@ -1545,8 +1545,7 @@ void tcp_data_connect(app_ur_session *elem, uint32_t cid)
 	++elem->pinfo.tcp_conn_number;
 	int i = (int)(elem->pinfo.tcp_conn_number-1);
 	elem->pinfo.tcp_conn=(app_tcp_conn_info**)realloc(elem->pinfo.tcp_conn,elem->pinfo.tcp_conn_number*sizeof(app_tcp_conn_info*));
-	elem->pinfo.tcp_conn[i]=(app_tcp_conn_info*)malloc(sizeof(app_tcp_conn_info));
-	memset(elem->pinfo.tcp_conn[i],0,sizeof(app_tcp_conn_info));
+	elem->pinfo.tcp_conn[i]=(app_tcp_conn_info*)calloc(sizeof(app_tcp_conn_info), 1);
 
 	elem->pinfo.tcp_conn[i]->tcp_data_fd = clnet_fd;
 	elem->pinfo.tcp_conn[i]->cid = cid;

@@ -1051,11 +1051,11 @@ void set_execdir(void)
 		if (edir[0] != '.')
 			edir = strstr(edir, "/");
 		if (edir && *edir)
-      edir = dirname(edir);
+            edir = dirname(edir);
     else
-      edir = dirname(_var);
+        edir = dirname(_var);
 		if (c_execdir)
-      free(c_execdir);
+            free(c_execdir);
     c_execdir = strdup(edir);
     free(_var);
   }
@@ -1173,7 +1173,7 @@ char* find_config_file(const char *config_file, int print_file_name)
 
 void ignore_sigpipe(void)
 {
-#if defined(__linux__)
+#if defined(__linux__) || defined(__APPLE__)
 	/* Ignore SIGPIPE from TCP sockets */
 	if(signal(SIGPIPE, SIG_IGN) == SIG_ERR) {
 		perror("Cannot set SIGPIPE handler");
@@ -1220,7 +1220,7 @@ unsigned long set_system_parameters(int max_resources)
 
 		num = _getmaxstdio();
 		return num;
-#elif defined(__linux__)
+#elif defined(__linux__) || defined(__APPLE__)
 	
 		struct rlimit rlim;
 		if(getrlimit(RLIMIT_NOFILE, &rlim)<0) {

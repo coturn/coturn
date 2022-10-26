@@ -920,8 +920,7 @@ ioa_socket_handle create_unbound_relay_ioa_socket(ioa_engine_handle e, int famil
 		return NULL;
 	}
 
-	ret = (ioa_socket*)malloc(sizeof(ioa_socket));
-	memset(ret,0,sizeof(ioa_socket));
+	ret = (ioa_socket*)calloc(sizeof(ioa_socket), 1);
 
 	ret->magic = SOCKET_MAGIC;
 
@@ -1364,8 +1363,7 @@ ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e,
 		return NULL;
 	}
 
-	ret = (ioa_socket*)malloc(sizeof(ioa_socket));
-	memset(ret,0,sizeof(ioa_socket));
+	ret = (ioa_socket*)calloc(sizeof(ioa_socket), 1);
 
 	ret->magic = SOCKET_MAGIC;
 
@@ -1640,7 +1638,7 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s)
 
 		ioa_network_buffer_delete(s->e, s->defer_nbh);
 
-		ret = (ioa_socket*)malloc(sizeof(ioa_socket));
+		ret = (ioa_socket*)calloc(sizeof(ioa_socket), 1);
 		if(!ret) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"%s: Cannot allocate new socket structure\n",__FUNCTION__);
 			if(udp_fd>=0)
@@ -1967,7 +1965,10 @@ static int socket_readerr(evutil_socket_t fd, ioa_addr *orig_addr)
 		return -1;
 
 #if defined(CMSG_SPACE) && defined(MSG_ERRQUEUE) && defined(IP_RECVERR)
-
+	#ifdef _MSC_VER
+	    //TODO: implement it!!!
+	    TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "The socket_readerr is not implement in _MSC_VER");
+	#else
 	uint8_t ecmsg[TURN_CMSG_SZ+1];
 	int flags = MSG_ERRQUEUE;
 	int len = 0;
@@ -2000,6 +2001,7 @@ static int socket_readerr(evutil_socket_t fd, ioa_addr *orig_addr)
 
 	} while((len>0)&&(try_cycle++<MAX_ERRORS_IN_UDP_BATCH));
 
+	#endif
 #endif
 
 	return 0;
@@ -2022,7 +2024,7 @@ int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr *like_a
 	recv_ttl_t recv_ttl = TTL_DEFAULT;
 	recv_tos_t recv_tos = TOS_DEFAULT;
 
-#if !defined(CMSG_SPACE)
+#if defined(_MSC_VER) || !defined(CMSG_SPACE)
 	do {
 	  len = recvfrom(fd, buffer, buf_size, flags, (struct sockaddr*) orig_addr, (socklen_t*) &slen);
 	} while (len < 0 && (errno == EINTR));
@@ -2629,7 +2631,7 @@ static int socket_input_worker(ioa_socket_handle s)
 			if(s->read_cb) {
 				ioa_net_data nd;
 
-				memset(&nd,0,sizeof(ioa_net_data));
+				memset(&nd, 0, sizeof(ioa_net_data));
 				addr_cpy(&(nd.src_addr),&remote_addr);
 				nd.nbh = buf_elem;
 				nd.recv_ttl = ttl;
@@ -3862,7 +3864,7 @@ const char* get_ioa_socket_tls_method(ioa_socket_handle s)
 #define TURN_SM_SIZE (1024<<11)
 
 struct _super_memory {
-	pthread_mutex_t mutex_sm;
+	TURN_MUTEX_DECLARE(mutex_sm)
 	char **super_memory;
 	size_t *sm_allocated;
 	size_t sm_total_sz;
@@ -3873,11 +3875,10 @@ struct _super_memory {
 static void init_super_memory_region(super_memory_t *r)
 {
 	if(r) {
-		memset(r,0,sizeof(super_memory_t));
+		memset(r, 0, sizeof(super_memory_t));
 
 		r->super_memory = (char**)malloc(sizeof(char*));
-		r->super_memory[0] = (char*)malloc(TURN_SM_SIZE);
-		memset(r->super_memory[0],0,TURN_SM_SIZE);
+		r->super_memory[0] = (char*)calloc(1, TURN_SM_SIZE);
 
 		r->sm_allocated = (size_t*)malloc(sizeof(size_t*));
 		r->sm_allocated[0] = 0;
@@ -3888,7 +3889,7 @@ static void init_super_memory_region(super_memory_t *r)
 		while(r->id == 0)
 			r->id = (uint32_t)turn_random();
 
-		pthread_mutex_init(&r->mutex_sm, NULL);
+		TURN_MUTEX_INIT(&r->mutex_sm);
 	}
 }
 
@@ -3913,12 +3914,11 @@ void* allocate_super_memory_region_func(super_memory_t *r, size_t size, const ch
 	void *ret = NULL;
 
 	if(!r) {
-		ret = malloc(size);
-		memset(ret, 0, size);
+		ret = calloc(1, size);
 		return ret;
 	}
 
-	pthread_mutex_lock(&r->mutex_sm);
+	TURN_MUTEX_LOCK(&r->mutex_sm);
 
 	size = ((size_t)((size+sizeof(void*))/(sizeof(void*)))) * sizeof(void*);
 
@@ -3947,8 +3947,7 @@ void* allocate_super_memory_region_func(super_memory_t *r, size_t size, const ch
 		if(!region) {
 			r->sm_chunk += 1;
 			r->super_memory = (char**)realloc(r->super_memory,(r->sm_chunk+1) * sizeof(char*));
-			r->super_memory[r->sm_chunk] = (char*)malloc(TURN_SM_SIZE);
-			memset(r->super_memory[r->sm_chunk],0,TURN_SM_SIZE);
+			r->super_memory[r->sm_chunk] = (char*)calloc(1, TURN_SM_SIZE);
 			r->sm_allocated = (size_t*)realloc(r->sm_allocated,(r->sm_chunk+1) * sizeof(size_t*));
 			r->sm_allocated[r->sm_chunk] = 0;
 			region = r->super_memory[r->sm_chunk];
@@ -3966,11 +3965,10 @@ void* allocate_super_memory_region_func(super_memory_t *r, size_t size, const ch
 		}
 	}
 
-	pthread_mutex_unlock(&r->mutex_sm);
+	TURN_MUTEX_UNLOCK(&r->mutex_sm);
 
 	if(!ret) {
-		ret = malloc(size);
-		memset(ret, 0, size);
+		ret = calloc(1, size);
 	}
 
 	return ret;

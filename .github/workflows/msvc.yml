@@ -9,7 +9,7 @@ jobs:
     strategy:
       matrix:
         BUILD_TYPE: [Release, Debug]
-        BUILD_SHARED_LIBS: [OFF]
+        BUILD_SHARED_LIBS: [OFF, ON]
         #VCPKG_PLATFORM_TOOLSET: [v143, v142, v141]
         CMAKE_GENERATOR_PLATFORM: [x64, Win32]
         os: [windows-latest]
