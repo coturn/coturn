@@ -41,6 +41,11 @@
 /* #define REQUEST_CLIENT_CERT */
 
 ///////////////////////////////////////////////////
+#if defined(WINDOWS)
+    //TODO: test it!
+    /* Type to represent a port.  */
+    typedef uint16_t in_port_t;
+#endif
 
 #define FUNCSTART if(server && eve(server->verbose)) TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s:%d:start\n",__FUNCTION__,__LINE__)
 #define FUNCEND if(server && eve(server->verbose)) TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s:%d:end\n",__FUNCTION__,__LINE__)
@@ -390,15 +395,20 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server,
 			{
 				uint8_t saddr[129];
 				uint8_t rsaddr[129];
-				long thrid = (long) pthread_self();
 				addr_to_string(get_local_addr_from_ioa_socket(chs),saddr);
 				addr_to_string(get_remote_addr_from_ioa_socket(chs),rsaddr);
+				long thrid = 0;
+#ifdef WINDOWS
+				thrid = GetCurrentThreadId();
+#else
+				thrid = (long)pthread_self();
+#endif
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
 					"%s: 111.111: thrid=0x%lx: Amap = 0x%lx, socket container=0x%lx, local addr %s, remote addr %s, s=0x%lx, done=%d, tbc=%d\n",
-					__FUNCTION__, thrid, (long) amap,
-					(long) (chs->sockets_container), (char*) saddr,
-					(char*) rsaddr, (long) s, (int) (chs->done),
-					(int) (chs->tobeclosed));
+					__FUNCTION__, thrid, (long)amap,
+					(long)(chs->sockets_container), (char*)saddr,
+					(char*)rsaddr, (long)s, (int)(chs->done),
+					(int)(chs->tobeclosed));
 			}
 		}
 
@@ -413,16 +423,22 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server,
 			{
 				uint8_t saddr[129];
 				uint8_t rsaddr[129];
-				long thrid = (long) pthread_self();
+
 				addr_to_string(get_local_addr_from_ioa_socket(chs),saddr);
 				addr_to_string(get_remote_addr_from_ioa_socket(chs),rsaddr);
+				long thrid = 0;
+#ifdef WINDOWS
+				thrid = GetCurrentThreadId();
+#else
+				thrid = (long)pthread_self();
+#endif
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
 					"%s: 111.222: thrid=0x%lx: Amap = 0x%lx, socket container=0x%lx, local addr %s, remote addr %s, s=0x%lx, done=%d, tbc=%d, st=%d, sat=%d\n",
-					__FUNCTION__, thrid, (long) amap,
-					(long) (chs->sockets_container), (char*) saddr,
-					(char*) rsaddr, (long) chs, (int) (chs->done),
-					(int) (chs->tobeclosed), (int) (chs->st),
-					(int) (chs->sat));
+					__FUNCTION__, thrid, (long)amap,
+					(long)(chs->sockets_container), (char*)saddr,
+					(char*)rsaddr, (long)chs, (int)(chs->done),
+					(int)(chs->tobeclosed), (int)(chs->st),
+					(int)(chs->sat));
 			}
 		}
 
@@ -643,9 +659,12 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void* arg)
 	addr_set_any(&(server->sm.m.sm.nd.src_addr));
 
 	ssize_t bsize = 0;
-
+#if defined(WINDOWS)
+	//TODO: implement it!!!
+	int flags = 0;
+#else
 	int flags = MSG_DONTWAIT;
-
+#endif
 	bsize = udp_recvfrom(fd, &(server->sm.m.sm.nd.src_addr), &(server->addr),
 			(char*)ioa_network_buffer_data(elem), (int)ioa_network_buffer_get_capacity_udp(),
 			&(server->sm.m.sm.nd.recv_ttl), &(server->sm.m.sm.nd.recv_tos),
@@ -665,8 +684,13 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void* arg)
 
 	#if defined(MSG_ERRQUEUE)
 
+#if defined(WINDOWS)
+		//TODO: implement it!!!
+		int eflags = MSG_ERRQUEUE;
+#else
 		//Linux
 		int eflags = MSG_ERRQUEUE | MSG_DONTWAIT;
+#endif
 		static char buffer[65535];
 		uint32_t errcode = 0;
 		ioa_addr orig_addr;

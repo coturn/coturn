@@ -32,11 +32,32 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+
+#if defined(_MSC_VER)
+#include <direct.h>
+#else
 #include <unistd.h>
+#endif
+
+#if defined(__unix__) || defined(unix) || defined(__APPLE__) \
+	|| defined(__DARWIN__) || defined(__MACH__)
+#include <ifaddrs.h>
+#include <libgen.h>
+#include <sys/resource.h>
+#include <sys/time.h>
+#endif
+
+#include <limits.h>
+
+#include <getopt.h>
+#include <locale.h>
+
+#include <signal.h>
 
 #include "libtelnet.h"
 
-#include <sys/resource.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 #include <event2/bufferevent.h>
 #include <event2/buffer.h>
@@ -652,8 +673,12 @@ static void cli_print_configuration(struct cli_session* cs)
 		cli_print_flag(cs,turn_params.mobility,"mobility",1);
 		cli_print_flag(cs,turn_params.udp_self_balance,"udp-self-balance",0);
 		cli_print_str(cs,turn_params.pidfile,"pidfile",0);
+#if defined(WINDOWS)
+		//TODO: implement it!!!
+#else
 		cli_print_uint(cs,(unsigned long)getuid(),"process user ID",0);
 		cli_print_uint(cs,(unsigned long)getgid(),"process group ID",0);
+#endif
 
 		{
 			char wd[1025];
@@ -1143,8 +1168,7 @@ static void cliserver_input_handler(struct evconnlistener *l, evutil_socket_t fd
 
 	addr_debug_print(adminserver.verbose, (ioa_addr*)sa,"CLI connected to");
 
-	struct cli_session *clisession = (struct cli_session*)malloc(sizeof(struct cli_session));
-	memset(clisession,0,sizeof(struct cli_session));
+	struct cli_session *clisession = (struct cli_session*)calloc(sizeof(struct cli_session), 1);
 
 	clisession->rp = get_realm(NULL);
 
@@ -2057,9 +2081,12 @@ static void write_pc_page(ioa_socket_handle s)
 				https_print_flag(sb,turn_params.mobility,"mobility","mobility");
 				https_print_flag(sb,turn_params.udp_self_balance,"udp-self-balance",0);
 				https_print_str(sb,turn_params.pidfile,"pidfile",0);
+#if defined(WINDOWS)
+				//TODO: implement it!!!
+#else
 				https_print_uint(sb,(unsigned long)getuid(),"process user ID",0);
 				https_print_uint(sb,(unsigned long)getgid(),"process group ID",0);
-
+#endif
 				{
 					char wd[1025];
 					if(getcwd(wd,sizeof(wd)-1)) {
@@ -3283,8 +3310,7 @@ static void handle_logon_request(ioa_socket_handle s, struct http_request* hr)
 
 		struct admin_session* as = (struct admin_session*)s->special_session;
 		if(!as) {
-			as = (struct admin_session*)malloc(sizeof(struct admin_session));
-			memset(as,0,sizeof(struct admin_session));
+			as = (struct admin_session*)calloc(sizeof(struct admin_session), 1);
 			s->special_session = as;
 			s->special_session_size = sizeof(struct admin_session);
 		}
