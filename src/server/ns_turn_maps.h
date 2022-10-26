@@ -94,7 +94,7 @@ size_t ur_map_size(const ur_map* map);
 
 int ur_map_foreach(ur_map* map, foreachcb_type func);
 
-int ur_map_foreach_arg(ur_map* map, foreachcb_arg_type func, void* arg);
+int ur_map_foreach_arg(const ur_map* map, foreachcb_arg_type func, void* arg);
 
 int ur_map_lock(const ur_map* map);
 int ur_map_unlock(const ur_map* map);

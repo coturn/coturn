@@ -29,6 +29,7 @@
  */
 
 #include "ns_turn_allocation.h"
+#include "ns_turn_ioalib.h"
 
 /////////////// Permission forward declarations /////////////////
 
@@ -47,12 +48,12 @@ void init_allocation(void *owner, allocation* a, ur_map *tcp_connections) {
   }
 }
 
-void clear_allocation(allocation *a)
+void clear_allocation(allocation *a, SOCKET_TYPE socket_type)
 {
 	if (a) {
 
 		if(a->is_valid)
-			turn_report_allocation_delete(a);
+			turn_report_allocation_delete(a, socket_type);
 
 		if(a->tcs.elems) {
 			size_t i;
