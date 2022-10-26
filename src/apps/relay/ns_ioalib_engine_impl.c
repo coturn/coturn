@@ -3707,7 +3707,7 @@ void turn_report_allocation_set(void *a, turn_time_t lifetime, int refresh)
 #if !defined(TURN_NO_PROMETHEUS)
 				{
 					if (!refresh)
-						prom_inc_allocation();
+						prom_inc_allocation(get_ioa_socket_type(ss->client_socket));
 				}
 #endif
 			}
@@ -3765,7 +3765,7 @@ void turn_report_allocation_delete(void *a)
 						prom_set_finished_traffic(NULL, (const char*)ss->username, (unsigned long)(ss->t_received_packets), (unsigned long)(ss->t_received_bytes), (unsigned long)(ss->t_sent_packets), (unsigned long)(ss->t_sent_bytes), false);
 						prom_set_finished_traffic(NULL, (const char*)ss->username, (unsigned long)(ss->t_peer_received_packets), (unsigned long)(ss->t_peer_received_bytes), (unsigned long)(ss->t_peer_sent_packets), (unsigned long)(ss->t_peer_sent_bytes), true);
 					}
-					prom_dec_allocation();
+					prom_dec_allocation(get_ioa_socket_type(ss->client_socket));
 				}
 #endif
 			}

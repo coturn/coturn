@@ -201,7 +201,7 @@ int ur_map_foreach(ur_map* map, foreachcb_type func) {
   return 0;
 }
 
-int ur_map_foreach_arg(ur_map* map, foreachcb_arg_type func, void* arg) {
+int ur_map_foreach_arg(const ur_map* map, foreachcb_arg_type func, void* arg) {
   if(map && func && ur_map_valid(map)) {
     khiter_t k;
     for (k = kh_begin((*map)->h); k != kh_end(map->h); ++k) {
