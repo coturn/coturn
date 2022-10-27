@@ -255,10 +255,12 @@ static int clnet_connect(uint16_t clnet_remote_port, const char *remote_address,
 
 		if(remote_addr.ss.sa_family == AF_INET6) {
 			if (make_ioa_addr((const uint8_t*) "::1", 0, &local_addr) < 0) {
+			    socket_closesocket(clnet_fd);
 			    return -1;
 			}
 		} else {
 			if (make_ioa_addr((const uint8_t*) "127.0.0.1", 0, &local_addr) < 0) {
+			    socket_closesocket(clnet_fd);
 			    return -1;
 			}
 		}
@@ -268,8 +270,10 @@ static int clnet_connect(uint16_t clnet_remote_port, const char *remote_address,
 	} else if (strlen(local_address) > 0) {
 
 		if (make_ioa_addr((const uint8_t*) local_address, 0,
-			    &local_addr) < 0)
+			    &local_addr) < 0) {
+			socket_closesocket(clnet_fd);
 			return -1;
+		}
 
 		addr_bind(clnet_fd, &local_addr,0,1,get_socket_type());
 	}
