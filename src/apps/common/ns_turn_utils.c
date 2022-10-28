@@ -50,11 +50,10 @@
 #include <unistd.h>
 #include <sys/syscall.h>
 
-#ifndef SYS_gettid
-#error "SYS_gettid unavailable on this system"
+#ifdef SYS_gettid
+#define gettid() ((pid_t)syscall(SYS_gettid))
 #endif
 
-#define gettid() ((pid_t)syscall(SYS_gettid))
 
 ////////// LOG TIME OPTIMIZATION ///////////
 
@@ -506,7 +505,6 @@ void turn_log_func_default(TURN_LOG_LEVEL level, const char* format, ...)
 	/* Fix for Issue 24, raised by John Selbie: */
 #define MAX_RTPPRINTF_BUFFER_SIZE (1024)
 	char s[MAX_RTPPRINTF_BUFFER_SIZE+1];
-#undef MAX_RTPPRINTF_BUFFER_SIZE
 	size_t so_far = 0;
 	if (use_new_log_timestamp_format) {
 		time_t now = time(NULL);
@@ -514,8 +512,16 @@ void turn_log_func_default(TURN_LOG_LEVEL level, const char* format, ...)
 	} else {
 		so_far += snprintf(s, sizeof(s), "%lu: ", (unsigned long)log_time());
 	}
+#ifdef SYS_gettid
 	so_far += snprintf(s + so_far, sizeof(s)-100, (level == TURN_LOG_LEVEL_ERROR) ? "(%lu): ERROR: " : "(%lu): ", (unsigned long)gettid());
+#else
+	so_far += snprintf(s + so_far, sizeof(s)-100, (level == TURN_LOG_LEVEL_ERROR) ? ": ERROR: " : ": ");
+#endif
 	so_far += vsnprintf(s + so_far,sizeof(s) - (so_far+1), format, args);
+	if(so_far > MAX_RTPPRINTF_BUFFER_SIZE+1)
+	{
+		so_far=MAX_RTPPRINTF_BUFFER_SIZE+1;
+	}
 	if(!no_stdout_log)
 		fwrite(s, so_far, 1, stdout);
 	/* write to syslog or to log file */
