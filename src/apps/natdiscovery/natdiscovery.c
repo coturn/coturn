@@ -634,6 +634,7 @@ int main(int argc, char **argv)
 	if (socket_init()) return -1;
 
 	set_logfile("stdout");
+	set_no_stdout_log(1);
 	set_system_parameters(0);
 
 	memset(local_addr_string, 0, sizeof(local_addr_string));
