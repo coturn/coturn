@@ -631,24 +631,7 @@ int main(int argc, char **argv)
 	int first=1;
 	ioa_addr other_addr, reflexive_addr, tmp_addr, remote_addr, local_addr, local2_addr;
 
-#if defined(WINDOWS)
-	{
-		WORD wVersionRequested;
-		WSADATA wsaData;
-		int e;
-
-		/* Use the MAKEWORD(lowbyte, highbyte) macro declared in Windef.h */
-		wVersionRequested = MAKEWORD(2, 2);
-
-		e = WSAStartup(wVersionRequested, &wsaData);
-		if (e != 0) {
-			/* Tell the user that we could not find a usable */
-			/* Winsock DLL.                                  */
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "WSAStartup failed with error: %d\n", e);
-			return 1;
-		}
-	}
-#endif
+	if (socket_init()) return -1;
 
 	set_logfile("stdout");
 	set_system_parameters(0);

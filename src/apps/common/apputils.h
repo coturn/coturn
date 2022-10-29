@@ -173,6 +173,7 @@ void read_spare_buffer(evutil_socket_t fd);
 
 int set_sock_buf_size(evutil_socket_t fd, int sz);
 
+int socket_init();
 int socket_set_reusable(evutil_socket_t fd, int reusable, SOCKET_TYPE st);
 int sock_bind_to_device(evutil_socket_t fd, const unsigned char* ifname);
 int socket_set_nonblocking(evutil_socket_t fd);

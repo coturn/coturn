@@ -141,6 +141,29 @@ int set_sock_buf_size(evutil_socket_t fd, int sz0)
 	return 0;
 }
 
+int socket_init()
+{
+#if defined(WINDOWS)
+	{
+		WORD wVersionRequested;
+		WSADATA wsaData;
+		int e;
+
+		/* Use the MAKEWORD(lowbyte, highbyte) macro declared in Windef.h */
+		wVersionRequested = MAKEWORD(2, 2);
+
+		e = WSAStartup(wVersionRequested, &wsaData);
+		if (e != 0) {
+			/* Tell the user that we could not find a usable */
+			/* Winsock DLL.                                  */
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "WSAStartup failed with error: %d\n", e);
+			return 1;
+		}
+	}
+#endif
+	return 0;
+}
+
 int socket_tcp_set_keepalive(evutil_socket_t fd,SOCKET_TYPE st)
 {
 	UNUSED_ARG(st);
