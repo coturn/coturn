@@ -35,6 +35,15 @@
 #include "prom_server.h"
 #endif
 
+#if defined(WINDOWS)
+    #include <Iphlpapi.h>
+
+    #define WORKING_BUFFER_SIZE 15000
+    #define MAX_TRIES 3
+
+    #define MALLOC(x) HeapAlloc(GetProcessHeap(), 0, (x))
+    #define FREE(x) HeapFree(GetProcessHeap(), 0, (x))
+#endif
 
 #if (defined LIBRESSL_VERSION_NUMBER && OPENSSL_VERSION_NUMBER == 0x20000000L)
 #undef OPENSSL_VERSION_NUMBER
@@ -83,102 +92,155 @@ char HTTP_ALPN[128] = "http/1.1";
 #define DEFAULT_GENERAL_RELAY_SERVERS_NUMBER (1)
 
 turn_params_t turn_params = {
-NULL, /* tls_ctx */
-NULL, /* dtls_ctx */
-DH_2066, "", "", "",
-"turn_server_cert.pem","turn_server_pkey.pem", "", "",
-0,0,0,
-#if !TLS_SUPPORTED
+    //////////////// OpenSSL group //////////////////////
+    NULL, /* tls_ctx */
+    NULL, /* dtls_ctx */
+    DH_2066, /*dh_key_size*/
+	
+	"", /*cipher_list*/
+	"", /*ec_curve_name*/
+	
+	"", /*ca_cert_file*/
+    "turn_server_cert.pem", /*cert_file*/
+	"turn_server_pkey.pem", /*pkey_file*/
+	"", /*tls_password*/
+	"", /*dh_file*/
+
+    0, /*no_tlsv1*/
+	0, /*no_tlsv1_1*/
+	0, /*no_tlsv1_2*/
+	/*no_tls*/
+    #if !TLS_SUPPORTED
 	1,
-#else
+    #else
 	0,
-#endif
-
-#if !DTLS_SUPPORTED
+    #endif
+	/*no_dtls*/
+    #if !DTLS_SUPPORTED
 	1,
-#else
+    #else
 	0,
-#endif
+    #endif
 
-NULL, PTHREAD_MUTEX_INITIALIZER,
+    NULL, /*tls_ctx_update_ev*/
+    {0, NULL}, /*tls_mutex*/
 
-//////////////// Common params ////////////////////
+    //////////////// Common params ////////////////////
 	TURN_VERBOSE_NONE, /* verbose */
 	0, /* turn_daemon */
 	0, /* no_software_attribute */
 	0, /* web_admin_listen_on_workers */
-	0, /* do_not_use_config_file */
-"/var/run/turnserver.pid", /* pidfile */
-"", /* acme_redirect */
-DEFAULT_STUN_PORT, /* listener_port*/
-DEFAULT_STUN_TLS_PORT, /* tls_listener_port */
-0, /* alt_listener_port */
-0, /* alt_tls_listener_port */
-0, /* tcp_proxy_port */
-1, /* rfc5780 */
-0, /* no_udp */
-0, /* no_tcp */
-0, /* tcp_use_proxy */
-0, /* no_tcp_relay */
-0, /* no_udp_relay */
-"",
-{"",""},0,
-{
-  NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0,0,NULL,NULL,NULL
-},
-{NULL, 0},{NULL, 0},
-NEV_UNKNOWN,
-{ "Unknown", "UDP listening socket per session", "UDP thread per network endpoint", "UDP thread per CPU core" },
-//////////////// Relay servers //////////////////////////////////
-LOW_DEFAULT_PORTS_BOUNDARY,HIGH_DEFAULT_PORTS_BOUNDARY,0,0,0,"",
-0,NULL,0,NULL,DEFAULT_GENERAL_RELAY_SERVERS_NUMBER,0,
-////////////// Auth server /////////////////////////////////////
-"","",0,
-/////////////// AUX SERVERS ////////////////
-{NULL,0,{0,NULL}},0,
-/////////////// ALTERNATE SERVERS ////////////////
-{NULL,0,{0,NULL}},{NULL,0,{0,NULL}},
-/////////////// stop server ////////////////
-0,
-/////////////// MISC PARAMS ////////////////
-0, /* stun_only */
-0, /* no_stun */
-0, /* secure_stun */
-0, /* server_relay */
-0, /* fingerprint */
-':', /* rest_api_separator */
-STUN_DEFAULT_NONCE_EXPIRATION_TIME, /* stale_nonce */
-STUN_DEFAULT_MAX_ALLOCATE_LIFETIME, /* max_allocate_lifetime */
-STUN_DEFAULT_CHANNEL_LIFETIME, /* channel_lifetime */
-STUN_DEFAULT_PERMISSION_LIFETIME, /* permission_lifetime */
-0, /* mobility */
-TURN_CREDENTIALS_NONE, /* ct */
-0, /* use_auth_secret_with_timestamp */
-0, /* max_bps */
-0, /* bps_capacity */
-0, /* bps_capacity_allocated */
-0, /* total_quota */
-0, /* user_quota */
-#if !defined(TURN_NO_PROMETHEUS)
-0, /* prometheus disabled by default */
-DEFAULT_PROM_SERVER_PORT, /* prometheus port */
-0, /* prometheus username labelling disabled by default when prometheus is enabled */
-#endif
-///////////// Users DB //////////////
-{ (TURN_USERDB_TYPE)0, {"\0","\0"}, {0,NULL, {NULL,0}} },
-///////////// CPUs //////////////////
-DEFAULT_CPUS_NUMBER,
-///////// Encryption /////////
-"", /* secret_key_file */
-"", /* secret_key */
-ALLOCATION_DEFAULT_ADDRESS_FAMILY_IPV4,  /* allocation_default_address_family */
-0,  /* no_auth_pings */
-0,  /* no_dynamic_ip_list */
-0,  /* no_dynamic_realms */
 
-0,  /* log_binding */
-0,	/* no_stun_backward_compatibility */
-0	/* response_origin_only_with_rfc5780 */
+	0, /* do_not_use_config_file */
+
+    "/var/run/turnserver.pid", /* pidfile */
+    "", /* acme_redirect */
+
+    ////////////////  Listener server /////////////////
+
+    DEFAULT_STUN_PORT, /* listener_port*/
+    DEFAULT_STUN_TLS_PORT, /* tls_listener_port */
+    0, /* alt_listener_port */
+    0, /* alt_tls_listener_port */
+    0, /* tcp_proxy_port */
+    1, /* rfc5780 */
+
+    0, /* no_udp */
+    0, /* no_tcp */
+    0, /* tcp_use_proxy */
+
+    0, /* no_tcp_relay */
+    0, /* no_udp_relay */
+
+    "", /*listener_ifname*/
+
+    {"", ""}, /*redis_statsdb*/
+    0, /*use_redis_statsdb*/
+    {
+        NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0,0,NULL,NULL,NULL
+    }, /*listener*/
+    {NULL, 0}, /*ip_whitelist*/
+    {NULL, 0}, /*ip_blacklist*/
+    NEV_UNKNOWN, /*net_engine_version*/
+    { "Unknown",
+	"UDP listening socket per session",
+	"UDP thread per network endpoint",
+	"UDP thread per CPU core" }, /*net_engine_version_txt*/
+
+    //////////////// Relay servers //////////////////////////////////
+    LOW_DEFAULT_PORTS_BOUNDARY, /*min_port*/
+    HIGH_DEFAULT_PORTS_BOUNDARY,/*max_port*/
+
+    0, /*check_origin*/
+
+    0, /*no_multicast_peers*/
+    0, /*allow_loopback_peers*/
+
+    "", /*relay_ifname*/
+    0, /*relays_number*/
+    NULL, /*relay_addrs*/
+    0, /*default_relays*/
+
+    NULL, /*external_ip*/
+    DEFAULT_GENERAL_RELAY_SERVERS_NUMBER, /*general_relay_servers_number*/
+    0, /*udp_relay_servers_number*/
+
+    ////////////// Auth server /////////////////////////////////////
+    "","",0,
+
+    /////////////// AUX SERVERS ////////////////
+    {NULL,0,{0,NULL}}, /*aux_servers_list*/
+    0, /*udp_self_balance*/
+
+    /////////////// ALTERNATE SERVERS ////////////////
+    {NULL,0,{0,NULL}}, /*alternate_servers_list*/
+    {NULL,0,{0,NULL}}, /*tls_alternate_servers_list*/
+
+    /////////////// stop server ////////////////
+    0, /*stop_turn_server*/
+
+    /////////////// MISC PARAMS ////////////////
+    0, /* stun_only */
+    0, /* no_stun */
+    0, /* secure_stun */
+    0, /* server_relay */
+    0, /* fingerprint */
+    ':', /* rest_api_separator */
+    STUN_DEFAULT_NONCE_EXPIRATION_TIME, /* stale_nonce */
+    STUN_DEFAULT_MAX_ALLOCATE_LIFETIME, /* max_allocate_lifetime */
+    STUN_DEFAULT_CHANNEL_LIFETIME, /* channel_lifetime */
+    STUN_DEFAULT_PERMISSION_LIFETIME, /* permission_lifetime */
+    0, /* mobility */
+    TURN_CREDENTIALS_NONE, /* ct */
+    0, /* use_auth_secret_with_timestamp */
+    0, /* max_bps */
+    0, /* bps_capacity */
+    0, /* bps_capacity_allocated */
+    0, /* total_quota */
+    0, /* user_quota */
+    #if !defined(TURN_NO_PROMETHEUS)
+    0, /* prometheus disabled by default */
+    DEFAULT_PROM_SERVER_PORT, /* prometheus port */
+    0, /* prometheus username labelling disabled by default when prometheus is enabled */
+    #endif
+
+    ///////////// Users DB //////////////
+    { (TURN_USERDB_TYPE)0, {"\0","\0"}, {0,NULL, {NULL,0}} },
+
+    ///////////// CPUs //////////////////
+    DEFAULT_CPUS_NUMBER,
+
+    ///////// Encryption /////////
+    "", /* secret_key_file */
+    "", /* secret_key */
+    ALLOCATION_DEFAULT_ADDRESS_FAMILY_IPV4,  /* allocation_default_address_family */
+    0,  /* no_auth_pings */
+    0,  /* no_dynamic_ip_list */
+    0,  /* no_dynamic_realms */
+
+    0,  /* log_binding */
+    0,	/* no_stun_backward_compatibility */
+    0	/* response_origin_only_with_rfc5780 */
 };
 
 //////////////// OpenSSL Init //////////////////////
@@ -193,13 +255,16 @@ static void openssl_setup(void);
 */
 
 //////////// Common static process params ////////
-
+#if defined(WINDOWS)
+//TODO: implement it!!!
+#else
 static gid_t procgroupid = 0;
 static uid_t procuserid = 0;
 static gid_t procgroupid_set = 0;
 static uid_t procuserid_set = 0;
 static char procusername[1025]="\0";
 static char procgroupname[1025]="\0";
+#endif
 
 ////////////// Configuration functionality ////////////////////////////////
 
@@ -211,7 +276,231 @@ static void reload_ssl_certs(evutil_socket_t sock, short events, void *args);
 static int make_local_listeners_list(void)
 {
 	int ret = 0;
+#if defined(WINDOWS)
 
+    DWORD dwSize = 0;
+    DWORD dwRetVal = 0;
+
+    unsigned int i = 0;
+
+    // Set the flags to pass to GetAdaptersAddresses
+    ULONG flags = GAA_FLAG_INCLUDE_PREFIX;
+
+    // default to unspecified address family (both)
+    ULONG family = AF_UNSPEC;
+
+    LPVOID lpMsgBuf = NULL;
+
+    PIP_ADAPTER_ADDRESSES pAddresses = NULL;
+    ULONG outBufLen = 0;
+    ULONG Iterations = 0;
+
+    PIP_ADAPTER_ADDRESSES pCurrAddresses = NULL;
+    PIP_ADAPTER_UNICAST_ADDRESS pUnicast = NULL;
+    PIP_ADAPTER_ANYCAST_ADDRESS pAnycast = NULL;
+    PIP_ADAPTER_MULTICAST_ADDRESS pMulticast = NULL;
+    IP_ADAPTER_DNS_SERVER_ADDRESS *pDnServer = NULL;
+    IP_ADAPTER_PREFIX *pPrefix = NULL;
+
+    // Allocate a 15 KB buffer to start with.
+    outBufLen = WORKING_BUFFER_SIZE;
+
+    do {
+
+        pAddresses = (IP_ADAPTER_ADDRESSES *)MALLOC(outBufLen);
+        if (pAddresses == NULL) {
+            TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+                "Memory allocation failed for IP_ADAPTER_ADDRESSES struct\n");
+            return -1;
+        }
+
+        dwRetVal =
+            GetAdaptersAddresses(family, flags, NULL, pAddresses, &outBufLen);
+
+        if (dwRetVal == ERROR_BUFFER_OVERFLOW) {
+            FREE(pAddresses);
+            pAddresses = NULL;
+        }
+        else {
+            break;
+        }
+
+        Iterations++;
+
+    } while ((dwRetVal == ERROR_BUFFER_OVERFLOW) && (Iterations < MAX_TRIES));
+
+    if (dwRetVal == NO_ERROR) {
+        // If successful, output some information from the data we received
+        pCurrAddresses = pAddresses;
+        while (pCurrAddresses) {
+            /*
+            printf("\tLength of the IP_ADAPTER_ADDRESS struct: %ld\n",
+                pCurrAddresses->Length);
+            printf("\tIfIndex (IPv4 interface): %u\n", pCurrAddresses->IfIndex);
+            printf("\tAdapter name: %s\n", pCurrAddresses->AdapterName);//*/
+
+            pUnicast = pCurrAddresses->FirstUnicastAddress;
+            if (pUnicast != NULL) {
+                //printf("\tNumber of Unicast Addresses:\n");
+                for (i = 0; pUnicast != NULL; pUnicast = pUnicast->Next)
+                {
+                    char saddr[INET6_ADDRSTRLEN] = "";
+                    if (AF_INET == pUnicast->Address.lpSockaddr->sa_family) // IPV4
+                    {
+                        if (!inet_ntop(PF_INET,
+                            &((struct sockaddr_in*)pUnicast->Address.lpSockaddr)->sin_addr,
+                            saddr, INET6_ADDRSTRLEN))
+                            continue;
+                        if (strstr(saddr, "169.254.") == saddr)
+                            continue;
+                        if (!strcmp(saddr, "0.0.0.0"))
+                            continue;
+                    }
+                    else if (AF_INET6 == pUnicast->Address.lpSockaddr->sa_family) // IPV6
+                    {
+                        if (!inet_ntop(PF_INET6,
+                            &((struct sockaddr_in6*)pUnicast->Address.lpSockaddr)->sin6_addr,
+                            saddr, INET6_ADDRSTRLEN))
+                            continue;
+                        if (strstr(saddr, "fe80") == saddr)
+                            continue;
+                        if (!strcmp(saddr, "::"))
+                            continue;
+                    }
+                    else
+                        continue;
+
+                    //printf("\t\tIP: %s\n", saddr);
+                    
+                    add_listener_addr(saddr);
+
+                    if (MIB_IF_TYPE_LOOPBACK != pCurrAddresses->IfType)
+                        ret++;
+                }
+            }
+            /*
+            else
+                printf("\tNo Unicast Addresses\n");
+
+            pAnycast = pCurrAddresses->FirstAnycastAddress;
+            if (pAnycast) {
+                for (i = 0; pAnycast != NULL; i++)
+                    pAnycast = pAnycast->Next;
+                printf("\tNumber of Anycast Addresses: %d\n", i);
+            }
+            else
+                printf("\tNo Anycast Addresses\n");
+
+            pMulticast = pCurrAddresses->FirstMulticastAddress;
+            if (pMulticast) {
+                for (i = 0; pMulticast != NULL; i++)
+                    pMulticast = pMulticast->Next;
+                printf("\tNumber of Multicast Addresses: %d\n", i);
+            }
+            else
+                printf("\tNo Multicast Addresses\n");
+
+            pDnServer = pCurrAddresses->FirstDnsServerAddress;
+            if (pDnServer) {
+                for (i = 0; pDnServer != NULL; i++)
+                    pDnServer = pDnServer->Next;
+                printf("\tNumber of DNS Server Addresses: %d\n", i);
+            }
+            else
+                printf("\tNo DNS Server Addresses\n");
+
+            printf("\tDNS Suffix: %wS\n", pCurrAddresses->DnsSuffix);
+            printf("\tDescription: %wS\n", pCurrAddresses->Description);
+            printf("\tFriendly name: %wS\n", pCurrAddresses->FriendlyName);
+
+            if (pCurrAddresses->PhysicalAddressLength != 0) {
+                printf("\tPhysical address: ");
+                for (i = 0; i < (int)pCurrAddresses->PhysicalAddressLength;
+                    i++) {
+                    if (i == (pCurrAddresses->PhysicalAddressLength - 1))
+                        printf("%.2X\n",
+                        (int)pCurrAddresses->PhysicalAddress[i]);
+                    else
+                        printf("%.2X-",
+                        (int)pCurrAddresses->PhysicalAddress[i]);
+                }
+            }
+            printf("\tFlags: %ld\n", pCurrAddresses->Flags);
+            printf("\tMtu: %lu\n", pCurrAddresses->Mtu);
+            char* pType = NULL;
+            
+            switch (pCurrAddresses->IfType)
+            {
+            case MIB_IF_TYPE_ETHERNET:
+                pType = "ETHERNET";
+                break;
+            case MIB_IF_TYPE_PPP:
+                pType = "PPP";
+                break;
+            case MIB_IF_TYPE_LOOPBACK:
+                pType = "LOOPBACK";
+                break;
+            case MIB_IF_TYPE_SLIP:
+                pType = "ATM";
+                break;
+            case IF_TYPE_IEEE80211:
+                pType = "WIFI";
+                break;
+            }
+            printf("\tIfType: %ld (%s)\n", pCurrAddresses->IfType, pType);
+            printf("\tOperStatus: %ld\n", pCurrAddresses->OperStatus);
+            printf("\tIpv6IfIndex (IPv6 interface): %u\n",
+                pCurrAddresses->Ipv6IfIndex);
+            printf("\tZoneIndices (hex): ");
+            for (i = 0; i < 16; i++)
+                printf("%lx ", pCurrAddresses->ZoneIndices[i]);
+            printf("\n");
+
+            printf("\tTransmit link speed: %I64u\n", pCurrAddresses->TransmitLinkSpeed);
+            printf("\tReceive link speed: %I64u\n", pCurrAddresses->ReceiveLinkSpeed);
+
+            pPrefix = pCurrAddresses->FirstPrefix;
+            if (pPrefix) {
+                for (i = 0; pPrefix != NULL; i++)
+                    pPrefix = pPrefix->Next;
+                printf("\tNumber of IP Adapter Prefix entries: %d\n", i);
+            }
+            else
+                printf("\tNumber of IP Adapter Prefix entries: 0\n");
+
+            printf("\n");//*/
+
+            pCurrAddresses = pCurrAddresses->Next;
+        }
+    }
+    else {
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+            "Call to GetAdaptersAddresses failed with error: %d\n",
+            dwRetVal);
+        if (dwRetVal == ERROR_NO_DATA)
+            TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+                "\tNo addresses were found for the requested parameters\n");
+        else {
+
+            if (FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER |
+                FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+                NULL, dwRetVal, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                // Default language
+                (LPTSTR)& lpMsgBuf, 0, NULL)) {
+                TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\tError: %s", lpMsgBuf);
+                LocalFree(lpMsgBuf);
+                if (pAddresses)
+                    FREE(pAddresses);
+                return -2;
+            }
+        }
+    }
+
+    if (pAddresses) {
+        FREE(pAddresses);
+    }
+
+#else
 	struct ifaddrs * ifs = NULL;
 	struct ifaddrs * ifa = NULL;
 
@@ -254,20 +543,122 @@ static int make_local_listeners_list(void)
 		}
 		freeifaddrs(ifs);
 	}
+#endif
 
 	return ret;
 }
 
 static int make_local_relays_list(int allow_local, int family)
 {
+	int counter = 0;
+
+#if defined(WINDOWS)
+    DWORD dwRetVal = 0;
+    // Set the flags to pass to GetAdaptersAddresses
+    ULONG flags = GAA_FLAG_INCLUDE_PREFIX;
+
+    // default to unspecified address family (both)
+    ULONG fm = AF_UNSPEC;
+
+    LPVOID lpMsgBuf = NULL;
+
+    PIP_ADAPTER_ADDRESSES pAddresses = NULL;
+    ULONG outBufLen = 0;
+    ULONG Iterations = 0;
+
+    PIP_ADAPTER_ADDRESSES pCurrAddresses = NULL;
+    PIP_ADAPTER_UNICAST_ADDRESS pUnicast = NULL;
+
+    // Allocate a 15 KB buffer to start with.
+    outBufLen = WORKING_BUFFER_SIZE;
+
+    do {
+
+        pAddresses = (IP_ADAPTER_ADDRESSES *)MALLOC(outBufLen);
+        if (pAddresses == NULL) {
+            TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+                "Memory allocation failed for IP_ADAPTER_ADDRESSES struct\n");
+            return -1;
+        }
+
+        dwRetVal =
+            GetAdaptersAddresses(fm, flags, NULL, pAddresses, &outBufLen);
+
+        if (dwRetVal == ERROR_BUFFER_OVERFLOW) {
+            FREE(pAddresses);
+            pAddresses = NULL;
+        }
+        else {
+            break;
+        }
+
+        Iterations++;
+
+    } while ((dwRetVal == ERROR_BUFFER_OVERFLOW) && (Iterations < MAX_TRIES));
+
+    if (dwRetVal == NO_ERROR) {
+        // If successful, output some information from the data we received
+        pCurrAddresses = pAddresses;
+        while (pCurrAddresses) {
+            /*
+            printf("\tLength of the IP_ADAPTER_ADDRESS struct: %ld\n",
+                pCurrAddresses->Length);
+            printf("\tIfIndex (IPv4 interface): %u\n", pCurrAddresses->IfIndex);
+            printf("\tAdapter name: %s\n", pCurrAddresses->AdapterName);//*/
+
+            pUnicast = pCurrAddresses->FirstUnicastAddress;
+            if (pUnicast != NULL) {
+                //printf("\tNumber of Unicast Addresses:\n");
+                for (; pUnicast != NULL; pUnicast = pUnicast->Next) {
+                    if (!allow_local && (MIB_IF_TYPE_LOOPBACK == pCurrAddresses->IfType))
+                        continue;
+
+                    char saddr[INET6_ADDRSTRLEN] = "";
+                    if (AF_INET == pUnicast->Address.lpSockaddr->sa_family) // IPV4
+                    {
+                        if (family != AF_INET)
+                            continue;
+                        if (!inet_ntop(PF_INET, &((struct sockaddr_in*)pUnicast->Address.lpSockaddr)->sin_addr, saddr, INET6_ADDRSTRLEN))
+                            continue;
+                        if (strstr(saddr, "169.254.") == saddr)
+                            continue;
+                        if (!strcmp(saddr, "0.0.0.0"))
+                            continue;
+                    }
+                    else if (AF_INET6 == pUnicast->Address.lpSockaddr->sa_family) // IPV6
+                    {
+                        if (family != AF_INET6)
+                            continue;
+
+                        if (!inet_ntop(PF_INET6, &((struct sockaddr_in6*)pUnicast->Address.lpSockaddr)->sin6_addr, saddr, INET6_ADDRSTRLEN))
+                            continue;
+                        if (strstr(saddr, "fe80") == saddr)
+                            continue;
+                        if (!strcmp(saddr, "::"))
+                            continue;
+                    }
+                    else
+                        continue;
+
+                    if (add_relay_addr(saddr) > 0) {
+                        counter += 1;
+                    }
+                }
+            }
+            pCurrAddresses = pCurrAddresses->Next;
+        }
+    }
+
+    if (pAddresses) {
+        FREE(pAddresses);
+    }
+#else
 	struct ifaddrs * ifs = NULL;
 	struct ifaddrs * ifa = NULL;
 
 	char saddr[INET6_ADDRSTRLEN] = "";
 
 	getifaddrs(&ifs);
-
-	int counter = 0;
 
 	if (ifs) {
 		for (ifa = ifs; ifa != NULL; ifa = ifa->ifa_next) {
@@ -316,17 +707,120 @@ static int make_local_relays_list(int allow_local, int family)
 		}
 		freeifaddrs(ifs);
 	}
+#endif
 
 	return counter;
 }
 
 int get_a_local_relay(int family, ioa_addr *relay_addr)
 {
-	struct ifaddrs * ifs = NULL;
-
+    int ret = -1;
 	int allow_local = 0;
 
-	int ret = -1;
+#if defined(WINDOWS)
+    DWORD dwRetVal = 0;
+    // Set the flags to pass to GetAdaptersAddresses
+    ULONG flags = GAA_FLAG_INCLUDE_PREFIX;
+
+    // default to unspecified address family (both)
+    ULONG fm = AF_UNSPEC;
+
+    LPVOID lpMsgBuf = NULL;
+
+    PIP_ADAPTER_ADDRESSES pAddresses = NULL;
+    ULONG outBufLen = 0;
+    ULONG Iterations = 0;
+
+    PIP_ADAPTER_ADDRESSES pCurrAddresses = NULL;
+    PIP_ADAPTER_UNICAST_ADDRESS pUnicast = NULL;
+
+    outBufLen = WORKING_BUFFER_SIZE;
+
+    do {
+
+        pAddresses = (IP_ADAPTER_ADDRESSES *)MALLOC(outBufLen);
+        if (pAddresses == NULL) {
+            TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+                "Memory allocation failed for IP_ADAPTER_ADDRESSES struct\n");
+            return -1;
+        }
+
+        dwRetVal =
+            GetAdaptersAddresses(fm, flags, NULL, pAddresses, &outBufLen);
+
+        if (dwRetVal == ERROR_BUFFER_OVERFLOW) {
+            FREE(pAddresses);
+            pAddresses = NULL;
+        }
+        else {
+            break;
+        }
+
+        Iterations++;
+
+    } while ((dwRetVal == ERROR_BUFFER_OVERFLOW) && (Iterations < MAX_TRIES));
+
+    if (dwRetVal == NO_ERROR) {
+    galr_start:
+        // If successful, output some information from the data we received
+        pCurrAddresses = pAddresses;
+        while (pCurrAddresses) {
+            pUnicast = pCurrAddresses->FirstUnicastAddress;
+            if (pUnicast != NULL) {
+                //printf("\tNumber of Unicast Addresses:\n");
+                for (; pUnicast != NULL; pUnicast = pUnicast->Next) {
+                    if (!allow_local && (MIB_IF_TYPE_LOOPBACK == pCurrAddresses->IfType))
+                        continue;
+
+                    char saddr[INET6_ADDRSTRLEN] = "";
+                    if (AF_INET == pUnicast->Address.lpSockaddr->sa_family) // IPV4
+                    {
+                        if (family != AF_INET)
+                            continue;
+                        if (!inet_ntop(PF_INET, &((struct sockaddr_in*)pUnicast->Address.lpSockaddr)->sin_addr, saddr, INET6_ADDRSTRLEN))
+                            continue;
+                        if (strstr(saddr, "169.254.") == saddr)
+                            continue;
+                        if (!strcmp(saddr, "0.0.0.0"))
+                            continue;
+                    }
+                    else if (AF_INET6 == pUnicast->Address.lpSockaddr->sa_family) // IPV6
+                    {
+                        if (family != AF_INET6)
+                            continue;
+
+                        if (!inet_ntop(PF_INET6, &((struct sockaddr_in6*)pUnicast->Address.lpSockaddr)->sin6_addr, saddr, INET6_ADDRSTRLEN))
+                            continue;
+                        if (strstr(saddr, "fe80") == saddr)
+                            continue;
+                        if (!strcmp(saddr, "::"))
+                            continue;
+}
+                    else
+                        continue;
+
+                    if (make_ioa_addr((const uint8_t*)saddr, 0, relay_addr) < 0) {
+                        continue;
+                    } else {
+                        ret = 0;
+                        break;
+                    }
+                }
+            }
+            pCurrAddresses = pCurrAddresses->Next;
+        }
+
+        if (ret < 0 && !allow_local) {
+            allow_local = 1;
+            goto galr_start;
+        }
+    }
+
+    if (pAddresses) {
+        FREE(pAddresses);
+    }
+#else
+	struct ifaddrs * ifs = NULL;
 
 	char saddr[INET6_ADDRSTRLEN] = "";
 
@@ -397,8 +891,8 @@ int get_a_local_relay(int family, ioa_addr *relay_addr)
 
 		freeifaddrs(ifs);
 	}
-
 	return -1;
+#endif
 }
 
 //////////////////////////////////////////////////
@@ -1128,7 +1622,7 @@ void generate_aes_128_key(char* filePath, unsigned char* returnedKey){
 	for(i = 0; i < 16; i++){
 		fputc(key[i], fptr);
 	}
-	strcpy((char*)returnedKey, key);
+	STRCPY((char*)returnedKey, key);
 	fclose(fptr);
 
 
@@ -1317,6 +1811,9 @@ static void set_option(int c, char *value)
   case WEB_ADMIN_LISTEN_ON_WORKERS_OPT:
 	  turn_params.web_admin_listen_on_workers = get_bool_value(value);
 	  break;
+#if defined(WINDOWS)
+	  //TODO: implement it!!!
+#else
   case PROC_USER_OPT: {
 	  struct passwd* pwd = getpwnam(value);
 	  if(!pwd) {
@@ -1341,6 +1838,7 @@ static void set_option(int c, char *value)
 		}
 	}
 	break;
+#endif
 	case 'i':
 		STRCPY(turn_params.relay_ifname, value);
 		break;
@@ -2231,6 +2729,9 @@ static void set_network_engine(void)
 
 static void drop_privileges(void)
 {
+#if defined(WINDOWS)
+	//TODO: implement it!!!
+#else
 	setgroups(0, NULL);
 	if(procgroupid_set) {
 		if(getgid() != procgroupid) {
@@ -2257,15 +2758,16 @@ static void drop_privileges(void)
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Keep UID: %s(%lu)\n", procusername, (unsigned long)procuserid);
 		}
 	}
+#endif
 }
 
 static void init_domain(void)
 {
 #if !defined(TURN_NO_GETDOMAINNAME)
-	if(getdomainname(turn_params.domain,sizeof(turn_params.domain)-1)<0) {
-		turn_params.domain[0]=0;
-	} else if(!strcmp(turn_params.domain,"(none)")) {
-		turn_params.domain[0]=0;
+	if (getdomainname(turn_params.domain, sizeof(turn_params.domain) - 1) < 0) {
+		turn_params.domain[0] = 0;
+	} else if (!strcmp(turn_params.domain, "(none)")) {
+		turn_params.domain[0] = 0;
 	}
 #endif
 }
@@ -2275,6 +2777,8 @@ int main(int argc, char **argv)
 	int c = 0;
 
 	IS_TURN_SERVER = 1;
+
+	TURN_MUTEX_INIT(&turn_params.tls_mutex);
 
 	set_execdir();
 
@@ -2341,25 +2845,23 @@ int main(int argc, char **argv)
 	turn_params.no_dtls = 1;
 #endif
 
-#if defined(_SC_NPROCESSORS_ONLN)
-
 	{
-		 turn_params.cpus = (long)sysconf(_SC_NPROCESSORS_CONF);
-
-		 if(turn_params.cpus<DEFAULT_CPUS_NUMBER)
+		int cpus = get_system_number_of_cpus();
+		if (0 < cpus)
+			turn_params.cpus = get_system_number_of_cpus();
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "System cpu num is %d\n", turn_params.cpus);
+		if (turn_params.cpus < DEFAULT_CPUS_NUMBER)
 			 turn_params.cpus = DEFAULT_CPUS_NUMBER;
-		 else if(turn_params.cpus>MAX_NUMBER_OF_GENERAL_RELAY_SERVERS)
+		else if (turn_params.cpus > MAX_NUMBER_OF_GENERAL_RELAY_SERVERS)
 			 turn_params.cpus = MAX_NUMBER_OF_GENERAL_RELAY_SERVERS;
 
 		 turn_params.general_relay_servers_number = (turnserver_id)turn_params.cpus;
 	}
 
-#endif
-
-	memset(&turn_params.default_users_db,0,sizeof(default_users_db_t));
+	memset(&turn_params.default_users_db, 0, sizeof(default_users_db_t));
 	turn_params.default_users_db.ram_db.static_accounts = ur_string_map_create(free);
 
-	if(strstr(argv[0],"turnadmin"))
+	if(strstr(argv[0], "turnadmin"))
 		return adminmain(argc,argv);
 	// Zero pass apply the log options.
 	read_config_file(argc,argv,0);
@@ -2555,6 +3057,12 @@ int main(int argc, char **argv)
 		}
 	}
 
+	if (socket_init()) return -1;
+
+#if defined(WINDOWS)
+
+    //TODO: implement deamon!!! use windows server
+#else
 	if(turn_params.turn_daemon) {
 #if !defined(TURN_HAS_DAEMON)
 		pid_t pid = fork();
@@ -2611,11 +3119,16 @@ int main(int argc, char **argv)
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "pid file created: %s\n", s);
 		}
 	}
+#endif
 
 	setup_server();
 
+#if defined(WINDOWS)
+	//TODO: implement it!!! add windows server
+#else
 	struct event *ev = evsignal_new(turn_params.listener.event_base, SIGUSR2, reload_ssl_certs, NULL);
 	event_add(ev, NULL);
+#endif
 
 	drop_privileges();
 #if !defined(TURN_NO_PROMETHEUS)
@@ -2645,7 +3158,7 @@ int main(int argc, char **argv)
 #if OPENSSL_VERSION_NUMBER < OPENSSL_VERSION_1_1_0
 
 //array larger than anything that OpenSSL may need:
-static pthread_mutex_t mutex_buf[256];
+static TURN_MUTEX_DECLARE(mutex_buf[256]);
 static int mutex_buf_initialized = 0;
 
 void coturn_locking_function(int mode, int n, const char *file, int line);
@@ -2654,9 +3167,9 @@ void coturn_locking_function(int mode, int n, const char *file, int line) {
   UNUSED_ARG(line);
   if(mutex_buf_initialized && (n < CRYPTO_num_locks())) {
 	  if (mode & CRYPTO_LOCK)
-		  pthread_mutex_lock(&(mutex_buf[n]));
+		  TURN_MUTEX_LOCK(&(mutex_buf[n]));
 	  else
-		  pthread_mutex_unlock(&(mutex_buf[n]));
+		  TURN_MUTEX_UNLOCK(&(mutex_buf[n]));
   }
 }
 
@@ -2670,7 +3183,7 @@ void coturn_id_function(CRYPTO_THREADID *ctid)
 static int THREAD_setup(void) {
     int i;
 	for (i = 0; i < CRYPTO_num_locks(); i++) {
-		pthread_mutex_init(&(mutex_buf[i]), NULL);
+		TURN_MUTEX_INIT(&(mutex_buf[i]));
 	}
 
 	mutex_buf_initialized = 1;
@@ -2679,7 +3192,6 @@ static int THREAD_setup(void) {
 	return 1;
 }
 
-int THREAD_cleanup(void);
 int THREAD_cleanup(void) {
     int i;
 
@@ -2689,7 +3201,7 @@ int THREAD_cleanup(void) {
     CRYPTO_THREADID_set_callback(NULL);
     CRYPTO_set_locking_callback(NULL);
     for (i = 0; i < CRYPTO_num_locks(); i++) {
-        pthread_mutex_destroy(&(mutex_buf[i]));
+	  TURN_MUTEX_DESTROY(&(mutex_buf[i]));
     }
 
     mutex_buf_initialized = 0;
@@ -2700,7 +3212,6 @@ static int THREAD_setup(void) {
     return 1;
 }
 
-int THREAD_cleanup(void);
 int THREAD_cleanup(void){
     return 1;
 }
@@ -3193,7 +3704,7 @@ static void openssl_setup(void)
 
 static void openssl_load_certificates(void)
 {
-	pthread_mutex_lock(&turn_params.tls_mutex);
+	TURN_MUTEX_LOCK(&turn_params.tls_mutex);
 	if(!turn_params.no_tls) {
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
         set_ctx(&turn_params.tls_ctx,"TLS", TLSv1_2_server_method()); /*openssl-1.0.2 version specific API */
@@ -3258,7 +3769,7 @@ static void openssl_load_certificates(void)
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS cipher suite: %s\n",turn_params.cipher_list);
 #endif
 	}
-	pthread_mutex_unlock(&turn_params.tls_mutex);
+	TURN_MUTEX_UNLOCK(&turn_params.tls_mutex);
 }
 
 static void reload_ssl_certs(evutil_socket_t sock, short events, void *args)

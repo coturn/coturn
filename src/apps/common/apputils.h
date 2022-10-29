@@ -159,7 +159,7 @@ typedef struct _oauth_key_data_raw oauth_key_data_raw;
 
 ///////////////////////// Sockets ///////////////////////////////
 
-#if defined(WIN32)
+#if defined(WINDOWS)
 /** Do the platform-specific call needed to close a socket returned from
     socket() or accept(). */
 #define socket_closesocket(s) closesocket(s)
@@ -173,6 +173,7 @@ void read_spare_buffer(evutil_socket_t fd);
 
 int set_sock_buf_size(evutil_socket_t fd, int sz);
 
+int socket_init();
 int socket_set_reusable(evutil_socket_t fd, int reusable, SOCKET_TYPE st);
 int sock_bind_to_device(evutil_socket_t fd, const unsigned char* ifname);
 int socket_set_nonblocking(evutil_socket_t fd);
@@ -198,6 +199,7 @@ int get_raw_socket_ttl(evutil_socket_t fd, int family);
 
 void ignore_sigpipe(void);
 unsigned long set_system_parameters(int max_resources);
+unsigned long get_system_number_of_cpus();
 
 ///////////////////////// MTU //////////////////////////
 
@@ -215,6 +217,22 @@ int get_socket_mtu(evutil_socket_t fd, int family, int verbose);
 ////////////////// Misc utils /////////////////////////
 
 char *skip_blanks(char* s);
+
+#if defined(_MSC_VER)
+    #define CLOCK_REALTIME 0
+	int clock_gettime(int X, struct timeval* tv);
+	int gettimeofday(struct timeval* tp, void* tzp);
+
+	char* dirname(char* path);
+#endif
+
+#if defined(WINDOWS)
+	int getdomainname(char* name, size_t len);
+	// wchar convert to char
+	char* _WTA(__in wchar_t* pszInBufBuf, __in int nInSize, __out char** pszOutBuf, __out int* pnOutSize);
+	// char convert to wchar
+	wchar_t* _ATW(__in char* pszInBuf, __in int nInSize, __out wchar_t** pszOutBuf, __out int* pnOutSize);
+#endif
 
 ////////////////// File search ////////////////////////
 
@@ -245,6 +263,10 @@ void convert_oauth_key_data_raw(const oauth_key_data_raw *raw, oauth_key_data *o
 //////////// Event Base /////////////////////
 
 struct event_base *turn_event_base_new(void);
+
+//////////// Random /////////////////////
+
+void turn_srandom(void);
 
 ///////////////////////////////////////////////////////
 

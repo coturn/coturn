@@ -36,8 +36,12 @@
 
 #include <sqlite3.h>
 
+#if defined(__unix__) || defined(unix) || defined(__APPLE__) \
+    || defined(__DARWIN__) || defined(__MACH__)
 #include <unistd.h>
+#include <sys/types.h>
 #include <pwd.h>
+#endif
 
 #include <pthread.h>
 
@@ -48,7 +52,11 @@ static pthread_cond_t rc_cond = PTHREAD_COND_INITIALIZER;
 
 static int read_threads = 0;
 static int write_level = 0;
+#if defined(WINDOWS)
+static pthread_t write_thread = {0};
+#else
 static pthread_t write_thread = 0;
+#endif
 
 static void sqlite_lock(int write)
 {
@@ -57,14 +65,29 @@ static void sqlite_lock(int write)
 	int can_move = 0;
 	while (!can_move) {
 		pthread_mutex_lock(&rc_mutex);
+#if defined(WINDOWS)
+		pthread_t zero = { 0 };
+#endif
 		if (write) {
-			if (((write_thread == 0) && (read_threads < 1)) || (write_thread == pths)) {
+			if ((
+#if defined(WINDOWS)
+				pthread_equal(write_thread, zero)
+#else
+				write_thread == 0
+#endif
+				&& (read_threads < 1)) || pthread_equal(write_thread, pths)) {
 				can_move = 1;
 				++write_level;
 				write_thread = pths;
 			}
 		} else {
-			if ((!write_thread) || (write_thread == pths)) {
+			if ((
+#if defined(WINDOWS)
+				pthread_equal(write_thread, zero))
+#else
+				!write_thread)
+#endif
+				|| pthread_equal(write_thread, pths)) {
 				can_move = 1;
 				++read_threads;
 			}
@@ -81,7 +104,12 @@ static void sqlite_unlock(int write)
 	pthread_mutex_lock(&rc_mutex);
 	if (write) {
 		if (!(--write_level)) {
+#if defined(WINDOWS)
+			pthread_t zero = { 0 };
+			write_thread = zero;
+#else
 			write_thread = 0;
+#endif
 			pthread_cond_broadcast(&rc_cond);
 		}
 	} else {
@@ -121,6 +149,8 @@ static int donot_print_connection_success = 0;
 static void fix_user_directory(char *dir0) {
 	char *dir = dir0;
 	while(*dir == ' ') ++dir;
+#if defined(__unix__) || defined(unix) || defined(__APPLE__) \
+    || defined(__DARWIN__) || defined(__MACH__)
 	if(*dir == '~') {
 		char *home=getenv("HOME");
 		if(!home) {
@@ -143,6 +173,7 @@ static void fix_user_directory(char *dir0) {
 		strncpy(dir0,dir_fixed,sz);
 		free(dir_fixed);
 	}
+#endif
 }
 
 static void init_sqlite_database(sqlite3 *sqliteconnection) {

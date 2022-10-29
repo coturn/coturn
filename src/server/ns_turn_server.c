@@ -213,7 +213,7 @@ void init_turn_server_addrs_list(turn_server_addrs_list_t *l)
 	if(l) {
 		l->addrs = NULL;
 		l->size = 0;
-		turn_mutex_init(&(l->m));
+		TURN_MUTEX_INIT(&(l->m));
 	}
 }
 
@@ -794,8 +794,7 @@ static ts_ur_super_session* create_new_ss(turn_turnserver* server) {
 	//
 	//printf("%s: 111.111: session size=%lu\n",__FUNCTION__,(unsigned long)sizeof(ts_ur_super_session));
 	//
-	ts_ur_super_session *ss = (ts_ur_super_session*)malloc(sizeof(ts_ur_super_session));
-	memset(ss,0,sizeof(ts_ur_super_session));
+	ts_ur_super_session *ss = (ts_ur_super_session*)calloc(sizeof(ts_ur_super_session), 1);
 	ss->server = server;
 	get_default_realm_options(&(ss->realm_options));
 	put_session_into_map(ss);
@@ -3642,9 +3641,9 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 					}
 
 					if(asl && asl->size) {
-						turn_mutex_lock(&(asl->m));
+						TURN_MUTEX_LOCK(&(asl->m));
 						set_alternate_server(asl,get_local_addr_from_ioa_socket(ss->client_socket),&(server->as_counter),method,&tid,resp_constructed,&err_code,&reason,nbh);
-						turn_mutex_unlock(&(asl->m));
+						TURN_MUTEX_UNLOCK(&(asl->m));
 					}
 				}
 			}

@@ -29,8 +29,11 @@
  */
 
 #include "ns_turn_ioaddr.h"
-#include <netdb.h>
-#include <string.h>
+
+#if defined(__unix__) || defined(unix) || defined(__APPLE__) \
+	|| defined(__DARWIN__) || defined(__MACH__)
+	#include <netdb.h>
+#endif
 
 //////////////////////////////////////////////////////////////
 

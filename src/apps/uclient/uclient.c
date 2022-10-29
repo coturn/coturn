@@ -34,12 +34,11 @@
 #include "ns_turn_utils.h"
 #include "session.h"
 
+#if defined(__linux__)
 #include <unistd.h>
-#include <time.h>
-
-#include "ns_turn_openssl.h"
-
 #include <sys/select.h>
+#endif
+#include <time.h>
 
 static int verbose_packets=0;
 
@@ -197,11 +196,11 @@ int send_buffer(app_ur_conn_info *clnet_info, stun_buffer* message, int data_con
 	char *buffer = (char*) (message->buf);
 
 	if(negative_protocol_test && (message->len>0)) {
-		if(random()%10 == 0) {
-			int np = (int)((unsigned long)random()%10);
+		if(turn_random()%10 == 0) {
+			int np = (int)((unsigned long)turn_random()%10);
 			while(np-->0) {
-				int pos = (int)((unsigned long)random()%(unsigned long)message->len);
-				int val = (int)((unsigned long)random()%256);
+				int pos = (int)((unsigned long)turn_random()%(unsigned long)message->len);
+				int val = (int)((unsigned long)turn_random()%256);
 				message->buf[pos]=(uint8_t)val;
 			}
 		}
@@ -700,7 +699,7 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 				  sar = stun_attr_get_next_str(elem->in_buffer.buf,elem->in_buffer.len,sar);
 			  }
 			  if(negative_test) {
-				  tcp_data_connect(elem,(uint64_t)random());
+				  tcp_data_connect(elem,(uint64_t)turn_random());
 			  } else {
 				  /* positive test */
 				  tcp_data_connect(elem,cid);
@@ -890,7 +889,7 @@ static int client_write(app_ur_session *elem) {
 	if (!(elem->pinfo.tcp_conn) || !(elem->pinfo.tcp_conn_number)) {
 		return -1;
 	}
-	int i = (unsigned int)(random()) % elem->pinfo.tcp_conn_number;
+	int i = (unsigned int)(turn_random()) % elem->pinfo.tcp_conn_number;
 	atc = elem->pinfo.tcp_conn[i];
 	if(!atc->tcp_data_bound) {
 		printf("%s: Uninitialized atc: i=%d, atc=0x%lx\n",__FUNCTION__,i,(long)atc);
@@ -1237,7 +1236,7 @@ static int refresh_channel(app_ur_session* elem, uint16_t method, uint32_t lt)
 		stun_attr_add(&message, STUN_ATTRIBUTE_LIFETIME, (const char*) &lt, 4);
 
 		if(dual_allocation && !mobility) {
-			int t = ((uint8_t)random())%3;
+			int t = ((uint8_t)turn_random())%3;
 			if(t) {
 				uint8_t field[4];
 				field[0] = (t==1) ? (uint8_t)STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4 : (uint8_t)STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6;
@@ -1528,7 +1527,7 @@ void start_mclient(const char *remote_address, int port,
 	stime = current_time;
 
 	for(i=0;i<total_clients;i++) {
-		elems[i]->to_send_timems = current_mstime + 1000 + ((uint32_t)random())%5000;
+		elems[i]->to_send_timems = current_mstime + 1000 + ((uint32_t)turn_random())%5000;
 	}
 
 	tot_messages = elems[0]->tot_msgnum * total_clients;
@@ -1612,7 +1611,7 @@ int add_integrity(app_ur_conn_info *clnet_info, stun_buffer *message)
 			if(((method == STUN_METHOD_ALLOCATE) || (method == STUN_METHOD_REFRESH)) || !(clnet_info->key_set))
 			{
 
-				cok=((unsigned short)random())%3;
+				cok=((unsigned short)turn_random())%3;
 				clnet_info->cok = cok;
 				oauth_token otoken;
 				encoded_oauth_token etoken;
@@ -1621,7 +1620,7 @@ int add_integrity(app_ur_conn_info *clnet_info, stun_buffer *message)
 				long halflifetime = OAUTH_SESSION_LIFETIME/2;
 				long random_lifetime = 0;
 				while(!random_lifetime) {
-					random_lifetime = random();
+					random_lifetime = turn_random();
 				}
 				if(random_lifetime<0) random_lifetime=-random_lifetime;
 				random_lifetime = random_lifetime % halflifetime;

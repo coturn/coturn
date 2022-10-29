@@ -96,8 +96,12 @@ int stun_method_str(uint16_t method, char *smethod)
 long turn_random(void)
 {
 	long ret = 0;
-	if(!RAND_bytes((unsigned char *)&ret,sizeof(ret)))
+	if (!RAND_bytes((unsigned char*)&ret, sizeof(ret)))
+#if defined(WINDOWS)
+		ret = rand();
+#else
 		ret = random();
+#endif
 	return ret;
 }
 
@@ -107,7 +111,7 @@ static void turn_random_tid_size(void *id)
 	if(!RAND_pseudo_bytes((unsigned char *)ar,12)) {
 		size_t i;
 		for(i=0;i<3;++i) {
-			ar[i] = (uint32_t)random();
+			ar[i] = (uint32_t)turn_random();
 		}
 	}
 }
@@ -263,7 +267,7 @@ int stun_produce_integrity_key_str(const uint8_t *uname, const uint8_t *realm, c
  		EVP_DigestUpdate(ctx,str,strl);
  		EVP_DigestFinal(ctx,key,&keylen);
  		EVP_MD_CTX_free(ctx);
-#else // OPENSSL_VERSION_NUMBER < 0x10100000L
+#else // OPENSSL_VERSION_NUMBER >= 0x10100000L && OPENSSL_VERSION_NUMBER < 0x30000000L
 		unsigned int keylen = 0;
 		EVP_MD_CTX *ctx = EVP_MD_CTX_new();
 #if defined EVP_MD_CTX_FLAG_NON_FIPS_ALLOW && ! defined(LIBRESSL_VERSION_NUMBER)
@@ -1477,7 +1481,7 @@ int stun_attr_add_str(uint8_t* buf, size_t *len, uint16_t attr, const uint8_t* a
     if(alen>0) memcpy(attr_start+4,avalue,alen);
 	
 	// Write 0 padding to not leak data
-	memset(attr_start+4+alen, 0, paddinglen);
+    memset(attr_start + 4 + alen, 0, paddinglen);
 
     return 0;
   }
@@ -1986,7 +1990,7 @@ int stun_check_message_integrity_by_key_str(turn_credential_type ct, uint8_t *bu
 	if(!old_hmac)
 		return -1;
 
-	if(bcmp(old_hmac,new_hmac,shasize))
+	if(memcmp(old_hmac,new_hmac,shasize))
 		return 0;
 
 	return +1;
@@ -2429,7 +2433,7 @@ int decode_oauth_token_normal(const uint8_t *server_name, const encoded_oauth_to
 		    	return -1;
 		    }
 
-		    if(bcmp(check_mac,mac,mac_size)) {
+		    if(memcmp(check_mac,mac,mac_size)) {
 		    	OAUTH_ERROR("%s: token integrity check failed\n",__FUNCTION__);
 		    	return -1;
 		    }
@@ -2478,7 +2482,7 @@ static void generate_random_nonce(unsigned char *nonce, size_t sz) {
 	if(!RAND_bytes(nonce, (int)sz)) {
 		size_t i;
 		for(i=0;i<sz;++i) {
-			nonce[i] = (unsigned char)random();
+			nonce[i] = (unsigned char)turn_random();
 		}
 	}
 }

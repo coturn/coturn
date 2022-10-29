@@ -1,0 +1,110 @@
+name: msvc
+
+on: [push]
+
+jobs:
+  compile:
+    name: ${{matrix.os}}-vc-${{matrix.VCPKG_PLATFORM_TOOLSET}}-${{matrix.CMAKE_GENERATOR_PLATFORM}}-${{matrix.BUILD_TYPE}}-${{matrix.BUILD_SHARED_LIBS}}
+
+    strategy:
+      matrix:
+        BUILD_TYPE: [Release, Debug]
+        BUILD_SHARED_LIBS: [OFF, ON]
+        #VCPKG_PLATFORM_TOOLSET: [v143, v142, v141]
+        CMAKE_GENERATOR_PLATFORM: [x64, Win32]
+        os: [windows-latest]
+        include:
+          # MSVC 2022
+          - triplet: x64-windows
+            VCPKG_PLATFORM_TOOLSET: v143
+            CMAKE_GENERATOR_PLATFORM: x64
+
+          - triplet: x86-windows
+            VCPKG_PLATFORM_TOOLSET: v143
+            CMAKE_GENERATOR_PLATFORM: Win32
+
+          # MSVC 2019
+          - triplet: x86-windows
+            VCPKG_PLATFORM_TOOLSET: v142
+            CMAKE_GENERATOR_PLATFORM: Win32
+ 
+          # MSVC 2017
+          - triplet: x86-windows
+            VCPKG_PLATFORM_TOOLSET: v141
+            CMAKE_GENERATOR_PLATFORM: Win32
+ 
+    runs-on: ${{matrix.os}}
+
+    env:
+      SOURCE_DIR:  ${{github.workspace}}\.cache\source
+      TOOLS_DIR:   ${{github.workspace}}\.cache\tools
+      INSTALL_DIR: ${{github.workspace}}\.cache\install_msvc_${{matrix.triplet}}_${{matrix.BUILD_TYPE}}
+      VCPKGGITCOMMITID: acc3bcf76b84ae5041c86ab55fe138ae7b8255c7
+      VCPKG_PLATFORM_TOOLSET: ${{matrix.VCPKG_PLATFORM_TOOLSET}}
+      CMAKE_GENERATOR_PLATFORM: ${{matrix.CMAKE_GENERATOR_PLATFORM}}
+
+    defaults:
+      run:
+        shell: cmd
+
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+
+    - name: make directory
+      run: |
+        cmake -E make_directory ${{env.SOURCE_DIR}}
+        cmake -E make_directory ${{env.TOOLS_DIR}}
+        cmake -E make_directory ${{env.INSTALL_DIR}}
+
+    - name: Cache installed
+      uses: actions/cache@v2
+      id: cache-installed
+      with:
+        path: |
+          ${{env.INSTALL_DIR}}
+        key: coturn-cache-installed-${{matrix.os}}-vc${{matrix.VCPKG_PLATFORM_TOOLSET}}-${{matrix.triplet}}-${{matrix.BUILD_TYPE}}
+
+    - name: run-vcpkg
+      uses: lukka/run-vcpkg@v10
+      with:
+        # If not using a submodule for vcpkg sources, this specifies which commit
+        # id must be checkout from a Git repo. It must not set if using a submodule
+        # for vcpkg.
+        vcpkgGitCommitId: '${{ env.VCPKGGITCOMMITID }}'
+        # Since the cache must be invalidated when content of the vcpkg.json file changes, let's
+        # compute its hash and append this to the computed cache's key.
+        appendedCacheKey: coturn-msvc-${{matrix.os}}-vc${{matrix.VCPKG_PLATFORM_TOOLSET}}-${{matrix.triplet}}-${{matrix.BUILD_TYPE}}-${{env.VCPKGGITCOMMITID}}
+
+    - name: build coturn
+      run: |
+        cmake -E make_directory ${{github.workspace}}/build
+        cd ${{github.workspace}}/build
+        cmake ${{github.workspace}} ^
+            -A ${{matrix.CMAKE_GENERATOR_PLATFORM}} ^
+            -T ${{matrix.VCPKG_PLATFORM_TOOLSET}} ^
+            -DWITH_MYSQL=OFF ^
+            -DBUILD_SHARED_LIBS=${{matrix.BUILD_SHARED_LIBS}} ^
+            -DCMAKE_BUILD_TYPE=${{matrix.BUILD_TYPE}} ^
+            -DCMAKE_INSTALL_PREFIX=${{github.workspace}}/build/install ^
+            -DCMAKE_TOOLCHAIN_FILE=${{env.VCPKG_ROOT}}/scripts/buildsystems/vcpkg.cmake
+        cmake --build . --config ${{matrix.BUILD_TYPE}}
+        cmake --build . --config ${{matrix.BUILD_TYPE}} --target install
+
+    - name: Package
+      if: ${{ matrix.BUILD_TYPE == 'Release' }}
+      working-directory: ${{github.workspace}}\build
+      run: |
+        7z a coturn_windows_msvc.zip ${{github.workspace}}\build\install\*
+        cmake --build . --config ${{matrix.BUILD_TYPE}} --target package
+
+    - name: update 
+      if: ${{ matrix.BUILD_TYPE == 'Release' }}
+      uses: actions/upload-artifact@v2
+      with:
+        name: coturn_msvc-${{matrix.VCPKG_PLATFORM_TOOLSET}}-${{matrix.CMAKE_GENERATOR_PLATFORM}}-${{matrix.BUILD_SHARED_LIBS}}
+        path: |
+          ${{github.workspace}}\build\coturn_windows_msvc.zip
+          ${{github.workspace}}\build\coturn*.exe
+          ${{github.workspace}}\build\coturn*.md5

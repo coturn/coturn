@@ -486,8 +486,7 @@ ch_info *ch_map_get(ch_map* map, uint16_t chnum, int new_chn)
 		if(new_chn) {
 			size_t old_sz_mem = old_sz * sizeof(ch_info*);
 			a->extra_chns = (ch_info**)realloc(a->extra_chns,old_sz_mem + sizeof(ch_info*));
-			a->extra_chns[old_sz] = (ch_info*)malloc(sizeof(ch_info));
-			memset(a->extra_chns[old_sz],0,sizeof(ch_info));
+			a->extra_chns[old_sz] = (ch_info*)calloc(sizeof(ch_info), 1);
 			a->extra_sz += 1;
 
 			return a->extra_chns[old_sz];
@@ -574,8 +573,7 @@ tcp_connection *create_tcp_connection(uint8_t server_id, allocation *a, stun_tid
 			}
 		}
 	}
-	tcp_connection *tc = (tcp_connection*)malloc(sizeof(tcp_connection));
-	memset(tc,0,sizeof(tcp_connection));
+	tcp_connection *tc = (tcp_connection*)calloc(sizeof(tcp_connection), 1);
 	addr_cpy(&(tc->peer_addr),peer_addr);
 	if(tid)
 		memcpy(&(tc->tid),tid,sizeof(stun_tid));

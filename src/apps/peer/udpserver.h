@@ -46,11 +46,6 @@ extern "C" {
 struct server_info;
 typedef struct server_info server_type;
 
-///////////////////////////////////////////////////
-
-#define FUNCSTART if(server && server->verbose) turn_log_func_default(TURN_LOG_LEVEL_INFO,"%s:%d:start\n",__FUNCTION__,__LINE__)
-#define FUNCEND if(server && server->verbose) turn_log_func_default(TURN_LOG_LEVEL_INFO,"%s:%d:end\n",__FUNCTION__,__LINE__)
-
 ///////////////////////////////////////////////////////
 
 struct server_info {

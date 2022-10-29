@@ -36,7 +36,11 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#if defined(_MSC_VER)
+#include <getopt.h>
+#else
 #include <unistd.h>
+#endif
 
 //////////////// local definitions /////////////////
 
@@ -59,6 +63,8 @@ int main(int argc, char **argv)
 	int verbose = TURN_VERBOSE_NONE;
 	int c;
 	char ifname[1025] = "\0";
+
+	if (socket_init()) return -1;
 
 	IS_TURN_SERVER = 1;
 
