@@ -31,9 +31,7 @@
 #include "mainrelay.h"
 #include "dbdrivers/dbdriver.h"
 
-#if !defined(TURN_NO_PROMETHEUS)
 #include "prom_server.h"
-#endif
 
 #if defined(WINDOWS)
     #include <Iphlpapi.h>
@@ -218,11 +216,9 @@ turn_params_t turn_params = {
     0, /* bps_capacity_allocated */
     0, /* total_quota */
     0, /* user_quota */
-    #if !defined(TURN_NO_PROMETHEUS)
     0, /* prometheus disabled by default */
     DEFAULT_PROM_SERVER_PORT, /* prometheus port */
     0, /* prometheus username labelling disabled by default when prometheus is enabled */
-    #endif
 
     ///////////// Users DB //////////////
     { (TURN_USERDB_TYPE)0, {"\0","\0"}, {0,NULL, {NULL,0}} },
@@ -2032,7 +2028,6 @@ static void set_option(int c, char *value)
         turn_params.use_redis_statsdb = 1;
         break;
 #endif
-#if !defined(TURN_NO_PROMETHEUS)
 	case PROMETHEUS_OPT:
 		turn_params.prometheus = 1;
 		break;
@@ -2042,7 +2037,6 @@ static void set_option(int c, char *value)
 	case PROMETHEUS_ENABLE_USERNAMES_OPT:
 		turn_params.prometheus_username_labels = 1;
 		break;
-#endif
 	case AUTH_SECRET_OPT:
 		turn_params.use_auth_secret_with_timestamp = 1;
         use_tltc = 1;
@@ -3131,19 +3125,7 @@ int main(int argc, char **argv)
 #endif
 
 	drop_privileges();
-#if !defined(TURN_NO_PROMETHEUS)
-	int prometheus_status = start_prometheus_server();
-	if (prometheus_status < 0) {
-	  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Could not start Prometheus collector!\n");
-	}
-	else if (prometheus_status == 1) {
-	  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Prometheus collector disabled, not started.\n");
-	}
-	else {
-	  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Prometheus collector started successfully.\n");
-	}
-#endif
-
+	start_prometheus_server();
 
 	run_listener_server(&(turn_params.listener));
 

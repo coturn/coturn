@@ -38,9 +38,7 @@
 
 #include "ns_ioalib_impl.h"
 
-#if !defined(TURN_NO_PROMETHEUS)
 #include "prom_server.h"
-#endif
 
 #if TLS_SUPPORTED
 #include <event2/bufferevent_ssl.h>
