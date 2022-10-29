@@ -141,7 +141,7 @@ int set_sock_buf_size(evutil_socket_t fd, int sz0)
 	return 0;
 }
 
-int socket_init()
+int socket_init(void)
 {
 #if defined(WINDOWS)
 	{
@@ -1262,7 +1262,7 @@ unsigned long set_system_parameters(int max_resources)
 	return 0;
 }
 
-unsigned long get_system_number_of_cpus()
+unsigned long get_system_number_of_cpus(void)
 {
 #if defined(WINDOWS)
 	SYSTEM_INFO sysInfo;
