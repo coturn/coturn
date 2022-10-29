@@ -173,7 +173,7 @@ void read_spare_buffer(evutil_socket_t fd);
 
 int set_sock_buf_size(evutil_socket_t fd, int sz);
 
-int socket_init();
+int socket_init(void);
 int socket_set_reusable(evutil_socket_t fd, int reusable, SOCKET_TYPE st);
 int sock_bind_to_device(evutil_socket_t fd, const unsigned char* ifname);
 int socket_set_nonblocking(evutil_socket_t fd);
@@ -199,7 +199,7 @@ int get_raw_socket_ttl(evutil_socket_t fd, int family);
 
 void ignore_sigpipe(void);
 unsigned long set_system_parameters(int max_resources);
-unsigned long get_system_number_of_cpus();
+unsigned long get_system_number_of_cpus(void);
 
 ///////////////////////// MTU //////////////////////////
 
