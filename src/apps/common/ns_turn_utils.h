@@ -81,7 +81,6 @@ extern volatile turn_time_t _log_time_value;
 extern int use_new_log_timestamp_format;
 
 void rtpprintf(const char *format, ...);
-int vrtpprintf(TURN_LOG_LEVEL level, const char *format, va_list args);
 void reset_rtpprintf(void);
 void set_logfile(const char *fn);
 void rollover_logfile(void);
