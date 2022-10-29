@@ -34,7 +34,7 @@
 #include "prom_server.h"
 
 #if defined(WINDOWS)
-    #include <Iphlpapi.h>
+    #include <iphlpapi.h>
 
     #define WORKING_BUFFER_SIZE 15000
     #define MAX_TRIES 3
