@@ -502,41 +502,41 @@ int main(int argc, char **argv)
 			csuite=cipher_suite;
 
 		if(use_tcp) {
-		  root_tls_ctx[root_tls_ctx_num] = SSL_CTX_new(SSLv23_client_method());
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+	#if TLSv1_2_SUPPORTED
+			root_tls_ctx[root_tls_ctx_num] = SSL_CTX_new(TLSv1_2_client_method());
+	#elif TLSv1_1_SUPPORTED
+			root_tls_ctx[root_tls_ctx_num] = SSL_CTX_new(TLSv1_1_client_method());
+	#else
+			root_tls_ctx[root_tls_ctx_num] = SSL_CTX_new(TLSv1_client_method());
+	#endif
 		  SSL_CTX_set_cipher_list(root_tls_ctx[root_tls_ctx_num], csuite);
-		  root_tls_ctx_num++;
-
-		  root_tls_ctx[root_tls_ctx_num] = SSL_CTX_new(TLSv1_client_method());
+#else // OPENSSL_VERSION_NUMBER >= 0x10100000L
+		  root_tls_ctx[root_tls_ctx_num] = SSL_CTX_new(TLS_client_method());
 		  SSL_CTX_set_cipher_list(root_tls_ctx[root_tls_ctx_num], csuite);
-		  root_tls_ctx_num++;
-
-#if TLSv1_1_SUPPORTED
-		  root_tls_ctx[root_tls_ctx_num] = SSL_CTX_new(TLSv1_1_client_method());
-		  SSL_CTX_set_cipher_list(root_tls_ctx[root_tls_ctx_num], csuite);
-		  root_tls_ctx_num++;
-#if TLSv1_2_SUPPORTED
-		  root_tls_ctx[root_tls_ctx_num] = SSL_CTX_new(TLSv1_2_client_method());
-		  SSL_CTX_set_cipher_list(root_tls_ctx[root_tls_ctx_num], csuite);
-		  root_tls_ctx_num++;
 #endif
-#endif
+		  root_tls_ctx_num++;
 		} else {
 #if !DTLS_SUPPORTED
 		  fprintf(stderr,"ERROR: DTLS is not supported.\n");
 		  exit(-1);
 #else
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 		  if(OPENSSL_VERSION_NUMBER < 0x10000000L) {
 		  	TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: OpenSSL version is rather old, DTLS may not be working correctly.\n");
 		  }
-		  root_tls_ctx[root_tls_ctx_num] = SSL_CTX_new(DTLSv1_client_method());
+	#if DTLSv1_2_SUPPORTED
+			root_tls_ctx[root_tls_ctx_num] = SSL_CTX_new(DTLSv1_2_client_method());
+	#else
+			root_tls_ctx[root_tls_ctx_num] = SSL_CTX_new(DTLSv1_client_method());
+	#endif
+			SSL_CTX_set_cipher_list(root_tls_ctx[root_tls_ctx_num], csuite);
+#else // OPENSSL_VERSION_NUMBER >= 0x10100000L
+		  root_tls_ctx[root_tls_ctx_num] = SSL_CTX_new(DTLS_client_method());
 		  SSL_CTX_set_cipher_list(root_tls_ctx[root_tls_ctx_num], csuite);
-		  root_tls_ctx_num++;
-#if DTLSv1_2_SUPPORTED
-		  root_tls_ctx[root_tls_ctx_num] = SSL_CTX_new(DTLSv1_2_client_method());
-		  SSL_CTX_set_cipher_list(root_tls_ctx[root_tls_ctx_num], csuite);
-		  root_tls_ctx_num++;
 #endif
 #endif
+		  root_tls_ctx_num++;
 		}
 	}
 
