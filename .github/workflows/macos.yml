@@ -16,13 +16,13 @@ jobs:
         brew update
         brew install \
             wget \
+            pkg-config \
             libevent \
             openssl \
             sqlite \
             hiredis \
             mongo-c-driver \
             libmicrohttpd
-    - uses: actions/checkout@v3
     - name: configure
       run: ./configure
     - name: make
