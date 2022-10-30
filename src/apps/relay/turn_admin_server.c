@@ -39,8 +39,7 @@
 #include <unistd.h>
 #endif
 
-#if defined(__unix__) || defined(unix) || defined(__APPLE__) \
-	|| defined(__DARWIN__) || defined(__MACH__)
+#if defined(__unix__) || defined(unix) || defined(__APPLE__)
 #include <ifaddrs.h>
 #include <libgen.h>
 #include <sys/resource.h>

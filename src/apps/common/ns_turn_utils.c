@@ -163,8 +163,7 @@ static char* str_fac[]={"LOG_AUTH","LOG_CRON","LOG_DAEMON",
 			"LOG_AUTHPRIV","LOG_SYSLOG",
 			0};
 
-#if defined(__unix__) || defined(unix) || defined(__APPLE__) \
-		|| defined(__DARWIN__) || defined(__MACH__)
+#if defined(__unix__) || defined(unix) || defined(__APPLE__)
 static int int_fac[]={LOG_AUTH ,  LOG_CRON , LOG_DAEMON ,
 		    LOG_KERN , LOG_LOCAL0 , LOG_LOCAL1 ,
 		    LOG_LOCAL2 , LOG_LOCAL3 , LOG_LOCAL4 , LOG_LOCAL5 ,
@@ -190,8 +189,7 @@ void set_syslog_facility(char *val)
 	if(val == NULL){
 		return;
 	}
-#if defined(__unix__) || defined(unix) || defined(__APPLE__) \
-		|| defined(__DARWIN__) || defined(__MACH__)
+#if defined(__unix__) || defined(unix) || defined(__APPLE__)
 	int tmp = str_to_syslog_facility(val);
 	if(tmp == -1){
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: invalid syslog-facility value (%s); ignored.\n", val);
@@ -377,8 +375,7 @@ static void set_log_file_name_func(char *base, char *f, size_t fsz)
 
 static void sighup_callback_handler(int signum)
 {
-#if defined(__unix__) || defined(unix) || defined(__APPLE__) \
-	|| defined(__DARWIN__) || defined(__MACH__)
+#if defined(__unix__) || defined(unix) || defined(__APPLE__)
 	if(signum == SIGHUP) {
 		to_reset_log_file = 1;
 	}
@@ -397,8 +394,7 @@ static void set_rtpfile(void)
 		return;
 	} else if (!_rtpfile) {
 
-#if defined(__unix__) || defined(unix) || defined(__APPLE__) \
-		|| defined(__DARWIN__) || defined(__MACH__)
+#if defined(__unix__) || defined(unix) || defined(__APPLE__)
 		signal(SIGHUP, sighup_callback_handler);
 #endif
 
@@ -540,8 +536,7 @@ void rollover_logfile(void)
 
 static int get_syslog_level(TURN_LOG_LEVEL level)
 {
-#if defined(__unix__) || defined(unix) || defined(__APPLE__) \
-	|| defined(__DARWIN__) || defined(__MACH__)
+#if defined(__unix__) || defined(unix) || defined(__APPLE__)
 	switch(level) {
 	case TURN_LOG_LEVEL_CONTROL:
 		return LOG_NOTICE;
