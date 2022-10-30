@@ -35,8 +35,7 @@
 
 #include <event2/event.h>
 
-#if defined(__unix__) || defined(unix) || defined(__APPLE__) \
-	|| defined(__DARWIN__) || defined(__MACH__)
+#if defined(__unix__) || defined(unix) || defined(__APPLE__)
     #include <ifaddrs.h>
     #include <getopt.h>
     #include <libgen.h>
@@ -740,8 +739,7 @@ int handle_socket_error(void) {
      * Must close connection.
      */
     return 0;
-#if defined(__unix__) || defined(unix) || defined(__APPLE__) \
-	|| defined(__DARWIN__) || defined(__MACH__)
+#if defined(__unix__) || defined(unix) || defined(__APPLE__)
   case EHOSTDOWN:
     /* Host is down.
      * Just ignore, might be an attacker
