@@ -167,11 +167,6 @@ static void redisLibeventCleanup(void *privdata)
 
 ///////////////////////// Send-receive ///////////////////////////
 
-void redis_async_init(void)
-{
-	;
-}
-
 int is_redis_asyncconn_good(redis_context_handle rch)
 {
 	if(rch) {

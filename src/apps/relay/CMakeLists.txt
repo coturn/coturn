@@ -23,6 +23,7 @@ set(HEADER_FILES
     userdb.h
     dbdrivers/dbdriver.h
     prom_server.h
+    dbdrivers/dbd_redis.h
     )
 
 set(SOURCE_FILES
@@ -39,6 +40,7 @@ set(SOURCE_FILES
     userdb.c
     dbdrivers/dbdriver.c
     prom_server.c
+    dbdrivers/dbd_redis.c
     )
 
 find_package(SQLite)

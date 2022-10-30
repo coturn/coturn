@@ -2778,10 +2778,6 @@ int main(int argc, char **argv)
 
 	init_super_memory();
 
-#if !defined(TURN_NO_HIREDIS)
-	redis_async_init();
-#endif
-
 	init_domain();
 	create_default_realm();
 
