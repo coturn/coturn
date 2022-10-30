@@ -1400,6 +1400,9 @@ const turn_dbdriver_t * get_redis_dbdriver(void) {
 }
 
 redis_context_handle get_redis_async_connection(struct event_base *base, redis_stats_db_t* connection_string, int delete_keys) {
+	UNUSED_ARG(base);
+	UNUSED_ARG(connection_string);
+	UNUSED_ARG(delete_keys);
     return NULL;
 }
 #endif /* !defined(TURN_NO_HIREDIS) */
