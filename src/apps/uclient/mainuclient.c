@@ -191,6 +191,7 @@ int main(int argc, char **argv)
 #endif
 
 	set_logfile("stdout");
+	set_no_stdout_log(1);
 
 	set_execdir();
 

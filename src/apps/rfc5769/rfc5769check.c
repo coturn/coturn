@@ -218,6 +218,7 @@ int main(int argc, const char **argv)
 		print_extra = 1;
 
 	set_logfile("stdout");
+	set_no_stdout_log(1);
 	set_system_parameters(0);
 
 	{
