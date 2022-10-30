@@ -49,7 +49,7 @@
 #endif
 
 #if defined(WINDOWS)
-	#include <DSRole.h>
+	#include <dsrole.h>
 #endif
 
 #if defined(_MSC_VER)

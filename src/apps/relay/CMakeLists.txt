@@ -8,7 +8,7 @@ if(NOT HAVE_THREAD_BARRIERS)
 endif()
 
 if(MSVC OR MINGW)
-    list(APPEND turnserver_LIBS Iphlpapi)
+    list(APPEND turnserver_LIBS iphlpapi)
 endif()
 
 set(HEADER_FILES

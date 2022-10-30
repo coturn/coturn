@@ -45,7 +45,7 @@
 
 #if defined(WINDOWS)
 #include <ws2tcpip.h>
-#include <Windows.h>
+#include <windows.h>
 #include <process.h>
 #else
 #include <sys/socket.h>
