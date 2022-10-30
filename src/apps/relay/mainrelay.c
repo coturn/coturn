@@ -3190,6 +3190,7 @@ static int THREAD_setup(void) {
     return 1;
 }
 
+int THREAD_cleanup(void);
 int THREAD_cleanup(void){
     return 1;
 }
