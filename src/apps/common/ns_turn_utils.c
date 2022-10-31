@@ -588,12 +588,12 @@ void turn_log_func_default(char* file, int line, TURN_LOG_LEVEL level, const cha
 		so_far += snprintf(s, sizeof(s), "%lu: ", (unsigned long)log_time());
 	}
 
-  if (_log_file_line_set)
 #ifdef SYS_gettid
-        so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "(%lu): %s(%d):", (unsigned long)gettid(), file, line);
-#else
-        so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "%s(%d):", file, line);
+	so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "(%lu): ", (unsigned long)gettid());
 #endif
+
+	if (_log_file_line_set)
+		so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "%s(%d):", file, line);
 
 	switch (level)
     {
