@@ -576,7 +576,7 @@ int main(int argc, char **argv)
 			{
 				if (!SSL_CTX_load_verify_locations(root_tls_ctx[sslind], ca_cert_file, NULL )) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
-							"ERROR: cannot load CA from file\n",
+							"ERROR: cannot load CA from file: %s\n",
 							ca_cert_file);
 					exit(-1);
 				}

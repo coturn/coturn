@@ -1270,8 +1270,8 @@ unsigned long get_system_number_of_cpus(void)
 	return sysInfo.dwNumberOfProcessors;
 #else
     #if defined(_SC_NPROCESSORS_ONLN)
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "System cpu num is %d \n", sysconf(_SC_NPROCESSORS_CONF));
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "System enable num is %d\n", sysconf(_SC_NPROCESSORS_ONLN));
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "System cpu num is %ld \n", sysconf(_SC_NPROCESSORS_CONF));
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "System enable num is %ld\n", sysconf(_SC_NPROCESSORS_ONLN));
 		return sysconf(_SC_NPROCESSORS_CONF);
 	#else
 		//GNU way
