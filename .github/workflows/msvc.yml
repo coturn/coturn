@@ -101,7 +101,7 @@ jobs:
 
     - name: update 
       if: ${{ matrix.BUILD_TYPE == 'Release' }}
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: coturn_msvc-${{matrix.VCPKG_PLATFORM_TOOLSET}}-${{matrix.CMAKE_GENERATOR_PLATFORM}}-${{matrix.BUILD_SHARED_LIBS}}
         path: |
