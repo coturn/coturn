@@ -107,6 +107,47 @@ static inline uint64_t _ioa_ntoh64(uint64_t v)
 
 #define BUFFEREVENT_FREE(be) do { if(be) { bufferevent_flush(be,EV_READ|EV_WRITE,BEV_FLUSH); bufferevent_disable(be,EV_READ|EV_WRITE); bufferevent_free(be); be = NULL;} } while(0)
 
+#define ERRNO_COMPARE_FUN(FUN, ERR) static inline int socket_##FUN(void) { return socket_errno() == ERR; }
+#if defined(WINDOWS)
+static inline int socket_errno(void)
+{
+	return WSAGetLastError();
+}
+ERRNO_COMPARE_FUN(enomem, WSA_NOT_ENOUGH_MEMORY)
+ERRNO_COMPARE_FUN(eintr, WSAEINTR)
+ERRNO_COMPARE_FUN(ebadf, WSAEBADF)
+ERRNO_COMPARE_FUN(eacces, WSAEACCES)
+ERRNO_COMPARE_FUN(enobufs, WSAENOBUFS)
+ERRNO_COMPARE_FUN(eagain, WSATRY_AGAIN)
+ERRNO_COMPARE_FUN(ewouldblock, WSAEWOULDBLOCK)
+ERRNO_COMPARE_FUN(einprogress, WSAEINPROGRESS)
+ERRNO_COMPARE_FUN(econnreset, WSAECONNRESET)
+ERRNO_COMPARE_FUN(econnrefused, WSAECONNREFUSED)
+ERRNO_COMPARE_FUN(ehostdown, WSAEHOSTDOWN)
+ERRNO_COMPARE_FUN(emsgsize, WSAEMSGSIZE)
+#else
+static inline int socket_errno(void)
+{
+	return errno;
+}
+ERRNO_COMPARE_FUN(enomem, ENOMEM)
+ERRNO_COMPARE_FUN(eintr, EINTR)
+ERRNO_COMPARE_FUN(ebadf, EBADF)
+ERRNO_COMPARE_FUN(eacces, EACCES)
+ERRNO_COMPARE_FUN(enobufs, ENOBUFS)
+ERRNO_COMPARE_FUN(eagain, EAGAIN)
+#if defined(EWOULDBLOCK)
+ERRNO_COMPARE_FUN(ewouldblock, EWOULDBLOCK)
+#else
+ERRNO_COMPARE_FUN(ewouldblock, EAGAIN)
+#endif
+ERRNO_COMPARE_FUN(einprogress, EINPROGRESS)
+ERRNO_COMPARE_FUN(econnreset, ECONNRESET)
+ERRNO_COMPARE_FUN(econnrefused, ECONNREFUSED)
+ERRNO_COMPARE_FUN(ehostdown, EHOSTDOWN)
+ERRNO_COMPARE_FUN(emsgsize, EMSGSIZE)
+#endif
+
 #define turn_time() ((turn_time_t)time(NULL))
 
 typedef int vint;

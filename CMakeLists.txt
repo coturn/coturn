@@ -66,6 +66,23 @@ IF(MSVC)
     add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 ENDIF(MSVC)
 
+if(WIN32)
+    # We have to set _WIN32_WINNT
+    if(${CMAKE_SYSTEM_VERSION} EQUAL 10) # Windows 10
+        add_definitions(-D _WIN32_WINNT=0x0A00)
+    elseif(${CMAKE_SYSTEM_VERSION} EQUAL 6.3) # Windows 8.1
+        add_definitions(-D _WIN32_WINNT=0x0603)
+    elseif(${CMAKE_SYSTEM_VERSION} EQUAL 6.2) # Windows 8
+        add_definitions(-D _WIN32_WINNT=0x0602)
+    elseif(${CMAKE_SYSTEM_VERSION} EQUAL 6.1) # Windows 7
+        add_definitions(-D _WIN32_WINNT=0x0601)
+    elseif(${CMAKE_SYSTEM_VERSION} EQUAL 6.0) # Windows Vista
+        add_definitions(-D _WIN32_WINNT=0x0600)
+    else() # Windows XP (5.1)
+        add_definitions(-D _WIN32_WINNT=0x0501)
+    endif()
+endif(WIN32)
+
 SET(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libs")
 if (BUILD_SHARED_LIBS)
     add_definitions(-DBUILD_SHARED_LIBS)

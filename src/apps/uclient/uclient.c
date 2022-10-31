@@ -232,7 +232,7 @@ int send_buffer(app_ur_conn_info *clnet_info, stun_buffer* message, int data_con
 			int len = 0;
 			do {
 				len = SSL_write(ssl, buffer, (int)message->len);
-			} while (len < 0 && ((errno == EINTR) || (errno == ENOBUFS)));
+			} while (len < 0 && (socket_eintr() || socket_enobufs()));
 
 			if(len == (int)message->len) {
 				if (clnet_verbose) {
@@ -286,7 +286,7 @@ int send_buffer(app_ur_conn_info *clnet_info, stun_buffer* message, int data_con
 		while (left > 0) {
 			do {
 				rc = send(fd, buffer, left, 0);
-			} while (rc <= 0 && ((errno == EINTR) || (errno == ENOBUFS) || (errno == EAGAIN)));
+			} while (rc <= 0 && (socket_eintr() || socket_enobufs() || socket_eagain()));
 			if (rc > 0) {
 				left -= (size_t) rc;
 				buffer += rc;
@@ -344,7 +344,7 @@ static int wait_fd(int fd, unsigned int cycle) {
 				}
 			}
 			rc = select(fd+1,&fds,NULL,NULL,&timeout);
-			if((rc<0) && (errno == EINTR)) {
+			if((rc<0) && socket_eintr()) {
 				gettimeofday(&ctime,NULL);
 			} else {
 				break;
@@ -399,9 +399,7 @@ int recv_buffer(app_ur_conn_info *clnet_info, stun_buffer* message, int sync, in
 
 		do {
 			rc = recv(fd, message->buf, sizeof(message->buf) - 1, 0);
-			if (rc < 0 && errno == EAGAIN && sync)
-				errno = EINTR;
-		} while (rc < 0 && (errno == EINTR));
+		} while (rc < 0 && (socket_eintr() || (socket_eagain() && sync)));
 
 		if (rc < 0) {
 			return -1;
@@ -423,9 +421,9 @@ int recv_buffer(app_ur_conn_info *clnet_info, stun_buffer* message, int sync, in
 			rc = 0;
 			do {
 				rc = SSL_read(ssl, message->buf, sizeof(message->buf) - 1);
-				if (rc < 0 && errno == EAGAIN && sync)
+				if (rc < 0 && socket_eagain() && sync)
 					continue;
-			} while (rc < 0 && (errno == EINTR));
+			} while (rc < 0 && socket_eintr());
 
 			if (rc > 0) {
 
@@ -493,9 +491,9 @@ int recv_buffer(app_ur_conn_info *clnet_info, stun_buffer* message, int sync, in
 			rc = 0;
 			do {
 				rc = SSL_read(ssl, message->buf, sizeof(message->buf) - 1);
-				if (rc < 0 && errno == EAGAIN && sync)
+				if (rc < 0 && socket_eagain() && sync)
 					continue;
-			} while (rc < 0 && (errno == EINTR));
+			} while (rc < 0 && socket_eintr());
 
 			if (rc > 0) {
 
@@ -556,10 +554,7 @@ int recv_buffer(app_ur_conn_info *clnet_info, stun_buffer* message, int sync, in
 
 		do {
 			rc = recv(fd, message->buf, sizeof(message->buf) - 1, MSG_PEEK);
-			if ((rc < 0) && (errno == EAGAIN) && sync) {
-				errno = EINTR;
-			}
-		} while (rc < 0 && (errno == EINTR));
+		} while (rc < 0 && (socket_eintr() || (socket_eagain() && sync)));
 
 		if (rc > 0) {
 			int mlen = rc;
@@ -586,9 +581,7 @@ int recv_buffer(app_ur_conn_info *clnet_info, stun_buffer* message, int sync, in
 					do {
 						rcr = recv(fd, message->buf + rsf,
 								(size_t) mlen - (size_t) rsf, 0);
-						if (rcr < 0 && errno == EAGAIN && sync)
-							errno = EINTR;
-					} while (rcr < 0 && (errno == EINTR));
+					} while (rcr < 0 && (socket_eintr() || (socket_eagain() && sync)));
 
 					if (rcr > 0)
 						rsf += rcr;
@@ -1361,7 +1354,7 @@ static void timer_handler(evutil_socket_t fd, short event, void *arg)
 		if(done>5 && (dos || random_disconnect)) {
 			for (i = 0; i < total_clients; ++i) {
 				if (elems[i]) {
-					close(elems[i]->pinfo.fd);
+					socket_closesocket(elems[i]->pinfo.fd);
 					elems[i]->pinfo.fd = -1;
 				}
 			}

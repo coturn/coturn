@@ -150,7 +150,7 @@ static int run_stunclient(const char* rip, int rport, int *port, int *rfc5780, i
 
 		do {
 			len = sendto(udp_fd, req.getRawBuffer(), req.getSize(), 0, (struct sockaddr*) &remote_addr, (socklen_t) slen);
-		} while (len < 0 && ((errno == EINTR) || (errno == ENOBUFS) || (errno == EAGAIN)));
+		} while (len < 0 && (socket_eintr() || socket_enobufs() || socket_eagain()));
 
 		if (len < 0)
 			err(-1, NULL);
@@ -165,7 +165,7 @@ static int run_stunclient(const char* rip, int rport, int *port, int *rfc5780, i
 
 	{
 		if(new_udp_fd >= 0) {
-			close(udp_fd);
+			socket_closesocket(udp_fd);
 			udp_fd = new_udp_fd;
 			new_udp_fd = -1;
 		}
@@ -185,7 +185,7 @@ static int run_stunclient(const char* rip, int rport, int *port, int *rfc5780, i
 				ptr += len;
 				break;
 			}
-		} while (len < 0 && (errno == EINTR));
+		} while (len < 0 && socket_eintr());
 
 		if (recvd > 0)
 			len = recvd;
@@ -306,7 +306,7 @@ static int run_stunclient(const char* rip, int rport, int *port, int *rfc5780, i
 
 		do {
 			len = sendto(udp_fd, buf.buf, buf.len, 0, (struct sockaddr*) &remote_addr, (socklen_t) slen);
-		} while (len < 0 && ((errno == EINTR) || (errno == ENOBUFS) || (errno == EAGAIN)));
+		} while (len < 0 && (socket_eintr() || socket_enobufs()|| socket_eagain()));
 
 		if (len < 0)
 			err(-1, NULL);
@@ -340,7 +340,7 @@ static int run_stunclient(const char* rip, int rport, int *port, int *rfc5780, i
 				ptr += len;
 				break;
 			}
-		} while (len < 0 && ((errno == EINTR) || (errno == EAGAIN)));
+		} while (len < 0 && (socket_eintr() || socket_eagain()));
 
 		if (recvd > 0)
 			len = recvd;

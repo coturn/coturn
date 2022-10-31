@@ -139,7 +139,7 @@ static int stunclient_send(int sockfd, ioa_addr *local_addr, int *local_port, io
 
 		do {
 			len = sendto(sockfd, req.getRawBuffer(), req.getSize(), 0, (struct sockaddr*) remote_addr, (socklen_t) slen);
-		} while (len < 0 && ((errno == EINTR) || (errno == ENOBUFS) || (errno == EAGAIN)));
+		} while (len < 0 && (socket_eintr() || socket_enobufs() || socket_eagain()));
 
 		if (len < 0)
 		err(-1, NULL);
@@ -180,9 +180,9 @@ static int stunclient_receive(int sockfd, ioa_addr *local_addr, ioa_addr *reflex
 				ptr += len;
 				break;
 			}
-		} while (len < 0 && (errno == EINTR));
+		} while (len < 0 && socket_eintr());
 
-		if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) {
+		if (socket_eagain() || socket_ewouldblock()) {
 			printf("STUN receive timeout..\n");
 			ret = 1;
 			return ret;
@@ -274,7 +274,7 @@ static int run_stunclient(ioa_addr *local_addr, ioa_addr *remote_addr, ioa_addr 
 	ret=init_socket(&udp_fd, local_addr, *local_port, remote_addr);
 	ret=stunclient_send(udp_fd, local_addr, local_port, remote_addr, change_ip, change_port, padding, -1);
 	ret=stunclient_receive(udp_fd, local_addr, reflexive_addr, other_addr, rfc5780);
-	close(udp_fd);
+	socket_closesocket(udp_fd);
 
 	return ret;
 }
@@ -300,8 +300,8 @@ static int run_stunclient_hairpinning(ioa_addr *local_addr, ioa_addr *remote_add
 	if(ret){
 		ret=stunclient_receive(udp_fd2, local_addr, reflexive_addr, other_addr, rfc5780);
 	}
-	close(udp_fd);
-	close(udp_fd2);
+	socket_closesocket(udp_fd);
+	socket_closesocket(udp_fd2);
 
 	return ret;
 }
@@ -374,7 +374,7 @@ static int stunclient_send(stun_buffer *buf, int sockfd, ioa_addr *local_addr, i
 
 		do {
 			len = sendto(sockfd, buf->buf, buf->len, 0, (struct sockaddr*) remote_addr, (socklen_t) slen);
-		} while (len < 0 && ((errno == EINTR) || (errno == ENOBUFS) || (errno == EAGAIN)));
+		} while (len < 0 && (socket_eintr() || socket_enobufs() || socket_eagain()));
 
 		if (len < 0)
 		err(-1, NULL);
@@ -414,7 +414,7 @@ static int stunclient_receive(stun_buffer *buf, int sockfd, ioa_addr *local_addr
 				ptr += len;
 				break;
 			}
-		} while (len < 0 && (errno == EINTR));
+		} while (len < 0 && socket_eintr());
 
 		if (recvd > 0)
 		len = recvd;
@@ -482,7 +482,7 @@ static int stunclient_receive(stun_buffer *buf, int sockfd, ioa_addr *local_addr
 				ret=1;
 			}
 		} else {
-			if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) {
+			if (socket_eagain() || socket_ewouldblock()) {
 				printf("STUN receive timeout..\n");
 			}else{
 				printf("The response is not a STUN message\n");

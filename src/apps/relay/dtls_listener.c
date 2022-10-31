@@ -511,7 +511,7 @@ static int create_new_connected_udp_socket(
 	if (!ret) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
 				"%s: Cannot allocate new socket structure\n", __FUNCTION__);
-		close(udp_fd);
+		socket_closesocket(udp_fd);
 		return -1;
 	}
 
@@ -660,8 +660,9 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void* arg)
 
 	ssize_t bsize = 0;
 #if defined(WINDOWS)
-	//TODO: implement it!!!
 	int flags = 0;
+	u_long iMode = 1;
+	ioctlsocket(fd, FIONBIO, &iMode);
 #else
 	int flags = MSG_DONTWAIT;
 #endif
@@ -672,6 +673,11 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void* arg)
 
 	int conn_reset = is_connreset();
 	int to_block = would_block();
+
+#if defined(WINDOWS)
+	iMode = 0;
+	ioctlsocket(fd, FIONBIO, &iMode);
+#endif
 
 	if (bsize < 0) {
 
@@ -685,8 +691,9 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void* arg)
 	#if defined(MSG_ERRQUEUE)
 
 #if defined(WINDOWS)
-		//TODO: implement it!!!
 		int eflags = MSG_ERRQUEUE;
+		iMode = 1;
+		ioctlsocket(fd, FIONBIO, &iMode);
 #else
 		//Linux
 		int eflags = MSG_ERRQUEUE | MSG_DONTWAIT;
@@ -703,10 +710,15 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void* arg)
 		//try again...
 		do {
 			bsize = recvfrom(fd, ioa_network_buffer_data(elem), ioa_network_buffer_get_capacity_udp(), flags, (struct sockaddr*) &(server->sm.m.sm.nd.src_addr), (socklen_t*) &slen);
-		} while (bsize < 0 && (errno == EINTR));
+		} while (bsize < 0 && socket_eintr());
 
 		conn_reset = is_connreset();
 		to_block = would_block();
+
+#if defined(WINDOWS)
+		iMode = 0;
+		ioctlsocket(fd, FIONBIO, &iMode);
+#endif
 
 	#endif
 
@@ -721,7 +733,7 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void* arg)
 
 	if(bsize<0) {
 		if(!to_block && !conn_reset) {
-			int ern=errno;
+			int ern=socket_errno();
 			perror(__FUNCTION__);
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: recvfrom error %d\n",__FUNCTION__,ern);
 		}

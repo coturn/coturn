@@ -1615,14 +1615,14 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s)
 
 			if(addr_bind(udp_fd,&(s->local_addr),1,1,UDP_SOCKET)<0) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot bind new detached udp server socket to local addr\n");
-				close(udp_fd);
+				socket_closesocket(udp_fd);
 				return ret;
 			}
 
 			int connect_err=0;
 			if(addr_connect(udp_fd, &(s->remote_addr), &connect_err)<0) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot connect new detached udp server socket to remote addr\n");
-				close(udp_fd);
+				socket_closesocket(udp_fd);
 				return ret;
 			}
 			set_raw_socket_ttl_options(udp_fd, s->local_addr.ss.sa_family);
@@ -1858,7 +1858,7 @@ int ssl_read(evutil_socket_t fd, SSL* ssl, ioa_network_buffer_handle nbh, int ve
 
 	do {
 		len = SSL_read(ssl, new_buffer, buf_size);
-	} while (len < 0 && (errno == EINTR));
+	} while (len < 0 && socket_eintr());
 
 	int if2 = SSL_is_init_finished(ssl);
 
@@ -1886,7 +1886,7 @@ int ssl_read(evutil_socket_t fd, SSL* ssl, ioa_network_buffer_handle nbh, int ve
 
 		ret = 0;
 
-	} else if (len < 0 && ((errno == ENOBUFS) || (errno == EAGAIN))) {
+	} else if (len < 0 && (socket_enobufs() || socket_eagain())) {
 		if (eve(verbose)) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: ENOBUFS/EAGAIN\n", __FUNCTION__);
 		}
@@ -1916,7 +1916,7 @@ int ssl_read(evutil_socket_t fd, SSL* ssl, ioa_network_buffer_handle nbh, int ve
 				break;
 			case SSL_ERROR_SYSCALL:
 			{
-				int err = errno;
+				int err = socket_errno();
 				if (handle_socket_error()) {
 					ret = 0;
 				} else {
@@ -1995,7 +1995,7 @@ static int socket_readerr(evutil_socket_t fd, ioa_addr *orig_addr)
 
 		do {
 			len = recvmsg(fd,&msg,flags);
-		} while (len < 0 && (errno == EINTR));
+		} while (len < 0 && socket_eintr());
 
 	} while((len>0)&&(try_cycle++<MAX_ERRORS_IN_UDP_BATCH));
 
@@ -2025,9 +2025,9 @@ int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr *like_a
 #if defined(_MSC_VER) || !defined(CMSG_SPACE)
 	do {
 	  len = recvfrom(fd, buffer, buf_size, flags, (struct sockaddr*) orig_addr, (socklen_t*) &slen);
-	} while (len < 0 && (errno == EINTR));
+	} while (len < 0 && socket_eintr());
 	if(len<0 && errcode)
-		*errcode = (uint32_t)errno;
+		*errcode = (uint32_t)socket_errno();
 #else
 	struct msghdr msg;
 	struct iovec iov;
@@ -2053,7 +2053,7 @@ int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr *like_a
 
 	do {
 		len = recvmsg(fd,&msg,flags);
-	} while (len < 0 && (errno == EINTR));
+	} while (len < 0 && socket_eintr());
 
 #if defined(MSG_ERRQUEUE)
 
@@ -2069,7 +2069,7 @@ int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr *like_a
 		//try again...
 		do {
 			len = recvmsg(fd,&msg,flags);
-		} while (len < 0 && (errno == EINTR));
+		} while (len < 0 && socket_eintr());
 	}
 #endif
 
@@ -2171,7 +2171,7 @@ static TURN_TLS_TYPE check_tentative_tls(ioa_socket_raw fd)
 
 	do {
 		len = (int)recv(fd, s, sizeof(s), MSG_PEEK);
-	} while (len < 0 && (errno == EINTR));
+	} while (len < 0 && socket_eintr());
 
 	if(len>0 && ((size_t)len == sizeof(s))) {
 		if((s[0]==22)&&(s[1]==3)&&(s[5]==1)&&(s[9]==3)) {
@@ -3023,13 +3023,13 @@ static int ssl_send(ioa_socket_handle s, const char* buffer, int len, int verbos
 
 	do {
 		rc = SSL_write(ssl, buffer, len);
-	} while (rc < 0 && errno == EINTR);
+	} while (rc < 0 && socket_eintr());
 
 	if (eve(verbose)) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: after write: %d\n", __FUNCTION__,rc);
 	}
 
-	if (rc < 0 && ((errno == ENOBUFS) || (errno == EAGAIN))) {
+	if (rc < 0 && (socket_enobufs() || socket_eagain())) {
 		if (eve(verbose)) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: ENOBUFS/EAGAIN\n", __FUNCTION__);
 		}
@@ -3063,7 +3063,7 @@ static int ssl_send(ioa_socket_handle s, const char* buffer, int len, int verbos
 			return 0;
 		case SSL_ERROR_SYSCALL:
 		{
-			int err = errno;
+			int err = socket_errno();
 			if (!handle_socket_error()) {
 				if(s->st == DTLS_SOCKET) {
 					if(is_connreset()) {
@@ -3126,22 +3126,14 @@ static int send_ssl_backlog_buffers(ioa_socket_handle s)
 }
 
 int is_connreset(void) {
-	switch (errno) {
-	case ECONNRESET:
-	case ECONNREFUSED:
+	if (socket_econnreset() || socket_econnrefused()) {
 		return 1;
-	default:
-		;
 	}
 	return 0;
 }
 
 int would_block(void) {
-#if defined(EWOULDBLOCK)
-	if(errno == EWOULDBLOCK)
-		return 1;
-#endif
-	return (errno == EAGAIN);
+	return socket_ewouldblock();
 }
 
 int udp_send(ioa_socket_handle s, const ioa_addr* dest_addr, const char* buffer, int len)
@@ -3178,7 +3170,7 @@ int udp_send(ioa_socket_handle s, const ioa_addr* dest_addr, const char* buffer,
 			do {
 				rc = sendto(fd, buffer, len, 0, (const struct sockaddr*) dest_addr, (socklen_t) slen);
 			} while (
-					((rc < 0) && (errno == EINTR)) ||
+					((rc < 0) && socket_eintr()) ||
 					((rc<0) && is_connreset() && (++cycle<TRIAL_EFFORTS_TO_SEND))
 					);
 
@@ -3186,13 +3178,13 @@ int udp_send(ioa_socket_handle s, const ioa_addr* dest_addr, const char* buffer,
 			do {
 				rc = send(fd, buffer, len, 0);
 			} while (
-					((rc < 0) && (errno == EINTR)) ||
+					((rc < 0) && socket_eintr()) ||
 					((rc<0) && is_connreset() && (++cycle<TRIAL_EFFORTS_TO_SEND))
 					);
 		}
 
 		if(rc<0) {
-			if((errno == ENOBUFS) || (errno == EAGAIN)) {
+			if(socket_enobufs() || socket_eagain()) {
 				//Lost packet due to overload ... fine.
 				rc = len;
 			} else if(is_connreset()) {
@@ -3311,7 +3303,7 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 						if (ret < 0) {
 							s->tobeclosed = 1;
 #if defined(EADDRNOTAVAIL)
-							int perr=errno;
+							int perr=socket_errno();
 #endif
 							perror("udp send");
 #if defined(EADDRNOTAVAIL)
