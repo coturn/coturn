@@ -2839,7 +2839,7 @@ int main(int argc, char **argv)
 		int cpus = get_system_number_of_cpus();
 		if (0 < cpus)
 			turn_params.cpus = get_system_number_of_cpus();
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "System cpu num is %d\n", turn_params.cpus);
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "System cpu num is %lu\n", turn_params.cpus);
 		if (turn_params.cpus < DEFAULT_CPUS_NUMBER)
 			 turn_params.cpus = DEFAULT_CPUS_NUMBER;
 		else if (turn_params.cpus > MAX_NUMBER_OF_GENERAL_RELAY_SERVERS)
