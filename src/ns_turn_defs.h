@@ -43,19 +43,26 @@
 #define __APPLE_USE_RFC_3542
 #endif
 
-#include <sys/types.h>
+#if defined(WINDOWS)
+#include <ws2tcpip.h>
+#include <windows.h>
+#include <process.h>
+#else
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <net/if.h>
+#include <strings.h>
+#include <unistd.h>
+#endif
+
+#include <sys/types.h>
 #include <ctype.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <strings.h>
-#include <unistd.h>
 #include <inttypes.h>
 #include <time.h>
 #include <stdarg.h>

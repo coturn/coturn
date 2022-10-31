@@ -67,6 +67,8 @@ static struct auth_server authserver[256];
 static struct relay_server *general_relay_servers[1+((turnserver_id)-1)];
 static struct relay_server *udp_relay_servers[1+((turnserver_id)-1)];
 
+static struct relay_server* get_relay_server(turnserver_id id);
+
 //////////////////////////////////////////////
 
 static void run_events(struct event_base *eb, ioa_engine_handle e);
@@ -101,13 +103,13 @@ static void barrier_wait_func(const char* func, int line)
 
 /////////////// Bandwidth //////////////////
 
-static pthread_mutex_t mutex_bps;
+static TURN_MUTEX_DECLARE(mutex_bps);
 
 static band_limit_t allocate_bps(band_limit_t bps, int positive)
 {
 	band_limit_t ret = 0;
 	if(bps>0) {
-		pthread_mutex_lock(&mutex_bps);
+		TURN_MUTEX_LOCK(&mutex_bps);
 
 		if(positive) {
 
@@ -134,7 +136,7 @@ static band_limit_t allocate_bps(band_limit_t bps, int positive)
 			}
 		}
 
-		pthread_mutex_unlock(&mutex_bps);
+		TURN_MUTEX_UNLOCK(&mutex_bps);
 	}
 
 	return ret;
@@ -143,42 +145,42 @@ static band_limit_t allocate_bps(band_limit_t bps, int positive)
 band_limit_t get_bps_capacity_allocated(void)
 {
 	band_limit_t ret = 0;
-	pthread_mutex_lock(&mutex_bps);
+	TURN_MUTEX_LOCK(&mutex_bps);
 	ret = turn_params.bps_capacity_allocated;
-	pthread_mutex_unlock(&mutex_bps);
+	TURN_MUTEX_UNLOCK(&mutex_bps);
 	return ret;
 }
 
 band_limit_t get_bps_capacity(void)
 {
 	band_limit_t ret = 0;
-	pthread_mutex_lock(&mutex_bps);
+	TURN_MUTEX_LOCK(&mutex_bps);
 	ret = turn_params.bps_capacity;
-	pthread_mutex_unlock(&mutex_bps);
+	TURN_MUTEX_UNLOCK(&mutex_bps);
 	return ret;
 }
 
 void set_bps_capacity(band_limit_t value)
 {
-	pthread_mutex_lock(&mutex_bps);
+	TURN_MUTEX_LOCK(&mutex_bps);
 	turn_params.bps_capacity = value;
-	pthread_mutex_unlock(&mutex_bps);
+	TURN_MUTEX_UNLOCK(&mutex_bps);
 }
 
 band_limit_t get_max_bps(void)
 {
 	band_limit_t ret = 0;
-	pthread_mutex_lock(&mutex_bps);
+	TURN_MUTEX_LOCK(&mutex_bps);
 	ret = turn_params.max_bps;
-	pthread_mutex_unlock(&mutex_bps);
+	TURN_MUTEX_UNLOCK(&mutex_bps);
 	return ret;
 }
 
 void set_max_bps(band_limit_t value)
 {
-	pthread_mutex_lock(&mutex_bps);
+	TURN_MUTEX_LOCK(&mutex_bps);
 	turn_params.max_bps = value;
-	pthread_mutex_unlock(&mutex_bps);
+	TURN_MUTEX_UNLOCK(&mutex_bps);
 }
 
 /////////////// AUX SERVERS ////////////////
@@ -213,7 +215,7 @@ static void add_alt_server(const char *saddr, int default_port, turn_server_addr
 	if(saddr && list) {
 		ioa_addr addr;
 
-		turn_mutex_lock(&(list->m));
+		TURN_MUTEX_LOCK(&(list->m));
 
 		if(make_ioa_addr_from_full_string((const uint8_t*)saddr, default_port, &addr)!=0) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong IP address format: %s\n",saddr);
@@ -227,7 +229,7 @@ static void add_alt_server(const char *saddr, int default_port, turn_server_addr
 			}
 		}
 
-		turn_mutex_unlock(&(list->m));
+		TURN_MUTEX_UNLOCK(&(list->m));
 	}
 }
 
@@ -237,7 +239,7 @@ static void del_alt_server(const char *saddr, int default_port, turn_server_addr
 
 		ioa_addr addr;
 
-		turn_mutex_lock(&(list->m));
+		TURN_MUTEX_LOCK(&(list->m));
 
 		if(make_ioa_addr_from_full_string((const uint8_t*)saddr, default_port, &addr)!=0) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong IP address format: %s\n",saddr);
@@ -277,7 +279,7 @@ static void del_alt_server(const char *saddr, int default_port, turn_server_addr
 			}
 		}
 
-		turn_mutex_unlock(&(list->m));
+		TURN_MUTEX_UNLOCK(&(list->m));
 	}
 }
 
@@ -332,13 +334,13 @@ static void update_ssl_ctx(evutil_socket_t sock, short events, update_ssl_ctx_cb
 	turn_params_t *params = args->params;
 
 	/* No mutex with "e" as these are only used in the same event loop */
-	pthread_mutex_lock(&turn_params.tls_mutex);
+	TURN_MUTEX_LOCK(&turn_params.tls_mutex);
 	replace_one_ssl_ctx(&e->tls_ctx, params->tls_ctx);
 #if DTLS_SUPPORTED
 	replace_one_ssl_ctx(&e->dtls_ctx, params->dtls_ctx);
 #endif
 	struct event *next = args->next;
-	pthread_mutex_unlock(&turn_params.tls_mutex);
+	TURN_MUTEX_UNLOCK(&turn_params.tls_mutex);
 
 	if (next != NULL)
 		event_active(next, EV_READ, 0);
@@ -359,10 +361,10 @@ void set_ssl_ctx(ioa_engine_handle e, turn_params_t *params)
 	struct event_base *base = e->event_base;
 	if (base != NULL) {
 		struct event *ev = event_new(base, -1, EV_PERSIST, (event_callback_fn)update_ssl_ctx, (void *)args);
-		pthread_mutex_lock(&turn_params.tls_mutex);
+		TURN_MUTEX_LOCK(&turn_params.tls_mutex);
 		args->next = params->tls_ctx_update_ev;
 		params->tls_ctx_update_ev = ev;
-		pthread_mutex_unlock(&turn_params.tls_mutex);
+		TURN_MUTEX_UNLOCK(&turn_params.tls_mutex);
 	}
 }
 
@@ -441,16 +443,52 @@ static void allocate_relay_addrs_ports(void) {
 
 static int handle_relay_message(relay_server_handle rs, struct message_to_relay *sm);
 
-static pthread_mutex_t auth_message_counter_mutex = PTHREAD_MUTEX_INITIALIZER;
+static struct relay_server* get_relay_server(turnserver_id id) {
+	struct relay_server *rs = NULL;
+	if(id>=TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP) {
+		size_t dest = id-TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP;
+		if(dest >= get_real_udp_relay_servers_number()) {
+			TURN_LOG_FUNC(
+					TURN_LOG_LEVEL_ERROR,
+					"%s: Too large UDP relay number: %d, total=%d\n",
+					__FUNCTION__,(int)dest,(int)get_real_udp_relay_servers_number());
+		}
+		rs = udp_relay_servers[dest];
+		if(!rs) {
+			TURN_LOG_FUNC(
+				TURN_LOG_LEVEL_ERROR,
+					"%s: Wrong UDP relay number: %d, total=%d\n",
+					__FUNCTION__,(int)dest,(int)get_real_udp_relay_servers_number());
+		}
+	} else {
+		size_t dest = id;
+		if(dest >= get_real_general_relay_servers_number()) {
+			TURN_LOG_FUNC(
+					TURN_LOG_LEVEL_ERROR,
+					"%s: Too large general relay number: %d, total=%d\n",
+					__FUNCTION__,(int)dest,(int)get_real_general_relay_servers_number());
+		}
+		rs = general_relay_servers[dest];
+		if(!rs) {
+			TURN_LOG_FUNC(
+				TURN_LOG_LEVEL_ERROR,
+				"%s: Wrong general relay number: %d, total=%d\n",
+				__FUNCTION__,(int)dest,(int)get_real_general_relay_servers_number());
+		}
+	}
+	return rs;
+}
+
+static TURN_MUTEX_DECLARE(auth_message_counter_mutex);
 static authserver_id auth_message_counter = 1;
 
 void send_auth_message_to_auth_server(struct auth_message *am)
 {
-	pthread_mutex_lock(&auth_message_counter_mutex);
+	TURN_MUTEX_LOCK(&auth_message_counter_mutex);
 	if(auth_message_counter>=authserver_number) auth_message_counter = 1;
 	else if(auth_message_counter<1) auth_message_counter = 1;
 	authserver_id sn = auth_message_counter++;
-	pthread_mutex_unlock(&auth_message_counter_mutex);
+	TURN_MUTEX_UNLOCK(&auth_message_counter_mutex);
 
 	struct evbuffer *output = bufferevent_get_output(authserver[sn].out_buf);
 	if(evbuffer_add(output,am,sizeof(struct auth_message))<0) {
@@ -481,42 +519,15 @@ static void auth_server_receive_message(struct bufferevent *bev, void *ptr)
     	  am.success = 1;
       }
     }
-    
-    size_t dest = am.id;
-    
+
     struct evbuffer *output = NULL;
-    
-    if(dest>=TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP) {
-      dest -= TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP;
-      if(dest >= get_real_udp_relay_servers_number()) {
-    	  TURN_LOG_FUNC(
-		      TURN_LOG_LEVEL_ERROR,
-		      "%s: Too large UDP relay number: %d\n",
-		      __FUNCTION__,(int)dest);
-      } else if(!(udp_relay_servers[dest])) {
-    	  TURN_LOG_FUNC(
-    	  	TURN_LOG_LEVEL_ERROR,
-    	  	"%s: Wrong UDP relay number: %d, total %d\n",
-    	  	__FUNCTION__,(int)dest, (int)get_real_udp_relay_servers_number());
-      } else {
-    	  output = bufferevent_get_output(udp_relay_servers[dest]->auth_out_buf);
-      }
-    } else {
-      if(dest >= get_real_general_relay_servers_number()) {
-    	  TURN_LOG_FUNC(
-		      TURN_LOG_LEVEL_ERROR,
-		      "%s: Too large general relay number: %d, total %d\n",
-		      __FUNCTION__,(int)dest,(int)get_real_general_relay_servers_number());
-      } else if(!(general_relay_servers[dest])) {
-    	  TURN_LOG_FUNC(
-    	  		      TURN_LOG_LEVEL_ERROR,
-    	  		      "%s: Wrong general relay number: %d, total %d\n",
-    	  		      __FUNCTION__,(int)dest,(int)get_real_general_relay_servers_number());
-      } else {
-    	  output = bufferevent_get_output(general_relay_servers[dest]->auth_out_buf);
-      }
-    }
-    
+	struct relay_server* relay_server = get_relay_server(am.id);
+	if(relay_server) {
+		output = bufferevent_get_output(relay_server->auth_out_buf);
+	} else {
+    	TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: can't find relay for turn_server_id: %d\n", __FUNCTION__,(int)am.id);
+	}
+
     if(output)
       evbuffer_add(output,&am,sizeof(struct auth_message));
     else {
@@ -580,46 +591,15 @@ static int send_socket_to_relay(turnserver_id id, uint64_t cid, stun_tid *tid, i
 	int ret = -1;
 
 	struct message_to_relay sm;
-	memset(&sm,0, sizeof(struct message_to_relay));
+	memset(&sm, 0, sizeof(struct message_to_relay));
 	sm.t = rmt;
 
 	ioa_socket_handle s_to_delete = s;
 
-	struct relay_server *rs = NULL;
-	if(id>=TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP) {
-		size_t dest = id-TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP;
-		if(dest >= get_real_udp_relay_servers_number()) {
-			TURN_LOG_FUNC(
-					TURN_LOG_LEVEL_ERROR,
-					"%s: Too large UDP relay number: %d, rmt=%d, total=%d\n",
-					__FUNCTION__,(int)dest,(int)rmt, (int)get_real_udp_relay_servers_number());
-			goto err;
-		}
-		rs = udp_relay_servers[dest];
-		if(!rs) {
-			TURN_LOG_FUNC(
-				TURN_LOG_LEVEL_ERROR,
-					"%s: Wrong UDP relay number: %d, rmt=%d, total=%d\n",
-					__FUNCTION__,(int)dest,(int)rmt, (int)get_real_udp_relay_servers_number());
-			goto err;
-		}
-	} else {
-		size_t dest = id;
-		if(dest >= get_real_general_relay_servers_number()) {
-			TURN_LOG_FUNC(
-					TURN_LOG_LEVEL_ERROR,
-					"%s: Too large general relay number: %d, rmt=%d, total=%d\n",
-					__FUNCTION__,(int)dest,(int)rmt, (int)get_real_general_relay_servers_number());
-			goto err;
-		}
-		rs = general_relay_servers[dest];
-		if(!rs) {
-			TURN_LOG_FUNC(
-				TURN_LOG_LEVEL_ERROR,
-				"%s: Wrong general relay number: %d, rmt=%d, total=%d\n",
-				__FUNCTION__,(int)dest,(int)rmt, (int)get_real_general_relay_servers_number());
-			goto err;
-		}
+	struct relay_server *rs = get_relay_server(id);
+	if(!rs) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: can't find relay for turn_server_id: %d\n", __FUNCTION__,(int)id);
+		goto err;
 	}
 
 	switch (rmt) {
@@ -711,50 +691,16 @@ int send_session_cancellation_to_relay(turnsession_id sid)
 	int ret = 0;
 
 	struct message_to_relay sm;
-	memset(&sm,0,sizeof(struct message_to_relay));
+	memset(&sm, 0, sizeof(struct message_to_relay));
 	sm.t = RMT_CANCEL_SESSION;
 
 	turnserver_id id = (turnserver_id)(sid / TURN_SESSION_ID_FACTOR);
 
-	struct relay_server *rs = NULL;
-	if(id>=TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP) {
-		size_t dest = id-TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP;
-		if(dest >= get_real_udp_relay_servers_number()) {
-			TURN_LOG_FUNC(
-					TURN_LOG_LEVEL_ERROR,
-					"%s: Too large UDP relay number: %d, total=%d\n",
-					__FUNCTION__,(int)dest,(int)get_real_udp_relay_servers_number());
-			ret = -1;
-			goto err;
-		}
-		rs = udp_relay_servers[dest];
-		if(!rs) {
-			TURN_LOG_FUNC(
-				TURN_LOG_LEVEL_ERROR,
-					"%s: Wrong UDP relay number: %d, total=%d\n",
-					__FUNCTION__,(int)dest,(int)get_real_udp_relay_servers_number());
-			ret = -1;
-			goto err;
-		}
-	} else {
-		size_t dest = id;
-		if(dest >= get_real_general_relay_servers_number()) {
-			TURN_LOG_FUNC(
-					TURN_LOG_LEVEL_ERROR,
-					"%s: Too large general relay number: %d, total=%d\n",
-					__FUNCTION__,(int)dest,(int)get_real_general_relay_servers_number());
-			ret = -1;
-			goto err;
-		}
-		rs = general_relay_servers[dest];
-		if(!rs) {
-			TURN_LOG_FUNC(
-				TURN_LOG_LEVEL_ERROR,
-				"%s: Wrong general relay number: %d, total=%d\n",
-				__FUNCTION__,(int)dest,(int)get_real_general_relay_servers_number());
-			ret = -1;
-			goto err;
-		}
+	struct relay_server *rs = get_relay_server(id);
+	if(!rs) {
+    	TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: can't find relay for turn_server_id: %d\n", __FUNCTION__,(int)id);
+		ret = -1;
+		goto err;
 	}
 
 	sm.relay_server = rs;
@@ -966,7 +912,7 @@ static void listener_receive_message(struct bufferevent *bev, void *ptr)
 					    	  TURN_LOG_LEVEL_ERROR,
 					    	       "%s: Wrong general relay number: %d, total %d\n",
 					    	       __FUNCTION__,(int)ri,(int)get_real_general_relay_servers_number());
-				} else if(general_relay_servers[ri]->thr == pthread_self()) {
+				} else if(pthread_equal(general_relay_servers[ri]->thr, pthread_self())) {
 					relay_thread_index=ri;
 					break;
 				}
@@ -1778,7 +1724,7 @@ static void* run_auth_server_thread(void *arg)
 
 	} else {
 
-		memset(as,0,sizeof(struct auth_server));
+		memset(as, 0, sizeof(struct auth_server));
 
 		as->id = id;
 
@@ -1839,7 +1785,7 @@ static void* run_admin_server_thread(void *arg)
 
 static void setup_admin_server(void)
 {
-	memset(&adminserver,0,sizeof(struct admin_server));
+	memset(&adminserver, 0, sizeof(struct admin_server));
 	adminserver.listen_fd = -1;
 	adminserver.verbose = turn_params.verbose;
 
@@ -1853,9 +1799,14 @@ static void setup_admin_server(void)
 
 void setup_server(void)
 {
+#if defined(WINDOWS)
+	evthread_use_windows_threads();
+#else
 	evthread_use_pthreads();
+#endif
 
-	pthread_mutex_init(&mutex_bps, NULL);
+	TURN_MUTEX_INIT(&mutex_bps);
+    TURN_MUTEX_INIT(&auth_message_counter_mutex);
 
 	authserver_number = 1 + (authserver_id)(turn_params.cpus / 2);
 
@@ -1924,7 +1875,7 @@ void setup_server(void)
 
 void init_listener(void)
 {
-	memset(&turn_params.listener,0,sizeof(struct listener_server));
+	memset(&turn_params.listener, 0, sizeof(struct listener_server));
 }
 
 ///////////////////////////////

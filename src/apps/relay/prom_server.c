@@ -1,7 +1,8 @@
-#if !defined(TURN_NO_PROMETHEUS)
-
 #include "mainrelay.h"
 #include "prom_server.h"
+#include "ns_turn_utils.h"
+
+#if !defined(TURN_NO_PROMETHEUS)
 
 
 prom_counter_t *turn_traffic_rcvp;
@@ -27,9 +28,10 @@ prom_counter_t *turn_total_traffic_peer_sentb;
 prom_gauge_t *turn_total_allocations;
 
 
-int start_prometheus_server(void){
+void start_prometheus_server(void){
   if (turn_params.prometheus == 0){
-    return 1;
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "prometheus collector disabled, not started\n");
+    return;
   }
   prom_collector_registry_default_init();
 
@@ -86,9 +88,13 @@ int start_prometheus_server(void){
   }
   struct MHD_Daemon *daemon = promhttp_start_daemon(flags, turn_params.prometheus_port, NULL, NULL);
   if (daemon == NULL) {
-    return -1;
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "could not start prometheus collector\n");
+    return;
   }
-  return 0;
+
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "prometheus collector started successfully\n");
+
+  return;
 }
 
 void prom_set_finished_traffic(const char* realm, const char* user, unsigned long rsvp, unsigned long rsvb, unsigned long sentp, unsigned long sentb, bool peer){
@@ -133,6 +139,13 @@ void prom_dec_allocation(void) {
   if (turn_params.prometheus == 1){
     prom_gauge_dec(turn_total_allocations, NULL);
   }
+}
+
+#else
+
+void start_prometheus_server(void){
+	  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "turnserver compiled without prometheus support\n");
+    return;
 }
 
 #endif /* TURN_NO_PROMETHEUS */

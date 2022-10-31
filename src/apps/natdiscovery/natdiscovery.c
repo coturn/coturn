@@ -28,12 +28,16 @@
 * SUCH DAMAGE.
 */
 
-#include <err.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#if defined(WINDOWS)
+#include <getopt.h>
+#else
 #include <unistd.h>
+#include <err.h>
+#endif
 
 #include "ns_turn_utils.h"
 #include "apputils.h"
@@ -627,8 +631,10 @@ int main(int argc, char **argv)
 	int first=1;
 	ioa_addr other_addr, reflexive_addr, tmp_addr, remote_addr, local_addr, local2_addr;
 
+	if (socket_init()) return -1;
 
 	set_logfile("stdout");
+	set_no_stdout_log(1);
 	set_system_parameters(0);
 
 	memset(local_addr_string, 0, sizeof(local_addr_string));

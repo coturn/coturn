@@ -35,12 +35,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
-#include <unistd.h>
 #include <limits.h>
-#include <ifaddrs.h>
-#include <getopt.h>
+
 #include <locale.h>
-#include <libgen.h>
 
 #include <pthread.h>
 #include <sched.h>
@@ -48,13 +45,21 @@
 #include <signal.h>
 
 #include <sys/types.h>
-#include <sys/time.h>
 #include <sys/stat.h>
+
+#include <getopt.h>
+
+#if defined(__unix__) || defined(unix) || defined(__APPLE__) \
+    || defined(__DARWIN__) || defined(__MACH__)
+#include <ifaddrs.h>
+#include <libgen.h>
+#include <sys/time.h>
 #include <sys/resource.h>
 #include <sys/utsname.h>
 
 #include <pwd.h>
 #include <grp.h>
+#endif
 
 #include <event2/bufferevent.h>
 #include <event2/buffer.h>
@@ -197,7 +202,7 @@ typedef struct _turn_params_ {
   int no_dtls;
 
   struct event *tls_ctx_update_ev;
-  pthread_mutex_t tls_mutex;
+  TURN_MUTEX_DECLARE(tls_mutex)
 
 //////////////// Common params ////////////////////
 
@@ -251,7 +256,6 @@ typedef struct _turn_params_ {
   vint allow_loopback_peers;
 
   char relay_ifname[1025];
-
   size_t relays_number;
   char **relay_addrs;
   int default_relays;
@@ -280,6 +284,7 @@ typedef struct _turn_params_ {
   turn_server_addrs_list_t alternate_servers_list;
   turn_server_addrs_list_t tls_alternate_servers_list;
 
+/////////////// stop server ////////////////
   int stop_turn_server;
 
 ////////////// MISC PARAMS ////////////////
@@ -302,11 +307,9 @@ typedef struct _turn_params_ {
   band_limit_t bps_capacity_allocated;
   vint total_quota;
   vint user_quota;
-  #if !defined(TURN_NO_PROMETHEUS)
   int prometheus;
   int prometheus_port;
-  int  prometheus_username_labels;
-  #endif
+  int prometheus_username_labels;
 
 
 /////// Users DB ///////////

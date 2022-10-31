@@ -67,7 +67,7 @@ persistent_users_db_t * get_persistent_users_db(void) {
 	return &(turn_params.default_users_db.persistent_users_db);
 }
 
-const turn_dbdriver_t * get_dbdriver()
+const turn_dbdriver_t * get_dbdriver(void)
 {
 	if (turn_params.default_users_db.userdb_type == TURN_USERDB_TYPE_UNKNOWN)
 		return NULL;
@@ -99,11 +99,9 @@ const turn_dbdriver_t * get_dbdriver()
 			_driver = get_mongo_dbdriver();
 			break;
 #endif
-#if !defined(TURN_NO_HIREDIS)
 		case TURN_USERDB_TYPE_REDIS:
 			_driver = get_redis_dbdriver();
 			break;
-#endif
 		default:
 			break;
 		}

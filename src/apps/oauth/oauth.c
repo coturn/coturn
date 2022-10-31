@@ -28,11 +28,14 @@
  * SUCH DAMAGE.
  */
 
+#if defined(__unix__)
+#include <unistd.h>
+#endif
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
-#include <unistd.h>
 #include <getopt.h>
 #include <stddef.h>
 
@@ -125,6 +128,7 @@ static int encode_token(const char* server_name,
         size_t base64encoded_etoken_length;
         const char *tmp=base64_encode((unsigned char *)(etoken.token), etoken.size, &base64encoded_etoken_length);
         STRCPY(base64encoded_etoken,tmp);
+        free(tmp);
 
         return 0;
 }
@@ -142,6 +146,7 @@ static int validate_decode_token(const char* server_name,
         const size_t base64encoded_etoken_length=strlen(base64encoded_etoken);
         const unsigned char *tmp = base64_decode(base64encoded_etoken,base64encoded_etoken_length,&etoken.size);
         memcpy(etoken.token,tmp,etoken.size);
+        free(tmp);
                         
         if (decode_oauth_token((const uint8_t *) server_name, &etoken, &key, dot) < 0) {
                 fprintf(stderr, "%s: cannot decode oauth token\n",
@@ -160,6 +165,7 @@ static void print_token_body(oauth_token* dot) {
         const char *base64encoded_nonce = base64_encode((unsigned char *)dot->enc_block.nonce, dot->enc_block.nonce_length,&base64encoded_nonce_length); 
         printf("    nonce: %s\n", base64encoded_nonce);
         printf("    nonce length: %d\n", (int) dot->enc_block.nonce_length);
+        free(base64encoded_nonce);
         printf("Token encrpyted body:\n");
         printf("{\n");
         printf("    mac key: %s\n", (char*) dot->enc_block.mac_key);
@@ -269,6 +275,7 @@ int main(int argc, char **argv)
   int c=0;
 
   set_logfile("stdout");
+  set_no_stdout_log(1);
   set_system_parameters(0);
 
   while ((c = getopt_long(argc, argv, "hvedi:j:k:l:m:n:o:p:q:r:t:u:",long_options, &option_index)) != -1) {
@@ -337,7 +344,7 @@ int main(int argc, char **argv)
         nonce_size=OAUTH_GCM_NONCE_SIZE;
       } 
       strncpy(gcm_nonce,nonce_val,nonce_size);
-      gcm_nonce[ nonce_size + 1 ]='\0';
+      gcm_nonce[ nonce_size ]='\0';
       break;
     case 'p':
       //token-mac-key

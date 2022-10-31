@@ -63,7 +63,7 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void* arg) 
 static int udp_create_server_socket(server_type* server, 
 				    const char* ifname, const char *local_address, int port) {
 
-  FUNCSTART;
+  if(server && server->verbose) TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Start\n");
 
   if(!server) return -1;
 
@@ -77,6 +77,7 @@ static int udp_create_server_socket(server_type* server,
   udp_fd = socket(server_addr->ss.sa_family, RELAY_DGRAM_SOCKET_TYPE, RELAY_DGRAM_SOCKET_PROTOCOL);
   if (udp_fd < 0) {
     perror("socket");
+    free(server_addr);
     return -1;
   }
 
@@ -95,7 +96,7 @@ static int udp_create_server_socket(server_type* server,
   
   event_add(udp_ev,NULL);
   
-  FUNCEND;
+  if(server && server->verbose) TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "End\n");
   
   return 0;
 }

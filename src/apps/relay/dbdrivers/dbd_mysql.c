@@ -71,6 +71,7 @@ static void MyconninfoFree(Myconninfo *co) {
 		if(co->capath) free(co->capath);
 		if(co->cipher) free(co->cipher);
 		memset(co,0,sizeof(Myconninfo));
+		free(co);
 	}
 }
 

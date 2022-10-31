@@ -38,7 +38,11 @@
 
 #include <pthread.h>
 
-#include <syslog.h>
+#if defined(__unix__) || defined(unix) || defined(__APPLE__) \
+    || defined(__DARWIN__) || defined(__MACH__)
+	#include <syslog.h>
+#endif
+
 #include <stdarg.h>
 
 #include <stdlib.h>
@@ -46,15 +50,17 @@
 
 #include <signal.h>
 
-#include <unistd.h>
-#include <sys/syscall.h>
-
-#ifdef SYS_gettid
-#define gettid() ((pid_t)syscall(SYS_gettid))
+#if !defined(WINDOWS)
+  #include <unistd.h>
+  #include <sys/syscall.h>
+  #ifdef SYS_gettid
+    #define gettid() ((pid_t)syscall(SYS_gettid))
+  #endif
 #endif
 
-
 ////////// LOG TIME OPTIMIZATION ///////////
+
+static volatile int _log_file_line_set = 0;
 
 static volatile turn_time_t log_start_time = 0;
 volatile int _log_time_value_set = 0;
@@ -165,6 +171,7 @@ static char* str_fac[]={"LOG_AUTH","LOG_CRON","LOG_DAEMON",
 			"LOG_AUTHPRIV","LOG_SYSLOG",
 			0};
 
+#if defined(__unix__) || defined(unix) || defined(__APPLE__)
 static int int_fac[]={LOG_AUTH ,  LOG_CRON , LOG_DAEMON ,
 		    LOG_KERN , LOG_LOCAL0 , LOG_LOCAL1 ,
 		    LOG_LOCAL2 , LOG_LOCAL3 , LOG_LOCAL4 , LOG_LOCAL5 ,
@@ -184,18 +191,20 @@ static int str_to_syslog_facility(char *s)
 	}
 	return -1;
 }
-
+#endif
 void set_syslog_facility(char *val)
 {
 	if(val == NULL){
 		return;
 	}
+#if defined(__unix__) || defined(unix) || defined(__APPLE__)
 	int tmp = str_to_syslog_facility(val);
 	if(tmp == -1){
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: invalid syslog-facility value (%s); ignored.\n", val);
 		return;
 	}
 	syslog_facility = tmp;
+#endif
 }
 
 #if defined(TURN_LOG_FUNC_IMPL)
@@ -300,6 +309,11 @@ void set_logfile(const char *fn)
 	}
 }
 
+void set_log_file_line(int set)
+{
+	_log_file_line_set = set;
+}
+
 void reset_rtpprintf(void)
 {
 	log_lock();
@@ -369,9 +383,11 @@ static void set_log_file_name_func(char *base, char *f, size_t fsz)
 
 static void sighup_callback_handler(int signum)
 {
+#if defined(__unix__) || defined(unix) || defined(__APPLE__)
 	if(signum == SIGHUP) {
 		to_reset_log_file = 1;
 	}
+#endif
 }
 
 static void set_rtpfile(void)
@@ -385,7 +401,11 @@ static void set_rtpfile(void)
 	if(to_syslog) {
 		return;
 	} else if (!_rtpfile) {
+
+#if defined(__unix__) || defined(unix) || defined(__APPLE__)
 		signal(SIGHUP, sighup_callback_handler);
+#endif
+
 		if(log_fn_base[0]) {
 			if(!strcmp(log_fn_base,"syslog")) {
 				_rtpfile = stdout;
@@ -524,6 +544,7 @@ void rollover_logfile(void)
 
 static int get_syslog_level(TURN_LOG_LEVEL level)
 {
+#if defined(__unix__) || defined(unix) || defined(__APPLE__)
 	switch(level) {
 	case TURN_LOG_LEVEL_CONTROL:
 		return LOG_NOTICE;
@@ -535,9 +556,21 @@ static int get_syslog_level(TURN_LOG_LEVEL level)
 		;
 	};
 	return LOG_INFO;
+#endif
+	return level;
 }
 
-void turn_log_func_default(TURN_LOG_LEVEL level, const char* format, ...)
+#if defined(WINDOWS)
+void err(int eval, const char *format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    TURN_LOG_FUNC(eval, format, args);
+    va_end(args);
+}
+#endif
+
+void turn_log_func_default(char* file, int line, TURN_LOG_LEVEL level, const char* format, ...)
 {
 	va_list args;
 	va_start(args,format);
@@ -554,13 +587,35 @@ void turn_log_func_default(TURN_LOG_LEVEL level, const char* format, ...)
 	} else {
 		so_far += snprintf(s, sizeof(s), "%lu: ", (unsigned long)log_time());
 	}
+
+  if (_log_file_line_set)
 #ifdef SYS_gettid
-	so_far += snprintf(s + so_far, sizeof(s)-100, (level == TURN_LOG_LEVEL_ERROR) ? "(%lu): ERROR: " : "(%lu): ", (unsigned long)gettid());
+        so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "(%lu): %s(%d):", (unsigned long)gettid(), file, line);
 #else
-	so_far += snprintf(s + so_far, sizeof(s)-100, (level == TURN_LOG_LEVEL_ERROR) ? ": ERROR: " : ": ");
+        so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "%s(%d):", file, line);
 #endif
-	so_far += vsnprintf(s + so_far,sizeof(s) - (so_far+1), format, args);
-	if(so_far > MAX_RTPPRINTF_BUFFER_SIZE+1)
+
+	switch (level)
+    {
+	case TURN_LOG_LEVEL_DEBUG:
+		so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "DEBUG: ");
+		break;
+    case TURN_LOG_LEVEL_INFO:
+        so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "INFO: ");
+        break;
+    case TURN_LOG_LEVEL_CONTROL:
+        so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "CONTROL: ");
+        break;
+    case TURN_LOG_LEVEL_WARNING:
+        so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "WARNING: ");
+        break;
+    case TURN_LOG_LEVEL_ERROR:
+        so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "ERROR: ");
+        break;
+    }
+	so_far += vsnprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far+1), format, args);
+
+  if(so_far > MAX_RTPPRINTF_BUFFER_SIZE+1)
 	{
 		so_far=MAX_RTPPRINTF_BUFFER_SIZE+1;
 	}
@@ -568,7 +623,15 @@ void turn_log_func_default(TURN_LOG_LEVEL level, const char* format, ...)
 		fwrite(s, so_far, 1, stdout);
 	/* write to syslog or to log file */
 	if(to_syslog) {
-		syslog(syslog_facility|get_syslog_level(level),"%s",s);
+
+#if defined(WINDOWS)
+		//TODO: add event tracing: https://docs.microsoft.com/en-us/windows/win32/etw/about-event-tracing
+		// windows10: https://docs.microsoft.com/en-us/windows/win32/tracelogging/trace-logging-portal
+		printf("%s", s);
+#else
+        syslog(syslog_facility | get_syslog_level(level), "%s", s);
+#endif
+
 	} else {
 		log_lock();
 		set_rtpfile();

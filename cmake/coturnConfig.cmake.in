@@ -1,0 +1,51 @@
+# - Try to find coturn
+#
+#  Usage from an external project:
+#    In your CMakeLists.txt, add these lines:
+#
+#    find_package(coturn)
+#    target_link_libraries(MY_TARGET_NAME ${coturn_LIBRARIES})
+#  
+#  This file will define the following variables:
+#    coturn_FOUND: True if find coturn, other false
+#    coturn_LIBRARIES:  The list of all imported targets for coturn components
+#
+# Author: Kang Lin <kl222@126.com>
+
+include(FindPackageHandleStandardArgs)
+
+if (NOT coturn_FIND_COMPONENTS)
+    set(coturn_FIND_COMPONENTS
+        turncommon
+        turnclient
+        turn_server
+	)
+endif()
+
+get_filename_component(_coturn_module_paths "${CMAKE_CURRENT_LIST_DIR}" ABSOLUTE)
+
+set(_coturn_FIND_PARTS_REQUIRED)
+if (coturn_FIND_REQUIRED)
+    set(_coturn_FIND_PARTS_REQUIRED REQUIRED)
+endif()
+set(_coturn_FIND_PARTS_QUIET)
+if (coturn_FIND_QUIETLY)
+    set(_coturn_FIND_PARTS_QUIET QUIET)
+endif()
+
+foreach(module ${coturn_FIND_COMPONENTS})
+    find_package(${module}
+        ${_coturn_FIND_PARTS_QUIET}
+        ${_coturn_FIND_PARTS_REQUIRED}
+        PATHS ${_coturn_module_paths} NO_DEFAULT_PATH
+    )
+    if(${module}_FOUND)
+        list(APPEND coturn_LIBRARIES coturn::${module})
+    endif()
+    list(APPEND required "${module}_FOUND")  
+endforeach()
+
+# Run checks via find_package_handle_standard_args
+find_package_handle_standard_args(coturn
+	FOUND_VAR coturn_FOUND
+	REQUIRED_VARS ${required})

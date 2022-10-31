@@ -1033,6 +1033,7 @@ static int redis_list_realm_options(uint8_t *realm) {
 }
   
 static void redis_auth_ping(void * rch) {
+	UNUSED_ARG(rch);
 	redisContext *rc = get_redis_connection();
 	if(rc) {
 		turnFreeRedisReply(redisCommand(rc, "keys turn/origin/*"));
@@ -1398,4 +1399,10 @@ const turn_dbdriver_t * get_redis_dbdriver(void) {
   return NULL;
 }
 
-#endif
+redis_context_handle get_redis_async_connection(struct event_base *base, redis_stats_db_t* connection_string, int delete_keys) {
+	UNUSED_ARG(base);
+	UNUSED_ARG(connection_string);
+	UNUSED_ARG(delete_keys);
+    return NULL;
+}
+#endif /* !defined(TURN_NO_HIREDIS) */

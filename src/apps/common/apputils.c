@@ -35,18 +35,38 @@
 
 #include <event2/event.h>
 
+#if defined(__unix__) || defined(unix) || defined(__APPLE__)
+    #include <ifaddrs.h>
+    #include <getopt.h>
+    #include <libgen.h>
+#endif
+#if defined(__unix__) || defined(unix)
+    #include <pthread.h>
+    #include <sys/time.h>
+    #include <sys/resource.h>
+    #include <sys/sysinfo.h>
+#endif
+
+#if defined(WINDOWS)
+	#include <dsrole.h>
+#endif
+
+#if defined(_MSC_VER)
+	#include <direct.h>
+#else
+	#include <unistd.h>
+#endif
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
-#include <unistd.h>
-#include <locale.h>
-#include <libgen.h>
-#include <fcntl.h>
 
+#include <limits.h>
+#include <locale.h>
+#include <fcntl.h>
 #include <signal.h>
 
-#include <sys/resource.h>
 
 #if !defined(TURN_NO_SCTP) && defined(TURN_SCTP_INCLUDE)
 #include TURN_SCTP_INCLUDE
@@ -60,7 +80,7 @@ int IS_TURN_SERVER = 0;
 
 int socket_set_nonblocking(evutil_socket_t fd)
 {
-#if defined(WIN32)
+#if defined(WINDOWS)
 	unsigned long nonblocking = 1;
     ioctlsocket(fd, FIONBIO, (unsigned long*) &nonblocking);
 #else
@@ -76,7 +96,12 @@ void read_spare_buffer(evutil_socket_t fd)
 {
 	if(fd >= 0) {
 		static char buffer[65536];
+#if defined(WINDOWS)
+        //TODO: add set no-block? by Kang Lin <kl222@126.com>
+		recv(fd, buffer, sizeof(buffer), 0);
+#else
 		recv(fd, buffer, sizeof(buffer), MSG_DONTWAIT);
+#endif
 	}
 }
 
@@ -115,6 +140,29 @@ int set_sock_buf_size(evutil_socket_t fd, int sz0)
 	return 0;
 }
 
+int socket_init(void)
+{
+#if defined(WINDOWS)
+	{
+		WORD wVersionRequested;
+		WSADATA wsaData;
+		int e;
+
+		/* Use the MAKEWORD(lowbyte, highbyte) macro declared in Windef.h */
+		wVersionRequested = MAKEWORD(2, 2);
+
+		e = WSAStartup(wVersionRequested, &wsaData);
+		if (e != 0) {
+			/* Tell the user that we could not find a usable */
+			/* Winsock DLL.                                  */
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "WSAStartup failed with error: %d\n", e);
+			return 1;
+		}
+	}
+#endif
+	return 0;
+}
+
 int socket_tcp_set_keepalive(evutil_socket_t fd,SOCKET_TYPE st)
 {
 	UNUSED_ARG(st);
@@ -147,7 +195,7 @@ int socket_set_reusable(evutil_socket_t fd, int flag, SOCKET_TYPE st)
 		return -1;
 	else {
 
-#if defined(WIN32)
+#if defined(WINDOWS)
 		int use_reuseaddr = IS_TURN_SERVER;
 #else
 		int use_reuseaddr = 1;
@@ -665,7 +713,7 @@ int get_socket_mtu(evutil_socket_t fd, int family, int verbose)
 
 //////////////////// socket error handle ////////////////////
 
-int handle_socket_error() {
+int handle_socket_error(void) {
   switch (errno) {
   case EINTR:
     /* Interrupted system call.
@@ -691,12 +739,14 @@ int handle_socket_error() {
      * Must close connection.
      */
     return 0;
+#if defined(__unix__) || defined(unix) || defined(__APPLE__)
   case EHOSTDOWN:
     /* Host is down.
      * Just ignore, might be an attacker
      * sending fake ICMP messages.
      */
     return 1;
+#endif
   case ECONNRESET:
   case ECONNREFUSED:
     /* Connection reset by peer. */
@@ -731,6 +781,259 @@ char *skip_blanks(char* s)
 	return s;
 }
 
+#if defined(_MSC_VER)
+
+LARGE_INTEGER getFILETIMEoffset()
+{
+	SYSTEMTIME s;
+	FILETIME f;
+	LARGE_INTEGER t;
+
+	s.wYear = 1970;
+	s.wMonth = 1;
+	s.wDay = 1;
+	s.wHour = 0;
+	s.wMinute = 0;
+	s.wSecond = 0;
+	s.wMilliseconds = 0;
+	SystemTimeToFileTime(&s, &f);
+	t.QuadPart = f.dwHighDateTime;
+	t.QuadPart <<= 32;
+	t.QuadPart |= f.dwLowDateTime;
+	return (t);
+}
+
+int clock_gettime(int X, struct timeval* tv)
+{
+	LARGE_INTEGER           t;
+	FILETIME                f;
+	double                  microseconds;
+	static LARGE_INTEGER    offset;
+	static double           frequencyToMicroseconds;
+	static int              initialized = 0;
+	static BOOL             usePerformanceCounter = FALSE;
+
+	if (!initialized) {
+		LARGE_INTEGER performanceFrequency;
+		initialized = 1;
+		usePerformanceCounter = QueryPerformanceFrequency(&performanceFrequency);
+		if (usePerformanceCounter) {
+			QueryPerformanceCounter(&offset);
+			frequencyToMicroseconds = (double)performanceFrequency.QuadPart / 1000000.;
+		}
+		else {
+			offset = getFILETIMEoffset();
+			frequencyToMicroseconds = 10.;
+		}
+	}
+	if (usePerformanceCounter) QueryPerformanceCounter(&t);
+	else {
+		GetSystemTimeAsFileTime(&f);
+		t.QuadPart = f.dwHighDateTime;
+		t.QuadPart <<= 32;
+		t.QuadPart |= f.dwLowDateTime;
+	}
+
+	t.QuadPart -= offset.QuadPart;
+	microseconds = (double)t.QuadPart / frequencyToMicroseconds;
+	t.QuadPart = microseconds;
+	tv->tv_sec = t.QuadPart / 1000000;
+	tv->tv_usec = t.QuadPart % 1000000;
+	return 0;
+}
+
+int gettimeofday(struct timeval* tp, void* tzp)
+{
+	time_t clock;
+	struct tm tm;
+	SYSTEMTIME wtm;
+
+	GetLocalTime(&wtm);
+	tm.tm_year = wtm.wYear - 1900;
+	tm.tm_mon = wtm.wMonth - 1;
+	tm.tm_mday = wtm.wDay;
+	tm.tm_hour = wtm.wHour;
+	tm.tm_min = wtm.wMinute;
+	tm.tm_sec = wtm.wSecond;
+	tm.tm_isdst = -1;
+	clock = mktime(&tm);
+	tp->tv_sec = clock;
+	tp->tv_usec = wtm.wMilliseconds * 1000;
+
+	return (0);
+}
+
+char* dirname(char* path)
+{
+	char drive[_MAX_DRIVE];
+	char dir[_MAX_DIR];
+
+	errno_t err = _splitpath_s(path,
+		drive, _MAX_DRIVE,
+		dir, _MAX_DIR,
+		NULL, 0,
+		NULL, 0);
+	if (err)
+	{
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "split path fail: %d", err);
+		return NULL;
+	}
+
+	int n = strlen(drive) + strlen(dir);
+	if (n > 0)
+		path[n] = 0;
+	else
+		return NULL;
+	return path;
+}
+#endif
+
+#if defined(WINDOWS)
+int getdomainname(char* name, size_t len)
+{
+	DSROLE_PRIMARY_DOMAIN_INFO_BASIC* info;
+	DWORD dw;
+
+	dw = DsRoleGetPrimaryDomainInformation(NULL,
+		     DsRolePrimaryDomainInfoBasic,
+		     (PBYTE*)&info);
+	if (dw != ERROR_SUCCESS)
+	{
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "DsRoleGetPrimaryDomainInformation: %u\n", dw);
+		return -1;
+	}
+
+	do {
+		if (info->DomainForestName)
+		{
+			char* pszOut = NULL;
+			int nOutSize = 0;
+			if (_WTA(info->DomainForestName, wcslen(info->DomainForestName), &pszOut, &nOutSize))
+			{
+				int n = nOutSize - 1;
+				if (nOutSize > len - 1)
+				{
+					n = len - 1;
+				}
+				strncpy(name, pszOut, n);
+				name[n] = 0;
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "DomainForestName: %s\n", pszOut);
+			}
+			else
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "wchar convert to char fail");
+
+			free(pszOut);
+			break;
+		} else {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "DomainForestName is NULL\n");
+		}
+
+		if (info->DomainNameDns)
+		{
+			char* pszOut = NULL;
+			int nOutSize = 0;
+			if (_WTA(info->DomainNameDns, wcslen(info->DomainNameDns), &pszOut, &nOutSize))
+			{
+				int n = nOutSize - 1;
+				if (nOutSize > len - 1)
+				{
+					n = len - 1;
+				}
+				strncpy(name, pszOut, n);
+				name[n] = 0;
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "DomainNameDns: %s\n", pszOut);
+			}
+			else
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "wchar convert to char fail");
+
+			free(pszOut);
+			break;
+		} else {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "DomainNameDns is NULL\n");
+		}
+
+		if (info->DomainNameFlat)
+		{
+			char* pszOut = NULL;
+			int nOutSize = 0;
+			if (_WTA(info->DomainNameFlat, wcslen(info->DomainNameFlat), &pszOut, &nOutSize))
+			{
+				int n = nOutSize - 1;
+				if (nOutSize > len - 1)
+				{
+					n = len - 1;
+				}
+				strncpy(name, pszOut, n);
+				name[n] = 0;
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "DomainNameFlat: %s\n", pszOut);
+			}
+			else
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "wchar convert to char fail");
+
+			free(pszOut);
+		} else {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "DomainNameFlat is NULL\n");
+			return -2;
+		}
+	} while (0);
+
+	DsRoleFreeMemory(info);
+	return 0;
+}
+
+/*!
+ * \brief convert char to wchar
+ * 
+ * \param pszInBuf: input buffer of wchar string 
+ * \param nInSize: size of wchar string
+ * \param pszOutBuf: output buffer of char string
+ * \param pnOutSize: size of char string
+ * \return 
+ */
+wchar_t* _ATW(__in char* pszInBuf, __in int nInSize, __out wchar_t** pszOutBuf, __out int* pnOutSize)
+{
+	if (!pszInBuf || !pszOutBuf || !pnOutSize || nInSize <= 0) return NULL;
+	// Get buffer size
+	*pnOutSize = MultiByteToWideChar(NULL, NULL, pszInBuf, nInSize, *pszOutBuf, 0);
+	if (*pnOutSize == 0) return NULL;
+	(*pnOutSize)++;
+	*pszOutBuf = malloc((*pnOutSize) * sizeof(wchar_t));
+	memset((void*)*pszOutBuf, 0, sizeof(wchar_t) * (*pnOutSize));
+	if (MultiByteToWideChar(NULL, NULL, pszInBuf, nInSize, *pszOutBuf, *pnOutSize) == 0)
+	{
+		free(*pszOutBuf);
+		return NULL;
+	}
+	else return *pszOutBuf;
+}
+
+/*!
+ * \brief convert wchar to char
+ * 
+ * \param pszInBuf: input buffer of char string 
+ * \param nInSize: size of char string
+ * \param pszOutBuf: output buffer of wchar string
+ * \param pnOutSize: size of wchar string
+ * \return 
+ */
+char* _WTA(__in wchar_t* pszInBuf, __in int nInSize, __out char** pszOutBuf, __out int* pnOutSize)
+{
+	if (!pszInBuf || !pszOutBuf || !pnOutSize || nInSize <= 0) return NULL;
+	*pnOutSize = WideCharToMultiByte(NULL, NULL, pszInBuf, nInSize, *pszOutBuf, 0, NULL, NULL);
+	if (*pnOutSize == 0) return NULL;
+	(*pnOutSize)++;
+	*pszOutBuf = malloc(*pnOutSize * sizeof(char));
+	memset((void*)*pszOutBuf, 0, sizeof(char) * (*pnOutSize));
+	if (WideCharToMultiByte(NULL, NULL, pszInBuf, nInSize, *pszOutBuf, *pnOutSize, NULL, NULL) == 0)
+	{
+		free(*pszOutBuf);
+		return NULL;
+	}
+	else return *pszOutBuf;
+}
+
+#endif
+
 //////////////////// Config file search //////////////////////
 
 #define Q(x) #x
@@ -751,18 +1054,29 @@ static char *c_execdir=NULL;
 void set_execdir(void)
 {
   /* On some systems, this may give us the execution path */
-  char *_var = getenv("_");
-  if(_var && *_var) {
+	char *_var = NULL;
+#if defined(_MSC_VER)
+	char szPath[MAX_PATH];
+	if (!GetModuleFileNameA(NULL, szPath, MAX_PATH))
+	{
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "GetModuleFileName failed(%d)\n", GetLastError());
+		return;
+	}
+	_var = szPath;
+#elif defined(__unix__)
+	_var = getenv("_");
+#endif
+	if (_var && *_var) {
     _var = strdup(_var);
-    char *edir=_var;
-    if(edir[0]!='.') 
-      edir = strstr(edir,"/");
-    if(edir && *edir)
-      edir = dirname(edir);
+		char *edir = _var;
+		if (edir[0] != '.')
+			edir = strstr(edir, "/");
+		if (edir && *edir)
+            edir = dirname(edir);
     else
-      edir = dirname(_var);
-    if(c_execdir)
-      free(c_execdir);
+        edir = dirname(_var);
+		if (c_execdir)
+            free(c_execdir);
     c_execdir = strdup(edir);
     free(_var);
   }
@@ -880,10 +1194,12 @@ char* find_config_file(const char *config_file, int print_file_name)
 
 void ignore_sigpipe(void)
 {
+#if defined(__linux__) || defined(__APPLE__)
 	/* Ignore SIGPIPE from TCP sockets */
 	if(signal(SIGPIPE, SIG_IGN) == SIG_ERR) {
 		perror("Cannot set SIGPIPE handler");
 	}
+#endif
 }
 
 static uint64_t turn_getRandTime(void) {
@@ -899,16 +1215,34 @@ static uint64_t turn_getRandTime(void) {
   return current_mstime;
 }
 
+void turn_srandom(void)
+{
+#if defined(WINDOWS)
+	srand((unsigned int)(turn_getRandTime() + (unsigned int)((long)(&turn_getRandTime))));
+#else
+	srandom((unsigned int)(turn_getRandTime() + (unsigned int)((long)(&turn_getRandTime))));
+#endif
+}
+
 unsigned long set_system_parameters(int max_resources)
 {
-	srandom((unsigned int) (turn_getRandTime() + (unsigned int)((long)(&turn_getRandTime))));
+	turn_srandom();
+
 	setlocale(LC_ALL, "C");
 
 	build_base64_decoding_table();
 
 	ignore_sigpipe();
 
-	if(max_resources) {
+	if (max_resources) {
+#if defined(WINDOWS)
+		int num = 0;
+		//TODO: get max socket? by KangLin <kl222@126.com>
+
+		num = _getmaxstdio();
+		return num;
+#elif defined(__linux__) || defined(__APPLE__)
+	
 		struct rlimit rlim;
 		if(getrlimit(RLIMIT_NOFILE, &rlim)<0) {
 			perror("Cannot get system limit");
@@ -919,9 +1253,33 @@ unsigned long set_system_parameters(int max_resources)
 			}
 			return (unsigned long)rlim.rlim_cur;
 		}
+	
+#endif
 	}
 
 	return 0;
+}
+
+unsigned long get_system_number_of_cpus(void)
+{
+#if defined(WINDOWS)
+	SYSTEM_INFO sysInfo;
+	GetSystemInfo(&sysInfo);
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "System cpu num is %d\n", sysInfo.dwNumberOfProcessors);
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "System enable num is 0x%X\n", sysInfo.dwActiveProcessorMask);
+	return sysInfo.dwNumberOfProcessors;
+#else
+    #if defined(_SC_NPROCESSORS_ONLN)
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "System cpu num is %d \n", sysconf(_SC_NPROCESSORS_CONF));
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "System enable num is %d\n", sysconf(_SC_NPROCESSORS_ONLN));
+		return sysconf(_SC_NPROCESSORS_CONF);
+	#else
+		//GNU way
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "System cpu num is %d\n", get_nprocs_conf());
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "System enable num is %d\n", get_nprocs());
+		return get_nprocs_conf();
+	#endif
+#endif
 }
 
 ////////////////////// Base 64 ////////////////////////////
@@ -969,7 +1327,7 @@ char *base64_encode(const unsigned char *data,
     return encoded_data;
 }
 
-void build_base64_decoding_table() {
+void build_base64_decoding_table(void) {
 
     decoding_table = (char*)malloc(256);
     memset(decoding_table, 0, 256);

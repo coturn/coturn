@@ -6,7 +6,8 @@ After=syslog.target network.target
 [Service]
 User=turnserver
 Group=turnserver
-Type=notify
+Type=exec
+PIDFile=/var/run/turnserver/turnserver.pid
 EnvironmentFile=/etc/sysconfig/turnserver
 ExecStart=/usr/bin/turnserver -c /etc/turnserver/turnserver.conf $EXTRA_OPTIONS
 ExecStopPost=/usr/bin/rm -f /var/run/turnserver/turnserver.pid

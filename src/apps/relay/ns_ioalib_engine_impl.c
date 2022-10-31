@@ -38,9 +38,7 @@
 
 #include "ns_ioalib_impl.h"
 
-#if !defined(TURN_NO_PROMETHEUS)
 #include "prom_server.h"
-#endif
 
 #if TLS_SUPPORTED
 #include <event2/bufferevent_ssl.h>
@@ -268,6 +266,9 @@ static stun_buffer_list_elem *get_elem_from_buffer_list(stun_buffer_list *bufs)
 		ret=bufs->head;
 		bufs->head=ret->next;
 		--bufs->tsz;
+		if(bufs->tsz == 0) {
+			bufs->tail = NULL;
+		}
 
 		ret->next=NULL;
 		ret->buf.len = 0;
@@ -285,11 +286,12 @@ static void pop_elem_from_buffer_list(stun_buffer_list *bufs)
 		stun_buffer_list_elem *ret = bufs->head;
 		bufs->head=ret->next;
 		--bufs->tsz;
+		if(bufs->tsz == 0) {
+			bufs->tail = NULL;
+		}
 		free(ret);
 	}
 }
-
-
 
 static stun_buffer_list_elem *new_blist_elem(ioa_engine_handle e)
 {
@@ -313,8 +315,14 @@ static stun_buffer_list_elem *new_blist_elem(ioa_engine_handle e)
 
 static inline void add_elem_to_buffer_list(stun_buffer_list *bufs, stun_buffer_list_elem *buf_elem)
 {
-	buf_elem->next = bufs->head;
-	bufs->head = buf_elem;
+	// We want a queue, so add to tail
+	if(bufs->tail) {
+		bufs->tail->next = buf_elem;
+	} else {
+		bufs->head = buf_elem;
+	}
+	buf_elem->next = NULL;
+	bufs->tail = buf_elem;
 	bufs->tsz += 1;
 }
 
@@ -910,8 +918,7 @@ ioa_socket_handle create_unbound_relay_ioa_socket(ioa_engine_handle e, int famil
 		return NULL;
 	}
 
-	ret = (ioa_socket*)malloc(sizeof(ioa_socket));
-	memset(ret,0,sizeof(ioa_socket));
+	ret = (ioa_socket*)calloc(sizeof(ioa_socket), 1);
 
 	ret->magic = SOCKET_MAGIC;
 
@@ -1354,8 +1361,7 @@ ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e,
 		return NULL;
 	}
 
-	ret = (ioa_socket*)malloc(sizeof(ioa_socket));
-	memset(ret,0,sizeof(ioa_socket));
+	ret = (ioa_socket*)calloc(sizeof(ioa_socket), 1);
 
 	ret->magic = SOCKET_MAGIC;
 
@@ -1630,7 +1636,7 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s)
 
 		ioa_network_buffer_delete(s->e, s->defer_nbh);
 
-		ret = (ioa_socket*)malloc(sizeof(ioa_socket));
+		ret = (ioa_socket*)calloc(sizeof(ioa_socket), 1);
 		if(!ret) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"%s: Cannot allocate new socket structure\n",__FUNCTION__);
 			if(udp_fd>=0)
@@ -1957,7 +1963,10 @@ static int socket_readerr(evutil_socket_t fd, ioa_addr *orig_addr)
 		return -1;
 
 #if defined(CMSG_SPACE) && defined(MSG_ERRQUEUE) && defined(IP_RECVERR)
-
+	#ifdef _MSC_VER
+	    //TODO: implement it!!!
+	    TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "The socket_readerr is not implement in _MSC_VER");
+	#else
 	uint8_t ecmsg[TURN_CMSG_SZ+1];
 	int flags = MSG_ERRQUEUE;
 	int len = 0;
@@ -1990,6 +1999,7 @@ static int socket_readerr(evutil_socket_t fd, ioa_addr *orig_addr)
 
 	} while((len>0)&&(try_cycle++<MAX_ERRORS_IN_UDP_BATCH));
 
+	#endif
 #endif
 
 	return 0;
@@ -2012,7 +2022,7 @@ int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr *like_a
 	recv_ttl_t recv_ttl = TTL_DEFAULT;
 	recv_tos_t recv_tos = TOS_DEFAULT;
 
-#if !defined(CMSG_SPACE)
+#if defined(_MSC_VER) || !defined(CMSG_SPACE)
 	do {
 	  len = recvfrom(fd, buffer, buf_size, flags, (struct sockaddr*) orig_addr, (socklen_t*) &slen);
 	} while (len < 0 && (errno == EINTR));
@@ -2584,7 +2594,7 @@ static int socket_input_worker(ioa_socket_handle s)
 		if(s->ssl && (len>0)) { /* DTLS */
 			send_ssl_backlog_buffers(s);
 			buf_elem->buf.len = (size_t)len;
-			ret = ssl_read(s->fd, s->ssl, (ioa_network_buffer_handle)buf_elem, ((s->e) && s->e->verbose));
+			ret = ssl_read(s->fd, s->ssl, (ioa_network_buffer_handle)buf_elem, (s->e ? s->e->verbose : TURN_VERBOSE_NONE));
 			addr_cpy(&remote_addr,&(s->remote_addr));
 			if(ret < 0) {
 				len = -1;
@@ -2619,7 +2629,7 @@ static int socket_input_worker(ioa_socket_handle s)
 			if(s->read_cb) {
 				ioa_net_data nd;
 
-				memset(&nd,0,sizeof(ioa_net_data));
+				memset(&nd, 0, sizeof(ioa_net_data));
 				addr_cpy(&(nd.src_addr),&remote_addr);
 				nd.nbh = buf_elem;
 				nd.recv_ttl = ttl;
@@ -3103,7 +3113,7 @@ static int send_ssl_backlog_buffers(ioa_socket_handle s)
 	if(s) {
 		stun_buffer_list_elem *buf_elem = s->bufs.head;
 		while(buf_elem) {
-			int rc = ssl_send(s, (char*)buf_elem->buf.buf + buf_elem->buf.offset - buf_elem->buf.coffset, (size_t)buf_elem->buf.len, ((s->e) && s->e->verbose));
+			int rc = ssl_send(s, (char*)buf_elem->buf.buf + buf_elem->buf.offset - buf_elem->buf.coffset, (size_t)buf_elem->buf.len, (s->e ? s->e->verbose : TURN_VERBOSE_NONE));
 			if(rc<1)
 				break;
 			++ret;
@@ -3279,7 +3289,7 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 								s,
 								(char*) ioa_network_buffer_data(nbh),
 								ioa_network_buffer_get_size(nbh),
-								((s->e) && s->e->verbose));
+								(s->e ? s->e->verbose : TURN_VERBOSE_NONE));
 						if (ret < 0)
 							s->tobeclosed = 1;
 						else if (ret == 0)
@@ -3852,7 +3862,7 @@ const char* get_ioa_socket_tls_method(ioa_socket_handle s)
 #define TURN_SM_SIZE (1024<<11)
 
 struct _super_memory {
-	pthread_mutex_t mutex_sm;
+	TURN_MUTEX_DECLARE(mutex_sm)
 	char **super_memory;
 	size_t *sm_allocated;
 	size_t sm_total_sz;
@@ -3863,11 +3873,10 @@ struct _super_memory {
 static void init_super_memory_region(super_memory_t *r)
 {
 	if(r) {
-		memset(r,0,sizeof(super_memory_t));
+		memset(r, 0, sizeof(super_memory_t));
 
 		r->super_memory = (char**)malloc(sizeof(char*));
-		r->super_memory[0] = (char*)malloc(TURN_SM_SIZE);
-		memset(r->super_memory[0],0,TURN_SM_SIZE);
+		r->super_memory[0] = (char*)calloc(1, TURN_SM_SIZE);
 
 		r->sm_allocated = (size_t*)malloc(sizeof(size_t*));
 		r->sm_allocated[0] = 0;
@@ -3876,9 +3885,9 @@ static void init_super_memory_region(super_memory_t *r)
 		r->sm_chunk = 0;
 
 		while(r->id == 0)
-			r->id = (uint32_t)random();
+			r->id = (uint32_t)turn_random();
 
-		pthread_mutex_init(&r->mutex_sm, NULL);
+		TURN_MUTEX_INIT(&r->mutex_sm);
 	}
 }
 
@@ -3903,12 +3912,11 @@ void* allocate_super_memory_region_func(super_memory_t *r, size_t size, const ch
 	void *ret = NULL;
 
 	if(!r) {
-		ret = malloc(size);
-		memset(ret, 0, size);
+		ret = calloc(1, size);
 		return ret;
 	}
 
-	pthread_mutex_lock(&r->mutex_sm);
+	TURN_MUTEX_LOCK(&r->mutex_sm);
 
 	size = ((size_t)((size+sizeof(void*))/(sizeof(void*)))) * sizeof(void*);
 
@@ -3937,8 +3945,7 @@ void* allocate_super_memory_region_func(super_memory_t *r, size_t size, const ch
 		if(!region) {
 			r->sm_chunk += 1;
 			r->super_memory = (char**)realloc(r->super_memory,(r->sm_chunk+1) * sizeof(char*));
-			r->super_memory[r->sm_chunk] = (char*)malloc(TURN_SM_SIZE);
-			memset(r->super_memory[r->sm_chunk],0,TURN_SM_SIZE);
+			r->super_memory[r->sm_chunk] = (char*)calloc(1, TURN_SM_SIZE);
 			r->sm_allocated = (size_t*)realloc(r->sm_allocated,(r->sm_chunk+1) * sizeof(size_t*));
 			r->sm_allocated[r->sm_chunk] = 0;
 			region = r->super_memory[r->sm_chunk];
@@ -3956,11 +3963,10 @@ void* allocate_super_memory_region_func(super_memory_t *r, size_t size, const ch
 		}
 	}
 
-	pthread_mutex_unlock(&r->mutex_sm);
+	TURN_MUTEX_UNLOCK(&r->mutex_sm);
 
 	if(!ret) {
-		ret = malloc(size);
-		memset(ret, 0, size);
+		ret = calloc(1, size);
 	}
 
 	return ret;

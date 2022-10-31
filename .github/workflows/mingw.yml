@@ -1,0 +1,96 @@
+name: mingw 
+
+on: [push]
+
+jobs:
+  build:
+    name: build
+
+    strategy:
+      matrix:
+        os: [windows-latest]
+        # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
+        BUILD_TYPE: [Release, Debug]
+        BUILD_SHARED_LIBS: [OFF]
+
+    defaults:
+      run:
+        shell: cmd
+        
+    runs-on: ${{ matrix.os }}
+    env:
+      BUILD_TYPE:  ${{ matrix.BUILD_TYPE }}
+      SOURCE_DIR:  ${{github.workspace}}\.cache\source
+      TOOSL_DIR:   ${{github.workspace}}\.cache\tools
+      INSTALL_DIR: ${{github.workspace}}\.cache\install_mingw_2022_02_15
+
+    steps:
+    - uses: actions/checkout@v2
+      #with:
+        #fetch-depth: 0
+            
+    - name: pacman
+      env:
+        PATH: C:\msys64\usr\bin
+      run: |
+        C:\msys64\usr\bin\pacman.exe -S --noconfirm ^
+            mingw-w64-x86_64-cmake ^
+            mingw-w64-x86_64-make ^
+            mingw-w64-x86_64-nsis ^
+            mingw-w64-x86_64-gcc ^
+            mingw-w64-x86_64-zlib ^
+            mingw-w64-x86_64-openssl ^
+            mingw-w64-x86_64-libevent ^
+            mingw-w64-x86_64-sqlite3 ^
+            mingw-w64-x86_64-hiredis ^
+            mingw-w64-x86_64-postgresql ^
+            git base-devel
+
+    - name: make_directory
+      run: |
+        cmake -E make_directory ${{env.SOURCE_DIR}}
+        cmake -E make_directory ${{env.TOOSL_DIR}}
+        cmake -E make_directory ${{env.INSTALL_DIR}}
+    
+    - name: Cache installed
+      uses: actions/cache@v2
+      id: cache-installed
+      with:
+        path: |
+          ${{env.INSTALL_DIR}}
+        key: coturn-cache-installed-mingw
+
+    - name: build coturn
+      working-directory: ${{github.workspace}}
+      env:
+        MSYSTEM: MINGW64
+        PATH: C:\msys64\mingw64\bin;C:\msys64\usr\bin
+      run: |
+        cmake -E make_directory build
+        cd build
+        cmake .. -G"MinGW Makefiles" ^
+            -DBUILD_SHARED_LIBS=${{matrix.BUILD_SHARED_LIBS}} ^
+            -DCMAKE_BUILD_TYPE=${{matrix.BUILD_TYPE}} ^
+            -DCMAKE_INSTALL_PREFIX=${{github.workspace}}/build/install
+        cmake --build . --config ${{matrix.BUILD_TYPE}}
+        cmake --build . --config ${{matrix.BUILD_TYPE}} --target install
+
+    - name: Package
+      if: ${{ matrix.BUILD_TYPE == 'Release' }}
+      working-directory: ${{github.workspace}}\build
+      run: |
+        copy /Y ${{env.INSTALL_DIR}}\bin\*.dll install\bin
+        copy /Y ${{env.INSTALL_DIR}}\lib\*.dll install\bin
+        copy /Y ${{env.RUNVCPKG_VCPKG_ROOT}}\installed\${{env.RUNVCPKG_VCPKG_TRIPLET_OUT}}\bin\*.dll install\bin
+        7z a coturn_windows_mingw.zip ${{github.workspace}}\build\install\*
+        cmake --build . --config ${{matrix.BUILD_TYPE}} --target package
+
+    - name: update 
+      if: ${{ matrix.BUILD_TYPE == 'Release' }}
+      uses: actions/upload-artifact@v2
+      with:
+        name: coturn_mingw_${{ matrix.os }}
+        path: |
+          ${{github.workspace}}\build\coturn_windows_mingw.zip
+          ${{github.workspace}}\build\coturn*.exe
+          ${{github.workspace}}\build\coturn*.md5

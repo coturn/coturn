@@ -1,0 +1,20 @@
+{
+  "name": "coturn",
+  "version-string": "4.6.0",
+  "dependencies": [
+    {
+      "name": "pthreads",
+      "platform": "windows"
+    },
+    {
+      "name": "libevent",
+      "features": [ "openssl", "thread" ]
+    },
+    "openssl",
+    "sqlite3",
+    "libpq",
+    "hiredis",
+    "mongo-c-driver"
+  ]
+
+}

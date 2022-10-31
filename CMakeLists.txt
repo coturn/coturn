@@ -1,12 +1,17 @@
-# Author: Kang Lin (kl222@126.com)
+# Author: Kang Lin <kl222@126.com>
 
 cmake_minimum_required(VERSION 3.5)
 
 project(coturn)
+set(CMAKE_INCLUDE_CURRENT_DIR ON)
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD_REQUIRED ON)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
 # TODO: Modify this when the version is released
-SET(BUILD_VERSION "4.5.2")
+SET(BUILD_VERSION "4.6.0")
+
+option(FUZZER "Build oss-fuzz fuzzing" OFF)
 
 # Find Git Version Patch
 IF(EXISTS "${CMAKE_SOURCE_DIR}/.git")
@@ -32,7 +37,12 @@ IF(EXISTS "${CMAKE_SOURCE_DIR}/.git")
         SET(BUILD_VERSION ${GIT_VERSION})
     ENDIF()
 ENDIF()
-message("BUILD_VERSION:${BUILD_VERSION}")
+string(FIND ${BUILD_VERSION} / BUILD_VERSION_POS REVERSE)
+if(BUILD_VERSION_POS GREATER -1)
+    math(EXPR BUILD_VERSION_POS "${BUILD_VERSION_POS} + 1")
+    string(SUBSTRING ${BUILD_VERSION} ${BUILD_VERSION_POS} -1 BUILD_VERSION)
+endif()
+message("BUILD_VERSION:${BUILD_VERSION};${_BUILD_VERSION}")
 set(VERSION ${BUILD_VERSION})
 
 if(NOT DEFINED CMAKE_BUILD_TYPE)
@@ -53,11 +63,20 @@ IF(MSVC)
     ENDIF(WIN32_USE_MP)
     add_compile_options("$<$<C_COMPILER_ID:MSVC>:/utf-8>")
     add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
+    add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 ENDIF(MSVC)
 
-IF(APPLE)
-    add_compile_definitions("TURN_NO_THREAD_BARRIERS=1")
-ENDIF()
+SET(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libs")
+if (BUILD_SHARED_LIBS)
+    add_definitions(-DBUILD_SHARED_LIBS)
+    if (CMAKE_COMPILER_IS_GNUCXX AND NOT MINGW)
+       # Just setting CMAKE_POSITION_INDEPENDENT_CODE should be enough to set
+       # -fPIC for GCC but sometimes it still doesn't get set, so make sure it
+       # does.
+       add_definitions("-fPIC")
+    endif()
+    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+endif(BUILD_SHARED_LIBS)
 
 include(CMakePackageConfigHelpers)
 include(GNUInstallDirs)
@@ -66,18 +85,6 @@ include(CheckIncludeFile)
 include(CheckIncludeFileCXX)
 include(CheckFunctionExists)
 
-# Create install runtime target
-add_custom_target(install-runtime
-  COMMAND
-     "${CMAKE_COMMAND}" -DCMAKE_INSTALL_COMPONENT=Runtime 
-     -P "${CMAKE_CURRENT_BINARY_DIR}/cmake_install.cmake"
-)
-# Create uninstall runtime target
-add_custom_target(uninstall-runtime
-  COMMAND
-     "${CMAKE_COMMAND}" -DCMAKE_INSTALL_COMPONENT=Runtime 
-     -P "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
-)
 # Create will be delete files
 CONFIGURE_FILE(
     "${CMAKE_SOURCE_DIR}/cmake/cmake_uninstall.cmake.in"
@@ -89,6 +96,19 @@ ADD_CUSTOM_TARGET(uninstall
     )
 
 add_subdirectory(src)
+
+OPTION(BUILD_TEST "Build test" OFF)
+if(BUILD_TEST)
+    add_subdirectory(test)
+endif(BUILD_TEST)
+
+CONFIGURE_FILE(
+    "${CMAKE_SOURCE_DIR}/cmake/coturnConfig.cmake.in"
+    "${CMAKE_BINARY_DIR}/coturnConfig.cmake"
+    IMMEDIATE @ONLY)
+install(FILES "${CMAKE_BINARY_DIR}/coturnConfig.cmake"
+    DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/coturn"
+        COMPONENT Development)
 
 install(DIRECTORY man DESTINATION .
     COMPONENT Runtime)
@@ -113,8 +133,17 @@ install(FILES examples/etc/turnserver.conf
     RENAME turnserver.conf.default
     )
 install(DIRECTORY
-            examples/etc
-            examples/scripts
-    DESTINATION share/examples/turnserver
-    PATTERN "rfc5769.sh" EXCLUDE
+        examples
+    DESTINATION share
+        COMPONENT examples
     )
+include(cmake/CMakeCPack.cmake)
+
+if(FUZZER)
+    if (NOT CMAKE_C_COMPILER_ID STREQUAL "Clang")
+        message(FATAL_ERROR "clang is require for libFuzzer")
+    endif()
+
+    add_subdirectory(fuzzing)
+
+endif()

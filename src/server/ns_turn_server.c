@@ -213,7 +213,7 @@ void init_turn_server_addrs_list(turn_server_addrs_list_t *l)
 	if(l) {
 		l->addrs = NULL;
 		l->size = 0;
-		turn_mutex_init(&(l->m));
+		TURN_MUTEX_INIT(&(l->m));
 	}
 }
 
@@ -794,8 +794,7 @@ static ts_ur_super_session* create_new_ss(turn_turnserver* server) {
 	//
 	//printf("%s: 111.111: session size=%lu\n",__FUNCTION__,(unsigned long)sizeof(ts_ur_super_session));
 	//
-	ts_ur_super_session *ss = (ts_ur_super_session*)malloc(sizeof(ts_ur_super_session));
-	memset(ss,0,sizeof(ts_ur_super_session));
+	ts_ur_super_session *ss = (ts_ur_super_session*)calloc(sizeof(ts_ur_super_session), 1);
 	ss->server = server;
 	get_default_realm_options(&(ss->realm_options));
 	put_session_into_map(ss);
@@ -3642,9 +3641,9 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 					}
 
 					if(asl && asl->size) {
-						turn_mutex_lock(&(asl->m));
+						TURN_MUTEX_LOCK(&(asl->m));
 						set_alternate_server(asl,get_local_addr_from_ioa_socket(ss->client_socket),&(server->as_counter),method,&tid,resp_constructed,&err_code,&reason,nbh);
-						turn_mutex_unlock(&(asl->m));
+						TURN_MUTEX_UNLOCK(&(asl->m));
 					}
 				}
 			}
@@ -4658,7 +4657,7 @@ static int read_client_connection(turn_turnserver *server,
 					if(st==TLS_SOCKET) {
 						proto = "HTTPS";
 						set_ioa_socket_app_type(ss->client_socket,HTTPS_CLIENT_SOCKET);
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s (%s %s) request: %s\n", __FUNCTION__, proto, get_ioa_socket_cipher(ss->client_socket), get_ioa_socket_ssl_method(ss->client_socket), ioa_network_buffer_get_size(in_buffer->nbh));
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s (%s %s) request: %zu\n", __FUNCTION__, proto, get_ioa_socket_cipher(ss->client_socket), get_ioa_socket_ssl_method(ss->client_socket), ioa_network_buffer_get_size(in_buffer->nbh));
 						if(server->send_https_socket) {
 							TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s socket to be detached: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(long)ss->client_socket, get_ioa_socket_type(ss->client_socket), get_ioa_socket_app_type(ss->client_socket));
 							ioa_socket_handle new_s = detach_ioa_socket(ss->client_socket);
@@ -4671,7 +4670,7 @@ static int read_client_connection(turn_turnserver *server,
 					} else {
 						set_ioa_socket_app_type(ss->client_socket,HTTP_CLIENT_SOCKET);
 						if(server->verbose) {
-							TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s request: %s\n", __FUNCTION__, proto, ioa_network_buffer_get_size(in_buffer->nbh));
+							TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s request: %zu\n", __FUNCTION__, proto, ioa_network_buffer_get_size(in_buffer->nbh));
 						}
 						handle_http_echo(ss->client_socket);
 					}

@@ -48,7 +48,6 @@ typedef void* redis_context_handle;
 
 #if !defined(TURN_NO_HIREDIS)
 
-void redis_async_init(void);
 
 redis_context_handle redisLibeventAttach(struct event_base *base, char *ip, int port, char *pwd, int db);
 
