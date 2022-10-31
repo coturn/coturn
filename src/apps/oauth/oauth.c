@@ -126,7 +126,7 @@ static int encode_token(const char* server_name,
         }
 
         size_t base64encoded_etoken_length;
-        const char *tmp=base64_encode((unsigned char *)(etoken.token), etoken.size, &base64encoded_etoken_length);
+        char *tmp=base64_encode((unsigned char *)(etoken.token), etoken.size, &base64encoded_etoken_length);
         STRCPY(base64encoded_etoken,tmp);
         free(tmp);
 
@@ -144,7 +144,7 @@ static int validate_decode_token(const char* server_name,
         memset(&etoken, 0, sizeof(etoken));
 
         const size_t base64encoded_etoken_length=strlen(base64encoded_etoken);
-        const unsigned char *tmp = base64_decode(base64encoded_etoken,base64encoded_etoken_length,&etoken.size);
+        unsigned char *tmp = base64_decode(base64encoded_etoken,base64encoded_etoken_length,&etoken.size);
         memcpy(etoken.token,tmp,etoken.size);
         free(tmp);
                         
@@ -162,7 +162,7 @@ static void print_token_body(oauth_token* dot) {
         printf("Token non-encrpyted body:\n");
         printf("{\n");
         size_t base64encoded_nonce_length;
-        const char *base64encoded_nonce = base64_encode((unsigned char *)dot->enc_block.nonce, dot->enc_block.nonce_length,&base64encoded_nonce_length); 
+        char *base64encoded_nonce = base64_encode((unsigned char *)dot->enc_block.nonce, dot->enc_block.nonce_length,&base64encoded_nonce_length); 
         printf("    nonce: %s\n", base64encoded_nonce);
         printf("    nonce length: %d\n", (int) dot->enc_block.nonce_length);
         free(base64encoded_nonce);
