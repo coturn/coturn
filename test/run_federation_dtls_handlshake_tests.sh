@@ -5,11 +5,6 @@ TEST_SERVER=127.0.0.1:9191
 SUCCESS=0
 FAILURE=1
 
-GoodCiphers=('ECDHE-RSA-AES128-GCM-SHA256', 'ECDHE-ECDSA-AES128-GCM-SHA256', 'ECDHE-RSA-AES256-GCM-SHA384', 'ECDHE-ECDSA-AES256-GCM-SHA384',\
-             'DHE-RSA-AES128-GCM-SHA256', 'ECDHE-RSA-AES128-SHA256', 'ECDHE-ECDSA-AES128-SHA256', 'ECDHE-RSA-AES128-SHA', 'ECDHE-ECDSA-AES128-SHA',\
-             'ECDHE-RSA-AES256-SHA384', 'ECDHE-ECDSA-AES256-SHA384', 'ECDHE-RSA-AES256-SHA', 'ECDHE-ECDSA-AES256-SHA', 'DHE-RSA-AES128-SHA256',\
-             'DHE-RSA-AES128-SHA', 'DHE-RSA-AES256-SHA256', 'DHE-RSA-AES256-SHA')
-
 GoodRSACiphers=('ECDHE-RSA-AES128-GCM-SHA256', 'ECDHE-RSA-AES256-GCM-SHA384',\
              'DHE-RSA-AES128-GCM-SHA256', 'ECDHE-RSA-AES128-SHA256', 'ECDHE-RSA-AES128-SHA',\
              'ECDHE-RSA-AES256-SHA384', 'ECDHE-RSA-AES256-SHA', 'DHE-RSA-AES128-SHA256',\
@@ -69,7 +64,6 @@ check_result() {
 # Start server with no issuer check enabled in config
 start_server turnserver_rsa_noissuercheck.conf
 
-# @SF.Calls @TSFI.RESTfulAPI @S5
 echo "Q" | timeout 3 openssl s_client -connect $TEST_SERVER -dtls1_2 -cert federation_rsa_cert.pem -key federation_rsa_pkey.pem >/dev/null 2>/dev/null
 check_result "DTLS version 1.2 federation client connects (no issuer check)" $SUCCESS
 
