@@ -1640,7 +1640,7 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s)
 		if(!ret) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"%s: Cannot allocate new socket structure\n",__FUNCTION__);
 			if(udp_fd>=0)
-				close(udp_fd);
+				socket_closesocket(udp_fd);
 			return ret;
 		}
 
