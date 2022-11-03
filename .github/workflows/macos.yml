@@ -18,13 +18,13 @@ jobs:
             wget \
             pkg-config \
             libevent \
-            openssl \
+            openssl@1.1 \
             sqlite \
             hiredis \
             mongo-c-driver \
             libmicrohttpd
     - name: configure
-      run: ./configure
+      run: PKG_CONFIG_PATH=/usr/local/Cellar/openssl@1.1 ./configure ./configure
     - name: make
       run: make
     - name: make check
