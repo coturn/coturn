@@ -25,7 +25,7 @@ jobs:
       INSTALL_DIR: ${{github.workspace}}\.cache\install_mingw_2022_02_15
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       #with:
         #fetch-depth: 0
             
@@ -87,7 +87,7 @@ jobs:
 
     - name: update 
       if: ${{ matrix.BUILD_TYPE == 'Release' }}
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: coturn_mingw_${{ matrix.os }}
         path: |

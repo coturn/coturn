@@ -3870,7 +3870,7 @@ static void init_super_memory_region(super_memory_t *r)
 		r->super_memory = (char**)malloc(sizeof(char*));
 		r->super_memory[0] = (char*)calloc(1, TURN_SM_SIZE);
 
-		r->sm_allocated = (size_t*)malloc(sizeof(size_t*));
+		r->sm_allocated = (size_t*)malloc(sizeof(size_t));
 		r->sm_allocated[0] = 0;
 
 		r->sm_total_sz = TURN_SM_SIZE;
@@ -3938,7 +3938,7 @@ void* allocate_super_memory_region_func(super_memory_t *r, size_t size, const ch
 			r->sm_chunk += 1;
 			r->super_memory = (char**)realloc(r->super_memory,(r->sm_chunk+1) * sizeof(char*));
 			r->super_memory[r->sm_chunk] = (char*)calloc(1, TURN_SM_SIZE);
-			r->sm_allocated = (size_t*)realloc(r->sm_allocated,(r->sm_chunk+1) * sizeof(size_t*));
+			r->sm_allocated = (size_t*)realloc(r->sm_allocated,(r->sm_chunk+1) * sizeof(size_t));
 			r->sm_allocated[r->sm_chunk] = 0;
 			region = r->super_memory[r->sm_chunk];
 			rsz = r->sm_allocated + r->sm_chunk;

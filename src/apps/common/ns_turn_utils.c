@@ -50,6 +50,14 @@
 
 #include <signal.h>
 
+#if !defined(WINDOWS)
+  #include <unistd.h>
+  #include <sys/syscall.h>
+  #ifdef SYS_gettid
+    #define gettid() ((pid_t)syscall(SYS_gettid))
+  #endif
+#endif
+
 ////////// LOG TIME OPTIMIZATION ///////////
 
 static volatile int _log_file_line_set = 0;
@@ -579,8 +587,13 @@ void turn_log_func_default(char* file, int line, TURN_LOG_LEVEL level, const cha
 	} else {
 		so_far += snprintf(s, sizeof(s), "%lu: ", (unsigned long)log_time());
 	}
+
+#ifdef SYS_gettid
+	so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "(%lu): ", (unsigned long)gettid());
+#endif
+
 	if (_log_file_line_set)
-        so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "%s(%d):", file, line);
+		so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "%s(%d):", file, line);
 
 	switch (level)
     {
@@ -601,7 +614,8 @@ void turn_log_func_default(char* file, int line, TURN_LOG_LEVEL level, const cha
         break;
     }
 	so_far += vsnprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far+1), format, args);
-	if(so_far > MAX_RTPPRINTF_BUFFER_SIZE+1)
+
+  if(so_far > MAX_RTPPRINTF_BUFFER_SIZE+1)
 	{
 		so_far=MAX_RTPPRINTF_BUFFER_SIZE+1;
 	}

@@ -43,8 +43,10 @@
 #include "libtelnet.h"
 
 /* inlinable functions */
-#if defined(__GNUC__) || __STDC_VERSION__ >= 199901L
+#if defined(__GNUC__)
 # define INLINE __inline__
+#elif __STDC_VERSION__ >= 199901L
+# define INLINE inline
 #else
 # define INLINE
 #endif

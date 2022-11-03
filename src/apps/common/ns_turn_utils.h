@@ -71,7 +71,11 @@ void set_syslog_facility(char *val);
 
 void set_turn_log_timestamp_format(char* new_format);
 
-void turn_log_func_default(char* file, int line, TURN_LOG_LEVEL level, const char* format, ...);
+void turn_log_func_default(char* file, int line, TURN_LOG_LEVEL level, const char* format, ...)
+#ifdef __GNUC__
+__attribute__ ((format (printf, 4, 5)))
+#endif
+;
 
 void addr_debug_print(int verbose, const ioa_addr *addr, const char* s);
 

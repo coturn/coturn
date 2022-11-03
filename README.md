@@ -97,6 +97,7 @@ The supported project target platforms are:
   * Solaris 11
   * Mac OS X
   * Cygwin (for non-production R&D purposes)
+  * Windows (native with, e.g., MSVC toolchain)
 
 Other server platforms can be supported by request.
 
