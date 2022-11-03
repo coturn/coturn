@@ -24,7 +24,7 @@ jobs:
             mongo-c-driver \
             libmicrohttpd
     - name: configure
-      run: PKG_CONFIG_PATH=/usr/local/Cellar/openssl@1.1 ./configure ./configure
+      run: PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/local/opt/openssl@1.1/lib/pkgconfig ./configure
     - name: make
       run: make
     - name: make check
