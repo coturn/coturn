@@ -1,0 +1,33 @@
+name: C/C++ CI macoS
+
+on:
+  push:
+    branches: [ $default-branch ]
+  pull_request:
+    types: [ opened, reopened, synchronize ]
+
+jobs:
+  builds:
+    runs-on: macos-12
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install dependencies
+      run: |
+        brew update
+        brew install \
+            wget \
+            pkg-config \
+            libevent \
+            openssl@1.1 \
+            sqlite \
+            hiredis \
+            mongo-c-driver \
+            libmicrohttpd
+    - name: configure
+      run: PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/local/opt/openssl@1.1/lib/pkgconfig ./configure
+    - name: make
+      run: make
+    - name: make check
+      run: make check
+    - name: apps tests
+      run: cd examples && ./run_tests.sh
