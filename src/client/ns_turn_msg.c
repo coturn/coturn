@@ -108,7 +108,7 @@ long turn_random(void)
 static void turn_random_tid_size(void *id)
 {
 	uint32_t *ar=(uint32_t*)id;
-	if(!RAND_pseudo_bytes((unsigned char *)ar,12)) {
+	if(!RAND_bytes((unsigned char *)ar,12)) {
 		size_t i;
 		for(i=0;i<3;++i) {
 			ar[i] = (uint32_t)turn_random();
