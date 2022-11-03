@@ -753,6 +753,14 @@ int handle_socket_error(void) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Out of memory!\n");
 		return 0;
 	}
+	if (socket_eacces()) {
+		/* Permission denied.
+		 * Just ignore, we might be blocked
+		 * by some firewall policy. Try again
+		 * and hope for the best.
+		 */
+		return 1;
+	}
 
 	/* Something unexpected happened */
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Unexpected error! (errno = %d)\n", socket_errno());
