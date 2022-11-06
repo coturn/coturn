@@ -31,12 +31,12 @@
 #ifndef __TURN_HTTP_SERVER__
 #define __TURN_HTTP_SERVER__
 
-#include "ns_turn_utils.h"
-#include "ns_turn_server.h"
 #include "apputils.h"
+#include "ns_turn_server.h"
+#include "ns_turn_utils.h"
 
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -44,40 +44,33 @@ extern "C" {
 
 /////////  HTTP REQUEST //////////
 
-enum _HTTP_REQUEST_TYPE {
-	HRT_UNKNOWN=0,
-	HRT_GET,
-	HRT_HEAD,
-	HRT_POST,
-	HRT_PUT,
-	HRT_DELETE
-};
+enum _HTTP_REQUEST_TYPE { HRT_UNKNOWN = 0, HRT_GET, HRT_HEAD, HRT_POST, HRT_PUT, HRT_DELETE };
 
 typedef enum _HTTP_REQUEST_TYPE HTTP_REQUEST_TYPE;
 
 struct http_headers;
 
 struct http_request {
-	HTTP_REQUEST_TYPE rtype;
-	char *path;
-	struct http_headers *headers;
+  HTTP_REQUEST_TYPE rtype;
+  char *path;
+  struct http_headers *headers;
 };
 
-struct http_request* parse_http_request(char* request);
-const char *get_http_header_value(const struct http_request *request, const char* key, const char* def);
+struct http_request *parse_http_request(char *request);
+const char *get_http_header_value(const struct http_request *request, const char *key, const char *def);
 void free_http_request(struct http_request *request);
 
-const char* get_http_date_header(void);
+const char *get_http_date_header(void);
 
 ////////////////////////////////////////////
 
 struct str_buffer;
 
-struct str_buffer* str_buffer_new(void);
-void str_buffer_append(struct str_buffer* sb, const char* str);
-void str_buffer_append_sz(struct str_buffer* sb, size_t sz);
-void str_buffer_append_sid(struct str_buffer* sb, turnsession_id sid);
-const char* str_buffer_get_str(const struct str_buffer *sb);
+struct str_buffer *str_buffer_new(void);
+void str_buffer_append(struct str_buffer *sb, const char *str);
+void str_buffer_append_sz(struct str_buffer *sb, size_t sz);
+void str_buffer_append_sid(struct str_buffer *sb, turnsession_id sid);
+const char *str_buffer_get_str(const struct str_buffer *sb);
 size_t str_buffer_get_str_len(const struct str_buffer *sb);
 void str_buffer_free(struct str_buffer *sb);
 
@@ -93,4 +86,3 @@ void handle_http_echo(ioa_socket_handle s);
 
 #endif
 /// __TURN_HTTP_SERVER__///
-

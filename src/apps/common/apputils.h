@@ -36,8 +36,8 @@
 #include "ns_turn_openssl.h"
 
 #include "ns_turn_ioaddr.h"
-#include "ns_turn_msg_defs.h"
 #include "ns_turn_ioalib.h"
+#include "ns_turn_msg_defs.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -68,48 +68,48 @@ extern int IS_TURN_SERVER;
 
 #if defined(TURN_NO_TLS)
 
-	#define TLS_SUPPORTED 0
-	#define TLSv1_1_SUPPORTED 0
-	#define TLSv1_2_SUPPORTED 0
+#define TLS_SUPPORTED 0
+#define TLSv1_1_SUPPORTED 0
+#define TLSv1_2_SUPPORTED 0
 
 #else
 
-	#define TLS_SUPPORTED 1
+#define TLS_SUPPORTED 1
 
-	#if defined(SSL_OP_NO_TLSv1_1)
-		#define TLSv1_1_SUPPORTED 1
-	#else
-		#define TLSv1_1_SUPPORTED 0
-	#endif
+#if defined(SSL_OP_NO_TLSv1_1)
+#define TLSv1_1_SUPPORTED 1
+#else
+#define TLSv1_1_SUPPORTED 0
+#endif
 
-	#if defined(SSL_OP_NO_TLSv1_2)
-		#define TLSv1_2_SUPPORTED 1
-	#else
-		#define TLSv1_2_SUPPORTED 0
-	#endif
-	
-	#if defined(SSL_OP_NO_TLSv1_3)
-		#define TLSv1_3_SUPPORTED 1
-	#else
-		#define TLSv1_3_SUPPORTED 0
-	#endif
+#if defined(SSL_OP_NO_TLSv1_2)
+#define TLSv1_2_SUPPORTED 1
+#else
+#define TLSv1_2_SUPPORTED 0
+#endif
+
+#if defined(SSL_OP_NO_TLSv1_3)
+#define TLSv1_3_SUPPORTED 1
+#else
+#define TLSv1_3_SUPPORTED 0
+#endif
 
 #endif
 
 #if defined(TURN_NO_DTLS) || (!defined(DTLS_CTRL_LISTEN) && (OPENSSL_VERSION_NUMBER < 0x10100000L))
 
-	#define DTLS_SUPPORTED 0
-	#define DTLSv1_2_SUPPORTED 0
+#define DTLS_SUPPORTED 0
+#define DTLSv1_2_SUPPORTED 0
 
 #else
 
-	#define DTLS_SUPPORTED 1
+#define DTLS_SUPPORTED 1
 
 #if defined(SSL_OP_NO_DTLSv1_2)
-		#define DTLSv1_2_SUPPORTED 1
-	#else
-		#define DTLSv1_2_SUPPORTED 0
-	#endif
+#define DTLSv1_2_SUPPORTED 1
+#else
+#define DTLSv1_2_SUPPORTED 0
+#endif
 
 #endif
 
@@ -122,16 +122,16 @@ extern int IS_TURN_SERVER;
 /////////// SSL //////////////////////////
 
 enum _TURN_TLS_TYPE {
-	TURN_TLS_NO=0,
-	TURN_TLS_SSL23,
-	TURN_TLS_v1_0,
+  TURN_TLS_NO = 0,
+  TURN_TLS_SSL23,
+  TURN_TLS_v1_0,
 #if TLSv1_1_SUPPORTED
-	TURN_TLS_v1_1,
+  TURN_TLS_v1_1,
 #if TLSv1_2_SUPPORTED
-	TURN_TLS_v1_2,
+  TURN_TLS_v1_2,
 #endif
 #endif
-	TURN_TLS_TOTAL
+  TURN_TLS_TOTAL
 };
 
 typedef enum _TURN_TLS_TYPE TURN_TLS_TYPE;
@@ -139,19 +139,24 @@ typedef enum _TURN_TLS_TYPE TURN_TLS_TYPE;
 ////////////////////////////////////////////
 
 struct _oauth_key_data_raw {
-	char kid[OAUTH_KID_SIZE+1];
-	char ikm_key[OAUTH_KEY_SIZE+1];
-	uint64_t timestamp;
-	uint32_t lifetime;
-	char as_rs_alg[OAUTH_ALG_SIZE+1];
-	char realm[STUN_MAX_REALM_SIZE+1];
+  char kid[OAUTH_KID_SIZE + 1];
+  char ikm_key[OAUTH_KEY_SIZE + 1];
+  uint64_t timestamp;
+  uint32_t lifetime;
+  char as_rs_alg[OAUTH_ALG_SIZE + 1];
+  char realm[STUN_MAX_REALM_SIZE + 1];
 };
 
 typedef struct _oauth_key_data_raw oauth_key_data_raw;
 
 //////////////////////////////////////////
 
-#define EVENT_DEL(ev) if(ev) { event_del(ev); event_free(ev); ev=NULL; }
+#define EVENT_DEL(ev)                                                                                                  \
+  if (ev) {                                                                                                            \
+    event_del(ev);                                                                                                     \
+    event_free(ev);                                                                                                    \
+    ev = NULL;                                                                                                         \
+  }
 
 //////////////////////////////////////////
 
@@ -175,20 +180,28 @@ int set_sock_buf_size(evutil_socket_t fd, int sz);
 
 int socket_init(void);
 int socket_set_reusable(evutil_socket_t fd, int reusable, SOCKET_TYPE st);
-int sock_bind_to_device(evutil_socket_t fd, const unsigned char* ifname);
+int sock_bind_to_device(evutil_socket_t fd, const unsigned char *ifname);
 int socket_set_nonblocking(evutil_socket_t fd);
 int socket_tcp_set_keepalive(evutil_socket_t fd, SOCKET_TYPE st);
 
-int addr_connect(evutil_socket_t fd, const ioa_addr* addr, int *out_errno);
+int addr_connect(evutil_socket_t fd, const ioa_addr *addr, int *out_errno);
 
-int addr_bind(evutil_socket_t fd, const ioa_addr* addr, int reusable, int debug, SOCKET_TYPE st);
+int addr_bind(evutil_socket_t fd, const ioa_addr *addr, int reusable, int debug, SOCKET_TYPE st);
 
 int addr_get_from_sock(evutil_socket_t fd, ioa_addr *addr);
 
 int handle_socket_error(void);
 
-#define CORRECT_RAW_TTL(ttl) do { if(ttl<0 || ttl>255) ttl=TTL_DEFAULT; } while(0)
-#define CORRECT_RAW_TOS(tos) do { if(tos<0 || tos>255) tos=TOS_DEFAULT; } while(0)
+#define CORRECT_RAW_TTL(ttl)                                                                                           \
+  do {                                                                                                                 \
+    if (ttl < 0 || ttl > 255)                                                                                          \
+      ttl = TTL_DEFAULT;                                                                                               \
+  } while (0)
+#define CORRECT_RAW_TOS(tos)                                                                                           \
+  do {                                                                                                                 \
+    if (tos < 0 || tos > 255)                                                                                          \
+      tos = TOS_DEFAULT;                                                                                               \
+  } while (0)
 
 int set_raw_socket_tos(evutil_socket_t fd, int family, int tos);
 int set_raw_socket_ttl(evutil_socket_t fd, int family, int ttl);
@@ -210,51 +223,47 @@ unsigned long get_system_number_of_cpus(void);
 #define MTU_STEP (68)
 
 int set_socket_df(evutil_socket_t fd, int family, int value);
-int set_mtu_df(SSL* ssl, evutil_socket_t fd, int family, int mtu, int df_value, int verbose);
-int decrease_mtu(SSL* ssl, int mtu, int verbose);
+int set_mtu_df(SSL *ssl, evutil_socket_t fd, int family, int mtu, int df_value, int verbose);
+int decrease_mtu(SSL *ssl, int mtu, int verbose);
 int get_socket_mtu(evutil_socket_t fd, int family, int verbose);
 
 ////////////////// Misc utils /////////////////////////
 
-char *skip_blanks(char* s);
+char *skip_blanks(char *s);
 
 #if defined(_MSC_VER)
-    #define CLOCK_REALTIME 0
-	int clock_gettime(int X, struct timeval* tv);
-	int gettimeofday(struct timeval* tp, void* tzp);
+#define CLOCK_REALTIME 0
+int clock_gettime(int X, struct timeval *tv);
+int gettimeofday(struct timeval *tp, void *tzp);
 
-	char* dirname(char* path);
+char *dirname(char *path);
 #endif
 
 #if defined(WINDOWS)
-	int getdomainname(char* name, size_t len);
-	// wchar convert to char
-	char* _WTA(__in wchar_t* pszInBufBuf, __in int nInSize, __out char** pszOutBuf, __out int* pnOutSize);
-	// char convert to wchar
-	wchar_t* _ATW(__in char* pszInBuf, __in int nInSize, __out wchar_t** pszOutBuf, __out int* pnOutSize);
+int getdomainname(char *name, size_t len);
+// wchar convert to char
+char *_WTA(__in wchar_t *pszInBufBuf, __in int nInSize, __out char **pszOutBuf, __out int *pnOutSize);
+// char convert to wchar
+wchar_t *_ATW(__in char *pszInBuf, __in int nInSize, __out wchar_t **pszOutBuf, __out int *pnOutSize);
 #endif
 
 ////////////////// File search ////////////////////////
 
-char* find_config_file(const char *config_file, int print_file_name);
+char *find_config_file(const char *config_file, int print_file_name);
 void set_execdir(void);
 void print_abs_file_name(const char *msg1, const char *msg2, const char *fn);
 
 ////////////////// Base64 /////////////////////////////
 
-char *base64_encode(const unsigned char *data,
-                    size_t input_length,
-                    size_t *output_length);
+char *base64_encode(const unsigned char *data, size_t input_length, size_t *output_length);
 
 void build_base64_decoding_table(void);
 
-unsigned char *base64_decode(const char *data,
-                             size_t input_length,
-                             size_t *output_length);
+unsigned char *base64_decode(const char *data, size_t input_length, size_t *output_length);
 
 ///////////// SSL ////////////////
 
-const char* turn_get_ssl_method(SSL *ssl, const char* mdefault);
+const char *turn_get_ssl_method(SSL *ssl, const char *mdefault);
 
 ////////////// OAUTH UTILS ////////////////
 

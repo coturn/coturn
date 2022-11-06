@@ -31,17 +31,17 @@
 #ifndef __TURN_ADMIN_SERVER__
 #define __TURN_ADMIN_SERVER__
 
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include <pthread.h>
 
-#include <event2/bufferevent.h>
 #include <event2/buffer.h>
+#include <event2/bufferevent.h>
 
-#include "ns_turn_utils.h"
 #include "ns_turn_maps.h"
 #include "ns_turn_server.h"
+#include "ns_turn_utils.h"
 
 #include "apputils.h"
 
@@ -54,25 +54,25 @@ extern "C" {
 #define ADMIN_USER_MAX_LENGTH (32)
 
 struct admin_session {
-	int as_ok;
-	char as_login[ADMIN_USER_MAX_LENGTH + 1];
-	char as_realm[STUN_MAX_REALM_SIZE + 1];
-	char as_eff_realm[STUN_MAX_REALM_SIZE + 1];
-	size_t number_of_user_sessions;
+  int as_ok;
+  char as_login[ADMIN_USER_MAX_LENGTH + 1];
+  char as_realm[STUN_MAX_REALM_SIZE + 1];
+  char as_eff_realm[STUN_MAX_REALM_SIZE + 1];
+  size_t number_of_user_sessions;
 };
 
 struct admin_server {
-	evutil_socket_t listen_fd;
-	struct event_base* event_base;
-	ioa_engine_handle e;
-	int verbose;
-	struct evconnlistener *l;
-	struct bufferevent *in_buf;
-	struct bufferevent *out_buf;
-	struct bufferevent *https_in_buf;
-	struct bufferevent *https_out_buf;
-	ur_map *sessions;
-	pthread_t thr;
+  evutil_socket_t listen_fd;
+  struct event_base *event_base;
+  ioa_engine_handle e;
+  int verbose;
+  struct evconnlistener *l;
+  struct bufferevent *in_buf;
+  struct bufferevent *out_buf;
+  struct bufferevent *https_in_buf;
+  struct bufferevent *https_out_buf;
+  ur_map *sessions;
+  pthread_t thr;
 };
 
 ///////////////////////////////////////////
@@ -94,11 +94,10 @@ extern char cli_password[CLI_PASSWORD_LENGTH];
 #define DEFAULT_CLI_MAX_OUTPUT_SESSIONS (256)
 extern int cli_max_output_sessions;
 
-
 extern int use_web_admin;
 
 #define WEB_ADMIN_DEFAULT_IP ("127.0.0.1")
-extern  ioa_addr web_admin_addr;
+extern ioa_addr web_admin_addr;
 extern int web_admin_addr_set;
 
 #define WEB_ADMIN_DEFAULT_PORT (8080)
@@ -111,7 +110,7 @@ void setup_admin_thread(void);
 void admin_server_receive_message(struct bufferevent *bev, void *ptr);
 void https_admin_server_receive_message(struct bufferevent *bev, void *ptr);
 
-int send_turn_session_info(struct turn_session_info* tsi);
+int send_turn_session_info(struct turn_session_info *tsi);
 void send_https_socket(ioa_socket_handle s);
 
 ////////////////////////////////////////////
@@ -122,4 +121,3 @@ void send_https_socket(ioa_socket_handle s);
 
 #endif
 /// __TURN_ADMIN_SERVER__///
-

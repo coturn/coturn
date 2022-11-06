@@ -38,7 +38,7 @@
 extern "C" {
 #endif
 
-const turn_dbdriver_t * get_mysql_dbdriver(void);
+const turn_dbdriver_t *get_mysql_dbdriver(void);
 
 #ifdef __cplusplus
 }
@@ -46,4 +46,3 @@ const turn_dbdriver_t * get_mysql_dbdriver(void);
 
 #endif
 /// __DBD_MYSQL__///
-

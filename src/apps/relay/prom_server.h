@@ -7,10 +7,10 @@
 #if !defined(TURN_NO_PROMETHEUS)
 
 #include <signal.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -54,10 +54,10 @@ extern prom_gauge_t *turn_total_allocations_number;
 extern "C" {
 #endif
 
-
 void start_prometheus_server(void);
 
-void prom_set_finished_traffic(const char* realm, const char* user, unsigned long rsvp, unsigned long rsvb, unsigned long sentp, unsigned long sentb, bool peer);
+void prom_set_finished_traffic(const char *realm, const char *user, unsigned long rsvp, unsigned long rsvb,
+                               unsigned long sentp, unsigned long sentb, bool peer);
 
 void prom_inc_allocation(SOCKET_TYPE type);
 void prom_dec_allocation(SOCKET_TYPE type);

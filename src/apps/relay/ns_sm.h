@@ -52,10 +52,12 @@ typedef struct _super_memory super_memory_t;
 
 void init_super_memory(void);
 
-super_memory_t* new_super_memory_region(void);
+super_memory_t *new_super_memory_region(void);
 
-#define allocate_super_memory_region(region,size) allocate_super_memory_region_func(region, size, __FILE__, __FUNCTION__, __LINE__)
-void* allocate_super_memory_region_func(super_memory_t *region, size_t size, const char* file, const char* func, int line);
+#define allocate_super_memory_region(region, size)                                                                     \
+  allocate_super_memory_region_func(region, size, __FILE__, __FUNCTION__, __LINE__)
+void *allocate_super_memory_region_func(super_memory_t *region, size_t size, const char *file, const char *func,
+                                        int line);
 
 /////////////////////////////////////////////////
 

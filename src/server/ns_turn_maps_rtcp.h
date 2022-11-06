@@ -31,8 +31,8 @@
 #ifndef __TURN_RTCP_MAP__
 #define __TURN_RTCP_MAP__
 
-#include "ns_turn_maps.h"
 #include "ns_turn_ioalib.h"
+#include "ns_turn_maps.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -47,30 +47,30 @@ typedef struct _rtcp_map rtcp_map;
 
 ////////////////////////////////////////////////
 
-rtcp_map* rtcp_map_create(ioa_engine_handle e);
+rtcp_map *rtcp_map_create(ioa_engine_handle e);
 
 /**
  * @ret:
  * 0 - success
  * -1 - error
  */
-int rtcp_map_put(rtcp_map* map, rtcp_token_type key, ioa_socket_handle s);
+int rtcp_map_put(rtcp_map *map, rtcp_token_type key, ioa_socket_handle s);
 
 /**
  * @ret:
  * >=0 - success
  * <0 - not found
  */
-ioa_socket_handle rtcp_map_get(rtcp_map* map, rtcp_token_type token);
+ioa_socket_handle rtcp_map_get(rtcp_map *map, rtcp_token_type token);
 
 /**
  * @ret:
  * 1 - success
  * 0 - not found
  */
-void rtcp_map_free(rtcp_map** map);
+void rtcp_map_free(rtcp_map **map);
 
-size_t rtcp_map_size(const rtcp_map* map);
+size_t rtcp_map_size(const rtcp_map *map);
 
 ////////////////////////////////////////////
 
