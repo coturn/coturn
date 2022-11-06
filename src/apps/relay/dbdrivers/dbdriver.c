@@ -33,115 +33,102 @@
 
 #include "apputils.h"
 
-#include "dbdriver.h"
-#include "dbd_sqlite.h"
-#include "dbd_pgsql.h"
-#include "dbd_mysql.h"
 #include "dbd_mongo.h"
+#include "dbd_mysql.h"
+#include "dbd_pgsql.h"
 #include "dbd_redis.h"
+#include "dbd_sqlite.h"
+#include "dbdriver.h"
 
-static void make_connection_key(void)
-{
-    (void) pthread_key_create(&connection_key, NULL);
-}
-
+static void make_connection_key(void) { (void)pthread_key_create(&connection_key, NULL); }
 
 pthread_key_t connection_key;
 pthread_once_t connection_key_once = PTHREAD_ONCE_INIT;
 
-int convert_string_key_to_binary(char* keysource, hmackey_t key, size_t sz) {
-	char is[3];
-	size_t i;
-	unsigned int v;
-	is[2]=0;
-	for(i=0;i<sz;i++) {
-		is[0]=keysource[i*2];
-		is[1]=keysource[i*2+1];
-		sscanf(is,"%02x",&v);
-		key[i]=(unsigned char)v;
-	}
-	return 0;
+int convert_string_key_to_binary(char *keysource, hmackey_t key, size_t sz) {
+  char is[3];
+  size_t i;
+  unsigned int v;
+  is[2] = 0;
+  for (i = 0; i < sz; i++) {
+    is[0] = keysource[i * 2];
+    is[1] = keysource[i * 2 + 1];
+    sscanf(is, "%02x", &v);
+    key[i] = (unsigned char)v;
+  }
+  return 0;
 }
 
-persistent_users_db_t * get_persistent_users_db(void) {
-	return &(turn_params.default_users_db.persistent_users_db);
-}
+persistent_users_db_t *get_persistent_users_db(void) { return &(turn_params.default_users_db.persistent_users_db); }
 
-const turn_dbdriver_t * get_dbdriver(void)
-{
-	if (turn_params.default_users_db.userdb_type == TURN_USERDB_TYPE_UNKNOWN)
-		return NULL;
+const turn_dbdriver_t *get_dbdriver(void) {
+  if (turn_params.default_users_db.userdb_type == TURN_USERDB_TYPE_UNKNOWN)
+    return NULL;
 
-	(void) pthread_once(&connection_key_once, make_connection_key);
+  (void)pthread_once(&connection_key_once, make_connection_key);
 
-	static const turn_dbdriver_t * _driver = NULL;
+  static const turn_dbdriver_t *_driver = NULL;
 
-	if (_driver == NULL) {
+  if (_driver == NULL) {
 
-		switch (turn_params.default_users_db.userdb_type){
+    switch (turn_params.default_users_db.userdb_type) {
 #if !defined(TURN_NO_SQLITE)
-		case TURN_USERDB_TYPE_SQLITE:
-			_driver = get_sqlite_dbdriver();
-			break;
+    case TURN_USERDB_TYPE_SQLITE:
+      _driver = get_sqlite_dbdriver();
+      break;
 #endif
 #if !defined(TURN_NO_PQ)
-		case TURN_USERDB_TYPE_PQ:
-			_driver = get_pgsql_dbdriver();
-			break;
+    case TURN_USERDB_TYPE_PQ:
+      _driver = get_pgsql_dbdriver();
+      break;
 #endif
 #if !defined(TURN_NO_MYSQL)
-		case TURN_USERDB_TYPE_MYSQL:
-			_driver = get_mysql_dbdriver();
-			break;
+    case TURN_USERDB_TYPE_MYSQL:
+      _driver = get_mysql_dbdriver();
+      break;
 #endif
 #if !defined(TURN_NO_MONGO)
-		case TURN_USERDB_TYPE_MONGO:
-			_driver = get_mongo_dbdriver();
-			break;
+    case TURN_USERDB_TYPE_MONGO:
+      _driver = get_mongo_dbdriver();
+      break;
 #endif
-		case TURN_USERDB_TYPE_REDIS:
-			_driver = get_redis_dbdriver();
-			break;
-		default:
-			break;
-		}
-	}
-	return _driver;
+    case TURN_USERDB_TYPE_REDIS:
+      _driver = get_redis_dbdriver();
+      break;
+    default:
+      break;
+    }
+  }
+  return _driver;
 }
 
-char* sanitize_userdb_string(char* udb) {
-    char * ret = NULL;
-    char * pstart;
-    char * pend;
+char *sanitize_userdb_string(char *udb) {
+  char *ret = NULL;
+  char *pstart;
+  char *pend;
 
-    /* host=localhost dbname=coturn user=turn password=turn connect_timeout=30 */
-    ret = strdup(udb);
-    pstart = strstr (ret,"password=");
-    if (pstart != NULL)
-    {
-        pstart += strlen("password=");
-        pend = strstr (pstart," ");
+  /* host=localhost dbname=coturn user=turn password=turn connect_timeout=30 */
+  ret = strdup(udb);
+  pstart = strstr(ret, "password=");
+  if (pstart != NULL) {
+    pstart += strlen("password=");
+    pend = strstr(pstart, " ");
+    size_t plen = pend - pstart;
+    if (pend == NULL) {
+      plen = strlen(pstart);
+    }
+    memset(pstart, '*', plen);
+  } else {
+    /* postgresql://username:password@/databasename */
+    pstart = strstr(ret, "postgresql://");
+    if (pstart != NULL) {
+      pstart += strlen("postgresql://");
+      pend = strstr(pstart, "@");
+      if (pend != NULL) {
         size_t plen = pend - pstart;
-        if (pend == NULL)
-        {
-            plen = strlen(pstart);
-        }
-        memset(pstart,'*',plen);
+        memset(pstart, '*', plen);
+      }
     }
-    else
-    {
-        /* postgresql://username:password@/databasename */
-        pstart = strstr (ret,"postgresql://");
-        if (pstart != NULL)
-        {
-            pstart += strlen("postgresql://");
-            pend = strstr (pstart,"@");
-            if (pend != NULL)
-            {
-                size_t plen = pend - pstart;
-                memset(pstart,'*',plen);
-            }
-        }
-    }
-    return ret;
+  }
+  return ret;
 }

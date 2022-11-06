@@ -45,29 +45,16 @@ int not_rare_event(void);
 
 void add_origin(stun_buffer *message);
 
-int start_c2c_connection(uint16_t clnet_remote_port,
-			 const char *remote_address, 
-			 const unsigned char* ifname, const char *local_address,
-			 int verbose,
-			 app_ur_conn_info *clnet_info_probe,
-			 app_ur_conn_info *clnet_info1,
-			 uint16_t *chn1,
-			 app_ur_conn_info *clnet_info1_rtcp,
-			 uint16_t *chn1_rtcp,
-			 app_ur_conn_info *clnet_info2,
-			 uint16_t *chn2,
-			 app_ur_conn_info *clnet_info2_rtcp,
-			 uint16_t *chn2_rtcp);
+int start_c2c_connection(uint16_t clnet_remote_port, const char *remote_address, const unsigned char *ifname,
+                         const char *local_address, int verbose, app_ur_conn_info *clnet_info_probe,
+                         app_ur_conn_info *clnet_info1, uint16_t *chn1, app_ur_conn_info *clnet_info1_rtcp,
+                         uint16_t *chn1_rtcp, app_ur_conn_info *clnet_info2, uint16_t *chn2,
+                         app_ur_conn_info *clnet_info2_rtcp, uint16_t *chn2_rtcp);
 
-int start_connection(uint16_t clnet_remote_port,
-		     const char *remote_address, 
-		     const unsigned char* ifname, const char *local_address,
-		     int verbose,
-		     app_ur_conn_info *clnet_info_probe,
-		     app_ur_conn_info *clnet_info,
-		     uint16_t *chn,
-		     app_ur_conn_info *clnet_info_rtcp,
-		     uint16_t *chn_rtcp);
+int start_connection(uint16_t clnet_remote_port, const char *remote_address, const unsigned char *ifname,
+                     const char *local_address, int verbose, app_ur_conn_info *clnet_info_probe,
+                     app_ur_conn_info *clnet_info, uint16_t *chn, app_ur_conn_info *clnet_info_rtcp,
+                     uint16_t *chn_rtcp);
 
 int turn_tcp_connect(int verbose, app_ur_conn_info *clnet_info, ioa_addr *peer_addr);
 
@@ -84,4 +71,3 @@ int read_mobility_ticket(app_ur_conn_info *clnet_info, stun_buffer *message);
 #endif
 
 #endif //__STARTCLIENT_TURN__
-

@@ -44,29 +44,29 @@
 #endif
 
 #if defined(WINDOWS)
-#include <ws2tcpip.h>
-#include <windows.h>
 #include <process.h>
+#include <windows.h>
+#include <ws2tcpip.h>
 #else
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <net/if.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <strings.h>
+#include <sys/socket.h>
 #include <unistd.h>
 #endif
 
-#include <sys/types.h>
 #include <ctype.h>
+#include <errno.h>
+#include <inttypes.h>
+#include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <inttypes.h>
+#include <sys/types.h>
 #include <time.h>
-#include <stdarg.h>
-#include <errno.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -76,22 +76,21 @@ extern "C" {
 #define nswap32(ul) ntohl(ul)
 #define nswap64(ull) ioa_ntoh64(ull)
 
-static inline uint64_t _ioa_ntoh64(uint64_t v)
-{
+static inline uint64_t _ioa_ntoh64(uint64_t v) {
 #if BYTE_ORDER == LITTLE_ENDIAN
-	uint8_t *src = (uint8_t*) &v;
-	uint8_t* dst = src + 7;
-	while (src < dst) {
-		uint8_t vdst = *dst;
-		*(dst--) = *src;
-		*(src++) = vdst;
-	}
+  uint8_t *src = (uint8_t *)&v;
+  uint8_t *dst = src + 7;
+  while (src < dst) {
+    uint8_t vdst = *dst;
+    *(dst--) = *src;
+    *(src++) = vdst;
+  }
 #elif BYTE_ORDER == BIG_ENDIAN
-	/* OK */
+  /* OK */
 #else
 #error WRONG BYTE_ORDER SETTING
 #endif
-	return v;
+  return v;
 }
 
 /* TTL */
@@ -105,24 +104,35 @@ static inline uint64_t _ioa_ntoh64(uint64_t v)
 #define ioa_ntoh64 _ioa_ntoh64
 #define ioa_hton64 _ioa_ntoh64
 
-#define BUFFEREVENT_FREE(be) do { if(be) { bufferevent_flush(be,EV_READ|EV_WRITE,BEV_FLUSH); bufferevent_disable(be,EV_READ|EV_WRITE); bufferevent_free(be); be = NULL;} } while(0)
+#define BUFFEREVENT_FREE(be)                                                                                           \
+  do {                                                                                                                 \
+    if (be) {                                                                                                          \
+      bufferevent_flush(be, EV_READ | EV_WRITE, BEV_FLUSH);                                                            \
+      bufferevent_disable(be, EV_READ | EV_WRITE);                                                                     \
+      bufferevent_free(be);                                                                                            \
+      be = NULL;                                                                                                       \
+    }                                                                                                                  \
+  } while (0)
 
 #define turn_time() ((turn_time_t)time(NULL))
 
 typedef int vint;
-typedef vint* vintp;
+typedef vint *vintp;
 
 typedef uint32_t turn_time_t;
 
-#define turn_time_before(t1,t2) ((((int32_t)(t1))-((int32_t)(t2))) < 0)
+#define turn_time_before(t1, t2) ((((int32_t)(t1)) - ((int32_t)(t2))) < 0)
 
 #if !defined(UNUSED_ARG)
-#define UNUSED_ARG(A) do { A=A; } while(0)
+#define UNUSED_ARG(A)                                                                                                  \
+  do {                                                                                                                 \
+    A = A;                                                                                                             \
+  } while (0)
 #endif
 
 #define MAX_STUN_MESSAGE_SIZE (65507)
 #define STUN_BUFFER_SIZE (MAX_STUN_MESSAGE_SIZE)
-#define UDP_STUN_BUFFER_SIZE (1024<<4)
+#define UDP_STUN_BUFFER_SIZE (1024 << 4)
 
 #define NONCE_LENGTH_32BITS (4)
 
@@ -137,16 +147,18 @@ typedef uint32_t turn_time_t;
 #error WRONG BYTE_ORDER SETTING
 #endif
 
-#define STRCPY(dst,src) \
-	do { if((const char*)(dst) != (const char*)(src)) { \
-		if(sizeof(dst)==sizeof(char*))\
-			strcpy(((char*)(dst)),(const char*)(src));\
-		else {\
-			size_t szdst = sizeof((dst));\
-			strncpy((char*)(dst),(const char*)(src),szdst);\
-			((char*)(dst))[szdst-1] = 0;\
-		}\
-	} } while(0)
+#define STRCPY(dst, src)                                                                                               \
+  do {                                                                                                                 \
+    if ((const char *)(dst) != (const char *)(src)) {                                                                  \
+      if (sizeof(dst) == sizeof(char *))                                                                               \
+        strcpy(((char *)(dst)), (const char *)(src));                                                                  \
+      else {                                                                                                           \
+        size_t szdst = sizeof((dst));                                                                                  \
+        strncpy((char *)(dst), (const char *)(src), szdst);                                                            \
+        ((char *)(dst))[szdst - 1] = 0;                                                                                \
+      }                                                                                                                \
+    }                                                                                                                  \
+  } while (0)
 
 //////////////// Bufferevents /////////////////////
 
@@ -155,11 +167,13 @@ typedef uint32_t turn_time_t;
 //////////////// KERNEL-LEVEL CHANNEL HANDLERS /////////
 
 #if !defined(TURN_CHANNEL_HANDLER_KERNEL)
-#define TURN_CHANNEL_HANDLER_KERNEL void*
+#define TURN_CHANNEL_HANDLER_KERNEL void *
 #endif
 
 #if !defined(CREATE_TURN_CHANNEL_KERNEL)
-#define CREATE_TURN_CHANNEL_KERNEL(channel_number, address_family_client, address_family_peer, protocol_client, client_addr, local_addr, local_relay_addr, peer_addr) ((TURN_CHANNEL_HANDLER_KERNEL)(1))
+#define CREATE_TURN_CHANNEL_KERNEL(channel_number, address_family_client, address_family_peer, protocol_client,        \
+                                   client_addr, local_addr, local_relay_addr, peer_addr)                               \
+  ((TURN_CHANNEL_HANDLER_KERNEL)(1))
 #endif
 
 #if !defined(DELETE_TURN_CHANNEL_KERNEL)
@@ -200,5 +214,5 @@ typedef uint32_t turn_time_t;
 }
 #endif
 
-#endif 
+#endif
 /* __IODEFS__ */

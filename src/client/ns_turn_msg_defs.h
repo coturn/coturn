@@ -49,15 +49,15 @@
 
 #define STUN_MAGIC_COOKIE (0x2112A442)
 
-#define IS_STUN_REQUEST(msg_type)       (((msg_type) & 0x0110) == 0x0000)
-#define IS_STUN_INDICATION(msg_type)    (((msg_type) & 0x0110) == 0x0010)
-#define IS_STUN_SUCCESS_RESP(msg_type)  (((msg_type) & 0x0110) == 0x0100)
-#define IS_STUN_ERR_RESP(msg_type)      (((msg_type) & 0x0110) == 0x0110)
+#define IS_STUN_REQUEST(msg_type) (((msg_type)&0x0110) == 0x0000)
+#define IS_STUN_INDICATION(msg_type) (((msg_type)&0x0110) == 0x0010)
+#define IS_STUN_SUCCESS_RESP(msg_type) (((msg_type)&0x0110) == 0x0100)
+#define IS_STUN_ERR_RESP(msg_type) (((msg_type)&0x0110) == 0x0110)
 
-#define GET_STUN_REQUEST(msg_type)      (msg_type & 0xFEEF)
-#define GET_STUN_INDICATION(msg_type)   ((msg_type & 0xFEEF)|0x0010)
-#define GET_STUN_SUCCESS_RESP(msg_type)  ((msg_type & 0xFEEF)|0x0100)
-#define GET_STUN_ERR_RESP(msg_type)      (msg_type | 0x0110)
+#define GET_STUN_REQUEST(msg_type) (msg_type & 0xFEEF)
+#define GET_STUN_INDICATION(msg_type) ((msg_type & 0xFEEF) | 0x0010)
+#define GET_STUN_SUCCESS_RESP(msg_type) ((msg_type & 0xFEEF) | 0x0100)
+#define GET_STUN_ERR_RESP(msg_type) (msg_type | 0x0110)
 
 /* Lifetimes: */
 #define STUN_DEFAULT_ALLOCATE_LIFETIME (600)
@@ -130,7 +130,7 @@
 #define STUN_ATTRIBUTE_CONNECTION_ID (0x002A)
 /* <<== RFC 6062 */
 
-#define STUN_VALID_CHANNEL(chn) ((chn)>=0x4000 && (chn)<=0x7FFF)
+#define STUN_VALID_CHANNEL(chn) ((chn) >= 0x4000 && (chn) <= 0x7FFF)
 
 ///////// extra values //////////////////
 
@@ -158,30 +158,32 @@
 #define MAXSHASIZE (128)
 
 enum _SHATYPE {
-	SHATYPE_ERROR = -1,
-	SHATYPE_DEFAULT=0,
-	SHATYPE_SHA1=SHATYPE_DEFAULT,
-	SHATYPE_SHA256,
-	SHATYPE_SHA384,
-	SHATYPE_SHA512
+  SHATYPE_ERROR = -1,
+  SHATYPE_DEFAULT = 0,
+  SHATYPE_SHA1 = SHATYPE_DEFAULT,
+  SHATYPE_SHA256,
+  SHATYPE_SHA384,
+  SHATYPE_SHA512
 };
 
 typedef enum _SHATYPE SHATYPE;
 
-#define shatype_name(sht) ((sht == SHATYPE_SHA1) ? "SHA1" : ((sht == SHATYPE_SHA256) ? "SHA256" : ((sht == SHATYPE_SHA384) ? "SHA384" : "SHA512")))
+#define shatype_name(sht)                                                                                              \
+  ((sht == SHATYPE_SHA1) ? "SHA1"                                                                                      \
+                         : ((sht == SHATYPE_SHA256) ? "SHA256" : ((sht == SHATYPE_SHA384) ? "SHA384" : "SHA512")))
 
 /* <<== SHA */
 
 /* OAUTH TOKEN ENC ALG ==> */
 
 enum _ENC_ALG {
-	ENC_ALG_ERROR=-1,
+  ENC_ALG_ERROR = -1,
 #if !defined(TURN_NO_GCM)
-	ENC_ALG_DEFAULT=0,
-	A256GCM=ENC_ALG_DEFAULT,
-	A128GCM,
+  ENC_ALG_DEFAULT = 0,
+  A256GCM = ENC_ALG_DEFAULT,
+  A128GCM,
 #endif
-	ENC_ALG_NUM
+  ENC_ALG_NUM
 };
 
 typedef enum _ENC_ALG ENC_ALG;
@@ -210,44 +212,44 @@ typedef enum _ENC_ALG ENC_ALG;
 #define OAUTH_TIME_DELTA (5)
 
 struct _oauth_key_data {
-	char kid[OAUTH_KID_SIZE+1];
-	char ikm_key[OAUTH_KEY_SIZE+1];
-	size_t ikm_key_size;
-	turn_time_t timestamp;
-	turn_time_t lifetime;
-	char as_rs_alg[OAUTH_ALG_SIZE+1];
+  char kid[OAUTH_KID_SIZE + 1];
+  char ikm_key[OAUTH_KEY_SIZE + 1];
+  size_t ikm_key_size;
+  turn_time_t timestamp;
+  turn_time_t lifetime;
+  char as_rs_alg[OAUTH_ALG_SIZE + 1];
 };
 
 typedef struct _oauth_key_data oauth_key_data;
 
 struct _oauth_key {
-	char kid[OAUTH_KID_SIZE+1];
-	char ikm_key[OAUTH_KEY_SIZE+1];
-	size_t ikm_key_size;
-	turn_time_t timestamp;
-	turn_time_t lifetime;
-	ENC_ALG as_rs_alg;
-	char as_rs_key[OAUTH_KEY_SIZE+1];
-	size_t as_rs_key_size;
-	char auth_key[OAUTH_KEY_SIZE+1];
-	size_t auth_key_size;
+  char kid[OAUTH_KID_SIZE + 1];
+  char ikm_key[OAUTH_KEY_SIZE + 1];
+  size_t ikm_key_size;
+  turn_time_t timestamp;
+  turn_time_t lifetime;
+  ENC_ALG as_rs_alg;
+  char as_rs_key[OAUTH_KEY_SIZE + 1];
+  size_t as_rs_key_size;
+  char auth_key[OAUTH_KEY_SIZE + 1];
+  size_t auth_key_size;
 };
 
 typedef struct _oauth_key oauth_key;
 
 struct _oauth_encrypted_block {
-	uint16_t nonce_length;
-	uint8_t nonce[OAUTH_MAX_NONCE_SIZE];
-	uint16_t key_length;
-	uint8_t mac_key[MAXSHASIZE];
-	uint64_t timestamp;
-	uint32_t lifetime;
+  uint16_t nonce_length;
+  uint8_t nonce[OAUTH_MAX_NONCE_SIZE];
+  uint16_t key_length;
+  uint8_t mac_key[MAXSHASIZE];
+  uint64_t timestamp;
+  uint32_t lifetime;
 };
 
 typedef struct _oauth_encrypted_block oauth_encrypted_block;
 
 struct _oauth_token {
-	oauth_encrypted_block enc_block;
+  oauth_encrypted_block enc_block;
 };
 
 typedef struct _oauth_token oauth_token;
@@ -255,8 +257,8 @@ typedef struct _oauth_token oauth_token;
 #define MAX_ENCODED_OAUTH_TOKEN_SIZE (1024)
 
 struct _encoded_oauth_token {
-	char token[MAX_ENCODED_OAUTH_TOKEN_SIZE];
-	size_t size;
+  char token[MAX_ENCODED_OAUTH_TOKEN_SIZE];
+  size_t size;
 };
 
 typedef struct _encoded_oauth_token encoded_oauth_token;

@@ -36,9 +36,9 @@
 #endif
 
 #if defined(WINDOWS)
-    #ifndef err
-        void err(int eval, const char *format, ...);
-    #endif
+#ifndef err
+void err(int eval, const char *format, ...);
+#endif
 #endif
 
 #include "ns_turn_ioaddr.h"
@@ -50,8 +50,8 @@ extern "C" {
 //////////////////////// LOG //////////////////////////
 
 typedef enum {
-	TURN_LOG_LEVEL_DEBUG = 0,
-	TURN_LOG_LEVEL_INFO,
+  TURN_LOG_LEVEL_DEBUG = 0,
+  TURN_LOG_LEVEL_INFO,
   TURN_LOG_LEVEL_CONTROL,
   TURN_LOG_LEVEL_WARNING,
   TURN_LOG_LEVEL_ERROR
@@ -61,7 +61,7 @@ typedef enum {
 #define TURN_VERBOSE_NORMAL (1)
 #define TURN_VERBOSE_EXTRA (2)
 
-#define eve(v) ((v)==TURN_VERBOSE_EXTRA)
+#define eve(v) ((v) == TURN_VERBOSE_EXTRA)
 
 void set_no_stdout_log(int val);
 void set_log_to_syslog(int val);
@@ -69,15 +69,15 @@ void set_simple_log(int val);
 
 void set_syslog_facility(char *val);
 
-void set_turn_log_timestamp_format(char* new_format);
+void set_turn_log_timestamp_format(char *new_format);
 
-void turn_log_func_default(char* file, int line, TURN_LOG_LEVEL level, const char* format, ...)
+void turn_log_func_default(char *file, int line, TURN_LOG_LEVEL level, const char *format, ...)
 #ifdef __GNUC__
-__attribute__ ((format (printf, 4, 5)))
+    __attribute__((format(printf, 4, 5)))
 #endif
-;
+    ;
 
-void addr_debug_print(int verbose, const ioa_addr *addr, const char* s);
+void addr_debug_print(int verbose, const ioa_addr *addr, const char *s);
 
 /* Log */
 extern volatile int _log_time_value_set;

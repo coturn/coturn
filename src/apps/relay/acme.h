@@ -31,12 +31,12 @@
 #ifndef __TURN_ACME__
 #define __TURN_ACME__
 
-#include "ns_turn_utils.h"
-#include "ns_turn_server.h"
 #include "apputils.h"
+#include "ns_turn_server.h"
+#include "ns_turn_utils.h"
 
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -54,4 +54,3 @@ int try_acme_redirect(char *req, size_t len, const char *url, ioa_socket_handle 
 
 #endif
 /// __TURN_ACME__ ///
-

@@ -31,14 +31,14 @@
 #ifndef __SESSION__
 #define __SESSION__
 
-#include <event2/event.h>
 #include <event2/bufferevent.h>
+#include <event2/event.h>
 
 #include "ns_turn_ioaddr.h"
 #include "ns_turn_utils.h"
 
-#include "stun_buffer.h"
 #include "apputils.h"
+#include "stun_buffer.h"
 
 #include "ns_turn_openssl.h"
 
@@ -48,29 +48,24 @@ extern "C" {
 
 ///////// types ////////////
 
-enum _UR_STATE {
-  UR_STATE_UNKNOWN=0,
-  UR_STATE_READY,
-  UR_STATE_DONE
-};
+enum _UR_STATE { UR_STATE_UNKNOWN = 0, UR_STATE_READY, UR_STATE_DONE };
 
 typedef enum _UR_STATE UR_STATE;
 
 //////////////// session info //////////////////////
 
-typedef struct
-{
-	/* RFC 6062 */
-	uint32_t cid;
-	ioa_addr tcp_data_local_addr;
-	ioa_socket_raw tcp_data_fd;
-	SSL *tcp_data_ssl;
-	int tcp_data_bound;
+typedef struct {
+  /* RFC 6062 */
+  uint32_t cid;
+  ioa_addr tcp_data_local_addr;
+  ioa_socket_raw tcp_data_fd;
+  SSL *tcp_data_ssl;
+  int tcp_data_bound;
 } app_tcp_conn_info;
 
 typedef struct {
   ioa_addr local_addr;
-  char	lsaddr[129];
+  char lsaddr[129];
   ioa_addr remote_addr;
   char rsaddr[129];
   char ifname[129];
@@ -79,11 +74,11 @@ typedef struct {
   ioa_socket_raw fd;
   SSL *ssl;
   int broken;
-  uint8_t nonce[STUN_MAX_NONCE_SIZE+1];
-  uint8_t realm[STUN_MAX_REALM_SIZE+1];
+  uint8_t nonce[STUN_MAX_NONCE_SIZE + 1];
+  uint8_t realm[STUN_MAX_REALM_SIZE + 1];
   /* oAuth */
   int oauth;
-  uint8_t server_name[STUN_MAX_SERVER_NAME_SIZE+1];
+  uint8_t server_name[STUN_MAX_SERVER_NAME_SIZE + 1];
   hmackey_t key;
   int key_set;
   int cok;
@@ -108,14 +103,14 @@ typedef struct {
   stun_buffer out_buffer;
   uint32_t refresh_time;
   uint32_t finished_time;
-  //Msg counters:
+  // Msg counters:
   int tot_msgnum;
   int wmsgnum;
   int rmsgnum;
   int recvmsgnum;
   uint32_t recvtimems;
   uint32_t to_send_timems;
-  //Statistics:
+  // Statistics:
   size_t loss;
   uint64_t latency;
   uint64_t jitter;
@@ -124,8 +119,8 @@ typedef struct {
 ///////////////////////////////////////////////////////
 
 typedef struct _message_info {
-	int msgnum;
-	uint64_t mstime;
+  int msgnum;
+  uint64_t mstime;
 } message_info;
 
 ///////////////////////////////////////////////////////////////////////////////

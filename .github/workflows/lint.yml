@@ -1,0 +1,29 @@
+name: Lint
+
+on:
+  push:
+    branches: [ $default-branch ]
+  pull_request:
+    types: [ opened, reopened, synchronize ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+            libevent-dev \
+            libssl-dev \
+            libpq-dev libmariadb-dev libsqlite3-dev \
+            libhiredis-dev \
+            libmongoc-dev \
+            libmicrohttpd-dev \
+            clang-format
+    - uses: actions/checkout@v3
+    - name: configure
+      run: ./configure
+    - name: lint
+      run: clang-format --version && make lint

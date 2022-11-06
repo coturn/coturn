@@ -31,11 +31,11 @@
 #if !defined(__MAIN_RELAY__)
 #define __MAIN_RELAY__
 
-#include <stdlib.h>
+#include <limits.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <limits.h>
 
 #include <locale.h>
 
@@ -44,39 +44,38 @@
 
 #include <signal.h>
 
-#include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 
 #include <getopt.h>
 
-#if defined(__unix__) || defined(unix) || defined(__APPLE__) \
-    || defined(__DARWIN__) || defined(__MACH__)
+#if defined(__unix__) || defined(unix) || defined(__APPLE__) || defined(__DARWIN__) || defined(__MACH__)
 #include <ifaddrs.h>
 #include <libgen.h>
-#include <sys/time.h>
 #include <sys/resource.h>
+#include <sys/time.h>
 #include <sys/utsname.h>
 
-#include <pwd.h>
 #include <grp.h>
+#include <pwd.h>
 #endif
 
-#include <event2/bufferevent.h>
 #include <event2/buffer.h>
+#include <event2/bufferevent.h>
 
 #include "ns_turn_openssl.h"
 
-#include "ns_turn_utils.h"
 #include "ns_turn_khash.h"
+#include "ns_turn_utils.h"
 
-#include "userdb.h"
 #include "turn_admin_server.h"
+#include "userdb.h"
 
-#include "tls_listener.h"
 #include "dtls_listener.h"
+#include "tls_listener.h"
 
-#include "ns_turn_server.h"
 #include "ns_turn_maps.h"
+#include "ns_turn_server.h"
 
 #include "apputils.h"
 
@@ -88,7 +87,7 @@
 #include <openssl/ssl.h>
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
-  #include <openssl/modes.h>
+#include <openssl/modes.h>
 #endif
 
 #if !defined(TURN_NO_SYSTEMD)
@@ -117,60 +116,52 @@ extern "C" {
 
 /////////// TYPES ///////////////////////////////////
 
-enum _DH_KEY_SIZE {
-	DH_566,
-	DH_1066,
-	DH_2066,
-	DH_CUSTOM
-};
+enum _DH_KEY_SIZE { DH_566, DH_1066, DH_2066, DH_CUSTOM };
 
 typedef enum _DH_KEY_SIZE DH_KEY_SIZE;
 
 ///////// LISTENER SERVER TYPES /////////////////////
 
 struct message_to_listener_to_client {
-	ioa_addr origin;
-	ioa_addr destination;
-	ioa_network_buffer_handle nbh;
+  ioa_addr origin;
+  ioa_addr destination;
+  ioa_network_buffer_handle nbh;
 };
 
-enum _MESSAGE_TO_LISTENER_TYPE {
-	LMT_UNKNOWN,
-	LMT_TO_CLIENT
-};
+enum _MESSAGE_TO_LISTENER_TYPE { LMT_UNKNOWN, LMT_TO_CLIENT };
 typedef enum _MESSAGE_TO_LISTENER_TYPE MESSAGE_TO_LISTENER_TYPE;
 
 struct message_to_listener {
-	MESSAGE_TO_LISTENER_TYPE t;
-	union {
-		struct message_to_listener_to_client tc;
-	} m;
+  MESSAGE_TO_LISTENER_TYPE t;
+  union {
+    struct message_to_listener_to_client tc;
+  } m;
 };
 
 struct listener_server {
-	rtcp_map* rtcpmap;
-	turnipports* tp;
-	struct event_base* event_base;
-	ioa_engine_handle ioa_eng;
-	struct bufferevent *in_buf;
-	struct bufferevent *out_buf;
-	char **addrs;
-	ioa_addr **encaddrs;
-	size_t addrs_number;
-	size_t services_number;
-	dtls_listener_relay_server_type ***udp_services;
-	dtls_listener_relay_server_type ***dtls_services;
-	dtls_listener_relay_server_type ***aux_udp_services;
+  rtcp_map *rtcpmap;
+  turnipports *tp;
+  struct event_base *event_base;
+  ioa_engine_handle ioa_eng;
+  struct bufferevent *in_buf;
+  struct bufferevent *out_buf;
+  char **addrs;
+  ioa_addr **encaddrs;
+  size_t addrs_number;
+  size_t services_number;
+  dtls_listener_relay_server_type ***udp_services;
+  dtls_listener_relay_server_type ***dtls_services;
+  dtls_listener_relay_server_type ***aux_udp_services;
 };
 
 enum _NET_ENG_VERSION {
-	NEV_UNKNOWN=0,
-	NEV_MIN,
-	NEV_UDP_SOCKET_PER_SESSION=NEV_MIN,
-	NEV_UDP_SOCKET_PER_ENDPOINT,
-	NEV_UDP_SOCKET_PER_THREAD,
-	NEV_MAX=NEV_UDP_SOCKET_PER_THREAD,
-	NEV_TOTAL
+  NEV_UNKNOWN = 0,
+  NEV_MIN,
+  NEV_UDP_SOCKET_PER_SESSION = NEV_MIN,
+  NEV_UDP_SOCKET_PER_ENDPOINT,
+  NEV_UDP_SOCKET_PER_THREAD,
+  NEV_MAX = NEV_UDP_SOCKET_PER_THREAD,
+  NEV_TOTAL
 };
 
 typedef enum _NET_ENG_VERSION NET_ENG_VERSION;
@@ -179,16 +170,16 @@ typedef enum _NET_ENG_VERSION NET_ENG_VERSION;
 
 typedef struct _turn_params_ {
 
-//////////////// OpenSSL group //////////////////////
+  //////////////// OpenSSL group //////////////////////
 
   SSL_CTX *tls_ctx;
   SSL_CTX *dtls_ctx;
-  
+
   DH_KEY_SIZE dh_key_size;
-  
+
   char cipher_list[1025];
   char ec_curve_name[33];
-  
+
   char ca_cert_file[1025];
   char cert_file[1025];
   char pkey_file[1025];
@@ -204,7 +195,7 @@ typedef struct _turn_params_ {
   struct event *tls_ctx_update_ev;
   TURN_MUTEX_DECLARE(tls_mutex)
 
-//////////////// Common params ////////////////////
+  //////////////// Common params ////////////////////
 
   int verbose;
   int turn_daemon;
@@ -228,7 +219,7 @@ typedef struct _turn_params_ {
   int no_udp;
   int no_tcp;
   int tcp_use_proxy;
-  
+
   vint no_tcp_relay;
   vint no_udp_relay;
 
@@ -243,9 +234,9 @@ typedef struct _turn_params_ {
   ip_range_list_t ip_blacklist;
 
   NET_ENG_VERSION net_engine_version;
-  const char* net_engine_version_txt[NEV_TOTAL];
+  const char *net_engine_version_txt[NEV_TOTAL];
 
-//////////////// Relay servers /////////////
+  //////////////// Relay servers /////////////
 
   uint16_t min_port;
   uint16_t max_port;
@@ -268,26 +259,26 @@ typedef struct _turn_params_ {
   turnserver_id general_relay_servers_number;
   turnserver_id udp_relay_servers_number;
 
-////////////// Auth server ////////////////
+  ////////////// Auth server ////////////////
 
   char oauth_server_name[1025];
   char domain[1025];
   int oauth;
 
-/////////////// AUX SERVERS ////////////////
+  /////////////// AUX SERVERS ////////////////
 
   turn_server_addrs_list_t aux_servers_list;
   int udp_self_balance;
 
-/////////////// ALTERNATE SERVERS ////////////////
+  /////////////// ALTERNATE SERVERS ////////////////
 
   turn_server_addrs_list_t alternate_servers_list;
   turn_server_addrs_list_t tls_alternate_servers_list;
 
-/////////////// stop server ////////////////
+  /////////////// stop server ////////////////
   int stop_turn_server;
 
-////////////// MISC PARAMS ////////////////
+  ////////////// MISC PARAMS ////////////////
 
   vint stun_only;
   vint no_stun;
@@ -311,12 +302,11 @@ typedef struct _turn_params_ {
   int prometheus_port;
   int prometheus_username_labels;
 
-
-/////// Users DB ///////////
+  /////// Users DB ///////////
 
   default_users_db_t default_users_db;
 
-/////// CPUs //////////////
+  /////// CPUs //////////////
 
   unsigned long cpus;
 
@@ -338,15 +328,15 @@ extern turn_params_t turn_params;
 ////////////////  Listener server /////////////////
 
 static inline int get_alt_listener_port(void) {
-	if(turn_params.alt_listener_port<1)
-		return turn_params.listener_port + 1;
-	return turn_params.alt_listener_port;
+  if (turn_params.alt_listener_port < 1)
+    return turn_params.listener_port + 1;
+  return turn_params.alt_listener_port;
 }
 
 static inline int get_alt_tls_listener_port(void) {
-	if(turn_params.alt_tls_listener_port<1)
-		return turn_params.tls_listener_port + 1;
-	return turn_params.alt_tls_listener_port;
+  if (turn_params.alt_tls_listener_port < 1)
+    return turn_params.tls_listener_port + 1;
+  return turn_params.alt_tls_listener_port;
 }
 
 void add_aux_server(const char *saddr);
@@ -358,8 +348,8 @@ void del_tls_alternate_server(const char *saddr);
 
 ////////// Addrs ////////////////////
 
-void add_listener_addr(const char* addr);
-int add_relay_addr(const char* addr);
+void add_listener_addr(const char *addr);
+int add_relay_addr(const char *addr);
 
 ////////// SSL CTX ////////////////////
 void set_ssl_ctx(ioa_engine_handle e, turn_params_t *params);
@@ -385,20 +375,18 @@ void set_max_bps(band_limit_t value);
 ///////// AES ENCRYPTION AND DECRYPTION ////////
 
 struct ctr_state {
-	unsigned char ivec[16];
-	unsigned int num;
-	unsigned char ecount[16];
+  unsigned char ivec[16];
+  unsigned int num;
+  unsigned char ecount[16];
 };
-void generate_aes_128_key(char* filePath, unsigned char* returnedKey);
-unsigned char *base64encode (const void *b64_encode_this, int encode_this_many_bytes);
-void encrypt_aes_128(unsigned char* in, const unsigned char* mykey);
-unsigned char *base64decode (const void *b64_decode_this, int decode_this_many_bytes);
-void decrypt_aes_128(char* in, const unsigned char* mykey);
+void generate_aes_128_key(char *filePath, unsigned char *returnedKey);
+unsigned char *base64encode(const void *b64_encode_this, int encode_this_many_bytes);
+void encrypt_aes_128(unsigned char *in, const unsigned char *mykey);
+unsigned char *base64decode(const void *b64_decode_this, int decode_this_many_bytes);
+void decrypt_aes_128(char *in, const unsigned char *mykey);
 int decodedTextSize(char *input);
-char* decryptPassword(char* in, const unsigned char* mykey);
+char *decryptPassword(char *in, const unsigned char *mykey);
 int init_ctr(struct ctr_state *state, const unsigned char iv[8]);
-
-
 
 ///////////////////////////////
 

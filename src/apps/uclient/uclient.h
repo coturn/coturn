@@ -32,8 +32,8 @@
 #define __UCLIENT_ECHO__
 
 #include "ns_turn_utils.h"
-#include "stun_buffer.h"
 #include "session.h"
+#include "stun_buffer.h"
 
 #include "ns_turn_openssl.h"
 
@@ -60,7 +60,7 @@ extern ioa_addr peer_addr;
 extern int no_rtcp;
 extern int default_address_family;
 extern int dont_fragment;
-extern uint8_t g_uname[STUN_MAX_USERNAME_SIZE+1];
+extern uint8_t g_uname[STUN_MAX_USERNAME_SIZE + 1];
 extern password_t g_upwd;
 extern char g_auth_secret[1025];
 extern int g_use_auth_secret_with_timestamp;
@@ -70,7 +70,7 @@ extern int root_tls_ctx_num;
 extern int RTP_PACKET_INTERVAL;
 extern uint8_t relay_transport;
 extern unsigned char client_ifname[1025];
-extern struct event_base* client_event_base;
+extern struct event_base *client_event_base;
 extern int passive_tcp;
 extern int mandatory_channel_padding;
 extern int negative_test;
@@ -84,7 +84,7 @@ extern int extra_requests;
 extern band_limit_t bps;
 extern int dual_allocation;
 
-extern char origin[STUN_MAX_ORIGIN_SIZE+1];
+extern char origin[STUN_MAX_ORIGIN_SIZE + 1];
 
 extern int oauth;
 extern oauth_key okey_array[3];
@@ -94,14 +94,14 @@ extern oauth_key okey_array[3];
 
 #define is_TCP_relay() (relay_transport == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE)
 
-void start_mclient(const char *remote_address, int port,
-		   const unsigned char* ifname, const char *local_address,
-		   int messagenumber, int mclient);
+void start_mclient(const char *remote_address, int port, const unsigned char *ifname, const char *local_address,
+                   int messagenumber, int mclient);
 
-int send_buffer(app_ur_conn_info *clnet_info, stun_buffer* message, int data_connection, app_tcp_conn_info *atc);
-int recv_buffer(app_ur_conn_info *clnet_info, stun_buffer* message, int sync, int data_connection, app_tcp_conn_info *atc, stun_buffer* request_message);
+int send_buffer(app_ur_conn_info *clnet_info, stun_buffer *message, int data_connection, app_tcp_conn_info *atc);
+int recv_buffer(app_ur_conn_info *clnet_info, stun_buffer *message, int sync, int data_connection,
+                app_tcp_conn_info *atc, stun_buffer *request_message);
 
-void client_input_handler(evutil_socket_t fd, short what, void* arg);
+void client_input_handler(evutil_socket_t fd, short what, void *arg);
 
 turn_credential_type get_turn_credentials_type(void);
 
@@ -117,4 +117,3 @@ SOCKET_TYPE get_socket_type(void);
 #endif
 
 #endif //__UCLIENT_ECHO__
-

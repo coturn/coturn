@@ -50,17 +50,17 @@ typedef struct server_info server_type;
 
 struct server_info {
   char ifname[1025];
-  struct event_base* event_base;
+  struct event_base *event_base;
   int verbose;
 };
 
 //////////////////////////////
 
-server_type* start_udp_server(int verbose, const char* ifname, char **local_addresses, size_t las, int port);
+server_type *start_udp_server(int verbose, const char *ifname, char **local_addresses, size_t las, int port);
 
-void run_udp_server(server_type* server);
+void run_udp_server(server_type *server);
 
-void clean_udp_server(server_type* server);
+void clean_udp_server(server_type *server);
 
 ///////////////////////////////////////////
 

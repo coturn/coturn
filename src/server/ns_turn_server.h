@@ -31,8 +31,8 @@
 #ifndef __TURN_SERVER__
 #define __TURN_SERVER__
 
-#include "ns_turn_utils.h"
 #include "ns_turn_session.h"
+#include "ns_turn_utils.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -45,9 +45,9 @@ extern "C" {
 //////////// ALTERNATE-SERVER /////////////
 
 struct _turn_server_addrs_list {
-	ioa_addr *addrs;
-	volatile size_t size;
-	TURN_MUTEX_DECLARE(m)
+  ioa_addr *addrs;
+  volatile size_t size;
+  TURN_MUTEX_DECLARE(m)
 };
 
 typedef struct _turn_server_addrs_list turn_server_addrs_list_t;
@@ -57,7 +57,8 @@ void init_turn_server_addrs_list(turn_server_addrs_list_t *l);
 ////////// RFC 5780 ///////////////////////
 
 typedef int (*get_alt_addr_cb)(ioa_addr *addr, ioa_addr *alt_addr);
-typedef int (*send_message_cb)(ioa_engine_handle e, ioa_network_buffer_handle nbh, ioa_addr *origin, ioa_addr *destination);
+typedef int (*send_message_cb)(ioa_engine_handle e, ioa_network_buffer_handle nbh, ioa_addr *origin,
+                               ioa_addr *destination);
 
 //////////////////////////////////////////
 
@@ -66,43 +67,43 @@ extern int TURN_MAX_ALLOCATE_TIMEOUT_STUN_ONLY;
 
 typedef uint8_t turnserver_id;
 
-enum _MESSAGE_TO_RELAY_TYPE {
-	RMT_UNKNOWN = 0,
-	RMT_SOCKET,
-	RMT_CB_SOCKET,
-	RMT_MOBILE_SOCKET,
-	RMT_CANCEL_SESSION
-};
+enum _MESSAGE_TO_RELAY_TYPE { RMT_UNKNOWN = 0, RMT_SOCKET, RMT_CB_SOCKET, RMT_MOBILE_SOCKET, RMT_CANCEL_SESSION };
 typedef enum _MESSAGE_TO_RELAY_TYPE MESSAGE_TO_RELAY_TYPE;
 
 ///////// ALLOCATION DEFAULT ADDRESS FAMILY TYPES /////////////////////
 enum _ALLOCATION_DEFAULT_ADDRESS_FAMILY {
-	ALLOCATION_DEFAULT_ADDRESS_FAMILY_IPV4 = 0,
-	ALLOCATION_DEFAULT_ADDRESS_FAMILY_IPV6,
-	ALLOCATION_DEFAULT_ADDRESS_FAMILY_KEEP,
+  ALLOCATION_DEFAULT_ADDRESS_FAMILY_IPV4 = 0,
+  ALLOCATION_DEFAULT_ADDRESS_FAMILY_IPV6,
+  ALLOCATION_DEFAULT_ADDRESS_FAMILY_KEEP,
 };
 typedef enum _ALLOCATION_DEFAULT_ADDRESS_FAMILY ALLOCATION_DEFAULT_ADDRESS_FAMILY;
 
 struct socket_message {
-	ioa_socket_handle s;
-	ioa_net_data nd;
-	int can_resume;
+  ioa_socket_handle s;
+  ioa_net_data nd;
+  int can_resume;
 };
 
 typedef enum {
-	DONT_FRAGMENT_UNSUPPORTED=0,
-	DONT_FRAGMENT_SUPPORTED,
-	DONT_FRAGMENT_SUPPORT_EMULATED
+  DONT_FRAGMENT_UNSUPPORTED = 0,
+  DONT_FRAGMENT_SUPPORTED,
+  DONT_FRAGMENT_SUPPORT_EMULATED
 } dont_fragment_option_t;
 
 struct _turn_turnserver;
 typedef struct _turn_turnserver turn_turnserver;
 
-typedef void (*get_username_resume_cb)(int success, int oauth, int max_session_time, hmackey_t hmackey, password_t pwd, turn_turnserver *server, uint64_t ctxkey, ioa_net_data *in_buffer, uint8_t* realm);
-typedef uint8_t *(*get_user_key_cb)(turnserver_id id, turn_credential_type ct, int in_oauth, int *out_oauth, uint8_t *uname, uint8_t *realm, get_username_resume_cb resume, ioa_net_data *in_buffer, uint64_t ctxkey, int *postpone_reply);
+typedef void (*get_username_resume_cb)(int success, int oauth, int max_session_time, hmackey_t hmackey, password_t pwd,
+                                       turn_turnserver *server, uint64_t ctxkey, ioa_net_data *in_buffer,
+                                       uint8_t *realm);
+typedef uint8_t *(*get_user_key_cb)(turnserver_id id, turn_credential_type ct, int in_oauth, int *out_oauth,
+                                    uint8_t *uname, uint8_t *realm, get_username_resume_cb resume,
+                                    ioa_net_data *in_buffer, uint64_t ctxkey, int *postpone_reply);
 typedef int (*check_new_allocation_quota_cb)(uint8_t *username, int oauth, uint8_t *realm);
 typedef void (*release_allocation_quota_cb)(uint8_t *username, int oauth, uint8_t *realm);
-typedef int (*send_socket_to_relay_cb)(turnserver_id id, uint64_t cid, stun_tid *tid, ioa_socket_handle s, int message_integrity, MESSAGE_TO_RELAY_TYPE rmt, ioa_net_data *nd, int can_resume);
+typedef int (*send_socket_to_relay_cb)(turnserver_id id, uint64_t cid, stun_tid *tid, ioa_socket_handle s,
+                                       int message_integrity, MESSAGE_TO_RELAY_TYPE rmt, ioa_net_data *nd,
+                                       int can_resume);
 typedef int (*send_turn_session_info_cb)(struct turn_session_info *tsi);
 typedef void (*send_https_socket_cb)(ioa_socket_handle s);
 
@@ -110,140 +111,111 @@ typedef band_limit_t (*allocate_bps_cb)(band_limit_t bps, int positive);
 
 struct _turn_turnserver {
 
-	turnserver_id id;
+  turnserver_id id;
 
-	turnsession_id session_id_counter;
-	ur_map *sessions_map;
+  turnsession_id session_id_counter;
+  ur_map *sessions_map;
 
-	turn_time_t ctime;
+  turn_time_t ctime;
 
-	ioa_engine_handle e;
-	int verbose;
-	int fingerprint;
-	int rfc5780;
-	vintp check_origin;
-	vintp stale_nonce;
-        vintp max_allocate_lifetime;
-        vintp channel_lifetime;
-        vintp permission_lifetime;
-	vintp stun_only;
-	vintp no_stun;
-	vintp no_software_attribute;
-	vintp web_admin_listen_on_workers;
-	vintp secure_stun;
-	turn_credential_type ct;
-	get_alt_addr_cb alt_addr_cb;
-	send_message_cb sm_cb;
-	dont_fragment_option_t dont_fragment;
-	int (*disconnect)(ts_ur_super_session*);
-	get_user_key_cb userkeycb;
-	check_new_allocation_quota_cb chquotacb;
-	release_allocation_quota_cb raqcb;
-	int external_ip_set;
-	ioa_addr external_ip;
-	vintp allow_loopback_peers;
-	vintp no_multicast_peers;
-	send_turn_session_info_cb send_turn_session_info;
-	send_https_socket_cb send_https_socket;
+  ioa_engine_handle e;
+  int verbose;
+  int fingerprint;
+  int rfc5780;
+  vintp check_origin;
+  vintp stale_nonce;
+  vintp max_allocate_lifetime;
+  vintp channel_lifetime;
+  vintp permission_lifetime;
+  vintp stun_only;
+  vintp no_stun;
+  vintp no_software_attribute;
+  vintp web_admin_listen_on_workers;
+  vintp secure_stun;
+  turn_credential_type ct;
+  get_alt_addr_cb alt_addr_cb;
+  send_message_cb sm_cb;
+  dont_fragment_option_t dont_fragment;
+  int (*disconnect)(ts_ur_super_session *);
+  get_user_key_cb userkeycb;
+  check_new_allocation_quota_cb chquotacb;
+  release_allocation_quota_cb raqcb;
+  int external_ip_set;
+  ioa_addr external_ip;
+  vintp allow_loopback_peers;
+  vintp no_multicast_peers;
+  send_turn_session_info_cb send_turn_session_info;
+  send_https_socket_cb send_https_socket;
 
-	/* RFC 6062 ==>> */
-	vintp no_udp_relay;
-	vintp no_tcp_relay;
-	ur_map *tcp_relay_connections;
-	send_socket_to_relay_cb send_socket_to_relay;
-	/* <<== RFC 6062 */
+  /* RFC 6062 ==>> */
+  vintp no_udp_relay;
+  vintp no_tcp_relay;
+  ur_map *tcp_relay_connections;
+  send_socket_to_relay_cb send_socket_to_relay;
+  /* <<== RFC 6062 */
 
-	/* Alternate servers ==>> */
-	turn_server_addrs_list_t *alternate_servers_list;
-	size_t as_counter;
-	turn_server_addrs_list_t *tls_alternate_servers_list;
-	size_t tls_as_counter;
-	turn_server_addrs_list_t *aux_servers_list;
-	int self_udp_balance;
+  /* Alternate servers ==>> */
+  turn_server_addrs_list_t *alternate_servers_list;
+  size_t as_counter;
+  turn_server_addrs_list_t *tls_alternate_servers_list;
+  size_t tls_as_counter;
+  turn_server_addrs_list_t *aux_servers_list;
+  int self_udp_balance;
 
-	/* White/black listing of address ranges */
-	ip_range_list_t* ip_whitelist;
-	ip_range_list_t* ip_blacklist;
+  /* White/black listing of address ranges */
+  ip_range_list_t *ip_whitelist;
+  ip_range_list_t *ip_blacklist;
 
-	/* Mobility */
-	vintp mobility;
-	ur_map *mobile_connections_map;
+  /* Mobility */
+  vintp mobility;
+  ur_map *mobile_connections_map;
 
-	/* Server relay */
-	int server_relay;
+  /* Server relay */
+  int server_relay;
 
-	/* Bandwidth draft: */
-	allocate_bps_cb allocate_bps_func;
+  /* Bandwidth draft: */
+  allocate_bps_cb allocate_bps_func;
 
-	/* oAuth: */
-	int oauth;
-	const char* oauth_server_name;
+  /* oAuth: */
+  int oauth;
+  const char *oauth_server_name;
 
-	/* ACME redirect URL */
-	const char* acme_redirect;
+  /* ACME redirect URL */
+  const char *acme_redirect;
 
-	/* Allocation Default Address Family */
-	ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family;
+  /* Allocation Default Address Family */
+  ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family;
 
-	/* Log Binding Requrest */
-	vintp log_binding;
+  /* Log Binding Requrest */
+  vintp log_binding;
 
-	/* Disable handling old STUN Binding Requests and disable MAPPED-ADDRESS attribute in response */
-	vintp no_stun_backward_compatibility;
+  /* Disable handling old STUN Binding Requests and disable MAPPED-ADDRESS attribute in response */
+  vintp no_stun_backward_compatibility;
 
-	/* Only send RESPONSE-ORIGIN attribute in response if RFC5780 is enabled */
-	vintp response_origin_only_with_rfc5780;
+  /* Only send RESPONSE-ORIGIN attribute in response if RFC5780 is enabled */
+  vintp response_origin_only_with_rfc5780;
 };
 
-const char * get_version(turn_turnserver *server);
+const char *get_version(turn_turnserver *server);
 
 ///////////////////////////////////////////
 
-void init_turn_server(turn_turnserver* server,
-					turnserver_id id, int verbose,
-				    ioa_engine_handle e,
-				    turn_credential_type ct,
-				    int stun_port,
-				    int fingerprint,
-				    dont_fragment_option_t dont_fragment,
-				    get_user_key_cb userkeycb,
-				    check_new_allocation_quota_cb chquotacb,
-				    release_allocation_quota_cb raqcb,
-				    ioa_addr *external_addr,
-				    vintp check_origin,
-				    vintp no_tcp_relay,
-				    vintp no_udp_relay,
-				    vintp stale_nonce,
-                                    vintp max_allocate_lifetime,
-                                    vintp channel_lifetime,
-                                    vintp permission_lifetime,
-				    vintp stun_only,
-				    vintp no_stun,
-				    vintp no_software_attribute,
-				    vintp web_admin_listen_on_workers,
-				    turn_server_addrs_list_t *alternate_servers_list,
-				    turn_server_addrs_list_t *tls_alternate_servers_list,
-				    turn_server_addrs_list_t *aux_servers_list,
-				    int self_udp_balance,
-				    vintp no_multicast_peers,
-				    vintp allow_loopback_peers,
-				    ip_range_list_t* ip_whitelist,
-				    ip_range_list_t* ip_blacklist,
-				    send_socket_to_relay_cb send_socket_to_relay,
-				    vintp secure_stun,
-				    vintp mobility,
-				    int server_relay,
-				    send_turn_session_info_cb send_turn_session_info,
-				    send_https_socket_cb send_https_socket,
-				    allocate_bps_cb allocate_bps_func,
-				    int oauth,
-				    const char* oauth_server_name,
-					const char* acme_redirect,
-					ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family,
-					vintp log_binding,
-					vintp no_stun_backward_compatibility,
-					vintp response_origin_only_with_rfc5780
-					);
+void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, ioa_engine_handle e,
+                      turn_credential_type ct, int stun_port, int fingerprint, dont_fragment_option_t dont_fragment,
+                      get_user_key_cb userkeycb, check_new_allocation_quota_cb chquotacb,
+                      release_allocation_quota_cb raqcb, ioa_addr *external_addr, vintp check_origin,
+                      vintp no_tcp_relay, vintp no_udp_relay, vintp stale_nonce, vintp max_allocate_lifetime,
+                      vintp channel_lifetime, vintp permission_lifetime, vintp stun_only, vintp no_stun,
+                      vintp no_software_attribute, vintp web_admin_listen_on_workers,
+                      turn_server_addrs_list_t *alternate_servers_list,
+                      turn_server_addrs_list_t *tls_alternate_servers_list, turn_server_addrs_list_t *aux_servers_list,
+                      int self_udp_balance, vintp no_multicast_peers, vintp allow_loopback_peers,
+                      ip_range_list_t *ip_whitelist, ip_range_list_t *ip_blacklist,
+                      send_socket_to_relay_cb send_socket_to_relay, vintp secure_stun, vintp mobility, int server_relay,
+                      send_turn_session_info_cb send_turn_session_info, send_https_socket_cb send_https_socket,
+                      allocate_bps_cb allocate_bps_func, int oauth, const char *oauth_server_name,
+                      const char *acme_redirect, ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family,
+                      vintp log_binding, vintp no_stun_backward_compatibility, vintp response_origin_only_with_rfc5780);
 
 ioa_engine_handle turn_server_get_engine(turn_turnserver *s);
 
@@ -253,11 +225,13 @@ void set_rfc5780(turn_turnserver *server, get_alt_addr_cb cb, send_message_cb sm
 
 ///////////////////////////////////////////
 
-int open_client_connection_session(turn_turnserver* server, struct socket_message *sm);
-int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss, int force, const char* reason);
-void set_disconnect_cb(turn_turnserver* server, int (*disconnect)(ts_ur_super_session*));
+int open_client_connection_session(turn_turnserver *server, struct socket_message *sm);
+int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss, int force, const char *reason);
+void set_disconnect_cb(turn_turnserver *server, int (*disconnect)(ts_ur_super_session *));
 
-int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_connection_id tcid, stun_tid *tid, ioa_socket_handle s, int message_integrity, ioa_net_data *nd, int can_resume);
+int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_connection_id tcid, stun_tid *tid,
+                                                 ioa_socket_handle s, int message_integrity, ioa_net_data *nd,
+                                                 int can_resume);
 
 int report_turn_session_info(turn_turnserver *server, ts_ur_super_session *ss, int force_invalid);
 

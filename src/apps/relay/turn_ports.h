@@ -51,18 +51,18 @@ typedef struct _turnipports turnipports;
 
 //////////////////////////////////////////////////
 
-turnipports* turnipports_create(super_memory_t *sm, uint16_t start, uint16_t end);
+turnipports *turnipports_create(super_memory_t *sm, uint16_t start, uint16_t end);
 
 void turnipports_add_ip(uint8_t transport, const ioa_addr *backend_addr);
 
-int turnipports_allocate(turnipports* tp, uint8_t transport, const ioa_addr *backend_addr);
-int turnipports_allocate_even(turnipports* tp, const ioa_addr *backend_addr, 
-			      int allocate_rtcp, uint64_t *reservation_token);
+int turnipports_allocate(turnipports *tp, uint8_t transport, const ioa_addr *backend_addr);
+int turnipports_allocate_even(turnipports *tp, const ioa_addr *backend_addr, int allocate_rtcp,
+                              uint64_t *reservation_token);
 
-void turnipports_release(turnipports* tp, uint8_t transport, const ioa_addr *socket_addr);
+void turnipports_release(turnipports *tp, uint8_t transport, const ioa_addr *socket_addr);
 
-int turnipports_is_allocated(turnipports* tp, uint8_t transport, const ioa_addr *backend_addr, uint16_t port);
-int turnipports_is_available(turnipports* tp, uint8_t transport, const ioa_addr *backend_addr, uint16_t port);
+int turnipports_is_allocated(turnipports *tp, uint8_t transport, const ioa_addr *backend_addr, uint16_t port);
+int turnipports_is_available(turnipports *tp, uint8_t transport, const ioa_addr *backend_addr, uint16_t port);
 
 //////////////////////////////////////////////////
 

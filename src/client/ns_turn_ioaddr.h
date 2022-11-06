@@ -54,36 +54,36 @@ typedef struct {
 
 ////////////////////////////
 
-uint32_t get_ioa_addr_len(const ioa_addr* addr);
+uint32_t get_ioa_addr_len(const ioa_addr *addr);
 
 ////////////////////////////
 
 void addr_set_any(ioa_addr *addr);
-int addr_any(const ioa_addr* addr);
-int addr_any_no_port(const ioa_addr* addr);
+int addr_any(const ioa_addr *addr);
+int addr_any_no_port(const ioa_addr *addr);
 uint32_t addr_hash(const ioa_addr *addr);
 uint32_t addr_hash_no_port(const ioa_addr *addr);
-void addr_cpy(ioa_addr* dst, const ioa_addr* src);
-void addr_cpy4(ioa_addr* dst, const struct sockaddr_in* src);
-void addr_cpy6(ioa_addr* dst, const struct sockaddr_in6* src);
-int addr_eq(const ioa_addr* a1, const ioa_addr *a2);
-int addr_eq_no_port(const ioa_addr* a1, const ioa_addr *a2);
-int make_ioa_addr(const uint8_t* saddr, int port, ioa_addr *addr);
-int make_ioa_addr_from_full_string(const uint8_t* saddr, int default_port, ioa_addr *addr);
-void addr_set_port(ioa_addr* addr, int port);
-int addr_get_port(const ioa_addr* addr);
-int addr_to_string(const ioa_addr* addr, uint8_t* saddr);
-int addr_to_string_no_port(const ioa_addr* addr, uint8_t* saddr);
+void addr_cpy(ioa_addr *dst, const ioa_addr *src);
+void addr_cpy4(ioa_addr *dst, const struct sockaddr_in *src);
+void addr_cpy6(ioa_addr *dst, const struct sockaddr_in6 *src);
+int addr_eq(const ioa_addr *a1, const ioa_addr *a2);
+int addr_eq_no_port(const ioa_addr *a1, const ioa_addr *a2);
+int make_ioa_addr(const uint8_t *saddr, int port, ioa_addr *addr);
+int make_ioa_addr_from_full_string(const uint8_t *saddr, int default_port, ioa_addr *addr);
+void addr_set_port(ioa_addr *addr, int port);
+int addr_get_port(const ioa_addr *addr);
+int addr_to_string(const ioa_addr *addr, uint8_t *saddr);
+int addr_to_string_no_port(const ioa_addr *addr, uint8_t *saddr);
 
 uint32_t hash_int32(uint32_t a);
 uint64_t hash_int64(uint64_t a);
 
 ///////////////////////////////////////////
 
-void ioa_addr_range_set(ioa_addr_range* range, const ioa_addr* addr_min, const ioa_addr* addr_max);
-int addr_less_eq(const ioa_addr* addr1, const ioa_addr* addr2);
-int ioa_addr_in_range(const ioa_addr_range* range, const ioa_addr* addr);
-void ioa_addr_range_cpy(ioa_addr_range* dest, const ioa_addr_range* src);
+void ioa_addr_range_set(ioa_addr_range *range, const ioa_addr *addr_min, const ioa_addr *addr_max);
+int addr_less_eq(const ioa_addr *addr1, const ioa_addr *addr2);
+int ioa_addr_in_range(const ioa_addr_range *range, const ioa_addr *addr);
+void ioa_addr_range_cpy(ioa_addr_range *dest, const ioa_addr_range *src);
 
 /////// Check whether this is a good address //////////////
 

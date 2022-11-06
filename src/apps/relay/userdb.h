@@ -31,14 +31,14 @@
 #ifndef __USERDB__
 #define __USERDB__
 
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "hiredis_libevent2.h"
 
-#include "ns_turn_utils.h"
 #include "ns_turn_maps.h"
 #include "ns_turn_server.h"
+#include "ns_turn_utils.h"
 
 #include "apputils.h"
 
@@ -56,78 +56,80 @@ typedef struct _realm_params_t realm_params_t;
 
 struct _realm_status_t {
 
-	vint total_current_allocs;
-	ur_string_map *alloc_counters;
-
+  vint total_current_allocs;
+  ur_string_map *alloc_counters;
 };
 
 struct _realm_params_t {
 
-	int is_default_realm;
+  int is_default_realm;
 
-	realm_options_t options;
+  realm_options_t options;
 
-	realm_status_t status;
-
+  realm_status_t status;
 };
 
 void lock_realms(void);
 void unlock_realms(void);
-void update_o_to_realm(ur_string_map * o_to_realm_new);
+void update_o_to_realm(ur_string_map *o_to_realm_new);
 
 //////////// USER DB //////////////////////////////
 
 struct auth_message {
-	turnserver_id id;
-	turn_credential_type ct;
-	int in_oauth;
-	int out_oauth;
-	int max_session_time;
-	uint8_t username[STUN_MAX_USERNAME_SIZE + 1];
-	uint8_t realm[STUN_MAX_REALM_SIZE + 1];
-	hmackey_t key;
-	password_t pwd;
-	get_username_resume_cb resume_func;
-	ioa_net_data in_buffer;
-	uint64_t ctxkey;
-	int success;
+  turnserver_id id;
+  turn_credential_type ct;
+  int in_oauth;
+  int out_oauth;
+  int max_session_time;
+  uint8_t username[STUN_MAX_USERNAME_SIZE + 1];
+  uint8_t realm[STUN_MAX_REALM_SIZE + 1];
+  hmackey_t key;
+  password_t pwd;
+  get_username_resume_cb resume_func;
+  ioa_net_data in_buffer;
+  uint64_t ctxkey;
+  int success;
 };
 
 enum _TURN_USERDB_TYPE {
 #if !defined(TURN_NO_SQLITE)
-	TURN_USERDB_TYPE_UNKNOWN=-1,
-	TURN_USERDB_TYPE_SQLITE=0
+  TURN_USERDB_TYPE_UNKNOWN = -1,
+  TURN_USERDB_TYPE_SQLITE = 0
 #else
-	TURN_USERDB_TYPE_UNKNOWN=0
+  TURN_USERDB_TYPE_UNKNOWN = 0
 #endif
 #if !defined(TURN_NO_PQ)
-	,TURN_USERDB_TYPE_PQ
+  ,
+  TURN_USERDB_TYPE_PQ
 #endif
 #if !defined(TURN_NO_MYSQL)
-	,TURN_USERDB_TYPE_MYSQL
+  ,
+  TURN_USERDB_TYPE_MYSQL
 #endif
 #if !defined(TURN_NO_MONGO)
-	,TURN_USERDB_TYPE_MONGO
+  ,
+  TURN_USERDB_TYPE_MONGO
 #endif
-	,TURN_USERDB_TYPE_REDIS
+  ,
+  TURN_USERDB_TYPE_REDIS
 };
 
 typedef enum _TURN_USERDB_TYPE TURN_USERDB_TYPE;
 
 enum _TURNADMIN_COMMAND_TYPE {
-	TA_COMMAND_UNKNOWN,
-	TA_PRINT_KEY,
-	TA_UPDATE_USER,
-	TA_DELETE_USER,
-	TA_LIST_USERS,
-	TA_SET_SECRET,
-	TA_SHOW_SECRET,
-	TA_DEL_SECRET,
-	TA_ADD_ORIGIN,
-	TA_DEL_ORIGIN,
-	TA_LIST_ORIGINS,
-	TA_SET_REALM_OPTION,
-	TA_LIST_REALM_OPTIONS
+  TA_COMMAND_UNKNOWN,
+  TA_PRINT_KEY,
+  TA_UPDATE_USER,
+  TA_DELETE_USER,
+  TA_LIST_USERS,
+  TA_SET_SECRET,
+  TA_SHOW_SECRET,
+  TA_DEL_SECRET,
+  TA_ADD_ORIGIN,
+  TA_DEL_ORIGIN,
+  TA_LIST_ORIGINS,
+  TA_SET_REALM_OPTION,
+  TA_LIST_REALM_OPTIONS
 };
 
 typedef enum _TURNADMIN_COMMAND_TYPE TURNADMIN_COMMAND_TYPE;
@@ -135,8 +137,8 @@ typedef enum _TURNADMIN_COMMAND_TYPE TURNADMIN_COMMAND_TYPE;
 /////////// SHARED SECRETS //////////////////
 
 struct _secrets_list {
-	char **secrets;
-	size_t sz;
+  char **secrets;
+  size_t sz;
 };
 typedef struct _secrets_list secrets_list_t;
 
@@ -145,34 +147,33 @@ typedef struct _secrets_list secrets_list_t;
 #define TURN_LONG_STRING_SIZE (1025)
 
 typedef struct _redis_stats_db_t {
-	char connection_string[TURN_LONG_STRING_SIZE];
-    char connection_string_sanitized[TURN_LONG_STRING_SIZE];
+  char connection_string[TURN_LONG_STRING_SIZE];
+  char connection_string_sanitized[TURN_LONG_STRING_SIZE];
 } redis_stats_db_t;
 
 typedef struct _ram_users_db_t {
-	size_t users_number;
-	ur_string_map *static_accounts;
-	secrets_list_t static_auth_secrets;
+  size_t users_number;
+  ur_string_map *static_accounts;
+  secrets_list_t static_auth_secrets;
 } ram_users_db_t;
 
 typedef struct _persistent_users_db_t {
-	char userdb[TURN_LONG_STRING_SIZE];
-    char userdb_sanitized[TURN_LONG_STRING_SIZE];
+  char userdb[TURN_LONG_STRING_SIZE];
+  char userdb_sanitized[TURN_LONG_STRING_SIZE];
 } persistent_users_db_t;
 
-typedef struct _default_users_db_t
-{
-	TURN_USERDB_TYPE userdb_type;
+typedef struct _default_users_db_t {
+  TURN_USERDB_TYPE userdb_type;
 
-	persistent_users_db_t persistent_users_db;
+  persistent_users_db_t persistent_users_db;
 
-	ram_users_db_t ram_db;
+  ram_users_db_t ram_db;
 
 } default_users_db_t;
 
 /////////////////////////////////////////////
 
-realm_params_t* get_realm(char* name);
+realm_params_t *get_realm(char *name);
 void set_default_realm_name(char *realm);
 int change_total_quota(char *realm, int value);
 int change_user_quota(char *realm, int value);
@@ -184,36 +185,41 @@ void init_dynamic_ip_lists(void);
 void update_white_and_black_lists(void);
 void clean_secrets_list(secrets_list_t *sl);
 size_t get_secrets_list_size(secrets_list_t *sl);
-const char* get_secrets_list_elem(secrets_list_t *sl, size_t i);
-void add_to_secrets_list(secrets_list_t *sl, const char* elem);
+const char *get_secrets_list_elem(secrets_list_t *sl, size_t i);
+void add_to_secrets_list(secrets_list_t *sl, const char *elem);
 
 /////////// USER DB CHECK //////////////////
 
-int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *uname, uint8_t *realm, hmackey_t key, ioa_network_buffer_handle nbh);
-uint8_t *start_user_check(turnserver_id id, turn_credential_type ct, int in_oauth, int *out_oauth, uint8_t *uname, uint8_t *realm, get_username_resume_cb resume, ioa_net_data *in_buffer, uint64_t ctxkey, int *postpone_reply);
+int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *uname, uint8_t *realm, hmackey_t key,
+                 ioa_network_buffer_handle nbh);
+uint8_t *start_user_check(turnserver_id id, turn_credential_type ct, int in_oauth, int *out_oauth, uint8_t *uname,
+                          uint8_t *realm, get_username_resume_cb resume, ioa_net_data *in_buffer, uint64_t ctxkey,
+                          int *postpone_reply);
 int check_new_allocation_quota(uint8_t *username, int oauth, uint8_t *realm);
 void release_allocation_quota(uint8_t *username, int oauth, uint8_t *realm);
 
 /////////// Handle user DB /////////////////
 
 #if defined(DB_TEST)
-	void run_db_test(void);
+void run_db_test(void);
 #endif
 
 void auth_ping(redis_context_handle rch);
 void reread_realms(void);
 int add_static_user_account(char *user);
-int adminuser(uint8_t *user, uint8_t *realm, uint8_t *pwd, uint8_t *secret, uint8_t *origin, TURNADMIN_COMMAND_TYPE ct, perf_options_t* po, int is_admin);
+int adminuser(uint8_t *user, uint8_t *realm, uint8_t *pwd, uint8_t *secret, uint8_t *origin, TURNADMIN_COMMAND_TYPE ct,
+              perf_options_t *po, int is_admin);
 
-int add_ip_list_range(const char* range, const char* realm, ip_range_list_t * list);
-int check_ip_list_range(const char* range);
-ip_range_list_t* get_ip_list(const char *kind);
+int add_ip_list_range(const char *range, const char *realm, ip_range_list_t *list);
+int check_ip_list_range(const char *range);
+ip_range_list_t *get_ip_list(const char *kind);
 void ip_list_free(ip_range_list_t *l);
 
 ///////////// Redis //////////////////////
 
 #if !defined(TURN_NO_HIREDIS)
-redis_context_handle get_redis_async_connection(struct event_base *base, redis_stats_db_t* redis_stats_db, int delete_keys);
+redis_context_handle get_redis_async_connection(struct event_base *base, redis_stats_db_t *redis_stats_db,
+                                                int delete_keys);
 #endif
 
 ////////////////////////////////////////////
@@ -224,4 +230,3 @@ redis_context_handle get_redis_async_connection(struct event_base *base, redis_s
 
 #endif
 /// __USERDB__///
-

@@ -31,10 +31,10 @@
 #ifndef __TURN_SESSION__
 #define __TURN_SESSION__
 
-#include "ns_turn_utils.h"
-#include "ns_turn_maps.h"
-#include "ns_turn_ioalib.h"
 #include "ns_turn_allocation.h"
+#include "ns_turn_ioalib.h"
+#include "ns_turn_maps.h"
+#include "ns_turn_utils.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -44,29 +44,29 @@ extern "C" {
 
 typedef struct _perf_options_t {
 
-	volatile band_limit_t max_bps;
-	vint total_quota;
-	vint user_quota;
+  volatile band_limit_t max_bps;
+  vint total_quota;
+  vint user_quota;
 
 } perf_options_t;
 
 struct _realm_options_t {
 
-	char name[STUN_MAX_REALM_SIZE + 1];
+  char name[STUN_MAX_REALM_SIZE + 1];
 
-	perf_options_t perf_options;
+  perf_options_t perf_options;
 };
 
 //////////////// session info //////////////////////
 
 typedef uint64_t turnsession_id;
 
-#define NONCE_MAX_SIZE (NONCE_LENGTH_32BITS*4+1)
+#define NONCE_MAX_SIZE (NONCE_LENGTH_32BITS * 4 + 1)
 
 typedef uint64_t mobile_id_t;
 
 struct _ts_ur_super_session {
-  void* server; 
+  void *server;
   turnsession_id id;
   turn_time_t start_time;
   ioa_socket_handle client_socket;
@@ -78,7 +78,7 @@ struct _ts_ur_super_session {
   /* Auth */
   uint8_t nonce[NONCE_MAX_SIZE];
   turn_time_t nonce_expiration_time;
-  uint8_t username[STUN_MAX_USERNAME_SIZE+1];
+  uint8_t username[STUN_MAX_USERNAME_SIZE + 1];
   hmackey_t hmackey;
   int hmackey_set;
   password_t pwd;
@@ -127,63 +127,63 @@ struct _ts_ur_super_session {
 #define TURN_MAIN_PEERS_ARRAY_SIZE (5)
 
 typedef struct _addr_data {
-	ioa_addr addr;
-	char saddr[TURN_ADDR_STR_SIZE];
+  ioa_addr addr;
+  char saddr[TURN_ADDR_STR_SIZE];
 } addr_data;
 
 struct turn_session_info {
-	turnsession_id id;
-	int valid;
-	turn_time_t start_time;
-	turn_time_t expiration_time;
-	SOCKET_TYPE client_protocol;
-	SOCKET_TYPE peer_protocol;
-	char tls_method[17];
-	char tls_cipher[65];
-	addr_data local_addr_data;
-	addr_data remote_addr_data;
-	addr_data relay_addr_data_ipv4;
-	addr_data relay_addr_data_ipv6;
-	uint8_t username[STUN_MAX_USERNAME_SIZE+1];
-	int enforce_fingerprints;
-/* Stats */
-	uint64_t received_packets;
-	uint64_t sent_packets;
-	uint64_t received_bytes;
-	uint64_t sent_bytes;
-	uint32_t received_rate;
-	uint32_t sent_rate;
-	uint32_t total_rate;
-	uint64_t peer_received_packets;
-	uint64_t peer_sent_packets;
-	uint64_t peer_received_bytes;
-	uint64_t peer_sent_bytes;
-	uint32_t peer_received_rate;
-	uint32_t peer_sent_rate;
-	uint32_t peer_total_rate;
-/* Mobile */
-	int is_mobile;
-/* Peers */
-	addr_data main_peers_data[TURN_MAIN_PEERS_ARRAY_SIZE];
-	size_t main_peers_size;
-	addr_data *extra_peers_data;
-	size_t extra_peers_size;
-/* Realm */
-	char realm[STUN_MAX_REALM_SIZE + 1];
-	char origin[STUN_MAX_ORIGIN_SIZE + 1];
-/* Bandwidth */
-	band_limit_t bps;
+  turnsession_id id;
+  int valid;
+  turn_time_t start_time;
+  turn_time_t expiration_time;
+  SOCKET_TYPE client_protocol;
+  SOCKET_TYPE peer_protocol;
+  char tls_method[17];
+  char tls_cipher[65];
+  addr_data local_addr_data;
+  addr_data remote_addr_data;
+  addr_data relay_addr_data_ipv4;
+  addr_data relay_addr_data_ipv6;
+  uint8_t username[STUN_MAX_USERNAME_SIZE + 1];
+  int enforce_fingerprints;
+  /* Stats */
+  uint64_t received_packets;
+  uint64_t sent_packets;
+  uint64_t received_bytes;
+  uint64_t sent_bytes;
+  uint32_t received_rate;
+  uint32_t sent_rate;
+  uint32_t total_rate;
+  uint64_t peer_received_packets;
+  uint64_t peer_sent_packets;
+  uint64_t peer_received_bytes;
+  uint64_t peer_sent_bytes;
+  uint32_t peer_received_rate;
+  uint32_t peer_sent_rate;
+  uint32_t peer_total_rate;
+  /* Mobile */
+  int is_mobile;
+  /* Peers */
+  addr_data main_peers_data[TURN_MAIN_PEERS_ARRAY_SIZE];
+  size_t main_peers_size;
+  addr_data *extra_peers_data;
+  size_t extra_peers_size;
+  /* Realm */
+  char realm[STUN_MAX_REALM_SIZE + 1];
+  char origin[STUN_MAX_ORIGIN_SIZE + 1];
+  /* Bandwidth */
+  band_limit_t bps;
 };
 
-void turn_session_info_init(struct turn_session_info* tsi);
-void turn_session_info_clean(struct turn_session_info* tsi);
-void turn_session_info_add_peer(struct turn_session_info* tsi, ioa_addr *peer);
+void turn_session_info_init(struct turn_session_info *tsi);
+void turn_session_info_clean(struct turn_session_info *tsi);
+void turn_session_info_add_peer(struct turn_session_info *tsi, ioa_addr *peer);
 
-int turn_session_info_copy_from(struct turn_session_info* tsi, ts_ur_super_session *ss);
+int turn_session_info_copy_from(struct turn_session_info *tsi, ts_ur_super_session *ss);
 
 ////////////// ss /////////////////////
 
-allocation* get_allocation_ss(ts_ur_super_session *ss);
+allocation *get_allocation_ss(ts_ur_super_session *ss);
 
 ///////////////////////////////////////////////////////
 

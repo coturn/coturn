@@ -39,16 +39,16 @@ KHASH_MAP_INIT_INT64(3, ur_map_value_type)
 #define MAGIC_HASH ((uint64_t)(0x90ABCDEFL))
 
 struct _ur_map {
-  khash_t(3) *h;
+  khash_t(3) * h;
   uint64_t magic;
   TURN_MUTEX_DECLARE(mutex)
 };
 
-static int ur_map_init(ur_map* map) {
-  if(map) {
-    map->h=kh_init(3);
-    if(map->h) {
-      map->magic=MAGIC_HASH;
+static int ur_map_init(ur_map *map) {
+  if (map) {
+    map->h = kh_init(3);
+    if (map->h) {
+      map->magic = MAGIC_HASH;
       TURN_MUTEX_INIT_RECURSIVE(&(map->mutex));
       return 0;
     }
@@ -56,11 +56,11 @@ static int ur_map_init(ur_map* map) {
   return -1;
 }
 
-#define ur_map_valid(map) ((map) && ((map)->h) && ((map)->magic==MAGIC_HASH))
+#define ur_map_valid(map) ((map) && ((map)->h) && ((map)->magic == MAGIC_HASH))
 
-ur_map* ur_map_create(void) {
-  ur_map *map=(ur_map*)malloc(sizeof(ur_map));
-  if(ur_map_init(map)<0) {
+ur_map *ur_map_create(void) {
+  ur_map *map = (ur_map *)malloc(sizeof(ur_map));
+  if (ur_map_init(map) < 0) {
     free(map);
     return NULL;
   }
@@ -72,19 +72,20 @@ ur_map* ur_map_create(void) {
  * 0 - success
  * -1 - error
  */
-int ur_map_put(ur_map* map, ur_map_key_type key, ur_map_value_type value) {
-  if(!ur_map_valid(map)) return -1;
+int ur_map_put(ur_map *map, ur_map_key_type key, ur_map_value_type value) {
+  if (!ur_map_valid(map))
+    return -1;
   else {
 
-    int ret=0;
+    int ret = 0;
     khiter_t k;
 
     k = kh_get(3, map->h, key);
-    if(k != kh_end(map->h)) {
+    if (k != kh_end(map->h)) {
       kh_del(3, map->h, k);
     }
-    
-    k = kh_put(3,map->h,key,&ret);
+
+    k = kh_put(3, map->h, key, &ret);
 
     if (!ret) {
       kh_del(3, map->h, k);
@@ -102,15 +103,17 @@ int ur_map_put(ur_map* map, ur_map_key_type key, ur_map_value_type value) {
  * 1 - success
  * 0 - not found
  */
-int ur_map_get(const ur_map* map, ur_map_key_type key, ur_map_value_type *value) {
-  if(!ur_map_valid(map)) return 0;
+int ur_map_get(const ur_map *map, ur_map_key_type key, ur_map_value_type *value) {
+  if (!ur_map_valid(map))
+    return 0;
   else {
 
     khiter_t k;
 
     k = kh_get(3, map->h, key);
-    if((k != kh_end(map->h)) && kh_exist(map->h,k)) {
-      if(value) *value=kh_value(map->h,k);
+    if ((k != kh_end(map->h)) && kh_exist(map->h, k)) {
+      if (value)
+        *value = kh_value(map->h, k);
       return 1;
     }
 
@@ -123,18 +126,19 @@ int ur_map_get(const ur_map* map, ur_map_key_type key, ur_map_value_type *value)
  * 1 - success
  * 0 - not found
  */
-int ur_map_del(ur_map* map, ur_map_key_type key,ur_map_del_func delfunc) {
-  if(!ur_map_valid(map)) return 0;
+int ur_map_del(ur_map *map, ur_map_key_type key, ur_map_del_func delfunc) {
+  if (!ur_map_valid(map))
+    return 0;
   else {
 
     khiter_t k;
 
     k = kh_get(3, map->h, key);
-    if((k != kh_end(map->h)) && kh_exist(map->h,k)) {
-      if(delfunc) {
-	delfunc(kh_value(map->h,k));
+    if ((k != kh_end(map->h)) && kh_exist(map->h, k)) {
+      if (delfunc) {
+        delfunc(kh_value(map->h, k));
       }
-      kh_del(3,map->h,k);
+      kh_del(3, map->h, k);
       return 1;
     }
 
@@ -147,14 +151,15 @@ int ur_map_del(ur_map* map, ur_map_key_type key,ur_map_del_func delfunc) {
  * 1 - success
  * 0 - not found
  */
-int ur_map_exist(const ur_map* map, ur_map_key_type key) {
-  if(!ur_map_valid(map)) return 0;
+int ur_map_exist(const ur_map *map, ur_map_key_type key) {
+  if (!ur_map_valid(map))
+    return 0;
   else {
 
     khiter_t k;
 
     k = kh_get(3, map->h, key);
-    if((k != kh_end(map->h)) && kh_exist(map->h,k)) {
+    if ((k != kh_end(map->h)) && kh_exist(map->h, k)) {
       return 1;
     }
 
@@ -162,73 +167,69 @@ int ur_map_exist(const ur_map* map, ur_map_key_type key) {
   }
 }
 
-void ur_map_free(ur_map** map) {
-  if(map && ur_map_valid(*map)) {
-	  {
-		  static int khctest=0;
-		  if(khctest)
-			  kh_clear(3,(*map)->h);
-	  }
-    kh_destroy(3,(*map)->h);
-    (*map)->h=NULL;
-    (*map)->magic=0;
+void ur_map_free(ur_map **map) {
+  if (map && ur_map_valid(*map)) {
+    {
+      static int khctest = 0;
+      if (khctest)
+        kh_clear(3, (*map)->h);
+    }
+    kh_destroy(3, (*map)->h);
+    (*map)->h = NULL;
+    (*map)->magic = 0;
     TURN_MUTEX_DESTROY(&((*map)->mutex));
     free(*map);
-    *map=NULL;
+    *map = NULL;
   }
 }
 
-size_t ur_map_size(const ur_map* map) {
-  if(ur_map_valid(map)) {
+size_t ur_map_size(const ur_map *map) {
+  if (ur_map_valid(map)) {
     return kh_size(map->h);
   } else {
     return 0;
   }
 }
 
-int ur_map_foreach(ur_map* map, foreachcb_type func) {
-  if(map && func && ur_map_valid(map)) {
+int ur_map_foreach(ur_map *map, foreachcb_type func) {
+  if (map && func && ur_map_valid(map)) {
     khiter_t k;
     for (k = kh_begin((*map)->h); k != kh_end(map->h); ++k) {
       if (kh_exist(map->h, k)) {
-	if(func((ur_map_key_type)(kh_key(map->h, k)),
-		(ur_map_value_type)(kh_value(map->h, k)))) {
-	  return 1;
-	}
+        if (func((ur_map_key_type)(kh_key(map->h, k)), (ur_map_value_type)(kh_value(map->h, k)))) {
+          return 1;
+        }
       }
     }
   }
   return 0;
 }
 
-int ur_map_foreach_arg(const ur_map* map, foreachcb_arg_type func, void* arg) {
-  if(map && func && ur_map_valid(map)) {
+int ur_map_foreach_arg(const ur_map *map, foreachcb_arg_type func, void *arg) {
+  if (map && func && ur_map_valid(map)) {
     khiter_t k;
     for (k = kh_begin((*map)->h); k != kh_end(map->h); ++k) {
       if (kh_exist(map->h, k)) {
-	if(func((ur_map_key_type)(kh_key(map->h, k)),
-		(ur_map_value_type)(kh_value(map->h, k)),
-		arg)
-	   ) {
-	  return 1;
-	}
+        if (func((ur_map_key_type)(kh_key(map->h, k)), (ur_map_value_type)(kh_value(map->h, k)), arg)) {
+          return 1;
+        }
       }
     }
   }
   return 0;
 }
 
-int ur_map_lock(const ur_map* map) {
-  if(ur_map_valid(map)) {
-    TURN_MUTEX_LOCK((const turn_mutex*)&(map->mutex));
+int ur_map_lock(const ur_map *map) {
+  if (ur_map_valid(map)) {
+    TURN_MUTEX_LOCK((const turn_mutex *)&(map->mutex));
     return 0;
   }
   return -1;
 }
 
-int ur_map_unlock(const ur_map* map) {
-  if(ur_map_valid(map)) {
-    TURN_MUTEX_UNLOCK((const turn_mutex*)&(map->mutex));
+int ur_map_unlock(const ur_map *map) {
+  if (ur_map_valid(map)) {
+    TURN_MUTEX_UNLOCK((const turn_mutex *)&(map->mutex));
     return 0;
   }
   return -1;
@@ -236,11 +237,10 @@ int ur_map_unlock(const ur_map* map) {
 
 //////////////////// LOCAL MAPS ////////////////////////////////////
 
-void lm_map_init(lm_map *map)
-{
-	if(map) {
-		memset(map, 0, sizeof(lm_map));
-	}
+void lm_map_init(lm_map *map) {
+  if (map) {
+    memset(map, 0, sizeof(lm_map));
+  }
 }
 
 /**
@@ -249,79 +249,78 @@ void lm_map_init(lm_map *map)
  * -1 - error
  */
 
-int lm_map_put(lm_map* map, ur_map_key_type key, ur_map_value_type value)
-{
-	int ret = -1;
-	if(map && key && value) {
+int lm_map_put(lm_map *map, ur_map_key_type key, ur_map_value_type value) {
+  int ret = -1;
+  if (map && key && value) {
 
-		size_t index = (size_t)(key & (LM_MAP_HASH_SIZE - 1));
-		lm_map_array *a = &(map->table[index]);
+    size_t index = (size_t)(key & (LM_MAP_HASH_SIZE - 1));
+    lm_map_array *a = &(map->table[index]);
 
-		size_t i;
+    size_t i;
 
-		for(i=0;i<LM_MAP_ARRAY_SIZE;++i) {
+    for (i = 0; i < LM_MAP_ARRAY_SIZE; ++i) {
 
-			ur_map_key_type key0 = a->main_keys[i];
-			ur_map_value_type value0 = a->main_values[i];
+      ur_map_key_type key0 = a->main_keys[i];
+      ur_map_value_type value0 = a->main_values[i];
 
-			if(key0 == key) {
-				if(value0 == value) {
-					return 0;
-				} else {
-					return -1;
-				}
-			}
+      if (key0 == key) {
+        if (value0 == value) {
+          return 0;
+        } else {
+          return -1;
+        }
+      }
 
-			if(!key0 || !value0) {
-				a->main_keys[i] = key;
-				a->main_values[i] = value;
-				return 0;
-			}
-		}
+      if (!key0 || !value0) {
+        a->main_keys[i] = key;
+        a->main_values[i] = value;
+        return 0;
+      }
+    }
 
-		size_t esz = a->extra_sz;
-		if(esz && a->extra_keys && a->extra_values) {
-			for(i=0;i<esz;++i) {
-				ur_map_key_type *keyp = a->extra_keys[i];
-				ur_map_value_type *valuep = a->extra_values[i];
-				if(keyp && valuep) {
-					if(!(*keyp) || !(*valuep)) {
-						*keyp = key;
-						*valuep = value;
-						return 0;
-					}
-				} else {
-					if(!(*keyp)) {
-						a->extra_keys[i] = (ur_map_key_type*)malloc(sizeof(ur_map_key_type));
-						keyp = a->extra_keys[i];
-					}
-					if(!(*valuep)) {
-						a->extra_values[i] = (ur_map_value_type*)malloc(sizeof(ur_map_value_type));
-						valuep = a->extra_values[i];
-					}
-					*keyp = key;
-					*valuep = value;
-					return 0;
-				}
-			}
-		}
+    size_t esz = a->extra_sz;
+    if (esz && a->extra_keys && a->extra_values) {
+      for (i = 0; i < esz; ++i) {
+        ur_map_key_type *keyp = a->extra_keys[i];
+        ur_map_value_type *valuep = a->extra_values[i];
+        if (keyp && valuep) {
+          if (!(*keyp) || !(*valuep)) {
+            *keyp = key;
+            *valuep = value;
+            return 0;
+          }
+        } else {
+          if (!(*keyp)) {
+            a->extra_keys[i] = (ur_map_key_type *)malloc(sizeof(ur_map_key_type));
+            keyp = a->extra_keys[i];
+          }
+          if (!(*valuep)) {
+            a->extra_values[i] = (ur_map_value_type *)malloc(sizeof(ur_map_value_type));
+            valuep = a->extra_values[i];
+          }
+          *keyp = key;
+          *valuep = value;
+          return 0;
+        }
+      }
+    }
 
-		size_t old_sz = esz;
-		size_t old_sz_mem = esz * sizeof(ur_map_key_type*);
-		a->extra_keys = (ur_map_key_type**)realloc(a->extra_keys,old_sz_mem + sizeof(ur_map_key_type*));
-		a->extra_keys[old_sz] = (ur_map_key_type*)malloc(sizeof(ur_map_key_type));
-		*(a->extra_keys[old_sz]) = key;
+    size_t old_sz = esz;
+    size_t old_sz_mem = esz * sizeof(ur_map_key_type *);
+    a->extra_keys = (ur_map_key_type **)realloc(a->extra_keys, old_sz_mem + sizeof(ur_map_key_type *));
+    a->extra_keys[old_sz] = (ur_map_key_type *)malloc(sizeof(ur_map_key_type));
+    *(a->extra_keys[old_sz]) = key;
 
-		old_sz_mem = esz * sizeof(ur_map_value_type*);
-		a->extra_values = (ur_map_value_type**)realloc(a->extra_values,old_sz_mem + sizeof(ur_map_value_type*));
-		a->extra_values[old_sz] = (ur_map_value_type*)malloc(sizeof(ur_map_value_type));
-		*(a->extra_values[old_sz]) = value;
+    old_sz_mem = esz * sizeof(ur_map_value_type *);
+    a->extra_values = (ur_map_value_type **)realloc(a->extra_values, old_sz_mem + sizeof(ur_map_value_type *));
+    a->extra_values[old_sz] = (ur_map_value_type *)malloc(sizeof(ur_map_value_type));
+    *(a->extra_values[old_sz]) = value;
 
-		a->extra_sz += 1;
+    a->extra_sz += 1;
 
-		return 0;
-	}
-	return ret;
+    return 0;
+  }
+  return ret;
 }
 
 /**
@@ -330,43 +329,42 @@ int lm_map_put(lm_map* map, ur_map_key_type key, ur_map_value_type value)
  * 0 - not found
  */
 
-int lm_map_get(const lm_map* map, ur_map_key_type key, ur_map_value_type *value)
-{
-	int ret = 0;
-	if(map && key) {
-		size_t index = (size_t)(key & (LM_MAP_HASH_SIZE - 1));
-		const lm_map_array *a = &(map->table[index]);
+int lm_map_get(const lm_map *map, ur_map_key_type key, ur_map_value_type *value) {
+  int ret = 0;
+  if (map && key) {
+    size_t index = (size_t)(key & (LM_MAP_HASH_SIZE - 1));
+    const lm_map_array *a = &(map->table[index]);
 
-		size_t i;
+    size_t i;
 
-		for(i=0;i<LM_MAP_ARRAY_SIZE;++i) {
+    for (i = 0; i < LM_MAP_ARRAY_SIZE; ++i) {
 
-			ur_map_key_type key0 = a->main_keys[i];
-			if((key0 == key) && a->main_values[i]) {
-				if(value) {
-					*value = a->main_values[i];
-				}
-				return 1;
-			}
-		}
+      ur_map_key_type key0 = a->main_keys[i];
+      if ((key0 == key) && a->main_values[i]) {
+        if (value) {
+          *value = a->main_values[i];
+        }
+        return 1;
+      }
+    }
 
-		size_t esz = a->extra_sz;
-		if(esz && a->extra_keys && a->extra_values) {
-			for(i=0;i<esz;++i) {
-				ur_map_key_type *keyp = a->extra_keys[i];
-				ur_map_value_type *valuep = a->extra_values[i];
-				if(keyp && valuep) {
-					if(*keyp == key) {
-						if(value)
-							*value = *valuep;
-						return 1;
-					}
-				}
-			}
-		}
-	}
+    size_t esz = a->extra_sz;
+    if (esz && a->extra_keys && a->extra_values) {
+      for (i = 0; i < esz; ++i) {
+        ur_map_key_type *keyp = a->extra_keys[i];
+        ur_map_value_type *valuep = a->extra_values[i];
+        if (keyp && valuep) {
+          if (*keyp == key) {
+            if (value)
+              *value = *valuep;
+            return 1;
+          }
+        }
+      }
+    }
+  }
 
-	return ret;
+  return ret;
 }
 /**
  * @ret:
@@ -374,49 +372,48 @@ int lm_map_get(const lm_map* map, ur_map_key_type key, ur_map_value_type *value)
  * 0 - not found
  */
 
-int lm_map_del(lm_map* map, ur_map_key_type key,ur_map_del_func delfunc)
-{
-	int ret = 0;
+int lm_map_del(lm_map *map, ur_map_key_type key, ur_map_del_func delfunc) {
+  int ret = 0;
 
-	if(map && key) {
-		size_t index = (size_t)(key & (LM_MAP_HASH_SIZE - 1));
-		lm_map_array *a = &(map->table[index]);
+  if (map && key) {
+    size_t index = (size_t)(key & (LM_MAP_HASH_SIZE - 1));
+    lm_map_array *a = &(map->table[index]);
 
-		size_t i;
+    size_t i;
 
-		for(i=0;i<LM_MAP_ARRAY_SIZE;++i) {
+    for (i = 0; i < LM_MAP_ARRAY_SIZE; ++i) {
 
-			ur_map_key_type key0 = a->main_keys[i];
+      ur_map_key_type key0 = a->main_keys[i];
 
-			if((key0 == key) && a->main_values[i]) {
-				if(delfunc) {
-					delfunc(a->main_values[i]);
-				}
-				a->main_keys[i] = 0;
-				a->main_values[i] = 0;
-				return 1;
-			}
-		}
+      if ((key0 == key) && a->main_values[i]) {
+        if (delfunc) {
+          delfunc(a->main_values[i]);
+        }
+        a->main_keys[i] = 0;
+        a->main_values[i] = 0;
+        return 1;
+      }
+    }
 
-		size_t esz = a->extra_sz;
-		if(esz && a->extra_keys && a->extra_values) {
-			for(i=0;i<esz;++i) {
-				ur_map_key_type *keyp = a->extra_keys[i];
-				ur_map_value_type *valuep = a->extra_values[i];
-				if(keyp && valuep) {
-					if(*keyp == key) {
-						if(delfunc)
-							delfunc(*valuep);
-						*keyp = 0;
-						*valuep = 0;
-						return 1;
-					}
-				}
-			}
-		}
-	}
+    size_t esz = a->extra_sz;
+    if (esz && a->extra_keys && a->extra_values) {
+      for (i = 0; i < esz; ++i) {
+        ur_map_key_type *keyp = a->extra_keys[i];
+        ur_map_value_type *valuep = a->extra_values[i];
+        if (keyp && valuep) {
+          if (*keyp == key) {
+            if (delfunc)
+              delfunc(*valuep);
+            *keyp = 0;
+            *valuep = 0;
+            return 1;
+          }
+        }
+      }
+    }
+  }
 
-	return ret;
+  return ret;
 }
 /**
  * @ret:
@@ -424,369 +421,359 @@ int lm_map_del(lm_map* map, ur_map_key_type key,ur_map_del_func delfunc)
  * 0 - not found
  */
 
-int lm_map_exist(const lm_map* map, ur_map_key_type key)
-{
-	return lm_map_get(map, key, NULL);
+int lm_map_exist(const lm_map *map, ur_map_key_type key) { return lm_map_get(map, key, NULL); }
+
+void lm_map_clean(lm_map *map) {
+  size_t j;
+  for (j = 0; j < LM_MAP_HASH_SIZE; ++j) {
+
+    lm_map_array *a = &(map->table[j]);
+
+    size_t esz = a->extra_sz;
+    if (esz) {
+      size_t i;
+      if (a->extra_keys) {
+        for (i = 0; i < esz; ++i) {
+          ur_map_key_type *keyp = a->extra_keys[i];
+          if (keyp) {
+            *keyp = 0;
+            free(keyp);
+          }
+        }
+        free(a->extra_keys);
+        a->extra_keys = NULL;
+      }
+      if (a->extra_values) {
+        for (i = 0; i < esz; ++i) {
+          ur_map_value_type *valuep = a->extra_values[i];
+          if (valuep) {
+            *valuep = 0;
+            free(valuep);
+          }
+        }
+        free(a->extra_values);
+        a->extra_values = NULL;
+      }
+    }
+  }
+
+  lm_map_init(map);
 }
 
-void lm_map_clean(lm_map* map)
-{
-	size_t j;
-	for(j=0;j<LM_MAP_HASH_SIZE;++j) {
+size_t lm_map_size(const lm_map *map) {
+  size_t ret = 0;
 
-		lm_map_array *a = &(map->table[j]);
+  if (map) {
 
-		size_t esz = a->extra_sz;
-		if(esz) {
-			size_t i;
-			if(a->extra_keys) {
-				for(i=0;i<esz;++i) {
-					ur_map_key_type *keyp = a->extra_keys[i];
-					if(keyp) {
-						*keyp = 0;
-						free(keyp);
-					}
-				}
-				free(a->extra_keys);
-				a->extra_keys = NULL;
-			}
-			if(a->extra_values) {
-				for(i=0;i<esz;++i) {
-					ur_map_value_type *valuep = a->extra_values[i];
-					if(valuep) {
-						*valuep = 0;
-						free(valuep);
-					}
-				}
-				free(a->extra_values);
-				a->extra_values = NULL;
-			}
-		}
-	}
+    size_t i;
 
-	lm_map_init(map);
+    for (i = 0; i < LM_MAP_HASH_SIZE; ++i) {
+
+      const lm_map_array *a = &(map->table[i]);
+
+      size_t j;
+
+      for (j = 0; j < LM_MAP_ARRAY_SIZE; ++j) {
+        if (a->main_keys[j] && a->main_values[j]) {
+          ++ret;
+        }
+      }
+
+      size_t esz = a->extra_sz;
+      if (esz && a->extra_values && a->extra_keys) {
+        for (j = 0; j < esz; ++j) {
+          if (*(a->extra_keys[j]) && *(a->extra_values[j])) {
+            ++ret;
+          }
+        }
+      }
+    }
+  }
+
+  return ret;
 }
 
-size_t lm_map_size(const lm_map* map)
-{
-	size_t ret = 0;
+int lm_map_foreach(lm_map *map, foreachcb_type func) {
+  size_t ret = 0;
 
-	if(map) {
+  if (map) {
 
-		size_t i;
+    size_t i;
 
-		for(i=0;i<LM_MAP_HASH_SIZE;++i) {
+    for (i = 0; i < LM_MAP_HASH_SIZE; ++i) {
 
-			const lm_map_array *a = &(map->table[i]);
+      lm_map_array *a = &(map->table[i]);
 
-			size_t j;
+      size_t j;
 
-			for(j=0;j<LM_MAP_ARRAY_SIZE;++j) {
-				if(a->main_keys[j] && a->main_values[j]) {
-					++ret;
-				}
-			}
+      for (j = 0; j < LM_MAP_ARRAY_SIZE; ++j) {
+        if (a->main_keys[j] && a->main_values[j]) {
+          if (func((ur_map_key_type)a->main_keys[j], (ur_map_value_type)a->main_values[j])) {
+            return 1;
+          }
+        }
+      }
 
-			size_t esz = a->extra_sz;
-			if(esz && a->extra_values && a->extra_keys) {
-				for(j=0;j<esz;++j) {
-					if(*(a->extra_keys[j]) && *(a->extra_values[j])) {
-						++ret;
-					}
-				}
-			}
-		}
-	}
+      size_t esz = a->extra_sz;
+      if (esz && a->extra_values && a->extra_keys) {
+        for (j = 0; j < esz; ++j) {
+          if (*(a->extra_keys[j]) && *(a->extra_values[j])) {
+            if (func((ur_map_key_type) * (a->extra_keys[j]), (ur_map_value_type) * (a->extra_values[j]))) {
+              return 1;
+            }
+          }
+        }
+      }
+    }
+  }
 
-	return ret;
+  return ret;
 }
 
-int lm_map_foreach(lm_map* map, foreachcb_type func)
-{
-	size_t ret = 0;
+int lm_map_foreach_arg(lm_map *map, foreachcb_arg_type func, void *arg) {
+  size_t ret = 0;
 
-	if(map) {
+  if (map) {
 
-		size_t i;
+    size_t i;
 
-		for(i=0;i<LM_MAP_HASH_SIZE;++i) {
+    for (i = 0; i < LM_MAP_HASH_SIZE; ++i) {
 
-			lm_map_array *a = &(map->table[i]);
+      lm_map_array *a = &(map->table[i]);
 
-			size_t j;
+      size_t j;
 
-			for(j=0;j<LM_MAP_ARRAY_SIZE;++j) {
-				if(a->main_keys[j] && a->main_values[j]) {
-					if(func((ur_map_key_type)a->main_keys[j],
-						(ur_map_value_type)a->main_values[j])) {
-						return 1;
-					}
-				}
-			}
+      for (j = 0; j < LM_MAP_ARRAY_SIZE; ++j) {
+        if (a->main_keys[j] && a->main_values[j]) {
+          if (func((ur_map_key_type)a->main_keys[j], (ur_map_value_type)a->main_values[j], arg)) {
+            return 1;
+          }
+        }
+      }
 
-			size_t esz = a->extra_sz;
-			if(esz && a->extra_values && a->extra_keys) {
-				for(j=0;j<esz;++j) {
-					if(*(a->extra_keys[j]) && *(a->extra_values[j])) {
-						if(func((ur_map_key_type)*(a->extra_keys[j]),
-							(ur_map_value_type)*(a->extra_values[j]))) {
-							return 1;
-						}
-					}
-				}
-			}
-		}
-	}
+      size_t esz = a->extra_sz;
+      if (esz && a->extra_values && a->extra_keys) {
+        for (j = 0; j < esz; ++j) {
+          if (*(a->extra_keys[j]) && *(a->extra_values[j])) {
+            if (func((ur_map_key_type) * (a->extra_keys[j]), (ur_map_value_type) * (a->extra_values[j]), arg)) {
+              return 1;
+            }
+          }
+        }
+      }
+    }
+  }
 
-	return ret;
-}
-
-int lm_map_foreach_arg(lm_map* map, foreachcb_arg_type func, void* arg)
-{
-	size_t ret = 0;
-
-	if(map) {
-
-		size_t i;
-
-		for(i=0;i<LM_MAP_HASH_SIZE;++i) {
-
-			lm_map_array *a = &(map->table[i]);
-
-			size_t j;
-
-			for(j=0;j<LM_MAP_ARRAY_SIZE;++j) {
-				if(a->main_keys[j] && a->main_values[j]) {
-					if(func((ur_map_key_type)a->main_keys[j],
-						(ur_map_value_type)a->main_values[j],
-						arg)) {
-						return 1;
-					}
-				}
-			}
-
-			size_t esz = a->extra_sz;
-			if(esz && a->extra_values && a->extra_keys) {
-				for(j=0;j<esz;++j) {
-					if(*(a->extra_keys[j]) && *(a->extra_values[j])) {
-						if(func((ur_map_key_type)*(a->extra_keys[j]),
-							(ur_map_value_type)*(a->extra_values[j]),
-							arg)) {
-							return 1;
-						}
-					}
-				}
-			}
-		}
-	}
-
-	return ret;
+  return ret;
 }
 
 ////////////////////  ADDR LISTS ///////////////////////////////////
 
-static void addr_list_free(addr_list_header* slh) {
-  if(slh) {
-    if(slh->extra_list) {
+static void addr_list_free(addr_list_header *slh) {
+  if (slh) {
+    if (slh->extra_list) {
       free(slh->extra_list);
     }
     memset(slh, 0, sizeof(addr_list_header));
   }
 }
-    
-static void addr_list_add(addr_list_header* slh, const ioa_addr* key,  ur_addr_map_value_type value) {
 
-  if(!key || !value) return;
+static void addr_list_add(addr_list_header *slh, const ioa_addr *key, ur_addr_map_value_type value) {
+
+  if (!key || !value)
+    return;
 
   addr_elem *elem = NULL;
   size_t i;
 
-  for(i=0;i<ADDR_ARRAY_SIZE;++i) {
-	  if(!(slh->main_list[i].value)) {
-		  elem = &(slh->main_list[i]);
-		  break;
-	  }
+  for (i = 0; i < ADDR_ARRAY_SIZE; ++i) {
+    if (!(slh->main_list[i].value)) {
+      elem = &(slh->main_list[i]);
+      break;
+    }
   }
 
-  if(!elem && slh->extra_list) {
-	  for(i=0;i<slh->extra_sz;++i) {
-		  if(!(slh->extra_list[i].value)) {
-			  elem = &(slh->extra_list[i]);
-			  break;
-		  }
-	  }
+  if (!elem && slh->extra_list) {
+    for (i = 0; i < slh->extra_sz; ++i) {
+      if (!(slh->extra_list[i].value)) {
+        elem = &(slh->extra_list[i]);
+        break;
+      }
+    }
   }
 
-  if(!elem) {
-	  size_t old_sz = slh->extra_sz;
-	  size_t old_sz_mem = old_sz * sizeof(addr_elem);
-	  slh->extra_list = (addr_elem*)realloc(slh->extra_list, old_sz_mem + sizeof(addr_elem));
-	  elem = &(slh->extra_list[old_sz]);
-	  slh->extra_sz += 1;
+  if (!elem) {
+    size_t old_sz = slh->extra_sz;
+    size_t old_sz_mem = old_sz * sizeof(addr_elem);
+    slh->extra_list = (addr_elem *)realloc(slh->extra_list, old_sz_mem + sizeof(addr_elem));
+    elem = &(slh->extra_list[old_sz]);
+    slh->extra_sz += 1;
   }
 
-  addr_cpy(&(elem->key),key);
-  elem->value=value;
+  addr_cpy(&(elem->key), key);
+  elem->value = value;
 }
 
-static void addr_list_remove(addr_list_header* slh, const ioa_addr* key,
-				   ur_addr_map_func delfunc, int *counter) {
-  if(!slh || !key) return;
+static void addr_list_remove(addr_list_header *slh, const ioa_addr *key, ur_addr_map_func delfunc, int *counter) {
+  if (!slh || !key)
+    return;
 
-  if(counter)
-	  *counter = 0;
+  if (counter)
+    *counter = 0;
 
   size_t i;
 
-  for(i=0;i<ADDR_ARRAY_SIZE;++i) {
-	addr_elem *elem=&(slh->main_list[i]);
-	if(elem->value) {
-		if(addr_eq(&(elem->key),key)) {
-			if(delfunc && elem->value)
-				delfunc(elem->value);
-			elem->value = 0;
-			if(counter) {
-			  *counter += 1;
-			}
-		}
-	}
+  for (i = 0; i < ADDR_ARRAY_SIZE; ++i) {
+    addr_elem *elem = &(slh->main_list[i]);
+    if (elem->value) {
+      if (addr_eq(&(elem->key), key)) {
+        if (delfunc && elem->value)
+          delfunc(elem->value);
+        elem->value = 0;
+        if (counter) {
+          *counter += 1;
+        }
+      }
+    }
   }
 
-  if(slh->extra_list) {
-  	  for(i=0;i<slh->extra_sz;++i) {
-  		  addr_elem *elem=&(slh->extra_list[i]);
-  		  if(elem->value) {
-  			  if(addr_eq(&(elem->key),key)) {
-  				  if(delfunc && elem->value)
-  					  delfunc(elem->value);
-  				  elem->value = 0;
-  				  if(counter) {
-  					  *counter += 1;
-  				  }
-  			  }
-  		  }
-  	  }
-  }
-}
-
-static void addr_list_foreach(addr_list_header* slh,  ur_addr_map_func func) {
-  if(slh && func) {
-
-    	  size_t i;
-
-    	  for(i=0;i<ADDR_ARRAY_SIZE;++i) {
-    		  addr_elem *elem=&(slh->main_list[i]);
-    		  if(elem->value) {
-    			  func(elem->value);
-    		  }
-    	  }
-
-	  if(slh->extra_list) {
-	    	  for(i=0;i<slh->extra_sz;++i) {
-	    		  addr_elem *elem=&(slh->extra_list[i]);
-	    		  if(elem->value) {
-	    			func(elem->value);
-	    		  }
-	    	  }
-	    }
+  if (slh->extra_list) {
+    for (i = 0; i < slh->extra_sz; ++i) {
+      addr_elem *elem = &(slh->extra_list[i]);
+      if (elem->value) {
+        if (addr_eq(&(elem->key), key)) {
+          if (delfunc && elem->value)
+            delfunc(elem->value);
+          elem->value = 0;
+          if (counter) {
+            *counter += 1;
+          }
+        }
+      }
+    }
   }
 }
 
-static size_t addr_list_num_elements(const addr_list_header* slh) {
+static void addr_list_foreach(addr_list_header *slh, ur_addr_map_func func) {
+  if (slh && func) {
 
-	size_t ret = 0;
+    size_t i;
 
-	if (slh) {
+    for (i = 0; i < ADDR_ARRAY_SIZE; ++i) {
+      addr_elem *elem = &(slh->main_list[i]);
+      if (elem->value) {
+        func(elem->value);
+      }
+    }
 
-		size_t i;
-
-		for (i = 0; i < ADDR_ARRAY_SIZE; ++i) {
-			const addr_elem *elem = &(slh->main_list[i]);
-			if (elem->value) {
-				++ret;
-			}
-		}
-
-		if (slh->extra_list) {
-			for (i = 0; i < slh->extra_sz; ++i) {
-				addr_elem *elem = &(slh->extra_list[i]);
-				if (elem->value) {
-					++ret;
-				}
-			}
-		}
-	}
-
-	return ret;
+    if (slh->extra_list) {
+      for (i = 0; i < slh->extra_sz; ++i) {
+        addr_elem *elem = &(slh->extra_list[i]);
+        if (elem->value) {
+          func(elem->value);
+        }
+      }
+    }
+  }
 }
 
-static size_t addr_list_size(const addr_list_header* slh) {
+static size_t addr_list_num_elements(const addr_list_header *slh) {
 
-	size_t ret = 0;
+  size_t ret = 0;
 
-	if (slh) {
+  if (slh) {
 
-		ret += ADDR_ARRAY_SIZE;
+    size_t i;
 
-		ret += slh->extra_sz;
-	}
+    for (i = 0; i < ADDR_ARRAY_SIZE; ++i) {
+      const addr_elem *elem = &(slh->main_list[i]);
+      if (elem->value) {
+        ++ret;
+      }
+    }
 
-	return ret;
+    if (slh->extra_list) {
+      for (i = 0; i < slh->extra_sz; ++i) {
+        addr_elem *elem = &(slh->extra_list[i]);
+        if (elem->value) {
+          ++ret;
+        }
+      }
+    }
+  }
+
+  return ret;
 }
 
-static addr_elem* addr_list_get(addr_list_header* slh, const ioa_addr* key) {
+static size_t addr_list_size(const addr_list_header *slh) {
 
-  if(!slh || !key) return NULL;
+  size_t ret = 0;
+
+  if (slh) {
+
+    ret += ADDR_ARRAY_SIZE;
+
+    ret += slh->extra_sz;
+  }
+
+  return ret;
+}
+
+static addr_elem *addr_list_get(addr_list_header *slh, const ioa_addr *key) {
+
+  if (!slh || !key)
+    return NULL;
 
   size_t i;
 
-  for(i=0;i<ADDR_ARRAY_SIZE;++i) {
-	  addr_elem *elem=&(slh->main_list[i]);
-	  if(elem->value) {
-		  if(addr_eq(&(elem->key),key)) {
-			  return elem;
-		  }
-	  }
+  for (i = 0; i < ADDR_ARRAY_SIZE; ++i) {
+    addr_elem *elem = &(slh->main_list[i]);
+    if (elem->value) {
+      if (addr_eq(&(elem->key), key)) {
+        return elem;
+      }
+    }
   }
 
-  if(slh->extra_list) {
-    	  for(i=0;i<slh->extra_sz;++i) {
-    		  addr_elem *elem=&(slh->extra_list[i]);
-    		  if(elem->value) {
-    			  if(addr_eq(&(elem->key),key)) {
-    				  return elem;
-    			  }
-    		  }
-    	  }
+  if (slh->extra_list) {
+    for (i = 0; i < slh->extra_sz; ++i) {
+      addr_elem *elem = &(slh->extra_list[i]);
+      if (elem->value) {
+        if (addr_eq(&(elem->key), key)) {
+          return elem;
+        }
+      }
+    }
   }
 
   return NULL;
 }
 
-static const addr_elem* addr_list_get_const(const addr_list_header* slh, const ioa_addr* key) {
+static const addr_elem *addr_list_get_const(const addr_list_header *slh, const ioa_addr *key) {
 
-  if(!slh || !key) return NULL;
+  if (!slh || !key)
+    return NULL;
 
   size_t i;
 
-  for(i=0;i<ADDR_ARRAY_SIZE;++i) {
-	  const addr_elem *elem=&(slh->main_list[i]);
-	  if(elem->value) {
-		  if(addr_eq(&(elem->key),key)) {
-			  return elem;
-		  }
-	  }
+  for (i = 0; i < ADDR_ARRAY_SIZE; ++i) {
+    const addr_elem *elem = &(slh->main_list[i]);
+    if (elem->value) {
+      if (addr_eq(&(elem->key), key)) {
+        return elem;
+      }
+    }
   }
 
-  if(slh->extra_list) {
-    	  for(i=0;i<slh->extra_sz;++i) {
-    		  const addr_elem *elem=&(slh->extra_list[i]);
-    		  if(elem->value) {
-    			  if(addr_eq(&(elem->key),key)) {
-    				  return elem;
-    			  }
-    		  }
-    	  }
+  if (slh->extra_list) {
+    for (i = 0; i < slh->extra_sz; ++i) {
+      const addr_elem *elem = &(slh->extra_list[i]);
+      if (elem->value) {
+        if (addr_eq(&(elem->key), key)) {
+          return elem;
+        }
+      }
+    }
   }
 
   return NULL;
@@ -798,19 +785,19 @@ static const addr_elem* addr_list_get_const(const addr_list_header* slh, const i
 
 #define get_addr_list_header(map, key) (&((map)->lists[addr_map_index((key))]))
 
-#define ur_addr_map_valid(map) ((map) && ((map)->magic==MAGIC_HASH))
+#define ur_addr_map_valid(map) ((map) && ((map)->magic == MAGIC_HASH))
 
-void ur_addr_map_init(ur_addr_map* map) {
-  if(map) {
+void ur_addr_map_init(ur_addr_map *map) {
+  if (map) {
     memset(map, 0, sizeof(ur_addr_map));
-    map->magic=MAGIC_HASH;
+    map->magic = MAGIC_HASH;
   }
 }
 
-void ur_addr_map_clean(ur_addr_map* map) {
-  if(map && ur_addr_map_valid(map)) {
-    uint32_t i=0;
-    for(i=0;i<ADDR_MAP_SIZE;i++) {
+void ur_addr_map_clean(ur_addr_map *map) {
+  if (map && ur_addr_map_valid(map)) {
+    uint32_t i = 0;
+    for (i = 0; i < ADDR_MAP_SIZE; i++) {
       addr_list_free(&(map->lists[i]));
     }
     memset(map, 0, sizeof(ur_addr_map));
@@ -823,19 +810,20 @@ void ur_addr_map_clean(ur_addr_map* map) {
  * -1 - error
  * if the addr key exists, the value is updated.
  */
-int ur_addr_map_put(ur_addr_map* map, ioa_addr* key, ur_addr_map_value_type value) {
+int ur_addr_map_put(ur_addr_map *map, ioa_addr *key, ur_addr_map_value_type value) {
 
-  if(!ur_addr_map_valid(map)) return -1;
+  if (!ur_addr_map_valid(map))
+    return -1;
 
   else {
 
-    addr_list_header* slh = get_addr_list_header(map, key);
+    addr_list_header *slh = get_addr_list_header(map, key);
 
-    addr_elem* elem = addr_list_get(slh, key);
-    if(elem) {
-      elem->value=value;
+    addr_elem *elem = addr_list_get(slh, key);
+    if (elem) {
+      elem->value = value;
     } else {
-      addr_list_add(slh,key,value);
+      addr_list_add(slh, key, value);
     }
 
     return 0;
@@ -847,17 +835,19 @@ int ur_addr_map_put(ur_addr_map* map, ioa_addr* key, ur_addr_map_value_type valu
  * 1 - success
  * 0 - not found
  */
-int ur_addr_map_get(const ur_addr_map* map, ioa_addr* key, ur_addr_map_value_type *value) {
+int ur_addr_map_get(const ur_addr_map *map, ioa_addr *key, ur_addr_map_value_type *value) {
 
-  if(!ur_addr_map_valid(map)) return 0;
+  if (!ur_addr_map_valid(map))
+    return 0;
 
   else {
 
-    const addr_list_header* slh = get_addr_list_header(map, key);
+    const addr_list_header *slh = get_addr_list_header(map, key);
 
     const addr_elem *elem = addr_list_get_const(slh, key);
-    if(elem) {
-      if(value) *value=elem->value;
+    if (elem) {
+      if (value)
+        *value = elem->value;
       return 1;
     }
 
@@ -870,19 +860,20 @@ int ur_addr_map_get(const ur_addr_map* map, ioa_addr* key, ur_addr_map_value_typ
  * 1 - success
  * 0 - not found
  */
-int ur_addr_map_del(ur_addr_map* map, ioa_addr* key,ur_addr_map_func delfunc) {
+int ur_addr_map_del(ur_addr_map *map, ioa_addr *key, ur_addr_map_func delfunc) {
 
-  if(!ur_addr_map_valid(map)) return 0;
+  if (!ur_addr_map_valid(map))
+    return 0;
 
   else {
 
-    addr_list_header* slh = get_addr_list_header(map, key);
+    addr_list_header *slh = get_addr_list_header(map, key);
 
-    int counter=0;
+    int counter = 0;
 
     addr_list_remove(slh, key, delfunc, &counter);
 
-    return (counter>0);
+    return (counter > 0);
   }
 }
 
@@ -891,58 +882,58 @@ int ur_addr_map_del(ur_addr_map* map, ioa_addr* key,ur_addr_map_func delfunc) {
  * 1 - success
  * 0 - not found
  */
-void ur_addr_map_foreach(ur_addr_map* map, ur_addr_map_func func) {
+void ur_addr_map_foreach(ur_addr_map *map, ur_addr_map_func func) {
 
-  if(ur_addr_map_valid(map)) {
+  if (ur_addr_map_valid(map)) {
 
-    uint32_t i=0;
-    for(i=0;i<ADDR_MAP_SIZE;i++) {
-      
-      addr_list_header* slh = &(map->lists[i]);
-      
+    uint32_t i = 0;
+    for (i = 0; i < ADDR_MAP_SIZE; i++) {
+
+      addr_list_header *slh = &(map->lists[i]);
+
       addr_list_foreach(slh, func);
     }
   }
 }
 
-size_t ur_addr_map_num_elements(const ur_addr_map* map) {
+size_t ur_addr_map_num_elements(const ur_addr_map *map) {
 
-	size_t ret = 0;
+  size_t ret = 0;
 
-	if (ur_addr_map_valid(map)) {
-		uint32_t i = 0;
-		for (i = 0; i < ADDR_MAP_SIZE; i++) {
+  if (ur_addr_map_valid(map)) {
+    uint32_t i = 0;
+    for (i = 0; i < ADDR_MAP_SIZE; i++) {
 
-			const addr_list_header* slh = &(map->lists[i]);
+      const addr_list_header *slh = &(map->lists[i]);
 
-			ret += addr_list_num_elements(slh);
-		}
-	}
+      ret += addr_list_num_elements(slh);
+    }
+  }
 
-	return ret;
+  return ret;
 }
 
-size_t ur_addr_map_size(const ur_addr_map* map) {
+size_t ur_addr_map_size(const ur_addr_map *map) {
 
-	size_t ret = 0;
+  size_t ret = 0;
 
-	if (ur_addr_map_valid(map)) {
-		uint32_t i = 0;
-		for (i = 0; i < ADDR_MAP_SIZE; i++) {
+  if (ur_addr_map_valid(map)) {
+    uint32_t i = 0;
+    for (i = 0; i < ADDR_MAP_SIZE; i++) {
 
-			const addr_list_header* slh = &(map->lists[i]);
+      const addr_list_header *slh = &(map->lists[i]);
 
-			ret += addr_list_size(slh);
-		}
-	}
+      ret += addr_list_size(slh);
+    }
+  }
 
-	return ret;
+  return ret;
 }
 
 ////////////////////  STRING LISTS ///////////////////////////////////
 
 typedef struct _string_list {
-  struct _string_list* next;
+  struct _string_list *next;
 } string_list;
 
 typedef struct _string_elem {
@@ -957,61 +948,67 @@ typedef struct _string_list_header {
 } string_list_header;
 
 static size_t string_list_size(const string_list *sl) {
-  if(!sl) return 0;
-  return 1+string_list_size(sl->next);
+  if (!sl)
+    return 0;
+  return 1 + string_list_size(sl->next);
 }
 
-static void string_list_free(string_list_header* slh, ur_string_map_func del_value_func) {
-  if(slh) {
-    string_list* list=slh->list;
-    while(list) {
-      string_elem *elem=(string_elem*)list;
-      string_list* tail=elem->list.next;
-      if(elem->key) free(elem->key);
-      if(del_value_func && elem->value)
-	      del_value_func(elem->value);
+static void string_list_free(string_list_header *slh, ur_string_map_func del_value_func) {
+  if (slh) {
+    string_list *list = slh->list;
+    while (list) {
+      string_elem *elem = (string_elem *)list;
+      string_list *tail = elem->list.next;
+      if (elem->key)
+        free(elem->key);
+      if (del_value_func && elem->value)
+        del_value_func(elem->value);
       free(elem);
-      list=tail;
+      list = tail;
     }
-    slh->list=NULL;
+    slh->list = NULL;
   }
 }
 
-static string_list* string_list_add(string_list* sl, const ur_string_map_key_type key, ur_string_map_value_type value) {
-  if(!key) return sl;
-  string_elem *elem=(string_elem*)malloc(sizeof(string_elem));
-  elem->list.next=sl;
-  elem->key_size = strlen(key)+1;
-  elem->key=(char*)malloc(elem->key_size);
-  memcpy(elem->key,key,elem->key_size);
-  elem->value=value;
+static string_list *string_list_add(string_list *sl, const ur_string_map_key_type key, ur_string_map_value_type value) {
+  if (!key)
+    return sl;
+  string_elem *elem = (string_elem *)malloc(sizeof(string_elem));
+  elem->list.next = sl;
+  elem->key_size = strlen(key) + 1;
+  elem->key = (char *)malloc(elem->key_size);
+  memcpy(elem->key, key, elem->key_size);
+  elem->value = value;
   return &(elem->list);
 }
 
-static string_list* string_list_remove(string_list* sl, const ur_string_map_key_type key,
-					ur_string_map_func del_value_func, int *counter) {
-  if(!sl || !key) return sl;
-  string_elem *elem=(string_elem*)sl;
-  string_list* tail=elem->list.next;
-  if(strcmp(elem->key,key)==0) {
+static string_list *string_list_remove(string_list *sl, const ur_string_map_key_type key,
+                                       ur_string_map_func del_value_func, int *counter) {
+  if (!sl || !key)
+    return sl;
+  string_elem *elem = (string_elem *)sl;
+  string_list *tail = elem->list.next;
+  if (strcmp(elem->key, key) == 0) {
     free(elem->key);
-    if(del_value_func)
-	    del_value_func(elem->value);
+    if (del_value_func)
+      del_value_func(elem->value);
     free(elem);
-    if(counter) *counter+=1;
-    sl=string_list_remove(tail, key, del_value_func, counter);
+    if (counter)
+      *counter += 1;
+    sl = string_list_remove(tail, key, del_value_func, counter);
   } else {
-    elem->list.next=string_list_remove(tail,key,del_value_func,counter);
+    elem->list.next = string_list_remove(tail, key, del_value_func, counter);
   }
   return sl;
 }
 
-static string_elem* string_list_get(string_list* sl, const ur_string_map_key_type key) {
+static string_elem *string_list_get(string_list *sl, const ur_string_map_key_type key) {
 
-  if(!sl || !key) return NULL;
+  if (!sl || !key)
+    return NULL;
 
-  string_elem *elem=(string_elem*)sl;
-  if(strcmp(elem->key,key)==0) {
+  string_elem *elem = (string_elem *)sl;
+  if (strcmp(elem->key, key) == 0) {
     return elem;
   } else {
     return string_list_get(elem->list.next, key);
@@ -1031,7 +1028,7 @@ struct _ur_string_map {
 
 static uint32_t string_hash(const ur_string_map_key_type key) {
 
-  uint8_t *str=(uint8_t*)key;
+  uint8_t *str = (uint8_t *)key;
 
   uint32_t hash = 0;
   int c = 0;
@@ -1042,18 +1039,16 @@ static uint32_t string_hash(const ur_string_map_key_type key) {
   return hash;
 }
 
-static int string_map_index(const ur_string_map_key_type key) {
-  return (int)(string_hash(key) % STRING_MAP_SIZE);
-}
+static int string_map_index(const ur_string_map_key_type key) { return (int)(string_hash(key) % STRING_MAP_SIZE); }
 
-static string_list_header* get_string_list_header(ur_string_map *map, const ur_string_map_key_type key) {
+static string_list_header *get_string_list_header(ur_string_map *map, const ur_string_map_key_type key) {
   return &(map->lists[string_map_index(key)]);
 }
 
-static int ur_string_map_init(ur_string_map* map) {
-  if(map) {
+static int ur_string_map_init(ur_string_map *map) {
+  if (map) {
     memset(map, 0, sizeof(ur_string_map));
-    map->magic=MAGIC_HASH;
+    map->magic = MAGIC_HASH;
 
     TURN_MUTEX_INIT_RECURSIVE(&(map->mutex));
 
@@ -1062,13 +1057,11 @@ static int ur_string_map_init(ur_string_map* map) {
   return -1;
 }
 
-static int ur_string_map_valid(const ur_string_map *map) {
-  return (map && map->magic==MAGIC_HASH);
-}
+static int ur_string_map_valid(const ur_string_map *map) { return (map && map->magic == MAGIC_HASH); }
 
-ur_string_map* ur_string_map_create(ur_string_map_func del_value_func) {
-  ur_string_map *map=(ur_string_map*)malloc(sizeof(ur_string_map));
-  if(ur_string_map_init(map)<0) {
+ur_string_map *ur_string_map_create(ur_string_map_func del_value_func) {
+  ur_string_map *map = (ur_string_map *)malloc(sizeof(ur_string_map));
+  if (ur_string_map_init(map) < 0) {
     free(map);
     return NULL;
   }
@@ -1082,25 +1075,26 @@ ur_string_map* ur_string_map_create(ur_string_map_func del_value_func) {
  * -1 - error
  * if the string key exists, and the value is different, return error.
  */
-int ur_string_map_put(ur_string_map* map, const ur_string_map_key_type key, ur_string_map_value_type value) {
+int ur_string_map_put(ur_string_map *map, const ur_string_map_key_type key, ur_string_map_value_type value) {
 
-  if(!ur_string_map_valid(map)) return -1;
+  if (!ur_string_map_valid(map))
+    return -1;
 
   else {
 
-    string_list_header* slh = get_string_list_header(map, key);
+    string_list_header *slh = get_string_list_header(map, key);
 
     string_elem *elem = string_list_get(slh->list, key);
-    if(elem) {
-      if(elem->value != value) {
-	      if(map->del_value_func)
-		      map->del_value_func(elem->value);
-	      elem->value = value;
+    if (elem) {
+      if (elem->value != value) {
+        if (map->del_value_func)
+          map->del_value_func(elem->value);
+        elem->value = value;
       }
       return 0;
     }
 
-    slh->list=string_list_add(slh->list,key,value);
+    slh->list = string_list_add(slh->list, key, value);
 
     return 0;
   }
@@ -1111,16 +1105,18 @@ int ur_string_map_put(ur_string_map* map, const ur_string_map_key_type key, ur_s
  * 1 - success
  * 0 - not found
  */
-int ur_string_map_get(ur_string_map* map, const ur_string_map_key_type key, ur_string_map_value_type *value) {
+int ur_string_map_get(ur_string_map *map, const ur_string_map_key_type key, ur_string_map_value_type *value) {
 
-  if(!ur_string_map_valid(map)) return 0;
+  if (!ur_string_map_valid(map))
+    return 0;
 
   else {
 
-    string_list_header* slh = get_string_list_header(map, key);
+    string_list_header *slh = get_string_list_header(map, key);
     string_elem *elem = string_list_get(slh->list, key);
-    if(elem) {
-      if(value) *value=elem->value;
+    if (elem) {
+      if (value)
+        *value = elem->value;
       return 1;
     } else {
       return 0;
@@ -1133,50 +1129,51 @@ int ur_string_map_get(ur_string_map* map, const ur_string_map_key_type key, ur_s
  * 1 - success
  * 0 - not found
  */
-int ur_string_map_del(ur_string_map* map, const ur_string_map_key_type key) {
+int ur_string_map_del(ur_string_map *map, const ur_string_map_key_type key) {
 
-  if(!ur_string_map_valid(map)) return 0;
+  if (!ur_string_map_valid(map))
+    return 0;
 
   else {
 
-    string_list_header* slh = get_string_list_header(map, key);
+    string_list_header *slh = get_string_list_header(map, key);
 
-    int counter=0;
+    int counter = 0;
 
-    slh->list=string_list_remove(slh->list, key, map->del_value_func, &counter);
+    slh->list = string_list_remove(slh->list, key, map->del_value_func, &counter);
 
-    return (counter>0);
+    return (counter > 0);
   }
 }
 
-void ur_string_map_clean(ur_string_map* map) {
-	if (ur_string_map_valid(map)) {
-		int i = 0;
-		for (i = 0; i < STRING_MAP_SIZE; i++) {
-			string_list_free(&(map->lists[i]), map->del_value_func);
-		}
-	}
+void ur_string_map_clean(ur_string_map *map) {
+  if (ur_string_map_valid(map)) {
+    int i = 0;
+    for (i = 0; i < STRING_MAP_SIZE; i++) {
+      string_list_free(&(map->lists[i]), map->del_value_func);
+    }
+  }
 }
 
-void ur_string_map_free(ur_string_map** map) {
-  if(map && ur_string_map_valid(*map)) {
-    int i=0;
-    for(i=0;i<STRING_MAP_SIZE;i++) {
-      string_list_free(&((*map)->lists[i]),(*map)->del_value_func);
+void ur_string_map_free(ur_string_map **map) {
+  if (map && ur_string_map_valid(*map)) {
+    int i = 0;
+    for (i = 0; i < STRING_MAP_SIZE; i++) {
+      string_list_free(&((*map)->lists[i]), (*map)->del_value_func);
     }
-    (*map)->magic=0;
+    (*map)->magic = 0;
     TURN_MUTEX_DESTROY(&((*map)->mutex));
     free(*map);
-    *map=NULL;
+    *map = NULL;
   }
 }
 
-size_t ur_string_map_size(const ur_string_map* map) {
-  if(ur_string_map_valid(map)) {
-    size_t ret=0;
-    int i=0;
-    for(i=0;i<STRING_MAP_SIZE;i++) {
-      ret+=string_list_size(map->lists[i].list);
+size_t ur_string_map_size(const ur_string_map *map) {
+  if (ur_string_map_valid(map)) {
+    size_t ret = 0;
+    int i = 0;
+    for (i = 0; i < STRING_MAP_SIZE; i++) {
+      ret += string_list_size(map->lists[i].list);
     }
     return ret;
   } else {
@@ -1184,17 +1181,17 @@ size_t ur_string_map_size(const ur_string_map* map) {
   }
 }
 
-int ur_string_map_lock(const ur_string_map* map) {
-  if(ur_string_map_valid(map)) {
-    TURN_MUTEX_LOCK((const turn_mutex*)&(map->mutex));
+int ur_string_map_lock(const ur_string_map *map) {
+  if (ur_string_map_valid(map)) {
+    TURN_MUTEX_LOCK((const turn_mutex *)&(map->mutex));
     return 0;
   }
   return -1;
 }
 
-int ur_string_map_unlock(const ur_string_map* map) {
-  if(ur_string_map_valid(map)) {
-    TURN_MUTEX_UNLOCK((const turn_mutex*)&(map->mutex));
+int ur_string_map_unlock(const ur_string_map *map) {
+  if (ur_string_map_valid(map)) {
+    TURN_MUTEX_UNLOCK((const turn_mutex *)&(map->mutex));
     return 0;
   }
   return -1;
