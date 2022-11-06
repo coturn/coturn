@@ -131,14 +131,12 @@ void prom_set_finished_traffic(const char* realm, const char* user, unsigned lon
 
 void prom_inc_allocation(SOCKET_TYPE type) {
   if (turn_params.prometheus == 1){
-    prom_gauge_inc(turn_total_allocations, (const char*[]) {"all"});
     prom_gauge_inc(turn_total_allocations, (const char*[]) {socket_type_name(type)});
   }
 }
 
 void prom_dec_allocation(SOCKET_TYPE type) {
   if (turn_params.prometheus == 1){
-    prom_gauge_dec(turn_total_allocations, (const char*[]) {"all"});
     prom_gauge_dec(turn_total_allocations, (const char*[]) {socket_type_name(type)});
   }
 }
