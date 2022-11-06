@@ -802,12 +802,12 @@ static ts_ur_super_session* create_new_ss(turn_turnserver* server) {
 	return ss;
 }
 
-static void delete_ur_map_ss(void *p) {
+static void delete_ur_map_ss(void *p, SOCKET_TYPE socket_type) {
 	if (p) {
 		ts_ur_super_session* ss = (ts_ur_super_session*) p;
 		delete_session_from_map(ss);
 		IOA_CLOSE_SOCKET(ss->client_socket);
-		clear_allocation(get_allocation_ss(ss));
+		clear_allocation(get_allocation_ss(ss), socket_type);
 		IOA_EVENT_DEL(ss->to_be_allocated_timeout_ev);
 		free(p);
 	}
@@ -815,7 +815,7 @@ static void delete_ur_map_ss(void *p) {
 
 /////////// clean all /////////////////////
 
-static int turn_server_remove_all_from_ur_map_ss(ts_ur_super_session* ss) {
+static int turn_server_remove_all_from_ur_map_ss(ts_ur_super_session* ss, SOCKET_TYPE socket_type) {
 	if (!ss)
 		return 0;
 	else {
@@ -829,7 +829,7 @@ static int turn_server_remove_all_from_ur_map_ss(ts_ur_super_session* ss) {
 		if (get_relay_socket_ss(ss,AF_INET6)) {
 			clear_ioa_socket_session_if(get_relay_socket_ss(ss,AF_INET6), ss);
 		}
-		delete_ur_map_ss(ss);
+		delete_ur_map_ss(ss, socket_type);
 		return ret;
 	}
 }
@@ -4169,6 +4169,8 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
 	if (!ss)
 		return -1;
 
+	SOCKET_TYPE socket_type = get_ioa_socket_type(ss->client_socket);
+
 	turn_report_session_usage(ss, 1);
 	dec_quota(ss);
 	dec_bps(ss);
@@ -4227,7 +4229,7 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
 		}
 	}
 
-	turn_server_remove_all_from_ur_map_ss(ss);
+	turn_server_remove_all_from_ur_map_ss(ss, socket_type);
 
 	FUNCEND;
 
@@ -4334,7 +4336,7 @@ static void client_ss_allocation_timeout_handler(ioa_engine_handle e, void *arg)
 	turn_turnserver* server = (turn_turnserver*) (ss->server);
 
 	if (!server) {
-		clear_allocation(a);
+		clear_allocation(a, get_ioa_socket_type(ss->client_socket));
 		return;
 	}
 
