@@ -100,7 +100,7 @@ int start_prometheus_server(void){
 }
 
 void prom_set_finished_traffic(const char* realm, const char* user, unsigned long rsvp, unsigned long rsvb, unsigned long sentp, unsigned long sentb, bool peer){
-  if (turn_params.prometheus == 1){
+  if (turn_params.prometheus > PROM_DISABLED){
 
     const char *label[] = {realm, NULL};
     if (turn_params.prometheus_username_labels){
@@ -132,13 +132,13 @@ void prom_set_finished_traffic(const char* realm, const char* user, unsigned lon
 }
 
 void prom_inc_allocation(void) {
-  if (turn_params.prometheus == 1){
+  if (turn_params.prometheus > PROM_DISABLED){
     prom_gauge_inc(turn_total_allocations, NULL);
   }
 }
 
 void prom_dec_allocation(void) {
-  if (turn_params.prometheus == 1){
+  if (turn_params.prometheus > PROM_DISABLED){
     prom_gauge_dec(turn_total_allocations, NULL);
   }
 }
