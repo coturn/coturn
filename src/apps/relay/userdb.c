@@ -67,10 +67,11 @@
 #include "apputils.h"
 
 
-#define ZREST_USERNAME_REGEX	"^d=([0-9]+)\\.v=1\\.k=([0-9]+)\\.t=s\\.r=[a-z0-9]*$"
-#define ZREST_USERNAME_CAPTURES	3
-#define ZREST_DEADLINE_CAP	1
-#define ZREST_KEYINDEX_CAP	2
+#define ZREST_USERNAME_REGEX	"^(sft-)?d=([0-9]+)\\.v=1\\.k=([0-9]+)\\.t=s\\.r=[-_a-z0-9]*$"
+#define ZREST_USERNAME_CAPTURES	4
+#define ZREST_SFT_CAP   	1
+#define ZREST_DEADLINE_CAP	2
+#define ZREST_KEYINDEX_CAP	3
 
 static regex_t zrest_username_regex;
 
@@ -407,7 +408,7 @@ static char *get_real_username(char *usname)
 	return strdup(usname);
 }
 
-static int zrest_validate_username(char *usname, uint32_t *keyindex, turn_time_t *deadline)
+static int zrest_validate_username(char *usname, uint32_t *keyindex, turn_time_t *deadline, int *check_deadline)
 {
 	regmatch_t matches[ZREST_USERNAME_CAPTURES];
 	int ret;
@@ -426,6 +427,9 @@ static int zrest_validate_username(char *usname, uint32_t *keyindex, turn_time_t
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Empty capture groups in valid zrest username\n");
 		goto regout;
 	}
+
+	/* only check the deadline for non-sft clients */
+	*check_deadline = matches[ZREST_SFT_CAP].rm_so == -1;
 
 	span = &usname[matches[ZREST_KEYINDEX_CAP].rm_so];
 	span_len = matches[ZREST_KEYINDEX_CAP].rm_eo - matches[ZREST_KEYINDEX_CAP].rm_so;
@@ -618,6 +622,7 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
 
 	if(turn_params.use_zrest_auth_secret) {
 		uint32_t kidx;
+		int check_deadline;
 		turn_time_t deadline, now;
 		secrets_list_t sl;
 		unsigned char hmac[MAXSHASIZE];
@@ -626,11 +631,11 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
 		size_t sll = 0, pwd_len;
 		password_t pwdtmp;
 
-		if(zrest_validate_username((char *)usname, &kidx, &deadline)!=0)
+		if(zrest_validate_username((char *)usname, &kidx, &deadline, &check_deadline)!=0)
 			return ret;
 
 		now = (turn_time_t) time(NULL);
-		if (!turn_time_before(now, deadline)) {
+		if (check_deadline && !turn_time_before(now, deadline)) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "zrest authentication token expired\n");
 			return ret;
 		}
