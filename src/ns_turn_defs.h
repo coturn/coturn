@@ -33,7 +33,10 @@
 
 #define TURN_SERVER_VERSION "4.6.0"
 #define TURN_SERVER_VERSION_NAME "Gorst"
-#define TURN_SOFTWARE "Coturn-" TURN_SERVER_VERSION " '" TURN_SERVER_VERSION_NAME "'"
+#ifndef TURN_SERVER_BUILD_INFO
+#define TURN_SERVER_BUILD_INFO ""
+#endif
+#define TURN_SOFTWARE "Coturn-" TURN_SERVER_VERSION " '" TURN_SERVER_VERSION_NAME "'" TURN_SERVER_BUILD_INFO
 
 #if (defined(__unix__) || defined(unix)) && !defined(USG)
 #include <sys/param.h>
