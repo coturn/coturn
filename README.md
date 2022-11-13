@@ -1,86 +1,129 @@
-**_This project evolved from rfc5766-turn-server project (https://code.google.com/p/rfc5766-turn-server/). There are many new advanced TURN specs which are going far beyond the original RFC 5766 document. This project takes the code of rfc5766-turn-server as the starter, and adds new advanced features to it._**
+[![Docker CI](https://github.com/coturn/coturn/actions/workflows/docker.yml/badge.svg  "Docker CI")](https://github.com/coturn/coturn/actions/workflows/docker.yml)
+[![Docker Hub](https://img.shields.io/docker/pulls/coturn/coturn?label=Docker%20Hub%20pulls "Docker Hub pulls")](https://hub.docker.com/r/coturn/coturn)
 
-[Downloads page](https://github.com/coturn/coturn/wiki/Downloads)
+[Docker Hub](https://hub.docker.com/r/coturn/coturn)
+| [GitHub Container Registry](https://github.com/orgs/coturn/packages/container/package/coturn)
+| [Quay.io](https://quay.io/repository/coturn/coturn)
 
-[Docker image](https://github.com/coturn/coturn/tree/master/docker/coturn)
+# Coturn TURN server #
 
-[Wiki pages](https://github.com/coturn/coturn/wiki/)
+coturn is a free open source implementation of TURN and STUN Server.
+The TURN Server is a VoIP media traffic NAT traversal server and gateway.
 
-# Free open source implementation of TURN and STUN Server #
+## Installing / Getting started
 
-The TURN Server is a VoIP media traffic NAT traversal server and gateway. It can be used as a general-purpose network traffic TURN server and gateway, too.
+Linux distros may have a version of coturn which you can install by
+```
+apt install coturn
+turnserver --log-file stdout
+```
 
-On-line management interface (over telnet or over HTTPS) for the TURN server is available.
+Or run coturn using docker container:
+```
+docker run -d -p 3478:3478 -p 3478:3478/udp -p 5349:5349 -p 5349:5349/udp -p 49152-65535:49152-65535/udp coturn/coturn
+```
+See more details about using docker container [Docker Readme](https://github.com/coturn/coturn/blob/master/docker/coturn/README.md)
 
-The implementation also includes some extra experimental features.
 
-Supported RFCs:
+## Developing
 
-TURN specs:
+### Dependencies
 
-  * RFC 5766 - base TURN specs
-  * RFC 6062 - TCP relaying TURN extension
-  * RFC 6156 - IPv6 extension for TURN
-  * RFC 7443 - ALPN support for STUN & TURN
-  * RFC 7635 - oAuth third-party TURN/STUN authorization
-  * DTLS support (http://tools.ietf.org/html/draft-petithuguenin-tram-turn-dtls-00).
-  * Mobile ICE (MICE) support (http://tools.ietf.org/html/draft-wing-tram-turn-mobility-02).
-  * TURN REST API (http://tools.ietf.org/html/draft-uberti-behave-turn-rest-00)
-  * Origin field in TURN (Multi-tenant TURN Server) (https://tools.ietf.org/html/draft-ietf-tram-stun-origin-06)
-  * TURN Bandwidth draft specs (http://tools.ietf.org/html/draft-thomson-tram-turn-bandwidth-01)
-  * TURN-bis (with dual allocation) draft specs (http://tools.ietf.org/html/draft-ietf-tram-turnbis-04).
+coturn requires following dependencies to be installed first
+- libevent2
+
+Optional
+- openssl (to support TLS and DTLS, authorized STUN and TURN)
+- libmicrohttp and [prometheus-client-c](https://github.com/digitalocean/prometheus-client-c) (prometheus interface)
+- MySQL (user database)
+- [Hiredis](https://github.com/redis/hiredis) (user database, monitoring)
+- SQLite (user database)
+- PostgreSQL (user database)
+
+### Building
+```shell
+git clone git@github.com:coturn/coturn.git
+cd coturn
+./configure
+make
+```
+
+
+## Features
 
 STUN specs:
 
-  * RFC 3489 - "classic" STUN
-  * RFC 5389 - base "new" STUN specs
-  * RFC 5769 - test vectors for STUN protocol testing
-  * RFC 5780 - NAT behavior discovery support
-  * RFC 7443 - ALPN support for STUN & TURN
-  * RFC 7635 - oAuth third-party TURN/STUN authorization
+  * [RFC 3489](https://datatracker.ietf.org/doc/html/rfc3489) - "classic" STUN
+  * [RFC 5389](https://datatracker.ietf.org/doc/html/rfc5389) - base "new" STUN specs
+  * [RFC 5769](https://datatracker.ietf.org/doc/html/rfc5769) - test vectors for STUN protocol testing
+  * [RFC 5780](https://datatracker.ietf.org/doc/html/rfc5780) - NAT behavior discovery support
+  * [RFC 7443](https://datatracker.ietf.org/doc/html/rfc7443) - ALPN support for STUN & TURN
+  * [RFC 7635](https://datatracker.ietf.org/doc/html/rfc7635) - oAuth third-party TURN/STUN authorization
+  
+TURN specs:
 
-Supported ICE and related specs:
+  * [RFC 5766](https://datatracker.ietf.org/doc/html/rfc5766) - base TURN specs
+  * [RFC 6062](https://datatracker.ietf.org/doc/html/rfc6062) - TCP relaying TURN extension
+  * [RFC 6156](https://datatracker.ietf.org/doc/html/rfc6156) - IPv6 extension for TURN
+  * [RFC 7443](https://datatracker.ietf.org/doc/html/rfc7443) - ALPN support for STUN & TURN
+  * [RFC 7635](https://datatracker.ietf.org/doc/html/rfc7635) - oAuth third-party TURN/STUN authorization
+  * DTLS support (http://tools.ietf.org/html/draft-petithuguenin-tram-turn-dtls-00)
+  * Mobile ICE (MICE) support (http://tools.ietf.org/html/draft-wing-tram-turn-mobility-02)
+  * TURN REST API (http://tools.ietf.org/html/draft-uberti-behave-turn-rest-00)
+  * Origin field in TURN (Multi-tenant TURN Server) (https://tools.ietf.org/html/draft-ietf-tram-stun-origin-06)
+  * TURN Bandwidth draft specs (http://tools.ietf.org/html/draft-thomson-tram-turn-bandwidth-01)
+  * TURN-bis (with dual allocation) draft specs (http://tools.ietf.org/html/draft-ietf-tram-turnbis-04)
 
-  * RFC 5245 - ICE
-  * RFC 5768 – ICE–SIP
-  * RFC 6336 – ICE–IANA Registry
-  * RFC 6544 – ICE–TCP
-  * RFC 5928 - TURN Resolution Mechanism
+ICE and related specs:
+
+  * [RFC 5245](https://datatracker.ietf.org/doc/html/rfc5245) - ICE
+  * [RFC 5768](https://datatracker.ietf.org/doc/html/rfc5768) – ICE–SIP
+  * [RFC 6336](https://datatracker.ietf.org/doc/html/rfc6336) – ICE–IANA Registry
+  * [RFC 6544](https://datatracker.ietf.org/doc/html/rfc6544) – ICE–TCP
+  * [RFC 5928](https://datatracker.ietf.org/doc/html/rfc5928) - TURN Resolution Mechanism
 
 The implementation fully supports the following client-to-TURN-server protocols:
 
-  * UDP (per RFC 5766)
-  * TCP (per RFC 5766 and RFC 6062)
-  * TLS (per RFC 5766 and RFC 6062): TLS1.0/TLS1.1/TLS1.2; ECDHE is supported.
-  * DTLS  (http://tools.ietf.org/html/draft-petithuguenin-tram-turn-dtls-00): DTLS versions 1.0 and 1.2.
+  * UDP (per [RFC 5766](https://datatracker.ietf.org/doc/html/rfc5766))
+  * TCP (per [RFC 5766](https://datatracker.ietf.org/doc/html/rfc5766) and [RFC 6062](https://datatracker.ietf.org/doc/html/rfc6062))
+  * TLS (per [RFC 5766](https://datatracker.ietf.org/doc/html/rfc) and [RFC 6062](https://datatracker.ietf.org/doc/html/rfc6062)): including TLS1.3; ECDHE is supported.
+  * DTLS1.0 and DTLS1.2 (http://tools.ietf.org/html/draft-petithuguenin-tram-turn-dtls-00)
   * SCTP (experimental implementation).
 
-Supported relay protocols:
+Relay protocols:
 
-  * UDP (per RFC 5766)
-  * TCP (per RFC 6062)
+  * UDP (per [RFC 5766](https://datatracker.ietf.org/doc/html/rfc5766))
+  * TCP (per [RFC 6062](https://datatracker.ietf.org/doc/html/rfc6062))
 
-Supported user databases (for user repository, with passwords or keys, if authentication is required):
+User databases (for user repository, with passwords or keys, if authentication is required):
 
   * SQLite
   * MySQL
   * PostgreSQL
   * Redis
   * MongoDB
+  
+  
+Management interfaces:
+ * telnet cli 
+ * HTTPS interface
 
-Redis can also be used for status and statistics storage and notification.
 
-By default a [prometheus](https://prometheus.io/) exporter endpoint is disabled, if it is enabled it will listen on port 9641 under path /metrics
+Monitoring:
+ * Redis can be used for status and statistics storage and notification
+ * [prometheus](https://prometheus.io/) interface
 
-Supported message integrity digest algorithms:
+Message integrity digest algorithms:
 
   * HMAC-SHA1, with MD5-hashed keys (as required by STUN and TURN standards)
 
-Supported TURN authentication mechanisms:
+TURN authentication mechanisms:
 
   * 'classic' long-term credentials mechanism;
   * TURN REST API (a modification of the long-term mechanism, for time-limited secret-based authentication, for WebRTC applications: http://tools.ietf.org/html/draft-uberti-behave-turn-rest-00);
   * experimental third-party oAuth-based client authorization option;
+
+Performance and Load Balancing:
 
 When used as a part of an ICE solution, for VoIP connectivity, this TURN server can handle thousands simultaneous calls per CPU (when TURN protocol is used) or tens of thousands calls when only STUN protocol is used. For virtually unlimited scalability a load balancing scheme can be used. The load balancing can be implemented with the following tools (either one or a combination of them):
 
@@ -90,7 +133,7 @@ When used as a part of an ICE solution, for VoIP connectivity, this TURN server 
 
 Traffic bandwidth limitation and congestion avoidance algorithms implemented.
 
-The supported project target platforms are:
+Target platforms:
 
   * Linux (Debian, Ubuntu, Mint, CentOS, Fedora, Redhat, Amazon Linux, Arch Linux, OpenSUSE)
   * BSD (FreeBSD, NetBSD, OpenBSD, DragonFlyBSD)
@@ -98,10 +141,6 @@ The supported project target platforms are:
   * Mac OS X
   * Cygwin (for non-production R&D purposes)
   * Windows (native with, e.g., MSVC toolchain)
-
-Other server platforms can be supported by request.
-
-Any client platform is supported, including Android, iOS, Linux, OS X, Windows, and Windows Phone.
 
 This project can be successfully used on other `*NIX` platforms, too, but that is not officially supported.
 
@@ -116,15 +155,10 @@ To achieve high performance and scalability, the TURN server is implemented with
   * The TURN project code can be used in a custom proprietary networking environment. In the TURN server code, an abstract networking API is used. Only couple files in the project have to be re-written to plug-in the TURN server into a proprietary environment. With this project, only implementation for standard UNIX Networking/IO API is provided, but the  user can implement any other environment. The TURN server code was originally developed for a high-performance proprietary corporate environment, then adopted for UNIX Networking API
   * The TURN server works as a user space process, without imposing any special requirements on the system
 
-To download the TURN Server software, the client messaging library and the test programs, click the tab "Downloads".
 
-Contact information:
+## Links
 
-https://groups.google.com/forum/#!forum/turn-server-project-rfc5766-turn-server
-
-email:misi@majd.eu
-      mom040267@gmail.com
-
-### Feedback is very welcome (bugs, issues, suggestions, stories, questions). ###
-
-### Volunteers are welcome, too. ###
+- Project homepage: https://coturn.github.io/
+- Repository: https://github.com/coturn/coturn/
+- Issue tracker: https://github.com/coturn/coturn/issues
+- Google group: https://groups.google.com/forum/#!forum/turn-server-project-rfc5766-turn-server
