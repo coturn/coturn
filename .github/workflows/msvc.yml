@@ -59,7 +59,7 @@ jobs:
         cmake -E make_directory ${{env.INSTALL_DIR}}
 
     - name: Cache installed
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       id: cache-installed
       with:
         path: |
