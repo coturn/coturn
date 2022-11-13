@@ -52,6 +52,9 @@ string(TOLOWER "${CMAKE_BUILD_TYPE}" build_type)
 if("debug" STREQUAL build_type)
     add_definitions(-D_DEBUG)
 endif()
+if(DEFINED TURN_SERVER_BUILD_INFO)
+    add_definitions(-DTURN_SERVER_BUILD_INFO=${TURN_SERVER_BUILD_INFO})
+endif()
 
 IF(MSVC)
     # This option is to enable the /MP switch for Visual Studio 2005 and above compilers
