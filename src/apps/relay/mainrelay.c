@@ -2424,10 +2424,10 @@ static void read_config_file(int argc, char **argv, int pass) {
 
       fclose(f);
 
-    } else
+    } else if (pass == 0) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
-                    "WARNING: Cannot find config file: %s. Default and command-line settings will be used.\n",
-                    config_file);
+                    "Cannot find config file: %s. Default and command-line settings will be used.\n", config_file);
+    }
 
     if (full_path_to_config_file) {
       free(full_path_to_config_file);
@@ -2674,9 +2674,8 @@ static int adminmain(int argc, char **argv) {
 }
 
 static void print_features(unsigned long mfn) {
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\nRFC 3489/5389/5766/5780/6062/6156 STUN/TURN Server\nVersion %s\n",
-                TURN_SOFTWARE);
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\nMax number of open files/sockets allowed for this process: %lu\n", mfn);
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Coturn Version %s\n", TURN_SOFTWARE);
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Max number of open files/sockets allowed for this process: %lu\n", mfn);
   if (turn_params.net_engine_version == NEV_UDP_SOCKET_PER_ENDPOINT)
     mfn = mfn / 3;
   else
@@ -2685,7 +2684,7 @@ static void print_features(unsigned long mfn) {
   if (mfn < 500)
     mfn = 500;
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-                "\nDue to the open files/sockets limitation,\nmax supported number of TURN Sessions possible is: %lu "
+                "Due to the open files/sockets limitation, max supported number of TURN Sessions possible is: %lu "
                 "(approximately)\n",
                 mfn);
 
@@ -2702,21 +2701,27 @@ static void print_features(unsigned long mfn) {
      brightness and honed to a murderous sharpness.
      */
 
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "OpenSSL compile-time version: %s (0x%lx)\n", OPENSSL_VERSION_TEXT,
+                OPENSSL_VERSION_NUMBER);
+
 #if !TLS_SUPPORTED
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS is not supported\n");
-#else
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS supported\n");
+#elif TLSv1_3_SUPPORTED
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS 1.3 supported\n");
+#elif TLSv1_2_SUPPORTED
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS 1.2 supported\n");
+#elif TLSv1_1_SUPPORTED
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS 1.1 supported\n");
+#elif TLSv1_SUPPORTED
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS 1.0 supported\n");
 #endif
 
 #if !DTLS_SUPPORTED
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS is not supported\n");
-#else
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS supported\n");
-#if DTLSv1_2_SUPPORTED
+#elif DTLSv1_2_SUPPORTED
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS 1.2 supported\n");
-#else
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS 1.2 is not supported\n");
-#endif
+#elif DTLS_SUPPORTED
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS supported\n");
 #endif
 
 #if ALPN_SUPPORTED
@@ -2735,11 +2740,6 @@ static void print_features(unsigned long mfn) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "GCM (AEAD) supported\n");
 #endif
   }
-
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "OpenSSL compile-time version: %s (0x%lx)\n", OPENSSL_VERSION_TEXT,
-                OPENSSL_VERSION_NUMBER);
-
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\n");
 
 #if !defined(TURN_NO_SQLITE)
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "SQLite supported, default database location is %s\n", DEFAULT_USERDB_FILE);
@@ -2771,11 +2771,7 @@ static void print_features(unsigned long mfn) {
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "MongoDB is not supported\n");
 #endif
 
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\n");
-
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-                "Default Net Engine version: %d (%s)\n\n=====================================================\n\n",
-                (int)turn_params.net_engine_version,
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Default Net Engine version: %d (%s)\n", (int)turn_params.net_engine_version,
                 turn_params.net_engine_version_txt[(int)turn_params.net_engine_version]);
 }
 
@@ -2922,13 +2918,15 @@ int main(int argc, char **argv) {
     int cpus = get_system_number_of_cpus();
     if (0 < cpus)
       turn_params.cpus = get_system_number_of_cpus();
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "System cpu num is %lu\n", turn_params.cpus);
     if (turn_params.cpus < DEFAULT_CPUS_NUMBER)
       turn_params.cpus = DEFAULT_CPUS_NUMBER;
     else if (turn_params.cpus > MAX_NUMBER_OF_GENERAL_RELAY_SERVERS)
       turn_params.cpus = MAX_NUMBER_OF_GENERAL_RELAY_SERVERS;
 
     turn_params.general_relay_servers_number = (turnserver_id)turn_params.cpus;
+
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "System cpu num is %lu\n", turn_params.cpus);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "System enable num is %lu\n", get_system_active_number_of_cpus());
   }
 
   memset(&turn_params.default_users_db, 0, sizeof(default_users_db_t));
@@ -2993,15 +2991,15 @@ int main(int argc, char **argv) {
   }
 
   if (turn_params.no_udp_relay) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\nCONFIG: --no-udp-relay: UDP relay endpoints are not allowed.\n");
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "CONFIG: --no-udp-relay: UDP relay endpoints are not allowed.\n");
   }
 
   if (turn_params.no_tcp_relay) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\nCONFIG: --no-tcp-relay: TCP relay endpoints are not allowed.\n");
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "CONFIG: --no-tcp-relay: TCP relay endpoints are not allowed.\n");
   }
 
   if (turn_params.server_relay) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "\nCONFIG: WARNING: --server-relay: NON-STANDARD AND DANGEROUS OPTION.\n");
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "CONFIG: WARNING: --server-relay: NON-STANDARD AND DANGEROUS OPTION.\n");
   }
 
 #if !defined(TURN_NO_SQLITE)
@@ -3014,34 +3012,33 @@ int main(int argc, char **argv) {
   argv += optind;
 
   if (argc > 0) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nCONFIGURATION ALERT: Unknown argument: %s\n", argv[argc - 1]);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "CONFIG: Unknown argument: %s\n", argv[argc - 1]);
   }
 
   if (use_lt_credentials && anon_credentials) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nCONFIG ERROR: -a and -z options cannot be used together.\n");
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "CONFIG: -a and -z options cannot be used together.\n");
     exit(-1);
   }
 
   if (use_ltc && use_tltc) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
-                  "\nCONFIGURATION ALERT: You specified --lt-cred-mech and --use-auth-secret in the same time.\n"
+                  "CONFIG: You specified --lt-cred-mech and --use-auth-secret in the same time.\n"
                   "Be aware that you could not mix the username/password and the shared secret based auth methods. \n"
                   "Shared secret overrides username/password based auth method. Check your configuration!\n");
   }
 
   if (turn_params.allow_loopback_peers) {
-    TURN_LOG_FUNC(
-        TURN_LOG_LEVEL_WARNING,
-        "CONFIG WARNING: allow_loopback_peers opens a possible security vulnerability. Do not use in production!!\n");
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
+                  "CONFIG: allow_loopback_peers opens a possible security vulnerability. Do not use in production!!\n");
     if (cli_password[0] == 0 && use_cli) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
-                    "\nCONFIG ERROR: allow_loopback_peers and empty cli password cannot be used together.\n");
+                    "CONFIG: allow_loopback_peers and empty cli password cannot be used together.\n");
       exit(-1);
     }
   }
 
   if (use_cli && cli_password[0] == 0) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nCONFIG ERROR: Empty cli-password, and so telnet cli interface is disabled! "
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "CONFIG: Empty cli-password, and so telnet cli interface is disabled! "
                                         "Please set a non empty cli-password!\n");
     use_cli = 0;
   }
@@ -3049,7 +3046,7 @@ int main(int argc, char **argv) {
   if (!use_lt_credentials && !anon_credentials) {
     if (turn_params.default_users_db.ram_db.users_number) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
-                    "\nCONFIGURATION ALERT: you specified long-term user accounts, (-u option) \n	but you did "
+                    "CONFIG: you specified long-term user accounts, (-u option) \n	but you did "
                     "not specify the long-term credentials option\n	(-a or --lt-cred-mech option).\n 	I am "
                     "turning --lt-cred-mech ON for you, but double-check your configuration.\n");
       turn_params.ct = TURN_CREDENTIALS_LONG_TERM;
@@ -3063,7 +3060,7 @@ int main(int argc, char **argv) {
   if (use_lt_credentials) {
     if (!get_realm(NULL)->options.name[0]) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
-                    "\nCONFIGURATION ALERT: you did specify the long-term credentials usage\n but you did not specify "
+                    "CONFIG: you did specify the long-term credentials usage\n but you did not specify "
                     "the default realm option (-r option).\n		Check your configuration.\n");
     }
   }
@@ -3071,8 +3068,8 @@ int main(int argc, char **argv) {
   if (anon_credentials) {
     if (turn_params.default_users_db.ram_db.users_number) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
-                    "\nCONFIGURATION ALERT: you specified user accounts, (-u option) \n	but you also specified the "
-                    "anonymous user access option (-z or --no-auth option).\n 	User accounts will be ignored.\n");
+                    "CONFIG: you specified user accounts, (-u option)	but you also specified the "
+                    "anonymous user access option (-z or --no-auth option).	User accounts will be ignored.\n");
       turn_params.ct = TURN_CREDENTIALS_NONE;
       use_lt_credentials = 0;
     }
@@ -3157,12 +3154,12 @@ int main(int argc, char **argv) {
     if (pid > 0)
       exit(0);
     if (pid < 0) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: Cannot start daemon process\n");
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot start daemon process\n");
       exit(-1);
     }
 #else
     if (daemon(1, 0) < 0) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: Cannot start daemon process\n");
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot start daemon process\n");
       exit(-1);
     }
     reset_rtpprintf();
@@ -3176,9 +3173,7 @@ int main(int argc, char **argv) {
     if (f) {
       STRCPY(s, turn_params.pidfile);
     } else {
-      snprintf(s, sizeof(s), "Cannot create pid file: %s", turn_params.pidfile);
-      perror(s);
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "%s\n", s);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Cannot create pid file: %s\n", turn_params.pidfile);
 
       {
         const char *pfs[] = {"/var/run/turnserver.pid",
@@ -3302,7 +3297,7 @@ static void adjust_key_file_name(char *fn, const char *file_title, int critical)
     {
       FILE *f = full_path_to_file ? fopen(full_path_to_file, "r") : NULL;
       if (!f) {
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: cannot find %s file: %s (1)\n", file_title, fn);
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "cannot find %s file: %s (1)\n", file_title, fn);
         goto keyerr;
       } else {
         fclose(f);
@@ -3310,7 +3305,7 @@ static void adjust_key_file_name(char *fn, const char *file_title, int critical)
     }
 
     if (!full_path_to_file) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: cannot find %s file: %s (2)\n", file_title, fn);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "cannot find %s file: %s (2)\n", file_title, fn);
       goto keyerr;
     }
 
@@ -3325,8 +3320,8 @@ keyerr : {
   if (critical) {
     turn_params.no_tls = 1;
     turn_params.no_dtls = 1;
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
-                  "WARNING: cannot start TLS and DTLS listeners because %s file is not set properly\n", file_title);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "cannot start TLS and DTLS listeners because %s file is not set properly\n",
+                  file_title);
   }
   if (full_path_to_file)
     free(full_path_to_file);
@@ -3531,8 +3526,6 @@ static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *metho
   if (!SSL_CTX_use_certificate_chain_file(ctx, turn_params.cert_file)) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: no certificate found\n", protocol);
     err = 1;
-  } else {
-    print_abs_file_name(protocol, ": Certificate", turn_params.cert_file);
   }
 
   if (!SSL_CTX_use_PrivateKey_file(ctx, turn_params.pkey_file, SSL_FILETYPE_PEM)) {
@@ -3540,13 +3533,8 @@ static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *metho
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
                     "%s: ERROR: no valid private key found, or invalid private key password provided\n", protocol);
       err = 1;
-    } else {
-      print_abs_file_name(protocol, ": Private RSA key", turn_params.pkey_file);
     }
-  } else {
-    print_abs_file_name(protocol, ": Private key", turn_params.pkey_file);
   }
-
   if (!SSL_CTX_check_private_key(ctx)) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: invalid private key\n", protocol);
     err = 1;
@@ -3758,6 +3746,10 @@ static void openssl_setup(void) {
 }
 
 static void openssl_load_certificates(void) {
+
+  print_abs_file_name("", "Certificate", turn_params.cert_file);
+  print_abs_file_name("", "Private key", turn_params.pkey_file);
+
   TURN_MUTEX_LOCK(&turn_params.tls_mutex);
   if (!turn_params.no_tls) {
 #if OPENSSL_VERSION_NUMBER < 0x10100000L

@@ -213,6 +213,7 @@ int get_raw_socket_ttl(evutil_socket_t fd, int family);
 void ignore_sigpipe(void);
 unsigned long set_system_parameters(int max_resources);
 unsigned long get_system_number_of_cpus(void);
+unsigned long get_system_active_number_of_cpus(void);
 
 ///////////////////////// MTU //////////////////////////
 

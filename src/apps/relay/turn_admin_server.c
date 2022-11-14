@@ -1293,8 +1293,6 @@ void setup_admin_thread(void) {
     set_ssl_ctx(adminserver.e, &turn_params);
   }
 
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "IO method (admin thread): %s\n", event_base_get_method(adminserver.event_base));
-
   {
     struct bufferevent *pair[2];
 

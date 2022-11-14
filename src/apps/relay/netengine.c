@@ -927,7 +927,6 @@ static void listener_receive_message(struct bufferevent *bev, void *ptr) {
 
 static ioa_engine_handle create_new_listener_engine(void) {
   struct event_base *eb = turn_event_base_new();
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "IO method (udp listener/relay thread): %s\n", event_base_get_method(eb));
   super_memory_t *sm = new_super_memory_region();
   ioa_engine_handle e =
       create_ioa_engine(sm, eb, turn_params.listener.tp, turn_params.relay_ifname, turn_params.relays_number,
@@ -965,8 +964,7 @@ static void setup_listener(void) {
 
   turn_params.listener.event_base = turn_event_base_new();
 
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "IO method (main listener thread): %s\n",
-                event_base_get_method(turn_params.listener.event_base));
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "IO method: %s\n", event_base_get_method(turn_params.listener.event_base));
 
   turn_params.listener.ioa_eng = create_ioa_engine(
       sm, turn_params.listener.event_base, turn_params.listener.tp, turn_params.relay_ifname, turn_params.relays_number,
@@ -997,14 +995,12 @@ static void setup_listener(void) {
   if (turn_params.rfc5780 == 1) {
     if (turn_params.listener.addrs_number < 2 || turn_params.external_ip) {
       turn_params.rfc5780 = 0;
-      TURN_LOG_FUNC(
-          TURN_LOG_LEVEL_WARNING,
-          "WARNING: I cannot support STUN CHANGE_REQUEST functionality because only one IP address is provided\n");
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "STUN CHANGE_REQUEST not supported: only one IP address is provided\n");
     } else {
       turn_params.listener.services_number = turn_params.listener.services_number * 2;
     }
   } else {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "INFO: RFC5780 disabled! /NAT behavior discovery/\n");
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "RFC5780 disabled! /NAT behavior discovery/\n");
   }
 
   turn_params.listener.udp_services = (dtls_listener_relay_server_type ***)allocate_super_memory_engine(
@@ -1602,7 +1598,6 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
     rs->ioa_eng = e;
   } else {
     rs->event_base = turn_event_base_new();
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "IO method (general relay thread): %s\n", event_base_get_method(rs->event_base));
     rs->ioa_eng = create_ioa_engine(rs->sm, rs->event_base, turn_params.listener.tp, turn_params.relay_ifname,
                                     turn_params.relays_number, turn_params.relay_addrs, turn_params.default_relays,
                                     turn_params.verbose
@@ -1735,7 +1730,6 @@ static void *run_auth_server_thread(void *arg) {
     as->id = id;
 
     as->event_base = turn_event_base_new();
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "IO method (auth thread): %s\n", event_base_get_method(as->event_base));
 
     struct bufferevent *pair[2];
 
@@ -1827,6 +1821,7 @@ void setup_server(void) {
   allocate_relay_addrs_ports();
   setup_barriers();
   setup_general_relay_servers();
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total General servers: %d\n", (int)get_real_general_relay_servers_number());
 
   if (turn_params.net_engine_version == NEV_UDP_SOCKET_PER_THREAD)
     setup_socket_per_thread_udp_listener_servers();
@@ -1852,7 +1847,6 @@ void setup_server(void) {
   {
     int tot = get_real_general_relay_servers_number();
     if (tot) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total General servers: %d\n", (int)tot);
       int i;
       for (i = 0; i < tot; i++) {
         if (!(general_relay_servers[i])) {
@@ -1868,6 +1862,7 @@ void setup_server(void) {
       authserver[sn].id = sn;
       setup_auth_server(&(authserver[sn]));
     }
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total auth threads: %d\n", authserver_number);
   }
 
   setup_admin_server();
