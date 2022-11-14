@@ -67,7 +67,7 @@
 #include "apputils.h"
 
 
-#define ZREST_USERNAME_REGEX	"^(sft-)?d=([0-9]+)\\.v=1\\.k=([0-9]+)\\.t=s\\.r=[-_a-z0-9]*$"
+#define ZREST_USERNAME_REGEX	"^(sft-)?d=([0-9]+)\\.v=1\\.k=([0-9]+)\\.t=s\\.r=[-_a-zA-Z0-9]*$"
 #define ZREST_USERNAME_CAPTURES	4
 #define ZREST_SFT_CAP   	1
 #define ZREST_DEADLINE_CAP	2
