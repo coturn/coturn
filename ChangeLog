@@ -19,15 +19,12 @@ Contributors:
 
 Changelist:
 	- Do not build debug version during PR preflight (Pavel Punsky)
-	- Bump actions/cache from 2 to 3 (#1084) (dependabot[bot])
 	- Add clang format rules and checks (#935) (Gustavo Garcia)
 	- Fix duplicate prometheus metric report (#1079) (Pavel Punsky)
 	- feature(1026): add sessioncount to prometheus metrics (#1075) (Paul Kramer)
 	- Add macOS build action (#1059) (Pavel Punsky)
 	- Update openssl API use to non-deprecated version (#1072) (Pavel Punsky)
 	- Log threadId to logs to aid in multi-threaded debugging. (#1030) (Scott Godin)
-	- Bump actions/upload-artifact from 2 to 3 (#1067) (dependabot[bot])
-	- Bump actions/checkout from 2 to 3 (#1068) (dependabot[bot])
 	- Use khash 0.2.8 (#1047) (Gregor Jasny)
 	- Reflect new native Windows build support in documentation (#1060) (Samuel Marks)
 	- Check and fix format string for turn_log_func_default (#1064) (Gregor Jasny)
