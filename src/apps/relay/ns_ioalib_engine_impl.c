@@ -397,7 +397,6 @@ ioa_engine_handle create_ioa_engine(super_memory_t *sm, struct event_base *eb, t
       e->deallocate_eb = 0;
     } else {
       e->event_base = turn_event_base_new();
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "IO method (engine own thread): %s\n", event_base_get_method(e->event_base));
       e->deallocate_eb = 1;
     }
 

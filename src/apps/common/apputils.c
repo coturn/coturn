@@ -1120,8 +1120,6 @@ char *find_config_file(const char *config_file, int print_file_name) {
         FILE *f = fopen(fn, "r");
         if (f) {
           fclose(f);
-          if (print_file_name)
-            print_abs_file_name("", "Config", fn);
           full_path_to_config_file = fn;
           break;
         }
@@ -1148,8 +1146,6 @@ char *find_config_file(const char *config_file, int print_file_name) {
             f = fopen(fn, "r");
             if (f) {
               fclose(f);
-              if (print_file_name)
-                print_abs_file_name("", "Config", fn);
               full_path_to_config_file = fn;
               break;
             }
@@ -1241,19 +1237,34 @@ unsigned long get_system_number_of_cpus(void) {
 #if defined(WINDOWS)
   SYSTEM_INFO sysInfo;
   GetSystemInfo(&sysInfo);
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "System cpu num is %d\n", sysInfo.dwNumberOfProcessors);
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "System enable num is 0x%X\n", sysInfo.dwActiveProcessorMask);
+  // TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "System cpu num is %d\n", sysInfo.dwNumberOfProcessors);
   return sysInfo.dwNumberOfProcessors;
 #else
 #if defined(_SC_NPROCESSORS_ONLN)
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "System cpu num is %ld \n", sysconf(_SC_NPROCESSORS_CONF));
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "System enable num is %ld\n", sysconf(_SC_NPROCESSORS_ONLN));
+  // TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "System cpu num is %ld \n", sysconf(_SC_NPROCESSORS_CONF));
   return sysconf(_SC_NPROCESSORS_CONF);
 #else
   // GNU way
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "System cpu num is %d\n", get_nprocs_conf());
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "System enable num is %d\n", get_nprocs());
+  // TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "System cpu num is %d\n", get_nprocs_conf());
   return get_nprocs_conf();
+#endif
+#endif
+}
+
+unsigned long get_system_active_number_of_cpus(void) {
+#if defined(WINDOWS)
+  SYSTEM_INFO sysInfo;
+  GetSystemInfo(&sysInfo);
+  // TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "System enable num is 0x%X\n", sysInfo.dwActiveProcessorMask);
+  return sysInfo.dwActiveProcessorMask;
+#else
+#if defined(_SC_NPROCESSORS_ONLN)
+  // TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "System enable num is %ld\n", sysconf(_SC_NPROCESSORS_ONLN));
+  return sysconf(_SC_NPROCESSORS_ONLN);
+#else
+  // GNU way
+  // TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "System enable num is %d\n", get_nprocs());
+  return get_nprocs();
 #endif
 #endif
 }
