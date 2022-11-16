@@ -50,10 +50,32 @@
 }
 
 
+@test "TLS supported" { # TODO: Remove on next Coturn version release.
+  [ ! "$COTURN_VERSION" = '4.6.0' ] && skip
+
+  run docker run --rm --pull never --platform $PLATFORM \
+                 --entrypoint sh $IMAGE -c \
+    "turnserver -o --log-file=stdout | grep 'TLS supported'"
+  [ "$status" -eq 0 ]
+  [ ! "$output" = '' ]
+}
+
 @test "TLS 1.3 supported" {
+  [ "$COTURN_VERSION" = '4.6.0' ] && skip
+
   run docker run --rm --pull never --platform $PLATFORM \
                  --entrypoint sh $IMAGE -c \
     "turnserver -o --log-file=stdout | grep 'TLS 1.3 supported'"
+  [ "$status" -eq 0 ]
+  [ ! "$output" = '' ]
+}
+
+@test "DTLS supported" { # TODO: Remove on next Coturn version release.
+  [ ! "$COTURN_VERSION" = '4.6.0' ] && skip
+
+  run docker run --rm --pull never --platform $PLATFORM \
+                 --entrypoint sh $IMAGE -c \
+    "turnserver -o --log-file=stdout | grep 'DTLS supported'"
   [ "$status" -eq 0 ]
   [ ! "$output" = '' ]
 }
