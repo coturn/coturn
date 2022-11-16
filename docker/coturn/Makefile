@@ -205,6 +205,7 @@ define test.docker.do
 	$(if $(call eq,$(with),ipv6),TEST_IPV6=1,) \
 	node_modules/.bin/bats \
 		--timing $(if $(call eq,$(CI),),--pretty,--formatter tap) \
+		--print-output-on-failure \
 		tests/main.bats
 endef
 
