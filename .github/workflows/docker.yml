@@ -239,7 +239,8 @@ jobs:
         env:
           DOCKER_USER: ${{ secrets.DOCKERHUB_BOT_USER }}
           DOCKER_PASS: ${{ secrets.DOCKERHUB_BOT_PASS }}
-        if: ${{ matrix.registry == 'docker.io' }}
+        if: ${{ startsWith(github.ref, 'refs/tags/')
+             && matrix.registry == 'docker.io' }}
       - name: Update README on Quay.io
         uses: christian-korneck/update-container-description-action@v1
         with:
@@ -248,7 +249,8 @@ jobs:
           readme_file: docker/coturn/README.md
         env:
           DOCKER_APIKEY: ${{ secrets.QUAYIO_API_TOKEN }}
-        if: ${{ matrix.registry == 'quay.io' }}
+        if: ${{ startsWith(github.ref, 'refs/tags/')
+             && matrix.registry == 'quay.io' }}
 
   release-github:
     name: release (GitHub)
@@ -271,7 +273,7 @@ jobs:
         id: changelog
         run: echo "link=${{ github.server_url }}/${{ github.repository }}/blob/docker/${{ steps.semver.outputs.group1 }}/docker/coturn/CHANGELOG.md#$(sed -n '/^## \[${{ steps.semver.outputs.group1 }}\]/{s/^## \[\(.*\)\][^0-9]*\([0-9].*\)/\1--\2/;s/[^0-9a-z-]*//g;p;}' CHANGELOG.md)"
              >> $GITHUB_OUTPUT
-        working-directory: ./docker/coturn
+        working-directory: docker/coturn/
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v1
