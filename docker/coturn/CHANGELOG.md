@@ -4,6 +4,21 @@ Coturn TURN server Docker image changelog
 
 
 
+## [4.6.0-r1] · 2022-11-16
+[4.6.0-r1]: /../../tree/docker/4.6.0-r1
+
+### Added
+
+- Support of `linux/386` platform.
+
+### Security updated
+
+- [Alpine Linux] 3.16.3: <https://github.com/docker-library/official-images/commit/bbdc5719dd50a7d4c112b517b5bd6d7f8d35ceff>
+- [Debian Linux] "bullseye" 20221114: <https://github.com/docker-library/official-images/commit/629455d056a9b046c12d4fa65a1006d4b94b5fa5>
+
+
+
+
 ## [4.6.0-r0] · 2022-08-13
 [4.6.0-r0]: /../../tree/docker/4.6.0-r0
 

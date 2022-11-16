@@ -29,6 +29,7 @@ jobs:
           - arm32v6
           - arm32v7
           - arm64v8
+          - i386
           - ppc64le
           - s390x
     runs-on: ubuntu-latest
@@ -92,6 +93,7 @@ jobs:
           - arm32v6
           - arm32v7
           - arm64v8
+          - i386
           - ppc64le
           - s390x
     runs-on: ubuntu-latest
@@ -195,6 +197,7 @@ jobs:
                       arm32v6 \
                       arm32v7 \
                       arm64v8 \
+                      i386 \
                       ppc64le \
                       s390x
           do
@@ -216,6 +219,7 @@ jobs:
                       ${{ steps.docker.outputs.tag }}-arm32v6
                       ${{ steps.docker.outputs.tag }}-arm32v7
                       ${{ steps.docker.outputs.tag }}-arm64v8
+                      ${{ steps.docker.outputs.tag }}-i386
                       ${{ steps.docker.outputs.tag }}-ppc64le
                       ${{ steps.docker.outputs.tag }}-s390x'
                  tags=${{ (startsWith(github.ref, 'refs/tags/')
