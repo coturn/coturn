@@ -14,7 +14,157 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+
+  ############
+  # Building #
+  ############
+
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        dist: ["alpine", "debian"]
+        arch:
+          - amd64
+          - arm32v6
+          - arm32v7
+          - arm64v8
+          - ppc64le
+          - s390x
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # for correct image labeling via `git describe --tags`
+      - uses: docker/setup-qemu-action@v2
+      - uses: docker/setup-buildx-action@v2
+
+      - name: Detect correct Git ref for image build
+        id: git
+        uses: actions/github-script@v6
+        with:
+          script: |
+            let out = {ref: 'HEAD', ver: ''};
+            if ('${{ github.ref }}'.startsWith('refs/tags/docker/')) {
+              out.ref = '${{ github.ref }}'.substring(17).split('-')[0];
+              out.ver = out.ref;
+            }
+            return out;
+      - name: Verify Git ref matches Makefile version
+        run: |
+          test "${{ fromJSON(steps.git.outputs.result).ref }}" \
+            == "$(grep -m1 'COTURN_VER ?=' Makefile | cut -d'=' -f2 | tr -d ' ')"
+        working-directory: docker/coturn/
+        if: ${{ github.event_name == 'push'
+             && startsWith(github.ref, 'refs/tags/docker/' }}
+
+      - run: make docker.image no-cache=yes
+                  dockerfile=${{ matrix.dist }}
+                  platform=linux/${{ matrix.arch }}
+                  ref=${{ fromJSON(steps.git.outputs.result).ref }}
+                  tag=build-${{ github.run_number }}-${{ matrix.dist }}-${{ matrix.arch }}
+        working-directory: docker/coturn/
+
+      - run: make docker.tar to-file=.cache/image.tar
+                  tags=build-${{ github.run_number }}-${{ matrix.dist }}-${{ matrix.arch }}
+        working-directory: docker/coturn/
+      - uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.dist }}-${{ matrix.arch }}-${{ github.run_number }}
+          path: docker/coturn/.cache/image.tar
+          retention-days: 1
+
+
+
+
+  ###########
+  # Testing #
+  ###########
+
+  test:
+    needs: ["build"]
+    strategy:
+      fail-fast: false
+      matrix:
+        dist: ["alpine", "debian"]
+        arch:
+          - amd64
+          - arm32v6
+          - arm32v7
+          - arm64v8
+          - ppc64le
+          - s390x
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: docker/setup-qemu-action@v2
+      - run: make npm.install
+
+      - name: Detect correct Git version for image tests
+        id: git
+        uses: actions/github-script@v6
+        with:
+          script: |
+            let out = {ref: 'HEAD', ver: ''};
+            if ('${{ github.ref }}'.startsWith('refs/tags/docker/')) {
+              out.ref = '${{ github.ref }}'.substring(17).split('-')[0];
+              out.ver = out.ref;
+            }
+            return out;
+
+      - uses: actions/download-artifact@v3
+        with:
+          name: ${{ matrix.dist }}-${{ matrix.arch }}-${{ github.run_number }}
+          path: docker/coturn/.cache/
+      - run: make docker.untar from-file=.cache/image.tar
+        working-directory: docker/coturn/
+
+      - run: make test.docker
+                  platform=linux/${{ matrix.arch }}
+                  tag=build-${{ github.run_number }}-${{ matrix.dist }}-${{ matrix.arch }}
+        env:
+          COTURN_VERSION: ${{ fromJSON(steps.git.outputs.result).ver }}
+        working-directory: docker/coturn/
+
+
+
+
+  #############
+  # Releasing #
+  #############
+
+  push:
+    needs: ["build", "test"]
+    if: ${{ false
+         && github.event_name == 'push'
+         && startsWith(github.ref, 'refs/tags/') }}
+    strategy:
+      fail-fast: false
+      matrix:
+        registry: ["docker.io", "ghcr.io", "quay.io"]
+        dist: ["alpine", "debian"]
+    runs-on: ubuntu-latest
+    steps:
+      # Skip if this is fork and no credentials are provided.
+      - id: skip
+        run: echo "no=${{ !(
+               github.repository_owner != 'coturn'
+               && ((matrix.registry == 'quay.io'
+                    && secrets.QUAYIO_ROBOT_USER == '')
+                || (matrix.registry == 'docker.io'
+                    && secrets.DOCKERHUB_BOT_USER == ''))
+             ) }}" >> $GITHUB_OUTPUT
+
+
+
+
+
+
+
+
+
   buildx:
+    if: ${{ false }}
     strategy:
       matrix:
         include:
