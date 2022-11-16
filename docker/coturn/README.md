@@ -23,12 +23,7 @@ Coturn TURN server Docker image
 
 ## Supported platforms
 
-- `linux/amd64`
-- `linux/arm64`
-- `linux/arm/v6`
-- `linux/arm/v7`
-- `linux/ppc64le`
-- `linux/s390x`
+- `linux`: `amd64`, `arm32v6`, `arm32v7`, `arm64v8`, `ppc64le`, `s390x`
 
 
 
@@ -134,38 +129,73 @@ docker run -d --network=host --mount type=tmpfs,destination=/var/lib/coturn cotu
 ## Image versions
 
 
-### `X`
+### `alpine`
 
-Latest tag of `X` Coturn's major version.
+This image is based on the popular [Alpine Linux project][1], available in [the alpine official image][2]. [Alpine Linux][1] is much smaller than most distribution base images (~5MB), and thus leads to much slimmer images in general.
 
-
-### `X.Y`
-
-Latest tag of `X` Coturn's minor version.
+This variant is highly recommended when final image size being as small as possible is desired. The main caveat to note is that it does use [musl libc][4] instead of [glibc and friends][5], so certain software might run into issues depending on the depth of their libc requirements. However, most software doesn't have an issue with this, so this variant is usually a very safe choice. See [this Hacker News comment thread][6] for more discussion of the issues that might arise and some pro/con comparisons of using [Alpine][1]-based images.
 
 
-### `X.Y.Z` or `X.Y.Z.W`
+### `<X>`
 
-Latest tag version of a concrete `X.Y.Z` or `X.Y.Z.W` version of Coturn.
+Latest tag of the latest major `X` Coturn version.
+
+This is a multi-platform image.
 
 
-### `X.Y.Z-rN` or `X.Y.Z.W-rN`
+### `<X.Y>`
 
-Concrete `N` image revision tag of a Coturn's concrete `X.Y.Z` or `X.Y.Z.W` version.
+Latest tag of the latest minor `X.Y` Coturn version.
+
+This is a multi-platform image.
+
+
+### `<X.Y.Z>`/`<X.Y.Z.W>`
+
+Latest tag of the concrete `X.Y.Z` (or `X.Y.Z.W`) Coturn version.
+
+This is a multi-platform image.
+
+
+### `<X.Y.Z>-r<N>`/`<X.Y.Z.W>-r<N>`
+
+Concrete `N` image revision tag of the concrete `X.Y.Z` (or `X.Y.Z.W`) Coturn version.
+
+Once built, it's never updated.
+
+This is a multi-platform image.
+
+
+### `<X.Y.Z>-r<N>-<dist>`/`<X.Y.Z.W>-r<N>-<dist>`
+
+Concrete `N` image revision tag of the concrete `X.Y.Z` (or `X.Y.Z.W`) Coturn version on the concrete `dist` (`alpine` or `debian`).
+
+Once built, it's never updated.
+
+This is a multi-platform image.
+
+
+### `<X.Y.Z>-r<N>-<dist>-<arch>`/`<X.Y.Z.W>-r<N>-<dist>-<arch>`
+
+Concrete `N` image revision tag of the concrete `X.Y.Z` (or `X.Y.Z.W`) Coturn version on the concrete `dist` (`alpine` or `debian`) and `arch`.
 
 Once build, it's never updated.
 
-
-### `alpine`
-
-This image is based on the popular [Alpine Linux project][1], available in [the alpine official image][2]. Alpine Linux is much smaller than most distribution base images (~5MB), and thus leads to much slimmer images in general.
-
-This variant is highly recommended when final image size being as small as possible is desired. The main caveat to note is that it does use [musl libc][4] instead of [glibc and friends][5], so certain software might run into issues depending on the depth of their libc requirements. However, most software doesn't have an issue with this, so this variant is usually a very safe choice. See [this Hacker News comment thread][6] for more discussion of the issues that might arise and some pro/con comparisons of using Alpine-based images.
+This is a single-platform image.
 
 
-### `edge`
+### `edge-<dist>`
 
-Contains build of Coturn's latest `master` branch.
+Latest tag of the latest `master` branch of Coturn on the concrete `dist` (`alpine` or `debian`).
+
+This is a multi-platform image.
+
+
+### `edge-<dist>-<arch>`
+
+Latest tag of the latest `master` branch of Coturn on the concrete `dist` (`alpine` or `debian`) and `arch`.
+
+This is a single-platform image.
 
 
 

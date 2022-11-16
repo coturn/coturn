@@ -23,7 +23,7 @@ Contribution Guide
 At the moment `coturn/coturn` Docker image's [workflow is automated][1] via [GitHub Actions] in the following manner:
 
 - On each push the image is built and tested.  
-  This helps to track image regressions due to changes in codebase.
+  This helps to track image regressions due to changes in the codebase.
 
 - Image is built and tested automatically from `master` branch on weekly basis.  
   This helps to track image regressions due to changes in parent OS images (`debian`, `alpine`), their system packages, and other dependencies.
@@ -50,7 +50,6 @@ To produce a new release (version tag) of `coturn/coturn` Docker image, perform 
 3. Update [README] with the new version declared in [`Makefile`].
 
 4. Perform a `make release` command inside the `docker/coturn/` directory.
-
 
 
 
