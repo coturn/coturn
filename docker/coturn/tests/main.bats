@@ -50,18 +50,10 @@
 }
 
 
-@test "TLS supported" {
+@test "TLS 1.3 supported" {
   run docker run --rm --pull never --platform $PLATFORM \
                  --entrypoint sh $IMAGE -c \
-    "turnserver -o --log-file=stdout | grep 'TLS supported'"
-  [ "$status" -eq 0 ]
-  [ ! "$output" = '' ]
-}
-
-@test "DTLS supported" {
-  run docker run --rm --pull never --platform $PLATFORM \
-                 --entrypoint sh $IMAGE -c \
-    "turnserver -o --log-file=stdout | grep 'DTLS supported'"
+    "turnserver -o --log-file=stdout | grep 'TLS 1.3 supported'"
   [ "$status" -eq 0 ]
   [ ! "$output" = '' ]
 }
