@@ -14,6 +14,8 @@
     [ "$output" = "armv7l" ]
   elif [ "$PLATFORM" = "linux/arm64/v8" ]; then
     [ "$output" = "aarch64" ]
+  elif [ "$PLATFORM" = "linux/386" ]; then
+    [ "$output" = "x86_64" ]
   else
     [ "$output" = "$(echo $PLATFORM | cut -d '/' -f2-)" ]
   fi
