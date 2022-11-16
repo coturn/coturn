@@ -126,6 +126,22 @@ supported in the client library).
 
 55) Multi-tenant implementation based upon third-party authorization
 (oAuth).
+
+56) TLS1.3 support (with openssl-1.1.1+)
+
+57) openssl-3.0 support
+
+58) Windows build support, MSVC and MinGW
+
+59) Add support to Prometheus as metrics interface
+
+60) Sanitize DB connection strings before printing to log
+
+61) Syslog facility support as an additional logging mechanism provider
+
+62) Support LibreSSL
+
+63) CMake as an alternative build system
  
 Things to be implemented in future (the development roadmap) 
 are described in the TODO file.
