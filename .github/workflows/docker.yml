@@ -222,9 +222,9 @@ jobs:
                       ${{ steps.docker.outputs.tag }}-i386
                       ${{ steps.docker.outputs.tag }}-ppc64le
                       ${{ steps.docker.outputs.tag }}-s390x'
-                 tags=${{ (startsWith(github.ref, 'refs/tags/')
-                           && '')
-                       ||     steps.docker.outputs.tag }}
+                 tags=${{ (!startsWith(github.ref, 'refs/tags/')
+                           && steps.docker.outputs.tag)
+                       ||     '' }}
         env:
           DOCKERFILE: ${{ matrix.dist }}  # for correct `tags` auto-detection
         working-directory: docker/coturn/
