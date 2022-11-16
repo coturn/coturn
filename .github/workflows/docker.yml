@@ -161,7 +161,8 @@ jobs:
           regex: '^refs/tags/docker/(((([0-9]+)\.[0-9]+)\.[0-9]+)-(.+))$'
       - name: Parse CHANGELOG link
         id: changelog
-        run: echo ::set-output name=link::${{ github.server_url }}/${{ github.repository }}/blob/docker/${{ steps.semver.outputs.group1 }}/docker/coturn/CHANGELOG.md#$(sed -n '/^## \[${{ steps.semver.outputs.group1 }}\]/{s/^## \[\(.*\)\][^0-9]*\([0-9].*\)/\1--\2/;s/[^0-9a-z-]*//g;p;}' CHANGELOG.md)
+        run: echo "link=${{ github.server_url }}/${{ github.repository }}/blob/docker/${{ steps.semver.outputs.group1 }}/docker/coturn/CHANGELOG.md#$(sed -n '/^## \[${{ steps.semver.outputs.group1 }}\]/{s/^## \[\(.*\)\][^0-9]*\([0-9].*\)/\1--\2/;s/[^0-9a-z-]*//g;p;}' CHANGELOG.md)"
+             >> $GITHUB_OUTPUT
         working-directory: ./docker/coturn
 
       - name: Create GitHub release
