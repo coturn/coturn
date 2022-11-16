@@ -135,171 +135,123 @@ jobs:
   #############
 
   push:
+    if: ${{ github.event_name == 'push'
+         && github.repository_owner == 'coturn'
+         && (startsWith(github.ref, 'refs/tags/')
+             || github.ref == 'refs/heads/master') }}
     needs: ["build", "test"]
-    if: ${{ false
-         && github.event_name == 'push'
-         && startsWith(github.ref, 'refs/tags/') }}
     strategy:
       fail-fast: false
+      max-parallel: 1
       matrix:
         registry: ["docker.io", "ghcr.io", "quay.io"]
         dist: ["alpine", "debian"]
     runs-on: ubuntu-latest
     steps:
-      # Skip if this is fork and no credentials are provided.
-      - id: skip
-        run: echo "no=${{ !(
-               github.repository_owner != 'coturn'
-               && ((matrix.registry == 'quay.io'
-                    && secrets.QUAYIO_ROBOT_USER == '')
-                || (matrix.registry == 'docker.io'
-                    && secrets.DOCKERHUB_BOT_USER == ''))
-             ) }}" >> $GITHUB_OUTPUT
-
-
-
-
-
-
-
-
-
-  buildx:
-    if: ${{ false }}
-    strategy:
-      matrix:
-        include:
-          - dockerfile: debian
-            cache: ${{ github.ref != 'refs/heads/master'
-                    && !startsWith(github.ref, 'refs/tags/docker/') }}
-            publish: ${{ github.event_name == 'push'
-                      && github.repository_owner == 'coturn'
-                      && (startsWith(github.ref, 'refs/tags/docker/')
-                          || github.ref == 'refs/heads/master') }}
-          - dockerfile: alpine
-            cache: ${{ github.ref != 'refs/heads/master'
-                    && !startsWith(github.ref, 'refs/tags/docker/') }}
-            publish: ${{ github.event_name == 'push'
-                      && github.repository_owner == 'coturn'
-                      && (startsWith(github.ref, 'refs/tags/docker/')
-                          || github.ref == 'refs/heads/master') }}
-    runs-on: ubuntu-latest
-    steps:
       - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-      - uses: docker/setup-qemu-action@v2
-      - uses: docker/setup-buildx-action@v2
 
-      - name: Detect correct Git ref for image build
-        id: git
-        uses: actions/github-script@v6
+      - name: Parse Docker image name from Git repository name
+        id: image
+        uses: actions-ecosystem/action-regex-match@v2
         with:
-          script: |
-            let out = {ref: 'HEAD', ver: ''};
-            if ('${{ github.ref }}'.startsWith('refs/tags/docker/')) {
-              out.ref = '${{ github.ref }}'.substring(17).split('-')[0];
-              out.ver = out.ref;
-            }
-            return out;
-      - name: Verify Git ref matches Makefile version
+          text: ${{ github.repository }}
+          regex: '^${{ github.repository_owner }}/(.+)$'
+      - name: Parse semver versions from Git tag
+        id: semver
+        uses: actions-ecosystem/action-regex-match@v2
+        with:
+          text: ${{ github.ref }}
+          regex: '^refs/tags/docker/(((([0-9]+)\.[0-9]+)\.[0-9]+)-(.+))$'
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+      - name: Form main Docker image tag
+        id: docker
+        run: echo "tag=${{ (startsWith(github.ref, 'refs/tags/')
+                            && steps.semver.outputs.group1)
+                        ||     'edge' }}-${{ matrix.dist }}"
+             >> $GITHUB_OUTPUT
+
+      - uses: actions/download-artifact@v3
+        with:
+          path: docker/coturn/.cache/
+
+      - name: Login to ${{ matrix.registry }} container registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ matrix.registry }}
+          username: ${{ (matrix.registry == 'docker.io'
+                         && secrets.DOCKERHUB_BOT_USER)
+                     || (matrix.registry == 'quay.io'
+                         && secrets.QUAYIO_ROBOT_USER)
+                     || github.repository_owner }}
+          password: ${{ (matrix.registry == 'docker.io'
+                         && secrets.DOCKERHUB_BOT_PASS)
+                     || (matrix.registry == 'quay.io'
+                         && secrets.QUAYIO_ROBOT_TOKEN)
+                     || secrets.GITHUB_TOKEN }}
+
+      - name: Tag and push single-platform images
         run: |
-          test "${{ fromJSON(steps.git.outputs.result).ref }}" \
-            == "$(grep -m1 'COTURN_VER ?=' Makefile | cut -d'=' -f2 | tr -d ' ')"
-        working-directory: ./docker/coturn
-        if: ${{ matrix.publish
-             && github.ref != 'refs/heads/master' }}
-
-      - uses: satackey/action-docker-layer-caching@v0.0.11
-        with:
-          key: docker-${{ matrix.dockerfile }}-buildx-{hash}
-          restore-keys: docker-${{ matrix.dockerfile }}-buildx-
-        continue-on-error: true
-        timeout-minutes: 10
-        if: ${{ matrix.cache }}
-      - name: Pre-build Docker images cache
-        run: make docker.build.cache DOCKERFILE=${{ matrix.dockerfile }}
-                  no-cache=${{ (matrix.cache && 'no') || 'yes' }}
-                  ref=${{ fromJSON(steps.git.outputs.result).ref }}
-        working-directory: ./docker/coturn
-
-      - name: Test Docker images
-        run: |
-          # Enable experimental features of Docker Daemon to run multi-arch images.
-          echo "$(cat /etc/docker/daemon.json)" '{"experimental": true}' \
-          | jq --slurp 'reduce .[] as $item ({}; . * $item)' \
-          | sudo tee /etc/docker/daemon.json
-          sudo systemctl restart docker
-
-          make npm.install
-          make test.docker DOCKERFILE=${{ matrix.dockerfile }} \
-               platforms=@all build=yes \
-               ref=${{ fromJSON(steps.git.outputs.result).ref }}
+          for arch in amd64 \
+                      arm32v6 \
+                      arm32v7 \
+                      arm64v8 \
+                      ppc64le \
+                      s390x
+          do
+            make docker.untar \
+                 from-file=.cache/${{ matrix.dist }}-$arch-${{ github.run_number }}/image.tar
+            make docker.tags \
+                 of=build-${{ github.run_number }}-${{ matrix.dist }}-$arch \
+                 tags=${{ steps.docker.outputs.tag }}-$arch \
+                 registries=${{ matrix.registry }}
+            make docker.push \
+                 tags=${{ steps.docker.outputs.tag }}-$arch \
+                 registries=${{ matrix.registry }}
+          done
+        working-directory: docker/coturn/
+      - name: Tag and push multi-platform images
+        run: make docker.manifest push=yes
+                  registries=${{ matrix.registry }}
+                  of='${{ steps.docker.outputs.tag }}-amd64
+                      ${{ steps.docker.outputs.tag }}-arm32v6
+                      ${{ steps.docker.outputs.tag }}-arm32v7
+                      ${{ steps.docker.outputs.tag }}-arm64v8
+                      ${{ steps.docker.outputs.tag }}-ppc64le
+                      ${{ steps.docker.outputs.tag }}-s390x'
+                 tags=${{ (startsWith(github.ref, 'refs/tags/')
+                           && '')
+                       ||     steps.docker.outputs.tag }}
         env:
-          COTURN_VERSION: ${{ fromJSON(steps.git.outputs.result).ver }}
-        working-directory: ./docker/coturn
-
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v2
-        with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-        if: ${{ matrix.publish }}
-      - name: Login to Quay.io
-        uses: docker/login-action@v2
-        with:
-          registry: quay.io
-          username: ${{ secrets.QUAYIO_ROBOT_USERNAME }}
-          password: ${{ secrets.QUAYIO_ROBOT_TOKEN }}
-        if: ${{ matrix.publish }}
-      - name: Login to Docker Hub
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKERHUB_BOT_USER }}
-          password: ${{ secrets.DOCKERHUB_BOT_PASS }}
-        if: ${{ matrix.publish }}
-
-      - name: Publish version Docker tags
-        run: make docker.push DOCKERFILE=${{ matrix.dockerfile }}
-                  ref=${{ fromJSON(steps.git.outputs.result).ref }}
-        working-directory: ./docker/coturn
-        if: ${{ matrix.publish
-             && github.ref != 'refs/heads/master' }}
-      - name: Publish edge Docker tags
-        run: make docker.push DOCKERFILE=${{ matrix.dockerfile }}
-                  tags=edge-${{ matrix.dockerfile }}
-                  ref=${{ fromJSON(steps.git.outputs.result).ref }}
-        working-directory: ./docker/coturn
-        if: ${{ matrix.publish
-             && github.ref == 'refs/heads/master' }}
+          DOCKERFILE: ${{ matrix.dist }}  # for correct `tags` auto-detection
+        working-directory: docker/coturn/
 
       # On GitHub Container Registry README is automatically updated on pushes.
-      - name: Update README on Quay.io
-        uses: christian-korneck/update-container-description-action@v1
-        env:
-          DOCKER_APIKEY: ${{ secrets.QUAYIO_API_TOKEN }}
-        with:
-          provider: quay
-          destination_container_repo: quay.io/coturn/coturn
-          readme_file: docker/coturn/README.md
-        if: ${{ matrix.publish }}
       - name: Update README on Docker Hub
         uses: christian-korneck/update-container-description-action@v1
+        with:
+          provider: dockerhub
+          destination_container_repo: ${{ github.repository_owner }}/${{ steps.image.outputs.group1 }}
+          readme_file: docker/coturn/README.md
         env:
           DOCKER_USER: ${{ secrets.DOCKERHUB_BOT_USER }}
           DOCKER_PASS: ${{ secrets.DOCKERHUB_BOT_PASS }}
+        if: ${{ matrix.registry == 'docker.io' }}
+      - name: Update README on Quay.io
+        uses: christian-korneck/update-container-description-action@v1
         with:
-          provider: dockerhub
-          destination_container_repo: coturn/coturn
+          provider: quay
+          destination_container_repo: ${{ matrix.registry }}/${{ github.repository_owner }}/${{ steps.image.outputs.group1 }}
           readme_file: docker/coturn/README.md
-        if: ${{ matrix.publish }}
+        env:
+          DOCKER_APIKEY: ${{ secrets.QUAYIO_API_TOKEN }}
+        if: ${{ matrix.registry == 'quay.io' }}
 
-  release:
-    needs: ["buildx"]
+  release-github:
+    name: release (GitHub)
     if: ${{ github.event_name == 'push'
          && github.repository_owner == 'coturn'
-         && startsWith(github.ref, 'refs/tags/docker/') }}
+         && startsWith(github.ref, 'refs/tags/') }}
+    needs: ["push"]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -310,6 +262,7 @@ jobs:
         with:
           text: ${{ github.ref }}
           regex: '^refs/tags/docker/(((([0-9]+)\.[0-9]+)\.[0-9]+)-(.+))$'
+
       - name: Parse CHANGELOG link
         id: changelog
         run: echo "link=${{ github.server_url }}/${{ github.repository }}/blob/docker/${{ steps.semver.outputs.group1 }}/docker/coturn/CHANGELOG.md#$(sed -n '/^## \[${{ steps.semver.outputs.group1 }}\]/{s/^## \[\(.*\)\][^0-9]*\([0-9].*\)/\1--\2/;s/[^0-9a-z-]*//g;p;}' CHANGELOG.md)"

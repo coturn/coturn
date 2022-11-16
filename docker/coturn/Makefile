@@ -106,25 +106,77 @@ docker.image:
 		--load -t $(OWNER)/$(NAME):$(or $(tag),$(VERSION)) ./
 
 
-# Push Docker images to their repositories (container registries),
-# along with the required multi-arch manifests.
+# Unite multiple single-platform Docker images as a multi-platform Docker image.
+#
+# WARNING: All the single-platform Docker images should be present on their
+#          remote registry. This is the limitation imposed by `docker manifest`
+#          command.
+#
+#	make docker.manifest [amend=(yes|no)] [push=(no|yes)]
+#	                     [of=($(VERSION)|<docker-tag-1>[,<docker-tag-2>...])]
+#	                     [tags=($(TAGS)|<docker-tag-1>[,<docker-tag-2>...])]
+#	                     [registries=($(REGISTRIES)|<prefix-1>[,<prefix-2>...])]
+
+docker.manifest:
+	$(foreach tag,$(subst $(comma), ,$(docker-tags)),\
+		$(foreach registry,$(subst $(comma), ,$(docker-registries)),\
+			$(call docker.manifest.create.do,$(or $(of),$(VERSION)),\
+			                                 $(registry),$(tag))))
+ifeq ($(push),yes)
+	$(foreach tag,$(subst $(comma), ,$(docker-tags)),\
+		$(foreach registry,$(subst $(comma), ,$(docker-registries)),\
+			$(call docker.manifest.push.do,$(registry),$(tag))))
+endif
+define docker.manifest.create.do
+	$(eval froms := $(strip $(1)))
+	$(eval repo := $(strip $(2)))
+	$(eval tag := $(strip $(3)))
+	docker manifest create $(if $(call eq,$(amend),no),,--amend) \
+		$(repo)/$(OWNER)/$(NAME):$(tag) \
+		$(foreach from,$(subst $(comma), ,$(froms)),\
+			$(repo)/$(OWNER)/$(NAME):$(from))
+endef
+define docker.manifest.push.do
+	$(eval repo := $(strip $(1)))
+	$(eval tag := $(strip $(2)))
+	docker manifest push $(repo)/$(OWNER)/$(NAME):$(tag)
+endef
+
+
+# Manually push single-platform Docker images to container registries.
 #
 # Usage:
-#	make docker.push [DOCKERFILE=(debian|alpine)]
-#		[namespaces=($(NAMESPACES)|<prefix-1>[,<prefix-2>...])]
-#		[tags=($(TAGS)|<tag-1>[,<tag-2>...])]
-#		[platforms=($(PLATFORMS)|<platform-1>[,<platform-2>...])]
-#		[ref=<git-ref>]
+#	make docker.push [tags=($(TAGS)|<docker-tag-1>[,<docker-tag-2>...])]
+#	                 [registries=($(REGISTRIES)|<prefix-1>[,<prefix-2>...])]
 
 docker.push:
-	$(foreach namespace,$(docker-namespaces),\
-		$(foreach tag,$(docker-tags),\
-			$(call docker.buildx,$(DOCKERFILE),\
-				$(namespace),\
-				$(tag),\
-				$(ref),\
-				$(shell echo "$(docker-platforms)" | tr -s '[:blank:]' ','),,\
-				--push)))
+	$(foreach tag,$(subst $(comma), ,$(docker-tags)),\
+		$(foreach registry,$(subst $(comma), ,$(docker-registries)),\
+			$(call docker.push.do,$(registry),$(tag))))
+define docker.push.do
+	$(eval repo := $(strip $(1)))
+	$(eval tag := $(strip $(2)))
+	docker push $(repo)/$(OWNER)/$(NAME):$(tag)
+endef
+
+
+# Tag single-platform Docker image with the given tags.
+#
+# Usage:
+#	make docker.tags [of=($(VERSION)|<docker-tag>)]
+#	                 [tags=($(TAGS)|<docker-tag-1>[,<docker-tag-2>...])]
+#	                 [registries=($(REGISTRIES)|<prefix-1>[,<prefix-2>...])]
+
+docker.tags:
+	$(foreach tag,$(subst $(comma), ,$(docker-tags)),\
+		$(foreach registry,$(subst $(comma), ,$(docker-registries)),\
+			$(call docker.tags.do,$(or $(of),$(VERSION)),$(registry),$(tag))))
+define docker.tags.do
+	$(eval from := $(strip $(1)))
+	$(eval repo := $(strip $(2)))
+	$(eval to := $(strip $(3)))
+	docker tag $(OWNER)/$(NAME):$(from) $(repo)/$(OWNER)/$(NAME):$(to)
+endef
 
 
 # Save single-platform Docker images to a tarball file.
