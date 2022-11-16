@@ -183,7 +183,7 @@ jobs:
           username: ${{ (matrix.registry == 'docker.io'
                          && secrets.DOCKERHUB_BOT_USER)
                      || (matrix.registry == 'quay.io'
-                         && secrets.QUAYIO_ROBOT_USER)
+                         && secrets.QUAYIO_ROBOT_USERNAME)
                      || github.repository_owner }}
           password: ${{ (matrix.registry == 'docker.io'
                          && secrets.DOCKERHUB_BOT_PASS)
