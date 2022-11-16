@@ -19,16 +19,13 @@ Contributors:
 
 Changelist:
 	- Do not build debug version during PR preflight (Pavel Punsky)
-	- Add clang format rules and checks (#935) (Gustavo Garcia)
 	- Fix duplicate prometheus metric report (#1079) (Pavel Punsky)
 	- feature(1026): add sessioncount to prometheus metrics (#1075) (Paul Kramer)
-	- Add macOS build action (#1059) (Pavel Punsky)
 	- Update openssl API use to non-deprecated version (#1072) (Pavel Punsky)
 	- Log threadId to logs to aid in multi-threaded debugging. (#1030) (Scott Godin)
 	- Use khash 0.2.8 (#1047) (Gregor Jasny)
 	- Reflect new native Windows build support in documentation (#1060) (Samuel Marks)
 	- Check and fix format string for turn_log_func_default (#1064) (Gregor Jasny)
-	- Repair MSVC CI builds (#1066) (Emil Ljungdahl)
 	- Properly calculate size for sm_allocated (#1063) (Gregor Jasny)
 	- Do not discard qualifiers in free() (#1065) (Gregor Jasny)
 	- Simplify defines for macOS platform (#1058) (Pavel Punsky)
@@ -80,10 +77,6 @@ Changelist:
 	- Improve openssl3 and FIPS support (#955) (Pavel Punsky)
 	- Preserve file timestamps when using install(1) (#983) (Robert Scheck)
 	- Fix renegotiation flag for older version of openssl (#978) (Pavel Punsky)
-	- Improve GitHub release notes of Docker image (tyranron)
-	- Improve Docker CI pipeline (tyranron)
-	- Upgrade Docker image to 4.6.0 Coturn version (tyranron)
-	- Fix ChangeLog for 4.6.0 release (#976) (tyranron)
 
 13/09/2022 Oleg Moskalenko <mom040267@gmail.com> Mihály Mészáros <misi@majd.eu> Gustavo Garcia <gustavogb@gmail.com> Pavel Punsky <pavel.punsky@epicgames.com>
 Version 4.6.0 'Gorst':
