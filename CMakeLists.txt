@@ -9,7 +9,7 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
 # TODO: Modify this when the version is released
-SET(BUILD_VERSION "4.6.0")
+SET(BUILD_VERSION "v4.7.0")
 
 option(FUZZER "Build oss-fuzz fuzzing" OFF)
 

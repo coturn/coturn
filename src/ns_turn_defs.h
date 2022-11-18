@@ -31,8 +31,8 @@
 #ifndef __IOADEFS__
 #define __IOADEFS__
 
-#define TURN_SERVER_VERSION "4.6.0"
-#define TURN_SERVER_VERSION_NAME "Gorst"
+#define TURN_SERVER_VERSION "v4.7.0"
+#define TURN_SERVER_VERSION "v4.7.0"
 #ifndef TURN_SERVER_BUILD_INFO
 #define TURN_SERVER_BUILD_INFO ""
 #endif
