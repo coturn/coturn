@@ -1,0 +1,144 @@
+Thanks to the following contributors (in alphabetical order):
+
+- Alessandro Polidori <alessandro.polidori@nethesis.it>
+- Alexander N <a@a>
+- Alexander Terczka <alex@mail.at>
+- Antony Dovgal <tony@daylessday.org>
+- Arjun <36335769+0x34d@users.noreply.github.com>
+- Arne Georg Gisnås Gleditsch <argggh@appear.in>
+- Arne Georg Gisnås Gleditsch <argggh@whereby.com>
+- Benjamin Porter <FreedomBen@users.noreply.github.com>
+- Bertold Van den Bergh <vandenbergh@bertold.org>
+- Bradley T. Hughes <bradleythughes@appear.in>
+- Bradley T. Hughes <bradleythughes@fastmail.fm>
+- Byron Clark <byron@theclarkfamily.name>
+- Camden Narzt <c.narzt@me.com>
+- Carsten Bock <carsten@ng-voice.com>
+- Cédric Krier <ced@b2ck.com>
+- Corey Cole <coreyleoc@gmail.com>
+- Daniil Meitis <30820460+dsmeytis@users.noreply.github.com>
+- Daniil Meitis <daniil.meitis@viber.com>
+- Danilo Bargen <mail@dbrgn.ch>
+- Dave Lambley <dave@lambley.me.uk>
+- Dave Lambley <github@davel.me.uk>
+- David Florness <david@florness.com>
+- David-dp- <David-dp-@users.noreply.github.com>
+- Domenico Briganti <domenico.briganti@osys.it>
+- Emil Ljungdahl <111423223+pando-emil@users.noreply.github.com>
+- Erdem Duman <erdemduman23@gmail.com>
+- Erik Moqvist <erik.moqvist@axis.com>
+- Feral Interactive <noreply@feralinteractive.com>
+- Gautier HUSSON <g.husson_git@liberasys.com>
+- Giacomo Vacca <gvacca@subspace.com>
+- GingerAdonis <2751672+GingerAdonis@users.noreply.github.com>
+- Greg Fodor <gfodor@gmail.com>
+- Gregor Jasny <gjasny@googlemail.com>
+- Gustavo Garcia <gustavogb@gmail.com>
+- Haseeb Abdul Qadir <haseebq@jumpdesktop.com>
+- Hristo Venev <hristo@venev.name>
+- Hui Kang <kangh@us.ibm.com>
+- Hyorin Choi <17173216+hyorin@users.noreply.github.com>
+- Ilya Kisleyko <osterik@gmail.com>
+- James Huang <hng.jms@gmail.com>
+- Jens Elkner <jel+coturn@cs.ovgu.de>
+- Jens Elkner <jel+git@iks.cs.uni-magdeburg.de>
+- Jeremy Murphy <jeremymu@blackmagicdesign.com>
+- Joachim Bauch <bauch@struktur.de>
+- Joe Duncan <j.duncan@outlook.com>
+- Johannes Weberhofer <jweberhofer@weberhofer.at>
+- Jonathan GIBERT <Jonathan.GIBERT@iconsultants.fr>
+- JooYoung <qkdlql@naver.com>
+- Juan Navarro <juan.navarro@gmx.es>
+- KORAY VATANSEVER <koray.vatansever@turkcell.com.tr>
+- KORAY VATANSEVER <ttkvatansever@TC08966777>
+- Kai Ren <tyranron@gmail.com>
+- Kang Lin <kl222@126.com>
+- KangLin <kl222@126.com>
+- Kirill Gribunin <gribunin@gmail.com>
+- Krithin Sitaram <me@krith.in>
+- Lionel Nicolas <lionel.nicolas@nividic.org>
+- MÉSZÁROS Mihály <misi@majd.eu>
+- MÉSZÁROS Mihály <misi@odu.duckdns.org>
+- Majid Motallebikashani <chakmeshma@gmail.com>
+- Mark Hills <mark@xwax.org>
+- Mathieu Aubin <mathieu@zeroserieux.com>
+- Mathieu Brunot <mb.mathieu.brunot@gmail.com>
+- Mészáros Mihály <bakfitty@gmail.com>
+- Mészáros Mihály <misi@majd.eu>
+- Mészáros Mihály <misi@niif.hu>
+- Michal Biskup <eiver@eiver.pl>
+- Miquel Ortega <miquel@syncrtc.com>
+- Molly Miller <molly.miller@wire.com>
+- Mustafa Bingül <bnglmstf@gmail.com>
+- NeoCat <neocat@neocat.jp>
+- Nicolas Edet <nicedet@cisco.com>
+- Nikolay Lanets <n.lanets@modxclub.ru>
+- Oleg Moskalenko <mom040267@gmail.com>
+- Orsiris de Jong <ozy@netpower.fr>
+- Oskar Niburski <oskarniburski@gmail.com>
+- Paride Legovini <pl@ninthfloor.org>
+- Paul Kramer <47924093+paulkram@users.noreply.github.com>
+- Paul Menzel <pmenzel@molgen.mpg.de>
+- Paul Wayper <paulway@mabula.net>
+- Pavel Kretov <firegurafiku@gmail.com>
+- Pavel Punsky <eakraly@users.noreply.github.com>
+- Pavel Punsky <pavel.punsky@epicgames.com>
+- Peter Linss <peter@startupstack.tech>
+- Phillip Voyle <phillipv@faceme.com>
+- Prashanth Rajaram <prashanthr@users.noreply.github.com>
+- RIORAO <lah.messagebox@gmail.com>
+- Richard Garnier <richard@bitcraft.co.jp>
+- Robert Scheck <robert-scheck@users.noreply.github.com>
+- Robert Scheck <robert@fedoraproject.org>
+- Robert Tupelo-Schneck <schneck@cnri.reston.va.us>
+- Rozhuk Ivan <rozhuk.im@gmail.com>
+- Ruben Barkow-Kuder <rubo77@users.noreply.github.com>
+- Samuel <faust64@gmail.com>
+- Samuel Marks <807580+SamuelMarks@users.noreply.github.com>
+- Sandro Gauci <sandro@enablesecurity.com>
+- Scott Godin <sgodin@sipspectrum.com>
+- Sebastian Kemper <sebastian_ml@gmx.net>
+- Sergey Safarov <s.safarov@gmail.com>
+- Serhii Charykov <laammaar@gmail.com>
+- Shu Muto <shu.mutow@gmail.com>
+- Steffen Moser <public@steffen-moser.de>
+- Steffen Moser <steffen.moser@uni-ulm.de>
+- Thibaut ACKERMANN <thib-ack@users.noreply.github.com>
+- Thibaut Ackermann <thibaut.ackermann@al-enterprise.com>
+- Thibaut Ackermann <thibaut.ackermann@alcatel-lucent.com>
+- Tom Bevan <thehorrorthehorror@gmail.com>
+- Wuelber Castillo <wuelber.castillo@gmail.com>
+- Yoshiki Kadoshita <sublimer.me@gmail.com>
+- Zebadiah Long <zeb@noblewhale.com>
+- bpcurse <29312856+bpcurse@users.noreply.github.com>
+- brevilo <brevilo@users.noreply.github.com>
+- chanduthedev <chanduthedev@gmail.com>
+- damencho <damencho@jitsi.org>
+- ddeka2910 <60925700+ddeka2910@users.noreply.github.com>
+- ggalperi <81175455+ggalperi@users.noreply.github.com>
+- huhaipeng <huhaipeng@corp.netease.com>
+- islamoglus <islamogluselahaddin@gmail.com>
+- marcoschum <50410120+marcoschum@users.noreply.github.com>
+- misi <bakfitty@gmail.com>
+- mom040267 <mom040267@gmail.com>
+- mom040267 <mom040267@users.noreply.github.com>
+- oleg <oleg@lamb.(none)>
+- oleg <oleg@sck63.oleg.net>
+- oleg <oleg@shy.(none)>
+- ooookai <ooookai@users.noreply.github.com>
+- raghumuppa <mupparthies@gmail.com>
+- release-it <release-it@tawenda.com>
+- root <root@centot7.test.in.securom.me>
+- seungbin-ko <seungbin.ko@navercorp.com>
+- shuyin.wsy <shuyin.wsy@alibaba-inc.com>
+- skystar-p <wogus150@naver.com>
+- tyranron <tyranron@gmail.com>
+- unicode-it <info@unicode-it.de>
+- wolmi <lenyos@gmail.com>
+- xthursdayx <xthursdayx@mailbox.org>
+- yohan <783b8c87@scimetis.net>
+- z00316370 <zhangzhiwen@hisilicon.com>
+
+Use the following command to query the author's commit:
+   git log --author='author'
+Or see [ChangeLog](ChangeLog)
