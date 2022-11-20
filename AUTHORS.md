@@ -139,8 +139,3 @@ Thanks to the following contributors (in alphabetical order):
 - yohan <783b8c87@scimetis.net>
 - z00316370 <zhangzhiwen@hisilicon.com>
 
-Use the following command to query the author's commit:
-```
-   git log --author='author'
-```
-Or see [ChangeLog](ChangeLog)
