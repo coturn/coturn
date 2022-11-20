@@ -38,7 +38,7 @@ fi
 echo "$MESSAGE" >  ${SOURCE_DIR}/ChangeLog
 echo "" >> ${SOURCE_DIR}/ChangeLog
 echo "Changelist:" >> ${SOURCE_DIR}/ChangeLog
-echo "`git log --pretty=format:'- %s (%an <%ae>)' ${PRE_TAG}..HEAD`" >> ${SOURCE_DIR}/ChangeLog
+echo "`git log --pretty=format:'- %s (%an <%ae>)' ${PRE_TAG}..HEAD | grep -v dependabot`" >> ${SOURCE_DIR}/ChangeLog
 echo "" >> ${SOURCE_DIR}/ChangeLog
 echo "Contributors:" >> ${SOURCE_DIR}/ChangeLog
 echo "`git log --pretty=format:'- %an <%ae>' ${PRE_TAG}..HEAD|sort|uniq`" >> ${SOURCE_DIR}/ChangeLog
