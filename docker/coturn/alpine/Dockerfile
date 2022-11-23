@@ -181,7 +181,7 @@ RUN apk update \
  # Install Coturn dependencies.
  && apk add --no-cache \
         libevent \
-        libcrypto1.1 libssl1.1 \
+        libcrypto3 libssl3 \
         libpq mariadb-connector-c sqlite-libs \
         hiredis \
         mongo-c-driver \
