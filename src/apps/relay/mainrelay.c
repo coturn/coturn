@@ -3785,21 +3785,21 @@ static void openssl_load_certificates(void) {
 #if OPENSSL_VERSION_NUMBER < 0x10100000L // before openssl-1.1.0 no version independent API
 #if DTLSv1_2_SUPPORTED
     set_ctx(&turn_params.dtls_ctx, "DTLS", DTLSv1_2_server_method()); // openssl-1.0.2
-    if (!turn_params.no_tlsv1_2) {
+    if (turn_params.no_tlsv1_2) {
       SSL_CTX_set_options(turn_params.dtls_ctx, SSL_OP_NO_DTLSv1_2);
     }
 #else
     set_ctx(&turn_params.dtls_ctx, "DTLS", DTLSv1_server_method()); // < openssl-1.0.2
 #endif
-    if (!turn_params.no_tlsv1 || !turn_params.no_tlsv1_1) {
+    if (turn_params.no_tlsv1 || turn_params.no_tlsv1_1) {
       SSL_CTX_set_options(turn_params.dtls_ctx, SSL_OP_NO_DTLSv1);
     }
 #else  // OPENSSL_VERSION_NUMBER < 0x10100000L
     set_ctx(&turn_params.dtls_ctx, "DTLS", DTLS_server_method());
-    if (!turn_params.no_tlsv1 || !turn_params.no_tlsv1_1) {
+    if (turn_params.no_tlsv1 || turn_params.no_tlsv1_1) {
       SSL_CTX_set_min_proto_version(turn_params.dtls_ctx, DTLS1_2_VERSION);
     }
-    if (!turn_params.no_tlsv1_2) {
+    if (turn_params.no_tlsv1_2) {
       SSL_CTX_set_max_proto_version(turn_params.dtls_ctx, DTLS1_VERSION);
     }
 #endif // OPENSSL_VERSION_NUMBER < 0x10100000L
