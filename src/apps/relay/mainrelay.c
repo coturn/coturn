@@ -3807,10 +3807,10 @@ static void openssl_load_certificates(void) {
 #else  // OPENSSL_VERSION_NUMBER < 0x10100000L
     set_ctx(&turn_params.dtls_ctx, "DTLS", DTLS_server_method());
     if (!turn_params.no_tlsv1 || !turn_params.no_tlsv1_1) {
-      SSL_CTX_set_min_proto_version(turn_params.tls_ctx, DTLS1_2_VERSION);
+      SSL_CTX_set_min_proto_version(turn_params.dtls_ctx, DTLS1_2_VERSION);
     }
     if (!turn_params.no_tlsv1_2) {
-      SSL_CTX_set_max_proto_version(turn_params.tls_ctx, DTLS1_VERSION);
+      SSL_CTX_set_max_proto_version(turn_params.dtls_ctx, DTLS1_VERSION);
     }
 #endif // OPENSSL_VERSION_NUMBER < 0x10100000L
     setup_dtls_callbacks(turn_params.dtls_ctx);
