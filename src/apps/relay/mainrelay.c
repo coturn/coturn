@@ -1105,8 +1105,10 @@ static char Usage[] =
     "						If both --no-tls and --no-dtls options\n"
     " --pkey-pwd		<password>		If the private key file is encrypted, then this password to be "
     "used.\n"
-    " --cipher-list	<\"cipher-string\">		Allowed OpenSSL cipher list for TLS/DTLS connections.\n"
-    "						Default value is \"DEFAULT\".\n"
+    " --cipher-list	<\"cipher-string\">		Allowed OpenSSL cipher list for TLS/DTLS connections\n"
+    "						(up to TLS/DLTS 1.2). Default value is \"DEFAULT\".\n"
+    " --ciphersuites	<\"cipher-string\">		Allowed OpenSSL ciphersuites for TLS 1.3 connections.\n"
+    "						Default value is ciphersuite list compiled into OpenSSL.\n"
     " --CA-file		<filename>		CA file in OpenSSL format.\n"
     "						Forces TURN server to verify the client SSL certificates.\n"
     "						By default, no CA is set and no client certificate check is "
@@ -3529,6 +3531,10 @@ static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *metho
 
   SSL_CTX_set_cipher_list(ctx, turn_params.cipher_list);
   SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_OFF);
+
+#if TLSv1_3_SUPPORTED
+  SSL_CTX_set_ciphersuites(ctx, turn_params.cipher_list);
+#endif
 
   if (!SSL_CTX_use_certificate_chain_file(ctx, turn_params.cert_file)) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: no certificate found\n", protocol);

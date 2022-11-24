@@ -102,8 +102,11 @@ extern "C" {
 
 #define DEFAULT_CONFIG_FILE "turnserver.conf"
 
+#if TLSv1_3_SUPPORTED
+#define DEFAULT_CIPHER_LIST "DEFAULT:" TLS_DEFAULT_CIPHERSUITES
+#else
 #define DEFAULT_CIPHER_LIST "DEFAULT"
-/* "ALL:eNULL:aNULL:NULL" */
+#endif
 
 #define DEFAULT_EC_CURVE_NAME "prime256v1"
 
