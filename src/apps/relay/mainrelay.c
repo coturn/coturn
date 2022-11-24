@@ -3677,16 +3677,6 @@ static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *metho
     op |= SSL_OP_NO_SSLv3;
 #endif
 
-#if defined(SSL_OP_NO_DTLSv1) && DTLS_SUPPORTED
-    if (turn_params.no_tlsv1)
-      op |= SSL_OP_NO_DTLSv1;
-#endif
-
-#if defined(SSL_OP_NO_DTLSv1_2) && DTLSv1_2_SUPPORTED
-    if (turn_params.no_tlsv1_2)
-      op |= SSL_OP_NO_DTLSv1_2;
-#endif
-
 #if defined(SSL_OP_CIPHER_SERVER_PREFERENCE)
     op |= SSL_OP_CIPHER_SERVER_PREFERENCE;
 #endif
