@@ -484,7 +484,8 @@ Options with values:
 --pkey-pwd		If the private key file is encrypted, then this password to be used.
 
 --cipher-list		Allowed OpenSSL cipher list for TLS/DTLS connections.
-			Default value is "DEFAULT".
+			Default value is "DEFAULT" for TLS/DTLS versions up to TLSv1.2/DTLSv1.2,
+			and the library default ciphersuites for TLSv1.3.
 
 --CA-file		CA file in OpenSSL format.
 			Forces TURN server to verify the client SSL certificates.
