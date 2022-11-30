@@ -52,9 +52,7 @@ As per [RFC 5766 Section 6.2], these are the ports that the TURN server will use
 You can change them with `min-port` and `max-port` Coturn configuration options:
 ```bash
 docker run -d -p 3478:3478 -p 3478:3478/udp -p 5349:5349 -p 5349:5349/udp -p 49160-49200:49160-49200/udp \
-       coturn/coturn -n --log-file=stdout \
-                        --external-ip='$(detect-external-ip)' \
-                        --min-port=49160 --max-port=49200
+       coturn/coturn --min-port=49160 --max-port=49200
 ```
 
 Or just use the host network directly (__recommended__, as Docker [performs badly with large port ranges][7]):
@@ -97,12 +95,15 @@ By default, default Coturn configuration and CLI options provided in the `CMD` [
 
 #### Automatic detection of external IP
 
-`detect-external-ip` binary may be used to automatically detect external IP of TURN server in runtime. It's okay to use it multiple times (the value will be evaluated only once).
+`detect-external-ip` binary may be used to automatically detect external IP of TURN server in runtime. 
+To add ` --external-ip=<detected external IP>` using `detect-external-ip` as argument for `turnserver`, set envronment variable `DETECT_EXTERNAL_IP`. Also, environment variables `DETECT_RELAY_IP`, `DETECT_EXTERNAL_IPV6` and `DETECT_RELAY_IPV6` can be used for adding arugments ` --external-ip=<detected external IP>` or ` --relay-ip=<detected external IP>`.
+It's okay to use it multiple times (the value will be evaluated only once).
 ```bash
-docker run -d --network=host coturn/coturn \
-           -n --log-file=stdout \
-           --external-ip='$(detect-external-ip)' \
-           --relay-ip='$(detect-external-ip)'
+docker run -d --network=host \
+           -e DETECT_EXTERNAL_IP=yes \
+           -e DETECT_RELAY_IP=yes \
+           coturn/coturn \
+           -n --log-file=stdout
 ```
 
 By default, [IPv4] address is discovered. In case you need an [IPv6] one, specify the `--ipv6` flag:
