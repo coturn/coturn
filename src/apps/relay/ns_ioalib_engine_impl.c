@@ -1548,9 +1548,15 @@ void close_ioa_socket(ioa_socket_handle s)
 
 		close_socket_net_data(s);
 
-		s->session = NULL;
-		s->sub_session = NULL;
-		s->magic = 0;
+    if (s->session && s->session->client_socket == s) {
+      // Detaching client socket from super session to prevent mem corruption
+      // in case client_to_be_allocated_timeout_handler gets triggered
+      s->session->client_socket = NULL;
+    }
+
+    s->session = NULL;
+    s->sub_session = NULL;
+    s->magic = 0;
 
 		free(s);
 	}
