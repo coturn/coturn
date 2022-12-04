@@ -744,35 +744,7 @@ static void cli_print_configuration(struct cli_session *cs) {
     myprintf(cs, "\n");
 
     if (turn_params.default_users_db.persistent_users_db.userdb[0]) {
-      switch (turn_params.default_users_db.userdb_type) {
-#if !defined(TURN_NO_SQLITE)
-      case TURN_USERDB_TYPE_SQLITE:
-        cli_print_str(cs, "SQLite", "DB type", 0);
-        break;
-#endif
-#if !defined(TURN_NO_PQ)
-      case TURN_USERDB_TYPE_PQ:
-        cli_print_str(cs, "Postgres", "DB type", 0);
-        break;
-#endif
-#if !defined(TURN_NO_MYSQL)
-      case TURN_USERDB_TYPE_MYSQL:
-        cli_print_str(cs, "MySQL/MariaDB", "DB type", 0);
-        break;
-#endif
-#if !defined(TURN_NO_MONGO)
-      case TURN_USERDB_TYPE_MONGO:
-        cli_print_str(cs, "MongoDB", "DB type", 0);
-        break;
-#endif
-#if !defined(TURN_NO_HIREDIS)
-      case TURN_USERDB_TYPE_REDIS:
-        cli_print_str(cs, "redis", "DB type", 0);
-        break;
-#endif
-      default:
-        cli_print_str(cs, "unknown", "DB type", 0);
-      };
+      cli_print_str(cs, userdb_type_to_string(turn_params.default_users_db.userdb_type), "DB type", 0);
       cli_print_str(cs, turn_params.default_users_db.persistent_users_db.userdb, "DB", 0);
     } else {
       cli_print_str(cs, "none", "DB type", 0);
@@ -2125,35 +2097,7 @@ static void write_pc_page(ioa_socket_handle s) {
         https_print_empty_row(sb, 2);
 
         if (turn_params.default_users_db.persistent_users_db.userdb[0]) {
-          switch (turn_params.default_users_db.userdb_type) {
-#if !defined(TURN_NO_SQLITE)
-          case TURN_USERDB_TYPE_SQLITE:
-            https_print_str(sb, "SQLite", "DB type", 0);
-            break;
-#endif
-#if !defined(TURN_NO_PQ)
-          case TURN_USERDB_TYPE_PQ:
-            https_print_str(sb, "Postgres", "DB type", 0);
-            break;
-#endif
-#if !defined(TURN_NO_MYSQL)
-          case TURN_USERDB_TYPE_MYSQL:
-            https_print_str(sb, "MySQL/MariaDB", "DB type", 0);
-            break;
-#endif
-#if !defined(TURN_NO_MONGO)
-          case TURN_USERDB_TYPE_MONGO:
-            https_print_str(sb, "MongoDB", "DB type", 0);
-            break;
-#endif
-#if !defined(TURN_NO_HIREDIS)
-          case TURN_USERDB_TYPE_REDIS:
-            https_print_str(sb, "redis", "DB type", 0);
-            break;
-#endif
-          default:
-            https_print_str(sb, "unknown", "DB type", 0);
-          };
+          https_print_str(sb, userdb_type_to_string(turn_params.default_users_db.userdb_type), "DB type", 0);
           if (is_superuser()) {
             https_print_str(sb, turn_params.default_users_db.persistent_users_db.userdb, "DB", 0);
           }

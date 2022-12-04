@@ -92,25 +92,11 @@ struct auth_message {
 };
 
 enum _TURN_USERDB_TYPE {
-#if !defined(TURN_NO_SQLITE)
-  TURN_USERDB_TYPE_UNKNOWN = -1,
-  TURN_USERDB_TYPE_SQLITE = 0
-#else
-  TURN_USERDB_TYPE_UNKNOWN = 0
-#endif
-#if !defined(TURN_NO_PQ)
-  ,
-  TURN_USERDB_TYPE_PQ
-#endif
-#if !defined(TURN_NO_MYSQL)
-  ,
-  TURN_USERDB_TYPE_MYSQL
-#endif
-#if !defined(TURN_NO_MONGO)
-  ,
-  TURN_USERDB_TYPE_MONGO
-#endif
-  ,
+  TURN_USERDB_TYPE_UNKNOWN,
+  TURN_USERDB_TYPE_SQLITE,
+  TURN_USERDB_TYPE_PQ,
+  TURN_USERDB_TYPE_MYSQL,
+  TURN_USERDB_TYPE_MONGO,
   TURN_USERDB_TYPE_REDIS
 };
 
@@ -173,6 +159,7 @@ typedef struct _default_users_db_t {
 
 /////////////////////////////////////////////
 
+const char *userdb_type_to_string(TURN_USERDB_TYPE t);
 realm_params_t *get_realm(char *name);
 void set_default_realm_name(char *realm);
 int change_total_quota(char *realm, int value);
