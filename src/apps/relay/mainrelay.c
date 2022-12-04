@@ -1066,13 +1066,12 @@ static char Usage[] =
     "						The connection string has the same parameters as redis-userdb "
     "connection string.\n"
 #endif
-#if !defined(TURN_NO_PROMETHEUS)
     " --prometheus					Enable prometheus metrics. It is disabled by default. If it is "
     "enabled it will listen on port 9641 under the path /metrics\n"
     "						also the path / on this port can be used as a health check\n"
+    "						May not be supported if built without Prometheus support.\n"
     " --prometheus-port		<port>		Prometheus metrics port (Default: 9641).\n"
     " --prometheus-username-labels			When metrics are enabled, add labels with client usernames.\n"
-#endif
     " --use-auth-secret				TURN REST API flag.\n"
     "						Flag that sets a special authorization option that is based upon "
     "authentication secret\n"
@@ -1480,11 +1479,9 @@ static const struct myoption long_options[] = {
     {"redis-userdb", required_argument, NULL, 'N'},
     {"redis-statsdb", required_argument, NULL, 'O'},
 #endif
-#if !defined(TURN_NO_PROMETHEUS)
     {"prometheus", optional_argument, NULL, PROMETHEUS_OPT},
     {"prometheus-port", optional_argument, NULL, PROMETHEUS_PORT_OPT},
     {"prometheus-username-labels", optional_argument, NULL, PROMETHEUS_ENABLE_USERNAMES_OPT},
-#endif
     {"use-auth-secret", optional_argument, NULL, AUTH_SECRET_OPT},
     {"static-auth-secret", required_argument, NULL, STATIC_AUTH_SECRET_VAL_OPT},
     {"no-auth-pings", optional_argument, NULL, NO_AUTH_PINGS_OPT},

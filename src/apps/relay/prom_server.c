@@ -197,4 +197,19 @@ void start_prometheus_server(void) {
   return;
 }
 
+void prom_set_finished_traffic(const char *realm, const char *user, unsigned long rsvp, unsigned long rsvb,
+                               unsigned long sentp, unsigned long sentb, bool peer) {
+  UNUSED_ARG(realm);
+  UNUSED_ARG(user);
+  UNUSED_ARG(rsvp);
+  UNUSED_ARG(rsvb);
+  UNUSED_ARG(sentp);
+  UNUSED_ARG(sentb);
+  UNUSED_ARG(peer);
+}
+
+void prom_inc_allocation(SOCKET_TYPE type) { UNUSED_ARG(type); }
+
+void prom_dec_allocation(SOCKET_TYPE type) { UNUSED_ARG(type); }
+
 #endif /* TURN_NO_PROMETHEUS */

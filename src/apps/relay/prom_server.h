@@ -2,17 +2,16 @@
 #ifndef __PROM_SERVER_H__
 #define __PROM_SERVER_H__
 
+#include <stdbool.h>
+#include "ns_turn_ioalib.h"
+
 #define DEFAULT_PROM_SERVER_PORT (9641)
+#define TURN_ALLOC_STR_MAX_SIZE (20)
 
 #if !defined(TURN_NO_PROMETHEUS)
 
-#include <signal.h>
-#include <stdbool.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-
-#include "ns_turn_ioalib.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -54,11 +53,11 @@ extern prom_counter_t *turn_total_traffic_peer_sentb;
 
 extern prom_gauge_t *turn_total_allocations_number;
 
-#define TURN_ALLOC_STR_MAX_SIZE (20)
-
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#endif /* TURN_NO_PROMETHEUS */
 
 void start_prometheus_server(void);
 
