@@ -24,6 +24,10 @@ extern "C" {
 }
 #endif /* __clplusplus */
 
+extern prom_counter_t *stun_binding_request;
+extern prom_counter_t *stun_binding_response;
+extern prom_counter_t *stun_binding_error;
+
 extern prom_counter_t *turn_new_allocation;
 extern prom_counter_t *turn_refreshed_allocation;
 extern prom_counter_t *turn_deleted_allocation;
