@@ -205,6 +205,10 @@ void ioa_network_buffer_delete(ioa_engine_handle e, ioa_network_buffer_handle nb
 /*
  * Status reporting functions
  */
+void stun_report_binding_request(void *a);
+void stun_report_binding_response(void *a);
+void stun_report_binding_error(void *session);
+
 void turn_report_allocation_set(void *a, turn_time_t lifetime, int refresh);
 void turn_report_allocation_delete(void *a, SOCKET_TYPE socket_type);
 void turn_report_session_usage(void *session, int force_invalid);

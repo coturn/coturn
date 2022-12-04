@@ -172,6 +172,24 @@ void prom_dec_allocation(SOCKET_TYPE type) {
   }
 }
 
+void prom_inc_stun_binding_request(void) {
+  if (turn_params.prometheus == 1) {
+    prom_counter_add(stun_binding_request, 1, NULL);
+  }
+}
+
+void prom_inc_stun_binding_response(void) {
+  if (turn_params.prometheus == 1) {
+    prom_counter_add(stun_binding_response, 1, NULL);
+  }
+}
+
+void prom_inc_stun_binding_error(void) {
+  if (turn_params.prometheus == 1) {
+    prom_counter_add(stun_binding_error, 1, NULL);
+  }
+}
+
 #else
 
 void start_prometheus_server(void) {
