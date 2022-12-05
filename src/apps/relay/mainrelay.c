@@ -3839,10 +3839,9 @@ static void reload_ssl_certs(evutil_socket_t sock, short events, void *args) {
 }
 
 static void shutdown_handler(evutil_socket_t sock, short events, void *args) {
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Caught signal, terminating\n");
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Terminating on signal %d\n", sock);
   turn_params.stop_turn_server = 1;
 
-  UNUSED_ARG(sock);
   UNUSED_ARG(events);
   UNUSED_ARG(args);
 }
