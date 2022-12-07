@@ -3677,16 +3677,6 @@ static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *metho
     op |= SSL_OP_NO_SSLv3;
 #endif
 
-#if defined(SSL_OP_NO_DTLSv1) && DTLS_SUPPORTED
-    if (turn_params.no_tlsv1)
-      op |= SSL_OP_NO_DTLSv1;
-#endif
-
-#if defined(SSL_OP_NO_DTLSv1_2) && DTLSv1_2_SUPPORTED
-    if (turn_params.no_tlsv1_2)
-      op |= SSL_OP_NO_DTLSv1_2;
-#endif
-
 #if defined(SSL_OP_CIPHER_SERVER_PREFERENCE)
     op |= SSL_OP_CIPHER_SERVER_PREFERENCE;
 #endif
@@ -3754,29 +3744,29 @@ static void openssl_load_certificates(void) {
   if (!turn_params.no_tls) {
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
     set_ctx(&turn_params.tls_ctx, "TLS", TLSv1_2_server_method()); /*openssl-1.0.2 version specific API */
-    if (!turn_params.no_tlsv1) {
+    if (turn_params.no_tlsv1) {
       SSL_CTX_set_options(turn_params.tls_ctx, SSL_OP_NO_TLSv1);
     }
 #if TLSv1_1_SUPPORTED
-    if (!turn_params.no_tlsv1_1) {
+    if (turn_params.no_tlsv1_1) {
       SSL_CTX_set_options(turn_params.tls_ctx, SSL_OP_NO_TLSv1_1);
     }
 #if TLSv1_2_SUPPORTED
-    if (!turn_params.no_tlsv1_2) {
+    if (turn_params.no_tlsv1_2) {
       SSL_CTX_set_options(turn_params.tls_ctx, SSL_OP_NO_TLSv1_2);
     }
 #endif
 #endif
 #else // OPENSSL_VERSION_NUMBER < 0x10100000L
     set_ctx(&turn_params.tls_ctx, "TLS", TLS_server_method());
-    if (!turn_params.no_tlsv1) {
+    if (turn_params.no_tlsv1) {
       SSL_CTX_set_min_proto_version(turn_params.tls_ctx, TLS1_1_VERSION);
     }
-    if (!turn_params.no_tlsv1_1) {
+    if (turn_params.no_tlsv1_1) {
       SSL_CTX_set_min_proto_version(turn_params.tls_ctx, TLS1_2_VERSION);
     }
 #if TLSv1_3_SUPPORTED
-    if (!turn_params.no_tlsv1_2) {
+    if (turn_params.no_tlsv1_2) {
       SSL_CTX_set_min_proto_version(turn_params.tls_ctx, TLS1_3_VERSION);
     }
 #endif
@@ -3795,22 +3785,22 @@ static void openssl_load_certificates(void) {
 #if OPENSSL_VERSION_NUMBER < 0x10100000L // before openssl-1.1.0 no version independent API
 #if DTLSv1_2_SUPPORTED
     set_ctx(&turn_params.dtls_ctx, "DTLS", DTLSv1_2_server_method()); // openssl-1.0.2
-    if (!turn_params.no_tlsv1_2) {
+    if (turn_params.no_tlsv1_2) {
       SSL_CTX_set_options(turn_params.dtls_ctx, SSL_OP_NO_DTLSv1_2);
     }
 #else
     set_ctx(&turn_params.dtls_ctx, "DTLS", DTLSv1_server_method()); // < openssl-1.0.2
 #endif
-    if (!turn_params.no_tlsv1 || !turn_params.no_tlsv1_1) {
+    if (turn_params.no_tlsv1 || turn_params.no_tlsv1_1) {
       SSL_CTX_set_options(turn_params.dtls_ctx, SSL_OP_NO_DTLSv1);
     }
 #else  // OPENSSL_VERSION_NUMBER < 0x10100000L
     set_ctx(&turn_params.dtls_ctx, "DTLS", DTLS_server_method());
-    if (!turn_params.no_tlsv1 || !turn_params.no_tlsv1_1) {
-      SSL_CTX_set_min_proto_version(turn_params.tls_ctx, DTLS1_2_VERSION);
+    if (turn_params.no_tlsv1 || turn_params.no_tlsv1_1) {
+      SSL_CTX_set_min_proto_version(turn_params.dtls_ctx, DTLS1_2_VERSION);
     }
-    if (!turn_params.no_tlsv1_2) {
-      SSL_CTX_set_max_proto_version(turn_params.tls_ctx, DTLS1_VERSION);
+    if (turn_params.no_tlsv1_2) {
+      SSL_CTX_set_max_proto_version(turn_params.dtls_ctx, DTLS1_VERSION);
     }
 #endif // OPENSSL_VERSION_NUMBER < 0x10100000L
     setup_dtls_callbacks(turn_params.dtls_ctx);
