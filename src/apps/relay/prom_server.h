@@ -2,8 +2,8 @@
 #ifndef __PROM_SERVER_H__
 #define __PROM_SERVER_H__
 
-#include <stdbool.h>
 #include "ns_turn_ioalib.h"
+#include <stdbool.h>
 
 #define DEFAULT_PROM_SERVER_PORT (9641)
 #define TURN_ALLOC_STR_MAX_SIZE (20)
