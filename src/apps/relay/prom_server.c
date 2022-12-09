@@ -82,8 +82,9 @@ void start_prometheus_server(void) {
       prom_counter_new("turn_total_traffic_peer_sentb", "Represents total finished sessions peer sent bytes", 0, NULL));
 
   // Create total allocations number gauge metric
+  const char *typeLabel[] = {"type"};
   turn_total_allocations = prom_collector_registry_must_register_metric(
-      prom_gauge_new("turn_total_allocations", "Represents current allocations number", 1, (const char *[]){"type"}));
+      prom_gauge_new("turn_total_allocations", "Represents current allocations number", 1, typeLabel));
 
   promhttp_set_active_collector_registry(NULL);
 
