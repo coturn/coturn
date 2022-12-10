@@ -3514,7 +3514,8 @@ const char *get_ioa_socket_ssl_method(ioa_socket_handle s) {
   return "no SSL";
 }
 
-void stun_report_binding_request(void *a) {
+void stun_report_binding(void *a, STUN_PROMETHEUS_METRIC_TYPE type) {
+#if !defined(TURN_NO_PROMETHEUS)
   if (a) {
     ts_ur_super_session *ss = (ts_ur_super_session *)a;
     if (ss) {
@@ -3522,53 +3523,29 @@ void stun_report_binding_request(void *a) {
       if (server) {
         ioa_engine_handle e = turn_server_get_engine(server);
         if (e && e->verbose) {
-          TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: STUN binding request realm=<%s>, username=<%s>\n",
+          TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: STUN binding %s realm=<%s>, username=<%s>\n",
+                        (type == 0) ? "request" : (type == 1) ? "response" : "error",
                         (unsigned long long)ss->id, (char *)ss->realm_options.name, (char *)ss->username);
         }
-#if !defined(TURN_NO_PROMETHEUS)
-        { prom_inc_stun_binding_request(); }
-#endif
+        switch(type) {
+        case 0:
+            prom_inc_stun_binding_request();
+            break;
+          case 1:
+            prom_inc_stun_binding_response();
+            break;
+          case 2: 
+            prom_inc_stun_binding_error();
+            break;
+          default:
+        }
       }
     }
   }
-}
-
-void stun_report_binding_response(void *a) {
-  if (a) {
-    ts_ur_super_session *ss = (ts_ur_super_session *)a;
-    if (ss) {
-      turn_turnserver *server = (turn_turnserver *)ss->server;
-      if (server) {
-        ioa_engine_handle e = turn_server_get_engine(server);
-        if (e && e->verbose) {
-          TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: STUN binding response realm=<%s>, username=<%s>\n",
-                        (unsigned long long)ss->id, (char *)ss->realm_options.name, (char *)ss->username);
-        }
-#if !defined(TURN_NO_PROMETHEUS)
-        { prom_inc_stun_binding_response(); }
+#else
+  UNUSED_ARG(a);
+  UNUSED_ARG(type);
 #endif
-      }
-    }
-  }
-}
-
-void stun_report_binding_error(void *a) {
-  if (a) {
-    ts_ur_super_session *ss = (ts_ur_super_session *)(((allocation *)a)->owner);
-    if (ss) {
-      turn_turnserver *server = (turn_turnserver *)ss->server;
-      if (server) {
-        ioa_engine_handle e = turn_server_get_engine(server);
-        if (e && e->verbose) {
-          TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: STUN binding error realm=<%s>, username=<%s>\n",
-                        (unsigned long long)ss->id, (char *)ss->realm_options.name, (char *)ss->username);
-        }
-#if !defined(TURN_NO_PROMETHEUS)
-        { prom_inc_stun_binding_error(); }
-#endif
-      }
-    }
-  }
 }
 
 void turn_report_allocation_set(void *a, turn_time_t lifetime, int refresh) {

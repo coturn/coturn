@@ -205,9 +205,15 @@ void ioa_network_buffer_delete(ioa_engine_handle e, ioa_network_buffer_handle nb
 /*
  * Status reporting functions
  */
-void stun_report_binding_request(void *a);
-void stun_report_binding_response(void *a);
-void stun_report_binding_error(void *session);
+enum _STUN_PROMETHEUS_METRIC_TYPE {
+  STUN_PROMETHEUS_METRIC_TYPE_REQUEST,
+  STUN_PROMETHEUS_METRIC_TYPE_RESPONSE,
+  STUN_PROMETHEUS_METRIC_TYPE_ERROR,
+  STUN_PROMETHEUS_METRIC_TYPE_NUM
+};
+
+typedef enum _STUN_PROMETHEUS_METRIC_TYPE STUN_PROMETHEUS_METRIC_TYPE; 
+void stun_report_binding(void *session, STUN_PROMETHEUS_METRIC_TYPE type);
 
 void turn_report_allocation_set(void *a, turn_time_t lifetime, int refresh);
 void turn_report_allocation_delete(void *a, SOCKET_TYPE socket_type);
