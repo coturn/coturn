@@ -3525,21 +3525,23 @@ void stun_report_binding(void *a, STUN_PROMETHEUS_METRIC_TYPE type) {
         if (e && e->verbose) {
           TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: STUN binding %s realm=<%s>, username=<%s>\n",
                         (unsigned long long)ss->id,
-                        (type == 0) ? "request" : (type == 1) ? "response" : "error",
+                        (type == 0)   ? "request"
+                        : (type == 1) ? "response"
+                                      : "error",
                         (char *)ss->realm_options.name, (char *)ss->username);
         }
-        switch(type) {
+        switch (type) {
         case 0:
-            prom_inc_stun_binding_request();
-            break;
-          case 1:
-            prom_inc_stun_binding_response();
-            break;
-          case 2: 
-            prom_inc_stun_binding_error();
-            break;
-          default:
-            break;
+          prom_inc_stun_binding_request();
+          break;
+        case 1:
+          prom_inc_stun_binding_response();
+          break;
+        case 2:
+          prom_inc_stun_binding_error();
+          break;
+        default:
+          break;
         }
       }
     }

@@ -212,7 +212,7 @@ enum _STUN_PROMETHEUS_METRIC_TYPE {
   STUN_PROMETHEUS_METRIC_TYPE_NUM
 };
 
-typedef enum _STUN_PROMETHEUS_METRIC_TYPE STUN_PROMETHEUS_METRIC_TYPE; 
+typedef enum _STUN_PROMETHEUS_METRIC_TYPE STUN_PROMETHEUS_METRIC_TYPE;
 void stun_report_binding(void *session, STUN_PROMETHEUS_METRIC_TYPE type);
 
 void turn_report_allocation_set(void *a, turn_time_t lifetime, int refresh);
