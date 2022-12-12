@@ -3524,8 +3524,9 @@ void stun_report_binding(void *a, STUN_PROMETHEUS_METRIC_TYPE type) {
         ioa_engine_handle e = turn_server_get_engine(server);
         if (e && e->verbose) {
           TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: STUN binding %s realm=<%s>, username=<%s>\n",
+                        (unsigned long long)ss->id,
                         (type == 0) ? "request" : (type == 1) ? "response" : "error",
-                        (unsigned long long)ss->id, (char *)ss->realm_options.name, (char *)ss->username);
+                        (char *)ss->realm_options.name, (char *)ss->username);
         }
         switch(type) {
         case 0:
