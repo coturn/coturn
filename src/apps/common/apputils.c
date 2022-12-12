@@ -743,7 +743,7 @@ int handle_socket_error(void) {
     /* Out of memory.
      * Must close connection.
      */
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Out of memory!\n");
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Out of memory!\n");
     return 0;
   }
   if (socket_eacces()) {
@@ -756,7 +756,7 @@ int handle_socket_error(void) {
   }
 
   /* Something unexpected happened */
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Unexpected error! (errno = %d)\n", socket_errno());
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Unexpected error! (errno = %d)\n", socket_errno());
   return 0;
 }
 

@@ -108,8 +108,7 @@ static inline uint64_t _ioa_ntoh64(uint64_t v) {
 #define ioa_hton64 _ioa_ntoh64
 
 #if defined(WINDOWS)
-static inline int socket_errno(void)
-{
+static inline int socket_errno(void) {
 	return WSAGetLastError();
 }
 static inline int socket_enomem(void) { return socket_errno() == WSA_NOT_ENOUGH_MEMORY; }
@@ -125,8 +124,7 @@ static inline int socket_econnrefused(void) { return socket_errno() == WSAECONNR
 static inline int socket_ehostdown(void) { return socket_errno() == WSAEHOSTDOWN; }
 static inline int socket_emsgsize(void) { return socket_errno() == WSAEMSGSIZE; }
 #else
-static inline int socket_errno(void)
-{
+static inline int socket_errno(void) {
 	return errno;
 }
 static inline int socket_eperm(void) { return socket_errno() == EPERM; }

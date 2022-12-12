@@ -305,7 +305,7 @@ static int run_stunclient(const char *rip, int rport, int *port, int *rfc5780, i
 
     do {
       len = sendto(udp_fd, buf.buf, buf.len, 0, (struct sockaddr *)&remote_addr, (socklen_t)slen);
-    } while (len < 0 && (socket_eintr() || socket_enobufs()|| socket_eagain()));
+    } while (len < 0 && (socket_eintr() || socket_enobufs() || socket_eagain()));
 
     if (len < 0)
       err(-1, NULL);

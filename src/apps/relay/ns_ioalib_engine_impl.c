@@ -3042,9 +3042,7 @@ int is_connreset(void) {
   return 0;
 }
 
-int would_block(void) {
-  return socket_ewouldblock();
-}
+int would_block(void) { return socket_ewouldblock(); }
 
 int udp_send(ioa_socket_handle s, const ioa_addr *dest_addr, const char *buffer, int len) {
   int rc = 0;
