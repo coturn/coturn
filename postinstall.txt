@@ -1,1 +1,1 @@
-See https://github.com/coturn/coturn/docs/PostInstall.md
+See docs folder or go to https://github.com/coturn/coturn/docs/PostInstall.md
