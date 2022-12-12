@@ -69,6 +69,13 @@ IF(MSVC)
     add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 ENDIF(MSVC)
 
+IF(WIN32)
+    # Explicitly state minimum Windows version to compile against
+    # This affects which APIs that are available in for example winsock
+    # 0x0601 == Windows 7
+    add_definitions(-D_WIN32_WINNT=0x0601)
+ENDIF(WIN32)
+
 SET(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libs")
 if (BUILD_SHARED_LIBS)
     add_definitions(-DBUILD_SHARED_LIBS)
