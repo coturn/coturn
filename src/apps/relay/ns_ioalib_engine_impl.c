@@ -3539,6 +3539,7 @@ void stun_report_binding(void *a, STUN_PROMETHEUS_METRIC_TYPE type) {
             prom_inc_stun_binding_error();
             break;
           default:
+            break;
         }
       }
     }
