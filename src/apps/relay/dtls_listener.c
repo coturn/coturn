@@ -479,7 +479,7 @@ static int create_new_connected_udp_socket(dtls_listener_relay_server_type *serv
   ioa_socket_handle ret = (ioa_socket *)malloc(sizeof(ioa_socket));
   if (!ret) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Cannot allocate new socket structure\n", __FUNCTION__);
-    close(udp_fd);
+    socket_closesocket(udp_fd);
     return -1;
   }
 
@@ -663,7 +663,7 @@ start_udp_cycle:
     do {
       bsize = recvfrom(fd, ioa_network_buffer_data(elem), ioa_network_buffer_get_capacity_udp(), flags,
                        (struct sockaddr *)&(server->sm.m.sm.nd.src_addr), (socklen_t *)&slen);
-    } while (bsize < 0 && (errno == EINTR));
+    } while (bsize < 0 && socket_eintr());
 
     conn_reset = is_connreset();
     to_block = would_block();
@@ -681,7 +681,7 @@ start_udp_cycle:
 
   if (bsize < 0) {
     if (!to_block && !conn_reset) {
-      int ern = errno;
+      int ern = socket_errno();
       perror(__FUNCTION__);
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: recvfrom error %d\n", __FUNCTION__, ern);
     }

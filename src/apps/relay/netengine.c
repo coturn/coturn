@@ -88,11 +88,11 @@ static void barrier_wait_func(const char *func, int line) {
   do {
     br = pthread_barrier_wait(&barrier);
     if ((br < 0) && (br != PTHREAD_BARRIER_SERIAL_THREAD)) {
-      int err = errno;
+      int err = socket_errno();
       perror("barrier wait");
       printf("%s:%s:%d: %d\n", __FUNCTION__, func, line, err);
     }
-  } while (((br < 0) && (br != PTHREAD_BARRIER_SERIAL_THREAD)) && (errno == EINTR));
+  } while (((br < 0) && (br != PTHREAD_BARRIER_SERIAL_THREAD)) && socket_eintr());
 #else
   UNUSED_ARG(func);
   UNUSED_ARG(line);

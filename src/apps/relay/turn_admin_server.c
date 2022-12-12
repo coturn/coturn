@@ -836,7 +836,7 @@ static void close_cli_session(struct cli_session *cs) {
     BUFFEREVENT_FREE(cs->bev);
 
     if (cs->fd >= 0) {
-      close(cs->fd);
+      socket_closesocket(cs->fd);
       cs->fd = -1;
     }
 
