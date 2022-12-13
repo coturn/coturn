@@ -3526,8 +3526,13 @@ static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *metho
 
   SSL_CTX_set_default_passwd_cb(ctx, pem_password_func);
 
-  if (!(turn_params.cipher_list[0]))
+  if (!(turn_params.cipher_list[0])) {
     strncpy(turn_params.cipher_list, DEFAULT_CIPHER_LIST, TURN_LONG_STRING_SIZE);
+#if TLSv1_3_SUPPORTED
+    strncat(turn_params.cipher_list, ":", TURN_LONG_STRING_SIZE - 1);
+    strncat(turn_params.cipher_list, DEFAULT_CIPHERSUITES, TURN_LONG_STRING_SIZE - 1);
+#endif
+  }
 
   SSL_CTX_set_cipher_list(ctx, turn_params.cipher_list);
   SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_OFF);
