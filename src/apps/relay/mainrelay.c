@@ -3529,8 +3529,8 @@ static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *metho
   if (!(turn_params.cipher_list[0])) {
     strncpy(turn_params.cipher_list, DEFAULT_CIPHER_LIST, TURN_LONG_STRING_SIZE);
 #if TLSv1_3_SUPPORTED
-    strncat(turn_params.cipher_list, ":", TURN_LONG_STRING_SIZE - 1);
-    strncat(turn_params.cipher_list, DEFAULT_CIPHERSUITES, TURN_LONG_STRING_SIZE - 1);
+    strncat(turn_params.cipher_list, ":", TURN_LONG_STRING_SIZE - strlen(turn_params.cipher_list));
+    strncat(turn_params.cipher_list, DEFAULT_CIPHERSUITES, TURN_LONG_STRING_SIZE - strlen(turn_params.cipher_list));
 #endif
   }
 
