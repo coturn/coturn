@@ -102,8 +102,17 @@ extern "C" {
 
 #define DEFAULT_CONFIG_FILE "turnserver.conf"
 
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+#define DEFAULT_CIPHER_LIST OSSL_default_cipher_list()
+#if TLSv1_3_SUPPORTED
+#define DEFAULT_CIPHERSUITES OSSL_default_ciphersuites()
+#endif
+#else
 #define DEFAULT_CIPHER_LIST "DEFAULT"
-/* "ALL:eNULL:aNULL:NULL" */
+#if TLSv1_3_SUPPORTED
+#define DEFAULT_CIPHERSUITES TLS_DEFAULT_CIPHERSUITES
+#endif
+#endif
 
 #define DEFAULT_EC_CURVE_NAME "prime256v1"
 
