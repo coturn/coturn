@@ -3514,6 +3514,28 @@ const char *get_ioa_socket_ssl_method(ioa_socket_handle s) {
   return "no SSL";
 }
 
+void stun_report_binding(void *a, STUN_PROMETHEUS_METRIC_TYPE type) {
+#if !defined(TURN_NO_PROMETHEUS)
+  UNUSED_ARG(a);
+  switch (type) {
+  case 0:
+    prom_inc_stun_binding_request();
+    break;
+  case 1:
+    prom_inc_stun_binding_response();
+    break;
+  case 2:
+    prom_inc_stun_binding_error();
+    break;
+  default:
+    break;
+  }
+#else
+  UNUSED_ARG(a);
+  UNUSED_ARG(type);
+#endif
+}
+
 void turn_report_allocation_set(void *a, turn_time_t lifetime, int refresh) {
   if (a) {
     ts_ur_super_session *ss = (ts_ur_super_session *)(((allocation *)a)->owner);
