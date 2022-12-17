@@ -95,7 +95,7 @@ By default, default Coturn configuration and CLI options provided in the `CMD` [
 
 #### Automatic detection of external IP
 
-`detect-external-ip` binary may be used to automatically detect external IP of TURN server in runtime. 
+`detect-external-ip` binary may be used to automatically detect external IP of TURN server in runtime.
 To add ` --external-ip=<detected external IP>` using `detect-external-ip` as argument for `turnserver`, set envronment variable `DETECT_EXTERNAL_IP`. Also, environment variables `DETECT_RELAY_IP`, `DETECT_EXTERNAL_IPV6` and `DETECT_RELAY_IPV6` can be used for adding arugments ` --external-ip=<detected external IP>` or ` --relay-ip=<detected external IP>`.
 It's okay to use it multiple times (the value will be evaluated only once).
 ```bash
