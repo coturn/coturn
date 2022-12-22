@@ -264,7 +264,7 @@ static int sctp_create_server_listener(tls_listener_relay_server_type *server) {
   }
 
   if (addr_bind(tls_listen_fd, &server->addr, 1, 0, SCTP_SOCKET) < 0) {
-    close(tls_listen_fd);
+    socket_closesocket(tls_listen_fd);
     return -1;
   }
 

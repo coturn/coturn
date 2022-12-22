@@ -81,7 +81,7 @@ static void redisLibeventReadEvent(int fd, short event, void *arg) {
       int len = 0;
       do {
         len = recv(fd, buf, sizeof(buf), MSG_PEEK);
-      } while ((len < 0) && (errno == EINTR));
+      } while ((len < 0) && socket_eintr());
       if (len < 1) {
         e->invalid = 1;
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Redis connection broken: e=0x%lx\n", __FUNCTION__, ((unsigned long)e));
