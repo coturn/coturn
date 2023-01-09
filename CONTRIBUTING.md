@@ -1,7 +1,7 @@
 Note: by contributing code to the Coturn project in any form, including sending
 a pull request via Github, a code fragment or patch via private email or
 public discussion groups, you agree to release your code under the terms
-of the BSD license that you can find in the LICENSE file included in the Coturn
+of the license that you can find in the LICENSE file included in the Coturn
 source distribution.
 
 # IMPORTANT: HOW TO USE COTURN GITHUB ISSUES
