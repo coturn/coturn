@@ -621,8 +621,9 @@ start_udp_cycle:
 
   ssize_t bsize = 0;
 #if defined(WINDOWS)
-  // TODO: implement it!!!
   int flags = 0;
+  u_long iMode = 1;
+  ioctlsocket(fd, FIONBIO, &iMode);
 #else
   int flags = MSG_DONTWAIT;
 #endif
@@ -632,6 +633,11 @@ start_udp_cycle:
 
   int conn_reset = is_connreset();
   int to_block = would_block();
+
+#if defined(WINDOWS)
+  iMode = 0;
+  ioctlsocket(fd, FIONBIO, &iMode);
+#endif
 
   if (bsize < 0) {
 
@@ -645,8 +651,9 @@ start_udp_cycle:
 #if defined(MSG_ERRQUEUE)
 
 #if defined(WINDOWS)
-    // TODO: implement it!!!
     int eflags = MSG_ERRQUEUE;
+    iMode = 1;
+    ioctlsocket(fd, FIONBIO, &iMode);
 #else
     // Linux
     int eflags = MSG_ERRQUEUE | MSG_DONTWAIT;
@@ -667,6 +674,11 @@ start_udp_cycle:
 
     conn_reset = is_connreset();
     to_block = would_block();
+
+#if defined(WINDOWS)
+    iMode = 0;
+    ioctlsocket(fd, FIONBIO, &iMode);
+#endif
 
 #endif
 
