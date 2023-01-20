@@ -57,8 +57,6 @@ extern prom_gauge_t *turn_total_allocations_number;
 extern "C" {
 #endif
 
-#endif /* TURN_NO_PROMETHEUS */
-
 void start_prometheus_server(void);
 
 void prom_set_finished_traffic(const char *realm, const char *user, unsigned long rsvp, unsigned long rsvb,
