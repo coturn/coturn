@@ -4,6 +4,18 @@ Coturn TURN server Docker image changelog
 
 
 
+## [4.6.1-r1] · 2023-01-??
+[4.6.1-r1]: /../../tree/docker/4.6.1-r1
+
+### Fixed
+
+- Incorrect argument expansion in `docker-entrypoint.sh`. ([#1110])
+
+[#1110]: /../../pull/1110
+
+
+
+
 ## [4.6.1-r0] · 2022-12-04
 [4.6.1-r0]: /../../tree/docker/4.6.1-r0
 
@@ -192,7 +204,7 @@ Coturn TURN server Docker image changelog
 
 ### Improved
 
-- Use DNS requests to discover external IP address in `detect-external-ip` script ([#753]).
+- Use DNS requests to discover external IP address in `detect-external-ip` script. ([#753])
 
 ### Fixed
 
