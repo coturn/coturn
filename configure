@@ -830,7 +830,7 @@ else
     else
         ${ECHO_CMD} "ERROR: Libevent2 development libraries are not installed properly in required location."
         ${ECHO_CMD} "ERROR: may be you have just too old libevent tool - then you have to upgrade it."
-        ${ECHO_CMD} "See the INSTALL file."
+        ${ECHO_CMD} "See the docs/Build.md file."
         ${ECHO_CMD} "Abort."
         cleanup
         exit 1
@@ -864,7 +864,7 @@ if [ -z "${TURN_NO_PROMETHEUS}" ] ; then
                 ${ECHO_CMD}
                 ${ECHO_CMD} "Warning: microhttpd development libraries are not installed properly in required location."
                 ${ECHO_CMD} "Prometheus support will be disabled."
-                ${ECHO_CMD} "See the INSTALL file."
+                ${ECHO_CMD} "See the docs/Build.md file."
                 ${ECHO_CMD}
                 OSCFLAGS="${OSCFLAGS} -DTURN_NO_PROMETHEUS"
             fi
@@ -872,7 +872,7 @@ if [ -z "${TURN_NO_PROMETHEUS}" ] ; then
             ${ECHO_CMD}
             ${ECHO_CMD} "Warning: Libpromhttp development libraries are not installed properly in required location."
             ${ECHO_CMD} "Prometheus support will be disabled."
-            ${ECHO_CMD} "See the INSTALL file."
+            ${ECHO_CMD} "See the docs/Build.md file."
             ${ECHO_CMD}
             OSCFLAGS="${OSCFLAGS} -DTURN_NO_PROMETHEUS"
         fi
@@ -880,7 +880,7 @@ if [ -z "${TURN_NO_PROMETHEUS}" ] ; then
         ${ECHO_CMD}
         ${ECHO_CMD} "Warning: Libprom development libraries are not installed properly in required location."
         ${ECHO_CMD} "Prometheus support will be disabled."
-        ${ECHO_CMD} "See the INSTALL file."
+        ${ECHO_CMD} "See the docs/Build.md file."
         ${ECHO_CMD}
         OSCFLAGS="${OSCFLAGS} -DTURN_NO_PROMETHEUS"
     fi

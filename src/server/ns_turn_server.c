@@ -2786,14 +2786,13 @@ static int handle_turn_binding(turn_turnserver *server, ts_ur_super_session *ss,
   }
 
   if (*ua_num > 0) {
-
     *err_code = 420;
-
+    stun_report_binding(ss, STUN_PROMETHEUS_METRIC_TYPE_ERROR);
   } else if (*err_code) {
-
-    ;
+    stun_report_binding(ss, STUN_PROMETHEUS_METRIC_TYPE_ERROR);
 
   } else if (ss->client_socket && get_remote_addr_from_ioa_socket(ss->client_socket)) {
+    stun_report_binding(ss, STUN_PROMETHEUS_METRIC_TYPE_REQUEST);
 
     size_t len = ioa_network_buffer_get_size(nbh);
     if (stun_set_binding_response_str(ioa_network_buffer_data(nbh), &len, tid,
@@ -3737,7 +3736,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
           }
 
           send_turn_message_to(server, nbh, &response_origin, &response_destination);
-
+          stun_report_binding(ss, STUN_PROMETHEUS_METRIC_TYPE_RESPONSE);
           no_response = 1;
         }
 

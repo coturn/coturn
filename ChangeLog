@@ -78,6 +78,11 @@ Changelist:
 	- Preserve file timestamps when using install(1) (#983) (Robert Scheck)
 	- Fix renegotiation flag for older version of openssl (#978) (Pavel Punsky)
 
+03/12/2022 Gustavo Garcia <gustavogb@gmail.com> Paul Kramer <paul.kramer@logmein.com>
+Version 4.6.1 'Gorst':
+	- merge PR #1113 (paulkram)
+		* fix memory corruption on socket close
+
 13/09/2022 Oleg Moskalenko <mom040267@gmail.com> Mihály Mészáros <misi@majd.eu> Gustavo Garcia <gustavogb@gmail.com> Pavel Punsky <pavel.punsky@epicgames.com>
 Version 4.6.0 'Gorst':
 	- merge PR #967 (eakraly)

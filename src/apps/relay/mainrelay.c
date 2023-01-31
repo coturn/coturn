@@ -265,6 +265,8 @@ static char procgroupname[1025] = "\0";
 static void read_config_file(int argc, char **argv, int pass);
 static void reload_ssl_certs(evutil_socket_t sock, short events, void *args);
 
+static void shutdown_handler(evutil_socket_t sock, short events, void *args);
+
 //////////////////////////////////////////////////
 
 static int make_local_listeners_list(void) {
@@ -1103,8 +1105,10 @@ static char Usage[] =
     "						If both --no-tls and --no-dtls options\n"
     " --pkey-pwd		<password>		If the private key file is encrypted, then this password to be "
     "used.\n"
-    " --cipher-list	<\"cipher-string\">		Allowed OpenSSL cipher list for TLS/DTLS connections.\n"
-    "						Default value is \"DEFAULT\".\n"
+    " --cipher-list		<cipher-string>		Allowed OpenSSL cipher list for TLS/DTLS connections.\n"
+    "						Default value is \"DEFAULT\" for TLS/DTLS versions up to "
+    "TLSv1.2/DTLSv1.2,\n"
+    "						and the library default ciphersuites for TLSv1.3.\n"
     " --CA-file		<filename>		CA file in OpenSSL format.\n"
     "						Forces TURN server to verify the client SSL certificates.\n"
     "						By default, no CA is set and no client certificate check is "
@@ -1121,14 +1125,14 @@ static char Usage[] =
     " --dh-file	<dh-file-name>			Use custom DH TLS key, stored in PEM format in the file.\n"
     "						Flags --dh566 and --dh1066 are ignored when the DH key is taken from a "
     "file.\n"
-    " --no-tlsv1					Set TLSv1_1/DTLSv1.2 as a minimum supported protocol version.\n"
-    "								With openssl-1.0.2 and below, do not allow "
+    " --no-tlsv1					Set TLSv1.1/DTLSv1.2 as a minimum supported protocol version.\n"
+    "						With openssl-1.0.2 and below, do not allow "
     "TLSv1/DTLSv1 protocols.\n"
-    " --no-tlsv1_1					Set TLSv1_2/DTLSv1.2 as a minimum supported protocol version.\n"
-    "								With openssl-1.0.2 and below, do not allow TLSv1.1 "
+    " --no-tlsv1_1					Set TLSv1.2/DTLSv1.2 as a minimum supported protocol version.\n"
+    "						With openssl-1.0.2 and below, do not allow TLSv1.1 "
     "protocol.\n"
-    " --no-tlsv1_2					Set TLSv1_3/DTLSv1.2 as a minimum supported protocol version.\n"
-    "								With openssl-1.0.2 and below, do not allow "
+    " --no-tlsv1_2					Set TLSv1.3/DTLSv1.2 as a minimum supported protocol version.\n"
+    "						With openssl-1.0.2 and below, do not allow "
     "TLSv1.2/DTLSv1.2 protocols.\n"
     " --no-udp					Do not start UDP client listeners.\n"
     " --no-tcp					Do not start TCP client listeners.\n"
@@ -1225,7 +1229,7 @@ static char Usage[] =
     "back to this default.\n"
     "						The standard RFC explicitly define actually that this default must be "
     "IPv4,\n"
-    "                       so use other option values with care!\n"
+    "						so use other option values with care!\n"
     " --no-cli					Turn OFF the CLI support. By default it is always ON.\n"
     " --cli-ip=<IP>					Local system IP address to be used for CLI server endpoint. "
     "Default value\n"
@@ -3211,6 +3215,11 @@ int main(int argc, char **argv) {
 #else
   struct event *ev = evsignal_new(turn_params.listener.event_base, SIGUSR2, reload_ssl_certs, NULL);
   event_add(ev, NULL);
+
+  ev = evsignal_new(turn_params.listener.event_base, SIGTERM, shutdown_handler, NULL);
+  event_add(ev, NULL);
+  ev = evsignal_new(turn_params.listener.event_base, SIGINT, shutdown_handler, NULL);
+  event_add(ev, NULL);
 #endif
 
   drop_privileges();
@@ -3517,11 +3526,20 @@ static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *metho
 
   SSL_CTX_set_default_passwd_cb(ctx, pem_password_func);
 
-  if (!(turn_params.cipher_list[0]))
+  if (!(turn_params.cipher_list[0])) {
     strncpy(turn_params.cipher_list, DEFAULT_CIPHER_LIST, TURN_LONG_STRING_SIZE);
+#if TLSv1_3_SUPPORTED
+    strncat(turn_params.cipher_list, ":", TURN_LONG_STRING_SIZE - strlen(turn_params.cipher_list));
+    strncat(turn_params.cipher_list, DEFAULT_CIPHERSUITES, TURN_LONG_STRING_SIZE - strlen(turn_params.cipher_list));
+#endif
+  }
 
   SSL_CTX_set_cipher_list(ctx, turn_params.cipher_list);
   SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_OFF);
+
+#if TLSv1_3_SUPPORTED
+  SSL_CTX_set_ciphersuites(ctx, turn_params.cipher_list);
+#endif
 
   if (!SSL_CTX_use_certificate_chain_file(ctx, turn_params.cert_file)) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: no certificate found\n", protocol);
@@ -3677,16 +3695,6 @@ static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *metho
     op |= SSL_OP_NO_SSLv3;
 #endif
 
-#if defined(SSL_OP_NO_DTLSv1) && DTLS_SUPPORTED
-    if (turn_params.no_tlsv1)
-      op |= SSL_OP_NO_DTLSv1;
-#endif
-
-#if defined(SSL_OP_NO_DTLSv1_2) && DTLSv1_2_SUPPORTED
-    if (turn_params.no_tlsv1_2)
-      op |= SSL_OP_NO_DTLSv1_2;
-#endif
-
 #if defined(SSL_OP_CIPHER_SERVER_PREFERENCE)
     op |= SSL_OP_CIPHER_SERVER_PREFERENCE;
 #endif
@@ -3754,29 +3762,29 @@ static void openssl_load_certificates(void) {
   if (!turn_params.no_tls) {
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
     set_ctx(&turn_params.tls_ctx, "TLS", TLSv1_2_server_method()); /*openssl-1.0.2 version specific API */
-    if (!turn_params.no_tlsv1) {
+    if (turn_params.no_tlsv1) {
       SSL_CTX_set_options(turn_params.tls_ctx, SSL_OP_NO_TLSv1);
     }
 #if TLSv1_1_SUPPORTED
-    if (!turn_params.no_tlsv1_1) {
+    if (turn_params.no_tlsv1_1) {
       SSL_CTX_set_options(turn_params.tls_ctx, SSL_OP_NO_TLSv1_1);
     }
 #if TLSv1_2_SUPPORTED
-    if (!turn_params.no_tlsv1_2) {
+    if (turn_params.no_tlsv1_2) {
       SSL_CTX_set_options(turn_params.tls_ctx, SSL_OP_NO_TLSv1_2);
     }
 #endif
 #endif
 #else // OPENSSL_VERSION_NUMBER < 0x10100000L
     set_ctx(&turn_params.tls_ctx, "TLS", TLS_server_method());
-    if (!turn_params.no_tlsv1) {
+    if (turn_params.no_tlsv1) {
       SSL_CTX_set_min_proto_version(turn_params.tls_ctx, TLS1_1_VERSION);
     }
-    if (!turn_params.no_tlsv1_1) {
+    if (turn_params.no_tlsv1_1) {
       SSL_CTX_set_min_proto_version(turn_params.tls_ctx, TLS1_2_VERSION);
     }
 #if TLSv1_3_SUPPORTED
-    if (!turn_params.no_tlsv1_2) {
+    if (turn_params.no_tlsv1_2) {
       SSL_CTX_set_min_proto_version(turn_params.tls_ctx, TLS1_3_VERSION);
     }
 #endif
@@ -3795,22 +3803,22 @@ static void openssl_load_certificates(void) {
 #if OPENSSL_VERSION_NUMBER < 0x10100000L // before openssl-1.1.0 no version independent API
 #if DTLSv1_2_SUPPORTED
     set_ctx(&turn_params.dtls_ctx, "DTLS", DTLSv1_2_server_method()); // openssl-1.0.2
-    if (!turn_params.no_tlsv1_2) {
+    if (turn_params.no_tlsv1_2) {
       SSL_CTX_set_options(turn_params.dtls_ctx, SSL_OP_NO_DTLSv1_2);
     }
 #else
     set_ctx(&turn_params.dtls_ctx, "DTLS", DTLSv1_server_method()); // < openssl-1.0.2
 #endif
-    if (!turn_params.no_tlsv1 || !turn_params.no_tlsv1_1) {
+    if (turn_params.no_tlsv1 || turn_params.no_tlsv1_1) {
       SSL_CTX_set_options(turn_params.dtls_ctx, SSL_OP_NO_DTLSv1);
     }
 #else  // OPENSSL_VERSION_NUMBER < 0x10100000L
     set_ctx(&turn_params.dtls_ctx, "DTLS", DTLS_server_method());
-    if (!turn_params.no_tlsv1 || !turn_params.no_tlsv1_1) {
-      SSL_CTX_set_min_proto_version(turn_params.tls_ctx, DTLS1_2_VERSION);
+    if (turn_params.no_tlsv1 || turn_params.no_tlsv1_1) {
+      SSL_CTX_set_min_proto_version(turn_params.dtls_ctx, DTLS1_2_VERSION);
     }
-    if (!turn_params.no_tlsv1_2) {
-      SSL_CTX_set_max_proto_version(turn_params.tls_ctx, DTLS1_VERSION);
+    if (turn_params.no_tlsv1_2) {
+      SSL_CTX_set_max_proto_version(turn_params.dtls_ctx, DTLS1_VERSION);
     }
 #endif // OPENSSL_VERSION_NUMBER < 0x10100000L
     setup_dtls_callbacks(turn_params.dtls_ctx);
@@ -3827,6 +3835,14 @@ static void reload_ssl_certs(evutil_socket_t sock, short events, void *args) {
     event_active(turn_params.tls_ctx_update_ev, EV_READ, 0);
 
   UNUSED_ARG(sock);
+  UNUSED_ARG(events);
+  UNUSED_ARG(args);
+}
+
+static void shutdown_handler(evutil_socket_t sock, short events, void *args) {
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Terminating on signal %d\n", sock);
+  turn_params.stop_turn_server = 1;
+
   UNUSED_ARG(events);
   UNUSED_ARG(args);
 }

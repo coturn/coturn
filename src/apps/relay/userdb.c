@@ -68,6 +68,35 @@ static TURN_MUTEX_DECLARE(o_to_realm_mutex);
 static ur_string_map *o_to_realm = NULL;
 static secrets_list_t realms_list;
 
+static char userdb_type_unknown[] = "Unknown";
+static char userdb_type_sqlite[] = "SQLite";
+static char userdb_type_postgresql[] = "PostgreSQL";
+static char userdb_type_mysql[] = "MySQL/MariaDB";
+static char userdb_type_mongo[] = "MongoDB";
+static char userdb_type_redis[] = "Redis";
+
+const char *userdb_type_to_string(TURN_USERDB_TYPE t) {
+  switch (t) {
+  case TURN_USERDB_TYPE_SQLITE:
+    return userdb_type_sqlite;
+    break;
+  case TURN_USERDB_TYPE_PQ:
+    return userdb_type_postgresql;
+    break;
+  case TURN_USERDB_TYPE_MYSQL:
+    return userdb_type_mysql;
+    break;
+  case TURN_USERDB_TYPE_MONGO:
+    return userdb_type_mongo;
+    break;
+  case TURN_USERDB_TYPE_REDIS:
+    return userdb_type_redis;
+    break;
+  default:
+    return userdb_type_unknown;
+  };
+}
+
 void lock_realms(void) { ur_string_map_lock(realms); }
 
 void unlock_realms(void) { ur_string_map_unlock(realms); }

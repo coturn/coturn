@@ -31,7 +31,7 @@
 #ifndef __IOADEFS__
 #define __IOADEFS__
 
-#define TURN_SERVER_VERSION "4.6.0"
+#define TURN_SERVER_VERSION "4.6.1"
 #define TURN_SERVER_VERSION_NAME "Gorst"
 #ifndef TURN_SERVER_BUILD_INFO
 #define TURN_SERVER_BUILD_INFO ""
@@ -106,6 +106,41 @@ static inline uint64_t _ioa_ntoh64(uint64_t v) {
 
 #define ioa_ntoh64 _ioa_ntoh64
 #define ioa_hton64 _ioa_ntoh64
+
+#if defined(WINDOWS)
+static inline int socket_errno(void) { return WSAGetLastError(); }
+static inline int socket_enomem(void) { return socket_errno() == WSA_NOT_ENOUGH_MEMORY; }
+static inline int socket_eintr(void) { return socket_errno() == WSAEINTR; }
+static inline int socket_ebadf(void) { return socket_errno() == WSAEBADF; }
+static inline int socket_eacces(void) { return socket_errno() == WSAEACCES; }
+static inline int socket_enobufs(void) { return socket_errno() == WSAENOBUFS; }
+static inline int socket_eagain(void) { return socket_errno() == WSATRY_AGAIN; }
+static inline int socket_ewouldblock(void) { return socket_errno() == WSAEWOULDBLOCK; }
+static inline int socket_einprogress(void) { return socket_errno() == WSAEINPROGRESS; }
+static inline int socket_econnreset(void) { return socket_errno() == WSAECONNRESET; }
+static inline int socket_econnrefused(void) { return socket_errno() == WSAECONNREFUSED; }
+static inline int socket_ehostdown(void) { return socket_errno() == WSAEHOSTDOWN; }
+static inline int socket_emsgsize(void) { return socket_errno() == WSAEMSGSIZE; }
+#else
+static inline int socket_errno(void) { return errno; }
+static inline int socket_eperm(void) { return socket_errno() == EPERM; }
+static inline int socket_enomem(void) { return socket_errno() == ENOMEM; }
+static inline int socket_eintr(void) { return socket_errno() == EINTR; }
+static inline int socket_ebadf(void) { return socket_errno() == EBADF; }
+static inline int socket_eacces(void) { return socket_errno() == EACCES; }
+static inline int socket_enobufs(void) { return socket_errno() == ENOBUFS; }
+static inline int socket_eagain(void) { return socket_errno() == EAGAIN; }
+#if defined(EWOULDBLOCK)
+static inline int socket_ewouldblock(void) { return socket_errno() == EWOULDBLOCK; }
+#else
+static inline int socket_ewouldblock(void) { return socket_errno() == EAGAIN; }
+#endif
+static inline int socket_einprogress(void) { return socket_errno() == EINPROGRESS; }
+static inline int socket_econnreset(void) { return socket_errno() == ECONNRESET; }
+static inline int socket_econnrefused(void) { return socket_errno() == ECONNREFUSED; }
+static inline int socket_ehostdown(void) { return socket_errno() == EHOSTDOWN; }
+static inline int socket_emsgsize(void) { return socket_errno() == EMSGSIZE; }
+#endif
 
 #define BUFFEREVENT_FREE(be)                                                                                           \
   do {                                                                                                                 \

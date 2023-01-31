@@ -4,7 +4,7 @@ The TURN Server project contains the source code of a TURN server and TURN clien
 messaging library. Also, some extra programs provided, for testing-only
 purposes.
 
-See the INSTALL file for the building instructions.
+See the docs/Build.md file for the building instructions.
 
 After the build, you will have the following binary images:
 
@@ -108,7 +108,7 @@ User database settings:
 		"postgresql://username:password@hostname:port/databasename"
 		(for 9.x or newer Postgres).
 
-		See the INSTALL file for more explanations and examples.
+		See the docs/PostgreSQL.md file for more explanations and examples.
 
 		Also, see http://www.PostgreSQL.org for full PostgreSQL documentation.
 
@@ -120,7 +120,7 @@ User database settings:
 
 		"host=<host> dbname=<dbname> user=<db-user> password=<db-user-password> connect_timeout=<seconds> read_timeout=<seconds>"
 
-		See the INSTALL file for more explanations and examples.
+		See the docs/MySQL.md file for more explanations and examples.
 
 		Also, see http://www.mysql.org or http://mariadb.org
 		for full MySQL documentation.
@@ -143,7 +143,7 @@ User database settings:
 
 		"mongodb://username:password@host:port/database?options"
 
-		See the INSTALL file for more explanations and examples.
+		See the docs/Mongo.md file for more explanations and examples.
 
 		Also, see http://docs.mongodb.org/manual/
 		for full MongoDB documentation.
@@ -156,7 +156,7 @@ User database settings:
 
 		"ip=<ip-addr> dbname=<db-number> password=<db-password> connect_timeout=<seconds>"
 
-		See the INSTALL file for more explanations and examples.
+		See the docs/Redis.md file for more explanations and examples.
 
 		Also, see http://redis.io for full Redis documentation.
 
@@ -290,7 +290,7 @@ Flags:
 			also the path / on this port can be used as a health check
  --prometheus-username-labels	Enable labeling prometheus traffic
 			metrics with client usernames. Labeling with client usernames is
-			disabled by default, beacuse this may cause memory leaks when using
+			disabled by default, because this may cause memory leaks when using
 			authentication with ephemeral usernames (e.g. TURN REST API).
 
 --prometheus-port	Prometheus listener port (Default: 9641).
@@ -484,7 +484,8 @@ Options with values:
 --pkey-pwd		If the private key file is encrypted, then this password to be used.
 
 --cipher-list		Allowed OpenSSL cipher list for TLS/DTLS connections.
-			Default value is "DEFAULT".
+			Default value is "DEFAULT" for TLS/DTLS versions up to TLSv1.2/DTLSv1.2,
+			and the library default ciphersuites for TLSv1.3.
 
 --CA-file		CA file in OpenSSL format.
 			Forces TURN server to verify the client SSL certificates.
@@ -1020,5 +1021,5 @@ https://groups.google.com/forum/?fromgroups=#!forum/turn-server-project-rfc5766-
 
   AUTHORS
 
-	See [AUTHORS](AUTHORS.md)
+	See the AUTHORS.md file in the coturn source distribution.
 

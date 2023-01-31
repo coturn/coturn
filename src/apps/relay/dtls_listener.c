@@ -479,7 +479,7 @@ static int create_new_connected_udp_socket(dtls_listener_relay_server_type *serv
   ioa_socket_handle ret = (ioa_socket *)malloc(sizeof(ioa_socket));
   if (!ret) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Cannot allocate new socket structure\n", __FUNCTION__);
-    close(udp_fd);
+    socket_closesocket(udp_fd);
     return -1;
   }
 
@@ -621,8 +621,9 @@ start_udp_cycle:
 
   ssize_t bsize = 0;
 #if defined(WINDOWS)
-  // TODO: implement it!!!
   int flags = 0;
+  u_long iMode = 1;
+  ioctlsocket(fd, FIONBIO, &iMode);
 #else
   int flags = MSG_DONTWAIT;
 #endif
@@ -632,6 +633,11 @@ start_udp_cycle:
 
   int conn_reset = is_connreset();
   int to_block = would_block();
+
+#if defined(WINDOWS)
+  iMode = 0;
+  ioctlsocket(fd, FIONBIO, &iMode);
+#endif
 
   if (bsize < 0) {
 
@@ -645,8 +651,9 @@ start_udp_cycle:
 #if defined(MSG_ERRQUEUE)
 
 #if defined(WINDOWS)
-    // TODO: implement it!!!
     int eflags = MSG_ERRQUEUE;
+    iMode = 1;
+    ioctlsocket(fd, FIONBIO, &iMode);
 #else
     // Linux
     int eflags = MSG_ERRQUEUE | MSG_DONTWAIT;
@@ -663,10 +670,15 @@ start_udp_cycle:
     do {
       bsize = recvfrom(fd, ioa_network_buffer_data(elem), ioa_network_buffer_get_capacity_udp(), flags,
                        (struct sockaddr *)&(server->sm.m.sm.nd.src_addr), (socklen_t *)&slen);
-    } while (bsize < 0 && (errno == EINTR));
+    } while (bsize < 0 && socket_eintr());
 
     conn_reset = is_connreset();
     to_block = would_block();
+
+#if defined(WINDOWS)
+    iMode = 0;
+    ioctlsocket(fd, FIONBIO, &iMode);
+#endif
 
 #endif
 
@@ -681,7 +693,7 @@ start_udp_cycle:
 
   if (bsize < 0) {
     if (!to_block && !conn_reset) {
-      int ern = errno;
+      int ern = socket_errno();
       perror(__FUNCTION__);
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: recvfrom error %d\n", __FUNCTION__, ern);
     }

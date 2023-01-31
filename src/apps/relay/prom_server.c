@@ -4,6 +4,10 @@
 
 #if !defined(TURN_NO_PROMETHEUS)
 
+prom_counter_t *stun_binding_request;
+prom_counter_t *stun_binding_response;
+prom_counter_t *stun_binding_error;
+
 prom_counter_t *turn_traffic_rcvp;
 prom_counter_t *turn_traffic_rcvb;
 prom_counter_t *turn_traffic_sentp;
@@ -41,7 +45,15 @@ void start_prometheus_server(void) {
     nlabels++;
   }
 
-  // Create traffic counter metrics
+  // Create STUN counters
+  stun_binding_request = prom_collector_registry_must_register_metric(
+      prom_counter_new("stun_binding_request", "Incoming STUN Binding requests", 0, NULL));
+  stun_binding_response = prom_collector_registry_must_register_metric(
+      prom_counter_new("stun_binding_response", "Outgoing STUN Binding responses", 0, NULL));
+  stun_binding_error = prom_collector_registry_must_register_metric(
+      prom_counter_new("stun_binding_error", "STUN Binding errors", 0, NULL));
+
+  // Create TURN traffic counter metrics
   turn_traffic_rcvp = prom_collector_registry_must_register_metric(
       prom_counter_new("turn_traffic_rcvp", "Represents finished sessions received packets", nlabels, label));
   turn_traffic_rcvb = prom_collector_registry_must_register_metric(
@@ -82,8 +94,9 @@ void start_prometheus_server(void) {
       prom_counter_new("turn_total_traffic_peer_sentb", "Represents total finished sessions peer sent bytes", 0, NULL));
 
   // Create total allocations number gauge metric
+  const char *typeLabel[] = {"type"};
   turn_total_allocations = prom_collector_registry_must_register_metric(
-      prom_gauge_new("turn_total_allocations", "Represents current allocations number", 1, (const char *[]){"type"}));
+      prom_gauge_new("turn_total_allocations", "Represents current allocations number", 1, typeLabel));
 
   promhttp_set_active_collector_registry(NULL);
 
@@ -147,13 +160,33 @@ void prom_set_finished_traffic(const char *realm, const char *user, unsigned lon
 
 void prom_inc_allocation(SOCKET_TYPE type) {
   if (turn_params.prometheus == 1) {
-    prom_gauge_inc(turn_total_allocations, (const char *[]){socket_type_name(type)});
+    const char *label[] = {socket_type_name(type)};
+    prom_gauge_inc(turn_total_allocations, label);
   }
 }
 
 void prom_dec_allocation(SOCKET_TYPE type) {
   if (turn_params.prometheus == 1) {
-    prom_gauge_dec(turn_total_allocations, (const char *[]){socket_type_name(type)});
+    const char *label[] = {socket_type_name(type)};
+    prom_gauge_dec(turn_total_allocations, label);
+  }
+}
+
+void prom_inc_stun_binding_request(void) {
+  if (turn_params.prometheus == 1) {
+    prom_counter_add(stun_binding_request, 1, NULL);
+  }
+}
+
+void prom_inc_stun_binding_response(void) {
+  if (turn_params.prometheus == 1) {
+    prom_counter_add(stun_binding_response, 1, NULL);
+  }
+}
+
+void prom_inc_stun_binding_error(void) {
+  if (turn_params.prometheus == 1) {
+    prom_counter_add(stun_binding_error, 1, NULL);
   }
 }
 

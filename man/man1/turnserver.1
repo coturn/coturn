@@ -297,15 +297,18 @@ Use 1066 bits predefined DH TLS key. Default size of the key is 2066.
 .TP
 .B
 \fB\-\-no\-tlsv1\fP
-Do not allow TLSv1/DTLSv1 protocol.
+Set TLSv1_1/DTLSv1.2 as a minimum supported protocol version.
+With openssl\-1.0.2 and below, do not allow TLSv1.2/DTLSv1.2 protocols.
 .TP
 .B
 \fB\-\-no\-tlsv1_1\fP
-Do not allow TLSv1.1 protocol.
+Set TLSv1_2/DTLSv1.2 as a minimum supported protocol version.
+With openssl\-1.0.2 and below, do not allow TLSv1.1 protocol.
 .TP
 .B
 \fB\-\-no\-tlsv1_2\fP
-Do not allow TLSv1.2/DTLSv1.2 protocol.
+Set TLSv1_3/DTLSv1.2 as a minimum supported protocol version.
+With openssl\-1.0.2 and below, do not allow TLSv1.2/DTLSv1.2 protocols.
 .TP
 .B
 \fB\-\-no\-udp\fP
@@ -428,10 +431,7 @@ initially used by the session).
 Enable prometheus metrics. By default it is
 disabled. Would listen on port 9641 under the path /metrics
 also the path / on this port can be used as a health check
-.TP
-.B
-\fB\-\-prometheus\-port\fP
-Prometheus listener port (Default: 9641).
+.RS
 .TP
 .B
 \fB\-\-prometheus\-username\-labels\fP
@@ -440,6 +440,10 @@ metrics with client usernames. Labeling with client usernames is
 disabled by default, because this may cause memory leaks when using
 authentication with ephemeral usernames (e.g. TURN REST API).
 .RE
+.TP
+.B
+\fB\-\-prometheus\-port\fP
+Prometheus listener port (Default: 9641).
 .TP
 .B
 \fB\-h\fP
@@ -706,7 +710,8 @@ If the private key file is encrypted, then this password to be used.
 .B
 \fB\-\-cipher\-list\fP
 Allowed OpenSSL cipher list for TLS/DTLS connections.
-Default value is "DEFAULT".
+Default value is "DEFAULT" for TLS/DTLS versions up to TLSv1.2/DTLSv1.2,
+and the library default ciphersuites for TLSv1.3.
 .TP
 .B
 \fB\-\-CA\-file\fP
@@ -1314,34 +1319,4 @@ https://groups.google.com/forum/?fromgroups=#!forum/turn\-server\-project\-rfc57
 
 .SS  AUTHORS
 
-Oleg Moskalenko <mom040267@gmail.com>
-.PP
-Gabor Kovesdan http://kovesdan.org/
-.PP
-Daniel Pocock http://danielpocock.com/
-.PP
-John Selbie (jselbie@gmail.com)
-.PP
-Lee Sylvester <lee@designrealm.co.uk>
-.PP
-Erik Johnston <erikj@openmarket.com>
-.PP
-Roman Lisagor <roman@demonware.net>
-.PP
-Vladimir Tsanev <tsachev@gmail.com>
-.PP
-Po\-sheng Lin <personlin118@gmail.com>
-.PP
-Peter Dunkley <peter.dunkley@acision.com>
-.PP
-Mutsutoshi Yoshimoto <mutsutoshi.yoshimoto@mixi.co.jp>
-.PP
-Federico Pinna <fpinna@vivocha.com>
-.PP
-Bradley T. Hughes <bradleythughes@fastmail.fm>
-.RE
-.PP
-Mihály Mészáros <misi@majd.eu>
-.SS  ACTIVE MAINTAINERS
-
-Mihály Mészáros <misi@majd.eu>
+See the AUTHORS.md file in the coturn source distribution.

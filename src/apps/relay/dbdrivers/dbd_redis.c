@@ -171,7 +171,7 @@ redis_context_handle get_redis_async_connection(struct event_base *base, redis_s
 
   char *errmsg = NULL;
   if (base && redis_stats_db->connection_string[0]) {
-    Ryconninfo *co = RyconninfoParse(redis_stats_db->connection_string_sanitized, &errmsg);
+    Ryconninfo *co = RyconninfoParse(redis_stats_db->connection_string, &errmsg);
     if (!co) {
       if (errmsg) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
