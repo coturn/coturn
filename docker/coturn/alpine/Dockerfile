@@ -105,7 +105,7 @@ COPY --from=dist-libprom /out/ /
 COPY CMakeLists.txt \
      configure \
      INSTALL \
-     LICENSE LICENSE.OpenSSL \
+     LICENSE \
      make-man.sh Makefile.in \
      postinstall.txt \
      README.turn* \
@@ -154,7 +154,6 @@ RUN mkdir -p /out/ \
 
 # Install helper tools of Docker image.
 COPY docker/coturn/rootfs/ /out/
-COPY docker/coturn/alpine/rootfs/ /out/
 RUN chmod +x /out/usr/local/bin/docker-entrypoint.sh \
              /out/usr/local/bin/detect-external-ip.sh
 RUN ln -s /usr/local/bin/detect-external-ip.sh \
@@ -187,6 +186,9 @@ RUN apk update \
         hiredis \
         mongo-c-driver \
         libmicrohttpd \
+ # Install `bash` for `docker-entrypoint.sh`.
+ && apk add --no-cache \
+        bash \
  # Install `dig` tool for `detect-external-ip.sh`.
  && apk add --no-cache \
         bind-tools \
