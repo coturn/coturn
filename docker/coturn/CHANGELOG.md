@@ -4,12 +4,16 @@ Coturn TURN server Docker image changelog
 
 
 
-## [4.6.1-r1] · 2023-01-??
+## [4.6.1-r1] · 2023-01-31
 [4.6.1-r1]: /../../tree/docker/4.6.1-r1
 
 ### Fixed
 
 - Incorrect argument expansion in `docker-entrypoint.sh`. ([#1110])
+
+### Security updated
+
+- [Debian Linux] "bullseye" 20230109: <https://github.com/docker-library/official-images/commit/5e4784af91b60ebae23aab567b6cea3dcdb173a0>
 
 [#1110]: /../../pull/1110
 
