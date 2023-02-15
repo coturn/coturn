@@ -15,7 +15,7 @@ url="http://$host:$port/metrics"
 echo "Polling coturn status on $url"
 
 while true; do
-    allocs=$(curl -s "$url" | grep -E '^turn_active_allocations' | cut -d' ' -f2)
+    allocs=$(curl -s "$url" | grep -E '^turn_total_allocations' | cut -d' ' -f2)
     if [ "$?" != 0 ]; then
         echo "Could not retrieve metrics from coturn!"
         exit 1
