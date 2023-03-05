@@ -43,7 +43,6 @@
 #if defined(__unix__) || defined(unix)
 #include <pthread.h>
 #include <sys/resource.h>
-#include <sys/sysinfo.h>
 #include <sys/time.h>
 #endif
 
