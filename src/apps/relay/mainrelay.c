@@ -1003,7 +1003,7 @@ static char Usage[] =
 #endif
 #if !defined(TURN_NO_PQ)
     " -e, --psql-userdb, --sql-userdb <conn-string>	PostgreSQL database connection string, if used (default - "
-    "empty, no PostreSQL DB used).\n"
+    "empty, no PostgreSQL DB used).\n"
     "		                                This database can be used for long-term credentials mechanism users,\n"
     "		                                and it can store the secret value(s) for secret-based timed "
     "authentication in TURN REST API.\n"
