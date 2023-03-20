@@ -1,82 +1,44 @@
-TBD Version 4.7.0 '':
-Contributors:
-	- Arjun (36335769+0x34d@users.noreply.github.com)
-	- Emil Ljungdahl (111423223+pando-emil@users.noreply.github.com)
-	- Gregor Jasny (gjasny@googlemail.com)
-	- Gustavo Garcia (gustavogb@gmail.com)
-	- Hyorin Choi (17173216+hyorin@users.noreply.github.com)
-	- Joachim Bauch (bauch@struktur.de)
-	- Kang Lin (kl222@126.com)
-	- Paul Kramer (47924093+paulkram@users.noreply.github.com)
-	- Pavel Punsky (eakraly@users.noreply.github.com)
-	- Robert Scheck (robert-scheck@users.noreply.github.com)
-	- Samuel Marks (807580+SamuelMarks@users.noreply.github.com)
-	- Scott Godin (sgodin@sipspectrum.com)
-	- Thibaut ACKERMANN (thib-ack@users.noreply.github.com)
-	- Tom Bevan (thehorrorthehorror@gmail.com)
-	- Yoshiki Kadoshita (sublimer.me@gmail.com)
-	- tyranron (tyranron@gmail.com)
+Release v4.6.2
 
 Changelist:
-	- Do not build debug version during PR preflight (Pavel Punsky)
-	- Fix duplicate prometheus metric report (#1079) (Pavel Punsky)
-	- feature(1026): add sessioncount to prometheus metrics (#1075) (Paul Kramer)
-	- Update openssl API use to non-deprecated version (#1072) (Pavel Punsky)
-	- Log threadId to logs to aid in multi-threaded debugging. (#1030) (Scott Godin)
-	- Use khash 0.2.8 (#1047) (Gregor Jasny)
-	- Reflect new native Windows build support in documentation (#1060) (Samuel Marks)
-	- Check and fix format string for turn_log_func_default (#1064) (Gregor Jasny)
-	- Properly calculate size for sm_allocated (#1063) (Gregor Jasny)
-	- Do not discard qualifiers in free() (#1065) (Gregor Jasny)
-	- Simplify defines for macOS platform (#1058) (Pavel Punsky)
-	- Fix warnings (unused arguments, undeclared function) (#1057) (Pavel Punsky)
-	- WINDOWS: unsigned long should not be used to store pointers (#1055) (Emil Ljungdahl)
-	- Reduce usage of TURN_NO_HIREDIS macros (#1022) (Pavel Punsky)
-	- Update to fix duplicate stdout log output (#1054) (Yoshiki Kadoshita)
-	- Use c11 standard See: #1055 (#1056) (Kang Lin)
-	- Reduce usage of TURN_NO_PROMETHEUS (#1023) (Pavel Punsky)
-	- Remove unnecessary declaration from header file (#1052) (Yoshiki Kadoshita)
-	- Fix compilation warnings for functions with no arguments (#1053) (Pavel Punsky)
-	- Support Windows MSVC (#855) (Kang Lin)
-	- Fix resource leaks (#1048) (Gregor Jasny)
-	- Update turnserver.conf (#1009) (Hyorin Choi)
-	- Fix warnings (#1046) (Gregor Jasny)
-	- Backlog fifo (#1029) (Scott Godin)
-	- Change rpm systemd service type from notify to exec (#1043) (Gustavo Garcia)
-	- Add missing comma (#1041) (Gregor Jasny)
-	- Fix off-by-one when terminating gcm_nonce (#1039) (Gregor Jasny)
-	- Use %zu format specifier for size_t (#1040) (Gregor Jasny)
-	- Fix variable argument handling (#1042) (Gregor Jasny)
-	- Cleanup openssl initialization (#1012) (Pavel Punsky)
-	- fuzzing support (#982) (Arjun)
-	- created netengine.c get_relay_server utility method to reduce code duplication (#1032) (Scott Godin)
-	- fix bug in calls to ssl_read and ssl_send where extra verbose flag goes missing (#1033) (Scott Godin)
-	- ignore raw UDP if no_udp is enabled (#1031) (Scott Godin)
-	- Fix 2 warnings in code (#1027) (Pavel Punsky)
-	- Sanitize DB connection string before printing to log (#1020) (Pavel Punsky)
-	- Better detect SCTP protocol (#1016) (Pavel Punsky)
-	- Redis memleaks and socketleaks (#1015) (Thibaut ACKERMANN)
-	- Fix : Issue 51563 in oss-fuzz (#1010) (Arjun)
-	- Fix multiple warnings in libtelnet.c file (#1011) (Pavel Punsky)
-	- Update libtelnet to 0.23 (portability issues) (#1005) (Pavel Punsky)
-	- Remove debug publish to redis (#1008) (Pavel Punsky)
-	- Cleanup unused include of header files (#1004) (Pavel Punsky)
-	- Use single SSL_CTX for DTLS support (#996) (Pavel Punsky)
-	- Malformed response to mobility refresh request (#1006) (Tom Bevan)
-	- Silence warnings by converting STRCPY to strncpy calls (#995) (Pavel Punsky)
-	- Build CI with prometheus support (#999) (Pavel Punsky)
-	- Replace references to non-existent pdf file with links (#1002) (Pavel Punsky)
-	- Fix TLS1.3 support (Pavel Punsky)
-	- Use a single SSL context object (#989) (Pavel Punsky)
-	- Use epoll for promhttp server if supported.  (#997) (Joachim Bauch)
-	- Fix issues reported by cppcheck (#987) (Pavel Punsky)
-	- Replace bcopy with memcpy (#991) (Pavel Punsky)
-	- Add CI tests in older ubuntu version (#981) (Gustavo Garcia)
-	- Replace bzero with memset (#986) (Pavel Punsky)
-	- Fix a warning (#988) (Pavel Punsky)
-	- Improve openssl3 and FIPS support (#955) (Pavel Punsky)
-	- Preserve file timestamps when using install(1) (#983) (Robert Scheck)
-	- Fix renegotiation flag for older version of openssl (#978) (Pavel Punsky)
+- Prometheus: make sure microhttpd starts using epoll if supported (#1173) (Thibaut ACKERMANN <thib-ack@users.noreply.github.com>)
+- Fix typo in mainrelay.c (#1169) (Stefan Sundin <git@stefansundin.com>)
+- Remove unused include that breaks OpenBSD (#1165) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Update Alpine to 3.16.4 version and Debian "bullseye" to 20230208 snapshot to fix CVE-2023-0286 (and friends) in Docker image (tyranron <tyranron@gmail.com>)
+- Fix arguments expansion in `docker-entrypoint.sh` (#1110, #902) (Shu Muto <shu.mutow@nec.com>)
+- Delete LICENSE.OpenSSL (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Use santisied psql string (#1144) (r3g_5z <june@girlboss.ceo>)
+- Use the actual redis connection string to connect, not the sanitized one (#1141) (Jasper <jasper@jasperhugo.com>)
+- Update CONTRIBUTING.md (Gustavo Garcia <gustavogb@gmail.com>)
+- Fix brew for MacOS CI build (#1136) (Gustavo Garcia <gustavogb@gmail.com>)
+- Implement non-blocking recvfrom on Windows (#1124) (Emil Ljungdahl <111423223+pando-emil@users.noreply.github.com>)
+- Add contributing guidelines (#1135) (Gustavo Garcia <gustavogb@gmail.com>)
+- Move and split documentation files (#1096) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Use inline functions for errno checks (#1123) (Emil Ljungdahl <111423223+pando-emil@users.noreply.github.com>)
+- Add STUN request/response/error prometheus counters (#1115) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Add configuration option for TLS 1.3 ciphersuites (#1118) (Molly Miller <33266253+sysvinit@users.noreply.github.com>)
+- Fix wrong usage of C-sytle in place generated array (#1122) (Paul Kramer <47924093+paulkram@users.noreply.github.com>)
+- Fix broken type label of turn_total_allocations gauge (#1119) (Paul Kramer <47924093+paulkram@users.noreply.github.com>)
+- Add explicit SIGTERM and SIGINT handlers. (#1106) (Molly Miller <33266253+sysvinit@users.noreply.github.com>)
+- Set string bytes to null to prevent random origin (#1114) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Regenerate manual pages from README files (#1117) (Molly Miller <33266253+sysvinit@users.noreply.github.com>)
+- Fix inverted logic in TLS configuration options (#1105) (Molly Miller <33266253+sysvinit@users.noreply.github.com>)
+- Reduce code duplication when printing userdb (#1103) (Pavel Punsky <eakraly@users.noreply.github.com>)
+
+Contributors:
+- Emil Ljungdahl <111423223+pando-emil@users.noreply.github.com>
+- Gregor Jasny <gjasny@googlemail.com>
+- Gustavo Garcia <gustavogb@gmail.com>
+- Jasper <jasper@jasperhugo.com>
+- Kai Ren <tyranron@gmail.com>
+- Molly Miller <33266253+sysvinit@users.noreply.github.com>
+- Paul Kramer <47924093+paulkram@users.noreply.github.com>
+- Pavel Punsky <eakraly@users.noreply.github.com>
+- Shu Muto <shu.mutow@nec.com>
+- Stefan Sundin <git@stefansundin.com>
+- Thibaut ACKERMANN <thib-ack@users.noreply.github.com>
+- r3g_5z <june@girlboss.ceo>
+
 
 03/12/2022 Gustavo Garcia <gustavogb@gmail.com> Paul Kramer <paul.kramer@logmein.com>
 Version 4.6.1 'Gorst':

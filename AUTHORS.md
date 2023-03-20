@@ -40,6 +40,7 @@ Thanks to the following contributors (in alphabetical order):
 - Hyorin Choi <17173216+hyorin@users.noreply.github.com>
 - Ilya Kisleyko <osterik@gmail.com>
 - James Huang <hng.jms@gmail.com>
+- Jasper <jasper@jasperhugo.com>
 - Jens Elkner <jel+coturn@cs.ovgu.de>
 - Jens Elkner <jel+git@iks.cs.uni-magdeburg.de>
 - Jeremy Murphy <jeremymu@blackmagicdesign.com>
@@ -68,6 +69,7 @@ Thanks to the following contributors (in alphabetical order):
 - Mészáros Mihály <misi@niif.hu>
 - Michal Biskup <eiver@eiver.pl>
 - Miquel Ortega <miquel@syncrtc.com>
+- Molly Miller <33266253+sysvinit@users.noreply.github.com>
 - Molly Miller <molly.miller@wire.com>
 - Mustafa Bingül <bnglmstf@gmail.com>
 - NeoCat <neocat@neocat.jp>
@@ -101,6 +103,8 @@ Thanks to the following contributors (in alphabetical order):
 - Sergey Safarov <s.safarov@gmail.com>
 - Serhii Charykov <laammaar@gmail.com>
 - Shu Muto <shu.mutow@gmail.com>
+- Shu Muto <shu.mutow@nec.com>
+- Stefan Sundin <git@stefansundin.com>
 - Steffen Moser <public@steffen-moser.de>
 - Steffen Moser <steffen.moser@uni-ulm.de>
 - Thibaut ACKERMANN <thib-ack@users.noreply.github.com>
@@ -126,6 +130,7 @@ Thanks to the following contributors (in alphabetical order):
 - oleg <oleg@sck63.oleg.net>
 - oleg <oleg@shy.(none)>
 - ooookai <ooookai@users.noreply.github.com>
+- r3g_5z <june@girlboss.ceo>
 - raghumuppa <mupparthies@gmail.com>
 - release-it <release-it@tawenda.com>
 - root <root@centot7.test.in.securom.me>
