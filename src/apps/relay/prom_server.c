@@ -100,19 +100,25 @@ void start_prometheus_server(void) {
 
   promhttp_set_active_collector_registry(NULL);
 
+  // some flags appeared first in microhttpd v0.9.53
   unsigned int flags = MHD_USE_DUAL_STACK
-#if MHD_USE_ERROR_LOG
+#if MHD_VERSION >= 0x00095300
                        | MHD_USE_ERROR_LOG
 #endif
       ;
   if (MHD_is_feature_supported(MHD_FEATURE_EPOLL)) {
-#if MHD_USE_EPOLL_INTERNAL_THREAD
+#if MHD_VERSION >= 0x00095300
     flags |= MHD_USE_EPOLL_INTERNAL_THREAD;
 #else
-    flags |= MHD_USE_SELECT_INTERNALLY; // ubuntu 16.04
+    flags |= MHD_USE_EPOLL_INTERNALLY_LINUX_ONLY; // old versions of microhttpd
 #endif
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "prometheus exporter server will start using EPOLL\n");
   } else {
     flags |= MHD_USE_SELECT_INTERNALLY;
+    // Select() will not work if all 1024 first file-descriptors are used.
+    // In this case the prometheus server will be unreachable
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "prometheus exporter server will start using SELECT. "
+                                          "The exporter might be unreachable on highly used servers\n");
   }
   struct MHD_Daemon *daemon = promhttp_start_daemon(flags, turn_params.prometheus_port, NULL, NULL);
   if (daemon == NULL) {
