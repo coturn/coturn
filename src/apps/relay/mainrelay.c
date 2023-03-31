@@ -187,6 +187,8 @@ TURN_CREDENTIALS_NONE, /* ct */
 0, /* user_quota */
 #if !defined(TURN_NO_PROMETHEUS)
 0, /* prometheus disabled by default */
+DEFAULT_PROM_SERVER_PORT, /* prometheus port */
+0, /* prometheus username labelling disabled by default when prometheus is enabled */
 #endif
 ///////////// Users DB //////////////
 { (TURN_USERDB_TYPE)0, {"\0"}, {0,NULL, {NULL,0}} },
@@ -585,8 +587,12 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						The connection string has the same parameters as redis-userdb connection string.\n"
 #endif
 #if !defined(TURN_NO_PROMETHEUS)
-" --prometheus					Enable prometheus metrics. It is disabled by default. If it is enabled it will listen on port 9641 unther the path /metrics\n"
-"						also the path / on this port can be used as a health check\n"
+" --prometheus					Enable prometheus metrics. It is disabled by default.\n"
+"						When enabled, it will listen on port 9641 on the wildcard address under the path /metrics.\n"
+"						The path / on this port can also be used as a health check.\n"
+" --prometheus-username-labels			When metrics are enabled, add labels with client usernames.\n"
+" --prometheus-ip=<ip>				IP address for the Prometheus listener. Default is the wildcard address.\n"
+" --prometheus-port=<port>			Prometheus listener port. Default is 9641.\n"
 #endif
 " --use-auth-secret				TURN REST API flag.\n"
 "						Flag that sets a special authorization option that is based upon authentication secret\n"
