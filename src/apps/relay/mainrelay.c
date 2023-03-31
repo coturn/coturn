@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
+ * Copyright (C) 2022 Wire Swiss GmbH
  *
  * All rights reserved.
  *
@@ -30,6 +31,7 @@
 
 #include "mainrelay.h"
 #include "dbdrivers/dbdriver.h"
+#include "federation.h"
 
 #if !defined(TURN_NO_PROMETHEUS)
 #include "prom_server.h"
@@ -136,7 +138,7 @@ DEFAULT_STUN_TLS_PORT, /* tls_listener_port */
 "",
 "",0,
 {
-  NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0,0,NULL,NULL,NULL
+  NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0,0,NULL,NULL,NULL,NULL,NULL
 },
 {NULL, 0},{NULL, 0},
 NEV_UNKNOWN,
@@ -152,6 +154,17 @@ LOW_DEFAULT_PORTS_BOUNDARY,HIGH_DEFAULT_PORTS_BOUNDARY,0,0,0,"",
 {NULL,0,{0,NULL}},{NULL,0,{0,NULL}},
 /////////////// stop server ////////////////
 0,
+/////////////// FEDERATION SERVER ///////////////
+0,   // federation_listening_ip
+0,   // federation_listening_port
+0,   // federation_no_dtls
+"",  // federation_cert_file
+"",  // federation_pkey_file
+"",  // federation_pkey_pwd
+#if DTLSv1_2_SUPPORTED
+0,   // federation_dtls_client_ctx_v1_2
+0,   // federation_dtls_server_ctx_v1_2
+#endif
 /////////////// MISC PARAMS ////////////////
 0, /* stun_only */
 0, /* no_stun */
@@ -174,8 +187,6 @@ TURN_CREDENTIALS_NONE, /* ct */
 0, /* user_quota */
 #if !defined(TURN_NO_PROMETHEUS)
 0, /* prometheus disabled by default */
-DEFAULT_PROM_SERVER_PORT, /* prometheus port */
-0, /* prometheus username labelling disabled by default when prometheus is enabled */
 #endif
 ///////////// Users DB //////////////
 { (TURN_USERDB_TYPE)0, {"\0"}, {0,NULL, {NULL,0}} },
@@ -450,7 +461,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						The load balancing is using the ALTERNATE-SERVER mechanism.\n"
 "						The TURN client must support 300 ALTERNATE-SERVER response for this functionality.\n"
 " -i, --relay-device		<device-name>	Relay interface device for relay sockets (NOT RECOMMENDED. Optional, Linux only).\n"
-" -E, --relay-ip		<ip>			Relay address (the local IP address that will be used to relay the\n"
+" -E, --relay-ip			<ip>		Relay address (the local IP address that will be used to relay the\n"
 "						packets to the peer).\n"
 "						Multiple relay addresses may be used.\n"
 "						The same IP(s) can be used as both listening IP(s) and relay IP(s).\n"
@@ -470,6 +481,18 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						In more complex case when more than one IP address is involved,\n"
 "						that option must be used several times in the command line, each entry must\n"
 "						have form \"-X public-ip/private-ip\", to map all involved addresses.\n"
+" --federation-listening-ip	<ip>		The IP address to bind to for federated UDP or DTLS traffic\n"
+" --federation-listening-port	<port>		The port to bind to for federated UDP or DTLS traffic\n"
+" --federation-no-dtls				Disables DTLS for federation.  If specified then UDP is used for federation.\n"
+" --federation-cert		<filename>	Federation certificate file, PEM format. Same file search rules\n"
+"						applied as for the configuration file.\n"
+"						If federation-no-dtls is true then this parameter is not needed.\n"
+" --federation-pkey		<filename>	Federation private key file, PEM format. Same file search rules\n"
+"						applied as for the configuration file.\n"
+"						If federation-no-dtls is true then this parameter is not needed.\n"
+" --federation-pkey-pwd		<password>	If the federation private key file is encrypted, then this password will be used.\n"
+" --federation-remote_whilelist  <hostname>[,<issuer>]	List of acceptable certificate hostname and optional issuer name pairs for federation\n"
+"						DTLS mutual authentication validation.\n"
 " --allow-loopback-peers				Allow peers on the loopback addresses (127.x.x.x and ::1).\n"
 " --no-multicast-peers				Disallow peers on well-known broadcast addresses (224.0.0.0 and above, and FFXX:*).\n"
 " -m, --relay-threads		<number>	Number of relay threads to handle the established connections\n"
@@ -514,7 +537,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						for the sessions, combined (input and output network streams are treated separately).\n"
 " -c				<filename>	Configuration file name (default - turnserver.conf).\n"
 #if !defined(TURN_NO_SQLITE)
-" -b, , --db, --userdb	<filename>		SQLite database file name; default - /var/db/turndb or\n"
+" -b, , --db, --userdb		<filename>	SQLite database file name; default - /var/db/turndb or\n"
 "						    /usr/local/var/db/turndb or /var/lib/turn/turndb.\n"
 #endif
 #if !defined(TURN_NO_PQ)
@@ -562,17 +585,13 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						The connection string has the same parameters as redis-userdb connection string.\n"
 #endif
 #if !defined(TURN_NO_PROMETHEUS)
-" --prometheus					Enable prometheus metrics. It is disabled by default.\n"
-"						When enabled, it will listen on port 9641 on the wildcard address under the path /metrics.\n"
-"						The path / on this port can also be used as a health check.\n"
-" --prometheus-username-labels			When metrics are enabled, add labels with client usernames.\n"
-" --prometheus-ip=<ip>				IP address for the Prometheus listener. Default is the wildcard address.\n"
-" --prometheus-port=<port>			Prometheus listener port. Default is 9641.\n"
+" --prometheus					Enable prometheus metrics. It is disabled by default. If it is enabled it will listen on port 9641 unther the path /metrics\n"
+"						also the path / on this port can be used as a health check\n"
 #endif
 " --use-auth-secret				TURN REST API flag.\n"
 "						Flag that sets a special authorization option that is based upon authentication secret\n"
 "						(TURN Server REST API, see TURNServerRESTAPI.pdf). This option is used with timestamp.\n"
-" --static-auth-secret		<secret>	'Static' authentication secret value (a string) for TURN REST API only.\n"
+" --static-auth-secret	<secret>		'Static' authentication secret value (a string) for TURN REST API only.\n"
 "						If not set, then the turn server will try to use the 'dynamic' value\n"
 "						in turn_secret table in user database (if present).\n"
 "						That database value can be changed on-the-fly\n"
@@ -595,8 +614,8 @@ static char Usage[] = "Usage: turnserver [options]\n"
 " --pkey			<filename>		Private key file, PEM format. Same file search rules\n"
 "						applied as for the configuration file.\n"
 "						If both --no-tls and --no-dtls options\n"
-" --pkey-pwd		<password>		If the private key file is encrypted, then this password to be used.\n"
-" --cipher-list	<\"cipher-string\">		Allowed OpenSSL cipher list for TLS/DTLS connections.\n"
+" --pkey-pwd		<password>		If the private key file is encrypted, then this password will be used.\n"
+" --cipher-list		<\"cipher-string\">	Allowed OpenSSL cipher list for TLS/DTLS connections.\n"
 "						Default value is \"DEFAULT\".\n"
 " --CA-file		<filename>		CA file in OpenSSL format.\n"
 "						Forces TURN server to verify the client SSL certificates.\n"
@@ -608,7 +627,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						by this option.\n"
 " --dh566					Use 566 bits predefined DH TLS key. Default size of the predefined key is 2066.\n"
 " --dh1066					Use 1066 bits predefined DH TLS key. Default size of the predefined key is 2066.\n"
-" --dh-file	<dh-file-name>			Use custom DH TLS key, stored in PEM format in the file.\n"
+" --dh-file		<dh-file-name>		Use custom DH TLS key, stored in PEM format in the file.\n"
 "						Flags --dh566 and --dh1066 are ignored when the DH key is taken from a file.\n"
 " --no-tlsv1					Do not allow TLSv1/DTLSv1 protocol.\n"
 " --no-tlsv1_1					Do not allow TLSv1.1 protocol.\n"
@@ -645,7 +664,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 " --permission-lifetime		<value>		Set the value for the lifetime of the permission. Default to 300 secs.\n"
 "						This MUST not be changed for production purposes.\n"
 " -S, --stun-only				Option to set standalone STUN operation only, all TURN requests will be ignored.\n"
-"     --no-stun					Option to suppress STUN functionality, only TURN requests will be processed.\n"
+" --no-stun					Option to suppress STUN functionality, only TURN requests will be processed.\n"
 " --alternate-server		<ip:port>	Set the TURN server to redirect the allocate requests (UDP and TCP services).\n"
 "						Multiple alternate-server options can be set for load balancing purposes.\n"
 "						See the docs for more information.\n"
@@ -677,11 +696,11 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						TURN server allocates address family according TURN\n"
 "						Client <=> Server communication address family.\n"
 "						!! It breaks RFC6156 section-4.2 (violates default IPv4) !!\n"
-" -A --allocation-default-address-family=<ipv4|ipv6|keep> 		Default is IPv4\n"
+" -A --allocation-default-address-family=<ipv4|ipv6|keep>	Default is IPv4\n"
 "						TURN server allocates address family according TURN client requested address family. \n"
 "						If address family is not requested explicitly by client, then it falls back to this default.\n"
 "						The standard RFC explicitly define actually that this default must be IPv4,\n"
-"                       so use other option values with care!\n"
+"						so use other option values with care!\n"
 " --no-cli					Turn OFF the CLI support. By default it is always ON.\n"
 " --cli-ip=<IP>					Local system IP address to be used for CLI server endpoint. Default value\n"
 "						is 127.0.0.1.\n"
@@ -802,7 +821,7 @@ enum EXTRA_OPTS {
 	PROMETHEUS_OPT,
 	PROMETHEUS_ENABLE_USERNAMES_OPT,
 	PROMETHEUS_IP_OPT,
-	PROMETHEUS_PORT_OPT,
+	PROMETHEUS_PORT_OPT,	
 	AUTH_SECRET_OPT,
 	NO_AUTH_PINGS_OPT,
 	NO_DYNAMIC_IP_LIST_OPT,
@@ -868,7 +887,14 @@ enum EXTRA_OPTS {
 	NO_STUN_BACKWARD_COMPATIBILITY_OPT,
 	RESPONSE_ORIGIN_ONLY_WITH_RFC5780_OPT,
 	VERSION_OPT,
-	ZREST_AUTH_OPT
+	ZREST_AUTH_OPT,
+	FEDERATION_LISTENING_IP_OPT,
+	FEDERATION_LISTENING_PORT_OPT,
+	FEDERATION_NO_DTLS_OPT,
+	FEDERATION_CERT_OPT,
+	FEDERATION_PKEY_OPT,
+	FEDERATION_PKEY_PWD_OPT,
+	FEDERATION_REMOTE_WHITELIST_OPT
 };
 
 struct myoption {
@@ -897,6 +923,13 @@ static const struct myoption long_options[] = {
 				{ "relay-device", required_argument, NULL, 'i' },
 				{ "relay-ip", required_argument, NULL, 'E' },
 				{ "external-ip", required_argument, NULL, 'X' },
+				{ "federation-listening-ip", required_argument, NULL, FEDERATION_LISTENING_IP_OPT },
+				{ "federation-listening-port", required_argument, NULL, FEDERATION_LISTENING_PORT_OPT },
+				{ "federation-no-dtls", required_argument, NULL, FEDERATION_NO_DTLS_OPT },
+				{ "federation-cert", required_argument, NULL, FEDERATION_CERT_OPT },
+				{ "federation-pkey", required_argument, NULL, FEDERATION_PKEY_OPT },
+				{ "federation-pkey-pwd", required_argument, NULL, FEDERATION_PKEY_PWD_OPT },
+				{ "federation-remote-whitelist", required_argument, NULL, FEDERATION_REMOTE_WHITELIST_OPT },
 				{ "relay-threads", required_argument, NULL, 'm' },
 				{ "min-port", required_argument, NULL, MIN_PORT_OPT },
 				{ "max-port", required_argument, NULL, MAX_PORT_OPT },
@@ -1716,7 +1749,53 @@ static void set_option(int c, char *value)
 		turn_params.ct = TURN_CREDENTIALS_LONG_TERM;
 		use_lt_credentials = 1;
 		break;
-
+	case FEDERATION_LISTENING_IP_OPT:
+		if(turn_params.federation_listening_ip) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "You cannot define federation listen IP more than once in the configuration\n");
+		} else {
+			turn_params.federation_listening_ip = (ioa_addr*)allocate_super_memory_engine(turn_params.listener.ioa_eng, sizeof(ioa_addr));
+			if(make_ioa_addr((const uint8_t*)value,0,turn_params.federation_listening_ip)<0) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"federation_listening_ip : Wrong address format: %s\n",value);
+				free(turn_params.federation_listening_ip);
+				turn_params.federation_listening_ip = NULL;
+			}
+		}
+		break;
+	case FEDERATION_LISTENING_PORT_OPT:
+		turn_params.federation_listening_port = atoi(value);
+		break;
+	case FEDERATION_NO_DTLS_OPT:
+#if DTLSv1_2_SUPPORTED
+		turn_params.federation_no_dtls = get_bool_value(value);
+#else
+		turn_params.federation_no_dtls = 1;
+#endif
+		break;
+	case FEDERATION_CERT_OPT:
+		STRCPY(turn_params.federation_cert_file,value);
+		break;
+	case FEDERATION_PKEY_OPT:
+		STRCPY(turn_params.federation_pkey_file,value);
+		break;
+	case FEDERATION_PKEY_PWD_OPT:
+		STRCPY(turn_params.federation_pkey_pwd,value);
+		break;
+	case FEDERATION_REMOTE_WHITELIST_OPT:
+		if(value) {
+			char *div = strchr(value,',');
+			if(div) {
+				char *hostname=strdup(value);
+				div = strchr(hostname,',');
+				div[0]=0;
+				++div;  // div now points to issuer
+				federation_whitelist_add(hostname, div);
+				free(hostname);
+			} else {
+				// No Issuer
+				federation_whitelist_add(value, "");
+			}
+		}
+		break;
 	/* these options have been already taken care of before: */
 	case 'l':
 	case NO_STDOUT_LOG_OPT:
@@ -3004,7 +3083,12 @@ static int ServerALPNCallback(SSL *ssl,
 
 #endif
 
-static void set_ctx(SSL_CTX** out, const char *protocol, const SSL_METHOD* method)
+void set_ctx(SSL_CTX** out, const char *protocol, const SSL_METHOD* method) 
+{
+	set_ctx_ex(out, protocol, method, turn_params.cert_file, turn_params.pkey_file, turn_params.tls_password);
+}
+
+void set_ctx_ex(SSL_CTX** out, const char *protocol, const SSL_METHOD* method, const char* cert_file, const char* pkey_file, char* pkey_pwd)
 {
 	SSL_CTX* ctx = SSL_CTX_new(method);
 	int err = 0;
@@ -3013,7 +3097,7 @@ static void set_ctx(SSL_CTX** out, const char *protocol, const SSL_METHOD* metho
 	SSL_CTX_set_alpn_select_cb(ctx, ServerALPNCallback, NULL);
 #endif
 
-	SSL_CTX_set_default_passwd_cb_userdata(ctx, turn_params.tls_password);
+	SSL_CTX_set_default_passwd_cb_userdata(ctx, pkey_pwd);
 
 	SSL_CTX_set_default_passwd_cb(ctx, pem_password_func);
 
@@ -3023,22 +3107,22 @@ static void set_ctx(SSL_CTX** out, const char *protocol, const SSL_METHOD* metho
 	SSL_CTX_set_cipher_list(ctx, turn_params.cipher_list);
 	SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_OFF);
 
-	if (!SSL_CTX_use_certificate_chain_file(ctx, turn_params.cert_file)) {
+	if (!SSL_CTX_use_certificate_chain_file(ctx, cert_file)) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: no certificate found\n", protocol);
 		err = 1;
 	} else {
-		print_abs_file_name(protocol, ": Certificate", turn_params.cert_file);
+		print_abs_file_name(protocol, ": Certificate", cert_file);
 	}
 
-	if (!SSL_CTX_use_PrivateKey_file(ctx, turn_params.pkey_file, SSL_FILETYPE_PEM)) {
-		if (!SSL_CTX_use_RSAPrivateKey_file(ctx, turn_params.pkey_file, SSL_FILETYPE_PEM)) {
+	if (!SSL_CTX_use_PrivateKey_file(ctx, pkey_file, SSL_FILETYPE_PEM)) {
+		if (!SSL_CTX_use_RSAPrivateKey_file(ctx, pkey_file, SSL_FILETYPE_PEM)) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: no valid private key found, or invalid private key password provided\n", protocol);
 			err = 1;
 		} else {
-			print_abs_file_name(protocol, ": Private RSA key", turn_params.pkey_file);
+			print_abs_file_name(protocol, ": Private RSA key", pkey_file);
 		}
 	} else {
-		print_abs_file_name(protocol, ": Private key", turn_params.pkey_file);
+		print_abs_file_name(protocol, ": Private key", pkey_file);
 	}
 
 	if (!SSL_CTX_check_private_key(ctx)) {
@@ -3324,6 +3408,7 @@ static void reload_ssl_certs(evutil_socket_t sock, short events, void *args)
 {
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Reloading TLS certificates and keys\n");
 	openssl_load_certificates();
+	federation_load_certificates();
 	if (turn_params.tls_ctx_update_ev != NULL)
 		event_active(turn_params.tls_ctx_update_ev, EV_READ, 0);
 

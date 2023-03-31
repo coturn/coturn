@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
+ * Copyright (C) 2022 Wire Swiss GmbH
  *
  * All rights reserved.
  *
@@ -100,8 +101,6 @@ static void socket_input_handler(evutil_socket_t fd, short what, void* arg);
 static void socket_output_handler_bev(struct bufferevent *bev, void* arg);
 static void socket_input_handler_bev(struct bufferevent *bev, void* arg);
 static void eventcb_bev(struct bufferevent *bev, short events, void *arg);
-
-static int send_ssl_backlog_buffers(ioa_socket_handle s);
 
 static int set_accept_cb(ioa_socket_handle s, accept_cb acb, void *arg);
 
@@ -268,6 +267,9 @@ static stun_buffer_list_elem *get_elem_from_buffer_list(stun_buffer_list *bufs)
 		ret=bufs->head;
 		bufs->head=ret->next;
 		--bufs->tsz;
+		if(bufs->tsz == 0) {
+			bufs->tail = NULL;
+		}
 
 		ret->next=NULL;
 		ret->buf.len = 0;
@@ -285,11 +287,12 @@ static void pop_elem_from_buffer_list(stun_buffer_list *bufs)
 		stun_buffer_list_elem *ret = bufs->head;
 		bufs->head=ret->next;
 		--bufs->tsz;
+		if(bufs->tsz == 0) {
+			bufs->tail = NULL;
+		}
 		free(ret);
 	}
 }
-
-
 
 static stun_buffer_list_elem *new_blist_elem(ioa_engine_handle e)
 {
@@ -313,8 +316,14 @@ static stun_buffer_list_elem *new_blist_elem(ioa_engine_handle e)
 
 static inline void add_elem_to_buffer_list(stun_buffer_list *bufs, stun_buffer_list_elem *buf_elem)
 {
-	buf_elem->next = bufs->head;
-	bufs->head = buf_elem;
+	// We want a queue, so add to tail
+	if(bufs->tail) {
+		bufs->tail->next = buf_elem;
+	} else {
+		bufs->head = buf_elem;
+	}
+	buf_elem->next = NULL;
+	bufs->tail = buf_elem;
 	bufs->tsz += 1;
 }
 
@@ -1548,6 +1557,9 @@ void close_ioa_socket(ioa_socket_handle s)
 
 		close_socket_net_data(s);
 
+		IOA_EVENT_DEL(s->federation_handshake_tmr);
+		IOA_EVENT_DEL(s->federation_heartbeat_tmr);
+
 		s->session = NULL;
 		s->sub_session = NULL;
 		s->magic = 0;
@@ -2620,7 +2632,7 @@ static int socket_input_worker(ioa_socket_handle s)
 		if(s->ssl && (len>0)) { /* DTLS */
 			send_ssl_backlog_buffers(s);
 			buf_elem->buf.len = (size_t)len;
-			ret = ssl_read(s->fd, s->ssl, (ioa_network_buffer_handle)buf_elem, ((s->e) && s->e->verbose));
+			ret = ssl_read(s->fd, s->ssl, (ioa_network_buffer_handle)buf_elem, (s->e ? s->e->verbose : TURN_VERBOSE_NONE));
 			addr_cpy(&remote_addr,&(s->remote_addr));
 			if(ret < 0) {
 				len = -1;
@@ -3133,13 +3145,13 @@ static int ssl_send(ioa_socket_handle s, const char* buffer, int len, int verbos
 	}
 }
 
-static int send_ssl_backlog_buffers(ioa_socket_handle s)
+int send_ssl_backlog_buffers(ioa_socket_handle s)
 {
 	int ret = 0;
 	if(s) {
 		stun_buffer_list_elem *buf_elem = s->bufs.head;
 		while(buf_elem) {
-			int rc = ssl_send(s, (char*)buf_elem->buf.buf + buf_elem->buf.offset - buf_elem->buf.coffset, (size_t)buf_elem->buf.len, ((s->e) && s->e->verbose));
+			int rc = ssl_send(s, (char*)buf_elem->buf.buf + buf_elem->buf.offset - buf_elem->buf.coffset, (size_t)buf_elem->buf.len, (s->e ? s->e->verbose : TURN_VERBOSE_NONE));
 			if(rc<1)
 				break;
 			++ret;
@@ -3310,12 +3322,25 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 							}
 						}
 					} else if (s->ssl) {
-						send_ssl_backlog_buffers(s);
-						ret = ssl_send(
-								s,
-								(char*) ioa_network_buffer_data(nbh),
-								ioa_network_buffer_get_size(nbh),
-								((s->e) && s->e->verbose));
+						// Call ssl_send if:
+						//   -SSL handshake is finished  OR 
+						//   -if this is the first send attempt while waiting for handshake to finish (allows client handshake process to kickstart)
+						// Note: if we just call ssl_send and rely on the SSL_write failure, it is possible to get the following error: 
+						//       SSL write error: 16: 101593: error:140950D3:SSL routines:ssl3_read_n:read bio not set (1)
+						//       since calls to ssl_read clear out the read bio, which is potentially needed by the handshake process.
+						int handshake_finished = SSL_is_init_finished(s->ssl);
+						if(handshake_finished ||
+						   (!handshake_finished && buffer_list_empty(&(s->bufs)))) {
+							send_ssl_backlog_buffers(s);
+							ret = ssl_send(
+									s,
+									(char*) ioa_network_buffer_data(nbh),
+									ioa_network_buffer_get_size(nbh),
+									(s->e ? s->e->verbose : TURN_VERBOSE_NONE));
+						} else {
+							// Put message in backlog below
+							ret = 0;
+						}
 						if (ret < 0)
 							s->tobeclosed = 1;
 						else if (ret == 0)
@@ -3669,6 +3694,11 @@ uint8_t ioa_network_buffer_get_coffset(ioa_network_buffer_handle nbh)
   return buf_elem->buf.coffset;
 }
 
+// Note: The engine passed in here is where the buffer could get stored around
+//       for future use.  Each ioa_engine holds up to 64 (MAX_BUFFER_QUEUE_SIZE_PER_ENGINE)
+//       buffers for re-use.  The passed in engine does NOT need to match the engine
+//       that originally allocated the buffer.  If a NULL engine handle is passed in
+//       then buffer is simply free'd and not reused.
 void ioa_network_buffer_delete(ioa_engine_handle e, ioa_network_buffer_handle nbh) {
   stun_buffer_list_elem *buf_elem = (stun_buffer_list_elem *)nbh;
   free_blist_elem(e,buf_elem);
@@ -3719,21 +3749,8 @@ void turn_report_allocation_set(void *a, turn_time_t lifetime, int refresh)
 					} else {
 						snprintf(key,sizeof(key),"turn/user/%s/allocation/%018llu/status",(char*)ss->username, (unsigned long long)ss->id);
 					}
-					uint8_t saddr[129];
-					uint8_t rsaddr[129];
-					addr_to_string(get_local_addr_from_ioa_socket(ss->client_socket), saddr);
-					addr_to_string(get_remote_addr_from_ioa_socket(ss->client_socket), rsaddr);
-					const char *type = socket_type_name(get_ioa_socket_type(ss->client_socket));
-					const char *ssl = ss->client_socket->ssl ? turn_get_ssl_method(ss->client_socket->ssl, "UNKNOWN") : "NONE";
-					const char *cipher = ss->client_socket->ssl ? get_ioa_socket_cipher(ss->client_socket) : "NONE";
-					send_message_to_redis(e->rch, "set", key, "%s lifetime=%lu, type=%s, local=%s, remote=%s, ssl=%s, cipher=%s", status, (unsigned long)lifetime, type, saddr, rsaddr, ssl, cipher);
-					send_message_to_redis(e->rch, "publish", key, "%s lifetime=%lu, type=%s, local=%s, remote=%s, ssl=%s, cipher=%s", status, (unsigned long)lifetime, type, saddr, rsaddr, ssl, cipher);
-				}
-#endif
-#if !defined(TURN_NO_PROMETHEUS)
-				{
-					if (!refresh)
-						prom_inc_allocation();
+					send_message_to_redis(e->rch, "set", key, "%s lifetime=%lu", status, (unsigned long)lifetime);
+					send_message_to_redis(e->rch, "publish", key, "%s lifetime=%lu", status, (unsigned long)lifetime);
 				}
 #endif
 			}
@@ -3792,6 +3809,7 @@ void turn_report_allocation_delete(void *a)
 						prom_set_finished_traffic(NULL, (const char*)ss->username, (unsigned long)(ss->t_peer_received_packets), (unsigned long)(ss->t_peer_received_bytes), (unsigned long)(ss->t_peer_sent_packets), (unsigned long)(ss->t_peer_sent_bytes), true);
 					}
 					prom_dec_allocation();
+					
 				}
 #endif
 			}

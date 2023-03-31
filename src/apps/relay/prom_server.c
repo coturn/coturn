@@ -67,7 +67,7 @@ int start_prometheus_server(void){
   turn_total_traffic_peer_sentp = prom_collector_registry_must_register_metric(prom_counter_new("turn_total_traffic_peer_sentp", "Represents total finished sessions peer sent packets", 0, NULL));
   turn_total_traffic_peer_sentb = prom_collector_registry_must_register_metric(prom_counter_new("turn_total_traffic_peer_sentb", "Represents total finished sessions peer sent bytes", 0, NULL));
 
-  // Create total allocations number gauge metric
+ // Create total allocations number gauge metric
   turn_total_allocations = prom_collector_registry_must_register_metric(prom_gauge_new("turn_total_allocations", "Represents current allocations number", 0, NULL));
 
   promhttp_set_active_collector_registry(NULL);
@@ -100,7 +100,7 @@ int start_prometheus_server(void){
 }
 
 void prom_set_finished_traffic(const char* realm, const char* user, unsigned long rsvp, unsigned long rsvb, unsigned long sentp, unsigned long sentb, bool peer){
-  if (turn_params.prometheus > PROM_DISABLED){
+    if (turn_params.prometheus > PROM_DISABLED){
 
     const char *label[] = {realm, NULL};
     if (turn_params.prometheus_username_labels){

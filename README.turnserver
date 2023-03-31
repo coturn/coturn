@@ -289,15 +289,9 @@ Flags:
 			check: across the session, all requests must have the same
 			main ORIGIN attribute value (if the ORIGIN was
 			initially used by the session).
-
---prometheus		Enable prometheus metrics. By default it is
-			disabled. Would listen on port 9641 under the path /metrics
+ --prometheus		Enable prometheus metrics. By default it is
+			disabled. Would listen on port 9641 unther the path /metrics
 			also the path / on this port can be used as a health check
-			See also options --prometheus-ip and --prometheus-port.
---prometheus-username-labels	Enable labeling prometheus traffic
-			metrics with client usernames. Labeling with client usernames is
-			disabled by default, beacuse this may cause memory leaks when using
-			authentication with ephemeral usernames (e.g. TURN REST API).
 
 -h			Help.
 
@@ -400,6 +394,45 @@ Options with values:
 			correctly, if the addresses are mapped properly, even when the TURN server itself
 			is behind A NAT.
 			By default, this value is empty, and no address mapping is used.
+
+--federation-listening-ip	Federation allows clients of different coturn instances to tunnel
+			data between each other on a single federated connection between two coturn instances.
+			The federated link can either use UDP or DTLS. MTLS authentication is used for DTLS
+			federated connections. See the federation-remote-whitelist configuration option.
+			To use the federation feature, a TURN client creates an allocation using a username
+			that starts with the token "sft-". This special allocation creates a federation
+			channel number that is used by a remote coturn instance to send data to this client.
+			The federation channel number or channel id (cid) is returned in the TURN allocation
+			response as a ChannelNum attribute. The federation ip address and port is returned
+			in the TURN allocation response RelayAddress attribute. A client of a remote cotrun
+			instance creates a federated allocation in the same manner, and uses a Send Indication
+			with the correct channel number from the other coturn instance, to send to the other
+			coturn instance over the federated tunnel. This data is then forwarded to the client
+			of the other coturn instance as a Data Indication.
+			To enable federation set both federation-listening-ip and federation-listening-port.
+
+--federation-listening-port	The UDP/DTLS port to bind to for federated traffic.
+
+--federation-no-dtls	If true, then unencrypted UDP is used to tunnel data on the
+			federated link. If false (default) then DTLS is used and you are required to
+			configure the additional federation certificate settings.
+
+--federation-cert	If federation-no-dtls is false, then you must configure a certificate file. 
+			Use an absolute path or path relative to the configuration file.
+			Use PEM file format.
+
+--federation-pkey	If federation-no-dtls is false, then you must configure a private key file.
+			Use an absolute path or path relative to the configuration file.
+			Use PEM file format.
+
+--federation-pkey-pwd	Federation private key file password, if it is in encrypted format.
+
+--federation-remote-whitelist	If federation-no-dtls is false, then you must configure
+			a whitelist for DTLS mutual authenication (MTLS) connection verification.
+			This setting can be repeated multiple times to form a list of pairs.  Each pair
+			defines a hostname/domain name and an optional issuer name to validate. All
+			certificatesin the chain are checked for an issuer match.
+			Setting format:  <hostname>[,<issuer>]
 
 -m, --relay-threads	Number of the relay threads to handle the established connections
 			(in addition to authentication thread and the listener thread).
@@ -1054,7 +1087,9 @@ https://groups.google.com/forum/?fromgroups=#!forum/turn-server-project-rfc5766-
 
 	Bradley T. Hughes <bradleythughes@fastmail.fm>
 
-    Mihály Mészáros <misi@majd.eu>
+	Mihály Mészáros <misi@majd.eu>
+
+	Scott Godin http://sipspectrum.com
 
   ACTIVE MAINTAINERS
 

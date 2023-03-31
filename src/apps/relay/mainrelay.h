@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
+ * Copyright (C) 2022 Wire Swiss GmbH
  *
  * All rights reserved.
  *
@@ -156,6 +157,8 @@ struct listener_server {
 	dtls_listener_relay_server_type ***udp_services;
 	dtls_listener_relay_server_type ***dtls_services;
 	dtls_listener_relay_server_type ***aux_udp_services;
+  dtls_listener_relay_server_type *federation_service;
+	ioa_engine_handle federation_ioa_eng;
 };
 
 enum _NET_ENG_VERSION {
@@ -297,6 +300,18 @@ typedef struct _turn_params_ {
 
   int stop_turn_server;
 
+/////////////// FEDERATION SERVER ///////////////
+  ioa_addr *federation_listening_ip;
+  int federation_listening_port;
+  int federation_no_dtls;
+  char federation_cert_file[1025];
+  char federation_pkey_file[1025];
+  char federation_pkey_pwd[513];  
+#if DTLSv1_2_SUPPORTED
+  SSL_CTX *federation_dtls_client_ctx_v1_2;
+  SSL_CTX *federation_dtls_server_ctx_v1_2;
+#endif
+
 ////////////// MISC PARAMS ////////////////
 
   vint stun_only;
@@ -383,6 +398,8 @@ void send_auth_message_to_auth_server(struct auth_message *am);
 
 /////////// Setup server ////////
 
+void set_ctx(SSL_CTX** out, const char *protocol, const SSL_METHOD* method);
+void set_ctx_ex(SSL_CTX** out, const char *protocol, const SSL_METHOD* method, const char* cert_file, const char* pkey_file, char* pkey_pwd);
 void init_listener(void);
 void setup_server(void);
 void run_listener_server(struct listener_server *ls);
@@ -411,7 +428,9 @@ int decodedTextSize(char *input);
 char* decryptPassword(char* in, const unsigned char* mykey);
 int init_ctr(struct ctr_state *state, const unsigned char iv[8]);
 
+////////// Federation ////////////
 
+void send_federation_data_message_to_relay(turnsession_id sid, ioa_network_buffer_handle nbh, int ttl, int tos);
 
 ///////////////////////////////
 

@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
+ * Copyright (C) 2022 Wire Swiss GmbH
  *
  * All rights reserved.
  *
@@ -476,7 +477,6 @@ void init_zrest_regex() {
 		exit(-1);
 	}
 }
-
 
 /*
  * Password retrieval

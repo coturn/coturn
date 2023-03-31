@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
+ * Copyright (C) 2022 Wire Swiss GmbH
  *
  * All rights reserved.
  *
@@ -45,6 +46,14 @@
 #include <stdio.h>
 
 #include <signal.h>
+
+#include <unistd.h>
+#include <sys/syscall.h>
+
+#ifdef SYS_gettid
+#define gettid() ((pid_t)syscall(SYS_gettid))
+#endif
+
 
 ////////// LOG TIME OPTIMIZATION ///////////
 
@@ -546,7 +555,11 @@ void turn_log_func_default(TURN_LOG_LEVEL level, const char* format, ...)
 	} else {
 		so_far += snprintf(s, sizeof(s), "%lu: ", (unsigned long)log_time());
 	}
+#ifdef SYS_gettid
+	so_far += snprintf(s + so_far, sizeof(s)-100, (level == TURN_LOG_LEVEL_ERROR) ? "(%lu): ERROR: " : "(%lu): ", (unsigned long)gettid());
+#else
 	so_far += snprintf(s + so_far, sizeof(s)-100, (level == TURN_LOG_LEVEL_ERROR) ? ": ERROR: " : ": ");
+#endif
 	so_far += vsnprintf(s + so_far,sizeof(s) - (so_far+1), format, args);
 	if(so_far > MAX_RTPPRINTF_BUFFER_SIZE+1)
 	{
