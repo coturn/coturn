@@ -1,6 +1,7 @@
 Release 4.6.2
 
 Changelist:
+- Fix MSVC CI build (#1182) (Cédric DIJOUX <45537432+PrinceChoco@users.noreply.github.com>)
 - Prometheus: make sure microhttpd starts using epoll if supported (#1173) (Thibaut ACKERMANN <thib-ack@users.noreply.github.com>)
 - Fix typo in mainrelay.c (#1169) (Stefan Sundin <git@stefansundin.com>)
 - Remove unused include that breaks OpenBSD (#1165) (Pavel Punsky <eakraly@users.noreply.github.com>)
@@ -93,6 +94,7 @@ Changelist:
 
 Contributors:
 - Arjun <36335769+0x34d@users.noreply.github.com>
+- Cédric DIJOUX <45537432+PrinceChoco@users.noreply.github.com>
 - Emil Ljungdahl <111423223+pando-emil@users.noreply.github.com>
 - Erik Moqvist <erik.moqvist@axis.com>
 - Gregor Jasny <gjasny@googlemail.com>
