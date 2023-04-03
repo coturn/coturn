@@ -28,7 +28,7 @@ COTURN_VER ?= 4.6.1
 COTURN_MIN_VER = $(strip $(shell echo $(COTURN_VER) | cut -d '.' -f1,2))
 COTURN_MAJ_VER = $(strip $(shell echo $(COTURN_VER) | cut -d '.' -f1))
 
-BUILD_REV ?= 2
+BUILD_REV ?= 3
 
 NAME := coturn
 OWNER := $(or $(GITHUB_REPOSITORY_OWNER),coturn)
