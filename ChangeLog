@@ -5,7 +5,6 @@ Changelist:
 - Prometheus: make sure microhttpd starts using epoll if supported (#1173) (Thibaut ACKERMANN <thib-ack@users.noreply.github.com>)
 - Fix typo in mainrelay.c (#1169) (Stefan Sundin <git@stefansundin.com>)
 - Remove unused include that breaks OpenBSD (#1165) (Pavel Punsky <eakraly@users.noreply.github.com>)
-- Fix arguments expansion in `docker-entrypoint.sh` (#1110, #902) (Shu Muto <shu.mutow@nec.com>)
 - Delete LICENSE.OpenSSL (Pavel Punsky <eakraly@users.noreply.github.com>)
 - use santisied psql string (#1144) (r3g_5z <june@girlboss.ceo>)
 - Use the actual redis connection string to connect, not the sanitized one (#1141) (Jasper <jasper@jasperhugo.com>)
@@ -23,16 +22,14 @@ Changelist:
 - Fix inverted logic in TLS configuration options (#1105) (Molly Miller <33266253+sysvinit@users.noreply.github.com>)
 - Reduce code duplication when printing userdb (#1103) (Pavel Punsky <eakraly@users.noreply.github.com>)
 - Fix memory corruption on socket close (#1113) (Paul Kramer <47924093+paulkram@users.noreply.github.com>)
-- Omit changing README in container registries on `edge` Docker image pushes (tyranron <tyranron@gmail.com>)
-- Support `linux/386` platform for Docker image (tyranron <tyranron@gmail.com>)
 - Cleanup logs on turnserver start (#1088) (Pavel Punsky <eakraly@users.noreply.github.com>)
 - Optional build info compiled into turnserver binary (#1083) (Erik Moqvist <erik.moqvist@axis.com>)
 - Fix duplicate prometheus metric report (#1079) (Pavel Punsky <eakraly@users.noreply.github.com>)
-- feature(1026): add sessioncount to prometheus metrics (#1075) (Paul Kramer <47924093+paulkram@users.noreply.github.com>)
+- Add sessioncount to prometheus metrics (#1075) (Paul Kramer <47924093+paulkram@users.noreply.github.com>)
 - Update openssl API use to non-deprecated version (#1072) (Pavel Punsky <eakraly@users.noreply.github.com>)
 - Log threadId to logs to aid in multi-threaded debugging. (#1030) (Scott Godin <sgodin@sipspectrum.com>)
 - Use khash 0.2.8 (#1047) (Gregor Jasny <gjasny@googlemail.com>)
-- [README.md] Reflect new native Windows build support in documentation (#1060) (Samuel Marks <807580+SamuelMarks@users.noreply.github.com>)
+- Reflect new native Windows build support in documentation (#1060) (Samuel Marks <807580+SamuelMarks@users.noreply.github.com>)
 - Check and fix format string for turn_log_func_default (#1064) (Gregor Jasny <gjasny@googlemail.com>)
 - Properly calculate size for sm_allocated (#1063) (Gregor Jasny <gjasny@googlemail.com>)
 - Do not discard qualifiers in free() (#1065) (Gregor Jasny <gjasny@googlemail.com>)
@@ -59,7 +56,7 @@ Changelist:
 - Sanitize DB connection string before printing to log (#1020) (Pavel Punsky <eakraly@users.noreply.github.com>)
 - Better detect SCTP protocol (#1016) (Pavel Punsky <eakraly@users.noreply.github.com>)
 - Redis memleaks and socketleaks (#1015) (Thibaut ACKERMANN <thib-ack@users.noreply.github.com>)
-- Fix : Issue 51563 in oss-fuzz (#1010) (Arjun <36335769+0x34d@users.noreply.github.com>)
+- Fix issue 51563 in oss-fuzz (#1010) (Arjun <36335769+0x34d@users.noreply.github.com>)
 - Fix multiple warnings in libtelnet.c file (#1011) (Pavel Punsky <eakraly@users.noreply.github.com>)
 - Update libtelnet to 0.23 (portability issues) (#1005) (Pavel Punsky <eakraly@users.noreply.github.com>)
 - Remove debug publish to redis (#1008) (Pavel Punsky <eakraly@users.noreply.github.com>)
@@ -89,7 +86,6 @@ Contributors:
 - Hyorin Choi <17173216+hyorin@users.noreply.github.com>
 - Jasper <jasper@jasperhugo.com>
 - Joachim Bauch <bauch@struktur.de>
-- Kai Ren <tyranron@gmail.com>
 - Kang Lin <kl222@126.com>
 - Molly Miller <33266253+sysvinit@users.noreply.github.com>
 - Paul Kramer <47924093+paulkram@users.noreply.github.com>
@@ -97,15 +93,11 @@ Contributors:
 - Robert Scheck <robert-scheck@users.noreply.github.com>
 - Samuel Marks <807580+SamuelMarks@users.noreply.github.com>
 - Scott Godin <sgodin@sipspectrum.com>
-- Shu Muto <shu.mutow@nec.com>
 - Stefan Sundin <git@stefansundin.com>
 - Thibaut ACKERMANN <thib-ack@users.noreply.github.com>
 - Tom Bevan <thehorrorthehorror@gmail.com>
 - Yoshiki Kadoshita <sublimer.me@gmail.com>
-- dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
 - r3g_5z <june@girlboss.ceo>
-- tyranron <tyranron@gmail.com>
-
 
 
 03/12/2022 Gustavo Garcia <gustavogb@gmail.com> Paul Kramer <paul.kramer@logmein.com>
