@@ -10,6 +10,7 @@ Coturn TURN server Docker image changelog
 ### Upgraded
 
 - [Coturn] 4.6.2: <https://github.com/coturn/coturn/blob/4.6.2/ChangeLog>
+- [Alpine Linux] 3.17: <https://alpinelinux.org/posts/Alpine-3.17.0-released.html>
 
 ### Security updated
 
