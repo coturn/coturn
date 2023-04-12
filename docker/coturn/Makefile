@@ -24,11 +24,11 @@ dockerify = $(strip $(if $(call eq,$(1),linux/arm32v6),linux/arm/v6,\
 # Project parameters #
 ######################
 
-COTURN_VER ?= 4.6.1
+COTURN_VER ?= 4.6.2
 COTURN_MIN_VER = $(strip $(shell echo $(COTURN_VER) | cut -d '.' -f1,2))
 COTURN_MAJ_VER = $(strip $(shell echo $(COTURN_VER) | cut -d '.' -f1))
 
-BUILD_REV ?= 1
+BUILD_REV ?= 0
 
 NAME := coturn
 OWNER := $(or $(GITHUB_REPOSITORY_OWNER),coturn)
