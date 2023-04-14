@@ -6,7 +6,7 @@ project(coturn)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
 # TODO: Modify this when the version is released
-SET(BUILD_VERSION "4.5.2")
+SET(BUILD_VERSION "4.6.1")
 
 # Find Git Version Patch
 IF(EXISTS "${CMAKE_SOURCE_DIR}/.git")
