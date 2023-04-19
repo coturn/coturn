@@ -191,6 +191,9 @@ RUN apt-get update \
  # Install `dig` tool for `detect-external-ip.sh`.
  && apt-get install -y --no-install-recommends --no-install-suggests \
             dnsutils \
+ # Install `telnet` tool for easier debugging.
+ && apt-get install -y --no-install-recommends --no-install-suggests \
+            telnet \
  # Cleanup unnecessary stuff.
  && rm -rf /var/lib/apt/lists/*
 

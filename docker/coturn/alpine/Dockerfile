@@ -192,6 +192,9 @@ RUN apk update \
  # Install `dig` tool for `detect-external-ip.sh`.
  && apk add --no-cache \
         bind-tools \
+ # Install `telnet` tool for easier debugging.
+ && apk add --no-cache \
+        busybox-extras \
  # Cleanup unnecessary stuff.
  && rm -rf /var/cache/apk/*
 
