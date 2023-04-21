@@ -209,6 +209,7 @@ turn_params_t turn_params = {
     0,                                  /* mobility */
     TURN_CREDENTIALS_NONE,              /* ct */
     0,                                  /* use_auth_secret_with_timestamp */
+    0,                                  /* use_zrest_auth_secret */
     0,                                  /* max_bps */
     0,                                  /* bps_capacity */
     0,                                  /* bps_capacity_allocated */
@@ -1087,6 +1088,8 @@ static char Usage[] =
     "						by a separate program, so this is why it is 'dynamic'.\n"
     "						Multiple shared secrets can be used (both in the database and in the "
     "\"static\" fashion).\n"
+    " --zrest					Enable zrest authentication. This enables the TURN REST API, but uses\n"
+    "						a different format and algorithm for username and passwords handling.\n"
     " --no-auth-pings				Disable periodic health checks to 'dynamic' auth secret tables.\n"
     " --no-dynamic-ip-list				Do not use dynamic allowed/denied peer ip list.\n"
     " --no-dynamic-realms				Do not use dynamic realm assignment and options.\n"
@@ -1429,7 +1432,8 @@ enum EXTRA_OPTS {
   NO_RFC5780,
   NO_STUN_BACKWARD_COMPATIBILITY_OPT,
   RESPONSE_ORIGIN_ONLY_WITH_RFC5780_OPT,
-  VERSION_OPT
+  VERSION_OPT,
+  ZREST_AUTH_OPT
 };
 
 struct myoption {
@@ -1487,6 +1491,7 @@ static const struct myoption long_options[] = {
 #endif
     {"use-auth-secret", optional_argument, NULL, AUTH_SECRET_OPT},
     {"static-auth-secret", required_argument, NULL, STATIC_AUTH_SECRET_VAL_OPT},
+    {"zrest", optional_argument, NULL, ZREST_AUTH_OPT},
     {"no-auth-pings", optional_argument, NULL, NO_AUTH_PINGS_OPT},
     {"no-dynamic-ip-list", optional_argument, NULL, NO_DYNAMIC_IP_LIST_OPT},
     {"no-dynamic-realms", optional_argument, NULL, NO_DYNAMIC_REALMS_OPT},
@@ -2268,6 +2273,12 @@ static void set_option(int c, char *value) {
   case RESPONSE_ORIGIN_ONLY_WITH_RFC5780_OPT:
     turn_params.response_origin_only_with_rfc5780 = get_bool_value(value);
     break;
+  case ZREST_AUTH_OPT:
+    turn_params.use_zrest_auth_secret = 1;
+    use_tltc = 1;
+    turn_params.ct = TURN_CREDENTIALS_LONG_TERM;
+    use_lt_credentials = 1;
+    break;
 
   /* these options have been already taken care of before: */
   case 'l':
@@ -2865,6 +2876,8 @@ int main(int argc, char **argv) {
   init_domain();
   create_default_realm();
 
+  init_zrest_regex();
+
   init_turn_server_addrs_list(&turn_params.alternate_servers_list);
   init_turn_server_addrs_list(&turn_params.tls_alternate_servers_list);
   init_turn_server_addrs_list(&turn_params.aux_servers_list);
@@ -3077,6 +3090,11 @@ int main(int argc, char **argv) {
       turn_params.ct = TURN_CREDENTIALS_NONE;
       use_lt_credentials = 0;
     }
+  }
+
+  if(turn_params.use_zrest_auth_secret) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\nCONFIG: you have specified zrest-based authentication; disabling TURN REST API authentication.\n");
+    turn_params.use_auth_secret_with_timestamp = 0;
   }
 
   openssl_setup();
