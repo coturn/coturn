@@ -4,6 +4,59 @@ Coturn TURN server Docker image changelog
 
 
 
+## [4.6.2-r0] · 2023-04-12
+[4.6.2-r0]: /../../tree/docker/4.6.2-r0
+
+### Upgraded
+
+- [Coturn] 4.6.2: <https://github.com/coturn/coturn/blob/4.6.2/ChangeLog>
+- [Alpine Linux] 3.17: <https://alpinelinux.org/posts/Alpine-3.17.0-released.html>
+
+### Security updated
+
+- [Debian Linux] "bullseye" 20230411: <https://github.com/docker-library/official-images/commit/7697552ea03fcfa76ac2482c8a8ccfb2b594d545>
+
+
+
+
+## [4.6.1-r3] · 2023-03-31
+[4.6.1-r3]: /../../tree/docker/4.6.1-r3
+
+### Security updated
+
+- [Alpine Linux] 3.16.5: <https://github.com/docker-library/official-images/commit/d5e1db947991b391f375ef1e8686b884538c1917>
+- [Debian Linux] "bullseye" 20230320: <https://github.com/docker-library/official-images/commit/066bc3b863f98325ff211a27301fe1b5a5d51721>
+
+
+
+
+## [4.6.1-r2] · 2023-02-13
+[4.6.1-r2]: /../../tree/docker/4.6.1-r2
+
+### Security updated
+
+- [Alpine Linux] 3.16.4: <https://github.com/docker-library/official-images/commit/5819aa56167e9874ef65e35da8277dc71b3ecee6>
+- [Debian Linux] "bullseye" 20230208: <https://github.com/docker-library/official-images/commit/0a379d1f4d38dee47df84b07afcf5c26d03cc5a5>
+
+
+
+
+## [4.6.1-r1] · 2023-01-31
+[4.6.1-r1]: /../../tree/docker/4.6.1-r1
+
+### Fixed
+
+- Incorrect argument expansion in `docker-entrypoint.sh`. ([#1110])
+
+### Security updated
+
+- [Debian Linux] "bullseye" 20230109: <https://github.com/docker-library/official-images/commit/5e4784af91b60ebae23aab567b6cea3dcdb173a0>
+
+[#1110]: /../../pull/1110
+
+
+
+
 ## [4.6.1-r0] · 2022-12-04
 [4.6.1-r0]: /../../tree/docker/4.6.1-r0
 
@@ -192,7 +245,7 @@ Coturn TURN server Docker image changelog
 
 ### Improved
 
-- Use DNS requests to discover external IP address in `detect-external-ip` script ([#753]).
+- Use DNS requests to discover external IP address in `detect-external-ip` script. ([#753])
 
 ### Fixed
 

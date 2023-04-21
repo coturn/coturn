@@ -1,8 +1,8 @@
-	Coturn architecture, part 1 
+#	Coturn architecture, part 1 
 
-	Network architecture
+##	Network architecture
 
-I. INTRODUCTION
+### I. INTRODUCTION
 
 This document assumes that the reader is familiar with the various TURN specifications.
 The goal of this document is to provide general information for the Coturn
@@ -30,7 +30,7 @@ how those communicatiuons are organized in the Coturn code.
 The key to the understanding how Coturn works is the notions of "listeners" and 
 "general relay servers". 
 
-II. LISTENERS
+### II. LISTENERS
 
 In Coturn, a "listener" is the entity that initiates dialog with the new client. When a
 new client sends its first packet to TURN, then it is initially accepted by the UDP
@@ -57,7 +57,7 @@ listeners with the execution threads and with the relay servers.
 There may be multiple listeners in the server, and they may be running in different
 threads.
 
-III. RELAY SERVERS
+### III. RELAY SERVERS
 
 The relay servers take control over the client sessions after the initial contact was
 established by the listeners. The relay server will be reading the session sockets
@@ -81,7 +81,7 @@ the result. The the original relay server will have to pack the session, say
 will adopt the session and the session will stay with the new relay server - until the
 next client address change.
 
-IV. NETWORK ENGINES
+### IV. NETWORK ENGINES
 
 UDP communications are rather under-developed, comparing to the TCP communications,
 in modern operational systems. Because TURN stresses UDP communications, UDP

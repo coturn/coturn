@@ -104,7 +104,7 @@ COPY --from=dist-libprom /out/ /
 COPY CMakeLists.txt \
      configure \
      INSTALL \
-     LICENSE LICENSE.OpenSSL \
+     LICENSE \
      make-man.sh Makefile.in \
      postinstall.txt \
      README.turn* \
@@ -153,7 +153,6 @@ RUN mkdir -p /out/ \
 
 # Install helper tools of Docker image.
 COPY docker/coturn/rootfs/ /out/
-COPY docker/coturn/debian/rootfs/ /out/
 RUN chmod +x /out/usr/local/bin/docker-entrypoint.sh \
              /out/usr/local/bin/detect-external-ip.sh
 RUN ln -s /usr/local/bin/detect-external-ip.sh \

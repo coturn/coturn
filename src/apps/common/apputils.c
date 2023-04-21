@@ -43,7 +43,6 @@
 #if defined(__unix__) || defined(unix)
 #include <pthread.h>
 #include <sys/resource.h>
-#include <sys/sysinfo.h>
 #include <sys/time.h>
 #endif
 
@@ -239,7 +238,7 @@ int sock_bind_to_device(evutil_socket_t fd, const unsigned char *ifname) {
     strncpy(ifr.ifr_name, (const char *)ifname, sizeof(ifr.ifr_name));
 
     if (setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, (void *)&ifr, sizeof(ifr)) < 0) {
-      if (errno == EPERM)
+      if (socket_eperm())
         perror("You must obtain superuser privileges to bind a socket to device");
       else
         perror("Cannot bind socket to device");
@@ -268,12 +267,12 @@ int addr_connect(evutil_socket_t fd, const ioa_addr *addr, int *out_errno) {
       } else {
         return -1;
       }
-    } while (err < 0 && errno == EINTR);
+    } while (err < 0 && socket_eintr());
 
     if (out_errno)
-      *out_errno = errno;
+      *out_errno = socket_errno();
 
-    if (err < 0 && errno != EINPROGRESS)
+    if (err < 0 && !socket_einprogress())
       perror("Connect");
 
     return err;
@@ -294,19 +293,19 @@ int addr_bind(evutil_socket_t fd, const ioa_addr *addr, int reusable, int debug,
     if (addr->ss.sa_family == AF_INET) {
       do {
         ret = bind(fd, (const struct sockaddr *)addr, sizeof(struct sockaddr_in));
-      } while (ret < 0 && errno == EINTR);
+      } while (ret < 0 && socket_eintr());
     } else if (addr->ss.sa_family == AF_INET6) {
       const int off = 0;
       setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, (const char *)&off, sizeof(off));
       do {
         ret = bind(fd, (const struct sockaddr *)addr, sizeof(struct sockaddr_in6));
-      } while (ret < 0 && errno == EINTR);
+      } while (ret < 0 && socket_eintr());
     } else {
       return -1;
     }
     if (ret < 0) {
       if (debug) {
-        int err = errno;
+        int err = socket_errno();
         perror("bind");
         char str[129];
         addr_to_string(addr, (uint8_t *)str);
@@ -549,7 +548,7 @@ int set_socket_df(evutil_socket_t fd, int family, int value) {
 #endif
     }
     if (ret < 0) {
-      int err = errno;
+      int err = socket_errno();
       perror("set socket df:");
       TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: set sockopt failed: fd=%d, err=%d, family=%d\n", __FUNCTION__, fd, err,
                     family);
@@ -707,61 +706,57 @@ int get_socket_mtu(evutil_socket_t fd, int family, int verbose) {
 //////////////////// socket error handle ////////////////////
 
 int handle_socket_error(void) {
-  switch (errno) {
-  case EINTR:
+  if (socket_eintr()) {
     /* Interrupted system call.
      * Just ignore.
      */
     return 1;
-  case ENOBUFS:
-    /* No buffers, temporary condition.
-     * Just ignore and try later.
+  }
+  if (socket_enobufs()) {
+    /* Interrupted system call.
+     * Just ignore.
      */
     return 1;
-  case EAGAIN:
-#if defined(EWOULDBLOCK)
-#if (EWOULDBLOCK != EAGAIN)
-  case EWOULDBLOCK:
-#endif
-#endif
+  }
+  if (socket_ewouldblock() || socket_eagain()) {
     return 1;
-  case EMSGSIZE:
-    return 1;
-  case EBADF:
+  }
+  if (socket_ebadf()) {
     /* Invalid socket.
      * Must close connection.
      */
     return 0;
-#if defined(__unix__) || defined(unix) || defined(__APPLE__)
-  case EHOSTDOWN:
+  }
+  if (socket_ehostdown()) {
     /* Host is down.
      * Just ignore, might be an attacker
      * sending fake ICMP messages.
      */
     return 1;
-#endif
-  case ECONNRESET:
-  case ECONNREFUSED:
+  }
+  if (socket_econnreset() || socket_econnrefused()) {
     /* Connection reset by peer. */
     return 0;
-  case ENOMEM:
+  }
+  if (socket_enomem()) {
     /* Out of memory.
      * Must close connection.
      */
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Out of memory!\n");
     return 0;
-  case EACCES:
+  }
+  if (socket_eacces()) {
     /* Permission denied.
      * Just ignore, we might be blocked
      * by some firewall policy. Try again
      * and hope for the best.
      */
     return 1;
-  default:
-    /* Something unexpected happened */
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Unexpected error! (errno = %d)\n", errno);
-    return 0;
   }
+
+  /* Something unexpected happened */
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Unexpected error! (errno = %d)\n", socket_errno());
+  return 0;
 }
 
 //////////////////// Misc utils //////////////////////////////

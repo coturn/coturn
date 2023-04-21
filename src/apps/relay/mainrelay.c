@@ -1003,7 +1003,7 @@ static char Usage[] =
 #endif
 #if !defined(TURN_NO_PQ)
     " -e, --psql-userdb, --sql-userdb <conn-string>	PostgreSQL database connection string, if used (default - "
-    "empty, no PostreSQL DB used).\n"
+    "empty, no PostgreSQL DB used).\n"
     "		                                This database can be used for long-term credentials mechanism users,\n"
     "		                                and it can store the secret value(s) for secret-based timed "
     "authentication in TURN REST API.\n"
@@ -1105,8 +1105,10 @@ static char Usage[] =
     "						If both --no-tls and --no-dtls options\n"
     " --pkey-pwd		<password>		If the private key file is encrypted, then this password to be "
     "used.\n"
-    " --cipher-list	<\"cipher-string\">		Allowed OpenSSL cipher list for TLS/DTLS connections.\n"
-    "						Default value is \"DEFAULT\".\n"
+    " --cipher-list		<cipher-string>		Allowed OpenSSL cipher list for TLS/DTLS connections.\n"
+    "						Default value is \"DEFAULT\" for TLS/DTLS versions up to "
+    "TLSv1.2/DTLSv1.2,\n"
+    "						and the library default ciphersuites for TLSv1.3.\n"
     " --CA-file		<filename>		CA file in OpenSSL format.\n"
     "						Forces TURN server to verify the client SSL certificates.\n"
     "						By default, no CA is set and no client certificate check is "
@@ -1123,14 +1125,14 @@ static char Usage[] =
     " --dh-file	<dh-file-name>			Use custom DH TLS key, stored in PEM format in the file.\n"
     "						Flags --dh566 and --dh1066 are ignored when the DH key is taken from a "
     "file.\n"
-    " --no-tlsv1					Set TLSv1_1/DTLSv1.2 as a minimum supported protocol version.\n"
-    "								With openssl-1.0.2 and below, do not allow "
+    " --no-tlsv1					Set TLSv1.1/DTLSv1.2 as a minimum supported protocol version.\n"
+    "						With openssl-1.0.2 and below, do not allow "
     "TLSv1/DTLSv1 protocols.\n"
-    " --no-tlsv1_1					Set TLSv1_2/DTLSv1.2 as a minimum supported protocol version.\n"
-    "								With openssl-1.0.2 and below, do not allow TLSv1.1 "
+    " --no-tlsv1_1					Set TLSv1.2/DTLSv1.2 as a minimum supported protocol version.\n"
+    "						With openssl-1.0.2 and below, do not allow TLSv1.1 "
     "protocol.\n"
-    " --no-tlsv1_2					Set TLSv1_3/DTLSv1.2 as a minimum supported protocol version.\n"
-    "								With openssl-1.0.2 and below, do not allow "
+    " --no-tlsv1_2					Set TLSv1.3/DTLSv1.2 as a minimum supported protocol version.\n"
+    "						With openssl-1.0.2 and below, do not allow "
     "TLSv1.2/DTLSv1.2 protocols.\n"
     " --no-udp					Do not start UDP client listeners.\n"
     " --no-tcp					Do not start TCP client listeners.\n"
@@ -1227,7 +1229,7 @@ static char Usage[] =
     "back to this default.\n"
     "						The standard RFC explicitly define actually that this default must be "
     "IPv4,\n"
-    "                       so use other option values with care!\n"
+    "						so use other option values with care!\n"
     " --no-cli					Turn OFF the CLI support. By default it is always ON.\n"
     " --cli-ip=<IP>					Local system IP address to be used for CLI server endpoint. "
     "Default value\n"
@@ -3524,11 +3526,20 @@ static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *metho
 
   SSL_CTX_set_default_passwd_cb(ctx, pem_password_func);
 
-  if (!(turn_params.cipher_list[0]))
+  if (!(turn_params.cipher_list[0])) {
     strncpy(turn_params.cipher_list, DEFAULT_CIPHER_LIST, TURN_LONG_STRING_SIZE);
+#if TLSv1_3_SUPPORTED
+    strncat(turn_params.cipher_list, ":", TURN_LONG_STRING_SIZE - strlen(turn_params.cipher_list));
+    strncat(turn_params.cipher_list, DEFAULT_CIPHERSUITES, TURN_LONG_STRING_SIZE - strlen(turn_params.cipher_list));
+#endif
+  }
 
   SSL_CTX_set_cipher_list(ctx, turn_params.cipher_list);
   SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_OFF);
+
+#if TLSv1_3_SUPPORTED
+  SSL_CTX_set_ciphersuites(ctx, turn_params.cipher_list);
+#endif
 
   if (!SSL_CTX_use_certificate_chain_file(ctx, turn_params.cert_file)) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: no certificate found\n", protocol);

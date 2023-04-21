@@ -130,8 +130,8 @@ static SSL *tls_connect(ioa_socket_raw fd, ioa_addr *remote_addr, int *try_again
   do {
     do {
       rc = SSL_connect(ssl);
-    } while (rc < 0 && errno == EINTR);
-    int orig_errno = errno;
+    } while (rc < 0 && socket_eintr());
+    int orig_errno = socket_errno();
     if (rc > 0) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: client session connected with cipher %s, method=%s\n", __FUNCTION__,
                     SSL_get_cipher(ssl), turn_get_ssl_method(ssl, NULL));
@@ -586,7 +586,7 @@ beg_allocate:
           SSL_free(ssl);
           fd = -1;
         } else if (fd >= 0) {
-          close(fd);
+          socket_closesocket(fd);
           fd = -1;
           ssl = NULL;
         }
@@ -608,7 +608,7 @@ beg_allocate:
         SSL_shutdown(ssl);
         SSL_free(ssl);
       } else if (fd >= 0) {
-        close(fd);
+        socket_closesocket(fd);
       }
     }
 

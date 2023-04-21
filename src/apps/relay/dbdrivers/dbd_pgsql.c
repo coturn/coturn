@@ -82,7 +82,7 @@ static PGconn *get_pqdb_connection(void) {
           TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open PostgreSQL DB connection: <%s>, runtime error\n",
                         pud->userdb_sanitized);
         } else if (!donot_print_connection_success) {
-          TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "PostgreSQL DB connection success: %s\n", pud->userdb);
+          TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "PostgreSQL DB connection success: %s\n", pud->userdb_sanitized);
           donot_print_connection_success = 1;
         }
       }
