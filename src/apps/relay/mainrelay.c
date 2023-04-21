@@ -2129,17 +2129,21 @@ static void set_option(int c, char *value) {
 #endif
   case PROMETHEUS_OPT:
     turn_params.prometheus = turn_params.prometheus == PROM_DISABLED ? PROM_ENABLED : turn_params.prometheus;
-    break;
+    break;    
   case PROMETHEUS_IP_OPT:
+#if !defined(TURN_NO_PROMETHEUS)
     if(make_ioa_addr((const uint8_t*)value,0,&prometheus_addr)<0) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot parse Prometheus listener address: %s\n", value);
     } else {
       turn_params.prometheus = PROM_ENABLED_WITH_IP;
     }
+#endif
     break;
   case PROMETHEUS_PORT_OPT:
+#if !defined(TURN_NO_PROMETHEUS)
     prometheus_port = atoi(value);
     turn_params.prometheus = turn_params.prometheus == PROM_DISABLED ? PROM_ENABLED : turn_params.prometheus;
+#endif
     break;
   case PROMETHEUS_ENABLE_USERNAMES_OPT:
     turn_params.prometheus_username_labels = 1;

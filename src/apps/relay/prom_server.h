@@ -4,6 +4,10 @@
 
 #define DEFAULT_PROM_SERVER_PORT (9641)
 
+#define PROM_DISABLED		0
+#define PROM_ENABLED		1
+#define PROM_ENABLED_WITH_IP	2
+
 #if !defined(TURN_NO_PROMETHEUS)
 
 #include <signal.h>
@@ -23,10 +27,6 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif /* __clplusplus */
-
-#define PROM_DISABLED		0
-#define PROM_ENABLED		1
-#define PROM_ENABLED_WITH_IP	2
 
 extern int prometheus_port;
 extern ioa_addr prometheus_addr;
