@@ -30,11 +30,11 @@ RUN apt-get install -y --no-install-recommends --no-install-suggests \
             libmicrohttpd-dev
 
 # Prepare prometheus-client-c sources for building.
-ARG prom_ver=0.1.3
+ARG prom_commit=66deada5dc9b005ffd1bb509ff08b2d1d722356c
 RUN mkdir -p /build/ && cd /build/ \
  && git init \
- && git remote add origin https://github.com/digitalocean/prometheus-client-c \
- && git fetch --depth=1 origin "v${prom_ver}" \
+ && git remote add origin https://github.com/wireapp/prometheus-client-c \
+ && git fetch --depth=1 origin "${prom_commit}" \
  && git checkout FETCH_HEAD
 
 # Build libprom.so from sources.
@@ -48,13 +48,10 @@ RUN mkdir -p /build/prom/build/ && cd /build/prom/build/ \
 
 # Build libpromhttp.so from sources.
 RUN mkdir -p /build/promhttp/build/ && cd /build/promhttp/build/ \
- # Fix compiler warning: -Werror=incompatible-pointer-types
- && sed -i 's/\&promhttp_handler/(MHD_AccessHandlerCallback)\&promhttp_handler/' \
-           /build/promhttp/src/promhttp.c \
  && TEST=0 cmake -G "Unix Makefiles" \
                  -DCMAKE_INSTALL_PREFIX=/usr \
                  -DCMAKE_SKIP_BUILD_RPATH=TRUE \
-                 -DCMAKE_C_FLAGS="-g -O3" \
+                 -DCMAKE_C_FLAGS="-g -O2" \
                  .. \
  && make VERBOSE=1
 
@@ -119,7 +116,7 @@ WORKDIR /app/
 # Use Coturn sources from Git if `coturn_git_ref` is specified.
 ARG coturn_git_ref=HEAD
 ARG coturn_github_url=https://github.com
-ARG coturn_github_repo=coturn/coturn
+ARG coturn_github_repo=wireapp/coturn
 
 RUN if [ "${coturn_git_ref}" != 'HEAD' ]; then true \
  && rm -rf /app/* \

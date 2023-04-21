@@ -4,6 +4,9 @@
 
 #if !defined(TURN_NO_PROMETHEUS)
 
+int prometheus_port = DEFAULT_PROM_SERVER_PORT;
+ioa_addr prometheus_addr;
+
 prom_counter_t *stun_binding_request;
 prom_counter_t *stun_binding_response;
 prom_counter_t *stun_binding_error;
@@ -31,7 +34,7 @@ prom_counter_t *turn_total_traffic_peer_sentb;
 prom_gauge_t *turn_total_allocations;
 
 void start_prometheus_server(void) {
-  if (turn_params.prometheus == 0) {
+  if (turn_params.prometheus == PROM_DISABLED) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "prometheus collector disabled, not started\n");
     return;
   }
@@ -120,7 +123,27 @@ void start_prometheus_server(void) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "prometheus exporter server will start using SELECT. "
                                           "The exporter might be unreachable on highly used servers\n");
   }
-  struct MHD_Daemon *daemon = promhttp_start_daemon(flags, turn_params.prometheus_port, NULL, NULL);
+  
+  struct MHD_Daemon *daemon;
+  void *arg;
+
+  if (turn_params.prometheus == PROM_ENABLED) {
+    daemon = promhttp_start_daemon(flags, prometheus_port, NULL, NULL);
+  } else {
+    // turn_params.prometheus == PROM_ENABLED_WITH_IP
+
+    addr_set_port(&prometheus_addr, prometheus_port);
+
+    if (prometheus_addr.ss.sa_family == AF_INET6) {
+      flags |= MHD_USE_IPv6;
+      arg = &prometheus_addr.s6;
+    } else {
+      arg = &prometheus_addr.s4;
+    }
+
+    daemon = promhttp_start_daemon_with_options(flags, 0, NULL, NULL, MHD_OPTION_SOCK_ADDR, arg, MHD_OPTION_END);
+  }  
+
   if (daemon == NULL) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "could not start prometheus collector\n");
     return;
@@ -131,9 +154,9 @@ void start_prometheus_server(void) {
   return;
 }
 
-void prom_set_finished_traffic(const char *realm, const char *user, unsigned long rsvp, unsigned long rsvb,
+void prom_set_finished_traffic(const char* realm, const char* user, unsigned long rsvp, unsigned long rsvb,
                                unsigned long sentp, unsigned long sentb, bool peer) {
-  if (turn_params.prometheus == 1) {
+  if (turn_params.prometheus > PROM_DISABLED) {
 
     const char *label[] = {realm, NULL};
     if (turn_params.prometheus_username_labels) {
@@ -165,14 +188,14 @@ void prom_set_finished_traffic(const char *realm, const char *user, unsigned lon
 }
 
 void prom_inc_allocation(SOCKET_TYPE type) {
-  if (turn_params.prometheus == 1) {
+  if (turn_params.prometheus > PROM_DISABLED) {
     const char *label[] = {socket_type_name(type)};
     prom_gauge_inc(turn_total_allocations, label);
   }
 }
 
 void prom_dec_allocation(SOCKET_TYPE type) {
-  if (turn_params.prometheus == 1) {
+  if (turn_params.prometheus > PROM_DISABLED) {
     const char *label[] = {socket_type_name(type)};
     prom_gauge_dec(turn_total_allocations, label);
   }
@@ -185,13 +208,13 @@ void prom_inc_stun_binding_request(void) {
 }
 
 void prom_inc_stun_binding_response(void) {
-  if (turn_params.prometheus == 1) {
+  if (turn_params.prometheus > PROM_DISABLED) {
     prom_counter_add(stun_binding_response, 1, NULL);
   }
 }
 
 void prom_inc_stun_binding_error(void) {
-  if (turn_params.prometheus == 1) {
+  if (turn_params.prometheus > PROM_DISABLED) {
     prom_counter_add(stun_binding_error, 1, NULL);
   }
 }

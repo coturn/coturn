@@ -24,6 +24,13 @@ extern "C" {
 }
 #endif /* __clplusplus */
 
+#define PROM_DISABLED		0
+#define PROM_ENABLED		1
+#define PROM_ENABLED_WITH_IP	2
+
+extern int prometheus_port;
+extern ioa_addr prometheus_addr;
+
 extern prom_counter_t *stun_binding_request;
 extern prom_counter_t *stun_binding_response;
 extern prom_counter_t *stun_binding_error;
