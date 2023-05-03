@@ -31,7 +31,8 @@
 #include "mainrelay.h"
 
 //////////// Backward compatibility with OpenSSL 1.0.x //////////////
-#if (OPENSSL_VERSION_NUMBER < 0x10100001L || defined LIBRESSL_VERSION_NUMBER)
+#if (OPENSSL_VERSION_NUMBER < 0x10100001L ||                                                                           \
+     (defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER <= 0x3040000fL))
 #define SSL_CTX_up_ref(ctx) CRYPTO_add(&(ctx)->references, 1, CRYPTO_LOCK_SSL_CTX)
 #endif
 
