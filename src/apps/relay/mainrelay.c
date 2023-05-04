@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
+ * Copyright (C) 2022 Wire Swiss GmbH
  *
  * All rights reserved.
  *
@@ -30,6 +31,7 @@
 
 #include "mainrelay.h"
 #include "dbdrivers/dbdriver.h"
+#include "federation.h"
 
 #include "prom_server.h"
 
@@ -194,7 +196,17 @@ turn_params_t turn_params = {
 
     /////////////// stop server ////////////////
     0, /*stop_turn_server*/
-
+    /////////////// FEDERATION SERVER ///////////////
+    0,   // federation_listening_ip
+    0,   // federation_listening_port
+    0,   // federation_no_dtls
+    "",  // federation_cert_file
+    "",  // federation_pkey_file
+    "",  // federation_pkey_pwd
+#if DTLSv1_2_SUPPORTED
+    0,   // federation_dtls_client_ctx_v1_2
+    0,   // federation_dtls_server_ctx_v1_2
+#endif
     /////////////// MISC PARAMS ////////////////
     0,                                  /* stun_only */
     0,                                  /* no_stun */
@@ -941,6 +953,18 @@ static char Usage[] =
     "						that option must be used several times in the command line, each entry "
     "must\n"
     "						have form \"-X public-ip/private-ip\", to map all involved addresses.\n"
+    " --federation-listening-ip	<ip>		The IP address to bind to for federated UDP or DTLS traffic\n"
+    " --federation-listening-port	<port>		The port to bind to for federated UDP or DTLS traffic\n"
+    " --federation-no-dtls				Disables DTLS for federation.  If specified then UDP is used for federation.\n"
+    " --federation-cert		<filename>	Federation certificate file, PEM format. Same file search rules\n"
+    "						applied as for the configuration file.\n"
+    "						If federation-no-dtls is true then this parameter is not needed.\n"
+    " --federation-pkey		<filename>	Federation private key file, PEM format. Same file search rules\n"
+    "						applied as for the configuration file.\n"
+    "						If federation-no-dtls is true then this parameter is not needed.\n"
+    " --federation-pkey-pwd		<password>	If the federation private key file is encrypted, then this password will be used.\n"
+    " --federation-remote_whilelist  <hostname>[,<issuer>]	List of acceptable certificate hostname and optional issuer name pairs for federation\n"
+    "						DTLS mutual authentication validation.\n"
     " --allow-loopback-peers				Allow peers on the loopback addresses (127.x.x.x and ::1).\n"
     " --no-multicast-peers				Disallow peers on well-known broadcast addresses (224.0.0.0 "
     "and above, and FFXX:*).\n"
@@ -1435,7 +1459,14 @@ enum EXTRA_OPTS {
   NO_STUN_BACKWARD_COMPATIBILITY_OPT,
   RESPONSE_ORIGIN_ONLY_WITH_RFC5780_OPT,
   VERSION_OPT,
-  ZREST_AUTH_OPT
+  ZREST_AUTH_OPT,
+  FEDERATION_LISTENING_IP_OPT,
+  FEDERATION_LISTENING_PORT_OPT,
+  FEDERATION_NO_DTLS_OPT,
+  FEDERATION_CERT_OPT,
+  FEDERATION_PKEY_OPT,
+  FEDERATION_PKEY_PWD_OPT,
+  FEDERATION_REMOTE_WHITELIST_OPT
 };
 
 struct myoption {
@@ -1464,6 +1495,13 @@ static const struct myoption long_options[] = {
     {"relay-device", required_argument, NULL, 'i'},
     {"relay-ip", required_argument, NULL, 'E'},
     {"external-ip", required_argument, NULL, 'X'},
+    {"federation-listening-ip", required_argument, NULL, FEDERATION_LISTENING_IP_OPT },
+    {"federation-listening-port", required_argument, NULL, FEDERATION_LISTENING_PORT_OPT },
+    {"federation-no-dtls", required_argument, NULL, FEDERATION_NO_DTLS_OPT },
+    {"federation-cert", required_argument, NULL, FEDERATION_CERT_OPT },
+    {"federation-pkey", required_argument, NULL, FEDERATION_PKEY_OPT },
+    {"federation-pkey-pwd", required_argument, NULL, FEDERATION_PKEY_PWD_OPT },
+    {"federation-remote-whitelist", required_argument, NULL, FEDERATION_REMOTE_WHITELIST_OPT },
     {"relay-threads", required_argument, NULL, 'm'},
     {"min-port", required_argument, NULL, MIN_PORT_OPT},
     {"max-port", required_argument, NULL, MAX_PORT_OPT},
@@ -2294,7 +2332,53 @@ static void set_option(int c, char *value) {
     turn_params.ct = TURN_CREDENTIALS_LONG_TERM;
     use_lt_credentials = 1;
     break;
-
+  case FEDERATION_LISTENING_IP_OPT:
+    if(turn_params.federation_listening_ip) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "You cannot define federation listen IP more than once in the configuration\n");
+    } else {
+      turn_params.federation_listening_ip = (ioa_addr*)allocate_super_memory_engine(turn_params.listener.ioa_eng, sizeof(ioa_addr));
+      if(make_ioa_addr((const uint8_t*)value,0,turn_params.federation_listening_ip)<0) {
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"federation_listening_ip : Wrong address format: %s\n",value);
+        free(turn_params.federation_listening_ip);
+        turn_params.federation_listening_ip = NULL;
+      }
+    }
+    break;
+  case FEDERATION_LISTENING_PORT_OPT:
+    turn_params.federation_listening_port = atoi(value);
+    break;
+  case FEDERATION_NO_DTLS_OPT:
+#if DTLSv1_2_SUPPORTED
+    turn_params.federation_no_dtls = get_bool_value(value);
+#else
+    turn_params.federation_no_dtls = 1;
+#endif
+    break;
+  case FEDERATION_CERT_OPT:
+    STRCPY(turn_params.federation_cert_file,value);
+    break;
+  case FEDERATION_PKEY_OPT:
+    STRCPY(turn_params.federation_pkey_file,value);
+    break;
+  case FEDERATION_PKEY_PWD_OPT:
+    STRCPY(turn_params.federation_pkey_pwd,value);
+    break;
+  case FEDERATION_REMOTE_WHITELIST_OPT:
+    if(value) {
+      char *div = strchr(value,',');
+      if(div) {
+        char *hostname=strdup(value);
+        div = strchr(hostname,',');
+        div[0]=0;
+        ++div;  // div now points to issuer
+        federation_whitelist_add(hostname, div);
+        free(hostname);
+      } else {
+        // No Issuer
+        federation_whitelist_add(value, "");
+      }
+    }
+    break;
   /* these options have been already taken care of before: */
   case 'l':
   case NO_STDOUT_LOG_OPT:
@@ -3547,7 +3631,11 @@ static int ServerALPNCallback(SSL *ssl, const unsigned char **out, unsigned char
 
 #endif
 
-static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *method) {
+void set_ctx(SSL_CTX** out, const char *protocol, const SSL_METHOD* method) {
+  set_ctx_ex(out, protocol, method, turn_params.cert_file, turn_params.pkey_file, turn_params.tls_password);
+}
+
+void set_ctx_ex(SSL_CTX** out, const char *protocol, const SSL_METHOD* method, const char* cert_file, const char* pkey_file, char* pkey_pwd) {
   SSL_CTX *ctx = SSL_CTX_new(method);
   int err = 0;
   int rc = 0;
@@ -3555,7 +3643,7 @@ static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *metho
   SSL_CTX_set_alpn_select_cb(ctx, ServerALPNCallback, NULL);
 #endif
 
-  SSL_CTX_set_default_passwd_cb_userdata(ctx, turn_params.tls_password);
+  SSL_CTX_set_default_passwd_cb_userdata(ctx, pkey_pwd);
 
   SSL_CTX_set_default_passwd_cb(ctx, pem_password_func);
 
@@ -3574,13 +3662,13 @@ static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *metho
   SSL_CTX_set_ciphersuites(ctx, turn_params.cipher_list);
 #endif
 
-  if (!SSL_CTX_use_certificate_chain_file(ctx, turn_params.cert_file)) {
+  if (!SSL_CTX_use_certificate_chain_file(ctx, cert_file)) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: no certificate found\n", protocol);
     err = 1;
   }
 
-  if (!SSL_CTX_use_PrivateKey_file(ctx, turn_params.pkey_file, SSL_FILETYPE_PEM)) {
-    if (!SSL_CTX_use_RSAPrivateKey_file(ctx, turn_params.pkey_file, SSL_FILETYPE_PEM)) {
+  if (!SSL_CTX_use_PrivateKey_file(ctx, pkey_file, SSL_FILETYPE_PEM)) {
+    if (!SSL_CTX_use_RSAPrivateKey_file(ctx, pkey_file, SSL_FILETYPE_PEM)) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
                     "%s: ERROR: no valid private key found, or invalid private key password provided\n", protocol);
       err = 1;
@@ -3864,6 +3952,7 @@ static void openssl_load_certificates(void) {
 static void reload_ssl_certs(evutil_socket_t sock, short events, void *args) {
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Reloading TLS certificates and keys\n");
   openssl_load_certificates();
+  federation_load_certificates();
   if (turn_params.tls_ctx_update_ev != NULL)
     event_active(turn_params.tls_ctx_update_ev, EV_READ, 0);
 

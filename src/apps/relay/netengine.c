@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
+ * Copyright (C) 2022 Wire Swiss GmbH
  *
  * All rights reserved.
  *
@@ -687,6 +688,35 @@ err:
   return ret;
 }
 
+void send_federation_data_message_to_relay(turnsession_id sid, ioa_network_buffer_handle nbh, int ttl, int tos) {
+  struct message_to_relay sm;
+  bzero(&sm,sizeof(struct message_to_relay));
+  sm.t = RMT_FEDERATION_SEND;
+
+  turnserver_id id = (turnserver_id)(sid / TURN_SESSION_ID_FACTOR);
+
+  struct relay_server *rs = get_relay_server(id);
+  if(!rs) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: can't find relay for turn_server_id: %d\n", __FUNCTION__,(int)id);
+    ioa_network_buffer_delete(NULL, nbh);
+    return;
+  }
+
+  sm.relay_server = rs;
+  sm.m.fed_send.id = sid;
+  sm.m.fed_send.nbh = nbh;
+  sm.m.fed_send.ttl = ttl;
+  sm.m.fed_send.tos = tos;
+
+  struct evbuffer *output = bufferevent_get_output(rs->out_buf);
+  if(output) {
+    evbuffer_add(output,&sm,sizeof(struct message_to_relay));
+  } else {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Empty output buffer\n", __FUNCTION__);
+    ioa_network_buffer_delete(rs->ioa_eng, nbh);
+  }
+}
+
 static int handle_relay_message(relay_server_handle rs, struct message_to_relay *sm) {
   if (rs && sm) {
 
@@ -767,6 +797,9 @@ static int handle_relay_message(relay_server_handle rs, struct message_to_relay 
       sm->m.sm.nd.nbh = NULL;
       break;
     }
+    case RMT_FEDERATION_SEND:
+      turn_send_federation_data(&(rs->server), sm->m.fed_send.id, sm->m.fed_send.nbh, sm->m.fed_send.ttl, sm->m.fed_send.tos);
+      break;
     default: {
       perror("Weird buffer type\n");
     }
@@ -1637,6 +1670,14 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
                    turn_params.allocation_default_address_family, &turn_params.log_binding,
                    &turn_params.no_stun_backward_compatibility, &turn_params.response_origin_only_with_rfc5780);
 
+  // Intentionally performed outside init_turn_server to help avoid future merge conflicts
+  if(turn_params.federation_listening_ip != NULL && 
+    turn_params.federation_listening_port != 0) {
+    addr_cpy(&rs->server.federation_addr, turn_params.federation_listening_ip);
+    addr_set_port(&rs->server.federation_addr, turn_params.federation_listening_port);
+    rs->server.federation_service = (void**)&turn_params.listener.federation_service;  // Store pointer to pointer, since federation service may not be created when this turn server is being initialized
+  }
+
   if (to_set_rfc5780) {
     set_rfc5780(&(rs->server), get_alt_addr, send_message_from_listener_to_client);
   }
@@ -1854,6 +1895,46 @@ void setup_server(void) {
         }
       }
     }
+  }
+
+  /* Startup Federation Server (if enabled)*/
+  if(turn_params.federation_listening_ip != 0 && turn_params.federation_listening_port != 0) {
+    char slistenaddr[129];
+    addr_to_string_no_port(turn_params.federation_listening_ip,(uint8_t*)slistenaddr);
+
+    if(turn_params.general_relay_servers_number > 1) {
+      super_memory_t *sm = new_super_memory_region();
+      struct event_base *eb = turn_event_base_new();
+
+      // If more than single threaded, then run federation in it's own thread
+      turn_params.listener.federation_ioa_eng = create_ioa_engine(sm, eb, turn_params.listener.tp,
+                                                                  turn_params.relay_ifname, turn_params.relays_number, turn_params.relay_addrs,
+                                                                  turn_params.default_relays, turn_params.verbose
+#if !defined(TURN_NO_HIREDIS)
+                                                                  ,turn_params.redis_statsdb
+#endif
+                                                                 );
+    } else {
+      // otherwise use single relay io engine, and thread
+      turn_params.listener.federation_ioa_eng = general_relay_servers[0]->ioa_eng;
+    }
+
+    if(!turn_params.listener.federation_ioa_eng)
+      exit(-1);
+
+    turn_params.listener.federation_service = (dtls_listener_relay_server_type*)allocate_super_memory_engine(turn_params.listener.federation_ioa_eng, sizeof(dtls_listener_relay_server_type*));
+    turn_params.listener.federation_service = create_dtls_federation_listener_server(turn_params.listener_ifname, slistenaddr, turn_params.federation_listening_port, turn_params.verbose,
+                                                                                     turn_params.listener.federation_ioa_eng, NULL, 1 /* report_creation? */, NULL /* send_socket? */);
+
+    if(turn_params.general_relay_servers_number > 1) {
+      pthread_t thr;
+      if(pthread_create(&thr, NULL, run_udp_listener_thread, turn_params.listener.federation_service)) {
+        perror("Cannot create federation listener thread\n");
+        exit(-1);
+      }
+      pthread_detach(thr);
+    }
+
   }
 
   {

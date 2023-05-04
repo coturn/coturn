@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
+ * Copyright (C) 2022 Wire Swiss GmbH
  *
  * All rights reserved.
  *
@@ -890,7 +891,7 @@ public:
 
     stun_set_allocate_response_str(_buffer, &_sz, &tid, &relayed_addr1, &relayed_addr2, &reflexive_addr, lifetime,
                                    STUN_DEFAULT_MAX_ALLOCATE_LIFETIME, error_code, reason, reservation_token,
-                                   mobile_id);
+                                   mobile_id, 0);
   }
 
   /**

@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
+ * Copyright (C) 2022 Wire Swiss GmbH
  *
  * All rights reserved.
  *
@@ -99,6 +100,13 @@ struct cancelled_session_message {
   turnsession_id id;
 };
 
+struct federation_send_message {
+  turnsession_id id;
+  int ttl;
+  int tos;
+  ioa_network_buffer_handle nbh;
+};
+
 struct relay_server {
   turnserver_id id;
   super_memory_t *sm;
@@ -119,6 +127,7 @@ struct message_to_relay {
     struct socket_message sm;
     struct cb_socket_message cb_sm;
     struct cancelled_session_message csm;
+    struct federation_send_message fed_send;
   } m;
 };
 
@@ -175,6 +184,9 @@ struct _ioa_socket {
   SOCKET_TYPE st;
   SOCKET_APP_TYPE sat;
   SSL *ssl;
+  ioa_timer_handle federation_handshake_tmr;
+  ioa_timer_handle federation_heartbeat_tmr;
+  int federation_heartbeat_pings_outstanding;
   uint32_t ssl_renegs;
   int in_write;
   int bound;
@@ -258,6 +270,8 @@ void delete_socket_from_parent(ioa_socket_handle s);
 
 void add_socket_to_map(ioa_socket_handle s, ur_addr_map *amap);
 void delete_socket_from_map(ioa_socket_handle s);
+
+int send_ssl_backlog_buffers(ioa_socket_handle s);
 
 int is_connreset(void);
 int would_block(void);

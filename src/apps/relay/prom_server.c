@@ -155,7 +155,7 @@ void start_prometheus_server(void) {
   return;
 }
 
-void prom_set_finished_traffic(const char* realm, const char* user, unsigned long rsvp, unsigned long rsvb,
+void prom_set_finished_traffic(const char *realm, const char *user, unsigned long rsvp, unsigned long rsvb,
                                unsigned long sentp, unsigned long sentb, bool peer) {
   if (turn_params.prometheus > PROM_DISABLED) {
 
@@ -203,7 +203,7 @@ void prom_dec_allocation(SOCKET_TYPE type) {
 }
 
 void prom_inc_stun_binding_request(void) {
-  if (turn_params.prometheus == 1) {
+  if (turn_params.prometheus > PROM_DISABLED) {
     prom_counter_add(stun_binding_request, 1, NULL);
   }
 }

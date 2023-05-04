@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
+ * Copyright (C) 2022 Wire Swiss GmbH
  *
  * All rights reserved.
  *
@@ -67,7 +68,14 @@ extern int TURN_MAX_ALLOCATE_TIMEOUT_STUN_ONLY;
 
 typedef uint8_t turnserver_id;
 
-enum _MESSAGE_TO_RELAY_TYPE { RMT_UNKNOWN = 0, RMT_SOCKET, RMT_CB_SOCKET, RMT_MOBILE_SOCKET, RMT_CANCEL_SESSION };
+enum _MESSAGE_TO_RELAY_TYPE {
+  RMT_UNKNOWN = 0,
+  RMT_SOCKET,
+  RMT_CB_SOCKET,
+  RMT_MOBILE_SOCKET,
+  RMT_CANCEL_SESSION,
+  RMT_FEDERATION_SEND
+};
 typedef enum _MESSAGE_TO_RELAY_TYPE MESSAGE_TO_RELAY_TYPE;
 
 ///////// ALLOCATION DEFAULT ADDRESS FAMILY TYPES /////////////////////
@@ -194,6 +202,10 @@ struct _turn_turnserver {
 
   /* Only send RESPONSE-ORIGIN attribute in response if RFC5780 is enabled */
   vintp response_origin_only_with_rfc5780;
+
+	/* Federation params */
+	ioa_addr federation_addr;
+	void **federation_service;
 };
 
 const char *get_version(turn_turnserver *server);
@@ -238,6 +250,7 @@ int report_turn_session_info(turn_turnserver *server, ts_ur_super_session *ss, i
 turn_time_t get_turn_server_time(turn_turnserver *server);
 
 void turn_cancel_session(turn_turnserver *server, turnsession_id sid);
+void turn_send_federation_data(turn_turnserver *server, turnsession_id sid, ioa_network_buffer_handle nbh, int ttl, int tos);
 
 ///////////////////////////////////////////
 

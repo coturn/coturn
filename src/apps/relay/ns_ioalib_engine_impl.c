@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
+ * Copyright (C) 2022 Wire Swiss GmbH
  *
  * All rights reserved.
  *
@@ -99,8 +100,6 @@ static void socket_input_handler(evutil_socket_t fd, short what, void *arg);
 static void socket_output_handler_bev(struct bufferevent *bev, void *arg);
 static void socket_input_handler_bev(struct bufferevent *bev, void *arg);
 static void eventcb_bev(struct bufferevent *bev, short events, void *arg);
-
-static int send_ssl_backlog_buffers(ioa_socket_handle s);
 
 static int set_accept_cb(ioa_socket_handle s, accept_cb acb, void *arg);
 
@@ -1497,6 +1496,9 @@ void close_ioa_socket(ioa_socket_handle s) {
       // in case client_to_be_allocated_timeout_handler gets triggered
       s->session->client_socket = NULL;
     }
+
+    IOA_EVENT_DEL(s->federation_handshake_tmr);
+    IOA_EVENT_DEL(s->federation_heartbeat_tmr);
 
     s->session = NULL;
     s->sub_session = NULL;
@@ -3168,9 +3170,23 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr *dest_addr, ioa_
               }
             }
           } else if (s->ssl) {
-            send_ssl_backlog_buffers(s);
-            ret = ssl_send(s, (char *)ioa_network_buffer_data(nbh), ioa_network_buffer_get_size(nbh),
-                           (s->e ? s->e->verbose : TURN_VERBOSE_NONE));
+            // Call ssl_send if:
+            //   -SSL handshake is finished  OR 
+            //   -if this is the first send attempt while waiting for handshake to finish (allows client handshake process to kickstart)
+            // Note: if we just call ssl_send and rely on the SSL_write failure, it is possible to get the following error: 
+            //       SSL write error: 16: 101593: error:140950D3:SSL routines:ssl3_read_n:read bio not set (1)
+            //       since calls to ssl_read clear out the read bio, which is potentially needed by the handshake process.
+            int handshake_finished = SSL_is_init_finished(s->ssl);
+            if(handshake_finished ||
+               (!handshake_finished && buffer_list_empty(&(s->bufs)))) {
+              send_ssl_backlog_buffers(s);
+              ret = ssl_send(s, (char *)ioa_network_buffer_data(nbh), ioa_network_buffer_get_size(nbh),
+                             (s->e ? s->e->verbose : TURN_VERBOSE_NONE));
+            } else {
+              // Put message in backlog below
+              ret = 0;
+            }
+            
             if (ret < 0)
               s->tobeclosed = 1;
             else if (ret == 0)
@@ -3484,6 +3500,11 @@ uint8_t ioa_network_buffer_get_coffset(ioa_network_buffer_handle nbh) {
   return buf_elem->buf.coffset;
 }
 
+// Note: The engine passed in here is where the buffer could get stored around
+//       for future use.  Each ioa_engine holds up to 64 (MAX_BUFFER_QUEUE_SIZE_PER_ENGINE)
+//       buffers for re-use.  The passed in engine does NOT need to match the engine
+//       that originally allocated the buffer.  If a NULL engine handle is passed in
+//       then buffer is simply free'd and not reused.
 void ioa_network_buffer_delete(ioa_engine_handle e, ioa_network_buffer_handle nbh) {
   stun_buffer_list_elem *buf_elem = (stun_buffer_list_elem *)nbh;
   free_blist_elem(e, buf_elem);
