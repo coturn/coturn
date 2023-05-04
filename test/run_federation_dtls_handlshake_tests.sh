@@ -38,8 +38,8 @@ start_server() {
   stop_server
   nohup ../bin/turnserver -c $1 > $1.out 2>&1 &
   serverPID=$!
-  sleep 1
-  echo "Started server, pid=$serverPID, conf=$1"
+  echo "Started server, pid=$serverPID, conf=$1, delaying 5 seconds..."
+  sleep 5
 }
 
 check_result() {
@@ -132,4 +132,4 @@ check_result "DTLS federation client bad signature cert fails to connect" $FAILU
 # Stop the server
 stop_server
 
-
+echo "All Tests Passed!"
