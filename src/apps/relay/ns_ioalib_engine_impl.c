@@ -3019,7 +3019,7 @@ try_start:
   }
 }
 
-static int send_ssl_backlog_buffers(ioa_socket_handle s) {
+int send_ssl_backlog_buffers(ioa_socket_handle s) {
   int ret = 0;
   if (s) {
     stun_buffer_list_elem *buf_elem = s->bufs.head;

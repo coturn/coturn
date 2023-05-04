@@ -187,8 +187,6 @@ int federation_remove_connection(uint16_t connection_id) {
   return ret;
 }
 
-#if DTLSv1_2_SUPPORTED
-
 // returns -1 if not found, otherwise position in whitelist
 static int hostname_whitelist_match(char* cert_hostname) {
   // Look through all whitelist entries for a match
@@ -346,9 +344,26 @@ static const char *cipherlist =
   "DHE-RSA-AES256-SHA256:"
   "DHE-RSA-AES256-SHA";
 
-static SSL_CTX* federation_setup_dtls_ctx(const SSL_METHOD* method) {
+static SSL_CTX* federation_setup_dtls_ctx(int isClient) {
   SSL_CTX* ssl_ctx = NULL;
-  set_ctx_ex(&ssl_ctx,"DTLS1.2", method, turn_params.federation_cert_file, turn_params.federation_pkey_file, turn_params.federation_pkey_pwd);
+
+#if DTLSv1_2_SUPPORTED
+#if OPENSSL_VERSION_NUMBER < 0x10100000L // before openssl-1.1.0 no version independent API
+  set_ctx_ex(&ssl_ctx,"Federation-DTLS", 
+             isClient == 0 ? DTLSv1_2_server_method() : DTLSv1_2_client_method(), 
+             turn_params.federation_cert_file, 
+             turn_params.federation_pkey_file, 
+             turn_params.federation_pkey_pwd);
+  SSL_CTX_set_options(&ssl_ctx, SSL_OP_NO_DTLSv1);
+#else  // newer than 1.1.0
+  set_ctx_ex(&ssl_ctx,"Federation-DTLS", 
+             isClient == 0 ? DTLS_server_method() : DTLS_client_method(), 
+             turn_params.federation_cert_file, 
+             turn_params.federation_pkey_file, 
+             turn_params.federation_pkey_pwd);
+  SSL_CTX_set_min_proto_version(ssl_ctx, DTLS1_2_VERSION);
+#endif 
+
   SSL_CTX_set_cipher_list(ssl_ctx, cipherlist);
   
   if(turn_params.ca_cert_file[0]) {
@@ -362,23 +377,25 @@ static SSL_CTX* federation_setup_dtls_ctx(const SSL_METHOD* method) {
     SSL_CTX_set_verify(ssl_ctx, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT | SSL_VERIFY_CLIENT_ONCE, NULL);
     SSL_CTX_set_cert_verify_callback(ssl_ctx, federation_cert_verify, NULL);
   }
-  
-  SSL_CTX_set_read_ahead(ssl_ctx, 1);
 
   SSL_CTX_set_cookie_generate_cb(ssl_ctx, generate_cookie);
   SSL_CTX_set_cookie_verify_cb(ssl_ctx, verify_cookie);  
-  
+
+#else // DTLSv1_2_SUPPORTED
+  TURN_LOG_FUNC(
+      TURN_LOG_LEVEL_WARNING,
+      "WARNING: TURN Server was compiled with rather old OpenSSL version, DTLS federation won't work correctly.\n");
+#endif
+
   return ssl_ctx;
 }
-
-#endif
 
 static void cleanup_connection(ur_addr_map_value_type connectionvt) {
     ioa_socket_handle connection = (ioa_socket_handle)connectionvt;
   close_ioa_socket(connection);
 }
-static void signal_callback_handler(evutil_socket_t sock, short events, void *args)
-{
+
+static void signal_callback_handler(evutil_socket_t sock, short events, void *args) {
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Terminating server, ending all federated connections..\n");
 
     ur_addr_map* connectionsmap = turn_params.listener.federation_service->children_ss;
@@ -442,15 +459,14 @@ static void federation_receive_message(struct bufferevent *bev, void *ptr)
 }
 
 void federation_load_certificates(void) {
-#if DTLSv1_2_SUPPORTED
   if(!turn_params.federation_no_dtls && federation_data_singleton.federation_initalized) {
     // Store old ctx's so we can free them - at startup these are nulls
-    SSL_CTX* old_client_ctx = turn_params.federation_dtls_client_ctx_v1_2;
-    SSL_CTX* old_server_ctx = turn_params.federation_dtls_server_ctx_v1_2;
+    SSL_CTX* old_client_ctx = turn_params.federation_dtls_client_ctx;
+    SSL_CTX* old_server_ctx = turn_params.federation_dtls_server_ctx;
 
     // Create and assign new ctx's.  Pointer set's are atomic so no need for locking.
-    turn_params.federation_dtls_client_ctx_v1_2 = federation_setup_dtls_ctx(DTLSv1_2_client_method());
-    turn_params.federation_dtls_server_ctx_v1_2 = federation_setup_dtls_ctx(DTLSv1_2_server_method());
+    turn_params.federation_dtls_client_ctx = federation_setup_dtls_ctx(1 /* isClient? */);
+    turn_params.federation_dtls_server_ctx = federation_setup_dtls_ctx(0 /* isClient? */);
 
     // Free old ctx's if defined - only needed for when SIG_USR2 is fired and we are reloading after startup
     if(old_client_ctx) {
@@ -460,7 +476,6 @@ void federation_load_certificates(void) {
       SSL_CTX_free(old_server_ctx);
     }
   }
-#endif
 }
 
 void federation_init(ioa_engine_handle e) {
@@ -499,7 +514,6 @@ void federation_init(ioa_engine_handle e) {
 
 int federation_send_data_imp(dtls_listener_relay_server_type* server, ioa_addr* dest_addr,
         ioa_network_buffer_handle nbh, int ttl, int tos, int* skip) {
-#if DTLSv1_2_SUPPORTED
   int fd = server->udp_listen_s->fd;
   if(server->federation_listener && !turn_params.federation_no_dtls) {
     // See if we already have a DTLS connection to the destination
@@ -519,7 +533,7 @@ int federation_send_data_imp(dtls_listener_relay_server_type* server, ioa_addr* 
 
     if(chs == NULL) {      
       // No connection yet, DTLS connect to dest_addr
-      SSL* ssl = SSL_new(turn_params.federation_dtls_client_ctx_v1_2);
+      SSL* ssl = SSL_new(turn_params.federation_dtls_client_ctx);
       SSL_set_options(ssl, SSL_OP_COOKIE_EXCHANGE);
 
 #if ALPN_SUPPORTED
@@ -568,7 +582,6 @@ int federation_send_data_imp(dtls_listener_relay_server_type* server, ioa_addr* 
     return send_data_from_ioa_socket_nbh(chs, dest_addr, nbh, ttl, tos, skip);
   }
   else
-#endif
   {
     addr_debug_print(eve(server->verbose), dest_addr, "Federation: relaying data from SendInd to");
 

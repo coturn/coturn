@@ -1294,7 +1294,7 @@ static int handle_turn_allocate(turn_turnserver *server, ts_ur_super_session *ss
 
             ioa_timer_handle ev = set_ioa_timer(server->e, lifetime, 0,
                                                 client_ss_federation_allocation_timeout_handler, ss, 0,
-                                                client_ss_federation_allocation_timeout_handler");
+                                                "client_ss_federation_allocation_timeout_handler");
             set_federation_allocation_lifetime_ev(alloc, server->ctime + lifetime, ev);
           } else {
           if (!af4 && !af6) {
@@ -4307,7 +4307,7 @@ static void client_ss_federation_allocation_timeout_handler(ioa_engine_handle e,
   turn_turnserver* server = (turn_turnserver*) (ss->server);
 
   if (!server) {
-    clear_allocation(a);
+    clear_allocation(a, get_ioa_socket_type(ss->client_socket));
     return;
   }
 

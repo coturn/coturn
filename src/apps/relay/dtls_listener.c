@@ -127,7 +127,7 @@ static void calculate_cookie(SSL *ssl, unsigned char *cookie_secret, unsigned in
     *ip = rv;
 }
 
-static int generate_cookie(SSL *ssl, unsigned char *cookie, unsigned int *cookie_len) {
+int generate_cookie(SSL *ssl, unsigned char *cookie, unsigned int *cookie_len) {
   unsigned char *buffer, result[EVP_MAX_MD_SIZE];
   unsigned int length = 0, resultlength;
   ioa_addr peer;
@@ -263,20 +263,11 @@ static ioa_socket_handle dtls_server_input_handler(dtls_listener_relay_server_ty
   timeout.tv_usec = 0;
   BIO_ctrl(wbio, BIO_CTRL_DGRAM_SET_RECV_TIMEOUT, 0, &timeout);
 
-#if DTLSv1_2_SUPPORTED
   if(server->federation_listener) {
-    connecting_ssl = SSL_new(turn_params.federation_dtls_server_ctx_v1_2);
-  } else if(get_dtls_version(ioa_network_buffer_data(nbh),
-                             (int)ioa_network_buffer_get_size(nbh)) == 1) {
-    connecting_ssl = SSL_new(server->e->dtls_ctx_v1_2);
+    connecting_ssl = SSL_new(turn_params.federation_dtls_server_ctx);
   } else {
     connecting_ssl = SSL_new(server->e->dtls_ctx);
   }
-#else
-  {
-    connecting_ssl = SSL_new(server->e->dtls_ctx);
-  }
-#endif
 
   SSL_set_accept_state(connecting_ssl);
 
@@ -599,20 +590,12 @@ static int create_new_connected_udp_socket(dtls_listener_relay_server_type *serv
     timeout.tv_usec = 0;
     BIO_ctrl(wbio, BIO_CTRL_DGRAM_SET_RECV_TIMEOUT, 0, &timeout);
 
-#if DTLSv1_2_SUPPORTED
     if(server->federation_listener) {
-      connecting_ssl = SSL_new(turn_params.federation_dtls_server_ctx_v1_2);
-    } else if(get_dtls_version(ioa_network_buffer_data(server->sm.m.sm.nd.nbh),
-                               (int)ioa_network_buffer_get_size(server->sm.m.sm.nd.nbh)) == 1) {
-      connecting_ssl = SSL_new(server->e->dtls_ctx_v1_2);
+      connecting_ssl = SSL_new(turn_params.federation_dtls_server_ctx);
     } else {
       connecting_ssl = SSL_new(server->e->dtls_ctx);
     }
-#else
-    {
-      connecting_ssl = SSL_new(server->e->dtls_ctx);
-    }
-#endif
+
     SSL_set_accept_state(connecting_ssl);
 
     SSL_set_bio(connecting_ssl, NULL, wbio);
@@ -1037,7 +1020,7 @@ dtls_listener_relay_server_type *create_dtls_listener_server(const char *ifname,
   dtls_listener_relay_server_type *server =
       (dtls_listener_relay_server_type *)allocate_super_memory_engine(e, sizeof(dtls_listener_relay_server_type));
 
-  if (init_server(server, ifname, local_address, port, verbose, e, ts, report_creation, send_socket) < 0) {
+  if (init_server(server, ifname, local_address, port, verbose, e, ts, report_creation, send_socket, 0 /* federation_listener? */) < 0) {
     return NULL;
   } else {
     return server;

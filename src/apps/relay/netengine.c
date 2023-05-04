@@ -1911,7 +1911,7 @@ void setup_server(void) {
                                                                   turn_params.relay_ifname, turn_params.relays_number, turn_params.relay_addrs,
                                                                   turn_params.default_relays, turn_params.verbose
 #if !defined(TURN_NO_HIREDIS)
-                                                                  ,turn_params.redis_statsdb
+                                                                  ,&turn_params.redis_statsdb
 #endif
                                                                  );
     } else {

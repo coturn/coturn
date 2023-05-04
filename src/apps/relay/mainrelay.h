@@ -290,17 +290,15 @@ typedef struct _turn_params_ {
   /////////////// stop server ////////////////
   int stop_turn_server;
 
-/////////////// FEDERATION SERVER ///////////////
+  /////////////// FEDERATION SERVER ///////////////
   ioa_addr *federation_listening_ip;
   int federation_listening_port;
   int federation_no_dtls;
   char federation_cert_file[1025];
   char federation_pkey_file[1025];
-  char federation_pkey_pwd[513];  
-#if DTLSv1_2_SUPPORTED
-  SSL_CTX *federation_dtls_client_ctx_v1_2;
-  SSL_CTX *federation_dtls_server_ctx_v1_2;
-#endif
+  char federation_pkey_pwd[513];
+  SSL_CTX *federation_dtls_client_ctx;
+  SSL_CTX *federation_dtls_server_ctx;
 
   ////////////// MISC PARAMS ////////////////
 
@@ -385,8 +383,9 @@ void send_auth_message_to_auth_server(struct auth_message *am);
 
 /////////// Setup server ////////
 
-void set_ctx(SSL_CTX** out, const char *protocol, const SSL_METHOD* method);
-void set_ctx_ex(SSL_CTX** out, const char *protocol, const SSL_METHOD* method, const char* cert_file, const char* pkey_file, char* pkey_pwd);
+void set_ctx(SSL_CTX** out, const char* protocol, const SSL_METHOD* method);
+void set_ctx_ex(SSL_CTX** out, const char* protocol, const SSL_METHOD* method, const char* cert_file,
+                const char* pkey_file, char* pkey_pwd);
 void init_listener(void);
 void setup_server(void);
 void run_listener_server(struct listener_server *ls);

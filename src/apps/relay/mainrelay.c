@@ -156,7 +156,7 @@ turn_params_t turn_params = {
 
     {"", ""},                                                                 /*redis_statsdb*/
     0,                                                                        /*use_redis_statsdb*/
-    {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, 0, NULL, NULL, NULL}, /*listener*/
+    {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, 0, NULL, NULL, NULL, NULL, NULL}, /*listener*/
     {NULL, 0},                                                                /*ip_whitelist*/
     {NULL, 0},                                                                /*ip_blacklist*/
     NEV_UNKNOWN,                                                              /*net_engine_version*/
@@ -203,10 +203,8 @@ turn_params_t turn_params = {
     "",  // federation_cert_file
     "",  // federation_pkey_file
     "",  // federation_pkey_pwd
-#if DTLSv1_2_SUPPORTED
-    0,   // federation_dtls_client_ctx_v1_2
-    0,   // federation_dtls_server_ctx_v1_2
-#endif
+    0,   // federation_dtls_client_ctx
+    0,   // federation_dtls_server_ctx
     /////////////// MISC PARAMS ////////////////
     0,                                  /* stun_only */
     0,                                  /* no_stun */
@@ -2348,11 +2346,7 @@ static void set_option(int c, char *value) {
     turn_params.federation_listening_port = atoi(value);
     break;
   case FEDERATION_NO_DTLS_OPT:
-#if DTLSv1_2_SUPPORTED
     turn_params.federation_no_dtls = get_bool_value(value);
-#else
-    turn_params.federation_no_dtls = 1;
-#endif
     break;
   case FEDERATION_CERT_OPT:
     STRCPY(turn_params.federation_cert_file,value);
