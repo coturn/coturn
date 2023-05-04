@@ -447,8 +447,10 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server, struct mes
     chs = NULL;
 
 #if DTLS_SUPPORTED
-    if (!turn_params.no_dtls && is_dtls_handshake_message(ioa_network_buffer_data(sm->m.sm.nd.nbh),
-                                                          (int)ioa_network_buffer_get_size(sm->m.sm.nd.nbh))) {
+    if ((!turn_params.no_dtls || 
+         (server->federation_listener && !turn_params.federation_no_dtls)) && 
+        is_dtls_handshake_message(ioa_network_buffer_data(sm->m.sm.nd.nbh),
+                                  (int)ioa_network_buffer_get_size(sm->m.sm.nd.nbh))) {
       chs = dtls_server_input_handler(server, s, sm->m.sm.nd.nbh);
       ioa_network_buffer_delete(server->e, sm->m.sm.nd.nbh);
       sm->m.sm.nd.nbh = NULL;
@@ -571,8 +573,10 @@ static int create_new_connected_udp_socket(dtls_listener_relay_server_type *serv
   ret->default_tos = s->default_tos;
 
 #if DTLS_SUPPORTED
-  if (!turn_params.no_dtls && is_dtls_handshake_message(ioa_network_buffer_data(server->sm.m.sm.nd.nbh),
-                                                        (int)ioa_network_buffer_get_size(server->sm.m.sm.nd.nbh))) {
+  if ((!turn_params.no_dtls || 
+       (server->federation_listener && !turn_params.federation_no_dtls)) && 
+      is_dtls_handshake_message(ioa_network_buffer_data(server->sm.m.sm.nd.nbh),
+                                (int)ioa_network_buffer_get_size(server->sm.m.sm.nd.nbh))) {
 
     SSL *connecting_ssl = NULL;
 
