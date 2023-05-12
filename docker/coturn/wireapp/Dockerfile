@@ -17,4 +17,5 @@ RUN apt-get update \
 COPY docker/coturn/wireapp/pre-stop-hook.sh /usr/local/bin/pre-stop-hook
 RUN chmod +x /usr/local/bin/pre-stop-hook
 
+# Limit access by switching to non-root user
 USER nobody:nogroup
