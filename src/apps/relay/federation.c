@@ -464,6 +464,14 @@ void federation_load_certificates(void) {
     SSL_CTX* old_client_ctx = turn_params.federation_dtls_client_ctx;
     SSL_CTX* old_server_ctx = turn_params.federation_dtls_server_ctx;
 
+    if(turn_params.ca_cert_file[0]) {
+      print_abs_file_name("", "Federation CA", turn_params.ca_cert_file);
+    } else {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "No CA cert file, certificate validation is disabled.\n");
+    }
+    print_abs_file_name("", "Federation Certificate", turn_params.federation_cert_file);
+    print_abs_file_name("", "Federation Private key", turn_params.federation_pkey_file);
+
     // Create and assign new ctx's.  Pointer set's are atomic so no need for locking.
     turn_params.federation_dtls_client_ctx = federation_setup_dtls_ctx(1 /* isClient? */);
     turn_params.federation_dtls_server_ctx = federation_setup_dtls_ctx(0 /* isClient? */);
