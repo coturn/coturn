@@ -43,10 +43,7 @@
 #define FREE(x) HeapFree(GetProcessHeap(), 0, (x))
 #endif
 
-#if (defined LIBRESSL_VERSION_NUMBER && OPENSSL_VERSION_NUMBER == 0x20000000L)
-#undef OPENSSL_VERSION_NUMBER
-#define OPENSSL_VERSION_NUMBER 0x1000107FL
-#elif (!defined OPENSSL_VERSION_1_1_1)
+#if (!defined OPENSSL_VERSION_1_1_1)
 #define OPENSSL_VERSION_1_1_1 0x10101000L
 #endif
 
@@ -3528,7 +3525,7 @@ static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *metho
 
   if (!(turn_params.cipher_list[0])) {
     strncpy(turn_params.cipher_list, DEFAULT_CIPHER_LIST, TURN_LONG_STRING_SIZE);
-#if TLSv1_3_SUPPORTED
+#if defined(DEFAULT_CIPHERSUITES)
     strncat(turn_params.cipher_list, ":", TURN_LONG_STRING_SIZE - strlen(turn_params.cipher_list));
     strncat(turn_params.cipher_list, DEFAULT_CIPHERSUITES, TURN_LONG_STRING_SIZE - strlen(turn_params.cipher_list));
 #endif
