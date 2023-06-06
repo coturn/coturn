@@ -195,6 +195,8 @@ void set_syslog_facility(char *val) {
 #endif
 }
 
+int log_min_level = TURN_LOG_LEVEL_DEBUG;
+
 #if defined(TURN_LOG_FUNC_IMPL)
 extern void TURN_LOG_FUNC_IMPL(TURN_LOG_LEVEL level, const char *format, va_list args);
 #endif
@@ -208,6 +210,10 @@ static char turn_log_timestamp_format[MAX_LOG_TIMESTAMP_FORMAT_LEN] = "%FT%T%z";
 
 void set_turn_log_timestamp_format(char *new_format) {
   strncpy(turn_log_timestamp_format, new_format, MAX_LOG_TIMESTAMP_FORMAT_LEN - 1);
+}
+
+void set_log_min_level(const char *value) {
+  log_min_level = atoi(value);
 }
 
 int use_new_log_timestamp_format = 0;
@@ -527,6 +533,9 @@ void err(int eval, const char *format, ...) {
 #endif
 
 void turn_log_func_default(char *file, int line, TURN_LOG_LEVEL level, const char *format, ...) {
+  if (level < log_min_level) {
+    return;
+  }
   va_list args;
   va_start(args, format);
 #if defined(TURN_LOG_FUNC_IMPL)
