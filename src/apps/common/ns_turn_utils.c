@@ -212,9 +212,7 @@ void set_turn_log_timestamp_format(char *new_format) {
   strncpy(turn_log_timestamp_format, new_format, MAX_LOG_TIMESTAMP_FORMAT_LEN - 1);
 }
 
-void set_log_min_level(const char *value) {
-  log_min_level = atoi(value);
-}
+void set_log_min_level(const char *value) { log_min_level = strtol(value, NULL, 10); }
 
 int use_new_log_timestamp_format = 0;
 
