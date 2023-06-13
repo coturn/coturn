@@ -102,7 +102,7 @@ fi
 
 IFS="$(printf '\nx')" && IFS="${IFS%x}"
 for COMMAND in $COMMANDS; do
-  if IP="$(eval "$COMMAND")" && is_valid_ip "$IP"; then
+  if IP="$(eval "$COMMAND 2>/dev/null")" && is_valid_ip "$IP"; then
     printf '%s' "$IP"
     exit 0
   fi
