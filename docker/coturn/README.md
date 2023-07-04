@@ -187,14 +187,14 @@ This is a single-platform image.
 
 ### `edge-<dist>`
 
-Latest tag of the latest `master` branch of Coturn on the concrete `dist` (`alpine3.18`, or `bookworm`, or latest `alpine`/`debian`).
+Latest tag of the latest `master` branch of Coturn on the concrete `dist` (latest `alpine`/`debian`).
 
 This is a multi-platform image.
 
 
 ### `edge-<dist>-<arch>`
 
-Latest tag of the latest `master` branch of Coturn on the concrete `dist` (`alpine3.18`, or `bookworm`, or latest `alpine`/`debian`) and `arch`.
+Latest tag of the latest `master` branch of Coturn on the concrete `dist` (latest `alpine`/`debian`) and `arch`.
 
 This is a single-platform image.
 
