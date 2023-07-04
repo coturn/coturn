@@ -28,6 +28,12 @@ COTURN_VER ?= 4.6.2
 COTURN_MIN_VER = $(strip $(shell echo $(COTURN_VER) | cut -d '.' -f1,2))
 COTURN_MAJ_VER = $(strip $(shell echo $(COTURN_VER) | cut -d '.' -f1))
 
+ALPINE_VER := alpine$(strip $(shell grep -m1 'alpine_ver=' alpine/Dockerfile \
+                                    | cut -d '=' -f2 \
+                                    | cut -d '.' -f1,2))
+DEBIAN_VER := $(strip $(shell grep -m1 'debian_ver=' debian/Dockerfile \
+                              | cut -d '=' -f2))
+
 BUILD_REV ?= 3
 
 NAME := coturn
@@ -36,8 +42,8 @@ REGISTRIES := $(strip $(subst $(comma), ,\
 	$(shell grep -m1 'registry: \["' ../../.github/workflows/docker.yml \
 	        | cut -d':' -f2 | tr -d '"][')))
 ALL_IMAGES := \
-	debian:$(COTURN_VER)-r$(BUILD_REV)-debian,$(COTURN_VER)-debian,$(COTURN_MIN_VER)-debian,$(COTURN_MAJ_VER)-debian,debian,$(COTURN_VER)-r$(BUILD_REV),$(COTURN_VER),$(COTURN_MIN_VER),$(COTURN_MAJ_VER),latest \
-	alpine:$(COTURN_VER)-r$(BUILD_REV)-alpine,$(COTURN_VER)-alpine,$(COTURN_MIN_VER)-alpine,$(COTURN_MAJ_VER)-alpine,alpine
+	debian:$(COTURN_VER)-r$(BUILD_REV)-debian,$(COTURN_VER)-debian,$(COTURN_MIN_VER)-debian,$(COTURN_MAJ_VER)-debian,debian,$(COTURN_VER)-r$(BUILD_REV)-$(DEBIAN_VER),$(COTURN_VER)-$(DEBIAN_VER),$(COTURN_MIN_VER)-$(DEBIAN_VER),$(COTURN_MAJ_VER)-$(DEBIAN_VER),$(DEBIAN_VER),$(COTURN_VER)-r$(BUILD_REV),$(COTURN_VER),$(COTURN_MIN_VER),$(COTURN_MAJ_VER),latest \
+	alpine:$(COTURN_VER)-r$(BUILD_REV)-alpine,$(COTURN_VER)-alpine,$(COTURN_MIN_VER)-alpine,$(COTURN_MAJ_VER)-alpine,alpine,$(COTURN_VER)-r$(BUILD_REV)-$(ALPINE_VER),$(COTURN_VER)-$(ALPINE_VER),$(COTURN_MIN_VER)-$(ALPINE_VER),$(COTURN_MAJ_VER)-$(ALPINE_VER),$(ALPINE_VER)
 #	<Dockerfile>:<version>,<tag1>,<tag2>,...
 
 # Default is first image from ALL_IMAGES list.

@@ -43,7 +43,7 @@ At the moment `coturn/coturn` Docker image's [workflow is automated][1] via [Git
 
 To produce a new release (version tag) of `coturn/coturn` Docker image, perform the following steps:
 
-1. Upgrade the image version correctly in [`Makefile`] by bumping up either the `COTURN_VER` (if Coturn has changed it version) or the `BUILD_REV` (if anything else in the image has been changed). If the `COTURN_VER` has changed, the `BUILD_REV` may be reset to `0`.
+1. Upgrade the image version correctly in [`Makefile`] by bumping up either the `COTURN_VER` (if Coturn has changed it version) or the `BUILD_REV` (if anything else in the image has been changed). If the `COTURN_VER` has changed, the `BUILD_REV` may be reset to `0` (DO NOT reset when `ALPINE_VER`/`DEBIAN_VER` changes).
 
 2. Complete an existing [CHANGELOG] or fill up a new one for the new version declared in [`Makefile`].
 
