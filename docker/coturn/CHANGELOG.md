@@ -4,6 +4,23 @@ Coturn TURN server Docker image changelog
 
 
 
+## [4.6.2-r4] · 2023-07-04
+[4.6.2-r4]: /../../tree/docker/4.6.2-r4
+
+### Added
+
+- Additional tags with major OS version. ([#1230], [#1226])
+
+### Security updated
+
+- [Debian Linux] "bookworm" 20230703: <https://github.com/docker-library/official-images/commit/e4358612aca01fd8aa393e7b3d590d45ae72e9af>
+
+[#1226]: /../../issues/1226
+[#1230]: /../../pull/1230
+
+
+
+
 ## [4.6.2-r3] · 2023-06-15
 [4.6.2-r3]: /../../tree/docker/4.6.2-r3
 
