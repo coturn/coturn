@@ -4536,28 +4536,28 @@ static int read_client_connection(turn_turnserver *server, ts_ur_super_session *
           }
           return 0;
         } else {
-            /* Our incoming connection is HTTP, but we are not serving the
-             * admin site. Return a 400 response. */
-            if (st==TLS_SOCKET) {
-                TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s (%s %s) returning 400 response: %zu\n", __FUNCTION__, proto,
-                    get_ioa_socket_cipher(ss->client_socket), get_ioa_socket_ssl_method(ss->client_socket),
-                   ioa_network_buffer_get_size(in_buffer->nbh));
-                set_ioa_socket_app_type(ss->client_socket, HTTPS_CLIENT_SOCKET);
-            } else {
-                TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s returning 400 response",
-                    __FUNCTION__, proto);
-            }
+          /* Our incoming connection is HTTP, but we are not serving the
+           * admin site. Return a 400 response. */
+          if (st == TLS_SOCKET) {
+            TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s (%s %s) returning 400 response: %zu\n", __FUNCTION__, proto,
+                          get_ioa_socket_cipher(ss->client_socket), get_ioa_socket_ssl_method(ss->client_socket),
+                          ioa_network_buffer_get_size(in_buffer->nbh));
+            set_ioa_socket_app_type(ss->client_socket, HTTPS_CLIENT_SOCKET);
+          } else {
+            TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s returning 400 response", __FUNCTION__, proto);
+          }
 
-            ioa_network_buffer_handle nbh_http = ioa_network_buffer_allocate(ss->client_socket->e);
+          ioa_network_buffer_handle nbh_http = ioa_network_buffer_allocate(ss->client_socket->e);
 
-            char *content = "HTTP Not supported.\n";
-            char buffer[1024];
-            snprintf(buffer, sizeof(buffer),
-                "HTTP/1.1 400 %s Not supported\r\nConnection: close\r\nServer: %s\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s",
-                proto, TURN_SOFTWARE, (int)strlen(content), content);
-            ioa_network_buffer_set_size(nbh_http, strlen(buffer));
-            memcpy(ioa_network_buffer_data(nbh_http), buffer, strlen(buffer));
-            send_data_from_ioa_socket_nbh(ss->client_socket, NULL, nbh_http, TTL_IGNORE, TOS_IGNORE, NULL);
+          char *content = "HTTP Not supported.\n";
+          char buffer[1024];
+          snprintf(buffer, sizeof(buffer),
+                   "HTTP/1.1 400 %s Not supported\r\nConnection: close\r\nServer: %s\r\nContent-Type: "
+                   "text/plain\r\nContent-Length: %d\r\n\r\n%s",
+                   proto, TURN_SOFTWARE, (int)strlen(content), content);
+          ioa_network_buffer_set_size(nbh_http, strlen(buffer));
+          memcpy(ioa_network_buffer_data(nbh_http), buffer, strlen(buffer));
+          send_data_from_ioa_socket_nbh(ss->client_socket, NULL, nbh_http, TTL_IGNORE, TOS_IGNORE, NULL);
         }
       }
     }
