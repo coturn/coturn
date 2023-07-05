@@ -15,8 +15,8 @@ Coturn TURN server Docker image
 
 ## Supported tags and respective `Dockerfile` links
 
-- [`4.6.2-r4`, `4.6.2-r4-debian`, `4.6.2-r4-bookworm`, `4.6.2`, `4.6.2-debian`, `4.6.2-bookworm`, `4.6`, `4.6-debian`, `4.6-bookworm`, `4`, `4-debian`, `4-bookworm`, `debian`, `bookworm`, `latest`][d1]
-- [`4.6.2-r4-alpine`, `4.6.2-r4-alpine3.18`, `4.6.2-alpine`, `4.6.2-alpine3.18`, `4.6-alpine`, `4.6-alpine3.18`, `4-alpine`, `4-alpine3.18`, `alpine`, `alpine3.18`][d2]
+- [`4.6.2-r4`, `4.6.2-r4-debian`, `4.6.2`, `4.6.2-debian`, `4.6.2-bookworm`, `4.6`, `4.6-debian`, `4.6-bookworm`, `4`, `4-debian`, `4-bookworm`, `debian`, `bookworm`, `latest`][d1]
+- [`4.6.2-r4-alpine`, `4.6.2-alpine`, `4.6.2-alpine3.18`, `4.6-alpine`, `4.6-alpine3.18`, `4-alpine`, `4-alpine3.18`, `alpine`, `alpine3.18`][d2]
 
 
 
@@ -169,7 +169,7 @@ This is a multi-platform image.
 
 ### `<X.Y.Z>-r<N>-<dist>`/`<X.Y.Z.W>-r<N>-<dist>`
 
-Concrete `N` image revision tag of the concrete `X.Y.Z` (or `X.Y.Z.W`) Coturn version on the concrete `dist` (`alpine3.18`, or `bookworm`, or latest `alpine`/`debian`).
+Concrete `N` image revision tag of the concrete `X.Y.Z` (or `X.Y.Z.W`) Coturn version on the concrete `dist` (`alpine` or `debian`).
 
 Once built, it's never updated.
 
@@ -178,7 +178,7 @@ This is a multi-platform image.
 
 ### `<X.Y.Z>-r<N>-<dist>-<arch>`/`<X.Y.Z.W>-r<N>-<dist>-<arch>`
 
-Concrete `N` image revision tag of the concrete `X.Y.Z` (or `X.Y.Z.W`) Coturn version on the concrete `dist` (`alpine3.18`, or `bookworm`, or latest `alpine`/`debian`) and `arch`.
+Concrete `N` image revision tag of the concrete `X.Y.Z` (or `X.Y.Z.W`) Coturn version on the concrete `dist` (`alpine` or `debian`) and `arch`.
 
 Once build, it's never updated.
 
@@ -187,14 +187,14 @@ This is a single-platform image.
 
 ### `edge-<dist>`
 
-Latest tag of the latest `master` branch of Coturn on the concrete `dist` (latest `alpine`/`debian`).
+Latest tag of the latest `master` branch of Coturn on the concrete `dist` (`alpine` or `debian`).
 
 This is a multi-platform image.
 
 
 ### `edge-<dist>-<arch>`
 
-Latest tag of the latest `master` branch of Coturn on the concrete `dist` (latest `alpine`/`debian`) and `arch`.
+Latest tag of the latest `master` branch of Coturn on the concrete `dist` (`alpine` or `debian`) and `arch`.
 
 This is a single-platform image.
 
