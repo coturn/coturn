@@ -194,6 +194,10 @@ struct _turn_turnserver {
 
   /* Only send RESPONSE-ORIGIN attribute in response if RFC5780 is enabled */
   vintp response_origin_only_with_rfc5780;
+
+  /* Return an HTTP 400 response to HTTP connections made to ports not
+     otherwise handling HTTP. */
+  vintp unsupported_http_gives_400;
 };
 
 const char *get_version(turn_turnserver *server);
@@ -215,7 +219,8 @@ void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, io
                       send_turn_session_info_cb send_turn_session_info, send_https_socket_cb send_https_socket,
                       allocate_bps_cb allocate_bps_func, int oauth, const char *oauth_server_name,
                       const char *acme_redirect, ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family,
-                      vintp log_binding, vintp no_stun_backward_compatibility, vintp response_origin_only_with_rfc5780);
+                      vintp log_binding, vintp no_stun_backward_compatibility, vintp response_origin_only_with_rfc5780,
+                      vintp unsupported_http_gives_400);
 
 ioa_engine_handle turn_server_get_engine(turn_turnserver *s);
 

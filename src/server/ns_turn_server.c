@@ -4535,7 +4535,7 @@ static int read_client_connection(turn_turnserver *server, ts_ur_super_session *
             handle_http_echo(ss->client_socket);
           }
           return 0;
-        } else {
+        } else if (*server->unsupported_http_gives_400) {
           /* Our incoming connection is HTTP, but we are not serving the
            * admin site. Return a 400 response. */
           if (st == TLS_SOCKET) {
@@ -4558,6 +4558,9 @@ static int read_client_connection(turn_turnserver *server, ts_ur_super_session *
           ioa_network_buffer_set_size(nbh_http, strlen(buffer));
           memcpy(ioa_network_buffer_data(nbh_http), buffer, strlen(buffer));
           send_data_from_ioa_socket_nbh(ss->client_socket, NULL, nbh_http, TTL_IGNORE, TOS_IGNORE, NULL);
+        } else {
+            ss->to_be_closed = 1;
+            return 0;
         }
       }
     }
@@ -4799,7 +4802,8 @@ void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, io
                       allocate_bps_cb allocate_bps_func, int oauth, const char *oauth_server_name,
                       const char *acme_redirect, ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family,
                       vintp log_binding, vintp no_stun_backward_compatibility,
-                      vintp response_origin_only_with_rfc5780) {
+                      vintp response_origin_only_with_rfc5780,
+                      vintp unsupported_http_gives_400) {
 
   if (!server)
     return;
@@ -4877,6 +4881,8 @@ void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, io
   server->no_stun_backward_compatibility = no_stun_backward_compatibility;
 
   server->response_origin_only_with_rfc5780 = response_origin_only_with_rfc5780;
+
+  server->unsupported_http_gives_400 = unsupported_http_gives_400;
 }
 
 ioa_engine_handle turn_server_get_engine(turn_turnserver *s) {
