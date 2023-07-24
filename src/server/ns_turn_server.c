@@ -4559,8 +4559,8 @@ static int read_client_connection(turn_turnserver *server, ts_ur_super_session *
           memcpy(ioa_network_buffer_data(nbh_http), buffer, strlen(buffer));
           send_data_from_ioa_socket_nbh(ss->client_socket, NULL, nbh_http, TTL_IGNORE, TOS_IGNORE, NULL);
         } else {
-            ss->to_be_closed = 1;
-            return 0;
+          ss->to_be_closed = 1;
+          return 0;
         }
       }
     }
@@ -4801,8 +4801,7 @@ void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, io
                       send_turn_session_info_cb send_turn_session_info, send_https_socket_cb send_https_socket,
                       allocate_bps_cb allocate_bps_func, int oauth, const char *oauth_server_name,
                       const char *acme_redirect, ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family,
-                      vintp log_binding, vintp no_stun_backward_compatibility,
-                      vintp response_origin_only_with_rfc5780,
+                      vintp log_binding, vintp no_stun_backward_compatibility, vintp response_origin_only_with_rfc5780,
                       vintp unsupported_http_gives_400) {
 
   if (!server)
