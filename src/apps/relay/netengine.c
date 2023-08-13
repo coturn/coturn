@@ -265,7 +265,6 @@ static void del_alt_server(const char *saddr, int default_port, turn_server_addr
           TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Alternate server removed: %s\n", s);
         }
 
-        del_alt_server(saddr, default_port, list);
       }
     }
 
