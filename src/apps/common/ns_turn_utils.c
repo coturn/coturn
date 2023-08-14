@@ -49,7 +49,7 @@
 
 #include <signal.h>
 
-#if !defined(WINDOWS)
+#if !defined(WINDOWS) && !defined(__CYGWIN__) && !defined(__CYGWIN32__) && !defined(__CYGWIN64__)
 #include <sys/syscall.h>
 #include <unistd.h>
 #ifdef SYS_gettid
