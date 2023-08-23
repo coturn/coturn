@@ -111,7 +111,7 @@ Management interfaces:
 
 Monitoring:
  * Redis can be used for status and statistics storage and notification
- * [prometheus](https://prometheus.io/) interface
+ * [prometheus](https://prometheus.io/) interface (unavailable on apt package)
 
 Message integrity digest algorithms:
 
