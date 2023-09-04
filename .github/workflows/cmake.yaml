@@ -26,7 +26,7 @@ jobs:
             libhiredis-dev \
             libmongoc-dev \
             libmicrohttpd-dev
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Prometheus support
       run: |
         wget https://github.com/digitalocean/prometheus-client-c/releases/download/v0.1.3/libprom-dev-0.1.3-Linux.deb && \

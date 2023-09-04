@@ -22,7 +22,7 @@ jobs:
             libmongoc-dev \
             libmicrohttpd-dev \
             clang-format
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: configure
       run: ./configure
     - name: lint
