@@ -4549,12 +4549,19 @@ static int read_client_connection(turn_turnserver *server, ts_ur_super_session *
 
           ioa_network_buffer_handle nbh_http = ioa_network_buffer_allocate(ss->client_socket->e);
 
-          char *content = "HTTP Not supported.\n";
+          /* HTTP content */
+          char *content = "HTTP not supported.\n";
+
+          /* Measure length of content */
+          int content_length = strlen(content);
+
+          /* Construct full response */
           char buffer[1024];
           snprintf(buffer, sizeof(buffer),
                    "HTTP/1.1 400 %s Not supported\r\nConnection: close\r\nServer: %s\r\nContent-Type: "
                    "text/plain\r\nContent-Length: %d\r\n\r\n%s",
-                   proto, TURN_SOFTWARE, (int)strlen(content), content);
+                   proto, TURN_SOFTWARE, content_length, content);
+
           ioa_network_buffer_set_size(nbh_http, strlen(buffer));
           memcpy(ioa_network_buffer_data(nbh_http), buffer, strlen(buffer));
           send_data_from_ioa_socket_nbh(ss->client_socket, NULL, nbh_http, TTL_IGNORE, TOS_IGNORE, NULL);
