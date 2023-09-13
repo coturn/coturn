@@ -38,7 +38,7 @@ jobs:
         with:
           fetch-depth: 0  # for correct image labeling via `git describe --tags`
       - uses: docker/setup-qemu-action@v2
-      - uses: docker/setup-buildx-action@v2
+      - uses: docker/setup-buildx-action@v3
 
       - name: Detect correct Git ref for image build
         id: git
