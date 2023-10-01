@@ -96,6 +96,10 @@ int is_secure_string(const uint8_t *string, int sanitizesql);
 
 ///////////////////////////////////////////////////////
 
+#if !defined(min)
+#define min(a, b) ((a) <= (b) ? (a) : (b))
+#endif
+
 #ifdef __cplusplus
 }
 #endif

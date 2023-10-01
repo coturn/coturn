@@ -3165,10 +3165,6 @@ static int create_challenge_response(ts_ur_super_session *ss, stun_tid *tid, int
   return 0;
 }
 
-#if !defined(min)
-#define min(a, b) ((a) <= (b) ? (a) : (b))
-#endif
-
 static void resume_processing_after_username_check(int success, int oauth, int max_session_time, hmackey_t hmackey,
                                                    password_t pwd, turn_turnserver *server, uint64_t ctxkey,
                                                    ioa_net_data *in_buffer, uint8_t *realm) {

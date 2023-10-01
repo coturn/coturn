@@ -34,6 +34,7 @@
 ///////////// Security functions implementation from ns_turn_msg.h ///////////
 
 #include "ns_turn_openssl.h"
+#include "ns_turn_utils.h"
 
 ///////////
 
@@ -546,24 +547,23 @@ int stun_is_challenge_response_str(const uint8_t *buf, size_t len, int *err_code
   int ret = stun_is_error_response_str(buf, len, err_code, err_msg, err_msg_size);
 
   if (ret && (((*err_code) == 401) || ((*err_code) == 438))) {
-
     stun_attr_ref sar = stun_attr_get_first_by_type_str(buf, len, STUN_ATTRIBUTE_REALM);
     if (sar) {
-
       int found_oauth = 0;
 
       const uint8_t *value = stun_attr_get_value(sar);
       if (value) {
         size_t vlen = (size_t)stun_attr_get_len(sar);
+        vlen = min(vlen, STUN_MAX_REALM_SIZE);
         memcpy(realm, value, vlen);
         realm[vlen] = 0;
-
         {
           sar = stun_attr_get_first_by_type_str(buf, len, STUN_ATTRIBUTE_THIRD_PARTY_AUTHORIZATION);
           if (sar) {
             value = stun_attr_get_value(sar);
             if (value) {
               vlen = (size_t)stun_attr_get_len(sar);
+              vlen = min(vlen, STUN_MAX_SERVER_NAME_SIZE);
               if (vlen > 0) {
                 if (server_name) {
                   memcpy(server_name, value, vlen);
@@ -579,6 +579,7 @@ int stun_is_challenge_response_str(const uint8_t *buf, size_t len, int *err_code
           value = stun_attr_get_value(sar);
           if (value) {
             vlen = (size_t)stun_attr_get_len(sar);
+            vlen = min(vlen, STUN_MAX_NONCE_SIZE);
             memcpy(nonce, value, vlen);
             nonce[vlen] = 0;
             if (oauth) {
