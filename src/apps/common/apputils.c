@@ -1193,6 +1193,14 @@ void turn_srandom(void) {
 #endif
 }
 
+long turn_random(void) {
+#if defined(WINDOWS)
+  return rand();
+#else
+  return random();
+#endif
+}
+
 unsigned long set_system_parameters(int max_resources) {
   turn_srandom();
 

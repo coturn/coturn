@@ -92,7 +92,7 @@ int stun_method_str(uint16_t method, char *smethod) {
   return ret;
 }
 
-long turn_random(void) {
+long turn_random_number(void) {
   long ret = 0;
   if (!RAND_bytes((unsigned char *)&ret, sizeof(ret)))
 #if defined(WINDOWS)
@@ -108,7 +108,7 @@ static void turn_random_tid_size(void *id) {
   if (!RAND_bytes((unsigned char *)ar, 12)) {
     size_t i;
     for (i = 0; i < 3; ++i) {
-      ar[i] = (uint32_t)turn_random();
+      ar[i] = (uint32_t)turn_random_number();
     }
   }
 }
@@ -1100,7 +1100,7 @@ uint16_t stun_set_channel_bind_request_str(uint8_t *buf, size_t *len, const ioa_
                                            uint16_t channel_number) {
 
   if (!STUN_VALID_CHANNEL(channel_number)) {
-    channel_number = 0x4000 + ((uint16_t)(((uint32_t)turn_random()) % (0x7FFF - 0x4000 + 1)));
+    channel_number = 0x4000 + ((uint16_t)(((uint32_t)turn_random_number()) % (0x7FFF - 0x4000 + 1)));
   }
 
   stun_init_request_str(STUN_METHOD_CHANNEL_BIND, buf, len);
@@ -2429,7 +2429,7 @@ static void generate_random_nonce(unsigned char *nonce, size_t sz) {
   if (!RAND_bytes(nonce, (int)sz)) {
     size_t i;
     for (i = 0; i < sz; ++i) {
-      nonce[i] = (unsigned char)turn_random();
+      nonce[i] = (unsigned char)turn_random_number();
     }
   }
 }
