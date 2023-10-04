@@ -34,6 +34,7 @@
 ///////////// Security functions implementation from ns_turn_msg.h ///////////
 
 #include "ns_turn_openssl.h"
+#include "ns_turn_utils.h"
 
 ///////////
 
@@ -92,7 +93,7 @@ int stun_method_str(uint16_t method, char *smethod) {
   return ret;
 }
 
-long turn_random(void) {
+long turn_random_number(void) {
   long ret = 0;
   if (!RAND_bytes((unsigned char *)&ret, sizeof(ret)))
 #if defined(WINDOWS)
@@ -108,7 +109,7 @@ static void turn_random_tid_size(void *id) {
   if (!RAND_bytes((unsigned char *)ar, 12)) {
     size_t i;
     for (i = 0; i < 3; ++i) {
-      ar[i] = (uint32_t)turn_random();
+      ar[i] = (uint32_t)turn_random_number();
     }
   }
 }
@@ -546,24 +547,23 @@ int stun_is_challenge_response_str(const uint8_t *buf, size_t len, int *err_code
   int ret = stun_is_error_response_str(buf, len, err_code, err_msg, err_msg_size);
 
   if (ret && (((*err_code) == 401) || ((*err_code) == 438))) {
-
     stun_attr_ref sar = stun_attr_get_first_by_type_str(buf, len, STUN_ATTRIBUTE_REALM);
     if (sar) {
-
       int found_oauth = 0;
 
       const uint8_t *value = stun_attr_get_value(sar);
       if (value) {
         size_t vlen = (size_t)stun_attr_get_len(sar);
+        vlen = min(vlen, STUN_MAX_REALM_SIZE);
         memcpy(realm, value, vlen);
         realm[vlen] = 0;
-
         {
           sar = stun_attr_get_first_by_type_str(buf, len, STUN_ATTRIBUTE_THIRD_PARTY_AUTHORIZATION);
           if (sar) {
             value = stun_attr_get_value(sar);
             if (value) {
               vlen = (size_t)stun_attr_get_len(sar);
+              vlen = min(vlen, STUN_MAX_SERVER_NAME_SIZE);
               if (vlen > 0) {
                 if (server_name) {
                   memcpy(server_name, value, vlen);
@@ -579,6 +579,7 @@ int stun_is_challenge_response_str(const uint8_t *buf, size_t len, int *err_code
           value = stun_attr_get_value(sar);
           if (value) {
             vlen = (size_t)stun_attr_get_len(sar);
+            vlen = min(vlen, STUN_MAX_NONCE_SIZE);
             memcpy(nonce, value, vlen);
             nonce[vlen] = 0;
             if (oauth) {
@@ -1100,7 +1101,7 @@ uint16_t stun_set_channel_bind_request_str(uint8_t *buf, size_t *len, const ioa_
                                            uint16_t channel_number) {
 
   if (!STUN_VALID_CHANNEL(channel_number)) {
-    channel_number = 0x4000 + ((uint16_t)(((uint32_t)turn_random()) % (0x7FFF - 0x4000 + 1)));
+    channel_number = 0x4000 + ((uint16_t)(((uint32_t)turn_random_number()) % (0x7FFF - 0x4000 + 1)));
   }
 
   stun_init_request_str(STUN_METHOD_CHANNEL_BIND, buf, len);
@@ -2429,7 +2430,7 @@ static void generate_random_nonce(unsigned char *nonce, size_t sz) {
   if (!RAND_bytes(nonce, (int)sz)) {
     size_t i;
     for (i = 0; i < sz; ++i) {
-      nonce[i] = (unsigned char)turn_random();
+      nonce[i] = (unsigned char)turn_random_number();
     }
   }
 }
