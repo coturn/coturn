@@ -96,7 +96,7 @@ jobs:
           - i386
           - ppc64le
           - s390x
-    runs-on: ubuntu-latest
+    runs-on: ${{ (matrix.arch == 's390x' && 'macos') || 'ubuntu' }}-latest
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-qemu-action@v3
