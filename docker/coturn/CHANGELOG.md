@@ -4,7 +4,7 @@ Coturn TURN server Docker image changelog
 
 
 
-## [4.6.2-r5] · 2023-10-04
+## [4.6.2-r5] · 2023-10-05
 [4.6.2-r5]: /../../tree/docker/4.6.2-r5
 
 ### Security updated
