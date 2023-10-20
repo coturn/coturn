@@ -43,6 +43,16 @@ set(SOURCE_FILES
     dbdrivers/dbd_redis.c
     )
 
+if(MSVC)
+    list(APPEND HEADER_FILES
+         windows/ServiceInstaller.h
+	     windows/Service.h)
+    list(APPEND SOURCE_FILES
+        windows/ServiceInstaller.cpp
+	    windows/Service.cpp
+        )
+endif()
+
 find_package(SQLite)
 if(SQLite_FOUND)
     list(APPEND turnserver_LIBS SQLite::sqlite)
