@@ -104,7 +104,7 @@ turn_params_t turn_params = {
     0, /*no_tlsv1*/
     0, /*no_tlsv1_1*/
     0, /*no_tlsv1_2*/
-       /*no_tls*/
+/*no_tls*/
 #if !TLS_SUPPORTED
     1,
 #else
@@ -234,6 +234,9 @@ turn_params_t turn_params = {
     0, /* response_origin_only_with_rfc5780 */
     0  /* respond_http_unsupported */
 };
+
+// Initial the common of turnadmin and turnserver
+int init_common(int argc, char **argv);
 
 //////////////// OpenSSL Init //////////////////////
 
@@ -367,93 +370,93 @@ static int make_local_listeners_list(void) {
       else
           printf("\tNo Unicast Addresses\n");
 
-      pAnycast = pCurrAddresses->FirstAnycastAddress;
-      if (pAnycast) {
-          for (i = 0; pAnycast != NULL; i++)
-              pAnycast = pAnycast->Next;
-          printf("\tNumber of Anycast Addresses: %d\n", i);
-      }
-      else
-          printf("\tNo Anycast Addresses\n");
+         pAnycast = pCurrAddresses->FirstAnycastAddress;
+         if (pAnycast) {
+             for (i = 0; pAnycast != NULL; i++)
+                 pAnycast = pAnycast->Next;
+             printf("\tNumber of Anycast Addresses: %d\n", i);
+         }
+         else
+             printf("\tNo Anycast Addresses\n");
 
-      pMulticast = pCurrAddresses->FirstMulticastAddress;
-      if (pMulticast) {
-          for (i = 0; pMulticast != NULL; i++)
-              pMulticast = pMulticast->Next;
-          printf("\tNumber of Multicast Addresses: %d\n", i);
-      }
-      else
-          printf("\tNo Multicast Addresses\n");
+            pMulticast = pCurrAddresses->FirstMulticastAddress;
+            if (pMulticast) {
+                for (i = 0; pMulticast != NULL; i++)
+                    pMulticast = pMulticast->Next;
+                printf("\tNumber of Multicast Addresses: %d\n", i);
+            }
+            else
+                printf("\tNo Multicast Addresses\n");
 
-      pDnServer = pCurrAddresses->FirstDnsServerAddress;
-      if (pDnServer) {
-          for (i = 0; pDnServer != NULL; i++)
-              pDnServer = pDnServer->Next;
-          printf("\tNumber of DNS Server Addresses: %d\n", i);
-      }
-      else
-          printf("\tNo DNS Server Addresses\n");
+         pDnServer = pCurrAddresses->FirstDnsServerAddress;
+         if (pDnServer) {
+             for (i = 0; pDnServer != NULL; i++)
+                 pDnServer = pDnServer->Next;
+             printf("\tNumber of DNS Server Addresses: %d\n", i);
+         }
+         else
+             printf("\tNo DNS Server Addresses\n");
 
-      printf("\tDNS Suffix: %wS\n", pCurrAddresses->DnsSuffix);
-      printf("\tDescription: %wS\n", pCurrAddresses->Description);
-      printf("\tFriendly name: %wS\n", pCurrAddresses->FriendlyName);
+          printf("\tDNS Suffix: %wS\n", pCurrAddresses->DnsSuffix);
+          printf("\tDescription: %wS\n", pCurrAddresses->Description);
+          printf("\tFriendly name: %wS\n", pCurrAddresses->FriendlyName);
 
-      if (pCurrAddresses->PhysicalAddressLength != 0) {
-          printf("\tPhysical address: ");
-          for (i = 0; i < (int)pCurrAddresses->PhysicalAddressLength;
-              i++) {
-              if (i == (pCurrAddresses->PhysicalAddressLength - 1))
-                  printf("%.2X\n",
-                  (int)pCurrAddresses->PhysicalAddress[i]);
-              else
-                  printf("%.2X-",
-                  (int)pCurrAddresses->PhysicalAddress[i]);
+       if (pCurrAddresses->PhysicalAddressLength != 0) {
+           printf("\tPhysical address: ");
+           for (i = 0; i < (int)pCurrAddresses->PhysicalAddressLength;
+               i++) {
+               if (i == (pCurrAddresses->PhysicalAddressLength - 1))
+                   printf("%.2X\n",
+                   (int)pCurrAddresses->PhysicalAddress[i]);
+               else
+                   printf("%.2X-",
+                   (int)pCurrAddresses->PhysicalAddress[i]);
+           }
+       }
+       printf("\tFlags: %ld\n", pCurrAddresses->Flags);
+       printf("\tMtu: %lu\n", pCurrAddresses->Mtu);
+       char* pType = NULL;
+
+          switch (pCurrAddresses->IfType)
+          {
+          case MIB_IF_TYPE_ETHERNET:
+              pType = "ETHERNET";
+              break;
+          case MIB_IF_TYPE_PPP:
+              pType = "PPP";
+              break;
+          case MIB_IF_TYPE_LOOPBACK:
+              pType = "LOOPBACK";
+              break;
+          case MIB_IF_TYPE_SLIP:
+              pType = "ATM";
+              break;
+          case IF_TYPE_IEEE80211:
+              pType = "WIFI";
+              break;
           }
-      }
-      printf("\tFlags: %ld\n", pCurrAddresses->Flags);
-      printf("\tMtu: %lu\n", pCurrAddresses->Mtu);
-      char* pType = NULL;
+          printf("\tIfType: %ld (%s)\n", pCurrAddresses->IfType, pType);
+          printf("\tOperStatus: %ld\n", pCurrAddresses->OperStatus);
+          printf("\tIpv6IfIndex (IPv6 interface): %u\n",
+              pCurrAddresses->Ipv6IfIndex);
+          printf("\tZoneIndices (hex): ");
+          for (i = 0; i < 16; i++)
+              printf("%lx ", pCurrAddresses->ZoneIndices[i]);
+          printf("\n");
 
-      switch (pCurrAddresses->IfType)
-      {
-      case MIB_IF_TYPE_ETHERNET:
-          pType = "ETHERNET";
-          break;
-      case MIB_IF_TYPE_PPP:
-          pType = "PPP";
-          break;
-      case MIB_IF_TYPE_LOOPBACK:
-          pType = "LOOPBACK";
-          break;
-      case MIB_IF_TYPE_SLIP:
-          pType = "ATM";
-          break;
-      case IF_TYPE_IEEE80211:
-          pType = "WIFI";
-          break;
-      }
-      printf("\tIfType: %ld (%s)\n", pCurrAddresses->IfType, pType);
-      printf("\tOperStatus: %ld\n", pCurrAddresses->OperStatus);
-      printf("\tIpv6IfIndex (IPv6 interface): %u\n",
-          pCurrAddresses->Ipv6IfIndex);
-      printf("\tZoneIndices (hex): ");
-      for (i = 0; i < 16; i++)
-          printf("%lx ", pCurrAddresses->ZoneIndices[i]);
-      printf("\n");
+       printf("\tTransmit link speed: %I64u\n", pCurrAddresses->TransmitLinkSpeed);
+       printf("\tReceive link speed: %I64u\n", pCurrAddresses->ReceiveLinkSpeed);
 
-      printf("\tTransmit link speed: %I64u\n", pCurrAddresses->TransmitLinkSpeed);
-      printf("\tReceive link speed: %I64u\n", pCurrAddresses->ReceiveLinkSpeed);
+          pPrefix = pCurrAddresses->FirstPrefix;
+          if (pPrefix) {
+              for (i = 0; pPrefix != NULL; i++)
+                  pPrefix = pPrefix->Next;
+              printf("\tNumber of IP Adapter Prefix entries: %d\n", i);
+          }
+          else
+              printf("\tNumber of IP Adapter Prefix entries: 0\n");
 
-      pPrefix = pCurrAddresses->FirstPrefix;
-      if (pPrefix) {
-          for (i = 0; pPrefix != NULL; i++)
-              pPrefix = pPrefix->Next;
-          printf("\tNumber of IP Adapter Prefix entries: %d\n", i);
-      }
-      else
-          printf("\tNumber of IP Adapter Prefix entries: 0\n");
-
-      printf("\n");//*/
+       printf("\n");//*/
 
       pCurrAddresses = pCurrAddresses->Next;
     }
@@ -1440,7 +1443,7 @@ struct myoption {
   int has_arg;      /* whether option takes an argument */
   int *flag;        /* if not NULL, set *flag to val when option found */
   int val;          /* if flag is not NULL, value to set *flag to. */
-                    /* if flag is NULL, return value */
+  /* if flag is NULL, return value */
 };
 
 struct uoptions {
@@ -2456,6 +2459,7 @@ static int disconnect_database(void) {
 static int adminmain(int argc, char **argv) {
   int c = 0;
   int rc = 0;
+  struct uoptions uo = {0};
 
   TURNADMIN_COMMAND_TYPE ct = TA_COMMAND_UNKNOWN;
 
@@ -2470,12 +2474,17 @@ static int adminmain(int argc, char **argv) {
   uint8_t origin[STUN_MAX_ORIGIN_SIZE + 1] = "\0";
   perf_options_t po = {(band_limit_t)-1, -1, -1};
 
-  struct uoptions uo;
-  uo.u.m = admin_long_options;
-
   int print_enc_password = 0;
   int print_enc_aes_password = 0;
 
+  c = init_common(argc, argv);
+  if (c)
+    return c;
+
+  optind = 1;
+    
+  uo.u.m = admin_long_options;
+    
   while (((c = getopt_long(argc, argv, ADMIN_OPTIONS, uo.u.o, NULL)) != -1)) {
     switch (c) {
     case 'P':
@@ -2483,7 +2492,7 @@ static int adminmain(int argc, char **argv) {
         char result[257];
         generate_new_enc_password((char *)pwd, result);
         printf("%s\n", result);
-        exit(0);
+        return 0;
       }
       print_enc_password = 1;
       break;
@@ -2590,11 +2599,11 @@ static int adminmain(int argc, char **argv) {
       STRCPY(user, optarg);
       if (!is_secure_string((uint8_t *)user, 1)) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong user name structure or symbols, choose another name: %s\n", user);
-        exit(-1);
+        return -1;
       }
       if (SASLprep((uint8_t *)user) < 0) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong user name: %s\n", user);
-        exit(-1);
+        return -1;
       }
       break;
     case 'r':
@@ -2602,29 +2611,29 @@ static int adminmain(int argc, char **argv) {
       STRCPY(realm, optarg);
       if (SASLprep((uint8_t *)realm) < 0) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong realm: %s\n", realm);
-        exit(-1);
+        return -1;
       }
       break;
     case 'p':
       STRCPY(pwd, optarg);
       if (SASLprep((uint8_t *)pwd) < 0) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong password: %s\n", pwd);
-        exit(-1);
+        return -1;
       }
       if (print_enc_password) {
         char result[257];
         generate_new_enc_password((char *)pwd, result);
         printf("%s\n", result);
-        exit(0);
+        return 0;
       }
       if (print_enc_aes_password) {
         encrypt_aes_128(pwd, generated_key);
-        exit(0);
+        return 0;
       }
       break;
     case 'x':
       generate_aes_128_key(optarg, generated_key);
-      exit(0);
+      return 0;
       break;
     case 'f':
       fptr = fopen((char *)optarg, "r");
@@ -2645,14 +2654,13 @@ static int adminmain(int argc, char **argv) {
       break;
     case 'v':
       decrypt_aes_128((char *)optarg, generated_key);
-      exit(0);
+      return 0;
     case 'h':
       printf("\n%s\n", AdminUsage);
-      exit(0);
-      break;
+      return 0;
     default:
       fprintf(stderr, "\n%s\n", AdminUsage);
-      exit(-1);
+      return -1;
     }
   }
 
@@ -2664,7 +2672,7 @@ static int adminmain(int argc, char **argv) {
 
   if (ct == TA_COMMAND_UNKNOWN) {
     fprintf(stderr, "\n%s\n", AdminUsage);
-    exit(-1);
+    return -1;
   }
 
   argc -= optind;
@@ -2672,7 +2680,7 @@ static int adminmain(int argc, char **argv) {
 
   if (argc != 0) {
     fprintf(stderr, "\n%s\n", AdminUsage);
-    exit(-1);
+    return -1;
   }
 
   int result = adminuser(user, realm, pwd, secret, origin, ct, &po, is_admin);
@@ -2792,7 +2800,7 @@ static void print_features(unsigned long mfn) {
 static void set_network_engine(void) {
   if (turn_params.net_engine_version != NEV_UNKNOWN)
     return;
-  turn_params.net_engine_version = NEV_UDP_SOCKET_PER_ENDPOINT;
+  turn_params.net_engine_version = NEV_UDP_SOCKET_PER_THREAD;
 #if defined(SO_REUSEPORT)
 #if defined(__linux__) || defined(__LINUX__) || defined(__linux) || defined(linux__) || defined(LINUX) ||              \
     defined(__LINUX) || defined(LINUX__)
@@ -2856,7 +2864,10 @@ static void init_domain(void) {
 #endif
 }
 
-int main(int argc, char **argv) {
+/*!
+ * \brief Initial the common of turnadmin and turnserver
+ */
+int init_common(int argc, char **argv) {
   int c = 0;
 
   IS_TURN_SERVER = 1;
@@ -2879,41 +2890,6 @@ int main(int argc, char **argv) {
   init_listener();
   init_secrets_list(&turn_params.default_users_db.ram_db.static_auth_secrets);
   init_dynamic_ip_lists();
-
-  if (!strstr(argv[0], "turnadmin")) {
-
-    struct uoptions uo;
-    uo.u.m = long_options;
-
-    while (((c = getopt_long(argc, argv, OPTIONS, uo.u.o, NULL)) != -1)) {
-      switch (c) {
-      case 'l':
-        set_logfile(optarg);
-        break;
-      case NO_STDOUT_LOG_OPT:
-        set_no_stdout_log(get_bool_value(optarg));
-        break;
-      case SYSLOG_OPT:
-        set_log_to_syslog(get_bool_value(optarg));
-        break;
-      case SIMPLE_LOG_OPT:
-        set_simple_log(get_bool_value(optarg));
-        break;
-      case NEW_LOG_TIMESTAMP_OPT:
-        use_new_log_timestamp_format = 1;
-        break;
-      case NEW_LOG_TIMESTAMP_FORMAT_OPT:
-        set_turn_log_timestamp_format(optarg);
-        break;
-      case SYSLOG_FACILITY_OPT:
-        set_syslog_facility(optarg);
-        break;
-      default:;
-      }
-    }
-  }
-
-  optind = 0;
 
 #if !TLS_SUPPORTED
   turn_params.no_tls = 1;
@@ -2940,17 +2916,53 @@ int main(int argc, char **argv) {
 
   memset(&turn_params.default_users_db, 0, sizeof(default_users_db_t));
   turn_params.default_users_db.ram_db.static_accounts = ur_string_map_create(free);
+  
+  return 0;
+}
 
-  if (strstr(argv[0], "turnadmin"))
-    return adminmain(argc, argv);
+long service_start(int argc, char **argv) {
+  int c = 0;
+
+  struct uoptions uo;
+  uo.u.m = long_options;
+
+  while (((c = getopt_long(argc, argv, OPTIONS, uo.u.o, NULL)) != -1)) {
+    switch (c) {
+    case 'l':
+      set_logfile(optarg);
+      break;
+    case NO_STDOUT_LOG_OPT:
+      set_no_stdout_log(get_bool_value(optarg));
+      break;
+    case SYSLOG_OPT:
+      set_log_to_syslog(get_bool_value(optarg));
+      break;
+    case SIMPLE_LOG_OPT:
+      set_simple_log(get_bool_value(optarg));
+      break;
+    case NEW_LOG_TIMESTAMP_OPT:
+      use_new_log_timestamp_format = 1;
+      break;
+    case NEW_LOG_TIMESTAMP_FORMAT_OPT:
+      set_turn_log_timestamp_format(optarg);
+      break;
+    case SYSLOG_FACILITY_OPT:
+      set_syslog_facility(optarg);
+      break;
+    default:;
+    }
+  }
+
+  optind = 1;
+
+  init_common(argc, argv);
+
   // Zero pass apply the log options.
   read_config_file(argc, argv, 0);
   // First pass read other config options
   read_config_file(argc, argv, 1);
 
-  struct uoptions uo;
-  uo.u.m = long_options;
-
+  optind = 0;
   while (((c = getopt_long(argc, argv, OPTIONS, uo.u.o, NULL)) != -1)) {
     if (c != 'u')
       set_option(c, optarg);
@@ -2979,8 +2991,7 @@ int main(int argc, char **argv) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "oAuth server name: %s\n", turn_params.oauth_server_name);
   }
 
-  optind = 0;
-
+  optind = 1;
   while (((c = getopt_long(argc, argv, OPTIONS, uo.u.o, NULL)) != -1)) {
     if (c == 'u') {
       set_option(c, optarg);
@@ -2990,13 +3001,13 @@ int main(int argc, char **argv) {
   if (turn_params.bps_capacity && !(turn_params.max_bps)) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
                   "\nCONFIG ERROR: If you set the --bps-capacity option, then you must set --max-bps options, too.\n");
-    exit(-1);
+    return -1;
   }
 
   if (turn_params.no_udp_relay && turn_params.no_tcp_relay) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
                   "\nCONFIG ERROR: --no-udp-relay and --no-tcp-relay options cannot be used together.\n");
-    exit(-1);
+    return -1;
   }
 
   if (turn_params.no_udp_relay) {
@@ -3026,7 +3037,7 @@ int main(int argc, char **argv) {
 
   if (use_lt_credentials && anon_credentials) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "CONFIG: -a and -z options cannot be used together.\n");
-    exit(-1);
+    return -1;
   }
 
   if (use_ltc && use_tltc) {
@@ -3042,7 +3053,7 @@ int main(int argc, char **argv) {
     if (cli_password[0] == 0 && use_cli) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
                     "CONFIG: allow_loopback_peers and empty cli password cannot be used together.\n");
-      exit(-1);
+      return -1;
     }
   }
 
@@ -3099,7 +3110,7 @@ int main(int argc, char **argv) {
     if ((maddrs < 1) || !turn_params.listener.addrs_number) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Cannot configure any meaningful IP listener address\n", __FUNCTION__);
       fprintf(stderr, "\n%s\n", Usage);
-      exit(-1);
+      return -1;
     }
     local_listeners = 1;
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "=====================================================\n");
@@ -3134,7 +3145,7 @@ int main(int argc, char **argv) {
     if (!turn_params.relays_number) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: You must specify the relay address(es)\n", __FUNCTION__);
       fprintf(stderr, "\n%s\n", Usage);
-      exit(-1);
+      return -1;
     }
   }
 
@@ -3158,28 +3169,12 @@ int main(int argc, char **argv) {
   if (socket_init())
     return -1;
 
-#if defined(WINDOWS)
+  return 0;
+}
 
-    // TODO: implement deamon!!! use windows server
-#else
-  if (turn_params.turn_daemon) {
-#if !defined(TURN_HAS_DAEMON)
-    pid_t pid = fork();
-    if (pid > 0)
-      exit(0);
-    if (pid < 0) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot start daemon process\n");
-      exit(-1);
-    }
-#else
-    if (daemon(1, 0) < 0) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot start daemon process\n");
-      exit(-1);
-    }
-    reset_rtpprintf();
-#endif
-  }
+long service_run() {
 
+#if !defined(WINDOWS)
   if (turn_params.pidfile[0]) {
 
     char s[2049];
@@ -3220,9 +3215,7 @@ int main(int argc, char **argv) {
 
   setup_server();
 
-#if defined(WINDOWS)
-  // TODO: implement it!!! add windows server
-#else
+#if !defined(WINDOWS)
   struct event *ev = evsignal_new(turn_params.listener.event_base, SIGUSR2, reload_ssl_certs, NULL);
   event_add(ev, NULL);
 
@@ -3233,6 +3226,7 @@ int main(int argc, char **argv) {
 #endif
 
   drop_privileges();
+
   start_prometheus_server();
 
   run_listener_server(&(turn_params.listener));
@@ -3240,6 +3234,52 @@ int main(int argc, char **argv) {
   disconnect_database();
 
   return 0;
+}
+
+int main(int argc, char **argv) {
+  int nRet = 0;
+
+  if (strstr(argv[0], "turnadmin"))
+    return adminmain(argc, argv);
+
+  nRet = service_start(argc, argv);
+  if (nRet)
+    return nRet;
+  
+  if (turn_params.turn_daemon) {
+#if defined(WINDOWS)
+
+    /*
+    // TODO: Use windows service See: https://github.com/coturn/coturn/pull/1300
+    // TODO: implement deamon!!! use windows server
+    ServiceRun("coturn", service_start, service_run, shutdown_handler);
+    return 0;
+    */
+
+#else
+    
+#if !defined(TURN_HAS_DAEMON)
+    pid_t pid = fork();
+    if (pid > 0)
+      exit(0);
+    if (pid < 0) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot start daemon process\n");
+      exit(-1);
+    }
+#else
+    if (daemon(1, 0) < 0) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot start daemon process\n");
+      exit(-1);
+    }
+    reset_rtpprintf();
+#endif // #if !defined(TURN_HAS_DAEMON)
+
+#endif // #if defined(WINDOWS)
+  }
+
+  nRet = service_run();
+
+  return nRet;
 }
 
 ////////// OpenSSL locking ////////////////////////////////////////
