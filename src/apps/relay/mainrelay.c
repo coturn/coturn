@@ -2482,9 +2482,7 @@ static int adminmain(int argc, char **argv) {
     return c;
 
   optind = 1;
-    
   uo.u.m = admin_long_options;
-    
   while (((c = getopt_long(argc, argv, ADMIN_OPTIONS, uo.u.o, NULL)) != -1)) {
     switch (c) {
     case 'P':
@@ -2674,15 +2672,16 @@ static int adminmain(int argc, char **argv) {
     fprintf(stderr, "\n%s\n", AdminUsage);
     return -1;
   }
-
+  
+  // TODO: The following code is repeated and can be removed?
   argc -= optind;
   argv += optind;
-
   if (argc != 0) {
-    fprintf(stderr, "\n%s\n", AdminUsage);
+    fprintf(stderr, "\n:%s\n", AdminUsage);
     return -1;
   }
-
+  // TODO: The above code is repeated and can be removed?
+  
   int result = adminuser(user, realm, pwd, secret, origin, ct, &po, is_admin);
 
   disconnect_database();
@@ -2690,9 +2689,13 @@ static int adminmain(int argc, char **argv) {
   return result;
 }
 
-static void print_features(unsigned long mfn) {
+static void print_features() {
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Coturn Version %s\n", TURN_SOFTWARE);
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Max number of open files/sockets allowed for this process: %lu\n", mfn);
+  
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "System cpu num is %lu\n", turn_params.cpus);
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "System enable cpu num is %lu\n", get_system_active_number_of_cpus());
+  unsigned long mfn = set_system_parameters(1);
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "System max number of open files/sockets allowed for this process: %lu\n", mfn);
   if (turn_params.net_engine_version == NEV_UDP_SOCKET_PER_ENDPOINT)
     mfn = mfn / 3;
   else
@@ -2704,8 +2707,8 @@ static void print_features(unsigned long mfn) {
                 "Due to the open files/sockets limitation, max supported number of TURN Sessions possible is: %lu "
                 "(approximately)\n",
                 mfn);
-
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\n\n==== Show him the instruments, Practical Frost: ====\n\n");
+  
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "======= Show him the instruments, Practical Frost: =======\n");
 
   /*
      Frost stepped forward and opened the polished case with a theatrical
@@ -2899,21 +2902,6 @@ int init_common(int argc, char **argv) {
   turn_params.no_dtls = 1;
 #endif
 
-  {
-    int cpus = get_system_number_of_cpus();
-    if (0 < cpus)
-      turn_params.cpus = get_system_number_of_cpus();
-    if (turn_params.cpus < DEFAULT_CPUS_NUMBER)
-      turn_params.cpus = DEFAULT_CPUS_NUMBER;
-    else if (turn_params.cpus > MAX_NUMBER_OF_GENERAL_RELAY_SERVERS)
-      turn_params.cpus = MAX_NUMBER_OF_GENERAL_RELAY_SERVERS;
-
-    turn_params.general_relay_servers_number = (turnserver_id)turn_params.cpus;
-
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "System cpu num is %lu\n", turn_params.cpus);
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "System enable num is %lu\n", get_system_active_number_of_cpus());
-  }
-
   memset(&turn_params.default_users_db, 0, sizeof(default_users_db_t));
   turn_params.default_users_db.ram_db.static_accounts = ur_string_map_create(free);
   
@@ -2925,7 +2913,7 @@ long service_start(int argc, char **argv) {
 
   struct uoptions uo;
   uo.u.m = long_options;
-
+  optind = 1;
   while (((c = getopt_long(argc, argv, OPTIONS, uo.u.o, NULL)) != -1)) {
     switch (c) {
     case 'l':
@@ -2953,8 +2941,6 @@ long service_start(int argc, char **argv) {
     }
   }
 
-  optind = 1;
-
   init_common(argc, argv);
 
   // Zero pass apply the log options.
@@ -2962,7 +2948,7 @@ long service_start(int argc, char **argv) {
   // First pass read other config options
   read_config_file(argc, argv, 1);
 
-  optind = 0;
+  optind = 1;
   while (((c = getopt_long(argc, argv, OPTIONS, uo.u.o, NULL)) != -1)) {
     if (c != 'u')
       set_option(c, optarg);
@@ -2970,12 +2956,20 @@ long service_start(int argc, char **argv) {
 
   // Second pass read -u options
   read_config_file(argc, argv, 2);
-
+  
   {
-    unsigned long mfn = set_system_parameters(1);
-
-    print_features(mfn);
+    int cpus = get_system_number_of_cpus();
+    if (0 < cpus)
+      turn_params.cpus = get_system_number_of_cpus();
+    if (turn_params.cpus < DEFAULT_CPUS_NUMBER)
+      turn_params.cpus = DEFAULT_CPUS_NUMBER;
+    else if (turn_params.cpus > MAX_NUMBER_OF_GENERAL_RELAY_SERVERS)
+      turn_params.cpus = MAX_NUMBER_OF_GENERAL_RELAY_SERVERS;
+    
+    turn_params.general_relay_servers_number = (turnserver_id)turn_params.cpus;
   }
+  
+  print_features();
 
   if (!get_realm(NULL)->options.name[0]) {
     STRCPY(get_realm(NULL)->options.name, turn_params.domain);
