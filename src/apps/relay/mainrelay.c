@@ -235,8 +235,8 @@ turn_params_t turn_params = {
     0  /* respond_http_unsupported */
 };
 
-// Initial the common of turnadmin and turnserver
-int init_common(int argc, char **argv);
+// Initialize the default values in turnadmin and turnserver
+int init_default_values();
 
 //////////////// OpenSSL Init //////////////////////
 
@@ -263,7 +263,6 @@ static char procgroupname[1025] = "\0";
 
 ////////////// Configuration functionality ////////////////////////////////
 
-static void read_config_file(int argc, char **argv, int pass);
 static void reload_ssl_certs(evutil_socket_t sock, short events, void *args);
 
 static void shutdown_handler(evutil_socket_t sock, short events, void *args);
@@ -1789,7 +1788,15 @@ static int get_bool_value(const char *s) {
   exit(-1);
 }
 
-static void set_option(int c, char *value) {
+/*
+ * \param c
+ * \param value
+ * \return
+ *   - 0: Success
+ *   - < 0: Fail
+ *   - > 0: Exit program
+ */
+static int set_option(int c, char *value) {
   if (value && value[0] == '=') {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
                   "WARNING: option -%c is possibly used incorrectly. The short form of the option must be used as "
@@ -1911,7 +1918,7 @@ static void set_option(int c, char *value) {
     struct passwd *pwd = getpwnam(value);
     if (!pwd) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown user name: %s\n", value);
-      exit(-1);
+      return -1;
     } else {
       procuserid = pwd->pw_uid;
       procuserid_set = 1;
@@ -1922,7 +1929,7 @@ static void set_option(int c, char *value) {
     struct group *gr = getgrnam(value);
     if (!gr) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown group name: %s\n", value);
-      exit(-1);
+      return -1;
     } else {
       procgroupid = gr->gr_gid;
       procgroupid_set = 1;
@@ -2276,22 +2283,40 @@ static void set_option(int c, char *value) {
   case RESPOND_HTTP_UNSUPPORTED_OPT:
     turn_params.respond_http_unsupported = get_bool_value(value);
     break;
-
-  /* these options have been already taken care of before: */
   case 'l':
+    set_logfile(value);
+    break;
   case NO_STDOUT_LOG_OPT:
+    set_no_stdout_log(get_bool_value(value));
+    break;
   case SYSLOG_OPT:
+    set_log_to_syslog(get_bool_value(value));
+    break;
   case SIMPLE_LOG_OPT:
+    set_simple_log(get_bool_value(value));
+    break;
   case NEW_LOG_TIMESTAMP_OPT:
+    use_new_log_timestamp_format = 1;
+    break;
   case NEW_LOG_TIMESTAMP_FORMAT_OPT:
+    set_turn_log_timestamp_format(value);
+    break;
   case SYSLOG_FACILITY_OPT:
+    set_syslog_facility(value);
+    break;
+  /* these options have been already taken care of before: */
   case 'c':
   case 'n':
-  case 'h':
     break;
+  case 'h':
+    printf("\n%s\n", Usage);
+    return 1;
+  case VERSION_OPT:
+    printf("%s\n", TURN_SOFTWARE);
+    return 1;
   default:
     fprintf(stderr, "\n%s\n", Usage);
-    exit(-1);
+    return -1;
   }
 
   if (turn_params.default_users_db.persistent_users_db.userdb[0]) {
@@ -2304,6 +2329,8 @@ static void set_option(int c, char *value) {
     STRCPY(turn_params.redis_statsdb.connection_string_sanitized, connection_string);
     free(connection_string);
   }
+
+  return 0;
 }
 
 static int parse_arg_string(char *sarg, int *c, char **value) {
@@ -2346,106 +2373,69 @@ static int parse_arg_string(char *sarg, int *c, char **value) {
   return -1;
 }
 
-static void read_config_file(int argc, char **argv, int pass) {
-  static char config_file[1025] = DEFAULT_CONFIG_FILE;
+static int read_config_file(char *config_file) {
 
-  if (pass == 0) {
+  if (turn_params.do_not_use_config_file || !config_file || config_file[0] == 0) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Do not use config file. Default and command-line settings will be used.\n");
+    return 0;
+  }
 
-    if (argv) {
-      int i = 0;
-      for (i = 0; i < argc; i++) {
-        if (!strcmp(argv[i], "-c")) {
-          if (i < argc - 1) {
-            STRCPY(config_file, argv[i + 1]);
-          } else {
-            TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Wrong usage of -c option\n");
-          }
-        } else if (!strcmp(argv[i], "-n")) {
-          turn_params.do_not_use_config_file = 1;
-          config_file[0] = 0;
-          return;
-        } else if (!strcmp(argv[i], "-h")) {
-          printf("\n%s\n", Usage);
-          exit(0);
-        } else if (!strcmp(argv[i], "--version")) {
-          printf("%s\n", TURN_SERVER_VERSION);
-          exit(0);
+  FILE *f = NULL;
+  char *full_path_to_config_file = NULL;
+
+  full_path_to_config_file = find_config_file(config_file);
+  if (full_path_to_config_file)
+    f = fopen(full_path_to_config_file, "r");
+
+  if (f) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Use config file: %s.\n", config_file);
+
+    char sbuf[1025];
+    char sarg[1035];
+
+    for (;;) {
+      char *s = fgets(sbuf, sizeof(sbuf) - 1, f);
+      if (!s)
+        break;
+      s = skip_blanks(s);
+      if (s[0] == '#')
+        continue;
+      if (!s[0])
+        continue;
+
+      size_t slen = strlen(s);
+      // strip white-spaces from config file lines end
+      while (slen && isspace(s[slen - 1]))
+        s[--slen] = 0;
+
+      if (slen) {
+        int c = 0;
+        char *value = NULL;
+        STRCPY(sarg, s);
+        if (parse_arg_string(sarg, &c, &value) < 0) {
+          TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Bad configuration format: %s\n", sarg);
+        } else {
+          set_option(c, value);
+        }
+        if (s[slen - 1] == 59) {
+          TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Check config! The following line ends with semicolon: \"%s\" \n", s);
         }
       }
     }
+
+    fclose(f);
+
+  } else {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
+                  "Cannot find config file: %s. Default and command-line settings will be used.\n", config_file);
   }
 
-  if (!turn_params.do_not_use_config_file && config_file[0]) {
-
-    FILE *f = NULL;
-    char *full_path_to_config_file = NULL;
-
-    full_path_to_config_file = find_config_file(config_file, pass);
-    if (full_path_to_config_file)
-      f = fopen(full_path_to_config_file, "r");
-
-    if (f) {
-
-      char sbuf[1025];
-      char sarg[1035];
-
-      for (;;) {
-        char *s = fgets(sbuf, sizeof(sbuf) - 1, f);
-        if (!s)
-          break;
-        s = skip_blanks(s);
-        if (s[0] == '#')
-          continue;
-        if (!s[0])
-          continue;
-        size_t slen = strlen(s);
-
-        // strip white-spaces from config file lines end
-        while (slen && isspace(s[slen - 1]))
-          s[--slen] = 0;
-        if (slen) {
-          int c = 0;
-          char *value = NULL;
-          STRCPY(sarg, s);
-          if (parse_arg_string(sarg, &c, &value) < 0) {
-            TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Bad configuration format: %s\n", sarg);
-          } else if ((pass == 0) && (c == 'l')) {
-            set_logfile(value);
-          } else if ((pass == 0) && (c == NO_STDOUT_LOG_OPT)) {
-            set_no_stdout_log(get_bool_value(value));
-          } else if ((pass == 0) && (c == SYSLOG_OPT)) {
-            set_log_to_syslog(get_bool_value(value));
-          } else if ((pass == 0) && (c == SIMPLE_LOG_OPT)) {
-            set_simple_log(get_bool_value(value));
-          } else if ((pass == 0) && (c == NEW_LOG_TIMESTAMP_OPT)) {
-            use_new_log_timestamp_format = 1;
-          } else if ((pass == 0) && (c == NEW_LOG_TIMESTAMP_FORMAT_OPT)) {
-            set_turn_log_timestamp_format(value);
-          } else if ((pass == 0) && (c == SYSLOG_FACILITY_OPT)) {
-            set_syslog_facility(value);
-          } else if ((pass == 1) && (c != 'u')) {
-            set_option(c, value);
-          } else if ((pass == 2) && (c == 'u')) {
-            set_option(c, value);
-          }
-          if (s[slen - 1] == 59) {
-            TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Check config! The following line ends with semicolon: \"%s\" \n", s);
-          }
-        }
-      }
-
-      fclose(f);
-
-    } else if (pass == 0) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
-                    "Cannot find config file: %s. Default and command-line settings will be used.\n", config_file);
-    }
-
-    if (full_path_to_config_file) {
-      free(full_path_to_config_file);
-      full_path_to_config_file = NULL;
-    }
+  if (full_path_to_config_file) {
+    free(full_path_to_config_file);
+    full_path_to_config_file = NULL;
   }
+
+  return 0;
 }
 
 static int disconnect_database(void) {
@@ -2477,12 +2467,13 @@ static int adminmain(int argc, char **argv) {
   int print_enc_password = 0;
   int print_enc_aes_password = 0;
 
-  c = init_common(argc, argv);
+  c = init_default_values();
   if (c)
     return c;
 
   optind = 1;
   uo.u.m = admin_long_options;
+
   while (((c = getopt_long(argc, argv, ADMIN_OPTIONS, uo.u.o, NULL)) != -1)) {
     switch (c) {
     case 'P':
@@ -2672,7 +2663,7 @@ static int adminmain(int argc, char **argv) {
     fprintf(stderr, "\n%s\n", AdminUsage);
     return -1;
   }
-  
+
   // TODO: The following code is repeated and can be removed?
   argc -= optind;
   argv += optind;
@@ -2681,7 +2672,7 @@ static int adminmain(int argc, char **argv) {
     return -1;
   }
   // TODO: The above code is repeated and can be removed?
-  
+
   int result = adminuser(user, realm, pwd, secret, origin, ct, &po, is_admin);
 
   disconnect_database();
@@ -2690,8 +2681,7 @@ static int adminmain(int argc, char **argv) {
 }
 
 static void print_features() {
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Coturn Version %s\n", TURN_SOFTWARE);
-  
+
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "System cpu num is %lu\n", turn_params.cpus);
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "System enable cpu num is %lu\n", get_system_active_number_of_cpus());
   unsigned long mfn = set_system_parameters(1);
@@ -2707,7 +2697,7 @@ static void print_features() {
                 "Due to the open files/sockets limitation, max supported number of TURN Sessions possible is: %lu "
                 "(approximately)\n",
                 mfn);
-  
+
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "======= Show him the instruments, Practical Frost: =======\n");
 
   /*
@@ -2868,11 +2858,9 @@ static void init_domain(void) {
 }
 
 /*!
- * \brief Initial the common of turnadmin and turnserver
+ * \brief Initialize the default values in turnadmin and turnserver
  */
-int init_common(int argc, char **argv) {
-  int c = 0;
-
+int init_default_values() {
   IS_TURN_SERVER = 1;
 
   TURN_MUTEX_INIT(&turn_params.tls_mutex);
@@ -2904,59 +2892,68 @@ int init_common(int argc, char **argv) {
 
   memset(&turn_params.default_users_db, 0, sizeof(default_users_db_t));
   turn_params.default_users_db.ram_db.static_accounts = ur_string_map_create(free);
-  
+
   return 0;
 }
 
 long service_start(int argc, char **argv) {
   int c = 0;
+  int nRet = 0;
+  struct uoptions uo = {long_options};
+  char config_file[1025] = DEFAULT_CONFIG_FILE;
 
-  struct uoptions uo;
-  uo.u.m = long_options;
-  optind = 1;
+  // The configuration file and log parameters in the command line must be processed first
   while (((c = getopt_long(argc, argv, OPTIONS, uo.u.o, NULL)) != -1)) {
     switch (c) {
     case 'l':
-      set_logfile(optarg);
-      break;
     case NO_STDOUT_LOG_OPT:
-      set_no_stdout_log(get_bool_value(optarg));
-      break;
     case SYSLOG_OPT:
-      set_log_to_syslog(get_bool_value(optarg));
-      break;
     case SIMPLE_LOG_OPT:
-      set_simple_log(get_bool_value(optarg));
-      break;
     case NEW_LOG_TIMESTAMP_OPT:
-      use_new_log_timestamp_format = 1;
-      break;
     case NEW_LOG_TIMESTAMP_FORMAT_OPT:
-      set_turn_log_timestamp_format(optarg);
-      break;
     case SYSLOG_FACILITY_OPT:
-      set_syslog_facility(optarg);
+      nRet = set_option(c, optarg);
+      if (nRet)
+        return nRet;
       break;
+    case 'c':
+      if (optarg)
+        STRCPY(config_file, optarg);
+      else
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Wrong usage of -c option\n");
+      break;
+    case 'n':
+      turn_params.do_not_use_config_file = 1;
+      config_file[0] = 0;
+      break;
+    case VERSION_OPT:
+      printf("%s\n", TURN_SOFTWARE);
+      return 0;
     default:;
     }
   }
 
-  init_common(argc, argv);
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Coturn Version %s\n", TURN_SOFTWARE);
 
-  // Zero pass apply the log options.
-  read_config_file(argc, argv, 0);
-  // First pass read other config options
-  read_config_file(argc, argv, 1);
+  nRet = init_default_values();
+  if (nRet)
+    return nRet;
 
+  nRet = read_config_file(config_file);
+  if (nRet)
+    return nRet;
+
+  // Process the parameters in the command line
   optind = 1;
   while (((c = getopt_long(argc, argv, OPTIONS, uo.u.o, NULL)) != -1)) {
-    if (c != 'u')
-      set_option(c, optarg);
+    nRet = set_option(c, optarg);
+    if (nRet) {
+      if (nRet > 0)
+        nRet = 0;
+      return nRet;
+    }
   }
 
-  // Second pass read -u options
-  read_config_file(argc, argv, 2);
-  
   {
     int cpus = get_system_number_of_cpus();
     if (0 < cpus)
@@ -2965,10 +2962,10 @@ long service_start(int argc, char **argv) {
       turn_params.cpus = DEFAULT_CPUS_NUMBER;
     else if (turn_params.cpus > MAX_NUMBER_OF_GENERAL_RELAY_SERVERS)
       turn_params.cpus = MAX_NUMBER_OF_GENERAL_RELAY_SERVERS;
-    
+
     turn_params.general_relay_servers_number = (turnserver_id)turn_params.cpus;
   }
-  
+
   print_features();
 
   if (!get_realm(NULL)->options.name[0]) {
@@ -2983,13 +2980,6 @@ long service_start(int argc, char **argv) {
   }
   if (turn_params.oauth && turn_params.oauth_server_name[0]) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "oAuth server name: %s\n", turn_params.oauth_server_name);
-  }
-
-  optind = 1;
-  while (((c = getopt_long(argc, argv, OPTIONS, uo.u.o, NULL)) != -1)) {
-    if (c == 'u') {
-      set_option(c, optarg);
-    }
   }
 
   if (turn_params.bps_capacity && !(turn_params.max_bps)) {
@@ -3022,12 +3012,14 @@ long service_start(int argc, char **argv) {
     strncpy(turn_params.default_users_db.persistent_users_db.userdb, DEFAULT_USERDB_FILE, TURN_LONG_STRING_SIZE);
 #endif
 
+  // TODO：The following code is repeated and can be removed?
   argc -= optind;
   argv += optind;
 
   if (argc > 0) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "CONFIG: Unknown argument: %s\n", argv[argc - 1]);
   }
+  // TODO: The above code is repeated and can be removed ?
 
   if (use_lt_credentials && anon_credentials) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "CONFIG: -a and -z options cannot be used together.\n");
@@ -3160,8 +3152,9 @@ long service_start(int argc, char **argv) {
     }
   }
 
-  if (socket_init())
-    return -1;
+  nRet = socket_init();
+  if(nRet)
+    return nRet;
 
   return 0;
 }
@@ -3239,19 +3232,18 @@ int main(int argc, char **argv) {
   nRet = service_start(argc, argv);
   if (nRet)
     return nRet;
-  
+
   if (turn_params.turn_daemon) {
 #if defined(WINDOWS)
 
     /*
     // TODO: Use windows service See: https://github.com/coturn/coturn/pull/1300
-    // TODO: implement deamon!!! use windows server
     ServiceRun("coturn", service_start, service_run, shutdown_handler);
     return 0;
     */
 
 #else
-    
+
 #if !defined(TURN_HAS_DAEMON)
     pid_t pid = fork();
     if (pid > 0)
@@ -3346,7 +3338,7 @@ static void adjust_key_file_name(char *fn, const char *file_title, int critical)
     goto keyerr;
   } else {
 
-    full_path_to_file = find_config_file(fn, 1);
+    full_path_to_file = find_config_file(fn);
     {
       FILE *f = full_path_to_file ? fopen(full_path_to_file, "r") : NULL;
       if (!f) {

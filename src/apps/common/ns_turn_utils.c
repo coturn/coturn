@@ -385,7 +385,7 @@ static void set_rtpfile(void) {
         set_log_file_name(log_fn_base, log_fn);
         _rtpfile = fopen(log_fn, "a");
         if (_rtpfile)
-          TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "log file opened: %s\n", log_fn);
+          TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Log file opened: %s\n", log_fn);
       }
       if (!_rtpfile) {
         fprintf(stderr, "ERROR: Cannot open log file for writing: %s\n", log_fn);
@@ -413,7 +413,7 @@ static void set_rtpfile(void) {
 
     _rtpfile = fopen(logf, "a");
     if (_rtpfile)
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "log file opened: %s\n", logf);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Log file opened: %s\n", logf);
     else {
       if (snprintf(logbase, FILE_STR_LEN, "/var/log/%s", logtail) < 0)
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "String truncation occured.\n");
@@ -421,7 +421,7 @@ static void set_rtpfile(void) {
       set_log_file_name(logbase, logf);
       _rtpfile = fopen(logf, "a");
       if (_rtpfile)
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "log file opened: %s\n", logf);
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Log file opened: %s\n", logf);
       else {
         if (snprintf(logbase, FILE_STR_LEN, "/var/tmp/%s", logtail) < 0)
           TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "String truncation occured.\n");
@@ -429,20 +429,20 @@ static void set_rtpfile(void) {
         set_log_file_name(logbase, logf);
         _rtpfile = fopen(logf, "a");
         if (_rtpfile)
-          TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "log file opened: %s\n", logf);
+          TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Log file opened: %s\n", logf);
         else {
           if (snprintf(logbase, FILE_STR_LEN, "/tmp/%s", logtail) < 0)
             TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "String truncation occured.\n");
           set_log_file_name(logbase, logf);
           _rtpfile = fopen(logf, "a");
           if (_rtpfile)
-            TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "log file opened: %s\n", logf);
+            TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Log file opened: %s\n", logf);
           else {
             snprintf(logbase, FILE_STR_LEN, "%s", logtail);
             set_log_file_name(logbase, logf);
             _rtpfile = fopen(logf, "a");
             if (_rtpfile)
-              TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "log file opened: %s\n", logf);
+              TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Log file opened: %s\n", logf);
             else {
               _rtpfile = stdout;
               return;
@@ -494,7 +494,7 @@ void rollover_logfile(void) {
       _rtpfile = fopen(logf, "w");
       if (_rtpfile) {
         STRCPY(log_fn, logf);
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "log file opened: %s\n", log_fn);
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Log file opened: %s\n", log_fn);
       } else {
         _rtpfile = stdout;
       }
