@@ -1094,73 +1094,85 @@ void print_abs_file_name(const char *msg1, const char *msg2, const char *fn) {
 }
 
 char *find_config_file(const char *config_file) {
-  char *full_path_to_config_file = NULL;
+  
+  if (!(config_file && config_file[0]))
+    return NULL;
 
-  if (config_file && config_file[0]) {
-    if ((config_file[0] == '/') || (config_file[0] == '~')) {
-      FILE *f = fopen(config_file, "r");
-      if (f) {
-        fclose(f);
-        full_path_to_config_file = strdup(config_file);
-      }
-    } else {
-      int i = 0;
-      size_t cflen = strlen(config_file);
-
-      while (config_file_search_dirs[i]) {
-        size_t dirlen = strlen(config_file_search_dirs[i]);
-        size_t fnsz = sizeof(char) * (dirlen + cflen + 10);
-        char *fn = (char *)malloc(fnsz + 1);
-        strncpy(fn, config_file_search_dirs[i], fnsz);
-        strncpy(fn + dirlen, config_file, fnsz - dirlen);
-        fn[fnsz] = 0;
-        FILE *f = fopen(fn, "r");
-        if (f) {
-          fclose(f);
-          full_path_to_config_file = fn;
-          break;
-        }
-        free(fn);
-        if (config_file_search_dirs[i][0] != '/' && config_file_search_dirs[i][0] != '.' && c_execdir && c_execdir[0]) {
-          size_t celen = strlen(c_execdir);
-          fnsz = sizeof(char) * (dirlen + cflen + celen + 10);
-          fn = (char *)malloc(fnsz + 1);
-          strncpy(fn, c_execdir, fnsz);
-          size_t fnlen = strlen(fn);
-          if (fnlen < fnsz) {
-            strncpy(fn + fnlen, "/", fnsz - fnlen);
-            fnlen = strlen(fn);
-            if (fnlen < fnsz) {
-              strncpy(fn + fnlen, config_file_search_dirs[i], fnsz - fnlen);
-              fnlen = strlen(fn);
-              if (fnlen < fnsz) {
-                strncpy(fn + fnlen, config_file, fnsz - fnlen);
-              }
-            }
-          }
-          fn[fnsz] = 0;
-          if (strstr(fn, "//") != fn) {
-            f = fopen(fn, "r");
-            if (f) {
-              fclose(f);
-              full_path_to_config_file = fn;
-              break;
-            }
-          }
-          free(fn);
-        }
-        ++i;
-      }
-    }
-
-    if (!full_path_to_config_file) {
-      if (strstr(config_file, "etc/") == config_file) {
-        return find_config_file(config_file + 4);
-      }
+#if defined(WINDOWS)
+  FILE *f = fopen(config_file, "r");
+  if (f) {
+    fclose(f);
+    return strdup(config_file);
+  }
+#else
+  if ((config_file[0] == '/') || (config_file[0] == '~')) {
+    FILE *f = fopen(config_file, "r");
+    if (f) {
+      fclose(f);
+      return strdup(config_file);
     }
   }
+#endif
 
-  return full_path_to_config_file;
+  int i = 0;
+  size_t cflen = strlen(config_file);
+
+  while (config_file_search_dirs[i]) {
+    size_t dirlen = strlen(config_file_search_dirs[i]);
+    size_t fnsz = sizeof(char) * (dirlen + cflen + 10);
+    char *fn = (char *)malloc(fnsz + 1);
+    strncpy(fn, config_file_search_dirs[i], fnsz);
+    strncpy(fn + dirlen, config_file, fnsz - dirlen);
+    fn[fnsz] = 0;
+    FILE *f = fopen(fn, "r");
+    if (f) {
+      fclose(f);
+      return fn;
+    }
+    free(fn);
+
+    if (config_file_search_dirs[i][0] != '/' && config_file_search_dirs[i][0] != '~' && c_execdir && c_execdir[0]) {
+      size_t celen = strlen(c_execdir);
+      fnsz = sizeof(char) * (dirlen + cflen + celen + 10);
+      fn = (char *)malloc(fnsz + 1);
+      strncpy(fn, c_execdir, fnsz);
+      if ('/' == fn[celen - 1]
+#if defined(WINDOWS)
+          || '\\' == fn[celen - 1]
+#endif
+      ) {
+        fn[celen - 1] = 0;
+      }
+      size_t fnlen = strlen(fn);
+      if (fnlen < fnsz) {
+        strncpy(fn + fnlen, "/", fnsz - fnlen);
+        fnlen = strlen(fn);
+        if (fnlen < fnsz) {
+          strncpy(fn + fnlen, config_file_search_dirs[i], fnsz - fnlen);
+          fnlen = strlen(fn);
+          if (fnlen < fnsz) {
+            strncpy(fn + fnlen, config_file, fnsz - fnlen);
+          }
+        }
+      }
+      fn[fnsz] = 0;
+      if (strstr(fn, "//") != fn) {
+        f = fopen(fn, "r");
+        if (f) {
+          fclose(f);
+          return fn;
+        }
+      }
+      free(fn);
+    }
+    ++i;
+  }
+
+  if (strstr(config_file, "etc/") == config_file) {
+    return find_config_file(config_file + 4);
+  }
+
+  return NULL;
 }
 
 /////////////////// SYS SETTINGS ///////////////////////

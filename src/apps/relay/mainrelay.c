@@ -2388,7 +2388,7 @@ static int read_config_file(char *config_file) {
     f = fopen(full_path_to_config_file, "r");
 
   if (f) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Use config file: %s.\n", config_file);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Use config file: %s.\n", full_path_to_config_file);
 
     char sbuf[1025];
     char sarg[1035];
