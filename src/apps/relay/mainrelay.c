@@ -238,17 +238,6 @@ turn_params_t turn_params = {
 // Initialize the default values in turnadmin and turnserver
 int init_default_values();
 
-//////////////// OpenSSL Init //////////////////////
-
-static void openssl_setup(void);
-
-/*
- * openssl genrsa -out pkey 2048
- * openssl req -new -key pkey -out cert.req
- * openssl x509 -req -days 365 -in cert.req -signkey pkey -out cert
- *
- */
-
 //////////// Common static process params ////////
 #if defined(WINDOWS)
 // TODO: implement it!!!
@@ -260,10 +249,6 @@ static uid_t procuserid_set = 0;
 static char procusername[1025] = "\0";
 static char procgroupname[1025] = "\0";
 #endif
-
-////////////// Configuration functionality ////////////////////////////////
-
-static void reload_ssl_certs(evutil_socket_t sock, short events, void *args);
 
 static void shutdown_handler(evutil_socket_t sock, short events, void *args);
 
@@ -1788,7 +1773,7 @@ static int get_bool_value(const char *s) {
   exit(-1);
 }
 
-/*
+/**
  * \param c
  * \param value
  * \return
@@ -2680,111 +2665,6 @@ static int adminmain(int argc, char **argv) {
   return result;
 }
 
-static void print_features() {
-
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "System cpu num is %lu\n", turn_params.cpus);
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "System enable cpu num is %lu\n", get_system_active_number_of_cpus());
-  unsigned long mfn = set_system_parameters(1);
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "System max number of open files/sockets allowed for this process: %lu\n", mfn);
-  if (turn_params.net_engine_version == NEV_UDP_SOCKET_PER_ENDPOINT)
-    mfn = mfn / 3;
-  else
-    mfn = mfn / 2;
-  mfn = ((unsigned long)(mfn / 500)) * 500;
-  if (mfn < 500)
-    mfn = 500;
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-                "Due to the open files/sockets limitation, max supported number of TURN Sessions possible is: %lu "
-                "(approximately)\n",
-                mfn);
-
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "======= Show him the instruments, Practical Frost: =======\n");
-
-  /*
-     Frost stepped forward and opened the polished case with a theatrical
-     flourish. It was a masterful piece of craftsmanship. As the lid was
-     pulled back, the many trays inside lifted and fanned out, displaying
-     Glokta’s tools in all their gruesome glory. There were blades of every
-     size and shape, needles curved and straight, bottles of oil and acid,
-     nails and screws, clamps and pliers, saws, hammers, chisels. Metal, wood
-     and glass glittered in the bright lamplight, all polished to mirror
-     brightness and honed to a murderous sharpness.
-     */
-
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "OpenSSL compile-time version: %s (0x%lx)\n", OPENSSL_VERSION_TEXT,
-                OPENSSL_VERSION_NUMBER);
-
-#if !TLS_SUPPORTED
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS is not supported\n");
-#elif TLSv1_3_SUPPORTED
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS 1.3 supported\n");
-#elif TLSv1_2_SUPPORTED
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS 1.2 supported\n");
-#elif TLSv1_1_SUPPORTED
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS 1.1 supported\n");
-#elif TLSv1_SUPPORTED
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS 1.0 supported\n");
-#endif
-
-#if !DTLS_SUPPORTED
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS is not supported\n");
-#elif DTLSv1_2_SUPPORTED
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS 1.2 supported\n");
-#elif DTLS_SUPPORTED
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS supported\n");
-#endif
-
-#if ALPN_SUPPORTED
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TURN/STUN ALPN supported\n");
-#else
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TURN/STUN ALPN is not supported\n");
-#endif
-
-  if (ENC_ALG_NUM == 0) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Third-party authorization (oAuth) is not supported\n");
-  } else {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Third-party authorization (oAuth) supported\n");
-#if defined(TURN_NO_GCM)
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "GCM (AEAD) is not supported\n");
-#else
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "GCM (AEAD) supported\n");
-#endif
-  }
-
-#if !defined(TURN_NO_SQLITE)
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "SQLite supported, default database location is %s\n", DEFAULT_USERDB_FILE);
-#else
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "SQLite is not supported\n");
-#endif
-
-#if !defined(TURN_NO_HIREDIS)
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Redis supported\n");
-#else
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Redis is not supported\n");
-#endif
-
-#if !defined(TURN_NO_PQ)
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "PostgreSQL supported\n");
-#else
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "PostgreSQL is not supported\n");
-#endif
-
-#if !defined(TURN_NO_MYSQL)
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "MySQL supported\n");
-#else
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "MySQL is not supported\n");
-#endif
-
-#if !defined(TURN_NO_MONGO)
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "MongoDB supported\n");
-#else
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "MongoDB is not supported\n");
-#endif
-
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Default Net Engine version: %d (%s)\n", (int)turn_params.net_engine_version,
-                turn_params.net_engine_version_txt[(int)turn_params.net_engine_version]);
-}
-
 #if defined(__linux__) || defined(__LINUX__) || defined(__linux) || defined(linux__) || defined(LINUX) ||              \
     defined(__LINUX) || defined(LINUX__)
 #include <linux/version.h>
@@ -2857,418 +2737,75 @@ static void init_domain(void) {
 #endif
 }
 
-/*!
- * \brief Initialize the default values in turnadmin and turnserver
- */
-int init_default_values() {
-  IS_TURN_SERVER = 1;
+void process_system() {
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "=========== System =========\n");
 
-  TURN_MUTEX_INIT(&turn_params.tls_mutex);
+  int cpus = get_system_number_of_cpus();
+  if (0 < cpus)
+    turn_params.cpus = get_system_number_of_cpus();
+  if (turn_params.cpus < DEFAULT_CPUS_NUMBER)
+    turn_params.cpus = DEFAULT_CPUS_NUMBER;
+  else if (turn_params.cpus > MAX_NUMBER_OF_GENERAL_RELAY_SERVERS)
+    turn_params.cpus = MAX_NUMBER_OF_GENERAL_RELAY_SERVERS;
 
-  set_execdir();
+  turn_params.general_relay_servers_number = (turnserver_id)turn_params.cpus;
 
-  init_super_memory();
-
-  init_domain();
-  create_default_realm();
-
-  init_turn_server_addrs_list(&turn_params.alternate_servers_list);
-  init_turn_server_addrs_list(&turn_params.tls_alternate_servers_list);
-  init_turn_server_addrs_list(&turn_params.aux_servers_list);
-
-  set_network_engine();
-
-  init_listener();
-  init_secrets_list(&turn_params.default_users_db.ram_db.static_auth_secrets);
-  init_dynamic_ip_lists();
-
-#if !TLS_SUPPORTED
-  turn_params.no_tls = 1;
-#endif
-
-#if !DTLS_SUPPORTED
-  turn_params.no_dtls = 1;
-#endif
-
-  memset(&turn_params.default_users_db, 0, sizeof(default_users_db_t));
-  turn_params.default_users_db.ram_db.static_accounts = ur_string_map_create(free);
-
-  return 0;
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "System cpu num is %lu\n", turn_params.cpus);
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "System enable cpu num is %lu\n", get_system_active_number_of_cpus());
+  unsigned long mfn = set_system_parameters(1);
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "System max number of open files/sockets allowed for this process: %lu\n", mfn);
+  if (turn_params.net_engine_version == NEV_UDP_SOCKET_PER_ENDPOINT)
+    mfn = mfn / 3;
+  else
+    mfn = mfn / 2;
+  mfn = ((unsigned long)(mfn / 500)) * 500;
+  if (mfn < 500)
+    mfn = 500;
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+                "Due to the open files/sockets limitation, max supported number of TURN Sessions possible is: %lu "
+                "(approximately)\n",
+                mfn);
 }
 
-long service_start(int argc, char **argv) {
-  int c = 0;
-  int nRet = 0;
-  struct uoptions uo = {long_options};
-  char config_file[1025] = DEFAULT_CONFIG_FILE;
-
-  // The configuration file and log parameters in the command line must be processed first
-  while (((c = getopt_long(argc, argv, OPTIONS, uo.u.o, NULL)) != -1)) {
-    switch (c) {
-    case 'l':
-    case NO_STDOUT_LOG_OPT:
-    case SYSLOG_OPT:
-    case SIMPLE_LOG_OPT:
-    case NEW_LOG_TIMESTAMP_OPT:
-    case NEW_LOG_TIMESTAMP_FORMAT_OPT:
-    case SYSLOG_FACILITY_OPT:
-      nRet = set_option(c, optarg);
-      if (nRet)
-        return nRet;
-      break;
-    case 'c':
-      if (optarg)
-        STRCPY(config_file, optarg);
-      else
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Wrong usage of -c option\n");
-      break;
-    case 'n':
-      turn_params.do_not_use_config_file = 1;
-      config_file[0] = 0;
-      break;
-    case VERSION_OPT:
-      printf("%s\n", TURN_SOFTWARE);
-      return 0;
-    default:;
-    }
-  }
-
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Coturn Version %s\n", TURN_SOFTWARE);
-
-  nRet = init_default_values();
-  if (nRet)
-    return nRet;
-
-  nRet = read_config_file(config_file);
-  if (nRet)
-    return nRet;
-
-  // Process the parameters in the command line
-  optind = 1;
-  while (((c = getopt_long(argc, argv, OPTIONS, uo.u.o, NULL)) != -1)) {
-    nRet = set_option(c, optarg);
-    if (nRet) {
-      if (nRet > 0)
-        nRet = 0;
-      return nRet;
-    }
-  }
-
-  {
-    int cpus = get_system_number_of_cpus();
-    if (0 < cpus)
-      turn_params.cpus = get_system_number_of_cpus();
-    if (turn_params.cpus < DEFAULT_CPUS_NUMBER)
-      turn_params.cpus = DEFAULT_CPUS_NUMBER;
-    else if (turn_params.cpus > MAX_NUMBER_OF_GENERAL_RELAY_SERVERS)
-      turn_params.cpus = MAX_NUMBER_OF_GENERAL_RELAY_SERVERS;
-
-    turn_params.general_relay_servers_number = (turnserver_id)turn_params.cpus;
-  }
-
-  print_features();
-
-  if (!get_realm(NULL)->options.name[0]) {
-    STRCPY(get_realm(NULL)->options.name, turn_params.domain);
-  }
-
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Domain name: %s\n", turn_params.domain);
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Default realm: %s\n", get_realm(NULL)->options.name);
-
-  if (turn_params.acme_redirect[0]) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "ACME redirect URL: %s\n", turn_params.acme_redirect);
-  }
-  if (turn_params.oauth && turn_params.oauth_server_name[0]) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "oAuth server name: %s\n", turn_params.oauth_server_name);
-  }
-
-  if (turn_params.bps_capacity && !(turn_params.max_bps)) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
-                  "\nCONFIG ERROR: If you set the --bps-capacity option, then you must set --max-bps options, too.\n");
-    return -1;
-  }
-
-  if (turn_params.no_udp_relay && turn_params.no_tcp_relay) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
-                  "\nCONFIG ERROR: --no-udp-relay and --no-tcp-relay options cannot be used together.\n");
-    return -1;
-  }
-
-  if (turn_params.no_udp_relay) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "CONFIG: --no-udp-relay: UDP relay endpoints are not allowed.\n");
-  }
-
-  if (turn_params.no_tcp_relay) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "CONFIG: --no-tcp-relay: TCP relay endpoints are not allowed.\n");
-  }
-
-  if (turn_params.server_relay) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "CONFIG: WARNING: --server-relay: NON-STANDARD AND DANGEROUS OPTION.\n");
-  }
+void process_database() {
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "=========== Database =========\n");
 
 #if !defined(TURN_NO_SQLITE)
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "SQLite supported, default database location is %s\n", DEFAULT_USERDB_FILE);
   if (!strlen(turn_params.default_users_db.persistent_users_db.userdb) &&
       (turn_params.default_users_db.userdb_type == TURN_USERDB_TYPE_SQLITE))
     strncpy(turn_params.default_users_db.persistent_users_db.userdb, DEFAULT_USERDB_FILE, TURN_LONG_STRING_SIZE);
-#endif
-
-  // TODO：The following code is repeated and can be removed?
-  argc -= optind;
-  argv += optind;
-
-  if (argc > 0) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "CONFIG: Unknown argument: %s\n", argv[argc - 1]);
-  }
-  // TODO: The above code is repeated and can be removed ?
-
-  if (use_lt_credentials && anon_credentials) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "CONFIG: -a and -z options cannot be used together.\n");
-    return -1;
-  }
-
-  if (use_ltc && use_tltc) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
-                  "CONFIG: You specified --lt-cred-mech and --use-auth-secret in the same time.\n"
-                  "Be aware that you could not mix the username/password and the shared secret based auth methods. \n"
-                  "Shared secret overrides username/password based auth method. Check your configuration!\n");
-  }
-
-  if (turn_params.allow_loopback_peers) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
-                  "CONFIG: allow_loopback_peers opens a possible security vulnerability. Do not use in production!!\n");
-    if (cli_password[0] == 0 && use_cli) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
-                    "CONFIG: allow_loopback_peers and empty cli password cannot be used together.\n");
-      return -1;
-    }
-  }
-
-  if (use_cli && cli_password[0] == 0) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "CONFIG: Empty cli-password, and so telnet cli interface is disabled! "
-                                        "Please set a non empty cli-password!\n");
-    use_cli = 0;
-  }
-
-  if (!use_lt_credentials && !anon_credentials) {
-    if (turn_params.default_users_db.ram_db.users_number) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
-                    "CONFIG: you specified long-term user accounts, (-u option) \n	but you did "
-                    "not specify the long-term credentials option\n	(-a or --lt-cred-mech option).\n 	I am "
-                    "turning --lt-cred-mech ON for you, but double-check your configuration.\n");
-      turn_params.ct = TURN_CREDENTIALS_LONG_TERM;
-      use_lt_credentials = 1;
-    } else {
-      turn_params.ct = TURN_CREDENTIALS_NONE;
-      use_lt_credentials = 0;
-    }
-  }
-
-  if (use_lt_credentials) {
-    if (!get_realm(NULL)->options.name[0]) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
-                    "CONFIG: you did specify the long-term credentials usage\n but you did not specify "
-                    "the default realm option (-r option).\n		Check your configuration.\n");
-    }
-  }
-
-  if (anon_credentials) {
-    if (turn_params.default_users_db.ram_db.users_number) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
-                    "CONFIG: you specified user accounts, (-u option)	but you also specified the "
-                    "anonymous user access option (-z or --no-auth option).	User accounts will be ignored.\n");
-      turn_params.ct = TURN_CREDENTIALS_NONE;
-      use_lt_credentials = 0;
-    }
-  }
-
-  if (use_web_admin && turn_params.no_tls) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "CONFIG: WARNING: web-admin support not compatible witn --no-tls option.\n");
-    use_web_admin = 0;
-  }
-
-  openssl_setup();
-
-  int local_listeners = 0;
-  if (!turn_params.listener.addrs_number) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "NO EXPLICIT LISTENER ADDRESS(ES) ARE CONFIGURED\n");
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "===========Discovering listener addresses: =========\n");
-    int maddrs = make_local_listeners_list();
-    if ((maddrs < 1) || !turn_params.listener.addrs_number) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Cannot configure any meaningful IP listener address\n", __FUNCTION__);
-      fprintf(stderr, "\n%s\n", Usage);
-      return -1;
-    }
-    local_listeners = 1;
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "=====================================================\n");
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total: %d 'real' addresses discovered\n", maddrs);
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "=====================================================\n");
-  }
-
-  if (!turn_params.relays_number) {
-    if (!local_listeners && turn_params.listener.addrs_number && turn_params.listener.addrs) {
-      size_t la = 0;
-      for (la = 0; la < turn_params.listener.addrs_number; la++) {
-        if (turn_params.listener.addrs[la]) {
-          add_relay_addr(turn_params.listener.addrs[la]);
-        }
-      }
-    }
-    if (!turn_params.relays_number) {
-      turn_params.default_relays = 1;
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "NO EXPLICIT RELAY ADDRESS(ES) ARE CONFIGURED\n");
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "===========Discovering relay addresses: =============\n");
-      if (make_local_relays_list(0, AF_INET) < 1) {
-        make_local_relays_list(1, AF_INET);
-      }
-      if (make_local_relays_list(0, AF_INET6) < 1) {
-        make_local_relays_list(1, AF_INET6);
-      }
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "=====================================================\n");
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total: %d relay addresses discovered\n", (int)turn_params.relays_number);
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "=====================================================\n");
-    }
-
-    if (!turn_params.relays_number) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: You must specify the relay address(es)\n", __FUNCTION__);
-      fprintf(stderr, "\n%s\n", Usage);
-      return -1;
-    }
-  }
-
-  if (turn_params.external_ip && turn_params.relay_addrs) {
-    size_t ir = 0;
-    for (ir = 0; ir < turn_params.relays_number; ++ir) {
-      if (turn_params.relay_addrs[ir]) {
-        const char *sra = (const char *)turn_params.relay_addrs[ir];
-        if ((strstr(sra, "127.0.0.1") != sra) && (strstr(sra, "::1") != sra)) {
-          ioa_addr ra;
-          if (make_ioa_addr((const uint8_t *)sra, 0, &ra) < 0) {
-            TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "-X : Wrong address format: %s\n", sra);
-          } else if (ra.ss.sa_family == turn_params.external_ip->ss.sa_family) {
-            ioa_addr_add_mapping(turn_params.external_ip, &ra);
-          }
-        }
-      }
-    }
-  }
-
-  nRet = socket_init();
-  if(nRet)
-    return nRet;
-
-  return 0;
-}
-
-long service_run() {
-
-#if !defined(WINDOWS)
-  if (turn_params.pidfile[0]) {
-
-    char s[2049];
-    FILE *f = fopen(turn_params.pidfile, "w");
-    if (f) {
-      STRCPY(s, turn_params.pidfile);
-    } else {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Cannot create pid file: %s\n", turn_params.pidfile);
-
-      {
-        const char *pfs[] = {"/var/run/turnserver.pid",
-                             "/var/spool/turnserver.pid",
-                             "/var/turnserver.pid",
-                             "/var/tmp/turnserver.pid",
-                             "/tmp/turnserver.pid",
-                             "turnserver.pid",
-                             NULL};
-        const char **ppfs = pfs;
-        while (*ppfs) {
-          f = fopen(*ppfs, "w");
-          if (f) {
-            STRCPY(s, *ppfs);
-            break;
-          } else {
-            ++ppfs;
-          }
-        }
-      }
-    }
-
-    if (f) {
-      fprintf(f, "%lu\n", (unsigned long)getpid());
-      fclose(f);
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "pid file created: %s\n", s);
-    }
-  }
-#endif
-
-  setup_server();
-
-#if !defined(WINDOWS)
-  struct event *ev = evsignal_new(turn_params.listener.event_base, SIGUSR2, reload_ssl_certs, NULL);
-  event_add(ev, NULL);
-
-  ev = evsignal_new(turn_params.listener.event_base, SIGTERM, shutdown_handler, NULL);
-  event_add(ev, NULL);
-  ev = evsignal_new(turn_params.listener.event_base, SIGINT, shutdown_handler, NULL);
-  event_add(ev, NULL);
-#endif
-
-  drop_privileges();
-
-  start_prometheus_server();
-
-  run_listener_server(&(turn_params.listener));
-
-  disconnect_database();
-
-  return 0;
-}
-
-int main(int argc, char **argv) {
-  int nRet = 0;
-
-  if (strstr(argv[0], "turnadmin"))
-    return adminmain(argc, argv);
-
-  nRet = service_start(argc, argv);
-  if (nRet)
-    return nRet;
-
-  if (turn_params.turn_daemon) {
-#if defined(WINDOWS)
-
-    /*
-    // TODO: Use windows service See: https://github.com/coturn/coturn/pull/1300
-    ServiceRun("coturn", service_start, service_run, shutdown_handler);
-    return 0;
-    */
 
 #else
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "SQLite is not supported\n");
+#endif
 
-#if !defined(TURN_HAS_DAEMON)
-    pid_t pid = fork();
-    if (pid > 0)
-      exit(0);
-    if (pid < 0) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot start daemon process\n");
-      exit(-1);
-    }
+#if !defined(TURN_NO_HIREDIS)
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Redis supported\n");
 #else
-    if (daemon(1, 0) < 0) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot start daemon process\n");
-      exit(-1);
-    }
-    reset_rtpprintf();
-#endif // #if !defined(TURN_HAS_DAEMON)
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Redis is not supported\n");
+#endif
 
-#endif // #if defined(WINDOWS)
-  }
+#if !defined(TURN_NO_PQ)
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "PostgreSQL supported\n");
+#else
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "PostgreSQL is not supported\n");
+#endif
 
-  nRet = service_run();
+#if !defined(TURN_NO_MYSQL)
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "MySQL supported\n");
+#else
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "MySQL is not supported\n");
+#endif
 
-  return nRet;
+#if !defined(TURN_NO_MONGO)
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "MongoDB supported\n");
+#else
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "MongoDB is not supported\n");
+#endif
 }
 
-////////// OpenSSL locking ////////////////////////////////////////
+////////////// OpenSSL locking //////////////
 
 #if defined(OPENSSL_THREADS)
 #if OPENSSL_VERSION_NUMBER < OPENSSL_VERSION_1_1_0
@@ -3289,7 +2826,6 @@ void coturn_locking_function(int mode, int n, const char *file, int line) {
   }
 }
 
-void coturn_id_function(CRYPTO_THREADID *ctid);
 void coturn_id_function(CRYPTO_THREADID *ctid) {
   UNUSED_ARG(ctid);
   CRYPTO_THREADID_set_numeric(ctid, (unsigned long)pthread_self());
@@ -3325,7 +2861,6 @@ int THREAD_cleanup(void) {
 #else
 static int THREAD_setup(void) { return 1; }
 
-int THREAD_cleanup(void);
 int THREAD_cleanup(void) { return 1; }
 #endif /* OPENSSL_VERSION_NUMBER < OPENSSL_VERSION_1_1_0 */
 #endif /* defined(OPENSSL_THREADS) */
@@ -3756,7 +3291,37 @@ static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *metho
 }
 
 static void openssl_load_certificates(void);
+/*
+ * openssl genrsa -out pkey 2048
+ * openssl req -new -key pkey -out cert.req
+ * openssl x509 -req -days 365 -in cert.req -signkey pkey -out cert
+ *
+ */
 static void openssl_setup(void) {
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "=========== Openssl =========\n");
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "OpenSSL compile-time version: %s (0x%lx)\n", OPENSSL_VERSION_TEXT,
+                OPENSSL_VERSION_NUMBER);
+
+#if !TLS_SUPPORTED
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS is not supported\n");
+#elif TLSv1_3_SUPPORTED
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS 1.3 supported\n");
+#elif TLSv1_2_SUPPORTED
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS 1.2 supported\n");
+#elif TLSv1_1_SUPPORTED
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS 1.1 supported\n");
+#elif TLSv1_SUPPORTED
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS 1.0 supported\n");
+#endif
+
+#if !DTLS_SUPPORTED
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS is not supported\n");
+#elif DTLSv1_2_SUPPORTED
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS 1.2 supported\n");
+#elif DTLS_SUPPORTED
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS supported\n");
+#endif
+
   THREAD_setup();
   SSL_load_error_strings();
   OpenSSL_add_ssl_algorithms();
@@ -3787,6 +3352,11 @@ static void openssl_setup(void) {
   }
 
   openssl_load_certificates();
+  
+  if(turn_params.verbose)
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "no_tls:%d\tno_tlsv1:%d\tno_tlsv1_1:%d\tno_tlsv1_2:%d\tno_dtls:%d\n",
+                  turn_params.no_tls, turn_params.no_tlsv1, turn_params.no_tlsv1_1, turn_params.no_tlsv1_2,
+                  turn_params.no_dtls);
 }
 
 static void openssl_load_certificates(void) {
@@ -3883,4 +3453,430 @@ static void shutdown_handler(evutil_socket_t sock, short events, void *args) {
   UNUSED_ARG(args);
 }
 
-///////////////////////////////
+////////////// OpenSSL locking end //////////////
+
+/*!
+ * \brief Initialize the default values in turnadmin and turnserver
+ * \return
+ *   - 0: Success
+ *   - < 0: Fail
+ *   - > 0: Exit program
+ */
+int init_default_values() {
+  IS_TURN_SERVER = 1;
+
+  TURN_MUTEX_INIT(&turn_params.tls_mutex);
+
+  set_execdir();
+
+  init_super_memory();
+
+  init_domain();
+  create_default_realm();
+
+  init_turn_server_addrs_list(&turn_params.alternate_servers_list);
+  init_turn_server_addrs_list(&turn_params.tls_alternate_servers_list);
+  init_turn_server_addrs_list(&turn_params.aux_servers_list);
+
+  set_network_engine();
+
+  init_listener();
+  init_secrets_list(&turn_params.default_users_db.ram_db.static_auth_secrets);
+  init_dynamic_ip_lists();
+
+#if !TLS_SUPPORTED
+  turn_params.no_tls = 1;
+#endif
+
+#if !DTLS_SUPPORTED
+  turn_params.no_dtls = 1;
+#endif
+
+  memset(&turn_params.default_users_db, 0, sizeof(default_users_db_t));
+  turn_params.default_users_db.ram_db.static_accounts = ur_string_map_create(free);
+
+  return 0;
+}
+
+/**
+ * \return
+ *   - > 0: Exit program
+ *   - 0: Success
+ *   - < 0: Fail
+ */
+long service_start(int argc, char **argv) {
+  int c = 0;
+  int nRet = 0;
+  struct uoptions uo = {long_options};
+  char config_file[1025] = DEFAULT_CONFIG_FILE;
+
+  // The configuration file and log parameters in the command line must be processed first
+  while (((c = getopt_long(argc, argv, OPTIONS, uo.u.o, NULL)) != -1)) {
+    switch (c) {
+    case 'l':
+    case NO_STDOUT_LOG_OPT:
+    case SYSLOG_OPT:
+    case SIMPLE_LOG_OPT:
+    case NEW_LOG_TIMESTAMP_OPT:
+    case NEW_LOG_TIMESTAMP_FORMAT_OPT:
+    case SYSLOG_FACILITY_OPT:
+      nRet = set_option(c, optarg);
+      if (nRet)
+        return nRet;
+      break;
+    case 'c':
+      if (optarg)
+        STRCPY(config_file, optarg);
+      else
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Wrong usage of -c option\n");
+      break;
+    case 'n':
+      turn_params.do_not_use_config_file = 1;
+      config_file[0] = 0;
+      break;
+    case VERSION_OPT:
+      printf("%s\n", TURN_SOFTWARE);
+      return 1;
+    default:;
+    }
+  }
+
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Coturn Version %s\n", TURN_SOFTWARE);
+
+  nRet = init_default_values();
+  if (nRet)
+    return nRet;
+
+  nRet = read_config_file(config_file);
+  if (nRet)
+    return nRet;
+
+  // Process the parameters in the command line
+  optind = 1;
+  while (((c = getopt_long(argc, argv, OPTIONS, uo.u.o, NULL)) != -1)) {
+    nRet = set_option(c, optarg);
+    if (nRet) {
+      return nRet;
+    }
+  }
+
+  nRet = socket_init();
+  if (nRet)
+    return nRet;
+
+  process_system();
+  openssl_setup();
+  process_database();
+
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "=========== Authorization =========\n");
+  if (!get_realm(NULL)->options.name[0]) {
+    STRCPY(get_realm(NULL)->options.name, turn_params.domain);
+  }
+
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Domain name: %s\n", turn_params.domain);
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Default realm: %s\n", get_realm(NULL)->options.name);
+
+#if ALPN_SUPPORTED
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TURN/STUN ALPN supported\n");
+#else
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TURN/STUN ALPN is not supported\n");
+#endif
+
+  if (ENC_ALG_NUM == 0) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Third-party authorization (oAuth) is not supported\n");
+  } else {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Third-party authorization (oAuth) supported\n");
+#if defined(TURN_NO_GCM)
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "GCM (AEAD) is not supported\n");
+#else
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "GCM (AEAD) supported\n");
+#endif
+  }
+
+  if (turn_params.acme_redirect[0]) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "ACME redirect URL: %s\n", turn_params.acme_redirect);
+  }
+  if (turn_params.oauth && turn_params.oauth_server_name[0]) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "oAuth server name: %s\n", turn_params.oauth_server_name);
+  }
+
+  if (turn_params.bps_capacity && !(turn_params.max_bps)) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+                  "\nCONFIG ERROR: If you set the --bps-capacity option, then you must set --max-bps options, too.\n");
+    return -1;
+  }
+
+  if (turn_params.no_udp_relay && turn_params.no_tcp_relay) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+                  "\nCONFIG ERROR: --no-udp-relay and --no-tcp-relay options cannot be used together.\n");
+    return -1;
+  }
+
+  if (turn_params.no_udp_relay) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "CONFIG: --no-udp-relay: UDP relay endpoints are not allowed.\n");
+  }
+
+  if (turn_params.no_tcp_relay) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "CONFIG: --no-tcp-relay: TCP relay endpoints are not allowed.\n");
+  }
+
+  if (turn_params.server_relay) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "CONFIG: WARNING: --server-relay: NON-STANDARD AND DANGEROUS OPTION.\n");
+  }
+
+  // TODO：The following code is repeated and can be removed?
+  argc -= optind;
+  argv += optind;
+
+  if (argc > 0) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "CONFIG: Unknown argument: %s\n", argv[argc - 1]);
+  }
+  // TODO: The above code is repeated and can be removed ?
+
+  if (use_lt_credentials && anon_credentials) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "CONFIG: -a and -z options cannot be used together.\n");
+    return -1;
+  }
+
+  if (use_ltc && use_tltc) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
+                  "CONFIG: You specified --lt-cred-mech and --use-auth-secret in the same time.\n"
+                  "Be aware that you could not mix the username/password and the shared secret based auth methods. \n"
+                  "Shared secret overrides username/password based auth method. Check your configuration!\n");
+  }
+
+  if (turn_params.allow_loopback_peers) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
+                  "CONFIG: allow_loopback_peers opens a possible security vulnerability. Do not use in production!!\n");
+    if (cli_password[0] == 0 && use_cli) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+                    "CONFIG: allow_loopback_peers and empty cli password cannot be used together.\n");
+      return -1;
+    }
+  }
+
+  if (!use_lt_credentials && !anon_credentials) {
+    if (turn_params.default_users_db.ram_db.users_number) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
+                    "CONFIG: you specified long-term user accounts, (-u option) \n	but you did "
+                    "not specify the long-term credentials option\n	(-a or --lt-cred-mech option).\n 	I am "
+                    "turning --lt-cred-mech ON for you, but double-check your configuration.\n");
+      turn_params.ct = TURN_CREDENTIALS_LONG_TERM;
+      use_lt_credentials = 1;
+    } else {
+      turn_params.ct = TURN_CREDENTIALS_NONE;
+      use_lt_credentials = 0;
+    }
+  }
+
+  if (use_lt_credentials) {
+    if (!get_realm(NULL)->options.name[0]) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
+                    "CONFIG: you did specify the long-term credentials usage\n but you did not specify "
+                    "the default realm option (-r option).\n		Check your configuration.\n");
+    }
+  }
+
+  if (anon_credentials) {
+    if (turn_params.default_users_db.ram_db.users_number) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
+                    "CONFIG: you specified user accounts, (-u option)	but you also specified the "
+                    "anonymous user access option (-z or --no-auth option).	User accounts will be ignored.\n");
+      turn_params.ct = TURN_CREDENTIALS_NONE;
+      use_lt_credentials = 0;
+    }
+  }
+  
+  if (use_cli && cli_password[0] == 0) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "CONFIG: Empty cli-password, and so telnet cli interface is disabled! "
+                                        "Please set a non empty cli-password!\n");
+    use_cli = 0;
+  }
+
+  if (use_web_admin && turn_params.no_tls) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "CONFIG: WARNING: web-admin support not compatible with --no-tls option.\n");
+    use_web_admin = 0;
+  }
+
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "=========== Network =========\n");
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Default Net Engine version: %d (%s)\n", (int)turn_params.net_engine_version,
+                turn_params.net_engine_version_txt[(int)turn_params.net_engine_version]);
+  int local_listeners = 0;
+  if (!turn_params.listener.addrs_number) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "NO EXPLICIT LISTENER ADDRESS(ES) ARE CONFIGURED\n");
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "----------- Discovering listener addresses ---------\n");
+    int maddrs = make_local_listeners_list();
+    if ((maddrs < 1) || !turn_params.listener.addrs_number) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Cannot configure any meaningful IP listener address\n", __FUNCTION__);
+      fprintf(stderr, "\n%s\n", Usage);
+      return -1;
+    }
+    local_listeners = 1;
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "-----------------------------------------------------\n");
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total: %d 'real' addresses discovered\n", maddrs);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "-----------------------------------------------------\n");
+  }
+
+  if (!turn_params.relays_number) {
+    if (!local_listeners && turn_params.listener.addrs_number && turn_params.listener.addrs) {
+      size_t la = 0;
+      for (la = 0; la < turn_params.listener.addrs_number; la++) {
+        if (turn_params.listener.addrs[la]) {
+          add_relay_addr(turn_params.listener.addrs[la]);
+        }
+      }
+    }
+    if (!turn_params.relays_number) {
+      turn_params.default_relays = 1;
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "NO EXPLICIT RELAY ADDRESS(ES) ARE CONFIGURED\n");
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "----------- Discovering relay addresses -----------\n");
+      if (make_local_relays_list(0, AF_INET) < 1) {
+        make_local_relays_list(1, AF_INET);
+      }
+      if (make_local_relays_list(0, AF_INET6) < 1) {
+        make_local_relays_list(1, AF_INET6);
+      }
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "-----------------------------------------------------\n");
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total: %d relay addresses discovered\n", (int)turn_params.relays_number);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "-----------------------------------------------------\n");
+    }
+
+    if (!turn_params.relays_number) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: You must specify the relay address(es)\n", __FUNCTION__);
+      fprintf(stderr, "\n%s\n", Usage);
+      return -1;
+    }
+  }
+
+  if (turn_params.external_ip && turn_params.relay_addrs) {
+    size_t ir = 0;
+    for (ir = 0; ir < turn_params.relays_number; ++ir) {
+      if (turn_params.relay_addrs[ir]) {
+        const char *sra = (const char *)turn_params.relay_addrs[ir];
+        if ((strstr(sra, "127.0.0.1") != sra) && (strstr(sra, "::1") != sra)) {
+          ioa_addr ra;
+          if (make_ioa_addr((const uint8_t *)sra, 0, &ra) < 0) {
+            TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "-X : Wrong address format: %s\n", sra);
+          } else if (ra.ss.sa_family == turn_params.external_ip->ss.sa_family) {
+            ioa_addr_add_mapping(turn_params.external_ip, &ra);
+          }
+        }
+      }
+    }
+  }
+
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\n");
+  return 0;
+}
+
+long service_run() {
+
+#if !defined(WINDOWS)
+  if (turn_params.pidfile[0]) {
+
+    char s[2049];
+    FILE *f = fopen(turn_params.pidfile, "w");
+    if (f) {
+      STRCPY(s, turn_params.pidfile);
+    } else {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Cannot create pid file: %s\n", turn_params.pidfile);
+
+      {
+        const char *pfs[] = {"/var/run/turnserver.pid",
+                             "/var/spool/turnserver.pid",
+                             "/var/turnserver.pid",
+                             "/var/tmp/turnserver.pid",
+                             "/tmp/turnserver.pid",
+                             "turnserver.pid",
+                             NULL};
+        const char **ppfs = pfs;
+        while (*ppfs) {
+          f = fopen(*ppfs, "w");
+          if (f) {
+            STRCPY(s, *ppfs);
+            break;
+          } else {
+            ++ppfs;
+          }
+        }
+      }
+    }
+
+    if (f) {
+      fprintf(f, "%lu\n", (unsigned long)getpid());
+      fclose(f);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "pid file created: %s\n", s);
+    }
+  }
+#endif
+
+  setup_server();
+
+#if !defined(WINDOWS)
+  struct event *ev = evsignal_new(turn_params.listener.event_base, SIGUSR2, reload_ssl_certs, NULL);
+  event_add(ev, NULL);
+
+  ev = evsignal_new(turn_params.listener.event_base, SIGTERM, shutdown_handler, NULL);
+  event_add(ev, NULL);
+  ev = evsignal_new(turn_params.listener.event_base, SIGINT, shutdown_handler, NULL);
+  event_add(ev, NULL);
+#endif
+
+  drop_privileges();
+
+  start_prometheus_server();
+
+  run_listener_server(&(turn_params.listener));
+
+  disconnect_database();
+
+  return 0;
+}
+
+int main(int argc, char **argv) {
+  int nRet = 0;
+
+  if (strstr(argv[0], "turnadmin"))
+    return adminmain(argc, argv);
+
+  nRet = service_start(argc, argv);
+  if (nRet) {
+    if (nRet > 0)
+      nRet = 0;
+    return nRet;
+  }
+
+  if (turn_params.turn_daemon) {
+#if defined(WINDOWS)
+
+    /*
+    // TODO: Use windows service See: https://github.com/coturn/coturn/pull/1300
+    ServiceRun("coturn", service_start, service_run, shutdown_handler);
+    return 0;
+    */
+
+#else
+
+#if !defined(TURN_HAS_DAEMON)
+    pid_t pid = fork();
+    if (pid > 0)
+      exit(0);
+    if (pid < 0) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot start daemon process\n");
+      exit(-1);
+    }
+#else
+    if (daemon(1, 0) < 0) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot start daemon process\n");
+      exit(-1);
+    }
+    reset_rtpprintf();
+#endif // #if !defined(TURN_HAS_DAEMON)
+
+#endif // #if defined(WINDOWS)
+  }
+
+  nRet = service_run();
+
+  return nRet;
+}
