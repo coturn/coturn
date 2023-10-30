@@ -2854,7 +2854,7 @@ static void set_network_engine(void) {
 #endif /* defined(SO_REUSEPORT) */
 }
 
-static void drop_privileges(void) {
+static int drop_privileges(void) {
 #if defined(WINDOWS)
   // TODO: implement it!!!
 #else
@@ -2863,7 +2863,7 @@ static void drop_privileges(void) {
     if (getgid() != procgroupid) {
       if (setgid(procgroupid) != 0) {
         perror("setgid: Unable to change group privileges");
-        exit(-1);
+        return -1;
       } else {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "New GID: %s(%lu)\n", procgroupname, (unsigned long)procgroupid);
       }
@@ -2876,7 +2876,7 @@ static void drop_privileges(void) {
     if (procuserid != getuid()) {
       if (setuid(procuserid) != 0) {
         perror("setuid: Unable to change user privileges");
-        exit(-1);
+        return -1;
       } else {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "New UID: %s(%lu)\n", procusername, (unsigned long)procuserid);
       }
@@ -2885,6 +2885,7 @@ static void drop_privileges(void) {
     }
   }
 #endif
+  return 0;
 }
 
 static void init_domain(void) {
@@ -3930,6 +3931,7 @@ long service_start(int argc, char **argv) {
 }
 
 long service_run() {
+  long lRet = 0;
 
 #if !defined(WINDOWS)
   if (turn_params.pidfile[0]) {
@@ -3982,7 +3984,8 @@ long service_run() {
   event_add(ev, NULL);
 #endif
 
-  drop_privileges();
+  lRet = drop_privileges();
+  if(lRet) return lRet;
 
   start_prometheus_server();
 
