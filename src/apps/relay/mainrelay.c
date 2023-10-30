@@ -1756,7 +1756,15 @@ static int get_int_value(const char *s, int default_value) {
   return atoi(s);
 }
 
+/*!
+ * \param s: on/off, yes/no, 1/0, true/false
+ * \return
+ *    - 0: false
+ *    - 1: true
+ *    - -1: error paramters
+ */
 static int get_bool_value(const char *s) {
+
   if (!s || !(s[0]))
     return 1;
   if (s[0] == '0' || s[0] == 'n' || s[0] == 'N' || s[0] == 'f' || s[0] == 'F')
@@ -1770,7 +1778,7 @@ static int get_bool_value(const char *s) {
   if (!strcmp(s, "on") || !strcmp(s, "ON") || !strcmp(s, "On"))
     return 1;
   TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown boolean value: %s. You can use on/off, yes/no, 1/0, true/false.\n", s);
-  exit(-1);
+  return -1;
 }
 
 /**
@@ -1791,10 +1799,14 @@ static int set_option(int c, char *value) {
   }
 
   switch (c) {
-  case 'K':
-    if (get_bool_value(value))
+  case 'K': {
+    int r = get_bool_value(value);
+    if (1 == r)
       turn_params.allocation_default_address_family = ALLOCATION_DEFAULT_ADDRESS_FAMILY_KEEP;
+    else if(-1 == r)
+      return -1;
     break;
+  }
   case 'A':
     if (value && strlen(value) > 0) {
       if (*value == '=')
@@ -1819,7 +1831,10 @@ static int set_option(int c, char *value) {
     if (ENC_ALG_NUM == 0) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: option --oauth is not supported; ignored.\n");
     } else {
-      turn_params.oauth = get_bool_value(value);
+      int r = get_bool_value(value);
+      if(-1 == r)
+        return -1;
+      turn_params.oauth = r;
     }
     break;
   case NO_SSLV2_OPT:
@@ -1828,15 +1843,27 @@ static int set_option(int c, char *value) {
   case NO_SSLV3_OPT:
     // deprecated
     break;
-  case NO_TLSV1_OPT:
-    turn_params.no_tlsv1 = get_bool_value(value);
+  case NO_TLSV1_OPT: {
+    int r = get_bool_value(value);
+    if(-1 == r)
+      return -1;
+    turn_params.no_tlsv1 = r; 
     break;
-  case NO_TLSV1_1_OPT:
-    turn_params.no_tlsv1_1 = get_bool_value(value);
+  }
+  case NO_TLSV1_1_OPT: {
+    int r = get_bool_value(value);
+    if(-1 == r)
+      return -1;
+    turn_params.no_tlsv1_1 = r;
     break;
-  case NO_TLSV1_2_OPT:
-    turn_params.no_tlsv1_2 = get_bool_value(value);
+  }
+  case NO_TLSV1_2_OPT: {
+    int r = get_bool_value(value);
+    if(-1 == r)
+      return -1;
+    turn_params.no_tlsv1_2 = r;
     break;
+  }
   case NE_TYPE_OPT: {
     int ne = atoi(value);
     if ((ne < (int)NEV_MIN) || (ne > (int)NEV_MAX)) {
@@ -1844,29 +1871,49 @@ static int set_option(int c, char *value) {
     }
     turn_params.net_engine_version = (NET_ENG_VERSION)ne;
   } break;
-  case DH566_OPT:
-    if (get_bool_value(value))
+  case DH566_OPT: {
+    int r = get_bool_value(value);
+    if (1 == r)
       turn_params.dh_key_size = DH_566;
+    else if(-1 == r)
+      return -1;
     break;
-  case DH1066_OPT:
-    if (get_bool_value(value))
+  }
+  case DH1066_OPT: {
+    int r = get_bool_value(value);
+    if (1 == r)
       turn_params.dh_key_size = DH_1066;
+    else if(-1 == r)
+      return -1;
     break;
+  }
   case EC_CURVE_NAME_OPT:
     STRCPY(turn_params.ec_curve_name, value);
     break;
   case CLI_MAX_SESSIONS_OPT:
     cli_max_output_sessions = atoi(value);
     break;
-  case SERVER_RELAY_OPT:
-    turn_params.server_relay = get_bool_value(value);
+  case SERVER_RELAY_OPT: {
+    int r = get_bool_value(value);
+    if(-1 == r)
+      return -1;
+    turn_params.server_relay = r;
     break;
-  case MOBILITY_OPT:
-    turn_params.mobility = get_bool_value(value);
+  }
+  case MOBILITY_OPT: {
+    int r = get_bool_value(value);
+    if(-1 == r)
+      return -1;
+    turn_params.mobility = r;
     break;
-  case NO_CLI_OPT:
-    use_cli = !get_bool_value(value);
+  }
+  case NO_CLI_OPT: {
+    int r = get_bool_value(value);
+    if(-1 == r)
+      return -1;
+    use_cli = !r;
     break;
+  }
   case CLI_IP_OPT:
     if (make_ioa_addr((const uint8_t *)value, 0, &cli_addr) < 0) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot set cli address: %s\n", value);
@@ -1880,9 +1927,13 @@ static int set_option(int c, char *value) {
   case CLI_PASSWORD_OPT:
     STRCPY(cli_password, value);
     break;
-  case WEB_ADMIN_OPT:
-    use_web_admin = get_bool_value(value);
+  case WEB_ADMIN_OPT: {
+    int r = get_bool_value(value);
+    if(-1 == r)
+      return -1;
+    use_web_admin = r;
     break;
+  }
   case WEB_ADMIN_IP_OPT:
     if (make_ioa_addr((const uint8_t *)value, 0, &web_admin_addr) < 0) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot set web-admin address: %s\n", value);
@@ -1893,9 +1944,13 @@ static int set_option(int c, char *value) {
   case WEB_ADMIN_PORT_OPT:
     web_admin_port = atoi(value);
     break;
-  case WEB_ADMIN_LISTEN_ON_WORKERS_OPT:
-    turn_params.web_admin_listen_on_workers = get_bool_value(value);
+  case WEB_ADMIN_LISTEN_ON_WORKERS_OPT: {
+    int r = get_bool_value(value);
+    if(-1 == r)
+      return -1;
+    turn_params.web_admin_listen_on_workers = r;
     break;
+  }
 #if defined(WINDOWS)
     // TODO: implement it!!!
 #else
@@ -1960,15 +2015,27 @@ static int set_option(int c, char *value) {
   case MAX_PORT_OPT:
     turn_params.max_port = atoi(value);
     break;
-  case SECURE_STUN_OPT:
-    turn_params.secure_stun = get_bool_value(value);
+  case SECURE_STUN_OPT: {
+    int r = get_bool_value(value);
+    if(-1 == r)
+      return -1;
+    turn_params.secure_stun = r;
     break;
-  case NO_MULTICAST_PEERS_OPT:
-    turn_params.no_multicast_peers = get_bool_value(value);
+  }
+  case NO_MULTICAST_PEERS_OPT: {
+    int r = get_bool_value(value);
+    if(-1 == r)
+      return -1;
+    turn_params.no_multicast_peers = r;
     break;
-  case ALLOW_LOOPBACK_PEERS_OPT:
-    turn_params.allow_loopback_peers = get_bool_value(value);
+  }
+  case ALLOW_LOOPBACK_PEERS_OPT: {
+    int r = get_bool_value(value);
+    if(-1 == r)
+      return -1;
+    turn_params.allow_loopback_peers = r;
     break;
+  }
   case STALE_NONCE_OPT:
     turn_params.stale_nonce = get_int_value(value, STUN_DEFAULT_NONCE_EXPIRATION_TIME);
     break;
@@ -1985,12 +2052,20 @@ static int set_option(int c, char *value) {
     TURN_MAX_ALLOCATE_TIMEOUT = atoi(value);
     TURN_MAX_ALLOCATE_TIMEOUT_STUN_ONLY = atoi(value);
     break;
-  case 'S':
-    turn_params.stun_only = get_bool_value(value);
+  case 'S': {
+    int r = get_bool_value(value);
+    if(-1 == r)
+      return -1;
+    turn_params.stun_only = r;
     break;
-  case NO_STUN_OPT:
-    turn_params.no_stun = get_bool_value(value);
+  }
+  case NO_STUN_OPT: {
+    int r = get_bool_value(value);
+    if(-1 == r)
+      return -1;
+    turn_params.no_stun = r;
     break;
+  }
   case 'L':
     add_listener_addr(value);
     break;
@@ -2035,23 +2110,37 @@ static int set_option(int c, char *value) {
     break;
   case 'v':
     if (turn_params.verbose != TURN_VERBOSE_EXTRA) {
-      if (get_bool_value(value)) {
+      int r = get_bool_value(value);
+      if(-1 == r)
+        return -1;
+      if (1 == r) {
         turn_params.verbose = TURN_VERBOSE_NORMAL;
       } else {
         turn_params.verbose = TURN_VERBOSE_NONE;
       }
     }
     break;
-  case 'V':
-    if (get_bool_value(value)) {
+  case 'V': {
+    int r = get_bool_value(value);
+    if(-1 == r)
+      return -1;
+    if (1 == r) {
       turn_params.verbose = TURN_VERBOSE_EXTRA;
     }
     break;
-  case 'o':
-    turn_params.turn_daemon = get_bool_value(value);
+  }
+  case 'o': {
+    int r = get_bool_value(value);
+    if(-1 == r)
+      return -1;
+    turn_params.turn_daemon = r;
     break;
-  case 'a':
-    if (get_bool_value(value)) {
+  }
+  case 'a': {
+    int r = get_bool_value(value);
+    if(-1 == r)
+      return -1;
+    if (r) {
       turn_params.ct = TURN_CREDENTIALS_LONG_TERM;
       use_lt_credentials = 1;
       use_ltc = 1;
@@ -2060,8 +2149,12 @@ static int set_option(int c, char *value) {
       use_lt_credentials = 0;
     }
     break;
-  case 'z':
-    if (!get_bool_value(value)) {
+  }
+  case 'z': {
+    int r = get_bool_value(value);
+    if(-1 == r)
+      return -1;
+    if (!r) {
       turn_params.ct = TURN_CREDENTIALS_UNDEFINED;
       anon_credentials = 0;
     } else {
@@ -2069,12 +2162,21 @@ static int set_option(int c, char *value) {
       anon_credentials = 1;
     }
     break;
-  case NO_SOFTWARE_ATTRIBUTE_OPT:
-    turn_params.no_software_attribute = get_bool_value(value);
+  }
+  case NO_SOFTWARE_ATTRIBUTE_OPT: {
+    int r = get_bool_value(value);
+    if(-1 == r)
+      return -1;
+    turn_params.no_software_attribute = r;
     break;
-  case 'f':
-    turn_params.fingerprint = get_bool_value(value);
+  }
+  case 'f': {
+    int r = get_bool_value(value);
+    if(-1 == r)
+      return -1;
+    turn_params.fingerprint = r;
     break;
+  }
   case 'u':
     add_static_user_account(value);
     break;
@@ -2172,31 +2274,61 @@ static int set_option(int c, char *value) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%lu bytes per second allowed, combined server capacity\n",
                   (unsigned long)turn_params.bps_capacity);
     break;
-  case CHECK_ORIGIN_CONSISTENCY_OPT:
-    turn_params.check_origin = get_bool_value(value);
+  case CHECK_ORIGIN_CONSISTENCY_OPT: {
+    int r = get_bool_value(value);
+    if(-1 == r)
+      return -1;
+    turn_params.check_origin = r;
     break;
-  case NO_UDP_OPT:
-    turn_params.no_udp = get_bool_value(value);
+  }
+  case NO_UDP_OPT: {
+    int r = get_bool_value(value);
+    if(-1 == r)
+      return -1;
+    turn_params.no_udp = r;
     break;
-  case NO_TCP_OPT:
-    turn_params.no_tcp = get_bool_value(value);
+  }
+  case NO_TCP_OPT: {
+    int r = get_bool_value(value);
+    if(-1 == r)
+      return -1;
+    turn_params.no_tcp = r;
     break;
-  case NO_UDP_RELAY_OPT:
-    turn_params.no_udp_relay = get_bool_value(value);
+  }
+  case NO_UDP_RELAY_OPT: {
+    int r = get_bool_value(value);
+    if(-1 == r)
+      return -1;
+    turn_params.no_udp_relay = r;
     break;
-  case NO_TCP_RELAY_OPT:
-    turn_params.no_tcp_relay = get_bool_value(value);
+  }
+  case NO_TCP_RELAY_OPT: {
+    int r = get_bool_value(value);
+    if(-1 == r)
+      return -1;
+    turn_params.no_tcp_relay = r;
     break;
+  }
   case NO_TLS_OPT:
 #if !TLS_SUPPORTED
     turn_params.no_tls = 1;
 #else
-    turn_params.no_tls = get_bool_value(value);
+  {
+    int r = get_bool_value(value);
+    if(-1 == r)
+      return -1;
+    turn_params.no_tls = r;
+  }
 #endif
     break;
   case NO_DTLS_OPT:
 #if DTLS_SUPPORTED
-    turn_params.no_dtls = get_bool_value(value);
+  {
+    int r = get_bool_value(value);
+    if(-1 == r)
+      return -1;
+    turn_params.no_dtls = r;
+  }
 #else
     turn_params.no_dtls = 1;
 #endif
@@ -2225,9 +2357,13 @@ static int set_option(int c, char *value) {
   case AUX_SERVER_OPT:
     add_aux_server(value);
     break;
-  case UDP_SELF_BALANCE_OPT:
-    turn_params.udp_self_balance = get_bool_value(value);
+  case UDP_SELF_BALANCE_OPT: {
+    int r = get_bool_value(value);
+    if(-1 == r)
+      return -1;
+    turn_params.udp_self_balance = r;
     break;
+  }
   case TLS_ALTERNATE_SERVER_OPT:
     add_tls_alternate_server(value);
     break;
@@ -2253,33 +2389,57 @@ static int set_option(int c, char *value) {
       turn_params.rest_api_separator = *value;
     }
     break;
-  case LOG_BINDING_OPT:
-    turn_params.log_binding = get_bool_value(value);
+  case LOG_BINDING_OPT: {
+    int r = get_bool_value(value);
+    if(-1 == r)
+      return -1;
+    turn_params.log_binding = r;
     break;
+  }
   case NO_RFC5780:
     turn_params.rfc5780 = 0;
     break;
-  case NO_STUN_BACKWARD_COMPATIBILITY_OPT:
-    turn_params.no_stun_backward_compatibility = get_bool_value(value);
+  case NO_STUN_BACKWARD_COMPATIBILITY_OPT: {
+    int r = get_bool_value(value);
+    if(-1 == r)
+      return -1;
+    turn_params.no_stun_backward_compatibility = r;
     break;
-  case RESPONSE_ORIGIN_ONLY_WITH_RFC5780_OPT:
-    turn_params.response_origin_only_with_rfc5780 = get_bool_value(value);
+  }
+  case RESPONSE_ORIGIN_ONLY_WITH_RFC5780_OPT: {
+    int r = get_bool_value(value);
+    if (-1 == r)
+      return -1;
+    turn_params.response_origin_only_with_rfc5780 = r;
     break;
+  }
   case RESPOND_HTTP_UNSUPPORTED_OPT:
     turn_params.respond_http_unsupported = get_bool_value(value);
     break;
   case 'l':
     set_logfile(value);
     break;
-  case NO_STDOUT_LOG_OPT:
-    set_no_stdout_log(get_bool_value(value));
+  case NO_STDOUT_LOG_OPT: {
+    int r = get_bool_value(value);
+    if (-1 == r)
+      return -1;
+    set_no_stdout_log(r);
     break;
-  case SYSLOG_OPT:
-    set_log_to_syslog(get_bool_value(value));
+  }
+  case SYSLOG_OPT: {
+    int r = get_bool_value(value);
+    if (-1 == r)
+      return -1;
+    set_log_to_syslog(r);
     break;
-  case SIMPLE_LOG_OPT:
-    set_simple_log(get_bool_value(value));
+  }
+  case SIMPLE_LOG_OPT: {
+    int r = get_bool_value(value);
+    if (-1 == r)
+      return -1;
+    set_simple_log(r);
     break;
+  }
   case NEW_LOG_TIMESTAMP_OPT:
     use_new_log_timestamp_format = 1;
     break;
