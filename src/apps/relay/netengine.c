@@ -956,7 +956,7 @@ static void *run_udp_listener_thread(void *arg) {
   return arg;
 }
 
-static void setup_listener(void) {
+static int setup_listener(void) {
   super_memory_t *sm = new_super_memory_region();
 
   turn_params.listener.tp = turnipports_create(sm, turn_params.min_port, turn_params.max_port);
@@ -975,7 +975,7 @@ static void setup_listener(void) {
   );
 
   if (!turn_params.listener.ioa_eng)
-    exit(-1);
+    return -1;
 
   set_ssl_ctx(turn_params.listener.ioa_eng, &turn_params);
   turn_params.listener.rtcpmap = rtcp_map_create(turn_params.listener.ioa_eng);
@@ -1010,6 +1010,8 @@ static void setup_listener(void) {
   turn_params.listener.aux_udp_services = (dtls_listener_relay_server_type ***)allocate_super_memory_engine(
       turn_params.listener.ioa_eng,
       (sizeof(dtls_listener_relay_server_type **) * turn_params.aux_servers_list.size) + sizeof(void *));
+  
+  return 0;
 }
 
 static void setup_barriers(void) {
@@ -1792,13 +1794,16 @@ static void setup_admin_server(void) {
   pthread_detach(adminserver.thr);
 }
 
-void setup_server(void) {
+int setup_server(void) {
+  int nRet = 0;
 #if defined(WINDOWS)
-  evthread_use_windows_threads();
+  nRet = evthread_use_windows_threads();
 #else
-  evthread_use_pthreads();
+  nRet = evthread_use_pthreads();
 #endif
-
+  if(nRet)
+    return nRet;
+  
   TURN_MUTEX_INIT(&mutex_bps);
   TURN_MUTEX_INIT(&auth_message_counter_mutex);
 
@@ -1816,7 +1821,9 @@ void setup_server(void) {
 
 #endif
 
-  setup_listener();
+  nRet = setup_listener();
+  if(nRet)
+    return nRet;
   allocate_relay_addrs_ports();
   setup_barriers();
   setup_general_relay_servers();

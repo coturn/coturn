@@ -3972,7 +3972,9 @@ long service_run() {
   }
 #endif
 
-  setup_server();
+  lRet = setup_server();
+  if(lRet)
+    return lRet;
 
 #if !defined(WINDOWS)
   struct event *ev = evsignal_new(turn_params.listener.event_base, SIGUSR2, reload_ssl_certs, NULL);
