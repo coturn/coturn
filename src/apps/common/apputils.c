@@ -1089,7 +1089,7 @@ void print_abs_file_name(const char *msg1, const char *msg2, const char *fn) {
     }
   }
   if (absfn[0]) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s%s file found: %s\n", msg1, msg2, absfn);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s%s file: %s\n", msg1, msg2, absfn);
   }
 }
 
