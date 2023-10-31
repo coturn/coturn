@@ -3927,6 +3927,19 @@ super_memory_t *new_super_memory_region(void) {
   return r;
 }
 
+void free_super_memory_region(super_memory_t* r){
+  if(!r) return;
+  TURN_MUTEX_LOCK(&r->mutex_sm);
+  int i = 0;
+  for (i = 0; i <= r->sm_chunk; ++i) {
+    free(r->super_memory[i]);
+  }
+  free(r->super_memory);
+  free(r->sm_allocated);
+  TURN_MUTEX_UNLOCK(&r->mutex_sm);
+  free(r);
+}
+
 void *allocate_super_memory_region_func(super_memory_t *r, size_t size, const char *file, const char *func, int line) {
   UNUSED_ARG(file);
   UNUSED_ARG(func);

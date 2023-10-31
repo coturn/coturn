@@ -53,6 +53,7 @@ typedef struct _super_memory super_memory_t;
 void init_super_memory(void);
 
 super_memory_t *new_super_memory_region(void);
+void free_super_memory_region(super_memory_t* r);
 
 #define allocate_super_memory_region(region, size)                                                                     \
   allocate_super_memory_region_func(region, size, __FILE__, __FUNCTION__, __LINE__)
