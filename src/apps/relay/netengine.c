@@ -1010,7 +1010,7 @@ static int setup_listener(void) {
   turn_params.listener.aux_udp_services = (dtls_listener_relay_server_type ***)allocate_super_memory_engine(
       turn_params.listener.ioa_eng,
       (sizeof(dtls_listener_relay_server_type **) * turn_params.aux_servers_list.size) + sizeof(void *));
-  
+
   return 0;
 }
 
@@ -1768,30 +1768,38 @@ static void setup_auth_server(struct auth_server *as) {
 }
 
 static void *run_admin_server_thread(void *arg) {
+  int nRet = 0;
+
   ignore_sigpipe();
 
-  setup_admin_thread();
+  nRet = setup_admin_thread();
+  if (nRet) {
+    turn_params.stop_turn_server = 1;
+  }
 
   barrier_wait();
 
-  while (adminserver.event_base) {
+  while (adminserver.event_base && !turn_params.stop_turn_server) {
     run_events(adminserver.event_base, NULL);
   }
+
+  remove_admin_thread();
 
   return arg;
 }
 
-static void setup_admin_server(void) {
+static int setup_admin_server(void) {
   memset(&adminserver, 0, sizeof(struct admin_server));
   adminserver.listen_fd = -1;
   adminserver.verbose = turn_params.verbose;
 
   if (pthread_create(&(adminserver.thr), NULL, run_admin_server_thread, &adminserver)) {
-    perror("Cannot create cli thread\n");
-    exit(-1);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create admin server thread\n");
+    return -1;
   }
 
   pthread_detach(adminserver.thr);
+  return 0;
 }
 
 int setup_server(void) {
@@ -1801,9 +1809,9 @@ int setup_server(void) {
 #else
   nRet = evthread_use_pthreads();
 #endif
-  if(nRet)
+  if (nRet)
     return nRet;
-  
+
   TURN_MUTEX_INIT(&mutex_bps);
   TURN_MUTEX_INIT(&auth_message_counter_mutex);
 
@@ -1821,59 +1829,69 @@ int setup_server(void) {
 
 #endif
 
-  nRet = setup_listener();
-  if(nRet)
-    return nRet;
-  allocate_relay_addrs_ports();
-  setup_barriers();
-  setup_general_relay_servers();
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total General servers: %d\n", (int)get_real_general_relay_servers_number());
+  do {
+    nRet = setup_listener();
+    if (nRet)
+      return nRet;
+    allocate_relay_addrs_ports();
+    setup_barriers();
+    setup_general_relay_servers();
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total General servers: %d\n", (int)get_real_general_relay_servers_number());
 
-  if (turn_params.net_engine_version == NEV_UDP_SOCKET_PER_THREAD)
-    setup_socket_per_thread_udp_listener_servers();
-  else if (turn_params.net_engine_version == NEV_UDP_SOCKET_PER_ENDPOINT)
-    setup_socket_per_endpoint_udp_listener_servers();
-  else if (turn_params.net_engine_version == NEV_UDP_SOCKET_PER_SESSION)
-    setup_socket_per_session_udp_listener_servers();
+    if (turn_params.net_engine_version == NEV_UDP_SOCKET_PER_THREAD)
+      setup_socket_per_thread_udp_listener_servers();
+    else if (turn_params.net_engine_version == NEV_UDP_SOCKET_PER_ENDPOINT)
+      setup_socket_per_endpoint_udp_listener_servers();
+    else if (turn_params.net_engine_version == NEV_UDP_SOCKET_PER_SESSION)
+      setup_socket_per_session_udp_listener_servers();
 
-  if (turn_params.net_engine_version != NEV_UDP_SOCKET_PER_THREAD) {
-    setup_tcp_listener_servers(turn_params.listener.ioa_eng, NULL);
-  }
-
-  {
-    int tot = 0;
-    if (udp_relay_servers[0]) {
-      tot = get_real_udp_relay_servers_number();
+    if (turn_params.net_engine_version != NEV_UDP_SOCKET_PER_THREAD) {
+      setup_tcp_listener_servers(turn_params.listener.ioa_eng, NULL);
     }
-    if (tot) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total UDP servers: %d\n", (int)tot);
-    }
-  }
 
-  {
-    int tot = get_real_general_relay_servers_number();
-    if (tot) {
-      int i;
-      for (i = 0; i < tot; i++) {
-        if (!(general_relay_servers[i])) {
-          TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "General server %d is not initialized !\n", (int)i);
+    {
+      int tot = 0;
+      if (udp_relay_servers[0]) {
+        tot = get_real_udp_relay_servers_number();
+      }
+      if (tot) {
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total UDP servers: %d\n", (int)tot);
+      }
+    }
+
+    {
+      int tot = get_real_general_relay_servers_number();
+      if (tot) {
+        int i;
+        for (i = 0; i < tot; i++) {
+          if (!(general_relay_servers[i])) {
+            TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "General server %d is not initialized !\n", (int)i);
+          }
         }
       }
     }
-  }
 
-  {
-    authserver_id sn = 0;
-    for (sn = 0; sn < authserver_number; ++sn) {
-      authserver[sn].id = sn;
-      setup_auth_server(&(authserver[sn]));
+    {
+      authserver_id sn = 0;
+      for (sn = 0; sn < authserver_number; ++sn) {
+        authserver[sn].id = sn;
+        setup_auth_server(&(authserver[sn]));
+      }
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total auth threads: %d\n", authserver_number);
     }
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total auth threads: %d\n", authserver_number);
-  }
 
-  setup_admin_server();
+    nRet = setup_admin_server();
+    if (nRet)
+      break;
 
-  barrier_wait();
+    barrier_wait();
+    return 0;
+
+  } while (0);
+
+  // TODO: when error, doing clean.
+
+  return nRet;
 }
 
 void init_listener(void) { memset(&turn_params.listener, 0, sizeof(struct listener_server)); }

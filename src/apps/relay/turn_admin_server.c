@@ -1247,12 +1247,58 @@ static int send_socket_to_admin_server(ioa_engine_handle e, struct message_to_re
   return 0;
 }
 
-void setup_admin_thread(void) {
+void remove_admin_thread() {
+  if (adminserver.verbose)
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "clean_admin_thread()");
+
+  if (-1 != adminserver.listen_fd) {
+    socket_closesocket(adminserver.listen_fd);
+    adminserver.listen_fd = -1;
+  }
+  if (adminserver.l) {
+    evconnlistener_free(adminserver.l);
+    adminserver.l = NULL;
+  }
+  if (adminserver.event_base) {
+    event_base_free(adminserver.event_base);
+    adminserver.event_base = NULL;
+  }
+  if (adminserver.sessions) {
+    ur_map_free(&adminserver.sessions);
+    adminserver.sessions = NULL;
+  }
+  if (adminserver.in_buf) {
+    bufferevent_free(adminserver.in_buf);
+    adminserver.in_buf = NULL;
+  }
+  if (adminserver.out_buf) {
+    bufferevent_free(adminserver.out_buf);
+    adminserver.out_buf = NULL;
+  }
+  if (adminserver.https_in_buf) {
+    bufferevent_free(adminserver.https_in_buf);
+    adminserver.https_in_buf = NULL;
+  }
+  if (adminserver.https_out_buf) {
+    bufferevent_free(adminserver.https_out_buf);
+    adminserver.https_out_buf = NULL;
+  }
+  if (adminserver.sessions)
+    ur_map_free(&adminserver.sessions);
+
+  if (adminserver.e) {
+    if (adminserver.e->sm)
+      free_super_memory_region(adminserver.e->sm);
+    adminserver.e = NULL;
+  }
+}
+
+int setup_admin_thread(void) {
   adminserver.event_base = turn_event_base_new();
   super_memory_t *sm = new_super_memory_region();
   adminserver.e = create_ioa_engine(sm, adminserver.event_base, turn_params.listener.tp, turn_params.relay_ifname,
                                     turn_params.relays_number, turn_params.relay_addrs, turn_params.default_relays,
-                                    turn_params.verbose
+                                    adminserver.verbose
 #if !defined(TURN_NO_HIREDIS)
                                     ,
                                     &turn_params.redis_statsdb
@@ -1294,7 +1340,7 @@ void setup_admin_thread(void) {
     if (!web_admin_addr_set) {
       if (make_ioa_addr((const uint8_t *)WEB_ADMIN_DEFAULT_IP, 0, &web_admin_addr) < 0) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot set web-admin address %s\n", WEB_ADMIN_DEFAULT_IP);
-        return;
+        return -1;
       }
     }
 
@@ -1304,22 +1350,22 @@ void setup_admin_thread(void) {
     addr_to_string_no_port(&web_admin_addr, (uint8_t *)saddr);
 
     tls_listener_relay_server_type *tls_service =
-        create_tls_listener_server(turn_params.listener_ifname, saddr, web_admin_port, turn_params.verbose,
+        create_tls_listener_server(turn_params.listener_ifname, saddr, web_admin_port, adminserver.verbose,
                                    adminserver.e, send_socket_to_admin_server, NULL);
 
     if (tls_service == NULL) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create web-admin listener\n");
-      return;
+      return -1;
     }
 
-    addr_debug_print(adminserver.verbose, &web_admin_addr, "web-admin listener opened on ");
+    addr_debug_print(1, &web_admin_addr, "web-admin listener opened on ");
   }
 
   if (use_cli) {
     if (!cli_addr_set) {
       if (make_ioa_addr((const uint8_t *)CLI_DEFAULT_IP, 0, &cli_addr) < 0) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot set cli address %s\n", CLI_DEFAULT_IP);
-        return;
+        return -1;
       }
     }
 
@@ -1329,7 +1375,7 @@ void setup_admin_thread(void) {
     if (adminserver.listen_fd < 0) {
       perror("socket");
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open CLI socket\n");
-      return;
+      return -1;
     }
 
     if (addr_bind(adminserver.listen_fd, &cli_addr, 1, 1, TCP_SOCKET) < 0) {
@@ -1338,7 +1384,7 @@ void setup_admin_thread(void) {
       addr_to_string(&cli_addr, (uint8_t *)saddr);
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot bind CLI listener socket to addr %s\n", saddr);
       socket_closesocket(adminserver.listen_fd);
-      return;
+      return -1;
     }
 
     socket_tcp_set_keepalive(adminserver.listen_fd, TCP_SOCKET);
@@ -1352,13 +1398,14 @@ void setup_admin_thread(void) {
     if (!(adminserver.l)) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create CLI listener\n");
       socket_closesocket(adminserver.listen_fd);
-      return;
+      return -1;
     }
 
-    addr_debug_print(adminserver.verbose, &cli_addr, "CLI listener opened on ");
+    addr_debug_print(1, &cli_addr, "CLI listener opened on ");
   }
 
   adminserver.sessions = ur_map_create();
+  return 0;
 }
 
 void admin_server_receive_message(struct bufferevent *bev, void *ptr) {
@@ -3248,7 +3295,7 @@ static void handle_logout_request(ioa_socket_handle s, struct http_request *hr) 
 static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
   current_socket = s;
 
-  if (turn_params.verbose) {
+  if (adminserver.verbose) {
     if (nbh) {
       ((char *)ioa_network_buffer_data(nbh))[ioa_network_buffer_get_size(nbh)] = 0;
       if (!strstr((char *)ioa_network_buffer_data(nbh), "pwd")) {

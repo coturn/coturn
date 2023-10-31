@@ -105,7 +105,8 @@ extern int web_admin_port;
 
 ////////////////////////////////////////////
 
-void setup_admin_thread(void);
+int setup_admin_thread(void);
+void remove_admin_thread(void);
 
 void admin_server_receive_message(struct bufferevent *bev, void *ptr);
 void https_admin_server_receive_message(struct bufferevent *bev, void *ptr);
