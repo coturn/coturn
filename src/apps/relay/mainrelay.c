@@ -1803,7 +1803,7 @@ static int set_option(int c, char *value) {
     int r = get_bool_value(value);
     if (1 == r)
       turn_params.allocation_default_address_family = ALLOCATION_DEFAULT_ADDRESS_FAMILY_KEEP;
-    else if(-1 == r)
+    else if (-1 == r)
       return -1;
     break;
   }
@@ -1832,7 +1832,7 @@ static int set_option(int c, char *value) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: option --oauth is not supported; ignored.\n");
     } else {
       int r = get_bool_value(value);
-      if(-1 == r)
+      if (-1 == r)
         return -1;
       turn_params.oauth = r;
     }
@@ -1845,21 +1845,21 @@ static int set_option(int c, char *value) {
     break;
   case NO_TLSV1_OPT: {
     int r = get_bool_value(value);
-    if(-1 == r)
+    if (-1 == r)
       return -1;
-    turn_params.no_tlsv1 = r; 
+    turn_params.no_tlsv1 = r;
     break;
   }
   case NO_TLSV1_1_OPT: {
     int r = get_bool_value(value);
-    if(-1 == r)
+    if (-1 == r)
       return -1;
     turn_params.no_tlsv1_1 = r;
     break;
   }
   case NO_TLSV1_2_OPT: {
     int r = get_bool_value(value);
-    if(-1 == r)
+    if (-1 == r)
       return -1;
     turn_params.no_tlsv1_2 = r;
     break;
@@ -1875,7 +1875,7 @@ static int set_option(int c, char *value) {
     int r = get_bool_value(value);
     if (1 == r)
       turn_params.dh_key_size = DH_566;
-    else if(-1 == r)
+    else if (-1 == r)
       return -1;
     break;
   }
@@ -1883,7 +1883,7 @@ static int set_option(int c, char *value) {
     int r = get_bool_value(value);
     if (1 == r)
       turn_params.dh_key_size = DH_1066;
-    else if(-1 == r)
+    else if (-1 == r)
       return -1;
     break;
   }
@@ -1895,21 +1895,21 @@ static int set_option(int c, char *value) {
     break;
   case SERVER_RELAY_OPT: {
     int r = get_bool_value(value);
-    if(-1 == r)
+    if (-1 == r)
       return -1;
     turn_params.server_relay = r;
     break;
   }
   case MOBILITY_OPT: {
     int r = get_bool_value(value);
-    if(-1 == r)
+    if (-1 == r)
       return -1;
     turn_params.mobility = r;
     break;
   }
   case NO_CLI_OPT: {
     int r = get_bool_value(value);
-    if(-1 == r)
+    if (-1 == r)
       return -1;
     use_cli = !r;
     break;
@@ -1929,7 +1929,7 @@ static int set_option(int c, char *value) {
     break;
   case WEB_ADMIN_OPT: {
     int r = get_bool_value(value);
-    if(-1 == r)
+    if (-1 == r)
       return -1;
     use_web_admin = r;
     break;
@@ -1946,13 +1946,13 @@ static int set_option(int c, char *value) {
     break;
   case WEB_ADMIN_LISTEN_ON_WORKERS_OPT: {
     int r = get_bool_value(value);
-    if(-1 == r)
+    if (-1 == r)
       return -1;
     turn_params.web_admin_listen_on_workers = r;
     break;
   }
 #if defined(WINDOWS)
-    // TODO: implement it!!!
+  // TODO: implement it!!!
 #else
   case PROC_USER_OPT: {
     struct passwd *pwd = getpwnam(value);
@@ -2017,21 +2017,21 @@ static int set_option(int c, char *value) {
     break;
   case SECURE_STUN_OPT: {
     int r = get_bool_value(value);
-    if(-1 == r)
+    if (-1 == r)
       return -1;
     turn_params.secure_stun = r;
     break;
   }
   case NO_MULTICAST_PEERS_OPT: {
     int r = get_bool_value(value);
-    if(-1 == r)
+    if (-1 == r)
       return -1;
     turn_params.no_multicast_peers = r;
     break;
   }
   case ALLOW_LOOPBACK_PEERS_OPT: {
     int r = get_bool_value(value);
-    if(-1 == r)
+    if (-1 == r)
       return -1;
     turn_params.allow_loopback_peers = r;
     break;
@@ -2054,14 +2054,14 @@ static int set_option(int c, char *value) {
     break;
   case 'S': {
     int r = get_bool_value(value);
-    if(-1 == r)
+    if (-1 == r)
       return -1;
     turn_params.stun_only = r;
     break;
   }
   case NO_STUN_OPT: {
     int r = get_bool_value(value);
-    if(-1 == r)
+    if (-1 == r)
       return -1;
     turn_params.no_stun = r;
     break;
@@ -2111,7 +2111,7 @@ static int set_option(int c, char *value) {
   case 'v':
     if (turn_params.verbose != TURN_VERBOSE_EXTRA) {
       int r = get_bool_value(value);
-      if(-1 == r)
+      if (-1 == r)
         return -1;
       if (1 == r) {
         turn_params.verbose = TURN_VERBOSE_NORMAL;
@@ -2122,7 +2122,7 @@ static int set_option(int c, char *value) {
     break;
   case 'V': {
     int r = get_bool_value(value);
-    if(-1 == r)
+    if (-1 == r)
       return -1;
     if (1 == r) {
       turn_params.verbose = TURN_VERBOSE_EXTRA;
@@ -2131,14 +2131,14 @@ static int set_option(int c, char *value) {
   }
   case 'o': {
     int r = get_bool_value(value);
-    if(-1 == r)
+    if (-1 == r)
       return -1;
     turn_params.turn_daemon = r;
     break;
   }
   case 'a': {
     int r = get_bool_value(value);
-    if(-1 == r)
+    if (-1 == r)
       return -1;
     if (r) {
       turn_params.ct = TURN_CREDENTIALS_LONG_TERM;
@@ -2152,7 +2152,7 @@ static int set_option(int c, char *value) {
   }
   case 'z': {
     int r = get_bool_value(value);
-    if(-1 == r)
+    if (-1 == r)
       return -1;
     if (!r) {
       turn_params.ct = TURN_CREDENTIALS_UNDEFINED;
@@ -2165,14 +2165,14 @@ static int set_option(int c, char *value) {
   }
   case NO_SOFTWARE_ATTRIBUTE_OPT: {
     int r = get_bool_value(value);
-    if(-1 == r)
+    if (-1 == r)
       return -1;
     turn_params.no_software_attribute = r;
     break;
   }
   case 'f': {
     int r = get_bool_value(value);
-    if(-1 == r)
+    if (-1 == r)
       return -1;
     turn_params.fingerprint = r;
     break;
@@ -2276,35 +2276,35 @@ static int set_option(int c, char *value) {
     break;
   case CHECK_ORIGIN_CONSISTENCY_OPT: {
     int r = get_bool_value(value);
-    if(-1 == r)
+    if (-1 == r)
       return -1;
     turn_params.check_origin = r;
     break;
   }
   case NO_UDP_OPT: {
     int r = get_bool_value(value);
-    if(-1 == r)
+    if (-1 == r)
       return -1;
     turn_params.no_udp = r;
     break;
   }
   case NO_TCP_OPT: {
     int r = get_bool_value(value);
-    if(-1 == r)
+    if (-1 == r)
       return -1;
     turn_params.no_tcp = r;
     break;
   }
   case NO_UDP_RELAY_OPT: {
     int r = get_bool_value(value);
-    if(-1 == r)
+    if (-1 == r)
       return -1;
     turn_params.no_udp_relay = r;
     break;
   }
   case NO_TCP_RELAY_OPT: {
     int r = get_bool_value(value);
-    if(-1 == r)
+    if (-1 == r)
       return -1;
     turn_params.no_tcp_relay = r;
     break;
@@ -2315,7 +2315,7 @@ static int set_option(int c, char *value) {
 #else
   {
     int r = get_bool_value(value);
-    if(-1 == r)
+    if (-1 == r)
       return -1;
     turn_params.no_tls = r;
   }
@@ -2325,14 +2325,14 @@ static int set_option(int c, char *value) {
 #if DTLS_SUPPORTED
   {
     int r = get_bool_value(value);
-    if(-1 == r)
+    if (-1 == r)
       return -1;
     turn_params.no_dtls = r;
   }
 #else
     turn_params.no_dtls = 1;
 #endif
-    break;
+  break;
   case CERT_FILE_OPT:
     STRCPY(turn_params.cert_file, value);
     break;
@@ -2359,7 +2359,7 @@ static int set_option(int c, char *value) {
     break;
   case UDP_SELF_BALANCE_OPT: {
     int r = get_bool_value(value);
-    if(-1 == r)
+    if (-1 == r)
       return -1;
     turn_params.udp_self_balance = r;
     break;
@@ -2391,7 +2391,7 @@ static int set_option(int c, char *value) {
     break;
   case LOG_BINDING_OPT: {
     int r = get_bool_value(value);
-    if(-1 == r)
+    if (-1 == r)
       return -1;
     turn_params.log_binding = r;
     break;
@@ -2401,7 +2401,7 @@ static int set_option(int c, char *value) {
     break;
   case NO_STUN_BACKWARD_COMPATIBILITY_OPT: {
     int r = get_bool_value(value);
-    if(-1 == r)
+    if (-1 == r)
       return -1;
     turn_params.no_stun_backward_compatibility = r;
     break;
@@ -3513,8 +3513,8 @@ static void openssl_setup(void) {
   }
 
   openssl_load_certificates();
-  
-  if(turn_params.verbose)
+
+  if (turn_params.verbose)
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "no_tls:%d\tno_tlsv1:%d\tno_tlsv1_1:%d\tno_tlsv1_2:%d\tno_dtls:%d\n",
                   turn_params.no_tls, turn_params.no_tlsv1, turn_params.no_tlsv1_1, turn_params.no_tlsv1_2,
                   turn_params.no_dtls);
@@ -3847,7 +3847,7 @@ long service_start(int argc, char **argv) {
       use_lt_credentials = 0;
     }
   }
-  
+
   if (use_cli && cli_password[0] == 0) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "CONFIG: Empty cli-password, and so telnet cli interface is disabled! "
                                         "Please set a non empty cli-password!\n");
@@ -3973,7 +3973,7 @@ long service_run() {
 #endif
 
   lRet = setup_server();
-  if(lRet)
+  if (lRet)
     return lRet;
 
 #if !defined(WINDOWS)
@@ -3987,7 +3987,8 @@ long service_run() {
 #endif
 
   lRet = drop_privileges();
-  if(lRet) return lRet;
+  if (lRet)
+    return lRet;
 
   start_prometheus_server();
 

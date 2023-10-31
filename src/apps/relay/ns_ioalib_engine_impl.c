@@ -3927,8 +3927,9 @@ super_memory_t *new_super_memory_region(void) {
   return r;
 }
 
-void free_super_memory_region(super_memory_t* r){
-  if(!r) return;
+void free_super_memory_region(super_memory_t *r) {
+  if (!r)
+    return;
   TURN_MUTEX_LOCK(&r->mutex_sm);
   int i = 0;
   for (i = 0; i <= r->sm_chunk; ++i) {
