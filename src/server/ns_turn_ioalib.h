@@ -253,8 +253,8 @@ void inc_ioa_socket_ref_counter(ioa_socket_handle s);
 
 /* Relay socket handling */
 /*
- * event_port == -1: no rtcp;
- * event_port == 0: reserve rtcp;
+ * even_port == -1: no rtcp;
+ * even_port == 0: reserve rtcp;
  * even_port == +1: reserve and bind rtcp.
  */
 int create_relay_ioa_sockets(ioa_engine_handle e, ioa_socket_handle client_s, int address_family, uint8_t transport,
@@ -303,6 +303,7 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s);
 void detach_socket_net_data(ioa_socket_handle s);
 int set_df_on_ioa_socket(ioa_socket_handle s, int value);
 void set_do_not_use_df(ioa_socket_handle s);
+int set_ioa_socket_buf_size(ioa_socket_handle s, int sz);
 int ioa_socket_tobeclosed(ioa_socket_handle s);
 void set_ioa_socket_tobeclosed(ioa_socket_handle s);
 void close_ioa_socket_after_processing_if_necessary(ioa_socket_handle s);

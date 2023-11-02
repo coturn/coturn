@@ -268,6 +268,8 @@ typedef struct _turn_params_ {
   turnserver_id general_relay_servers_number;
   turnserver_id udp_relay_servers_number;
 
+  int sock_buf_size;
+
   ////////////// Auth server ////////////////
 
   char oauth_server_name[1025];
