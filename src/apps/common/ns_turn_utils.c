@@ -49,7 +49,9 @@
 
 #include <signal.h>
 
-#if !defined(WINDOWS) && !defined(__CYGWIN__) && !defined(__CYGWIN32__) && !defined(__CYGWIN64__)
+#if defined(WINDOWS) || defined(__CYGWIN__) || defined(__CYGWIN32__) || defined(__CYGWIN64__)
+#include <windows.h>
+#else
 #include <sys/syscall.h>
 #include <unistd.h>
 #ifdef SYS_gettid
@@ -543,8 +545,15 @@ void turn_log_func_default(char *file, int line, TURN_LOG_LEVEL level, const cha
     so_far += snprintf(s, sizeof(s), "%lu: ", (unsigned long)log_time());
   }
 
+#if defined(WINDOWS) || defined(__CYGWIN__) || defined(__CYGWIN32__) || defined(__CYGWIN64__)
+  so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "(%lu:%lu): ", GetCurrentProcessId(),
+                     GetCurrentThreadId());
+#else
+
 #ifdef SYS_gettid
   so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "(%lu): ", (unsigned long)gettid());
+#endif
+
 #endif
 
   if (_log_file_line_set)
