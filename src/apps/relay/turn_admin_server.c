@@ -1304,6 +1304,8 @@ int setup_admin_thread(void) {
                                     &turn_params.redis_statsdb
 #endif
   );
+  if (!adminserver.e)
+    return;
 
   if (use_web_admin) {
     // Support encryption on this ioa engine

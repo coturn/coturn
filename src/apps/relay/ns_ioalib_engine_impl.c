@@ -385,60 +385,59 @@ ioa_engine_handle create_ioa_engine(super_memory_t *sm, struct event_base *eb, t
   if (!relays_number || !relay_addrs || !tp) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Cannot create TURN engine\n", __FUNCTION__);
     return NULL;
-  } else {
-    ioa_engine_handle e = (ioa_engine_handle)allocate_super_memory_region(sm, sizeof(ioa_engine));
+  }
 
-    e->sm = sm;
-    e->default_relays = default_relays;
-    e->verbose = verbose;
-    e->tp = tp;
-    if (eb) {
-      e->event_base = eb;
-      e->deallocate_eb = 0;
-    } else {
-      e->event_base = turn_event_base_new();
-      e->deallocate_eb = 1;
-    }
+  ioa_engine_handle e = (ioa_engine_handle)allocate_super_memory_region(sm, sizeof(ioa_engine));
+
+  e->sm = sm;
+  e->default_relays = default_relays;
+  e->verbose = verbose;
+  e->tp = tp;
+  if (eb) {
+    e->event_base = eb;
+    e->deallocate_eb = 0;
+  } else {
+    e->event_base = turn_event_base_new();
+    e->deallocate_eb = 1;
+  }
 
 #if !defined(TURN_NO_HIREDIS)
-    e->rch = get_redis_async_connection(e->event_base, redis_stats_db, 0);
+  e->rch = get_redis_async_connection(e->event_base, redis_stats_db, 0);
 #endif
 
-    {
-      int t;
-      for (t = 0; t < PREDEF_TIMERS_NUM; ++t) {
-        struct timeval duration;
-        duration.tv_sec = predef_timer_intervals[t];
-        duration.tv_usec = 0;
-        const struct timeval *ptv = event_base_init_common_timeout(e->event_base, &duration);
-        if (!ptv) {
-          TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "FATAL: cannot create preferable timeval for %d secs (%d number)\n",
-                        predef_timer_intervals[t], t);
-          exit(-1);
-        } else {
-          memcpy(&(e->predef_timers[t]), ptv, sizeof(struct timeval));
-          e->predef_timer_intervals[t] = predef_timer_intervals[t];
-        }
+  {
+    int t;
+    for (t = 0; t < PREDEF_TIMERS_NUM; ++t) {
+      struct timeval duration;
+      duration.tv_sec = predef_timer_intervals[t];
+      duration.tv_usec = 0;
+      const struct timeval *ptv = event_base_init_common_timeout(e->event_base, &duration);
+      if (!ptv) {
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "FATAL: cannot create preferable timeval for %d secs (%d number)\n",
+                      predef_timer_intervals[t], t);
+        return NULL;
       }
+      memcpy(&(e->predef_timers[t]), ptv, sizeof(struct timeval));
+      e->predef_timer_intervals[t] = predef_timer_intervals[t];
     }
-
-    if (relay_ifname)
-      STRCPY(e->relay_ifname, relay_ifname);
-    {
-      size_t i = 0;
-      e->relay_addrs = (ioa_addr *)allocate_super_memory_region(sm, relays_number * sizeof(ioa_addr) + 8);
-      for (i = 0; i < relays_number; i++) {
-        if (make_ioa_addr((uint8_t *)relay_addrs[i], 0, &(e->relay_addrs[i])) < 0) {
-          TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot add a relay address: %s\n", relay_addrs[i]);
-        }
-      }
-      e->relays_number = relays_number;
-    }
-    e->relay_addr_counter = (unsigned short)turn_random();
-    timer_handler(e, e);
-    e->timer_ev = set_ioa_timer(e, 1, 0, timer_handler, e, 1, "timer_handler");
-    return e;
   }
+
+  if (relay_ifname)
+    STRCPY(e->relay_ifname, relay_ifname);
+  {
+    size_t i = 0;
+    e->relay_addrs = (ioa_addr *)allocate_super_memory_region(sm, relays_number * sizeof(ioa_addr) + 8);
+    for (i = 0; i < relays_number; i++) {
+      if (make_ioa_addr((uint8_t *)relay_addrs[i], 0, &(e->relay_addrs[i])) < 0) {
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot add a relay address: %s\n", relay_addrs[i]);
+      }
+    }
+    e->relays_number = relays_number;
+  }
+  e->relay_addr_counter = (unsigned short)turn_random();
+  timer_handler(e, e);
+  e->timer_ev = set_ioa_timer(e, 1, 0, timer_handler, e, 1, "timer_handler");
+  return e;
 }
 
 void ioa_engine_set_rtcp_map(ioa_engine_handle e, rtcp_map *rtcpmap) {
