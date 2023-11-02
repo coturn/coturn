@@ -546,45 +546,45 @@ ioa_timer_handle set_ioa_timer(ioa_engine_handle e, int secs, int ms, ioa_timer_
                                int persist, const char *txt) {
   ioa_timer_handle ret = NULL;
 
-  if (e && cb && secs > 0) {
+  if (!e || !cb || secs < 0)
+    return NULL;
 
-    timer_event *te = (timer_event *)malloc(sizeof(timer_event));
-    int flags = EV_TIMEOUT;
-    if (persist)
-      flags |= EV_PERSIST;
-    struct event *ev = event_new(e->event_base, -1, flags, timer_event_handler, te);
-    struct timeval tv;
+  timer_event *te = (timer_event *)malloc(sizeof(timer_event));
+  int flags = EV_TIMEOUT;
+  if (persist)
+    flags |= EV_PERSIST;
+  struct event *ev = event_new(e->event_base, -1, flags, timer_event_handler, te);
+  struct timeval tv;
 
-    tv.tv_sec = secs;
+  tv.tv_sec = secs;
 
-    te->ctx = ctx;
-    te->e = e;
-    te->ev = ev;
-    te->cb = cb;
-    te->txt = strdup(txt);
+  te->ctx = ctx;
+  te->e = e;
+  te->ev = ev;
+  te->cb = cb;
+  te->txt = strdup(txt);
 
-    if (!ms) {
-      tv.tv_usec = 0;
-      int found = 0;
-      int t;
-      for (t = 0; t < PREDEF_TIMERS_NUM; ++t) {
-        if (e->predef_timer_intervals[t] == secs) {
-          evtimer_add(ev, &(e->predef_timers[t]));
-          found = 1;
-          break;
-        }
+  if (!ms) {
+    tv.tv_usec = 0;
+    int found = 0;
+    int t;
+    for (t = 0; t < PREDEF_TIMERS_NUM; ++t) {
+      if (e->predef_timer_intervals[t] == secs) {
+        evtimer_add(ev, &(e->predef_timers[t]));
+        found = 1;
+        break;
       }
-      if (!found) {
-        evtimer_add(ev, &tv);
-      }
-    } else {
-      tv.tv_usec = ms * 1000;
+    }
+    if (!found) {
       evtimer_add(ev, &tv);
     }
-
-    ret = te;
+  } else {
+    tv.tv_usec = ms * 1000;
+    evtimer_add(ev, &tv);
   }
 
+  ret = te;
+ 
   return ret;
 }
 
