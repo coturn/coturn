@@ -3994,8 +3994,9 @@ long service_run() {
 
   run_listener_server(&(turn_params.listener));
 
+  remove_server();
   disconnect_database();
-
+  
   return 0;
 }
 

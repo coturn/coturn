@@ -75,7 +75,6 @@ struct dtls_listener_relay_server_info {
 ///////////// forward declarations ////////
 
 static int create_server_socket(dtls_listener_relay_server_type *server, int report_creation);
-static int clean_server(dtls_listener_relay_server_type *server);
 static int reopen_server_socket(dtls_listener_relay_server_type *server, evutil_socket_t fd);
 
 ///////////// dtls message types //////////
@@ -739,7 +738,7 @@ static int create_server_socket(dtls_listener_relay_server_type *server, int rep
   if (!server)
     return -1;
 
-  clean_server(server);
+  clean_dtls_listener_server(server);
 
   {
     ioa_socket_raw udp_listen_fd = -1;
@@ -913,7 +912,7 @@ static int init_server(dtls_listener_relay_server_type *server, const char *ifna
   return create_server_socket(server, report_creation);
 }
 
-static int clean_server(dtls_listener_relay_server_type *server) {
+int clean_dtls_listener_server(dtls_listener_relay_server_type *server) {
   if (server) {
     EVENT_DEL(server->udp_listen_ev);
     close_ioa_socket(server->udp_listen_s);

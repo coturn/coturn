@@ -1249,7 +1249,7 @@ static int send_socket_to_admin_server(ioa_engine_handle e, struct message_to_re
 
 void remove_admin_thread() {
   if (adminserver.verbose)
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "clean_admin_thread()");
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "remove_admin_thread()");
 
   if (-1 != adminserver.listen_fd) {
     socket_closesocket(adminserver.listen_fd);

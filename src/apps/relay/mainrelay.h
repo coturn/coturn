@@ -372,6 +372,7 @@ void send_auth_message_to_auth_server(struct auth_message *am);
 
 void init_listener(void);
 int setup_server(void);
+int remove_server(void);
 void run_listener_server(struct listener_server *ls);
 
 ////////// BPS ////////////////
