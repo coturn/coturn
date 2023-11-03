@@ -31,8 +31,9 @@
 #ifndef __TURN_ULIB__
 #define __TURN_ULIB__
 
+#define TURN_LOG_CATEGORY(category, level, ...) turn_log_func_default(__FILE__, __LINE__, category, level, __VA_ARGS__)
 #if !defined(TURN_LOG_FUNC)
-#define TURN_LOG_FUNC(level, ...) turn_log_func_default(__FILE__, __LINE__, level, __VA_ARGS__)
+#define TURN_LOG_FUNC(level, ...) TURN_LOG_CATEGORY("", level, __VA_ARGS__)
 #endif
 
 #if defined(WINDOWS)
@@ -71,9 +72,12 @@ void set_syslog_facility(char *val);
 
 void set_turn_log_timestamp_format(char *new_format);
 
-void turn_log_func_default(char *file, int line, TURN_LOG_LEVEL level, const char *format, ...)
+/*!
+ * \note User don't use it. please use TURN_LOG_CATEGORY
+ */
+void turn_log_func_default(char *file, int line, char *category, TURN_LOG_LEVEL level, const char *format, ...)
 #ifdef __GNUC__
-    __attribute__((format(printf, 4, 5)))
+    __attribute__((format(printf, 5, 6)))
 #endif
     ;
 

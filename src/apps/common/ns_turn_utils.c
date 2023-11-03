@@ -528,7 +528,7 @@ void err(int eval, const char *format, ...) {
 }
 #endif
 
-void turn_log_func_default(char *file, int line, TURN_LOG_LEVEL level, const char *format, ...) {
+void turn_log_func_default(char *file, int line, char *category, TURN_LOG_LEVEL level, const char *format, ...) {
   va_list args;
   va_start(args, format);
 #if defined(TURN_LOG_FUNC_IMPL)
@@ -546,36 +546,41 @@ void turn_log_func_default(char *file, int line, TURN_LOG_LEVEL level, const cha
   }
 
 #if defined(WINDOWS) || defined(__CYGWIN__) || defined(__CYGWIN32__) || defined(__CYGWIN64__)
-  so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "(%lu:%lu): ", GetCurrentProcessId(),
+  so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "[%lu:%lu] ", GetCurrentProcessId(),
                      GetCurrentThreadId());
 #else
 
 #ifdef SYS_gettid
-  so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "(%lu): ", (unsigned long)gettid());
+  so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "[%lu] ", (unsigned long)gettid());
 #endif
 
 #endif
 
   if (_log_file_line_set)
-    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "%s(%d):", file, line);
+    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "%s(%d)", file, line);
 
   switch (level) {
   case TURN_LOG_LEVEL_DEBUG:
-    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "DEBUG: ");
+    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "DEBUG");
     break;
   case TURN_LOG_LEVEL_INFO:
-    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "INFO: ");
+    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "INFO");
     break;
   case TURN_LOG_LEVEL_CONTROL:
-    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "CONTROL: ");
+    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "CONTROL");
     break;
   case TURN_LOG_LEVEL_WARNING:
-    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "WARNING: ");
+    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "WARNING");
     break;
   case TURN_LOG_LEVEL_ERROR:
-    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "ERROR: ");
+    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "ERROR");
     break;
   }
+
+  if (category && strcmp(category, ""))
+    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), " %s", category);
+  so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), ": ");
+
   so_far += vsnprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), format, args);
 
   if (so_far > MAX_RTPPRINTF_BUFFER_SIZE + 1) {
