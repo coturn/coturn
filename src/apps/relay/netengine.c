@@ -400,24 +400,25 @@ int add_relay_addr(const char *addr) {
     turn_params.relay_addrs = (char **)realloc(turn_params.relay_addrs, sizeof(char *) * turn_params.relays_number);
     turn_params.relay_addrs[turn_params.relays_number - 1] = strdup(sbaddr);
 
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Relay address to use: %s\n", sbaddr);
+    TURN_LOG_CATEGORY("relay", TURN_LOG_LEVEL_INFO, "Relay address to use: %s\n", sbaddr);
     return 1;
   }
 }
 
 static void allocate_relay_addrs_ports(void) {
   int i;
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Wait for relay ports initialization...\n");
+  TURN_LOG_CATEGORY("relay", TURN_LOG_LEVEL_INFO, "Wait for relay ports initialization...\n");
   for (i = 0; i < (int)turn_params.relays_number; i++) {
     ioa_addr baddr;
     if (make_ioa_addr((const uint8_t *)turn_params.relay_addrs[i], 0, &baddr) >= 0) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "  relay %s initialization...\n", turn_params.relay_addrs[i]);
+      TURN_LOG_CATEGORY("relay", TURN_LOG_LEVEL_INFO, "  relay %s initialization...\n", turn_params.relay_addrs[i]);
       turnipports_add_ip(STUN_ATTRIBUTE_TRANSPORT_UDP_VALUE, &baddr);
       turnipports_add_ip(STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE, &baddr);
       // TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "  relay %s initialization done\n", turn_params.relay_addrs[i]);
     }
   }
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total %d relay ports initialization done\n", turn_params.relays_number);
+  TURN_LOG_CATEGORY("relay", TURN_LOG_LEVEL_INFO, "Total %d relay ports initialization done\n",
+                    turn_params.relays_number);
 }
 
 //////////////////////////////////////////////////
@@ -1892,6 +1893,8 @@ static int setup_general_relay_servers(void) {
   if (turn_params.general_relay_servers_number == 0) {
     struct relay_server *rs = NULL;
     rs = (struct relay_server *)allocate_super_memory_engine(turn_params.listener.ioa_eng, sizeof(struct relay_server));
+    if (!rs)
+      return -1;
     rs->id = (turnserver_id)0;
     rs->sm = NULL;
     setup_relay_server(rs, turn_params.listener.ioa_eng,
@@ -1900,7 +1903,9 @@ static int setup_general_relay_servers(void) {
                            turn_params.rfc5780);
     rs->thr = pthread_self();
     general_relay_servers[0] = rs;
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total General servers: %d\n", (int)get_real_general_relay_servers_number());
+    general_relay_servers[0]->thr = pthread_self();
+    TURN_LOG_CATEGORY("relay", TURN_LOG_LEVEL_INFO, "Total General servers: %d\n",
+                      (int)get_real_general_relay_servers_number());
     return 0;
   }
 
@@ -1908,17 +1913,20 @@ static int setup_general_relay_servers(void) {
     struct relay_server *rs = NULL;
     super_memory_t *sm = new_super_memory_region();
     rs = (struct relay_server *)allocate_super_memory_region(sm, sizeof(struct relay_server));
+    if (!rs)
+      return -2;
     rs->id = (turnserver_id)i;
     rs->sm = sm;
     if (pthread_create(&(rs->thr), NULL, run_general_relay_thread, rs)) {
       free_super_memory_region(sm);
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Cannot create relay thread\n");
+      TURN_LOG_CATEGORY("relay", TURN_LOG_LEVEL_ERROR, "Cannot create relay thread\n");
       return -1;
     }
     pthread_detach(rs->thr);
     general_relay_servers[i] = rs;
   }
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total General servers: %d\n", (int)get_real_general_relay_servers_number());
+  TURN_LOG_CATEGORY("relay", TURN_LOG_LEVEL_INFO, "Total General servers: %d\n",
+                    (int)get_real_general_relay_servers_number());
   return 0;
 }
 
