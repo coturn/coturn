@@ -414,10 +414,10 @@ static void allocate_relay_addrs_ports(void) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "  relay %s initialization...\n", turn_params.relay_addrs[i]);
       turnipports_add_ip(STUN_ATTRIBUTE_TRANSPORT_UDP_VALUE, &baddr);
       turnipports_add_ip(STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE, &baddr);
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "  relay %s initialization done\n", turn_params.relay_addrs[i]);
+      // TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "  relay %s initialization done\n", turn_params.relay_addrs[i]);
     }
   }
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Relay ports initialization done\n");
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total %d relay ports initialization done\n", turn_params.relays_number);
 }
 
 //////////////////////////////////////////////////
@@ -1768,6 +1768,42 @@ void run_listener_server(struct listener_server *ls) {
 #endif
 }
 
+int remove_relay_severs(struct relay_server *rs) {
+  if (!rs)
+    return 0;
+
+  if (turn_params.verbose)
+    TURN_LOG_CATEGORY("relay", TURN_LOG_LEVEL_DEBUG, "remove_relay_severs turn server id=%d\n", rs->id);
+
+  if (!rs->sm)
+    return 0;
+
+  if (rs->in_buf) {
+    bufferevent_free(rs->in_buf);
+    rs->in_buf = NULL;
+  }
+  if (rs->out_buf) {
+    bufferevent_free(rs->out_buf);
+  }
+  if (rs->auth_in_buf) {
+    bufferevent_free(rs->auth_in_buf);
+    rs->auth_in_buf = NULL;
+  }
+  if (rs->auth_out_buf) {
+    bufferevent_free(rs->auth_out_buf);
+    rs->auth_out_buf = NULL;
+  }
+  if (rs->event_base) {
+    event_base_free(rs->event_base);
+    rs->event_base = NULL;
+  }
+  if (rs->sm) {
+    free_super_memory_region(rs->sm);
+  }
+
+  return 0;
+}
+
 static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int to_set_rfc5780) {
   struct bufferevent *pair[2];
 
@@ -1842,40 +1878,48 @@ static void *run_general_relay_thread(void *arg) {
 
   barrier_wait();
 
-  while (always_true) {
+  while (always_true && !turn_params.stop_turn_server) {
     run_events(rs->event_base, rs->ioa_eng);
   }
 
+  remove_relay_severs(rs);
   return arg;
 }
 
-static void setup_general_relay_servers(void) {
+static int setup_general_relay_servers(void) {
   size_t i = 0;
 
-  for (i = 0; i < get_real_general_relay_servers_number(); i++) {
-
-    if (turn_params.general_relay_servers_number == 0) {
-      general_relay_servers[i] = (struct relay_server *)allocate_super_memory_engine(turn_params.listener.ioa_eng,
-                                                                                     sizeof(struct relay_server));
-      general_relay_servers[i]->id = (turnserver_id)i;
-      general_relay_servers[i]->sm = NULL;
-      setup_relay_server(general_relay_servers[i], turn_params.listener.ioa_eng,
-                         ((turn_params.net_engine_version == NEV_UDP_SOCKET_PER_THREAD) ||
-                          (turn_params.net_engine_version == NEV_UDP_SOCKET_PER_SESSION)) &&
-                             turn_params.rfc5780);
-      general_relay_servers[i]->thr = pthread_self();
-    } else {
-      super_memory_t *sm = new_super_memory_region();
-      general_relay_servers[i] = (struct relay_server *)allocate_super_memory_region(sm, sizeof(struct relay_server));
-      general_relay_servers[i]->id = (turnserver_id)i;
-      general_relay_servers[i]->sm = sm;
-      if (pthread_create(&(general_relay_servers[i]->thr), NULL, run_general_relay_thread, general_relay_servers[i])) {
-        perror("Cannot create relay thread\n");
-        exit(-1);
-      }
-      pthread_detach(general_relay_servers[i]->thr);
-    }
+  if (turn_params.general_relay_servers_number == 0) {
+    struct relay_server *rs = NULL;
+    rs = (struct relay_server *)allocate_super_memory_engine(turn_params.listener.ioa_eng, sizeof(struct relay_server));
+    rs->id = (turnserver_id)0;
+    rs->sm = NULL;
+    setup_relay_server(rs, turn_params.listener.ioa_eng,
+                       ((turn_params.net_engine_version == NEV_UDP_SOCKET_PER_THREAD) ||
+                        (turn_params.net_engine_version == NEV_UDP_SOCKET_PER_SESSION)) &&
+                           turn_params.rfc5780);
+    rs->thr = pthread_self();
+    general_relay_servers[0] = rs;
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total General servers: %d\n", (int)get_real_general_relay_servers_number());
+    return 0;
   }
+
+  for (i = 0; i < get_real_general_relay_servers_number(); i++) {
+    struct relay_server *rs = NULL;
+    super_memory_t *sm = new_super_memory_region();
+    rs = (struct relay_server *)allocate_super_memory_region(sm, sizeof(struct relay_server));
+    rs->id = (turnserver_id)i;
+    rs->sm = sm;
+    if (pthread_create(&(rs->thr), NULL, run_general_relay_thread, rs)) {
+      free_super_memory_region(sm);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Cannot create relay thread\n");
+      return -1;
+    }
+    pthread_detach(rs->thr);
+    general_relay_servers[i] = rs;
+  }
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total General servers: %d\n", (int)get_real_general_relay_servers_number());
+  return 0;
 }
 
 static int run_auth_server_flag = 1;
@@ -2022,8 +2066,9 @@ int setup_server(void) {
       break;
     allocate_relay_addrs_ports();
     setup_barriers();
-    setup_general_relay_servers();
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total General servers: %d\n", (int)get_real_general_relay_servers_number());
+    nRet = setup_general_relay_servers();
+    if (nRet)
+      break;
 
     if (turn_params.net_engine_version == NEV_UDP_SOCKET_PER_THREAD)
       setup_socket_per_thread_udp_listener_servers();
