@@ -906,7 +906,7 @@ static int run_cli_input(struct cli_session *cs, const char *buf0, unsigned int 
         if (check_password(cmd, cli_password)) {
           if (cs->cmds >= CLI_PASSWORD_TRY_NUMBER) {
             addr_debug_print(1, &(cs->addr), "CLI authentication error");
-            TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "CLI authentication error\n");
+            TURN_LOG_CATEGORY("admin", TURN_LOG_LEVEL_ERROR, "CLI authentication error\n");
             close_cli_session(cs);
           } else {
             const char *ipwd = "Enter password: ";
@@ -1084,7 +1084,7 @@ static void cli_telnet_event_handler(telnet_t *telnet, telnet_event_t *event, vo
       run_cli_output(cs, event->data.buffer, event->data.size);
       break;
     case TELNET_EV_ERROR:
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TELNET error: %s", event->error.msg);
+      TURN_LOG_CATEGORY("admin", TURN_LOG_LEVEL_INFO, "TELNET error: %s", event->error.msg);
       break;
     default:;
     };
@@ -1143,7 +1143,7 @@ static void web_admin_input_handler(ioa_socket_handle s, int event_type, ioa_net
 
   int buffer_size = (int)ioa_network_buffer_get_size(in_buffer->nbh);
   if (buffer_size >= UDP_STUN_BUFFER_SIZE) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "%s: request is too big: %d\n", __FUNCTION__, buffer_size);
+    TURN_LOG_CATEGORY("admin", TURN_LOG_LEVEL_WARNING, "%s: request is too big: %d\n", __FUNCTION__, buffer_size);
     to_be_closed = 1;
   } else if (buffer_size > 0) {
 
@@ -1157,17 +1157,17 @@ static void web_admin_input_handler(ioa_socket_handle s, int event_type, ioa_net
           proto = "HTTPS";
           set_ioa_socket_app_type(s, HTTPS_CLIENT_SOCKET);
 
-          TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s (%s %s) request: %s\n", __FUNCTION__, proto,
-                        get_ioa_socket_cipher(s), get_ioa_socket_ssl_method(s),
-                        (char *)ioa_network_buffer_data(in_buffer->nbh));
+          TURN_LOG_CATEGORY("admin", TURN_LOG_LEVEL_INFO, "%s: %s (%s %s) request: %s\n", __FUNCTION__, proto,
+                            get_ioa_socket_cipher(s), get_ioa_socket_ssl_method(s),
+                            (char *)ioa_network_buffer_data(in_buffer->nbh));
 
-          TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s socket to be detached: 0x%lx, st=%d, sat=%d\n", __FUNCTION__, (long)s,
-                        get_ioa_socket_type(s), get_ioa_socket_app_type(s));
+          TURN_LOG_CATEGORY("admin", TURN_LOG_LEVEL_INFO, "%s socket to be detached: 0x%lx, st=%d, sat=%d\n",
+                            __FUNCTION__, (long)s, get_ioa_socket_type(s), get_ioa_socket_app_type(s));
 
           ioa_socket_handle new_s = detach_ioa_socket(s);
           if (new_s) {
-            TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s new detached socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,
-                          (long)new_s, get_ioa_socket_type(new_s), get_ioa_socket_app_type(new_s));
+            TURN_LOG_CATEGORY("admin", TURN_LOG_LEVEL_INFO, "%s new detached socket: 0x%lx, st=%d, sat=%d\n",
+                              __FUNCTION__, (long)new_s, get_ioa_socket_type(new_s), get_ioa_socket_app_type(new_s));
 
             send_https_socket(new_s);
           }
@@ -1176,8 +1176,8 @@ static void web_admin_input_handler(ioa_socket_handle s, int event_type, ioa_net
         } else {
           set_ioa_socket_app_type(s, HTTP_CLIENT_SOCKET);
           if (adminserver.verbose) {
-            TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s request: %s\n", __FUNCTION__, proto,
-                          (char *)ioa_network_buffer_data(in_buffer->nbh));
+            TURN_LOG_CATEGORY("admin", TURN_LOG_LEVEL_INFO, "%s: %s request: %s\n", __FUNCTION__, proto,
+                              (char *)ioa_network_buffer_data(in_buffer->nbh));
           }
           handle_http_echo(s);
         }
@@ -1187,8 +1187,8 @@ static void web_admin_input_handler(ioa_socket_handle s, int event_type, ioa_net
 
   if (to_be_closed) {
     if (adminserver.verbose) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: web-admin socket to be closed in client handler: s=0x%lx\n", __FUNCTION__,
-                    (long)s);
+      TURN_LOG_CATEGORY("admin", TURN_LOG_LEVEL_INFO, "%s: web-admin socket to be closed in client handler: s=0x%lx\n",
+                        __FUNCTION__, (long)s);
     }
     set_ioa_socket_tobeclosed(s);
   }
@@ -1212,11 +1212,11 @@ static int send_socket_to_admin_server(ioa_engine_handle e, struct message_to_re
   ioa_socket_handle s = sm->m.sm.s;
 
   if (!s) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: web-admin socket EMPTY\n", __FUNCTION__);
+    TURN_LOG_CATEGORY("admin", TURN_LOG_LEVEL_ERROR, "%s: web-admin socket EMPTY\n", __FUNCTION__);
 
   } else if (s->read_event || s->bev) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: web-admin socket wrongly preset: 0x%lx : 0x%lx\n", __FUNCTION__,
-                  (long)s->read_event, (long)s->bev);
+    TURN_LOG_CATEGORY("admin", TURN_LOG_LEVEL_ERROR, "%s: web-admin socket wrongly preset: 0x%lx : 0x%lx\n",
+                      __FUNCTION__, (long)s->read_event, (long)s->bev);
 
     IOA_CLOSE_SOCKET(s);
     sm->m.sm.s = NULL;
@@ -1227,7 +1227,8 @@ static int send_socket_to_admin_server(ioa_engine_handle e, struct message_to_re
 
     if (register_callback_on_ioa_socket(e, msg->s, IOA_EV_READ, web_admin_input_handler, NULL, 0) < 0) {
 
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: Failed to register callback on web-admin ioa socket\n", __FUNCTION__);
+      TURN_LOG_CATEGORY("admin", TURN_LOG_LEVEL_INFO, "%s: Failed to register callback on web-admin ioa socket\n",
+                        __FUNCTION__);
       IOA_CLOSE_SOCKET(s);
       sm->m.sm.s = NULL;
 
@@ -1249,7 +1250,7 @@ static int send_socket_to_admin_server(ioa_engine_handle e, struct message_to_re
 
 void remove_admin_thread() {
   if (adminserver.verbose)
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "remove_admin_thread()");
+    TURN_LOG_CATEGORY("admin", TURN_LOG_LEVEL_DEBUG, "remove_admin_thread()");
 
   if (-1 != adminserver.listen_fd) {
     socket_closesocket(adminserver.listen_fd);
@@ -1294,6 +1295,7 @@ void remove_admin_thread() {
 }
 
 int setup_admin_thread(void) {
+  int nRet = 0;
   adminserver.event_base = turn_event_base_new();
   super_memory_t *sm = new_super_memory_region();
   adminserver.e = create_ioa_engine(sm, adminserver.event_base, turn_params.listener.tp, turn_params.relay_ifname,
@@ -1305,7 +1307,7 @@ int setup_admin_thread(void) {
 #endif
   );
   if (!adminserver.e)
-    return;
+    return -1;
 
   if (use_web_admin) {
     // Support encryption on this ioa engine
@@ -1316,7 +1318,11 @@ int setup_admin_thread(void) {
   {
     struct bufferevent *pair[2];
 
-    bufferevent_pair_new(adminserver.event_base, TURN_BUFFEREVENTS_OPTIONS, pair);
+    nRet = bufferevent_pair_new(adminserver.event_base, TURN_BUFFEREVENTS_OPTIONS, pair);
+    if (nRet) {
+      TURN_LOG_CATEGORY("admin", TURN_LOG_LEVEL_ERROR, "bufferevent_pair_new fail\n");
+      return -2;
+    }
 
     adminserver.in_buf = pair[0];
     adminserver.out_buf = pair[1];
@@ -1328,36 +1334,48 @@ int setup_admin_thread(void) {
   {
     struct bufferevent *pair[2];
 
-    bufferevent_pair_new(adminserver.event_base, TURN_BUFFEREVENTS_OPTIONS, pair);
-
+    nRet = bufferevent_pair_new(adminserver.event_base, TURN_BUFFEREVENTS_OPTIONS, pair);
+    if (nRet) {
+      TURN_LOG_CATEGORY("admin", TURN_LOG_LEVEL_ERROR, "bufferevent_pair_new fail\n");
+      return -3;
+    }
     adminserver.https_in_buf = pair[0];
     adminserver.https_out_buf = pair[1];
 
     bufferevent_setcb(adminserver.https_in_buf, https_admin_server_receive_message, NULL, NULL, &adminserver);
-    bufferevent_enable(adminserver.https_in_buf, EV_READ);
+    nRet = bufferevent_enable(adminserver.https_in_buf, EV_READ);
+    if (nRet) {
+      TURN_LOG_CATEGORY("admin", TURN_LOG_LEVEL_ERROR, "bufferevent_enable fail\n");
+      return -4;
+    }
   }
 
   // Setup the web-admin server
   if (use_web_admin) {
     if (!web_admin_addr_set) {
       if (make_ioa_addr((const uint8_t *)WEB_ADMIN_DEFAULT_IP, 0, &web_admin_addr) < 0) {
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot set web-admin address %s\n", WEB_ADMIN_DEFAULT_IP);
-        return -1;
+        TURN_LOG_CATEGORY("admin", TURN_LOG_LEVEL_ERROR, "Cannot set web-admin address %s\n", WEB_ADMIN_DEFAULT_IP);
+        return -5;
       }
     }
 
     addr_set_port(&web_admin_addr, web_admin_port);
 
     char saddr[129];
-    addr_to_string_no_port(&web_admin_addr, (uint8_t *)saddr);
+    nRet = addr_to_string_no_port(&web_admin_addr, (uint8_t *)saddr);
+    if (nRet) {
+      TURN_LOG_CATEGORY("admin", TURN_LOG_LEVEL_ERROR, "addr_to_string_no_port fail\n");
+      return -6;
+    }
 
+    // TODO: free tls_service->l ?
     tls_listener_relay_server_type *tls_service =
         create_tls_listener_server(turn_params.listener_ifname, saddr, web_admin_port, adminserver.verbose,
                                    adminserver.e, send_socket_to_admin_server, NULL);
 
     if (tls_service == NULL) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create web-admin listener\n");
-      return -1;
+      TURN_LOG_CATEGORY("admin", TURN_LOG_LEVEL_ERROR, "Cannot create web-admin listener\n");
+      return -7;
     }
 
     addr_debug_print(1, &web_admin_addr, "web-admin listener opened on ");
@@ -1366,8 +1384,8 @@ int setup_admin_thread(void) {
   if (use_cli) {
     if (!cli_addr_set) {
       if (make_ioa_addr((const uint8_t *)CLI_DEFAULT_IP, 0, &cli_addr) < 0) {
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot set cli address %s\n", CLI_DEFAULT_IP);
-        return -1;
+        TURN_LOG_CATEGORY("admin", TURN_LOG_LEVEL_ERROR, "Cannot set cli address %s\n", CLI_DEFAULT_IP);
+        return -8;
       }
     }
 
@@ -1375,32 +1393,38 @@ int setup_admin_thread(void) {
 
     adminserver.listen_fd = socket(cli_addr.ss.sa_family, ADMIN_STREAM_SOCKET_TYPE, ADMIN_STREAM_SOCKET_PROTOCOL);
     if (adminserver.listen_fd < 0) {
-      perror("socket");
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open CLI socket\n");
-      return -1;
+      TURN_LOG_CATEGORY("admin", TURN_LOG_LEVEL_ERROR, "Cannot open CLI socket. err:%d\n", socket_errno());
+      return -9;
     }
 
     if (addr_bind(adminserver.listen_fd, &cli_addr, 1, 1, TCP_SOCKET) < 0) {
-      perror("Cannot bind CLI socket to addr");
-      char saddr[129];
+      char saddr[129] = {0};
       addr_to_string(&cli_addr, (uint8_t *)saddr);
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot bind CLI listener socket to addr %s\n", saddr);
+      TURN_LOG_CATEGORY("admin", TURN_LOG_LEVEL_ERROR, "Cannot bind CLI listener socket to addr %s. err: %d\n", saddr,
+                        socket_errno());
       socket_closesocket(adminserver.listen_fd);
-      return -1;
+      return -10;
     }
 
-    socket_tcp_set_keepalive(adminserver.listen_fd, TCP_SOCKET);
+    nRet = socket_tcp_set_keepalive(adminserver.listen_fd, TCP_SOCKET);
+    if (nRet) {
+      TURN_LOG_CATEGORY("admin", TURN_LOG_LEVEL_ERROR, "socket_tcp_set_keepalive fail\n");
+      return -9;
+    }
 
-    if (evutil_make_socket_nonblocking(adminserver.listen_fd))
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Set nonblocking fail\n");
+    nRet = evutil_make_socket_nonblocking(adminserver.listen_fd);
+    if (nRet) {
+      TURN_LOG_CATEGORY("admin", TURN_LOG_LEVEL_ERROR, "Set nonblocking fail\n");
+      return -10;
+    }
 
     adminserver.l = evconnlistener_new(adminserver.event_base, cliserver_input_handler, &adminserver,
                                        LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE, 1024, adminserver.listen_fd);
 
     if (!(adminserver.l)) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create CLI listener\n");
+      TURN_LOG_CATEGORY("admin", TURN_LOG_LEVEL_ERROR, "Cannot create CLI listener\n");
       socket_closesocket(adminserver.listen_fd);
-      return -1;
+      return -11;
     }
 
     addr_debug_print(1, &cli_addr, "CLI listener opened on ");
@@ -3218,7 +3242,7 @@ static void handle_update_request(ioa_socket_handle s, struct http_request *hr) 
         char *ip = evhttp_decode_uri(eip);
 
         if (check_ip_list_range(ip) < 0) {
-          TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong address range format: %s\n", ip);
+          TURN_LOG_CATEGORY("admin", TURN_LOG_LEVEL_ERROR, "Wrong address range format: %s\n", ip);
         } else {
 
           const char *r = get_http_header_value(hr, HR_ADD_IP_REALM, "");
@@ -3301,11 +3325,11 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
     if (nbh) {
       ((char *)ioa_network_buffer_data(nbh))[ioa_network_buffer_get_size(nbh)] = 0;
       if (!strstr((char *)ioa_network_buffer_data(nbh), "pwd")) {
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: HTTPS connection input: %s\n", __FUNCTION__,
-                      (char *)ioa_network_buffer_data(nbh));
+        TURN_LOG_CATEGORY("admin", TURN_LOG_LEVEL_INFO, "%s: HTTPS connection input: %s\n", __FUNCTION__,
+                          (char *)ioa_network_buffer_data(nbh));
       }
     } else {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: HTTPS connection initial input\n", __FUNCTION__);
+      TURN_LOG_CATEGORY("admin", TURN_LOG_LEVEL_INFO, "%s: HTTPS connection initial input\n", __FUNCTION__);
     }
   }
 
@@ -3315,10 +3339,10 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
     ((char *)ioa_network_buffer_data(nbh))[ioa_network_buffer_get_size(nbh)] = 0;
     struct http_request *hr = parse_http_request((char *)ioa_network_buffer_data(nbh));
     if (!hr) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: wrong HTTPS request (I cannot parse it)\n", __FUNCTION__);
+      TURN_LOG_CATEGORY("admin", TURN_LOG_LEVEL_ERROR, "%s: wrong HTTPS request (I cannot parse it)\n", __FUNCTION__);
       write_https_logon_page(s);
     } else {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: HTTPS request, path %s\n", __FUNCTION__, hr->path);
+      TURN_LOG_CATEGORY("admin", TURN_LOG_LEVEL_INFO, "%s: HTTPS request, path %s\n", __FUNCTION__, hr->path);
 
       AS_FORM form = get_form(hr->path);
 
