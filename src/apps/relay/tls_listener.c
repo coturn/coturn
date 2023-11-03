@@ -178,7 +178,7 @@ static void sctp_server_input_handler(struct evconnlistener *l, evutil_socket_t 
 ///////////////////// operations //////////////////////////
 
 static int create_server_listener(tls_listener_relay_server_type *server) {
-
+  int nRet = 0;
   FUNCSTART;
 
   if (!server)
@@ -188,7 +188,7 @@ static int create_server_listener(tls_listener_relay_server_type *server) {
 
   tls_listen_fd = socket(server->addr.ss.sa_family, CLIENT_STREAM_SOCKET_TYPE, CLIENT_STREAM_SOCKET_PROTOCOL);
   if (tls_listen_fd < 0) {
-    perror("socket");
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Create sock fail: %s", strerror(errno));
     return -1;
   }
 
@@ -196,35 +196,36 @@ static int create_server_listener(tls_listener_relay_server_type *server) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Cannot bind listener socket to device %s\n", server->ifname);
   }
 
-  {
-    const int max_binding_time = 60;
-    int addr_bind_cycle = 0;
-  retry_addr_bind:
-
-    if (addr_bind(tls_listen_fd, &server->addr, 1, 1, TCP_SOCKET) < 0) {
-      perror("Cannot bind local socket to addr");
-      char saddr[129];
+  const int max_binding_time = 60;
+  int addr_bind_cycle = 0;
+  char saddr[129] = {0};
+  while (addr_bind_cycle++ < max_binding_time) {
+    nRet = addr_bind(tls_listen_fd, &server->addr, 1, 1, TCP_SOCKET);
+    if (nRet) {
       addr_to_string(&server->addr, (uint8_t *)saddr);
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Cannot bind TLS/TCP listener socket to addr %s\n", saddr);
-      if (addr_bind_cycle++ < max_binding_time) {
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Trying to bind TLS/TCP listener socket to addr %s, again...\n", saddr);
-        sleep(1);
-        goto retry_addr_bind;
-      }
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Fatal final failure: cannot bind TLS/TCP listener socket to addr %s\n",
-                    saddr);
-      exit(-1);
-    }
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Cannot bind TLS/TCP listener socket to addr %s; err: %d\n", saddr,
+                    socket_errno());
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Trying to bind TLS/TCP listener socket to addr %s, again...\n", saddr);
+      sleep(1);
+    } else
+      break;
+  }
+  if (nRet) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Fatal final failure: cannot bind TLS/TCP listener socket to addr %s\n", saddr);
+    socket_closesocket(tls_listen_fd);
+    return -1;
   }
 
   socket_tcp_set_keepalive(tls_listen_fd, TCP_SOCKET);
 
-  if (evutil_make_socket_nonblocking(tls_listen_fd))
+  if (evutil_make_socket_nonblocking(tls_listen_fd)) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Set nonblocking fail\n");
+    socket_closesocket(tls_listen_fd);
+    return -1;
+  }
 
   server->l = evconnlistener_new(server->e->event_base, server_input_handler, server,
                                  LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE, 1024, tls_listen_fd);
-
   if (!(server->l)) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Cannot create TLS listener\n");
     socket_closesocket(tls_listen_fd);
