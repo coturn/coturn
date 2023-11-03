@@ -533,7 +533,7 @@ static void timer_event_handler(evutil_socket_t fd, short what, void *arg) {
     return;
 
   if (te->e && eve(te->e->verbose))
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: timeout 0x%lx: %s\n", __FUNCTION__, (long)te, te->txt);
+    TURN_LOG_CATEGORY("timer", TURN_LOG_LEVEL_INFO, "%s: timeout 0x%lx: %s\n", __FUNCTION__, (long)te, te->txt);
 
   ioa_timer_event_handler cb = te->cb;
   ioa_engine_handle e = te->e;

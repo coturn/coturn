@@ -690,6 +690,9 @@ err:
 static int handle_relay_message(relay_server_handle rs, struct message_to_relay *sm) {
   if (rs && sm) {
 
+    if (eve(turn_params.verbose))
+      TURN_LOG_CATEGORY("relay", TURN_LOG_LEVEL_DEBUG, "handle_relay_message: %d", sm->t);
+
     switch (sm->t) {
 
     case RMT_CANCEL_SESSION: {
@@ -710,9 +713,9 @@ static int handle_relay_message(relay_server_handle rs, struct message_to_relay 
       ioa_socket_handle s = sm->m.sm.s;
 
       if (!s) {
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: socket EMPTY\n", __FUNCTION__);
+        TURN_LOG_CATEGORY("relay", TURN_LOG_LEVEL_ERROR, "%s: socket EMPTY\n", __FUNCTION__);
       } else if (s->read_event || s->bev) {
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: socket wrongly preset: 0x%lx : 0x%lx\n", __FUNCTION__,
+        TURN_LOG_CATEGORY("relay", TURN_LOG_LEVEL_ERROR, "%s: socket wrongly preset: 0x%lx : 0x%lx\n", __FUNCTION__,
                       (long)s->read_event, (long)s->bev);
         IOA_CLOSE_SOCKET(s);
         sm->m.sm.s = NULL;
@@ -749,9 +752,10 @@ static int handle_relay_message(relay_server_handle rs, struct message_to_relay 
       ioa_socket_handle s = sm->m.sm.s;
 
       if (!s) {
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: mobile socket EMPTY\n", __FUNCTION__);
+        TURN_LOG_CATEGORY("relay", TURN_LOG_LEVEL_ERROR, "%s: mobile socket EMPTY\n", __FUNCTION__);
       } else if (s->read_event || s->bev) {
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: mobile socket wrongly preset: 0x%lx : 0x%lx\n", __FUNCTION__,
+        TURN_LOG_CATEGORY("relay", TURN_LOG_LEVEL_ERROR, "%s: mobile socket wrongly preset: 0x%lx : 0x%lx\n",
+                          __FUNCTION__,
                       (long)s->read_event, (long)s->bev);
         IOA_CLOSE_SOCKET(s);
         sm->m.sm.s = NULL;
@@ -768,7 +772,7 @@ static int handle_relay_message(relay_server_handle rs, struct message_to_relay 
       break;
     }
     default: {
-      perror("Weird buffer type\n");
+      TURN_LOG_CATEGORY("relay", TURN_LOG_LEVEL_ERROR, "Weird buffer type\n");
     }
     }
   }
@@ -794,7 +798,7 @@ static void relay_receive_message(struct bufferevent *bev, void *ptr) {
   while ((n = evbuffer_remove(input, &sm, sizeof(struct message_to_relay))) > 0) {
 
     if (n != sizeof(struct message_to_relay)) {
-      perror("Weird buffer error\n");
+      TURN_LOG_CATEGORY("relay", TURN_LOG_LEVEL_ERROR, "Weird buffer error\n");
       continue;
     }
 
@@ -2074,10 +2078,12 @@ int setup_server(void) {
       break;
     allocate_relay_addrs_ports();
     setup_barriers();
+    TURN_LOG_CATEGORY("relay", TURN_LOG_LEVEL_INFO, "Total General turn servers: %d\n",
+                      (int)get_real_general_relay_servers_number());
     nRet = setup_general_relay_servers();
     if (nRet)
       break;
-
+    
     if (turn_params.net_engine_version == NEV_UDP_SOCKET_PER_THREAD)
       setup_socket_per_thread_udp_listener_servers();
     else if (turn_params.net_engine_version == NEV_UDP_SOCKET_PER_ENDPOINT)
