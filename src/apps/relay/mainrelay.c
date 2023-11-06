@@ -231,7 +231,8 @@ turn_params_t turn_params = {
 
     0, /* log_binding */
     0, /* no_stun_backward_compatibility */
-    0  /* response_origin_only_with_rfc5780 */
+    0, /* response_origin_only_with_rfc5780 */
+    0  /* respond_http_unsupported */
 };
 
 //////////////// OpenSSL Init //////////////////////
@@ -1271,6 +1272,10 @@ static char Usage[] =
     "						in binding response (use only the XOR-MAPPED-ADDRESS).\n"
     " --response-origin-only-with-rfc5780		Only send RESPONSE-ORIGIN attribute in binding response if "
     "RFC5780 is enabled.\n"
+    " --respond-http-unsupported			Return an HTTP reponse with a 400 status code to HTTP "
+    "connections made to ports not\n"
+    "						supporting HTTP. The default behaviour is to immediately "
+    "close the connection.\n"
     " --version					Print version (and exit).\n"
     " -h						Help\n"
     "\n";
@@ -1426,6 +1431,7 @@ enum EXTRA_OPTS {
   NO_RFC5780,
   NO_STUN_BACKWARD_COMPATIBILITY_OPT,
   RESPONSE_ORIGIN_ONLY_WITH_RFC5780_OPT,
+  RESPOND_HTTP_UNSUPPORTED_OPT,
   VERSION_OPT
 };
 
@@ -1568,6 +1574,7 @@ static const struct myoption long_options[] = {
     {"no-rfc5780", optional_argument, NULL, NO_RFC5780},
     {"no-stun-backward-compatibility", optional_argument, NULL, NO_STUN_BACKWARD_COMPATIBILITY_OPT},
     {"response-origin-only-with-rfc5780", optional_argument, NULL, RESPONSE_ORIGIN_ONLY_WITH_RFC5780_OPT},
+    {"respond-http-unsupported", optional_argument, NULL, RESPOND_HTTP_UNSUPPORTED_OPT},
     {"version", optional_argument, NULL, VERSION_OPT},
     {"syslog-facility", required_argument, NULL, SYSLOG_FACILITY_OPT},
     {NULL, no_argument, NULL, 0}};
@@ -2262,6 +2269,9 @@ static void set_option(int c, char *value) {
     break;
   case RESPONSE_ORIGIN_ONLY_WITH_RFC5780_OPT:
     turn_params.response_origin_only_with_rfc5780 = get_bool_value(value);
+    break;
+  case RESPOND_HTTP_UNSUPPORTED_OPT:
+    turn_params.respond_http_unsupported = get_bool_value(value);
     break;
 
   /* these options have been already taken care of before: */

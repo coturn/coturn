@@ -4497,7 +4497,8 @@ static int read_client_connection(turn_turnserver *server, ts_ur_super_session *
     if (is_stream_socket(st)) {
       if (is_http((char *)ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh))) {
 
-        const char *proto = "HTTP";
+        const char *proto = st == TLS_SOCKET ? "HTTPS" : "HTTP";
+
         if ((st == TCP_SOCKET) && (try_acme_redirect((char *)ioa_network_buffer_data(in_buffer->nbh),
                                                      ioa_network_buffer_get_size(in_buffer->nbh), server->acme_redirect,
                                                      ss->client_socket) == 0)) {
@@ -4505,7 +4506,6 @@ static int read_client_connection(turn_turnserver *server, ts_ur_super_session *
           return 0;
         } else if (*server->web_admin_listen_on_workers) {
           if (st == TLS_SOCKET) {
-            proto = "HTTPS";
             set_ioa_socket_app_type(ss->client_socket, HTTPS_CLIENT_SOCKET);
             TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s (%s %s) request: %zu\n", __FUNCTION__, proto,
                           get_ioa_socket_cipher(ss->client_socket), get_ioa_socket_ssl_method(ss->client_socket),
@@ -4531,6 +4531,36 @@ static int read_client_connection(turn_turnserver *server, ts_ur_super_session *
             handle_http_echo(ss->client_socket);
           }
           return 0;
+        } else if (*server->respond_http_unsupported) {
+          /* Our incoming connection is HTTP, but we are not serving the
+           * admin site. Return a 400 response. */
+          if (st == TLS_SOCKET) {
+            TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s (%s %s) returning 400 response: %zu\n", __FUNCTION__, proto,
+                          get_ioa_socket_cipher(ss->client_socket), get_ioa_socket_ssl_method(ss->client_socket),
+                          ioa_network_buffer_get_size(in_buffer->nbh));
+            set_ioa_socket_app_type(ss->client_socket, HTTPS_CLIENT_SOCKET);
+          } else {
+            TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s returning 400 response", __FUNCTION__, proto);
+          }
+
+          ioa_network_buffer_handle nbh_http = ioa_network_buffer_allocate(ss->client_socket->e);
+
+          /* HTTP content */
+          char *content = "HTTP not supported.\n";
+
+          /* Measure length of content */
+          int content_length = strlen(content);
+
+          /* Construct full response */
+          char buffer[1024];
+          snprintf(buffer, sizeof(buffer),
+                   "HTTP/1.1 400 %s Not supported\r\nConnection: close\r\nContent-Type: "
+                   "text/plain\r\nContent-Length: %d\r\n\r\n%s",
+                   proto, content_length, content);
+
+          ioa_network_buffer_set_size(nbh_http, strlen(buffer));
+          memcpy(ioa_network_buffer_data(nbh_http), buffer, strlen(buffer));
+          send_data_from_ioa_socket_nbh(ss->client_socket, NULL, nbh_http, TTL_IGNORE, TOS_IGNORE, NULL);
         } else {
           ss->to_be_closed = 1;
           return 0;
@@ -4774,8 +4804,8 @@ void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, io
                       send_turn_session_info_cb send_turn_session_info, send_https_socket_cb send_https_socket,
                       allocate_bps_cb allocate_bps_func, int oauth, const char *oauth_server_name,
                       const char *acme_redirect, ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family,
-                      vintp log_binding, vintp no_stun_backward_compatibility,
-                      vintp response_origin_only_with_rfc5780) {
+                      vintp log_binding, vintp no_stun_backward_compatibility, vintp response_origin_only_with_rfc5780,
+                      vintp respond_http_unsupported) {
 
   if (!server)
     return;
@@ -4853,6 +4883,8 @@ void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, io
   server->no_stun_backward_compatibility = no_stun_backward_compatibility;
 
   server->response_origin_only_with_rfc5780 = response_origin_only_with_rfc5780;
+
+  server->respond_http_unsupported = respond_http_unsupported;
 }
 
 ioa_engine_handle turn_server_get_engine(turn_turnserver *s) {
