@@ -1968,7 +1968,7 @@ int stun_check_message_integrity_str(turn_credential_type ct, uint8_t *buf, size
   password_t pwd;
 
   if (ct == TURN_CREDENTIALS_SHORT_TERM) {
-    len = strncpy((char *)pwd, (const char *)upwd, sizeof(password_t) - 1);
+    strncpy((char *)pwd, (const char *)upwd, sizeof(password_t) - 1);
     pwd[sizeof(password_t) - 1] = 0;
   } else if (stun_produce_integrity_key_str(uname, realm, upwd, key, shatype) < 0) {
     return -1;
