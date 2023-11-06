@@ -3572,12 +3572,10 @@ void turn_report_allocation_set(void *a, turn_time_t lifetime, int refresh) {
                                 (unsigned long)lifetime, type, saddr, rsaddr, ssl, cipher);
         }
 #endif
-#if !defined(TURN_NO_PROMETHEUS)
         {
           if (!refresh)
             prom_inc_allocation(get_ioa_socket_type(ss->client_socket));
         }
-#endif
       }
     }
   }
@@ -3631,7 +3629,6 @@ void turn_report_allocation_delete(void *a, SOCKET_TYPE socket_type) {
                                 (unsigned long)(ss->t_peer_sent_bytes));
         }
 #endif
-#if !defined(TURN_NO_PROMETHEUS)
         {
           if (ss->realm_options.name[0]) {
 
@@ -3655,7 +3652,6 @@ void turn_report_allocation_delete(void *a, SOCKET_TYPE socket_type) {
           }
           prom_dec_allocation(socket_type);
         }
-#endif
       }
     }
   }
