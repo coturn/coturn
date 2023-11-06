@@ -790,35 +790,36 @@ static void handle_relay_auth_message(struct relay_server *rs, struct auth_messa
 }
 
 static void relay_receive_message(struct bufferevent *bev, void *ptr) {
-  struct message_to_relay sm;
+  struct message_to_relay sm = {0};
   int n = 0;
   struct evbuffer *input = bufferevent_get_input(bev);
   struct relay_server *rs = (struct relay_server *)ptr;
 
-  while ((n = evbuffer_remove(input, &sm, sizeof(struct message_to_relay))) > 0) {
+  n = evbuffer_get_length(input);
+  if (n < sizeof(struct message_to_relay)) {
+    TURN_LOG_CATEGORY("relay", TURN_LOG_LEVEL_WARNING, "The io cache is not filled. Continue reading.\n");
+    return;
+  }
 
-    if (n != sizeof(struct message_to_relay)) {
-      TURN_LOG_CATEGORY("relay", TURN_LOG_LEVEL_ERROR, "Weird buffer error\n");
-      continue;
-    }
-
+  n = evbuffer_remove(input, &sm, sizeof(struct message_to_relay));
+  if (sizeof(struct message_to_relay) == n) {
     handle_relay_message(rs, &sm);
   }
 }
 
 static void relay_receive_auth_message(struct bufferevent *bev, void *ptr) {
-  struct auth_message am;
+  struct auth_message am = {0};
   int n = 0;
   struct evbuffer *input = bufferevent_get_input(bev);
   struct relay_server *rs = (struct relay_server *)ptr;
 
-  while ((n = evbuffer_remove(input, &am, sizeof(struct auth_message))) > 0) {
-
-    if (n != sizeof(struct auth_message)) {
-      perror("Weird auth_buffer error\n");
-      continue;
-    }
-
+  n = evbuffer_get_length(input);
+  if (n < sizeof(struct message_to_relay)) {
+    TURN_LOG_CATEGORY("relay", TURN_LOG_LEVEL_WARNING, "The io cache is not filled. Continue reading.\n");
+    return;
+  }
+  n = evbuffer_remove(input, &am, sizeof(struct auth_message));
+  if (sizeof(struct auth_message) == n) {
     handle_relay_auth_message(rs, &am);
   }
 }
@@ -1908,8 +1909,6 @@ static int setup_general_relay_servers(void) {
     rs->thr = pthread_self();
     general_relay_servers[0] = rs;
     general_relay_servers[0]->thr = pthread_self();
-    TURN_LOG_CATEGORY("relay", TURN_LOG_LEVEL_INFO, "Total General servers: %d\n",
-                      (int)get_real_general_relay_servers_number());
     return 0;
   }
 
@@ -1921,16 +1920,16 @@ static int setup_general_relay_servers(void) {
       return -2;
     rs->id = (turnserver_id)i;
     rs->sm = sm;
+    general_relay_servers[i] = rs;
     if (pthread_create(&(rs->thr), NULL, run_general_relay_thread, rs)) {
       free_super_memory_region(sm);
+      general_relay_servers[i] = NULL;
       TURN_LOG_CATEGORY("relay", TURN_LOG_LEVEL_ERROR, "Cannot create relay thread\n");
       return -1;
     }
     pthread_detach(rs->thr);
-    general_relay_servers[i] = rs;
   }
-  TURN_LOG_CATEGORY("relay", TURN_LOG_LEVEL_INFO, "Total General servers: %d\n",
-                    (int)get_real_general_relay_servers_number());
+  
   return 0;
 }
 
@@ -2083,7 +2082,7 @@ int setup_server(void) {
     nRet = setup_general_relay_servers();
     if (nRet)
       break;
-    
+
     if (turn_params.net_engine_version == NEV_UDP_SOCKET_PER_THREAD)
       setup_socket_per_thread_udp_listener_servers();
     else if (turn_params.net_engine_version == NEV_UDP_SOCKET_PER_ENDPOINT)
