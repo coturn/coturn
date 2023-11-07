@@ -1103,7 +1103,7 @@ static int setup_socket_per_endpoint_udp_listener_servers(void) {
         ++udp_relay_server_index;
         pthread_t thr;
         if (pthread_create(&thr, NULL, run_udp_listener_thread, turn_params.listener.aux_udp_services[index][0])) {
-          perror("Cannot create aux listener thread\n");
+          TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create aux listener thread: %s\n", strerror(errno));
           return -1;
         }
         pthread_detach(thr);
@@ -1130,7 +1130,7 @@ static int setup_socket_per_endpoint_udp_listener_servers(void) {
         ++udp_relay_server_index;
         pthread_t thr;
         if (pthread_create(&thr, NULL, run_udp_listener_thread, turn_params.listener.udp_services[index][0])) {
-          perror("Cannot create listener thread\n");
+          TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create listener thread: %s\n", strerror(errno));
           return -1;
         }
         pthread_detach(thr);
@@ -1149,7 +1149,7 @@ static int setup_socket_per_endpoint_udp_listener_servers(void) {
           ++udp_relay_server_index;
           pthread_t thr;
           if (pthread_create(&thr, NULL, run_udp_listener_thread, turn_params.listener.udp_services[index + 1][0])) {
-            perror("Cannot create listener thread\n");
+            TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create listener thread: %s\n", strerror(errno));
             return -1;
           }
           pthread_detach(thr);
@@ -1173,7 +1173,7 @@ static int setup_socket_per_endpoint_udp_listener_servers(void) {
         ++udp_relay_server_index;
         pthread_t thr;
         if (pthread_create(&thr, NULL, run_udp_listener_thread, turn_params.listener.dtls_services[index][0])) {
-          perror("Cannot create listener thread\n");
+          TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create listener thread: %s\n", strerror(errno));
           return -1;
         }
         pthread_detach(thr);
@@ -1193,7 +1193,7 @@ static int setup_socket_per_endpoint_udp_listener_servers(void) {
           ++udp_relay_server_index;
           pthread_t thr;
           if (pthread_create(&thr, NULL, run_udp_listener_thread, turn_params.listener.dtls_services[index + 1][0])) {
-            perror("Cannot create listener thread\n");
+            TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create listener thread: %s\n", strerror(errno));
             return -1;
           }
           pthread_detach(thr);
@@ -2024,6 +2024,9 @@ static void *run_admin_server_thread(void *arg) {
 
   ignore_sigpipe();
 
+  if (turn_params.verbose)
+    TURN_LOG_CATEGORY("admin", TURN_LOG_LEVEL_DEBUG, "admin server thread start\n");
+
   nRet = setup_admin_thread();
   if (nRet) {
     turn_params.stop_turn_server = 1;
@@ -2036,6 +2039,9 @@ static void *run_admin_server_thread(void *arg) {
   }
 
   remove_admin_thread();
+
+  if (turn_params.verbose)
+    TURN_LOG_CATEGORY("admin", TURN_LOG_LEVEL_DEBUG, "admin server thread exit\n");
 
   return arg;
 }
@@ -2063,7 +2069,6 @@ int remove_server(void) {
 
   if (turn_params.general_relay_servers_number == 0) {
     remove_relay_severs(general_relay_servers[0]);
-    remove_relay_severs(udp_relay_servers[0]);
   }
   return 0;
 }
@@ -2123,14 +2128,13 @@ int setup_server(void) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total turn servers(UDP): %d\n", (int)get_real_udp_relay_servers_number());
 
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total turn servers(TCP): %d\n", (int)get_real_general_relay_servers_number());
-
     {
       int tot = get_real_general_relay_servers_number();
       if (tot) {
         int i;
         for (i = 0; i < tot; i++) {
           if (!(general_relay_servers[i])) {
-            TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "General server %d is not initialized !\n", (int)i);
+            TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "General turn server(TCP) %d is not initialized !\n", (int)i);
           }
         }
       }

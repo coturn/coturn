@@ -929,8 +929,7 @@ static int run_cli_input(struct cli_session *cs, const char *buf0, unsigned int 
         myprintf(cs, "%s\n", str);
         close_cli_session(cs);
         turn_params.stop_turn_server = 1;
-        sleep(10);
-        exit(0);
+        return 0;
       } else if ((strcmp(cmd, "?") == 0) || (strcmp(cmd, "h") == 0) || (strcmp(cmd, "help") == 0)) {
         print_str_array(cs, CLI_GREETING_STR);
         print_str_array(cs, CLI_HELP_STR);
@@ -1250,7 +1249,7 @@ static int send_socket_to_admin_server(ioa_engine_handle e, struct message_to_re
 
 void remove_admin_thread() {
   if (adminserver.verbose)
-    TURN_LOG_CATEGORY("admin", TURN_LOG_LEVEL_DEBUG, "remove_admin_thread()");
+    TURN_LOG_CATEGORY("admin", TURN_LOG_LEVEL_DEBUG, "remove_admin_thread()\n");
 
   if (-1 != adminserver.listen_fd) {
     socket_closesocket(adminserver.listen_fd);
@@ -1259,10 +1258,6 @@ void remove_admin_thread() {
   if (adminserver.l) {
     evconnlistener_free(adminserver.l);
     adminserver.l = NULL;
-  }
-  if (adminserver.event_base) {
-    event_base_free(adminserver.event_base);
-    adminserver.event_base = NULL;
   }
   if (adminserver.sessions) {
     ur_map_free(&adminserver.sessions);
@@ -1287,10 +1282,13 @@ void remove_admin_thread() {
   if (adminserver.sessions)
     ur_map_free(&adminserver.sessions);
 
+  if (adminserver.event_base) {
+    event_base_free(adminserver.event_base);
+    adminserver.event_base = NULL;
+  }
   if (adminserver.e) {
     if (adminserver.e->sm)
       free_super_memory_region(adminserver.e->sm);
-    adminserver.e = NULL;
   }
 }
 
