@@ -732,7 +732,7 @@ start_udp_cycle:
 ///////////////////// operations //////////////////////////
 
 static int create_server_socket(dtls_listener_relay_server_type *server, int report_creation) {
-
+  int nRet = 0;
   FUNCSTART;
 
   if (!server)
@@ -740,55 +740,68 @@ static int create_server_socket(dtls_listener_relay_server_type *server, int rep
 
   clean_dtls_listener_server(server);
 
-  {
-    ioa_socket_raw udp_listen_fd = -1;
+  ioa_socket_raw udp_listen_fd = -1;
 
-    udp_listen_fd = socket(server->addr.ss.sa_family, CLIENT_DGRAM_SOCKET_TYPE, CLIENT_DGRAM_SOCKET_PROTOCOL);
-    if (udp_listen_fd < 0) {
-      perror("socket");
-      return -1;
-    }
+  udp_listen_fd = socket(server->addr.ss.sa_family, CLIENT_DGRAM_SOCKET_TYPE, CLIENT_DGRAM_SOCKET_PROTOCOL);
+  if (udp_listen_fd < 0) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Create DTLS/UDP listener socket(family:%d) fail:%d\n",
+                  server->addr.ss.sa_family, socket_errno());
+    return -1;
+  }
 
-    server->udp_listen_s =
-        create_ioa_socket_from_fd(server->e, udp_listen_fd, NULL, UDP_SOCKET, LISTENER_SOCKET, NULL, &(server->addr));
+  server->udp_listen_s =
+      create_ioa_socket_from_fd(server->e, udp_listen_fd, NULL, UDP_SOCKET, LISTENER_SOCKET, NULL, &(server->addr));
+  if (!server->udp_listen_s) {
+    socket_closesocket(udp_listen_fd);
+    return -1;
+  }
 
-    set_sock_buf_size(udp_listen_fd, UR_SERVER_SOCK_BUF_SIZE);
+  set_sock_buf_size(udp_listen_fd, UR_SERVER_SOCK_BUF_SIZE);
 
-    if (sock_bind_to_device(udp_listen_fd, (unsigned char *)server->ifname) < 0) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Cannot bind listener socket to device %s\n", server->ifname);
-    }
+  if (sock_bind_to_device(udp_listen_fd, (unsigned char *)server->ifname) < 0) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Cannot bind DTLS/UDP listener socket(family:%d) to device %s\n",
+                  server->addr.ss.sa_family, server->ifname);
+  }
 
-    set_raw_socket_ttl_options(udp_listen_fd, server->addr.ss.sa_family);
-    set_raw_socket_tos_options(udp_listen_fd, server->addr.ss.sa_family);
+  set_raw_socket_ttl_options(udp_listen_fd, server->addr.ss.sa_family);
+  set_raw_socket_tos_options(udp_listen_fd, server->addr.ss.sa_family);
 
-    {
-      const int max_binding_time = 60;
-      int addr_bind_cycle = 0;
-    retry_addr_bind:
+  const int max_binding_time = 60;
+  int addr_bind_cycle = 0;
 
-      if (addr_bind(udp_listen_fd, &server->addr, 1, 1, UDP_SOCKET) < 0) {
-        perror("Cannot bind local socket to addr");
-        char saddr[129];
-        addr_to_string(&server->addr, (uint8_t *)saddr);
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Cannot bind DTLS/UDP listener socket to addr %s\n", saddr);
-        if (addr_bind_cycle++ < max_binding_time) {
-          TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Trying to bind DTLS/UDP listener socket to addr %s, again...\n", saddr);
-          sleep(1);
-          goto retry_addr_bind;
-        }
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Fatal final failure: cannot bind DTLS/UDP listener socket to addr %s\n",
-                      saddr);
-        exit(-1);
-      }
-    }
+  char saddr[129];
+  addr_to_string(&server->addr, (uint8_t *)saddr);
+  while (addr_bind_cycle++ < max_binding_time) {
+    nRet = addr_bind(udp_listen_fd, &server->addr, 1, 1, UDP_SOCKET);
+    if (nRet < 0) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Cannot bind DTLS/UDP listener socket to addr %s; error: %d\n", saddr,
+                    socket_errno());
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Trying to bind DTLS/UDP listener socket to addr %s, again...\n", saddr);
+      sleep(1);
+    } else
+      break;
+  }
+  if (nRet) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Fatal final failure: cannot bind DTLS/UDP listener socket to addr %s\n",
+                  saddr);
+    socket_closesocket(udp_listen_fd);
+    return -1;
+  }
 
-    if (evutil_make_socket_nonblocking(udp_listen_fd))
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Set nonblocking fail\n");
+  if (evutil_make_socket_nonblocking(udp_listen_fd)) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Set nonblocking fail\n");
+    socket_closesocket(udp_listen_fd);
+    return -1;
+  }
 
-    server->udp_listen_ev =
-        event_new(server->e->event_base, udp_listen_fd, EV_READ | EV_PERSIST, udp_server_input_handler, server);
-
+  server->udp_listen_ev =
+      event_new(server->e->event_base, udp_listen_fd, EV_READ | EV_PERSIST, udp_server_input_handler, server);
+  if (server->udp_listen_ev)
     event_add(server->udp_listen_ev, NULL);
+  else {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "event_new fail\n");
+    socket_closesocket(udp_listen_fd);
+    return -1;
   }
 
   if (report_creation) {
