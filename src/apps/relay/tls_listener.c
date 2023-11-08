@@ -273,7 +273,7 @@ static int sctp_create_server_listener(tls_listener_relay_server_type *server) {
   socket_tcp_set_keepalive(tls_listen_fd, SCTP_SOCKET);
 
   if (evutil_make_socket_nonblocking(tls_listen_fd))
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Set nonblocking fail\n");
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Set socket nonblocking fail\n");
 
   server->sctp_l = evconnlistener_new(server->e->event_base, sctp_server_input_handler, server,
                                       LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE, 1024, tls_listen_fd);
