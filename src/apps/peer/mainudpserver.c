@@ -58,7 +58,7 @@ int main(int argc, char **argv) {
   char **local_addr_list = NULL;
   size_t las = 0;
   int verbose = TURN_VERBOSE_NONE;
-  int c;
+  int c = 0;
   char ifname[1025] = "\0";
 
   if (socket_init())
@@ -87,7 +87,7 @@ int main(int argc, char **argv) {
       break;
     default:
       fprintf(stderr, "%s\n", Usage);
-      exit(1);
+      return -2;
     }
 
   if (las < 1) {
@@ -98,6 +98,8 @@ int main(int argc, char **argv) {
   }
 
   server_type *server = start_udp_server(verbose, ifname, local_addr_list, las, port);
+  if (!server)
+    return -3;
   run_udp_server(server);
   clean_udp_server(server);
 

@@ -45,13 +45,14 @@ extern "C" {
 
 struct server_info;
 typedef struct server_info server_type;
-
+typedef struct listen_info listen_type;
 ///////////////////////////////////////////////////////
 
 struct server_info {
   char ifname[1025];
   struct event_base *event_base;
   int verbose;
+  listen_type *listen;
 };
 
 //////////////////////////////
