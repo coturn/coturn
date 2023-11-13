@@ -41,7 +41,7 @@ jobs:
 
       - name: Detect correct Git ref for image build
         id: git
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
           script: |
             let out = {ref: 'HEAD', ver: ''};
@@ -110,7 +110,7 @@ jobs:
 
       - name: Detect correct Git version for image tests
         id: git
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
           script: |
             let out = {ref: 'HEAD', ver: ''};
