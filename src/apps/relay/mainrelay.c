@@ -2612,9 +2612,13 @@ static int adminmain(int argc, char **argv) {
   int print_enc_password = 0;
   int print_enc_aes_password = 0;
 
+  int old_log = set_no_stdout_log(1);
+
   c = init_default_values();
   if (c)
     return c;
+
+  set_no_stdout_log(old_log);
 
   optind = 1;
   uo.u.m = admin_long_options;
@@ -3996,7 +4000,7 @@ long service_run() {
 
   remove_server();
   disconnect_database();
-  
+
   return 0;
 }
 

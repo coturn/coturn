@@ -64,7 +64,7 @@ typedef enum {
 
 #define eve(v) ((v) == TURN_VERBOSE_EXTRA)
 
-void set_no_stdout_log(int val);
+int set_no_stdout_log(int val);
 void set_log_to_syslog(int val);
 void set_simple_log(int val);
 

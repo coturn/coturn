@@ -203,7 +203,11 @@ extern void TURN_LOG_FUNC_IMPL(TURN_LOG_LEVEL level, const char *format, va_list
 
 static int no_stdout_log = 0;
 
-void set_no_stdout_log(int val) { no_stdout_log = val; }
+int set_no_stdout_log(int val) {
+  int old = no_stdout_log;
+  no_stdout_log = val;
+  return old;
+}
 
 #define MAX_LOG_TIMESTAMP_FORMAT_LEN 48
 static char turn_log_timestamp_format[MAX_LOG_TIMESTAMP_FORMAT_LEN] = "%FT%T%z";

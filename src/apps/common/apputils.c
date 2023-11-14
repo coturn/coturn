@@ -1094,7 +1094,7 @@ void print_abs_file_name(const char *msg1, const char *msg2, const char *fn) {
 }
 
 char *find_config_file(const char *config_file) {
-  
+
   if (!(config_file && config_file[0]))
     return NULL;
 
