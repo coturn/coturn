@@ -80,7 +80,7 @@ void read_spare_buffer(evutil_socket_t fd) {
   if (fd >= 0) {
     static char buffer[65536];
 #if defined(WINDOWS)
-    // TODO: add set no-block? by Kang Lin <kl222@126.com>
+    // Because of the fd is noblock socket
     recv(fd, buffer, sizeof(buffer), 0);
 #else
     recv(fd, buffer, sizeof(buffer), MSG_DONTWAIT);
@@ -101,8 +101,7 @@ int set_sock_buf_size(evutil_socket_t fd, int sz0) {
   }
 
   if (sz < 1) {
-    perror("Cannot set socket rcv size");
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Cannot set rcv sock size %d on fd %d\n", sz0, fd);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Cannot set rcv sock size %d on fd %d, err:%d\n", sz0, fd, socket_errno());
   }
 
   sz = sz0;
@@ -115,8 +114,7 @@ int set_sock_buf_size(evutil_socket_t fd, int sz0) {
   }
 
   if (sz < 1) {
-    perror("Cannot set socket snd size");
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Cannot set snd sock size %d on fd %d\n", sz0, fd);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Cannot set snd sock size %d on fd %d, err: %d\n", sz0, fd, socket_errno());
   }
 
   return 0;
@@ -338,7 +336,7 @@ int get_raw_socket_ttl(evutil_socket_t fd, int family) {
 #else
     socklen_t slen = (socklen_t)sizeof(ttl);
     if (getsockopt(fd, IPPROTO_IPV6, IPV6_UNICAST_HOPS, &ttl, &slen) < 0) {
-      perror("get HOPLIMIT on socket");
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Get HOPLIMIT on fd[%d] fail. error code: %d\n", fd, socket_errno());
       return TTL_IGNORE;
     }
 #endif
@@ -351,7 +349,7 @@ int get_raw_socket_ttl(evutil_socket_t fd, int family) {
 #else
     socklen_t slen = (socklen_t)sizeof(ttl);
     if (getsockopt(fd, IPPROTO_IP, IP_TTL, &ttl, &slen) < 0) {
-      perror("get TTL on socket");
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Get TTL on fd[%d] fail. error code: %d\n", fd, socket_errno());
       return TTL_IGNORE;
     }
 #endif
@@ -374,6 +372,7 @@ int get_raw_socket_tos(evutil_socket_t fd, int family) {
 #else
     socklen_t slen = (socklen_t)sizeof(tos);
     if (getsockopt(fd, IPPROTO_IPV6, IPV6_TCLASS, &tos, &slen) < 0) {
+
 #if defined(_MSC_VER)
       /*NOTE: Because getsockopt is not support IPV6_TCLASS in windows.
        * it need WSARecvMsg get IPV6_TCLASS. and it must called after bind().
@@ -393,6 +392,7 @@ int get_raw_socket_tos(evutil_socket_t fd, int family) {
       return TOS_IGNORE;
     }
 #endif
+
   } else {
 #if !defined(IP_TOS)
     UNUSED_ARG(fd);
@@ -402,8 +402,8 @@ int get_raw_socket_tos(evutil_socket_t fd, int family) {
 #else
     socklen_t slen = (socklen_t)sizeof(tos);
     if (getsockopt(fd, IPPROTO_IP, IP_TOS, &tos, &slen) < 0) {
-      perror("get TOS on socket");
-      return -1;
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Get TOS on fd[%d] fail. error code: %d\n", fd, socket_errno());
+      return TOS_IGNORE;
     }
 #endif
   }
@@ -422,7 +422,7 @@ int set_raw_socket_ttl(evutil_socket_t fd, int family, int ttl) {
 #else
     CORRECT_RAW_TTL(ttl);
     if (setsockopt(fd, IPPROTO_IPV6, IPV6_UNICAST_HOPS, &ttl, sizeof(ttl)) < 0) {
-      perror("set HOPLIMIT on socket");
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Set HOPLIMIT on fd[%d] fail. error code: %d\n", fd, socket_errno());
       return -1;
     }
 #endif
@@ -433,7 +433,7 @@ int set_raw_socket_ttl(evutil_socket_t fd, int family, int ttl) {
 #else
     CORRECT_RAW_TTL(ttl);
     if (setsockopt(fd, IPPROTO_IP, IP_TTL, &ttl, sizeof(ttl)) < 0) {
-      perror("set TTL on socket");
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Set TTL on fd[%d] fail. error code: %d\n", fd, socket_errno());
       return -1;
     }
 #endif
@@ -451,7 +451,7 @@ int set_raw_socket_tos(evutil_socket_t fd, int family, int tos) {
 #else
     CORRECT_RAW_TOS(tos);
     if (setsockopt(fd, IPPROTO_IPV6, IPV6_TCLASS, &tos, sizeof(tos)) < 0) {
-      perror("set TCLASS on socket");
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Set TCLASS on fd[%d] fail. error code: %d\n", fd, socket_errno());
       return -1;
     }
 #endif
@@ -461,7 +461,7 @@ int set_raw_socket_tos(evutil_socket_t fd, int family, int tos) {
     UNUSED_ARG(tos);
 #else
     if (setsockopt(fd, IPPROTO_IP, IP_TOS, &tos, sizeof(tos)) < 0) {
-      perror("set TOS on socket");
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Set TOS on fd[%d] fail. error code: %d\n", fd, socket_errno());
       return -1;
     }
 #endif
@@ -551,7 +551,7 @@ int set_socket_df(evutil_socket_t fd, int family, int value) {
     }
     if (ret < 0) {
       int err = socket_errno();
-      perror("set socket df:");
+      // perror("set socket df:");
       TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: set sockopt failed: fd=%d, err=%d, family=%d\n", __FUNCTION__, fd, err,
                     family);
     }
@@ -575,8 +575,8 @@ int set_socket_df(evutil_socket_t fd, int family, int value) {
 #endif
     }
     if (ret < 0) {
-      perror("set DF");
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: set sockopt failed\n", __FUNCTION__);
+      // perror("set DF");
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: set sockopt failed, err: %d\n", __FUNCTION__, socket_errno());
     }
   }
 #else

@@ -1955,7 +1955,6 @@ typedef unsigned char recv_tos_t;
 int udp_recvfrom(ioa_socket_handle s, ioa_addr *orig_addr, const ioa_addr *like_addr, char *buffer, int buf_size,
                  int *ttl, int *tos, char *ecmsg, int flags, uint32_t *errcode) {
   int len = 0;
-
   if (!s || !orig_addr || !like_addr || !buffer)
     return -1;
 
@@ -2079,11 +2078,13 @@ int udp_recvfrom(ioa_socket_handle s, ioa_addr *orig_addr, const ioa_addr *like_
                   recv_tos);
 
 #elif !defined(CMSG_SPACE)
+
   do {
     len = recvfrom(fd, buffer, buf_size, flags, (struct sockaddr *)orig_addr, (socklen_t *)&slen);
   } while (len < 0 && socket_eintr());
   if (len < 0 && errcode)
     *errcode = (uint32_t)errno;
+
 #else
 
   struct msghdr msg;
