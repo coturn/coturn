@@ -3507,13 +3507,13 @@ void stun_report_binding(void *a, STUN_PROMETHEUS_METRIC_TYPE type) {
 #if !defined(TURN_NO_PROMETHEUS)
   UNUSED_ARG(a);
   switch (type) {
-  case 0:
+  case STUN_PROMETHEUS_METRIC_TYPE_REQUEST:
     prom_inc_stun_binding_request();
     break;
-  case 1:
+  case STUN_PROMETHEUS_METRIC_TYPE_RESPONSE:
     prom_inc_stun_binding_response();
     break;
-  case 2:
+  case STUN_PROMETHEUS_METRIC_TYPE_ERROR:
     prom_inc_stun_binding_error();
     break;
   default:
