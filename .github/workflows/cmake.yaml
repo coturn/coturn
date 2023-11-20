@@ -2,7 +2,6 @@ name: CMake
 
 on:
   push:
-    branches: [ $default-branch ]
   pull_request:
     types: [ opened, reopened, synchronize ]
 
