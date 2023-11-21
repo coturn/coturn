@@ -297,6 +297,13 @@ Flags:
 
 --prometheus-port	Prometheus listener port (Default: 9641).
 
+--prometheus-compact	Omit the HELP and TYPE comments when generating
+		the prometheus metrics report. Usually it is sufficient to get and
+		record them once. There is no need to send them again and again on
+		each report - would just waste bandwith and demands more resources
+		to parse and process the report. On production systems it is
+		recommended to use this option.
+
 -h			Help.
 
 Options with values:

@@ -310,6 +310,7 @@ typedef struct _turn_params_ {
   int prometheus;
   int prometheus_port;
   int prometheus_username_labels;
+  int prometheus_compact;
 
   /////// Users DB ///////////
 

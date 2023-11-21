@@ -16,9 +16,8 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-#include <microhttpd.h>
-#include <prom.h>
-#include <promhttp.h>
+#include <libprom/prom.h>
+#include <libprom/promhttp.h>
 #ifdef __cplusplus
 }
 #endif /* __clplusplus */

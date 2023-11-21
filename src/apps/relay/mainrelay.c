@@ -214,6 +214,7 @@ turn_params_t turn_params = {
     0,                                  /* prometheus disabled by default */
     DEFAULT_PROM_SERVER_PORT,           /* prometheus port */
     0, /* prometheus username labelling disabled by default when prometheus is enabled */
+    0,                                  /* prometheus compact output */
 
     ///////////// Users DB //////////////
     {(TURN_USERDB_TYPE)0, {"\0", "\0"}, {0, NULL, {NULL, 0}}},
@@ -1070,6 +1071,7 @@ static char Usage[] =
     "						also the path / on this port can be used as a health check\n"
     " --prometheus-port		<port>		Prometheus metrics port (Default: 9641).\n"
     " --prometheus-username-labels			When metrics are enabled, add labels with client usernames.\n"
+    " --prometheus-compact			Omit the optional # HELP and # TYPE comments for each metric output.\n"
 #endif
     " --use-auth-secret				TURN REST API flag.\n"
     "						Flag that sets a special authorization option that is based upon "
@@ -1367,6 +1369,7 @@ enum EXTRA_OPTS {
   PROMETHEUS_OPT,
   PROMETHEUS_PORT_OPT,
   PROMETHEUS_ENABLE_USERNAMES_OPT,
+  PROMETHEUS_COMPACT_OPT,
   AUTH_SECRET_OPT,
   NO_AUTH_PINGS_OPT,
   NO_DYNAMIC_IP_LIST_OPT,
@@ -1487,6 +1490,7 @@ static const struct myoption long_options[] = {
     {"prometheus", optional_argument, NULL, PROMETHEUS_OPT},
     {"prometheus-port", optional_argument, NULL, PROMETHEUS_PORT_OPT},
     {"prometheus-username-labels", optional_argument, NULL, PROMETHEUS_ENABLE_USERNAMES_OPT},
+    {"prometheus-compact", optional_argument, NULL, PROMETHEUS_COMPACT_OPT},
 #endif
     {"use-auth-secret", optional_argument, NULL, AUTH_SECRET_OPT},
     {"static-auth-secret", required_argument, NULL, STATIC_AUTH_SECRET_VAL_OPT},
@@ -2129,6 +2133,9 @@ static void set_option(int c, char *value) {
     break;
   case PROMETHEUS_ENABLE_USERNAMES_OPT:
     turn_params.prometheus_username_labels = 1;
+    break;
+  case PROMETHEUS_COMPACT_OPT:
+    turn_params.prometheus_compact = 1;
     break;
   case AUTH_SECRET_OPT:
     turn_params.use_auth_secret_with_timestamp = 1;
