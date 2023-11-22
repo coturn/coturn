@@ -785,8 +785,9 @@ int set_socket_options_fd(evutil_socket_t fd, SOCKET_TYPE st, int family) {
       ;
     }
   }
-
-  socket_set_nonblocking(fd);
+  
+  if (evutil_make_socket_nonblocking(fd))
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Set socket nonblocking fail\n");
 
   if (!is_stream_socket(st)) {
     set_raw_socket_ttl_options(fd, family);

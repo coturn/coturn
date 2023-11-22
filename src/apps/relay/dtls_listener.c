@@ -788,6 +788,9 @@ static int create_server_socket(dtls_listener_relay_server_type *server, int rep
         exit(-1);
       }
     }
+    
+    if (evutil_make_socket_nonblocking(udp_listen_fd))
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Set nonblocking fail\n");
 
     server->udp_listen_ev =
         event_new(server->e->event_base, udp_listen_fd, EV_READ | EV_PERSIST, udp_server_input_handler, server);

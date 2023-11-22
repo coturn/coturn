@@ -76,19 +76,6 @@ int IS_TURN_SERVER = 0;
 
 /*********************** Sockets *********************************/
 
-int socket_set_nonblocking(evutil_socket_t fd) {
-#if defined(WINDOWS)
-  unsigned long nonblocking = 1;
-  ioctlsocket(fd, FIONBIO, (unsigned long *)&nonblocking);
-#else
-  if (fcntl(fd, F_SETFL, O_NONBLOCK) == -1) {
-    perror("O_NONBLOCK");
-    return -1;
-  }
-#endif
-  return 0;
-}
-
 void read_spare_buffer(evutil_socket_t fd) {
   if (fd >= 0) {
     static char buffer[65536];
