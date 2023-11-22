@@ -1345,7 +1345,7 @@ void setup_admin_thread(void) {
 
     if (evutil_make_socket_nonblocking(adminserver.listen_fd))
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Set nonblocking fail\n");
-    
+
     adminserver.l = evconnlistener_new(adminserver.event_base, cliserver_input_handler, &adminserver,
                                        LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE, 1024, adminserver.listen_fd);
 

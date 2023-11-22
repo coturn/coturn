@@ -374,8 +374,23 @@ int get_raw_socket_tos(evutil_socket_t fd, int family) {
 #else
     socklen_t slen = (socklen_t)sizeof(tos);
     if (getsockopt(fd, IPPROTO_IPV6, IPV6_TCLASS, &tos, &slen) < 0) {
-      perror("get TCLASS on socket");
-      return -1;
+#if defined(_MSC_VER)
+      /*NOTE: Because getsockopt is not support IPV6_TCLASS in windows.
+       * it need WSARecvMsg get IPV6_TCLASS. and it must called after bind().
+       * so there are ignore it!
+       * see: https://learn.microsoft.com/windows/win32/winsock/ipproto-ipv6-socket-options
+       * see: https://learn.microsoft.com/windows/win32/api/mswsock/nc-mswsock-lpfn_wsarecvmsg
+       */
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
+                    "Because getsockopt is not support IPV6_TCLASS in windows. "
+                    "it must use WSARecvMsg. so return TOS_DEFAULT. "
+                    "Get TCLASS on fd[%d] fail. error code: %d\n",
+                    fd, socket_errno());
+      return TOS_DEFAULT;
+#else
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Get TCLASS on fd[%d] fail. error code: %d\n", fd, socket_errno());
+#endif
+      return TOS_IGNORE;
     }
 #endif
   } else {

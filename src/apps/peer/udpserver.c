@@ -92,7 +92,7 @@ static int udp_create_server_socket(server_type *server, const char *ifname, con
 
   if (addr_bind(udp_fd, server_addr, 1, 1, UDP_SOCKET) < 0)
     return -1;
-  
+
   if (evutil_make_socket_nonblocking(udp_fd))
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Set socket nonblocking fail\n");
 
