@@ -4241,7 +4241,7 @@ static int create_relay_connection(turn_turnserver *server, ts_ur_super_session 
           ioa_socket_tobeclosed(s)) {
 
         IOA_CLOSE_SOCKET(s);
-        *err_code = 404;
+        *err_code = 508;
         *reason = (const uint8_t *)"Cannot find reserved socket";
         return -1;
       }
