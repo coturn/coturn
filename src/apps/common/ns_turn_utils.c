@@ -59,9 +59,12 @@
 
 ////////// LOG TIME OPTIMIZATION ///////////
 
+TURN_LOG_LEVEL app_log_level = TURN_LOG_LEVEL_INFO; // skip DEBUG stuff per default
+
 static volatile int _log_file_line_set = 0;
 
 static volatile turn_time_t log_start_time = 0;
+static volatile turn_time_t log_boot_time = 0;
 volatile int _log_time_value_set = 0;
 volatile turn_time_t _log_time_value = 0;
 
@@ -207,6 +210,19 @@ void set_no_stdout_log(int val) { no_stdout_log = val; }
 static char turn_log_timestamp_format[MAX_LOG_TIMESTAMP_FORMAT_LEN] = "%FT%T%z";
 
 void set_turn_log_timestamp_format(char *new_format) {
+  struct timespec t;
+  size_t len = strlen(new_format);
+  char *nano = len > 1 ? (new_format + len - 2) : new_format;
+  // strip off the trailing placeholder for micro seconds, if any.
+  if (strcmp(nano, "%N") == 0)
+    new_format[len - 2] = '\0';
+#ifdef CLOCK_MONOTONIC
+  if (len > 1 && nano[0] == '\0' && clock_gettime(CLOCK_MONOTONIC, &t) == 0) {
+    log_boot_time = time(NULL) - t.tv_sec;
+  } else {
+    log_boot_time = 0;
+  }
+#endif
   strncpy(turn_log_timestamp_format, new_format, MAX_LOG_TIMESTAMP_FORMAT_LEN - 1);
 }
 
@@ -528,6 +544,10 @@ void err(int eval, const char *format, ...) {
 
 void turn_log_func_default(char *file, int line, TURN_LOG_LEVEL level, const char *format, ...) {
   va_list args;
+
+  if (level < app_log_level)
+    return;
+
   va_start(args, format);
 #if defined(TURN_LOG_FUNC_IMPL)
   TURN_LOG_FUNC_IMPL(level, format, args);
@@ -537,8 +557,24 @@ void turn_log_func_default(char *file, int line, TURN_LOG_LEVEL level, const cha
   char s[MAX_RTPPRINTF_BUFFER_SIZE + 1];
   size_t so_far = 0;
   if (use_new_log_timestamp_format) {
-    time_t now = time(NULL);
-    so_far += strftime(s, sizeof(s), turn_log_timestamp_format, localtime(&now));
+#ifdef CLOCK_MONOTONIC
+    struct timespec t;
+    if (log_boot_time) {
+      if (clock_gettime(CLOCK_MONOTONIC, &t) != 0) {
+        t.tv_sec = time(NULL);
+        t.tv_nsec = 0;
+      }
+      t.tv_sec += log_boot_time;
+      so_far += strftime(s, sizeof(s) - 1, turn_log_timestamp_format, gmtime(&(t.tv_sec)));
+      so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - so_far - 2, "%06ld", t.tv_nsec / 1000);
+    } else
+#endif
+    {
+      time_t now = time(NULL);
+      so_far += strftime(s, sizeof(s) - 1, turn_log_timestamp_format, localtime(&now));
+    }
+    s[so_far] = ' ';
+    s[++so_far] = '\0';
   } else {
     so_far += snprintf(s, sizeof(s), "%lu: ", (unsigned long)log_time());
   }
