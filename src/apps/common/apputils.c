@@ -265,40 +265,38 @@ int addr_connect(evutil_socket_t fd, const ioa_addr *addr, int *out_errno) {
 }
 
 int addr_bind(evutil_socket_t fd, const ioa_addr *addr, int reusable, int debug, SOCKET_TYPE st) {
+  int ret = -1;
+
   if (!addr || fd < 0) {
 
     return -1;
-
-  } else {
-
-    int ret = -1;
-
-    socket_set_reusable(fd, reusable, st);
-
-    if (addr->ss.sa_family == AF_INET) {
-      do {
-        ret = bind(fd, (const struct sockaddr *)addr, sizeof(struct sockaddr_in));
-      } while (ret < 0 && socket_eintr());
-    } else if (addr->ss.sa_family == AF_INET6) {
-      const int off = 0;
-      setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, (const char *)&off, sizeof(off));
-      do {
-        ret = bind(fd, (const struct sockaddr *)addr, sizeof(struct sockaddr_in6));
-      } while (ret < 0 && socket_eintr());
-    } else {
-      return -1;
-    }
-    if (ret < 0) {
-      if (debug) {
-        int err = socket_errno();
-        perror("bind");
-        char str[129];
-        addr_to_string(addr, (uint8_t *)str);
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Trying to bind fd %d to <%s>: errno=%d\n", fd, str, err);
-      }
-    }
-    return ret;
   }
+
+  socket_set_reusable(fd, reusable, st);
+
+  if (addr->ss.sa_family == AF_INET) {
+    do {
+      ret = bind(fd, (const struct sockaddr *)addr, sizeof(struct sockaddr_in));
+    } while (ret < 0 && socket_eintr());
+  } else if (addr->ss.sa_family == AF_INET6) {
+    const int off = 0;
+    setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, (const char *)&off, sizeof(off));
+    do {
+      ret = bind(fd, (const struct sockaddr *)addr, sizeof(struct sockaddr_in6));
+    } while (ret < 0 && socket_eintr());
+  } else {
+    return -1;
+  }
+
+  if (ret < 0) {
+    if (debug) {
+      int err = socket_errno();
+      char str[129] = {0};
+      addr_to_string(addr, (uint8_t *)str);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Trying to bind fd %d to <%s>: errno=%d\n", fd, str, err);
+    }
+  }
+  return ret;
 }
 
 int addr_get_from_sock(evutil_socket_t fd, ioa_addr *addr) {
