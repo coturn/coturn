@@ -257,11 +257,12 @@ static int send_turn_message_to(turn_turnserver *server, ioa_network_buffer_hand
 
 /////////////////// Peer addr check /////////////////////////////
 
-static int good_peer_addr(turn_turnserver *server, const char *realm, ioa_addr *peer_addr) {
+static int good_peer_addr(turn_turnserver *server, const char *realm, ioa_addr *peer_addr, turnsession_id session_id) {
 #define CHECK_REALM(r)                                                                                                 \
   if ((r)[0] && realm && realm[0] && strcmp((r), realm))                                                               \
   continue
 
+  turnserver_id server_id = (turnserver_id)(session_id / TURN_SESSION_ID_FACTOR);
   if (server && peer_addr) {
     if (*(server->no_multicast_peers) && ioa_addr_is_multicast(peer_addr))
       return 0;
@@ -307,8 +308,8 @@ static int good_peer_addr(turn_turnserver *server, const char *realm, ioa_addr *
           if (ioa_addr_in_range(&(server->ip_blacklist->rs[i].enc), peer_addr)) {
             char saddr[129];
             addr_to_string_no_port(peer_addr, (uint8_t *)saddr);
-            TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "A peer IP %s denied in the range: %s\n", saddr,
-                          server->ip_blacklist->rs[i].str);
+            TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: A peer IP %s denied in the range: %s in server %d \n", 
+                          (unsigned long long) session_id, saddr, server->ip_blacklist->rs[i].str, server_id);
             return 0;
           }
         }
@@ -326,7 +327,8 @@ static int good_peer_addr(turn_turnserver *server, const char *realm, ioa_addr *
               ioa_unlock_blacklist(server->e);
               char saddr[129];
               addr_to_string_no_port(peer_addr, (uint8_t *)saddr);
-              TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "A peer IP %s denied in the range: %s\n", saddr, bl->rs[i].str);
+              TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: A peer IP %s denied in the range= %s in server %d \n", 
+                            (unsigned long long) session_id, saddr, server->ip_blacklist->rs[i].str, server_id);
               return 0;
             }
           }
@@ -2137,7 +2139,7 @@ static void tcp_peer_accept_connection(ioa_socket_handle s, void *arg) {
       return;
     }
 
-    if (!good_peer_addr(server, ss->realm_options.name, peer_addr)) {
+    if (!good_peer_addr(server, ss->realm_options.name, peer_addr, ss->id)) {
       uint8_t saddr[256];
       addr_to_string(peer_addr, saddr);
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: an attempt to connect from a peer with forbidden address: %s\n",
@@ -2272,7 +2274,7 @@ static int handle_turn_connect(turn_turnserver *server, ts_ur_super_session *ss,
       *reason = (const uint8_t *)"Where is Peer Address ?";
 
     } else {
-      if (!good_peer_addr(server, ss->realm_options.name, &peer_addr)) {
+      if (!good_peer_addr(server, ss->realm_options.name, &peer_addr, ss->id)) {
         *err_code = 403;
         *reason = (const uint8_t *)"Forbidden IP";
       } else {
@@ -2629,7 +2631,7 @@ static int handle_turn_channel_bind(turn_turnserver *server, ts_ur_super_session
           *err_code = 400;
           *reason = (const uint8_t *)"You cannot use the same peer with different channel number";
         } else {
-          if (!good_peer_addr(server, ss->realm_options.name, &peer_addr)) {
+          if (!good_peer_addr(server, ss->realm_options.name, &peer_addr, ss->id)) {
             *err_code = 403;
             *reason = (const uint8_t *)"Forbidden IP";
           } else {
@@ -3046,7 +3048,7 @@ static int handle_turn_create_permission(turn_turnserver *server, ts_ur_super_se
           if (!get_relay_socket(a, peer_addr.ss.sa_family)) {
             *err_code = 443;
             *reason = (const uint8_t *)"Peer Address Family Mismatch (4)";
-          } else if (!good_peer_addr(server, ss->realm_options.name, &peer_addr)) {
+          } else if (!good_peer_addr(server, ss->realm_options.name, &peer_addr, ss->id)) {
             *err_code = 403;
             *reason = (const uint8_t *)"Forbidden IP";
           } else {
