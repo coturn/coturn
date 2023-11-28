@@ -308,8 +308,8 @@ static int good_peer_addr(turn_turnserver *server, const char *realm, ioa_addr *
           if (ioa_addr_in_range(&(server->ip_blacklist->rs[i].enc), peer_addr)) {
             char saddr[129];
             addr_to_string_no_port(peer_addr, (uint8_t *)saddr);
-            TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: A peer IP %s denied in the range: %s in server %d \n", 
-                          (unsigned long long) session_id, saddr, server->ip_blacklist->rs[i].str, server_id);
+            TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: A peer IP %s denied in the range: %s in server %d \n",
+                          (unsigned long long)session_id, saddr, server->ip_blacklist->rs[i].str, server_id);
             return 0;
           }
         }
@@ -327,8 +327,9 @@ static int good_peer_addr(turn_turnserver *server, const char *realm, ioa_addr *
               ioa_unlock_blacklist(server->e);
               char saddr[129];
               addr_to_string_no_port(peer_addr, (uint8_t *)saddr);
-              TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: A peer IP %s denied in the range= %s in server %d \n", 
-                            (unsigned long long) session_id, saddr, server->ip_blacklist->rs[i].str, server_id);
+              TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+                            "session %018llu: A peer IP %s denied in the range= %s in server %d \n",
+                            (unsigned long long)session_id, saddr, server->ip_blacklist->rs[i].str, server_id);
               return 0;
             }
           }
