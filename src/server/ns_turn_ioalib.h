@@ -205,6 +205,20 @@ void ioa_network_buffer_delete(ioa_engine_handle e, ioa_network_buffer_handle nb
 /*
  * Status reporting functions
  */
+void attach_samples(ts_ur_super_session *ss);
+void acquire_recyclable_session_id(ts_ur_super_session *ss);
+void release_recyclable_session_id(ts_ur_super_session *ss);
+
+typedef enum {
+	SESSION_STATE_CLOSED,
+	SESSION_STATE_DEALLOCATED,
+	SESSION_STATE_CLOSING,
+	SESSION_STATE_OPEN,
+	SESSION_STATE_ALLOCATED,
+	SESSION_STATE_REFRESH,
+	SESSION_STATE_MAX
+} session_state_t;
+
 enum _STUN_PROMETHEUS_METRIC_TYPE {
   STUN_PROMETHEUS_METRIC_TYPE_REQUEST,
   STUN_PROMETHEUS_METRIC_TYPE_RESPONSE,
@@ -213,7 +227,7 @@ enum _STUN_PROMETHEUS_METRIC_TYPE {
 };
 
 typedef enum _STUN_PROMETHEUS_METRIC_TYPE STUN_PROMETHEUS_METRIC_TYPE;
-void stun_report_binding(void *session, STUN_PROMETHEUS_METRIC_TYPE type);
+void stun_report_binding(ts_ur_super_session *session, STUN_PROMETHEUS_METRIC_TYPE type, int err_code);
 
 void turn_report_allocation_set(void *a, turn_time_t lifetime, int refresh);
 void turn_report_allocation_delete(void *a, SOCKET_TYPE socket_type);

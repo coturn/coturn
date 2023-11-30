@@ -41,8 +41,8 @@ extern "C" {
 
 //////////////////////////////////////////////////
 
-#define LOW_DEFAULT_PORTS_BOUNDARY (49152)
-#define HIGH_DEFAULT_PORTS_BOUNDARY (65535)
+#define LOW_DEFAULT_PORTS_BOUNDARY 49152
+#define HIGH_DEFAULT_PORTS_BOUNDARY 65535
 
 //////////////////////////////////////////////////
 

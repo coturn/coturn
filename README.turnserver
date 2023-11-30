@@ -162,6 +162,8 @@ User database settings:
 
 Flags:
 
+-h					Help.
+
 -v, --verbose		Moderate verbose mode.
 
 -V, --Verbose		Extra verbose mode, very annoying and not recommended.
@@ -285,28 +287,46 @@ Flags:
 			main ORIGIN attribute value (if the ORIGIN was
 			initially used by the session).
 
---prometheus		Enable prometheus metrics. By default it is
-			disabled. Would listen on port 9641 under the path /metrics
-			also the path / on this port can be used as a health check. 
-			Unavailable on apt installations.
-			
---prometheus-username-labels	Enable labeling prometheus traffic
-		metrics with client usernames. Labeling with client usernames is
-		disabled by default, because this may cause memory leaks when using
-		authentication with ephemeral usernames (e.g. TURN REST API).
 
---prometheus-port	Prometheus listener port (Default: 9641).
+Prometheus/OpenMetrics options:
 
---prometheus-compact	Omit the HELP and TYPE comments when generating
-		the prometheus metrics report. Usually it is sufficient to get and
-		record them once. There is no need to send them again and again on
-		each report - would just waste bandwith and demands more resources
-		to parse and process the report. On production systems it is
-		recommended to use this option.
+--prom		Enable metric collections to monitor this application and make them
+			available via HTTP in reports using the Prometheus/OpenMetrics
+			exposition format via http://host:port/metrics . All options
+			starting with "--prom-" are only effective if this one is enabled.
+            For more information and details you should read `docs/Metrics.md`.
 
--h			Help.
+--prom-port=<port>	Listen on the given port for /metric requests. Default: 9641
 
-Options with values:
+--prom-compact	Omit the HELP and TYPE comments when generating the metric
+		reports. Recommended for all production systems.
+
+--prom-realm	Label the session state metric with the session realm. Usually just overhead.
+
+--prom-usernames	Label the session state metric with client usernames. One
+		should not use, unless really needed!
+
+--prom-uniq-sid	Label session related metrics with the unique ID of the session.
+		One should not use, unless really needed!
+
+--prom-sid	Reuse session IDs of already closed sessions to reduce the number
+		of generate metrics. However, still a vulnerable point for DoS attacks
+		so should not be used or in an environment, where one has pretty good
+		control over the clients accessing this service.
+		NOTE: --prom-sid supersedes the --prom-sid option.
+
+--prom-sid-retain=<num>	Set the time in seconds a session must have been closed
+		before its ID can be re-used by a new session.
+
+--log-ip	Log the IP address of each session endpoint, when a session gets created.
+			Right now IP addresses are logged in verbose mode at the session end, only.
+			This is not sufficient or too late if one needs to correlate metrics. So
+			this option allows one to turn it on on demand. Default: 0
+
+For production the recommended options are --prom and --prom-compact.
+
+
+Other Options with values:
 
 --stale-nonce[=<value>]		Use extra security with nonce value having
 							limited lifetime, in seconds (default 600 secs).

@@ -211,11 +211,17 @@ turn_params_t turn_params = {
     0,                                  /* bps_capacity_allocated */
     0,                                  /* total_quota */
     0,                                  /* user_quota */
-    0,                                  /* prometheus disabled by default */
-    DEFAULT_PROM_SERVER_PORT,           /* prometheus port */
-    0, /* prometheus username labelling disabled by default when prometheus is enabled */
-    0,                                  /* prometheus compact output */
-
+#if !defined(TURN_NO_PROMETHEUS)
+    0,									/* prom disabled by default */
+    DEFAULT_PROM_SERVER_PORT,			/* prom port */
+    0,									/* prom compact output */
+    0,									/* prom realm labels */
+    0,									/* prom username labels */
+    0,									/* prom unique sessionID labels */
+    0,									/* prom sessionID labels, reusable */
+    DEFAULT_PROM_SID_RETAIN,			/* prom retain sessionID secs before reuse */
+    0,									/* log ip on session create */
+#endif
     ///////////// Users DB //////////////
     {(TURN_USERDB_TYPE)0, {"\0", "\0"}, {0, NULL, {NULL, 0}}},
 
@@ -861,18 +867,19 @@ int get_a_local_relay(int family, ioa_addr *relay_addr) {
 }
 
 //////////////////////////////////////////////////
-
+#define _STRVAL(s) _STR(s)
+#define _STR(s) #s
 static char Usage[] =
     "Usage: turnserver [options]\n"
     "Options:\n"
     " -d, --listening-device	<device-name>		Listener interface device (NOT RECOMMENDED. Optional, Linux "
     "only).\n"
-    " -p, --listening-port		<port>		TURN listener port (Default: 3478).\n"
+    " -p, --listening-port		<port>		TURN listener port. Default: " _STRVAL(DEFAULT_STUN_PORT) ".\n"
     "						Note: actually, TLS & DTLS sessions can connect to the \"plain\" TCP & "
     "UDP port(s), too,\n"
     "						if allowed by configuration.\n"
-    " --tls-listening-port		<port>		TURN listener port for TLS & DTLS listeners\n"
-    "						(Default: 5349).\n"
+    " --tls-listening-port		<port>		TURN listener port for TLS & DTLS listeners.\n"
+    "						Default: " _STRVAL(DEFAULT_STUN_TLS_PORT) ".\n"
     "						Note: actually, \"plain\" TCP & UDP sessions can connect to the TLS & "
     "DTLS port(s), too,\n"
     "						if allowed by configuration. The TURN server\n"
@@ -953,10 +960,10 @@ static char Usage[] =
     "						the number of listening endpoints (unless -m 0 is set).\n"
     " --min-port			<port>		Lower bound of the UDP port range for relay endpoints "
     "allocation.\n"
-    "						Default value is 49152, according to RFC 5766.\n"
+    "						Default according to RFC 5766: " _STRVAL(LOW_DEFAULT_PORTS_BOUNDARY) ".\n"
     " --max-port			<port>		Upper bound of the UDP port range for relay endpoints "
     "allocation.\n"
-    "						Default value is 65535, according to RFC 5766.\n"
+    "						Default according to RFC 5766: " _STRVAL(HIGH_DEFAULT_PORTS_BOUNDARY) ".\n"
     " -v, --verbose					'Moderate' verbose mode.\n"
     " -V, --Verbose					Extra verbose mode, very annoying (for debug purposes only).\n"
     " -o, --daemon					Start process as daemon (detach from current shell).\n"
@@ -995,14 +1002,14 @@ static char Usage[] =
     "allocate\n"
     "						for the sessions, combined (input and output network streams are "
     "treated separately).\n"
-    " -c				<filename>	Configuration file name (default - turnserver.conf).\n"
+    " -c				<filename>	Configuration file name. Default: " DEFAULT_CONFIG_FILE ".\n"
 #if !defined(TURN_NO_SQLITE)
     " -b, , --db, --userdb	<filename>		SQLite database file name; default - /var/db/turndb or\n"
     "						    /usr/local/var/db/turndb or /var/lib/turn/turndb.\n"
 #endif
 #if !defined(TURN_NO_PQ)
-    " -e, --psql-userdb, --sql-userdb <conn-string>	PostgreSQL database connection string, if used (default - "
-    "empty, no PostgreSQL DB used).\n"
+    " -e, --psql-userdb, --sql-userdb <conn-string>	PostgreSQL database connection string, if used. Default: "
+    "empty, no PostgreSQL DB used.\n"
     "		                                This database can be used for long-term credentials mechanism users,\n"
     "		                                and it can store the secret value(s) for secret-based timed "
     "authentication in TURN REST API.\n"
@@ -1014,7 +1021,7 @@ static char Usage[] =
     "						for 9.x and newer connection string formats.\n"
 #endif
 #if !defined(TURN_NO_MYSQL)
-    " -M, --mysql-userdb	<connection-string>	MySQL database connection string, if used (default - empty, no "
+    " -M, --mysql-userdb	<connection-string>	MySQL database connection string, if used. Default: empty, no "
     "MySQL DB used).\n"
     "	                                	This database can be used for long-term credentials mechanism users,\n"
     "		                                and it can store the secret value(s) for secret-based timed "
@@ -1039,15 +1046,15 @@ static char Usage[] =
     "						If you want to use cleartext password then do not set this option!\n"
 #endif
 #if !defined(TURN_NO_MONGO)
-    " -J, --mongo-userdb	<connection-string>	MongoDB connection string, if used (default - empty, no "
-    "MongoDB used).\n"
+    " -J, --mongo-userdb	<connection-string>	MongoDB connection string, if used. Default: empty, no "
+    "MongoDB used.\n"
     "	                                	This database can be used for long-term credentials mechanism users,\n"
     "		                                and it can store the secret value(s) for secret-based timed "
     "authentication in TURN REST API.\n"
 #endif
 #if !defined(TURN_NO_HIREDIS)
-    " -N, --redis-userdb	<connection-string>	Redis user database connection string, if used (default - "
-    "empty, no Redis DB used).\n"
+    " -N, --redis-userdb	<connection-string>	Redis user database connection string, if used. Default: "
+    "empty, no Redis DB used.\n"
     "	                                	This database can be used for long-term credentials mechanism users,\n"
     "		                                and it can store the secret value(s) for secret-based timed "
     "authentication in TURN REST API.\n"
@@ -1057,8 +1064,7 @@ static char Usage[] =
     "connect_timeout=<seconds>\".\n\n"
     "	        	          		All connection-string parameters are optional.\n\n"
     " -O, --redis-statsdb	<connection-string>	Redis status and statistics database connection string, if "
-    "used \n"
-    "						(default - empty, no Redis stats DB used).\n"
+    "used. Default: empty, no Redis stats DB used.\n"
     "	                                	This database keeps allocations status information, and it can be also "
     "used for publishing\n"
     "		                                and delivering traffic and allocation event notifications.\n"
@@ -1066,12 +1072,20 @@ static char Usage[] =
     "connection string.\n"
 #endif
 #if !defined(TURN_NO_PROMETHEUS)
-    " --prometheus					Enable prometheus metrics. It is disabled by default. If it is "
-    "enabled it will listen on port 9641 under the path /metrics\n"
-    "						also the path / on this port can be used as a health check\n"
-    " --prometheus-port		<port>		Prometheus metrics port (Default: 9641).\n"
-    " --prometheus-username-labels			When metrics are enabled, add labels with client usernames.\n"
-    " --prometheus-compact			Omit the optional # HELP and # TYPE comments for each metric output.\n"
+    " --prom						Enable metric collections and provide reports in\n"
+    "						Prometheus/OpenMetrics format via http://localhost:" _STRVAL(DEFAULT_PROM_SERVER_PORT) "/metrics .\n"
+    "						All --prom- options are only effective, if this option is enabled.\n"
+    " --prom-port=<port>				Provide /metric reports on the given port. Default: " _STRVAL(DEFAULT_PROM_SERVER_PORT) ".\n"
+    " --prom-compact					Omit the optional # HELP and # TYPE comments for each metric output.\n"
+    " --prom-realm					Add a realm label to the session state metric.\n"
+    " --prom-usernames				Add a username label to the session state metric.\n"
+    " --prom-uniq-sid				Add a unique session ID label to all session metrics.\n"
+    " --prom-sid					Add a session ID label to all session metrics. IDs of closed session\n"
+    "						will be reused. Also enables session_state metrics.\n"
+    "						Supersedes --prom-uniq-sid.\n"
+    " --prom-sid-retain=<num>			Wait the given number of seconds, before an ID of a closed session gets\n"
+    "						reused. Default: " _STRVAL(DEFAULT_PROM_SID_RETAIN) "\n"
+    " --log-ip					Log the endpoint IP addresses for each new session: Default: 0.\n"
 #endif
     " --use-auth-secret				TURN REST API flag.\n"
     "						Flag that sets a special authorization option that is based upon "
@@ -1114,10 +1128,7 @@ static char Usage[] =
     "						By default, no CA is set and no client certificate check is "
     "performed.\n"
     " --ec-curve-name	<curve-name>		Curve name for EC ciphers, if supported by OpenSSL\n"
-    "						library (TLS and DTLS). The default value is prime256v1,\n"
-    "						if pre-OpenSSL 1.0.2 is used. With OpenSSL 1.0.2+,\n"
-    "						an optimal curve will be automatically calculated, if not defined\n"
-    "						by this option.\n"
+    "						library (TLS and DTLS). Default: " DEFAULT_EC_CURVE_NAME ".\n"
     " --dh566					Use 566 bits predefined DH TLS key. Default size of the predefined key "
     "is 2066.\n"
     " --dh1066					Use 1066 bits predefined DH TLS key. Default size of the predefined "
@@ -1157,7 +1168,7 @@ static char Usage[] =
     "						(unless the log file itself is stdout).\n"
     " --syslog					Output all log information into the system log (syslog), do not use "
     "the file output.\n"
-    " --syslog-facility             <value>          Set syslog facility for syslog messages. Default is ''.\n"
+    " --syslog-facility             <value>          Set syslog facility for syslog messages. Default: ''.\n"
     " --simple-log					This flag means that no log file rollover will be used, and "
     "the log file\n"
     "						name will be constructed as-is, without PID and date appendage.\n"
@@ -1168,14 +1179,11 @@ static char Usage[] =
     "--new-log-timestamp to be enabled.\n"
     " --log-binding					Log STUN binding request. It is now disabled by default to "
     "avoid DoS attacks.\n"
-    " --stale-nonce[=<value>]			Use extra security with nonce value having limited lifetime (default "
-    "600 secs).\n"
-    " --max-allocate-lifetime	<value>		Set the maximum value for the allocation lifetime. Default to 3600 "
-    "secs.\n"
-    " --channel-lifetime		<value>		Set the lifetime for channel binding, default to 600 secs.\n"
+    " --stale-nonce[=<value>]			Use extra security with nonce value having limited lifetime in seconds. Default: " _STRVAL(STUN_DEFAULT_ALLOCATE_LIFETIME) ".\n"
+    " --max-allocate-lifetime	<value>		Set the maximum value for the allocation lifetime in seconds. Default: " _STRVAL(STUN_DEFAULT_MAX_ALLOCATE_LIFETIME) ".\n"
+    " --channel-lifetime		<value>		Set the lifetime for channel binding in seconds. Default: " _STRVAL(STUN_DEFAULT_CHANNEL_LIFETIME) ".\n"
     "						This value MUST not be changed for production purposes.\n"
-    " --permission-lifetime		<value>		Set the value for the lifetime of the permission. Default to "
-    "300 secs.\n"
+    " --permission-lifetime		<value>		Set the value for the lifetime of the permission in seconds. Default: " _STRVAL(STUN_DEFAULT_PERMISSION_LIFETIME) ".\n"
     "						This MUST not be changed for production purposes.\n"
     " -S, --stun-only				Option to set standalone STUN operation only, all TURN requests will "
     "be ignored.\n"
@@ -1193,9 +1201,9 @@ static char Usage[] =
     "						See the docs for more information.\n"
     " -C, --rest-api-separator	<SYMBOL>	This is the timestamp/username separator symbol (character) in TURN "
     "REST API.\n"
-    "						The default value is ':'.\n"
+    "						Default: ':'.\n"
     " --max-allocate-timeout=<seconds>		Max time, in seconds, allowed for full allocation establishment. "
-    "Default is 60.\n"
+    "Default: " _STRVAL(TURN_MAX_ALLOCATE_TIMEOUT) ".\n"
     " --allowed-peer-ip=<ip[-ip]> 			Specifies an ip or range of ips that are explicitly allowed to "
     "connect to the \n"
     "						turn server. Multiple allowed-peer-ip can be set.\n"
@@ -1232,18 +1240,16 @@ static char Usage[] =
     "						so use other option values with care!\n"
     " --no-cli					Turn OFF the CLI support. By default it is always ON.\n"
     " --cli-ip=<IP>					Local system IP address to be used for CLI server endpoint. "
-    "Default value\n"
-    "						is 127.0.0.1.\n"
-    " --cli-port=<port>				CLI server port. Default is 5766.\n"
+    "Default: " CLI_DEFAULT_IP ".\n"
+    " --cli-port=<port>				CLI server port. Default: " _STRVAL(CLI_DEFAULT_PORT) ".\n"
     " --cli-password=<password>			CLI access password. Default is empty (no password).\n"
     "						For the security reasons, it is recommended to use the encrypted\n"
     "						for of the password (see the -P command in the turnadmin utility).\n"
     "						The dollar signs in the encrypted form must be escaped.\n"
     " --web-admin					Enable Turn Web-admin support. By default it is disabled.\n"
     " --web-admin-ip=<IP>				Local system IP address to be used for Web-admin server "
-    "endpoint. Default value\n"
-    "						is 127.0.0.1.\n"
-    " --web-admin-port=<port>			Web-admin server port. Default is 8080.\n"
+    "endpoint. Default: " WEB_ADMIN_DEFAULT_IP ".\n"
+    " --web-admin-port=<port>			Web-admin server port. Default: " _STRVAL(WEB_ADMIN_DEFAULT_PORT) ".\n"
     " --web-admin-listen-on-workers			Enable for web-admin server to listens on STUN/TURN workers "
     "STUN/TURN ports.\n"
     "						By default it is disabled for security reasons!\n"
@@ -1366,10 +1372,17 @@ enum EXTRA_OPTS {
   MAX_ALLOCATE_LIFETIME_OPT,
   CHANNEL_LIFETIME_OPT,
   PERMISSION_LIFETIME_OPT,
-  PROMETHEUS_OPT,
-  PROMETHEUS_PORT_OPT,
-  PROMETHEUS_ENABLE_USERNAMES_OPT,
-  PROMETHEUS_COMPACT_OPT,
+#if !defined(TURN_NO_PROMETHEUS)
+  PROM_OPT,
+  PROM_PORT_OPT,
+  PROM_COMPACT_OPT,
+  PROM_REALM_OPT,
+  PROM_USERNAMES_OPT,
+  PROM_USID_OPT,
+  PROM_RSID_OPT,
+  PROM_SID_RETAIN_OPT,
+  LOG_IP_OPT,
+#endif
   AUTH_SECRET_OPT,
   NO_AUTH_PINGS_OPT,
   NO_DYNAMIC_IP_LIST_OPT,
@@ -1487,10 +1500,15 @@ static const struct myoption long_options[] = {
     {"redis-statsdb", required_argument, NULL, 'O'},
 #endif
 #if !defined(TURN_NO_PROMETHEUS)
-    {"prometheus", optional_argument, NULL, PROMETHEUS_OPT},
-    {"prometheus-port", optional_argument, NULL, PROMETHEUS_PORT_OPT},
-    {"prometheus-username-labels", optional_argument, NULL, PROMETHEUS_ENABLE_USERNAMES_OPT},
-    {"prometheus-compact", optional_argument, NULL, PROMETHEUS_COMPACT_OPT},
+    {"prom", optional_argument, NULL, PROM_OPT},
+    {"prom-port", required_argument, NULL, PROM_PORT_OPT},
+    {"prom-compact", optional_argument, NULL, PROM_COMPACT_OPT},
+    {"prom-realm", optional_argument, NULL, PROM_REALM_OPT},
+    {"prom-usernames", optional_argument, NULL, PROM_USERNAMES_OPT},
+    {"prom-uniq-sid", optional_argument, NULL, PROM_USID_OPT},
+    {"prom-sid", optional_argument, NULL, PROM_RSID_OPT},
+    {"prom-sid-retain", required_argument, NULL, PROM_SID_RETAIN_OPT},
+    {"log-ip", optional_argument, NULL, LOG_IP_OPT},
 #endif
     {"use-auth-secret", optional_argument, NULL, AUTH_SECRET_OPT},
     {"static-auth-secret", required_argument, NULL, STATIC_AUTH_SECRET_VAL_OPT},
@@ -1791,6 +1809,8 @@ static int get_bool_value(const char *s) {
 }
 
 static void set_option(int c, char *value) {
+  int n;
+
   if (value && value[0] == '=') {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
                   "WARNING: option -%c is possibly used incorrectly. The short form of the option must be used as "
@@ -2125,18 +2145,39 @@ static void set_option(int c, char *value) {
     turn_params.use_redis_statsdb = 1;
     break;
 #endif
-  case PROMETHEUS_OPT:
-    turn_params.prometheus = 1;
+#if !defined(TURN_NO_PROMETHEUS)
+  case PROM_OPT:
+    turn_params.prom = get_bool_value(value);
     break;
-  case PROMETHEUS_PORT_OPT:
-    turn_params.prometheus_port = atoi(value);
+  case PROM_PORT_OPT:
+    n = atoi(value);
+    if (n > 0)
+      turn_params.prom_port = n;
     break;
-  case PROMETHEUS_ENABLE_USERNAMES_OPT:
-    turn_params.prometheus_username_labels = 1;
+  case PROM_COMPACT_OPT:
+    turn_params.prom_compact = get_bool_value(value);
     break;
-  case PROMETHEUS_COMPACT_OPT:
-    turn_params.prometheus_compact = 1;
+  case PROM_REALM_OPT:
+    turn_params.prom_realm = get_bool_value(value);
     break;
+  case PROM_USERNAMES_OPT:
+    turn_params.prom_usernames = get_bool_value(value);
+    break;
+  case PROM_USID_OPT:
+    turn_params.prom_usid = get_bool_value(value);
+    break;
+  case PROM_RSID_OPT:
+    turn_params.prom_rsid = get_bool_value(value);
+    break;
+  case PROM_SID_RETAIN_OPT:
+    n = atoi(value);
+    if (n >= 0)
+      turn_params.prom_sid_retain = n;
+    break;
+  case LOG_IP_OPT:
+    turn_params.log_ip = get_bool_value(value);
+    break;
+#endif
   case AUTH_SECRET_OPT:
     turn_params.use_auth_secret_with_timestamp = 1;
     use_tltc = 1;

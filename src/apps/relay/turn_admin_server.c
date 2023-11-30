@@ -188,6 +188,9 @@ struct toggleable_command tcmds[] = {{"stale-nonce", &turn_params.stale_nonce},
                                      {"no-multicast-peers", &turn_params.no_multicast_peers},
                                      {"allow-loopback-peers", &turn_params.allow_loopback_peers},
                                      {"mobility", &turn_params.mobility},
+#if !defined(TURN_NO_PROMETHEUS)
+                                     {"log-ip", &turn_params.log_ip},
+#endif
                                      {NULL, NULL}};
 
 ///////////////////////////////
@@ -387,6 +390,12 @@ static void change_cli_param(struct cli_session *cs, const char *pn) {
       cli_max_output_sessions = atoi(pn + strlen("cli-max-output-sessions"));
       cli_print_uint(cs, (unsigned long)cli_max_output_sessions, "cli-max-output-sessions", 2);
       return;
+    } else if (strstr(pn, "prom-sid-retain") == pn) {
+      int t = atoi(pn + strlen("prom-sid-retain"));
+      if (t >= 0)
+        turn_params.prom_sid_retain = t;
+      cli_print_uint(cs, turn_params.prom_sid_retain, "prom-sid-retain", 2);
+      return;
     }
 
     myprintf(cs, "\n");
@@ -464,8 +473,8 @@ static int print_session(ur_map_key_type key, ur_map_value_type value, void *arg
       }
       if (cs->f || (unsigned long)csarg->counter < (unsigned long)cli_max_output_sessions) {
         myprintf(cs, "\n");
-        myprintf(cs, "    %lu) id=%018llu, user <%s>:\n", (unsigned long)(csarg->counter + 1),
-                 (unsigned long long)tsi->id, tsi->username);
+        myprintf(cs, "    %lu) id=%012llu, tid: %d, rsid: %d, user <%s>:\n", (unsigned long)(csarg->counter + 1),
+                 (unsigned long long)tsi->id, (int) (tsi->id % TURN_SESSION_ID_FACTOR), tsi->rsid, tsi->username);
         if (tsi->realm[0])
           myprintf(cs, "      realm: %s\n", tsi->realm);
         if (tsi->origin[0])
@@ -778,6 +787,20 @@ static void cli_print_configuration(struct cli_session *cs) {
       cli_print_uint(cs, turn_params.rest_api_separator, "TURN REST API separator ASCII number", 0);
 
     myprintf(cs, "\n");
+
+#if !defined(TURN_NO_PROMETHEUS)
+    cli_print_flag(cs, turn_params.prom, "prom", 0);
+    cli_print_uint(cs, turn_params.prom_port, "prom-port", 0);
+    cli_print_flag(cs, turn_params.prom_compact, "prom-compact", 0);
+    cli_print_flag(cs, turn_params.prom_realm, "prom-realm", 0);
+    cli_print_flag(cs, turn_params.prom_usernames, "prom-usernames", 0);
+    cli_print_flag(cs, turn_params.prom_usid, "prom-usid", 0);
+    cli_print_flag(cs, turn_params.prom_rsid, "prom-sid", 0);
+    cli_print_uint(cs, turn_params.prom_sid_retain, "prom-sid-retain", 2);
+    cli_print_flag(cs, turn_params.log_ip, "log-ip", 1);
+
+    myprintf(cs, "\n");
+#endif
 
     cli_print_uint(cs, (unsigned long)cs->rp->status.total_current_allocs, "total-current-allocs", 0);
 
@@ -2153,6 +2176,20 @@ static void write_pc_page(ioa_socket_handle s) {
 
         https_print_empty_row(sb, 2);
 
+#if !defined(TURN_NO_PROMETHEUS)
+        https_print_flag(sb, turn_params.prom, "prom", NULL);
+        https_print_uint(sb, turn_params.prom_port, "prom-port", "prom-port");
+        https_print_flag(sb, turn_params.prom_compact, "prom-compact", NULL);
+        https_print_flag(sb, turn_params.prom_realm, "prom-realm", NULL);
+        https_print_flag(sb, turn_params.prom_usernames, "prom-usernames", NULL);
+        https_print_flag(sb, turn_params.prom_usid, "prom-usid", NULL);
+        https_print_flag(sb, turn_params.prom_rsid, "prom-sid", NULL);
+        https_print_uint(sb, turn_params.prom_sid_retain, "prom-sid-retain", "prom-sid-retain");
+        https_print_flag(sb, turn_params.log_ip, "log-ip", "log-ip");
+
+        https_print_empty_row(sb, 2);
+#endif
+
         https_print_uint(sb, (unsigned long)rp->status.total_current_allocs, "total-current-allocs", 0);
 
         https_print_empty_row(sb, 2);
@@ -2243,11 +2280,11 @@ static int https_print_session(ur_map_key_type key, ur_map_value_type value, voi
       str_buffer_append(sb, "<tr><td>");
       str_buffer_append_sz(sb, (size_t)(csarg->counter + 1));
       str_buffer_append(sb, "</td><td>");
-      str_buffer_append_sid(sb, tsi->id);
+      str_buffer_append_sid(sb, tsi->id, tsi->rsid);
       str_buffer_append(sb, "<br><a href=\"");
       str_buffer_append(sb, form_names[AS_FORM_PS].name);
       str_buffer_append(sb, "?cs=");
-      str_buffer_append_sid(sb, tsi->id);
+      str_buffer_append_sid(sb, tsi->id, tsi->rsid);
       str_buffer_append(sb, "\">cancel</a>");
       str_buffer_append(sb, "</td><td>");
       str_buffer_append(sb, (char *)tsi->username);

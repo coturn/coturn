@@ -171,7 +171,7 @@ void turn_permission_clean(turn_permission_info *tinfo) {
     if (tinfo->verbose) {
       char s[257] = "\0";
       addr_to_string(&(tinfo->addr), (uint8_t *)s);
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: peer %s deleted\n", tinfo->session_id, s);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %012llu.%d: peer %s deleted\n", tinfo->session_id, tinfo->session_rid, s);
     }
 
     if (!(tinfo->lifetime_ev)) {

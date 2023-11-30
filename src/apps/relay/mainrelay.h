@@ -307,10 +307,17 @@ typedef struct _turn_params_ {
   band_limit_t bps_capacity_allocated;
   vint total_quota;
   vint user_quota;
-  int prometheus;
-  int prometheus_port;
-  int prometheus_username_labels;
-  int prometheus_compact;
+#if !defined(TURN_NO_PROMETHEUS)
+  int prom;
+  int prom_port;
+  int prom_compact;
+  int prom_realm;
+  int prom_usernames;
+  int prom_usid;
+  int prom_rsid;
+  vint prom_sid_retain;
+  vint log_ip;
+#endif
 
   /////// Users DB ///////////
 

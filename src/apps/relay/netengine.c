@@ -45,6 +45,7 @@ static pthread_barrier_t barrier;
 
 ////////////// Auth Server ////////////////
 
+uint32_t relay_servers_in_use = 0;
 typedef unsigned char authserver_id;
 
 struct auth_server {
@@ -1626,8 +1627,12 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
       DONT_FRAGMENT_SUPPORTED, start_user_check, check_new_allocation_quota, release_allocation_quota,
       turn_params.external_ip, &turn_params.check_origin, &turn_params.no_tcp_relay, &turn_params.no_udp_relay,
       &turn_params.stale_nonce, &turn_params.max_allocate_lifetime, &turn_params.channel_lifetime,
-      &turn_params.permission_lifetime, &turn_params.stun_only, &turn_params.no_stun,
-      &turn_params.no_software_attribute, &turn_params.web_admin_listen_on_workers, &turn_params.alternate_servers_list,
+      &turn_params.permission_lifetime, &turn_params.stun_only, &turn_params.no_stun, &turn_params.no_software_attribute,
+#if !defined(TURN_NO_PROMETHEUS)
+	  &turn_params.prom_sid_retain,
+	  &turn_params.log_ip,
+#endif
+      &turn_params.web_admin_listen_on_workers, &turn_params.alternate_servers_list,
       &turn_params.tls_alternate_servers_list, &turn_params.aux_servers_list, turn_params.udp_self_balance,
       &turn_params.no_multicast_peers, &turn_params.allow_loopback_peers, &turn_params.ip_whitelist,
       &turn_params.ip_blacklist, send_socket_to_relay, &turn_params.secure_stun, &turn_params.mobility,
@@ -1671,7 +1676,8 @@ static void *run_general_relay_thread(void *arg) {
 static void setup_general_relay_servers(void) {
   size_t i = 0;
 
-  for (i = 0; i < get_real_general_relay_servers_number(); i++) {
+  relay_servers_in_use = get_real_general_relay_servers_number();
+  for (i = 0; i < relay_servers_in_use; i++) {
 
     if (turn_params.general_relay_servers_number == 0) {
       general_relay_servers[i] = (struct relay_server *)allocate_super_memory_engine(turn_params.listener.ioa_eng,
