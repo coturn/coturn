@@ -329,7 +329,7 @@ static int good_peer_addr(turn_turnserver *server, const char *realm, ioa_addr *
               addr_to_string_no_port(peer_addr, (uint8_t *)saddr);
               TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
                             "session %018llu: A peer IP %s denied in the range= %s in server %d \n",
-                            (unsigned long long)session_id, saddr, server->ip_blacklist->rs[i].str, server_id);
+                            (unsigned long long)session_id, saddr, bl->rs[i].str, server_id);
               return 0;
             }
           }
