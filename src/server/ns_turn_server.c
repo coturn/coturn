@@ -3289,8 +3289,8 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
     realm[alen] = 0;
 
     if (!is_secure_string(realm, 0)) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: %s: wrong realm: %s\n",
-                      (unsigned long long)(ss->id), __FUNCTION__, (char*)realm);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: %s: wrong realm: %s\n", (unsigned long long)(ss->id),
+                    __FUNCTION__, (char *)realm);
       realm[0] = 0;
       *err_code = 400;
       return -1;
@@ -3331,8 +3331,8 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
   usname[alen] = 0;
 
   if (!is_secure_string(usname, 1)) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: %s: wrong username: %s\n",
-                    (unsigned long long)(ss->id), __FUNCTION__, (char*)usname);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: %s: wrong username: %s\n", (unsigned long long)(ss->id),
+                  __FUNCTION__, (char *)usname);
     usname[0] = 0;
     *err_code = 400;
     return -1;
@@ -3396,7 +3396,7 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
     }
 
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: %s: Cannot find credentials of user <%s>\n",
-                        (unsigned long long)(ss->id), __FUNCTION__, (char *)usname);
+                  (unsigned long long)(ss->id), __FUNCTION__, (char *)usname);
     *err_code = 401;
     return create_challenge_response(ss, tid, resp_constructed, err_code, reason, nbh, method);
   }
@@ -3414,8 +3414,8 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
       }
     }
 
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: %s: user %s credentials are incorrect\n", 
-                        (unsigned long long)(ss->id), __FUNCTION__, (char *)usname);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: %s: user %s credentials are incorrect\n",
+                  (unsigned long long)(ss->id), __FUNCTION__, (char *)usname);
     *err_code = 401;
     return create_challenge_response(ss, tid, resp_constructed, err_code, reason, nbh, method);
   }
@@ -3490,16 +3490,16 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 
       no_response = 1;
       if (server->verbose) {
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: %s: STUN method 0x%x ignored\n", 
-                       (unsigned long long)(ss->id), __FUNCTION__, (unsigned int)method);
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: %s: STUN method 0x%x ignored\n",
+                      (unsigned long long)(ss->id), __FUNCTION__, (unsigned int)method);
       }
 
     } else if ((method != STUN_METHOD_BINDING) && (*(server->stun_only))) {
 
       no_response = 1;
       if (server->verbose) {
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: %s: STUN method 0x%x ignored\n", 
-                       (unsigned long long)(ss->id), __FUNCTION__, (unsigned int)method);
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: %s: STUN method 0x%x ignored\n",
+                      (unsigned long long)(ss->id), __FUNCTION__, (unsigned int)method);
       }
 
     } else if ((method != STUN_METHOD_BINDING) || (*(server->secure_stun))) {
@@ -3554,8 +3554,8 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
               char *corigin = (char *)malloc(STUN_MAX_ORIGIN_SIZE + 1);
               corigin[0] = 0;
               if (get_canonic_origin(o, corigin, STUN_MAX_ORIGIN_SIZE) < 0) {
-                TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: %s: Wrong origin format: %s\n", 
-                                (unsigned long long)(ss->id), __FUNCTION__, o);
+                TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: %s: Wrong origin format: %s\n",
+                              (unsigned long long)(ss->id), __FUNCTION__, o);
               }
               if (!strncmp(ss->origin, corigin, STUN_MAX_ORIGIN_SIZE)) {
                 origin_found = 1;
@@ -3609,8 +3609,8 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
               char *corigin = (char *)malloc(STUN_MAX_ORIGIN_SIZE + 1);
               corigin[0] = 0;
               if (get_canonic_origin(o, corigin, STUN_MAX_ORIGIN_SIZE) < 0) {
-                TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: %s: Wrong origin format: %s\n", 
-                               (unsigned long long)(ss->id), __FUNCTION__, o);
+                TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: %s: Wrong origin format: %s\n",
+                              (unsigned long long)(ss->id), __FUNCTION__, o);
               }
               strncpy(ss->origin, corigin, STUN_MAX_ORIGIN_SIZE);
               free(corigin);
@@ -3728,8 +3728,8 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
         if (*resp_constructed && !err_code && (origin_changed || dest_changed)) {
 
           if (server->verbose && *(server->log_binding)) {
-            TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: RFC 5780 request successfully processed\n", 
-                            (unsigned long long)(ss->id));
+            TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: RFC 5780 request successfully processed\n",
+                          (unsigned long long)(ss->id));
           }
 
           if (!(*server->no_software_attribute)) {
@@ -3749,7 +3749,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
       }
       default:
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: Unsupported STUN request received, method 0x%x\n",
-					             (unsigned long long)(ss->id), (unsigned int)method);
+                      (unsigned long long)(ss->id), (unsigned int)method);
       };
     }
 
@@ -3800,7 +3800,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
     no_response = 1;
 
     if (server->verbose) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: Wrong STUN message received\n", 
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: Wrong STUN message received\n",
                     (unsigned long long)(ss->id));
     }
   }
