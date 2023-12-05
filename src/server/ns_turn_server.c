@@ -1405,9 +1405,10 @@ static int handle_turn_allocate(turn_turnserver *server, ts_ur_super_session *ss
               addr_to_string(pxor_relayed_addr1, (uint8_t *)ip4addr);
               addr_to_string(pxor_relayed_addr2, (uint8_t *)ip6addr);
               addr_to_string(get_remote_addr_from_ioa_socket(ss->client_socket), (uint8_t *)xor_mapped_addr);
-              TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-                            "session %018llu: xor_relayed_addr ip4=[%s] ip6=[%s], xor_mapped_addr=[%s]",
-                            (unsigned long long)ss->id, ip4addr, ip6addr, xor_mapped_addr);
+              TURN_LOG_FUNC(
+                  TURN_LOG_LEVEL_INFO,
+                  "session %018llu: handle_turn_allocate: xor_relayed_addr ip4=[%s] ip6=[%s], xor_mapped_addr=[%s]",
+                  (unsigned long long)ss->id, ip4addr, ip6addr, xor_mapped_addr);
             }
 
             turn_report_allocation_set(&(ss->alloc), lifetime, 0);
@@ -4239,7 +4240,7 @@ static void client_ss_allocation_timeout_handler(ioa_engine_handle e, void *arg)
       if (ss->alloc.relay_sessions[i].s) {
         char sallocaddr[129] = "\0";
         addr_to_string(get_local_addr_from_ioa_socket(ss->alloc.relay_sessions[i].s), (uint8_t *)sallocaddr);
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: closed %s reason: allocation timeout\n",
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: closing %s reason: allocation timeout\n",
                       (unsigned long long)(ss->id), sallocaddr);
       }
     }
