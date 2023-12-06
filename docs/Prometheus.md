@@ -1,8 +1,8 @@
-# Prometheus setup
+# Metrics setup
 
 It is need the following libraries:
 
-- prometheus-client-c
+- libprom
 - libmicrohttpd
 
 ## Ubuntu
@@ -23,12 +23,12 @@ Download from https://git.gnunet.org/libmicrohttpd.git
 git clone https://git.gnunet.org/libmicrohttpd.git
 ```
 
-- [prometheus-client-c](https://github.com/digitalocean/prometheus-client-c)
+- [libprom](https://github.com/jelmd/libprom)
 
-Download from https://github.com/digitalocean/prometheus-client-c.git
+Download from https://github.com/jelmd/libprom.git
 
 ```
-git clone https://github.com/digitalocean/prometheus-client-c.git
+git clone https://github.com/jelmd/libprom.git
 ```
 
 ## Build
@@ -44,10 +44,10 @@ cd libmicrohttpd
 make install
 ```
 
-- Build prometheus-client-c from source code
+- Build libprom from source code
 
 ```
-git clone https://github.com/digitalocean/prometheus-client-c.git
-cd prometheus-client-c
+git clone https://github.com/jelmd/libprom.git
+cd libprom
 make
 ```
