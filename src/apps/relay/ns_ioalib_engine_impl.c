@@ -3928,7 +3928,7 @@ void turn_report_session_usage(void *session, int force_invalid) {
                         (unsigned long)(ss->peer_sent_packets), (unsigned long)(ss->peer_sent_bytes));
         }
 #if !defined(TURN_NO_HIREDIS)
-        if (e->chr) {
+        if (e->rch) {
           char key[1024];
           if (ss->realm_options.name[0]) {
             snprintf(key, sizeof(key), "turn/realm/%s/user/%s/allocation/%012llu/traffic", ss->realm_options.name,
