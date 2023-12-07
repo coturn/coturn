@@ -34,7 +34,7 @@ coturn requires following dependencies to be installed first
 
 Optional
 - openssl (to support TLS and DTLS, authorized STUN and TURN)
-- libmicrohttp and [prometheus-client-c](https://github.com/digitalocean/prometheus-client-c) (prometheus interface)
+- libmicrohttp and [libprom](https://github.com/jelmd/libprom) (libprom interface)
 - MySQL (user database)
 - [Hiredis](https://github.com/redis/hiredis) (user database, monitoring)
 - SQLite (user database)
@@ -111,7 +111,7 @@ Management interfaces:
 
 Monitoring:
  * Redis can be used for status and statistics storage and notification
- * [prometheus](https://prometheus.io/) interface (unavailable on apt package)
+ * [libprom](https://jelmd.github.io/libprom/) interface (unavailable on apt package)
 
 Message integrity digest algorithms:
 

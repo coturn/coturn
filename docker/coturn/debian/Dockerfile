@@ -8,10 +8,10 @@ ARG debian_ver=bookworm
 
 
 #
-# Stage 'dist-libprom' creates prometheus-client-c distribution.
+# Stage 'dist-libprom' creates libprom distribution.
 #
 
-# We compile prometheus-client-c from sources, because Debian doesn't provide
+# We compile libprom from sources, because Debian doesn't provide
 # it as its package yet.
 #
 # TODO: Re-check this to be present in packages on next Debian major version update.
@@ -25,15 +25,15 @@ RUN apt-get update \
             ca-certificates cmake g++ git make \
  && update-ca-certificates
 
-# Install prometheus-client-c build dependencies.
+# Install libprom build dependencies.
 RUN apt-get install -y --no-install-recommends --no-install-suggests \
             libmicrohttpd-dev
 
-# Prepare prometheus-client-c sources for building.
-ARG prom_ver=0.1.3
+# Prepare libprom sources for building.
+ARG prom_ver=1.2.0
 RUN mkdir -p /build/ && cd /build/ \
  && git init \
- && git remote add origin https://github.com/digitalocean/prometheus-client-c \
+ && git remote add origin https://github.com/jelmd/libprom \
  && git fetch --depth=1 origin "v${prom_ver}" \
  && git checkout FETCH_HEAD
 
@@ -49,8 +49,6 @@ RUN mkdir -p /build/prom/build/ && cd /build/prom/build/ \
 # Build libpromhttp.so from sources.
 RUN mkdir -p /build/promhttp/build/ && cd /build/promhttp/build/ \
  # Fix compiler warning: -Werror=incompatible-pointer-types
- && sed -i 's/\&promhttp_handler/(MHD_AccessHandlerCallback)\&promhttp_handler/' \
-           /build/promhttp/src/promhttp.c \
  && TEST=0 cmake -G "Unix Makefiles" \
                  -DCMAKE_INSTALL_PREFIX=/usr \
                  -DCMAKE_SKIP_BUILD_RPATH=TRUE \
@@ -58,19 +56,19 @@ RUN mkdir -p /build/promhttp/build/ && cd /build/promhttp/build/ \
                  .. \
  && make VERBOSE=1
 
-# Install prometheus-client-c.
+# Install libprom.
 RUN LIBS_DIR=/out/$(dirname $(find /usr/ -name libc.so)) \
  && mkdir -p $LIBS_DIR/ \
  && cp -rf /build/prom/build/libprom.so \
            /build/promhttp/build/libpromhttp.so \
        $LIBS_DIR/ \
- && mkdir -p /out/usr/include/ \
+ && mkdir -p /out/usr/include/libprom \
  && cp -rf /build/prom/include/* \
            /build/promhttp/include/* \
-       /out/usr/include/ \
+       /out/usr/include/libprom \
  # Preserve license file.
- && mkdir -p /out/usr/share/licenses/prometheus-client-c/ \
- && cp /build/LICENSE /out/usr/share/licenses/prometheus-client-c/
+ && mkdir -p /out/usr/share/licenses/libprom \
+ && cp /build/LICENSE /out/usr/share/licenses/libprom/
 
 
 
@@ -97,7 +95,7 @@ RUN apt-get install -y --no-install-recommends --no-install-suggests \
             libmongoc-dev \
             libmicrohttpd-dev
 
-# Install prometheus-client-c distribution.
+# Install libprom distribution.
 COPY --from=dist-libprom /out/ /
 
 # Prepare local Coturn sources for building.
@@ -159,7 +157,7 @@ RUN ln -s /usr/local/bin/detect-external-ip.sh \
           /out/usr/local/bin/detect-external-ip
 RUN chown -R nobody:nogroup /out/var/lib/coturn/
 
-# Re-export prometheus-client-c distribution.
+# Re-export libprom distribution.
 COPY --from=dist-libprom /out/ /out/
 
 

@@ -127,10 +127,10 @@
 
 @test "Prometheus supported" {
   # Support of Prometheus is not displayed in the output,
-  # but using --prometheus flag does the job.
+  # but using --prom flag does the job.
   run docker run --rm --pull never --platform $PLATFORM \
                  --entrypoint sh $IMAGE -c \
-    "turnserver -o --log-file=stdout --prometheus | grep 'Version Coturn'"
+    "turnserver -o --log-file=stdout --prom | grep 'Version Coturn'"
   [ "$status" -eq 0 ]
   [ ! "$output" = '' ]
 }
