@@ -4122,8 +4122,11 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
                   (long)ss->client_socket, (long)get_ioa_socket_session(ss->client_socket));
   }
 
+#if !defined(TURN_NO_PROMETHEUS)
   if (ss->sample_session_state)
     pms_set(ss->sample_session_state, SESSION_STATE_CLOSING);
+#endif
+
   if (server->disconnect)
     server->disconnect(ss);
 
@@ -4150,8 +4153,11 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
   }
 
   turn_server_remove_all_from_ur_map_ss(ss, socket_type);
+
+#if !defined(TURN_NO_PROMETHEUS)
   if (ss->sample_session_state)
     pms_set(ss->sample_session_state, SESSION_STATE_CLOSED);
+#endif
 
   FUNCEND;
 
@@ -4681,6 +4687,7 @@ int open_client_connection_session(turn_turnserver *server, struct socket_messag
 
   ss->client_socket = sm->s;
 
+#if !defined(TURN_NO_PROMETHEUS)
   if (*(server->log_ip)) {
     // log IPs early to be able to correlate metrics if needed
     char sraddr[129] = "\0";
@@ -4691,6 +4698,7 @@ int open_client_connection_session(turn_turnserver *server, struct socket_messag
       "new session %012llu tid: %d rsid: %d: local %s, remote %s\n",
           (unsigned long long)(ss->id), server->id, ss->rsid, sladdr, sraddr);
   }
+#endif
 
   if (register_callback_on_ioa_socket(server->e, ss->client_socket, IOA_EV_READ, client_input_handler, ss, 0) < 0) {
     ret = -1;

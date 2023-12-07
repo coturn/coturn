@@ -390,12 +390,14 @@ static void change_cli_param(struct cli_session *cs, const char *pn) {
       cli_max_output_sessions = atoi(pn + strlen("cli-max-output-sessions"));
       cli_print_uint(cs, (unsigned long)cli_max_output_sessions, "cli-max-output-sessions", 2);
       return;
+#if !defined(TURN_NO_PROMETHEUS)
     } else if (strstr(pn, "prom-sid-retain") == pn) {
       int t = atoi(pn + strlen("prom-sid-retain"));
       if (t >= 0)
         turn_params.prom_sid_retain = t;
       cli_print_uint(cs, turn_params.prom_sid_retain, "prom-sid-retain", 2);
       return;
+#endif
     }
 
     myprintf(cs, "\n");

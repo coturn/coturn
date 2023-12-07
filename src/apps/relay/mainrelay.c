@@ -1809,7 +1809,9 @@ static int get_bool_value(const char *s) {
 }
 
 static void set_option(int c, char *value) {
+#if !defined(TURN_NO_PROMETHEUS)
   int n;
+#endif
 
   if (value && value[0] == '=') {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
