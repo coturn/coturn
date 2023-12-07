@@ -6,12 +6,16 @@ on:
   pull_request:
     types: [ opened, reopened, synchronize ]
 
+env:
+  LIBPROM_VERS: '1.2.0-1'
+  LIBPROM_URL: 'https://pkg.cs.ovgu.de/LNF/linux/ubuntu/20.04'
+
 jobs:
   builds:
     strategy:
       fail-fast: false
       matrix:
-        os: [ 'ubuntu:16.04', 'ubuntu:20.04', 'ubuntu:22.04' ]
+        os: [ 'ubuntu:20.04', 'ubuntu:22.04' ]
     runs-on: ubuntu-latest
     container: ${{ matrix.os }}
     steps:
@@ -30,13 +34,12 @@ jobs:
             libpq-dev libsqlite3-dev \
             libhiredis-dev \
             libmongoc-dev \
-            libmicrohttpd-dev
-        if [ ${{ matrix.os }}  = 'ubuntu:16.04' ]; then apt-get install -y libmariadb-client-lgpl-dev; fi
-        if [ ${{ matrix.os }} != 'ubuntu:16.04' ]; then apt-get install -y libmariadb-dev; fi
-        wget https://github.com/digitalocean/prometheus-client-c/releases/download/v0.1.3/libprom-dev-0.1.3-Linux.deb && \
-            wget https://github.com/digitalocean/prometheus-client-c/releases/download/v0.1.3/libpromhttp-dev-0.1.3-Linux.deb && \
-            apt install ./libprom-dev-0.1.3-Linux.deb ./libpromhttp-dev-0.1.3-Linux.deb && \
-            rm ./libprom-dev-0.1.3-Linux.deb ./libpromhttp-dev-0.1.3-Linux.deb
+            libmicrohttpd-dev \
+            libmariadb-dev
+        wget ${LIBPROM_URL}/libprom-dev-${LIBPROM_VERS}.deb && \
+        wget ${LIBPROM_URL}/libprom-${LIBPROM_VERS}.deb && \
+        apt install ./libprom-${LIBPROM_VERS}.deb ./libprom-dev-${LIBPROM_VERS}.deb && \
+        rm -f ./libprom-*.deb
     - uses: actions/checkout@v3
     - name: configure
       run: ./configure
