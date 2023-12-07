@@ -312,7 +312,7 @@ $ turnutils_oauth [options]
 
   DESCRIPTION
 
-turnutils_oauth utilitiy provides help in OAuth access_token encryption and/or
+turnutils_oauth utility provides help in OAuth access_token encryption and/or
 decryption with AEAD (Atuthenticated Encryption with Associated Data). It helps
 for an Auth Server in access_token creation, and also for debugging purposes it
 helps the access_token validation and decryption. This utility inputs all the
