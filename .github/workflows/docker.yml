@@ -31,7 +31,6 @@ jobs:
           - arm64v8
           - i386
           - ppc64le
-          - s390x
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -94,7 +93,6 @@ jobs:
           - arm64v8
           - i386
           - ppc64le
-          - s390x
     runs-on: ${{ (matrix.dist == 'alpine' && matrix.arch == 's390x' && 'macos') 
                                                                     || 'ubuntu' }}-latest
     steps:
@@ -203,8 +201,7 @@ jobs:
                       arm32v7 \
                       arm64v8 \
                       i386 \
-                      ppc64le \
-                      s390x
+                      ppc64le
           do
             make docker.untar \
                  from-file=.cache/${{ matrix.dist }}-$arch-${{ github.run_number }}/image.tar
@@ -225,8 +222,7 @@ jobs:
                       ${{ steps.docker.outputs.tag }}-arm32v7
                       ${{ steps.docker.outputs.tag }}-arm64v8
                       ${{ steps.docker.outputs.tag }}-i386
-                      ${{ steps.docker.outputs.tag }}-ppc64le
-                      ${{ steps.docker.outputs.tag }}-s390x'
+                      ${{ steps.docker.outputs.tag }}-ppc64le'
                  tags=${{ (!startsWith(github.ref, 'refs/tags/')
                            && steps.docker.outputs.tag)
                        ||     '' }}
