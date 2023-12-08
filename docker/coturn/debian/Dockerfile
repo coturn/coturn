@@ -37,40 +37,15 @@ RUN mkdir -p /build/ && cd /build/ \
  && git fetch --depth=1 origin "v${prom_ver}" \
  && git checkout FETCH_HEAD
 
-# Build libprom.so from sources.
-RUN mkdir -p /build/prom/build/ && cd /build/prom/build/ \
- && TEST=0 cmake -G "Unix Makefiles" \
-                 -DCMAKE_INSTALL_PREFIX=/usr \
-                 -DCMAKE_SKIP_BUILD_RPATH=TRUE \
-                 -DCMAKE_C_FLAGS="-DPROM_LOG_ENABLE -g -O3" \
-                 .. \
- && make
-
-# Build libpromhttp.so from sources.
-RUN mkdir -p /build/promhttp/build/ && cd /build/promhttp/build/ \
- # Fix compiler warning: -Werror=incompatible-pointer-types
- && TEST=0 cmake -G "Unix Makefiles" \
-                 -DCMAKE_INSTALL_PREFIX=/usr \
-                 -DCMAKE_SKIP_BUILD_RPATH=TRUE \
-                 -DCMAKE_C_FLAGS="-g -O3" \
-                 .. \
- && make VERBOSE=1
+# Build libprom.so and libpromhttp.so from sources.
+RUN cd /build && make VERBOSE=1
 
 # Install libprom.
-RUN LIBS_DIR=/out/$(dirname $(find /usr/ -name libc.so)) \
- && mkdir -p $LIBS_DIR/ \
- && cp -rf /build/prom/build/libprom.so \
-           /build/promhttp/build/libpromhttp.so \
-       $LIBS_DIR/ \
- && mkdir -p /out/usr/include/libprom \
- && cp -rf /build/prom/include/* \
-           /build/promhttp/include/* \
-       /out/usr/include/libprom \
+RUN cd /build/prom/build && DESTDIR=/out make install \
+ && cd /build/promhttp/build && DESTDIR=/out make install \
  # Preserve license file.
  && mkdir -p /out/usr/share/licenses/libprom \
  && cp /build/LICENSE /out/usr/share/licenses/libprom/
-
-
 
 
 #

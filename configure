@@ -1,5 +1,7 @@
 #!/bin/sh
 
+DEBUG=
+
 # Proprietary configure script of Coturn project
 
 cleanup() {
@@ -19,6 +21,12 @@ testlibraw() {
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
         ${ECHO_CMD} "Library option -${1} cannot be used"
+		if [ -n ${DEBUG} ]; then
+			${ECHO_CMD} "Command: ${CC} ${TMPCPROGC} -o ${TMPCPROGB} ${OSCFLAGS} ${OSLIBS} -${1}"
+			${ECHO_CMD} "${TMPCPROGC}:\n---start---"
+			cat ${TMPCPROGC}
+			${ECHO_CMD} "---end---"
+		fi
         return 0
     else
         OSLIBS="${OSLIBS} -${1}"
@@ -843,6 +851,7 @@ fi
 
 if [ -z "${TURN_NO_PROMETHEUS}" ] ; then
 
+DEBUG="1"
     testlib prom
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
@@ -878,13 +887,18 @@ if [ -z "${TURN_NO_PROMETHEUS}" ] ; then
         fi
     else
         ${ECHO_CMD}
+        if [ -n ${DEBUG} ]; then
+            ls -al /usr/lib/*/libprom*
+            ls -al /usr/lib/libprom*
+            ${ECHO_CMD}
+        fi
         ${ECHO_CMD} "Warning: Libprom development libraries are not installed properly in required location."
         ${ECHO_CMD} "Prometheus support will be disabled."
         ${ECHO_CMD} "See the docs/Prometheus.md file."
         ${ECHO_CMD}
         OSCFLAGS="${OSCFLAGS} -DTURN_NO_PROMETHEUS"
     fi
-
+DEBUG=
 else
     OSCFLAGS="${OSCFLAGS} -DTURN_NO_PROMETHEUS"
 fi
