@@ -93,9 +93,9 @@ struct _ts_ur_super_session {
   int origin_set;
   char origin[STUN_MAX_ORIGIN_SIZE + 1];
   /* Stats */
-  int32_t rsid;	// recyclable ID (*server instance scope). Actually for metrics,
-				// but would clutter logging code, if one would always need to
-				// check for TURN_NO_PROMETHEUS ...
+  int32_t rsid; // recyclable ID (*server instance scope). Actually for metrics,
+                // but would clutter logging code, if one would always need to
+                // check for TURN_NO_PROMETHEUS ...
 #if !defined(TURN_NO_PROMETHEUS)
   // to avoid metric sample lookups on each counter/gauge op, we store and use
   // the reference to the samples directly. The sample ops are just atomic

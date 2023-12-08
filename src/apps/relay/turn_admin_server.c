@@ -476,7 +476,7 @@ static int print_session(ur_map_key_type key, ur_map_value_type value, void *arg
       if (cs->f || (unsigned long)csarg->counter < (unsigned long)cli_max_output_sessions) {
         myprintf(cs, "\n");
         myprintf(cs, "    %lu) id=%012llu, tid: %d, rsid: %d, user <%s>:\n", (unsigned long)(csarg->counter + 1),
-                 (unsigned long long)tsi->id, (int) (tsi->id % TURN_SESSION_ID_FACTOR), tsi->rsid, tsi->username);
+                 (unsigned long long)tsi->id, (int)(tsi->id % TURN_SESSION_ID_FACTOR), tsi->rsid, tsi->username);
         if (tsi->realm[0])
           myprintf(cs, "      realm: %s\n", tsi->realm);
         if (tsi->origin[0])

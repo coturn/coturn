@@ -87,21 +87,23 @@ static inline void log_method(ts_ur_super_session *ss, const char *method, int e
       if (ss->origin[0]) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
                       "session %012llu.%d: origin <%s> realm <%s> user <%s>: incoming packet %s processed, success\n",
-                      (unsigned long long)(ss->id), ss->rsid, (const char *)(ss->origin), (const char *)(ss->realm_options.name),
-                      (const char *)(ss->username), method);
+                      (unsigned long long)(ss->id), ss->rsid, (const char *)(ss->origin),
+                      (const char *)(ss->realm_options.name), (const char *)(ss->username), method);
       } else {
-        TURN_LOG_FUNC(
-            TURN_LOG_LEVEL_INFO, "session %012llu.%d: realm <%s> user <%s>: incoming packet %s processed, success\n",
-            (unsigned long long)(ss->id), ss->rsid, (const char *)(ss->realm_options.name), (const char *)(ss->username), method);
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+                      "session %012llu.%d: realm <%s> user <%s>: incoming packet %s processed, success\n",
+                      (unsigned long long)(ss->id), ss->rsid, (const char *)(ss->realm_options.name),
+                      (const char *)(ss->username), method);
       }
     } else {
       if (!reason)
         reason = get_default_reason(err_code);
       if (ss->origin[0]) {
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-                      "session %012llu.%d: origin <%s> realm <%s> user <%s>: incoming packet %s processed, error %d: %s\n",
-                      (unsigned long long)(ss->id), ss->rsid, (const char *)(ss->origin), (const char *)(ss->realm_options.name),
-                      (const char *)(ss->username), method, err_code, reason);
+        TURN_LOG_FUNC(
+            TURN_LOG_LEVEL_INFO,
+            "session %012llu.%d: origin <%s> realm <%s> user <%s>: incoming packet %s processed, error %d: %s\n",
+            (unsigned long long)(ss->id), ss->rsid, (const char *)(ss->origin), (const char *)(ss->realm_options.name),
+            (const char *)(ss->username), method, err_code, reason);
       } else {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
                       "session %012llu.%d: realm <%s> user <%s>: incoming packet %s processed, error %d: %s\n",
@@ -749,7 +751,8 @@ void turn_cancel_session(turn_turnserver *server, turnsession_id sid) {
   if (server) {
     ts_ur_super_session *ts = get_session_from_map(server, sid);
     if (ts) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Session %012llu.%d to be forcefully canceled\n", (unsigned long long)sid, ts->rsid);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Session %012llu.%d to be forcefully canceled\n", (unsigned long long)sid,
+                    ts->rsid);
       shutdown_client_connection(server, ts, 0, "Forceful shutdown");
     }
   }
@@ -1854,10 +1857,10 @@ static void tcp_deliver_delayed_buffer(unsent_buffer *ub, ioa_socket_handle s, t
         ++(ss->sent_packets);
         ss->sent_bytes += bytes;
 #if !defined(TURN_NO_PROMETHEUS)
-		if (ss->sample_tx_msgs) {
-			pms_add(ss->sample_tx_msgs, 1);
-			pms_add(ss->sample_tx_bytes, bytes);
-		}
+        if (ss->sample_tx_msgs) {
+          pms_add(ss->sample_tx_msgs, 1);
+          pms_add(ss->sample_tx_bytes, bytes);
+        }
 #endif
         turn_report_session_usage(ss, 0);
       }
@@ -1911,9 +1914,9 @@ static void tcp_peer_input_handler(ioa_socket_handle s, int event_type, ioa_net_
     ss->sent_bytes += bytes;
 #if !defined(TURN_NO_PROMETHEUS)
     if (ss->sample_tx_msgs) {
-		pms_add(ss->sample_tx_msgs, 1);
-		pms_add(ss->sample_tx_bytes, bytes);
-	}
+      pms_add(ss->sample_tx_msgs, 1);
+      pms_add(ss->sample_tx_bytes, bytes);
+    }
 #endif
   }
 
@@ -1968,10 +1971,10 @@ static void tcp_client_input_handler_rfc6062data(ioa_socket_handle s, int event_
     ++(ss->peer_sent_packets);
     ss->peer_sent_bytes += bytes;
 #if !defined(TURN_NO_PROMETHEUS)
-	if (ss->sample_peer_tx_msgs) {
-		pms_add(ss->sample_peer_tx_msgs, 1);
-		pms_add(ss->sample_peer_tx_bytes, bytes);
-	}
+    if (ss->sample_peer_tx_msgs) {
+      pms_add(ss->sample_peer_tx_msgs, 1);
+      pms_add(ss->sample_peer_tx_bytes, bytes);
+    }
 #endif
   }
 
@@ -3000,10 +3003,10 @@ static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss, in
           ++(ss->peer_sent_packets);
           ss->peer_sent_bytes += len;
 #if !defined(TURN_NO_PROMETHEUS)
-		  if (ss->sample_peer_tx_msgs) {
-			  pms_add(ss->sample_peer_tx_msgs, 1);
-			  pms_add(ss->sample_peer_tx_bytes, len);
-		  }
+          if (ss->sample_peer_tx_msgs) {
+            pms_add(ss->sample_peer_tx_msgs, 1);
+            pms_add(ss->sample_peer_tx_bytes, len);
+          }
 #endif
           turn_report_session_usage(ss, 0);
         }
@@ -3953,7 +3956,7 @@ static int handle_old_stun_command(turn_turnserver *server, ts_ur_super_session 
         }
 
         send_turn_message_to(server, nbh, &response_origin, &response_destination);
-		stun_report_binding(ss, STUN_PROMETHEUS_METRIC_TYPE_RESPONSE, 0);
+        stun_report_binding(ss, STUN_PROMETHEUS_METRIC_TYPE_RESPONSE, 0);
         no_response = 1;
       }
     }
@@ -4052,14 +4055,14 @@ static int write_to_peerchannel(ts_ur_super_session *ss, uint16_t chnum, ioa_net
                                          in_buffer->recv_ttl - 1, in_buffer->recv_tos, &skip);
 
       if (!skip && rc > -1) {
-		uint32_t bytes = (uint32_t)ioa_network_buffer_get_size(in_buffer->nbh);
+        uint32_t bytes = (uint32_t)ioa_network_buffer_get_size(in_buffer->nbh);
         ++(ss->peer_sent_packets);
         ss->peer_sent_bytes += bytes;
 #if !defined(TURN_NO_PROMETHEUS)
-		if (ss->sample_peer_tx_msgs) {
-			pms_add(ss->sample_peer_tx_msgs, 1);
-			pms_add(ss->sample_peer_tx_bytes, bytes);
-		}
+        if (ss->sample_peer_tx_msgs) {
+          pms_add(ss->sample_peer_tx_msgs, 1);
+          pms_add(ss->sample_peer_tx_bytes, bytes);
+        }
 #endif
         turn_report_session_usage(ss, 0);
       }
@@ -4106,8 +4109,8 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
       TURN_LOG_FUNC(
           TURN_LOG_LEVEL_INFO,
           "session %012llu.%d: closed (1st stage), user <%s> realm <%s> origin <%s>, local %s, remote %s, reason: %s\n",
-          (unsigned long long)(ss->id), ss->rsid, (char *)ss->username, (char *)ss->realm_options.name, (char *)ss->origin,
-          sladdr, sraddr, reason);
+          (unsigned long long)(ss->id), ss->rsid, (char *)ss->username, (char *)ss->realm_options.name,
+          (char *)ss->origin, sladdr, sraddr, reason);
     }
 
     IOA_CLOSE_SOCKET(ss->client_socket);
@@ -4140,8 +4143,8 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
     TURN_LOG_FUNC(
         TURN_LOG_LEVEL_INFO,
         "session %012llu.%d: closed (2nd stage), user <%s> realm <%s> origin <%s>, local %s, remote %s, reason: %s\n",
-        (unsigned long long)(ss->id), ss->rsid, (char *)ss->username, (char *)ss->realm_options.name, (char *)ss->origin, sladdr,
-        sraddr, reason);
+        (unsigned long long)(ss->id), ss->rsid, (char *)ss->username, (char *)ss->realm_options.name,
+        (char *)ss->origin, sladdr, sraddr, reason);
   }
 
   IOA_CLOSE_SOCKET(ss->client_socket);
@@ -4234,10 +4237,10 @@ static int write_client_connection(turn_turnserver *server, ts_ur_super_session 
       ++(ss->sent_packets);
       ss->sent_bytes += bytes;
 #if !defined(TURN_NO_PROMETHEUS)
-	  if (ss->sample_tx_msgs) {
-		  pms_add(ss->sample_tx_msgs, 1);
-		  pms_add(ss->sample_tx_bytes, bytes);
-	  }
+      if (ss->sample_tx_msgs) {
+        pms_add(ss->sample_tx_msgs, 1);
+        pms_add(ss->sample_tx_bytes, bytes);
+      }
 #endif
       turn_report_session_usage(ss, 0);
     }
@@ -4694,9 +4697,8 @@ int open_client_connection_session(turn_turnserver *server, struct socket_messag
     char sladdr[129] = "\0";
     addr_to_string(get_remote_addr_from_ioa_socket(ss->client_socket), (uint8_t *)sraddr);
     addr_to_string(get_local_addr_from_ioa_socket(ss->client_socket), (uint8_t *)sladdr);
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-      "new session %012llu tid: %d rsid: %d: local %s, remote %s\n",
-          (unsigned long long)(ss->id), server->id, ss->rsid, sladdr, sraddr);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "new session %012llu tid: %d rsid: %d: local %s, remote %s\n",
+                  (unsigned long long)(ss->id), server->id, ss->rsid, sladdr, sraddr);
   }
 #endif
 
@@ -4771,7 +4773,7 @@ static void peer_input_handler(ioa_socket_handle s, int event_type, ioa_net_data
     ++(ss->peer_received_packets);
     ss->peer_received_bytes += ilen;
 #if !defined(TURN_NO_PROMETHEUS)
-	if (ss->sample_peer_rx_msgs) {
+    if (ss->sample_peer_rx_msgs) {
       pms_add(ss->sample_peer_rx_msgs, 1);
       pms_add(ss->sample_peer_rx_bytes, ilen);
     }
@@ -4888,8 +4890,7 @@ void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, io
                       vintp no_udp_relay, vintp stale_nonce, vintp max_allocate_lifetime, vintp channel_lifetime,
                       vintp permission_lifetime, vintp stun_only, vintp no_stun, vintp no_software_attribute,
 #if !defined(TURN_NO_PROMETHEUS)
-					  vintp retain,
-					  vintp log_ip,
+                      vintp retain, vintp log_ip,
 #endif
                       vintp web_admin_listen_on_workers, turn_server_addrs_list_t *alternate_servers_list,
                       turn_server_addrs_list_t *tls_alternate_servers_list, turn_server_addrs_list_t *aux_servers_list,
@@ -4913,7 +4914,7 @@ void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, io
   server->sessions_map = ur_map_create();
   server->tcp_relay_connections = ur_map_create();
 #if !defined(TURN_NO_PROMETHEUS)
-  server->rsid_pool = (id_pool_t *) calloc(sizeof(id_pool_t), 1);
+  server->rsid_pool = (id_pool_t *)calloc(sizeof(id_pool_t), 1);
   server->sid_retain = retain;
   server->log_ip = log_ip;
 #endif

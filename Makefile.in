@@ -46,10 +46,12 @@ check:	bin/turnutils_rfc5769check
 	bin/turnutils_rfc5769check
 
 format:
-	find . -iname "*.c" -o -iname "*.h" | xargs clang-format -i
+	find src -iname "*.c" -o -iname "*.h" | \
+		xargs clang-format -i
 
 lint:
-	find . -iname "*.c" -o -iname "*.h" | xargs clang-format --dry-run -Werror
+	find src -iname "*.c" -o -iname "*.h" | \
+		xargs clang-format --dry-run -Werror
 
 include/turn/ns_turn_defs.h:	src/ns_turn_defs.h
 	${RMCMD} include

@@ -96,13 +96,13 @@ typedef enum {
 #if !defined(TURN_NO_PROMETHEUS)
 /** pool used to maintain recyclable session IDs for a single turn server. */
 typedef struct {
-	int32_t *id;		// array with the IDs of closed sessions
-	time_t	*release;	// time from when the ID can be re-used again.
-	int32_t capacity;	// number of IDs, which fit into the id and release.
-	int32_t len;	// number of recyclable IDs in id and timestamps in release;
-	int32_t start;		// the index where to start looking for a free ID
-	int32_t max_id;		// the highest ID used so far
-	int32_t recycled;	// how many times an ID of the pool got re-used
+  int32_t *id;      // array with the IDs of closed sessions
+  time_t *release;  // time from when the ID can be re-used again.
+  int32_t capacity; // number of IDs, which fit into the id and release.
+  int32_t len;      // number of recyclable IDs in id and timestamps in release;
+  int32_t start;    // the index where to start looking for a free ID
+  int32_t max_id;   // the highest ID used so far
+  int32_t recycled; // how many times an ID of the pool got re-used
 } id_pool_t;
 #endif
 
@@ -132,9 +132,9 @@ struct _turn_turnserver {
   turnsession_id session_id_counter;
   ur_map *sessions_map;
 #if !defined(TURN_NO_PROMETHEUS)
-  id_pool_t *rsid_pool;		// the pool for recyclable session IDs
-  vintp sid_retain;			// retain IDs of closed sessions at least N seconds before reuse
-  vintp log_ip;				// log the endpoint IPs on each session setup
+  id_pool_t *rsid_pool; // the pool for recyclable session IDs
+  vintp sid_retain;     // retain IDs of closed sessions at least N seconds before reuse
+  vintp log_ip;         // log the endpoint IPs on each session setup
 #endif
 
   turn_time_t ctime;
@@ -232,8 +232,7 @@ void init_turn_server(
     vintp check_origin, vintp no_tcp_relay, vintp no_udp_relay, vintp stale_nonce, vintp max_allocate_lifetime,
     vintp channel_lifetime, vintp permission_lifetime, vintp stun_only, vintp no_stun, vintp no_software_attribute,
 #if !defined(TURN_NO_PROMETHEUS)
-    vintp retain,
-    vintp log_ip,
+    vintp retain, vintp log_ip,
 #endif
     vintp web_admin_listen_on_workers, turn_server_addrs_list_t *alternate_servers_list,
     turn_server_addrs_list_t *tls_alternate_servers_list, turn_server_addrs_list_t *aux_servers_list,

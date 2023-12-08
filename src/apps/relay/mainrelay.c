@@ -212,15 +212,15 @@ turn_params_t turn_params = {
     0,                                  /* total_quota */
     0,                                  /* user_quota */
 #if !defined(TURN_NO_PROMETHEUS)
-    0,									/* prom disabled by default */
-    DEFAULT_PROM_SERVER_PORT,			/* prom port */
-    0,									/* prom compact output */
-    0,									/* prom realm labels */
-    0,									/* prom username labels */
-    0,									/* prom unique sessionID labels */
-    0,									/* prom sessionID labels, reusable */
-    DEFAULT_PROM_SID_RETAIN,			/* prom retain sessionID secs before reuse */
-    0,									/* log ip on session create */
+    0,                        /* prom disabled by default */
+    DEFAULT_PROM_SERVER_PORT, /* prom port */
+    0,                        /* prom compact output */
+    0,                        /* prom realm labels */
+    0,                        /* prom username labels */
+    0,                        /* prom unique sessionID labels */
+    0,                        /* prom sessionID labels, reusable */
+    DEFAULT_PROM_SID_RETAIN,  /* prom retain sessionID secs before reuse */
+    0,                        /* log ip on session create */
 #endif
     ///////////// Users DB //////////////
     {(TURN_USERDB_TYPE)0, {"\0", "\0"}, {0, NULL, {NULL, 0}}},
@@ -867,6 +867,7 @@ int get_a_local_relay(int family, ioa_addr *relay_addr) {
 }
 
 //////////////////////////////////////////////////
+// clang-format off
 #define _STRVAL(s) _STR(s)
 #define _STR(s) #s
 static char Usage[] =
@@ -1287,6 +1288,7 @@ static char Usage[] =
     " --version					Print version (and exit).\n"
     " -h						Help\n"
     "\n";
+// clang-format on
 
 static char AdminUsage[] =
     "Usage: turnadmin [command] [options]\n"

@@ -35,19 +35,18 @@ extern prom_gauge_t *turn_lifetime;
 extern prom_gauge_t *turn_allocations;
 
 typedef enum {
-	METRIC_RX_MSGS,
-	METRIC_TX_MSGS,
-	METRIC_RX_BYTES,
-	METRIC_TX_BYTES,
-	METRIC_LIFETIME,
-	METRIC_ALLOCATIONS_RUNNING,
-	METRIC_ALLOCATIONS_CREATED,
-	METRIC_STUN_REQUEST,
-	METRIC_STUN_RESPONSE,
-	METRIC_STUN_ERROR,
-	METRIC_MAX
+  METRIC_RX_MSGS,
+  METRIC_TX_MSGS,
+  METRIC_RX_BYTES,
+  METRIC_TX_BYTES,
+  METRIC_LIFETIME,
+  METRIC_ALLOCATIONS_RUNNING,
+  METRIC_ALLOCATIONS_CREATED,
+  METRIC_STUN_REQUEST,
+  METRIC_STUN_RESPONSE,
+  METRIC_STUN_ERROR,
+  METRIC_MAX
 } session_metric_t;
-
 
 #ifdef __cplusplus
 extern "C" {
@@ -56,7 +55,7 @@ extern "C" {
 void start_prometheus_server(void);
 
 pms_t *get_state_sample(int32_t tid, int32_t sid, uint64_t usid, char *realm, char *user);
-pms_t * get_session_sample(session_metric_t type, bool peer, int32_t tid, int32_t sid, uint64_t usid);
+pms_t *get_session_sample(session_metric_t type, bool peer, int32_t tid, int32_t sid, uint64_t usid);
 
 void prom_binding_error(int32_t tid, int32_t sid, uint64_t usid, int error);
 
@@ -68,7 +67,6 @@ void start_prometheus_server(void);
 
 bool prom_disabled(void);
 bool prom_rsids(void);
-
 
 #ifdef __cplusplus
 }
