@@ -61,6 +61,8 @@ int main(int argc, char **argv) {
   int c;
   char ifname[1025] = "\0";
 
+  void *log = turn_log_init();
+
   if (socket_init())
     return -1;
 
@@ -101,5 +103,6 @@ int main(int argc, char **argv) {
   run_udp_server(server);
   clean_udp_server(server);
 
+  turn_log_clean(log);
   return 0;
 }

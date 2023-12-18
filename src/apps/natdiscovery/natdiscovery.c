@@ -632,6 +632,7 @@ int main(int argc, char **argv) {
   int first = 1;
   ioa_addr other_addr, reflexive_addr, tmp_addr, remote_addr, local_addr, local2_addr;
 
+  void *log = turn_log_init();
   if (socket_init())
     return -1;
 
@@ -813,6 +814,8 @@ int main(int argc, char **argv) {
   }
   socket_closesocket(udp_fd);
   socket_closesocket(udp_fd2);
+
+  turn_log_clean(log);
 
   return 0;
 }

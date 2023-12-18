@@ -417,6 +417,8 @@ int main(int argc, char **argv) {
   int c = 0;
   int forceRfc5780 = 0;
 
+  void *log = turn_log_init();
+
   if (socket_init())
     return -1;
 
@@ -468,5 +470,6 @@ int main(int argc, char **argv) {
 
   socket_closesocket(udp_fd);
 
+  turn_log_clean(log);
   return 0;
 }

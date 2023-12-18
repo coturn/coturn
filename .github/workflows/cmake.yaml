@@ -24,7 +24,8 @@ jobs:
             libpq-dev libmariadb-dev libsqlite3-dev \
             libhiredis-dev \
             libmongoc-dev \
-            libmicrohttpd-dev
+            libmicrohttpd-dev \
+            liblog4cplus-dev
     - uses: actions/checkout@v4
     - name: Prometheus support
       run: |

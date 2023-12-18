@@ -130,11 +130,6 @@ install(FILES
             postinstall.txt
         DESTINATION doc/turnserver
             COMPONENT Runtime)
-install(FILES examples/etc/turnserver.conf
-    DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}
-        COMPONENT Runtime
-    RENAME turnserver.conf.default
-    )
 install(DIRECTORY
         examples
     DESTINATION share

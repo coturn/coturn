@@ -31,8 +31,11 @@
 #ifndef __TURN_ULIB__
 #define __TURN_ULIB__
 
+#define TURN_LOG_CATEGORY(category, level, ...)                                                                        \
+  turn_log_func_default(__FILE__, __LINE__, __FUNCTION__, category, level, __VA_ARGS__)
 #if !defined(TURN_LOG_FUNC)
-#define TURN_LOG_FUNC(level, ...) turn_log_func_default(__FILE__, __LINE__, level, __VA_ARGS__)
+// The log interfac is obsolete. use TURN_LOG_CATEGORY
+#define TURN_LOG_FUNC(level, ...) TURN_LOG_CATEGORY(NULL, level, __VA_ARGS__)
 #endif
 
 #if defined(WINDOWS)
@@ -52,7 +55,6 @@ extern "C" {
 typedef enum {
   TURN_LOG_LEVEL_DEBUG = 0,
   TURN_LOG_LEVEL_INFO,
-  TURN_LOG_LEVEL_CONTROL,
   TURN_LOG_LEVEL_WARNING,
   TURN_LOG_LEVEL_ERROR
 } TURN_LOG_LEVEL;
@@ -71,9 +73,13 @@ void set_syslog_facility(char *val);
 
 void set_turn_log_timestamp_format(char *new_format);
 
-void turn_log_func_default(char *file, int line, TURN_LOG_LEVEL level, const char *format, ...)
+/*!
+ * \note User don't use it. please use TURN_LOG_CATEGORY
+ */
+void turn_log_func_default(const char *file, int line, const char *f, char *category, TURN_LOG_LEVEL level,
+                           const char *format, ...)
 #ifdef __GNUC__
-    __attribute__((format(printf, 4, 5)))
+    __attribute__((format(printf, 6, 7)))
 #endif
     ;
 
@@ -83,6 +89,10 @@ void addr_debug_print(int verbose, const ioa_addr *addr, const char *s);
 extern volatile int _log_time_value_set;
 extern volatile turn_time_t _log_time_value;
 extern int use_new_log_timestamp_format;
+
+void *turn_log_init();
+void turn_log_clean(void *log);
+int turn_log_set_conf_file(const char *file);
 
 void rtpprintf(const char *format, ...);
 void reset_rtpprintf(void);
@@ -96,8 +106,10 @@ int is_secure_string(const uint8_t *string, int sanitizesql);
 
 ///////////////////////////////////////////////////////
 
+#ifndef __cplusplus
 #if !defined(min)
 #define min(a, b) ((a) <= (b) ? (a) : (b))
+#endif
 #endif
 
 #ifdef __cplusplus

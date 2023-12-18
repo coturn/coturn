@@ -32,6 +32,7 @@
 #include "dbdrivers/dbdriver.h"
 
 #include "prom_server.h"
+#include <math.h>
 
 #if defined(WINDOWS)
 #include <iphlpapi.h>
@@ -1141,6 +1142,9 @@ static char Usage[] =
     " -l, --log-file		<filename>		Option to set the full path name of the log file.\n"
     "						By default, the turnserver tries to open a log file in\n"
     "						/var/log/turnserver/, /var/log, /var/tmp, /tmp and . (current) "
+    " --log-conf-file <filename>                Option to set the full path name of the log configure file.\n"
+    "						By default, the turnserver tries to open a log configure file in\n"
+    "						/etc/turnserver/log.conf and ./log.conf (current) "
     "directories\n"
     "						(which open operation succeeds first that file will be used).\n"
     "						With this option you can set the definite log file name.\n"
@@ -1374,6 +1378,7 @@ enum EXTRA_OPTS {
   DEL_ALL_AUTH_SECRETS_OPT,
   STATIC_AUTH_SECRET_VAL_OPT,
   AUTH_SECRET_TS_EXP, /* deprecated */
+  LOG_CONF_FILE,
   NO_STDOUT_LOG_OPT,
   SYSLOG_OPT,
   SYSLOG_FACILITY_OPT,
@@ -1524,6 +1529,7 @@ static const struct myoption long_options[] = {
     {"pkey", required_argument, NULL, PKEY_FILE_OPT},
     {"pkey-pwd", required_argument, NULL, PKEY_PWD_OPT},
     {"log-file", required_argument, NULL, 'l'},
+    {"log-conf-file", optional_argument, NULL, LOG_CONF_FILE},
     {"no-stdout-log", optional_argument, NULL, NO_STDOUT_LOG_OPT},
     {"syslog", optional_argument, NULL, SYSLOG_OPT},
     {"simple-log", optional_argument, NULL, SIMPLE_LOG_OPT},
@@ -2276,6 +2282,7 @@ static void set_option(int c, char *value) {
 
   /* these options have been already taken care of before: */
   case 'l':
+  case LOG_CONF_FILE:
   case NO_STDOUT_LOG_OPT:
   case SYSLOG_OPT:
   case SIMPLE_LOG_OPT:
@@ -2408,6 +2415,8 @@ static void read_config_file(int argc, char **argv, int pass) {
             TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Bad configuration format: %s\n", sarg);
           } else if ((pass == 0) && (c == 'l')) {
             set_logfile(value);
+          } else if ((pass == 0) && (c == LOG_CONF_FILE)) {
+            turn_log_set_conf_file(value);
           } else if ((pass == 0) && (c == NO_STDOUT_LOG_OPT)) {
             set_no_stdout_log(get_bool_value(value));
           } else if ((pass == 0) && (c == SYSLOG_OPT)) {
@@ -2859,6 +2868,7 @@ static void init_domain(void) {
 int main(int argc, char **argv) {
   int c = 0;
 
+  void *log = turn_log_init();
   IS_TURN_SERVER = 1;
 
   TURN_MUTEX_INIT(&turn_params.tls_mutex);
@@ -2889,6 +2899,9 @@ int main(int argc, char **argv) {
       switch (c) {
       case 'l':
         set_logfile(optarg);
+        break;
+      case LOG_CONF_FILE:
+        turn_log_set_conf_file(optarg);
         break;
       case NO_STDOUT_LOG_OPT:
         set_no_stdout_log(get_bool_value(optarg));
@@ -3239,6 +3252,7 @@ int main(int argc, char **argv) {
 
   disconnect_database();
 
+  turn_log_clean(log);
   return 0;
 }
 

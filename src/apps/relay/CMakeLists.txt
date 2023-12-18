@@ -165,3 +165,9 @@ else()
             COMPONENT Runtime
 		)
 endif()
+
+install(FILES ${CMAKE_SOURCE_DIR}/examples/etc/turnserver.conf
+    DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}
+        COMPONENT Runtime
+    RENAME turnserver.conf.default
+    )
