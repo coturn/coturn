@@ -188,6 +188,7 @@ RUN apt-get update \
             libhiredis0.14 \
             libmongoc-1.0-0 \
             libmicrohttpd12 \
+            liblog4cplus-dev \
  # Install `dig` tool for `detect-external-ip.sh`.
  && apt-get install -y --no-install-recommends --no-install-suggests \
             dnsutils \
