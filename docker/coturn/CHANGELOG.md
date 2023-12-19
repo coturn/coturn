@@ -4,6 +4,16 @@ Coturn TURN server Docker image changelog
 
 
 
+## [4.6.2-r7] · 202?-??-?? (unreleased)
+[4.6.2-r7]: /../../tree/docker/4.6.2-r7
+
+### Security updated
+
+- [Debian Linux] "bookworm" 20231218 (12.4): <https://github.com/docker-library/official-images/commit/b74fc005ee75c4609302221e135b07b5a29f9894>
+
+
+
+
 ## [4.6.2-r7] · 2023-12-08
 [4.6.2-r7]: /../../tree/docker/4.6.2-r7
 
