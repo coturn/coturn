@@ -3511,7 +3511,7 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
                 uint8_t o[STUN_MAX_ORIGIN_SIZE + 1];
                 STRCPY(o, origin);
                 dbd->del_origin(o);
-                uint8_t corigin[STUN_MAX_ORIGIN_SIZE + 1] = '\0';
+                uint8_t corigin[STUN_MAX_ORIGIN_SIZE + 1] = {\0};
                 get_canonic_origin((const char *)origin, (char *)corigin, sizeof(corigin) - 1);
                 dbd->del_origin(corigin);
               }
@@ -3521,7 +3521,7 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
           const uint8_t *add_realm = (const uint8_t *)current_eff_realm();
           const uint8_t *add_origin = (const uint8_t *)get_http_header_value(hr, HR_ADD_ORIGIN, "");
           const char *msg = "";
-          uint8_t corigin[STUN_MAX_ORIGIN_SIZE + 1] = '\0';
+          uint8_t corigin[STUN_MAX_ORIGIN_SIZE + 1] = {\0};
           get_canonic_origin((const char *)add_origin, (char *)corigin, sizeof(corigin) - 1);
           if (corigin[0]) {
             add_realm = (const uint8_t *)get_http_header_value(hr, HR_ADD_REALM, current_realm());
