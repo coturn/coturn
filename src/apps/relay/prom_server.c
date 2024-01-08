@@ -1,6 +1,9 @@
 #include "prom_server.h"
 #include "mainrelay.h"
 #include "ns_turn_utils.h"
+#include <errno.h>
+#include <sys/socket.h>
+#include <unistd.h>
 
 #if !defined(TURN_NO_PROMETHEUS)
 
@@ -101,11 +104,13 @@ void start_prometheus_server(void) {
   promhttp_set_active_collector_registry(NULL);
 
   // some flags appeared first in microhttpd v0.9.53
-  unsigned int flags = MHD_USE_DUAL_STACK
+  unsigned int flags = 0;
+  if (MHD_is_feature_supported(MHD_FEATURE_IPv6) && is_ipv6_enabled()) {
+    flags |= MHD_USE_DUAL_STACK;
+  }
 #if MHD_VERSION >= 0x00095300
-                       | MHD_USE_ERROR_LOG
+  flags |= MHD_USE_ERROR_LOG;
 #endif
-      ;
   if (MHD_is_feature_supported(MHD_FEATURE_EPOLL)) {
 #if MHD_VERSION >= 0x00095300
     flags |= MHD_USE_EPOLL_INTERNAL_THREAD;
@@ -194,6 +199,22 @@ void prom_inc_stun_binding_error(void) {
   if (turn_params.prometheus == 1) {
     prom_counter_add(stun_binding_error, 1, NULL);
   }
+}
+
+int is_ipv6_enabled(void) {
+  int ret = 0;
+
+#ifdef AF_INET6
+  int fd = socket(AF_INET6, SOCK_STREAM, 0);
+  if (fd == -1) {
+    ret = errno != EAFNOSUPPORT;
+  } else {
+    ret = 1;
+    close(fd);
+  }
+#endif /* AF_INET6 */
+
+  return ret;
 }
 
 #else
