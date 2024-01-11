@@ -350,9 +350,9 @@ void str_buffer_append_sz(struct str_buffer *sb, size_t sz) {
   str_buffer_append(sb, ssz);
 }
 
-void str_buffer_append_sid(struct str_buffer *sb, turnsession_id sid) {
+void str_buffer_append_sid(struct str_buffer *sb, turnsession_id sid, uint32_t rsid) {
   char ssz[129];
-  snprintf(ssz, sizeof(ssz) - 1, "%018llu", (unsigned long long)sid);
+  snprintf(ssz, sizeof(ssz) - 1, "%012llu.%d", (unsigned long long)sid, rsid);
   str_buffer_append(sb, ssz);
 }
 

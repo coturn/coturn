@@ -444,6 +444,15 @@ authentication with ephemeral usernames (e.g. TURN REST API).
 .B
 \fB\-\-prometheus\-port\fP
 Prometheus listener port (Default: 9641).
+
+.TP
+.B --prometheus-compact
+Omit the HELP and TYPE comments when generating the prometheus metrics
+report. Usually it is sufficient to get and record them once. There is
+no need to send them again and again on each report - would just waste
+bandwith and demands more resources to parse and process the report.
+On production systems it is recommended to use this option.
+
 .TP
 .B
 \fB\-h\fP

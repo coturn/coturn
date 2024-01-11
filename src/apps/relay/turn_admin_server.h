@@ -81,11 +81,11 @@ extern struct admin_server adminserver;
 
 extern int use_cli;
 
-#define CLI_DEFAULT_IP ("127.0.0.1")
+#define CLI_DEFAULT_IP "127.0.0.1"
 extern ioa_addr cli_addr;
 extern int cli_addr_set;
 
-#define CLI_DEFAULT_PORT (5766)
+#define CLI_DEFAULT_PORT 5766
 extern int cli_port;
 
 #define CLI_PASSWORD_LENGTH (129)
@@ -96,11 +96,11 @@ extern int cli_max_output_sessions;
 
 extern int use_web_admin;
 
-#define WEB_ADMIN_DEFAULT_IP ("127.0.0.1")
+#define WEB_ADMIN_DEFAULT_IP "127.0.0.1"
 extern ioa_addr web_admin_addr;
 extern int web_admin_addr_set;
 
-#define WEB_ADMIN_DEFAULT_PORT (8080)
+#define WEB_ADMIN_DEFAULT_PORT 8080
 extern int web_admin_port;
 
 ////////////////////////////////////////////

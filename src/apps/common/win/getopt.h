@@ -77,12 +77,14 @@ struct option /* specification for a long form option...	*/
   int val;          /* its associated status value		*/
 };
 
-enum /* permitted values for its `has_arg' field...	*/
-{
-  no_argument = 0,   /* option never takes an argument	*/
+// clang-format off
+//	different clang-format versions have different opinions on this and prevent PRs to succeed
+enum                 /* permitted values for its `has_arg' field...	*/
+{ no_argument = 0,   /* option never takes an argument	*/
   required_argument, /* option always requires an argument	*/
   optional_argument  /* option may take an argument		*/
 };
+// clang-format on
 
 extern int getopt_long(int nargc, char *const *nargv, const char *options, const struct option *long_options, int *idx);
 extern int getopt_long_only(int nargc, char *const *nargv, const char *options, const struct option *long_options,

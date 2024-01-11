@@ -35,6 +35,9 @@
 #include "ns_turn_ioalib.h"
 #include "ns_turn_maps.h"
 #include "ns_turn_utils.h"
+#if !defined(TURN_NO_PROMETHEUS)
+#include <libprom/prom_metric_sample.h>
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -90,6 +93,32 @@ struct _ts_ur_super_session {
   int origin_set;
   char origin[STUN_MAX_ORIGIN_SIZE + 1];
   /* Stats */
+  int32_t rsid; // recyclable ID (*server instance scope). Actually for metrics,
+                // but would clutter logging code, if one would always need to
+                // check for TURN_NO_PROMETHEUS ...
+#if !defined(TURN_NO_PROMETHEUS)
+  // to avoid metric sample lookups on each counter/gauge op, we store and use
+  // the reference to the samples directly. The sample ops are just atomic
+  // inc/dev/set ops and thus really fast and safe (at least wrt. to add and
+  // set ;-)). This way explicit thread locking. key construction + hashing
+  // and bucket lookup are skipped, which are BTW pretty fast, too (e.g. the
+  // bucket lookup on a 2.6 GHz Xeon E5-2690v4 takes about 30 ns for the sample
+  // 'peer_tx_bytes{tid="10"_sid="20"_realm="nice_to_meet_you"}').
+  pms_t *sample_rx_msgs;
+  pms_t *sample_tx_msgs;
+  pms_t *sample_rx_bytes;
+  pms_t *sample_tx_bytes;
+  pms_t *sample_peer_rx_msgs;
+  pms_t *sample_peer_tx_msgs;
+  pms_t *sample_peer_rx_bytes;
+  pms_t *sample_peer_tx_bytes;
+  pms_t *sample_allocations_running;
+  pms_t *sample_allocations_created;
+  pms_t *sample_lifetime;
+  pms_t *sample_session_state;
+  pms_t *sample_stun_req;
+  pms_t *sample_stun_resp;
+#endif
   uint32_t received_packets;
   uint32_t sent_packets;
   uint32_t received_bytes;
@@ -147,6 +176,7 @@ struct turn_session_info {
   uint8_t username[STUN_MAX_USERNAME_SIZE + 1];
   int enforce_fingerprints;
   /* Stats */
+  int32_t rsid;
   uint64_t received_packets;
   uint64_t sent_packets;
   uint64_t received_bytes;

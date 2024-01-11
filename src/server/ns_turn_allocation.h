@@ -146,6 +146,7 @@ typedef struct _turn_permission_info {
   void *owner; // a
   int verbose;
   unsigned long long session_id;
+  uint32_t session_rid;
 } turn_permission_info;
 
 typedef struct _turn_permission_slot {

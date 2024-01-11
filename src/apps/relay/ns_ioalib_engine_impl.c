@@ -183,10 +183,12 @@ static void log_socket_event(ioa_socket_handle s, const char *msg, int error) {
     if (!msg)
       msg = "General socket event";
     turnsession_id id = 0;
+    int32_t rsid = 0;
     {
       ts_ur_super_session *ss = s->session;
       if (ss) {
         id = ss->id;
+        rsid = ss->rsid;
       } else {
         return;
       }
@@ -205,11 +207,11 @@ static void log_socket_event(ioa_socket_handle s, const char *msg, int error) {
       addr_to_string(&(s->local_addr), (uint8_t *)sladdr);
 
       if (EVUTIL_SOCKET_ERROR()) {
-        TURN_LOG_FUNC(ll, "session %018llu: %s: %s (local %s, remote %s)\n", (unsigned long long)id, msg,
+        TURN_LOG_FUNC(ll, "session %012llu.%d: %s: %s (local %s, remote %s)\n", (unsigned long long)id, rsid, msg,
                       evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()), sladdr, sraddr);
       } else {
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: %s (local %s, remote %s)\n", (unsigned long long)id, msg,
-                      sladdr, sraddr);
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %012llu.%d: %s (local %s, remote %s)\n", (unsigned long long)id,
+                      rsid, msg, sladdr, sraddr);
       }
     }
   }
@@ -2842,8 +2844,8 @@ static void eventcb_bev(struct bufferevent *bev, short events, void *arg) {
               addr_to_string(&(s->remote_addr), (uint8_t *)sraddr);
               if (events & BEV_EVENT_EOF) {
                 if (server->verbose)
-                  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: %s socket closed remotely %s\n",
-                                (unsigned long long)(ss->id), socket_type_name(s->st), sraddr);
+                  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %012llu.%d: %s socket closed remotely %s\n",
+                                (unsigned long long)(ss->id), ss->rsid, socket_type_name(s->st), sraddr);
                 if (s == ss->client_socket) {
                   char msg[256];
                   snprintf(msg, sizeof(msg) - 1, "%s connection closed by client (callback)", socket_type_name(s->st));
@@ -2866,12 +2868,12 @@ static void eventcb_bev(struct bufferevent *bev, short events, void *arg) {
                 }
               } else if (events & BEV_EVENT_ERROR) {
                 if (EVUTIL_SOCKET_ERROR()) {
-                  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: %s socket error: %s %s\n",
-                                (unsigned long long)(ss->id), socket_type_name(s->st),
+                  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %012llu.%d: %s socket error: %s %s\n",
+                                (unsigned long long)(ss->id), ss->rsid, socket_type_name(s->st),
                                 evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()), sraddr);
                 } else if (server->verbose) {
-                  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: %s socket disconnected: %s\n",
-                                (unsigned long long)(ss->id), socket_type_name(s->st), sraddr);
+                  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %012llu.%d: %s socket disconnected: %s\n",
+                                (unsigned long long)(ss->id), ss->rsid, socket_type_name(s->st), sraddr);
                 }
                 char msg[256];
                 snprintf(msg, sizeof(msg) - 1, "%s socket buffer operation error (callback)", socket_type_name(s->st));
@@ -3503,25 +3505,257 @@ const char *get_ioa_socket_ssl_method(ioa_socket_handle s) {
   return "no SSL";
 }
 
-void stun_report_binding(void *a, STUN_PROMETHEUS_METRIC_TYPE type) {
+/**
+ * @brief  turnserver: Get a uniqe session ID wrt. all sessions currently
+ *	managed by the associated turnserver.
+ *
+ * It is different wrt. the sessionID, because sessionID is a composit of the
+ * turnserverID and its session count and thus always in any scope (global or
+ * local) unique for the whole lifetime of the turnserver.
+ *
+ * However if sessionID would be used as parameter for timeseries metrics,
+ * this would let explode the number of timeseries (every sessionID creates a
+ * new one) and extremly stress the TDB.
+ *
+ * Using a recyclable ID instead reduces such timeseries to a more or less
+ * predictable level and improves reporting as well as data management time and
+ * server resources quiet a bit.
+ *
+ * The simple idea is: If a session gets closed, its ID gets returned into the
+ * related pool. Only if the pool has no ID, which is in there for the given
+ * duration, a new ID gets allocated/returned.
+ *
+ * @param ss	The sessions, which needs to get a recyclable ID.
+ */
+#ifdef POOL_TRACE
+#define _TRACE TURN_LOG_FUNC
+#else
+// dirty talk - is for developers, only
+#define _TRACE(level, fmt, ...)
+#endif
+void acquire_recyclable_session_id(ts_ur_super_session *ss) {
+#if defined(TURN_NO_PROMETHEUS)
+  UNUSED_ARG(ss);
+#else
+  if (!prom_rsids())
+    return;
+
+  // gets called by initialized servers, only. So no ts->var NULL checks.
+  turn_turnserver *server = (turn_turnserver *)(ss->server);
+  id_pool_t *pool = server->rsid_pool;
+  _TRACE(TURN_LOG_LEVEL_DEBUG, "tid: %d  usid: %d  wants a sid (has %d) start: %d\n", server->id,
+         (int)(ss->id % TURN_SESSION_ID_FACTOR), ss->rsid, pool->start);
+
+  if (pool->id == NULL || pool->len == 0) {
+    (pool->max_id)++;
+    _TRACE(TURN_LOG_LEVEL_DEBUG,
+           "tid: %d  usid: %d  <= newId: %d  "
+           "capacity: %d  len: %d\n",
+           server->id, (int)(ss->id % TURN_SESSION_ID_FACTOR), pool->max_id, pool->capacity, pool->len);
+    ss->rsid = pool->max_id;
+    return;
+  }
+  if (pool->release[pool->start] < server->ctime) {
+    ss->rsid = pool->id[pool->start];
+    // not really needed but
+    pool->release[pool->start] = INT_MAX;
+    pool->id[pool->start] = -1;
+
+    (pool->start)++;
+    if (pool->start == pool->capacity)
+      pool->start = 0;
+    (pool->len)--;
+    (pool->recycled)++;
+    _TRACE(TURN_LOG_LEVEL_DEBUG,
+           "tid: %d  usid: %d  <= newId: %d  "
+           "capacity: %d  len: %d  recycledSids: %d  startNow: %d\n",
+           server->id, (int)(ss->id % TURN_SESSION_ID_FACTOR), ss->rsid, pool->capacity, pool->len, pool->recycled,
+           pool->start);
+    return;
+  }
+  // all IDs in use
+  (pool->max_id)++;
+  _TRACE(TURN_LOG_LEVEL_DEBUG,
+         "tid: %d  usid: %d  <= newId: %d  "
+         "capacity: %d  len: %d\n",
+         server->id, (int)(ss->id % TURN_SESSION_ID_FACTOR), pool->max_id, pool->capacity, pool->len);
+  ss->rsid = pool->max_id;
+#endif
+}
+
+#define INITIAL_ID_POOL_SZ 4
+#define ID_POOL_NOMEM                                                                                                  \
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,                                                                                \
+                "Turnserver %d: Not enough memory to maintain the pool for "                                           \
+                "recyclable session IDs.\n",                                                                           \
+                server->id);
+
+/**
+ * Delete the recyclable ID of the given session and and return it to the
+ * related server's rsid_pool.
+ *
+ * @param ss	The sessions, which needs to give its recyclable ID back to the
+ *	server's rsid_pool.
+ */
+void release_recyclable_session_id(ts_ur_super_session *ss) {
+#if defined(TURN_NO_PROMETHEUS)
+  UNUSED_ARG(ss);
+#else
+  int n, m;
+
+  if (!prom_rsids())
+    return;
+
+  turn_turnserver *server = (turn_turnserver *)(ss->server);
+  id_pool_t *pool = server->rsid_pool;
+  _TRACE(TURN_LOG_LEVEL_DEBUG, "tid: %d  usid: %d  returns sid %d%s\n", server->id,
+         (int)(ss->id % TURN_SESSION_ID_FACTOR), ss->rsid, ss->rsid < 1 ? " INVALID" : "");
+
+  if (ss->rsid < 1)
+    return;
+
+  _TRACE(TURN_LOG_LEVEL_DEBUG,
+         "tid: %d  usid: %d  rsid: %d  recycle before:  "
+         "capacity: %d  start: %d  len: %d  maxId: %d\n",
+         server->id, (int)(ss->id % TURN_SESSION_ID_FACTOR), ss->rsid, pool->capacity, pool->start, pool->len,
+         pool->max_id);
+
+  if (pool->id == NULL) {
+    int32_t *ia = (int32_t *)calloc(sizeof(int32_t), INITIAL_ID_POOL_SZ);
+    if (ia == NULL) {
+      ID_POOL_NOMEM
+      return;
+    }
+    time_t *t = (time_t *)calloc(sizeof(time_t), INITIAL_ID_POOL_SZ);
+    if (t == NULL) {
+      free(ia);
+      ID_POOL_NOMEM
+      return;
+    }
+    pool->id = ia;
+    pool->release = t;
+    pool->capacity = INITIAL_ID_POOL_SZ;
+  } else if (pool->len == pool->capacity) {
+    // grow slowly
+    n = pool->capacity + (pool->capacity >> 1);
+    // scrapetime for 1 session report takes probably ~ 160K CPU cycles
+    // to avoid complexity we assume a 2.6 GHz machine
+    double max = n * relay_servers_in_use * 16.0 / 260000;
+    // 0.8 s/report should be ok =~ 16K sessions =~ 256K metrics
+    TURN_LOG_LEVEL l = max < 0.8 ? TURN_LOG_LEVEL_INFO : TURN_LOG_LEVEL_WARNING;
+    int32_t *ia = (int32_t *)calloc(sizeof(int32_t), n);
+    if (ia == NULL) {
+      ID_POOL_NOMEM
+      return;
+    }
+    time_t *ta = (time_t *)calloc(sizeof(time_t), n);
+    if (ta == NULL) {
+      free(ia);
+      ID_POOL_NOMEM
+      return;
+    }
+    if (pool->start == 0) {
+      TURN_LOG_FUNC(l,
+                    "tid: %d  usid: %d  rsid: %d  grew rsid pool from "
+                    "%d to %d  start: %d  len: %d  maxSid: %d\n",
+                    server->id, (int)(ss->id % TURN_SESSION_ID_FACTOR), ss->rsid, pool->capacity, n, pool->start,
+                    pool->len, pool->max_id);
+      memcpy(ia, pool->id, pool->len * sizeof(int32_t));
+      memcpy(ta, pool->release, pool->len * sizeof(time_t));
+    } else {
+      m = pool->capacity - pool->start;
+      TURN_LOG_FUNC(l,
+                    "tid: %d  usid: %d  rsid: %d  grew sid pool from "
+                    "%d  to %d  start: %d  len: %d/end: %d  len: %d  maxSid: %d\n",
+                    server->id, (int)(ss->id % TURN_SESSION_ID_FACTOR), ss->rsid, pool->capacity, n, pool->start, m, 0,
+                    pool->len - m, pool->max_id);
+      memcpy(ia, &(pool->id[pool->start]), m * sizeof(int32_t));
+      memcpy(ta, &(pool->release[pool->start]), m * sizeof(time_t));
+      memcpy(&(ia[m]), pool->id, (pool->len - m) * sizeof(int32_t));
+      memcpy(&(ta[m]), pool->release, (pool->len - m) * sizeof(time_t));
+      pool->start = 0;
+    }
+    free(pool->id);
+    free(pool->release);
+    pool->id = ia;
+    pool->release = ta;
+    pool->capacity = n;
+  }
+  n = pool->start + pool->len;
+  if (n >= pool->capacity)
+    n -= pool->capacity;
+  pool->id[n] = ss->rsid;
+  pool->release[n] = server->ctime + *(server->sid_retain);
+  _TRACE(TURN_LOG_LEVEL_DEBUG, "tid: %d  usid: %d  rsid: %d  idx: %d  %d  %ld\n", server->id,
+         (int)(ss->id % TURN_SESSION_ID_FACTOR), ss->rsid, n, pool->id[n], pool->release[n]);
+  (pool->len)++;
+  ss->rsid *= -1;
+  _TRACE(TURN_LOG_LEVEL_DEBUG,
+         "tid: %d  usid: %d  rsid: %d  recycle after:  "
+         "capacity: %d  start: %d  len: %d  maxId: %d\n",
+         server->id, (int)(ss->id % TURN_SESSION_ID_FACTOR), ss->rsid, pool->capacity, pool->start, pool->len,
+         pool->max_id);
+#endif
+}
+
+void attach_samples(ts_ur_super_session *ss) {
+#if defined(TURN_NO_PROMETHEUS)
+  UNUSED_ARG(ss);
+#else
+  if (ss == NULL || prom_disabled() || ss->server == NULL)
+    return;
+
+  if (ss->rsid < 0)
+    ss->rsid = -1;
+  uint32_t tid = ((turn_turnserver *)ss->server)->id;
+
+  // no reflection in C, so ...
+  ss->sample_session_state = get_state_sample(tid, ss->rsid, ss->id, ss->realm_options.name, (char *)ss->username);
+  if (ss->sample_session_state)
+    pms_set(ss->sample_session_state, SESSION_STATE_OPEN);
+
+  ss->sample_rx_msgs = get_session_sample(METRIC_RX_MSGS, false, tid, ss->rsid, ss->id);
+  ss->sample_tx_msgs = get_session_sample(METRIC_TX_MSGS, false, tid, ss->rsid, ss->id);
+  ss->sample_rx_bytes = get_session_sample(METRIC_RX_BYTES, false, tid, ss->rsid, ss->id);
+  ss->sample_tx_bytes = get_session_sample(METRIC_TX_BYTES, false, tid, ss->rsid, ss->id);
+
+  ss->sample_peer_rx_msgs = get_session_sample(METRIC_RX_MSGS, true, tid, ss->rsid, ss->id);
+  ss->sample_peer_tx_msgs = get_session_sample(METRIC_TX_MSGS, true, tid, ss->rsid, ss->id);
+  ss->sample_peer_rx_bytes = get_session_sample(METRIC_RX_BYTES, true, tid, ss->rsid, ss->id);
+  ss->sample_peer_tx_bytes = get_session_sample(METRIC_TX_BYTES, true, tid, ss->rsid, ss->id);
+
+  ss->sample_lifetime = get_session_sample(METRIC_LIFETIME, false, tid, ss->rsid, ss->id);
+  if (ss->sample_lifetime)
+    pms_set(ss->sample_lifetime, 0);
+  ss->sample_allocations_running = get_session_sample(METRIC_ALLOCATIONS_RUNNING, false, tid, ss->rsid, ss->id);
+  ss->sample_allocations_created = get_session_sample(METRIC_ALLOCATIONS_CREATED, false, tid, ss->rsid, ss->id);
+  ss->sample_stun_req = get_session_sample(METRIC_STUN_REQUEST, false, tid, ss->rsid, ss->id);
+  ss->sample_stun_resp = get_session_sample(METRIC_STUN_RESPONSE, false, tid, ss->rsid, ss->id);
+#endif
+}
+
+void stun_report_binding(ts_ur_super_session *ss, STUN_PROMETHEUS_METRIC_TYPE type, int err_code) {
 #if !defined(TURN_NO_PROMETHEUS)
-  UNUSED_ARG(a);
+  if (!ss->sample_stun_req)
+    return;
+
   switch (type) {
-  case 0:
-    prom_inc_stun_binding_request();
+  case STUN_PROMETHEUS_METRIC_TYPE_REQUEST:
+    pms_add(ss->sample_stun_req, 1);
     break;
-  case 1:
-    prom_inc_stun_binding_response();
+  case STUN_PROMETHEUS_METRIC_TYPE_RESPONSE:
+    pms_add(ss->sample_stun_resp, 1);
     break;
-  case 2:
-    prom_inc_stun_binding_error();
+  case STUN_PROMETHEUS_METRIC_TYPE_ERROR:
+    prom_binding_error(((turn_turnserver *)ss->server)->id, ss->rsid, ss->id, err_code);
     break;
   default:
     break;
   }
 #else
-  UNUSED_ARG(a);
+  UNUSED_ARG(ss);
   UNUSED_ARG(type);
+  UNUSED_ARG(err_code);
 #endif
 }
 
@@ -3536,26 +3770,44 @@ void turn_report_allocation_set(void *a, turn_time_t lifetime, int refresh) {
       if (server) {
         ioa_engine_handle e = turn_server_get_engine(server);
         if (e && e->verbose && ss->client_socket) {
+          SOCKET_TYPE socket_type = get_ioa_socket_type(ss->client_socket);
+          const char *socket_type_str = socket_type_name(socket_type);
           if (ss->client_socket->ssl) {
-            TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-                          "session %018llu: %s, realm=<%s>, username=<%s>, lifetime=%lu, cipher=%s, method=%s\n",
-                          (unsigned long long)ss->id, status, (char *)ss->realm_options.name, (char *)ss->username,
-                          (unsigned long)lifetime, SSL_get_cipher(ss->client_socket->ssl),
-                          turn_get_ssl_method(ss->client_socket->ssl, "UNKNOWN"));
+            TURN_LOG_FUNC(
+                TURN_LOG_LEVEL_INFO,
+                "session %012llu.%d: %s, realm=<%s>, username=<%s>, lifetime=%lu, cipher=%s, method=%s, socket=%s\n",
+                (unsigned long long)ss->id, ss->rsid, status, (char *)ss->realm_options.name, (char *)ss->username,
+                (unsigned long)lifetime, SSL_get_cipher(ss->client_socket->ssl),
+                turn_get_ssl_method(ss->client_socket->ssl, "UNKNOWN"), socket_type_str);
           } else {
-            TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: %s, realm=<%s>, username=<%s>, lifetime=%lu\n",
-                          (unsigned long long)ss->id, status, (char *)ss->realm_options.name, (char *)ss->username,
-                          (unsigned long)lifetime);
+            TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+                          "session %012llu.%d: %s, realm=<%s>, username=<%s>, lifetime=%lu, socket=%s\n",
+                          (unsigned long long)ss->id, ss->rsid, status, (char *)ss->realm_options.name,
+                          (char *)ss->username, (unsigned long)lifetime, socket_type_str);
           }
         }
+
+#if !defined(TURN_NO_PROMETHEUS)
+        if (ss->sample_allocations_running) {
+          if (!refresh) {
+            pms_add(ss->sample_allocations_running, 1);
+            pms_add(ss->sample_allocations_created, 1);
+          }
+          if (ss->sample_session_state) {
+            pms_set(ss->sample_session_state, refresh ? SESSION_STATE_REFRESH : SESSION_STATE_ALLOCATED);
+            pms_set(ss->sample_lifetime, lifetime);
+          }
+        }
+#endif
+
 #if !defined(TURN_NO_HIREDIS)
-        {
+        if (e->rch) {
           char key[1024];
           if (ss->realm_options.name[0]) {
-            snprintf(key, sizeof(key), "turn/realm/%s/user/%s/allocation/%018llu/status", ss->realm_options.name,
+            snprintf(key, sizeof(key), "turn/realm/%s/user/%s/allocation/%012llu/status", ss->realm_options.name,
                      (char *)ss->username, (unsigned long long)ss->id);
           } else {
-            snprintf(key, sizeof(key), "turn/user/%s/allocation/%018llu/status", (char *)ss->username,
+            snprintf(key, sizeof(key), "turn/user/%s/allocation/%012llu/status", (char *)ss->username,
                      (unsigned long long)ss->id);
           }
           uint8_t saddr[129];
@@ -3572,10 +3824,6 @@ void turn_report_allocation_set(void *a, turn_time_t lifetime, int refresh) {
                                 (unsigned long)lifetime, type, saddr, rsaddr, ssl, cipher);
         }
 #endif
-        {
-          if (!refresh)
-            prom_inc_allocation(get_ioa_socket_type(ss->client_socket));
-        }
       }
     }
   }
@@ -3589,17 +3837,29 @@ void turn_report_allocation_delete(void *a, SOCKET_TYPE socket_type) {
       if (server) {
         ioa_engine_handle e = turn_server_get_engine(server);
         if (e && e->verbose) {
-          TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: delete: realm=<%s>, username=<%s>\n",
-                        (unsigned long long)ss->id, (char *)ss->realm_options.name, (char *)ss->username);
+          const char *socket_type_str = socket_type_name(socket_type);
+          TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %012llu.%d: delete: realm=<%s>, username=<%s>, socket=%s\n",
+                        (unsigned long long)ss->id, ss->rsid, (char *)ss->realm_options.name, (char *)ss->username,
+                        socket_type_str);
         }
+
+#if !defined(TURN_NO_PROMETHEUS)
+        if (ss->sample_allocations_running)
+          pms_sub(ss->sample_allocations_running, 1);
+        if (ss->sample_session_state) {
+          pms_set(ss->sample_session_state, SESSION_STATE_DEALLOCATED);
+          pms_set(ss->sample_lifetime, -1);
+        }
+#endif
+
 #if !defined(TURN_NO_HIREDIS)
-        {
+        if (e->rch) {
           char key[1024];
           if (ss->realm_options.name[0]) {
-            snprintf(key, sizeof(key), "turn/realm/%s/user/%s/allocation/%018llu/status", ss->realm_options.name,
+            snprintf(key, sizeof(key), "turn/realm/%s/user/%s/allocation/%012llu/status", ss->realm_options.name,
                      (char *)ss->username, (unsigned long long)ss->id);
           } else {
-            snprintf(key, sizeof(key), "turn/user/%s/allocation/%018llu/status", (char *)ss->username,
+            snprintf(key, sizeof(key), "turn/user/%s/allocation/%012llu/status", (char *)ss->username,
                      (unsigned long long)ss->id);
           }
           send_message_to_redis(e->rch, "del", key, "");
@@ -3607,20 +3867,20 @@ void turn_report_allocation_delete(void *a, SOCKET_TYPE socket_type) {
 
           // report total traffic usage for this allocation
           if (ss->realm_options.name[0]) {
-            snprintf(key, sizeof(key), "turn/realm/%s/user/%s/allocation/%018llu/total_traffic", ss->realm_options.name,
+            snprintf(key, sizeof(key), "turn/realm/%s/user/%s/allocation/%012llu/total_traffic", ss->realm_options.name,
                      (char *)ss->username, (unsigned long long)ss->id);
           } else {
-            snprintf(key, sizeof(key), "turn/user/%s/allocation/%018llu/total_traffic", (char *)ss->username,
+            snprintf(key, sizeof(key), "turn/user/%s/allocation/%012llu/total_traffic", (char *)ss->username,
                      (unsigned long long)ss->id);
           }
           send_message_to_redis(e->rch, "publish", key, "rcvp=%lu, rcvb=%lu, sentp=%lu, sentb=%lu",
                                 (unsigned long)(ss->t_received_packets), (unsigned long)(ss->t_received_bytes),
                                 (unsigned long)(ss->t_sent_packets), (unsigned long)(ss->t_sent_bytes));
           if (ss->realm_options.name[0]) {
-            snprintf(key, sizeof(key), "turn/realm/%s/user/%s/allocation/%018llu/total_traffic/peer",
+            snprintf(key, sizeof(key), "turn/realm/%s/user/%s/allocation/%012llu/total_traffic/peer",
                      ss->realm_options.name, (char *)ss->username, (unsigned long long)(ss->id));
           } else {
-            snprintf(key, sizeof(key), "turn/user/%s/allocation/%018llu/total_traffic/peer", (char *)ss->username,
+            snprintf(key, sizeof(key), "turn/user/%s/allocation/%012llu/total_traffic/peer", (char *)ss->username,
                      (unsigned long long)(ss->id));
           }
           send_message_to_redis(e->rch, "publish", key, "rcvp=%lu, rcvb=%lu, sentp=%lu, sentb=%lu",
@@ -3629,29 +3889,6 @@ void turn_report_allocation_delete(void *a, SOCKET_TYPE socket_type) {
                                 (unsigned long)(ss->t_peer_sent_bytes));
         }
 #endif
-        {
-          if (ss->realm_options.name[0]) {
-
-            // Set prometheus traffic metrics
-            prom_set_finished_traffic(ss->realm_options.name, (const char *)ss->username,
-                                      (unsigned long)(ss->t_received_packets), (unsigned long)(ss->t_received_bytes),
-                                      (unsigned long)(ss->t_sent_packets), (unsigned long)(ss->t_sent_bytes), false);
-            prom_set_finished_traffic(
-                ss->realm_options.name, (const char *)ss->username, (unsigned long)(ss->t_peer_received_packets),
-                (unsigned long)(ss->t_peer_received_bytes), (unsigned long)(ss->t_peer_sent_packets),
-                (unsigned long)(ss->t_peer_sent_bytes), true);
-          } else {
-            // Set prometheus traffic metrics
-            prom_set_finished_traffic(NULL, (const char *)ss->username, (unsigned long)(ss->t_received_packets),
-                                      (unsigned long)(ss->t_received_bytes), (unsigned long)(ss->t_sent_packets),
-                                      (unsigned long)(ss->t_sent_bytes), false);
-            prom_set_finished_traffic(NULL, (const char *)ss->username, (unsigned long)(ss->t_peer_received_packets),
-                                      (unsigned long)(ss->t_peer_received_bytes),
-                                      (unsigned long)(ss->t_peer_sent_packets), (unsigned long)(ss->t_peer_sent_bytes),
-                                      true);
-          }
-          prom_dec_allocation(socket_type);
-        }
       }
     }
   }
@@ -3667,34 +3904,34 @@ void turn_report_session_usage(void *session, int force_invalid) {
           force_invalid) {
         if (e && e->verbose) {
           TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-                        "session %018llu: usage: realm=<%s>, username=<%s>, rp=%lu, rb=%lu, sp=%lu, sb=%lu\n",
-                        (unsigned long long)(ss->id), (char *)ss->realm_options.name, (char *)ss->username,
+                        "session %012llu.%d: usage: realm=<%s>, username=<%s>, rp=%lu, rb=%lu, sp=%lu, sb=%lu\n",
+                        (unsigned long long)(ss->id), ss->rsid, (char *)ss->realm_options.name, (char *)ss->username,
                         (unsigned long)(ss->received_packets), (unsigned long)(ss->received_bytes),
                         (unsigned long)(ss->sent_packets), (unsigned long)(ss->sent_bytes));
           TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-                        "session %018llu: peer usage: realm=<%s>, username=<%s>, rp=%lu, rb=%lu, sp=%lu, sb=%lu\n",
-                        (unsigned long long)(ss->id), (char *)ss->realm_options.name, (char *)ss->username,
+                        "session %012llu.%d: peer usage: realm=<%s>, username=<%s>, rp=%lu, rb=%lu, sp=%lu, sb=%lu\n",
+                        (unsigned long long)(ss->id), ss->rsid, (char *)ss->realm_options.name, (char *)ss->username,
                         (unsigned long)(ss->peer_received_packets), (unsigned long)(ss->peer_received_bytes),
                         (unsigned long)(ss->peer_sent_packets), (unsigned long)(ss->peer_sent_bytes));
         }
 #if !defined(TURN_NO_HIREDIS)
-        {
+        if (e->rch) {
           char key[1024];
           if (ss->realm_options.name[0]) {
-            snprintf(key, sizeof(key), "turn/realm/%s/user/%s/allocation/%018llu/traffic", ss->realm_options.name,
+            snprintf(key, sizeof(key), "turn/realm/%s/user/%s/allocation/%012llu/traffic", ss->realm_options.name,
                      (char *)ss->username, (unsigned long long)(ss->id));
           } else {
-            snprintf(key, sizeof(key), "turn/user/%s/allocation/%018llu/traffic", (char *)ss->username,
+            snprintf(key, sizeof(key), "turn/user/%s/allocation/%012llu/traffic", (char *)ss->username,
                      (unsigned long long)(ss->id));
           }
           send_message_to_redis(e->rch, "publish", key, "rcvp=%lu, rcvb=%lu, sentp=%lu, sentb=%lu",
                                 (unsigned long)(ss->received_packets), (unsigned long)(ss->received_bytes),
                                 (unsigned long)(ss->sent_packets), (unsigned long)(ss->sent_bytes));
           if (ss->realm_options.name[0]) {
-            snprintf(key, sizeof(key), "turn/realm/%s/user/%s/allocation/%018llu/traffic/peer", ss->realm_options.name,
+            snprintf(key, sizeof(key), "turn/realm/%s/user/%s/allocation/%012llu/traffic/peer", ss->realm_options.name,
                      (char *)ss->username, (unsigned long long)(ss->id));
           } else {
-            snprintf(key, sizeof(key), "turn/user/%s/allocation/%018llu/traffic/peer", (char *)ss->username,
+            snprintf(key, sizeof(key), "turn/user/%s/allocation/%012llu/traffic/peer", (char *)ss->username,
                      (unsigned long long)(ss->id));
           }
           send_message_to_redis(e->rch, "publish", key, "rcvp=%lu, rcvb=%lu, sentp=%lu, sentb=%lu",

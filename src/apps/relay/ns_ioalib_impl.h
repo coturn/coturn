@@ -125,6 +125,10 @@ struct message_to_relay {
 struct relay_server;
 typedef struct relay_server *relay_server_handle;
 
+// should be read-only and rw for src/apps/relay/netengine.c to let consumers
+// know, how many relay-threads are actually in use.
+extern uint32_t relay_servers_in_use;
+
 typedef int (*ioa_engine_new_connection_event_handler)(ioa_engine_handle e, struct message_to_relay *sm);
 typedef int (*ioa_engine_udp_event_handler)(relay_server_handle rs, struct message_to_relay *sm);
 

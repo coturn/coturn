@@ -34,7 +34,7 @@ find_library(
     PATH_SUFFIXES lib ${CMAKE_INSTALL_LIBDIR})
 
 find_path(prom_INCLUDE_DIR
-    NAMES prom.h
+    NAMES prom.h libprom/prom.h
     HINTS ${Prometheus_DIR} ${Prometheus_ROOT} ${PC_prom_INCLUDE_DIRS} /usr
     PATHS $ENV{Prometheus_DIR} $ENV{Prometheus_ROOT}
     PATH_SUFFIXES include
@@ -48,7 +48,7 @@ find_library(
     PATH_SUFFIXES lib ${CMAKE_INSTALL_LIBDIR})
 
 find_path(promhttp_INCLUDE_DIR
-    NAMES promhttp.h
+    NAMES promhttp.h libprom/promhttp.h
     HINTS ${Prometheus_DIR} ${Prometheus_ROOT} ${PC_promhttp_INCLUDE_DIRS} /usr
     PATHS $ENV{Prometheus_DIR} $ENV{Prometheus_ROOT}
     PATH_SUFFIXES include
