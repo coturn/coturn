@@ -1,0 +1,11 @@
+[
+    { ref: /usr/share/include-what-you-use/gcc.libc.imp }
+  , { ref: /usr/share/include-what-you-use/gcc.symbols.imp }
+  , { ref: /usr/share/include-what-you-use/gcc.stl.headers.imp }
+  , { ref: /usr/share/include-what-you-use/stl.c.headers.imp }
+  , { include: [ "<ext/alloc_traits.h>", private, "<memory>", public ] }
+  , { include: [ "<ext/alloc_traits.h>", private, "<string>", public ] }
+  , { include: [ "<ext/alloc_traits.h>", private, "<vector>", public ] }
+  , { include: [ "<ext/alloc_traits.h>", private, "<map>", public ] }
+  , { include: [ "<ext/alloc_traits.h>", private, "<set>", public ] }
+]
