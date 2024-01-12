@@ -28,6 +28,14 @@
  * SUCH DAMAGE.
  */
 
+#include "ns_turn_defs.h"     // for STRCPY, turn_time_t, uint8_t, uint32_t
+#include "ns_turn_msg.h"      // for convert_oauth_key_data, decode_oauth_t...
+#include "ns_turn_msg_defs.h" // for oauth_token, oauth_encrypted_block
+#include "ns_turn_utils.h"
+
+#include "apputils.h"
+#include "stun_buffer.h"
+
 #if defined(__unix__)
 #include <unistd.h>
 #endif
@@ -38,10 +46,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-
-#include "apputils.h"
-#include "ns_turn_utils.h"
-#include "stun_buffer.h"
 
 ////////////////////////////////////////////////////
 

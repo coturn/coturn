@@ -31,6 +31,7 @@
 #ifndef __LIB_TURN_MSG_ADDR__
 #define __LIB_TURN_MSG_ADDR__
 
+#include "ns_turn_defs.h" // for ioa_addr, uint8_t, uint32_t
 #include "ns_turn_ioaddr.h"
 
 #ifdef __cplusplus

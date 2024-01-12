@@ -31,8 +31,13 @@
 #ifndef __TURN_SERVER__
 #define __TURN_SERVER__
 
+#include "ns_turn_allocation.h" // for tcp_connection_id
+#include "ns_turn_defs.h"       // for vintp, uint8_t, size_t, uint64_t
+#include "ns_turn_ioaddr.h"     // for ioa_addr
+#include "ns_turn_ioalib.h"     // for ioa_net_data, ioa_engine_handle, ioa...
+#include "ns_turn_maps.h"       // for ur_map
+#include "ns_turn_msg.h"        // for turn_credential_type, band_limit_t
 #include "ns_turn_session.h"
-#include "ns_turn_utils.h"
 
 #ifdef __cplusplus
 extern "C" {

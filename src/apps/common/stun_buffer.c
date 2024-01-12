@@ -30,6 +30,8 @@
 
 #include "stun_buffer.h"
 
+#include <string.h> // for memset
+
 ////////////////////// BUFFERS ///////////////////////////
 
 int stun_init_buffer(stun_buffer *buf) {

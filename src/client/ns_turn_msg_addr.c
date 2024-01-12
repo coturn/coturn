@@ -29,6 +29,9 @@
  */
 
 #include "ns_turn_msg_addr.h"
+#include "ns_turn_defs.h" // for nswap16, nswap32
+
+#include <string.h> // for memcpy
 
 //////////////////////////////////////////////////////////////////////////////
 

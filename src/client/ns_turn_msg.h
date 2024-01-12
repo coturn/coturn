@@ -31,6 +31,7 @@
 #ifndef __LIB_TURN_MSG__
 #define __LIB_TURN_MSG__
 
+#include "ns_turn_defs.h" // for turn_time_t
 #include "ns_turn_ioaddr.h"
 #include "ns_turn_msg_defs.h"
 

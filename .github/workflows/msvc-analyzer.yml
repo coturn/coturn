@@ -43,28 +43,17 @@ jobs:
         cmake -E make_directory ${{env.TOOLS_DIR}}
         cmake -E make_directory ${{env.INSTALL_DIR}}
 
-    - name: Cache installed
-      uses: actions/cache@v3
-      id: cache-installed
-      with:
-        path: |
-          ${{env.INSTALL_DIR}}
-        key: coturn-cache-installed-${{matrix.os}}-vc${{matrix.VCPKG_PLATFORM_TOOLSET}}-x64-windows-${{matrix.BUILD_TYPE}}
-
     - name: run-vcpkg
-      uses: lukka/run-vcpkg@v10
+      uses: lukka/run-vcpkg@v11
       with:
         # If not using a submodule for vcpkg sources, this specifies which commit
         # id must be checkout from a Git repo. It must not set if using a submodule
         # for vcpkg.
         vcpkgGitCommitId: '${{ env.VCPKGGITCOMMITID }}'
-        # Since the cache must be invalidated when content of the vcpkg.json file changes, let's
-        # compute its hash and append this to the computed cache's key.
-        appendedCacheKey: coturn-msvc-${{matrix.os}}-vc${{matrix.VCPKG_PLATFORM_TOOLSET}}-x64-windows-${{matrix.BUILD_TYPE}}-${{env.VCPKGGITCOMMITID}}
 
     - name: Configure (MSVC)
       run: |
-        cmake -B buiild ^
+        cmake -B build ^
             -A ${{matrix.CMAKE_GENERATOR_PLATFORM}} ^
             -T ${{matrix.VCPKG_PLATFORM_TOOLSET}} ^
             -DWITH_MYSQL=OFF ^

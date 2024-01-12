@@ -35,6 +35,7 @@
 #ifndef __IOA_LIB__
 #define __IOA_LIB__
 
+#include "ns_turn_defs.h" // for turn_time_t
 #include "ns_turn_ioaddr.h"
 
 #ifdef __cplusplus

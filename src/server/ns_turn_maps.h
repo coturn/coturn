@@ -31,6 +31,7 @@
 #ifndef __TURN_MAPS__
 #define __TURN_MAPS__
 
+#include "ns_turn_defs.h" // for size_t, uint64_t, uintptr_t
 #include "ns_turn_ioaddr.h"
 
 #include <stdbool.h>
@@ -41,7 +42,7 @@ extern "C" {
 
 //////////////// UR MAP //////////////////
 
-struct _ur_map;
+struct _ur_map; // IWYU pragma: keep
 typedef struct _ur_map ur_map;
 
 //////////////// Common Definitions //////
@@ -206,7 +207,6 @@ struct _ur_addr_map {
   uint64_t magic;
 };
 
-struct _ur_addr_map;
 typedef struct _ur_addr_map ur_addr_map;
 
 typedef void (*ur_addr_map_func)(ur_addr_map_value_type);
@@ -245,7 +245,7 @@ size_t ur_addr_map_size(const ur_addr_map *map);
 
 typedef char *ur_string_map_key_type;
 typedef void *ur_string_map_value_type;
-struct _ur_string_map;
+struct _ur_string_map; // IWYU pragma: keep
 typedef struct _ur_string_map ur_string_map;
 
 typedef void (*ur_string_map_func)(ur_string_map_value_type);

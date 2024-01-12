@@ -44,4 +44,4 @@ jobs:
         wget https://raw.githubusercontent.com/include-what-you-use/include-what-you-use/clang_14/iwyu_tool.py
         chmod +x iwyu_tool.py
         # iwyu_tool.py returns non-zero if any executions returned nonzero. Which... happens to be useless unless the project is already IWYU clean.
-        ./iwyu_tool.py -j $(nproc) -p build -- -Xiwyu --mapping_file=${GITHUB_WORKSPACE}/iwyu-ubuntu.imp || exit 0
+        ./iwyu_tool.py -j $(nproc) -p build -- -Xiwyu --mapping_file=${GITHUB_WORKSPACE}/iwyu-ubuntu.imp | grep -v "has correct" | uniq || exit 0

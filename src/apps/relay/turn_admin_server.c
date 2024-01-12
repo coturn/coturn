@@ -27,7 +27,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -66,12 +65,17 @@
 #include "mainrelay.h"
 #include "userdb.h"
 
+#include "ns_ioalib_impl.h" // for ioa_socket, ip_range_t, ioa_network_...
+#include "ns_sm.h"          // for new_super_memory_region, super_memory_t
+#include "ns_turn_defs.h"   // for uint8_t, STRCPY, UNUSED_ARG, getcwd
+#include "ns_turn_maps.h"
+#include "ns_turn_msg.h" // for check_password, band_limit_t, conver...
+#include "ns_turn_server.h"
+#include "ns_turn_session.h" // for turn_session_info, addr_data, _realm...
 #include "ns_turn_utils.h"
 
-#include "ns_turn_maps.h"
-#include "ns_turn_server.h"
-
 #include "apputils.h"
+#include "stun_buffer.h" // for stun_buffer
 
 #include "turn_admin_server.h"
 
@@ -80,6 +84,12 @@
 #include "dbdrivers/dbdriver.h"
 
 #include "tls_listener.h"
+
+///////////////////////////////
+
+struct bufferevent;
+struct evconnlistener;
+struct str_buffer;
 
 ///////////////////////////////
 

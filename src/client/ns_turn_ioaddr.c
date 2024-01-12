@@ -30,6 +30,12 @@
 
 #include "ns_turn_ioaddr.h"
 
+#include "ns_turn_defs.h" // for nswap16, nswap32, STRCPY
+
+#include <stdio.h>  // for snprintf, fprintf, stderr
+#include <stdlib.h> // for atoi, malloc, realloc, free
+#include <string.h> // for memcpy, strncpy, memset, NULL, memcmp, strstr
+
 #if defined(__unix__) || defined(unix) || defined(__APPLE__)
 #include <netdb.h>
 #endif

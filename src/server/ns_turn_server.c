@@ -33,7 +33,14 @@
 #include "../apps/relay/ns_ioalib_impl.h"
 #include "ns_turn_allocation.h"
 #include "ns_turn_ioalib.h"
+#include "ns_turn_msg_defs.h" // for STUN_ATTRIBUTE_NONCE
 #include "ns_turn_utils.h"
+
+#include "apputils.h" // for turn_random, base64_decode
+
+#include <stdio.h>  // for snprintf
+#include <stdlib.h> // for free, malloc, calloc, realloc
+#include <string.h> // for memcpy, strlen, strcmp
 
 ///////////////////////////////////////////
 
