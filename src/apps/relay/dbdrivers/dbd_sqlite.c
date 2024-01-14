@@ -156,6 +156,7 @@ static void fix_user_directory(char *dir0) {
       struct passwd *pwd = getpwuid(getuid());
       if (!pwd) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot figure out the user's HOME directory (1)\n");
+        return;
       } else {
         home = pwd->pw_dir;
         if (!home) {
