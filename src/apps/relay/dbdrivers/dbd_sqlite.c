@@ -36,7 +36,7 @@
 
 #include <sqlite3.h>
 
-#if defined(__unix__) || defined(unix) || defined(__APPLE__) || defined(__DARWIN__) || defined(__MACH__)
+#if defined(__unix__) || defined(unix) || defined(__APPLE__)
 #include <pwd.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -149,7 +149,7 @@ static void fix_user_directory(char *dir0) {
   char *dir = dir0;
   while (*dir == ' ')
     ++dir;
-#if defined(__unix__) || defined(unix) || defined(__APPLE__) || defined(__DARWIN__) || defined(__MACH__)
+#if defined(__unix__) || defined(unix) || defined(__APPLE__)
   if (*dir == '~') {
     char *home = getenv("HOME");
     if (!home) {
