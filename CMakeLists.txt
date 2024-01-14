@@ -100,11 +100,6 @@ ADD_CUSTOM_TARGET(uninstall
 
 add_subdirectory(src)
 
-OPTION(BUILD_TEST "Build test" OFF)
-if(BUILD_TEST)
-    add_subdirectory(test)
-endif(BUILD_TEST)
-
 CONFIGURE_FILE(
     "${CMAKE_SOURCE_DIR}/cmake/coturnConfig.cmake.in"
     "${CMAKE_BINARY_DIR}/coturnConfig.cmake"
