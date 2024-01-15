@@ -67,7 +67,7 @@ jobs:
         key: coturn-cache-installed-${{matrix.os}}-vc${{matrix.VCPKG_PLATFORM_TOOLSET}}-${{matrix.triplet}}-${{matrix.BUILD_TYPE}}
 
     - name: run-vcpkg
-      uses: lukka/run-vcpkg@v10
+      uses: lukka/run-vcpkg@v11
       with:
         # If not using a submodule for vcpkg sources, this specifies which commit
         # id must be checkout from a Git repo. It must not set if using a submodule
