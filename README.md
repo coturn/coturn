@@ -39,6 +39,7 @@ Optional
 - [Hiredis](https://github.com/redis/hiredis) (user database, monitoring)
 - SQLite (user database)
 - PostgreSQL (user database)
+- [log4cplus](https://github.com/log4cplus/log4cplus) (log library)
 
 ### Building
 ```shell

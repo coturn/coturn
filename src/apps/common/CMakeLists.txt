@@ -50,6 +50,18 @@ else()
     endif()
 endif()
 
+find_package(log4cplus)
+if(log4cplus_FOUND)
+    list(APPEND COMMON_LIBS log4cplus::log4cplus)
+    list(APPEND COMMON_DEFINED HAS_LOG4CPLUS)
+    list(APPEND SOURCE_FILES log4cplus.cpp)
+    install(FILES ${CMAKE_SOURCE_DIR}/examples/etc/log.conf
+        DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}
+            COMPONENT Runtime
+        RENAME turnserver_log.conf
+    )
+endif()
+
 find_package(hiredis)
 if(hiredis_FOUND)
     list(APPEND SOURCE_FILES hiredis_libevent2.c)

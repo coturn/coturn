@@ -197,6 +197,8 @@ static SHATYPE shatype = SHATYPE_SHA1;
 int main(int argc, const char **argv) {
   int res = -1;
 
+  void *log = turn_log_init();
+
   UNUSED_ARG(argc);
   UNUSED_ARG(argv);
 
@@ -560,6 +562,8 @@ int main(int argc, const char **argv) {
     if (check_oauth() < 0)
       exit(-1);
   }
+
+  turn_log_clean(log);
 
   return 0;
 }

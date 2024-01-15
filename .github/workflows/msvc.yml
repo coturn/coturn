@@ -39,7 +39,7 @@ jobs:
       SOURCE_DIR:  ${{github.workspace}}\.cache\source
       TOOLS_DIR:   ${{github.workspace}}\.cache\tools
       INSTALL_DIR: ${{github.workspace}}\.cache\install_msvc_${{matrix.triplet}}_${{matrix.BUILD_TYPE}}
-      VCPKGGITCOMMITID: acc3bcf76b84ae5041c86ab55fe138ae7b8255c7
+      VCPKGGITCOMMITID: 0e47c1985273129e4d0ee52ff73bed9125555de8
       VCPKG_PLATFORM_TOOLSET: ${{matrix.VCPKG_PLATFORM_TOOLSET}}
       CMAKE_GENERATOR_PLATFORM: ${{matrix.CMAKE_GENERATOR_PLATFORM}}
 

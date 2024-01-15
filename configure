@@ -61,6 +61,7 @@ test_mysql_config() {
 testpkg_common() {
     testpkg "$@" || return $?
     OSCFLAGS="${OSCFLAGS} ${PKG_CFLAGS}"
+    OSCPPFLAGS += "${PKG_CFLAGS}"
     OSLIBS="${OSLIBS} ${PKG_LIBS}"
 }
 
@@ -838,6 +839,21 @@ else
 fi
 
 ###########################
+# Test log4cplus
+###########################
+
+if [ -z "${HAS_LOG4CPLUS}" ] ; then
+    if testpkg_common log4cplus; then
+        ${ECHO_CMD} "log4cplus library found."
+        OSCFLAGS="${OSCFLAGS} -DHAS_LOG4CPLUS"
+        OSCPPFLAGS="${OSCPPFLAGS} -DHAS_LOG4CPLUS"
+        MAKEFILE_VAR="${MAKEFILE_VAR}\nHAS_LOG4CPLUS=1"
+    else
+        ${ECHO_CMD} "log4cplus library not found. Building without log4cplus support."
+    fi
+fi
+
+###########################
 # Test Prometheus
 ###########################
 
@@ -1039,6 +1055,9 @@ if ! [ -z "${TURN_ACCEPT_RPATH}" ] ; then
 fi
 
 ${ECHO_CMD} PREFIX="${PREFIX}" LOCALSTATEDIR="${LOCALSTATEDIR}" OSLIBS="${OSLIBS}" DBLIBS="${DBLIBS}" OSCFLAGS="${OSCFLAGS}" DBCFLAGS="${DBCFLAGS}" $@
+${ECHO_CMD} "#########################"
+${ECHO_CMD} MAKEFILE_VAR:"${MAKEFILE_VAR}"
+${ECHO_CMD} "#########################"
 
 ###############################
 # Make make:
@@ -1052,7 +1071,7 @@ ${ECHO_CMD} "CC = ${CC}" >> Makefile
 ${ECHO_CMD} "LDFLAGS += ${OSLIBS}" >> Makefile
 ${ECHO_CMD} "DBLIBS += ${DBLIBS}" >> Makefile
 ${ECHO_CMD} "CFLAGS += ${OSCFLAGS}" >> Makefile
-${ECHO_CMD} "CPPFLAGS = ${CPPFLAGS}" >> Makefile
+${ECHO_CMD} "CPPFLAGS += ${OSCPPFLAGS}" >> Makefile
 ${ECHO_CMD} "DBCFLAGS += ${DBCFLAGS} ${TURN_NO_PQ} ${TURN_NO_MYSQL} ${TURN_NO_SQLITE} ${TURN_NO_MONGO} ${TURN_NO_HIREDIS} ${TURN_NO_SYSTEMD}" >> Makefile
 ${ECHO_CMD} "#" >> Makefile
 ${ECHO_CMD} "PORTNAME = ${PORTNAME}" >> Makefile
@@ -1097,6 +1116,8 @@ ${ECHO_CMD} "RMCMD = ${RMCMD}" >> Makefile
 ${ECHO_CMD} "MORECMD = ${MORECMD}" >> Makefile
 ${ECHO_CMD} "LDCONFIG=${LDCONFIG}" >> Makefile
 ${ECHO_CMD} "################################" >> Makefile
+${ECHO_CMD} "#" >> Makefile
+${ECHO_CMD} "${MAKEFILE_VAR}" >> Makefile
 ${ECHO_CMD} "" >> Makefile
 cat Makefile.in >> Makefile
 

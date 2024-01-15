@@ -504,8 +504,6 @@ void rollover_logfile(void) {
 static int get_syslog_level(TURN_LOG_LEVEL level) {
 #if defined(__unix__) || defined(unix) || defined(__APPLE__)
   switch (level) {
-  case TURN_LOG_LEVEL_CONTROL:
-    return LOG_NOTICE;
   case TURN_LOG_LEVEL_WARNING:
     return LOG_WARNING;
   case TURN_LOG_LEVEL_ERROR:
@@ -526,7 +524,15 @@ void err(int eval, const char *format, ...) {
 }
 #endif
 
-void turn_log_func_default(char *file, int line, TURN_LOG_LEVEL level, const char *format, ...) {
+#if !defined(HAS_LOG4CPLUS)
+void *turn_log_init() { return NULL; }
+
+void turn_log_clean(void *log) {}
+
+int turn_log_set_conf_file(const char *file) { return 0; }
+
+void turn_log_func_default(const char *file, int line, const char *f, char *category, TURN_LOG_LEVEL level,
+                           const char *format, ...) {
   va_list args;
   va_start(args, format);
 #if defined(TURN_LOG_FUNC_IMPL)
@@ -543,30 +549,39 @@ void turn_log_func_default(char *file, int line, TURN_LOG_LEVEL level, const cha
     so_far += snprintf(s, sizeof(s), "%lu: ", (unsigned long)log_time());
   }
 
+#if defined(WINDOWS) || defined(__CYGWIN__) || defined(__CYGWIN32__) || defined(__CYGWIN64__)
+  so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "[%lu:%lu] ", GetCurrentProcessId(),
+                     GetCurrentThreadId());
+#else
+
 #ifdef SYS_gettid
-  so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "(%lu): ", (unsigned long)gettid());
+  so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "[%lu] ", (unsigned long)gettid());
+#endif
+
 #endif
 
   if (_log_file_line_set)
-    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "%s(%d):", file, line);
+    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "%s(%d)", file, line);
 
   switch (level) {
   case TURN_LOG_LEVEL_DEBUG:
-    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "DEBUG: ");
+    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "DEBUG");
     break;
   case TURN_LOG_LEVEL_INFO:
-    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "INFO: ");
-    break;
-  case TURN_LOG_LEVEL_CONTROL:
-    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "CONTROL: ");
+    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "INFO");
     break;
   case TURN_LOG_LEVEL_WARNING:
-    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "WARNING: ");
+    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "WARNING");
     break;
   case TURN_LOG_LEVEL_ERROR:
-    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "ERROR: ");
+    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "ERROR");
     break;
   }
+
+  if (category && strcmp(category, ""))
+    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), " %s", category);
+  so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), ": ");
+
   so_far += vsnprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), format, args);
 
   if (so_far > MAX_RTPPRINTF_BUFFER_SIZE + 1) {
@@ -598,6 +613,7 @@ void turn_log_func_default(char *file, int line, TURN_LOG_LEVEL level, const cha
 #endif
   va_end(args);
 }
+#endif // !defined(HAS_LOG4CPLUS)
 
 ///////////// ORIGIN ///////////////////
 

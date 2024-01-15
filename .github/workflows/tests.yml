@@ -30,7 +30,8 @@ jobs:
             libpq-dev libsqlite3-dev \
             libhiredis-dev \
             libmongoc-dev \
-            libmicrohttpd-dev
+            libmicrohttpd-dev \
+            liblog4cplus-dev
         if [ ${{ matrix.os }}  = 'ubuntu:16.04' ]; then apt-get install -y libmariadb-client-lgpl-dev; fi
         if [ ${{ matrix.os }} != 'ubuntu:16.04' ]; then apt-get install -y libmariadb-dev; fi
         wget https://github.com/digitalocean/prometheus-client-c/releases/download/v0.1.3/libprom-dev-0.1.3-Linux.deb && \

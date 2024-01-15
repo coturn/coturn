@@ -195,6 +195,7 @@ const char Usage[] =
 //////////////////////////////////////////////////
 
 int main(int argc, char **argv) {
+  void *log = turn_log_init();
 
   oauth_key key;
 
@@ -469,5 +470,6 @@ int main(int argc, char **argv) {
     }
   }
 
+  turn_log_clean(log);
   return 0;
 }

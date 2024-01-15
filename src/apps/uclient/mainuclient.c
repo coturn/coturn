@@ -170,6 +170,8 @@ int main(int argc, char **argv) {
   char rest_api_separator = ':';
   int use_null_cipher = 0;
 
+  void *log = turn_log_init();
+
 #if defined(WINDOWS)
 
   WORD wVersionRequested;
@@ -579,5 +581,6 @@ int main(int argc, char **argv) {
 
   start_mclient(argv[optind], port, client_ifname, local_addr, messagenumber, mclient);
 
+  turn_log_clean(log);
   return 0;
 }
