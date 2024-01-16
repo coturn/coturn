@@ -1,0 +1,49 @@
+name: compiler-sanitizers
+
+on:
+  push:
+  pull_request:
+    types: [ opened, reopened, synchronize ]
+
+jobs:
+  compiler-sanitizers:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        sanitizer: [ 'address,pointer-compare,pointer-subtract', 'thread' ]
+
+    env:
+      CFLAGS:       "-fno-omit-frame-pointer -fstack-protector-all -fsanitize=${{matrix.sanitizer}},bounds,enum -fsanitize-address-use-after-scope -fsanitize-address-use-after-return=always -fsanitize-recover=address -fsanitize-memory-track-origins=2"
+      CC:           "clang"
+      ASAN_OPTIONS: "strict_string_checks=1:detect_stack_use_after_return=1:check_initialization_order=1:detect_leaks=0:detect_invalid_pointer_pairs=1:halt_on_error=0"
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt install -y clang wget libevent-dev libssl-dev libpq-dev libmariadb-dev libsqlite3-dev libhiredis-dev libmongoc-dev libmicrohttpd-dev
+        wget https://github.com/digitalocean/prometheus-client-c/releases/download/v0.1.3/libprom-dev-0.1.3-Linux.deb
+        wget https://github.com/digitalocean/prometheus-client-c/releases/download/v0.1.3/libpromhttp-dev-0.1.3-Linux.deb
+        sudo apt install -y ./libprom-dev-0.1.3-Linux.deb ./libpromhttp-dev-0.1.3-Linux.deb
+
+    - name: Configure
+      run: |
+        ./configure
+
+    - name: Compile
+      run: |
+        make -j $(nproc)
+
+    - name: Check
+      run: |
+        make check
+
+    - name: Test
+      run: |
+        cd examples
+        ./run_tests.sh

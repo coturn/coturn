@@ -608,10 +608,11 @@ if [ -z "${CC}" ] ; then
         exit 1
     fi
 else
-    ${CC} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>>/dev/null
+    CC_OUTPUT=$(${CC} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB})
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
-        ${ECHO_CMD} "ERROR: cannot use compiler ${CC} properly"
+        ${ECHO_CMD} "ERROR: cannot use compiler ${CC} properly."
+        ${ECHO_CMD} "${CC_OUTPUT}"
         cleanup
         exit 1
     fi
