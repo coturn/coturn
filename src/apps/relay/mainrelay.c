@@ -33,16 +33,6 @@
 
 #include "prom_server.h"
 
-#if defined(WINDOWS)
-#include <iphlpapi.h>
-
-#define WORKING_BUFFER_SIZE 15000
-#define MAX_TRIES 3
-
-#define MALLOC(x) HeapAlloc(GetProcessHeap(), 0, (x))
-#define FREE(x) HeapFree(GetProcessHeap(), 0, (x))
-#endif
-
 #if (!defined OPENSSL_VERSION_1_1_1)
 #define OPENSSL_VERSION_1_1_1 0x10101000L
 #endif
@@ -300,7 +290,7 @@ static int make_local_listeners_list(void) {
 
   do {
 
-    pAddresses = (IP_ADAPTER_ADDRESSES *)MALLOC(outBufLen);
+    pAddresses = (IP_ADAPTER_ADDRESSES *)malloc(outBufLen);
     if (pAddresses == NULL) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Memory allocation failed for IP_ADAPTER_ADDRESSES struct\n");
       return -1;
@@ -309,7 +299,7 @@ static int make_local_listeners_list(void) {
     dwRetVal = GetAdaptersAddresses(family, flags, NULL, pAddresses, &outBufLen);
 
     if (dwRetVal == ERROR_BUFFER_OVERFLOW) {
-      FREE(pAddresses);
+      free(pAddresses);
       pAddresses = NULL;
     } else {
       break;
@@ -470,14 +460,14 @@ static int make_local_listeners_list(void) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\tError: %s", lpMsgBuf);
         LocalFree(lpMsgBuf);
         if (pAddresses)
-          FREE(pAddresses);
+          free(pAddresses);
         return -2;
       }
     }
   }
 
   if (pAddresses) {
-    FREE(pAddresses);
+    free(pAddresses);
   }
 
 #else
@@ -551,7 +541,7 @@ static int make_local_relays_list(int allow_local, int family) {
 
   do {
 
-    pAddresses = (IP_ADAPTER_ADDRESSES *)MALLOC(outBufLen);
+    pAddresses = (IP_ADAPTER_ADDRESSES *)malloc(outBufLen);
     if (pAddresses == NULL) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Memory allocation failed for IP_ADAPTER_ADDRESSES struct\n");
       return -1;
@@ -560,7 +550,7 @@ static int make_local_relays_list(int allow_local, int family) {
     dwRetVal = GetAdaptersAddresses(fm, flags, NULL, pAddresses, &outBufLen);
 
     if (dwRetVal == ERROR_BUFFER_OVERFLOW) {
-      FREE(pAddresses);
+      free(pAddresses);
       pAddresses = NULL;
     } else {
       break;
@@ -624,7 +614,7 @@ static int make_local_relays_list(int allow_local, int family) {
   }
 
   if (pAddresses) {
-    FREE(pAddresses);
+    free(pAddresses);
   }
 #else
   struct ifaddrs *ifs = NULL;
@@ -709,7 +699,7 @@ int get_a_local_relay(int family, ioa_addr *relay_addr) {
 
   do {
 
-    pAddresses = (IP_ADAPTER_ADDRESSES *)MALLOC(outBufLen);
+    pAddresses = (IP_ADAPTER_ADDRESSES *)malloc(outBufLen);
     if (pAddresses == NULL) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Memory allocation failed for IP_ADAPTER_ADDRESSES struct\n");
       return -1;
@@ -718,7 +708,7 @@ int get_a_local_relay(int family, ioa_addr *relay_addr) {
     dwRetVal = GetAdaptersAddresses(fm, flags, NULL, pAddresses, &outBufLen);
 
     if (dwRetVal == ERROR_BUFFER_OVERFLOW) {
-      FREE(pAddresses);
+      free(pAddresses);
       pAddresses = NULL;
     } else {
       break;
@@ -785,7 +775,7 @@ int get_a_local_relay(int family, ioa_addr *relay_addr) {
   }
 
   if (pAddresses) {
-    FREE(pAddresses);
+    free(pAddresses);
   }
 #else
   struct ifaddrs *ifs = NULL;
