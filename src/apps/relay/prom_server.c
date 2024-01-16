@@ -1,9 +1,11 @@
 #include "prom_server.h"
 #include "mainrelay.h"
 #include "ns_turn_utils.h"
+#if !defined(WINDOWS)
 #include <errno.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#endif
 
 #if !defined(TURN_NO_PROMETHEUS)
 
