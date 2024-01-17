@@ -1,0 +1,16 @@
+---
+Checks: 'clang-diagnostic-*,
+	,clang-analyzer-*,
+	,-clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling,
+	,-clang-analyzer-security.insecureAPI.strcpy,
+	,bugprone-*,
+	,-bugprone-easily-swappable-parameters,
+	,performance-*,
+	,readability-*,
+	,-readability-braces-around-statements,
+	,-readability-identifier-length,
+	,-readability-else-after-return,
+	,-readability-magic-numbers,
+	,-readability-function-cognitive-complexity,
+	,modernize-*,
+'
