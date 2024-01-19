@@ -2,29 +2,26 @@ name: CodeQL
 
 on:
   push:
-    branches: ["master"]
-    tags: ["4.*"]
   pull_request:
-    branches: ["master"]
+    types: [ opened, reopened, synchronize ]
   schedule:
     - cron: "6 13 * * 4"
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 
 env:
   BUILD_TYPE: Release
 
 jobs:
   analyze:
+    name: CodeQL Analyze
     runs-on: ubuntu-latest
     permissions:
       security-events: write
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
-      - name: Install dependencies
+      - name: Install Dependencies
         uses: ./.github/workflows/actions/ubuntu-build-deps
         with:
           SUDO: true
@@ -36,8 +33,9 @@ jobs:
 
       - name: Configure
         run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+
       - name: Build
-        run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+        run: cmake --build ${{github.workspace}}/build --parallel --config ${{env.BUILD_TYPE}}
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
