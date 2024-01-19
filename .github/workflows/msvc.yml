@@ -1,6 +1,6 @@
 name: msvc
 
-on: [push, pull_request]
+on: [push]
 
 jobs:
   compile:
