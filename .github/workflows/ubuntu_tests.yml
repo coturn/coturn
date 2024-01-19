@@ -1,20 +1,17 @@
-name: CMake
+name: Ubuntu
 
 on:
   push:
   pull_request:
     types: [ opened, reopened, synchronize ]
 
-env:
-  BUILD_TYPE: Release
-
 jobs:
-  build:
+  builds:
     strategy:
       fail-fast: false
-      # Even though 16.04 and 18.04 are EOL, don't bother supporting cmake on them. Too old to be worth it.
+      # ubuntu 16.04 EOL is 2026
       matrix:
-        os: [ 'ubuntu:20.04', 'ubuntu:22.04' ]
+        os: [ 'ubuntu:16.04', 'ubuntu:18.04', 'ubuntu:20.04', 'ubuntu:22.04' ]
 
     runs-on: ubuntu-latest
     container: ${{ matrix.os }}
@@ -33,8 +30,6 @@ jobs:
         apt update
         apt install -y \
             build-essential \
-            cmake \
-            ninja-build \
             pkgconf \
             wget \
             libevent-dev \
@@ -44,6 +39,8 @@ jobs:
             libhiredis-dev \
             libmongoc-dev \
             libmicrohttpd-dev
+        if [ ${{ matrix.os }}  = 'ubuntu:16.04' ]; then apt install -y libmariadb-client-lgpl-dev; fi
+        if [ ${{ matrix.os }} != 'ubuntu:16.04' ]; then apt install -y libmariadb-dev; fi
 
     - name: Prometheus Support
       run: |
@@ -52,11 +49,13 @@ jobs:
         apt install -y ./libprom-dev-0.1.3-Linux.deb ./libpromhttp-dev-0.1.3-Linux.deb
 
     - name: Configure
-      run: |
-        cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+      run: ./configure
 
     - name: Compile
-      run: cmake --build build --config ${{env.BUILD_TYPE}}
+      run: make
+
+    - name: Unit Test
+      run: make check
 
     - name: Integration Test
       working-directory: examples

@@ -1,4 +1,4 @@
-name: "CodeQL"
+name: CodeQL
 
 on:
   push:
@@ -35,9 +35,9 @@ jobs:
     - if: matrix.language == 'cpp'
       name: Build C
       run: |
-        sudo apt-get update
-        sudo apt-get install -y --no-install-recommends --no-install-suggests autoconf ca-certificates coreutils g++ git libtool make pkg-config
-        sudo apt-get install -y --no-install-recommends --no-install-suggests libevent-dev libssl-dev libpq-dev libmariadb-dev libsqlite3-dev libhiredis-dev libmongoc-dev libmicrohttpd-dev
+        sudo apt update
+        sudo apt install -y --no-install-recommends --no-install-suggests autoconf ca-certificates coreutils g++ git libtool make pkg-config
+        sudo apt install -y --no-install-recommends --no-install-suggests libevent-dev libssl-dev libpq-dev libmariadb-dev libsqlite3-dev libhiredis-dev libmongoc-dev libmicrohttpd-dev
 
     # Initializes the CodeQL tools for scanning.
     - name: Initialize CodeQL

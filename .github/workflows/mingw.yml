@@ -1,6 +1,9 @@
-name: mingw 
+name: mingw
 
-on: [push]
+on:
+  push:
+  pull_request:
+    types: [ opened, reopened, synchronize ]
 
 jobs:
   build:
@@ -16,7 +19,7 @@ jobs:
     defaults:
       run:
         shell: cmd
-        
+
     runs-on: ${{ matrix.os }}
     env:
       BUILD_TYPE:  ${{ matrix.BUILD_TYPE }}
@@ -28,7 +31,7 @@ jobs:
     - uses: actions/checkout@v4
       #with:
         #fetch-depth: 0
-            
+
     - name: pacman
       env:
         PATH: C:\msys64\usr\bin
@@ -52,7 +55,7 @@ jobs:
         cmake -E make_directory ${{env.SOURCE_DIR}}
         cmake -E make_directory ${{env.TOOSL_DIR}}
         cmake -E make_directory ${{env.INSTALL_DIR}}
-    
+
     - name: Cache installed
       uses: actions/cache@v4
       id: cache-installed
@@ -88,7 +91,7 @@ jobs:
             -DCMAKE_INSTALL_PREFIX=${{env.INSTALL_DIR}}
         cmake --build . --config ${{matrix.BUILD_TYPE}}
         cmake --build . --config ${{matrix.BUILD_TYPE}} --target install
-        
+
     - name: build coturn
       working-directory: ${{github.workspace}}
       env:
@@ -115,7 +118,7 @@ jobs:
         7z a coturn_windows_mingw.zip ${{github.workspace}}\build\install\*
         cmake --build . --config ${{matrix.BUILD_TYPE}} --target package
 
-    - name: update 
+    - name: update
       if: ${{ matrix.BUILD_TYPE == 'Release' }}
       uses: actions/upload-artifact@v4
       with:

@@ -23,27 +23,39 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: Install dependencies
+    - name: Install Dependencies
+      # Set env variable or otherwise tzdata package requires interaction
+      env:
+        DEBIAN_FRONTEND: noninteractive
       run: |
-        sudo apt-get update
-        sudo apt install -y clang wget libevent-dev libssl-dev libpq-dev libmariadb-dev libsqlite3-dev libhiredis-dev libmongoc-dev libmicrohttpd-dev
+        sudo apt update
+        sudo apt install -y \
+            build-essential \
+            pkgconf \
+            wget \
+            libevent-dev \
+            libssl-dev \
+            libpq-dev \
+            libsqlite3-dev \
+            libhiredis-dev \
+            libmongoc-dev \
+            libmicrohttpd-dev
+
+    - name: Prometheus Support
+      run: |
         wget https://github.com/digitalocean/prometheus-client-c/releases/download/v0.1.3/libprom-dev-0.1.3-Linux.deb
         wget https://github.com/digitalocean/prometheus-client-c/releases/download/v0.1.3/libpromhttp-dev-0.1.3-Linux.deb
         sudo apt install -y ./libprom-dev-0.1.3-Linux.deb ./libpromhttp-dev-0.1.3-Linux.deb
 
     - name: Configure
-      run: |
-        ./configure
+      run: ./configure
 
     - name: Compile
-      run: |
-        make -j $(nproc)
+      run: make -j $(nproc)
 
-    - name: Check
-      run: |
-        make check
+    - name: Unit Test
+      run: make check
 
-    - name: Test
-      run: |
-        cd examples
-        ./run_tests.sh
+    - name: Integration Test
+      working-directory: examples
+      run: ./run_tests.sh

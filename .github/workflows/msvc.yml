@@ -1,6 +1,9 @@
 name: msvc
 
-on: [push]
+on:
+  push:
+  pull_request:
+    types: [ opened, reopened, synchronize ]
 
 jobs:
   compile:
@@ -27,12 +30,12 @@ jobs:
           - triplet: x86-windows
             VCPKG_PLATFORM_TOOLSET: v142
             CMAKE_GENERATOR_PLATFORM: Win32
- 
+
           # MSVC 2017
           - triplet: x86-windows
             VCPKG_PLATFORM_TOOLSET: v141
             CMAKE_GENERATOR_PLATFORM: Win32
- 
+
     runs-on: ${{matrix.os}}
 
     env:
@@ -88,7 +91,7 @@ jobs:
         7z a coturn_windows_msvc.zip ${{github.workspace}}\build\install\*
         cmake --build . --config ${{matrix.BUILD_TYPE}} --target package
 
-    - name: update 
+    - name: Update
       if: ${{ matrix.BUILD_TYPE == 'Release' }}
       uses: actions/upload-artifact@v4
       with:

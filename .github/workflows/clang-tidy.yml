@@ -18,11 +18,32 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: Install dependencies
+    - name: Install Dependencies
+      # Set env variable or otherwise tzdata package requires interaction
+      env:
+        DEBIAN_FRONTEND: noninteractive
       run: |
-        sudo apt-get update
-        sudo apt install -y clang clang-tidy clang-tools ninja-build iwyu
-        sudo apt install -y wget libevent-dev libssl-dev libpq-dev libmariadb-dev libsqlite3-dev libhiredis-dev libmongoc-dev libmicrohttpd-dev
+        sudo apt update
+        sudo apt install -y \
+            build-essential \
+            clang \
+            clang-tidy \
+            clang-tools \
+            ninja-build \
+            iwyu \
+            pkgconf \
+            wget \
+            libevent-dev \
+            libssl-dev \
+            libpq-dev \
+            libsqlite3-dev \
+            libhiredis-dev \
+            libmongoc-dev \
+            libmicrohttpd-dev \
+            libmariadb-dev
+
+    - name: Prometheus Support
+      run: |
         wget https://github.com/digitalocean/prometheus-client-c/releases/download/v0.1.3/libprom-dev-0.1.3-Linux.deb
         wget https://github.com/digitalocean/prometheus-client-c/releases/download/v0.1.3/libpromhttp-dev-0.1.3-Linux.deb
         sudo apt install -y ./libprom-dev-0.1.3-Linux.deb ./libpromhttp-dev-0.1.3-Linux.deb

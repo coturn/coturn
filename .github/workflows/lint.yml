@@ -2,7 +2,6 @@ name: Lint
 
 on:
   push:
-    branches: [ $default-branch ]
   pull_request:
     types: [ opened, reopened, synchronize ]
 
@@ -11,19 +10,39 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Install dependencies
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Install Dependencies
+      # Set env variable or otherwise tzdata package requires interaction
+      env:
+        DEBIAN_FRONTEND: noninteractive
       run: |
-        sudo apt-get update
-        sudo apt-get install -y \
+        sudo apt update
+        sudo apt install -y \
+            build-essential \
+            pkgconf \
+            wget \
             libevent-dev \
             libssl-dev \
-            libpq-dev libmariadb-dev libsqlite3-dev \
+            libpq-dev \
+            libsqlite3-dev \
             libhiredis-dev \
             libmongoc-dev \
             libmicrohttpd-dev \
-            clang-format
-    - uses: actions/checkout@v4
-    - name: configure
+            libmariadb-dev
+
+    - name: Prometheus Support
+      run: |
+        wget https://github.com/digitalocean/prometheus-client-c/releases/download/v0.1.3/libprom-dev-0.1.3-Linux.deb
+        wget https://github.com/digitalocean/prometheus-client-c/releases/download/v0.1.3/libpromhttp-dev-0.1.3-Linux.deb
+        sudo apt install -y ./libprom-dev-0.1.3-Linux.deb ./libpromhttp-dev-0.1.3-Linux.deb
+
+    - name: Configure
       run: ./configure
-    - name: lint
-      run: clang-format --version && make lint
+
+    - name: Lint
+      run: |
+        clang-format --version
+        make lint
