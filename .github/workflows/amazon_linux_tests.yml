@@ -26,6 +26,7 @@ jobs:
     - name: Install Dependencies
       run: |
         yum install -y gcc make gzip tar openssl-devel libevent-devel
+
     # Delay checkout until after dependencies have been installed. Amazon linux is very minimal and lacks basic stuff by default.
     # use v3 of checkout until the weird container, nodejs, glibc issue is fixed
     - uses: actions/checkout@v3
@@ -36,11 +37,13 @@ jobs:
       run: ./configure
 
     - name: Compile
-      run: make
+      run: make -j $(nproc)
 
     - name: Unit Test
       run: make check
 
     - name: Integration Test
       working-directory: examples
-      run: ./run_tests.sh && ./run_tests_conf.sh
+      run: |
+        ./run_tests.sh
+        ./run_tests_conf.sh
