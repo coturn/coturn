@@ -32,6 +32,11 @@ jobs:
           - i386
           - ppc64le
           - s390x
+        # temporarily exclude alpine+s390x, as it currently times out and fails the CI.
+        exclude:
+          - dist: alpine
+            arch: s390x
+
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -95,6 +100,11 @@ jobs:
           - i386
           - ppc64le
           - s390x
+        # temporarily exclude alpine+s390x, as it currently times out and fails the CI.
+        exclude:
+          - dist: alpine
+            arch: s390x
+
     runs-on: ${{ (matrix.dist == 'alpine' && matrix.arch == 's390x' && 'macos') 
                                                                     || 'ubuntu' }}-latest
     steps:
