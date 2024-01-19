@@ -33,6 +33,13 @@
 
 #include "prom_server.h"
 
+#if defined(WINDOWS)
+#include <iphlpapi.h>
+
+#define WORKING_BUFFER_SIZE 15000
+#define MAX_TRIES 3
+#endif
+
 #if (!defined OPENSSL_VERSION_1_1_1)
 #define OPENSSL_VERSION_1_1_1 0x10101000L
 #endif
