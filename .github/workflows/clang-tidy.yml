@@ -18,7 +18,7 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: install dependencies
+    - name: Install Dependencies
       uses: ./.github/workflows/actions/ubuntu-build-deps
       with:
         SUDO: true

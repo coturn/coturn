@@ -22,26 +22,23 @@ jobs:
     - uses: actions/checkout@v4
       with:
         fetch-depth: 0
-    
-    - name: install dependencies
+
+    - name: Install Dependencies
       uses: ./.github/workflows/actions/ubuntu-build-deps
       with:
         SUDO: true
 
-
     - name: Configure
-      run: |
-        ./configure
+      run: ./configure
 
     - name: Compile
-      run: |
-        make -j $(nproc)
+      run: make -j $(nproc)
 
-    - name: Check
-      run: |
-        make check
+    - name: Unit Test
+      run: make check
 
-    - name: Test
+    - name: Integration Test
+      working-directory: examples
       run: |
-        cd examples
-        ./run_tests.sh && ./run_tests_conf.sh
+        ./run_tests.sh
+        ./run_tests_conf.sh

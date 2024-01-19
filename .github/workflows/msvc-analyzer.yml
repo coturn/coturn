@@ -53,7 +53,7 @@ jobs:
 
     - name: Configure (MSVC)
       run: |
-        cmake -B build ^
+        cmake -B ${{github.workspace}}/build ^
             -A ${{matrix.CMAKE_GENERATOR_PLATFORM}} ^
             -T ${{matrix.VCPKG_PLATFORM_TOOLSET}} ^
             -DWITH_MYSQL=OFF ^
