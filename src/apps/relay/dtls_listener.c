@@ -201,12 +201,7 @@ static int generate_cookie(SSL *ssl, unsigned char *cookie, unsigned int *cookie
   return 1;
 }
 
-static int verify_cookie(SSL *ssl,
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-                         const
-#endif
-                         unsigned char *cookie,
-                         unsigned int cookie_len) {
+static int verify_cookie(SSL *ssl, const unsigned char *cookie, unsigned int cookie_len) {
   unsigned int resultlength = 0;
   unsigned char result[COOKIE_SECRET_LENGTH];
 
@@ -284,14 +279,8 @@ static ioa_socket_handle dtls_server_input_handler(dtls_listener_relay_server_ty
 
   SSL_set_bio(connecting_ssl, NULL, wbio);
   SSL_set_options(connecting_ssl, SSL_OP_COOKIE_EXCHANGE
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-#if defined(SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS)
-                                      | SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS
-#endif
-#else
 #if defined(SSL_OP_NO_RENEGOTIATION)
                                       | SSL_OP_NO_RENEGOTIATION
-#endif
 #endif
   );
   SSL_set_max_cert_list(connecting_ssl, 655350);
@@ -555,14 +544,8 @@ static int create_new_connected_udp_socket(dtls_listener_relay_server_type *serv
     SSL_set_bio(connecting_ssl, NULL, wbio);
 
     SSL_set_options(connecting_ssl, SSL_OP_COOKIE_EXCHANGE
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-#if defined(SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS)
-                                        | SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS
-#endif
-#else
 #if defined(SSL_OP_NO_RENEGOTIATION)
                                         | SSL_OP_NO_RENEGOTIATION
-#endif
 #endif
     );
 
