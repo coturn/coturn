@@ -40,10 +40,6 @@
 #define MAX_TRIES 3
 #endif
 
-#if (!defined OPENSSL_VERSION_1_1_1)
-#define OPENSSL_VERSION_1_1_1 0x10101000L
-#endif
-
 ////// TEMPORARY data //////////
 
 static int use_lt_credentials = 0;
@@ -1740,12 +1736,8 @@ void encrypt_aes_128(unsigned char *in, const unsigned char *mykey) {
   struct ctr_state state;
   init_ctr(&state, iv);
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
   CRYPTO_ctr128_encrypt(in, out, strlen((char *)in), &key, state.ivec, state.ecount, &state.num,
                         (block128_f)AES_encrypt);
-#else
-  AES_ctr128_encrypt(in, out, strlen((char *)in), &key, state.ivec, state.ecount, &state.num);
-#endif
 
   totalSize += strlen((char *)in);
   size = strlen((char *)in);
@@ -1836,12 +1828,8 @@ void decrypt_aes_128(char *in, const unsigned char *mykey) {
   struct ctr_state state;
   init_ctr(&state, iv);
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
   CRYPTO_ctr128_encrypt(encryptedText, outdata, newTotalSize, &key, state.ivec, state.ecount, &state.num,
                         (block128_f)AES_encrypt);
-#else
-  AES_ctr128_encrypt(encryptedText, outdata, newTotalSize, &key, state.ivec, state.ecount, &state.num);
-#endif
 
   strcat(last, (char *)outdata);
   printf("%s\n", last);
@@ -3370,65 +3358,10 @@ int main(int argc, char **argv) {
 ////////// OpenSSL locking ////////////////////////////////////////
 
 #if defined(OPENSSL_THREADS)
-#if OPENSSL_VERSION_NUMBER < OPENSSL_VERSION_1_1_0
-
-// array larger than anything that OpenSSL may need:
-static TURN_MUTEX_DECLARE(mutex_buf[256]);
-static int mutex_buf_initialized = 0;
-
-void coturn_locking_function(int mode, int n, const char *file, int line);
-void coturn_locking_function(int mode, int n, const char *file, int line) {
-  UNUSED_ARG(file);
-  UNUSED_ARG(line);
-  if (mutex_buf_initialized && (n < CRYPTO_num_locks())) {
-    if (mode & CRYPTO_LOCK) {
-      TURN_MUTEX_LOCK(&(mutex_buf[n]));
-    } else {
-      TURN_MUTEX_UNLOCK(&(mutex_buf[n]));
-    }
-  }
-}
-
-void coturn_id_function(CRYPTO_THREADID *ctid);
-void coturn_id_function(CRYPTO_THREADID *ctid) {
-  UNUSED_ARG(ctid);
-  CRYPTO_THREADID_set_numeric(ctid, (unsigned long)pthread_self());
-}
-
-static int THREAD_setup(void) {
-  int i;
-  for (i = 0; i < CRYPTO_num_locks(); i++) {
-    TURN_MUTEX_INIT(&(mutex_buf[i]));
-  }
-
-  mutex_buf_initialized = 1;
-  CRYPTO_THREADID_set_callback(coturn_id_function);
-  CRYPTO_set_locking_callback(coturn_locking_function);
-  return 1;
-}
-
-int THREAD_cleanup(void) {
-  int i;
-
-  if (!mutex_buf_initialized) {
-    return 0;
-  }
-
-  CRYPTO_THREADID_set_callback(NULL);
-  CRYPTO_set_locking_callback(NULL);
-  for (i = 0; i < CRYPTO_num_locks(); i++) {
-    TURN_MUTEX_DESTROY(&(mutex_buf[i]));
-  }
-
-  mutex_buf_initialized = 0;
-  return 1;
-}
-#else
 static int THREAD_setup(void) { return 1; }
 
 int THREAD_cleanup(void);
 int THREAD_cleanup(void) { return 1; }
-#endif /* OPENSSL_VERSION_NUMBER < OPENSSL_VERSION_1_1_0 */
 #endif /* defined(OPENSSL_THREADS) */
 
 static void adjust_key_file_name(char *fn, const char *file_title, int critical) {
@@ -3504,16 +3437,7 @@ static DH *get_dh566(void) {
   if ((dh = DH_new()) == NULL) {
     return (NULL);
   }
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-  dh->p = BN_bin2bn(dh566_p, sizeof(dh566_p), NULL);
-  dh->g = BN_bin2bn(dh566_g, sizeof(dh566_g), NULL);
-  if ((dh->p == NULL) || (dh->g == NULL)) {
-    DH_free(dh);
-    return (NULL);
-  }
-#else
   DH_set0_pqg(dh, BN_bin2bn(dh566_p, sizeof(dh566_p), NULL), NULL, BN_bin2bn(dh566_g, sizeof(dh566_g), NULL));
-#endif
   return (dh);
 }
 
@@ -3541,16 +3465,7 @@ static DH *get_dh1066(void) {
   if ((dh = DH_new()) == NULL) {
     return (NULL);
   }
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-  dh->p = BN_bin2bn(dh1066_p, sizeof(dh1066_p), NULL);
-  dh->g = BN_bin2bn(dh1066_g, sizeof(dh1066_g), NULL);
-  if ((dh->p == NULL) || (dh->g == NULL)) {
-    DH_free(dh);
-    return (NULL);
-  }
-#else
   DH_set0_pqg(dh, BN_bin2bn(dh1066_p, sizeof(dh1066_p), NULL), NULL, BN_bin2bn(dh1066_g, sizeof(dh1066_g), NULL));
-#endif
   return (dh);
 }
 
@@ -3587,16 +3502,7 @@ static DH *get_dh2066(void) {
   if ((dh = DH_new()) == NULL) {
     return (NULL);
   }
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-  dh->p = BN_bin2bn(dh2066_p, sizeof(dh2066_p), NULL);
-  dh->g = BN_bin2bn(dh2066_g, sizeof(dh2066_g), NULL);
-  if ((dh->p == NULL) || (dh->g == NULL)) {
-    DH_free(dh);
-    return (NULL);
-  }
-#else
   DH_set0_pqg(dh, BN_bin2bn(dh2066_p, sizeof(dh2066_p), NULL), NULL, BN_bin2bn(dh2066_g, sizeof(dh2066_g), NULL));
-#endif
   return (dh);
 }
 
@@ -3759,11 +3665,6 @@ static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *metho
     }
 
     if (set_auto_curve) {
-#if SSL_SESSION_ECDH_AUTO_SUPPORTED
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-      SSL_CTX_set_ecdh_auto(ctx, 1);
-#endif
-#endif
       set_auto_curve = 0;
     }
   }
@@ -3916,22 +3817,6 @@ static void openssl_load_certificates(void) {
 
   TURN_MUTEX_LOCK(&turn_params.tls_mutex);
   if (!turn_params.no_tls) {
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-    set_ctx(&turn_params.tls_ctx, "TLS", TLSv1_2_server_method()); /*openssl-1.0.2 version specific API */
-    if (turn_params.no_tlsv1) {
-      SSL_CTX_set_options(turn_params.tls_ctx, SSL_OP_NO_TLSv1);
-    }
-#if TLSv1_1_SUPPORTED
-    if (turn_params.no_tlsv1_1) {
-      SSL_CTX_set_options(turn_params.tls_ctx, SSL_OP_NO_TLSv1_1);
-    }
-#if TLSv1_2_SUPPORTED
-    if (turn_params.no_tlsv1_2) {
-      SSL_CTX_set_options(turn_params.tls_ctx, SSL_OP_NO_TLSv1_2);
-    }
-#endif
-#endif
-#else // OPENSSL_VERSION_NUMBER < 0x10100000L
     set_ctx(&turn_params.tls_ctx, "TLS", TLS_server_method());
     if (turn_params.no_tlsv1) {
       SSL_CTX_set_min_proto_version(turn_params.tls_ctx, TLS1_1_VERSION);
@@ -3944,31 +3829,13 @@ static void openssl_load_certificates(void) {
       SSL_CTX_set_min_proto_version(turn_params.tls_ctx, TLS1_3_VERSION);
     }
 #endif
-#endif // OPENSSL_VERSION_NUMBER < 0x10100000L
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS cipher suite: %s\n", turn_params.cipher_list);
   }
 
   if (!turn_params.no_dtls) {
 #if !DTLS_SUPPORTED
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: DTLS is not supported.\n");
-#elif OPENSSL_VERSION_NUMBER < 0x10000000L
-    TURN_LOG_FUNC(
-        TURN_LOG_LEVEL_WARNING,
-        "WARNING: TURN Server was compiled with rather old OpenSSL version, DTLS may not be working correctly.\n");
 #else
-#if OPENSSL_VERSION_NUMBER < 0x10100000L // before openssl-1.1.0 no version independent API
-#if DTLSv1_2_SUPPORTED
-    set_ctx(&turn_params.dtls_ctx, "DTLS", DTLSv1_2_server_method()); // openssl-1.0.2
-    if (turn_params.no_tlsv1_2) {
-      SSL_CTX_set_options(turn_params.dtls_ctx, SSL_OP_NO_DTLSv1_2);
-    }
-#else
-    set_ctx(&turn_params.dtls_ctx, "DTLS", DTLSv1_server_method()); // < openssl-1.0.2
-#endif
-    if (turn_params.no_tlsv1 || turn_params.no_tlsv1_1) {
-      SSL_CTX_set_options(turn_params.dtls_ctx, SSL_OP_NO_DTLSv1);
-    }
-#else  // OPENSSL_VERSION_NUMBER < 0x10100000L
     set_ctx(&turn_params.dtls_ctx, "DTLS", DTLS_server_method());
     if (turn_params.no_tlsv1 || turn_params.no_tlsv1_1) {
       SSL_CTX_set_min_proto_version(turn_params.dtls_ctx, DTLS1_2_VERSION);
@@ -3976,7 +3843,6 @@ static void openssl_load_certificates(void) {
     if (turn_params.no_tlsv1_2) {
       SSL_CTX_set_max_proto_version(turn_params.dtls_ctx, DTLS1_VERSION);
     }
-#endif // OPENSSL_VERSION_NUMBER < 0x10100000L
     setup_dtls_callbacks(turn_params.dtls_ctx);
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS cipher suite: %s\n", turn_params.cipher_list);
 #endif
