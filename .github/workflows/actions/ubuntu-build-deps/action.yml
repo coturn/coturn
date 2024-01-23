@@ -1,0 +1,49 @@
+name: 'ubuntu build dependencies'
+description: 'install required build dependencies for ubuntu'
+inputs:
+
+  SUDO:
+    description: "set to true to run apt as root"
+    required: false
+    default: ""
+
+
+runs:
+  using: 'composite'
+  steps:
+    - name: apt update
+      shell: bash
+      run: ${{inputs.SUDO}} apt update
+
+    - name: install build tools
+      shell: bash
+      run: |
+        ${{inputs.SUDO}} apt install -y \
+            build-essential \
+            clang \
+            clang-tidy \
+            clang-tools \
+            ninja-build \
+            iwyu \
+            pkgconf \
+            wget 
+
+    - name: install coturn dependencies
+      shell: bash
+      run: |
+        ${{inputs.SUDO}} apt install -y \
+            libevent-dev \
+            libssl-dev \
+            libpq-dev \
+            libmariadb-dev \
+            libsqlite3-dev \
+            libhiredis-dev \
+            libmongoc-dev \
+            libmicrohttpd-dev
+
+    - name: Prometheus Support
+      shell: bash
+      run: |
+        wget https://github.com/digitalocean/prometheus-client-c/releases/download/v0.1.3/libprom-dev-0.1.3-Linux.deb
+        wget https://github.com/digitalocean/prometheus-client-c/releases/download/v0.1.3/libpromhttp-dev-0.1.3-Linux.deb
+        ${{inputs.SUDO}} apt install -y ./libprom-dev-0.1.3-Linux.deb ./libpromhttp-dev-0.1.3-Linux.deb
