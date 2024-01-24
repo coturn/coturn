@@ -95,15 +95,9 @@ jobs:
           - i386
           - ppc64le
           - s390x
-    runs-on: ${{ (matrix.dist == 'alpine' && matrix.arch == 's390x' && 'macos') 
-                                                                    || 'ubuntu' }}-latest
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Setup Docker and Docker Compose
-        run: |
-            brew install colima docker
-            colima start
-        if: ${{ matrix.dist == 'alpine' && matrix.arch == 's390x' }}
       - uses: docker/setup-qemu-action@v3
       - run: make npm.install
         working-directory: docker/coturn/
