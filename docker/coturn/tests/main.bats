@@ -36,6 +36,7 @@
   [ "$status" -eq 0 ]
 }
 
+
 @test "TLS 1.3 supported" {
   run docker run --rm --pull never --platform $PLATFORM \
                  --entrypoint sh $IMAGE -c \
@@ -166,6 +167,7 @@
   [ "$status" -eq 0 ]
 }
 
+
 @test "Coturn has correct version" {
   [ -z "$COTURN_VERSION" ] && skip
 
@@ -180,6 +182,7 @@
 
   [ "$actual" = "$COTURN_VERSION" ]
 }
+
 
 #
 # Helpers
