@@ -3106,105 +3106,114 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr *dest_addr, ioa_
                                   int tos, int *skip) {
   int ret = -1;
 
+  if (!nbh)
+    return -1;
+
   if (!s) {
     ioa_network_buffer_delete(NULL, nbh);
     return -1;
   }
 
-  if (s->done || (s->fd == -1)) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-                  "!!! %s: (1) Trying to send data from closed socket: 0x%lx (1): done=%d, fd=%d, st=%d, sat=%d\n",
-                  __FUNCTION__, (long)s, (int)s->done, (int)s->fd, s->st, s->sat);
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s socket: 0x%lx was closed\n", __FUNCTION__, (long)s);
+  do {
 
-  } else if (nbh) {
+    if (s->done || (s->fd == -1)) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
+                    "!!! (1) Trying to send data from closed socket: 0x%lx (1): done=%d, fd=%d, st=%d, sat=%d\n",
+                    (long)s, (int)s->done, (int)s->fd, s->st, s->sat);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "!!! socket: 0x%lx was closed\n", (long)s);
+      break;
+    }
+
     if (!ioa_socket_check_bandwidth(s, nbh, 0)) {
       /* Bandwidth exhausted, we pretend everything is fine: */
       ret = (int)(ioa_network_buffer_get_size(nbh));
       if (skip)
         *skip = 1;
-    } else {
-      if (!ioa_socket_tobeclosed(s) && s->e) {
+      break;
+    }
 
-        if (!(s->done || (s->fd == -1))) {
-          set_socket_ttl(s, ttl);
-          set_socket_tos(s, tos);
+    if (ioa_socket_tobeclosed(s) || !s->e)
+      break;
 
-          if (s->connected && s->bev) {
-            if ((s->st == TLS_SOCKET) || (s->st == TLS_SCTP_SOCKET)) {
+    set_socket_ttl(s, ttl);
+    set_socket_tos(s, tos);
+
+    if (s->connected && s->bev) {
+      if ((s->st == TLS_SOCKET) || (s->st == TLS_SCTP_SOCKET)) {
 #if TLS_SUPPORTED
-              SSL *ctx = bufferevent_openssl_get_ssl(s->bev);
-              if (!ctx || SSL_get_shutdown(ctx)) {
-                s->tobeclosed = 1;
-                ret = 0;
-              }
-#endif
-            }
-
-            if (!(s->tobeclosed)) {
-
-              ret = (int)ioa_network_buffer_get_size(nbh);
-
-              if (!tcp_congestion_control || is_socket_writeable(s, (size_t)ret, __FUNCTION__, 2)) {
-                s->in_write = 1;
-                if (bufferevent_write(s->bev, ioa_network_buffer_data(nbh), ioa_network_buffer_get_size(nbh)) < 0) {
-                  ret = -1;
-                  perror("bufev send");
-                  log_socket_event(s, "socket write failed, to be closed", 1);
-                  s->tobeclosed = 1;
-                  s->broken = 1;
-                }
-                /*
-                bufferevent_flush(s->bev,
-                                                EV_READ|EV_WRITE,
-                                                BEV_FLUSH);
-                                                */
-                s->in_write = 0;
-              } else {
-                // drop the packet
-                ;
-              }
-            }
-          } else if (s->ssl) {
-            send_ssl_backlog_buffers(s);
-            ret = ssl_send(s, (char *)ioa_network_buffer_data(nbh), ioa_network_buffer_get_size(nbh),
-                           (s->e ? s->e->verbose : TURN_VERBOSE_NONE));
-            if (ret < 0)
-              s->tobeclosed = 1;
-            else if (ret == 0)
-              add_buffer_to_buffer_list(&(s->bufs), (char *)ioa_network_buffer_data(nbh),
-                                        ioa_network_buffer_get_size(nbh));
-          } else if (s->fd >= 0) {
-
-            if (s->connected && !(s->parent_s)) {
-              dest_addr = NULL; /* ignore dest_addr */
-            } else if (!dest_addr) {
-              dest_addr = &(s->remote_addr);
-            }
-
-            ret = udp_send(s, dest_addr, (char *)ioa_network_buffer_data(nbh), ioa_network_buffer_get_size(nbh));
-            if (ret < 0) {
-              s->tobeclosed = 1;
-#if defined(EADDRNOTAVAIL)
-              int perr = socket_errno();
-#endif
-              perror("udp send");
-#if defined(EADDRNOTAVAIL)
-              if (dest_addr && (perr == EADDRNOTAVAIL)) {
-                char sfrom[129];
-                addr_to_string(&(s->local_addr), (uint8_t *)sfrom);
-                char sto[129];
-                addr_to_string(dest_addr, (uint8_t *)sto);
-                TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: network error: address unreachable from %s to %s\n",
-                              __FUNCTION__, sfrom, sto);
-              }
-#endif
-            }
-          }
+        SSL *ctx = bufferevent_openssl_get_ssl(s->bev);
+        if (!ctx || SSL_get_shutdown(ctx)) {
+          s->tobeclosed = 1;
+          ret = 0;
         }
+#endif
+      }
+
+      if (s->tobeclosed)
+        break;
+
+      ret = (int)ioa_network_buffer_get_size(nbh);
+
+      if (!tcp_congestion_control || is_socket_writeable(s, (size_t)ret, __FUNCTION__, 2)) {
+        s->in_write = 1;
+        if (bufferevent_write(s->bev, ioa_network_buffer_data(nbh), ioa_network_buffer_get_size(nbh)) < 0) {
+          ret = -1;
+          perror("bufev send");
+          log_socket_event(s, "socket write failed, to be closed", 1);
+          s->tobeclosed = 1;
+          s->broken = 1;
+        }
+        /*
+        bufferevent_flush(s->bev,
+                                        EV_READ|EV_WRITE,
+                                        BEV_FLUSH);
+                                        */
+        s->in_write = 0;
+      } else {
+        // drop the packet
+        ;
+      }
+
+      break;
+    }
+
+    if (s->ssl) {
+      send_ssl_backlog_buffers(s);
+      ret = ssl_send(s, (char *)ioa_network_buffer_data(nbh), ioa_network_buffer_get_size(nbh),
+                     (s->e ? s->e->verbose : TURN_VERBOSE_NONE));
+      if (ret < 0)
+        s->tobeclosed = 1;
+      else if (ret == 0)
+        add_buffer_to_buffer_list(&(s->bufs), (char *)ioa_network_buffer_data(nbh), ioa_network_buffer_get_size(nbh));
+
+      break;
+    }
+
+    if (s->fd >= 0) {
+
+      if (s->connected && !(s->parent_s)) {
+        dest_addr = NULL; /* ignore dest_addr */
+      } else if (!dest_addr) {
+        dest_addr = &(s->remote_addr);
+      }
+
+      ret = udp_send(s, dest_addr, (char *)ioa_network_buffer_data(nbh), ioa_network_buffer_get_size(nbh));
+      if (ret < 0) {
+        s->tobeclosed = 1;
+        int perr = socket_errno();
+        char sfrom[129] = {0};
+        addr_to_string(&(s->local_addr), (uint8_t *)sfrom);
+        if (dest_addr) {
+          char sto[129] = {0};
+          addr_to_string(dest_addr, (uint8_t *)sto);
+          TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Udp send network error[%d] from %s to %s\n", perr, sfrom, sto);
+          break;
+        }
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Udp send network error[%d] from %s\n", perr, sfrom);
       }
     }
-  }
+
+  } while (0);
 
   ioa_network_buffer_delete(s->e, nbh);
 
