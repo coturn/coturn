@@ -95,12 +95,16 @@ jobs:
           - i386
           - ppc64le
           - s390x
+        # TODO: Try remove on new QEMU or Coturn versions.
+        # Temporarily exclude `alpine` on `s390x` arch, as QEMU emulation
+        # currently times out and fails the CI.
+        exclude:
+          - dist: alpine
+            arch: s390x
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-qemu-action@v3
-        with:
-          image: tonistiigi/binfmt:qemu-v8.1.4
       - run: make npm.install
         working-directory: docker/coturn/
 
@@ -122,11 +126,6 @@ jobs:
           path: docker/coturn/.cache/
       - run: make docker.untar from-file=.cache/image.tar
         working-directory: docker/coturn/
-
-      - run: docker run --rm --pull never --platform linux/${{ matrix.arch }} --entrypoint sh 
-                    coturn/coturn:build-${{ github.run_number }}-${{ matrix.dist }}-${{ matrix.arch }}
-                    -c 'turnserver -o --log-file=stdout'
-        if: ${{ matrix.dist == 'alpine' && matrix.arch == 's390x' }}
 
       - run: make test.docker
                   platform=linux/${{ matrix.arch }}
