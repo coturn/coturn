@@ -99,6 +99,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-qemu-action@v3
+        with:
+          image: tonistiigi/binfmt:qemu-v8.1.4
       - run: make npm.install
         working-directory: docker/coturn/
 
