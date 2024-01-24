@@ -238,7 +238,6 @@ endif
 	node_modules/.bin/bats \
 		--timing $(if $(call eq,$(CI),),--pretty,--formatter tap) \
 		--print-output-on-failure \
-		--verbose-run \
 		tests/main.bats
 
 

@@ -121,6 +121,11 @@ jobs:
       - run: make docker.untar from-file=.cache/image.tar
         working-directory: docker/coturn/
 
+      - run: docker run --rm --pull never --platform linux/${{ matrix.arch }} --entrypoint sh 
+                    coturn/coturn:build-${{ github.run_number }}-${{ matrix.dist }}-${{ matrix.arch }}
+                    -c 'turnserver -o --log-file=stdout'
+        if: ${{ matrix.dist == 'alpine' && matrix.arch == 's390x' }}
+
       - run: make test.docker
                   platform=linux/${{ matrix.arch }}
                   tag=build-${{ github.run_number }}-${{ matrix.dist }}-${{ matrix.arch }}

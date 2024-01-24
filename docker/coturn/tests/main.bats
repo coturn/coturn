@@ -53,8 +53,6 @@
 
 
 @test "TLS 1.3 supported" {
-  skip
-
   run docker run --rm --pull never --platform $PLATFORM \
                  --entrypoint sh $IMAGE -c \
     "turnserver -o --log-file=stdout | grep 'TLS 1.3 supported'"
