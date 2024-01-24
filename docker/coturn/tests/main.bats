@@ -36,6 +36,21 @@
   [ "$status" -eq 0 ]
 }
 
+@test "Coturn has correct version" {
+  [ -z "$COTURN_VERSION" ] && skip
+
+  run docker run --rm --pull never --platform $PLATFORM \
+                 --entrypoint sh $IMAGE -c \
+    "turnserver -o --log-file=stdout | grep -m 1 'Version Coturn' \
+                                     | cut -d ' ' -f6 \
+                                     | cut -d '-' -f2"
+  [ "$status" -eq 0 ]
+  [ ! "$output" = '' ]
+  actual="$output"
+
+  [ "$actual" = "$COTURN_VERSION" ]
+}
+
 
 @test "TLS 1.3 supported" {
   run docker run --rm --pull never --platform $PLATFORM \
@@ -165,22 +180,6 @@
 
   run validate_ipv4 "$output"
   [ "$status" -eq 0 ]
-}
-
-
-@test "Coturn has correct version" {
-  [ -z "$COTURN_VERSION" ] && skip
-
-  run docker run --rm --pull never --platform $PLATFORM \
-                 --entrypoint sh $IMAGE -c \
-    "turnserver -o --log-file=stdout | grep -m 1 'Version Coturn' \
-                                     | cut -d ' ' -f6 \
-                                     | cut -d '-' -f2"
-  [ "$status" -eq 0 ]
-  [ ! "$output" = '' ]
-  actual="$output"
-
-  [ "$actual" = "$COTURN_VERSION" ]
 }
 
 
