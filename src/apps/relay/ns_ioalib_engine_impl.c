@@ -786,7 +786,8 @@ int set_socket_options_fd(evutil_socket_t fd, SOCKET_TYPE st, int family) {
     }
   }
 
-  socket_set_nonblocking(fd);
+  if (evutil_make_socket_nonblocking(fd))
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Set socket nonblocking fail\n");
 
   if (!is_stream_socket(st)) {
     set_raw_socket_ttl_options(fd, family);
@@ -884,11 +885,12 @@ ioa_socket_handle create_unbound_relay_ioa_socket(ioa_engine_handle e, int famil
     return NULL;
   }
 
-  ret = (ioa_socket *)calloc(sizeof(ioa_socket), 1);
+  ret = create_ioa_socket_from_fd(e, fd, NULL, st, sat, NULL, NULL);
+  if (!ret) {
+    socket_closesocket(fd);
+    return NULL;
+  }
 
-  ret->magic = SOCKET_MAGIC;
-
-  ret->fd = fd;
   ret->family = family;
   ret->st = st;
   ret->sat = sat;
@@ -1294,10 +1296,28 @@ ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e, ioa_socket_raw 
   }
 
   ret = (ioa_socket *)calloc(sizeof(ioa_socket), 1);
+  if (!ret) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot allocate new ioa_socket structure\n");
+    return NULL;
+  }
 
   ret->magic = SOCKET_MAGIC;
 
   ret->fd = fd;
+
+#if defined(_MSC_VER)
+
+  DWORD dwBytesRecvd = 0;
+  GUID guidWSARecvMsg = WSAID_WSARECVMSG;
+  int nRet = WSAIoctl(fd, SIO_GET_EXTENSION_FUNCTION_POINTER, &guidWSARecvMsg, sizeof(guidWSARecvMsg), &ret->recvmsg,
+                      sizeof(LPFN_WSARECVMSG), &dwBytesRecvd, NULL, NULL);
+  if (nRet)
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "WSAIoctl fail:%d\n", socket_errno());
+  else if (!ret->recvmsg)
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ret->recvmsg is null\n");
+
+#endif
+
   ret->st = st;
   ret->sat = sat;
   ret->e = e;
@@ -1933,11 +1953,15 @@ static int socket_readerr(evutil_socket_t fd, ioa_addr *orig_addr) {
 typedef unsigned char recv_ttl_t;
 typedef unsigned char recv_tos_t;
 
-int udp_recvfrom(evutil_socket_t fd, ioa_addr *orig_addr, const ioa_addr *like_addr, char *buffer, int buf_size,
+int udp_recvfrom(ioa_socket_handle s, ioa_addr *orig_addr, const ioa_addr *like_addr, char *buffer, int buf_size,
                  int *ttl, int *tos, char *ecmsg, int flags, uint32_t *errcode) {
   int len = 0;
 
-  if (fd < 0 || !orig_addr || !like_addr || !buffer)
+  if (!s || !orig_addr || !like_addr || !buffer)
+    return -1;
+
+  evutil_socket_t fd = s->fd;
+  if (fd < 0)
     return -1;
 
   if (errcode)
@@ -1947,13 +1971,122 @@ int udp_recvfrom(evutil_socket_t fd, ioa_addr *orig_addr, const ioa_addr *like_a
   recv_ttl_t recv_ttl = TTL_DEFAULT;
   recv_tos_t recv_tos = TOS_DEFAULT;
 
-#if defined(_MSC_VER) || !defined(CMSG_SPACE)
+#if defined(_MSC_VER)
+
+  DWORD bytes_received = 0;
+  WSAMSG msg = {0};
+  WSABUF sbuf = {0};
+  uint8_t cmdbuf[512];
+  WSACMSGHDR *cmsg;
+  PIN6_PKTINFO pi;
+
+  sbuf.buf = (char FAR *)buffer;
+  sbuf.len = (u_long)buf_size;
+  msg.lpBuffers = &sbuf;
+  msg.dwBufferCount = 1;
+  msg.name = (LPSOCKADDR)orig_addr;
+  msg.namelen = slen;
+  msg.Control.buf = (char FAR *)cmdbuf;
+  msg.Control.len = (u_long)sizeof(cmdbuf);
+
+  if (!s->recvmsg) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
+                  "WSARecvMsg is null. use recvfrom. the ttl and tos is not got. So set it to the default value\n");
+    len = recvfrom(fd, buffer, buf_size, flags, (struct sockaddr *)orig_addr, (socklen_t *)&slen);
+    if (len < 0 && errcode) {
+      *errcode = (uint32_t)socket_errno();
+      return -1;
+    }
+    return len;
+  }
+
+  int nRet = 0;
+  /* Receive a packet */
+  nRet = (s->recvmsg)(s->fd, &msg, &bytes_received, NULL, NULL);
+  if (nRet) {
+    if (s->e->verbose && socket_ewouldblock() == socket_errno())
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WSARecvMsg fail:%d\n", socket_errno());
+    else
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "WSARecvMsg fail:%d\n", socket_errno());
+    if (errcode)
+      *errcode = (uint32_t)socket_errno();
+    return -1;
+  }
+
+  /* Parse the header info, look for the local address */
+  cmsg = WSA_CMSG_FIRSTHDR(&msg);
+  for (; cmsg != NULL; cmsg = WSA_CMSG_NXTHDR(&msg, cmsg)) {
+    // TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "level: %d; type:%d\n", cmsg->cmsg_level, cmsg->cmsg_type);
+    switch (cmsg->cmsg_level) {
+    case IPPROTO_IP:
+      switch (cmsg->cmsg_type) {
+#if defined(IP_RECVTTL) && !defined(__sparc_v9__)
+      case IP_RECVTTL:
+      case IP_TTL:
+        recv_ttl = *((recv_ttl_t *)WSA_CMSG_DATA(cmsg));
+        break;
+#endif
+#if defined(IP_RECVTOS)
+      case IP_RECVTOS:
+      case IP_TOS:
+        recv_tos = *((recv_tos_t *)WSA_CMSG_DATA(cmsg));
+        break;
+#endif
+#if defined(IP_RECVERR)
+      case IP_RECVERR: {
+        struct turn_sock_extended_err *e = (struct turn_sock_extended_err *)WSA_CMSG_DATA(cmsg);
+        if (errcode)
+          *errcode = e->ee_errno;
+      } break;
+#endif
+      default:;
+        /* no break */
+      };
+      break;
+    case IPPROTO_IPV6:
+      switch (cmsg->cmsg_type) {
+#if defined(IPV6_RECVHOPLIMIT) && !defined(__sparc_v9__)
+      case IPV6_RECVHOPLIMIT:
+      case IPV6_HOPLIMIT:
+        recv_ttl = *((recv_ttl_t *)CMSG_DATA(cmsg));
+        break;
+#endif
+#if defined(IPV6_RECVTCLASS)
+      case IPV6_RECVTCLASS:
+      case IPV6_TCLASS:
+        recv_tos = *((recv_tos_t *)WSA_CMSG_DATA(cmsg));
+        break;
+#endif
+#if defined(IPV6_RECVERR)
+      case IPV6_RECVERR: {
+        struct turn_sock_extended_err *e = (struct turn_sock_extended_err *)WSA_CMSG_DATA(cmsg);
+        if (errcode)
+          *errcode = e->ee_errno;
+      } break;
+#endif
+      default:;
+        /* no break */
+      };
+      break;
+    default:;
+      /* no break */
+    };
+  }
+
+  len = bytes_received;
+
+  if (s->e->verbose)
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "WSARecvMsg len: %d; ttl: %08X; tos: %08X\n", bytes_received, recv_ttl,
+                  recv_tos);
+
+#elif !defined(CMSG_SPACE)
   do {
     len = recvfrom(fd, buffer, buf_size, flags, (struct sockaddr *)orig_addr, (socklen_t *)&slen);
   } while (len < 0 && socket_eintr());
   if (len < 0 && errcode)
-    *errcode = (uint32_t)socket_errno();
+    *errcode = (uint32_t)errno;
 #else
+
   struct msghdr msg;
   struct iovec iov;
 
@@ -1977,7 +2110,7 @@ try_again:
 #endif
 
   do {
-    len = recvmsg(fd, &msg, flags);
+    len = recvmsg(s->fd, &msg, flags);
   } while (len < 0 && socket_eintr());
 
 #if defined(MSG_ERRQUEUE)
@@ -1991,7 +2124,7 @@ try_again:
     // Linux
     int eflags = MSG_ERRQUEUE | MSG_DONTWAIT;
     uint32_t errcode1 = 0;
-    udp_recvfrom(fd, orig_addr, like_addr, buffer, buf_size, ttl, tos, ecmsg, eflags, &errcode1);
+    udp_recvfrom(s, orig_addr, like_addr, buffer, buf_size, ttl, tos, ecmsg, eflags, &errcode1);
     // try again...
     do {
       len = recvmsg(fd, &msg, flags);
@@ -2507,8 +2640,8 @@ try_start:
     if (len == 0)
       len = -1;
   } else if (s->fd >= 0) { /* UDP and DTLS */
-    ret = udp_recvfrom(s->fd, &remote_addr, &(s->local_addr), (char *)(buf_elem->buf.buf), UDP_STUN_BUFFER_SIZE, &ttl,
-                       &tos, s->e->cmsg, 0, NULL);
+    ret = udp_recvfrom(s, &remote_addr, &(s->local_addr), (char *)(buf_elem->buf.buf), UDP_STUN_BUFFER_SIZE, &ttl, &tos,
+                       s->e->cmsg, 0, NULL);
     len = ret;
     if (s->ssl && (len > 0)) { /* DTLS */
       send_ssl_backlog_buffers(s);

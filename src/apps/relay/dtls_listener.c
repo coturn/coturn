@@ -467,27 +467,21 @@ static int create_new_connected_udp_socket(dtls_listener_relay_server_type *serv
 
   evutil_socket_t udp_fd = socket(s->local_addr.ss.sa_family, CLIENT_DGRAM_SOCKET_TYPE, CLIENT_DGRAM_SOCKET_PROTOCOL);
   if (udp_fd < 0) {
-    perror("socket");
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Cannot allocate new socket\n", __FUNCTION__);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Create socket fail: %d\n", socket_errno());
     return -1;
   }
 
   if (sock_bind_to_device(udp_fd, (unsigned char *)(s->e->relay_ifname)) < 0) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot bind udp server socket to device %s\n", (char *)(s->e->relay_ifname));
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot bind udp server socket to device[%d]: %s\n", socket_errno(),
+                  (char *)(s->e->relay_ifname));
   }
 
-  ioa_socket_handle ret = (ioa_socket *)malloc(sizeof(ioa_socket));
+  ioa_socket_handle ret = create_ioa_socket_from_fd(NULL, udp_fd, NULL, s->st, CLIENT_SOCKET, NULL, NULL);
   if (!ret) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Cannot allocate new socket structure\n", __FUNCTION__);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot allocate new ioa_socket\n");
     socket_closesocket(udp_fd);
     return -1;
   }
-
-  memset(ret, 0, sizeof(ioa_socket));
-
-  ret->magic = SOCKET_MAGIC;
-
-  ret->fd = udp_fd;
 
   ret->family = s->family;
   ret->st = s->st;
@@ -627,7 +621,7 @@ start_udp_cycle:
 #else
   int flags = MSG_DONTWAIT;
 #endif
-  bsize = udp_recvfrom(fd, &(server->sm.m.sm.nd.src_addr), &(server->addr), (char *)ioa_network_buffer_data(elem),
+  bsize = udp_recvfrom(s, &(server->sm.m.sm.nd.src_addr), &(server->addr), (char *)ioa_network_buffer_data(elem),
                        (int)ioa_network_buffer_get_capacity_udp(), &(server->sm.m.sm.nd.recv_ttl),
                        &(server->sm.m.sm.nd.recv_tos), server->e->cmsg, flags, NULL);
 
@@ -664,7 +658,7 @@ start_udp_cycle:
     int ttl = 0;
     int tos = 0;
     int slen = server->slen0;
-    udp_recvfrom(fd, &orig_addr, &(server->addr), buffer, (int)sizeof(buffer), &ttl, &tos, server->e->cmsg, eflags,
+    udp_recvfrom(s, &orig_addr, &(server->addr), buffer, (int)sizeof(buffer), &ttl, &tos, server->e->cmsg, eflags,
                  &errcode);
     // try again...
     do {
@@ -788,6 +782,9 @@ static int create_server_socket(dtls_listener_relay_server_type *server, int rep
         exit(-1);
       }
     }
+
+    if (evutil_make_socket_nonblocking(udp_listen_fd))
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Set nonblocking fail\n");
 
     server->udp_listen_ev =
         event_new(server->e->event_base, udp_listen_fd, EV_READ | EV_PERSIST, udp_server_input_handler, server);

@@ -1584,7 +1584,8 @@ again:
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: cannot BIND to tcp connection\n", __FUNCTION__);
   } else {
 
-    socket_set_nonblocking(clnet_fd);
+    if (evutil_make_socket_nonblocking(clnet_fd))
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Set nonblocking fail\n");
 
     struct event *ev = event_new(client_event_base, clnet_fd, EV_READ | EV_PERSIST, client_input_handler, elem);
 

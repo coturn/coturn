@@ -992,10 +992,12 @@ static int start_client(const char *remote_address, int port, const unsigned cha
     clnet_info_probe.fd = -1;
   }
 
-  socket_set_nonblocking(clnet_info->fd);
+  if (evutil_make_socket_nonblocking(clnet_info->fd))
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Set nonblocking fail\n");
 
   if (!no_rtcp)
-    socket_set_nonblocking(clnet_info_rtcp->fd);
+    if (evutil_make_socket_nonblocking(clnet_info_rtcp->fd))
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Set nonblocking fail\n");
 
   struct event *ev = event_new(client_event_base, clnet_info->fd, EV_READ | EV_PERSIST, client_input_handler, ss);
 
@@ -1085,15 +1087,19 @@ static int start_c2c(const char *remote_address, int port, const unsigned char *
     clnet_info_probe.fd = -1;
   }
 
-  socket_set_nonblocking(clnet_info1->fd);
+  if (evutil_make_socket_nonblocking(clnet_info1->fd))
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Set nonblocking fail\n");
 
   if (!no_rtcp)
-    socket_set_nonblocking(clnet_info1_rtcp->fd);
+    if (evutil_make_socket_nonblocking(clnet_info1_rtcp->fd))
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Set nonblocking fail\n");
 
-  socket_set_nonblocking(clnet_info2->fd);
+  if (evutil_make_socket_nonblocking(clnet_info2->fd))
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Set nonblocking fail\n");
 
   if (!no_rtcp)
-    socket_set_nonblocking(clnet_info2_rtcp->fd);
+    if (evutil_make_socket_nonblocking(clnet_info2_rtcp->fd))
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Set nonblocking fail\n");
 
   struct event *ev1 = event_new(client_event_base, clnet_info1->fd, EV_READ | EV_PERSIST, client_input_handler, ss1);
 
