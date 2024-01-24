@@ -76,24 +76,11 @@ int IS_TURN_SERVER = 0;
 
 /*********************** Sockets *********************************/
 
-int socket_set_nonblocking(evutil_socket_t fd) {
-#if defined(WINDOWS)
-  unsigned long nonblocking = 1;
-  ioctlsocket(fd, FIONBIO, (unsigned long *)&nonblocking);
-#else
-  if (fcntl(fd, F_SETFL, O_NONBLOCK) == -1) {
-    perror("O_NONBLOCK");
-    return -1;
-  }
-#endif
-  return 0;
-}
-
 void read_spare_buffer(evutil_socket_t fd) {
   if (fd >= 0) {
     static char buffer[65536];
 #if defined(WINDOWS)
-    // TODO: add set no-block? by Kang Lin <kl222@126.com>
+    // Because of the fd is noblock socket
     recv(fd, buffer, sizeof(buffer), 0);
 #else
     recv(fd, buffer, sizeof(buffer), MSG_DONTWAIT);
@@ -114,8 +101,7 @@ int set_sock_buf_size(evutil_socket_t fd, int sz0) {
   }
 
   if (sz < 1) {
-    perror("Cannot set socket rcv size");
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Cannot set rcv sock size %d on fd %d\n", sz0, fd);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Cannot set rcv sock size %d on fd %d, err:%d\n", sz0, fd, socket_errno());
   }
 
   sz = sz0;
@@ -128,8 +114,7 @@ int set_sock_buf_size(evutil_socket_t fd, int sz0) {
   }
 
   if (sz < 1) {
-    perror("Cannot set socket snd size");
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Cannot set snd sock size %d on fd %d\n", sz0, fd);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Cannot set snd sock size %d on fd %d, err: %d\n", sz0, fd, socket_errno());
   }
 
   return 0;
@@ -150,7 +135,7 @@ int socket_init(void) {
       /* Tell the user that we could not find a usable */
       /* Winsock DLL.                                  */
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "WSAStartup failed with error: %d\n", e);
-      return 1;
+      return e;
     }
   }
 #endif
@@ -280,40 +265,38 @@ int addr_connect(evutil_socket_t fd, const ioa_addr *addr, int *out_errno) {
 }
 
 int addr_bind(evutil_socket_t fd, const ioa_addr *addr, int reusable, int debug, SOCKET_TYPE st) {
+  int ret = -1;
+
   if (!addr || fd < 0) {
 
     return -1;
-
-  } else {
-
-    int ret = -1;
-
-    socket_set_reusable(fd, reusable, st);
-
-    if (addr->ss.sa_family == AF_INET) {
-      do {
-        ret = bind(fd, (const struct sockaddr *)addr, sizeof(struct sockaddr_in));
-      } while (ret < 0 && socket_eintr());
-    } else if (addr->ss.sa_family == AF_INET6) {
-      const int off = 0;
-      setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, (const char *)&off, sizeof(off));
-      do {
-        ret = bind(fd, (const struct sockaddr *)addr, sizeof(struct sockaddr_in6));
-      } while (ret < 0 && socket_eintr());
-    } else {
-      return -1;
-    }
-    if (ret < 0) {
-      if (debug) {
-        int err = socket_errno();
-        perror("bind");
-        char str[129];
-        addr_to_string(addr, (uint8_t *)str);
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Trying to bind fd %d to <%s>: errno=%d\n", fd, str, err);
-      }
-    }
-    return ret;
   }
+
+  socket_set_reusable(fd, reusable, st);
+
+  if (addr->ss.sa_family == AF_INET) {
+    do {
+      ret = bind(fd, (const struct sockaddr *)addr, sizeof(struct sockaddr_in));
+    } while (ret < 0 && socket_eintr());
+  } else if (addr->ss.sa_family == AF_INET6) {
+    const int off = 0;
+    setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, (const char *)&off, sizeof(off));
+    do {
+      ret = bind(fd, (const struct sockaddr *)addr, sizeof(struct sockaddr_in6));
+    } while (ret < 0 && socket_eintr());
+  } else {
+    return -1;
+  }
+
+  if (ret < 0) {
+    if (debug) {
+      int err = socket_errno();
+      char str[129] = {0};
+      addr_to_string(addr, (uint8_t *)str);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Trying to bind fd %d to <%s>: errno=%d\n", fd, str, err);
+    }
+  }
+  return ret;
 }
 
 int addr_get_from_sock(evutil_socket_t fd, ioa_addr *addr) {
@@ -351,7 +334,7 @@ int get_raw_socket_ttl(evutil_socket_t fd, int family) {
 #else
     socklen_t slen = (socklen_t)sizeof(ttl);
     if (getsockopt(fd, IPPROTO_IPV6, IPV6_UNICAST_HOPS, &ttl, &slen) < 0) {
-      perror("get HOPLIMIT on socket");
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Get HOPLIMIT on fd[%d] fail. error code: %d\n", fd, socket_errno());
       return TTL_IGNORE;
     }
 #endif
@@ -364,7 +347,7 @@ int get_raw_socket_ttl(evutil_socket_t fd, int family) {
 #else
     socklen_t slen = (socklen_t)sizeof(ttl);
     if (getsockopt(fd, IPPROTO_IP, IP_TTL, &ttl, &slen) < 0) {
-      perror("get TTL on socket");
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Get TTL on fd[%d] fail. error code: %d\n", fd, socket_errno());
       return TTL_IGNORE;
     }
 #endif
@@ -387,10 +370,27 @@ int get_raw_socket_tos(evutil_socket_t fd, int family) {
 #else
     socklen_t slen = (socklen_t)sizeof(tos);
     if (getsockopt(fd, IPPROTO_IPV6, IPV6_TCLASS, &tos, &slen) < 0) {
-      perror("get TCLASS on socket");
-      return -1;
+
+#if defined(_MSC_VER)
+      /*NOTE: Because getsockopt is not support IPV6_TCLASS in windows.
+       * it need WSARecvMsg get IPV6_TCLASS. and it must called after bind().
+       * so there are ignore it!
+       * see: https://learn.microsoft.com/windows/win32/winsock/ipproto-ipv6-socket-options
+       * see: https://learn.microsoft.com/windows/win32/api/mswsock/nc-mswsock-lpfn_wsarecvmsg
+       */
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
+                    "Because getsockopt is not support IPV6_TCLASS in windows. "
+                    "it must use WSARecvMsg. so return TOS_DEFAULT. "
+                    "Get TCLASS on fd[%d] fail. error code: %d\n",
+                    fd, socket_errno());
+      return TOS_DEFAULT;
+#else
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Get TCLASS on fd[%d] fail. error code: %d\n", fd, socket_errno());
+#endif
+      return TOS_IGNORE;
     }
 #endif
+
   } else {
 #if !defined(IP_TOS)
     UNUSED_ARG(fd);
@@ -400,8 +400,8 @@ int get_raw_socket_tos(evutil_socket_t fd, int family) {
 #else
     socklen_t slen = (socklen_t)sizeof(tos);
     if (getsockopt(fd, IPPROTO_IP, IP_TOS, &tos, &slen) < 0) {
-      perror("get TOS on socket");
-      return -1;
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Get TOS on fd[%d] fail. error code: %d\n", fd, socket_errno());
+      return TOS_IGNORE;
     }
 #endif
   }
@@ -420,7 +420,7 @@ int set_raw_socket_ttl(evutil_socket_t fd, int family, int ttl) {
 #else
     CORRECT_RAW_TTL(ttl);
     if (setsockopt(fd, IPPROTO_IPV6, IPV6_UNICAST_HOPS, &ttl, sizeof(ttl)) < 0) {
-      perror("set HOPLIMIT on socket");
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Set HOPLIMIT on fd[%d] fail. error code: %d\n", fd, socket_errno());
       return -1;
     }
 #endif
@@ -431,7 +431,7 @@ int set_raw_socket_ttl(evutil_socket_t fd, int family, int ttl) {
 #else
     CORRECT_RAW_TTL(ttl);
     if (setsockopt(fd, IPPROTO_IP, IP_TTL, &ttl, sizeof(ttl)) < 0) {
-      perror("set TTL on socket");
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Set TTL on fd[%d] fail. error code: %d\n", fd, socket_errno());
       return -1;
     }
 #endif
@@ -449,7 +449,7 @@ int set_raw_socket_tos(evutil_socket_t fd, int family, int tos) {
 #else
     CORRECT_RAW_TOS(tos);
     if (setsockopt(fd, IPPROTO_IPV6, IPV6_TCLASS, &tos, sizeof(tos)) < 0) {
-      perror("set TCLASS on socket");
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Set TCLASS on fd[%d] fail. error code: %d\n", fd, socket_errno());
       return -1;
     }
 #endif
@@ -459,7 +459,7 @@ int set_raw_socket_tos(evutil_socket_t fd, int family, int tos) {
     UNUSED_ARG(tos);
 #else
     if (setsockopt(fd, IPPROTO_IP, IP_TOS, &tos, sizeof(tos)) < 0) {
-      perror("set TOS on socket");
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Set TOS on fd[%d] fail. error code: %d\n", fd, socket_errno());
       return -1;
     }
 #endif
@@ -549,7 +549,7 @@ int set_socket_df(evutil_socket_t fd, int family, int value) {
     }
     if (ret < 0) {
       int err = socket_errno();
-      perror("set socket df:");
+      // perror("set socket df:");
       TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: set sockopt failed: fd=%d, err=%d, family=%d\n", __FUNCTION__, fd, err,
                     family);
     }
@@ -573,8 +573,8 @@ int set_socket_df(evutil_socket_t fd, int family, int value) {
 #endif
     }
     if (ret < 0) {
-      perror("set DF");
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: set sockopt failed\n", __FUNCTION__);
+      // perror("set DF");
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: set sockopt failed, err: %d\n", __FUNCTION__, socket_errno());
     }
   }
 #else
@@ -1087,78 +1087,90 @@ void print_abs_file_name(const char *msg1, const char *msg2, const char *fn) {
     }
   }
   if (absfn[0]) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s%s file found: %s\n", msg1, msg2, absfn);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s%s file: %s\n", msg1, msg2, absfn);
   }
 }
 
-char *find_config_file(const char *config_file, int print_file_name) {
-  char *full_path_to_config_file = NULL;
+char *find_config_file(const char *config_file) {
 
-  if (config_file && config_file[0]) {
-    if ((config_file[0] == '/') || (config_file[0] == '~')) {
-      FILE *f = fopen(config_file, "r");
-      if (f) {
-        fclose(f);
-        full_path_to_config_file = strdup(config_file);
-      }
-    } else {
-      int i = 0;
-      size_t cflen = strlen(config_file);
+  if (!(config_file && config_file[0]))
+    return NULL;
 
-      while (config_file_search_dirs[i]) {
-        size_t dirlen = strlen(config_file_search_dirs[i]);
-        size_t fnsz = sizeof(char) * (dirlen + cflen + 10);
-        char *fn = (char *)malloc(fnsz + 1);
-        strncpy(fn, config_file_search_dirs[i], fnsz);
-        strncpy(fn + dirlen, config_file, fnsz - dirlen);
-        fn[fnsz] = 0;
-        FILE *f = fopen(fn, "r");
-        if (f) {
-          fclose(f);
-          full_path_to_config_file = fn;
-          break;
-        }
-        free(fn);
-        if (config_file_search_dirs[i][0] != '/' && config_file_search_dirs[i][0] != '.' && c_execdir && c_execdir[0]) {
-          size_t celen = strlen(c_execdir);
-          fnsz = sizeof(char) * (dirlen + cflen + celen + 10);
-          fn = (char *)malloc(fnsz + 1);
-          strncpy(fn, c_execdir, fnsz);
-          size_t fnlen = strlen(fn);
-          if (fnlen < fnsz) {
-            strncpy(fn + fnlen, "/", fnsz - fnlen);
-            fnlen = strlen(fn);
-            if (fnlen < fnsz) {
-              strncpy(fn + fnlen, config_file_search_dirs[i], fnsz - fnlen);
-              fnlen = strlen(fn);
-              if (fnlen < fnsz) {
-                strncpy(fn + fnlen, config_file, fnsz - fnlen);
-              }
-            }
-          }
-          fn[fnsz] = 0;
-          if (strstr(fn, "//") != fn) {
-            f = fopen(fn, "r");
-            if (f) {
-              fclose(f);
-              full_path_to_config_file = fn;
-              break;
-            }
-          }
-          free(fn);
-        }
-        ++i;
-      }
-    }
-
-    if (!full_path_to_config_file) {
-      if (strstr(config_file, "etc/") == config_file) {
-        return find_config_file(config_file + 4, print_file_name);
-      }
+#if defined(WINDOWS)
+  FILE *f = fopen(config_file, "r");
+  if (f) {
+    fclose(f);
+    return strdup(config_file);
+  }
+#else
+  if ((config_file[0] == '/') || (config_file[0] == '~')) {
+    FILE *f = fopen(config_file, "r");
+    if (f) {
+      fclose(f);
+      return strdup(config_file);
     }
   }
+#endif
 
-  return full_path_to_config_file;
+  int i = 0;
+  size_t cflen = strlen(config_file);
+
+  while (config_file_search_dirs[i]) {
+    size_t dirlen = strlen(config_file_search_dirs[i]);
+    size_t fnsz = sizeof(char) * (dirlen + cflen + 10);
+    char *fn = (char *)malloc(fnsz + 1);
+    strncpy(fn, config_file_search_dirs[i], fnsz);
+    strncpy(fn + dirlen, config_file, fnsz - dirlen);
+    fn[fnsz] = 0;
+    FILE *f = fopen(fn, "r");
+    if (f) {
+      fclose(f);
+      return fn;
+    }
+    free(fn);
+
+    if (config_file_search_dirs[i][0] != '/' && config_file_search_dirs[i][0] != '~' && c_execdir && c_execdir[0]) {
+      size_t celen = strlen(c_execdir);
+      fnsz = sizeof(char) * (dirlen + cflen + celen + 10);
+      fn = (char *)malloc(fnsz + 1);
+      strncpy(fn, c_execdir, fnsz);
+      if ('/' == fn[celen - 1]
+#if defined(WINDOWS)
+          || '\\' == fn[celen - 1]
+#endif
+      ) {
+        fn[celen - 1] = 0;
+      }
+      size_t fnlen = strlen(fn);
+      if (fnlen < fnsz) {
+        strncpy(fn + fnlen, "/", fnsz - fnlen);
+        fnlen = strlen(fn);
+        if (fnlen < fnsz) {
+          strncpy(fn + fnlen, config_file_search_dirs[i], fnsz - fnlen);
+          fnlen = strlen(fn);
+          if (fnlen < fnsz) {
+            strncpy(fn + fnlen, config_file, fnsz - fnlen);
+          }
+        }
+      }
+      fn[fnsz] = 0;
+      if (strstr(fn, "//") != fn) {
+        f = fopen(fn, "r");
+        if (f) {
+          fclose(f);
+          return fn;
+        }
+      }
+      free(fn);
+    }
+    ++i;
+  }
+
+  if (strstr(config_file, "etc/") == config_file) {
+    return find_config_file(config_file + 4);
+  }
+
+  return NULL;
 }
 
 /////////////////// SYS SETTINGS ///////////////////////
@@ -1379,10 +1391,10 @@ const char *turn_get_ssl_method(SSL *ssl, const char *mdefault) {
 
 struct event_base *turn_event_base_new(void) {
   struct event_config *cfg = event_config_new();
-
   event_config_set_flag(cfg, EVENT_BASE_FLAG_EPOLL_USE_CHANGELIST);
-
-  return event_base_new_with_config(cfg);
+  struct event_base *e = event_base_new_with_config(cfg);
+  event_config_free(cfg);
+  return e;
 }
 
 /////////// OAUTH /////////////////

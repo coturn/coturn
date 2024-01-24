@@ -248,7 +248,7 @@ int main(int argc, char **argv) {
       mobility = 1;
       break;
     case 'E': {
-      char *fn = find_config_file(optarg, 1);
+      char *fn = find_config_file(optarg);
       if (!fn) {
         fprintf(stderr, "ERROR: file %s not found\n", optarg);
         exit(-1);
@@ -358,7 +358,7 @@ int main(int argc, char **argv) {
       STRCPY(g_auth_secret, optarg);
       break;
     case 'i': {
-      char *fn = find_config_file(optarg, 1);
+      char *fn = find_config_file(optarg);
       if (!fn) {
         fprintf(stderr, "ERROR: file %s not found\n", optarg);
         exit(-1);
@@ -367,7 +367,7 @@ int main(int argc, char **argv) {
       free(fn);
     } break;
     case 'k': {
-      char *fn = find_config_file(optarg, 1);
+      char *fn = find_config_file(optarg);
       if (!fn) {
         fprintf(stderr, "ERROR: file %s not found\n", optarg);
         exit(-1);

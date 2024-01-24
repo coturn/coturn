@@ -385,60 +385,59 @@ ioa_engine_handle create_ioa_engine(super_memory_t *sm, struct event_base *eb, t
   if (!relays_number || !relay_addrs || !tp) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Cannot create TURN engine\n", __FUNCTION__);
     return NULL;
-  } else {
-    ioa_engine_handle e = (ioa_engine_handle)allocate_super_memory_region(sm, sizeof(ioa_engine));
+  }
 
-    e->sm = sm;
-    e->default_relays = default_relays;
-    e->verbose = verbose;
-    e->tp = tp;
-    if (eb) {
-      e->event_base = eb;
-      e->deallocate_eb = 0;
-    } else {
-      e->event_base = turn_event_base_new();
-      e->deallocate_eb = 1;
-    }
+  ioa_engine_handle e = (ioa_engine_handle)allocate_super_memory_region(sm, sizeof(ioa_engine));
+
+  e->sm = sm;
+  e->default_relays = default_relays;
+  e->verbose = verbose;
+  e->tp = tp;
+  if (eb) {
+    e->event_base = eb;
+    e->deallocate_eb = 0;
+  } else {
+    e->event_base = turn_event_base_new();
+    e->deallocate_eb = 1;
+  }
 
 #if !defined(TURN_NO_HIREDIS)
-    e->rch = get_redis_async_connection(e->event_base, redis_stats_db, 0);
+  e->rch = get_redis_async_connection(e->event_base, redis_stats_db, 0);
 #endif
 
-    {
-      int t;
-      for (t = 0; t < PREDEF_TIMERS_NUM; ++t) {
-        struct timeval duration;
-        duration.tv_sec = predef_timer_intervals[t];
-        duration.tv_usec = 0;
-        const struct timeval *ptv = event_base_init_common_timeout(e->event_base, &duration);
-        if (!ptv) {
-          TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "FATAL: cannot create preferable timeval for %d secs (%d number)\n",
-                        predef_timer_intervals[t], t);
-          exit(-1);
-        } else {
-          memcpy(&(e->predef_timers[t]), ptv, sizeof(struct timeval));
-          e->predef_timer_intervals[t] = predef_timer_intervals[t];
-        }
+  {
+    int t;
+    for (t = 0; t < PREDEF_TIMERS_NUM; ++t) {
+      struct timeval duration;
+      duration.tv_sec = predef_timer_intervals[t];
+      duration.tv_usec = 0;
+      const struct timeval *ptv = event_base_init_common_timeout(e->event_base, &duration);
+      if (!ptv) {
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "FATAL: cannot create preferable timeval for %d secs (%d number)\n",
+                      predef_timer_intervals[t], t);
+        return NULL;
       }
+      memcpy(&(e->predef_timers[t]), ptv, sizeof(struct timeval));
+      e->predef_timer_intervals[t] = predef_timer_intervals[t];
     }
-
-    if (relay_ifname)
-      STRCPY(e->relay_ifname, relay_ifname);
-    {
-      size_t i = 0;
-      e->relay_addrs = (ioa_addr *)allocate_super_memory_region(sm, relays_number * sizeof(ioa_addr) + 8);
-      for (i = 0; i < relays_number; i++) {
-        if (make_ioa_addr((uint8_t *)relay_addrs[i], 0, &(e->relay_addrs[i])) < 0) {
-          TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot add a relay address: %s\n", relay_addrs[i]);
-        }
-      }
-      e->relays_number = relays_number;
-    }
-    e->relay_addr_counter = (unsigned short)turn_random();
-    timer_handler(e, e);
-    e->timer_ev = set_ioa_timer(e, 1, 0, timer_handler, e, 1, "timer_handler");
-    return e;
   }
+
+  if (relay_ifname)
+    STRCPY(e->relay_ifname, relay_ifname);
+  {
+    size_t i = 0;
+    e->relay_addrs = (ioa_addr *)allocate_super_memory_region(sm, relays_number * sizeof(ioa_addr) + 8);
+    for (i = 0; i < relays_number; i++) {
+      if (make_ioa_addr((uint8_t *)relay_addrs[i], 0, &(e->relay_addrs[i])) < 0) {
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot add a relay address: %s\n", relay_addrs[i]);
+      }
+    }
+    e->relays_number = relays_number;
+  }
+  e->relay_addr_counter = (unsigned short)turn_random();
+  timer_handler(e, e);
+  e->timer_ev = set_ioa_timer(e, 1, 0, timer_handler, e, 1, "timer_handler");
+  return e;
 }
 
 void ioa_engine_set_rtcp_map(ioa_engine_handle e, rtcp_map *rtcpmap) {
@@ -534,7 +533,7 @@ static void timer_event_handler(evutil_socket_t fd, short what, void *arg) {
     return;
 
   if (te->e && eve(te->e->verbose))
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: timeout 0x%lx: %s\n", __FUNCTION__, (long)te, te->txt);
+    TURN_LOG_CATEGORY("timer", TURN_LOG_LEVEL_INFO, "%s: timeout 0x%lx: %s\n", __FUNCTION__, (long)te, te->txt);
 
   ioa_timer_event_handler cb = te->cb;
   ioa_engine_handle e = te->e;
@@ -547,44 +546,44 @@ ioa_timer_handle set_ioa_timer(ioa_engine_handle e, int secs, int ms, ioa_timer_
                                int persist, const char *txt) {
   ioa_timer_handle ret = NULL;
 
-  if (e && cb && secs > 0) {
+  if (!e || !cb || secs < 0)
+    return NULL;
 
-    timer_event *te = (timer_event *)malloc(sizeof(timer_event));
-    int flags = EV_TIMEOUT;
-    if (persist)
-      flags |= EV_PERSIST;
-    struct event *ev = event_new(e->event_base, -1, flags, timer_event_handler, te);
-    struct timeval tv;
+  timer_event *te = (timer_event *)malloc(sizeof(timer_event));
+  int flags = EV_TIMEOUT;
+  if (persist)
+    flags |= EV_PERSIST;
+  struct event *ev = event_new(e->event_base, -1, flags, timer_event_handler, te);
+  struct timeval tv;
 
-    tv.tv_sec = secs;
+  tv.tv_sec = secs;
 
-    te->ctx = ctx;
-    te->e = e;
-    te->ev = ev;
-    te->cb = cb;
-    te->txt = strdup(txt);
+  te->ctx = ctx;
+  te->e = e;
+  te->ev = ev;
+  te->cb = cb;
+  te->txt = strdup(txt);
 
-    if (!ms) {
-      tv.tv_usec = 0;
-      int found = 0;
-      int t;
-      for (t = 0; t < PREDEF_TIMERS_NUM; ++t) {
-        if (e->predef_timer_intervals[t] == secs) {
-          evtimer_add(ev, &(e->predef_timers[t]));
-          found = 1;
-          break;
-        }
+  if (!ms) {
+    tv.tv_usec = 0;
+    int found = 0;
+    int t;
+    for (t = 0; t < PREDEF_TIMERS_NUM; ++t) {
+      if (e->predef_timer_intervals[t] == secs) {
+        evtimer_add(ev, &(e->predef_timers[t]));
+        found = 1;
+        break;
       }
-      if (!found) {
-        evtimer_add(ev, &tv);
-      }
-    } else {
-      tv.tv_usec = ms * 1000;
+    }
+    if (!found) {
       evtimer_add(ev, &tv);
     }
-
-    ret = te;
+  } else {
+    tv.tv_usec = ms * 1000;
+    evtimer_add(ev, &tv);
   }
+
+  ret = te;
 
   return ret;
 }
@@ -786,7 +785,8 @@ int set_socket_options_fd(evutil_socket_t fd, SOCKET_TYPE st, int family) {
     }
   }
 
-  socket_set_nonblocking(fd);
+  if (evutil_make_socket_nonblocking(fd))
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Set socket nonblocking fail\n");
 
   if (!is_stream_socket(st)) {
     set_raw_socket_ttl_options(fd, family);
@@ -884,11 +884,12 @@ ioa_socket_handle create_unbound_relay_ioa_socket(ioa_engine_handle e, int famil
     return NULL;
   }
 
-  ret = (ioa_socket *)calloc(sizeof(ioa_socket), 1);
+  ret = create_ioa_socket_from_fd(e, fd, NULL, st, sat, NULL, NULL);
+  if (!ret) {
+    socket_closesocket(fd);
+    return NULL;
+  }
 
-  ret->magic = SOCKET_MAGIC;
-
-  ret->fd = fd;
   ret->family = family;
   ret->st = st;
   ret->sat = sat;
@@ -1294,10 +1295,28 @@ ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e, ioa_socket_raw 
   }
 
   ret = (ioa_socket *)calloc(sizeof(ioa_socket), 1);
+  if (!ret) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot allocate new ioa_socket structure\n");
+    return NULL;
+  }
 
   ret->magic = SOCKET_MAGIC;
 
   ret->fd = fd;
+
+#if defined(_MSC_VER)
+
+  DWORD dwBytesRecvd = 0;
+  GUID guidWSARecvMsg = WSAID_WSARECVMSG;
+  int nRet = WSAIoctl(fd, SIO_GET_EXTENSION_FUNCTION_POINTER, &guidWSARecvMsg, sizeof(guidWSARecvMsg), &ret->recvmsg,
+                      sizeof(LPFN_WSARECVMSG), &dwBytesRecvd, NULL, NULL);
+  if (nRet)
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "WSAIoctl fail:%d\n", socket_errno());
+  else if (!ret->recvmsg)
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ret->recvmsg is null\n");
+
+#endif
+
   ret->st = st;
   ret->sat = sat;
   ret->e = e;
@@ -1933,11 +1952,14 @@ static int socket_readerr(evutil_socket_t fd, ioa_addr *orig_addr) {
 typedef unsigned char recv_ttl_t;
 typedef unsigned char recv_tos_t;
 
-int udp_recvfrom(evutil_socket_t fd, ioa_addr *orig_addr, const ioa_addr *like_addr, char *buffer, int buf_size,
+int udp_recvfrom(ioa_socket_handle s, ioa_addr *orig_addr, const ioa_addr *like_addr, char *buffer, int buf_size,
                  int *ttl, int *tos, char *ecmsg, int flags, uint32_t *errcode) {
   int len = 0;
+  if (!s || !orig_addr || !like_addr || !buffer)
+    return -1;
 
-  if (fd < 0 || !orig_addr || !like_addr || !buffer)
+  evutil_socket_t fd = s->fd;
+  if (fd < 0)
     return -1;
 
   if (errcode)
@@ -1947,13 +1969,124 @@ int udp_recvfrom(evutil_socket_t fd, ioa_addr *orig_addr, const ioa_addr *like_a
   recv_ttl_t recv_ttl = TTL_DEFAULT;
   recv_tos_t recv_tos = TOS_DEFAULT;
 
-#if defined(_MSC_VER) || !defined(CMSG_SPACE)
+#if defined(_MSC_VER)
+
+  DWORD bytes_received = 0;
+  WSAMSG msg = {0};
+  WSABUF sbuf = {0};
+  uint8_t cmdbuf[512];
+  WSACMSGHDR *cmsg;
+  PIN6_PKTINFO pi;
+
+  sbuf.buf = (char FAR *)buffer;
+  sbuf.len = (u_long)buf_size;
+  msg.lpBuffers = &sbuf;
+  msg.dwBufferCount = 1;
+  msg.name = (LPSOCKADDR)orig_addr;
+  msg.namelen = slen;
+  msg.Control.buf = (char FAR *)cmdbuf;
+  msg.Control.len = (u_long)sizeof(cmdbuf);
+
+  if (!s->recvmsg) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
+                  "WSARecvMsg is null. use recvfrom. the ttl and tos is not got. So set it to the default value\n");
+    len = recvfrom(fd, buffer, buf_size, flags, (struct sockaddr *)orig_addr, (socklen_t *)&slen);
+    if (len < 0 && errcode) {
+      *errcode = (uint32_t)socket_errno();
+      return -1;
+    }
+    return len;
+  }
+
+  int nRet = 0;
+  /* Receive a packet */
+  nRet = (s->recvmsg)(s->fd, &msg, &bytes_received, NULL, NULL);
+  if (nRet) {
+    if (s->e->verbose && socket_ewouldblock() == socket_errno())
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WSARecvMsg fail:%d\n", socket_errno());
+    else
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "WSARecvMsg fail:%d\n", socket_errno());
+    if (errcode)
+      *errcode = (uint32_t)socket_errno();
+    return -1;
+  }
+
+  /* Parse the header info, look for the local address */
+  cmsg = WSA_CMSG_FIRSTHDR(&msg);
+  for (; cmsg != NULL; cmsg = WSA_CMSG_NXTHDR(&msg, cmsg)) {
+    // TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "level: %d; type:%d\n", cmsg->cmsg_level, cmsg->cmsg_type);
+    switch (cmsg->cmsg_level) {
+    case IPPROTO_IP:
+      switch (cmsg->cmsg_type) {
+#if defined(IP_RECVTTL) && !defined(__sparc_v9__)
+      case IP_RECVTTL:
+      case IP_TTL:
+        recv_ttl = *((recv_ttl_t *)WSA_CMSG_DATA(cmsg));
+        break;
+#endif
+#if defined(IP_RECVTOS)
+      case IP_RECVTOS:
+      case IP_TOS:
+        recv_tos = *((recv_tos_t *)WSA_CMSG_DATA(cmsg));
+        break;
+#endif
+#if defined(IP_RECVERR)
+      case IP_RECVERR: {
+        struct turn_sock_extended_err *e = (struct turn_sock_extended_err *)WSA_CMSG_DATA(cmsg);
+        if (errcode)
+          *errcode = e->ee_errno;
+      } break;
+#endif
+      default:;
+        /* no break */
+      };
+      break;
+    case IPPROTO_IPV6:
+      switch (cmsg->cmsg_type) {
+#if defined(IPV6_RECVHOPLIMIT) && !defined(__sparc_v9__)
+      case IPV6_RECVHOPLIMIT:
+      case IPV6_HOPLIMIT:
+        recv_ttl = *((recv_ttl_t *)CMSG_DATA(cmsg));
+        break;
+#endif
+#if defined(IPV6_RECVTCLASS)
+      case IPV6_RECVTCLASS:
+      case IPV6_TCLASS:
+        recv_tos = *((recv_tos_t *)WSA_CMSG_DATA(cmsg));
+        break;
+#endif
+#if defined(IPV6_RECVERR)
+      case IPV6_RECVERR: {
+        struct turn_sock_extended_err *e = (struct turn_sock_extended_err *)WSA_CMSG_DATA(cmsg);
+        if (errcode)
+          *errcode = e->ee_errno;
+      } break;
+#endif
+      default:;
+        /* no break */
+      };
+      break;
+    default:;
+      /* no break */
+    };
+  }
+
+  len = bytes_received;
+
+  if (s->e->verbose)
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "WSARecvMsg len: %d; ttl: %08X; tos: %08X\n", bytes_received, recv_ttl,
+                  recv_tos);
+
+#elif !defined(CMSG_SPACE)
+
   do {
     len = recvfrom(fd, buffer, buf_size, flags, (struct sockaddr *)orig_addr, (socklen_t *)&slen);
   } while (len < 0 && socket_eintr());
   if (len < 0 && errcode)
-    *errcode = (uint32_t)socket_errno();
+    *errcode = (uint32_t)errno;
+
 #else
+
   struct msghdr msg;
   struct iovec iov;
 
@@ -1977,7 +2110,7 @@ try_again:
 #endif
 
   do {
-    len = recvmsg(fd, &msg, flags);
+    len = recvmsg(s->fd, &msg, flags);
   } while (len < 0 && socket_eintr());
 
 #if defined(MSG_ERRQUEUE)
@@ -1991,7 +2124,7 @@ try_again:
     // Linux
     int eflags = MSG_ERRQUEUE | MSG_DONTWAIT;
     uint32_t errcode1 = 0;
-    udp_recvfrom(fd, orig_addr, like_addr, buffer, buf_size, ttl, tos, ecmsg, eflags, &errcode1);
+    udp_recvfrom(s, orig_addr, like_addr, buffer, buf_size, ttl, tos, ecmsg, eflags, &errcode1);
     // try again...
     do {
       len = recvmsg(fd, &msg, flags);
@@ -2507,8 +2640,8 @@ try_start:
     if (len == 0)
       len = -1;
   } else if (s->fd >= 0) { /* UDP and DTLS */
-    ret = udp_recvfrom(s->fd, &remote_addr, &(s->local_addr), (char *)(buf_elem->buf.buf), UDP_STUN_BUFFER_SIZE, &ttl,
-                       &tos, s->e->cmsg, 0, NULL);
+    ret = udp_recvfrom(s, &remote_addr, &(s->local_addr), (char *)(buf_elem->buf.buf), UDP_STUN_BUFFER_SIZE, &ttl, &tos,
+                       s->e->cmsg, 0, NULL);
     len = ret;
     if (s->ssl && (len > 0)) { /* DTLS */
       send_ssl_backlog_buffers(s);
@@ -3792,6 +3925,20 @@ super_memory_t *new_super_memory_region(void) {
   super_memory_t *r = (super_memory_t *)malloc(sizeof(super_memory_t));
   init_super_memory_region(r);
   return r;
+}
+
+void free_super_memory_region(super_memory_t *r) {
+  if (!r)
+    return;
+  TURN_MUTEX_LOCK(&r->mutex_sm);
+  int i = 0;
+  for (i = 0; i <= r->sm_chunk; ++i) {
+    free(r->super_memory[i]);
+  }
+  free(r->super_memory);
+  free(r->sm_allocated);
+  TURN_MUTEX_UNLOCK(&r->mutex_sm);
+  free(r);
 }
 
 void *allocate_super_memory_region_func(super_memory_t *r, size_t size, const char *file, const char *func, int line) {

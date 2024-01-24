@@ -57,6 +57,10 @@
 
 #include <pthread.h>
 
+#if defined(WINDOWS)
+#include <mswsock.h>
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -166,6 +170,9 @@ struct traffic_bytes {
 
 struct _ioa_socket {
   evutil_socket_t fd;
+#if _MSC_VER
+  LPFN_WSARECVMSG recvmsg;
+#endif
   struct _ioa_socket *parent_s;
   uint32_t magic;
   ur_addr_map *sockets_container; /* relay container for UDP sockets */
@@ -262,7 +269,7 @@ void delete_socket_from_map(ioa_socket_handle s);
 int is_connreset(void);
 int would_block(void);
 int udp_send(ioa_socket_handle s, const ioa_addr *dest_addr, const char *buffer, int len);
-int udp_recvfrom(evutil_socket_t fd, ioa_addr *orig_addr, const ioa_addr *like_addr, char *buffer, int buf_size,
+int udp_recvfrom(ioa_socket_handle s, ioa_addr *orig_addr, const ioa_addr *like_addr, char *buffer, int buf_size,
                  int *ttl, int *tos, char *ecmsg, int flags, uint32_t *errcode);
 int ssl_read(evutil_socket_t fd, SSL *ssl, ioa_network_buffer_handle nbh, int verbose);
 

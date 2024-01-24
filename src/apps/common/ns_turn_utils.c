@@ -49,7 +49,9 @@
 
 #include <signal.h>
 
-#if !defined(WINDOWS) && !defined(__CYGWIN__) && !defined(__CYGWIN32__) && !defined(__CYGWIN64__)
+#if defined(WINDOWS) || defined(__CYGWIN__) || defined(__CYGWIN32__) || defined(__CYGWIN64__)
+#include <windows.h>
+#else
 #include <sys/syscall.h>
 #include <unistd.h>
 #ifdef SYS_gettid
@@ -201,7 +203,11 @@ extern void TURN_LOG_FUNC_IMPL(TURN_LOG_LEVEL level, const char *format, va_list
 
 static int no_stdout_log = 0;
 
-void set_no_stdout_log(int val) { no_stdout_log = val; }
+int set_no_stdout_log(int val) {
+  int old = no_stdout_log;
+  no_stdout_log = val;
+  return old;
+}
 
 #define MAX_LOG_TIMESTAMP_FORMAT_LEN 48
 static char turn_log_timestamp_format[MAX_LOG_TIMESTAMP_FORMAT_LEN] = "%FT%T%z";
@@ -383,7 +389,7 @@ static void set_rtpfile(void) {
         set_log_file_name(log_fn_base, log_fn);
         _rtpfile = fopen(log_fn, "a");
         if (_rtpfile)
-          TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "log file opened: %s\n", log_fn);
+          TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Log file opened: %s\n", log_fn);
       }
       if (!_rtpfile) {
         fprintf(stderr, "ERROR: Cannot open log file for writing: %s\n", log_fn);
@@ -411,7 +417,7 @@ static void set_rtpfile(void) {
 
     _rtpfile = fopen(logf, "a");
     if (_rtpfile)
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "log file opened: %s\n", logf);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Log file opened: %s\n", logf);
     else {
       if (snprintf(logbase, FILE_STR_LEN, "/var/log/%s", logtail) < 0)
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "String truncation occured.\n");
@@ -419,7 +425,7 @@ static void set_rtpfile(void) {
       set_log_file_name(logbase, logf);
       _rtpfile = fopen(logf, "a");
       if (_rtpfile)
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "log file opened: %s\n", logf);
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Log file opened: %s\n", logf);
       else {
         if (snprintf(logbase, FILE_STR_LEN, "/var/tmp/%s", logtail) < 0)
           TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "String truncation occured.\n");
@@ -427,20 +433,20 @@ static void set_rtpfile(void) {
         set_log_file_name(logbase, logf);
         _rtpfile = fopen(logf, "a");
         if (_rtpfile)
-          TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "log file opened: %s\n", logf);
+          TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Log file opened: %s\n", logf);
         else {
           if (snprintf(logbase, FILE_STR_LEN, "/tmp/%s", logtail) < 0)
             TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "String truncation occured.\n");
           set_log_file_name(logbase, logf);
           _rtpfile = fopen(logf, "a");
           if (_rtpfile)
-            TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "log file opened: %s\n", logf);
+            TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Log file opened: %s\n", logf);
           else {
             snprintf(logbase, FILE_STR_LEN, "%s", logtail);
             set_log_file_name(logbase, logf);
             _rtpfile = fopen(logf, "a");
             if (_rtpfile)
-              TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "log file opened: %s\n", logf);
+              TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Log file opened: %s\n", logf);
             else {
               _rtpfile = stdout;
               return;
@@ -492,7 +498,7 @@ void rollover_logfile(void) {
       _rtpfile = fopen(logf, "w");
       if (_rtpfile) {
         STRCPY(log_fn, logf);
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "log file opened: %s\n", log_fn);
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Log file opened: %s\n", log_fn);
       } else {
         _rtpfile = stdout;
       }
@@ -526,7 +532,7 @@ void err(int eval, const char *format, ...) {
 }
 #endif
 
-void turn_log_func_default(char *file, int line, TURN_LOG_LEVEL level, const char *format, ...) {
+void turn_log_func_default(char *file, int line, char *category, TURN_LOG_LEVEL level, const char *format, ...) {
   va_list args;
   va_start(args, format);
 #if defined(TURN_LOG_FUNC_IMPL)
@@ -543,30 +549,42 @@ void turn_log_func_default(char *file, int line, TURN_LOG_LEVEL level, const cha
     so_far += snprintf(s, sizeof(s), "%lu: ", (unsigned long)log_time());
   }
 
+#if defined(WINDOWS) || defined(__CYGWIN__) || defined(__CYGWIN32__) || defined(__CYGWIN64__)
+  so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "[%lu:%lu] ", GetCurrentProcessId(),
+                     GetCurrentThreadId());
+#else
+
 #ifdef SYS_gettid
-  so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "(%lu): ", (unsigned long)gettid());
+  so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "[%lu] ", (unsigned long)gettid());
+#endif
+
 #endif
 
   if (_log_file_line_set)
-    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "%s(%d):", file, line);
+    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "%s(%d)", file, line);
 
   switch (level) {
   case TURN_LOG_LEVEL_DEBUG:
-    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "DEBUG: ");
+    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "DEBUG");
     break;
   case TURN_LOG_LEVEL_INFO:
-    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "INFO: ");
+    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "INFO");
     break;
   case TURN_LOG_LEVEL_CONTROL:
-    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "CONTROL: ");
+    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "CONTROL");
     break;
   case TURN_LOG_LEVEL_WARNING:
-    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "WARNING: ");
+    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "WARNING");
     break;
   case TURN_LOG_LEVEL_ERROR:
-    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "ERROR: ");
+    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "ERROR");
     break;
   }
+
+  if (category && strcmp(category, ""))
+    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), " %s", category);
+  so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), ": ");
+
   so_far += vsnprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), format, args);
 
   if (so_far > MAX_RTPPRINTF_BUFFER_SIZE + 1) {
