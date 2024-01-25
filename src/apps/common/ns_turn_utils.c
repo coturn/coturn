@@ -126,15 +126,15 @@ int turn_mutex_init_recursive(turn_mutex *mutex) {
   int ret = -1;
   if (mutex) {
     pthread_mutexattr_t attr;
-    if (pthread_mutexattr_init(&attr) < 0) {
+    if (pthread_mutexattr_init(&attr) != 0) {
       perror("Cannot init mutex attr");
     } else {
-      if (pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE) < 0) {
+      if (pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE) != 0) {
         perror("Cannot set type on mutex attr");
       } else {
         mutex->mutex = malloc(sizeof(pthread_mutex_t));
         mutex->data = MAGIC_CODE;
-        if ((ret = pthread_mutex_init((pthread_mutex_t *)mutex->mutex, &attr)) < 0) {
+        if ((ret = pthread_mutex_init((pthread_mutex_t *)mutex->mutex, &attr)) != 0) {
           perror("Cannot init mutex");
           mutex->data = 0;
           free(mutex->mutex);
@@ -280,7 +280,7 @@ static void get_date(char *s, size_t sz) {
 void set_logfile(const char *fn) {
   if (fn) {
     log_lock();
-    if (strcmp(fn, log_fn_base)) {
+    if (strcmp(fn, log_fn_base) != 0) {
       reset_rtpprintf();
       STRCPY(log_fn_base, fn);
     }
@@ -501,7 +501,7 @@ void rollover_logfile(void) {
     char logf[FILE_STR_LEN];
 
     set_log_file_name(log_fn_base, logf);
-    if (strcmp(log_fn, logf)) {
+    if (strcmp(log_fn, logf) != 0) {
       fclose(_rtpfile);
       log_fn[0] = 0;
       _rtpfile = fopen(logf, "w");

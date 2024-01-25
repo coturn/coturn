@@ -33,8 +33,9 @@
 #include "ns_turn_msg_defs.h" // for STUN_VALID_CHANNEL
 #include "ns_turn_utils.h"    // for TURN_LOG_FUNC, TURN_LOG_LEVEL_ERROR
 
-#include <stdlib.h> // for NULL, size_t, free, realloc, calloc
-#include <string.h> // for memset, memcpy
+#include <stdbool.h> // for bool, false, true
+#include <stdlib.h>  // for NULL, size_t, free, realloc, calloc
+#include <string.h>  // for memset, memcpy
 
 /////////////// Permission forward declarations /////////////////
 
@@ -565,10 +566,9 @@ static void set_new_tc_id(uint8_t server_id, tcp_connection *tc) {
 
 tcp_connection *create_tcp_connection(uint8_t server_id, allocation *a, stun_tid *tid, ioa_addr *peer_addr,
                                       int *err_code) {
-  tcp_connection_list *tcl = &(a->tcs);
+  tcp_connection_list *const tcl = &(a->tcs);
   if (tcl->elems) {
-    size_t i;
-    for (i = 0; i < tcl->sz; ++i) {
+    for (size_t i = 0; i < tcl->sz; ++i) {
       tcp_connection *otc = tcl->elems[i];
       if (otc) {
         if (addr_eq(&(otc->peer_addr), peer_addr)) {
@@ -585,14 +585,13 @@ tcp_connection *create_tcp_connection(uint8_t server_id, allocation *a, stun_tid
   }
   tc->owner = a;
 
-  int found = 0;
+  bool found = false;
   if (a->tcs.elems) {
-    size_t i;
-    for (i = 0; i < tcl->sz; ++i) {
+    for (size_t i = 0; i < tcl->sz; ++i) {
       tcp_connection *otc = tcl->elems[i];
       if (!otc) {
         tcl->elems[i] = tc;
-        found = 1;
+        found = true;
         break;
       }
     }
@@ -603,7 +602,6 @@ tcp_connection *create_tcp_connection(uint8_t server_id, allocation *a, stun_tid
     a->tcs.elems = (tcp_connection **)realloc(a->tcs.elems, old_sz_mem + sizeof(tcp_connection *));
     a->tcs.elems[a->tcs.sz] = tc;
     a->tcs.sz += 1;
-    tcl = &(a->tcs);
   }
 
   set_new_tc_id(server_id, tc);
