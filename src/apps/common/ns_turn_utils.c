@@ -112,39 +112,60 @@ int turn_mutex_unlock(const turn_mutex *mutex) {
 }
 
 int turn_mutex_init(turn_mutex *mutex) {
-  if (mutex) {
-    mutex->data = MAGIC_CODE;
-    mutex->mutex = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t));
-    pthread_mutex_init((pthread_mutex_t *)mutex->mutex, NULL);
-    return 0;
-  } else {
+  if (!mutex) {
     return -1;
   }
+
+  mutex->mutex = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t));
+  if (!(mutex->mutex)) {
+    perror("Cannot allocate mutex");
+    return -1;
+  }
+
+  if (pthread_mutex_init((pthread_mutex_t *)mutex->mutex, NULL) != 0) {
+    perror("Cannot init mutex");
+    free(mutex->mutex);
+    mutex->mutex = NULL;
+    return -1;
+  }
+
+  mutex->data = MAGIC_CODE;
+  return 0;
 }
 
 int turn_mutex_init_recursive(turn_mutex *mutex) {
-  int ret = -1;
-  if (mutex) {
-    pthread_mutexattr_t attr;
-    if (pthread_mutexattr_init(&attr) < 0) {
-      perror("Cannot init mutex attr");
-    } else {
-      if (pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE) < 0) {
-        perror("Cannot set type on mutex attr");
-      } else {
-        mutex->data = MAGIC_CODE;
-        mutex->mutex = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t));
-        if ((ret = pthread_mutex_init((pthread_mutex_t *)mutex->mutex, &attr)) < 0) {
-          perror("Cannot init mutex");
-          mutex->data = 0;
-          free(mutex->mutex);
-          mutex->mutex = NULL;
-        }
-      }
-      pthread_mutexattr_destroy(&attr);
-    }
+  if (!mutex) {
+    return -1;
   }
-  return ret;
+
+  pthread_mutexattr_t attr;
+  if (pthread_mutexattr_init(&attr) != 0) {
+    perror("Cannot init mutex attr");
+    return -1;
+  }
+
+  if (pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE) != 0) {
+    perror("Cannot set type on mutex attr");
+    return -1;
+  }
+
+  mutex->mutex = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t));
+  if (!(mutex->mutex)) {
+    perror("Cannot allocate mutex");
+    return -1;
+  }
+
+  if (pthread_mutex_init((pthread_mutex_t *)mutex->mutex, &attr) != 0) {
+    perror("Cannot init mutex");
+    free(mutex->mutex);
+    mutex->mutex = NULL;
+    return -1;
+  }
+
+  pthread_mutexattr_destroy(&attr);
+
+  mutex->data = MAGIC_CODE;
+  return 0;
 }
 
 int turn_mutex_destroy(turn_mutex *mutex) {
@@ -280,7 +301,7 @@ static void get_date(char *s, size_t sz) {
 void set_logfile(const char *fn) {
   if (fn) {
     log_lock();
-    if (strcmp(fn, log_fn_base)) {
+    if (strcmp(fn, log_fn_base) != 0) {
       reset_rtpprintf();
       STRCPY(log_fn_base, fn);
     }
@@ -501,7 +522,7 @@ void rollover_logfile(void) {
     char logf[FILE_STR_LEN];
 
     set_log_file_name(log_fn_base, logf);
-    if (strcmp(log_fn, logf)) {
+    if (strcmp(log_fn, logf) != 0) {
       fclose(_rtpfile);
       log_fn[0] = 0;
       _rtpfile = fopen(logf, "w");

@@ -18,10 +18,9 @@
 static int is_acme_req(char *req, size_t len) {
   static const char *A = "                                             -  0123456789       ABCDEFGHIJKLMNOPQRSTUVWXYZ  "
                          "  _ abcdefghijklmnopqrstuvwxyz     ";
-  int c, i, k;
 
   // Check first request line. Should be like: GET path HTTP/1.x
-  if (strncmp(req, GET_ACME_PREFIX, GET_ACME_PREFIX_LEN)) {
+  if (strncmp(req, GET_ACME_PREFIX, GET_ACME_PREFIX_LEN) != 0) {
     return -1;
   }
   // Usually (for LE) the "method path" is 32 + 43 = 55 chars. But other
@@ -31,24 +30,24 @@ static int is_acme_req(char *req, size_t len) {
   if (len > 131) {
     len = 131;
   }
-  for (i = GET_ACME_PREFIX_LEN; i < (int)len; i++) {
+  for (size_t i = GET_ACME_PREFIX_LEN; i < len; i++) {
     // find the end of the path
     if (req[i] != ' ') {
       continue;
     }
     // consider path < 10 chars invalid. Also we wanna see a "trailer".
-    if (i < (GET_ACME_PREFIX_LEN + 10) || strncmp(req + i, " HTTP/1.", 8)) {
+    if (i < (GET_ACME_PREFIX_LEN + 10) || strncmp(req + i, " HTTP/1.", 8) != 0) {
       return -2;
     }
     // finally check for allowed chars
-    for (k = GET_ACME_PREFIX_LEN; k < i; k++) {
-      c = req[k];
+    for (size_t k = GET_ACME_PREFIX_LEN; k < i; k++) {
+      const char c = req[k];
       if ((c > 127) || (A[c] == ' ')) {
         return -3;
       }
     }
     // all checks passed: sufficient for us to answer with a redirect
-    return i;
+    return (int)i;
   }
   return -4; // end of path not found
 }
@@ -57,11 +56,11 @@ int try_acme_redirect(char *req, size_t len, const char *url, ioa_socket_handle 
   static const char *HTML = "<html><head><title>301 Moved Permanently</title></head>\
 		<body><h1>301 Moved Permanently</h1></body></html>";
   char http_response[1024];
-  size_t plen, rlen;
 
   if (url == NULL || url[0] == '\0' || req == NULL || s == 0) {
     return 1;
   }
+  size_t plen;
   if (len < (GET_ACME_PREFIX_LEN + 32) || len > (512 - GET_ACME_PREFIX_LEN) ||
       (plen = is_acme_req(req, len)) < (GET_ACME_PREFIX_LEN + 1)) {
     return 2;
@@ -78,7 +77,7 @@ int try_acme_redirect(char *req, size_t len, const char *url, ioa_socket_handle 
            "\r\n%s",
            strlen(HTML), url, req + GET_ACME_PREFIX_LEN, HTML);
 
-  rlen = strlen(http_response);
+  size_t rlen = strlen(http_response);
 
 #ifdef LIBEV_OK
   ioa_network_buffer_handle nbh_acme = ioa_network_buffer_allocate(s->e);
