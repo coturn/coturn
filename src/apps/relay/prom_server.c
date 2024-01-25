@@ -134,8 +134,6 @@ void start_prometheus_server(void) {
   }
 
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "prometheus collector started successfully\n");
-
-  return;
 }
 
 void prom_set_finished_traffic(const char *realm, const char *user, unsigned long rsvp, unsigned long rsvb,

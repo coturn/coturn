@@ -101,7 +101,7 @@ int stun_get_command_message_len(const stun_buffer *buf);
 ///////////////////////////////////////////////////////////////
 
 int stun_init_channel_message(uint16_t chnumber, stun_buffer *buf, int length, int do_padding);
-int stun_is_channel_message(stun_buffer *buf, uint16_t *chnumber, int is_padding_madatory);
+int stun_is_channel_message(stun_buffer *buf, uint16_t *chnumber, int is_padding_mandatory);
 
 ///////////////////////////////////////////////////////////////
 
