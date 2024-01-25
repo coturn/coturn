@@ -1056,7 +1056,7 @@ static void setup_barriers(void) {
 
 #if !defined(TURN_NO_THREAD_BARRIERS)
   {
-    if (pthread_barrier_init(&barrier, NULL, barrier_count) < 0) {
+    if (pthread_barrier_init(&barrier, NULL, barrier_count) != 0) {
       perror("barrier init");
     }
   }
@@ -1131,7 +1131,7 @@ static void setup_socket_per_endpoint_udp_listener_servers(void) {
   /* Aux UDP servers */
   for (i = 0; i < turn_params.aux_servers_list.size; i++) {
 
-    int index = i;
+    size_t index = i;
 
     if (!turn_params.no_udp || !turn_params.no_dtls) {
 

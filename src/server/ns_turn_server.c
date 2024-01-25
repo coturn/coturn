@@ -38,9 +38,10 @@
 
 #include "apputils.h" // for turn_random, base64_decode
 
-#include <stdio.h>  // for snprintf
-#include <stdlib.h> // for free, malloc, calloc, realloc
-#include <string.h> // for memcpy, strlen, strcmp
+#include <stdbool.h> // for bool, false
+#include <stdio.h>   // for snprintf
+#include <stdlib.h>  // for free, malloc, calloc, realloc
+#include <string.h>  // for memcpy, strlen, strcmp
 
 ///////////////////////////////////////////
 
@@ -295,73 +296,68 @@ static int good_peer_addr(turn_turnserver *server, const char *realm, ioa_addr *
       return 0;
     }
 
-    {
-      int i;
+    if (server->ip_whitelist) {
+      // White listing of addr ranges
+      for (int i = server->ip_whitelist->ranges_number - 1; i >= 0; --i) {
+        CHECK_REALM(server->ip_whitelist->rs[i].realm);
+        if (ioa_addr_in_range(&(server->ip_whitelist->rs[i].enc), peer_addr)) {
+          return 1;
+        }
+      }
+    }
 
-      if (server->ip_whitelist) {
+    {
+      ioa_lock_whitelist(server->e);
+
+      const ip_range_list_t *wl = ioa_get_whitelist(server->e);
+      if (wl) {
         // White listing of addr ranges
-        for (i = server->ip_whitelist->ranges_number - 1; i >= 0; --i) {
-          CHECK_REALM(server->ip_whitelist->rs[i].realm);
-          if (ioa_addr_in_range(&(server->ip_whitelist->rs[i].enc), peer_addr)) {
+        for (int i = wl->ranges_number - 1; i >= 0; --i) {
+          CHECK_REALM(wl->rs[i].realm);
+          if (ioa_addr_in_range(&(wl->rs[i].enc), peer_addr)) {
+            ioa_unlock_whitelist(server->e);
             return 1;
           }
         }
       }
 
-      {
-        ioa_lock_whitelist(server->e);
+      ioa_unlock_whitelist(server->e);
+    }
 
-        const ip_range_list_t *wl = ioa_get_whitelist(server->e);
-        if (wl) {
-          // White listing of addr ranges
-          for (i = wl->ranges_number - 1; i >= 0; --i) {
-            CHECK_REALM(wl->rs[i].realm);
-            if (ioa_addr_in_range(&(wl->rs[i].enc), peer_addr)) {
-              ioa_unlock_whitelist(server->e);
-              return 1;
-            }
-          }
+    if (server->ip_blacklist) {
+      // Black listing of addr ranges
+      for (int i = server->ip_blacklist->ranges_number - 1; i >= 0; --i) {
+        CHECK_REALM(server->ip_blacklist->rs[i].realm);
+        if (ioa_addr_in_range(&(server->ip_blacklist->rs[i].enc), peer_addr)) {
+          char saddr[129];
+          addr_to_string_no_port(peer_addr, (uint8_t *)saddr);
+          TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: A peer IP %s denied in the range: %s in server %d \n",
+                        (unsigned long long)session_id, saddr, server->ip_blacklist->rs[i].str, server_id);
+          return 0;
         }
-
-        ioa_unlock_whitelist(server->e);
       }
+    }
 
-      if (server->ip_blacklist) {
+    {
+      ioa_lock_blacklist(server->e);
+
+      const ip_range_list_t *bl = ioa_get_blacklist(server->e);
+      if (bl) {
         // Black listing of addr ranges
-        for (i = server->ip_blacklist->ranges_number - 1; i >= 0; --i) {
-          CHECK_REALM(server->ip_blacklist->rs[i].realm);
-          if (ioa_addr_in_range(&(server->ip_blacklist->rs[i].enc), peer_addr)) {
+        for (int i = bl->ranges_number - 1; i >= 0; --i) {
+          CHECK_REALM(bl->rs[i].realm);
+          if (ioa_addr_in_range(&(bl->rs[i].enc), peer_addr)) {
+            ioa_unlock_blacklist(server->e);
             char saddr[129];
             addr_to_string_no_port(peer_addr, (uint8_t *)saddr);
-            TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: A peer IP %s denied in the range: %s in server %d \n",
-                          (unsigned long long)session_id, saddr, server->ip_blacklist->rs[i].str, server_id);
+            TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: A peer IP %s denied in the range= %s in server %d \n",
+                          (unsigned long long)session_id, saddr, bl->rs[i].str, server_id);
             return 0;
           }
         }
       }
 
-      {
-        ioa_lock_blacklist(server->e);
-
-        const ip_range_list_t *bl = ioa_get_blacklist(server->e);
-        if (bl) {
-          // Black listing of addr ranges
-          for (i = bl->ranges_number - 1; i >= 0; --i) {
-            CHECK_REALM(bl->rs[i].realm);
-            if (ioa_addr_in_range(&(bl->rs[i].enc), peer_addr)) {
-              ioa_unlock_blacklist(server->e);
-              char saddr[129];
-              addr_to_string_no_port(peer_addr, (uint8_t *)saddr);
-              TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
-                            "session %018llu: A peer IP %s denied in the range= %s in server %d \n",
-                            (unsigned long long)session_id, saddr, bl->rs[i].str, server_id);
-              return 0;
-            }
-          }
-        }
-
-        ioa_unlock_blacklist(server->e);
-      }
+      ioa_unlock_blacklist(server->e);
     }
   }
 

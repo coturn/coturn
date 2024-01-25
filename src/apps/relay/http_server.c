@@ -56,23 +56,24 @@ static void write_http_echo(ioa_socket_handle s) {
   if (s && !ioa_socket_tobeclosed(s)) {
     SOCKET_APP_TYPE sat = get_ioa_socket_app_type(s);
     if ((sat == HTTP_CLIENT_SOCKET) || (sat == HTTPS_CLIENT_SOCKET)) {
-      ioa_network_buffer_handle nbh_http = ioa_network_buffer_allocate(s->e);
-      size_t len_http = ioa_network_buffer_get_size(nbh_http);
-      uint8_t *data = ioa_network_buffer_data(nbh_http);
-      char data_http[1025];
       char content_http[1025];
-      const char *title = "TURN Server";
+      const char *const title = "TURN Server";
       snprintf(content_http, sizeof(content_http) - 1,
                "<!DOCTYPE html>\r\n<html>\r\n  <head>\r\n    <title>%s</title>\r\n  </head>\r\n  <body>\r\n    "
                "<b>%s</b> <br> <b><i>use https connection for the admin session</i></b>\r\n  </body>\r\n</html>\r\n",
                title, title);
-      snprintf(
-          data_http, sizeof(data_http) - 1,
-          "HTTP/1.0 200 OK\r\nServer: %s\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Length: %d\r\n\r\n%.906s",
-          TURN_SOFTWARE, (int)strlen(content_http), content_http);
-      len_http = strlen(data_http);
-      memcpy(data, data_http, len_http);
-      ioa_network_buffer_set_size(nbh_http, len_http);
+
+      char data_http[1025];
+      snprintf(data_http, sizeof(data_http) - 1,
+               "HTTP/1.0 200 OK\r\nServer: %s\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Length: "
+               "%zu\r\n\r\n%.906s",
+               TURN_SOFTWARE, strlen(content_http), content_http);
+
+      ioa_network_buffer_handle nbh_http = ioa_network_buffer_allocate(s->e);
+      char *data = ioa_network_buffer_data(nbh_http);
+
+      strcpy(data, data_http);
+      ioa_network_buffer_set_size(nbh_http, strlen(data_http));
       send_data_from_ioa_socket_nbh(s, NULL, nbh_http, TTL_IGNORE, TOS_IGNORE, NULL);
     }
   }

@@ -29,13 +29,13 @@
  */
 
 #include "apputils.h"
+#include "ns_turn_defs.h" // for NULL, STRCPY
 #include "ns_turn_utils.h"
 #include "udpserver.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 #if defined(_MSC_VER)
 #include <getopt.h>
 #else
