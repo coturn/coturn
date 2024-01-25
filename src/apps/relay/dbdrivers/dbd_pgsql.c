@@ -145,9 +145,8 @@ static int pgsql_get_user_key(uint8_t *usname, uint8_t *realm, hmackey_t key) {
         size_t sz = get_hmackey_size(SHATYPE_DEFAULT);
         if (((size_t)len < sz * 2) || (strlen(kval) < sz * 2)) {
           TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key format: %s, user %s\n", kval, usname);
-        } else if (convert_string_key_to_binary(kval, key, sz) < 0) {
-          TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key: %s, user %s\n", kval, usname);
         } else {
+          convert_string_key_to_binary(kval, key, sz);
           ret = 0;
         }
       } else {
