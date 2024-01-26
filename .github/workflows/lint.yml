@@ -13,17 +13,23 @@ jobs:
     steps:
     - name: Install dependencies
       run: |
-        sudo apt-get update
-        sudo apt-get install -y \
+        sudo apt update
+        sudo apt install -y clang-format-15
+        sudo apt install -y \
             libevent-dev \
             libssl-dev \
             libpq-dev libmariadb-dev libsqlite3-dev \
             libhiredis-dev \
             libmongoc-dev \
             libmicrohttpd-dev \
-            clang-format
     - uses: actions/checkout@v4
     - name: configure
       run: ./configure
     - name: lint
-      run: clang-format --version && make lint
+      run: |
+        if which clang-format-15 2>&1 >/dev/null
+        then
+            sudo cp $(which clang-format-15) $(which clang-format)
+        fi
+        clang-format --version
+        make lint

@@ -64,30 +64,35 @@ static int run_stunclient(const char *rip, int rport, int *port, int *rfc5780, i
   int new_udp_fd = -1;
 
   memset((void *)&remote_addr, 0, sizeof(ioa_addr));
-  if (make_ioa_addr((const uint8_t *)rip, rport, &remote_addr) < 0)
+  if (make_ioa_addr((const uint8_t *)rip, rport, &remote_addr) < 0) {
     err(-1, NULL);
+  }
 
   if (udp_fd < 0) {
     udp_fd = socket(remote_addr.ss.sa_family, SOCK_DGRAM, 0);
-    if (udp_fd < 0)
+    if (udp_fd < 0) {
       err(-1, NULL);
+    }
 
     if (!addr_any(&real_local_addr)) {
-      if (addr_bind(udp_fd, &real_local_addr, 0, 1, UDP_SOCKET) < 0)
+      if (addr_bind(udp_fd, &real_local_addr, 0, 1, UDP_SOCKET) < 0) {
         err(-1, NULL);
+      }
     }
   }
 
   if (response_port >= 0) {
 
     new_udp_fd = socket(remote_addr.ss.sa_family, SOCK_DGRAM, 0);
-    if (new_udp_fd < 0)
+    if (new_udp_fd < 0) {
       err(-1, NULL);
+    }
 
     addr_set_port(&real_local_addr, response_port);
 
-    if (addr_bind(new_udp_fd, &real_local_addr, 0, 1, UDP_SOCKET) < 0)
+    if (addr_bind(new_udp_fd, &real_local_addr, 0, 1, UDP_SOCKET) < 0) {
       err(-1, NULL);
+    }
   }
 
   turn::StunMsgRequest req(STUN_METHOD_BINDING);
@@ -152,8 +157,9 @@ static int run_stunclient(const char *rip, int rport, int *port, int *rfc5780, i
       len = sendto(udp_fd, req.getRawBuffer(), req.getSize(), 0, (struct sockaddr *)&remote_addr, (socklen_t)slen);
     } while (len < 0 && (socket_eintr() || socket_enobufs() || socket_eagain()));
 
-    if (len < 0)
+    if (len < 0) {
       err(-1, NULL);
+    }
   }
 
   if (addr_get_from_sock(udp_fd, &real_local_addr) < 0) {
@@ -186,8 +192,9 @@ static int run_stunclient(const char *rip, int rport, int *port, int *rfc5780, i
       }
     } while (len < 0 && socket_eintr());
 
-    if (recvd > 0)
+    if (recvd > 0) {
       len = recvd;
+    }
     buf.len = len;
 
     try {
@@ -259,30 +266,35 @@ static int run_stunclient(const char *rip, int rport, int *port, int *rfc5780, i
   stun_buffer buf;
 
   memset(&remote_addr, 0, sizeof(remote_addr));
-  if (make_ioa_addr((const uint8_t *)rip, rport, &remote_addr) < 0)
+  if (make_ioa_addr((const uint8_t *)rip, rport, &remote_addr) < 0) {
     err(-1, NULL);
+  }
 
   if (udp_fd < 0) {
     udp_fd = socket(remote_addr.ss.sa_family, CLIENT_DGRAM_SOCKET_TYPE, CLIENT_DGRAM_SOCKET_PROTOCOL);
-    if (udp_fd < 0)
+    if (udp_fd < 0) {
       err(-1, NULL);
+    }
 
     if (!addr_any(&real_local_addr)) {
-      if (addr_bind(udp_fd, &real_local_addr, 0, 1, UDP_SOCKET) < 0)
+      if (addr_bind(udp_fd, &real_local_addr, 0, 1, UDP_SOCKET) < 0) {
         err(-1, NULL);
+      }
     }
   }
 
   if (response_port >= 0) {
 
     new_udp_fd = socket(remote_addr.ss.sa_family, CLIENT_DGRAM_SOCKET_TYPE, CLIENT_DGRAM_SOCKET_PROTOCOL);
-    if (new_udp_fd < 0)
+    if (new_udp_fd < 0) {
       err(-1, NULL);
+    }
 
     addr_set_port(&real_local_addr, response_port);
 
-    if (addr_bind(new_udp_fd, &real_local_addr, 0, 1, UDP_SOCKET) < 0)
+    if (addr_bind(new_udp_fd, &real_local_addr, 0, 1, UDP_SOCKET) < 0) {
       err(-1, NULL);
+    }
   }
 
   stun_prepare_binding_request(&buf);
@@ -307,8 +319,9 @@ static int run_stunclient(const char *rip, int rport, int *port, int *rfc5780, i
       len = sendto(udp_fd, buf.buf, buf.len, 0, (struct sockaddr *)&remote_addr, (socklen_t)slen);
     } while (len < 0 && (socket_eintr() || socket_enobufs() || socket_eagain()));
 
-    if (len < 0)
+    if (len < 0) {
       err(-1, NULL);
+    }
   }
 
   if (addr_get_from_sock(udp_fd, &real_local_addr) < 0) {
@@ -340,8 +353,9 @@ static int run_stunclient(const char *rip, int rport, int *port, int *rfc5780, i
       }
     } while (len < 0 && (socket_eintr() || socket_eagain()));
 
-    if (recvd > 0)
+    if (recvd > 0) {
       len = recvd;
+    }
     buf.len = len;
 
     if (stun_is_command_message(&buf)) {
@@ -417,8 +431,9 @@ int main(int argc, char **argv) {
   int c = 0;
   int forceRfc5780 = 0;
 
-  if (socket_init())
+  if (socket_init()) {
     return -1;
+  }
 
   set_logfile("stdout");
   set_no_stdout_log(1);

@@ -119,9 +119,9 @@ static struct headers_list *post_parse(char *data, size_t data_len) {
       while (fsplit != NULL) {
         char *vmarker = NULL;
         char *key = strtok_r(fsplit, "=", &vmarker);
-        if (key == NULL)
+        if (key == NULL) {
           break;
-        else {
+        } else {
           char *value = strtok_r(NULL, "=", &vmarker);
           char empty[1];
           empty[0] = 0;
@@ -129,8 +129,9 @@ static struct headers_list *post_parse(char *data, size_t data_len) {
           value = evhttp_decode_uri(value);
           char *p = value;
           while (*p) {
-            if (*p == '+')
+            if (*p == '+') {
               *p = ' ';
+            }
             p++;
           }
           list->keys = (char **)realloc(list->keys, sizeof(char *) * (list->n + 1));
@@ -178,8 +179,9 @@ static struct http_request *parse_http_request_1(struct http_request *ret, char 
         }
 
         const char *path = evhttp_uri_get_path(uri);
-        if (path && ret)
+        if (path && ret) {
           ret->path = strdup(path);
+        }
 
         evhttp_uri_free(uri);
 

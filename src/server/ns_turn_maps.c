@@ -73,9 +73,9 @@ ur_map *ur_map_create(void) {
  * -1 - error
  */
 int ur_map_put(ur_map *map, ur_map_key_type key, ur_map_value_type value) {
-  if (!ur_map_valid(map))
+  if (!ur_map_valid(map)) {
     return -1;
-  else {
+  } else {
 
     int ret = 0;
     khiter_t k;
@@ -104,16 +104,17 @@ int ur_map_put(ur_map *map, ur_map_key_type key, ur_map_value_type value) {
  * 0 - not found
  */
 int ur_map_get(const ur_map *map, ur_map_key_type key, ur_map_value_type *value) {
-  if (!ur_map_valid(map))
+  if (!ur_map_valid(map)) {
     return 0;
-  else {
+  } else {
 
     khiter_t k;
 
     k = kh_get(3, map->h, key);
     if ((k != kh_end(map->h)) && kh_exist(map->h, k)) {
-      if (value)
+      if (value) {
         *value = kh_value(map->h, k);
+      }
       return 1;
     }
 
@@ -127,9 +128,9 @@ int ur_map_get(const ur_map *map, ur_map_key_type key, ur_map_value_type *value)
  * 0 - not found
  */
 int ur_map_del(ur_map *map, ur_map_key_type key, ur_map_del_func delfunc) {
-  if (!ur_map_valid(map))
+  if (!ur_map_valid(map)) {
     return 0;
-  else {
+  } else {
 
     khiter_t k;
 
@@ -152,9 +153,9 @@ int ur_map_del(ur_map *map, ur_map_key_type key, ur_map_del_func delfunc) {
  * 0 - not found
  */
 int ur_map_exist(const ur_map *map, ur_map_key_type key) {
-  if (!ur_map_valid(map))
+  if (!ur_map_valid(map)) {
     return 0;
-  else {
+  } else {
 
     khiter_t k;
 
@@ -171,8 +172,9 @@ void ur_map_free(ur_map **map) {
   if (map && ur_map_valid(*map)) {
     {
       static int khctest = 0;
-      if (khctest)
+      if (khctest) {
         kh_clear(3, (*map)->h);
+      }
     }
     kh_destroy(3, (*map)->h);
     (*map)->h = NULL;
@@ -355,8 +357,9 @@ int lm_map_get(const lm_map *map, ur_map_key_type key, ur_map_value_type *value)
         ur_map_value_type *valuep = a->extra_values[i];
         if (keyp && valuep) {
           if (*keyp == key) {
-            if (value)
+            if (value) {
               *value = *valuep;
+            }
             return 1;
           }
         }
@@ -402,8 +405,9 @@ int lm_map_del(lm_map *map, ur_map_key_type key, ur_map_del_func delfunc) {
         ur_map_value_type *valuep = a->extra_values[i];
         if (keyp && valuep) {
           if (*keyp == key) {
-            if (delfunc)
+            if (delfunc) {
               delfunc(*valuep);
+            }
             *keyp = 0;
             *valuep = 0;
             return 1;
@@ -580,8 +584,9 @@ static void addr_list_free(addr_list_header *slh) {
 
 static void addr_list_add(addr_list_header *slh, const ioa_addr *key, ur_addr_map_value_type value) {
 
-  if (!key || !value)
+  if (!key || !value) {
     return;
+  }
 
   addr_elem *elem = NULL;
   size_t i;
@@ -615,11 +620,13 @@ static void addr_list_add(addr_list_header *slh, const ioa_addr *key, ur_addr_ma
 }
 
 static void addr_list_remove(addr_list_header *slh, const ioa_addr *key, ur_addr_map_func delfunc, int *counter) {
-  if (!slh || !key)
+  if (!slh || !key) {
     return;
+  }
 
-  if (counter)
+  if (counter) {
     *counter = 0;
+  }
 
   size_t i;
 
@@ -627,8 +634,9 @@ static void addr_list_remove(addr_list_header *slh, const ioa_addr *key, ur_addr
     addr_elem *elem = &(slh->main_list[i]);
     if (elem->value) {
       if (addr_eq(&(elem->key), key)) {
-        if (delfunc && elem->value)
+        if (delfunc && elem->value) {
           delfunc(elem->value);
+        }
         elem->value = 0;
         if (counter) {
           *counter += 1;
@@ -642,8 +650,9 @@ static void addr_list_remove(addr_list_header *slh, const ioa_addr *key, ur_addr
       addr_elem *elem = &(slh->extra_list[i]);
       if (elem->value) {
         if (addr_eq(&(elem->key), key)) {
-          if (delfunc && elem->value)
+          if (delfunc && elem->value) {
             delfunc(elem->value);
+          }
           elem->value = 0;
           if (counter) {
             *counter += 1;
@@ -721,8 +730,9 @@ static size_t addr_list_size(const addr_list_header *slh) {
 
 static addr_elem *addr_list_get(addr_list_header *slh, const ioa_addr *key) {
 
-  if (!slh || !key)
+  if (!slh || !key) {
     return NULL;
+  }
 
   size_t i;
 
@@ -751,8 +761,9 @@ static addr_elem *addr_list_get(addr_list_header *slh, const ioa_addr *key) {
 
 static const addr_elem *addr_list_get_const(const addr_list_header *slh, const ioa_addr *key) {
 
-  if (!slh || !key)
+  if (!slh || !key) {
     return NULL;
+  }
 
   size_t i;
 
@@ -812,8 +823,9 @@ void ur_addr_map_clean(ur_addr_map *map) {
  */
 int ur_addr_map_put(ur_addr_map *map, ioa_addr *key, ur_addr_map_value_type value) {
 
-  if (!ur_addr_map_valid(map))
+  if (!ur_addr_map_valid(map)) {
     return -1;
+  }
 
   else {
 
@@ -837,8 +849,9 @@ int ur_addr_map_put(ur_addr_map *map, ioa_addr *key, ur_addr_map_value_type valu
  */
 int ur_addr_map_get(const ur_addr_map *map, ioa_addr *key, ur_addr_map_value_type *value) {
 
-  if (!ur_addr_map_valid(map))
+  if (!ur_addr_map_valid(map)) {
     return 0;
+  }
 
   else {
 
@@ -846,8 +859,9 @@ int ur_addr_map_get(const ur_addr_map *map, ioa_addr *key, ur_addr_map_value_typ
 
     const addr_elem *elem = addr_list_get_const(slh, key);
     if (elem) {
-      if (value)
+      if (value) {
         *value = elem->value;
+      }
       return 1;
     }
 
@@ -862,8 +876,9 @@ int ur_addr_map_get(const ur_addr_map *map, ioa_addr *key, ur_addr_map_value_typ
  */
 int ur_addr_map_del(ur_addr_map *map, ioa_addr *key, ur_addr_map_func delfunc) {
 
-  if (!ur_addr_map_valid(map))
+  if (!ur_addr_map_valid(map)) {
     return 0;
+  }
 
   else {
 
@@ -948,8 +963,9 @@ typedef struct _string_list_header {
 } string_list_header;
 
 static size_t string_list_size(const string_list *sl) {
-  if (!sl)
+  if (!sl) {
     return 0;
+  }
   return 1 + string_list_size(sl->next);
 }
 
@@ -959,10 +975,12 @@ static void string_list_free(string_list_header *slh, ur_string_map_func del_val
     while (list) {
       string_elem *elem = (string_elem *)list;
       string_list *tail = elem->list.next;
-      if (elem->key)
+      if (elem->key) {
         free(elem->key);
-      if (del_value_func && elem->value)
+      }
+      if (del_value_func && elem->value) {
         del_value_func(elem->value);
+      }
       free(elem);
       list = tail;
     }
@@ -971,8 +989,9 @@ static void string_list_free(string_list_header *slh, ur_string_map_func del_val
 }
 
 static string_list *string_list_add(string_list *sl, const ur_string_map_key_type key, ur_string_map_value_type value) {
-  if (!key)
+  if (!key) {
     return sl;
+  }
   string_elem *elem = (string_elem *)malloc(sizeof(string_elem));
   elem->list.next = sl;
   elem->key_size = strlen(key) + 1;
@@ -984,17 +1003,20 @@ static string_list *string_list_add(string_list *sl, const ur_string_map_key_typ
 
 static string_list *string_list_remove(string_list *sl, const ur_string_map_key_type key,
                                        ur_string_map_func del_value_func, int *counter) {
-  if (!sl || !key)
+  if (!sl || !key) {
     return sl;
+  }
   string_elem *elem = (string_elem *)sl;
   string_list *tail = elem->list.next;
   if (strcmp(elem->key, key) == 0) {
     free(elem->key);
-    if (del_value_func)
+    if (del_value_func) {
       del_value_func(elem->value);
+    }
     free(elem);
-    if (counter)
+    if (counter) {
       *counter += 1;
+    }
     sl = string_list_remove(tail, key, del_value_func, counter);
   } else {
     elem->list.next = string_list_remove(tail, key, del_value_func, counter);
@@ -1004,8 +1026,9 @@ static string_list *string_list_remove(string_list *sl, const ur_string_map_key_
 
 static string_elem *string_list_get(string_list *sl, const ur_string_map_key_type key) {
 
-  if (!sl || !key)
+  if (!sl || !key) {
     return NULL;
+  }
 
   string_elem *elem = (string_elem *)sl;
   if (strcmp(elem->key, key) == 0) {
@@ -1033,8 +1056,9 @@ static uint32_t string_hash(const ur_string_map_key_type key) {
   uint32_t hash = 0;
   int c = 0;
 
-  while ((c = *str++))
+  while ((c = *str++)) {
     hash = c + (hash << 6) + (hash << 16) - hash;
+  }
 
   return hash;
 }
@@ -1077,8 +1101,9 @@ ur_string_map *ur_string_map_create(ur_string_map_func del_value_func) {
  */
 int ur_string_map_put(ur_string_map *map, const ur_string_map_key_type key, ur_string_map_value_type value) {
 
-  if (!ur_string_map_valid(map))
+  if (!ur_string_map_valid(map)) {
     return -1;
+  }
 
   else {
 
@@ -1087,8 +1112,9 @@ int ur_string_map_put(ur_string_map *map, const ur_string_map_key_type key, ur_s
     string_elem *elem = string_list_get(slh->list, key);
     if (elem) {
       if (elem->value != value) {
-        if (map->del_value_func)
+        if (map->del_value_func) {
           map->del_value_func(elem->value);
+        }
         elem->value = value;
       }
       return 0;
@@ -1107,16 +1133,18 @@ int ur_string_map_put(ur_string_map *map, const ur_string_map_key_type key, ur_s
  */
 int ur_string_map_get(ur_string_map *map, const ur_string_map_key_type key, ur_string_map_value_type *value) {
 
-  if (!ur_string_map_valid(map))
+  if (!ur_string_map_valid(map)) {
     return 0;
+  }
 
   else {
 
     string_list_header *slh = get_string_list_header(map, key);
     string_elem *elem = string_list_get(slh->list, key);
     if (elem) {
-      if (value)
+      if (value) {
         *value = elem->value;
+      }
       return 1;
     } else {
       return 0;
@@ -1131,8 +1159,9 @@ int ur_string_map_get(ur_string_map *map, const ur_string_map_key_type key, ur_s
  */
 int ur_string_map_del(ur_string_map *map, const ur_string_map_key_type key) {
 
-  if (!ur_string_map_valid(map))
+  if (!ur_string_map_valid(map)) {
     return 0;
+  }
 
   else {
 

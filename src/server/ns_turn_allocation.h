@@ -54,8 +54,9 @@ typedef struct {
 } relay_endpoint_session;
 
 static inline void clear_relay_endpoint_session_data(relay_endpoint_session *cdi) {
-  if (cdi)
+  if (cdi) {
     IOA_CLOSE_SOCKET(cdi->s);
+  }
 }
 
 ////////// RFC 6062 TCP connection ////////
