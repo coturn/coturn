@@ -443,14 +443,16 @@ int main(int argc, char **argv) {
   }
 
   if (port == 0) {
-    if (use_secure)
+    if (use_secure) {
       port = DEFAULT_STUN_TLS_PORT;
-    else
+    } else {
       port = DEFAULT_STUN_PORT;
+    }
   }
 
-  if (clmessage_length < (int)sizeof(message_info))
+  if (clmessage_length < (int)sizeof(message_info)) {
     clmessage_length = (int)sizeof(message_info);
+  }
 
   const int max_header = 100;
   if (clmessage_length > (int)(STUN_BUFFER_SIZE - max_header)) {
@@ -488,10 +490,11 @@ int main(int argc, char **argv) {
     OpenSSL_add_ssl_algorithms();
 
     const char *csuite = "ALL"; //"AES256-SHA" "DH"
-    if (use_null_cipher)
+    if (use_null_cipher) {
       csuite = "eNULL";
-    else if (cipher_suite[0])
+    } else if (cipher_suite[0]) {
       csuite = cipher_suite;
+    }
 
     if (use_tcp) {
 #if OPENSSL_VERSION_NUMBER < 0x10100000L

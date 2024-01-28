@@ -63,12 +63,14 @@ static int init_socket(int *socketfd, ioa_addr *local_addr, int local_port, ioa_
   }
 
   *socketfd = socket(remote_addr->ss.sa_family, SOCK_DGRAM, 0);
-  if (udp_fd < 0)
+  if (udp_fd < 0) {
     err(-1, NULL);
+  }
 
   if (!addr_any(local_addr)) {
-    if (addr_bind(*socketfd, local_addr, 0, 1, UDP_SOCKET) < 0)
+    if (addr_bind(*socketfd, local_addr, 0, 1, UDP_SOCKET) < 0) {
       err(-1, NULL);
+    }
   }
 
   return ret;
@@ -140,8 +142,9 @@ static int stunclient_send(int sockfd, ioa_addr *local_addr, int *local_port, io
       len = sendto(sockfd, req.getRawBuffer(), req.getSize(), 0, (struct sockaddr *)remote_addr, (socklen_t)slen);
     } while (len < 0 && (socket_eintr() || socket_enobufs() || socket_eagain()));
 
-    if (len < 0)
+    if (len < 0) {
       err(-1, NULL);
+    }
   }
 
   if (addr_get_from_sock(sockfd, local_addr) < 0) {
@@ -184,8 +187,9 @@ static int stunclient_receive(int sockfd, ioa_addr *local_addr, ioa_addr *reflex
       ret = 1;
       return ret;
     }
-    if (recvd > 0)
+    if (recvd > 0) {
       len = recvd;
+    }
     buf.len = len;
 
     try {
@@ -336,8 +340,9 @@ static int init_socket(int *socketfd, ioa_addr *local_addr, int local_port, ioa_
   int ret = 0;
 
   *socketfd = socket(remote_addr->ss.sa_family, CLIENT_DGRAM_SOCKET_TYPE, CLIENT_DGRAM_SOCKET_PROTOCOL);
-  if (udp_fd < 0)
+  if (udp_fd < 0) {
     err(-1, NULL);
+  }
 
   if (local_port >= 0) {
     addr_set_port(local_addr, local_port);
@@ -377,8 +382,9 @@ static int stunclient_send(stun_buffer *buf, int sockfd, ioa_addr *local_addr, i
       len = sendto(sockfd, buf->buf, buf->len, 0, (struct sockaddr *)remote_addr, (socklen_t)slen);
     } while (len < 0 && (socket_eintr() || socket_enobufs() || socket_eagain()));
 
-    if (len < 0)
+    if (len < 0) {
       err(-1, NULL);
+    }
   }
 
   if (addr_get_from_sock(sockfd, local_addr) < 0) {
@@ -415,8 +421,9 @@ static int stunclient_receive(stun_buffer *buf, int sockfd, ioa_addr *local_addr
       }
     } while (len < 0 && socket_eintr());
 
-    if (recvd > 0)
+    if (recvd > 0) {
       len = recvd;
+    }
     buf->len = len;
 
     if (stun_is_command_message(buf)) {
@@ -601,12 +608,14 @@ static void init(int first, ioa_addr *local_addr, ioa_addr *remote_addr, int *lo
       err(-1, NULL);
     }
   }
-  if (!first)
+  if (!first) {
     *local_port = -1;
+  }
   *rfc5780 = 0;
 
-  if (make_ioa_addr((const uint8_t *)remote_param, port, remote_addr) < 0)
+  if (make_ioa_addr((const uint8_t *)remote_param, port, remote_addr) < 0) {
     err(-1, NULL);
+  }
 }
 
 static void discoveryresult(const char *decision) {
@@ -632,8 +641,9 @@ int main(int argc, char **argv) {
   int first = 1;
   ioa_addr other_addr, reflexive_addr, tmp_addr, remote_addr, local_addr, local2_addr;
 
-  if (socket_init())
+  if (socket_init()) {
     return -1;
+  }
 
   set_logfile("stdout");
   set_no_stdout_log(1);

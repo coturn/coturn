@@ -24,7 +24,6 @@ extern int LLVMFuzzerTestOneInput(const uint8_t *Data,
   uint8_t realm[33];
   uint8_t upwd[33];
   strcpy((char *)upwd, "VOkJxbRl1RmTxUk/WvJxBt");
-  stun_check_message_integrity_str(TURN_CREDENTIALS_SHORT_TERM, (uint8_t *)Data,
-                                   Size, uname, realm, upwd, shatype);
+  stun_check_message_integrity_str(TURN_CREDENTIALS_SHORT_TERM, (uint8_t *)Data, Size, uname, realm, upwd, shatype);
   return 0;
 }

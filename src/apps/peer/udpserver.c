@@ -36,8 +36,9 @@
 
 static void udp_server_input_handler(evutil_socket_t fd, short what, void *arg) {
 
-  if (!(what & EV_READ))
+  if (!(what & EV_READ)) {
     return;
+  }
 
   ioa_addr *addr = (ioa_addr *)arg;
 
@@ -63,19 +64,22 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void *arg) 
 
 static int udp_create_server_socket(server_type *server, const char *ifname, const char *local_address, int port) {
 
-  if (server && server->verbose)
+  if (server && server->verbose) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Start\n");
+  }
 
-  if (!server)
+  if (!server) {
     return -1;
+  }
 
   evutil_socket_t udp_fd = -1;
   ioa_addr *server_addr = (ioa_addr *)malloc(sizeof(ioa_addr));
 
   STRCPY(server->ifname, ifname);
 
-  if (make_ioa_addr((const uint8_t *)local_address, port, server_addr) < 0)
+  if (make_ioa_addr((const uint8_t *)local_address, port, server_addr) < 0) {
     return -1;
+  }
 
   udp_fd = socket(server_addr->ss.sa_family, RELAY_DGRAM_SOCKET_TYPE, RELAY_DGRAM_SOCKET_PROTOCOL);
   if (udp_fd < 0) {
@@ -90,8 +94,9 @@ static int udp_create_server_socket(server_type *server, const char *ifname, con
 
   set_sock_buf_size(udp_fd, UR_SERVER_SOCK_BUF_SIZE);
 
-  if (addr_bind(udp_fd, server_addr, 1, 1, UDP_SOCKET) < 0)
+  if (addr_bind(udp_fd, server_addr, 1, 1, UDP_SOCKET) < 0) {
     return -1;
+  }
 
   socket_set_nonblocking(udp_fd);
 
@@ -100,8 +105,9 @@ static int udp_create_server_socket(server_type *server, const char *ifname, con
 
   event_add(udp_ev, NULL);
 
-  if (server && server->verbose)
+  if (server && server->verbose) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "End\n");
+  }
 
   return 0;
 }
@@ -110,8 +116,9 @@ static server_type *init_server(int verbose, const char *ifname, char **local_ad
 
   server_type *server = (server_type *)malloc(sizeof(server_type));
 
-  if (!server)
+  if (!server) {
     return server;
+  }
 
   memset(server, 0, sizeof(server_type));
 
@@ -129,8 +136,9 @@ static server_type *init_server(int verbose, const char *ifname, char **local_ad
 
 static int clean_server(server_type *server) {
   if (server) {
-    if (server->event_base)
+    if (server->event_base) {
       event_base_free(server->event_base);
+    }
     free(server);
   }
   return 0;
@@ -140,8 +148,9 @@ static int clean_server(server_type *server) {
 
 static void run_events(server_type *server) {
 
-  if (!server)
+  if (!server) {
     return;
+  }
 
   struct timeval timeout;
 
@@ -174,8 +183,9 @@ void run_udp_server(server_type *server) {
 }
 
 void clean_udp_server(server_type *server) {
-  if (server)
+  if (server) {
     clean_server(server);
+  }
 }
 
 //////////////////////////////////////////////////////////////////

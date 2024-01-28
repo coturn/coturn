@@ -147,8 +147,9 @@ static int donot_print_connection_success = 0;
 
 static void fix_user_directory(char *dir0) {
   char *dir = dir0;
-  while (*dir == ' ')
+  while (*dir == ' ') {
     ++dir;
+  }
 #if defined(__unix__) || defined(unix) || defined(__APPLE__)
   if (*dir == '~') {
     char *home = getenv("HOME");
@@ -268,8 +269,9 @@ static int sqlite_get_auth_secrets(secrets_list_t *sl, uint8_t *realm) {
         if (res == SQLITE_ROW) {
 
           int type = sqlite3_column_type(st, 0);
-          if (type != SQLITE_NULL)
+          if (type != SQLITE_NULL) {
             add_to_secrets_list(sl, (const char *)sqlite3_column_text(st, 0));
+          }
 
         } else if (res == SQLITE_DONE) {
           break;
@@ -574,8 +576,9 @@ static int sqlite_list_users(uint8_t *realm, secrets_list_t *users, secrets_list
   int rc = 0;
 
   uint8_t realm0[STUN_MAX_REALM_SIZE + 1] = "\0";
-  if (!realm)
+  if (!realm) {
     realm = realm0;
+  }
 
   donot_print_connection_success = 1;
 
@@ -638,8 +641,9 @@ static int sqlite_list_secrets(uint8_t *realm, secrets_list_t *secrets, secrets_
   char statement[TURN_LONG_STRING_SIZE];
 
   uint8_t realm0[STUN_MAX_REALM_SIZE + 1] = "\0";
-  if (!realm)
+  if (!realm) {
     realm = realm0;
+  }
 
   sqlite3_stmt *st = NULL;
   int rc = 0;
@@ -707,10 +711,11 @@ static int sqlite_del_secret(uint8_t *secret, uint8_t *realm) {
 
   sqlite3 *sqliteconnection = get_sqlite_connection();
   if (sqliteconnection) {
-    if (!secret || (secret[0] == 0))
+    if (!secret || (secret[0] == 0)) {
       snprintf(statement, sizeof(statement), "delete from turn_secret where realm='%s'", realm);
-    else
+    } else {
       snprintf(statement, sizeof(statement), "delete from turn_secret where value='%s' and realm='%s'", secret, realm);
+    }
 
     sqlite_lock(1);
 
@@ -816,8 +821,9 @@ static int sqlite_list_origins(uint8_t *realm, secrets_list_t *origins, secrets_
   int ret = -1;
 
   uint8_t realm0[STUN_MAX_REALM_SIZE + 1] = "\0";
-  if (!realm)
+  if (!realm) {
     realm = realm0;
+  }
 
   donot_print_connection_success = 1;
 
@@ -1012,8 +1018,9 @@ static int sqlite_set_permission_ip(const char *kind, uint8_t *realm, const char
   int ret = -1;
 
   uint8_t realm0[STUN_MAX_REALM_SIZE + 1] = "\0";
-  if (!realm)
+  if (!realm) {
     realm = realm0;
+  }
 
   char statement[TURN_LONG_STRING_SIZE];
 
@@ -1140,13 +1147,13 @@ static void sqlite_reread_realms(secrets_list_t *realms_list) {
             const char *vval = (const char *)sqlite3_column_text(st, 2);
 
             realm_params_t *rp = get_realm(rval);
-            if (!strcmp(oval, "max-bps"))
+            if (!strcmp(oval, "max-bps")) {
               rp->options.perf_options.max_bps = (band_limit_t)strtoul(vval, NULL, 10);
-            else if (!strcmp(oval, "total-quota"))
+            } else if (!strcmp(oval, "total-quota")) {
               rp->options.perf_options.total_quota = (vint)atoi(vval);
-            else if (!strcmp(oval, "user-quota"))
+            } else if (!strcmp(oval, "user-quota")) {
               rp->options.perf_options.user_quota = (vint)atoi(vval);
-            else {
+            } else {
               TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown realm option: %s\n", oval);
             }
 

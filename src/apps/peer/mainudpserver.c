@@ -61,8 +61,9 @@ int main(int argc, char **argv) {
   int c;
   char ifname[1025] = "\0";
 
-  if (socket_init())
+  if (socket_init()) {
     return -1;
+  }
 
   IS_TURN_SERVER = 1;
 
@@ -70,7 +71,7 @@ int main(int argc, char **argv) {
   set_no_stdout_log(1);
   set_system_parameters(0);
 
-  while ((c = getopt(argc, argv, "d:p:L:v")) != -1)
+  while ((c = getopt(argc, argv, "d:p:L:v")) != -1) {
     switch (c) {
     case 'd':
       STRCPY(ifname, optarg);
@@ -89,6 +90,7 @@ int main(int argc, char **argv) {
       fprintf(stderr, "%s\n", Usage);
       exit(1);
     }
+  }
 
   if (las < 1) {
     local_addr_list = (char **)realloc(local_addr_list, ++las * sizeof(char *));
