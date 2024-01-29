@@ -3,7 +3,7 @@ description: 'install required build dependencies for ubuntu'
 inputs:
 
   SUDO:
-    description: "set to true to run apt as root"
+    description: "set to sudo to run apt as root"
     required: false
     default: ""
 
@@ -26,7 +26,7 @@ runs:
             iwyu \
             pkgconf \
             wget 
-        if [ ${{ matrix.os }} != 'ubuntu:16.04' ]; then apt install -y clang-tools; fi
+        if [ "$(lsb_release -s -r)x" == "16.04x" ]; then apt install -y clang-tools; fi
 
     - name: install coturn dependencies
       shell: bash
@@ -39,8 +39,8 @@ runs:
             libhiredis-dev \
             libmongoc-dev \
             libmicrohttpd-dev
-        if [ ${{ matrix.os }} = 'ubuntu:16.04' ]; then apt-get install -y libmariadb-client-lgpl-dev; fi
-        if [ ${{ matrix.os }} != 'ubuntu:16.04' ]; then apt-get install -y libmariadb-dev; fi
+        if [ "$(lsb_release -s -r)x" == "16.04x" ]; then apt-get install -y libmariadb-client-lgpl-dev; fi
+        if [ "$(lsb_release -s -r)x" == "16.04x" ]; then apt-get install -y libmariadb-dev; fi
 
     - name: Prometheus Support
       shell: bash
