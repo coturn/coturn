@@ -352,7 +352,7 @@ void set_ssl_ctx(ioa_engine_handle e, turn_params_t *params) {
   }
   else
   {
-    if (args) free(args);
+    if (args) { free(args); }
   }
 }
 
