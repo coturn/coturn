@@ -22,11 +22,11 @@ runs:
             build-essential \
             clang \
             clang-tidy \
-            clang-tools \
             ninja-build \
             iwyu \
             pkgconf \
             wget 
+        if [ ${{ matrix.os }} != 'ubuntu:16.04' ]; then apt install -y clang-tools; fi
 
     - name: install coturn dependencies
       shell: bash
@@ -35,11 +35,12 @@ runs:
             libevent-dev \
             libssl-dev \
             libpq-dev \
-            libmariadb-dev \
             libsqlite3-dev \
             libhiredis-dev \
             libmongoc-dev \
             libmicrohttpd-dev
+        if [ ${{ matrix.os }} = 'ubuntu:16.04' ]; then apt-get install -y libmariadb-client-lgpl-dev; fi
+        if [ ${{ matrix.os }} != 'ubuntu:16.04' ]; then apt-get install -y libmariadb-dev; fi
 
     - name: Prometheus Support
       shell: bash
