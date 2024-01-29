@@ -102,7 +102,7 @@ turn_params_t turn_params = {
     false, /*no_tlsv1*/
     false, /*no_tlsv1_1*/
     false, /*no_tlsv1_2*/
-       /*no_tls*/
+           /*no_tls*/
 #if !TLS_SUPPORTED
     true,
 #else
@@ -119,10 +119,10 @@ turn_params_t turn_params = {
     {0, NULL}, /*tls_mutex*/
 
     //////////////// Common params ////////////////////
-    TURN_VERBOSE_NONE, 	   /* verbose */
-    false,                 /* turn_daemon */
-    false,                 /* no_software_attribute */
-    false,                 /* web_admin_listen_on_workers */
+    TURN_VERBOSE_NONE, /* verbose */
+    false,             /* turn_daemon */
+    false,             /* no_software_attribute */
+    false,             /* web_admin_listen_on_workers */
 
     false, /* do_not_use_config_file */
 
@@ -136,7 +136,7 @@ turn_params_t turn_params = {
     0,                     /* alt_listener_port */
     0,                     /* alt_tls_listener_port */
     0,                     /* tcp_proxy_port */
-    true,                     /* rfc5780 */
+    true,                  /* rfc5780 */
 
     false, /* no_udp */
     false, /* no_tcp */
@@ -148,7 +148,7 @@ turn_params_t turn_params = {
     "", /*listener_ifname*/
 
     {"", ""},                                                                 /*redis_statsdb*/
-    false,                                                                        /*use_redis_statsdb*/
+    false,                                                                    /*use_redis_statsdb*/
     {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, 0, NULL, NULL, NULL}, /*listener*/
     {NULL, 0},                                                                /*ip_whitelist*/
     {NULL, 0},                                                                /*ip_blacklist*/
@@ -191,9 +191,9 @@ turn_params_t turn_params = {
     false, /*stop_turn_server*/
 
     /////////////// MISC PARAMS ////////////////
-    false,                                  /* stun_only */
-    false,                                  /* no_stun */
-    false,                                  /* secure_stun */
+    false,                              /* stun_only */
+    false,                              /* no_stun */
+    false,                              /* secure_stun */
     0,                                  /* server_relay */
     0,                                  /* fingerprint */
     ':',                                /* rest_api_separator */
