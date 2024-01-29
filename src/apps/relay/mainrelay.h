@@ -37,7 +37,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <stdbool.h>
 
 #include <locale.h>
 
