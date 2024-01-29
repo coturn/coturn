@@ -172,7 +172,7 @@ static struct http_request *parse_http_request_1(struct http_request *ret, char 
           if (evhttp_parse_query_str(query, kv) < 0) {
             free(ret);
             ret = NULL;
-            if (kv) free(kv); //kv no longer assigned on this path
+            if (kv) { free(kv); } //kv no longer assigned on this path
           } else {
             ret->headers = (struct http_headers *)calloc(sizeof(struct http_headers), 1);
             ret->headers->uri_headers = kv;
