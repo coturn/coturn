@@ -44,6 +44,8 @@
 
 #include <pthread.h>
 
+#include <stdbool.h>
+
 //////////////////////////////////////////////////
 
 static pthread_mutex_t rc_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -53,43 +55,27 @@ static int read_threads = 0;
 static int write_level = 0;
 #if defined(WINDOWS)
 static pthread_t write_thread = {0};
+static pthread_t const null_thread = {0};
 #else
 static pthread_t write_thread = 0;
+static pthread_t const null_thread = 0;
 #endif
 
-static void sqlite_lock(int write) {
-  pthread_t pths = pthread_self();
+static void sqlite_lock(bool const write) {
+  pthread_t const pths = pthread_self();
 
-  int can_move = 0;
+  bool can_move = false;
   while (!can_move) {
     pthread_mutex_lock(&rc_mutex);
-#if defined(WINDOWS)
-    pthread_t zero = {0};
-#endif
     if (write) {
-      if ((
-#if defined(WINDOWS)
-              pthread_equal(write_thread, zero)
-#else
-              write_thread == 0
-#endif
-              && (read_threads < 1)) ||
-          pthread_equal(write_thread, pths)) {
-        can_move = 1;
+      if ((pthread_equal(write_thread, null_thread) && (read_threads < 1)) || pthread_equal(write_thread, pths)) {
+        can_move = true;
         ++write_level;
         write_thread = pths;
       }
-    } else {
-      if ((
-#if defined(WINDOWS)
-              pthread_equal(write_thread, zero))
-#else
-              !write_thread)
-#endif
-          || pthread_equal(write_thread, pths)) {
-        can_move = 1;
-        ++read_threads;
-      }
+    } else if (pthread_equal(write_thread, null_thread) || pthread_equal(write_thread, pths)) {
+      can_move = true;
+      ++read_threads;
     }
     if (!can_move) {
       pthread_cond_wait(&rc_cond, &rc_mutex);
@@ -98,22 +84,15 @@ static void sqlite_lock(int write) {
   }
 }
 
-static void sqlite_unlock(int write) {
+static void sqlite_unlock(bool const write) {
   pthread_mutex_lock(&rc_mutex);
   if (write) {
-    if (!(--write_level)) {
-#if defined(WINDOWS)
-      pthread_t zero = {0};
-      write_thread = zero;
-#else
-      write_thread = 0;
-#endif
+    if (--write_level == 0) {
+      write_thread = null_thread;
       pthread_cond_broadcast(&rc_cond);
     }
-  } else {
-    if (!(--read_threads)) {
-      pthread_cond_broadcast(&rc_cond);
-    }
+  } else if (--read_threads == 0) {
+    pthread_cond_broadcast(&rc_cond);
   }
   pthread_mutex_unlock(&rc_mutex);
 }
