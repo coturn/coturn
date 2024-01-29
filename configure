@@ -15,7 +15,7 @@ cleanup() {
 }
 
 testlibraw() {
-    ${CC} ${TMPCPROGC} -o ${TMPCPROGB} ${OSCFLAGS} ${OSLIBS} -${1} 2>>/dev/null
+    ${CXX} ${TMPCPROGC} -o ${TMPCPROGB} ${OSCXXFLAGS} ${OSLIBS} -${1} 2>>/dev/null
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
         ${ECHO_CMD} "Library option -${1} cannot be used"
@@ -27,40 +27,40 @@ testlibraw() {
 }
 
 # testpkg pkg1 pkg2 ...
-# If all libraries are found, sets PKG_CFLAGS/PKG_LIBS and returns success.
+# If all libraries are found, sets PKG_CXXFLAGS/PKG_LIBS and returns success.
 # Otherwise, returns failure.
 testpkg() {
     PKG_LIBS="$($PKGCONFIG --libs "$@" 2>/dev/null)"
     if [ $? -ne 0 ] ; then
         return 1
     fi
-    PKG_CFLAGS="$($PKGCONFIG --cflags "$@")"
+    PKG_CXXFLAGS="$($PKGCONFIG --cflags "$@")"
 }
 
 # testpkg_db pkg1 pkg2 ...
-# If all libraries are found, adds them to DBCFLAGS/DBLIBS and returns success.
+# If all libraries are found, adds them to DBCXXFLAGS/DBLIBS and returns success.
 # Otherwise, returns failure.
 testpkg_db() {
     testpkg "$@" || return $?
-    DBCFLAGS="${DBCFLAGS} ${PKG_CFLAGS}"
+    DBCXXFLAGS="${DBCXXFLAGS} ${PKG_CXXFLAGS}"
     DBLIBS="${DBLIBS} ${PKG_LIBS}"
 }
 
 # support for older mysql version
-# if mysql_config is found in path adds librairies to DBCFLAGS/DBLIBS and returns success.
+# if mysql_config is found in path adds librairies to DBCXXFLAGS/DBLIBS and returns success.
 # Otherwise, returns failure.
 test_mysql_config() {
     which mysql_config &>/dev/null || return $?
-    DBCFLAGS="${DBCFLAGS} $(mysql_config --cflags)"
+    DBCXXFLAGS="${DBCXXFLAGS} $(mysql_config --cflags)"
     DBLIBS="${DBLIBS} $(mysql_config --libs)"
 }
 
 # testpkg_common pkg1 pkg2 ...
-# If all libraries are found, adds them to OSCFLAGS/OSLIBS and returns success.
+# If all libraries are found, adds them to OSCXXFLAGS/OSLIBS and returns success.
 # Otherwise, returns failure.
 testpkg_common() {
     testpkg "$@" || return $?
-    OSCFLAGS="${OSCFLAGS} ${PKG_CFLAGS}"
+    OSCXXFLAGS="${OSCXXFLAGS} ${PKG_CXXFLAGS}"
     OSLIBS="${OSLIBS} ${PKG_LIBS}"
 }
 
@@ -85,37 +85,37 @@ pthread_testlib() {
         return
     fi
 
-    ${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} 2>>/dev/null
+    ${CXX} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCXXFLAGS} ${OSLIBS} 2>>/dev/null
     ER=$?
     if [ ${ER} -eq 0 ] ; then
         return
     fi
 
-    ${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} -pthread 2>>/dev/null
+    ${CXX} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCXXFLAGS} ${OSLIBS} -pthread 2>>/dev/null
     ER=$?
     if [ ${ER} -eq 0 ] ; then
         OSLIBS="${OSLIBS} -pthread"
         return
     fi
 
-    ${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} -lpthread 2>>/dev/null
+    ${CXX} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCXXFLAGS} ${OSLIBS} -lpthread 2>>/dev/null
     ER=$?
     if [ ${ER} -eq 0 ] ; then
         OSLIBS="${OSLIBS} -lpthread"
         return
     fi
 
-    ${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} 2>>/dev/null
+    ${CXX} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCXXFLAGS} ${OSLIBS} 2>>/dev/null
     ER=$?
     if [ ${ER} -eq 0 ] ; then
         return
     fi
 
-    ${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} -D_GNU_SOURCE 2>>/dev/null
+    ${CXX} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCXXFLAGS} ${OSLIBS} -D_GNU_SOURCE 2>>/dev/null
     ER=$?
     if [ ${ER} -eq 0 ] ; then
         ${ECHO_CMD} "Older GNU pthread library found"
-        OSCFLAGS="${OSCFLAGS} -D_GNU_SOURCE"
+        OSCXXFLAGS="${OSCXXFLAGS} -D_GNU_SOURCE"
         return
     fi
 
@@ -126,18 +126,18 @@ pthread_testlib() {
 pthread_testbarriers() {
 
     ${ECHO_CMD} "pthread_barrier_t barrier;" >> ${TH_TMPCPROGC}
-    ${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} 2>>/dev/null
+    ${CXX} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCXXFLAGS} ${OSLIBS} 2>>/dev/null
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
 		${ECHO_CMD} "pthread barriers not found"
-		OSCFLAGS="${OSCFLAGS} -DTURN_NO_THREAD_BARRIERS"
+		OSCXXFLAGS="${OSCXXFLAGS} -DTURN_NO_THREAD_BARRIERS"
     fi
 }
 
 gcm_testlib() {
 
     if [ -z "${TURN_NO_GCM}" ] ; then
-    	${CC} ${GCM_TMPCPROGC} -o ${GCM_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} 2>>/dev/null
+        ${CXX} ${GCM_TMPCPROGC} -o ${GCM_TMPCPROGB} ${OSCXXFLAGS} ${OSLIBS} 2>>/dev/null
     	ER=$?
     	if [ ${ER} -eq 0 ] ; then
     	    return 1
@@ -151,22 +151,22 @@ gcm_testlib() {
 
 testdaemon() {
 
-	${CC} ${D_TMPCPROGC} -o ${D_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} 2>>/dev/null
+	${CXX} ${D_TMPCPROGC} -o ${D_TMPCPROGB} ${OSCXXFLAGS} ${OSLIBS} 2>>/dev/null
 	ER=$?
 	if [ ${ER} -eq 0 ] ; then
-	    OSCFLAGS="${OSCFLAGS} -DTURN_HAS_DAEMON"
+	    OSCXXFLAGS="${OSCXXFLAGS} -DTURN_HAS_DAEMON"
 	fi
 }
 
 test_sin_len() {
     TMPCADDRPROGC=src/client/ns_turn_ioaddr.c
-    ${CC} -c ${OSCFLAGS} -DTURN_HAS_SIN_LEN -Isrc ${TMPCADDRPROGC} -o ${TMPCADDRPROGO} 2>>/dev/null
+    ${CXX} -c ${OSCXXFLAGS} -DTURN_HAS_SIN_LEN -Isrc ${TMPCADDRPROGC} -o ${TMPCADDRPROGO} 2>>/dev/null
     ER=$?
     if [ ${ER} -eq 0 ] ; then
-	OSCFLAGS="${OSCFLAGS} -DTURN_HAS_SIN_LEN"
+	OSCXXFLAGS="${OSCXXFLAGS} -DTURN_HAS_SIN_LEN"
 	${ECHO_CMD} "Sockets code is fine: sin_len field present"
     else
-	${CC} -c ${OSCFLAGS} -Isrc ${TMPCADDRPROGC} -o ${TMPCADDRPROGO} 2>>/dev/null
+	${CXX} -c ${OSCXXFLAGS} -Isrc ${TMPCADDRPROGC} -o ${TMPCADDRPROGO} 2>>/dev/null
 	ER=$?
 	if [ ${ER} -eq 0 ] ; then
 	    ${ECHO_CMD} "Sockets code is fine: no sin_len field present"
@@ -420,12 +420,12 @@ if [ -z "${MORECMD}" ]; then
 	MORECMD="cat"
 fi
 
-OSCFLAGS="${CFLAGS}"
+OSCXXFLAGS="${CXXFLAGS}"
 OSLIBS="${LDFLAGS}"
 
 SYSTEM=`uname`
 if [ "${SYSTEM}" = "NetBSD" ] ; then
-	OSCFLAGS="${OSCFLAGS} -I/usr/pkg/include"
+	OSCXXFLAGS="${OSCXXFLAGS} -I/usr/pkg/include"
 	OSLIBS="-L/usr/pkg/lib ${OSLIBS}"
 	if ! [ -z "${TURN_ACCEPT_RPATH}" ] ; then
 	    TURN_RPATH="${TURN_RPATH} -Wl,-rpath,/usr/pkg/lib"
@@ -441,7 +441,7 @@ if [ -z "${LIBEV_OK}" ]; then
 		[ "${OS}" = "Ubuntu" ] && LIBEV_OK=0
 	fi
 fi
-[ "${LIBEV_OK}" = "1" ] && OSCFLAGS="${OSCFLAGS} -DLIBEV_OK"
+[ "${LIBEV_OK}" = "1" ] && OSCXXFLAGS="${OSCXXFLAGS} -DLIBEV_OK"
 
 ###########################
 # Install shell commands
@@ -513,7 +513,7 @@ SYSTEM=`uname`
 
 if [ "${SYSTEM}" = "SunOS" ] ; then
 # Solaris ? is this you ?!
-    OSCFLAGS="${OSCFLAGS} -D__EXTENSIONS__ -D_XOPEN_SOURCE=500 -DTURN_NO_GETDOMAINNAME"
+    OSCXXFLAGS="${OSCXXFLAGS} -D__EXTENSIONS__ -D_XOPEN_SOURCE=500 -DTURN_NO_GETDOMAINNAME"
     OSLIBS="${OSLIBS} -lnsl"
     TURN_NO_SCTP=1
 fi
@@ -592,36 +592,36 @@ int main(int argc, char** argv) {
 # What is our compiler ?
 ##########################
 
-if [ -z "${CC}" ] ; then
-    for CC in cc gcc clang; do
-        ${CC} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>>/dev/null
+if [ -z "${CXX}" ] ; then
+    for CXX in cxx c++ g++ clang++; do
+        ${CXX} ${TMPCPROGC} ${OSCXXFLAGS} -o ${TMPCPROGB} 2>>/dev/null
         ER=$?
         if [ ${ER} -eq 0 ] ; then
             break
         fi
-        CC=
+        CXX=
     done
 
-    if [ -z "$CC" ] ; then
-        ${ECHO_CMD} "ERROR: failed to a find working C compiler"
+    if [ -z "${CXX}" ] ; then
+        ${ECHO_CMD} "ERROR: failed to a find a C++ compiler using the default search choices."
         cleanup
         exit 1
     fi
 else
-    CC_OUTPUT=$(${CC} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB})
+    CXX_OUTPUT=$(${CXX} ${TMPCPROGC} ${OSCXXFLAGS} -o ${TMPCPROGB})
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
-        ${ECHO_CMD} "ERROR: cannot use compiler ${CC} properly."
-        ${ECHO_CMD} "${CC_OUTPUT}"
+        ${ECHO_CMD} "ERROR: cannot use compiler ${CXX} properly."
+        ${ECHO_CMD} "${CXX_OUTPUT}"
         cleanup
         exit 1
     fi
 fi
 
-${ECHO_CMD} "Compiler: ${CC}"
+${ECHO_CMD} "Compiler: ${CXX}"
 
 if [ -z "${TURN_ACCEPT_RPATH}" ] ; then
-    ${CC} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} -Wl,-rpath,/usr/lib 2>>/dev/null
+    ${CXX} ${TMPCPROGC} ${OSCXXFLAGS} -o ${TMPCPROGB} -Wl,-rpath,/usr/lib 2>>/dev/null
     ER=$?
     if [ ${ER} -eq 0 ] ; then
 	TURN_ACCEPT_RPATH=1
@@ -660,40 +660,40 @@ ${ECHO_CMD} "pkg-config: $PKGCONFIG"
 # or Clang compiler flags
 ###########################
 
-GNUOSCFLAGS="-g ${GNUOSCFLAGS}"
-GNUOSCFLAGS="${GNUOSCFLAGS} -Wall -Wno-deprecated-declarations -Wextra -Wformat-security -Wnested-externs -Wstrict-prototypes  -Wmissing-prototypes -Wpointer-arith -Wcast-qual"
-GNUOSCFLAGS="${GNUOSCFLAGS}"
+GNUOSCXXFLAGS="-g ${GNUOSCXXFLAGS}"
+GNUOSCXXFLAGS="${GNUOSCXXFLAGS} -Wall -Wno-deprecated-declarations -Wextra -Wformat-security -Wnested-externs -Wstrict-prototypes  -Wmissing-prototypes -Wpointer-arith -Wcast-qual"
+GNUOSCXXFLAGS="${GNUOSCXXFLAGS}"
 
-${CC} -Werror ${GNUOSCFLAGS} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>>/dev/null
+${CXX} -Werror ${GNUOSCXXFLAGS} ${TMPCPROGC} ${OSCXXFLAGS} -o ${TMPCPROGB} 2>>/dev/null
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then
-    ${ECHO_CMD} "Hm..."
-    ${CC} -Wall ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>>/dev/null
-    ER=$?
-    if ! [ ${ER} -eq 0 ] ; then
+	${ECHO_CMD} "Hm..."
+	${CXX} -Wall ${TMPCPROGC} ${OSCXXFLAGS} -o ${TMPCPROGB} 2>>/dev/null
+	ER=$?
+	if ! [ ${ER} -eq 0 ] ; then
 		${ECHO_CMD} "Not an ordinary GNU or Clang compiler"
-    else
+	else
 		${ECHO_CMD} "g++ or something..."
-		GNUOSCFLAGS="-g -Wall -Wno-deprecated-declarations -Wextra -Wformat-security -Wpointer-arith -Wcast-qual"
-		${CC} -Werror ${GNUOSCFLAGS} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>>/dev/null
+		GNUOSCXXFLAGS="-g -Wall -Wno-deprecated-declarations -Wextra -Wformat-security -Wpointer-arith -Wcast-qual"
+		${CXX} -Werror ${GNUOSCXXFLAGS} ${TMPCPROGC} ${OSCXXFLAGS} -o ${TMPCPROGB} 2>>/dev/null
 		ER=$?
 		if ! [ ${ER} -eq 0 ] ; then
-	    	${ECHO_CMD} "Not an ordinary g++ compiler"
-	    	GNUOSCFLAGS="-x c++ -g -Wall -Wno-deprecated-declarations -Wextra -Wformat-security -Wpointer-arith -Wcast-qual"
-	    	${CC} -Werror ${GNUOSCFLAGS} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>>/dev/null
-	    	ER=$?
-	    	if ! [ ${ER} -eq 0 ] ; then
-	    		${ECHO_CMD} "Not an ordinary c++ compiler"
-	    	else
+			${ECHO_CMD} "Not an ordinary g++ compiler"
+			GNUOSCXXFLAGS="-x c++ -g -Wall -Wno-deprecated-declarations -Wextra -Wformat-security -Wpointer-arith -Wcast-qual"
+			${CXX} -Werror ${GNUOSCXXFLAGS} ${TMPCPROGC} ${OSCXXFLAGS} -o ${TMPCPROGB} 2>>/dev/null
+			ER=$?
+			if ! [ ${ER} -eq 0 ] ; then
+				${ECHO_CMD} "Not an ordinary c++ compiler"
+			else
 				${ECHO_CMD} "Clang++ compiler ?"
-	    		OSCFLAGS="${GNUOSCFLAGS} ${OSCFLAGS}"
-	    	fi
+				OSCXXFLAGS="${GNUOSCXXFLAGS} ${OSCXXFLAGS}"
+			fi
 		else
-	    	OSCFLAGS="${GNUOSCFLAGS} ${OSCFLAGS}"
+			OSCXXFLAGS="${GNUOSCXXFLAGS} ${OSCXXFLAGS}"
 		fi
-    fi
+	fi
 else
-    OSCFLAGS="${GNUOSCFLAGS} ${OSCFLAGS}"
+	OSCXXFLAGS="${GNUOSCXXFLAGS} ${OSCXXFLAGS}"
 fi
 
 ###########################
@@ -740,7 +740,7 @@ if [ -z ${TURN_IP_RECVERR} ] ; then
 else
 	${ECHO_CMD} "Use IP_RECVERR"
 	TURN_IP_RECVERR="-DTURN_IP_RECVERR"
-	OSCFLAGS="${OSCFLAGS} ${TURN_IP_RECVERR}"
+	OSCXXFLAGS="${OSCXXFLAGS} ${TURN_IP_RECVERR}"
 fi
 
 ###########################
@@ -754,13 +754,13 @@ testdaemon
 ###########################
 
 if [ -n "${SSL_CFLAGS}" ] && [ -n "${SSL_LIBS}" ]; then
-    ${CC} ${TMPCPROGC} ${SSL_CFLAGS} -o ${TMPCPROGB} ${OSCFLAGS} ${OSLIBS} ${SSL_LIBS} 2>>/dev/null
+    ${CXX} ${TMPCPROGC} ${SSL_CFLAGS} -o ${TMPCPROGB} ${OSCXXFLAGS} ${OSLIBS} ${SSL_LIBS} 2>>/dev/null
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
         ${ECHO_CMD} "Private SSL Library option cannot be used"
         exit 1
     else
-        OSCFLAGS="${OSCFLAGS} ${SSL_CFLAGS}"
+        OSCXXFLAGS="${OSCXXFLAGS} ${SSL_CFLAGS}"
         OSLIBS="${OSLIBS} ${SSL_LIBS}"
     fi
 else
@@ -816,13 +816,13 @@ fi
 # Test Libevent2 setup
 ###########################
 if [ -n "${EVENT_CFLAGS}" ] && [ -n "${EVENT_LIBS}" ]; then
-    ${CC} ${TMPCPROGC} ${EVENT_CFLAGS} -o ${TMPCPROGB} ${OSCFLAGS} ${OSLIBS} ${EVENT_LIBS} 2>>/dev/null
+    ${CXX} ${TMPCPROGC} ${EVENT_CFLAGS} -o ${TMPCPROGB} ${OSCXXFLAGS} ${OSLIBS} ${EVENT_LIBS} 2>>/dev/null
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
         ${ECHO_CMD} "Private Event Library option cannot be used"
         exit 1
     else
-        OSCFLAGS="${OSCFLAGS} ${EVENT_CFLAGS}"
+        OSCXXFLAGS="${OSCXXFLAGS} ${EVENT_CFLAGS}"
         OSLIBS="${OSLIBS} ${EVENT_LIBS}"
     fi
 else
@@ -871,11 +871,11 @@ if [ -z "${TURN_NO_PROMETHEUS}" ] ; then
         ${ECHO_CMD} "Prometheus support will be disabled."
         ${ECHO_CMD} "See the docs/Prometheus.md file."
         ${ECHO_CMD}
-        OSCFLAGS="${OSCFLAGS} -DTURN_NO_PROMETHEUS"
+        OSCXXFLAGS="${OSCXXFLAGS} -DTURN_NO_PROMETHEUS"
     fi
 
 else
-    OSCFLAGS="${OSCFLAGS} -DTURN_NO_PROMETHEUS"
+    OSCXXFLAGS="${OSCXXFLAGS} -DTURN_NO_PROMETHEUS"
 fi
 
 ###########################
@@ -1033,7 +1033,7 @@ fi
 # So, what we have now:
 ###############################
 
-OSCFLAGS="${OSCFLAGS} ${TURN_NO_SCTP} ${TURN_SCTP_INCLUDE} ${TURN_NO_THREAD_BARRIERS} ${TURN_NO_DTLS} ${TURN_NO_GCM} ${TURN_NO_TLS} -DINSTALL_PREFIX=${PREFIX} -DTURNDB=${TURNDBDIR}/turndb ${TURN_NO_OAUTH}"
+OSCXXFLAGS="${OSCXXFLAGS} ${TURN_NO_SCTP} ${TURN_SCTP_INCLUDE} ${TURN_NO_THREAD_BARRIERS} ${TURN_NO_DTLS} ${TURN_NO_GCM} ${TURN_NO_TLS} -DINSTALL_PREFIX=${PREFIX} -DTURNDB=${TURNDBDIR}/turndb"
 
 if ! [ -z "${TURN_ACCEPT_RPATH}" ] ; then
   if [ -z "${TURN_DISABLE_RPATH}" ] ; then
@@ -1042,7 +1042,7 @@ if ! [ -z "${TURN_ACCEPT_RPATH}" ] ; then
   fi
 fi
 
-${ECHO_CMD} PREFIX="${PREFIX}" LOCALSTATEDIR="${LOCALSTATEDIR}" OSLIBS="${OSLIBS}" DBLIBS="${DBLIBS}" OSCFLAGS="${OSCFLAGS}" DBCFLAGS="${DBCFLAGS}" $@
+${ECHO_CMD} PREFIX="${PREFIX}" LOCALSTATEDIR="${LOCALSTATEDIR}" OSLIBS="${OSLIBS}" DBLIBS="${DBLIBS}" OSCXXFLAGS="${OSCXXFLAGS}" DBCXXFLAGS="${DBCXXFLAGS}" $@
 
 ###############################
 # Make make:
@@ -1052,12 +1052,12 @@ ${ECHO_CMD} "#################################" > Makefile
 ${ECHO_CMD} "# Generated by configure script #" >> Makefile
 ${ECHO_CMD} "#################################" >> Makefile
 ${ECHO_CMD} "ECHO_CMD = ${ECHO_CMD}" >> Makefile
-${ECHO_CMD} "CC = ${CC}" >> Makefile
+${ECHO_CMD} "CXX = ${CXX}" >> Makefile
 ${ECHO_CMD} "LDFLAGS += ${OSLIBS}" >> Makefile
 ${ECHO_CMD} "DBLIBS += ${DBLIBS}" >> Makefile
-${ECHO_CMD} "CFLAGS += ${OSCFLAGS}" >> Makefile
+${ECHO_CMD} "CXXFLAGS += ${OSCXXFLAGS}" >> Makefile
 ${ECHO_CMD} "CPPFLAGS = ${CPPFLAGS}" >> Makefile
-${ECHO_CMD} "DBCFLAGS += ${DBCFLAGS} ${TURN_NO_PQ} ${TURN_NO_MYSQL} ${TURN_NO_SQLITE} ${TURN_NO_MONGO} ${TURN_NO_HIREDIS} ${TURN_NO_SYSTEMD}" >> Makefile
+${ECHO_CMD} "DBCXXFLAGS += ${DBCXXFLAGS} ${TURN_NO_PQ} ${TURN_NO_MYSQL} ${TURN_NO_SQLITE} ${TURN_NO_MONGO} ${TURN_NO_HIREDIS} ${TURN_NO_SYSTEMD}" >> Makefile
 ${ECHO_CMD} "#" >> Makefile
 ${ECHO_CMD} "PORTNAME = ${PORTNAME}" >> Makefile
 ${ECHO_CMD} "PREFIX = ${PREFIX}" >> Makefile
