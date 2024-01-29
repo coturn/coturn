@@ -32,8 +32,8 @@
 #ifndef __DBD_REDIS__
 #define __DBD_REDIS__
 
+#include "../hiredis_libevent2.h"
 #include "dbdriver.h"
-#include "hiredis_libevent2.h"
 
 #ifdef __cplusplus
 extern "C" {

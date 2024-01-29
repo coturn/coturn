@@ -33,7 +33,7 @@
 #include "../mainrelay.h"
 
 #if !defined(TURN_NO_HIREDIS)
-#include "hiredis_libevent2.h"
+#include "../hiredis_libevent2.h"
 #include <hiredis/hiredis.h>
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
