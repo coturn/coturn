@@ -105,6 +105,7 @@ static void __turn_getMSTime(void) {
 }
 
 ////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////
 
 static int refresh_channel(app_ur_session *elem, uint16_t method, uint32_t lt);
 
@@ -216,7 +217,7 @@ int send_buffer(app_ur_conn_info *clnet_info, stun_buffer *message, int data_con
 
   if (ssl) {
 
-    int message_sent = 0;
+    bool message_sent = 0;
     while (!message_sent) {
 
       if (SSL_get_shutdown(ssl)) {
@@ -611,7 +612,7 @@ recv_again:
   return rc;
 }
 
-static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info *atc) {
+static int client_read(app_ur_session *elem, bool is_tcp_data, app_tcp_conn_info *atc) {
 
   if (!elem)
     return -1;
@@ -902,7 +903,7 @@ static int client_write(app_ur_session *elem) {
   return 0;
 }
 
-void client_input_handler(evutil_socket_t fd, short what, void *arg) {
+void client_input_handler(evutil_socket_t fd, bool what, void *arg) {
 
   if (!(what & EV_READ) || !arg)
     return;
@@ -1582,7 +1583,6 @@ int add_integrity(app_ur_conn_info *clnet_info, stun_buffer *message) {
       // self-test:
       {
         password_t pwd;
-        if (stun_check_message_integrity_by_key_str(get_turn_credentials_type(), message->buf, (size_t)(message->len),
                                                     clnet_info->key, pwd, shatype) < 1) {
           TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, " Self-test of integrity does not comple correctly !\n");
           return -1;
@@ -1644,3 +1644,4 @@ SOCKET_TYPE get_socket_type(void) {
   }
 }
 ///////////////////////////////////////////
+/*

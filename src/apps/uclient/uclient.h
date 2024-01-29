@@ -37,6 +37,8 @@
 
 #include "ns_turn_openssl.h"
 
+#include <stdbool.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -47,46 +49,46 @@ extern "C" {
 #define STARTING_TCP_RELAY_TIME (30)
 
 extern int clmessage_length;
-extern int do_not_use_channel;
-extern int clnet_verbose;
-extern int use_tcp;
-extern int use_sctp;
-extern int use_secure;
+extern bool do_not_use_channel;
+extern bool clnet_verbose;
+extern bool use_tcp;
+extern bool use_sctp;
+extern bool use_secure;
 extern char cert_file[1025];
 extern char pkey_file[1025];
-extern int hang_on;
-extern int c2c;
+extern bool hang_on;
+extern bool c2c;
 extern ioa_addr peer_addr;
-extern int no_rtcp;
+extern bool no_rtcp;
 extern int default_address_family;
-extern int dont_fragment;
+extern bool dont_fragment;
 extern uint8_t g_uname[STUN_MAX_USERNAME_SIZE + 1];
 extern password_t g_upwd;
 extern char g_auth_secret[1025];
-extern int g_use_auth_secret_with_timestamp;
-extern int use_fingerprints;
+extern bool g_use_auth_secret_with_timestamp;
+extern bool use_fingerprints;
 extern SSL_CTX *root_tls_ctx[32];
 extern int root_tls_ctx_num;
 extern int RTP_PACKET_INTERVAL;
 extern uint8_t relay_transport;
 extern unsigned char client_ifname[1025];
 extern struct event_base *client_event_base;
-extern int passive_tcp;
-extern int mandatory_channel_padding;
-extern int negative_test;
-extern int negative_protocol_test;
-extern int dos;
-extern int random_disconnect;
+extern bool passive_tcp;
+extern bool mandatory_channel_padding;
+extern bool negative_test;
+extern bool negative_protocol_test;
+extern bool dos;
+extern bool random_disconnect;
 extern SHATYPE shatype;
-extern int mobility;
-extern int no_permissions;
-extern int extra_requests;
+extern bool mobility;
+extern bool no_permissions;
+extern bool extra_requests;
 extern band_limit_t bps;
-extern int dual_allocation;
+extern bool dual_allocation;
 
 extern char origin[STUN_MAX_ORIGIN_SIZE + 1];
 
-extern int oauth;
+extern bool oauth;
 extern oauth_key okey_array[3];
 
 #define UCLIENT_SESSION_LIFETIME (777)
