@@ -7,6 +7,7 @@ set(SOURCE_FILES
     startuclient.c
     mainuclient.c
     )
+set_source_files_properties(${SOURCE_FILES} PROPERIES LANGUAGE CXX)
 
 add_executable(${PROJECT_NAME} ${SOURCE_FILES})
 target_link_libraries(${PROJECT_NAME} PRIVATE turnclient)
