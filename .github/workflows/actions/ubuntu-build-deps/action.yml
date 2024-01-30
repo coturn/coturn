@@ -1,24 +1,35 @@
 name: 'ubuntu build dependencies'
 description: 'install required build dependencies for ubuntu'
 inputs:
-
   SUDO:
-    description: "set to sudo to run apt as root"
+    description: "set to true to run apt as root"
     required: false
-    default: ""
+    default: false
 
 
 runs:
   using: 'composite'
   steps:
+
+    - name: check if sudo is set
+      shell: bash
+      run: |
+        if [ ${{inputs.SUDO}} = true ]
+        then
+          AS_ROOT="sudo"
+        else
+          AS_ROOT=""
+        fi
+        echo "AS_ROOT=$AS_ROOT" >> $GITHUB_ENV
+
     - name: apt update
       shell: bash
-      run: ${{inputs.SUDO}} apt update
+      run: ${{env.AS_ROOT}} apt update
 
     - name: install build tools
       shell: bash
       run: |
-        ${{inputs.SUDO}} apt install -y \
+        ${{env.AS_ROOT}} apt install -y \
             build-essential \
             clang \
             clang-tidy \
@@ -31,7 +42,7 @@ runs:
     - name: install coturn dependencies
       shell: bash
       run: |
-        ${{inputs.SUDO}} apt install -y \
+        ${{env.AS_ROOT}} apt install -y \
             libevent-dev \
             libssl-dev \
             libpq-dev \
@@ -47,4 +58,4 @@ runs:
       run: |
         wget https://github.com/digitalocean/prometheus-client-c/releases/download/v0.1.3/libprom-dev-0.1.3-Linux.deb
         wget https://github.com/digitalocean/prometheus-client-c/releases/download/v0.1.3/libpromhttp-dev-0.1.3-Linux.deb
-        ${{inputs.SUDO}} apt install -y ./libprom-dev-0.1.3-Linux.deb ./libpromhttp-dev-0.1.3-Linux.deb
+        ${{env.AS_ROOT}} apt install -y ./libprom-dev-0.1.3-Linux.deb ./libpromhttp-dev-0.1.3-Linux.deb

@@ -26,7 +26,7 @@ jobs:
     - name: install dependencies
       uses: ./.github/workflows/actions/ubuntu-build-deps
       with:
-        SUDO: sudo
+        SUDO: true
 
 
     - name: Configure
