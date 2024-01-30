@@ -169,7 +169,7 @@ int main(int argc, char **argv) {
   int peer_port = PEER_DEFAULT_PORT;
 
   char rest_api_separator = ':';
-  int use_null_cipher = 0;
+  bool use_null_cipher = false;
 
 #if defined(WINDOWS)
 
@@ -249,7 +249,7 @@ int main(int argc, char **argv) {
       mobility = true;
       break;
     case 'E': {
-      char *fn = find_config_file(optarg, 1);
+      char *fn = find_config_file(optarg);
       if (!fn) {
         fprintf(stderr, "ERROR: file %s not found\n", optarg);
         exit(-1);
@@ -347,7 +347,7 @@ int main(int argc, char **argv) {
       relay_transport = STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE;
       break;
     case 'U':
-      use_null_cipher = 1;
+      use_null_cipher = true;
       /* implies 'S' */
       /* no break */
       /* Falls through. */
@@ -359,7 +359,7 @@ int main(int argc, char **argv) {
       STRCPY(g_auth_secret, optarg);
       break;
     case 'i': {
-      char *fn = find_config_file(optarg, 1);
+      char *fn = find_config_file(optarg);
       if (!fn) {
         fprintf(stderr, "ERROR: file %s not found\n", optarg);
         exit(-1);
@@ -368,7 +368,7 @@ int main(int argc, char **argv) {
       free(fn);
     } break;
     case 'k': {
-      char *fn = find_config_file(optarg, 1);
+      char *fn = find_config_file(optarg);
       if (!fn) {
         fprintf(stderr, "ERROR: file %s not found\n", optarg);
         exit(-1);
