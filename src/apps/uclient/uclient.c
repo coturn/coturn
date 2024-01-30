@@ -1,4 +1,6 @@
 /*
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
@@ -272,7 +274,7 @@ int send_buffer(app_ur_conn_info *clnet_info, stun_buffer *message, int data_con
         }
         /* Falls through. */
         default:
-          clnet_info->broken = 1;
+          clnet_info->broken = true;
           TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Unexpected error while writing!\n");
           return -1;
         }
@@ -475,7 +477,7 @@ recv_again:
         }
         /* Falls through. */
         default:
-          clnet_info->broken = 1;
+          clnet_info->broken = true;
           TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Unexpected error while reading: rc=%d, sslerr=%d\n", rc, sslerr);
           return -1;
         }
@@ -544,7 +546,7 @@ recv_again:
         }
         /* Falls through. */
         default:
-          clnet_info->broken = 1;
+          clnet_info->broken = true;
           TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Unexpected error while reading: rc=%d, sslerr=%d\n", rc, sslerr);
           return -1;
         }
@@ -1653,7 +1655,7 @@ int add_integrity(app_ur_conn_info *clnet_info, stun_buffer *message) {
                           (const uint8_t *)etoken.token, (int)etoken.size);
 
         memcpy(clnet_info->key, otoken.enc_block.mac_key, otoken.enc_block.key_length);
-        clnet_info->key_set = 1;
+        clnet_info->key_set = true;
       }
 
       if (stun_attr_add_integrity_by_key_str(message->buf, (size_t *)&(message->len), (uint8_t *)okey_array[cok].kid,

@@ -1,4 +1,6 @@
 /*
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
@@ -1225,7 +1227,7 @@ int start_c2c_connection(uint16_t clnet_remote_port0, const char *remote_address
   }
 
   if (passive_tcp) {
-    clnet_info2->is_peer = 1;
+    clnet_info2->is_peer = true;
   }
 
   if (clnet_connect(clnet_remote_port, remote_address, ifname, local_address, verbose, clnet_info2) < 0) {
@@ -1553,7 +1555,7 @@ beg_cb:
           if (verbose) {
             TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "success\n");
           }
-          atc->tcp_data_bound = 1;
+          atc->tcp_data_bound = true;
         } else if (stun_is_challenge_response_str(response_message.buf, (size_t)response_message.len, &err_code,
                                                   err_msg, sizeof(err_msg), clnet_info->realm, clnet_info->nonce,
                                                   clnet_info->server_name, &(clnet_info->oauth))) {
