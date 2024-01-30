@@ -96,8 +96,8 @@ extern oauth_key okey_array[3];
 void start_mclient(const char *remote_address, int port, const unsigned char *ifname, const char *local_address,
                    int messagenumber, int mclient);
 
-int send_buffer(app_ur_conn_info *clnet_info, stun_buffer *message, int data_connection, app_tcp_conn_info *atc);
-int recv_buffer(app_ur_conn_info *clnet_info, stun_buffer *message, int sync, int data_connection,
+int send_buffer(app_ur_conn_info *clnet_info, stun_buffer *message, bool data_connection, app_tcp_conn_info *atc);
+int recv_buffer(app_ur_conn_info *clnet_info, stun_buffer *message, bool sync, bool data_connection,
                 app_tcp_conn_info *atc, stun_buffer *request_message);
 
 void client_input_handler(evutil_socket_t fd, short what, void *arg);
