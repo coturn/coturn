@@ -1,6 +1,4 @@
 /*
- * SPDX-License-Identifier: BSD-3-Clause
- *
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
@@ -30,8 +28,8 @@
  * SUCH DAMAGE.
  */
 
-#ifndef COTURN_UCLIENT_UCLIENT_H_BE2A41BA_D261_4A88_9A40_3256EE1BB8DF
-#define COTURN_UCLIENT_UCLIENT_H_BE2A41BA_D261_4A88_9A40_3256EE1BB8DF
+#ifndef __UCLIENT_ECHO__
+#define __UCLIENT_ECHO__
 
 #include "session.h"
 #include "stun_buffer.h"
@@ -96,8 +94,8 @@ extern oauth_key okey_array[3];
 void start_mclient(const char *remote_address, int port, const unsigned char *ifname, const char *local_address,
                    int messagenumber, int mclient);
 
-int send_buffer(app_ur_conn_info *clnet_info, stun_buffer *message, int data_connection, app_tcp_conn_info *atc);
-int recv_buffer(app_ur_conn_info *clnet_info, stun_buffer *message, int sync, int data_connection,
+int send_buffer(app_ur_conn_info *clnet_info, stun_buffer *message, bool data_connection, app_tcp_conn_info *atc);
+int recv_buffer(app_ur_conn_info *clnet_info, stun_buffer *message, bool sync, bool data_connection,
                 app_tcp_conn_info *atc, stun_buffer *request_message);
 
 void client_input_handler(evutil_socket_t fd, short what, void *arg);
@@ -115,4 +113,4 @@ SOCKET_TYPE get_socket_type(void);
 }
 #endif
 
-#endif // COTURN_UCLIENT_UCLIENT_H_BE2A41BA_D261_4A88_9A40_3256EE1BB8DF
+#endif //__UCLIENT_ECHO__

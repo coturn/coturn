@@ -1,6 +1,4 @@
 /*
- * SPDX-License-Identifier: BSD-3-Clause
- *
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.

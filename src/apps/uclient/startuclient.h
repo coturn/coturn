@@ -1,6 +1,4 @@
 /*
- * SPDX-License-Identifier: BSD-3-Clause
- *
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
@@ -30,8 +28,8 @@
  * SUCH DAMAGE.
  */
 
-#ifndef COTURN_UCLIENT_STARTUCLIENT_H_A1214C56_F7D3_49F2_BA92_AFF74628E01E
-#define COTURN_UCLIENT_STARTUCLIENT_H_A1214C56_F7D3_49F2_BA92_AFF74628E01E
+#ifndef __STARTCLIENT_TURN__
+#define __STARTCLIENT_TURN__
 
 #include "session.h"
 
@@ -71,4 +69,4 @@ int read_mobility_ticket(app_ur_conn_info *clnet_info, stun_buffer *message);
 }
 #endif
 
-#endif // COTURN_UCLIENT_STARTUCLIENT_H_A1214C56_F7D3_49F2_BA92_AFF74628E01E
+#endif //__STARTCLIENT_TURN__

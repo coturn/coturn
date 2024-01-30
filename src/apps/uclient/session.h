@@ -1,6 +1,4 @@
 /*
- * SPDX-License-Identifier: BSD-3-Clause
- *
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
@@ -30,8 +28,8 @@
  * SUCH DAMAGE.
  */
 
-#ifndef COTURN_UCLIENT_SESSION_H_3F24DB4E_3426_47FF_BC7F_4F3E1FB3094B
-#define COTURN_UCLIENT_SESSION_H_3F24DB4E_3426_47FF_BC7F_4F3E1FB3094B
+#ifndef __SESSION__
+#define __SESSION__
 
 #include <event2/bufferevent.h>
 #include <event2/event.h>
@@ -129,4 +127,4 @@ typedef struct {
 }
 #endif
 
-#endif // COTURN_UCLIENT_SESSION_H_3F24DB4E_3426_47FF_BC7F_4F3E1FB3094B
+#endif //__SESSION__
