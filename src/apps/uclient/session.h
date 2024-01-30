@@ -48,9 +48,7 @@ extern "C" {
 
 ///////// types ////////////
 
-enum _UR_STATE { UR_STATE_UNKNOWN = 0, UR_STATE_READY, UR_STATE_DONE };
-
-typedef enum _UR_STATE UR_STATE;
+typedef enum { UR_STATE_UNKNOWN = 0, UR_STATE_READY, UR_STATE_DONE } UR_STATE;
 
 //////////////// session info //////////////////////
 
@@ -118,7 +116,7 @@ typedef struct {
 
 ///////////////////////////////////////////////////////
 
-typedef struct _message_info {
+typedef struct {
   int msgnum;
   uint64_t mstime;
 } message_info;
