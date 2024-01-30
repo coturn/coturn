@@ -1131,7 +1131,7 @@ void print_abs_file_name(const char *msg1, const char *msg2, const char *fn) {
   }
 }
 
-char *find_config_file(const char *config_file, int print_file_name) {
+char *find_config_file(const char *config_file) {
   char *full_path_to_config_file = NULL;
 
   if (config_file && config_file[0]) {
@@ -1193,7 +1193,7 @@ char *find_config_file(const char *config_file, int print_file_name) {
 
     if (!full_path_to_config_file) {
       if (strstr(config_file, "etc/") == config_file) {
-        return find_config_file(config_file + 4, print_file_name);
+        return find_config_file(config_file + 4);
       }
     }
   }

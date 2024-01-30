@@ -2463,7 +2463,7 @@ static void read_config_file(int argc, char **argv, int pass) {
     FILE *f = NULL;
     char *full_path_to_config_file = NULL;
 
-    full_path_to_config_file = find_config_file(config_file, pass);
+    full_path_to_config_file = find_config_file(config_file);
     if (full_path_to_config_file) {
       f = fopen(full_path_to_config_file, "r");
     }
@@ -3418,7 +3418,7 @@ static void adjust_key_file_name(char *fn, const char *file_title, int critical)
     goto keyerr;
   } else {
 
-    full_path_to_file = find_config_file(fn, 1);
+    full_path_to_file = find_config_file(fn);
     {
       FILE *f = full_path_to_file ? fopen(full_path_to_file, "r") : NULL;
       if (!f) {
