@@ -85,12 +85,13 @@ static void server_input_handler(struct evconnlistener *l, evutil_socket_t fd, s
 
   SOCKET_TYPE st = TENTATIVE_TCP_SOCKET;
 
-  if (turn_params.tcp_use_proxy)
+  if (turn_params.tcp_use_proxy) {
     st = TCP_SOCKET_PROXY;
-  else if (turn_params.no_tls)
+  } else if (turn_params.no_tls) {
     st = TCP_SOCKET;
-  else if (turn_params.no_tcp)
+  } else if (turn_params.no_tcp) {
     st = TLS_SOCKET;
+  }
 
   ioa_socket_handle ioas = create_ioa_socket_from_fd(server->e, fd, NULL, st, CLIENT_SOCKET,
                                                      &(server->sm.m.sm.nd.src_addr), &(server->addr));
@@ -143,10 +144,11 @@ static void sctp_server_input_handler(struct evconnlistener *l, evutil_socket_t 
 
   SOCKET_TYPE st = TENTATIVE_SCTP_SOCKET;
 
-  if (turn_params.no_tls)
+  if (turn_params.no_tls) {
     st = SCTP_SOCKET;
-  else if (turn_params.no_tcp)
+  } else if (turn_params.no_tcp) {
     st = TLS_SCTP_SOCKET;
+  }
 
   ioa_socket_handle ioas = create_ioa_socket_from_fd(server->e, fd, NULL, st, CLIENT_SOCKET,
                                                      &(server->sm.m.sm.nd.src_addr), &(server->addr));
@@ -181,8 +183,9 @@ static int create_server_listener(tls_listener_relay_server_type *server) {
 
   FUNCSTART;
 
-  if (!server)
+  if (!server) {
     return -1;
+  }
 
   evutil_socket_t tls_listen_fd = -1;
 
@@ -230,12 +233,13 @@ static int create_server_listener(tls_listener_relay_server_type *server) {
     return -1;
   }
 
-  if (!turn_params.no_tcp && !turn_params.no_tls)
+  if (!turn_params.no_tcp && !turn_params.no_tls) {
     addr_debug_print(server->verbose, &server->addr, "TLS/TCP listener opened on ");
-  else if (!turn_params.no_tls)
+  } else if (!turn_params.no_tls) {
     addr_debug_print(server->verbose, &server->addr, "TLS listener opened on ");
-  else if (!turn_params.no_tcp)
+  } else if (!turn_params.no_tcp) {
     addr_debug_print(server->verbose, &server->addr, "TCP listener opened on ");
+  }
 
   FUNCEND;
 
@@ -248,8 +252,9 @@ static int sctp_create_server_listener(tls_listener_relay_server_type *server) {
 
   FUNCSTART;
 
-  if (!server)
+  if (!server) {
     return -1;
+  }
 
   evutil_socket_t tls_listen_fd = -1;
 
@@ -280,10 +285,11 @@ static int sctp_create_server_listener(tls_listener_relay_server_type *server) {
     return -1;
   }
 
-  if (!turn_params.no_tls)
+  if (!turn_params.no_tls) {
     addr_debug_print(server->verbose, &server->addr, "TLS/SCTP listener opened on ");
-  else
+  } else {
     addr_debug_print(server->verbose, &server->addr, "SCTP listener opened on ");
+  }
 
   FUNCEND;
 
@@ -296,14 +302,16 @@ static int init_server(tls_listener_relay_server_type *server, const char *ifnam
                        int verbose, ioa_engine_handle e, ioa_engine_new_connection_event_handler send_socket,
                        struct relay_server *relay_server) {
 
-  if (!server)
+  if (!server) {
     return -1;
+  }
 
   server->connect_cb = send_socket;
   server->relay_server = relay_server;
 
-  if (ifname)
+  if (ifname) {
     STRCPY(server->ifname, ifname);
+  }
 
   if (make_ioa_addr((const uint8_t *)local_address, port, &server->addr) < 0) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create a TCP/TLS listener for address: %s\n", local_address);

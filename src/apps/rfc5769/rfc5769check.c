@@ -95,8 +95,9 @@ static int check_oauth(void) {
 
         printf("oauth token %s:", encs[i_encs]);
 
-        if (print_extra)
+        if (print_extra) {
           printf("\n");
+        }
 
         oauth_token ot;
         memset(&ot, 0, sizeof(ot));
@@ -200,8 +201,9 @@ int main(int argc, const char **argv) {
   UNUSED_ARG(argc);
   UNUSED_ARG(argv);
 
-  if (argc > 1)
+  if (argc > 1) {
     print_extra = 1;
+  }
 
   set_logfile("stdout");
   set_no_stdout_log(1);
@@ -557,8 +559,9 @@ int main(int argc, const char **argv) {
   }
 
   {
-    if (check_oauth() < 0)
+    if (check_oauth() < 0) {
       exit(-1);
+    }
   }
 
   return 0;

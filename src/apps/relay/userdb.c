@@ -399,8 +399,9 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
                  ioa_network_buffer_handle nbh) {
   int ret = -1;
 
-  if (max_session_time)
+  if (max_session_time) {
     *max_session_time = 0;
+  }
 
   if (in_oauth && out_oauth && usname && usname[0]) {
 
@@ -423,11 +424,13 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
           memset(&rawKey, 0, sizeof(rawKey));
 
           int gres = (*(dbd->get_oauth_key))(usname, &rawKey);
-          if (gres < 0)
+          if (gres < 0) {
             return ret;
+          }
 
-          if (!rawKey.kid[0])
+          if (!rawKey.kid[0]) {
             return ret;
+          }
 
           if (rawKey.lifetime) {
             if (!turn_time_before(turn_time(), (turn_time_t)(rawKey.timestamp + rawKey.lifetime + OAUTH_TIME_DELTA))) {
@@ -535,8 +538,9 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
 
     init_secrets_list(&sl);
 
-    if (get_auth_secrets(&sl, realm) < 0)
+    if (get_auth_secrets(&sl, realm) < 0) {
       return ret;
+    }
 
     ts = get_rest_api_timestamp((char *)usname);
 
@@ -550,8 +554,9 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
 
       stun_attr_ref sar = stun_attr_get_first_by_type_str(
           ioa_network_buffer_data(nbh), ioa_network_buffer_get_size(nbh), STUN_ATTRIBUTE_MESSAGE_INTEGRITY);
-      if (!sar)
+      if (!sar) {
         return -1;
+      }
 
       int sarlen = stun_attr_get_len(sar);
       switch (sarlen) {
@@ -591,8 +596,9 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
                 }
                 free(pwd);
 
-                if (ret == 0)
+                if (ret == 0) {
                   break;
+                }
               }
             }
           }
@@ -699,8 +705,9 @@ void release_allocation_quota(uint8_t *user, int oauth, uint8_t *realm) {
         }
       }
     }
-    if (rp->status.total_current_allocs)
+    if (rp->status.total_current_allocs) {
       --(rp->status.total_current_allocs);
+    }
     ur_string_map_unlock(rp->status.alloc_counters);
     free(username);
   }
@@ -800,8 +807,9 @@ static int del_secret(uint8_t *secret, uint8_t *realm) {
 
 static int set_secret(uint8_t *secret, uint8_t *realm) {
 
-  if (!secret || (secret[0] == 0))
+  if (!secret || (secret[0] == 0)) {
     return 0;
+  }
 
   must_set_admin_realm(realm);
 
@@ -851,8 +859,9 @@ static int list_origins(uint8_t *realm) {
 }
 
 static int set_realm_option_one(uint8_t *realm, unsigned long value, const char *opt) {
-  if (value == (unsigned long)-1)
+  if (value == (unsigned long)-1) {
     return 0;
+  }
 
   const turn_dbdriver_t *dbd = get_dbdriver();
   if (dbd && dbd->set_realm_option_one) {
@@ -956,16 +965,19 @@ int adminuser(uint8_t *user, uint8_t *realm, uint8_t *pwd, uint8_t *secret, uint
 
   } else if (dbd) {
 
-    if (!is_admin)
+    if (!is_admin) {
       must_set_admin_realm(realm);
+    }
 
     if (ct == TA_DELETE_USER) {
       if (is_admin) {
-        if (dbd->del_admin_user)
+        if (dbd->del_admin_user) {
           (*dbd->del_admin_user)(user);
+        }
       } else {
-        if (dbd->del_user)
+        if (dbd->del_user) {
           (*dbd->del_user)(user, realm);
+        }
       }
     } else if (ct == TA_UPDATE_USER) {
       if (is_admin) {
@@ -976,8 +988,9 @@ int adminuser(uint8_t *user, uint8_t *realm, uint8_t *pwd, uint8_t *secret, uint
           (*dbd->set_admin_user)(user, realm, password);
         }
       } else {
-        if (dbd->set_user_key)
+        if (dbd->set_user_key) {
           (*dbd->set_user_key)(user, realm, skey);
+        }
       }
     }
   }
@@ -1152,8 +1165,9 @@ ip_range_list_t *get_ip_list(const char *kind) {
 
 void ip_list_free(ip_range_list_t *l) {
   if (l) {
-    if (l->rs)
+    if (l->rs) {
       free(l->rs);
+    }
     free(l);
   }
 }
@@ -1209,16 +1223,18 @@ int add_ip_list_range(const char *range0, const char *realm, ip_range_list_t *li
     addr_cpy(&max, &min);
   }
 
-  if (separator)
+  if (separator) {
     *separator = '-';
+  }
 
   ++(list->ranges_number);
   list->rs = (ip_range_t *)realloc(list->rs, sizeof(ip_range_t) * list->ranges_number);
   STRCPY(list->rs[list->ranges_number - 1].str, range);
-  if (realm)
+  if (realm) {
     STRCPY(list->rs[list->ranges_number - 1].realm, realm);
-  else
+  } else {
     list->rs[list->ranges_number - 1].realm[0] = 0;
+  }
   free(range);
   ioa_addr_range_set(&(list->rs[list->ranges_number - 1].enc), &min, &max);
 
@@ -1253,8 +1269,9 @@ int check_ip_list_range(const char *range0) {
     addr_cpy(&max, &min);
   }
 
-  if (separator)
+  if (separator) {
     *separator = '-';
+  }
 
   free(range);
 

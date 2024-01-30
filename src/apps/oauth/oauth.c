@@ -105,8 +105,9 @@ static int encode_token(const char *server_name, const char *gcm_nonce, const ch
   memset(&etoken, 0, sizeof(etoken));
 
   // TODO: avoid this hack
-  if (!*gcm_nonce)
+  if (!*gcm_nonce) {
     gcm_nonce = NULL;
+  }
 
   if (encode_oauth_token((const uint8_t *)server_name, &etoken, &key, &ot, (const uint8_t *)gcm_nonce) < 0) {
     fprintf(stderr, "%s: cannot encode oauth token\n", __FUNCTION__);
@@ -370,8 +371,9 @@ int main(int argc, char **argv) {
     }
   }
 
-  for (i = optind; i < argc; i++)
+  for (i = optind; i < argc; i++) {
     printf("Non-option argument %s\n", argv[i]);
+  }
 
   if (optind > argc) {
     fprintf(stderr, "%s\n", Usage);
@@ -456,8 +458,9 @@ int main(int argc, char **argv) {
         oauth_token dot;
         if (validate_decode_token(server_name, key, base64encoded_etoken, &dot) == 0) {
           printf("-=Valid token!=-\n");
-          if (verbose_flag)
+          if (verbose_flag) {
             print_token_body(&dot);
+          }
         } else {
           fprintf(stderr, "Error during token validation and decoding\n");
           exit(-1);

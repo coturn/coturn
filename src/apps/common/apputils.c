@@ -183,9 +183,9 @@ int socket_tcp_set_keepalive(evutil_socket_t fd, SOCKET_TYPE st) {
 int socket_set_reusable(evutil_socket_t fd, int flag, SOCKET_TYPE st) {
   UNUSED_ARG(st);
 
-  if (fd < 0)
+  if (fd < 0) {
     return -1;
-  else {
+  } else {
 
 #if defined(WINDOWS)
     int use_reuseaddr = IS_TURN_SERVER;
@@ -197,8 +197,9 @@ int socket_set_reusable(evutil_socket_t fd, int flag, SOCKET_TYPE st) {
     if (use_reuseaddr) {
       int on = flag;
       int ret = setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (const void *)&on, (socklen_t)sizeof(on));
-      if (ret < 0)
+      if (ret < 0) {
         perror("SO_REUSEADDR");
+      }
     }
 #endif
 
@@ -208,8 +209,9 @@ int socket_set_reusable(evutil_socket_t fd, int flag, SOCKET_TYPE st) {
       if (is_sctp_socket(st)) {
         int on = flag;
         int ret = setsockopt(fd, IPPROTO_SCTP, SCTP_REUSE_PORT, (const void *)&on, (socklen_t)sizeof(on));
-        if (ret < 0)
+        if (ret < 0) {
           perror("SCTP_REUSE_PORT");
+        }
       }
     }
 #endif
@@ -238,10 +240,11 @@ int sock_bind_to_device(evutil_socket_t fd, const unsigned char *ifname) {
     strncpy(ifr.ifr_name, (const char *)ifname, sizeof(ifr.ifr_name));
 
     if (setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, (void *)&ifr, sizeof(ifr)) < 0) {
-      if (socket_eperm())
+      if (socket_eperm()) {
         perror("You must obtain superuser privileges to bind a socket to device");
-      else
+      } else {
         perror("Cannot bind socket to device");
+      }
 
       return -1;
     }
@@ -255,9 +258,9 @@ int sock_bind_to_device(evutil_socket_t fd, const unsigned char *ifname) {
 }
 
 int addr_connect(evutil_socket_t fd, const ioa_addr *addr, int *out_errno) {
-  if (!addr || fd < 0)
+  if (!addr || fd < 0) {
     return -1;
-  else {
+  } else {
     int err = 0;
     do {
       if (addr->ss.sa_family == AF_INET) {
@@ -269,11 +272,13 @@ int addr_connect(evutil_socket_t fd, const ioa_addr *addr, int *out_errno) {
       }
     } while (err < 0 && socket_eintr());
 
-    if (out_errno)
+    if (out_errno) {
       *out_errno = socket_errno();
+    }
 
-    if (err < 0 && !socket_einprogress())
+    if (err < 0 && !socket_einprogress()) {
       perror("Connect");
+    }
 
     return err;
   }
@@ -318,9 +323,9 @@ int addr_bind(evutil_socket_t fd, const ioa_addr *addr, int reusable, int debug,
 
 int addr_get_from_sock(evutil_socket_t fd, ioa_addr *addr) {
 
-  if (fd < 0 || !addr)
+  if (fd < 0 || !addr) {
     return -1;
-  else {
+  } else {
 
     ioa_addr a;
     a.ss.sa_family = AF_INET6;
@@ -559,14 +564,16 @@ int set_socket_df(evutil_socket_t fd, int family, int value) {
     /* kernel sets DF bit on outgoing IP packets */
     if (family == AF_INET) {
       int val = IP_PMTUDISC_DO;
-      if (!value)
+      if (!value) {
         val = IP_PMTUDISC_DONT;
+      }
       ret = setsockopt(fd, IPPROTO_IP, IP_MTU_DISCOVER, &val, sizeof(val));
     } else {
 #if defined(IPPROTO_IPV6) && defined(IPV6_MTU_DISCOVER) && defined(IPV6_PMTUDISC_DO) && defined(IPV6_PMTUDISC_DONT)
       int val = IPV6_PMTUDISC_DO;
-      if (!value)
+      if (!value) {
         val = IPV6_PMTUDISC_DONT;
+      }
       ret = setsockopt(fd, IPPROTO_IPV6, IPV6_MTU_DISCOVER, &val, sizeof(val));
 #else
 #error CANNOT SET IPV6 SOCKET DF FLAG (2)
@@ -590,8 +597,9 @@ int set_socket_df(evutil_socket_t fd, int family, int value) {
 static int get_mtu_from_ssl(SSL *ssl) {
   int ret = SOSO_MTU;
 #if DTLS_SUPPORTED
-  if (ssl)
+  if (ssl) {
     ret = BIO_ctrl(SSL_get_wbio(ssl), BIO_CTRL_DGRAM_QUERY_MTU, 0, NULL);
+  }
 #else
   UNUSED_ARG(ssl);
 #endif
@@ -610,29 +618,35 @@ static void set_query_mtu(SSL *ssl) {
 
 int decrease_mtu(SSL *ssl, int mtu, int verbose) {
 
-  if (!ssl)
+  if (!ssl) {
     return mtu;
+  }
 
   int new_mtu = get_mtu_from_ssl(ssl);
 
-  if (new_mtu < 1)
+  if (new_mtu < 1) {
     new_mtu = mtu;
+  }
 
-  if (new_mtu > MAX_MTU)
+  if (new_mtu > MAX_MTU) {
     mtu = MAX_MTU;
-  if (new_mtu > 0 && new_mtu < MIN_MTU)
+  }
+  if (new_mtu > 0 && new_mtu < MIN_MTU) {
     mtu = MIN_MTU;
-  else if (new_mtu < mtu)
+  } else if (new_mtu < mtu) {
     mtu = new_mtu;
-  else
+  } else {
     mtu -= MTU_STEP;
+  }
 
-  if (mtu < MIN_MTU)
+  if (mtu < MIN_MTU) {
     mtu = MIN_MTU;
+  }
 
   set_query_mtu(ssl);
-  if (verbose)
+  if (verbose) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "1. mtu to use: %d\n", mtu);
+  }
 
 #if DTLS_SUPPORTED
   SSL_set_mtu(ssl, mtu);
@@ -644,21 +658,24 @@ int decrease_mtu(SSL *ssl, int mtu, int verbose) {
 
 int set_mtu_df(SSL *ssl, evutil_socket_t fd, int family, int mtu, int df_value, int verbose) {
 
-  if (!ssl || fd < 0)
+  if (!ssl || fd < 0) {
     return 0;
+  }
 
   int ret = set_socket_df(fd, family, df_value);
 
-  if (!mtu)
+  if (!mtu) {
     mtu = SOSO_MTU;
-  else if (mtu < MIN_MTU)
+  } else if (mtu < MIN_MTU) {
     mtu = MIN_MTU;
-  else if (mtu > MAX_MTU)
+  } else if (mtu > MAX_MTU) {
     mtu = MAX_MTU;
+  }
 
   set_query_mtu(ssl);
-  if (verbose)
+  if (verbose) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "3. mtu to use: %d\n", mtu);
+  }
 
 #if DTLS_SUPPORTED
 
@@ -668,8 +685,9 @@ int set_mtu_df(SSL *ssl, evutil_socket_t fd, int family, int mtu, int df_value, 
 
 #endif
 
-  if (verbose)
+  if (verbose) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "4. new mtu: %d\n", get_mtu_from_ssl(ssl));
+  }
 
   return ret;
 }
@@ -697,8 +715,9 @@ int get_socket_mtu(evutil_socket_t fd, int family, int verbose) {
   ret = val;
 #endif
 
-  if (verbose)
+  if (verbose) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: final=%d\n", __FUNCTION__, ret);
+  }
 
   return ret;
 }
@@ -762,8 +781,9 @@ int handle_socket_error(void) {
 //////////////////// Misc utils //////////////////////////////
 
 char *skip_blanks(char *s) {
-  while (*s == ' ' || *s == '\t' || *s == '\n')
+  while (*s == ' ' || *s == '\t' || *s == '\n') {
     ++s;
+  }
 
   return s;
 }
@@ -810,9 +830,9 @@ int clock_gettime(int X, struct timeval *tv) {
       frequencyToMicroseconds = 10.;
     }
   }
-  if (usePerformanceCounter)
+  if (usePerformanceCounter) {
     QueryPerformanceCounter(&t);
-  else {
+  } else {
     GetSystemTimeAsFileTime(&f);
     t.QuadPart = f.dwHighDateTime;
     t.QuadPart <<= 32;
@@ -858,10 +878,11 @@ char *dirname(char *path) {
   }
 
   int n = strlen(drive) + strlen(dir);
-  if (n > 0)
+  if (n > 0) {
     path[n] = 0;
-  else
+  } else {
     return NULL;
+  }
   return path;
 }
 #endif
@@ -889,8 +910,9 @@ int getdomainname(char *name, size_t len) {
         strncpy(name, pszOut, n);
         name[n] = 0;
         TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "DomainForestName: %s\n", pszOut);
-      } else
+      } else {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "wchar convert to char fail");
+      }
 
       free(pszOut);
       break;
@@ -909,8 +931,9 @@ int getdomainname(char *name, size_t len) {
         strncpy(name, pszOut, n);
         name[n] = 0;
         TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "DomainNameDns: %s\n", pszOut);
-      } else
+      } else {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "wchar convert to char fail");
+      }
 
       free(pszOut);
       break;
@@ -929,8 +952,9 @@ int getdomainname(char *name, size_t len) {
         strncpy(name, pszOut, n);
         name[n] = 0;
         TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "DomainNameFlat: %s\n", pszOut);
-      } else
+      } else {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "wchar convert to char fail");
+      }
 
       free(pszOut);
     } else {
@@ -953,20 +977,23 @@ int getdomainname(char *name, size_t len) {
  * \return
  */
 wchar_t *_ATW(__in char *pszInBuf, __in int nInSize, __out wchar_t **pszOutBuf, __out int *pnOutSize) {
-  if (!pszInBuf || !pszOutBuf || !pnOutSize || nInSize <= 0)
+  if (!pszInBuf || !pszOutBuf || !pnOutSize || nInSize <= 0) {
     return NULL;
+  }
   // Get buffer size
   *pnOutSize = MultiByteToWideChar(NULL, NULL, pszInBuf, nInSize, *pszOutBuf, 0);
-  if (*pnOutSize == 0)
+  if (*pnOutSize == 0) {
     return NULL;
+  }
   (*pnOutSize)++;
   *pszOutBuf = malloc((*pnOutSize) * sizeof(wchar_t));
   memset((void *)*pszOutBuf, 0, sizeof(wchar_t) * (*pnOutSize));
   if (MultiByteToWideChar(NULL, NULL, pszInBuf, nInSize, *pszOutBuf, *pnOutSize) == 0) {
     free(*pszOutBuf);
     return NULL;
-  } else
+  } else {
     return *pszOutBuf;
+  }
 }
 
 /*!
@@ -979,19 +1006,22 @@ wchar_t *_ATW(__in char *pszInBuf, __in int nInSize, __out wchar_t **pszOutBuf, 
  * \return
  */
 char *_WTA(__in wchar_t *pszInBuf, __in int nInSize, __out char **pszOutBuf, __out int *pnOutSize) {
-  if (!pszInBuf || !pszOutBuf || !pnOutSize || nInSize <= 0)
+  if (!pszInBuf || !pszOutBuf || !pnOutSize || nInSize <= 0) {
     return NULL;
+  }
   *pnOutSize = WideCharToMultiByte(NULL, NULL, pszInBuf, nInSize, *pszOutBuf, 0, NULL, NULL);
-  if (*pnOutSize == 0)
+  if (*pnOutSize == 0) {
     return NULL;
+  }
   (*pnOutSize)++;
   *pszOutBuf = malloc(*pnOutSize * sizeof(char));
   memset((void *)*pszOutBuf, 0, sizeof(char) * (*pnOutSize));
   if (WideCharToMultiByte(NULL, NULL, pszInBuf, nInSize, *pszOutBuf, *pnOutSize, NULL, NULL) == 0) {
     free(*pszOutBuf);
     return NULL;
-  } else
+  } else {
     return *pszOutBuf;
+  }
 }
 
 #endif
@@ -1047,14 +1077,17 @@ void set_execdir(void) {
   if (_var && *_var) {
     _var = strdup(_var);
     char *edir = _var;
-    if (edir[0] != '.')
+    if (edir[0] != '.') {
       edir = strstr(edir, "/");
-    if (edir && *edir)
+    }
+    if (edir && *edir) {
       edir = dirname(edir);
-    else
+    } else {
       edir = dirname(_var);
-    if (c_execdir)
+    }
+    if (c_execdir) {
       free(c_execdir);
+    }
     c_execdir = strdup(edir);
     free(_var);
   }
@@ -1065,16 +1098,19 @@ void print_abs_file_name(const char *msg1, const char *msg2, const char *fn) {
   absfn[0] = 0;
 
   if (fn) {
-    while (fn[0] && fn[0] == ' ')
+    while (fn[0] && fn[0] == ' ') {
       ++fn;
+    }
     if (fn[0]) {
       if (fn[0] == '/') {
         STRCPY(absfn, fn);
       } else {
-        if (fn[0] == '.' && fn[1] && fn[1] == '/')
+        if (fn[0] == '.' && fn[1] && fn[1] == '/') {
           fn += 2;
-        if (!getcwd(absfn, sizeof(absfn) - 1))
+        }
+        if (!getcwd(absfn, sizeof(absfn) - 1)) {
           absfn[0] = 0;
+        }
         size_t blen = strlen(absfn);
         if (blen < sizeof(absfn) - 1) {
           strncpy(absfn + blen, "/", sizeof(absfn) - blen);
@@ -1286,8 +1322,9 @@ char *base64_encode(const unsigned char *data, size_t input_length, size_t *outp
   *output_length = 4 * ((input_length + 2) / 3);
 
   char *encoded_data = (char *)malloc(*output_length + 1);
-  if (encoded_data == NULL)
+  if (encoded_data == NULL) {
     return NULL;
+  }
 
   size_t i, j;
   for (i = 0, j = 0; i < input_length;) {
@@ -1304,8 +1341,9 @@ char *base64_encode(const unsigned char *data, size_t input_length, size_t *outp
     encoded_data[j++] = encoding_table[(triple >> 0 * 6) & 0x3F];
   }
 
-  for (i = 0; i < mod_table[input_length % 3]; i++)
+  for (i = 0; i < mod_table[input_length % 3]; i++) {
     encoded_data[*output_length - 1 - i] = '=';
+  }
 
   encoded_data[*output_length] = 0;
 
@@ -1318,27 +1356,33 @@ void build_base64_decoding_table(void) {
   memset(decoding_table, 0, 256);
 
   int i;
-  for (i = 0; i < 64; i++)
+  for (i = 0; i < 64; i++) {
     decoding_table[(unsigned char)encoding_table[i]] = (char)i;
+  }
 }
 
 unsigned char *base64_decode(const char *data, size_t input_length, size_t *output_length) {
 
-  if (decoding_table == NULL)
+  if (decoding_table == NULL) {
     build_base64_decoding_table();
+  }
 
-  if (input_length % 4 != 0)
+  if (input_length % 4 != 0) {
     return NULL;
+  }
 
   *output_length = input_length / 4 * 3;
-  if (data[input_length - 1] == '=')
+  if (data[input_length - 1] == '=') {
     (*output_length)--;
-  if (data[input_length - 2] == '=')
+  }
+  if (data[input_length - 2] == '=') {
     (*output_length)--;
+  }
 
   unsigned char *decoded_data = (unsigned char *)malloc(*output_length);
-  if (decoded_data == NULL)
+  if (decoded_data == NULL) {
     return NULL;
+  }
 
   int i;
   size_t j;
@@ -1351,12 +1395,15 @@ unsigned char *base64_decode(const char *data, size_t input_length, size_t *outp
 
     uint32_t triple = (sextet_a << 3 * 6) + (sextet_b << 2 * 6) + (sextet_c << 1 * 6) + (sextet_d << 0 * 6);
 
-    if (j < *output_length)
+    if (j < *output_length) {
       decoded_data[j++] = (triple >> 2 * 8) & 0xFF;
-    if (j < *output_length)
+    }
+    if (j < *output_length) {
       decoded_data[j++] = (triple >> 1 * 8) & 0xFF;
-    if (j < *output_length)
+    }
+    if (j < *output_length) {
       decoded_data[j++] = (triple >> 0 * 8) & 0xFF;
+    }
   }
 
   return decoded_data;

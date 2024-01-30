@@ -338,14 +338,16 @@ extern turn_params_t turn_params;
 ////////////////  Listener server /////////////////
 
 static inline int get_alt_listener_port(void) {
-  if (turn_params.alt_listener_port < 1)
+  if (turn_params.alt_listener_port < 1) {
     return turn_params.listener_port + 1;
+  }
   return turn_params.alt_listener_port;
 }
 
 static inline int get_alt_tls_listener_port(void) {
-  if (turn_params.alt_tls_listener_port < 1)
+  if (turn_params.alt_tls_listener_port < 1) {
     return turn_params.tls_listener_port + 1;
+  }
   return turn_params.alt_tls_listener_port;
 }
 
