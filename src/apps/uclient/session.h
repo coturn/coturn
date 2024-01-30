@@ -1,4 +1,6 @@
 /*
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
@@ -28,19 +30,17 @@
  * SUCH DAMAGE.
  */
 
-#ifndef __SESSION__
-#define __SESSION__
+#ifndef COTURN_UCLIENT_SESSION_H_3F24DB4E_3426_47FF_BC7F_4F3E1FB3094B
+#define COTURN_UCLIENT_SESSION_H_3F24DB4E_3426_47FF_BC7F_4F3E1FB3094B
 
 #include <event2/bufferevent.h>
 #include <event2/event.h>
 
 #include "ns_turn_ioaddr.h"
-#include "ns_turn_utils.h"
 
 #include "apputils.h"
 #include "stun_buffer.h"
 
-#include "ns_turn_openssl.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -129,4 +129,4 @@ typedef struct _message_info {
 }
 #endif
 
-#endif //__SESSION__
+#endif // COTURN_UCLIENT_SESSION_H_3F24DB4E_3426_47FF_BC7F_4F3E1FB3094B
