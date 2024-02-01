@@ -54,17 +54,20 @@ static const char *encs[] = {
 static int print_extra = 0;
 
 void print_field5769(const char *name, const void *f0, size_t len);
-void print_field5769(const char *name, const void *f0, size_t len) {
+void print_field5769(const char *name, const void *f0, size_t len)
+{
   const unsigned char *f = (const unsigned char *)f0;
   printf("\nfield %s %lu==>>\n", name, (unsigned long)len);
   size_t i;
-  for (i = 0; i < len; ++i) {
+  for (i = 0; i < len; ++i)
+  {
     printf("\\x%02x", (unsigned int)f[i]);
   }
   printf("\n<<==field %s\n", name);
 }
 
-static int check_oauth(void) {
+static int check_oauth(void)
+{
 
   const char server_name[33] = "blackdow.carleon.gov";
 
@@ -91,11 +94,13 @@ static int check_oauth(void) {
   {
     {
 
-      for (i_encs = 0; encs[i_encs]; ++i_encs) {
+      for (i_encs = 0; encs[i_encs]; ++i_encs)
+      {
 
         printf("oauth token %s:", encs[i_encs]);
 
-        if (print_extra) {
+        if (print_extra)
+        {
           printf("\n");
         }
 
@@ -130,14 +135,16 @@ static int check_oauth(void) {
             char err_msg[1025] = "\0";
             size_t err_msg_size = sizeof(err_msg) - 1;
 
-            if (convert_oauth_key_data(&okd, &key, err_msg, err_msg_size) < 0) {
+            if (convert_oauth_key_data(&okd, &key, err_msg, err_msg_size) < 0)
+            {
               fprintf(stderr, "%s\n", err_msg);
               return -1;
             }
           }
         }
 
-        if (print_extra) {
+        if (print_extra)
+        {
           print_field5769("AS-RS", key.as_rs_key, key.as_rs_key_size);
           print_field5769("AUTH", key.auth_key, key.auth_key_size);
         }
@@ -146,38 +153,45 @@ static int check_oauth(void) {
           encoded_oauth_token etoken;
           memset(&etoken, 0, sizeof(etoken));
 
-          if (encode_oauth_token((const uint8_t *)server_name, &etoken, &key, &ot, (const uint8_t *)gcm_nonce) < 0) {
+          if (encode_oauth_token((const uint8_t *)server_name, &etoken, &key, &ot, (const uint8_t *)gcm_nonce) < 0)
+          {
             fprintf(stderr, "%s: cannot encode oauth token\n", __FUNCTION__);
             return -1;
           }
 
-          if (print_extra) {
+          if (print_extra)
+          {
             print_field5769("encoded token", etoken.token, etoken.size);
           }
 
-          if (decode_oauth_token((const uint8_t *)server_name, &etoken, &key, &dot) < 0) {
+          if (decode_oauth_token((const uint8_t *)server_name, &etoken, &key, &dot) < 0)
+          {
             fprintf(stderr, "%s: cannot decode oauth token\n", __FUNCTION__);
             return -1;
           }
         }
 
-        if (strcmp((char *)ot.enc_block.mac_key, (char *)dot.enc_block.mac_key)) {
+        if (strcmp((char *)ot.enc_block.mac_key, (char *)dot.enc_block.mac_key))
+        {
           fprintf(stderr, "%s: wrong mac key: %s, must be %s\n", __FUNCTION__, (char *)dot.enc_block.mac_key,
                   (char *)ot.enc_block.mac_key);
           return -1;
         }
 
-        if (ot.enc_block.key_length != dot.enc_block.key_length) {
+        if (ot.enc_block.key_length != dot.enc_block.key_length)
+        {
           fprintf(stderr, "%s: wrong key length: %d, must be %d\n", __FUNCTION__, (int)dot.enc_block.key_length,
                   (int)ot.enc_block.key_length);
           return -1;
         }
-        if (ot.enc_block.timestamp != dot.enc_block.timestamp) {
+        if (ot.enc_block.timestamp != dot.enc_block.timestamp)
+        {
           fprintf(stderr, "%s: wrong timestamp: %llu, must be %llu\n", __FUNCTION__,
                   (unsigned long long)dot.enc_block.timestamp, (unsigned long long)ot.enc_block.timestamp);
           return -1;
         }
-        if (ot.enc_block.lifetime != dot.enc_block.lifetime) {
+        if (ot.enc_block.lifetime != dot.enc_block.lifetime)
+        {
           fprintf(stderr, "%s: wrong lifetime: %lu, must be %lu\n", __FUNCTION__, (unsigned long)dot.enc_block.lifetime,
                   (unsigned long)ot.enc_block.lifetime);
           return -1;
@@ -195,13 +209,15 @@ static int check_oauth(void) {
 
 static SHATYPE shatype = SHATYPE_SHA1;
 
-int main(int argc, const char **argv) {
+int main(int argc, const char **argv)
+{
   int res = -1;
 
   UNUSED_ARG(argc);
   UNUSED_ARG(argv);
 
-  if (argc > 1) {
+  if (argc > 1)
+  {
     print_extra = 1;
   }
 
@@ -235,9 +251,12 @@ int main(int argc, const char **argv) {
       res = stun_is_command_message_full_check_str(buf, sizeof(reqstc) - 1, 1, NULL);
       printf("RFC 5769 message fingerprint test(0) result: ");
 
-      if (res) {
+      if (res)
+      {
         printf("success\n");
-      } else if (res == 0) {
+      }
+      else if (res == 0)
+      {
         printf("failure on fingerprint(0) check\n");
         exit(-1);
       }
@@ -253,12 +272,17 @@ int main(int argc, const char **argv) {
                                              shatype);
       printf("RFC 5769 simple request short-term credentials and integrity test result: ");
 
-      if (res > 0) {
+      if (res > 0)
+      {
         printf("success\n");
-      } else if (res == 0) {
+      }
+      else if (res == 0)
+      {
         printf("failure on integrity check\n");
         exit(-1);
-      } else {
+      }
+      else
+      {
         printf("failure on message structure check\n");
         exit(-1);
       }
@@ -270,9 +294,12 @@ int main(int argc, const char **argv) {
       res = stun_is_command_message_full_check_str(buf, sizeof(reqstc) - 1, 1, NULL);
       printf("RFC 5769 NEGATIVE fingerprint test(0) result: ");
 
-      if (!res) {
+      if (!res)
+      {
         printf("success\n");
-      } else if (res == 0) {
+      }
+      else if (res == 0)
+      {
         printf("failure on NEGATIVE fingerprint check\n");
         exit(-1);
       }
@@ -318,12 +345,17 @@ int main(int argc, const char **argv) {
 
     printf("RFC 5769 message structure, long-term credentials and integrity test result: ");
 
-    if (res > 0) {
+    if (res > 0)
+    {
       printf("success\n");
-    } else if (res == 0) {
+    }
+    else if (res == 0)
+    {
       printf("failure on integrity check\n");
       exit(-1);
-    } else {
+    }
+    else
+    {
       printf("failure on message structure check\n");
       exit(-1);
     }
@@ -343,19 +375,23 @@ int main(int argc, const char **argv) {
       buf32[1] = nswap32(STUN_MAGIC_COOKIE);
       stun_tid_message_cpy(buf, &tid);
       stun_attr_add_integrity_by_user_str(buf, &len, uname, realm, upwd, nonce, shatype);
-      if (len != (sizeof(reqltc) - 1)) {
+      if (len != (sizeof(reqltc) - 1))
+      {
         printf("failure: length %d, must be %d\n", (int)len, (int)(sizeof(reqltc) - 1));
         exit(-1);
       }
-      if (memcmp(buf, reqltc, len)) {
+      if (memcmp(buf, reqltc, len))
+      {
         printf("failure: wrong message content\n");
         {
           int lines = 29;
           int line = 0;
           int col = 0;
           int cols = 4;
-          for (line = 0; line < lines; line++) {
-            for (col = 0; col < cols; col++) {
+          for (line = 0; line < lines; line++)
+          {
+            for (col = 0; col < cols; col++)
+            {
               uint8_t c = buf[line * 4 + col];
               printf(" %2x", (int)c);
             }
@@ -374,9 +410,12 @@ int main(int argc, const char **argv) {
 
     printf("RFC 5769 NEGATIVE long-term credentials test result: ");
 
-    if (res == 0) {
+    if (res == 0)
+    {
       printf("success\n");
-    } else {
+    }
+    else
+    {
       printf("failure on NEGATIVE long-term credentials check\n");
       exit(-1);
     }
@@ -404,9 +443,12 @@ int main(int argc, const char **argv) {
       res = stun_is_command_message_full_check_str(buf, sizeof(respv4) - 1, 1, NULL);
       printf("RFC 5769 message fingerprint test(1) result: ");
 
-      if (res) {
+      if (res)
+      {
         printf("success\n");
-      } else if (res == 0) {
+      }
+      else if (res == 0)
+      {
         printf("failure on fingerprint(1) check\n");
         exit(-1);
       }
@@ -422,12 +464,17 @@ int main(int argc, const char **argv) {
                                              shatype);
       printf("RFC 5769 IPv4 response short-term credentials and integrity test result: ");
 
-      if (res > 0) {
+      if (res > 0)
+      {
         printf("success\n");
-      } else if (res == 0) {
+      }
+      else if (res == 0)
+      {
         printf("failure on integrity check\n");
         exit(-1);
-      } else {
+      }
+      else
+      {
         printf("failure on message structure check\n");
         exit(-1);
       }
@@ -439,9 +486,12 @@ int main(int argc, const char **argv) {
       res = stun_is_command_message_full_check_str(buf, sizeof(respv4) - 1, 1, NULL);
       printf("RFC 5769 NEGATIVE fingerprint test(1) result: ");
 
-      if (!res) {
+      if (!res)
+      {
         printf("success\n");
-      } else if (res == 0) {
+      }
+      else if (res == 0)
+      {
         printf("failure on NEGATIVE fingerprint check\n");
         exit(-1);
       }
@@ -454,15 +504,19 @@ int main(int argc, const char **argv) {
       printf("RFC 5769 IPv4 encoding result: ");
 
       res = stun_attr_get_first_addr_str(buf, sizeof(respv4) - 1, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS, &addr4, NULL);
-      if (res < 0) {
+      if (res < 0)
+      {
         printf("failure on message structure check\n");
         exit(-1);
       }
 
       make_ioa_addr((const uint8_t *)"192.0.2.1", 32853, &addr4_test);
-      if (addr_eq(&addr4, &addr4_test)) {
+      if (addr_eq(&addr4, &addr4_test))
+      {
         printf("success\n");
-      } else {
+      }
+      else
+      {
         printf("failure on IPv4 deconding check\n");
         exit(-1);
       }
@@ -493,9 +547,12 @@ int main(int argc, const char **argv) {
       res = stun_is_command_message_full_check_str(buf, sizeof(respv6) - 1, 1, NULL);
       printf("RFC 5769 message fingerprint test(2) result: ");
 
-      if (res) {
+      if (res)
+      {
         printf("success\n");
-      } else if (res == 0) {
+      }
+      else if (res == 0)
+      {
         printf("failure on fingerprint(2) check\n");
         exit(-1);
       }
@@ -511,12 +568,17 @@ int main(int argc, const char **argv) {
                                              shatype);
       printf("RFC 5769 IPv6 response short-term credentials and integrity test result: ");
 
-      if (res > 0) {
+      if (res > 0)
+      {
         printf("success\n");
-      } else if (res == 0) {
+      }
+      else if (res == 0)
+      {
         printf("failure on integrity check\n");
         exit(-1);
-      } else {
+      }
+      else
+      {
         printf("failure on message structure check\n");
         exit(-1);
       }
@@ -528,9 +590,12 @@ int main(int argc, const char **argv) {
       res = stun_is_command_message_full_check_str(buf, sizeof(respv6) - 1, 1, NULL);
       printf("RFC 5769 NEGATIVE fingerprint test(2) result: ");
 
-      if (!res) {
+      if (!res)
+      {
         printf("success\n");
-      } else if (res == 0) {
+      }
+      else if (res == 0)
+      {
         printf("failure on NEGATIVE fingerprint check\n");
         exit(-1);
       }
@@ -543,15 +608,19 @@ int main(int argc, const char **argv) {
       printf("RFC 5769 IPv6 encoding result: ");
 
       res = stun_attr_get_first_addr_str(buf, sizeof(respv6) - 1, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS, &addr6, NULL);
-      if (res < 0) {
+      if (res < 0)
+      {
         printf("failure on message structure check\n");
         exit(-1);
       }
 
       make_ioa_addr((const uint8_t *)"2001:db8:1234:5678:11:2233:4455:6677", 32853, &addr6_test);
-      if (addr_eq(&addr6, &addr6_test)) {
+      if (addr_eq(&addr6, &addr6_test))
+      {
         printf("success\n");
-      } else {
+      }
+      else
+      {
         printf("failure on IPv6 deconding check\n");
         exit(-1);
       }
@@ -559,7 +628,8 @@ int main(int argc, const char **argv) {
   }
 
   {
-    if (check_oauth() < 0) {
+    if (check_oauth() < 0)
+    {
       exit(-1);
     }
   }

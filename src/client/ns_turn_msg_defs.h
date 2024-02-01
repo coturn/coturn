@@ -157,7 +157,8 @@
 
 #define MAXSHASIZE (128)
 
-enum _SHATYPE {
+enum _SHATYPE
+{
   SHATYPE_ERROR = -1,
   SHATYPE_DEFAULT = 0,
   SHATYPE_SHA1 = SHATYPE_DEFAULT,
@@ -176,7 +177,8 @@ typedef enum _SHATYPE SHATYPE;
 
 /* OAUTH TOKEN ENC ALG ==> */
 
-enum _ENC_ALG {
+enum _ENC_ALG
+{
   ENC_ALG_ERROR = -1,
 #if !defined(TURN_NO_GCM)
   ENC_ALG_DEFAULT = 0,
@@ -211,7 +213,8 @@ typedef enum _ENC_ALG ENC_ALG;
 
 #define OAUTH_TIME_DELTA (5)
 
-struct _oauth_key_data {
+struct _oauth_key_data
+{
   char kid[OAUTH_KID_SIZE + 1];
   char ikm_key[OAUTH_KEY_SIZE + 1];
   size_t ikm_key_size;
@@ -222,7 +225,8 @@ struct _oauth_key_data {
 
 typedef struct _oauth_key_data oauth_key_data;
 
-struct _oauth_key {
+struct _oauth_key
+{
   char kid[OAUTH_KID_SIZE + 1];
   char ikm_key[OAUTH_KEY_SIZE + 1];
   size_t ikm_key_size;
@@ -237,7 +241,8 @@ struct _oauth_key {
 
 typedef struct _oauth_key oauth_key;
 
-struct _oauth_encrypted_block {
+struct _oauth_encrypted_block
+{
   uint16_t nonce_length;
   uint8_t nonce[OAUTH_MAX_NONCE_SIZE];
   uint16_t key_length;
@@ -248,7 +253,8 @@ struct _oauth_encrypted_block {
 
 typedef struct _oauth_encrypted_block oauth_encrypted_block;
 
-struct _oauth_token {
+struct _oauth_token
+{
   oauth_encrypted_block enc_block;
 };
 
@@ -256,7 +262,8 @@ typedef struct _oauth_token oauth_token;
 
 #define MAX_ENCODED_OAUTH_TOKEN_SIZE (1024)
 
-struct _encoded_oauth_token {
+struct _encoded_oauth_token
+{
   char token[MAX_ENCODED_OAUTH_TOKEN_SIZE];
   size_t size;
 };

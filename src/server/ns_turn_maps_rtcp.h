@@ -35,7 +35,8 @@
 #include "ns_turn_maps.h"
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 //////////////// RTCP MAP //////////////////

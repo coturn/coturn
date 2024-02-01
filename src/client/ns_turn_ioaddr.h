@@ -34,20 +34,23 @@
 #include "ns_turn_defs.h"
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 /////////////////////////////////////////////////////
 
 #define MAX_IOA_ADDR_STRING (65)
 
-typedef union {
+typedef union
+{
   struct sockaddr ss;
   struct sockaddr_in s4;
   struct sockaddr_in6 s6;
 } ioa_addr;
 
-typedef struct {
+typedef struct
+{
   ioa_addr min;
   ioa_addr max;
 } ioa_addr_range;

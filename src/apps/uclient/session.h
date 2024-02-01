@@ -43,18 +43,25 @@
 #include "ns_turn_openssl.h"
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 ///////// types ////////////
 
-enum _UR_STATE { UR_STATE_UNKNOWN = 0, UR_STATE_READY, UR_STATE_DONE };
+enum _UR_STATE
+{
+  UR_STATE_UNKNOWN = 0,
+  UR_STATE_READY,
+  UR_STATE_DONE
+};
 
 typedef enum _UR_STATE UR_STATE;
 
 //////////////// session info //////////////////////
 
-typedef struct {
+typedef struct
+{
   /* RFC 6062 */
   uint32_t cid;
   ioa_addr tcp_data_local_addr;
@@ -63,7 +70,8 @@ typedef struct {
   int tcp_data_bound;
 } app_tcp_conn_info;
 
-typedef struct {
+typedef struct
+{
   ioa_addr local_addr;
   char lsaddr[129];
   ioa_addr remote_addr;
@@ -89,7 +97,8 @@ typedef struct {
   char s_mobile_id[33];
 } app_ur_conn_info;
 
-typedef struct {
+typedef struct
+{
   app_ur_conn_info pinfo;
   UR_STATE state;
   unsigned int ctime;
@@ -118,7 +127,8 @@ typedef struct {
 
 ///////////////////////////////////////////////////////
 
-typedef struct _message_info {
+typedef struct _message_info
+{
   int msgnum;
   uint64_t mstime;
 } message_info;

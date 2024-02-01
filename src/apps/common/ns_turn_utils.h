@@ -44,12 +44,14 @@ void err(int eval, const char *format, ...);
 #include "ns_turn_ioaddr.h"
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 //////////////////////// LOG //////////////////////////
 
-typedef enum {
+typedef enum
+{
   TURN_LOG_LEVEL_DEBUG = 0,
   TURN_LOG_LEVEL_INFO,
   TURN_LOG_LEVEL_CONTROL,

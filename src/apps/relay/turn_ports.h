@@ -36,7 +36,8 @@
 #include "ns_sm.h"
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 //////////////////////////////////////////////////
