@@ -39,18 +39,28 @@
 #include <stdlib.h>
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 /////////  HTTP REQUEST //////////
 
-enum _HTTP_REQUEST_TYPE { HRT_UNKNOWN = 0, HRT_GET, HRT_HEAD, HRT_POST, HRT_PUT, HRT_DELETE };
+enum _HTTP_REQUEST_TYPE
+{
+  HRT_UNKNOWN = 0,
+  HRT_GET,
+  HRT_HEAD,
+  HRT_POST,
+  HRT_PUT,
+  HRT_DELETE
+};
 
 typedef enum _HTTP_REQUEST_TYPE HTTP_REQUEST_TYPE;
 
 struct http_headers;
 
-struct http_request {
+struct http_request
+{
   HTTP_REQUEST_TYPE rtype;
   char *path;
   struct http_headers *headers;

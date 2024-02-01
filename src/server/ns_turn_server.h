@@ -40,7 +40,8 @@
 #include "ns_turn_session.h"
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 //////////// defines //////////////
@@ -49,7 +50,8 @@ extern "C" {
 
 //////////// ALTERNATE-SERVER /////////////
 
-struct _turn_server_addrs_list {
+struct _turn_server_addrs_list
+{
   ioa_addr *addrs;
   volatile size_t size;
   TURN_MUTEX_DECLARE(m)
@@ -72,24 +74,34 @@ extern int TURN_MAX_ALLOCATE_TIMEOUT_STUN_ONLY;
 
 typedef uint8_t turnserver_id;
 
-enum _MESSAGE_TO_RELAY_TYPE { RMT_UNKNOWN = 0, RMT_SOCKET, RMT_CB_SOCKET, RMT_MOBILE_SOCKET, RMT_CANCEL_SESSION };
+enum _MESSAGE_TO_RELAY_TYPE
+{
+  RMT_UNKNOWN = 0,
+  RMT_SOCKET,
+  RMT_CB_SOCKET,
+  RMT_MOBILE_SOCKET,
+  RMT_CANCEL_SESSION
+};
 typedef enum _MESSAGE_TO_RELAY_TYPE MESSAGE_TO_RELAY_TYPE;
 
 ///////// ALLOCATION DEFAULT ADDRESS FAMILY TYPES /////////////////////
-enum _ALLOCATION_DEFAULT_ADDRESS_FAMILY {
+enum _ALLOCATION_DEFAULT_ADDRESS_FAMILY
+{
   ALLOCATION_DEFAULT_ADDRESS_FAMILY_IPV4 = 0,
   ALLOCATION_DEFAULT_ADDRESS_FAMILY_IPV6,
   ALLOCATION_DEFAULT_ADDRESS_FAMILY_KEEP,
 };
 typedef enum _ALLOCATION_DEFAULT_ADDRESS_FAMILY ALLOCATION_DEFAULT_ADDRESS_FAMILY;
 
-struct socket_message {
+struct socket_message
+{
   ioa_socket_handle s;
   ioa_net_data nd;
   int can_resume;
 };
 
-typedef enum {
+typedef enum
+{
   DONT_FRAGMENT_UNSUPPORTED = 0,
   DONT_FRAGMENT_SUPPORTED,
   DONT_FRAGMENT_SUPPORT_EMULATED
@@ -114,7 +126,8 @@ typedef void (*send_https_socket_cb)(ioa_socket_handle s);
 
 typedef band_limit_t (*allocate_bps_cb)(band_limit_t bps, int positive);
 
-struct _turn_turnserver {
+struct _turn_turnserver
+{
 
   turnserver_id id;
 

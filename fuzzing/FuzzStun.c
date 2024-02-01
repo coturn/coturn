@@ -11,10 +11,11 @@ static SHATYPE shatype = SHATYPE_SHA1;
 #define kMinInputLength 10
 #define kMaxInputLength 5120
 
-extern int LLVMFuzzerTestOneInput(const uint8_t *Data,
-                                  size_t Size) { // rfc5769check
+extern int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
+{ // rfc5769check
 
-  if (Size < kMinInputLength || Size > kMaxInputLength) {
+  if (Size < kMinInputLength || Size > kMaxInputLength)
+  {
     return 1;
   }
 

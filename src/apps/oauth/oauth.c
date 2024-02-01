@@ -61,7 +61,8 @@
 #define OAUTH_HMAC_ALG_SIZE 20
 
 static int setup_ikm_key(const char *kid, const char *ikm_key, const turn_time_t key_timestamp,
-                         const turn_time_t key_lifetime, const char *as_rs_alg, oauth_key *key) {
+                         const turn_time_t key_lifetime, const char *as_rs_alg, oauth_key *key)
+{
 
   memset(key, 0, sizeof(*key));
 
@@ -84,7 +85,8 @@ static int setup_ikm_key(const char *kid, const char *ikm_key, const turn_time_t
   char err_msg[1025] = "\0";
   size_t err_msg_size = sizeof(err_msg) - 1;
 
-  if (!convert_oauth_key_data(&okd, key, err_msg, err_msg_size)) {
+  if (!convert_oauth_key_data(&okd, key, err_msg, err_msg_size))
+  {
     fprintf(stderr, "%s\n", err_msg);
     return -1;
   }
@@ -94,7 +96,8 @@ static int setup_ikm_key(const char *kid, const char *ikm_key, const turn_time_t
 
 static int encode_token(const char *server_name, const char *gcm_nonce, const char *mac_key,
                         const uint64_t token_timestamp, const uint32_t token_lifetime, const oauth_key key,
-                        char *base64encoded_etoken) {
+                        char *base64encoded_etoken)
+{
 
   oauth_token ot;
   memset(&ot, 0, sizeof(ot));
@@ -109,11 +112,13 @@ static int encode_token(const char *server_name, const char *gcm_nonce, const ch
   memset(&etoken, 0, sizeof(etoken));
 
   // TODO: avoid this hack
-  if (!*gcm_nonce) {
+  if (!*gcm_nonce)
+  {
     gcm_nonce = NULL;
   }
 
-  if (!encode_oauth_token((const uint8_t *)server_name, &etoken, &key, &ot, (const uint8_t *)gcm_nonce)) {
+  if (!encode_oauth_token((const uint8_t *)server_name, &etoken, &key, &ot, (const uint8_t *)gcm_nonce))
+  {
     fprintf(stderr, "%s: cannot encode oauth token\n", __FUNCTION__);
     return -1;
   }
@@ -127,7 +132,8 @@ static int encode_token(const char *server_name, const char *gcm_nonce, const ch
 }
 
 static int validate_decode_token(const char *server_name, const oauth_key key, const char *base64encoded_etoken,
-                                 oauth_token *dot) {
+                                 oauth_token *dot)
+{
 
   memset(dot, 0, sizeof(*dot));
 
@@ -139,15 +145,19 @@ static int validate_decode_token(const char *server_name, const oauth_key key, c
   memcpy(etoken.token, tmp, etoken.size);
   free(tmp);
 
-  if (!decode_oauth_token((const uint8_t *)server_name, &etoken, &key, dot)) {
+  if (!decode_oauth_token((const uint8_t *)server_name, &etoken, &key, dot))
+  {
     fprintf(stderr, "%s: cannot decode oauth token\n", __FUNCTION__);
     return -1;
-  } else {
+  }
+  else
+  {
     return 0;
   };
 }
 
-static void print_token_body(oauth_token *dot) {
+static void print_token_body(oauth_token *dot)
+{
   printf("\n");
   printf("Token non-encrpyted body:\n");
   printf("{\n");
@@ -199,7 +209,8 @@ const char Usage[] =
 
 //////////////////////////////////////////////////
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv)
+{
 
   oauth_key key;
 
@@ -266,8 +277,10 @@ int main(int argc, char **argv) {
   set_no_stdout_log(1);
   set_system_parameters(0);
 
-  while ((c = getopt_long(argc, argv, "hvedi:j:k:l:m:n:o:p:q:r:t:u:", long_options, &option_index)) != -1) {
-    switch (c) {
+  while ((c = getopt_long(argc, argv, "hvedi:j:k:l:m:n:o:p:q:r:t:u:", long_options, &option_index)) != -1)
+  {
+    switch (c)
+    {
     case 'h':
       fprintf(stderr, "%s\n", Usage);
       exit(1);
@@ -283,27 +296,36 @@ int main(int argc, char **argv) {
       break;
     case 'i':
       // server-name
-      if (strlen(optarg) <= OAUTH_SERVER_NAME_SIZE) {
+      if (strlen(optarg) <= OAUTH_SERVER_NAME_SIZE)
+      {
         STRCPY(server_name, optarg);
-      } else {
+      }
+      else
+      {
         fprintf(stderr, "Server-name must not exceed %d!\n", OAUTH_LTK_ID_SIZE);
         exit(1);
       }
       break;
     case 'j':
       // auth-key-id
-      if (strlen(optarg) <= OAUTH_LTK_ID_SIZE) {
+      if (strlen(optarg) <= OAUTH_LTK_ID_SIZE)
+      {
         STRCPY(kid, optarg);
-      } else {
+      }
+      else
+      {
         fprintf(stderr, "Key ID must not exceed %d!\n", OAUTH_LTK_ID_SIZE);
         exit(1);
       }
       break;
     case 'k':
       // auth-key
-      if (strlen(optarg) <= OAUTH_LTK_BASE64ENCODED_SIZE) {
+      if (strlen(optarg) <= OAUTH_LTK_BASE64ENCODED_SIZE)
+      {
         STRCPY(base64encoded_ltk, optarg);
-      } else {
+      }
+      else
+      {
         fprintf(stderr, "Key must not exceed %d!\n", OAUTH_LTK_BASE64ENCODED_SIZE);
         exit(1);
       }
@@ -318,9 +340,12 @@ int main(int argc, char **argv) {
       break;
     case 'n':
       // auth-key-as-rs-alg
-      if (strlen(optarg) <= OAUTH_AS_RS_ALG_SIZE) {
+      if (strlen(optarg) <= OAUTH_AS_RS_ALG_SIZE)
+      {
         STRCPY(as_rs_alg, optarg);
-      } else {
+      }
+      else
+      {
         fprintf(stderr, "AS-RS Alg must not exceed %d!\n", OAUTH_AS_RS_ALG_SIZE);
         exit(1);
       }
@@ -328,7 +353,8 @@ int main(int argc, char **argv) {
     case 'o':
       // token-nonce
       nonce_val = (char *)base64_decode(optarg, strlen(optarg), &nonce_size);
-      if (nonce_size > OAUTH_GCM_NONCE_SIZE) {
+      if (nonce_size > OAUTH_GCM_NONCE_SIZE)
+      {
         nonce_size = OAUTH_GCM_NONCE_SIZE;
       }
       strncpy(gcm_nonce, nonce_val, nonce_size);
@@ -337,7 +363,8 @@ int main(int argc, char **argv) {
     case 'p':
       // token-mac-key
       mac_key_val = (char *)base64_decode(optarg, strlen(optarg), &mac_key_size);
-      if (mac_key_size > OAUTH_MAC_KEY_SIZE) {
+      if (mac_key_size > OAUTH_MAC_KEY_SIZE)
+      {
         mac_key_size = OAUTH_MAC_KEY_SIZE;
       }
       strncpy(mac_key, mac_key_val, mac_key_size);
@@ -352,18 +379,24 @@ int main(int argc, char **argv) {
       token_lifetime = atoi(optarg);
       break;
     case 't':
-      if (strlen(optarg) <= OAUTH_TOKEN_SIZE) {
+      if (strlen(optarg) <= OAUTH_TOKEN_SIZE)
+      {
         STRCPY(base64encoded_etoken, optarg);
-      } else {
+      }
+      else
+      {
         fprintf(stderr, "base64 encoded encrypted token must not exceed %d!\n", OAUTH_TOKEN_SIZE);
         exit(1);
       }
       break;
     case 'u':
       // hmac-alg
-      if (strlen(optarg) <= OAUTH_HMAC_ALG_SIZE) {
+      if (strlen(optarg) <= OAUTH_HMAC_ALG_SIZE)
+      {
         STRCPY(hmac_alg, optarg);
-      } else {
+      }
+      else
+      {
         fprintf(stderr, "STUN client HMAC Alg must not exceed %d!\n", OAUTH_HMAC_ALG_SIZE);
         exit(1);
       }
@@ -375,76 +408,98 @@ int main(int argc, char **argv) {
     }
   }
 
-  for (i = optind; i < argc; i++) {
+  for (i = optind; i < argc; i++)
+  {
     printf("Non-option argument %s\n", argv[i]);
   }
 
-  if (optind > argc) {
+  if (optind > argc)
+  {
     fprintf(stderr, "%s\n", Usage);
     exit(-1);
   }
 
-  if (!(encrypt_flag || decrypt_flag)) {
+  if (!(encrypt_flag || decrypt_flag))
+  {
     fprintf(stderr, "Use either encrypt or decrypt.\nPlease use -h or --help for the detailed help\n");
     exit(-1);
   }
 
   // check if we have required params
   // TODO: more compact warnning handling
-  if (encrypt_flag || decrypt_flag) {
-    if (strlen(server_name) == 0) {
+  if (encrypt_flag || decrypt_flag)
+  {
+    if (strlen(server_name) == 0)
+    {
       fprintf(stderr, "For encode/decode  --server-name/-i is mandatory \n");
       exit(-1);
     }
 
-    if (strlen(kid) == 0) {
+    if (strlen(kid) == 0)
+    {
       fprintf(stderr, "For encode/decode  --auth-key-id/-j is mandatory \n");
       exit(-1);
     }
-    if (strlen(base64encoded_ltk) == 0) {
+    if (strlen(base64encoded_ltk) == 0)
+    {
       fprintf(stderr, "For encode/decode  --auth-key/-k is mandatory \n");
       exit(-1);
     }
-    if (key_timestamp == 0) {
+    if (key_timestamp == 0)
+    {
       fprintf(stderr, "For encode/decode  --auth-key-timestamp/-l is mandatory \n");
       exit(-1);
     }
-    if (key_lifetime == 0) {
+    if (key_lifetime == 0)
+    {
       fprintf(stderr, "For encode/decode  --auth-key-lifetime/-m is mandatory \n");
       exit(-1);
     }
 
-    if (encrypt_flag && strlen(mac_key) == 0) {
+    if (encrypt_flag && strlen(mac_key) == 0)
+    {
       fprintf(stderr, "For encode --token-mac-key/-p is mandatory \n");
       exit(-1);
     }
 
-    if (!encrypt_flag && decrypt_flag && strlen(base64encoded_etoken) == 0) {
+    if (!encrypt_flag && decrypt_flag && strlen(base64encoded_etoken) == 0)
+    {
       fprintf(stderr, "For decode --token/-t is mandatory \n");
       exit(-1);
     }
 
     // Expiry warnings
-    if ((unsigned long long)key_timestamp << 16 > token_timestamp + ((unsigned long long)token_lifetime << 16)) {
+    if ((unsigned long long)key_timestamp << 16 > token_timestamp + ((unsigned long long)token_lifetime << 16))
+    {
       fprintf(stderr, "\nWARNING: Token expiry is earlear then Auth key life time start timestamp!!\n\n");
-    } else {
-      if ((unsigned long long)key_timestamp << 16 > token_timestamp) {
+    }
+    else
+    {
+      if ((unsigned long long)key_timestamp << 16 > token_timestamp)
+      {
         fprintf(stderr, "\nWARNING: Token life time start timestamp is earlier then Auth key start timestamp!!\n\n");
       }
     }
-    if ((unsigned long long)(key_timestamp + key_lifetime) << 16 < token_timestamp) {
+    if ((unsigned long long)(key_timestamp + key_lifetime) << 16 < token_timestamp)
+    {
       fprintf(stderr, "\nWARNING: Auth key will expire before token lifetime start timestamp!!\n\n");
-    } else {
+    }
+    else
+    {
       if ((unsigned long long)(key_timestamp + key_lifetime) << 16 <
-          token_timestamp + ((unsigned long long)token_lifetime << 16)) {
+          token_timestamp + ((unsigned long long)token_lifetime << 16))
+      {
         fprintf(stderr, "\nWARNING: Auth key will expire before token expiry!!\n\n");
       }
     }
 
-    if (setup_ikm_key(kid, base64encoded_ltk, key_timestamp, key_lifetime, as_rs_alg, &key) == 0) {
-      if (encrypt_flag) {
+    if (setup_ikm_key(kid, base64encoded_ltk, key_timestamp, key_lifetime, as_rs_alg, &key) == 0)
+    {
+      if (encrypt_flag)
+      {
         if (encode_token(server_name, gcm_nonce, mac_key, token_timestamp, token_lifetime, key, base64encoded_etoken) ==
-            0) {
+            0)
+        {
           printf("{\n");
           printf("    \"access_token\":\"%s\",\n", base64encoded_etoken);
           printf("    \"token_type\":\"pop\",\n");
@@ -453,24 +508,33 @@ int main(int argc, char **argv) {
           printf("    \"key\":\"%s\",\n", mac_key);
           printf("    \"alg\":\"%s\"\n", hmac_alg);
           printf("}\n");
-        } else {
+        }
+        else
+        {
           fprintf(stderr, "Error during token encode\n");
           exit(-1);
         }
       }
-      if (decrypt_flag) {
+      if (decrypt_flag)
+      {
         oauth_token dot;
-        if (validate_decode_token(server_name, key, base64encoded_etoken, &dot) == 0) {
+        if (validate_decode_token(server_name, key, base64encoded_etoken, &dot) == 0)
+        {
           printf("-=Valid token!=-\n");
-          if (verbose_flag) {
+          if (verbose_flag)
+          {
             print_token_body(&dot);
           }
-        } else {
+        }
+        else
+        {
           fprintf(stderr, "Error during token validation and decoding\n");
           exit(-1);
         }
       }
-    } else {
+    }
+    else
+    {
       fprintf(stderr, "Error during key setup\n");
       exit(-1);
     }

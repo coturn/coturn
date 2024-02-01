@@ -26,7 +26,8 @@
 #endif
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 WINGETOPT_API extern int optind; /* index of first non-option in argv      */
@@ -66,7 +67,8 @@ extern int optreset;
 #define __GETOPT_LONG_H__
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 struct option /* specification for a long form option...	*/

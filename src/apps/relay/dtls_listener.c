@@ -58,7 +58,8 @@ typedef uint16_t in_port_t;
 
 #define MAX_SINGLE_UDP_BATCH (16)
 
-struct dtls_listener_relay_server_info {
+struct dtls_listener_relay_server_info
+{
   char ifname[1025];
   ioa_addr addr;
   ioa_engine_handle e;
@@ -88,25 +89,32 @@ int get_dtls_version(const unsigned char *buf, int len);
 
 int is_dtls_message(const unsigned char *buf, int len);
 
-int is_dtls_handshake_message(const unsigned char *buf, int len) {
+int is_dtls_handshake_message(const unsigned char *buf, int len)
+{
   return (buf && len > 3 && buf[0] == 0x16 && buf[1] == 0xfe && ((buf[2] == 0xff) || (buf[2] == 0xfd)));
 }
 
-int is_dtls_data_message(const unsigned char *buf, int len) {
+int is_dtls_data_message(const unsigned char *buf, int len)
+{
   return (buf && len > 3 && buf[0] == 0x17 && buf[1] == 0xfe && ((buf[2] == 0xff) || (buf[2] == 0xfd)));
 }
 
-int is_dtls_alert_message(const unsigned char *buf, int len) {
+int is_dtls_alert_message(const unsigned char *buf, int len)
+{
   return (buf && len > 3 && buf[0] == 0x15 && buf[1] == 0xfe && ((buf[2] == 0xff) || (buf[2] == 0xfd)));
 }
 
-int is_dtls_cipher_change_message(const unsigned char *buf, int len) {
+int is_dtls_cipher_change_message(const unsigned char *buf, int len)
+{
   return (buf && len > 3 && buf[0] == 0x14 && buf[1] == 0xfe && ((buf[2] == 0xff) || (buf[2] == 0xfd)));
 }
 
-int is_dtls_message(const unsigned char *buf, int len) {
-  if (buf && (len > 3) && (buf[1]) == 0xfe && ((buf[2] == 0xff) || (buf[2] == 0xfd))) {
-    switch (buf[0]) {
+int is_dtls_message(const unsigned char *buf, int len)
+{
+  if (buf && (len > 3) && (buf[1]) == 0xfe && ((buf[2] == 0xff) || (buf[2] == 0xfd)))
+  {
+    switch (buf[0])
+    {
     case 0x14:
     case 0x15:
     case 0x16:
@@ -119,8 +127,10 @@ int is_dtls_message(const unsigned char *buf, int len) {
 }
 
 /* 0 - 1.0, 1 - 1.2 */
-int get_dtls_version(const unsigned char *buf, int len) {
-  if (buf && (len > 3) && (buf[2] == 0xfd)) {
+int get_dtls_version(const unsigned char *buf, int len)
+{
+  if (buf && (len > 3) && (buf[2] == 0xfd))
+  {
     return 1;
   }
   return 0;
@@ -130,17 +140,20 @@ int get_dtls_version(const unsigned char *buf, int len) {
 
 #if DTLS_SUPPORTED
 
-static void calculate_cookie(SSL *ssl, unsigned char *cookie_secret, unsigned int cookie_length) {
+static void calculate_cookie(SSL *ssl, unsigned char *cookie_secret, unsigned int cookie_length)
+{
   long rv = (long)ssl;
   long inum = (cookie_length - (((long)cookie_secret) % sizeof(long))) / sizeof(long);
   long i = 0;
   long *ip = (long *)cookie_secret;
-  for (i = 0; i < inum; ++i, ++ip) {
+  for (i = 0; i < inum; ++i, ++ip)
+  {
     *ip = rv;
   }
 }
 
-static int generate_cookie(SSL *ssl, unsigned char *cookie, unsigned int *cookie_len) {
+static int generate_cookie(SSL *ssl, unsigned char *cookie, unsigned int *cookie_len)
+{
   unsigned char *buffer, result[EVP_MAX_MD_SIZE];
   unsigned int length = 0, resultlength;
   ioa_addr peer;
@@ -155,7 +168,8 @@ static int generate_cookie(SSL *ssl, unsigned char *cookie, unsigned int *cookie
 
   /* Create buffer with peer's address and port */
   length = 0;
-  switch (peer.ss.sa_family) {
+  switch (peer.ss.sa_family)
+  {
   case AF_INET:
     length += sizeof(struct in_addr);
     break;
@@ -169,14 +183,16 @@ static int generate_cookie(SSL *ssl, unsigned char *cookie, unsigned int *cookie
   length += sizeof(in_port_t);
   buffer = (unsigned char *)OPENSSL_malloc(length);
 
-  if (buffer == NULL) {
+  if (buffer == NULL)
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "out of memory\n");
     return 0;
   }
 
   // TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: family=%u(2)\n",__FUNCTION__,(unsigned)peer.ss.sa_family);
 
-  switch (peer.ss.sa_family) {
+  switch (peer.ss.sa_family)
+  {
   case AF_INET:
     memcpy(buffer, &peer.s4.sin_port, sizeof(in_port_t));
     memcpy(buffer + sizeof(peer.s4.sin_port), &peer.s4.sin_addr, sizeof(struct in_addr));
@@ -206,16 +222,20 @@ static int verify_cookie(SSL *ssl,
                          const
 #endif
                          unsigned char *cookie,
-                         unsigned int cookie_len) {
+                         unsigned int cookie_len)
+{
   unsigned int resultlength = 0;
   unsigned char result[COOKIE_SECRET_LENGTH];
 
   generate_cookie(ssl, result, &resultlength);
 
-  if (cookie_len == resultlength && memcmp(result, cookie, resultlength) == 0) {
+  if (cookie_len == resultlength && memcmp(result, cookie, resultlength) == 0)
+  {
     // TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: cookies are OK, length=%u\n",__FUNCTION__,cookie_len);
     return 1;
-  } else {
+  }
+  else
+  {
     // TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: cookies are OK, length=%u\n",__FUNCTION__,cookie_len);
     return 0;
   }
@@ -225,16 +245,19 @@ static int verify_cookie(SSL *ssl,
 
 static ioa_socket_handle dtls_accept_client_connection(dtls_listener_relay_server_type *server, ioa_socket_handle sock,
                                                        SSL *ssl, ioa_addr *remote_addr, ioa_addr *local_addr,
-                                                       ioa_network_buffer_handle nbh) {
+                                                       ioa_network_buffer_handle nbh)
+{
   FUNCSTART;
 
-  if (!server || !ssl) {
+  if (!server || !ssl)
+  {
     return NULL;
   }
 
   int rc = ssl_read(sock->fd, ssl, nbh, server->verbose);
 
-  if (rc < 0) {
+  if (rc < 0)
+  {
     return NULL;
   }
 
@@ -242,12 +265,15 @@ static ioa_socket_handle dtls_accept_client_connection(dtls_listener_relay_serve
 
   ioa_socket_handle ioas =
       create_ioa_socket_from_ssl(server->e, sock, ssl, DTLS_SOCKET, CLIENT_SOCKET, remote_addr, local_addr);
-  if (ioas) {
+  if (ioas)
+  {
     addr_cpy(&(server->sm.m.sm.nd.src_addr), remote_addr);
     server->sm.m.sm.nd.recv_ttl = TTL_IGNORE;
     server->sm.m.sm.nd.recv_tos = TOS_IGNORE;
     server->sm.m.sm.s = ioas;
-  } else {
+  }
+  else
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create ioa_socket from SSL\n");
   }
 
@@ -257,10 +283,12 @@ static ioa_socket_handle dtls_accept_client_connection(dtls_listener_relay_serve
 }
 
 static ioa_socket_handle dtls_server_input_handler(dtls_listener_relay_server_type *server, ioa_socket_handle s,
-                                                   ioa_network_buffer_handle nbh) {
+                                                   ioa_network_buffer_handle nbh)
+{
   FUNCSTART;
 
-  if (!server || !nbh) {
+  if (!server || !nbh)
+  {
     return NULL;
   }
 
@@ -299,8 +327,10 @@ static ioa_socket_handle dtls_server_input_handler(dtls_listener_relay_server_ty
   ioa_socket_handle rc =
       dtls_accept_client_connection(server, s, connecting_ssl, &(server->sm.m.sm.nd.src_addr), &(server->addr), nbh);
 
-  if (!rc) {
-    if (!(SSL_get_shutdown(connecting_ssl) & SSL_SENT_SHUTDOWN)) {
+  if (!rc)
+  {
+    if (!(SSL_get_shutdown(connecting_ssl) & SSL_SENT_SHUTDOWN))
+    {
       SSL_set_shutdown(connecting_ssl, SSL_RECEIVED_SHUTDOWN);
       SSL_shutdown(connecting_ssl);
     }
@@ -313,71 +343,93 @@ static ioa_socket_handle dtls_server_input_handler(dtls_listener_relay_server_ty
 #endif
 
 static int handle_udp_packet(dtls_listener_relay_server_type *server, struct message_to_relay *sm,
-                             ioa_engine_handle ioa_eng, turn_turnserver *ts) {
+                             ioa_engine_handle ioa_eng, turn_turnserver *ts)
+{
   int verbose = ioa_eng->verbose;
   ioa_socket_handle s = sm->m.sm.s;
 
   ur_addr_map_value_type mvt = 0;
-  if (!(server->children_ss)) {
+  if (!(server->children_ss))
+  {
     server->children_ss = (ur_addr_map *)allocate_super_memory_engine(server->e, sizeof(ur_addr_map));
     ur_addr_map_init(server->children_ss);
   }
   ur_addr_map *amap = server->children_ss;
 
   ioa_socket_handle chs = NULL;
-  if ((ur_addr_map_get(amap, &(sm->m.sm.nd.src_addr), &mvt) > 0) && mvt) {
+  if ((ur_addr_map_get(amap, &(sm->m.sm.nd.src_addr), &mvt) > 0) && mvt)
+  {
     chs = (ioa_socket_handle)mvt;
   }
 
-  if (chs && !ioa_socket_tobeclosed(chs) && (chs->sockets_container == amap) && (chs->magic == SOCKET_MAGIC)) {
+  if (chs && !ioa_socket_tobeclosed(chs) && (chs->sockets_container == amap) && (chs->magic == SOCKET_MAGIC))
+  {
     s = chs;
     sm->m.sm.s = s;
-    if (s->ssl) {
+    if (s->ssl)
+    {
       int sslret = ssl_read(s->fd, s->ssl, sm->m.sm.nd.nbh, verbose);
-      if (sslret < 0) {
+      if (sslret < 0)
+      {
         ioa_network_buffer_delete(ioa_eng, sm->m.sm.nd.nbh);
         sm->m.sm.nd.nbh = NULL;
         ts_ur_super_session *ss = (ts_ur_super_session *)s->session;
-        if (ss) {
+        if (ss)
+        {
           turn_turnserver *server = (turn_turnserver *)ss->server;
-          if (server) {
+          if (server)
+          {
             shutdown_client_connection(server, ss, 0, "SSL read error");
           }
-        } else {
+        }
+        else
+        {
           close_ioa_socket(s);
         }
         ur_addr_map_del(amap, &(sm->m.sm.nd.src_addr), NULL);
         sm->m.sm.s = NULL;
         s = NULL;
         chs = NULL;
-      } else if (ioa_network_buffer_get_size(sm->m.sm.nd.nbh) > 0) {
+      }
+      else if (ioa_network_buffer_get_size(sm->m.sm.nd.nbh) > 0)
+      {
         ;
-      } else {
+      }
+      else
+      {
         ioa_network_buffer_delete(ioa_eng, sm->m.sm.nd.nbh);
         sm->m.sm.nd.nbh = NULL;
       }
     }
 
-    if (s && ioa_socket_check_bandwidth(s, sm->m.sm.nd.nbh, 1)) {
+    if (s && ioa_socket_check_bandwidth(s, sm->m.sm.nd.nbh, 1))
+    {
       s->e = ioa_eng;
-      if (s && s->read_cb && sm->m.sm.nd.nbh) {
+      if (s && s->read_cb && sm->m.sm.nd.nbh)
+      {
         s->read_cb(s, IOA_EV_READ, &(sm->m.sm.nd), s->read_ctx, 1);
         ioa_network_buffer_delete(ioa_eng, sm->m.sm.nd.nbh);
         sm->m.sm.nd.nbh = NULL;
 
-        if (ioa_socket_tobeclosed(s)) {
+        if (ioa_socket_tobeclosed(s))
+        {
           ts_ur_super_session *ss = (ts_ur_super_session *)s->session;
-          if (ss) {
+          if (ss)
+          {
             turn_turnserver *server = (turn_turnserver *)ss->server;
-            if (server) {
+            if (server)
+            {
               shutdown_client_connection(server, ss, 0, "UDP packet processing error");
             }
           }
         }
       }
     }
-  } else {
-    if (chs && ioa_socket_tobeclosed(chs)) {
+  }
+  else
+  {
+    if (chs && ioa_socket_tobeclosed(chs))
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: socket to be closed\n", __FUNCTION__);
       {
         uint8_t saddr[129];
@@ -398,11 +450,13 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server, struct mes
       }
     }
 
-    if (chs && (chs->magic != SOCKET_MAGIC)) {
+    if (chs && (chs->magic != SOCKET_MAGIC))
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: wrong socket magic\n", __FUNCTION__);
     }
 
-    if (chs && (chs->sockets_container != amap)) {
+    if (chs && (chs->sockets_container != amap))
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: wrong socket container\n", __FUNCTION__);
       {
         uint8_t saddr[129];
@@ -428,16 +482,19 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server, struct mes
 
 #if DTLS_SUPPORTED
     if (!turn_params.no_dtls && is_dtls_handshake_message(ioa_network_buffer_data(sm->m.sm.nd.nbh),
-                                                          (int)ioa_network_buffer_get_size(sm->m.sm.nd.nbh))) {
+                                                          (int)ioa_network_buffer_get_size(sm->m.sm.nd.nbh)))
+    {
       chs = dtls_server_input_handler(server, s, sm->m.sm.nd.nbh);
       ioa_network_buffer_delete(server->e, sm->m.sm.nd.nbh);
       sm->m.sm.nd.nbh = NULL;
     }
 #endif
 
-    if (!chs) {
+    if (!chs)
+    {
       // Disallow raw UDP if no_udp is enabled
-      if (turn_params.no_udp) {
+      if (turn_params.no_udp)
+      {
         return -1;
       }
       chs = create_ioa_socket_from_fd(ioa_eng, s->fd, s, UDP_SOCKET, CLIENT_SOCKET, &(sm->m.sm.nd.src_addr),
@@ -447,8 +504,10 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server, struct mes
     s = chs;
     sm->m.sm.s = s;
 
-    if (s) {
-      if (verbose && turn_params.log_binding) {
+    if (s)
+    {
+      if (verbose && turn_params.log_binding)
+      {
         uint8_t saddr[129];
         uint8_t rsaddr[129];
         addr_to_string(get_local_addr_from_ioa_socket(s), saddr);
@@ -458,7 +517,8 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server, struct mes
       }
       s->e = ioa_eng;
       add_socket_to_map(s, amap);
-      if (open_client_connection_session(ts, &(sm->m.sm)) < 0) {
+      if (open_client_connection_session(ts, &(sm->m.sm)) < 0)
+      {
         return -1;
       }
     }
@@ -467,21 +527,25 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server, struct mes
   return 0;
 }
 
-static int create_new_connected_udp_socket(dtls_listener_relay_server_type *server, ioa_socket_handle s) {
+static int create_new_connected_udp_socket(dtls_listener_relay_server_type *server, ioa_socket_handle s)
+{
 
   evutil_socket_t udp_fd = socket(s->local_addr.ss.sa_family, CLIENT_DGRAM_SOCKET_TYPE, CLIENT_DGRAM_SOCKET_PROTOCOL);
-  if (udp_fd < 0) {
+  if (udp_fd < 0)
+  {
     perror("socket");
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Cannot allocate new socket\n", __FUNCTION__);
     return -1;
   }
 
-  if (sock_bind_to_device(udp_fd, (unsigned char *)(s->e->relay_ifname)) < 0) {
+  if (sock_bind_to_device(udp_fd, (unsigned char *)(s->e->relay_ifname)) < 0)
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot bind udp server socket to device %s\n", (char *)(s->e->relay_ifname));
   }
 
   ioa_socket_handle ret = (ioa_socket *)calloc(1, sizeof(ioa_socket));
-  if (!ret) {
+  if (!ret)
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Cannot allocate new socket structure\n", __FUNCTION__);
     socket_closesocket(udp_fd);
     return -1;
@@ -497,7 +561,8 @@ static int create_new_connected_udp_socket(dtls_listener_relay_server_type *serv
   ret->local_addr_known = 1;
   addr_cpy(&(ret->local_addr), &(s->local_addr));
 
-  if (addr_bind(udp_fd, &(s->local_addr), 1, 1, UDP_SOCKET) < 0) {
+  if (addr_bind(udp_fd, &(s->local_addr), 1, 1, UDP_SOCKET) < 0)
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot bind new detached udp server socket to local addr\n");
     IOA_CLOSE_SOCKET(ret);
     return -1;
@@ -506,7 +571,8 @@ static int create_new_connected_udp_socket(dtls_listener_relay_server_type *serv
 
   {
     int connect_err = 0;
-    if (addr_connect(udp_fd, &(server->sm.m.sm.nd.src_addr), &connect_err) < 0) {
+    if (addr_connect(udp_fd, &(server->sm.m.sm.nd.src_addr), &connect_err) < 0)
+    {
       char sl[129];
       char sr[129];
       addr_to_string(&(ret->local_addr), (uint8_t *)sl);
@@ -530,7 +596,8 @@ static int create_new_connected_udp_socket(dtls_listener_relay_server_type *serv
 
 #if DTLS_SUPPORTED
   if (!turn_params.no_dtls && is_dtls_handshake_message(ioa_network_buffer_data(server->sm.m.sm.nd.nbh),
-                                                        (int)ioa_network_buffer_get_size(server->sm.m.sm.nd.nbh))) {
+                                                        (int)ioa_network_buffer_get_size(server->sm.m.sm.nd.nbh)))
+  {
 
     SSL *connecting_ssl = NULL;
 
@@ -569,8 +636,10 @@ static int create_new_connected_udp_socket(dtls_listener_relay_server_type *serv
     SSL_set_max_cert_list(connecting_ssl, 655350);
     int rc = ssl_read(ret->fd, connecting_ssl, server->sm.m.sm.nd.nbh, server->verbose);
 
-    if (rc < 0) {
-      if (!(SSL_get_shutdown(connecting_ssl) & SSL_SENT_SHUTDOWN)) {
+    if (rc < 0)
+    {
+      if (!(SSL_get_shutdown(connecting_ssl) & SSL_SENT_SHUTDOWN))
+      {
         SSL_set_shutdown(connecting_ssl, SSL_RECEIVED_SHUTDOWN);
         SSL_shutdown(connecting_ssl);
       }
@@ -594,9 +663,11 @@ static int create_new_connected_udp_socket(dtls_listener_relay_server_type *serv
   return server->connect_cb(server->e, &(server->sm));
 }
 
-static void udp_server_input_handler(evutil_socket_t fd, short what, void *arg) {
+static void udp_server_input_handler(evutil_socket_t fd, short what, void *arg)
+{
 
-  if (!arg) {
+  if (!arg)
+  {
     return;
   }
 
@@ -607,7 +678,8 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void *arg) 
 
   FUNCSTART;
 
-  if (!(what & EV_READ)) {
+  if (!(what & EV_READ))
+  {
     return;
   }
 
@@ -646,9 +718,11 @@ start_udp_cycle:
   ioctlsocket(fd, FIONBIO, &iMode);
 #endif
 
-  if (bsize < 0) {
+  if (bsize < 0)
+  {
 
-    if (to_block) {
+    if (to_block)
+    {
       ioa_network_buffer_delete(server->e, server->sm.m.sm.nd.nbh);
       server->sm.m.sm.nd.nbh = NULL;
       FUNCEND;
@@ -674,7 +748,8 @@ start_udp_cycle:
     udp_recvfrom(fd, &orig_addr, &(server->addr), buffer, (int)sizeof(buffer), &ttl, &tos, server->e->cmsg, eflags,
                  &errcode);
     // try again...
-    do {
+    do
+    {
       bsize = recvfrom(fd, ioa_network_buffer_data(elem), ioa_network_buffer_get_capacity_udp(), flags,
                        (struct sockaddr *)&(server->sm.m.sm.nd.src_addr), (socklen_t *)&slen);
     } while (bsize < 0 && socket_eintr());
@@ -689,7 +764,8 @@ start_udp_cycle:
 
 #endif
 
-    if (conn_reset) {
+    if (conn_reset)
+    {
       ioa_network_buffer_delete(server->e, server->sm.m.sm.nd.nbh);
       server->sm.m.sm.nd.nbh = NULL;
       reopen_server_socket(server, fd);
@@ -698,8 +774,10 @@ start_udp_cycle:
     }
   }
 
-  if (bsize < 0) {
-    if (!to_block && !conn_reset) {
+  if (bsize < 0)
+  {
+    if (!to_block && !conn_reset)
+    {
       int ern = socket_errno();
       perror(__FUNCTION__);
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: recvfrom error %d\n", __FUNCTION__, ern);
@@ -710,25 +788,31 @@ start_udp_cycle:
     return;
   }
 
-  if (bsize > 0) {
+  if (bsize > 0)
+  {
 
     int rc = 0;
     ioa_network_buffer_set_size(elem, (size_t)bsize);
 
-    if (server->connect_cb) {
+    if (server->connect_cb)
+    {
 
       rc = create_new_connected_udp_socket(server, s);
-      if (rc < 0) {
+      if (rc < 0)
+      {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot handle UDP packet, size %d\n", (int)bsize);
       }
-
-    } else {
+    }
+    else
+    {
       server->sm.m.sm.s = s;
       rc = handle_udp_packet(server, &(server->sm), server->e, server->ts);
     }
 
-    if (rc < 0) {
-      if (eve(server->e->verbose)) {
+    if (rc < 0)
+    {
+      if (eve(server->e->verbose))
+      {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot handle UDP event\n");
       }
     }
@@ -737,7 +821,8 @@ start_udp_cycle:
   ioa_network_buffer_delete(server->e, server->sm.m.sm.nd.nbh);
   server->sm.m.sm.nd.nbh = NULL;
 
-  if ((bsize > 0) && (cycle++ < MAX_SINGLE_UDP_BATCH)) {
+  if ((bsize > 0) && (cycle++ < MAX_SINGLE_UDP_BATCH))
+  {
     goto start_udp_cycle;
   }
 
@@ -746,11 +831,13 @@ start_udp_cycle:
 
 ///////////////////// operations //////////////////////////
 
-static int create_server_socket(dtls_listener_relay_server_type *server, int report_creation) {
+static int create_server_socket(dtls_listener_relay_server_type *server, int report_creation)
+{
 
   FUNCSTART;
 
-  if (!server) {
+  if (!server)
+  {
     return -1;
   }
 
@@ -760,7 +847,8 @@ static int create_server_socket(dtls_listener_relay_server_type *server, int rep
     ioa_socket_raw udp_listen_fd = -1;
 
     udp_listen_fd = socket(server->addr.ss.sa_family, CLIENT_DGRAM_SOCKET_TYPE, CLIENT_DGRAM_SOCKET_PROTOCOL);
-    if (udp_listen_fd < 0) {
+    if (udp_listen_fd < 0)
+    {
       perror("socket");
       return -1;
     }
@@ -770,7 +858,8 @@ static int create_server_socket(dtls_listener_relay_server_type *server, int rep
 
     set_sock_buf_size(udp_listen_fd, UR_SERVER_SOCK_BUF_SIZE);
 
-    if (sock_bind_to_device(udp_listen_fd, (unsigned char *)server->ifname) < 0) {
+    if (sock_bind_to_device(udp_listen_fd, (unsigned char *)server->ifname) < 0)
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Cannot bind listener socket to device %s\n", server->ifname);
     }
 
@@ -780,14 +869,16 @@ static int create_server_socket(dtls_listener_relay_server_type *server, int rep
     {
       const int max_binding_time = 60;
       int addr_bind_cycle = 0;
-    retry_addr_bind:
+retry_addr_bind:
 
-      if (addr_bind(udp_listen_fd, &server->addr, 1, 1, UDP_SOCKET) < 0) {
+      if (addr_bind(udp_listen_fd, &server->addr, 1, 1, UDP_SOCKET) < 0)
+      {
         perror("Cannot bind local socket to addr");
         char saddr[129];
         addr_to_string(&server->addr, (uint8_t *)saddr);
         TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Cannot bind DTLS/UDP listener socket to addr %s\n", saddr);
-        if (addr_bind_cycle++ < max_binding_time) {
+        if (addr_bind_cycle++ < max_binding_time)
+        {
           TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Trying to bind DTLS/UDP listener socket to addr %s, again...\n", saddr);
           sleep(1);
           goto retry_addr_bind;
@@ -804,12 +895,18 @@ static int create_server_socket(dtls_listener_relay_server_type *server, int rep
     event_add(server->udp_listen_ev, NULL);
   }
 
-  if (report_creation) {
-    if (!turn_params.no_udp && !turn_params.no_dtls) {
+  if (report_creation)
+  {
+    if (!turn_params.no_udp && !turn_params.no_dtls)
+    {
       addr_debug_print(server->verbose, &server->addr, "DTLS/UDP listener opened on");
-    } else if (!turn_params.no_dtls) {
+    }
+    else if (!turn_params.no_dtls)
+    {
       addr_debug_print(server->verbose, &server->addr, "DTLS listener opened on");
-    } else if (!turn_params.no_udp) {
+    }
+    else if (!turn_params.no_udp)
+    {
       addr_debug_print(server->verbose, &server->addr, "UDP listener opened on");
     }
   }
@@ -819,10 +916,12 @@ static int create_server_socket(dtls_listener_relay_server_type *server, int rep
   return 0;
 }
 
-static int reopen_server_socket(dtls_listener_relay_server_type *server, evutil_socket_t fd) {
+static int reopen_server_socket(dtls_listener_relay_server_type *server, evutil_socket_t fd)
+{
   UNUSED_ARG(fd);
 
-  if (!server) {
+  if (!server)
+  {
     return 0;
   }
 
@@ -831,18 +930,21 @@ static int reopen_server_socket(dtls_listener_relay_server_type *server, evutil_
   {
     EVENT_DEL(server->udp_listen_ev);
 
-    if (server->udp_listen_s->fd >= 0) {
+    if (server->udp_listen_s->fd >= 0)
+    {
       socket_closesocket(server->udp_listen_s->fd);
       server->udp_listen_s->fd = -1;
     }
 
-    if (!(server->udp_listen_s)) {
+    if (!(server->udp_listen_s))
+    {
       return create_server_socket(server, 1);
     }
 
     ioa_socket_raw udp_listen_fd =
         socket(server->addr.ss.sa_family, CLIENT_DGRAM_SOCKET_TYPE, CLIENT_DGRAM_SOCKET_PROTOCOL);
-    if (udp_listen_fd < 0) {
+    if (udp_listen_fd < 0)
+    {
       perror("socket");
       FUNCEND;
       return -1;
@@ -856,11 +958,13 @@ static int reopen_server_socket(dtls_listener_relay_server_type *server, evutil_
 
     set_sock_buf_size(udp_listen_fd, UR_SERVER_SOCK_BUF_SIZE);
 
-    if (sock_bind_to_device(udp_listen_fd, (unsigned char *)server->ifname) < 0) {
+    if (sock_bind_to_device(udp_listen_fd, (unsigned char *)server->ifname) < 0)
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Cannot bind listener socket to device %s\n", server->ifname);
     }
 
-    if (addr_bind(udp_listen_fd, &server->addr, 1, 1, UDP_SOCKET) < 0) {
+    if (addr_bind(udp_listen_fd, &server->addr, 1, 1, UDP_SOCKET) < 0)
+    {
       perror("Cannot bind local socket to addr");
       char saddr[129];
       addr_to_string(&server->addr, (uint8_t *)saddr);
@@ -874,11 +978,16 @@ static int reopen_server_socket(dtls_listener_relay_server_type *server, evutil_
     event_add(server->udp_listen_ev, NULL);
   }
 
-  if (!turn_params.no_udp && !turn_params.no_dtls) {
+  if (!turn_params.no_udp && !turn_params.no_dtls)
+  {
     addr_debug_print(server->verbose, &server->addr, "DTLS/UDP listener opened on ");
-  } else if (!turn_params.no_dtls) {
+  }
+  else if (!turn_params.no_dtls)
+  {
     addr_debug_print(server->verbose, &server->addr, "DTLS listener opened on ");
-  } else if (!turn_params.no_udp) {
+  }
+  else if (!turn_params.no_udp)
+  {
     addr_debug_print(server->verbose, &server->addr, "UDP listener opened on ");
   }
 
@@ -889,12 +998,14 @@ static int reopen_server_socket(dtls_listener_relay_server_type *server, evutil_
 
 #if defined(REQUEST_CLIENT_CERT)
 
-static int dtls_verify_callback(int ok, X509_STORE_CTX *ctx) {
+static int dtls_verify_callback(int ok, X509_STORE_CTX *ctx)
+{
   /* This function should ask the user
    * if he trusts the received certificate.
    * Here we always trust.
    */
-  if (ok && ctx) {
+  if (ok && ctx)
+  {
     return 1;
   }
   return -1;
@@ -904,20 +1015,24 @@ static int dtls_verify_callback(int ok, X509_STORE_CTX *ctx) {
 
 static int init_server(dtls_listener_relay_server_type *server, const char *ifname, const char *local_address, int port,
                        int verbose, ioa_engine_handle e, turn_turnserver *ts, int report_creation,
-                       ioa_engine_new_connection_event_handler send_socket) {
+                       ioa_engine_new_connection_event_handler send_socket)
+{
 
-  if (!server) {
+  if (!server)
+  {
     return -1;
   }
 
   server->ts = ts;
   server->connect_cb = send_socket;
 
-  if (ifname) {
+  if (ifname)
+  {
     STRCPY(server->ifname, ifname);
   }
 
-  if (make_ioa_addr((const uint8_t *)local_address, port, &server->addr) < 0) {
+  if (make_ioa_addr((const uint8_t *)local_address, port, &server->addr) < 0)
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create a DTLS/UDP listener for address: %s\n", local_address);
     return -1;
   }
@@ -931,8 +1046,10 @@ static int init_server(dtls_listener_relay_server_type *server, const char *ifna
   return create_server_socket(server, report_creation);
 }
 
-static int clean_server(dtls_listener_relay_server_type *server) {
-  if (server) {
+static int clean_server(dtls_listener_relay_server_type *server)
+{
+  if (server)
+  {
     EVENT_DEL(server->udp_listen_ev);
     close_ioa_socket(server->udp_listen_s);
     server->udp_listen_s = NULL;
@@ -943,8 +1060,10 @@ static int clean_server(dtls_listener_relay_server_type *server) {
 ///////////////////////////////////////////////////////////
 
 #if DTLS_SUPPORTED
-void setup_dtls_callbacks(SSL_CTX *ctx) {
-  if (!ctx) {
+void setup_dtls_callbacks(SSL_CTX *ctx)
+{
+  if (!ctx)
+  {
     return;
   }
 
@@ -961,20 +1080,26 @@ void setup_dtls_callbacks(SSL_CTX *ctx) {
 dtls_listener_relay_server_type *create_dtls_listener_server(const char *ifname, const char *local_address, int port,
                                                              int verbose, ioa_engine_handle e, turn_turnserver *ts,
                                                              int report_creation,
-                                                             ioa_engine_new_connection_event_handler send_socket) {
+                                                             ioa_engine_new_connection_event_handler send_socket)
+{
 
   dtls_listener_relay_server_type *server =
       (dtls_listener_relay_server_type *)allocate_super_memory_engine(e, sizeof(dtls_listener_relay_server_type));
 
-  if (init_server(server, ifname, local_address, port, verbose, e, ts, report_creation, send_socket) < 0) {
+  if (init_server(server, ifname, local_address, port, verbose, e, ts, report_creation, send_socket) < 0)
+  {
     return NULL;
-  } else {
+  }
+  else
+  {
     return server;
   }
 }
 
-ioa_engine_handle get_engine(dtls_listener_relay_server_type *server) {
-  if (server) {
+ioa_engine_handle get_engine(dtls_listener_relay_server_type *server)
+{
+  if (server)
+  {
     return server->e;
   }
   return NULL;
@@ -982,8 +1107,10 @@ ioa_engine_handle get_engine(dtls_listener_relay_server_type *server) {
 
 //////////// UDP send ////////////////
 
-void udp_send_message(dtls_listener_relay_server_type *server, ioa_network_buffer_handle nbh, ioa_addr *dest) {
-  if (server && dest && nbh && (server->udp_listen_s)) {
+void udp_send_message(dtls_listener_relay_server_type *server, ioa_network_buffer_handle nbh, ioa_addr *dest)
+{
+  if (server && dest && nbh && (server->udp_listen_s))
+  {
     udp_send(server->udp_listen_s, dest, (char *)ioa_network_buffer_data(nbh), (int)ioa_network_buffer_get_size(nbh));
   }
 }

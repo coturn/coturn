@@ -75,8 +75,10 @@ static char userdb_type_mysql[] = "MySQL/MariaDB";
 static char userdb_type_mongo[] = "MongoDB";
 static char userdb_type_redis[] = "Redis";
 
-const char *userdb_type_to_string(TURN_USERDB_TYPE t) {
-  switch (t) {
+const char *userdb_type_to_string(TURN_USERDB_TYPE t)
+{
+  switch (t)
+  {
   case TURN_USERDB_TYPE_SQLITE:
     return userdb_type_sqlite;
     break;
@@ -101,15 +103,18 @@ void lock_realms(void) { ur_string_map_lock(realms); }
 
 void unlock_realms(void) { ur_string_map_unlock(realms); }
 
-void update_o_to_realm(ur_string_map *o_to_realm_new) {
+void update_o_to_realm(ur_string_map *o_to_realm_new)
+{
   TURN_MUTEX_LOCK(&o_to_realm_mutex);
   ur_string_map_free(&o_to_realm);
   o_to_realm = o_to_realm_new;
   TURN_MUTEX_UNLOCK(&o_to_realm_mutex);
 }
 
-void create_default_realm(void) {
-  if (default_realm_params_ptr) {
+void create_default_realm(void)
+{
+  if (default_realm_params_ptr)
+  {
     return;
   }
 
@@ -129,15 +134,18 @@ void create_default_realm(void) {
   unlock_realms();
 }
 
-void get_default_realm_options(realm_options_t *ro) {
-  if (ro) {
+void get_default_realm_options(realm_options_t *ro)
+{
+  if (ro)
+  {
     lock_realms();
     memcpy(ro, &(default_realm_params_ptr->options), sizeof(realm_options_t));
     unlock_realms();
   }
 }
 
-void set_default_realm_name(char *realm) {
+void set_default_realm_name(char *realm)
+{
   lock_realms();
   ur_string_map_value_type value = (ur_string_map_value_type)default_realm_params_ptr;
   STRCPY(default_realm_params_ptr->options.name, realm);
@@ -146,15 +154,20 @@ void set_default_realm_name(char *realm) {
   unlock_realms();
 }
 
-realm_params_t *get_realm(char *name) {
-  if (name && name[0]) {
+realm_params_t *get_realm(char *name)
+{
+  if (name && name[0])
+  {
     lock_realms();
     ur_string_map_value_type value = 0;
     ur_string_map_key_type key = (ur_string_map_key_type)name;
-    if (ur_string_map_get(realms, key, &value)) {
+    if (ur_string_map_get(realms, key, &value))
+    {
       unlock_realms();
       return (realm_params_t *)value;
-    } else {
+    }
+    else
+    {
       realm_params_t *ret = (realm_params_t *)malloc(sizeof(realm_params_t));
       memcpy(ret, default_realm_params_ptr, sizeof(realm_params_t));
       STRCPY(ret->options.name, name);
@@ -170,17 +183,20 @@ realm_params_t *get_realm(char *name) {
   return default_realm_params_ptr;
 }
 
-int get_realm_data(char *name, realm_params_t *rp) {
+int get_realm_data(char *name, realm_params_t *rp)
+{
   lock_realms();
   memcpy(rp, get_realm(name), sizeof(realm_params_t));
   unlock_realms();
   return 0;
 }
 
-int get_realm_options_by_origin(char *origin, realm_options_t *ro) {
+int get_realm_options_by_origin(char *origin, realm_options_t *ro)
+{
   ur_string_map_value_type value = 0;
   TURN_MUTEX_LOCK(&o_to_realm_mutex);
-  if (ur_string_map_get(o_to_realm, (ur_string_map_key_type)origin, &value) && value) {
+  if (ur_string_map_get(o_to_realm, (ur_string_map_key_type)origin, &value) && value)
+  {
     char *realm = strdup((char *)value);
     TURN_MUTEX_UNLOCK(&o_to_realm_mutex);
     realm_params_t rp;
@@ -188,20 +204,24 @@ int get_realm_options_by_origin(char *origin, realm_options_t *ro) {
     memcpy(ro, &(rp.options), sizeof(realm_options_t));
     free(realm);
     return 1;
-  } else {
+  }
+  else
+  {
     TURN_MUTEX_UNLOCK(&o_to_realm_mutex);
     get_default_realm_options(ro);
     return 0;
   }
 }
 
-void get_realm_options_by_name(char *realm, realm_options_t *ro) {
+void get_realm_options_by_name(char *realm, realm_options_t *ro)
+{
   realm_params_t rp;
   get_realm_data(realm, &rp);
   memcpy(ro, &(rp.options), sizeof(realm_options_t));
 }
 
-int change_total_quota(char *realm, int value) {
+int change_total_quota(char *realm, int value)
+{
   int ret = value;
   lock_realms();
   realm_params_t *rp = get_realm(realm);
@@ -210,7 +230,8 @@ int change_total_quota(char *realm, int value) {
   return ret;
 }
 
-int change_user_quota(char *realm, int value) {
+int change_user_quota(char *realm, int value)
+{
   int ret = value;
   lock_realms();
   realm_params_t *rp = get_realm(realm);
@@ -219,33 +240,41 @@ int change_user_quota(char *realm, int value) {
   return ret;
 }
 
-static void must_set_admin_realm(void *realm0) {
+static void must_set_admin_realm(void *realm0)
+{
   char *realm = (char *)realm0;
-  if (!realm || !realm[0]) {
+  if (!realm || !realm[0])
+  {
     fprintf(stderr, "The operation cannot be completed: the realm must be set.\n");
     exit(-1);
   }
 }
 
-static void must_set_admin_user(void *user0) {
+static void must_set_admin_user(void *user0)
+{
   char *user = (char *)user0;
-  if (!user || !user[0]) {
+  if (!user || !user[0])
+  {
     fprintf(stderr, "The operation cannot be completed: the user must be set.\n");
     exit(-1);
   }
 }
 
-static void must_set_admin_pwd(void *pwd0) {
+static void must_set_admin_pwd(void *pwd0)
+{
   char *pwd = (char *)pwd0;
-  if (!pwd || !pwd[0]) {
+  if (!pwd || !pwd[0])
+  {
     fprintf(stderr, "The operation cannot be completed: the password must be set.\n");
     exit(-1);
   }
 }
 
-static void must_set_admin_origin(void *origin0) {
+static void must_set_admin_origin(void *origin0)
+{
   char *origin = (char *)origin0;
-  if (!origin || !origin[0]) {
+  if (!origin || !origin[0])
+  {
     fprintf(stderr, "The operation cannot be completed: the origin must be set.\n");
     exit(-1);
   }
@@ -253,18 +282,25 @@ static void must_set_admin_origin(void *origin0) {
 
 /////////// SHARED SECRETS /////////////////
 
-void init_secrets_list(secrets_list_t *sl) {
-  if (sl) {
+void init_secrets_list(secrets_list_t *sl)
+{
+  if (sl)
+  {
     memset(sl, 0, sizeof(secrets_list_t));
   }
 }
 
-void clean_secrets_list(secrets_list_t *sl) {
-  if (sl) {
-    if (sl->secrets) {
+void clean_secrets_list(secrets_list_t *sl)
+{
+  if (sl)
+  {
+    if (sl->secrets)
+    {
       size_t i = 0;
-      for (i = 0; i < sl->sz; ++i) {
-        if (sl->secrets[i]) {
+      for (i = 0; i < sl->sz; ++i)
+      {
+        if (sl->secrets[i])
+        {
           free(sl->secrets[i]);
         }
       }
@@ -275,22 +311,28 @@ void clean_secrets_list(secrets_list_t *sl) {
   }
 }
 
-size_t get_secrets_list_size(secrets_list_t *sl) {
-  if (sl && sl->secrets) {
+size_t get_secrets_list_size(secrets_list_t *sl)
+{
+  if (sl && sl->secrets)
+  {
     return sl->sz;
   }
   return 0;
 }
 
-const char *get_secrets_list_elem(secrets_list_t *sl, size_t i) {
-  if (get_secrets_list_size(sl) > i) {
+const char *get_secrets_list_elem(secrets_list_t *sl, size_t i)
+{
+  if (get_secrets_list_size(sl) > i)
+  {
     return sl->secrets[i];
   }
   return NULL;
 }
 
-void add_to_secrets_list(secrets_list_t *sl, const char *elem) {
-  if (sl && elem) {
+void add_to_secrets_list(secrets_list_t *sl, const char *elem)
+{
+  if (sl && elem)
+  {
     sl->secrets = (char **)realloc(sl->secrets, (sizeof(char *) * (sl->sz + 1)));
     sl->secrets[sl->sz] = strdup(elem);
     sl->sz += 1;
@@ -299,21 +341,25 @@ void add_to_secrets_list(secrets_list_t *sl, const char *elem) {
 
 ////////////////////////////////////////////
 
-static int get_auth_secrets(secrets_list_t *sl, uint8_t *realm) {
+static int get_auth_secrets(secrets_list_t *sl, uint8_t *realm)
+{
   int ret = -1;
   const turn_dbdriver_t *dbd = get_dbdriver();
 
   clean_secrets_list(sl);
 
-  if (get_secrets_list_size(&turn_params.default_users_db.ram_db.static_auth_secrets)) {
+  if (get_secrets_list_size(&turn_params.default_users_db.ram_db.static_auth_secrets))
+  {
     size_t i = 0;
-    for (i = 0; i < get_secrets_list_size(&turn_params.default_users_db.ram_db.static_auth_secrets); ++i) {
+    for (i = 0; i < get_secrets_list_size(&turn_params.default_users_db.ram_db.static_auth_secrets); ++i)
+    {
       add_to_secrets_list(sl, get_secrets_list_elem(&turn_params.default_users_db.ram_db.static_auth_secrets, i));
     }
     ret = 0;
   }
 
-  if (dbd && dbd->get_auth_secrets) {
+  if (dbd && dbd->get_auth_secrets)
+  {
     ret = (*dbd->get_auth_secrets)(sl, realm);
   }
 
@@ -323,29 +369,39 @@ static int get_auth_secrets(secrets_list_t *sl, uint8_t *realm) {
 /*
  * Timestamp retrieval
  */
-static turn_time_t get_rest_api_timestamp(char *usname) {
+static turn_time_t get_rest_api_timestamp(char *usname)
+{
   turn_time_t ts = 0;
   int ts_set = 0;
 
   char *col = strchr(usname, turn_params.rest_api_separator);
 
-  if (col) {
-    if (col == usname) {
+  if (col)
+  {
+    if (col == usname)
+    {
       usname += 1;
-    } else {
+    }
+    else
+    {
       char *ptr = usname;
       int found_non_figure = 0;
-      while (ptr < col) {
-        if (!(ptr[0] >= '0' && ptr[0] <= '9')) {
+      while (ptr < col)
+      {
+        if (!(ptr[0] >= '0' && ptr[0] <= '9'))
+        {
           found_non_figure = 1;
           break;
         }
         ++ptr;
       }
-      if (found_non_figure) {
+      if (found_non_figure)
+      {
         ts = (turn_time_t)atol(col + 1);
         ts_set = 1;
-      } else {
+      }
+      else
+      {
         *col = 0;
         ts = (turn_time_t)atol(usname);
         ts_set = 1;
@@ -354,32 +410,44 @@ static turn_time_t get_rest_api_timestamp(char *usname) {
     }
   }
 
-  if (!ts_set) {
+  if (!ts_set)
+  {
     ts = (turn_time_t)atol(usname);
   }
 
   return ts;
 }
 
-static char *get_real_username(char *usname) {
-  if (usname[0] && turn_params.use_auth_secret_with_timestamp) {
+static char *get_real_username(char *usname)
+{
+  if (usname[0] && turn_params.use_auth_secret_with_timestamp)
+  {
     char *col = strchr(usname, turn_params.rest_api_separator);
-    if (col) {
-      if (col == usname) {
+    if (col)
+    {
+      if (col == usname)
+      {
         usname += 1;
-      } else {
+      }
+      else
+      {
         char *ptr = usname;
         int found_non_figure = 0;
-        while (ptr < col) {
-          if (!(ptr[0] >= '0' && ptr[0] <= '9')) {
+        while (ptr < col)
+        {
+          if (!(ptr[0] >= '0' && ptr[0] <= '9'))
+          {
             found_non_figure = 1;
             break;
           }
           ++ptr;
         }
-        if (!found_non_figure) {
+        if (!found_non_figure)
+        {
           usname = col + 1;
-        } else {
+        }
+        else
+        {
           *col = 0;
           usname = strdup(usname);
           *col = turn_params.rest_api_separator;
@@ -396,44 +464,54 @@ static char *get_real_username(char *usname) {
  * Password retrieval
  */
 int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *usname, uint8_t *realm, hmackey_t key,
-                 ioa_network_buffer_handle nbh) {
+                 ioa_network_buffer_handle nbh)
+{
   int ret = -1;
 
-  if (max_session_time) {
+  if (max_session_time)
+  {
     *max_session_time = 0;
   }
 
-  if (in_oauth && out_oauth && usname && usname[0]) {
+  if (in_oauth && out_oauth && usname && usname[0])
+  {
 
     stun_attr_ref sar = stun_attr_get_first_by_type_str(ioa_network_buffer_data(nbh), ioa_network_buffer_get_size(nbh),
                                                         STUN_ATTRIBUTE_OAUTH_ACCESS_TOKEN);
-    if (sar) {
+    if (sar)
+    {
 
       int len = stun_attr_get_len(sar);
       const uint8_t *value = stun_attr_get_value(sar);
 
       *out_oauth = 1;
 
-      if (len > 0 && value) {
+      if (len > 0 && value)
+      {
 
         const turn_dbdriver_t *dbd = get_dbdriver();
 
-        if (dbd && dbd->get_oauth_key) {
+        if (dbd && dbd->get_oauth_key)
+        {
 
           oauth_key_data_raw rawKey;
           memset(&rawKey, 0, sizeof(rawKey));
 
           int gres = (*(dbd->get_oauth_key))(usname, &rawKey);
-          if (gres < 0) {
+          if (gres < 0)
+          {
             return ret;
           }
 
-          if (!rawKey.kid[0]) {
+          if (!rawKey.kid[0])
+          {
             return ret;
           }
 
-          if (rawKey.lifetime) {
-            if (!turn_time_before(turn_time(), (turn_time_t)(rawKey.timestamp + rawKey.lifetime + OAUTH_TIME_DELTA))) {
+          if (rawKey.lifetime)
+          {
+            if (!turn_time_before(turn_time(), (turn_time_t)(rawKey.timestamp + rawKey.lifetime + OAUTH_TIME_DELTA)))
+            {
               return ret;
             }
           }
@@ -449,7 +527,8 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
           oauth_key okey;
           memset(&okey, 0, sizeof(okey));
 
-          if (!convert_oauth_key_data(&okd, &okey, err_msg, err_msg_size)) {
+          if (!convert_oauth_key_data(&okd, &okey, err_msg, err_msg_size))
+          {
             TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s\n", err_msg);
             return -1;
           }
@@ -460,7 +539,8 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
           encoded_oauth_token etoken;
           memset(&etoken, 0, sizeof(etoken));
 
-          if ((size_t)len > sizeof(etoken.token)) {
+          if ((size_t)len > sizeof(etoken.token))
+          {
             TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Encoded oAuth token is too large\n");
             return -1;
           }
@@ -468,20 +548,24 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
           etoken.size = (size_t)len;
 
           const char *server_name = (char *)turn_params.oauth_server_name;
-          if (!(server_name && server_name[0])) {
+          if (!(server_name && server_name[0]))
+          {
             server_name = (char *)realm;
-            if (!(server_name && server_name[0])) {
+            if (!(server_name && server_name[0]))
+            {
               TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot determine oAuth server name");
               return -1;
             }
           }
 
-          if (!decode_oauth_token((const uint8_t *)server_name, &etoken, &okey, &dot)) {
+          if (!decode_oauth_token((const uint8_t *)server_name, &etoken, &okey, &dot))
+          {
             TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot decode oauth token\n");
             return -1;
           }
 
-          switch (dot.enc_block.key_length) {
+          switch (dot.enc_block.key_length)
+          {
           case SHA1SIZEBYTES:
             break;
           case SHA256SIZEBYTES:
@@ -496,25 +580,30 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
           password_t pwdtmp;
           if (stun_check_message_integrity_by_key_str(TURN_CREDENTIALS_LONG_TERM, ioa_network_buffer_data(nbh),
                                                       ioa_network_buffer_get_size(nbh), dot.enc_block.mac_key, pwdtmp,
-                                                      SHATYPE_DEFAULT) > 0) {
+                                                      SHATYPE_DEFAULT) > 0)
+          {
 
             turn_time_t lifetime = (turn_time_t)(dot.enc_block.lifetime);
-            if (lifetime) {
+            if (lifetime)
+            {
               turn_time_t ts = (turn_time_t)(dot.enc_block.timestamp >> 16);
               turn_time_t to = ts + lifetime + OAUTH_TIME_DELTA;
               turn_time_t ct = turn_time();
-              if (!turn_time_before(ct, to)) {
+              if (!turn_time_before(ct, to))
+              {
                 TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "oAuth token is too old\n");
                 return -1;
               }
-              if (max_session_time) {
+              if (max_session_time)
+              {
                 *max_session_time = to - ct;
               }
             }
 
             memcpy(key, dot.enc_block.mac_key, dot.enc_block.key_length);
 
-            if (rawKey.realm[0]) {
+            if (rawKey.realm[0])
+            {
               memcpy(realm, rawKey.realm, sizeof(rawKey.realm));
             }
 
@@ -525,11 +614,13 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
     }
   }
 
-  if (out_oauth && *out_oauth) {
+  if (out_oauth && *out_oauth)
+  {
     return ret;
   }
 
-  if (turn_params.use_auth_secret_with_timestamp) {
+  if (turn_params.use_auth_secret_with_timestamp)
+  {
 
     turn_time_t ctime = (turn_time_t)time(NULL);
     turn_time_t ts = 0;
@@ -538,13 +629,15 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
 
     init_secrets_list(&sl);
 
-    if (get_auth_secrets(&sl, realm) < 0) {
+    if (get_auth_secrets(&sl, realm) < 0)
+    {
       return ret;
     }
 
     ts = get_rest_api_timestamp((char *)usname);
 
-    if (!turn_time_before(ts, ctime)) {
+    if (!turn_time_before(ts, ctime))
+    {
 
       uint8_t hmac[MAXSHASIZE];
       unsigned int hmac_len;
@@ -554,12 +647,14 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
 
       stun_attr_ref sar = stun_attr_get_first_by_type_str(
           ioa_network_buffer_data(nbh), ioa_network_buffer_get_size(nbh), STUN_ATTRIBUTE_MESSAGE_INTEGRITY);
-      if (!sar) {
+      if (!sar)
+      {
         return -1;
       }
 
       int sarlen = stun_attr_get_len(sar);
-      switch (sarlen) {
+      switch (sarlen)
+      {
       case SHA1SIZEBYTES:
         hmac_len = SHA1SIZEBYTES;
         break;
@@ -570,31 +665,41 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
         return -1;
       };
 
-      for (sll = 0; sll < get_secrets_list_size(&sl); ++sll) {
+      for (sll = 0; sll < get_secrets_list_size(&sl); ++sll)
+      {
 
         const char *secret = get_secrets_list_elem(&sl, sll);
 
-        if (secret) {
+        if (secret)
+        {
           if (stun_calculate_hmac(usname, strlen((char *)usname), (const uint8_t *)secret, strlen(secret), hmac,
-                                  &hmac_len, SHATYPE_DEFAULT)) {
+                                  &hmac_len, SHATYPE_DEFAULT))
+          {
             size_t pwd_length = 0;
             char *pwd = base64_encode(hmac, hmac_len, &pwd_length);
 
-            if (pwd) {
-              if (pwd_length < 1) {
+            if (pwd)
+            {
+              if (pwd_length < 1)
+              {
                 free(pwd);
-              } else {
-                if (stun_produce_integrity_key_str((uint8_t *)usname, realm, (uint8_t *)pwd, key, SHATYPE_DEFAULT)) {
+              }
+              else
+              {
+                if (stun_produce_integrity_key_str((uint8_t *)usname, realm, (uint8_t *)pwd, key, SHATYPE_DEFAULT))
+                {
                   if (stun_check_message_integrity_by_key_str(TURN_CREDENTIALS_LONG_TERM, ioa_network_buffer_data(nbh),
                                                               ioa_network_buffer_get_size(nbh), key, pwdtmp,
-                                                              SHATYPE_DEFAULT) > 0) {
+                                                              SHATYPE_DEFAULT) > 0)
+                  {
 
                     ret = 0;
                   }
                 }
                 free(pwd);
 
-                if (ret == 0) {
+                if (ret == 0)
+                {
                   break;
                 }
               }
@@ -611,19 +716,22 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
 
   ur_string_map_value_type ukey = NULL;
   ur_string_map_lock(turn_params.default_users_db.ram_db.static_accounts);
-  if (ur_string_map_get(turn_params.default_users_db.ram_db.static_accounts, (ur_string_map_key_type)usname, &ukey)) {
+  if (ur_string_map_get(turn_params.default_users_db.ram_db.static_accounts, (ur_string_map_key_type)usname, &ukey))
+  {
     ret = 0;
   }
   ur_string_map_unlock(turn_params.default_users_db.ram_db.static_accounts);
 
-  if (ret == 0) {
+  if (ret == 0)
+  {
     size_t sz = get_hmackey_size(SHATYPE_DEFAULT);
     memcpy(key, ukey, sz);
     return 0;
   }
 
   const turn_dbdriver_t *dbd = get_dbdriver();
-  if (dbd && dbd->get_user_key) {
+  if (dbd && dbd->get_user_key)
+  {
     ret = (*(dbd->get_user_key))(usname, realm, key);
   }
 
@@ -632,7 +740,8 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
 
 uint8_t *start_user_check(turnserver_id id, turn_credential_type ct, int in_oauth, int *out_oauth, uint8_t *usname,
                           uint8_t *realm, get_username_resume_cb resume, ioa_net_data *in_buffer, uint64_t ctxkey,
-                          int *postpone_reply) {
+                          int *postpone_reply)
+{
   *postpone_reply = 1;
 
   struct auth_message am;
@@ -653,31 +762,44 @@ uint8_t *start_user_check(turnserver_id id, turn_credential_type ct, int in_oaut
   return NULL;
 }
 
-int check_new_allocation_quota(uint8_t *user, int oauth, uint8_t *realm) {
+int check_new_allocation_quota(uint8_t *user, int oauth, uint8_t *realm)
+{
   int ret = 0;
-  if (user || oauth) {
+  if (user || oauth)
+  {
     uint8_t *username = oauth ? (uint8_t *)strdup("") : (uint8_t *)get_real_username((char *)user);
     realm_params_t *rp = get_realm((char *)realm);
     ur_string_map_lock(rp->status.alloc_counters);
     if (rp->options.perf_options.total_quota &&
-        (rp->status.total_current_allocs >= rp->options.perf_options.total_quota)) {
+        (rp->status.total_current_allocs >= rp->options.perf_options.total_quota))
+    {
       ret = -1;
-    } else if (username[0]) {
+    }
+    else if (username[0])
+    {
       ur_string_map_value_type value = 0;
-      if (!ur_string_map_get(rp->status.alloc_counters, (ur_string_map_key_type)username, &value)) {
+      if (!ur_string_map_get(rp->status.alloc_counters, (ur_string_map_key_type)username, &value))
+      {
         value = (ur_string_map_value_type)1;
         ur_string_map_put(rp->status.alloc_counters, (ur_string_map_key_type)username, value);
         ++(rp->status.total_current_allocs);
-      } else {
-        if ((rp->options.perf_options.user_quota) && ((size_t)value >= (size_t)(rp->options.perf_options.user_quota))) {
+      }
+      else
+      {
+        if ((rp->options.perf_options.user_quota) && ((size_t)value >= (size_t)(rp->options.perf_options.user_quota)))
+        {
           ret = -1;
-        } else {
+        }
+        else
+        {
           value = (ur_string_map_value_type)(((size_t)value) + 1);
           ur_string_map_put(rp->status.alloc_counters, (ur_string_map_key_type)username, value);
           ++(rp->status.total_current_allocs);
         }
       }
-    } else {
+    }
+    else
+    {
       ++(rp->status.total_current_allocs);
     }
     free(username);
@@ -686,24 +808,32 @@ int check_new_allocation_quota(uint8_t *user, int oauth, uint8_t *realm) {
   return ret;
 }
 
-void release_allocation_quota(uint8_t *user, int oauth, uint8_t *realm) {
-  if (user) {
+void release_allocation_quota(uint8_t *user, int oauth, uint8_t *realm)
+{
+  if (user)
+  {
     uint8_t *username = oauth ? (uint8_t *)strdup("") : (uint8_t *)get_real_username((char *)user);
     realm_params_t *rp = get_realm((char *)realm);
     ur_string_map_lock(rp->status.alloc_counters);
-    if (username[0]) {
+    if (username[0])
+    {
       ur_string_map_value_type value = 0;
       ur_string_map_get(rp->status.alloc_counters, (ur_string_map_key_type)username, &value);
-      if (value) {
+      if (value)
+      {
         value = (ur_string_map_value_type)(((size_t)value) - 1);
-        if (value == 0) {
+        if (value == 0)
+        {
           ur_string_map_del(rp->status.alloc_counters, (ur_string_map_key_type)username);
-        } else {
+        }
+        else
+        {
           ur_string_map_put(rp->status.alloc_counters, (ur_string_map_key_type)username, value);
         }
       }
     }
-    if (rp->status.total_current_allocs) {
+    if (rp->status.total_current_allocs)
+    {
       --(rp->status.total_current_allocs);
     }
     ur_string_map_unlock(rp->status.alloc_counters);
@@ -713,14 +843,17 @@ void release_allocation_quota(uint8_t *user, int oauth, uint8_t *realm) {
 
 //////////////////////////////////
 
-int add_static_user_account(char *user) {
+int add_static_user_account(char *user)
+{
   /* Realm is either default or empty for users taken from file or command-line */
-  if (!user || turn_params.use_auth_secret_with_timestamp) {
+  if (!user || turn_params.use_auth_secret_with_timestamp)
+  {
     return -1;
   }
 
   char *s = strstr(user, ":");
-  if (!s || (s == user) || (strlen(s) < 2)) {
+  if (!s || (s == user) || (strlen(s) < 2))
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong user account: %s\n", user);
     return -1;
   }
@@ -731,14 +864,16 @@ int add_static_user_account(char *user) {
   // are user account names as well? If so, we can avoid allocating
   // and instead use a stack buffer.
   char *usname = (char *)malloc(ulen + 1);
-  if (!usname) {
+  if (!usname)
+  {
     return -1;
   }
 
   strncpy(usname, user, ulen);
   usname[ulen] = 0;
 
-  if (!SASLprep((uint8_t *)usname)) {
+  if (!SASLprep((uint8_t *)usname))
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong user name: %s\n", user);
     free(usname);
     return -1;
@@ -746,19 +881,24 @@ int add_static_user_account(char *user) {
   s = skip_blanks(s + 1);
 
   hmackey_t *key = (hmackey_t *)malloc(sizeof(hmackey_t));
-  if (!key) {
+  if (!key)
+  {
     free(usname);
     return -1;
   }
 
-  if (strstr(s, "0x") == s) {
+  if (strstr(s, "0x") == s)
+  {
     char *keysource = s + 2;
     size_t sz = get_hmackey_size(SHATYPE_DEFAULT);
-    if (strlen(keysource) < sz * 2) {
+    if (strlen(keysource) < sz * 2)
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key format: %s\n", s);
     }
     convert_string_key_to_binary(keysource, *key, sz);
-  } else {
+  }
+  else
+  {
     // this is only for default realm
     stun_produce_integrity_key_str((uint8_t *)usname, (uint8_t *)get_realm(NULL)->options.name, (uint8_t *)s, *key,
                                    SHATYPE_DEFAULT);
@@ -766,7 +906,8 @@ int add_static_user_account(char *user) {
 
   // the ur_string_map functions only fail (well... other than allocation failures, which aren't handled)
   // if the map isn't valid. So we only need to check the result of locking.
-  if (!ur_string_map_lock(turn_params.default_users_db.ram_db.static_accounts)) {
+  if (!ur_string_map_lock(turn_params.default_users_db.ram_db.static_accounts))
+  {
     free(usname);
     free(key);
     return -1;
@@ -786,15 +927,22 @@ int add_static_user_account(char *user) {
 
 ////////////////// Admin /////////////////////////
 
-static int list_users(uint8_t *realm, int is_admin) {
+static int list_users(uint8_t *realm, int is_admin)
+{
   const turn_dbdriver_t *dbd = get_dbdriver();
-  if (dbd) {
-    if (is_admin) {
-      if (dbd->list_admin_users) {
+  if (dbd)
+  {
+    if (is_admin)
+    {
+      if (dbd->list_admin_users)
+      {
         (*dbd->list_admin_users)(0);
       }
-    } else {
-      if (dbd->list_users) {
+    }
+    else
+    {
+      if (dbd->list_users)
+      {
         (*dbd->list_users)(realm, NULL, NULL);
       }
     }
@@ -803,30 +951,36 @@ static int list_users(uint8_t *realm, int is_admin) {
   return 0;
 }
 
-static int show_secret(uint8_t *realm) {
+static int show_secret(uint8_t *realm)
+{
   const turn_dbdriver_t *dbd = get_dbdriver();
-  if (dbd && dbd->list_secrets) {
+  if (dbd && dbd->list_secrets)
+  {
     (*dbd->list_secrets)(realm, NULL, NULL);
   }
 
   return 0;
 }
 
-static int del_secret(uint8_t *secret, uint8_t *realm) {
+static int del_secret(uint8_t *secret, uint8_t *realm)
+{
 
   must_set_admin_realm(realm);
 
   const turn_dbdriver_t *dbd = get_dbdriver();
-  if (dbd && dbd->del_secret) {
+  if (dbd && dbd->del_secret)
+  {
     (*dbd->del_secret)(secret, realm);
   }
 
   return 0;
 }
 
-static int set_secret(uint8_t *secret, uint8_t *realm) {
+static int set_secret(uint8_t *secret, uint8_t *realm)
+{
 
-  if (!secret || (secret[0] == 0)) {
+  if (!secret || (secret[0] == 0))
+  {
     return 0;
   }
 
@@ -835,71 +989,84 @@ static int set_secret(uint8_t *secret, uint8_t *realm) {
   del_secret(secret, realm);
 
   const turn_dbdriver_t *dbd = get_dbdriver();
-  if (dbd && dbd->set_secret) {
+  if (dbd && dbd->set_secret)
+  {
     (*dbd->set_secret)(secret, realm);
   }
 
   return 0;
 }
 
-static int add_origin(uint8_t *origin0, uint8_t *realm) {
+static int add_origin(uint8_t *origin0, uint8_t *realm)
+{
   uint8_t origin[STUN_MAX_ORIGIN_SIZE + 1];
 
   get_canonic_origin((const char *)origin0, (char *)origin, sizeof(origin) - 1);
 
   const turn_dbdriver_t *dbd = get_dbdriver();
-  if (dbd && dbd->add_origin) {
+  if (dbd && dbd->add_origin)
+  {
     (*dbd->add_origin)(origin, realm);
   }
 
   return 0;
 }
 
-static int del_origin(uint8_t *origin0) {
+static int del_origin(uint8_t *origin0)
+{
   uint8_t origin[STUN_MAX_ORIGIN_SIZE + 1];
 
   get_canonic_origin((const char *)origin0, (char *)origin, sizeof(origin) - 1);
 
   const turn_dbdriver_t *dbd = get_dbdriver();
-  if (dbd && dbd->del_origin) {
+  if (dbd && dbd->del_origin)
+  {
     (*dbd->del_origin)(origin);
   }
 
   return 0;
 }
 
-static int list_origins(uint8_t *realm) {
+static int list_origins(uint8_t *realm)
+{
   const turn_dbdriver_t *dbd = get_dbdriver();
-  if (dbd && dbd->list_origins) {
+  if (dbd && dbd->list_origins)
+  {
     (*dbd->list_origins)(realm, NULL, NULL);
   }
 
   return 0;
 }
 
-static int set_realm_option_one(uint8_t *realm, unsigned long value, const char *opt) {
-  if (value == (unsigned long)-1) {
+static int set_realm_option_one(uint8_t *realm, unsigned long value, const char *opt)
+{
+  if (value == (unsigned long)-1)
+  {
     return 0;
   }
 
   const turn_dbdriver_t *dbd = get_dbdriver();
-  if (dbd && dbd->set_realm_option_one) {
+  if (dbd && dbd->set_realm_option_one)
+  {
     (*dbd->set_realm_option_one)(realm, value, opt);
   }
 
   return 0;
 }
 
-static int set_realm_option(uint8_t *realm, perf_options_t *po) {
+static int set_realm_option(uint8_t *realm, perf_options_t *po)
+{
   set_realm_option_one(realm, (unsigned long)po->max_bps, "max-bps");
   set_realm_option_one(realm, (unsigned long)po->user_quota, "user-quota");
   set_realm_option_one(realm, (unsigned long)po->total_quota, "total-quota");
   return 0;
 }
 
-static int list_realm_options(uint8_t *realm) {
+static int list_realm_options(uint8_t *realm)
+{
   const turn_dbdriver_t *dbd = get_dbdriver();
-  if (dbd && dbd->list_realm_options) {
+  if (dbd && dbd->list_realm_options)
+  {
     (*dbd->list_realm_options)(realm);
   }
 
@@ -907,57 +1074,69 @@ static int list_realm_options(uint8_t *realm) {
 }
 
 int adminuser(uint8_t *user, uint8_t *realm, uint8_t *pwd, uint8_t *secret, uint8_t *origin, TURNADMIN_COMMAND_TYPE ct,
-              perf_options_t *po, int is_admin) {
+              perf_options_t *po, int is_admin)
+{
   hmackey_t key;
   char skey[sizeof(hmackey_t) * 2 + 1];
 
-  if (ct == TA_LIST_USERS) {
+  if (ct == TA_LIST_USERS)
+  {
     return list_users(realm, is_admin);
   }
 
-  if (ct == TA_LIST_ORIGINS) {
+  if (ct == TA_LIST_ORIGINS)
+  {
     return list_origins(realm);
   }
 
-  if (ct == TA_SHOW_SECRET) {
+  if (ct == TA_SHOW_SECRET)
+  {
     return show_secret(realm);
   }
 
-  if (ct == TA_SET_SECRET) {
+  if (ct == TA_SET_SECRET)
+  {
     return set_secret(secret, realm);
   }
 
-  if (ct == TA_DEL_SECRET) {
+  if (ct == TA_DEL_SECRET)
+  {
     return del_secret(secret, realm);
   }
 
-  if (ct == TA_ADD_ORIGIN) {
+  if (ct == TA_ADD_ORIGIN)
+  {
     must_set_admin_origin(origin);
     must_set_admin_realm(realm);
     return add_origin(origin, realm);
   }
 
-  if (ct == TA_DEL_ORIGIN) {
+  if (ct == TA_DEL_ORIGIN)
+  {
     must_set_admin_origin(origin);
     return del_origin(origin);
   }
 
-  if (ct == TA_SET_REALM_OPTION) {
+  if (ct == TA_SET_REALM_OPTION)
+  {
     must_set_admin_realm(realm);
-    if (!(po && (po->max_bps != ((band_limit_t)-1) || po->total_quota >= 0 || po->user_quota >= 0))) {
+    if (!(po && (po->max_bps != ((band_limit_t)-1) || po->total_quota >= 0 || po->user_quota >= 0)))
+    {
       fprintf(stderr, "The operation cannot be completed: a realm option must be set.\n");
       exit(-1);
     }
     return set_realm_option(realm, po);
   }
 
-  if (ct == TA_LIST_REALM_OPTIONS) {
+  if (ct == TA_LIST_REALM_OPTIONS)
+  {
     return list_realm_options(realm);
   }
 
   must_set_admin_user(user);
 
-  if (ct != TA_DELETE_USER && !is_admin) {
+  if (ct != TA_DELETE_USER && !is_admin)
+  {
 
     must_set_admin_pwd(pwd);
 
@@ -966,7 +1145,8 @@ int adminuser(uint8_t *user, uint8_t *realm, uint8_t *pwd, uint8_t *secret, uint
       size_t sz = get_hmackey_size(SHATYPE_DEFAULT);
       int maxsz = (int)(sz * 2) + 1;
       char *s = skey;
-      for (size_t i = 0; (i < sz) && (maxsz > 2); i++) {
+      for (size_t i = 0; (i < sz) && (maxsz > 2); i++)
+      {
         snprintf(s, (size_t)(sz * 2), "%02x", (unsigned int)key[i]);
         maxsz -= 2;
         s += 2;
@@ -977,36 +1157,52 @@ int adminuser(uint8_t *user, uint8_t *realm, uint8_t *pwd, uint8_t *secret, uint
 
   const turn_dbdriver_t *dbd = get_dbdriver();
 
-  if (ct == TA_PRINT_KEY) {
+  if (ct == TA_PRINT_KEY)
+  {
 
     printf("0x%s\n", skey);
+  }
+  else if (dbd)
+  {
 
-  } else if (dbd) {
-
-    if (!is_admin) {
+    if (!is_admin)
+    {
       must_set_admin_realm(realm);
     }
 
-    if (ct == TA_DELETE_USER) {
-      if (is_admin) {
-        if (dbd->del_admin_user) {
+    if (ct == TA_DELETE_USER)
+    {
+      if (is_admin)
+      {
+        if (dbd->del_admin_user)
+        {
           (*dbd->del_admin_user)(user);
         }
-      } else {
-        if (dbd->del_user) {
+      }
+      else
+      {
+        if (dbd->del_user)
+        {
           (*dbd->del_user)(user, realm);
         }
       }
-    } else if (ct == TA_UPDATE_USER) {
-      if (is_admin) {
+    }
+    else if (ct == TA_UPDATE_USER)
+    {
+      if (is_admin)
+      {
         must_set_admin_pwd(pwd);
-        if (dbd->set_admin_user) {
+        if (dbd->set_admin_user)
+        {
           password_t password;
           generate_new_enc_password((char *)pwd, (char *)password);
           (*dbd->set_admin_user)(user, realm, password);
         }
-      } else {
-        if (dbd->set_user_key) {
+      }
+      else
+      {
+        if (dbd->set_user_key)
+        {
           (*dbd->set_user_key)(user, realm, skey);
         }
       }
@@ -1018,9 +1214,11 @@ int adminuser(uint8_t *user, uint8_t *realm, uint8_t *pwd, uint8_t *secret, uint
 
 /////////// PING //////////////
 
-void auth_ping(redis_context_handle rch) {
+void auth_ping(redis_context_handle rch)
+{
   const turn_dbdriver_t *dbd = get_dbdriver();
-  if (dbd && dbd->auth_ping) {
+  if (dbd && dbd->auth_ping)
+  {
     (*dbd->auth_ping)(rch);
   }
 }
@@ -1029,9 +1227,11 @@ void auth_ping(redis_context_handle rch) {
 
 #if defined(DB_TEST)
 
-void run_db_test(void) {
+void run_db_test(void)
+{
   turn_dbdriver_t *dbd = get_dbdriver();
-  if (dbd) {
+  if (dbd)
+  {
 
     printf("DB TEST 1:\n");
     dbd->list_oauth_keys();
@@ -1075,9 +1275,12 @@ void run_db_test(void) {
     oauth_key oak;
     char err_msg[1025];
     err_msg[0] = 0;
-    if (!convert_oauth_key_data(&oakd, &oak, err_msg, sizeof(err_msg) - 1)) {
+    if (!convert_oauth_key_data(&oakd, &oak, err_msg, sizeof(err_msg) - 1))
+    {
       printf("  ERROR: %s\n", err_msg);
-    } else {
+    }
+    else
+    {
       printf("  OK!\n");
     }
     printf("DB TEST END\n");
@@ -1099,7 +1302,8 @@ static TURN_MUTEX_DECLARE(blacklist_mutex);
 static ip_range_list_t *ipwhitelist = NULL;
 static ip_range_list_t *ipblacklist = NULL;
 
-void init_dynamic_ip_lists(void) {
+void init_dynamic_ip_lists(void)
+{
 #if !defined(TURN_NO_RWLOCK)
   whitelist_rwlock = (pthread_rwlock_t *)malloc(sizeof(pthread_rwlock_t));
   pthread_rwlock_init(whitelist_rwlock, NULL);
@@ -1112,7 +1316,8 @@ void init_dynamic_ip_lists(void) {
 #endif
 }
 
-void ioa_lock_whitelist(ioa_engine_handle e) {
+void ioa_lock_whitelist(ioa_engine_handle e)
+{
   UNUSED_ARG(e);
 #if !defined(TURN_NO_RWLOCK)
   pthread_rwlock_rdlock(whitelist_rwlock);
@@ -1120,7 +1325,8 @@ void ioa_lock_whitelist(ioa_engine_handle e) {
   TURN_MUTEX_LOCK(&whitelist_mutex);
 #endif
 }
-void ioa_unlock_whitelist(ioa_engine_handle e) {
+void ioa_unlock_whitelist(ioa_engine_handle e)
+{
   UNUSED_ARG(e);
 #if !defined(TURN_NO_RWLOCK)
   pthread_rwlock_unlock(whitelist_rwlock);
@@ -1128,7 +1334,8 @@ void ioa_unlock_whitelist(ioa_engine_handle e) {
   TURN_MUTEX_UNLOCK(&whitelist_mutex);
 #endif
 }
-static void ioa_wrlock_whitelist(ioa_engine_handle e) {
+static void ioa_wrlock_whitelist(ioa_engine_handle e)
+{
   UNUSED_ARG(e);
 #if !defined(TURN_NO_RWLOCK)
   pthread_rwlock_wrlock(whitelist_rwlock);
@@ -1136,12 +1343,14 @@ static void ioa_wrlock_whitelist(ioa_engine_handle e) {
   TURN_MUTEX_LOCK(&whitelist_mutex);
 #endif
 }
-const ip_range_list_t *ioa_get_whitelist(ioa_engine_handle e) {
+const ip_range_list_t *ioa_get_whitelist(ioa_engine_handle e)
+{
   UNUSED_ARG(e);
   return ipwhitelist;
 }
 
-void ioa_lock_blacklist(ioa_engine_handle e) {
+void ioa_lock_blacklist(ioa_engine_handle e)
+{
   UNUSED_ARG(e);
 #if !defined(TURN_NO_RWLOCK)
   pthread_rwlock_rdlock(blacklist_rwlock);
@@ -1149,7 +1358,8 @@ void ioa_lock_blacklist(ioa_engine_handle e) {
   TURN_MUTEX_LOCK(&blacklist_mutex);
 #endif
 }
-void ioa_unlock_blacklist(ioa_engine_handle e) {
+void ioa_unlock_blacklist(ioa_engine_handle e)
+{
   UNUSED_ARG(e);
 #if !defined(TURN_NO_RWLOCK)
   pthread_rwlock_unlock(blacklist_rwlock);
@@ -1157,7 +1367,8 @@ void ioa_unlock_blacklist(ioa_engine_handle e) {
   TURN_MUTEX_UNLOCK(&blacklist_mutex);
 #endif
 }
-static void ioa_wrlock_blacklist(ioa_engine_handle e) {
+static void ioa_wrlock_blacklist(ioa_engine_handle e)
+{
   UNUSED_ARG(e);
 #if !defined(TURN_NO_RWLOCK)
   pthread_rwlock_wrlock(blacklist_rwlock);
@@ -1165,32 +1376,39 @@ static void ioa_wrlock_blacklist(ioa_engine_handle e) {
   TURN_MUTEX_LOCK(&blacklist_mutex);
 #endif
 }
-const ip_range_list_t *ioa_get_blacklist(ioa_engine_handle e) {
+const ip_range_list_t *ioa_get_blacklist(ioa_engine_handle e)
+{
   UNUSED_ARG(e);
   return ipblacklist;
 }
 
-ip_range_list_t *get_ip_list(const char *kind) {
+ip_range_list_t *get_ip_list(const char *kind)
+{
   ip_range_list_t *ret = (ip_range_list_t *)calloc(sizeof(ip_range_list_t), 1);
 
   const turn_dbdriver_t *dbd = get_dbdriver();
-  if (dbd && dbd->get_ip_list && !turn_params.no_dynamic_ip_list) {
+  if (dbd && dbd->get_ip_list && !turn_params.no_dynamic_ip_list)
+  {
     (*dbd->get_ip_list)(kind, ret);
   }
 
   return ret;
 }
 
-void ip_list_free(ip_range_list_t *l) {
-  if (l) {
-    if (l->rs) {
+void ip_list_free(ip_range_list_t *l)
+{
+  if (l)
+  {
+    if (l->rs)
+    {
       free(l->rs);
     }
     free(l);
   }
 }
 
-void update_white_and_black_lists(void) {
+void update_white_and_black_lists(void)
+{
   {
     ip_range_list_t *wl = get_ip_list("allowed");
     ip_range_list_t *owl = NULL;
@@ -1213,44 +1431,55 @@ void update_white_and_black_lists(void) {
 
 /////////////// add ACL record ///////////////////
 
-int add_ip_list_range(const char *range0, const char *realm, ip_range_list_t *list) {
+int add_ip_list_range(const char *range0, const char *realm, ip_range_list_t *list)
+{
   char *range = strdup(range0);
 
   char *separator = strchr(range, '-');
 
-  if (separator) {
+  if (separator)
+  {
     *separator = '\0';
   }
 
   ioa_addr min, max;
 
-  if (make_ioa_addr((const uint8_t *)range, 0, &min) < 0) {
+  if (make_ioa_addr((const uint8_t *)range, 0, &min) < 0)
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong address format: %s\n", range);
     free(range);
     return -1;
   }
 
-  if (separator) {
-    if (make_ioa_addr((const uint8_t *)separator + 1, 0, &max) < 0) {
+  if (separator)
+  {
+    if (make_ioa_addr((const uint8_t *)separator + 1, 0, &max) < 0)
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong address format: %s\n", separator + 1);
       free(range);
       return -1;
     }
-  } else {
+  }
+  else
+  {
     // Doesn't have a '-' character in it, so assume that this is a single address
     addr_cpy(&max, &min);
   }
 
-  if (separator) {
+  if (separator)
+  {
     *separator = '-';
   }
 
   ++(list->ranges_number);
   list->rs = (ip_range_t *)realloc(list->rs, sizeof(ip_range_t) * list->ranges_number);
   STRCPY(list->rs[list->ranges_number - 1].str, range);
-  if (realm) {
+  if (realm)
+  {
     STRCPY(list->rs[list->ranges_number - 1].realm, realm);
-  } else {
+  }
+  else
+  {
     list->rs[list->ranges_number - 1].realm[0] = 0;
   }
   free(range);
@@ -1259,35 +1488,43 @@ int add_ip_list_range(const char *range0, const char *realm, ip_range_list_t *li
   return 0;
 }
 
-int check_ip_list_range(const char *range0) {
+int check_ip_list_range(const char *range0)
+{
   char *range = strdup(range0);
 
   char *separator = strchr(range, '-');
 
-  if (separator) {
+  if (separator)
+  {
     *separator = '\0';
   }
 
   ioa_addr min, max;
 
-  if (make_ioa_addr((const uint8_t *)range, 0, &min) < 0) {
+  if (make_ioa_addr((const uint8_t *)range, 0, &min) < 0)
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong address range format: %s\n", range);
     free(range);
     return -1;
   }
 
-  if (separator) {
-    if (make_ioa_addr((const uint8_t *)separator + 1, 0, &max) < 0) {
+  if (separator)
+  {
+    if (make_ioa_addr((const uint8_t *)separator + 1, 0, &max) < 0)
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong address range format: %s\n", separator + 1);
       free(range);
       return -1;
     }
-  } else {
+  }
+  else
+  {
     // Doesn't have a '-' character in it, so assume that this is a single address
     addr_cpy(&max, &min);
   }
 
-  if (separator) {
+  if (separator)
+  {
     *separator = '-';
   }
 
@@ -1298,7 +1535,8 @@ int check_ip_list_range(const char *range0) {
 
 /////////// REALM //////////////
 
-void reread_realms(void) {
+void reread_realms(void)
+{
   {
     realm_params_t *defrp = get_realm(NULL);
     lock_realms();
@@ -1309,7 +1547,8 @@ void reread_realms(void) {
   }
 
   const turn_dbdriver_t *dbd = get_dbdriver();
-  if (dbd && dbd->reread_realms && !turn_params.no_dynamic_realms) {
+  if (dbd && dbd->reread_realms && !turn_params.no_dynamic_realms)
+  {
     (*dbd->reread_realms)(&realms_list);
   }
 }

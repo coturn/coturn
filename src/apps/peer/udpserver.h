@@ -40,7 +40,8 @@
 #include <stddef.h> // for size_t
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 //////////////////////////////
@@ -50,7 +51,8 @@ typedef struct server_info server_type;
 
 ///////////////////////////////////////////////////////
 
-struct server_info {
+struct server_info
+{
   char ifname[1025];
   struct event_base *event_base;
   int verbose;

@@ -35,7 +35,8 @@
 #include "dbdriver.h"
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 const turn_dbdriver_t *get_mysql_dbdriver(void);

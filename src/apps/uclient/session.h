@@ -42,16 +42,23 @@
 #include <stdbool.h>
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 ///////// types ////////////
 
-typedef enum { UR_STATE_UNKNOWN = 0, UR_STATE_READY, UR_STATE_DONE } UR_STATE;
+typedef enum
+{
+  UR_STATE_UNKNOWN = 0,
+  UR_STATE_READY,
+  UR_STATE_DONE
+} UR_STATE;
 
 //////////////// session info //////////////////////
 
-typedef struct {
+typedef struct
+{
   /* RFC 6062 */
   uint32_t cid; // https://datatracker.ietf.org/doc/html/rfc6062#section-6.2.1
   ioa_addr tcp_data_local_addr;
@@ -60,7 +67,8 @@ typedef struct {
   bool tcp_data_bound;
 } app_tcp_conn_info;
 
-typedef struct {
+typedef struct
+{
   ioa_addr local_addr;
   char lsaddr[129];
   ioa_addr remote_addr;
@@ -86,7 +94,8 @@ typedef struct {
   char s_mobile_id[33];
 } app_ur_conn_info;
 
-typedef struct {
+typedef struct
+{
   app_ur_conn_info pinfo;
   UR_STATE state;
   unsigned int ctime; // assigned to from a uint64_t variable "current time" likely should be a time_t or similar.
@@ -115,7 +124,8 @@ typedef struct {
 
 ///////////////////////////////////////////////////////
 
-typedef struct {
+typedef struct
+{
   int msgnum;
   uint64_t mstime;
 } message_info;
