@@ -36,7 +36,8 @@
 #include "stun_buffer.h" // for stun_buffer
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 /////////////////////////////////////////////////////////

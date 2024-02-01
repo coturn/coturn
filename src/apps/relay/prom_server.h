@@ -14,7 +14,8 @@
 #include <unistd.h>
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 #include <microhttpd.h>
 #include <prom.h>
@@ -54,7 +55,8 @@ extern prom_counter_t *turn_total_traffic_peer_sentb;
 extern prom_gauge_t *turn_total_allocations_number;
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 void start_prometheus_server(void);

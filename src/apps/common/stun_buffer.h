@@ -37,12 +37,14 @@
 #include "ns_turn_msg_defs.h" // for STUN_CHANNEL_HEADER_LENGTH
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 ///////////////////////////////////////////////////////////////
 
-typedef struct _stun_buffer {
+typedef struct _stun_buffer
+{
   uint8_t channel[STUN_CHANNEL_HEADER_LENGTH];
   uint8_t buf[STUN_BUFFER_SIZE];
   size_t len;
