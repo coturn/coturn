@@ -39,7 +39,8 @@
 #include <pthread.h>
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 ////////////////////////////////////////////
@@ -47,7 +48,8 @@ extern "C" {
 extern pthread_key_t connection_key;
 extern pthread_once_t connection_key_once;
 
-typedef struct _turn_dbdriver_t {
+typedef struct _turn_dbdriver_t
+{
   int (*get_auth_secrets)(secrets_list_t *sl, uint8_t *realm);
   int (*get_user_key)(uint8_t *usname, uint8_t *realm, hmackey_t key);
   int (*set_user_key)(uint8_t *usname, uint8_t *realm, const char *key);

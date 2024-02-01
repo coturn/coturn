@@ -71,18 +71,21 @@
 #include <time.h>
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 #define nswap16(s) ntohs(s)
 #define nswap32(ul) ntohl(ul)
 #define nswap64(ull) ioa_ntoh64(ull)
 
-static inline uint64_t _ioa_ntoh64(uint64_t v) {
+static inline uint64_t _ioa_ntoh64(uint64_t v)
+{
 #if BYTE_ORDER == LITTLE_ENDIAN
   uint8_t *src = (uint8_t *)&v;
   uint8_t *dst = src + 7;
-  while (src < dst) {
+  while (src < dst)
+  {
     uint8_t vdst = *dst;
     *(dst--) = *src;
     *(src++) = vdst;
@@ -142,8 +145,10 @@ static inline int socket_emsgsize(void) { return socket_errno() == EMSGSIZE; }
 #endif
 
 #define BUFFEREVENT_FREE(be)                                                                                           \
-  do {                                                                                                                 \
-    if (be) {                                                                                                          \
+  do                                                                                                                   \
+  {                                                                                                                    \
+    if (be)                                                                                                            \
+    {                                                                                                                  \
       bufferevent_flush(be, EV_READ | EV_WRITE, BEV_FLUSH);                                                            \
       bufferevent_disable(be, EV_READ | EV_WRITE);                                                                     \
       bufferevent_free(be);                                                                                            \
@@ -162,7 +167,8 @@ typedef uint32_t turn_time_t;
 
 #if !defined(UNUSED_ARG)
 #define UNUSED_ARG(A)                                                                                                  \
-  do {                                                                                                                 \
+  do                                                                                                                   \
+  {                                                                                                                    \
     A = A;                                                                                                             \
   } while (0)
 #endif
@@ -185,11 +191,14 @@ typedef uint32_t turn_time_t;
 #endif
 
 #define STRCPY(dst, src)                                                                                               \
-  do {                                                                                                                 \
-    if ((const char *)(dst) != (const char *)(src)) {                                                                  \
+  do                                                                                                                   \
+  {                                                                                                                    \
+    if ((const char *)(dst) != (const char *)(src))                                                                    \
+    {                                                                                                                  \
       if (sizeof(dst) == sizeof(char *))                                                                               \
         strcpy(((char *)(dst)), (const char *)(src));                                                                  \
-      else {                                                                                                           \
+      else                                                                                                             \
+      {                                                                                                                \
         size_t szdst = sizeof((dst));                                                                                  \
         strncpy((char *)(dst), (const char *)(src), szdst);                                                            \
         ((char *)(dst))[szdst - 1] = 0;                                                                                \

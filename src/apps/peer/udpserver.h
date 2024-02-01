@@ -38,7 +38,8 @@
 #include <event2/event.h>
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 //////////////////////////////
@@ -48,7 +49,8 @@ typedef struct server_info server_type;
 
 ///////////////////////////////////////////////////////
 
-struct server_info {
+struct server_info
+{
   char ifname[1025];
   struct event_base *event_base;
   int verbose;
