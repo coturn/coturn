@@ -36,7 +36,8 @@
 #include "ns_turn_msg_defs.h"
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 ///////////////////////////////////
@@ -45,14 +46,16 @@ extern "C" {
  * Structure holding the STUN message Transaction ID
  */
 #define STUN_TID_SIZE (12)
-typedef struct {
+typedef struct
+{
   /**
    * Binary array
    */
   uint8_t tsx_id[STUN_TID_SIZE];
 } stun_tid;
 
-typedef enum {
+typedef enum
+{
   TURN_CREDENTIALS_NONE = 0,
   TURN_CREDENTIALS_LONG_TERM,
   TURN_CREDENTIALS_SHORT_TERM,

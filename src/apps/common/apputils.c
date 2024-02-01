@@ -80,12 +80,14 @@ int IS_TURN_SERVER = 0;
 
 /*********************** Sockets *********************************/
 
-int socket_set_nonblocking(evutil_socket_t fd) {
+int socket_set_nonblocking(evutil_socket_t fd)
+{
 #if defined(WINDOWS)
   unsigned long nonblocking = 1;
   ioctlsocket(fd, FIONBIO, (unsigned long *)&nonblocking);
 #else
-  if (fcntl(fd, F_SETFL, O_NONBLOCK) == -1) {
+  if (fcntl(fd, F_SETFL, O_NONBLOCK) == -1)
+  {
     perror("O_NONBLOCK");
     return -1;
   }
@@ -93,8 +95,10 @@ int socket_set_nonblocking(evutil_socket_t fd) {
   return 0;
 }
 
-void read_spare_buffer(evutil_socket_t fd) {
-  if (fd >= 0) {
+void read_spare_buffer(evutil_socket_t fd)
+{
+  if (fd >= 0)
+  {
     static char buffer[65536];
 #if defined(WINDOWS)
     // TODO: add set no-block? by Kang Lin <kl222@126.com>
@@ -105,33 +109,44 @@ void read_spare_buffer(evutil_socket_t fd) {
   }
 }
 
-int set_sock_buf_size(evutil_socket_t fd, int sz0) {
+int set_sock_buf_size(evutil_socket_t fd, int sz0)
+{
   int sz;
 
   sz = sz0;
-  while (sz > 0) {
-    if (setsockopt(fd, SOL_SOCKET, SO_RCVBUF, (const void *)&sz, (socklen_t)sizeof(sz)) < 0) {
+  while (sz > 0)
+  {
+    if (setsockopt(fd, SOL_SOCKET, SO_RCVBUF, (const void *)&sz, (socklen_t)sizeof(sz)) < 0)
+    {
       sz = sz / 2;
-    } else {
+    }
+    else
+    {
       break;
     }
   }
 
-  if (sz < 1) {
+  if (sz < 1)
+  {
     perror("Cannot set socket rcv size");
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Cannot set rcv sock size %d on fd %d\n", sz0, fd);
   }
 
   sz = sz0;
-  while (sz > 0) {
-    if (setsockopt(fd, SOL_SOCKET, SO_SNDBUF, (const void *)&sz, (socklen_t)sizeof(sz)) < 0) {
+  while (sz > 0)
+  {
+    if (setsockopt(fd, SOL_SOCKET, SO_SNDBUF, (const void *)&sz, (socklen_t)sizeof(sz)) < 0)
+    {
       sz = sz / 2;
-    } else {
+    }
+    else
+    {
       break;
     }
   }
 
-  if (sz < 1) {
+  if (sz < 1)
+  {
     perror("Cannot set socket snd size");
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Cannot set snd sock size %d on fd %d\n", sz0, fd);
   }
@@ -139,7 +154,8 @@ int set_sock_buf_size(evutil_socket_t fd, int sz0) {
   return 0;
 }
 
-int socket_init(void) {
+int socket_init(void)
+{
 #if defined(WINDOWS)
   {
     WORD wVersionRequested;
@@ -150,7 +166,8 @@ int socket_init(void) {
     wVersionRequested = MAKEWORD(2, 2);
 
     e = WSAStartup(wVersionRequested, &wsaData);
-    if (e != 0) {
+    if (e != 0)
+    {
       /* Tell the user that we could not find a usable */
       /* Winsock DLL.                                  */
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "WSAStartup failed with error: %d\n", e);
@@ -161,7 +178,8 @@ int socket_init(void) {
   return 0;
 }
 
-int socket_tcp_set_keepalive(evutil_socket_t fd, SOCKET_TYPE st) {
+int socket_tcp_set_keepalive(evutil_socket_t fd, SOCKET_TYPE st)
+{
   UNUSED_ARG(st);
 
 #ifdef SO_KEEPALIVE
@@ -184,12 +202,16 @@ int socket_tcp_set_keepalive(evutil_socket_t fd, SOCKET_TYPE st) {
   return 0;
 }
 
-int socket_set_reusable(evutil_socket_t fd, int flag, SOCKET_TYPE st) {
+int socket_set_reusable(evutil_socket_t fd, int flag, SOCKET_TYPE st)
+{
   UNUSED_ARG(st);
 
-  if (fd < 0) {
+  if (fd < 0)
+  {
     return -1;
-  } else {
+  }
+  else
+  {
 
 #if defined(WINDOWS)
     int use_reuseaddr = IS_TURN_SERVER;
@@ -198,10 +220,12 @@ int socket_set_reusable(evutil_socket_t fd, int flag, SOCKET_TYPE st) {
 #endif
 
 #if defined(SO_REUSEADDR)
-    if (use_reuseaddr) {
+    if (use_reuseaddr)
+    {
       int on = flag;
       int ret = setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (const void *)&on, (socklen_t)sizeof(on));
-      if (ret < 0) {
+      if (ret < 0)
+      {
         perror("SO_REUSEADDR");
       }
     }
@@ -209,11 +233,14 @@ int socket_set_reusable(evutil_socket_t fd, int flag, SOCKET_TYPE st) {
 
 #if !defined(TURN_NO_SCTP)
 #if defined(SCTP_REUSE_PORT)
-    if (use_reuseaddr) {
-      if (is_sctp_socket(st)) {
+    if (use_reuseaddr)
+    {
+      if (is_sctp_socket(st))
+      {
         int on = flag;
         int ret = setsockopt(fd, IPPROTO_SCTP, SCTP_REUSE_PORT, (const void *)&on, (socklen_t)sizeof(on));
-        if (ret < 0) {
+        if (ret < 0)
+        {
           perror("SCTP_REUSE_PORT");
         }
       }
@@ -222,7 +249,8 @@ int socket_set_reusable(evutil_socket_t fd, int flag, SOCKET_TYPE st) {
 #endif
 
 #if defined(SO_REUSEPORT)
-    if (use_reuseaddr) {
+    if (use_reuseaddr)
+    {
       int on = flag;
       setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, (const void *)&on, (socklen_t)sizeof(on));
     }
@@ -232,9 +260,11 @@ int socket_set_reusable(evutil_socket_t fd, int flag, SOCKET_TYPE st) {
   }
 }
 
-int sock_bind_to_device(evutil_socket_t fd, const unsigned char *ifname) {
+int sock_bind_to_device(evutil_socket_t fd, const unsigned char *ifname)
+{
 
-  if (fd >= 0 && ifname && ifname[0]) {
+  if (fd >= 0 && ifname && ifname[0])
+  {
 
 #if defined(SO_BINDTODEVICE)
 
@@ -243,10 +273,14 @@ int sock_bind_to_device(evutil_socket_t fd, const unsigned char *ifname) {
 
     strncpy(ifr.ifr_name, (const char *)ifname, sizeof(ifr.ifr_name));
 
-    if (setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, (const void *)&ifr, sizeof(ifr)) < 0) {
-      if (socket_eperm()) {
+    if (setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, (const void *)&ifr, sizeof(ifr)) < 0)
+    {
+      if (socket_eperm())
+      {
         perror("You must obtain superuser privileges to bind a socket to device");
-      } else {
+      }
+      else
+      {
         perror("Cannot bind socket to device");
       }
 
@@ -261,26 +295,38 @@ int sock_bind_to_device(evutil_socket_t fd, const unsigned char *ifname) {
   return 0;
 }
 
-int addr_connect(evutil_socket_t fd, const ioa_addr *addr, int *out_errno) {
-  if (!addr || fd < 0) {
+int addr_connect(evutil_socket_t fd, const ioa_addr *addr, int *out_errno)
+{
+  if (!addr || fd < 0)
+  {
     return -1;
-  } else {
+  }
+  else
+  {
     int err = 0;
-    do {
-      if (addr->ss.sa_family == AF_INET) {
+    do
+    {
+      if (addr->ss.sa_family == AF_INET)
+      {
         err = connect(fd, (const struct sockaddr *)addr, sizeof(struct sockaddr_in));
-      } else if (addr->ss.sa_family == AF_INET6) {
+      }
+      else if (addr->ss.sa_family == AF_INET6)
+      {
         err = connect(fd, (const struct sockaddr *)addr, sizeof(struct sockaddr_in6));
-      } else {
+      }
+      else
+      {
         return -1;
       }
     } while (err < 0 && socket_eintr());
 
-    if (out_errno) {
+    if (out_errno)
+    {
       *out_errno = socket_errno();
     }
 
-    if (err < 0 && !socket_einprogress()) {
+    if (err < 0 && !socket_einprogress())
+    {
       perror("Connect");
     }
 
@@ -288,32 +334,44 @@ int addr_connect(evutil_socket_t fd, const ioa_addr *addr, int *out_errno) {
   }
 }
 
-int addr_bind(evutil_socket_t fd, const ioa_addr *addr, int reusable, int debug, SOCKET_TYPE st) {
-  if (!addr || fd < 0) {
+int addr_bind(evutil_socket_t fd, const ioa_addr *addr, int reusable, int debug, SOCKET_TYPE st)
+{
+  if (!addr || fd < 0)
+  {
 
     return -1;
-
-  } else {
+  }
+  else
+  {
 
     int ret = -1;
 
     socket_set_reusable(fd, reusable, st);
 
-    if (addr->ss.sa_family == AF_INET) {
-      do {
+    if (addr->ss.sa_family == AF_INET)
+    {
+      do
+      {
         ret = bind(fd, (const struct sockaddr *)addr, sizeof(struct sockaddr_in));
       } while (ret < 0 && socket_eintr());
-    } else if (addr->ss.sa_family == AF_INET6) {
+    }
+    else if (addr->ss.sa_family == AF_INET6)
+    {
       const int off = 0;
       setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, (const void *)&off, sizeof(off));
-      do {
+      do
+      {
         ret = bind(fd, (const struct sockaddr *)addr, sizeof(struct sockaddr_in6));
       } while (ret < 0 && socket_eintr());
-    } else {
+    }
+    else
+    {
       return -1;
     }
-    if (ret < 0) {
-      if (debug) {
+    if (ret < 0)
+    {
+      if (debug)
+      {
         int err = socket_errno();
         perror("bind");
         char str[129];
@@ -325,19 +383,25 @@ int addr_bind(evutil_socket_t fd, const ioa_addr *addr, int reusable, int debug,
   }
 }
 
-int addr_get_from_sock(evutil_socket_t fd, ioa_addr *addr) {
+int addr_get_from_sock(evutil_socket_t fd, ioa_addr *addr)
+{
 
-  if (fd < 0 || !addr) {
+  if (fd < 0 || !addr)
+  {
     return -1;
-  } else {
+  }
+  else
+  {
 
     ioa_addr a;
     a.ss.sa_family = AF_INET6;
     socklen_t socklen = get_ioa_addr_len(&a);
-    if (getsockname(fd, (struct sockaddr *)&a, &socklen) < 0) {
+    if (getsockname(fd, (struct sockaddr *)&a, &socklen) < 0)
+    {
       a.ss.sa_family = AF_INET;
       socklen = get_ioa_addr_len(&a);
-      if (getsockname(fd, (struct sockaddr *)&a, &socklen) < 0) {
+      if (getsockname(fd, (struct sockaddr *)&a, &socklen) < 0)
+      {
         return -1;
       }
     }
@@ -348,31 +412,39 @@ int addr_get_from_sock(evutil_socket_t fd, ioa_addr *addr) {
   }
 }
 
-int get_raw_socket_ttl(evutil_socket_t fd, int family) {
+int get_raw_socket_ttl(evutil_socket_t fd, int family)
+{
   int ttl = 0;
 
-  if (family == AF_INET6) {
+  if (family == AF_INET6)
+  {
 #if !defined(IPV6_UNICAST_HOPS)
     UNUSED_ARG(fd);
-    do {
+    do
+    {
       return TTL_IGNORE;
     } while (0);
 #else
     socklen_t slen = (socklen_t)sizeof(ttl);
-    if (getsockopt(fd, IPPROTO_IPV6, IPV6_UNICAST_HOPS, (void *)&ttl, &slen) < 0) {
+    if (getsockopt(fd, IPPROTO_IPV6, IPV6_UNICAST_HOPS, (void *)&ttl, &slen) < 0)
+    {
       perror("get HOPLIMIT on socket");
       return TTL_IGNORE;
     }
 #endif
-  } else {
+  }
+  else
+  {
 #if !defined(IP_TTL)
     UNUSED_ARG(fd);
-    do {
+    do
+    {
       return TTL_IGNORE;
     } while (0);
 #else
     socklen_t slen = (socklen_t)sizeof(ttl);
-    if (getsockopt(fd, IPPROTO_IP, IP_TTL, (void *)&ttl, &slen) < 0) {
+    if (getsockopt(fd, IPPROTO_IP, IP_TTL, (void *)&ttl, &slen) < 0)
+    {
       perror("get TTL on socket");
       return TTL_IGNORE;
     }
@@ -384,31 +456,39 @@ int get_raw_socket_ttl(evutil_socket_t fd, int family) {
   return ttl;
 }
 
-int get_raw_socket_tos(evutil_socket_t fd, int family) {
+int get_raw_socket_tos(evutil_socket_t fd, int family)
+{
   int tos = 0;
 
-  if (family == AF_INET6) {
+  if (family == AF_INET6)
+  {
 #if !defined(IPV6_TCLASS)
     UNUSED_ARG(fd);
-    do {
+    do
+    {
       return TOS_IGNORE;
     } while (0);
 #else
     socklen_t slen = (socklen_t)sizeof(tos);
-    if (getsockopt(fd, IPPROTO_IPV6, IPV6_TCLASS, (void *)&tos, &slen) < 0) {
+    if (getsockopt(fd, IPPROTO_IPV6, IPV6_TCLASS, (void *)&tos, &slen) < 0)
+    {
       perror("get TCLASS on socket");
       return -1;
     }
 #endif
-  } else {
+  }
+  else
+  {
 #if !defined(IP_TOS)
     UNUSED_ARG(fd);
-    do {
+    do
+    {
       return TOS_IGNORE;
     } while (0);
 #else
     socklen_t slen = (socklen_t)sizeof(tos);
-    if (getsockopt(fd, IPPROTO_IP, IP_TOS, (void *)&tos, &slen) < 0) {
+    if (getsockopt(fd, IPPROTO_IP, IP_TOS, (void *)&tos, &slen) < 0)
+    {
       perror("get TOS on socket");
       return -1;
     }
@@ -420,26 +500,32 @@ int get_raw_socket_tos(evutil_socket_t fd, int family) {
   return tos;
 }
 
-int set_raw_socket_ttl(evutil_socket_t fd, int family, int ttl) {
+int set_raw_socket_ttl(evutil_socket_t fd, int family, int ttl)
+{
 
-  if (family == AF_INET6) {
+  if (family == AF_INET6)
+  {
 #if !defined(IPV6_UNICAST_HOPS)
     UNUSED_ARG(fd);
     UNUSED_ARG(ttl);
 #else
     CORRECT_RAW_TTL(ttl);
-    if (setsockopt(fd, IPPROTO_IPV6, IPV6_UNICAST_HOPS, (const void *)&ttl, sizeof(ttl)) < 0) {
+    if (setsockopt(fd, IPPROTO_IPV6, IPV6_UNICAST_HOPS, (const void *)&ttl, sizeof(ttl)) < 0)
+    {
       perror("set HOPLIMIT on socket");
       return -1;
     }
 #endif
-  } else {
+  }
+  else
+  {
 #if !defined(IP_TTL)
     UNUSED_ARG(fd);
     UNUSED_ARG(ttl);
 #else
     CORRECT_RAW_TTL(ttl);
-    if (setsockopt(fd, IPPROTO_IP, IP_TTL, (const void *)&ttl, sizeof(ttl)) < 0) {
+    if (setsockopt(fd, IPPROTO_IP, IP_TTL, (const void *)&ttl, sizeof(ttl)) < 0)
+    {
       perror("set TTL on socket");
       return -1;
     }
@@ -449,25 +535,31 @@ int set_raw_socket_ttl(evutil_socket_t fd, int family, int ttl) {
   return 0;
 }
 
-int set_raw_socket_tos(evutil_socket_t fd, int family, int tos) {
+int set_raw_socket_tos(evutil_socket_t fd, int family, int tos)
+{
 
-  if (family == AF_INET6) {
+  if (family == AF_INET6)
+  {
 #if !defined(IPV6_TCLASS)
     UNUSED_ARG(fd);
     UNUSED_ARG(tos);
 #else
     CORRECT_RAW_TOS(tos);
-    if (setsockopt(fd, IPPROTO_IPV6, IPV6_TCLASS, (const void *)&tos, sizeof(tos)) < 0) {
+    if (setsockopt(fd, IPPROTO_IPV6, IPV6_TCLASS, (const void *)&tos, sizeof(tos)) < 0)
+    {
       perror("set TCLASS on socket");
       return -1;
     }
 #endif
-  } else {
+  }
+  else
+  {
 #if !defined(IP_TOS)
     UNUSED_ARG(fd);
     UNUSED_ARG(tos);
 #else
-    if (setsockopt(fd, IPPROTO_IP, IP_TOS, (const void *)&tos, sizeof(tos)) < 0) {
+    if (setsockopt(fd, IPPROTO_IP, IP_TOS, (const void *)&tos, sizeof(tos)) < 0)
+    {
       perror("set TOS on socket");
       return -1;
     }
@@ -477,8 +569,10 @@ int set_raw_socket_tos(evutil_socket_t fd, int family, int tos) {
   return 0;
 }
 
-int is_stream_socket(int st) {
-  switch (st) {
+int is_stream_socket(int st)
+{
+  switch (st)
+  {
   case TCP_SOCKET:
   case TCP_SOCKET_PROXY:
   case TLS_SOCKET:
@@ -492,8 +586,10 @@ int is_stream_socket(int st) {
   return 0;
 }
 
-int is_tcp_socket(int st) {
-  switch (st) {
+int is_tcp_socket(int st)
+{
+  switch (st)
+  {
   case TCP_SOCKET:
   case TLS_SOCKET:
   case TENTATIVE_TCP_SOCKET:
@@ -503,8 +599,10 @@ int is_tcp_socket(int st) {
   return 0;
 }
 
-int is_sctp_socket(int st) {
-  switch (st) {
+int is_sctp_socket(int st)
+{
+  switch (st)
+  {
   case SCTP_SOCKET:
   case TLS_SCTP_SOCKET:
   case TENTATIVE_SCTP_SOCKET:
@@ -514,8 +612,10 @@ int is_sctp_socket(int st) {
   return 0;
 }
 
-const char *socket_type_name(SOCKET_TYPE st) {
-  switch (st) {
+const char *socket_type_name(SOCKET_TYPE st)
+{
+  switch (st)
+  {
   case TCP_SOCKET:
     return "TCP";
   case SCTP_SOCKET:
@@ -539,7 +639,8 @@ const char *socket_type_name(SOCKET_TYPE st) {
 
 /////////////////// MTU /////////////////////////////////////////
 
-int set_socket_df(evutil_socket_t fd, int family, int value) {
+int set_socket_df(evutil_socket_t fd, int family, int value)
+{
 
   int ret = 0;
 
@@ -547,16 +648,20 @@ int set_socket_df(evutil_socket_t fd, int family, int value) {
   {
     const int val = value;
     /* kernel sets DF bit on outgoing IP packets */
-    if (family == AF_INET) {
+    if (family == AF_INET)
+    {
       ret = setsockopt(fd, IPPROTO_IP, IP_DONTFRAG, (const void *)&val, sizeof(val));
-    } else {
+    }
+    else
+    {
 #if defined(IPV6_DONTFRAG) && defined(IPPROTO_IPV6)
       ret = setsockopt(fd, IPPROTO_IPV6, IPV6_DONTFRAG, (const void *)&val, sizeof(val));
 #else
 #error CANNOT SET IPV6 SOCKET DF FLAG (1)
 #endif
     }
-    if (ret < 0) {
+    if (ret < 0)
+    {
       int err = socket_errno();
       perror("set socket df:");
       TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: set sockopt failed: fd=%d, err=%d, family=%d\n", __FUNCTION__, fd, err,
@@ -566,16 +671,21 @@ int set_socket_df(evutil_socket_t fd, int family, int value) {
 #elif defined(IPPROTO_IP) && defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DO) && defined(IP_PMTUDISC_DONT) // LINUX
   {
     /* kernel sets DF bit on outgoing IP packets */
-    if (family == AF_INET) {
+    if (family == AF_INET)
+    {
       int val = IP_PMTUDISC_DO;
-      if (!value) {
+      if (!value)
+      {
         val = IP_PMTUDISC_DONT;
       }
       ret = setsockopt(fd, IPPROTO_IP, IP_MTU_DISCOVER, (const void *)&val, sizeof(val));
-    } else {
+    }
+    else
+    {
 #if defined(IPPROTO_IPV6) && defined(IPV6_MTU_DISCOVER) && defined(IPV6_PMTUDISC_DO) && defined(IPV6_PMTUDISC_DONT)
       int val = IPV6_PMTUDISC_DO;
-      if (!value) {
+      if (!value)
+      {
         val = IPV6_PMTUDISC_DONT;
       }
       ret = setsockopt(fd, IPPROTO_IPV6, IPV6_MTU_DISCOVER, (const void *)&val, sizeof(val));
@@ -583,7 +693,8 @@ int set_socket_df(evutil_socket_t fd, int family, int value) {
 #error CANNOT SET IPV6 SOCKET DF FLAG (2)
 #endif
     }
-    if (ret < 0) {
+    if (ret < 0)
+    {
       perror("set DF");
       TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: set sockopt failed\n", __FUNCTION__);
     }
@@ -598,10 +709,12 @@ int set_socket_df(evutil_socket_t fd, int family, int value) {
   return ret;
 }
 
-static int get_mtu_from_ssl(SSL *ssl) {
+static int get_mtu_from_ssl(SSL *ssl)
+{
   int ret = SOSO_MTU;
 #if DTLS_SUPPORTED
-  if (ssl) {
+  if (ssl)
+  {
     ret = BIO_ctrl(SSL_get_wbio(ssl), BIO_CTRL_DGRAM_QUERY_MTU, 0, NULL);
   }
 #else
@@ -610,8 +723,10 @@ static int get_mtu_from_ssl(SSL *ssl) {
   return ret;
 }
 
-static void set_query_mtu(SSL *ssl) {
-  if (ssl) {
+static void set_query_mtu(SSL *ssl)
+{
+  if (ssl)
+  {
 #if defined(SSL_OP_NO_QUERY_MTU)
     SSL_set_options(ssl, SSL_OP_NO_QUERY_MTU);
 #else
@@ -620,35 +735,46 @@ static void set_query_mtu(SSL *ssl) {
   }
 }
 
-int decrease_mtu(SSL *ssl, int mtu, int verbose) {
+int decrease_mtu(SSL *ssl, int mtu, int verbose)
+{
 
-  if (!ssl) {
+  if (!ssl)
+  {
     return mtu;
   }
 
   int new_mtu = get_mtu_from_ssl(ssl);
 
-  if (new_mtu < 1) {
+  if (new_mtu < 1)
+  {
     new_mtu = mtu;
   }
 
-  if (new_mtu > MAX_MTU) {
+  if (new_mtu > MAX_MTU)
+  {
     mtu = MAX_MTU;
   }
-  if (new_mtu > 0 && new_mtu < MIN_MTU) {
+  if (new_mtu > 0 && new_mtu < MIN_MTU)
+  {
     mtu = MIN_MTU;
-  } else if (new_mtu < mtu) {
+  }
+  else if (new_mtu < mtu)
+  {
     mtu = new_mtu;
-  } else {
+  }
+  else
+  {
     mtu -= MTU_STEP;
   }
 
-  if (mtu < MIN_MTU) {
+  if (mtu < MIN_MTU)
+  {
     mtu = MIN_MTU;
   }
 
   set_query_mtu(ssl);
-  if (verbose) {
+  if (verbose)
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "1. mtu to use: %d\n", mtu);
   }
 
@@ -660,24 +786,32 @@ int decrease_mtu(SSL *ssl, int mtu, int verbose) {
   return mtu;
 }
 
-int set_mtu_df(SSL *ssl, evutil_socket_t fd, int family, int mtu, int df_value, int verbose) {
+int set_mtu_df(SSL *ssl, evutil_socket_t fd, int family, int mtu, int df_value, int verbose)
+{
 
-  if (!ssl || fd < 0) {
+  if (!ssl || fd < 0)
+  {
     return 0;
   }
 
   int ret = set_socket_df(fd, family, df_value);
 
-  if (!mtu) {
+  if (!mtu)
+  {
     mtu = SOSO_MTU;
-  } else if (mtu < MIN_MTU) {
+  }
+  else if (mtu < MIN_MTU)
+  {
     mtu = MIN_MTU;
-  } else if (mtu > MAX_MTU) {
+  }
+  else if (mtu > MAX_MTU)
+  {
     mtu = MAX_MTU;
   }
 
   set_query_mtu(ssl);
-  if (verbose) {
+  if (verbose)
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "3. mtu to use: %d\n", mtu);
   }
 
@@ -689,14 +823,16 @@ int set_mtu_df(SSL *ssl, evutil_socket_t fd, int family, int mtu, int df_value, 
 
 #endif
 
-  if (verbose) {
+  if (verbose)
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "4. new mtu: %d\n", get_mtu_from_ssl(ssl));
   }
 
   return ret;
 }
 
-int get_socket_mtu(evutil_socket_t fd, int family, int verbose) {
+int get_socket_mtu(evutil_socket_t fd, int family, int verbose)
+{
 
   int ret = 0;
 
@@ -707,9 +843,12 @@ int get_socket_mtu(evutil_socket_t fd, int family, int verbose) {
 #if defined(IP_MTU)
   int val = 0;
   socklen_t slen = sizeof(val);
-  if (family == AF_INET) {
+  if (family == AF_INET)
+  {
     ret = getsockopt(fd, IPPROTO_IP, IP_MTU, (void *)&val, &slen);
-  } else {
+  }
+  else
+  {
 #if defined(IPPROTO_IPV6) && defined(IPV6_MTU)
     ret = getsockopt(fd, IPPROTO_IPV6, IPV6_MTU, (void *)&val, &slen);
 #endif
@@ -719,7 +858,8 @@ int get_socket_mtu(evutil_socket_t fd, int family, int verbose) {
   ret = val;
 #endif
 
-  if (verbose) {
+  if (verbose)
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: final=%d\n", __FUNCTION__, ret);
   }
 
@@ -728,47 +868,56 @@ int get_socket_mtu(evutil_socket_t fd, int family, int verbose) {
 
 //////////////////// socket error handle ////////////////////
 
-int handle_socket_error(void) {
-  if (socket_eintr()) {
+int handle_socket_error(void)
+{
+  if (socket_eintr())
+  {
     /* Interrupted system call.
      * Just ignore.
      */
     return 1;
   }
-  if (socket_enobufs()) {
+  if (socket_enobufs())
+  {
     /* Interrupted system call.
      * Just ignore.
      */
     return 1;
   }
-  if (socket_ewouldblock() || socket_eagain()) {
+  if (socket_ewouldblock() || socket_eagain())
+  {
     return 1;
   }
-  if (socket_ebadf()) {
+  if (socket_ebadf())
+  {
     /* Invalid socket.
      * Must close connection.
      */
     return 0;
   }
-  if (socket_ehostdown()) {
+  if (socket_ehostdown())
+  {
     /* Host is down.
      * Just ignore, might be an attacker
      * sending fake ICMP messages.
      */
     return 1;
   }
-  if (socket_econnreset() || socket_econnrefused()) {
+  if (socket_econnreset() || socket_econnrefused())
+  {
     /* Connection reset by peer. */
     return 0;
   }
-  if (socket_enomem()) {
+  if (socket_enomem())
+  {
     /* Out of memory.
      * Must close connection.
      */
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Out of memory!\n");
     return 0;
   }
-  if (socket_eacces()) {
+  if (socket_eacces())
+  {
     /* Permission denied.
      * Just ignore, we might be blocked
      * by some firewall policy. Try again
@@ -784,8 +933,10 @@ int handle_socket_error(void) {
 
 //////////////////// Misc utils //////////////////////////////
 
-char *skip_blanks(char *s) {
-  while (*s == ' ' || *s == '\t' || *s == '\n') {
+char *skip_blanks(char *s)
+{
+  while (*s == ' ' || *s == '\t' || *s == '\n')
+  {
     ++s;
   }
 
@@ -794,7 +945,8 @@ char *skip_blanks(char *s) {
 
 #if defined(_MSC_VER)
 
-LARGE_INTEGER getFILETIMEoffset() {
+LARGE_INTEGER getFILETIMEoffset()
+{
   SYSTEMTIME s;
   FILETIME f;
   LARGE_INTEGER t;
@@ -813,7 +965,8 @@ LARGE_INTEGER getFILETIMEoffset() {
   return (t);
 }
 
-int clock_gettime(int X, struct timeval *tv) {
+int clock_gettime(int X, struct timeval *tv)
+{
   LARGE_INTEGER t;
   FILETIME f;
   double microseconds;
@@ -822,21 +975,28 @@ int clock_gettime(int X, struct timeval *tv) {
   static int initialized = 0;
   static BOOL usePerformanceCounter = FALSE;
 
-  if (!initialized) {
+  if (!initialized)
+  {
     LARGE_INTEGER performanceFrequency;
     initialized = 1;
     usePerformanceCounter = QueryPerformanceFrequency(&performanceFrequency);
-    if (usePerformanceCounter) {
+    if (usePerformanceCounter)
+    {
       QueryPerformanceCounter(&offset);
       frequencyToMicroseconds = (double)performanceFrequency.QuadPart / 1000000.;
-    } else {
+    }
+    else
+    {
       offset = getFILETIMEoffset();
       frequencyToMicroseconds = 10.;
     }
   }
-  if (usePerformanceCounter) {
+  if (usePerformanceCounter)
+  {
     QueryPerformanceCounter(&t);
-  } else {
+  }
+  else
+  {
     GetSystemTimeAsFileTime(&f);
     t.QuadPart = f.dwHighDateTime;
     t.QuadPart <<= 32;
@@ -851,7 +1011,8 @@ int clock_gettime(int X, struct timeval *tv) {
   return 0;
 }
 
-int gettimeofday(struct timeval *tp, void *tzp) {
+int gettimeofday(struct timeval *tp, void *tzp)
+{
   time_t clock;
   struct tm tm;
   SYSTEMTIME wtm;
@@ -871,20 +1032,25 @@ int gettimeofday(struct timeval *tp, void *tzp) {
   return (0);
 }
 
-char *dirname(char *path) {
+char *dirname(char *path)
+{
   char drive[_MAX_DRIVE];
   char dir[_MAX_DIR];
 
   errno_t err = _splitpath_s(path, drive, _MAX_DRIVE, dir, _MAX_DIR, NULL, 0, NULL, 0);
-  if (err) {
+  if (err)
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "split path fail: %d", err);
     return NULL;
   }
 
   int n = strlen(drive) + strlen(dir);
-  if (n > 0) {
+  if (n > 0)
+  {
     path[n] = 0;
-  } else {
+  }
+  else
+  {
     return NULL;
   }
   return path;
@@ -902,12 +1068,15 @@ char *dirname(char *path) {
  * \param pnOutSize: size of output char buffer
  * \return
  */
-static char *_WTA(__in wchar_t *pszInBuf, __in int nInSize, __out char **pszOutBuf, __out int *pnOutSize) {
-  if (!pszInBuf || !pszOutBuf || !*pszOutBuf || !pnOutSize || nInSize <= 0) {
+static char *_WTA(__in wchar_t *pszInBuf, __in int nInSize, __out char **pszOutBuf, __out int *pnOutSize)
+{
+  if (!pszInBuf || !pszOutBuf || !*pszOutBuf || !pnOutSize || nInSize <= 0)
+  {
     return NULL;
   }
   *pnOutSize = WideCharToMultiByte((UINT)0, (DWORD)0, pszInBuf, nInSize, NULL, 0, NULL, NULL);
-  if (*pnOutSize == 0) {
+  if (*pnOutSize == 0)
+  {
     return NULL;
   }
   // add 1 for explicit nul-terminator at end.
@@ -915,85 +1084,112 @@ static char *_WTA(__in wchar_t *pszInBuf, __in int nInSize, __out char **pszOutB
   // and we have to add space to the allocation ourselves.
   (*pnOutSize)++;
   *pszOutBuf = malloc(*pnOutSize * sizeof(char));
-  if (WideCharToMultiByte((UINT)0, (DWORD)0, pszInBuf, nInSize, *pszOutBuf, *pnOutSize, NULL, NULL) == 0) {
+  if (WideCharToMultiByte((UINT)0, (DWORD)0, pszInBuf, nInSize, *pszOutBuf, *pnOutSize, NULL, NULL) == 0)
+  {
     free(*pszOutBuf);
     return NULL;
-  } else {
+  }
+  else
+  {
     (*pszOutBuf)[*pnOutSize - 1] = '\0';
     return *pszOutBuf;
   }
 }
 
-int getdomainname(char *name, size_t len) {
+int getdomainname(char *name, size_t len)
+{
   DSROLE_PRIMARY_DOMAIN_INFO_BASIC *info;
   DWORD dw;
 
   dw = DsRoleGetPrimaryDomainInformation(NULL, DsRolePrimaryDomainInfoBasic, (PBYTE *)&info);
-  if (dw != ERROR_SUCCESS) {
+  if (dw != ERROR_SUCCESS)
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "DsRoleGetPrimaryDomainInformation: %u\n", dw);
     return -1;
   }
 
-  do {
-    if (info->DomainForestName) {
+  do
+  {
+    if (info->DomainForestName)
+    {
       char *pszOut = NULL;
       int nOutSize = 0;
-      if (_WTA(info->DomainForestName, wcslen(info->DomainForestName), &pszOut, &nOutSize)) {
+      if (_WTA(info->DomainForestName, wcslen(info->DomainForestName), &pszOut, &nOutSize))
+      {
         int n = nOutSize - 1;
-        if (nOutSize > len - 1) {
+        if (nOutSize > len - 1)
+        {
           n = len - 1;
         }
         strncpy(name, pszOut, n);
         name[n] = 0;
         TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "DomainForestName: %s\n", pszOut);
-      } else {
+      }
+      else
+      {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "wchar convert to char fail");
       }
 
       free(pszOut);
       break;
-    } else {
+    }
+    else
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "DomainForestName is NULL\n");
     }
 
-    if (info->DomainNameDns) {
+    if (info->DomainNameDns)
+    {
       char *pszOut = NULL;
       int nOutSize = 0;
-      if (_WTA(info->DomainNameDns, wcslen(info->DomainNameDns), &pszOut, &nOutSize)) {
+      if (_WTA(info->DomainNameDns, wcslen(info->DomainNameDns), &pszOut, &nOutSize))
+      {
         int n = nOutSize - 1;
-        if (nOutSize > len - 1) {
+        if (nOutSize > len - 1)
+        {
           n = len - 1;
         }
         strncpy(name, pszOut, n);
         name[n] = 0;
         TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "DomainNameDns: %s\n", pszOut);
-      } else {
+      }
+      else
+      {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "wchar convert to char fail");
       }
 
       free(pszOut);
       break;
-    } else {
+    }
+    else
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "DomainNameDns is NULL\n");
     }
 
-    if (info->DomainNameFlat) {
+    if (info->DomainNameFlat)
+    {
       char *pszOut = NULL;
       int nOutSize = 0;
-      if (_WTA(info->DomainNameFlat, wcslen(info->DomainNameFlat), &pszOut, &nOutSize)) {
+      if (_WTA(info->DomainNameFlat, wcslen(info->DomainNameFlat), &pszOut, &nOutSize))
+      {
         int n = nOutSize - 1;
-        if (nOutSize > len - 1) {
+        if (nOutSize > len - 1)
+        {
           n = len - 1;
         }
         strncpy(name, pszOut, n);
         name[n] = 0;
         TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "DomainNameFlat: %s\n", pszOut);
-      } else {
+      }
+      else
+      {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "wchar convert to char fail");
       }
 
       free(pszOut);
-    } else {
+    }
+    else
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "DomainNameFlat is NULL\n");
       return -2;
     }
@@ -1040,12 +1236,14 @@ static const char *config_file_search_dirs[] = {"./",
                                                 NULL};
 static char *c_execdir = NULL;
 
-void set_execdir(void) {
+void set_execdir(void)
+{
   /* On some systems, this may give us the execution path */
   char *_var = NULL;
 #if defined(_MSC_VER)
   char szPath[MAX_PATH];
-  if (!GetModuleFileNameA(NULL, szPath, MAX_PATH)) {
+  if (!GetModuleFileNameA(NULL, szPath, MAX_PATH))
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "GetModuleFileName failed(%d)\n", GetLastError());
     return;
   }
@@ -1053,18 +1251,24 @@ void set_execdir(void) {
 #elif defined(__unix__)
   _var = getenv("_");
 #endif
-  if (_var && *_var) {
+  if (_var && *_var)
+  {
     _var = strdup(_var);
     char *edir = _var;
-    if (edir[0] != '.') {
+    if (edir[0] != '.')
+    {
       edir = strstr(edir, "/");
     }
-    if (edir && *edir) {
+    if (edir && *edir)
+    {
       edir = dirname(edir);
-    } else {
+    }
+    else
+    {
       edir = dirname(_var);
     }
-    if (c_execdir) {
+    if (c_execdir)
+    {
       free(c_execdir);
     }
     c_execdir = strdup(edir);
@@ -1072,55 +1276,75 @@ void set_execdir(void) {
   }
 }
 
-void print_abs_file_name(const char *msg1, const char *msg2, const char *fn) {
+void print_abs_file_name(const char *msg1, const char *msg2, const char *fn)
+{
   char absfn[1025];
   absfn[0] = 0;
 
-  if (fn) {
-    while (fn[0] && fn[0] == ' ') {
+  if (fn)
+  {
+    while (fn[0] && fn[0] == ' ')
+    {
       ++fn;
     }
-    if (fn[0]) {
-      if (fn[0] == '/') {
+    if (fn[0])
+    {
+      if (fn[0] == '/')
+      {
         STRCPY(absfn, fn);
-      } else {
-        if (fn[0] == '.' && fn[1] && fn[1] == '/') {
+      }
+      else
+      {
+        if (fn[0] == '.' && fn[1] && fn[1] == '/')
+        {
           fn += 2;
         }
-        if (!getcwd(absfn, sizeof(absfn) - 1)) {
+        if (!getcwd(absfn, sizeof(absfn) - 1))
+        {
           absfn[0] = 0;
         }
         size_t blen = strlen(absfn);
-        if (blen < sizeof(absfn) - 1) {
+        if (blen < sizeof(absfn) - 1)
+        {
           strncpy(absfn + blen, "/", sizeof(absfn) - blen);
           strncpy(absfn + blen + 1, fn, sizeof(absfn) - blen - 1);
-        } else {
+        }
+        else
+        {
           STRCPY(absfn, fn);
         }
         absfn[sizeof(absfn) - 1] = 0;
       }
     }
   }
-  if (absfn[0]) {
+  if (absfn[0])
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s%s file found: %s\n", msg1, msg2, absfn);
   }
 }
 
-char *find_config_file(const char *config_file) {
+char *find_config_file(const char *config_file)
+{
   char *full_path_to_config_file = NULL;
 
-  if (config_file && config_file[0]) {
-    if ((config_file[0] == '/') || (config_file[0] == '~')) {
+  if (config_file && config_file[0])
+  {
+    if ((config_file[0] == '/') || (config_file[0] == '~'))
+    {
       FILE *f = fopen(config_file, "r");
-      if (f) {
+      if (f)
+      {
         fclose(f);
         full_path_to_config_file = strdup(config_file);
       }
-    } else {
+    }
+    else
+    {
       int i = 0;
       size_t cflen = strlen(config_file);
 
-      while (config_file_search_dirs[i]) {
+      while (config_file_search_dirs[i])
+      {
         size_t dirlen = strlen(config_file_search_dirs[i]);
         size_t fnsz = sizeof(char) * (dirlen + cflen + 10);
         char *fn = (char *)malloc(fnsz + 1);
@@ -1128,33 +1352,40 @@ char *find_config_file(const char *config_file) {
         strncpy(fn + dirlen, config_file, fnsz - dirlen);
         fn[fnsz] = 0;
         FILE *f = fopen(fn, "r");
-        if (f) {
+        if (f)
+        {
           fclose(f);
           full_path_to_config_file = fn;
           break;
         }
         free(fn);
-        if (config_file_search_dirs[i][0] != '/' && config_file_search_dirs[i][0] != '.' && c_execdir && c_execdir[0]) {
+        if (config_file_search_dirs[i][0] != '/' && config_file_search_dirs[i][0] != '.' && c_execdir && c_execdir[0])
+        {
           size_t celen = strlen(c_execdir);
           fnsz = sizeof(char) * (dirlen + cflen + celen + 10);
           fn = (char *)malloc(fnsz + 1);
           strncpy(fn, c_execdir, fnsz);
           size_t fnlen = strlen(fn);
-          if (fnlen < fnsz) {
+          if (fnlen < fnsz)
+          {
             strncpy(fn + fnlen, "/", fnsz - fnlen);
             fnlen = strlen(fn);
-            if (fnlen < fnsz) {
+            if (fnlen < fnsz)
+            {
               strncpy(fn + fnlen, config_file_search_dirs[i], fnsz - fnlen);
               fnlen = strlen(fn);
-              if (fnlen < fnsz) {
+              if (fnlen < fnsz)
+              {
                 strncpy(fn + fnlen, config_file, fnsz - fnlen);
               }
             }
           }
           fn[fnsz] = 0;
-          if (strstr(fn, "//") != fn) {
+          if (strstr(fn, "//") != fn)
+          {
             f = fopen(fn, "r");
-            if (f) {
+            if (f)
+            {
               fclose(f);
               full_path_to_config_file = fn;
               break;
@@ -1166,8 +1397,10 @@ char *find_config_file(const char *config_file) {
       }
     }
 
-    if (!full_path_to_config_file) {
-      if (strstr(config_file, "etc/") == config_file) {
+    if (!full_path_to_config_file)
+    {
+      if (strstr(config_file, "etc/") == config_file)
+      {
         return find_config_file(config_file + 4);
       }
     }
@@ -1178,16 +1411,19 @@ char *find_config_file(const char *config_file) {
 
 /////////////////// SYS SETTINGS ///////////////////////
 
-void ignore_sigpipe(void) {
+void ignore_sigpipe(void)
+{
 #if defined(__linux__) || defined(__APPLE__)
   /* Ignore SIGPIPE from TCP sockets */
-  if (signal(SIGPIPE, SIG_IGN) == SIG_ERR) {
+  if (signal(SIGPIPE, SIG_IGN) == SIG_ERR)
+  {
     perror("Cannot set SIGPIPE handler");
   }
 #endif
 }
 
-static uint64_t turn_getRandTime(void) {
+static uint64_t turn_getRandTime(void)
+{
   struct timespec tp = {0, 0};
 #if defined(CLOCK_REALTIME)
   clock_gettime(CLOCK_REALTIME, &tp);
@@ -1200,7 +1436,8 @@ static uint64_t turn_getRandTime(void) {
   return current_mstime;
 }
 
-void turn_srandom(void) {
+void turn_srandom(void)
+{
 #if defined(WINDOWS)
   srand((unsigned int)(turn_getRandTime() + (unsigned int)((long)(&turn_getRandTime))));
 #else
@@ -1208,7 +1445,8 @@ void turn_srandom(void) {
 #endif
 }
 
-long turn_random(void) {
+long turn_random(void)
+{
 #if defined(WINDOWS)
   return rand();
 #else
@@ -1216,7 +1454,8 @@ long turn_random(void) {
 #endif
 }
 
-unsigned long set_system_parameters(int max_resources) {
+unsigned long set_system_parameters(int max_resources)
+{
   turn_srandom();
 
   setlocale(LC_ALL, "C");
@@ -1225,7 +1464,8 @@ unsigned long set_system_parameters(int max_resources) {
 
   ignore_sigpipe();
 
-  if (max_resources) {
+  if (max_resources)
+  {
 #if defined(WINDOWS)
     int num = 0;
     // TODO: get max socket? by KangLin <kl222@126.com>
@@ -1235,11 +1475,15 @@ unsigned long set_system_parameters(int max_resources) {
 #elif defined(__linux__) || defined(__APPLE__)
 
     struct rlimit rlim;
-    if (getrlimit(RLIMIT_NOFILE, &rlim) < 0) {
+    if (getrlimit(RLIMIT_NOFILE, &rlim) < 0)
+    {
       perror("Cannot get system limit");
-    } else {
+    }
+    else
+    {
       rlim.rlim_cur = rlim.rlim_max;
-      while ((setrlimit(RLIMIT_NOFILE, &rlim) < 0) && (rlim.rlim_cur > 0)) {
+      while ((setrlimit(RLIMIT_NOFILE, &rlim) < 0) && (rlim.rlim_cur > 0))
+      {
         rlim.rlim_cur = rlim.rlim_cur >> 1;
       }
       return (unsigned long)rlim.rlim_cur;
@@ -1251,7 +1495,8 @@ unsigned long set_system_parameters(int max_resources) {
   return 0;
 }
 
-unsigned long get_system_number_of_cpus(void) {
+unsigned long get_system_number_of_cpus(void)
+{
 #if defined(WINDOWS)
   SYSTEM_INFO sysInfo;
   GetSystemInfo(&sysInfo);
@@ -1269,7 +1514,8 @@ unsigned long get_system_number_of_cpus(void) {
 #endif
 }
 
-unsigned long get_system_active_number_of_cpus(void) {
+unsigned long get_system_active_number_of_cpus(void)
+{
 #if defined(WINDOWS)
   SYSTEM_INFO sysInfo;
   GetSystemInfo(&sysInfo);
@@ -1296,16 +1542,19 @@ static const char encoding_table[] = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I
                                       'w', 'x', 'y', 'z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '/'};
 static const char *decoding_table = NULL;
 
-char *base64_encode(const unsigned char *data, size_t input_length, size_t *output_length) {
+char *base64_encode(const unsigned char *data, size_t input_length, size_t *output_length)
+{
 
   *output_length = 4 * ((input_length + 2) / 3);
 
   char *encoded_data = (char *)malloc(*output_length + 1);
-  if (encoded_data == NULL) {
+  if (encoded_data == NULL)
+  {
     return NULL;
   }
 
-  for (size_t i = 0, j = 0; i < input_length;) {
+  for (size_t i = 0, j = 0; i < input_length;)
+  {
 
     uint32_t octet_a = i < input_length ? data[i++] : 0;
     uint32_t octet_b = i < input_length ? data[i++] : 0;
@@ -1319,7 +1568,8 @@ char *base64_encode(const unsigned char *data, size_t input_length, size_t *outp
     encoded_data[j++] = encoding_table[(triple >> 0 * 6) & 0x3F];
   }
 
-  for (size_t i = 0; i < mod_table[input_length % 3]; i++) {
+  for (size_t i = 0; i < mod_table[input_length % 3]; i++)
+  {
     encoded_data[*output_length - 1 - i] = '=';
   }
 
@@ -1328,42 +1578,51 @@ char *base64_encode(const unsigned char *data, size_t input_length, size_t *outp
   return encoded_data;
 }
 
-void build_base64_decoding_table(void) {
+void build_base64_decoding_table(void)
+{
 
   char *table = (char *)calloc(256, sizeof(char));
 
-  for (char i = 0; i < 64; i++) {
+  for (char i = 0; i < 64; i++)
+  {
     table[(unsigned char)encoding_table[i]] = i;
   }
   decoding_table = table;
 }
 
-unsigned char *base64_decode(const char *data, size_t input_length, size_t *output_length) {
+unsigned char *base64_decode(const char *data, size_t input_length, size_t *output_length)
+{
 
-  if (decoding_table == NULL) {
+  if (decoding_table == NULL)
+  {
     build_base64_decoding_table();
   }
 
-  if (input_length % 4 != 0) {
+  if (input_length % 4 != 0)
+  {
     return NULL;
   }
 
   *output_length = input_length / 4 * 3;
-  if (data[input_length - 1] == '=') {
+  if (data[input_length - 1] == '=')
+  {
     (*output_length)--;
   }
-  if (data[input_length - 2] == '=') {
+  if (data[input_length - 2] == '=')
+  {
     (*output_length)--;
   }
 
   unsigned char *decoded_data = (unsigned char *)malloc(*output_length);
-  if (decoded_data == NULL) {
+  if (decoded_data == NULL)
+  {
     return NULL;
   }
 
   int i;
   size_t j;
-  for (i = 0, j = 0; i < (int)input_length;) {
+  for (i = 0, j = 0; i < (int)input_length;)
+  {
 
     uint32_t sextet_a = data[i] == '=' ? 0 & i++ : decoding_table[(int)data[i++]];
     uint32_t sextet_b = data[i] == '=' ? 0 & i++ : decoding_table[(int)data[i++]];
@@ -1372,13 +1631,16 @@ unsigned char *base64_decode(const char *data, size_t input_length, size_t *outp
 
     uint32_t triple = (sextet_a << 3 * 6) + (sextet_b << 2 * 6) + (sextet_c << 1 * 6) + (sextet_d << 0 * 6);
 
-    if (j < *output_length) {
+    if (j < *output_length)
+    {
       decoded_data[j++] = (triple >> 2 * 8) & 0xFF;
     }
-    if (j < *output_length) {
+    if (j < *output_length)
+    {
       decoded_data[j++] = (triple >> 1 * 8) & 0xFF;
     }
-    if (j < *output_length) {
+    if (j < *output_length)
+    {
       decoded_data[j++] = (triple >> 0 * 8) & 0xFF;
     }
   }
@@ -1388,11 +1650,15 @@ unsigned char *base64_decode(const char *data, size_t input_length, size_t *outp
 
 ////////////////// SSL /////////////////////
 
-const char *turn_get_ssl_method(SSL *ssl, const char *mdefault) {
+const char *turn_get_ssl_method(SSL *ssl, const char *mdefault)
+{
   const char *ret = "unknown";
-  if (!ssl) {
+  if (!ssl)
+  {
     ret = mdefault;
-  } else {
+  }
+  else
+  {
     ret = SSL_get_version(ssl);
   }
 
@@ -1401,7 +1667,8 @@ const char *turn_get_ssl_method(SSL *ssl, const char *mdefault) {
 
 //////////// EVENT BASE ///////////////
 
-struct event_base *turn_event_base_new(void) {
+struct event_base *turn_event_base_new(void)
+{
   struct event_config *cfg = event_config_new();
 
   event_config_set_flag(cfg, EVENT_BASE_FLAG_EPOLL_USE_CHANGELIST);
@@ -1411,8 +1678,10 @@ struct event_base *turn_event_base_new(void) {
 
 /////////// OAUTH /////////////////
 
-void convert_oauth_key_data_raw(const oauth_key_data_raw *raw, oauth_key_data *oakd) {
-  if (raw && oakd) {
+void convert_oauth_key_data_raw(const oauth_key_data_raw *raw, oauth_key_data *oakd)
+{
+  if (raw && oakd)
+  {
 
     memset(oakd, 0, sizeof(oauth_key_data));
 
@@ -1422,10 +1691,12 @@ void convert_oauth_key_data_raw(const oauth_key_data_raw *raw, oauth_key_data *o
     memcpy(oakd->as_rs_alg, raw->as_rs_alg, sizeof(oakd->as_rs_alg));
     memcpy(oakd->kid, raw->kid, sizeof(oakd->kid));
 
-    if (raw->ikm_key[0]) {
+    if (raw->ikm_key[0])
+    {
       size_t ikm_key_size = 0;
       char *ikm_key = (char *)base64_decode(raw->ikm_key, strlen(raw->ikm_key), &ikm_key_size);
-      if (ikm_key) {
+      if (ikm_key)
+      {
         memcpy(oakd->ikm_key, ikm_key, ikm_key_size);
         oakd->ikm_key_size = ikm_key_size;
         free(ikm_key);

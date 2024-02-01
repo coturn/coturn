@@ -37,12 +37,14 @@
 #include "ns_turn_utils.h"
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 ////////// REALM ////////////
 
-typedef struct _perf_options_t {
+typedef struct _perf_options_t
+{
 
   volatile band_limit_t max_bps;
   vint total_quota;
@@ -50,7 +52,8 @@ typedef struct _perf_options_t {
 
 } perf_options_t;
 
-struct _realm_options_t {
+struct _realm_options_t
+{
 
   char name[STUN_MAX_REALM_SIZE + 1];
 
@@ -65,7 +68,8 @@ typedef uint64_t turnsession_id;
 
 typedef uint64_t mobile_id_t;
 
-struct _ts_ur_super_session {
+struct _ts_ur_super_session
+{
   void *server;
   turnsession_id id;
   turn_time_t start_time;
@@ -126,12 +130,14 @@ struct _ts_ur_super_session {
 #define TURN_ADDR_STR_SIZE (65)
 #define TURN_MAIN_PEERS_ARRAY_SIZE (5)
 
-typedef struct _addr_data {
+typedef struct _addr_data
+{
   ioa_addr addr;
   char saddr[TURN_ADDR_STR_SIZE];
 } addr_data;
 
-struct turn_session_info {
+struct turn_session_info
+{
   turnsession_id id;
   int valid;
   turn_time_t start_time;

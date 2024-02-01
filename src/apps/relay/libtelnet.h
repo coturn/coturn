@@ -48,7 +48,8 @@
 
 /* C++ support */
 #if defined(__cplusplus)
-extern "C" {
+extern "C"
+{
 #endif
 
 /* printf type checking feature in GCC and some other compilers */
@@ -190,7 +191,8 @@ typedef struct telnet_telopt_t telnet_telopt_t;
 /*!
  * error codes
  */
-enum telnet_error_t {
+enum telnet_error_t
+{
   TELNET_EOK = 0,   /*!< no error */
   TELNET_EBADVAL,   /*!< invalid parameter, or API misuse */
   TELNET_ENOMEM,    /*!< memory allocation failure */
@@ -203,7 +205,8 @@ typedef enum telnet_error_t telnet_error_t; /*!< Error code type. */
 /*!
  * event codes
  */
-enum telnet_event_type_t {
+enum telnet_event_type_t
+{
   TELNET_EV_DATA = 0,       /*!< raw text data has been received */
   TELNET_EV_SEND,           /*!< data needs to be sent to the peer */
   TELNET_EV_IAC,            /*!< generic IAC code received */
@@ -225,7 +228,8 @@ typedef enum telnet_event_type_t telnet_event_type_t; /*!< Telnet event type. */
 /*!
  * environ/MSSP command information
  */
-struct telnet_environ_t {
+struct telnet_environ_t
+{
   unsigned char type; /*!< either TELNET_ENVIRON_VAR or TELNET_ENVIRON_USERVAR */
   char *var;          /*!< name of the variable being set */
   char *value;        /*!< value of variable being set; empty string if no value */
@@ -234,7 +238,8 @@ struct telnet_environ_t {
 /*!
  * event information
  */
-union telnet_event_t {
+union telnet_event_t
+{
   /*!
    * \brief Event type
    *
@@ -248,7 +253,8 @@ union telnet_event_t {
   /*!
    * data event: for DATA and SEND events
    */
-  struct data_t {
+  struct data_t
+  {
     enum telnet_event_type_t _type; /*!< alias for type */
     const char *buffer;             /*!< byte buffer */
     size_t size;                    /*!< number of bytes in buffer */
@@ -257,7 +263,8 @@ union telnet_event_t {
   /*!
    * WARNING and ERROR events
    */
-  struct error_t {
+  struct error_t
+  {
     enum telnet_event_type_t _type; /*!< alias for type */
     const char *file;               /*!< file the error occured in */
     const char *func;               /*!< function the error occured in */
@@ -269,7 +276,8 @@ union telnet_event_t {
   /*!
    * command event: for IAC
    */
-  struct iac_t {
+  struct iac_t
+  {
     enum telnet_event_type_t _type; /*!< alias for type */
     unsigned char cmd;              /*!< telnet command received */
   } iac;                            /*!< IAC */
@@ -277,7 +285,8 @@ union telnet_event_t {
   /*!
    * negotiation event: WILL, WONT, DO, DONT
    */
-  struct negotiate_t {
+  struct negotiate_t
+  {
     enum telnet_event_type_t _type; /*!< alias for type */
     unsigned char telopt;           /*!< option being negotiated */
   } neg;                            /*!< WILL, WONT, DO, DONT */
@@ -285,7 +294,8 @@ union telnet_event_t {
   /*!
    * subnegotiation event
    */
-  struct subnegotiate_t {
+  struct subnegotiate_t
+  {
     enum telnet_event_type_t _type; /*!< alias for type */
     const char *buffer;             /*!< data of sub-negotiation */
     size_t size;                    /*!< number of bytes in buffer */
@@ -295,7 +305,8 @@ union telnet_event_t {
   /*!
    * ZMP event
    */
-  struct zmp_t {
+  struct zmp_t
+  {
     enum telnet_event_type_t _type; /*!< alias for type */
     const char **argv;              /*!< array of argument string */
     size_t argc;                    /*!< number of elements in argv */
@@ -304,7 +315,8 @@ union telnet_event_t {
   /*!
    * TTYPE event
    */
-  struct ttype_t {
+  struct ttype_t
+  {
     enum telnet_event_type_t _type; /*!< alias for type */
     unsigned char cmd;              /*!< TELNET_TTYPE_IS or TELNET_TTYPE_SEND */
     const char *name;               /*!< terminal type name (IS only) */
@@ -313,7 +325,8 @@ union telnet_event_t {
   /*!
    * COMPRESS event
    */
-  struct compress_t {
+  struct compress_t
+  {
     enum telnet_event_type_t _type; /*!< alias for type */
     unsigned char state;            /*!< 1 if compression is enabled,
                                      0 if disabled */
@@ -322,7 +335,8 @@ union telnet_event_t {
   /*!
    * ENVIRON/NEW-ENVIRON event
    */
-  struct environ_t {
+  struct environ_t
+  {
     enum telnet_event_type_t _type;        /*!< alias for type */
     const struct telnet_environ_t *values; /*!< array of variable values */
     size_t size;                           /*!< number of elements in values */
@@ -332,7 +346,8 @@ union telnet_event_t {
   /*!
    * MSSP event
    */
-  struct mssp_t {
+  struct mssp_t
+  {
     enum telnet_event_type_t _type;        /*!< alias for type */
     const struct telnet_environ_t *values; /*!< array of variable values */
     size_t size;                           /*!< number of elements in values */
@@ -356,7 +371,8 @@ typedef void (*telnet_event_handler_t)(telnet_t *telnet, telnet_event_t *event, 
 /*!
  * telopt support table element; use telopt of -1 for end marker
  */
-struct telnet_telopt_t {
+struct telnet_telopt_t
+{
   short telopt;      /*!< one of the TELOPT codes or -1 */
   unsigned char us;  /*!< TELNET_WILL or TELNET_WONT */
   unsigned char him; /*!< TELNET_DO or TELNET_DONT */

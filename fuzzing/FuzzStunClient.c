@@ -9,10 +9,11 @@
 #define kMinInputLength 10
 #define kMaxInputLength 5120
 
-extern int LLVMFuzzerTestOneInput(const uint8_t *Data,
-                                  size_t Size) { // stunclient.c
+extern int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
+{ // stunclient.c
 
-  if (Size < kMinInputLength || Size > kMaxInputLength) {
+  if (Size < kMinInputLength || Size > kMaxInputLength)
+  {
     return 1;
   }
 
@@ -21,10 +22,14 @@ extern int LLVMFuzzerTestOneInput(const uint8_t *Data,
   buf.len = Size;
   memcpy(buf.buf, Data, buf.len);
 
-  if (stun_is_command_message(&buf)) {
-    if (stun_is_response(&buf)) {
-      if (stun_is_success_response(&buf)) {
-        if (stun_is_binding_response(&buf)) {
+  if (stun_is_command_message(&buf))
+  {
+    if (stun_is_response(&buf))
+    {
+      if (stun_is_success_response(&buf))
+      {
+        if (stun_is_binding_response(&buf))
+        {
           return 0;
         }
       }

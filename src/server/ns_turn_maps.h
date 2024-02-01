@@ -37,7 +37,8 @@
 #include <stdbool.h>
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 //////////////// UR MAP //////////////////
@@ -124,7 +125,8 @@ bool ur_map_unlock(const ur_map *map);
 #define LM_MAP_HASH_SIZE (8)
 #define LM_MAP_ARRAY_SIZE (3)
 
-typedef struct _lm_map_array {
+typedef struct _lm_map_array
+{
   ur_map_key_type main_keys[LM_MAP_ARRAY_SIZE];
   ur_map_value_type main_values[LM_MAP_ARRAY_SIZE];
   size_t extra_sz;
@@ -132,7 +134,8 @@ typedef struct _lm_map_array {
   ur_map_value_type **extra_values;
 } lm_map_array;
 
-typedef struct _lm_map {
+typedef struct _lm_map
+{
   lm_map_array table[LM_MAP_HASH_SIZE];
 } lm_map;
 
@@ -191,18 +194,21 @@ typedef uintptr_t ur_addr_map_value_type;
 #define ADDR_MAP_SIZE (1024)
 #define ADDR_ARRAY_SIZE (4)
 
-typedef struct _addr_elem {
+typedef struct _addr_elem
+{
   ioa_addr key;
   ur_addr_map_value_type value;
 } addr_elem;
 
-typedef struct _addr_list_header {
+typedef struct _addr_list_header
+{
   addr_elem main_list[ADDR_ARRAY_SIZE];
   addr_elem *extra_list;
   size_t extra_sz;
 } addr_list_header;
 
-struct _ur_addr_map {
+struct _ur_addr_map
+{
   addr_list_header lists[ADDR_MAP_SIZE];
   uint64_t magic;
 };
