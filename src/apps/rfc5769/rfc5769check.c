@@ -128,7 +128,7 @@ static int check_oauth(void) {
             convert_oauth_key_data_raw(&okdr, &okd);
 
             char err_msg[1025] = "\0";
-            size_t err_msg_size = sizeof(err_msg) - 1;
+            size_t const err_msg_size = sizeof(err_msg) - 1;
 
             if (convert_oauth_key_data(&okd, &key, err_msg, err_msg_size) < 0) {
               fprintf(stderr, "%s\n", err_msg);
@@ -350,13 +350,13 @@ int main(int argc, const char **argv) {
       if (memcmp(buf, reqltc, len)) {
         printf("failure: wrong message content\n");
         {
-          int lines = 29;
+          int const lines = 29;
           int line = 0;
           int col = 0;
-          int cols = 4;
+          int const cols = 4;
           for (line = 0; line < lines; line++) {
             for (col = 0; col < cols; col++) {
-              uint8_t c = buf[line * 4 + col];
+              uint8_t const c = buf[line * 4 + col];
               printf(" %2x", (int)c);
             }
             printf("\n");

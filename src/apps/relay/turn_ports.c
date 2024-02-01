@@ -86,15 +86,15 @@ static int is_taken(uint32_t status) {
 
 static void turnports_randomize(turnports *tp) {
   if (tp) {
-    unsigned int size = (unsigned int)(tp->high - tp->low);
+    unsigned int const size = (unsigned int)(tp->high - tp->low);
     unsigned int i = 0;
-    unsigned int cycles = size * 10;
+    unsigned int const cycles = size * 10;
     for (i = 0; i < cycles; i++) {
-      uint16_t port1 = (uint16_t)(tp->low + (uint16_t)(((unsigned long)turn_random()) % ((unsigned long)size)));
-      uint16_t port2 = (uint16_t)(tp->low + (uint16_t)(((unsigned long)turn_random()) % ((unsigned long)size)));
+      uint16_t const port1 = (uint16_t)(tp->low + (uint16_t)(((unsigned long)turn_random()) % ((unsigned long)size)));
+      uint16_t const port2 = (uint16_t)(tp->low + (uint16_t)(((unsigned long)turn_random()) % ((unsigned long)size)));
       if (port1 != port2) {
-        int pos1 = tp->status[port1];
-        int pos2 = tp->status[port2];
+        int const pos1 = tp->status[port1];
+        int const pos2 = tp->status[port2];
         int tmp = (int)tp->status[port1];
         tp->status[port1] = tp->status[port2];
         tp->status[port2] = (uint32_t)tmp;
@@ -152,7 +152,7 @@ uint16_t turnports_size(turnports *tp) {
     return 0;
   } else {
     TURN_MUTEX_LOCK(&tp->mutex);
-    uint16_t ret = (uint16_t)((tp->high - tp->low));
+    uint16_t const ret = (uint16_t)((tp->high - tp->low));
     TURN_MUTEX_UNLOCK(&tp->mutex);
     return ret;
   }
@@ -173,7 +173,7 @@ int turnports_allocate(turnports *tp) {
         return -1;
       }
 
-      int position = (uint16_t)(tp->low & 0x0000FFFF);
+      int const position = (uint16_t)(tp->low & 0x0000FFFF);
 
       port = (int)tp->ports[position];
       if (port < (int)(tp->range_start) || port > ((int)(tp->range_stop))) {
@@ -202,7 +202,7 @@ int turnports_allocate(turnports *tp) {
 void turnports_release(turnports *tp, uint16_t port) {
   TURN_MUTEX_LOCK(&tp->mutex);
   if (tp && port >= tp->range_start && port <= tp->range_stop) {
-    uint16_t position = (uint16_t)(tp->high & 0x0000FFFF);
+    uint16_t const position = (uint16_t)(tp->high & 0x0000FFFF);
     if (is_taken(tp->status[port])) {
       tp->status[port] = tp->high;
       tp->ports[position] = port;
@@ -215,11 +215,11 @@ void turnports_release(turnports *tp, uint16_t port) {
 int turnports_allocate_even(turnports *tp, int allocate_rtcp, uint64_t *reservation_token) {
   if (tp) {
     TURN_MUTEX_LOCK(&tp->mutex);
-    uint16_t size = turnports_size(tp);
+    uint16_t const size = turnports_size(tp);
     if (size > 1) {
       uint16_t i = 0;
       for (i = 0; i < size; i++) {
-        int port = turnports_allocate(tp);
+        int const port = turnports_allocate(tp);
         if (port & 0x00000001) {
           turnports_release(tp, port);
         } else {
@@ -227,7 +227,7 @@ int turnports_allocate_even(turnports *tp, int allocate_rtcp, uint64_t *reservat
             TURN_MUTEX_UNLOCK(&tp->mutex);
             return port;
           } else {
-            int rtcp_port = port + 1;
+            int const rtcp_port = port + 1;
             if (rtcp_port > tp->range_stop) {
               turnports_release(tp, port);
             } else if (!turnports_is_available(tp, rtcp_port)) {
@@ -259,7 +259,7 @@ int turnports_is_allocated(turnports *tp, uint16_t port) {
     return 0;
   } else {
     TURN_MUTEX_LOCK(&tp->mutex);
-    int ret = is_taken(tp->status[port]);
+    int const ret = is_taken(tp->status[port]);
     TURN_MUTEX_UNLOCK(&tp->mutex);
     return ret;
   }
@@ -268,9 +268,9 @@ int turnports_is_allocated(turnports *tp, uint16_t port) {
 int turnports_is_available(turnports *tp, uint16_t port) {
   if (tp) {
     TURN_MUTEX_LOCK(&tp->mutex);
-    uint32_t status = tp->status[port];
+    uint32_t const status = tp->status[port];
     if ((status != TPS_OUT_OF_RANGE) && !is_taken(status)) {
-      uint16_t position = (uint16_t)(status & 0x0000FFFF);
+      uint16_t const position = (uint16_t)(status & 0x0000FFFF);
       if (tp->ports[position] == port) {
         TURN_MUTEX_UNLOCK(&tp->mutex);
         return 1;

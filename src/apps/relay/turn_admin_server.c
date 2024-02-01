@@ -568,7 +568,7 @@ static int print_session(ur_map_key_type key, ur_map_value_type value, void *arg
 
 static void cancel_session(struct cli_session *cs, const char *ssid) {
   if (cs && cs->ts && ssid && *ssid) {
-    turnsession_id sid = strtoull(ssid, NULL, 10);
+    turnsession_id const sid = strtoull(ssid, NULL, 10);
     send_session_cancellation_to_relay(sid);
   }
 }
@@ -938,7 +938,7 @@ static int run_cli_input(struct cli_session *cs, const char *buf0, unsigned int 
     size_t sl = strlen(cmd);
 
     while (sl) {
-      char c = cmd[sl - 1];
+      char const c = cmd[sl - 1];
       if ((c == 10) || (c == 13)) {
         cmd[sl - 1] = 0;
         --sl;
@@ -1088,7 +1088,7 @@ static void cli_socket_input_handler_bev(struct bufferevent *bev, void *arg) {
 
     if (cs->bev) {
 
-      int len = (int)bufferevent_read(cs->bev, buf.buf, STUN_BUFFER_SIZE - 1);
+      int const len = (int)bufferevent_read(cs->bev, buf.buf, STUN_BUFFER_SIZE - 1);
       if (len < 0) {
         close_cli_session(cs);
         return;
@@ -1190,13 +1190,13 @@ static void web_admin_input_handler(ioa_socket_handle s, int event_type, ioa_net
 
   int to_be_closed = 0;
 
-  int buffer_size = (int)ioa_network_buffer_get_size(in_buffer->nbh);
+  int const buffer_size = (int)ioa_network_buffer_get_size(in_buffer->nbh);
   if (buffer_size >= UDP_STUN_BUFFER_SIZE) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "%s: request is too big: %d\n", __FUNCTION__, buffer_size);
     to_be_closed = 1;
   } else if (buffer_size > 0) {
 
-    SOCKET_TYPE st = get_ioa_socket_type(s);
+    SOCKET_TYPE const st = get_ioa_socket_type(s);
 
     if (is_stream_socket(st)) {
       if (is_http((char *)ioa_network_buffer_data(in_buffer->nbh), buffer_size)) {
@@ -1612,7 +1612,7 @@ static void set_current_max_output_sessions(size_t value) {
 
 static void https_cancel_session(const char *ssid) {
   if (ssid && *ssid) {
-    turnsession_id sid = (turnsession_id)strtoull(ssid, NULL, 10);
+    turnsession_id const sid = (turnsession_id)strtoull(ssid, NULL, 10);
     send_session_cancellation_to_relay(sid);
   }
 }
@@ -1681,7 +1681,7 @@ static void write_https_logon_page(ioa_socket_handle s) {
     int we_have_admin_users = 0;
     const turn_dbdriver_t *dbd = get_dbdriver();
     if (dbd && dbd->list_admin_users) {
-      int ausers = dbd->list_admin_users(1);
+      int const ausers = dbd->list_admin_users(1);
       if (ausers > 0) {
         we_have_admin_users = 1;
       }
@@ -2492,7 +2492,7 @@ static void write_ps_page(ioa_socket_handle s, const char *client_protocol, cons
           "addr (IPv4)</th><th>Relay addr (IPv6)</th><th>Fingerprints</th><th>Mobile</th><th>TLS method</th><th>TLS "
           "cipher</th><th>BPS (allocated)</th><th>Packets</th><th>Rate</th><th>Peers</th></tr>\r\n");
 
-      size_t total_sz = https_print_sessions(sb, client_protocol, user_pattern, max_sessions, cs);
+      size_t const total_sz = https_print_sessions(sb, client_protocol, user_pattern, max_sessions, cs);
 
       str_buffer_append(sb, "\r\n</table>\r\n");
 
@@ -2514,7 +2514,7 @@ static size_t https_print_users(struct str_buffer *sb) {
     init_secrets_list(&realms);
     dbd->list_users((uint8_t *)current_eff_realm(), &users, &realms);
 
-    size_t sz = get_secrets_list_size(&users);
+    size_t const sz = get_secrets_list_size(&users);
     size_t i;
     for (i = 0; i < sz; ++i) {
       str_buffer_append(sb, "<tr><td>");
@@ -2638,7 +2638,7 @@ static void write_users_page(ioa_socket_handle s, const uint8_t *add_user, const
       str_buffer_append(sb, "<th> </th>");
       str_buffer_append(sb, "</tr>\r\n");
 
-      size_t total_sz = https_print_users(sb);
+      size_t const total_sz = https_print_users(sb);
 
       str_buffer_append(sb, "\r\n</table>\r\n");
 
@@ -2660,7 +2660,7 @@ static size_t https_print_secrets(struct str_buffer *sb) {
     init_secrets_list(&realms);
     dbd->list_secrets((uint8_t *)current_eff_realm(), &secrets, &realms);
 
-    size_t sz = get_secrets_list_size(&secrets);
+    size_t const sz = get_secrets_list_size(&secrets);
     size_t i;
     for (i = 0; i < sz; ++i) {
       str_buffer_append(sb, "<tr><td>");
@@ -2771,7 +2771,7 @@ static void write_shared_secrets_page(ioa_socket_handle s, const char *add_secre
       str_buffer_append(sb, "<th> </th>");
       str_buffer_append(sb, "</tr>\r\n");
 
-      size_t total_sz = https_print_secrets(sb);
+      size_t const total_sz = https_print_secrets(sb);
 
       str_buffer_append(sb, "\r\n</table>\r\n");
 
@@ -2793,7 +2793,7 @@ static size_t https_print_origins(struct str_buffer *sb) {
     init_secrets_list(&realms);
     dbd->list_origins((uint8_t *)current_eff_realm(), &origins, &realms);
 
-    size_t sz = get_secrets_list_size(&origins);
+    size_t const sz = get_secrets_list_size(&origins);
     size_t i;
     for (i = 0; i < sz; ++i) {
       str_buffer_append(sb, "<tr><td>");
@@ -2902,7 +2902,7 @@ static void write_origins_page(ioa_socket_handle s, const char *add_origin, cons
       }
       str_buffer_append(sb, "</tr>\r\n");
 
-      size_t total_sz = https_print_origins(sb);
+      size_t const total_sz = https_print_origins(sb);
 
       str_buffer_append(sb, "\r\n</table>\r\n");
 
@@ -2927,7 +2927,7 @@ static size_t https_print_oauth_keys(struct str_buffer *sb) {
     init_secrets_list(&realms);
     dbd->list_oauth_keys(&kids, &teas, &tss, &lts, &realms);
 
-    size_t sz = get_secrets_list_size(&kids);
+    size_t const sz = get_secrets_list_size(&kids);
     size_t i;
     for (i = 0; i < sz; ++i) {
       str_buffer_append(sb, "<tr><td>");
@@ -3013,7 +3013,7 @@ static void write_https_oauth_show_keys(ioa_socket_handle s, const char *kid) {
             convert_oauth_key_data_raw(&key, &okd);
 
             char err_msg[1025] = "\0";
-            size_t err_msg_size = sizeof(err_msg) - 1;
+            size_t const err_msg_size = sizeof(err_msg) - 1;
 
             oauth_key okey;
             memset(&okey, 0, sizeof(okey));
@@ -3185,7 +3185,7 @@ static void write_https_oauth_page(ioa_socket_handle s, const char *add_kid, con
       str_buffer_append(sb, "<th> </th>");
       str_buffer_append(sb, "</tr>\r\n");
 
-      size_t total_sz = https_print_oauth_keys(sb);
+      size_t const total_sz = https_print_oauth_keys(sb);
 
       str_buffer_append(sb, "\r\n</table>\r\n");
 
@@ -3352,7 +3352,7 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
     } else {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: HTTPS request, path %s\n", __FUNCTION__, hr->path);
 
-      AS_FORM form = get_form(hr->path);
+      AS_FORM const form = get_form(hr->path);
 
       switch (form) {
       case AS_FORM_PC: {
@@ -3479,7 +3479,7 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
                     STRCPY(p, pwd);
                     stun_produce_integrity_key_str(u, r, p, key, SHATYPE_DEFAULT);
                     size_t i = 0;
-                    size_t sz = get_hmackey_size(SHATYPE_DEFAULT);
+                    size_t const sz = get_hmackey_size(SHATYPE_DEFAULT);
                     int maxsz = (int)(sz * 2) + 1;
                     char *s = skey;
                     for (i = 0; (i < sz) && (maxsz > 2); i++) {
@@ -3689,7 +3689,7 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
             add_tea = get_http_header_value(hr, HR_ADD_OAUTH_TEA, "");
             add_realm = get_http_header_value(hr, HR_ADD_OAUTH_REALM, "");
 
-            int keys_ok = (add_ikm[0] != 0);
+            int const keys_ok = (add_ikm[0] != 0);
             if (!keys_ok) {
               msg = "You must enter the key value.";
             } else {
