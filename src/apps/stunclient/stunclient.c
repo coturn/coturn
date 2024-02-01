@@ -28,6 +28,7 @@
  * SUCH DAMAGE.
  */
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -57,8 +58,8 @@ static int counter = 0;
 
 #ifdef __cplusplus
 
-static int run_stunclient(const char *rip, int rport, int *port, int *rfc5780, int response_port, int change_ip,
-                          int change_port, int padding) {
+static int run_stunclient(const char *rip, int rport, int *port, bool *rfc5780, int response_port, bool change_ip,
+                          bool change_port, int padding) {
 
   ioa_addr remote_addr;
   int new_udp_fd = -1;
@@ -258,8 +259,8 @@ static int run_stunclient(const char *rip, int rport, int *port, int *rfc5780, i
 
 #else
 
-static int run_stunclient(const char *rip, int rport, int *port, int *rfc5780, int response_port, int change_ip,
-                          int change_port, int padding) {
+static int run_stunclient(const char *rip, int rport, int *port, bool *rfc5780, int response_port, bool change_ip,
+                          bool change_port, int padding) {
 
   ioa_addr remote_addr;
   int new_udp_fd = -1;
@@ -429,7 +430,7 @@ int main(int argc, char **argv) {
   int port = DEFAULT_STUN_PORT;
   char local_addr[256] = "\0";
   int c = 0;
-  int forceRfc5780 = 0;
+  bool forceRfc5780 = false;
 
   if (socket_init()) {
     return -1;
@@ -472,7 +473,7 @@ int main(int argc, char **argv) {
   }
 
   int local_port = -1;
-  int rfc5780 = 0;
+  bool rfc5780 = false;
 
   run_stunclient(argv[optind], port, &local_port, &rfc5780, -1, 0, 0, 0);
 
