@@ -25,7 +25,16 @@ while true; do
         echo "No more active allocations, exiting"
         exit 0
     fi
-    if [ "$allocs" = 0 ]; then
+
+    # Note: there can be multiple allocation counts, e.g.
+    # turn_total_allocations{type="UDP"} 0
+    # turn_total_allocations{type="TCP"} 0
+    # So we need to sum the counts before comparing with 0.
+    sum=0
+    for num in $allocs; do
+        (( sum += num ))
+    done
+    if [ "$sum" = 0 ]; then
         echo "No more active allocations, exiting"
         exit 0
     fi
