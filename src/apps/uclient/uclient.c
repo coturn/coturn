@@ -191,8 +191,8 @@ int send_buffer(app_ur_conn_info *clnet_info, stun_buffer *message, int data_con
     if (turn_random() % 10 == 0) {
       int np = (int)((unsigned long)turn_random() % 10);
       while (np-- > 0) {
-        int const pos = (int)((unsigned long)turn_random() % (unsigned long)message->len);
-        int const val = (int)((unsigned long)turn_random() % 256);
+        const int pos = (int)((unsigned long)turn_random() % (unsigned long)message->len);
+        const int val = (int)((unsigned long)turn_random() % 256);
         message->buf[pos] = (uint8_t)val;
       }
     }
@@ -374,7 +374,7 @@ recv_again:
   if (!use_tcp && sync && request_message && (fd >= 0)) {
 
     for (int cycle = 0; cycle < MAX_LISTENING_CYCLE_NUMBER; ++cycle) {
-      int const serc = wait_fd(fd, cycle);
+      const int serc = wait_fd(fd, cycle);
       if (serc > 0) {
         break;
       }
@@ -429,7 +429,7 @@ recv_again:
 
       } else {
 
-        int const sslerr = SSL_get_error(ssl, rc);
+        const int sslerr = SSL_get_error(ssl, rc);
 
         switch (sslerr) {
         case SSL_ERROR_NONE:
@@ -496,7 +496,7 @@ recv_again:
 
       } else {
 
-        int const sslerr = SSL_get_error(ssl, rc);
+        const int sslerr = SSL_get_error(ssl, rc);
 
         switch (sslerr) {
         case SSL_ERROR_NONE:
@@ -670,13 +670,13 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
     }
   } else if (stun_is_indication(&(elem->in_buffer))) {
 
-    uint16_t const method = stun_get_method(&elem->in_buffer);
+    const uint16_t method = stun_get_method(&elem->in_buffer);
     if ((method == STUN_METHOD_CONNECTION_ATTEMPT) && is_TCP_relay()) {
 
       uint32_t cid = 0;
       for (stun_attr_ref sar = stun_attr_get_first(&(elem->in_buffer)); sar;
            sar = stun_attr_get_next_str(elem->in_buffer.buf, elem->in_buffer.len, sar)) {
-        int const attr_type = stun_attr_get_type(sar);
+        const int attr_type = stun_attr_get_type(sar);
         if (attr_type == STUN_ATTRIBUTE_CONNECTION_ID) {
           cid = *((const uint32_t *)stun_attr_get_value(sar));
           break;
@@ -695,13 +695,13 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
       return rc;
     } else {
 
-      stun_attr_ref const sar = stun_attr_get_first_by_type(&(elem->in_buffer), STUN_ATTRIBUTE_DATA);
+      const stun_attr_ref sar = stun_attr_get_first_by_type(&(elem->in_buffer), STUN_ATTRIBUTE_DATA);
       if (!sar) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "ERROR: received DATA message has no data, size=%d\n", rc);
         return rc;
       }
 
-      int const rlen = stun_attr_get_len(sar);
+      const int rlen = stun_attr_get_len(sar);
       applen = rlen;
       if (rlen != clmessage_length) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "ERROR: received DATA message has wrong len: %d, must be %d\n", rlen,
@@ -729,7 +729,7 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
       uint32_t cid = 0;
       for (stun_attr_ref sar = stun_attr_get_first(&(elem->in_buffer)); sar;
            sar = stun_attr_get_next_str(elem->in_buffer.buf, elem->in_buffer.len, sar)) {
-        int const attr_type = stun_attr_get_type(sar);
+        const int attr_type = stun_attr_get_type(sar);
         if (attr_type == STUN_ATTRIBUTE_CONNECTION_ID) {
           cid = *((const uint32_t *)stun_attr_get_value(sar));
           break;
@@ -781,7 +781,7 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
     if (mi.msgnum != elem->recvmsgnum + 1) {
       ++(elem->loss);
     } else {
-      uint64_t const clatency = (uint64_t)time_minus(current_mstime, mi.mstime);
+      const uint64_t clatency = (uint64_t)time_minus(current_mstime, mi.mstime);
       if (clatency > max_latency) {
         max_latency = clatency;
       }
@@ -790,7 +790,7 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
       }
       elem->latency += clatency;
       if (elem->rmsgnum > 0) {
-        uint64_t const cjitter = abs((int)(current_mstime - elem->recvtimems) - RTP_PACKET_INTERVAL);
+        const uint64_t cjitter = abs((int)(current_mstime - elem->recvtimems) - RTP_PACKET_INTERVAL);
 
         if (cjitter > max_jitter) {
           max_jitter = cjitter;
@@ -873,7 +873,7 @@ static int client_write(app_ur_session *elem) {
     if (!(elem->pinfo.tcp_conn) || !(elem->pinfo.tcp_conn_number)) {
       return -1;
     }
-    int const i = (unsigned int)(turn_random()) % elem->pinfo.tcp_conn_number;
+    const int i = (unsigned int)(turn_random()) % elem->pinfo.tcp_conn_number;
     atc = elem->pinfo.tcp_conn[i];
     if (!atc->tcp_data_bound) {
       printf("%s: Uninitialized atc: i=%d, atc=0x%lx\n", __FUNCTION__, i, (long)atc);
@@ -902,7 +902,7 @@ static int client_write(app_ur_session *elem) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "before write ...\n");
     }
 
-    int const rc = send_buffer(&(elem->pinfo), &(elem->out_buffer), 1, atc);
+    const int rc = send_buffer(&(elem->pinfo), &(elem->out_buffer), 1, atc);
 
     ++elem->wmsgnum;
     elem->to_send_timems += RTP_PACKET_INTERVAL;
@@ -950,7 +950,7 @@ void client_input_handler(evutil_socket_t fd, short what, void *arg) {
           }
         }
       }
-      int const rc = client_read(elem, is_tcp_data, atc);
+      const int rc = client_read(elem, is_tcp_data, atc);
       if (rc <= 0) {
         break;
       }
@@ -1213,7 +1213,7 @@ static int refresh_channel(app_ur_session *elem, uint16_t method, uint32_t lt) {
     stun_attr_add(&message, STUN_ATTRIBUTE_LIFETIME, (const char *)&lt, 4);
 
     if (dual_allocation && !mobility) {
-      int const t = ((uint8_t)turn_random()) % 3;
+      const int t = ((uint8_t)turn_random()) % 3;
       if (t) {
         uint8_t field[4];
         field[0] = (t == 1) ? (uint8_t)STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4
@@ -1282,7 +1282,7 @@ static inline int client_timer_handler(app_ur_session *elem, int *done) {
       return 0;
     }
 
-    int const max_num = 50;
+    const int max_num = 50;
     int cur_num = 0;
 
     while (!turn_time_before(current_mstime, elem->to_send_timems)) {
@@ -1338,7 +1338,7 @@ static void timer_handler(evutil_socket_t fd, short event, void *arg) {
     int done = 0;
     for (int i = 0; i < total_clients; ++i) {
       if (elems[i]) {
-        int const finished = client_timer_handler(elems[i], &done);
+        const int finished = client_timer_handler(elems[i], &done);
         if (finished) {
           elems[i] = NULL;
         }
@@ -1478,7 +1478,7 @@ void start_mclient(const char *remote_address, int port, const unsigned char *if
   stime = current_time;
 
   if (is_TCP_relay()) {
-    uint64_t const connect_wait_start_time = current_time;
+    const uint64_t connect_wait_start_time = current_time;
     while (1) {
       int completed = 0;
       if (passive_tcp) {
@@ -1528,7 +1528,7 @@ void start_mclient(const char *remote_address, int port, const unsigned char *if
 
     run_events(1);
 
-    int const msz = (int)current_clients_number;
+    const int msz = (int)current_clients_number;
     if (msz < 1) {
       break;
     }
@@ -1582,7 +1582,7 @@ int add_integrity(app_ur_conn_info *clnet_info, stun_buffer *message) {
 
     if (oauth && clnet_info->oauth) {
 
-      uint16_t const method = stun_get_method_str(message->buf, message->len);
+      const uint16_t method = stun_get_method_str(message->buf, message->len);
 
       int cok = clnet_info->cok;
 
@@ -1594,7 +1594,7 @@ int add_integrity(app_ur_conn_info *clnet_info, stun_buffer *message) {
         encoded_oauth_token etoken;
         uint8_t nonce[12];
         RAND_bytes((unsigned char *)nonce, 12);
-        long const halflifetime = OAUTH_SESSION_LIFETIME / 2;
+        const long halflifetime = OAUTH_SESSION_LIFETIME / 2;
         long random_lifetime = 0;
         while (!random_lifetime) {
           random_lifetime = turn_random();
