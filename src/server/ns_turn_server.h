@@ -40,7 +40,7 @@ extern "C" {
 
 //////////// defines //////////////
 
-// Even if a single threaded app handles on average about 1 session/s
+// Even if a single threaded app handles on average about 1k session/s
 // this means, the counter lasts ~ 31.7 years before it wraps to 0 and even
 // than it is unlikely, that a session last that long and a collision occures.
 #define TURN_SESSION_ID_FACTOR (1000000000LL)
