@@ -33,6 +33,7 @@
 
 #include "ns_turn_ioaddr.h"
 #include "ns_turn_msg_defs.h"
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -110,8 +111,8 @@ int stun_init_channel_message_str(uint16_t chnumber, uint8_t *buf, size_t *len, 
 
 int stun_is_command_message_str(const uint8_t *buf, size_t blen);
 int old_stun_is_command_message_str(const uint8_t *buf, size_t blen, uint32_t *cookie);
-int stun_is_command_message_full_check_str(const uint8_t *buf, size_t blen, int must_check_fingerprint,
-                                           int *fingerprint_present);
+int stun_is_command_message_full_check_str(const uint8_t *buf, size_t blen, bool must_check_fingerprint,
+                                           bool *fingerprint_present);
 int stun_is_command_message_offset_str(const uint8_t *buf, size_t blen, int offset);
 int stun_is_request_str(const uint8_t *buf, size_t len);
 int stun_is_success_response_str(const uint8_t *buf, size_t len);

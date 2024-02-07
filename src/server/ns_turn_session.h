@@ -35,6 +35,7 @@
 #include "ns_turn_ioalib.h"
 #include "ns_turn_maps.h"
 #include "ns_turn_utils.h"
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -72,17 +73,17 @@ struct _ts_ur_super_session {
   ioa_socket_handle client_socket;
   allocation alloc;
   ioa_timer_handle to_be_allocated_timeout_ev;
-  int enforce_fingerprints;
-  int is_tcp_relay;
-  int to_be_closed;
+  bool enforce_fingerprints;
+  bool is_tcp_relay;
+  bool to_be_closed;
   /* Auth */
   uint8_t nonce[NONCE_MAX_SIZE];
   turn_time_t nonce_expiration_time;
   uint8_t username[STUN_MAX_USERNAME_SIZE + 1];
   hmackey_t hmackey;
-  int hmackey_set;
+  bool hmackey_set;
   password_t pwd;
-  int quota_used;
+  bool quota_used;
   int oauth;
   turn_time_t max_session_time_auth;
   /* Realm */
@@ -113,7 +114,7 @@ struct _ts_ur_super_session {
   size_t peer_sent_rate;
   size_t peer_total_rate;
   /* Mobile */
-  int is_mobile;
+  bool is_mobile;
   mobile_id_t mobile_id;
   mobile_id_t old_mobile_id;
   char s_mobile_id[33];
@@ -133,7 +134,7 @@ typedef struct _addr_data {
 
 struct turn_session_info {
   turnsession_id id;
-  int valid;
+  bool valid;
   turn_time_t start_time;
   turn_time_t expiration_time;
   SOCKET_TYPE client_protocol;
@@ -145,7 +146,7 @@ struct turn_session_info {
   addr_data relay_addr_data_ipv4;
   addr_data relay_addr_data_ipv6;
   uint8_t username[STUN_MAX_USERNAME_SIZE + 1];
-  int enforce_fingerprints;
+  bool enforce_fingerprints;
   /* Stats */
   uint64_t received_packets;
   uint64_t sent_packets;
@@ -162,7 +163,7 @@ struct turn_session_info {
   uint32_t peer_sent_rate;
   uint32_t peer_total_rate;
   /* Mobile */
-  int is_mobile;
+  bool is_mobile;
   /* Peers */
   addr_data main_peers_data[TURN_MAIN_PEERS_ARRAY_SIZE];
   size_t main_peers_size;
