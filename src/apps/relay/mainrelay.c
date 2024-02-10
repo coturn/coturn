@@ -3170,7 +3170,7 @@ int main(int argc, char **argv) {
   }
 
   if (use_web_admin && turn_params.no_tls) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "CONFIG: WARNING: web-admin support not compatible witn --no-tls option.\n");
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "CONFIG: WARNING: web-admin support not compatible with --no-tls option.\n");
     use_web_admin = 0;
   }
 
