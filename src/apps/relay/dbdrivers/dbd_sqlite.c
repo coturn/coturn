@@ -58,7 +58,7 @@ static pthread_t write_thread = 0;
 #endif
 
 static void sqlite_lock(int write) {
-  pthread_t pths = pthread_self();
+  const pthread_t pths = pthread_self();
 
   int can_move = 0;
   while (!can_move) {
@@ -166,8 +166,8 @@ static void fix_user_directory(char *dir0) {
         }
       }
     }
-    size_t szh = strlen(home);
-    size_t sz = strlen(dir0) + 1 + szh;
+    const size_t szh = strlen(home);
+    const size_t sz = strlen(dir0) + 1 + szh;
     char *dir_fixed = (char *)malloc(sz);
     strncpy(dir_fixed, home, szh);
     strncpy(dir_fixed + szh, dir + 1, (sz - szh - 1));
@@ -217,7 +217,7 @@ static sqlite3 *get_sqlite_connection(void) {
 
     fix_user_directory(pud->userdb);
     (void)pthread_once(&sqlite_init_once, sqlite_init_multithreaded);
-    int rc = sqlite3_open(pud->userdb, &sqliteconnection);
+    const int rc = sqlite3_open(pud->userdb, &sqliteconnection);
     if (!sqliteconnection || (rc != SQLITE_OK)) {
       const char *errmsg = sqlite3_errmsg(sqliteconnection);
       TURN_LOG_FUNC(
@@ -260,15 +260,15 @@ static int sqlite_get_auth_secrets(secrets_list_t *sl, uint8_t *realm) {
 
     if ((rc = sqlite3_prepare(sqliteconnection, statement, -1, &st, 0)) == SQLITE_OK) {
 
-      int ctotal = sqlite3_column_count(st);
+      const int ctotal = sqlite3_column_count(st);
       ret = 0;
 
       while (ctotal > 0) {
 
-        int res = sqlite3_step(st);
+        const int res = sqlite3_step(st);
         if (res == SQLITE_ROW) {
 
-          int type = sqlite3_column_type(st, 0);
+          const int type = sqlite3_column_type(st, 0);
           if (type != SQLITE_NULL) {
             add_to_secrets_list(sl, (const char *)sqlite3_column_text(st, 0));
           }
@@ -307,10 +307,10 @@ static int sqlite_get_user_key(uint8_t *usname, uint8_t *realm, hmackey_t key) {
     sqlite_lock(0);
 
     if ((rc = sqlite3_prepare(sqliteconnection, statement, -1, &st, 0)) == SQLITE_OK) {
-      int res = sqlite3_step(st);
+      const int res = sqlite3_step(st);
       if (res == SQLITE_ROW) {
         char *kval = strdup((const char *)sqlite3_column_text(st, 0));
-        size_t sz = get_hmackey_size(SHATYPE_DEFAULT);
+        const size_t sz = get_hmackey_size(SHATYPE_DEFAULT);
         if (convert_string_key_to_binary(kval, key, sz) < 0) {
           TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key: %s, user %s\n", kval, usname);
         } else {
@@ -349,7 +349,7 @@ static int sqlite_get_oauth_key(const uint8_t *kid, oauth_key_data_raw *key) {
 
     if ((rc = sqlite3_prepare(sqliteconnection, statement, -1, &st, 0)) == SQLITE_OK) {
 
-      int res = sqlite3_step(st);
+      const int res = sqlite3_step(st);
       if (res == SQLITE_ROW) {
 
         STRCPY(key->ikm_key, sqlite3_column_text(st, 0));
@@ -398,7 +398,7 @@ static int sqlite_list_oauth_keys(secrets_list_t *kids, secrets_list_t *teas, se
 
       ret = 0;
       while (1) {
-        int res = sqlite3_step(st);
+        const int res = sqlite3_step(st);
         if (res == SQLITE_ROW) {
 
           STRCPY(key->ikm_key, sqlite3_column_text(st, 0));
@@ -597,7 +597,7 @@ static int sqlite_list_users(uint8_t *realm, secrets_list_t *users, secrets_list
 
       ret = 0;
       while (1) {
-        int res = sqlite3_step(st);
+        const int res = sqlite3_step(st);
         if (res == SQLITE_ROW) {
 
           const char *kval = (const char *)sqlite3_column_text(st, 0);
@@ -846,7 +846,7 @@ static int sqlite_list_origins(uint8_t *realm, secrets_list_t *origins, secrets_
 
       ret = 0;
       while (1) {
-        int res = sqlite3_step(st);
+        const int res = sqlite3_step(st);
         if (res == SQLITE_ROW) {
 
           const char *kval = (const char *)sqlite3_column_text(st, 0);
@@ -938,7 +938,7 @@ static int sqlite_list_realm_options(uint8_t *realm) {
       ret = 0;
 
       while (1) {
-        int res = sqlite3_step(st);
+        const int res = sqlite3_step(st);
         if (res == SQLITE_ROW) {
 
           const char *rval = (const char *)sqlite3_column_text(st, 0);
@@ -986,7 +986,7 @@ static int sqlite_get_ip_list(const char *kind, ip_range_list_t *list) {
       ret = 0;
 
       while (1) {
-        int res = sqlite3_step(st);
+        const int res = sqlite3_step(st);
         if (res == SQLITE_ROW) {
 
           const char *kval = (const char *)sqlite3_column_text(st, 0);
@@ -1072,7 +1072,7 @@ static void sqlite_reread_realms(secrets_list_t *realms_list) {
         ur_string_map *o_to_realm_new = ur_string_map_create(free);
 
         while (1) {
-          int res = sqlite3_step(st);
+          const int res = sqlite3_step(st);
           if (res == SQLITE_ROW) {
 
             char *oval = strdup((const char *)sqlite3_column_text(st, 0));
@@ -1139,7 +1139,7 @@ static void sqlite_reread_realms(secrets_list_t *realms_list) {
       if ((rc = sqlite3_prepare(sqliteconnection, statement, -1, &st, 0)) == SQLITE_OK) {
 
         while (1) {
-          int res = sqlite3_step(st);
+          const int res = sqlite3_step(st);
           if (res == SQLITE_ROW) {
 
             char *rval = strdup((const char *)sqlite3_column_text(st, 0));
@@ -1196,7 +1196,7 @@ static int sqlite_get_admin_user(const uint8_t *usname, uint8_t *realm, password
     sqlite_lock(0);
 
     if ((rc = sqlite3_prepare(sqliteconnection, statement, -1, &st, 0)) == SQLITE_OK) {
-      int res = sqlite3_step(st);
+      const int res = sqlite3_step(st);
       if (res == SQLITE_ROW) {
         const char *kval = (const char *)sqlite3_column_text(st, 0);
         if (kval) {
@@ -1296,7 +1296,7 @@ static int sqlite_list_admin_users(int no_print) {
 
       ret = 0;
       while (1) {
-        int res = sqlite3_step(st);
+        const int res = sqlite3_step(st);
         if (res == SQLITE_ROW) {
 
           const char *kval = (const char *)sqlite3_column_text(st, 0);

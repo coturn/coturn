@@ -126,7 +126,7 @@ char *sanitize_userdb_string(char *udb) {
       pstart += strlen("postgresql://");
       pend = strstr(pstart, "@");
       if (pend != NULL) {
-        size_t plen = pend - pstart;
+        const size_t plen = pend - pstart;
         memset(pstart, '*', plen);
       }
     }

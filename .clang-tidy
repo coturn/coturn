@@ -12,5 +12,6 @@ Checks: 'clang-diagnostic-*,
 	,-readability-else-after-return,
 	,-readability-magic-numbers,
 	,-readability-function-cognitive-complexity,
+	,-readability-suspicious-call-argument,
 	,modernize-*,
 '

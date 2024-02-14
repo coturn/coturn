@@ -146,7 +146,7 @@ int stun_is_channel_message(stun_buffer *buf, uint16_t *chnumber, int is_padding
     return 0;
   }
   size_t blen = (size_t)buf->len;
-  int ret = stun_is_channel_message_str(buf->buf, &blen, chnumber, is_padding_mandatory);
+  const int ret = stun_is_channel_message_str(buf->buf, &blen, chnumber, is_padding_mandatory);
   if (ret) {
     buf->len = blen;
   }
