@@ -28,6 +28,7 @@
  * SUCH DAMAGE.
  */
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -76,8 +77,8 @@ static int init_socket(int *socketfd, ioa_addr *local_addr, int local_port, ioa_
   return ret;
 }
 
-static int stunclient_send(int sockfd, ioa_addr *local_addr, int *local_port, ioa_addr *remote_addr, int change_ip,
-                           int change_port, int padding, int response_port) {
+static int stunclient_send(int sockfd, ioa_addr *local_addr, int *local_port, ioa_addr *remote_addr, bool change_ip,
+                           bool change_port, int padding, int response_port) {
   int ret = 0;
 
   turn::StunMsgRequest req(STUN_METHOD_BINDING);
@@ -157,7 +158,7 @@ static int stunclient_send(int sockfd, ioa_addr *local_addr, int *local_port, io
 }
 
 static int stunclient_receive(int sockfd, ioa_addr *local_addr, ioa_addr *reflexive_addr, ioa_addr *other_addr,
-                              int *rfc5780) {
+                              bool *rfc5780) {
   int ret = 0;
 
   {
@@ -208,7 +209,7 @@ static int stunclient_receive(int sockfd, ioa_addr *local_addr, ioa_addr *reflex
 
               turn::StunAttrIterator iter1(res, STUN_ATTRIBUTE_OTHER_ADDRESS);
               if (!iter1.eof()) {
-                *rfc5780 = 1;
+                *rfc5780 = true;
                 printf("\n========================================\n");
                 printf("RFC 5780 response %d\n", ++counter);
                 turn::StunAttrIterator iter2(res, STUN_ATTRIBUTE_MAPPED_ADDRESS);
@@ -270,7 +271,7 @@ static int stunclient_receive(int sockfd, ioa_addr *local_addr, ioa_addr *reflex
 }
 
 static int run_stunclient(ioa_addr *local_addr, ioa_addr *remote_addr, ioa_addr *reflexive_addr, ioa_addr *other_addr,
-                          int *local_port, int *rfc5780, int change_ip, int change_port, int padding) {
+                          int *local_port, bool *rfc5780, bool change_ip, bool change_port, int padding) {
   int ret = 0;
 
   ret = init_socket(&udp_fd, local_addr, *local_port, remote_addr);
@@ -282,8 +283,8 @@ static int run_stunclient(ioa_addr *local_addr, ioa_addr *remote_addr, ioa_addr 
 }
 
 static int run_stunclient_hairpinning(ioa_addr *local_addr, ioa_addr *remote_addr, ioa_addr *reflexive_addr,
-                                      ioa_addr *other_addr, int *local_port, int *rfc5780, int change_ip,
-                                      int change_port, int padding) {
+                                      ioa_addr *other_addr, int *local_port, bool *rfc5780, bool change_ip,
+                                      bool change_port, int padding) {
   int ret = 0;
 
   init_socket(&udp_fd, local_addr, *local_port, remote_addr);
@@ -309,8 +310,8 @@ static int run_stunclient_hairpinning(ioa_addr *local_addr, ioa_addr *remote_add
 }
 
 static int run_stunclient_lifetime(int timer, ioa_addr *local_addr, ioa_addr *remote_addr, ioa_addr *reflexive_addr,
-                                   ioa_addr *other_addr, int *local_port, int *rfc5780, int change_ip, int change_port,
-                                   int padding) {
+                                   ioa_addr *other_addr, int *local_port, bool *rfc5780, bool change_ip,
+                                   bool change_port, int padding) {
   int ret = 0;
   int response_port;
 
@@ -357,7 +358,7 @@ static int init_socket(int *socketfd, ioa_addr *local_addr, int local_port, ioa_
 }
 
 static int stunclient_send(stun_buffer *buf, int sockfd, ioa_addr *local_addr, int *local_port, ioa_addr *remote_addr,
-                           int change_ip, int change_port, int padding, int response_port) {
+                           bool change_ip, bool change_port, int padding, int response_port) {
   int ret = 0;
 
   stun_prepare_binding_request(buf);
@@ -397,7 +398,7 @@ static int stunclient_send(stun_buffer *buf, int sockfd, ioa_addr *local_addr, i
 }
 
 static int stunclient_receive(stun_buffer *buf, int sockfd, ioa_addr *local_addr, ioa_addr *reflexive_addr,
-                              ioa_addr *other_addr, int *rfc5780) {
+                              ioa_addr *other_addr, bool *rfc5780) {
   int ret = 0;
 
   {
@@ -439,7 +440,7 @@ static int stunclient_receive(stun_buffer *buf, int sockfd, ioa_addr *local_addr
 
               stun_attr_ref sar = stun_attr_get_first_by_type_str(buf->buf, buf->len, STUN_ATTRIBUTE_OTHER_ADDRESS);
               if (sar) {
-                *rfc5780 = 1;
+                *rfc5780 = true;
                 printf("\n========================================\n");
                 printf("RFC 5780 response %d\n", ++counter);
                 ioa_addr mapped_addr;
@@ -501,7 +502,7 @@ static int stunclient_receive(stun_buffer *buf, int sockfd, ioa_addr *local_addr
 }
 
 static int run_stunclient(ioa_addr *local_addr, ioa_addr *remote_addr, ioa_addr *reflexive_addr, ioa_addr *other_addr,
-                          int *local_port, int *rfc5780, int change_ip, int change_port, int padding) {
+                          int *local_port, bool *rfc5780, bool change_ip, bool change_port, int padding) {
   int ret = 0;
   stun_buffer buf;
 
@@ -516,8 +517,8 @@ static int run_stunclient(ioa_addr *local_addr, ioa_addr *remote_addr, ioa_addr 
 }
 
 static int run_stunclient_hairpinning(ioa_addr *local_addr, ioa_addr *remote_addr, ioa_addr *reflexive_addr,
-                                      ioa_addr *other_addr, int *local_port, int *rfc5780, int change_ip,
-                                      int change_port, int padding) {
+                                      ioa_addr *other_addr, int *local_port, bool *rfc5780, bool change_ip,
+                                      bool change_port, int padding) {
   int ret = 0;
   stun_buffer buf;
   stun_buffer buf2;
@@ -546,8 +547,8 @@ static int run_stunclient_hairpinning(ioa_addr *local_addr, ioa_addr *remote_add
 }
 
 static int run_stunclient_lifetime(int timer, ioa_addr *local_addr, ioa_addr *remote_addr, ioa_addr *reflexive_addr,
-                                   ioa_addr *other_addr, int *local_port, int *rfc5780, int change_ip, int change_port,
-                                   int padding) {
+                                   ioa_addr *other_addr, int *local_port, bool *rfc5780, bool change_ip,
+                                   bool change_port, int padding) {
   int ret = 0;
   stun_buffer buf;
   stun_buffer buf2;
@@ -599,7 +600,7 @@ static char Usage[] = "Usage: natdiscovery [options] address\n"
 
 //////////////////////////////////////////////////
 
-static void init(int first, ioa_addr *local_addr, ioa_addr *remote_addr, int *local_port, int port, int *rfc5780,
+static void init(int first, ioa_addr *local_addr, ioa_addr *remote_addr, int *local_port, int port, bool *rfc5780,
                  char *local_addr_string, char *remote_param) {
   addr_set_any(local_addr);
 
@@ -611,7 +612,7 @@ static void init(int first, ioa_addr *local_addr, ioa_addr *remote_addr, int *lo
   if (!first) {
     *local_port = -1;
   }
-  *rfc5780 = 0;
+  *rfc5780 = false;
 
   if (make_ioa_addr((const uint8_t *)remote_param, port, remote_addr) < 0) {
     err(-1, NULL);
@@ -637,7 +638,7 @@ int main(int argc, char **argv) {
   int padding = 0;
   int hairpinning = 0;
   int local_port = -1;
-  int rfc5780;
+  bool rfc5780;
   int first = 1;
   ioa_addr other_addr, reflexive_addr, tmp_addr, remote_addr, local_addr, local2_addr;
 
