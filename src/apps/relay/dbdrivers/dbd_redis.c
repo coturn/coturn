@@ -268,7 +268,7 @@ redis_context_handle get_redis_async_connection(struct event_base *base, redis_s
         }
       }
 
-      ret = redisLibeventAttach(base, co->host, co->port, co->password, atoi(co->dbname));
+      ret = redisLibeventAttach(base, co->host, (uint16_t)co->port, co->password, atoi(co->dbname));
 
       if (!ret) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot initialize Redis DB connection\n");
