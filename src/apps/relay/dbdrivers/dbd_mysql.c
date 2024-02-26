@@ -107,12 +107,8 @@ char *decryptPassword(char *in, const unsigned char *mykey) {
   init_ctr(&state, iv);
   memset(outdata, '\0', sizeof(outdata));
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
   CRYPTO_ctr128_encrypt(encryptedText, outdata, newTotalSize, &key, state.ivec, state.ecount, &state.num,
                         (block128_f)AES_encrypt);
-#else
-  AES_ctr128_encrypt(encryptedText, outdata, newTotalSize, &key, state.ivec, state.ecount, &state.num);
-#endif
 
   strcat(last, (char *)outdata);
   out = (char *)malloc(sizeof(char) * strlen(last));
