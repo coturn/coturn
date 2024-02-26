@@ -170,13 +170,7 @@ server_type *start_udp_server(int verbose, const char *ifname, char **local_addr
 void run_udp_server(server_type *server) {
 
   if (server) {
-
-    unsigned int cycle = 0;
-
     while (1) {
-
-      cycle++;
-
       run_events(server);
     }
   }
