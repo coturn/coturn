@@ -1613,6 +1613,29 @@ void run_listener_server(struct listener_server *ls) {
       }
     }
 
+    // Check if we are draining
+    if(turn_params.drain_turn_server == 2) {
+      // Tell each turn_service we are draining
+      for(int i = 0; i < ls->addrs_number i++) {
+        for(int j = 0; j < ls->services_number; j++) {
+          if(ls->udp_services[i][j]) {
+            ls->udp_services[i][j]->ts->is_draining = 1;
+          }
+          if(ls->dtls_services[i][j]) {
+            ls->dtls_services[i][j]->ts->is_draining = 1;
+          }
+          if(ls->aux_udp_services[i][j]) {
+            ls->aux_udp_services[i][j]->ts->is_draining = 1;
+          }
+        }
+      }
+      turn_params.drain_turn_server = 1;
+    } else if(turn_params.drain_turn_server == 1 && global_allocation_count == 0) {
+      turn_params.stop_turn_server = 1;
+      // TODO SLG - may need to signal term to have federation stuff shutdown
+    }
+    
+
     run_events(ls->event_base, ls->ioa_eng);
 
     rollover_logfile();

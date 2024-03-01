@@ -75,6 +75,7 @@ static regex_t zrest_username_regex;
 //////////// REALM //////////////
 
 static realm_params_t *default_realm_params_ptr = NULL;
+static int global_allocation_count = 0;
 
 static ur_string_map *realms = NULL;
 static TURN_MUTEX_DECLARE(o_to_realm_mutex);
@@ -829,6 +830,8 @@ int check_new_allocation_quota(uint8_t *user, int oauth, uint8_t *realm) {
     free(username);
     ur_string_map_unlock(rp->status.alloc_counters);
   }
+  ++global_allocation_count;   // TODO SLG - TODO atomic increment
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Global turn allocation count incremented, now %d\n", global_allocation_count);
   return ret;
 }
 
@@ -854,6 +857,8 @@ void release_allocation_quota(uint8_t *user, int oauth, uint8_t *realm) {
     ur_string_map_unlock(rp->status.alloc_counters);
     free(username);
   }
+  --global_allocation_count;  // TODO SLG - TODO atomic decrement
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Global turn allocation count decremented, now %d\n", global_allocation_count);
 }
 
 //////////////////////////////////

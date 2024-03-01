@@ -47,6 +47,8 @@
 extern "C" {
 #endif
 
+int global_allocation_count;
+
 //////////// REALM //////////////
 
 struct _realm_status_t;

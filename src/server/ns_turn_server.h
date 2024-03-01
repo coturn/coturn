@@ -203,9 +203,12 @@ struct _turn_turnserver {
   /* Only send RESPONSE-ORIGIN attribute in response if RFC5780 is enabled */
   vintp response_origin_only_with_rfc5780;
 
-	/* Federation params */
-	ioa_addr federation_addr;
-	void **federation_service;
+  /* Set to true on SIGUSR1 */
+  int is_draining;
+
+  /* Federation params */
+  ioa_addr federation_addr;
+  void **federation_service;
 };
 
 const char *get_version(turn_turnserver *server);
