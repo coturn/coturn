@@ -349,6 +349,10 @@ void set_ssl_ctx(ioa_engine_handle e, turn_params_t *params) {
     args->next = params->tls_ctx_update_ev;
     params->tls_ctx_update_ev = ev;
     TURN_MUTEX_UNLOCK(&turn_params.tls_mutex);
+  } else {
+    if (args) {
+      free(args);
+    }
   }
 }
 
