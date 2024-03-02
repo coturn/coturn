@@ -173,7 +173,7 @@ static struct http_request *parse_http_request_1(struct http_request *ret, char 
             free(ret);
             ret = NULL;
             if (kv) {
-              //kv no longer assigned on this path
+              // kv no longer assigned on this path
               free(kv);
             }
           } else {
