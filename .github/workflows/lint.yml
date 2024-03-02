@@ -11,18 +11,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Install dependencies
-      run: |
-        sudo apt update
-        sudo apt install -y clang-format-15
-        sudo apt install -y \
-            libevent-dev \
-            libssl-dev \
-            libpq-dev libmariadb-dev libsqlite3-dev \
-            libhiredis-dev \
-            libmongoc-dev \
-            libmicrohttpd-dev \
     - uses: actions/checkout@v4
+    - name: install dependencies
+      uses: ./.github/workflows/actions/ubuntu-build-deps
+      with:
+        SUDO: true
+    - name: install clang-format-15
+      run: sudo apt install -y clang-format-15
     - name: configure
       run: ./configure
     - name: lint

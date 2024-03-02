@@ -22,14 +22,12 @@ jobs:
     - uses: actions/checkout@v4
       with:
         fetch-depth: 0
+    
+    - name: install dependencies
+      uses: ./.github/workflows/actions/ubuntu-build-deps
+      with:
+        SUDO: true
 
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt install -y clang wget libevent-dev libssl-dev libpq-dev libmariadb-dev libsqlite3-dev libhiredis-dev libmongoc-dev libmicrohttpd-dev
-        wget https://github.com/digitalocean/prometheus-client-c/releases/download/v0.1.3/libprom-dev-0.1.3-Linux.deb
-        wget https://github.com/digitalocean/prometheus-client-c/releases/download/v0.1.3/libpromhttp-dev-0.1.3-Linux.deb
-        sudo apt install -y ./libprom-dev-0.1.3-Linux.deb ./libpromhttp-dev-0.1.3-Linux.deb
 
     - name: Configure
       run: |
