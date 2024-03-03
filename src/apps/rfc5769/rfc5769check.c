@@ -132,7 +132,7 @@ static int check_oauth(void) {
 
             if (convert_oauth_key_data(&okd, &key, err_msg, err_msg_size) < 0) {
               fprintf(stderr, "%s\n", err_msg);
-              return -1;
+              goto ERROR;
             }
           }
         }
@@ -148,7 +148,7 @@ static int check_oauth(void) {
 
           if (encode_oauth_token((const uint8_t *)server_name, &etoken, &key, &ot, (const uint8_t *)gcm_nonce) < 0) {
             fprintf(stderr, "%s: cannot encode oauth token\n", __FUNCTION__);
-            return -1;
+            goto ERROR;
           }
 
           if (print_extra) {
@@ -157,30 +157,30 @@ static int check_oauth(void) {
 
           if (decode_oauth_token((const uint8_t *)server_name, &etoken, &key, &dot) < 0) {
             fprintf(stderr, "%s: cannot decode oauth token\n", __FUNCTION__);
-            return -1;
+            goto ERROR;
           }
         }
 
         if (strcmp((char *)ot.enc_block.mac_key, (char *)dot.enc_block.mac_key)) {
           fprintf(stderr, "%s: wrong mac key: %s, must be %s\n", __FUNCTION__, (char *)dot.enc_block.mac_key,
                   (char *)ot.enc_block.mac_key);
-          return -1;
+          goto ERROR;
         }
 
         if (ot.enc_block.key_length != dot.enc_block.key_length) {
           fprintf(stderr, "%s: wrong key length: %d, must be %d\n", __FUNCTION__, (int)dot.enc_block.key_length,
                   (int)ot.enc_block.key_length);
-          return -1;
+          goto ERROR;
         }
         if (ot.enc_block.timestamp != dot.enc_block.timestamp) {
           fprintf(stderr, "%s: wrong timestamp: %llu, must be %llu\n", __FUNCTION__,
                   (unsigned long long)dot.enc_block.timestamp, (unsigned long long)ot.enc_block.timestamp);
-          return -1;
+          goto ERROR;
         }
         if (ot.enc_block.lifetime != dot.enc_block.lifetime) {
           fprintf(stderr, "%s: wrong lifetime: %lu, must be %lu\n", __FUNCTION__, (unsigned long)dot.enc_block.lifetime,
                   (unsigned long)ot.enc_block.lifetime);
-          return -1;
+          goto ERROR;
         }
 
         printf("OK\n");
@@ -188,7 +188,16 @@ static int check_oauth(void) {
     }
   }
 
+  if (base64encoded_ltp) {
+    free(base64encoded_ltp);
+  }
   return 0;
+
+ERROR:
+  if (base64encoded_ltp) {
+    free(base64encoded_ltp);
+  }
+  return -1;
 }
 
 //////////////////////////////////////////////////
