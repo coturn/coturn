@@ -188,15 +188,13 @@ static int check_oauth(void) {
     }
   }
 
-  if (base64encoded_ltp)
-  {
+  if (base64encoded_ltp) {
     free(base64encoded_ltp);
   }
   return 0;
 
-  ERROR:
-  if (base64encoded_ltp)
-  {
+ERROR:
+  if (base64encoded_ltp) {
     free(base64encoded_ltp);
   }
   return -1;
