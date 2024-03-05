@@ -326,6 +326,10 @@ typedef struct _turn_params_ {
   int no_auth_pings;
   int no_dynamic_ip_list;
   int no_dynamic_realms;
+  
+  //// UDP Notifier ////
+  int udp_notifier;
+  char udp_notifier_params[1025];
 
   vint log_binding;
   vint no_stun_backward_compatibility;

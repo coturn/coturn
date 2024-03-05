@@ -207,11 +207,7 @@ static int no_stdout_log = 0;
 void set_no_stdout_log(int val) { no_stdout_log = val; }
 
 #define MAX_LOG_TIMESTAMP_FORMAT_LEN 48
-static char turn_log_timestamp_format[MAX_LOG_TIMESTAMP_FORMAT_LEN] = "%FT%T%z";
-
-void set_turn_log_timestamp_format(char *new_format) {
-  strncpy(turn_log_timestamp_format, new_format, MAX_LOG_TIMESTAMP_FORMAT_LEN - 1);
-}
+static char turn_log_timestamp_format[MAX_LOG_TIMESTAMP_FORMAT_LEN] = "%Y-%m-%d %H:%M:%S";
 
 int use_new_log_timestamp_format = 0;
 
@@ -550,8 +546,11 @@ void turn_log_func_default(char *file, int line, TURN_LOG_LEVEL level, const cha
   char s[MAX_RTPPRINTF_BUFFER_SIZE + 1];
   size_t so_far = 0;
   if (use_new_log_timestamp_format) {
-    time_t now = time(NULL);
-    so_far += strftime(s, sizeof(s), turn_log_timestamp_format, localtime(&now));
+   	struct timeval now;
+		if(gettimeofday(&now, NULL) == 0) {
+      so_far += strftime(s, sizeof(s), turn_log_timestamp_format, localtime(&now.tv_sec));
+      so_far += snprintf(s + so_far, sizeof(s) - (so_far+1), ",%ld", now.tv_usec);
+		}
   } else {
     so_far += snprintf(s, sizeof(s), "%lu: ", (unsigned long)log_time());
   }
