@@ -552,20 +552,19 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
 
       hmac[0] = 0;
 
-      stun_attr_ref sar = stun_attr_get_first_by_type_str(
-          ioa_network_buffer_data(nbh), ioa_network_buffer_get_size(nbh), STUN_ATTRIBUTE_MESSAGE_INTEGRITY);
-      if (!sar) {
-        return -1;
-      }
-
-      int sarlen = stun_attr_get_len(sar);
-      switch (sarlen) {
-      case SHA1SIZEBYTES:
+      switch (turn_params.auth_secret_with_timestamp_shatype) {
+      case SHATYPE_SHA1:
         hmac_len = SHA1SIZEBYTES;
         break;
-      case SHA256SIZEBYTES:
-      case SHA384SIZEBYTES:
-      case SHA512SIZEBYTES:
+      case SHATYPE_SHA256:
+        hmac_len = SHA256SIZEBYTES;
+        break;
+      case SHATYPE_SHA384:
+        hmac_len = SHA384SIZEBYTES;
+        break;
+      case SHATYPE_SHA512:
+        hmac_len = SHA512SIZEBYTES;
+        break;
       default:
         return -1;
       };
@@ -576,7 +575,7 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
 
         if (secret) {
           if (stun_calculate_hmac(usname, strlen((char *)usname), (const uint8_t *)secret, strlen(secret), hmac,
-                                  &hmac_len, SHATYPE_DEFAULT) >= 0) {
+                                  &hmac_len, turn_params.auth_secret_with_timestamp_shatype) >= 0) {
             size_t pwd_length = 0;
             char *pwd = base64_encode(hmac, hmac_len, &pwd_length);
 

@@ -203,6 +203,7 @@ turn_params_t turn_params = {
     0,                                  /* mobility */
     TURN_CREDENTIALS_NONE,              /* ct */
     0,                                  /* use_auth_secret_with_timestamp */
+    SHATYPE_DEFAULT,                    /* auth_secret_with_timestamp_shatype */
     0,                                  /* max_bps */
     0,                                  /* bps_capacity */
     0,                                  /* bps_capacity_allocated */
@@ -1424,6 +1425,7 @@ enum EXTRA_OPTS {
   PROMETHEUS_PORT_OPT,
   PROMETHEUS_ENABLE_USERNAMES_OPT,
   AUTH_SECRET_OPT,
+  AUTH_SECRET_SHA256_OPT,
   NO_AUTH_PINGS_OPT,
   NO_DYNAMIC_IP_LIST_OPT,
   NO_DYNAMIC_REALMS_OPT,
@@ -1545,6 +1547,7 @@ static const struct myoption long_options[] = {
     {"prometheus-username-labels", optional_argument, NULL, PROMETHEUS_ENABLE_USERNAMES_OPT},
 #endif
     {"use-auth-secret", optional_argument, NULL, AUTH_SECRET_OPT},
+    {"use-auth-secret-sha256", optional_argument, NULL, AUTH_SECRET_SHA256_OPT},
     {"static-auth-secret", required_argument, NULL, STATIC_AUTH_SECRET_VAL_OPT},
     {"no-auth-pings", optional_argument, NULL, NO_AUTH_PINGS_OPT},
     {"no-dynamic-ip-list", optional_argument, NULL, NO_DYNAMIC_IP_LIST_OPT},
@@ -2203,6 +2206,9 @@ static void set_option(int c, char *value) {
     use_tltc = 1;
     turn_params.ct = TURN_CREDENTIALS_LONG_TERM;
     use_lt_credentials = 1;
+    break;
+  case AUTH_SECRET_SHA256_OPT:
+    turn_params.auth_secret_with_timestamp_shatype = SHATYPE_SHA256;
     break;
   case NO_AUTH_PINGS_OPT:
     turn_params.no_auth_pings = 1;
