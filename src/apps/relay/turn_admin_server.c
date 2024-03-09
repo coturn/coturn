@@ -933,8 +933,6 @@ static int run_cli_input(struct cli_session *cs, const char *buf0, unsigned int 
         myprintf(cs, "%s\n", str);
         close_cli_session(cs);
         turn_params.drain_turn_server = 2;
-        sleep(10);
-        exit(0);
       } else if ((strcmp(cmd, "halt") == 0) || (strcmp(cmd, "shutdown") == 0) || (strcmp(cmd, "stop") == 0)) {
         addr_debug_print(1, &(cs->addr), "Shutdown command received from CLI user");
         const char *str = "TURN server is shutting down";
