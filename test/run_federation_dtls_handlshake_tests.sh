@@ -5,6 +5,14 @@ TEST_SERVER=127.0.0.1:9191
 SUCCESS=0
 FAILURE=1
 
+if [ -x "../bin/turnserver" ]; then
+    # Use the file in the relative path
+    turnserver="../bin/turnserver"
+else
+    # Fallback to the absolute path
+    turnserver="/usr/bin/turnserver"
+fi
+
 GoodRSACiphers=('ECDHE-RSA-AES128-GCM-SHA256', 'ECDHE-RSA-AES256-GCM-SHA384',\
              'DHE-RSA-AES128-GCM-SHA256', 'ECDHE-RSA-AES128-SHA256', 'ECDHE-RSA-AES128-SHA',\
              'ECDHE-RSA-AES256-SHA384', 'ECDHE-RSA-AES256-SHA', 'DHE-RSA-AES128-SHA256',\
@@ -36,7 +44,7 @@ stop_server() {
 
 start_server() {
   stop_server
-  nohup ../bin/turnserver -c $1 > $1.out 2>&1 &
+  nohup $turnserver -c $1 > $1.out 2>&1 &
   serverPID=$!
   echo "Started server, pid=$serverPID, conf=$1, delaying 5 seconds..."
   sleep 5
