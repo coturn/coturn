@@ -11,8 +11,6 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
 # TODO: Modify this when the version is released
 SET(BUILD_VERSION "4.6.2")
 
-option(FUZZER "Build oss-fuzz fuzzing" OFF)
-
 # Find Git Version Patch
 IF(EXISTS "${CMAKE_SOURCE_DIR}/.git")
     if(NOT GIT)
@@ -137,6 +135,7 @@ install(DIRECTORY
     )
 include(cmake/CMakeCPack.cmake)
 
+option(FUZZER "Build oss-fuzz fuzzing" OFF)
 if(FUZZER)
     if (NOT CMAKE_C_COMPILER_ID STREQUAL "Clang")
         message(FATAL_ERROR "clang is require for libFuzzer")
