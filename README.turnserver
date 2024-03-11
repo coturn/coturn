@@ -238,9 +238,7 @@ Flags:
 			name will be constructed as-is, without PID and date appendage.
 			This option can be used, for example, together with the logrotate tool.
 
---new-log-timestamp				Enable full ISO-8601 timestamp in all logs.
-
---new-log-timestamp-format    	<format>	Set timestamp format (in strftime(1) format)
+--new-log-timestamp				Enable timestamp in all logs.
 
 --log-binding					Log STUN binding request. It is now disabled by default to avoid DoS attacks.
 
@@ -611,6 +609,9 @@ Options with values:
 
 --cli-max-output-sessions	Maximum number of output sessions in ps CLI command.
 			This value can be changed on-the-fly in CLI. The default value is 256.
+
+--udp-notifier		Send  notification  messages to target device via UDP interface.
+			"host=<host> port=<port>"
 
 --web-admin		Enable Turn Web-admin support. By default it is disabled.
 
