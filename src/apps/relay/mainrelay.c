@@ -3331,8 +3331,10 @@ int main(int argc, char **argv) {
 
 ////////// OpenSSL locking ////////////////////////////////////////
 
-#if defined(OPENSSL_THREADS)
-#if OPENSSL_VERSION_NUMBER < OPENSSL_VERSION_1_1_0
+int THREAD_cleanup(void);
+static int THREAD_setup(void);
+
+#if defined(OPENSSL_THREADS) && (OPENSSL_VERSION_NUMBER < OPENSSL_VERSION_1_1_0)
 
 // array larger than anything that OpenSSL may need:
 static TURN_MUTEX_DECLARE(mutex_buf[256]);
@@ -3385,13 +3387,12 @@ int THREAD_cleanup(void) {
   mutex_buf_initialized = 0;
   return 1;
 }
+/* OPENSSL_VERSION_NUMBER < OPENSSL_VERSION_1_1_0 */
+/* defined(OPENSSL_THREADS) end */
 #else
 static int THREAD_setup(void) { return 1; }
-
-int THREAD_cleanup(void);
 int THREAD_cleanup(void) { return 1; }
-#endif /* OPENSSL_VERSION_NUMBER < OPENSSL_VERSION_1_1_0 */
-#endif /* defined(OPENSSL_THREADS) */
+#endif
 
 static void adjust_key_file_name(char *fn, const char *file_title, int critical) {
   char *full_path_to_file = NULL;
