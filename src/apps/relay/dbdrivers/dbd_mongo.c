@@ -225,11 +225,8 @@ static int mongo_get_user_key(uint8_t *usname, uint8_t *realm, hmackey_t key) {
           char kval[sizeof(hmackey_t) + sizeof(hmackey_t) + 1];
           memcpy(kval, value, sz);
           kval[sz] = 0;
-          if (convert_string_key_to_binary(kval, key, sz / 2) < 0) {
-            TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key: %s, user %s\n", kval, usname);
-          } else {
-            ret = 0;
-          }
+          convert_string_key_to_binary(kval, key, sz / 2);
+          ret = 0;
         }
       }
     }
