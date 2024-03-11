@@ -7,6 +7,7 @@ set(SOURCE_FILES
     ns_turn_utils.c
     stun_buffer.c
     )
+set_source_files_properties(${SOURCE_FILES} PROPERIES LANGUAGE CXX)
 
 set(HEADER_FILES
     apputils.h
@@ -48,15 +49,6 @@ else()
     else()
         message(FATAL_ERROR "Must set Libevent")
     endif()
-endif()
-
-find_package(hiredis)
-if(hiredis_FOUND)
-    list(APPEND SOURCE_FILES hiredis_libevent2.c)
-    list(APPEND HEADER_FILES hiredis_libevent2.h)
-    list(APPEND COMMON_LIBS hiredis::hiredis)
-else()
-    list(APPEND COMMON_DEFINED TURN_NO_HIREDIS)
 endif()
 message("COMMON_LIBS:${COMMON_LIBS}")
 
