@@ -477,8 +477,8 @@ int old_stun_is_command_message_str(const uint8_t *buf, size_t blen, uint32_t *c
   return 0;
 }
 
-int stun_is_command_message_full_check_str(const uint8_t *buf, size_t blen, int must_check_fingerprint,
-                                           int *fingerprint_present) {
+int stun_is_command_message_full_check_str(const uint8_t *buf, size_t blen, bool must_check_fingerprint,
+                                           bool *fingerprint_present) {
   if (!stun_is_command_message_str(buf, blen)) {
     return 0;
   }
