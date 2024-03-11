@@ -57,6 +57,8 @@ typedef enum {
   TURN_LOG_LEVEL_ERROR
 } TURN_LOG_LEVEL;
 
+extern TURN_LOG_LEVEL app_log_level;
+
 #define TURN_VERBOSE_NONE (0)
 #define TURN_VERBOSE_NORMAL (1)
 #define TURN_VERBOSE_EXTRA (2)
