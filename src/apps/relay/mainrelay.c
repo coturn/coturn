@@ -95,6 +95,7 @@ turn_params_t turn_params = {
     "",                     /*ca_cert_file*/
     "turn_server_cert.pem", /*cert_file*/
     "turn_server_pkey.pem", /*pkey_file*/
+    0,                      /*rpk_enabled*/
     "",                     /*tls_password*/
     "",                     /*dh_file*/
 
@@ -1353,6 +1354,7 @@ enum EXTRA_OPTS {
   ALT_PORT_OPT,
   ALT_TLS_PORT_OPT,
   CERT_FILE_OPT,
+  RPK_ENABLED_OPT,
   PKEY_FILE_OPT,
   PKEY_PWD_OPT,
   MIN_PORT_OPT,
@@ -1518,6 +1520,7 @@ static const struct myoption long_options[] = {
     {"stun-only", optional_argument, NULL, 'S'},
     {"no-stun", optional_argument, NULL, NO_STUN_OPT},
     {"cert", required_argument, NULL, CERT_FILE_OPT},
+    {"enable-rpk", optional_argument, NULL, RPK_ENABLED_OPT},
     {"pkey", required_argument, NULL, PKEY_FILE_OPT},
     {"pkey-pwd", required_argument, NULL, PKEY_PWD_OPT},
     {"log-file", required_argument, NULL, 'l'},
@@ -2205,6 +2208,9 @@ static void set_option(int c, char *value) {
     break;
   case CERT_FILE_OPT:
     STRCPY(turn_params.cert_file, value);
+    break;
+  case RPK_ENABLED_OPT:
+    turn_params.rpk_enabled = get_bool_value(value);
     break;
   case CA_FILE_OPT:
     STRCPY(turn_params.ca_cert_file, value);
@@ -3723,6 +3729,14 @@ static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *metho
   } else if (!err) {
     SSL_CTX_free(*out);
     *out = ctx;
+  }
+
+  if (turn_params.rpk_enabled){
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Raw Public Keys(RFC7250) enabled!\n");
+      unsigned char cert_type = TLSEXT_cert_type_rpk;
+      if (!SSL_CTX_set1_server_cert_type(ctx, &cert_type, 1)) {
+          perror("Could not enable raw public key functionality (RFC-7250)\n");
+      }
   }
 }
 
