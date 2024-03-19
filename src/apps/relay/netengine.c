@@ -1614,7 +1614,7 @@ void run_listener_server(struct listener_server *ls) {
     }
 
     // Check if we are draining
-    if(turn_params.drain_turn_server == 2) {
+    if(turn_params.drain_turn_server == DRAINMODE_REQUESTED) {
       // Tell each turn_service we are draining
       for(size_t i = 0; i < ls->services_number; i++) {
         for(size_t j = 0; j < get_real_general_relay_servers_number(); j++) {
@@ -1633,8 +1633,8 @@ void run_listener_server(struct listener_server *ls) {
           }
         }
       }
-      turn_params.drain_turn_server = 1;
-    } else if(turn_params.drain_turn_server == 1 && global_allocation_count == 0) {
+      turn_params.drain_turn_server = DRAINMODE_ENABLED;
+    } else if(turn_params.drain_turn_server == DRAINMODE_ENABLED && global_allocation_count == 0) {
       //turn_params.stop_turn_server = 1;
       raise(SIGTERM);  // Raising SIGTERM instead of setting turn_params.stop_turn_server to 1, so that federation side shuts down cleanly as well
       TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Drain complete, shutting down now...\n");

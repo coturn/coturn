@@ -195,7 +195,7 @@ turn_params_t turn_params = {
     {NULL, 0, {0, NULL}}, /*tls_alternate_servers_list*/
 
     /////////////// stop server ////////////////
-    0, /*drain_turn_server*/
+    DRAINMODE_NOT_ENALBED, /*drain_turn_server*/
     0, /*stop_turn_server*/
     /////////////// FEDERATION SERVER ///////////////
     0,   // federation_listening_ip
@@ -3969,7 +3969,7 @@ static void shutdown_handler(evutil_socket_t sock, short events, void *args) {
 
 static void drain_handler(evutil_socket_t sock, short events, void *args) {
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Draining then terminating on signal %d\n", sock);
-  turn_params.drain_turn_server = 2;
+  turn_params.drain_turn_server = DRAINMODE_REQUESTED;
 
   UNUSED_ARG(events);
   UNUSED_ARG(args);
