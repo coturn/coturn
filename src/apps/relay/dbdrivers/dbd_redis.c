@@ -51,7 +51,7 @@ struct _Ryconninfo {
   char *dbname;
   char *password;
   unsigned int connect_timeout;
-  unsigned int port;
+  uint16_t port;
 };
 
 typedef struct _Ryconninfo Ryconninfo;
@@ -134,9 +134,9 @@ static Ryconninfo *RyconninfoParse(const char *userdb, char **errmsg) {
       } else if (!strcmp(s, "secret")) {
         co->password = strdup(seq + 1);
       } else if (!strcmp(s, "port")) {
-        co->port = (unsigned int)atoi(seq + 1);
+        co->port = atoi(seq + 1);
       } else if (!strcmp(s, "p")) {
-        co->port = (unsigned int)atoi(seq + 1);
+        co->port = atoi(seq + 1);
       } else if (!strcmp(s, "connect_timeout")) {
         co->connect_timeout = (unsigned int)atoi(seq + 1);
       } else if (!strcmp(s, "timeout")) {
@@ -201,7 +201,7 @@ redis_context_handle get_redis_async_connection(struct event_base *base, redis_s
         redisContext *rc = NULL;
 
         char ip[256] = "\0";
-        int port = DEFAULT_REDIS_PORT;
+        uint16_t port = DEFAULT_REDIS_PORT;
         if (co->host) {
           STRCPY(ip, co->host);
         }
@@ -210,7 +210,7 @@ redis_context_handle get_redis_async_connection(struct event_base *base, redis_s
         }
 
         if (co->port) {
-          port = (int)(co->port);
+          port = (co->port);
         }
 
         if (co->connect_timeout) {
@@ -268,7 +268,7 @@ redis_context_handle get_redis_async_connection(struct event_base *base, redis_s
         }
       }
 
-      ret = redisLibeventAttach(base, co->host, (uint16_t)co->port, co->password, atoi(co->dbname));
+      ret = redisLibeventAttach(base, co->host, co->port, co->password, atoi(co->dbname));
 
       if (!ret) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot initialize Redis DB connection\n");
@@ -320,7 +320,7 @@ static redisContext *get_redis_connection(void) {
       RyconninfoFree(co);
     } else {
       char ip[256] = "\0";
-      int port = DEFAULT_REDIS_PORT;
+      uint16_t port = DEFAULT_REDIS_PORT;
       if (co->host) {
         STRCPY(ip, co->host);
       }
@@ -329,7 +329,7 @@ static redisContext *get_redis_connection(void) {
       }
 
       if (co->port) {
-        port = (int)(co->port);
+        port = (co->port);
       }
 
       if (co->connect_timeout) {
