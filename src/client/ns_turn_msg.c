@@ -303,7 +303,7 @@ static void generate_enc_password(const char *pwd, char *result, const unsigned 
     memcpy(salt, orig_salt, PWD_SALT_SIZE);
     salt[PWD_SALT_SIZE] = 0;
   }
-  unsigned char rsalt[PWD_SALT_SIZE * 2 + 1];
+  unsigned char rsalt[PWD_SALT_SIZE * 2 + 2];
   readable_string(salt, rsalt, PWD_SALT_SIZE);
   result[0] = '$';
   result[1] = '5';
