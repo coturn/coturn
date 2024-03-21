@@ -36,6 +36,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <stdbool.h>
 
 #include <locale.h>
 
@@ -192,7 +193,7 @@ typedef struct _turn_params_ {
   char ca_cert_file[1025];
   char cert_file[1025];
   char pkey_file[1025];
-  char rpk_enabled;
+  bool rpk_enabled;
   char tls_password[513];
   char dh_file[1025];
 
