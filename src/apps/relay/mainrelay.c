@@ -95,7 +95,7 @@ turn_params_t turn_params = {
     "",                     /*ca_cert_file*/
     "turn_server_cert.pem", /*cert_file*/
     "turn_server_pkey.pem", /*pkey_file*/
-    0,                      /*rpk_enabled*/
+    false,                      /*rpk_enabled*/
     "",                     /*tls_password*/
     "",                     /*dh_file*/
 
