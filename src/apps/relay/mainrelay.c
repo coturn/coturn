@@ -95,7 +95,7 @@ turn_params_t turn_params = {
     "",                     /*ca_cert_file*/
     "turn_server_cert.pem", /*cert_file*/
     "turn_server_pkey.pem", /*pkey_file*/
-    false,                      /*rpk_enabled*/
+    false,                  /*rpk_enabled*/
     "",                     /*tls_password*/
     "",                     /*dh_file*/
 
@@ -3732,10 +3732,11 @@ static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *metho
   }
 
   if (turn_params.rpk_enabled){
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Raw Public Keys(RFC7250) enabled!\n");
       unsigned char cert_type = TLSEXT_cert_type_rpk;
       if (!SSL_CTX_set1_server_cert_type(ctx, &cert_type, 1)) {
           perror("Could not enable raw public key functionality (RFC-7250)\n");
+      } else {
+          TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Raw Public Keys(RFC7250) enabled!\n");
       }
   }
 }
