@@ -3003,6 +3003,15 @@ int main(int argc, char **argv) {
   turn_params.no_dtls = 1;
 #endif
 
+  if (strstr(argv[0], "turnadmin")) {
+    return adminmain(argc, argv);
+  }
+
+  // Zero pass apply the log options.
+  read_config_file(argc, argv, 0);
+  // First pass read other config options
+  read_config_file(argc, argv, 1);
+
   {
     int cpus = get_system_number_of_cpus();
     if (0 < cpus) {
@@ -3022,14 +3031,6 @@ int main(int argc, char **argv) {
 
   memset(&turn_params.default_users_db, 0, sizeof(default_users_db_t));
   turn_params.default_users_db.ram_db.static_accounts = ur_string_map_create(free);
-
-  if (strstr(argv[0], "turnadmin")) {
-    return adminmain(argc, argv);
-  }
-  // Zero pass apply the log options.
-  read_config_file(argc, argv, 0);
-  // First pass read other config options
-  read_config_file(argc, argv, 1);
 
   struct uoptions uo;
   uo.u.m = long_options;
