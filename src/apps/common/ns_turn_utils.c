@@ -364,7 +364,6 @@ static void sighup_callback_handler(int signum) {
 
 static void set_rtpfile(void) {
   if (to_reset_log_file) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "%s: resetting the log file\n", __FUNCTION__);
     reset_rtpprintf();
     to_reset_log_file = 0;
   }
