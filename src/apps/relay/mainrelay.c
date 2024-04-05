@@ -3026,7 +3026,7 @@ int main(int argc, char **argv) {
     turn_params.general_relay_servers_number = (turnserver_id)turn_params.cpus;
 
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "System cpu num is %lu\n", get_system_number_of_cpus());
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "System enable num is %lu\n", turn_params.cpus);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "System enable num is %lu\n", get_system_active_number_of_cpus());
   }
 
   memset(&turn_params.default_users_db, 0, sizeof(default_users_db_t));
