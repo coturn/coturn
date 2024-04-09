@@ -1,6 +1,9 @@
 name: msvc
 
-on: [push]
+on:
+  push:
+  pull_request:
+    types: [ opened, reopened, synchronize ]
 
 jobs:
   compile:
@@ -88,7 +91,7 @@ jobs:
         7z a coturn_windows_msvc.zip ${{github.workspace}}\build\install\*
         cmake --build . --config ${{matrix.BUILD_TYPE}} --target package
 
-    - name: update 
+    - name: Update 
       if: ${{ matrix.BUILD_TYPE == 'Release' }}
       uses: actions/upload-artifact@v4
       with:
