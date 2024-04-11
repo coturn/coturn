@@ -3734,12 +3734,12 @@ static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *metho
 
 #if OPENSSL_VERSION_NUMBER >= 0x30200010L
   if (turn_params.rpk_enabled){
-      unsigned char cert_type = TLSEXT_cert_type_rpk;
-      if (!SSL_CTX_set1_server_cert_type(ctx, &cert_type, 1)) {
-          perror("Could not enable raw public key functionality (RFC-7250)\n");
-      } else {
-          TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Raw Public Keys(RFC7250) enabled!\n");
-      }
+    unsigned char cert_type = TLSEXT_cert_type_rpk;
+    if (!SSL_CTX_set1_server_cert_type(ctx, &cert_type, 1)) {
+      perror("Could not enable raw public key functionality (RFC-7250)\n");
+    } else {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Raw Public Keys(RFC7250) enabled!\n");
+    }
   }
 #endif
 }
