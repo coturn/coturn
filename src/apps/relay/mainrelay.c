@@ -1520,7 +1520,7 @@ static const struct myoption long_options[] = {
     {"stun-only", optional_argument, NULL, 'S'},
     {"no-stun", optional_argument, NULL, NO_STUN_OPT},
     {"cert", required_argument, NULL, CERT_FILE_OPT},
-    {"enable-rpk", optional_argument, NULL, RPK_ENABLED_OPT},
+    {"raw-public-keys", optional_argument, NULL, RPK_ENABLED_OPT},
     {"pkey", required_argument, NULL, PKEY_FILE_OPT},
     {"pkey-pwd", required_argument, NULL, PKEY_PWD_OPT},
     {"log-file", required_argument, NULL, 'l'},
@@ -3733,10 +3733,10 @@ static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *metho
 
 
 #if OPENSSL_VERSION_NUMBER >= 0x30200010L
-  if (turn_params.rpk_enabled){
+  if (turn_params.rpk_enabled) {
     unsigned char cert_type = TLSEXT_cert_type_rpk;
     if (!SSL_CTX_set1_server_cert_type(ctx, &cert_type, 1)) {
-      perror("Could not enable raw public key functionality (RFC-7250)\n");
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Could not enable raw public key functionality (RFC7250)\n");
     } else {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Raw Public Keys(RFC7250) enabled!\n");
     }

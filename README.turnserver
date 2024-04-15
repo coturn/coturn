@@ -483,7 +483,7 @@ Options with values:
 			are specified, then this parameter is not needed.
 			Default value is turn_server_pkey.pem.
 
---enable-rpk        Raw public keys support.
+--raw-public-keys        Raw public keys support.
             On/off switch for RFC-7250 aka raw public keys.
             Coturn must be built against openSSL version at least 3.2.1
 
