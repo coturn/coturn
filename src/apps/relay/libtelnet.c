@@ -170,12 +170,14 @@ telnet_error_t _init_zlib(telnet_t *telnet, int deflate, int err_fatal) {
   int rs;
 
   /* if compression is already enabled, fail loudly */
-  if (telnet->z != 0)
+  if (telnet->z != 0) {
     return telnet_error(telnet, __LINE__, __func__, TELNET_EBADVAL, err_fatal, "cannot initialize compression twice");
+  }
 
   /* allocate zstream box */
-  if ((z = (z_stream *)calloc(1, sizeof(z_stream))) == 0)
+  if ((z = (z_stream *)calloc(1, sizeof(z_stream))) == 0) {
     return telnet_error(telnet, __LINE__, __func__, TELNET_ENOMEM, err_fatal, "malloc() failed: %s", strerror(errno));
+  }
 
   /* initialize */
   if (deflate) {
@@ -260,18 +262,20 @@ static INLINE int _check_telopt(telnet_t *telnet, unsigned char telopt, int us) 
   int i;
 
   /* if we have no telopts table, we obviously don't support it */
-  if (telnet->telopts == 0)
+  if (telnet->telopts == 0) {
     return 0;
+  }
 
   /* loop until found or end marker (us and him both 0) */
   for (i = 0; telnet->telopts[i].telopt != -1; ++i) {
     if (telnet->telopts[i].telopt == telopt) {
-      if (us && telnet->telopts[i].us == TELNET_WILL)
+      if (us && telnet->telopts[i].us == TELNET_WILL) {
         return 1;
-      else if (!us && telnet->telopts[i].him == TELNET_DO)
+      } else if (!us && telnet->telopts[i].him == TELNET_DO) {
         return 1;
-      else
+      } else {
         return 0;
+      }
     }
   }
 
@@ -306,13 +310,16 @@ static INLINE void _set_rfc1143(telnet_t *telnet, unsigned char telopt, char us,
   for (i = 0; i != telnet->q_cnt; ++i) {
     if (telnet->q[i].telopt == telopt) {
       telnet->q[i].state = Q_MAKE(us, him);
-      if (telopt != TELNET_TELOPT_BINARY)
+      if (telopt != TELNET_TELOPT_BINARY) {
         return;
+      }
       telnet->flags &= ~(TELNET_FLAG_TRANSMIT_BINARY | TELNET_FLAG_RECEIVE_BINARY);
-      if (us == Q_YES)
+      if (us == Q_YES) {
         telnet->flags |= TELNET_FLAG_TRANSMIT_BINARY;
-      if (him == Q_YES)
+      }
+      if (him == Q_YES) {
         telnet->flags |= TELNET_FLAG_RECEIVE_BINARY;
+      }
       return;
     }
   }
@@ -388,8 +395,9 @@ static void _negotiate(telnet_t *telnet, unsigned char telopt) {
         _set_rfc1143(telnet, telopt, Q_US(q), Q_YES);
         _send_negotiate(telnet, TELNET_DO, telopt);
         NEGOTIATE_EVENT(telnet, TELNET_EV_WILL, telopt);
-      } else
+      } else {
         _send_negotiate(telnet, TELNET_DONT, telopt);
+      }
       break;
     case Q_WANTNO:
       _set_rfc1143(telnet, telopt, Q_US(q), Q_NO);
@@ -444,8 +452,9 @@ static void _negotiate(telnet_t *telnet, unsigned char telopt) {
         _set_rfc1143(telnet, telopt, Q_YES, Q_HIM(q));
         _send_negotiate(telnet, TELNET_WILL, telopt);
         NEGOTIATE_EVENT(telnet, TELNET_EV_DO, telopt);
-      } else
+      } else {
         _send_negotiate(telnet, TELNET_WONT, telopt);
+      }
       break;
     case Q_WANTNO:
       _set_rfc1143(telnet, telopt, Q_NO, Q_HIM(q));
@@ -726,8 +735,9 @@ static int _zmp_telnet(telnet_t *telnet, const char *buffer, size_t size) {
   }
 
   /* count arguments */
-  for (argc = 0, c = buffer; c != buffer + size; ++argc)
+  for (argc = 0, c = buffer; c != buffer + size; ++argc) {
     c += strlen(c) + 1;
+  }
 
   /* allocate argument array, bail on error */
   if ((argv = (const char **)calloc(argc, sizeof(const char *))) == 0) {
@@ -817,8 +827,9 @@ static int _subnegotiate(telnet_t *telnet) {
    */
   case TELNET_TELOPT_COMPRESS2:
     if (telnet->sb_telopt == TELNET_TELOPT_COMPRESS2) {
-      if (_init_zlib(telnet, 0, 1) != TELNET_EOK)
+      if (_init_zlib(telnet, 0, 1) != TELNET_EOK) {
         return 0;
+      }
 
       /* notify app that compression was enabled */
       ev.type = TELNET_EV_COMPRESS;
@@ -848,8 +859,9 @@ static int _subnegotiate(telnet_t *telnet) {
 telnet_t *telnet_init(const telnet_telopt_t *telopts, telnet_event_handler_t eh, unsigned char flags, void *user_data) {
   /* allocate structure */
   struct telnet_t *telnet = (telnet_t *)calloc(1, sizeof(telnet_t));
-  if (telnet == 0)
+  if (telnet == 0) {
     return 0;
+  }
 
   /* initialize data */
   telnet->ud = user_data;
@@ -873,10 +885,11 @@ void telnet_free(telnet_t *telnet) {
 #if defined(HAVE_ZLIB)
   /* free zlib box */
   if (telnet->z != 0) {
-    if (telnet->flags & TELNET_PFLAG_DEFLATE)
+    if (telnet->flags & TELNET_PFLAG_DEFLATE) {
       deflateEnd(telnet->z);
-    else
+    } else {
       inflateEnd(telnet->z);
+    }
     free(telnet->z);
     telnet->z = 0;
   }
@@ -974,8 +987,9 @@ static void _process(telnet_t *telnet, const char *buffer, size_t size) {
       // any byte following '\r' other than '\n' or '\0' is invalid,
       // so pass both \r and the byte
       start = i;
-      if (byte == '\0')
+      if (byte == '\0') {
         ++start;
+      }
       /* state update */
       telnet->state = TELNET_STATE_DATA;
       break;
@@ -1155,10 +1169,11 @@ void telnet_recv(telnet_t *telnet, const char *buffer, size_t size) {
       rs = inflate(telnet->z, Z_SYNC_FLUSH);
 
       /* process the decompressed bytes on success */
-      if (rs == Z_OK || rs == Z_STREAM_END)
+      if (rs == Z_OK || rs == Z_STREAM_END) {
         _process(telnet, inflate_buffer, sizeof(inflate_buffer) - telnet->z->avail_out);
-      else
+      } else {
         telnet_error(telnet, __LINE__, __func__, TELNET_ECOMPRESS, 1, "inflate() failed: %s", zError(rs));
+      }
 
       /* prepare output buffer for next run */
       telnet->z->next_out = (unsigned char *)inflate_buffer;
@@ -1374,8 +1389,9 @@ void telnet_subnegotiation(telnet_t *telnet, unsigned char telopt, const char *b
   if (telnet->flags & TELNET_FLAG_PROXY && telopt == TELNET_TELOPT_COMPRESS2) {
     telnet_event_t ev;
 
-    if (_init_zlib(telnet, 1, 1) != TELNET_EOK)
+    if (_init_zlib(telnet, 1, 1) != TELNET_EOK) {
       return;
+    }
 
     /* notify app that compression was enabled */
     ev.type = TELNET_EV_COMPRESS;
@@ -1392,8 +1408,9 @@ void telnet_begin_compress2(telnet_t *telnet) {
   telnet_event_t ev;
 
   /* attempt to create output stream first, bail if we can't */
-  if (_init_zlib(telnet, 1, 0) != TELNET_EOK)
+  if (_init_zlib(telnet, 1, 0) != TELNET_EOK) {
     return;
+  }
 
   /* send compression marker.  we send directly to the event handler
    * instead of passing through _send because _send would result in
@@ -1439,19 +1456,23 @@ int telnet_vprintf(telnet_t *telnet, const char *fmt, va_list va) {
     /* special characters */
     if (output[i] == (char)TELNET_IAC || output[i] == '\r' || output[i] == '\n') {
       /* dump prior portion of text */
-      if (i != l)
+      if (i != l) {
         _send(telnet, output + l, i - l);
+      }
       l = i + 1;
 
       /* IAC -> IAC IAC */
-      if (output[i] == (char)TELNET_IAC)
+      if (output[i] == (char)TELNET_IAC) {
         telnet_iac(telnet, TELNET_IAC);
+      }
       /* automatic translation of \r -> CRNUL */
-      else if (output[i] == '\r')
+      else if (output[i] == '\r') {
         _send(telnet, CRNUL, 2);
+      }
       /* automatic translation of \n -> CRLF */
-      else if (output[i] == '\n')
+      else if (output[i] == '\n') {
         _send(telnet, CRLF, 2);
+      }
     }
   }
 
@@ -1562,8 +1583,9 @@ void telnet_send_zmp(telnet_t *telnet, size_t argc, const char **argv) {
   telnet_begin_zmp(telnet, argv[0]);
 
   /* send out each argument, including trailing NUL byte */
-  for (i = 1; i != argc; ++i)
+  for (i = 1; i != argc; ++i) {
     telnet_zmp_arg(telnet, argv[i]);
+  }
 
   /* ZMP footer */
   telnet_finish_zmp(telnet);
@@ -1577,8 +1599,9 @@ void telnet_send_vzmpv(telnet_t *telnet, va_list va) {
   telnet_begin_sb(telnet, TELNET_TELOPT_ZMP);
 
   /* send out each argument, including trailing NUL byte */
-  while ((arg = va_arg(va, const char *)) != 0)
+  while ((arg = va_arg(va, const char *)) != 0) {
     telnet_zmp_arg(telnet, arg);
+  }
 
   /* ZMP footer */
   telnet_finish_zmp(telnet);

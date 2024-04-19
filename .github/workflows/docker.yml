@@ -95,15 +95,15 @@ jobs:
           - i386
           - ppc64le
           - s390x
-    runs-on: ${{ (matrix.dist == 'alpine' && matrix.arch == 's390x' && 'macos') 
-                                                                    || 'ubuntu' }}-latest
+        # TODO: Try remove on new QEMU or Coturn versions.
+        # Temporarily exclude `alpine` on `s390x` arch, as QEMU emulation
+        # currently times out and fails the CI.
+        exclude:
+          - dist: alpine
+            arch: s390x
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Setup Docker and Docker Compose
-        run: |
-            brew install colima docker
-            colima start
-        if: ${{ matrix.dist == 'alpine' && matrix.arch == 's390x' }}
       - uses: docker/setup-qemu-action@v3
       - run: make npm.install
         working-directory: docker/coturn/
@@ -281,7 +281,7 @@ jobs:
         working-directory: docker/coturn/
 
       - name: Create GitHub release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           name: docker/${{ steps.semver.outputs.group1 }}
           body: |

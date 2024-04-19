@@ -4,12 +4,23 @@ Coturn TURN server Docker image changelog
 
 
 
-## [4.6.2-r7] · 202?-??-?? (unreleased)
-[4.6.2-r7]: /../../tree/docker/4.6.2-r7
+## [4.6.2-r9] · 2024-??-?? (unreleased)
+[4.6.2-r9]: /../../tree/docker/4.6.2-r9
 
 ### Security updated
 
-- [Debian Linux] "bookworm" 20231218 (12.4): <https://github.com/docker-library/official-images/commit/b74fc005ee75c4609302221e135b07b5a29f9894>
+- [Debian Linux] "bookworm" 20240408 (12.5): <https://github.com/docker-library/official-images/commit/6b87410113a686735d3eae520777644d3b29bec1>
+
+
+
+
+## [4.6.2-r8] · 2024-01-29
+[4.6.2-r8]: /../../tree/docker/4.6.2-r8
+
+### Security updated
+
+- [Alpine Linux] 3.19.1: <https://github.com/docker-library/official-images/commit/a5a02e00e489cfaa9dc8056755cd00abe7d0f646>
+- [Debian Linux] "bookworm" 20240110 (12.4): <https://github.com/docker-library/official-images/commit/06237a1cf18ad130b442a864854804c1a534ff29>
 
 
 

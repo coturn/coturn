@@ -1,6 +1,6 @@
 # Author: Kang Lin <kl222@126.com>
 
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.16)
 
 project(coturn)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
@@ -10,8 +10,6 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
 # TODO: Modify this when the version is released
 SET(BUILD_VERSION "4.6.2")
-
-option(FUZZER "Build oss-fuzz fuzzing" OFF)
 
 # Find Git Version Patch
 IF(EXISTS "${CMAKE_SOURCE_DIR}/.git")
@@ -100,11 +98,6 @@ ADD_CUSTOM_TARGET(uninstall
 
 add_subdirectory(src)
 
-OPTION(BUILD_TEST "Build test" OFF)
-if(BUILD_TEST)
-    add_subdirectory(test)
-endif(BUILD_TEST)
-
 CONFIGURE_FILE(
     "${CMAKE_SOURCE_DIR}/cmake/coturnConfig.cmake.in"
     "${CMAKE_BINARY_DIR}/coturnConfig.cmake"
@@ -142,6 +135,7 @@ install(DIRECTORY
     )
 include(cmake/CMakeCPack.cmake)
 
+option(FUZZER "Build oss-fuzz fuzzing" OFF)
 if(FUZZER)
     if (NOT CMAKE_C_COMPILER_ID STREQUAL "Clang")
         message(FATAL_ERROR "clang is require for libFuzzer")

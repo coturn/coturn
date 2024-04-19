@@ -1,0 +1,47 @@
+name: compiler-sanitizers
+
+on:
+  push:
+  pull_request:
+    types: [ opened, reopened, synchronize ]
+
+jobs:
+  compiler-sanitizers:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        sanitizer: [ 'address,pointer-compare,pointer-subtract', 'thread' ]
+
+    env:
+      CFLAGS:       "-fno-omit-frame-pointer -fstack-protector-all -fsanitize=${{matrix.sanitizer}},bounds,enum -fsanitize-address-use-after-scope -fsanitize-address-use-after-return=always -fsanitize-recover=address -fsanitize-memory-track-origins=2"
+      CC:           "clang"
+      ASAN_OPTIONS: "strict_string_checks=1:detect_stack_use_after_return=1:check_initialization_order=1:detect_leaks=0:detect_invalid_pointer_pairs=1:halt_on_error=0"
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: install dependencies
+      uses: ./.github/workflows/actions/ubuntu-build-deps
+      with:
+        SUDO: true
+
+
+    - name: Configure
+      run: |
+        ./configure
+
+    - name: Compile
+      run: |
+        make -j $(nproc)
+
+    - name: Check
+      run: |
+        make check
+
+    - name: Test
+      run: |
+        cd examples
+        ./run_tests.sh

@@ -1,0 +1,78 @@
+name: msvc-analyzer
+
+on:
+  push:
+  pull_request:
+    types: [ opened, reopened, synchronize ]
+
+jobs:
+  msvc-analyzer:
+    runs-on: windows-latest
+
+    permissions:
+      # required for all codeql to report detected outcomes
+      security-events: write
+
+    strategy:
+      matrix:
+        BUILD_TYPE: [Release]
+        BUILD_SHARED_LIBS: [OFF]
+        VCPKG_PLATFORM_TOOLSET: [v143]
+        CMAKE_GENERATOR_PLATFORM: [x64]
+
+    env:
+      SOURCE_DIR:  ${{github.workspace}}\.cache\source
+      TOOLS_DIR:   ${{github.workspace}}\.cache\tools
+      INSTALL_DIR: ${{github.workspace}}\.cache\install_msvc_x64-windows_${{matrix.BUILD_TYPE}}
+      VCPKGGITCOMMITID: 53bef8994c541b6561884a8395ea35715ece75db
+      VCPKG_PLATFORM_TOOLSET: ${{matrix.VCPKG_PLATFORM_TOOLSET}}
+      CMAKE_GENERATOR_PLATFORM: ${{matrix.CMAKE_GENERATOR_PLATFORM}}
+
+    defaults:
+      run:
+        shell: cmd
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: make directory
+      run: |
+        cmake -E make_directory ${{env.SOURCE_DIR}}
+        cmake -E make_directory ${{env.TOOLS_DIR}}
+        cmake -E make_directory ${{env.INSTALL_DIR}}
+
+    - name: run-vcpkg
+      uses: lukka/run-vcpkg@v11
+      with:
+        # If not using a submodule for vcpkg sources, this specifies which commit
+        # id must be checkout from a Git repo. It must not set if using a submodule
+        # for vcpkg.
+        vcpkgGitCommitId: '${{ env.VCPKGGITCOMMITID }}'
+
+    - name: Configure (MSVC)
+      run: |
+        cmake -B build ^
+            -A ${{matrix.CMAKE_GENERATOR_PLATFORM}} ^
+            -T ${{matrix.VCPKG_PLATFORM_TOOLSET}} ^
+            -DWITH_MYSQL=OFF ^
+            -DBUILD_SHARED_LIBS=${{matrix.BUILD_SHARED_LIBS}} ^
+            -DCMAKE_BUILD_TYPE=${{matrix.BUILD_TYPE}} ^
+            -DCMAKE_TOOLCHAIN_FILE=${{env.VCPKG_ROOT}}/scripts/buildsystems/vcpkg.cmake
+
+    - name: Initialize MSVC Code Analysis
+      uses: microsoft/msvc-code-analysis-action@v0.1.1
+      # Provide a unique ID to access the sarif output path
+      id: run-analysis
+      with:
+        cmakeBuildDirectory: build
+        buildConfiguration: ${{ matrix.BUILD_TYPE }}
+        # Ruleset file that will determine what checks will be run
+        ruleset: NativeRecommendedRules.ruleset
+
+      # Upload SARIF file to GitHub Code Scanning Alerts
+    - name: Upload SARIF to GitHub
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: ${{ steps.run-analysis.outputs.sarif }}

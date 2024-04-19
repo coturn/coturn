@@ -5,7 +5,7 @@ The TURN Server Redis database schema description can be found
 in schema.userdb.redis and schema.stats.redis files. Those files are located
 either in the turndb subdirectory of the main source code directory,
 or in /usr/local/share/turnserver/ after the installation, or somewhere in /usr/share/
-directory, depending on the OS and on the instalation package.
+directory, depending on the OS and on the installation package.
 
 If the TURN server was compiled with Hiredis support (Hiredis is the C client 
 library for Redis), then we can use the TURN server database parameter 

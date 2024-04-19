@@ -11,10 +11,10 @@ PREFIX/share/turnserver/schema.sql file after the turnserver installation:
 
 If you would like to created a new fresh SQLite TURN database:
 
-$ sqlite3 <your-db-file-name> < turndb/schema.sql
+$ `sqlite3 <your-db-file-name> < turndb/schema.sql`
 
 The schema description:
-
+```
 # Table for long-term credentials mechanism authorization:
 #
 CREATE TABLE turnusers_lt (
@@ -23,6 +23,7 @@ CREATE TABLE turnusers_lt (
     hmackey char(128),
     PRIMARY KEY (realm,name)
 );
+```
 
 The field hmackey contains HEX string representation of the key.
 We do not store the user open passwords for long-term credentials, for
@@ -31,7 +32,7 @@ if you change the realm, you will have to update the HMAC keys of all
 users, because the realm is used for the HMAC key generation.
 
 The key must be up to 32 characters (HEX representation of 16 bytes) for SHA1:
-
+```
 # Table holding shared secrets for secret-based authorization
 # (REST API). Shared secret can be stored either in unsecure open
 # plain form, or in encrypted form (see turnadmin docs).
@@ -94,6 +95,7 @@ CREATE TABLE oauth_key (
 	realm varchar(127) default '',
 	primary key (kid)
 ); 
+```
 
 The oauth_key table fields meanings are:
 
@@ -113,7 +115,7 @@ The oauth_key table fields meanings are:
 		The default value is "A256GCM";
 	
 	realm - (optional) can be used to set the user realm (if the field is not empty).
-
+```
 # Https access admin users.
 # Leave this table empty if you do not want 
 # remote https access to the admin functions.
@@ -126,6 +128,7 @@ CREATE TABLE admin_user (
 	password varchar(127),
 	primary key (name)
 );
+```
 
 You can use turnadmin program to manage the database - you can either use 
 turnadmin to add/modify/delete users, or you can use turnadmin to produce 
@@ -133,7 +136,7 @@ the hmac keys and modify the database with your favorite tools.
 
 When starting the turnserver, the --db parameter will be, for example:
 
-turnserver ... --db="/var/db/turndb"
+`turnserver ... --db="/var/db/turndb"`
 
 You will have to use the program turnadmin to fill the 
 database, or you can do that manually with psql.
@@ -142,14 +145,14 @@ Fill in users, for example:
 
   Shared secret for the TURN REST API (realm north.gov):
   
-  $ bin/turnadmin -s logen -r north.gov -b "/var/db/turndb"
+  $ `bin/turnadmin -s logen -r north.gov -b "/var/db/turndb"`
   
   Long-term credentials mechanism:
   
-  $ bin/turnadmin -a -b "/var/db/turndb" -u gorst -r north.gov -p hero
-  $ bin/turnadmin -a -b "/var/db/turndb" -u ninefingers -r north.gov -p youhavetoberealistic
+  $ `bin/turnadmin -a -b "/var/db/turndb" -u gorst -r north.gov -p hero` \
+  $ `bin/turnadmin -a -b "/var/db/turndb" -u ninefingers -r north.gov -p youhavetoberealistic`
   
   Admin users:
    
-  $ bin/turnadmin -A -b "/var/db/turndb" -u gorst -p hero
-  $ bin/turnadmin -A -b "/var/db/turndb" -u ninefingers -p youhavetoberealistic -r north.gov 
+  $ `bin/turnadmin -A -b "/var/db/turndb" -u gorst -p hero` \
+  $ `bin/turnadmin -A -b "/var/db/turndb" -u ninefingers -p youhavetoberealistic -r north.gov`

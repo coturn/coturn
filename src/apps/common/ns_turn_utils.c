@@ -38,7 +38,7 @@
 
 #include <pthread.h>
 
-#if defined(__unix__) || defined(unix) || defined(__APPLE__) || defined(__DARWIN__) || defined(__MACH__)
+#if defined(__unix__) || defined(unix) || defined(__APPLE__)
 #include <syslog.h>
 #endif
 
@@ -66,11 +66,13 @@ volatile int _log_time_value_set = 0;
 volatile turn_time_t _log_time_value = 0;
 
 static inline turn_time_t log_time(void) {
-  if (!log_start_time)
+  if (!log_start_time) {
     log_start_time = turn_time();
+  }
 
-  if (_log_time_value_set)
+  if (_log_time_value_set) {
     return (_log_time_value - log_start_time);
+  }
 
   return (turn_time() - log_start_time);
 }
@@ -175,8 +177,9 @@ static int syslog_facility = 0;
 static int str_to_syslog_facility(char *s) {
   int i;
   for (i = 0; str_fac[i]; i++) {
-    if (!strcasecmp(s, str_fac[i]))
+    if (!strcasecmp(s, str_fac[i])) {
       return int_fac[i];
+    }
   }
   return -1;
 }
@@ -218,8 +221,9 @@ void addr_debug_print(int verbose, const ioa_addr *addr, const char *s) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: EMPTY\n", s);
     } else {
       char addrbuf[INET6_ADDRSTRLEN];
-      if (!s)
+      if (!s) {
         s = "";
+      }
       if (addr->ss.sa_family == AF_INET) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "IPv4. %s: %s:%d\n", s,
                       inet_ntop(AF_INET, &addr->s4.sin_addr, addrbuf, INET6_ADDRSTRLEN), nswap16(addr->s4.sin_port));
@@ -287,8 +291,9 @@ void set_log_file_line(int set) { _log_file_line_set = set; }
 void reset_rtpprintf(void) {
   log_lock();
   if (_rtpfile) {
-    if (_rtpfile != stdout)
+    if (_rtpfile != stdout) {
       fclose(_rtpfile);
+    }
     _rtpfile = NULL;
   }
   log_unlock();
@@ -323,9 +328,9 @@ static void set_log_file_name_func(char *base, char *f, size_t fsz) {
   len = (int)strlen(base1);
 
   while (len >= 0) {
-    if (base1[len] == '/')
+    if (base1[len] == '/') {
       break;
-    else if (base1[len] == '.') {
+    } else if (base1[len] == '.') {
       free(tail);
       tail = strdup(base1 + len);
       base1[len] = 0;
@@ -382,8 +387,9 @@ static void set_rtpfile(void) {
       } else {
         set_log_file_name(log_fn_base, log_fn);
         _rtpfile = fopen(log_fn, "a");
-        if (_rtpfile)
+        if (_rtpfile) {
           TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "log file opened: %s\n", log_fn);
+        }
       }
       if (!_rtpfile) {
         fprintf(stderr, "ERROR: Cannot open log file for writing: %s\n", log_fn);
@@ -399,49 +405,54 @@ static void set_rtpfile(void) {
     char logtail[FILE_STR_LEN];
     char logf[FILE_STR_LEN];
 
-    if (simple_log)
+    if (simple_log) {
       snprintf(logtail, FILE_STR_LEN, "turn.log");
-    else
+    } else {
       snprintf(logtail, FILE_STR_LEN, "turn_%d_", (int)getpid());
+    }
 
-    if (snprintf(logbase, FILE_STR_LEN, "/var/log/turnserver/%s", logtail) < 0)
+    if (snprintf(logbase, FILE_STR_LEN, "/var/log/turnserver/%s", logtail) < 0) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "String truncation occured.\n");
+    }
 
     set_log_file_name(logbase, logf);
 
     _rtpfile = fopen(logf, "a");
-    if (_rtpfile)
+    if (_rtpfile) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "log file opened: %s\n", logf);
-    else {
-      if (snprintf(logbase, FILE_STR_LEN, "/var/log/%s", logtail) < 0)
+    } else {
+      if (snprintf(logbase, FILE_STR_LEN, "/var/log/%s", logtail) < 0) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "String truncation occured.\n");
+      }
 
       set_log_file_name(logbase, logf);
       _rtpfile = fopen(logf, "a");
-      if (_rtpfile)
+      if (_rtpfile) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "log file opened: %s\n", logf);
-      else {
-        if (snprintf(logbase, FILE_STR_LEN, "/var/tmp/%s", logtail) < 0)
+      } else {
+        if (snprintf(logbase, FILE_STR_LEN, "/var/tmp/%s", logtail) < 0) {
           TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "String truncation occured.\n");
+        }
 
         set_log_file_name(logbase, logf);
         _rtpfile = fopen(logf, "a");
-        if (_rtpfile)
+        if (_rtpfile) {
           TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "log file opened: %s\n", logf);
-        else {
-          if (snprintf(logbase, FILE_STR_LEN, "/tmp/%s", logtail) < 0)
+        } else {
+          if (snprintf(logbase, FILE_STR_LEN, "/tmp/%s", logtail) < 0) {
             TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "String truncation occured.\n");
+          }
           set_log_file_name(logbase, logf);
           _rtpfile = fopen(logf, "a");
-          if (_rtpfile)
+          if (_rtpfile) {
             TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "log file opened: %s\n", logf);
-          else {
+          } else {
             snprintf(logbase, FILE_STR_LEN, "%s", logtail);
             set_log_file_name(logbase, logf);
             _rtpfile = fopen(logf, "a");
-            if (_rtpfile)
+            if (_rtpfile) {
               TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "log file opened: %s\n", logf);
-            else {
+            } else {
               _rtpfile = stdout;
               return;
             }
@@ -463,8 +474,9 @@ void set_simple_log(int val) { simple_log = val; }
 #define QUOTE(x) Q(x)
 
 void rollover_logfile(void) {
-  if (to_syslog || !(log_fn[0]))
+  if (to_syslog || !(log_fn[0])) {
     return;
+  }
 
   {
     FILE *f = fopen(log_fn, "r");
@@ -478,8 +490,9 @@ void rollover_logfile(void) {
     }
   }
 
-  if (simple_log)
+  if (simple_log) {
     return;
+  }
 
   log_lock();
   if (_rtpfile && log_fn[0] && (_rtpfile != stdout)) {
@@ -547,8 +560,9 @@ void turn_log_func_default(char *file, int line, TURN_LOG_LEVEL level, const cha
   so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "(%lu): ", (unsigned long)gettid());
 #endif
 
-  if (_log_file_line_set)
+  if (_log_file_line_set) {
     so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "%s(%d):", file, line);
+  }
 
   switch (level) {
   case TURN_LOG_LEVEL_DEBUG:
@@ -572,8 +586,9 @@ void turn_log_func_default(char *file, int line, TURN_LOG_LEVEL level, const cha
   if (so_far > MAX_RTPPRINTF_BUFFER_SIZE + 1) {
     so_far = MAX_RTPPRINTF_BUFFER_SIZE + 1;
   }
-  if (!no_stdout_log)
+  if (!no_stdout_log) {
     fwrite(s, so_far, 1, stdout);
+  }
   /* write to syslog or to log file */
   if (to_syslog) {
 
@@ -605,46 +620,62 @@ int get_default_protocol_port(const char *scheme, size_t slen) {
   if (scheme && (slen > 0)) {
     switch (slen) {
     case 3:
-      if (!memcmp("ftp", scheme, 3))
+      if (!memcmp("ftp", scheme, 3)) {
         return 21;
-      if (!memcmp("svn", scheme, 3))
+      }
+      if (!memcmp("svn", scheme, 3)) {
         return 3690;
-      if (!memcmp("ssh", scheme, 3))
+      }
+      if (!memcmp("ssh", scheme, 3)) {
         return 22;
-      if (!memcmp("sip", scheme, 3))
+      }
+      if (!memcmp("sip", scheme, 3)) {
         return 5060;
+      }
       break;
     case 4:
-      if (!memcmp("http", scheme, 4))
+      if (!memcmp("http", scheme, 4)) {
         return 80;
-      if (!memcmp("ldap", scheme, 4))
+      }
+      if (!memcmp("ldap", scheme, 4)) {
         return 389;
-      if (!memcmp("sips", scheme, 4))
+      }
+      if (!memcmp("sips", scheme, 4)) {
         return 5061;
-      if (!memcmp("turn", scheme, 4))
+      }
+      if (!memcmp("turn", scheme, 4)) {
         return 3478;
-      if (!memcmp("stun", scheme, 4))
+      }
+      if (!memcmp("stun", scheme, 4)) {
         return 3478;
+      }
       break;
     case 5:
-      if (!memcmp("https", scheme, 5))
+      if (!memcmp("https", scheme, 5)) {
         return 443;
-      if (!memcmp("ldaps", scheme, 5))
+      }
+      if (!memcmp("ldaps", scheme, 5)) {
         return 636;
-      if (!memcmp("turns", scheme, 5))
+      }
+      if (!memcmp("turns", scheme, 5)) {
         return 5349;
-      if (!memcmp("stuns", scheme, 5))
+      }
+      if (!memcmp("stuns", scheme, 5)) {
         return 5349;
+      }
       break;
     case 6:
-      if (!memcmp("telnet", scheme, 6))
+      if (!memcmp("telnet", scheme, 6)) {
         return 23;
-      if (!memcmp("radius", scheme, 6))
+      }
+      if (!memcmp("radius", scheme, 6)) {
         return 1645;
+      }
       break;
     case 7:
-      if (!memcmp("svn+ssh", scheme, 7))
+      if (!memcmp("svn+ssh", scheme, 7)) {
         return 22;
+      }
       break;
     default:
       return 0;
@@ -682,10 +713,11 @@ int get_canonic_origin(const char *o, char *co, int sz) {
             if (port < 1) {
               port = get_default_protocol_port(otmp, schlen);
             }
-            if (port > 0)
+            if (port > 0) {
               snprintf(otmp + schlen, sizeof(otmp) - schlen - 1, "://%s:%d", host, port);
-            else
+            } else {
               snprintf(otmp + schlen, sizeof(otmp) - schlen - 1, "://%s", host);
+            }
 
             {
               unsigned char *s = (unsigned char *)otmp + schlen + 3;
