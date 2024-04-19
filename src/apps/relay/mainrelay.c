@@ -3736,9 +3736,9 @@ static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *metho
   if (turn_params.rpk_enabled) {
     unsigned char cert_type = TLSEXT_cert_type_rpk;
     if (!SSL_CTX_set1_server_cert_type(ctx, &cert_type, 1)) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Could not enable raw public key functionality (RFC7250)\n");
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Could not enable raw public keys functionality (RFC7250)\n");
     } else {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Raw Public Keys(RFC7250) enabled!\n");
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Raw Public Keys (RFC7250) enabled!\n");
     }
   }
 #endif
