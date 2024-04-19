@@ -74,7 +74,7 @@ static int check_oauth(void) {
 
   size_t ltp_output_length = 0;
 
-  const char *base64encoded_ltp =
+  char *base64encoded_ltp =
       base64_encode((const unsigned char *)long_term_key, strlen(long_term_key), &ltp_output_length);
 
   const char mac_key[33] = "ZksjpweoixXmvn67534m";
