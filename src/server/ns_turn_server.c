@@ -4783,80 +4783,80 @@ static void peer_input_handler(ioa_socket_handle s, int event_type, ioa_net_data
 
   int ilen =
       min((int)ioa_network_buffer_get_size(in_buffer->nbh), (int)(ioa_network_buffer_get_capacity_udp() - offset));
+  if (ilen < 0) {
+    return;
+  }
 
-  if (ilen >= 0) {
-    ++(ss->peer_received_packets);
-    ss->peer_received_bytes += ilen;
-    turn_report_session_usage(ss, 0);
+  ++(ss->peer_received_packets);
+  ss->peer_received_bytes += ilen;
+  turn_report_session_usage(ss, 0);
 
-    allocation *a = get_allocation_ss(ss);
-    if (is_allocation_valid(a)) {
+  allocation *a = get_allocation_ss(ss);
+  if (!is_allocation_valid(a))
+    return;
 
-      uint16_t chnum = 0;
+  uint16_t chnum = 0;
 
-      ioa_network_buffer_handle nbh = NULL;
+  ioa_network_buffer_handle nbh = NULL;
 
-      turn_permission_info *tinfo = allocation_get_permission(a, &(in_buffer->src_addr));
-      if (tinfo) {
-        chnum = get_turn_channel_number(tinfo, &(in_buffer->src_addr));
-      } else if (!(server->server_relay)) {
-        return;
-      }
+  turn_permission_info *tinfo = allocation_get_permission(a, &(in_buffer->src_addr));
+  if (tinfo) {
+    chnum = get_turn_channel_number(tinfo, &(in_buffer->src_addr));
+  } else if (!(server->server_relay)) {
+    return;
+  }
 
-      if (chnum) {
+  if (chnum) {
 
-        size_t len = (size_t)(ilen);
+    size_t len = (size_t)(ilen);
 
-        nbh = in_buffer->nbh;
+    nbh = in_buffer->nbh;
 
-        ioa_network_buffer_add_offset_size(nbh, 0, STUN_CHANNEL_HEADER_LENGTH,
-                                           ioa_network_buffer_get_size(nbh) + STUN_CHANNEL_HEADER_LENGTH);
+    ioa_network_buffer_add_offset_size(nbh, 0, STUN_CHANNEL_HEADER_LENGTH,
+                                       ioa_network_buffer_get_size(nbh) + STUN_CHANNEL_HEADER_LENGTH);
 
-        ioa_network_buffer_header_init(nbh);
+    ioa_network_buffer_header_init(nbh);
 
-        SOCKET_TYPE st = get_ioa_socket_type(ss->client_socket);
-        int do_padding = is_stream_socket(st);
+    SOCKET_TYPE st = get_ioa_socket_type(ss->client_socket);
+    int do_padding = is_stream_socket(st);
 
-        stun_init_channel_message_str(chnum, ioa_network_buffer_data(nbh), &len, len, do_padding);
-        ioa_network_buffer_set_size(nbh, len);
-        in_buffer->nbh = NULL;
-        if (eve(server->verbose)) {
-          TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: send channel 0x%x\n", __FUNCTION__, (int)(chnum));
-        }
-      } else {
+    stun_init_channel_message_str(chnum, ioa_network_buffer_data(nbh), &len, len, do_padding);
+    ioa_network_buffer_set_size(nbh, len);
+    in_buffer->nbh = NULL;
+    if (eve(server->verbose)) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: send channel 0x%x\n", __FUNCTION__, (int)(chnum));
+    }
+  } else {
 
-        size_t len = 0;
+    size_t len = 0;
 
-        nbh = ioa_network_buffer_allocate(server->e);
-        stun_init_indication_str(STUN_METHOD_DATA, ioa_network_buffer_data(nbh), &len);
-        stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_DATA,
-                          ioa_network_buffer_data(in_buffer->nbh), (size_t)ilen);
-        stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_XOR_PEER_ADDRESS,
-                               &(in_buffer->src_addr));
-        ioa_network_buffer_set_size(nbh, len);
+    nbh = ioa_network_buffer_allocate(server->e);
+    stun_init_indication_str(STUN_METHOD_DATA, ioa_network_buffer_data(nbh), &len);
+    stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_DATA, ioa_network_buffer_data(in_buffer->nbh),
+                      (size_t)ilen);
+    stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &(in_buffer->src_addr));
+    ioa_network_buffer_set_size(nbh, len);
 
-        if (!(*server->no_software_attribute)) {
-          const uint8_t *field = (const uint8_t *)get_version(server);
-          size_t fsz = strlen(get_version(server));
-          size_t len = ioa_network_buffer_get_size(nbh);
-          stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_SOFTWARE, field, fsz);
-          ioa_network_buffer_set_size(nbh, len);
-        }
+    if (!(*server->no_software_attribute)) {
+      const uint8_t *field = (const uint8_t *)get_version(server);
+      size_t fsz = strlen(get_version(server));
+      size_t len = ioa_network_buffer_get_size(nbh);
+      stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_SOFTWARE, field, fsz);
+      ioa_network_buffer_set_size(nbh, len);
+    }
 
-        if ((server->fingerprint) || ss->enforce_fingerprints) {
-          size_t len = ioa_network_buffer_get_size(nbh);
-          stun_attr_add_fingerprint_str(ioa_network_buffer_data(nbh), &len);
-          ioa_network_buffer_set_size(nbh, len);
-        }
-      }
-      if (eve(server->verbose)) {
-        uint16_t *t = (uint16_t *)ioa_network_buffer_data(nbh);
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Send data: 0x%x\n", (int)(nswap16(t[0])));
-      }
-
-      write_client_connection(server, ss, nbh, in_buffer->recv_ttl - 1, in_buffer->recv_tos);
+    if ((server->fingerprint) || ss->enforce_fingerprints) {
+      size_t len = ioa_network_buffer_get_size(nbh);
+      stun_attr_add_fingerprint_str(ioa_network_buffer_data(nbh), &len);
+      ioa_network_buffer_set_size(nbh, len);
     }
   }
+  if (eve(server->verbose)) {
+    uint16_t *t = (uint16_t *)ioa_network_buffer_data(nbh);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Send data: 0x%x\n", (int)(nswap16(t[0])));
+  }
+
+  write_client_connection(server, ss, nbh, in_buffer->recv_ttl - 1, in_buffer->recv_tos);
 }
 
 static void client_input_handler(ioa_socket_handle s, int event_type, ioa_net_data *data, void *arg, int can_resume) {
