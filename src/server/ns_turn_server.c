@@ -4792,8 +4792,9 @@ static void peer_input_handler(ioa_socket_handle s, int event_type, ioa_net_data
   turn_report_session_usage(ss, 0);
 
   allocation *a = get_allocation_ss(ss);
-  if (!is_allocation_valid(a))
+  if (!is_allocation_valid(a)) {
     return;
+  }
 
   uint16_t chnum = 0;
 
