@@ -747,7 +747,6 @@ int get_a_local_relay(int family, ioa_addr *relay_addr) {
   outBufLen = WORKING_BUFFER_SIZE;
 
   do {
-
     pAddresses = (IP_ADAPTER_ADDRESSES *)malloc(outBufLen);
     if (pAddresses == NULL) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Memory allocation failed for IP_ADAPTER_ADDRESSES struct\n");
@@ -836,6 +835,7 @@ int get_a_local_relay(int family, ioa_addr *relay_addr) {
   if (pAddresses) {
     free(pAddresses);
   }
+  return -1;
 #else
   struct ifaddrs *ifs = NULL;
 
@@ -3833,7 +3833,6 @@ static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *metho
     SSL_CTX_free(*out);
     *out = ctx;
   }
-
 
 #if OPENSSL_VERSION_NUMBER >= 0x30200010L
   if (turn_params.rpk_enabled) {
