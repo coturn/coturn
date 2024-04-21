@@ -747,7 +747,6 @@ int get_a_local_relay(int family, ioa_addr *relay_addr) {
   outBufLen = WORKING_BUFFER_SIZE;
 
   do {
-
     pAddresses = (IP_ADAPTER_ADDRESSES *)malloc(outBufLen);
     if (pAddresses == NULL) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Memory allocation failed for IP_ADAPTER_ADDRESSES struct\n");
@@ -836,6 +835,7 @@ int get_a_local_relay(int family, ioa_addr *relay_addr) {
   if (pAddresses) {
     free(pAddresses);
   }
+  return -1;
 #else
   struct ifaddrs *ifs = NULL;
 
@@ -1781,7 +1781,8 @@ unsigned char *base64decode(const void *b64_decode_this, int decode_this_many_by
   int decoded_byte_index = 0;                     // Index where the next base64_decoded byte should be written.
   while (0 < BIO_read(b64_bio, base64_decoded + decoded_byte_index, 1)) { // Read byte-by-byte.
     decoded_byte_index++; // Increment the index until read of BIO decoded data is complete.
-  } // Once we're done reading decoded data, BIO_read returns -1 even though there's no error.
+  }                       // Once we're done reading decoded data, BIO_read returns -1 even though there's no error.
+
   BIO_free_all(b64_bio); // Destroys all BIOs in chain, starting with b64 (i.e. the 1st one).
   return base64_decoded; // Returns base-64 decoded data with trailing null terminator.
 }
@@ -3832,7 +3833,6 @@ static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *metho
     SSL_CTX_free(*out);
     *out = ctx;
   }
-
 
 #if OPENSSL_VERSION_NUMBER >= 0x30200010L
   if (turn_params.rpk_enabled) {
