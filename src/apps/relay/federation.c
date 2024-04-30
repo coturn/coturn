@@ -404,6 +404,7 @@ static void signal_callback_handler(evutil_socket_t sock, short events, void *ar
 
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Terminating server, ended all federated connections\n");
 
+  sleep(5);  // Give time for TURN side to shutdown gracefully
   exit(0);
 
   UNUSED_ARG(sock);

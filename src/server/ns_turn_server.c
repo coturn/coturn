@@ -1278,6 +1278,12 @@ static int handle_turn_allocate(turn_turnserver *server, ts_ur_super_session *ss
           }
         }
 
+        if(server->is_draining) {
+         // Don't allow new allocations if we are draining
+          *err_code = 300;  // 300 (Try Alternate): The client should contact an alternate server for this request.
+          *reason = (const uint8_t *)"Server is draining, then will shutdown, please try another server";
+        }
+
         if (!(*err_code)) {
 
           // All is well with allocation request, now create the relay, OR if user is sft/"use_federation", then
@@ -4988,6 +4994,8 @@ void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, io
   server->no_stun_backward_compatibility = no_stun_backward_compatibility;
 
   server->response_origin_only_with_rfc5780 = response_origin_only_with_rfc5780;
+
+  server->is_draining = 0;
 }
 
 ioa_engine_handle turn_server_get_engine(turn_turnserver *s) {
