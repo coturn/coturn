@@ -47,7 +47,7 @@
 extern "C" {
 #endif
 
-int global_allocation_count;
+extern int global_allocation_count;
 
 //////////// REALM //////////////
 
