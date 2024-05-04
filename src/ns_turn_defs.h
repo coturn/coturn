@@ -42,7 +42,7 @@
 #include <sys/param.h>
 #endif
 
-#if defined(__APPLE__) || defined(__DARWIN__) || defined(__MACH__)
+#if defined(__APPLE__)
 #define __APPLE_USE_RFC_3542
 #endif
 

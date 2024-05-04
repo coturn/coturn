@@ -2,17 +2,16 @@
 #ifndef __PROM_SERVER_H__
 #define __PROM_SERVER_H__
 
+#include "ns_turn_ioalib.h"
+#include <stdbool.h>
+
 #define DEFAULT_PROM_SERVER_PORT (9641)
+#define TURN_ALLOC_STR_MAX_SIZE (20)
 
 #if !defined(TURN_NO_PROMETHEUS)
 
-#include <signal.h>
-#include <stdbool.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-
-#include "ns_turn_ioalib.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -54,8 +53,6 @@ extern prom_counter_t *turn_total_traffic_peer_sentb;
 
 extern prom_gauge_t *turn_total_allocations_number;
 
-#define TURN_ALLOC_STR_MAX_SIZE (20)
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -68,6 +65,8 @@ void prom_set_finished_traffic(const char *realm, const char *user, unsigned lon
 void prom_inc_allocation(SOCKET_TYPE type);
 void prom_dec_allocation(SOCKET_TYPE type);
 
+int is_ipv6_enabled(void);
+
 void prom_inc_stun_binding_request(void);
 void prom_inc_stun_binding_response(void);
 void prom_inc_stun_binding_error(void);
@@ -75,6 +74,12 @@ void prom_inc_stun_binding_error(void);
 #else
 
 void start_prometheus_server(void);
+
+void prom_set_finished_traffic(const char *realm, const char *user, unsigned long rsvp, unsigned long rsvb,
+                               unsigned long sentp, unsigned long sentb, bool peer);
+
+void prom_inc_allocation(SOCKET_TYPE type);
+void prom_dec_allocation(SOCKET_TYPE type);
 
 #endif /* TURN_NO_PROMETHEUS */
 

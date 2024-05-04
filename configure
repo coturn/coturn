@@ -608,10 +608,11 @@ if [ -z "${CC}" ] ; then
         exit 1
     fi
 else
-    ${CC} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>>/dev/null
+    CC_OUTPUT=$(${CC} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB})
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
-        ${ECHO_CMD} "ERROR: cannot use compiler ${CC} properly"
+        ${ECHO_CMD} "ERROR: cannot use compiler ${CC} properly."
+        ${ECHO_CMD} "${CC_OUTPUT}"
         cleanup
         exit 1
     fi
@@ -864,7 +865,7 @@ if [ -z "${TURN_NO_PROMETHEUS}" ] ; then
                 ${ECHO_CMD}
                 ${ECHO_CMD} "Warning: microhttpd development libraries are not installed properly in required location."
                 ${ECHO_CMD} "Prometheus support will be disabled."
-                ${ECHO_CMD} "See the docs/Build.md file."
+                ${ECHO_CMD} "See the docs/Prometheus.md file."
                 ${ECHO_CMD}
                 OSCFLAGS="${OSCFLAGS} -DTURN_NO_PROMETHEUS"
             fi
@@ -872,7 +873,7 @@ if [ -z "${TURN_NO_PROMETHEUS}" ] ; then
             ${ECHO_CMD}
             ${ECHO_CMD} "Warning: Libpromhttp development libraries are not installed properly in required location."
             ${ECHO_CMD} "Prometheus support will be disabled."
-            ${ECHO_CMD} "See the docs/Build.md file."
+            ${ECHO_CMD} "See the docs/Prometheus.md file."
             ${ECHO_CMD}
             OSCFLAGS="${OSCFLAGS} -DTURN_NO_PROMETHEUS"
         fi
@@ -880,7 +881,7 @@ if [ -z "${TURN_NO_PROMETHEUS}" ] ; then
         ${ECHO_CMD}
         ${ECHO_CMD} "Warning: Libprom development libraries are not installed properly in required location."
         ${ECHO_CMD} "Prometheus support will be disabled."
-        ${ECHO_CMD} "See the docs/Build.md file."
+        ${ECHO_CMD} "See the docs/Prometheus.md file."
         ${ECHO_CMD}
         OSCFLAGS="${OSCFLAGS} -DTURN_NO_PROMETHEUS"
     fi

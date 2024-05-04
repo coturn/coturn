@@ -1,6 +1,9 @@
-name: mingw 
+name: mingw
 
-on: [push]
+on:
+  push:
+  pull_request:
+    types: [ opened, reopened, synchronize ]
 
 jobs:
   build:
@@ -44,6 +47,7 @@ jobs:
             mingw-w64-x86_64-sqlite3 ^
             mingw-w64-x86_64-hiredis ^
             mingw-w64-x86_64-postgresql ^
+            mingw-w64-x86_64-libmicrohttpd ^
             git base-devel
 
     - name: make_directory
@@ -53,18 +57,47 @@ jobs:
         cmake -E make_directory ${{env.INSTALL_DIR}}
     
     - name: Cache installed
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       id: cache-installed
       with:
         path: |
           ${{env.INSTALL_DIR}}
         key: coturn-cache-installed-mingw
 
+    - name: build prometheus
+      if: false
+      working-directory: ${{env.SOURCE_DIR}}
+      env:
+        MSYSTEM: MINGW64
+        PATH: C:\msys64\mingw64\bin;C:\msys64\usr\bin
+      run: |
+        cd ${{env.SOURCE_DIR}}
+        git clone https://github.com/digitalocean/prometheus-client-c.git
+        cd prometheus-client-c/prom
+        mkdir build
+        cd build
+        cmake .. -G"MinGW Makefiles" ^
+            -DBUILD_SHARED_LIBS=${{matrix.BUILD_SHARED_LIBS}} ^
+            -DCMAKE_BUILD_TYPE=${{matrix.BUILD_TYPE}} ^
+            -DCMAKE_INSTALL_PREFIX=${{env.INSTALL_DIR}}
+        cmake --build . --config ${{matrix.BUILD_TYPE}}
+        cmake --build . --config ${{matrix.BUILD_TYPE}} --target install
+        cd ${{env.SOURCE_DIR}}/prometheus-client-c/promhttp
+        mkdir build
+        cd build
+        cmake .. -G"MinGW Makefiles" ^
+            -DBUILD_SHARED_LIBS=${{matrix.BUILD_SHARED_LIBS}} ^
+            -DCMAKE_BUILD_TYPE=${{matrix.BUILD_TYPE}} ^
+            -DCMAKE_INSTALL_PREFIX=${{env.INSTALL_DIR}}
+        cmake --build . --config ${{matrix.BUILD_TYPE}}
+        cmake --build . --config ${{matrix.BUILD_TYPE}} --target install
+        
     - name: build coturn
       working-directory: ${{github.workspace}}
       env:
         MSYSTEM: MINGW64
         PATH: C:\msys64\mingw64\bin;C:\msys64\usr\bin
+        Prometheus_ROOT: ${{env.INSTALL_DIR}}
       run: |
         cmake -E make_directory build
         cd build
@@ -87,7 +120,7 @@ jobs:
 
     - name: update 
       if: ${{ matrix.BUILD_TYPE == 'Release' }}
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: coturn_mingw_${{ matrix.os }}
         path: |

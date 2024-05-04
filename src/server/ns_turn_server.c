@@ -55,10 +55,11 @@ static inline int get_family(int stun_family, ioa_engine_handle e, ioa_socket_ha
     return AF_INET6;
     break;
   case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT:
-    if (e->default_relays && get_ioa_socket_address_family(client_socket) == AF_INET6)
+    if (e->default_relays && get_ioa_socket_address_family(client_socket) == AF_INET6) {
       return AF_INET6;
-    else
+    } else {
       return AF_INET;
+    }
   default:
     return AF_INET;
   };
@@ -81,8 +82,9 @@ int TURN_MAX_ALLOCATE_TIMEOUT_STUN_ONLY = 3;
 
 static inline void log_method(ts_ur_super_session *ss, const char *method, int err_code, const uint8_t *reason) {
   if (ss) {
-    if (!method)
+    if (!method) {
       method = "unknown";
+    }
     if (!err_code) {
       if (ss->origin[0]) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
@@ -95,8 +97,9 @@ static inline void log_method(ts_ur_super_session *ss, const char *method, int e
             (unsigned long long)(ss->id), (const char *)(ss->realm_options.name), (const char *)(ss->username), method);
       }
     } else {
-      if (!reason)
+      if (!reason) {
         reason = get_default_reason(err_code);
+      }
       if (ss->origin[0]) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
                       "session %018llu: origin <%s> realm <%s> user <%s>: incoming packet %s processed, error %d: %s\n",
@@ -231,8 +234,9 @@ void set_rfc5780(turn_turnserver *server, get_alt_addr_cb cb, send_message_cb sm
 }
 
 static int is_rfc5780(turn_turnserver *server) {
-  if (!server)
+  if (!server) {
     return 0;
+  }
 
   return ((server->rfc5780) && (server->alt_addr_cb));
 }
@@ -257,18 +261,22 @@ static int send_turn_message_to(turn_turnserver *server, ioa_network_buffer_hand
 
 /////////////////// Peer addr check /////////////////////////////
 
-static int good_peer_addr(turn_turnserver *server, const char *realm, ioa_addr *peer_addr) {
+static int good_peer_addr(turn_turnserver *server, const char *realm, ioa_addr *peer_addr, turnsession_id session_id) {
 #define CHECK_REALM(r)                                                                                                 \
   if ((r)[0] && realm && realm[0] && strcmp((r), realm))                                                               \
   continue
 
+  turnserver_id server_id = (turnserver_id)(session_id / TURN_SESSION_ID_FACTOR);
   if (server && peer_addr) {
-    if (*(server->no_multicast_peers) && ioa_addr_is_multicast(peer_addr))
+    if (*(server->no_multicast_peers) && ioa_addr_is_multicast(peer_addr)) {
       return 0;
-    if (!*(server->allow_loopback_peers) && ioa_addr_is_loopback(peer_addr))
+    }
+    if (!*(server->allow_loopback_peers) && ioa_addr_is_loopback(peer_addr)) {
       return 0;
-    if (ioa_addr_is_zero(peer_addr))
+    }
+    if (ioa_addr_is_zero(peer_addr)) {
       return 0;
+    }
 
     {
       int i;
@@ -277,8 +285,9 @@ static int good_peer_addr(turn_turnserver *server, const char *realm, ioa_addr *
         // White listing of addr ranges
         for (i = server->ip_whitelist->ranges_number - 1; i >= 0; --i) {
           CHECK_REALM(server->ip_whitelist->rs[i].realm);
-          if (ioa_addr_in_range(&(server->ip_whitelist->rs[i].enc), peer_addr))
+          if (ioa_addr_in_range(&(server->ip_whitelist->rs[i].enc), peer_addr)) {
             return 1;
+          }
         }
       }
 
@@ -307,8 +316,8 @@ static int good_peer_addr(turn_turnserver *server, const char *realm, ioa_addr *
           if (ioa_addr_in_range(&(server->ip_blacklist->rs[i].enc), peer_addr)) {
             char saddr[129];
             addr_to_string_no_port(peer_addr, (uint8_t *)saddr);
-            TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "A peer IP %s denied in the range: %s\n", saddr,
-                          server->ip_blacklist->rs[i].str);
+            TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: A peer IP %s denied in the range: %s in server %d \n",
+                          (unsigned long long)session_id, saddr, server->ip_blacklist->rs[i].str, server_id);
             return 0;
           }
         }
@@ -326,7 +335,9 @@ static int good_peer_addr(turn_turnserver *server, const char *realm, ioa_addr *
               ioa_unlock_blacklist(server->e);
               char saddr[129];
               addr_to_string_no_port(peer_addr, (uint8_t *)saddr);
-              TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "A peer IP %s denied in the range: %s\n", saddr, bl->rs[i].str);
+              TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+                            "session %018llu: A peer IP %s denied in the range= %s in server %d \n",
+                            (unsigned long long)session_id, saddr, bl->rs[i].str, server_id);
               return 0;
             }
           }
@@ -477,45 +488,53 @@ int turn_session_info_copy_from(struct turn_session_info *tsi, ts_ur_super_sessi
       STRCPY(tsi->realm, ss->realm_options.name);
       STRCPY(tsi->origin, ss->origin);
 
-      if (ss->t_received_packets > ss->received_packets)
+      if (ss->t_received_packets > ss->received_packets) {
         tsi->received_packets = ss->t_received_packets;
-      else
+      } else {
         tsi->received_packets = ss->received_packets;
+      }
 
-      if (ss->t_sent_packets > ss->sent_packets)
+      if (ss->t_sent_packets > ss->sent_packets) {
         tsi->sent_packets = ss->t_sent_packets;
-      else
+      } else {
         tsi->sent_packets = ss->sent_packets;
+      }
 
-      if (ss->t_received_bytes > ss->received_bytes)
+      if (ss->t_received_bytes > ss->received_bytes) {
         tsi->received_bytes = ss->t_received_bytes;
-      else
+      } else {
         tsi->received_bytes = ss->received_bytes;
+      }
 
-      if (ss->t_sent_bytes > ss->sent_bytes)
+      if (ss->t_sent_bytes > ss->sent_bytes) {
         tsi->sent_bytes = ss->t_sent_bytes;
-      else
+      } else {
         tsi->sent_bytes = ss->sent_bytes;
+      }
 
-      if (ss->t_peer_received_packets > ss->peer_received_packets)
+      if (ss->t_peer_received_packets > ss->peer_received_packets) {
         tsi->peer_received_packets = ss->t_peer_received_packets;
-      else
+      } else {
         tsi->peer_received_packets = ss->peer_received_packets;
+      }
 
-      if (ss->t_peer_sent_packets > ss->peer_sent_packets)
+      if (ss->t_peer_sent_packets > ss->peer_sent_packets) {
         tsi->peer_sent_packets = ss->t_peer_sent_packets;
-      else
+      } else {
         tsi->peer_sent_packets = ss->peer_sent_packets;
+      }
 
-      if (ss->t_peer_received_bytes > ss->peer_received_bytes)
+      if (ss->t_peer_received_bytes > ss->peer_received_bytes) {
         tsi->peer_received_bytes = ss->t_peer_received_bytes;
-      else
+      } else {
         tsi->peer_received_bytes = ss->peer_received_bytes;
+      }
 
-      if (ss->t_peer_sent_bytes > ss->peer_sent_bytes)
+      if (ss->t_peer_sent_bytes > ss->peer_sent_bytes) {
         tsi->peer_sent_bytes = ss->t_peer_sent_bytes;
-      else
+      } else {
         tsi->peer_sent_bytes = ss->peer_sent_bytes;
+      }
 
       {
         tsi->received_rate = ss->received_rate;
@@ -594,8 +613,9 @@ int report_turn_session_info(turn_turnserver *server, ts_ur_super_session *ss, i
     if (turn_session_info_copy_from(&tsi, ss) < 0) {
       turn_session_info_clean(&tsi);
     } else {
-      if (force_invalid)
+      if (force_invalid) {
         tsi.valid = 0;
+      }
       if (server->send_turn_session_info(&tsi) < 0) {
         turn_session_info_clean(&tsi);
       } else {
@@ -612,13 +632,15 @@ int report_turn_session_info(turn_turnserver *server, ts_ur_super_session *ss, i
 static int mobile_id_to_string(mobile_id_t mid, char *dst, size_t dst_sz) {
   size_t output_length = 0;
 
-  if (!dst)
+  if (!dst) {
     return -1;
+  }
 
   char *s = base64_encode((const unsigned char *)&mid, sizeof(mid), &output_length);
 
-  if (!s)
+  if (!s) {
     return -1;
+  }
 
   if (!output_length || (output_length + 1 > dst_sz)) {
     free(s);
@@ -665,9 +687,9 @@ static mobile_id_t get_new_mobile_id(turn_turnserver *server) {
     sid = sid << 56;
     do {
       while (!newid) {
-        if (TURN_RANDOM_SIZE == sizeof(mobile_id_t))
+        if (TURN_RANDOM_SIZE == sizeof(mobile_id_t)) {
           newid = (mobile_id_t)turn_random();
-        else {
+        } else {
           newid = (mobile_id_t)turn_random();
           newid = (newid << 32) + (mobile_id_t)turn_random();
         }
@@ -788,9 +810,9 @@ static void delete_ur_map_ss(void *p, SOCKET_TYPE socket_type) {
 /////////// clean all /////////////////////
 
 static int turn_server_remove_all_from_ur_map_ss(ts_ur_super_session *ss, SOCKET_TYPE socket_type) {
-  if (!ss)
+  if (!ss) {
     return 0;
-  else {
+  } else {
     int ret = 0;
     if (ss->client_socket) {
       clear_ioa_socket_session_if(ss->client_socket, ss);
@@ -812,8 +834,9 @@ static void client_ss_channel_timeout_handler(ioa_engine_handle e, void *arg) {
 
   UNUSED_ARG(e);
 
-  if (!arg)
+  if (!arg) {
     return;
+  }
 
   ch_info *chn = (ch_info *)arg;
 
@@ -858,8 +881,9 @@ static int update_turn_permission_lifetime(ts_ur_super_session *ss, turn_permiss
 
     if (server) {
 
-      if (!time_delta)
+      if (!time_delta) {
         time_delta = *(server->permission_lifetime);
+      }
       tinfo->expiration_time = server->ctime + time_delta;
 
       IOA_EVENT_DEL(tinfo->lifetime_ev);
@@ -893,8 +917,9 @@ static int update_channel_lifetime(ts_ur_super_session *ss, ch_info *chn) {
 
       if (server) {
 
-        if (update_turn_permission_lifetime(ss, tinfo, *(server->channel_lifetime)) < 0)
+        if (update_turn_permission_lifetime(ss, tinfo, *(server->channel_lifetime)) < 0) {
           return -1;
+        }
 
         chn->expiration_time = server->ctime + *(server->channel_lifetime);
 
@@ -1087,8 +1112,9 @@ static int handle_turn_allocate(turn_turnserver *server, ts_ur_super_session *ss
       } break;
       case STUN_ATTRIBUTE_DONT_FRAGMENT:
         dont_fragment = 1;
-        if (!(server->dont_fragment))
+        if (!(server->dont_fragment)) {
           unknown_attrs[(*ua_num)++] = nswap16(attr_type);
+        }
         break;
       case STUN_ATTRIBUTE_LIFETIME: {
         if (stun_attr_get_len(sar) != 4) {
@@ -1175,8 +1201,9 @@ static int handle_turn_allocate(turn_turnserver *server, ts_ur_super_session *ss
         }
       } break;
       default:
-        if (attr_type >= 0x0000 && attr_type <= 0x7FFF)
+        if (attr_type >= 0x0000 && attr_type <= 0x7FFF) {
           unknown_attrs[(*ua_num)++] = nswap16(attr_type);
+        }
       };
       sar = stun_attr_get_next_str(ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh),
                                    sar);
@@ -1185,8 +1212,9 @@ static int handle_turn_allocate(turn_turnserver *server, ts_ur_super_session *ss
     if (!transport) {
 
       *err_code = 400;
-      if (!(*reason))
+      if (!(*reason)) {
         *reason = (const uint8_t *)"Transport field missed or wrong";
+      }
 
     } else if (*ua_num > 0) {
 
@@ -1200,8 +1228,9 @@ static int handle_turn_allocate(turn_turnserver *server, ts_ur_super_session *ss
                (dont_fragment || in_reservation_token || (even_port != -1))) {
 
       *err_code = 400;
-      if (!(*reason))
+      if (!(*reason)) {
         *reason = (const uint8_t *)"Request parameters are incompatible with TCP transport";
+      }
 
     } else {
 
@@ -1234,10 +1263,12 @@ static int handle_turn_allocate(turn_turnserver *server, ts_ur_super_session *ss
           }
         }
 
-        if (af4)
+        if (af4) {
           af4 = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4;
-        if (af6)
+        }
+        if (af6) {
           af6 = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6;
+        }
 
         if (af4 && af6) {
           if (server->external_ip_set) {
@@ -1524,8 +1555,9 @@ static int handle_turn_refresh(turn_turnserver *server, ts_ur_super_session *ss,
             *reason = (const uint8_t *)"Wrong lifetime field data";
           } else {
             lifetime = nswap32(*((const uint32_t *)value));
-            if (!lifetime)
+            if (!lifetime) {
               to_delete = 1;
+            }
           }
         }
       } break;
@@ -1561,8 +1593,9 @@ static int handle_turn_refresh(turn_turnserver *server, ts_ur_super_session *ss,
         }
       } break;
       default:
-        if (attr_type >= 0x0000 && attr_type <= 0x7FFF)
+        if (attr_type >= 0x0000 && attr_type <= 0x7FFF) {
           unknown_attrs[(*ua_num)++] = nswap16(attr_type);
+        }
       };
       sar = stun_attr_get_next_str(ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh),
                                    sar);
@@ -1650,9 +1683,9 @@ static int handle_turn_refresh(turn_turnserver *server, ts_ur_super_session *ss,
 
               // Session transfer:
 
-              if (to_delete)
+              if (to_delete) {
                 lifetime = 0;
-              else {
+              } else {
                 lifetime = stun_adjust_allocate_lifetime(lifetime, *(server->max_allocate_lifetime),
                                                          ss->max_session_time_auth);
               }
@@ -1764,9 +1797,9 @@ static int handle_turn_refresh(turn_turnserver *server, ts_ur_super_session *ss,
 
     } else {
 
-      if (to_delete)
+      if (to_delete) {
         lifetime = 0;
-      else {
+      } else {
         lifetime = stun_adjust_allocate_lifetime(lifetime, *(server->max_allocate_lifetime), ss->max_session_time_auth);
       }
 
@@ -1837,8 +1870,9 @@ static void tcp_deliver_delayed_buffer(unsent_buffer *ub, ioa_socket_handle s, t
     size_t i = 0;
     do {
       ioa_network_buffer_handle nbh = top_unsent_buffer(ub);
-      if (!nbh)
+      if (!nbh) {
         break;
+      }
 
       uint32_t bytes = (uint32_t)ioa_network_buffer_get_size(nbh);
 
@@ -1857,8 +1891,9 @@ static void tcp_deliver_delayed_buffer(unsent_buffer *ub, ioa_socket_handle s, t
 
 static void tcp_peer_input_handler(ioa_socket_handle s, int event_type, ioa_net_data *in_buffer, void *arg,
                                    int can_resume) {
-  if (!(event_type & IOA_EV_READ) || !arg)
+  if (!(event_type & IOA_EV_READ) || !arg) {
     return;
+  }
 
   UNUSED_ARG(s);
   UNUSED_ARG(can_resume);
@@ -1901,8 +1936,9 @@ static void tcp_peer_input_handler(ioa_socket_handle s, int event_type, ioa_net_
 
 static void tcp_client_input_handler_rfc6062data(ioa_socket_handle s, int event_type, ioa_net_data *in_buffer,
                                                  void *arg, int can_resume) {
-  if (!(event_type & IOA_EV_READ) || !arg)
+  if (!(event_type & IOA_EV_READ) || !arg) {
     return;
+  }
 
   UNUSED_ARG(s);
   UNUSED_ARG(can_resume);
@@ -1914,11 +1950,13 @@ static void tcp_client_input_handler_rfc6062data(ioa_socket_handle s, int event_
     ss = (ts_ur_super_session *)a->owner;
   }
 
-  if (tc->state != TC_STATE_READY)
+  if (tc->state != TC_STATE_READY) {
     return;
+  }
 
-  if (!(tc->peer_s))
+  if (!(tc->peer_s)) {
     return;
+  }
 
   ioa_network_buffer_handle nbh = in_buffer->nbh;
   in_buffer->nbh = NULL;
@@ -1940,8 +1978,9 @@ static void tcp_client_input_handler_rfc6062data(ioa_socket_handle s, int event_
     ss->peer_sent_bytes += bytes;
   }
 
-  if (ss)
+  if (ss) {
     turn_report_session_usage(ss, 0);
+  }
 }
 
 static void tcp_conn_bind_timeout_handler(ioa_engine_handle e, void *arg) {
@@ -1992,8 +2031,9 @@ static void tcp_peer_connection_completed_callback(int success, void *arg) {
         char ls[257] = "\0";
         char rs[257] = "\0";
         ioa_addr *laddr = get_local_addr_from_ioa_socket(ss->client_socket);
-        if (laddr)
+        if (laddr) {
           addr_to_string(laddr, (uint8_t *)ls);
+        }
         addr_to_string(&(tc->peer_addr), (uint8_t *)rs);
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: failure to connect from %s to %s\n", __FUNCTION__, ls, rs);
       }
@@ -2131,13 +2171,14 @@ static void tcp_peer_accept_connection(ioa_socket_handle s, void *arg) {
     tcp_connection *tc = get_tcp_connection_by_peer(a, peer_addr);
     if (tc) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: peer data socket with this address already exist\n", __FUNCTION__);
-      if (tc->peer_s != s)
+      if (tc->peer_s != s) {
         close_ioa_socket(s);
+      }
       FUNCEND;
       return;
     }
 
-    if (!good_peer_addr(server, ss->realm_options.name, peer_addr)) {
+    if (!good_peer_addr(server, ss->realm_options.name, peer_addr, ss->id)) {
       uint8_t saddr[256];
       addr_to_string(peer_addr, saddr);
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: an attempt to connect from a peer with forbidden address: %s\n",
@@ -2251,8 +2292,9 @@ static int handle_turn_connect(turn_turnserver *server, ts_ur_super_session *ss,
         break;
       }
       default:
-        if (attr_type >= 0x0000 && attr_type <= 0x7FFF)
+        if (attr_type >= 0x0000 && attr_type <= 0x7FFF) {
           unknown_attrs[(*ua_num)++] = nswap16(attr_type);
+        }
       };
       sar = stun_attr_get_next_str(ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh),
                                    sar);
@@ -2272,7 +2314,7 @@ static int handle_turn_connect(turn_turnserver *server, ts_ur_super_session *ss,
       *reason = (const uint8_t *)"Where is Peer Address ?";
 
     } else {
-      if (!good_peer_addr(server, ss->realm_options.name, &peer_addr)) {
+      if (!good_peer_addr(server, ss->realm_options.name, &peer_addr, ss->id)) {
         *err_code = 403;
         *reason = (const uint8_t *)"Forbidden IP";
       } else {
@@ -2332,8 +2374,9 @@ static int handle_turn_connection_bind(turn_turnserver *server, ts_ur_super_sess
         }
       } break;
       default:
-        if (attr_type >= 0x0000 && attr_type <= 0x7FFF)
+        if (attr_type >= 0x0000 && attr_type <= 0x7FFF) {
           unknown_attrs[(*ua_num)++] = nswap16(attr_type);
+        }
       };
       sar = stun_attr_get_next_str(ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh),
                                    sar);
@@ -2391,8 +2434,9 @@ static int handle_turn_connection_bind(turn_turnserver *server, ts_ur_super_sess
 int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_connection_id tcid, stun_tid *tid,
                                                  ioa_socket_handle s, int message_integrity, ioa_net_data *in_buffer,
                                                  int can_resume) {
-  if (!server)
+  if (!server) {
     return -1;
+  }
 
   FUNCSTART;
 
@@ -2450,8 +2494,9 @@ int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_co
       }
     }
 
-    if (tc)
+    if (tc) {
       get_and_clean_tcp_connection_by_id(server->tcp_relay_connections, tcid);
+    }
 
     if (!resp_constructed) {
       if (!err_code) {
@@ -2572,8 +2617,9 @@ static int handle_turn_channel_bind(turn_turnserver *server, ts_ur_super_session
         break;
       }
       default:
-        if (attr_type >= 0x0000 && attr_type <= 0x7FFF)
+        if (attr_type >= 0x0000 && attr_type <= 0x7FFF) {
           unknown_attrs[(*ua_num)++] = nswap16(attr_type);
+        }
       };
       sar = stun_attr_get_next_str(ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh),
                                    sar);
@@ -2629,7 +2675,7 @@ static int handle_turn_channel_bind(turn_turnserver *server, ts_ur_super_session
           *err_code = 400;
           *reason = (const uint8_t *)"You cannot use the same peer with different channel number";
         } else {
-          if (!good_peer_addr(server, ss->realm_options.name, &peer_addr)) {
+          if (!good_peer_addr(server, ss->realm_options.name, &peer_addr, ss->id)) {
             *err_code = 403;
             *reason = (const uint8_t *)"Forbidden IP";
           } else {
@@ -2698,8 +2744,9 @@ static int handle_turn_binding(turn_turnserver *server, ts_ur_super_session *ss,
   SOCKET_TYPE st = get_ioa_socket_type(ss->client_socket);
   int use_reflected_from = 0;
 
-  if (!(ss->client_socket))
+  if (!(ss->client_socket)) {
     return -1;
+  }
 
   *origin_changed = 0;
   *dest_changed = 0;
@@ -2778,8 +2825,9 @@ static int handle_turn_binding(turn_turnserver *server, ts_ur_super_session *ss,
       }
       break;
     default:
-      if (attr_type >= 0x0000 && attr_type <= 0x7FFF)
+      if (attr_type >= 0x0000 && attr_type <= 0x7FFF) {
         unknown_attrs[(*ua_num)++] = nswap16(attr_type);
+      }
     };
     sar = stun_attr_get_next_str(ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh),
                                  sar);
@@ -2860,8 +2908,9 @@ static int handle_turn_binding(turn_turnserver *server, ts_ur_super_session *ss,
 
           if (padding) {
             int mtu = get_local_mtu_ioa_socket(ss->client_socket);
-            if (mtu < 68)
+            if (mtu < 68) {
               mtu = 1500;
+            }
 
             mtu = (mtu >> 2) << 2;
             stun_attr_add_padding_str(ioa_network_buffer_data(nbh), &len, (uint16_t)mtu);
@@ -2902,10 +2951,11 @@ static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss, in
       switch (attr_type) {
         SKIP_ATTRIBUTES;
       case STUN_ATTRIBUTE_DONT_FRAGMENT:
-        if (!(server->dont_fragment))
+        if (!(server->dont_fragment)) {
           unknown_attrs[(*ua_num)++] = nswap16(attr_type);
-        else
+        } else {
           set_df = 1;
+        }
         break;
       case STUN_ATTRIBUTE_XOR_PEER_ADDRESS: {
         if (addr_found) {
@@ -2926,8 +2976,9 @@ static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss, in
         }
       } break;
       default:
-        if (attr_type >= 0x0000 && attr_type <= 0x7FFF)
+        if (attr_type >= 0x0000 && attr_type <= 0x7FFF) {
           unknown_attrs[(*ua_num)++] = nswap16(attr_type);
+        }
       };
       sar = stun_attr_get_next_str(ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh),
                                    sar);
@@ -2943,8 +2994,9 @@ static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss, in
 
       turn_permission_info *tinfo = NULL;
 
-      if (!(server->server_relay))
+      if (!(server->server_relay)) {
         tinfo = allocation_get_permission(a, &peer_addr);
+      }
 
       if (tinfo || (server->server_relay)) {
 
@@ -2982,8 +3034,9 @@ static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss, in
 
 static int update_permission(ts_ur_super_session *ss, ioa_addr *peer_addr) {
 
-  if (!ss || !peer_addr)
+  if (!ss || !peer_addr) {
     return -1;
+  }
 
   allocation *a = get_allocation_ss(ss);
 
@@ -2993,16 +3046,19 @@ static int update_permission(ts_ur_super_session *ss, ioa_addr *peer_addr) {
     tinfo = allocation_add_permission(a, peer_addr);
   }
 
-  if (!tinfo)
+  if (!tinfo) {
     return -1;
+  }
 
-  if (update_turn_permission_lifetime(ss, tinfo, 0) < 0)
+  if (update_turn_permission_lifetime(ss, tinfo, 0) < 0) {
     return -1;
+  }
 
   ch_info *chn = get_turn_channel(tinfo, peer_addr);
   if (chn) {
-    if (update_channel_lifetime(ss, chn) < 0)
+    if (update_channel_lifetime(ss, chn) < 0) {
       return -1;
+    }
   }
 
   return 0;
@@ -3046,7 +3102,7 @@ static int handle_turn_create_permission(turn_turnserver *server, ts_ur_super_se
           if (!get_relay_socket(a, peer_addr.ss.sa_family)) {
             *err_code = 443;
             *reason = (const uint8_t *)"Peer Address Family Mismatch (4)";
-          } else if (!good_peer_addr(server, ss->realm_options.name, &peer_addr)) {
+          } else if (!good_peer_addr(server, ss->realm_options.name, &peer_addr, ss->id)) {
             *err_code = 403;
             *reason = (const uint8_t *)"Forbidden IP";
           } else {
@@ -3054,8 +3110,9 @@ static int handle_turn_create_permission(turn_turnserver *server, ts_ur_super_se
           }
         } break;
         default:
-          if (attr_type >= 0x0000 && attr_type <= 0x7FFF)
+          if (attr_type >= 0x0000 && attr_type <= 0x7FFF) {
             unknown_attrs[(*ua_num)++] = nswap16(attr_type);
+          }
         };
         sar = stun_attr_get_next_str(ioa_network_buffer_data(in_buffer->nbh),
                                      ioa_network_buffer_get_size(in_buffer->nbh), sar);
@@ -3207,8 +3264,9 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
   uint8_t realm[STUN_MAX_REALM_SIZE + 1];
   size_t alen = 0;
 
-  if (!need_stun_authentication(server, ss))
+  if (!need_stun_authentication(server, ss)) {
     return 0;
+  }
 
   int new_nonce = 0;
 
@@ -3289,7 +3347,8 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
     realm[alen] = 0;
 
     if (!is_secure_string(realm, 0)) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: wrong realm: %s\n", __FUNCTION__, (char *)realm);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: %s: wrong realm: %s\n", (unsigned long long)(ss->id),
+                    __FUNCTION__, (char *)realm);
       realm[0] = 0;
       *err_code = 400;
       return -1;
@@ -3330,7 +3389,8 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
   usname[alen] = 0;
 
   if (!is_secure_string(usname, 1)) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: wrong username: %s\n", __FUNCTION__, (char *)usname);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: %s: wrong username: %s\n", (unsigned long long)(ss->id),
+                  __FUNCTION__, (char *)usname);
     usname[0] = 0;
     *err_code = 400;
     return -1;
@@ -3393,7 +3453,8 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
       }
     }
 
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Cannot find credentials of user <%s>\n", __FUNCTION__, (char *)usname);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: %s: Cannot find credentials of user <%s>\n",
+                  (unsigned long long)(ss->id), __FUNCTION__, (char *)usname);
     *err_code = 401;
     return create_challenge_response(ss, tid, resp_constructed, err_code, reason, nbh, method);
   }
@@ -3411,7 +3472,8 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
       }
     }
 
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: user %s credentials are incorrect\n", __FUNCTION__, (char *)usname);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: %s: user %s credentials are incorrect\n",
+                  (unsigned long long)(ss->id), __FUNCTION__, (char *)usname);
     *err_code = 401;
     return create_challenge_response(ss, tid, resp_constructed, err_code, reason, nbh, method);
   }
@@ -3434,13 +3496,15 @@ static void set_alternate_server(turn_server_addrs_list_t *asl, const ioa_addr *
 
     for (i = 0; i < asl->size; ++i) {
       ioa_addr *addr = &(asl->addrs[i]);
-      if (addr_eq(addr, local_addr))
+      if (addr_eq(addr, local_addr)) {
         return;
+      }
     }
 
     for (i = 0; i < asl->size; ++i) {
-      if (*counter >= asl->size)
+      if (*counter >= asl->size) {
         *counter = 0;
+      }
       ioa_addr *addr = &(asl->addrs[*counter]);
       *counter += 1;
       if (addr->ss.sa_family == local_addr->ss.sa_family) {
@@ -3468,8 +3532,9 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
   int no_response = 0;
   int message_integrity = 0;
 
-  if (!(ss->client_socket))
+  if (!(ss->client_socket)) {
     return -1;
+  }
 
   uint16_t unknown_attrs[MAX_NUMBER_OF_UNKNOWN_ATTRS];
   uint16_t ua_num = 0;
@@ -3486,14 +3551,16 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 
       no_response = 1;
       if (server->verbose) {
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: STUN method 0x%x ignored\n", __FUNCTION__, (unsigned int)method);
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: %s: STUN method 0x%x ignored\n",
+                      (unsigned long long)(ss->id), __FUNCTION__, (unsigned int)method);
       }
 
     } else if ((method != STUN_METHOD_BINDING) && (*(server->stun_only))) {
 
       no_response = 1;
       if (server->verbose) {
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: STUN method 0x%x ignored\n", __FUNCTION__, (unsigned int)method);
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: %s: STUN method 0x%x ignored\n",
+                      (unsigned long long)(ss->id), __FUNCTION__, (unsigned int)method);
       }
 
     } else if ((method != STUN_METHOD_BINDING) || (*(server->secure_stun))) {
@@ -3548,7 +3615,8 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
               char *corigin = (char *)malloc(STUN_MAX_ORIGIN_SIZE + 1);
               corigin[0] = 0;
               if (get_canonic_origin(o, corigin, STUN_MAX_ORIGIN_SIZE) < 0) {
-                TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Wrong origin format: %s\n", __FUNCTION__, o);
+                TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: %s: Wrong origin format: %s\n",
+                              (unsigned long long)(ss->id), __FUNCTION__, o);
               }
               if (!strncmp(ss->origin, corigin, STUN_MAX_ORIGIN_SIZE)) {
                 origin_found = 1;
@@ -3602,7 +3670,8 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
               char *corigin = (char *)malloc(STUN_MAX_ORIGIN_SIZE + 1);
               corigin[0] = 0;
               if (get_canonic_origin(o, corigin, STUN_MAX_ORIGIN_SIZE) < 0) {
-                TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Wrong origin format: %s\n", __FUNCTION__, o);
+                TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: %s: Wrong origin format: %s\n",
+                              (unsigned long long)(ss->id), __FUNCTION__, o);
               }
               strncpy(ss->origin, corigin, STUN_MAX_ORIGIN_SIZE);
               free(corigin);
@@ -3625,8 +3694,9 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
           int postpone_reply = 0;
           check_stun_auth(server, ss, &tid, resp_constructed, &err_code, &reason, in_buffer, nbh, method,
                           &message_integrity, &postpone_reply, can_resume);
-          if (postpone_reply)
+          if (postpone_reply) {
             no_response = 1;
+          }
         }
       }
     }
@@ -3656,8 +3726,9 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
           log_method(ss, "CONNECT", err_code, reason);
         }
 
-        if (!err_code)
+        if (!err_code) {
           no_response = 1;
+        }
 
         break;
 
@@ -3720,7 +3791,8 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
         if (*resp_constructed && !err_code && (origin_changed || dest_changed)) {
 
           if (server->verbose && *(server->log_binding)) {
-            TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "RFC 5780 request successfully processed\n");
+            TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: RFC 5780 request successfully processed\n",
+                          (unsigned long long)(ss->id));
           }
 
           if (!(*server->no_software_attribute)) {
@@ -3739,7 +3811,8 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
         break;
       }
       default:
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unsupported STUN request received, method 0x%x\n", (unsigned int)method);
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: Unsupported STUN request received, method 0x%x\n",
+                      (unsigned long long)(ss->id), (unsigned int)method);
       };
     }
 
@@ -3779,8 +3852,8 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 
       default:
         if (server->verbose) {
-          TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Unsupported STUN indication received: method 0x%x\n",
-                        (unsigned int)method);
+          TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: Unsupported STUN indication received: method 0x%x\n",
+                        (unsigned long long)(ss->id), (unsigned int)method);
         }
       }
     };
@@ -3790,12 +3863,14 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
     no_response = 1;
 
     if (server->verbose) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Wrong STUN message received\n");
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: Wrong STUN message received\n",
+                    (unsigned long long)(ss->id));
     }
   }
 
-  if (ss->to_be_closed || !(ss->client_socket) || ioa_socket_tobeclosed(ss->client_socket))
+  if (ss->to_be_closed || !(ss->client_socket) || ioa_socket_tobeclosed(ss->client_socket)) {
     return 0;
+  }
 
   if (ua_num > 0) {
 
@@ -3816,8 +3891,9 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 
     if (!(*resp_constructed)) {
 
-      if (!err_code)
+      if (!err_code) {
         err_code = 400;
+      }
 
       size_t len = ioa_network_buffer_get_size(nbh);
       stun_init_error_response_str(method, ioa_network_buffer_data(nbh), &len, err_code, reason, &tid);
@@ -3904,8 +3980,9 @@ static int handle_old_stun_command(turn_turnserver *server, ts_ur_super_session 
           size_t newsz = (((oldsz) >> 2) + 1) << 2;
           uint8_t software[120];
           memset(software, 0, sizeof(software));
-          if (newsz > sizeof(software))
+          if (newsz > sizeof(software)) {
             newsz = sizeof(software);
+          }
           memcpy(software, get_version(server), oldsz);
           size_t len = ioa_network_buffer_get_size(nbh);
           stun_attr_add_str(ioa_network_buffer_data(nbh), &len, OLD_STUN_ATTRIBUTE_SERVER, software, newsz);
@@ -3945,8 +4022,9 @@ static int handle_old_stun_command(turn_turnserver *server, ts_ur_super_session 
 
     if (!(*resp_constructed)) {
 
-      if (!err_code)
+      if (!err_code) {
         err_code = 400;
+      }
 
       size_t len = ioa_network_buffer_get_size(nbh);
       old_stun_init_error_response_str(method, ioa_network_buffer_data(nbh), &len, err_code, reason, &tid, cookie);
@@ -3959,8 +4037,9 @@ static int handle_old_stun_command(turn_turnserver *server, ts_ur_super_session 
       size_t newsz = (((oldsz) >> 2) + 1) << 2;
       uint8_t software[120];
       memset(software, 0, sizeof(software));
-      if (newsz > sizeof(software))
+      if (newsz > sizeof(software)) {
         newsz = sizeof(software);
+      }
       memcpy(software, get_version(server), oldsz);
       size_t len = ioa_network_buffer_get_size(nbh);
       stun_attr_add_str(ioa_network_buffer_data(nbh), &len, OLD_STUN_ATTRIBUTE_SERVER, software, newsz);
@@ -3994,8 +4073,9 @@ static int write_to_peerchannel(ts_ur_super_session *ss, uint16_t chnum, ioa_net
 
       ch_info *chn = allocation_get_ch_info(a, chnum);
 
-      if (!chn)
+      if (!chn) {
         return -1;
+      }
 
       /* Channel packets are always sent with DF=0: */
       set_df_on_ioa_socket(get_relay_socket_ss(ss, chn->peer_addr.ss.sa_family), 0);
@@ -4033,8 +4113,9 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
 
   FUNCSTART;
 
-  if (!ss)
+  if (!ss) {
     return -1;
+  }
 
   SOCKET_TYPE socket_type = get_ioa_socket_type(ss->client_socket);
 
@@ -4075,8 +4156,9 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
                   (long)ss->client_socket, (long)get_ioa_socket_session(ss->client_socket));
   }
 
-  if (server->disconnect)
+  if (server->disconnect) {
     server->disconnect(ss);
+  }
 
   if (server->verbose) {
 
@@ -4109,8 +4191,9 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
 
 static void client_to_be_allocated_timeout_handler(ioa_engine_handle e, void *arg) {
 
-  if (!arg)
+  if (!arg) {
     return;
+  }
 
   UNUSED_ARG(e);
 
@@ -4118,8 +4201,9 @@ static void client_to_be_allocated_timeout_handler(ioa_engine_handle e, void *ar
 
   turn_turnserver *server = (turn_turnserver *)(ss->server);
 
-  if (!server)
+  if (!server) {
     return;
+  }
 
   FUNCSTART;
 
@@ -4187,18 +4271,21 @@ static void client_ss_allocation_timeout_handler(ioa_engine_handle e, void *arg)
 
   UNUSED_ARG(e);
 
-  if (!arg)
+  if (!arg) {
     return;
+  }
 
   relay_endpoint_session *rsession = (relay_endpoint_session *)arg;
 
-  if (!(rsession->s))
+  if (!(rsession->s)) {
     return;
+  }
 
   ts_ur_super_session *ss = get_ioa_socket_session(rsession->s);
 
-  if (!ss)
+  if (!ss) {
     return;
+  }
 
   allocation *a = get_allocation_ss(ss);
 
@@ -4241,7 +4328,7 @@ static int create_relay_connection(turn_turnserver *server, ts_ur_super_session 
           ioa_socket_tobeclosed(s)) {
 
         IOA_CLOSE_SOCKET(s);
-        *err_code = 404;
+        *err_code = 508;
         *reason = (const uint8_t *)"Cannot find reserved socket";
         return -1;
       }
@@ -4273,10 +4360,12 @@ static int create_relay_connection(turn_turnserver *server, ts_ur_super_session 
       int res = create_relay_ioa_sockets(server->e, ss->client_socket, address_family, transport, even_port,
                                          &(newelem->s), &rtcp_s, out_reservation_token, err_code, reason, acb, ss);
       if (res < 0) {
-        if (!(*err_code))
+        if (!(*err_code)) {
           *err_code = 508;
-        if (!(*reason))
+        }
+        if (!(*reason)) {
           *reason = (const uint8_t *)"Cannot create socket";
+        }
         IOA_CLOSE_SOCKET(newelem->s);
         IOA_CLOSE_SOCKET(rtcp_s);
         return -1;
@@ -4304,8 +4393,9 @@ static int create_relay_connection(turn_turnserver *server, ts_ur_super_session 
 
     /* RFC6156: do not use DF when IPv6 is involved: */
     if ((get_ioa_socket_address_family(newelem->s) == AF_INET6) ||
-        (get_ioa_socket_address_family(ss->client_socket) == AF_INET6))
+        (get_ioa_socket_address_family(ss->client_socket) == AF_INET6)) {
       set_do_not_use_df(newelem->s);
+    }
 
     if (get_ioa_socket_type(newelem->s) != TCP_SOCKET) {
       if (register_callback_on_ioa_socket(server->e, newelem->s, IOA_EV_READ, peer_input_handler, ss, 0) < 0) {
@@ -4313,10 +4403,11 @@ static int create_relay_connection(turn_turnserver *server, ts_ur_super_session 
       }
     }
 
-    if (lifetime < 1)
+    if (lifetime < 1) {
       lifetime = STUN_DEFAULT_ALLOCATE_LIFETIME;
-    else if (lifetime > (uint32_t) * (server->max_allocate_lifetime))
+    } else if (lifetime > (uint32_t) * (server->max_allocate_lifetime)) {
       lifetime = (uint32_t) * (server->max_allocate_lifetime);
+    }
 
     ioa_timer_handle ev = set_ioa_timer(server->e, lifetime, 0, client_ss_allocation_timeout_handler, newelem, 0,
                                         "client_ss_allocation_timeout_handler");
@@ -4443,8 +4534,9 @@ static int read_client_connection(turn_turnserver *server, ts_ur_super_session *
 
     handle_turn_command(server, ss, in_buffer, nbh, &resp_constructed, can_resume);
 
-    if ((method != STUN_METHOD_BINDING) && (method != STUN_METHOD_SEND))
+    if ((method != STUN_METHOD_BINDING) && (method != STUN_METHOD_SEND)) {
       report_turn_session_info(server, ss, 0);
+    }
 
     if (ss->to_be_closed || ioa_socket_tobeclosed(ss->client_socket)) {
       FUNCEND;
@@ -4497,7 +4589,8 @@ static int read_client_connection(turn_turnserver *server, ts_ur_super_session *
     if (is_stream_socket(st)) {
       if (is_http((char *)ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh))) {
 
-        const char *proto = "HTTP";
+        const char *proto = st == TLS_SOCKET ? "HTTPS" : "HTTP";
+
         if ((st == TCP_SOCKET) && (try_acme_redirect((char *)ioa_network_buffer_data(in_buffer->nbh),
                                                      ioa_network_buffer_get_size(in_buffer->nbh), server->acme_redirect,
                                                      ss->client_socket) == 0)) {
@@ -4505,7 +4598,6 @@ static int read_client_connection(turn_turnserver *server, ts_ur_super_session *
           return 0;
         } else if (*server->web_admin_listen_on_workers) {
           if (st == TLS_SOCKET) {
-            proto = "HTTPS";
             set_ioa_socket_app_type(ss->client_socket, HTTPS_CLIENT_SOCKET);
             TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s (%s %s) request: %zu\n", __FUNCTION__, proto,
                           get_ioa_socket_cipher(ss->client_socket), get_ioa_socket_ssl_method(ss->client_socket),
@@ -4531,6 +4623,36 @@ static int read_client_connection(turn_turnserver *server, ts_ur_super_session *
             handle_http_echo(ss->client_socket);
           }
           return 0;
+        } else if (*server->respond_http_unsupported) {
+          /* Our incoming connection is HTTP, but we are not serving the
+           * admin site. Return a 400 response. */
+          if (st == TLS_SOCKET) {
+            TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s (%s %s) returning 400 response: %zu\n", __FUNCTION__, proto,
+                          get_ioa_socket_cipher(ss->client_socket), get_ioa_socket_ssl_method(ss->client_socket),
+                          ioa_network_buffer_get_size(in_buffer->nbh));
+            set_ioa_socket_app_type(ss->client_socket, HTTPS_CLIENT_SOCKET);
+          } else {
+            TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s returning 400 response", __FUNCTION__, proto);
+          }
+
+          ioa_network_buffer_handle nbh_http = ioa_network_buffer_allocate(ss->client_socket->e);
+
+          /* HTTP content */
+          char *content = "HTTP not supported.\n";
+
+          /* Measure length of content */
+          int content_length = strlen(content);
+
+          /* Construct full response */
+          char buffer[1024];
+          snprintf(buffer, sizeof(buffer),
+                   "HTTP/1.1 400 %s Not supported\r\nConnection: close\r\nContent-Type: "
+                   "text/plain\r\nContent-Length: %d\r\n\r\n%s",
+                   proto, content_length, content);
+
+          ioa_network_buffer_set_size(nbh_http, strlen(buffer));
+          memcpy(ioa_network_buffer_data(nbh_http), buffer, strlen(buffer));
+          send_data_from_ioa_socket_nbh(ss->client_socket, NULL, nbh_http, TTL_IGNORE, TOS_IGNORE, NULL);
         } else {
           ss->to_be_closed = 1;
           return 0;
@@ -4575,11 +4697,13 @@ static int attach_socket_to_session(turn_turnserver *server, ioa_socket_handle s
 int open_client_connection_session(turn_turnserver *server, struct socket_message *sm) {
   int ret = 0;
   FUNCSTART;
-  if (!server)
+  if (!server) {
     return -1;
+  }
 
-  if (!(sm->s))
+  if (!(sm->s)) {
     return -1;
+  }
 
   ts_ur_super_session *ss = create_new_ss(server);
 
@@ -4592,8 +4716,9 @@ int open_client_connection_session(turn_turnserver *server, struct socket_messag
   set_ioa_socket_session(ss->client_socket, ss);
 
   int at = TURN_MAX_ALLOCATE_TIMEOUT;
-  if (*(server->stun_only))
+  if (*(server->stun_only)) {
     at = TURN_MAX_ALLOCATE_TIMEOUT_STUN_ONLY;
+  }
 
   IOA_EVENT_DEL(ss->to_be_allocated_timeout_ev);
   ss->to_be_allocated_timeout_ev = set_ioa_timer(server->e, at, 0, client_to_be_allocated_timeout_handler, ss, 1,
@@ -4615,32 +4740,39 @@ int open_client_connection_session(turn_turnserver *server, struct socket_messag
 static void peer_input_handler(ioa_socket_handle s, int event_type, ioa_net_data *in_buffer, void *arg,
                                int can_resume) {
 
-  if (!(event_type & IOA_EV_READ) || !arg)
+  if (!(event_type & IOA_EV_READ) || !arg) {
     return;
+  }
 
-  if (in_buffer->recv_ttl == 0)
+  if (in_buffer->recv_ttl == 0) {
     return;
+  }
 
   UNUSED_ARG(can_resume);
 
-  if (!s || ioa_socket_tobeclosed(s))
+  if (!s || ioa_socket_tobeclosed(s)) {
     return;
+  }
 
   ts_ur_super_session *ss = (ts_ur_super_session *)arg;
 
-  if (!ss)
+  if (!ss) {
     return;
+  }
 
-  if (ss->to_be_closed)
+  if (ss->to_be_closed) {
     return;
+  }
 
-  if (!(ss->client_socket) || ioa_socket_tobeclosed(ss->client_socket))
+  if (!(ss->client_socket) || ioa_socket_tobeclosed(ss->client_socket)) {
     return;
+  }
 
   turn_turnserver *server = (turn_turnserver *)(ss->server);
 
-  if (!server)
+  if (!server) {
     return;
+  }
 
   relay_endpoint_session *elem = get_relay_session_ss(ss, get_ioa_socket_address_family(s));
   if (elem->s == NULL) {
@@ -4651,86 +4783,88 @@ static void peer_input_handler(ioa_socket_handle s, int event_type, ioa_net_data
 
   int ilen =
       min((int)ioa_network_buffer_get_size(in_buffer->nbh), (int)(ioa_network_buffer_get_capacity_udp() - offset));
+  if (ilen < 0) {
+    return;
+  }
 
-  if (ilen >= 0) {
-    ++(ss->peer_received_packets);
-    ss->peer_received_bytes += ilen;
-    turn_report_session_usage(ss, 0);
+  ++(ss->peer_received_packets);
+  ss->peer_received_bytes += ilen;
+  turn_report_session_usage(ss, 0);
 
-    allocation *a = get_allocation_ss(ss);
-    if (is_allocation_valid(a)) {
+  allocation *a = get_allocation_ss(ss);
+  if (!is_allocation_valid(a)) {
+    return;
+  }
 
-      uint16_t chnum = 0;
+  uint16_t chnum = 0;
 
-      ioa_network_buffer_handle nbh = NULL;
+  ioa_network_buffer_handle nbh = NULL;
 
-      turn_permission_info *tinfo = allocation_get_permission(a, &(in_buffer->src_addr));
-      if (tinfo) {
-        chnum = get_turn_channel_number(tinfo, &(in_buffer->src_addr));
-      } else if (!(server->server_relay)) {
-        return;
-      }
+  turn_permission_info *tinfo = allocation_get_permission(a, &(in_buffer->src_addr));
+  if (tinfo) {
+    chnum = get_turn_channel_number(tinfo, &(in_buffer->src_addr));
+  } else if (!(server->server_relay)) {
+    return;
+  }
 
-      if (chnum) {
+  if (chnum) {
 
-        size_t len = (size_t)(ilen);
+    size_t len = (size_t)(ilen);
 
-        nbh = in_buffer->nbh;
+    nbh = in_buffer->nbh;
 
-        ioa_network_buffer_add_offset_size(nbh, 0, STUN_CHANNEL_HEADER_LENGTH,
-                                           ioa_network_buffer_get_size(nbh) + STUN_CHANNEL_HEADER_LENGTH);
+    ioa_network_buffer_add_offset_size(nbh, 0, STUN_CHANNEL_HEADER_LENGTH,
+                                       ioa_network_buffer_get_size(nbh) + STUN_CHANNEL_HEADER_LENGTH);
 
-        ioa_network_buffer_header_init(nbh);
+    ioa_network_buffer_header_init(nbh);
 
-        SOCKET_TYPE st = get_ioa_socket_type(ss->client_socket);
-        int do_padding = is_stream_socket(st);
+    SOCKET_TYPE st = get_ioa_socket_type(ss->client_socket);
+    int do_padding = is_stream_socket(st);
 
-        stun_init_channel_message_str(chnum, ioa_network_buffer_data(nbh), &len, len, do_padding);
-        ioa_network_buffer_set_size(nbh, len);
-        in_buffer->nbh = NULL;
-        if (eve(server->verbose)) {
-          TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: send channel 0x%x\n", __FUNCTION__, (int)(chnum));
-        }
-      } else {
+    stun_init_channel_message_str(chnum, ioa_network_buffer_data(nbh), &len, len, do_padding);
+    ioa_network_buffer_set_size(nbh, len);
+    in_buffer->nbh = NULL;
+    if (eve(server->verbose)) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: send channel 0x%x\n", __FUNCTION__, (int)(chnum));
+    }
+  } else {
 
-        size_t len = 0;
+    size_t len = 0;
 
-        nbh = ioa_network_buffer_allocate(server->e);
-        stun_init_indication_str(STUN_METHOD_DATA, ioa_network_buffer_data(nbh), &len);
-        stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_DATA,
-                          ioa_network_buffer_data(in_buffer->nbh), (size_t)ilen);
-        stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_XOR_PEER_ADDRESS,
-                               &(in_buffer->src_addr));
-        ioa_network_buffer_set_size(nbh, len);
+    nbh = ioa_network_buffer_allocate(server->e);
+    stun_init_indication_str(STUN_METHOD_DATA, ioa_network_buffer_data(nbh), &len);
+    stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_DATA, ioa_network_buffer_data(in_buffer->nbh),
+                      (size_t)ilen);
+    stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &(in_buffer->src_addr));
+    ioa_network_buffer_set_size(nbh, len);
 
-        if (!(*server->no_software_attribute)) {
-          const uint8_t *field = (const uint8_t *)get_version(server);
-          size_t fsz = strlen(get_version(server));
-          size_t len = ioa_network_buffer_get_size(nbh);
-          stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_SOFTWARE, field, fsz);
-          ioa_network_buffer_set_size(nbh, len);
-        }
+    if (!(*server->no_software_attribute)) {
+      const uint8_t *field = (const uint8_t *)get_version(server);
+      size_t fsz = strlen(get_version(server));
+      size_t len = ioa_network_buffer_get_size(nbh);
+      stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_SOFTWARE, field, fsz);
+      ioa_network_buffer_set_size(nbh, len);
+    }
 
-        if ((server->fingerprint) || ss->enforce_fingerprints) {
-          size_t len = ioa_network_buffer_get_size(nbh);
-          stun_attr_add_fingerprint_str(ioa_network_buffer_data(nbh), &len);
-          ioa_network_buffer_set_size(nbh, len);
-        }
-      }
-      if (eve(server->verbose)) {
-        uint16_t *t = (uint16_t *)ioa_network_buffer_data(nbh);
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Send data: 0x%x\n", (int)(nswap16(t[0])));
-      }
-
-      write_client_connection(server, ss, nbh, in_buffer->recv_ttl - 1, in_buffer->recv_tos);
+    if ((server->fingerprint) || ss->enforce_fingerprints) {
+      size_t len = ioa_network_buffer_get_size(nbh);
+      stun_attr_add_fingerprint_str(ioa_network_buffer_data(nbh), &len);
+      ioa_network_buffer_set_size(nbh, len);
     }
   }
+  if (eve(server->verbose)) {
+    uint16_t *t = (uint16_t *)ioa_network_buffer_data(nbh);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Send data: 0x%x\n", (int)(nswap16(t[0])));
+  }
+
+  write_client_connection(server, ss, nbh, in_buffer->recv_ttl - 1, in_buffer->recv_tos);
 }
 
 static void client_input_handler(ioa_socket_handle s, int event_type, ioa_net_data *data, void *arg, int can_resume) {
 
-  if (!arg)
+  if (!arg) {
     return;
+  }
 
   UNUSED_ARG(s);
   UNUSED_ARG(event_type);
@@ -4774,11 +4908,12 @@ void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, io
                       send_turn_session_info_cb send_turn_session_info, send_https_socket_cb send_https_socket,
                       allocate_bps_cb allocate_bps_func, int oauth, const char *oauth_server_name,
                       const char *acme_redirect, ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family,
-                      vintp log_binding, vintp no_stun_backward_compatibility,
-                      vintp response_origin_only_with_rfc5780) {
+                      vintp log_binding, vintp no_stun_backward_compatibility, vintp response_origin_only_with_rfc5780,
+                      vintp respond_http_unsupported) {
 
-  if (!server)
+  if (!server) {
     return;
+  }
 
   memset(server, 0, sizeof(turn_turnserver));
 
@@ -4800,10 +4935,12 @@ void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, io
   server->send_turn_session_info = send_turn_session_info;
   server->send_https_socket = send_https_socket;
   server->oauth = oauth;
-  if (oauth)
+  if (oauth) {
     server->oauth_server_name = oauth_server_name;
-  if (mobility)
+  }
+  if (mobility) {
     server->mobile_connections_map = ur_map_create();
+  }
   server->acme_redirect = acme_redirect;
 
   TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "turn server id=%d created\n", (int)id);
@@ -4832,8 +4969,9 @@ void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, io
     addr_cpy(&(server->external_ip), external_ip);
     server->external_ip_set = 1;
   }
-  if (stun_port < 1)
+  if (stun_port < 1) {
     stun_port = DEFAULT_STUN_PORT;
+  }
 
   server->verbose = verbose;
 
@@ -4853,11 +4991,14 @@ void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, io
   server->no_stun_backward_compatibility = no_stun_backward_compatibility;
 
   server->response_origin_only_with_rfc5780 = response_origin_only_with_rfc5780;
+
+  server->respond_http_unsupported = respond_http_unsupported;
 }
 
 ioa_engine_handle turn_server_get_engine(turn_turnserver *s) {
-  if (s)
+  if (s) {
     return s->e;
+  }
   return NULL;
 }
 

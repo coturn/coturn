@@ -143,15 +143,17 @@ static void redisLibeventCleanup(void *privdata) {
     struct redisLibeventEvents *e = (struct redisLibeventEvents *)privdata;
     if (e->allocated) {
       if (e->rev) {
-        if (e->rev_set)
+        if (e->rev_set) {
           event_del(e->rev);
+        }
         event_free(e->rev);
         e->rev = NULL;
       }
       e->rev_set = 0;
       if (e->wev) {
-        if (e->wev_set)
+        if (e->wev_set) {
           event_del(e->wev);
+        }
         event_free(e->wev);
         e->wev = NULL;
       }
@@ -166,8 +168,9 @@ static void redisLibeventCleanup(void *privdata) {
 int is_redis_asyncconn_good(redis_context_handle rch) {
   if (rch) {
     struct redisLibeventEvents *e = (struct redisLibeventEvents *)rch;
-    if (redis_le_valid(e))
+    if (redis_le_valid(e)) {
       return 1;
+    }
   }
   return 0;
 }
@@ -216,14 +219,16 @@ redis_context_handle redisLibeventAttach(struct event_base *base, char *ip0, int
   redisAsyncContext *ac = NULL;
 
   char ip[256];
-  if (ip0 && ip0[0])
+  if (ip0 && ip0[0]) {
     STRCPY(ip, ip0);
-  else
+  } else {
     strncpy(ip, "127.0.0.1", sizeof(ip));
+  }
 
   int port = DEFAULT_REDIS_PORT;
-  if (port0 > 0)
+  if (port0 > 0) {
     port = port0;
+  }
 
   ac = redisAsyncConnect(ip, port);
   if (!ac) {
@@ -243,8 +248,9 @@ redis_context_handle redisLibeventAttach(struct event_base *base, char *ip0, int
   e->base = base;
   e->ip = strdup(ip);
   e->port = port;
-  if (pwd)
+  if (pwd) {
     e->pwd = strdup(pwd);
+  }
   e->db = db;
 
   /* Register functions to start/stop listening for events */
@@ -286,20 +292,23 @@ redis_context_handle redisLibeventAttach(struct event_base *base, char *ip0, int
 }
 
 static void redis_reconnect(struct redisLibeventEvents *e) {
-  if (!e || !(e->allocated))
+  if (!e || !(e->allocated)) {
     return;
+  }
 
   if (e->rev) {
-    if (e->rev_set)
+    if (e->rev_set) {
       event_del(e->rev);
+    }
     event_free(e->rev);
     e->rev = NULL;
   }
   e->rev_set = 0;
 
   if (e->wev) {
-    if (e->wev_set)
+    if (e->wev_set) {
       event_del(e->wev);
+    }
     event_free(e->wev);
     e->wev = NULL;
   }

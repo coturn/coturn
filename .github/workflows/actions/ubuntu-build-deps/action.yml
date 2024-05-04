@@ -1,0 +1,61 @@
+name: 'ubuntu build dependencies'
+description: 'install required build dependencies for ubuntu'
+inputs:
+  SUDO:
+    description: "set to true to run apt as root"
+    required: false
+    default: false
+
+
+runs:
+  using: 'composite'
+  steps:
+
+    - name: check if sudo is set
+      shell: bash
+      run: |
+        if [ ${{inputs.SUDO}} = true ]
+        then
+          AS_ROOT="sudo"
+        else
+          AS_ROOT=""
+        fi
+        echo "AS_ROOT=$AS_ROOT" >> $GITHUB_ENV
+
+    - name: apt update
+      shell: bash
+      run: ${{env.AS_ROOT}} apt update
+
+    - name: install build tools
+      shell: bash
+      run: |
+        ${{env.AS_ROOT}} apt install -y \
+            build-essential \
+            clang \
+            clang-tidy \
+            ninja-build \
+            iwyu \
+            pkgconf \
+            wget 
+        if [ "$(lsb_release -s -r)x" == "16.04x" ]; then apt install -y clang-tools; fi
+
+    - name: install coturn dependencies
+      shell: bash
+      run: |
+        ${{env.AS_ROOT}} apt install -y \
+            libevent-dev \
+            libssl-dev \
+            libpq-dev \
+            libsqlite3-dev \
+            libhiredis-dev \
+            libmongoc-dev \
+            libmicrohttpd-dev
+        if [ "$(lsb_release -s -r)x" == "16.04x" ]; then apt-get install -y libmariadb-client-lgpl-dev; fi
+        if [ "$(lsb_release -s -r)x" == "16.04x" ]; then apt-get install -y libmariadb-dev; fi
+
+    - name: Prometheus Support
+      shell: bash
+      run: |
+        wget https://github.com/digitalocean/prometheus-client-c/releases/download/v0.1.3/libprom-dev-0.1.3-Linux.deb
+        wget https://github.com/digitalocean/prometheus-client-c/releases/download/v0.1.3/libpromhttp-dev-0.1.3-Linux.deb
+        ${{env.AS_ROOT}} apt install -y ./libprom-dev-0.1.3-Linux.deb ./libpromhttp-dev-0.1.3-Linux.deb
