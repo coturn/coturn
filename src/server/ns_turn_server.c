@@ -91,14 +91,16 @@ static inline void log_method(ts_ur_super_session *ss, const char *method, int e
     }
     if (!err_code) {
       if (ss->origin[0]) {
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-                      "session %018llu: origin <%s> realm <%s> user <%s> remote <%s>: incoming packet %s processed, success\n",
-                      (unsigned long long)(ss->id), (const char *)(ss->origin), (const char *)(ss->realm_options.name),
-                      (const char *)(ss->username), (const char *)sraddr, method);
-      } else {
         TURN_LOG_FUNC(
-            TURN_LOG_LEVEL_INFO, "session %018llu: realm <%s> user <%s> remote <%s>: incoming packet %s processed, success\n",
-            (unsigned long long)(ss->id), (const char *)(ss->realm_options.name), (const char *)(ss->username), (const char *)sraddr, method);
+            TURN_LOG_LEVEL_INFO,
+            "session %018llu: origin <%s> realm <%s> user <%s> remote <%s>: incoming packet %s processed, success\n",
+            (unsigned long long)(ss->id), (const char *)(ss->origin), (const char *)(ss->realm_options.name),
+            (const char *)(ss->username), (const char *)sraddr, method);
+      } else {
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+                      "session %018llu: realm <%s> user <%s> remote <%s>: incoming packet %s processed, success\n",
+                      (unsigned long long)(ss->id), (const char *)(ss->realm_options.name),
+                      (const char *)(ss->username), (const char *)sraddr, method);
       }
     } else {
       if (!reason) {
@@ -106,7 +108,8 @@ static inline void log_method(ts_ur_super_session *ss, const char *method, int e
       }
       if (ss->origin[0]) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-                      "session %018llu: origin <%s> realm <%s> user <%s> remote <%s>: incoming packet %s processed, error %d: %s\n",
+                      "session %018llu: origin <%s> realm <%s> user <%s> remote <%s>: incoming packet %s processed, "
+                      "error %d: %s\n",
                       (unsigned long long)(ss->id), (const char *)(ss->origin), (const char *)(ss->realm_options.name),
                       (const char *)(ss->username), (const char *)sraddr, method, err_code, reason);
       } else {
