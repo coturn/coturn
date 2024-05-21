@@ -13,7 +13,6 @@ jobs:
       matrix:
         BUILD_TYPE: [Release, Debug]
         BUILD_SHARED_LIBS: [OFF, ON]
-        #VCPKG_PLATFORM_TOOLSET: [v143, v142, v141]
         CMAKE_GENERATOR_PLATFORM: [x64, Win32]
         os: [windows-latest]
         include:
@@ -30,12 +29,7 @@ jobs:
           - triplet: x86-windows
             VCPKG_PLATFORM_TOOLSET: v142
             CMAKE_GENERATOR_PLATFORM: Win32
- 
-          # MSVC 2017
-          - triplet: x86-windows
-            VCPKG_PLATFORM_TOOLSET: v141
-            CMAKE_GENERATOR_PLATFORM: Win32
- 
+
     runs-on: ${{matrix.os}}
 
     env:
@@ -91,7 +85,7 @@ jobs:
         7z a coturn_windows_msvc.zip ${{github.workspace}}\build\install\*
         cmake --build . --config ${{matrix.BUILD_TYPE}} --target package
 
-    - name: Update 
+    - name: Update
       if: ${{ matrix.BUILD_TYPE == 'Release' }}
       uses: actions/upload-artifact@v4
       with:
