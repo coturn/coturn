@@ -54,10 +54,6 @@ typedef struct _tcp_connection tcp_connection;
 #define strtok_r strtok_s
 #endif
 
-#ifndef sleep
-#define sleep(t) Sleep(t * 1000)
-#endif
-
 #ifndef usleep
 #define usleep Sleep
 #endif
@@ -67,7 +63,13 @@ typedef struct _tcp_connection tcp_connection;
 typedef SSIZE_T ssize_t;
 #endif
 
+#endif // defined(_MSC_VER) || defined(__MINGW32__)
+
+#if defined(_MSC_VER) || defined(__MINGW32__)
+#ifndef sleep
+#define sleep(t) Sleep(t * 1000)
 #endif
+#endif // defined(_MSC_VER) || defined(__MINGW32__)
 
 ////////////// Mutexes /////////////////////
 

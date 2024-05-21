@@ -38,8 +38,12 @@
 #if defined(__unix__) || defined(unix) || defined(__APPLE__)
 #include <getopt.h>
 #include <ifaddrs.h>
+#endif
+
+#if defined(__unix__) || defined(unix) || defined(__APPLE__) || defined(__MINGW32__)
 #include <libgen.h>
 #endif
+
 #if defined(__unix__) || defined(unix)
 #include <pthread.h>
 #include <sys/resource.h>
@@ -106,7 +110,7 @@ int set_sock_buf_size(evutil_socket_t fd, int sz0) {
 
   sz = sz0;
   while (sz > 0) {
-    if (setsockopt(fd, SOL_SOCKET, SO_RCVBUF, (const void *)(&sz), (socklen_t)sizeof(sz)) < 0) {
+    if (setsockopt(fd, SOL_SOCKET, SO_RCVBUF, (const void *)&sz, (socklen_t)sizeof(sz)) < 0) {
       sz = sz / 2;
     } else {
       break;
@@ -120,7 +124,7 @@ int set_sock_buf_size(evutil_socket_t fd, int sz0) {
 
   sz = sz0;
   while (sz > 0) {
-    if (setsockopt(fd, SOL_SOCKET, SO_SNDBUF, (const void *)(&sz), (socklen_t)sizeof(sz)) < 0) {
+    if (setsockopt(fd, SOL_SOCKET, SO_SNDBUF, (const void *)&sz, (socklen_t)sizeof(sz)) < 0) {
       sz = sz / 2;
     } else {
       break;
@@ -239,7 +243,7 @@ int sock_bind_to_device(evutil_socket_t fd, const unsigned char *ifname) {
 
     strncpy(ifr.ifr_name, (const char *)ifname, sizeof(ifr.ifr_name));
 
-    if (setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, (void *)&ifr, sizeof(ifr)) < 0) {
+    if (setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, (const void *)&ifr, sizeof(ifr)) < 0) {
       if (socket_eperm()) {
         perror("You must obtain superuser privileges to bind a socket to device");
       } else {
@@ -301,7 +305,7 @@ int addr_bind(evutil_socket_t fd, const ioa_addr *addr, int reusable, int debug,
       } while (ret < 0 && socket_eintr());
     } else if (addr->ss.sa_family == AF_INET6) {
       const int off = 0;
-      setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, (const char *)&off, sizeof(off));
+      setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, (const void *)&off, sizeof(off));
       do {
         ret = bind(fd, (const struct sockaddr *)addr, sizeof(struct sockaddr_in6));
       } while (ret < 0 && socket_eintr());
@@ -355,7 +359,7 @@ int get_raw_socket_ttl(evutil_socket_t fd, int family) {
     } while (0);
 #else
     socklen_t slen = (socklen_t)sizeof(ttl);
-    if (getsockopt(fd, IPPROTO_IPV6, IPV6_UNICAST_HOPS, &ttl, &slen) < 0) {
+    if (getsockopt(fd, IPPROTO_IPV6, IPV6_UNICAST_HOPS, (void *)&ttl, &slen) < 0) {
       perror("get HOPLIMIT on socket");
       return TTL_IGNORE;
     }
@@ -368,7 +372,7 @@ int get_raw_socket_ttl(evutil_socket_t fd, int family) {
     } while (0);
 #else
     socklen_t slen = (socklen_t)sizeof(ttl);
-    if (getsockopt(fd, IPPROTO_IP, IP_TTL, &ttl, &slen) < 0) {
+    if (getsockopt(fd, IPPROTO_IP, IP_TTL, (void *)&ttl, &slen) < 0) {
       perror("get TTL on socket");
       return TTL_IGNORE;
     }
@@ -391,7 +395,7 @@ int get_raw_socket_tos(evutil_socket_t fd, int family) {
     } while (0);
 #else
     socklen_t slen = (socklen_t)sizeof(tos);
-    if (getsockopt(fd, IPPROTO_IPV6, IPV6_TCLASS, &tos, &slen) < 0) {
+    if (getsockopt(fd, IPPROTO_IPV6, IPV6_TCLASS, (void *)&tos, &slen) < 0) {
       perror("get TCLASS on socket");
       return -1;
     }
@@ -404,7 +408,7 @@ int get_raw_socket_tos(evutil_socket_t fd, int family) {
     } while (0);
 #else
     socklen_t slen = (socklen_t)sizeof(tos);
-    if (getsockopt(fd, IPPROTO_IP, IP_TOS, &tos, &slen) < 0) {
+    if (getsockopt(fd, IPPROTO_IP, IP_TOS, (void *)&tos, &slen) < 0) {
       perror("get TOS on socket");
       return -1;
     }
@@ -424,7 +428,7 @@ int set_raw_socket_ttl(evutil_socket_t fd, int family, int ttl) {
     UNUSED_ARG(ttl);
 #else
     CORRECT_RAW_TTL(ttl);
-    if (setsockopt(fd, IPPROTO_IPV6, IPV6_UNICAST_HOPS, &ttl, sizeof(ttl)) < 0) {
+    if (setsockopt(fd, IPPROTO_IPV6, IPV6_UNICAST_HOPS, (const void *)&ttl, sizeof(ttl)) < 0) {
       perror("set HOPLIMIT on socket");
       return -1;
     }
@@ -435,7 +439,7 @@ int set_raw_socket_ttl(evutil_socket_t fd, int family, int ttl) {
     UNUSED_ARG(ttl);
 #else
     CORRECT_RAW_TTL(ttl);
-    if (setsockopt(fd, IPPROTO_IP, IP_TTL, &ttl, sizeof(ttl)) < 0) {
+    if (setsockopt(fd, IPPROTO_IP, IP_TTL, (const void *)&ttl, sizeof(ttl)) < 0) {
       perror("set TTL on socket");
       return -1;
     }
@@ -453,7 +457,7 @@ int set_raw_socket_tos(evutil_socket_t fd, int family, int tos) {
     UNUSED_ARG(tos);
 #else
     CORRECT_RAW_TOS(tos);
-    if (setsockopt(fd, IPPROTO_IPV6, IPV6_TCLASS, &tos, sizeof(tos)) < 0) {
+    if (setsockopt(fd, IPPROTO_IPV6, IPV6_TCLASS, (const void *)&tos, sizeof(tos)) < 0) {
       perror("set TCLASS on socket");
       return -1;
     }
@@ -463,7 +467,7 @@ int set_raw_socket_tos(evutil_socket_t fd, int family, int tos) {
     UNUSED_ARG(fd);
     UNUSED_ARG(tos);
 #else
-    if (setsockopt(fd, IPPROTO_IP, IP_TOS, &tos, sizeof(tos)) < 0) {
+    if (setsockopt(fd, IPPROTO_IP, IP_TOS, (const void *)&tos, sizeof(tos)) < 0) {
       perror("set TOS on socket");
       return -1;
     }
@@ -544,10 +548,10 @@ int set_socket_df(evutil_socket_t fd, int family, int value) {
     const int val = value;
     /* kernel sets DF bit on outgoing IP packets */
     if (family == AF_INET) {
-      ret = setsockopt(fd, IPPROTO_IP, IP_DONTFRAG, &val, sizeof(val));
+      ret = setsockopt(fd, IPPROTO_IP, IP_DONTFRAG, (const void *)&val, sizeof(val));
     } else {
 #if defined(IPV6_DONTFRAG) && defined(IPPROTO_IPV6)
-      ret = setsockopt(fd, IPPROTO_IPV6, IPV6_DONTFRAG, &val, sizeof(val));
+      ret = setsockopt(fd, IPPROTO_IPV6, IPV6_DONTFRAG, (const void *)&val, sizeof(val));
 #else
 #error CANNOT SET IPV6 SOCKET DF FLAG (1)
 #endif
@@ -567,14 +571,14 @@ int set_socket_df(evutil_socket_t fd, int family, int value) {
       if (!value) {
         val = IP_PMTUDISC_DONT;
       }
-      ret = setsockopt(fd, IPPROTO_IP, IP_MTU_DISCOVER, &val, sizeof(val));
+      ret = setsockopt(fd, IPPROTO_IP, IP_MTU_DISCOVER, (const void *)&val, sizeof(val));
     } else {
 #if defined(IPPROTO_IPV6) && defined(IPV6_MTU_DISCOVER) && defined(IPV6_PMTUDISC_DO) && defined(IPV6_PMTUDISC_DONT)
       int val = IPV6_PMTUDISC_DO;
       if (!value) {
         val = IPV6_PMTUDISC_DONT;
       }
-      ret = setsockopt(fd, IPPROTO_IPV6, IPV6_MTU_DISCOVER, &val, sizeof(val));
+      ret = setsockopt(fd, IPPROTO_IPV6, IPV6_MTU_DISCOVER, (const void *)&val, sizeof(val));
 #else
 #error CANNOT SET IPV6 SOCKET DF FLAG (2)
 #endif
@@ -704,10 +708,10 @@ int get_socket_mtu(evutil_socket_t fd, int family, int verbose) {
   int val = 0;
   socklen_t slen = sizeof(val);
   if (family == AF_INET) {
-    ret = getsockopt(fd, IPPROTO_IP, IP_MTU, &val, &slen);
+    ret = getsockopt(fd, IPPROTO_IP, IP_MTU, (void *)&val, &slen);
   } else {
 #if defined(IPPROTO_IPV6) && defined(IPV6_MTU)
-    ret = getsockopt(fd, IPPROTO_IPV6, IPV6_MTU, &val, &slen);
+    ret = getsockopt(fd, IPPROTO_IPV6, IPV6_MTU, (void *)&val, &slen);
 #endif
     ;
   }
@@ -981,14 +985,14 @@ wchar_t *_ATW(__in char *pszInBuf, __in int nInSize, __out wchar_t **pszOutBuf, 
     return NULL;
   }
   // Get buffer size
-  *pnOutSize = MultiByteToWideChar(NULL, NULL, pszInBuf, nInSize, *pszOutBuf, 0);
+  *pnOutSize = MultiByteToWideChar((UINT)0, (DWORD)0, pszInBuf, nInSize, *pszOutBuf, 0);
   if (*pnOutSize == 0) {
     return NULL;
   }
   (*pnOutSize)++;
   *pszOutBuf = malloc((*pnOutSize) * sizeof(wchar_t));
   memset((void *)*pszOutBuf, 0, sizeof(wchar_t) * (*pnOutSize));
-  if (MultiByteToWideChar(NULL, NULL, pszInBuf, nInSize, *pszOutBuf, *pnOutSize) == 0) {
+  if (MultiByteToWideChar((UINT)0, (DWORD)0, pszInBuf, nInSize, *pszOutBuf, *pnOutSize) == 0) {
     free(*pszOutBuf);
     return NULL;
   } else {
@@ -1009,14 +1013,14 @@ char *_WTA(__in wchar_t *pszInBuf, __in int nInSize, __out char **pszOutBuf, __o
   if (!pszInBuf || !pszOutBuf || !pnOutSize || nInSize <= 0) {
     return NULL;
   }
-  *pnOutSize = WideCharToMultiByte(NULL, NULL, pszInBuf, nInSize, *pszOutBuf, 0, NULL, NULL);
+  *pnOutSize = WideCharToMultiByte((UINT)0, (DWORD)0, pszInBuf, nInSize, *pszOutBuf, 0, NULL, NULL);
   if (*pnOutSize == 0) {
     return NULL;
   }
   (*pnOutSize)++;
   *pszOutBuf = malloc(*pnOutSize * sizeof(char));
   memset((void *)*pszOutBuf, 0, sizeof(char) * (*pnOutSize));
-  if (WideCharToMultiByte(NULL, NULL, pszInBuf, nInSize, *pszOutBuf, *pnOutSize, NULL, NULL) == 0) {
+  if (WideCharToMultiByte((UINT)0, (DWORD)0, pszInBuf, nInSize, *pszOutBuf, *pnOutSize, NULL, NULL) == 0) {
     free(*pszOutBuf);
     return NULL;
   } else {
