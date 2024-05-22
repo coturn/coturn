@@ -62,26 +62,30 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void *arg) 
 
 ///////////////////// operations //////////////////////////
 
-static int udp_create_server_socket(server_type *server, const char *ifname, const char *local_address, int port) {
-
-  if (server && server->verbose) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Start\n");
-  }
+static int udp_create_server_socket(server_type *const server, const char *const ifname,
+                                    const char *const local_address, int const port) {
 
   if (!server) {
     return -1;
   }
 
-  evutil_socket_t udp_fd = -1;
+  if (server->verbose) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Start\n");
+  }
+
   ioa_addr *server_addr = (ioa_addr *)malloc(sizeof(ioa_addr));
+  if (!server_addr) {
+    return -1;
+  }
 
   STRCPY(server->ifname, ifname);
 
   if (make_ioa_addr((const uint8_t *)local_address, port, server_addr) < 0) {
+    free(server_addr);
     return -1;
   }
 
-  udp_fd = socket(server_addr->ss.sa_family, RELAY_DGRAM_SOCKET_TYPE, RELAY_DGRAM_SOCKET_PROTOCOL);
+  evutil_socket_t udp_fd = socket(server_addr->ss.sa_family, RELAY_DGRAM_SOCKET_TYPE, RELAY_DGRAM_SOCKET_PROTOCOL);
   if (udp_fd < 0) {
     perror("socket");
     free(server_addr);
@@ -105,7 +109,7 @@ static int udp_create_server_socket(server_type *server, const char *ifname, con
 
   event_add(udp_ev, NULL);
 
-  if (server && server->verbose) {
+  if (server->verbose) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "End\n");
   }
 
