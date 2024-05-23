@@ -1123,7 +1123,7 @@ int create_relay_ioa_sockets(ioa_engine_handle e, ioa_socket_handle client_s, in
   set_accept_cb(*rtp_s, acb, acbarg);
 
   if (rtcp_s && *rtcp_s && out_reservation_token && *out_reservation_token) {
-    if (rtcp_map_put(e->map_rtcp, *out_reservation_token, *rtcp_s) < 0) {
+    if (!rtcp_map_put(e->map_rtcp, *out_reservation_token, *rtcp_s)) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: cannot update RTCP map\n", __FUNCTION__);
       IOA_CLOSE_SOCKET(*rtp_s);
       if (rtcp_s) {

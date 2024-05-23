@@ -44,128 +44,96 @@ struct _ur_map {
   TURN_MUTEX_DECLARE(mutex)
 };
 
-static int ur_map_init(ur_map *map) {
+static bool ur_map_init(ur_map *map) {
   if (map) {
     map->h = kh_init(3);
     if (map->h) {
       map->magic = MAGIC_HASH;
       TURN_MUTEX_INIT_RECURSIVE(&(map->mutex));
-      return 0;
+      return true;
     }
   }
-  return -1;
+  return false;
 }
 
 #define ur_map_valid(map) ((map) && ((map)->h) && ((map)->magic == MAGIC_HASH))
 
 ur_map *ur_map_create(void) {
   ur_map *map = (ur_map *)malloc(sizeof(ur_map));
-  if (ur_map_init(map) < 0) {
+  if (!ur_map_init(map)) {
     free(map);
     return NULL;
   }
   return map;
 }
 
-/**
- * @ret:
- * 0 - success
- * -1 - error
- */
-int ur_map_put(ur_map *map, ur_map_key_type key, ur_map_value_type value) {
+bool ur_map_put(ur_map *map, ur_map_key_type key, ur_map_value_type value) {
   if (!ur_map_valid(map)) {
-    return -1;
-  } else {
-
-    int ret = 0;
-    khiter_t k;
-
-    k = kh_get(3, map->h, key);
-    if (k != kh_end(map->h)) {
-      kh_del(3, map->h, k);
-    }
-
-    k = kh_put(3, map->h, key, &ret);
-
-    if (!ret) {
-      kh_del(3, map->h, k);
-      return -1;
-    }
-
-    kh_value(map->h, k) = value;
-
-    return 0;
+    return false;
   }
+
+  khiter_t k = kh_get(3, map->h, key);
+  if (k != kh_end(map->h)) {
+    kh_del(3, map->h, k);
+  }
+
+  int ret = 0;
+  k = kh_put(3, map->h, key, &ret);
+
+  if (!ret) {
+    kh_del(3, map->h, k);
+    return false;
+  }
+
+  kh_value(map->h, k) = value;
+
+  return true;
 }
 
-/**
- * @ret:
- * 1 - success
- * 0 - not found
- */
-int ur_map_get(const ur_map *map, ur_map_key_type key, ur_map_value_type *value) {
+bool ur_map_get(const ur_map *map, ur_map_key_type key, ur_map_value_type *value) {
   if (!ur_map_valid(map)) {
-    return 0;
-  } else {
-
-    khiter_t k;
-
-    k = kh_get(3, map->h, key);
-    if ((k != kh_end(map->h)) && kh_exist(map->h, k)) {
-      if (value) {
-        *value = kh_value(map->h, k);
-      }
-      return 1;
-    }
-
-    return 0;
+    return false;
   }
+
+  khiter_t k = kh_get(3, map->h, key);
+  if ((k != kh_end(map->h)) && kh_exist(map->h, k)) {
+    if (value) {
+      *value = kh_value(map->h, k);
+    }
+    return true;
+  }
+
+  return false;
 }
 
-/**
- * @ret:
- * 1 - success
- * 0 - not found
- */
-int ur_map_del(ur_map *map, ur_map_key_type key, ur_map_del_func delfunc) {
+bool ur_map_del(ur_map *map, ur_map_key_type key, ur_map_del_func delfunc) {
   if (!ur_map_valid(map)) {
-    return 0;
-  } else {
-
-    khiter_t k;
-
-    k = kh_get(3, map->h, key);
-    if ((k != kh_end(map->h)) && kh_exist(map->h, k)) {
-      if (delfunc) {
-        delfunc(kh_value(map->h, k));
-      }
-      kh_del(3, map->h, k);
-      return 1;
-    }
-
-    return 0;
+    return false;
   }
+
+  khiter_t k = kh_get(3, map->h, key);
+  if ((k != kh_end(map->h)) && kh_exist(map->h, k)) {
+    if (delfunc) {
+      delfunc(kh_value(map->h, k));
+    }
+    kh_del(3, map->h, k);
+    return true;
+  }
+
+  return false;
 }
 
-/**
- * @ret:
- * 1 - success
- * 0 - not found
- */
-int ur_map_exist(const ur_map *map, ur_map_key_type key) {
+bool ur_map_exist(const ur_map *map, ur_map_key_type key) {
   if (!ur_map_valid(map)) {
-    return 0;
-  } else {
-
-    khiter_t k;
-
-    k = kh_get(3, map->h, key);
-    if ((k != kh_end(map->h)) && kh_exist(map->h, k)) {
-      return 1;
-    }
-
-    return 0;
+    return false;
   }
+
+  khiter_t k = kh_get(3, map->h, key);
+  if ((k != kh_end(map->h)) && kh_exist(map->h, k)) {
+    return true;
+  }
+
+  return 0;
 }
 
 void ur_map_free(ur_map **map) {
@@ -193,48 +161,46 @@ size_t ur_map_size(const ur_map *map) {
   }
 }
 
-int ur_map_foreach(ur_map *map, foreachcb_type func) {
+bool ur_map_foreach(ur_map *map, foreachcb_type func) {
   if (map && func && ur_map_valid(map)) {
-    khiter_t k;
-    for (k = kh_begin((*map)->h); k != kh_end(map->h); ++k) {
+    for (khiter_t k = kh_begin((*map)->h); k != kh_end(map->h); ++k) {
       if (kh_exist(map->h, k)) {
         if (func((ur_map_key_type)(kh_key(map->h, k)), (ur_map_value_type)(kh_value(map->h, k)))) {
-          return 1;
+          return true;
         }
       }
     }
   }
-  return 0;
+  return false;
 }
 
-int ur_map_foreach_arg(const ur_map *map, foreachcb_arg_type func, void *arg) {
+bool ur_map_foreach_arg(const ur_map *map, foreachcb_arg_type func, void *arg) {
   if (map && func && ur_map_valid(map)) {
-    khiter_t k;
-    for (k = kh_begin((*map)->h); k != kh_end(map->h); ++k) {
+    for (khiter_t k = kh_begin((*map)->h); k != kh_end(map->h); ++k) {
       if (kh_exist(map->h, k)) {
         if (func((ur_map_key_type)(kh_key(map->h, k)), (ur_map_value_type)(kh_value(map->h, k)), arg)) {
-          return 1;
+          return true;
         }
       }
     }
   }
-  return 0;
+  return false;
 }
 
-int ur_map_lock(const ur_map *map) {
+bool ur_map_lock(const ur_map *map) {
   if (ur_map_valid(map)) {
     TURN_MUTEX_LOCK((const turn_mutex *)&(map->mutex));
-    return 0;
+    return true;
   }
-  return -1;
+  return false;
 }
 
-int ur_map_unlock(const ur_map *map) {
+bool ur_map_unlock(const ur_map *map) {
   if (ur_map_valid(map)) {
     TURN_MUTEX_UNLOCK((const turn_mutex *)&(map->mutex));
-    return 0;
+    return true;
   }
-  return -1;
+  return false;
 }
 
 //////////////////// LOCAL MAPS ////////////////////////////////////
@@ -245,199 +211,161 @@ void lm_map_init(lm_map *map) {
   }
 }
 
-/**
- * @ret:
- * 0 - success
- * -1 - error
- */
+bool lm_map_put(lm_map *map, ur_map_key_type key, ur_map_value_type value) {
+  if (!map || !key || !value) {
+    return false;
+  }
 
-int lm_map_put(lm_map *map, ur_map_key_type key, ur_map_value_type value) {
-  int ret = -1;
-  if (map && key && value) {
+  size_t index = (size_t)(key & (LM_MAP_HASH_SIZE - 1));
+  lm_map_array *a = &(map->table[index]);
 
-    size_t index = (size_t)(key & (LM_MAP_HASH_SIZE - 1));
-    lm_map_array *a = &(map->table[index]);
+  for (size_t i = 0; i < LM_MAP_ARRAY_SIZE; ++i) {
+    ur_map_key_type key0 = a->main_keys[i];
+    ur_map_value_type value0 = a->main_values[i];
 
-    size_t i;
-
-    for (i = 0; i < LM_MAP_ARRAY_SIZE; ++i) {
-
-      ur_map_key_type key0 = a->main_keys[i];
-      ur_map_value_type value0 = a->main_values[i];
-
-      if (key0 == key) {
-        if (value0 == value) {
-          return 0;
-        } else {
-          return -1;
-        }
-      }
-
-      if (!key0 || !value0) {
-        a->main_keys[i] = key;
-        a->main_values[i] = value;
-        return 0;
-      }
+    if (key0 == key) {
+      return value0 == value;
     }
 
-    size_t esz = a->extra_sz;
-    if (esz && a->extra_keys && a->extra_values) {
-      for (i = 0; i < esz; ++i) {
-        ur_map_key_type *keyp = a->extra_keys[i];
-        ur_map_value_type *valuep = a->extra_values[i];
-        if (keyp && valuep) {
-          if (!(*keyp) || !(*valuep)) {
-            *keyp = key;
-            *valuep = value;
-            return 0;
-          }
-        } else {
-          if (!(*keyp)) {
-            a->extra_keys[i] = (ur_map_key_type *)malloc(sizeof(ur_map_key_type));
-            keyp = a->extra_keys[i];
-          }
-          if (!(*valuep)) {
-            a->extra_values[i] = (ur_map_value_type *)malloc(sizeof(ur_map_value_type));
-            valuep = a->extra_values[i];
-          }
+    if (!key0 || !value0) {
+      a->main_keys[i] = key;
+      a->main_values[i] = value;
+      return true;
+    }
+  }
+
+  size_t esz = a->extra_sz;
+  if (esz && a->extra_keys && a->extra_values) {
+    for (size_t i = 0; i < esz; ++i) {
+      ur_map_key_type *keyp = a->extra_keys[i];
+      ur_map_value_type *valuep = a->extra_values[i];
+      if (keyp && valuep) {
+        if (!(*keyp) || !(*valuep)) {
           *keyp = key;
           *valuep = value;
-          return 0;
+          return true;
         }
+      } else {
+        if (!(*keyp)) {
+          a->extra_keys[i] = (ur_map_key_type *)malloc(sizeof(ur_map_key_type));
+          keyp = a->extra_keys[i];
+        }
+        if (!(*valuep)) {
+          a->extra_values[i] = (ur_map_value_type *)malloc(sizeof(ur_map_value_type));
+          valuep = a->extra_values[i];
+        }
+        *keyp = key;
+        *valuep = value;
+        return false;
       }
     }
-
-    size_t old_sz = esz;
-    size_t old_sz_mem = esz * sizeof(ur_map_key_type *);
-    a->extra_keys = (ur_map_key_type **)realloc(a->extra_keys, old_sz_mem + sizeof(ur_map_key_type *));
-    a->extra_keys[old_sz] = (ur_map_key_type *)malloc(sizeof(ur_map_key_type));
-    *(a->extra_keys[old_sz]) = key;
-
-    old_sz_mem = esz * sizeof(ur_map_value_type *);
-    a->extra_values = (ur_map_value_type **)realloc(a->extra_values, old_sz_mem + sizeof(ur_map_value_type *));
-    a->extra_values[old_sz] = (ur_map_value_type *)malloc(sizeof(ur_map_value_type));
-    *(a->extra_values[old_sz]) = value;
-
-    a->extra_sz += 1;
-
-    return 0;
   }
-  return ret;
+
+  size_t old_sz = esz;
+  size_t old_sz_mem = esz * sizeof(ur_map_key_type *);
+  a->extra_keys = (ur_map_key_type **)realloc(a->extra_keys, old_sz_mem + sizeof(ur_map_key_type *));
+  a->extra_keys[old_sz] = (ur_map_key_type *)malloc(sizeof(ur_map_key_type));
+  *(a->extra_keys[old_sz]) = key;
+
+  old_sz_mem = esz * sizeof(ur_map_value_type *);
+  a->extra_values = (ur_map_value_type **)realloc(a->extra_values, old_sz_mem + sizeof(ur_map_value_type *));
+  a->extra_values[old_sz] = (ur_map_value_type *)malloc(sizeof(ur_map_value_type));
+  *(a->extra_values[old_sz]) = value;
+
+  a->extra_sz += 1;
+
+  return true;
 }
 
-/**
- * @ret:
- * 1 - success
- * 0 - not found
- */
+bool lm_map_get(const lm_map *map, ur_map_key_type key, ur_map_value_type *value) {
+  if (!map || !key) {
+    return false;
+  }
 
-int lm_map_get(const lm_map *map, ur_map_key_type key, ur_map_value_type *value) {
-  int ret = 0;
-  if (map && key) {
-    size_t index = (size_t)(key & (LM_MAP_HASH_SIZE - 1));
-    const lm_map_array *a = &(map->table[index]);
+  size_t index = (size_t)(key & (LM_MAP_HASH_SIZE - 1));
+  const lm_map_array *a = &(map->table[index]);
 
-    size_t i;
-
-    for (i = 0; i < LM_MAP_ARRAY_SIZE; ++i) {
-
-      ur_map_key_type key0 = a->main_keys[i];
-      if ((key0 == key) && a->main_values[i]) {
-        if (value) {
-          *value = a->main_values[i];
-        }
-        return 1;
+  for (size_t i = 0; i < LM_MAP_ARRAY_SIZE; ++i) {
+    ur_map_key_type key0 = a->main_keys[i];
+    if ((key0 == key) && a->main_values[i]) {
+      if (value) {
+        *value = a->main_values[i];
       }
+      return true;
     }
+  }
 
-    size_t esz = a->extra_sz;
-    if (esz && a->extra_keys && a->extra_values) {
-      for (i = 0; i < esz; ++i) {
-        ur_map_key_type *keyp = a->extra_keys[i];
-        ur_map_value_type *valuep = a->extra_values[i];
-        if (keyp && valuep) {
-          if (*keyp == key) {
-            if (value) {
-              *value = *valuep;
-            }
-            return 1;
+  size_t esz = a->extra_sz;
+  if (esz && a->extra_keys && a->extra_values) {
+    for (size_t i = 0; i < esz; ++i) {
+      ur_map_key_type *keyp = a->extra_keys[i];
+      ur_map_value_type *valuep = a->extra_values[i];
+      if (keyp && valuep) {
+        if (*keyp == key) {
+          if (value) {
+            *value = *valuep;
           }
+          return true;
         }
       }
     }
   }
 
-  return ret;
+  return false;
 }
-/**
- * @ret:
- * 1 - success
- * 0 - not found
- */
 
-int lm_map_del(lm_map *map, ur_map_key_type key, ur_map_del_func delfunc) {
-  int ret = 0;
+bool lm_map_del(lm_map *map, ur_map_key_type key, ur_map_del_func delfunc) {
+  if (!map || !key) {
+    return false;
+  }
 
-  if (map && key) {
-    size_t index = (size_t)(key & (LM_MAP_HASH_SIZE - 1));
-    lm_map_array *a = &(map->table[index]);
+  size_t index = (size_t)(key & (LM_MAP_HASH_SIZE - 1));
+  lm_map_array *a = &(map->table[index]);
 
-    size_t i;
+  for (size_t i = 0; i < LM_MAP_ARRAY_SIZE; ++i) {
+    ur_map_key_type key0 = a->main_keys[i];
 
-    for (i = 0; i < LM_MAP_ARRAY_SIZE; ++i) {
-
-      ur_map_key_type key0 = a->main_keys[i];
-
-      if ((key0 == key) && a->main_values[i]) {
-        if (delfunc) {
-          delfunc(a->main_values[i]);
-        }
-        a->main_keys[i] = 0;
-        a->main_values[i] = 0;
-        return 1;
+    if ((key0 == key) && a->main_values[i]) {
+      if (delfunc) {
+        delfunc(a->main_values[i]);
       }
+      a->main_keys[i] = 0;
+      a->main_values[i] = 0;
+      return true;
     }
+  }
 
-    size_t esz = a->extra_sz;
-    if (esz && a->extra_keys && a->extra_values) {
-      for (i = 0; i < esz; ++i) {
-        ur_map_key_type *keyp = a->extra_keys[i];
-        ur_map_value_type *valuep = a->extra_values[i];
-        if (keyp && valuep) {
-          if (*keyp == key) {
-            if (delfunc) {
-              delfunc(*valuep);
-            }
-            *keyp = 0;
-            *valuep = 0;
-            return 1;
+  size_t esz = a->extra_sz;
+  if (esz && a->extra_keys && a->extra_values) {
+    for (size_t i = 0; i < esz; ++i) {
+      ur_map_key_type *keyp = a->extra_keys[i];
+      ur_map_value_type *valuep = a->extra_values[i];
+      if (keyp && valuep) {
+        if (*keyp == key) {
+          if (delfunc) {
+            delfunc(*valuep);
           }
+          *keyp = 0;
+          *valuep = 0;
+          return true;
         }
       }
     }
   }
 
-  return ret;
+  return false;
 }
-/**
- * @ret:
- * 1 - success
- * 0 - not found
- */
 
-int lm_map_exist(const lm_map *map, ur_map_key_type key) { return lm_map_get(map, key, NULL); }
+bool lm_map_exist(const lm_map *map, ur_map_key_type key) { return lm_map_get(map, key, NULL); }
 
 void lm_map_clean(lm_map *map) {
-  size_t j;
-  for (j = 0; j < LM_MAP_HASH_SIZE; ++j) {
-
+  for (size_t j = 0; j < LM_MAP_HASH_SIZE; ++j) {
     lm_map_array *a = &(map->table[j]);
 
     size_t esz = a->extra_sz;
     if (esz) {
-      size_t i;
       if (a->extra_keys) {
-        for (i = 0; i < esz; ++i) {
+        for (size_t i = 0; i < esz; ++i) {
           ur_map_key_type *keyp = a->extra_keys[i];
           if (keyp) {
             *keyp = 0;
@@ -448,7 +376,7 @@ void lm_map_clean(lm_map *map) {
         a->extra_keys = NULL;
       }
       if (a->extra_values) {
-        for (i = 0; i < esz; ++i) {
+        for (size_t i = 0; i < esz; ++i) {
           ur_map_value_type *valuep = a->extra_values[i];
           if (valuep) {
             *valuep = 0;
@@ -465,110 +393,94 @@ void lm_map_clean(lm_map *map) {
 }
 
 size_t lm_map_size(const lm_map *map) {
+
+  if (!map) {
+    return 0;
+  }
+
   size_t ret = 0;
+  for (size_t i = 0; i < LM_MAP_HASH_SIZE; ++i) {
+    const lm_map_array *a = &(map->table[i]);
 
-  if (map) {
+    for (size_t j = 0; j < LM_MAP_ARRAY_SIZE; ++j) {
+      if (a->main_keys[j] && a->main_values[j]) {
+        ++ret;
+      }
+    }
 
-    size_t i;
-
-    for (i = 0; i < LM_MAP_HASH_SIZE; ++i) {
-
-      const lm_map_array *a = &(map->table[i]);
-
-      size_t j;
-
-      for (j = 0; j < LM_MAP_ARRAY_SIZE; ++j) {
-        if (a->main_keys[j] && a->main_values[j]) {
+    size_t esz = a->extra_sz;
+    if (esz && a->extra_values && a->extra_keys) {
+      for (size_t j = 0; j < esz; ++j) {
+        if (*(a->extra_keys[j]) && *(a->extra_values[j])) {
           ++ret;
         }
       }
-
-      size_t esz = a->extra_sz;
-      if (esz && a->extra_values && a->extra_keys) {
-        for (j = 0; j < esz; ++j) {
-          if (*(a->extra_keys[j]) && *(a->extra_values[j])) {
-            ++ret;
-          }
-        }
-      }
     }
   }
 
   return ret;
 }
 
-int lm_map_foreach(lm_map *map, foreachcb_type func) {
-  size_t ret = 0;
+bool lm_map_foreach(lm_map *map, foreachcb_type func) {
+  if (!map) {
+    return false;
+  }
 
-  if (map) {
+  for (size_t i = 0; i < LM_MAP_HASH_SIZE; ++i) {
+    lm_map_array *a = &(map->table[i]);
 
-    size_t i;
-
-    for (i = 0; i < LM_MAP_HASH_SIZE; ++i) {
-
-      lm_map_array *a = &(map->table[i]);
-
-      size_t j;
-
-      for (j = 0; j < LM_MAP_ARRAY_SIZE; ++j) {
-        if (a->main_keys[j] && a->main_values[j]) {
-          if (func((ur_map_key_type)a->main_keys[j], (ur_map_value_type)a->main_values[j])) {
-            return 1;
-          }
+    for (size_t j = 0; j < LM_MAP_ARRAY_SIZE; ++j) {
+      if (a->main_keys[j] && a->main_values[j]) {
+        if (func((ur_map_key_type)a->main_keys[j], (ur_map_value_type)a->main_values[j])) {
+          return true;
         }
       }
+    }
 
-      size_t esz = a->extra_sz;
-      if (esz && a->extra_values && a->extra_keys) {
-        for (j = 0; j < esz; ++j) {
-          if (*(a->extra_keys[j]) && *(a->extra_values[j])) {
-            if (func((ur_map_key_type) * (a->extra_keys[j]), (ur_map_value_type) * (a->extra_values[j]))) {
-              return 1;
-            }
+    size_t esz = a->extra_sz;
+    if (esz && a->extra_values && a->extra_keys) {
+      for (size_t j = 0; j < esz; ++j) {
+        if (*(a->extra_keys[j]) && *(a->extra_values[j])) {
+          if (func((ur_map_key_type) * (a->extra_keys[j]), (ur_map_value_type) * (a->extra_values[j]))) {
+            return true;
           }
         }
       }
     }
   }
 
-  return ret;
+  return false;
 }
 
-int lm_map_foreach_arg(lm_map *map, foreachcb_arg_type func, void *arg) {
-  size_t ret = 0;
+bool lm_map_foreach_arg(lm_map *map, foreachcb_arg_type func, void *arg) {
+  if (!map) {
+    return false;
+  }
 
-  if (map) {
+  for (size_t i = 0; i < LM_MAP_HASH_SIZE; ++i) {
+    lm_map_array *a = &(map->table[i]);
 
-    size_t i;
-
-    for (i = 0; i < LM_MAP_HASH_SIZE; ++i) {
-
-      lm_map_array *a = &(map->table[i]);
-
-      size_t j;
-
-      for (j = 0; j < LM_MAP_ARRAY_SIZE; ++j) {
-        if (a->main_keys[j] && a->main_values[j]) {
-          if (func((ur_map_key_type)a->main_keys[j], (ur_map_value_type)a->main_values[j], arg)) {
-            return 1;
-          }
+    for (size_t j = 0; j < LM_MAP_ARRAY_SIZE; ++j) {
+      if (a->main_keys[j] && a->main_values[j]) {
+        if (func((ur_map_key_type)a->main_keys[j], (ur_map_value_type)a->main_values[j], arg)) {
+          return true;
         }
       }
+    }
 
-      size_t esz = a->extra_sz;
-      if (esz && a->extra_values && a->extra_keys) {
-        for (j = 0; j < esz; ++j) {
-          if (*(a->extra_keys[j]) && *(a->extra_values[j])) {
-            if (func((ur_map_key_type) * (a->extra_keys[j]), (ur_map_value_type) * (a->extra_values[j]), arg)) {
-              return 1;
-            }
+    size_t esz = a->extra_sz;
+    if (esz && a->extra_values && a->extra_keys) {
+      for (size_t j = 0; j < esz; ++j) {
+        if (*(a->extra_keys[j]) && *(a->extra_values[j])) {
+          if (func((ur_map_key_type) * (a->extra_keys[j]), (ur_map_value_type) * (a->extra_values[j]), arg)) {
+            return true;
           }
         }
       }
     }
   }
 
-  return ret;
+  return false;
 }
 
 ////////////////////  ADDR LISTS ///////////////////////////////////
@@ -583,15 +495,13 @@ static void addr_list_free(addr_list_header *slh) {
 }
 
 static void addr_list_add(addr_list_header *slh, const ioa_addr *key, ur_addr_map_value_type value) {
-
   if (!key || !value) {
     return;
   }
 
   addr_elem *elem = NULL;
-  size_t i;
 
-  for (i = 0; i < ADDR_ARRAY_SIZE; ++i) {
+  for (size_t i = 0; i < ADDR_ARRAY_SIZE; ++i) {
     if (!(slh->main_list[i].value)) {
       elem = &(slh->main_list[i]);
       break;
@@ -599,7 +509,7 @@ static void addr_list_add(addr_list_header *slh, const ioa_addr *key, ur_addr_ma
   }
 
   if (!elem && slh->extra_list) {
-    for (i = 0; i < slh->extra_sz; ++i) {
+    for (size_t i = 0; i < slh->extra_sz; ++i) {
       if (!(slh->extra_list[i].value)) {
         elem = &(slh->extra_list[i]);
         break;
@@ -628,9 +538,7 @@ static void addr_list_remove(addr_list_header *slh, const ioa_addr *key, ur_addr
     *counter = 0;
   }
 
-  size_t i;
-
-  for (i = 0; i < ADDR_ARRAY_SIZE; ++i) {
+  for (size_t i = 0; i < ADDR_ARRAY_SIZE; ++i) {
     addr_elem *elem = &(slh->main_list[i]);
     if (elem->value) {
       if (addr_eq(&(elem->key), key)) {
@@ -646,7 +554,7 @@ static void addr_list_remove(addr_list_header *slh, const ioa_addr *key, ur_addr
   }
 
   if (slh->extra_list) {
-    for (i = 0; i < slh->extra_sz; ++i) {
+    for (size_t i = 0; i < slh->extra_sz; ++i) {
       addr_elem *elem = &(slh->extra_list[i]);
       if (elem->value) {
         if (addr_eq(&(elem->key), key)) {
@@ -666,9 +574,7 @@ static void addr_list_remove(addr_list_header *slh, const ioa_addr *key, ur_addr
 static void addr_list_foreach(addr_list_header *slh, ur_addr_map_func func) {
   if (slh && func) {
 
-    size_t i;
-
-    for (i = 0; i < ADDR_ARRAY_SIZE; ++i) {
+    for (size_t i = 0; i < ADDR_ARRAY_SIZE; ++i) {
       addr_elem *elem = &(slh->main_list[i]);
       if (elem->value) {
         func(elem->value);
@@ -676,7 +582,7 @@ static void addr_list_foreach(addr_list_header *slh, ur_addr_map_func func) {
     }
 
     if (slh->extra_list) {
-      for (i = 0; i < slh->extra_sz; ++i) {
+      for (size_t i = 0; i < slh->extra_sz; ++i) {
         addr_elem *elem = &(slh->extra_list[i]);
         if (elem->value) {
           func(elem->value);
@@ -687,14 +593,10 @@ static void addr_list_foreach(addr_list_header *slh, ur_addr_map_func func) {
 }
 
 static size_t addr_list_num_elements(const addr_list_header *slh) {
-
   size_t ret = 0;
 
   if (slh) {
-
-    size_t i;
-
-    for (i = 0; i < ADDR_ARRAY_SIZE; ++i) {
+    for (size_t i = 0; i < ADDR_ARRAY_SIZE; ++i) {
       const addr_elem *elem = &(slh->main_list[i]);
       if (elem->value) {
         ++ret;
@@ -702,7 +604,7 @@ static size_t addr_list_num_elements(const addr_list_header *slh) {
     }
 
     if (slh->extra_list) {
-      for (i = 0; i < slh->extra_sz; ++i) {
+      for (size_t i = 0; i < slh->extra_sz; ++i) {
         addr_elem *elem = &(slh->extra_list[i]);
         if (elem->value) {
           ++ret;
@@ -715,28 +617,19 @@ static size_t addr_list_num_elements(const addr_list_header *slh) {
 }
 
 static size_t addr_list_size(const addr_list_header *slh) {
-
-  size_t ret = 0;
-
   if (slh) {
-
-    ret += ADDR_ARRAY_SIZE;
-
-    ret += slh->extra_sz;
+    return ADDR_ARRAY_SIZE + slh->extra_sz;
   }
 
-  return ret;
+  return 0;
 }
 
 static addr_elem *addr_list_get(addr_list_header *slh, const ioa_addr *key) {
-
   if (!slh || !key) {
     return NULL;
   }
 
-  size_t i;
-
-  for (i = 0; i < ADDR_ARRAY_SIZE; ++i) {
+  for (size_t i = 0; i < ADDR_ARRAY_SIZE; ++i) {
     addr_elem *elem = &(slh->main_list[i]);
     if (elem->value) {
       if (addr_eq(&(elem->key), key)) {
@@ -746,7 +639,7 @@ static addr_elem *addr_list_get(addr_list_header *slh, const ioa_addr *key) {
   }
 
   if (slh->extra_list) {
-    for (i = 0; i < slh->extra_sz; ++i) {
+    for (size_t i = 0; i < slh->extra_sz; ++i) {
       addr_elem *elem = &(slh->extra_list[i]);
       if (elem->value) {
         if (addr_eq(&(elem->key), key)) {
@@ -760,14 +653,11 @@ static addr_elem *addr_list_get(addr_list_header *slh, const ioa_addr *key) {
 }
 
 static const addr_elem *addr_list_get_const(const addr_list_header *slh, const ioa_addr *key) {
-
   if (!slh || !key) {
     return NULL;
   }
 
-  size_t i;
-
-  for (i = 0; i < ADDR_ARRAY_SIZE; ++i) {
+  for (size_t i = 0; i < ADDR_ARRAY_SIZE; ++i) {
     const addr_elem *elem = &(slh->main_list[i]);
     if (elem->value) {
       if (addr_eq(&(elem->key), key)) {
@@ -777,7 +667,7 @@ static const addr_elem *addr_list_get_const(const addr_list_header *slh, const i
   }
 
   if (slh->extra_list) {
-    for (i = 0; i < slh->extra_sz; ++i) {
+    for (size_t i = 0; i < slh->extra_sz; ++i) {
       const addr_elem *elem = &(slh->extra_list[i]);
       if (elem->value) {
         if (addr_eq(&(elem->key), key)) {
@@ -807,24 +697,16 @@ void ur_addr_map_init(ur_addr_map *map) {
 
 void ur_addr_map_clean(ur_addr_map *map) {
   if (map && ur_addr_map_valid(map)) {
-    uint32_t i = 0;
-    for (i = 0; i < ADDR_MAP_SIZE; i++) {
+    for (size_t i = 0; i < ADDR_MAP_SIZE; i++) {
       addr_list_free(&(map->lists[i]));
     }
     memset(map, 0, sizeof(ur_addr_map));
   }
 }
 
-/**
- * @ret:
- * 0 - success
- * -1 - error
- * if the addr key exists, the value is updated.
- */
-int ur_addr_map_put(ur_addr_map *map, ioa_addr *key, ur_addr_map_value_type value) {
-
+bool ur_addr_map_put(ur_addr_map *map, ioa_addr *key, ur_addr_map_value_type value) {
   if (!ur_addr_map_valid(map)) {
-    return -1;
+    return false;
   }
 
   else {
@@ -838,108 +720,71 @@ int ur_addr_map_put(ur_addr_map *map, ioa_addr *key, ur_addr_map_value_type valu
       addr_list_add(slh, key, value);
     }
 
-    return 0;
+    return true;
   }
 }
 
-/**
- * @ret:
- * 1 - success
- * 0 - not found
- */
-int ur_addr_map_get(const ur_addr_map *map, ioa_addr *key, ur_addr_map_value_type *value) {
-
+bool ur_addr_map_get(const ur_addr_map *map, ioa_addr *key, ur_addr_map_value_type *value) {
   if (!ur_addr_map_valid(map)) {
-    return 0;
+    return false;
   }
 
-  else {
-
-    const addr_list_header *slh = get_addr_list_header(map, key);
-
-    const addr_elem *elem = addr_list_get_const(slh, key);
-    if (elem) {
-      if (value) {
-        *value = elem->value;
-      }
-      return 1;
+  const addr_list_header *slh = get_addr_list_header(map, key);
+  const addr_elem *elem = addr_list_get_const(slh, key);
+  if (elem) {
+    if (value) {
+      *value = elem->value;
     }
-
-    return 0;
+    return true;
   }
+  return false;
 }
 
-/**
- * @ret:
- * 1 - success
- * 0 - not found
- */
-int ur_addr_map_del(ur_addr_map *map, ioa_addr *key, ur_addr_map_func delfunc) {
-
+bool ur_addr_map_del(ur_addr_map *map, ioa_addr *key, ur_addr_map_func delfunc) {
   if (!ur_addr_map_valid(map)) {
-    return 0;
+    return false;
   }
 
-  else {
+  addr_list_header *slh = get_addr_list_header(map, key);
 
-    addr_list_header *slh = get_addr_list_header(map, key);
+  int counter = 0;
+  addr_list_remove(slh, key, delfunc, &counter);
 
-    int counter = 0;
-
-    addr_list_remove(slh, key, delfunc, &counter);
-
-    return (counter > 0);
-  }
+  return (counter > 0);
 }
 
-/**
- * @ret:
- * 1 - success
- * 0 - not found
- */
 void ur_addr_map_foreach(ur_addr_map *map, ur_addr_map_func func) {
-
   if (ur_addr_map_valid(map)) {
-
-    uint32_t i = 0;
-    for (i = 0; i < ADDR_MAP_SIZE; i++) {
-
+    for (size_t i = 0; i < ADDR_MAP_SIZE; i++) {
       addr_list_header *slh = &(map->lists[i]);
-
       addr_list_foreach(slh, func);
     }
   }
 }
 
 size_t ur_addr_map_num_elements(const ur_addr_map *map) {
+  if (!ur_addr_map_valid(map)) {
+    return 0;
+  }
 
   size_t ret = 0;
-
-  if (ur_addr_map_valid(map)) {
-    uint32_t i = 0;
-    for (i = 0; i < ADDR_MAP_SIZE; i++) {
-
-      const addr_list_header *slh = &(map->lists[i]);
-
-      ret += addr_list_num_elements(slh);
-    }
+  for (size_t i = 0; i < ADDR_MAP_SIZE; i++) {
+    const addr_list_header *slh = &(map->lists[i]);
+    ret += addr_list_num_elements(slh);
   }
 
   return ret;
 }
 
 size_t ur_addr_map_size(const ur_addr_map *map) {
+  if (!ur_addr_map_valid(map)) {
+    return 0;
+  }
 
   size_t ret = 0;
-
-  if (ur_addr_map_valid(map)) {
-    uint32_t i = 0;
-    for (i = 0; i < ADDR_MAP_SIZE; i++) {
-
-      const addr_list_header *slh = &(map->lists[i]);
-
-      ret += addr_list_size(slh);
-    }
+  for (size_t i = 0; i < ADDR_MAP_SIZE; i++) {
+    const addr_list_header *slh = &(map->lists[i]);
+    ret += addr_list_size(slh);
   }
 
   return ret;
@@ -1025,7 +870,6 @@ static string_list *string_list_remove(string_list *sl, const ur_string_map_key_
 }
 
 static string_elem *string_list_get(string_list *sl, const ur_string_map_key_type key) {
-
   if (!sl || !key) {
     return NULL;
   }
@@ -1063,25 +907,25 @@ static uint32_t string_hash(const ur_string_map_key_type key) {
   return hash;
 }
 
-static int string_map_index(const ur_string_map_key_type key) { return (int)(string_hash(key) % STRING_MAP_SIZE); }
+static size_t string_map_index(const ur_string_map_key_type key) { return string_hash(key) % STRING_MAP_SIZE; }
 
 static string_list_header *get_string_list_header(ur_string_map *map, const ur_string_map_key_type key) {
   return &(map->lists[string_map_index(key)]);
 }
 
-static int ur_string_map_init(ur_string_map *map) {
+static bool ur_string_map_init(ur_string_map *map) {
   if (map) {
     memset(map, 0, sizeof(ur_string_map));
     map->magic = MAGIC_HASH;
 
     TURN_MUTEX_INIT_RECURSIVE(&(map->mutex));
 
-    return 0;
+    return true;
   }
-  return -1;
+  return false;
 }
 
-static int ur_string_map_valid(const ur_string_map *map) { return (map && map->magic == MAGIC_HASH); }
+#define ur_string_map_valid(map) ((map) && ((map)->magic == MAGIC_HASH))
 
 ur_string_map *ur_string_map_create(ur_string_map_func del_value_func) {
   ur_string_map *map = (ur_string_map *)malloc(sizeof(ur_string_map));
@@ -1093,92 +937,62 @@ ur_string_map *ur_string_map_create(ur_string_map_func del_value_func) {
   return map;
 }
 
-/**
- * @ret:
- * 0 - success
- * -1 - error
- * if the string key exists, and the value is different, return error.
- */
-int ur_string_map_put(ur_string_map *map, const ur_string_map_key_type key, ur_string_map_value_type value) {
+bool ur_string_map_put(ur_string_map *map, const ur_string_map_key_type key, ur_string_map_value_type value) {
 
   if (!ur_string_map_valid(map)) {
-    return -1;
+    return false;
   }
 
-  else {
-
-    string_list_header *slh = get_string_list_header(map, key);
-
-    string_elem *elem = string_list_get(slh->list, key);
-    if (elem) {
-      if (elem->value != value) {
-        if (map->del_value_func) {
-          map->del_value_func(elem->value);
-        }
-        elem->value = value;
+  string_list_header *slh = get_string_list_header(map, key);
+  string_elem *elem = string_list_get(slh->list, key);
+  if (elem) {
+    if (elem->value != value) {
+      if (map->del_value_func) {
+        map->del_value_func(elem->value);
       }
-      return 0;
+      elem->value = value;
     }
+    return true;
+  }
 
-    slh->list = string_list_add(slh->list, key, value);
+  slh->list = string_list_add(slh->list, key, value);
+  return true;
+}
 
-    return 0;
+bool ur_string_map_get(ur_string_map *map, const ur_string_map_key_type key, ur_string_map_value_type *value) {
+
+  if (!ur_string_map_valid(map)) {
+    return false;
+  }
+
+  string_list_header *slh = get_string_list_header(map, key);
+  string_elem *elem = string_list_get(slh->list, key);
+  if (elem) {
+    if (value) {
+      *value = elem->value;
+    }
+    return true;
+  } else {
+    return false;
   }
 }
 
-/**
- * @ret:
- * 1 - success
- * 0 - not found
- */
-int ur_string_map_get(ur_string_map *map, const ur_string_map_key_type key, ur_string_map_value_type *value) {
+bool ur_string_map_del(ur_string_map *map, const ur_string_map_key_type key) {
 
   if (!ur_string_map_valid(map)) {
-    return 0;
+    return false;
   }
 
-  else {
+  string_list_header *slh = get_string_list_header(map, key);
 
-    string_list_header *slh = get_string_list_header(map, key);
-    string_elem *elem = string_list_get(slh->list, key);
-    if (elem) {
-      if (value) {
-        *value = elem->value;
-      }
-      return 1;
-    } else {
-      return 0;
-    }
-  }
-}
-
-/**
- * @ret:
- * 1 - success
- * 0 - not found
- */
-int ur_string_map_del(ur_string_map *map, const ur_string_map_key_type key) {
-
-  if (!ur_string_map_valid(map)) {
-    return 0;
-  }
-
-  else {
-
-    string_list_header *slh = get_string_list_header(map, key);
-
-    int counter = 0;
-
-    slh->list = string_list_remove(slh->list, key, map->del_value_func, &counter);
-
-    return (counter > 0);
-  }
+  int counter = 0;
+  slh->list = string_list_remove(slh->list, key, map->del_value_func, &counter);
+  return (counter > 0);
 }
 
 void ur_string_map_clean(ur_string_map *map) {
   if (ur_string_map_valid(map)) {
-    int i = 0;
-    for (i = 0; i < STRING_MAP_SIZE; i++) {
+    for (size_t i = 0; i < STRING_MAP_SIZE; ++i) {
       string_list_free(&(map->lists[i]), map->del_value_func);
     }
   }
@@ -1186,8 +1000,7 @@ void ur_string_map_clean(ur_string_map *map) {
 
 void ur_string_map_free(ur_string_map **map) {
   if (map && ur_string_map_valid(*map)) {
-    int i = 0;
-    for (i = 0; i < STRING_MAP_SIZE; i++) {
+    for (size_t i = 0; i < STRING_MAP_SIZE; ++i) {
       string_list_free(&((*map)->lists[i]), (*map)->del_value_func);
     }
     (*map)->magic = 0;
@@ -1198,32 +1011,31 @@ void ur_string_map_free(ur_string_map **map) {
 }
 
 size_t ur_string_map_size(const ur_string_map *map) {
-  if (ur_string_map_valid(map)) {
-    size_t ret = 0;
-    int i = 0;
-    for (i = 0; i < STRING_MAP_SIZE; i++) {
-      ret += string_list_size(map->lists[i].list);
-    }
-    return ret;
-  } else {
+  if (!ur_string_map_valid(map)) {
     return 0;
   }
+
+  size_t ret = 0;
+  for (size_t i = 0; i < STRING_MAP_SIZE; ++i) {
+    ret += string_list_size(map->lists[i].list);
+  }
+  return ret;
 }
 
-int ur_string_map_lock(const ur_string_map *map) {
+bool ur_string_map_lock(const ur_string_map *map) {
   if (ur_string_map_valid(map)) {
     TURN_MUTEX_LOCK((const turn_mutex *)&(map->mutex));
-    return 0;
+    return true;
   }
-  return -1;
+  return false;
 }
 
-int ur_string_map_unlock(const ur_string_map *map) {
+bool ur_string_map_unlock(const ur_string_map *map) {
   if (ur_string_map_valid(map)) {
     TURN_MUTEX_UNLOCK((const turn_mutex *)&(map->mutex));
-    return 0;
+    return true;
   }
-  return -1;
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////

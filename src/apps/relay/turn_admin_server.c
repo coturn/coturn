@@ -420,18 +420,18 @@ struct ps_arg {
   size_t users_number;
 };
 
-static int print_session(ur_map_key_type key, ur_map_value_type value, void *arg) {
+static bool print_session(ur_map_key_type key, ur_map_value_type value, void *arg) {
   if (key && value && arg) {
     struct ps_arg *csarg = (struct ps_arg *)arg;
     struct cli_session *cs = csarg->cs;
     struct turn_session_info *tsi = (struct turn_session_info *)value;
 
     if (cs->realm[0] && strcmp(cs->realm, tsi->realm)) {
-      return 0;
+      return false;
     }
 
     if (cs->origin[0] && strcmp(cs->origin, tsi->origin)) {
-      return 0;
+      return false;
     }
 
     if (csarg->users) {
@@ -440,22 +440,22 @@ static int print_session(ur_map_key_type key, ur_map_value_type value, void *arg
       if (pn[0]) {
         if (!strcmp(pn, "TLS") || !strcmp(pn, "tls") || !strcmp(pn, "Tls")) {
           if ((tsi->client_protocol != TLS_SOCKET) && (tsi->client_protocol != TLS_SCTP_SOCKET)) {
-            return 0;
+            return false;
           }
         } else if (!strcmp(pn, "DTLS") || !strcmp(pn, "dtls") || !strcmp(pn, "Dtls")) {
           if (tsi->client_protocol != DTLS_SOCKET) {
-            return 0;
+            return false;
           }
         } else if (!strcmp(pn, "TCP") || !strcmp(pn, "tcp") || !strcmp(pn, "Tcp")) {
           if ((tsi->client_protocol != TCP_SOCKET) && (tsi->client_protocol != SCTP_SOCKET)) {
-            return 0;
+            return false;
           }
         } else if (!strcmp(pn, "UDP") || !strcmp(pn, "udp") || !strcmp(pn, "Udp")) {
           if (tsi->client_protocol != UDP_SOCKET) {
-            return 0;
+            return false;
           }
         } else {
-          return 0;
+          return false;
         }
       }
 
@@ -474,11 +474,11 @@ static int print_session(ur_map_key_type key, ur_map_value_type value, void *arg
       if (csarg->username[0]) {
         if (csarg->exact_match) {
           if (strcmp((char *)tsi->username, csarg->username)) {
-            return 0;
+            return false;
           }
         } else {
           if (!strstr((char *)tsi->username, csarg->username)) {
-            return 0;
+            return false;
           }
         }
       }
@@ -563,7 +563,7 @@ static int print_session(ur_map_key_type key, ur_map_value_type value, void *arg
 
     csarg->counter += 1;
   }
-  return 0;
+  return false;
 }
 
 static void cancel_session(struct cli_session *cs, const char *ssid) {
@@ -2264,24 +2264,24 @@ struct https_ps_arg {
   turnsession_id cs;
 };
 
-static int https_print_session(ur_map_key_type key, ur_map_value_type value, void *arg) {
+static bool https_print_session(ur_map_key_type key, ur_map_value_type value, void *arg) {
   if (key && value && arg) {
     struct https_ps_arg *csarg = (struct https_ps_arg *)arg;
     struct str_buffer *sb = csarg->sb;
     struct turn_session_info *tsi = (struct turn_session_info *)value;
 
     if (current_eff_realm()[0] && strcmp(current_eff_realm(), tsi->realm)) {
-      return 0;
+      return false;
     }
 
     if (csarg->user_pattern[0]) {
       if (!strstr((char *)tsi->username, csarg->user_pattern)) {
-        return 0;
+        return false;
       }
     }
 
     if (csarg->cs == tsi->id) {
-      return 0;
+      return false;
     }
 
     {
@@ -2289,22 +2289,22 @@ static int https_print_session(ur_map_key_type key, ur_map_value_type value, voi
       if (pn[0]) {
         if (!strcmp(pn, "TLS") || !strcmp(pn, "tls") || !strcmp(pn, "Tls")) {
           if ((tsi->client_protocol != TLS_SOCKET) && (tsi->client_protocol != TLS_SCTP_SOCKET)) {
-            return 0;
+            return false;
           }
         } else if (!strcmp(pn, "DTLS") || !strcmp(pn, "dtls") || !strcmp(pn, "Dtls")) {
           if (tsi->client_protocol != DTLS_SOCKET) {
-            return 0;
+            return false;
           }
         } else if (!strcmp(pn, "TCP") || !strcmp(pn, "tcp") || !strcmp(pn, "Tcp")) {
           if ((tsi->client_protocol != TCP_SOCKET) && (tsi->client_protocol != SCTP_SOCKET)) {
-            return 0;
+            return false;
           }
         } else if (!strcmp(pn, "UDP") || !strcmp(pn, "udp") || !strcmp(pn, "Udp")) {
           if (tsi->client_protocol != UDP_SOCKET) {
-            return 0;
+            return false;
           }
         } else {
-          return 0;
+          return false;
         }
       }
     }
@@ -2417,7 +2417,7 @@ static int https_print_session(ur_map_key_type key, ur_map_value_type value, voi
 
     csarg->counter += 1;
   }
-  return 0;
+  return false;
 }
 
 static size_t https_print_sessions(struct str_buffer *sb, const char *client_protocol, const char *user_pattern,

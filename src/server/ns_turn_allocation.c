@@ -170,7 +170,7 @@ turn_permission_info *allocation_get_permission(allocation *a, const ioa_addr *a
 
 ///////////////////////////// TURN_PERMISSION /////////////////////////////////
 
-static int delete_channel_info_from_allocation_map(ur_map_key_type key, ur_map_value_type value);
+static bool delete_channel_info_from_allocation_map(ur_map_key_type key, ur_map_value_type value);
 
 void turn_permission_clean(turn_permission_info *tinfo) {
   if (tinfo && tinfo->allocated) {
@@ -279,7 +279,7 @@ static void ch_info_clean(ch_info *c) {
   }
 }
 
-static int delete_channel_info_from_allocation_map(ur_map_key_type key, ur_map_value_type value) {
+static bool delete_channel_info_from_allocation_map(ur_map_key_type key, ur_map_value_type value) {
   UNUSED_ARG(key);
 
   if (value) {
@@ -292,7 +292,7 @@ static int delete_channel_info_from_allocation_map(ur_map_key_type key, ur_map_v
     ch_info_clean(chn);
   }
 
-  return 0;
+  return false;
 }
 
 void turn_channel_delete(ch_info *chn) {
