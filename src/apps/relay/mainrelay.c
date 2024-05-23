@@ -1740,32 +1740,40 @@ void encrypt_aes_128(unsigned char *in, const unsigned char *mykey) {
   unsigned char *base64_encoded = base64encode(total, totalSize);
   printf("%s\n", base64_encoded);
 }
-void generate_aes_128_key(char *filePath, unsigned char *returnedKey) {
-  int i;
-  int part;
-  FILE *fptr;
+static void generate_aes_128_key(char *filePath, unsigned char *returnedKey) {
   char key[16];
+
+  // TODO: Document why this is called...?
   turn_srandom();
 
-  for (i = 0; i < 16; i++) {
-    part = (rand() % 3);
-    if (part == 0) {
+  for (size_t i = 0; i < 16; ++i) {
+    // TODO: This could be sped up by breaking the
+    // returned random value into multiple 8bit values
+    // instead of getting a new multi-byte random value
+    // for each key index.
+    switch (turn_random() % 3) {
+    case 0:
       key[i] = (turn_random() % 10) + 48;
-    }
-
-    else if (part == 1) {
+      continue;
+    case 1:
       key[i] = (turn_random() % 26) + 65;
-    }
-
-    else if (part == 2) {
+      continue;
+    default:
       key[i] = (turn_random() % 26) + 97;
+      continue;
     }
   }
-  fptr = fopen(filePath, "w");
-  for (i = 0; i < 16; i++) {
+  FILE *fptr = fopen(filePath, "w");
+  if (!fptr) {
+    return;
+  }
+  for (size_t i = 0; i < 16; ++i) {
     fputc(key[i], fptr);
   }
-  STRCPY((char *)returnedKey, key);
+  memcpy(returnedKey, key, 16);
+  // Note: Don't put a nul-terminator at the end.
+  // this function is only ever called with returnedKey
+  // as fixed size char arrays of size 16.
   fclose(fptr);
 }
 
