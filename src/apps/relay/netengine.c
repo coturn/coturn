@@ -236,22 +236,22 @@ static void del_alt_server(const char *saddr, int default_port, turn_server_addr
     } else {
 
       size_t i;
-      int found = 0;
       for (i = 0; i < list->size; ++i) {
         if (addr_eq(&(list->addrs[i]), &addr)) {
-          found = 1;
           break;
         }
       }
 
-      if (found) {
+      if (i < list->size) {
 
-        size_t j;
         ioa_addr *new_addrs = (ioa_addr *)malloc(sizeof(ioa_addr) * (list->size - 1));
-        for (j = 0; j < i; ++j) {
+        if (!new_addrs) {
+          return;
+        }
+        for (size_t j = 0; j < i; ++j) {
           addr_cpy(&(new_addrs[j]), &(list->addrs[j]));
         }
-        for (j = i; j < list->size - 1; ++j) {
+        for (size_t j = i; j < list->size - 1; ++j) {
           addr_cpy(&(new_addrs[j]), &(list->addrs[j + 1]));
         }
 
