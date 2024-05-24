@@ -228,7 +228,7 @@ static ioa_socket_handle dtls_accept_client_connection(dtls_listener_relay_serve
                                                        ioa_network_buffer_handle nbh) {
   FUNCSTART;
 
-  if (!ssl) {
+  if (!server || !ssl) {
     return NULL;
   }
 
@@ -597,6 +597,11 @@ static int create_new_connected_udp_socket(dtls_listener_relay_server_type *serv
 }
 
 static void udp_server_input_handler(evutil_socket_t fd, short what, void *arg) {
+
+  if (!arg) {
+    return;
+  }
+
   int cycle = 0;
 
   dtls_listener_relay_server_type *server = (dtls_listener_relay_server_type *)arg;

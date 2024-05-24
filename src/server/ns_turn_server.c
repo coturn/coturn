@@ -383,39 +383,42 @@ void turn_session_info_clean(struct turn_session_info *tsi) {
 }
 
 void turn_session_info_add_peer(struct turn_session_info *tsi, ioa_addr *peer) {
-  if (tsi && peer) {
-    {
-      size_t i;
-      for (i = 0; i < tsi->main_peers_size; ++i) {
-        if (addr_eq(peer, &(tsi->main_peers_data[i].addr))) {
-          return;
-        }
-      }
+  if (!tsi || !peer) {
+    return;
+  }
 
-      if (tsi->main_peers_size < TURN_MAIN_PEERS_ARRAY_SIZE) {
-        addr_cpy(&(tsi->main_peers_data[tsi->main_peers_size].addr), peer);
-        addr_to_string(&(tsi->main_peers_data[tsi->main_peers_size].addr),
-                       (uint8_t *)tsi->main_peers_data[tsi->main_peers_size].saddr);
-        tsi->main_peers_size += 1;
+  for (size_t i = 0; i < tsi->main_peers_size; ++i) {
+    if (addr_eq(peer, &(tsi->main_peers_data[i].addr))) {
+      return;
+    }
+  }
+
+  if (tsi->main_peers_size < TURN_MAIN_PEERS_ARRAY_SIZE) {
+    addr_cpy(&(tsi->main_peers_data[tsi->main_peers_size].addr), peer);
+    addr_to_string(&(tsi->main_peers_data[tsi->main_peers_size].addr),
+                   (uint8_t *)tsi->main_peers_data[tsi->main_peers_size].saddr);
+    tsi->main_peers_size += 1;
+    return;
+  }
+
+  if (tsi->extra_peers_data) {
+    for (size_t sz = 0; sz < tsi->extra_peers_size; ++sz) {
+      if (addr_eq(peer, &(tsi->extra_peers_data[sz].addr))) {
         return;
       }
     }
-
-    if (tsi->extra_peers_data) {
-      size_t sz;
-      for (sz = 0; sz < tsi->extra_peers_size; ++sz) {
-        if (addr_eq(peer, &(tsi->extra_peers_data[sz].addr))) {
-          return;
-        }
-      }
-    }
-    tsi->extra_peers_data =
-        (addr_data *)realloc(tsi->extra_peers_data, (tsi->extra_peers_size + 1) * sizeof(addr_data));
-    addr_cpy(&(tsi->extra_peers_data[tsi->extra_peers_size].addr), peer);
-    addr_to_string(&(tsi->extra_peers_data[tsi->extra_peers_size].addr),
-                   (uint8_t *)tsi->extra_peers_data[tsi->extra_peers_size].saddr);
-    tsi->extra_peers_size += 1;
   }
+
+  addr_data* pTmp = (addr_data *)realloc(tsi->extra_peers_data, (tsi->extra_peers_size + 1) * sizeof(addr_data));
+  if (!pTmp) {
+    return;
+  }
+
+  tsi->extra_peers_data = pTmp;
+  addr_cpy(&(tsi->extra_peers_data[tsi->extra_peers_size].addr), peer);
+  addr_to_string(&(tsi->extra_peers_data[tsi->extra_peers_size].addr),
+                 (uint8_t *)tsi->extra_peers_data[tsi->extra_peers_size].saddr);
+  tsi->extra_peers_size += 1;
 }
 
 struct tsi_arg {
@@ -789,6 +792,9 @@ static ts_ur_super_session *create_new_ss(turn_turnserver *server) {
   // printf("%s: 111.111: session size=%lu\n",__FUNCTION__,(unsigned long)sizeof(ts_ur_super_session));
   //
   ts_ur_super_session *ss = (ts_ur_super_session *)calloc(sizeof(ts_ur_super_session), 1);
+  if (!ss) {
+    return NULL;
+  }
   ss->server = server;
   get_default_realm_options(&(ss->realm_options));
   put_session_into_map(ss);
@@ -2080,7 +2086,7 @@ static int tcp_start_connection_to_peer(turn_turnserver *server, ts_ur_super_ses
                                         ioa_addr *peer_addr, int *err_code, const uint8_t **reason) {
   FUNCSTART;
 
-  if (!ss) {
+  if (!server || !ss) {
     *err_code = 500;
     *reason = (const uint8_t *)"Server error: empty session";
     FUNCEND;
@@ -2157,6 +2163,11 @@ static void tcp_peer_accept_connection(ioa_socket_handle s, void *arg) {
 
     ts_ur_super_session *ss = (ts_ur_super_session *)arg;
     turn_turnserver *server = (turn_turnserver *)(ss->server);
+
+    if (!server) {
+      close_ioa_socket(s);
+      return;
+    }
 
     FUNCSTART;
 
