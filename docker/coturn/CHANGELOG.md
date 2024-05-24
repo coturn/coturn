@@ -4,8 +4,12 @@ Coturn TURN server Docker image changelog
 
 
 
-## [4.6.2-r9] · 2024-??-?? (unreleased)
+## [4.6.2-r9] · 2024-05-24
 [4.6.2-r9]: /../../tree/docker/4.6.2-r9
+
+### Upgraded
+
+- [Alpine Linux] 3.20: <https://alpinelinux.org/posts/Alpine-3.20.0-released.html>
 
 ### Security updated
 
