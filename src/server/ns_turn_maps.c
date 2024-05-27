@@ -929,7 +929,7 @@ static bool ur_string_map_init(ur_string_map *map) {
 
 ur_string_map *ur_string_map_create(ur_string_map_func del_value_func) {
   ur_string_map *map = (ur_string_map *)malloc(sizeof(ur_string_map));
-  if (ur_string_map_init(map) < 0) {
+  if (!ur_string_map_init(map)) {
     free(map);
     return NULL;
   }
