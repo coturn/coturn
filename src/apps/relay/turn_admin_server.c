@@ -1533,11 +1533,12 @@ static ioa_socket_handle current_socket = NULL;
 
 static char *get_bold_admin_title(void) {
   static char sbat[1025];
-  strncpy(sbat, __bold_admin_title, sizeof(sbat));
+  strncpy(sbat, __bold_admin_title, sizeof(sbat) - 1);
+  sbat[sizeof(sbat) - 1] = '\0';
 
   if (current_socket && current_socket->special_session) {
     struct admin_session *as = (struct admin_session *)current_socket->special_session;
-    if (as->as_ok) {
+    if (as && as->as_ok) {
       if (as->as_login[0]) {
         char *dst = sbat + strlen(sbat);
         snprintf(dst, ADMIN_USER_MAX_LENGTH * 2 + 2, " admin user: <b><i>%s</i></b><br>\r\n", as->as_login);
