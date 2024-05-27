@@ -71,7 +71,7 @@ static int redis_le_valid(struct redisLibeventEvents *e) { return (e && !(e->inv
 
 /////////////////// Callbacks ////////////////////////////
 
-static void redisLibeventReadEvent(int fd, short event, void *arg) {
+static void redisLibeventReadEvent(evutil_socket_t fd, short event, void *arg) {
   ((void)fd);
   ((void)event);
   struct redisLibeventEvents *e = (struct redisLibeventEvents *)arg;
@@ -95,7 +95,7 @@ static void redisLibeventReadEvent(int fd, short event, void *arg) {
   }
 }
 
-static void redisLibeventWriteEvent(int fd, short event, void *arg) {
+static void redisLibeventWriteEvent(evutil_socket_t fd, short event, void *arg) {
   ((void)fd);
   ((void)event);
   struct redisLibeventEvents *e = (struct redisLibeventEvents *)arg;

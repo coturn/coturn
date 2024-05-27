@@ -30,6 +30,8 @@
 
 #include "mainrelay.h"
 
+#include "ns_turn_ioalib.h"
+
 //////////// Backward compatibility with OpenSSL 1.0.x //////////////
 #if (OPENSSL_VERSION_NUMBER < 0x10100001L ||                                                                           \
      (defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER <= 0x3040000fL))

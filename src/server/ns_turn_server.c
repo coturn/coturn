@@ -409,7 +409,7 @@ void turn_session_info_add_peer(struct turn_session_info *tsi, ioa_addr *peer) {
     }
   }
 
-  addr_data* pTmp = (addr_data *)realloc(tsi->extra_peers_data, (tsi->extra_peers_size + 1) * sizeof(addr_data));
+  addr_data *pTmp = (addr_data *)realloc(tsi->extra_peers_data, (tsi->extra_peers_size + 1) * sizeof(addr_data));
   if (!pTmp) {
     return;
   }

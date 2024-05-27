@@ -30,6 +30,7 @@
 
 #include "uclient.h"
 #include "apputils.h"
+#include "ns_turn_ioalib.h"
 #include "ns_turn_utils.h"
 #include "session.h"
 #include "startuclient.h"
@@ -39,6 +40,12 @@
 #include <unistd.h>
 #endif
 #include <time.h>
+
+#if defined(__MINGW32__)
+#ifndef usleep
+#define usleep Sleep
+#endif
+#endif
 
 static int verbose_packets = 0;
 

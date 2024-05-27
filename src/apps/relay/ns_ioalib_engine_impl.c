@@ -759,7 +759,7 @@ int set_raw_socket_ttl_options(evutil_socket_t fd, int family) {
     UNUSED_ARG(fd);
 #else
     int recv_ttl_on = 1;
-    if (setsockopt(fd, IPPROTO_IPV6, IPV6_RECVHOPLIMIT, &recv_ttl_on, sizeof(recv_ttl_on)) < 0) {
+    if (setsockopt(fd, IPPROTO_IPV6, IPV6_RECVHOPLIMIT, (const void *)&recv_ttl_on, sizeof(recv_ttl_on)) < 0) {
       perror("cannot set recvhoplimit\n");
     }
 #endif
@@ -768,7 +768,7 @@ int set_raw_socket_ttl_options(evutil_socket_t fd, int family) {
     UNUSED_ARG(fd);
 #else
     int recv_ttl_on = 1;
-    if (setsockopt(fd, IPPROTO_IP, IP_RECVTTL, &recv_ttl_on, sizeof(recv_ttl_on)) < 0) {
+    if (setsockopt(fd, IPPROTO_IP, IP_RECVTTL, (const void *)&recv_ttl_on, sizeof(recv_ttl_on)) < 0) {
       perror("cannot set recvttl\n");
     }
 #endif
@@ -783,7 +783,7 @@ int set_raw_socket_tos_options(evutil_socket_t fd, int family) {
     UNUSED_ARG(fd);
 #else
     int recv_tos_on = 1;
-    if (setsockopt(fd, IPPROTO_IPV6, IPV6_RECVTCLASS, &recv_tos_on, sizeof(recv_tos_on)) < 0) {
+    if (setsockopt(fd, IPPROTO_IPV6, IPV6_RECVTCLASS, (const void *)&recv_tos_on, sizeof(recv_tos_on)) < 0) {
       perror("cannot set recvtclass\n");
     }
 #endif
@@ -792,7 +792,7 @@ int set_raw_socket_tos_options(evutil_socket_t fd, int family) {
     UNUSED_ARG(fd);
 #else
     int recv_tos_on = 1;
-    if (setsockopt(fd, IPPROTO_IP, IP_RECVTOS, &recv_tos_on, sizeof(recv_tos_on)) < 0) {
+    if (setsockopt(fd, IPPROTO_IP, IP_RECVTOS, (const void *)&recv_tos_on, sizeof(recv_tos_on)) < 0) {
       perror("cannot set recvtos\n");
     }
 #endif
@@ -812,7 +812,7 @@ int set_socket_options_fd(evutil_socket_t fd, SOCKET_TYPE st, int family) {
     struct linger so_linger;
     so_linger.l_onoff = 1;
     so_linger.l_linger = 0;
-    if (setsockopt(fd, SOL_SOCKET, SO_LINGER, &so_linger, sizeof(so_linger)) < 1) {
+    if (setsockopt(fd, SOL_SOCKET, SO_LINGER, (const void *)&so_linger, sizeof(so_linger)) < 1) {
       // perror("setsolinger")
       ;
     }
@@ -830,7 +830,7 @@ int set_socket_options_fd(evutil_socket_t fd, SOCKET_TYPE st, int family) {
 #ifdef TURN_IP_RECVERR
       on = 1;
 #endif
-      if (setsockopt(fd, IPPROTO_IP, IP_RECVERR, (void *)&on, sizeof(on)) < 0) {
+      if (setsockopt(fd, IPPROTO_IP, IP_RECVERR, (const void *)&on, sizeof(on)) < 0) {
         perror("IP_RECVERR");
       }
     }
@@ -842,7 +842,7 @@ int set_socket_options_fd(evutil_socket_t fd, SOCKET_TYPE st, int family) {
 #ifdef TURN_IP_RECVERR
       on = 1;
 #endif
-      if (setsockopt(fd, IPPROTO_IPV6, IPV6_RECVERR, (void *)&on, sizeof(on)) < 0) {
+      if (setsockopt(fd, IPPROTO_IPV6, IPV6_RECVERR, (const void *)&on, sizeof(on)) < 0) {
         perror("IPV6_RECVERR");
       }
     }
@@ -853,18 +853,18 @@ int set_socket_options_fd(evutil_socket_t fd, SOCKET_TYPE st, int family) {
     int flag = 1;
 
     if (is_tcp_socket(st)) {
-      setsockopt(fd,            /* socket affected */
-                 IPPROTO_TCP,   /* set option at TCP level */
-                 TCP_NODELAY,   /* name of option */
-                 (char *)&flag, /* value */
-                 sizeof(int));  /* length of option value */
+      setsockopt(fd,                  /* socket affected */
+                 IPPROTO_TCP,         /* set option at TCP level */
+                 TCP_NODELAY,         /* name of option */
+                 (const void *)&flag, /* value */
+                 sizeof(int));        /* length of option value */
     } else {
 #if defined(SCTP_NODELAY)
-      setsockopt(fd,            /* socket affected */
-                 IPPROTO_SCTP,  /* set option at SCTP level */
-                 SCTP_NODELAY,  /* name of option */
-                 (char *)&flag, /* value */
-                 sizeof(int));  /* length of option value */
+      setsockopt(fd,                  /* socket affected */
+                 IPPROTO_SCTP,        /* set option at SCTP level */
+                 SCTP_NODELAY,        /* name of option */
+                 (const void *)&flag, /* value */
+                 sizeof(int));        /* length of option value */
 #endif
     }
 

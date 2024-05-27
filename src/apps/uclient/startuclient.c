@@ -39,6 +39,12 @@
 #include "startuclient.h"
 #include "uclient.h"
 
+#if defined(__MINGW32__)
+#ifndef usleep
+#define usleep Sleep
+#endif
+#endif
+
 /////////////////////////////////////////
 
 #define MAX_CONNECT_EFFORTS (77)

@@ -8,6 +8,10 @@
 #include "acme.h"
 #include "ns_ioalib_impl.h"
 
+#if !defined(_MSC_VER)
+#include <unistd.h>
+#endif
+
 #define GET_ACME_PREFIX "GET /.well-known/acme-challenge/"
 #define GET_ACME_PREFIX_LEN 32
 
