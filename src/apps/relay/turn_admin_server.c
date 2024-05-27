@@ -3290,6 +3290,9 @@ static void handle_logon_request(ioa_socket_handle s, struct http_request *hr) {
     struct admin_session *as = (struct admin_session *)s->special_session;
     if (!as) {
       as = (struct admin_session *)calloc(sizeof(struct admin_session), 1);
+      if (!as) {
+        return;
+      }
       s->special_session = as;
       s->special_session_size = sizeof(struct admin_session);
     }
