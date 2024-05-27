@@ -717,52 +717,78 @@ void release_allocation_quota(uint8_t *user, int oauth, uint8_t *realm) {
 
 int add_static_user_account(char *user) {
   /* Realm is either default or empty for users taken from file or command-line */
-  if (user && !turn_params.use_auth_secret_with_timestamp) {
-    char *s = strstr(user, ":");
-    if (!s || (s == user) || (strlen(s) < 2)) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong user account: %s\n", user);
-    } else {
-      size_t ulen = s - user;
-      char *usname = (char *)calloc(ulen + 1, sizeof(char));
-      strncpy(usname, user, ulen);
-      usname[ulen] = 0;
-      if (SASLprep((uint8_t *)usname) < 0) {
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong user name: %s\n", user);
-        free(usname);
-        return -1;
-      }
-      s = skip_blanks(s + 1);
-      hmackey_t *key = (hmackey_t *)malloc(sizeof(hmackey_t));
-      if (strstr(s, "0x") == s) {
-        char *keysource = s + 2;
-        size_t sz = get_hmackey_size(SHATYPE_DEFAULT);
-        if (strlen(keysource) < sz * 2) {
-          TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key format: %s\n", s);
-        }
-        if (convert_string_key_to_binary(keysource, *key, sz) < 0) {
-          TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key: %s\n", s);
-          free(usname);
-          free(key);
-          return -1;
-        }
-      } else {
-        // this is only for default realm
-        stun_produce_integrity_key_str((uint8_t *)usname, (uint8_t *)get_realm(NULL)->options.name, (uint8_t *)s, *key,
-                                       SHATYPE_DEFAULT);
-      }
-      {
-        ur_string_map_lock(turn_params.default_users_db.ram_db.static_accounts);
-        ur_string_map_put(turn_params.default_users_db.ram_db.static_accounts, (ur_string_map_key_type)usname,
-                          (ur_string_map_value_type)*key);
-        ur_string_map_unlock(turn_params.default_users_db.ram_db.static_accounts);
-      }
-      turn_params.default_users_db.ram_db.users_number++;
-      free(usname);
-      return 0;
-    }
+  if (!user || turn_params.use_auth_secret_with_timestamp) {
+    return -1;
   }
 
-  return -1;
+  char *s = strstr(user, ":");
+  if (!s || (s == user) || (strlen(s) < 2)) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong user account: %s\n", user);
+    return -1;
+  }
+
+  size_t ulen = s - user;
+
+  // TODO: TURN usernames should be length limited by the RFC.
+  // are user account names as well? If so, we can avoid allocating
+  // and instead use a stack buffer.
+  char *usname = (char *)malloc(ulen + 1);
+  if (!usname) {
+    return -1;
+  }
+
+  strncpy(usname, user, ulen);
+  usname[ulen] = 0;
+
+  if (SASLprep((uint8_t *)usname) < 0) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong user name: %s\n", user);
+    free(usname);
+    return -1;
+  }
+  s = skip_blanks(s + 1);
+
+  hmackey_t *key = (hmackey_t *)malloc(sizeof(hmackey_t));
+  if (!key) {
+    free(usname);
+    return -1;
+  }
+
+  if (strstr(s, "0x") == s) {
+    char *keysource = s + 2;
+    size_t sz = get_hmackey_size(SHATYPE_DEFAULT);
+    if (strlen(keysource) < sz * 2) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key format: %s\n", s);
+    }
+    if (convert_string_key_to_binary(keysource, *key, sz) < 0) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key: %s\n", s);
+      free(usname);
+      free(key);
+      return -1;
+    }
+  } else {
+    // this is only for default realm
+    stun_produce_integrity_key_str((uint8_t *)usname, (uint8_t *)get_realm(NULL)->options.name, (uint8_t *)s, *key,
+                                   SHATYPE_DEFAULT);
+  }
+
+  // the ur_string_map functions only fail (well... other than allocation failures, which aren't handled)
+  // if the map isn't valid. So we only need to check the result of locking.
+  if (ur_string_map_lock(turn_params.default_users_db.ram_db.static_accounts) < 0) {
+    free(usname);
+    free(key);
+    return -1;
+  }
+
+  // key argument (the usname variable) is deep-copied, so ownership isn't transfered, and we still need to free usname later..
+  // value argument (the key variable) has ownership transfered into this function
+  ur_string_map_put(turn_params.default_users_db.ram_db.static_accounts, (ur_string_map_key_type)usname,
+                    (ur_string_map_value_type)*key);
+  ur_string_map_unlock(turn_params.default_users_db.ram_db.static_accounts);
+
+  turn_params.default_users_db.ram_db.users_number++;
+
+  free(usname);
+  return 0;
 }
 
 ////////////////// Admin /////////////////////////
