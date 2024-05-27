@@ -42,6 +42,10 @@
 
 ///////////
 
+#define FINGERPRINT_XOR 0x5354554e
+
+///////////
+
 static void generate_random_nonce(unsigned char *nonce, size_t sz);
 
 ///////////
@@ -501,7 +505,7 @@ int stun_is_command_message_full_check_str(const uint8_t *buf, size_t blen, int 
     return !must_check_fingerprint;
   }
   uint32_t crc32len = (uint32_t)((((const uint8_t *)fingerprint) - buf) - 4);
-  int ret = (*fingerprint == nswap32(ns_crc32(buf, crc32len) ^ ((uint32_t)0x5354554e)));
+  int ret = (*fingerprint == nswap32(ns_crc32(buf, crc32len) ^ ((uint32_t)FINGERPRINT_XOR)));
   if (ret && fingerprint_present) {
     *fingerprint_present = ret;
   }
@@ -1736,7 +1740,7 @@ int stun_attr_add_fingerprint_str(uint8_t *buf, size_t *len) {
   uint32_t crc32 = 0;
   stun_attr_add_str(buf, len, STUN_ATTRIBUTE_FINGERPRINT, (uint8_t *)&crc32, 4);
   crc32 = ns_crc32(buf, (int)*len - 8);
-  *((uint32_t *)(buf + *len - 4)) = nswap32(crc32 ^ ((uint32_t)0x5354554e));
+  *((uint32_t *)(buf + *len - 4)) = nswap32(crc32 ^ ((uint32_t)FINGERPRINT_XOR));
   return 0;
 }
 ////////////// CRC ///////////////////////////////////////////////
