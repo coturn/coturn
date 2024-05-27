@@ -3021,9 +3021,9 @@ int main(int argc, char **argv) {
   read_config_file(argc, argv, 1);
 
   {
-    int cpus = get_system_number_of_cpus();
-    if (0 < cpus) {
-      turn_params.cpus = get_system_number_of_cpus();
+    unsigned long cpus = get_system_active_number_of_cpus();
+    if (cpus > 0) {
+      turn_params.cpus = cpus;
     }
     if (turn_params.cpus < DEFAULT_CPUS_NUMBER) {
       turn_params.cpus = DEFAULT_CPUS_NUMBER;
@@ -3033,7 +3033,7 @@ int main(int argc, char **argv) {
 
     turn_params.general_relay_servers_number = (turnserver_id)turn_params.cpus;
 
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "System cpu num is %lu\n", turn_params.cpus);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "System cpu num is %lu\n", get_system_number_of_cpus());
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "System enable num is %lu\n", get_system_active_number_of_cpus());
   }
 
