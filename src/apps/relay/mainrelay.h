@@ -393,7 +393,6 @@ struct ctr_state {
   unsigned int num;
   unsigned char ecount[16];
 };
-void generate_aes_128_key(char *filePath, unsigned char *returnedKey);
 unsigned char *base64encode(const void *b64_encode_this, int encode_this_many_bytes);
 void encrypt_aes_128(unsigned char *in, const unsigned char *mykey);
 unsigned char *base64decode(const void *b64_decode_this, int decode_this_many_bytes);
