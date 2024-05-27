@@ -172,7 +172,7 @@ static bool rtcp_map_init(rtcp_map *map, ioa_engine_handle e) {
 
 rtcp_map *rtcp_map_create(ioa_engine_handle e) {
   rtcp_map *map = (rtcp_map *)calloc(sizeof(rtcp_map), 1);
-  if (rtcp_map_init(map, e) < 0) {
+  if (!rtcp_map_init(map, e)) {
     free(map);
     return NULL;
   }

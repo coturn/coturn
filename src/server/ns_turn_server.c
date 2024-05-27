@@ -426,7 +426,7 @@ struct tsi_arg {
   ioa_addr *addr;
 };
 
-static int turn_session_info_foreachcb(ur_map_key_type key, ur_map_value_type value, void *arg) {
+static bool turn_session_info_foreachcb(ur_map_key_type key, ur_map_value_type value, void *arg) {
   UNUSED_ARG(value);
 
   int port = (int)key;
@@ -437,7 +437,7 @@ static int turn_session_info_foreachcb(ur_map_key_type key, ur_map_value_type va
     addr_set_port(&a, port);
     turn_session_info_add_peer(ta->tsi, &a);
   }
-  return 0;
+  return false;
 }
 
 int turn_session_info_copy_from(struct turn_session_info *tsi, ts_ur_super_session *ss) {
