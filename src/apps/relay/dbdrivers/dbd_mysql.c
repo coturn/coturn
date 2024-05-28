@@ -115,7 +115,7 @@ char *decryptPassword(char *in, const unsigned char *mykey) {
 #endif
 
   strcat(last, (char *)outdata);
-  out = (char *)malloc(sizeof(char) * strlen(last));
+  out = (char *)malloc(sizeof(char) * (strlen(last) + 1)); // add 1 to allocate space for terminating '\0'
   strcpy(out, last);
   return out;
 }
