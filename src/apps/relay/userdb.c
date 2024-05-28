@@ -779,8 +779,8 @@ int add_static_user_account(char *user) {
     return -1;
   }
 
-  // key argument (the usname variable) is deep-copied, so ownership isn't transfered, and we still need to free usname later..
-  // value argument (the key variable) has ownership transfered into this function
+  // key argument (the usname variable) is deep-copied, so ownership isn't transfered, and we still need to free usname
+  // later.. value argument (the key variable) has ownership transfered into this function
   ur_string_map_put(turn_params.default_users_db.ram_db.static_accounts, (ur_string_map_key_type)usname,
                     (ur_string_map_value_type)*key);
   ur_string_map_unlock(turn_params.default_users_db.ram_db.static_accounts);
