@@ -3776,8 +3776,7 @@ static void openssl_load_certificates(void) {
     set_ctx(&turn_params.tls_ctx, "TLS", TLS_server_method());
     if (!turn_params.no_tlsv1_2) {
       SSL_CTX_set_min_proto_version(turn_params.tls_ctx, TLS1_2_VERSION);
-    }
-    else {
+    } else {
       SSL_CTX_set_min_proto_version(turn_params.tls_ctx, TLS1_3_VERSION);
     }
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS cipher suite: %s\n", turn_params.cipher_list);
