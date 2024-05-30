@@ -250,7 +250,7 @@ wchar_t *_ATW(__in char *pszInBuf, __in int nInSize, __out wchar_t **pszOutBuf, 
 
 ////////////////// File search ////////////////////////
 
-char *find_config_file(const char *config_file, int print_file_name);
+char *find_config_file(const char *config_file);
 void set_execdir(void);
 void print_abs_file_name(const char *msg1, const char *msg2, const char *fn);
 

@@ -51,7 +51,7 @@ static int verbose_packets = 0;
 
 static size_t current_clients_number = 0;
 
-static int start_full_timer = 0;
+static bool start_full_timer = false;
 static uint32_t tot_messages = 0;
 static uint32_t tot_send_messages = 0;
 static uint64_t tot_send_bytes = 0;
@@ -91,7 +91,7 @@ static uint64_t max_latency = 0;
 static uint64_t min_jitter = 0xFFFFFFFF;
 static uint64_t max_jitter = 0;
 
-static int show_statistics = 0;
+static bool show_statistics = false;
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -107,7 +107,7 @@ static void __turn_getMSTime(void) {
     start_sec = tp.tv_sec;
   }
   if (current_time != (uint64_t)((uint64_t)(tp.tv_sec) - start_sec)) {
-    show_statistics = 1;
+    show_statistics = true;
   }
   current_time = (uint64_t)((uint64_t)(tp.tv_sec) - start_sec);
   current_mstime = (uint64_t)((current_time * 1000) + (tp.tv_nsec / 1000000));
@@ -137,8 +137,7 @@ static void uc_delete_session_elem_data(app_ur_session *cdi) {
     EVENT_DEL(cdi->input_ev);
     EVENT_DEL(cdi->input_tcp_data_ev);
     if (cdi->pinfo.tcp_conn) {
-      int i = 0;
-      for (i = 0; i < (int)(cdi->pinfo.tcp_conn_number); ++i) {
+      for (int i = 0; i < (int)(cdi->pinfo.tcp_conn_number); ++i) {
         if (cdi->pinfo.tcp_conn[i]) {
           if (cdi->pinfo.tcp_conn[i]->tcp_data_ssl && !(cdi->pinfo.broken)) {
             if (!(SSL_get_shutdown(cdi->pinfo.tcp_conn[i]->tcp_data_ssl) & SSL_SENT_SHUTDOWN)) {
@@ -191,7 +190,7 @@ static int remove_all_from_ss(app_ur_session *ss) {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-int send_buffer(app_ur_conn_info *clnet_info, stun_buffer *message, int data_connection, app_tcp_conn_info *atc) {
+int send_buffer(app_ur_conn_info *clnet_info, stun_buffer *message, bool data_connection, app_tcp_conn_info *atc) {
 
   int rc = 0;
   int ret = -1;
@@ -225,7 +224,7 @@ int send_buffer(app_ur_conn_info *clnet_info, stun_buffer *message, int data_con
 
   if (ssl) {
 
-    int message_sent = 0;
+    bool message_sent = false;
     while (!message_sent) {
 
       if (SSL_get_shutdown(ssl)) {
@@ -242,7 +241,7 @@ int send_buffer(app_ur_conn_info *clnet_info, stun_buffer *message, int data_con
           TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "buffer sent: size=%d\n", len);
         }
 
-        message_sent = 1;
+        message_sent = true;
         ret = len;
       } else {
         switch (SSL_get_error(ssl, len)) {
@@ -272,7 +271,7 @@ int send_buffer(app_ur_conn_info *clnet_info, stun_buffer *message, int data_con
         }
         /* Falls through. */
         default:
-          clnet_info->broken = 1;
+          clnet_info->broken = true;
           TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Unexpected error while writing!\n");
           return -1;
         }
@@ -281,7 +280,7 @@ int send_buffer(app_ur_conn_info *clnet_info, stun_buffer *message, int data_con
 
   } else if (fd >= 0) {
 
-    size_t left = (size_t)(message->len);
+    size_t left = message->len;
 
     while (left > 0) {
       do {
@@ -359,7 +358,7 @@ static int wait_fd(int fd, unsigned int cycle) {
   }
 }
 
-int recv_buffer(app_ur_conn_info *clnet_info, stun_buffer *message, int sync, int data_connection,
+int recv_buffer(app_ur_conn_info *clnet_info, stun_buffer *message, bool sync, bool data_connection,
                 app_tcp_conn_info *atc, stun_buffer *request_message) {
 
   int rc = 0;
@@ -475,7 +474,7 @@ recv_again:
         }
         /* Falls through. */
         default:
-          clnet_info->broken = 1;
+          clnet_info->broken = true;
           TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Unexpected error while reading: rc=%d, sslerr=%d\n", rc, sslerr);
           return -1;
         }
@@ -490,7 +489,7 @@ recv_again:
 
     /* TLS*/
 
-    int message_received = 0;
+    bool message_received = false;
     int cycle = 0;
     while (!message_received && cycle++ < 100) {
 
@@ -511,7 +510,7 @@ recv_again:
           TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "response received: size=%d\n", rc);
         }
         message->len = rc;
-        message_received = 1;
+        message_received = true;
 
       } else {
 
@@ -544,7 +543,7 @@ recv_again:
         }
         /* Falls through. */
         default:
-          clnet_info->broken = 1;
+          clnet_info->broken = true;
           TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Unexpected error while reading: rc=%d, sslerr=%d\n", rc, sslerr);
           return -1;
         }
@@ -675,13 +674,13 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
     uint16_t chnumber = 0;
 
     message_info mi;
-    int miset = 0;
+    bool miset = false;
     size_t buffers = 1;
 
     if (is_tcp_data) {
       if ((int)elem->in_buffer.len == clmessage_length) {
         memcpy(&mi, (elem->in_buffer.buf), sizeof(message_info));
-        miset = 1;
+        miset = true;
       } else {
         /* TODO: make a more clean fix */
         buffers = (int)elem->in_buffer.len / clmessage_length;
@@ -731,7 +730,7 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
         const uint8_t *data = stun_attr_get_value(sar);
 
         memcpy(&mi, data, sizeof(message_info));
-        miset = 1;
+        miset = true;
       }
 
     } else if (stun_is_success_response(&(elem->in_buffer))) {
@@ -783,7 +782,7 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
         }
 
         memcpy(&mi, elem->in_buffer.buf + 4, sizeof(message_info));
-        miset = 1;
+        miset = true;
         applen = elem->in_buffer.len - 4;
       }
     } else {
@@ -1360,9 +1359,8 @@ static void timer_handler(evutil_socket_t fd, short event, void *arg) {
   __turn_getMSTime();
 
   if (start_full_timer) {
-    int i = 0;
     int done = 0;
-    for (i = 0; i < total_clients; ++i) {
+    for (int i = 0; i < total_clients; ++i) {
       if (elems[i]) {
         int finished = client_timer_handler(elems[i], &done);
         if (finished) {
@@ -1371,7 +1369,7 @@ static void timer_handler(evutil_socket_t fd, short event, void *arg) {
       }
     }
     if (done > 5 && (dos || random_disconnect)) {
-      for (i = 0; i < total_clients; ++i) {
+      for (int i = 0; i < total_clients; ++i) {
         if (elems[i]) {
           socket_closesocket(elems[i]->pinfo.fd);
           elems[i]->pinfo.fd = -1;
@@ -1414,12 +1412,11 @@ void start_mclient(const char *remote_address, int port, const unsigned char *if
 
   client_event_base = turn_event_base_new();
 
-  int i = 0;
   int tot_clients = 0;
 
   if (c2c) {
     if (!no_rtcp) {
-      for (i = 0; i < (mclient >> 2); i++) {
+      for (int i = 0; i < (mclient >> 2); i++) {
         if (!dos) {
           usleep(SLEEP_INTERVAL);
         }
@@ -1429,7 +1426,7 @@ void start_mclient(const char *remote_address, int port, const unsigned char *if
         tot_clients += 4;
       }
     } else {
-      for (i = 0; i < (mclient >> 1); i++) {
+      for (int i = 0; i < (mclient >> 1); i++) {
         if (!dos) {
           usleep(SLEEP_INTERVAL);
         }
@@ -1441,7 +1438,7 @@ void start_mclient(const char *remote_address, int port, const unsigned char *if
     }
   } else {
     if (!no_rtcp) {
-      for (i = 0; i < (mclient >> 1); i++) {
+      for (int i = 0; i < (mclient >> 1); i++) {
         if (!dos) {
           usleep(SLEEP_INTERVAL);
         }
@@ -1451,7 +1448,7 @@ void start_mclient(const char *remote_address, int port, const unsigned char *if
         tot_clients += 2;
       }
     } else {
-      for (i = 0; i < mclient; i++) {
+      for (int i = 0; i < mclient; i++) {
         if (!dos) {
           usleep(SLEEP_INTERVAL);
         }
@@ -1479,7 +1476,7 @@ void start_mclient(const char *remote_address, int port, const unsigned char *if
 
   evtimer_add(ev, &tv);
 
-  for (i = 0; i < total_clients; i++) {
+  for (int i = 0; i < total_clients; i++) {
 
     if (is_TCP_relay()) {
       if (passive_tcp) {
@@ -1488,8 +1485,7 @@ void start_mclient(const char *remote_address, int port, const unsigned char *if
           socket_connect(elems[i]->pinfo.fd, &(elems[i]->pinfo.remote_addr), &connect_err);
         }
       } else {
-        int j = 0;
-        for (j = i + 1; j < total_clients; j++) {
+        for (int j = i + 1; j < total_clients; j++) {
           if (turn_tcp_connect(clnet_verbose, &(elems[i]->pinfo), &(elems[j]->pinfo.relay_addr)) < 0) {
             exit(-1);
           }
@@ -1508,10 +1504,9 @@ void start_mclient(const char *remote_address, int port, const unsigned char *if
   if (is_TCP_relay()) {
     uint64_t connect_wait_start_time = current_time;
     while (1) {
-      int i = 0;
       int completed = 0;
       if (passive_tcp) {
-        for (i = 0; i < total_clients; ++i) {
+        for (int i = 0; i < total_clients; ++i) {
           if (elems[i]->pinfo.is_peer) {
             completed += 1;
           } else if (elems[i]->pinfo.tcp_conn_number > 0 && elems[i]->pinfo.tcp_conn[0]->tcp_data_bound) {
@@ -1522,9 +1517,8 @@ void start_mclient(const char *remote_address, int port, const unsigned char *if
           break;
         }
       } else {
-        for (i = 0; i < total_clients; ++i) {
-          int j = 0;
-          for (j = 0; j < (int)elems[i]->pinfo.tcp_conn_number; j++) {
+        for (int i = 0; i < total_clients; ++i) {
+          for (int j = 0; j < (int)elems[i]->pinfo.tcp_conn_number; j++) {
             if (elems[i]->pinfo.tcp_conn[j]->tcp_data_bound) {
               completed++;
             }
@@ -1546,15 +1540,15 @@ void start_mclient(const char *remote_address, int port, const unsigned char *if
   __turn_getMSTime();
   stime = current_time;
 
-  for (i = 0; i < total_clients; i++) {
+  for (int i = 0; i < total_clients; i++) {
     elems[i]->to_send_timems = current_mstime + 1000 + ((uint32_t)turn_random()) % 5000;
   }
 
   tot_messages = elems[0]->tot_msgnum * total_clients;
 
-  start_full_timer = 1;
+  start_full_timer = true;
 
-  while (1) {
+  while (true) {
 
     run_events(1);
 
@@ -1568,7 +1562,7 @@ void start_mclient(const char *remote_address, int port, const unsigned char *if
                     "%s: msz=%d, tot_send_msgs=%lu, tot_recv_msgs=%lu, tot_send_bytes ~ %llu, tot_recv_bytes ~ %llu\n",
                     __FUNCTION__, msz, (unsigned long)tot_send_messages, (unsigned long)tot_recv_messages,
                     (unsigned long long)tot_send_bytes, (unsigned long long)tot_recv_bytes);
-      show_statistics = 0;
+      show_statistics = false;
     }
   }
 
@@ -1653,7 +1647,7 @@ int add_integrity(app_ur_conn_info *clnet_info, stun_buffer *message) {
                           (const uint8_t *)etoken.token, (int)etoken.size);
 
         memcpy(clnet_info->key, otoken.enc_block.mac_key, otoken.enc_block.key_length);
-        clnet_info->key_set = 1;
+        clnet_info->key_set = true;
       }
 
       if (stun_attr_add_integrity_by_key_str(message->buf, (size_t *)&(message->len), (uint8_t *)okey_array[cok].kid,
