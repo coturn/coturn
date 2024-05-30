@@ -442,15 +442,13 @@ turn_permission_info *allocation_add_permission(allocation *a, const ioa_addr *a
   }
 }
 
-ch_info *ch_map_get(ch_map *map, uint16_t chnum, int new_chn) {
-  ch_info *ret = NULL;
+ch_info *ch_map_get(ch_map *const map, const uint16_t chnum, const int new_chn) {
   if (map) {
-    size_t index = (size_t)(chnum & (CH_MAP_HASH_SIZE - 1));
-    ch_map_array *a = &(map->table[index]);
+    const size_t index = (size_t)(chnum & (CH_MAP_HASH_SIZE - 1));
+    ch_map_array *const a = &(map->table[index]);
 
-    size_t i;
-    for (i = 0; i < CH_MAP_ARRAY_SIZE; ++i) {
-      ch_info *chi = &(a->main_chns[i]);
+    for (size_t i = 0; i < CH_MAP_ARRAY_SIZE; ++i) {
+      ch_info *const chi = &(a->main_chns[i]);
       if (chi->allocated) {
         if (!new_chn && (chi->chnum == chnum)) {
           return chi;
@@ -460,10 +458,10 @@ ch_info *ch_map_get(ch_map *map, uint16_t chnum, int new_chn) {
       }
     }
 
-    size_t old_sz = a->extra_sz;
+    const size_t old_sz = a->extra_sz;
     if (old_sz && a->extra_chns) {
-      for (i = 0; i < old_sz; ++i) {
-        ch_info *chi = a->extra_chns[i];
+      for (size_t i = 0; i < old_sz; ++i) {
+        ch_info *const chi = a->extra_chns[i];
         if (chi) {
           if (chi->allocated) {
             if (!new_chn && (chi->chnum == chnum)) {
@@ -477,16 +475,26 @@ ch_info *ch_map_get(ch_map *map, uint16_t chnum, int new_chn) {
     }
 
     if (new_chn) {
-      size_t old_sz_mem = old_sz * sizeof(ch_info *);
-      a->extra_chns = (ch_info **)realloc(a->extra_chns, old_sz_mem + sizeof(ch_info *));
-      a->extra_chns[old_sz] = (ch_info *)calloc(sizeof(ch_info), 1);
+      const size_t old_sz_mem = old_sz * sizeof(ch_info *);
+      ch_info **const pTmp = (ch_info **)realloc(a->extra_chns, old_sz_mem + sizeof(ch_info *));
+      if (!pTmp) {
+        return NULL;
+      }
+      a->extra_chns = pTmp;
+      a->extra_chns[old_sz] = (ch_info *)calloc(1, sizeof(ch_info));
+      if (!a->extra_chns[old_sz]) {
+        // if the realloc succeeds, but the calloc fails, we don't attempt to shrink the realloc back down
+        // by not recording the change to the size, we allow the next call to this function to realloc the
+        // block to presumably the same size it already is, which should be fine and not result in any leaks.
+        return NULL;
+      }
       a->extra_sz += 1;
 
       return a->extra_chns[old_sz];
     }
   }
 
-  return ret;
+  return NULL;
 }
 
 void ch_map_clean(ch_map *map) {
@@ -565,7 +573,7 @@ tcp_connection *create_tcp_connection(uint8_t server_id, allocation *a, stun_tid
       }
     }
   }
-  tcp_connection *tc = (tcp_connection *)calloc(sizeof(tcp_connection), 1);
+  tcp_connection *tc = (tcp_connection *)calloc(1, sizeof(tcp_connection));
   addr_cpy(&(tc->peer_addr), peer_addr);
   if (tid) {
     memcpy(&(tc->tid), tid, sizeof(stun_tid));
