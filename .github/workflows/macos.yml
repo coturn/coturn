@@ -9,8 +9,8 @@ jobs:
   builds:
     strategy:
       fail-fast: false
-      matrix: 
-        os: [ 'macos-11', 'macos-12' ]
+      matrix:
+        os: [ 'macos-12', 'macos-13', 'macos-14' ]
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -42,10 +42,13 @@ jobs:
 
     - name: Configure
       run: PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/local/opt/openssl@1.1/lib/pkgconfig ./configure
+
     - name: Compile
       run: make
+
     - name: Unit Test
       run: make check
+
     - name: Integration Test
       working-directory: examples
       run: ./run_tests.sh
