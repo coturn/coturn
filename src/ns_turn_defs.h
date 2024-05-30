@@ -184,6 +184,7 @@ typedef uint32_t turn_time_t;
 #error WRONG BYTE_ORDER SETTING
 #endif
 
+// NOLINTBEGIN(clang-diagnostic-string-compare)
 #define STRCPY(dst, src)                                                                                               \
   do {                                                                                                                 \
     if ((const char *)(dst) != (const char *)(src)) {                                                                  \
@@ -196,6 +197,7 @@ typedef uint32_t turn_time_t;
       }                                                                                                                \
     }                                                                                                                  \
   } while (0)
+// NOLINTEND(clang-diagnostic-string-compare)
 
 //////////////// Bufferevents /////////////////////
 

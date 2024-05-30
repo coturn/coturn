@@ -759,12 +759,7 @@ int add_static_user_account(char *user) {
     if (strlen(keysource) < sz * 2) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key format: %s\n", s);
     }
-    if (convert_string_key_to_binary(keysource, *key, sz) < 0) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key: %s\n", s);
-      free(usname);
-      free(key);
-      return -1;
-    }
+    convert_string_key_to_binary(keysource, *key, sz);
   } else {
     // this is only for default realm
     stun_produce_integrity_key_str((uint8_t *)usname, (uint8_t *)get_realm(NULL)->options.name, (uint8_t *)s, *key,
