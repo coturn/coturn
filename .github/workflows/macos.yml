@@ -9,8 +9,8 @@ jobs:
   builds:
     strategy:
       fail-fast: false
-      matrix: 
-        os: [ 'macos-11', 'macos-12' ]
+      matrix:
+        os: [ 'macos-12', 'macos-13', 'macos-14' ]
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -18,7 +18,7 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: Install dependencies
+    - name: Brew - Relink Python
       run: |
         # Unlink and re-link to prevent errors when github mac runner images
         # install python outside of brew, for example:
@@ -29,7 +29,12 @@ jobs:
         # https://github.com/actions/runner-images/issues/2322
         brew list -1 | grep python | while read formula; do brew unlink $formula; brew link --overwrite $formula; done
 
+    - name: Brew - Update pkg listings
+      run: |
         brew update
+
+    - name: Brew - Install Dependencies
+      run: |
         brew install \
             wget \
             pkg-config \
@@ -42,10 +47,13 @@ jobs:
 
     - name: Configure
       run: PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/local/opt/openssl@1.1/lib/pkgconfig ./configure
+
     - name: Compile
       run: make
+
     - name: Unit Test
       run: make check
+
     - name: Integration Test
       working-directory: examples
       run: ./run_tests.sh
