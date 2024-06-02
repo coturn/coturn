@@ -215,9 +215,6 @@ void send_message_to_redis(redis_context_handle rch, const char *command, const 
 
 redis_context_handle redisLibeventAttach(struct event_base *base, char *ip0, int port0, char *pwd, int db) {
 
-  struct redisLibeventEvents *e = NULL;
-  redisAsyncContext *ac = NULL;
-
   char ip[256];
   if (ip0 && ip0[0]) {
     STRCPY(ip, ip0);
@@ -230,7 +227,7 @@ redis_context_handle redisLibeventAttach(struct event_base *base, char *ip0, int
     port = port0;
   }
 
-  ac = redisAsyncConnect(ip, port);
+  redisAsyncContext *ac = redisAsyncConnect(ip, port);
   if (!ac) {
     fprintf(stderr, "Error: redisAsyncConnect returned NULL\n");
     return NULL;
@@ -240,7 +237,10 @@ redis_context_handle redisLibeventAttach(struct event_base *base, char *ip0, int
   }
 
   /* Create container for context and r/w events */
-  e = (struct redisLibeventEvents *)malloc(sizeof(struct redisLibeventEvents));
+  struct redisLibeventEvents *e = (struct redisLibeventEvents *)malloc(sizeof(struct redisLibeventEvents));
+  if (!e) {
+    return NULL;
+  }
   memset(e, 0, sizeof(struct redisLibeventEvents));
 
   e->allocated = 1;
