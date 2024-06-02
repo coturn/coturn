@@ -49,6 +49,7 @@ static void turnFreeRedisReply(void *reply) {
 struct _Ryconninfo {
   char *host;
   char *dbname;
+  char *user;
   char *password;
   unsigned int connect_timeout;
   unsigned int port;
@@ -63,6 +64,9 @@ static void RyconninfoFree(Ryconninfo *co) {
     }
     if (co->dbname) {
       free(co->dbname);
+    }
+    if (co->user) {
+      free(co->user);
     }
     if (co->password) {
       free(co->password);
@@ -117,13 +121,13 @@ static Ryconninfo *RyconninfoParse(const char *userdb, char **errmsg) {
       } else if (!strcmp(s, "database")) {
         co->dbname = strdup(seq + 1);
       } else if (!strcmp(s, "user")) {
-        ;
+        co->user = strdup(seq + 1);
       } else if (!strcmp(s, "uname")) {
-        ;
+        co->user = strdup(seq + 1);
       } else if (!strcmp(s, "name")) {
-        ;
+        co->user = strdup(seq + 1);
       } else if (!strcmp(s, "username")) {
-        ;
+        co->user = strdup(seq + 1);
       } else if (!strcmp(s, "password")) {
         co->password = strdup(seq + 1);
       } else if (!strcmp(s, "pwd")) {
@@ -161,9 +165,6 @@ static Ryconninfo *RyconninfoParse(const char *userdb, char **errmsg) {
     }
     if (!(co->host)) {
       co->host = strdup("127.0.0.1");
-    }
-    if (!(co->password)) {
-      co->password = strdup("");
     }
   }
 
@@ -224,8 +225,12 @@ redis_context_handle get_redis_async_connection(struct event_base *base, redis_s
         if (!rc) {
           TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot initialize Redis DB async connection\n");
         } else {
-          if (co->password) {
-            turnFreeRedisReply(redisCommand(rc, "AUTH %s", co->password));
+          if (co->password && strlen(co->password)) {
+            if (co->user && strlen(co->user)) {
+              turnFreeRedisReply(redisCommand(rc, "AUTH %s %s", co->user, co->password));
+            } else {
+              turnFreeRedisReply(redisCommand(rc, "AUTH %s", co->password));
+            }
           }
           if (co->dbname) {
             turnFreeRedisReply(redisCommand(rc, "select %s", co->dbname));
@@ -267,7 +272,7 @@ redis_context_handle get_redis_async_connection(struct event_base *base, redis_s
         }
       }
 
-      ret = redisLibeventAttach(base, co->host, co->port, co->password, atoi(co->dbname));
+      ret = redisLibeventAttach(base, co->host, co->port, co->user, co->password, atoi(co->dbname));
 
       if (!ret) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot initialize Redis DB connection\n");
@@ -347,8 +352,13 @@ static redisContext *get_redis_connection(void) {
           }
           redisFree(redisconnection);
           redisconnection = NULL;
-        } else if (co->password) {
-          void *reply = redisCommand(redisconnection, "AUTH %s", co->password);
+        } else if (co->password && strlen(co->password)) {
+          void *reply;
+          if (co->user && strlen(co->user)) {
+            reply = redisCommand(redisconnection, "AUTH %s %s", co->user, co->password);
+          } else {
+            reply = redisCommand(redisconnection, "AUTH %s", co->password);
+          }
           if (!reply) {
             if (redisconnection->err && redisconnection->errstr[0]) {
               TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Redis: %s\n", redisconnection->errstr);
