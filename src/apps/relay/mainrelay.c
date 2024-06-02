@@ -3034,7 +3034,7 @@ int main(int argc, char **argv) {
     return adminmain(argc, argv);
   }
 
-  memset(&turn_params.default_users_db, 0, sizeof(default_users_db_t));
+  memset(&turn_params.default_users_db.ram_db, 0, sizeof(ram_users_db_t));
   turn_params.default_users_db.ram_db.static_accounts = ur_string_map_create(free);
 
   // Zero pass apply the log options.
