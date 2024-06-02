@@ -899,6 +899,9 @@ static int mongo_set_realm_option_one(uint8_t *realm, unsigned long value, const
 
   size_t klen = 9 + strlen(opt);
   char *_k = (char *)malloc(klen);
+  if (!_k) {
+    return -1;
+  }
   strcpy(_k, "options.");
   strcat(_k, opt);
 
