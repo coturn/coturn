@@ -51,11 +51,13 @@
 
 #if !defined(WINDOWS) && !defined(__CYGWIN__) && !defined(__CYGWIN32__) && !defined(__CYGWIN64__)
 #include <sys/syscall.h>
-#include <unistd.h>
 #ifdef SYS_gettid
 #define gettid() ((pid_t)syscall(SYS_gettid))
 #endif
 #endif
+
+#include <ctype.h>  // for tolower
+#include <string.h> // for memcmp, strstr, strcmp, strdup, strlen
 
 ////////// LOG TIME OPTIMIZATION ///////////
 

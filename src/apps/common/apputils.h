@@ -31,10 +31,11 @@
 #ifndef __APP_LIB__
 #define __APP_LIB__
 
-#include <event2/event.h>
+#include <event2/util.h> // for evutil_socket_t
 
 #include "ns_turn_openssl.h"
 
+#include "ns_turn_defs.h"
 #include "ns_turn_ioaddr.h"
 #include "ns_turn_ioalib.h"
 #include "ns_turn_msg_defs.h"

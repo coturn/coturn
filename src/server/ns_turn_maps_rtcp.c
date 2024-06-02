@@ -30,7 +30,9 @@
 
 #include "ns_turn_maps_rtcp.h"
 
-#include "ns_turn_ioaddr.h"
+#include "ns_turn_defs.h" // for NULL, UNUSED_ARG, size_t, turn_time,
+
+#include <stdlib.h> // for free, calloc
 
 ////////////////////////////////////////////
 

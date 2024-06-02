@@ -31,7 +31,9 @@
 #ifndef __STARTCLIENT_TURN__
 #define __STARTCLIENT_TURN__
 
+#include "ns_turn_ioaddr.h" // for ioa_addr
 #include "session.h"
+#include "stun_buffer.h" // for stun_buffer
 
 #ifdef __cplusplus
 extern "C" {

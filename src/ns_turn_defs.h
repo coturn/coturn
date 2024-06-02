@@ -50,20 +50,21 @@
 #include <process.h>
 #include <ws2tcpip.h>
 #else
-#include <arpa/inet.h>
-#include <net/if.h>
-#include <netinet/in.h>
-#include <netinet/tcp.h>
+#include <arpa/inet.h>   // IWYU pragma: export
+#include <net/if.h>      // IWYU pragma: export
+#include <netinet/in.h>  // IWYU pragma: export
+#include <netinet/tcp.h> // IWYU pragma: export
 #include <strings.h>
-#include <sys/socket.h>
-#include <unistd.h>
+#include <sys/socket.h> // IWYU pragma: export
+#include <unistd.h>     // IWYU pragma: export
 #endif
 
 #include <ctype.h>
 #include <errno.h>
 #include <inttypes.h>
 #include <stdarg.h>
-#include <stdint.h>
+#include <stddef.h> // IWYU pragma: export
+#include <stdint.h> // IWYU pragma: export
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

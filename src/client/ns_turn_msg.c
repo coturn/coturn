@@ -38,7 +38,10 @@
 
 ///////////
 
+#include <ctype.h> // for tolower
+#include <stdio.h> // for fprintf, printf, stderr, snprintf
 #include <stdlib.h>
+#include <string.h> // for memcpy, strlen, memset, strncpy, strcmp
 
 ///////////
 

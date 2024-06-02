@@ -34,6 +34,9 @@
 
 #include "ns_turn_khash.h"
 
+#include <stdlib.h> // for size_t, free, malloc, NULL, realloc
+#include <string.h> // for memset, strcmp, memcpy, strlen
+
 KHASH_MAP_INIT_INT64(3, ur_map_value_type)
 
 #define MAGIC_HASH ((uint64_t)(0x90ABCDEFL))

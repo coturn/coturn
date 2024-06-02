@@ -37,6 +37,8 @@
 
 #include <event2/event.h>
 
+#include <stddef.h> // for size_t
+
 #ifdef __cplusplus
 extern "C" {
 #endif

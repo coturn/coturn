@@ -34,6 +34,8 @@
 #include "ns_turn_ioalib.h"
 #include "ns_turn_maps.h"
 
+#include <stddef.h> // for size_t
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -42,7 +44,7 @@ extern "C" {
 
 typedef ur_map_key_type rtcp_token_type;
 
-struct _rtcp_map;
+struct _rtcp_map; // IWYU pragma: keep
 typedef struct _rtcp_map rtcp_map;
 
 ////////////////////////////////////////////////

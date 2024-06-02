@@ -30,6 +30,11 @@
 
 #include "ns_turn_allocation.h"
 #include "ns_turn_ioalib.h"
+#include "ns_turn_msg_defs.h" // for STUN_VALID_CHANNEL
+#include "ns_turn_utils.h"    // for TURN_LOG_FUNC, TURN_LOG_LEVEL_ERROR
+
+#include <stdlib.h> // for NULL, size_t, free, realloc, calloc
+#include <string.h> // for memset, memcpy
 
 /////////////// Permission forward declarations /////////////////
 

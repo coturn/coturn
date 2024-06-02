@@ -36,7 +36,7 @@ runs:
             ninja-build \
             iwyu \
             pkgconf \
-            wget 
+            wget
         if [ "$(lsb_release -s -r)x" == "16.04x" ]; then apt install -y clang-tools; fi
 
     - name: install coturn dependencies
