@@ -35,8 +35,10 @@ prom_counter_t *turn_total_traffic_peer_sentb;
 
 prom_gauge_t *turn_total_allocations;
 
-void start_prometheus_server(void) {
-  if (turn_params.prometheus == 0) {
+void start_prometheus_server(void)
+{
+  if (turn_params.prometheus == 0)
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "prometheus collector disabled, not started\n");
     return;
   }
@@ -45,7 +47,8 @@ void start_prometheus_server(void) {
   const char *label[] = {"realm", NULL};
   size_t nlabels = 1;
 
-  if (turn_params.prometheus_username_labels) {
+  if (turn_params.prometheus_username_labels)
+  {
     label[1] = "user";
     nlabels++;
   }
@@ -107,20 +110,24 @@ void start_prometheus_server(void) {
 
   // some flags appeared first in microhttpd v0.9.53
   unsigned int flags = 0;
-  if (MHD_is_feature_supported(MHD_FEATURE_IPv6) && is_ipv6_enabled()) {
+  if (MHD_is_feature_supported(MHD_FEATURE_IPv6) && is_ipv6_enabled())
+  {
     flags |= MHD_USE_DUAL_STACK;
   }
 #if MHD_VERSION >= 0x00095300
   flags |= MHD_USE_ERROR_LOG;
 #endif
-  if (MHD_is_feature_supported(MHD_FEATURE_EPOLL)) {
+  if (MHD_is_feature_supported(MHD_FEATURE_EPOLL))
+  {
 #if MHD_VERSION >= 0x00095300
     flags |= MHD_USE_EPOLL_INTERNAL_THREAD;
 #else
     flags |= MHD_USE_EPOLL_INTERNALLY_LINUX_ONLY; // old versions of microhttpd
 #endif
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "prometheus exporter server will start using EPOLL\n");
-  } else {
+  }
+  else
+  {
     flags |= MHD_USE_SELECT_INTERNALLY;
     // Select() will not work if all 1024 first file-descriptors are used.
     // In this case the prometheus server will be unreachable
@@ -128,7 +135,8 @@ void start_prometheus_server(void) {
                                           "The exporter might be unreachable on highly used servers\n");
   }
   struct MHD_Daemon *daemon = promhttp_start_daemon(flags, turn_params.prometheus_port, NULL, NULL);
-  if (daemon == NULL) {
+  if (daemon == NULL)
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "could not start prometheus collector\n");
     return;
   }
@@ -139,15 +147,19 @@ void start_prometheus_server(void) {
 }
 
 void prom_set_finished_traffic(const char *realm, const char *user, unsigned long rsvp, unsigned long rsvb,
-                               unsigned long sentp, unsigned long sentb, bool peer) {
-  if (turn_params.prometheus == 1) {
+                               unsigned long sentp, unsigned long sentb, bool peer)
+{
+  if (turn_params.prometheus == 1)
+  {
 
     const char *label[] = {realm, NULL};
-    if (turn_params.prometheus_username_labels) {
+    if (turn_params.prometheus_username_labels)
+    {
       label[1] = user;
     }
 
-    if (peer) {
+    if (peer)
+    {
       prom_counter_add(turn_traffic_peer_rcvp, rsvp, label);
       prom_counter_add(turn_traffic_peer_rcvb, rsvb, label);
       prom_counter_add(turn_traffic_peer_sentp, sentp, label);
@@ -157,7 +169,9 @@ void prom_set_finished_traffic(const char *realm, const char *user, unsigned lon
       prom_counter_add(turn_total_traffic_peer_rcvb, rsvb, NULL);
       prom_counter_add(turn_total_traffic_peer_sentp, sentp, NULL);
       prom_counter_add(turn_total_traffic_peer_sentb, sentb, NULL);
-    } else {
+    }
+    else
+    {
       prom_counter_add(turn_traffic_rcvp, rsvp, label);
       prom_counter_add(turn_traffic_rcvb, rsvb, label);
       prom_counter_add(turn_traffic_sentp, sentp, label);
@@ -171,46 +185,60 @@ void prom_set_finished_traffic(const char *realm, const char *user, unsigned lon
   }
 }
 
-void prom_inc_allocation(SOCKET_TYPE type) {
-  if (turn_params.prometheus == 1) {
+void prom_inc_allocation(SOCKET_TYPE type)
+{
+  if (turn_params.prometheus == 1)
+  {
     const char *label[] = {socket_type_name(type)};
     prom_gauge_inc(turn_total_allocations, label);
   }
 }
 
-void prom_dec_allocation(SOCKET_TYPE type) {
-  if (turn_params.prometheus == 1) {
+void prom_dec_allocation(SOCKET_TYPE type)
+{
+  if (turn_params.prometheus == 1)
+  {
     const char *label[] = {socket_type_name(type)};
     prom_gauge_dec(turn_total_allocations, label);
   }
 }
 
-void prom_inc_stun_binding_request(void) {
-  if (turn_params.prometheus == 1) {
+void prom_inc_stun_binding_request(void)
+{
+  if (turn_params.prometheus == 1)
+  {
     prom_counter_add(stun_binding_request, 1, NULL);
   }
 }
 
-void prom_inc_stun_binding_response(void) {
-  if (turn_params.prometheus == 1) {
+void prom_inc_stun_binding_response(void)
+{
+  if (turn_params.prometheus == 1)
+  {
     prom_counter_add(stun_binding_response, 1, NULL);
   }
 }
 
-void prom_inc_stun_binding_error(void) {
-  if (turn_params.prometheus == 1) {
+void prom_inc_stun_binding_error(void)
+{
+  if (turn_params.prometheus == 1)
+  {
     prom_counter_add(stun_binding_error, 1, NULL);
   }
 }
 
-int is_ipv6_enabled(void) {
+int is_ipv6_enabled(void)
+{
   int ret = 0;
 
 #ifdef AF_INET6
   int fd = socket(AF_INET6, SOCK_STREAM, 0);
-  if (fd == -1) {
+  if (fd == -1)
+  {
     ret = errno != EAFNOSUPPORT;
-  } else {
+  }
+  else
+  {
     ret = 1;
     close(fd);
   }
@@ -221,13 +249,15 @@ int is_ipv6_enabled(void) {
 
 #else
 
-void start_prometheus_server(void) {
+void start_prometheus_server(void)
+{
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "turnserver compiled without prometheus support\n");
   return;
 }
 
 void prom_set_finished_traffic(const char *realm, const char *user, unsigned long rsvp, unsigned long rsvb,
-                               unsigned long sentp, unsigned long sentb, bool peer) {
+                               unsigned long sentp, unsigned long sentb, bool peer)
+{
   UNUSED_ARG(realm);
   UNUSED_ARG(user);
   UNUSED_ARG(rsvp);

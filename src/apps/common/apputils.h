@@ -41,7 +41,8 @@
 #include "ns_turn_msg_defs.h"
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 //////////// Common defines ///////////////////////////
@@ -122,7 +123,8 @@ extern int IS_TURN_SERVER;
 
 /////////// SSL //////////////////////////
 
-enum _TURN_TLS_TYPE {
+enum _TURN_TLS_TYPE
+{
   TURN_TLS_NO = 0,
   TURN_TLS_SSL23,
   TURN_TLS_v1_0,
@@ -139,7 +141,8 @@ typedef enum _TURN_TLS_TYPE TURN_TLS_TYPE;
 
 ////////////////////////////////////////////
 
-struct _oauth_key_data_raw {
+struct _oauth_key_data_raw
+{
   char kid[OAUTH_KID_SIZE + 1];
   char ikm_key[OAUTH_KEY_SIZE + 1];
   uint64_t timestamp;
@@ -153,7 +156,8 @@ typedef struct _oauth_key_data_raw oauth_key_data_raw;
 //////////////////////////////////////////
 
 #define EVENT_DEL(ev)                                                                                                  \
-  if (ev) {                                                                                                            \
+  if (ev)                                                                                                              \
+  {                                                                                                                    \
     event_del(ev);                                                                                                     \
     event_free(ev);                                                                                                    \
     ev = NULL;                                                                                                         \
@@ -194,12 +198,14 @@ int addr_get_from_sock(evutil_socket_t fd, ioa_addr *addr);
 int handle_socket_error(void);
 
 #define CORRECT_RAW_TTL(ttl)                                                                                           \
-  do {                                                                                                                 \
+  do                                                                                                                   \
+  {                                                                                                                    \
     if (ttl < 0 || ttl > 255)                                                                                          \
       ttl = TTL_DEFAULT;                                                                                               \
   } while (0)
 #define CORRECT_RAW_TOS(tos)                                                                                           \
-  do {                                                                                                                 \
+  do                                                                                                                   \
+  {                                                                                                                    \
     if (tos < 0 || tos > 255)                                                                                          \
       tos = TOS_DEFAULT;                                                                                               \
   } while (0)
