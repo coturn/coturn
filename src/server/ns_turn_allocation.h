@@ -31,10 +31,11 @@
 #ifndef __TURN_TURN_A_LIB__
 #define __TURN_TURN_A_LIB__
 
+#include "ns_turn_defs.h"   // for turn_time_t, TURN_CHANNEL_HANDLER_KERNEL
+#include "ns_turn_ioaddr.h" // for ioa_addr
 #include "ns_turn_ioalib.h"
 #include "ns_turn_maps.h"
 #include "ns_turn_msg.h"
-#include "ns_turn_utils.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -54,8 +55,9 @@ typedef struct {
 } relay_endpoint_session;
 
 static inline void clear_relay_endpoint_session_data(relay_endpoint_session *cdi) {
-  if (cdi)
+  if (cdi) {
     IOA_CLOSE_SOCKET(cdi->s);
+  }
 }
 
 ////////// RFC 6062 TCP connection ////////
@@ -103,8 +105,6 @@ typedef struct _tcp_connection_list {
 
 #define TURN_PERMISSION_HASHTABLE_SIZE (0x8)
 #define TURN_PERMISSION_ARRAY_SIZE (0x3)
-
-struct _allocation;
 
 typedef struct _ch_info {
   uint16_t chnum;

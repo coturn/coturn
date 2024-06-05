@@ -31,10 +31,11 @@
 #ifndef __APP_LIB__
 #define __APP_LIB__
 
-#include <event2/event.h>
+#include <event2/util.h> // for evutil_socket_t
 
 #include "ns_turn_openssl.h"
 
+#include "ns_turn_defs.h"
 #include "ns_turn_ioaddr.h"
 #include "ns_turn_ioalib.h"
 #include "ns_turn_msg_defs.h"
@@ -250,7 +251,7 @@ wchar_t *_ATW(__in char *pszInBuf, __in int nInSize, __out wchar_t **pszOutBuf, 
 
 ////////////////// File search ////////////////////////
 
-char *find_config_file(const char *config_file, int print_file_name);
+char *find_config_file(const char *config_file);
 void set_execdir(void);
 void print_abs_file_name(const char *msg1, const char *msg2, const char *fn);
 
@@ -277,6 +278,7 @@ struct event_base *turn_event_base_new(void);
 //////////// Random /////////////////////
 
 void turn_srandom(void);
+long turn_random(void);
 
 ///////////////////////////////////////////////////////
 

@@ -41,6 +41,7 @@ void err(int eval, const char *format, ...);
 #endif
 #endif
 
+#include "ns_turn_defs.h" // for turn_time_t
 #include "ns_turn_ioaddr.h"
 
 #ifdef __cplusplus
@@ -95,6 +96,10 @@ void set_log_file_line(int set);
 int is_secure_string(const uint8_t *string, int sanitizesql);
 
 ///////////////////////////////////////////////////////
+
+#if !defined(min)
+#define min(a, b) ((a) <= (b) ? (a) : (b))
+#endif
 
 #ifdef __cplusplus
 }

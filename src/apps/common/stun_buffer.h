@@ -31,7 +31,10 @@
 #ifndef __TURN_STUN_BUF__
 #define __TURN_STUN_BUF__
 
+#include "ns_turn_defs.h"   // for uint16_t, uint8_t, uint32_t, size_t
+#include "ns_turn_ioaddr.h" // for ioa_addr
 #include "ns_turn_msg.h"
+#include "ns_turn_msg_defs.h" // for STUN_CHANNEL_HEADER_LENGTH
 
 #ifdef __cplusplus
 extern "C" {

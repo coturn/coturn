@@ -12,7 +12,7 @@
 # Other options:
 #
 # 1) --aux-server=... options start two auxiliary severs on IP address 127.0.0.1
-# and ports 12345 and 12346, and two auxiliary servers on IP adress ::1
+# and ports 12345 and 12346, and two auxiliary servers on IP address ::1
 # with the same ports.
 # 2) --self-udp-balance option forces the server to distribute the load from the 
 # main server points to the auxiliary servers through the ALTERNATE-SERVER 

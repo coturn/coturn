@@ -28,10 +28,11 @@
  * SUCH DAMAGE.
  */
 
-#if !defined(__MAIN_RELAY__)
+#ifndef __MAIN_RELAY__
 #define __MAIN_RELAY__
 
 #include <limits.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -49,7 +50,7 @@
 
 #include <getopt.h>
 
-#if defined(__unix__) || defined(unix) || defined(__APPLE__) || defined(__DARWIN__) || defined(__MACH__)
+#if defined(__unix__) || defined(unix) || defined(__APPLE__)
 #include <ifaddrs.h>
 #include <libgen.h>
 #include <sys/resource.h>
@@ -109,7 +110,7 @@ extern "C" {
 #endif
 #else
 #define DEFAULT_CIPHER_LIST "DEFAULT"
-#if TLSv1_3_SUPPORTED
+#if TLSv1_3_SUPPORTED && defined(TLS_DEFAULT_CIPHERSUITES)
 #define DEFAULT_CIPHERSUITES TLS_DEFAULT_CIPHERSUITES
 #endif
 #endif
@@ -192,6 +193,7 @@ typedef struct _turn_params_ {
   char ca_cert_file[1025];
   char cert_file[1025];
   char pkey_file[1025];
+  bool rpk_enabled;
   char tls_password[513];
   char dh_file[1025];
 
@@ -330,6 +332,7 @@ typedef struct _turn_params_ {
   vint log_binding;
   vint no_stun_backward_compatibility;
   vint response_origin_only_with_rfc5780;
+  vint respond_http_unsupported;
 } turn_params_t;
 
 extern turn_params_t turn_params;
@@ -337,14 +340,16 @@ extern turn_params_t turn_params;
 ////////////////  Listener server /////////////////
 
 static inline int get_alt_listener_port(void) {
-  if (turn_params.alt_listener_port < 1)
+  if (turn_params.alt_listener_port < 1) {
     return turn_params.listener_port + 1;
+  }
   return turn_params.alt_listener_port;
 }
 
 static inline int get_alt_tls_listener_port(void) {
-  if (turn_params.alt_tls_listener_port < 1)
+  if (turn_params.alt_tls_listener_port < 1) {
     return turn_params.tls_listener_port + 1;
+  }
   return turn_params.alt_tls_listener_port;
 }
 
@@ -388,7 +393,6 @@ struct ctr_state {
   unsigned int num;
   unsigned char ecount[16];
 };
-void generate_aes_128_key(char *filePath, unsigned char *returnedKey);
 unsigned char *base64encode(const void *b64_encode_this, int encode_this_many_bytes);
 void encrypt_aes_128(unsigned char *in, const unsigned char *mykey);
 unsigned char *base64decode(const void *b64_decode_this, int decode_this_many_bytes);

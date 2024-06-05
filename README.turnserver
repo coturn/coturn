@@ -287,11 +287,13 @@ Flags:
 
 --prometheus		Enable prometheus metrics. By default it is
 			disabled. Would listen on port 9641 under the path /metrics
-			also the path / on this port can be used as a health check
- --prometheus-username-labels	Enable labeling prometheus traffic
-			metrics with client usernames. Labeling with client usernames is
-			disabled by default, because this may cause memory leaks when using
-			authentication with ephemeral usernames (e.g. TURN REST API).
+			also the path / on this port can be used as a health check. 
+			Unavailable on apt installations.
+			
+--prometheus-username-labels	Enable labeling prometheus traffic
+		metrics with client usernames. Labeling with client usernames is
+		disabled by default, because this may cause memory leaks when using
+		authentication with ephemeral usernames (e.g. TURN REST API).
 
 --prometheus-port	Prometheus listener port (Default: 9641).
 
@@ -480,6 +482,10 @@ Options with values:
 			file. If both --no-tls and --no-dtls options
 			are specified, then this parameter is not needed.
 			Default value is turn_server_pkey.pem.
+
+--raw-public-keys        Raw public keys support.
+            On/off switch for RFC-7250 aka raw public keys.
+            Coturn must be built against openSSL version at least 3.2.1
 
 --pkey-pwd		If the private key file is encrypted, then this password to be used.
 

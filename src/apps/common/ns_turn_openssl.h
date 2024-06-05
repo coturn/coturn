@@ -31,15 +31,17 @@
 #ifndef __NST_OPENSSL_LIB__
 #define __NST_OPENSSL_LIB__
 
-#include <openssl/bio.h>
-#include <openssl/bn.h>
-#include <openssl/crypto.h>
-#include <openssl/dh.h>
-#include <openssl/err.h>
-#include <openssl/hmac.h>
-#include <openssl/md5.h>
-#include <openssl/opensslv.h>
-#include <openssl/rand.h>
-#include <openssl/ssl.h>
+#include <openssl/bio.h>      // IWYU pragma: export
+#include <openssl/bn.h>       // IWYU pragma: export
+#include <openssl/crypto.h>   // IWYU pragma: export
+#include <openssl/dh.h>       // IWYU pragma: export
+#include <openssl/err.h>      // IWYU pragma: export
+#include <openssl/evp.h>      // IWYU pragma: export
+#include <openssl/hmac.h>     // IWYU pragma: export
+#include <openssl/md5.h>      // IWYU pragma: export
+#include <openssl/opensslv.h> // IWYU pragma: export
+#include <openssl/rand.h>     // IWYU pragma: export
+#include <openssl/sha.h>      // IWYU pragma: export
+#include <openssl/ssl.h>      // IWYU pragma: export
 
 #endif //__NST_OPENSSL_LIB__

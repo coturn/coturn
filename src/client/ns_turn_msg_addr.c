@@ -29,13 +29,17 @@
  */
 
 #include "ns_turn_msg_addr.h"
+#include "ns_turn_defs.h" // for nswap16, nswap32
+
+#include <string.h> // for memcpy
 
 //////////////////////////////////////////////////////////////////////////////
 
 int stun_addr_encode(const ioa_addr *ca, uint8_t *cfield, int *clen, int xor_ed, uint32_t mc, const uint8_t *tsx_id) {
 
-  if (!cfield || !clen || !ca || !tsx_id)
+  if (!cfield || !clen || !ca || !tsx_id) {
     return -1;
+  }
 
   if (ca->ss.sa_family == AF_INET || ca->ss.sa_family == 0) {
 
@@ -109,8 +113,9 @@ int stun_addr_encode(const ioa_addr *ca, uint8_t *cfield, int *clen, int xor_ed,
 
 int stun_addr_decode(ioa_addr *ca, const uint8_t *cfield, int len, int xor_ed, uint32_t mc, const uint8_t *tsx_id) {
 
-  if (!cfield || !len || !ca || !tsx_id || (len < 8))
+  if (!cfield || !len || !ca || !tsx_id || (len < 8)) {
     return -1;
+  }
 
   if (cfield[0] != 0) {
     return -1;
@@ -118,19 +123,21 @@ int stun_addr_decode(ioa_addr *ca, const uint8_t *cfield, int len, int xor_ed, u
 
   int sa_family;
 
-  if (cfield[1] == 1)
+  if (cfield[1] == 1) {
     sa_family = AF_INET;
-  else if (cfield[1] == 2)
+  } else if (cfield[1] == 2) {
     sa_family = AF_INET6;
-  else
+  } else {
     return -1;
+  }
 
   ca->ss.sa_family = sa_family;
 
   if (sa_family == AF_INET) {
 
-    if (len != 8)
+    if (len != 8) {
       return -1;
+    }
 
     /* IPv4 address */
 
@@ -149,8 +156,9 @@ int stun_addr_decode(ioa_addr *ca, const uint8_t *cfield, int len, int xor_ed, u
 
     /* IPv6 address */
 
-    if (len != 20)
+    if (len != 20) {
       return -1;
+    }
 
     /* Port */
     ca->s6.sin6_port = ((const uint16_t *)cfield)[1];

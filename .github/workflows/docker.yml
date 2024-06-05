@@ -34,15 +34,14 @@ jobs:
           - s390x
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0  # for correct image labeling via `git describe --tags`
-      - uses: docker/setup-qemu-action@v2
-      - uses: docker/setup-buildx-action@v2
+      - uses: docker/setup-buildx-action@v3
 
       - name: Detect correct Git ref for image build
         id: git
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
           script: |
             let out = {ref: 'HEAD', ver: ''};
@@ -69,7 +68,7 @@ jobs:
       - run: make docker.tar to-file=.cache/image.tar
                   tags=build-${{ github.run_number }}-${{ matrix.dist }}-${{ matrix.arch }}
         working-directory: docker/coturn/
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.dist }}-${{ matrix.arch }}-${{ github.run_number }}
           path: docker/coturn/.cache/image.tar
@@ -96,16 +95,22 @@ jobs:
           - i386
           - ppc64le
           - s390x
+        # TODO: Try remove on new QEMU or Coturn versions.
+        # Temporarily exclude `alpine` on `s390x` arch, as QEMU emulation
+        # currently times out and fails the CI.
+        exclude:
+          - dist: alpine
+            arch: s390x
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: docker/setup-qemu-action@v2
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
       - run: make npm.install
         working-directory: docker/coturn/
 
       - name: Detect correct Git version for image tests
         id: git
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
           script: |
             let out = {ref: 'HEAD', ver: ''};
@@ -115,7 +120,7 @@ jobs:
             }
             return out;
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: ${{ matrix.dist }}-${{ matrix.arch }}-${{ github.run_number }}
           path: docker/coturn/.cache/
@@ -150,7 +155,7 @@ jobs:
         dist: ["alpine", "debian"]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Parse Docker image name from Git repository name
         id: image
@@ -172,12 +177,12 @@ jobs:
                         ||     'edge' }}-${{ matrix.dist }}"
              >> $GITHUB_OUTPUT
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           path: docker/coturn/.cache/
 
       - name: Login to ${{ matrix.registry }} container registry
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           registry: ${{ matrix.registry }}
           username: ${{ (matrix.registry == 'docker.io'
@@ -260,7 +265,7 @@ jobs:
     needs: ["push"]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Parse semver versions from Git tag
         id: semver
@@ -276,7 +281,7 @@ jobs:
         working-directory: docker/coturn/
 
       - name: Create GitHub release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           name: docker/${{ steps.semver.outputs.group1 }}
           body: |

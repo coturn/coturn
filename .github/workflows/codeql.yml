@@ -1,0 +1,42 @@
+name: "CodeQL"
+
+on:
+  push:
+  pull_request:
+    types: [ opened, reopened, synchronize ]
+  schedule:
+    - cron: '6 13 * * 4'
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  analyze:
+    name: CodeQL Analyze
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Install Dependencies
+      uses: ./.github/workflows/actions/ubuntu-build-deps
+      with:
+        SUDO: true
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: cpp
+
+    - name: Configure
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+
+    - name: Build
+      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3

@@ -30,11 +30,14 @@
 
 #include "stun_buffer.h"
 
+#include <string.h> // for memset
+
 ////////////////////// BUFFERS ///////////////////////////
 
 int stun_init_buffer(stun_buffer *buf) {
-  if (!buf)
+  if (!buf) {
     return -1;
+  }
   memset(buf->buf, 0, sizeof(buf->buf));
   buf->len = 0;
   buf->offset = 0;
@@ -43,8 +46,9 @@ int stun_init_buffer(stun_buffer *buf) {
 }
 
 int stun_get_size(const stun_buffer *buf) {
-  if (!buf)
+  if (!buf) {
     return 0;
+  }
   return sizeof(buf->buf);
 }
 
@@ -70,10 +74,11 @@ static inline int is_channel_msg(const stun_buffer *buf) {
 }
 
 int stun_is_command_message(const stun_buffer *buf) {
-  if (!buf || buf->len <= 0)
+  if (!buf || buf->len <= 0) {
     return 0;
-  else
+  } else {
     return stun_is_command_message_str(buf->buf, (size_t)(buf->len));
+  }
 }
 
 int stun_is_request(const stun_buffer *buf) { return stun_is_request_str(buf->buf, (size_t)buf->len); }
@@ -89,16 +94,18 @@ int stun_is_error_response(const stun_buffer *buf, int *err_code, uint8_t *err_m
 int stun_is_response(const stun_buffer *buf) { return stun_is_response_str(buf->buf, (size_t)(buf->len)); }
 
 int stun_is_indication(const stun_buffer *buf) {
-  if (is_channel_msg(buf))
+  if (is_channel_msg(buf)) {
     return 0;
+  }
   return IS_STUN_INDICATION(stun_get_msg_type(buf));
 }
 
 uint16_t stun_get_method(const stun_buffer *buf) { return stun_get_method_str(buf->buf, (size_t)(buf->len)); }
 
 uint16_t stun_get_msg_type(const stun_buffer *buf) {
-  if (!buf)
+  if (!buf) {
     return (uint16_t)-1;
+  }
   return stun_get_msg_type_str(buf->buf, (size_t)buf->len);
 }
 
@@ -137,8 +144,9 @@ int stun_init_channel_message(uint16_t chnumber, stun_buffer *buf, int length, i
 }
 
 int stun_is_channel_message(stun_buffer *buf, uint16_t *chnumber, int is_padding_mandatory) {
-  if (!buf)
+  if (!buf) {
     return 0;
+  }
   size_t blen = (size_t)buf->len;
   int ret = stun_is_channel_message_str(buf->buf, &blen, chnumber, is_padding_mandatory);
   if (ret) {
@@ -209,8 +217,9 @@ int stun_attr_get_first_addr(const stun_buffer *buf, uint16_t attr_type, ioa_add
 }
 
 int stun_attr_add_even_port(stun_buffer *buf, uint8_t value) {
-  if (value)
+  if (value) {
     value = 0x80;
+  }
   return stun_attr_add(buf, STUN_ATTRIBUTE_EVEN_PORT, (const char *)&value, 1);
 }
 

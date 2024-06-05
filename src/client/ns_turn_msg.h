@@ -31,6 +31,7 @@
 #ifndef __LIB_TURN_MSG__
 #define __LIB_TURN_MSG__
 
+#include "ns_turn_defs.h" // for turn_time_t
 #include "ns_turn_ioaddr.h"
 #include "ns_turn_msg_defs.h"
 
@@ -208,6 +209,7 @@ size_t get_hmackey_size(SHATYPE shatype);
 
 #define TURN_RANDOM_SIZE (sizeof(long))
 long turn_random(void);
+long turn_random_number(void);
 
 int stun_produce_integrity_key_str(const uint8_t *uname, const uint8_t *realm, const uint8_t *upwd, hmackey_t key,
                                    SHATYPE shatype);

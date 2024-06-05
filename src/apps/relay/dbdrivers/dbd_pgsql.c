@@ -68,8 +68,9 @@ static PGconn *get_pqdb_connection(void) {
       }
     } else {
       PQconninfoFree(co);
-      if (errmsg)
+      if (errmsg) {
         free(errmsg);
+      }
       pqdbconnection = PQconnectdb(pud->userdb);
       if (!pqdbconnection) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open PostgreSQL DB connection: <%s>, runtime error\n",
@@ -144,9 +145,8 @@ static int pgsql_get_user_key(uint8_t *usname, uint8_t *realm, hmackey_t key) {
         size_t sz = get_hmackey_size(SHATYPE_DEFAULT);
         if (((size_t)len < sz * 2) || (strlen(kval) < sz * 2)) {
           TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key format: %s, user %s\n", kval, usname);
-        } else if (convert_string_key_to_binary(kval, key, sz) < 0) {
-          TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key: %s, user %s\n", kval, usname);
         } else {
+          convert_string_key_to_binary(kval, key, sz);
           ret = 0;
         }
       } else {
@@ -154,8 +154,9 @@ static int pgsql_get_user_key(uint8_t *usname, uint8_t *realm, hmackey_t key) {
       }
     }
 
-    if (res)
+    if (res) {
       PQclear(res);
+    }
   }
   return ret;
 }
@@ -363,8 +364,9 @@ static int pgsql_list_users(uint8_t *realm, secrets_list_t *users, secrets_list_
   char statement[TURN_LONG_STRING_SIZE];
 
   uint8_t realm0[STUN_MAX_REALM_SIZE + 1] = "\0";
-  if (!realm)
+  if (!realm) {
     realm = realm0;
+  }
 
   PGconn *pqc = get_pqdb_connection();
   if (pqc) {
@@ -412,8 +414,9 @@ static int pgsql_list_secrets(uint8_t *realm, secrets_list_t *secrets, secrets_l
   int ret = -1;
 
   uint8_t realm0[STUN_MAX_REALM_SIZE + 1] = "\0";
-  if (!realm)
+  if (!realm) {
     realm = realm0;
+  }
 
   char statement[TURN_LONG_STRING_SIZE];
   if (realm[0]) {
@@ -465,10 +468,11 @@ static int pgsql_del_secret(uint8_t *secret, uint8_t *realm) {
   char statement[TURN_LONG_STRING_SIZE];
   PGconn *pqc = get_pqdb_connection();
   if (pqc) {
-    if (!secret || (secret[0] == 0))
+    if (!secret || (secret[0] == 0)) {
       snprintf(statement, sizeof(statement), "delete from turn_secret where realm='%s'", realm);
-    else
+    } else {
       snprintf(statement, sizeof(statement), "delete from turn_secret where value='%s' and realm='%s'", secret, realm);
+    }
 
     PGresult *res = PQexec(pqc, statement);
     if (res) {
@@ -504,8 +508,9 @@ static int pgsql_set_permission_ip(const char *kind, uint8_t *realm, const char 
   int ret = -1;
 
   uint8_t realm0[STUN_MAX_REALM_SIZE + 1] = "\0";
-  if (!realm)
+  if (!realm) {
     realm = realm0;
+  }
 
   donot_print_connection_success = 1;
 
@@ -580,8 +585,9 @@ static int pgsql_list_origins(uint8_t *realm, secrets_list_t *origins, secrets_l
   int ret = -1;
 
   uint8_t realm0[STUN_MAX_REALM_SIZE + 1] = "\0";
-  if (!realm)
+  if (!realm) {
     realm = realm0;
+  }
 
   donot_print_connection_success = 1;
 
@@ -777,7 +783,9 @@ static void pgsql_reread_realms(secrets_list_t *realms_list) {
             if (rval) {
               get_realm(rval);
               ur_string_map_value_type value = strdup(rval);
-              ur_string_map_put(o_to_realm_new, (ur_string_map_key_type)oval, value);
+              if (!ur_string_map_put(o_to_realm_new, (ur_string_map_key_type)oval, value)) {
+                free(value);
+              }
             }
           }
         }
@@ -831,13 +839,13 @@ static void pgsql_reread_realms(secrets_list_t *realms_list) {
           char *vval = PQgetvalue(res, i, 2);
           if (rval && oval && vval) {
             realm_params_t *rp = get_realm(rval);
-            if (!strcmp(oval, "max-bps"))
+            if (!strcmp(oval, "max-bps")) {
               rp->options.perf_options.max_bps = (band_limit_t)strtoul(vval, NULL, 10);
-            else if (!strcmp(oval, "total-quota"))
+            } else if (!strcmp(oval, "total-quota")) {
               rp->options.perf_options.total_quota = (vint)atoi(vval);
-            else if (!strcmp(oval, "user-quota"))
+            } else if (!strcmp(oval, "user-quota")) {
               rp->options.perf_options.user_quota = (vint)atoi(vval);
-            else {
+            } else {
               TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown realm option: %s\n", oval);
             }
           }
@@ -879,8 +887,9 @@ static int pgsql_get_admin_user(const uint8_t *usname, uint8_t *realm, password_
       ret = 0;
     }
 
-    if (res)
+    if (res) {
       PQclear(res);
+    }
   }
   return ret;
 }

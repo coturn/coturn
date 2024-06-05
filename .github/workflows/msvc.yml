@@ -1,6 +1,9 @@
 name: msvc
 
-on: [push]
+on:
+  push:
+  pull_request:
+    types: [ opened, reopened, synchronize ]
 
 jobs:
   compile:
@@ -10,7 +13,6 @@ jobs:
       matrix:
         BUILD_TYPE: [Release, Debug]
         BUILD_SHARED_LIBS: [OFF, ON]
-        #VCPKG_PLATFORM_TOOLSET: [v143, v142, v141]
         CMAKE_GENERATOR_PLATFORM: [x64, Win32]
         os: [windows-latest]
         include:
@@ -27,19 +29,14 @@ jobs:
           - triplet: x86-windows
             VCPKG_PLATFORM_TOOLSET: v142
             CMAKE_GENERATOR_PLATFORM: Win32
- 
-          # MSVC 2017
-          - triplet: x86-windows
-            VCPKG_PLATFORM_TOOLSET: v141
-            CMAKE_GENERATOR_PLATFORM: Win32
- 
+
     runs-on: ${{matrix.os}}
 
     env:
       SOURCE_DIR:  ${{github.workspace}}\.cache\source
       TOOLS_DIR:   ${{github.workspace}}\.cache\tools
       INSTALL_DIR: ${{github.workspace}}\.cache\install_msvc_${{matrix.triplet}}_${{matrix.BUILD_TYPE}}
-      VCPKGGITCOMMITID: acc3bcf76b84ae5041c86ab55fe138ae7b8255c7
+      VCPKGGITCOMMITID: 53bef8994c541b6561884a8395ea35715ece75db
       VCPKG_PLATFORM_TOOLSET: ${{matrix.VCPKG_PLATFORM_TOOLSET}}
       CMAKE_GENERATOR_PLATFORM: ${{matrix.CMAKE_GENERATOR_PLATFORM}}
 
@@ -48,7 +45,7 @@ jobs:
         shell: cmd
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 0
 
@@ -58,24 +55,13 @@ jobs:
         cmake -E make_directory ${{env.TOOLS_DIR}}
         cmake -E make_directory ${{env.INSTALL_DIR}}
 
-    - name: Cache installed
-      uses: actions/cache@v3
-      id: cache-installed
-      with:
-        path: |
-          ${{env.INSTALL_DIR}}
-        key: coturn-cache-installed-${{matrix.os}}-vc${{matrix.VCPKG_PLATFORM_TOOLSET}}-${{matrix.triplet}}-${{matrix.BUILD_TYPE}}
-
     - name: run-vcpkg
-      uses: lukka/run-vcpkg@v10
+      uses: lukka/run-vcpkg@v11
       with:
         # If not using a submodule for vcpkg sources, this specifies which commit
         # id must be checkout from a Git repo. It must not set if using a submodule
         # for vcpkg.
         vcpkgGitCommitId: '${{ env.VCPKGGITCOMMITID }}'
-        # Since the cache must be invalidated when content of the vcpkg.json file changes, let's
-        # compute its hash and append this to the computed cache's key.
-        appendedCacheKey: coturn-msvc-${{matrix.os}}-vc${{matrix.VCPKG_PLATFORM_TOOLSET}}-${{matrix.triplet}}-${{matrix.BUILD_TYPE}}-${{env.VCPKGGITCOMMITID}}
 
     - name: build coturn
       run: |
@@ -99,9 +85,9 @@ jobs:
         7z a coturn_windows_msvc.zip ${{github.workspace}}\build\install\*
         cmake --build . --config ${{matrix.BUILD_TYPE}} --target package
 
-    - name: update 
+    - name: Update
       if: ${{ matrix.BUILD_TYPE == 'Release' }}
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: coturn_msvc-${{matrix.VCPKG_PLATFORM_TOOLSET}}-${{matrix.CMAKE_GENERATOR_PLATFORM}}-${{matrix.BUILD_SHARED_LIBS}}
         path: |

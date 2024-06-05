@@ -31,7 +31,9 @@
 #ifndef __LIB_TURN_MSG_DEFS__
 #define __LIB_TURN_MSG_DEFS__
 
-#include "ns_turn_msg_defs_experimental.h"
+#include "ns_turn_defs.h" // for turn_time_t
+
+#include "ns_turn_msg_defs_experimental.h" // IWYU pragma: export
 
 ///////////////////////////////////////////
 // http://www.iana.org/assignments/stun-parameters/stun-parameters.xhtml

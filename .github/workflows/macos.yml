@@ -1,17 +1,24 @@
-name: C/C++ CI MacOS
+name: MacOS
 
 on:
   push:
-    branches: [ $default-branch ]
   pull_request:
     types: [ opened, reopened, synchronize ]
 
 jobs:
   builds:
-    runs-on: macos-12
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ 'macos-12', 'macos-13', 'macos-14' ]
+    runs-on: ${{ matrix.os }}
+
     steps:
-    - uses: actions/checkout@v3
-    - name: Install dependencies
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Brew - Relink Python
       run: |
         # Unlink and re-link to prevent errors when github mac runner images
         # install python outside of brew, for example:
@@ -22,7 +29,12 @@ jobs:
         # https://github.com/actions/runner-images/issues/2322
         brew list -1 | grep python | while read formula; do brew unlink $formula; brew link --overwrite $formula; done
 
+    - name: Brew - Update pkg listings
+      run: |
         brew update
+
+    - name: Brew - Install Dependencies
+      run: |
         brew install \
             wget \
             pkg-config \
@@ -32,11 +44,16 @@ jobs:
             hiredis \
             mongo-c-driver \
             libmicrohttpd
-    - name: configure
+
+    - name: Configure
       run: PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/local/opt/openssl@1.1/lib/pkgconfig ./configure
-    - name: make
+
+    - name: Compile
       run: make
-    - name: make check
+
+    - name: Unit Test
       run: make check
-    - name: apps tests
-      run: cd examples && ./run_tests.sh
+
+    - name: Integration Test
+      working-directory: examples
+      run: ./run_tests.sh

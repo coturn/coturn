@@ -30,6 +30,11 @@
 
 #include "ns_turn_allocation.h"
 #include "ns_turn_ioalib.h"
+#include "ns_turn_msg_defs.h" // for STUN_VALID_CHANNEL
+#include "ns_turn_utils.h"    // for TURN_LOG_FUNC, TURN_LOG_LEVEL_ERROR
+
+#include <stdlib.h> // for NULL, size_t, free, realloc, calloc
+#include <string.h> // for memset, memcpy
 
 /////////////// Permission forward declarations /////////////////
 
@@ -51,8 +56,9 @@ void init_allocation(void *owner, allocation *a, ur_map *tcp_connections) {
 void clear_allocation(allocation *a, SOCKET_TYPE socket_type) {
   if (a) {
 
-    if (a->is_valid)
+    if (a->is_valid) {
       turn_report_allocation_delete(a, socket_type);
+    }
 
     if (a->tcs.elems) {
       size_t i;
@@ -87,25 +93,29 @@ void clear_allocation(allocation *a, SOCKET_TYPE socket_type) {
 }
 
 relay_endpoint_session *get_relay_session(allocation *a, int family) {
-  if (a)
+  if (a) {
     return &(a->relay_sessions[ALLOC_INDEX(family)]);
+  }
   return NULL;
 }
 
 int get_relay_session_failure(allocation *a, int family) {
-  if (a)
+  if (a) {
     return a->relay_sessions_failure[ALLOC_INDEX(family)];
+  }
   return 0;
 }
 
 void set_relay_session_failure(allocation *a, int family) {
-  if (a)
+  if (a) {
     a->relay_sessions_failure[ALLOC_INDEX(family)] = 1;
+  }
 }
 
 ioa_socket_handle get_relay_socket(allocation *a, int family) {
-  if (a)
+  if (a) {
     return a->relay_sessions[ALLOC_INDEX(family)].s;
+  }
   return NULL;
 }
 
@@ -143,15 +153,17 @@ void set_allocation_lifetime_ev(allocation *a, turn_time_t exp_time, ioa_timer_h
 }
 
 int is_allocation_valid(const allocation *a) {
-  if (a)
+  if (a) {
     return a->is_valid;
-  else
+  } else {
     return 0;
+  }
 }
 
 void set_allocation_valid(allocation *a, int value) {
-  if (a)
+  if (a) {
     a->is_valid = value;
+  }
 }
 
 turn_permission_info *allocation_get_permission(allocation *a, const ioa_addr *addr) {
@@ -163,7 +175,7 @@ turn_permission_info *allocation_get_permission(allocation *a, const ioa_addr *a
 
 ///////////////////////////// TURN_PERMISSION /////////////////////////////////
 
-static int delete_channel_info_from_allocation_map(ur_map_key_type key, ur_map_value_type value);
+static bool delete_channel_info_from_allocation_map(ur_map_key_type key, ur_map_value_type value);
 
 void turn_permission_clean(turn_permission_info *tinfo) {
   if (tinfo && tinfo->allocated) {
@@ -186,8 +198,9 @@ void turn_permission_clean(turn_permission_info *tinfo) {
 }
 
 static void init_turn_permission_hashtable(turn_permission_hashtable *map) {
-  if (map)
+  if (map) {
     memset(map, 0, sizeof(turn_permission_hashtable));
+  }
 }
 
 static void free_turn_permission_hashtable(turn_permission_hashtable *map) {
@@ -228,8 +241,9 @@ static void free_turn_permission_hashtable(turn_permission_hashtable *map) {
 }
 
 static turn_permission_info *get_from_turn_permission_hashtable(turn_permission_hashtable *map, const ioa_addr *addr) {
-  if (!addr || !map)
+  if (!addr || !map) {
     return NULL;
+  }
 
   uint32_t index = addr_hash_no_port(addr) & (TURN_PERMISSION_HASHTABLE_SIZE - 1);
   turn_permission_array *parray = &(map->table[index]);
@@ -270,7 +284,7 @@ static void ch_info_clean(ch_info *c) {
   }
 }
 
-static int delete_channel_info_from_allocation_map(ur_map_key_type key, ur_map_value_type value) {
+static bool delete_channel_info_from_allocation_map(ur_map_key_type key, ur_map_value_type value) {
   UNUSED_ARG(key);
 
   if (value) {
@@ -283,7 +297,7 @@ static int delete_channel_info_from_allocation_map(ur_map_key_type key, ur_map_v
     ch_info_clean(chn);
   }
 
-  return 0;
+  return false;
 }
 
 void turn_channel_delete(ch_info *chn) {
@@ -312,8 +326,9 @@ ch_info *allocation_get_new_ch_info(allocation *a, uint16_t chnum, ioa_addr *pee
 
   turn_permission_info *tinfo = get_from_turn_permission_hashtable(&(a->addr_to_perm), peer_addr);
 
-  if (!tinfo)
+  if (!tinfo) {
     tinfo = allocation_add_permission(a, peer_addr);
+  }
 
   ch_info *chn = ch_map_get(&(a->chns), chnum, 1);
 
@@ -432,15 +447,13 @@ turn_permission_info *allocation_add_permission(allocation *a, const ioa_addr *a
   }
 }
 
-ch_info *ch_map_get(ch_map *map, uint16_t chnum, int new_chn) {
-  ch_info *ret = NULL;
+ch_info *ch_map_get(ch_map *const map, const uint16_t chnum, const int new_chn) {
   if (map) {
-    size_t index = (size_t)(chnum & (CH_MAP_HASH_SIZE - 1));
-    ch_map_array *a = &(map->table[index]);
+    const size_t index = (size_t)(chnum & (CH_MAP_HASH_SIZE - 1));
+    ch_map_array *const a = &(map->table[index]);
 
-    size_t i;
-    for (i = 0; i < CH_MAP_ARRAY_SIZE; ++i) {
-      ch_info *chi = &(a->main_chns[i]);
+    for (size_t i = 0; i < CH_MAP_ARRAY_SIZE; ++i) {
+      ch_info *const chi = &(a->main_chns[i]);
       if (chi->allocated) {
         if (!new_chn && (chi->chnum == chnum)) {
           return chi;
@@ -450,10 +463,10 @@ ch_info *ch_map_get(ch_map *map, uint16_t chnum, int new_chn) {
       }
     }
 
-    size_t old_sz = a->extra_sz;
+    const size_t old_sz = a->extra_sz;
     if (old_sz && a->extra_chns) {
-      for (i = 0; i < old_sz; ++i) {
-        ch_info *chi = a->extra_chns[i];
+      for (size_t i = 0; i < old_sz; ++i) {
+        ch_info *const chi = a->extra_chns[i];
         if (chi) {
           if (chi->allocated) {
             if (!new_chn && (chi->chnum == chnum)) {
@@ -467,16 +480,26 @@ ch_info *ch_map_get(ch_map *map, uint16_t chnum, int new_chn) {
     }
 
     if (new_chn) {
-      size_t old_sz_mem = old_sz * sizeof(ch_info *);
-      a->extra_chns = (ch_info **)realloc(a->extra_chns, old_sz_mem + sizeof(ch_info *));
-      a->extra_chns[old_sz] = (ch_info *)calloc(sizeof(ch_info), 1);
+      const size_t old_sz_mem = old_sz * sizeof(ch_info *);
+      ch_info **const pTmp = (ch_info **)realloc(a->extra_chns, old_sz_mem + sizeof(ch_info *));
+      if (!pTmp) {
+        return NULL;
+      }
+      a->extra_chns = pTmp;
+      a->extra_chns[old_sz] = (ch_info *)calloc(1, sizeof(ch_info));
+      if (!a->extra_chns[old_sz]) {
+        // if the realloc succeeds, but the calloc fails, we don't attempt to shrink the realloc back down
+        // by not recording the change to the size, we allow the next call to this function to realloc the
+        // block to presumably the same size it already is, which should be fine and not result in any leaks.
+        return NULL;
+      }
       a->extra_sz += 1;
 
       return a->extra_chns[old_sz];
     }
   }
 
-  return ret;
+  return NULL;
 }
 
 void ch_map_clean(ch_map *map) {
@@ -555,10 +578,11 @@ tcp_connection *create_tcp_connection(uint8_t server_id, allocation *a, stun_tid
       }
     }
   }
-  tcp_connection *tc = (tcp_connection *)calloc(sizeof(tcp_connection), 1);
+  tcp_connection *tc = (tcp_connection *)calloc(1, sizeof(tcp_connection));
   addr_cpy(&(tc->peer_addr), peer_addr);
-  if (tid)
+  if (tid) {
     memcpy(&(tc->tid), tid, sizeof(stun_tid));
+  }
   tc->owner = a;
 
   int found = 0;
@@ -663,8 +687,9 @@ tcp_connection *get_tcp_connection_by_peer(allocation *a, ioa_addr *peer_addr) {
 }
 
 int can_accept_tcp_connection_from_peer(allocation *a, ioa_addr *peer_addr, int server_relay) {
-  if (server_relay)
+  if (server_relay) {
     return 1;
+  }
 
   if (a && peer_addr) {
     return (get_from_turn_permission_hashtable(&(a->addr_to_perm), peer_addr) != NULL);

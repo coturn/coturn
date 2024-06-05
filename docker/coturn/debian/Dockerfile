@@ -2,7 +2,7 @@
 # Dockerfile of coturn/coturn:debian Docker image.
 #
 
-ARG debian_ver=bullseye
+ARG debian_ver=bookworm
 
 
 
@@ -183,7 +183,7 @@ RUN apt-get update \
             libatomic1 \
             libevent-2.1-7 libevent-core-2.1-7 libevent-extra-2.1-7 \
             libevent-openssl-2.1-7 libevent-pthreads-2.1-7 \
-            libssl1.1 \
+            libssl3 \
             libpq5 libmariadb3 libsqlite3-0 \
             libhiredis0.14 \
             libmongoc-1.0-0 \

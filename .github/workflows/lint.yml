@@ -2,7 +2,6 @@ name: Lint
 
 on:
   push:
-    branches: [ $default-branch ]
   pull_request:
     types: [ opened, reopened, synchronize ]
 
@@ -11,19 +10,26 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y \
-            libevent-dev \
-            libssl-dev \
-            libpq-dev libmariadb-dev libsqlite3-dev \
-            libhiredis-dev \
-            libmongoc-dev \
-            libmicrohttpd-dev \
-            clang-format
-    - uses: actions/checkout@v3
-    - name: configure
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Install Dependencies
+      uses: ./.github/workflows/actions/ubuntu-build-deps
+      with:
+        SUDO: true
+
+    - name: Install clang-format-15
+      run: sudo apt install -y clang-format-15
+
+    - name: Configure
       run: ./configure
+
     - name: lint
-      run: clang-format --version && make lint
+      run: |
+        if which clang-format-15 2>&1 >/dev/null
+        then
+            sudo cp $(which clang-format-15) $(which clang-format)
+        fi
+        clang-format --version
+        make lint

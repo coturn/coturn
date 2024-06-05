@@ -8,6 +8,10 @@
 #include "acme.h"
 #include "ns_ioalib_impl.h"
 
+#if !defined(_MSC_VER)
+#include <unistd.h>
+#endif
+
 #define GET_ACME_PREFIX "GET /.well-known/acme-challenge/"
 #define GET_ACME_PREFIX_LEN 32
 
@@ -17,26 +21,31 @@ static int is_acme_req(char *req, size_t len) {
   int c, i, k;
 
   // Check first request line. Should be like: GET path HTTP/1.x
-  if (strncmp(req, GET_ACME_PREFIX, GET_ACME_PREFIX_LEN))
+  if (strncmp(req, GET_ACME_PREFIX, GET_ACME_PREFIX_LEN)) {
     return -1;
+  }
   // Usually (for LE) the "method path" is 32 + 43 = 55 chars. But other
   // implementations may choose longer pathes. We define PATHMAX = 127 chars
   // to be prepared for "DoS" attacks (STUN msg size max. is ~ 64K).
   len -= 21; // min size of trailing headers
-  if (len > 131)
+  if (len > 131) {
     len = 131;
+  }
   for (i = GET_ACME_PREFIX_LEN; i < (int)len; i++) {
     // find the end of the path
-    if (req[i] != ' ')
+    if (req[i] != ' ') {
       continue;
+    }
     // consider path < 10 chars invalid. Also we wanna see a "trailer".
-    if (i < (GET_ACME_PREFIX_LEN + 10) || strncmp(req + i, " HTTP/1.", 8))
+    if (i < (GET_ACME_PREFIX_LEN + 10) || strncmp(req + i, " HTTP/1.", 8)) {
       return -2;
+    }
     // finally check for allowed chars
     for (k = GET_ACME_PREFIX_LEN; k < i; k++) {
       c = req[k];
-      if ((c > 127) || (A[c] == ' '))
+      if ((c > 127) || (A[c] == ' ')) {
         return -3;
+      }
     }
     // all checks passed: sufficient for us to answer with a redirect
     return i;
@@ -50,11 +59,13 @@ int try_acme_redirect(char *req, size_t len, const char *url, ioa_socket_handle 
   char http_response[1024];
   size_t plen, rlen;
 
-  if (url == NULL || url[0] == '\0' || req == NULL || s == 0)
+  if (url == NULL || url[0] == '\0' || req == NULL || s == 0) {
     return 1;
+  }
   if (len < (GET_ACME_PREFIX_LEN + 32) || len > (512 - GET_ACME_PREFIX_LEN) ||
-      (plen = is_acme_req(req, len)) < (GET_ACME_PREFIX_LEN + 1))
+      (plen = is_acme_req(req, len)) < (GET_ACME_PREFIX_LEN + 1)) {
     return 2;
+  }
 
   req[plen] = '\0';
 
