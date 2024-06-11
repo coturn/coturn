@@ -54,7 +54,7 @@ struct http_headers {
 
 static void write_http_echo(ioa_socket_handle s) {
   if (s && !ioa_socket_tobeclosed(s)) {
-    SOCKET_APP_TYPE sat = get_ioa_socket_app_type(s);
+    const SOCKET_APP_TYPE sat = get_ioa_socket_app_type(s);
     if ((sat == HTTP_CLIENT_SOCKET) || (sat == HTTPS_CLIENT_SOCKET)) {
       ioa_network_buffer_handle nbh_http = ioa_network_buffer_allocate(s->e);
       size_t len_http = ioa_network_buffer_get_size(nbh_http);
@@ -86,7 +86,7 @@ const char *get_http_date_header(void) {
   static const char *wds[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
   static const char *mons[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
 
-  time_t now = time(NULL);
+  const time_t now = time(NULL);
   struct tm *gmtm = gmtime(&now);
 
   buffer_header[0] = 0;
@@ -346,7 +346,7 @@ struct str_buffer *str_buffer_new(void) {
 
 void str_buffer_append(struct str_buffer *sb, const char *str) {
   if (sb && str && str[0]) {
-    size_t len = strlen(str);
+    const size_t len = strlen(str);
     while (sb->sz + len + 1 > sb->capacity) {
       sb->capacity += len + 1024;
       sb->buffer = (char *)realloc(sb->buffer, sb->capacity);
