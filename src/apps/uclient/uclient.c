@@ -201,8 +201,8 @@ int send_buffer(app_ur_conn_info *clnet_info, stun_buffer *message, bool data_co
     if (turn_random() % 10 == 0) {
       int np = (int)((unsigned long)turn_random() % 10);
       while (np-- > 0) {
-        int pos = (int)((unsigned long)turn_random() % (unsigned long)message->len);
-        int val = (int)((unsigned long)turn_random() % 256);
+        const int pos = (int)((unsigned long)turn_random() % (unsigned long)message->len);
+        const int val = (int)((unsigned long)turn_random() % 256);
         message->buf[pos] = (uint8_t)val;
       }
     }
@@ -222,6 +222,7 @@ int send_buffer(app_ur_conn_info *clnet_info, stun_buffer *message, bool data_co
     }
   }
 
+  int ret = -1;
   if (ssl) {
 
     bool message_sent = false;
@@ -243,6 +244,7 @@ int send_buffer(app_ur_conn_info *clnet_info, stun_buffer *message, bool data_co
 
         message_sent = true;
         ret = len;
+        break;
       } else {
         switch (SSL_get_error(ssl, len)) {
         case SSL_ERROR_NONE:
@@ -283,6 +285,7 @@ int send_buffer(app_ur_conn_info *clnet_info, stun_buffer *message, bool data_co
     size_t left = message->len;
 
     while (left > 0) {
+      ssize_t rc = 0;
       do {
         rc = send(fd, buffer, left, 0);
       } while (rc <= 0 && (socket_eintr() || socket_enobufs() || socket_eagain()));
@@ -361,8 +364,6 @@ static int wait_fd(int fd, unsigned int cycle) {
 int recv_buffer(app_ur_conn_info *clnet_info, stun_buffer *message, bool sync, bool data_connection,
                 app_tcp_conn_info *atc, stun_buffer *request_message) {
 
-  int rc = 0;
-
   stun_tid tid;
   uint16_t method = 0;
 
@@ -385,9 +386,8 @@ recv_again:
 
   if (!use_tcp && sync && request_message && (fd >= 0)) {
 
-    unsigned int cycle = 0;
-    while (cycle < MAX_LISTENING_CYCLE_NUMBER) {
-      int serc = wait_fd(fd, cycle);
+    for (int cycle = 0; cycle < MAX_LISTENING_CYCLE_NUMBER; ++cycle) {
+      const int serc = wait_fd(fd, cycle);
       if (serc > 0) {
         break;
       }
@@ -397,10 +397,10 @@ recv_again:
       if (send_buffer(clnet_info, request_message, data_connection, atc) <= 0) {
         return -1;
       }
-      ++cycle;
     }
   }
 
+  int rc = 0;
   if (!use_secure && !use_tcp && fd >= 0) {
 
     /* Plain UDP */
@@ -419,15 +419,12 @@ recv_again:
 
     /* DTLS */
 
-    int message_received = 0;
-    int cycle = 0;
-    while (!message_received && cycle++ < 100) {
+    for (int cycle = 0; cycle < 100; ++cycle) {
 
       if (SSL_get_shutdown(ssl)) {
         return -1;
       }
 
-      rc = 0;
       do {
         rc = SSL_read(ssl, message->buf, sizeof(message->buf) - 1);
         if (rc < 0 && socket_eagain() && sync) {
@@ -441,11 +438,11 @@ recv_again:
           TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "response received: size=%d\n", rc);
         }
         message->len = rc;
-        message_received = 1;
+        break;
 
       } else {
 
-        int sslerr = SSL_get_error(ssl, rc);
+        const int sslerr = SSL_get_error(ssl, rc);
 
         switch (sslerr) {
         case SSL_ERROR_NONE:
@@ -496,7 +493,7 @@ recv_again:
       if (SSL_get_shutdown(ssl)) {
         return -1;
       }
-      rc = 0;
+
       do {
         rc = SSL_read(ssl, message->buf, sizeof(message->buf) - 1);
         if (rc < 0 && socket_eagain() && sync) {
@@ -514,7 +511,7 @@ recv_again:
 
       } else {
 
-        int sslerr = SSL_get_error(ssl, rc);
+        const int sslerr = SSL_get_error(ssl, rc);
 
         switch (sslerr) {
         case SSL_ERROR_NONE:
@@ -651,25 +648,25 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 
   elem->ctime = current_time;
 
-  app_ur_conn_info *clnet_info = &(elem->pinfo);
-  int err_code = 0;
-  uint8_t err_msg[129];
-  int rc = 0;
-  int applen = 0;
+  app_ur_conn_info *const clnet_info = &(elem->pinfo);
 
   if (clnet_verbose && verbose_packets) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "before read ...\n");
   }
 
-  rc = recv_buffer(clnet_info, &(elem->in_buffer), 0, is_tcp_data, atc, NULL);
+  int rc = recv_buffer(clnet_info, &(elem->in_buffer), 0, is_tcp_data, atc, NULL);
 
   if (clnet_verbose && verbose_packets) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "read %d bytes\n", (int)rc);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "read %d bytes\n", rc);
   }
 
-  if (rc > 0) {
+  if (rc == 0) {
+    return 0;
+  } else if (rc < 0) {
+    return -1;
+  }
 
-    elem->in_buffer.len = rc;
+  elem->in_buffer.len = rc;
 
     uint16_t chnumber = 0;
 
@@ -687,99 +684,99 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
       }
     } else if (stun_is_indication(&(elem->in_buffer))) {
 
-      uint16_t method = stun_get_method(&elem->in_buffer);
+    const uint16_t method = stun_get_method(&elem->in_buffer);
+    if ((method == STUN_METHOD_CONNECTION_ATTEMPT) && is_TCP_relay()) {
 
-      if ((method == STUN_METHOD_CONNECTION_ATTEMPT) && is_TCP_relay()) {
-        stun_attr_ref sar = stun_attr_get_first(&(elem->in_buffer));
-        uint32_t cid = 0;
-        while (sar) {
-          int attr_type = stun_attr_get_type(sar);
-          if (attr_type == STUN_ATTRIBUTE_CONNECTION_ID) {
-            cid = *((const uint32_t *)stun_attr_get_value(sar));
-            break;
-          }
-          sar = stun_attr_get_next_str(elem->in_buffer.buf, elem->in_buffer.len, sar);
+      uint32_t cid = 0;
+      for (stun_attr_ref sar = stun_attr_get_first(&(elem->in_buffer)); sar;
+           sar = stun_attr_get_next_str(elem->in_buffer.buf, elem->in_buffer.len, sar)) {
+        const int attr_type = stun_attr_get_type(sar);
+        if (attr_type == STUN_ATTRIBUTE_CONNECTION_ID) {
+          cid = *((const uint32_t *)stun_attr_get_value(sar));
+          break;
         }
-        if (negative_test) {
-          tcp_data_connect(elem, (uint64_t)turn_random());
-        } else {
-          /* positive test */
-          tcp_data_connect(elem, cid);
-        }
-        return rc;
-      } else if (method != STUN_METHOD_DATA) {
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "ERROR: received indication message has wrong method: 0x%x\n", (int)method);
-        return rc;
+      }
+
+      if (negative_test) {
+        tcp_data_connect(elem, (uint64_t)turn_random());
       } else {
+        /* positive test */
+        tcp_data_connect(elem, cid);
+      }
+      return rc;
+    } else if (method != STUN_METHOD_DATA) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "ERROR: received indication message has wrong method: 0x%x\n", (int)method);
+      return rc;
+    } else {
 
-        stun_attr_ref sar = stun_attr_get_first_by_type(&(elem->in_buffer), STUN_ATTRIBUTE_DATA);
-        if (!sar) {
-          TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "ERROR: received DATA message has no data, size=%d\n", rc);
-          return rc;
-        }
+      const stun_attr_ref sar = stun_attr_get_first_by_type(&(elem->in_buffer), STUN_ATTRIBUTE_DATA);
+      if (!sar) {
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "ERROR: received DATA message has no data, size=%d\n", rc);
+        return rc;
+      }
 
-        int rlen = stun_attr_get_len(sar);
-        applen = rlen;
-        if (rlen != clmessage_length) {
-          TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "ERROR: received DATA message has wrong len: %d, must be %d\n", rlen,
-                        clmessage_length);
-          tot_recv_bytes += applen;
-          return rc;
-        }
+      const int rlen = stun_attr_get_len(sar);
+      applen = rlen;
+      if (rlen != clmessage_length) {
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "ERROR: received DATA message has wrong len: %d, must be %d\n", rlen,
+                      clmessage_length);
+        tot_recv_bytes += applen;
+        return rc;
+      }
 
-        const uint8_t *data = stun_attr_get_value(sar);
+      const uint8_t *const data = stun_attr_get_value(sar);
 
         memcpy(&mi, data, sizeof(message_info));
         miset = true;
       }
 
-    } else if (stun_is_success_response(&(elem->in_buffer))) {
+  } else if (stun_is_success_response(&(elem->in_buffer))) {
 
-      if (elem->pinfo.nonce[0]) {
-        if (check_integrity(&(elem->pinfo), &(elem->in_buffer)) < 0) {
-          return -1;
+    if (elem->pinfo.nonce[0]) {
+      if (check_integrity(&(elem->pinfo), &(elem->in_buffer)) < 0) {
+        return -1;
+      }
+    }
+
+    if (is_TCP_relay() && (stun_get_method(&(elem->in_buffer)) == STUN_METHOD_CONNECT)) {
+
+      uint32_t cid = 0;
+      for (stun_attr_ref sar = stun_attr_get_first(&(elem->in_buffer)); sar;
+           sar = stun_attr_get_next_str(elem->in_buffer.buf, elem->in_buffer.len, sar)) {
+        const int attr_type = stun_attr_get_type(sar);
+        if (attr_type == STUN_ATTRIBUTE_CONNECTION_ID) {
+          cid = *((const uint32_t *)stun_attr_get_value(sar));
+          break;
         }
       }
+      tcp_data_connect(elem, cid);
+    }
 
-      if (is_TCP_relay() && (stun_get_method(&(elem->in_buffer)) == STUN_METHOD_CONNECT)) {
-        stun_attr_ref sar = stun_attr_get_first(&(elem->in_buffer));
-        uint32_t cid = 0;
-        while (sar) {
-          int attr_type = stun_attr_get_type(sar);
-          if (attr_type == STUN_ATTRIBUTE_CONNECTION_ID) {
-            cid = *((const uint32_t *)stun_attr_get_value(sar));
-            break;
-          }
-          sar = stun_attr_get_next_str(elem->in_buffer.buf, elem->in_buffer.len, sar);
-        }
-        tcp_data_connect(elem, cid);
-      }
+    return rc;
+  } else if (stun_is_challenge_response_str(elem->in_buffer.buf, (size_t)elem->in_buffer.len, &err_code, err_msg,
+                                            sizeof(err_msg), clnet_info->realm, clnet_info->nonce,
+                                            clnet_info->server_name, &(clnet_info->oauth))) {
+    if (is_TCP_relay() && (stun_get_method(&(elem->in_buffer)) == STUN_METHOD_CONNECT)) {
+      turn_tcp_connect(clnet_verbose, &(elem->pinfo), &(elem->pinfo.peer_addr));
+    } else if (stun_get_method(&(elem->in_buffer)) == STUN_METHOD_REFRESH) {
+      refresh_channel(elem, stun_get_method(&elem->in_buffer), 600);
+    }
+    return rc;
+  } else if (stun_is_error_response(&(elem->in_buffer), NULL, NULL, 0)) {
+    return rc;
+  } else if (stun_is_channel_message(&(elem->in_buffer), &chnumber, use_tcp)) {
+    if (elem->chnum != chnumber) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "ERROR: received message has wrong channel: %d\n", (int)chnumber);
+      return rc;
+    }
 
-      return rc;
-    } else if (stun_is_challenge_response_str(elem->in_buffer.buf, (size_t)elem->in_buffer.len, &err_code, err_msg,
-                                              sizeof(err_msg), clnet_info->realm, clnet_info->nonce,
-                                              clnet_info->server_name, &(clnet_info->oauth))) {
-      if (is_TCP_relay() && (stun_get_method(&(elem->in_buffer)) == STUN_METHOD_CONNECT)) {
-        turn_tcp_connect(clnet_verbose, &(elem->pinfo), &(elem->pinfo.peer_addr));
-      } else if (stun_get_method(&(elem->in_buffer)) == STUN_METHOD_REFRESH) {
-        refresh_channel(elem, stun_get_method(&elem->in_buffer), 600);
-      }
-      return rc;
-    } else if (stun_is_error_response(&(elem->in_buffer), NULL, NULL, 0)) {
-      return rc;
-    } else if (stun_is_channel_message(&(elem->in_buffer), &chnumber, use_tcp)) {
-      if (elem->chnum != chnumber) {
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "ERROR: received message has wrong channel: %d\n", (int)chnumber);
+    if (elem->in_buffer.len >= 4) {
+      if (((int)(elem->in_buffer.len - 4) < clmessage_length) ||
+          ((int)(elem->in_buffer.len - 4) > clmessage_length + 3)) {
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "ERROR: received buffer have wrong length: %d, must be %d, len=%d\n", rc,
+                      clmessage_length + 4, (int)elem->in_buffer.len);
         return rc;
       }
-
-      if (elem->in_buffer.len >= 4) {
-        if (((int)(elem->in_buffer.len - 4) < clmessage_length) ||
-            ((int)(elem->in_buffer.len - 4) > clmessage_length + 3)) {
-          TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "ERROR: received buffer have wrong length: %d, must be %d, len=%d\n", rc,
-                        clmessage_length + 4, (int)elem->in_buffer.len);
-          return rc;
-        }
 
         memcpy(&mi, elem->in_buffer.buf + 4, sizeof(message_info));
         miset = true;
@@ -790,54 +787,48 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
       return rc;
     }
 
-    if (miset) {
-      /*
-      printf("%s: 111.111: msgnum=%d, rmsgnum=%d, sent=%lu, recv=%lu\n",__FUNCTION__,
-              mi->msgnum,elem->recvmsgnum,(unsigned long)mi->mstime,(unsigned long)current_mstime);
-              */
-      if (mi.msgnum != elem->recvmsgnum + 1) {
-        ++(elem->loss);
-      } else {
-        uint64_t clatency = (uint64_t)time_minus(current_mstime, mi.mstime);
-        if (clatency > max_latency) {
-          max_latency = clatency;
-        }
-        if (clatency < min_latency) {
-          min_latency = clatency;
-        }
-        elem->latency += clatency;
-        if (elem->rmsgnum > 0) {
-          uint64_t cjitter = abs((int)(current_mstime - elem->recvtimems) - RTP_PACKET_INTERVAL);
-
-          if (cjitter > max_jitter) {
-            max_jitter = cjitter;
-          }
-          if (cjitter < min_jitter) {
-            min_jitter = cjitter;
-          }
-
-          elem->jitter += cjitter;
-        }
-      }
-
-      elem->recvmsgnum = mi.msgnum;
-    }
-
-    elem->rmsgnum += buffers;
-    tot_recv_messages += buffers;
-    if (applen > 0) {
-      tot_recv_bytes += applen;
+  if (miset) {
+    /*
+    printf("%s: 111.111: msgnum=%d, rmsgnum=%d, sent=%lu, recv=%lu\n",__FUNCTION__,
+            mi->msgnum,elem->recvmsgnum,(unsigned long)mi->mstime,(unsigned long)current_mstime);
+            */
+    if (mi.msgnum != elem->recvmsgnum + 1) {
+      ++(elem->loss);
     } else {
-      tot_recv_bytes += elem->in_buffer.len;
-    }
-    elem->recvtimems = current_mstime;
-    elem->wait_cycles = 0;
+      const uint64_t clatency = (uint64_t)time_minus(current_mstime, mi.mstime);
+      if (clatency > max_latency) {
+        max_latency = clatency;
+      }
+      if (clatency < min_latency) {
+        min_latency = clatency;
+      }
+      elem->latency += clatency;
+      if (elem->rmsgnum > 0) {
+        const uint64_t cjitter = abs((int)(current_mstime - elem->recvtimems) - RTP_PACKET_INTERVAL);
 
-  } else if (rc == 0) {
-    return 0;
-  } else {
-    return -1;
+        if (cjitter > max_jitter) {
+          max_jitter = cjitter;
+        }
+        if (cjitter < min_jitter) {
+          min_jitter = cjitter;
+        }
+
+        elem->jitter += cjitter;
+      }
+    }
+
+    elem->recvmsgnum = mi.msgnum;
   }
+
+  elem->rmsgnum += buffers;
+  tot_recv_messages += buffers;
+  if (applen > 0) {
+    tot_recv_bytes += applen;
+  } else {
+    tot_recv_bytes += elem->in_buffer.len;
+  }
+  elem->recvtimems = current_mstime;
+  elem->wait_cycles = 0;
 
   return rc;
 }
@@ -896,7 +887,7 @@ static int client_write(app_ur_session *elem) {
     if (!(elem->pinfo.tcp_conn) || !(elem->pinfo.tcp_conn_number)) {
       return -1;
     }
-    int i = (unsigned int)(turn_random()) % elem->pinfo.tcp_conn_number;
+    const int i = (unsigned int)(turn_random()) % elem->pinfo.tcp_conn_number;
     atc = elem->pinfo.tcp_conn[i];
     if (!atc->tcp_data_bound) {
       printf("%s: Uninitialized atc: i=%d, atc=0x%lx\n", __FUNCTION__, i, (long)atc);
@@ -925,7 +916,7 @@ static int client_write(app_ur_session *elem) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "before write ...\n");
     }
 
-    int rc = send_buffer(&(elem->pinfo), &(elem->out_buffer), 1, atc);
+    const int rc = send_buffer(&(elem->pinfo), &(elem->out_buffer), 1, atc);
 
     ++elem->wmsgnum;
     elem->to_send_timems += RTP_PACKET_INTERVAL;
@@ -959,12 +950,11 @@ void client_input_handler(evutil_socket_t fd, short what, void *arg) {
 
   switch (elem->state) {
   case UR_STATE_READY:
-    do {
+    while (1) {
       app_tcp_conn_info *atc = NULL;
       int is_tcp_data = 0;
       if (elem->pinfo.tcp_conn) {
-        int i = 0;
-        for (i = 0; i < (int)(elem->pinfo.tcp_conn_number); ++i) {
+        for (int i = 0; i < (int)(elem->pinfo.tcp_conn_number); ++i) {
           if (elem->pinfo.tcp_conn[i]) {
             if ((fd == elem->pinfo.tcp_conn[i]->tcp_data_fd) && (elem->pinfo.tcp_conn[i]->tcp_data_bound)) {
               is_tcp_data = 1;
@@ -974,11 +964,11 @@ void client_input_handler(evutil_socket_t fd, short what, void *arg) {
           }
         }
       }
-      int rc = client_read(elem, is_tcp_data, atc);
+      const int rc = client_read(elem, is_tcp_data, atc);
       if (rc <= 0) {
         break;
       }
-    } while (1);
+    }
 
     break;
   default:;
@@ -1044,7 +1034,7 @@ static int start_client(const char *remote_address, int port, const unsigned cha
     socket_set_nonblocking(clnet_info_rtcp->fd);
   }
 
-  struct event *ev = event_new(client_event_base, clnet_info->fd, EV_READ | EV_PERSIST, client_input_handler, ss);
+  struct event *const ev = event_new(client_event_base, clnet_info->fd, EV_READ | EV_PERSIST, client_input_handler, ss);
 
   event_add(ev, NULL);
 
@@ -1237,7 +1227,7 @@ static int refresh_channel(app_ur_session *elem, uint16_t method, uint32_t lt) {
     stun_attr_add(&message, STUN_ATTRIBUTE_LIFETIME, (const char *)&lt, 4);
 
     if (dual_allocation && !mobility) {
-      int t = ((uint8_t)turn_random()) % 3;
+      const int t = ((uint8_t)turn_random()) % 3;
       if (t) {
         uint8_t field[4];
         field[0] = (t == 1) ? (uint8_t)STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4
@@ -1306,7 +1296,7 @@ static inline int client_timer_handler(app_ur_session *elem, int *done) {
       return 0;
     }
 
-    int max_num = 50;
+    const int max_num = 50;
     int cur_num = 0;
 
     while (!turn_time_before(current_mstime, elem->to_send_timems)) {
@@ -1362,7 +1352,7 @@ static void timer_handler(evutil_socket_t fd, short event, void *arg) {
     int done = 0;
     for (int i = 0; i < total_clients; ++i) {
       if (elems[i]) {
-        int finished = client_timer_handler(elems[i], &done);
+        const int finished = client_timer_handler(elems[i], &done);
         if (finished) {
           elems[i] = NULL;
         }
@@ -1502,7 +1492,7 @@ void start_mclient(const char *remote_address, int port, const unsigned char *if
   stime = current_time;
 
   if (is_TCP_relay()) {
-    uint64_t connect_wait_start_time = current_time;
+    const uint64_t connect_wait_start_time = current_time;
     while (1) {
       int completed = 0;
       if (passive_tcp) {
@@ -1552,7 +1542,7 @@ void start_mclient(const char *remote_address, int port, const unsigned char *if
 
     run_events(1);
 
-    int msz = (int)current_clients_number;
+    const int msz = (int)current_clients_number;
     if (msz < 1) {
       break;
     }
@@ -1606,7 +1596,7 @@ int add_integrity(app_ur_conn_info *clnet_info, stun_buffer *message) {
 
     if (oauth && clnet_info->oauth) {
 
-      uint16_t method = stun_get_method_str(message->buf, message->len);
+      const uint16_t method = stun_get_method_str(message->buf, message->len);
 
       int cok = clnet_info->cok;
 
@@ -1618,7 +1608,7 @@ int add_integrity(app_ur_conn_info *clnet_info, stun_buffer *message) {
         encoded_oauth_token etoken;
         uint8_t nonce[12];
         RAND_bytes((unsigned char *)nonce, 12);
-        long halflifetime = OAUTH_SESSION_LIFETIME / 2;
+        const long halflifetime = OAUTH_SESSION_LIFETIME / 2;
         long random_lifetime = 0;
         while (!random_lifetime) {
           random_lifetime = turn_random();
@@ -1678,7 +1668,7 @@ int add_integrity(app_ur_conn_info *clnet_info, stun_buffer *message) {
 }
 
 int check_integrity(app_ur_conn_info *clnet_info, stun_buffer *message) {
-  SHATYPE sht = shatype;
+  SHATYPE const sht = shatype;
 
   if (oauth && clnet_info->oauth) {
 
