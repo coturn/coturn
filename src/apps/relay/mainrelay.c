@@ -1816,7 +1816,7 @@ unsigned char *base64decode(const void *b64_decode_this, int decode_this_many_by
 int decodedTextSize(char *input) {
   int i = 0;
   int result = 0, padding = 0;
-  int size = strlen(input);
+  const int size = strlen(input);
   for (i = 0; i < size; ++i) {
     if (input[i] == '=') {
       padding++;
@@ -1831,8 +1831,8 @@ void decrypt_aes_128(char *in, const unsigned char *mykey) {
   AES_KEY key;
   unsigned char outdata[256] = {0};
   AES_set_encrypt_key(mykey, 128, &key);
-  int newTotalSize = decodedTextSize(in);
-  int bytes_to_decode = strlen(in);
+  const int newTotalSize = decodedTextSize(in);
+  const int bytes_to_decode = strlen(in);
   unsigned char *encryptedText = base64decode(in, bytes_to_decode);
   char last[1024] = "";
   struct ctr_state state;
@@ -1928,7 +1928,7 @@ static void set_option(int c, char *value) {
     turn_params.no_tlsv1_2 = get_bool_value(value);
     break;
   case NE_TYPE_OPT: {
-    int ne = atoi(value);
+    const int ne = atoi(value);
     if ((ne < (int)NEV_MIN) || (ne > (int)NEV_MAX)) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: wrong version of the network engine: %d\n", ne);
     }
@@ -2796,7 +2796,7 @@ static int adminmain(int argc, char **argv) {
     exit(-1);
   }
 
-  int result = adminuser(user, realm, pwd, secret, origin, ct, &po, is_admin);
+  const int result = adminuser(user, realm, pwd, secret, origin, ct, &po, is_admin);
 
   disconnect_database();
 
@@ -3089,7 +3089,7 @@ int main(int argc, char **argv) {
   read_config_file(argc, argv, 2);
 
   {
-    unsigned long mfn = set_system_parameters(1);
+    const unsigned long mfn = set_system_parameters(1);
 
     print_features(mfn);
   }
@@ -3225,7 +3225,7 @@ int main(int argc, char **argv) {
   if (!turn_params.listener.addrs_number) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "NO EXPLICIT LISTENER ADDRESS(ES) ARE CONFIGURED\n");
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "===========Discovering listener addresses: =========\n");
-    int maddrs = make_local_listeners_list();
+    const int maddrs = make_local_listeners_list();
     if ((maddrs < 1) || !turn_params.listener.addrs_number) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Cannot configure any meaningful IP listener address\n", __FUNCTION__);
       fprintf(stderr, "\n%s\n", Usage);
@@ -3295,7 +3295,7 @@ int main(int argc, char **argv) {
 #else
   if (turn_params.turn_daemon) {
 #if !defined(TURN_HAS_DAEMON)
-    pid_t pid = fork();
+    const pid_t pid = fork();
     if (pid > 0) {
       exit(0);
     }
@@ -3541,15 +3541,15 @@ static int ServerALPNCallback(SSL *ssl, const unsigned char **out, unsigned char
   UNUSED_ARG(ssl);
   UNUSED_ARG(arg);
 
-  unsigned char sa_len = (unsigned char)strlen(STUN_ALPN);
-  unsigned char ta_len = (unsigned char)strlen(TURN_ALPN);
-  unsigned char ha_len = (unsigned char)strlen(HTTP_ALPN);
+  const unsigned char sa_len = (unsigned char)strlen(STUN_ALPN);
+  const unsigned char ta_len = (unsigned char)strlen(TURN_ALPN);
+  const unsigned char ha_len = (unsigned char)strlen(HTTP_ALPN);
 
   int found_http = 0;
 
   const unsigned char *ptr = in;
   while (ptr < (in + inlen)) {
-    unsigned char current_len = *ptr;
+    const unsigned char current_len = *ptr;
     if (ptr + 1 + current_len > in + inlen) {
       break;
     }

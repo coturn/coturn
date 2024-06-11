@@ -175,11 +175,11 @@ bool stun_produce_integrity_key_str(const uint8_t *uname, const uint8_t *realm, 
   ERR_clear_error();
   UNUSED_ARG(shatype);
 
-  size_t ulen = strlen((const char *)uname);
-  size_t rlen = strlen((const char *)realm);
-  size_t plen = strlen((const char *)upwd);
-  size_t sz = ulen + 1 + rlen + 1 + plen + 1 + 10;
-  size_t strl = ulen + 1 + rlen + 1 + plen;
+  const size_t ulen = strlen((const char *)uname);
+  const size_t rlen = strlen((const char *)realm);
+  const size_t plen = strlen((const char *)upwd);
+  const size_t sz = ulen + 1 + rlen + 1 + plen + 1 + 10;
+  const size_t strl = ulen + 1 + rlen + 1 + plen;
   uint8_t *str = (uint8_t *)malloc(sz + 1);
 
   strncpy((char *)str, (const char *)uname, sz);
@@ -347,7 +347,7 @@ int stun_get_command_message_len_str(const uint8_t *buf, size_t len) {
   }
 
   /* Validate the size the buffer claims to be */
-  size_t bufLen = (size_t)(nswap16(((const uint16_t *)(buf))[1]) + STUN_HEADER_LENGTH);
+  const size_t bufLen = (size_t)(nswap16(((const uint16_t *)(buf))[1]) + STUN_HEADER_LENGTH);
   if (bufLen > len) {
     return -1;
   }
@@ -375,7 +375,7 @@ uint16_t stun_get_method_str(const uint8_t *buf, size_t len) {
     return (uint16_t)-1;
   }
 
-  uint16_t tt = nswap16(((const uint16_t *)buf)[0]);
+  const uint16_t tt = nswap16(((const uint16_t *)buf)[0]);
 
   return (tt & 0x000F) | ((tt & 0x00E0) >> 1) | ((tt & 0x0E00) >> 2) | ((tt & 0x3000) >> 2);
 }
@@ -398,7 +398,7 @@ bool stun_is_command_message_str(const uint8_t *buf, size_t blen) {
     if (!STUN_VALID_CHANNEL(nswap16(((const uint16_t *)buf)[0]))) {
       if ((((uint8_t)buf[0]) & ((uint8_t)(0xC0))) == 0) {
         if (nswap32(((const uint32_t *)(buf))[1]) == STUN_MAGIC_COOKIE) {
-          uint16_t len = nswap16(((const uint16_t *)(buf))[1]);
+          const uint16_t len = nswap16(((const uint16_t *)(buf))[1]);
           if ((len & 0x0003) == 0) {
             if ((size_t)(len + STUN_HEADER_LENGTH) == blen) {
               return true;
@@ -416,7 +416,7 @@ bool old_stun_is_command_message_str(const uint8_t *buf, size_t blen, uint32_t *
     if (!STUN_VALID_CHANNEL(nswap16(((const uint16_t *)buf)[0]))) {
       if ((((uint8_t)buf[0]) & ((uint8_t)(0xC0))) == 0) {
         if (nswap32(((const uint32_t *)(buf))[1]) != STUN_MAGIC_COOKIE) {
-          uint16_t len = nswap16(((const uint16_t *)(buf))[1]);
+          const uint16_t len = nswap16(((const uint16_t *)(buf))[1]);
           if ((len & 0x0003) == 0) {
             if ((size_t)(len + STUN_HEADER_LENGTH) == blen) {
               *cookie = nswap32(((const uint32_t *)(buf))[1]);
@@ -452,8 +452,8 @@ bool stun_is_command_message_full_check_str(const uint8_t *buf, size_t blen, int
   if (!fingerprint) {
     return !must_check_fingerprint;
   }
-  uint32_t crc32len = (uint32_t)((((const uint8_t *)fingerprint) - buf) - 4);
-  bool ret = (*fingerprint == nswap32(ns_crc32(buf, crc32len) ^ ((uint32_t)FINGERPRINT_XOR)));
+  const uint32_t crc32len = (uint32_t)((((const uint8_t *)fingerprint) - buf) - 4);
+  const bool ret = (*fingerprint == nswap32(ns_crc32(buf, crc32len) ^ ((uint32_t)FINGERPRINT_XOR)));
   if (ret && fingerprint_present) {
     *fingerprint_present = ret;
   }
@@ -507,7 +507,7 @@ bool stun_is_error_response_str(const uint8_t *buf, size_t len, int *err_code, u
 bool stun_is_challenge_response_str(const uint8_t *buf, size_t len, int *err_code, uint8_t *err_msg,
                                     size_t err_msg_size, uint8_t *realm, uint8_t *nonce, uint8_t *server_name,
                                     bool *oauth) {
-  bool ret = stun_is_error_response_str(buf, len, err_code, err_msg, err_msg_size);
+  const bool ret = stun_is_error_response_str(buf, len, err_code, err_msg, err_msg_size);
 
   if (ret && (((*err_code) == 401) || ((*err_code) == 438))) {
     stun_attr_ref sar = stun_attr_get_first_by_type_str(buf, len, STUN_ATTRIBUTE_REALM);
@@ -715,7 +715,7 @@ static void stun_init_error_response_common_str(uint8_t *buf, size_t *len, uint1
 
   //"Manual" padding for compatibility with classic old stun:
   {
-    int rem = alen % 4;
+    const int rem = alen % 4;
     if (rem) {
       alen += (4 - rem);
     }
@@ -771,7 +771,7 @@ bool stun_is_channel_message_str(const uint8_t *buf, size_t *blen, uint16_t *chn
     return false;
   }
 
-  uint16_t chn = nswap16(((const uint16_t *)(buf))[0]);
+  const uint16_t chn = nswap16(((const uint16_t *)(buf))[0]);
   if (!STUN_VALID_CHANNEL(chn)) {
     return false;
   }
@@ -799,7 +799,7 @@ bool stun_is_channel_message_str(const uint8_t *buf, size_t *blen, uint16_t *chn
       } else if (datalen_header == 0) {
         return false;
       } else {
-        uint16_t diff = datalen_actual - datalen_header;
+        const uint16_t diff = datalen_actual - datalen_header;
         if (diff > 3) {
           return false;
         }
@@ -837,9 +837,9 @@ static inline const char *findstr(const char *hay, size_t slen, const char *need
   const char *ret = NULL;
 
   if (hay && slen && needle) {
-    size_t nlen = strlen(needle);
+    const size_t nlen = strlen(needle);
     if (nlen <= slen) {
-      size_t smax = slen - nlen + 1;
+      const size_t smax = slen - nlen + 1;
       const char *sp = hay;
       for (size_t i = 0; i < smax; ++i) {
         if (sheadof(needle, sp + i, ignore_case)) {
@@ -860,7 +860,7 @@ int is_http(const char *s, size_t blen) {
       const char *sp = findstr(s + 4, blen - 4, " HTTP/", false);
       if (sp) {
         sp += 6;
-        size_t diff_blen = sp - s;
+        const size_t diff_blen = sp - s;
         if (diff_blen + 4 <= blen) {
           sp = findstr(sp, blen - diff_blen, "\r\n\r\n", false);
           if (sp) {
@@ -868,7 +868,7 @@ int is_http(const char *s, size_t blen) {
             const char *clheader = "content-length: ";
             const char *cl = findstr(s, sp - s, clheader, true);
             if (cl) {
-              unsigned long clen = strtoul(cl + strlen(clheader), NULL, 10);
+              const unsigned long clen = strtoul(cl + strlen(clheader), NULL, 10);
               if (clen > 0 && clen < (0x0FFFFFFF)) {
                 ret_len += (int)clen;
               }
@@ -904,7 +904,7 @@ int stun_get_message_len_str(uint8_t *buf, size_t blen, int padding, size_t *app
 
     // HTTP request ?
     {
-      int http_len = is_http(((char *)buf), blen);
+      const int http_len = is_http(((char *)buf), blen);
       if ((http_len > 0) && ((size_t)http_len <= blen)) {
         *app_len = (size_t)http_len;
         return http_len;
@@ -913,7 +913,7 @@ int stun_get_message_len_str(uint8_t *buf, size_t blen, int padding, size_t *app
 
     /* STUN channel ? */
     if (blen >= 4) {
-      uint16_t chn = nswap16(((const uint16_t *)(buf))[0]);
+      const uint16_t chn = nswap16(((const uint16_t *)(buf))[0]);
       if (STUN_VALID_CHANNEL(chn)) {
 
         uint16_t bret = (4 + (nswap16(((const uint16_t *)(buf))[1])));
@@ -1278,7 +1278,7 @@ int stun_attr_get_len(stun_attr_ref attr) {
 
 const uint8_t *stun_attr_get_value(stun_attr_ref attr) {
   if (attr) {
-    int len = (int)(nswap16(((const uint16_t *)attr)[1]));
+    const int len = (int)(nswap16(((const uint16_t *)attr)[1]));
     if (len < 1) {
       return NULL;
     }
@@ -1289,11 +1289,11 @@ const uint8_t *stun_attr_get_value(stun_attr_ref attr) {
 
 int stun_get_requested_address_family(stun_attr_ref attr) {
   if (attr) {
-    int len = (int)(nswap16(((const uint16_t *)attr)[1]));
+    const int len = (int)(nswap16(((const uint16_t *)attr)[1]));
     if (len != 4) {
       return STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_INVALID;
     }
-    int val = ((const uint8_t *)attr)[4];
+    const int val = ((const uint8_t *)attr)[4];
     switch (val) {
     case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4:
     case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6:
@@ -1309,7 +1309,7 @@ uint16_t stun_attr_get_channel_number(stun_attr_ref attr) {
   if (attr) {
     const uint8_t *value = stun_attr_get_value(attr);
     if (value && (stun_attr_get_len(attr) >= 2)) {
-      uint16_t cn = nswap16(((const uint16_t *)value)[0]);
+      const uint16_t cn = nswap16(((const uint16_t *)value)[0]);
       if (STUN_VALID_CHANNEL(cn)) {
         return cn;
       }
@@ -1322,7 +1322,7 @@ band_limit_t stun_attr_get_bandwidth(stun_attr_ref attr) {
   if (attr) {
     const uint8_t *value = stun_attr_get_value(attr);
     if (value && (stun_attr_get_len(attr) >= 4)) {
-      uint32_t bps = nswap32(((const uint32_t *)value)[0]);
+      const uint32_t bps = nswap32(((const uint32_t *)value)[0]);
       return (band_limit_t)(bps << 7);
     }
   }
@@ -1395,7 +1395,7 @@ static stun_attr_ref stun_attr_check_valid(stun_attr_ref attr, size_t remaining)
     remaining -= 4;
 
     /* Round to boundary */
-    uint16_t rem4 = ((uint16_t)attrlen) & 0x0003;
+    const uint16_t rem4 = ((uint16_t)attrlen) & 0x0003;
     if (rem4) {
       attrlen = attrlen + 4 - (int)rem4;
     }
@@ -1410,7 +1410,7 @@ static stun_attr_ref stun_attr_check_valid(stun_attr_ref attr, size_t remaining)
 }
 
 stun_attr_ref stun_attr_get_first_str(const uint8_t *buf, size_t len) {
-  int bufLen = stun_get_command_message_len_str(buf, len);
+  const int bufLen = stun_get_command_message_len_str(buf, len);
   if (bufLen > STUN_HEADER_LENGTH) {
     stun_attr_ref attr = (stun_attr_ref)(buf + STUN_HEADER_LENGTH);
     return stun_attr_check_valid(attr, bufLen - STUN_HEADER_LENGTH);
@@ -1425,7 +1425,7 @@ stun_attr_ref stun_attr_get_next_str(const uint8_t *buf, size_t len, stun_attr_r
   } else {
     const uint8_t *end = buf + stun_get_command_message_len_str(buf, len);
     int attrlen = stun_attr_get_len(prev);
-    uint16_t rem4 = ((uint16_t)attrlen) & 0x0003;
+    const uint16_t rem4 = ((uint16_t)attrlen) & 0x0003;
     if (rem4) {
       attrlen = attrlen + 4 - (int)rem4;
     }
@@ -1447,9 +1447,9 @@ bool stun_attr_add_str(uint8_t *buf, size_t *len, uint16_t attr, const uint8_t *
     alen = 0;
     avalue = tmp;
   }
-  int clen = stun_get_command_message_len_str(buf, *len);
+  const int clen = stun_get_command_message_len_str(buf, *len);
   int newlen = clen + 4 + alen;
-  int newlenrem4 = newlen & 0x00000003;
+  const int newlenrem4 = newlen & 0x00000003;
   int paddinglen = 0;
   if (newlenrem4) {
     paddinglen = 4 - newlenrem4;
@@ -1519,7 +1519,7 @@ bool stun_attr_get_addr_str(const uint8_t *buf, size_t len, stun_attr_ref attr, 
   addr_set_any(ca);
   addr_set_any(&public_addr);
 
-  int attr_type = stun_attr_get_type(attr);
+  const int attr_type = stun_attr_get_type(attr);
   if (attr_type < 0) {
     return false;
   }
@@ -1546,7 +1546,7 @@ bool stun_attr_get_addr_str(const uint8_t *buf, size_t len, stun_attr_ref attr, 
   map_addr_from_public_to_private(&public_addr, ca);
 
   if (default_addr && addr_any_no_port(ca) && !addr_any_no_port(default_addr)) {
-    int port = addr_get_port(ca);
+    const int port = addr_get_port(ca);
     addr_cpy(ca, default_addr);
     addr_set_port(ca, port);
   }
@@ -1581,7 +1581,7 @@ bool stun_attr_add_channel_number_str(uint8_t *buf, size_t *len, uint16_t chnumb
 
 bool stun_attr_add_bandwidth_str(uint8_t *buf, size_t *len, band_limit_t bps0) {
 
-  uint32_t bps = (uint32_t)(band_limit_t)(bps0 >> 7);
+  const uint32_t bps = (uint32_t)(band_limit_t)(bps0 >> 7);
 
   uint32_t field = nswap32(bps);
 
@@ -1602,7 +1602,7 @@ bool stun_attr_add_address_error_code(uint8_t *buf, size_t *len, int requested_a
 
   //"Manual" padding for compatibility with classic old stun:
   {
-    int rem = alen % 4;
+    const int rem = alen % 4;
     if (rem) {
       alen += (4 - rem);
     }
@@ -1616,7 +1616,7 @@ uint16_t stun_attr_get_first_channel_number_str(const uint8_t *buf, size_t len) 
   stun_attr_ref attr = stun_attr_get_first_str(buf, len);
   while (attr) {
     if (stun_attr_get_type(attr) == STUN_ATTRIBUTE_CHANNEL_NUMBER) {
-      uint16_t ret = stun_attr_get_channel_number(attr);
+      const uint16_t ret = stun_attr_get_channel_number(attr);
       if (STUN_VALID_CHANNEL(ret)) {
         return ret;
       }
@@ -1693,7 +1693,7 @@ bool SASLprep(uint8_t *s) {
     uint8_t *strin = s;
     uint8_t *strout = s;
     for (;;) {
-      uint8_t c = *strin;
+      const uint8_t c = *strin;
       if (!c) {
         *strout = 0;
         break;
@@ -1863,12 +1863,12 @@ int stun_check_message_integrity_by_key_str(turn_credential_type ct, uint8_t *bu
     return -1;
   };
 
-  int orig_len = stun_get_command_message_len_str(buf, len);
+  const int orig_len = stun_get_command_message_len_str(buf, len);
   if (orig_len < 0) {
     return -1;
   }
 
-  int new_len = (int)((const uint8_t *)sar - buf) + 4 + shasize;
+  const int new_len = (int)((const uint8_t *)sar - buf) + 4 + shasize;
   if (new_len > orig_len) {
     return -1;
   }
@@ -1980,7 +1980,7 @@ bool stun_attr_add_response_port_str(uint8_t *buf, size_t *len, uint16_t port) {
 }
 
 int stun_attr_get_padding_len_str(stun_attr_ref attr) {
-  int len = stun_attr_get_len(attr);
+  const int len = stun_attr_get_len(attr);
   if (len < 0) {
     return -1;
   }
@@ -2194,7 +2194,7 @@ int my_EVP_EncryptUpdate(EVP_CIPHER_CTX *ctx, unsigned char *out, int *outl, con
     if (out) {
       ptr = out + out_len;
     }
-    int ret = EVP_EncryptUpdate(ctx, ptr, &tmp_outl, in + out_len, inl - out_len);
+    const int ret = EVP_EncryptUpdate(ctx, ptr, &tmp_outl, in + out_len, inl - out_len);
     out_len += tmp_outl;
     if (ret < 1) {
       return ret;
@@ -2214,7 +2214,7 @@ int my_EVP_DecryptUpdate(EVP_CIPHER_CTX *ctx, unsigned char *out, int *outl, con
     if (out) {
       ptr = out + out_len;
     }
-    int ret = EVP_DecryptUpdate(ctx, ptr, &tmp_outl, in + out_len, inl - out_len);
+    const int ret = EVP_DecryptUpdate(ctx, ptr, &tmp_outl, in + out_len, inl - out_len);
     out_len += tmp_outl;
     if (ret < 1) {
       return ret;
@@ -2286,7 +2286,7 @@ static bool encode_oauth_token_gcm(const uint8_t *server_name, encoded_oauth_tok
     }
 
     int outl = 0;
-    size_t sn_len = strlen((const char *)server_name);
+    const size_t sn_len = strlen((const char *)server_name);
 
     /* Provide any AAD data. This can be called zero or more times as
      * required
@@ -2330,17 +2330,17 @@ static bool decode_oauth_token_gcm(const uint8_t *server_name, const encoded_oau
     memcpy(snl, (const unsigned char *)(etoken->token), 2);
     const unsigned char *csnl = snl;
 
-    uint16_t nonce_len = nswap16(*((const uint16_t *)csnl));
+    const uint16_t nonce_len = nswap16(*((const uint16_t *)csnl));
     dtoken->enc_block.nonce_length = nonce_len;
 
-    size_t min_encoded_field_size = 2 + 4 + 8 + nonce_len + 2 + OAUTH_GCM_TAG_SIZE + 1;
+    const size_t min_encoded_field_size = 2 + 4 + 8 + nonce_len + 2 + OAUTH_GCM_TAG_SIZE + 1;
     if (etoken->size < min_encoded_field_size) {
       OAUTH_ERROR("%s: token size too small: %d\n", __FUNCTION__, (int)etoken->size);
       return false;
     }
 
     const unsigned char *encoded_field = (const unsigned char *)(etoken->token + nonce_len + 2);
-    unsigned int encoded_field_size = (unsigned int)etoken->size - nonce_len - 2 - OAUTH_GCM_TAG_SIZE;
+    const unsigned int encoded_field_size = (unsigned int)etoken->size - nonce_len - 2 - OAUTH_GCM_TAG_SIZE;
     const unsigned char *nonce = ((const unsigned char *)etoken->token + 2);
     memcpy(dtoken->enc_block.nonce, nonce, nonce_len);
 
@@ -2382,7 +2382,7 @@ static bool decode_oauth_token_gcm(const uint8_t *server_name, const encoded_oau
     EVP_CIPHER_CTX_ctrl(ctxp, EVP_CTRL_GCM_SET_TAG, OAUTH_GCM_TAG_SIZE, tag);
 
     int outl = 0;
-    size_t sn_len = strlen((const char *)server_name);
+    const size_t sn_len = strlen((const char *)server_name);
 
     /* Provide any AAD data. This can be called zero or more times as
      * required
