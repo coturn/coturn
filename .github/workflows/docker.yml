@@ -172,10 +172,12 @@ jobs:
         if: ${{ startsWith(github.ref, 'refs/tags/') }}
       - name: Form main Docker image tag
         id: docker
-        run: echo "tag=${{ (startsWith(github.ref, 'refs/tags/')
-                            && steps.semver.outputs.group1)
-                        ||     'edge' }}-${{ matrix.dist }}"
+        run: echo "tag=${SEMVER}-${{ matrix.dist }}"
              >> $GITHUB_OUTPUT
+        env:
+          SEMVER: ${{ (startsWith(github.ref, 'refs/tags/')
+                      && steps.semver.outputs.group1)
+                      ||     'edge' }}
 
       - uses: actions/download-artifact@v4
         with:
@@ -276,9 +278,11 @@ jobs:
 
       - name: Parse CHANGELOG link
         id: changelog
-        run: echo "link=${{ github.server_url }}/${{ github.repository }}/blob/docker/${{ steps.semver.outputs.group1 }}/docker/coturn/CHANGELOG.md#$(sed -n '/^## \[${{ steps.semver.outputs.group1 }}\]/{s/^## \[\(.*\)\][^0-9]*\([0-9].*\)/\1--\2/;s/[^0-9a-z-]*//g;p;}' CHANGELOG.md)"
+        run: echo "link=${{ github.server_url }}/${{ github.repository }}/blob/docker/${SEMVER}/docker/coturn/CHANGELOG.md#$(sed -n '/^## \['${SEMVER}'\]/{s/^## \[\(.*\)\][^0-9]*\([0-9].*\)/\1--\2/;s/[^0-9a-z-]*//g;p;}' CHANGELOG.md)"
              >> $GITHUB_OUTPUT
         working-directory: docker/coturn/
+        env:
+          SEMVER: ${{ steps.semver.outputs.group1 }}
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
