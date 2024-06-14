@@ -89,19 +89,24 @@ int TURN_MAX_ALLOCATE_TIMEOUT_STUN_ONLY = 3;
 
 static inline void log_method(ts_ur_super_session *ss, const char *method, int err_code, const uint8_t *reason) {
   if (ss) {
+    // Get remote address
+    char remote_addr[129] = "\0";
+    addr_to_string(get_remote_addr_from_ioa_socket(ss->client_socket), (uint8_t *)remote_addr);
     if (!method) {
       method = "unknown";
     }
     if (!err_code) {
       if (ss->origin[0]) {
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-                      "session %018llu: origin <%s> realm <%s> user <%s>: incoming packet %s processed, success\n",
-                      (unsigned long long)(ss->id), (const char *)(ss->origin), (const char *)(ss->realm_options.name),
-                      (const char *)(ss->username), method);
-      } else {
         TURN_LOG_FUNC(
-            TURN_LOG_LEVEL_INFO, "session %018llu: realm <%s> user <%s>: incoming packet %s processed, success\n",
-            (unsigned long long)(ss->id), (const char *)(ss->realm_options.name), (const char *)(ss->username), method);
+            TURN_LOG_LEVEL_INFO,
+            "session %018llu: origin <%s> realm <%s> user <%s> remote <%s>: incoming packet %s processed, success\n",
+            (unsigned long long)(ss->id), (const char *)(ss->origin), (const char *)(ss->realm_options.name),
+            (const char *)(ss->username), remote_addr, method);
+      } else {
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+                      "session %018llu: realm <%s> user <%s> remote <%s>: incoming packet %s processed, success\n",
+                      (unsigned long long)(ss->id), (const char *)(ss->realm_options.name),
+                      (const char *)(ss->username), remote_addr, method);
       }
     } else {
       if (!reason) {
@@ -109,14 +114,15 @@ static inline void log_method(ts_ur_super_session *ss, const char *method, int e
       }
       if (ss->origin[0]) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-                      "session %018llu: origin <%s> realm <%s> user <%s>: incoming packet %s processed, error %d: %s\n",
+                      "session %018llu: origin <%s> realm <%s> user <%s> remote <%s>: incoming packet %s processed, "
+                      "error %d: %s\n",
                       (unsigned long long)(ss->id), (const char *)(ss->origin), (const char *)(ss->realm_options.name),
-                      (const char *)(ss->username), method, err_code, reason);
+                      (const char *)(ss->username), remote_addr, method, err_code, reason);
       } else {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-                      "session %018llu: realm <%s> user <%s>: incoming packet %s processed, error %d: %s\n",
+                      "session %018llu: realm <%s> user <%s> remote <%s>: incoming packet %s processed, error %d: %s\n",
                       (unsigned long long)(ss->id), (const char *)(ss->realm_options.name),
-                      (const char *)(ss->username), method, err_code, reason);
+                      (const char *)(ss->username), remote_addr, method, err_code, reason);
       }
     }
   }
@@ -1435,6 +1441,19 @@ static int handle_turn_allocate(turn_turnserver *server, ts_ur_super_session *ss
 
             ioa_network_buffer_set_size(nbh, len);
             *resp_constructed = 1;
+
+            if (server->verbose) {
+              char ip4addr[129] = "\0";
+              char ip6addr[129] = "\0";
+              char xor_mapped_addr[129] = "\0";
+              addr_to_string(pxor_relayed_addr1, (uint8_t *)ip4addr);
+              addr_to_string(pxor_relayed_addr2, (uint8_t *)ip6addr);
+              addr_to_string(get_remote_addr_from_ioa_socket(ss->client_socket), (uint8_t *)xor_mapped_addr);
+              TURN_LOG_FUNC(
+                  TURN_LOG_LEVEL_INFO,
+                  "session %018llu: handle_turn_allocate: xor_relayed_addr ip4=[%s] ip6=[%s], xor_mapped_addr=[%s]",
+                  (unsigned long long)ss->id, ip4addr, ip6addr, xor_mapped_addr);
+            }
 
             turn_report_allocation_set(&(ss->alloc), lifetime, 0);
           }
@@ -4170,8 +4189,10 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
   }
 
   if (eve(server->verbose)) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "closing session 0x%lx, client socket 0x%lx (socket session=0x%lx)\n", (long)ss,
-                  (long)ss->client_socket, (long)get_ioa_socket_session(ss->client_socket));
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+                  "session %018llu: closing session 0x%lx, client socket 0x%lx (socket session=0x%lx)\n",
+                  (unsigned long long)(ss->id), (long)ss, (long)ss->client_socket,
+                  (long)get_ioa_socket_session(ss->client_socket));
   }
 
   if (server->disconnect) {
@@ -4317,6 +4338,18 @@ static void client_ss_allocation_timeout_handler(ioa_engine_handle e, void *arg)
   FUNCSTART;
 
   int family = get_ioa_socket_address_family(rsession->s);
+
+  if (server->verbose) {
+    int i;
+    for (i = 0; i < ALLOC_PROTOCOLS_NUMBER; ++i) {
+      if (ss->alloc.relay_sessions[i].s) {
+        char sallocaddr[129] = "\0";
+        addr_to_string(get_local_addr_from_ioa_socket(ss->alloc.relay_sessions[i].s), (uint8_t *)sallocaddr);
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: closing %s reason: allocation timeout\n",
+                      (unsigned long long)(ss->id), sallocaddr);
+      }
+    }
+  }
 
   set_allocation_family_invalid(a, family);
 
