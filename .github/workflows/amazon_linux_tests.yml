@@ -1,0 +1,40 @@
+name: AmazonLinux
+
+on:
+  push:
+  pull_request:
+    types: [ opened, reopened, synchronize ]
+
+jobs:
+  builds:
+    strategy:
+      fail-fast: false
+      matrix:
+        # amazonlinux 2 is end-of-life 2025-06
+        os: [ 'amazonlinux:2', 'amazonlinux:2023' ]
+
+    runs-on: ubuntu-latest
+    container: ${{ matrix.os }}
+
+    steps:
+    - name: Install Dependencies
+      run: |
+        yum install -y gcc make gzip tar openssl-devel libevent-devel
+    # Delay checkout until after dependencies have been installed. Amazon linux is very minimal and lacks basic stuff by default.
+    # use v3 of checkout until the weird container, nodejs, glibc issue is fixed
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - name: Configure
+      run: ./configure
+
+    - name: Compile
+      run: make
+
+    - name: Unit Test
+      run: make check
+
+    - name: Integration Test
+      working-directory: examples
+      run: ./run_tests.sh
