@@ -188,6 +188,9 @@ RUN apt-get update \
  # Install `dig` tool for `detect-external-ip.sh`.
  && apt-get install -y --no-install-recommends --no-install-suggests \
             dnsutils \
+ # Install `dumb-init` to handle signaling (which we use for drain mode) correctly.
+ && apt-get install -y --no-install-recommends --no-install-suggests \
+            dumb-init \
  # Cleanup unnecessary stuff.
  && rm -rf /var/lib/apt/lists/*
 

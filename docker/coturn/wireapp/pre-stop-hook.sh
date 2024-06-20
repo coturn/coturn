@@ -5,27 +5,30 @@
 
 set -uo pipefail
 
-SLEEPTIME=60
+SLEEPTIME=3
 
 host="$1"
 port="$2"
 
 url="http://$host:$port/metrics"
 
-echo "Polling coturn status on $url"
+coturn_exe=/usr/bin/turnserver
+coturn_pid=$(pgrep -f "$coturn_exe" | head -n 1)
 
-while true; do
+function log(){
+    msg=$1
+    # send log output of the preStop hook to stdout of
+    # the main turnserver process, so they show up in the
+    # normal logs of the pod.
+    echo "PRESTOP: $msg" > "/proc/$coturn_pid/fd/1"
+}
+
+function getAllocations(){
     allocs=$(curl -s "$url" | grep -E '^turn_total_allocations' | cut -d' ' -f2)
-    if [ "$?" != 0 ]; then
-        echo "Could not retrieve metrics from coturn!"
-        exit 1
-    fi
-
     if [ -z "$allocs" ]; then
-        echo "No more active allocations, exiting"
-        exit 0
+        # nobody used the coturn server yet, which means the metric is absent from the output, in which case default to 0.
+        allocs=0
     fi
-
     # Note: there can be multiple allocation counts, e.g.
     # turn_total_allocations{type="UDP"} 0
     # turn_total_allocations{type="TCP"} 0
@@ -34,11 +37,17 @@ while true; do
     for num in $allocs; do
         (( sum += num ))
     done
-    if [ "$sum" = 0 ]; then
-        echo "No more active allocations, exiting"
-        exit 0
-    fi
+    log "Active remaining turn_allocations: $sum"
+}
 
-    echo "Active allocations remaining, sleeping for $SLEEPTIME seconds"
-    sleep "$SLEEPTIME"
+getAllocations
+
+# Invoke drain mode (https://github.com/wireapp/coturn/pull/12)
+pkill -f --signal SIGUSR1 "$coturn_exe"
+log "Sent SIGUSR1 to $coturn_exe to start draining."
+
+while pgrep -f "$coturn_exe" > /dev/null; do
+    log "$coturn_exe is still running"
+    getAllocations
+    sleep $SLEEPTIME
 done
