@@ -1,4 +1,6 @@
 /*
+ * SPDX-License-Identifier: Unknown
+ *
  * libtelnet - TELNET protocol handling library
  *
  * Sean Middleditch
