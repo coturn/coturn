@@ -3045,7 +3045,7 @@ int main(int argc, char **argv) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "System enable num is %lu\n", get_system_active_number_of_cpus());
   }
 
-  memset(&turn_params.default_users_db, 0, sizeof(default_users_db_t));
+  memset(&turn_params.default_users_db.ram_db, 0, sizeof(ram_users_db_t));
   turn_params.default_users_db.ram_db.static_accounts = ur_string_map_create(free);
 
   struct uoptions uo;
