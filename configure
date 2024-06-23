@@ -15,7 +15,7 @@ cleanup() {
 }
 
 testlibraw() {
-    ${CC} ${TMPCPROGC} -o ${TMPCPROGB} ${OSCFLAGS} ${OSLIBS} -${1} 2>>/dev/null
+    ${CXX} ${TMPCPROGC} -o ${TMPCPROGB} ${OSCFLAGS} ${OSLIBS} -${1} 2>>/dev/null
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
         ${ECHO_CMD} "Library option -${1} cannot be used"
@@ -85,33 +85,33 @@ pthread_testlib() {
         return
     fi
 
-    ${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} 2>>/dev/null
+    ${CXX} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} 2>>/dev/null
     ER=$?
     if [ ${ER} -eq 0 ] ; then
         return
     fi
 
-    ${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} -pthread 2>>/dev/null
+    ${CXX} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} -pthread 2>>/dev/null
     ER=$?
     if [ ${ER} -eq 0 ] ; then
         OSLIBS="${OSLIBS} -pthread"
         return
     fi
 
-    ${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} -lpthread 2>>/dev/null
+    ${CXX} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} -lpthread 2>>/dev/null
     ER=$?
     if [ ${ER} -eq 0 ] ; then
         OSLIBS="${OSLIBS} -lpthread"
         return
     fi
 
-    ${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} 2>>/dev/null
+    ${CXX} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} 2>>/dev/null
     ER=$?
     if [ ${ER} -eq 0 ] ; then
         return
     fi
 
-    ${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} -D_GNU_SOURCE 2>>/dev/null
+    ${CXX} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} -D_GNU_SOURCE 2>>/dev/null
     ER=$?
     if [ ${ER} -eq 0 ] ; then
         ${ECHO_CMD} "Older GNU pthread library found"
@@ -126,7 +126,7 @@ pthread_testlib() {
 pthread_testbarriers() {
 
     ${ECHO_CMD} "pthread_barrier_t barrier;" >> ${TH_TMPCPROGC}
-    ${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} 2>>/dev/null
+    ${CXX} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} 2>>/dev/null
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
 		${ECHO_CMD} "pthread barriers not found"
@@ -137,7 +137,7 @@ pthread_testbarriers() {
 gcm_testlib() {
 
     if [ -z "${TURN_NO_GCM}" ] ; then
-    	${CC} ${GCM_TMPCPROGC} -o ${GCM_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} 2>>/dev/null
+        ${CXX} ${GCM_TMPCPROGC} -o ${GCM_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} 2>>/dev/null
     	ER=$?
     	if [ ${ER} -eq 0 ] ; then
     	    return 1
@@ -151,7 +151,7 @@ gcm_testlib() {
 
 testdaemon() {
 
-	${CC} ${D_TMPCPROGC} -o ${D_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} 2>>/dev/null
+	${CXX} ${D_TMPCPROGC} -o ${D_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} 2>>/dev/null
 	ER=$?
 	if [ ${ER} -eq 0 ] ; then
 	    OSCFLAGS="${OSCFLAGS} -DTURN_HAS_DAEMON"
@@ -160,13 +160,13 @@ testdaemon() {
 
 test_sin_len() {
     TMPCADDRPROGC=src/client/ns_turn_ioaddr.c
-    ${CC} -c ${OSCFLAGS} -DTURN_HAS_SIN_LEN -Isrc ${TMPCADDRPROGC} -o ${TMPCADDRPROGO} 2>>/dev/null
+    ${CXX} -c ${OSCFLAGS} -DTURN_HAS_SIN_LEN -Isrc ${TMPCADDRPROGC} -o ${TMPCADDRPROGO} 2>>/dev/null
     ER=$?
     if [ ${ER} -eq 0 ] ; then
 	OSCFLAGS="${OSCFLAGS} -DTURN_HAS_SIN_LEN"
 	${ECHO_CMD} "Sockets code is fine: sin_len field present"
     else
-	${CC} -c ${OSCFLAGS} -Isrc ${TMPCADDRPROGC} -o ${TMPCADDRPROGO} 2>>/dev/null
+	${CXX} -c ${OSCFLAGS} -Isrc ${TMPCADDRPROGC} -o ${TMPCADDRPROGO} 2>>/dev/null
 	ER=$?
 	if [ ${ER} -eq 0 ] ; then
 	    ${ECHO_CMD} "Sockets code is fine: no sin_len field present"
@@ -420,7 +420,7 @@ if [ -z "${MORECMD}" ]; then
 	MORECMD="cat"
 fi
 
-OSCFLAGS="${CFLAGS}"
+OSCFLAGS="${CXXFLAGS}"
 OSLIBS="${LDFLAGS}"
 
 SYSTEM=`uname`
@@ -592,36 +592,36 @@ int main(int argc, char** argv) {
 # What is our compiler ?
 ##########################
 
-if [ -z "${CC}" ] ; then
-    for CC in cc gcc clang; do
-        ${CC} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>>/dev/null
+if [ -z "${CXX}" ] ; then
+    for CXX in cxx c++ g++ clang++; do
+        ${CXX} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>>/dev/null
         ER=$?
         if [ ${ER} -eq 0 ] ; then
             break
         fi
-        CC=
+        CXX=
     done
 
-    if [ -z "$CC" ] ; then
-        ${ECHO_CMD} "ERROR: failed to a find working C compiler"
+    if [ -z "${CXX}" ] ; then
+        ${ECHO_CMD} "ERROR: failed to a find a C++ compiler using the default search choices."
         cleanup
         exit 1
     fi
 else
-    CC_OUTPUT=$(${CC} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB})
+    CXX_OUTPUT=$(${CXX} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB})
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
-        ${ECHO_CMD} "ERROR: cannot use compiler ${CC} properly."
-        ${ECHO_CMD} "${CC_OUTPUT}"
+        ${ECHO_CMD} "ERROR: cannot use compiler ${CXX} properly."
+        ${ECHO_CMD} "${CXX_OUTPUT}"
         cleanup
         exit 1
     fi
 fi
 
-${ECHO_CMD} "Compiler: ${CC}"
+${ECHO_CMD} "Compiler: ${CXX}"
 
 if [ -z "${TURN_ACCEPT_RPATH}" ] ; then
-    ${CC} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} -Wl,-rpath,/usr/lib 2>>/dev/null
+    ${CXX} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} -Wl,-rpath,/usr/lib 2>>/dev/null
     ER=$?
     if [ ${ER} -eq 0 ] ; then
 	TURN_ACCEPT_RPATH=1
@@ -664,23 +664,23 @@ GNUOSCFLAGS="-g ${GNUOSCFLAGS}"
 GNUOSCFLAGS="${GNUOSCFLAGS} -Wall -Wno-deprecated-declarations -Wextra -Wformat-security -Wnested-externs -Wstrict-prototypes  -Wmissing-prototypes -Wpointer-arith -Wcast-qual"
 GNUOSCFLAGS="${GNUOSCFLAGS}"
 
-${CC} -Werror ${GNUOSCFLAGS} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>>/dev/null
+${CXX} -Werror ${GNUOSCFLAGS} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>>/dev/null
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then
     ${ECHO_CMD} "Hm..."
-    ${CC} -Wall ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>>/dev/null
+    ${CXX} -Wall ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>>/dev/null
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
 		${ECHO_CMD} "Not an ordinary GNU or Clang compiler"
     else
 		${ECHO_CMD} "g++ or something..."
 		GNUOSCFLAGS="-g -Wall -Wno-deprecated-declarations -Wextra -Wformat-security -Wpointer-arith -Wcast-qual"
-		${CC} -Werror ${GNUOSCFLAGS} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>>/dev/null
+		${CXX} -Werror ${GNUOSCFLAGS} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>>/dev/null
 		ER=$?
 		if ! [ ${ER} -eq 0 ] ; then
 	    	${ECHO_CMD} "Not an ordinary g++ compiler"
 	    	GNUOSCFLAGS="-x c++ -g -Wall -Wno-deprecated-declarations -Wextra -Wformat-security -Wpointer-arith -Wcast-qual"
-	    	${CC} -Werror ${GNUOSCFLAGS} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>>/dev/null
+            ${CXX} -Werror ${GNUOSCFLAGS} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>>/dev/null
 	    	ER=$?
 	    	if ! [ ${ER} -eq 0 ] ; then
 	    		${ECHO_CMD} "Not an ordinary c++ compiler"
@@ -754,7 +754,7 @@ testdaemon
 ###########################
 
 if [ -n "${SSL_CFLAGS}" ] && [ -n "${SSL_LIBS}" ]; then
-    ${CC} ${TMPCPROGC} ${SSL_CFLAGS} -o ${TMPCPROGB} ${OSCFLAGS} ${OSLIBS} ${SSL_LIBS} 2>>/dev/null
+    ${CXX} ${TMPCPROGC} ${SSL_CFLAGS} -o ${TMPCPROGB} ${OSCFLAGS} ${OSLIBS} ${SSL_LIBS} 2>>/dev/null
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
         ${ECHO_CMD} "Private SSL Library option cannot be used"
@@ -816,7 +816,7 @@ fi
 # Test Libevent2 setup
 ###########################
 if [ -n "${EVENT_CFLAGS}" ] && [ -n "${EVENT_LIBS}" ]; then
-    ${CC} ${TMPCPROGC} ${EVENT_CFLAGS} -o ${TMPCPROGB} ${OSCFLAGS} ${OSLIBS} ${EVENT_LIBS} 2>>/dev/null
+    ${CXX} ${TMPCPROGC} ${EVENT_CFLAGS} -o ${TMPCPROGB} ${OSCFLAGS} ${OSLIBS} ${EVENT_LIBS} 2>>/dev/null
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
         ${ECHO_CMD} "Private Event Library option cannot be used"
@@ -1049,10 +1049,10 @@ ${ECHO_CMD} "#################################" > Makefile
 ${ECHO_CMD} "# Generated by configure script #" >> Makefile
 ${ECHO_CMD} "#################################" >> Makefile
 ${ECHO_CMD} "ECHO_CMD = ${ECHO_CMD}" >> Makefile
-${ECHO_CMD} "CC = ${CC}" >> Makefile
+${ECHO_CMD} "CXX = ${CXX}" >> Makefile
 ${ECHO_CMD} "LDFLAGS += ${OSLIBS}" >> Makefile
 ${ECHO_CMD} "DBLIBS += ${DBLIBS}" >> Makefile
-${ECHO_CMD} "CFLAGS += ${OSCFLAGS}" >> Makefile
+${ECHO_CMD} "CXXFLAGS += ${OSCFLAGS}" >> Makefile
 ${ECHO_CMD} "CPPFLAGS = ${CPPFLAGS}" >> Makefile
 ${ECHO_CMD} "DBCFLAGS += ${DBCFLAGS} ${TURN_NO_PQ} ${TURN_NO_MYSQL} ${TURN_NO_SQLITE} ${TURN_NO_MONGO} ${TURN_NO_HIREDIS} ${TURN_NO_SYSTEMD}" >> Makefile
 ${ECHO_CMD} "#" >> Makefile
