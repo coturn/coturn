@@ -1611,7 +1611,7 @@ void run_listener_server(struct listener_server *ls) {
       for (size_t i = 0; i < ls->services_number; i++) {
         for (size_t j = 0; j < get_real_general_relay_servers_number(); j++) {
           if (ls->udp_services[i] && ls->udp_services[i][j]) {
-            ls->udp_services[i][j]->ts->is_draining = 1; 
+            ls->udp_services[i][j]->ts->is_draining = 1;
           }
           if (ls->dtls_services[i] && ls->dtls_services[i][j]) {
             ls->dtls_services[i][j]->ts->is_draining = 1;

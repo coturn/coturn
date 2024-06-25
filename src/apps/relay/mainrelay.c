@@ -189,7 +189,7 @@ turn_params_t turn_params = {
 
     /////////////// stop server ////////////////
     DRAINMODE_NOT_ENALBED, /*drain_turn_server*/
-    0, /*stop_turn_server*/
+    0,                     /*stop_turn_server*/
 
     /////////////// MISC PARAMS ////////////////
     0,                                  /* stun_only */
