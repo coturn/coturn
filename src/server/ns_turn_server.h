@@ -203,6 +203,9 @@ struct _turn_turnserver {
   /* Return an HTTP 400 response to HTTP connections made to ports not
      otherwise handling HTTP. */
   vintp respond_http_unsupported;
+
+  /* Set to true on SIGUSR1 */
+  int is_draining;
 };
 
 const char *get_version(turn_turnserver *server);
