@@ -327,6 +327,12 @@ static int make_local_listeners_list(void) {
       printf("\tIfIndex (IPv4 interface): %u\n", pCurrAddresses->IfIndex);
       printf("\tAdapter name: %s\n", pCurrAddresses->AdapterName);//*/
 
+      if (pCurrAddresses->OperStatus != IfOperStatusUp)
+      {
+          pCurrAddresses = pCurrAddresses->Next;
+          continue;
+      }
+
       pUnicast = pCurrAddresses->FirstUnicastAddress;
       if (pUnicast != NULL) {
         // printf("\tNumber of Unicast Addresses:\n");
@@ -595,6 +601,12 @@ static int make_local_relays_list(int allow_local, int family) {
           pCurrAddresses->Length);
       printf("\tIfIndex (IPv4 interface): %u\n", pCurrAddresses->IfIndex);
       printf("\tAdapter name: %s\n", pCurrAddresses->AdapterName);//*/
+
+      if (pCurrAddresses->OperStatus != IfOperStatusUp)
+      {
+          pCurrAddresses = pCurrAddresses->Next;
+          continue;
+      }
 
       pUnicast = pCurrAddresses->FirstUnicastAddress;
       if (pUnicast != NULL) {
