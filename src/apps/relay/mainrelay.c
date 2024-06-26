@@ -188,8 +188,8 @@ turn_params_t turn_params = {
     {NULL, 0, {0, NULL}}, /*tls_alternate_servers_list*/
 
     /////////////// stop server ////////////////
-    DRAINMODE_NOT_ENALBED, /*drain_turn_server*/
-    0,                     /*stop_turn_server*/
+    0, /*drain_turn_server*/
+    0, /*stop_turn_server*/
 
     /////////////// MISC PARAMS ////////////////
     0,                                  /* stun_only */
@@ -3989,9 +3989,10 @@ static void shutdown_handler(evutil_socket_t sock, short events, void *args) {
 
 static void drain_handler(evutil_socket_t sock, short events, void *args) {
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Draining then terminating on signal %d\n", sock);
-  turn_params.drain_turn_server = DRAINMODE_REQUESTED;
+  enable_drain_mode();
 
   UNUSED_ARG(events);
   UNUSED_ARG(args);
 }
+
 ///////////////////////////////

@@ -45,20 +45,7 @@ extern "C" {
 
 ///////////////////////////////////////////
 
-// netengine.c needs access to this
-struct dtls_listener_relay_server_info {
-  char ifname[1025];
-  ioa_addr addr;
-  ioa_engine_handle e;
-  turn_turnserver *ts;
-  int verbose;
-  struct event *udp_listen_ev;
-  ioa_socket_handle udp_listen_s;
-  ur_addr_map *children_ss; /* map of socket children on remote addr */
-  struct message_to_relay sm;
-  int slen0;
-  ioa_engine_new_connection_event_handler connect_cb;
-};
+struct dtls_listener_relay_server_info;
 typedef struct dtls_listener_relay_server_info dtls_listener_relay_server_type;
 
 ///////////////////////////////////////////

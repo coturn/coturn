@@ -46,7 +46,7 @@
 extern "C" {
 #endif
 
-extern int global_allocation_count;
+extern _Atomic size_t global_allocation_count;
 
 //////////// REALM //////////////
 

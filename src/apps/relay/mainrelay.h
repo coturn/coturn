@@ -176,8 +176,6 @@ enum _NET_ENG_VERSION {
 
 typedef enum _NET_ENG_VERSION NET_ENG_VERSION;
 
-typedef enum _DRAINMODE_STATE { DRAINMODE_NOT_ENALBED = 0, DRAINMODE_REQUESTED = 1, DRAINMODE_ENABLED } DRAINMODE_STATE;
-
 /////////// PARAMS //////////////////////////////////
 
 typedef struct _turn_params_ {
@@ -289,7 +287,7 @@ typedef struct _turn_params_ {
   turn_server_addrs_list_t tls_alternate_servers_list;
 
   /////////////// stop server ////////////////
-  DRAINMODE_STATE drain_turn_server;
+  int drain_turn_server;
   int stop_turn_server;
 
   ////////////// MISC PARAMS ////////////////
@@ -380,6 +378,7 @@ void send_auth_message_to_auth_server(struct auth_message *am);
 void init_listener(void);
 void setup_server(void);
 void run_listener_server(struct listener_server *ls);
+void enable_drain_mode(void);
 
 ////////// BPS ////////////////
 
