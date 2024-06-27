@@ -69,7 +69,7 @@ static TURN_MUTEX_DECLARE(o_to_realm_mutex);
 static ur_string_map *o_to_realm = NULL;
 static secrets_list_t realms_list;
 
-#ifndef _MSC_VER
+#if !defined(WINDOWS)
 _Atomic
 #else
 volatile
@@ -694,7 +694,7 @@ int check_new_allocation_quota(uint8_t *user, int oauth, uint8_t *realm) {
     ur_string_map_unlock(rp->status.alloc_counters);
   }
 
-#ifndef _MSC_VER
+#if !defined(WINDOWS)
   global_allocation_count++;
 #else
   InterlockedIncrement(&global_allocation_count);
@@ -728,7 +728,7 @@ void release_allocation_quota(uint8_t *user, int oauth, uint8_t *realm) {
     free(username);
   }
 
-#ifndef _MSC_VER
+#if !defined(WINDOWS)
   global_allocation_count--;
 #else
   InterlockedDecrement(&global_allocation_count);
