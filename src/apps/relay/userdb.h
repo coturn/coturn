@@ -46,7 +46,12 @@
 extern "C" {
 #endif
 
-extern _Atomic size_t global_allocation_count;
+#ifndef _MSC_VER
+extern _Atomic
+#else
+extern volatile
+#endif
+    size_t global_allocation_count;
 
 //////////// REALM //////////////
 
