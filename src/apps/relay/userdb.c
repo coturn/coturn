@@ -31,7 +31,6 @@
 #include <getopt.h>
 #include <limits.h>
 #include <locale.h>
-#include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -697,7 +696,7 @@ int check_new_allocation_quota(uint8_t *user, int oauth, uint8_t *realm) {
 #ifndef _MSC_VER
   global_allocation_count++;
 #else
-  InterlockedIncrement(&global_allocation_count);
+  InterlockedIncrement((volatile LONG *)&global_allocation_count);
 #endif
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Global turn allocation count incremented, now %ld\n", global_allocation_count);
 
@@ -731,7 +730,7 @@ void release_allocation_quota(uint8_t *user, int oauth, uint8_t *realm) {
 #ifndef _MSC_VER
   global_allocation_count--;
 #else
-  InterlockedDecrement(&global_allocation_count);
+  InterlockedDecrement((volatile LONG *)&global_allocation_count);
 #endif
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Global turn allocation count decremented, now %ld\n", global_allocation_count);
 }

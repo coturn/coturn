@@ -47,6 +47,7 @@ extern "C" {
 #endif
 
 #ifndef _MSC_VER
+#include <stdatomic.h>
 extern _Atomic
 #else
 extern volatile
