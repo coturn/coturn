@@ -31,6 +31,7 @@
 #include <getopt.h>
 #include <limits.h>
 #include <locale.h>
+#include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -68,7 +69,12 @@ static TURN_MUTEX_DECLARE(o_to_realm_mutex);
 static ur_string_map *o_to_realm = NULL;
 static secrets_list_t realms_list;
 
-_Atomic size_t global_allocation_count = 0; // used for drain mode, to know when all allocations have gone away
+#ifndef _MSC_VER
+_Atomic
+#else
+volatile
+#endif
+    size_t global_allocation_count = 0; // used for drain mode, to know when all allocations have gone away
 
 static char userdb_type_unknown[] = "Unknown";
 static char userdb_type_sqlite[] = "SQLite";
@@ -688,7 +694,11 @@ int check_new_allocation_quota(uint8_t *user, int oauth, uint8_t *realm) {
     ur_string_map_unlock(rp->status.alloc_counters);
   }
 
+#ifndef _MSC_VER
   global_allocation_count++;
+#else
+  InterlockedIncrement(&global_allocation_count);
+#endif
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Global turn allocation count incremented, now %ld\n", global_allocation_count);
 
   return ret;
@@ -718,7 +728,11 @@ void release_allocation_quota(uint8_t *user, int oauth, uint8_t *realm) {
     free(username);
   }
 
+#ifndef _MSC_VER
   global_allocation_count--;
+#else
+  InterlockedDecrement(&global_allocation_count);
+#endif
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Global turn allocation count decremented, now %ld\n", global_allocation_count);
 }
 
