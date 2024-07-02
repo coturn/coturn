@@ -286,9 +286,9 @@ typedef struct _turn_params_ {
   turn_server_addrs_list_t alternate_servers_list;
   turn_server_addrs_list_t tls_alternate_servers_list;
 
-  /////////////// stop server ////////////////
-  int drain_turn_server;
-  int stop_turn_server;
+  /////////////// stop/drain server ////////////////
+  bool drain_turn_server;
+  bool stop_turn_server;
 
   ////////////// MISC PARAMS ////////////////
 

@@ -994,7 +994,7 @@ static int run_cli_input(struct cli_session *cs, const char *buf0, unsigned int 
         const char *str = "TURN server is shutting down";
         myprintf(cs, "%s\n", str);
         close_cli_session(cs);
-        turn_params.stop_turn_server = 1;
+        turn_params.stop_turn_server = true;
         sleep(10);
         exit(0);
       } else if ((strcmp(cmd, "?") == 0) || (strcmp(cmd, "h") == 0) || (strcmp(cmd, "help") == 0)) {

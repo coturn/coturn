@@ -5017,7 +5017,7 @@ void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, io
 
   server->response_origin_only_with_rfc5780 = response_origin_only_with_rfc5780;
 
-  server->is_draining = 0;
+  server->is_draining = false;
 }
 
 ioa_engine_handle turn_server_get_engine(turn_turnserver *s) {

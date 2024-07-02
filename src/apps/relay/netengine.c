@@ -1605,8 +1605,8 @@ void run_listener_server(struct listener_server *ls) {
       }
     }
 
-    if (turn_params.drain_turn_server == 1 && global_allocation_count == 0) {
-      turn_params.stop_turn_server = 1;
+    if (turn_params.drain_turn_server && global_allocation_count == 0) {
+      turn_params.stop_turn_server = true;
       TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Drain complete, shutting down now...\n");
     }
 
@@ -1908,14 +1908,14 @@ void enable_drain_mode(void) {
   // Tell each turn_server we are draining
   for (size_t i = 0; i < get_real_general_relay_servers_number(); i++) {
     if (general_relay_servers[i]) {
-      general_relay_servers[i]->server.is_draining = 1;
+      general_relay_servers[i]->server.is_draining = true;
     }
   }
   for (size_t i = 0; i < get_real_udp_relay_servers_number(); i++) {
     if (udp_relay_servers[i]) {
-      udp_relay_servers[i]->server.is_draining = 1;
+      udp_relay_servers[i]->server.is_draining = true;
     }
   }
-  turn_params.drain_turn_server = 1;
+  turn_params.drain_turn_server = true;
 }
 ///////////////////////////////

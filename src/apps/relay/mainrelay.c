@@ -188,8 +188,8 @@ turn_params_t turn_params = {
     {NULL, 0, {0, NULL}}, /*tls_alternate_servers_list*/
 
     /////////////// stop server ////////////////
-    0, /*drain_turn_server*/
-    0, /*stop_turn_server*/
+    false, /*drain_turn_server*/
+    false, /*stop_turn_server*/
 
     /////////////// MISC PARAMS ////////////////
     0,                                  /* stun_only */
@@ -3981,7 +3981,7 @@ static void reload_ssl_certs(evutil_socket_t sock, short events, void *args) {
 
 static void shutdown_handler(evutil_socket_t sock, short events, void *args) {
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Terminating on signal %d\n", sock);
-  turn_params.stop_turn_server = 1;
+  turn_params.stop_turn_server = true;
 
   UNUSED_ARG(events);
   UNUSED_ARG(args);

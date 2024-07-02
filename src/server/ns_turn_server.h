@@ -205,7 +205,7 @@ struct _turn_turnserver {
   vintp respond_http_unsupported;
 
   /* Set to true on SIGUSR1 */
-  int is_draining;
+  bool is_draining;
 };
 
 const char *get_version(turn_turnserver *server);
