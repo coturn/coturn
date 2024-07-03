@@ -1657,8 +1657,8 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
       &turn_params.tls_alternate_servers_list, &turn_params.aux_servers_list, turn_params.udp_self_balance,
       &turn_params.no_multicast_peers, &turn_params.allow_loopback_peers, &turn_params.ip_whitelist,
       &turn_params.ip_blacklist, send_socket_to_relay, &turn_params.secure_stun, &turn_params.mobility,
-      turn_params.server_relay, send_turn_session_info, send_https_socket, allocate_bps, turn_params.oauth,
-      turn_params.oauth_server_name, turn_params.acme_redirect, turn_params.allocation_default_address_family,
+      turn_params.server_relay, send_turn_session_info, send_https_socket, turn_params.sock_buf_size, allocate_bps,
+      turn_params.oauth, turn_params.oauth_server_name, turn_params.acme_redirect, turn_params.allocation_default_address_family,
       &turn_params.log_binding, &turn_params.no_stun_backward_compatibility,
       &turn_params.response_origin_only_with_rfc5780, &turn_params.respond_http_unsupported);
 
