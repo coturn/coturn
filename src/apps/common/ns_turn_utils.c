@@ -709,7 +709,7 @@ int get_canonic_origin(const char *o, char *co, int sz) {
               }
             }
 
-            int port = evhttp_uri_get_port(uri);
+            uint16_t port = evhttp_uri_get_port(uri);
             if (port < 1) {
               port = get_default_protocol_port(otmp, schlen);
             }
