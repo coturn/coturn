@@ -134,7 +134,7 @@ static Ryconninfo *RyconninfoParse(const char *userdb, char **errmsg) {
       } else if (!strcmp(s, "secret")) {
         co->password = strdup(seq + 1);
       } else if (!strcmp(s, "port")) {
-        co->port = atoi(seq + 1);
+        co->port = (uint16_t)atoi(seq + 1);
       } else if (!strcmp(s, "p")) {
         co->port = atoi(seq + 1);
       } else if (!strcmp(s, "connect_timeout")) {
@@ -210,7 +210,7 @@ redis_context_handle get_redis_async_connection(struct event_base *base, redis_s
         }
 
         if (co->port) {
-          port = (co->port);
+          port = co->port;
         }
 
         if (co->connect_timeout) {
