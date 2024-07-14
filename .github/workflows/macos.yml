@@ -56,4 +56,4 @@ jobs:
 
     - name: Integration Test
       working-directory: examples
-      run: ./run_tests.sh
+      run: ./run_tests.sh && ./run_tests_conf.sh

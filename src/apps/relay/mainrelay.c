@@ -3023,10 +3023,11 @@ int main(int argc, char **argv) {
     return adminmain(argc, argv);
   }
 
+  memset(&turn_params.default_users_db, 0, sizeof(default_users_db_t));
+  turn_params.default_users_db.ram_db.static_accounts = ur_string_map_create(free);
+
   // Zero pass apply the log options.
   read_config_file(argc, argv, 0);
-  // First pass read other config options
-  read_config_file(argc, argv, 1);
 
   {
     unsigned long cpus = get_system_active_number_of_cpus();
@@ -3045,8 +3046,8 @@ int main(int argc, char **argv) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "System enable num is %lu\n", get_system_active_number_of_cpus());
   }
 
-  memset(&turn_params.default_users_db, 0, sizeof(default_users_db_t));
-  turn_params.default_users_db.ram_db.static_accounts = ur_string_map_create(free);
+  // First pass read other config options
+  read_config_file(argc, argv, 1);
 
   struct uoptions uo;
   uo.u.m = long_options;
