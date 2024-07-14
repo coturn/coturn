@@ -37,5 +37,5 @@ jobs:
     - name: Build
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
     - name: apps tests
-      run: cd examples && ./run_tests.sh
+      run: cd examples && ./run_tests.sh && ./run_tests_conf.sh
       
