@@ -1278,9 +1278,10 @@ static int handle_turn_allocate(turn_turnserver *server, ts_ur_super_session *ss
           }
         }
 
-        if(server->is_draining) {
-         // Don't allow new allocations if we are draining
-          *err_code = 300;  // 300 (Try Alternate): The client should contact an alternate server for this request.
+        if (server->is_draining) {
+          // Don't allow new allocations if we are draining
+          *err_code = 403; // 403 (Forbidden): RFC8656 - The request is valid, but the server is refusing to perform it,
+                           // likely due to administrative restrictions....
           *reason = (const uint8_t *)"Server is draining, then will shutdown, please try another server";
         }
 
@@ -4995,7 +4996,7 @@ void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, io
 
   server->response_origin_only_with_rfc5780 = response_origin_only_with_rfc5780;
 
-  server->is_draining = 0;
+  server->is_draining = false;
 }
 
 ioa_engine_handle turn_server_get_engine(turn_turnserver *s) {

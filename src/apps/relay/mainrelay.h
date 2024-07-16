@@ -33,6 +33,7 @@
 #define __MAIN_RELAY__
 
 #include <limits.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -178,12 +179,6 @@ enum _NET_ENG_VERSION {
 
 typedef enum _NET_ENG_VERSION NET_ENG_VERSION;
 
-typedef enum _DRAINMODE_STATE {
-  DRAINMODE_NOT_ENALBED = 0,
-  DRAINMODE_REQUESTED = 1,
-  DRAINMODE_ENABLED
-} DRAINMODE_STATE;
-
 /////////// PARAMS //////////////////////////////////
 
 typedef struct _turn_params_ {
@@ -293,9 +288,9 @@ typedef struct _turn_params_ {
   turn_server_addrs_list_t alternate_servers_list;
   turn_server_addrs_list_t tls_alternate_servers_list;
 
-  /////////////// stop server ////////////////
-  DRAINMODE_STATE drain_turn_server;
-  int stop_turn_server;
+  /////////////// stop/drain server ////////////////
+  bool drain_turn_server;
+  bool stop_turn_server;
 
   /////////////// FEDERATION SERVER ///////////////
   ioa_addr *federation_listening_ip;
@@ -396,6 +391,7 @@ void set_ctx_ex(SSL_CTX** out, const char* protocol, const SSL_METHOD* method, c
 void init_listener(void);
 void setup_server(void);
 void run_listener_server(struct listener_server *ls);
+void enable_drain_mode(void);
 
 ////////// BPS ////////////////
 
