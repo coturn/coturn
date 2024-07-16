@@ -55,7 +55,7 @@ static int counter = 0;
 
 #ifdef __cplusplus
 
-static int init_socket(int *socketfd, ioa_addr *local_addr, uint16_t local_port, ioa_addr *remote_addr) {
+static int init_socket(int *socketfd, ioa_addr *local_addr, int local_port, ioa_addr *remote_addr) {
   int ret = 0;
 
   if (local_port >= 0) {
@@ -77,7 +77,7 @@ static int init_socket(int *socketfd, ioa_addr *local_addr, uint16_t local_port,
 }
 
 static int stunclient_send(int sockfd, ioa_addr *local_addr, uint16_t *local_port, ioa_addr *remote_addr, int change_ip,
-                           uint16_t change_port, int padding, uint16_t response_port) {
+                           uint16_t change_port, int padding, int response_port) {
   int ret = 0;
 
   turn::StunMsgRequest req(STUN_METHOD_BINDING);
@@ -599,7 +599,7 @@ static char Usage[] = "Usage: natdiscovery [options] address\n"
 
 //////////////////////////////////////////////////
 
-static void init(int first, ioa_addr *local_addr, ioa_addr *remote_addr, uint16_t *local_port, uint16_t port, int *rfc5780,
+static void init(int first, ioa_addr *local_addr, ioa_addr *remote_addr, int *local_port, uint16_t port, int *rfc5780,
                  char *local_addr_string, char *remote_param) {
   addr_set_any(local_addr);
 

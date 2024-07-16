@@ -182,9 +182,9 @@ static Myconninfo *MyconninfoParse(char *userdb, char **errmsg) {
       } else if (!strcmp(s, "secret")) {
         co->password = strdup(seq + 1);
       } else if (!strcmp(s, "port")) {
-        co->port = (uint16_t)atoi(seq + 1);
+        co->port = (unsigned int)atoi(seq + 1);
       } else if (!strcmp(s, "p")) {
-        co->port = (uint16_t)atoi(seq + 1);
+        co->port = (unsigned int)atoi(seq + 1);
       } else if (!strcmp(s, "connect_timeout")) {
         co->connect_timeout = (unsigned int)atoi(seq + 1);
       } else if (!strcmp(s, "timeout")) {
