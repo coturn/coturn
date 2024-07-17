@@ -3408,10 +3408,11 @@ int THREAD_cleanup(void) {
 }
 #else
 static int THREAD_setup(void) { return 1; }
-
-int THREAD_cleanup(void);
 int THREAD_cleanup(void) { return 1; }
 #endif /* OPENSSL_VERSION_NUMBER < OPENSSL_VERSION_1_1_0 */
+#else
+static int THREAD_setup(void) { return 1; }
+int THREAD_cleanup(void) { return 1; }
 #endif /* defined(OPENSSL_THREADS) */
 
 static void adjust_key_file_name(char *fn, const char *file_title, int critical) {
