@@ -3404,6 +3404,7 @@ int THREAD_cleanup(void) {
   return 1;
 }
 #else
+static int THREAD_setup(void);
 static int THREAD_setup(void) { return 1; }
 
 int THREAD_cleanup(void);
