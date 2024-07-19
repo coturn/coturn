@@ -62,7 +62,7 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void *arg) 
 
 ///////////////////// operations //////////////////////////
 
-static int udp_create_server_socket(server_type *server, const char *ifname, const char *local_address, int port) {
+static int udp_create_server_socket(server_type *server, const char *ifname, const char *local_address, uint16_t port) {
 
   if (server && server->verbose) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Start\n");
@@ -112,7 +112,7 @@ static int udp_create_server_socket(server_type *server, const char *ifname, con
   return 0;
 }
 
-static server_type *init_server(int verbose, const char *ifname, char **local_addresses, size_t las, int port) {
+static server_type *init_server(int verbose, const char *ifname, char **local_addresses, size_t las, uint16_t port) {
 
   server_type *server = (server_type *)malloc(sizeof(server_type));
 
@@ -163,7 +163,7 @@ static void run_events(server_type *server) {
 
 /////////////////////////////////////////////////////////////
 
-server_type *start_udp_server(int verbose, const char *ifname, char **local_addresses, size_t las, int port) {
+server_type *start_udp_server(int verbose, const char *ifname, char **local_addresses, size_t las, uint16_t port) {
   return init_server(verbose, ifname, local_addresses, las, port);
 }
 

@@ -54,7 +54,7 @@ static char Usage[] = "Usage: server [options]\n"
 //////////////////////////////////////////////////
 
 int main(int argc, char **argv) {
-  int port = PEER_DEFAULT_PORT;
+  uint16_t port = PEER_DEFAULT_PORT;
   char **local_addr_list = NULL;
   size_t las = 0;
   int verbose = TURN_VERBOSE_NONE;
