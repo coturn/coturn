@@ -466,7 +466,7 @@ else
 		INSTALL_SCRIPT="install -p"
 		INSTALL_SHARED_LIB="install -p"
 		INSTALL_STATIC_LIB="install -p"
-		INSTALL_DATA="install -p"
+		INSTALL_DATA="install -p -m 0644"
 		MKDIR="install -d"
 	else
 		INSTALL_PROGRAM="cp -pf"
