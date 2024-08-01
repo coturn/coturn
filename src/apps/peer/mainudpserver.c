@@ -50,7 +50,7 @@ static char Usage[] = "Usage: server [options]\n"
                       "        -d      Listening interface device (optional)\n"
                       "        -L      Listening address\n"
                       "        -v      verbose\n";
-
+static char invalidPort[] = "Invalid UDP port. Port range is 0-65535"
 //////////////////////////////////////////////////
 
 int main(int argc, char **argv) {
@@ -77,6 +77,10 @@ int main(int argc, char **argv) {
       STRCPY(ifname, optarg);
       break;
     case 'p':
+      if(atoi(optarg) < 0 || atoi(optarg) > 65535){
+        fprintf(stderr, "%s\n", invalidPort);
+        exit(1);
+      }
       port = atoi(optarg);
       break;
     case 'L':

@@ -114,6 +114,10 @@ static int udp_create_server_socket(server_type *server, const char *ifname, con
 
 static server_type *init_server(int verbose, const char *ifname, char **local_addresses, size_t las, uint16_t port) {
 
+  if(port == 65535){
+    return NULL;
+  }
+  
   server_type *server = (server_type *)malloc(sizeof(server_type));
 
   if (!server) {
