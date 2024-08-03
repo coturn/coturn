@@ -480,14 +480,12 @@ static int create_new_connected_udp_socket(dtls_listener_relay_server_type *serv
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot bind udp server socket to device %s\n", (char *)(s->e->relay_ifname));
   }
 
-  ioa_socket_handle ret = (ioa_socket *)malloc(sizeof(ioa_socket));
+  ioa_socket_handle ret = (ioa_socket *)calloc(1, sizeof(ioa_socket));
   if (!ret) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Cannot allocate new socket structure\n", __FUNCTION__);
     socket_closesocket(udp_fd);
     return -1;
   }
-
-  memset(ret, 0, sizeof(ioa_socket));
 
   ret->magic = SOCKET_MAGIC;
 

@@ -1422,8 +1422,7 @@ void setup_admin_thread(void) {
 void admin_server_receive_message(struct bufferevent *bev, void *ptr) {
   UNUSED_ARG(ptr);
 
-  struct turn_session_info *tsi = (struct turn_session_info *)malloc(sizeof(struct turn_session_info));
-  turn_session_info_init(tsi);
+  struct turn_session_info *tsi = (struct turn_session_info *)calloc(1, sizeof(struct turn_session_info));
   int n = 0;
   struct evbuffer *input = bufferevent_get_input(bev);
 
@@ -1443,8 +1442,7 @@ void admin_server_receive_message(struct bufferevent *bev, void *ptr) {
 
     if (tsi->valid) {
       ur_map_put(adminserver.sessions, (ur_map_key_type)tsi->id, (ur_map_value_type)tsi);
-      tsi = (struct turn_session_info *)malloc(sizeof(struct turn_session_info));
-      turn_session_info_init(tsi);
+      tsi = (struct turn_session_info *)calloc(1, sizeof(struct turn_session_info));
     } else {
       turn_session_info_clean(tsi);
     }

@@ -92,8 +92,7 @@ static MONGO *get_mongodb_connection(void) {
     mongoc_init();
     mongoc_log_set_handler(&mongo_logger, NULL);
 
-    mydbconnection = (MONGO *)malloc(sizeof(MONGO));
-    memset(mydbconnection, 0, sizeof(MONGO));
+    mydbconnection = (MONGO *)calloc(1, sizeof(MONGO));
 
     mydbconnection->uri = mongoc_uri_new(pud->userdb);
 

@@ -243,10 +243,6 @@ char *dirname(char *path);
 
 #if defined(WINDOWS)
 int getdomainname(char *name, size_t len);
-// wchar convert to char
-char *_WTA(__in wchar_t *pszInBufBuf, __in int nInSize, __out char **pszOutBuf, __out int *pnOutSize);
-// char convert to wchar
-wchar_t *_ATW(__in char *pszInBuf, __in int nInSize, __out wchar_t **pszOutBuf, __out int *pnOutSize);
 #endif
 
 ////////////////// File search ////////////////////////

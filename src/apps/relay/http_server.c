@@ -331,8 +331,14 @@ struct str_buffer {
 
 struct str_buffer *str_buffer_new(void) {
   struct str_buffer *ret = (struct str_buffer *)calloc(sizeof(struct str_buffer), 1);
-
+  if (!ret) {
+    return NULL;
+  }
   ret->buffer = (char *)malloc(1);
+  if (!(ret->buffer)) {
+    free(ret);
+    return NULL;
+  }
   ret->buffer[0] = 0;
   ret->capacity = 1;
   return ret;

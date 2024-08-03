@@ -1699,9 +1699,9 @@ static const struct myoption admin_long_options[] = {
 
 int init_ctr(struct ctr_state *state, const unsigned char iv[8]) {
   state->num = 0;
-  memset(state->ecount, 0, 16);
-  memset(state->ivec + 8, 0, 8);
+  memset(state->ecount, 0, sizeof(state->ecount));
   memcpy(state->ivec, iv, 8);
+  memset(state->ivec + 8, 0, sizeof(state->ivec) - 8);
   return 1;
 }
 
@@ -1799,7 +1799,7 @@ unsigned char *base64decode(const void *b64_decode_this, int decode_this_many_by
   int decoded_byte_index = 0;                     // Index where the next base64_decoded byte should be written.
   while (0 < BIO_read(b64_bio, base64_decoded + decoded_byte_index, 1)) { // Read byte-by-byte.
     decoded_byte_index++; // Increment the index until read of BIO decoded data is complete.
-  }                       // Once we're done reading decoded data, BIO_read returns -1 even though there's no error.
+  } // Once we're done reading decoded data, BIO_read returns -1 even though there's no error.
 
   BIO_free_all(b64_bio); // Destroys all BIOs in chain, starting with b64 (i.e. the 1st one).
   return base64_decoded; // Returns base-64 decoded data with trailing null terminator.
@@ -1821,7 +1821,7 @@ int decodedTextSize(char *input) {
 void decrypt_aes_128(char *in, const unsigned char *mykey) {
   unsigned char iv[8] = {0};
   AES_KEY key;
-  unsigned char outdata[256];
+  unsigned char outdata[256] = {0};
   AES_set_encrypt_key(mykey, 128, &key);
   int newTotalSize = decodedTextSize(in);
   int bytes_to_decode = strlen(in);
@@ -1829,7 +1829,6 @@ void decrypt_aes_128(char *in, const unsigned char *mykey) {
   char last[1024] = "";
   struct ctr_state state;
   init_ctr(&state, iv);
-  memset(outdata, '\0', sizeof(outdata));
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
   CRYPTO_ctr128_encrypt(encryptedText, outdata, newTotalSize, &key, state.ivec, state.ecount, &state.num,

@@ -892,6 +892,38 @@ char *dirname(char *path) {
 #endif
 
 #if defined(WINDOWS)
+
+/*!
+ * \brief convert wchar to char
+ *
+ * \param pszInBuf: input buffer of wchar_t
+ * \param nInSize: size of input wchar_t buffer
+ * \param pszOutBuf: output buffer of char
+ * \param pnOutSize: size of output char buffer
+ * \return
+ */
+static char *_WTA(__in wchar_t *pszInBuf, __in int nInSize, __out char **pszOutBuf, __out int *pnOutSize) {
+  if (!pszInBuf || !pszOutBuf || !*pszOutBuf || !pnOutSize || nInSize <= 0) {
+    return NULL;
+  }
+  *pnOutSize = WideCharToMultiByte((UINT)0, (DWORD)0, pszInBuf, nInSize, NULL, 0, NULL, NULL);
+  if (*pnOutSize == 0) {
+    return NULL;
+  }
+  // add 1 for explicit nul-terminator at end.
+  // if MultiByteToWideChar is provided a length for the input, it does not add space for a nul-terminator
+  // and we have to add space to the allocation ourselves.
+  (*pnOutSize)++;
+  *pszOutBuf = malloc(*pnOutSize * sizeof(char));
+  if (WideCharToMultiByte((UINT)0, (DWORD)0, pszInBuf, nInSize, *pszOutBuf, *pnOutSize, NULL, NULL) == 0) {
+    free(*pszOutBuf);
+    return NULL;
+  } else {
+    (*pszOutBuf)[*pnOutSize - 1] = '\0';
+    return *pszOutBuf;
+  }
+}
+
 int getdomainname(char *name, size_t len) {
   DSROLE_PRIMARY_DOMAIN_INFO_BASIC *info;
   DWORD dw;
@@ -969,63 +1001,6 @@ int getdomainname(char *name, size_t len) {
 
   DsRoleFreeMemory(info);
   return 0;
-}
-
-/*!
- * \brief convert char to wchar
- *
- * \param pszInBuf: input buffer of wchar string
- * \param nInSize: size of wchar string
- * \param pszOutBuf: output buffer of char string
- * \param pnOutSize: size of char string
- * \return
- */
-wchar_t *_ATW(__in char *pszInBuf, __in int nInSize, __out wchar_t **pszOutBuf, __out int *pnOutSize) {
-  if (!pszInBuf || !pszOutBuf || !pnOutSize || nInSize <= 0) {
-    return NULL;
-  }
-  // Get buffer size
-  *pnOutSize = MultiByteToWideChar((UINT)0, (DWORD)0, pszInBuf, nInSize, *pszOutBuf, 0);
-  if (*pnOutSize == 0) {
-    return NULL;
-  }
-  (*pnOutSize)++;
-  *pszOutBuf = malloc((*pnOutSize) * sizeof(wchar_t));
-  memset((void *)*pszOutBuf, 0, sizeof(wchar_t) * (*pnOutSize));
-  if (MultiByteToWideChar((UINT)0, (DWORD)0, pszInBuf, nInSize, *pszOutBuf, *pnOutSize) == 0) {
-    free(*pszOutBuf);
-    return NULL;
-  } else {
-    return *pszOutBuf;
-  }
-}
-
-/*!
- * \brief convert wchar to char
- *
- * \param pszInBuf: input buffer of char string
- * \param nInSize: size of char string
- * \param pszOutBuf: output buffer of wchar string
- * \param pnOutSize: size of wchar string
- * \return
- */
-char *_WTA(__in wchar_t *pszInBuf, __in int nInSize, __out char **pszOutBuf, __out int *pnOutSize) {
-  if (!pszInBuf || !pszOutBuf || !pnOutSize || nInSize <= 0) {
-    return NULL;
-  }
-  *pnOutSize = WideCharToMultiByte((UINT)0, (DWORD)0, pszInBuf, nInSize, *pszOutBuf, 0, NULL, NULL);
-  if (*pnOutSize == 0) {
-    return NULL;
-  }
-  (*pnOutSize)++;
-  *pszOutBuf = malloc(*pnOutSize * sizeof(char));
-  memset((void *)*pszOutBuf, 0, sizeof(char) * (*pnOutSize));
-  if (WideCharToMultiByte((UINT)0, (DWORD)0, pszInBuf, nInSize, *pszOutBuf, *pnOutSize, NULL, NULL) == 0) {
-    free(*pszOutBuf);
-    return NULL;
-  } else {
-    return *pszOutBuf;
-  }
 }
 
 #endif
@@ -1314,12 +1289,12 @@ unsigned long get_system_active_number_of_cpus(void) {
 
 ////////////////////// Base 64 ////////////////////////////
 
-static char encoding_table[] = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
-                                'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f',
-                                'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v',
-                                'w', 'x', 'y', 'z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '/'};
-static char *decoding_table = NULL;
-static size_t mod_table[] = {0, 2, 1};
+static const size_t mod_table[] = {0, 2, 1};
+static const char encoding_table[] = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
+                                      'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f',
+                                      'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v',
+                                      'w', 'x', 'y', 'z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '/'};
+static const char *decoding_table = NULL;
 
 char *base64_encode(const unsigned char *data, size_t input_length, size_t *output_length) {
 
@@ -1330,8 +1305,7 @@ char *base64_encode(const unsigned char *data, size_t input_length, size_t *outp
     return NULL;
   }
 
-  size_t i, j;
-  for (i = 0, j = 0; i < input_length;) {
+  for (size_t i = 0, j = 0; i < input_length;) {
 
     uint32_t octet_a = i < input_length ? data[i++] : 0;
     uint32_t octet_b = i < input_length ? data[i++] : 0;
@@ -1345,7 +1319,7 @@ char *base64_encode(const unsigned char *data, size_t input_length, size_t *outp
     encoded_data[j++] = encoding_table[(triple >> 0 * 6) & 0x3F];
   }
 
-  for (i = 0; i < mod_table[input_length % 3]; i++) {
+  for (size_t i = 0; i < mod_table[input_length % 3]; i++) {
     encoded_data[*output_length - 1 - i] = '=';
   }
 
@@ -1356,13 +1330,12 @@ char *base64_encode(const unsigned char *data, size_t input_length, size_t *outp
 
 void build_base64_decoding_table(void) {
 
-  decoding_table = (char *)malloc(256);
-  memset(decoding_table, 0, 256);
+  char *table = (char *)calloc(256, sizeof(char));
 
-  int i;
-  for (i = 0; i < 64; i++) {
-    decoding_table[(unsigned char)encoding_table[i]] = (char)i;
+  for (char i = 0; i < 64; i++) {
+    table[(unsigned char)encoding_table[i]] = i;
   }
+  decoding_table = table;
 }
 
 unsigned char *base64_decode(const char *data, size_t input_length, size_t *output_length) {
