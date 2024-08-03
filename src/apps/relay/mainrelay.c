@@ -1807,7 +1807,7 @@ unsigned char *base64decode(const void *b64_decode_this, int decode_this_many_by
   int decoded_byte_index = 0;                     // Index where the next base64_decoded byte should be written.
   while (0 < BIO_read(b64_bio, base64_decoded + decoded_byte_index, 1)) { // Read byte-by-byte.
     decoded_byte_index++; // Increment the index until read of BIO decoded data is complete.
-  }                       // Once we're done reading decoded data, BIO_read returns -1 even though there's no error.
+  } // Once we're done reading decoded data, BIO_read returns -1 even though there's no error.
 
   BIO_free_all(b64_bio); // Destroys all BIOs in chain, starting with b64 (i.e. the 1st one).
   return base64_decoded; // Returns base-64 decoded data with trailing null terminator.

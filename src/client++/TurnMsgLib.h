@@ -35,10 +35,18 @@
 #ifndef __LIB_TURN_MSG_CPP__
 #define __LIB_TURN_MSG_CPP__
 
+#ifndef __cplusplus
+#error "This header is C++ only"
+#endif // __cplusplus
+
 #include "ns_turn_ioaddr.h"
 #include "ns_turn_msg.h"
 
+#include <memory>    // for std::unique_ptr
+#include <stdexcept> // for std::out_of_range, std::invalid_argument
 #include <string>
+
+#include <cstddef> // for size_t
 
 namespace turn {
 
@@ -47,34 +55,28 @@ class StunAttr;
 /**
  * Exception "end of buffer"
  */
-class EndOfStunMsgException {
-public:
-  EndOfStunMsgException() {}
-  virtual ~EndOfStunMsgException() {}
+struct EndOfStunMsgException final : public std::out_of_range {
+  EndOfStunMsgException() : std::out_of_range("End of stun message reached") {}
 };
 
 /**
  * Exception "wrong format of StunAttr"
  */
-class WrongStunAttrFormatException {
-public:
-  WrongStunAttrFormatException() {}
-  virtual ~WrongStunAttrFormatException() {}
+struct WrongStunAttrFormatException final : std::invalid_argument {
+  WrongStunAttrFormatException() : std::invalid_argument("Wrong Stun Attribute Format") {}
 };
 
 /**
  * Exception "wrong format of StunBuffer"
  */
-class WrongStunBufferFormatException {
-public:
-  WrongStunBufferFormatException() {}
-  virtual ~WrongStunBufferFormatException() {}
+struct WrongStunBufferFormatException final : std::invalid_argument {
+  WrongStunBufferFormatException() : std::invalid_argument("Wrong Stun Buffer Format") {}
 };
 
 /**
  * Iterator class for attributes
  */
-class StunAttrIterator {
+class StunAttrIterator final {
 public:
   /**
    * Iterator constructor: creates iterator on raw messagebuffer.
@@ -89,12 +91,7 @@ public:
   /**
    * Iterator constructor: create iterator over message.
    */
-  template <class T> StunAttrIterator(T &msg) : _buf(msg.getRawBuffer()), _sz(msg.getSize()) {
-    if (!stun_is_command_message_str(_buf, _sz)) {
-      throw WrongStunBufferFormatException();
-    }
-    _sar = stun_attr_get_first_str(_buf, _sz);
-  }
+  template <class T> StunAttrIterator(T &msg) : StunAttrIterator(msg.getRawBuffer(), msg.getSize()) {}
 
   /**
    * Iterator constructor: creates iterator over raw buffer, starting from first
@@ -111,12 +108,13 @@ public:
    * Iterator constructor: creates iterator over message, starting from first
    * location of an attribute of particular type.
    */
-  template <class T> StunAttrIterator(T &msg, uint16_t attr_type) : _buf(msg.getRawBuffer()), _sz(msg.getSize()) {
-    if (!stun_is_command_message_str(_buf, _sz)) {
-      throw WrongStunBufferFormatException();
-    }
-    _sar = stun_attr_get_first_by_type_str(_buf, _sz, attr_type);
-  }
+  template <class T>
+  StunAttrIterator(T &msg, uint16_t attr_type) : StunAttrIterator(msg.getRawBuffer(), msg.getSize(), attr_type) {}
+
+  /**
+   * Destructor
+   */
+  ~StunAttrIterator() = default;
 
   /**
    * Moves iterator to next attribute location
@@ -149,11 +147,6 @@ public:
   int getType() const { return stun_attr_get_type(_sar); }
 
   /**
-   * Destructor
-   */
-  virtual ~StunAttrIterator() {}
-
-  /**
    * Return raw memroy field of the attribute value.
    * If the attribute value length is zero (0), then return NULL.
    */
@@ -172,7 +165,7 @@ private:
   uint8_t *_buf;
   size_t _sz;
   stun_attr_ref _sar;
-};
+}; // class StunAttrIterator
 
 /**
  * Root class of all STUN attributes.
@@ -183,7 +176,7 @@ public:
   /**
    * Empty constructor
    */
-  StunAttr() : _attr_type(0), _value(0), _sz(0) {}
+  StunAttr() = default;
 
   /**
    * Constructs attribute from iterator
@@ -202,28 +195,22 @@ public:
       throw WrongStunAttrFormatException();
     }
     _attr_type = (uint16_t)at;
+    _value = std::make_unique<uint8_t[]>(sz);
+    std::copy_n(ptr, sz, _value.get());
     _sz = sz;
-    _value = (uint8_t *)malloc(_sz);
-    if (ptr) {
-      memcpy(_value, ptr, _sz);
-    }
   }
 
   /**
    * Destructor
    */
-  virtual ~StunAttr() {
-    if (_value) {
-      free(_value);
-    }
-  }
+  virtual ~StunAttr() = default;
 
   /**
    * Return raw data representation of the attribute
    */
   const uint8_t *getRawValue(size_t &sz) const {
     sz = _sz;
-    return _value;
+    return _value.get();
   }
 
   /**
@@ -233,14 +220,9 @@ public:
     if (sz > 0xFFFF) {
       throw WrongStunAttrFormatException();
     }
-    if (_value) {
-      free(_value);
-    }
+    _value = std::make_unique<uint8_t[]>(sz);
+    std::copy_n(value, sz, _value.get());
     _sz = sz;
-    _value = (uint8_t *)malloc(_sz);
-    if (value) {
-      memcpy(_value, value, _sz);
-    }
   }
 
   /**
@@ -276,15 +258,15 @@ protected:
   /**
    * Virtual function member to add attribute to a raw buffer
    */
-  virtual int addToBuffer(uint8_t *buffer, size_t &sz) {
+  virtual bool addToBuffer(uint8_t *buffer, size_t &sz) {
     if (buffer) {
       if (!_value) {
         throw WrongStunAttrFormatException();
       }
-      if (!stun_attr_add_str(buffer, &sz, _attr_type, _value, _sz)) {
+      if (!stun_attr_add_str(buffer, &sz, _attr_type, _value.get(), _sz)) {
         throw WrongStunBufferFormatException();
       }
-      return 0;
+      return false;
     }
     throw WrongStunBufferFormatException();
   }
@@ -295,19 +277,18 @@ protected:
   static stun_attr_ref getSar(const StunAttrIterator &iter) { return iter._sar; }
 
 private:
-  uint16_t _attr_type;
-  uint8_t *_value;
-  size_t _sz;
-};
+  std::unique_ptr<uint8_t[]> _value;
+  size_t _sz = 0;
+  uint16_t _attr_type = 0;
+}; // class StunAttr
 
 /**
  * Channel number attribute class
  */
-class StunAttrChannelNumber : public StunAttr {
+class StunAttrChannelNumber final : public StunAttr {
 public:
-  StunAttrChannelNumber() : _cn(0) { setType(STUN_ATTRIBUTE_CHANNEL_NUMBER); }
+  StunAttrChannelNumber() { setType(STUN_ATTRIBUTE_CHANNEL_NUMBER); }
   StunAttrChannelNumber(const StunAttrIterator &iter) : StunAttr(iter) {
-
     if (iter.eof()) {
       throw EndOfStunMsgException();
     }
@@ -316,81 +297,75 @@ public:
       throw WrongStunAttrFormatException();
     }
   }
-  virtual ~StunAttrChannelNumber() {}
   uint16_t getChannelNumber() const { return _cn; }
   void setChannelNumber(uint16_t cn) { _cn = cn; }
 
 protected:
-  virtual bool addToBuffer(uint8_t *buffer, size_t &sz) { return stun_attr_add_channel_number_str(buffer, &sz, _cn); }
+  bool addToBuffer(uint8_t *buffer, size_t &sz) override { return stun_attr_add_channel_number_str(buffer, &sz, _cn); }
 
 private:
-  uint16_t _cn;
-};
+  uint16_t _cn = 0;
+}; // class StunAttrChannelNumber
 
 /**
  * Even port attribute class
  */
-class StunAttrEvenPort : public StunAttr {
+class StunAttrEvenPort final : public StunAttr {
 public:
-  StunAttrEvenPort() : _ep(0) { setType(STUN_ATTRIBUTE_EVEN_PORT); }
+  StunAttrEvenPort() { setType(STUN_ATTRIBUTE_EVEN_PORT); }
   StunAttrEvenPort(const StunAttrIterator &iter) : StunAttr(iter) {
-
     if (iter.eof()) {
       throw EndOfStunMsgException();
     }
     _ep = stun_attr_get_even_port(getSar(iter));
   }
-  virtual ~StunAttrEvenPort() {}
   uint8_t getEvenPort() const { return _ep; }
   void setEvenPort(uint8_t ep) { _ep = ep; }
 
 protected:
-  virtual bool addToBuffer(uint8_t *buffer, size_t &sz) {
+  bool addToBuffer(uint8_t *buffer, size_t &sz) override {
     return stun_attr_add_str(buffer, &sz, STUN_ATTRIBUTE_EVEN_PORT, &_ep, 1);
   }
 
 private:
-  uint8_t _ep;
-};
+  uint8_t _ep = 0;
+}; // class StunAttrEvenPort
 
 /**
  * Reservation token attribute class
  */
-class StunAttrReservationToken : public StunAttr {
+class StunAttrReservationToken final : public StunAttr {
 public:
-  StunAttrReservationToken() : _rt(0) { setType(STUN_ATTRIBUTE_RESERVATION_TOKEN); }
+  StunAttrReservationToken() { setType(STUN_ATTRIBUTE_RESERVATION_TOKEN); }
   StunAttrReservationToken(const StunAttrIterator &iter) : StunAttr(iter) {
-
     if (iter.eof()) {
       throw EndOfStunMsgException();
     }
     _rt = stun_attr_get_reservation_token_value(getSar(iter));
   }
-  virtual ~StunAttrReservationToken() {}
   uint64_t getReservationToken() const { return _rt; }
   void setReservationToken(uint64_t rt) { _rt = rt; }
 
 protected:
-  virtual bool addToBuffer(uint8_t *buffer, size_t &sz) {
+  bool addToBuffer(uint8_t *buffer, size_t &sz) override {
     uint64_t reservation_token = ioa_ntoh64(_rt);
     return stun_attr_add_str(buffer, &sz, STUN_ATTRIBUTE_RESERVATION_TOKEN, (uint8_t *)(&reservation_token), 8);
   }
 
 private:
-  uint64_t _rt;
-};
+  uint64_t _rt = 0;
+}; // class StunAttrReservationToken
 
 /**
  * This attribute class is used for all address attributes
  */
-class StunAttrAddr : public StunAttr {
+class StunAttrAddr final : public StunAttr {
 public:
   StunAttrAddr(uint16_t attr_type = 0) {
     addr_set_any(&_addr);
     setType(attr_type);
   }
   StunAttrAddr(const StunAttrIterator &iter) : StunAttr(iter) {
-
     if (iter.eof()) {
       throw EndOfStunMsgException();
     }
@@ -400,27 +375,25 @@ public:
       throw WrongStunAttrFormatException();
     }
   }
-  virtual ~StunAttrAddr() {}
   void getAddr(ioa_addr &addr) const { addr_cpy(&addr, &_addr); }
   void setAddr(ioa_addr &addr) { addr_cpy(&_addr, &addr); }
 
 protected:
-  virtual bool addToBuffer(uint8_t *buffer, size_t &sz) {
+  bool addToBuffer(uint8_t *buffer, size_t &sz) override {
     return stun_attr_add_addr_str(buffer, &sz, getType(), &_addr);
   }
 
 private:
   ioa_addr _addr;
-};
+}; // class StunAttrAddr
 
 /**
  * Change Request attribute class
  */
-class StunAttrChangeRequest : public StunAttr {
+class StunAttrChangeRequest final : public StunAttr {
 public:
   StunAttrChangeRequest() : _changeIp(false), _changePort(false) { setType(STUN_ATTRIBUTE_CHANGE_REQUEST); }
   StunAttrChangeRequest(const StunAttrIterator &iter) : StunAttr(iter) {
-
     if (iter.eof()) {
       throw EndOfStunMsgException();
     }
@@ -429,63 +402,57 @@ public:
       throw WrongStunAttrFormatException();
     }
   }
-  virtual ~StunAttrChangeRequest() {}
   bool getChangeIp() const { return _changeIp; }
   void setChangeIp(bool ci) { _changeIp = ci; }
   bool getChangePort() const { return _changePort; }
   void setChangePort(bool cp) { _changePort = cp; }
 
 protected:
-  virtual bool addToBuffer(uint8_t *buffer, size_t &sz) {
+  bool addToBuffer(uint8_t *buffer, size_t &sz) override {
     return stun_attr_add_change_request_str(buffer, &sz, _changeIp, _changePort);
   }
 
 private:
-  bool _changeIp;
-  bool _changePort;
-};
+  bool _changeIp = false;
+  bool _changePort = false;
+}; // class StunAttrChangeRequest
 
 /**
  * Change Request attribute class
  */
-class StunAttrResponsePort : public StunAttr {
+class StunAttrResponsePort final : public StunAttr {
 public:
-  StunAttrResponsePort() : _rp(0) { setType(STUN_ATTRIBUTE_RESPONSE_PORT); }
+  StunAttrResponsePort() { setType(STUN_ATTRIBUTE_RESPONSE_PORT); }
   StunAttrResponsePort(const StunAttrIterator &iter) : StunAttr(iter) {
-
     if (iter.eof()) {
       throw EndOfStunMsgException();
     }
-
     int rp = stun_attr_get_response_port_str(getSar(iter));
     if (rp < 0) {
       throw WrongStunAttrFormatException();
     }
     _rp = (uint16_t)rp;
   }
-  virtual ~StunAttrResponsePort() {}
   uint16_t getResponsePort() const { return _rp; }
   void setResponsePort(uint16_t p) { _rp = p; }
 
 protected:
-  virtual bool addToBuffer(uint8_t *buffer, size_t &sz) { return stun_attr_add_response_port_str(buffer, &sz, _rp); }
+  bool addToBuffer(uint8_t *buffer, size_t &sz) override { return stun_attr_add_response_port_str(buffer, &sz, _rp); }
 
 private:
-  uint16_t _rp;
-};
+  uint16_t _rp = 0;
+}; // class StunAttrResponsePort
 
 /**
  * Padding attribute class
  */
-class StunAttrPadding : public StunAttr {
+class StunAttrPadding final : public StunAttr {
 public:
-  StunAttrPadding() : _p(0) { setType(STUN_ATTRIBUTE_PADDING); }
+  StunAttrPadding() { setType(STUN_ATTRIBUTE_PADDING); }
   StunAttrPadding(const StunAttrIterator &iter) : StunAttr(iter) {
-
     if (iter.eof()) {
       throw EndOfStunMsgException();
     }
-
     int p = stun_attr_get_padding_len_str(getSar(iter));
     if (p < 0) {
       throw WrongStunAttrFormatException();
@@ -500,11 +467,11 @@ public:
   void setPadding(uint16_t p) { _p = p; }
 
 protected:
-  virtual bool addToBuffer(uint8_t *buffer, size_t &sz) { return stun_attr_add_padding_str(buffer, &sz, _p); }
+  bool addToBuffer(uint8_t *buffer, size_t &sz) override { return stun_attr_add_padding_str(buffer, &sz, _p); }
 
 private:
-  uint16_t _p;
-};
+  uint16_t _p = 0;
+}; // class StunAttrPadding
 
 /**
  * Generic "STUN Message" class, base class for all messages
@@ -514,29 +481,19 @@ public:
   /**
    * Empty constructor
    */
-  StunMsg() {
-    _allocated_sz = 0xFFFF;
-    _buffer = (uint8_t *)malloc(_allocated_sz);
-    _deallocate = true;
-    _sz = 0;
-    _constructed = 0;
-  }
+  StunMsg() : _storage(std::make_unique<uint8_t[]>(_allocated_sz)), _buffer(_storage.get()) {}
 
   /**
    * Construct message over raw buffer.
    * Parameter "construct" is true if the buffer is initialized.
    */
   StunMsg(uint8_t *buffer, size_t total_sz, size_t sz, bool constructed)
-      : _buffer(buffer), _deallocate(false), _allocated_sz(total_sz), _sz(sz), _constructed(constructed) {}
+      : _allocated_sz(total_sz), _sz(sz), _buffer(buffer), _constructed(constructed) {}
 
   /**
    * Destructor
    */
-  virtual ~StunMsg() {
-    if (_deallocate && _buffer) {
-      free(_buffer);
-    }
-  }
+  virtual ~StunMsg() = default;
 
   /**
    * Initialize buffer
@@ -663,82 +620,59 @@ public:
   /**
    * Check message integrity, in secure communications.
    */
-  bool checkMessageIntegrity(turn_credential_type ct, std::string &uname, std::string &realm, std::string &upwd) const {
+  bool checkMessageIntegrity(turn_credential_type ct, const std::string &uname, const std::string &realm,
+                             const std::string &upwd) const {
     if (!_constructed || !isCommand()) {
       throw WrongStunBufferFormatException();
     }
-    uint8_t *suname = (uint8_t *)strdup(uname.c_str());
-    uint8_t *srealm = (uint8_t *)strdup(realm.c_str());
-    uint8_t *supwd = (uint8_t *)strdup(upwd.c_str());
-    SHATYPE sht = SHATYPE_SHA1;
-    bool ret = (0 < stun_check_message_integrity_str(ct, _buffer, _sz, suname, srealm, supwd, sht));
-    free(suname);
-    free(srealm);
-    free(supwd);
-    return ret;
+    return 0 < stun_check_message_integrity_str(ct, _buffer, _sz, (const uint8_t *)uname.c_str(),
+                                                (const uint8_t *)realm.c_str(), (const uint8_t *)upwd.c_str(),
+                                                SHATYPE_SHA1);
   }
 
   /**
    * Adds long-term message integrity data to the message.
    */
-  void addLTMessageIntegrity(std::string &uname, std::string &realm, std::string &upwd, std::string &nonce) {
-
+  void addLTMessageIntegrity(const std::string &uname, const std::string &realm, const std::string &upwd,
+                             const std::string &nonce) {
     if (!_constructed || !isCommand()) {
       throw WrongStunBufferFormatException();
     }
-
-    uint8_t *suname = (uint8_t *)strdup(uname.c_str());
-    uint8_t *srealm = (uint8_t *)strdup(realm.c_str());
-    uint8_t *supwd = (uint8_t *)strdup(upwd.c_str());
-    uint8_t *snonce = (uint8_t *)strdup(nonce.c_str());
-
-    stun_attr_add_integrity_by_user_str(_buffer, &_sz, suname, srealm, supwd, snonce, SHATYPE_SHA1);
-
-    free(suname);
-    free(srealm);
-    free(supwd);
-    free(snonce);
+    stun_attr_add_integrity_by_user_str(_buffer, &_sz, (const uint8_t *)uname.c_str(), (const uint8_t *)realm.c_str(),
+                                        (const uint8_t *)upwd.c_str(), (const uint8_t *)nonce.c_str(), SHATYPE_SHA1);
   }
 
   /**
    * Adds short-term message integrity data to the message.
    */
-  void addSTMessageIntegrity(std::string &uname, std::string &upwd) {
-
+  void addSTMessageIntegrity(const std::string &uname, const std::string &upwd) {
     if (!_constructed || !isCommand()) {
       throw WrongStunBufferFormatException();
     }
-
-    uint8_t *suname = (uint8_t *)strdup(uname.c_str());
-    uint8_t *supwd = (uint8_t *)strdup(upwd.c_str());
-
-    stun_attr_add_integrity_by_user_short_term_str(_buffer, &_sz, suname, supwd, SHATYPE_SHA1);
-
-    free(suname);
-    free(supwd);
+    stun_attr_add_integrity_by_user_short_term_str(_buffer, &_sz, (const uint8_t *)uname.c_str(),
+                                                   (const uint8_t *)upwd.c_str(), SHATYPE_SHA1);
   }
 
 protected:
   virtual void constructBuffer() = 0;
-  virtual bool check() = 0;
+  virtual bool check() const = 0;
 
 protected:
-  uint8_t *_buffer;
-  bool _deallocate;
-  size_t _allocated_sz;
-  size_t _sz;
-  bool _constructed;
-};
+  size_t _allocated_sz = 0xFFFF;
+  size_t _sz = 0;
+  std::unique_ptr<uint8_t[]> _storage;
+  uint8_t *_buffer = nullptr;
+  bool _constructed = false;
+}; // class StunMsg
 
 /**
  * Class that represents the "request" flavor of STUN/TURN messages.
  */
-class StunMsgRequest : public StunMsg {
+class StunMsgRequest final : public StunMsg {
 public:
-  StunMsgRequest(uint16_t method) : _method(method){};
+  StunMsgRequest(uint16_t method) : _method(method) {};
   StunMsgRequest(uint8_t *buffer, size_t total_sz, size_t sz, bool constructed)
-      : StunMsg(buffer, total_sz, sz, constructed), _method(0) {
-
+      : StunMsg(buffer, total_sz, sz, constructed) {
     if (constructed) {
       if (!stun_is_request_str(buffer, sz)) {
         throw WrongStunBufferFormatException();
@@ -746,7 +680,6 @@ public:
       _method = stun_get_method_str(buffer, sz);
     }
   }
-  virtual ~StunMsgRequest() {}
 
   /**
    * Get request method
@@ -781,12 +714,12 @@ public:
   }
 
 protected:
-  virtual void constructBuffer() {
+  void constructBuffer() override {
     stun_init_request_str(_method, _buffer, &_sz);
     _constructed = true;
   }
 
-  virtual bool check() {
+  bool check() const override {
     if (!_constructed) {
       return false;
     }
@@ -800,22 +733,21 @@ protected:
   }
 
 private:
-  uint16_t _method;
-};
+  uint16_t _method = 0;
+}; // class StunMsgRequest
 
 /**
  * Class for STUN/TURN responses
  */
-class StunMsgResponse : public StunMsg {
+class StunMsgResponse final : public StunMsg {
 public:
-  StunMsgResponse(uint16_t method, stun_tid &tid) : _method(method), _err(0), _reason(""), _tid(tid){};
-  StunMsgResponse(uint16_t method, int error_code, std::string reason, stun_tid &tid)
-      : _method(method), _err(error_code), _reason(reason), _tid(tid){
+  StunMsgResponse(uint16_t method, const stun_tid &tid) : _method(method), _tid(tid) {};
 
-                                                            };
+  StunMsgResponse(uint16_t method, int error_code, std::string reason, const stun_tid &tid)
+      : _method(method), _err(error_code), _reason(std::move(reason)), _tid(tid) {};
+
   StunMsgResponse(uint8_t *buffer, size_t total_sz, size_t sz, bool constructed)
-      : StunMsg(buffer, total_sz, sz, constructed), _method(0), _err(0), _reason("") {
-
+      : StunMsg(buffer, total_sz, sz, constructed) {
     if (constructed) {
       if (!stun_is_success_response_str(buffer, sz)) {
         uint8_t errtxt[0xFFFF];
@@ -846,22 +778,22 @@ public:
   /**
    * Get error message
    */
-  std::string getReason() const { return _reason; }
+  const std::string &getReason() const { return _reason; }
 
   /**
    * Set error message
    */
-  void setReason(std::string reason) { _reason = reason; }
+  void setReason(std::string reason) { _reason = std::move(reason); }
 
   /**
    * Set transaction ID
    */
-  void setTid(stun_tid &tid) { _tid = tid; }
+  void setTid(const stun_tid &tid) { _tid = tid; }
 
   /**
    * Get transaction ID
    */
-  virtual stun_tid getTid() const { return _tid; }
+  stun_tid getTid() const override { return _tid; }
 
   /**
    * Check if this is a challenge response, and return realm and nonce
@@ -923,7 +855,7 @@ public:
   }
 
 protected:
-  virtual void constructBuffer() {
+  void constructBuffer() override {
     if (_err) {
       stun_init_error_response_str(_method, _buffer, &_sz, _err, (const uint8_t *)_reason.c_str(), &_tid);
     } else {
@@ -932,7 +864,7 @@ protected:
     _constructed = true;
   }
 
-  virtual bool check() {
+  bool check() const override {
     if (!_constructed) {
       return false;
     }
@@ -953,21 +885,20 @@ protected:
   }
 
 private:
-  uint16_t _method;
-  int _err;
+  uint16_t _method = 0;
+  int _err = 0;
   std::string _reason;
   stun_tid _tid;
-};
+}; // class StunMsgResponse
 
 /**
  * Class for STUN/TURN indications
  */
-class StunMsgIndication : public StunMsg {
+class StunMsgIndication final : public StunMsg {
 public:
-  StunMsgIndication(uint16_t method) : _method(method){};
+  StunMsgIndication(uint16_t method) : _method(method) {};
   StunMsgIndication(uint8_t *buffer, size_t total_sz, size_t sz, bool constructed)
-      : StunMsg(buffer, total_sz, sz, constructed), _method(0) {
-
+      : StunMsg(buffer, total_sz, sz, constructed) {
     if (constructed) {
       if (!stun_is_indication_str(buffer, sz)) {
         throw WrongStunBufferFormatException();
@@ -975,19 +906,18 @@ public:
       _method = stun_get_method_str(buffer, sz);
     }
   }
-  virtual ~StunMsgIndication() {}
 
   uint16_t getMethod() const { return _method; }
 
   void setMethod(uint16_t method) { _method = method; }
 
 protected:
-  virtual void constructBuffer() {
+  void constructBuffer() override {
     stun_init_indication_str(_method, _buffer, &_sz);
     _constructed = true;
   }
 
-  virtual bool check() {
+  bool check() const override {
     if (!_constructed) {
       return false;
     }
@@ -1001,18 +931,17 @@ protected:
   }
 
 private:
-  uint16_t _method;
-};
+  uint16_t _method = 0;
+}; // class StunMsgIndication
 
 /**
  * Channel message
  */
-class StunMsgChannel : public StunMsg {
+class StunMsgChannel final : public StunMsg {
 public:
-  StunMsgChannel(uint16_t cn, int length) : _cn(cn), _len(length){};
+  StunMsgChannel(uint16_t cn, int length) : _cn(cn), _len(length) {};
   StunMsgChannel(uint8_t *buffer, size_t total_sz, size_t sz, bool constructed)
-      : StunMsg(buffer, total_sz, sz, constructed), _cn(0) {
-
+      : StunMsg(buffer, total_sz, sz, constructed) {
     if (constructed) {
       if (!stun_is_channel_message_str(buffer, &_sz, &_cn, false)) {
         throw WrongStunBufferFormatException();
@@ -1030,7 +959,6 @@ public:
       _len = 0;
     }
   }
-  virtual ~StunMsgChannel() {}
 
   uint16_t getChannelNumber() const { return _cn; }
 
@@ -1047,17 +975,18 @@ public:
   void setLength(size_t len) { _len = len; }
 
 protected:
-  virtual void constructBuffer() {
+  void constructBuffer() override {
     stun_init_channel_message_str(_cn, _buffer, &_sz, (int)_len, 0);
     _constructed = true;
   }
 
-  virtual bool check() {
+  bool check() const override {
     if (!_constructed) {
       return false;
     }
     uint16_t cn = 0;
-    if (!stun_is_channel_message_str(_buffer, &_sz, &cn, false)) {
+    size_t tmpLength = _sz;
+    if (!stun_is_channel_message_str(_buffer, &tmpLength, &cn, false)) {
       return false;
     }
     if (_cn != cn) {
@@ -1067,12 +996,10 @@ protected:
   }
 
 private:
-  uint16_t _cn;
-  size_t _len;
-};
+  uint16_t _cn = 0;
+  size_t _len = 0;
+}; // class StunMsgChannel
 
 } // namespace turn
-/* namespace */
 
-#endif
-/* __LIB_TURN_MSG_CPP__ */
+#endif // ifndef __LIB_TURN_MSG_CPP__
