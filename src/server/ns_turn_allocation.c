@@ -613,8 +613,7 @@ tcp_connection *create_tcp_connection(uint8_t server_id, allocation *a, stun_tid
 void delete_tcp_connection(tcp_connection *tc) {
   if (tc) {
     if (tc->done) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s: check on already closed tcp data connection: 0x%lx\n", __FUNCTION__,
-                    (unsigned long)tc);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s: check on already closed tcp data connection: %p\n", __FUNCTION__, tc);
       return;
     }
     tc->done = 1;

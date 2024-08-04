@@ -1220,13 +1220,13 @@ static void web_admin_input_handler(ioa_socket_handle s, int event_type, ioa_net
                         get_ioa_socket_cipher(s), get_ioa_socket_ssl_method(s),
                         (char *)ioa_network_buffer_data(in_buffer->nbh));
 
-          TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s socket to be detached: 0x%lx, st=%d, sat=%d\n", __FUNCTION__, (long)s,
+          TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s socket to be detached: %p, st=%d, sat=%d\n", __FUNCTION__, s,
                         get_ioa_socket_type(s), get_ioa_socket_app_type(s));
 
           ioa_socket_handle new_s = detach_ioa_socket(s);
           if (new_s) {
-            TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s new detached socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,
-                          (long)new_s, get_ioa_socket_type(new_s), get_ioa_socket_app_type(new_s));
+            TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s new detached socket: %p, st=%d, sat=%d\n", __FUNCTION__, new_s,
+                          get_ioa_socket_type(new_s), get_ioa_socket_app_type(new_s));
 
             send_https_socket(new_s);
           }
@@ -1246,8 +1246,8 @@ static void web_admin_input_handler(ioa_socket_handle s, int event_type, ioa_net
 
   if (to_be_closed) {
     if (adminserver.verbose) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: web-admin socket to be closed in client handler: s=0x%lx\n", __FUNCTION__,
-                    (long)s);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: web-admin socket to be closed in client handler: s=%p\n", __FUNCTION__,
+                    s);
     }
     set_ioa_socket_tobeclosed(s);
   }
@@ -1274,8 +1274,8 @@ static int send_socket_to_admin_server(ioa_engine_handle e, struct message_to_re
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: web-admin socket EMPTY\n", __FUNCTION__);
 
   } else if (s->read_event || s->bev) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: web-admin socket wrongly preset: 0x%lx : 0x%lx\n", __FUNCTION__,
-                  (long)s->read_event, (long)s->bev);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: web-admin socket wrongly preset: %p : %p\n", __FUNCTION__, s->read_event,
+                  s->bev);
 
     IOA_CLOSE_SOCKET(s);
     sm->m.sm.s = NULL;

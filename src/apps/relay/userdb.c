@@ -768,7 +768,7 @@ int add_static_user_account(char *user) {
 
   // the ur_string_map functions only fail (well... other than allocation failures, which aren't handled)
   // if the map isn't valid. So we only need to check the result of locking.
-  if (ur_string_map_lock(turn_params.default_users_db.ram_db.static_accounts) < 0) {
+  if (!ur_string_map_lock(turn_params.default_users_db.ram_db.static_accounts)) {
     free(usname);
     free(key);
     return -1;

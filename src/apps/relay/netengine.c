@@ -721,8 +721,8 @@ static int handle_relay_message(relay_server_handle rs, struct message_to_relay 
       if (!s) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: socket EMPTY\n", __FUNCTION__);
       } else if (s->read_event || s->bev) {
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: socket wrongly preset: 0x%lx : 0x%lx\n", __FUNCTION__,
-                      (long)s->read_event, (long)s->bev);
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: socket wrongly preset: %p : %p\n", __FUNCTION__, s->read_event,
+                      s->bev);
         IOA_CLOSE_SOCKET(s);
         sm->m.sm.s = NULL;
       } else {
@@ -760,8 +760,8 @@ static int handle_relay_message(relay_server_handle rs, struct message_to_relay 
       if (!s) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: mobile socket EMPTY\n", __FUNCTION__);
       } else if (s->read_event || s->bev) {
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: mobile socket wrongly preset: 0x%lx : 0x%lx\n", __FUNCTION__,
-                      (long)s->read_event, (long)s->bev);
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: mobile socket wrongly preset: %p : %p\n", __FUNCTION__, s->read_event,
+                      s->bev);
         IOA_CLOSE_SOCKET(s);
         sm->m.sm.s = NULL;
       } else {

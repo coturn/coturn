@@ -4170,8 +4170,8 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
   }
 
   if (eve(server->verbose)) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "closing session 0x%lx, client socket 0x%lx (socket session=0x%lx)\n", (long)ss,
-                  (long)ss->client_socket, (long)get_ioa_socket_session(ss->client_socket));
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "closing session %p, client socket %p (socket session=%p)\n", ss,
+                  ss->client_socket, get_ioa_socket_session(ss->client_socket));
   }
 
   if (server->disconnect) {
@@ -4268,7 +4268,7 @@ static int write_client_connection(turn_turnserver *server, ts_ur_super_session 
   } else {
 
     if (eve(server->verbose)) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: prepare to write to s 0x%lx\n", __FUNCTION__, (long)(ss->client_socket));
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: prepare to write to s %p\n", __FUNCTION__, ss->client_socket);
     }
 
     int skip = 0;
@@ -4491,8 +4491,8 @@ static int read_client_connection(turn_turnserver *server, ts_ur_super_session *
   }
 
   if (eve(server->verbose)) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: data.buffer=0x%lx, data.len=%ld\n", __FUNCTION__,
-                  (long)ioa_network_buffer_data(in_buffer->nbh), (long)ioa_network_buffer_get_size(in_buffer->nbh));
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: data.buffer=%p, data.len=%ld\n", __FUNCTION__,
+                  ioa_network_buffer_data(in_buffer->nbh), (long)ioa_network_buffer_get_size(in_buffer->nbh));
   }
 
   uint16_t chnum = 0;
@@ -4621,13 +4621,13 @@ static int read_client_connection(turn_turnserver *server, ts_ur_super_session *
                           get_ioa_socket_cipher(ss->client_socket), get_ioa_socket_ssl_method(ss->client_socket),
                           ioa_network_buffer_get_size(in_buffer->nbh));
             if (server->send_https_socket) {
-              TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s socket to be detached: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,
-                            (long)ss->client_socket, get_ioa_socket_type(ss->client_socket),
+              TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s socket to be detached: %p, st=%d, sat=%d\n", __FUNCTION__,
+                            ss->client_socket, get_ioa_socket_type(ss->client_socket),
                             get_ioa_socket_app_type(ss->client_socket));
               ioa_socket_handle new_s = detach_ioa_socket(ss->client_socket);
               if (new_s) {
-                TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s new detached socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,
-                              (long)new_s, get_ioa_socket_type(new_s), get_ioa_socket_app_type(new_s));
+                TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s new detached socket: %p, st=%d, sat=%d\n", __FUNCTION__, new_s,
+                              get_ioa_socket_type(new_s), get_ioa_socket_app_type(new_s));
                 server->send_https_socket(new_s);
               }
               ss->to_be_closed = 1;
@@ -4903,8 +4903,8 @@ static void client_input_handler(ioa_socket_handle s, int event_type, ioa_net_da
 
   if (ss->to_be_closed) {
     if (server->verbose) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: client socket to be closed in client handler: ss=0x%lx\n",
-                    (unsigned long long)(ss->id), (long)ss);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: client socket to be closed in client handler: ss=%p\n",
+                    (unsigned long long)(ss->id), ss);
     }
     set_ioa_socket_tobeclosed(s);
   }

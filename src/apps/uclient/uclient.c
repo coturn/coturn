@@ -855,7 +855,7 @@ static int client_shutdown(app_ur_session *elem) {
   remove_all_from_ss(elem);
 
   if (clnet_verbose) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "done, connection 0x%lx closed.\n", (long)elem);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "done, connection %p closed.\n", elem);
   }
 
   return 0;
@@ -899,7 +899,7 @@ static int client_write(app_ur_session *elem) {
     int i = (unsigned int)(turn_random()) % elem->pinfo.tcp_conn_number;
     atc = elem->pinfo.tcp_conn[i];
     if (!atc->tcp_data_bound) {
-      printf("%s: Uninitialized atc: i=%d, atc=0x%lx\n", __FUNCTION__, i, (long)atc);
+      printf("%s: Uninitialized atc: i=%d, atc=%p\n", __FUNCTION__, i, atc);
       return -1;
     }
   } else if (!do_not_use_channel) {
