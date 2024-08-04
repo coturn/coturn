@@ -371,7 +371,7 @@ static int stunclient_send(stun_buffer *buf, int sockfd, ioa_addr *local_addr, i
     stun_attr_add_change_request_str((uint8_t *)buf->buf, (size_t *)&(buf->len), change_ip, change_port);
   }
   if (padding) {
-    if (stun_attr_add_padding_str((uint8_t *)buf->buf, (size_t *)&(buf->len), 1500) < 0) {
+    if (!stun_attr_add_padding_str((uint8_t *)buf->buf, (size_t *)&(buf->len), 1500)) {
       printf("%s: ERROR: Cannot add padding\n", __FUNCTION__);
     }
   }
@@ -437,8 +437,7 @@ static int stunclient_receive(stun_buffer *buf, int sockfd, ioa_addr *local_addr
           if (stun_is_binding_response(buf)) {
 
             addr_set_any(reflexive_addr);
-            if (stun_attr_get_first_addr(buf, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS, reflexive_addr, NULL) >= 0) {
-
+            if (stun_attr_get_first_addr(buf, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS, reflexive_addr, NULL)) {
               stun_attr_ref sar = stun_attr_get_first_by_type_str(buf->buf, buf->len, STUN_ATTRIBUTE_OTHER_ADDRESS);
               if (sar) {
                 *rfc5780 = true;
@@ -446,7 +445,7 @@ static int stunclient_receive(stun_buffer *buf, int sockfd, ioa_addr *local_addr
                 printf("RFC 5780 response %d\n", ++counter);
                 ioa_addr mapped_addr;
                 addr_set_any(&mapped_addr);
-                if (stun_attr_get_first_addr(buf, STUN_ATTRIBUTE_MAPPED_ADDRESS, &mapped_addr, NULL) >= 0) {
+                if (stun_attr_get_first_addr(buf, STUN_ATTRIBUTE_MAPPED_ADDRESS, &mapped_addr, NULL)) {
                   if (!addr_eq(&mapped_addr, reflexive_addr)) {
                     printf("-= ALG detected! Mapped and XOR-Mapped differ! =-\n");
                     addr_debug_print(1, &mapped_addr, "Mapped Address: ");

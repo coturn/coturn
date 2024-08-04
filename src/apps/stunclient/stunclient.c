@@ -307,7 +307,7 @@ static int run_stunclient(const char *rip, int rport, int *port, bool *rfc5780, 
     stun_attr_add_change_request_str((uint8_t *)buf.buf, (size_t *)&(buf.len), change_ip, change_port);
   }
   if (padding) {
-    if (stun_attr_add_padding_str((uint8_t *)buf.buf, (size_t *)&(buf.len), 1500) < 0) {
+    if (!stun_attr_add_padding_str((uint8_t *)buf.buf, (size_t *)&(buf.len), 1500)) {
       printf("%s: ERROR: Cannot add padding\n", __FUNCTION__);
     }
   }
@@ -369,7 +369,7 @@ static int run_stunclient(const char *rip, int rport, int *port, bool *rfc5780, 
 
             ioa_addr reflexive_addr;
             addr_set_any(&reflexive_addr);
-            if (stun_attr_get_first_addr(&buf, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS, &reflexive_addr, NULL) >= 0) {
+            if (stun_attr_get_first_addr(&buf, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS, &reflexive_addr, NULL)) {
 
               stun_attr_ref sar = stun_attr_get_first_by_type_str(buf.buf, buf.len, STUN_ATTRIBUTE_OTHER_ADDRESS);
               if (sar) {
