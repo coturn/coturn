@@ -84,7 +84,7 @@ static void redisLibeventReadEvent(evutil_socket_t fd, short event, void *arg) {
       } while ((len < 0) && socket_eintr());
       if (len < 1) {
         e->invalid = 1;
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Redis connection broken: e=0x%lx\n", __FUNCTION__, ((unsigned long)e));
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Redis connection broken: e=0x%p\n", __FUNCTION__, e);
       }
     }
     if (redis_le_valid(e)) {
@@ -204,8 +204,7 @@ void send_message_to_redis(redis_context_handle rch, const char *command, const 
 
       if ((redisAsyncCommand(ac, NULL, e, rm.format, rm.arg) != REDIS_OK)) {
         e->invalid = 1;
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Redis connection broken: ac=0x%lx, e=0x%lx\n", __FUNCTION__,
-                      (unsigned long)ac, (unsigned long)e);
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Redis connection broken: ac=0x%p, e=0x%p\n", __FUNCTION__, ac, e);
       }
     }
   }

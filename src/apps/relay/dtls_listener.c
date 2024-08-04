@@ -391,10 +391,10 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server, struct mes
         thrid = (long)pthread_self();
 #endif
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-                      "%s: 111.111: thrid=0x%lx: Amap = 0x%lx, socket container=0x%lx, local addr %s, remote addr %s, "
-                      "s=0x%lx, done=%d, tbc=%d\n",
-                      __FUNCTION__, thrid, (long)amap, (long)(chs->sockets_container), (char *)saddr, (char *)rsaddr,
-                      (long)s, (int)(chs->done), (int)(chs->tobeclosed));
+                      "%s: 111.111: thrid=0x%lx: Amap = %p, socket container=%p, local addr %s, remote addr %s, "
+                      "s=%p, done=%d, tbc=%d\n",
+                      __FUNCTION__, thrid, amap, chs->sockets_container, (char *)saddr, (char *)rsaddr, s,
+                      (int)(chs->done), (int)(chs->tobeclosed));
       }
     }
 
@@ -417,10 +417,10 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server, struct mes
         thrid = (long)pthread_self();
 #endif
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-                      "%s: 111.222: thrid=0x%lx: Amap = 0x%lx, socket container=0x%lx, local addr %s, remote addr %s, "
+                      "%s: 111.222: thrid=0x%lx: Amap = %p, socket container=%p, local addr %s, remote addr %s, "
                       "s=0x%lx, done=%d, tbc=%d, st=%d, sat=%d\n",
-                      __FUNCTION__, thrid, (long)amap, (long)(chs->sockets_container), (char *)saddr, (char *)rsaddr,
-                      (long)chs, (int)(chs->done), (int)(chs->tobeclosed), (int)(chs->st), (int)(chs->sat));
+                      __FUNCTION__, thrid, amap, chs->sockets_container, (char *)saddr, (char *)rsaddr, (long)chs,
+                      (int)(chs->done), (int)(chs->tobeclosed), (int)(chs->st), (int)(chs->sat));
       }
     }
 

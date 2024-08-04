@@ -61,7 +61,7 @@ static bool rtcp_map_valid(const rtcp_map *map) { return (map && (map->magic == 
 
 typedef struct {
   rtcp_token_type tokens[MAX_TOKEN_DEL];
-  int tn;
+  size_t tn;
   turn_time_t t;
 } timeout_check_arg_type;
 

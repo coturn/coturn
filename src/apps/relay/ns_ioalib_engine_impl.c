@@ -554,7 +554,7 @@ static void timer_event_handler(evutil_socket_t fd, short what, void *arg) {
   }
 
   if (te->e && eve(te->e->verbose)) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: timeout 0x%lx: %s\n", __FUNCTION__, (long)te, te->txt);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: timeout %p: %s\n", __FUNCTION__, te, te->txt);
   }
 
   ioa_timer_event_handler cb = te->cb;
@@ -1501,15 +1501,15 @@ void close_ioa_socket(ioa_socket_handle s) {
   if (s) {
 
     if (s->magic != SOCKET_MAGIC) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s wrong magic on socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__, (long)s,
-                    s->st, s->sat);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s wrong magic on socket: %p, st=%d, sat=%d\n", __FUNCTION__, s, s->st,
+                    s->sat);
       return;
     }
 
     if (s->done) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s double free on socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__, (long)s,
-                    s->st, s->sat);
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s socket: 0x%lx was closed\n", __FUNCTION__, (long)s);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s double free on socket: %p, st=%d, sat=%d\n", __FUNCTION__, s, s->st,
+                    s->sat);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s socket: %p was closed\n", __FUNCTION__, s);
       return;
     }
 
@@ -1559,19 +1559,19 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Detaching NULL socket\n");
   } else {
     if ((s->magic != SOCKET_MAGIC) || (s->done)) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s detach on bad socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__, (long)s,
-                    s->st, s->sat);
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s socket: 0x%lx was closed\n", __FUNCTION__, (long)s);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s detach on bad socket: %p, st=%d, sat=%d\n", __FUNCTION__, s, s->st,
+                    s->sat);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s socket: %p was closed\n", __FUNCTION__, s);
       return ret;
     }
     if (s->tobeclosed) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s detach on tobeclosed socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,
-                    (long)s, s->st, s->sat);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s detach on tobeclosed socket: %p, st=%d, sat=%d\n", __FUNCTION__, s,
+                    s->st, s->sat);
       return ret;
     }
     if (!(s->e)) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s detach on socket without engine: 0x%lx, st=%d, sat=%d\n",
-                    __FUNCTION__, (long)s, s->st, s->sat);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s detach on socket without engine: %p, st=%d, sat=%d\n", __FUNCTION__,
+                    s, s->st, s->sat);
       return ret;
     }
 
@@ -1579,8 +1579,8 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s) {
 
     if (s->parent_s) {
       if ((s->st != UDP_SOCKET) && (s->st != DTLS_SOCKET)) {
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s detach on non-UDP child socket: 0x%lx, st=%d, sat=%d\n",
-                      __FUNCTION__, (long)s, s->st, s->sat);
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s detach on non-UDP child socket: %p, st=%d, sat=%d\n", __FUNCTION__,
+                      s, s->st, s->sat);
         return ret;
       }
     }
@@ -2384,8 +2384,8 @@ static int socket_input_worker(ioa_socket_handle s) {
   }
 
   if ((s->magic != SOCKET_MAGIC) || (s->done)) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s on socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__, (long)s, s->st, s->sat);
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s socket: 0x%lx was closed\n", __FUNCTION__, (long)s);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s on socket: %p, st=%d, sat=%d\n", __FUNCTION__, s, s->st, s->sat);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s socket: %p was closed\n", __FUNCTION__, s);
     return -1;
   }
 
@@ -2443,12 +2443,12 @@ static int socket_input_worker(ioa_socket_handle s) {
     if (tls_type) {
       s->st = TLS_SOCKET;
       if (s->ssl) {
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s on socket: 0x%lx, st=%d, sat=%d: ssl already exist\n", __FUNCTION__,
-                      (long)s, s->st, s->sat);
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s on socket: %p, st=%d, sat=%d: ssl already exist\n", __FUNCTION__, s,
+                      s->st, s->sat);
       }
       if (s->bev) {
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s on socket: 0x%lx, st=%d, sat=%d: bev already exist\n", __FUNCTION__,
-                      (long)s, s->st, s->sat);
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s on socket: %p, st=%d, sat=%d: bev already exist\n", __FUNCTION__, s,
+                      s->st, s->sat);
       }
 
       if (s->e->tls_ctx) {
@@ -2467,8 +2467,8 @@ static int socket_input_worker(ioa_socket_handle s) {
     {
       s->st = TCP_SOCKET;
       if (s->bev) {
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s on socket: 0x%lx, st=%d, sat=%d: bev already exist\n", __FUNCTION__,
-                      (long)s, s->st, s->sat);
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s on socket: %p, st=%d, sat=%d: bev already exist\n", __FUNCTION__, s,
+                      s->st, s->sat);
       }
       s->bev = bufferevent_socket_new(s->e->event_base, s->fd, TURN_BUFFEREVENTS_OPTIONS);
       bufferevent_setcb(s->bev, socket_input_handler_bev, socket_output_handler_bev, eventcb_bev, s);
@@ -2482,12 +2482,12 @@ static int socket_input_worker(ioa_socket_handle s) {
     if (tls_type) {
       s->st = TLS_SCTP_SOCKET;
       if (s->ssl) {
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s on socket: 0x%lx, st=%d, sat=%d: ssl already exist\n", __FUNCTION__,
-                      (long)s, s->st, s->sat);
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s on socket: %p, st=%d, sat=%d: ssl already exist\n", __FUNCTION__, s,
+                      s->st, s->sat);
       }
       if (s->bev) {
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s on socket: 0x%lx, st=%d, sat=%d: bev already exist\n", __FUNCTION__,
-                      (long)s, s->st, s->sat);
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s on socket: %p, st=%d, sat=%d: bev already exist\n", __FUNCTION__, s,
+                      s->st, s->sat);
       }
       if (s->e->tls_ctx) {
         set_socket_ssl(s, SSL_new(s->e->tls_ctx));
@@ -2504,8 +2504,8 @@ static int socket_input_worker(ioa_socket_handle s) {
     {
       s->st = SCTP_SOCKET;
       if (s->bev) {
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s on socket: 0x%lx, st=%d, sat=%d: bev already exist\n", __FUNCTION__,
-                      (long)s, s->st, s->sat);
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s on socket: %p, st=%d, sat=%d: bev already exist\n", __FUNCTION__, s,
+                      s->st, s->sat);
       }
       s->bev = bufferevent_socket_new(s->e->event_base, s->fd, TURN_BUFFEREVENTS_OPTIONS);
       bufferevent_setcb(s->bev, socket_input_handler_bev, socket_output_handler_bev, eventcb_bev, s);
@@ -2699,9 +2699,9 @@ static void socket_input_handler(evutil_socket_t fd, short what, void *arg) {
 
   if ((s->magic != SOCKET_MAGIC) || (s->done)) {
     read_spare_buffer(fd);
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s on bad socket, ev=%d: 0x%lx, st=%d, sat=%d\n", __FUNCTION__, (int)what,
-                  (long)s, s->st, s->sat);
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s socket: 0x%lx was closed\n", __FUNCTION__, (long)s);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s on bad socket, ev=%d: %p, st=%d, sat=%d\n", __FUNCTION__, (int)what, s,
+                  s->st, s->sat);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s socket: %p was closed\n", __FUNCTION__, s);
     return;
   }
 
@@ -2717,9 +2717,9 @@ static void socket_input_handler(evutil_socket_t fd, short what, void *arg) {
   }
 
   if ((s->magic != SOCKET_MAGIC) || (s->done)) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s (1) on socket, ev=%d: 0x%lx, st=%d, sat=%d\n", __FUNCTION__, (int)what,
-                  (long)s, s->st, s->sat);
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s socket: 0x%lx was closed\n", __FUNCTION__, (long)s);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s (1) on socket, ev=%d: %p, st=%d, sat=%d\n", __FUNCTION__, (int)what, s,
+                  s->st, s->sat);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s socket: %p was closed\n", __FUNCTION__, s);
     return;
   }
 
@@ -2736,7 +2736,7 @@ void close_ioa_socket_after_processing_if_necessary(ioa_socket_handle s) {
     s->special_session_size = 0;
 
     if (!(s->session) && !(s->sub_session)) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s https server socket closed: 0x%lx, st=%d, sat=%d\n", __FUNCTION__, (long)s,
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s https server socket closed: %p, st=%d, sat=%d\n", __FUNCTION__, s,
                     get_ioa_socket_type(s), get_ioa_socket_app_type(s));
       IOA_CLOSE_SOCKET(s);
       return;
@@ -2836,15 +2836,14 @@ static void socket_input_handler_bev(struct bufferevent *bev, void *arg) {
     ioa_socket_handle s = (ioa_socket_handle)arg;
 
     if (bev != s->bev) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s socket: 0x%lx: wrong bev\n", __FUNCTION__, (long)s);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s socket: %p: wrong bev\n", __FUNCTION__, s);
       read_spare_buffer_bev(bev);
       return;
     }
 
     if ((s->magic != SOCKET_MAGIC) || (s->done)) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s on socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__, (long)s, s->st,
-                    s->sat);
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s socket: 0x%lx was closed\n", __FUNCTION__, (long)s);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s on socket: %p, st=%d, sat=%d\n", __FUNCTION__, s, s->st, s->sat);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s socket: %p was closed\n", __FUNCTION__, s);
       read_spare_buffer_bev(bev);
       return;
     }
@@ -2863,9 +2862,8 @@ static void socket_input_handler_bev(struct bufferevent *bev, void *arg) {
     }
 
     if ((s->magic != SOCKET_MAGIC) || (s->done)) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s (1) on socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__, (long)s, s->st,
-                    s->sat);
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s socket: 0x%lx was closed\n", __FUNCTION__, (long)s);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s (1) on socket: %p, st=%d, sat=%d\n", __FUNCTION__, s, s->st, s->sat);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s socket: %p was closed\n", __FUNCTION__, s);
       return;
     }
 
@@ -2883,22 +2881,22 @@ static void eventcb_bev(struct bufferevent *bev, short events, void *arg) {
       ioa_socket_handle s = (ioa_socket_handle)arg;
 
       if (!is_stream_socket(s->st)) {
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s: socket type is wrong on the socket: 0x%lx, st=%d, sat=%d\n",
-                      __FUNCTION__, (long)s, s->st, s->sat);
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s: socket type is wrong on the socket: %p, st=%d, sat=%d\n",
+                      __FUNCTION__, s, s->st, s->sat);
         return;
       }
 
       if (s->magic != SOCKET_MAGIC) {
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s: magic is wrong on the socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,
-                      (long)s, s->st, s->sat);
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s: magic is wrong on the socket: %p, st=%d, sat=%d\n", __FUNCTION__, s,
+                      s->st, s->sat);
         return;
       }
 
       if (s->done) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-                      "!!! %s: closed socket: 0x%lx (1): done=%d, fd=%d, br=%d, st=%d, sat=%d, tbc=%d\n", __FUNCTION__,
-                      (long)s, (int)s->done, (int)s->fd, s->broken, s->st, s->sat, s->tobeclosed);
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s socket: 0x%lx was closed\n", __FUNCTION__, (long)s);
+                      "!!! %s: closed socket: %p (1): done=%d, fd=%d, br=%d, st=%d, sat=%d, tbc=%d\n", __FUNCTION__, s,
+                      (int)s->done, (int)s->fd, s->broken, s->st, s->sat, s->tobeclosed);
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s socket: %p was closed\n", __FUNCTION__, s);
         return;
       }
 
@@ -2917,8 +2915,8 @@ static void eventcb_bev(struct bufferevent *bev, short events, void *arg) {
       if (!(s->session) && !(s->sub_session)) {
         char sraddr[129] = "\0";
         addr_to_string(&(s->remote_addr), (uint8_t *)sraddr);
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s https server socket closed: 0x%lx, st=%d, sat=%d, remote addr=%s\n",
-                      __FUNCTION__, (long)s, get_ioa_socket_type(s), get_ioa_socket_app_type(s), sraddr);
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s https server socket closed: %p, st=%d, sat=%d, remote addr=%s\n",
+                      __FUNCTION__, s, get_ioa_socket_type(s), get_ioa_socket_app_type(s), sraddr);
         IOA_CLOSE_SOCKET(s);
         return;
       }
@@ -2997,7 +2995,7 @@ static int ssl_send(ioa_socket_handle s, const char *buffer, int len, int verbos
   SSL *ssl = s->ssl;
 
   if (eve(verbose)) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: before write: buffer=0x%lx, len=%d\n", __FUNCTION__, (long)buffer, len);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: before write: buffer=%p, len=%d\n", __FUNCTION__, buffer, len);
   }
 
   if (s->parent_s) {
@@ -3095,9 +3093,8 @@ try_start:
           TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS Socket lost packet... fine\n");
           return 0;
         }
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-                      "DTLS Socket write error unrecoverable: %d; buffer=0x%lx, len=%d, ssl=0x%lx\n", err, (long)buffer,
-                      (int)len, (long)ssl);
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS Socket write error unrecoverable: %d; buffer=%p, len=%d, ssl=%p\n",
+                      err, buffer, (int)len, ssl);
         return -1;
       } else {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS Socket write error recoverable: %d\n", err);
@@ -3221,9 +3218,9 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr *dest_addr, ioa_
 
   if (s->done || (s->fd == -1)) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-                  "!!! %s: (1) Trying to send data from closed socket: 0x%lx (1): done=%d, fd=%d, st=%d, sat=%d\n",
-                  __FUNCTION__, (long)s, (int)s->done, (int)s->fd, s->st, s->sat);
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s socket: 0x%lx was closed\n", __FUNCTION__, (long)s);
+                  "!!! %s: (1) Trying to send data from closed socket: %p (1): done=%d, fd=%d, st=%d, sat=%d\n",
+                  __FUNCTION__, s, (int)s->done, (int)s->fd, s->st, s->sat);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s socket: %p was closed\n", __FUNCTION__, s);
 
   } else if (nbh) {
     if (!ioa_socket_check_bandwidth(s, nbh, 0)) {
@@ -3328,9 +3325,9 @@ int send_data_from_ioa_socket_tcp(ioa_socket_handle s, const void *data, size_t 
 
     if (s->done || (s->fd == -1) || ioa_socket_tobeclosed(s) || !(s->e)) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-                    "!!! %s: (1) Trying to send data from bad socket: 0x%lx (1): done=%d, fd=%d, st=%d, sat=%d\n",
-                    __FUNCTION__, (long)s, (int)s->done, (int)s->fd, s->st, s->sat);
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s socket: 0x%lx was closed\n", __FUNCTION__, (long)s);
+                    "!!! %s: (1) Trying to send data from bad socket: %p (1): done=%d, fd=%d, st=%d, sat=%d\n",
+                    __FUNCTION__, s, (int)s->done, (int)s->fd, s->st, s->sat);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s socket: %p was closed\n", __FUNCTION__, s);
 
     } else if (s->connected && s->bev) {
       if ((s->st == TLS_SOCKET) || (s->st == TLS_SCTP_SOCKET)) {
@@ -3485,15 +3482,15 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 int ioa_socket_tobeclosed(ioa_socket_handle s) {
   if (s) {
     if (s->magic != SOCKET_MAGIC) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s: magic is wrong on the socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,
-                    (long)s, s->st, s->sat);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s: magic is wrong on the socket: %p, st=%d, sat=%d\n", __FUNCTION__, s,
+                    s->st, s->sat);
       return 1;
     }
 
     if (s->done) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s: check on already closed socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,
-                    (long)s, s->st, s->sat);
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s socket: 0x%lx was closed\n", __FUNCTION__, (long)s);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s: check on already closed socket: %p, st=%d, sat=%d\n", __FUNCTION__, s,
+                    s->st, s->sat);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s socket: %p was closed\n", __FUNCTION__, s);
       return 1;
     }
     if (s->tobeclosed) {

@@ -222,7 +222,7 @@ typedef uint32_t turn_time_t;
 
 ////////////////////////////////////////////////////////
 
-#if !defined(IPPROTO_SCTP)
+#if !defined(IPPROTO_SCTP) && !defined(TURN_NO_SCTP)
 #define TURN_NO_SCTP
 #endif
 
