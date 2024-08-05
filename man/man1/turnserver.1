@@ -355,11 +355,7 @@ This option can be used, for example, together with the logrotate tool.
 .TP
 .B
 \fB\-\-new\-log\-timestamp\fP
-Enable full ISO\-8601 timestamp in all logs.
-.TP
-.B
-\fB\-\-new\-log\-timestamp\-format\fP
-<format>        Set timestamp format (in \fBstrftime\fP(1) format)
+Enable timestamp in all logs.
 .TP
 .B
 \fB\-\-log\-binding\fP
@@ -878,6 +874,10 @@ Maximum number of output sessions in ps CLI command.
 This value can be changed on\-the\-fly in CLI. The default value is 256.
 .TP
 .B
+\fB\-\-udp\-notifier\fP
+Send notification messages to target device via UDP interface.
+"host=<host> port=<port>"
+.PP
 \fB\-\-web\-admin\fP
 Enable Turn Web\-admin support. By default it is disabled.
 .TP
