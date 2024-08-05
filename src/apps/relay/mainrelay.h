@@ -286,8 +286,9 @@ typedef struct _turn_params_ {
   turn_server_addrs_list_t alternate_servers_list;
   turn_server_addrs_list_t tls_alternate_servers_list;
 
-  /////////////// stop server ////////////////
-  int stop_turn_server;
+  /////////////// stop/drain server ////////////////
+  bool drain_turn_server;
+  bool stop_turn_server;
 
   ////////////// MISC PARAMS ////////////////
 
@@ -377,6 +378,7 @@ void send_auth_message_to_auth_server(struct auth_message *am);
 void init_listener(void);
 void setup_server(void);
 void run_listener_server(struct listener_server *ls);
+void enable_drain_mode(void);
 
 ////////// BPS ////////////////
 

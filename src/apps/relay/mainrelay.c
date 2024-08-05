@@ -188,7 +188,8 @@ turn_params_t turn_params = {
     {NULL, 0, {0, NULL}}, /*tls_alternate_servers_list*/
 
     /////////////// stop server ////////////////
-    0, /*stop_turn_server*/
+    false, /*drain_turn_server*/
+    false, /*stop_turn_server*/
 
     /////////////// MISC PARAMS ////////////////
     0,                                  /* stun_only */
@@ -262,6 +263,7 @@ static void read_config_file(int argc, char **argv, int pass);
 static void reload_ssl_certs(evutil_socket_t sock, short events, void *args);
 
 static void shutdown_handler(evutil_socket_t sock, short events, void *args);
+static void drain_handler(evutil_socket_t sock, short events, void *args);
 
 //////////////////////////////////////////////////
 
@@ -3344,6 +3346,8 @@ int main(int argc, char **argv) {
   event_add(ev, NULL);
   ev = evsignal_new(turn_params.listener.event_base, SIGINT, shutdown_handler, NULL);
   event_add(ev, NULL);
+  ev = evsignal_new(turn_params.listener.event_base, SIGUSR1, drain_handler, NULL);
+  event_add(ev, NULL);
 #endif
 
   drop_privileges();
@@ -3987,7 +3991,15 @@ static void reload_ssl_certs(evutil_socket_t sock, short events, void *args) {
 
 static void shutdown_handler(evutil_socket_t sock, short events, void *args) {
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Terminating on signal %d\n", sock);
-  turn_params.stop_turn_server = 1;
+  turn_params.stop_turn_server = true;
+
+  UNUSED_ARG(events);
+  UNUSED_ARG(args);
+}
+
+static void drain_handler(evutil_socket_t sock, short events, void *args) {
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Draining then terminating on signal %d\n", sock);
+  enable_drain_mode();
 
   UNUSED_ARG(events);
   UNUSED_ARG(args);
