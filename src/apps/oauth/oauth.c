@@ -129,7 +129,7 @@ static int encode_token(const char *server_name, const char *gcm_nonce, const ch
 static int validate_decode_token(const char *server_name, const oauth_key key, const char *base64encoded_etoken,
                                  oauth_token *dot) {
 
-  memset((dot), 0, sizeof(*dot));
+  memset(dot, 0, sizeof(*dot));
 
   encoded_oauth_token etoken;
   memset(&etoken, 0, sizeof(etoken));

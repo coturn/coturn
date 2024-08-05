@@ -374,18 +374,12 @@ static inline ioa_socket_handle get_relay_socket_ss(ts_ur_super_session *ss, int
 
 /////////// Session info ///////
 
-void turn_session_info_init(struct turn_session_info *tsi) {
-  if (tsi) {
-    memset(tsi, 0, sizeof(struct turn_session_info));
-  }
-}
-
 void turn_session_info_clean(struct turn_session_info *tsi) {
   if (tsi) {
     if (tsi->extra_peers_data) {
       free(tsi->extra_peers_data);
     }
-    turn_session_info_init(tsi);
+    memset(tsi, 0, sizeof(struct turn_session_info));
   }
 }
 
@@ -619,7 +613,7 @@ int turn_session_info_copy_from(struct turn_session_info *tsi, ts_ur_super_sessi
 int report_turn_session_info(turn_turnserver *server, ts_ur_super_session *ss, int force_invalid) {
   if (server && ss && server->send_turn_session_info) {
     struct turn_session_info tsi;
-    turn_session_info_init(&tsi);
+    memset(&tsi, 0, sizeof(struct turn_session_info));
     if (turn_session_info_copy_from(&tsi, ss) < 0) {
       turn_session_info_clean(&tsi);
     } else {
@@ -3996,8 +3990,7 @@ static int handle_old_stun_command(turn_turnserver *server, ts_ur_super_session 
         {
           size_t oldsz = strlen(get_version(server));
           size_t newsz = (((oldsz) >> 2) + 1) << 2;
-          uint8_t software[120];
-          memset(software, 0, sizeof(software));
+          uint8_t software[120] = {0};
           if (newsz > sizeof(software)) {
             newsz = sizeof(software);
           }
@@ -4053,8 +4046,7 @@ static int handle_old_stun_command(turn_turnserver *server, ts_ur_super_session 
     {
       size_t oldsz = strlen(get_version(server));
       size_t newsz = (((oldsz) >> 2) + 1) << 2;
-      uint8_t software[120];
-      memset(software, 0, sizeof(software));
+      uint8_t software[120] = {0};
       if (newsz > sizeof(software)) {
         newsz = sizeof(software);
       }

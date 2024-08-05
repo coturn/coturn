@@ -32,6 +32,8 @@
 #include "apputils.h"
 #include "stun_buffer.h"
 
+#include <limits.h> // for USHRT_MAX
+
 /////////////// io handlers ///////////////////
 
 static void udp_server_input_handler(evutil_socket_t fd, short what, void *arg) {
@@ -117,17 +119,18 @@ static int udp_create_server_socket(server_type *const server, const char *const
 }
 
 static server_type *init_server(int verbose, const char *ifname, char **local_addresses, size_t las, int port) {
-
-  server_type *server = (server_type *)malloc(sizeof(server_type));
-
+  // Ports cannot be larger than unsigned 16 bits
+  // and since this function creates two ports next to each other
+  // the provided port must be smaller than max unsigned 16.
+  if ((uint16_t)port >= USHRT_MAX) {
+    return NULL;
+  }
+  server_type *server = (server_type *)calloc(1, sizeof(server_type));
   if (!server) {
-    return server;
+    return NULL;
   }
 
-  memset(server, 0, sizeof(server_type));
-
   server->verbose = verbose;
-
   server->event_base = turn_event_base_new();
 
   while (las) {

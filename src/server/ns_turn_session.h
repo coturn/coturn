@@ -175,7 +175,6 @@ struct turn_session_info {
   band_limit_t bps;
 };
 
-void turn_session_info_init(struct turn_session_info *tsi);
 void turn_session_info_clean(struct turn_session_info *tsi);
 void turn_session_info_add_peer(struct turn_session_info *tsi, ioa_addr *peer);
 

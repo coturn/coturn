@@ -628,8 +628,8 @@ static void discoveryresult(const char *decision) {
 
 int main(int argc, char **argv) {
   int remote_port = DEFAULT_STUN_PORT;
-  char local_addr_string[256] = "\0";
-  char local2_addr_string[256] = "\0";
+  char local_addr_string[256] = {0};
+  char local2_addr_string[256] = {0};
   int c = 0;
   int mapping = 0;
   int filtering = 0;
@@ -651,8 +651,6 @@ int main(int argc, char **argv) {
   set_no_stdout_log(1);
   set_system_parameters(0);
 
-  memset(local_addr_string, 0, sizeof(local_addr_string));
-  memset(local2_addr_string, 0, sizeof(local2_addr_string));
   addr_set_any(&remote_addr);
   addr_set_any(&other_addr);
   addr_set_any(&reflexive_addr);

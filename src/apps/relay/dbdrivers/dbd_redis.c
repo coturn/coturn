@@ -73,8 +73,7 @@ static void RyconninfoFree(Ryconninfo *co) {
 }
 
 static Ryconninfo *RyconninfoParse(const char *userdb, char **errmsg) {
-  Ryconninfo *co = (Ryconninfo *)malloc(sizeof(Ryconninfo));
-  memset(co, 0, sizeof(Ryconninfo));
+  Ryconninfo *co = (Ryconninfo *)calloc(1, sizeof(Ryconninfo));
   if (userdb) {
     char *s0 = strdup(userdb);
     char *s = s0;

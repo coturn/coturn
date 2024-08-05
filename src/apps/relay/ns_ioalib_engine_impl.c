@@ -3881,8 +3881,6 @@ struct _super_memory {
 
 static void init_super_memory_region(super_memory_t *r) {
   if (r) {
-    memset(r, 0, sizeof(super_memory_t));
-
     r->super_memory = (char **)malloc(sizeof(char *));
     r->super_memory[0] = (char *)calloc(1, TURN_SM_SIZE);
 
@@ -3903,7 +3901,7 @@ static void init_super_memory_region(super_memory_t *r) {
 void init_super_memory(void) { ; }
 
 super_memory_t *new_super_memory_region(void) {
-  super_memory_t *r = (super_memory_t *)malloc(sizeof(super_memory_t));
+  super_memory_t *r = (super_memory_t *)calloc(1, sizeof(super_memory_t));
   init_super_memory_region(r);
   return r;
 }

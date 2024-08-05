@@ -114,7 +114,7 @@ int turn_mutex_unlock(const turn_mutex *mutex) {
 int turn_mutex_init(turn_mutex *mutex) {
   if (mutex) {
     mutex->data = MAGIC_CODE;
-    mutex->mutex = malloc(sizeof(pthread_mutex_t));
+    mutex->mutex = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t));
     pthread_mutex_init((pthread_mutex_t *)mutex->mutex, NULL);
     return 0;
   } else {
@@ -132,8 +132,8 @@ int turn_mutex_init_recursive(turn_mutex *mutex) {
       if (pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE) < 0) {
         perror("Cannot set type on mutex attr");
       } else {
-        mutex->mutex = malloc(sizeof(pthread_mutex_t));
         mutex->data = MAGIC_CODE;
+        mutex->mutex = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t));
         if ((ret = pthread_mutex_init((pthread_mutex_t *)mutex->mutex, &attr)) < 0) {
           perror("Cannot init mutex");
           mutex->data = 0;
