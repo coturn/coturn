@@ -19,17 +19,17 @@ jobs:
       with:
         SUDO: true
 
-    - name: Install clang-format-15
-      run: sudo apt install -y clang-format-15
+    - name: Install clang-format-18
+      run: sudo apt install -y clang-format-18
 
     - name: Configure
       run: ./configure
 
     - name: lint
       run: |
-        if which clang-format-15 2>&1 >/dev/null
+        if which clang-format-18 2>&1 >/dev/null
         then
-            sudo cp $(which clang-format-15) $(which clang-format)
+            sudo cp $(which clang-format-18) $(which clang-format)
         fi
         clang-format --version
         make lint
