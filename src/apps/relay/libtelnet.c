@@ -11,9 +11,6 @@
  * all present and future rights to this code under copyright law.
  */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
 #include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -21,7 +18,7 @@
 #include <string.h>
 
 /* Win32 compatibility */
-#if defined(WINDOWS)
+#if defined(_WIN32)
 #define vsnprintf _vsnprintf
 #define __func__ __FUNCTION__
 #define ZLIB_WINAPI 1
@@ -406,7 +403,6 @@ static void _negotiate(telnet_t *telnet, unsigned char telopt) {
       break;
     case Q_WANTNO_OP:
       _set_rfc1143(telnet, telopt, Q_US(q), Q_YES);
-      NEGOTIATE_EVENT(telnet, TELNET_EV_WILL, telopt);
       telnet_error(telnet, __LINE__, __func__, TELNET_EPROTOCOL, 0, "DONT answered by WILL");
       break;
     case Q_WANTYES:
@@ -435,7 +431,8 @@ static void _negotiate(telnet_t *telnet, unsigned char telopt) {
       break;
     case Q_WANTNO_OP:
       _set_rfc1143(telnet, telopt, Q_US(q), Q_WANTYES);
-      NEGOTIATE_EVENT(telnet, TELNET_EV_DO, telopt);
+      _send_negotiate(telnet, TELNET_DO, telopt);
+      NEGOTIATE_EVENT(telnet, TELNET_EV_WONT, telopt);
       break;
     case Q_WANTYES:
     case Q_WANTYES_OP:
@@ -463,7 +460,6 @@ static void _negotiate(telnet_t *telnet, unsigned char telopt) {
       break;
     case Q_WANTNO_OP:
       _set_rfc1143(telnet, telopt, Q_YES, Q_HIM(q));
-      NEGOTIATE_EVENT(telnet, TELNET_EV_DO, telopt);
       telnet_error(telnet, __LINE__, __func__, TELNET_EPROTOCOL, 0, "WONT answered by DO");
       break;
     case Q_WANTYES:
@@ -488,12 +484,12 @@ static void _negotiate(telnet_t *telnet, unsigned char telopt) {
       break;
     case Q_WANTNO:
       _set_rfc1143(telnet, telopt, Q_NO, Q_HIM(q));
-      NEGOTIATE_EVENT(telnet, TELNET_EV_WONT, telopt);
+      NEGOTIATE_EVENT(telnet, TELNET_EV_DONT, telopt);
       break;
     case Q_WANTNO_OP:
       _set_rfc1143(telnet, telopt, Q_WANTYES, Q_HIM(q));
       _send_negotiate(telnet, TELNET_WILL, telopt);
-      NEGOTIATE_EVENT(telnet, TELNET_EV_WILL, telopt);
+      NEGOTIATE_EVENT(telnet, TELNET_EV_DONT, telopt);
       break;
     case Q_WANTYES:
     case Q_WANTYES_OP:
@@ -547,7 +543,7 @@ static int _environ_telnet(telnet_t *telnet, unsigned char type, char *buffer, s
     ev.type = TELNET_EV_ENVIRON;
     telnet->eh(telnet, &ev, telnet->ud);
 
-    return 1;
+    return 0;
   }
 
   /* very second byte must be VAR or USERVAR, if present */
@@ -644,7 +640,7 @@ static int _environ_telnet(telnet_t *telnet, unsigned char type, char *buffer, s
 
   /* clean up */
   free(values);
-  return 1;
+  return 0;
 }
 
 /* process an MSSP subnegotiation buffer */
@@ -724,7 +720,7 @@ static int _mssp_telnet(telnet_t *telnet, char *buffer, size_t size) {
 /* parse ZMP command subnegotiation buffers */
 static int _zmp_telnet(telnet_t *telnet, const char *buffer, size_t size) {
   telnet_event_t ev;
-  const char **argv;
+  char **argv;
   const char *c;
   size_t i, argc;
 
@@ -740,20 +736,20 @@ static int _zmp_telnet(telnet_t *telnet, const char *buffer, size_t size) {
   }
 
   /* allocate argument array, bail on error */
-  if ((argv = (const char **)calloc(argc, sizeof(const char *))) == 0) {
+  if ((argv = (char **)calloc(argc, sizeof(char *))) == 0) {
     telnet_error(telnet, __LINE__, __func__, TELNET_ENOMEM, 0, "calloc() failed: %s", strerror(errno));
     return 0;
   }
 
   /* populate argument array */
   for (i = 0, c = buffer; i != argc; ++i) {
-    argv[i] = c;
+    argv[i] = (char *)c;
     c += strlen(c) + 1;
   }
 
   /* invoke event with our arguments */
   ev.type = TELNET_EV_ZMP;
-  ev.zmp.argv = argv;
+  ev.zmp.argv = (const char **)argv;
   ev.zmp.argc = argc;
   telnet->eh(telnet, &ev, telnet->ud);
 
@@ -826,18 +822,15 @@ static int _subnegotiate(telnet_t *telnet) {
    * start handling the compressed stream if it's not already.
    */
   case TELNET_TELOPT_COMPRESS2:
-    if (telnet->sb_telopt == TELNET_TELOPT_COMPRESS2) {
-      if (_init_zlib(telnet, 0, 1) != TELNET_EOK) {
-        return 0;
-      }
-
-      /* notify app that compression was enabled */
-      ev.type = TELNET_EV_COMPRESS;
-      ev.compress.state = 1;
-      telnet->eh(telnet, &ev, telnet->ud);
-      return 1;
+    if (_init_zlib(telnet, 0, 1) != TELNET_EOK) {
+      return 0;
     }
-    return 0;
+
+    /* notify app that compression was enabled */
+    ev.type = TELNET_EV_COMPRESS;
+    ev.compress.state = 1;
+    telnet->eh(telnet, &ev, telnet->ud);
+    return 1;
 #endif /* defined(HAVE_ZLIB) */
 
   /* specially handled subnegotiation telopt types */
@@ -984,8 +977,8 @@ static void _process(telnet_t *telnet, const char *buffer, size_t size) {
         telnet->eh(telnet, &ev, telnet->ud);
         byte = buffer[i];
       }
-      // any byte following '\r' other than '\n' or '\0' is invalid,
-      // so pass both \r and the byte
+      /* any byte following '\r' other than '\n' or '\0' is invalid,
+       * so pass both \r and the byte */
       start = i;
       if (byte == '\0') {
         ++start;
@@ -1432,24 +1425,27 @@ void telnet_begin_compress2(telnet_t *telnet) {
 
 /* send formatted data with \r and \n translation in addition to IAC IAC */
 int telnet_vprintf(telnet_t *telnet, const char *fmt, va_list va) {
+  va_list va_temp;
   char buffer[1024];
   char *output = buffer;
   unsigned int rs, i, l;
 
   /* format */
-  va_list va2;
-  va_copy(va2, va);
-  rs = vsnprintf(buffer, sizeof(buffer), fmt, va);
+  va_copy(va_temp, va);
+  rs = vsnprintf(buffer, sizeof(buffer), fmt, va_temp);
+  va_end(va_temp);
+
   if (rs >= sizeof(buffer)) {
     output = (char *)malloc(rs + 1);
     if (output == 0) {
       telnet_error(telnet, __LINE__, __func__, TELNET_ENOMEM, 0, "malloc() failed: %s", strerror(errno));
-      va_end(va2);
       return -1;
     }
-    rs = vsnprintf(output, rs + 1, fmt, va2);
+
+    va_copy(va_temp, va);
+    rs = vsnprintf(output, rs + 1, fmt, va_temp);
+    va_end(va_temp);
   }
-  va_end(va2);
 
   /* send */
   for (l = i = 0; i != rs; ++i) {
@@ -1503,24 +1499,27 @@ int telnet_printf(telnet_t *telnet, const char *fmt, ...) {
 
 /* send formatted data through telnet_send */
 int telnet_raw_vprintf(telnet_t *telnet, const char *fmt, va_list va) {
+  va_list va_temp;
   char buffer[1024];
   char *output = buffer;
   unsigned int rs;
 
   /* format; allocate more space if necessary */
-  va_list va2;
-  va_copy(va2, va);
-  rs = vsnprintf(buffer, sizeof(buffer), fmt, va);
+  va_copy(va_temp, va);
+  rs = vsnprintf(buffer, sizeof(buffer), fmt, va_temp);
+  va_end(va_temp);
+
   if (rs >= sizeof(buffer)) {
     output = (char *)malloc(rs + 1);
     if (output == 0) {
       telnet_error(telnet, __LINE__, __func__, TELNET_ENOMEM, 0, "malloc() failed: %s", strerror(errno));
-      va_end(va2);
       return -1;
     }
-    rs = vsnprintf(output, rs + 1, fmt, va2);
+
+    va_copy(va_temp, va);
+    rs = vsnprintf(output, rs + 1, fmt, va_temp);
+    va_end(va_temp);
   }
-  va_end(va2);
 
   /* send out the formatted data */
   telnet_send(telnet, output, rs);
@@ -1570,6 +1569,9 @@ void telnet_ttype_send(telnet_t *telnet) {
 /* send TERMINAL-TYPE IS command */
 void telnet_ttype_is(telnet_t *telnet, const char *ttype) {
   static const unsigned char IS[] = {TELNET_IAC, TELNET_SB, TELNET_TELOPT_TTYPE, TELNET_TTYPE_IS};
+  if (!ttype) {
+    ttype = "NVT";
+  }
   _sendu(telnet, IS, sizeof(IS));
   _send(telnet, ttype, strlen(ttype));
   telnet_finish_sb(telnet);
