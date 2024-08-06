@@ -62,7 +62,7 @@ void clear_allocation(allocation *a, SOCKET_TYPE socket_type) {
 
     if (a->tcs.elems) {
       size_t i;
-      size_t sz = a->tcs.sz;
+      const size_t sz = a->tcs.sz;
       for (i = 0; i < sz; ++i) {
         tcp_connection *tc = a->tcs.elems[i];
         if (tc) {
@@ -121,11 +121,11 @@ ioa_socket_handle get_relay_socket(allocation *a, int family) {
 
 void set_allocation_family_invalid(allocation *a, int family) {
   if (a) {
-    size_t index = ALLOC_INDEX(family);
+    const size_t index = ALLOC_INDEX(family);
     if (a->relay_sessions[index].s) {
       if (a->tcs.elems) {
         size_t i;
-        size_t sz = a->tcs.sz;
+        const size_t sz = a->tcs.sz;
         for (i = 0; i < sz; ++i) {
           tcp_connection *tc = a->tcs.elems[i];
           if (tc) {
@@ -245,7 +245,7 @@ static turn_permission_info *get_from_turn_permission_hashtable(turn_permission_
     return NULL;
   }
 
-  uint32_t index = addr_hash_no_port(addr) & (TURN_PERMISSION_HASHTABLE_SIZE - 1);
+  const uint32_t index = addr_hash_no_port(addr) & (TURN_PERMISSION_HASHTABLE_SIZE - 1);
   turn_permission_array *parray = &(map->table[index]);
 
   {
@@ -261,7 +261,7 @@ static turn_permission_info *get_from_turn_permission_hashtable(turn_permission_
   if (parray->extra_slots) {
 
     size_t i;
-    size_t sz = parray->extra_sz;
+    const size_t sz = parray->extra_sz;
     for (i = 0; i < sz; ++i) {
       turn_permission_slot *slot = parray->extra_slots[i];
       if (slot->info.allocated && addr_eq_no_port(&(slot->info.addr), addr)) {
@@ -302,7 +302,7 @@ static bool delete_channel_info_from_allocation_map(ur_map_key_type key, ur_map_
 
 void turn_channel_delete(ch_info *chn) {
   if (chn) {
-    int port = addr_get_port(&(chn->peer_addr));
+    const int port = addr_get_port(&(chn->peer_addr));
     if (port < 1) {
       char s[129];
       addr_to_string(&(chn->peer_addr), (uint8_t *)s);
@@ -387,8 +387,8 @@ turn_permission_info *allocation_add_permission(allocation *a, const ioa_addr *a
   if (a && addr) {
 
     turn_permission_hashtable *map = &(a->addr_to_perm);
-    uint32_t hash = addr_hash_no_port(addr);
-    size_t fds = (size_t)(hash & (TURN_PERMISSION_HASHTABLE_SIZE - 1));
+    const uint32_t hash = addr_hash_no_port(addr);
+    const size_t fds = (size_t)(hash & (TURN_PERMISSION_HASHTABLE_SIZE - 1));
 
     turn_permission_array *parray = &(map->table[fds]);
 
@@ -408,7 +408,7 @@ turn_permission_info *allocation_add_permission(allocation *a, const ioa_addr *a
 
     if (!slot) {
 
-      size_t old_sz = parray->extra_sz;
+      const size_t old_sz = parray->extra_sz;
 
       turn_permission_slot **slots = parray->extra_slots;
 
@@ -425,7 +425,7 @@ turn_permission_info *allocation_add_permission(allocation *a, const ioa_addr *a
       }
 
       if (!slot) {
-        size_t old_sz_mem = old_sz * sizeof(turn_permission_slot *);
+        const size_t old_sz_mem = old_sz * sizeof(turn_permission_slot *);
         parray->extra_slots =
             (turn_permission_slot **)realloc(parray->extra_slots, old_sz_mem + sizeof(turn_permission_slot *));
         slots = parray->extra_slots;
@@ -518,7 +518,7 @@ void ch_map_clean(ch_map *map) {
       }
 
       if (a->extra_chns) {
-        size_t sz = a->extra_sz;
+        const size_t sz = a->extra_sz;
         for (i = 0; i < sz; ++i) {
           ch_info *chi = a->extra_chns[i];
           if (chi) {
@@ -599,7 +599,7 @@ tcp_connection *create_tcp_connection(uint8_t server_id, allocation *a, stun_tid
   }
 
   if (!found) {
-    size_t old_sz_mem = a->tcs.sz * sizeof(tcp_connection *);
+    const size_t old_sz_mem = a->tcs.sz * sizeof(tcp_connection *);
     a->tcs.elems = (tcp_connection **)realloc(a->tcs.elems, old_sz_mem + sizeof(tcp_connection *));
     a->tcs.elems[a->tcs.sz] = tc;
     a->tcs.sz += 1;
@@ -671,7 +671,7 @@ tcp_connection *get_tcp_connection_by_peer(allocation *a, ioa_addr *peer_addr) {
     tcp_connection_list *tcl = &(a->tcs);
     if (tcl->elems) {
       size_t i;
-      size_t sz = tcl->sz;
+      const size_t sz = tcl->sz;
       for (i = 0; i < sz; ++i) {
         tcp_connection *tc = tcl->elems[i];
         if (tc) {
