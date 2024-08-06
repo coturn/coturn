@@ -39,7 +39,8 @@
 #include "ns_turn_ioaddr.h"
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 ////////////// forward declarations ////////
@@ -74,7 +75,8 @@ typedef SSIZE_T ssize_t;
 
 ////////////// Mutexes /////////////////////
 
-struct _turn_mutex {
+struct _turn_mutex
+{
   uint32_t data;
   void *mutex;
 };
@@ -104,7 +106,8 @@ int turn_mutex_destroy(turn_mutex *mutex);
 #define IOA_EV_SIGNAL 0x08
 #define IOA_EV_CLOSE 0x10
 
-enum _SOCKET_TYPE {
+enum _SOCKET_TYPE
+{
   UNKNOWN_SOCKET = 0,
   TCP_SOCKET = 6,
   UDP_SOCKET = 17,
@@ -119,7 +122,8 @@ enum _SOCKET_TYPE {
 
 typedef enum _SOCKET_TYPE SOCKET_TYPE;
 
-enum _SOCKET_APP_TYPE {
+enum _SOCKET_APP_TYPE
+{
   UNKNOWN_APP_SOCKET,
   CLIENT_SOCKET,
   HTTP_CLIENT_SOCKET,
@@ -146,7 +150,8 @@ typedef void *ioa_timer_handle;
 typedef void *ioa_network_buffer_handle;
 
 /* event data for net event */
-typedef struct _ioa_net_data {
+typedef struct _ioa_net_data
+{
   ioa_addr src_addr;
   ioa_network_buffer_handle nbh;
   int recv_ttl;
@@ -165,7 +170,8 @@ typedef struct _realm_options_t realm_options_t;
 
 //////// IP White/black listing ///////////
 
-struct _ip_range {
+struct _ip_range
+{
   char str[257];
   char realm[513];
   ioa_addr_range enc;
@@ -173,7 +179,8 @@ struct _ip_range {
 
 typedef struct _ip_range ip_range_t;
 
-struct _ip_range_list {
+struct _ip_range_list
+{
   ip_range_t *rs;
   size_t ranges_number;
 };
@@ -208,7 +215,8 @@ void ioa_network_buffer_delete(ioa_engine_handle e, ioa_network_buffer_handle nb
 /*
  * Status reporting functions
  */
-enum _STUN_PROMETHEUS_METRIC_TYPE {
+enum _STUN_PROMETHEUS_METRIC_TYPE
+{
   STUN_PROMETHEUS_METRIC_TYPE_REQUEST,
   STUN_PROMETHEUS_METRIC_TYPE_RESPONSE,
   STUN_PROMETHEUS_METRIC_TYPE_ERROR,
@@ -243,8 +251,10 @@ ioa_timer_handle set_ioa_timer(ioa_engine_handle e, int secs, int ms, ioa_timer_
 void stop_ioa_timer(ioa_timer_handle th);
 void delete_ioa_timer(ioa_timer_handle th);
 #define IOA_EVENT_DEL(E)                                                                                               \
-  do {                                                                                                                 \
-    if (E) {                                                                                                           \
+  do                                                                                                                   \
+  {                                                                                                                    \
+    if (E)                                                                                                             \
+    {                                                                                                                  \
       delete_ioa_timer(E);                                                                                             \
       E = NULL;                                                                                                        \
     }                                                                                                                  \
@@ -296,8 +306,10 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr *dest_addr, ioa_
                                   int tos, int *skip);
 void close_ioa_socket(ioa_socket_handle s);
 #define IOA_CLOSE_SOCKET(S)                                                                                            \
-  do {                                                                                                                 \
-    if (S) {                                                                                                           \
+  do                                                                                                                   \
+  {                                                                                                                    \
+    if (S)                                                                                                             \
+    {                                                                                                                  \
       close_ioa_socket(S);                                                                                             \
       S = NULL;                                                                                                        \
     }                                                                                                                  \

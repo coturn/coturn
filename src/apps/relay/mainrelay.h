@@ -96,7 +96,8 @@
 #endif
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 ////////////// DEFINES ////////////////////////////
@@ -126,29 +127,43 @@ extern "C" {
 
 /////////// TYPES ///////////////////////////////////
 
-enum _DH_KEY_SIZE { DH_566, DH_1066, DH_2066, DH_CUSTOM };
+enum _DH_KEY_SIZE
+{
+  DH_566,
+  DH_1066,
+  DH_2066,
+  DH_CUSTOM
+};
 
 typedef enum _DH_KEY_SIZE DH_KEY_SIZE;
 
 ///////// LISTENER SERVER TYPES /////////////////////
 
-struct message_to_listener_to_client {
+struct message_to_listener_to_client
+{
   ioa_addr origin;
   ioa_addr destination;
   ioa_network_buffer_handle nbh;
 };
 
-enum _MESSAGE_TO_LISTENER_TYPE { LMT_UNKNOWN, LMT_TO_CLIENT };
+enum _MESSAGE_TO_LISTENER_TYPE
+{
+  LMT_UNKNOWN,
+  LMT_TO_CLIENT
+};
 typedef enum _MESSAGE_TO_LISTENER_TYPE MESSAGE_TO_LISTENER_TYPE;
 
-struct message_to_listener {
+struct message_to_listener
+{
   MESSAGE_TO_LISTENER_TYPE t;
-  union {
+  union
+  {
     struct message_to_listener_to_client tc;
   } m;
 };
 
-struct listener_server {
+struct listener_server
+{
   rtcp_map *rtcpmap;
   turnipports *tp;
   struct event_base *event_base;
@@ -164,7 +179,8 @@ struct listener_server {
   dtls_listener_relay_server_type ***aux_udp_services;
 };
 
-enum _NET_ENG_VERSION {
+enum _NET_ENG_VERSION
+{
   NEV_UNKNOWN = 0,
   NEV_MIN,
   NEV_UDP_SOCKET_PER_SESSION = NEV_MIN,
@@ -178,7 +194,8 @@ typedef enum _NET_ENG_VERSION NET_ENG_VERSION;
 
 /////////// PARAMS //////////////////////////////////
 
-typedef struct _turn_params_ {
+typedef struct _turn_params_
+{
 
   //////////////// OpenSSL group //////////////////////
 
@@ -339,15 +356,19 @@ extern turn_params_t turn_params;
 
 ////////////////  Listener server /////////////////
 
-static inline int get_alt_listener_port(void) {
-  if (turn_params.alt_listener_port < 1) {
+static inline int get_alt_listener_port(void)
+{
+  if (turn_params.alt_listener_port < 1)
+  {
     return turn_params.listener_port + 1;
   }
   return turn_params.alt_listener_port;
 }
 
-static inline int get_alt_tls_listener_port(void) {
-  if (turn_params.alt_tls_listener_port < 1) {
+static inline int get_alt_tls_listener_port(void)
+{
+  if (turn_params.alt_tls_listener_port < 1)
+  {
     return turn_params.tls_listener_port + 1;
   }
   return turn_params.alt_tls_listener_port;
@@ -388,7 +409,8 @@ void set_max_bps(band_limit_t value);
 
 ///////// AES ENCRYPTION AND DECRYPTION ////////
 
-struct ctr_state {
+struct ctr_state
+{
   unsigned char ivec[16];
   unsigned int num;
   unsigned char ecount[16];
