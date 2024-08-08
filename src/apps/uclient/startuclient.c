@@ -487,7 +487,7 @@ beg_allocate:
                 int attr_type = stun_attr_get_type(sar);
                 if (attr_type == STUN_ATTRIBUTE_XOR_RELAYED_ADDRESS) {
 
-                  if (stun_attr_get_addr(&response_message, sar, relay_addr, NULL) < 0) {
+                  if (!stun_attr_get_addr(&response_message, sar, relay_addr, NULL)) {
                     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: !!!: relay addr cannot be received (1)\n", __FUNCTION__);
                     return -1;
                   } else {
@@ -551,8 +551,8 @@ beg_allocate:
               }
 
               ioa_addr alternate_server;
-              if (stun_attr_get_first_addr(&response_message, STUN_ATTRIBUTE_ALTERNATE_SERVER, &alternate_server,
-                                           NULL) == -1) {
+              if (!stun_attr_get_first_addr(&response_message, STUN_ATTRIBUTE_ALTERNATE_SERVER, &alternate_server,
+                                            NULL)) {
                 // error
               } else if (turn_addr && turn_port) {
                 addr_to_string_no_port(&alternate_server, (uint8_t *)turn_addr);
@@ -1549,8 +1549,8 @@ beg_cb:
             TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "success\n");
           }
           atc->tcp_data_bound = true;
-        } else if (stun_is_challenge_response_str(response_message.buf, (size_t)response_message.len, &err_code,
-                                                  err_msg, sizeof(err_msg), clnet_info->realm, clnet_info->nonce,
+        } else if (stun_is_challenge_response_str(response_message.buf, response_message.len, &err_code, err_msg,
+                                                  sizeof(err_msg), clnet_info->realm, clnet_info->nonce,
                                                   clnet_info->server_name, &(clnet_info->oauth))) {
           goto beg_cb;
         } else if (stun_is_error_response(&response_message, &err_code, err_msg, sizeof(err_msg))) {

@@ -74,8 +74,7 @@ typedef struct {
   uint8_t nonce[STUN_MAX_NONCE_SIZE + 1];
   uint8_t realm[STUN_MAX_REALM_SIZE + 1];
   /* oAuth */
-  int oauth; // Cannot (yet) be converted to bool, as many functions take an int* instead of bool*, those must be
-             // addressed first.
+  bool oauth;
   uint8_t server_name[STUN_MAX_SERVER_NAME_SIZE + 1];
   hmackey_t key;
   bool key_set;

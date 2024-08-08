@@ -1778,7 +1778,7 @@ static int handle_turn_refresh(turn_turnserver *server, ts_ur_super_session *ss,
 
                     if ((server->fingerprint) || ss->enforce_fingerprints) {
                       size_t len = ioa_network_buffer_get_size(nbh);
-                      if (stun_attr_add_fingerprint_str(ioa_network_buffer_data(nbh), &len) < 0) {
+                      if (!stun_attr_add_fingerprint_str(ioa_network_buffer_data(nbh), &len)) {
                         *err_code = 500;
                         ioa_network_buffer_delete(server->e, nbh);
                         return -1;
@@ -2289,8 +2289,8 @@ static int handle_turn_connect(turn_turnserver *server, ts_ur_super_session *ss,
       switch (attr_type) {
         SKIP_ATTRIBUTES;
       case STUN_ATTRIBUTE_XOR_PEER_ADDRESS: {
-        if (stun_attr_get_addr_str(ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh),
-                                   sar, &peer_addr, NULL) == -1) {
+        if (!stun_attr_get_addr_str(ioa_network_buffer_data(in_buffer->nbh),
+                                    ioa_network_buffer_get_size(in_buffer->nbh), sar, &peer_addr, NULL)) {
           *err_code = 400;
           *reason = (const uint8_t *)"Bad Peer Address";
         } else {
@@ -2748,8 +2748,8 @@ static int handle_turn_binding(turn_turnserver *server, ts_ur_super_session *ss,
                                uint32_t cookie, int old_stun) {
 
   FUNCSTART;
-  int change_ip = 0;
-  int change_port = 0;
+  bool change_ip = false;
+  bool change_port = false;
   int padding = 0;
   int response_port_present = 0;
   uint16_t response_port = 0;
@@ -2857,7 +2857,7 @@ static int handle_turn_binding(turn_turnserver *server, ts_ur_super_session *ss,
     size_t len = ioa_network_buffer_get_size(nbh);
     if (stun_set_binding_response_str(ioa_network_buffer_data(nbh), &len, tid,
                                       get_remote_addr_from_ioa_socket(ss->client_socket), 0, NULL, cookie, old_stun,
-                                      *server->no_stun_backward_compatibility) >= 0) {
+                                      *server->no_stun_backward_compatibility)) {
 
       addr_cpy(response_origin, get_local_addr_from_ioa_socket(ss->client_socket));
 
@@ -4558,7 +4558,7 @@ static int read_client_connection(turn_turnserver *server, ts_ur_super_session *
 
       if ((server->fingerprint) || ss->enforce_fingerprints) {
         size_t len = ioa_network_buffer_get_size(nbh);
-        if (stun_attr_add_fingerprint_str(ioa_network_buffer_data(nbh), &len) < 0) {
+        if (!stun_attr_add_fingerprint_str(ioa_network_buffer_data(nbh), &len)) {
           FUNCEND;
           ioa_network_buffer_delete(server->e, nbh);
           return -1;

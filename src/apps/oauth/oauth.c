@@ -84,7 +84,7 @@ static int setup_ikm_key(const char *kid, const char *ikm_key, const turn_time_t
   char err_msg[1025] = "\0";
   size_t err_msg_size = sizeof(err_msg) - 1;
 
-  if (convert_oauth_key_data(&okd, key, err_msg, err_msg_size) < 0) {
+  if (!convert_oauth_key_data(&okd, key, err_msg, err_msg_size)) {
     fprintf(stderr, "%s\n", err_msg);
     return -1;
   }
@@ -113,7 +113,7 @@ static int encode_token(const char *server_name, const char *gcm_nonce, const ch
     gcm_nonce = NULL;
   }
 
-  if (encode_oauth_token((const uint8_t *)server_name, &etoken, &key, &ot, (const uint8_t *)gcm_nonce) < 0) {
+  if (!encode_oauth_token((const uint8_t *)server_name, &etoken, &key, &ot, (const uint8_t *)gcm_nonce)) {
     fprintf(stderr, "%s: cannot encode oauth token\n", __FUNCTION__);
     return -1;
   }
@@ -139,7 +139,7 @@ static int validate_decode_token(const char *server_name, const oauth_key key, c
   memcpy(etoken.token, tmp, etoken.size);
   free(tmp);
 
-  if (decode_oauth_token((const uint8_t *)server_name, &etoken, &key, dot) < 0) {
+  if (!decode_oauth_token((const uint8_t *)server_name, &etoken, &key, dot)) {
     fprintf(stderr, "%s: cannot decode oauth token\n", __FUNCTION__);
     return -1;
   } else {

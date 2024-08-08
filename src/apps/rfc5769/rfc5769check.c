@@ -127,7 +127,7 @@ static int check_oauth(void) {
             char err_msg[1025] = "\0";
             size_t err_msg_size = sizeof(err_msg) - 1;
 
-            if (convert_oauth_key_data(&okd, &key, err_msg, err_msg_size) < 0) {
+            if (!convert_oauth_key_data(&okd, &key, err_msg, err_msg_size)) {
               fprintf(stderr, "%s\n", err_msg);
               goto err;
             }
@@ -143,7 +143,7 @@ static int check_oauth(void) {
           encoded_oauth_token etoken;
           memset(&etoken, 0, sizeof(etoken));
 
-          if (encode_oauth_token((const uint8_t *)server_name, &etoken, &key, &ot, (const uint8_t *)gcm_nonce) < 0) {
+          if (!encode_oauth_token((const uint8_t *)server_name, &etoken, &key, &ot, (const uint8_t *)gcm_nonce)) {
             fprintf(stderr, "%s: cannot encode oauth token\n", __FUNCTION__);
             goto err;
           }
@@ -152,7 +152,7 @@ static int check_oauth(void) {
             print_field5769("encoded token", etoken.token, etoken.size);
           }
 
-          if (decode_oauth_token((const uint8_t *)server_name, &etoken, &key, &dot) < 0) {
+          if (!decode_oauth_token((const uint8_t *)server_name, &etoken, &key, &dot)) {
             fprintf(stderr, "%s: cannot decode oauth token\n", __FUNCTION__);
             goto err;
           }
@@ -459,8 +459,7 @@ int main(int argc, const char **argv) {
 
       printf("RFC 5769 IPv4 encoding result: ");
 
-      res = stun_attr_get_first_addr_str(buf, sizeof(respv4) - 1, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS, &addr4, NULL);
-      if (res < 0) {
+      if (!stun_attr_get_first_addr_str(buf, sizeof(respv4) - 1, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS, &addr4, NULL)) {
         printf("failure on message structure check\n");
         exit(-1);
       }
@@ -548,8 +547,7 @@ int main(int argc, const char **argv) {
 
       printf("RFC 5769 IPv6 encoding result: ");
 
-      res = stun_attr_get_first_addr_str(buf, sizeof(respv6) - 1, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS, &addr6, NULL);
-      if (res < 0) {
+      if (!stun_attr_get_first_addr_str(buf, sizeof(respv6) - 1, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS, &addr6, NULL)) {
         printf("failure on message structure check\n");
         exit(-1);
       }
