@@ -1,0 +1,19 @@
+{{- if .Values.metrics.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: coturn
+  labels:
+    app: coturn
+    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  endpoints:
+    - port: status-http
+      path: /metrics
+  selector:
+    matchLabels:
+      app: coturn
+      release: {{ .Release.Name }}
+{{- end }}

@@ -1,0 +1,112 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coturn
+
+data:
+  coturn.conf.template: |
+    ## disable dtls control plane; don't permit relaying tcp connections.
+    no-dtls
+    no-tcp-relay
+
+    ## tls handling
+    {{- if .Values.tls.enabled }}
+    cert=/secrets-tls/tls.crt
+    pkey=/secrets-tls/tls.key
+    {{- if .Values.tls.ciphers }}
+    cipher-list={{ .Values.tls.ciphers }}
+    {{- end }}
+    {{- else }}
+    no-tls
+    {{- end }}
+
+    # This is mandatory for federated DTLS
+    CA-file=/etc/ssl/certs/ca-certificates.crt
+
+    ## don't turn on coturn's cli.
+    no-cli
+
+    pidfile="/var/tmp/turnserver.pid"
+
+    ## turn, stun.
+    listening-ip={{ default "__COTURN_EXT_IP__" .Values.coturnTurnListenIP }}
+    listening-port={{ .Values.coturnTurnListenPort }}
+    relay-ip={{ default "__COTURN_EXT_IP__" .Values.coturnTurnRelayIP }}
+    {{- if .Values.coturnTurnExternalIP }}
+    external-ip={{ default "__COTURN_EXT_IP__" .Values.coturnTurnExternalIP }}
+    {{- end }}
+    realm=dummy.io
+    no-stun-backward-compatibility
+    secure-stun
+    no-rfc5780
+
+    ## prometheus metrics
+    prometheus-ip={{ default "__COTURN_POD_IP__" .Values.coturnPrometheusIP }}
+    prometheus-port={{ .Values.coturnMetricsListenPort }}
+
+    ## logs
+    log-file=stdout
+    {{- if .Values.config.verboseLogging }}
+    verbose
+    {{- end }}
+
+    ## access control settings.
+    # the address ranges listed here are reserved for special use according
+    # to the iana registries for special-purposes ipv4 and ipv6 addresses. note
+    # however that these ranges do *not* include rfc1918 ipv4 space, or ula
+    # ipv6 space, as these may be valid peer addresses in some private network
+    # environments.
+    #
+    # ref:
+    # - https://www.iana.org/assignments/iana-ipv4-special-registry/iana-ipv4-special-registry.xhtml
+    # - https://www.iana.org/assignments/iana-ipv6-special-registry/iana-ipv6-special-registry.xhtml
+    # - https://www.rtcsec.com/article/cve-2020-26262-bypass-of-coturns-access-control-protection/#further-concerns-what-else
+    no-multicast-peers
+    denied-peer-ip=0.0.0.0-0.255.255.255
+    denied-peer-ip=100.64.0.0-100.127.255.255
+    denied-peer-ip=127.0.0.0-127.255.255.255
+    denied-peer-ip=169.254.0.0-169.254.255.255
+    denied-peer-ip=192.0.0.0-192.0.0.255
+    denied-peer-ip=192.0.2.0-192.0.2.255
+    denied-peer-ip=192.88.99.0-192.88.99.255
+    denied-peer-ip=198.18.0.0-198.19.255.255
+    denied-peer-ip=198.51.100.0-198.51.100.255
+    denied-peer-ip=203.0.113.0-203.0.113.255
+    denied-peer-ip=240.0.0.0-255.255.255.255
+    denied-peer-ip=::1
+    denied-peer-ip=64:ff9b::-64:ff9b::ffff:ffff
+    denied-peer-ip=::ffff:0.0.0.0-::ffff:255.255.255.255
+    denied-peer-ip=100::-100::ffff:ffff:ffff:ffff
+    denied-peer-ip=2001::-2001:1ff:ffff:ffff:ffff:ffff:ffff:ffff
+    denied-peer-ip=2002::-2002:ffff:ffff:ffff:ffff:ffff:ffff:ffff
+    # fc00::/7 is reserved for ipv6 ula, but fc00::/8 is not assigned at present.
+    denied-peer-ip=fc00::-fcff:ffff:ffff:ffff:ffff:ffff:ffff:ffff
+    denied-peer-ip=fe80::-febf:ffff:ffff:ffff:ffff:ffff:ffff:ffff
+
+    # FUTUREWORK: expose customisable access control settings.
+
+    ## authentication setup
+    zrest
+    ## static authentication secrets will be added below this line when the
+    ## runtime configuration is generated.
+
+    {{- if .Values.federate.enabled }}
+    ### federation setup
+    federation-listening-ip={{ default "__COTURN_EXT_IP__" .Values.coturnFederationListeningIP }}
+    federation-listening-port={{ .Values.federate.port }}
+    federation-no-dtls={{ not .Values.federate.dtls.enabled }}
+    {{- if .Values.federate.dtls.enabled }}
+    federation-cert=/coturn-dtls-certificate/tls.crt
+    federation-pkey=/coturn-dtls-certificate/tls.key
+    {{ if hasKey .Values.federate.dtls.tls "privateKeyPassword" }}
+    federation-pkey-pwd={{ .Values.federate.dtls.tls.privateKeyPassword }}
+    {{ end }}
+    # list of host/ip/cert common names / subject alt names, and optional issuer
+    # names to accept DTLS connections from. There can be multiple entries, each
+    # entry is formated as:
+    # <hostname>[,<issuer>]
+    {{ range $entry := .Values.federate.dtls.remoteWhitelist }}
+    federation-remote-whitelist={{ $entry.host }}{{ if hasKey $entry "issuer" }},{{ $entry.issuer }}{{end}}
+    {{ end }}
+    {{ end }}
+    {{ end }}
