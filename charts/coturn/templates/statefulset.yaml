@@ -1,0 +1,218 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: coturn
+  labels:
+    app: coturn
+    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+
+spec:
+  replicas: {{ .Values.replicaCount }}
+
+  # Allow starting and stopping coturn in parallel when scaling. This does not
+  # affect upgrades.
+  podManagementPolicy: Parallel
+
+  serviceName: coturn
+  selector:
+    matchLabels:
+      app: coturn
+  template:
+    metadata:
+    {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+
+      labels:
+        app: coturn
+        release: {{ .Release.Name }}
+    spec:
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if .Values.tls.enabled }}
+      # Needed for automatic certificate reload handling
+      shareProcessNamespace: true
+      {{- end }}
+      hostNetwork: true
+      serviceAccountName: coturn
+      volumes:
+        - name: external-ip
+          emptyDir: {}
+        - name: coturn-config
+          emptyDir: {}
+        - name: coturn-config-template
+          configMap:
+            name: coturn
+        - name: secrets
+          secret:
+            secretName: coturn
+        - name: coturndb
+          emptyDir:
+            medium: Memory
+            sizeLimit: 128Mi # observed size: 80 kilobytes
+        {{- if .Values.tls.enabled }}
+        - name: secrets-tls
+          secret:
+            secretName: {{ .Values.tls.secretRef }}
+        {{- end }}
+        {{- if .Values.federate.dtls.enabled }}
+        - name: coturn-dtls-certificate
+          secret:
+            secretName: coturn-dtls-certificate
+        {{- end }}
+      initContainers:
+        - name: get-external-ip
+          image: bitnami/kubectl:1.24.12
+          volumeMounts:
+            - name: external-ip
+              mountPath: /external-ip
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+  
+              # In the cloud, this setting is available to indicate the true IP address
+              addr=$(kubectl get node $NODE_NAME -ojsonpath='{.status.addresses[?(@.type=="ExternalIP")].address}')
+              # On on-prem we allow people to set  "wire.com/external-ip" to override this
+              if [ -z "$addr" ]; then
+                addr=$(kubectl get node $NODE_NAME -ojsonpath='{.metadata.annotations.wire\.com/external-ip}')
+              fi
+              echo -n "$addr" | tee /dev/stderr > /external-ip/ip
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository}}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: HOST_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+          volumeMounts:
+            - name: external-ip
+              mountPath: /external-ip
+            - name: coturn-config
+              mountPath: /coturn-config
+            - name: coturn-config-template
+              mountPath: /coturn-template/coturn.conf.template
+              subPath: coturn.conf.template
+            - name: secrets
+              mountPath: /secrets/
+              readOnly: true
+            # > By default, Coturn Docker image persists its data in /var/lib/coturn/ directory.
+            # > You can speedup Coturn simply by using tmpfs for that.
+            # We use a memory-backed emptyDir here instead.
+            - name: coturndb
+              mountPath: /var/lib/coturn
+          {{- if .Values.tls.enabled }}
+            - name: secrets-tls
+              mountPath: /secrets-tls/
+              readOnly: true
+          {{- end }}
+           {{- if .Values.federate.dtls.enabled }}
+            - name: coturn-dtls-certificate
+              mountPath: /coturn-dtls-certificate/
+              readOnly: true
+           {{- end }}
+          command:
+            - /usr/bin/dumb-init
+            - --
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              EXTERNAL_IP=$(cat /external-ip/ip)
+              sed -Ee "s;__COTURN_EXT_IP__;$EXTERNAL_IP;g" -e "s;__COTURN_POD_IP__;$POD_IP;g" -e "s;__COTURN_HOST_IP__;$HOST_IP;g" /coturn-template/coturn.conf.template > /coturn-config/turnserver.conf
+              sed -Ee 's/^/static-auth-secret=/' /secrets/zrest_secret.txt >> /coturn-config/turnserver.conf
+              exec /usr/bin/turnserver -c /coturn-config/turnserver.conf
+          {{- if .Values.coturnGracefulTermination }}
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - /bin/sh
+                  - -c
+                  - "exec /usr/local/bin/pre-stop-hook \"$POD_IP\" {{ .Values.coturnMetricsListenPort }}"
+          {{- end }}
+
+          ports:
+            - name: coturn-tcp
+              containerPort: {{ .Values.coturnTurnListenPort }}
+              protocol: TCP
+            - name: coturn-udp
+              containerPort: {{ .Values.coturnTurnListenPort }}
+              protocol: UDP
+            {{- if .Values.tls.enabled }}
+            - name: coturn-tls
+              containerPort: {{ .Values.coturnTurnTlsListenPort }}
+              protocol: TCP
+            {{- end }}
+            - name: status-http
+              containerPort: {{ .Values.coturnMetricsListenPort }}
+              protocol: TCP
+
+          livenessProbe:
+            timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+            httpGet:
+              path: /
+              port: status-http
+
+          readinessProbe:
+            timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
+            httpGet:
+              path: /
+              port: status-http
+
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+
+        {{- if .Values.tls.enabled }}
+        - name: {{ .Chart.Name }}-cert-reloader
+          image: "{{ .Values.tls.reloaderImage.repository }}:{{ .Values.tls.reloaderImage.tag }}"
+          imagePullPolicy: {{ .Values.tls.reloaderImage.pullPolicy }}
+          env:
+            - name: CONFIG_DIR
+              value: /secrets-tls
+            - name: PROCESS_NAME
+              value: turnserver
+            - name: RELOAD_SIGNAL
+              value: SIGUSR2
+          volumeMounts:
+            - name: secrets-tls
+              mountPath: /secrets-tls/
+              readOnly: true
+        {{- end }}
+
+      {{- if .Values.coturnGracefulTermination }}
+      terminationGracePeriodSeconds: {{ .Values.coturnGracePeriodSeconds }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
