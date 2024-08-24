@@ -210,17 +210,17 @@ int main(int argc, char **argv) {
       char err_msg[1025] = "\0";
       size_t err_msg_size = sizeof(err_msg) - 1;
 
-      if (convert_oauth_key_data(&okd_array[0], &okey_array[0], err_msg, err_msg_size) < 0) {
+      if (!convert_oauth_key_data(&okd_array[0], &okey_array[0], err_msg, err_msg_size)) {
         fprintf(stderr, "%s\n", err_msg);
         exit(-1);
       }
 
-      if (convert_oauth_key_data(&okd_array[1], &okey_array[1], err_msg, err_msg_size) < 0) {
+      if (!convert_oauth_key_data(&okd_array[1], &okey_array[1], err_msg, err_msg_size)) {
         fprintf(stderr, "%s\n", err_msg);
         exit(-1);
       }
 
-      if (convert_oauth_key_data(&okd_array[2], &okey_array[2], err_msg, err_msg_size) < 0) {
+      if (!convert_oauth_key_data(&okd_array[2], &okey_array[2], err_msg, err_msg_size)) {
         fprintf(stderr, "%s\n", err_msg);
         exit(-1);
       }
@@ -418,7 +418,7 @@ int main(int argc, char **argv) {
       hmac[0] = 0;
 
       if (stun_calculate_hmac(g_uname, strlen((char *)g_uname), (uint8_t *)g_auth_secret, strlen(g_auth_secret), hmac,
-                              &hmac_len, shatype) >= 0) {
+                              &hmac_len, shatype)) {
         size_t pwd_length = 0;
         char *pwd = base64_encode(hmac, hmac_len, &pwd_length);
 

@@ -449,7 +449,7 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
           oauth_key okey;
           memset(&okey, 0, sizeof(okey));
 
-          if (convert_oauth_key_data(&okd, &okey, err_msg, err_msg_size) < 0) {
+          if (!convert_oauth_key_data(&okd, &okey, err_msg, err_msg_size)) {
             TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s\n", err_msg);
             return -1;
           }
@@ -476,7 +476,7 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
             }
           }
 
-          if (decode_oauth_token((const uint8_t *)server_name, &etoken, &okey, &dot) < 0) {
+          if (!decode_oauth_token((const uint8_t *)server_name, &etoken, &okey, &dot)) {
             TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot decode oauth token\n");
             return -1;
           }
@@ -576,7 +576,7 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
 
         if (secret) {
           if (stun_calculate_hmac(usname, strlen((char *)usname), (const uint8_t *)secret, strlen(secret), hmac,
-                                  &hmac_len, SHATYPE_DEFAULT) >= 0) {
+                                  &hmac_len, SHATYPE_DEFAULT)) {
             size_t pwd_length = 0;
             char *pwd = base64_encode(hmac, hmac_len, &pwd_length);
 
@@ -584,9 +584,7 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
               if (pwd_length < 1) {
                 free(pwd);
               } else {
-                if (stun_produce_integrity_key_str((uint8_t *)usname, realm, (uint8_t *)pwd, key, SHATYPE_DEFAULT) >=
-                    0) {
-
+                if (stun_produce_integrity_key_str((uint8_t *)usname, realm, (uint8_t *)pwd, key, SHATYPE_DEFAULT)) {
                   if (stun_check_message_integrity_by_key_str(TURN_CREDENTIALS_LONG_TERM, ioa_network_buffer_data(nbh),
                                                               ioa_network_buffer_get_size(nbh), key, pwdtmp,
                                                               SHATYPE_DEFAULT) > 0) {
@@ -740,7 +738,7 @@ int add_static_user_account(char *user) {
   strncpy(usname, user, ulen);
   usname[ulen] = 0;
 
-  if (SASLprep((uint8_t *)usname) < 0) {
+  if (!SASLprep((uint8_t *)usname)) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong user name: %s\n", user);
     free(usname);
     return -1;
@@ -965,11 +963,10 @@ int adminuser(uint8_t *user, uint8_t *realm, uint8_t *pwd, uint8_t *secret, uint
 
     {
       stun_produce_integrity_key_str(user, realm, pwd, key, SHATYPE_DEFAULT);
-      size_t i = 0;
       size_t sz = get_hmackey_size(SHATYPE_DEFAULT);
       int maxsz = (int)(sz * 2) + 1;
       char *s = skey;
-      for (i = 0; (i < sz) && (maxsz > 2); i++) {
+      for (size_t i = 0; (i < sz) && (maxsz > 2); i++) {
         snprintf(s, (size_t)(sz * 2), "%02x", (unsigned int)key[i]);
         maxsz -= 2;
         s += 2;
@@ -1078,7 +1075,7 @@ void run_db_test(void) {
     oauth_key oak;
     char err_msg[1025];
     err_msg[0] = 0;
-    if (convert_oauth_key_data(&oakd, &oak, err_msg, sizeof(err_msg) - 1) < 0) {
+    if (!convert_oauth_key_data(&oakd, &oak, err_msg, sizeof(err_msg) - 1)) {
       printf("  ERROR: %s\n", err_msg);
     } else {
       printf("  OK!\n");

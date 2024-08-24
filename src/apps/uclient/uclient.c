@@ -756,7 +756,7 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
       }
 
       return rc;
-    } else if (stun_is_challenge_response_str(elem->in_buffer.buf, (size_t)elem->in_buffer.len, &err_code, err_msg,
+    } else if (stun_is_challenge_response_str(elem->in_buffer.buf, elem->in_buffer.len, &err_code, err_msg,
                                               sizeof(err_msg), clnet_info->realm, clnet_info->nonce,
                                               clnet_info->server_name, &(clnet_info->oauth))) {
       if (is_TCP_relay() && (stun_get_method(&(elem->in_buffer)) == STUN_METHOD_CONNECT)) {
@@ -1639,19 +1639,19 @@ int add_integrity(app_ur_conn_info *clnet_info, stun_buffer *message) {
           otoken.enc_block.key_length = 20;
         }
         RAND_bytes((unsigned char *)(otoken.enc_block.mac_key), otoken.enc_block.key_length);
-        if (encode_oauth_token(clnet_info->server_name, &etoken, &(okey_array[cok]), &otoken, nonce) < 0) {
+        if (!encode_oauth_token(clnet_info->server_name, &etoken, &(okey_array[cok]), &otoken, nonce)) {
           TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, " Cannot encode token\n");
           return -1;
         }
-        stun_attr_add_str(message->buf, (size_t *)&(message->len), STUN_ATTRIBUTE_OAUTH_ACCESS_TOKEN,
+        stun_attr_add_str(message->buf, &(message->len), STUN_ATTRIBUTE_OAUTH_ACCESS_TOKEN,
                           (const uint8_t *)etoken.token, (int)etoken.size);
 
         memcpy(clnet_info->key, otoken.enc_block.mac_key, otoken.enc_block.key_length);
         clnet_info->key_set = true;
       }
 
-      if (stun_attr_add_integrity_by_key_str(message->buf, (size_t *)&(message->len), (uint8_t *)okey_array[cok].kid,
-                                             clnet_info->realm, clnet_info->key, clnet_info->nonce, shatype) < 0) {
+      if (!stun_attr_add_integrity_by_key_str(message->buf, &(message->len), (uint8_t *)okey_array[cok].kid,
+                                              clnet_info->realm, clnet_info->key, clnet_info->nonce, shatype)) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, " Cannot add integrity to the message\n");
         return -1;
       }
@@ -1659,15 +1659,15 @@ int add_integrity(app_ur_conn_info *clnet_info, stun_buffer *message) {
       // self-test:
       {
         password_t pwd;
-        if (stun_check_message_integrity_by_key_str(get_turn_credentials_type(), message->buf, (size_t)(message->len),
+        if (stun_check_message_integrity_by_key_str(get_turn_credentials_type(), message->buf, message->len,
                                                     clnet_info->key, pwd, shatype) < 1) {
           TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, " Self-test of integrity does not comple correctly !\n");
           return -1;
         }
       }
     } else {
-      if (stun_attr_add_integrity_by_user_str(message->buf, (size_t *)&(message->len), g_uname, clnet_info->realm,
-                                              g_upwd, clnet_info->nonce, shatype) < 0) {
+      if (!stun_attr_add_integrity_by_user_str(message->buf, (size_t *)&(message->len), g_uname, clnet_info->realm,
+                                               g_upwd, clnet_info->nonce, shatype)) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, " Cannot add integrity to the message\n");
         return -1;
       }

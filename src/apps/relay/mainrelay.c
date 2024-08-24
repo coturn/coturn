@@ -2693,7 +2693,7 @@ static int adminmain(int argc, char **argv) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong user name structure or symbols, choose another name: %s\n", user);
         exit(-1);
       }
-      if (SASLprep((uint8_t *)user) < 0) {
+      if (!SASLprep((uint8_t *)user)) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong user name: %s\n", user);
         exit(-1);
       }
@@ -2701,14 +2701,14 @@ static int adminmain(int argc, char **argv) {
     case 'r':
       set_default_realm_name(optarg);
       STRCPY(realm, optarg);
-      if (SASLprep((uint8_t *)realm) < 0) {
+      if (!SASLprep((uint8_t *)realm)) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong realm: %s\n", realm);
         exit(-1);
       }
       break;
     case 'p':
       STRCPY(pwd, optarg);
-      if (SASLprep((uint8_t *)pwd) < 0) {
+      if (!SASLprep((uint8_t *)pwd)) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong password: %s\n", pwd);
         exit(-1);
       }
