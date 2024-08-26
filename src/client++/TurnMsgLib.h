@@ -820,7 +820,7 @@ public:
   StunMsgResponse(uint16_t method, int error_code, std::string reason, stun_tid &tid)
       : _method(method), _err(error_code), _reason(reason), _tid(tid) {
 
-      };
+                                                            };
   StunMsgResponse(uint8_t *buffer, size_t total_sz, size_t sz, bool constructed)
       : StunMsg(buffer, total_sz, sz, constructed), _method(0), _err(0), _reason("") {
 
