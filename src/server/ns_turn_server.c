@@ -5017,6 +5017,8 @@ void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, io
 
   server->response_origin_only_with_rfc5780 = response_origin_only_with_rfc5780;
 
+  server->respond_http_unsupported = respond_http_unsupported;
+
   server->is_draining = false;
 }
 
