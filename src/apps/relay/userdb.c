@@ -729,8 +729,8 @@ void release_allocation_quota(uint8_t *user, int oauth, uint8_t *realm) {
   }
 
   int log_level = TURN_LOG_LEVEL_DEBUG;
-  if(turn_params.drain_turn_server) {
-   log_level = TURN_LOG_LEVEL_INFO;
+  if (turn_params.drain_turn_server) {
+    log_level = TURN_LOG_LEVEL_INFO;
   }
 #ifndef _MSC_VER
   global_allocation_count--;
