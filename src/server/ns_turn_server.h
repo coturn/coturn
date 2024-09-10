@@ -210,7 +210,7 @@ const char *get_version(turn_turnserver *server);
 ///////////////////////////////////////////
 
 void init_turn_server(
-    turn_turnserver *server, turnserver_id id, int verbose, ioa_engine_handle e, turn_credential_type ct, int stun_port,
+    turn_turnserver *server, turnserver_id id, int verbose, ioa_engine_handle e, turn_credential_type ct,
     int fingerprint, dont_fragment_option_t dont_fragment, get_user_key_cb userkeycb,
     check_new_allocation_quota_cb chquotacb, release_allocation_quota_cb raqcb, ioa_addr *external_addr,
     vintp check_origin, vintp no_tcp_relay, vintp no_udp_relay, vintp stale_nonce, vintp max_allocate_lifetime,
