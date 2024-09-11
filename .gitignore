@@ -44,8 +44,20 @@ qrc_*.cpp
 Thumbs.db
 *.res
 *.rc
+
+# CMake
 /.qmake.cache
 /.qmake.stash
+/*.cmake
+/src/**/*.cmake
+**/CMakeFiles/**
+/CMakeCache.txt
+
+# Make
+Makefile
+
+# clangd
+/.cache/
 
 # qtcreator generated files
 *.pro.user*
