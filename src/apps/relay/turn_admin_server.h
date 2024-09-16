@@ -46,14 +46,16 @@
 #include "apputils.h"
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 ////////////////////////////////////////////
 
 #define ADMIN_USER_MAX_LENGTH (32)
 
-struct admin_session {
+struct admin_session
+{
   int as_ok;
   char as_login[ADMIN_USER_MAX_LENGTH + 1];
   char as_realm[STUN_MAX_REALM_SIZE + 1];
@@ -61,7 +63,8 @@ struct admin_session {
   size_t number_of_user_sessions;
 };
 
-struct admin_server {
+struct admin_server
+{
   evutil_socket_t listen_fd;
   struct event_base *event_base;
   ioa_engine_handle e;

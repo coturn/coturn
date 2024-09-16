@@ -37,7 +37,8 @@
 #include <stddef.h> // for size_t
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 //////////////// RTCP MAP //////////////////

@@ -35,7 +35,8 @@
 #include "ns_turn_ioaddr.h"
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 ///////////////////////////////////////////

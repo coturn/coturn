@@ -47,7 +47,8 @@
   if (server && eve(server->verbose))                                                                                  \
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s:%d:end\n", __FUNCTION__, __LINE__)
 
-struct tls_listener_relay_server_info {
+struct tls_listener_relay_server_info
+{
   char ifname[1025];
   ioa_addr addr;
   ioa_engine_handle e;
@@ -62,17 +63,20 @@ struct tls_listener_relay_server_info {
 /////////////// io handlers ///////////////////
 
 static void server_input_handler(struct evconnlistener *l, evutil_socket_t fd, struct sockaddr *sa, int socklen,
-                                 void *arg) {
+                                 void *arg)
+{
 
   UNUSED_ARG(l);
 
   tls_listener_relay_server_type *server = (tls_listener_relay_server_type *)arg;
 
-  if (!server) {
+  if (!server)
+  {
     return;
   }
 
-  if (!(server->connect_cb)) {
+  if (!(server->connect_cb))
+  {
     socket_closesocket(fd);
     return;
   }
@@ -85,18 +89,24 @@ static void server_input_handler(struct evconnlistener *l, evutil_socket_t fd, s
 
   SOCKET_TYPE st = TENTATIVE_TCP_SOCKET;
 
-  if (turn_params.tcp_use_proxy) {
+  if (turn_params.tcp_use_proxy)
+  {
     st = TCP_SOCKET_PROXY;
-  } else if (turn_params.no_tls) {
+  }
+  else if (turn_params.no_tls)
+  {
     st = TCP_SOCKET;
-  } else if (turn_params.no_tcp) {
+  }
+  else if (turn_params.no_tcp)
+  {
     st = TLS_SOCKET;
   }
 
   ioa_socket_handle ioas = create_ioa_socket_from_fd(server->e, fd, NULL, st, CLIENT_SOCKET,
                                                      &(server->sm.m.sm.nd.src_addr), &(server->addr));
 
-  if (ioas) {
+  if (ioas)
+  {
 
     server->sm.m.sm.nd.recv_ttl = TTL_IGNORE;
     server->sm.m.sm.nd.recv_tos = TOS_IGNORE;
@@ -107,10 +117,13 @@ static void server_input_handler(struct evconnlistener *l, evutil_socket_t fd, s
 
     int rc = server->connect_cb(server->e, &(server->sm));
 
-    if (rc < 0) {
+    if (rc < 0)
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create tcp or tls session\n");
     }
-  } else {
+  }
+  else
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create ioa_socket from FD\n");
     socket_closesocket(fd);
   }
@@ -121,17 +134,20 @@ static void server_input_handler(struct evconnlistener *l, evutil_socket_t fd, s
 #if !defined(TURN_NO_SCTP)
 
 static void sctp_server_input_handler(struct evconnlistener *l, evutil_socket_t fd, struct sockaddr *sa, int socklen,
-                                      void *arg) {
+                                      void *arg)
+{
 
   UNUSED_ARG(l);
 
   tls_listener_relay_server_type *server = (tls_listener_relay_server_type *)arg;
 
-  if (!server) {
+  if (!server)
+  {
     return;
   }
 
-  if (!(server->connect_cb)) {
+  if (!(server->connect_cb))
+  {
     socket_closesocket(fd);
     return;
   }
@@ -144,16 +160,20 @@ static void sctp_server_input_handler(struct evconnlistener *l, evutil_socket_t 
 
   SOCKET_TYPE st = TENTATIVE_SCTP_SOCKET;
 
-  if (turn_params.no_tls) {
+  if (turn_params.no_tls)
+  {
     st = SCTP_SOCKET;
-  } else if (turn_params.no_tcp) {
+  }
+  else if (turn_params.no_tcp)
+  {
     st = TLS_SCTP_SOCKET;
   }
 
   ioa_socket_handle ioas = create_ioa_socket_from_fd(server->e, fd, NULL, st, CLIENT_SOCKET,
                                                      &(server->sm.m.sm.nd.src_addr), &(server->addr));
 
-  if (ioas) {
+  if (ioas)
+  {
 
     server->sm.m.sm.nd.recv_ttl = TTL_IGNORE;
     server->sm.m.sm.nd.recv_tos = TOS_IGNORE;
@@ -164,10 +184,13 @@ static void sctp_server_input_handler(struct evconnlistener *l, evutil_socket_t 
 
     int rc = server->connect_cb(server->e, &(server->sm));
 
-    if (rc < 0) {
+    if (rc < 0)
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create sctp or tls/sctp session\n");
     }
-  } else {
+  }
+  else
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create ioa_socket from FD\n");
     socket_closesocket(fd);
   }
@@ -179,37 +202,43 @@ static void sctp_server_input_handler(struct evconnlistener *l, evutil_socket_t 
 
 ///////////////////// operations //////////////////////////
 
-static int create_server_listener(tls_listener_relay_server_type *server) {
+static int create_server_listener(tls_listener_relay_server_type *server)
+{
 
   FUNCSTART;
 
-  if (!server) {
+  if (!server)
+  {
     return -1;
   }
 
   evutil_socket_t tls_listen_fd = -1;
 
   tls_listen_fd = socket(server->addr.ss.sa_family, CLIENT_STREAM_SOCKET_TYPE, CLIENT_STREAM_SOCKET_PROTOCOL);
-  if (tls_listen_fd < 0) {
+  if (tls_listen_fd < 0)
+  {
     perror("socket");
     return -1;
   }
 
-  if (sock_bind_to_device(tls_listen_fd, (unsigned char *)server->ifname) < 0) {
+  if (sock_bind_to_device(tls_listen_fd, (unsigned char *)server->ifname) < 0)
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Cannot bind listener socket to device %s\n", server->ifname);
   }
 
   {
     const int max_binding_time = 60;
     int addr_bind_cycle = 0;
-  retry_addr_bind:
+retry_addr_bind:
 
-    if (addr_bind(tls_listen_fd, &server->addr, 1, 1, TCP_SOCKET) < 0) {
+    if (addr_bind(tls_listen_fd, &server->addr, 1, 1, TCP_SOCKET) < 0)
+    {
       perror("Cannot bind local socket to addr");
       char saddr[129];
       addr_to_string(&server->addr, (uint8_t *)saddr);
       TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Cannot bind TLS/TCP listener socket to addr %s\n", saddr);
-      if (addr_bind_cycle++ < max_binding_time) {
+      if (addr_bind_cycle++ < max_binding_time)
+      {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Trying to bind TLS/TCP listener socket to addr %s, again...\n", saddr);
         sleep(1);
         goto retry_addr_bind;
@@ -227,17 +256,23 @@ static int create_server_listener(tls_listener_relay_server_type *server) {
   server->l = evconnlistener_new(server->e->event_base, server_input_handler, server,
                                  LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE, 1024, tls_listen_fd);
 
-  if (!(server->l)) {
+  if (!(server->l))
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Cannot create TLS listener\n");
     socket_closesocket(tls_listen_fd);
     return -1;
   }
 
-  if (!turn_params.no_tcp && !turn_params.no_tls) {
+  if (!turn_params.no_tcp && !turn_params.no_tls)
+  {
     addr_debug_print(server->verbose, &server->addr, "TLS/TCP listener opened on ");
-  } else if (!turn_params.no_tls) {
+  }
+  else if (!turn_params.no_tls)
+  {
     addr_debug_print(server->verbose, &server->addr, "TLS listener opened on ");
-  } else if (!turn_params.no_tcp) {
+  }
+  else if (!turn_params.no_tcp)
+  {
     addr_debug_print(server->verbose, &server->addr, "TCP listener opened on ");
   }
 
@@ -248,27 +283,32 @@ static int create_server_listener(tls_listener_relay_server_type *server) {
 
 #if !defined(TURN_NO_SCTP)
 
-static int sctp_create_server_listener(tls_listener_relay_server_type *server) {
+static int sctp_create_server_listener(tls_listener_relay_server_type *server)
+{
 
   FUNCSTART;
 
-  if (!server) {
+  if (!server)
+  {
     return -1;
   }
 
   evutil_socket_t tls_listen_fd = -1;
 
   tls_listen_fd = socket(server->addr.ss.sa_family, SCTP_CLIENT_STREAM_SOCKET_TYPE, SCTP_CLIENT_STREAM_SOCKET_PROTOCOL);
-  if (tls_listen_fd < 0) {
+  if (tls_listen_fd < 0)
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create SCTP socket listener\n");
     return -1;
   }
 
-  if (sock_bind_to_device(tls_listen_fd, (unsigned char *)server->ifname) < 0) {
+  if (sock_bind_to_device(tls_listen_fd, (unsigned char *)server->ifname) < 0)
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Cannot bind listener socket to device %s\n", server->ifname);
   }
 
-  if (addr_bind(tls_listen_fd, &server->addr, 1, 0, SCTP_SOCKET) < 0) {
+  if (addr_bind(tls_listen_fd, &server->addr, 1, 0, SCTP_SOCKET) < 0)
+  {
     socket_closesocket(tls_listen_fd);
     return -1;
   }
@@ -280,14 +320,18 @@ static int sctp_create_server_listener(tls_listener_relay_server_type *server) {
   server->sctp_l = evconnlistener_new(server->e->event_base, sctp_server_input_handler, server,
                                       LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE, 1024, tls_listen_fd);
 
-  if (!(server->sctp_l)) {
+  if (!(server->sctp_l))
+  {
     socket_closesocket(tls_listen_fd);
     return -1;
   }
 
-  if (!turn_params.no_tls) {
+  if (!turn_params.no_tls)
+  {
     addr_debug_print(server->verbose, &server->addr, "TLS/SCTP listener opened on ");
-  } else {
+  }
+  else
+  {
     addr_debug_print(server->verbose, &server->addr, "SCTP listener opened on ");
   }
 
@@ -300,20 +344,24 @@ static int sctp_create_server_listener(tls_listener_relay_server_type *server) {
 
 static int init_server(tls_listener_relay_server_type *server, const char *ifname, const char *local_address, int port,
                        int verbose, ioa_engine_handle e, ioa_engine_new_connection_event_handler send_socket,
-                       struct relay_server *relay_server) {
+                       struct relay_server *relay_server)
+{
 
-  if (!server) {
+  if (!server)
+  {
     return -1;
   }
 
   server->connect_cb = send_socket;
   server->relay_server = relay_server;
 
-  if (ifname) {
+  if (ifname)
+  {
     STRCPY(server->ifname, ifname);
   }
 
-  if (make_ioa_addr((const uint8_t *)local_address, port, &server->addr) < 0) {
+  if (make_ioa_addr((const uint8_t *)local_address, port, &server->addr) < 0)
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create a TCP/TLS listener for address: %s\n", local_address);
     return -1;
   }
@@ -334,14 +382,18 @@ static int init_server(tls_listener_relay_server_type *server, const char *ifnam
 tls_listener_relay_server_type *create_tls_listener_server(const char *ifname, const char *local_address, int port,
                                                            int verbose, ioa_engine_handle e,
                                                            ioa_engine_new_connection_event_handler send_socket,
-                                                           struct relay_server *relay_server) {
+                                                           struct relay_server *relay_server)
+{
 
   tls_listener_relay_server_type *server =
       (tls_listener_relay_server_type *)allocate_super_memory_engine(e, sizeof(tls_listener_relay_server_type));
 
-  if (init_server(server, ifname, local_address, port, verbose, e, send_socket, relay_server) < 0) {
+  if (init_server(server, ifname, local_address, port, verbose, e, send_socket, relay_server) < 0)
+  {
     return NULL;
-  } else {
+  }
+  else
+  {
     return server;
   }
 }

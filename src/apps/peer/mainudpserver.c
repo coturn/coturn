@@ -53,7 +53,8 @@ static char Usage[] = "Usage: server [options]\n"
 
 //////////////////////////////////////////////////
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv)
+{
   int port = PEER_DEFAULT_PORT;
   char **local_addr_list = NULL;
   size_t las = 0;
@@ -61,7 +62,8 @@ int main(int argc, char **argv) {
   int c;
   char ifname[1025] = "\0";
 
-  if (socket_init()) {
+  if (socket_init())
+  {
     return -1;
   }
 
@@ -71,8 +73,10 @@ int main(int argc, char **argv) {
   set_no_stdout_log(1);
   set_system_parameters(0);
 
-  while ((c = getopt(argc, argv, "d:p:L:v")) != -1) {
-    switch (c) {
+  while ((c = getopt(argc, argv, "d:p:L:v")) != -1)
+  {
+    switch (c)
+    {
     case 'd':
       STRCPY(ifname, optarg);
       break;
@@ -92,7 +96,8 @@ int main(int argc, char **argv) {
     }
   }
 
-  if (las < 1) {
+  if (las < 1)
+  {
     local_addr_list = (char **)realloc(local_addr_list, ++las * sizeof(char *));
     local_addr_list[las - 1] = strdup("0.0.0.0");
     local_addr_list = (char **)realloc(local_addr_list, ++las * sizeof(char *));

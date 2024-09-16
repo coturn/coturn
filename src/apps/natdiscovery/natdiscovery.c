@@ -57,20 +57,25 @@ static int counter = 0;
 
 #ifdef __cplusplus
 
-static int init_socket(int *socketfd, ioa_addr *local_addr, int local_port, ioa_addr *remote_addr) {
+static int init_socket(int *socketfd, ioa_addr *local_addr, int local_port, ioa_addr *remote_addr)
+{
   int ret = 0;
 
-  if (local_port >= 0) {
+  if (local_port >= 0)
+  {
     addr_set_port(local_addr, local_port);
   }
 
   *socketfd = socket(remote_addr->ss.sa_family, SOCK_DGRAM, 0);
-  if (udp_fd < 0) {
+  if (udp_fd < 0)
+  {
     err(-1, NULL);
   }
 
-  if (!addr_any(local_addr)) {
-    if (addr_bind(*socketfd, local_addr, 0, 1, UDP_SOCKET) < 0) {
+  if (!addr_any(local_addr))
+  {
+    if (addr_bind(*socketfd, local_addr, 0, 1, UDP_SOCKET) < 0)
+    {
       err(-1, NULL);
     }
   }
@@ -79,58 +84,83 @@ static int init_socket(int *socketfd, ioa_addr *local_addr, int local_port, ioa_
 }
 
 static int stunclient_send(int sockfd, ioa_addr *local_addr, int *local_port, ioa_addr *remote_addr, bool change_ip,
-                           bool change_port, int padding, int response_port) {
+                           bool change_port, int padding, int response_port)
+{
   int ret = 0;
 
   turn::StunMsgRequest req(STUN_METHOD_BINDING);
 
   req.constructBindingRequest();
 
-  if (response_port >= 0) {
+  if (response_port >= 0)
+  {
     turn::StunAttrResponsePort rpa;
     rpa.setResponsePort((uint16_t)response_port);
-    try {
+    try
+    {
       req.addAttr(rpa);
-    } catch (turn::WrongStunAttrFormatException &ex1) {
+    }
+    catch (turn::WrongStunAttrFormatException &ex1)
+    {
       printf("Wrong rp attr format\n");
       exit(-1);
-    } catch (turn::WrongStunBufferFormatException &ex2) {
+    }
+    catch (turn::WrongStunBufferFormatException &ex2)
+    {
       printf("Wrong stun buffer format (1)\n");
       exit(-1);
-    } catch (...) {
+    }
+    catch (...)
+    {
       printf("Wrong something (1)\n");
       exit(-1);
     }
   }
-  if (change_ip || change_port) {
+  if (change_ip || change_port)
+  {
     turn::StunAttrChangeRequest cra;
     cra.setChangeIp(change_ip);
     cra.setChangePort(change_port);
-    try {
+    try
+    {
       req.addAttr(cra);
-    } catch (turn::WrongStunAttrFormatException &ex1) {
+    }
+    catch (turn::WrongStunAttrFormatException &ex1)
+    {
       printf("Wrong cr attr format\n");
       exit(-1);
-    } catch (turn::WrongStunBufferFormatException &ex2) {
+    }
+    catch (turn::WrongStunBufferFormatException &ex2)
+    {
       printf("Wrong stun buffer format (2)\n");
       exit(-1);
-    } catch (...) {
+    }
+    catch (...)
+    {
       printf("Wrong something (2)\n");
       exit(-1);
     }
   }
-  if (padding) {
+  if (padding)
+  {
     turn::StunAttrPadding pa;
     pa.setPadding(1500);
-    try {
+    try
+    {
       req.addAttr(pa);
-    } catch (turn::WrongStunAttrFormatException &ex1) {
+    }
+    catch (turn::WrongStunAttrFormatException &ex1)
+    {
       printf("Wrong p attr format\n");
       exit(-1);
-    } catch (turn::WrongStunBufferFormatException &ex2) {
+    }
+    catch (turn::WrongStunBufferFormatException &ex2)
+    {
       printf("Wrong stun buffer format (3)\n");
       exit(-1);
-    } catch (...) {
+    }
+    catch (...)
+    {
       printf("Wrong something (3)\n");
       exit(-1);
     }
@@ -140,18 +170,23 @@ static int stunclient_send(int sockfd, ioa_addr *local_addr, int *local_port, io
     int len = 0;
     int slen = get_ioa_addr_len(remote_addr);
 
-    do {
+    do
+    {
       len = sendto(sockfd, req.getRawBuffer(), req.getSize(), 0, (struct sockaddr *)remote_addr, (socklen_t)slen);
     } while (len < 0 && (socket_eintr() || socket_enobufs() || socket_eagain()));
 
-    if (len < 0) {
+    if (len < 0)
+    {
       err(-1, NULL);
     }
   }
 
-  if (addr_get_from_sock(sockfd, local_addr) < 0) {
+  if (addr_get_from_sock(sockfd, local_addr) < 0)
+  {
     printf("%s: Cannot get address from local socket\n", __FUNCTION__);
-  } else {
+  }
+  else
+  {
     *local_port = addr_get_port(local_addr);
   }
 
@@ -159,7 +194,8 @@ static int stunclient_send(int sockfd, ioa_addr *local_addr, int *local_port, io
 }
 
 static int stunclient_receive(int sockfd, ioa_addr *local_addr, ioa_addr *reflexive_addr, ioa_addr *other_addr,
-                              bool *rfc5780) {
+                              bool *rfc5780)
+{
   int ret = 0;
 
   {
@@ -175,63 +211,80 @@ static int stunclient_receive(int sockfd, ioa_addr *local_addr, ioa_addr *reflex
 
     setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv, sizeof(struct timeval));
 
-    do {
+    do
+    {
       len = recv(sockfd, ptr, to_recv - recvd, 0);
-      if (len > 0) {
+      if (len > 0)
+      {
         recvd += len;
         ptr += len;
         break;
       }
     } while (len < 0 && socket_eintr());
 
-    if (socket_eagain() || socket_ewouldblock()) {
+    if (socket_eagain() || socket_ewouldblock())
+    {
       printf("STUN receive timeout..\n");
       ret = 1;
       return ret;
     }
-    if (recvd > 0) {
+    if (recvd > 0)
+    {
       len = recvd;
     }
     buf.len = len;
 
-    try {
+    try
+    {
       turn::StunMsgResponse res(buf.buf, sizeof(buf.buf), (size_t)buf.len, true);
 
-      if (res.isCommand()) {
-        if (res.isSuccess()) {
+      if (res.isCommand())
+      {
+        if (res.isSuccess())
+        {
 
-          if (res.isBindingResponse()) {
+          if (res.isBindingResponse())
+          {
 
             turn::StunAttrIterator iter(res, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS);
-            if (!iter.eof()) {
+            if (!iter.eof())
+            {
 
               turn::StunAttrAddr addr(iter);
               addr.getAddr(*reflexive_addr);
 
               turn::StunAttrIterator iter1(res, STUN_ATTRIBUTE_OTHER_ADDRESS);
-              if (!iter1.eof()) {
+              if (!iter1.eof())
+              {
                 *rfc5780 = true;
                 printf("\n========================================\n");
                 printf("RFC 5780 response %d\n", ++counter);
                 turn::StunAttrIterator iter2(res, STUN_ATTRIBUTE_MAPPED_ADDRESS);
-                if (!iter2.eof()) {
+                if (!iter2.eof())
+                {
                   ioa_addr mapped_addr;
                   addr_set_any(&mapped_addr);
                   turn::StunAttrAddr addr2(iter2);
                   addr2.getAddr(mapped_addr);
-                  if (!addr_eq(&mapped_addr, reflexive_addr)) {
+                  if (!addr_eq(&mapped_addr, reflexive_addr))
+                  {
                     printf("-= ALG detected! Mapped and XOR-Mapped differ! =-\n");
                     addr_debug_print(1, &mapped_addr, "Mapped Address: ");
-                  } else {
+                  }
+                  else
+                  {
                     printf("No ALG: Mapped == XOR-Mapped\n");
                   }
-                } else {
+                }
+                else
+                {
                   printf("Not received mapped address attribute!\n");
                 }
                 turn::StunAttrAddr addr1(iter1);
                 addr1.getAddr(*other_addr);
                 turn::StunAttrIterator iter3(res, STUN_ATTRIBUTE_RESPONSE_ORIGIN);
-                if (!iter3.eof()) {
+                if (!iter3.eof())
+                {
                   ioa_addr response_origin;
                   turn::StunAttrAddr addr3(iter3);
                   addr3.getAddr(response_origin);
@@ -241,27 +294,40 @@ static int stunclient_receive(int sockfd, ioa_addr *local_addr, ioa_addr *reflex
               }
               addr_debug_print(1, reflexive_addr, "UDP reflexive addr");
               addr_debug_print(1, local_addr, "Local addr: ");
-            } else {
+            }
+            else
+            {
               printf("Cannot read the response\n");
             }
-          } else {
+          }
+          else
+          {
             printf("Wrong type of response\n");
           }
-        } else {
+        }
+        else
+        {
           int err_code = res.getError();
           std::string reason = res.getReason();
 
           printf("The response is an error %d (%s)\n", err_code, reason.c_str());
         }
-      } else {
+      }
+      else
+      {
         printf("The response is not a response message\n");
       }
-    } catch (...) {
+    }
+    catch (...)
+    {
       turn::StunMsgRequest msg(buf.buf, sizeof(buf.buf), (size_t)buf.len, true);
-      if (msg.isRequest(buf.buf, (size_t)buf.len)) {
+      if (msg.isRequest(buf.buf, (size_t)buf.len))
+      {
         printf("Received a request (maybe a successful hairpinning)\n");
         return ret;
-      } else {
+      }
+      else
+      {
         printf("The response is not a well formed STUN message\n");
       }
       ret = 1;
@@ -272,7 +338,8 @@ static int stunclient_receive(int sockfd, ioa_addr *local_addr, ioa_addr *reflex
 }
 
 static int run_stunclient(ioa_addr *local_addr, ioa_addr *remote_addr, ioa_addr *reflexive_addr, ioa_addr *other_addr,
-                          int *local_port, bool *rfc5780, bool change_ip, bool change_port, int padding) {
+                          int *local_port, bool *rfc5780, bool change_ip, bool change_port, int padding)
+{
   int ret = 0;
 
   ret = init_socket(&udp_fd, local_addr, *local_port, remote_addr);
@@ -285,7 +352,8 @@ static int run_stunclient(ioa_addr *local_addr, ioa_addr *remote_addr, ioa_addr 
 
 static int run_stunclient_hairpinning(ioa_addr *local_addr, ioa_addr *remote_addr, ioa_addr *reflexive_addr,
                                       ioa_addr *other_addr, int *local_port, bool *rfc5780, bool change_ip,
-                                      bool change_port, int padding) {
+                                      bool change_port, int padding)
+{
   int ret = 0;
 
   init_socket(&udp_fd, local_addr, *local_port, remote_addr);
@@ -301,7 +369,8 @@ static int run_stunclient_hairpinning(ioa_addr *local_addr, ioa_addr *remote_add
   ret = stunclient_send(udp_fd2, local_addr, local_port, remote_addr, change_ip, change_port, padding, -1);
   ret = stunclient_receive(udp_fd, local_addr, reflexive_addr, other_addr, rfc5780);
 
-  if (ret) {
+  if (ret)
+  {
     ret = stunclient_receive(udp_fd2, local_addr, reflexive_addr, other_addr, rfc5780);
   }
   socket_closesocket(udp_fd);
@@ -312,7 +381,8 @@ static int run_stunclient_hairpinning(ioa_addr *local_addr, ioa_addr *remote_add
 
 static int run_stunclient_lifetime(int timer, ioa_addr *local_addr, ioa_addr *remote_addr, ioa_addr *reflexive_addr,
                                    ioa_addr *other_addr, int *local_port, bool *rfc5780, bool change_ip,
-                                   bool change_port, int padding) {
+                                   bool change_port, int padding)
+{
   int ret = 0;
   int response_port;
 
@@ -338,19 +408,24 @@ static int run_stunclient_lifetime(int timer, ioa_addr *local_addr, ioa_addr *re
 
 #else
 
-static int init_socket(int *socketfd, ioa_addr *local_addr, int local_port, ioa_addr *remote_addr) {
+static int init_socket(int *socketfd, ioa_addr *local_addr, int local_port, ioa_addr *remote_addr)
+{
   int ret = 0;
 
   *socketfd = socket(remote_addr->ss.sa_family, CLIENT_DGRAM_SOCKET_TYPE, CLIENT_DGRAM_SOCKET_PROTOCOL);
-  if (udp_fd < 0) {
+  if (udp_fd < 0)
+  {
     err(-1, NULL);
   }
 
-  if (local_port >= 0) {
+  if (local_port >= 0)
+  {
     addr_set_port(local_addr, local_port);
   }
-  if (!addr_any(local_addr)) {
-    if (addr_bind(*socketfd, local_addr, 0, 1, UDP_SOCKET) < 0) {
+  if (!addr_any(local_addr))
+  {
+    if (addr_bind(*socketfd, local_addr, 0, 1, UDP_SOCKET) < 0)
+    {
       err(-1, NULL);
     }
   }
@@ -359,19 +434,24 @@ static int init_socket(int *socketfd, ioa_addr *local_addr, int local_port, ioa_
 }
 
 static int stunclient_send(stun_buffer *buf, int sockfd, ioa_addr *local_addr, int *local_port, ioa_addr *remote_addr,
-                           bool change_ip, bool change_port, int padding, int response_port) {
+                           bool change_ip, bool change_port, int padding, int response_port)
+{
   int ret = 0;
 
   stun_prepare_binding_request(buf);
 
-  if (response_port >= 0) {
+  if (response_port >= 0)
+  {
     stun_attr_add_response_port_str((uint8_t *)(buf->buf), (size_t *)&(buf->len), (uint16_t)response_port);
   }
-  if (change_ip || change_port) {
+  if (change_ip || change_port)
+  {
     stun_attr_add_change_request_str((uint8_t *)buf->buf, (size_t *)&(buf->len), change_ip, change_port);
   }
-  if (padding) {
-    if (!stun_attr_add_padding_str((uint8_t *)buf->buf, (size_t *)&(buf->len), 1500)) {
+  if (padding)
+  {
+    if (!stun_attr_add_padding_str((uint8_t *)buf->buf, (size_t *)&(buf->len), 1500))
+    {
       printf("%s: ERROR: Cannot add padding\n", __FUNCTION__);
     }
   }
@@ -380,18 +460,23 @@ static int stunclient_send(stun_buffer *buf, int sockfd, ioa_addr *local_addr, i
     int len = 0;
     int slen = get_ioa_addr_len(remote_addr);
 
-    do {
+    do
+    {
       len = sendto(sockfd, buf->buf, buf->len, 0, (struct sockaddr *)remote_addr, (socklen_t)slen);
     } while (len < 0 && (socket_eintr() || socket_enobufs() || socket_eagain()));
 
-    if (len < 0) {
+    if (len < 0)
+    {
       err(-1, NULL);
     }
   }
 
-  if (addr_get_from_sock(sockfd, local_addr) < 0) {
+  if (addr_get_from_sock(sockfd, local_addr) < 0)
+  {
     printf("%s: Cannot get address from local socket\n", __FUNCTION__);
-  } else {
+  }
+  else
+  {
     *local_port = addr_get_port(local_addr);
   }
 
@@ -399,7 +484,8 @@ static int stunclient_send(stun_buffer *buf, int sockfd, ioa_addr *local_addr, i
 }
 
 static int stunclient_receive(stun_buffer *buf, int sockfd, ioa_addr *local_addr, ioa_addr *reflexive_addr,
-                              ioa_addr *other_addr, bool *rfc5780) {
+                              ioa_addr *other_addr, bool *rfc5780)
+{
   int ret = 0;
 
   {
@@ -414,50 +500,66 @@ static int stunclient_receive(stun_buffer *buf, int sockfd, ioa_addr *local_addr
 
     setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv, sizeof(struct timeval));
 
-    do {
+    do
+    {
       len = recv(sockfd, ptr, to_recv - recvd, 0);
-      if (len > 0) {
+      if (len > 0)
+      {
         recvd += len;
         ptr += len;
         break;
       }
     } while (len < 0 && socket_eintr());
 
-    if (recvd > 0) {
+    if (recvd > 0)
+    {
       len = recvd;
     }
     buf->len = len;
 
-    if (stun_is_command_message(buf)) {
+    if (stun_is_command_message(buf))
+    {
 
-      if (stun_is_response(buf)) {
+      if (stun_is_response(buf))
+      {
 
-        if (stun_is_success_response(buf)) {
+        if (stun_is_success_response(buf))
+        {
 
-          if (stun_is_binding_response(buf)) {
+          if (stun_is_binding_response(buf))
+          {
 
             addr_set_any(reflexive_addr);
-            if (stun_attr_get_first_addr(buf, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS, reflexive_addr, NULL)) {
+            if (stun_attr_get_first_addr(buf, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS, reflexive_addr, NULL))
+            {
               stun_attr_ref sar = stun_attr_get_first_by_type_str(buf->buf, buf->len, STUN_ATTRIBUTE_OTHER_ADDRESS);
-              if (sar) {
+              if (sar)
+              {
                 *rfc5780 = true;
                 printf("\n========================================\n");
                 printf("RFC 5780 response %d\n", ++counter);
                 ioa_addr mapped_addr;
                 addr_set_any(&mapped_addr);
-                if (stun_attr_get_first_addr(buf, STUN_ATTRIBUTE_MAPPED_ADDRESS, &mapped_addr, NULL)) {
-                  if (!addr_eq(&mapped_addr, reflexive_addr)) {
+                if (stun_attr_get_first_addr(buf, STUN_ATTRIBUTE_MAPPED_ADDRESS, &mapped_addr, NULL))
+                {
+                  if (!addr_eq(&mapped_addr, reflexive_addr))
+                  {
                     printf("-= ALG detected! Mapped and XOR-Mapped differ! =-\n");
                     addr_debug_print(1, &mapped_addr, "Mapped Address: ");
-                  } else {
+                  }
+                  else
+                  {
                     printf("No ALG: Mapped == XOR-Mapped\n");
                   }
-                } else {
+                }
+                else
+                {
                   printf("Not received mapped address attribute.\n");
                 }
                 stun_attr_get_addr_str((uint8_t *)buf->buf, (size_t)buf->len, sar, other_addr, NULL);
                 sar = stun_attr_get_first_by_type_str(buf->buf, buf->len, STUN_ATTRIBUTE_RESPONSE_ORIGIN);
-                if (sar) {
+                if (sar)
+                {
                   ioa_addr response_origin;
                   stun_attr_get_addr_str((uint8_t *)buf->buf, (size_t)buf->len, sar, &response_origin, NULL);
                   addr_debug_print(1, &response_origin, "Response origin: ");
@@ -466,32 +568,50 @@ static int stunclient_receive(stun_buffer *buf, int sockfd, ioa_addr *local_addr
               }
               addr_debug_print(1, reflexive_addr, "UDP reflexive addr");
               addr_debug_print(1, local_addr, "Local addr: ");
-            } else {
+            }
+            else
+            {
               printf("Cannot read the response\n");
             }
-          } else {
+          }
+          else
+          {
             printf("Wrong type of response\n");
           }
-        } else {
+        }
+        else
+        {
           int err_code = 0;
           uint8_t err_msg[1025] = "\0";
           size_t err_msg_size = sizeof(err_msg);
-          if (stun_is_error_response(buf, &err_code, err_msg, err_msg_size)) {
+          if (stun_is_error_response(buf, &err_code, err_msg, err_msg_size))
+          {
             printf("The response is an error %d (%s)\n", err_code, (char *)err_msg);
-          } else {
+          }
+          else
+          {
             printf("The response is an unrecognized error\n");
           }
         }
-      } else if (stun_is_request(buf)) {
+      }
+      else if (stun_is_request(buf))
+      {
         printf("Received a request (maybe a successful hairpinning)\n");
-      } else {
+      }
+      else
+      {
         printf("The response is not a response message\n");
         ret = 1;
       }
-    } else {
-      if (socket_eagain() || socket_ewouldblock()) {
+    }
+    else
+    {
+      if (socket_eagain() || socket_ewouldblock())
+      {
         printf("STUN receive timeout..\n");
-      } else {
+      }
+      else
+      {
         printf("The response is not a STUN message\n");
       }
       ret = 1;
@@ -502,7 +622,8 @@ static int stunclient_receive(stun_buffer *buf, int sockfd, ioa_addr *local_addr
 }
 
 static int run_stunclient(ioa_addr *local_addr, ioa_addr *remote_addr, ioa_addr *reflexive_addr, ioa_addr *other_addr,
-                          int *local_port, bool *rfc5780, bool change_ip, bool change_port, int padding) {
+                          int *local_port, bool *rfc5780, bool change_ip, bool change_port, int padding)
+{
   int ret = 0;
   stun_buffer buf;
 
@@ -518,7 +639,8 @@ static int run_stunclient(ioa_addr *local_addr, ioa_addr *remote_addr, ioa_addr 
 
 static int run_stunclient_hairpinning(ioa_addr *local_addr, ioa_addr *remote_addr, ioa_addr *reflexive_addr,
                                       ioa_addr *other_addr, int *local_port, bool *rfc5780, bool change_ip,
-                                      bool change_port, int padding) {
+                                      bool change_port, int padding)
+{
   int ret = 0;
   stun_buffer buf;
   stun_buffer buf2;
@@ -536,7 +658,8 @@ static int run_stunclient_hairpinning(ioa_addr *local_addr, ioa_addr *remote_add
   ret = stunclient_send(&buf2, udp_fd2, local_addr, local_port, remote_addr, change_ip, change_port, padding, -1);
   ret = stunclient_receive(&buf, udp_fd, local_addr, reflexive_addr, other_addr, rfc5780);
 
-  if (ret) {
+  if (ret)
+  {
     ret = stunclient_receive(&buf2, udp_fd2, local_addr, reflexive_addr, other_addr, rfc5780);
   }
 
@@ -548,7 +671,8 @@ static int run_stunclient_hairpinning(ioa_addr *local_addr, ioa_addr *remote_add
 
 static int run_stunclient_lifetime(int timer, ioa_addr *local_addr, ioa_addr *remote_addr, ioa_addr *reflexive_addr,
                                    ioa_addr *other_addr, int *local_port, bool *rfc5780, bool change_ip,
-                                   bool change_port, int padding) {
+                                   bool change_port, int padding)
+{
   int ret = 0;
   stun_buffer buf;
   stun_buffer buf2;
@@ -601,31 +725,38 @@ static char Usage[] = "Usage: natdiscovery [options] address\n"
 //////////////////////////////////////////////////
 
 static void init(int first, ioa_addr *local_addr, ioa_addr *remote_addr, int *local_port, int port, bool *rfc5780,
-                 char *local_addr_string, char *remote_param) {
+                 char *local_addr_string, char *remote_param)
+{
   addr_set_any(local_addr);
 
-  if (local_addr_string[0]) {
-    if (make_ioa_addr((const uint8_t *)local_addr_string, 0, local_addr) < 0) {
+  if (local_addr_string[0])
+  {
+    if (make_ioa_addr((const uint8_t *)local_addr_string, 0, local_addr) < 0)
+    {
       err(-1, NULL);
     }
   }
-  if (!first) {
+  if (!first)
+  {
     *local_port = -1;
   }
   *rfc5780 = false;
 
-  if (make_ioa_addr((const uint8_t *)remote_param, port, remote_addr) < 0) {
+  if (make_ioa_addr((const uint8_t *)remote_param, port, remote_addr) < 0)
+  {
     err(-1, NULL);
   }
 }
 
-static void discoveryresult(const char *decision) {
+static void discoveryresult(const char *decision)
+{
   printf("\n========================================\n");
   printf("%s", decision);
   printf("\n========================================\n");
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv)
+{
   int remote_port = DEFAULT_STUN_PORT;
   char local_addr_string[256] = {0};
   char local2_addr_string[256] = {0};
@@ -642,7 +773,8 @@ int main(int argc, char **argv) {
   int first = 1;
   ioa_addr other_addr, reflexive_addr, tmp_addr, remote_addr, local_addr, local2_addr;
 
-  if (socket_init()) {
+  if (socket_init())
+  {
     return -1;
   }
 
@@ -655,8 +787,10 @@ int main(int argc, char **argv) {
   addr_set_any(&reflexive_addr);
   addr_set_any(&tmp_addr);
 
-  while ((c = getopt(argc, argv, "mftcPHp:L:l:A:T:")) != -1) {
-    switch (c) {
+  while ((c = getopt(argc, argv, "mftcPHp:L:l:A:T:")) != -1)
+  {
+    switch (c)
+    {
     case 'm':
       mapping = 1;
       break;
@@ -696,30 +830,35 @@ int main(int argc, char **argv) {
     }
   }
 
-  if (optind >= argc) {
+  if (optind >= argc)
+  {
     fprintf(stderr, "%s\n", Usage);
     exit(-1);
   }
 
-  if (collision && !strcmp(local2_addr_string, "\0")) {
+  if (collision && !strcmp(local2_addr_string, "\0"))
+  {
     fprintf(stderr, "Use \"-A\" to add an Alternative local IP address.\n");
     fprintf(stderr, "It is mandatory with \"-c\" collision behavior detection..\n");
     exit(-1);
   }
 
-  if (lifetime && timer == -1) {
+  if (lifetime && timer == -1)
+  {
     fprintf(stderr, "Use \"-T\" to add a timer value (in sec).\n");
     fprintf(stderr, "It is mandatory with \"-b\" mapping lifetime behavior detection..\n");
     exit(-1);
   }
 
-  if (local_port >= 0 && !strcmp(local_addr_string, "\0")) {
+  if (local_port >= 0 && !strcmp(local_addr_string, "\0"))
+  {
     fprintf(stderr, "To use local port please specify local address \"-L\"!\n");
     fprintf(stderr, "We need to know the address familly to set the port.\n");
     exit(-1);
   }
 
-  if (lifetime) {
+  if (lifetime)
+  {
     printf("\n-= Mapping Lifetime Behavior Discovery =-\n");
     init(first, &local_addr, &remote_addr, &local_port, remote_port, &rfc5780, local_addr_string, argv[optind]);
     first = 0;
@@ -727,7 +866,8 @@ int main(int argc, char **argv) {
                             padding);
   }
 
-  if (hairpinning) {
+  if (hairpinning)
+  {
     printf("\n-= Hairpinning Behavior Discovery =-\n");
     init(first, &local_addr, &remote_addr, &local_port, remote_port, &rfc5780, local_addr_string, argv[optind]);
     first = 0;
@@ -735,17 +875,21 @@ int main(int argc, char **argv) {
                                padding);
   }
 
-  if (mapping) {
+  if (mapping)
+  {
     printf("\n-= Mapping Behavior Discovery =-\n");
     init(first, &local_addr, &remote_addr, &local_port, remote_port, &rfc5780, local_addr_string, argv[optind]);
     first = 0;
 
     run_stunclient(&local_addr, &remote_addr, &reflexive_addr, &other_addr, &local_port, &rfc5780, 0, 0, padding);
-    if (addr_eq(&local_addr, &reflexive_addr)) {
+    if (addr_eq(&local_addr, &reflexive_addr))
+    {
       discoveryresult("No NAT! (Endpoint Independent Mapping)");
     }
-    if (rfc5780) {
-      if (!addr_any(&other_addr)) {
+    if (rfc5780)
+    {
+      if (!addr_any(&other_addr))
+      {
         addr_cpy(&tmp_addr, &reflexive_addr);
 
         addr_cpy(&remote_addr, &other_addr);
@@ -753,15 +897,21 @@ int main(int argc, char **argv) {
 
         run_stunclient(&local_addr, &remote_addr, &reflexive_addr, &other_addr, &local_port, &rfc5780, 0, 0, padding);
 
-        if (addr_eq(&tmp_addr, &reflexive_addr)) {
+        if (addr_eq(&tmp_addr, &reflexive_addr))
+        {
           discoveryresult("NAT with Endpoint Independent Mapping!");
-        } else {
+        }
+        else
+        {
           addr_cpy(&tmp_addr, &reflexive_addr);
           addr_cpy(&remote_addr, &other_addr);
           run_stunclient(&local_addr, &remote_addr, &reflexive_addr, &other_addr, &local_port, &rfc5780, 0, 0, padding);
-          if (addr_eq(&tmp_addr, &reflexive_addr)) {
+          if (addr_eq(&tmp_addr, &reflexive_addr))
+          {
             discoveryresult("NAT with Address Dependent Mapping!");
-          } else {
+          }
+          else
+          {
             discoveryresult("NAT with Address and Port Dependent Mapping!");
           }
         }
@@ -769,29 +919,39 @@ int main(int argc, char **argv) {
     }
   }
 
-  if (filtering) {
+  if (filtering)
+  {
     printf("\n-= Filtering Behavior Discovery =-\n");
     init(first, &local_addr, &remote_addr, &local_port, remote_port, &rfc5780, local_addr_string, argv[optind]);
     first = 0;
 
     run_stunclient(&local_addr, &remote_addr, &reflexive_addr, &other_addr, &local_port, &rfc5780, 0, 0, padding);
-    if (addr_eq(&local_addr, &reflexive_addr)) {
+    if (addr_eq(&local_addr, &reflexive_addr))
+    {
       discoveryresult("No NAT! (Endpoint Independent Mapping)");
     }
-    if (rfc5780) {
-      if (!addr_any(&other_addr)) {
+    if (rfc5780)
+    {
+      if (!addr_any(&other_addr))
+      {
         int res = 0;
         res = run_stunclient(&local_addr, &remote_addr, &reflexive_addr, &other_addr, &local_port, &rfc5780, 1, 1,
                              padding);
-        if (!res) {
+        if (!res)
+        {
           discoveryresult("NAT with Endpoint Independent Filtering!");
-        } else {
+        }
+        else
+        {
           res = 0;
           res = run_stunclient(&local_addr, &remote_addr, &reflexive_addr, &other_addr, &local_port, &rfc5780, 0, 1,
                                padding);
-          if (!res) {
+          if (!res)
+          {
             discoveryresult("NAT with Address Dependent Filtering!");
-          } else {
+          }
+          else
+          {
             discoveryresult("NAT with Address and Port Dependent Filtering!");
           }
         }
@@ -799,15 +959,18 @@ int main(int argc, char **argv) {
     }
   }
 
-  if (collision) {
+  if (collision)
+  {
     printf("\n-= Collision Behavior Discovery =-\n");
     init(first, &local_addr, &remote_addr, &local_port, remote_port, &rfc5780, local_addr_string, argv[optind]);
     first = 0;
 
     addr_set_any(&local2_addr);
 
-    if (local2_addr_string[0]) {
-      if (make_ioa_addr((const uint8_t *)local2_addr_string, 0, &local2_addr) < 0) {
+    if (local2_addr_string[0])
+    {
+      if (make_ioa_addr((const uint8_t *)local2_addr_string, 0, &local2_addr) < 0)
+      {
         err(-1, NULL);
       }
     }
@@ -817,7 +980,8 @@ int main(int argc, char **argv) {
     run_stunclient(&local2_addr, &remote_addr, &reflexive_addr, &other_addr, &local_port, &rfc5780, 0, 0, padding);
   }
 
-  if (!filtering && !mapping && !collision && !hairpinning && !lifetime) {
+  if (!filtering && !mapping && !collision && !hairpinning && !lifetime)
+  {
     printf("Please use either -f or -m or -c or -t or -H parameter for Filtering or Mapping behavior discovery.\n");
   }
   socket_closesocket(udp_fd);
