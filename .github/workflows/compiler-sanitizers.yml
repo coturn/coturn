@@ -14,15 +14,15 @@ jobs:
         sanitizer: [ 'address,pointer-compare,pointer-subtract', 'thread' ]
 
     env:
-      CFLAGS:       "-fno-omit-frame-pointer -fstack-protector-all -fsanitize=${{matrix.sanitizer}},bounds,enum -fsanitize-address-use-after-scope -fsanitize-address-use-after-return=always -fsanitize-recover=address -fsanitize-memory-track-origins=2"
-      CC:           "clang"
+      CXXFLAGS:     "-fno-omit-frame-pointer -fstack-protector-all -fsanitize=${{matrix.sanitizer}},bounds,enum -fsanitize-address-use-after-scope -fsanitize-address-use-after-return=always -fsanitize-recover=address -fsanitize-memory-track-origins=2"
+      CXX:          "clang++"
       ASAN_OPTIONS: "strict_string_checks=1:detect_stack_use_after_return=1:check_initialization_order=1:detect_leaks=0:detect_invalid_pointer_pairs=1:halt_on_error=0"
 
     steps:
     - uses: actions/checkout@v4
       with:
         fetch-depth: 0
-    
+
     - name: install dependencies
       uses: ./.github/workflows/actions/ubuntu-build-deps
       with:
