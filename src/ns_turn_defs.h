@@ -31,7 +31,7 @@
 #ifndef __IOADEFS__
 #define __IOADEFS__
 
-#define TURN_SERVER_VERSION "wireapp/4.6.2d"
+#define TURN_SERVER_VERSION "wireapp/4.6.2e"
 #define TURN_SERVER_VERSION_NAME "Gorst"
 #ifndef TURN_SERVER_BUILD_INFO
 #define TURN_SERVER_BUILD_INFO ""
