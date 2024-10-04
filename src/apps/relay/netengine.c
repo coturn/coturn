@@ -1648,7 +1648,7 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
   bufferevent_enable(rs->auth_in_buf, EV_READ);
 
   init_turn_server(
-      &(rs->server), rs->id, turn_params.verbose, rs->ioa_eng, turn_params.ct, 0, turn_params.fingerprint,
+      &(rs->server), rs->id, turn_params.verbose, rs->ioa_eng, turn_params.ct, turn_params.fingerprint,
       DONT_FRAGMENT_SUPPORTED, start_user_check, check_new_allocation_quota, release_allocation_quota,
       turn_params.external_ip, &turn_params.check_origin, &turn_params.no_tcp_relay, &turn_params.no_udp_relay,
       &turn_params.stale_nonce, &turn_params.max_allocate_lifetime, &turn_params.channel_lifetime,
