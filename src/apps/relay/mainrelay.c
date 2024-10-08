@@ -173,6 +173,7 @@ turn_params_t turn_params = {
     NULL,                                 /*external_ip*/
     DEFAULT_GENERAL_RELAY_SERVERS_NUMBER, /*general_relay_servers_number*/
     0,                                    /*udp_relay_servers_number*/
+    UR_SERVER_SOCK_BUF_SIZE,
 
     ////////////// Auth server /////////////////////////////////////
     "",
@@ -1428,6 +1429,7 @@ enum EXTRA_OPTS {
   PKEY_PWD_OPT,
   MIN_PORT_OPT,
   MAX_PORT_OPT,
+  SOCK_BUF_SIZE_OPT,
   STALE_NONCE_OPT,
   MAX_ALLOCATE_LIFETIME_OPT,
   CHANNEL_LIFETIME_OPT,
@@ -1532,6 +1534,7 @@ static const struct myoption long_options[] = {
     {"relay-threads", required_argument, NULL, 'm'},
     {"min-port", required_argument, NULL, MIN_PORT_OPT},
     {"max-port", required_argument, NULL, MAX_PORT_OPT},
+    {"sock-buf-size", required_argument, NULL, SOCK_BUF_SIZE_OPT},
     {"lt-cred-mech", optional_argument, NULL, 'a'},
     {"no-auth", optional_argument, NULL, 'z'},
     {"user", required_argument, NULL, 'u'},
@@ -2053,6 +2056,9 @@ static void set_option(int c, char *value) {
     break;
   case MAX_PORT_OPT:
     turn_params.max_port = atoi(value);
+    break;
+  case SOCK_BUF_SIZE_OPT:
+    turn_params.sock_buf_size = atoi(value);
     break;
   case SECURE_STUN_OPT:
     turn_params.secure_stun = get_bool_value(value);
