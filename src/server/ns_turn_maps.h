@@ -48,6 +48,7 @@ typedef uint64_t ur_map_key_type;
 typedef uintptr_t ur_map_value_type;
 
 typedef void (*ur_map_del_func)(ur_map_value_type);
+typedef int (ur_addr_map_cond_func)(ur_addr_map_value_type);
 
 typedef int (*foreachcb_type)(ur_map_key_type key, ur_map_value_type value);
 typedef int (*foreachcb_arg_type)(ur_map_key_type key, ur_map_value_type value, void *arg);
@@ -181,7 +182,6 @@ struct _ur_addr_map;
 typedef struct _ur_addr_map ur_addr_map;
 
 typedef void (*ur_addr_map_func)(ur_addr_map_value_type);
-typedef int (ur_addr_map_cond_func)(ur_addr_map_value_type);
 
 void ur_addr_map_init(ur_addr_map *map);
 void ur_addr_map_clean(ur_addr_map *map);
@@ -192,18 +192,14 @@ void ur_addr_map_clean(ur_addr_map *map);
  * -1 - error
  * if the addr key exists, the value is updated.
  */
-int _ur_addr_map_put(ur_addr_map *map, ioa_addr *key, ur_addr_map_value_type value, int port);
 int ur_addr_map_put(ur_addr_map *map, ioa_addr *key, ur_addr_map_value_type value);
-int ur_addr_map_put_no_port(ur_addr_map *map, ioa_addr *key, ur_addr_map_value_type value);
 
 /**
  * @ret:
  * 1 - success
  * 0 - not found
  */
-int _ur_addr_map_get(const ur_addr_map *map, ioa_addr *key, ur_addr_map_value_type *value, int port);
 int ur_addr_map_get(const ur_addr_map *map, ioa_addr *key, ur_addr_map_value_type *value);
-int ur_addr_map_get_no_port(const ur_addr_map *map, ioa_addr *key, ur_addr_map_value_type *value);
 
 /**
  * @ret:

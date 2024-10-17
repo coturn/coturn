@@ -38,14 +38,14 @@
 extern "C" {
 #endif
 
-int ratelimit_is_address_limited(ioa_addr *address);
+int ratelimit_is_address_limited(ioa_addr *address, int max_requests, int window_seconds);
 void ratelimit_add_node(ioa_addr *address);
 int ratelimit_delete_expired(ur_map_value_type value);
 void ratelimit_init_map(void);
 ////// Rate limit for 401 Unauthorized //////
 
-#define RATE_LIMIT_MAX_REQUESTS_PER_WINDOW 100
-#define RATE_LIMIT_WINDOW_SECS 60
+#define RATELIMIT_DEFAULT_MAX_REQUESTS_PER_WINDOW 1000
+#define RATELIMIT_DEFAULT_WINDOW_SECS 120
 
 typedef struct {
   time_t last_request_time;

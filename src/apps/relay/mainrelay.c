@@ -34,6 +34,7 @@
 #include "federation.h"
 
 #include "prom_server.h"
+#include "ns_turn_ratelimit.h"
 
 #if defined(WINDOWS)
 #include <iphlpapi.h>
@@ -246,7 +247,11 @@ turn_params_t turn_params = {
 
     0, /* log_binding */
     0, /* no_stun_backward_compatibility */
-    0  /* response_origin_only_with_rfc5780 */
+    0, /* response_origin_only_with_rfc5780 */
+
+    ///////// Ratelimt /////////
+    RATELIMIT_DEFAULT_MAX_REQUESTS_PER_WINDOW, /* 401-req-limit */
+    RATELIMIT_DEFAULT_WINDOW_SECS              /* 401-window */
 };
 
 //////////////// OpenSSL Init //////////////////////
@@ -1302,6 +1307,10 @@ static char Usage[] =
     "						in binding response (use only the XOR-MAPPED-ADDRESS).\n"
     " --response-origin-only-with-rfc5780		Only send RESPONSE-ORIGIN attribute in binding response if "
     "RFC5780 is enabled.\n"
+    " --401-req-limit=<request>\t\t\tSet the maximum number of 401 Unauthorized responses allowed\n"
+    "						per rate-limiting window. If set to 0 disables rate limiting. Default is 1000.\n"
+    " --401-window=<seconds>\t\t\t\tSet the time window duration in seconds for rate limiting 401 Unauthorized responses.\n"
+    "						Default is 120.\n"
     " --version					Print version (and exit).\n"
     " -h						Help\n"
     "\n";
@@ -1466,7 +1475,10 @@ enum EXTRA_OPTS {
   FEDERATION_CERT_OPT,
   FEDERATION_PKEY_OPT,
   FEDERATION_PKEY_PWD_OPT,
-  FEDERATION_REMOTE_WHITELIST_OPT
+  FEDERATION_REMOTE_WHITELIST_OPT,
+  RATELIMIT_OPT,
+  RATELIMIT_REQUESTS_OPT,
+  RATELIMIT_WINDOW_OPT
 };
 
 struct myoption {
@@ -1619,6 +1631,8 @@ static const struct myoption long_options[] = {
     {"response-origin-only-with-rfc5780", optional_argument, NULL, RESPONSE_ORIGIN_ONLY_WITH_RFC5780_OPT},
     {"version", optional_argument, NULL, VERSION_OPT},
     {"syslog-facility", required_argument, NULL, SYSLOG_FACILITY_OPT},
+    {"401-req-limit", optional_argument, NULL, RATELIMIT_REQUESTS_OPT},
+    {"401-window", optional_argument, NULL, RATELIMIT_WINDOW_OPT},
     {NULL, no_argument, NULL, 0}};
 
 static const struct myoption admin_long_options[] = {
@@ -2374,6 +2388,14 @@ static void set_option(int c, char *value) {
         federation_whitelist_add(value, "");
       }
     }
+    break;
+  case RATELIMIT_REQUESTS_OPT:
+    turn_params.ratelimit_401_requests_per_window = get_int_value(value, RATELIMIT_DEFAULT_MAX_REQUESTS_PER_WINDOW);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Setting 401 ratelimit requests per window to: %i\n", turn_params.ratelimit_401_requests_per_window);
+    break;
+  case RATELIMIT_WINDOW_OPT:
+    turn_params.ratelimit_401_window_seconds = get_int_value(value, RATELIMIT_DEFAULT_WINDOW_SECS);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Setting 401 ratelimit window to: %i seconds\n", turn_params.ratelimit_401_window_seconds);
     break;
   /* these options have been already taken care of before: */
   case 'l':
