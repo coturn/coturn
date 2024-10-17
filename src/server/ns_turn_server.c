@@ -35,6 +35,8 @@
 #include "ns_turn_ioalib.h"
 #include "ns_turn_msg_defs.h" // for STUN_ATTRIBUTE_NONCE
 #include "ns_turn_utils.h"
+#include "ns_turn_ratelimit.h"
+#include "ns_turn_maps.h"
 
 #include "apputils.h" // for turn_random, base64_decode
 
@@ -149,6 +151,7 @@ static int read_client_connection(turn_turnserver *server, ts_ur_super_session *
                                   int can_resume, int count_usage);
 
 static int need_stun_authentication(turn_turnserver *server, ts_ur_super_session *ss);
+
 
 /////////////////// timer //////////////////////////
 
@@ -3898,6 +3901,15 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 
     *resp_constructed = 1;
   }
+  if(err_code == 401 && *server->ratelimit_401_responses == 1) {
+      ioa_addr *rate_limit_address = get_remote_addr_from_ioa_socket(ss->client_socket);
+      if (ratelimit_is_address_limited(rate_limit_address, *server->ratelimit_401_requests_per_window, *server->ratelimit_401_window_seconds)) {
+          no_response = 1;
+          char raddr[129];
+          addr_to_string_no_port(rate_limit_address, (unsigned char *)raddr);
+          TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "401 rate limit exceeded from %s, response not sent\n", raddr);
+      }
+  }
 
   if (!no_response) {
 
@@ -4919,7 +4931,8 @@ void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, io
                       allocate_bps_cb allocate_bps_func, int oauth, const char *oauth_server_name,
                       const char *acme_redirect, ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family,
                       vintp log_binding, vintp no_stun_backward_compatibility, vintp response_origin_only_with_rfc5780,
-                      vintp respond_http_unsupported) {
+                      vintp respond_http_unsupported,
+                      vintp ratelimit_401_responses, vintp ratelimit_401_requests_per_window, vintp ratelimit_401_window_seconds) {
 
   if (!server) {
     return;
@@ -5000,6 +5013,10 @@ void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, io
   server->response_origin_only_with_rfc5780 = response_origin_only_with_rfc5780;
 
   server->respond_http_unsupported = respond_http_unsupported;
+
+  server->ratelimit_401_responses = ratelimit_401_responses;
+  server->ratelimit_401_requests_per_window = ratelimit_401_requests_per_window;
+  server->ratelimit_401_window_seconds = ratelimit_401_window_seconds;
 }
 
 ioa_engine_handle turn_server_get_engine(turn_turnserver *s) {

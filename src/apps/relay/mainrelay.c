@@ -32,6 +32,7 @@
 #include "dbdrivers/dbdriver.h"
 
 #include "prom_server.h"
+#include "ns_turn_ratelimit.h"
 
 #if defined(WINDOWS)
 #include <iphlpapi.h>
@@ -230,7 +231,12 @@ turn_params_t turn_params = {
     0, /* log_binding */
     0, /* no_stun_backward_compatibility */
     0, /* response_origin_only_with_rfc5780 */
-    0  /* respond_http_unsupported */
+    0, /* respond_http_unsupported */
+
+    ///////// Ratelimt /////////
+    1,                                         /* no-ratelimit-401 */
+    RATELIMIT_DEFAULT_MAX_REQUESTS_PER_WINDOW, /* ratelimit-401-requests-per-window */
+    RATELIMIT_DEFAULT_WINDOW_SECS              /* ratelimit-401-window-seconds */
 };
 
 //////////////// OpenSSL Init //////////////////////
@@ -1343,6 +1349,9 @@ static char Usage[] =
     "connections made to ports not\n"
     "						supporting HTTP. The default behaviour is to immediately "
     "close the connection.\n"
+    " --no-ratelimit-401\t\t\t\tDisable rate limiting for 401 Unauthorized responses\n"
+    " --ratelimit-401-requests-per-window=<request>\tSet the maximum number of 401 Unauthorized responses allowed per rate-limiting window\n"
+    " --ratelimit-401-window-seconds=<seconds>\tSet the time window duration in seconds for rate limiting 401 Unauthorized responses\n"
     " --version					Print version (and exit).\n"
     " -h						Help\n"
     "\n";
@@ -1500,7 +1509,10 @@ enum EXTRA_OPTS {
   NO_STUN_BACKWARD_COMPATIBILITY_OPT,
   RESPONSE_ORIGIN_ONLY_WITH_RFC5780_OPT,
   RESPOND_HTTP_UNSUPPORTED_OPT,
-  VERSION_OPT
+  VERSION_OPT,
+  RATELIMIT_OPT,
+  RATELIMIT_REQUESTS_OPT,
+  RATELIMIT_WINDOW_OPT
 };
 
 struct myoption {
@@ -1646,6 +1658,9 @@ static const struct myoption long_options[] = {
     {"respond-http-unsupported", optional_argument, NULL, RESPOND_HTTP_UNSUPPORTED_OPT},
     {"version", optional_argument, NULL, VERSION_OPT},
     {"syslog-facility", required_argument, NULL, SYSLOG_FACILITY_OPT},
+    {"no-ratelimit-401", optional_argument, NULL, RATELIMIT_OPT},
+    {"ratelimit-401-requests-per-window", optional_argument, NULL, RATELIMIT_REQUESTS_OPT},
+    {"ratelimit-401-window-seconds", optional_argument, NULL, RATELIMIT_WINDOW_OPT},
     {NULL, no_argument, NULL, 0}};
 
 static const struct myoption admin_long_options[] = {
@@ -2367,6 +2382,17 @@ static void set_option(int c, char *value) {
     break;
   case RESPOND_HTTP_UNSUPPORTED_OPT:
     turn_params.respond_http_unsupported = get_bool_value(value);
+    break;
+  case RATELIMIT_OPT:
+    turn_params.ratelimit_401_responses = 0;
+    break;
+  case RATELIMIT_REQUESTS_OPT:
+    turn_params.ratelimit_401_requests_per_window = get_int_value(value, RATELIMIT_DEFAULT_MAX_REQUESTS_PER_WINDOW);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Setting 401 ratelimit requests per window to: %i\n", turn_params.ratelimit_401_requests_per_window);
+    break;
+  case RATELIMIT_WINDOW_OPT:
+    turn_params.ratelimit_401_window_seconds = get_int_value(value, RATELIMIT_DEFAULT_WINDOW_SECS);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Setting 401 ratelimit window to: %i seconds\n", turn_params.ratelimit_401_window_seconds);
     break;
 
   /* these options have been already taken care of before: */
