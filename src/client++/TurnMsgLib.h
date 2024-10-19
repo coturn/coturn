@@ -731,7 +731,7 @@ protected:
  */
 class StunMsgRequest : public StunMsg {
 public:
-  StunMsgRequest(uint16_t method) : _method(method) {};
+  StunMsgRequest(uint16_t method) : _method(method){};
   StunMsgRequest(uint8_t *buffer, size_t total_sz, size_t sz, bool constructed)
       : StunMsg(buffer, total_sz, sz, constructed), _method(0) {
 
@@ -804,11 +804,11 @@ private:
  */
 class StunMsgResponse : public StunMsg {
 public:
-  StunMsgResponse(uint16_t method, stun_tid &tid) : _method(method), _err(0), _reason(""), _tid(tid) {};
+  StunMsgResponse(uint16_t method, stun_tid &tid) : _method(method), _err(0), _reason(""), _tid(tid){};
   StunMsgResponse(uint16_t method, int error_code, std::string reason, stun_tid &tid)
-      : _method(method), _err(error_code), _reason(reason), _tid(tid) {
+      : _method(method), _err(error_code), _reason(reason), _tid(tid){
 
-        };
+                                                            };
   StunMsgResponse(uint8_t *buffer, size_t total_sz, size_t sz, bool constructed)
       : StunMsg(buffer, total_sz, sz, constructed), _method(0), _err(0), _reason("") {
 
@@ -960,7 +960,7 @@ private:
  */
 class StunMsgIndication : public StunMsg {
 public:
-  StunMsgIndication(uint16_t method) : _method(method) {};
+  StunMsgIndication(uint16_t method) : _method(method){};
   StunMsgIndication(uint8_t *buffer, size_t total_sz, size_t sz, bool constructed)
       : StunMsg(buffer, total_sz, sz, constructed), _method(0) {
 
@@ -1005,7 +1005,7 @@ private:
  */
 class StunMsgChannel : public StunMsg {
 public:
-  StunMsgChannel(uint16_t cn, int length) : _cn(cn), _len(length) {};
+  StunMsgChannel(uint16_t cn, int length) : _cn(cn), _len(length){};
   StunMsgChannel(uint8_t *buffer, size_t total_sz, size_t sz, bool constructed)
       : StunMsg(buffer, total_sz, sz, constructed), _cn(0) {
 
