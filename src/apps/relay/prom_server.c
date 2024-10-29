@@ -40,7 +40,7 @@ void start_prometheus_server(void) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "prometheus collector disabled, not started\n");
     return;
   }
-  prom_collector_registry_default_init();
+  pcr_default_init();
 
   const char *label[] = {"realm", NULL};
   size_t nlabels = 1;
@@ -51,56 +51,56 @@ void start_prometheus_server(void) {
   }
 
   // Create STUN counters
-  stun_binding_request = prom_collector_registry_must_register_metric(
+  stun_binding_request = pcr_must_register_metric(
       prom_counter_new("stun_binding_request", "Incoming STUN Binding requests", 0, NULL));
-  stun_binding_response = prom_collector_registry_must_register_metric(
+  stun_binding_response = pcr_must_register_metric(
       prom_counter_new("stun_binding_response", "Outgoing STUN Binding responses", 0, NULL));
-  stun_binding_error = prom_collector_registry_must_register_metric(
+  stun_binding_error = pcr_must_register_metric(
       prom_counter_new("stun_binding_error", "STUN Binding errors", 0, NULL));
 
   // Create TURN traffic counter metrics
-  turn_traffic_rcvp = prom_collector_registry_must_register_metric(
+  turn_traffic_rcvp = pcr_must_register_metric(
       prom_counter_new("turn_traffic_rcvp", "Represents finished sessions received packets", nlabels, label));
-  turn_traffic_rcvb = prom_collector_registry_must_register_metric(
+  turn_traffic_rcvb = pcr_must_register_metric(
       prom_counter_new("turn_traffic_rcvb", "Represents finished sessions received bytes", nlabels, label));
-  turn_traffic_sentp = prom_collector_registry_must_register_metric(
+  turn_traffic_sentp = pcr_must_register_metric(
       prom_counter_new("turn_traffic_sentp", "Represents finished sessions sent packets", nlabels, label));
-  turn_traffic_sentb = prom_collector_registry_must_register_metric(
+  turn_traffic_sentb = pcr_must_register_metric(
       prom_counter_new("turn_traffic_sentb", "Represents finished sessions sent bytes", nlabels, label));
 
   // Create finished sessions traffic for peers counter metrics
-  turn_traffic_peer_rcvp = prom_collector_registry_must_register_metric(
+  turn_traffic_peer_rcvp = pcr_must_register_metric(
       prom_counter_new("turn_traffic_peer_rcvp", "Represents finished sessions peer received packets", nlabels, label));
-  turn_traffic_peer_rcvb = prom_collector_registry_must_register_metric(
+  turn_traffic_peer_rcvb = pcr_must_register_metric(
       prom_counter_new("turn_traffic_peer_rcvb", "Represents finished sessions peer received bytes", nlabels, label));
-  turn_traffic_peer_sentp = prom_collector_registry_must_register_metric(
+  turn_traffic_peer_sentp = pcr_must_register_metric(
       prom_counter_new("turn_traffic_peer_sentp", "Represents finished sessions peer sent packets", nlabels, label));
-  turn_traffic_peer_sentb = prom_collector_registry_must_register_metric(
+  turn_traffic_peer_sentb = pcr_must_register_metric(
       prom_counter_new("turn_traffic_peer_sentb", "Represents finished sessions peer sent bytes", nlabels, label));
 
   // Create total finished traffic counter metrics
-  turn_total_traffic_rcvp = prom_collector_registry_must_register_metric(
+  turn_total_traffic_rcvp = pcr_must_register_metric(
       prom_counter_new("turn_total_traffic_rcvp", "Represents total finished sessions received packets", 0, NULL));
-  turn_total_traffic_rcvb = prom_collector_registry_must_register_metric(
+  turn_total_traffic_rcvb = pcr_must_register_metric(
       prom_counter_new("turn_total_traffic_rcvb", "Represents total finished sessions received bytes", 0, NULL));
-  turn_total_traffic_sentp = prom_collector_registry_must_register_metric(
+  turn_total_traffic_sentp = pcr_must_register_metric(
       prom_counter_new("turn_total_traffic_sentp", "Represents total finished sessions sent packets", 0, NULL));
-  turn_total_traffic_sentb = prom_collector_registry_must_register_metric(
+  turn_total_traffic_sentb = pcr_must_register_metric(
       prom_counter_new("turn_total_traffic_sentb", "Represents total finished sessions sent bytes", 0, NULL));
 
   // Create total finished sessions traffic for peers counter metrics
-  turn_total_traffic_peer_rcvp = prom_collector_registry_must_register_metric(prom_counter_new(
+  turn_total_traffic_peer_rcvp = pcr_must_register_metric(prom_counter_new(
       "turn_total_traffic_peer_rcvp", "Represents total finished sessions peer received packets", 0, NULL));
-  turn_total_traffic_peer_rcvb = prom_collector_registry_must_register_metric(prom_counter_new(
+  turn_total_traffic_peer_rcvb = pcr_must_register_metric(prom_counter_new(
       "turn_total_traffic_peer_rcvb", "Represents total finished sessions peer received bytes", 0, NULL));
-  turn_total_traffic_peer_sentp = prom_collector_registry_must_register_metric(prom_counter_new(
+  turn_total_traffic_peer_sentp = pcr_must_register_metric(prom_counter_new(
       "turn_total_traffic_peer_sentp", "Represents total finished sessions peer sent packets", 0, NULL));
-  turn_total_traffic_peer_sentb = prom_collector_registry_must_register_metric(
+  turn_total_traffic_peer_sentb = pcr_must_register_metric(
       prom_counter_new("turn_total_traffic_peer_sentb", "Represents total finished sessions peer sent bytes", 0, NULL));
 
   // Create total allocations number gauge metric
   const char *typeLabel[] = {"type"};
-  turn_total_allocations = prom_collector_registry_must_register_metric(
+  turn_total_allocations = pcr_must_register_metric(
       prom_gauge_new("turn_total_allocations", "Represents current allocations number", 1, typeLabel));
 
   promhttp_set_active_collector_registry(NULL);
