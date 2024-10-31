@@ -35,18 +35,15 @@ prom_counter_t *turn_total_traffic_peer_sentb;
 
 prom_gauge_t *turn_total_allocations;
 
-#if MHD_VERSION >= 0x00097500
-enum MHD_Result
+#if MHD_VERSION >= 0x00097002
+#define MHD_RESULT enum MHD_Result
 #else
-int
+#define MHD_RESULT int
 #endif
-promhttp_handler(void *cls, struct MHD_Connection *connection, const char *url, const char *method, const char *version,
-                 const char *upload_data, size_t *upload_data_size, void **con_cls) {
-#if MHD_VERSION >= 0x00097500
-  enum MHD_Result ret;
-#else
-  int ret;
-#endif
+
+MHD_RESULT promhttp_handler(void *cls, struct MHD_Connection *connection, const char *url, const char *method,
+                            const char *version, const char *upload_data, size_t *upload_data_size, void **con_cls) {
+  MHD_RESULT ret;
 
   char *body = NULL;
   enum MHD_ResponseMemoryMode mode = MHD_RESPMEM_PERSISTENT;
