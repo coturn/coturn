@@ -207,6 +207,10 @@ struct _turn_turnserver {
   vintp ratelimit_401_responses;
   vintp ratelimit_401_requests_per_window;
   vintp ratelimit_401_window_seconds;
+=======
+  /* Set to true on SIGUSR1 */
+  bool is_draining;
+>>>>>>> edcdfc8b0255bd92b0f6f269a79d393b8bf737aa
 };
 
 const char *get_version(turn_turnserver *server);
