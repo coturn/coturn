@@ -1,0 +1,120 @@
+# The amount of coturn instances to run.  NOTE: Only one coturn can run per node due
+# to `hostNetwork`. If this number is higher than the amount of nodes that can
+# be used for scheduling (Also see `nodeSelector`) pods will remain in a
+# pending state untill you add more capacity.
+replicaCount: 1
+
+image:
+  repository: quay.io/wire/coturn
+  pullPolicy: IfNotPresent
+  # overwrite the tag here, otherwise `appVersion` of the chart will be used
+  tag: ""
+
+# If you have multiple deployments of coturn running in one cluster, it is
+# important that they run on disjoint sets of nodes, you can use nodeSelector to enforce this
+nodeSelector: {}
+
+podSecurityContext:
+  fsGroup: 31338
+
+securityContext:
+  # Pick a high number that is unlikely to conflict with the host
+  # https://kubesec.io/basics/containers-securitycontext-runasuser/
+  runAsUser: 31338
+
+coturnTurnListenPort: 3478
+coturnMetricsListenPort: 9641
+coturnTurnTlsListenPort: 5349
+
+# coturnTurnListenIP: "1.2.3.4" # can also be __COTURN_EXT_IP__, __COTURN_POD_IP__,__COTURN_HOST_IP__
+coturnTurnExternalIP: null
+# coturnTurnRelayIP:
+# coturnPrometheusIP:
+# coturnFederationListeningIP:
+
+tls:
+  enabled: false
+  # compliant with BSI TR-02102-2
+  ciphers: 'ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384'
+  secretRef:
+  reloaderImage:
+    # container image containing https://github.com/Pluies/config-reloader-sidecar
+    # for handling runtime certificate reloads.
+    repository: quay.io/wire/config-reloader-sidecar
+    pullPolicy: IfNotPresent
+    tag: 72c3c8434660bd157d42012b0bcd67f338fc5c7a
+
+config:
+  verboseLogging: false
+
+federate:
+  enabled: false
+  port: 9191
+
+  dtls:
+    enabled: false
+
+    tls:
+  #   Example:
+  #
+  #   tls:
+  #     key: "-----BEGIN EC PRIVATE KEY----- ..." # (ascii blob) private key
+  #     crt: "-----BEGIN CERTIFICATE----- ..." # (ascii blob) certificate
+  #     privateKeyPassword: "XXX" # optional, used when the key is password protected
+  #
+  #   OR (mutually exclusive)
+  #
+  #   tls:
+  #      issuerRef:
+  #        name: letsencrypt-http01
+  #
+  #        # We can reference ClusterIssuers by changing the kind here.
+  #        # The default value is Issuer (i.e. a locally namespaced Issuer)
+  #        # kind: Issuer
+  #        kind: Issuer
+  #
+  #        # This is optional since cert-manager will default to this value however
+  #        # if you are using an external issuer, change this to that issuer group.
+  #        group: cert-manager.io
+  #
+  #      # optional labels to attach to the cert-manager Certificate
+  #      certificate:
+  #        labels: ..
+
+  # # list of host/ip/cert common names / subject alt names, and optional issuer
+  # # names to accept DTLS connections from. There can be multiple entries.
+  # remoteWhitelist:
+  #   - host: wire.example
+  #     issuer: Issuer Common Name
+  #   - host: another.wire.example
+  #     issuer: "DigiCert SHA2 Extended Validation Server CA"
+  #   - host: another-host-without-issuer.wire.example
+    remoteWhitelist: []
+
+metrics:
+  serviceMonitor:
+    enabled: false
+
+# This chart supports waiting for traffic to drain from coturn
+# before pods are actually terminated. Once in 'drain' mode, no new connections
+# are accepted, but old ones are kept alive.
+# If you have 2 or more replicas, it's recommended to set this to true,
+# and if you only have one coturn replica you may want this to be false, as
+# otherwise while the pod restarts, no new calls can be established.
+coturnGracefulTermination: false
+# Grace period for terminating coturn pods, after which they will be forcibly
+# terminated. This setting is only effective when coturnGracefulTermination is
+# set to true.
+coturnGracePeriodSeconds: 43200 # 12 hours
+
+livenessProbe:
+  timeoutSeconds: 5
+  failureThreshold: 5
+
+readinessProbe:
+  timeoutSeconds: 5
+  failureThreshold: 5
+
+service:
+  # Kubernetes annotations to be set at the Service
+  annotations: {}

@@ -37,6 +37,8 @@
 #include "ns_turn_allocation.h"
 #include "ns_turn_ioalib.h"
 #include "ns_turn_utils.h"
+#include "ns_turn_ratelimit.h"
+#include "ns_turn_maps.h"
 
 ///////////////////////////////////////////
 
@@ -142,6 +144,7 @@ static int read_client_connection(turn_turnserver *server, ts_ur_super_session *
                                   int can_resume, int count_usage);
 
 static int need_stun_authentication(turn_turnserver *server, ts_ur_super_session *ss);
+
 
 /////////////////// timer //////////////////////////
 
@@ -3916,6 +3919,16 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
     ioa_network_buffer_set_size(nbh, len);
 
     *resp_constructed = 1;
+  }
+
+  if(err_code == 401) {
+      ioa_addr *rate_limit_address = get_remote_addr_from_ioa_socket(ss->client_socket);
+      if (ratelimit_is_address_limited(rate_limit_address)) {
+          no_response = 1;
+          char raddr[129];
+          addr_to_string_no_port(rate_limit_address, (unsigned char *)raddr);
+          TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "401 rate limit exceeded from %s, response not sent\n", raddr);
+      }
   }
 
   if (!no_response) {

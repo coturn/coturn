@@ -1,0 +1,37 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: coturn
+  labels:
+    app: coturn
+    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+  {{- with .Values.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  # Needs to be headless
+  # See: https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/
+  clusterIP: None
+  ports:
+    - name: coturn-tcp
+      port: {{ .Values.coturnTurnListenPort }}
+      targetPort: coturn-tcp
+    - name: coturn-udp
+      port: {{ .Values.coturnTurnListenPort }}
+      targetPort: coturn-udp
+      protocol: UDP
+    {{- if .Values.tls.enabled }}
+    - name: coturn-tls
+      port: {{ .Values.coturnTurnTlsListenPort }}
+      targetPort: coturn-tls
+    {{- end }}
+    - name: status-http
+      port: {{ .Values.coturnMetricsListenPort }}
+      targetPort: status-http
+  selector:
+    app: coturn
+    release: {{ .Release.Name }}
