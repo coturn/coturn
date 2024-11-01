@@ -839,10 +839,10 @@ int check_new_allocation_quota(uint8_t *user, int oauth, uint8_t *realm) {
 
 #ifndef _MSC_VER
   global_allocation_count++;
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Global turn allocation count incremented, now %ld\n", global_allocation_count);
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "Global turn allocation count incremented, now %ld\n", global_allocation_count);
 #else
   size_t cur_count = (size_t)InterlockedIncrement((volatile LONG *)&global_allocation_count);
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Global turn allocation count incremented, now %ld\n", cur_count);
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "Global turn allocation count incremented, now %ld\n", cur_count);
 #endif
 
   return ret;
@@ -871,12 +871,16 @@ void release_allocation_quota(uint8_t *user, int oauth, uint8_t *realm) {
     free(username);
   }
 
+  int log_level = TURN_LOG_LEVEL_DEBUG;
+  if (turn_params.drain_turn_server) {
+    log_level = TURN_LOG_LEVEL_INFO;
+  }
 #ifndef _MSC_VER
   global_allocation_count--;
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Global turn allocation count decremented, now %ld\n", global_allocation_count);
+  TURN_LOG_FUNC(log_level, "Global turn allocation count decremented, now %ld\n", global_allocation_count);
 #else
   size_t cur_count = (size_t)InterlockedDecrement((volatile LONG *)&global_allocation_count);
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Global turn allocation count decremented, now %ld\n", cur_count);
+  TURN_LOG_FUNC(log_level, "Global turn allocation count decremented, now %ld\n", cur_count);
 #endif
 }
 
