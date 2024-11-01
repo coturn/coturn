@@ -204,13 +204,11 @@ struct _turn_turnserver {
      otherwise handling HTTP. */
   vintp respond_http_unsupported;
 
-  vintp ratelimit_401_responses;
-  vintp ratelimit_401_requests_per_window;
-  vintp ratelimit_401_window_seconds;
-=======
   /* Set to true on SIGUSR1 */
   bool is_draining;
->>>>>>> edcdfc8b0255bd92b0f6f269a79d393b8bf737aa
+
+  vintp ratelimit_401_requests_per_window;
+  vintp ratelimit_401_window_seconds;
 };
 
 const char *get_version(turn_turnserver *server);
@@ -231,7 +229,7 @@ void init_turn_server(
     allocate_bps_cb allocate_bps_func, int oauth, const char *oauth_server_name, const char *acme_redirect,
     ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family, vintp log_binding,
     vintp no_stun_backward_compatibility, vintp response_origin_only_with_rfc5780, vintp respond_http_unsupported,
-    vintp ratelimit_401_responses, vintp ratelimit_401_requests_per_window, vintp ratelimit_401_window_seconds);
+    vintp ratelimit_401_requests_per_window, vintp ratelimit_401_window_seconds);
 
 ioa_engine_handle turn_server_get_engine(turn_turnserver *s);
 

@@ -634,9 +634,8 @@ Options with values:
                     Strongly encouraged to use this option to decrease gain factor in STUN binding responses.
 --no-stun-backward-compatibility		Disable handling old STUN Binding requests and disable MAPPED-ADDRESS attribute in binding response (use only the XOR-MAPPED-ADDRESS).
 --response-origin-only-with-rfc5780		Only send RESPONSE-ORIGIN attribute in binding response if RFC5780 is enabled.
---no-ratelimit-401				Disable rate limiting for 401 Unauthorized responses.
---ratelimit-401-requests-per-window=<request>	Set the maximum number of 401 Unauthorized responses allowed per rate-limiting window.
---ratelimit-401-window-seconds=<seconds>	Set the time window duration in seconds for rate limiting 401 Unauthorized responses.
+--401-req-limit=<request>	Set the maximum number of 401 Unauthorized responses allowed per rate-limiting window.
+--401-window=<seconds>	Set the time window duration in seconds for rate limiting 401 Unauthorized responses.
 					
 
 ==================================

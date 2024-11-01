@@ -45,15 +45,13 @@ void ratelimit_add_node(ioa_addr *address) {
   rateLimitEntry->request_count = 1;
   rateLimitEntry->last_request_time = time(NULL);
 
-  ur_addr_map_put_no_port(rate_limit_map, address, (ur_addr_map_value_type)rateLimitEntry);
+  ur_addr_map_put(rate_limit_map, address, (ur_addr_map_value_type)rateLimitEntry);
 }
 
 int ratelimit_delete_expired(ur_map_value_type value) {
-  time_t current_time = time(NULL);
+  turn_time_t current_time = turn_time();
   ratelimit_entry *rateLimitEntry = (ratelimit_entry*)(void*)(ur_map_value_type)value;
-  if (rateLimitEntry->last_request_time + RATELIMIT_DEFAULT_WINDOW_SECS < current_time)
-    return 1;
-  return 0;
+  return (rateLimitEntry->last_request_time + RATELIMIT_DEFAULT_WINDOW_SECS < current_time);
 }
 
 void ratelimit_init_map() {
@@ -67,7 +65,7 @@ void ratelimit_init_map() {
 
 int ratelimit_is_address_limited(ioa_addr *address, int max_requests, int window_seconds) {
   /* Housekeeping, prune the map when ADDR_MAP_SIZE is hit and delete expired items */
-  time_t current_time = time(NULL);
+  turn_time_t current_time = turn_time();
 
   if (rate_limit_map == NULL) {
     ratelimit_init_map();
@@ -83,37 +81,44 @@ int ratelimit_is_address_limited(ioa_addr *address, int max_requests, int window
   }
 
   ur_addr_map_value_type ratelimit_ptr = 0;
-  int returnValue = 0;
 
-  if (ur_addr_map_get_no_port(rate_limit_map, address, &ratelimit_ptr)) {
+  ioa_addr *address_new = (ioa_addr *)malloc(sizeof(ioa_addr));
+  //memcpy(address_new, address, sizeof(ioa_addr));
+  *address_new = *address;
+  addr_set_port(address_new, 0);
+
+  if (ur_addr_map_get(rate_limit_map, address_new, &ratelimit_ptr)) {
+    free(address_new);
     ratelimit_entry *rateLimitEntry = (ratelimit_entry *)(void *)(ur_map_value_type)ratelimit_ptr;
     TURN_MUTEX_LOCK(&(rateLimitEntry->mutex));
 
-    if (current_time - rateLimitEntry->last_request_time > window_seconds) {
+    if (turn_time_before(current_time, rateLimitEntry->last_request_time)) {
       /* Check if request is inside the ratelimit window; reset the count and request time */
       rateLimitEntry->request_count = 1;
       rateLimitEntry->last_request_time = current_time;
-      returnValue = 0;
+      TURN_MUTEX_UNLOCK(&(rateLimitEntry->mutex));
+      return 0;
     } else if (rateLimitEntry->request_count < max_requests) {
       /* Check if request count is below requests per window; increment the count */
       if (rateLimitEntry->request_count < UINT32_MAX)
         rateLimitEntry->request_count++;
       rateLimitEntry->last_request_time = current_time;
-      returnValue = 0;
+      TURN_MUTEX_UNLOCK(&(rateLimitEntry->mutex));
+      return 0;
     } else {
       /* Request is outside of defined window and count, request is ratelimited */
       if (rateLimitEntry->request_count < UINT32_MAX)
         rateLimitEntry->request_count++;
       rateLimitEntry->last_request_time = current_time;
-      returnValue = 1;
+      TURN_MUTEX_UNLOCK(&(rateLimitEntry->mutex));
+      return 1;
     }
-    TURN_MUTEX_UNLOCK(&(rateLimitEntry->mutex));
   } else {
     // New entry, allow response
     TURN_MUTEX_LOCK(&rate_limit_main_mutex);
-    ratelimit_add_node(address);
+    ratelimit_add_node(address_new);
+    free(address_new);
     TURN_MUTEX_UNLOCK(&rate_limit_main_mutex);
-    returnValue = 0;
+    return 0;
   }
-  return returnValue;
 }

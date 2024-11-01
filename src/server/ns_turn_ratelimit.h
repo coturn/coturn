@@ -44,8 +44,8 @@ int ratelimit_delete_expired(ur_map_value_type value);
 void ratelimit_init_map(void);
 ////// Rate limit for 401 Unauthorized //////
 
-#define RATELIMIT_DEFAULT_MAX_REQUESTS_PER_WINDOW 100
-#define RATELIMIT_DEFAULT_WINDOW_SECS 60
+#define RATELIMIT_DEFAULT_MAX_REQUESTS_PER_WINDOW 1000
+#define RATELIMIT_DEFAULT_WINDOW_SECS 120
 
 typedef struct {
   time_t last_request_time;
