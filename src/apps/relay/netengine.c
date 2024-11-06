@@ -1673,7 +1673,9 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
                    send_turn_session_info, send_https_socket, allocate_bps, turn_params.oauth,
                    turn_params.oauth_server_name, turn_params.acme_redirect,
                    turn_params.allocation_default_address_family, &turn_params.log_binding,
-                   &turn_params.no_stun_backward_compatibility, &turn_params.response_origin_only_with_rfc5780);
+                   &turn_params.no_stun_backward_compatibility, &turn_params.response_origin_only_with_rfc5780,
+                   &turn_params.ratelimit_401_requests_per_window, &turn_params.ratelimit_401_window_seconds);
+
 
   // Intentionally performed outside init_turn_server to help avoid future merge conflicts
   if(turn_params.federation_listening_ip != NULL && 
