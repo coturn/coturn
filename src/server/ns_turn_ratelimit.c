@@ -28,6 +28,8 @@
  * SUCH DAMAGE.
  */
 
+#include <sys/stat.h>
+
 #include "ns_turn_maps.h"
 #include "ns_turn_ioalib.h"
 #include "ns_turn_ratelimit.h"
@@ -35,8 +37,95 @@
 /////////////////// rate limit //////////////////////////
 
 ur_addr_map *rate_limit_map = NULL;
+ur_addr_map *rate_limit_allowlist_map = NULL;
+
 int ratelimit_window_secs = RATELIMIT_DEFAULT_WINDOW_SECS;
+time_t last_mtime = 0;
+
 TURN_MUTEX_DECLARE(rate_limit_main_mutex);
+TURN_MUTEX_DECLARE(rate_limit_allowlist_mutex);
+
+void ratelimit_remove_newlines(char *str) {
+  char *src = str;
+  char *dst = str;
+
+  while (*src != '\0') {
+    if (*src != '\r' && *src != '\n') {
+      *dst++ = *src;
+    }
+    src++;
+  }
+  *dst = '\0';
+}
+
+void ratelimit_init_allowlist_map() {
+  TURN_MUTEX_INIT(&rate_limit_allowlist_mutex);
+  TURN_MUTEX_LOCK(&rate_limit_allowlist_mutex);
+
+  rate_limit_allowlist_map = (ur_addr_map*)malloc(sizeof(ur_addr_map));
+  ur_addr_map_init(rate_limit_allowlist_map);
+
+  TURN_MUTEX_UNLOCK(&rate_limit_allowlist_mutex);
+}
+
+int ratelimit_is_on_allowlist(const char *allowlist, ioa_addr *addr) {
+  /* If no allowlist provided, return early */
+  if (!allowlist) {
+    return 0;
+  }
+  /* Init allow_list map if needed */
+  if (rate_limit_allowlist_map == NULL) {
+    ratelimit_init_allowlist_map();
+  }
+
+  /* Check the mtime of the allow list, do we need to update? */
+  struct stat fstat;
+  if (stat(allowlist, &fstat) == 0) {
+    if (fstat.st_mtime != last_mtime) {
+      last_mtime = fstat.st_mtime;
+
+      FILE *file = NULL;
+      file = fopen(allowlist, "r");
+      if (file != NULL) {
+        char line[1024];
+
+        /* Rebuild map */
+        TURN_MUTEX_LOCK(&rate_limit_allowlist_mutex);
+        ur_addr_map_clean(rate_limit_allowlist_map);
+        ur_addr_map_init(rate_limit_allowlist_map);
+        TURN_MUTEX_UNLOCK(&rate_limit_allowlist_mutex);
+        /* loop over file and add entries */
+        while (fgets(line, sizeof(line) - 1, file) != NULL) {
+          if (!line) {
+            break;
+          }
+
+          ioa_addr new_address;
+          ratelimit_remove_newlines(line);
+          if(make_ioa_addr_from_full_string((const uint8_t *)line, 0, &new_address) != 0) {
+            TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Malformed address in 401 ratelimit allow list file %s: %s\n", allowlist, line);
+          } else {
+            TURN_MUTEX_LOCK(&rate_limit_allowlist_mutex);
+            ur_addr_map_put(rate_limit_allowlist_map, &new_address, (ur_addr_map_value_type)1);
+            TURN_MUTEX_UNLOCK(&rate_limit_allowlist_mutex);
+          }
+        }
+        if (file) {
+          fclose(file);
+        }
+      } else {
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Could not open 401 ratelimit allow list file: %s\n", allowlist);
+      }
+    }
+  }
+
+  ur_addr_map_value_type ratelimit_ptr = 0;
+  if (ur_addr_map_get(rate_limit_allowlist_map, addr, &ratelimit_ptr)) {
+    return 1;
+  } else {
+    return 0;
+  }
+}
 
 void ratelimit_add_node(ioa_addr *address) {
   // copy address
@@ -63,7 +152,7 @@ void ratelimit_init_map() {
   TURN_MUTEX_UNLOCK(&rate_limit_main_mutex);
 }
 
-int ratelimit_is_address_limited(ioa_addr *address, int max_requests, int window_seconds) {
+int ratelimit_is_address_limited(ioa_addr *address, int max_requests, int window_seconds, const char *allowlist) {
   /* Housekeeping, prune the map when ADDR_MAP_SIZE is hit and delete expired items */
   turn_time_t current_time = turn_time();
 
@@ -87,7 +176,6 @@ int ratelimit_is_address_limited(ioa_addr *address, int max_requests, int window
   addr_set_port(address_new, 0);
 
   if (ur_addr_map_get(rate_limit_map, address_new, &ratelimit_ptr)) {
-    free(address_new);
     ratelimit_entry *rateLimitEntry = (ratelimit_entry *)(void *)(ur_map_value_type)ratelimit_ptr;
     TURN_MUTEX_LOCK(&(rateLimitEntry->mutex));
 
@@ -96,6 +184,7 @@ int ratelimit_is_address_limited(ioa_addr *address, int max_requests, int window
       rateLimitEntry->request_count = 1;
       rateLimitEntry->last_request_time = current_time;
       TURN_MUTEX_UNLOCK(&(rateLimitEntry->mutex));
+      free(address_new);
       return 0;
     } else if (rateLimitEntry->request_count < max_requests) {
       /* Check if request count is below requests per window; increment the count */
@@ -103,8 +192,17 @@ int ratelimit_is_address_limited(ioa_addr *address, int max_requests, int window
         rateLimitEntry->request_count++;
       rateLimitEntry->last_request_time = current_time;
       TURN_MUTEX_UNLOCK(&(rateLimitEntry->mutex));
+      free(address_new);
       return 0;
     } else {
+      /* Before ratelimit, check allow list */
+      if(ratelimit_is_on_allowlist(allowlist, address_new)) {
+        free(address_new);
+        TURN_MUTEX_UNLOCK(&(rateLimitEntry->mutex));
+        return 0;
+      }
+
+      free(address_new);
       /* Request is outside of defined window and count, request is ratelimited */
       if (rateLimitEntry->request_count < UINT32_MAX)
         rateLimitEntry->request_count++;

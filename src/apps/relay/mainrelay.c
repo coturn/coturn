@@ -251,7 +251,8 @@ turn_params_t turn_params = {
 
     ///////// Ratelimt /////////
     RATELIMIT_DEFAULT_MAX_REQUESTS_PER_WINDOW, /* 401-req-limit */
-    RATELIMIT_DEFAULT_WINDOW_SECS              /* 401-window */
+    RATELIMIT_DEFAULT_WINDOW_SECS,             /* 401-window */
+    NULL                                       /* 401-allowlist */
 };
 
 //////////////// OpenSSL Init //////////////////////
@@ -1311,6 +1312,8 @@ static char Usage[] =
     "						per rate-limiting window. If set to 0 disables rate limiting. Default is 1000.\n"
     " --401-window=<seconds>\t\t\t\tSet the time window duration in seconds for rate limiting 401 Unauthorized responses.\n"
     "						Default is 120.\n"
+    " --401-allowlist=<filename>\t\t\tSet the path of the allow-list, one IP per line allowed to bypass the 401\n"
+    "						rate-limit settings. Default is none.\n"
     " --version					Print version (and exit).\n"
     " -h						Help\n"
     "\n";
@@ -1476,9 +1479,9 @@ enum EXTRA_OPTS {
   FEDERATION_PKEY_OPT,
   FEDERATION_PKEY_PWD_OPT,
   FEDERATION_REMOTE_WHITELIST_OPT,
-  RATELIMIT_OPT,
   RATELIMIT_REQUESTS_OPT,
-  RATELIMIT_WINDOW_OPT
+  RATELIMIT_WINDOW_OPT,
+  RATELIMIT_ALLOWLIST_OPT
 };
 
 struct myoption {
@@ -1633,6 +1636,7 @@ static const struct myoption long_options[] = {
     {"syslog-facility", required_argument, NULL, SYSLOG_FACILITY_OPT},
     {"401-req-limit", optional_argument, NULL, RATELIMIT_REQUESTS_OPT},
     {"401-window", optional_argument, NULL, RATELIMIT_WINDOW_OPT},
+    {"401-allowlist", optional_argument, NULL, RATELIMIT_ALLOWLIST_OPT},
     {NULL, no_argument, NULL, 0}};
 
 static const struct myoption admin_long_options[] = {
@@ -2396,6 +2400,10 @@ static void set_option(int c, char *value) {
   case RATELIMIT_WINDOW_OPT:
     turn_params.ratelimit_401_window_seconds = get_int_value(value, RATELIMIT_DEFAULT_WINDOW_SECS);
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Setting 401 ratelimit window to: %i seconds\n", turn_params.ratelimit_401_window_seconds);
+    break;
+  case RATELIMIT_ALLOWLIST_OPT:
+    STRCPY(turn_params.ratelimit_401_allowlist, value);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Setting 401 ratelimit allow list to: %s\n", turn_params.ratelimit_401_allowlist);
     break;
   /* these options have been already taken care of before: */
   case 'l':
