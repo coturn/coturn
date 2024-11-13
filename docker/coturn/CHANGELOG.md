@@ -9,7 +9,7 @@ Coturn TURN server Docker image changelog
 
 ### Security updated
 
-- [Debian Linux] "bookworm" 20241016 (12.7): <https://github.com/docker-library/official-images/commit/e6d93e331b38261c646c27e86161d55235144e0a>
+- [Debian Linux] "bookworm" 20241111 (12.8): <https://github.com/docker-library/official-images/commit/ce9eb7711699561bd9d1c99b64e213c2e48b96b7>
 
 
 
