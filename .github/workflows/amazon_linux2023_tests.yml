@@ -1,4 +1,4 @@
-name: AmazonLinux
+name: AmazonLinux2023
 
 on:
   push:
@@ -16,8 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # amazonlinux 2 is end-of-life 2025-06
-        os: [ 'amazonlinux:2', 'amazonlinux:2023' ]
+       os: [ 'amazonlinux:2023' ]
 
     runs-on: ubuntu-latest
     container: ${{ matrix.os }}
