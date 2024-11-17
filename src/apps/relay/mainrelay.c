@@ -121,7 +121,7 @@ turn_params_t turn_params = {
     //////////////// Common params ////////////////////
     TURN_VERBOSE_NONE, /* verbose */
     0,                 /* turn_daemon */
-    0,                 /* no_software_attribute */
+    true,              /* software_attribute */
     0,                 /* web_admin_listen_on_workers */
 
     0, /* do_not_use_config_file */
@@ -1493,7 +1493,7 @@ enum EXTRA_OPTS {
   ADMIN_USER_QUOTA_OPT,
   SERVER_NAME_OPT,
   OAUTH_OPT,
-  NO_SOFTWARE_ATTRIBUTE_OPT,
+  SOFTWARE_ATTRIBUTE_OPT,
   NO_HTTP_OPT,
   SECRET_KEY_OPT,
   ACME_REDIRECT_OPT,
@@ -1574,8 +1574,8 @@ static const struct myoption long_options[] = {
     {"verbose", optional_argument, NULL, 'v'},
     {"Verbose", optional_argument, NULL, 'V'},
     {"daemon", optional_argument, NULL, 'o'},
-    /* deprecated: */ {"prod", optional_argument, NULL, NO_SOFTWARE_ATTRIBUTE_OPT},
-    {"no-software-attribute", optional_argument, NULL, NO_SOFTWARE_ATTRIBUTE_OPT},
+    /* deprecated: */ {"prod", optional_argument, NULL, SOFTWARE_ATTRIBUTE_OPT},
+    {"no-software-attribute", optional_argument, NULL, SOFTWARE_ATTRIBUTE_OPT},
     {"fingerprint", optional_argument, NULL, 'f'},
     {"check-origin-consistency", optional_argument, NULL, CHECK_ORIGIN_CONSISTENCY_OPT},
     {"no-udp", optional_argument, NULL, NO_UDP_OPT},
@@ -2166,8 +2166,8 @@ static void set_option(int c, char *value) {
       anon_credentials = 1;
     }
     break;
-  case NO_SOFTWARE_ATTRIBUTE_OPT:
-    turn_params.no_software_attribute = get_bool_value(value);
+  case SOFTWARE_ATTRIBUTE_OPT:
+    turn_params.software_attribute = !(bool)get_bool_value(value);
     break;
   case 'f':
     turn_params.fingerprint = get_bool_value(value);
