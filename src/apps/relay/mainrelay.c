@@ -121,7 +121,7 @@ turn_params_t turn_params = {
     //////////////// Common params ////////////////////
     TURN_VERBOSE_NONE, /* verbose */
     0,                 /* turn_daemon */
-    true,              /* software_attribute */
+    false,             /* software_attribute */
     0,                 /* web_admin_listen_on_workers */
 
     0, /* do_not_use_config_file */
@@ -1028,7 +1028,8 @@ static char Usage[] =
     " -v, --verbose					'Moderate' verbose mode.\n"
     " -V, --Verbose					Extra verbose mode, very annoying (for debug purposes only).\n"
     " -o, --daemon					Start process as daemon (detach from current shell).\n"
-    " --no-software-attribute	 		Production mode: hide the software version (formerly --prod).\n"
+    " --no-software-attribute	 		DEPRECATED Production mode: hide the software version.\n"
+    " --software-attribute	 		Enable sending software attribute (for debugging).\n"
     " -f, --fingerprint				Use fingerprints in the TURN messages.\n"
     " -a, --lt-cred-mech				Use the long-term credential mechanism.\n"
     " -z, --no-auth					Do not use any credential mechanism, allow anonymous access.\n"
@@ -1494,6 +1495,7 @@ enum EXTRA_OPTS {
   SERVER_NAME_OPT,
   OAUTH_OPT,
   SOFTWARE_ATTRIBUTE_OPT,
+  DEPRECATED_NO_SOFTWARE_ATTRIBUTE_OPT,
   NO_HTTP_OPT,
   SECRET_KEY_OPT,
   ACME_REDIRECT_OPT,
@@ -1574,8 +1576,8 @@ static const struct myoption long_options[] = {
     {"verbose", optional_argument, NULL, 'v'},
     {"Verbose", optional_argument, NULL, 'V'},
     {"daemon", optional_argument, NULL, 'o'},
-    /* deprecated: */ {"prod", optional_argument, NULL, SOFTWARE_ATTRIBUTE_OPT},
-    {"no-software-attribute", optional_argument, NULL, SOFTWARE_ATTRIBUTE_OPT},
+    /* deprecated: */ {"no-software-attribute", optional_argument, NULL, DEPRECATED_NO_SOFTWARE_ATTRIBUTE_OPT},
+    {"software-attribute", optional_argument, NULL, SOFTWARE_ATTRIBUTE_OPT},
     {"fingerprint", optional_argument, NULL, 'f'},
     {"check-origin-consistency", optional_argument, NULL, CHECK_ORIGIN_CONSISTENCY_OPT},
     {"no-udp", optional_argument, NULL, NO_UDP_OPT},
@@ -2166,8 +2168,11 @@ static void set_option(int c, char *value) {
       anon_credentials = 1;
     }
     break;
-  case SOFTWARE_ATTRIBUTE_OPT:
+  case DEPRECATED_NO_SOFTWARE_ATTRIBUTE_OPT:
     turn_params.software_attribute = !(bool)get_bool_value(value);
+    break;
+  case SOFTWARE_ATTRIBUTE_OPT:
+    turn_params.software_attribute = (bool)get_bool_value(value);
     break;
   case 'f':
     turn_params.fingerprint = get_bool_value(value);
