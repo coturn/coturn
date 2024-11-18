@@ -137,6 +137,9 @@ static const char *CLI_HELP_STR[] = {"",
                                      "",
                                      "  quit, q, exit, bye - end CLI session",
                                      "",
+                                     "  drain - drain TURN Server, then shutdown",
+                                     "     (wait for all allocations to go away, reject new)",
+                                     "",
                                      "  stop, shutdown, halt - shutdown TURN Server",
                                      "",
                                      "  pc - print configuration",
@@ -960,7 +963,7 @@ static int run_cli_input(struct cli_session *cs, const char *buf0, unsigned int 
     if (sl) {
       cs->cmds += 1;
       if (cli_password[0] && !(cs->auth_completed)) {
-        if (check_password_equal(cmd, cli_password)) {
+        if (!check_password_equal(cmd, cli_password)) {
           if (cs->cmds >= CLI_PASSWORD_TRY_NUMBER) {
             addr_debug_print(1, &(cs->addr), "CLI authentication error");
             TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "CLI authentication error\n");
@@ -980,12 +983,18 @@ static int run_cli_input(struct cli_session *cs, const char *buf0, unsigned int 
         myprintf(cs, "%s\n", str);
         close_cli_session(cs);
         ret = -1;
+      } else if (strcmp(cmd, "drain") == 0) {
+        addr_debug_print(1, &(cs->addr), "Drain command received from CLI user");
+        const char *str = "TURN server is draining then shutting down";
+        myprintf(cs, "%s\n", str);
+        close_cli_session(cs);
+        enable_drain_mode();
       } else if ((strcmp(cmd, "halt") == 0) || (strcmp(cmd, "shutdown") == 0) || (strcmp(cmd, "stop") == 0)) {
         addr_debug_print(1, &(cs->addr), "Shutdown command received from CLI user");
         const char *str = "TURN server is shutting down";
         myprintf(cs, "%s\n", str);
         close_cli_session(cs);
-        turn_params.stop_turn_server = 1;
+        turn_params.stop_turn_server = true;
         sleep(10);
         exit(0);
       } else if ((strcmp(cmd, "?") == 0) || (strcmp(cmd, "h") == 0) || (strcmp(cmd, "help") == 0)) {

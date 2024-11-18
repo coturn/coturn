@@ -46,6 +46,14 @@
 extern "C" {
 #endif
 
+#ifndef _MSC_VER
+#include <stdatomic.h>
+extern _Atomic
+#else
+extern volatile
+#endif
+    size_t global_allocation_count;
+
 //////////// REALM //////////////
 
 struct _realm_status_t;

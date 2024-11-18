@@ -1605,6 +1605,11 @@ void run_listener_server(struct listener_server *ls) {
       }
     }
 
+    if (turn_params.drain_turn_server && global_allocation_count == 0) {
+      turn_params.stop_turn_server = true;
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Drain complete, shutting down now...\n");
+    }
+
     run_events(ls->event_base, ls->ioa_eng);
 
     rollover_logfile();
@@ -1648,7 +1653,7 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
   bufferevent_enable(rs->auth_in_buf, EV_READ);
 
   init_turn_server(
-      &(rs->server), rs->id, turn_params.verbose, rs->ioa_eng, turn_params.ct, 0, turn_params.fingerprint,
+      &(rs->server), rs->id, turn_params.verbose, rs->ioa_eng, turn_params.ct, turn_params.fingerprint,
       DONT_FRAGMENT_SUPPORTED, start_user_check, check_new_allocation_quota, release_allocation_quota,
       turn_params.external_ip, &turn_params.check_origin, &turn_params.no_tcp_relay, &turn_params.no_udp_relay,
       &turn_params.stale_nonce, &turn_params.max_allocate_lifetime, &turn_params.channel_lifetime,
@@ -1899,4 +1904,18 @@ void setup_server(void) {
 
 void init_listener(void) { memset(&turn_params.listener, 0, sizeof(struct listener_server)); }
 
+void enable_drain_mode(void) {
+  // Tell each turn_server we are draining
+  for (size_t i = 0; i < get_real_general_relay_servers_number(); i++) {
+    if (general_relay_servers[i]) {
+      general_relay_servers[i]->server.is_draining = true;
+    }
+  }
+  for (size_t i = 0; i < get_real_udp_relay_servers_number(); i++) {
+    if (udp_relay_servers[i]) {
+      udp_relay_servers[i]->server.is_draining = true;
+    }
+  }
+  turn_params.drain_turn_server = true;
+}
 ///////////////////////////////

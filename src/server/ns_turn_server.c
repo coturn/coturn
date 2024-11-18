@@ -1288,6 +1288,13 @@ static int handle_turn_allocate(turn_turnserver *server, ts_ur_super_session *ss
           }
         }
 
+        if (server->is_draining) {
+          // Don't allow new allocations if we are draining
+          *err_code = 403; // 403 (Forbidden): RFC8656 - The request is valid, but the server is refusing to perform it,
+                           // likely due to administrative restrictions....
+          *reason = (const uint8_t *)"Server is draining, then will shutdown, please try another server";
+        }
+
         if (!(*err_code)) {
           if (!af4 && !af6) {
             switch (server->allocation_default_address_family) {
@@ -4905,7 +4912,7 @@ static void client_input_handler(ioa_socket_handle s, int event_type, ioa_net_da
 ///////////////////////////////////////////////////////////
 
 void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, ioa_engine_handle e,
-                      turn_credential_type ct, int stun_port, int fingerprint, dont_fragment_option_t dont_fragment,
+                      turn_credential_type ct, int fingerprint, dont_fragment_option_t dont_fragment,
                       get_user_key_cb userkeycb, check_new_allocation_quota_cb chquotacb,
                       release_allocation_quota_cb raqcb, ioa_addr *external_ip, vintp check_origin, vintp no_tcp_relay,
                       vintp no_udp_relay, vintp stale_nonce, vintp max_allocate_lifetime, vintp channel_lifetime,
@@ -4979,9 +4986,6 @@ void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, io
     addr_cpy(&(server->external_ip), external_ip);
     server->external_ip_set = 1;
   }
-  if (stun_port < 1) {
-    stun_port = DEFAULT_STUN_PORT;
-  }
 
   server->verbose = verbose;
 
@@ -5003,6 +5007,8 @@ void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, io
   server->response_origin_only_with_rfc5780 = response_origin_only_with_rfc5780;
 
   server->respond_http_unsupported = respond_http_unsupported;
+
+  server->is_draining = false;
 }
 
 ioa_engine_handle turn_server_get_engine(turn_turnserver *s) {
