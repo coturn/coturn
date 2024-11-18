@@ -45,12 +45,13 @@ MHD_RESULT promhttp_handler(void *cls, struct MHD_Connection *connection, const 
                             const char *version, const char *upload_data, size_t *upload_data_size, void **con_cls) {
   MHD_RESULT ret;
 
-  char *body = NULL;
+  char *body = "not found";
   enum MHD_ResponseMemoryMode mode = MHD_RESPMEM_PERSISTENT;
   unsigned int status = MHD_HTTP_NOT_FOUND;
 
   if (strcmp(method, "GET") != 0) {
     status = MHD_HTTP_METHOD_NOT_ALLOWED;
+    body = "method not allowed";
   } else if (strcmp(url, "/metrics") == 0) {
     body = prom_collector_registry_bridge(PROM_COLLECTOR_REGISTRY_DEFAULT);
     mode = MHD_RESPMEM_MUST_FREE;
