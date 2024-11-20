@@ -214,7 +214,7 @@ turn_params_t turn_params = {
     DEFAULT_PROM_SERVER_PORT,           /* prometheus port */
     "",                                 /* prometheus address */
     0, /* prometheus username labelling disabled by default when prometheus is enabled */
-    "",                                 /* prometheus basepath */
+    "/metrics",                         /* prometheus basepath */
 
     ///////////// Users DB //////////////
     {(TURN_USERDB_TYPE)0, {"\0", "\0"}, {0, NULL, {NULL, 0}}},
