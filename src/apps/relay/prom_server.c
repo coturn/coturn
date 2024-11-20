@@ -52,10 +52,14 @@ MHD_RESULT promhttp_handler(void *cls, struct MHD_Connection *connection, const 
   if (strcmp(method, "GET") != 0) {
     status = MHD_HTTP_METHOD_NOT_ALLOWED;
     body = "method not allowed";
-  } else if (strcmp(url, "/metrics") == 0) {
-    body = prom_collector_registry_bridge(PROM_COLLECTOR_REGISTRY_DEFAULT);
-    mode = MHD_RESPMEM_MUST_FREE;
-    status = MHD_HTTP_OK;
+  } else if (strncmp(turn_params.prometheus_basepath, url, strlen(turn_params.prometheus_basepath)) == 0) {
+    url += strlen(turn_params.prometheus_basepath);
+
+    if (strcmp(url, "/metrics") == 0) {
+      body = prom_collector_registry_bridge(PROM_COLLECTOR_REGISTRY_DEFAULT);
+      mode = MHD_RESPMEM_MUST_FREE;
+      status = MHD_HTTP_OK;
+    }
   }
 
   struct MHD_Response *response = MHD_create_response_from_buffer(strlen(body), body, mode);
