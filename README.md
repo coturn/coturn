@@ -35,7 +35,7 @@ coturn requires following dependencies to be installed first
 Optional
 - openssl (to support TLS and DTLS, authorized STUN and TURN)
 - libmicrohttp and [prometheus-client-c](https://github.com/digitalocean/prometheus-client-c) (prometheus interface)
-- MySQL (user database)
+- MariaDB/MySQL (user database)
 - [Hiredis](https://github.com/redis/hiredis) (user database, monitoring)
 - SQLite (user database)
 - PostgreSQL (user database)
@@ -98,7 +98,7 @@ Relay protocols:
 User databases (for user repository, with passwords or keys, if authentication is required):
 
   * SQLite
-  * MySQL
+  * MariaDB/MySQL
   * PostgreSQL
   * Redis
   * MongoDB
