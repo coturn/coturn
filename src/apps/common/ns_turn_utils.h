@@ -41,6 +41,7 @@ void err(int eval, const char *format, ...);
 #endif
 #endif
 
+#include "ns_turn_defs.h" // for turn_time_t
 #include "ns_turn_ioaddr.h"
 
 #ifdef __cplusplus

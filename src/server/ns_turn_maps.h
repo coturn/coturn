@@ -31,7 +31,10 @@
 #ifndef __TURN_MAPS__
 #define __TURN_MAPS__
 
+#include "ns_turn_defs.h" // for size_t, uint64_t, uintptr_t
 #include "ns_turn_ioaddr.h"
+
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -39,7 +42,7 @@ extern "C" {
 
 //////////////// UR MAP //////////////////
 
-struct _ur_map;
+struct _ur_map; // IWYU pragma: keep
 typedef struct _ur_map ur_map;
 
 //////////////// Common Definitions //////
@@ -49,8 +52,8 @@ typedef uintptr_t ur_map_value_type;
 
 typedef void (*ur_map_del_func)(ur_map_value_type);
 
-typedef int (*foreachcb_type)(ur_map_key_type key, ur_map_value_type value);
-typedef int (*foreachcb_arg_type)(ur_map_key_type key, ur_map_value_type value, void *arg);
+typedef bool (*foreachcb_type)(ur_map_key_type key, ur_map_value_type value);
+typedef bool (*foreachcb_arg_type)(ur_map_key_type key, ur_map_value_type value, void *arg);
 
 ///////////// non-local map /////////////////////
 
@@ -58,44 +61,63 @@ ur_map *ur_map_create(void);
 
 /**
  * @ret:
- * 0 - success
- * -1 - error
+ * true - success
+ * fakse - error
  */
-
-int ur_map_put(ur_map *map, ur_map_key_type key, ur_map_value_type value);
+bool ur_map_put(ur_map *map, ur_map_key_type key, ur_map_value_type value);
 
 /**
  * @ret:
- * 1 - success
- * 0 - not found
+ * true - success
+ * false - not found
  */
+bool ur_map_get(const ur_map *map, ur_map_key_type key, ur_map_value_type *value);
 
-int ur_map_get(const ur_map *map, ur_map_key_type key, ur_map_value_type *value);
 /**
  * @ret:
- * 1 - success
- * 0 - not found
+ * true - success
+ * false - not found
  */
+bool ur_map_del(ur_map *map, ur_map_key_type key, ur_map_del_func delfunc);
 
-int ur_map_del(ur_map *map, ur_map_key_type key, ur_map_del_func delfunc);
 /**
  * @ret:
- * 1 - success
- * 0 - not found
+ * true - success
+ * false - not found
  */
-
-int ur_map_exist(const ur_map *map, ur_map_key_type key);
+bool ur_map_exist(const ur_map *map, ur_map_key_type key);
 
 void ur_map_free(ur_map **map);
 
 size_t ur_map_size(const ur_map *map);
 
-int ur_map_foreach(ur_map *map, foreachcb_type func);
+/**
+ * @ret:
+ * true - func is called and returns true
+ * false - func is not called, or is called and returns false
+ */
+bool ur_map_foreach(ur_map *map, foreachcb_type func);
 
-int ur_map_foreach_arg(const ur_map *map, foreachcb_arg_type func, void *arg);
+/**
+ * @ret:
+ * true - func is called and returns true
+ * false - func is not called, or is called and returns false
+ */
+bool ur_map_foreach_arg(const ur_map *map, foreachcb_arg_type func, void *arg);
 
-int ur_map_lock(const ur_map *map);
-int ur_map_unlock(const ur_map *map);
+/**
+ * @ret:
+ * true - success
+ * false - failure
+ */
+bool ur_map_lock(const ur_map *map);
+
+/**
+ * @ret:
+ * true - success
+ * false - failure
+ */
+bool ur_map_unlock(const ur_map *map);
 
 ///////////// "local" map /////////////////////
 
@@ -118,41 +140,49 @@ void lm_map_init(lm_map *map);
 
 /**
  * @ret:
- * 0 - success
- * -1 - error
+ * true - success
+ * false - error
  */
-
-int lm_map_put(lm_map *map, ur_map_key_type key, ur_map_value_type value);
+bool lm_map_put(lm_map *map, ur_map_key_type key, ur_map_value_type value);
 
 /**
  * @ret:
- * 1 - success
- * 0 - not found
+ * true - success
+ * false - not found
  */
+bool lm_map_get(const lm_map *map, ur_map_key_type key, ur_map_value_type *value);
 
-int lm_map_get(const lm_map *map, ur_map_key_type key, ur_map_value_type *value);
 /**
  * @ret:
- * 1 - success
- * 0 - not found
+ * true - success
+ * false - not found
  */
+bool lm_map_del(lm_map *map, ur_map_key_type key, ur_map_del_func delfunc);
 
-int lm_map_del(lm_map *map, ur_map_key_type key, ur_map_del_func delfunc);
 /**
  * @ret:
- * 1 - success
- * 0 - not found
+ * true - success
+ * false - not found
  */
-
-int lm_map_exist(const lm_map *map, ur_map_key_type key);
+bool lm_map_exist(const lm_map *map, ur_map_key_type key);
 
 void lm_map_clean(lm_map *map);
 
 size_t lm_map_size(const lm_map *map);
 
-int lm_map_foreach(lm_map *map, foreachcb_type func);
+/**
+ * @ret:
+ * true - func is called and returns true
+ * false - func is not called, or is called and returns false
+ */
+bool lm_map_foreach(lm_map *map, foreachcb_type func);
 
-int lm_map_foreach_arg(lm_map *map, foreachcb_arg_type func, void *arg);
+/**
+ * @ret:
+ * true - func is called and returns true
+ * false - func is not called, or is called and returns false
+ */
+bool lm_map_foreach_arg(lm_map *map, foreachcb_arg_type func, void *arg);
 
 //////////////// UR ADDR MAP //////////////////
 
@@ -177,7 +207,6 @@ struct _ur_addr_map {
   uint64_t magic;
 };
 
-struct _ur_addr_map;
 typedef struct _ur_addr_map ur_addr_map;
 
 typedef void (*ur_addr_map_func)(ur_addr_map_value_type);
@@ -187,31 +216,26 @@ void ur_addr_map_clean(ur_addr_map *map);
 
 /**
  * @ret:
- * 0 - success
- * -1 - error
+ * true - success
+ * false - error
  * if the addr key exists, the value is updated.
  */
-int ur_addr_map_put(ur_addr_map *map, ioa_addr *key, ur_addr_map_value_type value);
+bool ur_addr_map_put(ur_addr_map *map, ioa_addr *key, ur_addr_map_value_type value);
 
 /**
  * @ret:
- * 1 - success
- * 0 - not found
+ * true - success
+ * false - not found
  */
-int ur_addr_map_get(const ur_addr_map *map, ioa_addr *key, ur_addr_map_value_type *value);
+bool ur_addr_map_get(const ur_addr_map *map, ioa_addr *key, ur_addr_map_value_type *value);
 
 /**
  * @ret:
- * 1 - success
- * 0 - not found
+ * true - success
+ * false - not found
  */
-int ur_addr_map_del(ur_addr_map *map, ioa_addr *key, ur_addr_map_func func);
+bool ur_addr_map_del(ur_addr_map *map, ioa_addr *key, ur_addr_map_func func);
 
-/**
- * @ret:
- * 1 - success
- * 0 - not found
- */
 void ur_addr_map_foreach(ur_addr_map *map, ur_addr_map_func func);
 
 size_t ur_addr_map_num_elements(const ur_addr_map *map);
@@ -221,7 +245,7 @@ size_t ur_addr_map_size(const ur_addr_map *map);
 
 typedef char *ur_string_map_key_type;
 typedef void *ur_string_map_value_type;
-struct _ur_string_map;
+struct _ur_string_map; // IWYU pragma: keep
 typedef struct _ur_string_map ur_string_map;
 
 typedef void (*ur_string_map_func)(ur_string_map_value_type);
@@ -230,33 +254,44 @@ ur_string_map *ur_string_map_create(ur_string_map_func del_value_func);
 
 /**
  * @ret:
- * 0 - success
- * -1 - error
+ * true - success
+ * false - error
  * if the string key exists, and the value is different, return error.
  */
-int ur_string_map_put(ur_string_map *map, const ur_string_map_key_type key, ur_string_map_value_type value);
+bool ur_string_map_put(ur_string_map *map, const ur_string_map_key_type key, ur_string_map_value_type value);
 
 /**
  * @ret:
- * 1 - success
- * 0 - not found
+ * true - success
+ * false - not found
  */
-int ur_string_map_get(ur_string_map *map, const ur_string_map_key_type key, ur_string_map_value_type *value);
+bool ur_string_map_get(ur_string_map *map, const ur_string_map_key_type key, ur_string_map_value_type *value);
 
 /**
  * @ret:
- * 1 - success
- * 0 - not found
+ * true - success
+ * false - not found
  */
-int ur_string_map_del(ur_string_map *map, const ur_string_map_key_type key);
+bool ur_string_map_del(ur_string_map *map, const ur_string_map_key_type key);
 
 void ur_string_map_clean(ur_string_map *map);
 void ur_string_map_free(ur_string_map **map);
 
 size_t ur_string_map_size(const ur_string_map *map);
 
-int ur_string_map_lock(const ur_string_map *map);
-int ur_string_map_unlock(const ur_string_map *map);
+/**
+ * @ret:
+ * true - success
+ * false - failure
+ */
+bool ur_string_map_lock(const ur_string_map *map);
+
+/**
+ * @ret:
+ * true - success
+ * false - failure
+ */
+bool ur_string_map_unlock(const ur_string_map *map);
 
 ////////////////////////////////////////////
 

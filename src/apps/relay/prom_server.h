@@ -65,6 +65,8 @@ void prom_set_finished_traffic(const char *realm, const char *user, unsigned lon
 void prom_inc_allocation(SOCKET_TYPE type);
 void prom_dec_allocation(SOCKET_TYPE type);
 
+int is_ipv6_enabled(void);
+
 void prom_inc_stun_binding_request(void);
 void prom_inc_stun_binding_response(void);
 void prom_inc_stun_binding_error(void);

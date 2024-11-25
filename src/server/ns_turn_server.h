@@ -31,8 +31,13 @@
 #ifndef __TURN_SERVER__
 #define __TURN_SERVER__
 
+#include "ns_turn_allocation.h" // for tcp_connection_id
+#include "ns_turn_defs.h"       // for vintp, uint8_t, size_t, uint64_t
+#include "ns_turn_ioaddr.h"     // for ioa_addr
+#include "ns_turn_ioalib.h"     // for ioa_net_data, ioa_engine_handle, ioa...
+#include "ns_turn_maps.h"       // for ur_map
+#include "ns_turn_msg.h"        // for turn_credential_type, band_limit_t
 #include "ns_turn_session.h"
-#include "ns_turn_utils.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -198,6 +203,9 @@ struct _turn_turnserver {
   /* Return an HTTP 400 response to HTTP connections made to ports not
      otherwise handling HTTP. */
   vintp respond_http_unsupported;
+
+  /* Set to true on SIGUSR1 */
+  bool is_draining;
 };
 
 const char *get_version(turn_turnserver *server);
@@ -205,7 +213,7 @@ const char *get_version(turn_turnserver *server);
 ///////////////////////////////////////////
 
 void init_turn_server(
-    turn_turnserver *server, turnserver_id id, int verbose, ioa_engine_handle e, turn_credential_type ct, int stun_port,
+    turn_turnserver *server, turnserver_id id, int verbose, ioa_engine_handle e, turn_credential_type ct,
     int fingerprint, dont_fragment_option_t dont_fragment, get_user_key_cb userkeycb,
     check_new_allocation_quota_cb chquotacb, release_allocation_quota_cb raqcb, ioa_addr *external_addr,
     vintp check_origin, vintp no_tcp_relay, vintp no_udp_relay, vintp stale_nonce, vintp max_allocate_lifetime,

@@ -30,11 +30,14 @@
 
 #include "stun_buffer.h"
 
+#include <string.h> // for memset
+
 ////////////////////// BUFFERS ///////////////////////////
 
 int stun_init_buffer(stun_buffer *buf) {
-  if (!buf)
+  if (!buf) {
     return -1;
+  }
   memset(buf->buf, 0, sizeof(buf->buf));
   buf->len = 0;
   buf->offset = 0;
@@ -43,8 +46,9 @@ int stun_init_buffer(stun_buffer *buf) {
 }
 
 int stun_get_size(const stun_buffer *buf) {
-  if (!buf)
+  if (!buf) {
     return 0;
+  }
   return sizeof(buf->buf);
 }
 
@@ -62,43 +66,46 @@ void stun_tid_generate_in_message(stun_buffer *buf, stun_tid *id) {
 
 ////////////////////////////////////////////////////////
 
-static inline int is_channel_msg(const stun_buffer *buf) {
+static inline bool is_channel_msg(const stun_buffer *buf) {
   if (buf && buf->len > 0) {
     return is_channel_msg_str(buf->buf, (size_t)(buf->len));
   }
-  return 0;
+  return false;
 }
 
-int stun_is_command_message(const stun_buffer *buf) {
-  if (!buf || buf->len <= 0)
-    return 0;
-  else
+bool stun_is_command_message(const stun_buffer *buf) {
+  if (!buf || buf->len <= 0) {
+    return false;
+  } else {
     return stun_is_command_message_str(buf->buf, (size_t)(buf->len));
+  }
 }
 
-int stun_is_request(const stun_buffer *buf) { return stun_is_request_str(buf->buf, (size_t)buf->len); }
+bool stun_is_request(const stun_buffer *buf) { return stun_is_request_str(buf->buf, (size_t)buf->len); }
 
-int stun_is_success_response(const stun_buffer *buf) {
+bool stun_is_success_response(const stun_buffer *buf) {
   return stun_is_success_response_str(buf->buf, (size_t)(buf->len));
 }
 
-int stun_is_error_response(const stun_buffer *buf, int *err_code, uint8_t *err_msg, size_t err_msg_size) {
+bool stun_is_error_response(const stun_buffer *buf, int *err_code, uint8_t *err_msg, size_t err_msg_size) {
   return stun_is_error_response_str(buf->buf, (size_t)(buf->len), err_code, err_msg, err_msg_size);
 }
 
-int stun_is_response(const stun_buffer *buf) { return stun_is_response_str(buf->buf, (size_t)(buf->len)); }
+bool stun_is_response(const stun_buffer *buf) { return stun_is_response_str(buf->buf, (size_t)(buf->len)); }
 
-int stun_is_indication(const stun_buffer *buf) {
-  if (is_channel_msg(buf))
-    return 0;
+bool stun_is_indication(const stun_buffer *buf) {
+  if (is_channel_msg(buf)) {
+    return false;
+  }
   return IS_STUN_INDICATION(stun_get_msg_type(buf));
 }
 
 uint16_t stun_get_method(const stun_buffer *buf) { return stun_get_method_str(buf->buf, (size_t)(buf->len)); }
 
 uint16_t stun_get_msg_type(const stun_buffer *buf) {
-  if (!buf)
+  if (!buf) {
     return (uint16_t)-1;
+  }
   return stun_get_msg_type_str(buf->buf, (size_t)buf->len);
 }
 
@@ -106,7 +113,7 @@ uint16_t stun_get_msg_type(const stun_buffer *buf) {
 
 static void stun_init_command(uint16_t message_type, stun_buffer *buf) {
   buf->len = stun_get_size(buf);
-  stun_init_command_str(message_type, buf->buf, (size_t *)(&(buf->len)));
+  stun_init_command_str(message_type, buf->buf, &(buf->len));
 }
 
 void stun_init_request(uint16_t method, stun_buffer *buf) { stun_init_command(stun_make_request(method), buf); }
@@ -115,32 +122,33 @@ void stun_init_indication(uint16_t method, stun_buffer *buf) { stun_init_command
 
 void stun_init_success_response(uint16_t method, stun_buffer *buf, stun_tid *id) {
   buf->len = stun_get_size(buf);
-  stun_init_success_response_str(method, buf->buf, (size_t *)(&(buf->len)), id);
+  stun_init_success_response_str(method, buf->buf, &(buf->len), id);
 }
 
 void stun_init_error_response(uint16_t method, stun_buffer *buf, uint16_t error_code, const uint8_t *reason,
                               stun_tid *id) {
   buf->len = stun_get_size(buf);
-  stun_init_error_response_str(method, buf->buf, (size_t *)(&(buf->len)), error_code, reason, id);
+  stun_init_error_response_str(method, buf->buf, &(buf->len), error_code, reason, id);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
 int stun_get_command_message_len(const stun_buffer *buf) {
-  return stun_get_command_message_len_str(buf->buf, (size_t)(buf->len));
+  return stun_get_command_message_len_str(buf->buf, buf->len);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
-int stun_init_channel_message(uint16_t chnumber, stun_buffer *buf, int length, int do_padding) {
-  return stun_init_channel_message_str(chnumber, buf->buf, (size_t *)(&(buf->len)), length, do_padding);
+bool stun_init_channel_message(uint16_t chnumber, stun_buffer *buf, int length, bool do_padding) {
+  return stun_init_channel_message_str(chnumber, buf->buf, &(buf->len), length, do_padding);
 }
 
-int stun_is_channel_message(stun_buffer *buf, uint16_t *chnumber, int is_padding_mandatory) {
-  if (!buf)
-    return 0;
-  size_t blen = (size_t)buf->len;
-  int ret = stun_is_channel_message_str(buf->buf, &blen, chnumber, is_padding_mandatory);
+bool stun_is_channel_message(stun_buffer *buf, uint16_t *chnumber, bool is_padding_mandatory) {
+  if (!buf) {
+    return false;
+  }
+  size_t blen = buf->len;
+  bool ret = stun_is_channel_message_str(buf->buf, &blen, chnumber, is_padding_mandatory);
   if (ret) {
     buf->len = blen;
   }
@@ -149,93 +157,85 @@ int stun_is_channel_message(stun_buffer *buf, uint16_t *chnumber, int is_padding
 
 ///////////////////////////////////////////////////////////////////////////////
 
-int stun_set_allocate_request(stun_buffer *buf, uint32_t lifetime, int af4, int af6, uint8_t transport, int mobile,
-                              const char *rt, int ep) {
-  return stun_set_allocate_request_str(buf->buf, (size_t *)(&(buf->len)), lifetime, af4, af6, transport, mobile, rt,
-                                       ep);
+bool stun_set_allocate_request(stun_buffer *buf, uint32_t lifetime, bool af4, bool af6, uint8_t transport, bool mobile,
+                               const char *rt, int ep) {
+  return stun_set_allocate_request_str(buf->buf, &(buf->len), lifetime, af4, af6, transport, mobile, rt, ep);
 }
 
-int stun_set_allocate_response(stun_buffer *buf, stun_tid *tid, const ioa_addr *relayed_addr1,
-                               const ioa_addr *relayed_addr2, const ioa_addr *reflexive_addr, uint32_t lifetime,
-                               uint32_t max_lifetime, int error_code, const uint8_t *reason, uint64_t reservation_token,
-                               char *mobile_id) {
+bool stun_set_allocate_response(stun_buffer *buf, stun_tid *tid, const ioa_addr *relayed_addr1,
+                                const ioa_addr *relayed_addr2, const ioa_addr *reflexive_addr, uint32_t lifetime,
+                                uint32_t max_lifetime, int error_code, const uint8_t *reason,
+                                uint64_t reservation_token, char *mobile_id) {
 
-  return stun_set_allocate_response_str(buf->buf, (size_t *)(&(buf->len)), tid, relayed_addr1, relayed_addr2,
-                                        reflexive_addr, lifetime, max_lifetime, error_code, reason, reservation_token,
-                                        mobile_id);
+  return stun_set_allocate_response_str(buf->buf, &(buf->len), tid, relayed_addr1, relayed_addr2, reflexive_addr,
+                                        lifetime, max_lifetime, error_code, reason, reservation_token, mobile_id);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
 uint16_t stun_set_channel_bind_request(stun_buffer *buf, const ioa_addr *peer_addr, uint16_t channel_number) {
 
-  return stun_set_channel_bind_request_str(buf->buf, (size_t *)(&(buf->len)), peer_addr, channel_number);
+  return stun_set_channel_bind_request_str(buf->buf, &(buf->len), peer_addr, channel_number);
 }
 
 void stun_set_channel_bind_response(stun_buffer *buf, stun_tid *tid, int error_code, const uint8_t *reason) {
-  stun_set_channel_bind_response_str(buf->buf, (size_t *)(&(buf->len)), tid, error_code, reason);
+  stun_set_channel_bind_response_str(buf->buf, &(buf->len), tid, error_code, reason);
 }
 
 ////////////////////////////////////////////////////////////////
 
-stun_attr_ref stun_attr_get_first(const stun_buffer *buf) {
-  return stun_attr_get_first_str(buf->buf, (size_t)(buf->len));
-}
+stun_attr_ref stun_attr_get_first(const stun_buffer *buf) { return stun_attr_get_first_str(buf->buf, buf->len); }
 
 stun_attr_ref stun_attr_get_next(const stun_buffer *buf, stun_attr_ref prev) {
-  return stun_attr_get_next_str(buf->buf, (size_t)(buf->len), prev);
+  return stun_attr_get_next_str(buf->buf, buf->len, prev);
 }
 
-int stun_attr_add(stun_buffer *buf, uint16_t attr, const char *avalue, int alen) {
-  return stun_attr_add_str(buf->buf, (size_t *)(&(buf->len)), attr, (const uint8_t *)avalue, alen);
+bool stun_attr_add(stun_buffer *buf, uint16_t attr, const char *avalue, int alen) {
+  return stun_attr_add_str(buf->buf, &(buf->len), attr, (const uint8_t *)avalue, alen);
 }
 
-int stun_attr_add_channel_number(stun_buffer *buf, uint16_t chnumber) {
-  return stun_attr_add_channel_number_str(buf->buf, (size_t *)(&(buf->len)), chnumber);
+bool stun_attr_add_channel_number(stun_buffer *buf, uint16_t chnumber) {
+  return stun_attr_add_channel_number_str(buf->buf, &(buf->len), chnumber);
 }
 
-int stun_attr_add_addr(stun_buffer *buf, uint16_t attr_type, const ioa_addr *ca) {
-  return stun_attr_add_addr_str(buf->buf, (size_t *)(&(buf->len)), attr_type, ca);
+bool stun_attr_add_addr(stun_buffer *buf, uint16_t attr_type, const ioa_addr *ca) {
+  return stun_attr_add_addr_str(buf->buf, &(buf->len), attr_type, ca);
 }
 
-int stun_attr_get_addr(const stun_buffer *buf, stun_attr_ref attr, ioa_addr *ca, const ioa_addr *default_addr) {
-
-  return stun_attr_get_addr_str(buf->buf, (size_t)(buf->len), attr, ca, default_addr);
+bool stun_attr_get_addr(const stun_buffer *buf, stun_attr_ref attr, ioa_addr *ca, const ioa_addr *default_addr) {
+  return stun_attr_get_addr_str(buf->buf, buf->len, attr, ca, default_addr);
 }
 
-int stun_attr_get_first_addr(const stun_buffer *buf, uint16_t attr_type, ioa_addr *ca, const ioa_addr *default_addr) {
-
-  return stun_attr_get_first_addr_str(buf->buf, (size_t)(buf->len), attr_type, ca, default_addr);
+bool stun_attr_get_first_addr(const stun_buffer *buf, uint16_t attr_type, ioa_addr *ca, const ioa_addr *default_addr) {
+  return stun_attr_get_first_addr_str(buf->buf, buf->len, attr_type, ca, default_addr);
 }
 
-int stun_attr_add_even_port(stun_buffer *buf, uint8_t value) {
-  if (value)
+bool stun_attr_add_even_port(stun_buffer *buf, uint8_t value) {
+  if (value) {
     value = 0x80;
+  }
   return stun_attr_add(buf, STUN_ATTRIBUTE_EVEN_PORT, (const char *)&value, 1);
 }
 
 uint16_t stun_attr_get_first_channel_number(const stun_buffer *buf) {
-  return stun_attr_get_first_channel_number_str(buf->buf, (size_t)(buf->len));
+  return stun_attr_get_first_channel_number_str(buf->buf, buf->len);
 }
 
 stun_attr_ref stun_attr_get_first_by_type(const stun_buffer *buf, uint16_t attr_type) {
-  return stun_attr_get_first_by_type_str(buf->buf, (size_t)(buf->len), attr_type);
+  return stun_attr_get_first_by_type_str(buf->buf, buf->len, attr_type);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
 void stun_set_binding_request(stun_buffer *buf) { stun_set_binding_request_str(buf->buf, (size_t *)(&(buf->len))); }
 
-int stun_set_binding_response(stun_buffer *buf, stun_tid *tid, const ioa_addr *reflexive_addr, int error_code,
-                              const uint8_t *reason) {
-  return stun_set_binding_response_str(buf->buf, (size_t *)(&(buf->len)), tid, reflexive_addr, error_code, reason, 0, 0,
-                                       1);
+bool stun_set_binding_response(stun_buffer *buf, stun_tid *tid, const ioa_addr *reflexive_addr, int error_code,
+                               const uint8_t *reason) {
+  return stun_set_binding_response_str(buf->buf, &(buf->len), tid, reflexive_addr, error_code, reason, 0, false, true);
 }
 
 void stun_prepare_binding_request(stun_buffer *buf) { stun_set_binding_request_str(buf->buf, (size_t *)(&(buf->len))); }
 
-int stun_is_binding_response(const stun_buffer *buf) {
-  return stun_is_binding_response_str(buf->buf, (size_t)(buf->len));
-}
+bool stun_is_binding_response(const stun_buffer *buf) { return stun_is_binding_response_str(buf->buf, buf->len); }
 
 ///////////////////////////////////////////////////////

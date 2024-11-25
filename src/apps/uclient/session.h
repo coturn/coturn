@@ -35,12 +35,11 @@
 #include <event2/event.h>
 
 #include "ns_turn_ioaddr.h"
-#include "ns_turn_utils.h"
 
 #include "apputils.h"
 #include "stun_buffer.h"
 
-#include "ns_turn_openssl.h"
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -48,19 +47,17 @@ extern "C" {
 
 ///////// types ////////////
 
-enum _UR_STATE { UR_STATE_UNKNOWN = 0, UR_STATE_READY, UR_STATE_DONE };
-
-typedef enum _UR_STATE UR_STATE;
+typedef enum { UR_STATE_UNKNOWN = 0, UR_STATE_READY, UR_STATE_DONE } UR_STATE;
 
 //////////////// session info //////////////////////
 
 typedef struct {
   /* RFC 6062 */
-  uint32_t cid;
+  uint32_t cid; // https://datatracker.ietf.org/doc/html/rfc6062#section-6.2.1
   ioa_addr tcp_data_local_addr;
   ioa_socket_raw tcp_data_fd;
   SSL *tcp_data_ssl;
-  int tcp_data_bound;
+  bool tcp_data_bound;
 } app_tcp_conn_info;
 
 typedef struct {
@@ -73,30 +70,30 @@ typedef struct {
   ioa_addr relay_addr;
   ioa_socket_raw fd;
   SSL *ssl;
-  int broken;
+  bool broken;
   uint8_t nonce[STUN_MAX_NONCE_SIZE + 1];
   uint8_t realm[STUN_MAX_REALM_SIZE + 1];
   /* oAuth */
-  int oauth;
+  bool oauth;
   uint8_t server_name[STUN_MAX_SERVER_NAME_SIZE + 1];
   hmackey_t key;
-  int key_set;
-  int cok;
+  bool key_set;
+  int cok; // presumably means "client oauth key" or something like it? Appears to be used as an index into an array.
   /* RFC 6062 */
   app_tcp_conn_info **tcp_conn;
   size_t tcp_conn_number;
-  int is_peer;
+  bool is_peer;
   char s_mobile_id[33];
 } app_ur_conn_info;
 
 typedef struct {
   app_ur_conn_info pinfo;
   UR_STATE state;
-  unsigned int ctime;
+  unsigned int ctime; // assigned to from a uint64_t variable "current time" likely should be a time_t or similar.
   uint16_t chnum;
   int wait_cycles;
   int timer_cycle;
-  int completed;
+  int completed; // A count of the number of connections considered complete.
   struct event *input_ev;
   struct event *input_tcp_data_ev;
   stun_buffer in_buffer;
@@ -118,7 +115,7 @@ typedef struct {
 
 ///////////////////////////////////////////////////////
 
-typedef struct _message_info {
+typedef struct {
   int msgnum;
   uint64_t mstime;
 } message_info;

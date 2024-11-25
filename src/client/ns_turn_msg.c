@@ -38,11 +38,15 @@
 
 ///////////
 
+#include <ctype.h> // for tolower
+#include <stdbool.h>
+#include <stdio.h> // for fprintf, printf, stderr, snprintf
 #include <stdlib.h>
+#include <string.h> // for memcpy, strlen, memset, strncpy, strcmp
 
 ///////////
 
-static void generate_random_nonce(unsigned char *nonce, size_t sz);
+#define FINGERPRINT_XOR 0x5354554e
 
 ///////////
 
@@ -87,7 +91,7 @@ int stun_method_str(uint16_t method, char *smethod) {
   };
 
   if (smethod) {
-    memcpy(smethod, s, strlen(s) + 1);
+    strcpy(smethod, s);
   }
 
   return ret;
@@ -104,58 +108,65 @@ long turn_random_number(void) {
   return ret;
 }
 
+static void generate_random_nonce(unsigned char *nonce, size_t sz) {
+  if (!RAND_bytes(nonce, (int)sz)) {
+    for (size_t i = 0; i < sz; ++i) {
+      nonce[i] = (unsigned char)turn_random_number();
+    }
+  }
+}
+
 static void turn_random_tid_size(void *id) {
   uint32_t *ar = (uint32_t *)id;
   if (!RAND_bytes((unsigned char *)ar, 12)) {
-    size_t i;
-    for (i = 0; i < 3; ++i) {
+    for (size_t i = 0; i < 3; ++i) {
       ar[i] = (uint32_t)turn_random_number();
     }
   }
 }
 
-int stun_calculate_hmac(const uint8_t *buf, size_t len, const uint8_t *key, size_t keylen, uint8_t *hmac,
-                        unsigned int *hmac_len, SHATYPE shatype) {
+bool stun_calculate_hmac(const uint8_t *buf, size_t len, const uint8_t *key, size_t keylen, uint8_t *hmac,
+                         unsigned int *hmac_len, SHATYPE shatype) {
   ERR_clear_error();
   UNUSED_ARG(shatype);
 
   if (shatype == SHATYPE_SHA256) {
 #if !defined(OPENSSL_NO_SHA256) && defined(SHA256_DIGEST_LENGTH)
     if (!HMAC(EVP_sha256(), key, (int)keylen, buf, len, hmac, hmac_len)) {
-      return -1;
+      return false;
     }
 #else
     fprintf(stderr, "SHA256 is not supported\n");
-    return -1;
+    return false;
 #endif
   } else if (shatype == SHATYPE_SHA384) {
 #if !defined(OPENSSL_NO_SHA384) && defined(SHA384_DIGEST_LENGTH)
     if (!HMAC(EVP_sha384(), key, (int)keylen, buf, len, hmac, hmac_len)) {
-      return -1;
+      return false;
     }
 #else
     fprintf(stderr, "SHA384 is not supported\n");
-    return -1;
+    return false;
 #endif
   } else if (shatype == SHATYPE_SHA512) {
 #if !defined(OPENSSL_NO_SHA512) && defined(SHA512_DIGEST_LENGTH)
     if (!HMAC(EVP_sha512(), key, (int)keylen, buf, len, hmac, hmac_len)) {
-      return -1;
+      return false;
     }
 #else
     fprintf(stderr, "SHA512 is not supported\n");
-    return -1;
+    return false;
 #endif
   } else if (!HMAC(EVP_sha1(), key, (int)keylen, buf, len, hmac, hmac_len)) {
-    return -1;
+    return false;
   }
 
-  return 0;
+  return true;
 }
 
-int stun_produce_integrity_key_str(const uint8_t *uname, const uint8_t *realm, const uint8_t *upwd, hmackey_t key,
-                                   SHATYPE shatype) {
-  int ret;
+bool stun_produce_integrity_key_str(const uint8_t *uname, const uint8_t *realm, const uint8_t *upwd, hmackey_t key,
+                                    SHATYPE shatype) {
+  bool ret;
 
   ERR_clear_error();
   UNUSED_ARG(shatype);
@@ -191,10 +202,10 @@ int stun_produce_integrity_key_str(const uint8_t *uname, const uint8_t *realm, c
     EVP_DigestFinal(ctx, key, &keylen);
     EVP_MD_CTX_free(ctx);
 #endif
-    ret = 0;
+    ret = true;
 #else
     fprintf(stderr, "SHA256 is not supported\n");
-    ret = -1;
+    ret = false;
 #endif
   } else if (shatype == SHATYPE_SHA384) {
 #if !defined(OPENSSL_NO_SHA384) && defined(SHA384_DIGEST_LENGTH)
@@ -213,10 +224,10 @@ int stun_produce_integrity_key_str(const uint8_t *uname, const uint8_t *realm, c
     EVP_DigestFinal(ctx, key, &keylen);
     EVP_MD_CTX_free(ctx);
 #endif
-    ret = 0;
+    ret = true;
 #else
     fprintf(stderr, "SHA384 is not supported\n");
-    ret = -1;
+    ret = false;
 #endif
   } else if (shatype == SHATYPE_SHA512) {
 #if !defined(OPENSSL_NO_SHA512) && defined(SHA512_DIGEST_LENGTH)
@@ -235,10 +246,10 @@ int stun_produce_integrity_key_str(const uint8_t *uname, const uint8_t *realm, c
     EVP_DigestFinal(ctx, key, &keylen);
     EVP_MD_CTX_free(ctx);
 #endif
-    ret = 0;
+    ret = true;
 #else
     fprintf(stderr, "SHA512 is not supported\n");
-    ret = -1;
+    ret = false;
 #endif
   } else {
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
@@ -277,7 +288,7 @@ int stun_produce_integrity_key_str(const uint8_t *uname, const uint8_t *realm, c
     EVP_DigestFinal(ctx, key, &keylen);
     EVP_MD_CTX_free(ctx);
 #endif // OPENSSL_VERSION_NUMBER < 0X10100000L
-    ret = 0;
+    ret = true;
   }
 
   free(str);
@@ -288,12 +299,11 @@ int stun_produce_integrity_key_str(const uint8_t *uname, const uint8_t *realm, c
 #define PWD_SALT_SIZE (8)
 
 static void readable_string(unsigned char *orig, unsigned char *out, size_t sz) {
-  size_t i = 0;
-  out[0] = 0;
-
-  for (i = 0; i < sz; ++i) {
-    snprintf((char *)(out + (i * 2)), 4, "%02x", (unsigned int)orig[i]);
+  out[0] = '\0';
+  for (size_t i = 0; i < sz; ++i) {
+    snprintf((char *)(out + (i * 2)), 3, "%02x", (unsigned int)orig[i]);
   }
+  out[sz * 2] = 0;
 }
 
 static void generate_enc_password(const char *pwd, char *result, const unsigned char *orig_salt) {
@@ -351,12 +361,11 @@ static void generate_enc_password(const char *pwd, char *result, const unsigned 
 
 void generate_new_enc_password(const char *pwd, char *result) { generate_enc_password(pwd, result, NULL); }
 
-static int encrypted_password(const char *pin, unsigned char *salt) {
-  size_t min_len = 3 + PWD_SALT_SIZE + PWD_SALT_SIZE + 1 + 32;
+static bool encrypted_password(const char *pin, unsigned char *salt) {
+  static const size_t min_len = 3 + PWD_SALT_SIZE + PWD_SALT_SIZE + 1 + 32;
   if (strlen(pin) >= min_len) {
     if ((pin[0] == '$') && (pin[1] == '5') && (pin[2] == '$') && (pin[3 + PWD_SALT_SIZE + PWD_SALT_SIZE] == '$')) {
-      size_t i = 0;
-      for (i = 0; i < PWD_SALT_SIZE; ++i) {
+      for (size_t i = 0; i < PWD_SALT_SIZE; ++i) {
         const char *c = pin + 3 + i + i;
         char sc[3];
         sc[0] = c[0];
@@ -364,33 +373,32 @@ static int encrypted_password(const char *pin, unsigned char *salt) {
         sc[2] = 0;
         salt[i] = (unsigned char)strtoul(sc, NULL, 16);
       }
-      return 1;
+      return true;
     }
   }
-  return 0;
+  return false;
 }
 
-int check_password(const char *pin, const char *pwd) {
+bool check_password_equal(const char *pin, const char *pwd) {
   unsigned char salt[PWD_SALT_SIZE];
   if (!encrypted_password(pwd, salt)) {
-    return strcmp(pin, pwd);
+    return 0 == strcmp(pin, pwd);
   }
   char enc_pin[257];
   generate_enc_password(pin, enc_pin, salt);
-  return strcmp(enc_pin, pwd);
+  return 0 == strcmp(enc_pin, pwd);
 }
 
 /////////////////////////////////////////////////////////////////
 
 static uint32_t ns_crc32(const uint8_t *buffer, uint32_t len);
 
-void print_hmac(const char *name, const void *s, size_t len);
-
 /////////////////////////////////////////////////////////////////
 
 int stun_get_command_message_len_str(const uint8_t *buf, size_t len) {
-  if (len < STUN_HEADER_LENGTH)
+  if (len < STUN_HEADER_LENGTH) {
     return -1;
+  }
 
   /* Validate the size the buffer claims to be */
   size_t bufLen = (size_t)(nswap16(((const uint16_t *)(buf))[1]) + STUN_HEADER_LENGTH);
@@ -401,11 +409,12 @@ int stun_get_command_message_len_str(const uint8_t *buf, size_t len) {
   return bufLen;
 }
 
-static int stun_set_command_message_len_str(uint8_t *buf, int len) {
-  if (len < STUN_HEADER_LENGTH)
-    return -1;
+static bool stun_set_command_message_len_str(uint8_t *buf, int len) {
+  if (len < STUN_HEADER_LENGTH) {
+    return false;
+  }
   ((uint16_t *)buf)[1] = nswap16((uint16_t)(len - STUN_HEADER_LENGTH));
-  return 0;
+  return true;
 }
 
 ///////////  Low-level binary //////////////////////////////////////////////
@@ -416,8 +425,9 @@ uint16_t stun_make_type(uint16_t method) {
 }
 
 uint16_t stun_get_method_str(const uint8_t *buf, size_t len) {
-  if (!buf || len < 2)
+  if (!buf || len < 2) {
     return (uint16_t)-1;
+  }
 
   uint16_t tt = nswap16(((const uint16_t *)buf)[0]);
 
@@ -425,18 +435,19 @@ uint16_t stun_get_method_str(const uint8_t *buf, size_t len) {
 }
 
 uint16_t stun_get_msg_type_str(const uint8_t *buf, size_t len) {
-  if (!buf || len < 2)
+  if (!buf || len < 2) {
     return (uint16_t)-1;
+  }
   return ((nswap16(((const uint16_t *)buf)[0])) & 0x3FFF);
 }
 
-int is_channel_msg_str(const uint8_t *buf, size_t blen) {
+bool is_channel_msg_str(const uint8_t *buf, size_t blen) {
   return (buf && blen >= 4 && STUN_VALID_CHANNEL(nswap16(((const uint16_t *)buf)[0])));
 }
 
 /////////////// message types /////////////////////////////////
 
-int stun_is_command_message_str(const uint8_t *buf, size_t blen) {
+bool stun_is_command_message_str(const uint8_t *buf, size_t blen) {
   if (buf && blen >= STUN_HEADER_LENGTH) {
     if (!STUN_VALID_CHANNEL(nswap16(((const uint16_t *)buf)[0]))) {
       if ((((uint8_t)buf[0]) & ((uint8_t)(0xC0))) == 0) {
@@ -444,17 +455,17 @@ int stun_is_command_message_str(const uint8_t *buf, size_t blen) {
           uint16_t len = nswap16(((const uint16_t *)(buf))[1]);
           if ((len & 0x0003) == 0) {
             if ((size_t)(len + STUN_HEADER_LENGTH) == blen) {
-              return 1;
+              return true;
             }
           }
         }
       }
     }
   }
-  return 0;
+  return false;
 }
 
-int old_stun_is_command_message_str(const uint8_t *buf, size_t blen, uint32_t *cookie) {
+bool old_stun_is_command_message_str(const uint8_t *buf, size_t blen, uint32_t *cookie) {
   if (buf && blen >= STUN_HEADER_LENGTH) {
     if (!STUN_VALID_CHANNEL(nswap16(((const uint16_t *)buf)[0]))) {
       if ((((uint8_t)buf[0]) & ((uint8_t)(0xC0))) == 0) {
@@ -463,60 +474,64 @@ int old_stun_is_command_message_str(const uint8_t *buf, size_t blen, uint32_t *c
           if ((len & 0x0003) == 0) {
             if ((size_t)(len + STUN_HEADER_LENGTH) == blen) {
               *cookie = nswap32(((const uint32_t *)(buf))[1]);
-              return 1;
+              return true;
             }
           }
         }
       }
     }
   }
-  return 0;
+  return false;
 }
 
-int stun_is_command_message_full_check_str(const uint8_t *buf, size_t blen, int must_check_fingerprint,
-                                           int *fingerprint_present) {
-  if (!stun_is_command_message_str(buf, blen))
-    return 0;
+bool stun_is_command_message_full_check_str(const uint8_t *buf, size_t blen, int must_check_fingerprint,
+                                            int *fingerprint_present) {
+  if (!stun_is_command_message_str(buf, blen)) {
+    return false;
+  }
   stun_attr_ref sar = stun_attr_get_first_by_type_str(buf, blen, STUN_ATTRIBUTE_FINGERPRINT);
   if (!sar) {
-    if (fingerprint_present)
+    if (fingerprint_present) {
       *fingerprint_present = 0;
+    }
     if (stun_get_method_str(buf, blen) == STUN_METHOD_BINDING) {
-      return 1;
+      return true;
     }
     return !must_check_fingerprint;
   }
-  if (stun_attr_get_len(sar) != 4)
-    return 0;
+  if (stun_attr_get_len(sar) != 4) {
+    return false;
+  }
   const uint32_t *fingerprint = (const uint32_t *)stun_attr_get_value(sar);
-  if (!fingerprint)
+  if (!fingerprint) {
     return !must_check_fingerprint;
+  }
   uint32_t crc32len = (uint32_t)((((const uint8_t *)fingerprint) - buf) - 4);
-  int ret = (*fingerprint == nswap32(ns_crc32(buf, crc32len) ^ ((uint32_t)0x5354554e)));
-  if (ret && fingerprint_present)
+  bool ret = (*fingerprint == nswap32(ns_crc32(buf, crc32len) ^ ((uint32_t)FINGERPRINT_XOR)));
+  if (ret && fingerprint_present) {
     *fingerprint_present = ret;
+  }
   return ret;
 }
 
-int stun_is_command_message_offset_str(const uint8_t *buf, size_t blen, int offset) {
-  return stun_is_command_message_str(buf + offset, blen);
-}
-
-int stun_is_request_str(const uint8_t *buf, size_t len) {
-  if (is_channel_msg_str(buf, len))
-    return 0;
+bool stun_is_request_str(const uint8_t *buf, size_t len) {
+  if (is_channel_msg_str(buf, len)) {
+    return false;
+  }
   return IS_STUN_REQUEST(stun_get_msg_type_str(buf, len));
 }
 
-int stun_is_success_response_str(const uint8_t *buf, size_t len) {
-  if (is_channel_msg_str(buf, len))
-    return 0;
+bool stun_is_success_response_str(const uint8_t *buf, size_t len) {
+  if (is_channel_msg_str(buf, len)) {
+    return false;
+  }
   return IS_STUN_SUCCESS_RESP(stun_get_msg_type_str(buf, len));
 }
 
-int stun_is_error_response_str(const uint8_t *buf, size_t len, int *err_code, uint8_t *err_msg, size_t err_msg_size) {
-  if (is_channel_msg_str(buf, len))
-    return 0;
+bool stun_is_error_response_str(const uint8_t *buf, size_t len, int *err_code, uint8_t *err_msg, size_t err_msg_size) {
+  if (is_channel_msg_str(buf, len)) {
+    return false;
+  }
   if (IS_STUN_ERR_RESP(stun_get_msg_type_str(buf, len))) {
     if (err_code) {
       stun_attr_ref sar = stun_attr_get_first_by_type_str(buf, len, STUN_ATTRIBUTE_ERROR_CODE);
@@ -528,8 +543,9 @@ int stun_is_error_response_str(const uint8_t *buf, size_t len, int *err_code, ui
             err_msg[0] = 0;
             if (stun_attr_get_len(sar) > 4) {
               size_t msg_len = stun_attr_get_len(sar) - 4;
-              if (msg_len > (err_msg_size - 1))
+              if (msg_len > (err_msg_size - 1)) {
                 msg_len = err_msg_size - 1;
+              }
               memcpy(err_msg, val + 4, msg_len);
               err_msg[msg_len] = 0;
             }
@@ -537,19 +553,20 @@ int stun_is_error_response_str(const uint8_t *buf, size_t len, int *err_code, ui
         }
       }
     }
-    return 1;
+    return true;
   }
-  return 0;
+  return false;
 }
 
-int stun_is_challenge_response_str(const uint8_t *buf, size_t len, int *err_code, uint8_t *err_msg, size_t err_msg_size,
-                                   uint8_t *realm, uint8_t *nonce, uint8_t *server_name, int *oauth) {
-  int ret = stun_is_error_response_str(buf, len, err_code, err_msg, err_msg_size);
+bool stun_is_challenge_response_str(const uint8_t *buf, size_t len, int *err_code, uint8_t *err_msg,
+                                    size_t err_msg_size, uint8_t *realm, uint8_t *nonce, uint8_t *server_name,
+                                    bool *oauth) {
+  bool ret = stun_is_error_response_str(buf, len, err_code, err_msg, err_msg_size);
 
   if (ret && (((*err_code) == 401) || ((*err_code) == 438))) {
     stun_attr_ref sar = stun_attr_get_first_by_type_str(buf, len, STUN_ATTRIBUTE_REALM);
     if (sar) {
-      int found_oauth = 0;
+      bool found_oauth = false;
 
       const uint8_t *value = stun_attr_get_value(sar);
       if (value) {
@@ -568,7 +585,7 @@ int stun_is_challenge_response_str(const uint8_t *buf, size_t len, int *err_code
                 if (server_name) {
                   memcpy(server_name, value, vlen);
                 }
-                found_oauth = 1;
+                found_oauth = true;
               }
             }
           }
@@ -585,29 +602,33 @@ int stun_is_challenge_response_str(const uint8_t *buf, size_t len, int *err_code
             if (oauth) {
               *oauth = found_oauth;
             }
-            return 1;
+            return true;
           }
         }
       }
     }
   }
 
-  return 0;
+  return false;
 }
 
-int stun_is_response_str(const uint8_t *buf, size_t len) {
-  if (is_channel_msg_str(buf, len))
-    return 0;
-  if (IS_STUN_SUCCESS_RESP(stun_get_msg_type_str(buf, len)))
-    return 1;
-  if (IS_STUN_ERR_RESP(stun_get_msg_type_str(buf, len)))
-    return 1;
-  return 0;
+bool stun_is_response_str(const uint8_t *buf, size_t len) {
+  if (is_channel_msg_str(buf, len)) {
+    return false;
+  }
+  if (IS_STUN_SUCCESS_RESP(stun_get_msg_type_str(buf, len))) {
+    return true;
+  }
+  if (IS_STUN_ERR_RESP(stun_get_msg_type_str(buf, len))) {
+    return true;
+  }
+  return false;
 }
 
-int stun_is_indication_str(const uint8_t *buf, size_t len) {
-  if (is_channel_msg_str(buf, len))
-    return 0;
+bool stun_is_indication_str(const uint8_t *buf, size_t len) {
+  if (is_channel_msg_str(buf, len)) {
+    return false;
+  }
   return IS_STUN_INDICATION(stun_get_msg_type_str(buf, len));
 }
 
@@ -667,67 +688,67 @@ void old_stun_init_success_response_str(uint16_t method, uint8_t *buf, size_t *l
 }
 
 const uint8_t *get_default_reason(int error_code) {
-  const uint8_t *reason = (const uint8_t *)"Unknown error";
+  const char *reason = "Unknown error";
 
   switch (error_code) {
   case 300:
-    reason = (const uint8_t *)"Try Alternate";
+    reason = "Try Alternate";
     break;
   case 400:
-    reason = (const uint8_t *)"Bad Request";
+    reason = "Bad Request";
     break;
   case 401:
-    reason = (const uint8_t *)"Unauthorized";
+    reason = "Unauthorized";
     break;
   case 403:
-    reason = (const uint8_t *)"Forbidden";
+    reason = "Forbidden";
     break;
   case 404:
-    reason = (const uint8_t *)"Not Found";
+    reason = "Not Found";
     break;
   case 420:
-    reason = (const uint8_t *)"Unknown Attribute";
+    reason = "Unknown Attribute";
     break;
   case 437:
-    reason = (const uint8_t *)"Allocation Mismatch";
+    reason = "Allocation Mismatch";
     break;
   case 438:
-    reason = (const uint8_t *)"Stale Nonce";
+    reason = "Stale Nonce";
     break;
   case 440:
-    reason = (const uint8_t *)"Address Family not Supported";
+    reason = "Address Family not Supported";
     break;
   case 441:
-    reason = (const uint8_t *)"Wrong Credentials";
+    reason = "Wrong Credentials";
     break;
   case 442:
-    reason = (const uint8_t *)"Unsupported Transport Protocol";
+    reason = "Unsupported Transport Protocol";
     break;
   case 443:
-    reason = (const uint8_t *)"Peer Address Family Mismatch";
+    reason = "Peer Address Family Mismatch";
     break;
   case 446:
-    reason = (const uint8_t *)"Connection Already Exists";
+    reason = "Connection Already Exists";
     break;
   case 447:
-    reason = (const uint8_t *)"Connection Timeout or Failure";
+    reason = "Connection Timeout or Failure";
     break;
   case 486:
-    reason = (const uint8_t *)"Allocation Quota Reached";
+    reason = "Allocation Quota Reached";
     break;
   case 487:
-    reason = (const uint8_t *)"Role Conflict";
+    reason = "Role Conflict";
     break;
   case 500:
-    reason = (const uint8_t *)"Server Error";
+    reason = "Server Error";
     break;
   case 508:
-    reason = (const uint8_t *)"Insufficient Capacity";
+    reason = "Insufficient Capacity";
     break;
   default:;
   };
 
-  return reason;
+  return (const uint8_t *)reason;
 }
 
 static void stun_init_error_response_common_str(uint8_t *buf, size_t *len, uint16_t error_code, const uint8_t *reason,
@@ -778,42 +799,48 @@ void stun_init_error_response_str(uint16_t method, uint8_t *buf, size_t *len, ui
 
 /////////// CHANNEL ////////////////////////////////////////////////
 
-int stun_init_channel_message_str(uint16_t chnumber, uint8_t *buf, size_t *len, int length, int do_padding) {
+bool stun_init_channel_message_str(uint16_t chnumber, uint8_t *buf, size_t *len, int length, bool do_padding) {
   uint16_t rlen = (uint16_t)length;
 
-  if (length < 0 || (MAX_STUN_MESSAGE_SIZE < (4 + length)))
-    return -1;
+  if (length < 0 || (MAX_STUN_MESSAGE_SIZE < (4 + length))) {
+    return false;
+  }
   ((uint16_t *)(buf))[0] = nswap16(chnumber);
   ((uint16_t *)(buf))[1] = nswap16((uint16_t)length);
 
-  if (do_padding && (rlen & 0x0003))
+  if (do_padding && (rlen & 0x0003)) {
     rlen = ((rlen >> 2) + 1) << 2;
+  }
 
   *len = 4 + rlen;
 
-  return 0;
+  return true;
 }
 
-int stun_is_channel_message_str(const uint8_t *buf, size_t *blen, uint16_t *chnumber, int mandatory_padding) {
+bool stun_is_channel_message_str(const uint8_t *buf, size_t *blen, uint16_t *chnumber, bool mandatory_padding) {
   uint16_t datalen_header;
   uint16_t datalen_actual;
 
-  if (!blen || (*blen < 4))
-    return 0;
+  if (!blen || (*blen < 4)) {
+    return false;
+  }
 
   uint16_t chn = nswap16(((const uint16_t *)(buf))[0]);
-  if (!STUN_VALID_CHANNEL(chn))
-    return 0;
+  if (!STUN_VALID_CHANNEL(chn)) {
+    return false;
+  }
 
-  if (*blen > (uint16_t)-1)
+  if (*blen > (uint16_t)-1) {
     *blen = (uint16_t)-1;
+  }
 
   datalen_actual = (uint16_t)(*blen) - 4;
   datalen_header = ((const uint16_t *)buf)[1];
   datalen_header = nswap16(datalen_header);
 
-  if (datalen_header > datalen_actual)
-    return 0;
+  if (datalen_header > datalen_actual) {
+    return false;
+  }
 
   if (datalen_header != datalen_actual) {
 
@@ -822,52 +849,53 @@ int stun_is_channel_message_str(const uint8_t *buf, size_t *blen, uint16_t *chnu
     if (datalen_actual & 0x0003) {
 
       if (mandatory_padding) {
-        return 0;
+        return false;
       } else if (datalen_header == 0) {
-        return 0;
+        return false;
       } else {
         uint16_t diff = datalen_actual - datalen_header;
-        if (diff > 3)
-          return 0;
+        if (diff > 3) {
+          return false;
+        }
       }
     }
   }
 
   *blen = datalen_header + 4;
 
-  if (chnumber)
+  if (chnumber) {
     *chnumber = chn;
+  }
 
-  return 1;
+  return true;
 }
 
 ////////// STUN message ///////////////////////////////
 
-static inline int sheadof(const char *head, const char *full, int ignore_case) {
+static inline bool sheadof(const char *head, const char *full, bool ignore_case) {
   while (*head) {
     if (*head != *full) {
       if (ignore_case && (tolower((int)*head) == tolower((int)*full))) {
         // OK
       } else {
-        return 0;
+        return false;
       }
     }
     ++head;
     ++full;
   }
-  return 1;
+  return true;
 }
 
-static inline const char *findstr(const char *hay, size_t slen, const char *needle, int ignore_case) {
+static inline const char *findstr(const char *hay, size_t slen, const char *needle, bool ignore_case) {
   const char *ret = NULL;
 
   if (hay && slen && needle) {
     size_t nlen = strlen(needle);
     if (nlen <= slen) {
       size_t smax = slen - nlen + 1;
-      size_t i;
       const char *sp = hay;
-      for (i = 0; i < smax; ++i) {
+      for (size_t i = 0; i < smax; ++i) {
         if (sheadof(needle, sp + i, ignore_case)) {
           ret = sp + i;
           break;
@@ -879,20 +907,20 @@ static inline const char *findstr(const char *hay, size_t slen, const char *need
   return ret;
 }
 
-static inline int is_http_inline(const char *s, size_t blen) {
+int is_http(const char *s, size_t blen) {
   if (s && blen >= 12) {
     if ((strstr(s, "GET ") == s) || (strstr(s, "POST ") == s) || (strstr(s, "DELETE ") == s) ||
         (strstr(s, "PUT ") == s)) {
-      const char *sp = findstr(s + 4, blen - 4, " HTTP/", 0);
+      const char *sp = findstr(s + 4, blen - 4, " HTTP/", false);
       if (sp) {
         sp += 6;
         size_t diff_blen = sp - s;
         if (diff_blen + 4 <= blen) {
-          sp = findstr(sp, blen - diff_blen, "\r\n\r\n", 0);
+          sp = findstr(sp, blen - diff_blen, "\r\n\r\n", false);
           if (sp) {
             int ret_len = (int)(sp - s + 4);
             const char *clheader = "content-length: ";
-            const char *cl = findstr(s, sp - s, clheader, 1);
+            const char *cl = findstr(s, sp - s, clheader, true);
             if (cl) {
               unsigned long clen = strtoul(cl + strlen(clheader), NULL, 10);
               if (clen > 0 && clen < (0x0FFFFFFF)) {
@@ -907,8 +935,6 @@ static inline int is_http_inline(const char *s, size_t blen) {
   }
   return 0;
 }
-
-int is_http(const char *s, size_t blen) { return is_http_inline(s, blen); }
 
 int stun_get_message_len_str(uint8_t *buf, size_t blen, int padding, size_t *app_len) {
   if (buf && blen) {
@@ -932,7 +958,7 @@ int stun_get_message_len_str(uint8_t *buf, size_t blen, int padding, size_t *app
 
     // HTTP request ?
     {
-      int http_len = is_http_inline(((char *)buf), blen);
+      int http_len = is_http(((char *)buf), blen);
       if ((http_len > 0) && ((size_t)http_len <= blen)) {
         *app_len = (size_t)http_len;
         return http_len;
@@ -964,8 +990,8 @@ int stun_get_message_len_str(uint8_t *buf, size_t blen, int padding, size_t *app
 
 ////////// ALLOCATE ///////////////////////////////////
 
-int stun_set_allocate_request_str(uint8_t *buf, size_t *len, uint32_t lifetime, int af4, int af6, uint8_t transport,
-                                  int mobile, const char *rt, int ep) {
+bool stun_set_allocate_request_str(uint8_t *buf, size_t *len, uint32_t lifetime, bool af4, bool af6, uint8_t transport,
+                                   bool mobile, const char *rt, int ep) {
 
   stun_init_request_str(STUN_METHOD_ALLOCATE, buf, len);
 
@@ -976,29 +1002,34 @@ int stun_set_allocate_request_str(uint8_t *buf, size_t *len, uint32_t lifetime, 
     field[1] = 0;
     field[2] = 0;
     field[3] = 0;
-    if (stun_attr_add_str(buf, len, STUN_ATTRIBUTE_REQUESTED_TRANSPORT, field, sizeof(field)) < 0)
-      return -1;
+    if (!stun_attr_add_str(buf, len, STUN_ATTRIBUTE_REQUESTED_TRANSPORT, field, sizeof(field))) {
+      return false;
+    }
   }
 
   // LIFETIME
   {
-    if (lifetime < 1)
+    if (lifetime < 1) {
       lifetime = STUN_DEFAULT_ALLOCATE_LIFETIME;
+    }
     uint32_t field = nswap32(lifetime);
-    if (stun_attr_add_str(buf, len, STUN_ATTRIBUTE_LIFETIME, (uint8_t *)(&field), sizeof(field)) < 0)
-      return -1;
+    if (!stun_attr_add_str(buf, len, STUN_ATTRIBUTE_LIFETIME, (uint8_t *)(&field), sizeof(field))) {
+      return false;
+    }
   }
 
   // MICE
   if (mobile) {
-    if (stun_attr_add_str(buf, len, STUN_ATTRIBUTE_MOBILITY_TICKET, (const uint8_t *)"", 0) < 0)
-      return -1;
+    if (!stun_attr_add_str(buf, len, STUN_ATTRIBUTE_MOBILITY_TICKET, (const uint8_t *)"", 0)) {
+      return false;
+    }
   }
 
   if (ep > -1) {
     uint8_t value = ep ? 0x80 : 0x00;
-    if (stun_attr_add_str(buf, len, STUN_ATTRIBUTE_EVEN_PORT, (const uint8_t *)&value, 1) < 0)
-      return -1;
+    if (!stun_attr_add_str(buf, len, STUN_ATTRIBUTE_EVEN_PORT, (const uint8_t *)&value, 1)) {
+      return false;
+    }
   }
 
   // RESERVATION-TOKEN, EVEN-PORT and DUAL-ALLOCATION are mutually exclusive:
@@ -1015,8 +1046,9 @@ int stun_set_allocate_request_str(uint8_t *buf, size_t *len, uint32_t lifetime, 
       field[1] = 0;
       field[2] = 0;
       field[3] = 0;
-      if (stun_attr_add_str(buf, len, STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY, field, sizeof(field)) < 0)
-        return -1;
+      if (!stun_attr_add_str(buf, len, STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY, field, sizeof(field))) {
+        return false;
+      }
     }
 
     if (af6 && !af4) {
@@ -1025,8 +1057,9 @@ int stun_set_allocate_request_str(uint8_t *buf, size_t *len, uint32_t lifetime, 
       field[1] = 0;
       field[2] = 0;
       field[3] = 0;
-      if (stun_attr_add_str(buf, len, STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY, field, sizeof(field)) < 0)
-        return -1;
+      if (!stun_attr_add_str(buf, len, STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY, field, sizeof(field))) {
+        return false;
+      }
     }
 
     if (af4 && af6) {
@@ -1035,36 +1068,40 @@ int stun_set_allocate_request_str(uint8_t *buf, size_t *len, uint32_t lifetime, 
       field[1] = 0;
       field[2] = 0;
       field[3] = 0;
-      if (stun_attr_add_str(buf, len, STUN_ATTRIBUTE_ADDITIONAL_ADDRESS_FAMILY, field, sizeof(field)) < 0)
-        return -1;
+      if (!stun_attr_add_str(buf, len, STUN_ATTRIBUTE_ADDITIONAL_ADDRESS_FAMILY, field, sizeof(field))) {
+        return false;
+      }
     }
   }
 
-  return 0;
+  return true;
 }
 
-int stun_set_allocate_response_str(uint8_t *buf, size_t *len, stun_tid *tid, const ioa_addr *relayed_addr1,
-                                   const ioa_addr *relayed_addr2, const ioa_addr *reflexive_addr, uint32_t lifetime,
-                                   uint32_t max_lifetime, int error_code, const uint8_t *reason,
-                                   uint64_t reservation_token, char *mobile_id) {
+bool stun_set_allocate_response_str(uint8_t *buf, size_t *len, stun_tid *tid, const ioa_addr *relayed_addr1,
+                                    const ioa_addr *relayed_addr2, const ioa_addr *reflexive_addr, uint32_t lifetime,
+                                    uint32_t max_lifetime, int error_code, const uint8_t *reason,
+                                    uint64_t reservation_token, char *mobile_id) {
 
   if (!error_code) {
 
     stun_init_success_response_str(STUN_METHOD_ALLOCATE, buf, len, tid);
 
     if (relayed_addr1) {
-      if (stun_attr_add_addr_str(buf, len, STUN_ATTRIBUTE_XOR_RELAYED_ADDRESS, relayed_addr1) < 0)
-        return -1;
+      if (!stun_attr_add_addr_str(buf, len, STUN_ATTRIBUTE_XOR_RELAYED_ADDRESS, relayed_addr1)) {
+        return false;
+      }
     }
 
     if (relayed_addr2) {
-      if (stun_attr_add_addr_str(buf, len, STUN_ATTRIBUTE_XOR_RELAYED_ADDRESS, relayed_addr2) < 0)
-        return -1;
+      if (!stun_attr_add_addr_str(buf, len, STUN_ATTRIBUTE_XOR_RELAYED_ADDRESS, relayed_addr2)) {
+        return false;
+      }
     }
 
     if (reflexive_addr) {
-      if (stun_attr_add_addr_str(buf, len, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS, reflexive_addr) < 0)
-        return -1;
+      if (!stun_attr_add_addr_str(buf, len, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS, reflexive_addr)) {
+        return false;
+      }
     }
 
     if (reservation_token) {
@@ -1073,26 +1110,29 @@ int stun_set_allocate_response_str(uint8_t *buf, size_t *len, stun_tid *tid, con
     }
 
     {
-      if (lifetime < 1)
+      if (lifetime < 1) {
         lifetime = STUN_DEFAULT_ALLOCATE_LIFETIME;
-      else if (lifetime > max_lifetime)
+      } else if (lifetime > max_lifetime) {
         lifetime = max_lifetime;
+      }
 
       uint32_t field = nswap32(lifetime);
-      if (stun_attr_add_str(buf, len, STUN_ATTRIBUTE_LIFETIME, (uint8_t *)(&field), sizeof(field)) < 0)
-        return -1;
+      if (!stun_attr_add_str(buf, len, STUN_ATTRIBUTE_LIFETIME, (uint8_t *)(&field), sizeof(field))) {
+        return false;
+      }
     }
 
     if (mobile_id && *mobile_id) {
-      if (stun_attr_add_str(buf, len, STUN_ATTRIBUTE_MOBILITY_TICKET, (uint8_t *)mobile_id, (int)strlen(mobile_id)) < 0)
-        return -1;
+      if (!stun_attr_add_str(buf, len, STUN_ATTRIBUTE_MOBILITY_TICKET, (uint8_t *)mobile_id, (int)strlen(mobile_id))) {
+        return false;
+      }
     }
 
   } else {
     stun_init_error_response_str(STUN_METHOD_ALLOCATE, buf, len, error_code, reason, tid);
   }
 
-  return 0;
+  return true;
 }
 
 /////////////// CHANNEL BIND ///////////////////////////////////////
@@ -1106,18 +1146,21 @@ uint16_t stun_set_channel_bind_request_str(uint8_t *buf, size_t *len, const ioa_
 
   stun_init_request_str(STUN_METHOD_CHANNEL_BIND, buf, len);
 
-  if (stun_attr_add_channel_number_str(buf, len, channel_number) < 0)
+  if (!stun_attr_add_channel_number_str(buf, len, channel_number)) {
     return 0;
+  }
 
   if (!peer_addr) {
     ioa_addr ca;
     memset(&ca, 0, sizeof(ioa_addr));
 
-    if (stun_attr_add_addr_str(buf, len, STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &ca) < 0)
+    if (!stun_attr_add_addr_str(buf, len, STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &ca)) {
       return 0;
+    }
   } else {
-    if (stun_attr_add_addr_str(buf, len, STUN_ATTRIBUTE_XOR_PEER_ADDRESS, peer_addr) < 0)
+    if (!stun_attr_add_addr_str(buf, len, STUN_ATTRIBUTE_XOR_PEER_ADDRESS, peer_addr)) {
       return 0;
+    }
   }
 
   return channel_number;
@@ -1136,9 +1179,9 @@ void stun_set_channel_bind_response_str(uint8_t *buf, size_t *len, stun_tid *tid
 
 void stun_set_binding_request_str(uint8_t *buf, size_t *len) { stun_init_request_str(STUN_METHOD_BINDING, buf, len); }
 
-int stun_set_binding_response_str(uint8_t *buf, size_t *len, stun_tid *tid, const ioa_addr *reflexive_addr,
-                                  int error_code, const uint8_t *reason, uint32_t cookie, int old_stun,
-                                  int no_stun_backward_compatibility)
+bool stun_set_binding_response_str(uint8_t *buf, size_t *len, stun_tid *tid, const ioa_addr *reflexive_addr,
+                                   int error_code, const uint8_t *reason, uint32_t cookie, bool old_stun,
+                                   bool no_stun_backward_compatibility)
 
 {
   if (!error_code) {
@@ -1148,13 +1191,15 @@ int stun_set_binding_response_str(uint8_t *buf, size_t *len, stun_tid *tid, cons
       old_stun_init_success_response_str(STUN_METHOD_BINDING, buf, len, tid, cookie);
     }
     if (!old_stun && reflexive_addr) {
-      if (stun_attr_add_addr_str(buf, len, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS, reflexive_addr) < 0)
-        return -1;
+      if (!stun_attr_add_addr_str(buf, len, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS, reflexive_addr)) {
+        return false;
+      }
     }
     if (reflexive_addr) {
       if (!no_stun_backward_compatibility &&
-          stun_attr_add_addr_str(buf, len, STUN_ATTRIBUTE_MAPPED_ADDRESS, reflexive_addr) < 0)
-        return -1;
+          !stun_attr_add_addr_str(buf, len, STUN_ATTRIBUTE_MAPPED_ADDRESS, reflexive_addr)) {
+        return false;
+      }
     }
   } else if (!old_stun) {
     stun_init_error_response_str(STUN_METHOD_BINDING, buf, len, error_code, reason, tid);
@@ -1162,67 +1207,64 @@ int stun_set_binding_response_str(uint8_t *buf, size_t *len, stun_tid *tid, cons
     old_stun_init_error_response_str(STUN_METHOD_BINDING, buf, len, error_code, reason, tid, cookie);
   }
 
-  return 0;
+  return true;
 }
 
-int stun_is_binding_request_str(const uint8_t *buf, size_t len, size_t offset) {
+bool stun_is_binding_request_str(const uint8_t *buf, size_t len, size_t offset) {
   if (offset < len) {
     buf += offset;
     len -= offset;
     if (stun_is_command_message_str(buf, len)) {
       if (stun_is_request_str(buf, len) && (stun_get_method_str(buf, len) == STUN_METHOD_BINDING)) {
-        return 1;
+        return true;
       }
     }
   }
-  return 0;
+  return false;
 }
 
-int stun_is_binding_response_str(const uint8_t *buf, size_t len) {
+bool stun_is_binding_response_str(const uint8_t *buf, size_t len) {
   if (stun_is_command_message_str(buf, len) && (stun_get_method_str(buf, len) == STUN_METHOD_BINDING)) {
     if (stun_is_response_str(buf, len)) {
-      return 1;
+      return true;
     }
   }
-  return 0;
+  return false;
 }
 
 /////////////////////////////// TID ///////////////////////////////
 
-int stun_tid_equals(const stun_tid *id1, const stun_tid *id2) {
-  if (id1 == id2)
-    return 1;
-  if (!id1)
-    return 0;
-  if (!id2)
-    return 0;
-  {
-    unsigned int i = 0;
-    for (i = 0; i < STUN_TID_SIZE; ++i) {
-      if (id1->tsx_id[i] != id2->tsx_id[i])
-        return 0;
+bool stun_tid_equals(const stun_tid *id1, const stun_tid *id2) {
+  if (!id1 || !id2) {
+    return false;
+  }
+  if (id1 == id2) {
+    return true;
+  }
+  for (size_t i = 0; i < STUN_TID_SIZE; ++i) {
+    if (id1->tsx_id[i] != id2->tsx_id[i]) {
+      return false;
     }
   }
-  return 1;
+  return true;
 }
 
 void stun_tid_cpy(stun_tid *id1, const stun_tid *id2) {
-  if (!id1)
+  if (!id1 || !id2) {
     return;
-  if (!id2)
-    return;
-  memcpy((void *)(id1->tsx_id), (const void *)(id2->tsx_id), STUN_TID_SIZE);
+  }
+  memcpy(id1->tsx_id, id2->tsx_id, STUN_TID_SIZE);
 }
 
 static void stun_tid_string_cpy(uint8_t *s, const stun_tid *id) {
   if (s && id) {
-    memcpy(s, (const void *)(id->tsx_id), STUN_TID_SIZE);
+    memcpy(s, id->tsx_id, STUN_TID_SIZE);
   }
 }
 
 static void stun_tid_from_string(const uint8_t *s, stun_tid *id) {
   if (s && id) {
-    memcpy((void *)(id->tsx_id), s, STUN_TID_SIZE);
+    memcpy(id->tsx_id, s, STUN_TID_SIZE);
   }
 }
 
@@ -1245,8 +1287,9 @@ void stun_tid_generate(stun_tid *id) {
 
 void stun_tid_generate_in_message_str(uint8_t *buf, stun_tid *id) {
   stun_tid tmp;
-  if (!id)
+  if (!id) {
     id = &tmp;
+  }
   stun_tid_generate(id);
   stun_tid_message_cpy(buf, id);
 }
@@ -1256,12 +1299,13 @@ void stun_tid_generate_in_message_str(uint8_t *buf, stun_tid *id) {
 turn_time_t stun_adjust_allocate_lifetime(turn_time_t lifetime, turn_time_t max_allowed_lifetime,
                                           turn_time_t max_lifetime) {
 
-  if (!lifetime)
+  if (!lifetime) {
     lifetime = STUN_DEFAULT_ALLOCATE_LIFETIME;
-  else if (lifetime < STUN_MIN_ALLOCATE_LIFETIME)
+  } else if (lifetime < STUN_MIN_ALLOCATE_LIFETIME) {
     lifetime = STUN_MIN_ALLOCATE_LIFETIME;
-  else if (lifetime > max_allowed_lifetime)
+  } else if (lifetime > max_allowed_lifetime) {
     lifetime = max_allowed_lifetime;
+  }
 
   if (max_lifetime && (max_lifetime < lifetime)) {
     lifetime = max_lifetime;
@@ -1273,22 +1317,25 @@ turn_time_t stun_adjust_allocate_lifetime(turn_time_t lifetime, turn_time_t max_
 ////////////// ATTR /////////////////////////////////////////////////////////////
 
 int stun_attr_get_type(stun_attr_ref attr) {
-  if (attr)
+  if (attr) {
     return (int)(nswap16(((const uint16_t *)attr)[0]));
+  }
   return -1;
 }
 
 int stun_attr_get_len(stun_attr_ref attr) {
-  if (attr)
+  if (attr) {
     return (int)(nswap16(((const uint16_t *)attr)[1]));
+  }
   return -1;
 }
 
 const uint8_t *stun_attr_get_value(stun_attr_ref attr) {
   if (attr) {
     int len = (int)(nswap16(((const uint16_t *)attr)[1]));
-    if (len < 1)
+    if (len < 1) {
       return NULL;
+    }
     return ((const uint8_t *)attr) + 4;
   }
   return NULL;
@@ -1297,12 +1344,12 @@ const uint8_t *stun_attr_get_value(stun_attr_ref attr) {
 int stun_get_requested_address_family(stun_attr_ref attr) {
   if (attr) {
     int len = (int)(nswap16(((const uint16_t *)attr)[1]));
-    if (len != 4)
+    if (len != 4) {
       return STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_INVALID;
+    }
     int val = ((const uint8_t *)attr)[4];
     switch (val) {
     case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4:
-      return val;
     case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6:
       return val;
     default:
@@ -1317,8 +1364,9 @@ uint16_t stun_attr_get_channel_number(stun_attr_ref attr) {
     const uint8_t *value = stun_attr_get_value(attr);
     if (value && (stun_attr_get_len(attr) >= 2)) {
       uint16_t cn = nswap16(((const uint16_t *)value)[0]);
-      if (STUN_VALID_CHANNEL(cn))
+      if (STUN_VALID_CHANNEL(cn)) {
         return cn;
+      }
     }
   }
   return 0;
@@ -1347,7 +1395,7 @@ uint64_t stun_attr_get_reservation_token_value(stun_attr_ref attr) {
   return 0;
 }
 
-int stun_attr_is_addr(stun_attr_ref attr) {
+bool stun_attr_is_addr(stun_attr_ref attr) {
 
   if (attr) {
     switch (stun_attr_get_type(attr)) {
@@ -1362,27 +1410,27 @@ int stun_attr_is_addr(stun_attr_ref attr) {
     case OLD_STUN_ATTRIBUTE_REFLECTED_FROM:
     case STUN_ATTRIBUTE_RESPONSE_ORIGIN:
     case STUN_ATTRIBUTE_OTHER_ADDRESS:
-      return 1;
+      return true;
       break;
     default:;
     };
   }
-  return 0;
+  return false;
 }
 
 uint8_t stun_attr_get_even_port(stun_attr_ref attr) {
   if (attr) {
     const uint8_t *value = stun_attr_get_value(attr);
     if (value) {
-      if ((uint8_t)(value[0]) > 0x7F)
+      if ((uint8_t)(value[0]) > 0x7F) {
         return 1;
+      }
     }
   }
   return 0;
 }
 
 stun_attr_ref stun_attr_get_first_by_type_str(const uint8_t *buf, size_t len, uint16_t attr_type) {
-
   stun_attr_ref attr = stun_attr_get_first_str(buf, len);
   while (attr) {
     if (stun_attr_get_type(attr) == attr_type) {
@@ -1395,7 +1443,6 @@ stun_attr_ref stun_attr_get_first_by_type_str(const uint8_t *buf, size_t len, ui
 }
 
 static stun_attr_ref stun_attr_check_valid(stun_attr_ref attr, size_t remaining) {
-
   if (remaining >= 4) {
     /* Read the size of the attribute */
     size_t attrlen = stun_attr_get_len(attr);
@@ -1417,7 +1464,6 @@ static stun_attr_ref stun_attr_check_valid(stun_attr_ref attr, size_t remaining)
 }
 
 stun_attr_ref stun_attr_get_first_str(const uint8_t *buf, size_t len) {
-
   int bufLen = stun_get_command_message_len_str(buf, len);
   if (bufLen > STUN_HEADER_LENGTH) {
     stun_attr_ref attr = (stun_attr_ref)(buf + STUN_HEADER_LENGTH);
@@ -1428,10 +1474,9 @@ stun_attr_ref stun_attr_get_first_str(const uint8_t *buf, size_t len) {
 }
 
 stun_attr_ref stun_attr_get_next_str(const uint8_t *buf, size_t len, stun_attr_ref prev) {
-
-  if (!prev)
+  if (!prev) {
     return stun_attr_get_first_str(buf, len);
-  else {
+  } else {
     const uint8_t *end = buf + stun_get_command_message_len_str(buf, len);
     int attrlen = stun_attr_get_len(prev);
     uint16_t rem4 = ((uint16_t)attrlen) & 0x0003;
@@ -1447,9 +1492,10 @@ stun_attr_ref stun_attr_get_next_str(const uint8_t *buf, size_t len, stun_attr_r
   }
 }
 
-int stun_attr_add_str(uint8_t *buf, size_t *len, uint16_t attr, const uint8_t *avalue, int alen) {
-  if (alen < 0)
+bool stun_attr_add_str(uint8_t *buf, size_t *len, uint16_t attr, const uint8_t *avalue, int alen) {
+  if (alen < 0) {
     alen = 0;
+  }
   uint8_t tmp[1];
   if (!avalue) {
     alen = 0;
@@ -1463,29 +1509,31 @@ int stun_attr_add_str(uint8_t *buf, size_t *len, uint16_t attr, const uint8_t *a
     paddinglen = 4 - newlenrem4;
     newlen = newlen + paddinglen;
   }
-  if (newlen >= MAX_STUN_MESSAGE_SIZE)
-    return -1;
-  else {
-    uint8_t *attr_start = buf + clen;
 
-    uint16_t *attr_start_16t = (uint16_t *)attr_start;
-
-    stun_set_command_message_len_str(buf, newlen);
-    *len = newlen;
-
-    attr_start_16t[0] = nswap16(attr);
-    attr_start_16t[1] = nswap16(alen);
-    if (alen > 0)
-      memcpy(attr_start + 4, avalue, alen);
-
-    // Write 0 padding to not leak data
-    memset(attr_start + 4 + alen, 0, paddinglen);
-
-    return 0;
+  if (newlen >= MAX_STUN_MESSAGE_SIZE) {
+    return false;
   }
+
+  uint8_t *attr_start = buf + clen;
+
+  uint16_t *attr_start_16t = (uint16_t *)attr_start;
+
+  stun_set_command_message_len_str(buf, newlen);
+  *len = newlen;
+
+  attr_start_16t[0] = nswap16(attr);
+  attr_start_16t[1] = nswap16(alen);
+  if (alen > 0) {
+    memcpy(attr_start + 4, avalue, alen);
+  }
+
+  // Write 0 padding to not leak data
+  memset(attr_start + 4 + alen, 0, paddinglen);
+
+  return true;
 }
 
-int stun_attr_add_addr_str(uint8_t *buf, size_t *len, uint16_t attr_type, const ioa_addr *ca) {
+bool stun_attr_add_addr_str(uint8_t *buf, size_t *len, uint16_t attr_type, const ioa_addr *ca) {
 
   stun_tid tid;
   stun_tid_from_message_str(buf, *len, &tid);
@@ -1506,18 +1554,18 @@ int stun_attr_add_addr_str(uint8_t *buf, size_t *len, uint16_t attr_type, const 
   uint8_t cfield[64];
   int clen = 0;
   if (stun_addr_encode(&public_addr, cfield, &clen, xor_ed, STUN_MAGIC_COOKIE, tid.tsx_id) < 0) {
-    return -1;
+    return false;
   }
 
-  if (stun_attr_add_str(buf, len, attr_type, (uint8_t *)(&cfield), clen) < 0)
-    return -1;
+  if (!stun_attr_add_str(buf, len, attr_type, (uint8_t *)(&cfield), clen)) {
+    return false;
+  }
 
-  return 0;
+  return true;
 }
 
-int stun_attr_get_addr_str(const uint8_t *buf, size_t len, stun_attr_ref attr, ioa_addr *ca,
-                           const ioa_addr *default_addr) {
-
+bool stun_attr_get_addr_str(const uint8_t *buf, size_t len, stun_attr_ref attr, ioa_addr *ca,
+                            const ioa_addr *default_addr) {
   stun_tid tid;
   stun_tid_from_message_str(buf, len, &tid);
   ioa_addr public_addr;
@@ -1526,8 +1574,9 @@ int stun_attr_get_addr_str(const uint8_t *buf, size_t len, stun_attr_ref attr, i
   addr_set_any(&public_addr);
 
   int attr_type = stun_attr_get_type(attr);
-  if (attr_type < 0)
-    return -1;
+  if (attr_type < 0) {
+    return false;
+  }
 
   int xor_ed = 0;
   switch (attr_type) {
@@ -1540,11 +1589,12 @@ int stun_attr_get_addr_str(const uint8_t *buf, size_t len, stun_attr_ref attr, i
   };
 
   const uint8_t *cfield = stun_attr_get_value(attr);
-  if (!cfield)
-    return -1;
+  if (!cfield) {
+    return false;
+  }
 
   if (stun_addr_decode(&public_addr, cfield, stun_attr_get_len(attr), xor_ed, STUN_MAGIC_COOKIE, tid.tsx_id) < 0) {
-    return -1;
+    return false;
   }
 
   map_addr_from_public_to_private(&public_addr, ca);
@@ -1555,27 +1605,26 @@ int stun_attr_get_addr_str(const uint8_t *buf, size_t len, stun_attr_ref attr, i
     addr_set_port(ca, port);
   }
 
-  return 0;
+  return true;
 }
 
-int stun_attr_get_first_addr_str(const uint8_t *buf, size_t len, uint16_t attr_type, ioa_addr *ca,
-                                 const ioa_addr *default_addr) {
-
+bool stun_attr_get_first_addr_str(const uint8_t *buf, size_t len, uint16_t attr_type, ioa_addr *ca,
+                                  const ioa_addr *default_addr) {
   stun_attr_ref attr = stun_attr_get_first_str(buf, len);
 
   while (attr) {
     if (stun_attr_is_addr(attr) && (attr_type == stun_attr_get_type(attr))) {
-      if (stun_attr_get_addr_str(buf, len, attr, ca, default_addr) == 0) {
-        return 0;
+      if (stun_attr_get_addr_str(buf, len, attr, ca, default_addr)) {
+        return true;
       }
     }
     attr = stun_attr_get_next_str(buf, len, attr);
   }
 
-  return -1;
+  return false;
 }
 
-int stun_attr_add_channel_number_str(uint8_t *buf, size_t *len, uint16_t chnumber) {
+bool stun_attr_add_channel_number_str(uint8_t *buf, size_t *len, uint16_t chnumber) {
 
   uint16_t field[2];
   field[0] = nswap16(chnumber);
@@ -1584,7 +1633,7 @@ int stun_attr_add_channel_number_str(uint8_t *buf, size_t *len, uint16_t chnumbe
   return stun_attr_add_str(buf, len, STUN_ATTRIBUTE_CHANNEL_NUMBER, (uint8_t *)(field), sizeof(field));
 }
 
-int stun_attr_add_bandwidth_str(uint8_t *buf, size_t *len, band_limit_t bps0) {
+bool stun_attr_add_bandwidth_str(uint8_t *buf, size_t *len, band_limit_t bps0) {
 
   uint32_t bps = (uint32_t)(band_limit_t)(bps0 >> 7);
 
@@ -1593,7 +1642,7 @@ int stun_attr_add_bandwidth_str(uint8_t *buf, size_t *len, band_limit_t bps0) {
   return stun_attr_add_str(buf, len, STUN_ATTRIBUTE_NEW_BANDWIDTH, (uint8_t *)(&field), sizeof(field));
 }
 
-int stun_attr_add_address_error_code(uint8_t *buf, size_t *len, int requested_address_family, int error_code) {
+bool stun_attr_add_address_error_code(uint8_t *buf, size_t *len, int requested_address_family, int error_code) {
   const uint8_t *reason = get_default_reason(error_code);
 
   uint8_t avalue[513];
@@ -1613,40 +1662,7 @@ int stun_attr_add_address_error_code(uint8_t *buf, size_t *len, int requested_ad
     }
   }
 
-  stun_attr_add_str(buf, len, STUN_ATTRIBUTE_ADDRESS_ERROR_CODE, (uint8_t *)avalue, alen);
-
-  return 0;
-}
-
-int stun_attr_get_address_error_code(uint8_t *buf, size_t len, int *requested_address_family, int *error_code) {
-  if (requested_address_family) {
-    *requested_address_family = 0;
-  }
-  if (error_code) {
-    *error_code = 0;
-  }
-  if (buf && len) {
-    stun_attr_ref sar = stun_attr_get_first_by_type_str(buf, len, STUN_ATTRIBUTE_ADDRESS_ERROR_CODE);
-    if (sar) {
-      const uint8_t *value = stun_attr_get_value(sar);
-      if (!value) {
-        return -1;
-      } else {
-        int alen = stun_attr_get_len(sar);
-        if (alen != 4) {
-          return -1;
-        }
-        if (requested_address_family) {
-          *requested_address_family = value[0];
-        }
-        if (error_code) {
-          *error_code = (int)(value[2] * 100 + value[3]);
-        }
-        return 0;
-      }
-    }
-  }
-  return 0;
+  return stun_attr_add_str(buf, len, STUN_ATTRIBUTE_ADDRESS_ERROR_CODE, (uint8_t *)avalue, alen);
 }
 
 uint16_t stun_attr_get_first_channel_number_str(const uint8_t *buf, size_t len) {
@@ -1667,12 +1683,14 @@ uint16_t stun_attr_get_first_channel_number_str(const uint8_t *buf, size_t len) 
 
 ////////////// FINGERPRINT ////////////////////////////
 
-int stun_attr_add_fingerprint_str(uint8_t *buf, size_t *len) {
+bool stun_attr_add_fingerprint_str(uint8_t *buf, size_t *len) {
   uint32_t crc32 = 0;
-  stun_attr_add_str(buf, len, STUN_ATTRIBUTE_FINGERPRINT, (uint8_t *)&crc32, 4);
+  if (!stun_attr_add_str(buf, len, STUN_ATTRIBUTE_FINGERPRINT, (uint8_t *)&crc32, 4)) {
+    return false;
+  }
   crc32 = ns_crc32(buf, (int)*len - 8);
-  *((uint32_t *)(buf + *len - 4)) = nswap32(crc32 ^ ((uint32_t)0x5354554e));
-  return 0;
+  *((uint32_t *)(buf + *len - 4)) = nswap32(crc32 ^ ((uint32_t)FINGERPRINT_XOR));
+  return true;
 }
 ////////////// CRC ///////////////////////////////////////////////
 
@@ -1712,34 +1730,11 @@ static const uint32_t crctable[256] = {
     0xb40bbe37, 0xc30c8ea1, 0x5a05df1b, 0x2d02ef8d,
 };
 
-/*
-
-#define CRCPOLY     0xEDB88320UL
-reversed 0x04C11DB7
-1110 1101 1001 1000 1000 0011 0010 0000
-
-static void make_crctable(void)
-{
-        uint i, j;
-        uint32_t r;
-
-        for (i = 0; i < 256; ++i) {
-                r = i;
-                for (j = 8; j > 0; --j) {
-                        if (r & 1)
-                                r = (r >> 1) ^ CRCPOLY;
-                        else
-                                r >>= 1;
-                }
-                crctable[i] = r;
-        }
-}
-*/
-
 static uint32_t ns_crc32(const uint8_t *buffer, uint32_t len) {
   uint32_t crc = CRC_MASK;
-  while (len--)
+  while (len--) {
     UPDATE_CRC(crc, *buffer++);
+  }
   return (~crc);
 }
 
@@ -1747,7 +1742,7 @@ static uint32_t ns_crc32(const uint8_t *buffer, uint32_t len) {
 
 /* We support only basic ASCII table */
 
-int SASLprep(uint8_t *s) {
+bool SASLprep(uint8_t *s) {
   if (s) {
     uint8_t *strin = s;
     uint8_t *strout = s;
@@ -1769,12 +1764,14 @@ int SASLprep(uint8_t *s) {
         ++strin;
         break;
       case 0x7F:
-        return -1;
+        return false;
       default:
-        if (c < 0x1F)
-          return -1;
-        if (c >= 0x80 && c <= 0x9F)
-          return -1;
+        if (c < 0x1F) {
+          return false;
+        }
+        if (c >= 0x80 && c <= 0x9F) {
+          return false;
+        }
         *strout = c;
         ++strout;
         ++strin;
@@ -1782,32 +1779,34 @@ int SASLprep(uint8_t *s) {
     }
   }
 
-  return 0;
+  return true;
 }
 
 //////////////// Message Integrity ////////////////////////////
 
 size_t get_hmackey_size(SHATYPE shatype) {
-  if (shatype == SHATYPE_SHA256)
+  if (shatype == SHATYPE_SHA256) {
     return 32;
-  if (shatype == SHATYPE_SHA384)
+  }
+  if (shatype == SHATYPE_SHA384) {
     return 48;
-  if (shatype == SHATYPE_SHA512)
+  }
+  if (shatype == SHATYPE_SHA512) {
     return 64;
+  }
   return 16;
 }
 
 void print_bin_func(const char *name, size_t len, const void *s, const char *func) {
   printf("<%s>:<%s>:len=%d:[", func, name, (int)len);
-  size_t i;
-  for (i = 0; i < len; i++) {
+  for (size_t i = 0; i < len; i++) {
     printf("%02x", (int)((const uint8_t *)s)[i]);
   }
   printf("]\n");
 }
 
-int stun_attr_add_integrity_str(turn_credential_type ct, uint8_t *buf, size_t *len, hmackey_t key, password_t pwd,
-                                SHATYPE shatype) {
+bool stun_attr_add_integrity_str(turn_credential_type ct, uint8_t *buf, size_t *len, hmackey_t key, password_t pwd,
+                                 SHATYPE shatype) {
   uint8_t hmac[MAXSHASIZE];
 
   unsigned int shasize;
@@ -1826,63 +1825,56 @@ int stun_attr_add_integrity_str(turn_credential_type ct, uint8_t *buf, size_t *l
     shasize = SHA1SIZEBYTES;
   };
 
-  if (stun_attr_add_str(buf, len, STUN_ATTRIBUTE_MESSAGE_INTEGRITY, hmac, shasize) < 0)
-    return -1;
-
-  if (ct == TURN_CREDENTIALS_SHORT_TERM) {
-    if (stun_calculate_hmac(buf, *len - 4 - shasize, pwd, strlen((char *)pwd), buf + *len - shasize, &shasize,
-                            shatype) < 0)
-      return -1;
-  } else {
-    if (stun_calculate_hmac(buf, *len - 4 - shasize, key, get_hmackey_size(shatype), buf + *len - shasize, &shasize,
-                            shatype) < 0)
-      return -1;
+  if (!stun_attr_add_str(buf, len, STUN_ATTRIBUTE_MESSAGE_INTEGRITY, hmac, shasize)) {
+    return false;
   }
 
-  return 0;
+  if (ct == TURN_CREDENTIALS_SHORT_TERM) {
+    return stun_calculate_hmac(buf, *len - 4 - shasize, pwd, strlen((char *)pwd), buf + *len - shasize, &shasize,
+                               shatype);
+  } else {
+    return stun_calculate_hmac(buf, *len - 4 - shasize, key, get_hmackey_size(shatype), buf + *len - shasize, &shasize,
+                               shatype);
+  }
 }
 
-int stun_attr_add_integrity_by_key_str(uint8_t *buf, size_t *len, const uint8_t *uname, const uint8_t *realm,
-                                       hmackey_t key, const uint8_t *nonce, SHATYPE shatype) {
-  if (stun_attr_add_str(buf, len, STUN_ATTRIBUTE_USERNAME, uname, (int)strlen((const char *)uname)) < 0)
-    return -1;
+bool stun_attr_add_integrity_by_key_str(uint8_t *buf, size_t *len, const uint8_t *uname, const uint8_t *realm,
+                                        hmackey_t key, const uint8_t *nonce, SHATYPE shatype) {
+  if (!stun_attr_add_str(buf, len, STUN_ATTRIBUTE_USERNAME, uname, (int)strlen((const char *)uname))) {
+    return false;
+  }
 
-  if (stun_attr_add_str(buf, len, STUN_ATTRIBUTE_NONCE, nonce, (int)strlen((const char *)nonce)) < 0)
-    return -1;
+  if (!stun_attr_add_str(buf, len, STUN_ATTRIBUTE_NONCE, nonce, (int)strlen((const char *)nonce))) {
+    return false;
+  }
 
-  if (stun_attr_add_str(buf, len, STUN_ATTRIBUTE_REALM, realm, (int)strlen((const char *)realm)) < 0)
-    return -1;
+  if (!stun_attr_add_str(buf, len, STUN_ATTRIBUTE_REALM, realm, (int)strlen((const char *)realm))) {
+    return false;
+  }
 
   password_t p;
   return stun_attr_add_integrity_str(TURN_CREDENTIALS_LONG_TERM, buf, len, key, p, shatype);
 }
 
-int stun_attr_add_integrity_by_user_str(uint8_t *buf, size_t *len, const uint8_t *uname, const uint8_t *realm,
-                                        const uint8_t *upwd, const uint8_t *nonce, SHATYPE shatype) {
+bool stun_attr_add_integrity_by_user_str(uint8_t *buf, size_t *len, const uint8_t *uname, const uint8_t *realm,
+                                         const uint8_t *upwd, const uint8_t *nonce, SHATYPE shatype) {
   hmackey_t key;
 
-  if (stun_produce_integrity_key_str(uname, realm, upwd, key, shatype) < 0)
-    return -1;
+  if (!stun_produce_integrity_key_str(uname, realm, upwd, key, shatype)) {
+    return false;
+  }
 
   return stun_attr_add_integrity_by_key_str(buf, len, uname, realm, key, nonce, shatype);
 }
 
-int stun_attr_add_integrity_by_user_short_term_str(uint8_t *buf, size_t *len, const uint8_t *uname, password_t pwd,
-                                                   SHATYPE shatype) {
-  if (stun_attr_add_str(buf, len, STUN_ATTRIBUTE_USERNAME, uname, (int)strlen((const char *)uname)) < 0)
-    return -1;
+bool stun_attr_add_integrity_by_user_short_term_str(uint8_t *buf, size_t *len, const uint8_t *uname, password_t pwd,
+                                                    SHATYPE shatype) {
+  if (stun_attr_add_str(buf, len, STUN_ATTRIBUTE_USERNAME, uname, (int)strlen((const char *)uname))) {
+    return false;
+  }
 
   hmackey_t key;
   return stun_attr_add_integrity_str(TURN_CREDENTIALS_SHORT_TERM, buf, len, key, pwd, shatype);
-}
-
-void print_hmac(const char *name, const void *s, size_t len) {
-  printf("%s:len=%d:[", name, (int)len);
-  size_t i;
-  for (i = 0; i < len; i++) {
-    printf("%02x", (int)((const uint8_t *)s)[i]);
-  }
-  printf("]\n");
 }
 
 /*
@@ -1890,71 +1882,86 @@ void print_hmac(const char *name, const void *s, size_t len) {
  */
 int stun_check_message_integrity_by_key_str(turn_credential_type ct, uint8_t *buf, size_t len, hmackey_t key,
                                             password_t pwd, SHATYPE shatype) {
-  int res = 0;
-  uint8_t new_hmac[MAXSHASIZE] = {0};
-  unsigned int shasize;
-  const uint8_t *old_hmac = NULL;
-
   stun_attr_ref sar = stun_attr_get_first_by_type_str(buf, len, STUN_ATTRIBUTE_MESSAGE_INTEGRITY);
-  if (!sar)
+  if (!sar) {
     return -1;
+  }
 
-  int sarlen = stun_attr_get_len(sar);
-
-  switch (sarlen) {
+  unsigned int shasize = 0;
+  switch (stun_attr_get_len(sar)) {
   case SHA256SIZEBYTES:
     shasize = SHA256SIZEBYTES;
-    if (shatype != SHATYPE_SHA256)
+    if (shatype != SHATYPE_SHA256) {
       return -1;
+    }
     break;
   case SHA384SIZEBYTES:
     shasize = SHA384SIZEBYTES;
-    if (shatype != SHATYPE_SHA384)
+    if (shatype != SHATYPE_SHA384) {
       return -1;
+    }
     break;
   case SHA512SIZEBYTES:
     shasize = SHA512SIZEBYTES;
-    if (shatype != SHATYPE_SHA512)
+    if (shatype != SHATYPE_SHA512) {
       return -1;
+    }
     break;
   case SHA1SIZEBYTES:
     shasize = SHA1SIZEBYTES;
-    if (shatype != SHATYPE_SHA1)
+    if (shatype != SHATYPE_SHA1) {
       return -1;
+    }
     break;
   default:
     return -1;
   };
 
   int orig_len = stun_get_command_message_len_str(buf, len);
-  if (orig_len < 0)
+  if (orig_len < 0) {
     return -1;
+  }
 
   int new_len = (int)((const uint8_t *)sar - buf) + 4 + shasize;
-  if (new_len > orig_len)
+  if (new_len > orig_len) {
     return -1;
+  }
 
-  if (stun_set_command_message_len_str(buf, new_len) < 0)
+  if (!stun_set_command_message_len_str(buf, new_len)) {
     return -1;
+  }
 
+  int res = 0;
+  uint8_t new_hmac[MAXSHASIZE] = {0};
   if (ct == TURN_CREDENTIALS_SHORT_TERM) {
-    res =
-        stun_calculate_hmac(buf, (size_t)new_len - 4 - shasize, pwd, strlen((char *)pwd), new_hmac, &shasize, shatype);
+    if (!stun_calculate_hmac(buf, (size_t)new_len - 4 - shasize, pwd, strlen((char *)pwd), new_hmac, &shasize,
+                             shatype)) {
+      res = -1;
+    } else {
+      res = 0;
+    }
   } else {
-    res = stun_calculate_hmac(buf, (size_t)new_len - 4 - shasize, key, get_hmackey_size(shatype), new_hmac, &shasize,
-                              shatype);
+    if (!stun_calculate_hmac(buf, (size_t)new_len - 4 - shasize, key, get_hmackey_size(shatype), new_hmac, &shasize,
+                             shatype)) {
+      res = -1;
+    } else {
+      res = 0;
+    }
   }
 
   stun_set_command_message_len_str(buf, orig_len);
-  if (res < 0)
+  if (res < 0) {
     return -1;
+  }
 
-  old_hmac = stun_attr_get_value(sar);
-  if (!old_hmac)
+  const uint8_t *old_hmac = stun_attr_get_value(sar);
+  if (!old_hmac) {
     return -1;
+  }
 
-  if (memcmp(old_hmac, new_hmac, shasize))
+  if (0 != memcmp(old_hmac, new_hmac, shasize)) {
     return 0;
+  }
 
   return +1;
 }
@@ -1970,7 +1977,7 @@ int stun_check_message_integrity_str(turn_credential_type ct, uint8_t *buf, size
   if (ct == TURN_CREDENTIALS_SHORT_TERM) {
     strncpy((char *)pwd, (const char *)upwd, sizeof(password_t) - 1);
     pwd[sizeof(password_t) - 1] = 0;
-  } else if (stun_produce_integrity_key_str(uname, realm, upwd, key, shatype) < 0) {
+  } else if (!stun_produce_integrity_key_str(uname, realm, upwd, key, shatype)) {
     return -1;
   }
 
@@ -1979,19 +1986,19 @@ int stun_check_message_integrity_str(turn_credential_type ct, uint8_t *buf, size
 
 /* RFC 5780 */
 
-int stun_attr_get_change_request_str(stun_attr_ref attr, int *change_ip, int *change_port) {
+bool stun_attr_get_change_request_str(stun_attr_ref attr, bool *change_ip, bool *change_port) {
   if (stun_attr_get_len(attr) == 4) {
     const uint8_t *value = stun_attr_get_value(attr);
     if (value) {
-      *change_ip = (value[3] & (uint8_t)0x04);
-      *change_port = (value[3] & (uint8_t)0x02);
-      return 0;
+      *change_ip = (value[3] & 0x04);
+      *change_port = (value[3] & 0x02);
+      return true;
     }
   }
-  return -1;
+  return false;
 }
 
-int stun_attr_add_change_request_str(uint8_t *buf, size_t *len, int change_ip, int change_port) {
+bool stun_attr_add_change_request_str(uint8_t *buf, size_t *len, bool change_ip, bool change_port) {
   uint8_t avalue[4] = {0, 0, 0, 0};
 
   if (change_ip) {
@@ -2017,7 +2024,7 @@ int stun_attr_get_response_port_str(stun_attr_ref attr) {
   return -1;
 }
 
-int stun_attr_add_response_port_str(uint8_t *buf, size_t *len, uint16_t port) {
+bool stun_attr_add_response_port_str(uint8_t *buf, size_t *len, uint16_t port) {
   uint8_t avalue[4] = {0, 0, 0, 0};
   uint16_t *port_ptr = (uint16_t *)avalue;
 
@@ -2028,12 +2035,13 @@ int stun_attr_add_response_port_str(uint8_t *buf, size_t *len, uint16_t port) {
 
 int stun_attr_get_padding_len_str(stun_attr_ref attr) {
   int len = stun_attr_get_len(attr);
-  if (len < 0)
+  if (len < 0) {
     return -1;
+  }
   return (uint16_t)len;
 }
 
-int stun_attr_add_padding_str(uint8_t *buf, size_t *len, uint16_t padding_len) {
+bool stun_attr_add_padding_str(uint8_t *buf, size_t *len, uint16_t padding_len) {
   uint8_t avalue[0xFFFF];
   memset(avalue, 0, padding_len);
 
@@ -2047,8 +2055,9 @@ int stun_attr_add_padding_str(uint8_t *buf, size_t *len, uint16_t padding_len) {
 static void remove_spaces(char *s) {
   char *sfns = s;
   while (*sfns) {
-    if (*sfns != ' ')
+    if (*sfns != ' ') {
       break;
+    }
     ++sfns;
   }
   if (*sfns) {
@@ -2074,9 +2083,9 @@ static void remove_spaces(char *s) {
 static void normalize_algorithm(char *s) {
   char c = *s;
   while (c) {
-    if (c == '_')
+    if (c == '_') {
       *s = '-';
-    else if ((c >= 'a') && (c <= 'z')) {
+    } else if ((c >= 'a') && (c <= 'z')) {
       *s = c - 'a' + 'A';
     }
     ++s;
@@ -2113,16 +2122,16 @@ size_t calculate_auth_key_length(ENC_ALG a) {
   return 0;
 }
 
-int calculate_key(char *key, size_t key_size, char *new_key, size_t new_key_size);
-int calculate_key(char *key, size_t key_size, char *new_key, size_t new_key_size) {
+static bool calculate_key(char *key, size_t key_size, char *new_key, size_t new_key_size);
+static bool calculate_key(char *key, size_t key_size, char *new_key, size_t new_key_size) {
   UNUSED_ARG(key_size);
 
   memcpy(new_key, key, new_key_size);
 
-  return 0;
+  return true;
 }
 
-int convert_oauth_key_data(const oauth_key_data *oakd0, oauth_key *key, char *err_msg, size_t err_msg_size) {
+bool convert_oauth_key_data(const oauth_key_data *oakd0, oauth_key *key, char *err_msg, size_t err_msg_size) {
   if (oakd0 && key) {
 
     oauth_key_data oakd_obj;
@@ -2146,7 +2155,7 @@ int convert_oauth_key_data(const oauth_key_data *oakd0, oauth_key *key, char *er
         snprintf(err_msg, err_msg_size, "KID is not defined");
       }
       OAUTH_ERROR("KID is not defined\n");
-      return -1;
+      return false;
     }
 
     memset(key, 0, sizeof(oauth_key));
@@ -2159,10 +2168,12 @@ int convert_oauth_key_data(const oauth_key_data *oakd0, oauth_key *key, char *er
     key->timestamp = oakd->timestamp;
     key->lifetime = oakd->lifetime;
 
-    if (!(key->timestamp))
+    if (!(key->timestamp)) {
       key->timestamp = OAUTH_DEFAULT_TIMESTAMP;
-    if (!(key->lifetime))
+    }
+    if (!(key->lifetime)) {
       key->lifetime = OAUTH_DEFAULT_LIFETIME;
+    }
 
     key->as_rs_alg = ENC_ALG_ERROR;
 #if !defined(TURN_NO_GCM)
@@ -2182,26 +2193,26 @@ int convert_oauth_key_data(const oauth_key_data *oakd0, oauth_key *key, char *er
         snprintf(err_msg, err_msg_size, "Wrong oAuth token encryption algorithm: %s (2)\n", oakd->as_rs_alg);
       }
       OAUTH_ERROR("Wrong oAuth token encryption algorithm: %s (3)\n", oakd->as_rs_alg);
-      return -1;
+      return false;
     }
 
 #if !defined(TURN_NO_GCM)
 
     key->auth_key_size = calculate_auth_key_length(key->as_rs_alg);
     if (key->auth_key_size) {
-      if (calculate_key(key->ikm_key, key->ikm_key_size, key->auth_key, key->auth_key_size) < 0) {
-        return -1;
+      if (!calculate_key(key->ikm_key, key->ikm_key_size, key->auth_key, key->auth_key_size)) {
+        return false;
       }
     }
 
     key->as_rs_key_size = calculate_enc_key_length(key->as_rs_alg);
-    if (calculate_key(key->ikm_key, key->ikm_key_size, key->as_rs_key, key->as_rs_key_size) < 0) {
-      return -1;
+    if (!calculate_key(key->ikm_key, key->ikm_key_size, key->as_rs_key, key->as_rs_key_size)) {
+      return false;
     }
 #endif
   }
 
-  return 0;
+  return true;
 }
 
 const EVP_CIPHER *get_cipher_type(ENC_ALG enc_alg);
@@ -2227,12 +2238,14 @@ int my_EVP_EncryptUpdate(EVP_CIPHER_CTX *ctx, unsigned char *out, int *outl, con
   while ((out_len < inl) && (++cycle < 128)) {
     int tmp_outl = 0;
     unsigned char *ptr = NULL;
-    if (out)
+    if (out) {
       ptr = out + out_len;
+    }
     int ret = EVP_EncryptUpdate(ctx, ptr, &tmp_outl, in + out_len, inl - out_len);
     out_len += tmp_outl;
-    if (ret < 1)
+    if (ret < 1) {
       return ret;
+    }
   }
   *outl = out_len;
   return 1;
@@ -2245,202 +2258,22 @@ int my_EVP_DecryptUpdate(EVP_CIPHER_CTX *ctx, unsigned char *out, int *outl, con
   while ((out_len < inl) && (++cycle < 128)) {
     int tmp_outl = 0;
     unsigned char *ptr = NULL;
-    if (out)
+    if (out) {
       ptr = out + out_len;
+    }
     int ret = EVP_DecryptUpdate(ctx, ptr, &tmp_outl, in + out_len, inl - out_len);
     out_len += tmp_outl;
-    if (ret < 1)
+    if (ret < 1) {
       return ret;
+    }
   }
   *outl = out_len;
   return 1;
 }
-
-void print_field(const char *name, const unsigned char *f, size_t len);
-void print_field(const char *name, const unsigned char *f, size_t len) {
-  printf("\nfield %s==>>\n", name);
-  size_t i;
-  for (i = 0; i < len; ++i) {
-    printf("<0x%x>", (unsigned int)f[i]);
-  }
-  printf("\n<<==field %s\n", name);
-}
-
-int encode_oauth_token_normal(const uint8_t *server_name, encoded_oauth_token *etoken, const oauth_key *key,
-                              const oauth_token *dtoken);
-int encode_oauth_token_normal(const uint8_t *server_name, encoded_oauth_token *etoken, const oauth_key *key,
-                              const oauth_token *dtoken) {
-  UNUSED_ARG(server_name);
-  UNUSED_ARG(etoken);
-  UNUSED_ARG(key);
-  UNUSED_ARG(dtoken);
-
-  /*
-  if(server_name && etoken && key && dtoken && (dtoken->enc_block.key_length<=128)) {
-
-          unsigned char orig_field[MAX_ENCODED_OAUTH_TOKEN_SIZE];
-          memset(orig_field, 0, sizeof(orig_field));
-
-          size_t len = 0;
-          *((uint16_t*)(orig_field+len)) = nswap16(dtoken->enc_block.key_length);
-          len +=2;
-
-          memcpy(orig_field+len,dtoken->enc_block.mac_key,dtoken->enc_block.key_length);
-          len += dtoken->enc_block.key_length;
-
-          *((uint64_t*)(orig_field+len)) = nswap64(dtoken->enc_block.timestamp);
-          len += 8;
-
-          *((uint32_t*)(orig_field+len)) = nswap32(dtoken->enc_block.lifetime);
-          len += 4;
-
-          const EVP_CIPHER * cipher = get_cipher_type(key->as_rs_alg);
-          if(!cipher)
-                  return -1;
-
-          unsigned char *encoded_field = (unsigned char*)etoken->token;
-
-          EVP_CIPHER_CTX ctx;
-          EVP_CIPHER_CTX_init(&ctx);
-          EVP_EncryptInit_ex(&ctx, cipher, NULL, (const unsigned char *)key->as_rs_key, NULL);
-          EVP_CIPHER_CTX_set_padding(&ctx,1);
-          int outl=0;
-          my_EVP_EncryptUpdate(&ctx, encoded_field, &outl, orig_field, (int)len);
-          if(outl % OAUTH_ENC_ALG_BLOCK_SIZE) {
-                  int tmp_outl = 0;
-                  EVP_EncryptFinal_ex(&ctx, encoded_field + outl, &tmp_outl);
-                  outl += tmp_outl;
-          }
-
-          EVP_CIPHER_CTX_cleanup(&ctx);
-
-          size_t sn_len = strlen((const char*)server_name);
-          memcpy(encoded_field+outl,server_name,sn_len);
-          outl += sn_len;
-
-          const EVP_MD *md = get_auth_type(key->auth_alg);
-          if(!md)
-                  return -1;
-
-          unsigned int hmac_len = EVP_MD_size(md);
-          if (!HMAC(md, key->auth_key, key->auth_key_size, encoded_field, outl, encoded_field + outl, &hmac_len)) {
-              return -1;
-          }
-
-          update_hmac_len(key->auth_alg, &hmac_len);
-
-          memcpy(encoded_field + outl - sn_len, encoded_field + outl, hmac_len);
-          outl -= sn_len;
-          outl += hmac_len; //encoded+hmac
-
-          etoken->size = outl;
-
-          return 0;
-  }
-  */
-  return -1;
-}
-
-int decode_oauth_token_normal(const uint8_t *server_name, const encoded_oauth_token *etoken, const oauth_key *key,
-                              oauth_token *dtoken);
-int decode_oauth_token_normal(const uint8_t *server_name, const encoded_oauth_token *etoken, const oauth_key *key,
-                              oauth_token *dtoken) {
-  UNUSED_ARG(server_name);
-  UNUSED_ARG(etoken);
-  UNUSED_ARG(key);
-  UNUSED_ARG(dtoken);
-
-  /*
-  if(server_name && etoken && key && dtoken) {
-
-          size_t mac_size = calculate_auth_output_length(key->auth_alg);
-          size_t min_encoded_field_size = 2+4+8+1;
-          if(etoken->size < mac_size+min_encoded_field_size) {
-                  OAUTH_ERROR("%s: token size too small: %d, mac_size=%d,
-  min_encoded_field_size=%d\n",__FUNCTION__,(int)etoken->size,(int)mac_size,(int)min_encoded_field_size); return -1;
-          }
-
-          const unsigned char* encoded_field = (const unsigned char*)etoken->token;
-          unsigned int encoded_field_size = (unsigned int)etoken->size-mac_size;
-          const unsigned char* mac = ((const unsigned char*)etoken->token) + etoken->size - mac_size;
-
-          {
-                  const EVP_MD *md = get_auth_type(key->auth_alg);
-                  if(!md)
-                          return -1;
-          unsigned int hmac_len = EVP_MD_size(md);
-          update_hmac_len(key->auth_alg,&hmac_len);
-          if(hmac_len != mac_size) {
-                  OAUTH_ERROR("%s: mac size is wrong: %d, must be %d\n",__FUNCTION__,(int)mac_size,(int)hmac_len);
-                  return -1;
-          }
-          unsigned char efield[MAX_ENCODED_OAUTH_TOKEN_SIZE];
-          unsigned char check_mac[MAXSHASIZE];
-          memcpy(efield,encoded_field,encoded_field_size);
-          size_t sn_len = strlen((const char*)server_name);
-          memcpy(efield+encoded_field_size,server_name,sn_len);
-              if (!HMAC(md, key->auth_key, key->auth_key_size, efield, encoded_field_size+sn_len, check_mac, &hmac_len))
-  { return -1;
-              }
-
-              if(memcmp(check_mac,mac,mac_size)) {
-                  OAUTH_ERROR("%s: token integrity check failed\n",__FUNCTION__);
-                  return -1;
-              }
-          }
-
-          unsigned char decoded_field[MAX_ENCODED_OAUTH_TOKEN_SIZE];
-
-          const EVP_CIPHER * cipher = get_cipher_type(key->as_rs_alg);
-          if(!cipher)
-                  return -1;
-
-          EVP_CIPHER_CTX ctx;
-          EVP_CIPHER_CTX_init(&ctx);
-          EVP_DecryptInit_ex(&ctx, cipher, NULL, (const unsigned char *)key->as_rs_key, NULL);
-          EVP_CIPHER_CTX_set_padding(&ctx,1);
-          int outl=0;
-          my_EVP_DecryptUpdate(&ctx, decoded_field, &outl, encoded_field, (int)encoded_field_size);
-
-          int tmp_outl = 0;
-          EVP_DecryptFinal_ex(&ctx, decoded_field + outl, &tmp_outl);
-          outl += tmp_outl;
-
-          EVP_CIPHER_CTX_cleanup(&ctx);
-
-          size_t len = 0;
-
-          dtoken->enc_block.key_length = nswap16(*((uint16_t*)(decoded_field+len)));
-          len += 2;
-
-          memcpy(dtoken->enc_block.mac_key,decoded_field+len,dtoken->enc_block.key_length);
-          len += dtoken->enc_block.key_length;
-
-          dtoken->enc_block.timestamp = nswap64(*((uint64_t*)(decoded_field+len)));
-          len += 8;
-
-          dtoken->enc_block.lifetime = nswap32(*((uint32_t*)(decoded_field+len)));
-          len += 4;
-
-          return 0;
-  }
-  */
-  return -1;
-}
-
-static void generate_random_nonce(unsigned char *nonce, size_t sz) {
-  if (!RAND_bytes(nonce, (int)sz)) {
-    size_t i;
-    for (i = 0; i < sz; ++i) {
-      nonce[i] = (unsigned char)turn_random_number();
-    }
-  }
-}
-
 #if !defined(TURN_NO_GCM)
 
-static int encode_oauth_token_gcm(const uint8_t *server_name, encoded_oauth_token *etoken, const oauth_key *key,
-                                  const oauth_token *dtoken, const uint8_t *nonce0) {
+static bool encode_oauth_token_gcm(const uint8_t *server_name, encoded_oauth_token *etoken, const oauth_key *key,
+                                   const oauth_token *dtoken, const uint8_t *nonce0) {
   if (server_name && etoken && key && dtoken && (dtoken->enc_block.key_length <= MAXSHASIZE)) {
 
     unsigned char orig_field[MAX_ENCODED_OAUTH_TOKEN_SIZE];
@@ -2475,8 +2308,9 @@ static int encode_oauth_token_gcm(const uint8_t *server_name, encoded_oauth_toke
     len += 4;
 
     const EVP_CIPHER *cipher = get_cipher_type(key->as_rs_alg);
-    if (!cipher)
-      return -1;
+    if (!cipher) {
+      return false;
+    }
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
     EVP_CIPHER_CTX ctx;
@@ -2487,18 +2321,21 @@ static int encode_oauth_token_gcm(const uint8_t *server_name, encoded_oauth_toke
     EVP_CIPHER_CTX_init(ctxp);
 
     /* Initialize the encryption operation. */
-    if (1 != EVP_EncryptInit_ex(ctxp, cipher, NULL, NULL, NULL))
+    if (1 != EVP_EncryptInit_ex(ctxp, cipher, NULL, NULL, NULL)) {
       return -1;
+    }
 
     EVP_CIPHER_CTX_set_padding(ctxp, 1);
 
     /* Set IV length if default 12 bytes (96 bits) is not appropriate */
-    if (1 != EVP_CIPHER_CTX_ctrl(ctxp, EVP_CTRL_GCM_SET_IVLEN, OAUTH_GCM_NONCE_SIZE, NULL))
-      return -1;
+    if (1 != EVP_CIPHER_CTX_ctrl(ctxp, EVP_CTRL_GCM_SET_IVLEN, OAUTH_GCM_NONCE_SIZE, NULL)) {
+      return false;
+    }
 
     /* Initialize key and IV */
-    if (1 != EVP_EncryptInit_ex(ctxp, NULL, NULL, (const unsigned char *)key->as_rs_key, nonce))
-      return -1;
+    if (1 != EVP_EncryptInit_ex(ctxp, NULL, NULL, (const unsigned char *)key->as_rs_key, nonce)) {
+      return false;
+    }
 
     int outl = 0;
     size_t sn_len = strlen((const char *)server_name);
@@ -2506,8 +2343,9 @@ static int encode_oauth_token_gcm(const uint8_t *server_name, encoded_oauth_toke
     /* Provide any AAD data. This can be called zero or more times as
      * required
      */
-    if (1 != my_EVP_EncryptUpdate(ctxp, NULL, &outl, server_name, (int)sn_len))
-      return -1;
+    if (1 != my_EVP_EncryptUpdate(ctxp, NULL, &outl, server_name, (int)sn_len)) {
+      return false;
+    }
 
     outl = 0;
     unsigned char *encoded_field = (unsigned char *)etoken->token;
@@ -2516,8 +2354,9 @@ static int encode_oauth_token_gcm(const uint8_t *server_name, encoded_oauth_toke
     unsigned char *start_field = orig_field + OAUTH_GCM_NONCE_SIZE + 2;
     len -= OAUTH_GCM_NONCE_SIZE + 2;
 
-    if (1 != my_EVP_EncryptUpdate(ctxp, encoded_field, &outl, start_field, (int)len))
+    if (1 != my_EVP_EncryptUpdate(ctxp, encoded_field, &outl, start_field, (int)len)) {
       return -1;
+    }
 
     int tmp_outl = 0;
     EVP_EncryptFinal_ex(ctxp, encoded_field + outl, &tmp_outl);
@@ -2534,13 +2373,13 @@ static int encode_oauth_token_gcm(const uint8_t *server_name, encoded_oauth_toke
     EVP_CIPHER_CTX_free(ctxp);
 #endif
 
-    return 0;
+    return true;
   }
-  return -1;
+  return false;
 }
 
-static int decode_oauth_token_gcm(const uint8_t *server_name, const encoded_oauth_token *etoken, const oauth_key *key,
-                                  oauth_token *dtoken) {
+static bool decode_oauth_token_gcm(const uint8_t *server_name, const encoded_oauth_token *etoken, const oauth_key *key,
+                                   oauth_token *dtoken) {
   if (server_name && etoken && key && dtoken) {
 
     unsigned char snl[2];
@@ -2553,7 +2392,7 @@ static int decode_oauth_token_gcm(const uint8_t *server_name, const encoded_oaut
     size_t min_encoded_field_size = 2 + 4 + 8 + nonce_len + 2 + OAUTH_GCM_TAG_SIZE + 1;
     if (etoken->size < min_encoded_field_size) {
       OAUTH_ERROR("%s: token size too small: %d\n", __FUNCTION__, (int)etoken->size);
-      return -1;
+      return false;
     }
 
     const unsigned char *encoded_field = (const unsigned char *)(etoken->token + nonce_len + 2);
@@ -2569,7 +2408,7 @@ static int decode_oauth_token_gcm(const uint8_t *server_name, const encoded_oaut
     const EVP_CIPHER *cipher = get_cipher_type(key->as_rs_alg);
     if (!cipher) {
       OAUTH_ERROR("%s: Cannot find cipher for algorithm: %d\n", __FUNCTION__, (int)key->as_rs_alg);
-      return -1;
+      return false;
     }
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
@@ -2582,7 +2421,7 @@ static int decode_oauth_token_gcm(const uint8_t *server_name, const encoded_oaut
     /* Initialize the decryption operation. */
     if (1 != EVP_DecryptInit_ex(ctxp, cipher, NULL, NULL, NULL)) {
       OAUTH_ERROR("%s: Cannot initialize decryption\n", __FUNCTION__);
-      return -1;
+      return false;
     }
 
     // EVP_CIPHER_CTX_set_padding(&ctx,1);
@@ -2590,13 +2429,13 @@ static int decode_oauth_token_gcm(const uint8_t *server_name, const encoded_oaut
     /* Set IV length if default 12 bytes (96 bits) is not appropriate */
     if (1 != EVP_CIPHER_CTX_ctrl(ctxp, EVP_CTRL_GCM_SET_IVLEN, nonce_len, NULL)) {
       OAUTH_ERROR("%s: Cannot set nonce length\n", __FUNCTION__);
-      return -1;
+      return false;
     }
 
     /* Initialize key and IV */
     if (1 != EVP_DecryptInit_ex(ctxp, NULL, NULL, (const unsigned char *)key->as_rs_key, nonce)) {
       OAUTH_ERROR("%s: Cannot set nonce\n", __FUNCTION__);
-      return -1;
+      return false;
     }
 
     /* Set expected tag value. A restriction in OpenSSL 1.0.1c and earlier
@@ -2611,11 +2450,11 @@ static int decode_oauth_token_gcm(const uint8_t *server_name, const encoded_oaut
      */
     if (1 != my_EVP_DecryptUpdate(ctxp, NULL, &outl, server_name, (int)sn_len)) {
       OAUTH_ERROR("%s: Cannot decrypt update server_name: %s, len=%d\n", __FUNCTION__, server_name, (int)sn_len);
-      return -1;
+      return false;
     }
     if (1 != my_EVP_DecryptUpdate(ctxp, decoded_field, &outl, encoded_field, (int)encoded_field_size)) {
       OAUTH_ERROR("%s: Cannot decrypt update\n", __FUNCTION__);
-      return -1;
+      return false;
     }
 
     int tmp_outl = 0;
@@ -2626,7 +2465,7 @@ static int decode_oauth_token_gcm(const uint8_t *server_name, const encoded_oaut
       EVP_CIPHER_CTX_free(ctxp);
 #endif
       OAUTH_ERROR("%s: token integrity check failed\n", __FUNCTION__);
-      return -1;
+      return false;
     }
     outl += tmp_outl;
 
@@ -2654,15 +2493,15 @@ static int decode_oauth_token_gcm(const uint8_t *server_name, const encoded_oaut
     dtoken->enc_block.lifetime = nswap32(lt);
     len += sizeof(lt);
 
-    return 0;
+    return true;
   }
-  return -1;
+  return false;
 }
 
 #endif
 
-int encode_oauth_token(const uint8_t *server_name, encoded_oauth_token *etoken, const oauth_key *key,
-                       const oauth_token *dtoken, const uint8_t *nonce) {
+bool encode_oauth_token(const uint8_t *server_name, encoded_oauth_token *etoken, const oauth_key *key,
+                        const oauth_token *dtoken, const uint8_t *nonce) {
   UNUSED_ARG(nonce);
   if (server_name && etoken && key && dtoken) {
     switch (key->as_rs_alg) {
@@ -2676,11 +2515,11 @@ int encode_oauth_token(const uint8_t *server_name, encoded_oauth_token *etoken, 
       break;
     };
   }
-  return -1;
+  return false;
 }
 
-int decode_oauth_token(const uint8_t *server_name, const encoded_oauth_token *etoken, const oauth_key *key,
-                       oauth_token *dtoken) {
+bool decode_oauth_token(const uint8_t *server_name, const encoded_oauth_token *etoken, const oauth_key *key,
+                        oauth_token *dtoken) {
   if (server_name && etoken && key && dtoken) {
     switch (key->as_rs_alg) {
 #if !defined(TURN_NO_GCM)
@@ -2693,7 +2532,7 @@ int decode_oauth_token(const uint8_t *server_name, const encoded_oauth_token *et
       break;
     };
   }
-  return -1;
+  return false;
 }
 
 ///////////////////////////////////////////////////////////////

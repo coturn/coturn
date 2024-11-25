@@ -31,10 +31,11 @@
 #ifndef __APP_LIB__
 #define __APP_LIB__
 
-#include <event2/event.h>
+#include <event2/util.h> // for evutil_socket_t
 
 #include "ns_turn_openssl.h"
 
+#include "ns_turn_defs.h"
 #include "ns_turn_ioaddr.h"
 #include "ns_turn_ioalib.h"
 #include "ns_turn_msg_defs.h"
@@ -242,15 +243,11 @@ char *dirname(char *path);
 
 #if defined(WINDOWS)
 int getdomainname(char *name, size_t len);
-// wchar convert to char
-char *_WTA(__in wchar_t *pszInBufBuf, __in int nInSize, __out char **pszOutBuf, __out int *pnOutSize);
-// char convert to wchar
-wchar_t *_ATW(__in char *pszInBuf, __in int nInSize, __out wchar_t **pszOutBuf, __out int *pnOutSize);
 #endif
 
 ////////////////// File search ////////////////////////
 
-char *find_config_file(const char *config_file, int print_file_name);
+char *find_config_file(const char *config_file);
 void set_execdir(void);
 void print_abs_file_name(const char *msg1, const char *msg2, const char *fn);
 

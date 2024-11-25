@@ -15,8 +15,8 @@ Coturn TURN server Docker image
 
 ## Supported tags and respective `Dockerfile` links
 
-- [`4.6.2-r5`, `4.6.2-r5-debian`, `4.6.2`, `4.6.2-debian`, `4.6.2-bookworm`, `4.6`, `4.6-debian`, `4.6-bookworm`, `4`, `4-debian`, `4-bookworm`, `debian`, `bookworm`, `latest`][d1]
-- [`4.6.2-r5-alpine`, `4.6.2-alpine`, `4.6.2-alpine3.18`, `4.6-alpine`, `4.6-alpine3.18`, `4-alpine`, `4-alpine3.18`, `alpine`, `alpine3.18`][d2]
+- [`4.6.2-r12`, `4.6.2-r12-debian`, `4.6.2`, `4.6.2-debian`, `4.6.2-bookworm`, `4.6`, `4.6-debian`, `4.6-bookworm`, `4`, `4-debian`, `4-bookworm`, `debian`, `bookworm`, `latest`][d1]
+- [`4.6.2-r12-alpine`, `4.6.2-alpine`, `4.6.2-alpine3.20`, `4.6-alpine`, `4.6-alpine3.20`, `4-alpine`, `4-alpine3.20`, `alpine`, `alpine3.20`][d2]
 
 
 
@@ -96,7 +96,7 @@ By default, default Coturn configuration and CLI options provided in the `CMD` [
 #### Automatic detection of external IP
 
 `detect-external-ip` binary may be used to automatically detect external IP of TURN server in runtime.
-To add ` --external-ip=<detected external IP>` using `detect-external-ip` as argument for `turnserver`, set envronment variable `DETECT_EXTERNAL_IP`. Also, environment variables `DETECT_RELAY_IP`, `DETECT_EXTERNAL_IPV6` and `DETECT_RELAY_IPV6` can be used for adding arugments ` --external-ip=<detected external IP>` or ` --relay-ip=<detected external IP>`.
+To add ` --external-ip=<detected external IP>` using `detect-external-ip` as argument for `turnserver`, set envronment variable `DETECT_EXTERNAL_IP`. Also, environment variables `DETECT_RELAY_IP`, `DETECT_EXTERNAL_IPV6` and `DETECT_RELAY_IPV6` can be used for adding arguments ` --external-ip=<detected external IP>` or ` --relay-ip=<detected external IP>`.
 It's okay to use it multiple times (the value will be evaluated only once).
 ```bash
 docker run -d --network=host \

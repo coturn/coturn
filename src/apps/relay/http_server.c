@@ -119,9 +119,9 @@ static struct headers_list *post_parse(char *data, size_t data_len) {
       while (fsplit != NULL) {
         char *vmarker = NULL;
         char *key = strtok_r(fsplit, "=", &vmarker);
-        if (key == NULL)
+        if (key == NULL) {
           break;
-        else {
+        } else {
           char *value = strtok_r(NULL, "=", &vmarker);
           char empty[1];
           empty[0] = 0;
@@ -129,8 +129,9 @@ static struct headers_list *post_parse(char *data, size_t data_len) {
           value = evhttp_decode_uri(value);
           char *p = value;
           while (*p) {
-            if (*p == '+')
+            if (*p == '+') {
               *p = ' ';
+            }
             p++;
           }
           list->keys = (char **)realloc(list->keys, sizeof(char *) * (list->n + 1));
@@ -171,6 +172,10 @@ static struct http_request *parse_http_request_1(struct http_request *ret, char 
           if (evhttp_parse_query_str(query, kv) < 0) {
             free(ret);
             ret = NULL;
+            if (kv) {
+              // kv no longer assigned on this path
+              free(kv);
+            }
           } else {
             ret->headers = (struct http_headers *)calloc(sizeof(struct http_headers), 1);
             ret->headers->uri_headers = kv;
@@ -178,8 +183,9 @@ static struct http_request *parse_http_request_1(struct http_request *ret, char 
         }
 
         const char *path = evhttp_uri_get_path(uri);
-        if (path && ret)
+        if (path && ret) {
           ret->path = strdup(path);
+        }
 
         evhttp_uri_free(uri);
 
@@ -325,8 +331,14 @@ struct str_buffer {
 
 struct str_buffer *str_buffer_new(void) {
   struct str_buffer *ret = (struct str_buffer *)calloc(sizeof(struct str_buffer), 1);
-
+  if (!ret) {
+    return NULL;
+  }
   ret->buffer = (char *)malloc(1);
+  if (!(ret->buffer)) {
+    free(ret);
+    return NULL;
+  }
   ret->buffer[0] = 0;
   ret->capacity = 1;
   return ret;

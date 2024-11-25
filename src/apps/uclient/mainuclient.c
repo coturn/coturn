@@ -31,7 +31,6 @@
 #include "apputils.h"
 #include "ns_turn_utils.h"
 #include "session.h"
-#include "stun_buffer.h"
 #include "uclient.h"
 
 #include <stdio.h>
@@ -48,22 +47,22 @@
 /////////////// extern definitions /////////////////////
 
 int clmessage_length = 100;
-int do_not_use_channel = 0;
-int c2c = 0;
+bool do_not_use_channel = false;
+bool c2c = false;
 int clnet_verbose = TURN_VERBOSE_NONE;
-int use_tcp = 0;
-int use_sctp = 0;
-int use_secure = 0;
-int hang_on = 0;
+bool use_tcp = false;
+bool use_sctp = false;
+bool use_secure = false;
+bool hang_on = false;
 ioa_addr peer_addr;
-int no_rtcp = 0;
+bool no_rtcp = false;
 int default_address_family = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT;
-int dont_fragment = 0;
+bool dont_fragment = false;
 uint8_t g_uname[STUN_MAX_USERNAME_SIZE + 1];
 password_t g_upwd;
 char g_auth_secret[1025] = "\0";
-int g_use_auth_secret_with_timestamp = 0;
-int use_fingerprints = 1;
+bool g_use_auth_secret_with_timestamp = false;
+bool use_fingerprints = true;
 
 static char ca_cert_file[1025] = "";
 static char cipher_suite[1025] = "";
@@ -74,26 +73,26 @@ int root_tls_ctx_num = 0;
 
 uint8_t relay_transport = STUN_ATTRIBUTE_TRANSPORT_UDP_VALUE;
 unsigned char client_ifname[1025] = "";
-int passive_tcp = 0;
-int mandatory_channel_padding = 0;
-int negative_test = 0;
-int negative_protocol_test = 0;
-int dos = 0;
-int random_disconnect = 0;
+bool passive_tcp = false;
+bool mandatory_channel_padding = false;
+bool negative_test = false;
+bool negative_protocol_test = false;
+bool dos = false;
+bool random_disconnect = false;
 
 SHATYPE shatype = SHATYPE_DEFAULT;
 
-int mobility = 0;
+bool mobility = false;
 
-int no_permissions = 0;
+bool no_permissions = false;
 
-int extra_requests = 0;
+bool extra_requests = false;
 
 char origin[STUN_MAX_ORIGIN_SIZE + 1] = "\0";
 
 band_limit_t bps = 0;
 
-int dual_allocation = 0;
+bool dual_allocation = false;
 
 int oauth = 0;
 oauth_key okey_array[3];
@@ -168,7 +167,7 @@ int main(int argc, char **argv) {
   int peer_port = PEER_DEFAULT_PORT;
 
   char rest_api_separator = ':';
-  int use_null_cipher = 0;
+  bool use_null_cipher = false;
 
 #if defined(WINDOWS)
 
@@ -211,17 +210,17 @@ int main(int argc, char **argv) {
       char err_msg[1025] = "\0";
       size_t err_msg_size = sizeof(err_msg) - 1;
 
-      if (convert_oauth_key_data(&okd_array[0], &okey_array[0], err_msg, err_msg_size) < 0) {
+      if (!convert_oauth_key_data(&okd_array[0], &okey_array[0], err_msg, err_msg_size)) {
         fprintf(stderr, "%s\n", err_msg);
         exit(-1);
       }
 
-      if (convert_oauth_key_data(&okd_array[1], &okey_array[1], err_msg, err_msg_size) < 0) {
+      if (!convert_oauth_key_data(&okd_array[1], &okey_array[1], err_msg, err_msg_size)) {
         fprintf(stderr, "%s\n", err_msg);
         exit(-1);
       }
 
-      if (convert_oauth_key_data(&okd_array[2], &okey_array[2], err_msg, err_msg_size) < 0) {
+      if (!convert_oauth_key_data(&okd_array[2], &okey_array[2], err_msg, err_msg_size)) {
         fprintf(stderr, "%s\n", err_msg);
         exit(-1);
       }
@@ -233,22 +232,22 @@ int main(int argc, char **argv) {
       STRCPY(origin, optarg);
       break;
     case 'B':
-      random_disconnect = 1;
+      random_disconnect = true;
       break;
     case 'G':
-      extra_requests = 1;
+      extra_requests = true;
       break;
     case 'F':
       STRCPY(cipher_suite, optarg);
       break;
     case 'I':
-      no_permissions = 1;
+      no_permissions = true;
       break;
     case 'M':
-      mobility = 1;
+      mobility = true;
       break;
     case 'E': {
-      char *fn = find_config_file(optarg, 1);
+      char *fn = find_config_file(optarg);
       if (!fn) {
         fprintf(stderr, "ERROR: file %s not found\n", optarg);
         exit(-1);
@@ -256,25 +255,25 @@ int main(int argc, char **argv) {
       STRCPY(ca_cert_file, fn);
     } break;
     case 'O':
-      dos = 1;
+      dos = true;
       break;
     case 'C':
       rest_api_separator = *optarg;
       break;
     case 'D':
-      mandatory_channel_padding = 1;
+      mandatory_channel_padding = true;
       break;
     case 'N':
-      negative_test = 1;
+      negative_test = true;
       break;
     case 'R':
-      negative_protocol_test = 1;
+      negative_protocol_test = true;
       break;
     case 'z':
       RTP_PACKET_INTERVAL = atoi(optarg);
       break;
     case 'Z':
-      dual_allocation = 1;
+      dual_allocation = true;
       break;
     case 'u':
       STRCPY(g_uname, optarg);
@@ -283,7 +282,7 @@ int main(int argc, char **argv) {
       STRCPY(g_upwd, optarg);
       break;
     case 'g':
-      dont_fragment = 1;
+      dont_fragment = true;
       break;
     case 'd':
       STRCPY(client_ifname, optarg);
@@ -298,7 +297,7 @@ int main(int argc, char **argv) {
       clmessage_length = atoi(optarg);
       break;
     case 's':
-      do_not_use_channel = 1;
+      do_not_use_channel = true;
       break;
     case 'n':
       messagenumber = atoi(optarg);
@@ -319,26 +318,26 @@ int main(int argc, char **argv) {
       clnet_verbose = TURN_VERBOSE_NORMAL;
       break;
     case 'h':
-      hang_on = 1;
+      hang_on = true;
       break;
     case 'c':
-      no_rtcp = 1;
+      no_rtcp = true;
       break;
     case 'm':
       mclient = atoi(optarg);
       break;
     case 'y':
-      c2c = 1;
+      c2c = true;
       break;
     case 't':
-      use_tcp = 1;
+      use_tcp = true;
       break;
     case 'b':
-      use_sctp = 1;
-      use_tcp = 1;
+      use_sctp = true;
+      use_tcp = true;
       break;
     case 'P':
-      passive_tcp = 1;
+      passive_tcp = true;
       /* implies 'T': */
       /* no break */
       /* Falls through. */
@@ -346,19 +345,19 @@ int main(int argc, char **argv) {
       relay_transport = STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE;
       break;
     case 'U':
-      use_null_cipher = 1;
+      use_null_cipher = true;
       /* implies 'S' */
       /* no break */
       /* Falls through. */
     case 'S':
-      use_secure = 1;
+      use_secure = true;
       break;
     case 'W':
-      g_use_auth_secret_with_timestamp = 1;
+      g_use_auth_secret_with_timestamp = true;
       STRCPY(g_auth_secret, optarg);
       break;
     case 'i': {
-      char *fn = find_config_file(optarg, 1);
+      char *fn = find_config_file(optarg);
       if (!fn) {
         fprintf(stderr, "ERROR: file %s not found\n", optarg);
         exit(-1);
@@ -367,7 +366,7 @@ int main(int argc, char **argv) {
       free(fn);
     } break;
     case 'k': {
-      char *fn = find_config_file(optarg, 1);
+      char *fn = find_config_file(optarg);
       if (!fn) {
         fprintf(stderr, "ERROR: file %s not found\n", optarg);
         exit(-1);
@@ -382,7 +381,7 @@ int main(int argc, char **argv) {
   }
 
   if (dual_allocation) {
-    no_rtcp = 1;
+    no_rtcp = true;
   }
 
   if (g_use_auth_secret_with_timestamp) {
@@ -419,7 +418,7 @@ int main(int argc, char **argv) {
       hmac[0] = 0;
 
       if (stun_calculate_hmac(g_uname, strlen((char *)g_uname), (uint8_t *)g_auth_secret, strlen(g_auth_secret), hmac,
-                              &hmac_len, shatype) >= 0) {
+                              &hmac_len, shatype)) {
         size_t pwd_length = 0;
         char *pwd = base64_encode(hmac, hmac_len, &pwd_length);
 
@@ -435,22 +434,24 @@ int main(int argc, char **argv) {
   }
 
   if (is_TCP_relay()) {
-    dont_fragment = 0;
-    no_rtcp = 1;
-    c2c = 1;
-    use_tcp = 1;
-    do_not_use_channel = 1;
+    dont_fragment = false;
+    no_rtcp = true;
+    c2c = true;
+    use_tcp = true;
+    do_not_use_channel = true;
   }
 
   if (port == 0) {
-    if (use_secure)
+    if (use_secure) {
       port = DEFAULT_STUN_TLS_PORT;
-    else
+    } else {
       port = DEFAULT_STUN_PORT;
+    }
   }
 
-  if (clmessage_length < (int)sizeof(message_info))
+  if (clmessage_length < (int)sizeof(message_info)) {
     clmessage_length = (int)sizeof(message_info);
+  }
 
   const int max_header = 100;
   if (clmessage_length > (int)(STUN_BUFFER_SIZE - max_header)) {
@@ -488,10 +489,11 @@ int main(int argc, char **argv) {
     OpenSSL_add_ssl_algorithms();
 
     const char *csuite = "ALL"; //"AES256-SHA" "DH"
-    if (use_null_cipher)
+    if (use_null_cipher) {
       csuite = "eNULL";
-    else if (cipher_suite[0])
+    } else if (cipher_suite[0]) {
       csuite = cipher_suite;
+    }
 
     if (use_tcp) {
 #if OPENSSL_VERSION_NUMBER < 0x10100000L

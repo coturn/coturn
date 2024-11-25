@@ -31,10 +31,13 @@
 #ifndef __TURN_TURN_A_LIB__
 #define __TURN_TURN_A_LIB__
 
+#include "ns_turn_defs.h"   // for turn_time_t, TURN_CHANNEL_HANDLER_KERNEL
+#include "ns_turn_ioaddr.h" // for ioa_addr
 #include "ns_turn_ioalib.h"
 #include "ns_turn_maps.h"
 #include "ns_turn_msg.h"
-#include "ns_turn_utils.h"
+
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -54,8 +57,9 @@ typedef struct {
 } relay_endpoint_session;
 
 static inline void clear_relay_endpoint_session_data(relay_endpoint_session *cdi) {
-  if (cdi)
+  if (cdi) {
     IOA_CLOSE_SOCKET(cdi->s);
+  }
 }
 
 ////////// RFC 6062 TCP connection ////////
@@ -90,7 +94,7 @@ struct _tcp_connection {
   ioa_timer_handle conn_bind_timeout;
   stun_tid tid;
   void *owner; // a
-  int done;
+  bool done;
   unsent_buffer ub_to_client;
 };
 
@@ -104,11 +108,9 @@ typedef struct _tcp_connection_list {
 #define TURN_PERMISSION_HASHTABLE_SIZE (0x8)
 #define TURN_PERMISSION_ARRAY_SIZE (0x3)
 
-struct _allocation;
-
 typedef struct _ch_info {
   uint16_t chnum;
-  int allocated;
+  bool allocated;
   uint16_t port;
   ioa_addr peer_addr;
   turn_time_t expiration_time;
@@ -138,13 +140,13 @@ void ch_map_clean(ch_map *map);
 ////////////////////////////
 
 typedef struct _turn_permission_info {
-  int allocated;
+  bool allocated;
   lm_map chns;
   ioa_addr addr;
   turn_time_t expiration_time;
   ioa_timer_handle lifetime_ev;
   void *owner; // a
-  int verbose;
+  bool verbose;
   unsigned long long session_id;
 } turn_permission_info;
 
@@ -171,7 +173,7 @@ typedef struct _turn_permission_hashtable {
 #define ALLOC_INDEX_ADDR(addr) ALLOC_INDEX(((addr)->ss).sa_family)
 
 typedef struct _allocation {
-  int is_valid;
+  bool is_valid;
   stun_tid tid;
   turn_permission_hashtable addr_to_perm;
   relay_endpoint_session relay_sessions[ALLOC_PROTOCOLS_NUMBER];
@@ -197,8 +199,8 @@ void clear_allocation(allocation *a, SOCKET_TYPE socket_type);
 void turn_permission_clean(turn_permission_info *tinfo);
 
 void set_allocation_lifetime_ev(allocation *a, turn_time_t exp_time, ioa_timer_handle ev, int family);
-int is_allocation_valid(const allocation *a);
-void set_allocation_valid(allocation *a, int value);
+bool is_allocation_valid(const allocation *a);
+void set_allocation_valid(allocation *a, bool value);
 turn_permission_info *allocation_get_permission(allocation *a, const ioa_addr *addr);
 turn_permission_hashtable *allocation_get_turn_permission_hashtable(allocation *a);
 turn_permission_info *allocation_add_permission(allocation *a, const ioa_addr *addr);
@@ -216,7 +218,7 @@ void set_allocation_family_invalid(allocation *a, int family);
 tcp_connection *get_and_clean_tcp_connection_by_id(ur_map *map, tcp_connection_id id);
 tcp_connection *get_tcp_connection_by_id(ur_map *map, tcp_connection_id id);
 tcp_connection *get_tcp_connection_by_peer(allocation *a, ioa_addr *peer_addr);
-int can_accept_tcp_connection_from_peer(allocation *a, ioa_addr *peer_addr, int server_relay);
+bool can_accept_tcp_connection_from_peer(allocation *a, ioa_addr *peer_addr, int server_relay);
 tcp_connection *create_tcp_connection(uint8_t server_id, allocation *a, stun_tid *tid, ioa_addr *peer_addr,
                                       int *err_code);
 void delete_tcp_connection(tcp_connection *tc);

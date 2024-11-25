@@ -60,24 +60,33 @@ typedef struct _Myconninfo Myconninfo;
 
 static void MyconninfoFree(Myconninfo *co) {
   if (co) {
-    if (co->host)
+    if (co->host) {
       free(co->host);
-    if (co->dbname)
+    }
+    if (co->dbname) {
       free(co->dbname);
-    if (co->user)
+    }
+    if (co->user) {
       free(co->user);
-    if (co->password)
+    }
+    if (co->password) {
       free(co->password);
-    if (co->key)
+    }
+    if (co->key) {
       free(co->key);
-    if (co->ca)
+    }
+    if (co->ca) {
       free(co->ca);
-    if (co->cert)
+    }
+    if (co->cert) {
       free(co->cert);
-    if (co->capath)
+    }
+    if (co->capath) {
       free(co->capath);
-    if (co->cipher)
+    }
+    if (co->cipher) {
       free(co->cipher);
+    }
     memset(co, 0, sizeof(Myconninfo));
     free(co);
   }
@@ -88,7 +97,7 @@ char *decryptPassword(char *in, const unsigned char *mykey) {
   char *out;
   unsigned char iv[8] = {0}; // changed
   AES_KEY key;
-  unsigned char outdata[256]; // changed
+  unsigned char outdata[256] = {0}; // changed
   AES_set_encrypt_key(mykey, 128, &key);
   int newTotalSize = decodedTextSize(in);
   int bytes_to_decode = strlen(in);
@@ -96,7 +105,6 @@ char *decryptPassword(char *in, const unsigned char *mykey) {
   char last[1024] = "";
   struct ctr_state state;
   init_ctr(&state, iv);
-  memset(outdata, '\0', sizeof(outdata));
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
   CRYPTO_ctr128_encrypt(encryptedText, outdata, newTotalSize, &key, state.ivec, state.ecount, &state.num,
@@ -106,22 +114,22 @@ char *decryptPassword(char *in, const unsigned char *mykey) {
 #endif
 
   strcat(last, (char *)outdata);
-  out = (char *)malloc(sizeof(char) * strlen(last));
+  out = (char *)malloc(sizeof(char) * (strlen(last) + 1)); // add 1 to allocate space for terminating '\0'
   strcpy(out, last);
   return out;
 }
 
 static Myconninfo *MyconninfoParse(char *userdb, char **errmsg) {
-  Myconninfo *co = (Myconninfo *)malloc(sizeof(Myconninfo));
-  memset(co, 0, sizeof(Myconninfo));
+  Myconninfo *co = (Myconninfo *)calloc(1, sizeof(Myconninfo));
   if (userdb) {
     char *s0 = strdup(userdb);
     char *s = s0;
 
     while (s && *s) {
 
-      while (*s && (*s == ' '))
+      while (*s && (*s == ' ')) {
         ++s;
+      }
       char *snext = strstr(s, " ");
       if (snext) {
         *snext = 0;
@@ -139,69 +147,69 @@ static Myconninfo *MyconninfoParse(char *userdb, char **errmsg) {
       }
 
       *seq = 0;
-      if (!strcmp(s, "host"))
+      if (!strcmp(s, "host")) {
         co->host = strdup(seq + 1);
-      else if (!strcmp(s, "ip"))
+      } else if (!strcmp(s, "ip")) {
         co->host = strdup(seq + 1);
-      else if (!strcmp(s, "addr"))
+      } else if (!strcmp(s, "addr")) {
         co->host = strdup(seq + 1);
-      else if (!strcmp(s, "ipaddr"))
+      } else if (!strcmp(s, "ipaddr")) {
         co->host = strdup(seq + 1);
-      else if (!strcmp(s, "hostaddr"))
+      } else if (!strcmp(s, "hostaddr")) {
         co->host = strdup(seq + 1);
-      else if (!strcmp(s, "dbname"))
+      } else if (!strcmp(s, "dbname")) {
         co->dbname = strdup(seq + 1);
-      else if (!strcmp(s, "db"))
+      } else if (!strcmp(s, "db")) {
         co->dbname = strdup(seq + 1);
-      else if (!strcmp(s, "database"))
+      } else if (!strcmp(s, "database")) {
         co->dbname = strdup(seq + 1);
-      else if (!strcmp(s, "user"))
+      } else if (!strcmp(s, "user")) {
         co->user = strdup(seq + 1);
-      else if (!strcmp(s, "uname"))
+      } else if (!strcmp(s, "uname")) {
         co->user = strdup(seq + 1);
-      else if (!strcmp(s, "name"))
+      } else if (!strcmp(s, "name")) {
         co->user = strdup(seq + 1);
-      else if (!strcmp(s, "username"))
+      } else if (!strcmp(s, "username")) {
         co->user = strdup(seq + 1);
-      else if (!strcmp(s, "password"))
+      } else if (!strcmp(s, "password")) {
         co->password = strdup(seq + 1);
-      else if (!strcmp(s, "pwd"))
+      } else if (!strcmp(s, "pwd")) {
         co->password = strdup(seq + 1);
-      else if (!strcmp(s, "passwd"))
+      } else if (!strcmp(s, "passwd")) {
         co->password = strdup(seq + 1);
-      else if (!strcmp(s, "secret"))
+      } else if (!strcmp(s, "secret")) {
         co->password = strdup(seq + 1);
-      else if (!strcmp(s, "port"))
+      } else if (!strcmp(s, "port")) {
         co->port = (unsigned int)atoi(seq + 1);
-      else if (!strcmp(s, "p"))
+      } else if (!strcmp(s, "p")) {
         co->port = (unsigned int)atoi(seq + 1);
-      else if (!strcmp(s, "connect_timeout"))
+      } else if (!strcmp(s, "connect_timeout")) {
         co->connect_timeout = (unsigned int)atoi(seq + 1);
-      else if (!strcmp(s, "timeout"))
+      } else if (!strcmp(s, "timeout")) {
         co->connect_timeout = (unsigned int)atoi(seq + 1);
-      else if (!strcmp(s, "read_timeout"))
+      } else if (!strcmp(s, "read_timeout")) {
         co->read_timeout = (unsigned int)atoi(seq + 1);
-      else if (!strcmp(s, "key"))
+      } else if (!strcmp(s, "key")) {
         co->key = strdup(seq + 1);
-      else if (!strcmp(s, "ssl-key"))
+      } else if (!strcmp(s, "ssl-key")) {
         co->key = strdup(seq + 1);
-      else if (!strcmp(s, "ca"))
+      } else if (!strcmp(s, "ca")) {
         co->ca = strdup(seq + 1);
-      else if (!strcmp(s, "ssl-ca"))
+      } else if (!strcmp(s, "ssl-ca")) {
         co->ca = strdup(seq + 1);
-      else if (!strcmp(s, "capath"))
+      } else if (!strcmp(s, "capath")) {
         co->capath = strdup(seq + 1);
-      else if (!strcmp(s, "ssl-capath"))
+      } else if (!strcmp(s, "ssl-capath")) {
         co->capath = strdup(seq + 1);
-      else if (!strcmp(s, "cert"))
+      } else if (!strcmp(s, "cert")) {
         co->cert = strdup(seq + 1);
-      else if (!strcmp(s, "ssl-cert"))
+      } else if (!strcmp(s, "ssl-cert")) {
         co->cert = strdup(seq + 1);
-      else if (!strcmp(s, "cipher"))
+      } else if (!strcmp(s, "cipher")) {
         co->cipher = strdup(seq + 1);
-      else if (!strcmp(s, "ssl-cipher"))
+      } else if (!strcmp(s, "ssl-cipher")) {
         co->cipher = strdup(seq + 1);
-      else {
+      } else {
         MyconninfoFree(co);
         co = NULL;
         if (errmsg) {
@@ -217,14 +225,18 @@ static Myconninfo *MyconninfoParse(char *userdb, char **errmsg) {
   }
 
   if (co) {
-    if (!(co->dbname))
+    if (!(co->dbname)) {
       co->dbname = strdup("0");
-    if (!(co->host))
+    }
+    if (!(co->host)) {
       co->host = strdup("127.0.0.1");
-    if (!(co->user))
+    }
+    if (!(co->user)) {
       co->user = strdup("");
-    if (!(co->password))
+    }
+    if (!(co->password)) {
       co->password = strdup("");
+    }
   }
 
   return co;
@@ -270,10 +282,12 @@ static MYSQL *get_mydb_connection(void) {
       if (!mydbconnection) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot initialize MySQL DB connection\n");
       } else {
-        if (co->connect_timeout)
+        if (co->connect_timeout) {
           mysql_options(mydbconnection, MYSQL_OPT_CONNECT_TIMEOUT, &(co->connect_timeout));
-        if (co->read_timeout)
+        }
+        if (co->read_timeout) {
           mysql_options(mydbconnection, MYSQL_OPT_READ_TIMEOUT, &(co->read_timeout));
+        }
         if (co->ca || co->capath || co->cert || co->cipher || co->key) {
           mysql_ssl_set(mydbconnection, co->key, co->cert, co->ca, co->capath, co->cipher);
         }
@@ -298,8 +312,9 @@ static MYSQL *get_mydb_connection(void) {
           if (turn_params.secret_key_file[0]) {
             TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Encryption with AES is activated.\n");
             TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Connection is secure.\n");
-          } else
+          } else {
             TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Connection is not secure.\n");
+          }
           donot_print_connection_success = 1;
         }
       }
@@ -348,8 +363,9 @@ static int mysql_get_auth_secrets(secrets_list_t *sl, uint8_t *realm) {
         ret = 0;
       }
 
-      if (mres)
+      if (mres) {
         mysql_free_result(mres);
+      }
     }
   }
   return ret;
@@ -385,18 +401,16 @@ static int mysql_get_user_key(uint8_t *usname, uint8_t *realm, hmackey_t key) {
               char kval[sizeof(hmackey_t) + sizeof(hmackey_t) + 1];
               memcpy(kval, row[0], sz);
               kval[sz] = 0;
-              if (convert_string_key_to_binary(kval, key, sz / 2) < 0) {
-                TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key: %s, user %s\n", kval, usname);
-              } else {
-                ret = 0;
-              }
+              convert_string_key_to_binary(kval, key, sz / 2);
+              ret = 0;
             }
           }
         }
       }
 
-      if (mres)
+      if (mres) {
         mysql_free_result(mres);
+      }
     }
   }
   return ret;
@@ -451,8 +465,9 @@ static int mysql_get_oauth_key(const uint8_t *kid, oauth_key_data_raw *key) {
         }
       }
 
-      if (mres)
+      if (mres) {
         mysql_free_result(mres);
+      }
     }
   }
   return ret;
@@ -531,8 +546,9 @@ static int mysql_list_oauth_keys(secrets_list_t *kids, secrets_list_t *teas, sec
         }
       }
 
-      if (mres)
+      if (mres) {
         mysql_free_result(mres);
+      }
     }
   }
 
@@ -630,8 +646,9 @@ static int mysql_list_users(uint8_t *realm, secrets_list_t *users, secrets_list_
   char statement[TURN_LONG_STRING_SIZE];
 
   uint8_t realm0[STUN_MAX_REALM_SIZE + 1] = "\0";
-  if (!realm)
+  if (!realm) {
     realm = realm0;
+  }
 
   MYSQL *myc = get_mydb_connection();
   if (myc) {
@@ -675,8 +692,9 @@ static int mysql_list_users(uint8_t *realm, secrets_list_t *users, secrets_list_
         ret = 0;
       }
 
-      if (mres)
+      if (mres) {
         mysql_free_result(mres);
+      }
     }
   }
   return ret;
@@ -686,8 +704,9 @@ static int mysql_list_secrets(uint8_t *realm, secrets_list_t *secrets, secrets_l
   int ret = -1;
 
   uint8_t realm0[STUN_MAX_REALM_SIZE + 1] = "\0";
-  if (!realm)
+  if (!realm) {
     realm = realm0;
+  }
 
   char statement[TURN_LONG_STRING_SIZE];
   if (realm[0]) {
@@ -737,8 +756,9 @@ static int mysql_list_secrets(uint8_t *realm, secrets_list_t *secrets, secrets_l
         ret = 0;
       }
 
-      if (mres)
+      if (mres) {
         mysql_free_result(mres);
+      }
     }
   }
   return ret;
@@ -750,10 +770,11 @@ static int mysql_del_secret(uint8_t *secret, uint8_t *realm) {
   char statement[TURN_LONG_STRING_SIZE];
   MYSQL *myc = get_mydb_connection();
   if (myc) {
-    if (!secret || (secret[0] == 0))
+    if (!secret || (secret[0] == 0)) {
       snprintf(statement, sizeof(statement), "delete from turn_secret where realm='%s'", realm);
-    else
+    } else {
       snprintf(statement, sizeof(statement), "delete from turn_secret where value='%s' and realm='%s'", secret, realm);
+    }
     mysql_query(myc, statement);
     ret = 0;
   }
@@ -781,8 +802,9 @@ static int mysql_set_permission_ip(const char *kind, uint8_t *realm, const char 
   int ret = -1;
 
   uint8_t realm0[STUN_MAX_REALM_SIZE + 1] = "\0";
-  if (!realm)
+  if (!realm) {
     realm = realm0;
+  }
 
   donot_print_connection_success = 1;
 
@@ -844,8 +866,9 @@ static int mysql_list_origins(uint8_t *realm, secrets_list_t *origins, secrets_l
   int ret = -1;
 
   uint8_t realm0[STUN_MAX_REALM_SIZE + 1] = "\0";
-  if (!realm)
+  if (!realm) {
     realm = realm0;
+  }
 
   donot_print_connection_success = 1;
 
@@ -894,8 +917,9 @@ static int mysql_list_origins(uint8_t *realm, secrets_list_t *origins, secrets_l
         ret = 0;
       }
 
-      if (mres)
+      if (mres) {
         mysql_free_result(mres);
+      }
     }
   }
   return ret;
@@ -959,8 +983,9 @@ static int mysql_list_realm_options(uint8_t *realm) {
         ret = 0;
       }
 
-      if (mres)
+      if (mres) {
         mysql_free_result(mres);
+      }
     }
   }
   return ret;
@@ -1033,8 +1058,9 @@ static int mysql_get_ip_list(const char *kind, ip_range_list_t *list) {
         ret = 0;
       }
 
-      if (mres)
+      if (mres) {
         mysql_free_result(mres);
+      }
     }
   }
   return ret;
@@ -1077,8 +1103,9 @@ static void mysql_reread_realms(secrets_list_t *realms_list) {
           update_o_to_realm(o_to_realm_new);
         }
 
-        if (mres)
+        if (mres) {
           mysql_free_result(mres);
+        }
       }
     }
     {
@@ -1136,13 +1163,13 @@ static void mysql_reread_realms(secrets_list_t *realms_list) {
                 memcpy(vval, row[2], sz);
                 vval[sz] = 0;
                 realm_params_t *rp = get_realm(rval);
-                if (!strcmp(oval, "max-bps"))
+                if (!strcmp(oval, "max-bps")) {
                   rp->options.perf_options.max_bps = (band_limit_t)strtoul(vval, NULL, 10);
-                else if (!strcmp(oval, "total-quota"))
+                } else if (!strcmp(oval, "total-quota")) {
                   rp->options.perf_options.total_quota = (vint)atoi(vval);
-                else if (!strcmp(oval, "user-quota"))
+                } else if (!strcmp(oval, "user-quota")) {
                   rp->options.perf_options.user_quota = (vint)atoi(vval);
-                else {
+                } else {
                   TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown realm option: %s\n", oval);
                 }
               }
@@ -1151,8 +1178,9 @@ static void mysql_reread_realms(secrets_list_t *realms_list) {
         }
       }
 
-      if (mres)
+      if (mres) {
         mysql_free_result(mres);
+      }
     }
   }
 }
@@ -1187,8 +1215,9 @@ static int mysql_get_admin_user(const uint8_t *usname, uint8_t *realm, password_
         }
       }
 
-      if (mres)
+      if (mres) {
         mysql_free_result(mres);
+      }
     }
   }
   return ret;
@@ -1271,8 +1300,9 @@ static int mysql_list_admin_users(int no_print) {
         }
       }
 
-      if (mres)
+      if (mres) {
         mysql_free_result(mres);
+      }
     }
   }
   return ret;

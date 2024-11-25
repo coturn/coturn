@@ -1,0 +1,36 @@
+name: Ubuntu
+
+on:
+  push:
+  pull_request:
+    types: [ opened, reopened, synchronize ]
+
+# make GHA actions use node16 to use ancient container images
+# See https://github.blog/changelog/2024-03-07-github-actions-all-actions-will-run-on-node20-instead-of-node16-by-default/
+# Unclear how long this will work though
+env:
+  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
+
+jobs:
+  builds:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [  'ubuntu:16.04', 'ubuntu:18.04', 'ubuntu:20.04', 'ubuntu:22.04' ]
+    runs-on: ubuntu-latest
+    container: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install dependencies
+      # Set env variable or otherwise tzdata package requires interaction
+      env:
+        DEBIAN_FRONTEND: noninteractive
+      uses: ./.github/workflows/actions/ubuntu-build-deps
+    - name: configure
+      run: ./configure
+    - name: make
+      run: make
+    - name: make check
+      run: make check
+    - name: apps tests
+      run: cd examples && ./run_tests.sh && ./run_tests_conf.sh

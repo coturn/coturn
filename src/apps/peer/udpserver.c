@@ -32,12 +32,15 @@
 #include "apputils.h"
 #include "stun_buffer.h"
 
+#include <limits.h> // for USHRT_MAX
+
 /////////////// io handlers ///////////////////
 
 static void udp_server_input_handler(evutil_socket_t fd, short what, void *arg) {
 
-  if (!(what & EV_READ))
+  if (!(what & EV_READ)) {
     return;
+  }
 
   ioa_addr *addr = (ioa_addr *)arg;
 
@@ -61,23 +64,30 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void *arg) 
 
 ///////////////////// operations //////////////////////////
 
-static int udp_create_server_socket(server_type *server, const char *ifname, const char *local_address, int port) {
+static int udp_create_server_socket(server_type *const server, const char *const ifname,
+                                    const char *const local_address, int const port) {
 
-  if (server && server->verbose)
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Start\n");
-
-  if (!server)
+  if (!server) {
     return -1;
+  }
 
-  evutil_socket_t udp_fd = -1;
+  if (server->verbose) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Start\n");
+  }
+
   ioa_addr *server_addr = (ioa_addr *)malloc(sizeof(ioa_addr));
+  if (!server_addr) {
+    return -1;
+  }
 
   STRCPY(server->ifname, ifname);
 
-  if (make_ioa_addr((const uint8_t *)local_address, port, server_addr) < 0)
+  if (make_ioa_addr((const uint8_t *)local_address, port, server_addr) < 0) {
+    free(server_addr);
     return -1;
+  }
 
-  udp_fd = socket(server_addr->ss.sa_family, RELAY_DGRAM_SOCKET_TYPE, RELAY_DGRAM_SOCKET_PROTOCOL);
+  evutil_socket_t udp_fd = socket(server_addr->ss.sa_family, RELAY_DGRAM_SOCKET_TYPE, RELAY_DGRAM_SOCKET_PROTOCOL);
   if (udp_fd < 0) {
     perror("socket");
     free(server_addr);
@@ -90,8 +100,9 @@ static int udp_create_server_socket(server_type *server, const char *ifname, con
 
   set_sock_buf_size(udp_fd, UR_SERVER_SOCK_BUF_SIZE);
 
-  if (addr_bind(udp_fd, server_addr, 1, 1, UDP_SOCKET) < 0)
+  if (addr_bind(udp_fd, server_addr, 1, 1, UDP_SOCKET) < 0) {
     return -1;
+  }
 
   socket_set_nonblocking(udp_fd);
 
@@ -100,23 +111,26 @@ static int udp_create_server_socket(server_type *server, const char *ifname, con
 
   event_add(udp_ev, NULL);
 
-  if (server && server->verbose)
+  if (server->verbose) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "End\n");
+  }
 
   return 0;
 }
 
 static server_type *init_server(int verbose, const char *ifname, char **local_addresses, size_t las, int port) {
-
-  server_type *server = (server_type *)malloc(sizeof(server_type));
-
-  if (!server)
-    return server;
-
-  memset(server, 0, sizeof(server_type));
+  // Ports cannot be larger than unsigned 16 bits
+  // and since this function creates two ports next to each other
+  // the provided port must be smaller than max unsigned 16.
+  if ((uint16_t)port >= USHRT_MAX) {
+    return NULL;
+  }
+  server_type *server = (server_type *)calloc(1, sizeof(server_type));
+  if (!server) {
+    return NULL;
+  }
 
   server->verbose = verbose;
-
   server->event_base = turn_event_base_new();
 
   while (las) {
@@ -129,8 +143,9 @@ static server_type *init_server(int verbose, const char *ifname, char **local_ad
 
 static int clean_server(server_type *server) {
   if (server) {
-    if (server->event_base)
+    if (server->event_base) {
       event_base_free(server->event_base);
+    }
     free(server);
   }
   return 0;
@@ -140,8 +155,9 @@ static int clean_server(server_type *server) {
 
 static void run_events(server_type *server) {
 
-  if (!server)
+  if (!server) {
     return;
+  }
 
   struct timeval timeout;
 
@@ -161,21 +177,16 @@ server_type *start_udp_server(int verbose, const char *ifname, char **local_addr
 void run_udp_server(server_type *server) {
 
   if (server) {
-
-    unsigned int cycle = 0;
-
     while (1) {
-
-      cycle++;
-
       run_events(server);
     }
   }
 }
 
 void clean_udp_server(server_type *server) {
-  if (server)
+  if (server) {
     clean_server(server);
+  }
 }
 
 //////////////////////////////////////////////////////////////////

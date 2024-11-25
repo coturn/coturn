@@ -30,7 +30,9 @@
 
 #include "ns_turn_maps_rtcp.h"
 
-#include "ns_turn_ioaddr.h"
+#include "ns_turn_defs.h" // for NULL, UNUSED_ARG, size_t, turn_time,
+
+#include <stdlib.h> // for free, calloc
 
 ////////////////////////////////////////////
 
@@ -55,15 +57,15 @@ typedef struct {
 
 ////////////////////////////////////////////
 
-static int rtcp_map_valid(const rtcp_map *map) { return (map && (map->magic == MAGIC_RTCP_MAP) && map->map); }
+static bool rtcp_map_valid(const rtcp_map *map) { return (map && (map->magic == MAGIC_RTCP_MAP) && map->map); }
 
 typedef struct {
   rtcp_token_type tokens[MAX_TOKEN_DEL];
-  int tn;
+  size_t tn;
   turn_time_t t;
 } timeout_check_arg_type;
 
-static int timeout_check(ur_map_key_type key, ur_map_value_type value, void *arg) {
+static bool timeout_check(ur_map_key_type key, ur_map_value_type value, void *arg) {
 
   if (value && arg) {
 
@@ -76,7 +78,7 @@ static int timeout_check(ur_map_key_type key, ur_map_value_type value, void *arg
     }
   }
 
-  return 0;
+  return false;
 }
 
 static void rtcp_alloc_free(ur_map_value_type value) {
@@ -94,45 +96,44 @@ static void rtcp_alloc_free_savefd(ur_map_value_type value) {
   }
 }
 
-static int foreachcb_free(ur_map_key_type key, ur_map_value_type value) {
+static bool foreachcb_free(ur_map_key_type key, ur_map_value_type value) {
   UNUSED_ARG(key);
   if (value) {
     rtcp_alloc_free(value);
   }
-  return 0;
+  return false;
 }
 
 /**
  * @ret:
- * 1 - success
- * 0 - not found
+ * true - success
+ * false - not found
  */
-static int rtcp_map_del(rtcp_map *map, rtcp_token_type token) {
-  if (!rtcp_map_valid(map))
-    return 0;
-  else {
-    TURN_MUTEX_LOCK(&map->mutex);
-    int ret = ur_map_del(map->map, token, rtcp_alloc_free);
-    TURN_MUTEX_UNLOCK(&map->mutex);
-    return ret;
+static bool rtcp_map_del(rtcp_map *map, rtcp_token_type token) {
+  if (!rtcp_map_valid(map)) {
+    return false;
   }
+
+  TURN_MUTEX_LOCK(&map->mutex);
+  bool ret = ur_map_del(map->map, token, rtcp_alloc_free);
+  TURN_MUTEX_UNLOCK(&map->mutex);
+  return ret;
 }
 
-static int rtcp_map_del_savefd(rtcp_map *map, rtcp_token_type token) {
-  if (!rtcp_map_valid(map))
-    return 0;
-  else {
-    int ret = ur_map_del(map->map, token, rtcp_alloc_free_savefd);
-    return ret;
+static bool rtcp_map_del_savefd(rtcp_map *map, rtcp_token_type token) {
+  if (!rtcp_map_valid(map)) {
+    return false;
   }
+  return ur_map_del(map->map, token, rtcp_alloc_free_savefd);
 }
 
 static void rtcp_map_timeout_handler(ioa_engine_handle e, void *arg) {
 
   UNUSED_ARG(e);
 
-  if (!arg)
+  if (!arg) {
     return;
+  }
 
   rtcp_map *map = (rtcp_map *)arg;
 
@@ -148,31 +149,32 @@ static void rtcp_map_timeout_handler(ioa_engine_handle e, void *arg) {
 
     TURN_MUTEX_UNLOCK(&map->mutex);
 
-    int i = 0;
-    for (i = 0; i < tcat.tn; i++) {
+    for (size_t i = 0; i < tcat.tn; i++) {
       rtcp_map_del(map, tcat.tokens[i]);
     }
   }
 }
 
-static int rtcp_map_init(rtcp_map *map, ioa_engine_handle e) {
+static bool rtcp_map_init(rtcp_map *map, ioa_engine_handle e) {
   if (map) {
     if (map->magic != MAGIC_RTCP_MAP) {
       map->magic = MAGIC_RTCP_MAP;
       map->map = ur_map_create();
-      if (e)
+      if (e) {
         map->timer_ev = set_ioa_timer(e, 3, 0, rtcp_map_timeout_handler, map, 1, "rtcp_map_timeout_handler");
+      }
       TURN_MUTEX_INIT(&map->mutex);
-      if (rtcp_map_valid(map))
-        return 0;
+      if (rtcp_map_valid(map)) {
+        return true;
+      }
     }
   }
-  return -1;
+  return false;
 }
 
 rtcp_map *rtcp_map_create(ioa_engine_handle e) {
   rtcp_map *map = (rtcp_map *)calloc(sizeof(rtcp_map), 1);
-  if (rtcp_map_init(map, e) < 0) {
+  if (!rtcp_map_init(map, e)) {
     free(map);
     return NULL;
   }
@@ -181,26 +183,28 @@ rtcp_map *rtcp_map_create(ioa_engine_handle e) {
 
 /**
  * @ret:
- * 0 - success
- * -1 - error
+ * true - success
+ * false - error
  */
-int rtcp_map_put(rtcp_map *map, rtcp_token_type token, ioa_socket_handle s) {
-  if (!rtcp_map_valid(map))
-    return -1;
-  else {
+bool rtcp_map_put(rtcp_map *map, rtcp_token_type token, ioa_socket_handle s) {
+  if (!rtcp_map_valid(map)) {
+    return false;
+  } else {
     rtcp_alloc_type *value = (rtcp_alloc_type *)calloc(sizeof(rtcp_alloc_type), 1);
-    if (!value)
-      return -1;
+    if (!value) {
+      return false;
+    }
 
     value->s = s;
     value->t = turn_time() + RTCP_TIMEOUT;
     value->token = token;
     TURN_MUTEX_LOCK(&map->mutex);
-    int ret = ur_map_put(map->map, token, (ur_map_value_type)value);
+    bool ret = ur_map_put(map->map, token, (ur_map_value_type)value);
     // TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: 111.111: ret=%d, token=%llu\n",__FUNCTION__,ret,token);
     TURN_MUTEX_UNLOCK(&map->mutex);
-    if (ret < 0)
+    if (!ret) {
       free(value);
+    }
     return ret;
   }
 }

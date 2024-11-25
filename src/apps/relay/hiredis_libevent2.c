@@ -50,6 +50,7 @@ struct redisLibeventEvents {
   int rev_set, wev_set;
   char *ip;
   int port;
+  char *user;
   char *pwd;
   int db;
 };
@@ -71,7 +72,7 @@ static int redis_le_valid(struct redisLibeventEvents *e) { return (e && !(e->inv
 
 /////////////////// Callbacks ////////////////////////////
 
-static void redisLibeventReadEvent(int fd, short event, void *arg) {
+static void redisLibeventReadEvent(evutil_socket_t fd, short event, void *arg) {
   ((void)fd);
   ((void)event);
   struct redisLibeventEvents *e = (struct redisLibeventEvents *)arg;
@@ -84,7 +85,7 @@ static void redisLibeventReadEvent(int fd, short event, void *arg) {
       } while ((len < 0) && socket_eintr());
       if (len < 1) {
         e->invalid = 1;
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Redis connection broken: e=0x%lx\n", __FUNCTION__, ((unsigned long)e));
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Redis connection broken: e=0x%p\n", __FUNCTION__, e);
       }
     }
     if (redis_le_valid(e)) {
@@ -95,7 +96,7 @@ static void redisLibeventReadEvent(int fd, short event, void *arg) {
   }
 }
 
-static void redisLibeventWriteEvent(int fd, short event, void *arg) {
+static void redisLibeventWriteEvent(evutil_socket_t fd, short event, void *arg) {
   ((void)fd);
   ((void)event);
   struct redisLibeventEvents *e = (struct redisLibeventEvents *)arg;
@@ -143,15 +144,17 @@ static void redisLibeventCleanup(void *privdata) {
     struct redisLibeventEvents *e = (struct redisLibeventEvents *)privdata;
     if (e->allocated) {
       if (e->rev) {
-        if (e->rev_set)
+        if (e->rev_set) {
           event_del(e->rev);
+        }
         event_free(e->rev);
         e->rev = NULL;
       }
       e->rev_set = 0;
       if (e->wev) {
-        if (e->wev_set)
+        if (e->wev_set) {
           event_del(e->wev);
+        }
         event_free(e->wev);
         e->wev = NULL;
       }
@@ -166,8 +169,9 @@ static void redisLibeventCleanup(void *privdata) {
 int is_redis_asyncconn_good(redis_context_handle rch) {
   if (rch) {
     struct redisLibeventEvents *e = (struct redisLibeventEvents *)rch;
-    if (redis_le_valid(e))
+    if (redis_le_valid(e)) {
       return 1;
+    }
   }
   return 0;
 }
@@ -201,8 +205,7 @@ void send_message_to_redis(redis_context_handle rch, const char *command, const 
 
       if ((redisAsyncCommand(ac, NULL, e, rm.format, rm.arg) != REDIS_OK)) {
         e->invalid = 1;
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Redis connection broken: ac=0x%lx, e=0x%lx\n", __FUNCTION__,
-                      (unsigned long)ac, (unsigned long)e);
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Redis connection broken: ac=0x%p, e=0x%p\n", __FUNCTION__, ac, e);
       }
     }
   }
@@ -210,22 +213,21 @@ void send_message_to_redis(redis_context_handle rch, const char *command, const 
 
 ///////////////////////// Attach /////////////////////////////////
 
-redis_context_handle redisLibeventAttach(struct event_base *base, char *ip0, int port0, char *pwd, int db) {
-
-  struct redisLibeventEvents *e = NULL;
-  redisAsyncContext *ac = NULL;
+redis_context_handle redisLibeventAttach(struct event_base *base, char *ip0, int port0, char *user, char *pwd, int db) {
 
   char ip[256];
-  if (ip0 && ip0[0])
+  if (ip0 && ip0[0]) {
     STRCPY(ip, ip0);
-  else
+  } else {
     strncpy(ip, "127.0.0.1", sizeof(ip));
+  }
 
   int port = DEFAULT_REDIS_PORT;
-  if (port0 > 0)
+  if (port0 > 0) {
     port = port0;
+  }
 
-  ac = redisAsyncConnect(ip, port);
+  redisAsyncContext *ac = redisAsyncConnect(ip, port);
   if (!ac) {
     fprintf(stderr, "Error: redisAsyncConnect returned NULL\n");
     return NULL;
@@ -235,16 +237,22 @@ redis_context_handle redisLibeventAttach(struct event_base *base, char *ip0, int
   }
 
   /* Create container for context and r/w events */
-  e = (struct redisLibeventEvents *)malloc(sizeof(struct redisLibeventEvents));
-  memset(e, 0, sizeof(struct redisLibeventEvents));
+  struct redisLibeventEvents *e = (struct redisLibeventEvents *)calloc(1, sizeof(struct redisLibeventEvents));
+  if (!e) {
+    return NULL;
+  }
 
   e->allocated = 1;
   e->context = ac;
   e->base = base;
   e->ip = strdup(ip);
   e->port = port;
-  if (pwd)
+  if (user) {
+    e->user = strdup(user);
+  }
+  if (pwd) {
     e->pwd = strdup(pwd);
+  }
   e->db = db;
 
   /* Register functions to start/stop listening for events */
@@ -270,9 +278,15 @@ redis_context_handle redisLibeventAttach(struct event_base *base, char *ip0, int
   e->wev_set = 1;
 
   // Authentication
-  if (redis_le_valid(e) && pwd) {
-    if (redisAsyncCommand(ac, NULL, e, "AUTH %s", pwd) != REDIS_OK) {
-      e->invalid = 1;
+  if (redis_le_valid(e) && pwd && strlen(pwd)) {
+    if (user && strlen(user)) {
+      if (redisAsyncCommand(ac, NULL, e, "AUTH %s %s", e->user, e->pwd) != REDIS_OK) {
+        e->invalid = 1;
+      }
+    } else {
+      if (redisAsyncCommand(ac, NULL, e, "AUTH %s", e->pwd) != REDIS_OK) {
+        e->invalid = 1;
+      }
     }
   }
 
@@ -286,20 +300,23 @@ redis_context_handle redisLibeventAttach(struct event_base *base, char *ip0, int
 }
 
 static void redis_reconnect(struct redisLibeventEvents *e) {
-  if (!e || !(e->allocated))
+  if (!e || !(e->allocated)) {
     return;
+  }
 
   if (e->rev) {
-    if (e->rev_set)
+    if (e->rev_set) {
       event_del(e->rev);
+    }
     event_free(e->rev);
     e->rev = NULL;
   }
   e->rev_set = 0;
 
   if (e->wev) {
-    if (e->wev_set)
+    if (e->wev_set) {
       event_del(e->wev);
+    }
     event_free(e->wev);
     e->wev = NULL;
   }
@@ -342,9 +359,15 @@ static void redis_reconnect(struct redisLibeventEvents *e) {
   e->invalid = 0;
 
   // Authentication
-  if (redis_le_valid(e) && e->pwd) {
-    if (redisAsyncCommand(ac, NULL, e, "AUTH %s", e->pwd) != REDIS_OK) {
-      e->invalid = 1;
+  if (redis_le_valid(e) && e->pwd && strlen(e->pwd)) {
+    if (e->user && strlen(e->user)) {
+      if (redisAsyncCommand(ac, NULL, e, "AUTH %s %s", e->user, e->pwd) != REDIS_OK) {
+        e->invalid = 1;
+      }
+    } else {
+      if (redisAsyncCommand(ac, NULL, e, "AUTH %s", e->pwd) != REDIS_OK) {
+        e->invalid = 1;
+      }
     }
   }
 

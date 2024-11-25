@@ -137,8 +137,9 @@ static void turnports_init(turnports *tp, uint16_t start, uint16_t end) {
 
 turnports *turnports_create(super_memory_t *sm, uint16_t start, uint16_t end) {
 
-  if (start > end)
+  if (start > end) {
     return NULL;
+  }
 
   turnports *ret = (turnports *)allocate_super_memory_region(sm, sizeof(turnports));
   turnports_init(ret, start, end);
@@ -147,9 +148,9 @@ turnports *turnports_create(super_memory_t *sm, uint16_t start, uint16_t end) {
 }
 
 uint16_t turnports_size(turnports *tp) {
-  if (!tp)
+  if (!tp) {
     return 0;
-  else {
+  } else {
     TURN_MUTEX_LOCK(&tp->mutex);
     uint16_t ret = (uint16_t)((tp->high - tp->low));
     TURN_MUTEX_UNLOCK(&tp->mutex);
@@ -254,9 +255,9 @@ int turnports_allocate_even(turnports *tp, int allocate_rtcp, uint64_t *reservat
 }
 
 int turnports_is_allocated(turnports *tp, uint16_t port) {
-  if (!tp)
+  if (!tp) {
     return 0;
-  else {
+  } else {
     TURN_MUTEX_LOCK(&tp->mutex);
     int ret = is_taken(tp->status[port]);
     TURN_MUTEX_UNLOCK(&tp->mutex);
@@ -294,8 +295,9 @@ struct _turnipports {
 //////////////////////////////////////////////////
 
 static ur_addr_map *get_map(turnipports *tp, uint8_t transport) {
-  if (transport == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE)
+  if (transport == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE) {
     return &(tp->ip_to_turnports_tcp);
+  }
   return &(tp->ip_to_turnports_udp);
 }
 //////////////////////////////////////////////////
