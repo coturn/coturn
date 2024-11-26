@@ -3596,19 +3596,28 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 
         if (!err_code) {
           SOCKET_TYPE cst = get_ioa_socket_type(ss->client_socket);
+          size_t *any_counter = &(server->as_counter);
           turn_server_addrs_list_t *asl = server->alternate_servers_list;
 
-          if (((cst == UDP_SOCKET) || (cst == DTLS_SOCKET)) && server->self_udp_balance && server->aux_servers_list &&
-              server->aux_servers_list->size) {
+          if ((cst == UDP_SOCKET) && server->udp_alternate_servers_list && server->udp_alternate_servers_list->size) {
+            asl = server->udp_alternate_servers_list;
+            any_counter = &(server->udp_as_counter);
+          } else if ((cst == TCP_SOCKET) && server->tcp_alternate_servers_list && server->tcp_alternate_servers_list->size) {
+            asl = server->tcp_alternate_servers_list;
+            any_counter = &(server->tcp_as_counter);
+          } else if (((cst == UDP_SOCKET) || (cst == DTLS_SOCKET)) && server->self_udp_balance && server->aux_servers_list &&
+            server->aux_servers_list->size) {
             asl = server->aux_servers_list;
+            any_counter = &(server->as_counter);
           } else if (((cst == TLS_SOCKET) || (cst == DTLS_SOCKET) || (cst == TLS_SCTP_SOCKET)) &&
                      server->tls_alternate_servers_list && server->tls_alternate_servers_list->size) {
             asl = server->tls_alternate_servers_list;
+            any_counter= &(server->tls_as_counter);
           }
 
           if (asl && asl->size) {
             TURN_MUTEX_LOCK(&(asl->m));
-            set_alternate_server(asl, get_local_addr_from_ioa_socket(ss->client_socket), &(server->as_counter), method,
+            set_alternate_server(asl, get_local_addr_from_ioa_socket(ss->client_socket), any_counter, method,
                                  &tid, resp_constructed, &err_code, &reason, nbh);
             TURN_MUTEX_UNLOCK(&(asl->m));
           }
@@ -4918,7 +4927,10 @@ void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, io
                       vintp no_udp_relay, vintp stale_nonce, vintp max_allocate_lifetime, vintp channel_lifetime,
                       vintp permission_lifetime, vintp stun_only, vintp no_stun, vintp no_software_attribute,
                       vintp web_admin_listen_on_workers, turn_server_addrs_list_t *alternate_servers_list,
-                      turn_server_addrs_list_t *tls_alternate_servers_list, turn_server_addrs_list_t *aux_servers_list,
+                      turn_server_addrs_list_t *tls_alternate_servers_list, 
+                      turn_server_addrs_list_t *tcp_alternate_servers_list, 
+                      turn_server_addrs_list_t *udp_alternate_servers_list, 
+                      turn_server_addrs_list_t *aux_servers_list,
                       int self_udp_balance, vintp no_multicast_peers, vintp allow_loopback_peers,
                       ip_range_list_t *ip_whitelist, ip_range_list_t *ip_blacklist,
                       send_socket_to_relay_cb send_socket_to_relay, vintp secure_stun, vintp mobility, int server_relay,
@@ -4968,6 +4980,8 @@ void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, io
 
   server->alternate_servers_list = alternate_servers_list;
   server->tls_alternate_servers_list = tls_alternate_servers_list;
+  server->tcp_alternate_servers_list = tcp_alternate_servers_list;
+  server->udp_alternate_servers_list = udp_alternate_servers_list;
   server->aux_servers_list = aux_servers_list;
   server->self_udp_balance = self_udp_balance;
 

@@ -289,6 +289,22 @@ void del_tls_alternate_server(const char *saddr) {
   del_alt_server(saddr, DEFAULT_STUN_TLS_PORT, &turn_params.tls_alternate_servers_list);
 }
 
+void add_tcp_alternate_server(const char *saddr) {
+  add_alt_server(saddr, DEFAULT_STUN_TLS_PORT, &turn_params.tcp_alternate_servers_list);
+}
+
+void del_tcp_alternate_server(const char *saddr) {
+  del_alt_server(saddr, DEFAULT_STUN_TLS_PORT, &turn_params.tcp_alternate_servers_list);
+}
+
+void add_udp_alternate_server(const char *saddr) {
+  add_alt_server(saddr, DEFAULT_STUN_TLS_PORT, &turn_params.udp_alternate_servers_list);
+}
+
+void del_udp_alternate_server(const char *saddr) {
+  del_alt_server(saddr, DEFAULT_STUN_TLS_PORT, &turn_params.udp_alternate_servers_list);
+}
+
 //////////////////////////////////////////////////
 
 typedef struct update_ssl_ctx_cb_args {
@@ -1659,7 +1675,8 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
       &turn_params.stale_nonce, &turn_params.max_allocate_lifetime, &turn_params.channel_lifetime,
       &turn_params.permission_lifetime, &turn_params.stun_only, &turn_params.no_stun,
       &turn_params.no_software_attribute, &turn_params.web_admin_listen_on_workers, &turn_params.alternate_servers_list,
-      &turn_params.tls_alternate_servers_list, &turn_params.aux_servers_list, turn_params.udp_self_balance,
+      &turn_params.tls_alternate_servers_list, &turn_params.tcp_alternate_servers_list, &turn_params.udp_alternate_servers_list,
+      &turn_params.aux_servers_list, turn_params.udp_self_balance,
       &turn_params.no_multicast_peers, &turn_params.allow_loopback_peers, &turn_params.ip_whitelist,
       &turn_params.ip_blacklist, send_socket_to_relay, &turn_params.secure_stun, &turn_params.mobility,
       turn_params.server_relay, send_turn_session_info, send_https_socket, allocate_bps, turn_params.oauth,

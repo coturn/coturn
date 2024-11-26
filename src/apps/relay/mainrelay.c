@@ -186,6 +186,8 @@ turn_params_t turn_params = {
     /////////////// ALTERNATE SERVERS ////////////////
     {NULL, 0, {0, NULL}}, /*alternate_servers_list*/
     {NULL, 0, {0, NULL}}, /*tls_alternate_servers_list*/
+    {NULL, 0, {0, NULL}}, /*tcp_alternate_servers_list*/
+    {NULL, 0, {0, NULL}}, /*udp_alternate_servers_list*/
 
     /////////////// stop server ////////////////
     false, /*drain_turn_server*/
@@ -1454,6 +1456,8 @@ enum EXTRA_OPTS {
   UDP_SELF_BALANCE_OPT,
   ALTERNATE_SERVER_OPT,
   TLS_ALTERNATE_SERVER_OPT,
+  TCP_ALTERNATE_SERVER_OPT,
+  UDP_ALTERNATE_SERVER_OPT,
   NO_MULTICAST_PEERS_OPT,
   ALLOW_LOOPBACK_PEERS_OPT,
   MAX_ALLOCATE_TIMEOUT_OPT,
@@ -1604,6 +1608,8 @@ static const struct myoption long_options[] = {
     {"udp-self-balance", optional_argument, NULL, UDP_SELF_BALANCE_OPT},
     {"alternate-server", required_argument, NULL, ALTERNATE_SERVER_OPT},
     {"tls-alternate-server", required_argument, NULL, TLS_ALTERNATE_SERVER_OPT},
+    {"tcp-alternate-server", required_argument, NULL, TCP_ALTERNATE_SERVER_OPT},
+    {"udp-alternate-server", required_argument, NULL, UDP_ALTERNATE_SERVER_OPT},
     {"rest-api-separator", required_argument, NULL, 'C'},
     {"max-allocate-timeout", required_argument, NULL, MAX_ALLOCATE_TIMEOUT_OPT},
     {"no-multicast-peers", optional_argument, NULL, NO_MULTICAST_PEERS_OPT},
@@ -2331,6 +2337,12 @@ static void set_option(int c, char *value) {
   case TLS_ALTERNATE_SERVER_OPT:
     add_tls_alternate_server(value);
     break;
+  case TCP_ALTERNATE_SERVER_OPT:
+    add_tcp_alternate_server(value);
+    break;
+  case UDP_ALTERNATE_SERVER_OPT:
+    add_udp_alternate_server(value);
+    break;
   case ALLOWED_PEER_IPS:
     if (add_ip_list_range(value, NULL, &turn_params.ip_whitelist) == 0) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "White listing: %s\n", value);
@@ -2979,6 +2991,8 @@ int main(int argc, char **argv) {
 
   init_turn_server_addrs_list(&turn_params.alternate_servers_list);
   init_turn_server_addrs_list(&turn_params.tls_alternate_servers_list);
+  init_turn_server_addrs_list(&turn_params.tcp_alternate_servers_list);
+  init_turn_server_addrs_list(&turn_params.udp_alternate_servers_list);
   init_turn_server_addrs_list(&turn_params.aux_servers_list);
 
   set_network_engine();
