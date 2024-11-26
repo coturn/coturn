@@ -3602,23 +3602,24 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
           if ((cst == UDP_SOCKET) && server->udp_alternate_servers_list && server->udp_alternate_servers_list->size) {
             asl = server->udp_alternate_servers_list;
             any_counter = &(server->udp_as_counter);
-          } else if ((cst == TCP_SOCKET) && server->tcp_alternate_servers_list && server->tcp_alternate_servers_list->size) {
+          } else if ((cst == TCP_SOCKET) && server->tcp_alternate_servers_list &&
+                     server->tcp_alternate_servers_list->size) {
             asl = server->tcp_alternate_servers_list;
             any_counter = &(server->tcp_as_counter);
-          } else if (((cst == UDP_SOCKET) || (cst == DTLS_SOCKET)) && server->self_udp_balance && server->aux_servers_list &&
-            server->aux_servers_list->size) {
+          } else if (((cst == UDP_SOCKET) || (cst == DTLS_SOCKET)) && server->self_udp_balance &&
+                     server->aux_servers_list && server->aux_servers_list->size) {
             asl = server->aux_servers_list;
             any_counter = &(server->as_counter);
           } else if (((cst == TLS_SOCKET) || (cst == DTLS_SOCKET) || (cst == TLS_SCTP_SOCKET)) &&
                      server->tls_alternate_servers_list && server->tls_alternate_servers_list->size) {
             asl = server->tls_alternate_servers_list;
-            any_counter= &(server->tls_as_counter);
+            any_counter = &(server->tls_as_counter);
           }
 
           if (asl && asl->size) {
             TURN_MUTEX_LOCK(&(asl->m));
-            set_alternate_server(asl, get_local_addr_from_ioa_socket(ss->client_socket), any_counter, method,
-                                 &tid, resp_constructed, &err_code, &reason, nbh);
+            set_alternate_server(asl, get_local_addr_from_ioa_socket(ss->client_socket), any_counter, method, &tid,
+                                 resp_constructed, &err_code, &reason, nbh);
             TURN_MUTEX_UNLOCK(&(asl->m));
           }
         }
@@ -4920,25 +4921,21 @@ static void client_input_handler(ioa_socket_handle s, int event_type, ioa_net_da
 
 ///////////////////////////////////////////////////////////
 
-void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, ioa_engine_handle e,
-                      turn_credential_type ct, int fingerprint, dont_fragment_option_t dont_fragment,
-                      get_user_key_cb userkeycb, check_new_allocation_quota_cb chquotacb,
-                      release_allocation_quota_cb raqcb, ioa_addr *external_ip, vintp check_origin, vintp no_tcp_relay,
-                      vintp no_udp_relay, vintp stale_nonce, vintp max_allocate_lifetime, vintp channel_lifetime,
-                      vintp permission_lifetime, vintp stun_only, vintp no_stun, vintp no_software_attribute,
-                      vintp web_admin_listen_on_workers, turn_server_addrs_list_t *alternate_servers_list,
-                      turn_server_addrs_list_t *tls_alternate_servers_list, 
-                      turn_server_addrs_list_t *tcp_alternate_servers_list, 
-                      turn_server_addrs_list_t *udp_alternate_servers_list, 
-                      turn_server_addrs_list_t *aux_servers_list,
-                      int self_udp_balance, vintp no_multicast_peers, vintp allow_loopback_peers,
-                      ip_range_list_t *ip_whitelist, ip_range_list_t *ip_blacklist,
-                      send_socket_to_relay_cb send_socket_to_relay, vintp secure_stun, vintp mobility, int server_relay,
-                      send_turn_session_info_cb send_turn_session_info, send_https_socket_cb send_https_socket,
-                      allocate_bps_cb allocate_bps_func, int oauth, const char *oauth_server_name,
-                      const char *acme_redirect, ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family,
-                      vintp log_binding, vintp no_stun_backward_compatibility, vintp response_origin_only_with_rfc5780,
-                      vintp respond_http_unsupported) {
+void init_turn_server(
+    turn_turnserver *server, turnserver_id id, int verbose, ioa_engine_handle e, turn_credential_type ct,
+    int fingerprint, dont_fragment_option_t dont_fragment, get_user_key_cb userkeycb,
+    check_new_allocation_quota_cb chquotacb, release_allocation_quota_cb raqcb, ioa_addr *external_ip,
+    vintp check_origin, vintp no_tcp_relay, vintp no_udp_relay, vintp stale_nonce, vintp max_allocate_lifetime,
+    vintp channel_lifetime, vintp permission_lifetime, vintp stun_only, vintp no_stun, vintp no_software_attribute,
+    vintp web_admin_listen_on_workers, turn_server_addrs_list_t *alternate_servers_list,
+    turn_server_addrs_list_t *tls_alternate_servers_list, turn_server_addrs_list_t *tcp_alternate_servers_list,
+    turn_server_addrs_list_t *udp_alternate_servers_list, turn_server_addrs_list_t *aux_servers_list,
+    int self_udp_balance, vintp no_multicast_peers, vintp allow_loopback_peers, ip_range_list_t *ip_whitelist,
+    ip_range_list_t *ip_blacklist, send_socket_to_relay_cb send_socket_to_relay, vintp secure_stun, vintp mobility,
+    int server_relay, send_turn_session_info_cb send_turn_session_info, send_https_socket_cb send_https_socket,
+    allocate_bps_cb allocate_bps_func, int oauth, const char *oauth_server_name, const char *acme_redirect,
+    ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family, vintp log_binding,
+    vintp no_stun_backward_compatibility, vintp response_origin_only_with_rfc5780, vintp respond_http_unsupported) {
 
   if (!server) {
     return;

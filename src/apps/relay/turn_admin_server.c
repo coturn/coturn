@@ -1111,10 +1111,10 @@ static int run_cli_input(struct cli_session *cs, const char *buf0, unsigned int 
       } else if (strstr(cmd, "dtas ") == cmd) {
         cli_del_tls_alternate_server(cs, cmd + 5);
         type_cli_cursor(cs);
-      }  else if (strstr(cmd, "dtcpas ") == cmd) {
+      } else if (strstr(cmd, "dtcpas ") == cmd) {
         cli_del_tcp_alternate_server(cs, cmd + 7);
         type_cli_cursor(cs);
-      }  else if (strstr(cmd, "dudpas ") == cmd) {
+      } else if (strstr(cmd, "dudpas ") == cmd) {
         cli_del_udp_alternate_server(cs, cmd + 7);
         type_cli_cursor(cs);
       } else {
@@ -2191,7 +2191,7 @@ static void write_pc_page(ioa_socket_handle s) {
           an += https_print_addr_list(sb, &turn_params.tls_alternate_servers_list, 1, "TLS alternate server");
           an += https_print_addr_list(sb, &turn_params.tcp_alternate_servers_list, 1, "TCP alternate server");
           an += https_print_addr_list(sb, &turn_params.udp_alternate_servers_list, 1, "UDP alternate server");
-          
+
           if (an) {
             https_print_empty_row(sb, 2);
           }
