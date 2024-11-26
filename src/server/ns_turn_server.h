@@ -151,6 +151,7 @@ struct _turn_turnserver {
   vintp no_multicast_peers;
   send_turn_session_info_cb send_turn_session_info;
   send_https_socket_cb send_https_socket;
+  int sock_buf_size;
 
   /* RFC 6062 ==>> */
   vintp no_udp_relay;
@@ -223,7 +224,7 @@ void init_turn_server(
     int self_udp_balance, vintp no_multicast_peers, vintp allow_loopback_peers, ip_range_list_t *ip_whitelist,
     ip_range_list_t *ip_blacklist, send_socket_to_relay_cb send_socket_to_relay, vintp secure_stun, vintp mobility,
     int server_relay, send_turn_session_info_cb send_turn_session_info, send_https_socket_cb send_https_socket,
-    allocate_bps_cb allocate_bps_func, int oauth, const char *oauth_server_name, const char *acme_redirect,
+    int sock_buf_size, allocate_bps_cb allocate_bps_func, int oauth, const char *oauth_server_name, const char *acme_redirect,
     ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family, vintp log_binding,
     vintp no_stun_backward_compatibility, vintp response_origin_only_with_rfc5780, vintp respond_http_unsupported);
 
