@@ -110,3 +110,9 @@ data:
     {{ end }}
     {{ end }}
     {{ end }}
+
+    {{- if .Values.ratelimit.override }}
+    ## rate-limiting config
+    401-req-limit={{ .Values.ratelimit.401-req-limit }}
+    401-window={{ .Values.ratelimit.401-window }}
+    {{- end }}
