@@ -4,8 +4,12 @@ Coturn TURN server Docker image changelog
 
 
 
-## [edge] · (unreleased)
-[edge]: /../../tree/main
+## [4.6.2-r13] · 2024-12-06
+[4.6.2-r13]: /../../tree/4.6.2-r13
+
+### Upgraded
+
+- [Alpine Linux] 3.21: <https://alpinelinux.org/posts/Alpine-3.21.0-released.html>
 
 ### Security updated
 
