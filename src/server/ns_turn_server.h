@@ -134,7 +134,7 @@ struct _turn_turnserver {
   vintp permission_lifetime;
   vintp stun_only;
   vintp no_stun;
-  vintp no_software_attribute;
+  bool software_attribute;
   vintp web_admin_listen_on_workers;
   vintp secure_stun;
   turn_credential_type ct;
@@ -217,7 +217,7 @@ void init_turn_server(
     int fingerprint, dont_fragment_option_t dont_fragment, get_user_key_cb userkeycb,
     check_new_allocation_quota_cb chquotacb, release_allocation_quota_cb raqcb, ioa_addr *external_addr,
     vintp check_origin, vintp no_tcp_relay, vintp no_udp_relay, vintp stale_nonce, vintp max_allocate_lifetime,
-    vintp channel_lifetime, vintp permission_lifetime, vintp stun_only, vintp no_stun, vintp no_software_attribute,
+    vintp channel_lifetime, vintp permission_lifetime, vintp stun_only, vintp no_stun, bool software_attribute,
     vintp web_admin_listen_on_workers, turn_server_addrs_list_t *alternate_servers_list,
     turn_server_addrs_list_t *tls_alternate_servers_list, turn_server_addrs_list_t *aux_servers_list,
     int self_udp_balance, vintp no_multicast_peers, vintp allow_loopback_peers, ip_range_list_t *ip_whitelist,

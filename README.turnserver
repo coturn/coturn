@@ -168,7 +168,10 @@ Flags:
 
 -o, --daemon		Run server as daemon.
 
---no-software-attribute	Production mode: hide the software version.
+--no-software-attribute	DEPRECATED. See "--software-attribute".
+
+--software-attribute	Send SOFTWARE_ATTRIBUTE on messages that can have it. Disabled by default.
+		Equals to deprecated option "--no-software-attribute false".	
 
 -f, --fingerprint	Use fingerprints in the TURN messages. If an incoming request
 			contains a fingerprint, then TURN server will always add
