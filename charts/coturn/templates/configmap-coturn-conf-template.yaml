@@ -113,6 +113,6 @@ data:
 
     {{- if .Values.ratelimit.override }}
     ## rate-limiting config
-    401-req-limit={{ .Values.ratelimit.401-req-limit }}
-    401-window={{ .Values.ratelimit.401-window }}
+    401-req-limit={{ .Values.ratelimit.requestLimit }}
+    401-window={{ .Values.ratelimit.window }}
     {{- end }}
