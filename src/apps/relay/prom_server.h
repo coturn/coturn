@@ -18,7 +18,6 @@ extern "C" {
 #endif
 #include <microhttpd.h>
 #include <prom.h>
-#include <promhttp.h>
 #ifdef __cplusplus
 }
 #endif /* __clplusplus */
