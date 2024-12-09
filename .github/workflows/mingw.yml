@@ -82,15 +82,6 @@ jobs:
             -DCMAKE_INSTALL_PREFIX=${{env.INSTALL_DIR}}
         cmake --build . --config ${{matrix.BUILD_TYPE}}
         cmake --build . --config ${{matrix.BUILD_TYPE}} --target install
-        cd ${{env.SOURCE_DIR}}/prometheus-client-c/promhttp
-        mkdir build
-        cd build
-        cmake .. -G"MinGW Makefiles" ^
-            -DBUILD_SHARED_LIBS=${{matrix.BUILD_SHARED_LIBS}} ^
-            -DCMAKE_BUILD_TYPE=${{matrix.BUILD_TYPE}} ^
-            -DCMAKE_INSTALL_PREFIX=${{env.INSTALL_DIR}}
-        cmake --build . --config ${{matrix.BUILD_TYPE}}
-        cmake --build . --config ${{matrix.BUILD_TYPE}} --target install
         
     - name: build coturn
       working-directory: ${{github.workspace}}
