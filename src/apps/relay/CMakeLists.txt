@@ -119,7 +119,7 @@ if(Prometheus_FOUND)
     list(APPEND turnserver_include_dirs ${Prometheus_INCLUDE_DIRS})
 else()
     message(AUTHOR_WARNING "Could not find prometheus. Please install "
-        "prom, promhttp, microhttpd, and set Prometheus_ROOT. "
+        "prom, microhttpd, and set Prometheus_ROOT. "
         "See docs/Prometheus.md")
     list(APPEND turnserver_DEFINED TURN_NO_PROMETHEUS)
 endif()
