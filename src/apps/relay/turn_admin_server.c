@@ -1658,7 +1658,7 @@ static void https_finish_page(struct str_buffer *sb, ioa_socket_handle s, int cc
   str_buffer_append(sb, "</body>\r\n</html>\r\n");
 
   send_str_from_ioa_socket_tcp(s, "HTTP/1.1 200 OK\r\nServer: ");
-  if (!turn_params.no_software_attribute) {
+  if (turn_params.software_attribute) {
     send_str_from_ioa_socket_tcp(s, TURN_SOFTWARE);
   }
   send_str_from_ioa_socket_tcp(s, "\r\n");
