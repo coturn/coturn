@@ -11,15 +11,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# make GHA actions use node16 to use ancient container images
-# See https://github.blog/changelog/2024-03-07-github-actions-all-actions-will-run-on-node20-instead-of-node16-by-default/
-# Unclear how long this will work though
-env:
-  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
-
 jobs:
   builds:
-    name: "build + test"
+    name: build + test
     strategy:
       fail-fast: false
       matrix:
@@ -40,7 +34,7 @@ jobs:
           wget -qO- https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh | bash
           export NVM_DIR="$HOME/.nvm"
           [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
-          nvm install 16
+          nvm install 14
         if: ${{ contains('16.04 18.04', matrix.ver) }}
 
       - uses: actions/checkout@v4
