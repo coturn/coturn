@@ -17,7 +17,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ver: ["12", "13", "14"]
+        ver: ["13", "14", "15"]
     runs-on: macos-${{ matrix.ver }}
     steps:
       - uses: actions/checkout@v4
