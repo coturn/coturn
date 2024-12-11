@@ -1,5 +1,12 @@
 #!/bin/bash
 
+
+# Detect cmake build and adjust path
+BINDIR="../bin"
+if [ ! -f $BINDIR/turnserver ]; then
+    BINDIR="../build/bin"
+fi
+
 function assert_prom_no_response() {
   wget --quiet --output-document=/dev/null --tries=1 "$1"
   status="$?"
@@ -24,35 +31,35 @@ function assert_prom_response() {
 }
 
 echo "Running without prometheus"
-../bin/turnserver &
+$BINDIR/turnserver /dev/null &
 turnserver_pid="$!"
 sleep 2
 assert_prom_no_response "http://localhost:9641/metrics"
 kill "$turnserver_pid"
 
 echo "Running turnserver with prometheus, using defaults"
-../bin/turnserver --prometheus &
+$BINDIR/turnserver --prometheus > /dev/null &
 turnserver_pid="$!"
 sleep 2
 assert_prom_response "http://localhost:9641/metrics"
 kill "$turnserver_pid"
 
 echo "Running turnserver with prometheus, using custom address"
-../bin/turnserver --prometheus --prometheus-address="127.0.0.1" &
+$BINDIR/turnserver --prometheus --prometheus-address="127.0.0.1" > /dev/null &
 turnserver_pid="$!"
 sleep 2
 assert_prom_response "http://127.0.0.1:9641/metrics"
 kill "$turnserver_pid"
-
+ 
 echo "Running turnserver with prometheus, using custom port"
-../bin/turnserver --prometheus --prometheus-port="8080" &
+$BINDIR/turnserver --prometheus --prometheus-port="8080" > /dev/null &
 turnserver_pid="$!"
 sleep 2
 assert_prom_response "http://localhost:8080/metrics"
 kill "$turnserver_pid"
 
 echo "Running turnserver with prometheus, using custom address and port"
-../bin/turnserver --prometheus --prometheus-address="127.0.0.1" --prometheus-port="8080" &
+$BINDIR/turnserver --prometheus --prometheus-address="127.0.0.1" --prometheus-port="8080" > /dev/null &
 turnserver_pid="$!"
 sleep 2
 assert_prom_response "http://127.0.0.1:8080/metrics"
