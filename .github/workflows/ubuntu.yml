@@ -23,18 +23,21 @@ jobs:
           - "20.04"
           - "22.04"
     runs-on: ubuntu-latest
-    container: ubuntu:${{ matrix.ver }}
+    container:
+      image: ubuntu:${{ matrix.ver }}
+      volumes:
+        - ${{ contains('16.04 18.04', matrix.ver) && '/node20217:/node20217:rw,rshared' || ' ' }}
+        - ${{ contains('16.04 18.04', matrix.ver) && '/node20217:/__e/node20:ro,rshared' || ' ' }}
     steps:
-      - name: Install Node.js 16 for GitHub Actions
+      - name: Install Node.js 20 built against glibc 2.17 for GitHub Actions
         run: |
           set -ex
           apt update 
-          apt install -y wget
-          touch "$HOME/.bashrc"
-          wget -qO- https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh | bash
-          export NVM_DIR="$HOME/.nvm"
-          [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
-          nvm install 14.21.3
+          apt install -y curl
+          curl -LO https://unofficial-builds.nodejs.org/download/release/v20.9.0/node-v20.9.0-linux-x64-glibc-217.tar.xz
+          tar -xf node-v20.9.0-linux-x64-glibc-217.tar.xz --strip-components 1 -C /node20217
+          ldd /__e/node20/bin/node
+        working-directory: tmp/
         if: ${{ contains('16.04 18.04', matrix.ver) }}
 
       - uses: actions/checkout@v4
