@@ -2,8 +2,10 @@ name: clang-tidy
 
 on:
   push:
-  pull_request:
-    types: [ opened, reopened, synchronize ]
+    branches: ["master"]
+  #push:
+  #pull_request:
+  #  types: [ opened, reopened, synchronize ]
 
 jobs:
   clang-tidy:

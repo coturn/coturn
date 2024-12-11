@@ -2,8 +2,10 @@ name: AmazonLinux2023
 
 on:
   push:
-  pull_request:
-    types: [ opened, reopened, synchronize ]
+    branches: ["master"]
+  #push:
+  #pull_request:
+  #  types: [ opened, reopened, synchronize ]
 
 # make GHA actions use node16 to use ancient container images
 # See https://github.blog/changelog/2024-03-07-github-actions-all-actions-will-run-on-node20-instead-of-node16-by-default/
