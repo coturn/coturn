@@ -34,7 +34,7 @@ jobs:
           wget -qO- https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh | bash
           export NVM_DIR="$HOME/.nvm"
           [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
-          nvm install 14
+          nvm install 14.21.3
         if: ${{ contains('16.04 18.04', matrix.ver) }}
 
       - uses: actions/checkout@v4
