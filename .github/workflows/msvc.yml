@@ -16,7 +16,7 @@ env:
 
 jobs:
   code-analysis:
-    name: code analysis windows-vc-${{ matrix.VCPKG_PLATFORM_TOOLSET }}-${{ matrix.CMAKE_GENERATOR_PLATFORM }}-${{ matrix.BUILD_TYPE }}-${{ matrix.BUILD_SHARED_LIBS }}
+    name: code analysis (windows-vc-${{ matrix.VCPKG_PLATFORM_TOOLSET }}-${{ matrix.CMAKE_GENERATOR_PLATFORM }}-${{ matrix.BUILD_TYPE }}-${{ matrix.BUILD_SHARED_LIBS }})
     runs-on: windows-latest
     strategy:
       fail-fast: false
@@ -80,7 +80,7 @@ jobs:
           sarif_file: ${{ steps.run-analysis.outputs.sarif }}
 
   compile:
-    name: compile ${{ matrix.os }}-vc-${{ matrix.VCPKG_PLATFORM_TOOLSET }}-${{ matrix.CMAKE_GENERATOR_PLATFORM }}-${{ matrix.BUILD_TYPE }}-${{ matrix.BUILD_SHARED_LIBS }}
+    name: compile (${{ matrix.os }}-vc-${{ matrix.VCPKG_PLATFORM_TOOLSET }}-${{ matrix.CMAKE_GENERATOR_PLATFORM }}-${{ matrix.BUILD_TYPE }}-${{ matrix.BUILD_SHARED_LIBS }})
     strategy:
       fail-fast: false
       matrix:
