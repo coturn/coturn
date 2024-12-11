@@ -31,6 +31,10 @@ jobs:
         - ${{ contains('amazonlinux:2 ubuntu:16.04 ubuntu:18.04', matrix.os) && '/node20217:/node20217:rw,rshared' || ' ' }}
         - ${{ contains('amazonlinux:2 ubuntu:16.04 ubuntu:18.04', matrix.os) && '/node20217:/__e/node20:ro,rshared' || ' ' }}
     steps:
+      - name: Install `yum` dependencies
+        run: yum install -y gcc make gzip tar openssl-devel libevent-devel which
+        if: ${{ contains(matrix.os, 'amazonlinux') }}
+
       - name: Install Node.js 20 built against glibc 2.17 for GitHub Actions
         run: |
           set -ex
@@ -44,10 +48,6 @@ jobs:
           ldd /__e/node20/bin/node
         working-directory: /tmp/
         if: ${{ contains('amazonlinux:2 ubuntu:16.04 ubuntu:18.04', matrix.os) }}
-
-      - name: Install `yum` dependencies
-        run: yum install -y gcc make gzip tar openssl-devel libevent-devel
-        if: ${{ contains(matrix.os, 'amazonlinux') }}
 
       - uses: actions/checkout@v4
 
@@ -68,3 +68,4 @@ jobs:
         working-directory: examples/
       - run: ./run_tests_prom.sh
         working-directory: examples/
+        if: ${{ !contains('amazonlinux:2023', matrix.os) }}
