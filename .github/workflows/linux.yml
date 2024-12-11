@@ -28,22 +28,9 @@ jobs:
     container:
       image: ${{ matrix.os }}
       volumes:
-        - ${{ contains('ubuntu:16.04 ubuntu:18.04', matrix.os) && '/node20217:/node20217:rw,rshared' || ' ' }}
-        - ${{ contains('ubuntu:16.04 ubuntu:18.04', matrix.os) && '/node20217:/__e/node20:ro,rshared' || ' ' }}
+        - ${{ contains('amazonlinux:2 ubuntu:16.04 ubuntu:18.04', matrix.os) && '/node20217:/node20217:rw,rshared' || ' ' }}
+        - ${{ contains('amazonlinux:2 ubuntu:16.04 ubuntu:18.04', matrix.os) && '/node20217:/__e/node20:ro,rshared' || ' ' }}
     steps:
-      - name: Install Node.js 20 built against glibc 2.17 for GitHub Actions
-        run: |
-          set -ex
-          apt update 
-          apt install -y curl xz-utils
-          curl -LO https://unofficial-builds.nodejs.org/download/release/v20.9.0/node-v20.9.0-linux-x64-glibc-217.tar.xz
-          tar -xf node-v20.9.0-linux-x64-glibc-217.tar.xz --strip-components 1 -C /node20217
-          ldd /__e/node20/bin/node
-        working-directory: /tmp/
-        if: ${{ contains('ubuntu:16.04 ubuntu:18.04', matrix.os) }}
-
-      - uses: actions/checkout@v4
-
       - name: Install dependencies via `apt`
         # Set env variable or otherwise `tzdata` package requires interaction.
         env:
@@ -51,8 +38,19 @@ jobs:
         uses: ./.github/workflows/actions/ubuntu-build-deps
         if: ${{ contains(matrix.os, 'ubuntu') }}
       - name: Install dependencies via `yum`
-        run: yum install -y gcc make gzip tar openssl-devel libevent-devel
+        run: yum install -y gcc make gzip tar openssl-devel libevent-devel wget xz-utils
         if: ${{ contains(matrix.os, 'amazonlinux') }}
+
+      - name: Install Node.js 20 built against glibc 2.17 for GitHub Actions
+        run: |
+          set -ex
+          wget https://unofficial-builds.nodejs.org/download/release/v20.9.0/node-v20.9.0-linux-x64-glibc-217.tar.xz
+          tar -xf node-v20.9.0-linux-x64-glibc-217.tar.xz --strip-components 1 -C /node20217
+          ldd /__e/node20/bin/node
+        working-directory: /tmp/
+        if: ${{ contains('amazonlinux:2 ubuntu:16.04 ubuntu:18.04', matrix.os) }}
+
+      - uses: actions/checkout@v4
 
       - run: ./configure
       - run: make
