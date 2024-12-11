@@ -29,7 +29,6 @@ Changelist:
 - Simplify workflow for codeql (#1517) (Michael Jones <jonesmz@users.noreply.github.com>)
 - Move the hiredis_libevent2 code from common to relay (#1509) (Michael Jones <jonesmz@users.noreply.github.com>)
 - Include what you use (#1512) (Michael Jones <jonesmz@users.noreply.github.com>)
-- Remove deprecated macos-11, add macos-13 and macos-14 (#1511) (Michael Jones <jonesmz@users.noreply.github.com>)
 - Check the result of malloc in string_list_add (#1495) (Michael Jones <jonesmz@users.noreply.github.com>)
 - Check the result of realloc and calloc in ch_map_get (#1497) (Michael Jones <jonesmz@users.noreply.github.com>)
 - Address clang-tidy warnings in db files (#1405) (Michael Jones <jonesmz@users.noreply.github.com>)
@@ -51,7 +50,6 @@ Changelist:
 - Avoid nullptr dereference of server variable in various functions (#1504) (Michael Jones <jonesmz@users.noreply.github.com>)
 - Fix msvc analyzer error on goto label on rfc5769check (#1486) (Gustavo Garcia <gustavogb@gmail.com>)
 - Fix buffer overflow in generate_enc_password with increase rsalt by 2 (#1463) (Stefan Junker <1181362+steveej@users.noreply.github.com>)
-- Update Debian "bookworm" to 20240423 snapshot in Docker image (tyranron <tyranron@gmail.com>)
 - Fix lint errors (Gustavo Garcia <gustavogb@gmail.com>)
 - Add support for raw public keys (Rfc 7250) (#1458) (Nikolayshcx <77790944+Nikolayshcx@users.noreply.github.com>)
 - Fix clang-format lint warnings (Gustavo Garcia <gustavogb@mail.com>)
@@ -68,13 +66,11 @@ Changelist:
 - ubuntu build dependencies extracted to composite actions (#1399) (redraincatching <99604494+redraincatching@users.noreply.github.com>)
 - Delete unused variable (#1437) (Pavel Punsky <eakraly@users.noreply.github.com>)
 - changed variables in stunclient.c to bool (C11) (#1421) (redraincatching <99604494+redraincatching@users.noreply.github.com>)
-- Update Debian "bookworm" to 20240211 snapshot in Docker image (tyranron <tyranron@gmail.com>)
 - added missing function prototype of turn_random_number() (#1428) (redraincatching <99604494+redraincatching@users.noreply.github.com>)
 - Fix no-tls warning typo (#1426) (Jan Brasna <1784648+janbrasna@users.noreply.github.com>)
 - Update SQLite.md (#1429) (dominiquefournier <dominique@fournier38.fr>)
 - Adjust wording in cmake message when prometheous cannot be found. (#1418) (Michael Jones <jonesmz@users.noreply.github.com>)
 - Add the InsertBraces command for clang-format to ensure that all conditionals always have braces (#1408) (Michael Jones <jonesmz@users.noreply.github.com>)
-- Exclude testing `alpine` Docker image on `s390x` arch on CI due to QEMU emulation problems (#1395, #1390) (Pavel Punsky <eakraly@users.noreply.github.com>)
 - Change minimal required cmake version to 3.16 (#1388) (Pavel Punsky <eakraly@users.noreply.github.com>)
 - Replace HeapAlloc with malloc (#1378) (Pavel Punsky <eakraly@users.noreply.github.com>)
 - Added sessionID to some log lines (#1334) (korayvt <korayvt@users.noreply.github.com>)
@@ -96,7 +92,6 @@ Changelist:
 - Reduce ifdefs in code: TURN_NO_PROMETHEUS (#1116) (Pavel Punsky <eakraly@users.noreply.github.com>)
 - strncpy doesn't return size_t (#1296) (Richard Russo <richard@signal.org>)
 - Return a 400 response to HTTP requests (#1231) (Dave Lambley <dave@lambley.me.uk>)
-- Update Debian "bookworm" to 20231030 snapshot in Docker image (tyranron <tyranron@gmail.com>)
 - Fix missing strncpy in fix_stun_check_message_integrity_str (#1282) (Gustavo Garcia <gustavogb@gmail.com>)
 - Fix ubuntu 16 build with GH action checkout version to v3 (#1281) (Gustavo Garcia <gustavogb@gmail.com>)
 - Fix memleak in pgsql_reread_realms (#1278) (Pavel Punsky <eakraly@users.noreply.github.com>)
@@ -109,13 +104,9 @@ Changelist:
 - Fix error of make command in Cygwin environment (#1236) (Aaron Bird <25508292+Aaron-Bird@users.noreply.github.com>)
 - Fix recursive call in delete alternate server (#1250) (Cybermilitia <Cybermilitia@users.noreply.github.com>)
 - Add CodeQL workflow (#1228) (Jorge <46056498+jorgectf@users.noreply.github.com>)
-- Fix redundant Docker image tags with major OS version (#1230, #1226) (tyranron <tyranron@gmail.com>)
-- Bump up Docker image revision number (tyranron <tyranron@gmail.com>)
-- Improve Docker image tagging with major OS version (#1230, #1226) (Kai Ren <tyranron@gmail.com>)
 - Change printf() to TURN_LOG_FUNC() for --no-stdout-log (#1221) (Robert Scheck <robert-scheck@users.noreply.github.com>)
 - Fix build with libressl 3.6+ (#1198) (rim <11380091+rozhuk-im@users.noreply.github.com>)
 - Update turnserver.spec (#1192) (Mathieu Aubin <mathieu@zeroserieux.com>)
-- Fix Docker tests for 4.6.2 Coturn (tyranron <tyranron@gmail.com>)
 
 Contributors:
 - Aaron Bird <25508292+Aaron-Bird@users.noreply.github.com>
@@ -130,7 +121,6 @@ Contributors:
 - Gustavo Garcia <gustavogb@mail.com>
 - Jan Brasna <1784648+janbrasna@users.noreply.github.com>
 - Jorge <46056498+jorgectf@users.noreply.github.com>
-- Kai Ren <tyranron@gmail.com>
 - Kang Lin <kl222@126.com>
 - Mathieu Aubin <mathieu@zeroserieux.com>
 - Mészáros Mihály <misi@majd.eu>
@@ -158,7 +148,6 @@ Contributors:
 - maddy <maddy@kitty.garden>
 - redraincatching <99604494+redraincatching@users.noreply.github.com>
 - rim <11380091+rozhuk-im@users.noreply.github.com>
-- tyranron <tyranron@gmail.com>
 - vuittont60 <81072379+vuittont60@users.noreply.github.com>
 
 Release 4.6.2
