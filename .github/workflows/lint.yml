@@ -24,10 +24,7 @@ jobs:
 
       - name: Install `clang-format-15`
         run: sudo apt install -y clang-format-15
-
-      - run: ./configure
-
-      - name: lint
+      - name: Prepare `clang-format`
         run: |
           set -e
           if which clang-format-15 2>&1 >/dev/null
@@ -35,4 +32,7 @@ jobs:
               sudo cp $(which clang-format-15) $(which clang-format)
           fi
           clang-format --version
-          make lint
+
+      - run: ./configure
+
+      - run: make lint

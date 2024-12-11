@@ -18,11 +18,9 @@ env:
 
 jobs:
   analyze:
-    name: CodeQL Analyze
     runs-on: ubuntu-latest
     permissions:
       security-events: write
-
     steps:
       - uses: actions/checkout@v4
 
@@ -40,5 +38,6 @@ jobs:
         run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
       - name: Build
         run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3

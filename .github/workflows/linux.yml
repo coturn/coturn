@@ -60,6 +60,7 @@ jobs:
 
       - run: ./configure
       - run: make
+
       - run: make check
 
       - run: ./run_tests.sh

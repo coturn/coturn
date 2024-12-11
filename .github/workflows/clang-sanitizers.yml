@@ -34,6 +34,7 @@ jobs:
 
       - run: ./configure
       - run: make -j $(nproc)
+
       - run: make check
 
       - run: ./run_tests.sh
