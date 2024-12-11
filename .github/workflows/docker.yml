@@ -1,11 +1,11 @@
-name: Docker CI
+name: Docker
 
 on:
   push:
     branches: ["master"]
-  #  tags: ["docker/*"]
-  #pull_request:
-  #  branches: ["master"]
+    tags: ["docker/*"]
+  pull_request:
+    branches: ["master"]
   schedule:
     - cron: "13 13 * * 3"
 
