@@ -1,49 +1,49 @@
-name: clang-tidy
+name: clang
 
 on:
   push:
     branches: ["master"]
-  #push:
-  #pull_request:
-  #  types: [ opened, reopened, synchronize ]
+    tags: ["4.*"]
+  pull_request:
+    branches: ["master"]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  clang-tidy:
+  tidy:
     runs-on: ubuntu-latest
-
     strategy:
       matrix:
-        config: [Release]
-
+        config: ["Release"]
     steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
+      - uses: actions/checkout@v4
 
-    - name: install dependencies
-      uses: ./.github/workflows/actions/ubuntu-build-deps
-      with:
-        SUDO: true
+      - name: Install dependencies
+        uses: ./.github/workflows/actions/ubuntu-build-deps
+        with:
+          SUDO: true
 
-    - name: Configure
-      run: |
-        cmake -G Ninja -B build -DCMAKE_BUILD_TYPE=${{ matrix.config }} -DCMAKE_EXPORT_COMPILE_COMMANDS=true
+      - name: Configure
+        run: cmake -G Ninja -B build -DCMAKE_BUILD_TYPE=${{ matrix.config }} 
+                                     -DCMAKE_EXPORT_COMPILE_COMMANDS=true
+      - name: Compile
+        run: cmake --build build --parallel --config ${{ matrix.config }}
 
-    - name: Compile
-      run: |
-        cmake --build build --parallel --config ${{ matrix.config }}
+      # Implicitly requires `build/compile_commands.json` to exist
+      - name: Run `clang-tidy`
+        run: |
+          set -e
+          wget https://raw.githubusercontent.com/llvm/llvm-project/llvmorg-14.0.6/clang-tools-extra/clang-tidy/tool/run-clang-tidy.py
+          chmod +x run-clang-tidy.py
+          ./run-clang-tidy.py -j $(nproc) -p build
 
-    # Implicitly requires build/compile_commands.json to exist
-    - name: Run Clang Tidy
-      run: |
-        wget https://raw.githubusercontent.com/llvm/llvm-project/llvmorg-14.0.6/clang-tools-extra/clang-tidy/tool/run-clang-tidy.py
-        chmod +x run-clang-tidy.py
-        ./run-clang-tidy.py -j $(nproc) -p build
-
-    # Implicitly requires build/compile_commands.json to exist
-    - name: Run IWYU
-      run: |
-        wget https://raw.githubusercontent.com/include-what-you-use/include-what-you-use/clang_14/iwyu_tool.py
-        chmod +x iwyu_tool.py
-        # iwyu_tool.py returns non-zero if any executions returned nonzero. Which... happens to be useless unless the project is already IWYU clean.
-        ./iwyu_tool.py -j $(nproc) -p build -- -Xiwyu --mapping_file=${GITHUB_WORKSPACE}/iwyu-ubuntu.imp | grep -v "has correct" | uniq || exit 0
+      # Implicitly requires `build/compile_commands.json` to exist
+      - name: Run IWYU
+        run: |
+          set -e
+          wget https://raw.githubusercontent.com/include-what-you-use/include-what-you-use/clang_14/iwyu_tool.py
+          chmod +x iwyu_tool.py
+          # iwyu_tool.py returns non-zero if any executions returned nonzero. Which... happens to be useless unless the project is already IWYU clean.
+          ./iwyu_tool.py -j $(nproc) -p build -- -Xiwyu --mapping_file=${GITHUB_WORKSPACE}/iwyu-ubuntu.imp | grep -v "has correct" | uniq || exit 0

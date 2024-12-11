@@ -3,9 +3,13 @@ name: CMake
 on:
   push:
     branches: ["master"]
-  #push:
-  #pull_request:
-  #  types: [ opened, reopened, synchronize ]
+    tags: ["4.*"]
+  pull_request:
+    branches: ["master"]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   BUILD_TYPE: Release
@@ -13,13 +17,12 @@ env:
 jobs:
   build:
     runs-on: ubuntu-20.04
-
     steps:
       - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-              wget \
+                  wget \
               libevent-dev \
               libssl-dev \
               libpq-dev libmariadb-dev libsqlite3-dev \
