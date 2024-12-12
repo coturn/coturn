@@ -85,10 +85,11 @@ data:
 
     # FUTUREWORK: expose customisable access control settings.
 
-    ## authentication setup
-    zrest
-    ## static authentication secrets will be added below this line when the
-    ## runtime configuration is generated.
+    {{- if .Values.ratelimit.override }}
+    ## rate-limiting config
+    401-req-limit={{ .Values.ratelimit.requestLimit }}
+    401-window={{ .Values.ratelimit.window }}
+    {{- end }}
 
     {{- if .Values.federate.enabled }}
     ### federation setup
@@ -111,8 +112,8 @@ data:
     {{ end }}
     {{ end }}
 
-    {{- if .Values.ratelimit.override }}
-    ## rate-limiting config
-    401-req-limit={{ .Values.ratelimit.requestLimit }}
-    401-window={{ .Values.ratelimit.window }}
-    {{- end }}
+    ## authentication setup
+    zrest
+    ## static authentication secrets will be added below this line when the
+    ## runtime configuration is generated.
+    
