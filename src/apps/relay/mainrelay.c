@@ -212,6 +212,7 @@ turn_params_t turn_params = {
     0,                                  /* user_quota */
     0,                                  /* prometheus disabled by default */
     DEFAULT_PROM_SERVER_PORT,           /* prometheus port */
+    "",                                 /* prometheus address */
     0, /* prometheus username labelling disabled by default when prometheus is enabled */
 
     ///////////// Users DB //////////////
@@ -1139,6 +1140,7 @@ static char Usage[] =
     "enabled it will listen on port 9641 under the path /metrics\n"
     "						also the path / on this port can be used as a health check\n"
     " --prometheus-port		<port>		Prometheus metrics port (Default: 9641).\n"
+    " --prometheus-address		<address>		Prometheus listening address (Default: any).\n"
     " --prometheus-username-labels			When metrics are enabled, add labels with client usernames.\n"
 #endif
     " --use-auth-secret				TURN REST API flag.\n"
@@ -1437,6 +1439,7 @@ enum EXTRA_OPTS {
   PERMISSION_LIFETIME_OPT,
   PROMETHEUS_OPT,
   PROMETHEUS_PORT_OPT,
+  PROMETHEUS_ADDRESS_OPT,
   PROMETHEUS_ENABLE_USERNAMES_OPT,
   AUTH_SECRET_OPT,
   NO_AUTH_PINGS_OPT,
@@ -1558,6 +1561,7 @@ static const struct myoption long_options[] = {
 #if !defined(TURN_NO_PROMETHEUS)
     {"prometheus", optional_argument, NULL, PROMETHEUS_OPT},
     {"prometheus-port", optional_argument, NULL, PROMETHEUS_PORT_OPT},
+    {"prometheus-address", optional_argument, NULL, PROMETHEUS_ADDRESS_OPT},
     {"prometheus-username-labels", optional_argument, NULL, PROMETHEUS_ENABLE_USERNAMES_OPT},
 #endif
     {"use-auth-secret", optional_argument, NULL, AUTH_SECRET_OPT},
@@ -2223,6 +2227,9 @@ static void set_option(int c, char *value) {
     break;
   case PROMETHEUS_PORT_OPT:
     turn_params.prometheus_port = atoi(value);
+    break;
+  case PROMETHEUS_ADDRESS_OPT:
+    STRCPY(turn_params.prometheus_address, value);
     break;
   case PROMETHEUS_ENABLE_USERNAMES_OPT:
     turn_params.prometheus_username_labels = 1;
@@ -3039,7 +3046,7 @@ int main(int argc, char **argv) {
     return adminmain(argc, argv);
   }
 
-  memset(&turn_params.default_users_db, 0, sizeof(default_users_db_t));
+  memset(&turn_params.default_users_db.ram_db, 0, sizeof(ram_users_db_t));
   turn_params.default_users_db.ram_db.static_accounts = ur_string_map_create(free);
 
   // Zero pass apply the log options.
