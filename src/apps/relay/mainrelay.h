@@ -87,9 +87,7 @@
 #include <openssl/pem.h>
 #include <openssl/ssl.h>
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
 #include <openssl/modes.h>
-#endif
 
 #if !defined(TURN_NO_SYSTEMD)
 #include <systemd/sd-daemon.h>

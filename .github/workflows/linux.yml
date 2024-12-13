@@ -18,9 +18,7 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          - amazonlinux:2  # EOL 2025-06
           - amazonlinux:2023
-          - ubuntu:16.04
           - ubuntu:18.04
           - ubuntu:20.04
           - ubuntu:22.04

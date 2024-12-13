@@ -57,13 +57,7 @@ extern int IS_TURN_SERVER;
 
 /* ALPN */
 
-#define OPENSSL_FIRST_ALPN_VERSION (0x10002003L)
-
-#if OPENSSL_VERSION_NUMBER >= OPENSSL_FIRST_ALPN_VERSION
 #define ALPN_SUPPORTED 1
-#else
-#define ALPN_SUPPORTED 0
-#endif
 
 /* TLS */
 
@@ -97,7 +91,7 @@ extern int IS_TURN_SERVER;
 
 #endif
 
-#if defined(TURN_NO_DTLS) || (!defined(DTLS_CTRL_LISTEN) && (OPENSSL_VERSION_NUMBER < 0x10100000L))
+#if defined(TURN_NO_DTLS)
 
 #define DTLS_SUPPORTED 0
 #define DTLSv1_2_SUPPORTED 0
@@ -114,11 +108,7 @@ extern int IS_TURN_SERVER;
 
 #endif
 
-#if OPENSSL_VERSION_NUMBER >= OPENSSL_FIRST_ALPN_VERSION
 #define SSL_SESSION_ECDH_AUTO_SUPPORTED 1
-#else
-#define SSL_SESSION_ECDH_AUTO_SUPPORTED 0
-#endif
 
 /////////// SSL //////////////////////////
 
