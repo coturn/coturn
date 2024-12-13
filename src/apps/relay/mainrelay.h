@@ -208,7 +208,7 @@ typedef struct _turn_params_ {
 
   int verbose;
   int turn_daemon;
-  int no_software_attribute;
+  bool software_attribute;
   int web_admin_listen_on_workers;
 
   int do_not_use_config_file;

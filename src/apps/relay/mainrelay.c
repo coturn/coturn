@@ -117,7 +117,7 @@ turn_params_t turn_params = {
     //////////////// Common params ////////////////////
     TURN_VERBOSE_NONE, /* verbose */
     0,                 /* turn_daemon */
-    0,                 /* no_software_attribute */
+    false,             /* software_attribute */
     0,                 /* web_admin_listen_on_workers */
 
     0, /* do_not_use_config_file */
@@ -1025,7 +1025,8 @@ static char Usage[] =
     " -v, --verbose					'Moderate' verbose mode.\n"
     " -V, --Verbose					Extra verbose mode, very annoying (for debug purposes only).\n"
     " -o, --daemon					Start process as daemon (detach from current shell).\n"
-    " --no-software-attribute	 		Production mode: hide the software version (formerly --prod).\n"
+    " --no-software-attribute	 		DEPRECATED Production mode: hide the software version.\n"
+    " --software-attribute	 		Enable sending software attribute (for debugging).\n"
     " -f, --fingerprint				Use fingerprints in the TURN messages.\n"
     " -a, --lt-cred-mech				Use the long-term credential mechanism.\n"
     " -z, --no-auth					Do not use any credential mechanism, allow anonymous access.\n"
@@ -1442,7 +1443,6 @@ enum EXTRA_OPTS {
   NO_DYNAMIC_REALMS_OPT,
   DEL_ALL_AUTH_SECRETS_OPT,
   STATIC_AUTH_SECRET_VAL_OPT,
-  AUTH_SECRET_TS_EXP, /* deprecated */
   NO_STDOUT_LOG_OPT,
   SYSLOG_OPT,
   SYSLOG_FACILITY_OPT,
@@ -1481,8 +1481,6 @@ enum EXTRA_OPTS {
   DH566_OPT,
   DH1066_OPT,
   NE_TYPE_OPT,
-  NO_SSLV2_OPT, /*deprecated*/
-  NO_SSLV3_OPT, /*deprecated*/
   NO_TLSV1_OPT,
   NO_TLSV1_1_OPT,
   NO_TLSV1_2_OPT,
@@ -1492,7 +1490,8 @@ enum EXTRA_OPTS {
   ADMIN_USER_QUOTA_OPT,
   SERVER_NAME_OPT,
   OAUTH_OPT,
-  NO_SOFTWARE_ATTRIBUTE_OPT,
+  SOFTWARE_ATTRIBUTE_OPT,
+  DEPRECATED_NO_SOFTWARE_ATTRIBUTE_OPT,
   NO_HTTP_OPT,
   SECRET_KEY_OPT,
   ACME_REDIRECT_OPT,
@@ -1563,7 +1562,6 @@ static const struct myoption long_options[] = {
     {"no-auth-pings", optional_argument, NULL, NO_AUTH_PINGS_OPT},
     {"no-dynamic-ip-list", optional_argument, NULL, NO_DYNAMIC_IP_LIST_OPT},
     {"no-dynamic-realms", optional_argument, NULL, NO_DYNAMIC_REALMS_OPT},
-    /* deprecated: */ {"secret-ts-exp-time", optional_argument, NULL, AUTH_SECRET_TS_EXP},
     {"realm", required_argument, NULL, 'r'},
     {"server-name", required_argument, NULL, SERVER_NAME_OPT},
     {"oauth", optional_argument, NULL, OAUTH_OPT},
@@ -1574,8 +1572,8 @@ static const struct myoption long_options[] = {
     {"verbose", optional_argument, NULL, 'v'},
     {"Verbose", optional_argument, NULL, 'V'},
     {"daemon", optional_argument, NULL, 'o'},
-    /* deprecated: */ {"prod", optional_argument, NULL, NO_SOFTWARE_ATTRIBUTE_OPT},
-    {"no-software-attribute", optional_argument, NULL, NO_SOFTWARE_ATTRIBUTE_OPT},
+    /* deprecated: */ {"no-software-attribute", optional_argument, NULL, DEPRECATED_NO_SOFTWARE_ATTRIBUTE_OPT},
+    {"software-attribute", optional_argument, NULL, SOFTWARE_ATTRIBUTE_OPT},
     {"fingerprint", optional_argument, NULL, 'f'},
     {"check-origin-consistency", optional_argument, NULL, CHECK_ORIGIN_CONSISTENCY_OPT},
     {"no-udp", optional_argument, NULL, NO_UDP_OPT},
@@ -1632,8 +1630,6 @@ static const struct myoption long_options[] = {
     {"dh566", optional_argument, NULL, DH566_OPT},
     {"dh1066", optional_argument, NULL, DH1066_OPT},
     {"ne", required_argument, NULL, NE_TYPE_OPT},
-    {"no-sslv2", optional_argument, NULL, NO_SSLV2_OPT}, /* deprecated */
-    {"no-sslv3", optional_argument, NULL, NO_SSLV3_OPT}, /* deprecated */
     {"no-tlsv1", optional_argument, NULL, NO_TLSV1_OPT},
     {"no-tlsv1_1", optional_argument, NULL, NO_TLSV1_1_OPT},
     {"no-tlsv1_2", optional_argument, NULL, NO_TLSV1_2_OPT},
@@ -1908,12 +1904,6 @@ static void set_option(int c, char *value) {
       turn_params.oauth = get_bool_value(value);
     }
     break;
-  case NO_SSLV2_OPT:
-    // deprecated
-    break;
-  case NO_SSLV3_OPT:
-    // deprecated
-    break;
   case NO_TLSV1_OPT:
     turn_params.no_tlsv1 = get_bool_value(value);
     break;
@@ -2158,8 +2148,11 @@ static void set_option(int c, char *value) {
       anon_credentials = 1;
     }
     break;
-  case NO_SOFTWARE_ATTRIBUTE_OPT:
-    turn_params.no_software_attribute = get_bool_value(value);
+  case DEPRECATED_NO_SOFTWARE_ATTRIBUTE_OPT:
+    turn_params.software_attribute = !(bool)get_bool_value(value);
+    break;
+  case SOFTWARE_ATTRIBUTE_OPT:
+    turn_params.software_attribute = (bool)get_bool_value(value);
     break;
   case 'f':
     turn_params.fingerprint = get_bool_value(value);
@@ -2238,9 +2231,6 @@ static void set_option(int c, char *value) {
     use_tltc = 1;
     turn_params.ct = TURN_CREDENTIALS_LONG_TERM;
     use_lt_credentials = 1;
-    break;
-  case AUTH_SECRET_TS_EXP:
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: Option --secret-ts-exp-time deprecated and has no effect.\n");
     break;
   case 'r':
     set_default_realm_name(value);
