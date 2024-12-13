@@ -1447,7 +1447,6 @@ enum EXTRA_OPTS {
   NO_DYNAMIC_REALMS_OPT,
   DEL_ALL_AUTH_SECRETS_OPT,
   STATIC_AUTH_SECRET_VAL_OPT,
-  AUTH_SECRET_TS_EXP, /* deprecated */
   NO_STDOUT_LOG_OPT,
   SYSLOG_OPT,
   SYSLOG_FACILITY_OPT,
@@ -1486,8 +1485,6 @@ enum EXTRA_OPTS {
   DH566_OPT,
   DH1066_OPT,
   NE_TYPE_OPT,
-  NO_SSLV2_OPT, /*deprecated*/
-  NO_SSLV3_OPT, /*deprecated*/
   NO_TLSV1_OPT,
   NO_TLSV1_1_OPT,
   NO_TLSV1_2_OPT,
@@ -1569,7 +1566,6 @@ static const struct myoption long_options[] = {
     {"no-auth-pings", optional_argument, NULL, NO_AUTH_PINGS_OPT},
     {"no-dynamic-ip-list", optional_argument, NULL, NO_DYNAMIC_IP_LIST_OPT},
     {"no-dynamic-realms", optional_argument, NULL, NO_DYNAMIC_REALMS_OPT},
-    /* deprecated: */ {"secret-ts-exp-time", optional_argument, NULL, AUTH_SECRET_TS_EXP},
     {"realm", required_argument, NULL, 'r'},
     {"server-name", required_argument, NULL, SERVER_NAME_OPT},
     {"oauth", optional_argument, NULL, OAUTH_OPT},
@@ -1638,8 +1634,6 @@ static const struct myoption long_options[] = {
     {"dh566", optional_argument, NULL, DH566_OPT},
     {"dh1066", optional_argument, NULL, DH1066_OPT},
     {"ne", required_argument, NULL, NE_TYPE_OPT},
-    {"no-sslv2", optional_argument, NULL, NO_SSLV2_OPT}, /* deprecated */
-    {"no-sslv3", optional_argument, NULL, NO_SSLV3_OPT}, /* deprecated */
     {"no-tlsv1", optional_argument, NULL, NO_TLSV1_OPT},
     {"no-tlsv1_1", optional_argument, NULL, NO_TLSV1_1_OPT},
     {"no-tlsv1_2", optional_argument, NULL, NO_TLSV1_2_OPT},
@@ -1921,12 +1915,6 @@ static void set_option(int c, char *value) {
     } else {
       turn_params.oauth = get_bool_value(value);
     }
-    break;
-  case NO_SSLV2_OPT:
-    // deprecated
-    break;
-  case NO_SSLV3_OPT:
-    // deprecated
     break;
   case NO_TLSV1_OPT:
     turn_params.no_tlsv1 = get_bool_value(value);
@@ -2255,9 +2243,6 @@ static void set_option(int c, char *value) {
     use_tltc = 1;
     turn_params.ct = TURN_CREDENTIALS_LONG_TERM;
     use_lt_credentials = 1;
-    break;
-  case AUTH_SECRET_TS_EXP:
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: Option --secret-ts-exp-time deprecated and has no effect.\n");
     break;
   case 'r':
     set_default_realm_name(value);
