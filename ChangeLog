@@ -1,3 +1,155 @@
+Release 4.6.3
+
+Changelist:
+- Implement custom prometheus http handler (#1591) (Alex Gustafsson <89969483+alexg-axis@users.noreply.github.com>)
+- Add MariaDB support to README.md (#1601) (Robert Silén <robert.silen@mariadb.org>)
+- Allow authenticating with a username to redis (#1488) (maddy <maddy@kitty.garden>)
+- Easy installation of coturn on AWS (#1581) (hariprasadt <hariprasad.t@samsung.com>)
+- Add prometheus setting suggestions on turn.conf in example folder (#1597) (Chai-Shi <changchaishi@gmail.com>)
+- Install openssl-1.1.1 on amazonlinux:2 instead of openssl-1.0.1 (#1595) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Add new Drain feature (#1529) (Scott Godin <sgodin@sipspectrum.com>)
+- Additional refactoring of ns_turn_allocation.* to address security scanner concerns (#1514) (Michael Jones <jonesmz@users.noreply.github.com>)
+- Fix linting error in mainrelay.c (#1558) (redraincatching <99604494+redraincatching@users.noreply.github.com>)
+- Fix rpm version scripts (#1556) (eakraly <eakraly@users.noreply.github.com>)
+- Delete dead code (#1563) (Sven Tennie <sven.tennie@gmail.com>)
+- Fix cli auth (#1578) (Mészáros Mihály <misi@majd.eu>)
+- Use bool, instead of int, for the functions in ns_turn_msg.c (#1553) (Michael Jones <jonesmz@users.noreply.github.com>)
+- Reformat code (#1557) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- configure: data files shouldn't be executable (#1542) (Sergey Radionov <RSATom@gmail.com>)
+- Update libtelnet (#1545) (Michael Jones <jonesmz@users.noreply.github.com>)
+- Use calloc where appropriate, avoid memset when normal buffer initialization works (#1550) (Michael Jones <jonesmz@users.noreply.github.com>)
+- Fix make lint (#1547) (Michael Jones <jonesmz@users.noreply.github.com>)
+- Fix compiler warnings from continuous integration (#1555) (Michael Jones <jonesmz@users.noreply.github.com>)
+- Fix nodejs/glibc problem with old container images. (#1548) (Michael Jones <jonesmz@users.noreply.github.com>)
+- Windows: Only attempt to bind when the network interface is up (#1527) (David Smitmanis <davidsm@axis.com>)
+- Memset user_db before reading conf file, not after (#1537) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- added support for amazon linux and renamed tests.yml (#1401) (redraincatching <99604494+redraincatching@users.noreply.github.com>)
+- Check the result of malloc in send_message_to_redis (#1515) (Michael Jones <jonesmz@users.noreply.github.com>)
+- Check the result of malloc in mongo_set_realm_option_one (#1516) (Michael Jones <jonesmz@users.noreply.github.com>)
+- Simplify workflow for codeql (#1517) (Michael Jones <jonesmz@users.noreply.github.com>)
+- Move the hiredis_libevent2 code from common to relay (#1509) (Michael Jones <jonesmz@users.noreply.github.com>)
+- Include what you use (#1512) (Michael Jones <jonesmz@users.noreply.github.com>)
+- Check the result of malloc in string_list_add (#1495) (Michael Jones <jonesmz@users.noreply.github.com>)
+- Check the result of realloc and calloc in ch_map_get (#1497) (Michael Jones <jonesmz@users.noreply.github.com>)
+- Address clang-tidy warnings in db files (#1405) (Michael Jones <jonesmz@users.noreply.github.com>)
+- malloc now allocates space for string terminator (#1507) (redraincatching <99604494+redraincatching@users.noreply.github.com>)
+- Use bool over int for the turnutils_uclient program (#1420) (Michael Jones <jonesmz@users.noreply.github.com>)
+- Fix lint complaint about comment (#1506) (Michael Jones <jonesmz@users.noreply.github.com>)
+- Run all of the CI except for Docker builds on any change (#1415) (Michael Jones <jonesmz@users.noreply.github.com>)
+- Avoid read-past-end of string in get_bold_admin_title (#1499) (Michael Jones <jonesmz@users.noreply.github.com>)
+- Check allocation results in add_static_user_account (#1501) (Michael Jones <jonesmz@users.noreply.github.com>)
+- Address some build issues introduced by api changes (#1505) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Check the result of calloc in handle_logon_request (#1498) (Michael Jones <jonesmz@users.noreply.github.com>)
+- Avoid writing potentially uninitialized data to aes_128 key file (#1500) (Michael Jones <jonesmz@users.noreply.github.com>)
+- Use active CPU number instead of total number (#1469) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- defined a magic number for stun fingerprinting (#1489) (redraincatching <99604494+redraincatching@users.noreply.github.com>)
+- Always run lint, regardless of branch (#1492) (Michael Jones <jonesmz@users.noreply.github.com>)
+- avoid potential nullptr derefernence in udp_create_server_socket (#1496) (Michael Jones <jonesmz@users.noreply.github.com>)
+- Change the various map functions to return bool instead of inconsistantly return 0, 1, or -1 (#1502) (Michael Jones <jonesmz@users.noreply.github.com>)
+- Check the result of malloc in del_alt_server (#1503) (Michael Jones <jonesmz@users.noreply.github.com>)
+- Avoid nullptr dereference of server variable in various functions (#1504) (Michael Jones <jonesmz@users.noreply.github.com>)
+- Fix msvc analyzer error on goto label on rfc5769check (#1486) (Gustavo Garcia <gustavogb@gmail.com>)
+- Fix buffer overflow in generate_enc_password with increase rsalt by 2 (#1463) (Stefan Junker <1181362+steveej@users.noreply.github.com>)
+- Fix lint errors (Gustavo Garcia <gustavogb@gmail.com>)
+- Add support for raw public keys (Rfc 7250) (#1458) (Nikolayshcx <77790944+Nikolayshcx@users.noreply.github.com>)
+- Fix clang-format lint warnings (Gustavo Garcia <gustavogb@mail.com>)
+- Fix const during free warning in rfc5769check app (Gustavo Garcia <gustavogb@mail.com>)
+- Refactor: peer_input_handle (#1325) (Kang Lin <kl222@126.com>)
+- workflow tidying (#1396) (redraincatching <99604494+redraincatching@users.noreply.github.com>)
+- Update turnserver.conf Example about listening-ip (#1336) (Wittmer, Christian <chris@computersalat.de>)
+- Fix Cmake find issue in libevent (#1466) (NO NAME <45446340+linwenchen@users.noreply.github.com>)
+- CMake: Declare the variable nearby (#1387) (Kang Lin <kl222@126.com>)
+- Print version only, no extra lines (#1441) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix memory leak in rfc5769check.c (#1410) (ashamedbit <muralianiruddhan@gmail.com>)
+- Fix memory leak in netengine.c (#1411) (ashamedbit <muralianiruddhan@gmail.com>)
+- Fix memory leak on http_server.c (#1412) (ashamedbit <muralianiruddhan@gmail.com>)
+- ubuntu build dependencies extracted to composite actions (#1399) (redraincatching <99604494+redraincatching@users.noreply.github.com>)
+- Delete unused variable (#1437) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- changed variables in stunclient.c to bool (C11) (#1421) (redraincatching <99604494+redraincatching@users.noreply.github.com>)
+- added missing function prototype of turn_random_number() (#1428) (redraincatching <99604494+redraincatching@users.noreply.github.com>)
+- Fix no-tls warning typo (#1426) (Jan Brasna <1784648+janbrasna@users.noreply.github.com>)
+- Update SQLite.md (#1429) (dominiquefournier <dominique@fournier38.fr>)
+- Adjust wording in cmake message when prometheous cannot be found. (#1418) (Michael Jones <jonesmz@users.noreply.github.com>)
+- Add the InsertBraces command for clang-format to ensure that all conditionals always have braces (#1408) (Michael Jones <jonesmz@users.noreply.github.com>)
+- Change minimal required cmake version to 3.16 (#1388) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Replace HeapAlloc with malloc (#1378) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Added sessionID to some log lines (#1334) (korayvt <korayvt@users.noreply.github.com>)
+- Update FlowChart (#1377) (Kang Lin <kl222@126.com>)
+- Add clang-tidy, include-what-you-use, and msvc-analyzer github actions (#1363) (Michael Jones <jonesmz@users.noreply.github.com>)
+- Doc: add flowchart (#1328) (Kang Lin <kl222@126.com>)
+- Missing session ID in coturn logs for denied IP - 1330 (#1332) (Cybermilitia <Cybermilitia@users.noreply.github.com>)
+- Update lukka/run-vcpkg@11 (#1374) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix typos (#1345) (vuittont60 <81072379+vuittont60@users.noreply.github.com>)
+- Fix mingw build (#1376) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Add github action that runs tests with compiler sanitizers (#1370) (Michael Jones <jonesmz@users.noreply.github.com>)
+- Simplify macOS detection macros (#1372) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix potential null passed to function expecting nonnull (#1373) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Only set MHD_USE_DUAL_STACK if IPv6 is available (#1362) (Evgeny Khramtsov <xramtsov@gmail.com>)
+- Remove unimplemented test folder reference from CMakeLists.txt (#1371) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix cmake find prometheus(fix #1304) (#1315) (Kang Lin <kl222@126.com>)
+- Fix run cmake.yml in any github action (#1320) (Kang Lin <kl222@126.com>)
+- Fix return correct error code for `create_relay_connection` in case of `RESERVATION-TOKEN` failure (#1319) (Subhra264 <chakrabortysubhradeep556@gmail.com>)
+- Reduce ifdefs in code: TURN_NO_PROMETHEUS (#1116) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- strncpy doesn't return size_t (#1296) (Richard Russo <richard@signal.org>)
+- Return a 400 response to HTTP requests (#1231) (Dave Lambley <dave@lambley.me.uk>)
+- Fix missing strncpy in fix_stun_check_message_integrity_str (#1282) (Gustavo Garcia <gustavogb@gmail.com>)
+- Fix ubuntu 16 build with GH action checkout version to v3 (#1281) (Gustavo Garcia <gustavogb@gmail.com>)
+- Fix memleak in pgsql_reread_realms (#1278) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Replace srand/rand with srandom/random (#1279) (Gustavo Garcia <gustavogb@gmail.com>)
+- Fix memcpy len checks stun_is_challenge_response_str (#1280) (Gustavo Garcia <gustavogb@gmail.com>)
+- Add warning and disable web admin if no-tls option used (#1256) (Alexander Udovichenko <udovichenko48@gmail.com>)
+- Fix formatting to fix lint error (#1258) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- added warnings for prometheus apt unavailability (#1184) (czephyr <alfredo.funicello@studenti.unimi.it>)
+- Update version in vcpkg.json (#1254) (Kang Lin <kl222@126.com>)
+- Fix error of make command in Cygwin environment (#1236) (Aaron Bird <25508292+Aaron-Bird@users.noreply.github.com>)
+- Fix recursive call in delete alternate server (#1250) (Cybermilitia <Cybermilitia@users.noreply.github.com>)
+- Add CodeQL workflow (#1228) (Jorge <46056498+jorgectf@users.noreply.github.com>)
+- Change printf() to TURN_LOG_FUNC() for --no-stdout-log (#1221) (Robert Scheck <robert-scheck@users.noreply.github.com>)
+- Fix build with libressl 3.6+ (#1198) (rim <11380091+rozhuk-im@users.noreply.github.com>)
+- Update turnserver.spec (#1192) (Mathieu Aubin <mathieu@zeroserieux.com>)
+
+Contributors:
+- Aaron Bird <25508292+Aaron-Bird@users.noreply.github.com>
+- Alex Gustafsson <89969483+alexg-axis@users.noreply.github.com>
+- Alexander Udovichenko <udovichenko48@gmail.com>
+- Chai-Shi <changchaishi@gmail.com>
+- Cybermilitia <Cybermilitia@users.noreply.github.com>
+- Dave Lambley <dave@lambley.me.uk>
+- David Smitmanis <davidsm@axis.com>
+- Evgeny Khramtsov <xramtsov@gmail.com>
+- Gustavo Garcia <gustavogb@gmail.com>
+- Gustavo Garcia <gustavogb@mail.com>
+- Jan Brasna <1784648+janbrasna@users.noreply.github.com>
+- Jorge <46056498+jorgectf@users.noreply.github.com>
+- Kang Lin <kl222@126.com>
+- Mathieu Aubin <mathieu@zeroserieux.com>
+- Mészáros Mihály <misi@majd.eu>
+- Michael Jones <jonesmz@users.noreply.github.com>
+- NO NAME <45446340+linwenchen@users.noreply.github.com>
+- Nikolayshcx <77790944+Nikolayshcx@users.noreply.github.com>
+- Pavel Punsky <eakraly@users.noreply.github.com>
+- Richard Russo <richard@signal.org>
+- Robert Scheck <robert-scheck@users.noreply.github.com>
+- Robert Silén <robert.silen@mariadb.org>
+- Scott Godin <sgodin@sipspectrum.com>
+- Sergey Radionov <RSATom@gmail.com>
+- Stefan Junker <1181362+steveej@users.noreply.github.com>
+- Subhra264 <chakrabortysubhradeep556@gmail.com>
+- Sven Tennie <sven.tennie@gmail.com>
+- Wittmer, Christian <chris@computersalat.de>
+- Zoey <zoey@z0ey.de>
+- ashamedbit <muralianiruddhan@gmail.com>
+- czephyr <alfredo.funicello@studenti.unimi.it>
+- dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+- dominiquefournier <dominique@fournier38.fr>
+- eakraly <eakraly@users.noreply.github.com>
+- hariprasadt <hariprasad.t@samsung.com>
+- korayvt <korayvt@users.noreply.github.com>
+- maddy <maddy@kitty.garden>
+- redraincatching <99604494+redraincatching@users.noreply.github.com>
+- rim <11380091+rozhuk-im@users.noreply.github.com>
+- vuittont60 <81072379+vuittont60@users.noreply.github.com>
+
 Release 4.6.2
 
 Changelist:

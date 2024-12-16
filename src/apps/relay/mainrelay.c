@@ -40,10 +40,6 @@
 #define MAX_TRIES 3
 #endif
 
-#if (!defined OPENSSL_VERSION_1_1_1)
-#define OPENSSL_VERSION_1_1_1 0x10101000L
-#endif
-
 ////// TEMPORARY data //////////
 
 static int use_lt_credentials = 0;
@@ -121,7 +117,7 @@ turn_params_t turn_params = {
     //////////////// Common params ////////////////////
     TURN_VERBOSE_NONE, /* verbose */
     0,                 /* turn_daemon */
-    0,                 /* no_software_attribute */
+    false,             /* software_attribute */
     0,                 /* web_admin_listen_on_workers */
 
     0, /* do_not_use_config_file */
@@ -1030,7 +1026,8 @@ static char Usage[] =
     " -v, --verbose					'Moderate' verbose mode.\n"
     " -V, --Verbose					Extra verbose mode, very annoying (for debug purposes only).\n"
     " -o, --daemon					Start process as daemon (detach from current shell).\n"
-    " --no-software-attribute	 		Production mode: hide the software version (formerly --prod).\n"
+    " --no-software-attribute	 		DEPRECATED Production mode: hide the software version.\n"
+    " --software-attribute	 		Enable sending software attribute (for debugging).\n"
     " -f, --fingerprint				Use fingerprints in the TURN messages.\n"
     " -a, --lt-cred-mech				Use the long-term credential mechanism.\n"
     " -z, --no-auth					Do not use any credential mechanism, allow anonymous access.\n"
@@ -1449,7 +1446,6 @@ enum EXTRA_OPTS {
   NO_DYNAMIC_REALMS_OPT,
   DEL_ALL_AUTH_SECRETS_OPT,
   STATIC_AUTH_SECRET_VAL_OPT,
-  AUTH_SECRET_TS_EXP, /* deprecated */
   NO_STDOUT_LOG_OPT,
   SYSLOG_OPT,
   SYSLOG_FACILITY_OPT,
@@ -1488,8 +1484,6 @@ enum EXTRA_OPTS {
   DH566_OPT,
   DH1066_OPT,
   NE_TYPE_OPT,
-  NO_SSLV2_OPT, /*deprecated*/
-  NO_SSLV3_OPT, /*deprecated*/
   NO_TLSV1_OPT,
   NO_TLSV1_1_OPT,
   NO_TLSV1_2_OPT,
@@ -1499,7 +1493,8 @@ enum EXTRA_OPTS {
   ADMIN_USER_QUOTA_OPT,
   SERVER_NAME_OPT,
   OAUTH_OPT,
-  NO_SOFTWARE_ATTRIBUTE_OPT,
+  SOFTWARE_ATTRIBUTE_OPT,
+  DEPRECATED_NO_SOFTWARE_ATTRIBUTE_OPT,
   NO_HTTP_OPT,
   SECRET_KEY_OPT,
   ACME_REDIRECT_OPT,
@@ -1571,7 +1566,6 @@ static const struct myoption long_options[] = {
     {"no-auth-pings", optional_argument, NULL, NO_AUTH_PINGS_OPT},
     {"no-dynamic-ip-list", optional_argument, NULL, NO_DYNAMIC_IP_LIST_OPT},
     {"no-dynamic-realms", optional_argument, NULL, NO_DYNAMIC_REALMS_OPT},
-    /* deprecated: */ {"secret-ts-exp-time", optional_argument, NULL, AUTH_SECRET_TS_EXP},
     {"realm", required_argument, NULL, 'r'},
     {"server-name", required_argument, NULL, SERVER_NAME_OPT},
     {"oauth", optional_argument, NULL, OAUTH_OPT},
@@ -1582,8 +1576,8 @@ static const struct myoption long_options[] = {
     {"verbose", optional_argument, NULL, 'v'},
     {"Verbose", optional_argument, NULL, 'V'},
     {"daemon", optional_argument, NULL, 'o'},
-    /* deprecated: */ {"prod", optional_argument, NULL, NO_SOFTWARE_ATTRIBUTE_OPT},
-    {"no-software-attribute", optional_argument, NULL, NO_SOFTWARE_ATTRIBUTE_OPT},
+    /* deprecated: */ {"no-software-attribute", optional_argument, NULL, DEPRECATED_NO_SOFTWARE_ATTRIBUTE_OPT},
+    {"software-attribute", optional_argument, NULL, SOFTWARE_ATTRIBUTE_OPT},
     {"fingerprint", optional_argument, NULL, 'f'},
     {"check-origin-consistency", optional_argument, NULL, CHECK_ORIGIN_CONSISTENCY_OPT},
     {"no-udp", optional_argument, NULL, NO_UDP_OPT},
@@ -1640,8 +1634,6 @@ static const struct myoption long_options[] = {
     {"dh566", optional_argument, NULL, DH566_OPT},
     {"dh1066", optional_argument, NULL, DH1066_OPT},
     {"ne", required_argument, NULL, NE_TYPE_OPT},
-    {"no-sslv2", optional_argument, NULL, NO_SSLV2_OPT}, /* deprecated */
-    {"no-sslv3", optional_argument, NULL, NO_SSLV3_OPT}, /* deprecated */
     {"no-tlsv1", optional_argument, NULL, NO_TLSV1_OPT},
     {"no-tlsv1_1", optional_argument, NULL, NO_TLSV1_1_OPT},
     {"no-tlsv1_2", optional_argument, NULL, NO_TLSV1_2_OPT},
@@ -1744,12 +1736,8 @@ void encrypt_aes_128(unsigned char *in, const unsigned char *mykey) {
   struct ctr_state state;
   init_ctr(&state, iv);
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
   CRYPTO_ctr128_encrypt(in, out, strlen((char *)in), &key, state.ivec, state.ecount, &state.num,
                         (block128_f)AES_encrypt);
-#else
-  AES_ctr128_encrypt(in, out, strlen((char *)in), &key, state.ivec, state.ecount, &state.num);
-#endif
 
   totalSize += strlen((char *)in);
   size = strlen((char *)in);
@@ -1840,12 +1828,8 @@ void decrypt_aes_128(char *in, const unsigned char *mykey) {
   struct ctr_state state;
   init_ctr(&state, iv);
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
   CRYPTO_ctr128_encrypt(encryptedText, outdata, newTotalSize, &key, state.ivec, state.ecount, &state.num,
                         (block128_f)AES_encrypt);
-#else
-  AES_ctr128_encrypt(encryptedText, outdata, newTotalSize, &key, state.ivec, state.ecount, &state.num);
-#endif
 
   strcat(last, (char *)outdata);
   printf("%s\n", last);
@@ -1923,12 +1907,6 @@ static void set_option(int c, char *value) {
     } else {
       turn_params.oauth = get_bool_value(value);
     }
-    break;
-  case NO_SSLV2_OPT:
-    // deprecated
-    break;
-  case NO_SSLV3_OPT:
-    // deprecated
     break;
   case NO_TLSV1_OPT:
     turn_params.no_tlsv1 = get_bool_value(value);
@@ -2174,8 +2152,11 @@ static void set_option(int c, char *value) {
       anon_credentials = 1;
     }
     break;
-  case NO_SOFTWARE_ATTRIBUTE_OPT:
-    turn_params.no_software_attribute = get_bool_value(value);
+  case DEPRECATED_NO_SOFTWARE_ATTRIBUTE_OPT:
+    turn_params.software_attribute = !(bool)get_bool_value(value);
+    break;
+  case SOFTWARE_ATTRIBUTE_OPT:
+    turn_params.software_attribute = (bool)get_bool_value(value);
     break;
   case 'f':
     turn_params.fingerprint = get_bool_value(value);
@@ -2257,9 +2238,6 @@ static void set_option(int c, char *value) {
     use_tltc = 1;
     turn_params.ct = TURN_CREDENTIALS_LONG_TERM;
     use_lt_credentials = 1;
-    break;
-  case AUTH_SECRET_TS_EXP:
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: Option --secret-ts-exp-time deprecated and has no effect.\n");
     break;
   case 'r':
     set_default_realm_name(value);
@@ -3377,65 +3355,10 @@ int main(int argc, char **argv) {
 ////////// OpenSSL locking ////////////////////////////////////////
 
 #if defined(OPENSSL_THREADS)
-#if OPENSSL_VERSION_NUMBER < OPENSSL_VERSION_1_1_0
-
-// array larger than anything that OpenSSL may need:
-static TURN_MUTEX_DECLARE(mutex_buf[256]);
-static int mutex_buf_initialized = 0;
-
-void coturn_locking_function(int mode, int n, const char *file, int line);
-void coturn_locking_function(int mode, int n, const char *file, int line) {
-  UNUSED_ARG(file);
-  UNUSED_ARG(line);
-  if (mutex_buf_initialized && (n < CRYPTO_num_locks())) {
-    if (mode & CRYPTO_LOCK) {
-      TURN_MUTEX_LOCK(&(mutex_buf[n]));
-    } else {
-      TURN_MUTEX_UNLOCK(&(mutex_buf[n]));
-    }
-  }
-}
-
-void coturn_id_function(CRYPTO_THREADID *ctid);
-void coturn_id_function(CRYPTO_THREADID *ctid) {
-  UNUSED_ARG(ctid);
-  CRYPTO_THREADID_set_numeric(ctid, (unsigned long)pthread_self());
-}
-
-static int THREAD_setup(void) {
-  int i;
-  for (i = 0; i < CRYPTO_num_locks(); i++) {
-    TURN_MUTEX_INIT(&(mutex_buf[i]));
-  }
-
-  mutex_buf_initialized = 1;
-  CRYPTO_THREADID_set_callback(coturn_id_function);
-  CRYPTO_set_locking_callback(coturn_locking_function);
-  return 1;
-}
-
-int THREAD_cleanup(void) {
-  int i;
-
-  if (!mutex_buf_initialized) {
-    return 0;
-  }
-
-  CRYPTO_THREADID_set_callback(NULL);
-  CRYPTO_set_locking_callback(NULL);
-  for (i = 0; i < CRYPTO_num_locks(); i++) {
-    TURN_MUTEX_DESTROY(&(mutex_buf[i]));
-  }
-
-  mutex_buf_initialized = 0;
-  return 1;
-}
-#else
 static int THREAD_setup(void) { return 1; }
 
 int THREAD_cleanup(void);
 int THREAD_cleanup(void) { return 1; }
-#endif /* OPENSSL_VERSION_NUMBER < OPENSSL_VERSION_1_1_0 */
 #endif /* defined(OPENSSL_THREADS) */
 
 static void adjust_key_file_name(char *fn, const char *file_title, int critical) {
@@ -3511,16 +3434,7 @@ static DH *get_dh566(void) {
   if ((dh = DH_new()) == NULL) {
     return (NULL);
   }
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-  dh->p = BN_bin2bn(dh566_p, sizeof(dh566_p), NULL);
-  dh->g = BN_bin2bn(dh566_g, sizeof(dh566_g), NULL);
-  if ((dh->p == NULL) || (dh->g == NULL)) {
-    DH_free(dh);
-    return (NULL);
-  }
-#else
   DH_set0_pqg(dh, BN_bin2bn(dh566_p, sizeof(dh566_p), NULL), NULL, BN_bin2bn(dh566_g, sizeof(dh566_g), NULL));
-#endif
   return (dh);
 }
 
@@ -3548,16 +3462,7 @@ static DH *get_dh1066(void) {
   if ((dh = DH_new()) == NULL) {
     return (NULL);
   }
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-  dh->p = BN_bin2bn(dh1066_p, sizeof(dh1066_p), NULL);
-  dh->g = BN_bin2bn(dh1066_g, sizeof(dh1066_g), NULL);
-  if ((dh->p == NULL) || (dh->g == NULL)) {
-    DH_free(dh);
-    return (NULL);
-  }
-#else
   DH_set0_pqg(dh, BN_bin2bn(dh1066_p, sizeof(dh1066_p), NULL), NULL, BN_bin2bn(dh1066_g, sizeof(dh1066_g), NULL));
-#endif
   return (dh);
 }
 
@@ -3594,16 +3499,7 @@ static DH *get_dh2066(void) {
   if ((dh = DH_new()) == NULL) {
     return (NULL);
   }
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-  dh->p = BN_bin2bn(dh2066_p, sizeof(dh2066_p), NULL);
-  dh->g = BN_bin2bn(dh2066_g, sizeof(dh2066_g), NULL);
-  if ((dh->p == NULL) || (dh->g == NULL)) {
-    DH_free(dh);
-    return (NULL);
-  }
-#else
   DH_set0_pqg(dh, BN_bin2bn(dh2066_p, sizeof(dh2066_p), NULL), NULL, BN_bin2bn(dh2066_g, sizeof(dh2066_g), NULL));
-#endif
   return (dh);
 }
 
@@ -3766,11 +3662,6 @@ static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *metho
     }
 
     if (set_auto_curve) {
-#if SSL_SESSION_ECDH_AUTO_SUPPORTED
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-      SSL_CTX_set_ecdh_auto(ctx, 1);
-#endif
-#endif
       set_auto_curve = 0;
     }
   }
@@ -3923,22 +3814,6 @@ static void openssl_load_certificates(void) {
 
   TURN_MUTEX_LOCK(&turn_params.tls_mutex);
   if (!turn_params.no_tls) {
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-    set_ctx(&turn_params.tls_ctx, "TLS", TLSv1_2_server_method()); /*openssl-1.0.2 version specific API */
-    if (turn_params.no_tlsv1) {
-      SSL_CTX_set_options(turn_params.tls_ctx, SSL_OP_NO_TLSv1);
-    }
-#if TLSv1_1_SUPPORTED
-    if (turn_params.no_tlsv1_1) {
-      SSL_CTX_set_options(turn_params.tls_ctx, SSL_OP_NO_TLSv1_1);
-    }
-#if TLSv1_2_SUPPORTED
-    if (turn_params.no_tlsv1_2) {
-      SSL_CTX_set_options(turn_params.tls_ctx, SSL_OP_NO_TLSv1_2);
-    }
-#endif
-#endif
-#else // OPENSSL_VERSION_NUMBER < 0x10100000L
     set_ctx(&turn_params.tls_ctx, "TLS", TLS_server_method());
     if (turn_params.no_tlsv1) {
       SSL_CTX_set_min_proto_version(turn_params.tls_ctx, TLS1_1_VERSION);
@@ -3951,31 +3826,13 @@ static void openssl_load_certificates(void) {
       SSL_CTX_set_min_proto_version(turn_params.tls_ctx, TLS1_3_VERSION);
     }
 #endif
-#endif // OPENSSL_VERSION_NUMBER < 0x10100000L
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS cipher suite: %s\n", turn_params.cipher_list);
   }
 
   if (!turn_params.no_dtls) {
 #if !DTLS_SUPPORTED
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: DTLS is not supported.\n");
-#elif OPENSSL_VERSION_NUMBER < 0x10000000L
-    TURN_LOG_FUNC(
-        TURN_LOG_LEVEL_WARNING,
-        "WARNING: TURN Server was compiled with rather old OpenSSL version, DTLS may not be working correctly.\n");
 #else
-#if OPENSSL_VERSION_NUMBER < 0x10100000L // before openssl-1.1.0 no version independent API
-#if DTLSv1_2_SUPPORTED
-    set_ctx(&turn_params.dtls_ctx, "DTLS", DTLSv1_2_server_method()); // openssl-1.0.2
-    if (turn_params.no_tlsv1_2) {
-      SSL_CTX_set_options(turn_params.dtls_ctx, SSL_OP_NO_DTLSv1_2);
-    }
-#else
-    set_ctx(&turn_params.dtls_ctx, "DTLS", DTLSv1_server_method()); // < openssl-1.0.2
-#endif
-    if (turn_params.no_tlsv1 || turn_params.no_tlsv1_1) {
-      SSL_CTX_set_options(turn_params.dtls_ctx, SSL_OP_NO_DTLSv1);
-    }
-#else  // OPENSSL_VERSION_NUMBER < 0x10100000L
     set_ctx(&turn_params.dtls_ctx, "DTLS", DTLS_server_method());
     if (turn_params.no_tlsv1 || turn_params.no_tlsv1_1) {
       SSL_CTX_set_min_proto_version(turn_params.dtls_ctx, DTLS1_2_VERSION);
@@ -3983,7 +3840,6 @@ static void openssl_load_certificates(void) {
     if (turn_params.no_tlsv1_2) {
       SSL_CTX_set_max_proto_version(turn_params.dtls_ctx, DTLS1_VERSION);
     }
-#endif // OPENSSL_VERSION_NUMBER < 0x10100000L
     setup_dtls_callbacks(turn_params.dtls_ctx);
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS cipher suite: %s\n", turn_params.cipher_list);
 #endif

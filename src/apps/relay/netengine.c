@@ -33,8 +33,7 @@
 #include "ns_turn_ioalib.h"
 
 //////////// Backward compatibility with OpenSSL 1.0.x //////////////
-#if (OPENSSL_VERSION_NUMBER < 0x10100001L ||                                                                           \
-     (defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER <= 0x3040000fL))
+#if defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER <= 0x3040000fL
 #define SSL_CTX_up_ref(ctx) CRYPTO_add(&(ctx)->references, 1, CRYPTO_LOCK_SSL_CTX)
 #endif
 
@@ -1657,8 +1656,8 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
       DONT_FRAGMENT_SUPPORTED, start_user_check, check_new_allocation_quota, release_allocation_quota,
       turn_params.external_ip, &turn_params.check_origin, &turn_params.no_tcp_relay, &turn_params.no_udp_relay,
       &turn_params.stale_nonce, &turn_params.max_allocate_lifetime, &turn_params.channel_lifetime,
-      &turn_params.permission_lifetime, &turn_params.stun_only, &turn_params.no_stun,
-      &turn_params.no_software_attribute, &turn_params.web_admin_listen_on_workers, &turn_params.alternate_servers_list,
+      &turn_params.permission_lifetime, &turn_params.stun_only, &turn_params.no_stun, turn_params.software_attribute,
+      &turn_params.web_admin_listen_on_workers, &turn_params.alternate_servers_list,
       &turn_params.tls_alternate_servers_list, &turn_params.aux_servers_list, turn_params.udp_self_balance,
       &turn_params.no_multicast_peers, &turn_params.allow_loopback_peers, &turn_params.ip_whitelist,
       &turn_params.ip_blacklist, send_socket_to_relay, &turn_params.secure_stun, &turn_params.mobility,
