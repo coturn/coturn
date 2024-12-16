@@ -120,9 +120,12 @@ int ratelimit_is_on_allowlist(const char *allowlist, ioa_addr *addr) {
   }
 
   ur_addr_map_value_type ratelimit_ptr = 0;
+  TURN_MUTEX_LOCK(&rate_limit_allowlist_mutex);
   if (ur_addr_map_get(rate_limit_allowlist_map, addr, &ratelimit_ptr)) {
+    TURN_MUTEX_UNLOCK(&rate_limit_allowlist_mutex);
     return 1;
   } else {
+    TURN_MUTEX_UNLOCK(&rate_limit_allowlist_mutex);
     return 0;
   }
 }
