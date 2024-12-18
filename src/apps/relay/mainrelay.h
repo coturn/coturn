@@ -311,6 +311,7 @@ typedef struct _turn_params_ {
   int prometheus;
   int prometheus_port;
   char prometheus_address[INET6_ADDRSTRLEN];
+  char prometheus_path[1025];
   int prometheus_username_labels;
 
   /////// Users DB ///////////

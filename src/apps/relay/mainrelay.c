@@ -209,6 +209,7 @@ turn_params_t turn_params = {
     0,                                  /* prometheus disabled by default */
     DEFAULT_PROM_SERVER_PORT,           /* prometheus port */
     "",                                 /* prometheus address */
+    "/metrics",                         /* prometheus path */
     0, /* prometheus username labelling disabled by default when prometheus is enabled */
 
     ///////////// Users DB //////////////
@@ -1137,6 +1138,7 @@ static char Usage[] =
     "						also the path / on this port can be used as a health check\n"
     " --prometheus-port		<port>		Prometheus metrics port (Default: 9641).\n"
     " --prometheus-address		<address>		Prometheus listening address (Default: any).\n"
+    " --prometheus-path		<path>		Prometheus serve path (Default: /metrics).\n"
     " --prometheus-username-labels			When metrics are enabled, add labels with client usernames.\n"
 #endif
     " --use-auth-secret				TURN REST API flag.\n"
@@ -1436,6 +1438,7 @@ enum EXTRA_OPTS {
   PROMETHEUS_OPT,
   PROMETHEUS_PORT_OPT,
   PROMETHEUS_ADDRESS_OPT,
+  PROMETHEUS_PATH_OPT,
   PROMETHEUS_ENABLE_USERNAMES_OPT,
   AUTH_SECRET_OPT,
   NO_AUTH_PINGS_OPT,
@@ -1555,6 +1558,7 @@ static const struct myoption long_options[] = {
     {"prometheus", optional_argument, NULL, PROMETHEUS_OPT},
     {"prometheus-port", optional_argument, NULL, PROMETHEUS_PORT_OPT},
     {"prometheus-address", optional_argument, NULL, PROMETHEUS_ADDRESS_OPT},
+    {"prometheus-path", optional_argument, NULL, PROMETHEUS_PATH_OPT},
     {"prometheus-username-labels", optional_argument, NULL, PROMETHEUS_ENABLE_USERNAMES_OPT},
 #endif
     {"use-auth-secret", optional_argument, NULL, AUTH_SECRET_OPT},
@@ -2206,6 +2210,9 @@ static void set_option(int c, char *value) {
     break;
   case PROMETHEUS_ADDRESS_OPT:
     STRCPY(turn_params.prometheus_address, value);
+    break;
+  case PROMETHEUS_PATH_OPT:
+    STRCPY(turn_params.prometheus_path, value);
     break;
   case PROMETHEUS_ENABLE_USERNAMES_OPT:
     turn_params.prometheus_username_labels = 1;

@@ -64,3 +64,10 @@ turnserver_pid="$!"
 sleep 2
 assert_prom_response "http://127.0.0.1:8080/metrics"
 kill "$turnserver_pid"
+
+echo "Running turnserver with prometheus, using custom path"
+$BINDIR/turnserver --prometheus --prometheus-path="/coturn/metrics" > /dev/null &
+turnserver_pid="$!"
+sleep 2
+assert_prom_response "http://localhost:9641/coturn/metrics"
+kill "$turnserver_pid"
