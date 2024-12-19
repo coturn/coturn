@@ -51,13 +51,9 @@ static int use_tltc = 0;
 
 ////// ALPN //////////
 
-#if ALPN_SUPPORTED
-
 char STUN_ALPN[128] = "stun.nat-discovery";
 char TURN_ALPN[128] = "stun.turn";
 char HTTP_ALPN[128] = "http/1.1";
-
-#endif
 
 ////// TURNDB //////////////
 
@@ -2831,11 +2827,7 @@ static void print_features(unsigned long mfn) {
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS supported\n");
 #endif
 
-#if ALPN_SUPPORTED
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TURN/STUN ALPN supported\n");
-#else
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TURN/STUN ALPN is not supported\n");
-#endif
 
   if (ENC_ALG_NUM == 0) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Third-party authorization (oAuth) is not supported\n");
@@ -3511,8 +3503,6 @@ static int pem_password_func(char *buf, int size, int rwflag, void *password) {
   return (strlen(buf));
 }
 
-#if ALPN_SUPPORTED
-
 static int ServerALPNCallback(SSL *ssl, const unsigned char **out, unsigned char *outlen, const unsigned char *in,
                               unsigned int inlen, void *arg) {
 
@@ -3559,18 +3549,12 @@ static int ServerALPNCallback(SSL *ssl, const unsigned char **out, unsigned char
   return SSL_TLSEXT_ERR_NOACK; //???
 }
 
-#endif
-
 static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *method) {
   SSL_CTX *ctx = SSL_CTX_new(method);
   int err = 0;
   int rc = 0;
-#if ALPN_SUPPORTED
   SSL_CTX_set_alpn_select_cb(ctx, ServerALPNCallback, NULL);
-#endif
-
   SSL_CTX_set_default_passwd_cb_userdata(ctx, turn_params.tls_password);
-
   SSL_CTX_set_default_passwd_cb(ctx, pem_password_func);
 
   if (!(turn_params.cipher_list[0])) {
