@@ -1332,7 +1332,7 @@ void build_base64_decoding_table(void) {
 
   char *table = (char *)calloc(256, sizeof(char));
 
-  for (char i = 0; i < 64; i++) {
+  for (size_t i = 0; i < 64; i++) {
     table[(unsigned char)encoding_table[i]] = i;
   }
   decoding_table = table;
