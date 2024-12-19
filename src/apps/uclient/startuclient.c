@@ -55,10 +55,8 @@ static uint64_t current_reservation_token = 0;
 static int allocate_rtcp = 0;
 static const int never_allocate_rtcp = 0;
 
-#if ALPN_SUPPORTED
 static const unsigned char kALPNProtos[] = "\x08http/1.1\x09stun.turn\x12stun.nat-discovery";
 static const size_t kALPNProtosLen = sizeof(kALPNProtos) - 1;
-#endif
 
 /////////////////////////////////////////
 
@@ -96,9 +94,7 @@ static SSL *tls_connect(ioa_socket_raw fd, ioa_addr *remote_addr, bool *try_agai
 
   ssl = SSL_new(root_tls_ctx[ctxtype]);
 
-#if ALPN_SUPPORTED
   SSL_set_alpn_protos(ssl, kALPNProtos, kALPNProtosLen);
-#endif
 
   if (use_tcp) {
     SSL_set_fd(ssl, fd);
