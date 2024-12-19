@@ -82,12 +82,12 @@ const char *get_version(turn_turnserver *server) {
   }
 }
 
-void maybe_add_software_attribute(turn_turnserver *server, ioa_network_buffer_handle nbh) {
+static void maybe_add_software_attribute(turn_turnserver *server, ioa_network_buffer_handle nbh) {
   if (server->software_attribute) {
-    const char *field = get_version(server);
+    const char *software = get_version(server);
     size_t fsz = strlen(get_version(server));
     size_t len = ioa_network_buffer_get_size(nbh);
-    stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_SOFTWARE, field, fsz);
+    stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_SOFTWARE, (const uint8_t *)software, fsz);
     ioa_network_buffer_set_size(nbh, len);
   }
 }
