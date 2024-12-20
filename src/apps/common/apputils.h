@@ -58,68 +58,32 @@ extern int IS_TURN_SERVER;
 /* TLS */
 
 #if defined(TURN_NO_TLS)
-
 #define TLS_SUPPORTED 0
-#define TLSv1_1_SUPPORTED 0
-#define TLSv1_2_SUPPORTED 0
-
 #else
-
 #define TLS_SUPPORTED 1
-
-#if defined(SSL_OP_NO_TLSv1_1)
-#define TLSv1_1_SUPPORTED 1
-#else
-#define TLSv1_1_SUPPORTED 0
-#endif
-
-#if defined(SSL_OP_NO_TLSv1_2)
-#define TLSv1_2_SUPPORTED 1
-#else
-#define TLSv1_2_SUPPORTED 0
-#endif
-
-#if defined(SSL_OP_NO_TLSv1_3)
-#define TLSv1_3_SUPPORTED 1
-#else
-#define TLSv1_3_SUPPORTED 0
-#endif
-
 #endif
 
 #if defined(TURN_NO_DTLS)
-
 #define DTLS_SUPPORTED 0
-#define DTLSv1_2_SUPPORTED 0
-
 #else
-
 #define DTLS_SUPPORTED 1
-
-#if defined(SSL_OP_NO_DTLSv1_2)
-#define DTLSv1_2_SUPPORTED 1
-#else
-#define DTLSv1_2_SUPPORTED 0
-#endif
-
 #endif
 
 #define SSL_SESSION_ECDH_AUTO_SUPPORTED 1
 
 /////////// SSL //////////////////////////
 
+// clang-format off
 enum _TURN_TLS_TYPE {
   TURN_TLS_NO = 0,
   TURN_TLS_SSL23,
   TURN_TLS_v1_0,
-#if TLSv1_1_SUPPORTED
   TURN_TLS_v1_1,
-#if TLSv1_2_SUPPORTED
   TURN_TLS_v1_2,
-#endif
-#endif
+  TURN_TLS_v1_3,
   TURN_TLS_TOTAL
 };
+// clang-format on
 
 typedef enum _TURN_TLS_TYPE TURN_TLS_TYPE;
 
