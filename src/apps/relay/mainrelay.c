@@ -2809,22 +2809,14 @@ static void print_features(unsigned long mfn) {
 
 #if !TLS_SUPPORTED
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS is not supported\n");
-#elif TLSv1_3_SUPPORTED
+#else
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS 1.3 supported\n");
-#elif TLSv1_2_SUPPORTED
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS 1.2 supported\n");
-#elif TLSv1_1_SUPPORTED
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS 1.1 supported\n");
-#elif TLSv1_SUPPORTED
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS 1.0 supported\n");
 #endif
 
 #if !DTLS_SUPPORTED
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS is not supported\n");
-#elif DTLSv1_2_SUPPORTED
+#else
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS 1.2 supported\n");
-#elif DTLS_SUPPORTED
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS supported\n");
 #endif
 
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TURN/STUN ALPN supported\n");
@@ -3567,10 +3559,7 @@ static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *metho
 
   SSL_CTX_set_cipher_list(ctx, turn_params.cipher_list);
   SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_OFF);
-
-#if TLSv1_3_SUPPORTED
   SSL_CTX_set_ciphersuites(ctx, turn_params.cipher_list);
-#endif
 
   if (!SSL_CTX_use_certificate_chain_file(ctx, turn_params.cert_file)) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: no certificate found\n", protocol);
@@ -3805,11 +3794,9 @@ static void openssl_load_certificates(void) {
     if (turn_params.no_tlsv1_1) {
       SSL_CTX_set_min_proto_version(turn_params.tls_ctx, TLS1_2_VERSION);
     }
-#if TLSv1_3_SUPPORTED
     if (turn_params.no_tlsv1_2) {
       SSL_CTX_set_min_proto_version(turn_params.tls_ctx, TLS1_3_VERSION);
     }
-#endif
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS cipher suite: %s\n", turn_params.cipher_list);
   }
 
