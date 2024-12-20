@@ -55,10 +55,6 @@ extern "C" {
 
 extern int IS_TURN_SERVER;
 
-/* ALPN */
-
-#define ALPN_SUPPORTED 1
-
 /* TLS */
 
 #if defined(TURN_NO_TLS)
