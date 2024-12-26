@@ -40,7 +40,6 @@ ur_addr_map *rate_limit_map = NULL;
 ur_addr_map *rate_limit_allowlist_map = NULL;
 
 int ratelimit_window_secs = RATELIMIT_DEFAULT_WINDOW_SECS;
-time_t last_mtime = 0;
 
 TURN_MUTEX_DECLARE(rate_limit_main_mutex);
 TURN_MUTEX_DECLARE(rate_limit_allowlist_mutex);
@@ -68,58 +67,51 @@ void ratelimit_init_allowlist_map() {
   TURN_MUTEX_UNLOCK(&rate_limit_allowlist_mutex);
 }
 
+void ratelimit_update_allowlist(const char *allowlist) {
+
+  FILE *file = NULL;
+  file = fopen(allowlist, "r");
+  if (file != NULL) {
+    char line[1024];
+
+    /* Rebuild map */
+    TURN_MUTEX_LOCK(&rate_limit_allowlist_mutex);
+    ur_addr_map_clean(rate_limit_allowlist_map);
+    ur_addr_map_init(rate_limit_allowlist_map);
+    TURN_MUTEX_UNLOCK(&rate_limit_allowlist_mutex);
+    /* loop over file and add entries */
+    while (fgets(line, sizeof(line) - 1, file) != NULL) {
+      if (!line) {
+        break;
+      }
+
+      ioa_addr new_address;
+      ratelimit_remove_newlines(line);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Added address to 401 ratelimit allow list from file %s: %s\n", allowlist, line);
+      if(make_ioa_addr_from_full_string((const uint8_t *)line, 0, &new_address) != 0) {
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Malformed address in 401 ratelimit allow list file %s: %s\n", allowlist, line);
+      } else {
+        TURN_MUTEX_LOCK(&rate_limit_allowlist_mutex);
+        ur_addr_map_put(rate_limit_allowlist_map, &new_address, (ur_addr_map_value_type)1);
+        TURN_MUTEX_UNLOCK(&rate_limit_allowlist_mutex);
+      }
+    }
+    if (file) {
+      fclose(file);
+    }
+  } else {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Could not open 401 ratelimit allow list file: %s\n", allowlist);
+  }
+}
+
 int ratelimit_is_on_allowlist(const char *allowlist, ioa_addr *addr) {
   /* If no allowlist provided, return early */
   if (!allowlist) {
     return 0;
   }
-  /* Init allow_list map if needed */
-  if (rate_limit_allowlist_map == NULL) {
-    ratelimit_init_allowlist_map();
-  }
-
-  /* Check the mtime of the allow list, do we need to update? */
-  struct stat fstat;
-  if (stat(allowlist, &fstat) == 0) {
-    if (fstat.st_mtime != last_mtime) {
-      last_mtime = fstat.st_mtime;
-
-      FILE *file = NULL;
-      file = fopen(allowlist, "r");
-      if (file != NULL) {
-        char line[1024];
-
-        /* Rebuild map */
-        TURN_MUTEX_LOCK(&rate_limit_allowlist_mutex);
-        ur_addr_map_clean(rate_limit_allowlist_map);
-        ur_addr_map_init(rate_limit_allowlist_map);
-        TURN_MUTEX_UNLOCK(&rate_limit_allowlist_mutex);
-        /* loop over file and add entries */
-        while (fgets(line, sizeof(line) - 1, file) != NULL) {
-          if (!line) {
-            break;
-          }
-
-          ioa_addr new_address;
-          ratelimit_remove_newlines(line);
-          if(make_ioa_addr_from_full_string((const uint8_t *)line, 0, &new_address) != 0) {
-            TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Malformed address in 401 ratelimit allow list file %s: %s\n", allowlist, line);
-          } else {
-            TURN_MUTEX_LOCK(&rate_limit_allowlist_mutex);
-            ur_addr_map_put(rate_limit_allowlist_map, &new_address, (ur_addr_map_value_type)1);
-            TURN_MUTEX_UNLOCK(&rate_limit_allowlist_mutex);
-          }
-        }
-        if (file) {
-          fclose(file);
-        }
-      } else {
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Could not open 401 ratelimit allow list file: %s\n", allowlist);
-      }
-    }
-  }
 
   ur_addr_map_value_type ratelimit_ptr = 0;
+
   TURN_MUTEX_LOCK(&rate_limit_allowlist_mutex);
   if (ur_addr_map_get(rate_limit_allowlist_map, addr, &ratelimit_ptr)) {
     TURN_MUTEX_UNLOCK(&rate_limit_allowlist_mutex);

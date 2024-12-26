@@ -285,6 +285,7 @@ static void reload_ssl_certs(evutil_socket_t sock, short events, void *args);
 
 static void shutdown_handler(evutil_socket_t sock, short events, void *args);
 static void drain_handler(evutil_socket_t sock, short events, void *args);
+static void ratelimit_update_allowlist_handler(evutil_socket_t sock, short events, void *args);
 
 //////////////////////////////////////////////////
 
@@ -3353,6 +3354,12 @@ int main(int argc, char **argv) {
 
   setup_server();
 
+  /* Init allow list if configured */
+  if (turn_params.ratelimit_401_allowlist != NULL) {
+    ratelimit_init_allowlist_map();
+    ratelimit_update_allowlist(turn_params.ratelimit_401_allowlist);
+  }
+
 #if defined(WINDOWS)
   // TODO: implement it!!! add windows server
 #else
@@ -3364,6 +3371,8 @@ int main(int argc, char **argv) {
   ev = evsignal_new(turn_params.listener.event_base, SIGINT, shutdown_handler, NULL);
   event_add(ev, NULL);
   ev = evsignal_new(turn_params.listener.event_base, SIGUSR1, drain_handler, NULL);
+  event_add(ev, NULL);
+  ev = evsignal_new(turn_params.listener.event_base, SIGRTMIN+3, ratelimit_update_allowlist_handler, NULL);
   event_add(ev, NULL);
 #endif
 
@@ -4000,6 +4009,14 @@ static void shutdown_handler(evutil_socket_t sock, short events, void *args) {
 static void drain_handler(evutil_socket_t sock, short events, void *args) {
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Draining then terminating on signal %d\n", sock);
   turn_params.drain_turn_server = DRAINMODE_REQUESTED;
+
+  UNUSED_ARG(events);
+  UNUSED_ARG(args);
+}
+
+static void ratelimit_update_allowlist_handler(evutil_socket_t sock, short events, void *args) {
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Reloading 401 ratelimit allowlist signal %d\n", sock);
+  ratelimit_update_allowlist(turn_params.ratelimit_401_allowlist);
 
   UNUSED_ARG(events);
   UNUSED_ARG(args);
