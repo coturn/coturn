@@ -212,6 +212,7 @@ int ratelimit_is_address_limited(ioa_addr *address, int max_requests, int window
     ratelimit_add_node(address_new);
     free(address_new);
     TURN_MUTEX_UNLOCK(&rate_limit_main_mutex);
-    return 0;
+    retval = 0;
   }
+  return retval;
 }
