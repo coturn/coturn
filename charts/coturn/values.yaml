@@ -91,6 +91,13 @@ federate:
   #   - host: another-host-without-issuer.wire.example
     remoteWhitelist: []
 
+ratelimit:
+  override: false
+#   # Set the maximum number of 401 Unauthorized responses allowed per rate-limiting window. Defaults is 1000.
+#   requestLimit: 1000
+#   # Set the time window duration in seconds for rate limiting 401 Unauthorized responses. Defaults is 120.
+#   window: 120
+
 metrics:
   serviceMonitor:
     enabled: false

@@ -32,6 +32,7 @@
 #ifndef __TURN_SERVER__
 #define __TURN_SERVER__
 
+#include <stdbool.h>
 #include "ns_turn_session.h"
 #include "ns_turn_utils.h"
 
@@ -204,7 +205,7 @@ struct _turn_turnserver {
   vintp response_origin_only_with_rfc5780;
 
   /* Set to true on SIGUSR1 */
-  int is_draining;
+  bool is_draining;
 
   /* Federation params */
   ioa_addr federation_addr;
