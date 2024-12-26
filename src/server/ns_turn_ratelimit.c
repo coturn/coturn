@@ -169,6 +169,7 @@ int ratelimit_is_address_limited(ioa_addr *address, int max_requests, int window
   ioa_addr *address_new = (ioa_addr *)malloc(sizeof(ioa_addr));
   *address_new = *address;
   addr_set_port(address_new, 0);
+  int retval = 0;
 
   if (ur_addr_map_get(rate_limit_map, address_new, &ratelimit_ptr)) {
     ratelimit_entry *rateLimitEntry = (ratelimit_entry *)(void *)(ur_map_value_type)ratelimit_ptr;
@@ -178,32 +179,32 @@ int ratelimit_is_address_limited(ioa_addr *address, int max_requests, int window
       /* Check if request is inside the ratelimit window; reset the count and request time */
       rateLimitEntry->request_count = 1;
       rateLimitEntry->last_request_time = current_time;
-      TURN_MUTEX_UNLOCK(&(rateLimitEntry->mutex));
-      free(address_new);
-      return 0;
+      retval = 0;
+      goto end_ratelimit_entry;
     } else if (rateLimitEntry->request_count < max_requests) {
       /* Check if request count is below requests per window; increment the count */
       if (rateLimitEntry->request_count < UINT32_MAX)
         rateLimitEntry->request_count++;
       rateLimitEntry->last_request_time = current_time;
-      TURN_MUTEX_UNLOCK(&(rateLimitEntry->mutex));
-      free(address_new);
-      return 0;
+      retval = 0;
+      goto end_ratelimit_entry;
     } else {
       /* Before ratelimit, check allow list */
       if(ratelimit_is_on_allowlist(allowlist, address_new)) {
-        free(address_new);
-        TURN_MUTEX_UNLOCK(&(rateLimitEntry->mutex));
-        return 0;
+        retval = 0;
+        goto end_ratelimit_entry;
       }
 
-      free(address_new);
       /* Request is outside of defined window and count, request is ratelimited */
       if (rateLimitEntry->request_count < UINT32_MAX)
         rateLimitEntry->request_count++;
       rateLimitEntry->last_request_time = current_time;
+      retval = 1;
+
+    end_ratelimit_entry:
       TURN_MUTEX_UNLOCK(&(rateLimitEntry->mutex));
-      return 1;
+      free(address_new);
+      return retval;
     }
   } else {
     // New entry, allow response
