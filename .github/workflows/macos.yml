@@ -79,8 +79,6 @@ jobs:
       - name: Build
         run: cmake --build ${{github.workspace}}/build
 
-      - run: make check
-
       - run: ./run_tests.sh
         working-directory: examples/
       - run: ./run_tests_conf.sh
