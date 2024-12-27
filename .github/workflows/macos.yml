@@ -75,9 +75,9 @@ jobs:
       - run: brew install wget pkg-config libevent openssl@1.1 sqlite hiredis mongo-c-driver libmicrohttpd
 
       - name: Configure
-        run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+        run: cmake -B ${{github.workspace}}/build
       - name: Build
-        run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+        run: cmake --build ${{github.workspace}}/build
 
       - run: make check
 
