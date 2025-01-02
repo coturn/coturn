@@ -285,10 +285,10 @@ static int good_peer_addr(turn_turnserver *server, const char *realm, ioa_addr *
 
   turnserver_id server_id = (turnserver_id)(session_id / TURN_SESSION_ID_FACTOR);
   if (server && peer_addr) {
-    if (*(server->no_multicast_peers) && ioa_addr_is_multicast(peer_addr)) {
+    if ((server->no_multicast_peers) && ioa_addr_is_multicast(peer_addr)) {
       return 0;
     }
-    if (!*(server->allow_loopback_peers) && ioa_addr_is_loopback(peer_addr)) {
+    if (!(server->allow_loopback_peers) && ioa_addr_is_loopback(peer_addr)) {
       return 0;
     }
     if (ioa_addr_is_zero(peer_addr)) {
@@ -724,7 +724,7 @@ static mobile_id_t get_new_mobile_id(turn_turnserver *server) {
 static void put_session_into_mobile_map(ts_ur_super_session *ss) {
   if (ss && ss->server) {
     turn_turnserver *server = (turn_turnserver *)(ss->server);
-    if (*(server->mobility) && server->mobile_connections_map) {
+    if ((server->mobility) && server->mobile_connections_map) {
       if (!(ss->mobile_id)) {
         ss->mobile_id = get_new_mobile_id(server);
         mobile_id_to_string(ss->mobile_id, ss->s_mobile_id, sizeof(ss->s_mobile_id));
@@ -789,7 +789,7 @@ void turn_cancel_session(turn_turnserver *server, turnsession_id sid) {
 
 static ts_ur_super_session *get_session_from_mobile_map(turn_turnserver *server, mobile_id_t mid) {
   ts_ur_super_session *ss = NULL;
-  if (server && *(server->mobility) && server->mobile_connections_map && mid) {
+  if (server && (server->mobility) && server->mobile_connections_map && mid) {
     ur_map_value_type value = 0;
     if (ur_map_get(server->mobile_connections_map, (ur_map_key_type)mid, &value) && value) {
       ss = (ts_ur_super_session *)value;
@@ -1082,7 +1082,7 @@ static int handle_turn_allocate(turn_turnserver *server, ts_ur_super_session *ss
         bps = stun_attr_get_bandwidth(sar);
         break;
       case STUN_ATTRIBUTE_MOBILITY_TICKET:
-        if (!(*(server->mobility))) {
+        if (!(server->mobility)) {
           *err_code = 405;
           *reason = (const uint8_t *)"Mobility Forbidden";
         } else if (stun_attr_get_len(sar) != 0) {
@@ -1106,10 +1106,10 @@ static int handle_turn_allocate(turn_turnserver *server, ts_ur_super_session *ss
             if (!transport) {
               *err_code = 442;
             }
-            if ((transport == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE) && *(server->no_tcp_relay)) {
+            if ((transport == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE) && (server->no_tcp_relay)) {
               *err_code = 442;
               *reason = (const uint8_t *)"TCP Transport is not allowed by the TURN Server configuration";
-            } else if ((transport == STUN_ATTRIBUTE_TRANSPORT_UDP_VALUE) && *(server->no_udp_relay)) {
+            } else if ((transport == STUN_ATTRIBUTE_TRANSPORT_UDP_VALUE) && (server->no_udp_relay)) {
               *err_code = 442;
               *reason = (const uint8_t *)"UDP Transport is not allowed by the TURN Server configuration";
             } else if (ss->client_socket) {
@@ -1251,7 +1251,7 @@ static int handle_turn_allocate(turn_turnserver *server, ts_ur_super_session *ss
 
     } else {
 
-      if (*(server->mobility)) {
+      if (server->mobility) {
         if (!(ss->is_mobile)) {
           delete_session_from_mobile_map(ss);
         }
@@ -1527,7 +1527,7 @@ static int handle_turn_refresh(turn_turnserver *server, ts_ur_super_session *ss,
     }
   }
 
-  if (!is_allocation_valid(a) && !(*(server->mobility))) {
+  if (!is_allocation_valid(a) && !(server->mobility)) {
 
     *err_code = 437;
     *reason = (const uint8_t *)"Invalid allocation";
@@ -1546,7 +1546,7 @@ static int handle_turn_refresh(turn_turnserver *server, ts_ur_super_session *ss,
       switch (attr_type) {
         SKIP_ATTRIBUTES;
       case STUN_ATTRIBUTE_MOBILITY_TICKET: {
-        if (!(*(server->mobility))) {
+        if (!(server->mobility)) {
           *err_code = 405;
           *reason = (const uint8_t *)"Mobility forbidden";
         } else {
@@ -2856,7 +2856,7 @@ static int handle_turn_binding(turn_turnserver *server, ts_ur_super_session *ss,
     size_t len = ioa_network_buffer_get_size(nbh);
     if (stun_set_binding_response_str(ioa_network_buffer_data(nbh), &len, tid,
                                       get_remote_addr_from_ioa_socket(ss->client_socket), 0, NULL, cookie, old_stun,
-                                      *server->no_stun_backward_compatibility)) {
+                                      server->no_stun_backward_compatibility)) {
 
       addr_cpy(response_origin, get_local_addr_from_ioa_socket(ss->client_socket));
 
@@ -2869,7 +2869,7 @@ static int handle_turn_binding(turn_turnserver *server, ts_ur_super_session *ss,
 
       if (!is_rfc5780(server)) {
 
-        if (!(*server->response_origin_only_with_rfc5780)) {
+        if (!(server->response_origin_only_with_rfc5780)) {
           if (old_stun) {
             stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len, OLD_STUN_ATTRIBUTE_SOURCE_ADDRESS,
                                    response_origin);
@@ -3558,7 +3558,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 
   if (stun_is_request_str(ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh))) {
 
-    if ((method == STUN_METHOD_BINDING) && (*(server->no_stun))) {
+    if ((method == STUN_METHOD_BINDING) && (server->no_stun)) {
 
       no_response = 1;
       if (server->verbose) {
@@ -3566,7 +3566,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
                       (unsigned long long)(ss->id), __FUNCTION__, (unsigned int)method);
       }
 
-    } else if ((method != STUN_METHOD_BINDING) && (*(server->stun_only))) {
+    } else if ((method != STUN_METHOD_BINDING) && (server->stun_only)) {
 
       no_response = 1;
       if (server->verbose) {
@@ -3574,7 +3574,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
                       (unsigned long long)(ss->id), __FUNCTION__, (unsigned int)method);
       }
 
-    } else if ((method != STUN_METHOD_BINDING) || (*(server->secure_stun))) {
+    } else if ((method != STUN_METHOD_BINDING) || (server->secure_stun)) {
 
       if (method == STUN_METHOD_ALLOCATE) {
 
@@ -3640,7 +3640,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
                                        ioa_network_buffer_get_size(in_buffer->nbh), sar);
         }
 
-        if (server->check_origin && *(server->check_origin)) {
+        if (server->check_origin && (server->check_origin)) {
           if (ss->origin[0]) {
             if (!origin_found) {
               err_code = 441;
@@ -3700,7 +3700,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
       if (!err_code && !(*resp_constructed) && !no_response) {
         if (method == STUN_METHOD_CONNECTION_BIND) {
           ;
-        } else if (!(*(server->mobility)) || (method != STUN_METHOD_REFRESH) ||
+        } else if (!(server->mobility) || (method != STUN_METHOD_REFRESH) ||
                    is_allocation_valid(get_allocation_ss(ss))) {
           int postpone_reply = 0;
           check_stun_auth(server, ss, &tid, resp_constructed, &err_code, &reason, in_buffer, nbh, method,
@@ -3795,13 +3795,13 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
         handle_turn_binding(server, ss, &tid, resp_constructed, &err_code, &reason, unknown_attrs, &ua_num, in_buffer,
                             nbh, &origin_changed, &response_origin, &dest_changed, &response_destination, 0, 0);
 
-        if (server->verbose && *(server->log_binding)) {
+        if (server->verbose && server->log_binding) {
           log_method(ss, "BINDING", err_code, reason);
         }
 
         if (*resp_constructed && !err_code && (origin_changed || dest_changed)) {
 
-          if (server->verbose && *(server->log_binding)) {
+          if (server->verbose && server->log_binding) {
             TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: RFC 5780 request successfully processed\n",
                           (unsigned long long)(ss->id));
           }
@@ -3964,7 +3964,7 @@ static int handle_old_stun_command(turn_turnserver *server, ts_ur_super_session 
       handle_turn_binding(server, ss, &tid, resp_constructed, &err_code, &reason, unknown_attrs, &ua_num, in_buffer,
                           nbh, &origin_changed, &response_origin, &dest_changed, &response_destination, cookie, 1);
 
-      if (server->verbose && *(server->log_binding)) {
+      if (server->verbose && server->log_binding) {
         log_method(ss, "OLD BINDING", err_code, reason);
       }
 
@@ -4564,7 +4564,7 @@ static int read_client_connection(turn_turnserver *server, ts_ur_super_session *
 
   } else if (old_stun_is_command_message_str(ioa_network_buffer_data(in_buffer->nbh),
                                              ioa_network_buffer_get_size(in_buffer->nbh), &old_stun_cookie) &&
-             !(*(server->no_stun)) && !(*(server->no_stun_backward_compatibility))) {
+             !(server->no_stun) && !(server->no_stun_backward_compatibility)) {
 
     ioa_network_buffer_handle nbh = ioa_network_buffer_allocate(server->e);
     int resp_constructed = 0;
@@ -4593,7 +4593,7 @@ static int read_client_connection(turn_turnserver *server, ts_ur_super_session *
                                                      ss->client_socket) == 0)) {
           ss->to_be_closed = 1;
           return 0;
-        } else if (*server->web_admin_listen_on_workers) {
+        } else if (server->web_admin_listen_on_workers) {
           if (st == TLS_SOCKET) {
             set_ioa_socket_app_type(ss->client_socket, HTTPS_CLIENT_SOCKET);
             TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s (%s %s) request: %zu\n", __FUNCTION__, proto,
@@ -4620,7 +4620,7 @@ static int read_client_connection(turn_turnserver *server, ts_ur_super_session *
             handle_http_echo(ss->client_socket);
           }
           return 0;
-        } else if (*server->respond_http_unsupported) {
+        } else if (server->respond_http_unsupported) {
           /* Our incoming connection is HTTP, but we are not serving the
            * admin site. Return a 400 response. */
           if (st == TLS_SOCKET) {
@@ -4713,7 +4713,7 @@ int open_client_connection_session(turn_turnserver *server, struct socket_messag
   set_ioa_socket_session(ss->client_socket, ss);
 
   int at = TURN_MAX_ALLOCATE_TIMEOUT;
-  if (*(server->stun_only)) {
+  if (server->stun_only) {
     at = TURN_MAX_ALLOCATE_TIMEOUT_STUN_ONLY;
   }
 
@@ -4888,19 +4888,19 @@ static void client_input_handler(ioa_socket_handle s, int event_type, ioa_net_da
 void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, ioa_engine_handle e,
                       turn_credential_type ct, int fingerprint, dont_fragment_option_t dont_fragment,
                       get_user_key_cb userkeycb, check_new_allocation_quota_cb chquotacb,
-                      release_allocation_quota_cb raqcb, ioa_addr *external_ip, vintp check_origin, vintp no_tcp_relay,
-                      vintp no_udp_relay, vintp stale_nonce, vintp max_allocate_lifetime, vintp channel_lifetime,
-                      vintp permission_lifetime, vintp stun_only, vintp no_stun, bool software_attribute,
-                      vintp web_admin_listen_on_workers, turn_server_addrs_list_t *alternate_servers_list,
+                      release_allocation_quota_cb raqcb, ioa_addr *external_ip, bool check_origin, bool no_tcp_relay,
+                      bool no_udp_relay, vintp stale_nonce, vintp max_allocate_lifetime, vintp channel_lifetime,
+                      vintp permission_lifetime, bool stun_only, bool no_stun, bool software_attribute,
+                      bool web_admin_listen_on_workers, turn_server_addrs_list_t *alternate_servers_list,
                       turn_server_addrs_list_t *tls_alternate_servers_list, turn_server_addrs_list_t *aux_servers_list,
-                      int self_udp_balance, vintp no_multicast_peers, vintp allow_loopback_peers,
+                      int self_udp_balance, bool no_multicast_peers, bool allow_loopback_peers,
                       ip_range_list_t *ip_whitelist, ip_range_list_t *ip_blacklist,
-                      send_socket_to_relay_cb send_socket_to_relay, vintp secure_stun, vintp mobility, int server_relay,
+                      send_socket_to_relay_cb send_socket_to_relay, bool secure_stun, bool mobility, int server_relay,
                       send_turn_session_info_cb send_turn_session_info, send_https_socket_cb send_https_socket,
                       allocate_bps_cb allocate_bps_func, int oauth, const char *oauth_server_name,
                       const char *acme_redirect, ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family,
-                      vintp log_binding, vintp no_stun_backward_compatibility, vintp response_origin_only_with_rfc5780,
-                      vintp respond_http_unsupported) {
+                      bool log_binding, bool no_stun_backward_compatibility, bool response_origin_only_with_rfc5780,
+                      bool respond_http_unsupported) {
 
   if (!server) {
     return;
