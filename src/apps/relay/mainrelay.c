@@ -221,7 +221,9 @@ turn_params_t turn_params = {
     0,                                      /* no_auth_pings */
     0,                                      /* no_dynamic_ip_list */
     0,                                      /* no_dynamic_realms */
-
+    ///// UDP NOTIFIER /////
+    0,
+    "",
     0, /* log_binding */
     0, /* no_stun_backward_compatibility */
     0, /* response_origin_only_with_rfc5780 */
@@ -1227,9 +1229,7 @@ static char Usage[] =
     "						name will be constructed as-is, without PID and date appendage.\n"
     "						This option can be used, for example, together with the logrotate "
     "tool.\n"
-    " --new-log-timestamp				Enable full ISO-8601 timestamp in all logs.\n"
-    " --new-log-timestamp-format    	<format>	Set timestamp format (in strftime(1) format). Depends on "
-    "--new-log-timestamp to be enabled.\n"
+    " --new-log-timestamp				Enable timestamp in all logs.\n"
     " --log-binding					Log STUN binding request. It is now disabled by default to "
     "avoid DoS attacks.\n"
     " --stale-nonce[=<value>]			Use extra security with nonce value having limited lifetime (default "
@@ -1318,6 +1318,7 @@ static char Usage[] =
     "						when we want to run server applications on the relay endpoints.\n"
     "						This option eliminates the IP permissions check on the packets\n"
     "						incoming to the relay endpoints.\n"
+    " --udp-notifier					Send notification messages to target device via UDP interface.\n"
     " --cli-max-output-sessions			Maximum number of output sessions in ps CLI command.\n"
     "						This value can be changed on-the-fly in CLI. The default value is "
     "256.\n"
@@ -1447,7 +1448,6 @@ enum EXTRA_OPTS {
   SYSLOG_FACILITY_OPT,
   SIMPLE_LOG_OPT,
   NEW_LOG_TIMESTAMP_OPT,
-  NEW_LOG_TIMESTAMP_FORMAT_OPT,
   AUX_SERVER_OPT,
   UDP_SELF_BALANCE_OPT,
   ALTERNATE_SERVER_OPT,
@@ -1494,6 +1494,7 @@ enum EXTRA_OPTS {
   NO_HTTP_OPT,
   SECRET_KEY_OPT,
   ACME_REDIRECT_OPT,
+  UDP_NOTIFIER_OPT,
   LOG_BINDING_OPT,
   NO_RFC5780,
   NO_STUN_BACKWARD_COMPATIBILITY_OPT,
@@ -1597,7 +1598,6 @@ static const struct myoption long_options[] = {
     {"syslog", optional_argument, NULL, SYSLOG_OPT},
     {"simple-log", optional_argument, NULL, SIMPLE_LOG_OPT},
     {"new-log-timestamp", optional_argument, NULL, NEW_LOG_TIMESTAMP_OPT},
-    {"new-log-timestamp-format", required_argument, NULL, NEW_LOG_TIMESTAMP_FORMAT_OPT},
     {"aux-server", required_argument, NULL, AUX_SERVER_OPT},
     {"udp-self-balance", optional_argument, NULL, UDP_SELF_BALANCE_OPT},
     {"alternate-server", required_argument, NULL, ALTERNATE_SERVER_OPT},
@@ -1637,6 +1637,7 @@ static const struct myoption long_options[] = {
     {"keep-address-family", optional_argument, NULL, 'K'},
     {"allocation-default-address-family", required_argument, NULL, 'A'},
     {"acme-redirect", required_argument, NULL, ACME_REDIRECT_OPT},
+    {"udp-notifier", required_argument, NULL, UDP_NOTIFIER_OPT },
     {"log-binding", optional_argument, NULL, LOG_BINDING_OPT},
     {"no-rfc5780", optional_argument, NULL, NO_RFC5780},
     {"no-stun-backward-compatibility", optional_argument, NULL, NO_STUN_BACKWARD_COMPATIBILITY_OPT},
@@ -2343,6 +2344,10 @@ static void set_option(int c, char *value) {
       turn_params.rest_api_separator = *value;
     }
     break;
+  case UDP_NOTIFIER_OPT:
+    turn_params.udp_notifier = 1;
+    STRCPY(turn_params.udp_notifier_params, value);
+    break;
   case LOG_BINDING_OPT:
     turn_params.log_binding = get_bool_value(value);
     break;
@@ -2365,7 +2370,6 @@ static void set_option(int c, char *value) {
   case SYSLOG_OPT:
   case SIMPLE_LOG_OPT:
   case NEW_LOG_TIMESTAMP_OPT:
-  case NEW_LOG_TIMESTAMP_FORMAT_OPT:
   case SYSLOG_FACILITY_OPT:
   case 'c':
   case 'n':
@@ -2506,8 +2510,6 @@ static void read_config_file(int argc, char **argv, int pass) {
             set_simple_log(get_bool_value(value));
           } else if ((pass == 0) && (c == NEW_LOG_TIMESTAMP_OPT)) {
             use_new_log_timestamp_format = 1;
-          } else if ((pass == 0) && (c == NEW_LOG_TIMESTAMP_FORMAT_OPT)) {
-            set_turn_log_timestamp_format(value);
           } else if ((pass == 0) && (c == SYSLOG_FACILITY_OPT)) {
             set_syslog_facility(value);
           } else if ((pass == 1) && (c != 'u')) {
@@ -2984,9 +2986,6 @@ int main(int argc, char **argv) {
         break;
       case NEW_LOG_TIMESTAMP_OPT:
         use_new_log_timestamp_format = 1;
-        break;
-      case NEW_LOG_TIMESTAMP_FORMAT_OPT:
-        set_turn_log_timestamp_format(optarg);
         break;
       case SYSLOG_FACILITY_OPT:
         set_syslog_facility(optarg);
