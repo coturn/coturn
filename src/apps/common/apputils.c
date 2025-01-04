@@ -903,7 +903,7 @@ char *dirname(char *path) {
  * \return
  */
 static char *_WTA(__in wchar_t *pszInBuf, __in int nInSize, __out char **pszOutBuf, __out int *pnOutSize) {
-  if (!pszInBuf || !pszOutBuf || !*pszOutBuf || !pnOutSize || nInSize <= 0) {
+  if (!pszInBuf  ||  nInSize <= 0) {
     return NULL;
   }
   *pnOutSize = WideCharToMultiByte((UINT)0, (DWORD)0, pszInBuf, nInSize, NULL, 0, NULL, NULL);
