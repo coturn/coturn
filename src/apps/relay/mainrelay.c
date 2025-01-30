@@ -73,8 +73,6 @@ char HTTP_ALPN[128] = "http/1.1";
 
 //////TURN PARAMS STRUCTURE DEFINITION //////
 
-#define DEFAULT_GENERAL_RELAY_SERVERS_NUMBER (1)
-
 turn_params_t turn_params = {
     //////////////// OpenSSL group //////////////////////
     NULL,    /* tls_ctx */
@@ -162,9 +160,9 @@ turn_params_t turn_params = {
     NULL, /*relay_addrs*/
     0,    /*default_relays*/
 
-    NULL,                                 /*external_ip*/
-    DEFAULT_GENERAL_RELAY_SERVERS_NUMBER, /*general_relay_servers_number*/
-    0,                                    /*udp_relay_servers_number*/
+    NULL, /*external_ip*/
+    255,  /*general_relay_servers_number*/
+    0,    /*udp_relay_servers_number*/
 
     ////////////// Auth server /////////////////////////////////////
     "",
@@ -212,7 +210,7 @@ turn_params_t turn_params = {
     {(TURN_USERDB_TYPE)0, {"\0", "\0"}, {0, NULL, {NULL, 0}}},
 
     ///////////// CPUs //////////////////
-    DEFAULT_CPUS_NUMBER,
+    0,
 
     ///////// Encryption /////////
     "",                                     /* secret_key_file */
@@ -1013,6 +1011,10 @@ static char Usage[] =
     "						In older systems (pre-Linux 3.9) the number of UDP relay threads "
     "always equals\n"
     "						the number of listening endpoints (unless -m 0 is set).\n"
+    " --cpus-num			<number>	Number of cpus to use.\n"
+    "						If not set or set smth below 2 then a default OS-dependent optimal "
+    "algorithm will be "
+    "employed.\n"
     " --min-port			<port>		Lower bound of the UDP port range for relay endpoints "
     "allocation.\n"
     "						Default value is 49152, according to RFC 5766.\n"
@@ -1499,7 +1501,8 @@ enum EXTRA_OPTS {
   NO_STUN_BACKWARD_COMPATIBILITY_OPT,
   RESPONSE_ORIGIN_ONLY_WITH_RFC5780_OPT,
   RESPOND_HTTP_UNSUPPORTED_OPT,
-  VERSION_OPT
+  VERSION_OPT,
+  CPUS_NUMBER_OPT
 };
 
 struct myoption {
@@ -1644,6 +1647,7 @@ static const struct myoption long_options[] = {
     {"respond-http-unsupported", optional_argument, NULL, RESPOND_HTTP_UNSUPPORTED_OPT},
     {"version", optional_argument, NULL, VERSION_OPT},
     {"syslog-facility", required_argument, NULL, SYSLOG_FACILITY_OPT},
+    {"cpus-num", required_argument, NULL, CPUS_NUMBER_OPT},
     {NULL, no_argument, NULL, 0}};
 
 static const struct myoption admin_long_options[] = {
@@ -2358,6 +2362,16 @@ static void set_option(int c, char *value) {
   case RESPOND_HTTP_UNSUPPORTED_OPT:
     turn_params.respond_http_unsupported = get_bool_value(value);
     break;
+  case CPUS_NUMBER_OPT:
+    if (atoi(value) > MAX_CPUS_NUMBER) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "max number of cpus is 128.\n");
+      turn_params.cpus = MAX_CPUS_NUMBER;
+    } else if (atoi(value) <= MIN_CPUS_NUMBER) {
+      turn_params.cpus = 0;
+    } else {
+      turn_params.cpus = atoi(value);
+    }
+    break;
 
   /* these options have been already taken care of before: */
   case 'l':
@@ -3016,23 +3030,6 @@ int main(int argc, char **argv) {
   // Zero pass apply the log options.
   read_config_file(argc, argv, 0);
 
-  {
-    unsigned long cpus = get_system_active_number_of_cpus();
-    if (cpus > 0) {
-      turn_params.cpus = cpus;
-    }
-    if (turn_params.cpus < DEFAULT_CPUS_NUMBER) {
-      turn_params.cpus = DEFAULT_CPUS_NUMBER;
-    } else if (turn_params.cpus > MAX_NUMBER_OF_GENERAL_RELAY_SERVERS) {
-      turn_params.cpus = MAX_NUMBER_OF_GENERAL_RELAY_SERVERS;
-    }
-
-    turn_params.general_relay_servers_number = (turnserver_id)turn_params.cpus;
-
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "System cpu num is %lu\n", get_system_number_of_cpus());
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "System enable num is %lu\n", get_system_active_number_of_cpus());
-  }
-
   // First pass read other config options
   read_config_file(argc, argv, 1);
 
@@ -3043,6 +3040,26 @@ int main(int argc, char **argv) {
     if (c != 'u') {
       set_option(c, optarg);
     }
+  }
+
+  if (!turn_params.cpus) {
+    unsigned long cpus = get_system_active_number_of_cpus();
+    if (cpus > 0) {
+      turn_params.cpus = cpus;
+    }
+    if (turn_params.cpus < MIN_CPUS_NUMBER) {
+      turn_params.cpus = MIN_CPUS_NUMBER;
+    } else if (turn_params.cpus > MAX_CPUS_NUMBER) {
+      turn_params.cpus = MAX_CPUS_NUMBER;
+    }
+  }
+
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "System cpu num is %lu\n", get_system_number_of_cpus());
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "System enable num is %lu\n", get_system_active_number_of_cpus());
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Will be used %lu\n", turn_params.cpus);
+
+  if (turn_params.general_relay_servers_number == 255) {
+    turn_params.general_relay_servers_number = (turnserver_id)turn_params.cpus;
   }
 
   // Second pass read -u options
