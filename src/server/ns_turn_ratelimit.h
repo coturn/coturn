@@ -38,10 +38,12 @@
 extern "C" {
 #endif
 
-int ratelimit_is_address_limited(ioa_addr *address, int max_requests, int window_seconds);
+int ratelimit_is_address_limited(ioa_addr *address, int max_requests,
+                                 int window_seconds, const char *allowlist);
 void ratelimit_add_node(ioa_addr *address);
 int ratelimit_delete_expired(ur_map_value_type value);
 void ratelimit_init_map(void);
+void ratelimit_update_allowlist();
 ////// Rate limit for 401 Unauthorized //////
 
 #define RATELIMIT_DEFAULT_MAX_REQUESTS_PER_WINDOW 1000

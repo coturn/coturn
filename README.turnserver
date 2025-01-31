@@ -682,6 +682,8 @@ Options with values:
                             Defaults is 1000.
 --401-window=<seconds>      Set the time window duration in seconds for rate limiting 401 Unauthorized responses.
                             Defaults is 120.
+--401-allowlist=<filename>  Set the path of the allow-list, one IP per line allowed to bypass the 401 rate-limit settings.
+                            Default is none.
 					
 
 ==================================

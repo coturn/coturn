@@ -349,6 +349,7 @@ typedef struct _turn_params_ {
 
   vint ratelimit_401_requests_per_window;
   vint ratelimit_401_window_seconds;
+  char ratelimit_401_allowlist[1025];
 } turn_params_t;
 
 extern turn_params_t turn_params;

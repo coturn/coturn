@@ -213,6 +213,7 @@ struct _turn_turnserver {
 
   vintp ratelimit_401_requests_per_window;
   vintp ratelimit_401_window_seconds;
+  const char *ratelimit_401_allowlist;
 };
 
 const char *get_version(turn_turnserver *server);
@@ -235,7 +236,8 @@ void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, io
                       allocate_bps_cb allocate_bps_func, int oauth, const char *oauth_server_name,
                       const char *acme_redirect, ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family,
                       vintp log_binding, vintp no_stun_backward_compatibility, vintp response_origin_only_with_rfc5780,
-                      vintp ratelimit_401_requests_per_window, vintp ratelimit_401_window_seconds);
+                      vintp ratelimit_401_requests_per_window, vintp ratelimit_401_window_seconds,
+                      const char *ratelimit_401_allowlist);
 
 ioa_engine_handle turn_server_get_engine(turn_turnserver *s);
 
