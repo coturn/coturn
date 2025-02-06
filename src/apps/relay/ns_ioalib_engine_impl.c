@@ -249,6 +249,12 @@ void set_do_not_use_df(ioa_socket_handle s) {
   set_socket_df(s->fd, s->family, 0);
 }
 
+int set_ioa_socket_buf_size(ioa_socket_handle s, int sz) {
+  if (!s || sz <= 0)
+    return 0;
+  return set_sock_buf_size(s->fd, sz);
+}
+
 /************** Buffer List ********************/
 
 static int buffer_list_empty(stun_buffer_list *bufs) {
@@ -904,7 +910,6 @@ ioa_socket_handle create_unbound_relay_ioa_socket(ioa_engine_handle e, int famil
       perror("UDP socket");
       return NULL;
     }
-    set_sock_buf_size(fd, UR_CLIENT_SOCK_BUF_SIZE);
     break;
   case TCP_SOCKET:
     fd = socket(family, RELAY_STREAM_SOCKET_TYPE, RELAY_STREAM_SOCKET_PROTOCOL);
@@ -912,7 +917,6 @@ ioa_socket_handle create_unbound_relay_ioa_socket(ioa_engine_handle e, int famil
       perror("TCP socket");
       return NULL;
     }
-    set_sock_buf_size(fd, UR_CLIENT_SOCK_BUF_SIZE);
     break;
   default:
     /* we do not support other sockets in the relay position */
@@ -976,7 +980,6 @@ int create_relay_ioa_sockets(ioa_engine_handle e, ioa_socket_handle client_s, in
   size_t iip = 0;
 
   for (iip = 0; iip < e->relays_number; ++iip) {
-
     ioa_addr relay_addr;
     const ioa_addr *ra = ioa_engine_get_relay_addr(e, client_s, address_family, err_code);
     if (ra) {
@@ -1010,7 +1013,6 @@ int create_relay_ioa_sockets(ioa_engine_handle e, ioa_socket_handle client_s, in
       if (even_port < 0) {
         port = turnipports_allocate(tp, transport, &relay_addr);
       } else {
-
         port = turnipports_allocate_even(tp, &relay_addr, even_port, out_reservation_token);
         if (port >= 0 && even_port > 0) {
 
