@@ -1,0 +1,16 @@
+{{- if .Values.ratelimit.allowlist }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coturn-allowlist
+  labels:
+    app: coturn
+    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+data:
+  allowlist.txt: |
+    {{- range .Values.ratelimit.allowlist }}
+    {{ . }}
+    {{- end }}
+{{- end }}
