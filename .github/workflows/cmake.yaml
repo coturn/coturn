@@ -1,0 +1,47 @@
+name: CMake
+
+on:
+  push:
+    branches: ["master"]
+    tags: ["4.*"]
+  pull_request:
+    branches: ["master"]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+              libevent-dev \
+              libssl-dev \
+              libpq-dev libmariadb-dev libsqlite3-dev \
+              libhiredis-dev \
+              libmongoc-dev \
+              libmicrohttpd-dev \
+              wget
+      - uses: actions/checkout@v4
+      - name: Prometheus support
+        run: |
+          wget https://github.com/digitalocean/prometheus-client-c/releases/download/v0.1.3/libprom-dev-0.1.3-Linux.deb && \
+              sudo apt install ./libprom-dev-0.1.3-Linux.deb && \
+              rm ./libprom-dev-0.1.3-Linux.deb
+
+      - name: Configure
+        run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+      - name: Build
+        run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+
+      - run: ./run_tests.sh
+        working-directory: examples/
+      - run: ./run_tests_conf.sh
+        working-directory: examples/
