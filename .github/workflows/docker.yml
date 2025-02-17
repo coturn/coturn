@@ -41,7 +41,7 @@ jobs:
         with:
           platforms: linux/${{ matrix.arch }}
           buildkitd-config-inline: |
-            [worker.oci]
+            [oci]
             max-parallelism = 1
         if: ${{ matrix.arch == 'ppc64le' }}
 
