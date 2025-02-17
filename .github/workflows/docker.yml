@@ -37,15 +37,14 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0  # for correct image labeling via `git describe --tags`
-      - uses: docker/setup-buildx-action@v3
       - name: Configure `max-parallelism = 1` for Docker BuildKit
         run: echo -e "[worker.oci]\nmax-parallelism = 1"
              >> /tmp/buildkitd.toml
         if: ${{ matrix.arch == 'ppc64le' }}
-      - name: Create Docker BuildKit builder
-        run: docker buildx create --use --name builder 
-                                  --driver=docker-container --platform=linux/${{ matrix.arch }}
-                                  --config=/tmp/buildkitd.toml
+      - uses: docker/setup-buildx-action@v3
+        with:
+          platforms: linux/${{ matrix.arch }}
+          config: /tmp/buildkitd.toml
         if: ${{ matrix.arch == 'ppc64le' }}
 
       - name: Detect correct Git ref for image build
