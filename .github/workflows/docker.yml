@@ -43,8 +43,8 @@ jobs:
              >> /tmp/buildkitd.toml
         if: ${{ matrix.arch == 'ppc64le' }}
       - name: Create Docker BuildKit builder
-        run: docker buildx create --use --name container \
-                                  --driver docker-container \
+        run: docker buildx create --use --name container 
+                                  --driver docker-container 
                                   --config /tmp/buildkitd.toml
         if: ${{ matrix.arch == 'ppc64le' }}
 
