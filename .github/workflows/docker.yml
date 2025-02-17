@@ -42,12 +42,10 @@ jobs:
         run: echo -e "[worker.oci]\nmax-parallelism = 1"
              >> /tmp/buildkitd.toml
         if: ${{ matrix.arch == 'ppc64le' }}
-      - run: cat /tmp/buildkitd.toml
-        if: ${{ matrix.arch == 'ppc64le' }}
       - name: Create Docker BuildKit builder
-        run: docker buildx create --use --name container 
-                                  --driver docker-container 
-                                  --config /tmp/buildkitd.toml
+        run: docker buildx create --use --name builder 
+                                  --driver=docker-container --platform=linux/${{ matrix.arch }}
+                                  --config=/tmp/buildkitd.toml
         if: ${{ matrix.arch == 'ppc64le' }}
 
       - name: Detect correct Git ref for image build
