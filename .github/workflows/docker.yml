@@ -43,7 +43,6 @@ jobs:
           buildkitd-config-inline: |
             [worker.oci]
             max-parallelism = 1
-        if: ${{ matrix.arch == 'ppc64le' }}
 
       - name: Detect correct Git ref for image build
         id: git
