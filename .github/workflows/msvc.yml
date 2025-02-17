@@ -1,0 +1,160 @@
+name: MSVC
+
+on:
+  push:
+    branches: ["master"]
+    tags: ["4.*"]
+  pull_request:
+    branches: ["master"]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  VCPKGGITCOMMITID: 53bef8994c541b6561884a8395ea35715ece75db
+
+jobs:
+  code-analysis:
+    name: code analysis (windows-vc-${{ matrix.VCPKG_PLATFORM_TOOLSET }}-${{ matrix.CMAKE_GENERATOR_PLATFORM }}-${{ matrix.BUILD_TYPE }}-${{ matrix.BUILD_SHARED_LIBS }})
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        BUILD_TYPE: [Release]
+        BUILD_SHARED_LIBS: [OFF]
+        VCPKG_PLATFORM_TOOLSET: [v143]
+        CMAKE_GENERATOR_PLATFORM: [x64]
+    env:
+      SOURCE_DIR:  ${{ github.workspace }}\.cache\source
+      TOOLS_DIR:   ${{ github.workspace }}\.cache\tools
+      INSTALL_DIR: ${{ github.workspace }}\.cache\install_msvc_x64-windows_${{ matrix.BUILD_TYPE }}
+      VCPKG_PLATFORM_TOOLSET: ${{ matrix.VCPKG_PLATFORM_TOOLSET }}
+      CMAKE_GENERATOR_PLATFORM: ${{ matrix.CMAKE_GENERATOR_PLATFORM }}
+    defaults:
+      run:
+        shell: cmd
+    permissions:
+      security-events: write  # required for all CodeQL to report detected outcomes
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create directories
+        run: |
+          cmake -E make_directory ${{ env.SOURCE_DIR }}
+          cmake -E make_directory ${{ env.TOOLS_DIR }}
+          cmake -E make_directory ${{ env.INSTALL_DIR }}
+
+      - name: run-vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          # If not using a submodule for vcpkg sources, this specifies which commit
+          # id must be checkout from a Git repo. It must not set if using a submodule
+          # for vcpkg.
+          vcpkgGitCommitId: '${{ env.VCPKGGITCOMMITID }}'
+
+      - name: Configure
+        run: |
+          cmake -B build ^
+              -A ${{ matrix.CMAKE_GENERATOR_PLATFORM }} ^
+              -T ${{ matrix.VCPKG_PLATFORM_TOOLSET }} ^
+              -DWITH_MYSQL=OFF ^
+              -DBUILD_SHARED_LIBS=${{ matrix.BUILD_SHARED_LIBS }} ^
+              -DCMAKE_BUILD_TYPE=${{ matrix.BUILD_TYPE }} ^
+              -DCMAKE_TOOLCHAIN_FILE=${{ env.VCPKG_ROOT }}/scripts/buildsystems/vcpkg.cmake
+
+      - name: Initialize MSVC Code Analysis
+        uses: microsoft/msvc-code-analysis-action@v0.1.1
+        # Provide a unique ID to access the SARIF output path.
+        id: run-analysis
+        with:
+          cmakeBuildDirectory: build
+          buildConfiguration: ${{ matrix.BUILD_TYPE }}
+          # Ruleset file that will determine what checks will be run.
+          ruleset: NativeRecommendedRules.ruleset
+
+      # Upload SARIF file to GitHub Code Scanning Alerts
+      - name: Upload SARIF to GitHub
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: ${{ steps.run-analysis.outputs.sarif }}
+
+  compile:
+    name: compile (${{ matrix.os }}-vc-${{ matrix.VCPKG_PLATFORM_TOOLSET }}-${{ matrix.CMAKE_GENERATOR_PLATFORM }}-${{ matrix.BUILD_TYPE }}-${{ matrix.BUILD_SHARED_LIBS }})
+    strategy:
+      fail-fast: false
+      matrix:
+        BUILD_TYPE: ["Release", "Debug"]
+        BUILD_SHARED_LIBS: ["OFF", "ON"]
+        CMAKE_GENERATOR_PLATFORM: ["x64", "Win32"]
+        os: ["windows"]
+        include:
+          # MSVC 2022
+          - triplet: x64-windows
+            VCPKG_PLATFORM_TOOLSET: v143
+            CMAKE_GENERATOR_PLATFORM: x64
+          - triplet: x86-windows
+            VCPKG_PLATFORM_TOOLSET: v143
+            CMAKE_GENERATOR_PLATFORM: Win32
+          # MSVC 2019
+          - triplet: x86-windows
+            VCPKG_PLATFORM_TOOLSET: v142
+            CMAKE_GENERATOR_PLATFORM: Win32
+    runs-on: ${{ matrix.os }}-latest
+    env:
+      SOURCE_DIR:  ${{ github.workspace }}\.cache\source
+      TOOLS_DIR:   ${{ github.workspace }}\.cache\tools
+      INSTALL_DIR: ${{ github.workspace }}\.cache\install_msvc_${{matrix.triplet}}_${{matrix.BUILD_TYPE}}
+      VCPKG_PLATFORM_TOOLSET: ${{ matrix.VCPKG_PLATFORM_TOOLSET }}
+      CMAKE_GENERATOR_PLATFORM: ${{ matrix.CMAKE_GENERATOR_PLATFORM }}
+    defaults:
+      run:
+        shell: cmd
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create directories
+        run: |
+          cmake -E make_directory ${{ env.SOURCE_DIR }}
+          cmake -E make_directory ${{ env.TOOLS_DIR }}
+          cmake -E make_directory ${{ env.INSTALL_DIR }}
+
+      - name: run-vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          # If not using a submodule for vcpkg sources, this specifies which commit
+          # id must be checkout from a Git repo. It must not set if using a submodule
+          # for vcpkg.
+          vcpkgGitCommitId: '${{ env.VCPKGGITCOMMITID }}'
+
+      - name: Build Coturn
+        run: |
+          cmake -E make_directory ${{ github.workspace }}/build
+          cd ${{ github.workspace }}/build
+          cmake ${{ github.workspace }} ^
+              -A ${{ matrix.CMAKE_GENERATOR_PLATFORM }} ^
+              -T ${{ matrix.VCPKG_PLATFORM_TOOLSET }} ^
+              -DWITH_MYSQL=OFF ^
+              -DBUILD_SHARED_LIBS=${{ matrix.BUILD_SHARED_LIBS }} ^
+              -DCMAKE_BUILD_TYPE=${{ matrix.BUILD_TYPE }} ^
+              -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/build/install ^
+              -DCMAKE_TOOLCHAIN_FILE=${{ env.VCPKG_ROOT }}/scripts/buildsystems/vcpkg.cmake
+          cmake --build . --config ${{ matrix.BUILD_TYPE }}
+          cmake --build . --config ${{ matrix.BUILD_TYPE }} --target install
+
+      - name: Package
+        run: |
+          7z a coturn_windows_msvc.zip ${{ github.workspace }}\build\install\*
+          cmake --build . --config ${{ matrix.BUILD_TYPE }} --target package
+        working-directory: ${{ github.workspace }}\build
+        if: ${{ matrix.BUILD_TYPE == 'Release' }}
+
+      - name: Update artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: coturn_msvc-${{ matrix.VCPKG_PLATFORM_TOOLSET }}-${{ matrix.CMAKE_GENERATOR_PLATFORM }}-${{ matrix.BUILD_SHARED_LIBS }}
+          path: |
+            ${{ github.workspace }}\build\coturn_windows_msvc.zip
+            ${{ github.workspace }}\build\coturn*.exe
+            ${{ github.workspace }}\build\coturn*.md5
+        if: ${{ matrix.BUILD_TYPE == 'Release' }}
