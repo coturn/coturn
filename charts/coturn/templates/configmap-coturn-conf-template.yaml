@@ -90,6 +90,10 @@ data:
     401-req-limit={{ .Values.ratelimit.requestLimit }}
     401-window={{ .Values.ratelimit.window }}
     {{- end }}
+    {{- if .Values.ratelimit.allowlist }}
+    ## rate-limiting allowlist location
+    401-allowlist=/etc/coturn/allowlist.txt
+    {{- end }}
 
     {{- if .Values.federate.enabled }}
     ### federation setup

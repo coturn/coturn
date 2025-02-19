@@ -63,6 +63,11 @@ spec:
           secret:
             secretName: coturn-dtls-certificate
         {{- end }}
+        {{- if .Values.ratelimit.allowlist }}
+        - name: allowlist-volume
+          configMap:
+            name: coturn-allowlist
+        {{- end }}
       initContainers:
         - name: get-external-ip
           image: bitnami/kubectl:1.29.11
@@ -125,11 +130,16 @@ spec:
               mountPath: /secrets-tls/
               readOnly: true
           {{- end }}
-           {{- if .Values.federate.dtls.enabled }}
+          {{- if .Values.federate.dtls.enabled }}
             - name: coturn-dtls-certificate
               mountPath: /coturn-dtls-certificate/
               readOnly: true
-           {{- end }}
+          {{- end }}
+          {{- if .Values.ratelimit.allowlist }}
+            - name: allowlist-volume
+              mountPath: /etc/coturn/allowlist.txt
+              subPath: allowlist.txt
+          {{- end }}
           command:
             - /usr/bin/dumb-init
             - --

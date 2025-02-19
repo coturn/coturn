@@ -93,10 +93,14 @@ federate:
 
 ratelimit:
   override: false
-#   # Set the maximum number of 401 Unauthorized responses allowed per rate-limiting window. Defaults is 1000.
-#   requestLimit: 1000
-#   # Set the time window duration in seconds for rate limiting 401 Unauthorized responses. Defaults is 120.
-#   window: 120
+  # # Set the maximum number of 401 Unauthorized responses allowed per rate-limiting window. Defaults is 1000.
+  # requestLimit: 1000
+  # # Set the time window duration in seconds for rate limiting 401 Unauthorized responses. Defaults is 120.
+  # window: 120
+  # # Define the IPs allowed to bypass the 401 rate-limiting
+  # allowlist: 
+  #   - "192.168.1.1"
+  #   - "192.168.1.2"
 
 metrics:
   serviceMonitor:
