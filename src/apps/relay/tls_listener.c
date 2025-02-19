@@ -105,6 +105,8 @@ static void server_input_handler(struct evconnlistener *l, evutil_socket_t fd, s
     server->sm.m.sm.can_resume = 1;
     server->sm.relay_server = server->relay_server;
 
+    set_ioa_socket_buf_size(ioas, server->relay_server->server.sock_buf_size);
+
     int rc = server->connect_cb(server->e, &(server->sm));
 
     if (rc < 0) {
@@ -161,6 +163,8 @@ static void sctp_server_input_handler(struct evconnlistener *l, evutil_socket_t 
     server->sm.m.sm.s = ioas;
     server->sm.m.sm.can_resume = 1;
     server->sm.relay_server = server->relay_server;
+
+    set_ioa_socket_buf_size(ioas, server->relay_server->server.sock_buf_size);
 
     int rc = server->connect_cb(server->e, &(server->sm));
 
