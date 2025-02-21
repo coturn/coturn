@@ -127,16 +127,16 @@ struct _turn_turnserver {
   int verbose;
   int fingerprint;
   int rfc5780;
-  vintp check_origin;
+  bool *check_origin;
   vintp stale_nonce;
   vintp max_allocate_lifetime;
   vintp channel_lifetime;
   vintp permission_lifetime;
-  vintp stun_only;
-  vintp no_stun;
+  bool *stun_only;
+  bool *no_stun;
   bool software_attribute;
-  vintp web_admin_listen_on_workers;
-  vintp secure_stun;
+  bool *web_admin_listen_on_workers;
+  bool *secure_stun;
   turn_credential_type ct;
   get_alt_addr_cb alt_addr_cb;
   send_message_cb sm_cb;
@@ -147,14 +147,14 @@ struct _turn_turnserver {
   release_allocation_quota_cb raqcb;
   int external_ip_set;
   ioa_addr external_ip;
-  vintp allow_loopback_peers;
-  vintp no_multicast_peers;
+  bool *allow_loopback_peers;
+  bool *no_multicast_peers;
   send_turn_session_info_cb send_turn_session_info;
   send_https_socket_cb send_https_socket;
 
   /* RFC 6062 ==>> */
-  vintp no_udp_relay;
-  vintp no_tcp_relay;
+  bool *no_udp_relay;
+  bool *no_tcp_relay;
   ur_map *tcp_relay_connections;
   send_socket_to_relay_cb send_socket_to_relay;
   /* <<== RFC 6062 */
@@ -172,7 +172,7 @@ struct _turn_turnserver {
   ip_range_list_t *ip_blacklist;
 
   /* Mobility */
-  vintp mobility;
+  bool *mobility;
   ur_map *mobile_connections_map;
 
   /* Server relay */
@@ -192,17 +192,17 @@ struct _turn_turnserver {
   ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family;
 
   /* Log Binding Requrest */
-  vintp log_binding;
+  bool *log_binding;
 
   /* Disable handling old STUN Binding Requests and disable MAPPED-ADDRESS attribute in response */
-  vintp no_stun_backward_compatibility;
+  bool *no_stun_backward_compatibility;
 
   /* Only send RESPONSE-ORIGIN attribute in response if RFC5780 is enabled */
-  vintp response_origin_only_with_rfc5780;
+  bool *response_origin_only_with_rfc5780;
 
   /* Return an HTTP 400 response to HTTP connections made to ports not
      otherwise handling HTTP. */
-  vintp respond_http_unsupported;
+  bool *respond_http_unsupported;
 
   /* Set to true on SIGUSR1 */
   bool is_draining;
@@ -216,16 +216,16 @@ void init_turn_server(
     turn_turnserver *server, turnserver_id id, int verbose, ioa_engine_handle e, turn_credential_type ct,
     int fingerprint, dont_fragment_option_t dont_fragment, get_user_key_cb userkeycb,
     check_new_allocation_quota_cb chquotacb, release_allocation_quota_cb raqcb, ioa_addr *external_addr,
-    vintp check_origin, vintp no_tcp_relay, vintp no_udp_relay, vintp stale_nonce, vintp max_allocate_lifetime,
-    vintp channel_lifetime, vintp permission_lifetime, vintp stun_only, vintp no_stun, bool software_attribute,
-    vintp web_admin_listen_on_workers, turn_server_addrs_list_t *alternate_servers_list,
+    bool *check_origin, bool *no_tcp_relay, bool *no_udp_relay, vintp stale_nonce, vintp max_allocate_lifetime,
+    vintp channel_lifetime, vintp permission_lifetime, bool *stun_only, bool *no_stun, bool software_attribute,
+    bool *web_admin_listen_on_workers, turn_server_addrs_list_t *alternate_servers_list,
     turn_server_addrs_list_t *tls_alternate_servers_list, turn_server_addrs_list_t *aux_servers_list,
-    int self_udp_balance, vintp no_multicast_peers, vintp allow_loopback_peers, ip_range_list_t *ip_whitelist,
-    ip_range_list_t *ip_blacklist, send_socket_to_relay_cb send_socket_to_relay, vintp secure_stun, vintp mobility,
+    int self_udp_balance, bool *no_multicast_peers, bool *allow_loopback_peers, ip_range_list_t *ip_whitelist,
+    ip_range_list_t *ip_blacklist, send_socket_to_relay_cb send_socket_to_relay, bool *secure_stun, bool *mobility,
     int server_relay, send_turn_session_info_cb send_turn_session_info, send_https_socket_cb send_https_socket,
     allocate_bps_cb allocate_bps_func, int oauth, const char *oauth_server_name, const char *acme_redirect,
-    ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family, vintp log_binding,
-    vintp no_stun_backward_compatibility, vintp response_origin_only_with_rfc5780, vintp respond_http_unsupported);
+    ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family, bool *log_binding,
+    bool *no_stun_backward_compatibility, bool *response_origin_only_with_rfc5780, bool *respond_http_unsupported);
 
 ioa_engine_handle turn_server_get_engine(turn_turnserver *s);
 

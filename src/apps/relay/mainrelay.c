@@ -91,20 +91,20 @@ turn_params_t turn_params = {
     "",                     /*tls_password*/
     "",                     /*dh_file*/
 
-    0, /*no_tlsv1*/
-    0, /*no_tlsv1_1*/
-    0, /*no_tlsv1_2*/
-       /*no_tls*/
+    false, /*no_tlsv1*/
+    false, /*no_tlsv1_1*/
+    false, /*no_tlsv1_2*/
+           /*no_tls*/
 #if !TLS_SUPPORTED
-    1,
+    true,
 #else
-    0,
+    false,
 #endif
 /*no_dtls*/
 #if !DTLS_SUPPORTED
-    1,
+    true,
 #else
-    0,
+    false,
 #endif
 
     NULL,      /*tls_ctx_update_ev*/
@@ -112,11 +112,11 @@ turn_params_t turn_params = {
 
     //////////////// Common params ////////////////////
     TURN_VERBOSE_NONE, /* verbose */
-    0,                 /* turn_daemon */
-    false,             /* software_attribute */
-    0,                 /* web_admin_listen_on_workers */
+    false,             /* turn_daemon */
+    false,             /* no_software_attribute */
+    false,             /* web_admin_listen_on_workers */
 
-    0, /* do_not_use_config_file */
+    false, /* do_not_use_config_file */
 
     "/var/run/turnserver.pid", /* pidfile */
     "",                        /* acme_redirect */
@@ -128,19 +128,19 @@ turn_params_t turn_params = {
     0,                     /* alt_listener_port */
     0,                     /* alt_tls_listener_port */
     0,                     /* tcp_proxy_port */
-    1,                     /* rfc5780 */
+    true,                  /* rfc5780 */
 
-    0, /* no_udp */
-    0, /* no_tcp */
-    0, /* tcp_use_proxy */
+    false, /* no_udp */
+    false, /* no_tcp */
+    false, /* tcp_use_proxy */
 
-    0, /* no_tcp_relay */
-    0, /* no_udp_relay */
+    false, /* no_tcp_relay */
+    false, /* no_udp_relay */
 
     "", /*listener_ifname*/
 
     {"", ""},                                                                 /*redis_statsdb*/
-    0,                                                                        /*use_redis_statsdb*/
+    false,                                                                    /*use_redis_statsdb*/
     {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, 0, NULL, NULL, NULL}, /*listener*/
     {NULL, 0},                                                                /*ip_whitelist*/
     {NULL, 0},                                                                /*ip_blacklist*/
@@ -152,10 +152,10 @@ turn_params_t turn_params = {
     LOW_DEFAULT_PORTS_BOUNDARY,  /*min_port*/
     HIGH_DEFAULT_PORTS_BOUNDARY, /*max_port*/
 
-    0, /*check_origin*/
+    false, /*check_origin*/
 
-    0, /*no_multicast_peers*/
-    0, /*allow_loopback_peers*/
+    false, /*no_multicast_peers*/
+    false, /*allow_loopback_peers*/
 
     "",   /*relay_ifname*/
     0,    /*relays_number*/
@@ -184,9 +184,9 @@ turn_params_t turn_params = {
     false, /*stop_turn_server*/
 
     /////////////// MISC PARAMS ////////////////
-    0,                                  /* stun_only */
-    0,                                  /* no_stun */
-    0,                                  /* secure_stun */
+    false,                              /* stun_only */
+    false,                              /* no_stun */
+    false,                              /* secure_stun */
     0,                                  /* server_relay */
     0,                                  /* fingerprint */
     ':',                                /* rest_api_separator */
@@ -194,19 +194,19 @@ turn_params_t turn_params = {
     STUN_DEFAULT_MAX_ALLOCATE_LIFETIME, /* max_allocate_lifetime */
     STUN_DEFAULT_CHANNEL_LIFETIME,      /* channel_lifetime */
     STUN_DEFAULT_PERMISSION_LIFETIME,   /* permission_lifetime */
-    0,                                  /* mobility */
+    false,                              /* mobility */
     TURN_CREDENTIALS_NONE,              /* ct */
-    0,                                  /* use_auth_secret_with_timestamp */
+    false,                              /* use_auth_secret_with_timestamp */
     0,                                  /* max_bps */
     0,                                  /* bps_capacity */
     0,                                  /* bps_capacity_allocated */
     0,                                  /* total_quota */
     0,                                  /* user_quota */
-    0,                                  /* prometheus disabled by default */
+    false,                              /* prometheus disabled by default */
     DEFAULT_PROM_SERVER_PORT,           /* prometheus port */
     "",                                 /* prometheus address */
     "/metrics",                         /* prometheus path */
-    0, /* prometheus username labelling disabled by default when prometheus is enabled */
+    false, /* prometheus username labelling disabled by default when prometheus is enabled */
 
     ///////////// Users DB //////////////
     {(TURN_USERDB_TYPE)0, {"\0", "\0"}, {0, NULL, {NULL, 0}}},
@@ -218,14 +218,14 @@ turn_params_t turn_params = {
     "",                                     /* secret_key_file */
     "",                                     /* secret_key */
     ALLOCATION_DEFAULT_ADDRESS_FAMILY_IPV4, /* allocation_default_address_family */
-    0,                                      /* no_auth_pings */
-    0,                                      /* no_dynamic_ip_list */
-    0,                                      /* no_dynamic_realms */
+    false,                                  /* no_auth_pings */
+    false,                                  /* no_dynamic_ip_list */
+    false,                                  /* no_dynamic_realms */
 
-    0, /* log_binding */
-    0, /* no_stun_backward_compatibility */
-    0, /* response_origin_only_with_rfc5780 */
-    0  /* respond_http_unsupported */
+    false, /* log_binding */
+    false, /* no_stun_backward_compatibility */
+    false, /* response_origin_only_with_rfc5780 */
+    false  /* respond_http_unsupported */
 };
 
 //////////////// OpenSSL Init //////////////////////
