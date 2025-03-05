@@ -513,7 +513,7 @@ bool stun_is_challenge_response_str(const uint8_t *buf, size_t len, int *err_cod
       const uint8_t *value = stun_attr_get_value(sar);
       if (value) {
         size_t vlen = (size_t)stun_attr_get_len(sar);
-        vlen = min(vlen, STUN_MAX_REALM_SIZE);
+        vlen = min(vlen, (size_t)STUN_MAX_REALM_SIZE);
         memcpy(realm, value, vlen);
         realm[vlen] = 0;
         {
@@ -522,7 +522,7 @@ bool stun_is_challenge_response_str(const uint8_t *buf, size_t len, int *err_cod
             value = stun_attr_get_value(sar);
             if (value) {
               vlen = (size_t)stun_attr_get_len(sar);
-              vlen = min(vlen, STUN_MAX_SERVER_NAME_SIZE);
+              vlen = min(vlen, (size_t)STUN_MAX_SERVER_NAME_SIZE);
               if (vlen > 0) {
                 if (server_name) {
                   memcpy(server_name, value, vlen);
@@ -538,7 +538,7 @@ bool stun_is_challenge_response_str(const uint8_t *buf, size_t len, int *err_cod
           value = stun_attr_get_value(sar);
           if (value) {
             vlen = (size_t)stun_attr_get_len(sar);
-            vlen = min(vlen, STUN_MAX_NONCE_SIZE);
+            vlen = min(vlen, (size_t)STUN_MAX_NONCE_SIZE);
             memcpy(nonce, value, vlen);
             nonce[vlen] = 0;
             if (oauth) {
@@ -1747,8 +1747,8 @@ void print_bin_func(const char *name, size_t len, const void *s, const char *fun
   printf("]\n");
 }
 
-bool stun_attr_add_integrity_str(turn_credential_type ct, uint8_t *buf, size_t *len, hmackey_t key, password_t pwd,
-                                 SHATYPE shatype) {
+bool stun_attr_add_integrity_str(turn_credential_type ct, uint8_t *buf, size_t *len, hmackey_t key,
+                                 const password_t pwd, SHATYPE shatype) {
   uint8_t hmac[MAXSHASIZE];
 
   unsigned int shasize;
@@ -1772,7 +1772,7 @@ bool stun_attr_add_integrity_str(turn_credential_type ct, uint8_t *buf, size_t *
   }
 
   if (ct == TURN_CREDENTIALS_SHORT_TERM) {
-    return stun_calculate_hmac(buf, *len - 4 - shasize, pwd, strlen((char *)pwd), buf + *len - shasize, &shasize,
+    return stun_calculate_hmac(buf, *len - 4 - shasize, pwd, strlen((const char *)pwd), buf + *len - shasize, &shasize,
                                shatype);
   } else {
     return stun_calculate_hmac(buf, *len - 4 - shasize, key, get_hmackey_size(shatype), buf + *len - shasize, &shasize,
@@ -1809,8 +1809,8 @@ bool stun_attr_add_integrity_by_user_str(uint8_t *buf, size_t *len, const uint8_
   return stun_attr_add_integrity_by_key_str(buf, len, uname, realm, key, nonce, shatype);
 }
 
-bool stun_attr_add_integrity_by_user_short_term_str(uint8_t *buf, size_t *len, const uint8_t *uname, password_t pwd,
-                                                    SHATYPE shatype) {
+bool stun_attr_add_integrity_by_user_short_term_str(uint8_t *buf, size_t *len, const uint8_t *uname,
+                                                    const password_t pwd, SHATYPE shatype) {
   if (stun_attr_add_str(buf, len, STUN_ATTRIBUTE_USERNAME, uname, (int)strlen((const char *)uname))) {
     return false;
   }
