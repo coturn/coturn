@@ -21,7 +21,7 @@ set(HEADER_FILES
 
 add_library(${PROJECT_NAME} STATIC ${SOURCE_FILES} ${HEADER_FILES})
 
-target_link_libraries(${PROJECT_NAME} PUBLIC turnclient)
+target_link_libraries(${PROJECT_NAME} PUBLIC turnclient turnclientoauth)
 
 # See: http://www.it1352.com/478094.html
 target_include_directories(${PROJECT_NAME} PUBLIC

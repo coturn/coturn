@@ -68,6 +68,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/src/server>
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/src>
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/src/client>
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/src/clientoauth>
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/src/apps/common>
     ${COMMON_INCLUDE_DIR}
     )

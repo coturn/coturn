@@ -40,6 +40,7 @@
 #endif
 
 #include "apputils.h"
+#include "ns_turn_oauth.h"
 #include "ns_turn_utils.h"
 #include "stun_buffer.h"
 
