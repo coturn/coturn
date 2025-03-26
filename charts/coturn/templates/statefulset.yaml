@@ -91,7 +91,7 @@ spec:
                 # In the cloud, this setting is available to indicate the true IP address
                 addr=$(kubectl get node $NODE_NAME -ojsonpath='{.status.addresses[?(@.type=="ExternalIP")].address}')
                 
-                # On on-prem we allow people to set "wire.com/external-ip" to override this
+                # On on-prem we allow people to set "wire.com/external-ip" to be used if no ExternalIP is detected
                 if [ -z "$addr" ]; then
                   addr=$(kubectl get node $NODE_NAME -ojsonpath='{.metadata.annotations.wire\.com/external-ip}')
                 fi
