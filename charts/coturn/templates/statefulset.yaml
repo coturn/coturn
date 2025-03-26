@@ -98,7 +98,7 @@ spec:
 
                 if [ -n "$addr" ]; then
                   echo -n "$addr" | tee /dev/stderr > /external-ip/ip
-                  break  # Exit loop once IP is found
+                  break
                 fi
 
                 count=$((count + 1))
