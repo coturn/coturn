@@ -84,14 +84,32 @@ spec:
             - -c
             - |
               set -e
-  
-              # In the cloud, this setting is available to indicate the true IP address
-              addr=$(kubectl get node $NODE_NAME -ojsonpath='{.status.addresses[?(@.type=="ExternalIP")].address}')
-              # On on-prem we allow people to set  "wire.com/external-ip" to override this
+              max_tries=30
+              count=0
+
+              while [ "$count" -lt "$max_tries" ]; do
+                # In the cloud, this setting is available to indicate the true IP address
+                addr=$(kubectl get node $NODE_NAME -ojsonpath='{.status.addresses[?(@.type=="ExternalIP")].address}')
+                
+                # On on-prem we allow people to set "wire.com/external-ip" to be used if no ExternalIP is detected
+                if [ -z "$addr" ]; then
+                  addr=$(kubectl get node $NODE_NAME -ojsonpath='{.metadata.annotations.wire\.com/external-ip}')
+                fi
+
+                if [ -n "$addr" ]; then
+                  echo -n "$addr" | tee /dev/stderr > /external-ip/ip
+                  break
+                fi
+
+                count=$((count + 1))
+                echo "Waiting for external IP... ($count/$max_tries)"
+                sleep 10
+              done
+
               if [ -z "$addr" ]; then
-                addr=$(kubectl get node $NODE_NAME -ojsonpath='{.metadata.annotations.wire\.com/external-ip}')
+                echo "Error: No external IP found after $max_tries attempts." >&2
+                exit 1
               fi
-              echo -n "$addr" | tee /dev/stderr > /external-ip/ip
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository}}:{{ .Values.image.tag | default .Chart.AppVersion }}"
