@@ -65,6 +65,7 @@ MHD_RESULT promhttp_handler(void *cls, struct MHD_Connection *connection, const 
     }
     ret = MHD_NO;
   } else {
+    MHD_add_response_header(response, "Content-Type", "text/plain");
     ret = MHD_queue_response(connection, status, response);
     MHD_destroy_response(response);
   }
