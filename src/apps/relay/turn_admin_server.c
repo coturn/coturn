@@ -70,6 +70,7 @@
 #include "ns_turn_defs.h"   // for uint8_t, STRCPY, UNUSED_ARG, getcwd
 #include "ns_turn_maps.h"
 #include "ns_turn_msg.h" // for check_password, band_limit_t, conver...
+#include "ns_turn_oauth.h"
 #include "ns_turn_server.h"
 #include "ns_turn_session.h" // for turn_session_info, addr_data, _realm...
 #include "ns_turn_utils.h"
