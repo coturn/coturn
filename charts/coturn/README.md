@@ -1,5 +1,3 @@
-**Warning**: this chart is currently considered beta. Use at your own risk!
-
 This chart deploys Wire's fork of [coturn](https://github.com/coturn/coturn),
 a STUN and TURN server, with some additional features developed by Wire (see
 [here](https://github.com/wireapp/coturn/tree/wireapp)) to support our calling
