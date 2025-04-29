@@ -5,7 +5,7 @@ Summary:	Coturn TURN Server
 
 Group:		System Environment/Libraries
 License:	BSD
-URL:		https://github.com/coturn/coturn/ 
+URL:		https://github.com/coturn/coturn/
 Source0:	http://turnserver.open-sys.org/downloads/v%{version}/%{name}-%{version}.tar.gz
 
 BuildRequires:	gcc, make, redhat-rpm-config, sqlite-devel
@@ -284,6 +284,7 @@ fi
 %files		client-libs
 %{_docdir}/%{name}/LICENSE
 %{_libdir}/libturnclient.a
+%{_libdir}/libturnclientoauth.a
 
 %files		client-devel
 %{_docdir}/%{name}/LICENSE
@@ -295,6 +296,7 @@ fi
 %{_includedir}/turn/client/ns_turn_msg_defs.h
 %{_includedir}/turn/client/ns_turn_msg_defs_experimental.h
 %{_includedir}/turn/client/ns_turn_msg.h
+%{_includedir}/turn/client/ns_turn_oauth.h
 %{_includedir}/turn/client/TurnMsgLib.h
 
 %changelog
