@@ -51,10 +51,10 @@
 
 #define STUN_MAGIC_COOKIE (0x2112A442)
 
-#define IS_STUN_REQUEST(msg_type) (((msg_type)&0x0110) == 0x0000)
-#define IS_STUN_INDICATION(msg_type) (((msg_type)&0x0110) == 0x0010)
-#define IS_STUN_SUCCESS_RESP(msg_type) (((msg_type)&0x0110) == 0x0100)
-#define IS_STUN_ERR_RESP(msg_type) (((msg_type)&0x0110) == 0x0110)
+#define IS_STUN_REQUEST(msg_type) (((msg_type) & 0x0110) == 0x0000)
+#define IS_STUN_INDICATION(msg_type) (((msg_type) & 0x0110) == 0x0010)
+#define IS_STUN_SUCCESS_RESP(msg_type) (((msg_type) & 0x0110) == 0x0100)
+#define IS_STUN_ERR_RESP(msg_type) (((msg_type) & 0x0110) == 0x0110)
 
 #define GET_STUN_REQUEST(msg_type) (msg_type & 0xFEEF)
 #define GET_STUN_INDICATION(msg_type) ((msg_type & 0xFEEF) | 0x0010)
