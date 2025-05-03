@@ -166,6 +166,13 @@ Flags:
 
 -V, --Verbose		Extra verbose mode, very annoying and not recommended.
 
+--log-min-level	<level>	Set the minimum level at which to log:
+		0 = debug
+		1 = information
+		2 = control
+		3 = warning
+		4 = errors only
+
 -o, --daemon		Run server as daemon.
 
 --no-software-attribute	DEPRECATED. See "--software-attribute".
@@ -360,7 +367,7 @@ Options with values:
 --tcp-proxy-port	Support connections from TCP loadbalancer on this port. The loadbalancer
 			should use the binary proxy protocol.
 			(https://www.haproxy.org/download/1.8/doc/proxy-protocol.txt)
-				
+
 --aux-server		Auxiliary STUN/TURN server listening endpoint.
 			Aux servers have almost full TURN and STUN functionality.
 			The (minor) limitations are:
@@ -469,7 +476,7 @@ Options with values:
  --no-dynamic-ip-list	Do not use dynamic allowed/denied peer ip list.
 
  --no-dynamic-realms	Do not use dynamic realm assignment and options.
-			
+
 --server-name		Server name used for
 			the oAuth authentication purposes.
 			The default value is the realm name.
@@ -600,7 +607,7 @@ Options with values:
 -A --allocation-default-address-family=<ipv4|ipv6|keep> 		Default is IPv4
 			TURN server allocates address family according TURN client requested address family.
 			If address family not requested explicitly by the client, then it falls back to this default.
-			The standard RFC explicitly define that this default must be IPv4, 
+			The standard RFC explicitly define that this default must be IPv4,
 			so use other option values with care!
 
 --cli-ip		Local system IP address to be used for CLI management interface.
@@ -637,7 +644,7 @@ Options with values:
                     Strongly encouraged to use this option to decrease gain factor in STUN binding responses.
 --no-stun-backward-compatibility		Disable handling old STUN Binding requests and disable MAPPED-ADDRESS attribute in binding response (use only the XOR-MAPPED-ADDRESS).
 --response-origin-only-with-rfc5780		Only send RESPONSE-ORIGIN attribute in binding response if RFC5780 is enabled.
-					
+
 
 ==================================
 

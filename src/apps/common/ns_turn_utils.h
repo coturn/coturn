@@ -72,6 +72,9 @@ void set_syslog_facility(char *val);
 
 void set_turn_log_timestamp_format(char *new_format);
 
+extern int log_min_level;
+void set_log_min_level(const char *value);
+
 void turn_log_func_default(char *file, int line, TURN_LOG_LEVEL level, const char *format, ...)
 #ifdef __GNUC__
     __attribute__((format(printf, 4, 5)))

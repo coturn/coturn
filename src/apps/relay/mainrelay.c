@@ -1446,6 +1446,7 @@ enum EXTRA_OPTS {
   SYSLOG_OPT,
   SYSLOG_FACILITY_OPT,
   SIMPLE_LOG_OPT,
+  LOG_MIN_LEVEL_OPT,
   NEW_LOG_TIMESTAMP_OPT,
   NEW_LOG_TIMESTAMP_FORMAT_OPT,
   AUX_SERVER_OPT,
@@ -1596,6 +1597,7 @@ static const struct myoption long_options[] = {
     {"no-stdout-log", optional_argument, NULL, NO_STDOUT_LOG_OPT},
     {"syslog", optional_argument, NULL, SYSLOG_OPT},
     {"simple-log", optional_argument, NULL, SIMPLE_LOG_OPT},
+    {"log-min-level", required_argument, NULL, LOG_MIN_LEVEL_OPT},
     {"new-log-timestamp", optional_argument, NULL, NEW_LOG_TIMESTAMP_OPT},
     {"new-log-timestamp-format", required_argument, NULL, NEW_LOG_TIMESTAMP_FORMAT_OPT},
     {"aux-server", required_argument, NULL, AUX_SERVER_OPT},
@@ -2364,6 +2366,7 @@ static void set_option(int c, char *value) {
   case NO_STDOUT_LOG_OPT:
   case SYSLOG_OPT:
   case SIMPLE_LOG_OPT:
+  case LOG_MIN_LEVEL_OPT:
   case NEW_LOG_TIMESTAMP_OPT:
   case NEW_LOG_TIMESTAMP_FORMAT_OPT:
   case SYSLOG_FACILITY_OPT:
@@ -2504,6 +2507,8 @@ static void read_config_file(int argc, char **argv, int pass) {
             set_log_to_syslog(get_bool_value(value));
           } else if ((pass == 0) && (c == SIMPLE_LOG_OPT)) {
             set_simple_log(get_bool_value(value));
+          } else if ((pass == 0) && (c == LOG_MIN_LEVEL_OPT)) {
+            set_log_min_level(value);
           } else if ((pass == 0) && (c == NEW_LOG_TIMESTAMP_OPT)) {
             use_new_log_timestamp_format = 1;
           } else if ((pass == 0) && (c == NEW_LOG_TIMESTAMP_FORMAT_OPT)) {
@@ -2981,6 +2986,9 @@ int main(int argc, char **argv) {
         break;
       case SIMPLE_LOG_OPT:
         set_simple_log(get_bool_value(optarg));
+        break;
+      case LOG_MIN_LEVEL_OPT:
+        set_log_min_level(optarg);
         break;
       case NEW_LOG_TIMESTAMP_OPT:
         use_new_log_timestamp_format = 1;
