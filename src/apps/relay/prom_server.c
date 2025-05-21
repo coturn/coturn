@@ -56,6 +56,11 @@ MHD_RESULT promhttp_handler(void *cls, struct MHD_Connection *connection, const 
     body = prom_collector_registry_bridge(PROM_COLLECTOR_REGISTRY_DEFAULT);
     mode = MHD_RESPMEM_MUST_FREE;
     status = MHD_HTTP_OK;
+  } else if (strcmp(url, "/") == 0) {
+    // Return 200 OK for root path as a health check
+    body = "ok";
+    mode = MHD_RESPMEM_PERSISTENT;
+    status = MHD_HTTP_OK;
   }
 
   struct MHD_Response *response = MHD_create_response_from_buffer(strlen(body), body, mode);
