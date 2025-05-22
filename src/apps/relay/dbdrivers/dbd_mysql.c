@@ -295,8 +295,8 @@ static MYSQL *get_mydb_connection(void) {
         MYSQL *conn = mysql_real_connect(mydbconnection, co->host, co->user, co->password, co->dbname, co->port, NULL,
                                          CLIENT_IGNORE_SIGPIPE);
         if (!conn) {
-          TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open MySQL DB connection: <%s>, runtime error\n",
-                        pud->userdb_sanitized);
+          TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open MySQL DB connection: <%s>, runtime error: %s\n",
+                        pud->userdb_sanitized, mysql_error(mydbconnection));
           mysql_close(mydbconnection);
           mydbconnection = NULL;
         } else if (mysql_select_db(mydbconnection, co->dbname)) {
