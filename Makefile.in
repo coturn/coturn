@@ -1,7 +1,7 @@
 
 LIBEVENT_INCLUDE = -I${PREFIX}/include/ -I/usr/local/include/
 
-INCFLAGS = -Isrc -Isrc/apps/common -Isrc/server -Isrc/client -Isrc/client++ ${LIBEVENT_INCLUDE}
+INCFLAGS = -Isrc -Isrc/apps/common -Isrc/server -Isrc/client -Isrc/clientoauth -Isrc/client++ ${LIBEVENT_INCLUDE}
 
 CFLAGS += ${INCFLAGS}
 
@@ -12,13 +12,18 @@ LIBCLIENTTURN_MODS = src/client/ns_turn_ioaddr.c src/client/ns_turn_msg_addr.c s
 LIBCLIENTTURN_DEPS = ${LIBCLIENTTURN_HEADERS} ${MAKE_DEPS}
 LIBCLIENTTURN_OBJS = build/obj/ns_turn_ioaddr.o build/obj/ns_turn_msg_addr.o build/obj/ns_turn_msg.o
 
-SERVERTURN_HEADERS = src/server/ns_turn_allocation.h src/server/ns_turn_ioalib.h src/server/ns_turn_khash.h src/server/ns_turn_maps_rtcp.h src/server/ns_turn_maps.h src/server/ns_turn_server.h src/server/ns_turn_session.h 
-SERVERTURN_DEPS = ${LIBCLIENTTURN_HEADERS} ${SERVERTURN_HEADERS} ${MAKE_DEPS}
-SERVERTURN_MODS = ${LIBCLIENTTURN_MODS} src/server/ns_turn_allocation.c src/server/ns_turn_maps_rtcp.c src/server/ns_turn_maps.c src/server/ns_turn_server.c
+LIBCLIENTOAUTHTURN_HEADERS = src/ns_turn_defs.h src/clientoauth/ns_turn_oauth.h
+LIBCLIENTOAUTHTURN_MODS = src/clientoauth/ns_turn_oauth.c
+LIBCLIENTOAUTHTURN_DEPS = ${LIBCLIENTOAUTHTURN_HEADERS} ${MAKE_DEPS}
+LIBCLIENTOAUTHTURN_OBJS = build/obj/ns_turn_oauth.o
+
+SERVERTURN_HEADERS = src/server/ns_turn_allocation.h src/server/ns_turn_ioalib.h src/server/ns_turn_khash.h src/server/ns_turn_maps_rtcp.h src/server/ns_turn_maps.h src/server/ns_turn_server.h src/server/ns_turn_session.h
+SERVERTURN_DEPS = ${LIBCLIENTTURN_HEADERS} ${LIBCLIENTOAUTHTURN_HEADERS} ${SERVERTURN_HEADERS} ${MAKE_DEPS}
+SERVERTURN_MODS = ${LIBCLIENTTURN_MODS} ${LIBCLIENTOAUTHTURN_MODS} src/server/ns_turn_allocation.c src/server/ns_turn_maps_rtcp.c src/server/ns_turn_maps.c src/server/ns_turn_server.c
 
 COMMON_HEADERS = src/apps/common/apputils.h src/apps/common/ns_turn_openssl.h src/apps/common/ns_turn_utils.h src/apps/common/stun_buffer.h
 COMMON_MODS = src/apps/common/apputils.c src/apps/common/ns_turn_utils.c src/apps/common/stun_buffer.c
-COMMON_DEPS = ${LIBCLIENTTURN_DEPS} ${COMMON_MODS} ${COMMON_HEADERS}
+COMMON_DEPS = ${LIBCLIENTTURN_DEPS} ${LIBCLIENTOAUTHTURN_DEPS} ${COMMON_MODS} ${COMMON_HEADERS}
 
 IMPL_HEADERS = src/apps/relay/ns_ioalib_impl.h src/apps/relay/ns_sm.h src/apps/relay/turn_ports.h
 IMPL_MODS = src/apps/relay/ns_ioalib_engine_impl.c src/apps/relay/turn_ports.c src/apps/relay/http_server.c src/apps/relay/acme.c
@@ -32,9 +37,9 @@ USERDB_MODS = src/apps/relay/dbdrivers/dbdriver.c src/apps/relay/dbdrivers/dbd_s
 
 SERVERAPP_HEADERS = src/apps/relay/userdb.h src/apps/relay/tls_listener.h src/apps/relay/mainrelay.h src/apps/relay/turn_admin_server.h src/apps/relay/dtls_listener.h src/apps/relay/libtelnet.h src/apps/relay/prom_server.h ${HIREDIS_HEADERS} ${USERDB_HEADERS}
 SERVERAPP_MODS = src/apps/relay/mainrelay.c src/apps/relay/netengine.c src/apps/relay/libtelnet.c src/apps/relay/turn_admin_server.c src/apps/relay/userdb.c src/apps/relay/tls_listener.c src/apps/relay/dtls_listener.c src/apps/relay/prom_server.c ${HIREDIS_MODS} ${USERDB_MODS}
-SERVERAPP_DEPS = ${SERVERTURN_MODS} ${SERVERTURN_DEPS} ${SERVERAPP_MODS} ${SERVERAPP_HEADERS} ${COMMON_DEPS} ${IMPL_DEPS} lib/libturnclient.a
+SERVERAPP_DEPS = ${SERVERTURN_MODS} ${SERVERTURN_DEPS} ${SERVERAPP_MODS} ${SERVERAPP_HEADERS} ${COMMON_DEPS} ${IMPL_DEPS} lib/libturnclient.a lib/libturnclientoauth.a
 
-TURN_BUILD_RESULTS = bin/turnutils_oauth bin/turnutils_natdiscovery bin/turnutils_stunclient bin/turnutils_rfc5769check bin/turnutils_uclient bin/turnserver bin/turnutils_peer lib/libturnclient.a include/turn/ns_turn_defs.h sqlite_empty_db
+TURN_BUILD_RESULTS = bin/turnutils_oauth bin/turnutils_natdiscovery bin/turnutils_stunclient bin/turnutils_rfc5769check bin/turnutils_uclient bin/turnserver bin/turnutils_peer lib/libturnclient.a lib/libturnclientoauth.a include/turn/ns_turn_defs.h sqlite_empty_db
 
 .PHONY: all test check clean distclean sqlite_empty_db install deinstall uninstall reinstall
 
@@ -55,32 +60,33 @@ include/turn/ns_turn_defs.h:	src/ns_turn_defs.h
 	${RMCMD} include
 	${MKBUILDDIR} include/turn/client
 	cp -pf src/client/*.h include/turn/client/
+	cp -pf src/clientoauth/*.h include/turn/client/
 	cp -pf src/client++/*.h include/turn/client/
 	cp -pf src/ns_turn_defs.h include/turn/
 
-bin/turnutils_uclient:	${COMMON_DEPS} src/apps/uclient/session.h lib/libturnclient.a src/apps/uclient/mainuclient.c src/apps/uclient/uclient.c src/apps/uclient/uclient.h src/apps/uclient/startuclient.c src/apps/uclient/startuclient.h
+bin/turnutils_uclient:	${COMMON_DEPS} src/apps/uclient/session.h lib/libturnclient.a lib/libturnclientoauth.a src/apps/uclient/mainuclient.c src/apps/uclient/uclient.c src/apps/uclient/uclient.h src/apps/uclient/startuclient.c src/apps/uclient/startuclient.h
 	${MKBUILDDIR} bin
-	${CC} ${CPPFLAGS} ${CFLAGS} src/apps/uclient/uclient.c src/apps/uclient/startuclient.c src/apps/uclient/mainuclient.c ${COMMON_MODS} -o $@ -Llib -lturnclient -Llib ${LDFLAGS}
+	${CC} ${CPPFLAGS} ${CFLAGS} src/apps/uclient/uclient.c src/apps/uclient/startuclient.c src/apps/uclient/mainuclient.c ${COMMON_MODS} -o $@ -Llib -lturnclient -lturnclientoauth -Llib ${LDFLAGS}
 
 bin/turnutils_natdiscovery:	${COMMON_DEPS} lib/libturnclient.a src/apps/natdiscovery/natdiscovery.c
 	pwd
 	${MKBUILDDIR} bin
 	${CC} ${CPPFLAGS} ${CFLAGS} src/apps/natdiscovery/natdiscovery.c ${COMMON_MODS} -o $@ -Llib -lturnclient -Llib ${LDFLAGS}
 
-bin/turnutils_oauth:	${COMMON_DEPS} lib/libturnclient.a src/apps/oauth/oauth.c
+bin/turnutils_oauth:	${COMMON_DEPS} lib/libturnclient.a lib/libturnclientoauth.a src/apps/oauth/oauth.c
 	pwd
 	${MKBUILDDIR} bin
-	${CC} ${CPPFLAGS} ${CFLAGS} src/apps/oauth/oauth.c ${COMMON_MODS} -o $@ -Llib -lturnclient -Llib ${LDFLAGS}
+	${CC} ${CPPFLAGS} ${CFLAGS} src/apps/oauth/oauth.c ${COMMON_MODS} -o $@ -Llib -lturnclient -lturnclientoauth -Llib ${LDFLAGS}
 
 bin/turnutils_stunclient:	${COMMON_DEPS} lib/libturnclient.a src/apps/stunclient/stunclient.c
 	pwd
 	${MKBUILDDIR} bin
 	${CC} ${CPPFLAGS} ${CFLAGS} src/apps/stunclient/stunclient.c ${COMMON_MODS} -o $@ -Llib -lturnclient -Llib ${LDFLAGS}
 
-bin/turnutils_rfc5769check:	${COMMON_DEPS} lib/libturnclient.a src/apps/rfc5769/rfc5769check.c
+bin/turnutils_rfc5769check:	${COMMON_DEPS} lib/libturnclient.a lib/libturnclientoauth.a src/apps/rfc5769/rfc5769check.c
 	pwd
 	${MKBUILDDIR} bin
-	${CC} ${CPPFLAGS} ${CFLAGS} src/apps/rfc5769/rfc5769check.c ${COMMON_MODS} -o $@ -Llib -lturnclient -Llib ${LDFLAGS}
+	${CC} ${CPPFLAGS} ${CFLAGS} src/apps/rfc5769/rfc5769check.c ${COMMON_MODS} -o $@ -Llib -lturnclient -lturnclientoauth -Llib ${LDFLAGS}
 
 bin/turnserver:	${SERVERAPP_DEPS}
 	${MKBUILDDIR} bin
@@ -90,7 +96,7 @@ bin/turnserver:	${SERVERAPP_DEPS}
 
 bin/turnutils_peer:	${COMMON_DEPS} ${LIBCLIENTTURN_MODS} ${LIBCLIENTTURN_DEPS} lib/libturnclient.a src/apps/peer/mainudpserver.c src/apps/peer/udpserver.h src/apps/peer/udpserver.c
 	${MKBUILDDIR} bin
-	${CC} ${CPPFLAGS} ${CFLAGS} src/apps/peer/mainudpserver.c src/apps/peer/udpserver.c ${COMMON_MODS} -o $@ -Llib -lturnclient -Llib ${LDFLAGS}  
+	${CC} ${CPPFLAGS} ${CFLAGS} src/apps/peer/mainudpserver.c src/apps/peer/udpserver.c ${COMMON_MODS} -o $@ -Llib -lturnclient -Llib ${LDFLAGS}
 
 ### Client Library:
 
@@ -109,6 +115,16 @@ build/obj/ns_turn_msg_addr.o:	src/client/ns_turn_msg_addr.c ${LIBCLIENTTURN_DEPS
 build/obj/ns_turn_msg.o:	src/client/ns_turn_msg.c ${LIBCLIENTTURN_DEPS}
 	${MKBUILDDIR} build/obj
 	${CC} ${CPPFLAGS} ${CFLAGS} -c src/client/ns_turn_msg.c -o $@
+
+### Client OAuth Library:
+
+lib/libturnclientoauth.a:	${LIBCLIENTOAUTHTURN_OBJS} ${LIBCLIENTOAUTHTURN_DEPS}
+	${MKBUILDDIR} lib
+	${ARCHIVERCMD} $@ ${LIBCLIENTOAUTHTURN_OBJS}
+
+build/obj/ns_turn_oauth.o:	src/clientoauth/ns_turn_oauth.c ${LIBCLIENTOAUTHTURN_DEPS}
+	${MKBUILDDIR} build/obj
+	${CC} ${CPPFLAGS} ${CFLAGS} -c src/clientoauth/ns_turn_oauth.c -o $@
 
 ### Clean all:
 
@@ -156,6 +172,7 @@ install:	all ${MAKE_DEPS}
 	${INSTALL_MAN} man/man1/turnutils_peer.1 ${DESTDIR}${MANPREFIX}/man/man1/
 	${INSTALL_MAN} man/man1/coturn.1 ${DESTDIR}${MANPREFIX}/man/man1/
 	${INSTALL_STATIC_LIB} lib/libturnclient.a ${DESTDIR}${LIBDIR}
+	${INSTALL_STATIC_LIB} lib/libturnclientoauth.a ${DESTDIR}${LIBDIR}
 	${INSTALL_DATA} LICENSE ${DESTDIR}${DOCSDIR}
 	${INSTALL_DATA} README.turnserver ${DESTDIR}${DOCSDIR}
 	${INSTALL_DATA} README.turnadmin ${DESTDIR}${DOCSDIR}
@@ -204,6 +221,7 @@ deinstall:	${MAKE_DEPS}
 	${RMCMD} ${DESTDIR}${MANPREFIX}/man/man1/turnutils_peer.1
 	${RMCMD} ${DESTDIR}${MANPREFIX}/man/man1/coturn.1
 	${RMCMD} ${DESTDIR}${LIBDIR}/libturnclient.a
+	${RMCMD} ${DESTDIR}${LIBDIR}/libturnclientoauth.a
 	${RMCMD} ${DESTDIR}${EXAMPLESDIR}
 	${RMCMD} ${DESTDIR}${CONFDIR}/turnserver.conf.default
 	${RMCMD} ${DESTDIR}${TURNINCLUDEDIR}

@@ -210,6 +210,7 @@ size_t get_hmackey_size(SHATYPE shatype);
 #define TURN_RANDOM_SIZE (sizeof(long))
 long turn_random(void);
 long turn_random_number(void);
+void generate_random_nonce(unsigned char *nonce, size_t sz);
 
 bool stun_produce_integrity_key_str(const uint8_t *uname, const uint8_t *realm, const uint8_t *upwd, hmackey_t key,
                                     SHATYPE shatype);
@@ -226,13 +227,6 @@ bool stun_attr_add_padding_str(uint8_t *buf, size_t *len, uint16_t padding_len);
 
 /* HTTP */
 int is_http(const char *s, size_t blen);
-
-/* OAUTH */
-bool convert_oauth_key_data(const oauth_key_data *oakd, oauth_key *key, char *err_msg, size_t err_msg_size);
-bool decode_oauth_token(const uint8_t *server_name, const encoded_oauth_token *etoken, const oauth_key *key,
-                        oauth_token *dtoken);
-bool encode_oauth_token(const uint8_t *server_name, encoded_oauth_token *etoken, const oauth_key *key,
-                        const oauth_token *dtoken, const uint8_t *nonce);
 
 /* Encrypted password */
 void generate_new_enc_password(const char *pwd, char *result);
