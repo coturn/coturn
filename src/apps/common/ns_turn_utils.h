@@ -45,6 +45,10 @@ void err(int eval, const char *format, ...);
 #include "ns_turn_ioaddr.h"
 
 #ifdef __cplusplus
+#include <algorithm> // for std::min
+#endif
+
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -72,7 +76,7 @@ void set_syslog_facility(char *val);
 
 void set_turn_log_timestamp_format(char *new_format);
 
-void turn_log_func_default(char *file, int line, TURN_LOG_LEVEL level, const char *format, ...)
+void turn_log_func_default(const char *file, int line, TURN_LOG_LEVEL level, const char *format, ...)
 #ifdef __GNUC__
     __attribute__((format(printf, 4, 5)))
 #endif
@@ -97,12 +101,15 @@ int is_secure_string(const uint8_t *string, int sanitizesql);
 
 ///////////////////////////////////////////////////////
 
-#if !defined(min)
-#define min(a, b) ((a) <= (b) ? (a) : (b))
-#endif
-
 #ifdef __cplusplus
 }
+#endif
+
+// Make sure that we don't try to pull std::min into the extern-c block.
+#if defined(__cplusplus)
+using std::min;
+#elif !defined(min)
+#define min(a, b) ((a) <= (b) ? (a) : (b))
 #endif
 
 #endif //__TURN_ULIB__
