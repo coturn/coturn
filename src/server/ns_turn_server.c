@@ -700,6 +700,7 @@ static mobile_id_t get_new_mobile_id(turn_turnserver *server) {
     uint64_t sid = server->id;
     sid = sid << 56;
     do {
+      newid = 0;
       while (!newid) {
         if (TURN_RANDOM_SIZE == sizeof(mobile_id_t)) {
           newid = (mobile_id_t)turn_random();
