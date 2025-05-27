@@ -164,15 +164,15 @@ int turn_mutex_destroy(turn_mutex *mutex) {
 
 /* syslog facility */
 /*BVB-594  Syslog facility */
-static char *str_fac[] = {"LOG_AUTH",   "LOG_CRON",   "LOG_DAEMON",   "LOG_KERN",   "LOG_LOCAL0",
-                          "LOG_LOCAL1", "LOG_LOCAL2", "LOG_LOCAL3",   "LOG_LOCAL4", "LOG_LOCAL5",
-                          "LOG_LOCAL6", "LOG_LOCAL7", "LOG_LPR",      "LOG_MAIL",   "LOG_NEWS",
-                          "LOG_USER",   "LOG_UUCP",   "LOG_AUTHPRIV", "LOG_SYSLOG", 0};
+static const char *const str_fac[] = {"LOG_AUTH",   "LOG_CRON",   "LOG_DAEMON",   "LOG_KERN",   "LOG_LOCAL0",
+                                      "LOG_LOCAL1", "LOG_LOCAL2", "LOG_LOCAL3",   "LOG_LOCAL4", "LOG_LOCAL5",
+                                      "LOG_LOCAL6", "LOG_LOCAL7", "LOG_LPR",      "LOG_MAIL",   "LOG_NEWS",
+                                      "LOG_USER",   "LOG_UUCP",   "LOG_AUTHPRIV", "LOG_SYSLOG", 0};
 
 #if defined(__unix__) || defined(unix) || defined(__APPLE__)
-static int int_fac[] = {LOG_AUTH,   LOG_CRON,   LOG_DAEMON, LOG_KERN,     LOG_LOCAL0, LOG_LOCAL1, LOG_LOCAL2,
-                        LOG_LOCAL3, LOG_LOCAL4, LOG_LOCAL5, LOG_LOCAL6,   LOG_LOCAL7, LOG_LPR,    LOG_MAIL,
-                        LOG_NEWS,   LOG_USER,   LOG_UUCP,   LOG_AUTHPRIV, LOG_SYSLOG, 0};
+static const int int_fac[] = {LOG_AUTH,   LOG_CRON,   LOG_DAEMON, LOG_KERN,     LOG_LOCAL0, LOG_LOCAL1, LOG_LOCAL2,
+                              LOG_LOCAL3, LOG_LOCAL4, LOG_LOCAL5, LOG_LOCAL6,   LOG_LOCAL7, LOG_LPR,    LOG_MAIL,
+                              LOG_NEWS,   LOG_USER,   LOG_UUCP,   LOG_AUTHPRIV, LOG_SYSLOG, 0};
 
 static int syslog_facility = 0;
 
@@ -366,7 +366,7 @@ static void sighup_callback_handler(int signum) {
 
 static void set_rtpfile(void) {
   if (to_reset_log_file) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "%s: resetting the log file\n", __FUNCTION__);
+    printf("%s: resetting the log file\n", __FUNCTION__);
     reset_rtpprintf();
     to_reset_log_file = 0;
   }
@@ -541,7 +541,8 @@ void err(int eval, const char *format, ...) {
 }
 #endif
 
-void turn_log_func_default(char *file, int line, TURN_LOG_LEVEL level, const char *format, ...) {
+void turn_log_func_default(const char *const file, const int line, const TURN_LOG_LEVEL level, const char *const format,
+                           ...) {
   va_list args;
   va_start(args, format);
 #if defined(TURN_LOG_FUNC_IMPL)

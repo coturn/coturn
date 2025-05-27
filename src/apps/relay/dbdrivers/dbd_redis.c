@@ -345,41 +345,42 @@ static redisContext *get_redis_connection(void) {
         redisconnection = redisConnect(ip, port);
       }
 
-      if (redisconnection) {
-        if (redisconnection->err) {
-          if (redisconnection->errstr[0]) {
+      if (redisconnection && redisconnection->err) {
+        if (redisconnection->errstr[0]) {
+          TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Redis: %s\n", redisconnection->errstr);
+        }
+        redisFree(redisconnection);
+        redisconnection = NULL;
+      }
+
+      if (redisconnection && co->password && co->password[0]) {
+        void *reply;
+        if (co->user && co->user[0]) {
+          reply = redisCommand(redisconnection, "AUTH %s %s", co->user, co->password);
+        } else {
+          reply = redisCommand(redisconnection, "AUTH %s", co->password);
+        }
+        if (!reply) {
+          if (redisconnection->err && redisconnection->errstr[0]) {
             TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Redis: %s\n", redisconnection->errstr);
           }
           redisFree(redisconnection);
           redisconnection = NULL;
-        } else if (co->password && strlen(co->password)) {
-          void *reply;
-          if (co->user && strlen(co->user)) {
-            reply = redisCommand(redisconnection, "AUTH %s %s", co->user, co->password);
-          } else {
-            reply = redisCommand(redisconnection, "AUTH %s", co->password);
+        } else {
+          turnFreeRedisReply(reply);
+        }
+      }
+
+      if (redisconnection && co->dbname) {
+        void *reply = redisCommand(redisconnection, "select %s", co->dbname);
+        if (!reply) {
+          if (redisconnection->err && redisconnection->errstr[0]) {
+            TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Redis: %s\n", redisconnection->errstr);
           }
-          if (!reply) {
-            if (redisconnection->err && redisconnection->errstr[0]) {
-              TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Redis: %s\n", redisconnection->errstr);
-            }
-            redisFree(redisconnection);
-            redisconnection = NULL;
-          } else {
-            turnFreeRedisReply(reply);
-            if (co->dbname) {
-              reply = redisCommand(redisconnection, "select %s", co->dbname);
-              if (!reply) {
-                if (redisconnection->err && redisconnection->errstr[0]) {
-                  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Redis: %s\n", redisconnection->errstr);
-                }
-                redisFree(redisconnection);
-                redisconnection = NULL;
-              } else {
-                turnFreeRedisReply(reply);
-              }
-            }
-          }
+          redisFree(redisconnection);
+          redisconnection = NULL;
+        } else {
+          turnFreeRedisReply(reply);
         }
       }
 

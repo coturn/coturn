@@ -848,30 +848,18 @@ if [ -z "${TURN_NO_PROMETHEUS}" ] ; then
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
         ${ECHO_CMD} "Prometheus lib found."
-        testlib promhttp
+        testlib microhttpd
         ER=$?
         if ! [ ${ER} -eq 0 ] ; then
-            ${ECHO_CMD} "Prometheus http lib found."
-            testlib microhttpd
-            ER=$?
-            if ! [ ${ER} -eq 0 ] ; then
-                ${ECHO_CMD} "Microhttpd lib found."
-                # Adjustments for Debian
-                # See: https://github.com/coturn/coturn/pull/754#issuecomment-824693226
-                if [ -f "/etc/debian_version" ] ; then
-                    OSLIBS="${OSLIBS} -latomic"
-                fi
-            else
-                ${ECHO_CMD}
-                ${ECHO_CMD} "Warning: microhttpd development libraries are not installed properly in required location."
-                ${ECHO_CMD} "Prometheus support will be disabled."
-                ${ECHO_CMD} "See the docs/Prometheus.md file."
-                ${ECHO_CMD}
-                OSCFLAGS="${OSCFLAGS} -DTURN_NO_PROMETHEUS"
+            ${ECHO_CMD} "Microhttpd lib found."
+            # Adjustments for Debian
+            # See: https://github.com/coturn/coturn/pull/754#issuecomment-824693226
+            if [ -f "/etc/debian_version" ] ; then
+                OSLIBS="${OSLIBS} -latomic"
             fi
         else
             ${ECHO_CMD}
-            ${ECHO_CMD} "Warning: Libpromhttp development libraries are not installed properly in required location."
+            ${ECHO_CMD} "Warning: microhttpd development libraries are not installed properly in required location."
             ${ECHO_CMD} "Prometheus support will be disabled."
             ${ECHO_CMD} "See the docs/Prometheus.md file."
             ${ECHO_CMD}
@@ -1024,6 +1012,14 @@ if [ -z "${TURN_NO_SCTP}" ] ; then
     fi
 else
     TURN_NO_SCTP="-DTURN_NO_SCTP"
+fi
+
+###############################
+# TLS
+###############################
+
+if [ -n "${TURN_NO_TLS}" ]; then
+    TURN_NO_TLS="-DTURN_NO_TLS"
 fi
 
 ###############################

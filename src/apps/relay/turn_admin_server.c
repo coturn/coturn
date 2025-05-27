@@ -189,19 +189,20 @@ static const telnet_telopt_t cli_telopts[] = {
 
 struct toggleable_command {
   const char *cmd;
-  vintp data;
+  bool *data;
 };
 
-struct toggleable_command tcmds[] = {{"stale-nonce", &turn_params.stale_nonce},
-                                     {"stun-only", &turn_params.stun_only},
-                                     {"no-stun", &turn_params.no_stun},
-                                     {"secure-stun", &turn_params.secure_stun},
-                                     {"no-udp-relay", &turn_params.no_udp_relay},
-                                     {"no-tcp-relay", &turn_params.no_tcp_relay},
-                                     {"no-multicast-peers", &turn_params.no_multicast_peers},
-                                     {"allow-loopback-peers", &turn_params.allow_loopback_peers},
-                                     {"mobility", &turn_params.mobility},
-                                     {NULL, NULL}};
+struct toggleable_command tcmds[] = {
+    //{"stale-nonce", &turn_params.stale_nonce}, // TODO re-enable this option by separating from rest of bools
+    {"stun-only", &turn_params.stun_only},
+    {"no-stun", &turn_params.no_stun},
+    {"secure-stun", &turn_params.secure_stun},
+    {"no-udp-relay", &turn_params.no_udp_relay},
+    {"no-tcp-relay", &turn_params.no_tcp_relay},
+    {"no-multicast-peers", &turn_params.no_multicast_peers},
+    {"allow-loopback-peers", &turn_params.allow_loopback_peers},
+    {"mobility", &turn_params.mobility},
+    {NULL, NULL}};
 
 ///////////////////////////////
 
@@ -1696,7 +1697,7 @@ static void https_finish_page(struct str_buffer *sb, ioa_socket_handle s, int cc
   str_buffer_append(sb, "</body>\r\n</html>\r\n");
 
   send_str_from_ioa_socket_tcp(s, "HTTP/1.1 200 OK\r\nServer: ");
-  if (!turn_params.no_software_attribute) {
+  if (turn_params.software_attribute) {
     send_str_from_ioa_socket_tcp(s, TURN_SOFTWARE);
   }
   send_str_from_ioa_socket_tcp(s, "\r\n");
