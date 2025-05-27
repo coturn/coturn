@@ -289,19 +289,19 @@ void del_tls_alternate_server(const char *saddr) {
 }
 
 void add_tcp_alternate_server(const char *saddr) {
-  add_alt_server(saddr, DEFAULT_STUN_TLS_PORT, &turn_params.tcp_alternate_servers_list);
+  add_alt_server(saddr, DEFAULT_STUN_PORT, &turn_params.tcp_alternate_servers_list);
 }
 
 void del_tcp_alternate_server(const char *saddr) {
-  del_alt_server(saddr, DEFAULT_STUN_TLS_PORT, &turn_params.tcp_alternate_servers_list);
+  del_alt_server(saddr, DEFAULT_STUN_PORT, &turn_params.tcp_alternate_servers_list);
 }
 
 void add_udp_alternate_server(const char *saddr) {
-  add_alt_server(saddr, DEFAULT_STUN_TLS_PORT, &turn_params.udp_alternate_servers_list);
+  add_alt_server(saddr, DEFAULT_STUN_PORT, &turn_params.udp_alternate_servers_list);
 }
 
 void del_udp_alternate_server(const char *saddr) {
-  del_alt_server(saddr, DEFAULT_STUN_TLS_PORT, &turn_params.udp_alternate_servers_list);
+  del_alt_server(saddr, DEFAULT_STUN_PORT, &turn_params.udp_alternate_servers_list);
 }
 
 //////////////////////////////////////////////////
