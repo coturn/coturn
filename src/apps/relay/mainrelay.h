@@ -281,6 +281,8 @@ typedef struct _turn_params_ {
 
   turn_server_addrs_list_t alternate_servers_list;
   turn_server_addrs_list_t tls_alternate_servers_list;
+  turn_server_addrs_list_t tcp_alternate_servers_list;
+  turn_server_addrs_list_t udp_alternate_servers_list;
 
   /////////////// stop/drain server ////////////////
   bool drain_turn_server;
@@ -359,6 +361,10 @@ void add_alternate_server(const char *saddr);
 void del_alternate_server(const char *saddr);
 void add_tls_alternate_server(const char *saddr);
 void del_tls_alternate_server(const char *saddr);
+void add_tcp_alternate_server(const char *saddr);
+void del_tcp_alternate_server(const char *saddr);
+void add_udp_alternate_server(const char *saddr);
+void del_udp_alternate_server(const char *saddr);
 
 ////////// Addrs ////////////////////
 

@@ -164,6 +164,10 @@ struct _turn_turnserver {
   size_t as_counter;
   turn_server_addrs_list_t *tls_alternate_servers_list;
   size_t tls_as_counter;
+  turn_server_addrs_list_t *tcp_alternate_servers_list;
+  size_t tcp_as_counter;
+  turn_server_addrs_list_t *udp_alternate_servers_list;
+  size_t udp_as_counter;
   turn_server_addrs_list_t *aux_servers_list;
   int self_udp_balance;
 
@@ -219,7 +223,8 @@ void init_turn_server(
     bool *check_origin, bool *no_tcp_relay, bool *no_udp_relay, vintp stale_nonce, vintp max_allocate_lifetime,
     vintp channel_lifetime, vintp permission_lifetime, bool *stun_only, bool *no_stun, bool software_attribute,
     bool *web_admin_listen_on_workers, turn_server_addrs_list_t *alternate_servers_list,
-    turn_server_addrs_list_t *tls_alternate_servers_list, turn_server_addrs_list_t *aux_servers_list,
+    turn_server_addrs_list_t *tls_alternate_servers_list, turn_server_addrs_list_t *tcp_alternate_servers_list,
+    turn_server_addrs_list_t *udp_alternate_servers_list, turn_server_addrs_list_t *aux_servers_list,
     int self_udp_balance, bool *no_multicast_peers, bool *allow_loopback_peers, ip_range_list_t *ip_whitelist,
     ip_range_list_t *ip_blacklist, send_socket_to_relay_cb send_socket_to_relay, bool *secure_stun, bool *mobility,
     int server_relay, send_turn_session_info_cb send_turn_session_info, send_https_socket_cb send_https_socket,
