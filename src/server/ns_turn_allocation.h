@@ -40,7 +40,8 @@
 #include <stdbool.h>
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 ///////// Defines //////////
@@ -50,14 +51,17 @@ extern "C" {
 
 ////////////// Network session ////////////////
 
-typedef struct {
+typedef struct
+{
   ioa_socket_handle s;
   turn_time_t expiration_time;
   ioa_timer_handle lifetime_ev;
 } relay_endpoint_session;
 
-static inline void clear_relay_endpoint_session_data(relay_endpoint_session *cdi) {
-  if (cdi) {
+static inline void clear_relay_endpoint_session_data(relay_endpoint_session *cdi)
+{
+  if (cdi)
+  {
     IOA_CLOSE_SOCKET(cdi->s);
   }
 }
@@ -66,7 +70,8 @@ static inline void clear_relay_endpoint_session_data(relay_endpoint_session *cdi
 
 #define MAX_UNSENT_BUFFER_SIZE (0x10)
 
-enum _TC_STATE {
+enum _TC_STATE
+{
   TC_STATE_UNKNOWN = 0,
   TC_STATE_CLIENT_TO_PEER_CONNECTING,
   TC_STATE_PEER_CONNECTING,
@@ -79,12 +84,14 @@ typedef enum _TC_STATE TC_STATE;
 
 typedef uint32_t tcp_connection_id;
 
-typedef struct {
+typedef struct
+{
   size_t sz;
   ioa_network_buffer_handle *bufs;
 } unsent_buffer;
 
-struct _tcp_connection {
+struct _tcp_connection
+{
   TC_STATE state;
   tcp_connection_id id;
   ioa_addr peer_addr;
@@ -98,7 +105,8 @@ struct _tcp_connection {
   unsent_buffer ub_to_client;
 };
 
-typedef struct _tcp_connection_list {
+typedef struct _tcp_connection_list
+{
   size_t sz;
   tcp_connection **elems;
 } tcp_connection_list;
@@ -108,7 +116,8 @@ typedef struct _tcp_connection_list {
 #define TURN_PERMISSION_HASHTABLE_SIZE (0x8)
 #define TURN_PERMISSION_ARRAY_SIZE (0x3)
 
-typedef struct _ch_info {
+typedef struct _ch_info
+{
   uint16_t chnum;
   bool allocated;
   uint16_t port;
@@ -124,13 +133,15 @@ typedef struct _ch_info {
 #define CH_MAP_HASH_SIZE (0x8)
 #define CH_MAP_ARRAY_SIZE (0x3)
 
-typedef struct _chn_map_array {
+typedef struct _chn_map_array
+{
   ch_info main_chns[CH_MAP_ARRAY_SIZE];
   size_t extra_sz;
   ch_info **extra_chns;
 } ch_map_array;
 
-typedef struct _ch_map {
+typedef struct _ch_map
+{
   ch_map_array table[CH_MAP_HASH_SIZE];
 } ch_map;
 
@@ -139,7 +150,8 @@ void ch_map_clean(ch_map *map);
 
 ////////////////////////////
 
-typedef struct _turn_permission_info {
+typedef struct _turn_permission_info
+{
   bool allocated;
   lm_map chns;
   ioa_addr addr;
@@ -150,17 +162,20 @@ typedef struct _turn_permission_info {
   unsigned long long session_id;
 } turn_permission_info;
 
-typedef struct _turn_permission_slot {
+typedef struct _turn_permission_slot
+{
   turn_permission_info info;
 } turn_permission_slot;
 
-typedef struct _turn_permission_array {
+typedef struct _turn_permission_array
+{
   turn_permission_slot main_slots[TURN_PERMISSION_ARRAY_SIZE];
   size_t extra_sz;
   turn_permission_slot **extra_slots;
 } turn_permission_array;
 
-typedef struct _turn_permission_hashtable {
+typedef struct _turn_permission_hashtable
+{
   turn_permission_array table[TURN_PERMISSION_HASHTABLE_SIZE];
 } turn_permission_hashtable;
 
@@ -172,7 +187,8 @@ typedef struct _turn_permission_hashtable {
 #define ALLOC_INDEX(family) ((((family) == AF_INET6)) ? ALLOC_IPV6_INDEX : ALLOC_IPV4_INDEX)
 #define ALLOC_INDEX_ADDR(addr) ALLOC_INDEX(((addr)->ss).sa_family)
 
-typedef struct _allocation {
+typedef struct _allocation
+{
   bool is_valid;
   stun_tid tid;
   turn_permission_hashtable addr_to_perm;

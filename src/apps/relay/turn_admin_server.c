@@ -115,7 +115,8 @@ int web_admin_port = WEB_ADMIN_DEFAULT_PORT;
 
 ///////////////////////////////
 
-struct cli_session {
+struct cli_session
+{
   evutil_socket_t fd;
   int auth_completed;
   size_t cmds;
@@ -187,7 +188,8 @@ static const telnet_telopt_t cli_telopts[] = {
     {TELNET_TELOPT_MSSP, TELNET_WONT, TELNET_DONT},      {TELNET_TELOPT_BINARY, TELNET_WONT, TELNET_DONT},
     {TELNET_TELOPT_NAWS, TELNET_WONT, TELNET_DONT},      {-1, 0, 0}};
 
-struct toggleable_command {
+struct toggleable_command
+{
   const char *cmd;
   bool *data;
 };
@@ -206,92 +208,126 @@ struct toggleable_command tcmds[] = {
 
 ///////////////////////////////
 
-static void myprintf(struct cli_session *cs, const char *format, ...) {
-  if (cs && format) {
+static void myprintf(struct cli_session *cs, const char *format, ...)
+{
+  if (cs && format)
+  {
     va_list args;
     va_start(args, format);
-    if (cs->f) {
+    if (cs->f)
+    {
       vfprintf(cs->f, format, args);
-    } else {
+    }
+    else
+    {
       telnet_vprintf(cs->ts, format, args);
     }
     va_end(args);
   }
 }
 
-static void log_reset(struct cli_session *cs) {
-  if (cs) {
+static void log_reset(struct cli_session *cs)
+{
+  if (cs)
+  {
     reset_rtpprintf();
     myprintf(cs, "  log reset done\n");
   }
 }
 
-static void print_str_array(struct cli_session *cs, const char **sa) {
-  if (cs && sa) {
+static void print_str_array(struct cli_session *cs, const char **sa)
+{
+  if (cs && sa)
+  {
     int i = 0;
-    while (sa[i]) {
+    while (sa[i])
+    {
       myprintf(cs, "%s\n", sa[i]);
       i++;
     }
   }
 }
 
-static const char *get_flag(int val) {
-  if (val) {
+static const char *get_flag(int val)
+{
+  if (val)
+  {
     return "ON";
   }
   return "OFF";
 }
 
-static void cli_print_flag(struct cli_session *cs, int flag, const char *name, int changeable) {
-  if (cs && cs->ts && name) {
+static void cli_print_flag(struct cli_session *cs, int flag, const char *name, int changeable)
+{
+  if (cs && cs->ts && name)
+  {
     const char *sc = "";
-    if (changeable) {
+    if (changeable)
+    {
       sc = " (*)";
     }
     myprintf(cs, "  %s: %s%s\n", name, get_flag(flag), sc);
   }
 }
 
-static void cli_print_uint(struct cli_session *cs, unsigned long value, const char *name, int changeable) {
-  if (cs && cs->ts && name) {
+static void cli_print_uint(struct cli_session *cs, unsigned long value, const char *name, int changeable)
+{
+  if (cs && cs->ts && name)
+  {
     const char *sc = "";
-    if (changeable == 1) {
+    if (changeable == 1)
+    {
       sc = " (*)";
-    } else if (changeable == 2) {
+    }
+    else if (changeable == 2)
+    {
       sc = " (**)";
     }
     myprintf(cs, "  %s: %lu%s\n", name, value, sc);
   }
 }
 
-static void cli_print_str(struct cli_session *cs, const char *value, const char *name, int changeable) {
-  if (cs && cs->ts && name && value) {
-    if (value[0] == 0) {
+static void cli_print_str(struct cli_session *cs, const char *value, const char *name, int changeable)
+{
+  if (cs && cs->ts && name && value)
+  {
+    if (value[0] == 0)
+    {
       value = "empty";
     }
     const char *sc = "";
-    if (changeable == 1) {
+    if (changeable == 1)
+    {
       sc = " (*)";
-    } else if (changeable == 2) {
+    }
+    else if (changeable == 2)
+    {
       sc = " (**)";
     }
     myprintf(cs, "  %s: %s%s\n", name, value, sc);
   }
 }
 
-static void cli_print_addr(struct cli_session *cs, ioa_addr *value, int use_port, const char *name, int changeable) {
-  if (cs && cs->ts && name && value) {
+static void cli_print_addr(struct cli_session *cs, ioa_addr *value, int use_port, const char *name, int changeable)
+{
+  if (cs && cs->ts && name && value)
+  {
     const char *sc = "";
-    if (changeable == 1) {
+    if (changeable == 1)
+    {
       sc = " (*)";
-    } else if (changeable == 2) {
+    }
+    else if (changeable == 2)
+    {
       sc = " (**)";
     }
     char s[256];
-    if (!use_port) {
+    if (!use_port)
+    {
       addr_to_string_no_port(value, (uint8_t *)s);
-    } else {
+    }
+    else
+    {
       addr_to_string(value, (uint8_t *)s);
     }
     myprintf(cs, "  %s: %s%s\n", name, s, sc);
@@ -299,20 +335,29 @@ static void cli_print_addr(struct cli_session *cs, ioa_addr *value, int use_port
 }
 
 static void cli_print_addr_list(struct cli_session *cs, turn_server_addrs_list_t *value, int use_port, const char *name,
-                                int changeable) {
-  if (cs && cs->ts && name && value && value->size && value->addrs) {
+                                int changeable)
+{
+  if (cs && cs->ts && name && value && value->size && value->addrs)
+  {
     const char *sc = "";
-    if (changeable == 1) {
+    if (changeable == 1)
+    {
       sc = " (*)";
-    } else if (changeable == 2) {
+    }
+    else if (changeable == 2)
+    {
       sc = " (**)";
     }
     char s[256];
     size_t i;
-    for (i = 0; i < value->size; i++) {
-      if (!use_port) {
+    for (i = 0; i < value->size; i++)
+    {
+      if (!use_port)
+      {
         addr_to_string_no_port(&(value->addrs[i]), (uint8_t *)s);
-      } else {
+      }
+      else
+      {
         addr_to_string(&(value->addrs[i]), (uint8_t *)s);
       }
       myprintf(cs, "  %s: %s%s\n", name, s, sc);
@@ -320,53 +365,76 @@ static void cli_print_addr_list(struct cli_session *cs, turn_server_addrs_list_t
   }
 }
 
-static void cli_print_str_array(struct cli_session *cs, char **value, size_t sz, const char *name, int changeable) {
-  if (cs && cs->ts && name && value && sz) {
+static void cli_print_str_array(struct cli_session *cs, char **value, size_t sz, const char *name, int changeable)
+{
+  if (cs && cs->ts && name && value && sz)
+  {
     const char *sc = "";
-    if (changeable == 1) {
+    if (changeable == 1)
+    {
       sc = " (*)";
-    } else if (changeable == 2) {
+    }
+    else if (changeable == 2)
+    {
       sc = " (**)";
     }
     size_t i;
-    for (i = 0; i < sz; i++) {
-      if (value[i]) {
+    for (i = 0; i < sz; i++)
+    {
+      if (value[i])
+      {
         myprintf(cs, "  %s: %s%s\n", name, value[i], sc);
       }
     }
   }
 }
 
-static void cli_print_ip_range_list(struct cli_session *cs, ip_range_list_t *value, const char *name, int changeable) {
-  if (cs && cs->ts && name && value && value->ranges_number && value->rs) {
+static void cli_print_ip_range_list(struct cli_session *cs, ip_range_list_t *value, const char *name, int changeable)
+{
+  if (cs && cs->ts && name && value && value->ranges_number && value->rs)
+  {
     const char *sc = "";
-    if (changeable == 1) {
+    if (changeable == 1)
+    {
       sc = " (*)";
-    } else if (changeable == 2) {
+    }
+    else if (changeable == 2)
+    {
       sc = " (**)";
     }
     size_t i;
-    for (i = 0; i < value->ranges_number; ++i) {
-      if (value->rs[i].realm[0]) {
-        if (cs->realm[0] && strcmp(cs->realm, value->rs[i].realm)) {
+    for (i = 0; i < value->ranges_number; ++i)
+    {
+      if (value->rs[i].realm[0])
+      {
+        if (cs->realm[0] && strcmp(cs->realm, value->rs[i].realm))
+        {
           continue;
-        } else {
+        }
+        else
+        {
           myprintf(cs, "  %s: %s (%s)%s\n", name, value->rs[i].str, value->rs[i].realm, sc);
         }
-      } else {
+      }
+      else
+      {
         myprintf(cs, "  %s: %s%s\n", name, value->rs[i].str, sc);
       }
     }
   }
 }
 
-static void toggle_cli_param(struct cli_session *cs, const char *pn) {
-  if (cs && cs->ts && pn) {
+static void toggle_cli_param(struct cli_session *cs, const char *pn)
+{
+  if (cs && cs->ts && pn)
+  {
 
     int i = 0;
 
-    while (tcmds[i].cmd && tcmds[i].data) {
-      if (strcmp(tcmds[i].cmd, pn) == 0) {
+    while (tcmds[i].cmd && tcmds[i].data)
+    {
+      if (strcmp(tcmds[i].cmd, pn) == 0)
+      {
         *(tcmds[i].data) = !(*(tcmds[i].data));
         cli_print_flag(cs, *(tcmds[i].data), tcmds[i].cmd, 0);
         return;
@@ -381,7 +449,8 @@ static void toggle_cli_param(struct cli_session *cs, const char *pn) {
 
     i = 0;
 
-    while (tcmds[i].cmd && tcmds[i].data) {
+    while (tcmds[i].cmd && tcmds[i].data)
+    {
       cli_print_flag(cs, *(tcmds[i].data), tcmds[i].cmd, 0);
       ++i;
     }
@@ -390,26 +459,37 @@ static void toggle_cli_param(struct cli_session *cs, const char *pn) {
   }
 }
 
-static void change_cli_param(struct cli_session *cs, const char *pn) {
-  if (cs && cs->ts && pn) {
+static void change_cli_param(struct cli_session *cs, const char *pn)
+{
+  if (cs && cs->ts && pn)
+  {
 
-    if (strstr(pn, "total-quota") == pn) {
+    if (strstr(pn, "total-quota") == pn)
+    {
       turn_params.total_quota = atoi(pn + strlen("total-quota"));
       cli_print_uint(cs, (unsigned long)turn_params.total_quota, "total-quota", 2);
       return;
-    } else if (strstr(pn, "user-quota") == pn) {
+    }
+    else if (strstr(pn, "user-quota") == pn)
+    {
       turn_params.user_quota = atoi(pn + strlen("user-quota"));
       cli_print_uint(cs, (unsigned long)turn_params.user_quota, "user-quota", 2);
       return;
-    } else if (strstr(pn, "max-bps") == pn) {
+    }
+    else if (strstr(pn, "max-bps") == pn)
+    {
       set_max_bps((band_limit_t)strtoul(pn + strlen("max-bps"), NULL, 10));
       cli_print_uint(cs, (unsigned long)get_max_bps(), "max-bps", 2);
       return;
-    } else if (strstr(pn, "bps-capacity") == pn) {
+    }
+    else if (strstr(pn, "bps-capacity") == pn)
+    {
       set_bps_capacity((band_limit_t)strtoul(pn + strlen("bps-capacity"), NULL, 10));
       cli_print_uint(cs, (unsigned long)get_bps_capacity(), "bps-capacity", 2);
       return;
-    } else if (strstr(pn, "cli-max-output-sessions") == pn) {
+    }
+    else if (strstr(pn, "cli-max-output-sessions") == pn)
+    {
       cli_max_output_sessions = atoi(pn + strlen("cli-max-output-sessions"));
       cli_print_uint(cs, (unsigned long)cli_max_output_sessions, "cli-max-output-sessions", 2);
       return;
@@ -421,7 +501,8 @@ static void change_cli_param(struct cli_session *cs, const char *pn) {
   }
 }
 
-struct ps_arg {
+struct ps_arg
+{
   struct cli_session *cs;
   size_t counter;
   turn_time_t ct;
@@ -434,47 +515,67 @@ struct ps_arg {
   size_t users_number;
 };
 
-static bool print_session(ur_map_key_type key, ur_map_value_type value, void *arg) {
-  if (key && value && arg) {
+static bool print_session(ur_map_key_type key, ur_map_value_type value, void *arg)
+{
+  if (key && value && arg)
+  {
     struct ps_arg *csarg = (struct ps_arg *)arg;
     struct cli_session *cs = csarg->cs;
     struct turn_session_info *tsi = (struct turn_session_info *)value;
 
-    if (cs->realm[0] && strcmp(cs->realm, tsi->realm)) {
+    if (cs->realm[0] && strcmp(cs->realm, tsi->realm))
+    {
       return false;
     }
 
-    if (cs->origin[0] && strcmp(cs->origin, tsi->origin)) {
+    if (cs->origin[0] && strcmp(cs->origin, tsi->origin))
+    {
       return false;
     }
 
-    if (csarg->users) {
+    if (csarg->users)
+    {
 
       const char *pn = csarg->pname;
-      if (pn[0]) {
-        if (!strcmp(pn, "TLS") || !strcmp(pn, "tls") || !strcmp(pn, "Tls")) {
-          if ((tsi->client_protocol != TLS_SOCKET) && (tsi->client_protocol != TLS_SCTP_SOCKET)) {
+      if (pn[0])
+      {
+        if (!strcmp(pn, "TLS") || !strcmp(pn, "tls") || !strcmp(pn, "Tls"))
+        {
+          if ((tsi->client_protocol != TLS_SOCKET) && (tsi->client_protocol != TLS_SCTP_SOCKET))
+          {
             return false;
           }
-        } else if (!strcmp(pn, "DTLS") || !strcmp(pn, "dtls") || !strcmp(pn, "Dtls")) {
-          if (tsi->client_protocol != DTLS_SOCKET) {
+        }
+        else if (!strcmp(pn, "DTLS") || !strcmp(pn, "dtls") || !strcmp(pn, "Dtls"))
+        {
+          if (tsi->client_protocol != DTLS_SOCKET)
+          {
             return false;
           }
-        } else if (!strcmp(pn, "TCP") || !strcmp(pn, "tcp") || !strcmp(pn, "Tcp")) {
-          if ((tsi->client_protocol != TCP_SOCKET) && (tsi->client_protocol != SCTP_SOCKET)) {
+        }
+        else if (!strcmp(pn, "TCP") || !strcmp(pn, "tcp") || !strcmp(pn, "Tcp"))
+        {
+          if ((tsi->client_protocol != TCP_SOCKET) && (tsi->client_protocol != SCTP_SOCKET))
+          {
             return false;
           }
-        } else if (!strcmp(pn, "UDP") || !strcmp(pn, "udp") || !strcmp(pn, "Udp")) {
-          if (tsi->client_protocol != UDP_SOCKET) {
+        }
+        else if (!strcmp(pn, "UDP") || !strcmp(pn, "udp") || !strcmp(pn, "Udp"))
+        {
+          if (tsi->client_protocol != UDP_SOCKET)
+          {
             return false;
           }
-        } else {
+        }
+        else
+        {
           return false;
         }
       }
 
       ur_string_map_value_type value;
-      if (!ur_string_map_get(csarg->users, (ur_string_map_key_type)(char *)tsi->username, &value)) {
+      if (!ur_string_map_get(csarg->users, (ur_string_map_key_type)(char *)tsi->username, &value))
+      {
         value = (ur_string_map_value_type)csarg->users_number;
         csarg->users_number += 1;
         csarg->user_counters = (size_t *)realloc(csarg->user_counters, csarg->users_number * sizeof(size_t));
@@ -484,69 +585,94 @@ static bool print_session(ur_map_key_type key, ur_map_value_type value, void *ar
         ur_string_map_put(csarg->users, (ur_string_map_key_type)(char *)tsi->username, value);
       }
       csarg->user_counters[(size_t)value] += 1;
-    } else {
-      if (csarg->username[0]) {
-        if (csarg->exact_match) {
-          if (strcmp((char *)tsi->username, csarg->username)) {
+    }
+    else
+    {
+      if (csarg->username[0])
+      {
+        if (csarg->exact_match)
+        {
+          if (strcmp((char *)tsi->username, csarg->username))
+          {
             return false;
           }
-        } else {
-          if (!strstr((char *)tsi->username, csarg->username)) {
+        }
+        else
+        {
+          if (!strstr((char *)tsi->username, csarg->username))
+          {
             return false;
           }
         }
       }
-      if (cs->f || (unsigned long)csarg->counter < (unsigned long)cli_max_output_sessions) {
+      if (cs->f || (unsigned long)csarg->counter < (unsigned long)cli_max_output_sessions)
+      {
         myprintf(cs, "\n");
         myprintf(cs, "    %lu) id=%018llu, user <%s>:\n", (unsigned long)(csarg->counter + 1),
                  (unsigned long long)tsi->id, tsi->username);
-        if (tsi->realm[0]) {
+        if (tsi->realm[0])
+        {
           myprintf(cs, "      realm: %s\n", tsi->realm);
         }
-        if (tsi->origin[0]) {
+        if (tsi->origin[0])
+        {
           myprintf(cs, "      origin: %s\n", tsi->origin);
         }
-        if (turn_time_before(csarg->ct, tsi->start_time)) {
+        if (turn_time_before(csarg->ct, tsi->start_time))
+        {
           myprintf(cs, "      started: undefined time\n");
-        } else {
+        }
+        else
+        {
           myprintf(cs, "      started %lu secs ago\n", (unsigned long)(csarg->ct - tsi->start_time));
         }
-        if (turn_time_before(tsi->expiration_time, csarg->ct)) {
+        if (turn_time_before(tsi->expiration_time, csarg->ct))
+        {
           myprintf(cs, "      expired\n");
-        } else {
+        }
+        else
+        {
           myprintf(cs, "      expiring in %lu secs\n", (unsigned long)(tsi->expiration_time - csarg->ct));
         }
         myprintf(cs, "      client protocol %s, relay protocol %s\n", socket_type_name(tsi->client_protocol),
                  socket_type_name(tsi->peer_protocol));
         {
-          if (!tsi->local_addr_data.saddr[0]) {
+          if (!tsi->local_addr_data.saddr[0])
+          {
             addr_to_string(&(tsi->local_addr_data.addr), (uint8_t *)tsi->local_addr_data.saddr);
           }
-          if (!tsi->remote_addr_data.saddr[0]) {
+          if (!tsi->remote_addr_data.saddr[0])
+          {
             addr_to_string(&(tsi->remote_addr_data.addr), (uint8_t *)tsi->remote_addr_data.saddr);
           }
-          if (!tsi->relay_addr_data_ipv4.saddr[0]) {
+          if (!tsi->relay_addr_data_ipv4.saddr[0])
+          {
             addr_to_string(&(tsi->relay_addr_data_ipv4.addr), (uint8_t *)tsi->relay_addr_data_ipv4.saddr);
           }
-          if (!tsi->relay_addr_data_ipv6.saddr[0]) {
+          if (!tsi->relay_addr_data_ipv6.saddr[0])
+          {
             addr_to_string(&(tsi->relay_addr_data_ipv6.addr), (uint8_t *)tsi->relay_addr_data_ipv6.saddr);
           }
           myprintf(cs, "      client addr %s, server addr %s\n", tsi->remote_addr_data.saddr,
                    tsi->local_addr_data.saddr);
-          if (tsi->relay_addr_data_ipv4.saddr[0]) {
+          if (tsi->relay_addr_data_ipv4.saddr[0])
+          {
             myprintf(cs, "      relay addr %s\n", tsi->relay_addr_data_ipv4.saddr);
           }
-          if (tsi->relay_addr_data_ipv6.saddr[0]) {
+          if (tsi->relay_addr_data_ipv6.saddr[0])
+          {
             myprintf(cs, "      relay addr %s\n", tsi->relay_addr_data_ipv6.saddr);
           }
         }
         myprintf(cs, "      fingerprints enforced: %s\n", get_flag(tsi->enforce_fingerprints));
         myprintf(cs, "      mobile: %s\n", get_flag(tsi->is_mobile));
-        if (tsi->tls_method[0]) {
+        if (tsi->tls_method[0])
+        {
           myprintf(cs, "      TLS method: %s\n", tsi->tls_method);
           myprintf(cs, "      TLS cipher: %s\n", tsi->tls_cipher);
         }
-        if (tsi->bps) {
+        if (tsi->bps)
+        {
           myprintf(cs, "      Max throughput: %lu bytes per second\n", (unsigned long)tsi->bps);
         }
         myprintf(cs, "      usage: rp=%lu, rb=%lu, sp=%lu, sb=%lu\n", (unsigned long)(tsi->received_packets),
@@ -554,18 +680,24 @@ static bool print_session(ur_map_key_type key, ur_map_value_type value, void *ar
                  (unsigned long)(tsi->sent_bytes));
         myprintf(cs, "       rate: r=%lu, s=%lu, total=%lu (bytes per sec)\n", (unsigned long)(tsi->received_rate),
                  (unsigned long)(tsi->sent_rate), (unsigned long)(tsi->total_rate));
-        if (tsi->main_peers_size) {
+        if (tsi->main_peers_size)
+        {
           myprintf(cs, "      peers:\n");
           size_t i;
-          for (i = 0; i < tsi->main_peers_size; ++i) {
-            if (!(tsi->main_peers_data[i].saddr[0])) {
+          for (i = 0; i < tsi->main_peers_size; ++i)
+          {
+            if (!(tsi->main_peers_data[i].saddr[0]))
+            {
               addr_to_string(&(tsi->main_peers_data[i].addr), (uint8_t *)tsi->main_peers_data[i].saddr);
             }
             myprintf(cs, "          %s\n", tsi->main_peers_data[i].saddr);
           }
-          if (tsi->extra_peers_size && tsi->extra_peers_data) {
-            for (i = 0; i < tsi->extra_peers_size; ++i) {
-              if (!(tsi->extra_peers_data[i].saddr[0])) {
+          if (tsi->extra_peers_size && tsi->extra_peers_data)
+          {
+            for (i = 0; i < tsi->extra_peers_size; ++i)
+            {
+              if (!(tsi->extra_peers_data[i].saddr[0]))
+              {
                 addr_to_string(&(tsi->extra_peers_data[i].addr), (uint8_t *)tsi->extra_peers_data[i].saddr);
               }
               myprintf(cs, "          %s\n", tsi->extra_peers_data[i].saddr);
@@ -580,25 +712,32 @@ static bool print_session(ur_map_key_type key, ur_map_value_type value, void *ar
   return false;
 }
 
-static void cancel_session(struct cli_session *cs, const char *ssid) {
-  if (cs && cs->ts && ssid && *ssid) {
+static void cancel_session(struct cli_session *cs, const char *ssid)
+{
+  if (cs && cs->ts && ssid && *ssid)
+  {
     turnsession_id sid = strtoull(ssid, NULL, 10);
     send_session_cancellation_to_relay(sid);
   }
 }
 
-static void print_sessions(struct cli_session *cs, const char *pn, int exact_match, int print_users) {
-  if (cs && cs->ts && pn) {
+static void print_sessions(struct cli_session *cs, const char *pn, int exact_match, int print_users)
+{
+  if (cs && cs->ts && pn)
+  {
 
-    while (pn[0] == ' ') {
+    while (pn[0] == ' ')
+    {
       ++pn;
     }
-    if (pn[0] == '*') {
+    if (pn[0] == '*')
+    {
       ++pn;
     }
 
     const char *uname = "";
-    if (!print_users) {
+    if (!print_users)
+    {
       uname = pn;
       pn = "";
     }
@@ -607,7 +746,8 @@ static void print_sessions(struct cli_session *cs, const char *pn, int exact_mat
 
     arg.ct = turn_time();
 
-    if (print_users) {
+    if (print_users)
+    {
       arg.users = ur_string_map_create(NULL);
     }
 
@@ -615,15 +755,21 @@ static void print_sessions(struct cli_session *cs, const char *pn, int exact_mat
 
     myprintf(cs, "\n");
 
-    if (!print_users && !(cs->f)) {
-      if ((unsigned long)arg.counter > (unsigned long)cli_max_output_sessions) {
+    if (!print_users && !(cs->f))
+    {
+      if ((unsigned long)arg.counter > (unsigned long)cli_max_output_sessions)
+      {
         myprintf(cs, "...\n");
         myprintf(cs, "\n");
       }
-    } else if (arg.user_counters && arg.user_names) {
+    }
+    else if (arg.user_counters && arg.user_names)
+    {
       size_t i;
-      for (i = 0; i < arg.users_number; ++i) {
-        if (arg.user_names[i]) {
+      for (i = 0; i < arg.users_number; ++i)
+      {
+        if (arg.user_names[i])
+        {
           myprintf(cs, "    user: <%s>, %lu sessions\n", arg.user_names[i], (unsigned long)arg.user_counters[i]);
         }
       }
@@ -633,13 +779,18 @@ static void print_sessions(struct cli_session *cs, const char *pn, int exact_mat
     {
       char ts[1025];
       snprintf(ts, sizeof(ts), "  Total sessions");
-      if (cs->realm[0]) {
+      if (cs->realm[0])
+      {
         snprintf(ts + strlen(ts), sizeof(ts) - strlen(ts), " for realm %s", cs->realm);
-        if (cs->origin[0]) {
+        if (cs->origin[0])
+        {
           snprintf(ts + strlen(ts), sizeof(ts) - strlen(ts), " and for origin %s", cs->origin);
         }
-      } else {
-        if (cs->origin[0]) {
+      }
+      else
+      {
+        if (cs->origin[0])
+        {
           snprintf(ts + strlen(ts), sizeof(ts) - strlen(ts), " for origin %s", cs->origin);
         }
       }
@@ -648,8 +799,10 @@ static void print_sessions(struct cli_session *cs, const char *pn, int exact_mat
       myprintf(cs, "\n");
     }
 
-    if (!print_users && !(cs->f)) {
-      if ((unsigned long)arg.counter > (unsigned long)cli_max_output_sessions) {
+    if (!print_users && !(cs->f))
+    {
+      if ((unsigned long)arg.counter > (unsigned long)cli_max_output_sessions)
+      {
         myprintf(cs, "  Warning: too many output sessions, more than the\n");
         myprintf(cs, "  current value of cli-max-output-sessions CLI parameter.\n");
         myprintf(cs, "  Refine your request or increase cli-max-output-sessions value.\n");
@@ -657,26 +810,33 @@ static void print_sessions(struct cli_session *cs, const char *pn, int exact_mat
       }
     }
 
-    if (arg.user_counters) {
+    if (arg.user_counters)
+    {
       free(arg.user_counters);
     }
-    if (arg.user_names) {
+    if (arg.user_names)
+    {
       size_t i;
-      for (i = 0; i < arg.users_number; ++i) {
-        if (arg.user_names[i]) {
+      for (i = 0; i < arg.users_number; ++i)
+      {
+        if (arg.user_names[i])
+        {
           free(arg.user_names[i]);
         }
       }
       free(arg.user_names);
     }
-    if (arg.users) {
+    if (arg.users)
+    {
       ur_string_map_free(&arg.users);
     }
   }
 }
 
-static void cli_print_configuration(struct cli_session *cs) {
-  if (cs) {
+static void cli_print_configuration(struct cli_session *cs)
+{
+  if (cs)
+  {
     myprintf(cs, "\n");
 
     cli_print_flag(cs, turn_params.verbose, "verbose", 0);
@@ -702,28 +862,38 @@ static void cli_print_configuration(struct cli_session *cs) {
 
     {
       char wd[1025];
-      if (getcwd(wd, sizeof(wd) - 1)) {
+      if (getcwd(wd, sizeof(wd) - 1))
+      {
         cli_print_str(cs, wd, "process dir", 0);
       }
     }
 
     myprintf(cs, "\n");
 
-    if (turn_params.cipher_list[0]) {
+    if (turn_params.cipher_list[0])
+    {
       cli_print_str(cs, turn_params.cipher_list, "cipher-list", 0);
-    } else {
+    }
+    else
+    {
       cli_print_str(cs, DEFAULT_CIPHER_LIST, "cipher-list", 0);
     }
 
     cli_print_str(cs, turn_params.ec_curve_name, "ec-curve-name", 0);
     {
-      if (turn_params.dh_key_size == DH_CUSTOM) {
+      if (turn_params.dh_key_size == DH_CUSTOM)
+      {
         cli_print_str(cs, turn_params.dh_file, "dh-file", 0);
-      } else {
+      }
+      else
+      {
         unsigned int dh_key_length = 1066;
-        if (turn_params.dh_key_size == DH_566) {
+        if (turn_params.dh_key_size == DH_566)
+        {
           dh_key_length = 566;
-        } else if (turn_params.dh_key_size == DH_2066) {
+        }
+        else if (turn_params.dh_key_size == DH_2066)
+        {
           dh_key_length = 2066;
         }
         cli_print_uint(cs, (unsigned long)dh_key_length, "DH-key-length", 0);
@@ -736,7 +906,8 @@ static void cli_print_configuration(struct cli_session *cs) {
 
     cli_print_str_array(cs, turn_params.listener.addrs, turn_params.listener.addrs_number, "Listener addr", 0);
 
-    if (turn_params.listener_ifname[0]) {
+    if (turn_params.listener_ifname[0])
+    {
       cli_print_str(cs, turn_params.listener_ifname, "listener-ifname", 0);
     }
 
@@ -766,7 +937,8 @@ static void cli_print_configuration(struct cli_session *cs) {
 
     cli_print_str_array(cs, turn_params.relay_addrs, turn_params.relays_number, "Relay addr", 0);
 
-    if (turn_params.relay_ifname[0]) {
+    if (turn_params.relay_ifname[0])
+    {
       cli_print_str(cs, turn_params.relay_ifname, "relay-ifname", 0);
     }
 
@@ -797,16 +969,20 @@ static void cli_print_configuration(struct cli_session *cs) {
 
     myprintf(cs, "\n");
 
-    if (turn_params.default_users_db.persistent_users_db.userdb[0]) {
+    if (turn_params.default_users_db.persistent_users_db.userdb[0])
+    {
       cli_print_str(cs, userdb_type_to_string(turn_params.default_users_db.userdb_type), "DB type", 0);
       cli_print_str(cs, turn_params.default_users_db.persistent_users_db.userdb, "DB", 0);
-    } else {
+    }
+    else
+    {
       cli_print_str(cs, "none", "DB type", 0);
       cli_print_str(cs, "none", "DB", 0);
     }
 
 #if !defined(TURN_NO_HIREDIS)
-    if (turn_params.use_redis_statsdb && turn_params.redis_statsdb.connection_string[0]) {
+    if (turn_params.use_redis_statsdb && turn_params.redis_statsdb.connection_string[0])
+    {
       cli_print_str(cs, turn_params.redis_statsdb.connection_string, "Redis Statistics DB", 0);
     }
 #endif
@@ -815,25 +991,34 @@ static void cli_print_configuration(struct cli_session *cs) {
 
     {
       char *rn = get_realm(NULL)->options.name;
-      if (rn[0]) {
+      if (rn[0])
+      {
         cli_print_str(cs, rn, "Default realm", 0);
       }
     }
-    if (cs->realm[0]) {
+    if (cs->realm[0])
+    {
       cli_print_str(cs, cs->realm, "CLI session realm", 0);
-    } else {
+    }
+    else
+    {
       cli_print_str(cs, get_realm(NULL)->options.name, "CLI session realm", 0);
     }
-    if (cs->origin[0]) {
+    if (cs->origin[0])
+    {
       cli_print_str(cs, cs->origin, "CLI session origin", 0);
     }
-    if (turn_params.ct == TURN_CREDENTIALS_LONG_TERM) {
+    if (turn_params.ct == TURN_CREDENTIALS_LONG_TERM)
+    {
       cli_print_flag(cs, 1, "Long-term authorization mechanism", 0);
-    } else {
+    }
+    else
+    {
       cli_print_flag(cs, 1, "Anonymous credentials", 0);
     }
     cli_print_flag(cs, turn_params.use_auth_secret_with_timestamp, "TURN REST API support", 0);
-    if (turn_params.use_auth_secret_with_timestamp && turn_params.rest_api_separator) {
+    if (turn_params.use_auth_secret_with_timestamp && turn_params.rest_api_separator)
+    {
       cli_print_uint(cs, turn_params.rest_api_separator, "TURN REST API separator ASCII number", 0);
     }
 
@@ -873,9 +1058,12 @@ static void cli_print_configuration(struct cli_session *cs) {
 
 static void close_cli_session(struct cli_session *cs);
 
-static int run_cli_output(struct cli_session *cs, const char *buf, unsigned int len) {
-  if (cs && buf && len) {
-    if (bufferevent_write(cs->bev, buf, len) < 0) {
+static int run_cli_output(struct cli_session *cs, const char *buf, unsigned int len)
+{
+  if (cs && buf && len)
+  {
+    if (bufferevent_write(cs->bev, buf, len) < 0)
+    {
       return -1;
     }
     return 0;
@@ -883,19 +1071,23 @@ static int run_cli_output(struct cli_session *cs, const char *buf, unsigned int 
   return -1;
 }
 
-static void close_cli_session(struct cli_session *cs) {
-  if (cs) {
+static void close_cli_session(struct cli_session *cs)
+{
+  if (cs)
+  {
 
     addr_debug_print(adminserver.verbose, &(cs->addr), "CLI session disconnected from");
 
-    if (cs->ts) {
+    if (cs->ts)
+    {
       telnet_free(cs->ts);
       cs->ts = NULL;
     }
 
     BUFFEREVENT_FREE(cs->bev);
 
-    if (cs->fd >= 0) {
+    if (cs->fd >= 0)
+    {
       socket_closesocket(cs->fd);
       cs->fd = -1;
     }
@@ -904,40 +1096,52 @@ static void close_cli_session(struct cli_session *cs) {
   }
 }
 
-static void type_cli_cursor(struct cli_session *cs) {
-  if (cs && (cs->bev)) {
+static void type_cli_cursor(struct cli_session *cs)
+{
+  if (cs && (cs->bev))
+  {
     myprintf(cs, "%s", CLI_CURSOR);
   }
 }
 
-static void cli_add_alternate_server(struct cli_session *cs, const char *pn) {
-  if (cs && cs->ts && pn && *pn) {
+static void cli_add_alternate_server(struct cli_session *cs, const char *pn)
+{
+  if (cs && cs->ts && pn && *pn)
+  {
     add_alternate_server(pn);
   }
 }
 
-static void cli_add_tls_alternate_server(struct cli_session *cs, const char *pn) {
-  if (cs && cs->ts && pn && *pn) {
+static void cli_add_tls_alternate_server(struct cli_session *cs, const char *pn)
+{
+  if (cs && cs->ts && pn && *pn)
+  {
     add_tls_alternate_server(pn);
   }
 }
 
-static void cli_del_alternate_server(struct cli_session *cs, const char *pn) {
-  if (cs && cs->ts && pn && *pn) {
+static void cli_del_alternate_server(struct cli_session *cs, const char *pn)
+{
+  if (cs && cs->ts && pn && *pn)
+  {
     del_alternate_server(pn);
   }
 }
 
-static void cli_del_tls_alternate_server(struct cli_session *cs, const char *pn) {
-  if (cs && cs->ts && pn && *pn) {
+static void cli_del_tls_alternate_server(struct cli_session *cs, const char *pn)
+{
+  if (cs && cs->ts && pn && *pn)
+  {
     del_tls_alternate_server(pn);
   }
 }
 
-static int run_cli_input(struct cli_session *cs, const char *buf0, unsigned int len) {
+static int run_cli_input(struct cli_session *cs, const char *buf0, unsigned int len)
+{
   int ret = 0;
 
-  if (cs && buf0 && cs->ts && cs->bev) {
+  if (cs && buf0 && cs->ts && cs->bev)
+  {
 
     char *buf = (char *)malloc(len + 1);
     memcpy(buf, buf0, len);
@@ -945,52 +1149,71 @@ static int run_cli_input(struct cli_session *cs, const char *buf0, unsigned int 
 
     char *cmd = buf;
 
-    while ((cmd[0] == ' ') || (cmd[0] == '\t')) {
+    while ((cmd[0] == ' ') || (cmd[0] == '\t'))
+    {
       ++cmd;
     }
 
     size_t sl = strlen(cmd);
 
-    while (sl) {
+    while (sl)
+    {
       char c = cmd[sl - 1];
-      if ((c == 10) || (c == 13)) {
+      if ((c == 10) || (c == 13))
+      {
         cmd[sl - 1] = 0;
         --sl;
-      } else {
+      }
+      else
+      {
         break;
       }
     }
 
-    if (sl) {
+    if (sl)
+    {
       cs->cmds += 1;
-      if (cli_password[0] && !(cs->auth_completed)) {
-        if (!check_password_equal(cmd, cli_password)) {
-          if (cs->cmds >= CLI_PASSWORD_TRY_NUMBER) {
+      if (cli_password[0] && !(cs->auth_completed))
+      {
+        if (!check_password_equal(cmd, cli_password))
+        {
+          if (cs->cmds >= CLI_PASSWORD_TRY_NUMBER)
+          {
             addr_debug_print(1, &(cs->addr), "CLI authentication error");
             TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "CLI authentication error\n");
             close_cli_session(cs);
-          } else {
+          }
+          else
+          {
             const char *ipwd = "Enter password: ";
             myprintf(cs, "%s\n", ipwd);
           }
-        } else {
+        }
+        else
+        {
           cs->auth_completed = 1;
           addr_debug_print(1, &(cs->addr), "CLI authentication success");
           type_cli_cursor(cs);
         }
-      } else if ((strcmp(cmd, "bye") == 0) || (strcmp(cmd, "quit") == 0) || (strcmp(cmd, "exit") == 0) ||
-                 (strcmp(cmd, "q") == 0)) {
+      }
+      else if ((strcmp(cmd, "bye") == 0) || (strcmp(cmd, "quit") == 0) || (strcmp(cmd, "exit") == 0) ||
+               (strcmp(cmd, "q") == 0))
+      {
         const char *str = "Bye !";
         myprintf(cs, "%s\n", str);
         close_cli_session(cs);
         ret = -1;
-      } else if (strcmp(cmd, "drain") == 0) {
+      }
+      else if (strcmp(cmd, "drain") == 0)
+      {
         addr_debug_print(1, &(cs->addr), "Drain command received from CLI user");
         const char *str = "TURN server is draining then shutting down";
         myprintf(cs, "%s\n", str);
         close_cli_session(cs);
         enable_drain_mode();
-      } else if ((strcmp(cmd, "halt") == 0) || (strcmp(cmd, "shutdown") == 0) || (strcmp(cmd, "stop") == 0)) {
+      }
+      else if ((strcmp(cmd, "halt") == 0) || (strcmp(cmd, "shutdown") == 0) || (strcmp(cmd, "stop") == 0))
+      {
         addr_debug_print(1, &(cs->addr), "Shutdown command received from CLI user");
         const char *str = "TURN server is shutting down";
         myprintf(cs, "%s\n", str);
@@ -998,94 +1221,147 @@ static int run_cli_input(struct cli_session *cs, const char *buf0, unsigned int 
         turn_params.stop_turn_server = true;
         sleep(10);
         exit(0);
-      } else if ((strcmp(cmd, "?") == 0) || (strcmp(cmd, "h") == 0) || (strcmp(cmd, "help") == 0)) {
+      }
+      else if ((strcmp(cmd, "?") == 0) || (strcmp(cmd, "h") == 0) || (strcmp(cmd, "help") == 0))
+      {
         print_str_array(cs, CLI_GREETING_STR);
         print_str_array(cs, CLI_HELP_STR);
         type_cli_cursor(cs);
-      } else if (strcmp(cmd, "pc") == 0) {
+      }
+      else if (strcmp(cmd, "pc") == 0)
+      {
         cli_print_configuration(cs);
         type_cli_cursor(cs);
-      } else if (strstr(cmd, "tc ") == cmd) {
+      }
+      else if (strstr(cmd, "tc ") == cmd)
+      {
         toggle_cli_param(cs, cmd + 3);
-      } else if (strstr(cmd, "sr ") == cmd) {
+      }
+      else if (strstr(cmd, "sr ") == cmd)
+      {
         STRCPY(cs->realm, cmd + 3);
         cs->rp = get_realm(cs->realm);
         type_cli_cursor(cs);
-      } else if (strcmp(cmd, "ur") == 0) {
+      }
+      else if (strcmp(cmd, "ur") == 0)
+      {
         cs->realm[0] = 0;
         cs->rp = get_realm(NULL);
         type_cli_cursor(cs);
-      } else if (strstr(cmd, "so ") == cmd) {
+      }
+      else if (strstr(cmd, "so ") == cmd)
+      {
         STRCPY(cs->origin, cmd + 3);
         type_cli_cursor(cs);
-      } else if (strcmp(cmd, "uo") == 0) {
+      }
+      else if (strcmp(cmd, "uo") == 0)
+      {
         cs->origin[0] = 0;
         type_cli_cursor(cs);
-      } else if (strstr(cmd, "tc") == cmd) {
+      }
+      else if (strstr(cmd, "tc") == cmd)
+      {
         toggle_cli_param(cs, cmd + 2);
         type_cli_cursor(cs);
-      } else if (strstr(cmd, "psp") == cmd) {
+      }
+      else if (strstr(cmd, "psp") == cmd)
+      {
         print_sessions(cs, cmd + 3, 0, 0);
         type_cli_cursor(cs);
-      } else if (strstr(cmd, "psd") == cmd) {
+      }
+      else if (strstr(cmd, "psd") == cmd)
+      {
         cmd += 3;
-        while (cmd[0] == ' ') {
+        while (cmd[0] == ' ')
+        {
           ++cmd;
         }
-        if (!(cmd[0])) {
+        if (!(cmd[0]))
+        {
           const char *str = "You have to provide file name for ps dump\n";
           myprintf(cs, "%s\n", str);
-        } else {
+        }
+        else
+        {
           cs->f = fopen(cmd, "w");
-          if (!(cs->f)) {
+          if (!(cs->f))
+          {
             const char *str = "Cannot open file for writing\n";
             myprintf(cs, "%s\n", str);
-          } else {
+          }
+          else
+          {
             print_sessions(cs, "", 1, 0);
             fclose(cs->f);
             cs->f = NULL;
           }
         }
         type_cli_cursor(cs);
-      } else if (strstr(cmd, "pu ") == cmd) {
+      }
+      else if (strstr(cmd, "pu ") == cmd)
+      {
         print_sessions(cs, cmd + 3, 0, 1);
         type_cli_cursor(cs);
-      } else if (!strcmp(cmd, "pu")) {
+      }
+      else if (!strcmp(cmd, "pu"))
+      {
         print_sessions(cs, cmd + 2, 0, 1);
         type_cli_cursor(cs);
-      } else if (strstr(cmd, "ps") == cmd) {
+      }
+      else if (strstr(cmd, "ps") == cmd)
+      {
         print_sessions(cs, cmd + 2, 1, 0);
         type_cli_cursor(cs);
-      } else if (strstr(cmd, "cs ") == cmd) {
+      }
+      else if (strstr(cmd, "cs ") == cmd)
+      {
         cancel_session(cs, cmd + 3);
         type_cli_cursor(cs);
-      } else if (strstr(cmd, "lr") == cmd) {
+      }
+      else if (strstr(cmd, "lr") == cmd)
+      {
         log_reset(cs);
         type_cli_cursor(cs);
-      } else if (strstr(cmd, "cc ") == cmd) {
+      }
+      else if (strstr(cmd, "cc ") == cmd)
+      {
         change_cli_param(cs, cmd + 3);
         type_cli_cursor(cs);
-      } else if (strstr(cmd, "cc") == cmd) {
+      }
+      else if (strstr(cmd, "cc") == cmd)
+      {
         change_cli_param(cs, cmd + 2);
         type_cli_cursor(cs);
-      } else if (strstr(cmd, "aas ") == cmd) {
+      }
+      else if (strstr(cmd, "aas ") == cmd)
+      {
         cli_add_alternate_server(cs, cmd + 4);
         type_cli_cursor(cs);
-      } else if (strstr(cmd, "atas ") == cmd) {
+      }
+      else if (strstr(cmd, "atas ") == cmd)
+      {
         cli_add_tls_alternate_server(cs, cmd + 5);
         type_cli_cursor(cs);
-      } else if (strstr(cmd, "das ") == cmd) {
+      }
+      else if (strstr(cmd, "das ") == cmd)
+      {
         cli_del_alternate_server(cs, cmd + 4);
         type_cli_cursor(cs);
-      } else if (strstr(cmd, "dtas ") == cmd) {
+      }
+      else if (strstr(cmd, "dtas ") == cmd)
+      {
         cli_del_tls_alternate_server(cs, cmd + 5);
         type_cli_cursor(cs);
-      } else {
+      }
+      else
+      {
         const char *str = "Unknown command\n";
         myprintf(cs, "%s\n", str);
         type_cli_cursor(cs);
       }
-    } else {
+    }
+    else
+    {
       type_cli_cursor(cs);
     }
 
@@ -1095,24 +1371,31 @@ static int run_cli_input(struct cli_session *cs, const char *buf0, unsigned int 
   return ret;
 }
 
-static void cli_socket_input_handler_bev(struct bufferevent *bev, void *arg) {
-  if (bev && arg) {
+static void cli_socket_input_handler_bev(struct bufferevent *bev, void *arg)
+{
+  if (bev && arg)
+  {
 
     struct cli_session *cs = (struct cli_session *)arg;
 
-    if (!(cs->ts)) {
+    if (!(cs->ts))
+    {
       return;
     }
 
     stun_buffer buf;
 
-    if (cs->bev) {
+    if (cs->bev)
+    {
 
       int len = (int)bufferevent_read(cs->bev, buf.buf, STUN_BUFFER_SIZE - 1);
-      if (len < 0) {
+      if (len < 0)
+      {
         close_cli_session(cs);
         return;
-      } else if (len == 0) {
+      }
+      else if (len == 0)
+      {
         return;
       }
 
@@ -1125,13 +1408,18 @@ static void cli_socket_input_handler_bev(struct bufferevent *bev, void *arg) {
   }
 }
 
-static void cli_eventcb_bev(struct bufferevent *bev, short events, void *arg) {
+static void cli_eventcb_bev(struct bufferevent *bev, short events, void *arg)
+{
   UNUSED_ARG(bev);
 
-  if (events & BEV_EVENT_CONNECTED) {
+  if (events & BEV_EVENT_CONNECTED)
+  {
     // Connect okay
-  } else if (events & (BEV_EVENT_ERROR | BEV_EVENT_EOF)) {
-    if (arg) {
+  }
+  else if (events & (BEV_EVENT_ERROR | BEV_EVENT_EOF))
+  {
+    if (arg)
+    {
 
       struct cli_session *cs = (struct cli_session *)arg;
 
@@ -1140,12 +1428,15 @@ static void cli_eventcb_bev(struct bufferevent *bev, short events, void *arg) {
   }
 }
 
-static void cli_telnet_event_handler(telnet_t *telnet, telnet_event_t *event, void *user_data) {
-  if (user_data && telnet) {
+static void cli_telnet_event_handler(telnet_t *telnet, telnet_event_t *event, void *user_data)
+{
+  if (user_data && telnet)
+  {
 
     struct cli_session *cs = (struct cli_session *)user_data;
 
-    switch (event->type) {
+    switch (event->type)
+    {
     case TELNET_EV_DATA:
       run_cli_input(cs, event->data.buffer, event->data.size);
       break;
@@ -1161,7 +1452,8 @@ static void cli_telnet_event_handler(telnet_t *telnet, telnet_event_t *event, vo
 }
 
 static void cliserver_input_handler(struct evconnlistener *l, evutil_socket_t fd, struct sockaddr *sa, int socklen,
-                                    void *arg) {
+                                    void *arg)
+{
   UNUSED_ARG(l);
   UNUSED_ARG(arg);
   UNUSED_ARG(socklen);
@@ -1185,25 +1477,32 @@ static void cliserver_input_handler(struct evconnlistener *l, evutil_socket_t fd
 
   clisession->ts = telnet_init(cli_telopts, cli_telnet_event_handler, 0, clisession);
 
-  if (!(clisession->ts)) {
+  if (!(clisession->ts))
+  {
     const char *str = "Cannot open telnet session\n";
     addr_debug_print(adminserver.verbose, (ioa_addr *)sa, str);
     close_cli_session(clisession);
-  } else {
+  }
+  else
+  {
     print_str_array(clisession, CLI_GREETING_STR);
     telnet_printf(clisession->ts, "\n");
     telnet_printf(clisession->ts, "Type '?' for help\n");
-    if (cli_password[0]) {
+    if (cli_password[0])
+    {
       const char *ipwd = "Enter password: ";
       telnet_printf(clisession->ts, "%s\n", ipwd);
-    } else {
+    }
+    else
+    {
       type_cli_cursor(clisession);
     }
   }
 }
 
 static void web_admin_input_handler(ioa_socket_handle s, int event_type, ioa_net_data *in_buffer, void *arg,
-                                    int can_resume) {
+                                    int can_resume)
+{
   UNUSED_ARG(event_type);
   UNUSED_ARG(can_resume);
   UNUSED_ARG(arg);
@@ -1211,18 +1510,24 @@ static void web_admin_input_handler(ioa_socket_handle s, int event_type, ioa_net
   int to_be_closed = 0;
 
   int buffer_size = (int)ioa_network_buffer_get_size(in_buffer->nbh);
-  if (buffer_size >= UDP_STUN_BUFFER_SIZE) {
+  if (buffer_size >= UDP_STUN_BUFFER_SIZE)
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "%s: request is too big: %d\n", __FUNCTION__, buffer_size);
     to_be_closed = 1;
-  } else if (buffer_size > 0) {
+  }
+  else if (buffer_size > 0)
+  {
 
     SOCKET_TYPE st = get_ioa_socket_type(s);
 
-    if (is_stream_socket(st)) {
-      if (is_http((char *)ioa_network_buffer_data(in_buffer->nbh), buffer_size)) {
+    if (is_stream_socket(st))
+    {
+      if (is_http((char *)ioa_network_buffer_data(in_buffer->nbh), buffer_size))
+      {
         const char *proto = "HTTP";
         ioa_network_buffer_data(in_buffer->nbh)[buffer_size] = 0;
-        if (st == TLS_SOCKET) {
+        if (st == TLS_SOCKET)
+        {
           proto = "HTTPS";
           set_ioa_socket_app_type(s, HTTPS_CLIENT_SOCKET);
 
@@ -1234,17 +1539,20 @@ static void web_admin_input_handler(ioa_socket_handle s, int event_type, ioa_net
                         get_ioa_socket_type(s), get_ioa_socket_app_type(s));
 
           ioa_socket_handle new_s = detach_ioa_socket(s);
-          if (new_s) {
+          if (new_s)
+          {
             TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s new detached socket: %p, st=%d, sat=%d\n", __FUNCTION__, new_s,
                           get_ioa_socket_type(new_s), get_ioa_socket_app_type(new_s));
 
             send_https_socket(new_s);
           }
           to_be_closed = 1;
-
-        } else {
+        }
+        else
+        {
           set_ioa_socket_app_type(s, HTTP_CLIENT_SOCKET);
-          if (adminserver.verbose) {
+          if (adminserver.verbose)
+          {
             TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s request: %s\n", __FUNCTION__, proto,
                           (char *)ioa_network_buffer_data(in_buffer->nbh));
           }
@@ -1254,8 +1562,10 @@ static void web_admin_input_handler(ioa_socket_handle s, int event_type, ioa_net
     }
   }
 
-  if (to_be_closed) {
-    if (adminserver.verbose) {
+  if (to_be_closed)
+  {
+    if (adminserver.verbose)
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: web-admin socket to be closed in client handler: s=%p\n", __FUNCTION__,
                     s);
     }
@@ -1263,16 +1573,21 @@ static void web_admin_input_handler(ioa_socket_handle s, int event_type, ioa_net
   }
 }
 
-static int send_socket_to_admin_server(ioa_engine_handle e, struct message_to_relay *sm) {
+static int send_socket_to_admin_server(ioa_engine_handle e, struct message_to_relay *sm)
+{
   // sm->relay_server is null for us.
 
   sm->t = RMT_SOCKET;
 
-  if (sm->m.sm.s->defer_nbh) {
-    if (!sm->m.sm.nd.nbh) {
+  if (sm->m.sm.s->defer_nbh)
+  {
+    if (!sm->m.sm.nd.nbh)
+    {
       sm->m.sm.nd.nbh = sm->m.sm.s->defer_nbh;
       sm->m.sm.s->defer_nbh = NULL;
-    } else {
+    }
+    else
+    {
       ioa_network_buffer_delete(e, sm->m.sm.s->defer_nbh);
       sm->m.sm.s->defer_nbh = NULL;
     }
@@ -1280,29 +1595,36 @@ static int send_socket_to_admin_server(ioa_engine_handle e, struct message_to_re
 
   ioa_socket_handle s = sm->m.sm.s;
 
-  if (!s) {
+  if (!s)
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: web-admin socket EMPTY\n", __FUNCTION__);
-
-  } else if (s->read_event || s->bev) {
+  }
+  else if (s->read_event || s->bev)
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: web-admin socket wrongly preset: %p : %p\n", __FUNCTION__, s->read_event,
                   s->bev);
 
     IOA_CLOSE_SOCKET(s);
     sm->m.sm.s = NULL;
-  } else {
+  }
+  else
+  {
     s->e = e;
 
     struct socket_message *msg = &(sm->m.sm);
 
-    if (register_callback_on_ioa_socket(e, msg->s, IOA_EV_READ, web_admin_input_handler, NULL, 0) < 0) {
+    if (register_callback_on_ioa_socket(e, msg->s, IOA_EV_READ, web_admin_input_handler, NULL, 0) < 0)
+    {
 
       TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: Failed to register callback on web-admin ioa socket\n", __FUNCTION__);
       IOA_CLOSE_SOCKET(s);
       sm->m.sm.s = NULL;
+    }
+    else
+    {
 
-    } else {
-
-      if (msg->nd.nbh) {
+      if (msg->nd.nbh)
+      {
         web_admin_input_handler(msg->s, IOA_EV_READ, &(msg->nd), NULL, msg->can_resume);
         ioa_network_buffer_delete(e, msg->nd.nbh);
         msg->nd.nbh = NULL;
@@ -1316,7 +1638,8 @@ static int send_socket_to_admin_server(ioa_engine_handle e, struct message_to_re
   return 0;
 }
 
-void setup_admin_thread(void) {
+void setup_admin_thread(void)
+{
   adminserver.event_base = turn_event_base_new();
   super_memory_t *sm = new_super_memory_region();
   adminserver.e = create_ioa_engine(sm, adminserver.event_base, turn_params.listener.tp, turn_params.relay_ifname,
@@ -1328,7 +1651,8 @@ void setup_admin_thread(void) {
 #endif
   );
 
-  if (use_web_admin) {
+  if (use_web_admin)
+  {
     // Support encryption on this ioa engine
     // because the web-admin needs HTTPS
     set_ssl_ctx(adminserver.e, &turn_params);
@@ -1359,9 +1683,12 @@ void setup_admin_thread(void) {
   }
 
   // Setup the web-admin server
-  if (use_web_admin) {
-    if (!web_admin_addr_set) {
-      if (make_ioa_addr((const uint8_t *)WEB_ADMIN_DEFAULT_IP, 0, &web_admin_addr) < 0) {
+  if (use_web_admin)
+  {
+    if (!web_admin_addr_set)
+    {
+      if (make_ioa_addr((const uint8_t *)WEB_ADMIN_DEFAULT_IP, 0, &web_admin_addr) < 0)
+      {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot set web-admin address %s\n", WEB_ADMIN_DEFAULT_IP);
         return;
       }
@@ -1376,7 +1703,8 @@ void setup_admin_thread(void) {
         create_tls_listener_server(turn_params.listener_ifname, saddr, web_admin_port, turn_params.verbose,
                                    adminserver.e, send_socket_to_admin_server, NULL);
 
-    if (tls_service == NULL) {
+    if (tls_service == NULL)
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create web-admin listener\n");
       return;
     }
@@ -1384,9 +1712,12 @@ void setup_admin_thread(void) {
     addr_debug_print(adminserver.verbose, &web_admin_addr, "web-admin listener opened on ");
   }
 
-  if (use_cli) {
-    if (!cli_addr_set) {
-      if (make_ioa_addr((const uint8_t *)CLI_DEFAULT_IP, 0, &cli_addr) < 0) {
+  if (use_cli)
+  {
+    if (!cli_addr_set)
+    {
+      if (make_ioa_addr((const uint8_t *)CLI_DEFAULT_IP, 0, &cli_addr) < 0)
+      {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot set cli address %s\n", CLI_DEFAULT_IP);
         return;
       }
@@ -1395,13 +1726,15 @@ void setup_admin_thread(void) {
     addr_set_port(&cli_addr, cli_port);
 
     adminserver.listen_fd = socket(cli_addr.ss.sa_family, ADMIN_STREAM_SOCKET_TYPE, ADMIN_STREAM_SOCKET_PROTOCOL);
-    if (adminserver.listen_fd < 0) {
+    if (adminserver.listen_fd < 0)
+    {
       perror("socket");
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open CLI socket\n");
       return;
     }
 
-    if (addr_bind(adminserver.listen_fd, &cli_addr, 1, 1, TCP_SOCKET) < 0) {
+    if (addr_bind(adminserver.listen_fd, &cli_addr, 1, 1, TCP_SOCKET) < 0)
+    {
       perror("Cannot bind CLI socket to addr");
       char saddr[129];
       addr_to_string(&cli_addr, (uint8_t *)saddr);
@@ -1417,7 +1750,8 @@ void setup_admin_thread(void) {
     adminserver.l = evconnlistener_new(adminserver.event_base, cliserver_input_handler, &adminserver,
                                        LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE, 1024, adminserver.listen_fd);
 
-    if (!(adminserver.l)) {
+    if (!(adminserver.l))
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create CLI listener\n");
       socket_closesocket(adminserver.listen_fd);
       return;
@@ -1429,48 +1763,60 @@ void setup_admin_thread(void) {
   adminserver.sessions = ur_map_create();
 }
 
-void admin_server_receive_message(struct bufferevent *bev, void *ptr) {
+void admin_server_receive_message(struct bufferevent *bev, void *ptr)
+{
   UNUSED_ARG(ptr);
 
   struct turn_session_info *tsi = (struct turn_session_info *)calloc(1, sizeof(struct turn_session_info));
   int n = 0;
   struct evbuffer *input = bufferevent_get_input(bev);
 
-  while ((n = evbuffer_remove(input, tsi, sizeof(struct turn_session_info))) > 0) {
-    if (n != sizeof(struct turn_session_info)) {
+  while ((n = evbuffer_remove(input, tsi, sizeof(struct turn_session_info))) > 0)
+  {
+    if (n != sizeof(struct turn_session_info))
+    {
       fprintf(stderr, "%s: Weird CLI buffer error: size=%d\n", __FUNCTION__, n);
       continue;
     }
 
     ur_map_value_type t = 0;
-    if (ur_map_get(adminserver.sessions, (ur_map_key_type)tsi->id, &t) && t) {
+    if (ur_map_get(adminserver.sessions, (ur_map_key_type)tsi->id, &t) && t)
+    {
       struct turn_session_info *old = (struct turn_session_info *)t;
       turn_session_info_clean(old);
       free(old);
       ur_map_del(adminserver.sessions, (ur_map_key_type)tsi->id, NULL);
     }
 
-    if (tsi->valid) {
+    if (tsi->valid)
+    {
       ur_map_put(adminserver.sessions, (ur_map_key_type)tsi->id, (ur_map_value_type)tsi);
       tsi = (struct turn_session_info *)calloc(1, sizeof(struct turn_session_info));
-    } else {
+    }
+    else
+    {
       turn_session_info_clean(tsi);
     }
   }
 
-  if (tsi) {
+  if (tsi)
+  {
     turn_session_info_clean(tsi);
     free(tsi);
   }
 }
 
-int send_turn_session_info(struct turn_session_info *tsi) {
+int send_turn_session_info(struct turn_session_info *tsi)
+{
   int ret = -1;
 
-  if (tsi) {
+  if (tsi)
+  {
     struct evbuffer *output = bufferevent_get_output(adminserver.out_buf);
-    if (output) {
-      if (evbuffer_add(output, tsi, sizeof(struct turn_session_info)) >= 0) {
+    if (output)
+    {
+      if (evbuffer_add(output, tsi, sizeof(struct turn_session_info)) >= 0)
+      {
         ret = 0;
       }
     }
@@ -1481,7 +1827,8 @@ int send_turn_session_info(struct turn_session_info *tsi) {
 
 /////////// HTTPS /////////////
 
-enum _AS_FORM {
+enum _AS_FORM
+{
   AS_FORM_LOGON,
   AS_FORM_LOGOUT,
   AS_FORM_PC,
@@ -1531,7 +1878,8 @@ typedef enum _AS_FORM AS_FORM;
 #define HR_DELETE_OAUTH_KID "oauth_kid_del"
 #define HR_OAUTH_KID "kid"
 
-struct form_name {
+struct form_name
+{
   AS_FORM form;
   const char *name;
 };
@@ -1549,22 +1897,29 @@ static struct form_name form_names[] = {
 
 static ioa_socket_handle current_socket = NULL;
 
-static char *get_bold_admin_title(void) {
+static char *get_bold_admin_title(void)
+{
   static char sbat[1025];
   strncpy(sbat, __bold_admin_title, sizeof(sbat) - 1);
   sbat[sizeof(sbat) - 1] = '\0';
 
-  if (current_socket && current_socket->special_session) {
+  if (current_socket && current_socket->special_session)
+  {
     struct admin_session *as = (struct admin_session *)current_socket->special_session;
-    if (as && as->as_ok) {
-      if (as->as_login[0]) {
+    if (as && as->as_ok)
+    {
+      if (as->as_login[0])
+      {
         char *dst = sbat + strlen(sbat);
         snprintf(dst, ADMIN_USER_MAX_LENGTH * 2 + 2, " admin user: <b><i>%s</i></b><br>\r\n", as->as_login);
       }
-      if (as->as_realm[0]) {
+      if (as->as_realm[0])
+      {
         char *dst = sbat + strlen(sbat);
         snprintf(dst, STUN_MAX_REALM_SIZE * 2, " admin session realm: <b><i>%s</i></b><br>\r\n", as->as_realm);
-      } else if (as->as_eff_realm[0]) {
+      }
+      else if (as->as_eff_realm[0])
+      {
         char *dst = sbat + strlen(sbat);
         snprintf(dst, STUN_MAX_REALM_SIZE * 2, " admin session realm: <b><i>%s</i></b><br>\r\n", as->as_eff_realm);
       }
@@ -1573,9 +1928,11 @@ static char *get_bold_admin_title(void) {
   return sbat;
 }
 
-static int wrong_html_name(const char *s) {
+static int wrong_html_name(const char *s)
+{
   int ret = 0;
-  if (s) {
+  if (s)
+  {
     char *v = evhttp_encode_uri(s);
     ret = strcmp(v, s);
     free(v);
@@ -1583,60 +1940,79 @@ static int wrong_html_name(const char *s) {
   return ret;
 }
 
-static int is_as_ok(ioa_socket_handle s) {
+static int is_as_ok(ioa_socket_handle s)
+{
   return (s && s->special_session && ((struct admin_session *)s->special_session)->as_ok);
 }
 
-static int is_superuser(void) {
+static int is_superuser(void)
+{
   return (is_as_ok(current_socket) && (!((struct admin_session *)current_socket->special_session)->as_realm[0]));
 }
 
-static char *current_realm(void) {
+static char *current_realm(void)
+{
   if (current_socket && current_socket->special_session &&
-      ((struct admin_session *)current_socket->special_session)->as_ok) {
+      ((struct admin_session *)current_socket->special_session)->as_ok)
+  {
     return ((struct admin_session *)current_socket->special_session)->as_realm;
-  } else {
+  }
+  else
+  {
     static char bad_realm[1025] = "_ERROR:UNKNOWN_REALM__";
     return bad_realm;
   }
 }
 
-static char *current_eff_realm(void) {
+static char *current_eff_realm(void)
+{
   char *r = current_realm();
-  if (r && r[0]) {
+  if (r && r[0])
+  {
     return r;
-  } else if (current_socket && current_socket->special_session &&
-             ((struct admin_session *)current_socket->special_session)->as_ok) {
+  }
+  else if (current_socket && current_socket->special_session &&
+           ((struct admin_session *)current_socket->special_session)->as_ok)
+  {
     return ((struct admin_session *)current_socket->special_session)->as_eff_realm;
-  } else {
+  }
+  else
+  {
     static char bad_eff_realm[1025] = "_ERROR:UNKNOWN_REALM__";
     return bad_eff_realm;
   }
 }
 
-static size_t current_max_output_sessions(void) {
+static size_t current_max_output_sessions(void)
+{
   if (current_socket && current_socket->special_session &&
-      ((struct admin_session *)current_socket->special_session)->as_ok) {
+      ((struct admin_session *)current_socket->special_session)->as_ok)
+  {
     return ((struct admin_session *)current_socket->special_session)->number_of_user_sessions;
   }
   return DEFAULT_CLI_MAX_OUTPUT_SESSIONS;
 }
 
-static void set_current_max_output_sessions(size_t value) {
+static void set_current_max_output_sessions(size_t value)
+{
   if (current_socket && current_socket->special_session &&
-      ((struct admin_session *)current_socket->special_session)->as_ok) {
+      ((struct admin_session *)current_socket->special_session)->as_ok)
+  {
     ((struct admin_session *)current_socket->special_session)->number_of_user_sessions = value;
   }
 }
 
-static void https_cancel_session(const char *ssid) {
-  if (ssid && *ssid) {
+static void https_cancel_session(const char *ssid)
+{
+  if (ssid && *ssid)
+  {
     turnsession_id sid = (turnsession_id)strtoull(ssid, NULL, 10);
     send_session_cancellation_to_relay(sid);
   }
 }
 
-static void https_print_top_page_header(struct str_buffer *sb) {
+static void https_print_top_page_header(struct str_buffer *sb)
+{
   str_buffer_append(sb, "<!DOCTYPE html>\r\n<html>\r\n  <head>\r\n    <title>");
   str_buffer_append(sb, admin_title);
   str_buffer_append(
@@ -1645,7 +2021,8 @@ static void https_print_top_page_header(struct str_buffer *sb) {
   str_buffer_append(sb, bold_admin_title);
 }
 
-static void https_print_page_header(struct str_buffer *sb) {
+static void https_print_page_header(struct str_buffer *sb)
+{
   https_print_top_page_header(sb);
   str_buffer_append(sb, "<br><a href=\"/home?");
   str_buffer_append(sb, HR_REALM);
@@ -1655,16 +2032,19 @@ static void https_print_page_header(struct str_buffer *sb) {
   str_buffer_append(sb, "<br>\r\n");
 }
 
-static void https_finish_page(struct str_buffer *sb, ioa_socket_handle s, int cclose) {
+static void https_finish_page(struct str_buffer *sb, ioa_socket_handle s, int cclose)
+{
   str_buffer_append(sb, "</body>\r\n</html>\r\n");
 
   send_str_from_ioa_socket_tcp(s, "HTTP/1.1 200 OK\r\nServer: ");
-  if (turn_params.software_attribute) {
+  if (turn_params.software_attribute)
+  {
     send_str_from_ioa_socket_tcp(s, TURN_SOFTWARE);
   }
   send_str_from_ioa_socket_tcp(s, "\r\n");
   send_str_from_ioa_socket_tcp(s, get_http_date_header());
-  if (cclose) {
+  if (cclose)
+  {
     send_str_from_ioa_socket_tcp(s, "Connection: close\r\n");
   }
   send_str_from_ioa_socket_tcp(s, "Content-Type: text/html; charset=UTF-8\r\nContent-Length: ");
@@ -1677,11 +2057,15 @@ static void https_finish_page(struct str_buffer *sb, ioa_socket_handle s, int cc
   str_buffer_free(sb);
 }
 
-static AS_FORM get_form(const char *path) {
-  if (path) {
+static AS_FORM get_form(const char *path)
+{
+  if (path)
+  {
     size_t i = 0;
-    while (form_names[i].name) {
-      if (!strcmp(form_names[i].name, path)) {
+    while (form_names[i].name)
+    {
+      if (!strcmp(form_names[i].name, path))
+      {
         return form_names[i].form;
       }
       ++i;
@@ -1690,8 +2074,10 @@ static AS_FORM get_form(const char *path) {
   return AS_FORM_UNKNOWN;
 }
 
-static void write_https_logon_page(ioa_socket_handle s) {
-  if (s && !ioa_socket_tobeclosed(s)) {
+static void write_https_logon_page(ioa_socket_handle s)
+{
+  if (s && !ioa_socket_tobeclosed(s))
+  {
 
     struct str_buffer *sb = str_buffer_new();
 
@@ -1699,17 +2085,22 @@ static void write_https_logon_page(ioa_socket_handle s) {
 
     int we_have_admin_users = 0;
     const turn_dbdriver_t *dbd = get_dbdriver();
-    if (dbd && dbd->list_admin_users) {
+    if (dbd && dbd->list_admin_users)
+    {
       int ausers = dbd->list_admin_users(1);
-      if (ausers > 0) {
+      if (ausers > 0)
+      {
         we_have_admin_users = 1;
       }
     }
 
-    if (!we_have_admin_users) {
+    if (!we_have_admin_users)
+    {
       str_buffer_append(sb, "<br>To use the HTTPS admin connection, you have to set the database table "
                             "<b><i>admin_user</i></b> with the admin user accounts.<br>\r\n");
-    } else {
+    }
+    else
+    {
       str_buffer_append(sb, "<br><br>\r\n");
       str_buffer_append(sb, "<form action=\"");
       str_buffer_append(sb, form_names[AS_FORM_LOGON].name);
@@ -1728,12 +2119,17 @@ static void write_https_logon_page(ioa_socket_handle s) {
   }
 }
 
-static void write_https_home_page(ioa_socket_handle s) {
-  if (s && !ioa_socket_tobeclosed(s)) {
+static void write_https_home_page(ioa_socket_handle s)
+{
+  if (s && !ioa_socket_tobeclosed(s))
+  {
 
-    if (!is_as_ok(s)) {
+    if (!is_as_ok(s))
+    {
       write_https_logon_page(s);
-    } else {
+    }
+    else
+    {
 
       struct str_buffer *sb = str_buffer_new();
 
@@ -1749,9 +2145,12 @@ static void write_https_home_page(ioa_socket_handle s) {
       str_buffer_append(sb, "\" value=\"");
       str_buffer_append(sb, current_eff_realm());
       str_buffer_append(sb, "\"");
-      if (!is_superuser()) {
+      if (!is_superuser())
+      {
         str_buffer_append(sb, " disabled >");
-      } else {
+      }
+      else
+      {
         str_buffer_append(sb, "> <input type=\"submit\" value=\"Set Admin Session Realm\" >");
       }
 
@@ -1801,8 +2200,10 @@ static void write_https_home_page(ioa_socket_handle s) {
       str_buffer_append(sb, current_eff_realm());
       str_buffer_append(sb, "\">Origins</a>");
 
-      if (is_superuser()) {
-        if (ENC_ALG_NUM > 0) {
+      if (is_superuser())
+      {
+        if (ENC_ALG_NUM > 0)
+        {
           str_buffer_append(sb, "<br><a href=\"");
           str_buffer_append(sb, form_names[AS_FORM_OAUTH].name);
           str_buffer_append(sb, "?");
@@ -1821,8 +2222,10 @@ static void write_https_home_page(ioa_socket_handle s) {
   }
 }
 
-static void sbprintf(struct str_buffer *sb, const char *format, ...) {
-  if (sb && format) {
+static void sbprintf(struct str_buffer *sb, const char *format, ...)
+{
+  if (sb && format)
+  {
     va_list args;
     va_start(args, format);
     char s[1025] = "\0";
@@ -1832,38 +2235,56 @@ static void sbprintf(struct str_buffer *sb, const char *format, ...) {
   }
 }
 
-static void https_print_flag(struct str_buffer *sb, int flag, const char *name, const char *param_name) {
-  if (sb && name) {
-    if (!is_superuser()) {
+static void https_print_flag(struct str_buffer *sb, int flag, const char *name, const char *param_name)
+{
+  if (sb && name)
+  {
+    if (!is_superuser())
+    {
       param_name = 0;
     }
-    if (!param_name) {
+    if (!param_name)
+    {
       sbprintf(sb, "<tr><td>%s</td><td>%s</td></tr>\r\n", name, get_flag(flag));
-    } else {
+    }
+    else
+    {
       sbprintf(sb, "<tr><td>%s</td><td><a href=\"/toggle?%s=%s\">%s</a></td></tr>\r\n", name, HR_UPDATE_PARAMETER,
                param_name, get_flag(flag));
     }
   }
 }
 
-static void https_print_uint(struct str_buffer *sb, unsigned long value, const char *name, const char *param_name) {
-  if (sb && name) {
-    if (!is_superuser()) {
+static void https_print_uint(struct str_buffer *sb, unsigned long value, const char *name, const char *param_name)
+{
+  if (sb && name)
+  {
+    if (!is_superuser())
+    {
       param_name = 0;
     }
-    if (!param_name) {
-      if (value) {
+    if (!param_name)
+    {
+      if (value)
+      {
         sbprintf(sb, "<tr><td>%s</td><td>%lu</td></tr>\r\n", name, value);
-      } else {
+      }
+      else
+      {
         sbprintf(sb, "<tr><td>%s</td><td> </td></tr>\r\n", name);
       }
-    } else {
-      if (value) {
+    }
+    else
+    {
+      if (value)
+      {
         sbprintf(sb,
                  "<tr><td>%s</td><td> <form action=\"%s?%s=%s\" method=\"POST\"><input type=\"text\" name=\"%s\" "
                  "value=\"%lu\"><input type=\"submit\" value=\"Update\"></form> </td></tr>\r\n",
                  name, form_names[AS_FORM_UPDATE].name, HR_UPDATE_PARAMETER, param_name, param_name, value);
-      } else {
+      }
+      else
+      {
         sbprintf(sb,
                  "<tr><td>%s</td><td> <form action=\"%s?%s=%s\" method=\"POST\"><input type=\"text\" name=\"%s\" "
                  "value=\"\"><input type=\"submit\" value=\"Update\"></form> </td></tr>\r\n",
@@ -1873,14 +2294,20 @@ static void https_print_uint(struct str_buffer *sb, unsigned long value, const c
   }
 }
 
-static void https_print_str(struct str_buffer *sb, const char *value, const char *name, const char *param_name) {
-  if (sb && name && value) {
-    if (!is_superuser()) {
+static void https_print_str(struct str_buffer *sb, const char *value, const char *name, const char *param_name)
+{
+  if (sb && name && value)
+  {
+    if (!is_superuser())
+    {
       param_name = 0;
     }
-    if (!param_name) {
+    if (!param_name)
+    {
       sbprintf(sb, "<tr><td>%s</td><td>%s</td></tr>\r\n", name, value);
-    } else {
+    }
+    else
+    {
       sbprintf(sb,
                "<tr><td>%s</td><td> <form action=\"%s?%s=%s\" method=\"POST\"><input type=\"text\" name=\"%s\" "
                "value=\"%s\"><input type=\"submit\" value=\"Update\"></form> </td></tr>\r\n",
@@ -1889,23 +2316,32 @@ static void https_print_str(struct str_buffer *sb, const char *value, const char
   }
 }
 
-static void https_print_str_array(struct str_buffer *sb, char **value, size_t sz, const char *name) {
-  if (sb && name && value && sz) {
+static void https_print_str_array(struct str_buffer *sb, char **value, size_t sz, const char *name)
+{
+  if (sb && name && value && sz)
+  {
     size_t i;
-    for (i = 0; i < sz; i++) {
-      if (value[i]) {
+    for (i = 0; i < sz; i++)
+    {
+      if (value[i])
+      {
         sbprintf(sb, "<tr><td>  %s</td><td> %s</td></tr>\r\n", name, value[i]);
       }
     }
   }
 }
 
-static void https_print_addr(struct str_buffer *sb, ioa_addr *value, int use_port, const char *name) {
-  if (sb && name && value) {
+static void https_print_addr(struct str_buffer *sb, ioa_addr *value, int use_port, const char *name)
+{
+  if (sb && name && value)
+  {
     char s[256];
-    if (!use_port) {
+    if (!use_port)
+    {
       addr_to_string_no_port(value, (uint8_t *)s);
-    } else {
+    }
+    else
+    {
       addr_to_string(value, (uint8_t *)s);
     }
     sbprintf(sb, "<tr><td>  %s</td><td> %s</td></tr>\r\n", name, s);
@@ -1913,14 +2349,20 @@ static void https_print_addr(struct str_buffer *sb, ioa_addr *value, int use_por
 }
 
 static size_t https_print_addr_list(struct str_buffer *sb, turn_server_addrs_list_t *value, int use_port,
-                                    const char *name) {
-  if (sb && name && value && value->size && value->addrs) {
+                                    const char *name)
+{
+  if (sb && name && value && value->size && value->addrs)
+  {
     char s[256];
     size_t i;
-    for (i = 0; i < value->size; i++) {
-      if (!use_port) {
+    for (i = 0; i < value->size; i++)
+    {
+      if (!use_port)
+      {
         addr_to_string_no_port(&(value->addrs[i]), (uint8_t *)s);
-      } else {
+      }
+      else
+      {
         addr_to_string(&(value->addrs[i]), (uint8_t *)s);
       }
       sbprintf(sb, "</tr><td>  %s</td><td> %s</td></tr>\r\n", name, s);
@@ -1931,20 +2373,29 @@ static size_t https_print_addr_list(struct str_buffer *sb, turn_server_addrs_lis
 }
 
 static const char *change_ip_addr_html(int dynamic, const char *kind, const char *ip, const char *realm, char *buffer,
-                                       size_t sz) {
-  if (!buffer || !sz) {
+                                       size_t sz)
+{
+  if (!buffer || !sz)
+  {
     return "";
-  } else {
+  }
+  else
+  {
     buffer[0] = 0;
-    if (dynamic && kind && ip) {
+    if (dynamic && kind && ip)
+    {
 
-      if (!realm) {
+      if (!realm)
+      {
         realm = "";
       }
 
-      if (current_realm()[0] && strcmp(current_realm(), realm)) {
+      if (current_realm()[0] && strcmp(current_realm(), realm))
+      {
         // delete forbidden
-      } else {
+      }
+      else
+      {
         char *eip = evhttp_encode_uri(ip);
         snprintf(buffer, sz - 1, "<a href=\"%s?%s=%s&%s=%s&%s=%s\">delete</a>", form_names[AS_FORM_UPDATE].name,
                  HR_DELETE_IP_KIND, kind, HR_DELETE_IP_REALM, realm, HR_DELETE_IP, eip);
@@ -1956,34 +2407,46 @@ static const char *change_ip_addr_html(int dynamic, const char *kind, const char
 }
 
 static void https_print_ip_range_list(struct str_buffer *sb, ip_range_list_t *value, const char *name, const char *kind,
-                                      int dynamic) {
-  if (sb && name) {
-    if (value && value->rs) {
+                                      int dynamic)
+{
+  if (sb && name)
+  {
+    if (value && value->rs)
+    {
       size_t i;
       char buffer[1025];
-      for (i = 0; i < value->ranges_number; ++i) {
-        if (value->rs[i].realm[0]) {
-          if (current_eff_realm()[0] && strcmp(current_eff_realm(), value->rs[i].realm)) {
+      for (i = 0; i < value->ranges_number; ++i)
+      {
+        if (value->rs[i].realm[0])
+        {
+          if (current_eff_realm()[0] && strcmp(current_eff_realm(), value->rs[i].realm))
+          {
             continue;
-          } else {
+          }
+          else
+          {
             sbprintf(sb, "<tr><td>  %s</td><td> %s [%s] %s</td></tr>\r\n", name, value->rs[i].str, value->rs[i].realm,
                      change_ip_addr_html(dynamic, kind, value->rs[i].str, value->rs[i].realm, buffer, sizeof(buffer)));
           }
-        } else {
+        }
+        else
+        {
           sbprintf(sb, "<tr><td>  %s</td><td> %s %s</td></tr>\r\n", name, value->rs[i].str,
                    change_ip_addr_html(dynamic, kind, value->rs[i].str, value->rs[i].realm, buffer, sizeof(buffer)));
         }
       }
     }
 
-    if (dynamic) {
+    if (dynamic)
+    {
       sbprintf(sb, "<tr><td> Add %s</td><td>", name);
       sbprintf(
           sb,
           "<form action=\"%s?%s=%s\" method=\"POST\">IP range:<input required type=\"text\" name=\"%s\" value=\"\" >",
           form_names[AS_FORM_UPDATE].name, HR_ADD_IP_KIND, kind, HR_ADD_IP);
       sbprintf(sb, "Realm: <input type=\"text\" name=\"%s\" value=\"%s\" ", HR_ADD_IP_REALM, current_eff_realm());
-      if (!is_superuser()) {
+      if (!is_superuser())
+      {
         sbprintf(sb, " disabled ");
       }
       sbprintf(sb, ">");
@@ -1992,12 +2455,17 @@ static void https_print_ip_range_list(struct str_buffer *sb, ip_range_list_t *va
   }
 }
 
-static void toggle_param(const char *pn) {
-  if (is_superuser()) {
-    if (pn) {
+static void toggle_param(const char *pn)
+{
+  if (is_superuser())
+  {
+    if (pn)
+    {
       int i = 0;
-      while (tcmds[i].cmd && tcmds[i].data) {
-        if (strcmp(tcmds[i].cmd, pn) == 0) {
+      while (tcmds[i].cmd && tcmds[i].data)
+      {
+        if (strcmp(tcmds[i].cmd, pn) == 0)
+        {
           *(tcmds[i].data) = !(*(tcmds[i].data));
           return;
         }
@@ -2007,37 +2475,55 @@ static void toggle_param(const char *pn) {
   }
 }
 
-static void update_param(const char *pn, const char *value) {
-  if (pn) {
-    if (!value) {
+static void update_param(const char *pn, const char *value)
+{
+  if (pn)
+  {
+    if (!value)
+    {
       value = "0";
     }
-    if (is_superuser()) {
-      if (strstr(pn, "total-quota") == pn) {
+    if (is_superuser())
+    {
+      if (strstr(pn, "total-quota") == pn)
+      {
         turn_params.total_quota = atoi(value);
-      } else if (strstr(pn, "user-quota") == pn) {
+      }
+      else if (strstr(pn, "user-quota") == pn)
+      {
         turn_params.user_quota = atoi(value);
-      } else if (strstr(pn, "max-bps") == pn) {
+      }
+      else if (strstr(pn, "max-bps") == pn)
+      {
         set_max_bps((band_limit_t)strtoul(value, NULL, 10));
-      } else if (strstr(pn, "bps-capacity") == pn) {
+      }
+      else if (strstr(pn, "bps-capacity") == pn)
+      {
         set_bps_capacity((band_limit_t)strtoul(value, NULL, 10));
       }
     }
     {
       realm_params_t *rp = get_realm(current_eff_realm());
-      if (!rp) {
+      if (!rp)
+      {
         rp = get_realm(NULL);
       }
 
       const turn_dbdriver_t *dbd = get_dbdriver();
-      if (dbd && dbd->set_realm_option_one) {
-        if (strstr(pn, "cr-total-quota") == pn) {
+      if (dbd && dbd->set_realm_option_one)
+      {
+        if (strstr(pn, "cr-total-quota") == pn)
+        {
           rp->options.perf_options.total_quota = atoi(value);
           dbd->set_realm_option_one((uint8_t *)rp->options.name, rp->options.perf_options.total_quota, "total-quota");
-        } else if (strstr(pn, "cr-user-quota") == pn) {
+        }
+        else if (strstr(pn, "cr-user-quota") == pn)
+        {
           rp->options.perf_options.user_quota = atoi(value);
           dbd->set_realm_option_one((uint8_t *)rp->options.name, rp->options.perf_options.user_quota, "user-quota");
-        } else if (strstr(pn, "cr-max-bps") == pn) {
+        }
+        else if (strstr(pn, "cr-max-bps") == pn)
+        {
           rp->options.perf_options.max_bps = (band_limit_t)strtoul(value, NULL, 10);
           dbd->set_realm_option_one((uint8_t *)rp->options.name, rp->options.perf_options.max_bps, "max-bps");
         }
@@ -2046,18 +2532,24 @@ static void update_param(const char *pn, const char *value) {
   }
 }
 
-static void https_print_empty_row(struct str_buffer *sb, size_t span) {
+static void https_print_empty_row(struct str_buffer *sb, size_t span)
+{
   str_buffer_append(sb, "<tr><td colspan=");
   str_buffer_append_sz(sb, span);
   str_buffer_append(sb, "><br></td></tr>");
 }
 
-static void write_pc_page(ioa_socket_handle s) {
-  if (s && !ioa_socket_tobeclosed(s)) {
+static void write_pc_page(ioa_socket_handle s)
+{
+  if (s && !ioa_socket_tobeclosed(s))
+  {
 
-    if (!is_as_ok(s)) {
+    if (!is_as_ok(s))
+    {
       write_https_logon_page(s);
-    } else {
+    }
+    else
+    {
 
       struct str_buffer *sb = str_buffer_new();
 
@@ -2090,28 +2582,38 @@ static void write_pc_page(ioa_socket_handle s) {
 #endif
         {
           char wd[1025];
-          if (getcwd(wd, sizeof(wd) - 1)) {
+          if (getcwd(wd, sizeof(wd) - 1))
+          {
             https_print_str(sb, wd, "process dir", 0);
           }
         }
 
         https_print_empty_row(sb, 2);
 
-        if (turn_params.cipher_list[0]) {
+        if (turn_params.cipher_list[0])
+        {
           https_print_str(sb, turn_params.cipher_list, "cipher-list", 0);
-        } else {
+        }
+        else
+        {
           https_print_str(sb, DEFAULT_CIPHER_LIST, "cipher-list", 0);
         }
 
         https_print_str(sb, turn_params.ec_curve_name, "ec-curve-name", 0);
         {
-          if (turn_params.dh_key_size == DH_CUSTOM) {
+          if (turn_params.dh_key_size == DH_CUSTOM)
+          {
             https_print_str(sb, turn_params.dh_file, "dh-file", 0);
-          } else {
+          }
+          else
+          {
             unsigned int dh_key_length = 1066;
-            if (turn_params.dh_key_size == DH_566) {
+            if (turn_params.dh_key_size == DH_566)
+            {
               dh_key_length = 566;
-            } else if (turn_params.dh_key_size == DH_2066) {
+            }
+            else if (turn_params.dh_key_size == DH_2066)
+            {
               dh_key_length = 2066;
             }
             https_print_uint(sb, (unsigned long)dh_key_length, "DH-key-length", 0);
@@ -2126,7 +2628,8 @@ static void write_pc_page(ioa_socket_handle s) {
 
         https_print_str_array(sb, turn_params.listener.addrs, turn_params.listener.addrs_number, "Listener addr");
 
-        if (turn_params.listener_ifname[0]) {
+        if (turn_params.listener_ifname[0])
+        {
           https_print_str(sb, turn_params.listener_ifname, "listener-ifname", 0);
         }
 
@@ -2153,14 +2656,16 @@ static void write_pc_page(ioa_socket_handle s) {
           an += https_print_addr_list(sb, &turn_params.alternate_servers_list, 1, "Alternate server");
           an += https_print_addr_list(sb, &turn_params.tls_alternate_servers_list, 1, "TLS alternate server");
 
-          if (an) {
+          if (an)
+          {
             https_print_empty_row(sb, 2);
           }
         }
 
         https_print_str_array(sb, turn_params.relay_addrs, turn_params.relays_number, "Relay addr");
 
-        if (turn_params.relay_ifname[0]) {
+        if (turn_params.relay_ifname[0])
+        {
           https_print_str(sb, turn_params.relay_ifname, "relay-ifname", 0);
         }
 
@@ -2177,19 +2682,25 @@ static void write_pc_page(ioa_socket_handle s) {
 
         https_print_empty_row(sb, 2);
 
-        if (turn_params.default_users_db.persistent_users_db.userdb[0]) {
+        if (turn_params.default_users_db.persistent_users_db.userdb[0])
+        {
           https_print_str(sb, userdb_type_to_string(turn_params.default_users_db.userdb_type), "DB type", 0);
-          if (is_superuser()) {
+          if (is_superuser())
+          {
             https_print_str(sb, turn_params.default_users_db.persistent_users_db.userdb, "DB", 0);
           }
-        } else {
+        }
+        else
+        {
           https_print_str(sb, "none", "DB type", 0);
           https_print_str(sb, "none", "DB", 0);
         }
 
 #if !defined(TURN_NO_HIREDIS)
-        if (is_superuser()) {
-          if (turn_params.use_redis_statsdb && turn_params.redis_statsdb.connection_string_sanitized[0]) {
+        if (is_superuser())
+        {
+          if (turn_params.use_redis_statsdb && turn_params.redis_statsdb.connection_string_sanitized[0])
+          {
             https_print_str(sb, turn_params.redis_statsdb.connection_string_sanitized, "Redis Statistics DB", 0);
           }
         }
@@ -2197,32 +2708,42 @@ static void write_pc_page(ioa_socket_handle s) {
 
         https_print_empty_row(sb, 2);
 
-        if (turn_params.ct == TURN_CREDENTIALS_LONG_TERM) {
+        if (turn_params.ct == TURN_CREDENTIALS_LONG_TERM)
+        {
           https_print_flag(sb, 1, "Long-term authorization mechanism", 0);
-        } else {
+        }
+        else
+        {
           https_print_flag(sb, 1, "Anonymous credentials", 0);
         }
         https_print_flag(sb, turn_params.use_auth_secret_with_timestamp, "TURN REST API support", 0);
-        if (turn_params.use_auth_secret_with_timestamp) {
+        if (turn_params.use_auth_secret_with_timestamp)
+        {
 
-          if (!turn_params.rest_api_separator || ((unsigned int)turn_params.rest_api_separator == (unsigned int)':')) {
+          if (!turn_params.rest_api_separator || ((unsigned int)turn_params.rest_api_separator == (unsigned int)':'))
+          {
             https_print_str(sb, ":", "TURN REST API separator", 0);
-          } else {
+          }
+          else
+          {
             https_print_uint(sb, turn_params.rest_api_separator, "TURN REST API separator ASCII number", 0);
           }
         }
 
         https_print_empty_row(sb, 2);
 
-        if (is_superuser()) {
+        if (is_superuser())
+        {
           char *rn = get_realm(NULL)->options.name;
-          if (rn[0]) {
+          if (rn[0])
+          {
             https_print_str(sb, rn, "Default realm", 0);
           }
         }
 
         realm_params_t *rp = get_realm(current_eff_realm());
-        if (!rp) {
+        if (!rp)
+        {
           rp = get_realm(NULL);
         }
 
@@ -2273,7 +2794,8 @@ static void write_pc_page(ioa_socket_handle s) {
   }
 }
 
-struct https_ps_arg {
+struct https_ps_arg
+{
   struct str_buffer *sb;
   size_t counter;
   turn_time_t ct;
@@ -2283,52 +2805,73 @@ struct https_ps_arg {
   turnsession_id cs;
 };
 
-static bool https_print_session(ur_map_key_type key, ur_map_value_type value, void *arg) {
-  if (key && value && arg) {
+static bool https_print_session(ur_map_key_type key, ur_map_value_type value, void *arg)
+{
+  if (key && value && arg)
+  {
     struct https_ps_arg *csarg = (struct https_ps_arg *)arg;
     struct str_buffer *sb = csarg->sb;
     struct turn_session_info *tsi = (struct turn_session_info *)value;
 
-    if (current_eff_realm()[0] && strcmp(current_eff_realm(), tsi->realm)) {
+    if (current_eff_realm()[0] && strcmp(current_eff_realm(), tsi->realm))
+    {
       return false;
     }
 
-    if (csarg->user_pattern[0]) {
-      if (!strstr((char *)tsi->username, csarg->user_pattern)) {
+    if (csarg->user_pattern[0])
+    {
+      if (!strstr((char *)tsi->username, csarg->user_pattern))
+      {
         return false;
       }
     }
 
-    if (csarg->cs == tsi->id) {
+    if (csarg->cs == tsi->id)
+    {
       return false;
     }
 
     {
       const char *pn = csarg->client_protocol;
-      if (pn[0]) {
-        if (!strcmp(pn, "TLS") || !strcmp(pn, "tls") || !strcmp(pn, "Tls")) {
-          if ((tsi->client_protocol != TLS_SOCKET) && (tsi->client_protocol != TLS_SCTP_SOCKET)) {
+      if (pn[0])
+      {
+        if (!strcmp(pn, "TLS") || !strcmp(pn, "tls") || !strcmp(pn, "Tls"))
+        {
+          if ((tsi->client_protocol != TLS_SOCKET) && (tsi->client_protocol != TLS_SCTP_SOCKET))
+          {
             return false;
           }
-        } else if (!strcmp(pn, "DTLS") || !strcmp(pn, "dtls") || !strcmp(pn, "Dtls")) {
-          if (tsi->client_protocol != DTLS_SOCKET) {
+        }
+        else if (!strcmp(pn, "DTLS") || !strcmp(pn, "dtls") || !strcmp(pn, "Dtls"))
+        {
+          if (tsi->client_protocol != DTLS_SOCKET)
+          {
             return false;
           }
-        } else if (!strcmp(pn, "TCP") || !strcmp(pn, "tcp") || !strcmp(pn, "Tcp")) {
-          if ((tsi->client_protocol != TCP_SOCKET) && (tsi->client_protocol != SCTP_SOCKET)) {
+        }
+        else if (!strcmp(pn, "TCP") || !strcmp(pn, "tcp") || !strcmp(pn, "Tcp"))
+        {
+          if ((tsi->client_protocol != TCP_SOCKET) && (tsi->client_protocol != SCTP_SOCKET))
+          {
             return false;
           }
-        } else if (!strcmp(pn, "UDP") || !strcmp(pn, "udp") || !strcmp(pn, "Udp")) {
-          if (tsi->client_protocol != UDP_SOCKET) {
+        }
+        else if (!strcmp(pn, "UDP") || !strcmp(pn, "udp") || !strcmp(pn, "Udp"))
+        {
+          if (tsi->client_protocol != UDP_SOCKET)
+          {
             return false;
           }
-        } else {
+        }
+        else
+        {
           return false;
         }
       }
     }
 
-    if ((unsigned long)csarg->counter < (unsigned long)csarg->max_sessions) {
+    if ((unsigned long)csarg->counter < (unsigned long)csarg->max_sessions)
+    {
       str_buffer_append(sb, "<tr><td>");
       str_buffer_append_sz(sb, (size_t)(csarg->counter + 1));
       str_buffer_append(sb, "</td><td>");
@@ -2345,15 +2888,21 @@ static bool https_print_session(ur_map_key_type key, ur_map_value_type value, vo
       str_buffer_append(sb, "</td><td>");
       str_buffer_append(sb, tsi->origin);
       str_buffer_append(sb, "</td><td>");
-      if (turn_time_before(csarg->ct, tsi->start_time)) {
+      if (turn_time_before(csarg->ct, tsi->start_time))
+      {
         str_buffer_append(sb, "undefined time\n");
-      } else {
+      }
+      else
+      {
         str_buffer_append_sz(sb, (size_t)(csarg->ct - tsi->start_time));
       }
       str_buffer_append(sb, "</td><td>");
-      if (turn_time_before(tsi->expiration_time, csarg->ct)) {
+      if (turn_time_before(tsi->expiration_time, csarg->ct))
+      {
         str_buffer_append(sb, "expired");
-      } else {
+      }
+      else
+      {
         str_buffer_append_sz(sb, (size_t)(tsi->expiration_time - csarg->ct));
       }
       str_buffer_append(sb, "</td><td>");
@@ -2362,16 +2911,20 @@ static bool https_print_session(ur_map_key_type key, ur_map_value_type value, vo
       str_buffer_append(sb, socket_type_name(tsi->peer_protocol));
       str_buffer_append(sb, "</td><td>");
       {
-        if (!tsi->local_addr_data.saddr[0]) {
+        if (!tsi->local_addr_data.saddr[0])
+        {
           addr_to_string(&(tsi->local_addr_data.addr), (uint8_t *)tsi->local_addr_data.saddr);
         }
-        if (!tsi->remote_addr_data.saddr[0]) {
+        if (!tsi->remote_addr_data.saddr[0])
+        {
           addr_to_string(&(tsi->remote_addr_data.addr), (uint8_t *)tsi->remote_addr_data.saddr);
         }
-        if (!tsi->relay_addr_data_ipv4.saddr[0]) {
+        if (!tsi->relay_addr_data_ipv4.saddr[0])
+        {
           addr_to_string(&(tsi->relay_addr_data_ipv4.addr), (uint8_t *)tsi->relay_addr_data_ipv4.saddr);
         }
-        if (!tsi->relay_addr_data_ipv6.saddr[0]) {
+        if (!tsi->relay_addr_data_ipv6.saddr[0])
+        {
           addr_to_string(&(tsi->relay_addr_data_ipv6.addr), (uint8_t *)tsi->relay_addr_data_ipv6.saddr);
         }
         str_buffer_append(sb, tsi->remote_addr_data.saddr);
@@ -2409,19 +2962,25 @@ static bool https_print_session(ur_map_key_type key, ur_map_value_type value, vo
           str_buffer_append(sb, "</td><td>");
         }
 
-        if (tsi->main_peers_size) {
+        if (tsi->main_peers_size)
+        {
           size_t i;
-          for (i = 0; i < tsi->main_peers_size; ++i) {
-            if (!(tsi->main_peers_data[i].saddr[0])) {
+          for (i = 0; i < tsi->main_peers_size; ++i)
+          {
+            if (!(tsi->main_peers_data[i].saddr[0]))
+            {
               addr_to_string(&(tsi->main_peers_data[i].addr), (uint8_t *)tsi->main_peers_data[i].saddr);
             }
             str_buffer_append(sb, " ");
             str_buffer_append(sb, tsi->main_peers_data[i].saddr);
             str_buffer_append(sb, " ");
           }
-          if (tsi->extra_peers_size && tsi->extra_peers_data) {
-            for (i = 0; i < tsi->extra_peers_size; ++i) {
-              if (!(tsi->extra_peers_data[i].saddr[0])) {
+          if (tsi->extra_peers_size && tsi->extra_peers_data)
+          {
+            for (i = 0; i < tsi->extra_peers_size; ++i)
+            {
+              if (!(tsi->extra_peers_data[i].saddr[0]))
+              {
                 addr_to_string(&(tsi->extra_peers_data[i].addr), (uint8_t *)tsi->extra_peers_data[i].saddr);
               }
               str_buffer_append(sb, " ");
@@ -2440,7 +2999,8 @@ static bool https_print_session(ur_map_key_type key, ur_map_value_type value, vo
 }
 
 static size_t https_print_sessions(struct str_buffer *sb, const char *client_protocol, const char *user_pattern,
-                                   size_t max_sessions, turnsession_id cs) {
+                                   size_t max_sessions, turnsession_id cs)
+{
   struct https_ps_arg arg = {sb, 0, 0, client_protocol, user_pattern, max_sessions, cs};
 
   arg.ct = turn_time();
@@ -2451,12 +3011,17 @@ static size_t https_print_sessions(struct str_buffer *sb, const char *client_pro
 }
 
 static void write_ps_page(ioa_socket_handle s, const char *client_protocol, const char *user_pattern,
-                          size_t max_sessions, turnsession_id cs) {
-  if (s && !ioa_socket_tobeclosed(s)) {
+                          size_t max_sessions, turnsession_id cs)
+{
+  if (s && !ioa_socket_tobeclosed(s))
+  {
 
-    if (!is_as_ok(s)) {
+    if (!is_as_ok(s))
+    {
       write_https_logon_page(s);
-    } else {
+    }
+    else
+    {
 
       struct str_buffer *sb = str_buffer_new();
 
@@ -2472,7 +3037,8 @@ static void write_ps_page(ioa_socket_handle s, const char *client_protocol, cons
       str_buffer_append(sb, "\" value=\"");
       str_buffer_append(sb, current_eff_realm());
       str_buffer_append(sb, "\"");
-      if (!is_superuser()) {
+      if (!is_superuser())
+      {
         str_buffer_append(sb, " disabled ");
       }
       str_buffer_append(sb, ">");
@@ -2524,10 +3090,12 @@ static void write_ps_page(ioa_socket_handle s, const char *client_protocol, cons
   }
 }
 
-static size_t https_print_users(struct str_buffer *sb) {
+static size_t https_print_users(struct str_buffer *sb)
+{
   size_t ret = 0;
   const turn_dbdriver_t *dbd = get_dbdriver();
-  if (dbd && dbd->list_users) {
+  if (dbd && dbd->list_users)
+  {
     secrets_list_t users, realms;
     init_secrets_list(&users);
     init_secrets_list(&realms);
@@ -2535,14 +3103,16 @@ static size_t https_print_users(struct str_buffer *sb) {
 
     size_t sz = get_secrets_list_size(&users);
     size_t i;
-    for (i = 0; i < sz; ++i) {
+    for (i = 0; i < sz; ++i)
+    {
       str_buffer_append(sb, "<tr><td>");
       str_buffer_append_sz(sb, i + 1);
       str_buffer_append(sb, "</td>");
       str_buffer_append(sb, "<td>");
       str_buffer_append(sb, get_secrets_list_elem(&users, i));
       str_buffer_append(sb, "</td>");
-      if (!current_eff_realm()[0]) {
+      if (!current_eff_realm()[0])
+      {
         str_buffer_append(sb, "<td>");
         str_buffer_append(sb, get_secrets_list_elem(&realms, i));
         str_buffer_append(sb, "</td>");
@@ -2570,12 +3140,17 @@ static size_t https_print_users(struct str_buffer *sb) {
   return ret;
 }
 
-static void write_users_page(ioa_socket_handle s, const uint8_t *add_user, const uint8_t *add_realm, const char *msg) {
-  if (s && !ioa_socket_tobeclosed(s)) {
+static void write_users_page(ioa_socket_handle s, const uint8_t *add_user, const uint8_t *add_realm, const char *msg)
+{
+  if (s && !ioa_socket_tobeclosed(s))
+  {
 
-    if (!is_as_ok(s)) {
+    if (!is_as_ok(s))
+    {
       write_https_logon_page(s);
-    } else {
+    }
+    else
+    {
 
       struct str_buffer *sb = str_buffer_new();
 
@@ -2591,7 +3166,8 @@ static void write_users_page(ioa_socket_handle s, const uint8_t *add_user, const
       str_buffer_append(sb, "\" value=\"");
       str_buffer_append(sb, current_eff_realm());
       str_buffer_append(sb, "\"");
-      if (!is_superuser()) {
+      if (!is_superuser())
+      {
         str_buffer_append(sb, " disabled ");
       }
       str_buffer_append(sb, ">");
@@ -2606,7 +3182,8 @@ static void write_users_page(ioa_socket_handle s, const uint8_t *add_user, const
       str_buffer_append(sb, "\" method=\"POST\">\r\n");
       str_buffer_append(sb, "  <fieldset><legend>User:</legend>\r\n");
 
-      if (msg && msg[0]) {
+      if (msg && msg[0])
+      {
         str_buffer_append(sb, "<br><table id=\"msg\"><th>");
         str_buffer_append(sb, msg);
         str_buffer_append(sb, "</th></table><br>");
@@ -2617,7 +3194,8 @@ static void write_users_page(ioa_socket_handle s, const uint8_t *add_user, const
       str_buffer_append(sb, "\" value=\"");
       str_buffer_append(sb, (const char *)add_realm);
       str_buffer_append(sb, "\"");
-      if (!is_superuser()) {
+      if (!is_superuser())
+      {
         str_buffer_append(sb, " disabled ");
       }
       str_buffer_append(sb, "><br>\r\n");
@@ -2651,7 +3229,8 @@ static void write_users_page(ioa_socket_handle s, const uint8_t *add_user, const
       str_buffer_append(sb, "<br><b>Users:</b><br><br>\r\n");
       str_buffer_append(sb, "<table>\r\n");
       str_buffer_append(sb, "<tr><th>N</th><th>Name</th>");
-      if (!current_eff_realm()[0]) {
+      if (!current_eff_realm()[0])
+      {
         str_buffer_append(sb, "<th>Realm</th>");
       }
       str_buffer_append(sb, "<th> </th>");
@@ -2670,10 +3249,12 @@ static void write_users_page(ioa_socket_handle s, const uint8_t *add_user, const
   }
 }
 
-static size_t https_print_secrets(struct str_buffer *sb) {
+static size_t https_print_secrets(struct str_buffer *sb)
+{
   size_t ret = 0;
   const turn_dbdriver_t *dbd = get_dbdriver();
-  if (dbd && dbd->list_secrets) {
+  if (dbd && dbd->list_secrets)
+  {
     secrets_list_t secrets, realms;
     init_secrets_list(&secrets);
     init_secrets_list(&realms);
@@ -2681,14 +3262,16 @@ static size_t https_print_secrets(struct str_buffer *sb) {
 
     size_t sz = get_secrets_list_size(&secrets);
     size_t i;
-    for (i = 0; i < sz; ++i) {
+    for (i = 0; i < sz; ++i)
+    {
       str_buffer_append(sb, "<tr><td>");
       str_buffer_append_sz(sb, i + 1);
       str_buffer_append(sb, "</td>");
       str_buffer_append(sb, "<td>");
       str_buffer_append(sb, get_secrets_list_elem(&secrets, i));
       str_buffer_append(sb, "</td>");
-      if (!current_eff_realm()[0]) {
+      if (!current_eff_realm()[0])
+      {
         str_buffer_append(sb, "<td>");
         str_buffer_append(sb, get_secrets_list_elem(&realms, i));
         str_buffer_append(sb, "</td>");
@@ -2717,12 +3300,17 @@ static size_t https_print_secrets(struct str_buffer *sb) {
 }
 
 static void write_shared_secrets_page(ioa_socket_handle s, const char *add_secret, const char *add_realm,
-                                      const char *msg) {
-  if (s && !ioa_socket_tobeclosed(s)) {
+                                      const char *msg)
+{
+  if (s && !ioa_socket_tobeclosed(s))
+  {
 
-    if (!is_as_ok(s)) {
+    if (!is_as_ok(s))
+    {
       write_https_logon_page(s);
-    } else {
+    }
+    else
+    {
 
       struct str_buffer *sb = str_buffer_new();
 
@@ -2738,7 +3326,8 @@ static void write_shared_secrets_page(ioa_socket_handle s, const char *add_secre
       str_buffer_append(sb, "\" value=\"");
       str_buffer_append(sb, current_eff_realm());
       str_buffer_append(sb, "\"");
-      if (!is_superuser()) {
+      if (!is_superuser())
+      {
         str_buffer_append(sb, " disabled ");
       }
       str_buffer_append(sb, ">");
@@ -2753,7 +3342,8 @@ static void write_shared_secrets_page(ioa_socket_handle s, const char *add_secre
       str_buffer_append(sb, "\" method=\"POST\">\r\n");
       str_buffer_append(sb, "  <fieldset><legend>Secret:</legend>\r\n");
 
-      if (msg && msg[0]) {
+      if (msg && msg[0])
+      {
         str_buffer_append(sb, "<br><table id=\"msg\"><th>");
         str_buffer_append(sb, msg);
         str_buffer_append(sb, "</th></table><br>");
@@ -2764,7 +3354,8 @@ static void write_shared_secrets_page(ioa_socket_handle s, const char *add_secre
       str_buffer_append(sb, "\" value=\"");
       str_buffer_append(sb, (const char *)add_realm);
       str_buffer_append(sb, "\"");
-      if (!is_superuser()) {
+      if (!is_superuser())
+      {
         str_buffer_append(sb, " disabled ");
       }
       str_buffer_append(sb, "><br>\r\n");
@@ -2784,7 +3375,8 @@ static void write_shared_secrets_page(ioa_socket_handle s, const char *add_secre
       str_buffer_append(sb, "<br><b>Shared secrets:</b><br><br>\r\n");
       str_buffer_append(sb, "<table>\r\n");
       str_buffer_append(sb, "<tr><th>N</th><th>Value</th>");
-      if (!current_eff_realm()[0]) {
+      if (!current_eff_realm()[0])
+      {
         str_buffer_append(sb, "<th>Realm</th>");
       }
       str_buffer_append(sb, "<th> </th>");
@@ -2803,10 +3395,12 @@ static void write_shared_secrets_page(ioa_socket_handle s, const char *add_secre
   }
 }
 
-static size_t https_print_origins(struct str_buffer *sb) {
+static size_t https_print_origins(struct str_buffer *sb)
+{
   size_t ret = 0;
   const turn_dbdriver_t *dbd = get_dbdriver();
-  if (dbd && dbd->list_origins) {
+  if (dbd && dbd->list_origins)
+  {
     secrets_list_t origins, realms;
     init_secrets_list(&origins);
     init_secrets_list(&realms);
@@ -2814,19 +3408,22 @@ static size_t https_print_origins(struct str_buffer *sb) {
 
     size_t sz = get_secrets_list_size(&origins);
     size_t i;
-    for (i = 0; i < sz; ++i) {
+    for (i = 0; i < sz; ++i)
+    {
       str_buffer_append(sb, "<tr><td>");
       str_buffer_append_sz(sb, i + 1);
       str_buffer_append(sb, "</td>");
       str_buffer_append(sb, "<td>");
       str_buffer_append(sb, get_secrets_list_elem(&origins, i));
       str_buffer_append(sb, "</td>");
-      if (!current_eff_realm()[0]) {
+      if (!current_eff_realm()[0])
+      {
         str_buffer_append(sb, "<td>");
         str_buffer_append(sb, get_secrets_list_elem(&realms, i));
         str_buffer_append(sb, "</td>");
       }
-      if (is_superuser()) {
+      if (is_superuser())
+      {
         str_buffer_append(sb, "<td> <a href=\"");
         str_buffer_append(sb, form_names[AS_FORM_OS].name);
         str_buffer_append(sb, "?");
@@ -2847,12 +3444,17 @@ static size_t https_print_origins(struct str_buffer *sb) {
   return ret;
 }
 
-static void write_origins_page(ioa_socket_handle s, const char *add_origin, const char *add_realm, const char *msg) {
-  if (s && !ioa_socket_tobeclosed(s)) {
+static void write_origins_page(ioa_socket_handle s, const char *add_origin, const char *add_realm, const char *msg)
+{
+  if (s && !ioa_socket_tobeclosed(s))
+  {
 
-    if (!is_as_ok(s)) {
+    if (!is_as_ok(s))
+    {
       write_https_logon_page(s);
-    } else {
+    }
+    else
+    {
 
       struct str_buffer *sb = str_buffer_new();
 
@@ -2868,7 +3470,8 @@ static void write_origins_page(ioa_socket_handle s, const char *add_origin, cons
       str_buffer_append(sb, "\" value=\"");
       str_buffer_append(sb, current_eff_realm());
       str_buffer_append(sb, "\"");
-      if (!is_superuser()) {
+      if (!is_superuser())
+      {
         str_buffer_append(sb, " disabled ");
       }
       str_buffer_append(sb, ">");
@@ -2878,13 +3481,15 @@ static void write_origins_page(ioa_socket_handle s, const char *add_origin, cons
       str_buffer_append(sb, "</fieldset>\r\n");
       str_buffer_append(sb, "</form>\r\n");
 
-      if (is_superuser()) {
+      if (is_superuser())
+      {
         str_buffer_append(sb, "<form action=\"");
         str_buffer_append(sb, form_names[AS_FORM_OS].name);
         str_buffer_append(sb, "\" method=\"POST\">\r\n");
         str_buffer_append(sb, "  <fieldset><legend>Origin:</legend>\r\n");
 
-        if (msg && msg[0]) {
+        if (msg && msg[0])
+        {
           str_buffer_append(sb, "<br><table id=\"msg\"><th>");
           str_buffer_append(sb, msg);
           str_buffer_append(sb, "</th></table><br>");
@@ -2913,10 +3518,12 @@ static void write_origins_page(ioa_socket_handle s, const char *add_origin, cons
       str_buffer_append(sb, "<br><b>Origins:</b><br><br>\r\n");
       str_buffer_append(sb, "<table>\r\n");
       str_buffer_append(sb, "<tr><th>N</th><th>Value</th>");
-      if (!current_eff_realm()[0]) {
+      if (!current_eff_realm()[0])
+      {
         str_buffer_append(sb, "<th>Realm</th>");
       }
-      if (is_superuser()) {
+      if (is_superuser())
+      {
         str_buffer_append(sb, "<th> </th>");
       }
       str_buffer_append(sb, "</tr>\r\n");
@@ -2934,10 +3541,12 @@ static void write_origins_page(ioa_socket_handle s, const char *add_origin, cons
   }
 }
 
-static size_t https_print_oauth_keys(struct str_buffer *sb) {
+static size_t https_print_oauth_keys(struct str_buffer *sb)
+{
   size_t ret = 0;
   const turn_dbdriver_t *dbd = get_dbdriver();
-  if (dbd && dbd->list_oauth_keys) {
+  if (dbd && dbd->list_oauth_keys)
+  {
     secrets_list_t kids, teas, tss, lts, realms;
     init_secrets_list(&kids);
     init_secrets_list(&teas);
@@ -2948,7 +3557,8 @@ static size_t https_print_oauth_keys(struct str_buffer *sb) {
 
     size_t sz = get_secrets_list_size(&kids);
     size_t i;
-    for (i = 0; i < sz; ++i) {
+    for (i = 0; i < sz; ++i)
+    {
       str_buffer_append(sb, "<tr><td>");
       str_buffer_append_sz(sb, i + 1);
       str_buffer_append(sb, "</td>");
@@ -3001,14 +3611,21 @@ static size_t https_print_oauth_keys(struct str_buffer *sb) {
   return ret;
 }
 
-static void write_https_oauth_show_keys(ioa_socket_handle s, const char *kid) {
-  if (s && !ioa_socket_tobeclosed(s)) {
+static void write_https_oauth_show_keys(ioa_socket_handle s, const char *kid)
+{
+  if (s && !ioa_socket_tobeclosed(s))
+  {
 
-    if (!is_as_ok(s)) {
+    if (!is_as_ok(s))
+    {
       write_https_logon_page(s);
-    } else if (!is_superuser()) {
+    }
+    else if (!is_superuser())
+    {
       write_https_home_page(s);
-    } else {
+    }
+    else
+    {
 
       struct str_buffer *sb = str_buffer_new();
 
@@ -3018,13 +3635,18 @@ static void write_https_oauth_show_keys(ioa_socket_handle s, const char *kid) {
       str_buffer_append(sb, form_names[AS_FORM_OAUTH].name);
       str_buffer_append(sb, "\">back to oauth list</a><br><br>\r\n");
 
-      if (kid && kid[0]) {
+      if (kid && kid[0])
+      {
         const turn_dbdriver_t *dbd = get_dbdriver();
-        if (dbd && dbd->get_oauth_key) {
+        if (dbd && dbd->get_oauth_key)
+        {
           oauth_key_data_raw key;
-          if ((*dbd->get_oauth_key)((const uint8_t *)kid, &key) < 0) {
+          if ((*dbd->get_oauth_key)((const uint8_t *)kid, &key) < 0)
+          {
             str_buffer_append(sb, "data retrieval error");
-          } else {
+          }
+          else
+          {
 
             oauth_key_data okd;
             memset(&okd, 0, sizeof(okd));
@@ -3037,13 +3659,17 @@ static void write_https_oauth_show_keys(ioa_socket_handle s, const char *kid) {
             oauth_key okey;
             memset(&okey, 0, sizeof(okey));
 
-            if (!convert_oauth_key_data(&okd, &okey, err_msg, err_msg_size)) {
+            if (!convert_oauth_key_data(&okd, &okey, err_msg, err_msg_size))
+            {
               str_buffer_append(sb, err_msg);
-            } else {
+            }
+            else
+            {
 
               str_buffer_append(sb, "<table>\r\n");
 
-              if (key.ikm_key[0]) {
+              if (key.ikm_key[0])
+              {
                 str_buffer_append(sb, "<tr><td>Base64-encoded key:</td><td>");
                 str_buffer_append(sb, key.ikm_key);
                 str_buffer_append(sb, "</td></tr>\r\n");
@@ -3061,14 +3687,21 @@ static void write_https_oauth_show_keys(ioa_socket_handle s, const char *kid) {
 }
 
 static void write_https_oauth_page(ioa_socket_handle s, const char *add_kid, const char *add_ikm, const char *add_tea,
-                                   const char *add_ts, const char *add_lt, const char *add_realm, const char *msg) {
-  if (s && !ioa_socket_tobeclosed(s)) {
+                                   const char *add_ts, const char *add_lt, const char *add_realm, const char *msg)
+{
+  if (s && !ioa_socket_tobeclosed(s))
+  {
 
-    if (!is_as_ok(s)) {
+    if (!is_as_ok(s))
+    {
       write_https_logon_page(s);
-    } else if (!is_superuser()) {
+    }
+    else if (!is_superuser())
+    {
       write_https_home_page(s);
-    } else {
+    }
+    else
+    {
 
       struct str_buffer *sb = str_buffer_new();
 
@@ -3080,7 +3713,8 @@ static void write_https_oauth_page(ioa_socket_handle s, const char *add_kid, con
         str_buffer_append(sb, "\" method=\"POST\">\r\n");
         str_buffer_append(sb, "  <fieldset><legend>oAuth key:</legend>\r\n");
 
-        if (msg && msg[0]) {
+        if (msg && msg[0])
+        {
           str_buffer_append(sb, "<br><table id=\"msg\"><th>");
           str_buffer_append(sb, msg);
           str_buffer_append(sb, "</th></table><br>");
@@ -3089,7 +3723,8 @@ static void write_https_oauth_page(ioa_socket_handle s, const char *add_kid, con
         str_buffer_append(sb, "<table><tr><td>");
 
         {
-          if (!add_kid) {
+          if (!add_kid)
+          {
             add_kid = "";
           }
 
@@ -3103,7 +3738,8 @@ static void write_https_oauth_page(ioa_socket_handle s, const char *add_kid, con
         str_buffer_append(sb, "</td><td>");
 
         {
-          if (!add_ts) {
+          if (!add_ts)
+          {
             add_ts = "";
           }
 
@@ -3117,7 +3753,8 @@ static void write_https_oauth_page(ioa_socket_handle s, const char *add_kid, con
         str_buffer_append(sb, "</td><td>");
 
         {
-          if (!add_lt) {
+          if (!add_lt)
+          {
             add_lt = "";
           }
 
@@ -3133,7 +3770,8 @@ static void write_https_oauth_page(ioa_socket_handle s, const char *add_kid, con
         str_buffer_append(sb, "<tr><td colspan=\"1\">");
 
         {
-          if (!add_ikm) {
+          if (!add_ikm)
+          {
             add_ikm = "";
           }
 
@@ -3149,7 +3787,8 @@ static void write_https_oauth_page(ioa_socket_handle s, const char *add_kid, con
         str_buffer_append(sb, "</td><td>");
 
         {
-          if (!add_realm) {
+          if (!add_realm)
+          {
             add_realm = "";
           }
 
@@ -3165,14 +3804,16 @@ static void write_https_oauth_page(ioa_socket_handle s, const char *add_kid, con
         {
           str_buffer_append(sb, "<br>Token encryption algorithm (required):<br>\r\n");
 
-          if (!add_tea || !add_tea[0]) {
+          if (!add_tea || !add_tea[0])
+          {
             add_tea = "A256GCM";
           }
 
           str_buffer_append(sb, "<input type=\"radio\" name=\"");
           str_buffer_append(sb, HR_ADD_OAUTH_TEA);
           str_buffer_append(sb, "\" value=\"A128GCM\" ");
-          if (!strcmp("A128GCM", add_tea)) {
+          if (!strcmp("A128GCM", add_tea))
+          {
             str_buffer_append(sb, " checked ");
           }
           str_buffer_append(sb, ">A128GCM\r\n<br>\r\n");
@@ -3180,7 +3821,8 @@ static void write_https_oauth_page(ioa_socket_handle s, const char *add_kid, con
           str_buffer_append(sb, "<input type=\"radio\" name=\"");
           str_buffer_append(sb, HR_ADD_OAUTH_TEA);
           str_buffer_append(sb, "\" value=\"A256GCM\" ");
-          if (!strcmp("A256GCM", add_tea)) {
+          if (!strcmp("A256GCM", add_tea))
+          {
             str_buffer_append(sb, " checked ");
           }
           str_buffer_append(sb, ">A256GCM\r\n<br>\r\n");
@@ -3217,41 +3859,54 @@ static void write_https_oauth_page(ioa_socket_handle s, const char *add_kid, con
   }
 }
 
-static void handle_toggle_request(ioa_socket_handle s, struct http_request *hr) {
-  if (s && hr) {
+static void handle_toggle_request(ioa_socket_handle s, struct http_request *hr)
+{
+  if (s && hr)
+  {
     const char *param = get_http_header_value(hr, HR_UPDATE_PARAMETER, NULL);
     toggle_param(param);
   }
 }
 
-static void handle_update_request(ioa_socket_handle s, struct http_request *hr) {
-  if (s && hr) {
+static void handle_update_request(ioa_socket_handle s, struct http_request *hr)
+{
+  if (s && hr)
+  {
     {
       const char *param = get_http_header_value(hr, HR_UPDATE_PARAMETER, NULL);
-      if (param) {
+      if (param)
+      {
         update_param(param, get_http_header_value(hr, param, ""));
       }
     }
 
     {
       const char *eip = get_http_header_value(hr, HR_DELETE_IP, NULL);
-      if (eip && eip[0]) {
+      if (eip && eip[0])
+      {
         char *ip = evhttp_decode_uri(eip);
         const char *r = get_http_header_value(hr, HR_DELETE_IP_REALM, "");
         const char *kind = get_http_header_value(hr, HR_DELETE_IP_KIND, "");
 
         const turn_dbdriver_t *dbd = get_dbdriver();
-        if (dbd && dbd->set_permission_ip) {
+        if (dbd && dbd->set_permission_ip)
+        {
 
-          if (!r || !r[0]) {
+          if (!r || !r[0])
+          {
             r = current_realm();
           }
 
-          if (current_realm()[0] && strcmp(current_realm(), r)) {
+          if (current_realm()[0] && strcmp(current_realm(), r))
+          {
             // forbidden
-          } else if (strcmp(kind, "allowed") != 0 && strcmp(kind, "denied") != 0) {
+          }
+          else if (strcmp(kind, "allowed") != 0 && strcmp(kind, "denied") != 0)
+          {
             // forbidden
-          } else {
+          }
+          else
+          {
 
             uint8_t realm[STUN_MAX_REALM_SIZE + 1] = "\0";
             STRCPY(realm, r);
@@ -3265,28 +3920,39 @@ static void handle_update_request(ioa_socket_handle s, struct http_request *hr) 
 
     {
       const char *eip = get_http_header_value(hr, HR_ADD_IP, NULL);
-      if (eip && eip[0]) {
+      if (eip && eip[0])
+      {
         char *ip = evhttp_decode_uri(eip);
 
-        if (check_ip_list_range(ip) < 0) {
+        if (check_ip_list_range(ip) < 0)
+        {
           TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong address range format: %s\n", ip);
-        } else {
+        }
+        else
+        {
 
           const char *r = get_http_header_value(hr, HR_ADD_IP_REALM, "");
           const char *kind = get_http_header_value(hr, HR_ADD_IP_KIND, "");
 
           const turn_dbdriver_t *dbd = get_dbdriver();
-          if (dbd && dbd->set_permission_ip) {
+          if (dbd && dbd->set_permission_ip)
+          {
 
-            if (!r || !r[0]) {
+            if (!r || !r[0])
+            {
               r = current_realm();
             }
 
-            if (current_realm()[0] && strcmp(current_realm(), r)) {
+            if (current_realm()[0] && strcmp(current_realm(), r))
+            {
               // forbidden
-            } else if (strcmp(kind, "allowed") != 0 && strcmp(kind, "denied") != 0) {
+            }
+            else if (strcmp(kind, "allowed") != 0 && strcmp(kind, "denied") != 0)
+            {
               // forbidden
-            } else {
+            }
+            else
+            {
 
               uint8_t realm[STUN_MAX_REALM_SIZE + 1] = "\0";
               STRCPY(realm, r);
@@ -3301,28 +3967,36 @@ static void handle_update_request(ioa_socket_handle s, struct http_request *hr) 
   }
 }
 
-static void handle_logon_request(ioa_socket_handle s, struct http_request *hr) {
-  if (s && hr) {
+static void handle_logon_request(ioa_socket_handle s, struct http_request *hr)
+{
+  if (s && hr)
+  {
     const char *uname = get_http_header_value(hr, HR_USERNAME, NULL);
     const char *pwd = get_http_header_value(hr, HR_PASSWORD, NULL);
 
     struct admin_session *as = (struct admin_session *)s->special_session;
-    if (!as) {
+    if (!as)
+    {
       as = (struct admin_session *)calloc(sizeof(struct admin_session), 1);
-      if (!as) {
+      if (!as)
+      {
         return;
       }
       s->special_session = as;
       s->special_session_size = sizeof(struct admin_session);
     }
 
-    if (!(as->as_ok) && uname && is_secure_string((const uint8_t *)uname, 1) && pwd) {
+    if (!(as->as_ok) && uname && is_secure_string((const uint8_t *)uname, 1) && pwd)
+    {
       const turn_dbdriver_t *dbd = get_dbdriver();
-      if (dbd && dbd->get_admin_user) {
+      if (dbd && dbd->get_admin_user)
+      {
         password_t password;
         char realm[STUN_MAX_REALM_SIZE + 1] = "\0";
-        if ((*(dbd->get_admin_user))((const uint8_t *)uname, (uint8_t *)realm, password) >= 0) {
-          if (!check_password_equal(pwd, (char *)password)) {
+        if ((*(dbd->get_admin_user))((const uint8_t *)uname, (uint8_t *)realm, password) >= 0)
+        {
+          if (!check_password_equal(pwd, (char *)password))
+          {
             STRCPY(as->as_login, uname);
             STRCPY(as->as_realm, realm);
             as->as_eff_realm[0] = 0;
@@ -3335,11 +4009,14 @@ static void handle_logon_request(ioa_socket_handle s, struct http_request *hr) {
   }
 }
 
-static void handle_logout_request(ioa_socket_handle s, struct http_request *hr) {
+static void handle_logout_request(ioa_socket_handle s, struct http_request *hr)
+{
   UNUSED_ARG(hr);
-  if (s) {
+  if (s)
+  {
     struct admin_session *as = (struct admin_session *)s->special_session;
-    if (as) {
+    if (as)
+    {
       as->as_login[0] = 0;
       as->as_ok = 0;
       as->as_realm[0] = 0;
@@ -3348,52 +4025,73 @@ static void handle_logout_request(ioa_socket_handle s, struct http_request *hr) 
   }
 }
 
-static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
+static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh)
+{
   current_socket = s;
 
-  if (turn_params.verbose) {
-    if (nbh) {
+  if (turn_params.verbose)
+  {
+    if (nbh)
+    {
       ((char *)ioa_network_buffer_data(nbh))[ioa_network_buffer_get_size(nbh)] = 0;
-      if (!strstr((char *)ioa_network_buffer_data(nbh), "pwd")) {
+      if (!strstr((char *)ioa_network_buffer_data(nbh), "pwd"))
+      {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: HTTPS connection input: %s\n", __FUNCTION__,
                       (char *)ioa_network_buffer_data(nbh));
       }
-    } else {
+    }
+    else
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: HTTPS connection initial input\n", __FUNCTION__);
     }
   }
 
-  if (!nbh) {
+  if (!nbh)
+  {
     write_https_logon_page(s);
-  } else {
+  }
+  else
+  {
     ((char *)ioa_network_buffer_data(nbh))[ioa_network_buffer_get_size(nbh)] = 0;
     struct http_request *hr = parse_http_request((char *)ioa_network_buffer_data(nbh));
-    if (!hr) {
+    if (!hr)
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: wrong HTTPS request (I cannot parse it)\n", __FUNCTION__);
       write_https_logon_page(s);
-    } else {
+    }
+    else
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: HTTPS request, path %s\n", __FUNCTION__, hr->path);
 
       AS_FORM form = get_form(hr->path);
 
-      switch (form) {
-      case AS_FORM_PC: {
-        if (is_as_ok(s)) {
+      switch (form)
+      {
+      case AS_FORM_PC:
+      {
+        if (is_as_ok(s))
+        {
           const char *realm0 = get_http_header_value(hr, HR_REALM, current_realm());
-          if (!is_superuser()) {
+          if (!is_superuser())
+          {
             realm0 = current_realm();
           }
           strncpy(current_eff_realm(), realm0, STUN_MAX_REALM_SIZE);
           write_pc_page(s);
-        } else {
+        }
+        else
+        {
           write_https_logon_page(s);
         }
         break;
       }
-      case AS_FORM_PS: {
-        if (is_as_ok(s)) {
+      case AS_FORM_PS:
+      {
+        if (is_as_ok(s))
+        {
           const char *realm0 = get_http_header_value(hr, HR_REALM, current_realm());
-          if (!is_superuser()) {
+          if (!is_superuser())
+          {
             realm0 = current_realm();
           }
           strncpy(current_eff_realm(), realm0, STUN_MAX_REALM_SIZE);
@@ -3404,36 +4102,45 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
 
           turnsession_id csid = 0;
           const char *ssid = get_http_header_value(hr, HR_CANCEL_SESSION, NULL);
-          if (ssid) {
+          if (ssid)
+          {
             https_cancel_session(ssid);
             csid = (turnsession_id)strtoull(ssid, NULL, 10);
           }
 
           size_t max_sessions = current_max_output_sessions();
           const char *s_max_sessions = get_http_header_value(hr, HR_MAX_SESSIONS, NULL);
-          if (s_max_sessions) {
+          if (s_max_sessions)
+          {
             max_sessions = strtoul(s_max_sessions, NULL, 10);
-            if (!max_sessions) {
+            if (!max_sessions)
+            {
               max_sessions = current_max_output_sessions();
             }
             set_current_max_output_sessions(max_sessions);
           }
 
-          if (!max_sessions) {
+          if (!max_sessions)
+          {
             max_sessions = DEFAULT_CLI_MAX_OUTPUT_SESSIONS;
           }
 
           write_ps_page(s, client_protocol, user_pattern, max_sessions, csid);
-        } else {
+        }
+        else
+        {
           write_https_logon_page(s);
         }
         break;
       }
-      case AS_FORM_USERS: {
-        if (is_as_ok(s)) {
+      case AS_FORM_USERS:
+      {
+        if (is_as_ok(s))
+        {
           {
             const char *realm0 = get_http_header_value(hr, HR_REALM, current_realm());
-            if (!is_superuser()) {
+            if (!is_superuser())
+            {
               realm0 = current_realm();
             }
             strncpy(current_eff_realm(), realm0, STUN_MAX_REALM_SIZE);
@@ -3441,14 +4148,18 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
 
           {
             const uint8_t *user = (const uint8_t *)get_http_header_value(hr, HR_DELETE_USER, NULL);
-            if (user && user[0]) {
+            if (user && user[0])
+            {
               const uint8_t *realm = (const uint8_t *)get_http_header_value(hr, HR_DELETE_REALM, "");
-              if (!is_superuser()) {
+              if (!is_superuser())
+              {
                 realm = (const uint8_t *)current_realm();
               }
-              if (realm && realm[0]) {
+              if (realm && realm[0])
+              {
                 const turn_dbdriver_t *dbd = get_dbdriver();
-                if (dbd && dbd->del_user) {
+                if (dbd && dbd->del_user)
+                {
                   uint8_t u[STUN_MAX_USERNAME_SIZE + 1];
                   uint8_t r[STUN_MAX_REALM_SIZE + 1];
                   STRCPY(u, user);
@@ -3462,32 +4173,41 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
           const uint8_t *add_realm = (const uint8_t *)current_eff_realm();
           const uint8_t *add_user = (const uint8_t *)get_http_header_value(hr, HR_ADD_USER, "");
           const char *msg = "";
-          if (wrong_html_name((const char *)add_user)) {
+          if (wrong_html_name((const char *)add_user))
+          {
             msg = "Error: wrong user name";
             add_user = (const uint8_t *)"";
           }
-          if (add_user[0]) {
+          if (add_user[0])
+          {
             add_realm = (const uint8_t *)get_http_header_value(hr, HR_ADD_REALM, current_realm());
-            if (!is_superuser()) {
+            if (!is_superuser())
+            {
               add_realm = (const uint8_t *)current_realm();
             }
-            if (!add_realm[0]) {
+            if (!add_realm[0])
+            {
               add_realm = (const uint8_t *)current_eff_realm();
             }
-            if (!add_realm[0]) {
+            if (!add_realm[0])
+            {
               add_realm = (const uint8_t *)get_realm(NULL)->options.name;
             }
-            if (wrong_html_name((const char *)add_realm)) {
+            if (wrong_html_name((const char *)add_realm))
+            {
               msg = "Error: wrong realm name";
               add_realm = (const uint8_t *)"";
             }
-            if (add_realm[0]) {
+            if (add_realm[0])
+            {
               const uint8_t *pwd = (const uint8_t *)get_http_header_value(hr, HR_PASSWORD, NULL);
               const uint8_t *pwd1 = (const uint8_t *)get_http_header_value(hr, HR_PASSWORD1, NULL);
-              if (pwd && pwd1 && pwd[0] && pwd1[0] && !strcmp((const char *)pwd, (const char *)pwd1)) {
+              if (pwd && pwd1 && pwd[0] && pwd1[0] && !strcmp((const char *)pwd, (const char *)pwd1))
+              {
 
                 const turn_dbdriver_t *dbd = get_dbdriver();
-                if (dbd && dbd->set_user_key) {
+                if (dbd && dbd->set_user_key)
+                {
 
                   hmackey_t key;
                   char skey[sizeof(hmackey_t) * 2 + 1];
@@ -3504,7 +4224,8 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
                     size_t sz = get_hmackey_size(SHATYPE_DEFAULT);
                     int maxsz = (int)(sz * 2) + 1;
                     char *s = skey;
-                    for (i = 0; (i < sz) && (maxsz > 2); i++) {
+                    for (i = 0; (i < sz) && (maxsz > 2); i++)
+                    {
                       snprintf(s, (size_t)(sz * 2), "%02x", (unsigned int)key[i]);
                       maxsz -= 2;
                       s += 2;
@@ -3517,24 +4238,30 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
                   add_realm = (const uint8_t *)"";
                   add_user = (const uint8_t *)"";
                 }
-              } else {
+              }
+              else
+              {
                 msg = "Error: wrong password";
               }
             }
           }
 
           write_users_page(s, add_user, add_realm, msg);
-
-        } else {
+        }
+        else
+        {
           write_https_logon_page(s);
         }
         break;
       }
-      case AS_FORM_SS: {
-        if (is_as_ok(s)) {
+      case AS_FORM_SS:
+      {
+        if (is_as_ok(s))
+        {
           {
             const char *realm0 = get_http_header_value(hr, HR_REALM, current_realm());
-            if (!is_superuser()) {
+            if (!is_superuser())
+            {
               realm0 = current_realm();
             }
             strncpy(current_eff_realm(), realm0, STUN_MAX_REALM_SIZE);
@@ -3542,14 +4269,18 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
 
           {
             const uint8_t *secret = (const uint8_t *)get_http_header_value(hr, HR_DELETE_SECRET, NULL);
-            if (secret && secret[0]) {
+            if (secret && secret[0])
+            {
               const uint8_t *realm = (const uint8_t *)get_http_header_value(hr, HR_DELETE_REALM, NULL);
-              if (!is_superuser()) {
+              if (!is_superuser())
+              {
                 realm = (const uint8_t *)current_realm();
               }
-              if (realm && realm[0]) {
+              if (realm && realm[0])
+              {
                 const turn_dbdriver_t *dbd = get_dbdriver();
-                if (dbd && dbd->del_secret) {
+                if (dbd && dbd->del_secret)
+                {
                   uint8_t ss[AUTH_SECRET_SIZE + 1];
                   uint8_t r[STUN_MAX_REALM_SIZE + 1];
                   STRCPY(ss, secret);
@@ -3563,28 +4294,36 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
           const uint8_t *add_realm = (const uint8_t *)current_eff_realm();
           const uint8_t *add_secret = (const uint8_t *)get_http_header_value(hr, HR_ADD_SECRET, "");
           const char *msg = "";
-          if (wrong_html_name((const char *)add_secret)) {
+          if (wrong_html_name((const char *)add_secret))
+          {
             msg = "Error: wrong secret value";
             add_secret = (const uint8_t *)"";
           }
-          if (add_secret[0]) {
+          if (add_secret[0])
+          {
             add_realm = (const uint8_t *)get_http_header_value(hr, HR_ADD_REALM, current_realm());
-            if (!is_superuser()) {
+            if (!is_superuser())
+            {
               add_realm = (const uint8_t *)current_realm();
             }
-            if (!add_realm[0]) {
+            if (!add_realm[0])
+            {
               add_realm = (const uint8_t *)current_eff_realm();
             }
-            if (!add_realm[0]) {
+            if (!add_realm[0])
+            {
               add_realm = (const uint8_t *)get_realm(NULL)->options.name;
             }
-            if (wrong_html_name((const char *)add_realm)) {
+            if (wrong_html_name((const char *)add_realm))
+            {
               msg = "Error: wrong realm name";
               add_realm = (const uint8_t *)"";
             }
-            if (add_realm[0]) {
+            if (add_realm[0])
+            {
               const turn_dbdriver_t *dbd = get_dbdriver();
-              if (dbd && dbd->set_secret) {
+              if (dbd && dbd->set_secret)
+              {
                 uint8_t ss[AUTH_SECRET_SIZE + 1];
                 uint8_t r[STUN_MAX_REALM_SIZE + 1];
                 STRCPY(ss, add_secret);
@@ -3598,27 +4337,34 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
           }
 
           write_shared_secrets_page(s, (const char *)add_secret, (const char *)add_realm, msg);
-
-        } else {
+        }
+        else
+        {
           write_https_logon_page(s);
         }
         break;
       }
-      case AS_FORM_OS: {
-        if (is_as_ok(s)) {
+      case AS_FORM_OS:
+      {
+        if (is_as_ok(s))
+        {
           {
             const char *realm0 = get_http_header_value(hr, HR_REALM, current_realm());
-            if (!is_superuser()) {
+            if (!is_superuser())
+            {
               realm0 = current_realm();
             }
             strncpy(current_eff_realm(), realm0, STUN_MAX_REALM_SIZE);
           }
 
-          if (is_superuser()) {
+          if (is_superuser())
+          {
             const uint8_t *origin = (const uint8_t *)get_http_header_value(hr, HR_DELETE_ORIGIN, NULL);
-            if (origin && origin[0]) {
+            if (origin && origin[0])
+            {
               const turn_dbdriver_t *dbd = get_dbdriver();
-              if (dbd && dbd->del_origin) {
+              if (dbd && dbd->del_origin)
+              {
                 uint8_t o[STUN_MAX_ORIGIN_SIZE + 1];
                 STRCPY(o, origin);
                 dbd->del_origin(o);
@@ -3634,20 +4380,26 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
           const char *msg = "";
           uint8_t corigin[STUN_MAX_ORIGIN_SIZE + 1] = "\0";
           get_canonic_origin((const char *)add_origin, (char *)corigin, sizeof(corigin) - 1);
-          if (corigin[0]) {
+          if (corigin[0])
+          {
             add_realm = (const uint8_t *)get_http_header_value(hr, HR_ADD_REALM, current_realm());
-            if (!is_superuser()) {
+            if (!is_superuser())
+            {
               add_realm = (const uint8_t *)current_realm();
             }
-            if (!add_realm[0]) {
+            if (!add_realm[0])
+            {
               add_realm = (const uint8_t *)current_eff_realm();
             }
-            if (!add_realm[0]) {
+            if (!add_realm[0])
+            {
               add_realm = (const uint8_t *)get_realm(NULL)->options.name;
             }
-            if (add_realm[0]) {
+            if (add_realm[0])
+            {
               const turn_dbdriver_t *dbd = get_dbdriver();
-              if (dbd && dbd->add_origin) {
+              if (dbd && dbd->add_origin)
+              {
                 uint8_t o[STUN_MAX_ORIGIN_SIZE + 1];
                 uint8_t r[STUN_MAX_REALM_SIZE + 1];
                 STRCPY(o, corigin);
@@ -3661,35 +4413,50 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
           }
 
           write_origins_page(s, (const char *)add_origin, (const char *)add_realm, msg);
-
-        } else {
+        }
+        else
+        {
           write_https_logon_page(s);
         }
         break;
       }
-      case AS_FORM_OAUTH_SHOW_KEYS: {
-        if (!is_as_ok(s)) {
+      case AS_FORM_OAUTH_SHOW_KEYS:
+      {
+        if (!is_as_ok(s))
+        {
           write_https_logon_page(s);
-        } else if (!is_superuser()) {
+        }
+        else if (!is_superuser())
+        {
           write_https_home_page(s);
-        } else {
+        }
+        else
+        {
           const char *kid = get_http_header_value(hr, HR_OAUTH_KID, "");
           write_https_oauth_show_keys(s, kid);
         }
         break;
       }
-      case AS_FORM_OAUTH: {
-        if (!is_as_ok(s)) {
+      case AS_FORM_OAUTH:
+      {
+        if (!is_as_ok(s))
+        {
           write_https_logon_page(s);
-        } else if (!is_superuser()) {
+        }
+        else if (!is_superuser())
+        {
           write_https_home_page(s);
-        } else {
+        }
+        else
+        {
 
           {
             const char *del_kid = get_http_header_value(hr, HR_DELETE_OAUTH_KID, "");
-            if (del_kid[0]) {
+            if (del_kid[0])
+            {
               const turn_dbdriver_t *dbd = get_dbdriver();
-              if (dbd && dbd->del_oauth_key) {
+              if (dbd && dbd->del_oauth_key)
+              {
                 (*dbd->del_oauth_key)((const uint8_t *)del_kid);
               }
             }
@@ -3704,7 +4471,8 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
           const char *msg = "";
 
           add_kid = get_http_header_value(hr, HR_ADD_OAUTH_KID, "");
-          if (add_kid[0]) {
+          if (add_kid[0])
+          {
             add_ikm = get_http_header_value(hr, HR_ADD_OAUTH_IKM, "");
             add_ts = get_http_header_value(hr, HR_ADD_OAUTH_TS, "");
             add_lt = get_http_header_value(hr, HR_ADD_OAUTH_LT, "");
@@ -3712,28 +4480,38 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
             add_realm = get_http_header_value(hr, HR_ADD_OAUTH_REALM, "");
 
             int keys_ok = (add_ikm[0] != 0);
-            if (!keys_ok) {
+            if (!keys_ok)
+            {
               msg = "You must enter the key value.";
-            } else {
+            }
+            else
+            {
               oauth_key_data_raw key;
               memset(&key, 0, sizeof(key));
               STRCPY(key.kid, add_kid);
 
-              if (add_lt && add_lt[0]) {
+              if (add_lt && add_lt[0])
+              {
                 key.lifetime = (uint32_t)strtoul(add_lt, NULL, 10);
-                if (key.lifetime) {
-                  if (add_ts && add_ts[0]) {
+                if (key.lifetime)
+                {
+                  if (add_ts && add_ts[0])
+                  {
                     key.timestamp = (uint64_t)strtoull(add_ts, NULL, 10);
                   }
-                  if (!key.timestamp) {
+                  if (!key.timestamp)
+                  {
                     key.timestamp = (uint64_t)time(NULL);
                   }
                 }
-              } else if (add_ts && add_ts[0]) {
+              }
+              else if (add_ts && add_ts[0])
+              {
                 key.timestamp = (uint64_t)strtoull(add_ts, NULL, 10);
               }
 
-              if (add_realm && add_realm[0]) {
+              if (add_realm && add_realm[0])
+              {
                 STRCPY(key.realm, add_realm);
               }
 
@@ -3741,10 +4519,14 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
               STRCPY(key.as_rs_alg, add_tea);
 
               const turn_dbdriver_t *dbd = get_dbdriver();
-              if (dbd && dbd->set_oauth_key) {
-                if ((*dbd->set_oauth_key)(&key) < 0) {
+              if (dbd && dbd->set_oauth_key)
+              {
+                if ((*dbd->set_oauth_key)(&key) < 0)
+                {
                   msg = "Cannot insert oAuth key into the database";
-                } else {
+                }
+                else
+                {
                   add_kid = "";
                   add_ts = "0";
                   add_lt = "0";
@@ -3761,30 +4543,42 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
         break;
       }
       case AS_FORM_TOGGLE:
-        if (is_as_ok(s)) {
+        if (is_as_ok(s))
+        {
           handle_toggle_request(s, hr);
           write_pc_page(s);
-        } else {
+        }
+        else
+        {
           write_https_logon_page(s);
         }
         break;
       case AS_FORM_UPDATE:
-        if (is_as_ok(s)) {
+        if (is_as_ok(s))
+        {
           handle_update_request(s, hr);
           write_pc_page(s);
-        } else {
+        }
+        else
+        {
           write_https_logon_page(s);
         }
         break;
       case AS_FORM_LOGON:
-        if (!is_as_ok(s)) {
+        if (!is_as_ok(s))
+        {
           handle_logon_request(s, hr);
-          if (is_as_ok(s)) {
+          if (is_as_ok(s))
+          {
             write_https_home_page(s);
-          } else {
+          }
+          else
+          {
             write_https_logon_page(s);
           }
-        } else {
+        }
+        else
+        {
           write_https_home_page(s);
         }
         break;
@@ -3792,9 +4586,11 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
         handle_logout_request(s, hr);
         write_https_logon_page(s);
         break;
-      default: {
+      default:
+      {
         const char *realm0 = get_http_header_value(hr, HR_REALM, current_realm());
-        if (!is_superuser()) {
+        if (!is_superuser())
+        {
           realm0 = current_realm();
         }
         strncpy(current_eff_realm(), realm0, STUN_MAX_REALM_SIZE);
@@ -3808,7 +4604,8 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
   current_socket = NULL;
 }
 
-static void https_input_handler(ioa_socket_handle s, int event_type, ioa_net_data *data, void *arg, int can_resume) {
+static void https_input_handler(ioa_socket_handle s, int event_type, ioa_net_data *data, void *arg, int can_resume)
+{
 
   UNUSED_ARG(arg);
   UNUSED_ARG(s);
@@ -3821,15 +4618,18 @@ static void https_input_handler(ioa_socket_handle s, int event_type, ioa_net_dat
   data->nbh = NULL;
 }
 
-void https_admin_server_receive_message(struct bufferevent *bev, void *ptr) {
+void https_admin_server_receive_message(struct bufferevent *bev, void *ptr)
+{
   UNUSED_ARG(ptr);
 
   ioa_socket_handle s = NULL;
   int n = 0;
   struct evbuffer *input = bufferevent_get_input(bev);
 
-  while ((n = evbuffer_remove(input, &s, sizeof(s))) > 0) {
-    if (n != sizeof(s)) {
+  while ((n = evbuffer_remove(input, &s, sizeof(s))) > 0)
+  {
+    if (n != sizeof(s))
+    {
       fprintf(stderr, "%s: Weird HTTPS CLI buffer error: size=%d\n", __FUNCTION__, n);
       continue;
     }
@@ -3840,9 +4640,11 @@ void https_admin_server_receive_message(struct bufferevent *bev, void *ptr) {
   }
 }
 
-void send_https_socket(ioa_socket_handle s) {
+void send_https_socket(ioa_socket_handle s)
+{
   struct evbuffer *output = bufferevent_get_output(adminserver.https_out_buf);
-  if (output) {
+  if (output)
+  {
     evbuffer_add(output, &s, sizeof(s));
   }
 }

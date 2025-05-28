@@ -261,7 +261,8 @@ static void drain_handler(evutil_socket_t sock, short events, void *args);
 
 //////////////////////////////////////////////////
 
-static int make_local_listeners_list(void) {
+static int make_local_listeners_list(void)
+{
   int ret = 0;
 #if defined(WINDOWS)
 
@@ -292,20 +293,25 @@ static int make_local_listeners_list(void) {
   // Allocate a 15 KB buffer to start with.
   outBufLen = WORKING_BUFFER_SIZE;
 
-  do {
+  do
+  {
 
     pAddresses = (IP_ADAPTER_ADDRESSES *)malloc(outBufLen);
-    if (pAddresses == NULL) {
+    if (pAddresses == NULL)
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Memory allocation failed for IP_ADAPTER_ADDRESSES struct\n");
       return -1;
     }
 
     dwRetVal = GetAdaptersAddresses(family, flags, NULL, pAddresses, &outBufLen);
 
-    if (dwRetVal == ERROR_BUFFER_OVERFLOW) {
+    if (dwRetVal == ERROR_BUFFER_OVERFLOW)
+    {
       free(pAddresses);
       pAddresses = NULL;
-    } else {
+    }
+    else
+    {
       break;
     }
 
@@ -313,51 +319,65 @@ static int make_local_listeners_list(void) {
 
   } while ((dwRetVal == ERROR_BUFFER_OVERFLOW) && (Iterations < MAX_TRIES));
 
-  if (dwRetVal == NO_ERROR) {
+  if (dwRetVal == NO_ERROR)
+  {
     // If successful, output some information from the data we received
     pCurrAddresses = pAddresses;
-    while (pCurrAddresses) {
+    while (pCurrAddresses)
+    {
       /*
       printf("\tLength of the IP_ADAPTER_ADDRESS struct: %ld\n",
           pCurrAddresses->Length);
       printf("\tIfIndex (IPv4 interface): %u\n", pCurrAddresses->IfIndex);
       printf("\tAdapter name: %s\n", pCurrAddresses->AdapterName);//*/
 
-      if (pCurrAddresses->OperStatus != IfOperStatusUp) {
+      if (pCurrAddresses->OperStatus != IfOperStatusUp)
+      {
         pCurrAddresses = pCurrAddresses->Next;
         continue;
       }
 
       pUnicast = pCurrAddresses->FirstUnicastAddress;
-      if (pUnicast != NULL) {
+      if (pUnicast != NULL)
+      {
         // printf("\tNumber of Unicast Addresses:\n");
-        for (i = 0; pUnicast != NULL; pUnicast = pUnicast->Next) {
+        for (i = 0; pUnicast != NULL; pUnicast = pUnicast->Next)
+        {
           char saddr[INET6_ADDRSTRLEN] = "";
           if (AF_INET == pUnicast->Address.lpSockaddr->sa_family) // IPV4
           {
             if (!inet_ntop(PF_INET, &((struct sockaddr_in *)pUnicast->Address.lpSockaddr)->sin_addr, saddr,
-                           INET6_ADDRSTRLEN)) {
+                           INET6_ADDRSTRLEN))
+            {
               continue;
             }
-            if (strstr(saddr, "169.254.") == saddr) {
+            if (strstr(saddr, "169.254.") == saddr)
+            {
               continue;
             }
-            if (!strcmp(saddr, "0.0.0.0")) {
+            if (!strcmp(saddr, "0.0.0.0"))
+            {
               continue;
             }
-          } else if (AF_INET6 == pUnicast->Address.lpSockaddr->sa_family) // IPV6
+          }
+          else if (AF_INET6 == pUnicast->Address.lpSockaddr->sa_family) // IPV6
           {
             if (!inet_ntop(PF_INET6, &((struct sockaddr_in6 *)pUnicast->Address.lpSockaddr)->sin6_addr, saddr,
-                           INET6_ADDRSTRLEN)) {
+                           INET6_ADDRSTRLEN))
+            {
               continue;
             }
-            if (strstr(saddr, "fe80") == saddr) {
+            if (strstr(saddr, "fe80") == saddr)
+            {
               continue;
             }
-            if (!strcmp(saddr, "::")) {
+            if (!strcmp(saddr, "::"))
+            {
               continue;
             }
-          } else {
+          }
+          else
+          {
             continue;
           }
 
@@ -365,7 +385,8 @@ static int make_local_listeners_list(void) {
 
           add_listener_addr(saddr);
 
-          if (MIB_IF_TYPE_LOOPBACK != pCurrAddresses->IfType) {
+          if (MIB_IF_TYPE_LOOPBACK != pCurrAddresses->IfType)
+          {
             ret++;
           }
         }
@@ -464,19 +485,26 @@ static int make_local_listeners_list(void) {
 
       pCurrAddresses = pCurrAddresses->Next;
     }
-  } else {
+  }
+  else
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Call to GetAdaptersAddresses failed with error: %d\n", dwRetVal);
-    if (dwRetVal == ERROR_NO_DATA) {
+    if (dwRetVal == ERROR_NO_DATA)
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\tNo addresses were found for the requested parameters\n");
-    } else {
+    }
+    else
+    {
 
       if (FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
                         NULL, dwRetVal, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
                         // Default language
-                        (LPTSTR)&lpMsgBuf, 0, NULL)) {
+                        (LPTSTR)&lpMsgBuf, 0, NULL))
+      {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\tError: %s", lpMsgBuf);
         LocalFree(lpMsgBuf);
-        if (pAddresses) {
+        if (pAddresses)
+        {
           free(pAddresses);
         }
         return -2;
@@ -484,7 +512,8 @@ static int make_local_listeners_list(void) {
     }
   }
 
-  if (pAddresses) {
+  if (pAddresses)
+  {
     free(pAddresses);
   }
 
@@ -494,45 +523,61 @@ static int make_local_listeners_list(void) {
 
   char saddr[INET6_ADDRSTRLEN] = "";
 
-  if ((getifaddrs(&ifs) == 0) && ifs) {
+  if ((getifaddrs(&ifs) == 0) && ifs)
+  {
 
-    for (ifa = ifs; ifa != NULL; ifa = ifa->ifa_next) {
+    for (ifa = ifs; ifa != NULL; ifa = ifa->ifa_next)
+    {
 
-      if (!(ifa->ifa_flags & IFF_UP)) {
+      if (!(ifa->ifa_flags & IFF_UP))
+      {
         continue;
       }
 
-      if (!(ifa->ifa_addr)) {
+      if (!(ifa->ifa_addr))
+      {
         continue;
       }
 
-      if (ifa->ifa_addr->sa_family == AF_INET) {
-        if (!inet_ntop(AF_INET, &((struct sockaddr_in *)ifa->ifa_addr)->sin_addr, saddr, INET_ADDRSTRLEN)) {
+      if (ifa->ifa_addr->sa_family == AF_INET)
+      {
+        if (!inet_ntop(AF_INET, &((struct sockaddr_in *)ifa->ifa_addr)->sin_addr, saddr, INET_ADDRSTRLEN))
+        {
           continue;
         }
-        if (strstr(saddr, "169.254.") == saddr) {
+        if (strstr(saddr, "169.254.") == saddr)
+        {
           continue;
         }
-        if (!strcmp(saddr, "0.0.0.0")) {
+        if (!strcmp(saddr, "0.0.0.0"))
+        {
           continue;
         }
-      } else if (ifa->ifa_addr->sa_family == AF_INET6) {
-        if (!inet_ntop(AF_INET6, &((struct sockaddr_in6 *)ifa->ifa_addr)->sin6_addr, saddr, INET6_ADDRSTRLEN)) {
+      }
+      else if (ifa->ifa_addr->sa_family == AF_INET6)
+      {
+        if (!inet_ntop(AF_INET6, &((struct sockaddr_in6 *)ifa->ifa_addr)->sin6_addr, saddr, INET6_ADDRSTRLEN))
+        {
           continue;
         }
-        if (strstr(saddr, "fe80") == saddr) {
+        if (strstr(saddr, "fe80") == saddr)
+        {
           continue;
         }
-        if (!strcmp(saddr, "::")) {
+        if (!strcmp(saddr, "::"))
+        {
           continue;
         }
-      } else {
+      }
+      else
+      {
         continue;
       }
 
       add_listener_addr(saddr);
 
-      if (!(ifa->ifa_flags & IFF_LOOPBACK)) {
+      if (!(ifa->ifa_flags & IFF_LOOPBACK))
+      {
         ret++;
       }
     }
@@ -543,7 +588,8 @@ static int make_local_listeners_list(void) {
   return ret;
 }
 
-static int make_local_relays_list(int allow_local, int family) {
+static int make_local_relays_list(int allow_local, int family)
+{
   int counter = 0;
 
 #if defined(WINDOWS)
@@ -566,20 +612,25 @@ static int make_local_relays_list(int allow_local, int family) {
   // Allocate a 15 KB buffer to start with.
   outBufLen = WORKING_BUFFER_SIZE;
 
-  do {
+  do
+  {
 
     pAddresses = (IP_ADAPTER_ADDRESSES *)malloc(outBufLen);
-    if (pAddresses == NULL) {
+    if (pAddresses == NULL)
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Memory allocation failed for IP_ADAPTER_ADDRESSES struct\n");
       return -1;
     }
 
     dwRetVal = GetAdaptersAddresses(fm, flags, NULL, pAddresses, &outBufLen);
 
-    if (dwRetVal == ERROR_BUFFER_OVERFLOW) {
+    if (dwRetVal == ERROR_BUFFER_OVERFLOW)
+    {
       free(pAddresses);
       pAddresses = NULL;
-    } else {
+    }
+    else
+    {
       break;
     }
 
@@ -587,66 +638,84 @@ static int make_local_relays_list(int allow_local, int family) {
 
   } while ((dwRetVal == ERROR_BUFFER_OVERFLOW) && (Iterations < MAX_TRIES));
 
-  if (dwRetVal == NO_ERROR) {
+  if (dwRetVal == NO_ERROR)
+  {
     // If successful, output some information from the data we received
     pCurrAddresses = pAddresses;
-    while (pCurrAddresses) {
+    while (pCurrAddresses)
+    {
       /*
       printf("\tLength of the IP_ADAPTER_ADDRESS struct: %ld\n",
           pCurrAddresses->Length);
       printf("\tIfIndex (IPv4 interface): %u\n", pCurrAddresses->IfIndex);
       printf("\tAdapter name: %s\n", pCurrAddresses->AdapterName);//*/
 
-      if (pCurrAddresses->OperStatus != IfOperStatusUp) {
+      if (pCurrAddresses->OperStatus != IfOperStatusUp)
+      {
         pCurrAddresses = pCurrAddresses->Next;
         continue;
       }
 
       pUnicast = pCurrAddresses->FirstUnicastAddress;
-      if (pUnicast != NULL) {
+      if (pUnicast != NULL)
+      {
         // printf("\tNumber of Unicast Addresses:\n");
-        for (; pUnicast != NULL; pUnicast = pUnicast->Next) {
-          if (!allow_local && (MIB_IF_TYPE_LOOPBACK == pCurrAddresses->IfType)) {
+        for (; pUnicast != NULL; pUnicast = pUnicast->Next)
+        {
+          if (!allow_local && (MIB_IF_TYPE_LOOPBACK == pCurrAddresses->IfType))
+          {
             continue;
           }
 
           char saddr[INET6_ADDRSTRLEN] = "";
           if (AF_INET == pUnicast->Address.lpSockaddr->sa_family) // IPV4
           {
-            if (family != AF_INET) {
+            if (family != AF_INET)
+            {
               continue;
             }
             if (!inet_ntop(PF_INET, &((struct sockaddr_in *)pUnicast->Address.lpSockaddr)->sin_addr, saddr,
-                           INET6_ADDRSTRLEN)) {
+                           INET6_ADDRSTRLEN))
+            {
               continue;
             }
-            if (strstr(saddr, "169.254.") == saddr) {
+            if (strstr(saddr, "169.254.") == saddr)
+            {
               continue;
             }
-            if (!strcmp(saddr, "0.0.0.0")) {
+            if (!strcmp(saddr, "0.0.0.0"))
+            {
               continue;
             }
-          } else if (AF_INET6 == pUnicast->Address.lpSockaddr->sa_family) // IPV6
+          }
+          else if (AF_INET6 == pUnicast->Address.lpSockaddr->sa_family) // IPV6
           {
-            if (family != AF_INET6) {
+            if (family != AF_INET6)
+            {
               continue;
             }
 
             if (!inet_ntop(PF_INET6, &((struct sockaddr_in6 *)pUnicast->Address.lpSockaddr)->sin6_addr, saddr,
-                           INET6_ADDRSTRLEN)) {
+                           INET6_ADDRSTRLEN))
+            {
               continue;
             }
-            if (strstr(saddr, "fe80") == saddr) {
+            if (strstr(saddr, "fe80") == saddr)
+            {
               continue;
             }
-            if (!strcmp(saddr, "::")) {
+            if (!strcmp(saddr, "::"))
+            {
               continue;
             }
-          } else {
+          }
+          else
+          {
             continue;
           }
 
-          if (add_relay_addr(saddr) > 0) {
+          if (add_relay_addr(saddr) > 0)
+          {
             counter += 1;
           }
         }
@@ -655,7 +724,8 @@ static int make_local_relays_list(int allow_local, int family) {
     }
   }
 
-  if (pAddresses) {
+  if (pAddresses)
+  {
     free(pAddresses);
   }
 #else
@@ -666,59 +736,79 @@ static int make_local_relays_list(int allow_local, int family) {
 
   getifaddrs(&ifs);
 
-  if (ifs) {
-    for (ifa = ifs; ifa != NULL; ifa = ifa->ifa_next) {
+  if (ifs)
+  {
+    for (ifa = ifs; ifa != NULL; ifa = ifa->ifa_next)
+    {
 
-      if (!(ifa->ifa_flags & IFF_UP)) {
+      if (!(ifa->ifa_flags & IFF_UP))
+      {
         continue;
       }
 
-      if (!(ifa->ifa_name)) {
+      if (!(ifa->ifa_name))
+      {
         continue;
       }
-      if (!(ifa->ifa_addr)) {
-        continue;
-      }
-
-      if (!allow_local && (ifa->ifa_flags & IFF_LOOPBACK)) {
-        continue;
-      }
-
-      if (ifa->ifa_addr->sa_family == AF_INET) {
-
-        if (family != AF_INET) {
-          continue;
-        }
-
-        if (!inet_ntop(AF_INET, &((struct sockaddr_in *)ifa->ifa_addr)->sin_addr, saddr, INET_ADDRSTRLEN)) {
-          continue;
-        }
-        if (strstr(saddr, "169.254.") == saddr) {
-          continue;
-        }
-        if (!strcmp(saddr, "0.0.0.0")) {
-          continue;
-        }
-      } else if (ifa->ifa_addr->sa_family == AF_INET6) {
-
-        if (family != AF_INET6) {
-          continue;
-        }
-
-        if (!inet_ntop(AF_INET6, &((struct sockaddr_in6 *)ifa->ifa_addr)->sin6_addr, saddr, INET6_ADDRSTRLEN)) {
-          continue;
-        }
-        if (strstr(saddr, "fe80") == saddr) {
-          continue;
-        }
-        if (!strcmp(saddr, "::")) {
-          continue;
-        }
-      } else {
+      if (!(ifa->ifa_addr))
+      {
         continue;
       }
 
-      if (add_relay_addr(saddr) > 0) {
+      if (!allow_local && (ifa->ifa_flags & IFF_LOOPBACK))
+      {
+        continue;
+      }
+
+      if (ifa->ifa_addr->sa_family == AF_INET)
+      {
+
+        if (family != AF_INET)
+        {
+          continue;
+        }
+
+        if (!inet_ntop(AF_INET, &((struct sockaddr_in *)ifa->ifa_addr)->sin_addr, saddr, INET_ADDRSTRLEN))
+        {
+          continue;
+        }
+        if (strstr(saddr, "169.254.") == saddr)
+        {
+          continue;
+        }
+        if (!strcmp(saddr, "0.0.0.0"))
+        {
+          continue;
+        }
+      }
+      else if (ifa->ifa_addr->sa_family == AF_INET6)
+      {
+
+        if (family != AF_INET6)
+        {
+          continue;
+        }
+
+        if (!inet_ntop(AF_INET6, &((struct sockaddr_in6 *)ifa->ifa_addr)->sin6_addr, saddr, INET6_ADDRSTRLEN))
+        {
+          continue;
+        }
+        if (strstr(saddr, "fe80") == saddr)
+        {
+          continue;
+        }
+        if (!strcmp(saddr, "::"))
+        {
+          continue;
+        }
+      }
+      else
+      {
+        continue;
+      }
+
+      if (add_relay_addr(saddr) > 0)
+      {
         counter += 1;
       }
     }
@@ -729,7 +819,8 @@ static int make_local_relays_list(int allow_local, int family) {
   return counter;
 }
 
-int get_a_local_relay(int family, ioa_addr *relay_addr) {
+int get_a_local_relay(int family, ioa_addr *relay_addr)
+{
   int ret = -1;
   int allow_local = 0;
 
@@ -752,19 +843,24 @@ int get_a_local_relay(int family, ioa_addr *relay_addr) {
 
   outBufLen = WORKING_BUFFER_SIZE;
 
-  do {
+  do
+  {
     pAddresses = (IP_ADAPTER_ADDRESSES *)malloc(outBufLen);
-    if (pAddresses == NULL) {
+    if (pAddresses == NULL)
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Memory allocation failed for IP_ADAPTER_ADDRESSES struct\n");
       return -1;
     }
 
     dwRetVal = GetAdaptersAddresses(fm, flags, NULL, pAddresses, &outBufLen);
 
-    if (dwRetVal == ERROR_BUFFER_OVERFLOW) {
+    if (dwRetVal == ERROR_BUFFER_OVERFLOW)
+    {
       free(pAddresses);
       pAddresses = NULL;
-    } else {
+    }
+    else
+    {
       break;
     }
 
@@ -772,58 +868,77 @@ int get_a_local_relay(int family, ioa_addr *relay_addr) {
 
   } while ((dwRetVal == ERROR_BUFFER_OVERFLOW) && (Iterations < MAX_TRIES));
 
-  if (dwRetVal == NO_ERROR) {
-  galr_start:
+  if (dwRetVal == NO_ERROR)
+  {
+galr_start:
     // If successful, output some information from the data we received
     pCurrAddresses = pAddresses;
-    while (pCurrAddresses) {
+    while (pCurrAddresses)
+    {
       pUnicast = pCurrAddresses->FirstUnicastAddress;
-      if (pUnicast != NULL) {
+      if (pUnicast != NULL)
+      {
         // printf("\tNumber of Unicast Addresses:\n");
-        for (; pUnicast != NULL; pUnicast = pUnicast->Next) {
-          if (!allow_local && (MIB_IF_TYPE_LOOPBACK == pCurrAddresses->IfType)) {
+        for (; pUnicast != NULL; pUnicast = pUnicast->Next)
+        {
+          if (!allow_local && (MIB_IF_TYPE_LOOPBACK == pCurrAddresses->IfType))
+          {
             continue;
           }
 
           char saddr[INET6_ADDRSTRLEN] = "";
           if (AF_INET == pUnicast->Address.lpSockaddr->sa_family) // IPV4
           {
-            if (family != AF_INET) {
+            if (family != AF_INET)
+            {
               continue;
             }
             if (!inet_ntop(PF_INET, &((struct sockaddr_in *)pUnicast->Address.lpSockaddr)->sin_addr, saddr,
-                           INET6_ADDRSTRLEN)) {
+                           INET6_ADDRSTRLEN))
+            {
               continue;
             }
-            if (strstr(saddr, "169.254.") == saddr) {
+            if (strstr(saddr, "169.254.") == saddr)
+            {
               continue;
             }
-            if (!strcmp(saddr, "0.0.0.0")) {
+            if (!strcmp(saddr, "0.0.0.0"))
+            {
               continue;
             }
-          } else if (AF_INET6 == pUnicast->Address.lpSockaddr->sa_family) // IPV6
+          }
+          else if (AF_INET6 == pUnicast->Address.lpSockaddr->sa_family) // IPV6
           {
-            if (family != AF_INET6) {
+            if (family != AF_INET6)
+            {
               continue;
             }
 
             if (!inet_ntop(PF_INET6, &((struct sockaddr_in6 *)pUnicast->Address.lpSockaddr)->sin6_addr, saddr,
-                           INET6_ADDRSTRLEN)) {
+                           INET6_ADDRSTRLEN))
+            {
               continue;
             }
-            if (strstr(saddr, "fe80") == saddr) {
+            if (strstr(saddr, "fe80") == saddr)
+            {
               continue;
             }
-            if (!strcmp(saddr, "::")) {
+            if (!strcmp(saddr, "::"))
+            {
               continue;
             }
-          } else {
+          }
+          else
+          {
             continue;
           }
 
-          if (make_ioa_addr((const uint8_t *)saddr, 0, relay_addr) < 0) {
+          if (make_ioa_addr((const uint8_t *)saddr, 0, relay_addr) < 0)
+          {
             continue;
-          } else {
+          }
+          else
+          {
             ret = 0;
             break;
           }
@@ -832,13 +947,15 @@ int get_a_local_relay(int family, ioa_addr *relay_addr) {
       pCurrAddresses = pCurrAddresses->Next;
     }
 
-    if (ret < 0 && !allow_local) {
+    if (ret < 0 && !allow_local)
+    {
       allow_local = 1;
       goto galr_start;
     }
   }
 
-  if (pAddresses) {
+  if (pAddresses)
+  {
     free(pAddresses);
   }
   return -1;
@@ -849,69 +966,92 @@ int get_a_local_relay(int family, ioa_addr *relay_addr) {
 
   getifaddrs(&ifs);
 
-  if (ifs) {
+  if (ifs)
+  {
 
-  galr_start:
-    for (struct ifaddrs *ifa = ifs; ifa != NULL; ifa = ifa->ifa_next) {
+galr_start:
+    for (struct ifaddrs *ifa = ifs; ifa != NULL; ifa = ifa->ifa_next)
+    {
 
-      if (!(ifa->ifa_flags & IFF_UP)) {
+      if (!(ifa->ifa_flags & IFF_UP))
+      {
         continue;
       }
 
-      if (!(ifa->ifa_name)) {
+      if (!(ifa->ifa_name))
+      {
         continue;
       }
-      if (!(ifa->ifa_addr)) {
-        continue;
-      }
-
-      if (!allow_local && (ifa->ifa_flags & IFF_LOOPBACK)) {
+      if (!(ifa->ifa_addr))
+      {
         continue;
       }
 
-      if (ifa->ifa_addr->sa_family == AF_INET) {
-
-        if (family != AF_INET) {
-          continue;
-        }
-
-        if (!inet_ntop(AF_INET, &((struct sockaddr_in *)ifa->ifa_addr)->sin_addr, saddr, INET_ADDRSTRLEN)) {
-          continue;
-        }
-        if (strstr(saddr, "169.254.") == saddr) {
-          continue;
-        }
-        if (!strcmp(saddr, "0.0.0.0")) {
-          continue;
-        }
-      } else if (ifa->ifa_addr->sa_family == AF_INET6) {
-
-        if (family != AF_INET6) {
-          continue;
-        }
-
-        if (!inet_ntop(AF_INET6, &((struct sockaddr_in6 *)ifa->ifa_addr)->sin6_addr, saddr, INET6_ADDRSTRLEN)) {
-          continue;
-        }
-        if (strstr(saddr, "fe80") == saddr) {
-          continue;
-        }
-        if (!strcmp(saddr, "::")) {
-          continue;
-        }
-      } else {
+      if (!allow_local && (ifa->ifa_flags & IFF_LOOPBACK))
+      {
         continue;
       }
 
-      if (make_ioa_addr((const uint8_t *)saddr, 0, relay_addr) < 0) {
+      if (ifa->ifa_addr->sa_family == AF_INET)
+      {
+
+        if (family != AF_INET)
+        {
+          continue;
+        }
+
+        if (!inet_ntop(AF_INET, &((struct sockaddr_in *)ifa->ifa_addr)->sin_addr, saddr, INET_ADDRSTRLEN))
+        {
+          continue;
+        }
+        if (strstr(saddr, "169.254.") == saddr)
+        {
+          continue;
+        }
+        if (!strcmp(saddr, "0.0.0.0"))
+        {
+          continue;
+        }
+      }
+      else if (ifa->ifa_addr->sa_family == AF_INET6)
+      {
+
+        if (family != AF_INET6)
+        {
+          continue;
+        }
+
+        if (!inet_ntop(AF_INET6, &((struct sockaddr_in6 *)ifa->ifa_addr)->sin6_addr, saddr, INET6_ADDRSTRLEN))
+        {
+          continue;
+        }
+        if (strstr(saddr, "fe80") == saddr)
+        {
+          continue;
+        }
+        if (!strcmp(saddr, "::"))
+        {
+          continue;
+        }
+      }
+      else
+      {
         continue;
-      } else {
+      }
+
+      if (make_ioa_addr((const uint8_t *)saddr, 0, relay_addr) < 0)
+      {
+        continue;
+      }
+      else
+      {
         ret = 0;
         break;
       }
     }
 
-    if (ret < 0 && !allow_local) {
+    if (ret < 0 && !allow_local)
+    {
       allow_local = 1;
       goto galr_start;
     }
@@ -1410,7 +1550,8 @@ static char AdminUsage[] =
 
 #define ADMIN_OPTIONS "PEgGORIHKYlLkaADSdb:e:M:J:N:u:r:p:s:X:o:h:x:v:f:"
 
-enum EXTRA_OPTS {
+enum EXTRA_OPTS
+{
   NO_UDP_OPT = 256,
   NO_TCP_OPT,
   TCP_PROXY_PORT_OPT,
@@ -1502,7 +1643,8 @@ enum EXTRA_OPTS {
   VERSION_OPT
 };
 
-struct myoption {
+struct myoption
+{
   const char *name; /* name of long option */
   int has_arg;      /* whether option takes an argument */
   int *flag;        /* if not NULL, set *flag to val when option found */
@@ -1510,8 +1652,10 @@ struct myoption {
                     /* if flag is NULL, return value */
 };
 
-struct uoptions {
-  union {
+struct uoptions
+{
+  union
+  {
     const struct myoption *m;
     const struct option *o;
   } u;
@@ -1695,7 +1839,8 @@ static const struct myoption admin_long_options[] = {
     {"help", no_argument, NULL, 'h'},
     {NULL, no_argument, NULL, 0}};
 
-int init_ctr(struct ctr_state *state, const unsigned char iv[8]) {
+int init_ctr(struct ctr_state *state, const unsigned char iv[8])
+{
   state->num = 0;
   memset(state->ecount, 0, sizeof(state->ecount));
   memcpy(state->ivec, iv, 8);
@@ -1703,7 +1848,8 @@ int init_ctr(struct ctr_state *state, const unsigned char iv[8]) {
   return 1;
 }
 
-unsigned char *base64encode(const void *b64_encode_this, int encode_this_many_bytes) {
+unsigned char *base64encode(const void *b64_encode_this, int encode_this_many_bytes)
+{
   BIO *b64_bio, *mem_bio;                         // Declares two OpenSSL BIOs: a base64 filter and a memory BIO.
   BUF_MEM *mem_bio_mem_ptr;                       // Pointer to a "memory BIO" structure holding our base64 data.
   b64_bio = BIO_new(BIO_f_base64());              // Initialize our base64 filter BIO.
@@ -1719,7 +1865,8 @@ unsigned char *base64encode(const void *b64_encode_this, int encode_this_many_by
   (*mem_bio_mem_ptr).data[(*mem_bio_mem_ptr).length] = '\0';    // Adds null-terminator to tail.
   return (unsigned char *)(*mem_bio_mem_ptr).data; // Returns base-64 encoded data. (See: "buf_mem_st" struct).
 }
-void encrypt_aes_128(unsigned char *in, const unsigned char *mykey) {
+void encrypt_aes_128(unsigned char *in, const unsigned char *mykey)
+{
 
   int j = 0, k = 0;
   int totalSize = 0;
@@ -1737,25 +1884,29 @@ void encrypt_aes_128(unsigned char *in, const unsigned char *mykey) {
 
   totalSize += strlen((char *)in);
   size = strlen((char *)in);
-  for (j = 0; j < size; j++) {
+  for (j = 0; j < size; j++)
+  {
     total[k++] = out[j];
   }
 
   unsigned char *base64_encoded = base64encode(total, totalSize);
   printf("%s\n", base64_encoded);
 }
-static void generate_aes_128_key(char *filePath, unsigned char *returnedKey) {
+static void generate_aes_128_key(char *filePath, unsigned char *returnedKey)
+{
   char key[16];
 
   // TODO: Document why this is called...?
   turn_srandom();
 
-  for (size_t i = 0; i < 16; ++i) {
+  for (size_t i = 0; i < 16; ++i)
+  {
     // TODO: This could be sped up by breaking the
     // returned random value into multiple 8bit values
     // instead of getting a new multi-byte random value
     // for each key index.
-    switch (turn_random() % 3) {
+    switch (turn_random() % 3)
+    {
     case 0:
       key[i] = (turn_random() % 10) + 48;
       continue;
@@ -1768,10 +1919,12 @@ static void generate_aes_128_key(char *filePath, unsigned char *returnedKey) {
     }
   }
   FILE *fptr = fopen(filePath, "w");
-  if (!fptr) {
+  if (!fptr)
+  {
     return;
   }
-  for (size_t i = 0; i < 16; ++i) {
+  for (size_t i = 0; i < 16; ++i)
+  {
     fputc(key[i], fptr);
   }
   memcpy(returnedKey, key, 16);
@@ -1781,7 +1934,8 @@ static void generate_aes_128_key(char *filePath, unsigned char *returnedKey) {
   fclose(fptr);
 }
 
-unsigned char *base64decode(const void *b64_decode_this, int decode_this_many_bytes) {
+unsigned char *base64decode(const void *b64_decode_this, int decode_this_many_bytes)
+{
   BIO *b64_bio, *mem_bio; // Declares two OpenSSL BIOs: a base64 filter and a memory BIO.
   unsigned char *base64_decoded =
       (unsigned char *)calloc((decode_this_many_bytes * 3) / 4 + 1, sizeof(char)); //+1 = null.
@@ -1791,20 +1945,24 @@ unsigned char *base64decode(const void *b64_decode_this, int decode_this_many_by
   BIO_push(b64_bio, mem_bio);                     // Link the BIOs by creating a filter-source BIO chain.
   BIO_set_flags(b64_bio, BIO_FLAGS_BASE64_NO_NL); // Don't require trailing newlines.
   int decoded_byte_index = 0;                     // Index where the next base64_decoded byte should be written.
-  while (0 < BIO_read(b64_bio, base64_decoded + decoded_byte_index, 1)) { // Read byte-by-byte.
+  while (0 < BIO_read(b64_bio, base64_decoded + decoded_byte_index, 1))
+  {                       // Read byte-by-byte.
     decoded_byte_index++; // Increment the index until read of BIO decoded data is complete.
-  }                       // Once we're done reading decoded data, BIO_read returns -1 even though there's no error.
+  } // Once we're done reading decoded data, BIO_read returns -1 even though there's no error.
 
   BIO_free_all(b64_bio); // Destroys all BIOs in chain, starting with b64 (i.e. the 1st one).
   return base64_decoded; // Returns base-64 decoded data with trailing null terminator.
 }
 
-int decodedTextSize(char *input) {
+int decodedTextSize(char *input)
+{
   int i = 0;
   int result = 0, padding = 0;
   int size = strlen(input);
-  for (i = 0; i < size; ++i) {
-    if (input[i] == '=') {
+  for (i = 0; i < size; ++i)
+  {
+    if (input[i] == '=')
+    {
       padding++;
     }
   }
@@ -1812,7 +1970,8 @@ int decodedTextSize(char *input) {
   return result;
 }
 
-void decrypt_aes_128(char *in, const unsigned char *mykey) {
+void decrypt_aes_128(char *in, const unsigned char *mykey)
+{
   unsigned char iv[8] = {0};
   AES_KEY key;
   unsigned char outdata[256] = {0};
@@ -1831,38 +1990,49 @@ void decrypt_aes_128(char *in, const unsigned char *mykey) {
   printf("%s\n", last);
 }
 
-static int get_int_value(const char *s, int default_value) {
-  if (!s || !(s[0])) {
+static int get_int_value(const char *s, int default_value)
+{
+  if (!s || !(s[0]))
+  {
     return default_value;
   }
   return atoi(s);
 }
 
-static int get_bool_value(const char *s) {
-  if (!s || !(s[0])) {
+static int get_bool_value(const char *s)
+{
+  if (!s || !(s[0]))
+  {
     return 1;
   }
-  if (s[0] == '0' || s[0] == 'n' || s[0] == 'N' || s[0] == 'f' || s[0] == 'F') {
+  if (s[0] == '0' || s[0] == 'n' || s[0] == 'N' || s[0] == 'f' || s[0] == 'F')
+  {
     return 0;
   }
-  if (s[0] == 'y' || s[0] == 'Y' || s[0] == 't' || s[0] == 'T') {
+  if (s[0] == 'y' || s[0] == 'Y' || s[0] == 't' || s[0] == 'T')
+  {
     return 1;
   }
-  if (s[0] > '0' && s[0] <= '9') {
+  if (s[0] > '0' && s[0] <= '9')
+  {
     return 1;
   }
-  if (!strcmp(s, "off") || !strcmp(s, "OFF") || !strcmp(s, "Off")) {
+  if (!strcmp(s, "off") || !strcmp(s, "OFF") || !strcmp(s, "Off"))
+  {
     return 0;
   }
-  if (!strcmp(s, "on") || !strcmp(s, "ON") || !strcmp(s, "On")) {
+  if (!strcmp(s, "on") || !strcmp(s, "ON") || !strcmp(s, "On"))
+  {
     return 1;
   }
   TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown boolean value: %s. You can use on/off, yes/no, 1/0, true/false.\n", s);
   exit(-1);
 }
 
-static void set_option(int c, char *value) {
-  if (value && value[0] == '=') {
+static void set_option(int c, char *value)
+{
+  if (value && value[0] == '=')
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
                   "WARNING: option -%c is possibly used incorrectly. The short form of the option must be used as "
                   "this: -%c <value>, no \'equals\' sign may be used, that sign is used only with long form options "
@@ -1870,27 +2040,40 @@ static void set_option(int c, char *value) {
                   (char)c, (char)c);
   }
 
-  switch (c) {
+  switch (c)
+  {
   case 'K':
-    if (get_bool_value(value)) {
+    if (get_bool_value(value))
+    {
       turn_params.allocation_default_address_family = ALLOCATION_DEFAULT_ADDRESS_FAMILY_KEEP;
     }
     break;
   case 'A':
-    if (value && strlen(value) > 0) {
-      if (*value == '=') {
+    if (value && strlen(value) > 0)
+    {
+      if (*value == '=')
+      {
         ++value;
       }
-      if (!strcmp(value, "ipv6")) {
+      if (!strcmp(value, "ipv6"))
+      {
         turn_params.allocation_default_address_family = ALLOCATION_DEFAULT_ADDRESS_FAMILY_IPV6;
-      } else if (!strcmp(value, "keep")) {
+      }
+      else if (!strcmp(value, "keep"))
+      {
         turn_params.allocation_default_address_family = ALLOCATION_DEFAULT_ADDRESS_FAMILY_KEEP;
-      } else if (!strcmp(value, "ipv4")) {
+      }
+      else if (!strcmp(value, "ipv4"))
+      {
         turn_params.allocation_default_address_family = ALLOCATION_DEFAULT_ADDRESS_FAMILY_IPV4;
-      } else {
+      }
+      else
+      {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: invalid allocation_default_address_family parameter\n");
       }
-    } else {
+    }
+    else
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: invalid allocation_default_address_family parameter\n");
     }
     break;
@@ -1898,9 +2081,12 @@ static void set_option(int c, char *value) {
     STRCPY(turn_params.oauth_server_name, value);
     break;
   case OAUTH_OPT:
-    if (ENC_ALG_NUM == 0) {
+    if (ENC_ALG_NUM == 0)
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: option --oauth is not supported; ignored.\n");
-    } else {
+    }
+    else
+    {
       turn_params.oauth = get_bool_value(value);
     }
     break;
@@ -1913,20 +2099,25 @@ static void set_option(int c, char *value) {
   case NO_TLSV1_2_OPT:
     turn_params.no_tlsv1_2 = get_bool_value(value);
     break;
-  case NE_TYPE_OPT: {
+  case NE_TYPE_OPT:
+  {
     int ne = atoi(value);
-    if ((ne < (int)NEV_MIN) || (ne > (int)NEV_MAX)) {
+    if ((ne < (int)NEV_MIN) || (ne > (int)NEV_MAX))
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: wrong version of the network engine: %d\n", ne);
     }
     turn_params.net_engine_version = (NET_ENG_VERSION)ne;
-  } break;
+  }
+  break;
   case DH566_OPT:
-    if (get_bool_value(value)) {
+    if (get_bool_value(value))
+    {
       turn_params.dh_key_size = DH_566;
     }
     break;
   case DH1066_OPT:
-    if (get_bool_value(value)) {
+    if (get_bool_value(value))
+    {
       turn_params.dh_key_size = DH_1066;
     }
     break;
@@ -1946,9 +2137,12 @@ static void set_option(int c, char *value) {
     use_cli = !get_bool_value(value);
     break;
   case CLI_IP_OPT:
-    if (make_ioa_addr((const uint8_t *)value, 0, &cli_addr) < 0) {
+    if (make_ioa_addr((const uint8_t *)value, 0, &cli_addr) < 0)
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot set cli address: %s\n", value);
-    } else {
+    }
+    else
+    {
       cli_addr_set = 1;
     }
     break;
@@ -1962,9 +2156,12 @@ static void set_option(int c, char *value) {
     use_web_admin = get_bool_value(value);
     break;
   case WEB_ADMIN_IP_OPT:
-    if (make_ioa_addr((const uint8_t *)value, 0, &web_admin_addr) < 0) {
+    if (make_ioa_addr((const uint8_t *)value, 0, &web_admin_addr) < 0)
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot set web-admin address: %s\n", value);
-    } else {
+    }
+    else
+    {
       web_admin_addr_set = 1;
     }
     break;
@@ -1977,39 +2174,54 @@ static void set_option(int c, char *value) {
 #if defined(WINDOWS)
     // TODO: implement it!!!
 #else
-  case PROC_USER_OPT: {
+  case PROC_USER_OPT:
+  {
     struct passwd *pwd = getpwnam(value);
-    if (!pwd) {
+    if (!pwd)
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown user name: %s\n", value);
       exit(-1);
-    } else {
+    }
+    else
+    {
       procuserid = pwd->pw_uid;
       procuserid_set = 1;
       STRCPY(procusername, value);
     }
-  } break;
-  case PROC_GROUP_OPT: {
+  }
+  break;
+  case PROC_GROUP_OPT:
+  {
     struct group *gr = getgrnam(value);
-    if (!gr) {
+    if (!gr)
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown group name: %s\n", value);
       exit(-1);
-    } else {
+    }
+    else
+    {
       procgroupid = gr->gr_gid;
       procgroupid_set = 1;
       STRCPY(procgroupname, value);
     }
-  } break;
+  }
+  break;
 #endif
   case 'i':
     STRCPY(turn_params.relay_ifname, value);
     break;
   case 'm':
-    if (atoi(value) > MAX_NUMBER_OF_GENERAL_RELAY_SERVERS) {
+    if (atoi(value) > MAX_NUMBER_OF_GENERAL_RELAY_SERVERS)
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: max number of relay threads is 128.\n");
       turn_params.general_relay_servers_number = MAX_NUMBER_OF_GENERAL_RELAY_SERVERS;
-    } else if (atoi(value) <= 0) {
+    }
+    else if (atoi(value) <= 0)
+    {
       turn_params.general_relay_servers_number = 0;
-    } else {
+    }
+    else
+    {
       turn_params.general_relay_servers_number = atoi(value);
     }
     break;
@@ -2076,34 +2288,49 @@ static void set_option(int c, char *value) {
     add_relay_addr(value);
     break;
   case 'X':
-    if (value) {
+    if (value)
+    {
       char *div = strchr(value, '/');
-      if (div) {
+      if (div)
+      {
         char *nval = strdup(value);
         div = strchr(nval, '/');
         div[0] = 0;
         ++div;
         ioa_addr apub, apriv;
-        if (make_ioa_addr((const uint8_t *)nval, 0, &apub) < 0) {
+        if (make_ioa_addr((const uint8_t *)nval, 0, &apub) < 0)
+        {
           TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "-X : Wrong address format: %s\n", nval);
-        } else {
-          if (make_ioa_addr((const uint8_t *)div, 0, &apriv) < 0) {
+        }
+        else
+        {
+          if (make_ioa_addr((const uint8_t *)div, 0, &apriv) < 0)
+          {
             TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "-X : Wrong address format: %s\n", div);
-          } else {
+          }
+          else
+          {
             ioa_addr_add_mapping(&apub, &apriv);
-            if (add_ip_list_range((const char *)div, NULL, &turn_params.ip_whitelist) == 0) {
+            if (add_ip_list_range((const char *)div, NULL, &turn_params.ip_whitelist) == 0)
+            {
               TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Whitelisting external-ip private part: %s\n", div);
             }
           }
         }
         free(nval);
-      } else {
-        if (turn_params.external_ip) {
+      }
+      else
+      {
+        if (turn_params.external_ip)
+        {
           TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "You cannot define external IP more than once in the configuration\n");
-        } else {
+        }
+        else
+        {
           turn_params.external_ip =
               (ioa_addr *)allocate_super_memory_engine(turn_params.listener.ioa_eng, sizeof(ioa_addr));
-          if (make_ioa_addr((const uint8_t *)value, 0, turn_params.external_ip) < 0) {
+          if (make_ioa_addr((const uint8_t *)value, 0, turn_params.external_ip) < 0)
+          {
             TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "-X : Wrong address format: %s\n", value);
             free(turn_params.external_ip);
             turn_params.external_ip = NULL;
@@ -2113,16 +2340,21 @@ static void set_option(int c, char *value) {
     }
     break;
   case 'v':
-    if (turn_params.verbose != TURN_VERBOSE_EXTRA) {
-      if (get_bool_value(value)) {
+    if (turn_params.verbose != TURN_VERBOSE_EXTRA)
+    {
+      if (get_bool_value(value))
+      {
         turn_params.verbose = TURN_VERBOSE_NORMAL;
-      } else {
+      }
+      else
+      {
         turn_params.verbose = TURN_VERBOSE_NONE;
       }
     }
     break;
   case 'V':
-    if (get_bool_value(value)) {
+    if (get_bool_value(value))
+    {
       turn_params.verbose = TURN_VERBOSE_EXTRA;
     }
     break;
@@ -2130,20 +2362,26 @@ static void set_option(int c, char *value) {
     turn_params.turn_daemon = get_bool_value(value);
     break;
   case 'a':
-    if (get_bool_value(value)) {
+    if (get_bool_value(value))
+    {
       turn_params.ct = TURN_CREDENTIALS_LONG_TERM;
       use_lt_credentials = 1;
       use_ltc = 1;
-    } else {
+    }
+    else
+    {
       turn_params.ct = TURN_CREDENTIALS_UNDEFINED;
       use_lt_credentials = 0;
     }
     break;
   case 'z':
-    if (!get_bool_value(value)) {
+    if (!get_bool_value(value))
+    {
       turn_params.ct = TURN_CREDENTIALS_UNDEFINED;
       anon_credentials = 0;
-    } else {
+    }
+    else
+    {
       turn_params.ct = TURN_CREDENTIALS_NONE;
       anon_credentials = 1;
     }
@@ -2160,7 +2398,8 @@ static void set_option(int c, char *value) {
   case 'u':
     add_static_user_account(value);
     break;
-  case 'b': {
+  case 'b':
+  {
 #if defined(TURN_NO_SQLITE)
     TURN_LOG_FUNC(
         TURN_LOG_LEVEL_WARNING,
@@ -2169,7 +2408,8 @@ static void set_option(int c, char *value) {
     STRCPY(turn_params.default_users_db.persistent_users_db.userdb, value);
     turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_SQLITE;
 #endif
-  } break;
+  }
+  break;
 #if !defined(TURN_NO_PQ)
   case 'e':
     STRCPY(turn_params.default_users_db.persistent_users_db.userdb, value);
@@ -2320,12 +2560,14 @@ static void set_option(int c, char *value) {
     add_tls_alternate_server(value);
     break;
   case ALLOWED_PEER_IPS:
-    if (add_ip_list_range(value, NULL, &turn_params.ip_whitelist) == 0) {
+    if (add_ip_list_range(value, NULL, &turn_params.ip_whitelist) == 0)
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "White listing: %s\n", value);
     }
     break;
   case DENIED_PEER_IPS:
-    if (add_ip_list_range(value, NULL, &turn_params.ip_blacklist) == 0) {
+    if (add_ip_list_range(value, NULL, &turn_params.ip_blacklist) == 0)
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Black listing: %s\n", value);
     }
     break;
@@ -2339,7 +2581,8 @@ static void set_option(int c, char *value) {
     STRCPY(turn_params.acme_redirect, value);
     break;
   case 'C':
-    if (value && *value) {
+    if (value && *value)
+    {
       turn_params.rest_api_separator = *value;
     }
     break;
@@ -2376,25 +2619,31 @@ static void set_option(int c, char *value) {
     exit(-1);
   }
 
-  if (turn_params.default_users_db.persistent_users_db.userdb[0]) {
+  if (turn_params.default_users_db.persistent_users_db.userdb[0])
+  {
     char *userdb_sanitized = sanitize_userdb_string(turn_params.default_users_db.persistent_users_db.userdb);
     STRCPY(turn_params.default_users_db.persistent_users_db.userdb_sanitized, userdb_sanitized);
     free(userdb_sanitized);
   }
-  if (turn_params.redis_statsdb.connection_string[0]) {
+  if (turn_params.redis_statsdb.connection_string[0])
+  {
     char *connection_string = sanitize_userdb_string(turn_params.redis_statsdb.connection_string);
     STRCPY(turn_params.redis_statsdb.connection_string_sanitized, connection_string);
     free(connection_string);
   }
 }
 
-static int parse_arg_string(char *sarg, int *c, char **value) {
+static int parse_arg_string(char *sarg, int *c, char **value)
+{
   int i = 0;
   char *name = sarg;
-  while (*sarg) {
-    if ((*sarg == ' ') || (*sarg == '=') || (*sarg == '\t')) {
+  while (*sarg)
+  {
+    if ((*sarg == ' ') || (*sarg == '=') || (*sarg == '\t'))
+    {
       *sarg = 0;
-      do {
+      do
+      {
         ++sarg;
       } while ((*sarg == ' ') || (*sarg == '=') || (*sarg == '\t'));
       *value = sarg;
@@ -2404,20 +2653,25 @@ static int parse_arg_string(char *sarg, int *c, char **value) {
     *value = sarg;
   }
 
-  if (value && *value && **value == '\"') {
+  if (value && *value && **value == '\"')
+  {
     *value += 1;
     size_t len = strlen(*value);
     while (len > 0 && (((*value)[len - 1] == '\n') || ((*value)[len - 1] == '\r') || ((*value)[len - 1] == ' ') ||
-                       ((*value)[len - 1] == '\t'))) {
+                       ((*value)[len - 1] == '\t')))
+    {
       (*value)[--len] = 0;
     }
-    if (len > 0 && (*value)[len - 1] == '\"') {
+    if (len > 0 && (*value)[len - 1] == '\"')
+    {
       (*value)[--len] = 0;
     }
   }
 
-  while (long_options[i].name) {
-    if (strcmp(long_options[i].name, name)) {
+  while (long_options[i].name)
+  {
+    if (strcmp(long_options[i].name, name))
+    {
       ++i;
       continue;
     }
@@ -2428,28 +2682,42 @@ static int parse_arg_string(char *sarg, int *c, char **value) {
   return -1;
 }
 
-static void read_config_file(int argc, char **argv, int pass) {
+static void read_config_file(int argc, char **argv, int pass)
+{
   static char config_file[1025] = DEFAULT_CONFIG_FILE;
 
-  if (pass == 0) {
+  if (pass == 0)
+  {
 
-    if (argv) {
+    if (argv)
+    {
       int i = 0;
-      for (i = 0; i < argc; i++) {
-        if (!strcmp(argv[i], "-c")) {
-          if (i < argc - 1) {
+      for (i = 0; i < argc; i++)
+      {
+        if (!strcmp(argv[i], "-c"))
+        {
+          if (i < argc - 1)
+          {
             STRCPY(config_file, argv[i + 1]);
-          } else {
+          }
+          else
+          {
             TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Wrong usage of -c option\n");
           }
-        } else if (!strcmp(argv[i], "-n")) {
+        }
+        else if (!strcmp(argv[i], "-n"))
+        {
           turn_params.do_not_use_config_file = 1;
           config_file[0] = 0;
           return;
-        } else if (!strcmp(argv[i], "-h")) {
+        }
+        else if (!strcmp(argv[i], "-h"))
+        {
           printf("\n%s\n", Usage);
           exit(0);
-        } else if (!strcmp(argv[i], "--version")) {
+        }
+        else if (!strcmp(argv[i], "--version"))
+        {
           printf("%s\n", TURN_SERVER_VERSION);
           exit(0);
         }
@@ -2457,93 +2725,127 @@ static void read_config_file(int argc, char **argv, int pass) {
     }
   }
 
-  if (!turn_params.do_not_use_config_file && config_file[0]) {
+  if (!turn_params.do_not_use_config_file && config_file[0])
+  {
 
     FILE *f = NULL;
     char *full_path_to_config_file = NULL;
 
     full_path_to_config_file = find_config_file(config_file);
-    if (full_path_to_config_file) {
+    if (full_path_to_config_file)
+    {
       f = fopen(full_path_to_config_file, "r");
     }
 
-    if (f) {
+    if (f)
+    {
 
       char sbuf[1025];
       char sarg[1035];
 
-      for (;;) {
+      for (;;)
+      {
         char *s = fgets(sbuf, sizeof(sbuf) - 1, f);
-        if (!s) {
+        if (!s)
+        {
           break;
         }
         s = skip_blanks(s);
-        if (s[0] == '#') {
+        if (s[0] == '#')
+        {
           continue;
         }
-        if (!s[0]) {
+        if (!s[0])
+        {
           continue;
         }
         size_t slen = strlen(s);
 
         // strip white-spaces from config file lines end
-        while (slen && isspace(s[slen - 1])) {
+        while (slen && isspace(s[slen - 1]))
+        {
           s[--slen] = 0;
         }
-        if (slen) {
+        if (slen)
+        {
           int c = 0;
           char *value = NULL;
           STRCPY(sarg, s);
-          if (parse_arg_string(sarg, &c, &value) < 0) {
+          if (parse_arg_string(sarg, &c, &value) < 0)
+          {
             TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Bad configuration format: %s\n", sarg);
-          } else if ((pass == 0) && (c == 'l')) {
+          }
+          else if ((pass == 0) && (c == 'l'))
+          {
             set_logfile(value);
-          } else if ((pass == 0) && (c == NO_STDOUT_LOG_OPT)) {
+          }
+          else if ((pass == 0) && (c == NO_STDOUT_LOG_OPT))
+          {
             set_no_stdout_log(get_bool_value(value));
-          } else if ((pass == 0) && (c == SYSLOG_OPT)) {
+          }
+          else if ((pass == 0) && (c == SYSLOG_OPT))
+          {
             set_log_to_syslog(get_bool_value(value));
-          } else if ((pass == 0) && (c == SIMPLE_LOG_OPT)) {
+          }
+          else if ((pass == 0) && (c == SIMPLE_LOG_OPT))
+          {
             set_simple_log(get_bool_value(value));
-          } else if ((pass == 0) && (c == NEW_LOG_TIMESTAMP_OPT)) {
+          }
+          else if ((pass == 0) && (c == NEW_LOG_TIMESTAMP_OPT))
+          {
             use_new_log_timestamp_format = 1;
-          } else if ((pass == 0) && (c == NEW_LOG_TIMESTAMP_FORMAT_OPT)) {
+          }
+          else if ((pass == 0) && (c == NEW_LOG_TIMESTAMP_FORMAT_OPT))
+          {
             set_turn_log_timestamp_format(value);
-          } else if ((pass == 0) && (c == SYSLOG_FACILITY_OPT)) {
+          }
+          else if ((pass == 0) && (c == SYSLOG_FACILITY_OPT))
+          {
             set_syslog_facility(value);
-          } else if ((pass == 1) && (c != 'u')) {
-            set_option(c, value);
-          } else if ((pass == 2) && (c == 'u')) {
+          }
+          else if ((pass == 1) && (c != 'u'))
+          {
             set_option(c, value);
           }
-          if (s[slen - 1] == 59) {
+          else if ((pass == 2) && (c == 'u'))
+          {
+            set_option(c, value);
+          }
+          if (s[slen - 1] == 59)
+          {
             TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Check config! The following line ends with semicolon: \"%s\" \n", s);
           }
         }
       }
 
       fclose(f);
-
-    } else if (pass == 0) {
+    }
+    else if (pass == 0)
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
                     "Cannot find config file: %s. Default and command-line settings will be used.\n", config_file);
     }
 
-    if (full_path_to_config_file) {
+    if (full_path_to_config_file)
+    {
       free(full_path_to_config_file);
       full_path_to_config_file = NULL;
     }
   }
 }
 
-static int disconnect_database(void) {
+static int disconnect_database(void)
+{
   const turn_dbdriver_t *dbd = get_dbdriver();
-  if (dbd && dbd->disconnect) {
+  if (dbd && dbd->disconnect)
+  {
     dbd->disconnect();
   }
   return 0;
 }
 
-static int adminmain(int argc, char **argv) {
+static int adminmain(int argc, char **argv)
+{
   int c = 0;
   int rc = 0;
 
@@ -2566,10 +2868,13 @@ static int adminmain(int argc, char **argv) {
   int print_enc_password = 0;
   int print_enc_aes_password = 0;
 
-  while (((c = getopt_long(argc, argv, ADMIN_OPTIONS, uo.u.o, NULL)) != -1)) {
-    switch (c) {
+  while (((c = getopt_long(argc, argv, ADMIN_OPTIONS, uo.u.o, NULL)) != -1))
+  {
+    switch (c)
+    {
     case 'P':
-      if (pwd[0]) {
+      if (pwd[0])
+      {
         char result[257];
         generate_new_enc_password((char *)pwd, result);
         printf("%s\n", result);
@@ -2640,7 +2945,8 @@ static int adminmain(int argc, char **argv) {
       break;
     case 'X':
       ct = TA_DEL_SECRET;
-      if (optarg) {
+      if (optarg)
+      {
         STRCPY(secret, optarg);
       }
       break;
@@ -2679,11 +2985,13 @@ static int adminmain(int argc, char **argv) {
 #endif
     case 'u':
       STRCPY(user, optarg);
-      if (!is_secure_string((uint8_t *)user, 1)) {
+      if (!is_secure_string((uint8_t *)user, 1))
+      {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong user name structure or symbols, choose another name: %s\n", user);
         exit(-1);
       }
-      if (!SASLprep((uint8_t *)user)) {
+      if (!SASLprep((uint8_t *)user))
+      {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong user name: %s\n", user);
         exit(-1);
       }
@@ -2691,24 +2999,28 @@ static int adminmain(int argc, char **argv) {
     case 'r':
       set_default_realm_name(optarg);
       STRCPY(realm, optarg);
-      if (!SASLprep((uint8_t *)realm)) {
+      if (!SASLprep((uint8_t *)realm))
+      {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong realm: %s\n", realm);
         exit(-1);
       }
       break;
     case 'p':
       STRCPY(pwd, optarg);
-      if (!SASLprep((uint8_t *)pwd)) {
+      if (!SASLprep((uint8_t *)pwd))
+      {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong password: %s\n", pwd);
         exit(-1);
       }
-      if (print_enc_password) {
+      if (print_enc_password)
+      {
         char result[257];
         generate_new_enc_password((char *)pwd, result);
         printf("%s\n", result);
         exit(0);
       }
-      if (print_enc_aes_password) {
+      if (print_enc_aes_password)
+      {
         encrypt_aes_128(pwd, generated_key);
         exit(0);
       }
@@ -2719,15 +3031,22 @@ static int adminmain(int argc, char **argv) {
       break;
     case 'f':
       fptr = fopen((char *)optarg, "r");
-      if (fptr == NULL) {
+      if (fptr == NULL)
+      {
         printf("No such file like %s\n", (char *)optarg);
-      } else {
+      }
+      else
+      {
         fseek(fptr, 0, SEEK_SET);
         rc = fread(generated_key, sizeof(char), 16, fptr);
-        if (rc == 0) {
+        if (rc == 0)
+        {
           TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: Secret-Key file is empty\n", __FUNCTION__);
-        } else {
-          if (rc != 16) {
+        }
+        else
+        {
+          if (rc != 16)
+          {
             TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: Secret-Key length is not enough\n", __FUNCTION__);
           }
         }
@@ -2749,12 +3068,14 @@ static int adminmain(int argc, char **argv) {
 
 #if !defined(TURN_NO_SQLITE)
   if (!strlen(turn_params.default_users_db.persistent_users_db.userdb) &&
-      (turn_params.default_users_db.userdb_type == TURN_USERDB_TYPE_SQLITE)) {
+      (turn_params.default_users_db.userdb_type == TURN_USERDB_TYPE_SQLITE))
+  {
     strncpy(turn_params.default_users_db.persistent_users_db.userdb, DEFAULT_USERDB_FILE, TURN_LONG_STRING_SIZE);
   }
 #endif
 
-  if (ct == TA_COMMAND_UNKNOWN) {
+  if (ct == TA_COMMAND_UNKNOWN)
+  {
     fprintf(stderr, "\n%s\n", AdminUsage);
     exit(-1);
   }
@@ -2762,7 +3083,8 @@ static int adminmain(int argc, char **argv) {
   argc -= optind;
   argv += optind;
 
-  if (argc != 0) {
+  if (argc != 0)
+  {
     fprintf(stderr, "\n%s\n", AdminUsage);
     exit(-1);
   }
@@ -2774,16 +3096,21 @@ static int adminmain(int argc, char **argv) {
   return result;
 }
 
-static void print_features(unsigned long mfn) {
+static void print_features(unsigned long mfn)
+{
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Coturn Version %s\n", TURN_SOFTWARE);
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Max number of open files/sockets allowed for this process: %lu\n", mfn);
-  if (turn_params.net_engine_version == NEV_UDP_SOCKET_PER_ENDPOINT) {
+  if (turn_params.net_engine_version == NEV_UDP_SOCKET_PER_ENDPOINT)
+  {
     mfn = mfn / 3;
-  } else {
+  }
+  else
+  {
     mfn = mfn / 2;
   }
   mfn = ((unsigned long)(mfn / 500)) * 500;
-  if (mfn < 500) {
+  if (mfn < 500)
+  {
     mfn = 500;
   }
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
@@ -2821,9 +3148,12 @@ static void print_features(unsigned long mfn) {
 
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TURN/STUN ALPN supported\n");
 
-  if (ENC_ALG_NUM == 0) {
+  if (ENC_ALG_NUM == 0)
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Third-party authorization (oAuth) is not supported\n");
-  } else {
+  }
+  else
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Third-party authorization (oAuth) supported\n");
 #if defined(TURN_NO_GCM)
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "GCM (AEAD) is not supported\n");
@@ -2871,8 +3201,10 @@ static void print_features(unsigned long mfn) {
 #include <linux/version.h>
 #endif
 
-static void set_network_engine(void) {
-  if (turn_params.net_engine_version != NEV_UNKNOWN) {
+static void set_network_engine(void)
+{
+  if (turn_params.net_engine_version != NEV_UNKNOWN)
+  {
     return;
   }
   turn_params.net_engine_version = NEV_UDP_SOCKET_PER_ENDPOINT;
@@ -2896,50 +3228,70 @@ static void set_network_engine(void) {
 #endif /* defined(SO_REUSEPORT) */
 }
 
-static void drop_privileges(void) {
+static void drop_privileges(void)
+{
 #if defined(WINDOWS)
   // TODO: implement it!!!
 #else
   setgroups(0, NULL);
-  if (procgroupid_set) {
-    if (getgid() != procgroupid) {
-      if (setgid(procgroupid) != 0) {
+  if (procgroupid_set)
+  {
+    if (getgid() != procgroupid)
+    {
+      if (setgid(procgroupid) != 0)
+      {
         perror("setgid: Unable to change group privileges");
         exit(-1);
-      } else {
+      }
+      else
+      {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "New GID: %s(%lu)\n", procgroupname, (unsigned long)procgroupid);
       }
-    } else {
+    }
+    else
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Keep GID: %s(%lu)\n", procgroupname, (unsigned long)procgroupid);
     }
   }
 
-  if (procuserid_set) {
-    if (procuserid != getuid()) {
-      if (setuid(procuserid) != 0) {
+  if (procuserid_set)
+  {
+    if (procuserid != getuid())
+    {
+      if (setuid(procuserid) != 0)
+      {
         perror("setuid: Unable to change user privileges");
         exit(-1);
-      } else {
+      }
+      else
+      {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "New UID: %s(%lu)\n", procusername, (unsigned long)procuserid);
       }
-    } else {
+    }
+    else
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Keep UID: %s(%lu)\n", procusername, (unsigned long)procuserid);
     }
   }
 #endif
 }
 
-static void init_domain(void) {
+static void init_domain(void)
+{
 #if !defined(TURN_NO_GETDOMAINNAME)
-  if (getdomainname(turn_params.domain, sizeof(turn_params.domain) - 1) < 0) {
+  if (getdomainname(turn_params.domain, sizeof(turn_params.domain) - 1) < 0)
+  {
     turn_params.domain[0] = 0;
-  } else if (!strcmp(turn_params.domain, "(none)")) {
+  }
+  else if (!strcmp(turn_params.domain, "(none)"))
+  {
     turn_params.domain[0] = 0;
   }
 #endif
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv)
+{
   int c = 0;
 
   IS_TURN_SERVER = 1;
@@ -2963,13 +3315,16 @@ int main(int argc, char **argv) {
   init_secrets_list(&turn_params.default_users_db.ram_db.static_auth_secrets);
   init_dynamic_ip_lists();
 
-  if (!strstr(argv[0], "turnadmin")) {
+  if (!strstr(argv[0], "turnadmin"))
+  {
 
     struct uoptions uo;
     uo.u.m = long_options;
 
-    while (((c = getopt_long(argc, argv, OPTIONS, uo.u.o, NULL)) != -1)) {
-      switch (c) {
+    while (((c = getopt_long(argc, argv, OPTIONS, uo.u.o, NULL)) != -1))
+    {
+      switch (c)
+      {
       case 'l':
         set_logfile(optarg);
         break;
@@ -3006,7 +3361,8 @@ int main(int argc, char **argv) {
   turn_params.no_dtls = 1;
 #endif
 
-  if (strstr(argv[0], "turnadmin")) {
+  if (strstr(argv[0], "turnadmin"))
+  {
     return adminmain(argc, argv);
   }
 
@@ -3018,12 +3374,16 @@ int main(int argc, char **argv) {
 
   {
     unsigned long cpus = get_system_active_number_of_cpus();
-    if (cpus > 0) {
+    if (cpus > 0)
+    {
       turn_params.cpus = cpus;
     }
-    if (turn_params.cpus < DEFAULT_CPUS_NUMBER) {
+    if (turn_params.cpus < DEFAULT_CPUS_NUMBER)
+    {
       turn_params.cpus = DEFAULT_CPUS_NUMBER;
-    } else if (turn_params.cpus > MAX_NUMBER_OF_GENERAL_RELAY_SERVERS) {
+    }
+    else if (turn_params.cpus > MAX_NUMBER_OF_GENERAL_RELAY_SERVERS)
+    {
       turn_params.cpus = MAX_NUMBER_OF_GENERAL_RELAY_SERVERS;
     }
 
@@ -3039,8 +3399,10 @@ int main(int argc, char **argv) {
   struct uoptions uo;
   uo.u.m = long_options;
 
-  while (((c = getopt_long(argc, argv, OPTIONS, uo.u.o, NULL)) != -1)) {
-    if (c != 'u') {
+  while (((c = getopt_long(argc, argv, OPTIONS, uo.u.o, NULL)) != -1))
+  {
+    if (c != 'u')
+    {
       set_option(c, optarg);
     }
   }
@@ -3054,55 +3416,66 @@ int main(int argc, char **argv) {
     print_features(mfn);
   }
 
-  if (!get_realm(NULL)->options.name[0]) {
+  if (!get_realm(NULL)->options.name[0])
+  {
     STRCPY(get_realm(NULL)->options.name, turn_params.domain);
   }
 
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Domain name: %s\n", turn_params.domain);
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Default realm: %s\n", get_realm(NULL)->options.name);
 
-  if (turn_params.acme_redirect[0]) {
+  if (turn_params.acme_redirect[0])
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "ACME redirect URL: %s\n", turn_params.acme_redirect);
   }
-  if (turn_params.oauth && turn_params.oauth_server_name[0]) {
+  if (turn_params.oauth && turn_params.oauth_server_name[0])
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "oAuth server name: %s\n", turn_params.oauth_server_name);
   }
 
   optind = 0;
 
-  while (((c = getopt_long(argc, argv, OPTIONS, uo.u.o, NULL)) != -1)) {
-    if (c == 'u') {
+  while (((c = getopt_long(argc, argv, OPTIONS, uo.u.o, NULL)) != -1))
+  {
+    if (c == 'u')
+    {
       set_option(c, optarg);
     }
   }
 
-  if (turn_params.bps_capacity && !(turn_params.max_bps)) {
+  if (turn_params.bps_capacity && !(turn_params.max_bps))
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
                   "\nCONFIG ERROR: If you set the --bps-capacity option, then you must set --max-bps options, too.\n");
     exit(-1);
   }
 
-  if (turn_params.no_udp_relay && turn_params.no_tcp_relay) {
+  if (turn_params.no_udp_relay && turn_params.no_tcp_relay)
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
                   "\nCONFIG ERROR: --no-udp-relay and --no-tcp-relay options cannot be used together.\n");
     exit(-1);
   }
 
-  if (turn_params.no_udp_relay) {
+  if (turn_params.no_udp_relay)
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "CONFIG: --no-udp-relay: UDP relay endpoints are not allowed.\n");
   }
 
-  if (turn_params.no_tcp_relay) {
+  if (turn_params.no_tcp_relay)
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "CONFIG: --no-tcp-relay: TCP relay endpoints are not allowed.\n");
   }
 
-  if (turn_params.server_relay) {
+  if (turn_params.server_relay)
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "CONFIG: WARNING: --server-relay: NON-STANDARD AND DANGEROUS OPTION.\n");
   }
 
 #if !defined(TURN_NO_SQLITE)
   if (!strlen(turn_params.default_users_db.persistent_users_db.userdb) &&
-      (turn_params.default_users_db.userdb_type == TURN_USERDB_TYPE_SQLITE)) {
+      (turn_params.default_users_db.userdb_type == TURN_USERDB_TYPE_SQLITE))
+  {
     strncpy(turn_params.default_users_db.persistent_users_db.userdb, DEFAULT_USERDB_FILE, TURN_LONG_STRING_SIZE);
   }
 #endif
@@ -3110,62 +3483,76 @@ int main(int argc, char **argv) {
   argc -= optind;
   argv += optind;
 
-  if (argc > 0) {
+  if (argc > 0)
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "CONFIG: Unknown argument: %s\n", argv[argc - 1]);
   }
 
-  if (use_lt_credentials && anon_credentials) {
+  if (use_lt_credentials && anon_credentials)
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "CONFIG: -a and -z options cannot be used together.\n");
     exit(-1);
   }
 
-  if (use_ltc && use_tltc) {
+  if (use_ltc && use_tltc)
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
                   "CONFIG: You specified --lt-cred-mech and --use-auth-secret in the same time.\n"
                   "Be aware that you could not mix the username/password and the shared secret based auth methods. \n"
                   "Shared secret overrides username/password based auth method. Check your configuration!\n");
   }
 
-  if (turn_params.allow_loopback_peers) {
+  if (turn_params.allow_loopback_peers)
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
                   "CONFIG: allow_loopback_peers opens a possible security vulnerability. Do not use in production!!\n");
-    if (cli_password[0] == 0 && use_cli) {
+    if (cli_password[0] == 0 && use_cli)
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
                     "CONFIG: allow_loopback_peers and empty cli password cannot be used together.\n");
       exit(-1);
     }
   }
 
-  if (use_cli && cli_password[0] == 0) {
+  if (use_cli && cli_password[0] == 0)
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "CONFIG: Empty cli-password, and so telnet cli interface is disabled! "
                                         "Please set a non empty cli-password!\n");
     use_cli = 0;
   }
 
-  if (!use_lt_credentials && !anon_credentials) {
-    if (turn_params.default_users_db.ram_db.users_number) {
+  if (!use_lt_credentials && !anon_credentials)
+  {
+    if (turn_params.default_users_db.ram_db.users_number)
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
                     "CONFIG: you specified long-term user accounts, (-u option) \n	but you did "
                     "not specify the long-term credentials option\n	(-a or --lt-cred-mech option).\n 	I am "
                     "turning --lt-cred-mech ON for you, but double-check your configuration.\n");
       turn_params.ct = TURN_CREDENTIALS_LONG_TERM;
       use_lt_credentials = 1;
-    } else {
+    }
+    else
+    {
       turn_params.ct = TURN_CREDENTIALS_NONE;
       use_lt_credentials = 0;
     }
   }
 
-  if (use_lt_credentials) {
-    if (!get_realm(NULL)->options.name[0]) {
+  if (use_lt_credentials)
+  {
+    if (!get_realm(NULL)->options.name[0])
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
                     "CONFIG: you did specify the long-term credentials usage\n but you did not specify "
                     "the default realm option (-r option).\n		Check your configuration.\n");
     }
   }
 
-  if (anon_credentials) {
-    if (turn_params.default_users_db.ram_db.users_number) {
+  if (anon_credentials)
+  {
+    if (turn_params.default_users_db.ram_db.users_number)
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
                     "CONFIG: you specified user accounts, (-u option)	but you also specified the "
                     "anonymous user access option (-z or --no-auth option).	User accounts will be ignored.\n");
@@ -3174,7 +3561,8 @@ int main(int argc, char **argv) {
     }
   }
 
-  if (use_web_admin && turn_params.no_tls) {
+  if (use_web_admin && turn_params.no_tls)
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "CONFIG: WARNING: web-admin support not compatible with --no-tls option.\n");
     use_web_admin = 0;
   }
@@ -3182,11 +3570,13 @@ int main(int argc, char **argv) {
   openssl_setup();
 
   int local_listeners = 0;
-  if (!turn_params.listener.addrs_number) {
+  if (!turn_params.listener.addrs_number)
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "NO EXPLICIT LISTENER ADDRESS(ES) ARE CONFIGURED\n");
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "===========Discovering listener addresses: =========\n");
     int maddrs = make_local_listeners_list();
-    if ((maddrs < 1) || !turn_params.listener.addrs_number) {
+    if ((maddrs < 1) || !turn_params.listener.addrs_number)
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Cannot configure any meaningful IP listener address\n", __FUNCTION__);
       fprintf(stderr, "\n%s\n", Usage);
       exit(-1);
@@ -3197,23 +3587,30 @@ int main(int argc, char **argv) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "=====================================================\n");
   }
 
-  if (!turn_params.relays_number) {
-    if (!local_listeners && turn_params.listener.addrs_number && turn_params.listener.addrs) {
+  if (!turn_params.relays_number)
+  {
+    if (!local_listeners && turn_params.listener.addrs_number && turn_params.listener.addrs)
+    {
       size_t la = 0;
-      for (la = 0; la < turn_params.listener.addrs_number; la++) {
-        if (turn_params.listener.addrs[la]) {
+      for (la = 0; la < turn_params.listener.addrs_number; la++)
+      {
+        if (turn_params.listener.addrs[la])
+        {
           add_relay_addr(turn_params.listener.addrs[la]);
         }
       }
     }
-    if (!turn_params.relays_number) {
+    if (!turn_params.relays_number)
+    {
       turn_params.default_relays = 1;
       TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "NO EXPLICIT RELAY ADDRESS(ES) ARE CONFIGURED\n");
       TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "===========Discovering relay addresses: =============\n");
-      if (make_local_relays_list(0, AF_INET) < 1) {
+      if (make_local_relays_list(0, AF_INET) < 1)
+      {
         make_local_relays_list(1, AF_INET);
       }
-      if (make_local_relays_list(0, AF_INET6) < 1) {
+      if (make_local_relays_list(0, AF_INET6) < 1)
+      {
         make_local_relays_list(1, AF_INET6);
       }
       TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "=====================================================\n");
@@ -3221,23 +3618,31 @@ int main(int argc, char **argv) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "=====================================================\n");
     }
 
-    if (!turn_params.relays_number) {
+    if (!turn_params.relays_number)
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: You must specify the relay address(es)\n", __FUNCTION__);
       fprintf(stderr, "\n%s\n", Usage);
       exit(-1);
     }
   }
 
-  if (turn_params.external_ip && turn_params.relay_addrs) {
+  if (turn_params.external_ip && turn_params.relay_addrs)
+  {
     size_t ir = 0;
-    for (ir = 0; ir < turn_params.relays_number; ++ir) {
-      if (turn_params.relay_addrs[ir]) {
+    for (ir = 0; ir < turn_params.relays_number; ++ir)
+    {
+      if (turn_params.relay_addrs[ir])
+      {
         const char *sra = (const char *)turn_params.relay_addrs[ir];
-        if ((strstr(sra, "127.0.0.1") != sra) && (strstr(sra, "::1") != sra)) {
+        if ((strstr(sra, "127.0.0.1") != sra) && (strstr(sra, "::1") != sra))
+        {
           ioa_addr ra;
-          if (make_ioa_addr((const uint8_t *)sra, 0, &ra) < 0) {
+          if (make_ioa_addr((const uint8_t *)sra, 0, &ra) < 0)
+          {
             TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "-X : Wrong address format: %s\n", sra);
-          } else if (ra.ss.sa_family == turn_params.external_ip->ss.sa_family) {
+          }
+          else if (ra.ss.sa_family == turn_params.external_ip->ss.sa_family)
+          {
             ioa_addr_add_mapping(turn_params.external_ip, &ra);
           }
         }
@@ -3245,7 +3650,8 @@ int main(int argc, char **argv) {
     }
   }
 
-  if (socket_init()) {
+  if (socket_init())
+  {
     return -1;
   }
 
@@ -3253,18 +3659,22 @@ int main(int argc, char **argv) {
 
   // TODO: implement deamon!!! use windows server
 #else
-  if (turn_params.turn_daemon) {
+  if (turn_params.turn_daemon)
+  {
 #if !defined(TURN_HAS_DAEMON)
     pid_t pid = fork();
-    if (pid > 0) {
+    if (pid > 0)
+    {
       exit(0);
     }
-    if (pid < 0) {
+    if (pid < 0)
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot start daemon process\n");
       exit(-1);
     }
 #else
-    if (daemon(1, 0) < 0) {
+    if (daemon(1, 0) < 0)
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot start daemon process\n");
       exit(-1);
     }
@@ -3272,13 +3682,17 @@ int main(int argc, char **argv) {
 #endif
   }
 
-  if (turn_params.pidfile[0]) {
+  if (turn_params.pidfile[0])
+  {
 
     char s[2049];
     FILE *f = fopen(turn_params.pidfile, "w");
-    if (f) {
+    if (f)
+    {
       STRCPY(s, turn_params.pidfile);
-    } else {
+    }
+    else
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Cannot create pid file: %s\n", turn_params.pidfile);
 
       {
@@ -3290,19 +3704,24 @@ int main(int argc, char **argv) {
                              "turnserver.pid",
                              NULL};
         const char **ppfs = pfs;
-        while (*ppfs) {
+        while (*ppfs)
+        {
           f = fopen(*ppfs, "w");
-          if (f) {
+          if (f)
+          {
             STRCPY(s, *ppfs);
             break;
-          } else {
+          }
+          else
+          {
             ++ppfs;
           }
         }
       }
     }
 
-    if (f) {
+    if (f)
+    {
       fprintf(f, "%lu\n", (unsigned long)getpid());
       fclose(f);
       TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "pid file created: %s\n", s);
@@ -3345,26 +3764,34 @@ int THREAD_cleanup(void);
 int THREAD_cleanup(void) { return 1; }
 #endif /* defined(OPENSSL_THREADS) */
 
-static void adjust_key_file_name(char *fn, const char *file_title, int critical) {
+static void adjust_key_file_name(char *fn, const char *file_title, int critical)
+{
   char *full_path_to_file = NULL;
 
-  if (!fn[0]) {
+  if (!fn[0])
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nERROR: you must set the %s file parameter\n", file_title);
     goto keyerr;
-  } else {
+  }
+  else
+  {
 
     full_path_to_file = find_config_file(fn);
     {
       FILE *f = full_path_to_file ? fopen(full_path_to_file, "r") : NULL;
-      if (!f) {
+      if (!f)
+      {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "cannot find %s file: %s (1)\n", file_title, fn);
         goto keyerr;
-      } else {
+      }
+      else
+      {
         fclose(f);
       }
     }
 
-    if (!full_path_to_file) {
+    if (!full_path_to_file)
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "cannot find %s file: %s (2)\n", file_title, fn);
       goto keyerr;
     }
@@ -3377,29 +3804,35 @@ static void adjust_key_file_name(char *fn, const char *file_title, int critical)
   }
 
 keyerr:
-  if (critical) {
+  if (critical)
+  {
     turn_params.no_tls = 1;
     turn_params.no_dtls = 1;
     TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "cannot start TLS and DTLS listeners because %s file is not set properly\n",
                   file_title);
   }
-  if (full_path_to_file) {
+  if (full_path_to_file)
+  {
     free(full_path_to_file);
   }
   return;
 }
 
-static void adjust_key_file_names(void) {
-  if (turn_params.ca_cert_file[0]) {
+static void adjust_key_file_names(void)
+{
+  if (turn_params.ca_cert_file[0])
+  {
     adjust_key_file_name(turn_params.ca_cert_file, "CA", 1);
   }
   adjust_key_file_name(turn_params.cert_file, "certificate", 1);
   adjust_key_file_name(turn_params.pkey_file, "private key", 1);
-  if (turn_params.dh_file[0]) {
+  if (turn_params.dh_file[0])
+  {
     adjust_key_file_name(turn_params.dh_file, "DH key", 0);
   }
 }
-static DH *get_dh566(void) {
+static DH *get_dh566(void)
+{
 
   unsigned char dh566_p[] = {0x36, 0x53, 0xA8, 0x9C, 0x3C, 0xF1, 0xD1, 0x1B, 0x2D, 0xA2, 0x64, 0xDE, 0x59, 0x3B, 0xE3,
                              0x8C, 0x27, 0x74, 0xC2, 0xBE, 0x9B, 0x6D, 0x56, 0xE7, 0xDF, 0xFF, 0x67, 0x6A, 0xD2, 0x0C,
@@ -3415,14 +3848,16 @@ static DH *get_dh566(void) {
   unsigned char dh566_g[] = {0x05};
   DH *dh;
 
-  if ((dh = DH_new()) == NULL) {
+  if ((dh = DH_new()) == NULL)
+  {
     return (NULL);
   }
   DH_set0_pqg(dh, BN_bin2bn(dh566_p, sizeof(dh566_p), NULL), NULL, BN_bin2bn(dh566_g, sizeof(dh566_g), NULL));
   return (dh);
 }
 
-static DH *get_dh1066(void) {
+static DH *get_dh1066(void)
+{
 
   unsigned char dh1066_p[] = {0x02, 0x0E, 0x26, 0x6F, 0xAA, 0x9F, 0xA8, 0xE5, 0x3F, 0x70, 0x88, 0xF1, 0xA9, 0x29, 0xAE,
                               0x1A, 0x2B, 0xA8, 0x2F, 0xE8, 0xE5, 0x0E, 0x81, 0x78, 0xD7, 0x12, 0x41, 0xDC, 0xE2, 0xD5,
@@ -3443,14 +3878,16 @@ static DH *get_dh1066(void) {
   unsigned char dh1066_g[] = {0x02};
   DH *dh;
 
-  if ((dh = DH_new()) == NULL) {
+  if ((dh = DH_new()) == NULL)
+  {
     return (NULL);
   }
   DH_set0_pqg(dh, BN_bin2bn(dh1066_p, sizeof(dh1066_p), NULL), NULL, BN_bin2bn(dh1066_g, sizeof(dh1066_g), NULL));
   return (dh);
 }
 
-static DH *get_dh2066(void) {
+static DH *get_dh2066(void)
+{
 
   unsigned char dh2066_p[] = {
       0x03, 0x31, 0x77, 0x20, 0x58, 0xA6, 0x69, 0xA3, 0x9D, 0x2D, 0x5E, 0xE0, 0x5C, 0x46, 0x82, 0x0F, 0x9E, 0x80, 0xF0,
@@ -3480,14 +3917,16 @@ static DH *get_dh2066(void) {
   unsigned char dh2066_g[] = {0x05};
   DH *dh;
 
-  if ((dh = DH_new()) == NULL) {
+  if ((dh = DH_new()) == NULL)
+  {
     return (NULL);
   }
   DH_set0_pqg(dh, BN_bin2bn(dh2066_p, sizeof(dh2066_p), NULL), NULL, BN_bin2bn(dh2066_g, sizeof(dh2066_g), NULL));
   return (dh);
 }
 
-static int pem_password_func(char *buf, int size, int rwflag, void *password) {
+static int pem_password_func(char *buf, int size, int rwflag, void *password)
+{
   UNUSED_ARG(rwflag);
 
   strncpy(buf, (char *)(password), size);
@@ -3496,7 +3935,8 @@ static int pem_password_func(char *buf, int size, int rwflag, void *password) {
 }
 
 static int ServerALPNCallback(SSL *ssl, const unsigned char **out, unsigned char *outlen, const unsigned char *in,
-                              unsigned int inlen, void *arg) {
+                              unsigned int inlen, void *arg)
+{
 
   UNUSED_ARG(ssl);
   UNUSED_ARG(arg);
@@ -3508,24 +3948,29 @@ static int ServerALPNCallback(SSL *ssl, const unsigned char **out, unsigned char
   int found_http = 0;
 
   const unsigned char *ptr = in;
-  while (ptr < (in + inlen)) {
+  while (ptr < (in + inlen))
+  {
     unsigned char current_len = *ptr;
-    if (ptr + 1 + current_len > in + inlen) {
+    if (ptr + 1 + current_len > in + inlen)
+    {
       break;
     }
-    if ((!turn_params.no_stun) && (current_len == sa_len) && (memcmp(ptr + 1, STUN_ALPN, sa_len) == 0)) {
+    if ((!turn_params.no_stun) && (current_len == sa_len) && (memcmp(ptr + 1, STUN_ALPN, sa_len) == 0))
+    {
       *out = ptr + 1;
       *outlen = sa_len;
       SSL_set_app_data(ssl, STUN_ALPN);
       return SSL_TLSEXT_ERR_OK;
     }
-    if ((!turn_params.stun_only) && (current_len == ta_len) && (memcmp(ptr + 1, TURN_ALPN, ta_len) == 0)) {
+    if ((!turn_params.stun_only) && (current_len == ta_len) && (memcmp(ptr + 1, TURN_ALPN, ta_len) == 0))
+    {
       *out = ptr + 1;
       *outlen = ta_len;
       SSL_set_app_data(ssl, TURN_ALPN);
       return SSL_TLSEXT_ERR_OK;
     }
-    if ((current_len == ha_len) && (memcmp(ptr + 1, HTTP_ALPN, ha_len) == 0)) {
+    if ((current_len == ha_len) && (memcmp(ptr + 1, HTTP_ALPN, ha_len) == 0))
+    {
       *out = ptr + 1;
       *outlen = ha_len;
       SSL_set_app_data(ssl, HTTP_ALPN);
@@ -3534,14 +3979,16 @@ static int ServerALPNCallback(SSL *ssl, const unsigned char **out, unsigned char
     ptr += 1 + current_len;
   }
 
-  if (found_http) {
+  if (found_http)
+  {
     return SSL_TLSEXT_ERR_OK;
   }
 
   return SSL_TLSEXT_ERR_NOACK; //???
 }
 
-static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *method) {
+static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *method)
+{
   SSL_CTX *ctx = SSL_CTX_new(method);
   int err = 0;
   int rc = 0;
@@ -3549,7 +3996,8 @@ static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *metho
   SSL_CTX_set_default_passwd_cb_userdata(ctx, turn_params.tls_password);
   SSL_CTX_set_default_passwd_cb(ctx, pem_password_func);
 
-  if (!(turn_params.cipher_list[0])) {
+  if (!(turn_params.cipher_list[0]))
+  {
     strncpy(turn_params.cipher_list, DEFAULT_CIPHER_LIST, TURN_LONG_STRING_SIZE);
 #if defined(DEFAULT_CIPHERSUITES)
     strncat(turn_params.cipher_list, ":", TURN_LONG_STRING_SIZE - strlen(turn_params.cipher_list));
@@ -3561,26 +4009,32 @@ static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *metho
   SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_OFF);
   SSL_CTX_set_ciphersuites(ctx, turn_params.cipher_list);
 
-  if (!SSL_CTX_use_certificate_chain_file(ctx, turn_params.cert_file)) {
+  if (!SSL_CTX_use_certificate_chain_file(ctx, turn_params.cert_file))
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: no certificate found\n", protocol);
     err = 1;
   }
 
-  if (!SSL_CTX_use_PrivateKey_file(ctx, turn_params.pkey_file, SSL_FILETYPE_PEM)) {
-    if (!SSL_CTX_use_RSAPrivateKey_file(ctx, turn_params.pkey_file, SSL_FILETYPE_PEM)) {
+  if (!SSL_CTX_use_PrivateKey_file(ctx, turn_params.pkey_file, SSL_FILETYPE_PEM))
+  {
+    if (!SSL_CTX_use_RSAPrivateKey_file(ctx, turn_params.pkey_file, SSL_FILETYPE_PEM))
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
                     "%s: ERROR: no valid private key found, or invalid private key password provided\n", protocol);
       err = 1;
     }
   }
-  if (!SSL_CTX_check_private_key(ctx)) {
+  if (!SSL_CTX_check_private_key(ctx))
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: invalid private key\n", protocol);
     err = 1;
   }
 
-  if (turn_params.ca_cert_file[0]) {
+  if (turn_params.ca_cert_file[0])
+  {
 
-    if (!SSL_CTX_load_verify_locations(ctx, turn_params.ca_cert_file, NULL)) {
+    if (!SSL_CTX_load_verify_locations(ctx, turn_params.ca_cert_file, NULL))
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot load CA from file: %s\n", turn_params.ca_cert_file);
       err = 1;
     }
@@ -3592,8 +4046,9 @@ static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *metho
 
     /* Set the verification depth to 9 */
     SSL_CTX_set_verify_depth(ctx, 9);
-
-  } else {
+  }
+  else
+  {
     SSL_CTX_set_verify(ctx, SSL_VERIFY_NONE, NULL);
   }
 
@@ -3604,17 +4059,20 @@ static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *metho
 
     const char *curve_name = turn_params.ec_curve_name;
 
-    if (!(curve_name[0])) {
+    if (!(curve_name[0]))
+    {
 #if !SSL_SESSION_ECDH_AUTO_SUPPORTED
       curve_name = DEFAULT_EC_CURVE_NAME;
 #endif
       set_auto_curve = 1;
     }
 
-    if (curve_name[0]) {
+    if (curve_name[0])
+    {
       {
         nid = OBJ_sn2nid(curve_name);
-        if (nid == 0) {
+        if (nid == 0)
+        {
           TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "unknown curve name: %s\n", curve_name);
           curve_name = DEFAULT_EC_CURVE_NAME;
           nid = OBJ_sn2nid(curve_name);
@@ -3624,17 +4082,21 @@ static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *metho
 
       {
         EC_KEY *ecdh = EC_KEY_new_by_curve_name(nid);
-        if (!ecdh) {
+        if (!ecdh)
+        {
           TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: allocate EC suite\n", __FUNCTION__);
           set_auto_curve = 1;
-        } else {
+        }
+        else
+        {
           SSL_CTX_set_tmp_ecdh(ctx, ecdh);
           EC_KEY_free(ecdh);
         }
       }
     }
 
-    if (set_auto_curve) {
+    if (set_auto_curve)
+    {
       set_auto_curve = 0;
     }
   }
@@ -3643,34 +4105,49 @@ static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *metho
   { // DH algorithms:
 
     DH *dh = NULL;
-    if (turn_params.dh_file[0]) {
+    if (turn_params.dh_file[0])
+    {
       FILE *paramfile = fopen(turn_params.dh_file, "r");
-      if (!paramfile) {
+      if (!paramfile)
+      {
         perror("Cannot open DH file");
-      } else {
+      }
+      else
+      {
         dh = PEM_read_DHparams(paramfile, NULL, NULL, NULL);
         fclose(paramfile);
-        if (dh) {
+        if (dh)
+        {
           turn_params.dh_key_size = DH_CUSTOM;
         }
       }
     }
 
-    if (!dh) {
-      if (turn_params.dh_key_size == DH_566) {
+    if (!dh)
+    {
+      if (turn_params.dh_key_size == DH_566)
+      {
         dh = get_dh566();
-      } else if (turn_params.dh_key_size == DH_1066) {
+      }
+      else if (turn_params.dh_key_size == DH_1066)
+      {
         dh = get_dh1066();
-      } else {
+      }
+      else
+      {
         dh = get_dh2066();
       }
     }
 
-    if (!dh) {
+    if (!dh)
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: cannot allocate DH suite\n", __FUNCTION__);
       err = 1;
-    } else {
-      if (1 != SSL_CTX_set_tmp_dh(ctx, dh)) {
+    }
+    else
+    {
+      if (1 != SSL_CTX_set_tmp_dh(ctx, dh))
+      {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: cannot set DH\n", __FUNCTION__);
         err = 1;
       }
@@ -3680,18 +4157,26 @@ static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *metho
 
   { // secret key
 
-    if (turn_params.secret_key_file[0]) {
+    if (turn_params.secret_key_file[0])
+    {
       FILE *f = fopen(turn_params.secret_key_file, "r");
 
-      if (!f) {
+      if (!f)
+      {
         perror("Cannot open Secret-Key file");
-      } else {
+      }
+      else
+      {
         fseek(f, 0, SEEK_SET);
         rc = fread(turn_params.secret_key, sizeof(char), 16, f);
-        if (rc == 0) {
+        if (rc == 0)
+        {
           TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: Secret-Key file is empty\n", __FUNCTION__);
-        } else {
-          if (rc != 16) {
+        }
+        else
+        {
+          if (rc != 16)
+          {
             TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: Secret-Key length is not enough\n", __FUNCTION__);
           }
         }
@@ -3726,20 +4211,27 @@ static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *metho
     SSL_CTX_set_options(ctx, op);
   }
 
-  if (*out == NULL) {
+  if (*out == NULL)
+  {
     // Always initialize, even if issues were encountered
     *out = ctx;
-  } else if (!err) {
+  }
+  else if (!err)
+  {
     SSL_CTX_free(*out);
     *out = ctx;
   }
 
 #if OPENSSL_VERSION_NUMBER >= 0x30200010L
-  if (turn_params.rpk_enabled) {
+  if (turn_params.rpk_enabled)
+  {
     unsigned char cert_type = TLSEXT_cert_type_rpk;
-    if (!SSL_CTX_set1_server_cert_type(ctx, &cert_type, 1)) {
+    if (!SSL_CTX_set1_server_cert_type(ctx, &cert_type, 1))
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Could not enable raw public keys functionality (RFC7250)\n");
-    } else {
+    }
+    else
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Raw Public Keys (RFC7250) enabled!\n");
     }
   }
@@ -3747,68 +4239,81 @@ static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *metho
 }
 
 static void openssl_load_certificates(void);
-static void openssl_setup(void) {
+static void openssl_setup(void)
+{
   THREAD_setup();
   SSL_load_error_strings();
   OpenSSL_add_ssl_algorithms();
 
 #if !TLS_SUPPORTED
-  if (!turn_params.no_tls) {
+  if (!turn_params.no_tls)
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "WARNING: TLS is not supported\n");
     turn_params.no_tls = 1;
   }
 #endif
 
-  if (!(turn_params.no_tls && turn_params.no_dtls) && !turn_params.cert_file[0]) {
+  if (!(turn_params.no_tls && turn_params.no_dtls) && !turn_params.cert_file[0])
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "\nWARNING: certificate file is not specified, I cannot start TLS/DTLS "
                                           "services.\nOnly 'plain' UDP/TCP listeners can be started.\n");
     turn_params.no_tls = 1;
     turn_params.no_dtls = 1;
   }
 
-  if (!(turn_params.no_tls && turn_params.no_dtls) && !turn_params.pkey_file[0]) {
+  if (!(turn_params.no_tls && turn_params.no_dtls) && !turn_params.pkey_file[0])
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "\nWARNING: private key file is not specified, I cannot start TLS/DTLS "
                                           "services.\nOnly 'plain' UDP/TCP listeners can be started.\n");
     turn_params.no_tls = 1;
     turn_params.no_dtls = 1;
   }
 
-  if (!(turn_params.no_tls && turn_params.no_dtls)) {
+  if (!(turn_params.no_tls && turn_params.no_dtls))
+  {
     adjust_key_file_names();
   }
 
   openssl_load_certificates();
 }
 
-static void openssl_load_certificates(void) {
+static void openssl_load_certificates(void)
+{
 
   print_abs_file_name("", "Certificate", turn_params.cert_file);
   print_abs_file_name("", "Private key", turn_params.pkey_file);
 
   TURN_MUTEX_LOCK(&turn_params.tls_mutex);
-  if (!turn_params.no_tls) {
+  if (!turn_params.no_tls)
+  {
     set_ctx(&turn_params.tls_ctx, "TLS", TLS_server_method());
-    if (turn_params.no_tlsv1) {
+    if (turn_params.no_tlsv1)
+    {
       SSL_CTX_set_min_proto_version(turn_params.tls_ctx, TLS1_1_VERSION);
     }
-    if (turn_params.no_tlsv1_1) {
+    if (turn_params.no_tlsv1_1)
+    {
       SSL_CTX_set_min_proto_version(turn_params.tls_ctx, TLS1_2_VERSION);
     }
-    if (turn_params.no_tlsv1_2) {
+    if (turn_params.no_tlsv1_2)
+    {
       SSL_CTX_set_min_proto_version(turn_params.tls_ctx, TLS1_3_VERSION);
     }
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS cipher suite: %s\n", turn_params.cipher_list);
   }
 
-  if (!turn_params.no_dtls) {
+  if (!turn_params.no_dtls)
+  {
 #if !DTLS_SUPPORTED
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: DTLS is not supported.\n");
 #else
     set_ctx(&turn_params.dtls_ctx, "DTLS", DTLS_server_method());
-    if (turn_params.no_tlsv1 || turn_params.no_tlsv1_1) {
+    if (turn_params.no_tlsv1 || turn_params.no_tlsv1_1)
+    {
       SSL_CTX_set_min_proto_version(turn_params.dtls_ctx, DTLS1_2_VERSION);
     }
-    if (turn_params.no_tlsv1_2) {
+    if (turn_params.no_tlsv1_2)
+    {
       SSL_CTX_set_max_proto_version(turn_params.dtls_ctx, DTLS1_VERSION);
     }
     setup_dtls_callbacks(turn_params.dtls_ctx);
@@ -3818,10 +4323,12 @@ static void openssl_load_certificates(void) {
   TURN_MUTEX_UNLOCK(&turn_params.tls_mutex);
 }
 
-static void reload_ssl_certs(evutil_socket_t sock, short events, void *args) {
+static void reload_ssl_certs(evutil_socket_t sock, short events, void *args)
+{
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Reloading TLS certificates and keys\n");
   openssl_load_certificates();
-  if (turn_params.tls_ctx_update_ev != NULL) {
+  if (turn_params.tls_ctx_update_ev != NULL)
+  {
     event_active(turn_params.tls_ctx_update_ev, EV_READ, 0);
   }
 
@@ -3830,7 +4337,8 @@ static void reload_ssl_certs(evutil_socket_t sock, short events, void *args) {
   UNUSED_ARG(args);
 }
 
-static void shutdown_handler(evutil_socket_t sock, short events, void *args) {
+static void shutdown_handler(evutil_socket_t sock, short events, void *args)
+{
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Terminating on signal %d\n", sock);
   turn_params.stop_turn_server = true;
 
@@ -3838,7 +4346,8 @@ static void shutdown_handler(evutil_socket_t sock, short events, void *args) {
   UNUSED_ARG(args);
 }
 
-static void drain_handler(evutil_socket_t sock, short events, void *args) {
+static void drain_handler(evutil_socket_t sock, short events, void *args)
+{
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Draining then terminating on signal %d\n", sock);
   enable_drain_mode();
 

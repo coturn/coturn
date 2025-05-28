@@ -59,7 +59,8 @@
 #include <pthread.h>
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 //////////////////////////////////////////////////////
@@ -71,12 +72,14 @@ extern "C" {
 #define BUFFEREVENT_MAX_UDP_TO_TCP_WRITE (64 << 9)
 #define BUFFEREVENT_MAX_TCP_TO_TCP_WRITE (192 << 10)
 
-typedef struct _stun_buffer_list_elem {
+typedef struct _stun_buffer_list_elem
+{
   struct _stun_buffer_list_elem *next;
   stun_buffer buf;
 } stun_buffer_list_elem;
 
-typedef struct _stun_buffer_list {
+typedef struct _stun_buffer_list
+{
   stun_buffer_list_elem *head;
   stun_buffer_list_elem *tail;
   size_t tsz;
@@ -86,7 +89,8 @@ typedef struct _stun_buffer_list {
  * New connection callback
  */
 
-struct cb_socket_message {
+struct cb_socket_message
+{
   turnserver_id id;
   tcp_connection_id connection_id;
   stun_tid tid;
@@ -96,11 +100,13 @@ struct cb_socket_message {
   int can_resume;
 };
 
-struct cancelled_session_message {
+struct cancelled_session_message
+{
   turnsession_id id;
 };
 
-struct relay_server {
+struct relay_server
+{
   turnserver_id id;
   super_memory_t *sm;
   struct event_base *event_base;
@@ -113,10 +119,12 @@ struct relay_server {
   pthread_t thr;
 };
 
-struct message_to_relay {
+struct message_to_relay
+{
   MESSAGE_TO_RELAY_TYPE t;
   struct relay_server *relay_server;
-  union {
+  union
+  {
     struct socket_message sm;
     struct cb_socket_message cb_sm;
     struct cancelled_session_message csm;
@@ -134,7 +142,8 @@ typedef int (*ioa_engine_udp_event_handler)(relay_server_handle rs, struct messa
 #define PREDEF_TIMERS_NUM (14)
 extern const int predef_timer_intervals[PREDEF_TIMERS_NUM];
 
-struct _ioa_engine {
+struct _ioa_engine
+{
   super_memory_t *sm;
   struct event_base *event_base;
   int deallocate_eb;
@@ -160,12 +169,14 @@ struct _ioa_engine {
 
 #define SOCKET_MAGIC (0xABACADEF)
 
-struct traffic_bytes {
+struct traffic_bytes
+{
   band_limit_t jiffie_bytes_read;
   band_limit_t jiffie_bytes_write;
 };
 
-struct _ioa_socket {
+struct _ioa_socket
+{
   evutil_socket_t fd;
   struct _ioa_socket *parent_s;
   uint32_t magic;
@@ -218,7 +229,8 @@ struct _ioa_socket {
   size_t special_session_size;
 };
 
-typedef struct _timer_event {
+typedef struct _timer_event
+{
   struct event *ev;
   ioa_engine_handle e;
   ioa_timer_event_handler cb;

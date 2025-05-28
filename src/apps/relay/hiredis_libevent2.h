@@ -35,7 +35,8 @@
 #include <event2/event.h>
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 //////////////////////////////////////

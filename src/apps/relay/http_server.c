@@ -39,23 +39,28 @@
 
 //////////////////////////////////////
 
-struct headers_list {
+struct headers_list
+{
   size_t n;
   char **keys;
   char **values;
 };
 
-struct http_headers {
+struct http_headers
+{
   struct evkeyvalq *uri_headers;
   struct headers_list *post_headers;
 };
 
 //////////////////////////////////////
 
-static void write_http_echo(ioa_socket_handle s) {
-  if (s && !ioa_socket_tobeclosed(s)) {
+static void write_http_echo(ioa_socket_handle s)
+{
+  if (s && !ioa_socket_tobeclosed(s))
+  {
     SOCKET_APP_TYPE sat = get_ioa_socket_app_type(s);
-    if ((sat == HTTP_CLIENT_SOCKET) || (sat == HTTPS_CLIENT_SOCKET)) {
+    if ((sat == HTTP_CLIENT_SOCKET) || (sat == HTTPS_CLIENT_SOCKET))
+    {
       ioa_network_buffer_handle nbh_http = ioa_network_buffer_allocate(s->e);
       size_t len_http = ioa_network_buffer_get_size(nbh_http);
       uint8_t *data = ioa_network_buffer_data(nbh_http);
@@ -80,7 +85,8 @@ static void write_http_echo(ioa_socket_handle s) {
 
 void handle_http_echo(ioa_socket_handle s) { write_http_echo(s); }
 
-const char *get_http_date_header(void) {
+const char *get_http_date_header(void)
+{
   static char buffer_date[256];
   static char buffer_header[1025];
   static const char *wds[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
@@ -91,7 +97,8 @@ const char *get_http_date_header(void) {
 
   buffer_header[0] = 0;
   buffer_date[0] = 0;
-  if (gmtm) {
+  if (gmtm)
+  {
     snprintf(buffer_date, sizeof(buffer_date) - 1, "%s, %d %s %d %d:%d:%d GMT", wds[gmtm->tm_wday], gmtm->tm_mday,
              mons[gmtm->tm_mon], gmtm->tm_year + 1900, gmtm->tm_hour, gmtm->tm_min, gmtm->tm_sec);
     buffer_date[sizeof(buffer_date) - 1] = 0;
@@ -104,32 +111,42 @@ const char *get_http_date_header(void) {
 
 ///////////////////////////////////////////////
 
-static struct headers_list *post_parse(char *data, size_t data_len) {
-  while ((*data == '\r') || (*data == '\n')) {
+static struct headers_list *post_parse(char *data, size_t data_len)
+{
+  while ((*data == '\r') || (*data == '\n'))
+  {
     ++data;
     --data_len;
   }
-  if (data_len) {
+  if (data_len)
+  {
     char *post_data = (char *)calloc(data_len + 1, sizeof(char));
-    if (post_data != NULL) {
+    if (post_data != NULL)
+    {
       memcpy(post_data, data, data_len);
       char *fmarker = NULL;
       char *fsplit = strtok_r(post_data, "&", &fmarker);
       struct headers_list *list = (struct headers_list *)calloc(sizeof(struct headers_list), 1);
-      while (fsplit != NULL) {
+      while (fsplit != NULL)
+      {
         char *vmarker = NULL;
         char *key = strtok_r(fsplit, "=", &vmarker);
-        if (key == NULL) {
+        if (key == NULL)
+        {
           break;
-        } else {
+        }
+        else
+        {
           char *value = strtok_r(NULL, "=", &vmarker);
           char empty[1];
           empty[0] = 0;
           value = value ? value : empty;
           value = evhttp_decode_uri(value);
           char *p = value;
-          while (*p) {
-            if (*p == '+') {
+          while (*p)
+          {
+            if (*p == '+')
+            {
               *p = ' ';
             }
             p++;
@@ -149,50 +166,67 @@ static struct headers_list *post_parse(char *data, size_t data_len) {
   return NULL;
 }
 
-static struct http_request *parse_http_request_1(struct http_request *ret, char *request, int parse_post) {
+static struct http_request *parse_http_request_1(struct http_request *ret, char *request, int parse_post)
+{
 
-  if (ret && request) {
+  if (ret && request)
+  {
 
     char *s = strstr(request, " HTTP/");
-    if (!s) {
+    if (!s)
+    {
       free(ret);
       ret = NULL;
-    } else {
+    }
+    else
+    {
       *s = 0;
 
       struct evhttp_uri *uri = evhttp_uri_parse(request);
-      if (!uri) {
+      if (!uri)
+      {
         free(ret);
         ret = NULL;
-      } else {
+      }
+      else
+      {
 
         const char *query = evhttp_uri_get_query(uri);
-        if (query) {
+        if (query)
+        {
           struct evkeyvalq *kv = (struct evkeyvalq *)calloc(sizeof(struct evkeyvalq), 1);
-          if (evhttp_parse_query_str(query, kv) < 0) {
+          if (evhttp_parse_query_str(query, kv) < 0)
+          {
             free(ret);
             ret = NULL;
-            if (kv) {
+            if (kv)
+            {
               // kv no longer assigned on this path
               free(kv);
             }
-          } else {
+          }
+          else
+          {
             ret->headers = (struct http_headers *)calloc(sizeof(struct http_headers), 1);
             ret->headers->uri_headers = kv;
           }
         }
 
         const char *path = evhttp_uri_get_path(uri);
-        if (path && ret) {
+        if (path && ret)
+        {
           ret->path = strdup(path);
         }
 
         evhttp_uri_free(uri);
 
-        if (parse_post && ret) {
+        if (parse_post && ret)
+        {
           char *body = strstr(s + 1, "\r\n\r\n");
-          if (body && body[0]) {
-            if (!ret->headers) {
+          if (body && body[0])
+          {
+            if (!ret->headers)
+            {
               ret->headers = (struct http_headers *)calloc(sizeof(struct http_headers), 1);
             }
             ret->headers->post_headers = post_parse(body, strlen(body));
@@ -207,30 +241,43 @@ static struct http_request *parse_http_request_1(struct http_request *ret, char 
   return ret;
 }
 
-struct http_request *parse_http_request(char *request) {
+struct http_request *parse_http_request(char *request)
+{
 
   struct http_request *ret = NULL;
 
-  if (request) {
+  if (request)
+  {
 
     ret = (struct http_request *)calloc(sizeof(struct http_request), 1);
 
-    if (strstr(request, "GET ") == request) {
+    if (strstr(request, "GET ") == request)
+    {
       ret->rtype = HRT_GET;
       ret = parse_http_request_1(ret, request + 4, 0);
-    } else if (strstr(request, "HEAD ") == request) {
+    }
+    else if (strstr(request, "HEAD ") == request)
+    {
       ret->rtype = HRT_HEAD;
       ret = parse_http_request_1(ret, request + 5, 0);
-    } else if (strstr(request, "POST ") == request) {
+    }
+    else if (strstr(request, "POST ") == request)
+    {
       ret->rtype = HRT_POST;
       ret = parse_http_request_1(ret, request + 5, 1);
-    } else if (strstr(request, "PUT ") == request) {
+    }
+    else if (strstr(request, "PUT ") == request)
+    {
       ret->rtype = HRT_PUT;
       ret = parse_http_request_1(ret, request + 4, 1);
-    } else if (strstr(request, "DELETE ") == request) {
+    }
+    else if (strstr(request, "DELETE ") == request)
+    {
       ret->rtype = HRT_DELETE;
       ret = parse_http_request_1(ret, request + 7, 1);
-    } else {
+    }
+    else
+    {
       free(ret);
       ret = NULL;
     }
@@ -239,12 +286,16 @@ struct http_request *parse_http_request(char *request) {
   return ret;
 }
 
-static const char *get_headers_list_value(struct headers_list *h, const char *key) {
+static const char *get_headers_list_value(struct headers_list *h, const char *key)
+{
   const char *ret = NULL;
-  if (h && h->keys && h->values && key && key[0]) {
+  if (h && h->keys && h->values && key && key[0])
+  {
     size_t i = 0;
-    for (i = 0; i < h->n; ++i) {
-      if (h->keys[i] && !strcmp(key, h->keys[i]) && h->values[i]) {
+    for (i = 0; i < h->n; ++i)
+    {
+      if (h->keys[i] && !strcmp(key, h->keys[i]) && h->values[i])
+      {
         ret = h->values[i];
         break;
       }
@@ -253,12 +304,17 @@ static const char *get_headers_list_value(struct headers_list *h, const char *ke
   return ret;
 }
 
-static void free_headers_list(struct headers_list *h) {
-  if (h) {
-    if (h->keys) {
+static void free_headers_list(struct headers_list *h)
+{
+  if (h)
+  {
+    if (h->keys)
+    {
       size_t i = 0;
-      for (i = 0; i < h->n; ++i) {
-        if (h->keys[i]) {
+      for (i = 0; i < h->n; ++i)
+      {
+        if (h->keys[i])
+        {
           free(h->keys[i]);
           h->keys[i] = NULL;
         }
@@ -266,10 +322,13 @@ static void free_headers_list(struct headers_list *h) {
       free(h->keys);
       h->keys = NULL;
     }
-    if (h->values) {
+    if (h->values)
+    {
       size_t i = 0;
-      for (i = 0; i < h->n; ++i) {
-        if (h->values[i]) {
+      for (i = 0; i < h->n; ++i)
+      {
+        if (h->values[i])
+        {
           free(h->values[i]);
           h->values[i] = NULL;
         }
@@ -282,35 +341,46 @@ static void free_headers_list(struct headers_list *h) {
   }
 }
 
-const char *get_http_header_value(const struct http_request *request, const char *key, const char *default_value) {
+const char *get_http_header_value(const struct http_request *request, const char *key, const char *default_value)
+{
   const char *ret = NULL;
-  if (key && key[0] && request && request->headers) {
-    if (request->headers->uri_headers) {
+  if (key && key[0] && request && request->headers)
+  {
+    if (request->headers->uri_headers)
+    {
       ret = evhttp_find_header(request->headers->uri_headers, key);
     }
-    if (!ret && request->headers->post_headers) {
+    if (!ret && request->headers->post_headers)
+    {
       ret = get_headers_list_value(request->headers->post_headers, key);
     }
   }
-  if (!ret) {
+  if (!ret)
+  {
     ret = default_value;
   }
   return ret;
 }
 
-void free_http_request(struct http_request *request) {
-  if (request) {
-    if (request->path) {
+void free_http_request(struct http_request *request)
+{
+  if (request)
+  {
+    if (request->path)
+    {
       free(request->path);
       request->path = NULL;
     }
-    if (request->headers) {
-      if (request->headers->uri_headers) {
+    if (request->headers)
+    {
+      if (request->headers->uri_headers)
+      {
         evhttp_clear_headers(request->headers->uri_headers);
         free(request->headers->uri_headers);
         request->headers->uri_headers = NULL;
       }
-      if (request->headers->post_headers) {
+      if (request->headers->post_headers)
+      {
         free_headers_list(request->headers->post_headers);
         request->headers->post_headers = NULL;
       }
@@ -323,19 +393,23 @@ void free_http_request(struct http_request *request) {
 
 ////////////////////////////////////////////
 
-struct str_buffer {
+struct str_buffer
+{
   size_t capacity;
   size_t sz;
   char *buffer;
 };
 
-struct str_buffer *str_buffer_new(void) {
+struct str_buffer *str_buffer_new(void)
+{
   struct str_buffer *ret = (struct str_buffer *)calloc(sizeof(struct str_buffer), 1);
-  if (!ret) {
+  if (!ret)
+  {
     return NULL;
   }
   ret->buffer = (char *)malloc(1);
-  if (!(ret->buffer)) {
+  if (!(ret->buffer))
+  {
     free(ret);
     return NULL;
   }
@@ -344,10 +418,13 @@ struct str_buffer *str_buffer_new(void) {
   return ret;
 }
 
-void str_buffer_append(struct str_buffer *sb, const char *str) {
-  if (sb && str && str[0]) {
+void str_buffer_append(struct str_buffer *sb, const char *str)
+{
+  if (sb && str && str[0])
+  {
     size_t len = strlen(str);
-    while (sb->sz + len + 1 > sb->capacity) {
+    while (sb->sz + len + 1 > sb->capacity)
+    {
       sb->capacity += len + 1024;
       sb->buffer = (char *)realloc(sb->buffer, sb->capacity);
     }
@@ -356,34 +433,42 @@ void str_buffer_append(struct str_buffer *sb, const char *str) {
   }
 }
 
-void str_buffer_append_sz(struct str_buffer *sb, size_t sz) {
+void str_buffer_append_sz(struct str_buffer *sb, size_t sz)
+{
   char ssz[129];
   snprintf(ssz, sizeof(ssz) - 1, "%lu", (unsigned long)sz);
   str_buffer_append(sb, ssz);
 }
 
-void str_buffer_append_sid(struct str_buffer *sb, turnsession_id sid) {
+void str_buffer_append_sid(struct str_buffer *sb, turnsession_id sid)
+{
   char ssz[129];
   snprintf(ssz, sizeof(ssz) - 1, "%018llu", (unsigned long long)sid);
   str_buffer_append(sb, ssz);
 }
 
-const char *str_buffer_get_str(const struct str_buffer *sb) {
-  if (sb) {
+const char *str_buffer_get_str(const struct str_buffer *sb)
+{
+  if (sb)
+  {
     return sb->buffer;
   }
   return NULL;
 }
 
-size_t str_buffer_get_str_len(const struct str_buffer *sb) {
-  if (sb) {
+size_t str_buffer_get_str_len(const struct str_buffer *sb)
+{
+  if (sb)
+  {
     return sb->sz;
   }
   return 0;
 }
 
-void str_buffer_free(struct str_buffer *sb) {
-  if (sb) {
+void str_buffer_free(struct str_buffer *sb)
+{
+  if (sb)
+  {
     free(sb->buffer);
     free(sb);
   }

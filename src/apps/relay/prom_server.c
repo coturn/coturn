@@ -42,21 +42,27 @@ prom_gauge_t *turn_total_allocations;
 #endif
 
 MHD_RESULT promhttp_handler(void *cls, struct MHD_Connection *connection, const char *url, const char *method,
-                            const char *version, const char *upload_data, size_t *upload_data_size, void **con_cls) {
+                            const char *version, const char *upload_data, size_t *upload_data_size, void **con_cls)
+{
   MHD_RESULT ret;
 
   char *body = "not found";
   enum MHD_ResponseMemoryMode mode = MHD_RESPMEM_PERSISTENT;
   unsigned int status = MHD_HTTP_NOT_FOUND;
 
-  if (strcmp(method, "GET") != 0) {
+  if (strcmp(method, "GET") != 0)
+  {
     status = MHD_HTTP_METHOD_NOT_ALLOWED;
     body = "method not allowed";
-  } else if (strcmp(url, turn_params.prometheus_path) == 0) {
+  }
+  else if (strcmp(url, turn_params.prometheus_path) == 0)
+  {
     body = prom_collector_registry_bridge(PROM_COLLECTOR_REGISTRY_DEFAULT);
     mode = MHD_RESPMEM_MUST_FREE;
     status = MHD_HTTP_OK;
-  } else if (strcmp(url, "/") == 0) {
+  }
+  else if (strcmp(url, "/") == 0)
+  {
     // Return 200 OK for root path as a health check
     body = "ok";
     mode = MHD_RESPMEM_PERSISTENT;
@@ -64,12 +70,16 @@ MHD_RESULT promhttp_handler(void *cls, struct MHD_Connection *connection, const 
   }
 
   struct MHD_Response *response = MHD_create_response_from_buffer(strlen(body), body, mode);
-  if (response == NULL) {
-    if (mode == MHD_RESPMEM_MUST_FREE) {
+  if (response == NULL)
+  {
+    if (mode == MHD_RESPMEM_MUST_FREE)
+    {
       free(body);
     }
     ret = MHD_NO;
-  } else {
+  }
+  else
+  {
     MHD_add_response_header(response, "Content-Type", "text/plain");
     ret = MHD_queue_response(connection, status, response);
     MHD_destroy_response(response);
@@ -77,8 +87,10 @@ MHD_RESULT promhttp_handler(void *cls, struct MHD_Connection *connection, const 
   return ret;
 }
 
-void start_prometheus_server(void) {
-  if (turn_params.prometheus == 0) {
+void start_prometheus_server(void)
+{
+  if (turn_params.prometheus == 0)
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "prometheus collector disabled, not started\n");
     return;
   }
@@ -87,7 +99,8 @@ void start_prometheus_server(void) {
   const char *label[] = {"realm", NULL};
   size_t nlabels = 1;
 
-  if (turn_params.prometheus_username_labels) {
+  if (turn_params.prometheus_username_labels)
+  {
     label[1] = "user";
     nlabels++;
   }
@@ -150,14 +163,17 @@ void start_prometheus_server(void) {
 #if MHD_VERSION >= 0x00095300
   flags |= MHD_USE_ERROR_LOG;
 #endif
-  if (MHD_is_feature_supported(MHD_FEATURE_EPOLL)) {
+  if (MHD_is_feature_supported(MHD_FEATURE_EPOLL))
+  {
 #if MHD_VERSION >= 0x00095300
     flags |= MHD_USE_EPOLL_INTERNAL_THREAD;
 #else
     flags |= MHD_USE_EPOLL_INTERNALLY_LINUX_ONLY; // old versions of microhttpd
 #endif
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "prometheus exporter server will start using EPOLL\n");
-  } else {
+  }
+  else
+  {
     flags |= MHD_USE_SELECT_INTERNALLY;
     // Select() will not work if all 1024 first file-descriptors are used.
     // In this case the prometheus server will be unreachable
@@ -167,21 +183,29 @@ void start_prometheus_server(void) {
 
   ioa_addr server_addr;
   addr_set_any(&server_addr);
-  if (turn_params.prometheus_address[0]) {
-    if (make_ioa_addr((const uint8_t *)turn_params.prometheus_address, turn_params.prometheus_port, &server_addr) < 0) {
+  if (turn_params.prometheus_address[0])
+  {
+    if (make_ioa_addr((const uint8_t *)turn_params.prometheus_address, turn_params.prometheus_port, &server_addr) < 0)
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "could not parse prometheus collector's server address\n");
       return;
     }
 
-    if (is_ipv6_enabled() && server_addr.ss.sa_family == AF_INET6) {
+    if (is_ipv6_enabled() && server_addr.ss.sa_family == AF_INET6)
+    {
       flags |= MHD_USE_IPv6;
     }
-  } else {
-    if (MHD_is_feature_supported(MHD_FEATURE_IPv6) && is_ipv6_enabled()) {
+  }
+  else
+  {
+    if (MHD_is_feature_supported(MHD_FEATURE_IPv6) && is_ipv6_enabled())
+    {
       flags |= MHD_USE_DUAL_STACK;
       server_addr.ss.sa_family = AF_INET6;
       server_addr.s6.sin6_port = htons((uint16_t)turn_params.prometheus_port);
-    } else {
+    }
+    else
+    {
       server_addr.ss.sa_family = AF_INET;
       server_addr.s4.sin_port = htons((uint16_t)turn_params.prometheus_port);
     }
@@ -194,7 +218,8 @@ void start_prometheus_server(void) {
   struct MHD_Daemon *daemon =
       MHD_start_daemon(flags, 0, NULL, NULL, &promhttp_handler, NULL, MHD_OPTION_LISTENING_ADDRESS_REUSE, 1,
                        MHD_OPTION_SOCK_ADDR, &server_addr, MHD_OPTION_END);
-  if (daemon == NULL) {
+  if (daemon == NULL)
+  {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "could not start prometheus collector\n");
     return;
   }
@@ -205,15 +230,19 @@ void start_prometheus_server(void) {
 }
 
 void prom_set_finished_traffic(const char *realm, const char *user, unsigned long rsvp, unsigned long rsvb,
-                               unsigned long sentp, unsigned long sentb, bool peer) {
-  if (turn_params.prometheus == 1) {
+                               unsigned long sentp, unsigned long sentb, bool peer)
+{
+  if (turn_params.prometheus == 1)
+  {
 
     const char *label[] = {realm, NULL};
-    if (turn_params.prometheus_username_labels) {
+    if (turn_params.prometheus_username_labels)
+    {
       label[1] = user;
     }
 
-    if (peer) {
+    if (peer)
+    {
       prom_counter_add(turn_traffic_peer_rcvp, rsvp, label);
       prom_counter_add(turn_traffic_peer_rcvb, rsvb, label);
       prom_counter_add(turn_traffic_peer_sentp, sentp, label);
@@ -223,7 +252,9 @@ void prom_set_finished_traffic(const char *realm, const char *user, unsigned lon
       prom_counter_add(turn_total_traffic_peer_rcvb, rsvb, NULL);
       prom_counter_add(turn_total_traffic_peer_sentp, sentp, NULL);
       prom_counter_add(turn_total_traffic_peer_sentb, sentb, NULL);
-    } else {
+    }
+    else
+    {
       prom_counter_add(turn_traffic_rcvp, rsvp, label);
       prom_counter_add(turn_traffic_rcvb, rsvb, label);
       prom_counter_add(turn_traffic_sentp, sentp, label);
@@ -237,46 +268,60 @@ void prom_set_finished_traffic(const char *realm, const char *user, unsigned lon
   }
 }
 
-void prom_inc_allocation(SOCKET_TYPE type) {
-  if (turn_params.prometheus == 1) {
+void prom_inc_allocation(SOCKET_TYPE type)
+{
+  if (turn_params.prometheus == 1)
+  {
     const char *label[] = {socket_type_name(type)};
     prom_gauge_inc(turn_total_allocations, label);
   }
 }
 
-void prom_dec_allocation(SOCKET_TYPE type) {
-  if (turn_params.prometheus == 1) {
+void prom_dec_allocation(SOCKET_TYPE type)
+{
+  if (turn_params.prometheus == 1)
+  {
     const char *label[] = {socket_type_name(type)};
     prom_gauge_dec(turn_total_allocations, label);
   }
 }
 
-void prom_inc_stun_binding_request(void) {
-  if (turn_params.prometheus == 1) {
+void prom_inc_stun_binding_request(void)
+{
+  if (turn_params.prometheus == 1)
+  {
     prom_counter_add(stun_binding_request, 1, NULL);
   }
 }
 
-void prom_inc_stun_binding_response(void) {
-  if (turn_params.prometheus == 1) {
+void prom_inc_stun_binding_response(void)
+{
+  if (turn_params.prometheus == 1)
+  {
     prom_counter_add(stun_binding_response, 1, NULL);
   }
 }
 
-void prom_inc_stun_binding_error(void) {
-  if (turn_params.prometheus == 1) {
+void prom_inc_stun_binding_error(void)
+{
+  if (turn_params.prometheus == 1)
+  {
     prom_counter_add(stun_binding_error, 1, NULL);
   }
 }
 
-int is_ipv6_enabled(void) {
+int is_ipv6_enabled(void)
+{
   int ret = 0;
 
 #ifdef AF_INET6
   int fd = socket(AF_INET6, SOCK_STREAM, 0);
-  if (fd == -1) {
+  if (fd == -1)
+  {
     ret = errno != EAFNOSUPPORT;
-  } else {
+  }
+  else
+  {
     ret = 1;
     close(fd);
   }
@@ -287,13 +332,15 @@ int is_ipv6_enabled(void) {
 
 #else
 
-void start_prometheus_server(void) {
+void start_prometheus_server(void)
+{
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "turnserver compiled without prometheus support\n");
   return;
 }
 
 void prom_set_finished_traffic(const char *realm, const char *user, unsigned long rsvp, unsigned long rsvb,
-                               unsigned long sentp, unsigned long sentb, bool peer) {
+                               unsigned long sentp, unsigned long sentb, bool peer)
+{
   UNUSED_ARG(realm);
   UNUSED_ARG(user);
   UNUSED_ARG(rsvp);

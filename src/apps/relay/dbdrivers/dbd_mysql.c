@@ -39,7 +39,8 @@
 
 static int donot_print_connection_success = 0;
 
-struct _Myconninfo {
+struct _Myconninfo
+{
   char *host;
   char *dbname;
   char *user;
@@ -58,33 +59,44 @@ struct _Myconninfo {
 
 typedef struct _Myconninfo Myconninfo;
 
-static void MyconninfoFree(Myconninfo *co) {
-  if (co) {
-    if (co->host) {
+static void MyconninfoFree(Myconninfo *co)
+{
+  if (co)
+  {
+    if (co->host)
+    {
       free(co->host);
     }
-    if (co->dbname) {
+    if (co->dbname)
+    {
       free(co->dbname);
     }
-    if (co->user) {
+    if (co->user)
+    {
       free(co->user);
     }
-    if (co->password) {
+    if (co->password)
+    {
       free(co->password);
     }
-    if (co->key) {
+    if (co->key)
+    {
       free(co->key);
     }
-    if (co->ca) {
+    if (co->ca)
+    {
       free(co->ca);
     }
-    if (co->cert) {
+    if (co->cert)
+    {
       free(co->cert);
     }
-    if (co->capath) {
+    if (co->capath)
+    {
       free(co->capath);
     }
-    if (co->cipher) {
+    if (co->cipher)
+    {
       free(co->cipher);
     }
     memset(co, 0, sizeof(Myconninfo));
@@ -92,7 +104,8 @@ static void MyconninfoFree(Myconninfo *co) {
   }
 }
 
-char *decryptPassword(char *in, const unsigned char *mykey) {
+char *decryptPassword(char *in, const unsigned char *mykey)
+{
 
   char *out;
   unsigned char iv[8] = {0}; // changed
@@ -115,100 +128,171 @@ char *decryptPassword(char *in, const unsigned char *mykey) {
   return out;
 }
 
-static Myconninfo *MyconninfoParse(char *userdb, char **errmsg) {
+static Myconninfo *MyconninfoParse(char *userdb, char **errmsg)
+{
   Myconninfo *co = (Myconninfo *)calloc(1, sizeof(Myconninfo));
-  if (userdb) {
+  if (userdb)
+  {
     char *s0 = strdup(userdb);
     char *s = s0;
 
-    while (s && *s) {
+    while (s && *s)
+    {
 
-      while (*s && (*s == ' ')) {
+      while (*s && (*s == ' '))
+      {
         ++s;
       }
       char *snext = strstr(s, " ");
-      if (snext) {
+      if (snext)
+      {
         *snext = 0;
         ++snext;
       }
 
       char *seq = strstr(s, "=");
-      if (!seq) {
+      if (!seq)
+      {
         MyconninfoFree(co);
         co = NULL;
-        if (errmsg) {
+        if (errmsg)
+        {
           *errmsg = strdup(s);
         }
         break;
       }
 
       *seq = 0;
-      if (!strcmp(s, "host")) {
+      if (!strcmp(s, "host"))
+      {
         co->host = strdup(seq + 1);
-      } else if (!strcmp(s, "ip")) {
+      }
+      else if (!strcmp(s, "ip"))
+      {
         co->host = strdup(seq + 1);
-      } else if (!strcmp(s, "addr")) {
+      }
+      else if (!strcmp(s, "addr"))
+      {
         co->host = strdup(seq + 1);
-      } else if (!strcmp(s, "ipaddr")) {
+      }
+      else if (!strcmp(s, "ipaddr"))
+      {
         co->host = strdup(seq + 1);
-      } else if (!strcmp(s, "hostaddr")) {
+      }
+      else if (!strcmp(s, "hostaddr"))
+      {
         co->host = strdup(seq + 1);
-      } else if (!strcmp(s, "dbname")) {
+      }
+      else if (!strcmp(s, "dbname"))
+      {
         co->dbname = strdup(seq + 1);
-      } else if (!strcmp(s, "db")) {
+      }
+      else if (!strcmp(s, "db"))
+      {
         co->dbname = strdup(seq + 1);
-      } else if (!strcmp(s, "database")) {
+      }
+      else if (!strcmp(s, "database"))
+      {
         co->dbname = strdup(seq + 1);
-      } else if (!strcmp(s, "user")) {
+      }
+      else if (!strcmp(s, "user"))
+      {
         co->user = strdup(seq + 1);
-      } else if (!strcmp(s, "uname")) {
+      }
+      else if (!strcmp(s, "uname"))
+      {
         co->user = strdup(seq + 1);
-      } else if (!strcmp(s, "name")) {
+      }
+      else if (!strcmp(s, "name"))
+      {
         co->user = strdup(seq + 1);
-      } else if (!strcmp(s, "username")) {
+      }
+      else if (!strcmp(s, "username"))
+      {
         co->user = strdup(seq + 1);
-      } else if (!strcmp(s, "password")) {
+      }
+      else if (!strcmp(s, "password"))
+      {
         co->password = strdup(seq + 1);
-      } else if (!strcmp(s, "pwd")) {
+      }
+      else if (!strcmp(s, "pwd"))
+      {
         co->password = strdup(seq + 1);
-      } else if (!strcmp(s, "passwd")) {
+      }
+      else if (!strcmp(s, "passwd"))
+      {
         co->password = strdup(seq + 1);
-      } else if (!strcmp(s, "secret")) {
+      }
+      else if (!strcmp(s, "secret"))
+      {
         co->password = strdup(seq + 1);
-      } else if (!strcmp(s, "port")) {
+      }
+      else if (!strcmp(s, "port"))
+      {
         co->port = (unsigned int)atoi(seq + 1);
-      } else if (!strcmp(s, "p")) {
+      }
+      else if (!strcmp(s, "p"))
+      {
         co->port = (unsigned int)atoi(seq + 1);
-      } else if (!strcmp(s, "connect_timeout")) {
+      }
+      else if (!strcmp(s, "connect_timeout"))
+      {
         co->connect_timeout = (unsigned int)atoi(seq + 1);
-      } else if (!strcmp(s, "timeout")) {
+      }
+      else if (!strcmp(s, "timeout"))
+      {
         co->connect_timeout = (unsigned int)atoi(seq + 1);
-      } else if (!strcmp(s, "read_timeout")) {
+      }
+      else if (!strcmp(s, "read_timeout"))
+      {
         co->read_timeout = (unsigned int)atoi(seq + 1);
-      } else if (!strcmp(s, "key")) {
+      }
+      else if (!strcmp(s, "key"))
+      {
         co->key = strdup(seq + 1);
-      } else if (!strcmp(s, "ssl-key")) {
+      }
+      else if (!strcmp(s, "ssl-key"))
+      {
         co->key = strdup(seq + 1);
-      } else if (!strcmp(s, "ca")) {
+      }
+      else if (!strcmp(s, "ca"))
+      {
         co->ca = strdup(seq + 1);
-      } else if (!strcmp(s, "ssl-ca")) {
+      }
+      else if (!strcmp(s, "ssl-ca"))
+      {
         co->ca = strdup(seq + 1);
-      } else if (!strcmp(s, "capath")) {
+      }
+      else if (!strcmp(s, "capath"))
+      {
         co->capath = strdup(seq + 1);
-      } else if (!strcmp(s, "ssl-capath")) {
+      }
+      else if (!strcmp(s, "ssl-capath"))
+      {
         co->capath = strdup(seq + 1);
-      } else if (!strcmp(s, "cert")) {
+      }
+      else if (!strcmp(s, "cert"))
+      {
         co->cert = strdup(seq + 1);
-      } else if (!strcmp(s, "ssl-cert")) {
+      }
+      else if (!strcmp(s, "ssl-cert"))
+      {
         co->cert = strdup(seq + 1);
-      } else if (!strcmp(s, "cipher")) {
+      }
+      else if (!strcmp(s, "cipher"))
+      {
         co->cipher = strdup(seq + 1);
-      } else if (!strcmp(s, "ssl-cipher")) {
+      }
+      else if (!strcmp(s, "ssl-cipher"))
+      {
         co->cipher = strdup(seq + 1);
-      } else {
+      }
+      else
+      {
         MyconninfoFree(co);
         co = NULL;
-        if (errmsg) {
+        if (errmsg)
+        {
           *errmsg = strdup(s);
         }
         break;
@@ -220,17 +304,22 @@ static Myconninfo *MyconninfoParse(char *userdb, char **errmsg) {
     free(s0);
   }
 
-  if (co) {
-    if (!(co->dbname)) {
+  if (co)
+  {
+    if (!(co->dbname))
+    {
       co->dbname = strdup("0");
     }
-    if (!(co->host)) {
+    if (!(co->host))
+    {
       co->host = strdup("127.0.0.1");
     }
-    if (!(co->user)) {
+    if (!(co->user))
+    {
       co->user = strdup("");
     }
-    if (!(co->password)) {
+    if (!(co->password))
+    {
       co->password = strdup("");
     }
   }
@@ -238,77 +327,106 @@ static Myconninfo *MyconninfoParse(char *userdb, char **errmsg) {
   return co;
 }
 
-static MYSQL *get_mydb_connection(void) {
+static MYSQL *get_mydb_connection(void)
+{
 
   persistent_users_db_t *pud = get_persistent_users_db();
 
   MYSQL *mydbconnection = (MYSQL *)pthread_getspecific(connection_key);
 
-  if (mydbconnection) {
-    if (mysql_ping(mydbconnection)) {
+  if (mydbconnection)
+  {
+    if (mysql_ping(mydbconnection))
+    {
       mysql_close(mydbconnection);
       mydbconnection = NULL;
       (void)pthread_setspecific(connection_key, mydbconnection);
     }
   }
 
-  if (!mydbconnection) {
+  if (!mydbconnection)
+  {
     char *errmsg = NULL;
     Myconninfo *co = MyconninfoParse(pud->userdb, &errmsg);
-    if (!co) {
-      if (errmsg) {
+    if (!co)
+    {
+      if (errmsg)
+      {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
                       "Cannot open MySQL DB connection <%s>, connection string format error: %s\n",
                       pud->userdb_sanitized, errmsg);
         free(errmsg);
-      } else {
+      }
+      else
+      {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open MySQL DB connection <%s>, connection string format error\n",
                       pud->userdb_sanitized);
       }
-    } else if (errmsg) {
+    }
+    else if (errmsg)
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open MySQL DB connection <%s>, connection string format error: %s\n",
                     pud->userdb_sanitized, errmsg);
       free(errmsg);
       MyconninfoFree(co);
-    } else if (!(co->dbname)) {
+    }
+    else if (!(co->dbname))
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "MySQL Database name is not provided: <%s>\n", pud->userdb_sanitized);
       MyconninfoFree(co);
-    } else {
+    }
+    else
+    {
       mydbconnection = mysql_init(NULL);
-      if (!mydbconnection) {
+      if (!mydbconnection)
+      {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot initialize MySQL DB connection\n");
-      } else {
-        if (co->connect_timeout) {
+      }
+      else
+      {
+        if (co->connect_timeout)
+        {
           mysql_options(mydbconnection, MYSQL_OPT_CONNECT_TIMEOUT, &(co->connect_timeout));
         }
-        if (co->read_timeout) {
+        if (co->read_timeout)
+        {
           mysql_options(mydbconnection, MYSQL_OPT_READ_TIMEOUT, &(co->read_timeout));
         }
-        if (co->ca || co->capath || co->cert || co->cipher || co->key) {
+        if (co->ca || co->capath || co->cert || co->cipher || co->key)
+        {
           mysql_ssl_set(mydbconnection, co->key, co->cert, co->ca, co->capath, co->cipher);
         }
 
-        if (turn_params.secret_key_file[0]) {
+        if (turn_params.secret_key_file[0])
+        {
           co->password = decryptPassword(co->password, turn_params.secret_key);
         }
 
         MYSQL *conn = mysql_real_connect(mydbconnection, co->host, co->user, co->password, co->dbname, co->port, NULL,
                                          CLIENT_IGNORE_SIGPIPE);
-        if (!conn) {
+        if (!conn)
+        {
           TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open MySQL DB connection: <%s>, runtime error: %s\n",
                         pud->userdb_sanitized, mysql_error(mydbconnection));
           mysql_close(mydbconnection);
           mydbconnection = NULL;
-        } else if (mysql_select_db(mydbconnection, co->dbname)) {
+        }
+        else if (mysql_select_db(mydbconnection, co->dbname))
+        {
           TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot connect to MySQL DB: %s\n", co->dbname);
           mysql_close(mydbconnection);
           mydbconnection = NULL;
-        } else if (!donot_print_connection_success) {
+        }
+        else if (!donot_print_connection_success)
+        {
           TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "MySQL DB connection success: %s\n", pud->userdb_sanitized);
-          if (turn_params.secret_key_file[0]) {
+          if (turn_params.secret_key_file[0])
+          {
             TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Encryption with AES is activated.\n");
             TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Connection is secure.\n");
-          } else {
+          }
+          else
+          {
             TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Connection is not secure.\n");
           }
           donot_print_connection_success = 1;
@@ -316,7 +434,8 @@ static MYSQL *get_mydb_connection(void) {
       }
       MyconninfoFree(co);
     }
-    if (mydbconnection) {
+    if (mydbconnection)
+    {
       (void)pthread_setspecific(connection_key, mydbconnection);
     }
   }
@@ -325,28 +444,42 @@ static MYSQL *get_mydb_connection(void) {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static int mysql_get_auth_secrets(secrets_list_t *sl, uint8_t *realm) {
+static int mysql_get_auth_secrets(secrets_list_t *sl, uint8_t *realm)
+{
   int ret = -1;
   MYSQL *myc = get_mydb_connection();
-  if (myc) {
+  if (myc)
+  {
     char statement[TURN_LONG_STRING_SIZE];
     snprintf(statement, sizeof(statement) - 1, "select value from turn_secret where realm='%s'", realm);
     int res = mysql_query(myc, statement);
-    if (res) {
+    if (res)
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n", mysql_error(myc));
-    } else {
+    }
+    else
+    {
       MYSQL_RES *mres = mysql_store_result(myc);
-      if (!mres) {
+      if (!mres)
+      {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n", mysql_error(myc));
-      } else if (mysql_field_count(myc) == 1) {
-        for (;;) {
+      }
+      else if (mysql_field_count(myc) == 1)
+      {
+        for (;;)
+        {
           MYSQL_ROW row = mysql_fetch_row(mres);
-          if (!row) {
+          if (!row)
+          {
             break;
-          } else {
-            if (row[0]) {
+          }
+          else
+          {
+            if (row[0])
+            {
               unsigned long *lengths = mysql_fetch_lengths(mres);
-              if (lengths) {
+              if (lengths)
+              {
                 size_t sz = lengths[0];
                 char auth_secret[TURN_LONG_STRING_SIZE];
                 memcpy(auth_secret, row[0], sz);
@@ -359,7 +492,8 @@ static int mysql_get_auth_secrets(secrets_list_t *sl, uint8_t *realm) {
         ret = 0;
       }
 
-      if (mres) {
+      if (mres)
+      {
         mysql_free_result(mres);
       }
     }
@@ -367,33 +501,48 @@ static int mysql_get_auth_secrets(secrets_list_t *sl, uint8_t *realm) {
   return ret;
 }
 
-static int mysql_get_user_key(uint8_t *usname, uint8_t *realm, hmackey_t key) {
+static int mysql_get_user_key(uint8_t *usname, uint8_t *realm, hmackey_t key)
+{
   int ret = -1;
   MYSQL *myc = get_mydb_connection();
-  if (myc) {
+  if (myc)
+  {
     char statement[TURN_LONG_STRING_SIZE];
     /* direct user input eliminated - there is no SQL injection problem (since version 4.4.5.3) */
     snprintf(statement, sizeof(statement), "select hmackey from turnusers_lt where name='%s' and realm='%s'", usname,
              realm);
     int res = mysql_query(myc, statement);
-    if (res) {
+    if (res)
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n", mysql_error(myc));
-    } else {
+    }
+    else
+    {
       MYSQL_RES *mres = mysql_store_result(myc);
-      if (!mres) {
+      if (!mres)
+      {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n", mysql_error(myc));
-      } else if (mysql_field_count(myc) != 1) {
+      }
+      else if (mysql_field_count(myc) != 1)
+      {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown error retrieving MySQL DB information: %s\n", statement);
-      } else {
+      }
+      else
+      {
         MYSQL_ROW row = mysql_fetch_row(mres);
-        if (row && row[0]) {
+        if (row && row[0])
+        {
           unsigned long *lengths = mysql_fetch_lengths(mres);
-          if (lengths) {
+          if (lengths)
+          {
             size_t sz = get_hmackey_size(SHATYPE_DEFAULT) * 2;
-            if (lengths[0] < sz) {
+            if (lengths[0] < sz)
+            {
               TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key format: string length=%d (must be %d): user %s\n",
                             (int)lengths[0], (int)sz, usname);
-            } else {
+            }
+            else
+            {
               char kval[sizeof(hmackey_t) + sizeof(hmackey_t) + 1];
               memcpy(kval, row[0], sz);
               kval[sz] = 0;
@@ -404,7 +553,8 @@ static int mysql_get_user_key(uint8_t *usname, uint8_t *realm, hmackey_t key) {
         }
       }
 
-      if (mres) {
+      if (mres)
+      {
         mysql_free_result(mres);
       }
     }
@@ -412,7 +562,8 @@ static int mysql_get_user_key(uint8_t *usname, uint8_t *realm, hmackey_t key) {
   return ret;
 }
 
-static int mysql_get_oauth_key(const uint8_t *kid, oauth_key_data_raw *key) {
+static int mysql_get_oauth_key(const uint8_t *kid, oauth_key_data_raw *key)
+{
 
   int ret = -1;
   char statement[TURN_LONG_STRING_SIZE];
@@ -421,21 +572,32 @@ static int mysql_get_oauth_key(const uint8_t *kid, oauth_key_data_raw *key) {
            "select ikm_key,timestamp,lifetime,as_rs_alg,realm from oauth_key where kid='%s'", (const char *)kid);
 
   MYSQL *myc = get_mydb_connection();
-  if (myc) {
+  if (myc)
+  {
     int res = mysql_query(myc, statement);
-    if (res) {
+    if (res)
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n", mysql_error(myc));
-    } else {
+    }
+    else
+    {
       MYSQL_RES *mres = mysql_store_result(myc);
-      if (!mres) {
+      if (!mres)
+      {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n", mysql_error(myc));
-      } else if (mysql_field_count(myc) != 5) {
+      }
+      else if (mysql_field_count(myc) != 5)
+      {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown error retrieving MySQL DB information: %s\n", statement);
-      } else {
+      }
+      else
+      {
         MYSQL_ROW row = mysql_fetch_row(mres);
-        if (row && row[0]) {
+        if (row && row[0])
+        {
           unsigned long *lengths = mysql_fetch_lengths(mres);
-          if (lengths) {
+          if (lengths)
+          {
             STRCPY(key->kid, kid);
             memcpy(key->ikm_key, row[0], lengths[0]);
             key->ikm_key[lengths[0]] = 0;
@@ -461,7 +623,8 @@ static int mysql_get_oauth_key(const uint8_t *kid, oauth_key_data_raw *key) {
         }
       }
 
-      if (mres) {
+      if (mres)
+      {
         mysql_free_result(mres);
       }
     }
@@ -470,7 +633,8 @@ static int mysql_get_oauth_key(const uint8_t *kid, oauth_key_data_raw *key) {
 }
 
 static int mysql_list_oauth_keys(secrets_list_t *kids, secrets_list_t *teas, secrets_list_t *tss, secrets_list_t *lts,
-                                 secrets_list_t *realms) {
+                                 secrets_list_t *realms)
+{
 
   oauth_key_data_raw key_;
   oauth_key_data_raw *key = &key_;
@@ -480,21 +644,32 @@ static int mysql_list_oauth_keys(secrets_list_t *kids, secrets_list_t *teas, sec
            "select ikm_key,timestamp,lifetime,as_rs_alg,realm,kid from oauth_key order by kid");
 
   MYSQL *myc = get_mydb_connection();
-  if (myc) {
+  if (myc)
+  {
     int res = mysql_query(myc, statement);
-    if (res) {
+    if (res)
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n", mysql_error(myc));
-    } else {
+    }
+    else
+    {
       MYSQL_RES *mres = mysql_store_result(myc);
-      if (!mres) {
+      if (!mres)
+      {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n", mysql_error(myc));
-      } else if (mysql_field_count(myc) != 6) {
+      }
+      else if (mysql_field_count(myc) != 6)
+      {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown error retrieving MySQL DB information: %s\n", statement);
-      } else {
+      }
+      else
+      {
         MYSQL_ROW row = mysql_fetch_row(mres);
-        while (row) {
+        while (row)
+        {
           unsigned long *lengths = mysql_fetch_lengths(mres);
-          if (lengths) {
+          if (lengths)
+          {
 
             memcpy(key->ikm_key, row[0], lengths[0]);
             key->ikm_key[lengths[0]] = 0;
@@ -518,7 +693,8 @@ static int mysql_list_oauth_keys(secrets_list_t *kids, secrets_list_t *teas, sec
             memcpy(key->kid, row[5], lengths[5]);
             key->kid[lengths[5]] = 0;
 
-            if (kids) {
+            if (kids)
+            {
               add_to_secrets_list(kids, key->kid);
               add_to_secrets_list(teas, key->as_rs_alg);
               add_to_secrets_list(realms, key->realm);
@@ -532,7 +708,9 @@ static int mysql_list_oauth_keys(secrets_list_t *kids, secrets_list_t *teas, sec
                 snprintf(lt, sizeof(lt) - 1, "%lu", (unsigned long)key->lifetime);
                 add_to_secrets_list(lts, lt);
               }
-            } else {
+            }
+            else
+            {
               printf("  kid=%s, ikm_key=%s, timestamp=%llu, lifetime=%lu, as_rs_alg=%s, realm=%s\n", key->kid,
                      key->ikm_key, (unsigned long long)key->timestamp, (unsigned long)key->lifetime, key->as_rs_alg,
                      key->realm);
@@ -542,7 +720,8 @@ static int mysql_list_oauth_keys(secrets_list_t *kids, secrets_list_t *teas, sec
         }
       }
 
-      if (mres) {
+      if (mres)
+      {
         mysql_free_result(mres);
       }
     }
@@ -551,23 +730,31 @@ static int mysql_list_oauth_keys(secrets_list_t *kids, secrets_list_t *teas, sec
   return ret;
 }
 
-static int mysql_set_user_key(uint8_t *usname, uint8_t *realm, const char *key) {
+static int mysql_set_user_key(uint8_t *usname, uint8_t *realm, const char *key)
+{
   int ret = -1;
   char statement[TURN_LONG_STRING_SIZE];
   MYSQL *myc = get_mydb_connection();
-  if (myc) {
+  if (myc)
+  {
     snprintf(statement, sizeof(statement), "insert into turnusers_lt (realm,name,hmackey) values('%s','%s','%s')",
              realm, usname, key);
     int res = mysql_query(myc, statement);
-    if (!res) {
+    if (!res)
+    {
       ret = 0;
-    } else {
+    }
+    else
+    {
       snprintf(statement, sizeof(statement), "update turnusers_lt set hmackey='%s' where name='%s' and realm='%s'", key,
                usname, realm);
       res = mysql_query(myc, statement);
-      if (!res) {
+      if (!res)
+      {
         ret = 0;
-      } else {
+      }
+      else
+      {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error inserting/updating user key information: %s\n", mysql_error(myc));
       }
     }
@@ -575,111 +762,155 @@ static int mysql_set_user_key(uint8_t *usname, uint8_t *realm, const char *key) 
   return ret;
 }
 
-static int mysql_set_oauth_key(oauth_key_data_raw *key) {
+static int mysql_set_oauth_key(oauth_key_data_raw *key)
+{
   int ret = -1;
   char statement[TURN_LONG_STRING_SIZE];
   MYSQL *myc = get_mydb_connection();
-  if (myc) {
+  if (myc)
+  {
     snprintf(
         statement, sizeof(statement),
         "insert into oauth_key (kid,ikm_key,timestamp,lifetime,as_rs_alg,realm) values('%s','%s',%llu,%lu,'%s','%s')",
         key->kid, key->ikm_key, (unsigned long long)key->timestamp, (unsigned long)key->lifetime, key->as_rs_alg,
         key->realm);
     int res = mysql_query(myc, statement);
-    if (res) {
+    if (res)
+    {
       snprintf(
           statement, sizeof(statement),
           "update oauth_key set ikm_key='%s',timestamp=%lu,lifetime=%lu, as_rs_alg='%s', realm='%s' where kid='%s'",
           key->ikm_key, (unsigned long)key->timestamp, (unsigned long)key->lifetime, key->as_rs_alg, key->realm,
           key->kid);
       res = mysql_query(myc, statement);
-      if (res) {
+      if (res)
+      {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error inserting/updating oauth key information: %s\n", mysql_error(myc));
-      } else {
+      }
+      else
+      {
         ret = 0;
       }
-    } else {
+    }
+    else
+    {
       ret = 0;
     }
   }
   return ret;
 }
 
-static int mysql_del_user(uint8_t *usname, uint8_t *realm) {
+static int mysql_del_user(uint8_t *usname, uint8_t *realm)
+{
   int ret = -1;
   char statement[TURN_LONG_STRING_SIZE];
   MYSQL *myc = get_mydb_connection();
-  if (myc) {
+  if (myc)
+  {
     snprintf(statement, sizeof(statement), "delete from turnusers_lt where name='%s' and realm='%s'", usname, realm);
     int res = mysql_query(myc, statement);
-    if (res) {
+    if (res)
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error deleting user key information: %s\n", mysql_error(myc));
-    } else {
+    }
+    else
+    {
       ret = 0;
     }
   }
   return ret;
 }
 
-static int mysql_del_oauth_key(const uint8_t *kid) {
+static int mysql_del_oauth_key(const uint8_t *kid)
+{
   int ret = -1;
   char statement[TURN_LONG_STRING_SIZE];
   MYSQL *myc = get_mydb_connection();
-  if (myc) {
+  if (myc)
+  {
     snprintf(statement, sizeof(statement), "delete from oauth_key where kid = '%s'", (const char *)kid);
     int res = mysql_query(myc, statement);
-    if (res) {
+    if (res)
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error deleting oauth key information: %s\n", mysql_error(myc));
-    } else {
+    }
+    else
+    {
       ret = 0;
     }
   }
   return ret;
 }
 
-static int mysql_list_users(uint8_t *realm, secrets_list_t *users, secrets_list_t *realms) {
+static int mysql_list_users(uint8_t *realm, secrets_list_t *users, secrets_list_t *realms)
+{
   int ret = -1;
   char statement[TURN_LONG_STRING_SIZE];
 
   uint8_t realm0[STUN_MAX_REALM_SIZE + 1] = "\0";
-  if (!realm) {
+  if (!realm)
+  {
     realm = realm0;
   }
 
   MYSQL *myc = get_mydb_connection();
-  if (myc) {
-    if (realm[0]) {
+  if (myc)
+  {
+    if (realm[0])
+    {
       snprintf(statement, sizeof(statement), "select name, realm from turnusers_lt where realm='%s' order by name",
                realm);
-    } else {
+    }
+    else
+    {
       snprintf(statement, sizeof(statement), "select name, realm from turnusers_lt order by realm,name");
     }
     int res = mysql_query(myc, statement);
-    if (res) {
+    if (res)
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n", mysql_error(myc));
-    } else {
+    }
+    else
+    {
       MYSQL_RES *mres = mysql_store_result(myc);
-      if (!mres) {
+      if (!mres)
+      {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n", mysql_error(myc));
-      } else if (mysql_field_count(myc) != 2) {
+      }
+      else if (mysql_field_count(myc) != 2)
+      {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown error retrieving MySQL DB information: %s\n", statement);
-      } else {
-        for (;;) {
+      }
+      else
+      {
+        for (;;)
+        {
           MYSQL_ROW row = mysql_fetch_row(mres);
-          if (!row) {
+          if (!row)
+          {
             break;
-          } else {
-            if (row[0]) {
-              if (users) {
+          }
+          else
+          {
+            if (row[0])
+            {
+              if (users)
+              {
                 add_to_secrets_list(users, row[0]);
-                if (realms) {
-                  if (row[1]) {
+                if (realms)
+                {
+                  if (row[1])
+                  {
                     add_to_secrets_list(realms, row[1]);
-                  } else {
+                  }
+                  else
+                  {
                     add_to_secrets_list(realms, (char *)realm);
                   }
                 }
-              } else {
+              }
+              else
+              {
                 printf("%s[%s]\n", row[0], row[1]);
               }
             }
@@ -688,7 +919,8 @@ static int mysql_list_users(uint8_t *realm, secrets_list_t *users, secrets_list_
         ret = 0;
       }
 
-      if (mres) {
+      if (mres)
+      {
         mysql_free_result(mres);
       }
     }
@@ -696,54 +928,80 @@ static int mysql_list_users(uint8_t *realm, secrets_list_t *users, secrets_list_
   return ret;
 }
 
-static int mysql_list_secrets(uint8_t *realm, secrets_list_t *secrets, secrets_list_t *realms) {
+static int mysql_list_secrets(uint8_t *realm, secrets_list_t *secrets, secrets_list_t *realms)
+{
   int ret = -1;
 
   uint8_t realm0[STUN_MAX_REALM_SIZE + 1] = "\0";
-  if (!realm) {
+  if (!realm)
+  {
     realm = realm0;
   }
 
   char statement[TURN_LONG_STRING_SIZE];
-  if (realm[0]) {
+  if (realm[0])
+  {
     snprintf(statement, sizeof(statement), "select value,realm from turn_secret where realm='%s' order by value",
              realm);
-  } else {
+  }
+  else
+  {
     snprintf(statement, sizeof(statement), "select value,realm from turn_secret order by realm,value");
   }
 
   donot_print_connection_success = 1;
 
   MYSQL *myc = get_mydb_connection();
-  if (myc) {
+  if (myc)
+  {
     int res = mysql_query(myc, statement);
-    if (res) {
+    if (res)
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n", mysql_error(myc));
-    } else {
+    }
+    else
+    {
       MYSQL_RES *mres = mysql_store_result(myc);
-      if (!mres) {
+      if (!mres)
+      {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n", mysql_error(myc));
-      } else if (mysql_field_count(myc) != 2) {
+      }
+      else if (mysql_field_count(myc) != 2)
+      {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown error retrieving MySQL DB information: %s\n", statement);
-      } else {
-        for (;;) {
+      }
+      else
+      {
+        for (;;)
+        {
           MYSQL_ROW row = mysql_fetch_row(mres);
-          if (!row) {
+          if (!row)
+          {
             break;
-          } else {
+          }
+          else
+          {
             const char *kval = row[0];
-            if (kval) {
+            if (kval)
+            {
               const char *rval = row[1];
-              if (secrets) {
+              if (secrets)
+              {
                 add_to_secrets_list(secrets, kval);
-                if (realms) {
-                  if (rval && *rval) {
+                if (realms)
+                {
+                  if (rval && *rval)
+                  {
                     add_to_secrets_list(realms, rval);
-                  } else {
+                  }
+                  else
+                  {
                     add_to_secrets_list(realms, (char *)realm);
                   }
                 }
-              } else {
+              }
+              else
+              {
                 printf("%s[%s]\n", kval, rval);
               }
             }
@@ -752,7 +1010,8 @@ static int mysql_list_secrets(uint8_t *realm, secrets_list_t *secrets, secrets_l
         ret = 0;
       }
 
-      if (mres) {
+      if (mres)
+      {
         mysql_free_result(mres);
       }
     }
@@ -760,15 +1019,20 @@ static int mysql_list_secrets(uint8_t *realm, secrets_list_t *secrets, secrets_l
   return ret;
 }
 
-static int mysql_del_secret(uint8_t *secret, uint8_t *realm) {
+static int mysql_del_secret(uint8_t *secret, uint8_t *realm)
+{
   int ret = -1;
   donot_print_connection_success = 1;
   char statement[TURN_LONG_STRING_SIZE];
   MYSQL *myc = get_mydb_connection();
-  if (myc) {
-    if (!secret || (secret[0] == 0)) {
+  if (myc)
+  {
+    if (!secret || (secret[0] == 0))
+    {
       snprintf(statement, sizeof(statement), "delete from turn_secret where realm='%s'", realm);
-    } else {
+    }
+    else
+    {
       snprintf(statement, sizeof(statement), "delete from turn_secret where value='%s' and realm='%s'", secret, realm);
     }
     mysql_query(myc, statement);
@@ -777,28 +1041,35 @@ static int mysql_del_secret(uint8_t *secret, uint8_t *realm) {
   return ret;
 }
 
-static int mysql_set_secret(uint8_t *secret, uint8_t *realm) {
+static int mysql_set_secret(uint8_t *secret, uint8_t *realm)
+{
   int ret = -1;
   donot_print_connection_success = 1;
   char statement[TURN_LONG_STRING_SIZE];
   MYSQL *myc = get_mydb_connection();
-  if (myc) {
+  if (myc)
+  {
     snprintf(statement, sizeof(statement), "insert into turn_secret (realm,value) values('%s','%s')", realm, secret);
     int res = mysql_query(myc, statement);
-    if (res) {
+    if (res)
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error inserting/updating secret key information: %s\n", mysql_error(myc));
-    } else {
+    }
+    else
+    {
       ret = 0;
     }
   }
   return ret;
 }
 
-static int mysql_set_permission_ip(const char *kind, uint8_t *realm, const char *ip, int del) {
+static int mysql_set_permission_ip(const char *kind, uint8_t *realm, const char *ip, int del)
+{
   int ret = -1;
 
   uint8_t realm0[STUN_MAX_REALM_SIZE + 1] = "\0";
-  if (!realm) {
+  if (!realm)
+  {
     realm = realm0;
   }
 
@@ -807,104 +1078,147 @@ static int mysql_set_permission_ip(const char *kind, uint8_t *realm, const char 
   char statement[TURN_LONG_STRING_SIZE];
 
   MYSQL *myc = get_mydb_connection();
-  if (myc) {
-    if (del) {
+  if (myc)
+  {
+    if (del)
+    {
       snprintf(statement, sizeof(statement), "delete from %s_peer_ip where realm = '%s'  and ip_range = '%s'", kind,
                (char *)realm, ip);
-    } else {
+    }
+    else
+    {
       snprintf(statement, sizeof(statement), "insert into %s_peer_ip (realm,ip_range) values('%s','%s')", kind,
                (char *)realm, ip);
     }
     int res = mysql_query(myc, statement);
-    if (res) {
+    if (res)
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error inserting permission ip information: %s\n", mysql_error(myc));
-    } else {
+    }
+    else
+    {
       ret = 0;
     }
   }
   return ret;
 }
 
-static int mysql_add_origin(uint8_t *origin, uint8_t *realm) {
+static int mysql_add_origin(uint8_t *origin, uint8_t *realm)
+{
   int ret = -1;
   char statement[TURN_LONG_STRING_SIZE];
   MYSQL *myc = get_mydb_connection();
-  if (myc) {
+  if (myc)
+  {
     snprintf(statement, sizeof(statement), "insert into turn_origin_to_realm (origin,realm) values('%s','%s')", origin,
              realm);
     int res = mysql_query(myc, statement);
-    if (res) {
+    if (res)
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error inserting origin information: %s\n", mysql_error(myc));
-    } else {
+    }
+    else
+    {
       ret = 0;
     }
   }
   return ret;
 }
 
-static int mysql_del_origin(uint8_t *origin) {
+static int mysql_del_origin(uint8_t *origin)
+{
   int ret = -1;
   char statement[TURN_LONG_STRING_SIZE];
   MYSQL *myc = get_mydb_connection();
-  if (myc) {
+  if (myc)
+  {
     snprintf(statement, sizeof(statement), "delete from turn_origin_to_realm where origin='%s'", origin);
     int res = mysql_query(myc, statement);
-    if (res) {
+    if (res)
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error deleting origin information: %s\n", mysql_error(myc));
-    } else {
+    }
+    else
+    {
       ret = 0;
     }
   }
   return ret;
 }
 
-static int mysql_list_origins(uint8_t *realm, secrets_list_t *origins, secrets_list_t *realms) {
+static int mysql_list_origins(uint8_t *realm, secrets_list_t *origins, secrets_list_t *realms)
+{
   int ret = -1;
 
   uint8_t realm0[STUN_MAX_REALM_SIZE + 1] = "\0";
-  if (!realm) {
+  if (!realm)
+  {
     realm = realm0;
   }
 
   donot_print_connection_success = 1;
 
   MYSQL *myc = get_mydb_connection();
-  if (myc) {
+  if (myc)
+  {
     char statement[TURN_LONG_STRING_SIZE];
-    if (realm && realm[0]) {
+    if (realm && realm[0])
+    {
       snprintf(statement, sizeof(statement),
                "select origin,realm from turn_origin_to_realm where realm='%s' order by origin", realm);
-    } else {
+    }
+    else
+    {
       snprintf(statement, sizeof(statement), "select origin,realm from turn_origin_to_realm order by realm,origin");
     }
     int res = mysql_query(myc, statement);
-    if (res) {
+    if (res)
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n", mysql_error(myc));
-    } else {
+    }
+    else
+    {
       MYSQL_RES *mres = mysql_store_result(myc);
-      if (!mres) {
+      if (!mres)
+      {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n", mysql_error(myc));
-      } else if (mysql_field_count(myc) != 2) {
+      }
+      else if (mysql_field_count(myc) != 2)
+      {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown error retrieving MySQL DB information: %s\n", statement);
-      } else {
-        for (;;) {
+      }
+      else
+      {
+        for (;;)
+        {
           MYSQL_ROW row = mysql_fetch_row(mres);
-          if (!row) {
+          if (!row)
+          {
             break;
-          } else {
-            if (row[0] && row[1]) {
+          }
+          else
+          {
+            if (row[0] && row[1])
+            {
               const char *kval = row[0];
               const char *rval = row[1];
-              if (origins) {
+              if (origins)
+              {
                 add_to_secrets_list(origins, kval);
-                if (realms) {
-                  if (rval && *rval) {
+                if (realms)
+                {
+                  if (rval && *rval)
+                  {
                     add_to_secrets_list(realms, rval);
-                  } else {
+                  }
+                  else
+                  {
                     add_to_secrets_list(realms, (char *)realm);
                   }
                 }
-              } else {
+              }
+              else
+              {
                 printf("%s ==>> %s\n", kval, rval);
               }
             }
@@ -913,7 +1227,8 @@ static int mysql_list_origins(uint8_t *realm, secrets_list_t *origins, secrets_l
         ret = 0;
       }
 
-      if (mres) {
+      if (mres)
+      {
         mysql_free_result(mres);
       }
     }
@@ -921,22 +1236,28 @@ static int mysql_list_origins(uint8_t *realm, secrets_list_t *origins, secrets_l
   return ret;
 }
 
-static int mysql_set_realm_option_one(uint8_t *realm, unsigned long value, const char *opt) {
+static int mysql_set_realm_option_one(uint8_t *realm, unsigned long value, const char *opt)
+{
   int ret = -1;
   char statement[TURN_LONG_STRING_SIZE];
   MYSQL *myc = get_mydb_connection();
-  if (myc) {
+  if (myc)
+  {
     {
       snprintf(statement, sizeof(statement), "delete from turn_realm_option where realm='%s' and opt='%s'", realm, opt);
       mysql_query(myc, statement);
     }
-    if (value > 0) {
+    if (value > 0)
+    {
       snprintf(statement, sizeof(statement), "insert into turn_realm_option (realm,opt,value) values('%s','%s','%lu')",
                realm, opt, (unsigned long)value);
       int res = mysql_query(myc, statement);
-      if (res) {
+      if (res)
+      {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error inserting realm option information: %s\n", mysql_error(myc));
-      } else {
+      }
+      else
+      {
         ret = 0;
       }
     }
@@ -944,34 +1265,52 @@ static int mysql_set_realm_option_one(uint8_t *realm, unsigned long value, const
   return ret;
 }
 
-static int mysql_list_realm_options(uint8_t *realm) {
+static int mysql_list_realm_options(uint8_t *realm)
+{
   int ret = -1;
   donot_print_connection_success = 1;
   char statement[TURN_LONG_STRING_SIZE];
   MYSQL *myc = get_mydb_connection();
-  if (myc) {
-    if (realm && realm[0]) {
+  if (myc)
+  {
+    if (realm && realm[0])
+    {
       snprintf(statement, sizeof(statement),
                "select realm,opt,value from turn_realm_option where realm='%s' order by realm,opt", realm);
-    } else {
+    }
+    else
+    {
       snprintf(statement, sizeof(statement), "select realm,opt,value from turn_realm_option order by realm,opt");
     }
     int res = mysql_query(myc, statement);
-    if (res) {
+    if (res)
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n", mysql_error(myc));
-    } else {
+    }
+    else
+    {
       MYSQL_RES *mres = mysql_store_result(myc);
-      if (!mres) {
+      if (!mres)
+      {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n", mysql_error(myc));
-      } else if (mysql_field_count(myc) != 3) {
+      }
+      else if (mysql_field_count(myc) != 3)
+      {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown error retrieving MySQL DB information: %s\n", statement);
-      } else {
-        for (;;) {
+      }
+      else
+      {
+        for (;;)
+        {
           MYSQL_ROW row = mysql_fetch_row(mres);
-          if (!row) {
+          if (!row)
+          {
             break;
-          } else {
-            if (row[0] && row[1] && row[2]) {
+          }
+          else
+          {
+            if (row[0] && row[1] && row[2])
+            {
               printf("%s[%s]=%s\n", row[1], row[0], row[2]);
             }
           }
@@ -979,7 +1318,8 @@ static int mysql_list_realm_options(uint8_t *realm) {
         ret = 0;
       }
 
-      if (mres) {
+      if (mres)
+      {
         mysql_free_result(mres);
       }
     }
@@ -987,37 +1327,49 @@ static int mysql_list_realm_options(uint8_t *realm) {
   return ret;
 }
 
-static void mysql_auth_ping(void *rch) {
+static void mysql_auth_ping(void *rch)
+{
   UNUSED_ARG(rch);
   MYSQL *myc = get_mydb_connection();
-  if (myc) {
+  if (myc)
+  {
     char statement[TURN_LONG_STRING_SIZE];
     STRCPY(statement, "select value from turn_secret");
     int res = mysql_query(myc, statement);
-    if (res) {
+    if (res)
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n", mysql_error(myc));
-    } else {
+    }
+    else
+    {
       MYSQL_RES *mres = mysql_store_result(myc);
-      if (!mres) {
+      if (!mres)
+      {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n", mysql_error(myc));
-      } else {
+      }
+      else
+      {
         mysql_free_result(mres);
       }
     }
   }
 }
 
-static int mysql_get_ip_list(const char *kind, ip_range_list_t *list) {
+static int mysql_get_ip_list(const char *kind, ip_range_list_t *list)
+{
   int ret = -1;
   MYSQL *myc = get_mydb_connection();
-  if (myc) {
+  if (myc)
+  {
     char statement[TURN_LONG_STRING_SIZE];
     snprintf(statement, sizeof(statement), "select ip_range,realm from %s_peer_ip", kind);
     int res = mysql_query(myc, statement);
 
-    if (res) {
+    if (res)
+    {
       static int wrong_table_reported = 0;
-      if (!wrong_table_reported) {
+      if (!wrong_table_reported)
+      {
         wrong_table_reported = 1;
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
                       "Error retrieving MySQL DB information; probably, the tables 'allowed_peer_ip' and/or "
@@ -1027,17 +1379,25 @@ static int mysql_get_ip_list(const char *kind, ip_range_list_t *list) {
       res = mysql_query(myc, statement);
     }
 
-    if (res == 0) {
+    if (res == 0)
+    {
       MYSQL_RES *mres = mysql_store_result(myc);
-      if (mres && mysql_field_count(myc) == 2) {
-        for (;;) {
+      if (mres && mysql_field_count(myc) == 2)
+      {
+        for (;;)
+        {
           MYSQL_ROW row = mysql_fetch_row(mres);
-          if (!row) {
+          if (!row)
+          {
             break;
-          } else {
-            if (row[0]) {
+          }
+          else
+          {
+            if (row[0])
+            {
               unsigned long *lengths = mysql_fetch_lengths(mres);
-              if (lengths) {
+              if (lengths)
+              {
                 size_t sz = lengths[0];
                 char kval[TURN_LONG_STRING_SIZE];
                 memcpy(kval, row[0], sz);
@@ -1054,7 +1414,8 @@ static int mysql_get_ip_list(const char *kind, ip_range_list_t *list) {
         ret = 0;
       }
 
-      if (mres) {
+      if (mres)
+      {
         mysql_free_result(mres);
       }
     }
@@ -1062,27 +1423,37 @@ static int mysql_get_ip_list(const char *kind, ip_range_list_t *list) {
   return ret;
 }
 
-static void mysql_reread_realms(secrets_list_t *realms_list) {
+static void mysql_reread_realms(secrets_list_t *realms_list)
+{
   MYSQL *myc = get_mydb_connection();
-  if (myc) {
+  if (myc)
+  {
     char statement[TURN_LONG_STRING_SIZE];
     {
       snprintf(statement, sizeof(statement), "select origin,realm from turn_origin_to_realm");
       int res = mysql_query(myc, statement);
-      if (res == 0) {
+      if (res == 0)
+      {
         MYSQL_RES *mres = mysql_store_result(myc);
-        if (mres && mysql_field_count(myc) == 2) {
+        if (mres && mysql_field_count(myc) == 2)
+        {
 
           ur_string_map *o_to_realm_new = ur_string_map_create(free);
 
-          for (;;) {
+          for (;;)
+          {
             MYSQL_ROW row = mysql_fetch_row(mres);
-            if (!row) {
+            if (!row)
+            {
               break;
-            } else {
-              if (row[0] && row[1]) {
+            }
+            else
+            {
+              if (row[0] && row[1])
+              {
                 unsigned long *lengths = mysql_fetch_lengths(mres);
-                if (lengths) {
+                if (lengths)
+                {
                   size_t sz = lengths[0];
                   char oval[513];
                   memcpy(oval, row[0], sz);
@@ -1099,7 +1470,8 @@ static void mysql_reread_realms(secrets_list_t *realms_list) {
           update_o_to_realm(o_to_realm_new);
         }
 
-        if (mres) {
+        if (mres)
+        {
           mysql_free_result(mres);
         }
       }
@@ -1112,7 +1484,8 @@ static void mysql_reread_realms(secrets_list_t *realms_list) {
       rlsz = realms_list->sz;
       unlock_realms();
 
-      for (i = 0; i < rlsz; ++i) {
+      for (i = 0; i < rlsz; ++i)
+      {
 
         char *realm = realms_list->secrets[i];
 
@@ -1134,18 +1507,26 @@ static void mysql_reread_realms(secrets_list_t *realms_list) {
 
     snprintf(statement, sizeof(statement), "select realm,opt,value from turn_realm_option");
     int res = mysql_query(myc, statement);
-    if (res == 0) {
+    if (res == 0)
+    {
       MYSQL_RES *mres = mysql_store_result(myc);
-      if (mres && mysql_field_count(myc) == 3) {
+      if (mres && mysql_field_count(myc) == 3)
+      {
 
-        for (;;) {
+        for (;;)
+        {
           MYSQL_ROW row = mysql_fetch_row(mres);
-          if (!row) {
+          if (!row)
+          {
             break;
-          } else {
-            if (row[0] && row[1] && row[2]) {
+          }
+          else
+          {
+            if (row[0] && row[1] && row[2])
+            {
               unsigned long *lengths = mysql_fetch_lengths(mres);
-              if (lengths) {
+              if (lengths)
+              {
                 char rval[513];
                 size_t sz = lengths[0];
                 memcpy(rval, row[0], sz);
@@ -1159,13 +1540,20 @@ static void mysql_reread_realms(secrets_list_t *realms_list) {
                 memcpy(vval, row[2], sz);
                 vval[sz] = 0;
                 realm_params_t *rp = get_realm(rval);
-                if (!strcmp(oval, "max-bps")) {
+                if (!strcmp(oval, "max-bps"))
+                {
                   rp->options.perf_options.max_bps = (band_limit_t)strtoul(vval, NULL, 10);
-                } else if (!strcmp(oval, "total-quota")) {
+                }
+                else if (!strcmp(oval, "total-quota"))
+                {
                   rp->options.perf_options.total_quota = (vint)atoi(vval);
-                } else if (!strcmp(oval, "user-quota")) {
+                }
+                else if (!strcmp(oval, "user-quota"))
+                {
                   rp->options.perf_options.user_quota = (vint)atoi(vval);
-                } else {
+                }
+                else
+                {
                   TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown realm option: %s\n", oval);
                 }
               }
@@ -1174,7 +1562,8 @@ static void mysql_reread_realms(secrets_list_t *realms_list) {
         }
       }
 
-      if (mres) {
+      if (mres)
+      {
         mysql_free_result(mres);
       }
     }
@@ -1183,35 +1572,47 @@ static void mysql_reread_realms(secrets_list_t *realms_list) {
 
 /////////////////////////////////////////////////////
 
-static int mysql_get_admin_user(const uint8_t *usname, uint8_t *realm, password_t pwd) {
+static int mysql_get_admin_user(const uint8_t *usname, uint8_t *realm, password_t pwd)
+{
   int ret = -1;
 
   realm[0] = 0;
   pwd[0] = 0;
 
   MYSQL *myc = get_mydb_connection();
-  if (myc) {
+  if (myc)
+  {
     char statement[TURN_LONG_STRING_SIZE];
     snprintf(statement, sizeof(statement), "select realm,password from admin_user where name='%s'", usname);
     int res = mysql_query(myc, statement);
-    if (res) {
+    if (res)
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n", mysql_error(myc));
-    } else {
+    }
+    else
+    {
       MYSQL_RES *mres = mysql_store_result(myc);
-      if (!mres) {
+      if (!mres)
+      {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n", mysql_error(myc));
-      } else if (mysql_field_count(myc) != 2) {
+      }
+      else if (mysql_field_count(myc) != 2)
+      {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown error retrieving MySQL DB information: %s\n", statement);
-      } else {
+      }
+      else
+      {
         MYSQL_ROW row = mysql_fetch_row(mres);
-        if (row && row[0]) {
+        if (row && row[0])
+        {
           strncpy((char *)realm, row[0], STUN_MAX_REALM_SIZE);
           strncpy((char *)pwd, row[1], STUN_MAX_PWD_SIZE);
           ret = 0;
         }
       }
 
-      if (mres) {
+      if (mres)
+      {
         mysql_free_result(mres);
       }
     }
@@ -1219,24 +1620,32 @@ static int mysql_get_admin_user(const uint8_t *usname, uint8_t *realm, password_
   return ret;
 }
 
-static int mysql_set_admin_user(const uint8_t *usname, const uint8_t *realm, const password_t pwd) {
+static int mysql_set_admin_user(const uint8_t *usname, const uint8_t *realm, const password_t pwd)
+{
   int ret = -1;
   char statement[TURN_LONG_STRING_SIZE];
   donot_print_connection_success = 1;
   MYSQL *myc = get_mydb_connection();
-  if (myc) {
+  if (myc)
+  {
     snprintf(statement, sizeof(statement), "insert into admin_user (realm,name,password) values('%s','%s','%s')", realm,
              usname, pwd);
     int res = mysql_query(myc, statement);
-    if (!res) {
+    if (!res)
+    {
       ret = 0;
-    } else {
+    }
+    else
+    {
       snprintf(statement, sizeof(statement), "update admin_user set realm='%s',password='%s' where name='%s'", realm,
                pwd, usname);
       res = mysql_query(myc, statement);
-      if (!res) {
+      if (!res)
+      {
         ret = 0;
-      } else {
+      }
+      else
+      {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error inserting/updating user key information: %s\n", mysql_error(myc));
       }
     }
@@ -1244,51 +1653,74 @@ static int mysql_set_admin_user(const uint8_t *usname, const uint8_t *realm, con
   return ret;
 }
 
-static int mysql_del_admin_user(const uint8_t *usname) {
+static int mysql_del_admin_user(const uint8_t *usname)
+{
   int ret = -1;
   char statement[TURN_LONG_STRING_SIZE];
   donot_print_connection_success = 1;
   MYSQL *myc = get_mydb_connection();
-  if (myc) {
+  if (myc)
+  {
     snprintf(statement, sizeof(statement), "delete from admin_user where name='%s'", usname);
     int res = mysql_query(myc, statement);
-    if (res) {
+    if (res)
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error deleting admin user information: %s\n", mysql_error(myc));
-    } else {
+    }
+    else
+    {
       ret = 0;
     }
   }
   return ret;
 }
 
-static int mysql_list_admin_users(int no_print) {
+static int mysql_list_admin_users(int no_print)
+{
   int ret = -1;
   char statement[TURN_LONG_STRING_SIZE];
   donot_print_connection_success = 1;
   MYSQL *myc = get_mydb_connection();
-  if (myc) {
+  if (myc)
+  {
     snprintf(statement, sizeof(statement), "select name, realm from admin_user order by realm,name");
     int res = mysql_query(myc, statement);
-    if (res) {
+    if (res)
+    {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n", mysql_error(myc));
-    } else {
+    }
+    else
+    {
       MYSQL_RES *mres = mysql_store_result(myc);
-      if (!mres) {
+      if (!mres)
+      {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n", mysql_error(myc));
-      } else if (mysql_field_count(myc) != 2) {
+      }
+      else if (mysql_field_count(myc) != 2)
+      {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown error retrieving MySQL DB information: %s\n", statement);
-      } else {
+      }
+      else
+      {
         ret = 0;
-        for (;;) {
+        for (;;)
+        {
           MYSQL_ROW row = mysql_fetch_row(mres);
-          if (!row) {
+          if (!row)
+          {
             break;
-          } else {
+          }
+          else
+          {
             ++ret;
-            if (row[0] && !no_print) {
-              if (row[1] && row[1][0]) {
+            if (row[0] && !no_print)
+            {
+              if (row[1] && row[1][0])
+              {
                 printf("%s[%s]\n", row[0], row[1]);
-              } else {
+              }
+              else
+              {
                 printf("%s\n", row[0]);
               }
             }
@@ -1296,7 +1728,8 @@ static int mysql_list_admin_users(int no_print) {
         }
       }
 
-      if (mres) {
+      if (mres)
+      {
         mysql_free_result(mres);
       }
     }
@@ -1304,9 +1737,11 @@ static int mysql_list_admin_users(int no_print) {
   return ret;
 }
 
-static void mysql_disconnect(void) {
+static void mysql_disconnect(void)
+{
   MYSQL *mydbconnection = (MYSQL *)pthread_getspecific(connection_key);
-  if (mydbconnection) {
+  if (mydbconnection)
+  {
     mysql_close(mydbconnection);
     mydbconnection = NULL;
   }

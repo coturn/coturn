@@ -38,7 +38,8 @@
 #include "ns_ioalib_impl.h"
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 ///////////////////////////////////////////

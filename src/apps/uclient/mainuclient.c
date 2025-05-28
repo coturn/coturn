@@ -157,7 +157,8 @@ static char Usage[] =
 
 //////////////////////////////////////////////////
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv)
+{
   int port = 0;
   int messagenumber = 5;
   char local_addr[256];
@@ -179,7 +180,8 @@ int main(int argc, char **argv) {
   wVersionRequested = MAKEWORD(2, 2);
 
   err = WSAStartup(wVersionRequested, &wsaData);
-  if (err != 0) {
+  if (err != 0)
+  {
     /* Tell the user that we could not find a usable */
     /* Winsock DLL.                                  */
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "WSAStartup failed with error: %d\n", err);
@@ -196,9 +198,12 @@ int main(int argc, char **argv) {
 
   memset(local_addr, 0, sizeof(local_addr));
 
-  while ((c = getopt(argc, argv, "a:d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:E:F:o:bZvsyhcxXgtTSAPDNOUMRIGBJ")) != -1) {
-    switch (c) {
-    case 'J': {
+  while ((c = getopt(argc, argv, "a:d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:E:F:o:bZvsyhcxXgtTSAPDNOUMRIGBJ")) != -1)
+  {
+    switch (c)
+    {
+    case 'J':
+    {
 
       oauth = 1;
 
@@ -210,21 +215,25 @@ int main(int argc, char **argv) {
       char err_msg[1025] = "\0";
       size_t err_msg_size = sizeof(err_msg) - 1;
 
-      if (!convert_oauth_key_data(&okd_array[0], &okey_array[0], err_msg, err_msg_size)) {
+      if (!convert_oauth_key_data(&okd_array[0], &okey_array[0], err_msg, err_msg_size))
+      {
         fprintf(stderr, "%s\n", err_msg);
         exit(-1);
       }
 
-      if (!convert_oauth_key_data(&okd_array[1], &okey_array[1], err_msg, err_msg_size)) {
+      if (!convert_oauth_key_data(&okd_array[1], &okey_array[1], err_msg, err_msg_size))
+      {
         fprintf(stderr, "%s\n", err_msg);
         exit(-1);
       }
 
-      if (!convert_oauth_key_data(&okd_array[2], &okey_array[2], err_msg, err_msg_size)) {
+      if (!convert_oauth_key_data(&okd_array[2], &okey_array[2], err_msg, err_msg_size))
+      {
         fprintf(stderr, "%s\n", err_msg);
         exit(-1);
       }
-    } break;
+    }
+    break;
     case 'a':
       bps = (band_limit_t)strtoul(optarg, NULL, 10);
       break;
@@ -246,14 +255,17 @@ int main(int argc, char **argv) {
     case 'M':
       mobility = true;
       break;
-    case 'E': {
+    case 'E':
+    {
       char *fn = find_config_file(optarg);
-      if (!fn) {
+      if (!fn)
+      {
         fprintf(stderr, "ERROR: file %s not found\n", optarg);
         exit(-1);
       }
       STRCPY(ca_cert_file, fn);
-    } break;
+    }
+    break;
     case 'O':
       dos = true;
       break;
@@ -356,43 +368,54 @@ int main(int argc, char **argv) {
       g_use_auth_secret_with_timestamp = true;
       STRCPY(g_auth_secret, optarg);
       break;
-    case 'i': {
+    case 'i':
+    {
       char *fn = find_config_file(optarg);
-      if (!fn) {
+      if (!fn)
+      {
         fprintf(stderr, "ERROR: file %s not found\n", optarg);
         exit(-1);
       }
       STRCPY(cert_file, fn);
       free(fn);
-    } break;
-    case 'k': {
+    }
+    break;
+    case 'k':
+    {
       char *fn = find_config_file(optarg);
-      if (!fn) {
+      if (!fn)
+      {
         fprintf(stderr, "ERROR: file %s not found\n", optarg);
         exit(-1);
       }
       STRCPY(pkey_file, fn);
       free(fn);
-    } break;
+    }
+    break;
     default:
       fprintf(stderr, "%s\n", Usage);
       exit(1);
     }
   }
 
-  if (dual_allocation) {
+  if (dual_allocation)
+  {
     no_rtcp = true;
   }
 
-  if (g_use_auth_secret_with_timestamp) {
+  if (g_use_auth_secret_with_timestamp)
+  {
 
     {
       char new_uname[1025];
       const unsigned long exp_time = 3600 * 24; /* one day */
-      if (g_uname[0]) {
+      if (g_uname[0])
+      {
         snprintf(new_uname, sizeof(new_uname), "%lu%c%s", (unsigned long)time(NULL) + exp_time, rest_api_separator,
                  (char *)g_uname);
-      } else {
+      }
+      else
+      {
         snprintf(new_uname, sizeof(new_uname), "%lu", (unsigned long)time(NULL) + exp_time);
       }
       STRCPY(g_uname, new_uname);
@@ -401,7 +424,8 @@ int main(int argc, char **argv) {
       uint8_t hmac[MAXSHASIZE];
       unsigned int hmac_len;
 
-      switch (shatype) {
+      switch (shatype)
+      {
       case SHATYPE_SHA256:
         hmac_len = SHA256SIZEBYTES;
         break;
@@ -418,12 +442,15 @@ int main(int argc, char **argv) {
       hmac[0] = 0;
 
       if (stun_calculate_hmac(g_uname, strlen((char *)g_uname), (uint8_t *)g_auth_secret, strlen(g_auth_secret), hmac,
-                              &hmac_len, shatype)) {
+                              &hmac_len, shatype))
+      {
         size_t pwd_length = 0;
         char *pwd = base64_encode(hmac, hmac_len, &pwd_length);
 
-        if (pwd) {
-          if (pwd_length > 0) {
+        if (pwd)
+        {
+          if (pwd_length > 0)
+          {
             memcpy(g_upwd, pwd, pwd_length);
             g_upwd[pwd_length] = 0;
           }
@@ -433,7 +460,8 @@ int main(int argc, char **argv) {
     }
   }
 
-  if (is_TCP_relay()) {
+  if (is_TCP_relay())
+  {
     dont_fragment = false;
     no_rtcp = true;
     c2c = true;
@@ -441,65 +469,85 @@ int main(int argc, char **argv) {
     do_not_use_channel = true;
   }
 
-  if (port == 0) {
-    if (use_secure) {
+  if (port == 0)
+  {
+    if (use_secure)
+    {
       port = DEFAULT_STUN_TLS_PORT;
-    } else {
+    }
+    else
+    {
       port = DEFAULT_STUN_PORT;
     }
   }
 
-  if (clmessage_length < (int)sizeof(message_info)) {
+  if (clmessage_length < (int)sizeof(message_info))
+  {
     clmessage_length = (int)sizeof(message_info);
   }
 
   const int max_header = 100;
-  if (clmessage_length > (int)(STUN_BUFFER_SIZE - max_header)) {
+  if (clmessage_length > (int)(STUN_BUFFER_SIZE - max_header))
+  {
     fprintf(stderr, "Message length was corrected to %d\n", (STUN_BUFFER_SIZE - max_header));
     clmessage_length = (int)(STUN_BUFFER_SIZE - max_header);
   }
 
-  if (optind >= argc) {
+  if (optind >= argc)
+  {
     fprintf(stderr, "%s\n", Usage);
     exit(-1);
   }
 
-  if (!c2c) {
-    if (!peer_address[0]) {
+  if (!c2c)
+  {
+    if (!peer_address[0])
+    {
       fprintf(stderr, "Either -e peer_address or -y must be specified\n");
       return -1;
     }
 
-    if (make_ioa_addr((const uint8_t *)peer_address, peer_port, &peer_addr) < 0) {
+    if (make_ioa_addr((const uint8_t *)peer_address, peer_port, &peer_addr) < 0)
+    {
       return -1;
     }
 
-    if (peer_addr.ss.sa_family == AF_INET6) {
+    if (peer_addr.ss.sa_family == AF_INET6)
+    {
       default_address_family = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6;
-    } else if (peer_addr.ss.sa_family == AF_INET) {
+    }
+    else if (peer_addr.ss.sa_family == AF_INET)
+    {
       default_address_family = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4;
     }
   }
 
   /* SSL Init ==>> */
 
-  if (use_secure) {
+  if (use_secure)
+  {
 
     SSL_load_error_strings();
     OpenSSL_add_ssl_algorithms();
 
     const char *csuite = "ALL"; //"AES256-SHA" "DH"
-    if (use_null_cipher) {
+    if (use_null_cipher)
+    {
       csuite = "eNULL";
-    } else if (cipher_suite[0]) {
+    }
+    else if (cipher_suite[0])
+    {
       csuite = cipher_suite;
     }
 
-    if (use_tcp) {
+    if (use_tcp)
+    {
       root_tls_ctx[root_tls_ctx_num] = SSL_CTX_new(TLS_client_method());
       SSL_CTX_set_cipher_list(root_tls_ctx[root_tls_ctx_num], csuite);
       root_tls_ctx_num++;
-    } else {
+    }
+    else
+    {
 #if !DTLS_SUPPORTED
       fprintf(stderr, "ERROR: DTLS is not supported.\n");
       exit(-1);
@@ -513,33 +561,42 @@ int main(int argc, char **argv) {
 
   int use_cert = 0;
   int use_ca_cert = 0;
-  if (cert_file[0] && pkey_file[0]) {
+  if (cert_file[0] && pkey_file[0])
+  {
     use_cert = 1;
   }
-  if (ca_cert_file[0]) {
+  if (ca_cert_file[0])
+  {
     use_ca_cert = 1;
   }
 
-  if (use_cert) {
+  if (use_cert)
+  {
     int sslind = 0;
-    for (sslind = 0; sslind < root_tls_ctx_num; sslind++) {
-      if (!SSL_CTX_use_certificate_chain_file(root_tls_ctx[sslind], cert_file)) {
+    for (sslind = 0; sslind < root_tls_ctx_num; sslind++)
+    {
+      if (!SSL_CTX_use_certificate_chain_file(root_tls_ctx[sslind], cert_file))
+      {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nERROR: could not load certificate chain file!\n");
         exit(-1);
       }
 
-      if (!SSL_CTX_use_PrivateKey_file(root_tls_ctx[sslind], pkey_file, SSL_FILETYPE_PEM)) {
+      if (!SSL_CTX_use_PrivateKey_file(root_tls_ctx[sslind], pkey_file, SSL_FILETYPE_PEM))
+      {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nERROR: could not load private key file!\n");
         exit(-1);
       }
 
-      if (!SSL_CTX_check_private_key(root_tls_ctx[sslind])) {
+      if (!SSL_CTX_check_private_key(root_tls_ctx[sslind]))
+      {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nERROR: invalid private key!\n");
         exit(-1);
       }
 
-      if (use_ca_cert) {
-        if (!SSL_CTX_load_verify_locations(root_tls_ctx[sslind], ca_cert_file, NULL)) {
+      if (use_ca_cert)
+      {
+        if (!SSL_CTX_load_verify_locations(root_tls_ctx[sslind], ca_cert_file, NULL))
+        {
           TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: cannot load CA from file: %s\n", ca_cert_file);
           exit(-1);
         }
@@ -549,7 +606,9 @@ int main(int argc, char **argv) {
 
         /* Set the verification depth to 9 */
         SSL_CTX_set_verify_depth(root_tls_ctx[sslind], 9);
-      } else {
+      }
+      else
+      {
         SSL_CTX_set_verify(root_tls_ctx[sslind], SSL_VERIFY_NONE, NULL);
       }
     }

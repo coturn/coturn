@@ -43,7 +43,8 @@
 #include "apputils.h"
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 #ifndef _MSC_VER
@@ -62,13 +63,15 @@ typedef struct _realm_status_t realm_status_t;
 struct _realm_params_t;
 typedef struct _realm_params_t realm_params_t;
 
-struct _realm_status_t {
+struct _realm_status_t
+{
 
   vint total_current_allocs;
   ur_string_map *alloc_counters;
 };
 
-struct _realm_params_t {
+struct _realm_params_t
+{
 
   int is_default_realm;
 
@@ -83,7 +86,8 @@ void update_o_to_realm(ur_string_map *o_to_realm_new);
 
 //////////// USER DB //////////////////////////////
 
-struct auth_message {
+struct auth_message
+{
   turnserver_id id;
   turn_credential_type ct;
   int in_oauth;
@@ -99,7 +103,8 @@ struct auth_message {
   int success;
 };
 
-enum _TURN_USERDB_TYPE {
+enum _TURN_USERDB_TYPE
+{
   TURN_USERDB_TYPE_UNKNOWN,
   TURN_USERDB_TYPE_SQLITE,
   TURN_USERDB_TYPE_PQ,
@@ -110,7 +115,8 @@ enum _TURN_USERDB_TYPE {
 
 typedef enum _TURN_USERDB_TYPE TURN_USERDB_TYPE;
 
-enum _TURNADMIN_COMMAND_TYPE {
+enum _TURNADMIN_COMMAND_TYPE
+{
   TA_COMMAND_UNKNOWN,
   TA_PRINT_KEY,
   TA_UPDATE_USER,
@@ -130,7 +136,8 @@ typedef enum _TURNADMIN_COMMAND_TYPE TURNADMIN_COMMAND_TYPE;
 
 /////////// SHARED SECRETS //////////////////
 
-struct _secrets_list {
+struct _secrets_list
+{
   char **secrets;
   size_t sz;
 };
@@ -140,23 +147,27 @@ typedef struct _secrets_list secrets_list_t;
 
 #define TURN_LONG_STRING_SIZE (1025)
 
-typedef struct _redis_stats_db_t {
+typedef struct _redis_stats_db_t
+{
   char connection_string[TURN_LONG_STRING_SIZE];
   char connection_string_sanitized[TURN_LONG_STRING_SIZE];
 } redis_stats_db_t;
 
-typedef struct _ram_users_db_t {
+typedef struct _ram_users_db_t
+{
   size_t users_number;
   ur_string_map *static_accounts;
   secrets_list_t static_auth_secrets;
 } ram_users_db_t;
 
-typedef struct _persistent_users_db_t {
+typedef struct _persistent_users_db_t
+{
   char userdb[TURN_LONG_STRING_SIZE];
   char userdb_sanitized[TURN_LONG_STRING_SIZE];
 } persistent_users_db_t;
 
-typedef struct _default_users_db_t {
+typedef struct _default_users_db_t
+{
   TURN_USERDB_TYPE userdb_type;
 
   persistent_users_db_t persistent_users_db;
