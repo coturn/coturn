@@ -634,8 +634,8 @@ Options with values:
                     address family, then by default the NAT behavior discovery feature enabled.
                     This option enables this original behavior, because the NAT behavior discovery
                     adds attributes to response, and this increase the possibility of an amplification attack.
-                    Strongly encouraged to not use this option to decrease gain factor in STUN binding responses.
---no-stun-backward-compatibility		Disable handling old STUN Binding requests and disable MAPPED-ADDRESS attribute in binding response (use only the XOR-MAPPED-ADDRESS).
+                    Strongly encouraged to use this option to decrease gain factor in STUN binding responses.
+--stun-backward-compatibility		Enable handling old STUN Binding requests using MAPPED-ADDRESS attribute in binding response (instead of XOR-MAPPED-ADDRESS).
 --response-origin-only-with-rfc5780		Only send RESPONSE-ORIGIN attribute in binding response if RFC5780 is enabled.
 					
 

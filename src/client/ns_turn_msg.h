@@ -131,7 +131,7 @@ bool is_channel_msg_str(const uint8_t *buf, size_t blen);
 void stun_set_binding_request_str(uint8_t *buf, size_t *len);
 bool stun_set_binding_response_str(uint8_t *buf, size_t *len, stun_tid *tid, const ioa_addr *reflexive_addr,
                                    int error_code, const uint8_t *reason, uint32_t cookie, bool old_stun,
-                                   bool no_stun_backward_compatibility);
+                                   bool stun_backward_compatibility);
 bool stun_is_binding_request_str(const uint8_t *buf, size_t len, size_t offset);
 bool stun_is_binding_response_str(const uint8_t *buf, size_t len);
 

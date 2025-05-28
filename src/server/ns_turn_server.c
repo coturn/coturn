@@ -2857,7 +2857,7 @@ static int handle_turn_binding(turn_turnserver *server, ts_ur_super_session *ss,
     size_t len = ioa_network_buffer_get_size(nbh);
     if (stun_set_binding_response_str(ioa_network_buffer_data(nbh), &len, tid,
                                       get_remote_addr_from_ioa_socket(ss->client_socket), 0, NULL, cookie, old_stun,
-                                      *server->no_stun_backward_compatibility)) {
+                                      *server->stun_backward_compatibility)) {
 
       addr_cpy(response_origin, get_local_addr_from_ioa_socket(ss->client_socket));
 
@@ -4565,7 +4565,7 @@ static int read_client_connection(turn_turnserver *server, ts_ur_super_session *
 
   } else if (old_stun_is_command_message_str(ioa_network_buffer_data(in_buffer->nbh),
                                              ioa_network_buffer_get_size(in_buffer->nbh), &old_stun_cookie) &&
-             !(*(server->no_stun)) && !(*(server->no_stun_backward_compatibility))) {
+             !(*(server->no_stun)) && !(*(server->stun_backward_compatibility))) {
 
     ioa_network_buffer_handle nbh = ioa_network_buffer_allocate(server->e);
     int resp_constructed = 0;
@@ -4900,7 +4900,7 @@ void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, io
                       send_turn_session_info_cb send_turn_session_info, send_https_socket_cb send_https_socket,
                       allocate_bps_cb allocate_bps_func, int oauth, const char *oauth_server_name,
                       const char *acme_redirect, ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family,
-                      bool *log_binding, bool *no_stun_backward_compatibility, bool *response_origin_only_with_rfc5780,
+                      bool *log_binding, bool *stun_backward_compatibility, bool *response_origin_only_with_rfc5780,
                       bool *respond_http_unsupported) {
 
   if (!server) {
@@ -4977,7 +4977,7 @@ void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, io
 
   server->log_binding = log_binding;
 
-  server->no_stun_backward_compatibility = no_stun_backward_compatibility;
+  server->stun_backward_compatibility = stun_backward_compatibility;
 
   server->response_origin_only_with_rfc5780 = response_origin_only_with_rfc5780;
 
