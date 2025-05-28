@@ -1123,7 +1123,7 @@ void stun_set_binding_request_str(uint8_t *buf, size_t *len) { stun_init_request
 
 bool stun_set_binding_response_str(uint8_t *buf, size_t *len, stun_tid *tid, const ioa_addr *reflexive_addr,
                                    int error_code, const uint8_t *reason, uint32_t cookie, bool old_stun,
-                                   bool no_stun_backward_compatibility)
+                                   bool stun_backward_compatibility)
 
 {
   if (!error_code) {
@@ -1138,7 +1138,7 @@ bool stun_set_binding_response_str(uint8_t *buf, size_t *len, stun_tid *tid, con
       }
     }
     if (reflexive_addr) {
-      if (!no_stun_backward_compatibility &&
+      if (stun_backward_compatibility &&
           !stun_attr_add_addr_str(buf, len, STUN_ATTRIBUTE_MAPPED_ADDRESS, reflexive_addr)) {
         return false;
       }

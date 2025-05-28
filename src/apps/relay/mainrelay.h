@@ -330,7 +330,7 @@ typedef struct _turn_params_ {
   bool no_dynamic_realms;
 
   bool log_binding;
-  bool no_stun_backward_compatibility;
+  bool stun_backward_compatibility;
   bool response_origin_only_with_rfc5780;
   bool respond_http_unsupported;
 } turn_params_t;

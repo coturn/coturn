@@ -194,8 +194,8 @@ struct _turn_turnserver {
   /* Log Binding Requrest */
   bool *log_binding;
 
-  /* Disable handling old STUN Binding Requests and disable MAPPED-ADDRESS attribute in response */
-  bool *no_stun_backward_compatibility;
+  /* Enable handling old STUN Binding Requests and enable MAPPED-ADDRESS attribute in response */
+  bool *stun_backward_compatibility;
 
   /* Only send RESPONSE-ORIGIN attribute in response if RFC5780 is enabled */
   bool *response_origin_only_with_rfc5780;
@@ -225,7 +225,7 @@ void init_turn_server(
     int server_relay, send_turn_session_info_cb send_turn_session_info, send_https_socket_cb send_https_socket,
     allocate_bps_cb allocate_bps_func, int oauth, const char *oauth_server_name, const char *acme_redirect,
     ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family, bool *log_binding,
-    bool *no_stun_backward_compatibility, bool *response_origin_only_with_rfc5780, bool *respond_http_unsupported);
+    bool *stun_backward_compatibility, bool *response_origin_only_with_rfc5780, bool *respond_http_unsupported);
 
 ioa_engine_handle turn_server_get_engine(turn_turnserver *s);
 

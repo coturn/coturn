@@ -223,7 +223,7 @@ turn_params_t turn_params = {
     false,                                  /* no_dynamic_realms */
 
     false, /* log_binding */
-    false, /* no_stun_backward_compatibility */
+    false, /* stun_backward_compatibility */
     false, /* response_origin_only_with_rfc5780 */
     false  /* respond_http_unsupported */
 };
@@ -1499,7 +1499,7 @@ enum EXTRA_OPTS {
   LOG_BINDING_OPT,
   NO_RFC5780,
   ENABLE_RFC5780,
-  NO_STUN_BACKWARD_COMPATIBILITY_OPT,
+  STUN_BACKWARD_COMPATIBILITY_OPT,
   RESPONSE_ORIGIN_ONLY_WITH_RFC5780_OPT,
   RESPOND_HTTP_UNSUPPORTED_OPT,
   VERSION_OPT
@@ -1643,7 +1643,7 @@ static const struct myoption long_options[] = {
     {"log-binding", optional_argument, NULL, LOG_BINDING_OPT},
     {"no-rfc5780", optional_argument, NULL, NO_RFC5780},
     {"rfc5780", optional_argument, NULL, ENABLE_RFC5780},
-    {"no-stun-backward-compatibility", optional_argument, NULL, NO_STUN_BACKWARD_COMPATIBILITY_OPT},
+    {"stun-backward-compatibility", optional_argument, NULL, STUN_BACKWARD_COMPATIBILITY_OPT},
     {"response-origin-only-with-rfc5780", optional_argument, NULL, RESPONSE_ORIGIN_ONLY_WITH_RFC5780_OPT},
     {"respond-http-unsupported", optional_argument, NULL, RESPOND_HTTP_UNSUPPORTED_OPT},
     {"version", optional_argument, NULL, VERSION_OPT},
@@ -2355,8 +2355,8 @@ static void set_option(int c, char *value) {
   case ENABLE_RFC5780:
     turn_params.rfc5780 = true;
     break;
-  case NO_STUN_BACKWARD_COMPATIBILITY_OPT:
-    turn_params.no_stun_backward_compatibility = get_bool_value(value);
+  case STUN_BACKWARD_COMPATIBILITY_OPT:
+    turn_params.stun_backward_compatibility = get_bool_value(value);
     break;
   case RESPONSE_ORIGIN_ONLY_WITH_RFC5780_OPT:
     turn_params.response_origin_only_with_rfc5780 = get_bool_value(value);
