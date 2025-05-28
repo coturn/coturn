@@ -900,13 +900,13 @@ By default it is disabled for security reasons!
 Set network engine type for the process (for internal purposes).
 .TP
 .B
-\fB\-\-no\-rfc5780\fP
-Disable RFC5780 (NAT behavior discovery).
+\fB\-\-rfc5780\fP
+Enable RFC5780 (NAT behavior discovery).
 Originally, if there are more than one listener address from the same
 address family, then by default the NAT behavior discovery feature enabled.
-This option disables this original behavior, because the NAT behavior discovery
-adds attributes to response, and this increase the possibility of an amplification attack.
-Strongly encouraged to use this option to decrease gain factor in STUN binding responses.
+This option enables this original behavior (NAT behavior discovery
+adds attributes to response, and this increase the possibility of an amplification attack).
+Strongly encouraged to keep this option off to decrease gain factor in STUN binding responses.
 .TP
 .B
 \fB\-\-no\-stun\-backward\-compatibility\fP
