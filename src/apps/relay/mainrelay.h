@@ -331,7 +331,6 @@ typedef struct _turn_params_ {
 
   bool log_binding;
   bool stun_backward_compatibility;
-  bool response_origin_only_with_rfc5780;
   bool respond_http_unsupported;
 } turn_params_t;
 

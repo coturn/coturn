@@ -2868,20 +2868,7 @@ static int handle_turn_binding(turn_turnserver *server, ts_ur_super_session *ss,
                                get_remote_addr_from_ioa_socket(ss->client_socket));
       }
 
-      if (!is_rfc5780(server)) {
-
-        if (!(*server->response_origin_only_with_rfc5780)) {
-          if (old_stun) {
-            stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len, OLD_STUN_ATTRIBUTE_SOURCE_ADDRESS,
-                                   response_origin);
-            stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len, OLD_STUN_ATTRIBUTE_CHANGED_ADDRESS,
-                                   response_origin);
-          } else {
-            stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_RESPONSE_ORIGIN, response_origin);
-          }
-        }
-
-      } else if (ss->client_socket) {
+      if (is_rfc5780(server) && (ss->client_socket)) {
 
         ioa_addr other_address;
 
@@ -4900,8 +4887,7 @@ void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, io
                       send_turn_session_info_cb send_turn_session_info, send_https_socket_cb send_https_socket,
                       allocate_bps_cb allocate_bps_func, int oauth, const char *oauth_server_name,
                       const char *acme_redirect, ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family,
-                      bool *log_binding, bool *stun_backward_compatibility, bool *response_origin_only_with_rfc5780,
-                      bool *respond_http_unsupported) {
+                      bool *log_binding, bool *stun_backward_compatibility, bool *respond_http_unsupported) {
 
   if (!server) {
     return;
@@ -4978,8 +4964,6 @@ void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, io
   server->log_binding = log_binding;
 
   server->stun_backward_compatibility = stun_backward_compatibility;
-
-  server->response_origin_only_with_rfc5780 = response_origin_only_with_rfc5780;
 
   server->respond_http_unsupported = respond_http_unsupported;
 
