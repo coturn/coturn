@@ -1323,6 +1323,7 @@ static char Usage[] =
     "256.\n"
     " --ne=[1|2|3]					Set network engine type for the process (for internal "
     "purposes).\n"
+    " --no-rfc5780					DEPRECATED and now default, see --rfc5780.\n"
     " --rfc5780					Enable RFC5780 (NAT behavior discovery).\n"
     "						Originally, if there are more than one listener address from the same\n"
     "						address family, then by default the NAT behavior discovery feature "
@@ -1496,6 +1497,7 @@ enum EXTRA_OPTS {
   SECRET_KEY_OPT,
   ACME_REDIRECT_OPT,
   LOG_BINDING_OPT,
+  NO_RFC5780,
   ENABLE_RFC5780,
   NO_STUN_BACKWARD_COMPATIBILITY_OPT,
   RESPONSE_ORIGIN_ONLY_WITH_RFC5780_OPT,
@@ -1639,6 +1641,7 @@ static const struct myoption long_options[] = {
     {"allocation-default-address-family", required_argument, NULL, 'A'},
     {"acme-redirect", required_argument, NULL, ACME_REDIRECT_OPT},
     {"log-binding", optional_argument, NULL, LOG_BINDING_OPT},
+    {"no-rfc5780", optional_argument, NULL, NO_RFC5780},
     {"rfc5780", optional_argument, NULL, ENABLE_RFC5780},
     {"no-stun-backward-compatibility", optional_argument, NULL, NO_STUN_BACKWARD_COMPATIBILITY_OPT},
     {"response-origin-only-with-rfc5780", optional_argument, NULL, RESPONSE_ORIGIN_ONLY_WITH_RFC5780_OPT},
@@ -2346,6 +2349,8 @@ static void set_option(int c, char *value) {
     break;
   case LOG_BINDING_OPT:
     turn_params.log_binding = get_bool_value(value);
+    break;
+  case NO_RFC5780: // DEPRECATED, see below
     break;
   case ENABLE_RFC5780:
     turn_params.rfc5780 = true;
