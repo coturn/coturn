@@ -1323,7 +1323,7 @@ static char Usage[] =
     "256.\n"
     " --ne=[1|2|3]					Set network engine type for the process (for internal "
     "purposes).\n"
-    " --rfc5780					Disable RFC5780 (NAT behavior discovery).\n"
+    " --rfc5780					Enable RFC5780 (NAT behavior discovery).\n"
     "						Originally, if there are more than one listener address from the same\n"
     "						address family, then by default the NAT behavior discovery feature "
     "enabled.\n"
