@@ -1001,9 +1001,9 @@ static void setup_listener(void) {
     bufferevent_enable(turn_params.listener.in_buf, EV_READ);
   }
 
-  if (turn_params.rfc5780 == 1) {
+  if (turn_params.rfc5780 == true) {
     if (turn_params.listener.addrs_number < 2 || turn_params.external_ip) {
-      turn_params.rfc5780 = 0;
+      turn_params.rfc5780 = false;
       TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "STUN CHANGE_REQUEST not supported: only one IP address is provided\n");
     } else {
       turn_params.listener.services_number = turn_params.listener.services_number * 2;
