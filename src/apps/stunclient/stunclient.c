@@ -302,7 +302,7 @@ static int run_stunclient(const char *rip, int rport, int *port, bool *rfc5780, 
   }
 
   if (padding && !stun_attr_add_padding_str((uint8_t *)buf.buf, (size_t *)&(buf.len), 1500)) {
-      printf("%s: ERROR: Cannot add padding\n", __FUNCTION__);
+    printf("%s: ERROR: Cannot add padding\n", __FUNCTION__);
   }
 
   {
