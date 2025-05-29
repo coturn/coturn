@@ -105,14 +105,8 @@ static int run_stunclient(const char *rip, int rport, int *port, bool *rfc5780, 
     rpa.setResponsePort((uint16_t)response_port);
     try {
       req.addAttr(rpa);
-    } catch (turn::WrongStunAttrFormatException &ex1) {
-      printf("Wrong rp attr format\n");
-      exit(-1);
-    } catch (turn::WrongStunBufferFormatException &ex2) {
-      printf("Wrong stun buffer format (1)\n");
-      exit(-1);
-    } catch (...) {
-      printf("Wrong something (1)\n");
+    } catch (const std::exception &ex) {
+      printf(ex.what());
       exit(-1);
     }
   }
@@ -122,14 +116,8 @@ static int run_stunclient(const char *rip, int rport, int *port, bool *rfc5780, 
     cra.setChangePort(change_port);
     try {
       req.addAttr(cra);
-    } catch (turn::WrongStunAttrFormatException &ex1) {
-      printf("Wrong cr attr format\n");
-      exit(-1);
-    } catch (turn::WrongStunBufferFormatException &ex2) {
-      printf("Wrong stun buffer format (2)\n");
-      exit(-1);
-    } catch (...) {
-      printf("Wrong something (2)\n");
+    } catch (const std::exception &ex) {
+      printf(ex.what());
       exit(-1);
     }
   }
@@ -138,14 +126,8 @@ static int run_stunclient(const char *rip, int rport, int *port, bool *rfc5780, 
     pa.setPadding(1500);
     try {
       req.addAttr(pa);
-    } catch (turn::WrongStunAttrFormatException &ex1) {
-      printf("Wrong p attr format\n");
-      exit(-1);
-    } catch (turn::WrongStunBufferFormatException &ex2) {
-      printf("Wrong stun buffer format (3)\n");
-      exit(-1);
-    } catch (...) {
-      printf("Wrong something (3)\n");
+    } catch (const std::exception &ex) {
+      printf(ex.what());
       exit(-1);
     }
   }
