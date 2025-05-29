@@ -68,12 +68,7 @@ static TURN_MUTEX_DECLARE(o_to_realm_mutex);
 static ur_string_map *o_to_realm = NULL;
 static secrets_list_t realms_list;
 
-#ifndef _MSC_VER
-_Atomic
-#else
-volatile
-#endif
-    size_t global_allocation_count = 0; // used for drain mode, to know when all allocations have gone away
+atomic_size_t global_allocation_count = 0; // used for drain mode, to know when all allocations have gone away
 
 static char userdb_type_unknown[] = "Unknown";
 static char userdb_type_sqlite[] = "SQLite";
@@ -691,10 +686,11 @@ int check_new_allocation_quota(uint8_t *user, int oauth, uint8_t *realm) {
     ur_string_map_unlock(rp->status.alloc_counters);
   }
 
-#ifndef _MSC_VER
-  size_t cur_count = ++global_allocation_count;
+  global_allocation_count++;
+#ifdef __cplusplus
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "Global turn allocation count incremented, now %ld\n", global_allocation_count.load());
 #else
-  size_t cur_count = (size_t)InterlockedIncrement((volatile LONG *)&global_allocation_count);
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "Global turn allocation count incremented, now %ld\n", global_allocation_count);
 #endif
   if (turn_params.verbose > TURN_VERBOSE_NONE) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "Global turn allocation count incremented, now %ld\n", cur_count);
@@ -727,14 +723,16 @@ void release_allocation_quota(uint8_t *user, int oauth, uint8_t *realm) {
     free(username);
   }
 
-  int log_level = TURN_LOG_LEVEL_DEBUG;
+  TURN_LOG_LEVEL log_level = TURN_LOG_LEVEL_DEBUG;
   if (turn_params.drain_turn_server) {
     log_level = TURN_LOG_LEVEL_INFO;
   }
-#ifndef _MSC_VER
-  size_t cur_count = --global_allocation_count;
+
+  global_allocation_count--;
+#ifdef __cplusplus
+  TURN_LOG_FUNC(log_level, "Global turn allocation count decremented, now %ld\n", global_allocation_count.load());
 #else
-  size_t cur_count = (size_t)InterlockedDecrement((volatile LONG *)&global_allocation_count);
+  TURN_LOG_FUNC(log_level, "Global turn allocation count decremented, now %ld\n", global_allocation_count);
 #endif
   if (turn_params.verbose > TURN_VERBOSE_NONE) {
     TURN_LOG_FUNC(log_level, "Global turn allocation count decremented, now %ld\n", cur_count);
