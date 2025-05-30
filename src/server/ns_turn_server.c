@@ -4394,8 +4394,8 @@ static int create_relay_connection(turn_turnserver *server, ts_ur_super_session 
 
     if (lifetime < 1) {
       lifetime = STUN_DEFAULT_ALLOCATE_LIFETIME;
-    } else if (lifetime > (uint32_t)*(server->max_allocate_lifetime)) {
-      lifetime = (uint32_t)*(server->max_allocate_lifetime);
+    } else if (lifetime > (uint32_t) * (server->max_allocate_lifetime)) {
+      lifetime = (uint32_t) * (server->max_allocate_lifetime);
     }
 
     ioa_timer_handle ev = set_ioa_timer(server->e, lifetime, 0, client_ss_allocation_timeout_handler, newelem, 0,

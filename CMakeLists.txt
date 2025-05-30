@@ -41,7 +41,7 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
 # TODO: Modify this when the version is released
-SET(BUILD_VERSION "4.6.3")
+SET(BUILD_VERSION "4.7.0")
 
 # Find Git Version Patch
 IF(EXISTS "${CMAKE_SOURCE_DIR}/.git")
