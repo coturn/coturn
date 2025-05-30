@@ -4384,6 +4384,10 @@ static int create_relay_connection(turn_turnserver *server, ts_ur_super_session 
 
     if (get_ioa_socket_type(newelem->s) != TCP_SOCKET) {
       if (register_callback_on_ioa_socket(server->e, newelem->s, IOA_EV_READ, peer_input_handler, ss, 0) < 0) {
+        IOA_CLOSE_SOCKET(newelem->s);
+        IOA_CLOSE_SOCKET(rtcp_s);
+        *err_code = 500;
+        *reason = (const uint8_t *)"Wrong initialization (internal error)";
         return -1;
       }
     }
