@@ -1,3 +1,57 @@
+Release 4.7.0
+
+Changelist:
+- [BREAKING] Remove support for openssl older than 1.1.1 (#1397) (Michael Jones <jonesmz@users.noreply.github.com>)
+- [BREAKING] Cleanup deprecated options (#1599) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- [BREAKING] Reverse SOFTWARE_ATTRIBUTE_OPT to avoid inverse logic (#1598) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- [BREAKING] Deprecate response-origin-only-with-rfc5780 (#1690) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- [BREAKING] Invert no-stun-backward-compatibility to be default on (#1689) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Make older TLS versions optional (#1693) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Add missing close socket when ioa_socket call fails (#1694) (tyranron <tyranron@gmail.com>)
+- Add spdx tags to all source files (#1510) (Michael Jones <jonesmz@users.noreply.github.com>)
+- Address various minor clang-tidy warnings (#1513) (Michael Jones <jonesmz@users.noreply.github.com>)
+- Update reference to old draft in README to RFC8016 (Gustavo Garcia <gustavogb@gmail.com>)
+- Invert RFC5780 option to default off (#1688) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Add modules diagram to developer doc (#1685) (Gustavo Garcia <gustavogb@gmail.com>)
+- Fix compilation warning with const - non const conversions (#1686) (Gustavo Garcia <gustavogb@gmail.com>)
+- Makefile.in: Don't install sql schema into DOCSDIR (#1684) (Greg Troxel <gdt@lexort.com>)
+- Fix infinite loop in ns_turn_server.c (#1460) (Asmir Mehic <asmir.mehic@gmail.com>)
+- Fix the ability to compile coturn using C++ compiler (#1546) (Michael Jones <jonesmz@users.noreply.github.com>)
+- Restore returning 200 OK on root prometheus path for health check (#1678) (Gustavo Garcia <gustavogb@gmail.com>)
+- Improve MySQL connection error logging to include actual MySQL error message (#1679) (Gustavo Garcia <gustavogb@gmail.com>)
+- redis: use dbname param when redis is unauthenticated (#1668) (maddy <maddy@kitty.garden>)
+- Show allocations increment/decrement logs behind verbose flag (#1677) (Gustavo Garcia <gustavogb@gmail.com>)
+- [Fix] Fix Repeated Line in Example turnserver.conf (#1671) (Stefan Kieszkowski <85728496+stefankiesz@users.noreply.github.com>)
+- change for incorrect handling of TURN_NO_TLS environment variable (#1663) (Leonid Gorbachev <60500216+leonidgorbachev@users.noreply.github.com>)
+- Add Content-Type header to prometheus response (#1662) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix infinite loop while triggering SIGHUP and log file reset causing … (#1630) (nicolas-laduguie <111897939+nicolas-laduguie@users.noreply.github.com>)
+- rename and dependency extraction (#1634) (redraincatching <99604494+redraincatching@users.noreply.github.com>)
+- updated types to bool in _turn_params_ to reflect C11 (#1406) (redraincatching <99604494+redraincatching@users.noreply.github.com>)
+- Windows '_WTA' bug (#1624) (guoyingbo <guoyingbo@gmail.com>)
+- Fix cmake issues detecting mongo and libsystemd on macOS (#1621) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix hiredis detection by cmake (#1620) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Drop TLS version support detection (#1617) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Cleanup ALPN_SUPPORTED define usage (#1616) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix warnings type conversion (#1615) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Add parameter for specifying prometheus path (#1602) (Alex Gustafsson <89969483+alexg-axis@users.noreply.github.com>)
+- Do not build with Ubuntu 18, use 24 (#1613) (Pavel Punsky <eakraly@users.noreply.github.com>)
+
+Contributors:
+- Alex Gustafsson <89969483+alexg-axis@users.noreply.github.com>
+- Asmir Mehic <asmir.mehic@gmail.com>
+- Greg Troxel <gdt@lexort.com>
+- guoyingbo <guoyingbo@gmail.com>
+- Gustavo Garcia <gustavogb@gmail.com>
+- Kai Ren <tyranron@gmail.com>
+- Leonid Gorbachev <60500216+leonidgorbachev@users.noreply.github.com>
+- maddy <maddy@kitty.garden>
+- Michael Jones <jonesmz@users.noreply.github.com>
+- nicolas-laduguie <111897939+nicolas-laduguie@users.noreply.github.com>
+- Pavel Punsky <eakraly@users.noreply.github.com>
+- redraincatching <99604494+redraincatching@users.noreply.github.com>
+- Stefan Kieszkowski <85728496+stefankiesz@users.noreply.github.com>
+- tyranron <tyranron@gmail.com>
+
 Release 4.6.3
 
 Changelist:

@@ -1,6 +1,6 @@
 {
   "name": "coturn",
-  "version-string": "4.6.3",
+  "version-string": "4.7.0",
   "dependencies": [
     {
       "name": "pthreads",
