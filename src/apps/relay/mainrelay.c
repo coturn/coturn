@@ -95,8 +95,8 @@ turn_params_t turn_params = {
     "",                     /*tls_password*/
     "",                     /*dh_file*/
 
-    false, /*no_tlsv1*/
-    false, /*no_tlsv1_1*/
+    false, /*enable_tlsv1*/
+    false, /*enable_tlsv1_1*/
     false, /*no_tlsv1_2*/
            /*no_tls*/
 #if !TLS_SUPPORTED
@@ -1192,12 +1192,8 @@ static char Usage[] =
     " --dh-file	<dh-file-name>			Use custom DH TLS key, stored in PEM format in the file.\n"
     "						Flags --dh566 and --dh1066 are ignored when the DH key is taken from a "
     "file.\n"
-    " --no-tlsv1					Set TLSv1.1/DTLSv1.2 as a minimum supported protocol version.\n"
-    "						With openssl-1.0.2 and below, do not allow "
-    "TLSv1/DTLSv1 protocols.\n"
-    " --no-tlsv1_1					Set TLSv1.2/DTLSv1.2 as a minimum supported protocol version.\n"
-    "						With openssl-1.0.2 and below, do not allow TLSv1.1 "
-    "protocol.\n"
+    " --tlsv1					Set TLSv1 as a minimum supported protocol version.\n"
+    " --tlsv1_1					Set TLSv1.1 as a minimum supported protocol version.\n"
     " --no-tlsv1_2					Set TLSv1.3/DTLSv1.2 as a minimum supported protocol version.\n"
     "						With openssl-1.0.2 and below, do not allow "
     "TLSv1.2/DTLSv1.2 protocols.\n"
@@ -1482,8 +1478,8 @@ enum EXTRA_OPTS {
   DH566_OPT,
   DH1066_OPT,
   NE_TYPE_OPT,
-  NO_TLSV1_OPT,
-  NO_TLSV1_1_OPT,
+  ENABLE_TLSV1_OPT,
+  ENABLE_TLSV1_1_OPT,
   NO_TLSV1_2_OPT,
   CHECK_ORIGIN_CONSISTENCY_OPT,
   ADMIN_MAX_BPS_OPT,
@@ -1633,8 +1629,8 @@ static const struct myoption long_options[] = {
     {"dh566", optional_argument, NULL, DH566_OPT},
     {"dh1066", optional_argument, NULL, DH1066_OPT},
     {"ne", required_argument, NULL, NE_TYPE_OPT},
-    {"no-tlsv1", optional_argument, NULL, NO_TLSV1_OPT},
-    {"no-tlsv1_1", optional_argument, NULL, NO_TLSV1_1_OPT},
+    {"tlsv1", optional_argument, NULL, ENABLE_TLSV1_OPT},
+    {"tlsv1_1", optional_argument, NULL, ENABLE_TLSV1_1_OPT},
     {"no-tlsv1_2", optional_argument, NULL, NO_TLSV1_2_OPT},
     {"secret-key-file", required_argument, NULL, SECRET_KEY_OPT},
     {"keep-address-family", optional_argument, NULL, 'K'},
@@ -1908,11 +1904,11 @@ static void set_option(int c, char *value) {
       turn_params.oauth = get_bool_value(value);
     }
     break;
-  case NO_TLSV1_OPT:
-    turn_params.no_tlsv1 = get_bool_value(value);
+  case ENABLE_TLSV1_OPT:
+    turn_params.enable_tlsv1 = get_bool_value(value);
     break;
-  case NO_TLSV1_1_OPT:
-    turn_params.no_tlsv1_1 = get_bool_value(value);
+  case ENABLE_TLSV1_1_OPT:
+    turn_params.enable_tlsv1_1 = get_bool_value(value);
     break;
   case NO_TLSV1_2_OPT:
     turn_params.no_tlsv1_2 = get_bool_value(value);
@@ -2815,6 +2811,15 @@ static void print_features(unsigned long mfn) {
 #if !TLS_SUPPORTED
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS is not supported\n");
 #else
+  if (turn_params.enable_tlsv1) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS 1 supported\n");
+  }
+  if (turn_params.enable_tlsv1_1) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS 1.1 supported\n");
+  }
+  if (!turn_params.no_tlsv1_2) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS 1.2 supported\n");
+  }
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS 1.3 supported\n");
 #endif
 
@@ -3792,17 +3797,21 @@ static void openssl_load_certificates(void) {
 
   TURN_MUTEX_LOCK(&turn_params.tls_mutex);
   if (!turn_params.no_tls) {
+#if !TLS_SUPPORTED
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: TLS is not supported.\n");
+#else
     set_ctx(&turn_params.tls_ctx, "TLS", TLS_server_method());
-    if (turn_params.no_tlsv1) {
-      SSL_CTX_set_min_proto_version(turn_params.tls_ctx, TLS1_1_VERSION);
+    if (turn_params.enable_tlsv1) {
+      SSL_CTX_set_min_proto_version(turn_params.tls_ctx, TLS1_VERSION);
     }
-    if (turn_params.no_tlsv1_1) {
-      SSL_CTX_set_min_proto_version(turn_params.tls_ctx, TLS1_2_VERSION);
+    if (turn_params.enable_tlsv1_1) {
+      SSL_CTX_set_min_proto_version(turn_params.tls_ctx, TLS1_1_VERSION);
     }
     if (turn_params.no_tlsv1_2) {
       SSL_CTX_set_min_proto_version(turn_params.tls_ctx, TLS1_3_VERSION);
     }
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS cipher suite: %s\n", turn_params.cipher_list);
+#endif
   }
 
   if (!turn_params.no_dtls) {
@@ -3810,9 +3819,6 @@ static void openssl_load_certificates(void) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: DTLS is not supported.\n");
 #else
     set_ctx(&turn_params.dtls_ctx, "DTLS", DTLS_server_method());
-    if (turn_params.no_tlsv1 || turn_params.no_tlsv1_1) {
-      SSL_CTX_set_min_proto_version(turn_params.dtls_ctx, DTLS1_2_VERSION);
-    }
     if (turn_params.no_tlsv1_2) {
       SSL_CTX_set_max_proto_version(turn_params.dtls_ctx, DTLS1_VERSION);
     }
