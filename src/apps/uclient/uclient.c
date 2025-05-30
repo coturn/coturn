@@ -192,7 +192,6 @@ static int remove_all_from_ss(app_ur_session *ss) {
 
 int send_buffer(app_ur_conn_info *clnet_info, stun_buffer *message, bool data_connection, app_tcp_conn_info *atc) {
 
-  int rc = 0;
   int ret = -1;
 
   char *buffer = (char *)(message->buf);
@@ -282,12 +281,14 @@ int send_buffer(app_ur_conn_info *clnet_info, stun_buffer *message, bool data_co
 
     size_t left = message->len;
 
+    ssize_t rc = 0;
+
     while (left > 0) {
       do {
         rc = send(fd, buffer, left, 0);
       } while (rc <= 0 && (socket_eintr() || socket_enobufs() || socket_eagain()));
       if (rc > 0) {
-        left -= (size_t)rc;
+        left -= rc;
         buffer += rc;
       } else {
         tot_send_dropped += 1;

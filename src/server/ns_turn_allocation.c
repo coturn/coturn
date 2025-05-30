@@ -33,8 +33,9 @@
 #include "ns_turn_msg_defs.h" // for STUN_VALID_CHANNEL
 #include "ns_turn_utils.h"    // for TURN_LOG_FUNC, TURN_LOG_LEVEL_ERROR
 
-#include <stdlib.h> // for NULL, size_t, free, realloc, calloc
-#include <string.h> // for memset, memcpy
+#include <stdbool.h> // for bool, false, true
+#include <stdlib.h>  // for NULL, size_t, free, realloc, calloc
+#include <string.h>  // for memset, memcpy
 
 /////////////// Permission forward declarations /////////////////
 
@@ -556,7 +557,7 @@ static void set_new_tc_id(uint8_t server_id, tcp_connection *tc) {
 
 tcp_connection *create_tcp_connection(uint8_t server_id, allocation *a, stun_tid *tid, ioa_addr *peer_addr,
                                       int *err_code) {
-  tcp_connection_list *tcl = &(a->tcs);
+  tcp_connection_list *const tcl = &(a->tcs);
   if (!tcl) {
     return NULL;
   }
@@ -604,7 +605,6 @@ tcp_connection *create_tcp_connection(uint8_t server_id, allocation *a, stun_tid
     a->tcs.elems = new_elems;
     a->tcs.elems[a->tcs.sz] = tc;
     a->tcs.sz += 1;
-    tcl = &(a->tcs);
   }
 
   set_new_tc_id(server_id, tc);

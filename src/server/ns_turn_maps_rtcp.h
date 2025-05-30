@@ -34,7 +34,8 @@
 #include "ns_turn_ioalib.h"
 #include "ns_turn_maps.h"
 
-#include <stddef.h> // for size_t
+#include <stdbool.h> // for bool
+#include <stddef.h>  // for size_t
 
 #ifdef __cplusplus
 extern "C" {
