@@ -745,8 +745,8 @@ static void cli_print_configuration(struct cli_session *cs) {
     cli_print_flag(cs, turn_params.no_dtls, "no-dtls", 0);
     cli_print_flag(cs, turn_params.no_tls, "no-tls", 0);
 
-    cli_print_flag(cs, (!turn_params.no_tlsv1 && !turn_params.no_tls), "TLSv1.0", 0);
-    cli_print_flag(cs, (!turn_params.no_tlsv1_1 && !turn_params.no_tls), "TLSv1.1", 0);
+    cli_print_flag(cs, (turn_params.enable_tlsv1 && !turn_params.no_tls), "TLSv1.0", 0);
+    cli_print_flag(cs, (turn_params.enable_tlsv1_1 && !turn_params.no_tls), "TLSv1.1", 0);
     cli_print_flag(cs, (!turn_params.no_tlsv1_2 && !turn_params.no_tls), "TLSv1.2", 0);
 
     cli_print_uint(cs, (unsigned long)turn_params.listener_port, "listener-port", 0);
@@ -2135,8 +2135,6 @@ static void write_pc_page(ioa_socket_handle s) {
         https_print_flag(sb, turn_params.no_dtls, "no-dtls", 0);
         https_print_flag(sb, turn_params.no_tls, "no-tls", 0);
 
-        https_print_flag(sb, (!turn_params.no_tlsv1 && !turn_params.no_tls), "TLSv1.0", 0);
-        https_print_flag(sb, (!turn_params.no_tlsv1_1 && !turn_params.no_tls), "TLSv1.1", 0);
         https_print_flag(sb, (!turn_params.no_tlsv1_2 && !turn_params.no_tls), "TLSv1.2", 0);
 
         https_print_uint(sb, (unsigned long)turn_params.listener_port, "listener-port", 0);
