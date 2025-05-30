@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * https://opensource.org/license/bsd-3-clause
+ *
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
@@ -27,7 +31,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
 #include "apputils.h"
 #include "ns_turn_utils.h"
 #include "session.h"

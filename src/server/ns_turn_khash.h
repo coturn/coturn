@@ -1,5 +1,9 @@
 /* The MIT License
 
+   SPDX-License-Identifier: MIT
+
+   https://opensource.org/license/mit
+
    Copyright (c) 2008, 2009, 2011 by Attractive Chaos <attractor@live.co.uk>
 
    Permission is hereby granted, free of charge, to any person obtaining
