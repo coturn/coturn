@@ -338,7 +338,7 @@ typedef struct _turn_params_ {
   bool log_binding;
   bool stun_backward_compatibility;
   bool respond_http_unsupported;
-  bool no_error_reason;
+  bool send_error_reason;
 } turn_params_t;
 
 extern turn_params_t turn_params;

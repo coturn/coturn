@@ -229,7 +229,7 @@ turn_params_t turn_params = {
     false, /* log_binding */
     false, /* stun_backward_compatibility */
     false, /* respond_http_unsupported */
-    false  /* no_error_reason */
+    false  /* send_error_reason */
 };
 
 //////////////// OpenSSL Init //////////////////////
@@ -1341,7 +1341,7 @@ static char Usage[] =
     "connections made to ports not\n"
     "						supporting HTTP. The default behaviour is to immediately "
     "close the connection.\n"
-    " --no-error-reason				Do not send error reason phrase in STUN error responses.\n"
+    " --send-error-reason				Send STUN error reason phrases. By default, reason phrases are omitted.\n"
     " --version					Print version (and exit).\n"
     " -h						Help\n"
     "\n";
@@ -1500,7 +1500,7 @@ enum EXTRA_OPTS {
   STUN_BACKWARD_COMPATIBILITY_OPT,
   RESPONSE_ORIGIN_ONLY_WITH_RFC5780_OPT,
   RESPOND_HTTP_UNSUPPORTED_OPT,
-  NO_ERROR_REASON_OPT,
+  SEND_ERROR_REASON_OPT,
   VERSION_OPT
 };
 
@@ -1645,7 +1645,7 @@ static const struct myoption long_options[] = {
     {"stun-backward-compatibility", optional_argument, NULL, STUN_BACKWARD_COMPATIBILITY_OPT},
     {"response-origin-only-with-rfc5780", optional_argument, NULL, RESPONSE_ORIGIN_ONLY_WITH_RFC5780_OPT},
     {"respond-http-unsupported", optional_argument, NULL, RESPOND_HTTP_UNSUPPORTED_OPT},
-    {"no-error-reason", optional_argument, NULL, NO_ERROR_REASON_OPT},
+    {"send-error-reason", optional_argument, NULL, SEND_ERROR_REASON_OPT},
     {"version", optional_argument, NULL, VERSION_OPT},
     {"syslog-facility", required_argument, NULL, SYSLOG_FACILITY_OPT},
     {NULL, no_argument, NULL, 0}};
@@ -2363,8 +2363,8 @@ static void set_option(int c, char *value) {
   case RESPOND_HTTP_UNSUPPORTED_OPT:
     turn_params.respond_http_unsupported = get_bool_value(value);
     break;
-  case NO_ERROR_REASON_OPT:
-    turn_params.no_error_reason = get_bool_value(value);
+  case SEND_ERROR_REASON_OPT:
+    turn_params.send_error_reason = get_bool_value(value);
     break;
 
   /* these options have been already taken care of before: */
