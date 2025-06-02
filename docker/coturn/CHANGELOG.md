@@ -7,6 +7,10 @@ Coturn TURN server Docker image changelog
 ## [edge]
 [edge]: /../../tree/master
 
+### Upgraded
+
+- [Alpine Linux] 3.22: <https://www.alpinelinux.org/posts/Alpine-3.22.0-released.html>
+
 ### Security updated
 
 - [Debian Linux] "bookworm" 20250520 (12.11): <https://github.com/docker-library/official-images/commit/6d7afdaec5dec1a0b4021b4e470853c3e9fba2bc>

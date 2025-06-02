@@ -2,7 +2,7 @@
 # Dockerfile of coturn/coturn:alpine Docker image.
 #
 
-ARG alpine_ver=3.21
+ARG alpine_ver=3.22
 
 
 
