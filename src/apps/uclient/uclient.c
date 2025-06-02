@@ -35,6 +35,7 @@
 #include "uclient.h"
 #include "apputils.h"
 #include "ns_turn_ioalib.h"
+#include "ns_turn_oauth.h"
 #include "ns_turn_utils.h"
 #include "session.h"
 #include "startuclient.h"
