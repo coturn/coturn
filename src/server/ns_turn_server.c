@@ -1463,7 +1463,7 @@ static int handle_turn_allocate(turn_turnserver *server, ts_ur_super_session *ss
 
     size_t len = ioa_network_buffer_get_size(nbh);
     stun_set_allocate_response_str(ioa_network_buffer_data(nbh), &len, tid, NULL, NULL, NULL, 0,
-                                   *(server->max_allocate_lifetime), *err_code, *reason, 0, ss->s_mobile_id);
+                                   *(server->max_allocate_lifetime), *err_code, (server->params.send_error_reason ? *reason : ""), 0, ss->s_mobile_id);
     ioa_network_buffer_set_size(nbh, len);
     *resp_constructed = 1;
   }
@@ -1872,7 +1872,7 @@ static int handle_turn_refresh(turn_turnserver *server, ts_ur_super_session *ss,
       }
 
       size_t len = ioa_network_buffer_get_size(nbh);
-      stun_init_error_response_str(STUN_METHOD_REFRESH, ioa_network_buffer_data(nbh), &len, *err_code, *reason, tid);
+      stun_init_error_response_str(STUN_METHOD_REFRESH, ioa_network_buffer_data(nbh), &len, *err_code, (server->params.send_error_reason ? *reason : ""), tid);
       ioa_network_buffer_set_size(nbh, len);
 
       *resp_constructed = 1;
@@ -2056,7 +2056,7 @@ static void tcp_peer_connection_completed_callback(int success, void *arg) {
         addr_to_string(&(tc->peer_addr), (uint8_t *)rs);
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: failure to connect from %s to %s\n", __FUNCTION__, ls, rs);
       }
-      stun_init_error_response_str(STUN_METHOD_CONNECT, ioa_network_buffer_data(nbh), &len, err_code, NULL, &(tc->tid));
+      stun_init_error_response_str(STUN_METHOD_CONNECT, ioa_network_buffer_data(nbh), &len, err_code, (server->params.send_error_reason ? NULL : ""), &(tc->tid));
     }
 
     ioa_network_buffer_set_size(nbh, len);
@@ -2523,7 +2523,7 @@ int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_co
         ioa_network_buffer_set_size(nbh, len);
       } else {
         size_t len = ioa_network_buffer_get_size(nbh);
-        stun_init_error_response_str(STUN_METHOD_CONNECTION_BIND, ioa_network_buffer_data(nbh), &len, err_code, NULL,
+        stun_init_error_response_str(STUN_METHOD_CONNECTION_BIND, ioa_network_buffer_data(nbh), &len, err_code, (server->params.send_error_reason ? NULL : ""),
                                      tid);
         ioa_network_buffer_set_size(nbh, len);
       }
@@ -3198,7 +3198,8 @@ static int need_stun_authentication(turn_turnserver *server, ts_ur_super_session
 static int create_challenge_response(ts_ur_super_session *ss, stun_tid *tid, int *resp_constructed, int *err_code,
                                      const uint8_t **reason, ioa_network_buffer_handle nbh, uint16_t method) {
   size_t len = ioa_network_buffer_get_size(nbh);
-  stun_init_error_response_str(method, ioa_network_buffer_data(nbh), &len, *err_code, *reason, tid);
+  turn_turnserver *server_ptr = (turn_turnserver *)ss->server;
+  stun_init_error_response_str(method, ioa_network_buffer_data(nbh), &len, *err_code, (server_ptr->params.send_error_reason ? *reason : ""), tid);
   *resp_constructed = 1;
   stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_NONCE, ss->nonce, (int)(NONCE_MAX_SIZE - 1));
   char *realm = ss->realm_options.name;
@@ -3870,7 +3871,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
     err_code = 420;
 
     size_t len = ioa_network_buffer_get_size(nbh);
-    stun_init_error_response_str(method, ioa_network_buffer_data(nbh), &len, err_code, NULL, &tid);
+    stun_init_error_response_str(method, ioa_network_buffer_data(nbh), &len, err_code, (server->params.send_error_reason ? NULL : ""), &tid);
 
     stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_UNKNOWN_ATTRIBUTES,
                       (const uint8_t *)unknown_attrs, (ua_num * 2));
@@ -3889,7 +3890,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
       }
 
       size_t len = ioa_network_buffer_get_size(nbh);
-      stun_init_error_response_str(method, ioa_network_buffer_data(nbh), &len, err_code, reason, &tid);
+      stun_init_error_response_str(method, ioa_network_buffer_data(nbh), &len, err_code, (server->params.send_error_reason ? reason : ""), &tid);
       ioa_network_buffer_set_size(nbh, len);
       *resp_constructed = 1;
     }
@@ -3994,7 +3995,7 @@ static int handle_old_stun_command(turn_turnserver *server, ts_ur_super_session 
     err_code = 420;
 
     size_t len = ioa_network_buffer_get_size(nbh);
-    old_stun_init_error_response_str(method, ioa_network_buffer_data(nbh), &len, err_code, NULL, &tid, cookie);
+    old_stun_init_error_response_str(method, ioa_network_buffer_data(nbh), &len, err_code, (server->params.send_error_reason ? NULL : ""), &tid, cookie);
 
     stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_UNKNOWN_ATTRIBUTES,
                       (const uint8_t *)unknown_attrs, (ua_num * 2));
@@ -4013,7 +4014,7 @@ static int handle_old_stun_command(turn_turnserver *server, ts_ur_super_session 
       }
 
       size_t len = ioa_network_buffer_get_size(nbh);
-      old_stun_init_error_response_str(method, ioa_network_buffer_data(nbh), &len, err_code, reason, &tid, cookie);
+      old_stun_init_error_response_str(method, ioa_network_buffer_data(nbh), &len, err_code, (server->params.send_error_reason ? reason : ""), &tid, cookie);
       ioa_network_buffer_set_size(nbh, len);
       *resp_constructed = 1;
     }
