@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * https://opensource.org/license/bsd-3-clause
+ *
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
@@ -903,7 +907,7 @@ char *dirname(char *path) {
  * \return
  */
 static char *_WTA(__in wchar_t *pszInBuf, __in int nInSize, __out char **pszOutBuf, __out int *pnOutSize) {
-  if (!pszInBuf || !pszOutBuf || !*pszOutBuf || !pnOutSize || nInSize <= 0) {
+  if (!pszInBuf || !pszOutBuf || !pnOutSize || nInSize <= 0) {
     return NULL;
   }
   *pnOutSize = WideCharToMultiByte((UINT)0, (DWORD)0, pszInBuf, nInSize, NULL, 0, NULL, NULL);
@@ -1332,7 +1336,7 @@ void build_base64_decoding_table(void) {
 
   char *table = (char *)calloc(256, sizeof(char));
 
-  for (char i = 0; i < 64; i++) {
+  for (size_t i = 0; i < 64; i++) {
     table[(unsigned char)encoding_table[i]] = i;
   }
   decoding_table = table;

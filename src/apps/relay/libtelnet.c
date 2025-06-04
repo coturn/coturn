@@ -1,4 +1,6 @@
 /*
+ * SPDX-License-Identifier: Unknown
+ *
  * libtelnet - TELNET protocol handling library
  *
  * Sean Middleditch
@@ -720,7 +722,7 @@ static int _mssp_telnet(telnet_t *telnet, char *buffer, size_t size) {
 /* parse ZMP command subnegotiation buffers */
 static int _zmp_telnet(telnet_t *telnet, const char *buffer, size_t size) {
   telnet_event_t ev;
-  char **argv;
+  const char **argv;
   const char *c;
   size_t i, argc;
 
@@ -736,14 +738,14 @@ static int _zmp_telnet(telnet_t *telnet, const char *buffer, size_t size) {
   }
 
   /* allocate argument array, bail on error */
-  if ((argv = (char **)calloc(argc, sizeof(char *))) == 0) {
+  if ((argv = (const char **)calloc(argc, sizeof(char *))) == 0) {
     telnet_error(telnet, __LINE__, __func__, TELNET_ENOMEM, 0, "calloc() failed: %s", strerror(errno));
     return 0;
   }
 
   /* populate argument array */
   for (i = 0, c = buffer; i != argc; ++i) {
-    argv[i] = (char *)c;
+    argv[i] = (const char *)c;
     c += strlen(c) + 1;
   }
 

@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * https://opensource.org/license/bsd-3-clause
+ *
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
@@ -55,10 +59,8 @@ static uint64_t current_reservation_token = 0;
 static int allocate_rtcp = 0;
 static const int never_allocate_rtcp = 0;
 
-#if ALPN_SUPPORTED
 static const unsigned char kALPNProtos[] = "\x08http/1.1\x09stun.turn\x12stun.nat-discovery";
 static const size_t kALPNProtosLen = sizeof(kALPNProtos) - 1;
-#endif
 
 /////////////////////////////////////////
 
@@ -96,9 +98,7 @@ static SSL *tls_connect(ioa_socket_raw fd, ioa_addr *remote_addr, bool *try_agai
 
   ssl = SSL_new(root_tls_ctx[ctxtype]);
 
-#if ALPN_SUPPORTED
   SSL_set_alpn_protos(ssl, kALPNProtos, kALPNProtosLen);
-#endif
 
   if (use_tcp) {
     SSL_set_fd(ssl, fd);
@@ -216,16 +216,11 @@ static int clnet_connect(uint16_t clnet_remote_port, const char *remote_address,
                          const char *local_address, bool verbose, app_ur_conn_info *clnet_info) {
 
   ioa_addr local_addr;
-  evutil_socket_t clnet_fd;
-  int connect_err;
   int connect_cycle = 0;
 
   ioa_addr remote_addr;
 
 start_socket:
-
-  clnet_fd = -1;
-  connect_err = 0;
 
   memset(&remote_addr, 0, sizeof(ioa_addr));
   if (make_ioa_addr((const uint8_t *)remote_address, clnet_remote_port, &remote_addr) < 0) {
@@ -234,11 +229,11 @@ start_socket:
 
   memset(&local_addr, 0, sizeof(ioa_addr));
 
-  clnet_fd = socket(remote_addr.ss.sa_family,
-                    use_sctp ? SCTP_CLIENT_STREAM_SOCKET_TYPE
-                             : (use_tcp ? CLIENT_STREAM_SOCKET_TYPE : CLIENT_DGRAM_SOCKET_TYPE),
-                    use_sctp ? SCTP_CLIENT_STREAM_SOCKET_PROTOCOL
-                             : (use_tcp ? CLIENT_STREAM_SOCKET_PROTOCOL : CLIENT_DGRAM_SOCKET_PROTOCOL));
+  evutil_socket_t clnet_fd = socket(
+      remote_addr.ss.sa_family,
+      use_sctp ? SCTP_CLIENT_STREAM_SOCKET_TYPE : (use_tcp ? CLIENT_STREAM_SOCKET_TYPE : CLIENT_DGRAM_SOCKET_TYPE),
+      use_sctp ? SCTP_CLIENT_STREAM_SOCKET_PROTOCOL
+               : (use_tcp ? CLIENT_STREAM_SOCKET_PROTOCOL : CLIENT_DGRAM_SOCKET_PROTOCOL));
   if (clnet_fd < 0) {
     perror("socket");
     exit(-1);
@@ -279,6 +274,7 @@ start_socket:
     addr_bind(clnet_fd, &local_addr, 0, 1, get_socket_type());
   }
 
+  int connect_err = 0;
   if (clnet_info->is_peer) {
     ;
   } else if (socket_connect(clnet_fd, &remote_addr, &connect_err) > 0) {
@@ -562,7 +558,6 @@ beg_allocate:
 
             TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "error %d (%s)\n", err_code, (char *)err_msg);
             if (err_code != 437) {
-              allocate_finished = true;
               current_reservation_token = 0;
               return -1;
             } else {
@@ -829,7 +824,6 @@ beg_bind:
                                                   clnet_info->server_name, &(clnet_info->oauth))) {
           goto beg_bind;
         } else if (stun_is_error_response(&response_message, &err_code, err_msg, sizeof(err_msg))) {
-          cb_received = true;
           TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "channel bind: error %d (%s)\n", err_code, (char *)err_msg);
           return -1;
         } else {
@@ -929,7 +923,6 @@ beg_cp:
                                                   clnet_info->server_name, &(clnet_info->oauth))) {
           goto beg_cp;
         } else if (stun_is_error_response(&response_message, &err_code, err_msg, sizeof(err_msg))) {
-          cp_received = true;
           TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "create permission error %d (%s)\n", err_code, (char *)err_msg);
           return -1;
         } else {

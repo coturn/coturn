@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * https://opensource.org/license/bsd-3-clause
+ *
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
@@ -48,7 +52,7 @@ typedef void *redis_context_handle;
 
 #if !defined(TURN_NO_HIREDIS)
 
-redis_context_handle redisLibeventAttach(struct event_base *base, char *ip, int port, char *pwd, int db);
+redis_context_handle redisLibeventAttach(struct event_base *base, char *ip, int port, char *user, char *pwd, int db);
 
 void send_message_to_redis(redis_context_handle rch, const char *command, const char *key, const char *format, ...);
 

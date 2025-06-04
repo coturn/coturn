@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * https://opensource.org/license/bsd-3-clause
+ *
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
@@ -44,10 +48,10 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void *arg) 
 
   ioa_addr *addr = (ioa_addr *)arg;
 
-  int len = 0;
-  int slen = get_ioa_addr_len(addr);
   stun_buffer buffer;
   ioa_addr remote_addr;
+  uint32_t slen = get_ioa_addr_len(addr);
+  ssize_t len = 0;
 
   do {
     len = recvfrom(fd, buffer.buf, sizeof(buffer.buf) - 1, 0, (struct sockaddr *)&remote_addr, (socklen_t *)&slen);

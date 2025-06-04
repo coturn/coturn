@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * https://opensource.org/license/bsd-3-clause
+ *
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
@@ -50,6 +54,7 @@ struct redisLibeventEvents {
   int rev_set, wev_set;
   char *ip;
   int port;
+  char *user;
   char *pwd;
   int db;
 };
@@ -212,7 +217,7 @@ void send_message_to_redis(redis_context_handle rch, const char *command, const 
 
 ///////////////////////// Attach /////////////////////////////////
 
-redis_context_handle redisLibeventAttach(struct event_base *base, char *ip0, int port0, char *pwd, int db) {
+redis_context_handle redisLibeventAttach(struct event_base *base, char *ip0, int port0, char *user, char *pwd, int db) {
 
   char ip[256];
   if (ip0 && ip0[0]) {
@@ -246,6 +251,9 @@ redis_context_handle redisLibeventAttach(struct event_base *base, char *ip0, int
   e->base = base;
   e->ip = strdup(ip);
   e->port = port;
+  if (user) {
+    e->user = strdup(user);
+  }
   if (pwd) {
     e->pwd = strdup(pwd);
   }
@@ -274,9 +282,15 @@ redis_context_handle redisLibeventAttach(struct event_base *base, char *ip0, int
   e->wev_set = 1;
 
   // Authentication
-  if (redis_le_valid(e) && pwd) {
-    if (redisAsyncCommand(ac, NULL, e, "AUTH %s", pwd) != REDIS_OK) {
-      e->invalid = 1;
+  if (redis_le_valid(e) && pwd && strlen(pwd)) {
+    if (user && strlen(user)) {
+      if (redisAsyncCommand(ac, NULL, e, "AUTH %s %s", e->user, e->pwd) != REDIS_OK) {
+        e->invalid = 1;
+      }
+    } else {
+      if (redisAsyncCommand(ac, NULL, e, "AUTH %s", e->pwd) != REDIS_OK) {
+        e->invalid = 1;
+      }
     }
   }
 
@@ -349,9 +363,15 @@ static void redis_reconnect(struct redisLibeventEvents *e) {
   e->invalid = 0;
 
   // Authentication
-  if (redis_le_valid(e) && e->pwd) {
-    if (redisAsyncCommand(ac, NULL, e, "AUTH %s", e->pwd) != REDIS_OK) {
-      e->invalid = 1;
+  if (redis_le_valid(e) && e->pwd && strlen(e->pwd)) {
+    if (e->user && strlen(e->user)) {
+      if (redisAsyncCommand(ac, NULL, e, "AUTH %s %s", e->user, e->pwd) != REDIS_OK) {
+        e->invalid = 1;
+      }
+    } else {
+      if (redisAsyncCommand(ac, NULL, e, "AUTH %s", e->pwd) != REDIS_OK) {
+        e->invalid = 1;
+      }
     }
   }
 

@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * https://opensource.org/license/bsd-3-clause
+ *
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
@@ -1371,30 +1375,9 @@ ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e, ioa_socket_raw 
 }
 
 static void ssl_info_callback(SSL *ssl, int where, int ret) {
-
   UNUSED_ARG(ret);
   UNUSED_ARG(ssl);
   UNUSED_ARG(where);
-
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-#if defined(SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS)
-  if (0 != (where & SSL_CB_HANDSHAKE_START)) {
-    ioa_socket_handle s = (ioa_socket_handle)SSL_get_app_data(ssl);
-    if (s) {
-      ++(s->ssl_renegs);
-    }
-  } else if (0 != (where & SSL_CB_HANDSHAKE_DONE)) {
-    if (ssl->s3) {
-      ioa_socket_handle s = (ioa_socket_handle)SSL_get_app_data(ssl);
-      if (s) {
-        if (s->ssl_renegs > SSL_MAX_RENEG_NUMBER) {
-          ssl->s3->flags |= SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS;
-        }
-      }
-    }
-  }
-#endif
-#endif
 }
 
 typedef void (*ssl_info_callback_t)(const SSL *ssl, int type, int val);
@@ -1835,7 +1818,7 @@ int ssl_read(evutil_socket_t fd, SSL *ssl, ioa_network_buffer_handle nbh, int ve
   BIO *rbio = BIO_new_mem_buf(buffer, old_buffer_len);
   BIO_set_mem_eof_return(rbio, -1);
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L || (defined LIBRESSL_VERSION_NUMBER && LIBRESSL_VERSION_NUMBER < 0x3040000fL)
+#if defined LIBRESSL_VERSION_NUMBER && LIBRESSL_VERSION_NUMBER < 0x3040000fL
   ssl->rbio = rbio;
 #else
   SSL_set0_rbio(ssl, rbio);
@@ -1934,7 +1917,7 @@ int ssl_read(evutil_socket_t fd, SSL *ssl, ioa_network_buffer_handle nbh, int ve
   if (ret > 0) {
     ioa_network_buffer_add_offset_size(nbh, (uint16_t)buf_size, 0, (size_t)ret);
   }
-#if OPENSSL_VERSION_NUMBER < 0x10100000L || (defined LIBRESSL_VERSION_NUMBER && LIBRESSL_VERSION_NUMBER < 0x3040000fL)
+#if defined LIBRESSL_VERSION_NUMBER && LIBRESSL_VERSION_NUMBER < 0x3040000fL
   ssl->rbio = NULL;
   BIO_free(rbio);
 #else
@@ -2162,12 +2145,12 @@ static TURN_TLS_TYPE check_tentative_tls(ioa_socket_raw fd) {
     if ((s[0] == 22) && (s[1] == 3) && (s[5] == 1) && (s[9] == 3)) {
       char max_supported = (char)(TURN_TLS_TOTAL - 2);
       if (s[10] > max_supported) {
-        ret = TURN_TLS_SSL23; /* compatibility mode */
+        ret = TURN_TLS_v1_2; /* compatibility mode */
       } else {
         ret = (TURN_TLS_TYPE)(s[10] + 1);
       }
     } else if ((s[2] == 1) && (s[3] == 3)) {
-      ret = TURN_TLS_SSL23; /* compatibility mode */
+      ret = TURN_TLS_v1_2; /* compatibility mode */
     }
   }
 

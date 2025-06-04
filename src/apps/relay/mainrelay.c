@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * https://opensource.org/license/bsd-3-clause
+ *
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
@@ -40,10 +44,6 @@
 #define MAX_TRIES 3
 #endif
 
-#if (!defined OPENSSL_VERSION_1_1_1)
-#define OPENSSL_VERSION_1_1_1 0x10101000L
-#endif
-
 ////// TEMPORARY data //////////
 
 static int use_lt_credentials = 0;
@@ -55,13 +55,9 @@ static int use_tltc = 0;
 
 ////// ALPN //////////
 
-#if ALPN_SUPPORTED
-
 char STUN_ALPN[128] = "stun.nat-discovery";
 char TURN_ALPN[128] = "stun.turn";
 char HTTP_ALPN[128] = "http/1.1";
-
-#endif
 
 ////// TURNDB //////////////
 
@@ -99,20 +95,20 @@ turn_params_t turn_params = {
     "",                     /*tls_password*/
     "",                     /*dh_file*/
 
-    0, /*no_tlsv1*/
-    0, /*no_tlsv1_1*/
-    0, /*no_tlsv1_2*/
-       /*no_tls*/
+    false, /*enable_tlsv1*/
+    false, /*enable_tlsv1_1*/
+    false, /*no_tlsv1_2*/
+           /*no_tls*/
 #if !TLS_SUPPORTED
-    1,
+    true,
 #else
-    0,
+    false,
 #endif
 /*no_dtls*/
 #if !DTLS_SUPPORTED
-    1,
+    true,
 #else
-    0,
+    false,
 #endif
 
     NULL,      /*tls_ctx_update_ev*/
@@ -120,11 +116,11 @@ turn_params_t turn_params = {
 
     //////////////// Common params ////////////////////
     TURN_VERBOSE_NONE, /* verbose */
-    0,                 /* turn_daemon */
-    0,                 /* no_software_attribute */
-    0,                 /* web_admin_listen_on_workers */
+    false,             /* turn_daemon */
+    false,             /* no_software_attribute */
+    false,             /* web_admin_listen_on_workers */
 
-    0, /* do_not_use_config_file */
+    false, /* do_not_use_config_file */
 
     "/var/run/turnserver.pid", /* pidfile */
     "",                        /* acme_redirect */
@@ -136,19 +132,19 @@ turn_params_t turn_params = {
     0,                     /* alt_listener_port */
     0,                     /* alt_tls_listener_port */
     0,                     /* tcp_proxy_port */
-    1,                     /* rfc5780 */
+    false,                 /* rfc5780 */
 
-    0, /* no_udp */
-    0, /* no_tcp */
-    0, /* tcp_use_proxy */
+    false, /* no_udp */
+    false, /* no_tcp */
+    false, /* tcp_use_proxy */
 
-    0, /* no_tcp_relay */
-    0, /* no_udp_relay */
+    false, /* no_tcp_relay */
+    false, /* no_udp_relay */
 
     "", /*listener_ifname*/
 
     {"", ""},                                                                 /*redis_statsdb*/
-    0,                                                                        /*use_redis_statsdb*/
+    false,                                                                    /*use_redis_statsdb*/
     {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, 0, NULL, NULL, NULL}, /*listener*/
     {NULL, 0},                                                                /*ip_whitelist*/
     {NULL, 0},                                                                /*ip_blacklist*/
@@ -160,10 +156,10 @@ turn_params_t turn_params = {
     LOW_DEFAULT_PORTS_BOUNDARY,  /*min_port*/
     HIGH_DEFAULT_PORTS_BOUNDARY, /*max_port*/
 
-    0, /*check_origin*/
+    false, /*check_origin*/
 
-    0, /*no_multicast_peers*/
-    0, /*allow_loopback_peers*/
+    false, /*no_multicast_peers*/
+    false, /*allow_loopback_peers*/
 
     "",   /*relay_ifname*/
     0,    /*relays_number*/
@@ -188,12 +184,13 @@ turn_params_t turn_params = {
     {NULL, 0, {0, NULL}}, /*tls_alternate_servers_list*/
 
     /////////////// stop server ////////////////
-    0, /*stop_turn_server*/
+    false, /*drain_turn_server*/
+    false, /*stop_turn_server*/
 
     /////////////// MISC PARAMS ////////////////
-    0,                                  /* stun_only */
-    0,                                  /* no_stun */
-    0,                                  /* secure_stun */
+    false,                              /* stun_only */
+    false,                              /* no_stun */
+    false,                              /* secure_stun */
     0,                                  /* server_relay */
     0,                                  /* fingerprint */
     ':',                                /* rest_api_separator */
@@ -201,17 +198,19 @@ turn_params_t turn_params = {
     STUN_DEFAULT_MAX_ALLOCATE_LIFETIME, /* max_allocate_lifetime */
     STUN_DEFAULT_CHANNEL_LIFETIME,      /* channel_lifetime */
     STUN_DEFAULT_PERMISSION_LIFETIME,   /* permission_lifetime */
-    0,                                  /* mobility */
+    false,                              /* mobility */
     TURN_CREDENTIALS_NONE,              /* ct */
-    0,                                  /* use_auth_secret_with_timestamp */
+    false,                              /* use_auth_secret_with_timestamp */
     0,                                  /* max_bps */
     0,                                  /* bps_capacity */
     0,                                  /* bps_capacity_allocated */
     0,                                  /* total_quota */
     0,                                  /* user_quota */
-    0,                                  /* prometheus disabled by default */
+    false,                              /* prometheus disabled by default */
     DEFAULT_PROM_SERVER_PORT,           /* prometheus port */
-    0, /* prometheus username labelling disabled by default when prometheus is enabled */
+    "",                                 /* prometheus address */
+    "/metrics",                         /* prometheus path */
+    false, /* prometheus username labelling disabled by default when prometheus is enabled */
 
     ///////////// Users DB //////////////
     {(TURN_USERDB_TYPE)0, {"\0", "\0"}, {0, NULL, {NULL, 0}}},
@@ -223,14 +222,13 @@ turn_params_t turn_params = {
     "",                                     /* secret_key_file */
     "",                                     /* secret_key */
     ALLOCATION_DEFAULT_ADDRESS_FAMILY_IPV4, /* allocation_default_address_family */
-    0,                                      /* no_auth_pings */
-    0,                                      /* no_dynamic_ip_list */
-    0,                                      /* no_dynamic_realms */
+    false,                                  /* no_auth_pings */
+    false,                                  /* no_dynamic_ip_list */
+    false,                                  /* no_dynamic_realms */
 
-    0, /* log_binding */
-    0, /* no_stun_backward_compatibility */
-    0, /* response_origin_only_with_rfc5780 */
-    0  /* respond_http_unsupported */
+    false, /* log_binding */
+    false, /* stun_backward_compatibility */
+    false  /* respond_http_unsupported */
 };
 
 //////////////// OpenSSL Init //////////////////////
@@ -262,6 +260,7 @@ static void read_config_file(int argc, char **argv, int pass);
 static void reload_ssl_certs(evutil_socket_t sock, short events, void *args);
 
 static void shutdown_handler(evutil_socket_t sock, short events, void *args);
+static void drain_handler(evutil_socket_t sock, short events, void *args);
 
 //////////////////////////////////////////////////
 
@@ -1026,7 +1025,8 @@ static char Usage[] =
     " -v, --verbose					'Moderate' verbose mode.\n"
     " -V, --Verbose					Extra verbose mode, very annoying (for debug purposes only).\n"
     " -o, --daemon					Start process as daemon (detach from current shell).\n"
-    " --no-software-attribute	 		Production mode: hide the software version (formerly --prod).\n"
+    " --no-software-attribute	 		DEPRECATED Production mode: hide the software version.\n"
+    " --software-attribute	 		Enable sending software attribute (for debugging).\n"
     " -f, --fingerprint				Use fingerprints in the TURN messages.\n"
     " -a, --lt-cred-mech				Use the long-term credential mechanism.\n"
     " -z, --no-auth					Do not use any credential mechanism, allow anonymous access.\n"
@@ -1136,6 +1136,8 @@ static char Usage[] =
     "enabled it will listen on port 9641 under the path /metrics\n"
     "						also the path / on this port can be used as a health check\n"
     " --prometheus-port		<port>		Prometheus metrics port (Default: 9641).\n"
+    " --prometheus-address		<address>		Prometheus listening address (Default: any).\n"
+    " --prometheus-path		<path>		Prometheus serve path (Default: /metrics).\n"
     " --prometheus-username-labels			When metrics are enabled, add labels with client usernames.\n"
 #endif
     " --use-auth-secret				TURN REST API flag.\n"
@@ -1190,12 +1192,8 @@ static char Usage[] =
     " --dh-file	<dh-file-name>			Use custom DH TLS key, stored in PEM format in the file.\n"
     "						Flags --dh566 and --dh1066 are ignored when the DH key is taken from a "
     "file.\n"
-    " --no-tlsv1					Set TLSv1.1/DTLSv1.2 as a minimum supported protocol version.\n"
-    "						With openssl-1.0.2 and below, do not allow "
-    "TLSv1/DTLSv1 protocols.\n"
-    " --no-tlsv1_1					Set TLSv1.2/DTLSv1.2 as a minimum supported protocol version.\n"
-    "						With openssl-1.0.2 and below, do not allow TLSv1.1 "
-    "protocol.\n"
+    " --tlsv1					Set TLSv1 as a minimum supported protocol version.\n"
+    " --tlsv1_1					Set TLSv1.1 as a minimum supported protocol version.\n"
     " --no-tlsv1_2					Set TLSv1.3/DTLSv1.2 as a minimum supported protocol version.\n"
     "						With openssl-1.0.2 and below, do not allow "
     "TLSv1.2/DTLSv1.2 protocols.\n"
@@ -1324,21 +1322,20 @@ static char Usage[] =
     "256.\n"
     " --ne=[1|2|3]					Set network engine type for the process (for internal "
     "purposes).\n"
-    " --no-rfc5780					Disable RFC5780 (NAT behavior discovery).\n"
+    " --no-rfc5780					DEPRECATED and now default, see --rfc5780.\n"
+    " --rfc5780					Enable RFC5780 (NAT behavior discovery).\n"
     "						Originally, if there are more than one listener address from the same\n"
     "						address family, then by default the NAT behavior discovery feature "
     "enabled.\n"
-    "						This option disables this original behavior, because the NAT behavior "
+    "						This option enables this original behavior (downside is that the NAT "
+    "behavior "
     "discovery\n"
     "						adds attributes to response, and this increase the possibility of an "
-    "amplification attack.\n"
-    "						Strongly encouraged to use this option to decrease gain factor in STUN "
+    "amplification attack.)\n"
+    "						Strongly encouraged to keep it off to decrease gain factor in STUN "
     "binding responses.\n"
-    " --no-stun-backward-compatibility		Disable handling old STUN Binding requests and disable MAPPED-ADDRESS "
-    "attribute\n"
-    "						in binding response (use only the XOR-MAPPED-ADDRESS).\n"
-    " --response-origin-only-with-rfc5780		Only send RESPONSE-ORIGIN attribute in binding response if "
-    "RFC5780 is enabled.\n"
+    " --stun-backward-compatibility		        Enable handling old STUN Binding requests and enable "
+    "MAPPED-ADDRESS attribute\n"
     " --respond-http-unsupported			Return an HTTP reponse with a 400 status code to HTTP "
     "connections made to ports not\n"
     "						supporting HTTP. The default behaviour is to immediately "
@@ -1434,6 +1431,8 @@ enum EXTRA_OPTS {
   PERMISSION_LIFETIME_OPT,
   PROMETHEUS_OPT,
   PROMETHEUS_PORT_OPT,
+  PROMETHEUS_ADDRESS_OPT,
+  PROMETHEUS_PATH_OPT,
   PROMETHEUS_ENABLE_USERNAMES_OPT,
   AUTH_SECRET_OPT,
   NO_AUTH_PINGS_OPT,
@@ -1441,7 +1440,6 @@ enum EXTRA_OPTS {
   NO_DYNAMIC_REALMS_OPT,
   DEL_ALL_AUTH_SECRETS_OPT,
   STATIC_AUTH_SECRET_VAL_OPT,
-  AUTH_SECRET_TS_EXP, /* deprecated */
   NO_STDOUT_LOG_OPT,
   SYSLOG_OPT,
   SYSLOG_FACILITY_OPT,
@@ -1480,10 +1478,8 @@ enum EXTRA_OPTS {
   DH566_OPT,
   DH1066_OPT,
   NE_TYPE_OPT,
-  NO_SSLV2_OPT, /*deprecated*/
-  NO_SSLV3_OPT, /*deprecated*/
-  NO_TLSV1_OPT,
-  NO_TLSV1_1_OPT,
+  ENABLE_TLSV1_OPT,
+  ENABLE_TLSV1_1_OPT,
   NO_TLSV1_2_OPT,
   CHECK_ORIGIN_CONSISTENCY_OPT,
   ADMIN_MAX_BPS_OPT,
@@ -1491,13 +1487,15 @@ enum EXTRA_OPTS {
   ADMIN_USER_QUOTA_OPT,
   SERVER_NAME_OPT,
   OAUTH_OPT,
-  NO_SOFTWARE_ATTRIBUTE_OPT,
+  SOFTWARE_ATTRIBUTE_OPT,
+  DEPRECATED_NO_SOFTWARE_ATTRIBUTE_OPT,
   NO_HTTP_OPT,
   SECRET_KEY_OPT,
   ACME_REDIRECT_OPT,
   LOG_BINDING_OPT,
   NO_RFC5780,
-  NO_STUN_BACKWARD_COMPATIBILITY_OPT,
+  ENABLE_RFC5780,
+  STUN_BACKWARD_COMPATIBILITY_OPT,
   RESPONSE_ORIGIN_ONLY_WITH_RFC5780_OPT,
   RESPOND_HTTP_UNSUPPORTED_OPT,
   VERSION_OPT
@@ -1554,6 +1552,8 @@ static const struct myoption long_options[] = {
 #if !defined(TURN_NO_PROMETHEUS)
     {"prometheus", optional_argument, NULL, PROMETHEUS_OPT},
     {"prometheus-port", optional_argument, NULL, PROMETHEUS_PORT_OPT},
+    {"prometheus-address", optional_argument, NULL, PROMETHEUS_ADDRESS_OPT},
+    {"prometheus-path", optional_argument, NULL, PROMETHEUS_PATH_OPT},
     {"prometheus-username-labels", optional_argument, NULL, PROMETHEUS_ENABLE_USERNAMES_OPT},
 #endif
     {"use-auth-secret", optional_argument, NULL, AUTH_SECRET_OPT},
@@ -1561,7 +1561,6 @@ static const struct myoption long_options[] = {
     {"no-auth-pings", optional_argument, NULL, NO_AUTH_PINGS_OPT},
     {"no-dynamic-ip-list", optional_argument, NULL, NO_DYNAMIC_IP_LIST_OPT},
     {"no-dynamic-realms", optional_argument, NULL, NO_DYNAMIC_REALMS_OPT},
-    /* deprecated: */ {"secret-ts-exp-time", optional_argument, NULL, AUTH_SECRET_TS_EXP},
     {"realm", required_argument, NULL, 'r'},
     {"server-name", required_argument, NULL, SERVER_NAME_OPT},
     {"oauth", optional_argument, NULL, OAUTH_OPT},
@@ -1572,8 +1571,8 @@ static const struct myoption long_options[] = {
     {"verbose", optional_argument, NULL, 'v'},
     {"Verbose", optional_argument, NULL, 'V'},
     {"daemon", optional_argument, NULL, 'o'},
-    /* deprecated: */ {"prod", optional_argument, NULL, NO_SOFTWARE_ATTRIBUTE_OPT},
-    {"no-software-attribute", optional_argument, NULL, NO_SOFTWARE_ATTRIBUTE_OPT},
+    /* deprecated: */ {"no-software-attribute", optional_argument, NULL, DEPRECATED_NO_SOFTWARE_ATTRIBUTE_OPT},
+    {"software-attribute", optional_argument, NULL, SOFTWARE_ATTRIBUTE_OPT},
     {"fingerprint", optional_argument, NULL, 'f'},
     {"check-origin-consistency", optional_argument, NULL, CHECK_ORIGIN_CONSISTENCY_OPT},
     {"no-udp", optional_argument, NULL, NO_UDP_OPT},
@@ -1630,10 +1629,8 @@ static const struct myoption long_options[] = {
     {"dh566", optional_argument, NULL, DH566_OPT},
     {"dh1066", optional_argument, NULL, DH1066_OPT},
     {"ne", required_argument, NULL, NE_TYPE_OPT},
-    {"no-sslv2", optional_argument, NULL, NO_SSLV2_OPT}, /* deprecated */
-    {"no-sslv3", optional_argument, NULL, NO_SSLV3_OPT}, /* deprecated */
-    {"no-tlsv1", optional_argument, NULL, NO_TLSV1_OPT},
-    {"no-tlsv1_1", optional_argument, NULL, NO_TLSV1_1_OPT},
+    {"tlsv1", optional_argument, NULL, ENABLE_TLSV1_OPT},
+    {"tlsv1_1", optional_argument, NULL, ENABLE_TLSV1_1_OPT},
     {"no-tlsv1_2", optional_argument, NULL, NO_TLSV1_2_OPT},
     {"secret-key-file", required_argument, NULL, SECRET_KEY_OPT},
     {"keep-address-family", optional_argument, NULL, 'K'},
@@ -1641,7 +1638,8 @@ static const struct myoption long_options[] = {
     {"acme-redirect", required_argument, NULL, ACME_REDIRECT_OPT},
     {"log-binding", optional_argument, NULL, LOG_BINDING_OPT},
     {"no-rfc5780", optional_argument, NULL, NO_RFC5780},
-    {"no-stun-backward-compatibility", optional_argument, NULL, NO_STUN_BACKWARD_COMPATIBILITY_OPT},
+    {"rfc5780", optional_argument, NULL, ENABLE_RFC5780},
+    {"stun-backward-compatibility", optional_argument, NULL, STUN_BACKWARD_COMPATIBILITY_OPT},
     {"response-origin-only-with-rfc5780", optional_argument, NULL, RESPONSE_ORIGIN_ONLY_WITH_RFC5780_OPT},
     {"respond-http-unsupported", optional_argument, NULL, RESPOND_HTTP_UNSUPPORTED_OPT},
     {"version", optional_argument, NULL, VERSION_OPT},
@@ -1734,12 +1732,8 @@ void encrypt_aes_128(unsigned char *in, const unsigned char *mykey) {
   struct ctr_state state;
   init_ctr(&state, iv);
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
   CRYPTO_ctr128_encrypt(in, out, strlen((char *)in), &key, state.ivec, state.ecount, &state.num,
                         (block128_f)AES_encrypt);
-#else
-  AES_ctr128_encrypt(in, out, strlen((char *)in), &key, state.ivec, state.ecount, &state.num);
-#endif
 
   totalSize += strlen((char *)in);
   size = strlen((char *)in);
@@ -1830,12 +1824,8 @@ void decrypt_aes_128(char *in, const unsigned char *mykey) {
   struct ctr_state state;
   init_ctr(&state, iv);
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
   CRYPTO_ctr128_encrypt(encryptedText, outdata, newTotalSize, &key, state.ivec, state.ecount, &state.num,
                         (block128_f)AES_encrypt);
-#else
-  AES_ctr128_encrypt(encryptedText, outdata, newTotalSize, &key, state.ivec, state.ecount, &state.num);
-#endif
 
   strcat(last, (char *)outdata);
   printf("%s\n", last);
@@ -1914,17 +1904,11 @@ static void set_option(int c, char *value) {
       turn_params.oauth = get_bool_value(value);
     }
     break;
-  case NO_SSLV2_OPT:
-    // deprecated
+  case ENABLE_TLSV1_OPT:
+    turn_params.enable_tlsv1 = get_bool_value(value);
     break;
-  case NO_SSLV3_OPT:
-    // deprecated
-    break;
-  case NO_TLSV1_OPT:
-    turn_params.no_tlsv1 = get_bool_value(value);
-    break;
-  case NO_TLSV1_1_OPT:
-    turn_params.no_tlsv1_1 = get_bool_value(value);
+  case ENABLE_TLSV1_1_OPT:
+    turn_params.enable_tlsv1_1 = get_bool_value(value);
     break;
   case NO_TLSV1_2_OPT:
     turn_params.no_tlsv1_2 = get_bool_value(value);
@@ -2164,8 +2148,11 @@ static void set_option(int c, char *value) {
       anon_credentials = 1;
     }
     break;
-  case NO_SOFTWARE_ATTRIBUTE_OPT:
-    turn_params.no_software_attribute = get_bool_value(value);
+  case DEPRECATED_NO_SOFTWARE_ATTRIBUTE_OPT:
+    turn_params.software_attribute = !(bool)get_bool_value(value);
+    break;
+  case SOFTWARE_ATTRIBUTE_OPT:
+    turn_params.software_attribute = (bool)get_bool_value(value);
     break;
   case 'f':
     turn_params.fingerprint = get_bool_value(value);
@@ -2217,6 +2204,12 @@ static void set_option(int c, char *value) {
   case PROMETHEUS_PORT_OPT:
     turn_params.prometheus_port = atoi(value);
     break;
+  case PROMETHEUS_ADDRESS_OPT:
+    STRCPY(turn_params.prometheus_address, value);
+    break;
+  case PROMETHEUS_PATH_OPT:
+    STRCPY(turn_params.prometheus_path, value);
+    break;
   case PROMETHEUS_ENABLE_USERNAMES_OPT:
     turn_params.prometheus_username_labels = 1;
     break;
@@ -2241,9 +2234,6 @@ static void set_option(int c, char *value) {
     use_tltc = 1;
     turn_params.ct = TURN_CREDENTIALS_LONG_TERM;
     use_lt_credentials = 1;
-    break;
-  case AUTH_SECRET_TS_EXP:
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: Option --secret-ts-exp-time deprecated and has no effect.\n");
     break;
   case 'r':
     set_default_realm_name(value);
@@ -2356,14 +2346,15 @@ static void set_option(int c, char *value) {
   case LOG_BINDING_OPT:
     turn_params.log_binding = get_bool_value(value);
     break;
-  case NO_RFC5780:
-    turn_params.rfc5780 = 0;
+  case NO_RFC5780: // DEPRECATED, see below
     break;
-  case NO_STUN_BACKWARD_COMPATIBILITY_OPT:
-    turn_params.no_stun_backward_compatibility = get_bool_value(value);
+  case ENABLE_RFC5780:
+    turn_params.rfc5780 = true;
+    break;
+  case STUN_BACKWARD_COMPATIBILITY_OPT:
+    turn_params.stun_backward_compatibility = get_bool_value(value);
     break;
   case RESPONSE_ORIGIN_ONLY_WITH_RFC5780_OPT:
-    turn_params.response_origin_only_with_rfc5780 = get_bool_value(value);
     break;
   case RESPOND_HTTP_UNSUPPORTED_OPT:
     turn_params.respond_http_unsupported = get_bool_value(value);
@@ -2819,29 +2810,26 @@ static void print_features(unsigned long mfn) {
 
 #if !TLS_SUPPORTED
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS is not supported\n");
-#elif TLSv1_3_SUPPORTED
+#else
+  if (turn_params.enable_tlsv1) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS 1 supported\n");
+  }
+  if (turn_params.enable_tlsv1_1) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS 1.1 supported\n");
+  }
+  if (!turn_params.no_tlsv1_2) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS 1.2 supported\n");
+  }
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS 1.3 supported\n");
-#elif TLSv1_2_SUPPORTED
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS 1.2 supported\n");
-#elif TLSv1_1_SUPPORTED
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS 1.1 supported\n");
-#elif TLSv1_SUPPORTED
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS 1.0 supported\n");
 #endif
 
 #if !DTLS_SUPPORTED
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS is not supported\n");
-#elif DTLSv1_2_SUPPORTED
+#else
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS 1.2 supported\n");
-#elif DTLS_SUPPORTED
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS supported\n");
 #endif
 
-#if ALPN_SUPPORTED
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TURN/STUN ALPN supported\n");
-#else
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TURN/STUN ALPN is not supported\n");
-#endif
 
   if (ENC_ALG_NUM == 0) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Third-party authorization (oAuth) is not supported\n");
@@ -3032,7 +3020,7 @@ int main(int argc, char **argv) {
     return adminmain(argc, argv);
   }
 
-  memset(&turn_params.default_users_db, 0, sizeof(default_users_db_t));
+  memset(&turn_params.default_users_db.ram_db, 0, sizeof(ram_users_db_t));
   turn_params.default_users_db.ram_db.static_accounts = ur_string_map_create(free);
 
   // Zero pass apply the log options.
@@ -3344,6 +3332,8 @@ int main(int argc, char **argv) {
   event_add(ev, NULL);
   ev = evsignal_new(turn_params.listener.event_base, SIGINT, shutdown_handler, NULL);
   event_add(ev, NULL);
+  ev = evsignal_new(turn_params.listener.event_base, SIGUSR1, drain_handler, NULL);
+  event_add(ev, NULL);
 #endif
 
   drop_privileges();
@@ -3359,65 +3349,10 @@ int main(int argc, char **argv) {
 ////////// OpenSSL locking ////////////////////////////////////////
 
 #if defined(OPENSSL_THREADS)
-#if OPENSSL_VERSION_NUMBER < OPENSSL_VERSION_1_1_0
-
-// array larger than anything that OpenSSL may need:
-static TURN_MUTEX_DECLARE(mutex_buf[256]);
-static int mutex_buf_initialized = 0;
-
-void coturn_locking_function(int mode, int n, const char *file, int line);
-void coturn_locking_function(int mode, int n, const char *file, int line) {
-  UNUSED_ARG(file);
-  UNUSED_ARG(line);
-  if (mutex_buf_initialized && (n < CRYPTO_num_locks())) {
-    if (mode & CRYPTO_LOCK) {
-      TURN_MUTEX_LOCK(&(mutex_buf[n]));
-    } else {
-      TURN_MUTEX_UNLOCK(&(mutex_buf[n]));
-    }
-  }
-}
-
-void coturn_id_function(CRYPTO_THREADID *ctid);
-void coturn_id_function(CRYPTO_THREADID *ctid) {
-  UNUSED_ARG(ctid);
-  CRYPTO_THREADID_set_numeric(ctid, (unsigned long)pthread_self());
-}
-
-static int THREAD_setup(void) {
-  int i;
-  for (i = 0; i < CRYPTO_num_locks(); i++) {
-    TURN_MUTEX_INIT(&(mutex_buf[i]));
-  }
-
-  mutex_buf_initialized = 1;
-  CRYPTO_THREADID_set_callback(coturn_id_function);
-  CRYPTO_set_locking_callback(coturn_locking_function);
-  return 1;
-}
-
-int THREAD_cleanup(void) {
-  int i;
-
-  if (!mutex_buf_initialized) {
-    return 0;
-  }
-
-  CRYPTO_THREADID_set_callback(NULL);
-  CRYPTO_set_locking_callback(NULL);
-  for (i = 0; i < CRYPTO_num_locks(); i++) {
-    TURN_MUTEX_DESTROY(&(mutex_buf[i]));
-  }
-
-  mutex_buf_initialized = 0;
-  return 1;
-}
-#else
 static int THREAD_setup(void) { return 1; }
 
 int THREAD_cleanup(void);
 int THREAD_cleanup(void) { return 1; }
-#endif /* OPENSSL_VERSION_NUMBER < OPENSSL_VERSION_1_1_0 */
 #endif /* defined(OPENSSL_THREADS) */
 
 static void adjust_key_file_name(char *fn, const char *file_title, int critical) {
@@ -3493,16 +3428,7 @@ static DH *get_dh566(void) {
   if ((dh = DH_new()) == NULL) {
     return (NULL);
   }
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-  dh->p = BN_bin2bn(dh566_p, sizeof(dh566_p), NULL);
-  dh->g = BN_bin2bn(dh566_g, sizeof(dh566_g), NULL);
-  if ((dh->p == NULL) || (dh->g == NULL)) {
-    DH_free(dh);
-    return (NULL);
-  }
-#else
   DH_set0_pqg(dh, BN_bin2bn(dh566_p, sizeof(dh566_p), NULL), NULL, BN_bin2bn(dh566_g, sizeof(dh566_g), NULL));
-#endif
   return (dh);
 }
 
@@ -3530,16 +3456,7 @@ static DH *get_dh1066(void) {
   if ((dh = DH_new()) == NULL) {
     return (NULL);
   }
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-  dh->p = BN_bin2bn(dh1066_p, sizeof(dh1066_p), NULL);
-  dh->g = BN_bin2bn(dh1066_g, sizeof(dh1066_g), NULL);
-  if ((dh->p == NULL) || (dh->g == NULL)) {
-    DH_free(dh);
-    return (NULL);
-  }
-#else
   DH_set0_pqg(dh, BN_bin2bn(dh1066_p, sizeof(dh1066_p), NULL), NULL, BN_bin2bn(dh1066_g, sizeof(dh1066_g), NULL));
-#endif
   return (dh);
 }
 
@@ -3576,16 +3493,7 @@ static DH *get_dh2066(void) {
   if ((dh = DH_new()) == NULL) {
     return (NULL);
   }
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-  dh->p = BN_bin2bn(dh2066_p, sizeof(dh2066_p), NULL);
-  dh->g = BN_bin2bn(dh2066_g, sizeof(dh2066_g), NULL);
-  if ((dh->p == NULL) || (dh->g == NULL)) {
-    DH_free(dh);
-    return (NULL);
-  }
-#else
   DH_set0_pqg(dh, BN_bin2bn(dh2066_p, sizeof(dh2066_p), NULL), NULL, BN_bin2bn(dh2066_g, sizeof(dh2066_g), NULL));
-#endif
   return (dh);
 }
 
@@ -3596,8 +3504,6 @@ static int pem_password_func(char *buf, int size, int rwflag, void *password) {
   buf[size - 1] = 0;
   return (strlen(buf));
 }
-
-#if ALPN_SUPPORTED
 
 static int ServerALPNCallback(SSL *ssl, const unsigned char **out, unsigned char *outlen, const unsigned char *in,
                               unsigned int inlen, void *arg) {
@@ -3645,18 +3551,12 @@ static int ServerALPNCallback(SSL *ssl, const unsigned char **out, unsigned char
   return SSL_TLSEXT_ERR_NOACK; //???
 }
 
-#endif
-
 static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *method) {
   SSL_CTX *ctx = SSL_CTX_new(method);
   int err = 0;
   int rc = 0;
-#if ALPN_SUPPORTED
   SSL_CTX_set_alpn_select_cb(ctx, ServerALPNCallback, NULL);
-#endif
-
   SSL_CTX_set_default_passwd_cb_userdata(ctx, turn_params.tls_password);
-
   SSL_CTX_set_default_passwd_cb(ctx, pem_password_func);
 
   if (!(turn_params.cipher_list[0])) {
@@ -3669,10 +3569,7 @@ static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *metho
 
   SSL_CTX_set_cipher_list(ctx, turn_params.cipher_list);
   SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_OFF);
-
-#if TLSv1_3_SUPPORTED
   SSL_CTX_set_ciphersuites(ctx, turn_params.cipher_list);
-#endif
 
   if (!SSL_CTX_use_certificate_chain_file(ctx, turn_params.cert_file)) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: no certificate found\n", protocol);
@@ -3748,11 +3645,6 @@ static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *metho
     }
 
     if (set_auto_curve) {
-#if SSL_SESSION_ECDH_AUTO_SUPPORTED
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-      SSL_CTX_set_ecdh_auto(ctx, 1);
-#endif
-#endif
       set_auto_curve = 0;
     }
   }
@@ -3905,67 +3797,31 @@ static void openssl_load_certificates(void) {
 
   TURN_MUTEX_LOCK(&turn_params.tls_mutex);
   if (!turn_params.no_tls) {
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-    set_ctx(&turn_params.tls_ctx, "TLS", TLSv1_2_server_method()); /*openssl-1.0.2 version specific API */
-    if (turn_params.no_tlsv1) {
-      SSL_CTX_set_options(turn_params.tls_ctx, SSL_OP_NO_TLSv1);
-    }
-#if TLSv1_1_SUPPORTED
-    if (turn_params.no_tlsv1_1) {
-      SSL_CTX_set_options(turn_params.tls_ctx, SSL_OP_NO_TLSv1_1);
-    }
-#if TLSv1_2_SUPPORTED
-    if (turn_params.no_tlsv1_2) {
-      SSL_CTX_set_options(turn_params.tls_ctx, SSL_OP_NO_TLSv1_2);
-    }
-#endif
-#endif
-#else // OPENSSL_VERSION_NUMBER < 0x10100000L
+#if !TLS_SUPPORTED
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: TLS is not supported.\n");
+#else
     set_ctx(&turn_params.tls_ctx, "TLS", TLS_server_method());
-    if (turn_params.no_tlsv1) {
+    if (turn_params.enable_tlsv1) {
+      SSL_CTX_set_min_proto_version(turn_params.tls_ctx, TLS1_VERSION);
+    }
+    if (turn_params.enable_tlsv1_1) {
       SSL_CTX_set_min_proto_version(turn_params.tls_ctx, TLS1_1_VERSION);
     }
-    if (turn_params.no_tlsv1_1) {
-      SSL_CTX_set_min_proto_version(turn_params.tls_ctx, TLS1_2_VERSION);
-    }
-#if TLSv1_3_SUPPORTED
     if (turn_params.no_tlsv1_2) {
       SSL_CTX_set_min_proto_version(turn_params.tls_ctx, TLS1_3_VERSION);
     }
-#endif
-#endif // OPENSSL_VERSION_NUMBER < 0x10100000L
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS cipher suite: %s\n", turn_params.cipher_list);
+#endif
   }
 
   if (!turn_params.no_dtls) {
 #if !DTLS_SUPPORTED
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: DTLS is not supported.\n");
-#elif OPENSSL_VERSION_NUMBER < 0x10000000L
-    TURN_LOG_FUNC(
-        TURN_LOG_LEVEL_WARNING,
-        "WARNING: TURN Server was compiled with rather old OpenSSL version, DTLS may not be working correctly.\n");
 #else
-#if OPENSSL_VERSION_NUMBER < 0x10100000L // before openssl-1.1.0 no version independent API
-#if DTLSv1_2_SUPPORTED
-    set_ctx(&turn_params.dtls_ctx, "DTLS", DTLSv1_2_server_method()); // openssl-1.0.2
-    if (turn_params.no_tlsv1_2) {
-      SSL_CTX_set_options(turn_params.dtls_ctx, SSL_OP_NO_DTLSv1_2);
-    }
-#else
-    set_ctx(&turn_params.dtls_ctx, "DTLS", DTLSv1_server_method()); // < openssl-1.0.2
-#endif
-    if (turn_params.no_tlsv1 || turn_params.no_tlsv1_1) {
-      SSL_CTX_set_options(turn_params.dtls_ctx, SSL_OP_NO_DTLSv1);
-    }
-#else  // OPENSSL_VERSION_NUMBER < 0x10100000L
     set_ctx(&turn_params.dtls_ctx, "DTLS", DTLS_server_method());
-    if (turn_params.no_tlsv1 || turn_params.no_tlsv1_1) {
-      SSL_CTX_set_min_proto_version(turn_params.dtls_ctx, DTLS1_2_VERSION);
-    }
     if (turn_params.no_tlsv1_2) {
       SSL_CTX_set_max_proto_version(turn_params.dtls_ctx, DTLS1_VERSION);
     }
-#endif // OPENSSL_VERSION_NUMBER < 0x10100000L
     setup_dtls_callbacks(turn_params.dtls_ctx);
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS cipher suite: %s\n", turn_params.cipher_list);
 #endif
@@ -3987,7 +3843,15 @@ static void reload_ssl_certs(evutil_socket_t sock, short events, void *args) {
 
 static void shutdown_handler(evutil_socket_t sock, short events, void *args) {
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Terminating on signal %d\n", sock);
-  turn_params.stop_turn_server = 1;
+  turn_params.stop_turn_server = true;
+
+  UNUSED_ARG(events);
+  UNUSED_ARG(args);
+}
+
+static void drain_handler(evutil_socket_t sock, short events, void *args) {
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Draining then terminating on signal %d\n", sock);
+  enable_drain_mode();
 
   UNUSED_ARG(events);
   UNUSED_ARG(args);

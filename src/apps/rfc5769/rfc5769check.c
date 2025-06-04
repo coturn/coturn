@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * https://opensource.org/license/bsd-3-clause
+ *
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
@@ -57,8 +61,8 @@ void print_field5769(const char *name, const void *f0, size_t len);
 void print_field5769(const char *name, const void *f0, size_t len) {
   const unsigned char *f = (const unsigned char *)f0;
   printf("\nfield %s %lu==>>\n", name, (unsigned long)len);
-  size_t i;
-  for (i = 0; i < len; ++i) {
+
+  for (size_t i = 0; i < len; ++i) {
     printf("\\x%02x", (unsigned int)f[i]);
   }
   printf("\n<<==field %s\n", name);
@@ -66,8 +70,6 @@ void print_field5769(const char *name, const void *f0, size_t len) {
 
 static int check_oauth(void) {
   const char server_name[33] = "blackdow.carleon.gov";
-
-  size_t i_encs;
 
   const char long_term_key[33] = "HGkj32KJGiuy098sdfaqbNjOiaz71923";
 
@@ -89,7 +91,7 @@ static int check_oauth(void) {
 
   {
     {
-      for (i_encs = 0; encs[i_encs]; ++i_encs) {
+      for (size_t i_encs = 0; encs[i_encs]; ++i_encs) {
         printf("oauth token %s:", encs[i_encs]);
 
         if (print_extra) {
@@ -158,7 +160,7 @@ static int check_oauth(void) {
           }
         }
 
-        if (strcmp((char *)ot.enc_block.mac_key, (char *)dot.enc_block.mac_key)) {
+        if (0 != strcmp((char *)ot.enc_block.mac_key, (char *)dot.enc_block.mac_key)) {
           fprintf(stderr, "%s: wrong mac key: %s, must be %s\n", __FUNCTION__, (char *)dot.enc_block.mac_key,
                   (char *)ot.enc_block.mac_key);
           goto err;
@@ -353,15 +355,13 @@ int main(int argc, const char **argv) {
         printf("failure: length %d, must be %d\n", (int)len, (int)(sizeof(reqltc) - 1));
         exit(-1);
       }
-      if (memcmp(buf, reqltc, len)) {
+      if (memcmp(buf, reqltc, len) != 0) {
         printf("failure: wrong message content\n");
         {
-          int lines = 29;
-          int line = 0;
-          int col = 0;
-          int cols = 4;
-          for (line = 0; line < lines; line++) {
-            for (col = 0; col < cols; col++) {
+          size_t const lines = 29;
+          size_t const cols = 4;
+          for (size_t line = 0; line < lines; line++) {
+            for (size_t col = 0; col < cols; col++) {
               uint8_t c = buf[line * 4 + col];
               printf(" %2x", (int)c);
             }
@@ -562,10 +562,8 @@ int main(int argc, const char **argv) {
     }
   }
 
-  {
-    if (check_oauth() < 0) {
-      exit(-1);
-    }
+  if (check_oauth() < 0) {
+    exit(-1);
   }
 
   return 0;

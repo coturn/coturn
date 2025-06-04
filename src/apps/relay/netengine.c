@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * https://opensource.org/license/bsd-3-clause
+ *
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
@@ -33,8 +37,7 @@
 #include "ns_turn_ioalib.h"
 
 //////////// Backward compatibility with OpenSSL 1.0.x //////////////
-#if (OPENSSL_VERSION_NUMBER < 0x10100001L ||                                                                           \
-     (defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER <= 0x3040000fL))
+#if defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER <= 0x3040000fL
 #define SSL_CTX_up_ref(ctx) CRYPTO_add(&(ctx)->references, 1, CRYPTO_LOCK_SSL_CTX)
 #endif
 
@@ -1002,9 +1005,9 @@ static void setup_listener(void) {
     bufferevent_enable(turn_params.listener.in_buf, EV_READ);
   }
 
-  if (turn_params.rfc5780 == 1) {
+  if (turn_params.rfc5780 == true) {
     if (turn_params.listener.addrs_number < 2 || turn_params.external_ip) {
-      turn_params.rfc5780 = 0;
+      turn_params.rfc5780 = false;
       TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "STUN CHANGE_REQUEST not supported: only one IP address is provided\n");
     } else {
       turn_params.listener.services_number = turn_params.listener.services_number * 2;
@@ -1057,7 +1060,7 @@ static void setup_barriers(void) {
 
 #if !defined(TURN_NO_THREAD_BARRIERS)
   {
-    if (pthread_barrier_init(&barrier, NULL, barrier_count) < 0) {
+    if (pthread_barrier_init(&barrier, NULL, barrier_count) != 0) {
       perror("barrier init");
     }
   }
@@ -1132,7 +1135,7 @@ static void setup_socket_per_endpoint_udp_listener_servers(void) {
   /* Aux UDP servers */
   for (i = 0; i < turn_params.aux_servers_list.size; i++) {
 
-    int index = i;
+    size_t index = i;
 
     if (!turn_params.no_udp || !turn_params.no_dtls) {
 
@@ -1605,6 +1608,11 @@ void run_listener_server(struct listener_server *ls) {
       }
     }
 
+    if (turn_params.drain_turn_server && global_allocation_count == 0) {
+      turn_params.stop_turn_server = true;
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Drain complete, shutting down now...\n");
+    }
+
     run_events(ls->event_base, ls->ioa_eng);
 
     rollover_logfile();
@@ -1648,20 +1656,18 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
   bufferevent_enable(rs->auth_in_buf, EV_READ);
 
   init_turn_server(
-      &(rs->server), rs->id, turn_params.verbose, rs->ioa_eng, turn_params.ct, 0, turn_params.fingerprint,
+      &(rs->server), rs->id, turn_params.verbose, rs->ioa_eng, turn_params.ct, turn_params.fingerprint,
       DONT_FRAGMENT_SUPPORTED, start_user_check, check_new_allocation_quota, release_allocation_quota,
       turn_params.external_ip, &turn_params.check_origin, &turn_params.no_tcp_relay, &turn_params.no_udp_relay,
       &turn_params.stale_nonce, &turn_params.max_allocate_lifetime, &turn_params.channel_lifetime,
-      &turn_params.permission_lifetime, &turn_params.stun_only, &turn_params.no_stun,
-      &turn_params.no_software_attribute, &turn_params.web_admin_listen_on_workers, &turn_params.alternate_servers_list,
+      &turn_params.permission_lifetime, &turn_params.stun_only, &turn_params.no_stun, turn_params.software_attribute,
+      &turn_params.web_admin_listen_on_workers, &turn_params.alternate_servers_list,
       &turn_params.tls_alternate_servers_list, &turn_params.aux_servers_list, turn_params.udp_self_balance,
       &turn_params.no_multicast_peers, &turn_params.allow_loopback_peers, &turn_params.ip_whitelist,
       &turn_params.ip_blacklist, send_socket_to_relay, &turn_params.secure_stun, &turn_params.mobility,
       turn_params.server_relay, send_turn_session_info, send_https_socket, allocate_bps, turn_params.oauth,
       turn_params.oauth_server_name, turn_params.acme_redirect, turn_params.allocation_default_address_family,
-      &turn_params.log_binding, &turn_params.no_stun_backward_compatibility,
-      &turn_params.response_origin_only_with_rfc5780, &turn_params.respond_http_unsupported);
-
+      &turn_params.log_binding, &turn_params.stun_backward_compatibility, &turn_params.respond_http_unsupported);
   if (to_set_rfc5780) {
     set_rfc5780(&(rs->server), get_alt_addr, send_message_from_listener_to_client);
   }
@@ -1899,4 +1905,18 @@ void setup_server(void) {
 
 void init_listener(void) { memset(&turn_params.listener, 0, sizeof(struct listener_server)); }
 
+void enable_drain_mode(void) {
+  // Tell each turn_server we are draining
+  for (size_t i = 0; i < get_real_general_relay_servers_number(); i++) {
+    if (general_relay_servers[i]) {
+      general_relay_servers[i]->server.is_draining = true;
+    }
+  }
+  for (size_t i = 0; i < get_real_udp_relay_servers_number(); i++) {
+    if (udp_relay_servers[i]) {
+      udp_relay_servers[i]->server.is_draining = true;
+    }
+  }
+  turn_params.drain_turn_server = true;
+}
 ///////////////////////////////
