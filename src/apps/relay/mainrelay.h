@@ -101,6 +101,14 @@
 extern "C" {
 #endif
 
+#ifndef _MSC_VER
+#include <stdatomic.h>
+extern _Atomic
+#else
+extern volatile
+#endif
+    size_t global_allocation_count; // used for drain mode, to know when all allocations have gone away
+
 ////////////// DEFINES ////////////////////////////
 
 #define DEFAULT_CONFIG_FILE "turnserver.conf"
@@ -408,6 +416,9 @@ char *decryptPassword(char *in, const unsigned char *mykey);
 int init_ctr(struct ctr_state *state, const unsigned char iv[8]);
 
 ///////////////////////////////
+
+void increment_global_allocation_count(void);
+void decrement_global_allocation_count(void);
 
 #ifdef __cplusplus
 }
