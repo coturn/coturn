@@ -284,11 +284,16 @@ static void pop_elem_from_buffer_list(stun_buffer_list *bufs) {
 }
 
 static stun_buffer_list_elem *new_blist_elem(ioa_engine_handle e) {
+  stun_buffer_list_elem *ret =
+    (stun_buffer_list_elem *)malloc(sizeof(stun_buffer_list_elem));
+
+#if 0
   stun_buffer_list_elem *ret = get_elem_from_buffer_list(&(e->bufs));
 
   if (!ret) {
     ret = (stun_buffer_list_elem *)malloc(sizeof(stun_buffer_list_elem));
   }
+#endif
 
   if (ret) {
     ret->buf.len = 0;
@@ -326,6 +331,8 @@ static void add_buffer_to_buffer_list(stun_buffer_list *bufs, char *buf, size_t 
 }
 
 static void free_blist_elem(ioa_engine_handle e, stun_buffer_list_elem *buf_elem) {
+  free(buf_elem);
+#if 0
   if (buf_elem) {
     if (e && (e->bufs.tsz < MAX_BUFFER_QUEUE_SIZE_PER_ENGINE)) {
       add_elem_to_buffer_list(&(e->bufs), buf_elem);
@@ -333,6 +340,7 @@ static void free_blist_elem(ioa_engine_handle e, stun_buffer_list_elem *buf_elem
       free(buf_elem);
     }
   }
+#endif
 }
 
 /************** ENGINE *************************/

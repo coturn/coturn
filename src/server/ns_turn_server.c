@@ -4297,11 +4297,12 @@ static int write_client_connection(turn_turnserver *server, ts_ur_super_session 
     }
 
     int skip = 0;
+    size_t bsiz = ioa_network_buffer_get_size(nbh);
     int ret = send_data_from_ioa_socket_nbh(ss->client_socket, NULL, nbh, ttl, tos, &skip);
 
     if (!skip && ret > -1) {
       ++(ss->sent_packets);
-      ss->sent_bytes += (uint32_t)ioa_network_buffer_get_size(nbh);
+      ss->sent_bytes += (uint32_t)bsiz;
       turn_report_session_usage(ss, 0);
     }
 
