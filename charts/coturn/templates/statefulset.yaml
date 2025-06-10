@@ -71,6 +71,8 @@ spec:
       initContainers:
         - name: get-external-ip
           image: bitnami/kubectl:1.29.11
+          resources:
+            {{- toYaml .Values.initResources | nindent 6 }}
           volumeMounts:
             - name: external-ip
               mountPath: /external-ip
