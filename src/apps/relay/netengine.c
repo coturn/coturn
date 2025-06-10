@@ -1076,6 +1076,11 @@ static void setup_barriers(void) {
       barrier_count += (unsigned int)turn_params.aux_servers_list.size;
     }
   }
+  if(turn_params.federation_listening_ip != 0 && turn_params.federation_listening_port != 0
+     && turn_params.general_relay_servers_number > 1) {
+	  barrier_count++;
+  }
+
 #endif
 
 #if !defined(TURN_NO_THREAD_BARRIERS)
