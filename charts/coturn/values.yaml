@@ -18,15 +18,15 @@ nodeSelector: {}
 # This is to prevent the pod from being OOM kill
 resources:
   requests:
-    memory: "512Mi"
+    memory: 512Mi
   limits:
-    memory: "6.5Gi"
+    memory: 6.5Gi
 
 initResources:
   requests:
-    memory: "64Mi"
+    memory: 64Mi
   limits:
-    memory: "256Mi"
+    memory: 256Mi
 
 podSecurityContext:
   fsGroup: 31338
