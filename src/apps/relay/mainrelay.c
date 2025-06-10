@@ -44,10 +44,10 @@
 #define MAX_TRIES 3
 #endif
 
-#ifndef _MSC_VER
-_Atomic
-#else
+#ifdef _MSC_VER
 volatile
+#else
+_Atomic
 #endif
     size_t global_allocation_count = 0; // used for drain mode, to know when all allocations have gone away
 
@@ -3865,13 +3865,13 @@ static void drain_handler(evutil_socket_t sock, short events, void *args) {
 }
 
 void increment_global_allocation_count(void) {
-#ifndef _MSC_VER
-  size_t cur_count = ++global_allocation_count;
+#ifdef _MSC_VER
+  size_t cur_count = InterlockedIncrement(&global_allocation_count);
 #else
-  size_t cur_count = (size_t)InterlockedIncrement((volatile LONG *)&global_allocation_count);
+  size_t cur_count = ++global_allocation_count;
 #endif
   if (turn_params.verbose > TURN_VERBOSE_NONE) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "Global turn allocation count incremented, now %ld\n", cur_count);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "Global turn allocation count incremented, now %zu\n", cur_count);
   }
 }
 
@@ -3880,13 +3880,13 @@ void decrement_global_allocation_count(void) {
   if (turn_params.drain_turn_server) {
     log_level = TURN_LOG_LEVEL_INFO;
   }
-#ifndef _MSC_VER
-  size_t cur_count = --global_allocation_count;
+#ifdef _MSC_VER
+  size_t cur_count = InterlockedDecrement(&global_allocation_count);
 #else
-  size_t cur_count = (size_t)InterlockedDecrement((volatile LONG *)&global_allocation_count);
+  size_t cur_count = --global_allocation_count;
 #endif
   if (turn_params.drain_turn_server || turn_params.verbose > TURN_VERBOSE_NONE) {
-    TURN_LOG_FUNC(log_level, "Global turn allocation count decremented, now %ld\n", cur_count);
+    TURN_LOG_FUNC(log_level, "Global turn allocation count decremented, now %zu\n", cur_count);
   }
 }
 

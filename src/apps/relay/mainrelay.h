@@ -101,11 +101,11 @@
 extern "C" {
 #endif
 
-#ifndef _MSC_VER
+#ifdef _MSC_VER
+extern volatile
+#else
 #include <stdatomic.h>
 extern _Atomic
-#else
-extern volatile
 #endif
     size_t global_allocation_count; // used for drain mode, to know when all allocations have gone away
 
