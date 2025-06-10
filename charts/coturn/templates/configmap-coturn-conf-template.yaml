@@ -6,12 +6,7 @@ metadata:
 data:
   coturn.conf.template: |
     ## disable dtls control plane; don't permit relaying tcp connections.
-    ## dtls handling
-    {{- if .Values.federate.dtls.enabled }}
-    # no-dtls
-    {{- else }}
     no-dtls
-    {{- end }}
     no-tcp-relay
 
     ## tls handling
