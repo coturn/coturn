@@ -42,6 +42,7 @@
 
 #include "ns_ioalib_impl.h"
 
+#include "mainrelay.h"
 #include "prom_server.h"
 
 #if TLS_SUPPORTED
@@ -3668,6 +3669,7 @@ void turn_report_allocation_set(void *a, turn_time_t lifetime, int refresh) {
         {
           if (!refresh) {
             prom_inc_allocation(get_ioa_socket_type(ss->client_socket));
+            increment_global_allocation_count();
           }
         }
       }
@@ -3745,6 +3747,7 @@ void turn_report_allocation_delete(void *a, SOCKET_TYPE socket_type) {
                                       true);
           }
           prom_dec_allocation(socket_type);
+          decrement_global_allocation_count();
         }
       }
     }

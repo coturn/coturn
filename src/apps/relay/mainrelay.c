@@ -44,6 +44,13 @@
 #define MAX_TRIES 3
 #endif
 
+#ifdef _MSC_VER
+volatile
+#else
+_Atomic
+#endif
+    size_t global_allocation_count = 0; // used for drain mode, to know when all allocations have gone away
+
 ////// TEMPORARY data //////////
 
 static int use_lt_credentials = 0;
@@ -3855,6 +3862,32 @@ static void drain_handler(evutil_socket_t sock, short events, void *args) {
 
   UNUSED_ARG(events);
   UNUSED_ARG(args);
+}
+
+void increment_global_allocation_count(void) {
+#ifdef _MSC_VER
+  size_t cur_count = InterlockedIncrement(&global_allocation_count);
+#else
+  size_t cur_count = ++global_allocation_count;
+#endif
+  if (turn_params.verbose > TURN_VERBOSE_NONE) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "Global turn allocation count incremented, now %zu\n", cur_count);
+  }
+}
+
+void decrement_global_allocation_count(void) {
+  int log_level = TURN_LOG_LEVEL_DEBUG;
+  if (turn_params.drain_turn_server) {
+    log_level = TURN_LOG_LEVEL_INFO;
+  }
+#ifdef _MSC_VER
+  size_t cur_count = InterlockedDecrement(&global_allocation_count);
+#else
+  size_t cur_count = --global_allocation_count;
+#endif
+  if (turn_params.drain_turn_server || turn_params.verbose > TURN_VERBOSE_NONE) {
+    TURN_LOG_FUNC(log_level, "Global turn allocation count decremented, now %zu\n", cur_count);
+  }
 }
 
 ///////////////////////////////
