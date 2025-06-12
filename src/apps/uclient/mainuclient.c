@@ -32,6 +32,7 @@
  * SUCH DAMAGE.
  */
 #include "apputils.h"
+#include "ns_turn_oauth.h"
 #include "ns_turn_utils.h"
 #include "session.h"
 #include "uclient.h"
