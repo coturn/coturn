@@ -55,8 +55,8 @@ static int is_acme_req(char *req, size_t len) {
     }
     // finally check for allowed chars
     for (size_t k = GET_ACME_PREFIX_LEN; k < i; k++) {
-      const char c = req[k];
-      if ((c > 127) || (A[(unsigned char)c] == ' ')) {
+      const unsigned char c = req[k];
+      if ((c > 127) || (A[c] == ' ')) {
         return -3;
       }
     }
