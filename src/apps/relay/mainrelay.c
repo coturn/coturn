@@ -36,6 +36,7 @@
 #include "dbdrivers/dbdriver.h"
 
 #include "prom_server.h"
+#include <assert.h>
 
 #if defined(WINDOWS)
 #include <iphlpapi.h>
@@ -3568,9 +3569,10 @@ static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *metho
 
   if (!(turn_params.cipher_list[0])) {
     strncpy(turn_params.cipher_list, DEFAULT_CIPHER_LIST, TURN_LONG_STRING_SIZE);
+    assert(strlen(DEFAULT_CIPHER_LIST) < TURN_LONG_STRING_SIZE);
 #if defined(DEFAULT_CIPHERSUITES)
-    strncat(turn_params.cipher_list, ":", TURN_LONG_STRING_SIZE - strlen(turn_params.cipher_list));
-    strncat(turn_params.cipher_list, DEFAULT_CIPHERSUITES, TURN_LONG_STRING_SIZE - strlen(turn_params.cipher_list));
+    strncat(turn_params.cipher_list, ":", TURN_LONG_STRING_SIZE - strlen(turn_params.cipher_list) - 1);
+    strncat(turn_params.cipher_list, DEFAULT_CIPHERSUITES, TURN_LONG_STRING_SIZE - strlen(turn_params.cipher_list) - 1);
 #endif
   }
 
