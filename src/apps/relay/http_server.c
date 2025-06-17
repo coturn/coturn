@@ -74,7 +74,7 @@ static void write_http_echo(ioa_socket_handle s) {
                TURN_SOFTWARE, strlen(content_http), content_http);
 
       ioa_network_buffer_handle nbh_http = ioa_network_buffer_allocate(s->e);
-      char *data = ioa_network_buffer_data(nbh_http);
+      char *data = (char *)ioa_network_buffer_data(nbh_http);
 
       strcpy(data, data_http);
       ioa_network_buffer_set_size(nbh_http, strlen(data_http));
