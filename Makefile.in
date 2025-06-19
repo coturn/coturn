@@ -179,16 +179,12 @@ install:	all ${MAKE_DEPS}
 	${INSTALL_DATA} README.turnutils ${DESTDIR}${DOCSDIR}
 	${INSTALL_DATA} INSTALL ${DESTDIR}${DOCSDIR}
 	${INSTALL_DATA} postinstall.txt ${DESTDIR}${DOCSDIR}
-	${INSTALL_DATA} turndb/schema.sql ${DESTDIR}${DOCSDIR}
 	${INSTALL_DATA} turndb/schema.sql ${DESTDIR}${SCHEMADIR}
-	${INSTALL_DATA} turndb/schema.mongo.sh ${DESTDIR}${DOCSDIR}
 	${INSTALL_DATA} turndb/schema.mongo.sh ${DESTDIR}${SCHEMADIR}
 	${INSTALL_DATA} turndb/testredisdbsetup.sh ${DESTDIR}${SCHEMADIR}
 	${INSTALL_DATA} turndb/testmongosetup.sh ${DESTDIR}${SCHEMADIR}
 	${INSTALL_DATA} turndb/testsqldbsetup.sql ${DESTDIR}${SCHEMADIR}
-	${INSTALL_DATA} turndb/schema.userdb.redis ${DESTDIR}${DOCSDIR}
 	${INSTALL_DATA} turndb/schema.userdb.redis ${DESTDIR}${SCHEMADIR}
-	${INSTALL_DATA} turndb/schema.stats.redis ${DESTDIR}${DOCSDIR}
 	${INSTALL_DATA} turndb/schema.stats.redis ${DESTDIR}${SCHEMADIR}
 	if [ -f sqlite/turndb ] ; then ${INSTALL_DATA} sqlite/turndb ${DESTDIR}${TURNDBDIR}/turndb; fi
 	${INSTALL_DATA} examples/etc/turnserver.conf ${DESTDIR}${CONFDIR}/turnserver.conf.default

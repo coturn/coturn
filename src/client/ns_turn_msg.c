@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * https://opensource.org/license/bsd-3-clause
+ *
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
@@ -513,7 +517,7 @@ bool stun_is_challenge_response_str(const uint8_t *buf, size_t len, int *err_cod
       const uint8_t *value = stun_attr_get_value(sar);
       if (value) {
         size_t vlen = (size_t)stun_attr_get_len(sar);
-        vlen = min(vlen, STUN_MAX_REALM_SIZE);
+        vlen = min(vlen, (size_t)STUN_MAX_REALM_SIZE);
         memcpy(realm, value, vlen);
         realm[vlen] = 0;
         {
@@ -522,7 +526,7 @@ bool stun_is_challenge_response_str(const uint8_t *buf, size_t len, int *err_cod
             value = stun_attr_get_value(sar);
             if (value) {
               vlen = (size_t)stun_attr_get_len(sar);
-              vlen = min(vlen, STUN_MAX_SERVER_NAME_SIZE);
+              vlen = min(vlen, (size_t)STUN_MAX_SERVER_NAME_SIZE);
               if (vlen > 0) {
                 if (server_name) {
                   memcpy(server_name, value, vlen);
@@ -538,7 +542,7 @@ bool stun_is_challenge_response_str(const uint8_t *buf, size_t len, int *err_cod
           value = stun_attr_get_value(sar);
           if (value) {
             vlen = (size_t)stun_attr_get_len(sar);
-            vlen = min(vlen, STUN_MAX_NONCE_SIZE);
+            vlen = min(vlen, (size_t)STUN_MAX_NONCE_SIZE);
             memcpy(nonce, value, vlen);
             nonce[vlen] = 0;
             if (oauth) {
@@ -1123,7 +1127,7 @@ void stun_set_binding_request_str(uint8_t *buf, size_t *len) { stun_init_request
 
 bool stun_set_binding_response_str(uint8_t *buf, size_t *len, stun_tid *tid, const ioa_addr *reflexive_addr,
                                    int error_code, const uint8_t *reason, uint32_t cookie, bool old_stun,
-                                   bool no_stun_backward_compatibility)
+                                   bool stun_backward_compatibility)
 
 {
   if (!error_code) {
@@ -1138,7 +1142,7 @@ bool stun_set_binding_response_str(uint8_t *buf, size_t *len, stun_tid *tid, con
       }
     }
     if (reflexive_addr) {
-      if (!no_stun_backward_compatibility &&
+      if (stun_backward_compatibility &&
           !stun_attr_add_addr_str(buf, len, STUN_ATTRIBUTE_MAPPED_ADDRESS, reflexive_addr)) {
         return false;
       }

@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * https://opensource.org/license/bsd-3-clause
+ *
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
@@ -1001,9 +1005,9 @@ static void setup_listener(void) {
     bufferevent_enable(turn_params.listener.in_buf, EV_READ);
   }
 
-  if (turn_params.rfc5780 == 1) {
+  if (turn_params.rfc5780 == true) {
     if (turn_params.listener.addrs_number < 2 || turn_params.external_ip) {
-      turn_params.rfc5780 = 0;
+      turn_params.rfc5780 = false;
       TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "STUN CHANGE_REQUEST not supported: only one IP address is provided\n");
     } else {
       turn_params.listener.services_number = turn_params.listener.services_number * 2;
@@ -1056,7 +1060,7 @@ static void setup_barriers(void) {
 
 #if !defined(TURN_NO_THREAD_BARRIERS)
   {
-    if (pthread_barrier_init(&barrier, NULL, barrier_count) < 0) {
+    if (pthread_barrier_init(&barrier, NULL, barrier_count) != 0) {
       perror("barrier init");
     }
   }
@@ -1131,7 +1135,7 @@ static void setup_socket_per_endpoint_udp_listener_servers(void) {
   /* Aux UDP servers */
   for (i = 0; i < turn_params.aux_servers_list.size; i++) {
 
-    int index = i;
+    size_t index = i;
 
     if (!turn_params.no_udp || !turn_params.no_dtls) {
 
@@ -1663,9 +1667,7 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
       &turn_params.ip_blacklist, send_socket_to_relay, &turn_params.secure_stun, &turn_params.mobility,
       turn_params.server_relay, send_turn_session_info, send_https_socket, allocate_bps, turn_params.oauth,
       turn_params.oauth_server_name, turn_params.acme_redirect, turn_params.allocation_default_address_family,
-      &turn_params.log_binding, &turn_params.no_stun_backward_compatibility,
-      &turn_params.response_origin_only_with_rfc5780, &turn_params.respond_http_unsupported);
-
+      &turn_params.log_binding, &turn_params.stun_backward_compatibility, &turn_params.respond_http_unsupported);
   if (to_set_rfc5780) {
     set_rfc5780(&(rs->server), get_alt_addr, send_message_from_listener_to_client);
   }

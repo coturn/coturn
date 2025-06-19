@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * https://opensource.org/license/bsd-3-clause
+ *
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
@@ -34,7 +38,8 @@
 #include "ns_turn_ioalib.h"
 #include "ns_turn_maps.h"
 
-#include <stddef.h> // for size_t
+#include <stdbool.h> // for bool
+#include <stddef.h>  // for size_t
 
 #ifdef __cplusplus
 extern "C" {

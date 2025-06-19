@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * https://opensource.org/license/bsd-3-clause
+ *
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
@@ -97,19 +101,29 @@
 extern "C" {
 #endif
 
+#ifdef _MSC_VER
+extern volatile
+#else
+#include <stdatomic.h>
+extern _Atomic
+#endif
+    size_t global_allocation_count; // used for drain mode, to know when all allocations have gone away
+
 ////////////// DEFINES ////////////////////////////
 
 #define DEFAULT_CONFIG_FILE "turnserver.conf"
 
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 #define DEFAULT_CIPHER_LIST OSSL_default_cipher_list()
+#if TLS_SUPPORTED
 #define DEFAULT_CIPHERSUITES OSSL_default_ciphersuites()
-#else
+#endif
+#else // OPENSSL_VERSION_NUMBER < 0x30000000L
 #define DEFAULT_CIPHER_LIST "DEFAULT"
-#if defined(TLS_DEFAULT_CIPHERSUITES)
+#if TLS_SUPPORTED && defined(TLS_DEFAULT_CIPHERSUITES)
 #define DEFAULT_CIPHERSUITES TLS_DEFAULT_CIPHERSUITES
 #endif
-#endif
+#endif // OPENSSL_VERSION_NUMBER >= 0x30000000L
 
 #define DEFAULT_EC_CURVE_NAME "prime256v1"
 
@@ -193,8 +207,8 @@ typedef struct _turn_params_ {
   char tls_password[513];
   char dh_file[1025];
 
-  bool no_tlsv1;
-  bool no_tlsv1_1;
+  bool enable_tlsv1;
+  bool enable_tlsv1_1;
   bool no_tlsv1_2;
   bool no_tls;
   bool no_dtls;
@@ -330,8 +344,7 @@ typedef struct _turn_params_ {
   bool no_dynamic_realms;
 
   bool log_binding;
-  bool no_stun_backward_compatibility;
-  bool response_origin_only_with_rfc5780;
+  bool stun_backward_compatibility;
   bool respond_http_unsupported;
 } turn_params_t;
 
@@ -403,6 +416,9 @@ char *decryptPassword(char *in, const unsigned char *mykey);
 int init_ctr(struct ctr_state *state, const unsigned char iv[8]);
 
 ///////////////////////////////
+
+void increment_global_allocation_count(void);
+void decrement_global_allocation_count(void);
 
 #ifdef __cplusplus
 }

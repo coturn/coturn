@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * https://opensource.org/license/bsd-3-clause
+ *
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
@@ -32,6 +36,7 @@
 #include "dbdrivers/dbdriver.h"
 
 #include "prom_server.h"
+#include <assert.h>
 
 #if defined(WINDOWS)
 #include <iphlpapi.h>
@@ -39,6 +44,13 @@
 #define WORKING_BUFFER_SIZE 15000
 #define MAX_TRIES 3
 #endif
+
+#ifdef _MSC_VER
+volatile
+#else
+_Atomic
+#endif
+    size_t global_allocation_count = 0; // used for drain mode, to know when all allocations have gone away
 
 ////// TEMPORARY data //////////
 
@@ -91,8 +103,8 @@ turn_params_t turn_params = {
     "",                     /*tls_password*/
     "",                     /*dh_file*/
 
-    false, /*no_tlsv1*/
-    false, /*no_tlsv1_1*/
+    false, /*enable_tlsv1*/
+    false, /*enable_tlsv1_1*/
     false, /*no_tlsv1_2*/
            /*no_tls*/
 #if !TLS_SUPPORTED
@@ -128,7 +140,7 @@ turn_params_t turn_params = {
     0,                     /* alt_listener_port */
     0,                     /* alt_tls_listener_port */
     0,                     /* tcp_proxy_port */
-    true,                  /* rfc5780 */
+    false,                 /* rfc5780 */
 
     false, /* no_udp */
     false, /* no_tcp */
@@ -223,8 +235,7 @@ turn_params_t turn_params = {
     false,                                  /* no_dynamic_realms */
 
     false, /* log_binding */
-    false, /* no_stun_backward_compatibility */
-    false, /* response_origin_only_with_rfc5780 */
+    false, /* stun_backward_compatibility */
     false  /* respond_http_unsupported */
 };
 
@@ -1189,12 +1200,8 @@ static char Usage[] =
     " --dh-file	<dh-file-name>			Use custom DH TLS key, stored in PEM format in the file.\n"
     "						Flags --dh566 and --dh1066 are ignored when the DH key is taken from a "
     "file.\n"
-    " --no-tlsv1					Set TLSv1.1/DTLSv1.2 as a minimum supported protocol version.\n"
-    "						With openssl-1.0.2 and below, do not allow "
-    "TLSv1/DTLSv1 protocols.\n"
-    " --no-tlsv1_1					Set TLSv1.2/DTLSv1.2 as a minimum supported protocol version.\n"
-    "						With openssl-1.0.2 and below, do not allow TLSv1.1 "
-    "protocol.\n"
+    " --tlsv1					Set TLSv1 as a minimum supported protocol version.\n"
+    " --tlsv1_1					Set TLSv1.1 as a minimum supported protocol version.\n"
     " --no-tlsv1_2					Set TLSv1.3/DTLSv1.2 as a minimum supported protocol version.\n"
     "						With openssl-1.0.2 and below, do not allow "
     "TLSv1.2/DTLSv1.2 protocols.\n"
@@ -1323,21 +1330,20 @@ static char Usage[] =
     "256.\n"
     " --ne=[1|2|3]					Set network engine type for the process (for internal "
     "purposes).\n"
-    " --no-rfc5780					Disable RFC5780 (NAT behavior discovery).\n"
+    " --no-rfc5780					DEPRECATED and now default, see --rfc5780.\n"
+    " --rfc5780					Enable RFC5780 (NAT behavior discovery).\n"
     "						Originally, if there are more than one listener address from the same\n"
     "						address family, then by default the NAT behavior discovery feature "
     "enabled.\n"
-    "						This option disables this original behavior, because the NAT behavior "
+    "						This option enables this original behavior (downside is that the NAT "
+    "behavior "
     "discovery\n"
     "						adds attributes to response, and this increase the possibility of an "
-    "amplification attack.\n"
-    "						Strongly encouraged to use this option to decrease gain factor in STUN "
+    "amplification attack.)\n"
+    "						Strongly encouraged to keep it off to decrease gain factor in STUN "
     "binding responses.\n"
-    " --no-stun-backward-compatibility		Disable handling old STUN Binding requests and disable MAPPED-ADDRESS "
-    "attribute\n"
-    "						in binding response (use only the XOR-MAPPED-ADDRESS).\n"
-    " --response-origin-only-with-rfc5780		Only send RESPONSE-ORIGIN attribute in binding response if "
-    "RFC5780 is enabled.\n"
+    " --stun-backward-compatibility		        Enable handling old STUN Binding requests and enable "
+    "MAPPED-ADDRESS attribute\n"
     " --respond-http-unsupported			Return an HTTP reponse with a 400 status code to HTTP "
     "connections made to ports not\n"
     "						supporting HTTP. The default behaviour is to immediately "
@@ -1480,8 +1486,8 @@ enum EXTRA_OPTS {
   DH566_OPT,
   DH1066_OPT,
   NE_TYPE_OPT,
-  NO_TLSV1_OPT,
-  NO_TLSV1_1_OPT,
+  ENABLE_TLSV1_OPT,
+  ENABLE_TLSV1_1_OPT,
   NO_TLSV1_2_OPT,
   CHECK_ORIGIN_CONSISTENCY_OPT,
   ADMIN_MAX_BPS_OPT,
@@ -1496,7 +1502,8 @@ enum EXTRA_OPTS {
   ACME_REDIRECT_OPT,
   LOG_BINDING_OPT,
   NO_RFC5780,
-  NO_STUN_BACKWARD_COMPATIBILITY_OPT,
+  ENABLE_RFC5780,
+  STUN_BACKWARD_COMPATIBILITY_OPT,
   RESPONSE_ORIGIN_ONLY_WITH_RFC5780_OPT,
   RESPOND_HTTP_UNSUPPORTED_OPT,
   VERSION_OPT
@@ -1630,8 +1637,8 @@ static const struct myoption long_options[] = {
     {"dh566", optional_argument, NULL, DH566_OPT},
     {"dh1066", optional_argument, NULL, DH1066_OPT},
     {"ne", required_argument, NULL, NE_TYPE_OPT},
-    {"no-tlsv1", optional_argument, NULL, NO_TLSV1_OPT},
-    {"no-tlsv1_1", optional_argument, NULL, NO_TLSV1_1_OPT},
+    {"tlsv1", optional_argument, NULL, ENABLE_TLSV1_OPT},
+    {"tlsv1_1", optional_argument, NULL, ENABLE_TLSV1_1_OPT},
     {"no-tlsv1_2", optional_argument, NULL, NO_TLSV1_2_OPT},
     {"secret-key-file", required_argument, NULL, SECRET_KEY_OPT},
     {"keep-address-family", optional_argument, NULL, 'K'},
@@ -1639,7 +1646,8 @@ static const struct myoption long_options[] = {
     {"acme-redirect", required_argument, NULL, ACME_REDIRECT_OPT},
     {"log-binding", optional_argument, NULL, LOG_BINDING_OPT},
     {"no-rfc5780", optional_argument, NULL, NO_RFC5780},
-    {"no-stun-backward-compatibility", optional_argument, NULL, NO_STUN_BACKWARD_COMPATIBILITY_OPT},
+    {"rfc5780", optional_argument, NULL, ENABLE_RFC5780},
+    {"stun-backward-compatibility", optional_argument, NULL, STUN_BACKWARD_COMPATIBILITY_OPT},
     {"response-origin-only-with-rfc5780", optional_argument, NULL, RESPONSE_ORIGIN_ONLY_WITH_RFC5780_OPT},
     {"respond-http-unsupported", optional_argument, NULL, RESPOND_HTTP_UNSUPPORTED_OPT},
     {"version", optional_argument, NULL, VERSION_OPT},
@@ -1904,11 +1912,11 @@ static void set_option(int c, char *value) {
       turn_params.oauth = get_bool_value(value);
     }
     break;
-  case NO_TLSV1_OPT:
-    turn_params.no_tlsv1 = get_bool_value(value);
+  case ENABLE_TLSV1_OPT:
+    turn_params.enable_tlsv1 = get_bool_value(value);
     break;
-  case NO_TLSV1_1_OPT:
-    turn_params.no_tlsv1_1 = get_bool_value(value);
+  case ENABLE_TLSV1_1_OPT:
+    turn_params.enable_tlsv1_1 = get_bool_value(value);
     break;
   case NO_TLSV1_2_OPT:
     turn_params.no_tlsv1_2 = get_bool_value(value);
@@ -2346,14 +2354,15 @@ static void set_option(int c, char *value) {
   case LOG_BINDING_OPT:
     turn_params.log_binding = get_bool_value(value);
     break;
-  case NO_RFC5780:
-    turn_params.rfc5780 = 0;
+  case NO_RFC5780: // DEPRECATED, see below
     break;
-  case NO_STUN_BACKWARD_COMPATIBILITY_OPT:
-    turn_params.no_stun_backward_compatibility = get_bool_value(value);
+  case ENABLE_RFC5780:
+    turn_params.rfc5780 = true;
+    break;
+  case STUN_BACKWARD_COMPATIBILITY_OPT:
+    turn_params.stun_backward_compatibility = get_bool_value(value);
     break;
   case RESPONSE_ORIGIN_ONLY_WITH_RFC5780_OPT:
-    turn_params.response_origin_only_with_rfc5780 = get_bool_value(value);
     break;
   case RESPOND_HTTP_UNSUPPORTED_OPT:
     turn_params.respond_http_unsupported = get_bool_value(value);
@@ -2810,6 +2819,15 @@ static void print_features(unsigned long mfn) {
 #if !TLS_SUPPORTED
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS is not supported\n");
 #else
+  if (turn_params.enable_tlsv1) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS 1 supported\n");
+  }
+  if (turn_params.enable_tlsv1_1) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS 1.1 supported\n");
+  }
+  if (!turn_params.no_tlsv1_2) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS 1.2 supported\n");
+  }
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS 1.3 supported\n");
 #endif
 
@@ -3551,9 +3569,10 @@ static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *metho
 
   if (!(turn_params.cipher_list[0])) {
     strncpy(turn_params.cipher_list, DEFAULT_CIPHER_LIST, TURN_LONG_STRING_SIZE);
+    assert(strlen(DEFAULT_CIPHER_LIST) < TURN_LONG_STRING_SIZE);
 #if defined(DEFAULT_CIPHERSUITES)
-    strncat(turn_params.cipher_list, ":", TURN_LONG_STRING_SIZE - strlen(turn_params.cipher_list));
-    strncat(turn_params.cipher_list, DEFAULT_CIPHERSUITES, TURN_LONG_STRING_SIZE - strlen(turn_params.cipher_list));
+    strncat(turn_params.cipher_list, ":", TURN_LONG_STRING_SIZE - strlen(turn_params.cipher_list) - 1);
+    strncat(turn_params.cipher_list, DEFAULT_CIPHERSUITES, TURN_LONG_STRING_SIZE - strlen(turn_params.cipher_list) - 1);
 #endif
   }
 
@@ -3787,17 +3806,21 @@ static void openssl_load_certificates(void) {
 
   TURN_MUTEX_LOCK(&turn_params.tls_mutex);
   if (!turn_params.no_tls) {
+#if !TLS_SUPPORTED
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: TLS is not supported.\n");
+#else
     set_ctx(&turn_params.tls_ctx, "TLS", TLS_server_method());
-    if (turn_params.no_tlsv1) {
-      SSL_CTX_set_min_proto_version(turn_params.tls_ctx, TLS1_1_VERSION);
+    if (turn_params.enable_tlsv1) {
+      SSL_CTX_set_min_proto_version(turn_params.tls_ctx, TLS1_VERSION);
     }
-    if (turn_params.no_tlsv1_1) {
-      SSL_CTX_set_min_proto_version(turn_params.tls_ctx, TLS1_2_VERSION);
+    if (turn_params.enable_tlsv1_1) {
+      SSL_CTX_set_min_proto_version(turn_params.tls_ctx, TLS1_1_VERSION);
     }
     if (turn_params.no_tlsv1_2) {
       SSL_CTX_set_min_proto_version(turn_params.tls_ctx, TLS1_3_VERSION);
     }
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS cipher suite: %s\n", turn_params.cipher_list);
+#endif
   }
 
   if (!turn_params.no_dtls) {
@@ -3805,9 +3828,6 @@ static void openssl_load_certificates(void) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: DTLS is not supported.\n");
 #else
     set_ctx(&turn_params.dtls_ctx, "DTLS", DTLS_server_method());
-    if (turn_params.no_tlsv1 || turn_params.no_tlsv1_1) {
-      SSL_CTX_set_min_proto_version(turn_params.dtls_ctx, DTLS1_2_VERSION);
-    }
     if (turn_params.no_tlsv1_2) {
       SSL_CTX_set_max_proto_version(turn_params.dtls_ctx, DTLS1_VERSION);
     }
@@ -3844,6 +3864,32 @@ static void drain_handler(evutil_socket_t sock, short events, void *args) {
 
   UNUSED_ARG(events);
   UNUSED_ARG(args);
+}
+
+void increment_global_allocation_count(void) {
+#ifdef _MSC_VER
+  size_t cur_count = InterlockedIncrement(&global_allocation_count);
+#else
+  size_t cur_count = ++global_allocation_count;
+#endif
+  if (turn_params.verbose > TURN_VERBOSE_NONE) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "Global turn allocation count incremented, now %zu\n", cur_count);
+  }
+}
+
+void decrement_global_allocation_count(void) {
+  int log_level = TURN_LOG_LEVEL_DEBUG;
+  if (turn_params.drain_turn_server) {
+    log_level = TURN_LOG_LEVEL_INFO;
+  }
+#ifdef _MSC_VER
+  size_t cur_count = InterlockedDecrement(&global_allocation_count);
+#else
+  size_t cur_count = --global_allocation_count;
+#endif
+  if (turn_params.drain_turn_server || turn_params.verbose > TURN_VERBOSE_NONE) {
+    TURN_LOG_FUNC(log_level, "Global turn allocation count decremented, now %zu\n", cur_count);
+  }
 }
 
 ///////////////////////////////

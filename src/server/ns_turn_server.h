@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * https://opensource.org/license/bsd-3-clause
+ *
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
@@ -194,11 +198,8 @@ struct _turn_turnserver {
   /* Log Binding Requrest */
   bool *log_binding;
 
-  /* Disable handling old STUN Binding Requests and disable MAPPED-ADDRESS attribute in response */
-  bool *no_stun_backward_compatibility;
-
-  /* Only send RESPONSE-ORIGIN attribute in response if RFC5780 is enabled */
-  bool *response_origin_only_with_rfc5780;
+  /* Enable handling old STUN Binding Requests and enable MAPPED-ADDRESS attribute in response */
+  bool *stun_backward_compatibility;
 
   /* Return an HTTP 400 response to HTTP connections made to ports not
      otherwise handling HTTP. */
@@ -212,20 +213,22 @@ const char *get_version(turn_turnserver *server);
 
 ///////////////////////////////////////////
 
-void init_turn_server(
-    turn_turnserver *server, turnserver_id id, int verbose, ioa_engine_handle e, turn_credential_type ct,
-    int fingerprint, dont_fragment_option_t dont_fragment, get_user_key_cb userkeycb,
-    check_new_allocation_quota_cb chquotacb, release_allocation_quota_cb raqcb, ioa_addr *external_addr,
-    bool *check_origin, bool *no_tcp_relay, bool *no_udp_relay, vintp stale_nonce, vintp max_allocate_lifetime,
-    vintp channel_lifetime, vintp permission_lifetime, bool *stun_only, bool *no_stun, bool software_attribute,
-    bool *web_admin_listen_on_workers, turn_server_addrs_list_t *alternate_servers_list,
-    turn_server_addrs_list_t *tls_alternate_servers_list, turn_server_addrs_list_t *aux_servers_list,
-    int self_udp_balance, bool *no_multicast_peers, bool *allow_loopback_peers, ip_range_list_t *ip_whitelist,
-    ip_range_list_t *ip_blacklist, send_socket_to_relay_cb send_socket_to_relay, bool *secure_stun, bool *mobility,
-    int server_relay, send_turn_session_info_cb send_turn_session_info, send_https_socket_cb send_https_socket,
-    allocate_bps_cb allocate_bps_func, int oauth, const char *oauth_server_name, const char *acme_redirect,
-    ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family, bool *log_binding,
-    bool *no_stun_backward_compatibility, bool *response_origin_only_with_rfc5780, bool *respond_http_unsupported);
+void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, ioa_engine_handle e,
+                      turn_credential_type ct, int fingerprint, dont_fragment_option_t dont_fragment,
+                      get_user_key_cb userkeycb, check_new_allocation_quota_cb chquotacb,
+                      release_allocation_quota_cb raqcb, ioa_addr *external_addr, bool *check_origin,
+                      bool *no_tcp_relay, bool *no_udp_relay, vintp stale_nonce, vintp max_allocate_lifetime,
+                      vintp channel_lifetime, vintp permission_lifetime, bool *stun_only, bool *no_stun,
+                      bool software_attribute, bool *web_admin_listen_on_workers,
+                      turn_server_addrs_list_t *alternate_servers_list,
+                      turn_server_addrs_list_t *tls_alternate_servers_list, turn_server_addrs_list_t *aux_servers_list,
+                      int self_udp_balance, bool *no_multicast_peers, bool *allow_loopback_peers,
+                      ip_range_list_t *ip_whitelist, ip_range_list_t *ip_blacklist,
+                      send_socket_to_relay_cb send_socket_to_relay, bool *secure_stun, bool *mobility, int server_relay,
+                      send_turn_session_info_cb send_turn_session_info, send_https_socket_cb send_https_socket,
+                      allocate_bps_cb allocate_bps_func, int oauth, const char *oauth_server_name,
+                      const char *acme_redirect, ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family,
+                      bool *log_binding, bool *stun_backward_compatibility, bool *respond_http_unsupported);
 
 ioa_engine_handle turn_server_get_engine(turn_turnserver *s);
 

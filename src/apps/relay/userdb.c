@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * https://opensource.org/license/bsd-3-clause
+ *
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
@@ -69,13 +73,6 @@ static ur_string_map *realms = NULL;
 static TURN_MUTEX_DECLARE(o_to_realm_mutex);
 static ur_string_map *o_to_realm = NULL;
 static secrets_list_t realms_list;
-
-#ifndef _MSC_VER
-_Atomic
-#else
-volatile
-#endif
-    size_t global_allocation_count = 0; // used for drain mode, to know when all allocations have gone away
 
 static char userdb_type_unknown[] = "Unknown";
 static char userdb_type_sqlite[] = "SQLite";
@@ -693,14 +690,6 @@ int check_new_allocation_quota(uint8_t *user, int oauth, uint8_t *realm) {
     ur_string_map_unlock(rp->status.alloc_counters);
   }
 
-#ifndef _MSC_VER
-  global_allocation_count++;
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "Global turn allocation count incremented, now %ld\n", global_allocation_count);
-#else
-  size_t cur_count = (size_t)InterlockedIncrement((volatile LONG *)&global_allocation_count);
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "Global turn allocation count incremented, now %ld\n", cur_count);
-#endif
-
   return ret;
 }
 
@@ -727,18 +716,6 @@ void release_allocation_quota(uint8_t *user, int oauth, uint8_t *realm) {
     ur_string_map_unlock(rp->status.alloc_counters);
     free(username);
   }
-
-  int log_level = TURN_LOG_LEVEL_DEBUG;
-  if (turn_params.drain_turn_server) {
-    log_level = TURN_LOG_LEVEL_INFO;
-  }
-#ifndef _MSC_VER
-  global_allocation_count--;
-  TURN_LOG_FUNC(log_level, "Global turn allocation count decremented, now %ld\n", global_allocation_count);
-#else
-  size_t cur_count = (size_t)InterlockedDecrement((volatile LONG *)&global_allocation_count);
-  TURN_LOG_FUNC(log_level, "Global turn allocation count decremented, now %ld\n", cur_count);
-#endif
 }
 
 //////////////////////////////////

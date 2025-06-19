@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * https://opensource.org/license/bsd-3-clause
+ *
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
@@ -38,9 +42,10 @@
 
 #include "apputils.h" // for turn_random, base64_decode
 
-#include <stdio.h>  // for snprintf
-#include <stdlib.h> // for free, malloc, calloc, realloc
-#include <string.h> // for memcpy, strlen, strcmp
+#include <stdbool.h> // for bool, false
+#include <stdio.h>   // for snprintf
+#include <stdlib.h>  // for free, malloc, calloc, realloc
+#include <string.h>  // for memcpy, strlen, strcmp
 
 ///////////////////////////////////////////
 
@@ -295,73 +300,68 @@ static int good_peer_addr(turn_turnserver *server, const char *realm, ioa_addr *
       return 0;
     }
 
-    {
-      int i;
+    if (server->ip_whitelist) {
+      // White listing of addr ranges
+      for (int i = server->ip_whitelist->ranges_number - 1; i >= 0; --i) {
+        CHECK_REALM(server->ip_whitelist->rs[i].realm);
+        if (ioa_addr_in_range(&(server->ip_whitelist->rs[i].enc), peer_addr)) {
+          return 1;
+        }
+      }
+    }
 
-      if (server->ip_whitelist) {
+    {
+      ioa_lock_whitelist(server->e);
+
+      const ip_range_list_t *wl = ioa_get_whitelist(server->e);
+      if (wl) {
         // White listing of addr ranges
-        for (i = server->ip_whitelist->ranges_number - 1; i >= 0; --i) {
-          CHECK_REALM(server->ip_whitelist->rs[i].realm);
-          if (ioa_addr_in_range(&(server->ip_whitelist->rs[i].enc), peer_addr)) {
+        for (int i = wl->ranges_number - 1; i >= 0; --i) {
+          CHECK_REALM(wl->rs[i].realm);
+          if (ioa_addr_in_range(&(wl->rs[i].enc), peer_addr)) {
+            ioa_unlock_whitelist(server->e);
             return 1;
           }
         }
       }
 
-      {
-        ioa_lock_whitelist(server->e);
+      ioa_unlock_whitelist(server->e);
+    }
 
-        const ip_range_list_t *wl = ioa_get_whitelist(server->e);
-        if (wl) {
-          // White listing of addr ranges
-          for (i = wl->ranges_number - 1; i >= 0; --i) {
-            CHECK_REALM(wl->rs[i].realm);
-            if (ioa_addr_in_range(&(wl->rs[i].enc), peer_addr)) {
-              ioa_unlock_whitelist(server->e);
-              return 1;
-            }
-          }
+    if (server->ip_blacklist) {
+      // Black listing of addr ranges
+      for (int i = server->ip_blacklist->ranges_number - 1; i >= 0; --i) {
+        CHECK_REALM(server->ip_blacklist->rs[i].realm);
+        if (ioa_addr_in_range(&(server->ip_blacklist->rs[i].enc), peer_addr)) {
+          char saddr[129];
+          addr_to_string_no_port(peer_addr, (uint8_t *)saddr);
+          TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: A peer IP %s denied in the range: %s in server %d \n",
+                        (unsigned long long)session_id, saddr, server->ip_blacklist->rs[i].str, server_id);
+          return 0;
         }
-
-        ioa_unlock_whitelist(server->e);
       }
+    }
 
-      if (server->ip_blacklist) {
+    {
+      ioa_lock_blacklist(server->e);
+
+      const ip_range_list_t *bl = ioa_get_blacklist(server->e);
+      if (bl) {
         // Black listing of addr ranges
-        for (i = server->ip_blacklist->ranges_number - 1; i >= 0; --i) {
-          CHECK_REALM(server->ip_blacklist->rs[i].realm);
-          if (ioa_addr_in_range(&(server->ip_blacklist->rs[i].enc), peer_addr)) {
+        for (int i = bl->ranges_number - 1; i >= 0; --i) {
+          CHECK_REALM(bl->rs[i].realm);
+          if (ioa_addr_in_range(&(bl->rs[i].enc), peer_addr)) {
+            ioa_unlock_blacklist(server->e);
             char saddr[129];
             addr_to_string_no_port(peer_addr, (uint8_t *)saddr);
-            TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: A peer IP %s denied in the range: %s in server %d \n",
-                          (unsigned long long)session_id, saddr, server->ip_blacklist->rs[i].str, server_id);
+            TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: A peer IP %s denied in the range= %s in server %d \n",
+                          (unsigned long long)session_id, saddr, bl->rs[i].str, server_id);
             return 0;
           }
         }
       }
 
-      {
-        ioa_lock_blacklist(server->e);
-
-        const ip_range_list_t *bl = ioa_get_blacklist(server->e);
-        if (bl) {
-          // Black listing of addr ranges
-          for (i = bl->ranges_number - 1; i >= 0; --i) {
-            CHECK_REALM(bl->rs[i].realm);
-            if (ioa_addr_in_range(&(bl->rs[i].enc), peer_addr)) {
-              ioa_unlock_blacklist(server->e);
-              char saddr[129];
-              addr_to_string_no_port(peer_addr, (uint8_t *)saddr);
-              TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
-                            "session %018llu: A peer IP %s denied in the range= %s in server %d \n",
-                            (unsigned long long)session_id, saddr, bl->rs[i].str, server_id);
-              return 0;
-            }
-          }
-        }
-
-        ioa_unlock_blacklist(server->e);
-      }
+      ioa_unlock_blacklist(server->e);
     }
   }
 
@@ -700,6 +700,7 @@ static mobile_id_t get_new_mobile_id(turn_turnserver *server) {
     uint64_t sid = server->id;
     sid = sid << 56;
     do {
+      newid = 0;
       while (!newid) {
         if (TURN_RANDOM_SIZE == sizeof(mobile_id_t)) {
           newid = (mobile_id_t)turn_random();
@@ -2856,7 +2857,7 @@ static int handle_turn_binding(turn_turnserver *server, ts_ur_super_session *ss,
     size_t len = ioa_network_buffer_get_size(nbh);
     if (stun_set_binding_response_str(ioa_network_buffer_data(nbh), &len, tid,
                                       get_remote_addr_from_ioa_socket(ss->client_socket), 0, NULL, cookie, old_stun,
-                                      *server->no_stun_backward_compatibility)) {
+                                      *server->stun_backward_compatibility)) {
 
       addr_cpy(response_origin, get_local_addr_from_ioa_socket(ss->client_socket));
 
@@ -2867,20 +2868,7 @@ static int handle_turn_binding(turn_turnserver *server, ts_ur_super_session *ss,
                                get_remote_addr_from_ioa_socket(ss->client_socket));
       }
 
-      if (!is_rfc5780(server)) {
-
-        if (!(*server->response_origin_only_with_rfc5780)) {
-          if (old_stun) {
-            stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len, OLD_STUN_ATTRIBUTE_SOURCE_ADDRESS,
-                                   response_origin);
-            stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len, OLD_STUN_ATTRIBUTE_CHANGED_ADDRESS,
-                                   response_origin);
-          } else {
-            stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_RESPONSE_ORIGIN, response_origin);
-          }
-        }
-
-      } else if (ss->client_socket) {
+      if (is_rfc5780(server) && (ss->client_socket)) {
 
         ioa_addr other_address;
 
@@ -4396,6 +4384,10 @@ static int create_relay_connection(turn_turnserver *server, ts_ur_super_session 
 
     if (get_ioa_socket_type(newelem->s) != TCP_SOCKET) {
       if (register_callback_on_ioa_socket(server->e, newelem->s, IOA_EV_READ, peer_input_handler, ss, 0) < 0) {
+        IOA_CLOSE_SOCKET(newelem->s);
+        IOA_CLOSE_SOCKET(rtcp_s);
+        *err_code = 500;
+        *reason = (const uint8_t *)"Wrong initialization (internal error)";
         return -1;
       }
     }
@@ -4564,7 +4556,7 @@ static int read_client_connection(turn_turnserver *server, ts_ur_super_session *
 
   } else if (old_stun_is_command_message_str(ioa_network_buffer_data(in_buffer->nbh),
                                              ioa_network_buffer_get_size(in_buffer->nbh), &old_stun_cookie) &&
-             !(*(server->no_stun)) && !(*(server->no_stun_backward_compatibility))) {
+             !(*(server->no_stun)) && !(*(server->stun_backward_compatibility))) {
 
     ioa_network_buffer_handle nbh = ioa_network_buffer_allocate(server->e);
     int resp_constructed = 0;
@@ -4899,8 +4891,7 @@ void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, io
                       send_turn_session_info_cb send_turn_session_info, send_https_socket_cb send_https_socket,
                       allocate_bps_cb allocate_bps_func, int oauth, const char *oauth_server_name,
                       const char *acme_redirect, ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family,
-                      bool *log_binding, bool *no_stun_backward_compatibility, bool *response_origin_only_with_rfc5780,
-                      bool *respond_http_unsupported) {
+                      bool *log_binding, bool *stun_backward_compatibility, bool *respond_http_unsupported) {
 
   if (!server) {
     return;
@@ -4976,9 +4967,7 @@ void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, io
 
   server->log_binding = log_binding;
 
-  server->no_stun_backward_compatibility = no_stun_backward_compatibility;
-
-  server->response_origin_only_with_rfc5780 = response_origin_only_with_rfc5780;
+  server->stun_backward_compatibility = stun_backward_compatibility;
 
   server->respond_http_unsupported = respond_http_unsupported;
 

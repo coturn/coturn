@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * https://opensource.org/license/bsd-3-clause
+ *
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
  * Copyright (C) 2014 Vivocha S.p.A.
  *
@@ -295,8 +299,8 @@ static MYSQL *get_mydb_connection(void) {
         MYSQL *conn = mysql_real_connect(mydbconnection, co->host, co->user, co->password, co->dbname, co->port, NULL,
                                          CLIENT_IGNORE_SIGPIPE);
         if (!conn) {
-          TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open MySQL DB connection: <%s>, runtime error\n",
-                        pud->userdb_sanitized);
+          TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open MySQL DB connection: <%s>, runtime error: %s\n",
+                        pud->userdb_sanitized, mysql_error(mydbconnection));
           mysql_close(mydbconnection);
           mydbconnection = NULL;
         } else if (mysql_select_db(mydbconnection, co->dbname)) {

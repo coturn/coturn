@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * https://opensource.org/license/bsd-3-clause
+ *
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
@@ -68,7 +72,7 @@ struct dtls_listener_relay_server_info {
   ioa_socket_handle udp_listen_s;
   ur_addr_map *children_ss; /* map of socket children on remote addr */
   struct message_to_relay sm;
-  int slen0;
+  size_t slen0;
   ioa_engine_new_connection_event_handler connect_cb;
 };
 
@@ -141,8 +145,10 @@ static void calculate_cookie(SSL *ssl, unsigned char *cookie_secret, unsigned in
 }
 
 static int generate_cookie(SSL *ssl, unsigned char *cookie, unsigned int *cookie_len) {
-  unsigned char *buffer, result[EVP_MAX_MD_SIZE];
-  unsigned int length = 0, resultlength;
+  unsigned char *buffer;
+  unsigned char result[EVP_MAX_MD_SIZE];
+  unsigned int length = 0;
+  unsigned int resultlength;
   ioa_addr peer;
 
   unsigned char cookie_secret[COOKIE_SECRET_LENGTH];
@@ -653,13 +659,13 @@ start_udp_cycle:
     ioa_addr orig_addr;
     int ttl = 0;
     int tos = 0;
-    int slen = server->slen0;
+    socklen_t slen = server->slen0;
     udp_recvfrom(fd, &orig_addr, &(server->addr), buffer, (int)sizeof(buffer), &ttl, &tos, server->e->cmsg, eflags,
                  &errcode);
     // try again...
     do {
       bsize = recvfrom(fd, ioa_network_buffer_data(elem), ioa_network_buffer_get_capacity_udp(), flags,
-                       (struct sockaddr *)&(server->sm.m.sm.nd.src_addr), (socklen_t *)&slen);
+                       (struct sockaddr *)&(server->sm.m.sm.nd.src_addr), &slen);
     } while (bsize < 0 && socket_eintr());
 
     conn_reset = is_connreset();

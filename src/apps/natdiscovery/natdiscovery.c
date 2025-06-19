@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * https://opensource.org/license/bsd-3-clause
+ *
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
@@ -165,7 +169,6 @@ static int stunclient_receive(int sockfd, ioa_addr *local_addr, ioa_addr *reflex
   {
     int len = 0;
     stun_buffer buf;
-    uint8_t *ptr = buf.buf;
     int recvd = 0;
     const int to_recv = sizeof(buf.buf);
     struct timeval tv;
@@ -176,10 +179,9 @@ static int stunclient_receive(int sockfd, ioa_addr *local_addr, ioa_addr *reflex
     setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv, sizeof(struct timeval));
 
     do {
-      len = recv(sockfd, ptr, to_recv - recvd, 0);
+      len = recv(sockfd, buf.buf, to_recv - recvd, 0);
       if (len > 0) {
         recvd += len;
-        ptr += len;
         break;
       }
     } while (len < 0 && socket_eintr());
@@ -377,8 +379,8 @@ static int stunclient_send(stun_buffer *buf, int sockfd, ioa_addr *local_addr, i
   }
 
   {
-    int len = 0;
-    int slen = get_ioa_addr_len(remote_addr);
+    ssize_t len = 0;
+    uint32_t slen = get_ioa_addr_len(remote_addr);
 
     do {
       len = sendto(sockfd, buf->buf, buf->len, 0, (struct sockaddr *)remote_addr, (socklen_t)slen);
@@ -403,9 +405,8 @@ static int stunclient_receive(stun_buffer *buf, int sockfd, ioa_addr *local_addr
   int ret = 0;
 
   {
-    int len = 0;
-    uint8_t *ptr = buf->buf;
-    int recvd = 0;
+    ssize_t len = 0;
+    ssize_t recvd = 0;
     const int to_recv = sizeof(buf->buf);
     struct timeval tv;
 
@@ -415,10 +416,9 @@ static int stunclient_receive(stun_buffer *buf, int sockfd, ioa_addr *local_addr
     setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv, sizeof(struct timeval));
 
     do {
-      len = recv(sockfd, ptr, to_recv - recvd, 0);
+      len = recv(sockfd, buf->buf, to_recv - recvd, 0);
       if (len > 0) {
         recvd += len;
-        ptr += len;
         break;
       }
     } while (len < 0 && socket_eintr());
@@ -780,13 +780,11 @@ int main(int argc, char **argv) {
     }
     if (rfc5780) {
       if (!addr_any(&other_addr)) {
-        int res = 0;
-        res = run_stunclient(&local_addr, &remote_addr, &reflexive_addr, &other_addr, &local_port, &rfc5780, 1, 1,
-                             padding);
+        int res = run_stunclient(&local_addr, &remote_addr, &reflexive_addr, &other_addr, &local_port, &rfc5780, 1, 1,
+                                 padding);
         if (!res) {
           discoveryresult("NAT with Endpoint Independent Filtering!");
         } else {
-          res = 0;
           res = run_stunclient(&local_addr, &remote_addr, &reflexive_addr, &other_addr, &local_port, &rfc5780, 0, 1,
                                padding);
           if (!res) {

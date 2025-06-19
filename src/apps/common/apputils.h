@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * https://opensource.org/license/bsd-3-clause
+ *
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
@@ -59,9 +63,9 @@ extern int IS_TURN_SERVER;
 
 #if defined(TURN_NO_TLS)
 #define TLS_SUPPORTED 0
-#else
+#else // ! defined(TURN_NO_TLS)
 #define TLS_SUPPORTED 1
-#endif
+#endif // defined(TURN_NO_TLS)
 
 #if defined(TURN_NO_DTLS)
 #define DTLS_SUPPORTED 0
@@ -76,7 +80,6 @@ extern int IS_TURN_SERVER;
 // clang-format off
 enum _TURN_TLS_TYPE {
   TURN_TLS_NO = 0,
-  TURN_TLS_SSL23,
   TURN_TLS_v1_0,
   TURN_TLS_v1_1,
   TURN_TLS_v1_2,
