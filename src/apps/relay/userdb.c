@@ -58,6 +58,8 @@
 
 #include "ns_turn_utils.h"
 
+#include "ns_turn_oauth.h"
+
 #include "ns_turn_maps.h"
 #include "ns_turn_server.h"
 
