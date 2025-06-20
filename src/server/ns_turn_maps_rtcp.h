@@ -61,7 +61,7 @@ rtcp_map *rtcp_map_create(ioa_engine_handle e);
  * true - success
  * false - error
  */
-bool rtcp_map_put(rtcp_map *map, rtcp_token_type key, ioa_socket_handle s);
+bool rtcp_map_put(rtcp_map *map, rtcp_token_type token, ioa_socket_handle s);
 
 /**
  * @ret:
