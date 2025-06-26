@@ -1759,19 +1759,16 @@ static void generate_aes_128_key(char *filePath, unsigned char *returnedKey) {
   turn_srandom();
 
   for (size_t i = 0; i < 16; ++i) {
-    // TODO: This could be sped up by breaking the
-    // returned random value into multiple 8bit values
-    // instead of getting a new multi-byte random value
-    // for each key index.
-    switch (turn_random() % 3) {
+    size_t r = turn_random();
+    switch (r % 3) {
     case 0:
-      key[i] = (turn_random() % 10) + 48;
+      key[i] = (r % 10) + 48;
       continue;
     case 1:
-      key[i] = (turn_random() % 26) + 65;
+      key[i] = (r % 26) + 65;
       continue;
     default:
-      key[i] = (turn_random() % 26) + 97;
+      key[i] = (r % 26) + 97;
       continue;
     }
   }
