@@ -2938,6 +2938,10 @@ static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss, in
   addr_set_any(&peer_addr);
   allocation *a = get_allocation_ss(ss);
 
+  if (!server) {
+    return -1;
+  }
+
   if (ss->is_tcp_relay) {
     *err_code = 403;
     *reason = (const uint8_t *)"Send cannot be used with TCP relay";
@@ -4102,6 +4106,10 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
     return -1;
   }
 
+  if (!server) {
+    return -1;
+  }
+
   SOCKET_TYPE socket_type = get_ioa_socket_type(ss->client_socket);
 
   turn_report_session_usage(ss, 1);
@@ -4227,6 +4235,10 @@ static int write_client_connection(turn_turnserver *server, ts_ur_super_session 
                                    int ttl, int tos) {
 
   FUNCSTART;
+
+  if (!server) {
+    return -1;
+  }
 
   if (!(ss->client_socket)) {
     ioa_network_buffer_delete(server->e, nbh);
