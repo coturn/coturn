@@ -657,7 +657,7 @@ beg_allocate:
       if (dual_allocation && !mobility) {
         uint8_t rand = (uint8_t)turn_random();
         bool add_requested_family = rand & 0x01;
-        bool use_ipv4 = rand & 0x03;
+        bool use_ipv4 = rand & 0x02;
 
         if (add_requested_family) {
           uint8_t field[4];
