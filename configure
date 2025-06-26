@@ -1027,7 +1027,7 @@ fi
 ###############################
 
 # Uncomment to disable OAuth support
-OAUTH_DISABLED="-DOAUTH_DISABLED"
+#OAUTH_DISABLED="-DOAUTH_DISABLED"
 
 ###############################
 # So, what we have now:
