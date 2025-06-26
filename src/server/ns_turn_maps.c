@@ -38,6 +38,7 @@
 
 #include "ns_turn_khash.h"
 
+#include <assert.h> // for assert
 #include <stdlib.h> // for size_t, free, malloc, NULL, realloc
 #include <string.h> // for memset, strcmp, memcpy, strlen
 
@@ -261,6 +262,8 @@ bool lm_map_put(lm_map *map, ur_map_key_type key, ur_map_value_type value) {
           a->extra_values[i] = (ur_map_value_type *)malloc(sizeof(ur_map_value_type));
           valuep = a->extra_values[i];
         }
+        assert(keyp);
+        assert(valuep);
         *keyp = key;
         *valuep = value;
         return false;
@@ -271,11 +274,13 @@ bool lm_map_put(lm_map *map, ur_map_key_type key, ur_map_value_type value) {
   size_t old_sz = esz;
   size_t old_sz_mem = esz * sizeof(ur_map_key_type *);
   a->extra_keys = (ur_map_key_type **)realloc(a->extra_keys, old_sz_mem + sizeof(ur_map_key_type *));
+  assert(a->extra_keys);
   a->extra_keys[old_sz] = (ur_map_key_type *)malloc(sizeof(ur_map_key_type));
   *(a->extra_keys[old_sz]) = key;
 
   old_sz_mem = esz * sizeof(ur_map_value_type *);
   a->extra_values = (ur_map_value_type **)realloc(a->extra_values, old_sz_mem + sizeof(ur_map_value_type *));
+  assert(a->extra_values);
   a->extra_values[old_sz] = (ur_map_value_type *)malloc(sizeof(ur_map_value_type));
   *(a->extra_values[old_sz]) = value;
 
@@ -528,6 +533,7 @@ static void addr_list_add(addr_list_header *slh, const ioa_addr *key, ur_addr_ma
     size_t old_sz = slh->extra_sz;
     size_t old_sz_mem = old_sz * sizeof(addr_elem);
     slh->extra_list = (addr_elem *)realloc(slh->extra_list, old_sz_mem + sizeof(addr_elem));
+    assert(slh->extra_list);
     elem = &(slh->extra_list[old_sz]);
     slh->extra_sz += 1;
   }
@@ -947,6 +953,7 @@ ur_string_map *ur_string_map_create(ur_string_map_func del_value_func) {
     free(map);
     return NULL;
   }
+  assert(map);
   map->del_value_func = del_value_func;
   return map;
 }
