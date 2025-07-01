@@ -112,7 +112,7 @@ if (BUILD_SHARED_LIBS)
 endif(BUILD_SHARED_LIBS)
 
 # Uncomment to disable OAuth support
-#add_definitions(-DOAUTH_DISABLED)
+#add_definitions(-DTURN_NO_OAUTH)
 
 include(CMakePackageConfigHelpers)
 include(GNUInstallDirs)

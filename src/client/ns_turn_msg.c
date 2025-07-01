@@ -2078,7 +2078,7 @@ static bool calculate_key(char *key, size_t key_size, char *new_key, size_t new_
 }
 
 bool convert_oauth_key_data(const oauth_key_data *oakd0, oauth_key *key, char *err_msg, size_t err_msg_size) {
-#if !defined(OAUTH_DISABLED)
+#if !defined(TURN_NO_OAUTH)
   if (oakd0 && key) {
 
     oauth_key_data oakd_obj;
@@ -2166,7 +2166,7 @@ bool convert_oauth_key_data(const oauth_key_data *oakd0, oauth_key *key, char *e
 #endif
 }
 
-#if !defined(OAUTH_DISABLED)
+#if !defined(TURN_NO_OAUTH)
 
 const EVP_CIPHER *get_cipher_type(ENC_ALG enc_alg);
 const EVP_CIPHER *get_cipher_type(ENC_ALG enc_alg) {
@@ -2435,7 +2435,7 @@ static bool decode_oauth_token_gcm(const uint8_t *server_name, const encoded_oau
 
 bool encode_oauth_token(const uint8_t *server_name, encoded_oauth_token *etoken, const oauth_key *key,
                         const oauth_token *dtoken, const uint8_t *nonce) {
-#if !defined(OAUTH_DISABLED)
+#if !defined(TURN_NO_OAUTH)
   UNUSED_ARG(nonce);
   if (server_name && etoken && key && dtoken) {
     switch (key->as_rs_alg) {
@@ -2458,7 +2458,7 @@ bool encode_oauth_token(const uint8_t *server_name, encoded_oauth_token *etoken,
 
 bool decode_oauth_token(const uint8_t *server_name, const encoded_oauth_token *etoken, const oauth_key *key,
                         oauth_token *dtoken) {
-#if !defined(OAUTH_DISABLED)
+#if !defined(TURN_NO_OAUTH)
   if (server_name && etoken && key && dtoken) {
     switch (key->as_rs_alg) {
 #if !defined(TURN_NO_GCM)
