@@ -655,14 +655,14 @@ beg_allocate:
       }
 
       if (dual_allocation && !mobility) {
-        // TODO: This could be reworked
-        // it's using t as a tri-state to determine whether to add the requested address family field
-        // it should be two seperate bools for readability purposes though.
-        uint8_t t = ((uint8_t)turn_random()) % 3;
-        if (t) {
+        uint8_t rand = (uint8_t)turn_random();
+        bool add_requested_family = rand & 0x01;
+        bool use_ipv4 = rand & 0x02;
+
+        if (add_requested_family) {
           uint8_t field[4];
-          field[0] = (t == 1) ? (uint8_t)STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4
-                              : (uint8_t)STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6;
+          field[0] = (use_ipv4) ? (uint8_t)STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4
+                                : (uint8_t)STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6;
           field[1] = 0;
           field[2] = 0;
           field[3] = 0;

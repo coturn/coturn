@@ -725,6 +725,11 @@ void add_unsent_buffer(unsent_buffer *ub, ioa_network_buffer_handle nbh) {
     ioa_network_buffer_delete(NULL, nbh);
   } else {
     ub->bufs = (ioa_network_buffer_handle *)realloc(ub->bufs, sizeof(ioa_network_buffer_handle) * (ub->sz + 1));
+    if (!ub->bufs) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Memory allocation failed in add_unsent_buffer\n");
+      ioa_network_buffer_delete(NULL, nbh);
+      return;
+    }
     ub->bufs[ub->sz] = nbh;
     ub->sz += 1;
   }
