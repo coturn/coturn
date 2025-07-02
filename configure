@@ -1023,10 +1023,17 @@ if [ -n "${TURN_NO_TLS}" ]; then
 fi
 
 ###############################
+# OAUTH
+###############################
+
+# Uncomment to disable OAuth support
+#TURN_NO_OAUTH="-DTURN_NO_OAUTH"
+
+###############################
 # So, what we have now:
 ###############################
 
-OSCFLAGS="${OSCFLAGS} ${TURN_NO_SCTP} ${TURN_SCTP_INCLUDE} ${TURN_NO_THREAD_BARRIERS} ${TURN_NO_DTLS} ${TURN_NO_GCM} ${TURN_NO_TLS} -DINSTALL_PREFIX=${PREFIX} -DTURNDB=${TURNDBDIR}/turndb"
+OSCFLAGS="${OSCFLAGS} ${TURN_NO_SCTP} ${TURN_SCTP_INCLUDE} ${TURN_NO_THREAD_BARRIERS} ${TURN_NO_DTLS} ${TURN_NO_GCM} ${TURN_NO_TLS} -DINSTALL_PREFIX=${PREFIX} -DTURNDB=${TURNDBDIR}/turndb ${TURN_NO_OAUTH}"
 
 if ! [ -z "${TURN_ACCEPT_RPATH}" ] ; then
   if [ -z "${TURN_DISABLE_RPATH}" ] ; then

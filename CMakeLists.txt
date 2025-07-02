@@ -111,6 +111,9 @@ if (BUILD_SHARED_LIBS)
     set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 endif(BUILD_SHARED_LIBS)
 
+# Uncomment to disable OAuth support
+#add_definitions(-DTURN_NO_OAUTH)
+
 include(CMakePackageConfigHelpers)
 include(GNUInstallDirs)
 include(GenerateExportHeader)
