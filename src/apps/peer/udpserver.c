@@ -105,7 +105,7 @@ static int udp_create_server_socket(server_type *const server, const char *const
   set_sock_buf_size(udp_fd, UR_SERVER_SOCK_BUF_SIZE);
 
   if (addr_bind(udp_fd, server_addr, 1, 1, UDP_SOCKET) < 0) {
-    return -1;
+    goto cleanup;
   }
 
   socket_set_nonblocking(udp_fd);
@@ -113,13 +113,26 @@ static int udp_create_server_socket(server_type *const server, const char *const
   struct event *udp_ev =
       event_new(server->event_base, udp_fd, EV_READ | EV_PERSIST, udp_server_input_handler, server_addr);
 
-  event_add(udp_ev, NULL);
+  if (udp_ev == NULL) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Failed to create new event in udp_create_server_socket\n");
+    goto cleanup;
+  }
+
+  if (event_add(udp_ev, NULL) < 0) {
+    event_free(udp_ev);
+    goto cleanup;
+  }
 
   if (server->verbose) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "End\n");
   }
 
   return 0;
+
+cleanup:
+  socket_closesocket(udp_fd);
+  free(server_addr);
+  return -1;
 }
 
 static server_type *init_server(int verbose, const char *ifname, char **local_addresses, size_t las, int port) {
