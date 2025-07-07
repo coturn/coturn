@@ -591,6 +591,14 @@ will be employed (OS\-dependent). In the older Linux systems
 per network listening endpoint \- unless "\fB\-m\fP 0" or "\fB\-m\fP 1" is set.
 .TP
 .B
+\fB\-\-cpus\fP
+Override system CPU count detection. Use this number instead of the
+auto\-detected CPU count. Useful in virtualized/containerized environments
+where the system reports the host CPU count instead of the allocated
+container CPUs. This affects the default number of relay threads when
+\fB\-\-relay\-threads\fP is not explicitly specified.
+.TP
+.B
 \fB\-\-min\-port\fP
 Lower bound of the UDP port range for relay
 endpoints allocation.

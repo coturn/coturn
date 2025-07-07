@@ -225,7 +225,7 @@ turn_params_t turn_params = {
 
     ///////////// CPUs //////////////////
     DEFAULT_CPUS_NUMBER,
-    false,                                  /* cpus_configured */
+    false, /* cpus_configured */
 
     ///////// Encryption /////////
     "",                                     /* secret_key_file */
@@ -1809,7 +1809,7 @@ unsigned char *base64decode(const void *b64_decode_this, int decode_this_many_by
   int decoded_byte_index = 0;                     // Index where the next base64_decoded byte should be written.
   while (0 < BIO_read(b64_bio, base64_decoded + decoded_byte_index, 1)) { // Read byte-by-byte.
     decoded_byte_index++; // Increment the index until read of BIO decoded data is complete.
-  }                       // Once we're done reading decoded data, BIO_read returns -1 even though there's no error.
+  } // Once we're done reading decoded data, BIO_read returns -1 even though there's no error.
 
   BIO_free_all(b64_bio); // Destroys all BIOs in chain, starting with b64 (i.e. the 1st one).
   return base64_decoded; // Returns base-64 decoded data with trailing null terminator.
@@ -2380,7 +2380,8 @@ static void set_option(int c, char *value) {
     if (cpus < 1) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: cpus value must be positive\n");
     } else if (cpus > MAX_NUMBER_OF_GENERAL_RELAY_SERVERS) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: max number of cpus is %d.\n", MAX_NUMBER_OF_GENERAL_RELAY_SERVERS);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: max number of cpus is %d.\n",
+                    MAX_NUMBER_OF_GENERAL_RELAY_SERVERS);
       turn_params.cpus = MAX_NUMBER_OF_GENERAL_RELAY_SERVERS;
       turn_params.cpus_configured = true;
     } else {
