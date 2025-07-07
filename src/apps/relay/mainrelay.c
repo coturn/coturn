@@ -1773,7 +1773,7 @@ static void generate_aes_128_key(char *filePath, unsigned char *returnedKey) {
     key[i] = (i < 8) ? (random_value_0 >> (i * 8)) & 0xff : (random_value_1 >> ((i - 8) * 8)) & 0xff;
   }
 
-  FILE *fptr = fopen(filePath, "w");
+  FILE *fptr = fopen(filePath, "wb");
   if (!fptr) {
     return;
   }
