@@ -334,6 +334,7 @@ typedef struct _turn_params_ {
   /////// CPUs //////////////
 
   unsigned long cpus;
+  bool cpus_configured;
 
   ///////// Encryption /////////
   char secret_key_file[1025];
