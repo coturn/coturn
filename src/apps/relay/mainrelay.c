@@ -1809,7 +1809,7 @@ unsigned char *base64decode(const void *b64_decode_this, int decode_this_many_by
   int decoded_byte_index = 0;                     // Index where the next base64_decoded byte should be written.
   while (0 < BIO_read(b64_bio, base64_decoded + decoded_byte_index, 1)) { // Read byte-by-byte.
     decoded_byte_index++; // Increment the index until read of BIO decoded data is complete.
-  } // Once we're done reading decoded data, BIO_read returns -1 even though there's no error.
+  }                       // Once we're done reading decoded data, BIO_read returns -1 even though there's no error.
 
   BIO_free_all(b64_bio); // Destroys all BIOs in chain, starting with b64 (i.e. the 1st one).
   return base64_decoded; // Returns base-64 decoded data with trailing null terminator.
@@ -3069,25 +3069,23 @@ int main(int argc, char **argv) {
   }
 
   // CPU detection and configuration
-  {
-    if (!turn_params.cpus_configured) {
-      unsigned long cpus = get_system_active_number_of_cpus();
-      if (cpus > 0) {
-        turn_params.cpus = cpus;
-      }
+  if (!turn_params.cpus_configured) {
+    unsigned long cpus = get_system_active_number_of_cpus();
+    if (cpus > 0) {
+      turn_params.cpus = cpus;
     }
-    if (turn_params.cpus < DEFAULT_CPUS_NUMBER) {
-      turn_params.cpus = DEFAULT_CPUS_NUMBER;
-    } else if (turn_params.cpus > MAX_NUMBER_OF_GENERAL_RELAY_SERVERS) {
-      turn_params.cpus = MAX_NUMBER_OF_GENERAL_RELAY_SERVERS;
-    }
-
-    turn_params.general_relay_servers_number = (turnserver_id)turn_params.cpus;
-
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "System cpu num is %lu\n", get_system_number_of_cpus());
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "System enable num is %lu\n", get_system_active_number_of_cpus());
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Configured cpu num is %lu\n", turn_params.cpus);
   }
+  if (turn_params.cpus < DEFAULT_CPUS_NUMBER) {
+    turn_params.cpus = DEFAULT_CPUS_NUMBER;
+  } else if (turn_params.cpus > MAX_NUMBER_OF_GENERAL_RELAY_SERVERS) {
+    turn_params.cpus = MAX_NUMBER_OF_GENERAL_RELAY_SERVERS;
+  }
+
+  turn_params.general_relay_servers_number = (turnserver_id)turn_params.cpus;
+
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "System cpu num is %lu\n", get_system_number_of_cpus());
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "System enable num is %lu\n", get_system_active_number_of_cpus());
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Configured cpu num is %lu\n", turn_params.cpus);
 
   // Second pass read -u options
   read_config_file(argc, argv, 2);
