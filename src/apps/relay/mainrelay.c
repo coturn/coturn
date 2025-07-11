@@ -37,6 +37,7 @@
 
 #include "prom_server.h"
 #include <assert.h>
+#include <limits.h>
 
 #if defined(WINDOWS)
 #include <iphlpapi.h>
@@ -1761,29 +1762,26 @@ void encrypt_aes_128(unsigned char *in, const unsigned char *mykey) {
   printf("%s\n", base64_encoded);
 }
 static void generate_aes_128_key(char *filePath, unsigned char *returnedKey) {
-  char key[16];
+  unsigned char key[16];
 
   // TODO: Document why this is called...?
   turn_srandom();
 
+// generate two 64-bit random values
+#if LONG_MAX > 0xffffffff
+  uint64_t random_value_0 = (uint64_t)turn_random();
+  uint64_t random_value_1 = (uint64_t)turn_random();
+#else
+  uint64_t random_value_0 = (((uint64_t)turn_random()) << 32) | (uint64_t)turn_random();
+  uint64_t random_value_1 = (((uint64_t)turn_random()) << 32) | (uint64_t)turn_random();
+#endif
+
   for (size_t i = 0; i < 16; ++i) {
-    // TODO: This could be sped up by breaking the
-    // returned random value into multiple 8bit values
-    // instead of getting a new multi-byte random value
-    // for each key index.
-    switch (turn_random() % 3) {
-    case 0:
-      key[i] = (turn_random() % 10) + 48;
-      continue;
-    case 1:
-      key[i] = (turn_random() % 26) + 65;
-      continue;
-    default:
-      key[i] = (turn_random() % 26) + 97;
-      continue;
-    }
+    // store the 128 random bits in the key array
+    key[i] = (i < 8) ? (random_value_0 >> (i * 8)) & 0xff : (random_value_1 >> ((i - 8) * 8)) & 0xff;
   }
-  FILE *fptr = fopen(filePath, "w");
+
+  FILE *fptr = fopen(filePath, "wb");
   if (!fptr) {
     return;
   }
