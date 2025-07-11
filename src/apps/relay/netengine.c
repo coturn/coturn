@@ -948,6 +948,9 @@ static ioa_engine_handle create_new_listener_engine(void) {
                         &turn_params.redis_statsdb
 #endif
       );
+  if (!e) {
+    exit(-1);
+  }
   set_ssl_ctx(e, &turn_params);
   ioa_engine_set_rtcp_map(e, turn_params.listener.rtcpmap);
   return e;
@@ -1639,6 +1642,9 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
                                     &turn_params.redis_statsdb
 #endif
     );
+    if (!rs->ioa_eng) {
+      exit(-1);
+    }
     set_ssl_ctx(rs->ioa_eng, &turn_params);
     ioa_engine_set_rtcp_map(rs->ioa_eng, turn_params.listener.rtcpmap);
   }
