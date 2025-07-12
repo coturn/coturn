@@ -4,12 +4,83 @@ Coturn TURN server Docker image changelog
 
 
 
-## [edge] · (unreleased)
-[edge]: /../../tree/main
+## [edge]
+[edge]: /../../tree/docker/master
 
 ### Security updated
 
-- [Debian Linux] "bookworm" 20241016 (12.7): <https://github.com/docker-library/official-images/commit/e6d93e331b38261c646c27e86161d55235144e0a>
+- [Debian Linux] "bookworm" 20250630 (12.11): <https://github.com/docker-library/official-images/commit/2568150630c10253d352ff0695b0dc73717230c1>
+
+
+
+
+## [4.7.0-r0] · 2025-06-02
+[4.7.0-r0]: /../../tree/docker/4.7.0-r0
+
+### Upgraded
+
+- [Coturn] 4.7.0: <https://github.com/coturn/coturn/blob/4.7.0/ChangeLog>
+- [Alpine Linux] 3.22: <https://www.alpinelinux.org/posts/Alpine-3.22.0-released.html>
+
+### Security updated
+
+- [Debian Linux] "bookworm" 20250520 (12.11): <https://github.com/docker-library/official-images/commit/6d7afdaec5dec1a0b4021b4e470853c3e9fba2bc>
+
+
+
+
+## [4.6.3-r3] · 2025-02-17
+[4.6.3-r3]: /../../tree/docker/4.6.3-r3
+
+### Security updated
+
+- [Alpine Linux] 3.21.3: <https://github.com/docker-library/official-images/commit/a536b8d448389cbe8691ab77986e2cbaff01005f>
+- [Debian Linux] "bookworm" 20250203 (12.9): <https://github.com/docker-library/official-images/commit/454b1e5e30feb21440c31c8c109cf4a6cc059d5e>
+
+
+
+
+## [4.6.3-r2] · 2025-01-09
+[4.6.3-r2]: /../../tree/docker/4.6.3-r2
+
+### Security updated
+
+- [Alpine Linux] 3.21.2: <https://github.com/docker-library/official-images/commit/824cefde693b820f783266fda449588ca583a1b0>
+
+
+
+
+## [4.6.3-r1] · 2025-01-08
+[4.6.3-r1]: /../../tree/docker/4.6.3-r1
+
+### Security updated
+
+- [Alpine Linux] 3.21.1: <https://github.com/docker-library/official-images/commit/34b47f1f4bdef69e39ae335e55b0f07af3b4fa18>
+- [Debian Linux] "bookworm" 20241223 (12.8): <https://github.com/docker-library/official-images/commit/b6ea0fc48d92a7f6ef631667e82600666be53181>
+
+
+
+
+## [4.6.3-r0] · 2024-12-11
+[4.6.3-r0]: /../../tree/docker/4.6.3-r0
+
+### Upgraded
+
+- [Coturn] 4.6.3: <https://github.com/coturn/coturn/blob/4.6.3/ChangeLog>
+
+
+
+
+## [4.6.2-r13] · 2024-12-06
+[4.6.2-r13]: /../../tree/docker/4.6.2-r13
+
+### Upgraded
+
+- [Alpine Linux] 3.21: <https://alpinelinux.org/posts/Alpine-3.21.0-released.html>
+
+### Security updated
+
+- [Debian Linux] "bookworm" 20241202 (12.8): <https://github.com/docker-library/official-images/commit/36ffb3d236c35c22922dfeca1844d7ad119b06f5>
 
 
 

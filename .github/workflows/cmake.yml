@@ -1,4 +1,4 @@
-name: CodeQL
+name: CMake
 
 on:
   push:
@@ -6,8 +6,6 @@ on:
     tags: ["4.*"]
   pull_request:
     branches: ["master"]
-  schedule:
-    - cron: "6 13 * * 4"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -17,27 +15,29 @@ env:
   BUILD_TYPE: Release
 
 jobs:
-  analyze:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ 'ubuntu:20.04', 'ubuntu:22.04', 'ubuntu:24.04' ]
+
     runs-on: ubuntu-latest
-    permissions:
-      security-events: write
+    container: ${{ matrix.os }}
+
     steps:
       - uses: actions/checkout@v4
 
       - name: Install dependencies
+        env:
+          DEBIAN_FRONTEND: noninteractive
         uses: ./.github/workflows/actions/ubuntu-build-deps
-        with:
-          SUDO: true
-
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
-        with:
-          languages: cpp
 
       - name: Configure
         run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
       - name: Build
         run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
 
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+      - run: ./run_tests.sh
+        working-directory: examples/
+      - run: ./run_tests_conf.sh
+        working-directory: examples/

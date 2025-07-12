@@ -2,7 +2,7 @@
 # Dockerfile of coturn/coturn:alpine Docker image.
 #
 
-ARG alpine_ver=3.20
+ARG alpine_ver=3.22
 
 
 
@@ -46,27 +46,13 @@ RUN mkdir -p /build/prom/build/ && cd /build/prom/build/ \
                  .. \
  && make
 
-# Build libpromhttp.so from sources.
-RUN mkdir -p /build/promhttp/build/ && cd /build/promhttp/build/ \
- # Fix compiler warning: -Werror=incompatible-pointer-types
- && sed -i 's/\&promhttp_handler/(MHD_AccessHandlerCallback)\&promhttp_handler/' \
-           /build/promhttp/src/promhttp.c \
- && TEST=0 cmake -G "Unix Makefiles" \
-                 -DCMAKE_INSTALL_PREFIX=/usr \
-                 -DCMAKE_SKIP_BUILD_RPATH=TRUE \
-                 -DCMAKE_C_FLAGS="-g -O3" \
-                 .. \
- && make VERBOSE=1
-
 # Install prometheus-client-c.
 RUN LIBS_DIR=/out/$(dirname $(find /usr/ -name libc.so)) \
  && mkdir -p $LIBS_DIR/ \
  && cp -rf /build/prom/build/libprom.so \
-           /build/promhttp/build/libpromhttp.so \
        $LIBS_DIR/ \
  && mkdir -p /out/usr/include/ \
  && cp -rf /build/prom/include/* \
-           /build/promhttp/include/* \
        /out/usr/include/ \
  # Preserve license file.
  && mkdir -p /out/usr/share/licenses/prometheus-client-c/ \

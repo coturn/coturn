@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * https://opensource.org/license/bsd-3-clause
+ *
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
@@ -189,19 +193,20 @@ static const telnet_telopt_t cli_telopts[] = {
 
 struct toggleable_command {
   const char *cmd;
-  vintp data;
+  bool *data;
 };
 
-struct toggleable_command tcmds[] = {{"stale-nonce", &turn_params.stale_nonce},
-                                     {"stun-only", &turn_params.stun_only},
-                                     {"no-stun", &turn_params.no_stun},
-                                     {"secure-stun", &turn_params.secure_stun},
-                                     {"no-udp-relay", &turn_params.no_udp_relay},
-                                     {"no-tcp-relay", &turn_params.no_tcp_relay},
-                                     {"no-multicast-peers", &turn_params.no_multicast_peers},
-                                     {"allow-loopback-peers", &turn_params.allow_loopback_peers},
-                                     {"mobility", &turn_params.mobility},
-                                     {NULL, NULL}};
+struct toggleable_command tcmds[] = {
+    //{"stale-nonce", &turn_params.stale_nonce}, // TODO re-enable this option by separating from rest of bools
+    {"stun-only", &turn_params.stun_only},
+    {"no-stun", &turn_params.no_stun},
+    {"secure-stun", &turn_params.secure_stun},
+    {"no-udp-relay", &turn_params.no_udp_relay},
+    {"no-tcp-relay", &turn_params.no_tcp_relay},
+    {"no-multicast-peers", &turn_params.no_multicast_peers},
+    {"allow-loopback-peers", &turn_params.allow_loopback_peers},
+    {"mobility", &turn_params.mobility},
+    {NULL, NULL}};
 
 ///////////////////////////////
 
@@ -347,7 +352,7 @@ static void cli_print_ip_range_list(struct cli_session *cs, ip_range_list_t *val
     size_t i;
     for (i = 0; i < value->ranges_number; ++i) {
       if (value->rs[i].realm[0]) {
-        if (cs->realm[0] && strcmp(cs->realm, value->rs[i].realm)) {
+        if (cs->realm[0] && strcmp(cs->realm, value->rs[i].realm) != 0) {
           continue;
         } else {
           myprintf(cs, "  %s: %s (%s)%s\n", name, value->rs[i].str, value->rs[i].realm, sc);
@@ -439,11 +444,11 @@ static bool print_session(ur_map_key_type key, ur_map_value_type value, void *ar
     struct cli_session *cs = csarg->cs;
     struct turn_session_info *tsi = (struct turn_session_info *)value;
 
-    if (cs->realm[0] && strcmp(cs->realm, tsi->realm)) {
+    if (cs->realm[0] && strcmp(cs->realm, tsi->realm) != 0) {
       return false;
     }
 
-    if (cs->origin[0] && strcmp(cs->origin, tsi->origin)) {
+    if (cs->origin[0] && strcmp(cs->origin, tsi->origin) != 0) {
       return false;
     }
 
@@ -486,7 +491,7 @@ static bool print_session(ur_map_key_type key, ur_map_value_type value, void *ar
     } else {
       if (csarg->username[0]) {
         if (csarg->exact_match) {
-          if (strcmp((char *)tsi->username, csarg->username)) {
+          if (strcmp((char *)tsi->username, csarg->username) != 0) {
             return false;
           }
         } else {
@@ -744,8 +749,8 @@ static void cli_print_configuration(struct cli_session *cs) {
     cli_print_flag(cs, turn_params.no_dtls, "no-dtls", 0);
     cli_print_flag(cs, turn_params.no_tls, "no-tls", 0);
 
-    cli_print_flag(cs, (!turn_params.no_tlsv1 && !turn_params.no_tls), "TLSv1.0", 0);
-    cli_print_flag(cs, (!turn_params.no_tlsv1_1 && !turn_params.no_tls), "TLSv1.1", 0);
+    cli_print_flag(cs, (turn_params.enable_tlsv1 && !turn_params.no_tls), "TLSv1.0", 0);
+    cli_print_flag(cs, (turn_params.enable_tlsv1_1 && !turn_params.no_tls), "TLSv1.1", 0);
     cli_print_flag(cs, (!turn_params.no_tlsv1_2 && !turn_params.no_tls), "TLSv1.2", 0);
 
     cli_print_uint(cs, (unsigned long)turn_params.listener_port, "listener-port", 0);
@@ -1658,7 +1663,7 @@ static void https_finish_page(struct str_buffer *sb, ioa_socket_handle s, int cc
   str_buffer_append(sb, "</body>\r\n</html>\r\n");
 
   send_str_from_ioa_socket_tcp(s, "HTTP/1.1 200 OK\r\nServer: ");
-  if (!turn_params.no_software_attribute) {
+  if (turn_params.software_attribute) {
     send_str_from_ioa_socket_tcp(s, TURN_SOFTWARE);
   }
   send_str_from_ioa_socket_tcp(s, "\r\n");
@@ -1941,7 +1946,7 @@ static const char *change_ip_addr_html(int dynamic, const char *kind, const char
         realm = "";
       }
 
-      if (current_realm()[0] && strcmp(current_realm(), realm)) {
+      if (current_realm()[0] && strcmp(current_realm(), realm) != 0) {
         // delete forbidden
       } else {
         char *eip = evhttp_encode_uri(ip);
@@ -1962,7 +1967,7 @@ static void https_print_ip_range_list(struct str_buffer *sb, ip_range_list_t *va
       char buffer[1025];
       for (i = 0; i < value->ranges_number; ++i) {
         if (value->rs[i].realm[0]) {
-          if (current_eff_realm()[0] && strcmp(current_eff_realm(), value->rs[i].realm)) {
+          if (current_eff_realm()[0] && strcmp(current_eff_realm(), value->rs[i].realm) != 0) {
             continue;
           } else {
             sbprintf(sb, "<tr><td>  %s</td><td> %s [%s] %s</td></tr>\r\n", name, value->rs[i].str, value->rs[i].realm,
@@ -2134,8 +2139,6 @@ static void write_pc_page(ioa_socket_handle s) {
         https_print_flag(sb, turn_params.no_dtls, "no-dtls", 0);
         https_print_flag(sb, turn_params.no_tls, "no-tls", 0);
 
-        https_print_flag(sb, (!turn_params.no_tlsv1 && !turn_params.no_tls), "TLSv1.0", 0);
-        https_print_flag(sb, (!turn_params.no_tlsv1_1 && !turn_params.no_tls), "TLSv1.1", 0);
         https_print_flag(sb, (!turn_params.no_tlsv1_2 && !turn_params.no_tls), "TLSv1.2", 0);
 
         https_print_uint(sb, (unsigned long)turn_params.listener_port, "listener-port", 0);

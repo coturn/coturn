@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * https://opensource.org/license/bsd-3-clause
+ *
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
@@ -27,7 +31,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
 #include "apputils.h"
 #include "ns_turn_utils.h"
 #include "session.h"
@@ -496,40 +499,16 @@ int main(int argc, char **argv) {
     }
 
     if (use_tcp) {
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-#if TLSv1_2_SUPPORTED
-      root_tls_ctx[root_tls_ctx_num] = SSL_CTX_new(TLSv1_2_client_method());
-#elif TLSv1_1_SUPPORTED
-      root_tls_ctx[root_tls_ctx_num] = SSL_CTX_new(TLSv1_1_client_method());
-#else
-      root_tls_ctx[root_tls_ctx_num] = SSL_CTX_new(TLSv1_client_method());
-#endif
-      SSL_CTX_set_cipher_list(root_tls_ctx[root_tls_ctx_num], csuite);
-#else // OPENSSL_VERSION_NUMBER >= 0x10100000L
       root_tls_ctx[root_tls_ctx_num] = SSL_CTX_new(TLS_client_method());
       SSL_CTX_set_cipher_list(root_tls_ctx[root_tls_ctx_num], csuite);
-#endif
       root_tls_ctx_num++;
     } else {
 #if !DTLS_SUPPORTED
       fprintf(stderr, "ERROR: DTLS is not supported.\n");
       exit(-1);
 #else
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-      if (OPENSSL_VERSION_NUMBER < 0x10000000L) {
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
-                      "WARNING: OpenSSL version is rather old, DTLS may not be working correctly.\n");
-      }
-#if DTLSv1_2_SUPPORTED
-      root_tls_ctx[root_tls_ctx_num] = SSL_CTX_new(DTLSv1_2_client_method());
-#else
-      root_tls_ctx[root_tls_ctx_num] = SSL_CTX_new(DTLSv1_client_method());
-#endif
-      SSL_CTX_set_cipher_list(root_tls_ctx[root_tls_ctx_num], csuite);
-#else // OPENSSL_VERSION_NUMBER >= 0x10100000L
       root_tls_ctx[root_tls_ctx_num] = SSL_CTX_new(DTLS_client_method());
       SSL_CTX_set_cipher_list(root_tls_ctx[root_tls_ctx_num], csuite);
-#endif
 #endif
       root_tls_ctx_num++;
     }

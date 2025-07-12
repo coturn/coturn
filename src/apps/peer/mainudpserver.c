@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * https://opensource.org/license/bsd-3-clause
+ *
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
@@ -29,13 +33,13 @@
  */
 
 #include "apputils.h"
+#include "ns_turn_defs.h" // for NULL, STRCPY
 #include "ns_turn_utils.h"
 #include "udpserver.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 #if defined(_MSC_VER)
 #include <getopt.h>
 #else

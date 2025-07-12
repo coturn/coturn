@@ -168,7 +168,10 @@ Flags:
 
 -o, --daemon		Run server as daemon.
 
---no-software-attribute	Production mode: hide the software version.
+--no-software-attribute	DEPRECATED. See "--software-attribute".
+
+--software-attribute	Send SOFTWARE_ATTRIBUTE on messages that can have it. Disabled by default.
+		Equals to deprecated option "--no-software-attribute false".	
 
 -f, --fingerprint	Use fingerprints in the TURN messages. If an incoming request
 			contains a fingerprint, then TURN server will always add
@@ -626,17 +629,15 @@ Options with values:
 			(This behavior used to be the default behavior, and was enabled by default.)
 
 --ne=[1|2|3]		Set network engine type for the process (for internal purposes).
---no-rfc5780		Disable RFC5780 (NAT behavior discovery).
+--rfc5780			Enable RFC5780 (NAT behavior discovery).
                     Originally, if there are more than one listener address from the same
                     address family, then by default the NAT behavior discovery feature enabled.
-                    This option disables this original behavior, because the NAT behavior discovery
+                    This option enables this original behavior, because the NAT behavior discovery
                     adds attributes to response, and this increase the possibility of an amplification attack.
                     Strongly encouraged to use this option to decrease gain factor in STUN binding responses.
---no-stun-backward-compatibility		Disable handling old STUN Binding requests and disable MAPPED-ADDRESS attribute in binding response (use only the XOR-MAPPED-ADDRESS).
---response-origin-only-with-rfc5780		Only send RESPONSE-ORIGIN attribute in binding response if RFC5780 is enabled.
+--stun-backward-compatibility		Enable handling old STUN Binding requests using MAPPED-ADDRESS attribute in binding response (instead of XOR-MAPPED-ADDRESS).
 --401-req-limit=<request>	Set the maximum number of 401 Unauthorized responses allowed per rate-limiting window.
 --401-window=<seconds>	Set the time window duration in seconds for rate limiting 401 Unauthorized responses.
-					
 
 ==================================
 

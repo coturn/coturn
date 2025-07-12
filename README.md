@@ -35,7 +35,7 @@ coturn requires following dependencies to be installed first
 Optional
 - openssl (to support TLS and DTLS, authorized STUN and TURN)
 - libmicrohttp and [prometheus-client-c](https://github.com/digitalocean/prometheus-client-c) (prometheus interface)
-- MySQL (user database)
+- MariaDB/MySQL (user database)
 - [Hiredis](https://github.com/redis/hiredis) (user database, monitoring)
 - SQLite (user database)
 - PostgreSQL (user database)
@@ -67,8 +67,8 @@ TURN specs:
   * [RFC 6156](https://datatracker.ietf.org/doc/html/rfc6156) - IPv6 extension for TURN
   * [RFC 7443](https://datatracker.ietf.org/doc/html/rfc7443) - ALPN support for STUN & TURN
   * [RFC 7635](https://datatracker.ietf.org/doc/html/rfc7635) - oAuth third-party TURN/STUN authorization
+  * [RFC 8016](https://datatracker.ietf.org/doc/html/rfc8016) - Mobility with Traversal Using Relays around NAT (TURN)
   * DTLS support (http://tools.ietf.org/html/draft-petithuguenin-tram-turn-dtls-00)
-  * Mobile ICE (MICE) support (http://tools.ietf.org/html/draft-wing-tram-turn-mobility-02)
   * TURN REST API (http://tools.ietf.org/html/draft-uberti-behave-turn-rest-00)
   * Origin field in TURN (Multi-tenant TURN Server) (https://tools.ietf.org/html/draft-ietf-tram-stun-origin-06)
   * TURN Bandwidth draft specs (http://tools.ietf.org/html/draft-thomson-tram-turn-bandwidth-01)
@@ -98,7 +98,7 @@ Relay protocols:
 User databases (for user repository, with passwords or keys, if authentication is required):
 
   * SQLite
-  * MySQL
+  * MariaDB/MySQL
   * PostgreSQL
   * Redis
   * MongoDB

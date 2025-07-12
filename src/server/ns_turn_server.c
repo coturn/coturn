@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * https://opensource.org/license/bsd-3-clause
+ *
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
@@ -40,9 +44,10 @@
 
 #include "apputils.h" // for turn_random, base64_decode
 
-#include <stdio.h>  // for snprintf
-#include <stdlib.h> // for free, malloc, calloc, realloc
-#include <string.h> // for memcpy, strlen, strcmp
+#include <stdbool.h> // for bool, false
+#include <stdio.h>   // for snprintf
+#include <stdlib.h>  // for free, malloc, calloc, realloc
+#include <string.h>  // for memcpy, strlen, strcmp
 
 ///////////////////////////////////////////
 
@@ -77,10 +82,20 @@ static inline int get_family(int stun_family, ioa_engine_handle e, ioa_socket_ha
 ////////////////////////////////////////////////
 
 const char *get_version(turn_turnserver *server) {
-  if (server && !*server->no_software_attribute) {
+  if (server && server->software_attribute) {
     return (const char *)TURN_SOFTWARE;
   } else {
     return (const char *)"None";
+  }
+}
+
+static void maybe_add_software_attribute(turn_turnserver *server, ioa_network_buffer_handle nbh) {
+  if (server->software_attribute) {
+    const char *software = get_version(server);
+    size_t fsz = strlen(get_version(server));
+    size_t len = ioa_network_buffer_get_size(nbh);
+    stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_SOFTWARE, (const uint8_t *)software, fsz);
+    ioa_network_buffer_set_size(nbh, len);
   }
 }
 
@@ -288,73 +303,68 @@ static int good_peer_addr(turn_turnserver *server, const char *realm, ioa_addr *
       return 0;
     }
 
-    {
-      int i;
+    if (server->ip_whitelist) {
+      // White listing of addr ranges
+      for (int i = server->ip_whitelist->ranges_number - 1; i >= 0; --i) {
+        CHECK_REALM(server->ip_whitelist->rs[i].realm);
+        if (ioa_addr_in_range(&(server->ip_whitelist->rs[i].enc), peer_addr)) {
+          return 1;
+        }
+      }
+    }
 
-      if (server->ip_whitelist) {
+    {
+      ioa_lock_whitelist(server->e);
+
+      const ip_range_list_t *wl = ioa_get_whitelist(server->e);
+      if (wl) {
         // White listing of addr ranges
-        for (i = server->ip_whitelist->ranges_number - 1; i >= 0; --i) {
-          CHECK_REALM(server->ip_whitelist->rs[i].realm);
-          if (ioa_addr_in_range(&(server->ip_whitelist->rs[i].enc), peer_addr)) {
+        for (int i = wl->ranges_number - 1; i >= 0; --i) {
+          CHECK_REALM(wl->rs[i].realm);
+          if (ioa_addr_in_range(&(wl->rs[i].enc), peer_addr)) {
+            ioa_unlock_whitelist(server->e);
             return 1;
           }
         }
       }
 
-      {
-        ioa_lock_whitelist(server->e);
+      ioa_unlock_whitelist(server->e);
+    }
 
-        const ip_range_list_t *wl = ioa_get_whitelist(server->e);
-        if (wl) {
-          // White listing of addr ranges
-          for (i = wl->ranges_number - 1; i >= 0; --i) {
-            CHECK_REALM(wl->rs[i].realm);
-            if (ioa_addr_in_range(&(wl->rs[i].enc), peer_addr)) {
-              ioa_unlock_whitelist(server->e);
-              return 1;
-            }
-          }
+    if (server->ip_blacklist) {
+      // Black listing of addr ranges
+      for (int i = server->ip_blacklist->ranges_number - 1; i >= 0; --i) {
+        CHECK_REALM(server->ip_blacklist->rs[i].realm);
+        if (ioa_addr_in_range(&(server->ip_blacklist->rs[i].enc), peer_addr)) {
+          char saddr[129];
+          addr_to_string_no_port(peer_addr, (uint8_t *)saddr);
+          TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: A peer IP %s denied in the range: %s in server %d \n",
+                        (unsigned long long)session_id, saddr, server->ip_blacklist->rs[i].str, server_id);
+          return 0;
         }
-
-        ioa_unlock_whitelist(server->e);
       }
+    }
 
-      if (server->ip_blacklist) {
+    {
+      ioa_lock_blacklist(server->e);
+
+      const ip_range_list_t *bl = ioa_get_blacklist(server->e);
+      if (bl) {
         // Black listing of addr ranges
-        for (i = server->ip_blacklist->ranges_number - 1; i >= 0; --i) {
-          CHECK_REALM(server->ip_blacklist->rs[i].realm);
-          if (ioa_addr_in_range(&(server->ip_blacklist->rs[i].enc), peer_addr)) {
+        for (int i = bl->ranges_number - 1; i >= 0; --i) {
+          CHECK_REALM(bl->rs[i].realm);
+          if (ioa_addr_in_range(&(bl->rs[i].enc), peer_addr)) {
+            ioa_unlock_blacklist(server->e);
             char saddr[129];
             addr_to_string_no_port(peer_addr, (uint8_t *)saddr);
-            TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: A peer IP %s denied in the range: %s in server %d \n",
-                          (unsigned long long)session_id, saddr, server->ip_blacklist->rs[i].str, server_id);
+            TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: A peer IP %s denied in the range= %s in server %d \n",
+                          (unsigned long long)session_id, saddr, bl->rs[i].str, server_id);
             return 0;
           }
         }
       }
 
-      {
-        ioa_lock_blacklist(server->e);
-
-        const ip_range_list_t *bl = ioa_get_blacklist(server->e);
-        if (bl) {
-          // Black listing of addr ranges
-          for (i = bl->ranges_number - 1; i >= 0; --i) {
-            CHECK_REALM(bl->rs[i].realm);
-            if (ioa_addr_in_range(&(bl->rs[i].enc), peer_addr)) {
-              ioa_unlock_blacklist(server->e);
-              char saddr[129];
-              addr_to_string_no_port(peer_addr, (uint8_t *)saddr);
-              TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
-                            "session %018llu: A peer IP %s denied in the range= %s in server %d \n",
-                            (unsigned long long)session_id, saddr, bl->rs[i].str, server_id);
-              return 0;
-            }
-          }
-        }
-
-        ioa_unlock_blacklist(server->e);
-      }
+      ioa_unlock_blacklist(server->e);
     }
   }
 
@@ -693,6 +703,7 @@ static mobile_id_t get_new_mobile_id(turn_turnserver *server) {
     uint64_t sid = server->id;
     sid = sid << 56;
     do {
+      newid = 0;
       while (!newid) {
         if (TURN_RANDOM_SIZE == sizeof(mobile_id_t)) {
           newid = (mobile_id_t)turn_random();
@@ -1771,13 +1782,7 @@ static int handle_turn_refresh(turn_turnserver *server, ts_ur_super_session *ss,
                                       (uint8_t *)ss->s_mobile_id, strlen(ss->s_mobile_id));
                     ioa_network_buffer_set_size(nbh, len);
 
-                    if (!(*server->no_software_attribute)) {
-                      const uint8_t *field = (const uint8_t *)get_version(server);
-                      size_t fsz = strlen(get_version(server));
-                      size_t len = ioa_network_buffer_get_size(nbh);
-                      stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_SOFTWARE, field, fsz);
-                      ioa_network_buffer_set_size(nbh, len);
-                    }
+                    maybe_add_software_attribute(server, nbh);
 
                     if (message_integrity) {
                       size_t len = ioa_network_buffer_get_size(nbh);
@@ -2255,13 +2260,7 @@ static void tcp_peer_accept_connection(ioa_socket_handle s, void *arg) {
 
     ioa_network_buffer_set_size(nbh, len);
 
-    if (!(*server->no_software_attribute)) {
-      const uint8_t *field = (const uint8_t *)get_version(server);
-      size_t fsz = strlen(get_version(server));
-      size_t len = ioa_network_buffer_get_size(nbh);
-      stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_SOFTWARE, field, fsz);
-      ioa_network_buffer_set_size(nbh, len);
-    }
+    maybe_add_software_attribute(server, nbh);
 
     if ((server->fingerprint) || ss->enforce_fingerprints) {
       size_t len = ioa_network_buffer_get_size(nbh);
@@ -2533,13 +2532,7 @@ int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_co
       }
     }
 
-    if (!(*server->no_software_attribute)) {
-      size_t fsz = strlen(get_version(server));
-      const uint8_t *field = (const uint8_t *)get_version(server);
-      size_t len = ioa_network_buffer_get_size(nbh);
-      stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_SOFTWARE, field, fsz);
-      ioa_network_buffer_set_size(nbh, len);
-    }
+    maybe_add_software_attribute(server, nbh);
 
     if (message_integrity && ss) {
       size_t len = ioa_network_buffer_get_size(nbh);
@@ -2867,7 +2860,7 @@ static int handle_turn_binding(turn_turnserver *server, ts_ur_super_session *ss,
     size_t len = ioa_network_buffer_get_size(nbh);
     if (stun_set_binding_response_str(ioa_network_buffer_data(nbh), &len, tid,
                                       get_remote_addr_from_ioa_socket(ss->client_socket), 0, NULL, cookie, old_stun,
-                                      *server->no_stun_backward_compatibility)) {
+                                      *server->stun_backward_compatibility)) {
 
       addr_cpy(response_origin, get_local_addr_from_ioa_socket(ss->client_socket));
 
@@ -2878,20 +2871,7 @@ static int handle_turn_binding(turn_turnserver *server, ts_ur_super_session *ss,
                                get_remote_addr_from_ioa_socket(ss->client_socket));
       }
 
-      if (!is_rfc5780(server)) {
-
-        if (!(*server->response_origin_only_with_rfc5780)) {
-          if (old_stun) {
-            stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len, OLD_STUN_ATTRIBUTE_SOURCE_ADDRESS,
-                                   response_origin);
-            stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len, OLD_STUN_ATTRIBUTE_CHANGED_ADDRESS,
-                                   response_origin);
-          } else {
-            stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_RESPONSE_ORIGIN, response_origin);
-          }
-        }
-
-      } else if (ss->client_socket) {
+      if (is_rfc5780(server) && (ss->client_socket)) {
 
         ioa_addr other_address;
 
@@ -2960,6 +2940,10 @@ static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss, in
 
   addr_set_any(&peer_addr);
   allocation *a = get_allocation_ss(ss);
+
+  if (!server) {
+    return -1;
+  }
 
   if (ss->is_tcp_relay) {
     *err_code = 403;
@@ -3817,13 +3801,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
                           (unsigned long long)(ss->id));
           }
 
-          if (!(*server->no_software_attribute)) {
-            const uint8_t *field = (const uint8_t *)get_version(server);
-            size_t fsz = strlen(get_version(server));
-            size_t len = ioa_network_buffer_get_size(nbh);
-            stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_SOFTWARE, field, fsz);
-            ioa_network_buffer_set_size(nbh, len);
-          }
+          maybe_add_software_attribute(server, nbh);
 
           send_turn_message_to(server, nbh, &response_origin, &response_destination);
           stun_report_binding(ss, STUN_PROMETHEUS_METRIC_TYPE_RESPONSE);
@@ -3932,13 +3910,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
       *resp_constructed = 1;
     }
 
-    if (!(*server->no_software_attribute)) {
-      const uint8_t *field = (const uint8_t *)get_version(server);
-      size_t fsz = strlen(get_version(server));
-      size_t len = ioa_network_buffer_get_size(nbh);
-      stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_SOFTWARE, field, fsz);
-      ioa_network_buffer_set_size(nbh, len);
-    }
+    maybe_add_software_attribute(server, nbh);
 
     if (message_integrity) {
       size_t len = ioa_network_buffer_get_size(nbh);
@@ -4146,6 +4118,10 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
     return -1;
   }
 
+  if (!server) {
+    return -1;
+  }
+
   SOCKET_TYPE socket_type = get_ioa_socket_type(ss->client_socket);
 
   turn_report_session_usage(ss, 1);
@@ -4271,6 +4247,10 @@ static int write_client_connection(turn_turnserver *server, ts_ur_super_session 
                                    int ttl, int tos) {
 
   FUNCSTART;
+
+  if (!server) {
+    return -1;
+  }
 
   if (!(ss->client_socket)) {
     ioa_network_buffer_delete(server->e, nbh);
@@ -4428,6 +4408,10 @@ static int create_relay_connection(turn_turnserver *server, ts_ur_super_session 
 
     if (get_ioa_socket_type(newelem->s) != TCP_SOCKET) {
       if (register_callback_on_ioa_socket(server->e, newelem->s, IOA_EV_READ, peer_input_handler, ss, 0) < 0) {
+        IOA_CLOSE_SOCKET(newelem->s);
+        IOA_CLOSE_SOCKET(rtcp_s);
+        *err_code = 500;
+        *reason = (const uint8_t *)"Wrong initialization (internal error)";
         return -1;
       }
     }
@@ -4596,7 +4580,7 @@ static int read_client_connection(turn_turnserver *server, ts_ur_super_session *
 
   } else if (old_stun_is_command_message_str(ioa_network_buffer_data(in_buffer->nbh),
                                              ioa_network_buffer_get_size(in_buffer->nbh), &old_stun_cookie) &&
-             !(*(server->no_stun)) && !(*(server->no_stun_backward_compatibility))) {
+             !(*(server->no_stun)) && !(*(server->stun_backward_compatibility))) {
 
     ioa_network_buffer_handle nbh = ioa_network_buffer_allocate(server->e);
     int resp_constructed = 0;
@@ -4867,13 +4851,7 @@ static void peer_input_handler(ioa_socket_handle s, int event_type, ioa_net_data
     stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &(in_buffer->src_addr));
     ioa_network_buffer_set_size(nbh, len);
 
-    if (!(*server->no_software_attribute)) {
-      const uint8_t *field = (const uint8_t *)get_version(server);
-      size_t fsz = strlen(get_version(server));
-      size_t len = ioa_network_buffer_get_size(nbh);
-      stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_SOFTWARE, field, fsz);
-      ioa_network_buffer_set_size(nbh, len);
-    }
+    maybe_add_software_attribute(server, nbh);
 
     if ((server->fingerprint) || ss->enforce_fingerprints) {
       size_t len = ioa_network_buffer_get_size(nbh);
@@ -4926,19 +4904,18 @@ static void client_input_handler(ioa_socket_handle s, int event_type, ioa_net_da
 void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, ioa_engine_handle e,
                       turn_credential_type ct, int fingerprint, dont_fragment_option_t dont_fragment,
                       get_user_key_cb userkeycb, check_new_allocation_quota_cb chquotacb,
-                      release_allocation_quota_cb raqcb, ioa_addr *external_ip, vintp check_origin, vintp no_tcp_relay,
-                      vintp no_udp_relay, vintp stale_nonce, vintp max_allocate_lifetime, vintp channel_lifetime,
-                      vintp permission_lifetime, vintp stun_only, vintp no_stun, vintp no_software_attribute,
-                      vintp web_admin_listen_on_workers, turn_server_addrs_list_t *alternate_servers_list,
+                      release_allocation_quota_cb raqcb, ioa_addr *external_ip, bool *check_origin, bool *no_tcp_relay,
+                      bool *no_udp_relay, vintp stale_nonce, vintp max_allocate_lifetime, vintp channel_lifetime,
+                      vintp permission_lifetime, bool *stun_only, bool *no_stun, bool software_attribute,
+                      bool *web_admin_listen_on_workers, turn_server_addrs_list_t *alternate_servers_list,
                       turn_server_addrs_list_t *tls_alternate_servers_list, turn_server_addrs_list_t *aux_servers_list,
-                      int self_udp_balance, vintp no_multicast_peers, vintp allow_loopback_peers,
+                      int self_udp_balance, bool *no_multicast_peers, bool *allow_loopback_peers,
                       ip_range_list_t *ip_whitelist, ip_range_list_t *ip_blacklist,
-                      send_socket_to_relay_cb send_socket_to_relay, vintp secure_stun, vintp mobility, int server_relay,
+                      send_socket_to_relay_cb send_socket_to_relay, bool *secure_stun, bool *mobility, int server_relay,
                       send_turn_session_info_cb send_turn_session_info, send_https_socket_cb send_https_socket,
                       allocate_bps_cb allocate_bps_func, int oauth, const char *oauth_server_name,
                       const char *acme_redirect, ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family,
-                      vintp log_binding, vintp no_stun_backward_compatibility, vintp response_origin_only_with_rfc5780,
-                      vintp respond_http_unsupported,
+                      bool *log_binding, bool *stun_backward_compatibility, bool *respond_http_unsupported,
                       vintp ratelimit_401_requests_per_window, vintp ratelimit_401_window_seconds) {
 
   if (!server) {
@@ -4990,7 +4967,7 @@ void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, io
   server->permission_lifetime = permission_lifetime;
   server->stun_only = stun_only;
   server->no_stun = no_stun;
-  server->no_software_attribute = no_software_attribute;
+  server->software_attribute = software_attribute;
   server->web_admin_listen_on_workers = web_admin_listen_on_workers;
 
   server->dont_fragment = dont_fragment;
@@ -5015,9 +4992,7 @@ void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, io
 
   server->log_binding = log_binding;
 
-  server->no_stun_backward_compatibility = no_stun_backward_compatibility;
-
-  server->response_origin_only_with_rfc5780 = response_origin_only_with_rfc5780;
+  server->stun_backward_compatibility = stun_backward_compatibility;
 
   server->respond_http_unsupported = respond_http_unsupported;
 
