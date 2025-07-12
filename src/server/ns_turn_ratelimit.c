@@ -83,7 +83,6 @@ int ratelimit_is_address_limited(ioa_addr *address, int max_requests, int window
   ur_addr_map_value_type ratelimit_ptr = 0;
 
   ioa_addr *address_new = (ioa_addr *)malloc(sizeof(ioa_addr));
-  //memcpy(address_new, address, sizeof(ioa_addr));
   *address_new = *address;
   addr_set_port(address_new, 0);
 
