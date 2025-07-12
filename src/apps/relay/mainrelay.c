@@ -3050,7 +3050,7 @@ int main(int argc, char **argv) {
     optind = 0; // Reset optind for later processing
   }
 
-  // Zero pass apply the log options from config file.
+  // Zero pass: apply log options from config file (after command-line log options processed above).
   read_config_file(argc, argv, 0);
 
   // First pass read other config options
