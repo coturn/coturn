@@ -241,7 +241,7 @@ turn_params_t turn_params = {
     false, /* stun_backward_compatibility */
     false  /* respond_http_unsupported */
 
-    ///////// Ratelimt /////////
+    ///////// Ratelimit /////////
     RATELIMIT_DEFAULT_MAX_REQUESTS_PER_WINDOW, /* 401-req-limit */
     RATELIMIT_DEFAULT_WINDOW_SECS              /* 401-window */
 };
