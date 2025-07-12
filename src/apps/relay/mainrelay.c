@@ -3001,12 +3001,27 @@ int main(int argc, char **argv) {
   init_secrets_list(&turn_params.default_users_db.ram_db.static_auth_secrets);
   init_dynamic_ip_lists();
 
+#if !TLS_SUPPORTED
+  turn_params.no_tls = 1;
+#endif
+
+#if !DTLS_SUPPORTED
+  turn_params.no_dtls = 1;
+#endif
+
+  if (strstr(argv[0], "turnadmin")) {
+    return adminmain(argc, argv);
+  }
+
+  memset(&turn_params.default_users_db.ram_db, 0, sizeof(ram_users_db_t));
+  turn_params.default_users_db.ram_db.static_accounts = ur_string_map_create(free);
+
+  // Process command-line log options first, before any logging occurs
   if (!strstr(argv[0], "turnadmin")) {
+    struct uoptions uo_early;
+    uo_early.u.m = long_options;
 
-    struct uoptions uo;
-    uo.u.m = long_options;
-
-    while (((c = getopt_long(argc, argv, OPTIONS, uo.u.o, NULL)) != -1)) {
+    while (((c = getopt_long(argc, argv, OPTIONS, uo_early.u.o, NULL)) != -1)) {
       switch (c) {
       case 'l':
         set_logfile(optarg);
@@ -3032,26 +3047,10 @@ int main(int argc, char **argv) {
       default:;
       }
     }
+    optind = 0; // Reset optind for later processing
   }
 
-  optind = 0;
-
-#if !TLS_SUPPORTED
-  turn_params.no_tls = 1;
-#endif
-
-#if !DTLS_SUPPORTED
-  turn_params.no_dtls = 1;
-#endif
-
-  if (strstr(argv[0], "turnadmin")) {
-    return adminmain(argc, argv);
-  }
-
-  memset(&turn_params.default_users_db.ram_db, 0, sizeof(ram_users_db_t));
-  turn_params.default_users_db.ram_db.static_accounts = ur_string_map_create(free);
-
-  // Zero pass apply the log options.
+  // Zero pass apply the log options from config file.
   read_config_file(argc, argv, 0);
 
   // First pass read other config options
