@@ -2988,21 +2988,8 @@ int main(int argc, char **argv) {
 
   init_super_memory();
 
-  init_domain();
-  create_default_realm();
-
-  init_turn_server_addrs_list(&turn_params.alternate_servers_list);
-  init_turn_server_addrs_list(&turn_params.tls_alternate_servers_list);
-  init_turn_server_addrs_list(&turn_params.aux_servers_list);
-
-  set_network_engine();
-
-  init_listener();
-  init_secrets_list(&turn_params.default_users_db.ram_db.static_auth_secrets);
-  init_dynamic_ip_lists();
-
+  // Read the log options first because some initialization can generate logs
   if (!strstr(argv[0], "turnadmin")) {
-
     struct uoptions uo;
     uo.u.m = long_options;
 
@@ -3035,6 +3022,19 @@ int main(int argc, char **argv) {
   }
 
   optind = 0;
+
+  init_domain();
+  create_default_realm();
+
+  init_turn_server_addrs_list(&turn_params.alternate_servers_list);
+  init_turn_server_addrs_list(&turn_params.tls_alternate_servers_list);
+  init_turn_server_addrs_list(&turn_params.aux_servers_list);
+
+  set_network_engine();
+
+  init_listener();
+  init_secrets_list(&turn_params.default_users_db.ram_db.static_auth_secrets);
+  init_dynamic_ip_lists();
 
 #if !TLS_SUPPORTED
   turn_params.no_tls = 1;
