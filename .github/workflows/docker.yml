@@ -83,6 +83,35 @@ jobs:
   # Testing #
   ###########
 
+  changelog:
+    if: ${{ github.event_name == 'push'
+         && (startsWith(github.ref, 'refs/tags/')
+             || github.ref == 'refs/heads/master') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+
+      - name: Parse semver versions from Git tag
+        id: semver
+        uses: actions-ecosystem/action-regex-match@v2
+        with:
+          text: ${{ github.ref }}
+          regex: '^refs/tags/docker/(((([0-9]+)\.[0-9]+)\.[0-9]+)-(.+))$'
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+
+      - name: Ensure CHANGELOG date is today
+        run: |
+          today="$(date '+%Y-%m-%d')"
+          changelog="$(grep -E '^## \[${{ ssteps.semver.outputs.group1 }}\] ·' \
+                            CHANGELOG.md \
+                       | cut -d' ' -f4 | tr -d ' ')"
+          echo "Changelog: $changelog"
+          echo "Today: $today"
+          [ "$changelog" = "$today" ]
+        working-directory: docker/coturn/
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+
   test:
     needs: ["build"]
     strategy:
@@ -148,7 +177,7 @@ jobs:
          && github.repository_owner == 'coturn'
          && (startsWith(github.ref, 'refs/tags/')
              || github.ref == 'refs/heads/master') }}
-    needs: ["build", "test"]
+    needs: ["build", "changelog", "test"]
     strategy:
       fail-fast: false
       max-parallel: 1
