@@ -103,7 +103,7 @@ jobs:
       - name: Ensure CHANGELOG date is today
         run: |
           today="$(date '+%Y-%m-%d')"
-          changelog="$(grep -E '^## \[${{ ssteps.semver.outputs.group1 }}\] ·' \
+          changelog="$(grep -E '^## \[${{ steps.semver.outputs.group1 }}\] ·' \
                             CHANGELOG.md \
                        | cut -d' ' -f4 | tr -d ' ')"
           echo "Changelog: $changelog"
