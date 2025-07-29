@@ -331,11 +331,13 @@ static inline void add_elem_to_buffer_list(stun_buffer_list *bufs, stun_buffer_l
 static void add_buffer_to_buffer_list(stun_buffer_list *bufs, char *buf, size_t len) {
   if (bufs && buf && (bufs->tsz < MAX_SOCKET_BUFFER_BACKLOG)) {
     stun_buffer_list_elem *buf_elem = (stun_buffer_list_elem *)malloc(sizeof(stun_buffer_list_elem));
-    memcpy(buf_elem->buf.buf, buf, len);
-    buf_elem->buf.len = len;
-    buf_elem->buf.offset = 0;
-    buf_elem->buf.coffset = 0;
-    add_elem_to_buffer_list(bufs, buf_elem);
+    if (buf_elem) {
+      memcpy(buf_elem->buf.buf, buf, len);
+      buf_elem->buf.len = len;
+      buf_elem->buf.offset = 0;
+      buf_elem->buf.coffset = 0;
+      add_elem_to_buffer_list(bufs, buf_elem);
+    }
   }
 }
 
@@ -585,11 +587,13 @@ ioa_timer_handle set_ioa_timer(ioa_engine_handle e, int secs, int ms, ioa_timer_
 
     tv.tv_sec = secs;
 
-    te->ctx = ctx;
-    te->e = e;
-    te->ev = ev;
-    te->cb = cb;
-    te->txt = strdup(txt);
+    if (te) {
+      te->ctx = ctx;
+      te->e = e;
+      te->ev = ev;
+      te->cb = cb;
+      te->txt = strdup(txt);
+    }
 
     if (!ms) {
       tv.tv_usec = 0;
@@ -926,13 +930,15 @@ ioa_socket_handle create_unbound_relay_ioa_socket(ioa_engine_handle e, int famil
 
   ret = (ioa_socket *)calloc(sizeof(ioa_socket), 1);
 
-  ret->magic = SOCKET_MAGIC;
+  if (ret) {
+    ret->magic = SOCKET_MAGIC;
 
-  ret->fd = fd;
-  ret->family = family;
-  ret->st = st;
-  ret->sat = sat;
-  ret->e = e;
+    ret->fd = fd;
+    ret->family = family;
+    ret->st = st;
+    ret->sat = sat;
+    ret->e = e;
+  }
 
   set_socket_options(ret);
 
@@ -1019,7 +1025,9 @@ int create_relay_ioa_sockets(ioa_engine_handle e, ioa_socket_handle client_s, in
         port = turnipports_allocate_even(tp, &relay_addr, even_port, out_reservation_token);
         if (port >= 0 && even_port > 0) {
 
-          IOA_CLOSE_SOCKET(*rtcp_s);
+          if (rtcp_s) {
+            IOA_CLOSE_SOCKET(*rtcp_s);
+          }
           *rtcp_s = create_unbound_relay_ioa_socket(e, relay_addr.ss.sa_family, UDP_SOCKET, RELAY_RTCP_SOCKET);
           if (*rtcp_s == NULL) {
             perror("socket");
@@ -1343,12 +1351,14 @@ ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e, ioa_socket_raw 
 
   ret = (ioa_socket *)calloc(sizeof(ioa_socket), 1);
 
-  ret->magic = SOCKET_MAGIC;
+  if (ret) {
+    ret->magic = SOCKET_MAGIC;
 
-  ret->fd = fd;
-  ret->st = st;
-  ret->sat = sat;
-  ret->e = e;
+    ret->fd = fd;
+    ret->st = st;
+    ret->sat = sat;
+    ret->e = e;
+  }
 
   if (local_addr) {
     ret->family = local_addr->ss.sa_family;
@@ -3641,7 +3651,7 @@ void turn_report_allocation_set(void *a, turn_time_t lifetime, int refresh) {
           }
         }
 #if !defined(TURN_NO_HIREDIS)
-        {
+        if (e && ss->client_socket) {
           char key[1024];
           if (ss->realm_options.name[0]) {
             snprintf(key, sizeof(key), "turn/realm/%s/user/%s/allocation/%018llu/status", ss->realm_options.name,
@@ -3866,10 +3876,14 @@ struct _super_memory {
 static void init_super_memory_region(super_memory_t *r) {
   if (r) {
     r->super_memory = (char **)malloc(sizeof(char *));
-    r->super_memory[0] = (char *)calloc(1, TURN_SM_SIZE);
+    if (r->super_memory) {
+      r->super_memory[0] = (char *)calloc(1, TURN_SM_SIZE);
+    }
 
     r->sm_allocated = (size_t *)malloc(sizeof(size_t));
-    r->sm_allocated[0] = 0;
+    if (r->sm_allocated) {
+      r->sm_allocated[0] = 0;
+    }
 
     r->sm_total_sz = TURN_SM_SIZE;
     r->sm_chunk = 0;
