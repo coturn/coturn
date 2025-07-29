@@ -185,6 +185,10 @@ bool stun_produce_integrity_key_str(const uint8_t *uname, const uint8_t *realm, 
     return false;
   }
 
+  if (!str) {
+    return false;
+  }
+
   strncpy((char *)str, (const char *)uname, sz);
   str[ulen] = ':';
   strncpy((char *)str + ulen + 1, (const char *)realm, sz - ulen - 1);

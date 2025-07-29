@@ -951,13 +951,15 @@ static bool ur_string_map_init(ur_string_map *map) {
 
 ur_string_map *ur_string_map_create(ur_string_map_func del_value_func) {
   ur_string_map *map = (ur_string_map *)malloc(sizeof(ur_string_map));
-  if (!ur_string_map_init(map)) {
+  if (map == NULL) {
+    return NULL;
+  } else if (!ur_string_map_init(map)) {
     free(map);
     return NULL;
+  } else {
+    map->del_value_func = del_value_func;
+    return map;
   }
-  assert(map);
-  map->del_value_func = del_value_func;
-  return map;
 }
 
 bool ur_string_map_put(ur_string_map *map, const ur_string_map_key_type key, ur_string_map_value_type value) {
