@@ -216,7 +216,7 @@ void set_syslog_facility(char *val) {
     return;
   }
 #if defined(__unix__) || defined(unix) || defined(__APPLE__)
-  int tmp = str_to_syslog_facility(val);
+  const int tmp = str_to_syslog_facility(val);
   if (tmp == -1) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: invalid syslog-facility value (%s); ignored.\n", val);
     return;
@@ -578,7 +578,7 @@ void turn_log_func_default(const char *const file, const int line, const TURN_LO
   char s[MAX_RTPPRINTF_BUFFER_SIZE + 1];
   size_t so_far = 0;
   if (use_new_log_timestamp_format) {
-    time_t now = time(NULL);
+    const time_t now = time(NULL);
     so_far += strftime(s, sizeof(s), turn_log_timestamp_format, localtime(&now));
   } else {
     so_far += snprintf(s, sizeof(s), "%lu: ", (unsigned long)log_time());
@@ -721,7 +721,7 @@ int get_canonic_origin(const char *o, char *co, int sz) {
     if (uri) {
       const char *scheme = evhttp_uri_get_scheme(uri);
       if (scheme && scheme[0]) {
-        size_t schlen = strlen(scheme);
+        const size_t schlen = strlen(scheme);
         if ((schlen < (size_t)sz) && (schlen < STUN_MAX_ORIGIN_SIZE)) {
           const char *host = evhttp_uri_get_host(uri);
           if (host && host[0]) {

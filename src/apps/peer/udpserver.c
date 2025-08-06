@@ -69,7 +69,7 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void *arg) 
 ///////////////////// operations //////////////////////////
 
 static int udp_create_server_socket(server_type *const server, const char *const ifname,
-                                    const char *const local_address, int const port) {
+                                    const char *const local_address, const int port) {
 
   if (!server) {
     return -1;

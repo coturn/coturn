@@ -206,7 +206,7 @@ void get_realm_options_by_name(char *realm, realm_options_t *ro) {
 }
 
 int change_total_quota(char *realm, int value) {
-  int ret = value;
+  const int ret = value;
   lock_realms();
   realm_params_t *rp = get_realm(realm);
   rp->options.perf_options.total_quota = value;
@@ -215,7 +215,7 @@ int change_total_quota(char *realm, int value) {
 }
 
 int change_user_quota(char *realm, int value) {
-  int ret = value;
+  const int ret = value;
   lock_realms();
   realm_params_t *rp = get_realm(realm);
   rp->options.perf_options.user_quota = value;
@@ -413,7 +413,7 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
                                                         STUN_ATTRIBUTE_OAUTH_ACCESS_TOKEN);
     if (sar) {
 
-      int len = stun_attr_get_len(sar);
+      const int len = stun_attr_get_len(sar);
       const uint8_t *value = stun_attr_get_value(sar);
 
       *out_oauth = 1;
@@ -427,7 +427,7 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
           oauth_key_data_raw rawKey;
           memset(&rawKey, 0, sizeof(rawKey));
 
-          int gres = (*(dbd->get_oauth_key))(usname, &rawKey);
+          const int gres = (*(dbd->get_oauth_key))(usname, &rawKey);
           if (gres < 0) {
             return ret;
           }
@@ -448,7 +448,7 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
           convert_oauth_key_data_raw(&rawKey, &okd);
 
           char err_msg[1025] = "\0";
-          size_t err_msg_size = sizeof(err_msg) - 1;
+          const size_t err_msg_size = sizeof(err_msg) - 1;
 
           oauth_key okey;
           memset(&okey, 0, sizeof(okey));
@@ -502,11 +502,11 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
                                                       ioa_network_buffer_get_size(nbh), dot.enc_block.mac_key, pwdtmp,
                                                       SHATYPE_DEFAULT) > 0) {
 
-            turn_time_t lifetime = (turn_time_t)(dot.enc_block.lifetime);
+            const turn_time_t lifetime = (turn_time_t)(dot.enc_block.lifetime);
             if (lifetime) {
-              turn_time_t ts = (turn_time_t)(dot.enc_block.timestamp >> 16);
-              turn_time_t to = ts + lifetime + OAUTH_TIME_DELTA;
-              turn_time_t ct = turn_time();
+              const turn_time_t ts = (turn_time_t)(dot.enc_block.timestamp >> 16);
+              const turn_time_t to = ts + lifetime + OAUTH_TIME_DELTA;
+              const turn_time_t ct = turn_time();
               if (!turn_time_before(ct, to)) {
                 TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "oAuth token is too old\n");
                 return -1;
@@ -535,7 +535,7 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
 
   if (turn_params.use_auth_secret_with_timestamp) {
 
-    turn_time_t ctime = (turn_time_t)time(NULL);
+    const turn_time_t ctime = (turn_time_t)time(NULL);
     turn_time_t ts = 0;
     secrets_list_t sl;
     size_t sll = 0;
@@ -562,7 +562,7 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
         return -1;
       }
 
-      int sarlen = stun_attr_get_len(sar);
+      const int sarlen = stun_attr_get_len(sar);
       switch (sarlen) {
       case SHA1SIZEBYTES:
         hmac_len = SHA1SIZEBYTES;
@@ -621,7 +621,7 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
   ur_string_map_unlock(turn_params.default_users_db.ram_db.static_accounts);
 
   if (ret == 0) {
-    size_t sz = get_hmackey_size(SHATYPE_DEFAULT);
+    const size_t sz = get_hmackey_size(SHATYPE_DEFAULT);
     memcpy(key, ukey, sz);
     return 0;
   }
@@ -730,7 +730,7 @@ int add_static_user_account(char *user) {
     return -1;
   }
 
-  size_t ulen = s - user;
+  const size_t ulen = s - user;
 
   // TODO: TURN usernames should be length limited by the RFC.
   // are user account names as well? If so, we can avoid allocating
@@ -758,7 +758,7 @@ int add_static_user_account(char *user) {
 
   if (strstr(s, "0x") == s) {
     char *keysource = s + 2;
-    size_t sz = get_hmackey_size(SHATYPE_DEFAULT);
+    const size_t sz = get_hmackey_size(SHATYPE_DEFAULT);
     if (strlen(keysource) < sz * 2) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key format: %s\n", s);
     }
@@ -968,7 +968,7 @@ int adminuser(uint8_t *user, uint8_t *realm, uint8_t *pwd, uint8_t *secret, uint
 
     {
       stun_produce_integrity_key_str(user, realm, pwd, key, SHATYPE_DEFAULT);
-      size_t sz = get_hmackey_size(SHATYPE_DEFAULT);
+      const size_t sz = get_hmackey_size(SHATYPE_DEFAULT);
       int maxsz = (int)(sz * 2) + 1;
       char *s = skey;
       for (size_t i = 0; (i < sz) && (maxsz > 2); i++) {
