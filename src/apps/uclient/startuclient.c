@@ -291,7 +291,7 @@ start_socket:
     STRCPY(clnet_info->ifname, (const char *)ifname);
   }
 
-  if (use_secure) {
+  if (use_secure && clnet_info) {
     bool try_again = false;
     clnet_info->ssl = tls_connect(clnet_info->fd, &remote_addr, &try_again, connect_cycle++);
     if (!clnet_info->ssl) {
@@ -1589,6 +1589,11 @@ again:
   elem->pinfo.tcp_conn =
       (app_tcp_conn_info **)realloc(elem->pinfo.tcp_conn, elem->pinfo.tcp_conn_number * sizeof(app_tcp_conn_info *));
   elem->pinfo.tcp_conn[i] = (app_tcp_conn_info *)calloc(sizeof(app_tcp_conn_info), 1);
+
+  if (!elem->pinfo.tcp_conn[i]) {
+    perror("connect");
+    exit(-1);
+  }
 
   elem->pinfo.tcp_conn[i]->tcp_data_fd = clnet_fd;
   elem->pinfo.tcp_conn[i]->cid = cid;

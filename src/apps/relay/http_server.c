@@ -220,24 +220,26 @@ struct http_request *parse_http_request(char *request) {
 
     ret = (struct http_request *)calloc(sizeof(struct http_request), 1);
 
-    if (strstr(request, "GET ") == request) {
-      ret->rtype = HRT_GET;
-      ret = parse_http_request_1(ret, request + 4, 0);
-    } else if (strstr(request, "HEAD ") == request) {
-      ret->rtype = HRT_HEAD;
-      ret = parse_http_request_1(ret, request + 5, 0);
-    } else if (strstr(request, "POST ") == request) {
-      ret->rtype = HRT_POST;
-      ret = parse_http_request_1(ret, request + 5, 1);
-    } else if (strstr(request, "PUT ") == request) {
-      ret->rtype = HRT_PUT;
-      ret = parse_http_request_1(ret, request + 4, 1);
-    } else if (strstr(request, "DELETE ") == request) {
-      ret->rtype = HRT_DELETE;
-      ret = parse_http_request_1(ret, request + 7, 1);
-    } else {
-      free(ret);
-      ret = NULL;
+    if (ret) {
+      if (strstr(request, "GET ") == request) {
+        ret->rtype = HRT_GET;
+        ret = parse_http_request_1(ret, request + 4, 0);
+      } else if (strstr(request, "HEAD ") == request) {
+        ret->rtype = HRT_HEAD;
+        ret = parse_http_request_1(ret, request + 5, 0);
+      } else if (strstr(request, "POST ") == request) {
+        ret->rtype = HRT_POST;
+        ret = parse_http_request_1(ret, request + 5, 1);
+      } else if (strstr(request, "PUT ") == request) {
+        ret->rtype = HRT_PUT;
+        ret = parse_http_request_1(ret, request + 4, 1);
+      } else if (strstr(request, "DELETE ") == request) {
+        ret->rtype = HRT_DELETE;
+        ret = parse_http_request_1(ret, request + 7, 1);
+      } else {
+        free(ret);
+        ret = NULL;
+      }
     }
   }
 

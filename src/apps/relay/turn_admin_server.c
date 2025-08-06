@@ -1174,20 +1174,22 @@ static void cliserver_input_handler(struct evconnlistener *l, evutil_socket_t fd
 
   struct cli_session *clisession = (struct cli_session *)calloc(sizeof(struct cli_session), 1);
 
-  clisession->rp = get_realm(NULL);
+  if (clisession) {
+    clisession->rp = get_realm(NULL);
 
-  set_socket_options_fd(fd, TCP_SOCKET, sa->sa_family);
+    set_socket_options_fd(fd, TCP_SOCKET, sa->sa_family);
 
-  clisession->fd = fd;
+    clisession->fd = fd;
 
-  addr_cpy(&(clisession->addr), (ioa_addr *)sa);
+    addr_cpy(&(clisession->addr), (ioa_addr *)sa);
 
-  clisession->bev = bufferevent_socket_new(adminserver.event_base, fd, TURN_BUFFEREVENTS_OPTIONS);
-  bufferevent_setcb(clisession->bev, cli_socket_input_handler_bev, NULL, cli_eventcb_bev, clisession);
-  bufferevent_setwatermark(clisession->bev, EV_READ | EV_WRITE, 0, BUFFEREVENT_HIGH_WATERMARK);
-  bufferevent_enable(clisession->bev, EV_READ); /* Start reading. */
+    clisession->bev = bufferevent_socket_new(adminserver.event_base, fd, TURN_BUFFEREVENTS_OPTIONS);
+    bufferevent_setcb(clisession->bev, cli_socket_input_handler_bev, NULL, cli_eventcb_bev, clisession);
+    bufferevent_setwatermark(clisession->bev, EV_READ | EV_WRITE, 0, BUFFEREVENT_HIGH_WATERMARK);
+    bufferevent_enable(clisession->bev, EV_READ); /* Start reading. */
 
-  clisession->ts = telnet_init(cli_telopts, cli_telnet_event_handler, 0, clisession);
+    clisession->ts = telnet_init(cli_telopts, cli_telnet_event_handler, 0, clisession);
+  }
 
   if (!(clisession->ts)) {
     const char *str = "Cannot open telnet session\n";
@@ -1440,7 +1442,7 @@ void admin_server_receive_message(struct bufferevent *bev, void *ptr) {
   int n = 0;
   struct evbuffer *input = bufferevent_get_input(bev);
 
-  while ((n = evbuffer_remove(input, tsi, sizeof(struct turn_session_info))) > 0) {
+  while (tsi && (n = evbuffer_remove(input, tsi, sizeof(struct turn_session_info))) > 0) {
     if (n != sizeof(struct turn_session_info)) {
       fprintf(stderr, "%s: Weird CLI buffer error: size=%d\n", __FUNCTION__, n);
       continue;
