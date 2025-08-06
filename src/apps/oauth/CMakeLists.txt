@@ -37,6 +37,7 @@ project(turnutils_oauth)
 set(SOURCE_FILES
     oauth.c
     )
+set_source_files_properties(${SOURCE_FILES} PROPERIES LANGUAGE CXX)
 
 add_executable(${PROJECT_NAME} ${SOURCE_FILES})
 target_link_libraries(${PROJECT_NAME} PRIVATE turnclient)

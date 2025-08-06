@@ -39,6 +39,7 @@ set(SOURCE_FILES
     startuclient.c
     mainuclient.c
     )
+set_source_files_properties(${SOURCE_FILES} PROPERIES LANGUAGE CXX)
 
 set(HEADER_FILES
     uclient.h

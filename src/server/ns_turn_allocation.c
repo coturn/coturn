@@ -602,7 +602,7 @@ tcp_connection *create_tcp_connection(uint8_t server_id, allocation *a, stun_tid
 
   if (!found) {
     size_t old_sz_mem = a->tcs.sz * sizeof(tcp_connection *);
-    tcp_connection **new_elems = realloc(a->tcs.elems, old_sz_mem + sizeof(tcp_connection *));
+    tcp_connection **new_elems = (tcp_connection **)realloc(a->tcs.elems, old_sz_mem + sizeof(tcp_connection *));
     if (!new_elems) {
       return NULL;
     }

@@ -39,6 +39,7 @@ set(SOURCE_FILES
     ns_turn_utils.c
     stun_buffer.c
     )
+set_source_files_properties(${SOURCE_FILES} PROPERIES LANGUAGE CXX)
 
 set(HEADER_FILES
     apputils.h

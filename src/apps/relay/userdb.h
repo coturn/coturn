@@ -47,8 +47,18 @@
 #include "apputils.h"
 
 #ifdef __cplusplus
+#include <atomic>
+using atomic_size_t = std::atomic_size_t;
+#else
+#include <stdatomic.h>
+typedef _Atomic size_t atomic_size_t;
+#endif
+
+#ifdef __cplusplus
 extern "C" {
 #endif
+
+extern atomic_size_t global_allocation_count;
 
 //////////// REALM //////////////
 

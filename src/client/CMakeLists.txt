@@ -50,6 +50,8 @@ set(SOURCE_FILES
     ns_turn_msg.c
     )
 
+set_source_files_properties(${SOURCE_FILES} PROPERIES LANGUAGE CXX)
+
 add_library(${PROJECT_NAME} STATIC ${SOURCE_FILES} ${HEADER_FILES})
 
 target_link_libraries(${PROJECT_NAME} PUBLIC turncommon)
