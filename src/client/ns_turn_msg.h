@@ -197,14 +197,14 @@ int stun_check_message_integrity_by_key_str(turn_credential_type ct, uint8_t *bu
                                             password_t pwd, SHATYPE shatype);
 int stun_check_message_integrity_str(turn_credential_type ct, uint8_t *buf, size_t len, const uint8_t *uname,
                                      const uint8_t *realm, const uint8_t *upwd, SHATYPE shatype);
-bool stun_attr_add_integrity_str(turn_credential_type ct, uint8_t *buf, size_t *len, hmackey_t key, password_t pwd,
-                                 SHATYPE shatype);
+bool stun_attr_add_integrity_str(turn_credential_type ct, uint8_t *buf, size_t *len, hmackey_t key,
+                                 const password_t pwd, SHATYPE shatype);
 bool stun_attr_add_integrity_by_key_str(uint8_t *buf, size_t *len, const uint8_t *uname, const uint8_t *realm,
                                         hmackey_t key, const uint8_t *nonce, SHATYPE shatype);
 bool stun_attr_add_integrity_by_user_str(uint8_t *buf, size_t *len, const uint8_t *uname, const uint8_t *realm,
                                          const uint8_t *upwd, const uint8_t *nonce, SHATYPE shatype);
-bool stun_attr_add_integrity_by_user_short_term_str(uint8_t *buf, size_t *len, const uint8_t *uname, password_t pwd,
-                                                    SHATYPE shatype);
+bool stun_attr_add_integrity_by_user_short_term_str(uint8_t *buf, size_t *len, const uint8_t *uname,
+                                                    const password_t pwd, SHATYPE shatype);
 size_t get_hmackey_size(SHATYPE shatype);
 
 /*
