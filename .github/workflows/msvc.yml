@@ -37,7 +37,7 @@ jobs:
     permissions:
       security-events: write  # required for all CodeQL to report detected outcomes
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Create directories
         run: |
@@ -111,7 +111,7 @@ jobs:
       run:
         shell: cmd
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Create directories
         run: |
