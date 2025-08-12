@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  VCPKGGITCOMMITID: 53bef8994c541b6561884a8395ea35715ece75db
+  VCPKGGITCOMMITID: dd3097e305afa53f7b4312371f62058d2e665320
 
 jobs:
   code-analysis:
