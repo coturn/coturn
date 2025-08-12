@@ -12,6 +12,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
+  # https://github.com/microsoft/vcpkg/releases/tag/2025.07.25
   VCPKGGITCOMMITID: dd3097e305afa53f7b4312371f62058d2e665320
 
 jobs:
