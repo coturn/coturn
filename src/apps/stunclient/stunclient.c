@@ -108,10 +108,10 @@ static int run_stunclient(const char *rip, int rport, int *port, bool *rfc5780, 
     rpa.setResponsePort((uint16_t)response_port);
     try {
       req.addAttr(rpa);
-    } catch (turn::WrongStunAttrFormatException const &ex1) {
+    } catch (const turn::WrongStunAttrFormatException &ex1) {
       printf("Wrong rp attr format\n");
       exit(-1);
-    } catch (turn::WrongStunBufferFormatException const &ex2) {
+    } catch (const turn::WrongStunBufferFormatException &ex2) {
       printf("Wrong stun buffer format (1)\n");
       exit(-1);
     } catch (...) {
@@ -125,10 +125,10 @@ static int run_stunclient(const char *rip, int rport, int *port, bool *rfc5780, 
     cra.setChangePort(change_port);
     try {
       req.addAttr(cra);
-    } catch (turn::WrongStunAttrFormatException const &ex1) {
+    } catch (const turn::WrongStunAttrFormatException &ex1) {
       printf("Wrong cr attr format\n");
       exit(-1);
-    } catch (turn::WrongStunBufferFormatException const &ex2) {
+    } catch (const turn::WrongStunBufferFormatException &ex2) {
       printf("Wrong stun buffer format (2)\n");
       exit(-1);
     } catch (...) {
@@ -141,10 +141,10 @@ static int run_stunclient(const char *rip, int rport, int *port, bool *rfc5780, 
     pa.setPadding(1500);
     try {
       req.addAttr(pa);
-    } catch (turn::WrongStunAttrFormatException const &ex1) {
+    } catch (const turn::WrongStunAttrFormatException &ex1) {
       printf("Wrong p attr format\n");
       exit(-1);
-    } catch (turn::WrongStunBufferFormatException const &ex2) {
+    } catch (const turn::WrongStunBufferFormatException &ex2) {
       printf("Wrong stun buffer format (3)\n");
       exit(-1);
     } catch (...) {
@@ -154,8 +154,8 @@ static int run_stunclient(const char *rip, int rport, int *port, bool *rfc5780, 
   }
 
   {
-    int len = 0;
-    ssize_t slen = get_ioa_addr_len(&remote_addr);
+    const int len = 0;
+    const ssize_t slen = get_ioa_addr_len(&remote_addr);
 
     do {
       len = sendto(udp_fd, req.getRawBuffer(), req.getSize(), 0, (struct sockaddr *)&remote_addr, (socklen_t)slen);
@@ -218,12 +218,12 @@ static int run_stunclient(const char *rip, int rport, int *port, bool *rfc5780, 
                 *rfc5780 = 1;
                 printf("\n========================================\n");
                 printf("RFC 5780 response %d\n", ++counter);
-                ioa_addr other_addr;
+                const ioa_addr other_addr;
                 turn::StunAttrAddr addr1(iter1);
                 addr1.getAddr(other_addr);
                 turn::StunAttrIterator iter2(res, STUN_ATTRIBUTE_RESPONSE_ORIGIN);
                 if (!iter2.eof()) {
-                  ioa_addr response_origin;
+                  const ioa_addr response_origin;
                   turn::StunAttrAddr addr2(iter2);
                   addr2.getAddr(response_origin);
                   addr_debug_print(1, &response_origin, "Response origin: ");

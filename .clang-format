@@ -130,9 +130,10 @@ Standard:        Latest
 StatementMacros:
   - Q_UNUSED
   - QT_REQUIRE_VERSION
-TabWidth:        8
-UseCRLF:         false
-UseTab:          Never
-InsertBraces:    true
+TabWidth:           8
+UseCRLF:            false
+UseTab:             Never
+InsertBraces:       true
+QualifierAlignment: Left
 ...
 
