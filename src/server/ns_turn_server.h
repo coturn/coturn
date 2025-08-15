@@ -35,13 +35,8 @@
 #ifndef __TURN_SERVER__
 #define __TURN_SERVER__
 
-#include "ns_turn_allocation.h" // for tcp_connection_id
-#include "ns_turn_defs.h"       // for vintp, uint8_t, size_t, uint64_t
-#include "ns_turn_ioaddr.h"     // for ioa_addr
-#include "ns_turn_ioalib.h"     // for ioa_net_data, ioa_engine_handle, ioa...
-#include "ns_turn_maps.h"       // for ur_map
-#include "ns_turn_msg.h"        // for turn_credential_type, band_limit_t
 #include "ns_turn_session.h"
+#include "ns_turn_utils.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -155,6 +150,7 @@ struct _turn_turnserver {
   bool *no_multicast_peers;
   send_turn_session_info_cb send_turn_session_info;
   send_https_socket_cb send_https_socket;
+  int sock_buf_size;
 
   /* RFC 6062 ==>> */
   bool *no_udp_relay;
@@ -226,7 +222,7 @@ void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, io
                       ip_range_list_t *ip_whitelist, ip_range_list_t *ip_blacklist,
                       send_socket_to_relay_cb send_socket_to_relay, bool *secure_stun, bool *mobility, int server_relay,
                       send_turn_session_info_cb send_turn_session_info, send_https_socket_cb send_https_socket,
-                      allocate_bps_cb allocate_bps_func, int oauth, const char *oauth_server_name,
+                      int sock_buf_size, allocate_bps_cb allocate_bps_func, int oauth, const char *oauth_server_name,
                       const char *acme_redirect, ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family,
                       bool *log_binding, bool *stun_backward_compatibility, bool *respond_http_unsupported);
 
