@@ -161,12 +161,14 @@ realm_params_t *get_realm(char *name) {
     } else {
       realm_params_t *ret = (realm_params_t *)malloc(sizeof(realm_params_t));
       memcpy(ret, default_realm_params_ptr, sizeof(realm_params_t));
-      STRCPY(ret->options.name, name);
-      value = (ur_string_map_value_type)ret;
-      ur_string_map_put(realms, key, value);
-      ret->status.alloc_counters = ur_string_map_create(NULL);
-      add_to_secrets_list(&realms_list, name);
-      unlock_realms();
+      if (ret) {
+        STRCPY(ret->options.name, name);
+        value = (ur_string_map_value_type)ret;
+        ur_string_map_put(realms, key, value);
+        ret->status.alloc_counters = ur_string_map_create(NULL);
+        add_to_secrets_list(&realms_list, name);
+        unlock_realms();
+      }
       return ret;
     }
   }

@@ -1485,7 +1485,7 @@ void start_mclient(const char *remote_address, int port, const unsigned char *if
 
     if (is_TCP_relay()) {
       if (passive_tcp) {
-        if (elems[i]->pinfo.is_peer) {
+        if (elems && elems[i]->pinfo.is_peer) {
           int connect_err = 0;
           socket_connect(elems[i]->pinfo.fd, &(elems[i]->pinfo.remote_addr), &connect_err);
         }

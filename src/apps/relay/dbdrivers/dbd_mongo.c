@@ -98,7 +98,9 @@ static MONGO *get_mongodb_connection(void) {
 
     mydbconnection = (MONGO *)calloc(1, sizeof(MONGO));
 
-    mydbconnection->uri = mongoc_uri_new(pud->userdb);
+    if (mydbconnection) {
+      mydbconnection->uri = mongoc_uri_new(pud->userdb);
+    }
 
     if (!mydbconnection->uri) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open parse MongoDB URI <%s>, connection string format error\n",
