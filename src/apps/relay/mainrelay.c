@@ -1841,6 +1841,7 @@ void decrypt_aes_128(char *in, const unsigned char *mykey) {
   CRYPTO_ctr128_encrypt(encryptedText, outdata, newTotalSize, &key, state.ivec, state.ecount, &state.num,
                         (block128_f)AES_encrypt);
 
+  free(encryptedText);
   strcat(last, (char *)outdata);
   printf("%s\n", last);
 }
