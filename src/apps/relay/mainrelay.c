@@ -2130,9 +2130,13 @@ static void set_option(int c, char *value) {
     if (turn_params.verbose != TURN_VERBOSE_EXTRA) {
       if (get_bool_value(value)) {
         turn_params.verbose = TURN_VERBOSE_NORMAL;
+        app_log_level = TURN_LOG_LEVEL_DEBUG;
       } else {
         turn_params.verbose = TURN_VERBOSE_NONE;
+        app_log_level = TURN_LOG_LEVEL_INFO; // the default
       }
+    } else {
+      app_log_level = TURN_LOG_LEVEL_DEBUG;
     }
     break;
   case 'V':

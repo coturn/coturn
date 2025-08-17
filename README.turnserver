@@ -241,9 +241,17 @@ Flags:
 			name will be constructed as-is, without PID and date appendage.
 			This option can be used, for example, together with the logrotate tool.
 
---new-log-timestamp				Enable full ISO-8601 timestamp in all logs.
+--new-log-timestamp				Enable timestamp formatting (see also
+			--new-log-timestamp-format). If not given, seconds since turnserver
+			start will be used as timestamp.
 
---new-log-timestamp-format    	<format>	Set timestamp format (in strftime(1) format)
+--new-log-timestamp-format    	<format>	Set the timestamp format to use
+			(see strftime(3)). Default: "%FT%T%z" (ISO-8601 timestamp). If the
+			given format ends with %N , the time gets formatted as UTC timestamp
+			whereby %N gets replaced with the microseconds part of the current
+			time if the execuing machine provides a monotonic clock (otherwise
+			%N gets ignored). Ignored unless timestamp formatting is enabled
+			(see option --new-log-timestamp).
 
 --log-binding					Log STUN binding request. It is now disabled by default to avoid DoS attacks.
 
