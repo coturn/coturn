@@ -1,0 +1,16 @@
+{{- if gt (int .Values.replicaCount) 1 }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: coturn
+  labels:
+    app: coturn
+    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  maxUnavailable: {{ sub (int .Values.replicaCount) 1 }}
+  selector:
+    matchLabels:
+      app: coturn
+{{- end }}
