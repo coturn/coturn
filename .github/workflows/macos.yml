@@ -20,7 +20,7 @@ jobs:
         ver: ["13", "14", "15"]
     runs-on: macos-${{ matrix.ver }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Relink `python` package in `brew`
         # Unlink and re-link to prevent errors when GitHub `macos` runner images
@@ -57,7 +57,7 @@ jobs:
         ver: ["15"]
     runs-on: macos-${{ matrix.ver }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Relink `python` package in `brew`
         # Unlink and re-link to prevent errors when GitHub `macos` runner images
