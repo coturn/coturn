@@ -198,13 +198,13 @@ int socket_set_reusable(evutil_socket_t fd, int flag, SOCKET_TYPE st) {
 #if defined(WINDOWS)
     int use_reuseaddr = IS_TURN_SERVER;
 #else
-    int use_reuseaddr = 1;
+    const int use_reuseaddr = 1;
 #endif
 
 #if defined(SO_REUSEADDR)
     if (use_reuseaddr) {
       int on = flag;
-      int ret = setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (const void *)&on, (socklen_t)sizeof(on));
+      const int ret = setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (const void *)&on, (socklen_t)sizeof(on));
       if (ret < 0) {
         perror("SO_REUSEADDR");
       }
@@ -318,7 +318,7 @@ int addr_bind(evutil_socket_t fd, const ioa_addr *addr, int reusable, int debug,
     }
     if (ret < 0) {
       if (debug) {
-        int err = socket_errno();
+        const int err = socket_errno();
         perror("bind");
         char str[129];
         addr_to_string(addr, (uint8_t *)str);
@@ -670,7 +670,7 @@ int set_mtu_df(SSL *ssl, evutil_socket_t fd, int family, int mtu, int df_value, 
     return 0;
   }
 
-  int ret = set_socket_df(fd, family, df_value);
+  const int ret = set_socket_df(fd, family, df_value);
 
   if (!mtu) {
     mtu = SOSO_MTU;
@@ -1094,7 +1094,7 @@ void print_abs_file_name(const char *msg1, const char *msg2, const char *fn) {
         if (!getcwd(absfn, sizeof(absfn) - 1)) {
           absfn[0] = 0;
         }
-        size_t blen = strlen(absfn);
+        const size_t blen = strlen(absfn);
         if (blen < sizeof(absfn) - 1) {
           strncpy(absfn + blen, "/", sizeof(absfn) - blen);
           strncpy(absfn + blen + 1, fn, sizeof(absfn) - blen - 1);
@@ -1122,10 +1122,10 @@ char *find_config_file(const char *config_file) {
       }
     } else {
       int i = 0;
-      size_t cflen = strlen(config_file);
+      const size_t cflen = strlen(config_file);
 
       while (config_file_search_dirs[i]) {
-        size_t dirlen = strlen(config_file_search_dirs[i]);
+        const size_t dirlen = strlen(config_file_search_dirs[i]);
         size_t fnsz = sizeof(char) * (dirlen + cflen + 10);
         char *fn = (char *)malloc(fnsz + 1);
         strncpy(fn, config_file_search_dirs[i], fnsz);
@@ -1139,7 +1139,7 @@ char *find_config_file(const char *config_file) {
         }
         free(fn);
         if (config_file_search_dirs[i][0] != '/' && config_file_search_dirs[i][0] != '.' && c_execdir && c_execdir[0]) {
-          size_t celen = strlen(c_execdir);
+          const size_t celen = strlen(c_execdir);
           fnsz = sizeof(char) * (dirlen + cflen + celen + 10);
           fn = (char *)malloc(fnsz + 1);
           strncpy(fn, c_execdir, fnsz);
@@ -1198,8 +1198,8 @@ static uint64_t turn_getRandTime(void) {
 #else
   tp.tv_sec = time(NULL);
 #endif
-  uint64_t current_time = (uint64_t)(tp.tv_sec);
-  uint64_t current_mstime = (uint64_t)(current_time + (tp.tv_nsec));
+  const uint64_t current_time = (uint64_t)(tp.tv_sec);
+  const uint64_t current_mstime = (uint64_t)(current_time + (tp.tv_nsec));
 
   return current_mstime;
 }
@@ -1311,11 +1311,11 @@ char *base64_encode(const unsigned char *data, size_t input_length, size_t *outp
 
   for (size_t i = 0, j = 0; i < input_length;) {
 
-    uint32_t octet_a = i < input_length ? data[i++] : 0;
-    uint32_t octet_b = i < input_length ? data[i++] : 0;
-    uint32_t octet_c = i < input_length ? data[i++] : 0;
+    const uint32_t octet_a = i < input_length ? data[i++] : 0;
+    const uint32_t octet_b = i < input_length ? data[i++] : 0;
+    const uint32_t octet_c = i < input_length ? data[i++] : 0;
 
-    uint32_t triple = (octet_a << 0x10) + (octet_b << 0x08) + octet_c;
+    const uint32_t triple = (octet_a << 0x10) + (octet_b << 0x08) + octet_c;
 
     encoded_data[j++] = encoding_table[(triple >> 3 * 6) & 0x3F];
     encoded_data[j++] = encoding_table[(triple >> 2 * 6) & 0x3F];
@@ -1369,12 +1369,12 @@ unsigned char *base64_decode(const char *data, size_t input_length, size_t *outp
   size_t j;
   for (i = 0, j = 0; i < (int)input_length;) {
 
-    uint32_t sextet_a = data[i] == '=' ? 0 & i++ : decoding_table[(int)data[i++]];
-    uint32_t sextet_b = data[i] == '=' ? 0 & i++ : decoding_table[(int)data[i++]];
-    uint32_t sextet_c = data[i] == '=' ? 0 & i++ : decoding_table[(int)data[i++]];
-    uint32_t sextet_d = data[i] == '=' ? 0 & i++ : decoding_table[(int)data[i++]];
+    const uint32_t sextet_a = data[i] == '=' ? 0 & i++ : decoding_table[(int)data[i++]];
+    const uint32_t sextet_b = data[i] == '=' ? 0 & i++ : decoding_table[(int)data[i++]];
+    const uint32_t sextet_c = data[i] == '=' ? 0 & i++ : decoding_table[(int)data[i++]];
+    const uint32_t sextet_d = data[i] == '=' ? 0 & i++ : decoding_table[(int)data[i++]];
 
-    uint32_t triple = (sextet_a << 3 * 6) + (sextet_b << 2 * 6) + (sextet_c << 1 * 6) + (sextet_d << 0 * 6);
+    const uint32_t triple = (sextet_a << 3 * 6) + (sextet_b << 2 * 6) + (sextet_c << 1 * 6) + (sextet_d << 0 * 6);
 
     if (j < *output_length) {
       decoded_data[j++] = (triple >> 2 * 8) & 0xFF;

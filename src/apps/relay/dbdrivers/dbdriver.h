@@ -83,7 +83,7 @@ typedef struct _turn_dbdriver_t {
 
 /////////// USER DB CHECK //////////////////
 
-void convert_string_key_to_binary(char const *keysource, hmackey_t key, size_t sz);
+void convert_string_key_to_binary(const char *keysource, hmackey_t key, size_t sz);
 persistent_users_db_t *get_persistent_users_db(void);
 const turn_dbdriver_t *get_dbdriver(void);
 char *sanitize_userdb_string(char *udb);

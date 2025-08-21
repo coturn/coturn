@@ -62,7 +62,7 @@ static int counter = 0;
 #ifdef __cplusplus
 
 static int init_socket(int *socketfd, ioa_addr *local_addr, int local_port, ioa_addr *remote_addr) {
-  int ret = 0;
+  const int ret = 0;
 
   if (local_port >= 0) {
     addr_set_port(local_addr, local_port);
@@ -84,7 +84,7 @@ static int init_socket(int *socketfd, ioa_addr *local_addr, int local_port, ioa_
 
 static int stunclient_send(int sockfd, ioa_addr *local_addr, int *local_port, ioa_addr *remote_addr, bool change_ip,
                            bool change_port, int padding, int response_port) {
-  int ret = 0;
+  const int ret = 0;
 
   turn::StunMsgRequest req(STUN_METHOD_BINDING);
 
@@ -141,8 +141,8 @@ static int stunclient_send(int sockfd, ioa_addr *local_addr, int *local_port, io
   }
 
   {
-    int len = 0;
-    int slen = get_ioa_addr_len(remote_addr);
+    const int len = 0;
+    const int slen = get_ioa_addr_len(remote_addr);
 
     do {
       len = sendto(sockfd, req.getRawBuffer(), req.getSize(), 0, (struct sockaddr *)remote_addr, (socklen_t)slen);
@@ -234,7 +234,7 @@ static int stunclient_receive(int sockfd, ioa_addr *local_addr, ioa_addr *reflex
                 addr1.getAddr(*other_addr);
                 turn::StunAttrIterator iter3(res, STUN_ATTRIBUTE_RESPONSE_ORIGIN);
                 if (!iter3.eof()) {
-                  ioa_addr response_origin;
+                  const ioa_addr response_origin;
                   turn::StunAttrAddr addr3(iter3);
                   addr3.getAddr(response_origin);
                   addr_debug_print(1, &response_origin, "Response origin: ");
