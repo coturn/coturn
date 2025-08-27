@@ -21,11 +21,16 @@ spec:
       app: coturn
   template:
     metadata:
-    {{- with .Values.podAnnotations }}
       annotations:
+        # An annotation of the configmap checksum ensures changes to the configmaps and secrets cause a redeployment upon `helm upgrade`
+        {{- if .Values.ratelimit.allowlist }}
+        checksum/configmap-allowlist: {{ include (print .Template.BasePath "/configmap-allowlist.yaml") . | sha256sum }}
+        {{- end }}
+        checksum/configmap-coturn: {{ include (print .Template.BasePath "/configmap-coturn-conf-template.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print .Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
-    {{- end }}
-
+        {{- end }}
       labels:
         app: coturn
         release: {{ .Release.Name }}
