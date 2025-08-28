@@ -1590,6 +1590,11 @@ again:
       (app_tcp_conn_info **)realloc(elem->pinfo.tcp_conn, elem->pinfo.tcp_conn_number * sizeof(app_tcp_conn_info *));
   elem->pinfo.tcp_conn[i] = (app_tcp_conn_info *)calloc(sizeof(app_tcp_conn_info), 1);
 
+  if (elem->pinfo.tcp_conn[i] == NULL) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: failure in call to calloc \n", __FUNCTION__);
+    return;
+  }
+
   elem->pinfo.tcp_conn[i]->tcp_data_fd = clnet_fd;
   elem->pinfo.tcp_conn[i]->cid = cid;
 

@@ -181,6 +181,9 @@ bool stun_produce_integrity_key_str(const uint8_t *uname, const uint8_t *realm, 
   size_t sz = ulen + 1 + rlen + 1 + plen + 1 + 10;
   size_t strl = ulen + 1 + rlen + 1 + plen;
   uint8_t *str = (uint8_t *)malloc(sz + 1);
+  if (str == NULL) {
+    return false;
+  }
 
   strncpy((char *)str, (const char *)uname, sz);
   str[ulen] = ':';
