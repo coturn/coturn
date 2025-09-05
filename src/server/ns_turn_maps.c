@@ -282,11 +282,13 @@ bool lm_map_put(lm_map *map, ur_map_key_type key, ur_map_value_type value) {
   a->extra_values = (ur_map_value_type **)realloc(a->extra_values, old_sz_mem + sizeof(ur_map_value_type *));
   assert(a->extra_values);
   a->extra_values[old_sz] = (ur_map_value_type *)malloc(sizeof(ur_map_value_type));
-  *(a->extra_values[old_sz]) = value;
-
-  a->extra_sz += 1;
-
-  return true;
+  if (a->extra_values[old_sz] != NULL) {
+    *(a->extra_values[old_sz]) = value;
+    a->extra_sz += 1;
+    return true;
+  } else {
+    return false;
+  }
 }
 
 bool lm_map_get(const lm_map *map, ur_map_key_type key, ur_map_value_type *value) {
