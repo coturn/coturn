@@ -53,9 +53,4 @@
 
 /* <<== Bandwidth */
 
-////////////// SSODA ///////////////////
-
-#define STUN_ATTRIBUTE_ADDITIONAL_ADDRESS_FAMILY (0x8032)
-#define STUN_ATTRIBUTE_ADDRESS_ERROR_CODE (0x8033)
-
 #endif //__LIB_TURN_MSG_DEFS_NEW__
