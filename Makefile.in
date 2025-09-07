@@ -38,97 +38,97 @@ TURN_BUILD_RESULTS = bin/turnutils_oauth bin/turnutils_natdiscovery bin/turnutil
 
 .PHONY: all test check clean distclean sqlite_empty_db install deinstall uninstall reinstall
 
-all:	${TURN_BUILD_RESULTS}
+all: ${TURN_BUILD_RESULTS}
 
-test:	check
+test: check
 
-check:	bin/turnutils_rfc5769check
+check: bin/turnutils_rfc5769check
 	bin/turnutils_rfc5769check
 
-format:
+format: 
 	find . -iname "*.c" -o -iname "*.h" | xargs clang-format -i
 
-lint:
+lint: 
 	find . -iname "*.c" -o -iname "*.h" | xargs clang-format --dry-run -Werror
 
-include/turn/ns_turn_defs.h:	src/ns_turn_defs.h
+include/turn/ns_turn_defs.h: src/ns_turn_defs.h
 	${RMCMD} include
 	${MKBUILDDIR} include/turn/client
 	cp -pf src/client/*.h include/turn/client/
 	cp -pf src/client++/*.h include/turn/client/
 	cp -pf src/ns_turn_defs.h include/turn/
 
-bin/turnutils_uclient:	${COMMON_DEPS} src/apps/uclient/session.h lib/libturnclient.a src/apps/uclient/mainuclient.c src/apps/uclient/uclient.c src/apps/uclient/uclient.h src/apps/uclient/startuclient.c src/apps/uclient/startuclient.h
+bin/turnutils_uclient: ${COMMON_DEPS} src/apps/uclient/session.h lib/libturnclient.a src/apps/uclient/mainuclient.c src/apps/uclient/uclient.c src/apps/uclient/uclient.h src/apps/uclient/startuclient.c src/apps/uclient/startuclient.h src/server/ns_turn_ioalib.h
 	${MKBUILDDIR} bin
 	${CC} ${CPPFLAGS} ${CFLAGS} src/apps/uclient/uclient.c src/apps/uclient/startuclient.c src/apps/uclient/mainuclient.c ${COMMON_MODS} -o $@ -Llib -lturnclient -Llib ${LDFLAGS}
 
-bin/turnutils_natdiscovery:	${COMMON_DEPS} lib/libturnclient.a src/apps/natdiscovery/natdiscovery.c
+bin/turnutils_natdiscovery: ${COMMON_DEPS} lib/libturnclient.a src/apps/natdiscovery/natdiscovery.c src/server/ns_turn_ioalib.h
 	pwd
 	${MKBUILDDIR} bin
 	${CC} ${CPPFLAGS} ${CFLAGS} src/apps/natdiscovery/natdiscovery.c ${COMMON_MODS} -o $@ -Llib -lturnclient -Llib ${LDFLAGS}
 
-bin/turnutils_oauth:	${COMMON_DEPS} lib/libturnclient.a src/apps/oauth/oauth.c
+bin/turnutils_oauth: ${COMMON_DEPS} lib/libturnclient.a src/apps/oauth/oauth.c src/server/ns_turn_ioalib.h
 	pwd
 	${MKBUILDDIR} bin
 	${CC} ${CPPFLAGS} ${CFLAGS} src/apps/oauth/oauth.c ${COMMON_MODS} -o $@ -Llib -lturnclient -Llib ${LDFLAGS}
 
-bin/turnutils_stunclient:	${COMMON_DEPS} lib/libturnclient.a src/apps/stunclient/stunclient.c
+bin/turnutils_stunclient: ${COMMON_DEPS} lib/libturnclient.a src/apps/stunclient/stunclient.c src/server/ns_turn_ioalib.h
 	pwd
 	${MKBUILDDIR} bin
 	${CC} ${CPPFLAGS} ${CFLAGS} src/apps/stunclient/stunclient.c ${COMMON_MODS} -o $@ -Llib -lturnclient -Llib ${LDFLAGS}
 
-bin/turnutils_rfc5769check:	${COMMON_DEPS} lib/libturnclient.a src/apps/rfc5769/rfc5769check.c
+bin/turnutils_rfc5769check: ${COMMON_DEPS} lib/libturnclient.a src/apps/rfc5769/rfc5769check.c src/server/ns_turn_ioalib.h
 	pwd
 	${MKBUILDDIR} bin
 	${CC} ${CPPFLAGS} ${CFLAGS} src/apps/rfc5769/rfc5769check.c ${COMMON_MODS} -o $@ -Llib -lturnclient -Llib ${LDFLAGS}
 
-bin/turnserver:	${SERVERAPP_DEPS}
+bin/turnserver: ${SERVERAPP_DEPS} src/apps/relay/acme.h src/apps/relay/http_server.h
 	${MKBUILDDIR} bin
 	${RMCMD} bin/turnadmin
 	${CC} ${CPPFLAGS} ${CFLAGS} ${DBCFLAGS} ${IMPL_MODS} -Ilib ${SERVERAPP_MODS} ${COMMON_MODS} ${SERVERTURN_MODS} -o $@ ${DBLIBS} ${LDFLAGS}
 	cd bin; ln -s turnserver turnadmin
 
-bin/turnutils_peer:	${COMMON_DEPS} ${LIBCLIENTTURN_MODS} ${LIBCLIENTTURN_DEPS} lib/libturnclient.a src/apps/peer/mainudpserver.c src/apps/peer/udpserver.h src/apps/peer/udpserver.c
+bin/turnutils_peer: ${COMMON_DEPS} ${LIBCLIENTTURN_MODS} ${LIBCLIENTTURN_DEPS} lib/libturnclient.a src/apps/peer/mainudpserver.c src/apps/peer/udpserver.h src/apps/peer/udpserver.c src/server/ns_turn_ioalib.h
 	${MKBUILDDIR} bin
 	${CC} ${CPPFLAGS} ${CFLAGS} src/apps/peer/mainudpserver.c src/apps/peer/udpserver.c ${COMMON_MODS} -o $@ -Llib -lturnclient -Llib ${LDFLAGS}  
 
-### Client Library:
+### Client Library: 
 
-lib/libturnclient.a:	${LIBCLIENTTURN_OBJS} ${LIBCLIENTTURN_DEPS}
+lib/libturnclient.a: ${LIBCLIENTTURN_OBJS} ${LIBCLIENTTURN_DEPS}
 	${MKBUILDDIR} lib
 	${ARCHIVERCMD} $@ ${LIBCLIENTTURN_OBJS}
 
-build/obj/ns_turn_ioaddr.o:	src/client/ns_turn_ioaddr.c ${LIBCLIENTTURN_DEPS}
+build/obj/ns_turn_ioaddr.o: src/client/ns_turn_ioaddr.c ${LIBCLIENTTURN_DEPS}
 	${MKBUILDDIR} build/obj
 	${CC} ${CPPFLAGS} ${CFLAGS} -c src/client/ns_turn_ioaddr.c -o $@
 
-build/obj/ns_turn_msg_addr.o:	src/client/ns_turn_msg_addr.c ${LIBCLIENTTURN_DEPS}
+build/obj/ns_turn_msg_addr.o: src/client/ns_turn_msg_addr.c ${LIBCLIENTTURN_DEPS}
 	${MKBUILDDIR} build/obj
 	${CC} ${CPPFLAGS} ${CFLAGS} -c src/client/ns_turn_msg_addr.c -o $@
 
-build/obj/ns_turn_msg.o:	src/client/ns_turn_msg.c ${LIBCLIENTTURN_DEPS}
+build/obj/ns_turn_msg.o: src/client/ns_turn_msg.c ${LIBCLIENTTURN_DEPS} src/apps/common/ns_turn_openssl.h src/apps/common/ns_turn_utils.h
 	${MKBUILDDIR} build/obj
 	${CC} ${CPPFLAGS} ${CFLAGS} -c src/client/ns_turn_msg.c -o $@
 
-### Clean all:
+### Clean all: 
 
-clean:
+clean: 
 	${RMCMD} bin build lib obj *bak *~ */*~ */*/*~ */*/*/*~ *core */*core */*/*core include tmp sqlite
 
-distclean:	clean
+distclean: clean
 	${RMCMD} Makefile
 
-### SQLite empty database:
-sqlite_empty_db	:	sqlite/turndb
+### SQLite empty database: 
+sqlite_empty_db	: sqlite/turndb
 
-sqlite/turndb	:	turndb/schema.sql
+sqlite/turndb	: turndb/schema.sql
 	${MKDIR} sqlite
 	${RMCMD} sqlite/turndb
 	${SQLITE_CMD} sqlite/turndb < turndb/schema.sql
 
-### Install all:
+### Install all: 
 
-install:	all ${MAKE_DEPS}
+install: all ${MAKE_DEPS}
 	${MKDIR} ${DESTDIR}${PREFIX}
 	${MKDIR} ${DESTDIR}${BINDIR}
 	${MKDIR} ${DESTDIR}${TURNDBDIR}
@@ -178,7 +178,7 @@ install:	all ${MAKE_DEPS}
 	${INSTALL_DATA} include/turn/ns_turn_defs.h ${DESTDIR}${TURNINCLUDEDIR}
 	${MORECMD} ${DESTDIR}${DOCSDIR}/postinstall.txt
 
-deinstall:	${MAKE_DEPS}
+deinstall: ${MAKE_DEPS}
 	${PKILL_PROGRAM} turnserver || ${ECHO_CMD} OK
 	${RMCMD} ${DESTDIR}${TURNDBDIR}/turndb
 	${RMCMD} ${DESTDIR}${DOCSDIR}
@@ -204,6 +204,6 @@ deinstall:	${MAKE_DEPS}
 	${RMCMD} ${DESTDIR}${CONFDIR}/turnserver.conf.default
 	${RMCMD} ${DESTDIR}${TURNINCLUDEDIR}
 
-uninstall:	deinstall
+uninstall: deinstall
 
-reinstall:	deinstall install
+reinstall: deinstall install
