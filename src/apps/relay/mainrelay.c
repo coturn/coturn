@@ -2943,7 +2943,7 @@ static void drop_privileges(void) {
   if (procgroupid_set) {
     if (getgid() != procgroupid) {
       if (setgid(procgroupid) != 0) {
-        perror("setgid: Unable to change group privileges");
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "setgid: Unable to change group privileges");
         exit(-1);
       } else {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "New GID: %s(%lu)\n", procgroupname, (unsigned long)procgroupid);
@@ -2956,7 +2956,7 @@ static void drop_privileges(void) {
   if (procuserid_set) {
     if (procuserid != getuid()) {
       if (setuid(procuserid) != 0) {
-        perror("setuid: Unable to change user privileges");
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "setuid: Unable to change user privileges");
         exit(-1);
       } else {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "New UID: %s(%lu)\n", procusername, (unsigned long)procuserid);
@@ -3688,7 +3688,7 @@ static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *metho
     if (turn_params.dh_file[0]) {
       FILE *paramfile = fopen(turn_params.dh_file, "r");
       if (!paramfile) {
-        perror("Cannot open DH file");
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open DH file");
       } else {
         dh = PEM_read_DHparams(paramfile, NULL, NULL, NULL);
         fclose(paramfile);
@@ -3726,7 +3726,7 @@ static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *metho
       FILE *f = fopen(turn_params.secret_key_file, "r");
 
       if (!f) {
-        perror("Cannot open Secret-Key file");
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open Secret-Key file");
       } else {
         fseek(f, 0, SEEK_SET);
         rc = fread(turn_params.secret_key, sizeof(char), 16, f);

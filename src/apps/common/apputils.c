@@ -90,7 +90,7 @@ int socket_set_nonblocking(evutil_socket_t fd) {
   ioctlsocket(fd, FIONBIO, (unsigned long *)&nonblocking);
 #else
   if (fcntl(fd, F_SETFL, O_NONBLOCK) == -1) {
-    perror("O_NONBLOCK");
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "O_NONBLOCK");
     return -1;
   }
 #endif
@@ -122,7 +122,6 @@ int set_sock_buf_size(evutil_socket_t fd, int sz0) {
   }
 
   if (sz < 1) {
-    perror("Cannot set socket rcv size");
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Cannot set rcv sock size %d on fd %d\n", sz0, fd);
   }
 
@@ -136,7 +135,6 @@ int set_sock_buf_size(evutil_socket_t fd, int sz0) {
   }
 
   if (sz < 1) {
-    perror("Cannot set socket snd size");
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Cannot set snd sock size %d on fd %d\n", sz0, fd);
   }
 
@@ -206,7 +204,7 @@ int socket_set_reusable(evutil_socket_t fd, int flag, SOCKET_TYPE st) {
       int on = flag;
       const int ret = setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (const void *)&on, (socklen_t)sizeof(on));
       if (ret < 0) {
-        perror("SO_REUSEADDR");
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "SO_REUSEADDR");
       }
     }
 #endif
@@ -218,7 +216,7 @@ int socket_set_reusable(evutil_socket_t fd, int flag, SOCKET_TYPE st) {
         int on = flag;
         int ret = setsockopt(fd, IPPROTO_SCTP, SCTP_REUSE_PORT, (const void *)&on, (socklen_t)sizeof(on));
         if (ret < 0) {
-          perror("SCTP_REUSE_PORT");
+          TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "SCTP_REUSE_PORT");
         }
       }
     }
@@ -249,9 +247,9 @@ int sock_bind_to_device(evutil_socket_t fd, const unsigned char *ifname) {
 
     if (setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, (const void *)&ifr, sizeof(ifr)) < 0) {
       if (socket_eperm()) {
-        perror("You must obtain superuser privileges to bind a socket to device");
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "You must obtain superuser privileges to bind a socket to device");
       } else {
-        perror("Cannot bind socket to device");
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot bind socket to device");
       }
 
       return -1;
@@ -285,7 +283,7 @@ int addr_connect(evutil_socket_t fd, const ioa_addr *addr, int *out_errno) {
     }
 
     if (err < 0 && !socket_einprogress()) {
-      perror("Connect");
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Connect");
     }
 
     return err;
@@ -319,7 +317,6 @@ int addr_bind(evutil_socket_t fd, const ioa_addr *addr, int reusable, int debug,
     if (ret < 0) {
       if (debug) {
         const int err = socket_errno();
-        perror("bind");
         char str[129];
         addr_to_string(addr, (uint8_t *)str);
         TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Trying to bind fd %d to <%s>: errno=%d\n", fd, str, err);
@@ -364,7 +361,7 @@ int get_raw_socket_ttl(evutil_socket_t fd, int family) {
 #else
     socklen_t slen = (socklen_t)sizeof(ttl);
     if (getsockopt(fd, IPPROTO_IPV6, IPV6_UNICAST_HOPS, (void *)&ttl, &slen) < 0) {
-      perror("get HOPLIMIT on socket");
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "get HOPLIMIT on socket");
       return TTL_IGNORE;
     }
 #endif
@@ -377,7 +374,7 @@ int get_raw_socket_ttl(evutil_socket_t fd, int family) {
 #else
     socklen_t slen = (socklen_t)sizeof(ttl);
     if (getsockopt(fd, IPPROTO_IP, IP_TTL, (void *)&ttl, &slen) < 0) {
-      perror("get TTL on socket");
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "get TTL on socket");
       return TTL_IGNORE;
     }
 #endif
@@ -400,7 +397,7 @@ int get_raw_socket_tos(evutil_socket_t fd, int family) {
 #else
     socklen_t slen = (socklen_t)sizeof(tos);
     if (getsockopt(fd, IPPROTO_IPV6, IPV6_TCLASS, (void *)&tos, &slen) < 0) {
-      perror("get TCLASS on socket");
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "get TCLASS on socket");
       return -1;
     }
 #endif
@@ -413,7 +410,7 @@ int get_raw_socket_tos(evutil_socket_t fd, int family) {
 #else
     socklen_t slen = (socklen_t)sizeof(tos);
     if (getsockopt(fd, IPPROTO_IP, IP_TOS, (void *)&tos, &slen) < 0) {
-      perror("get TOS on socket");
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "get TOS on socket");
       return -1;
     }
 #endif
@@ -433,7 +430,7 @@ int set_raw_socket_ttl(evutil_socket_t fd, int family, int ttl) {
 #else
     CORRECT_RAW_TTL(ttl);
     if (setsockopt(fd, IPPROTO_IPV6, IPV6_UNICAST_HOPS, (const void *)&ttl, sizeof(ttl)) < 0) {
-      perror("set HOPLIMIT on socket");
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "set HOPLIMIT on socket");
       return -1;
     }
 #endif
@@ -444,7 +441,7 @@ int set_raw_socket_ttl(evutil_socket_t fd, int family, int ttl) {
 #else
     CORRECT_RAW_TTL(ttl);
     if (setsockopt(fd, IPPROTO_IP, IP_TTL, (const void *)&ttl, sizeof(ttl)) < 0) {
-      perror("set TTL on socket");
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "set TTL on socket");
       return -1;
     }
 #endif
@@ -462,7 +459,7 @@ int set_raw_socket_tos(evutil_socket_t fd, int family, int tos) {
 #else
     CORRECT_RAW_TOS(tos);
     if (setsockopt(fd, IPPROTO_IPV6, IPV6_TCLASS, (const void *)&tos, sizeof(tos)) < 0) {
-      perror("set TCLASS on socket");
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "set TCLASS on socket");
       return -1;
     }
 #endif
@@ -472,7 +469,7 @@ int set_raw_socket_tos(evutil_socket_t fd, int family, int tos) {
     UNUSED_ARG(tos);
 #else
     if (setsockopt(fd, IPPROTO_IP, IP_TOS, (const void *)&tos, sizeof(tos)) < 0) {
-      perror("set TOS on socket");
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "set TOS on socket");
       return -1;
     }
 #endif
@@ -562,7 +559,6 @@ int set_socket_df(evutil_socket_t fd, int family, int value) {
     }
     if (ret < 0) {
       int err = socket_errno();
-      perror("set socket df:");
       TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: set sockopt failed: fd=%d, err=%d, family=%d\n", __FUNCTION__, fd, err,
                     family);
     }
@@ -588,7 +584,6 @@ int set_socket_df(evutil_socket_t fd, int family, int value) {
 #endif
     }
     if (ret < 0) {
-      perror("set DF");
       TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: set sockopt failed\n", __FUNCTION__);
     }
   }
@@ -1193,7 +1188,7 @@ void ignore_sigpipe(void) {
 #if defined(__linux__) || defined(__APPLE__)
   /* Ignore SIGPIPE from TCP sockets */
   if (signal(SIGPIPE, SIG_IGN) == SIG_ERR) {
-    perror("Cannot set SIGPIPE handler");
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot set SIGPIPE handler");
   }
 #endif
 }
@@ -1247,7 +1242,7 @@ unsigned long set_system_parameters(int max_resources) {
 
     struct rlimit rlim;
     if (getrlimit(RLIMIT_NOFILE, &rlim) < 0) {
-      perror("Cannot get system limit");
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot get system limit");
     } else {
       rlim.rlim_cur = rlim.rlim_max;
       while ((setrlimit(RLIMIT_NOFILE, &rlim) < 0) && (rlim.rlim_cur > 0)) {

@@ -92,7 +92,7 @@ int turn_mutex_lock(const turn_mutex *mutex) {
     int ret = 0;
     ret = pthread_mutex_lock((pthread_mutex_t *)mutex->mutex);
     if (ret < 0) {
-      perror("Mutex lock");
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Mutex lock");
     }
     return ret;
   } else {
@@ -106,11 +106,11 @@ int turn_mutex_unlock(const turn_mutex *mutex) {
     int ret = 0;
     ret = pthread_mutex_unlock((pthread_mutex_t *)mutex->mutex);
     if (ret < 0) {
-      perror("Mutex unlock");
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Mutex unlock");
     }
     return ret;
   } else {
-    printf("Uninitialized mutex\n");
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Uninitialized mutex\n");
     return -1;
   }
 }
@@ -122,12 +122,12 @@ int turn_mutex_init(turn_mutex *mutex) {
 
   mutex->mutex = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t));
   if (!(mutex->mutex)) {
-    perror("Cannot allocate mutex");
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot allocate mutex");
     return -1;
   }
 
   if (pthread_mutex_init((pthread_mutex_t *)mutex->mutex, NULL) != 0) {
-    perror("Cannot init mutex");
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot init mutex");
     free(mutex->mutex);
     mutex->mutex = NULL;
     return -1;
@@ -144,23 +144,23 @@ int turn_mutex_init_recursive(turn_mutex *mutex) {
 
   pthread_mutexattr_t attr;
   if (pthread_mutexattr_init(&attr) != 0) {
-    perror("Cannot init mutex attr");
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot init mutex attr");
     return -1;
   }
 
   if (pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE) != 0) {
-    perror("Cannot set type on mutex attr");
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot set type on mutex attr");
     return -1;
   }
 
   mutex->mutex = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t));
   if (!(mutex->mutex)) {
-    perror("Cannot allocate mutex");
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot allocate mutex");
     return -1;
   }
 
   if (pthread_mutex_init((pthread_mutex_t *)mutex->mutex, &attr) != 0) {
-    perror("Cannot init mutex");
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot init mutex");
     free(mutex->mutex);
     mutex->mutex = NULL;
     return -1;

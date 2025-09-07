@@ -195,7 +195,7 @@ static int create_server_listener(tls_listener_relay_server_type *server) {
 
   tls_listen_fd = socket(server->addr.ss.sa_family, CLIENT_STREAM_SOCKET_TYPE, CLIENT_STREAM_SOCKET_PROTOCOL);
   if (tls_listen_fd < 0) {
-    perror("socket");
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create socket\n");
     return -1;
   }
 
@@ -209,7 +209,6 @@ static int create_server_listener(tls_listener_relay_server_type *server) {
   retry_addr_bind:
 
     if (addr_bind(tls_listen_fd, &server->addr, 1, 1, TCP_SOCKET) < 0) {
-      perror("Cannot bind local socket to addr");
       char saddr[129];
       addr_to_string(&server->addr, (uint8_t *)saddr);
       TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Cannot bind TLS/TCP listener socket to addr %s\n", saddr);
