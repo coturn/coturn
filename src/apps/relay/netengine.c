@@ -341,6 +341,10 @@ static void update_ssl_ctx(evutil_socket_t sock, short events, update_ssl_ctx_cb
 
 void set_ssl_ctx(ioa_engine_handle e, turn_params_t *params) {
   update_ssl_ctx_cb_args_t *args = (update_ssl_ctx_cb_args_t *)malloc(sizeof(update_ssl_ctx_cb_args_t));
+  if (!args) {
+	  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Failed to allocate memory for SSL context update args\n");
+	  return;
+	}
   args->engine = e;
   args->params = params;
   args->next = NULL;
