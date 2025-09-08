@@ -243,7 +243,10 @@ static ioa_socket_handle dtls_accept_client_connection(dtls_listener_relay_serve
 
   ioa_socket_handle ioas =
       create_ioa_socket_from_ssl(server->e, sock, ssl, DTLS_SOCKET, CLIENT_SOCKET, remote_addr, local_addr);
+
   if (ioas) {
+    set_ioa_socket_buf_size(ioas, server->ts->sock_buf_size);
+
     addr_cpy(&(server->sm.m.sm.nd.src_addr), remote_addr);
     server->sm.m.sm.nd.recv_ttl = TTL_IGNORE;
     server->sm.m.sm.nd.recv_tos = TOS_IGNORE;
@@ -452,6 +455,7 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server, struct mes
                       (char *)saddr, (char *)rsaddr);
       }
       s->e = ioa_eng;
+      set_ioa_socket_buf_size(s, ts->sock_buf_size);
       add_socket_to_map(s, amap);
       if (open_client_connection_session(ts, &(sm->m.sm)) < 0) {
         return -1;
@@ -516,6 +520,7 @@ static int create_new_connected_udp_socket(dtls_listener_relay_server_type *serv
   addr_cpy(&(ret->remote_addr), &(server->sm.m.sm.nd.src_addr));
 
   set_socket_options(ret);
+  set_ioa_socket_buf_size(ret, server->ts->sock_buf_size);
 
   ret->current_ttl = s->current_ttl;
   ret->default_ttl = s->default_ttl;
@@ -757,7 +762,7 @@ static int create_server_socket(dtls_listener_relay_server_type *server, int rep
     server->udp_listen_s =
         create_ioa_socket_from_fd(server->e, udp_listen_fd, NULL, UDP_SOCKET, LISTENER_SOCKET, NULL, &(server->addr));
 
-    set_sock_buf_size(udp_listen_fd, UR_SERVER_SOCK_BUF_SIZE);
+    set_ioa_socket_buf_size(server->udp_listen_s, server->ts->sock_buf_size);
 
     if (sock_bind_to_device(udp_listen_fd, (unsigned char *)server->ifname) < 0) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Cannot bind listener socket to device %s\n", server->ifname);
@@ -842,8 +847,7 @@ static int reopen_server_socket(dtls_listener_relay_server_type *server, evutil_
     /* some UDP sessions may fail due to the race condition here */
 
     set_socket_options(server->udp_listen_s);
-
-    set_sock_buf_size(udp_listen_fd, UR_SERVER_SOCK_BUF_SIZE);
+    set_ioa_socket_buf_size(server->udp_listen_s, server->ts->sock_buf_size);
 
     if (sock_bind_to_device(udp_listen_fd, (unsigned char *)server->ifname) < 0) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Cannot bind listener socket to device %s\n", server->ifname);
