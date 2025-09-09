@@ -923,8 +923,12 @@ static char *_WTA(__in wchar_t *pszInBuf, __in int nInSize, __out char **pszOutB
     free(*pszOutBuf);
     return NULL;
   } else {
-    (*pszOutBuf)[*pnOutSize - 1] = '\0';
-    return *pszOutBuf;
+    if (pszOutBuf != NULL) {
+      (*pszOutBuf)[*pnOutSize - 1] = '\0';
+      return *pszOutBuf;
+    } else {
+      return NULL;
+    }
   }
 }
 

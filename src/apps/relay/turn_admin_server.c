@@ -1173,6 +1173,10 @@ static void cliserver_input_handler(struct evconnlistener *l, evutil_socket_t fd
   addr_debug_print(adminserver.verbose, (ioa_addr *)sa, "CLI connected to");
 
   struct cli_session *clisession = (struct cli_session *)calloc(sizeof(struct cli_session), 1);
+  if (clisession == NULL) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: failure in call to calloc \n", __FUNCTION__);
+    return;
+  }
 
   clisession->rp = get_realm(NULL);
 
@@ -1437,6 +1441,11 @@ void admin_server_receive_message(struct bufferevent *bev, void *ptr) {
   UNUSED_ARG(ptr);
 
   struct turn_session_info *tsi = (struct turn_session_info *)calloc(1, sizeof(struct turn_session_info));
+  if (tsi == NULL) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: failure in call to calloc \n", __FUNCTION__);
+    return;
+  }
+
   int n = 0;
   struct evbuffer *input = bufferevent_get_input(bev);
 

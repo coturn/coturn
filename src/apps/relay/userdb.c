@@ -161,6 +161,10 @@ realm_params_t *get_realm(char *name) {
     } else {
       realm_params_t *ret = (realm_params_t *)malloc(sizeof(realm_params_t));
       memcpy(ret, default_realm_params_ptr, sizeof(realm_params_t));
+      if (ret == NULL) {
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: error allocating memory\n", __FUNCTION__);
+        return default_realm_params_ptr;
+      }
       STRCPY(ret->options.name, name);
       value = (ur_string_map_value_type)ret;
       ur_string_map_put(realms, key, value);

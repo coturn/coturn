@@ -98,6 +98,11 @@ static MONGO *get_mongodb_connection(void) {
 
     mydbconnection = (MONGO *)calloc(1, sizeof(MONGO));
 
+    if (mydbconnection == NULL) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: failure in call to calloc \n", __FUNCTION__);
+      return NULL;
+    }
+
     mydbconnection->uri = mongoc_uri_new(pud->userdb);
 
     if (!mydbconnection->uri) {

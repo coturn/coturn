@@ -331,6 +331,10 @@ static inline void add_elem_to_buffer_list(stun_buffer_list *bufs, stun_buffer_l
 static void add_buffer_to_buffer_list(stun_buffer_list *bufs, char *buf, size_t len) {
   if (bufs && buf && (bufs->tsz < MAX_SOCKET_BUFFER_BACKLOG)) {
     stun_buffer_list_elem *buf_elem = (stun_buffer_list_elem *)malloc(sizeof(stun_buffer_list_elem));
+    if (buf_elem == NULL) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: failure in call to calloc \n", __FUNCTION__);
+      return;
+    }
     memcpy(buf_elem->buf.buf, buf, len);
     buf_elem->buf.len = len;
     buf_elem->buf.offset = 0;
@@ -576,6 +580,11 @@ ioa_timer_handle set_ioa_timer(ioa_engine_handle e, int secs, int ms, ioa_timer_
   if (e && cb && secs > 0) {
 
     timer_event *te = (timer_event *)malloc(sizeof(timer_event));
+    if (te == NULL) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: failure in call to calloc \n", __FUNCTION__);
+      return NULL;
+    }
+
     int flags = EV_TIMEOUT;
     if (persist) {
       flags |= EV_PERSIST;
@@ -926,6 +935,11 @@ ioa_socket_handle create_unbound_relay_ioa_socket(ioa_engine_handle e, int famil
 
   ret = (ioa_socket *)calloc(sizeof(ioa_socket), 1);
 
+  if (ret == NULL) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: failure in call to calloc \n", __FUNCTION__);
+    return NULL;
+  }
+
   ret->magic = SOCKET_MAGIC;
 
   ret->fd = fd;
@@ -1018,8 +1032,9 @@ int create_relay_ioa_sockets(ioa_engine_handle e, ioa_socket_handle client_s, in
 
         port = turnipports_allocate_even(tp, &relay_addr, even_port, out_reservation_token);
         if (port >= 0 && even_port > 0) {
-
-          IOA_CLOSE_SOCKET(*rtcp_s);
+          if (rtcp_s != NULL) {
+            IOA_CLOSE_SOCKET(*rtcp_s);
+          }
           *rtcp_s = create_unbound_relay_ioa_socket(e, relay_addr.ss.sa_family, UDP_SOCKET, RELAY_RTCP_SOCKET);
           if (*rtcp_s == NULL) {
             perror("socket");
@@ -1342,6 +1357,11 @@ ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e, ioa_socket_raw 
   }
 
   ret = (ioa_socket *)calloc(sizeof(ioa_socket), 1);
+
+  if (ret == NULL) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: failure in call to calloc \n", __FUNCTION__);
+    return NULL;
+  }
 
   ret->magic = SOCKET_MAGIC;
 
@@ -3641,7 +3661,7 @@ void turn_report_allocation_set(void *a, turn_time_t lifetime, int refresh) {
           }
         }
 #if !defined(TURN_NO_HIREDIS)
-        {
+        if (e && ss) {
           char key[1024];
           if (ss->realm_options.name[0]) {
             snprintf(key, sizeof(key), "turn/realm/%s/user/%s/allocation/%018llu/status", ss->realm_options.name,
@@ -3687,7 +3707,7 @@ void turn_report_allocation_delete(void *a, SOCKET_TYPE socket_type) {
                         (unsigned long long)ss->id, (char *)ss->realm_options.name, (char *)ss->username);
         }
 #if !defined(TURN_NO_HIREDIS)
-        {
+        if (e) {
           char key[1024];
           if (ss->realm_options.name[0]) {
             snprintf(key, sizeof(key), "turn/realm/%s/user/%s/allocation/%018llu/status", ss->realm_options.name,
@@ -3773,7 +3793,7 @@ void turn_report_session_usage(void *session, int force_invalid) {
                         (unsigned long)(ss->peer_sent_packets), (unsigned long)(ss->peer_sent_bytes));
         }
 #if !defined(TURN_NO_HIREDIS)
-        {
+        if (e) {
           char key[1024];
           if (ss->realm_options.name[0]) {
             snprintf(key, sizeof(key), "turn/realm/%s/user/%s/allocation/%018llu/traffic", ss->realm_options.name,
@@ -3867,8 +3887,13 @@ static void init_super_memory_region(super_memory_t *r) {
   if (r) {
     r->super_memory = (char **)malloc(sizeof(char *));
     r->super_memory[0] = (char *)calloc(1, TURN_SM_SIZE);
-
     r->sm_allocated = (size_t *)malloc(sizeof(size_t));
+
+    if (r->sm_allocated == NULL || r->super_memory == NULL) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: failure in call to calloc \n", __FUNCTION__);
+      return;
+    }
+
     r->sm_allocated[0] = 0;
 
     r->sm_total_sz = TURN_SM_SIZE;

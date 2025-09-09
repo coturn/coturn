@@ -220,6 +220,11 @@ struct http_request *parse_http_request(char *request) {
 
     ret = (struct http_request *)calloc(sizeof(struct http_request), 1);
 
+    if (ret == NULL) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: failure in call to calloc \n", __FUNCTION__);
+      return NULL;
+    }
+
     if (strstr(request, "GET ") == request) {
       ret->rtype = HRT_GET;
       ret = parse_http_request_1(ret, request + 4, 0);
