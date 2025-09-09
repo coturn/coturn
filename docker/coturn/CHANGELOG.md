@@ -9,7 +9,7 @@ Coturn TURN server Docker image changelog
 
 ### Upgraded
 
-- [Debian Linux] "trixie": <https://www.debian.org/releases/trixie>
+- [Debian Linux] "trixie" 20250908 (13.1): <https://www.debian.org/releases/trixie>, <https://github.com/docker-library/official-images/commit/4c4536fafd07865578a0f2feab95a683eba7fa37>
 
 
 
