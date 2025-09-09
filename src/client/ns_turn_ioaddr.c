@@ -520,7 +520,7 @@ int ioa_addr_is_multicast(ioa_addr *addr) {
       const uint8_t *u = ((const uint8_t *)&(addr->s4.sin_addr));
       return (u[0] > 223);
     } else if (addr->ss.sa_family == AF_INET6) {
-      uint8_t u = ((const uint8_t *)&(addr->s6.sin6_addr))[0];
+      const uint8_t u = ((const uint8_t *)&(addr->s6.sin6_addr))[0];
       return (u == 255);
     }
   }
@@ -584,7 +584,7 @@ static size_t mcount = 0;
 static size_t msz = 0;
 
 void ioa_addr_add_mapping(ioa_addr *apub, ioa_addr *apriv) {
-  size_t new_size = msz + sizeof(ioa_addr *);
+  const size_t new_size = msz + sizeof(ioa_addr *);
   public_addrs = (ioa_addr **)realloc(public_addrs, new_size);
   private_addrs = (ioa_addr **)realloc(private_addrs, new_size);
   public_addrs[mcount] = (ioa_addr *)malloc(sizeof(ioa_addr));

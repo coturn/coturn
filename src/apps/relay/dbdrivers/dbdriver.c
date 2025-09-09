@@ -49,7 +49,7 @@ static void make_connection_key(void) { (void)pthread_key_create(&connection_key
 pthread_key_t connection_key;
 pthread_once_t connection_key_once = PTHREAD_ONCE_INIT;
 
-void convert_string_key_to_binary(char const *keysource, hmackey_t key, size_t sz) {
+void convert_string_key_to_binary(const char *keysource, hmackey_t key, size_t sz) {
   char is[3];
   size_t i;
   unsigned int v;
@@ -129,7 +129,7 @@ char *sanitize_userdb_string(char *udb) {
       pstart += strlen("postgresql://");
       pend = strstr(pstart, "@");
       if (pend != NULL) {
-        size_t plen = pend - pstart;
+        const size_t plen = pend - pstart;
         memset(pstart, '*', plen);
       }
     }

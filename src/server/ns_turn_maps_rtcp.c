@@ -119,7 +119,7 @@ static bool rtcp_map_del(rtcp_map *map, rtcp_token_type token) {
   }
 
   TURN_MUTEX_LOCK(&map->mutex);
-  bool ret = ur_map_del(map->map, token, rtcp_alloc_free);
+  const bool ret = ur_map_del(map->map, token, rtcp_alloc_free);
   TURN_MUTEX_UNLOCK(&map->mutex);
   return ret;
 }
@@ -203,7 +203,7 @@ bool rtcp_map_put(rtcp_map *map, rtcp_token_type token, ioa_socket_handle s) {
     value->t = turn_time() + RTCP_TIMEOUT;
     value->token = token;
     TURN_MUTEX_LOCK(&map->mutex);
-    bool ret = ur_map_put(map->map, token, (ur_map_value_type)value);
+    const bool ret = ur_map_put(map->map, token, (ur_map_value_type)value);
     // TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: 111.111: ret=%d, token=%llu\n",__FUNCTION__,ret,token);
     TURN_MUTEX_UNLOCK(&map->mutex);
     if (!ret) {
@@ -223,7 +223,7 @@ ioa_socket_handle rtcp_map_get(rtcp_map *map, rtcp_token_type token) {
   if (rtcp_map_valid(map)) {
     ur_map_value_type value;
     TURN_MUTEX_LOCK(&map->mutex);
-    int ret = ur_map_get(map->map, token, &value);
+    const int ret = ur_map_get(map->map, token, &value);
     if (ret) {
       rtcp_alloc_type *rval = (rtcp_alloc_type *)value;
       if (rval) {
@@ -253,7 +253,7 @@ void rtcp_map_free(rtcp_map **map) {
 size_t rtcp_map_size(const rtcp_map *map) {
   if (rtcp_map_valid(map)) {
     TURN_MUTEX_LOCK(&map->mutex);
-    size_t ret = ur_map_size(map->map);
+    const size_t ret = ur_map_size(map->map);
     TURN_MUTEX_UNLOCK(&map->mutex);
     return ret;
   } else {

@@ -243,7 +243,7 @@ static turn_permission_info *get_from_turn_permission_hashtable(turn_permission_
     return NULL;
   }
 
-  uint32_t index = addr_hash_no_port(addr) & (TURN_PERMISSION_HASHTABLE_SIZE - 1);
+  const uint32_t index = addr_hash_no_port(addr) & (TURN_PERMISSION_HASHTABLE_SIZE - 1);
   turn_permission_array *parray = &(map->table[index]);
 
   for (size_t i = 0; i < TURN_PERMISSION_ARRAY_SIZE; ++i) {
@@ -297,7 +297,7 @@ void turn_channel_delete(ch_info *chn) {
     return;
   }
 
-  int port = addr_get_port(&(chn->peer_addr));
+  const int port = addr_get_port(&(chn->peer_addr));
   if (port < 1) {
     char s[129];
     addr_to_string(&(chn->peer_addr), (uint8_t *)s);
@@ -391,8 +391,8 @@ turn_permission_info *allocation_add_permission(allocation *a, const ioa_addr *a
   }
 
   turn_permission_hashtable *map = &(a->addr_to_perm);
-  uint32_t hash = addr_hash_no_port(addr);
-  size_t fds = (size_t)(hash & (TURN_PERMISSION_HASHTABLE_SIZE - 1));
+  const uint32_t hash = addr_hash_no_port(addr);
+  const size_t fds = (size_t)(hash & (TURN_PERMISSION_HASHTABLE_SIZE - 1));
 
   turn_permission_array *parray = &(map->table[fds]);
 

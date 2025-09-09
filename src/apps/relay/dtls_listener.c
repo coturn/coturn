@@ -135,8 +135,8 @@ int get_dtls_version(const unsigned char *buf, int len) {
 #if DTLS_SUPPORTED
 
 static void calculate_cookie(SSL *ssl, unsigned char *cookie_secret, unsigned int cookie_length) {
-  long rv = (long)ssl;
-  long inum = (cookie_length - (((long)cookie_secret) % sizeof(long))) / sizeof(long);
+  const long rv = (long)ssl;
+  const long inum = (cookie_length - (((long)cookie_secret) % sizeof(long))) / sizeof(long);
   long i = 0;
   long *ip = (long *)cookie_secret;
   for (i = 0; i < inum; ++i, ++ip) {
@@ -233,7 +233,7 @@ static ioa_socket_handle dtls_accept_client_connection(dtls_listener_relay_serve
     return NULL;
   }
 
-  int rc = ssl_read(sock->fd, ssl, nbh, server->verbose);
+  const int rc = ssl_read(sock->fd, ssl, nbh, server->verbose);
 
   if (rc < 0) {
     return NULL;
@@ -309,7 +309,7 @@ static ioa_socket_handle dtls_server_input_handler(dtls_listener_relay_server_ty
 
 static int handle_udp_packet(dtls_listener_relay_server_type *server, struct message_to_relay *sm,
                              ioa_engine_handle ioa_eng, turn_turnserver *ts) {
-  int verbose = ioa_eng->verbose;
+  const int verbose = ioa_eng->verbose;
   ioa_socket_handle s = sm->m.sm.s;
 
   ur_addr_map_value_type mvt = 0;
@@ -328,7 +328,7 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server, struct mes
     s = chs;
     sm->m.sm.s = s;
     if (s->ssl) {
-      int sslret = ssl_read(s->fd, s->ssl, sm->m.sm.nd.nbh, verbose);
+      const int sslret = ssl_read(s->fd, s->ssl, sm->m.sm.nd.nbh, verbose);
       if (sslret < 0) {
         ioa_network_buffer_delete(ioa_eng, sm->m.sm.nd.nbh);
         sm->m.sm.nd.nbh = NULL;
@@ -556,7 +556,7 @@ static int create_new_connected_udp_socket(dtls_listener_relay_server_type *serv
     );
 
     SSL_set_max_cert_list(connecting_ssl, 655350);
-    int rc = ssl_read(ret->fd, connecting_ssl, server->sm.m.sm.nd.nbh, server->verbose);
+    const int rc = ssl_read(ret->fd, connecting_ssl, server->sm.m.sm.nd.nbh, server->verbose);
 
     if (rc < 0) {
       if (!(SSL_get_shutdown(connecting_ssl) & SSL_SENT_SHUTDOWN)) {
@@ -621,7 +621,7 @@ start_udp_cycle:
   u_long iMode = 1;
   ioctlsocket(fd, FIONBIO, &iMode);
 #else
-  int flags = MSG_DONTWAIT;
+  const int flags = MSG_DONTWAIT;
 #endif
   bsize = udp_recvfrom(fd, &(server->sm.m.sm.nd.src_addr), &(server->addr), (char *)ioa_network_buffer_data(elem),
                        (int)ioa_network_buffer_get_capacity_udp(), &(server->sm.m.sm.nd.recv_ttl),
@@ -652,7 +652,7 @@ start_udp_cycle:
     ioctlsocket(fd, FIONBIO, &iMode);
 #else
     // Linux
-    int eflags = MSG_ERRQUEUE | MSG_DONTWAIT;
+    const int eflags = MSG_ERRQUEUE | MSG_DONTWAIT;
 #endif
     static char buffer[65535];
     uint32_t errcode = 0;
@@ -689,7 +689,7 @@ start_udp_cycle:
 
   if (bsize < 0) {
     if (!to_block && !conn_reset) {
-      int ern = socket_errno();
+      const int ern = socket_errno();
       perror(__FUNCTION__);
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: recvfrom error %d\n", __FUNCTION__, ern);
     }
@@ -829,7 +829,7 @@ static int reopen_server_socket(dtls_listener_relay_server_type *server, evutil_
       return create_server_socket(server, 1);
     }
 
-    ioa_socket_raw udp_listen_fd =
+    const ioa_socket_raw udp_listen_fd =
         socket(server->addr.ss.sa_family, CLIENT_DGRAM_SOCKET_TYPE, CLIENT_DGRAM_SOCKET_PROTOCOL);
     if (udp_listen_fd < 0) {
       perror("socket");

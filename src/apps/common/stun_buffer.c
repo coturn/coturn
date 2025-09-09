@@ -152,7 +152,7 @@ bool stun_is_channel_message(stun_buffer *buf, uint16_t *chnumber, bool is_paddi
     return false;
   }
   size_t blen = buf->len;
-  bool ret = stun_is_channel_message_str(buf->buf, &blen, chnumber, is_padding_mandatory);
+  const bool ret = stun_is_channel_message_str(buf->buf, &blen, chnumber, is_padding_mandatory);
   if (ret) {
     buf->len = blen;
   }
