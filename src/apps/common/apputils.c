@@ -919,6 +919,9 @@ static char *_WTA(__in wchar_t *pszInBuf, __in int nInSize, __out char **pszOutB
   // and we have to add space to the allocation ourselves.
   (*pnOutSize)++;
   *pszOutBuf = malloc(*pnOutSize * sizeof(char));
+  if (!pszOutBuf) {
+    return NULL;
+  }
   if (WideCharToMultiByte((UINT)0, (DWORD)0, pszInBuf, nInSize, *pszOutBuf, *pnOutSize, NULL, NULL) == 0) {
     free(*pszOutBuf);
     return NULL;
@@ -1340,10 +1343,12 @@ void build_base64_decoding_table(void) {
 
   char *table = (char *)calloc(256, sizeof(char));
 
-  for (size_t i = 0; i < 64; i++) {
-    table[(unsigned char)encoding_table[i]] = i;
+  if (table) {
+    for (size_t i = 0; i < 64; i++) {
+      table[(unsigned char)encoding_table[i]] = i;
+    }
+    decoding_table = table;
   }
-  decoding_table = table;
 }
 
 unsigned char *base64_decode(const char *data, size_t input_length, size_t *output_length) {

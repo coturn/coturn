@@ -289,7 +289,7 @@ start_socket:
     STRCPY(clnet_info->ifname, (const char *)ifname);
   }
 
-  if (use_secure) {
+  if (use_secure && clnet_info) {
     bool try_again = false;
     clnet_info->ssl = tls_connect(clnet_info->fd, &remote_addr, &try_again, connect_cycle++);
     if (!clnet_info->ssl) {

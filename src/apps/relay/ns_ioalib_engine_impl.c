@@ -594,11 +594,13 @@ ioa_timer_handle set_ioa_timer(ioa_engine_handle e, int secs, int ms, ioa_timer_
 
     tv.tv_sec = secs;
 
-    te->ctx = ctx;
-    te->e = e;
-    te->ev = ev;
-    te->cb = cb;
-    te->txt = strdup(txt);
+    if (te) {
+      te->ctx = ctx;
+      te->e = e;
+      te->ev = ev;
+      te->cb = cb;
+      te->txt = strdup(txt);
+    }
 
     if (!ms) {
       tv.tv_usec = 0;
@@ -1364,7 +1366,6 @@ ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e, ioa_socket_raw 
   }
 
   ret->magic = SOCKET_MAGIC;
-
   ret->fd = fd;
   ret->st = st;
   ret->sat = sat;
@@ -3661,7 +3662,7 @@ void turn_report_allocation_set(void *a, turn_time_t lifetime, int refresh) {
           }
         }
 #if !defined(TURN_NO_HIREDIS)
-        if (e && ss) {
+        if (e && ss && ss->client_socket) {
           char key[1024];
           if (ss->realm_options.name[0]) {
             snprintf(key, sizeof(key), "turn/realm/%s/user/%s/allocation/%018llu/status", ss->realm_options.name,
