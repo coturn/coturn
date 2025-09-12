@@ -202,7 +202,6 @@ int socket_connect(evutil_socket_t clnet_fd, ioa_addr *remote_addr, int *connect
     if (*connect_err == EADDRINUSE) {
       return +1;
     }
-    perror("connect");
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: cannot connect to remote addr: %d\n", __FUNCTION__, *connect_err);
     exit(-1);
   }
@@ -233,7 +232,6 @@ start_socket:
       use_sctp ? SCTP_CLIENT_STREAM_SOCKET_PROTOCOL
                : (use_tcp ? CLIENT_STREAM_SOCKET_PROTOCOL : CLIENT_DGRAM_SOCKET_PROTOCOL));
   if (clnet_fd < 0) {
-    perror("socket");
     exit(-1);
   }
 
@@ -438,7 +436,6 @@ beg_allocate:
         }
         allocate_sent = 1;
       } else {
-        perror("send");
         exit(1);
       }
     }
@@ -573,7 +570,6 @@ beg_allocate:
             /* Try again ? */
           }
         } else {
-          perror("recv");
           exit(-1);
           break;
         }
@@ -696,7 +692,6 @@ beg_allocate:
             send_buffer(clnet_info, &request_message, 0, 0);
           }
         } else {
-          perror("send");
           exit(1);
         }
       }
@@ -743,7 +738,6 @@ beg_allocate:
             /* Try again ? */
           }
         } else {
-          perror("recv");
           exit(-1);
           break;
         }
@@ -785,7 +779,6 @@ beg_bind:
       }
       cb_sent = true;
     } else {
-      perror("send");
       exit(1);
     }
   }
@@ -834,7 +827,6 @@ beg_bind:
           /* Try again ? */
         }
       } else {
-        perror("recv");
         exit(-1);
         break;
       }
@@ -884,7 +876,6 @@ beg_cp:
       }
       cp_sent = true;
     } else {
-      perror("send");
       exit(1);
     }
   }
@@ -933,7 +924,6 @@ beg_cp:
           /* Try again ? */
         }
       } else {
-        perror("recv");
         exit(-1);
       }
     }
@@ -1459,7 +1449,6 @@ int turn_tcp_connect(bool verbose, app_ur_conn_info *clnet_info, ioa_addr *peer_
         }
         cp_sent = true;
       } else {
-        perror("send");
         exit(1);
       }
     }
@@ -1505,7 +1494,6 @@ beg_cb:
       if (errorOK) {
         return 0;
       }
-      perror("send");
       exit(1);
     }
   }
@@ -1561,7 +1549,6 @@ beg_cb:
         if (errorOK) {
           return 0;
         }
-        perror("recv");
         exit(-1);
       }
     }
@@ -1578,7 +1565,6 @@ again:
 
   clnet_fd = socket(elem->pinfo.remote_addr.ss.sa_family, CLIENT_STREAM_SOCKET_TYPE, CLIENT_STREAM_SOCKET_PROTOCOL);
   if (clnet_fd < 0) {
-    perror("socket");
     exit(-1);
   }
 
@@ -1610,15 +1596,15 @@ again:
   addr_get_from_sock(clnet_fd, &(elem->pinfo.tcp_conn[i]->tcp_data_local_addr));
 
   for (int cycle = 0; cycle < 1024; ++cycle) {
-    int err = 0;
-    if (addr_connect(clnet_fd, &(elem->pinfo.remote_addr), &err) < 0) {
-      if (err == EADDRINUSE) {
-        socket_closesocket(clnet_fd);
-        clnet_fd =
-            socket(elem->pinfo.remote_addr.ss.sa_family, CLIENT_STREAM_SOCKET_TYPE, CLIENT_STREAM_SOCKET_PROTOCOL);
-        if (clnet_fd < 0) {
-          perror("socket");
-          exit(-1);
+      int err = 0;
+      if (addr_connect(clnet_fd, &(elem->pinfo.remote_addr), &err) < 0) {
+        if (err == EADDRINUSE) {
+          socket_closesocket(clnet_fd);
+          clnet_fd =
+              socket(elem->pinfo.remote_addr.ss.sa_family, CLIENT_STREAM_SOCKET_TYPE, CLIENT_STREAM_SOCKET_PROTOCOL);
+          if (clnet_fd < 0) {
+            TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: cannot connect to remote addr\n", __FUNCTION__);
+            exit(-1);
         }
         if (sock_bind_to_device(clnet_fd, client_ifname) < 0) {
           TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Cannot bind client socket to device %s\n", client_ifname);
@@ -1637,11 +1623,10 @@ again:
 
         continue;
 
-      } else {
-        perror("connect");
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: cannot connect to remote addr\n", __FUNCTION__);
-        exit(-1);
-      }
+        } else {
+          TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: cannot connect to remote addr\n", __FUNCTION__);
+          exit(-1);
+        }
     } else {
       break;
     }
