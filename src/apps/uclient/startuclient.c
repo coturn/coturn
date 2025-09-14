@@ -1596,15 +1596,15 @@ again:
   addr_get_from_sock(clnet_fd, &(elem->pinfo.tcp_conn[i]->tcp_data_local_addr));
 
   for (int cycle = 0; cycle < 1024; ++cycle) {
-      int err = 0;
-      if (addr_connect(clnet_fd, &(elem->pinfo.remote_addr), &err) < 0) {
-        if (err == EADDRINUSE) {
-          socket_closesocket(clnet_fd);
-          clnet_fd =
-              socket(elem->pinfo.remote_addr.ss.sa_family, CLIENT_STREAM_SOCKET_TYPE, CLIENT_STREAM_SOCKET_PROTOCOL);
-          if (clnet_fd < 0) {
-            TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: cannot connect to remote addr\n", __FUNCTION__);
-            exit(-1);
+    int err = 0;
+    if (addr_connect(clnet_fd, &(elem->pinfo.remote_addr), &err) < 0) {
+      if (err == EADDRINUSE) {
+        socket_closesocket(clnet_fd);
+        clnet_fd =
+            socket(elem->pinfo.remote_addr.ss.sa_family, CLIENT_STREAM_SOCKET_TYPE, CLIENT_STREAM_SOCKET_PROTOCOL);
+        if (clnet_fd < 0) {
+          TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: cannot connect to remote addr\n", __FUNCTION__);
+          exit(-1);
         }
         if (sock_bind_to_device(clnet_fd, client_ifname) < 0) {
           TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Cannot bind client socket to device %s\n", client_ifname);
@@ -1623,10 +1623,10 @@ again:
 
         continue;
 
-        } else {
-          TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: cannot connect to remote addr\n", __FUNCTION__);
-          exit(-1);
-        }
+      } else {
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: cannot connect to remote addr\n", __FUNCTION__);
+        exit(-1);
+      }
     } else {
       break;
     }
