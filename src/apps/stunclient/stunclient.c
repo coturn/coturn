@@ -32,7 +32,9 @@
  * SUCH DAMAGE.
  */
 
+#include <limits.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -62,8 +64,8 @@ static int counter = 0;
 
 #ifdef __cplusplus
 
-static int run_stunclient(const char *rip, int rport, int *port, bool *rfc5780, int response_port, bool change_ip,
-                          bool change_port, int padding) {
+static int run_stunclient(const char *rip, uint16_t rport, uint16_t *port, bool *rfc5780, int response_port,
+                          bool change_ip, bool change_port, int padding) {
 
   ioa_addr remote_addr;
 
@@ -86,13 +88,15 @@ static int run_stunclient(const char *rip, int rport, int *port, bool *rfc5780, 
   }
 
   int new_udp_fd = -1;
-  if (response_port >= 0) {
+  // note: while port numbers are restricted to the range [0, USHRT_MAX], local_port is used throughout
+  // this file as an int, using -1 as a pseudo-boolean, marking that no local port will be used
+  if (response_port >= 0 && response_port < USHRT_MAX) {
     new_udp_fd = socket(remote_addr.ss.sa_family, SOCK_DGRAM, 0);
     if (new_udp_fd < 0) {
       err(-1, nullptr);
     }
 
-    addr_set_port(&real_local_addr, response_port);
+    addr_set_port(&real_local_addr, (uint16_t)response_port);
 
     if (addr_bind(new_udp_fd, &real_local_addr, 0, 1, UDP_SOCKET) < 0) {
       err(-1, nullptr);
@@ -103,7 +107,7 @@ static int run_stunclient(const char *rip, int rport, int *port, bool *rfc5780, 
 
   req.constructBindingRequest();
 
-  if (response_port >= 0) {
+  if (response_port >= 0 && response_port < USHRT_MAX) {
     turn::StunAttrResponsePort rpa;
     rpa.setResponsePort((uint16_t)response_port);
     try {
@@ -257,8 +261,8 @@ static int run_stunclient(const char *rip, int rport, int *port, bool *rfc5780, 
 
 #else  // ifdef __cplusplus
 
-static int run_stunclient(const char *rip, int rport, int *port, bool *rfc5780, int response_port, bool change_ip,
-                          bool change_port, int padding) {
+static int run_stunclient(const char *rip, uint16_t rport, uint16_t *port, bool *rfc5780, int response_port,
+                          bool change_ip, bool change_port, int padding) {
 
   ioa_addr remote_addr;
   stun_buffer buf;
@@ -282,14 +286,14 @@ static int run_stunclient(const char *rip, int rport, int *port, bool *rfc5780, 
     }
   }
 
-  if (response_port >= 0) {
+  if (response_port >= 0 && response_port < USHRT_MAX) {
 
     new_udp_fd = socket(remote_addr.ss.sa_family, CLIENT_DGRAM_SOCKET_TYPE, CLIENT_DGRAM_SOCKET_PROTOCOL);
     if (new_udp_fd < 0) {
       err(-1, NULL);
     }
 
-    addr_set_port(&real_local_addr, response_port);
+    addr_set_port(&real_local_addr, (uint16_t)response_port);
 
     if (addr_bind(new_udp_fd, &real_local_addr, 0, 1, UDP_SOCKET) < 0) {
       err(-1, NULL);
@@ -298,7 +302,7 @@ static int run_stunclient(const char *rip, int rport, int *port, bool *rfc5780, 
 
   stun_prepare_binding_request(&buf);
 
-  if (response_port >= 0) {
+  if (response_port >= 0 && response_port < USHRT_MAX) {
     stun_attr_add_response_port_str((uint8_t *)(buf.buf), (size_t *)&(buf.len), (uint16_t)response_port);
   }
   if (change_ip || change_port) {
@@ -419,7 +423,7 @@ static char Usage[] = "Usage: stunclient [options] address\n"
 //////////////////////////////////////////////////
 
 int main(int argc, char **argv) {
-  int port = DEFAULT_STUN_PORT;
+  uint16_t port = DEFAULT_STUN_PORT;
   char local_addr[256] = "\0";
   int c = 0;
   bool forceRfc5780 = false;
@@ -464,7 +468,8 @@ int main(int argc, char **argv) {
     }
   }
 
-  int local_port = -1;
+  // NOTE: not sure about this change
+  uint16_t local_port = 0;
   bool rfc5780 = false;
 
   run_stunclient(argv[optind], port, &local_port, &rfc5780, -1, 0, 0, 0);

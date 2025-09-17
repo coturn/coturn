@@ -38,6 +38,8 @@
 #include "session.h"
 #include "stun_buffer.h"
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -95,7 +97,7 @@ extern oauth_key okey_array[3];
 
 #define is_TCP_relay() (relay_transport == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE)
 
-void start_mclient(const char *remote_address, int port, const unsigned char *ifname, const char *local_address,
+void start_mclient(const char *remote_address, uint16_t port, const unsigned char *ifname, const char *local_address,
                    int messagenumber, int mclient);
 
 int send_buffer(app_ur_conn_info *clnet_info, stun_buffer *message, bool data_connection, app_tcp_conn_info *atc);

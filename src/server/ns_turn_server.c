@@ -2624,7 +2624,7 @@ static int handle_turn_channel_bind(turn_turnserver *server, ts_ur_super_session
           *reason = (const uint8_t *)"Peer Address Family Mismatch (3)";
         }
 
-        if (addr_get_port(&peer_addr) < 1) {
+        if (addr_get_port(&peer_addr) == 0) {
           *err_code = 400;
           *reason = (const uint8_t *)"Empty port number in channel bind request";
         } else {
@@ -2886,7 +2886,7 @@ static int handle_turn_binding(turn_turnserver *server, ts_ur_super_session *ss,
             if (change_port) {
               addr_cpy(response_origin, &other_address);
             } else {
-              const int old_port = addr_get_port(response_origin);
+              const uint16_t old_port = addr_get_port(response_origin);
               addr_cpy(response_origin, &other_address);
               addr_set_port(response_origin, old_port);
             }
