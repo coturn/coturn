@@ -1,15 +1,9 @@
-name: macOS
+name: MacOS
 
 on:
   push:
-    branches: ["master"]
-    tags: ["4.*"]
   pull_request:
-    branches: ["master"]
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+    types: [ opened, reopened, synchronize ]
 
 jobs:
   build:
@@ -17,37 +11,37 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ver: ["13", "14", "15"]
-    runs-on: macos-${{ matrix.ver }}
+        os: [ 'macos-12', 'macos-13', 'macos-14' ]
+    runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
+    - uses: actions/checkout@v5
+      with:
+        fetch-depth: 0
 
-      - name: Relink `python` package in `brew`
-        # Unlink and re-link to prevent errors when GitHub `macos` runner images
-        # install `python` outside of `brew`, for example:
-        # https://github.com/orgs/Homebrew/discussions/3895
-        # https://github.com/actions/setup-python/issues/577
-        # https://github.com/actions/runner-images/issues/6459
-        # https://github.com/actions/runner-images/issues/6507
-        # https://github.com/actions/runner-images/issues/2322
-        run: brew list -1 
-             | grep python 
-             | while read formula; do brew unlink $formula; brew link --overwrite $formula; done
+    - name: Relink `python` package in `brew`
+      # Unlink and re-link to prevent errors when GitHub `macos` runner images
+      # install `python` outside of `brew`, for example:
+      # https://github.com/orgs/Homebrew/discussions/3895
+      # https://github.com/actions/setup-python/issues/577
+      # https://github.com/actions/runner-images/issues/6459
+      # https://github.com/actions/runner-images/issues/6507
+      # https://github.com/actions/runner-images/issues/2322
+      run: brew list -1
+           | grep python
+           | while read formula; do brew unlink $formula; brew link --overwrite $formula; done
 
-      - run: brew update
-      - run: brew install wget pkg-config libevent openssl@1.1 sqlite hiredis mongo-c-driver libmicrohttpd
+    - run: brew update
+    - run: brew install wget pkg-config libevent openssl@1.1 sqlite hiredis mongo-c-driver libmicrohttpd
 
-      - run: ./configure
-        env:
-          PKG_CONFIG_PATH: "${{ env.PKG_CONFIG_PATH }}:/usr/local/opt/openssl@1.1/lib/pkgconfig"
-      - run: make
+    - run: ./configure
+      env:
+        PKG_CONFIG_PATH: "${{ env.PKG_CONFIG_PATH }}:/usr/local/opt/openssl@1.1/lib/pkgconfig"
 
-      - run: make check
+    - name: Compile
+      run: make -j $(nproc)
 
-      - run: ./run_tests.sh
-        working-directory: examples/
-      - run: ./run_tests_conf.sh
-        working-directory: examples/
+    - name: Unit Test
+      run: make check
 
   build-cmake:
     name: build + test cmake
@@ -79,7 +73,9 @@ jobs:
       - name: Build
         run: cmake --build ${{github.workspace}}/build
 
-      - run: ./run_tests.sh
-        working-directory: examples/
-      - run: ./run_tests_conf.sh
-        working-directory: examples/
+      - name: Integration Test
+        working-directory: examples
+        run: |
+          ./run_tests.sh
+          ./run_tests_conf.sh
+          ./run_tests_prom.sh

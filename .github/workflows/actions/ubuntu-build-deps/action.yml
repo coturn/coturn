@@ -11,7 +11,7 @@ runs:
   using: 'composite'
   steps:
 
-    - name: check if sudo is set
+    - name: Check if sudo is set
       shell: bash
       run: |
         if [ ${{ inputs.SUDO }} = true ]
@@ -22,11 +22,16 @@ runs:
         fi
         echo "AS_ROOT=$AS_ROOT" >> $GITHUB_ENV
 
-    - name: apt update
+    - name: Apt Update
       shell: bash
       run: ${{ env.AS_ROOT }} apt update
 
-    - name: install build tools
+    - name: Disable needrestart
+      shell: bash
+      run: |
+        if [ "$(lsb_release -s -r)x" == "24.04x" ]; then ${{env.AS_ROOT}} apt purge -y needrestart; fi
+
+    - name: Install Build Tools
       shell: bash
       run: |
         ${{ env.AS_ROOT }} apt install -y \
@@ -37,10 +42,11 @@ runs:
             iwyu \
             ninja-build \
             pkgconf \
-            wget
+            wget \
+            cmake
         if [ "$(lsb_release -s -r)x" == "16.04x" ]; then apt install -y clang-tools; fi
 
-    - name: install coturn dependencies
+    - name: Install Dependencies
       shell: bash
       run: |
         ${{ env.AS_ROOT }} apt install -y \
@@ -54,7 +60,7 @@ runs:
         if [ "$(lsb_release -s -r)x" == "16.04x" ]; then apt-get install -y libmariadb-client-lgpl-dev; fi
         if [ "$(lsb_release -s -r)x" == "16.04x" ]; then apt-get install -y libmariadb-dev; fi
 
-    - name: Prometheus Support
+    - name: Install Prometheus Support
       shell: bash
       run: |
         wget https://github.com/digitalocean/prometheus-client-c/releases/download/v0.1.3/libprom-dev-0.1.3-Linux.deb
