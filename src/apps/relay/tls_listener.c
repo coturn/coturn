@@ -41,6 +41,7 @@
 #include "tls_listener.h"
 
 #include <event2/listener.h>
+#include <stdint.h>
 
 ///////////////////////////////////////////////////
 
@@ -302,9 +303,9 @@ static int sctp_create_server_listener(tls_listener_relay_server_type *server) {
 
 #endif
 
-static int init_server(tls_listener_relay_server_type *server, const char *ifname, const char *local_address, int port,
-                       int verbose, ioa_engine_handle e, ioa_engine_new_connection_event_handler send_socket,
-                       struct relay_server *relay_server) {
+static int init_server(tls_listener_relay_server_type *server, const char *ifname, const char *local_address,
+                       uint16_t port, int verbose, ioa_engine_handle e,
+                       ioa_engine_new_connection_event_handler send_socket, struct relay_server *relay_server) {
 
   if (!server) {
     return -1;
@@ -335,7 +336,7 @@ static int init_server(tls_listener_relay_server_type *server, const char *ifnam
 
 ///////////////////////////////////////////////////////////
 
-tls_listener_relay_server_type *create_tls_listener_server(const char *ifname, const char *local_address, int port,
+tls_listener_relay_server_type *create_tls_listener_server(const char *ifname, const char *local_address, uint16_t port,
                                                            int verbose, ioa_engine_handle e,
                                                            ioa_engine_new_connection_event_handler send_socket,
                                                            struct relay_server *relay_server) {
