@@ -927,8 +927,8 @@ static char *_WTA(__in wchar_t *pszInBuf, __in int nInSize, __out char **pszOutB
     return NULL;
   } else {
     if (pszOutBuf != NULL) {
-      (*pszOutBuf)[*pnOutSize - 1] = '\0';
-      return *pszOutBuf;
+    (*pszOutBuf)[*pnOutSize - 1] = '\0';
+    return *pszOutBuf;
     } else {
       return NULL;
     }
@@ -1344,11 +1344,11 @@ void build_base64_decoding_table(void) {
   char *table = (char *)calloc(256, sizeof(char));
 
   if (table) {
-    for (size_t i = 0; i < 64; i++) {
-      table[(unsigned char)encoding_table[i]] = i;
-    }
-    decoding_table = table;
+  for (size_t i = 0; i < 64; i++) {
+    table[(unsigned char)encoding_table[i]] = i;
   }
+  decoding_table = table;
+}
 }
 
 unsigned char *base64_decode(const char *data, size_t input_length, size_t *output_length) {
@@ -1416,10 +1416,10 @@ const char *turn_get_ssl_method(SSL *ssl, const char *mdefault) {
 
 struct event_base *turn_event_base_new(void) {
   struct event_config *cfg = event_config_new();
-
   event_config_set_flag(cfg, EVENT_BASE_FLAG_EPOLL_USE_CHANGELIST);
-
-  return event_base_new_with_config(cfg);
+  struct event_base *base = event_base_new_with_config(cfg);
+  event_config_free(cfg); // Free the config after use to make valgrind happy
+  return base;
 }
 
 /////////// OAUTH /////////////////
