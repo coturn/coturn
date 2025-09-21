@@ -927,8 +927,8 @@ static char *_WTA(__in wchar_t *pszInBuf, __in int nInSize, __out char **pszOutB
     return NULL;
   } else {
     if (pszOutBuf != NULL) {
-    (*pszOutBuf)[*pnOutSize - 1] = '\0';
-    return *pszOutBuf;
+      (*pszOutBuf)[*pnOutSize - 1] = '\0';
+      return *pszOutBuf;
     } else {
       return NULL;
     }
@@ -1344,11 +1344,11 @@ void build_base64_decoding_table(void) {
   char *table = (char *)calloc(256, sizeof(char));
 
   if (table) {
-  for (size_t i = 0; i < 64; i++) {
-    table[(unsigned char)encoding_table[i]] = i;
+    for (size_t i = 0; i < 64; i++) {
+      table[(unsigned char)encoding_table[i]] = i;
+    }
+    decoding_table = table;
   }
-  decoding_table = table;
-}
 }
 
 unsigned char *base64_decode(const char *data, size_t input_length, size_t *output_length) {
