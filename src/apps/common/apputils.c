@@ -1416,10 +1416,10 @@ const char *turn_get_ssl_method(SSL *ssl, const char *mdefault) {
 
 struct event_base *turn_event_base_new(void) {
   struct event_config *cfg = event_config_new();
-
   event_config_set_flag(cfg, EVENT_BASE_FLAG_EPOLL_USE_CHANGELIST);
-
-  return event_base_new_with_config(cfg);
+  struct event_base *base = event_base_new_with_config(cfg);
+  event_config_free(cfg); // Free the config after use to make valgrind happy
+  return base;
 }
 
 /////////// OAUTH /////////////////
