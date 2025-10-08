@@ -17,7 +17,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ver: ["13", "14", "15"]
+        ver: ["14", "15", "26"]
     runs-on: macos-${{ matrix.ver }}
     steps:
       - uses: actions/checkout@v5
@@ -35,7 +35,7 @@ jobs:
              | while read formula; do brew unlink $formula; brew link --overwrite $formula; done
 
       - run: brew update
-      - run: brew install wget pkg-config libevent openssl@1.1 sqlite hiredis mongo-c-driver libmicrohttpd
+      - run: brew install wget pkg-config libevent openssl sqlite hiredis mongo-c-driver libmicrohttpd
 
       - run: ./configure
         env:
@@ -54,7 +54,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ver: ["15"]
+        ver: ["15", "26"]
     runs-on: macos-${{ matrix.ver }}
     steps:
       - uses: actions/checkout@v5
@@ -72,7 +72,7 @@ jobs:
               | while read formula; do brew unlink $formula; brew link --overwrite $formula; done
 
       - run: brew update
-      - run: brew install wget pkg-config libevent openssl@1.1 sqlite hiredis mongo-c-driver libmicrohttpd
+      - run: brew install wget pkg-config libevent openssl sqlite hiredis mongo-c-driver libmicrohttpd
 
       - name: Configure
         run: cmake -B ${{github.workspace}}/build

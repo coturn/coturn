@@ -76,7 +76,7 @@ jobs:
 
       # Upload SARIF file to GitHub Code Scanning Alerts
       - name: Upload SARIF to GitHub
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: ${{ steps.run-analysis.outputs.sarif }}
 
@@ -113,6 +113,12 @@ jobs:
         shell: cmd
     steps:
       - uses: actions/checkout@v5
+
+      - name: Install NSIS for packaging
+        uses: repolevedavaj/install-nsis@v1.1.0
+        with:
+          nsis-version: "3.11"
+        if: ${{ matrix.BUILD_TYPE == 'Release' }}
 
       - name: Create directories
         run: |

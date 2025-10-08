@@ -1,42 +1,53 @@
 name: CIFuzz
-on: 
-  [pull_request]
+
+on:
+  pull_request:
+    branches: ["master"]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions: {}
+
 jobs:
-  Fuzzing:
+  fuzz:
     runs-on: ubuntu-latest
     permissions:
       security-events: write
     strategy:
       fail-fast: false
       matrix: 
-        sanitizer: [address, memory, undefined]
+        sanitizer: ["address", "memory", "undefined"]
     steps:
-    - name: checkout repository
-      uses: actions/checkout@v5
-    - name: build fuzzers (${{ matrix.sanitizer }})
-      id: build
-      uses: google/oss-fuzz/infra/cifuzz/actions/build_fuzzers@master
-      with:
-        oss-fuzz-project-name: 'coturn'
-        language: c
-        sanitizer: ${{ matrix.sanitizer }}
-    - name: run fuzzers (${{ matrix.sanitizer }})
-      uses: google/oss-fuzz/infra/cifuzz/actions/run_fuzzers@master
-      with:
-        oss-fuzz-project-name: 'coturn'
-        language: c
-        sanitizer: ${{ matrix.sanitizer }}
-        fuzz-seconds: 600
-        output-sarif: true
-    - name: upload crash
-      uses: actions/upload-artifact@v4
-      if: failure() && steps.build.outcome == 'success'
-      with:
-        name: ${{ matrix.sanitizer }}_artifacts
-        path: ./out/artifacts
-    - name: upload sarif
-      if: always() && steps.build.outcome == 'success'
-      uses: github/codeql-action/upload-sarif@v3
-      with:
-        sarif_file: cifuzz-sarif/results.sarif
+      - uses: actions/checkout@v5
+
+      - name: build fuzzers (${{ matrix.sanitizer }})
+        id: build
+        uses: google/oss-fuzz/infra/cifuzz/actions/build_fuzzers@master
+        with:
+          oss-fuzz-project-name: coturn
+          language: c
+          sanitizer: ${{ matrix.sanitizer }}
+
+      - name: run fuzzers (${{ matrix.sanitizer }})
+        uses: google/oss-fuzz/infra/cifuzz/actions/run_fuzzers@master
+        with:
+          oss-fuzz-project-name: coturn
+          language: c
+          sanitizer: ${{ matrix.sanitizer }}
+          fuzz-seconds: 600
+          output-sarif: true
+
+      - name: upload crash
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.sanitizer }}_artifacts
+          path: ./out/artifacts
+        if: ${{ failure() && steps.build.outcome == 'success' }}
+
+      - name: upload sarif
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: cifuzz-sarif/results.sarif
+        if: ${{ always() && steps.build.outcome == 'success' }}
