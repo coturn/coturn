@@ -35,7 +35,7 @@ jobs:
              | while read formula; do brew unlink $formula; brew link --overwrite $formula; done
 
       - run: brew update
-      - run: brew install wget pkg-config libevent openssl@1.1 sqlite hiredis mongo-c-driver libmicrohttpd
+      - run: brew install wget pkg-config libevent openssl sqlite hiredis mongo-c-driver libmicrohttpd
 
       - run: ./configure
         env:
@@ -72,7 +72,7 @@ jobs:
               | while read formula; do brew unlink $formula; brew link --overwrite $formula; done
 
       - run: brew update
-      - run: brew install wget pkg-config libevent openssl@1.1 sqlite hiredis mongo-c-driver libmicrohttpd
+      - run: brew install wget pkg-config libevent openssl sqlite hiredis mongo-c-driver libmicrohttpd
 
       - name: Configure
         run: cmake -B ${{github.workspace}}/build
