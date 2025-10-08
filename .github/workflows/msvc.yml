@@ -114,6 +114,12 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: Install NSIS for packaging
+        uses: repolevedavaj/install-nsis@v1.1.0
+        with:
+          nsis-version: "3.11"
+        if: ${{ matrix.BUILD_TYPE == 'Release' }}
+
       - name: Create directories
         run: |
           cmake -E make_directory ${{ env.SOURCE_DIR }}
