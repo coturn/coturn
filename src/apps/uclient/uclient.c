@@ -1008,8 +1008,8 @@ static void run_events(int short_burst) {
 
 ////////////////////// main method /////////////////
 
-static int start_client(const char *remote_address, int port, const unsigned char *ifname, const char *local_address,
-                        int messagenumber, int i) {
+static int start_client(const char *remote_address, uint16_t port, const unsigned char *ifname,
+                        const char *local_address, int messagenumber, int i) {
 
   app_ur_session *ss = create_new_ss();
   app_ur_session *ss_rtcp = NULL;
@@ -1092,7 +1092,7 @@ static int start_client(const char *remote_address, int port, const unsigned cha
   return 0;
 }
 
-static int start_c2c(const char *remote_address, int port, const unsigned char *ifname, const char *local_address,
+static int start_c2c(const char *remote_address, uint16_t port, const unsigned char *ifname, const char *local_address,
                      int messagenumber, int i) {
 
   app_ur_session *ss1 = create_new_ss();
@@ -1384,7 +1384,7 @@ static void timer_handler(evutil_socket_t fd, short event, void *arg) {
   }
 }
 
-void start_mclient(const char *remote_address, int port, const unsigned char *ifname, const char *local_address,
+void start_mclient(const char *remote_address, uint16_t port, const unsigned char *ifname, const char *local_address,
                    int messagenumber, int mclient) {
 
   if (mclient < 1) {
