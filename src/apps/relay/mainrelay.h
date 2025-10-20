@@ -349,6 +349,7 @@ typedef struct _turn_params_ {
   bool log_binding;
   bool stun_backward_compatibility;
   bool respond_http_unsupported;
+  bool drop_invalid_packets;
 } turn_params_t;
 
 extern turn_params_t turn_params;

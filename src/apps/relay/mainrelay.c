@@ -239,7 +239,8 @@ turn_params_t turn_params = {
 
     false, /* log_binding */
     false, /* stun_backward_compatibility */
-    false  /* respond_http_unsupported */
+    false, /* respond_http_unsupported */
+    false  /* drop_invalid_packets */
 };
 
 //////////////// OpenSSL Init //////////////////////
@@ -1357,6 +1358,7 @@ static char Usage[] =
     "connections made to ports not\n"
     "						supporting HTTP. The default behaviour is to immediately "
     "close the connection.\n"
+    " --drop-invalid-packets			   Drop invalid packets early. The default behaviour is to accept all packets.\n"
     " --version					Print version (and exit).\n"
     " -h						Help\n"
     "\n";
