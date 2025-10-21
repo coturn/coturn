@@ -7,7 +7,7 @@ if [ ! -f $BINDIR/turnserver ]; then
 fi
 
 echo 'Running turnserver'
-$BINDIR/turnserver --use-auth-secret  --static-auth-secret=secret --realm=north.gov --allow-loopback-peers --no-cli --cert ../examples/ca/turn_server_cert.pem --pkey ../examples/ca/turn_server_pkey.pem > /dev/null &
+$BINDIR/turnserver --use-auth-secret  --sock-buf-size=1048576 --static-auth-secret=secret --realm=north.gov --allow-loopback-peers --no-cli --cert ../examples/ca/turn_server_cert.pem --pkey ../examples/ca/turn_server_pkey.pem &
 echo 'Running peer client'
 $BINDIR/turnutils_peer -L 127.0.0.1 -L ::1 -L 0.0.0.0 > /dev/null &
 
