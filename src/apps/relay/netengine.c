@@ -1155,8 +1155,8 @@ static void setup_socket_per_endpoint_udp_listener_servers(void) {
       turn_params.listener.aux_udp_services[index] = (dtls_listener_relay_server_type **)allocate_super_memory_engine(
           udp_relay_servers[udp_relay_server_index]->ioa_eng, sizeof(dtls_listener_relay_server_type *));
       turn_params.listener.aux_udp_services[index][0] =
-          create_dtls_listener_server(turn_params.listener_ifname, saddr, port, turn_params.verbose,
-                                      udp_relay_servers[udp_relay_server_index]->ioa_eng,
+          create_dtls_listener_server(turn_params.listener_ifname, saddr, port, turn_params.sock_buf_size,
+                                      turn_params.verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng,
                                       &(udp_relay_servers[udp_relay_server_index]->server), 1, NULL);
 
       if (turn_params.general_relay_servers_number > 1) {
@@ -1182,9 +1182,9 @@ static void setup_socket_per_endpoint_udp_listener_servers(void) {
       turn_params.listener.udp_services[index] = (dtls_listener_relay_server_type **)allocate_super_memory_engine(
           udp_relay_servers[udp_relay_server_index]->ioa_eng, sizeof(dtls_listener_relay_server_type *));
       turn_params.listener.udp_services[index][0] = create_dtls_listener_server(
-          turn_params.listener_ifname, turn_params.listener.addrs[i], turn_params.listener_port, turn_params.verbose,
-          udp_relay_servers[udp_relay_server_index]->ioa_eng, &(udp_relay_servers[udp_relay_server_index]->server), 1,
-          NULL);
+          turn_params.listener_ifname, turn_params.listener.addrs[i], turn_params.listener_port,
+          turn_params.sock_buf_size, turn_params.verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng,
+          &(udp_relay_servers[udp_relay_server_index]->server), 1, NULL);
 
       if (turn_params.general_relay_servers_number > 1) {
         ++udp_relay_server_index;
@@ -1201,9 +1201,9 @@ static void setup_socket_per_endpoint_udp_listener_servers(void) {
         turn_params.listener.udp_services[index + 1] = (dtls_listener_relay_server_type **)allocate_super_memory_engine(
             udp_relay_servers[udp_relay_server_index]->ioa_eng, sizeof(dtls_listener_relay_server_type *));
         turn_params.listener.udp_services[index + 1][0] = create_dtls_listener_server(
-            turn_params.listener_ifname, turn_params.listener.addrs[i], get_alt_listener_port(), turn_params.verbose,
-            udp_relay_servers[udp_relay_server_index]->ioa_eng, &(udp_relay_servers[udp_relay_server_index]->server), 1,
-            NULL);
+            turn_params.listener_ifname, turn_params.listener.addrs[i], get_alt_listener_port(),
+            turn_params.sock_buf_size, turn_params.verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng,
+            &(udp_relay_servers[udp_relay_server_index]->server), 1, NULL);
 
         if (turn_params.general_relay_servers_number > 1) {
           ++udp_relay_server_index;
@@ -1227,7 +1227,7 @@ static void setup_socket_per_endpoint_udp_listener_servers(void) {
           udp_relay_servers[udp_relay_server_index]->ioa_eng, sizeof(dtls_listener_relay_server_type *));
       turn_params.listener.dtls_services[index][0] = create_dtls_listener_server(
           turn_params.listener_ifname, turn_params.listener.addrs[i], turn_params.tls_listener_port,
-          turn_params.verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng,
+          turn_params.sock_buf_size, turn_params.verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng,
           &(udp_relay_servers[udp_relay_server_index]->server), 1, NULL);
 
       if (turn_params.general_relay_servers_number > 1) {
@@ -1247,7 +1247,7 @@ static void setup_socket_per_endpoint_udp_listener_servers(void) {
                 udp_relay_servers[udp_relay_server_index]->ioa_eng, sizeof(dtls_listener_relay_server_type *));
         turn_params.listener.dtls_services[index + 1][0] = create_dtls_listener_server(
             turn_params.listener_ifname, turn_params.listener.addrs[i], get_alt_tls_listener_port(),
-            turn_params.verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng,
+            turn_params.sock_buf_size, turn_params.verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng,
             &(udp_relay_servers[udp_relay_server_index]->server), 1, NULL);
 
         if (turn_params.general_relay_servers_number > 1) {
@@ -1299,9 +1299,10 @@ static void setup_socket_per_thread_udp_listener_servers(void) {
           sizeof(dtls_listener_relay_server_type *) * get_real_general_relay_servers_number());
 
       for (relayindex = 0; relayindex < get_real_general_relay_servers_number(); relayindex++) {
-        turn_params.listener.aux_udp_services[index][relayindex] = create_dtls_listener_server(
-            turn_params.listener_ifname, saddr, port, turn_params.verbose, general_relay_servers[relayindex]->ioa_eng,
-            &(general_relay_servers[relayindex]->server), !relayindex, NULL);
+        turn_params.listener.aux_udp_services[index][relayindex] =
+            create_dtls_listener_server(turn_params.listener_ifname, saddr, port, turn_params.sock_buf_size,
+                                        turn_params.verbose, general_relay_servers[relayindex]->ioa_eng,
+                                        &(general_relay_servers[relayindex]->server), !relayindex, NULL);
       }
     }
   }
@@ -1320,9 +1321,9 @@ static void setup_socket_per_thread_udp_listener_servers(void) {
 
       for (relayindex = 0; relayindex < get_real_general_relay_servers_number(); relayindex++) {
         turn_params.listener.udp_services[index][relayindex] = create_dtls_listener_server(
-            turn_params.listener_ifname, turn_params.listener.addrs[i], turn_params.listener_port, turn_params.verbose,
-            general_relay_servers[relayindex]->ioa_eng, &(general_relay_servers[relayindex]->server), !relayindex,
-            NULL);
+            turn_params.listener_ifname, turn_params.listener.addrs[i], turn_params.listener_port,
+            turn_params.sock_buf_size, turn_params.verbose, general_relay_servers[relayindex]->ioa_eng,
+            &(general_relay_servers[relayindex]->server), !relayindex, NULL);
       }
 
       if (turn_params.rfc5780) {
@@ -1333,9 +1334,9 @@ static void setup_socket_per_thread_udp_listener_servers(void) {
 
         for (relayindex = 0; relayindex < get_real_general_relay_servers_number(); relayindex++) {
           turn_params.listener.udp_services[index + 1][relayindex] = create_dtls_listener_server(
-              turn_params.listener_ifname, turn_params.listener.addrs[i], get_alt_listener_port(), turn_params.verbose,
-              general_relay_servers[relayindex]->ioa_eng, &(general_relay_servers[relayindex]->server), !relayindex,
-              NULL);
+              turn_params.listener_ifname, turn_params.listener.addrs[i], get_alt_listener_port(),
+              turn_params.sock_buf_size, turn_params.verbose, general_relay_servers[relayindex]->ioa_eng,
+              &(general_relay_servers[relayindex]->server), !relayindex, NULL);
         }
       }
     } else {
@@ -1353,7 +1354,7 @@ static void setup_socket_per_thread_udp_listener_servers(void) {
       for (relayindex = 0; relayindex < get_real_general_relay_servers_number(); relayindex++) {
         turn_params.listener.dtls_services[index][relayindex] = create_dtls_listener_server(
             turn_params.listener_ifname, turn_params.listener.addrs[i], turn_params.tls_listener_port,
-            turn_params.verbose, general_relay_servers[relayindex]->ioa_eng,
+            turn_params.sock_buf_size, turn_params.verbose, general_relay_servers[relayindex]->ioa_eng,
             &(general_relay_servers[relayindex]->server), !relayindex, NULL);
       }
 
@@ -1367,7 +1368,7 @@ static void setup_socket_per_thread_udp_listener_servers(void) {
         for (relayindex = 0; relayindex < get_real_general_relay_servers_number(); relayindex++) {
           turn_params.listener.dtls_services[index + 1][relayindex] = create_dtls_listener_server(
               turn_params.listener_ifname, turn_params.listener.addrs[i], get_alt_tls_listener_port(),
-              turn_params.verbose, general_relay_servers[relayindex]->ioa_eng,
+              turn_params.sock_buf_size, turn_params.verbose, general_relay_servers[relayindex]->ioa_eng,
               &(general_relay_servers[relayindex]->server), !relayindex, NULL);
         }
       }
@@ -1399,9 +1400,9 @@ static void setup_socket_per_session_udp_listener_servers(void) {
       turn_params.listener.aux_udp_services[index] = (dtls_listener_relay_server_type **)allocate_super_memory_engine(
           turn_params.listener.ioa_eng, sizeof(dtls_listener_relay_server_type *));
 
-      turn_params.listener.aux_udp_services[index][0] =
-          create_dtls_listener_server(turn_params.listener_ifname, saddr, port, turn_params.verbose,
-                                      turn_params.listener.ioa_eng, NULL, 1, send_socket_to_general_relay);
+      turn_params.listener.aux_udp_services[index][0] = create_dtls_listener_server(
+          turn_params.listener_ifname, saddr, port, turn_params.sock_buf_size, turn_params.verbose,
+          turn_params.listener.ioa_eng, NULL, 1, send_socket_to_general_relay);
     }
   }
 
@@ -1416,18 +1417,20 @@ static void setup_socket_per_session_udp_listener_servers(void) {
       turn_params.listener.udp_services[index] = (dtls_listener_relay_server_type **)allocate_super_memory_engine(
           turn_params.listener.ioa_eng, sizeof(dtls_listener_relay_server_type *));
 
-      turn_params.listener.udp_services[index][0] = create_dtls_listener_server(
-          turn_params.listener_ifname, turn_params.listener.addrs[i], turn_params.listener_port, turn_params.verbose,
-          turn_params.listener.ioa_eng, NULL, 1, send_socket_to_general_relay);
+      turn_params.listener.udp_services[index][0] =
+          create_dtls_listener_server(turn_params.listener_ifname, turn_params.listener.addrs[i],
+                                      turn_params.listener_port, turn_params.sock_buf_size, turn_params.verbose,
+                                      turn_params.listener.ioa_eng, NULL, 1, send_socket_to_general_relay);
 
       if (turn_params.rfc5780) {
 
         turn_params.listener.udp_services[index + 1] = (dtls_listener_relay_server_type **)allocate_super_memory_engine(
             turn_params.listener.ioa_eng, sizeof(dtls_listener_relay_server_type *));
 
-        turn_params.listener.udp_services[index + 1][0] = create_dtls_listener_server(
-            turn_params.listener_ifname, turn_params.listener.addrs[i], get_alt_listener_port(), turn_params.verbose,
-            turn_params.listener.ioa_eng, NULL, 1, send_socket_to_general_relay);
+        turn_params.listener.udp_services[index + 1][0] =
+            create_dtls_listener_server(turn_params.listener_ifname, turn_params.listener.addrs[i],
+                                        get_alt_listener_port(), turn_params.sock_buf_size, turn_params.verbose,
+                                        turn_params.listener.ioa_eng, NULL, 1, send_socket_to_general_relay);
       }
     } else {
       turn_params.listener.udp_services[index] = NULL;
@@ -1440,9 +1443,10 @@ static void setup_socket_per_session_udp_listener_servers(void) {
       turn_params.listener.dtls_services[index] = (dtls_listener_relay_server_type **)allocate_super_memory_engine(
           turn_params.listener.ioa_eng, sizeof(dtls_listener_relay_server_type *));
 
-      turn_params.listener.dtls_services[index][0] = create_dtls_listener_server(
-          turn_params.listener_ifname, turn_params.listener.addrs[i], turn_params.tls_listener_port,
-          turn_params.verbose, turn_params.listener.ioa_eng, NULL, 1, send_socket_to_general_relay);
+      turn_params.listener.dtls_services[index][0] =
+          create_dtls_listener_server(turn_params.listener_ifname, turn_params.listener.addrs[i],
+                                      turn_params.tls_listener_port, turn_params.sock_buf_size, turn_params.verbose,
+                                      turn_params.listener.ioa_eng, NULL, 1, send_socket_to_general_relay);
 
       if (turn_params.rfc5780) {
 
@@ -1450,9 +1454,10 @@ static void setup_socket_per_session_udp_listener_servers(void) {
             (dtls_listener_relay_server_type **)allocate_super_memory_engine(turn_params.listener.ioa_eng,
                                                                              sizeof(dtls_listener_relay_server_type *));
 
-        turn_params.listener.dtls_services[index + 1][0] = create_dtls_listener_server(
-            turn_params.listener_ifname, turn_params.listener.addrs[i], get_alt_tls_listener_port(),
-            turn_params.verbose, turn_params.listener.ioa_eng, NULL, 1, send_socket_to_general_relay);
+        turn_params.listener.dtls_services[index + 1][0] =
+            create_dtls_listener_server(turn_params.listener_ifname, turn_params.listener.addrs[i],
+                                        get_alt_tls_listener_port(), turn_params.sock_buf_size, turn_params.verbose,
+                                        turn_params.listener.ioa_eng, NULL, 1, send_socket_to_general_relay);
       }
     } else {
       turn_params.listener.dtls_services[index] = NULL;
