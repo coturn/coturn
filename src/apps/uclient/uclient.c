@@ -688,7 +688,12 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
         miset = true;
       } else {
         /* TODO: make a more clean fix */
-        buffers = (int)elem->in_buffer.len / clmessage_length;
+        if (clmessage_length == 0) {
+          TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "ERROR: the clmessage_lenght is zero, can not calculate buffers\n");
+          return rc;
+        } else {
+          buffers = (int)elem->in_buffer.len / clmessage_length;
+        }
       }
     } else if (stun_is_indication(&(elem->in_buffer))) {
 
@@ -733,7 +738,10 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
         }
 
         const uint8_t *data = stun_attr_get_value(sar);
-
+        if (!data) {
+          TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "ERROR: received DATA message has no data pointer, size=%d\n", rc);
+          return rc;
+        }
         memcpy(&mi, data, sizeof(message_info));
         miset = true;
       }
