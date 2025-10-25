@@ -113,7 +113,7 @@ jobs:
         if: ${{ matrix.BUILD_TYPE == 'Release' }}
 
       - name: Update artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: coturn_mingw_${{ matrix.os }}
           path: |
