@@ -239,7 +239,7 @@ turn_params_t turn_params = {
 
     false, /* log_binding */
     false, /* stun_backward_compatibility */
-    false  /* respond_http_unsupported */
+    false, /* respond_http_unsupported */
 
     ///////// Ratelimit /////////
     RATELIMIT_DEFAULT_MAX_REQUESTS_PER_WINDOW, /* 401-req-limit */
