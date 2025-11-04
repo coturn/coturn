@@ -242,6 +242,7 @@ turn_params_t turn_params = {
     false, /* respond_http_unsupported */
 
     ///////// Ratelimit /////////
+    false,                                     /* 401-ratelimit */
     RATELIMIT_DEFAULT_MAX_REQUESTS_PER_WINDOW, /* 401-req-limit */
     RATELIMIT_DEFAULT_WINDOW_SECS              /* 401-window */
 };
@@ -1360,10 +1361,12 @@ static char Usage[] =
     "connections made to ports not\n"
     "						supporting HTTP. The default behaviour is to immediately "
     "close the connection.\n"
+    " --401-ratelimit                                Enable ratelimiting 401 responses to mitigate "
+    " abuse of coturn in DDoS attacks.\n"
     " --401-req-limit=<request>                      Set the maximum number of 401 Unauthorized"
-    " responses allowed per rate-limiting window. If set\n"
-    "                                                to 0, this disables rate limiting.\n"
-    " --401-window=<seconds>                         Set the time window duration in seconds for rate limiting 401 Unauthorized responses\n"
+    " responses allowed per rate-limiting window.\n"
+    " --401-window=<seconds>                         Set the time window duration in seconds for "
+    "rate limiting 401 Unauthorized responses\n"
     " --version					Print version (and exit).\n"
     " -h						Help\n"
     "\n";
@@ -1523,6 +1526,7 @@ enum EXTRA_OPTS {
   RESPONSE_ORIGIN_ONLY_WITH_RFC5780_OPT,
   RESPOND_HTTP_UNSUPPORTED_OPT,
   VERSION_OPT,
+  RATELIMIT_OPT,
   RATELIMIT_REQUESTS_OPT,
   RATELIMIT_WINDOW_OPT,
   CPUS_OPT
@@ -1672,6 +1676,7 @@ static const struct myoption long_options[] = {
     {"version", optional_argument, NULL, VERSION_OPT},
     {"syslog-facility", required_argument, NULL, SYSLOG_FACILITY_OPT},
     {"cpus", required_argument, NULL, CPUS_OPT},
+    {"401-ratelimit", optional_argument, NULL, RATELIMIT_OPT},
     {"401-req-limit", optional_argument, NULL, RATELIMIT_REQUESTS_OPT},
     {"401-window", optional_argument, NULL, RATELIMIT_WINDOW_OPT},
     {NULL, no_argument, NULL, 0}};
@@ -2401,6 +2406,10 @@ static void set_option(int c, char *value) {
       turn_params.cpus_configured = true;
     }
   } break;
+  case RATELIMIT_OPT:
+    turn_params.ratelimit_401_requests = get_bool_value(value);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Enabling 401 request ratelimiting\n");
+    break;
   case RATELIMIT_REQUESTS_OPT:
     turn_params.ratelimit_401_requests_per_window = get_int_value(value, RATELIMIT_DEFAULT_MAX_REQUESTS_PER_WINDOW);
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Setting 401 ratelimit requests per window to: %i\n", turn_params.ratelimit_401_requests_per_window);

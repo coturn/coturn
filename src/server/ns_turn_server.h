@@ -208,6 +208,7 @@ struct _turn_turnserver {
   /* Set to true on SIGUSR1 */
   bool is_draining;
 
+  bool ratelimit_401_requests;
   vintp ratelimit_401_requests_per_window;
   vintp ratelimit_401_window_seconds;
 };
@@ -232,7 +233,8 @@ void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, io
                       allocate_bps_cb allocate_bps_func, int oauth, const char *oauth_server_name,
                       const char *acme_redirect, ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family,
                       bool *log_binding, bool *stun_backward_compatibility, bool *respond_http_unsupported,
-                      vintp ratelimit_401_requests_per_window, vintp ratelimit_401_window_seconds);
+                      bool *ratelimit_401_requests, vintp ratelimit_401_requests_per_window,
+                      vintp ratelimit_401_window_seconds);
 
 ioa_engine_handle turn_server_get_engine(turn_turnserver *s);
 
