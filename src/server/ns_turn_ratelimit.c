@@ -82,12 +82,10 @@ bool ratelimit_is_address_limited(ioa_addr *address, int max_requests, int windo
 
   ur_addr_map_value_type ratelimit_ptr = 0;
 
-  ioa_addr *address_new = (ioa_addr *)malloc(sizeof(ioa_addr));
-  *address_new = *address;
-  addr_set_port(address_new, 0);
+  ioa_addr address_new = *address;
+  addr_set_port(&address_new, 0);
 
-  if (ur_addr_map_get(rate_limit_map, address_new, &ratelimit_ptr)) {
-    free(address_new);
+  if (ur_addr_map_get(rate_limit_map, &address_new, &ratelimit_ptr)) {
     ratelimit_entry *rateLimitEntry = (ratelimit_entry *)(void *)(ur_map_value_type)ratelimit_ptr;
     TURN_MUTEX_LOCK(&(rateLimitEntry->mutex));
 
@@ -115,8 +113,7 @@ bool ratelimit_is_address_limited(ioa_addr *address, int max_requests, int windo
   } else {
     // New entry, allow response
     TURN_MUTEX_LOCK(&rate_limit_main_mutex);
-    ratelimit_add_node(address_new);
-    free(address_new);
+    ratelimit_add_node(&address_new);
     TURN_MUTEX_UNLOCK(&rate_limit_main_mutex);
     return 0;
   }
