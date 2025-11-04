@@ -1360,9 +1360,10 @@ static char Usage[] =
     "connections made to ports not\n"
     "						supporting HTTP. The default behaviour is to immediately "
     "close the connection.\n"
-    " --401-req-limit=<request>\tSet the maximum number of 401 Unauthorized responses allowed "
-    "           per rate-limiting window. If set to 0, this disables rate limiting.\n"
-    " --401-window=<seconds>\tSet the time window duration in seconds for rate limiting 401 Unauthorized responses\n"
+    " --401-req-limit=<request>                      Set the maximum number of 401 Unauthorized"
+    " responses allowed per rate-limiting window. If set\n"
+    "                                                to 0, this disables rate limiting.\n"
+    " --401-window=<seconds>                         Set the time window duration in seconds for rate limiting 401 Unauthorized responses\n"
     " --version					Print version (and exit).\n"
     " -h						Help\n"
     "\n";
