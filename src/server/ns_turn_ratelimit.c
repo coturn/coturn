@@ -63,7 +63,7 @@ void ratelimit_init_map() {
   TURN_MUTEX_UNLOCK(&rate_limit_main_mutex);
 }
 
-int ratelimit_is_address_limited(ioa_addr *address, int max_requests, int window_seconds) {
+bool ratelimit_is_address_limited(ioa_addr *address, int max_requests, int window_seconds) {
   /* Housekeeping, prune the map when ADDR_MAP_SIZE is hit and delete expired items */
   turn_time_t current_time = turn_time();
 
