@@ -94,7 +94,7 @@ static void barrier_wait_func(const char *func, int line) {
   do {
     br = pthread_barrier_wait(&barrier);
     if ((br < 0) && (br != PTHREAD_BARRIER_SERIAL_THREAD)) {
-      int err = socket_errno();
+      const int err = socket_errno();
       perror("barrier wait");
       printf("%s:%s:%d: %d\n", __FUNCTION__, func, line, err);
     }
@@ -123,7 +123,7 @@ static band_limit_t allocate_bps(band_limit_t bps, int positive) {
         ret = bps;
         turn_params.bps_capacity_allocated += ret;
       } else if (turn_params.bps_capacity_allocated < turn_params.bps_capacity) {
-        band_limit_t reserve = turn_params.bps_capacity - turn_params.bps_capacity_allocated;
+        const band_limit_t reserve = turn_params.bps_capacity - turn_params.bps_capacity_allocated;
         if (reserve <= bps) {
           ret = reserve;
           turn_params.bps_capacity_allocated = turn_params.bps_capacity;
@@ -341,6 +341,10 @@ static void update_ssl_ctx(evutil_socket_t sock, short events, update_ssl_ctx_cb
 
 void set_ssl_ctx(ioa_engine_handle e, turn_params_t *params) {
   update_ssl_ctx_cb_args_t *args = (update_ssl_ctx_cb_args_t *)malloc(sizeof(update_ssl_ctx_cb_args_t));
+  if (args == NULL) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: failure in call to calloc \n", __FUNCTION__);
+    return;
+  }
   args->engine = e;
   args->params = params;
   args->next = NULL;
@@ -441,7 +445,7 @@ static int handle_relay_message(relay_server_handle rs, struct message_to_relay 
 static struct relay_server *get_relay_server(turnserver_id id) {
   struct relay_server *rs = NULL;
   if (id >= TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP) {
-    size_t dest = id - TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP;
+    const size_t dest = id - TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP;
     if (dest >= get_real_udp_relay_servers_number()) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Too large UDP relay number: %d, total=%d\n", __FUNCTION__, (int)dest,
                     (int)get_real_udp_relay_servers_number());
@@ -452,7 +456,7 @@ static struct relay_server *get_relay_server(turnserver_id id) {
                     (int)get_real_udp_relay_servers_number());
     }
   } else {
-    size_t dest = id;
+    const size_t dest = id;
     if (dest >= get_real_general_relay_servers_number()) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Too large general relay number: %d, total=%d\n", __FUNCTION__, (int)dest,
                     (int)get_real_general_relay_servers_number());
@@ -476,7 +480,7 @@ void send_auth_message_to_auth_server(struct auth_message *am) {
   } else if (auth_message_counter < 1) {
     auth_message_counter = 1;
   }
-  authserver_id sn = auth_message_counter++;
+  const authserver_id sn = auth_message_counter++;
   TURN_MUTEX_UNLOCK(&auth_message_counter_mutex);
 
   struct evbuffer *output = bufferevent_get_output(authserver[sn].out_buf);
@@ -530,7 +534,7 @@ static int send_socket_to_general_relay(ioa_engine_handle e, struct message_to_r
   struct relay_server *rdest = sm->relay_server;
 
   if (!rdest) {
-    size_t dest = (hash_int32(addr_get_port(&(sm->m.sm.nd.src_addr)))) % get_real_general_relay_servers_number();
+    const size_t dest = (hash_int32(addr_get_port(&(sm->m.sm.nd.src_addr)))) % get_real_general_relay_servers_number();
     rdest = general_relay_servers[dest];
   }
 
@@ -673,7 +677,7 @@ int send_session_cancellation_to_relay(turnsession_id sid) {
   memset(&sm, 0, sizeof(struct message_to_relay));
   sm.t = RMT_CANCEL_SESSION;
 
-  turnserver_id id = (turnserver_id)(sid / TURN_SESSION_ID_FACTOR);
+  const turnserver_id id = (turnserver_id)(sid / TURN_SESSION_ID_FACTOR);
 
   struct relay_server *rs = get_relay_server(id);
   if (!rs) {
@@ -887,7 +891,7 @@ static void listener_receive_message(struct bufferevent *bev, void *ptr) {
     int found = 0;
     for (i = 0; i < turn_params.listener.addrs_number; i++) {
       if (addr_eq_no_port(turn_params.listener.encaddrs[i], &mm.m.tc.origin)) {
-        int o_port = addr_get_port(&mm.m.tc.origin);
+        const int o_port = addr_get_port(&mm.m.tc.origin);
         if (turn_params.listener.addrs_number == turn_params.listener.services_number) {
           if (o_port == turn_params.listener_port) {
             if (turn_params.listener.udp_services && turn_params.listener.udp_services[i] &&
@@ -957,7 +961,7 @@ static ioa_engine_handle create_new_listener_engine(void) {
 }
 
 static void *run_udp_listener_thread(void *arg) {
-  static int always_true = 1;
+  static const int always_true = 1;
 
   ignore_sigpipe();
 
@@ -1138,14 +1142,14 @@ static void setup_socket_per_endpoint_udp_listener_servers(void) {
   /* Aux UDP servers */
   for (i = 0; i < turn_params.aux_servers_list.size; i++) {
 
-    size_t index = i;
+    const int index = i;
 
     if (!turn_params.no_udp || !turn_params.no_dtls) {
 
       ioa_addr addr;
       char saddr[129];
       addr_cpy(&addr, &turn_params.aux_servers_list.addrs[i]);
-      int port = (int)addr_get_port(&addr);
+      const int port = (int)addr_get_port(&addr);
       addr_to_string_no_port(&addr, (uint8_t *)saddr);
 
       turn_params.listener.aux_udp_services[index] = (dtls_listener_relay_server_type **)allocate_super_memory_engine(
@@ -1170,7 +1174,7 @@ static void setup_socket_per_endpoint_udp_listener_servers(void) {
   /* Main servers */
   for (i = 0; i < turn_params.listener.addrs_number; i++) {
 
-    int index = turn_params.rfc5780 ? i * 2 : i;
+    const int index = turn_params.rfc5780 ? i * 2 : i;
 
     /* UDP: */
     if (!turn_params.no_udp) {
@@ -1280,14 +1284,14 @@ static void setup_socket_per_thread_udp_listener_servers(void) {
   /* Aux UDP servers */
   for (i = 0; i < turn_params.aux_servers_list.size; i++) {
 
-    int index = i;
+    const int index = i;
 
     if (!turn_params.no_udp || !turn_params.no_dtls) {
 
       ioa_addr addr;
       char saddr[129];
       addr_cpy(&addr, &turn_params.aux_servers_list.addrs[i]);
-      int port = (int)addr_get_port(&addr);
+      const int port = (int)addr_get_port(&addr);
       addr_to_string_no_port(&addr, (uint8_t *)saddr);
 
       turn_params.listener.aux_udp_services[index] = (dtls_listener_relay_server_type **)allocate_super_memory_engine(
@@ -1305,7 +1309,7 @@ static void setup_socket_per_thread_udp_listener_servers(void) {
   /* Main servers */
   for (i = 0; i < turn_params.listener.addrs_number; i++) {
 
-    int index = turn_params.rfc5780 ? i * 2 : i;
+    const int index = turn_params.rfc5780 ? i * 2 : i;
 
     /* UDP: */
     if (!turn_params.no_udp) {
@@ -1382,14 +1386,14 @@ static void setup_socket_per_session_udp_listener_servers(void) {
   /* Aux UDP servers */
   for (i = 0; i < turn_params.aux_servers_list.size; i++) {
 
-    int index = i;
+    const int index = i;
 
     if (!turn_params.no_udp || !turn_params.no_dtls) {
 
       ioa_addr addr;
       char saddr[129];
       addr_cpy(&addr, &turn_params.aux_servers_list.addrs[i]);
-      int port = (int)addr_get_port(&addr);
+      const int port = (int)addr_get_port(&addr);
       addr_to_string_no_port(&addr, (uint8_t *)saddr);
 
       turn_params.listener.aux_udp_services[index] = (dtls_listener_relay_server_type **)allocate_super_memory_engine(
@@ -1404,7 +1408,7 @@ static void setup_socket_per_session_udp_listener_servers(void) {
   /* Main servers */
   for (i = 0; i < turn_params.listener.addrs_number; i++) {
 
-    int index = turn_params.rfc5780 ? i * 2 : i;
+    const int index = turn_params.rfc5780 ? i * 2 : i;
 
     /* UDP: */
     if (!turn_params.no_udp) {
@@ -1480,7 +1484,7 @@ static void setup_tcp_listener_servers(ioa_engine_handle e, struct relay_server 
       ioa_addr addr;
       char saddr[129];
       addr_cpy(&addr, &turn_params.aux_servers_list.addrs[i]);
-      int port = (int)addr_get_port(&addr);
+      const int port = (int)addr_get_port(&addr);
       addr_to_string_no_port(&addr, (uint8_t *)saddr);
 
       aux_tcp_services[i] = create_tls_listener_server(turn_params.listener_ifname, saddr, port, turn_params.verbose, e,
@@ -1491,7 +1495,7 @@ static void setup_tcp_listener_servers(ioa_engine_handle e, struct relay_server 
   /* Main servers */
   for (i = 0; i < turn_params.listener.addrs_number; i++) {
 
-    int index = turn_params.rfc5780 ? i * 2 : i;
+    const int index = turn_params.rfc5780 ? i * 2 : i;
 
     /* TCP: */
     if (!turn_params.no_tcp) {
@@ -1538,7 +1542,7 @@ static int get_alt_addr(ioa_addr *addr, ioa_addr *alt_addr) {
     size_t index = 0xffff;
     size_t i = 0;
     int alt_port = -1;
-    int port = addr_get_port(addr);
+    const int port = addr_get_port(addr);
 
     if (port == turn_params.listener_port) {
       alt_port = get_alt_listener_port();
@@ -1562,7 +1566,7 @@ static int get_alt_addr(ioa_addr *addr, ioa_addr *alt_addr) {
     }
     if (index != 0xffff) {
       for (i = 0; i < turn_params.listener.addrs_number; i++) {
-        size_t ind = (index + i + 1) % turn_params.listener.addrs_number;
+        const size_t ind = (index + i + 1) % turn_params.listener.addrs_number;
         if (turn_params.listener.encaddrs && turn_params.listener.encaddrs[ind]) {
           ioa_addr *caddr = turn_params.listener.encaddrs[ind];
           if (caddr->ss.sa_family == addr->ss.sa_family) {
@@ -1685,14 +1689,14 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
 }
 
 static void *run_general_relay_thread(void *arg) {
-  static int always_true = 1;
+  static const int always_true = 1;
   struct relay_server *rs = (struct relay_server *)arg;
 
-  int udp_reuses_the_same_relay_server = (turn_params.general_relay_servers_number <= 1) ||
-                                         (turn_params.net_engine_version == NEV_UDP_SOCKET_PER_THREAD) ||
-                                         (turn_params.net_engine_version == NEV_UDP_SOCKET_PER_SESSION);
+  const int udp_reuses_the_same_relay_server = (turn_params.general_relay_servers_number <= 1) ||
+                                               (turn_params.net_engine_version == NEV_UDP_SOCKET_PER_THREAD) ||
+                                               (turn_params.net_engine_version == NEV_UDP_SOCKET_PER_SESSION);
 
-  int we_need_rfc5780 = udp_reuses_the_same_relay_server && turn_params.rfc5780;
+  const int we_need_rfc5780 = udp_reuses_the_same_relay_server && turn_params.rfc5780;
 
   ignore_sigpipe();
 
@@ -1743,7 +1747,7 @@ static void *run_auth_server_thread(void *arg) {
 
   struct auth_server *as = (struct auth_server *)arg;
 
-  authserver_id id = as->id;
+  const authserver_id id = as->id;
 
   if (id == 0) {
 
@@ -1885,7 +1889,7 @@ void setup_server(void) {
   }
 
   {
-    int tot = get_real_general_relay_servers_number();
+    const int tot = get_real_general_relay_servers_number();
     if (tot) {
       int i;
       for (i = 0; i < tot; i++) {

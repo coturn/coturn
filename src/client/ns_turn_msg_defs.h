@@ -136,6 +136,11 @@
 #define STUN_ATTRIBUTE_CONNECTION_ID (0x002A)
 /* <<== RFC 6062 */
 
+/* RFC 8656 ==>> */
+#define STUN_ATTRIBUTE_ADDITIONAL_ADDRESS_FAMILY (0x8000)
+#define STUN_ATTRIBUTE_ADDRESS_ERROR_CODE (0x8001)
+/* <<== RFC 8656 */
+
 #define STUN_VALID_CHANNEL(chn) ((chn) >= 0x4000 && (chn) <= 0x7FFF)
 
 ///////// extra values //////////////////

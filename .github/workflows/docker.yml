@@ -34,7 +34,7 @@ jobs:
           - s390x
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0  # for correct image labeling via `git describe --tags`
       # TODO: Try remove once `moby/buildkit` image upgrades its default QEMU version.
@@ -43,7 +43,7 @@ jobs:
 
       - name: Detect correct Git ref for image build
         id: git
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             let out = {ref: 'HEAD', ver: ''};
@@ -70,7 +70,7 @@ jobs:
       - run: make docker.tar to-file=.cache/image.tar
                   tags=build-${{ github.run_number }}-${{ matrix.dist }}-${{ matrix.arch }}
         working-directory: docker/coturn/
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: ${{ matrix.dist }}-${{ matrix.arch }}-${{ github.run_number }}
           path: docker/coturn/.cache/image.tar
@@ -82,6 +82,35 @@ jobs:
   ###########
   # Testing #
   ###########
+
+  changelog:
+    if: ${{ github.event_name == 'push'
+         && (startsWith(github.ref, 'refs/tags/')
+             || github.ref == 'refs/heads/master') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+
+      - name: Parse semver versions from Git tag
+        id: semver
+        uses: actions-ecosystem/action-regex-match@v2
+        with:
+          text: ${{ github.ref }}
+          regex: '^refs/tags/docker/(((([0-9]+)\.[0-9]+)\.[0-9]+)-(.+))$'
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+
+      - name: Ensure CHANGELOG date is today
+        run: |
+          today="$(date '+%Y-%m-%d')"
+          changelog="$(grep -E '^## \[${{ steps.semver.outputs.group1 }}\] ·' \
+                            CHANGELOG.md \
+                       | cut -d' ' -f4 | tr -d ' ')"
+          echo "Changelog: $changelog"
+          echo "Today: $today"
+          [ "$changelog" = "$today" ]
+        working-directory: docker/coturn/
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
 
   test:
     needs: ["build"]
@@ -105,14 +134,14 @@ jobs:
             arch: s390x
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: docker/setup-qemu-action@v3
       - run: make npm.install
         working-directory: docker/coturn/
 
       - name: Detect correct Git version for image tests
         id: git
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             let out = {ref: 'HEAD', ver: ''};
@@ -122,7 +151,7 @@ jobs:
             }
             return out;
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v6
         with:
           name: ${{ matrix.dist }}-${{ matrix.arch }}-${{ github.run_number }}
           path: docker/coturn/.cache/
@@ -148,7 +177,7 @@ jobs:
          && github.repository_owner == 'coturn'
          && (startsWith(github.ref, 'refs/tags/')
              || github.ref == 'refs/heads/master') }}
-    needs: ["build", "test"]
+    needs: ["build", "changelog", "test"]
     strategy:
       fail-fast: false
       max-parallel: 1
@@ -157,7 +186,7 @@ jobs:
         dist: ["alpine", "debian"]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Parse Docker image name from Git repository name
         id: image
@@ -179,7 +208,7 @@ jobs:
                         ||     'edge' }}-${{ matrix.dist }}"
              >> $GITHUB_OUTPUT
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v6
         with:
           path: docker/coturn/.cache/
 
@@ -267,7 +296,7 @@ jobs:
     needs: ["push"]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Parse semver versions from Git tag
         id: semver

@@ -31,7 +31,7 @@ jobs:
       TOOSL_DIR:   ${{ github.workspace }}\.cache\tools
       INSTALL_DIR: ${{ github.workspace }}\.cache\install_mingw_2022_02_15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
             
       - name: Install dependencies
         run: |
@@ -106,11 +106,14 @@ jobs:
           copy /Y ${{ env.RUNVCPKG_VCPKG_ROOT }}\installed\${{ env.RUNVCPKG_VCPKG_TRIPLET_OUT }}\bin\*.dll install\bin
           7z a coturn_windows_mingw.zip ${{ github.workspace }}\build\install\*
           cmake --build . --config ${{ matrix.BUILD_TYPE }} --target package
+        env:
+          MSYSTEM: MINGW64
+          PATH: C:\msys64\mingw64\bin;C:\msys64\usr\bin
         working-directory: ${{ github.workspace }}\build
         if: ${{ matrix.BUILD_TYPE == 'Release' }}
 
       - name: Update artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: coturn_mingw_${{ matrix.os }}
           path: |

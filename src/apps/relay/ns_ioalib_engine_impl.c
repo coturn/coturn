@@ -143,8 +143,8 @@ static int is_socket_writeable(ioa_socket_handle s, size_t sz, const char *msg, 
         struct evbuffer *evb = bufferevent_get_output(s->bev);
 
         if (evb) {
-          size_t bufsz = evbuffer_get_length(evb);
-          size_t newsz = bufsz + sz;
+          const size_t bufsz = evbuffer_get_length(evb);
+          const size_t newsz = bufsz + sz;
 
           switch (s->sat) {
           case TCP_CLIENT_DATA_SOCKET:
@@ -331,6 +331,10 @@ static inline void add_elem_to_buffer_list(stun_buffer_list *bufs, stun_buffer_l
 static void add_buffer_to_buffer_list(stun_buffer_list *bufs, char *buf, size_t len) {
   if (bufs && buf && (bufs->tsz < MAX_SOCKET_BUFFER_BACKLOG)) {
     stun_buffer_list_elem *buf_elem = (stun_buffer_list_elem *)malloc(sizeof(stun_buffer_list_elem));
+    if (buf_elem == NULL) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: failure in call to calloc \n", __FUNCTION__);
+      return;
+    }
     memcpy(buf_elem->buf.buf, buf, len);
     buf_elem->buf.len = len;
     buf_elem->buf.offset = 0;
@@ -576,6 +580,11 @@ ioa_timer_handle set_ioa_timer(ioa_engine_handle e, int secs, int ms, ioa_timer_
   if (e && cb && secs > 0) {
 
     timer_event *te = (timer_event *)malloc(sizeof(timer_event));
+    if (te == NULL) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: failure in call to calloc \n", __FUNCTION__);
+      return NULL;
+    }
+
     int flags = EV_TIMEOUT;
     if (persist) {
       flags |= EV_PERSIST;
@@ -585,11 +594,13 @@ ioa_timer_handle set_ioa_timer(ioa_engine_handle e, int secs, int ms, ioa_timer_
 
     tv.tv_sec = secs;
 
-    te->ctx = ctx;
-    te->e = e;
-    te->ev = ev;
-    te->cb = cb;
-    te->txt = strdup(txt);
+    if (te) {
+      te->ctx = ctx;
+      te->e = e;
+      te->ev = ev;
+      te->cb = cb;
+      te->txt = strdup(txt);
+    }
 
     if (!ms) {
       tv.tv_usec = 0;
@@ -641,9 +652,9 @@ int ioa_socket_check_bandwidth(ioa_socket_handle s, ioa_network_buffer_handle nb
   if (s && (s->e) && nbh && ((s->sat == CLIENT_SOCKET) || (s->sat == RELAY_SOCKET) || (s->sat == RELAY_RTCP_SOCKET)) &&
       (s->session)) {
 
-    size_t sz = ioa_network_buffer_get_size(nbh);
+    const size_t sz = ioa_network_buffer_get_size(nbh);
 
-    band_limit_t max_bps = s->session->bps;
+    const band_limit_t max_bps = s->session->bps;
 
     if (max_bps < 1) {
       return 1;
@@ -654,14 +665,14 @@ int ioa_socket_check_bandwidth(ioa_socket_handle s, ioa_network_buffer_handle nb
     if (s->sat == CLIENT_SOCKET) {
       uint8_t *buf = ioa_network_buffer_data(nbh);
       if (stun_is_command_message_str(buf, sz)) {
-        uint16_t method = stun_get_method_str(buf, sz);
+        const uint16_t method = stun_get_method_str(buf, sz);
         if ((method != STUN_METHOD_SEND) && (method != STUN_METHOD_DATA)) {
           traffic = &(s->control_traffic);
         }
       }
     }
 
-    band_limit_t bsz = (band_limit_t)sz;
+    const band_limit_t bsz = (band_limit_t)sz;
 
     if (s->jiffie != s->e->jiffie) {
 
@@ -730,7 +741,7 @@ static int set_socket_ttl(ioa_socket_handle s, int ttl) {
   }
 
   if (s->current_ttl != ttl) {
-    int ret = set_raw_socket_ttl(s->fd, s->family, ttl);
+    const int ret = set_raw_socket_ttl(s->fd, s->family, ttl);
     s->current_ttl = ttl;
     return ret;
   }
@@ -750,7 +761,7 @@ static int set_socket_tos(ioa_socket_handle s, int tos) {
   CORRECT_RAW_TOS(tos);
 
   if (s->current_tos != tos) {
-    int ret = set_raw_socket_tos(s->fd, s->family, tos);
+    const int ret = set_raw_socket_tos(s->fd, s->family, tos);
     s->current_tos = tos;
     return ret;
   }
@@ -926,6 +937,11 @@ ioa_socket_handle create_unbound_relay_ioa_socket(ioa_engine_handle e, int famil
 
   ret = (ioa_socket *)calloc(sizeof(ioa_socket), 1);
 
+  if (ret == NULL) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: failure in call to calloc \n", __FUNCTION__);
+    return NULL;
+  }
+
   ret->magic = SOCKET_MAGIC;
 
   ret->fd = fd;
@@ -946,7 +962,7 @@ static int bind_ioa_socket(ioa_socket_handle s, const ioa_addr *local_addr, int 
 
   if (s && s->fd >= 0 && s->e && local_addr) {
 
-    int res = addr_bind(s->fd, local_addr, reusable, 1, s->st);
+    const int res = addr_bind(s->fd, local_addr, reusable, 1, s->st);
     if (res >= 0) {
       s->bound = 1;
       addr_cpy(&(s->local_addr), local_addr);
@@ -1018,8 +1034,9 @@ int create_relay_ioa_sockets(ioa_engine_handle e, ioa_socket_handle client_s, in
 
         port = turnipports_allocate_even(tp, &relay_addr, even_port, out_reservation_token);
         if (port >= 0 && even_port > 0) {
-
-          IOA_CLOSE_SOCKET(*rtcp_s);
+          if (rtcp_s != NULL) {
+            IOA_CLOSE_SOCKET(*rtcp_s);
+          }
           *rtcp_s = create_unbound_relay_ioa_socket(e, relay_addr.ss.sa_family, UDP_SOCKET, RELAY_RTCP_SOCKET);
           if (*rtcp_s == NULL) {
             perror("socket");
@@ -1343,8 +1360,12 @@ ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e, ioa_socket_raw 
 
   ret = (ioa_socket *)calloc(sizeof(ioa_socket), 1);
 
-  ret->magic = SOCKET_MAGIC;
+  if (ret == NULL) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: failure in call to calloc \n", __FUNCTION__);
+    return NULL;
+  }
 
+  ret->magic = SOCKET_MAGIC;
   ret->fd = fd;
   ret->st = st;
   ret->sat = sat;
@@ -1793,15 +1814,15 @@ int ssl_read(evutil_socket_t fd, SSL *ssl, ioa_network_buffer_handle nbh, int ve
   }
 
   char *buffer = (char *)ioa_network_buffer_data(nbh);
-  int buf_size = (int)ioa_network_buffer_get_capacity_udp();
-  int read_len = (int)ioa_network_buffer_get_size(nbh);
+  const int buf_size = (int)ioa_network_buffer_get_capacity_udp();
+  const int read_len = (int)ioa_network_buffer_get_size(nbh);
 
   if (read_len < 1) {
     return -1;
   }
 
   char *new_buffer = buffer + buf_size;
-  int old_buffer_len = read_len;
+  const int old_buffer_len = read_len;
 
   int len = 0;
 
@@ -1823,13 +1844,13 @@ int ssl_read(evutil_socket_t fd, SSL *ssl, ioa_network_buffer_handle nbh, int ve
   SSL_set0_rbio(ssl, rbio);
 #endif
 
-  int if1 = SSL_is_init_finished(ssl);
+  const int if1 = SSL_is_init_finished(ssl);
 
   do {
     len = SSL_read(ssl, new_buffer, buf_size);
   } while (len < 0 && socket_eintr());
 
-  int if2 = SSL_is_init_finished(ssl);
+  const int if2 = SSL_is_init_finished(ssl);
 
   if (eve(verbose)) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: after read: %d\n", __FUNCTION__, len);
@@ -1883,7 +1904,7 @@ int ssl_read(evutil_socket_t fd, SSL *ssl, ioa_network_buffer_handle nbh, int ve
         ret = 0;
         break;
       case SSL_ERROR_SYSCALL: {
-        int err = socket_errno();
+        const int err = socket_errno();
         if (handle_socket_error()) {
           ret = 0;
         } else {
@@ -1937,7 +1958,7 @@ static int socket_readerr(evutil_socket_t fd, ioa_addr *orig_addr) {
   TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "The socket_readerr is not implement in _MSC_VER");
 #else
   uint8_t ecmsg[TURN_CMSG_SZ + 1];
-  int flags = MSG_ERRQUEUE;
+  const int flags = MSG_ERRQUEUE;
   int len = 0;
 
   struct msghdr msg;
@@ -1989,7 +2010,7 @@ int udp_recvfrom(evutil_socket_t fd, ioa_addr *orig_addr, const ioa_addr *like_a
     *errcode = 0;
   }
 
-  int slen = get_ioa_addr_len(like_addr);
+  const int slen = get_ioa_addr_len(like_addr);
   recv_ttl_t recv_ttl = TTL_DEFAULT;
   recv_tos_t recv_tos = TOS_DEFAULT;
 
@@ -2037,7 +2058,7 @@ try_again:
 
   if ((len < 0) && (!(flags & MSG_ERRQUEUE))) {
     // Linux
-    int eflags = MSG_ERRQUEUE | MSG_DONTWAIT;
+    const int eflags = MSG_ERRQUEUE | MSG_DONTWAIT;
     uint32_t errcode1 = 0;
     udp_recvfrom(fd, orig_addr, like_addr, buffer, buf_size, ttl, tos, ecmsg, eflags, &errcode1);
     // try again...
@@ -2053,8 +2074,8 @@ try_again:
 
     // Receive auxiliary data in msg
     for (cmsgh = CMSG_FIRSTHDR(&msg); cmsgh != NULL; cmsgh = CMSG_NXTHDR(&msg, cmsgh)) {
-      int l = cmsgh->cmsg_level;
-      int t = cmsgh->cmsg_type;
+      const int l = cmsgh->cmsg_level;
+      const int t = cmsgh->cmsg_type;
 
       switch (l) {
       case IPPROTO_IP:
@@ -2142,7 +2163,7 @@ static TURN_TLS_TYPE check_tentative_tls(ioa_socket_raw fd) {
 
   if (len > 0 && ((size_t)len == sizeof(s))) {
     if ((s[0] == 22) && (s[1] == 3) && (s[5] == 1) && (s[9] == 3)) {
-      char max_supported = (char)(TURN_TLS_TOTAL - 2);
+      const char max_supported = (char)(TURN_TLS_TOTAL - 2);
       if (s[10] > max_supported) {
         ret = TURN_TLS_v1_2; /* compatibility mode */
       } else {
@@ -2229,8 +2250,8 @@ static ssize_t socket_parse_proxy_v1(ioa_socket_handle s, uint8_t *buf, size_t l
 
   tlen++;
 
-  int sport_int = atoi(sport);
-  int dport_int = atoi(dport);
+  const int sport_int = atoi(sport);
+  const int dport_int = atoi(dport);
   if ((sport_int < 0) || (0xFFFF < sport_int)) {
     return -1;
   }
@@ -2283,18 +2304,18 @@ static ssize_t socket_parse_proxy_v2(ioa_socket_handle s, uint8_t *buf, size_t l
   }
 
   /* Check version */
-  uint8_t version = buf[12] >> 4;
+  const uint8_t version = buf[12] >> 4;
   if (version != 2) {
     return -1;
   }
 
   /* Read data */
-  uint8_t command = buf[12] & 0xF;
-  uint8_t family = buf[13] >> 4;
-  uint8_t proto = buf[13] & 0xF;
-  size_t plen = ((size_t)buf[14] << 8) | buf[15];
+  const uint8_t command = buf[12] & 0xF;
+  const uint8_t family = buf[13] >> 4;
+  const uint8_t proto = buf[13] & 0xF;
+  const size_t plen = ((size_t)buf[14] << 8) | buf[15];
 
-  size_t tlen = 16 + plen;
+  const size_t tlen = 16 + plen;
   if (len < tlen) {
     return 0;
   }
@@ -2421,7 +2442,7 @@ static int socket_input_worker(ioa_socket_handle s) {
   if (s->st == TENTATIVE_TCP_SOCKET) {
     EVENT_DEL(s->read_event);
 #if TLS_SUPPORTED
-    TURN_TLS_TYPE tls_type = check_tentative_tls(s->fd);
+    const TURN_TLS_TYPE tls_type = check_tentative_tls(s->fd);
     if (tls_type) {
       s->st = TLS_SOCKET;
       if (s->ssl) {
@@ -2460,7 +2481,7 @@ static int socket_input_worker(ioa_socket_handle s) {
   } else if (s->st == TENTATIVE_SCTP_SOCKET) {
     EVENT_DEL(s->read_event);
 #if TLS_SUPPORTED
-    TURN_TLS_TYPE tls_type = check_tentative_tls(s->fd);
+    const TURN_TLS_TYPE tls_type = check_tentative_tls(s->fd);
     if (tls_type) {
       s->st = TLS_SCTP_SOCKET;
       if (s->ssl) {
@@ -2521,7 +2542,7 @@ try_start:
         }
 
         if (s->st == TCP_SOCKET_PROXY) {
-          ssize_t tlen = socket_parse_proxy(s, buf_elem->buf.buf, blen);
+          const ssize_t tlen = socket_parse_proxy(s, buf_elem->buf.buf, blen);
           blen = 0;
           if (tlen < 0) {
             s->tobeclosed = 1;
@@ -2986,8 +3007,8 @@ static int ssl_send(ioa_socket_handle s, const char *buffer, int len, int verbos
     if (!wbio) {
       return -1;
     }
-    int fd = BIO_get_fd(wbio, 0);
-    int sfd = s->parent_s->fd;
+    const int fd = BIO_get_fd(wbio, 0);
+    const int sfd = s->parent_s->fd;
     if (sfd >= 0) {
       if (fd != sfd) {
         BIO_set_fd(wbio, sfd, BIO_NOCLOSE);
@@ -2998,7 +3019,7 @@ static int ssl_send(ioa_socket_handle s, const char *buffer, int len, int verbos
     if (!wbio) {
       return -1;
     }
-    int fd = BIO_get_fd(wbio, 0);
+    const int fd = BIO_get_fd(wbio, 0);
     if (fd != s->fd) {
       BIO_set_fd(wbio, s->fd, BIO_NOCLOSE);
     }
@@ -3055,14 +3076,14 @@ try_start:
     case SSL_ERROR_WANT_READ:
       return 0;
     case SSL_ERROR_SYSCALL: {
-      int err = socket_errno();
+      const int err = socket_errno();
       if (!handle_socket_error()) {
         if (s->st == DTLS_SOCKET) {
           if (is_connreset()) {
             if (try_again) {
               BIO *wbio = SSL_get_wbio(ssl);
               if (wbio) {
-                int fd = BIO_get_fd(wbio, 0);
+                const int fd = BIO_get_fd(wbio, 0);
                 if (fd >= 0) {
                   try_again = 0;
                   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS Socket, tring to recover write operation...\n");
@@ -3104,8 +3125,8 @@ static int send_ssl_backlog_buffers(ioa_socket_handle s) {
   if (s) {
     stun_buffer_list_elem *buf_elem = s->bufs.head;
     while (buf_elem) {
-      int rc = ssl_send(s, (char *)buf_elem->buf.buf + buf_elem->buf.offset - buf_elem->buf.coffset,
-                        (size_t)buf_elem->buf.len, (s->e ? s->e->verbose : TURN_VERBOSE_NONE));
+      const int rc = ssl_send(s, (char *)buf_elem->buf.buf + buf_elem->buf.offset - buf_elem->buf.coffset,
+                              (size_t)buf_elem->buf.len, (s->e ? s->e->verbose : TURN_VERBOSE_NONE));
       if (rc < 1) {
         break;
       }
@@ -3157,7 +3178,7 @@ int udp_send(ioa_socket_handle s, const ioa_addr *dest_addr, const char *buffer,
 
     if (dest_addr) {
 
-      int slen = get_ioa_addr_len(dest_addr);
+      const int slen = get_ioa_addr_len(dest_addr);
 
       do {
         rc = sendto(fd, buffer, len, 0, (const struct sockaddr *)dest_addr, (socklen_t)slen);
@@ -3275,7 +3296,7 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr *dest_addr, ioa_
             if (ret < 0) {
               s->tobeclosed = 1;
 #if defined(EADDRNOTAVAIL)
-              int perr = socket_errno();
+              const int perr = socket_errno();
 #endif
               perror("udp send");
 #if defined(EADDRNOTAVAIL)
@@ -3641,7 +3662,7 @@ void turn_report_allocation_set(void *a, turn_time_t lifetime, int refresh) {
           }
         }
 #if !defined(TURN_NO_HIREDIS)
-        {
+        if (e && ss && ss->client_socket) {
           char key[1024];
           if (ss->realm_options.name[0]) {
             snprintf(key, sizeof(key), "turn/realm/%s/user/%s/allocation/%018llu/status", ss->realm_options.name,
@@ -3687,7 +3708,7 @@ void turn_report_allocation_delete(void *a, SOCKET_TYPE socket_type) {
                         (unsigned long long)ss->id, (char *)ss->realm_options.name, (char *)ss->username);
         }
 #if !defined(TURN_NO_HIREDIS)
-        {
+        if (e) {
           char key[1024];
           if (ss->realm_options.name[0]) {
             snprintf(key, sizeof(key), "turn/realm/%s/user/%s/allocation/%018llu/status", ss->realm_options.name,
@@ -3773,7 +3794,7 @@ void turn_report_session_usage(void *session, int force_invalid) {
                         (unsigned long)(ss->peer_sent_packets), (unsigned long)(ss->peer_sent_bytes));
         }
 #if !defined(TURN_NO_HIREDIS)
-        {
+        if (e) {
           char key[1024];
           if (ss->realm_options.name[0]) {
             snprintf(key, sizeof(key), "turn/realm/%s/user/%s/allocation/%018llu/traffic", ss->realm_options.name,
@@ -3867,8 +3888,13 @@ static void init_super_memory_region(super_memory_t *r) {
   if (r) {
     r->super_memory = (char **)malloc(sizeof(char *));
     r->super_memory[0] = (char *)calloc(1, TURN_SM_SIZE);
-
     r->sm_allocated = (size_t *)malloc(sizeof(size_t));
+
+    if (r->sm_allocated == NULL || r->super_memory == NULL) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: failure in call to calloc \n", __FUNCTION__);
+      return;
+    }
+
     r->sm_allocated[0] = 0;
 
     r->sm_total_sz = TURN_SM_SIZE;
@@ -3921,7 +3947,7 @@ void *allocate_super_memory_region_func(super_memory_t *r, size_t size, const ch
     size_t *rsz = NULL;
     for (i = 0; i <= r->sm_chunk; ++i) {
 
-      size_t left = (size_t)r->sm_total_sz - r->sm_allocated[i];
+      const size_t left = (size_t)r->sm_total_sz - r->sm_allocated[i];
 
       if (left < size + sizeof(void *)) {
         continue;

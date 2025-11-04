@@ -5,10 +5,32 @@ Coturn TURN server Docker image changelog
 
 
 ## [edge]
-[edge]: /../../tree/docker/master
+[edge]: /../../tree/master
 
 ### Security updated
 
+- [Debian Linux] "trixie" 20251020 (13.1): <https://github.com/docker-library/official-images/commit/7d7121f027cea92f35edf151aef7d1175b9e1464>
+
+
+
+
+## [4.7.0-r2] · 2025-10-09
+[4.7.0-r2]: /../../tree/docker/4.7.0-r2
+
+### Security updated
+
+- [Alpine Linux] 3.22.2: <https://github.com/docker-library/official-images/commit/fdacb511822ac9045ec7ec066c1228f94291139f>
+- [Debian Linux] "trixie" 20250929 (13.1): <https://www.debian.org/releases/trixie>, <https://github.com/docker-library/official-images/commit/bb9759b29477674ff2e13518ec2de144fb863b35>
+
+
+
+
+## [4.7.0-r1] · 2025-07-16
+[4.7.0-r1]: /../../tree/docker/4.7.0-r1
+
+### Security updated
+
+- [Alpine Linux] 3.22.1: <https://github.com/docker-library/official-images/commit/9411795f2a8ba13baa3be3ca4a7827170a445695>
 - [Debian Linux] "bookworm" 20250630 (12.11): <https://github.com/docker-library/official-images/commit/2568150630c10253d352ff0695b0dc73717230c1>
 
 

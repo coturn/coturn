@@ -59,14 +59,14 @@ static int read_threads = 0;
 static int write_level = 0;
 #if defined(WINDOWS)
 static pthread_t write_thread = {0};
-static pthread_t const null_thread = {0};
+static const pthread_t null_thread = {0};
 #else
 static pthread_t write_thread = 0;
-static pthread_t const null_thread = 0;
+static const pthread_t null_thread = 0;
 #endif
 
-static void sqlite_lock(bool const write) {
-  pthread_t const pths = pthread_self();
+static void sqlite_lock(const bool write) {
+  const pthread_t pths = pthread_self();
 
   bool can_move = false;
   while (!can_move) {
@@ -88,7 +88,7 @@ static void sqlite_lock(bool const write) {
   }
 }
 
-static void sqlite_unlock(bool const write) {
+static void sqlite_unlock(const bool write) {
   pthread_mutex_lock(&rc_mutex);
   if (write) {
     if (--write_level == 0) {
@@ -145,8 +145,8 @@ static void fix_user_directory(char *dir0) {
         }
       }
     }
-    size_t szh = strlen(home);
-    size_t sz = strlen(dir0) + 1 + szh;
+    const size_t szh = strlen(home);
+    const size_t sz = strlen(dir0) + 1 + szh;
     char *dir_fixed = (char *)malloc(sz);
     strncpy(dir_fixed, home, szh);
     strncpy(dir_fixed + szh, dir + 1, (sz - szh - 1));
@@ -195,7 +195,7 @@ static sqlite3 *get_sqlite_connection(void) {
 
   fix_user_directory(pud->userdb);
   (void)pthread_once(&sqlite_init_once, sqlite_init_multithreaded);
-  int const rc = sqlite3_open(pud->userdb, &sqliteconnection);
+  const int rc = sqlite3_open(pud->userdb, &sqliteconnection);
   if ((sqliteconnection == NULL) || (rc != SQLITE_OK)) {
     const char *errmsg = sqlite3_errmsg(sqliteconnection);
     TURN_LOG_FUNC(
@@ -287,8 +287,8 @@ static int sqlite_get_user_key(uint8_t *usname, uint8_t *realm, hmackey_t key) {
 
     // TODO: Error if more than one result.
     if (sqlite3_step(st) == SQLITE_ROW) {
-      char const *const kval = (const char *)sqlite3_column_text(st, 0);
-      size_t const sz = get_hmackey_size(SHATYPE_DEFAULT);
+      const char *const kval = (const char *)sqlite3_column_text(st, 0);
+      const size_t sz = get_hmackey_size(SHATYPE_DEFAULT);
       convert_string_key_to_binary(kval, key, sz);
       ret = 0;
     }
@@ -1117,7 +1117,7 @@ static void sqlite_reread_realms(secrets_list_t *realms_list) {
 
   {
     lock_realms();
-    size_t const rlsz = realms_list->sz;
+    const size_t rlsz = realms_list->sz;
     unlock_realms();
 
     for (size_t i = 0; i < rlsz; ++i) {

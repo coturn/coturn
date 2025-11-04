@@ -1409,6 +1409,10 @@ void start_mclient(const char *remote_address, int port, const unsigned char *if
   }
 
   elems = (app_ur_session **)malloc(sizeof(app_ur_session) * ((mclient * 2) + 1) + sizeof(void *));
+  if (elems == NULL) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s: failure in call to malloc !!!\n", __FUNCTION__);
+    return;
+  }
 
   __turn_getMSTime();
   uint32_t stime = current_time;
@@ -1485,7 +1489,7 @@ void start_mclient(const char *remote_address, int port, const unsigned char *if
 
     if (is_TCP_relay()) {
       if (passive_tcp) {
-        if (elems[i]->pinfo.is_peer) {
+        if (elems && elems[i]->pinfo.is_peer) {
           int connect_err = 0;
           socket_connect(elems[i]->pinfo.fd, &(elems[i]->pinfo.remote_addr), &connect_err);
         }

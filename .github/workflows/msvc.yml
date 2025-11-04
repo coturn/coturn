@@ -12,7 +12,8 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  VCPKGGITCOMMITID: 53bef8994c541b6561884a8395ea35715ece75db
+  # https://github.com/microsoft/vcpkg/releases/tag/2025.07.25
+  VCPKGGITCOMMITID: dd3097e305afa53f7b4312371f62058d2e665320
 
 jobs:
   code-analysis:
@@ -37,7 +38,7 @@ jobs:
     permissions:
       security-events: write  # required for all CodeQL to report detected outcomes
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Create directories
         run: |
@@ -75,7 +76,7 @@ jobs:
 
       # Upload SARIF file to GitHub Code Scanning Alerts
       - name: Upload SARIF to GitHub
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: ${{ steps.run-analysis.outputs.sarif }}
 
@@ -111,7 +112,13 @@ jobs:
       run:
         shell: cmd
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+
+      - name: Install NSIS for packaging
+        uses: repolevedavaj/install-nsis@v1.1.0
+        with:
+          nsis-version: "3.11"
+        if: ${{ matrix.BUILD_TYPE == 'Release' }}
 
       - name: Create directories
         run: |
@@ -150,7 +157,7 @@ jobs:
         if: ${{ matrix.BUILD_TYPE == 'Release' }}
 
       - name: Update artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: coturn_msvc-${{ matrix.VCPKG_PLATFORM_TOOLSET }}-${{ matrix.CMAKE_GENERATOR_PLATFORM }}-${{ matrix.BUILD_SHARED_LIBS }}
           path: |

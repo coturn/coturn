@@ -211,7 +211,7 @@ int main(int argc, char **argv) {
       convert_oauth_key_data_raw(&okdr_array[2], &okd_array[2]);
 
       char err_msg[1025] = "\0";
-      size_t err_msg_size = sizeof(err_msg) - 1;
+      const size_t err_msg_size = sizeof(err_msg) - 1;
 
       if (!convert_oauth_key_data(&okd_array[0], &okey_array[0], err_msg, err_msg_size)) {
         fprintf(stderr, "%s\n", err_msg);

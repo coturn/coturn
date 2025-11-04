@@ -86,7 +86,7 @@ static int setup_ikm_key(const char *kid, const char *ikm_key, const turn_time_t
   }
 
   char err_msg[1025] = "\0";
-  size_t err_msg_size = sizeof(err_msg) - 1;
+  const size_t err_msg_size = sizeof(err_msg) - 1;
 
   if (!convert_oauth_key_data(&okd, key, err_msg, err_msg_size)) {
     fprintf(stderr, "%s\n", err_msg);
@@ -165,8 +165,8 @@ static void print_token_body(oauth_token *dot) {
   printf("{\n");
   printf("    mac key: %s\n", (char *)dot->enc_block.mac_key);
   printf("    mac key length: %d\n", (int)dot->enc_block.key_length);
-  time_t time = dot->enc_block.timestamp >> 16;
-  unsigned msec = (dot->enc_block.timestamp & 0xFFFF) * 64;
+  const time_t time = dot->enc_block.timestamp >> 16;
+  const unsigned msec = (dot->enc_block.timestamp & 0xFFFF) * 64;
   printf("    timestamp:\n");
   printf("        unixtime: %u (localtime: %s )", (unsigned int)time, ctime(&time));
   printf("        msec:%u\n", msec);
@@ -212,7 +212,7 @@ int main(int argc, char **argv) {
 
   char mac_key[OAUTH_MAC_KEY_SIZE + 1] = "";
 
-  time_t current_time = time(NULL);
+  const time_t current_time = time(NULL);
   struct tm *gmt = gmtime(&current_time);
   uint64_t token_timestamp = (unsigned long long)mktime(gmt) << 16;
   uint32_t token_lifetime = OAUTH_TOKEN_LIFETIME;
