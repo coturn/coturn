@@ -51,7 +51,7 @@ void ratelimit_add_node(ioa_addr *address) {
 int ratelimit_delete_expired(ur_map_value_type value) {
   turn_time_t current_time = turn_time();
   ratelimit_entry *rateLimitEntry = (ratelimit_entry*)(void*)(ur_map_value_type)value;
-  return (rateLimitEntry->last_request_time + RATELIMIT_DEFAULT_WINDOW_SECS < current_time);
+  return (rateLimitEntry->last_request_time + ratelimit_window_secs < current_time);
 }
 
 void ratelimit_init_map() {
