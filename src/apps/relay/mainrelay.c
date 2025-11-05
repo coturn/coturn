@@ -3381,6 +3381,10 @@ int main(int argc, char **argv) {
   }
 #endif
 
+  if (turn_params.ratelimit_401_requests) {
+    ratelimit_init_map();
+  }
+
   setup_server();
 
 #if defined(WINDOWS)

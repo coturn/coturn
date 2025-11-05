@@ -67,10 +67,6 @@ bool ratelimit_is_address_limited(ioa_addr *address, int max_requests, int windo
   /* Housekeeping, prune the map when ADDR_MAP_SIZE is hit and delete expired items */
   turn_time_t current_time = turn_time();
 
-  if (rate_limit_map == NULL) {
-    ratelimit_init_map();
-  }
-
   if (ur_addr_map_num_elements(rate_limit_map) >= ADDR_MAP_SIZE) {
     TURN_MUTEX_LOCK(&rate_limit_main_mutex);
     /* Set ratelimit_window_secs to grant access to our delete function */
