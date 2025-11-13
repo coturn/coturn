@@ -419,6 +419,8 @@ Options with values:
 			endpoints allocation.
 			Default value is 65535, according to RFC 5766.
 
+--sock-buf-size		Set socket buffer size to a new value (in bytes).
+
 -u, --user		Long-term security mechanism credentials user account,
 			in the column-separated form username:key.
 			Multiple user accounts may be used in the command line.
@@ -464,11 +466,11 @@ Options with values:
 			that other mode is dynamic. Multiple shared secrets can be used
 			(both in the database and in the "static" fashion).
 
- --no-auth-pings			Disable periodic health checks to 'dynamic' auth secret tables.
+--no-auth-pings			Disable periodic health checks to 'dynamic' auth secret tables.
 
- --no-dynamic-ip-list	Do not use dynamic allowed/denied peer ip list.
+--no-dynamic-ip-list	Do not use dynamic allowed/denied peer ip list.
 
- --no-dynamic-realms	Do not use dynamic realm assignment and options.
+--no-dynamic-realms	Do not use dynamic realm assignment and options.
 			
 --server-name		Server name used for
 			the oAuth authentication purposes.
