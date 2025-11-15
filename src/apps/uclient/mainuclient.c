@@ -36,6 +36,7 @@
 #include "session.h"
 #include "uclient.h"
 
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -161,13 +162,13 @@ static char Usage[] =
 //////////////////////////////////////////////////
 
 int main(int argc, char **argv) {
-  int port = 0;
+  uint16_t port = 0;
   int messagenumber = 5;
   char local_addr[256];
   int c;
   int mclient = 1;
   char peer_address[129] = "\0";
-  int peer_port = PEER_DEFAULT_PORT;
+  uint16_t peer_port = PEER_DEFAULT_PORT;
 
   char rest_api_separator = ':';
   bool use_null_cipher = false;
