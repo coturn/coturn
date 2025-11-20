@@ -38,7 +38,7 @@ jobs:
     permissions:
       security-events: write  # required for all CodeQL to report detected outcomes
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Create directories
         run: |
@@ -112,7 +112,7 @@ jobs:
       run:
         shell: cmd
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Install NSIS for packaging
         uses: repolevedavaj/install-nsis@v1.1.0

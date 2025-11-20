@@ -20,7 +20,7 @@ jobs:
       matrix: 
         sanitizer: ["address", "memory", "undefined"]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: build fuzzers (${{ matrix.sanitizer }})
         id: build

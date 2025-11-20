@@ -22,7 +22,7 @@ jobs:
     permissions:
       security-events: write
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Install dependencies
         uses: ./.github/workflows/actions/ubuntu-build-deps
