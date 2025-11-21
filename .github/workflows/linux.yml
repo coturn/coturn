@@ -47,7 +47,7 @@ jobs:
         working-directory: /tmp/
         if: ${{ contains('amazonlinux:2 ubuntu:16.04 ubuntu:18.04', matrix.os) }}
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Install `apt` dependencies
         # Set env variable or otherwise `tzdata` package requires interaction.

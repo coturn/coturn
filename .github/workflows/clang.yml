@@ -15,7 +15,7 @@ jobs:
   format:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Install dependencies
         uses: ./.github/workflows/actions/ubuntu-build-deps
@@ -49,7 +49,7 @@ jobs:
       CC:           clang
       ASAN_OPTIONS: strict_string_checks=1:detect_stack_use_after_return=1:check_initialization_order=1:detect_leaks=0:detect_invalid_pointer_pairs=1:halt_on_error=0
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Install dependencies
         uses: ./.github/workflows/actions/ubuntu-build-deps
@@ -74,7 +74,7 @@ jobs:
       matrix:
         config: ["Release"]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Install dependencies
         uses: ./.github/workflows/actions/ubuntu-build-deps
