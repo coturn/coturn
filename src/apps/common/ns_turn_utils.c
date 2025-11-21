@@ -336,10 +336,17 @@ static void set_log_file_name_func(char *base, char *f, size_t fsz) {
 
   char logdate[125];
   char *tail = strdup(".log");
+  if (!tail) {
+    return;
+  }
 
   get_date(logdate, sizeof(logdate));
 
   char *base1 = strdup(base);
+  if (!base1) {
+    free(tail);
+    return;
+  }
 
   int len = (int)strlen(base1);
 
@@ -360,6 +367,10 @@ static void set_log_file_name_func(char *base, char *f, size_t fsz) {
     } else if (base1[len] == '.') {
       free(tail);
       tail = strdup(base1 + len);
+      if (!tail) {
+        free(base1);
+        return;
+      }
       base1[len] = 0;
       if (strlen(tail) < 2) {
         free(tail);
@@ -779,6 +790,9 @@ int is_secure_string(const uint8_t *string, int sanitizesql) {
   int ret = 0;
   if (string) {
     unsigned char *s0 = (unsigned char *)strdup((const char *)string);
+    if (!s0) {
+      return 0;
+    }
     unsigned char *s = s0;
     while (*s) {
       *s = (unsigned char)tolower((int)*s);

@@ -2095,6 +2095,9 @@ static void set_option(int c, char *value) {
       char *div = strchr(value, '/');
       if (div) {
         char *nval = strdup(value);
+        if (!nval) {
+          break;
+        }
         div = strchr(nval, '/');
         div[0] = 0;
         ++div;
@@ -2408,11 +2411,17 @@ static void set_option(int c, char *value) {
 
   if (turn_params.default_users_db.persistent_users_db.userdb[0]) {
     char *userdb_sanitized = sanitize_userdb_string(turn_params.default_users_db.persistent_users_db.userdb);
+    if (!userdb_sanitized) {
+      return;
+    }
     STRCPY(turn_params.default_users_db.persistent_users_db.userdb_sanitized, userdb_sanitized);
     free(userdb_sanitized);
   }
   if (turn_params.redis_statsdb.connection_string[0]) {
     char *connection_string = sanitize_userdb_string(turn_params.redis_statsdb.connection_string);
+    if (!connection_string) {
+      return;
+    }
     STRCPY(turn_params.redis_statsdb.connection_string_sanitized, connection_string);
     free(connection_string);
   }
