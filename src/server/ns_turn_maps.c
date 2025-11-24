@@ -805,6 +805,50 @@ size_t ur_addr_map_size(const ur_addr_map *map) {
   return ret;
 }
 
+int addr_list_foreach_del_condition(ur_addr_map *map, ur_addr_map_cond_func func) {
+
+  if (!ur_addr_map_valid(map))
+    return 0;
+
+  uint32_t count = 0;
+  uint32_t i = 0;
+
+  for (i = 0; i < ADDR_MAP_SIZE; i++) {
+    addr_list_header *slh = &(map->lists[i]);
+
+    if (slh && func) {
+      size_t i;
+
+      for (i = 0; i < ADDR_ARRAY_SIZE; ++i) {
+        addr_elem *elem = &(slh->main_list[i]);
+        if (elem->value) {
+          if (func(elem->value)) {
+            free((void *)elem->value);
+            memset(&(elem->key), 0, sizeof(ioa_addr));
+            elem->value = NULL;
+            count++;
+          }
+        }
+      }
+
+      if (slh->extra_list) {
+        for (i = 0; i < slh->extra_sz; ++i) {
+          addr_elem *elem = &(slh->extra_list[i]);
+          if (elem->value) {
+            if (func(elem->value)) {
+              free((void *)elem->value);
+              memset(&(elem->key), 0, sizeof(ioa_addr));
+              elem->value = NULL;
+              count++;
+            }
+          }
+        }
+      }
+    }
+  }
+  return (count > 0);
+}
+
 ////////////////////  STRING LISTS ///////////////////////////////////
 
 typedef struct _string_list {
