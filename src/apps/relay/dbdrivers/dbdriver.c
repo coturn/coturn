@@ -113,6 +113,9 @@ char *sanitize_userdb_string(char *udb) {
 
   /* host=localhost dbname=coturn user=turn password=turn connect_timeout=30 */
   ret = strdup(udb);
+  if (!ret) {
+    return NULL;
+  }
   pstart = strstr(ret, "password=");
   if (pstart != NULL) {
     pstart += strlen("password=");
