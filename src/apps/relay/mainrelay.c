@@ -2221,7 +2221,7 @@ static void set_option(int c, char *value) {
     break;
 #endif
   case PROMETHEUS_OPT:
-    turn_params.prometheus = 1;
+    turn_params.prometheus = true;
     break;
   case PROMETHEUS_PORT_OPT:
     turn_params.prometheus_port = atoi(value);
@@ -2233,7 +2233,7 @@ static void set_option(int c, char *value) {
     STRCPY(turn_params.prometheus_path, value);
     break;
   case PROMETHEUS_ENABLE_USERNAMES_OPT:
-    turn_params.prometheus_username_labels = 1;
+    turn_params.prometheus_username_labels = value ? true : false;
     break;
   case AUTH_SECRET_OPT:
     turn_params.use_auth_secret_with_timestamp = 1;
