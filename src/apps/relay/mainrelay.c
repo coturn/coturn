@@ -2226,7 +2226,7 @@ static void set_option(int c, char *value) {
     STRCPY(turn_params.prometheus_path, value);
     break;
   case PROMETHEUS_ENABLE_USERNAMES_OPT:
-    turn_params.prometheus_username_labels = value ? true : false;
+    turn_params.prometheus_username_labels = true;
     break;
   case AUTH_SECRET_OPT:
     turn_params.use_auth_secret_with_timestamp = 1;
