@@ -112,7 +112,7 @@ MHD_RESULT promhttp_handler(void *cls, struct MHD_Connection *connection, const 
 }
 
 void start_prometheus_server(void) {
-  if (turn_params.prometheus == 0) {
+  if (!turn_params.prometheus) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "prometheus collector disabled, not started\n");
     return;
   }
@@ -238,7 +238,7 @@ void start_prometheus_server(void) {
 
 void prom_set_finished_traffic(const char *realm, const char *user, unsigned long rsvp, unsigned long rsvb,
                                unsigned long sentp, unsigned long sentb, bool peer) {
-  if (turn_params.prometheus == 1) {
+  if (turn_params.prometheus) {
 
     const char *label[] = {realm, NULL};
     if (turn_params.prometheus_username_labels) {
@@ -270,33 +270,33 @@ void prom_set_finished_traffic(const char *realm, const char *user, unsigned lon
 }
 
 void prom_inc_allocation(SOCKET_TYPE type) {
-  if (turn_params.prometheus == 1) {
+  if (turn_params.prometheus) {
     const char *label[] = {socket_type_name(type)};
     prom_gauge_inc(turn_total_allocations, label);
   }
 }
 
 void prom_dec_allocation(SOCKET_TYPE type) {
-  if (turn_params.prometheus == 1) {
+  if (turn_params.prometheus) {
     const char *label[] = {socket_type_name(type)};
     prom_gauge_dec(turn_total_allocations, label);
   }
 }
 
 void prom_inc_stun_binding_request(void) {
-  if (turn_params.prometheus == 1) {
+  if (turn_params.prometheus) {
     prom_counter_add(stun_binding_request, 1, NULL);
   }
 }
 
 void prom_inc_stun_binding_response(void) {
-  if (turn_params.prometheus == 1) {
+  if (turn_params.prometheus) {
     prom_counter_add(stun_binding_response, 1, NULL);
   }
 }
 
 void prom_inc_stun_binding_error(void) {
-  if (turn_params.prometheus == 1) {
+  if (turn_params.prometheus) {
     prom_counter_add(stun_binding_error, 1, NULL);
   }
 }
