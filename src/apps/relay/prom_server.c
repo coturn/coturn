@@ -43,6 +43,9 @@
 
 #if !defined(TURN_NO_PROMETHEUS)
 
+prom_counter_t *packet_processed;
+prom_counter_t *packet_dropped;
+
 prom_counter_t *stun_binding_request;
 prom_counter_t *stun_binding_response;
 prom_counter_t *stun_binding_error;
@@ -178,6 +181,11 @@ void start_prometheus_server(void) {
   const char *typeLabel[] = {"type"};
   turn_total_allocations = prom_collector_registry_must_register_metric(
       prom_gauge_new("turn_total_allocations", "Represents current allocations number", 1, typeLabel));
+  // Packet counters
+  packet_processed = prom_collector_registry_must_register_metric(
+      prom_counter_new("turn_packet_processed", "Incoming packet processed", 0, NULL));
+  packet_dropped = prom_collector_registry_must_register_metric(
+      prom_counter_new("turn_packet_dropped", "Incoming packet dropped", 0, NULL));
 
   // some flags appeared first in microhttpd v0.9.53
   unsigned int flags = 0;
@@ -283,6 +291,18 @@ void prom_dec_allocation(SOCKET_TYPE type) {
   }
 }
 
+void prom_inc_packet_processed(void) {
+  if (turn_params.prometheus == 1) {
+    prom_counter_add(packet_processed, 1, NULL);
+  }
+}
+
+void prom_inc_packet_dropped(void) {
+  if (turn_params.prometheus == 1) {
+    prom_counter_add(packet_dropped, 1, NULL);
+  }
+}
+
 void prom_inc_stun_binding_request(void) {
   if (turn_params.prometheus) {
     prom_counter_add(stun_binding_request, 1, NULL);
@@ -338,5 +358,9 @@ void prom_set_finished_traffic(const char *realm, const char *user, unsigned lon
 void prom_inc_allocation(SOCKET_TYPE type) { UNUSED_ARG(type); }
 
 void prom_dec_allocation(SOCKET_TYPE type) { UNUSED_ARG(type); }
+
+void prom_inc_packet_processed(void) {}
+
+void prom_inc_packet_dropped(void) {}
 
 #endif /* TURN_NO_PROMETHEUS */
