@@ -2157,6 +2157,8 @@ static int tcp_start_connection_to_peer(turn_turnserver *server, ts_ur_super_ses
     return -1;
   }
 
+  set_ioa_socket_buf_size(tcs, server->sock_buf_size);
+
   tc->state = TC_STATE_CLIENT_TO_PEER_CONNECTING;
   if (tc->peer_s != tcs) {
     IOA_CLOSE_SOCKET(tc->peer_s);
@@ -2237,6 +2239,7 @@ static void tcp_peer_accept_connection(ioa_socket_handle s, void *arg) {
 
     set_ioa_socket_session(s, ss);
     set_ioa_socket_sub_session(s, tc);
+    set_ioa_socket_buf_size(s, server->sock_buf_size);
 
     if (register_callback_on_ioa_socket(server->e, s, IOA_EV_READ, tcp_peer_input_handler, tc, 1) < 0) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: cannot set TCP peer data input callback\n", __FUNCTION__);
@@ -4372,6 +4375,13 @@ static int create_relay_connection(turn_turnserver *server, ts_ur_super_session 
       }
     }
 
+    if (newelem->s) {
+      set_ioa_socket_buf_size(newelem->s, server->sock_buf_size);
+    }
+    if (rtcp_s) {
+      set_ioa_socket_buf_size(rtcp_s, server->sock_buf_size);
+    }
+
     if (newelem->s == NULL) {
       IOA_CLOSE_SOCKET(rtcp_s);
       *err_code = 508;
@@ -4904,7 +4914,7 @@ void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, io
                       ip_range_list_t *ip_whitelist, ip_range_list_t *ip_blacklist,
                       send_socket_to_relay_cb send_socket_to_relay, bool *secure_stun, bool *mobility, int server_relay,
                       send_turn_session_info_cb send_turn_session_info, send_https_socket_cb send_https_socket,
-                      allocate_bps_cb allocate_bps_func, int oauth, const char *oauth_server_name,
+                      int sock_buf_size, allocate_bps_cb allocate_bps_func, int oauth, const char *oauth_server_name,
                       const char *acme_redirect, ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family,
                       bool *log_binding, bool *stun_backward_compatibility, bool *respond_http_unsupported) {
 
@@ -4931,6 +4941,7 @@ void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, io
   server->server_relay = server_relay;
   server->send_turn_session_info = send_turn_session_info;
   server->send_https_socket = send_https_socket;
+  server->sock_buf_size = sock_buf_size;
   server->oauth = oauth;
   if (oauth) {
     server->oauth_server_name = oauth_server_name;
