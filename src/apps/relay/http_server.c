@@ -121,6 +121,10 @@ static struct headers_list *post_parse(char *data, size_t data_len) {
       char *fmarker = NULL;
       char *fsplit = strtok_r(post_data, "&", &fmarker);
       struct headers_list *list = (struct headers_list *)calloc(sizeof(struct headers_list), 1);
+      if (!list) {
+        free(post_data);
+        return NULL;
+      }
       while (fsplit != NULL) {
         char *vmarker = NULL;
         char *key = strtok_r(fsplit, "=", &vmarker);
@@ -133,15 +137,29 @@ static struct headers_list *post_parse(char *data, size_t data_len) {
           value = value ? value : empty;
           value = evhttp_decode_uri(value);
           char *p = value;
-          while (*p) {
+          while (p && *p) {
             if (*p == '+') {
               *p = ' ';
             }
             p++;
           }
-          list->keys = (char **)realloc(list->keys, sizeof(char *) * (list->n + 1));
+          char **tmp = (char **)realloc(list->keys, sizeof(char *) * (list->n + 1));
+          if (!tmp) {
+            free(post_data);
+            return NULL;
+          }
+          list->keys = tmp;
           list->keys[list->n] = strdup(key);
-          list->values = (char **)realloc(list->values, sizeof(char *) * (list->n + 1));
+          if (!list->keys[list->n]) {
+            free(post_data);
+            return NULL;
+          }
+          tmp = (char **)realloc(list->values, sizeof(char *) * (list->n + 1));
+          if (!tmp) {
+            free(post_data);
+            return NULL;
+          }
+          list->values = tmp;
           list->values[list->n] = value;
           ++(list->n);
           fsplit = strtok_r(NULL, "&", &fmarker);
@@ -183,7 +201,14 @@ static struct http_request *parse_http_request_1(struct http_request *ret, char 
             }
           } else {
             ret->headers = (struct http_headers *)calloc(sizeof(struct http_headers), 1);
-            ret->headers->uri_headers = kv;
+            if (!ret->headers) {
+              evhttp_uri_free(uri);
+              free(ret);
+              free(kv);
+              return NULL;
+            } else {
+              ret->headers->uri_headers = kv;
+            }
           }
         }
 
@@ -200,7 +225,9 @@ static struct http_request *parse_http_request_1(struct http_request *ret, char 
             if (!ret->headers) {
               ret->headers = (struct http_headers *)calloc(sizeof(struct http_headers), 1);
             }
-            ret->headers->post_headers = post_parse(body, strlen(body));
+            if (ret->headers) {
+              ret->headers->post_headers = post_parse(body, strlen(body));
+            }
           }
         }
       }

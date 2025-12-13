@@ -1066,6 +1066,9 @@ void set_execdir(void) {
 #endif
   if (_var && *_var) {
     _var = strdup(_var);
+    if (!_var) {
+      return;
+    }
     char *edir = _var;
     if (edir[0] != '.') {
       edir = strstr(edir, "/");
@@ -1135,6 +1138,9 @@ char *find_config_file(const char *config_file) {
         const size_t dirlen = strlen(config_file_search_dirs[i]);
         size_t fnsz = sizeof(char) * (dirlen + cflen + 10);
         char *fn = (char *)malloc(fnsz + 1);
+        if (!fn) {
+          break;
+        }
         strncpy(fn, config_file_search_dirs[i], fnsz);
         strncpy(fn + dirlen, config_file, fnsz - dirlen);
         fn[fnsz] = 0;
@@ -1149,6 +1155,9 @@ char *find_config_file(const char *config_file) {
           const size_t celen = strlen(c_execdir);
           fnsz = sizeof(char) * (dirlen + cflen + celen + 10);
           fn = (char *)malloc(fnsz + 1);
+          if (!fn) {
+            break;
+          }
           strncpy(fn, c_execdir, fnsz);
           size_t fnlen = strlen(fn);
           if (fnlen < fnsz) {
@@ -1416,6 +1425,9 @@ const char *turn_get_ssl_method(SSL *ssl, const char *mdefault) {
 
 struct event_base *turn_event_base_new(void) {
   struct event_config *cfg = event_config_new();
+  if (!cfg) {
+    return NULL;
+  }
   event_config_set_flag(cfg, EVENT_BASE_FLAG_EPOLL_USE_CHANGELIST);
   struct event_base *base = event_base_new_with_config(cfg);
   event_config_free(cfg); // Free the config after use to make valgrind happy
