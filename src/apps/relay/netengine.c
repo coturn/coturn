@@ -1677,7 +1677,9 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
       &turn_params.ip_blacklist, send_socket_to_relay, &turn_params.secure_stun, &turn_params.mobility,
       turn_params.server_relay, send_turn_session_info, send_https_socket, allocate_bps, turn_params.oauth,
       turn_params.oauth_server_name, turn_params.acme_redirect, turn_params.allocation_default_address_family,
-      &turn_params.log_binding, &turn_params.stun_backward_compatibility, &turn_params.respond_http_unsupported);
+      &turn_params.log_binding, &turn_params.stun_backward_compatibility, &turn_params.respond_http_unsupported,
+      &turn_params.ratelimit_401_requests, &turn_params.ratelimit_401_requests_per_window,
+      &turn_params.ratelimit_401_window_seconds);
   if (to_set_rfc5780) {
     set_rfc5780(&(rs->server), get_alt_addr, send_message_from_listener_to_client);
   }
