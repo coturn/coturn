@@ -347,6 +347,10 @@ typedef struct _turn_params_ {
   bool log_binding;
   bool stun_backward_compatibility;
   bool respond_http_unsupported;
+
+  bool ratelimit_401_requests;
+  vint ratelimit_401_requests_per_window;
+  vint ratelimit_401_window_seconds;
 } turn_params_t;
 
 extern turn_params_t turn_params;

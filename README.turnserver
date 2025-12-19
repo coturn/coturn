@@ -636,7 +636,8 @@ Options with values:
                     adds attributes to response, and this increase the possibility of an amplification attack.
                     Strongly encouraged to use this option to decrease gain factor in STUN binding responses.
 --stun-backward-compatibility		Enable handling old STUN Binding requests using MAPPED-ADDRESS attribute in binding response (instead of XOR-MAPPED-ADDRESS).
-
+--401-req-limit=<request>	Set the maximum number of 401 Unauthorized responses allowed per rate-limiting window.
+--401-window=<seconds>	Set the time window duration in seconds for rate limiting 401 Unauthorized responses.
 
 ==================================
 
