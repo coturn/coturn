@@ -637,6 +637,8 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void *arg) 
   // printf_server_socket(server, fd);
 
   ioa_network_buffer_handle *elem = NULL;
+  int packets_processed = 0;
+  int packets_dropped = 0;
 
 start_udp_cycle:
 
@@ -729,7 +731,6 @@ start_udp_cycle:
     }
     ioa_network_buffer_delete(server->e, server->sm.m.sm.nd.nbh);
     server->sm.m.sm.nd.nbh = NULL;
-    prom_inc_packet_dropped();
     FUNCEND;
     return;
   }
@@ -757,9 +758,9 @@ start_udp_cycle:
         print_packet_txt2pcap(packetcounter, data, blen, txt2pcap, sizeof(txt2pcap));
         TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "TXT2PCAP: %s\n", txt2pcap);
       }
-      prom_inc_packet_dropped();
+      ++packets_dropped;
     } else {
-      prom_inc_packet_processed();
+      ++packets_processed;
 
       if (server->connect_cb) {
 
@@ -787,6 +788,9 @@ start_udp_cycle:
   if ((bsize > 0) && (cycle++ < MAX_SINGLE_UDP_BATCH)) {
     goto start_udp_cycle;
   }
+
+  prom_inc_packet_dropped(packets_dropped);
+  prom_inc_packet_processed(packets_processed);
 
   FUNCEND;
 }

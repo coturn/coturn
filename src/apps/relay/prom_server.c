@@ -291,15 +291,15 @@ void prom_dec_allocation(SOCKET_TYPE type) {
   }
 }
 
-void prom_inc_packet_processed(void) {
+void prom_inc_packet_processed(int count) {
   if (turn_params.prometheus == 1) {
-    prom_counter_add(packet_processed, 1, NULL);
+    prom_counter_add(packet_processed, count, NULL);
   }
 }
 
-void prom_inc_packet_dropped(void) {
+void prom_inc_packet_dropped(int count)) {
   if (turn_params.prometheus == 1) {
-    prom_counter_add(packet_dropped, 1, NULL);
+    prom_counter_add(packet_dropped, count, NULL);
   }
 }
 
@@ -359,8 +359,8 @@ void prom_inc_allocation(SOCKET_TYPE type) { UNUSED_ARG(type); }
 
 void prom_dec_allocation(SOCKET_TYPE type) { UNUSED_ARG(type); }
 
-void prom_inc_packet_processed(void) {}
+void prom_inc_packet_processed(int count) { UNUSED_ARG(count); }
 
-void prom_inc_packet_dropped(void) {}
+void prom_inc_packet_dropped(int count) { UNUSED_ARG(count); }
 
 #endif /* TURN_NO_PROMETHEUS */
