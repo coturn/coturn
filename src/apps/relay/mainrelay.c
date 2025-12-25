@@ -3640,11 +3640,9 @@ static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *metho
   }
 
   if (!SSL_CTX_use_PrivateKey_file(ctx, turn_params.pkey_file, SSL_FILETYPE_PEM)) {
-    if (!SSL_CTX_use_RSAPrivateKey_file(ctx, turn_params.pkey_file, SSL_FILETYPE_PEM)) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
-                    "%s: ERROR: no valid private key found, or invalid private key password provided\n", protocol);
-      err = 1;
-    }
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+                  "%s: ERROR: no valid private key found, or invalid private key password provided\n", protocol);
+    err = 1;
   }
   if (!SSL_CTX_check_private_key(ctx)) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: invalid private key\n", protocol);
