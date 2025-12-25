@@ -240,7 +240,8 @@ turn_params_t turn_params = {
     false, /* log_binding */
     false, /* stun_backward_compatibility */
     false, /* respond_http_unsupported */
-    false  /* drop_invalid_packets */
+    false,  /* drop_invalid_packets */
+    false  /* drop_invalid_packets_log */
 };
 
 //////////////// OpenSSL Init //////////////////////
@@ -1359,6 +1360,7 @@ static char Usage[] =
     "						supporting HTTP. The default behaviour is to immediately "
     "close the connection.\n"
     " --drop-invalid-packets			   Drop invalid packets early. The default behaviour is to accept all packets.\n"
+    " --drop-invalid-packets-log			   Log invalid packets. The default behaviour is to not log invalid packets.\n"
     " --version					Print version (and exit).\n"
     " -h						Help\n"
     "\n";
@@ -1518,6 +1520,8 @@ enum EXTRA_OPTS {
   STUN_BACKWARD_COMPATIBILITY_OPT,
   RESPONSE_ORIGIN_ONLY_WITH_RFC5780_OPT,
   RESPOND_HTTP_UNSUPPORTED_OPT,
+  DROP_INVALID_PACKETS_OPT,
+  DROP_INVALID_PACKETS_LOG_OPT,
   VERSION_OPT,
   CPUS_OPT
 };
@@ -1664,6 +1668,8 @@ static const struct myoption long_options[] = {
     {"stun-backward-compatibility", optional_argument, NULL, STUN_BACKWARD_COMPATIBILITY_OPT},
     {"response-origin-only-with-rfc5780", optional_argument, NULL, RESPONSE_ORIGIN_ONLY_WITH_RFC5780_OPT},
     {"respond-http-unsupported", optional_argument, NULL, RESPOND_HTTP_UNSUPPORTED_OPT},
+    {"drop-invalid-packets", optional_argument, NULL, DROP_INVALID_PACKETS_OPT},
+    {"drop-invalid-packets-log", optional_argument, NULL, DROP_INVALID_PACKETS_LOG_OPT},
     {"version", optional_argument, NULL, VERSION_OPT},
     {"syslog-facility", required_argument, NULL, SYSLOG_FACILITY_OPT},
     {"cpus", required_argument, NULL, CPUS_OPT},
@@ -2387,6 +2393,12 @@ static void set_option(int c, char *value) {
     break;
   case RESPOND_HTTP_UNSUPPORTED_OPT:
     turn_params.respond_http_unsupported = get_bool_value(value);
+    break;
+  case DROP_INVALID_PACKETS_OPT:
+    turn_params.drop_invalid_packets = get_bool_value(value);
+    break;
+  case DROP_INVALID_PACKETS_LOG_OPT:
+    turn_params.drop_invalid_packets_log = get_bool_value(value);
     break;
   case CPUS_OPT: {
     int cpus = atoi(value);
