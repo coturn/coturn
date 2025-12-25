@@ -297,7 +297,7 @@ void prom_inc_packet_processed(int count) {
   }
 }
 
-void prom_inc_packet_dropped(int count)) {
+void prom_inc_packet_dropped(int count) {
   if (turn_params.prometheus == 1) {
     prom_counter_add(packet_dropped, count, NULL);
   }
