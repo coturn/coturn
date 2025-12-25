@@ -753,7 +753,7 @@ start_udp_cycle:
 #endif
     ) {
       packetcounter++;
-      if (packetcounter % 1000 == 0) {
+      if (turn_params.drop_invalid_packets_log && (packetcounter % 1000 == 0)) {
         uint8_t txt2pcap[1000]; // 1000 is enough to print ~300B packet (3 chars per byte) with extras
         print_packet_txt2pcap(packetcounter, data, blen, txt2pcap, sizeof(txt2pcap));
         TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "TXT2PCAP: %s\n", txt2pcap);
