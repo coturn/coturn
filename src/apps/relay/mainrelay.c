@@ -1744,17 +1744,39 @@ void encrypt_aes_128(unsigned char *in, const unsigned char *mykey) {
 
   int j = 0, k = 0;
   int totalSize = 0;
-  AES_KEY key;
-  unsigned char iv[8] = {0}; // changed
-  unsigned char out[1024];   // changed
-  AES_set_encrypt_key(mykey, 128, &key);
+  unsigned char iv[16] = {0}; // 16-byte IV for AES-CTR (expanded from 8 bytes)
+  unsigned char out[1024];    // changed
   char total[256];
   int size = 0;
-  struct ctr_state state;
-  init_ctr(&state, iv);
+  int outlen = 0;
 
-  CRYPTO_ctr128_encrypt(in, out, strlen((char *)in), &key, state.ivec, state.ecount, &state.num,
-                        (block128_f)AES_encrypt);
+  EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
+  if (!ctx) {
+    return;
+  }
+
+  // Initialize encryption with AES-128-CTR
+  if (EVP_EncryptInit_ex(ctx, EVP_aes_128_ctr(), NULL, mykey, iv) != 1) {
+    EVP_CIPHER_CTX_free(ctx);
+    return;
+  }
+
+  // Disable padding for CTR mode
+  EVP_CIPHER_CTX_set_padding(ctx, 0);
+
+  // Perform encryption
+  if (EVP_EncryptUpdate(ctx, out, &outlen, in, (int)strlen((char *)in)) != 1) {
+    EVP_CIPHER_CTX_free(ctx);
+    return;
+  }
+
+  int final_len = 0;
+  if (EVP_EncryptFinal_ex(ctx, out + outlen, &final_len) != 1) {
+    EVP_CIPHER_CTX_free(ctx);
+    return;
+  }
+
+  EVP_CIPHER_CTX_free(ctx);
 
   totalSize += strlen((char *)in);
   size = strlen((char *)in);
@@ -1831,20 +1853,45 @@ int decodedTextSize(char *input) {
 }
 
 void decrypt_aes_128(char *in, const unsigned char *mykey) {
-  unsigned char iv[8] = {0};
-  AES_KEY key;
+  unsigned char iv[16] = {0}; // 16-byte IV for AES-CTR (expanded from 8 bytes)
   unsigned char outdata[256] = {0};
-  AES_set_encrypt_key(mykey, 128, &key);
   const int newTotalSize = decodedTextSize(in);
   const int bytes_to_decode = strlen(in);
   unsigned char *encryptedText = base64decode(in, bytes_to_decode);
   char last[1024] = "";
-  struct ctr_state state;
-  init_ctr(&state, iv);
+  int outlen = 0;
 
-  CRYPTO_ctr128_encrypt(encryptedText, outdata, newTotalSize, &key, state.ivec, state.ecount, &state.num,
-                        (block128_f)AES_encrypt);
+  EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
+  if (!ctx) {
+    free(encryptedText);
+    return;
+  }
 
+  // Initialize decryption with AES-128-CTR (CTR mode: encryption = decryption)
+  if (EVP_DecryptInit_ex(ctx, EVP_aes_128_ctr(), NULL, mykey, iv) != 1) {
+    EVP_CIPHER_CTX_free(ctx);
+    free(encryptedText);
+    return;
+  }
+
+  // Disable padding for CTR mode
+  EVP_CIPHER_CTX_set_padding(ctx, 0);
+
+  // Perform decryption
+  if (EVP_DecryptUpdate(ctx, outdata, &outlen, encryptedText, newTotalSize) != 1) {
+    EVP_CIPHER_CTX_free(ctx);
+    free(encryptedText);
+    return;
+  }
+
+  int final_len = 0;
+  if (EVP_DecryptFinal_ex(ctx, outdata + outlen, &final_len) != 1) {
+    EVP_CIPHER_CTX_free(ctx);
+    free(encryptedText);
+    return;
+  }
+
+  EVP_CIPHER_CTX_free(ctx);
   free(encryptedText);
   strcat(last, (char *)outdata);
   printf("%s\n", last);
