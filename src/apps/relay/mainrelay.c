@@ -1914,7 +1914,9 @@ static void set_option(int c, char *value) {
     }
     break;
   case SERVER_NAME_OPT:
-    STRCPY(turn_params.oauth_server_name, value);
+    if (value) {
+      STRCPY(turn_params.oauth_server_name, value);
+    }
     break;
   case OAUTH_OPT:
     if (ENC_ALG_NUM == 0) {
@@ -1933,11 +1935,13 @@ static void set_option(int c, char *value) {
     turn_params.no_tlsv1_2 = get_bool_value(value);
     break;
   case NE_TYPE_OPT: {
-    const int ne = atoi(value);
-    if ((ne < (int)NEV_MIN) || (ne > (int)NEV_MAX)) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: wrong version of the network engine: %d\n", ne);
+    if (value) {
+      const int ne = atoi(value);
+      if ((ne < (int)NEV_MIN) || (ne > (int)NEV_MAX)) {
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: wrong version of the network engine: %d\n", ne);
+      }
+      turn_params.net_engine_version = (NET_ENG_VERSION)ne;
     }
-    turn_params.net_engine_version = (NET_ENG_VERSION)ne;
   } break;
   case DH566_OPT:
     if (get_bool_value(value)) {
@@ -1950,10 +1954,14 @@ static void set_option(int c, char *value) {
     }
     break;
   case EC_CURVE_NAME_OPT:
-    STRCPY(turn_params.ec_curve_name, value);
+    if (value) {
+      STRCPY(turn_params.ec_curve_name, value);
+    }
     break;
   case CLI_MAX_SESSIONS_OPT:
-    cli_max_output_sessions = atoi(value);
+    if (value) {
+      cli_max_output_sessions = atoi(value);
+    }
     break;
   case SERVER_RELAY_OPT:
     turn_params.server_relay = get_bool_value(value);
@@ -1972,10 +1980,14 @@ static void set_option(int c, char *value) {
     }
     break;
   case CLI_PORT_OPT:
-    cli_port = atoi(value);
+    if (value) {
+      cli_port = atoi(value);
+    }
     break;
   case CLI_PASSWORD_OPT:
-    STRCPY(cli_password, value);
+    if (value) {
+      STRCPY(cli_password, value);
+    }
     break;
   case WEB_ADMIN_OPT:
     use_web_admin = get_bool_value(value);
@@ -1988,7 +2000,9 @@ static void set_option(int c, char *value) {
     }
     break;
   case WEB_ADMIN_PORT_OPT:
-    web_admin_port = atoi(value);
+    if (value) {
+      web_admin_port = atoi(value);
+    }
     break;
   case WEB_ADMIN_LISTEN_ON_WORKERS_OPT:
     turn_params.web_admin_listen_on_workers = get_bool_value(value);
@@ -1997,6 +2011,9 @@ static void set_option(int c, char *value) {
     // TODO: implement it!!!
 #else
   case PROC_USER_OPT: {
+    if (!value) {
+      break;
+    }
     struct passwd *pwd = getpwnam(value);
     if (!pwd) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown user name: %s\n", value);
@@ -2008,6 +2025,9 @@ static void set_option(int c, char *value) {
     }
   } break;
   case PROC_GROUP_OPT: {
+    if (!value) {
+      break;
+    }
     struct group *gr = getgrnam(value);
     if (!gr) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown group name: %s\n", value);
@@ -2020,9 +2040,14 @@ static void set_option(int c, char *value) {
   } break;
 #endif
   case 'i':
-    STRCPY(turn_params.relay_ifname, value);
+    if (value) {
+      STRCPY(turn_params.relay_ifname, value);
+    }
     break;
   case 'm':
+    if (!value) {
+      break;
+    }
     if (atoi(value) > MAX_NUMBER_OF_GENERAL_RELAY_SERVERS) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: max number of relay threads is 128.\n");
       turn_params.general_relay_servers_number = MAX_NUMBER_OF_GENERAL_RELAY_SERVERS;
@@ -2033,28 +2058,52 @@ static void set_option(int c, char *value) {
     }
     break;
   case 'd':
+    if (!value) { 
+      break;
+    }
     STRCPY(turn_params.listener_ifname, value);
     break;
   case 'p':
+    if (!value) { 
+      break;
+    }
     turn_params.listener_port = atoi(value);
     break;
   case TLS_PORT_OPT:
+    if (!value) { 
+      break;
+    }
     turn_params.tls_listener_port = atoi(value);
     break;
   case ALT_PORT_OPT:
+    if (!value) { 
+      break;
+    }
     turn_params.alt_listener_port = atoi(value);
     break;
   case ALT_TLS_PORT_OPT:
+    if (!value) { 
+      break;
+    }
     turn_params.alt_tls_listener_port = atoi(value);
     break;
   case TCP_PROXY_PORT_OPT:
+    if (!value) { 
+      break;
+    }
     turn_params.tcp_proxy_port = atoi(value);
     turn_params.tcp_use_proxy = 1;
     break;
   case MIN_PORT_OPT:
+    if (!value) { 
+      break;
+    }
     turn_params.min_port = atoi(value);
     break;
   case MAX_PORT_OPT:
+    if (!value) { 
+      break;
+    }
     turn_params.max_port = atoi(value);
     break;
   case SOCK_BUF_SIZE_OPT:
@@ -2087,6 +2136,9 @@ static void set_option(int c, char *value) {
     turn_params.permission_lifetime = get_int_value(value, STUN_DEFAULT_PERMISSION_LIFETIME);
     break;
   case MAX_ALLOCATE_TIMEOUT_OPT:
+    if (!value) { 
+      break;
+    }
     TURN_MAX_ALLOCATE_TIMEOUT = atoi(value);
     TURN_MAX_ALLOCATE_TIMEOUT_STUN_ONLY = atoi(value);
     break;
@@ -2107,6 +2159,9 @@ static void set_option(int c, char *value) {
       char *div = strchr(value, '/');
       if (div) {
         char *nval = strdup(value);
+        if (!nval) {
+          break;
+        }
         div = strchr(nval, '/');
         div[0] = 0;
         ++div;
@@ -2193,34 +2248,52 @@ static void set_option(int c, char *value) {
         TURN_LOG_LEVEL_WARNING,
         "WARNING: Options -b, --userdb and --db are not supported because SQLite is not supported in this build.\n");
 #else
+    if (!value) {
+      break;
+    }
     STRCPY(turn_params.default_users_db.persistent_users_db.userdb, value);
     turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_SQLITE;
 #endif
   } break;
 #if !defined(TURN_NO_PQ)
   case 'e':
+    if (!value) {
+      break;
+    }
     STRCPY(turn_params.default_users_db.persistent_users_db.userdb, value);
     turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_PQ;
     break;
 #endif
 #if !defined(TURN_NO_MYSQL)
   case 'M':
+    if (!value) {
+      break;
+    }
     STRCPY(turn_params.default_users_db.persistent_users_db.userdb, value);
     turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_MYSQL;
     break;
 #endif
 #if !defined(TURN_NO_MONGO)
   case 'J':
+    if (!value) {
+      break;
+    }
     STRCPY(turn_params.default_users_db.persistent_users_db.userdb, value);
     turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_MONGO;
     break;
 #endif
 #if !defined(TURN_NO_HIREDIS)
   case 'N':
+    if (!value) {
+      break;
+    }
     STRCPY(turn_params.default_users_db.persistent_users_db.userdb, value);
     turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_REDIS;
     break;
   case 'O':
+    if (!value) {
+      break;
+    }
     STRCPY(turn_params.redis_statsdb.connection_string, value);
     turn_params.use_redis_statsdb = 1;
     break;
@@ -2229,12 +2302,21 @@ static void set_option(int c, char *value) {
     turn_params.prometheus = true;
     break;
   case PROMETHEUS_PORT_OPT:
+    if (!value) { 
+      break;
+    }
     turn_params.prometheus_port = atoi(value);
     break;
   case PROMETHEUS_ADDRESS_OPT:
+    if (!value) { 
+      break;
+    }
     STRCPY(turn_params.prometheus_address, value);
     break;
   case PROMETHEUS_PATH_OPT:
+    if (!value) { 
+      break;
+    }
     STRCPY(turn_params.prometheus_path, value);
     break;
   case PROMETHEUS_ENABLE_USERNAMES_OPT:
@@ -2263,23 +2345,38 @@ static void set_option(int c, char *value) {
     use_lt_credentials = 1;
     break;
   case 'r':
+    if (!value) {
+      break;
+    }
     set_default_realm_name(value);
     break;
   case 'q':
+    if (!value) {
+      break;
+    }
     turn_params.user_quota = (vint)atoi(value);
     get_realm(NULL)->options.perf_options.user_quota = atoi(value);
     break;
   case 'Q':
+    if (!value) {
+      break;
+    }
     turn_params.total_quota = (vint)atoi(value);
     get_realm(NULL)->options.perf_options.total_quota = atoi(value);
     break;
   case 's':
+    if (!value) {
+      break;
+    }
     turn_params.max_bps = (band_limit_t)strtoul(value, NULL, 10);
     get_realm(NULL)->options.perf_options.max_bps = (band_limit_t)strtoul(value, NULL, 10);
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%lu bytes per second allowed per session\n",
                   (unsigned long)turn_params.max_bps);
     break;
   case 'B':
+    if (!value) {
+      break;
+    }
     turn_params.bps_capacity = (band_limit_t)strtoul(value, NULL, 10);
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%lu bytes per second allowed, combined server capacity\n",
                   (unsigned long)turn_params.bps_capacity);
@@ -2314,24 +2411,42 @@ static void set_option(int c, char *value) {
 #endif
     break;
   case CERT_FILE_OPT:
+    if (!value) {
+      break;
+    }
     STRCPY(turn_params.cert_file, value);
     break;
   case RPK_ENABLED_OPT:
     turn_params.rpk_enabled = get_bool_value(value);
     break;
   case CA_FILE_OPT:
+    if (!value) {
+      break;
+    }
     STRCPY(turn_params.ca_cert_file, value);
     break;
   case DH_FILE_OPT:
+    if (!value) {
+      break;
+    }
     STRCPY(turn_params.dh_file, value);
     break;
   case SECRET_KEY_OPT:
+    if (!value) {
+      break;
+    }
     STRCPY(turn_params.secret_key_file, value);
     break;
   case PKEY_FILE_OPT:
+    if (!value) {
+      break;
+    }
     STRCPY(turn_params.pkey_file, value);
     break;
   case PKEY_PWD_OPT:
+    if (!value) {
+      break;
+    }
     STRCPY(turn_params.tls_password, value);
     break;
   case ALTERNATE_SERVER_OPT:
@@ -2347,22 +2462,37 @@ static void set_option(int c, char *value) {
     add_tls_alternate_server(value);
     break;
   case ALLOWED_PEER_IPS:
+    if (!value) {
+      break;
+    }
     if (add_ip_list_range(value, NULL, &turn_params.ip_whitelist) == 0) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "White listing: %s\n", value);
     }
     break;
   case DENIED_PEER_IPS:
+    if (!value) {
+      break;
+    }
     if (add_ip_list_range(value, NULL, &turn_params.ip_blacklist) == 0) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Black listing: %s\n", value);
     }
     break;
   case CIPHER_LIST_OPT:
+    if (!value) {
+      break;
+    }
     STRCPY(turn_params.cipher_list, value);
     break;
   case PIDFILE_OPT:
+    if (!value) {
+      break;
+    }
     STRCPY(turn_params.pidfile, value);
     break;
   case ACME_REDIRECT_OPT:
+    if (!value) {
+      break;
+    }
     STRCPY(turn_params.acme_redirect, value);
     break;
   case 'C':
@@ -2387,6 +2517,9 @@ static void set_option(int c, char *value) {
     turn_params.respond_http_unsupported = get_bool_value(value);
     break;
   case CPUS_OPT: {
+    if (!value) {
+      break;
+    }
     int cpus = atoi(value);
     if (cpus < 1) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: cpus value must be positive\n");
@@ -2420,11 +2553,17 @@ static void set_option(int c, char *value) {
 
   if (turn_params.default_users_db.persistent_users_db.userdb[0]) {
     char *userdb_sanitized = sanitize_userdb_string(turn_params.default_users_db.persistent_users_db.userdb);
+    if (!userdb_sanitized) {
+      return;
+    }
     STRCPY(turn_params.default_users_db.persistent_users_db.userdb_sanitized, userdb_sanitized);
     free(userdb_sanitized);
   }
   if (turn_params.redis_statsdb.connection_string[0]) {
     char *connection_string = sanitize_userdb_string(turn_params.redis_statsdb.connection_string);
+    if (!connection_string) {
+      return;
+    }
     STRCPY(turn_params.redis_statsdb.connection_string_sanitized, connection_string);
     free(connection_string);
   }
