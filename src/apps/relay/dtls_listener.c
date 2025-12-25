@@ -746,12 +746,17 @@ start_udp_cycle:
     uint16_t chnum = 0;
     uint8_t *data = ioa_network_buffer_data(elem);
 
-    if ((turn_params.drop_invalid_packets && !stun_is_channel_message_str(data, &blen, &chnum, false) &&
-         !stun_is_command_message_str(data, blen))
+    bool is_valid_packet = false;
+    if (stun_is_channel_message_str(data, &blen, &chnum, false) || stun_is_command_message_str(data, blen)) {
+      is_valid_packet = true;
+    }
 #if DTLS_SUPPORTED
-        || (!turn_params.no_dtls && !is_dtls_message(data, blen))
+    else if (!turn_params.no_dtls && is_dtls_message(data, blen)) {
+      is_valid_packet = true;
+    }
 #endif
-    ) {
+
+    if (turn_params.drop_invalid_packets && !is_valid_packet) {
       packetcounter++;
       if (turn_params.drop_invalid_packets_log && (packetcounter % 1000 == 0)) {
         uint8_t txt2pcap[1000]; // 1000 is enough to print ~300B packet (3 chars per byte) with extras
