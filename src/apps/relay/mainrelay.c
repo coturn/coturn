@@ -178,6 +178,7 @@ turn_params_t turn_params = {
     NULL,                                 /*external_ip*/
     DEFAULT_GENERAL_RELAY_SERVERS_NUMBER, /*general_relay_servers_number*/
     0,                                    /*udp_relay_servers_number*/
+    UR_SERVER_SOCK_BUF_SIZE,
 
     ////////////// Auth server /////////////////////////////////////
     "",
@@ -1037,6 +1038,7 @@ static char Usage[] =
     " --max-port			<port>		Upper bound of the UDP port range for relay endpoints "
     "allocation.\n"
     "						Default value is 65535, according to RFC 5766.\n"
+    "--sock-buf-size   <number>	Size of the socket buffer for UDP sockets (in bytes).\n"
     " -v, --verbose					'Moderate' verbose mode.\n"
     " -V, --Verbose					Extra verbose mode, very annoying (for debug purposes only).\n"
     " -o, --daemon					Start process as daemon (detach from current shell).\n"
@@ -1440,6 +1442,7 @@ enum EXTRA_OPTS {
   PKEY_PWD_OPT,
   MIN_PORT_OPT,
   MAX_PORT_OPT,
+  SOCK_BUF_SIZE_OPT,
   STALE_NONCE_OPT,
   MAX_ALLOCATE_LIFETIME_OPT,
   CHANNEL_LIFETIME_OPT,
@@ -1546,6 +1549,7 @@ static const struct myoption long_options[] = {
     {"relay-threads", required_argument, NULL, 'm'},
     {"min-port", required_argument, NULL, MIN_PORT_OPT},
     {"max-port", required_argument, NULL, MAX_PORT_OPT},
+    {"sock-buf-size", required_argument, NULL, SOCK_BUF_SIZE_OPT},
     {"lt-cred-mech", optional_argument, NULL, 'a'},
     {"no-auth", optional_argument, NULL, 'z'},
     {"user", required_argument, NULL, 'u'},
@@ -2052,6 +2056,14 @@ static void set_option(int c, char *value) {
     break;
   case MAX_PORT_OPT:
     turn_params.max_port = atoi(value);
+    break;
+  case SOCK_BUF_SIZE_OPT:
+    turn_params.sock_buf_size = atoi(value);
+    if (turn_params.sock_buf_size <= 0) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Invalid socket buffer size: %s (must be > 0)\n", value);
+      turn_params.sock_buf_size = UR_SERVER_SOCK_BUF_SIZE;
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Using default socket buffer size: %d\n", turn_params.sock_buf_size);
+    }
     break;
   case SECURE_STUN_OPT:
     turn_params.secure_stun = get_bool_value(value);
