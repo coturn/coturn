@@ -2059,6 +2059,11 @@ static void set_option(int c, char *value) {
     break;
   case SOCK_BUF_SIZE_OPT:
     turn_params.sock_buf_size = atoi(value);
+    if (turn_params.sock_buf_size <= 0) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Invalid socket buffer size: %s (must be > 0)\n", value);
+      turn_params.sock_buf_size = UR_SERVER_SOCK_BUF_SIZE;
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Using default socket buffer size: %d\n", turn_params.sock_buf_size);
+    }
     break;
   case SECURE_STUN_OPT:
     turn_params.secure_stun = get_bool_value(value);

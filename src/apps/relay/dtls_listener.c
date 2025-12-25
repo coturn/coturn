@@ -921,7 +921,7 @@ static int init_server(dtls_listener_relay_server_type *server, const char *ifna
 
   server->e = e;
 
-  return create_server_socket(server, report_creation, turn_params.sock_buf_size);
+  return create_server_socket(server, report_creation, sock_buf_size);
 }
 
 static int clean_server(dtls_listener_relay_server_type *server) {
