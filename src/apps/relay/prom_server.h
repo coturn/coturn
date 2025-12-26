@@ -59,6 +59,9 @@ extern "C" {
 }
 #endif /* __clplusplus */
 
+extern prom_counter_t *packet_processed;
+extern prom_counter_t *packet_dropped;
+
 extern prom_counter_t *stun_binding_request;
 extern prom_counter_t *stun_binding_response;
 extern prom_counter_t *stun_binding_error;
@@ -104,5 +107,7 @@ void prom_set_finished_traffic(const char *realm, const char *user, unsigned lon
 
 void prom_inc_allocation(SOCKET_TYPE type);
 void prom_dec_allocation(SOCKET_TYPE type);
+void prom_inc_packet_processed(int count);
+void prom_inc_packet_dropped(int count);
 
 #endif /* __PROM_SERVER_H__ */

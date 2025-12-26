@@ -39,6 +39,7 @@
 #include "ns_ioalib_impl.h"
 
 #include "ns_turn_openssl.h"
+#include "prom_server.h"
 
 #include <pthread.h>
 
@@ -61,6 +62,8 @@ typedef uint16_t in_port_t;
 #define COOKIE_SECRET_LENGTH (32)
 
 #define MAX_SINGLE_UDP_BATCH (16)
+
+static int packetcounter = 1;
 
 struct dtls_listener_relay_server_info {
   char ifname[1025];
@@ -128,6 +131,33 @@ int get_dtls_version(const unsigned char *buf, int len) {
     return 1;
   }
   return 0;
+}
+
+static size_t print_packet_txt2pcap(uint64_t now, uint8_t *payload, size_t payload_length, uint8_t *txt2pcap,
+                                    size_t txt2pcap_length) {
+
+  size_t index = 0;
+  int64_t remaining = now % (24 * 60 * 60 * 1000);
+  int hours = remaining / (60 * 60 * 1000);
+  remaining = remaining % (60 * 60 * 1000);
+  int minutes = remaining / (60 * 1000);
+  remaining = remaining % (60 * 1000);
+  int seconds = remaining / 1000;
+  int ms = remaining % 1000;
+
+  snprintf((char *)(txt2pcap + index), txt2pcap_length - index, "%02d:%02d:%02d.%03d", hours, minutes, seconds, ms);
+
+  index += sizeof("00:00:00.000") - 1;
+  snprintf((char *)(txt2pcap + index), txt2pcap_length - index, " 0000");
+  index += sizeof(" 0000") - 1;
+
+  for (size_t i = 0; i < payload_length; i++) {
+    snprintf((char *)(txt2pcap + index), txt2pcap_length - index, " %02x", payload[i]);
+    index += 3;
+  }
+  snprintf((char *)(txt2pcap + index), txt2pcap_length - index, " # STUN_PACKET ");
+  index += sizeof(" # STUN_PACKET ");
+  return index;
 }
 
 ///////////// utils /////////////////////
@@ -608,6 +638,8 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void *arg) 
   // printf_server_socket(server, fd);
 
   ioa_network_buffer_handle *elem = NULL;
+  int packets_processed = 0;
+  int packets_dropped = 0;
 
 start_udp_cycle:
 
@@ -709,21 +741,49 @@ start_udp_cycle:
     int rc = 0;
     ioa_network_buffer_set_size(elem, (size_t)bsize);
 
-    if (server->connect_cb) {
+    // Do minimal validation on the received UDP packet
+    // stun_is_channel_message_str and stun_is_command_message_str
+    size_t blen = bsize;
+    uint16_t chnum = 0;
+    uint8_t *data = ioa_network_buffer_data(elem);
 
-      rc = create_new_connected_udp_socket(server, s);
-      if (rc < 0) {
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot handle UDP packet, size %d\n", (int)bsize);
+    bool is_valid_packet = false;
+    if (stun_is_channel_message_str(data, &blen, &chnum, false) || stun_is_command_message_str(data, blen)) {
+      is_valid_packet = true;
+    }
+#if DTLS_SUPPORTED
+    else if (!turn_params.no_dtls && is_dtls_message(data, blen)) {
+      is_valid_packet = true;
+    }
+#endif
+
+    if (turn_params.drop_invalid_packets && !is_valid_packet) {
+      packetcounter++;
+      if (turn_params.drop_invalid_packets_log && (packetcounter % 1000 == 0)) {
+        uint8_t txt2pcap[1000]; // 1000 is enough to print ~300B packet (3 chars per byte) with extras
+        print_packet_txt2pcap(packetcounter, data, blen, txt2pcap, sizeof(txt2pcap));
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "TXT2PCAP: %s\n", txt2pcap);
+      }
+      ++packets_dropped;
+    } else {
+      ++packets_processed;
+
+      if (server->connect_cb) {
+
+        rc = create_new_connected_udp_socket(server, s);
+        if (rc < 0) {
+          TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot handle UDP packet, size %d\n", (int)bsize);
+        }
+
+      } else {
+        server->sm.m.sm.s = s;
+        rc = handle_udp_packet(server, &(server->sm), server->e, server->ts);
       }
 
-    } else {
-      server->sm.m.sm.s = s;
-      rc = handle_udp_packet(server, &(server->sm), server->e, server->ts);
-    }
-
-    if (rc < 0) {
-      if (eve(server->e->verbose)) {
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot handle UDP event\n");
+      if (rc < 0) {
+        if (eve(server->e->verbose)) {
+          TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot handle UDP event\n");
+        }
       }
     }
   }
@@ -734,6 +794,9 @@ start_udp_cycle:
   if ((bsize > 0) && (cycle++ < MAX_SINGLE_UDP_BATCH)) {
     goto start_udp_cycle;
   }
+
+  prom_inc_packet_dropped(packets_dropped);
+  prom_inc_packet_processed(packets_processed);
 
   FUNCEND;
 }
