@@ -17,6 +17,7 @@ echo "pkey=../examples/ca/turn_server_pkey.pem" >> $BINDIR/turnserver.conf
 
 echo 'Running turnserver'
 $BINDIR/turnserver -c $BINDIR/turnserver.conf > /dev/null &
+turnserver_pid="$!"
 echo 'Running peer client'
 $BINDIR/turnutils_peer -L 127.0.0.1 -L ::1 -L 0.0.0.0 > /dev/null &
 
@@ -57,3 +58,6 @@ else
     echo FAIL
 	exit $?
 fi
+
+sleep 2
+kill "$turnserver_pid"
