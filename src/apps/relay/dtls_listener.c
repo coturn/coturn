@@ -520,7 +520,6 @@ static int create_new_connected_udp_socket(dtls_listener_relay_server_type *serv
   addr_cpy(&(ret->remote_addr), &(server->sm.m.sm.nd.src_addr));
 
   set_socket_options(ret);
-  set_ioa_socket_buf_size(ret, server->ts->sock_buf_size);
 
   ret->current_ttl = s->current_ttl;
   ret->default_ttl = s->default_ttl;
