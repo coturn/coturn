@@ -31,7 +31,7 @@ function assert_prom_response() {
 }
 
 echo "Running without prometheus"
-$BINDIR/turnserver /dev/null &
+$BINDIR/turnserver  > /dev/null &
 turnserver_pid="$!"
 sleep 2
 assert_prom_no_response "http://localhost:9641/metrics"
