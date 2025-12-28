@@ -940,7 +940,7 @@ ioa_socket_handle create_unbound_relay_ioa_socket(ioa_engine_handle e, int famil
     return NULL;
   }
 
-  ret = (ioa_socket *)calloc(sizeof(ioa_socket), 1);
+  ret = (ioa_socket *)calloc(1, sizeof(ioa_socket));
 
   if (ret == NULL) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: failure in call to calloc \n", __FUNCTION__);
@@ -1361,7 +1361,7 @@ ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e, ioa_socket_raw 
     return NULL;
   }
 
-  ret = (ioa_socket *)calloc(sizeof(ioa_socket), 1);
+  ret = (ioa_socket *)calloc(1, sizeof(ioa_socket));
 
   if (ret == NULL) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: failure in call to calloc \n", __FUNCTION__);
@@ -1629,7 +1629,7 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s) {
 
     ioa_network_buffer_delete(s->e, s->defer_nbh);
 
-    ret = (ioa_socket *)calloc(sizeof(ioa_socket), 1);
+    ret = (ioa_socket *)calloc(1, sizeof(ioa_socket));
     if (!ret) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Cannot allocate new socket structure\n", __FUNCTION__);
       if (udp_fd >= 0) {

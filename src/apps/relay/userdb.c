@@ -1180,7 +1180,7 @@ const ip_range_list_t *ioa_get_blacklist(ioa_engine_handle e) {
 }
 
 ip_range_list_t *get_ip_list(const char *kind) {
-  ip_range_list_t *ret = (ip_range_list_t *)calloc(sizeof(ip_range_list_t), 1);
+  ip_range_list_t *ret = (ip_range_list_t *)calloc(1, sizeof(ip_range_list_t));
 
   const turn_dbdriver_t *dbd = get_dbdriver();
   if (dbd && dbd->get_ip_list && !turn_params.no_dynamic_ip_list) {

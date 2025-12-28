@@ -1172,7 +1172,7 @@ static void cliserver_input_handler(struct evconnlistener *l, evutil_socket_t fd
 
   addr_debug_print(adminserver.verbose, (ioa_addr *)sa, "CLI connected to");
 
-  struct cli_session *clisession = (struct cli_session *)calloc(sizeof(struct cli_session), 1);
+  struct cli_session *clisession = (struct cli_session *)calloc(1, sizeof(struct cli_session));
   if (clisession == NULL) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: failure in call to calloc \n", __FUNCTION__);
     return;
@@ -3321,7 +3321,7 @@ static void handle_logon_request(ioa_socket_handle s, struct http_request *hr) {
 
     struct admin_session *as = (struct admin_session *)s->special_session;
     if (!as) {
-      as = (struct admin_session *)calloc(sizeof(struct admin_session), 1);
+      as = (struct admin_session *)calloc(1, sizeof(struct admin_session));
       if (!as) {
         return;
       }

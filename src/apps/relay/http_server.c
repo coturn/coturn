@@ -120,7 +120,7 @@ static struct headers_list *post_parse(char *data, size_t data_len) {
       memcpy(post_data, data, data_len);
       char *fmarker = NULL;
       char *fsplit = strtok_r(post_data, "&", &fmarker);
-      struct headers_list *list = (struct headers_list *)calloc(sizeof(struct headers_list), 1);
+      struct headers_list *list = (struct headers_list *)calloc(1, sizeof(struct headers_list));
       while (fsplit != NULL) {
         char *vmarker = NULL;
         char *key = strtok_r(fsplit, "=", &vmarker);
@@ -173,7 +173,7 @@ static struct http_request *parse_http_request_1(struct http_request *ret, char 
 
         const char *query = evhttp_uri_get_query(uri);
         if (query) {
-          struct evkeyvalq *kv = (struct evkeyvalq *)calloc(sizeof(struct evkeyvalq), 1);
+          struct evkeyvalq *kv = (struct evkeyvalq *)calloc(1, sizeof(struct evkeyvalq));
           if (evhttp_parse_query_str(query, kv) < 0) {
             free(ret);
             ret = NULL;
@@ -182,7 +182,7 @@ static struct http_request *parse_http_request_1(struct http_request *ret, char 
               free(kv);
             }
           } else {
-            ret->headers = (struct http_headers *)calloc(sizeof(struct http_headers), 1);
+            ret->headers = (struct http_headers *)calloc(1, sizeof(struct http_headers));
             ret->headers->uri_headers = kv;
           }
         }
@@ -198,7 +198,7 @@ static struct http_request *parse_http_request_1(struct http_request *ret, char 
           char *body = strstr(s + 1, "\r\n\r\n");
           if (body && body[0]) {
             if (!ret->headers) {
-              ret->headers = (struct http_headers *)calloc(sizeof(struct http_headers), 1);
+              ret->headers = (struct http_headers *)calloc(1, sizeof(struct http_headers));
             }
             ret->headers->post_headers = post_parse(body, strlen(body));
           }
@@ -218,7 +218,7 @@ struct http_request *parse_http_request(char *request) {
 
   if (request) {
 
-    ret = (struct http_request *)calloc(sizeof(struct http_request), 1);
+    ret = (struct http_request *)calloc(1, sizeof(struct http_request));
 
     if (ret == NULL) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: failure in call to calloc \n", __FUNCTION__);
@@ -340,7 +340,7 @@ struct str_buffer {
 };
 
 struct str_buffer *str_buffer_new(void) {
-  struct str_buffer *ret = (struct str_buffer *)calloc(sizeof(struct str_buffer), 1);
+  struct str_buffer *ret = (struct str_buffer *)calloc(1, sizeof(struct str_buffer));
   if (!ret) {
     return NULL;
   }
