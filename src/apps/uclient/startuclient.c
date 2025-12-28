@@ -1591,7 +1591,7 @@ again:
   const int i = (int)(elem->pinfo.tcp_conn_number - 1);
   elem->pinfo.tcp_conn =
       (app_tcp_conn_info **)realloc(elem->pinfo.tcp_conn, elem->pinfo.tcp_conn_number * sizeof(app_tcp_conn_info *));
-  elem->pinfo.tcp_conn[i] = (app_tcp_conn_info *)calloc(sizeof(app_tcp_conn_info), 1);
+  elem->pinfo.tcp_conn[i] = (app_tcp_conn_info *)calloc(1, sizeof(app_tcp_conn_info));
 
   if (elem->pinfo.tcp_conn[i] == NULL) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: failure in call to calloc \n", __FUNCTION__);

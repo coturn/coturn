@@ -177,7 +177,7 @@ static bool rtcp_map_init(rtcp_map *map, ioa_engine_handle e) {
 }
 
 rtcp_map *rtcp_map_create(ioa_engine_handle e) {
-  rtcp_map *map = (rtcp_map *)calloc(sizeof(rtcp_map), 1);
+  rtcp_map *map = (rtcp_map *)calloc(1, sizeof(rtcp_map));
   if (!rtcp_map_init(map, e)) {
     free(map);
     return NULL;
@@ -194,7 +194,7 @@ bool rtcp_map_put(rtcp_map *map, rtcp_token_type token, ioa_socket_handle s) {
   if (!rtcp_map_valid(map)) {
     return false;
   } else {
-    rtcp_alloc_type *value = (rtcp_alloc_type *)calloc(sizeof(rtcp_alloc_type), 1);
+    rtcp_alloc_type *value = (rtcp_alloc_type *)calloc(1, sizeof(rtcp_alloc_type));
     if (!value) {
       return false;
     }
