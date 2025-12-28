@@ -42,6 +42,7 @@
 #include "prom_server.h"
 
 #include <pthread.h>
+#include <stdint.h>
 
 /* #define REQUEST_CLIENT_CERT */
 
@@ -63,7 +64,7 @@ typedef uint16_t in_port_t;
 
 #define MAX_SINGLE_UDP_BATCH (16)
 
-static int packetcounter = 1;
+_Thread_local uint32_t packetcounter = 0;
 
 struct dtls_listener_relay_server_info {
   char ifname[1025];
@@ -135,28 +136,22 @@ int get_dtls_version(const unsigned char *buf, int len) {
 
 static size_t print_packet_txt2pcap(uint64_t now, uint8_t *payload, size_t payload_length, uint8_t *txt2pcap,
                                     size_t txt2pcap_length) {
+  div_t dv = div(now, 24 * 60 * 60 * 1000);
+  dv = div(dv.rem, 60 * 60 * 1000);
+  uint32_t hours = dv.quot;
+  dv = div(dv.rem, 60 * 1000);
+  uint32_t minutes = dv.quot;
+  dv = div(dv.rem, 1000);
+  uint32_t seconds = dv.quot;
+  uint32_t ms = dv.rem;
 
-  size_t index = 0;
-  int64_t remaining = now % (24 * 60 * 60 * 1000);
-  int hours = remaining / (60 * 60 * 1000);
-  remaining = remaining % (60 * 60 * 1000);
-  int minutes = remaining / (60 * 1000);
-  remaining = remaining % (60 * 1000);
-  int seconds = remaining / 1000;
-  int ms = remaining % 1000;
-
-  snprintf((char *)(txt2pcap + index), txt2pcap_length - index, "%02d:%02d:%02d.%03d", hours, minutes, seconds, ms);
-
-  index += sizeof("00:00:00.000") - 1;
-  snprintf((char *)(txt2pcap + index), txt2pcap_length - index, " 0000");
-  index += sizeof(" 0000") - 1;
+  size_t index = snprintf((char *)(txt2pcap + index), txt2pcap_length - index, "%02d:%02d:%02d.%03d", hours, minutes, seconds, ms);
+  index += snprintf((char *)(txt2pcap + index), txt2pcap_length - index, " 0000");
 
   for (size_t i = 0; i < payload_length; i++) {
-    snprintf((char *)(txt2pcap + index), txt2pcap_length - index, " %02x", payload[i]);
-    index += 3;
+    index += snprintf((char *)(txt2pcap + index), txt2pcap_length - index, " %02x", payload[i]);
   }
-  snprintf((char *)(txt2pcap + index), txt2pcap_length - index, " # STUN_PACKET ");
-  index += sizeof(" # STUN_PACKET ");
+  index += snprintf((char *)(txt2pcap + index), txt2pcap_length - index, " # STUN_PACKET ");
   return index;
 }
 
@@ -637,8 +632,8 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void *arg) 
   // printf_server_socket(server, fd);
 
   ioa_network_buffer_handle *elem = NULL;
-  int packets_processed = 0;
-  int packets_dropped = 0;
+  uint32_t packets_processed = 0;
+  uint32_t packets_dropped = 0;
 
 start_udp_cycle:
 

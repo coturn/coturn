@@ -240,7 +240,7 @@ turn_params_t turn_params = {
     false, /* log_binding */
     false, /* stun_backward_compatibility */
     false, /* respond_http_unsupported */
-    false, /* drop_invalid_packets */
+    true, /* drop_invalid_packets */
     false  /* drop_invalid_packets_log */
 };
 
