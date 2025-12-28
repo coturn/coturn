@@ -192,7 +192,12 @@ static void add_aux_server_list(const char *saddr, turn_server_addrs_list_t *lis
     if (make_ioa_addr_from_full_string((const uint8_t *)saddr, 0, &addr) != 0) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong full address format: %s\n", saddr);
     } else {
-      list->addrs = (ioa_addr *)realloc(list->addrs, sizeof(ioa_addr) * (list->size + 1));
+      ioa_addr* tmp = (ioa_addr *)realloc(list->addrs, sizeof(ioa_addr) * (list->size + 1));
+      if (!tmp) {
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Memory allocation failure\n");
+        return;
+      }
+      list->addrs = tmp;
       addr_cpy(&(list->addrs[(list->size)++]), &addr);
       {
         uint8_t s[1025];
@@ -484,6 +489,10 @@ void send_auth_message_to_auth_server(struct auth_message *am) {
   TURN_MUTEX_UNLOCK(&auth_message_counter_mutex);
 
   struct evbuffer *output = bufferevent_get_output(authserver[sn].out_buf);
+  if (!output) {
+    fprintf(stderr, "%s: Weird buffer error\n", __FUNCTION__);
+    return;
+  }
   if (evbuffer_add(output, am, sizeof(struct auth_message)) < 0) {
     fprintf(stderr, "%s: Weird buffer error\n", __FUNCTION__);
   }

@@ -1269,6 +1269,12 @@ ioa_socket_handle ioa_create_connecting_tcp_relay_socket(ioa_socket_handle s, io
   BUFFEREVENT_FREE(ret->conn_bev);
 
   ret->conn_bev = bufferevent_socket_new(ret->e->event_base, ret->fd, TURN_BUFFEREVENTS_OPTIONS);
+  if (!ret->conn_bev) {
+    set_ioa_socket_session(ret, NULL);
+    IOA_CLOSE_SOCKET(ret);
+    ret = NULL;
+    goto ccs_end;
+  }
   bufferevent_setcb(ret->conn_bev, NULL, NULL, connect_eventcb, ret);
 
   ret->conn_arg = arg;
@@ -2464,6 +2470,10 @@ static int socket_input_worker(ioa_socket_handle s) {
       if (s->ssl) {
         s->bev = bufferevent_openssl_socket_new(s->e->event_base, s->fd, s->ssl, BUFFEREVENT_SSL_ACCEPTING,
                                                 TURN_BUFFEREVENTS_OPTIONS);
+        if (!s->bev) {
+          TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: bufferevent_openssl_socket_new failed\n", __FUNCTION__);
+          return -1;
+        }
         bufferevent_setcb(s->bev, socket_input_handler_bev, socket_output_handler_bev, eventcb_bev, s);
         bufferevent_setwatermark(s->bev, EV_READ | EV_WRITE, 0, BUFFEREVENT_HIGH_WATERMARK);
         bufferevent_enable(s->bev, EV_READ | EV_WRITE); /* Start reading. */
@@ -2477,6 +2487,10 @@ static int socket_input_worker(ioa_socket_handle s) {
                       s->st, s->sat);
       }
       s->bev = bufferevent_socket_new(s->e->event_base, s->fd, TURN_BUFFEREVENTS_OPTIONS);
+      if (!s->bev) {
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: bufferevent_socket_new failed\n", __FUNCTION__);
+        return -1;
+      }
       bufferevent_setcb(s->bev, socket_input_handler_bev, socket_output_handler_bev, eventcb_bev, s);
       bufferevent_setwatermark(s->bev, EV_READ | EV_WRITE, 0, BUFFEREVENT_HIGH_WATERMARK);
       bufferevent_enable(s->bev, EV_READ | EV_WRITE); /* Start reading. */
@@ -2501,6 +2515,10 @@ static int socket_input_worker(ioa_socket_handle s) {
       if (s->ssl) {
         s->bev = bufferevent_openssl_socket_new(s->e->event_base, s->fd, s->ssl, BUFFEREVENT_SSL_ACCEPTING,
                                                 TURN_BUFFEREVENTS_OPTIONS);
+        if (!s->bev) {
+          TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: bufferevent_openssl_socket_new failed\n", __FUNCTION__);
+          return -1;
+        }
         bufferevent_setcb(s->bev, socket_input_handler_bev, socket_output_handler_bev, eventcb_bev, s);
         bufferevent_setwatermark(s->bev, EV_READ | EV_WRITE, 0, BUFFEREVENT_HIGH_WATERMARK);
         bufferevent_enable(s->bev, EV_READ | EV_WRITE); /* Start reading. */
@@ -2530,6 +2548,10 @@ try_start:
   try_ok = 0;
 
   stun_buffer_list_elem *buf_elem = new_blist_elem(s->e);
+  if (!buf_elem) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: cannot allocate buffer\n", __FUNCTION__);
+    return -1;
+  }
   len = -1;
 
   if (s->bev) { /* TCP & TLS  & SCTP & SCTP/TLS */
@@ -3439,6 +3461,10 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
             }
 #endif
             s->bev = bufferevent_socket_new(s->e->event_base, s->fd, TURN_BUFFEREVENTS_OPTIONS);
+            if (!s->bev) {
+              TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: bufferevent_socket_new failed\n", __FUNCTION__);
+              return -1;
+            }
             bufferevent_setcb(s->bev, socket_input_handler_bev, socket_output_handler_bev, eventcb_bev, s);
             bufferevent_setwatermark(s->bev, EV_READ | EV_WRITE, 0, BUFFEREVENT_HIGH_WATERMARK);
             bufferevent_enable(s->bev, EV_READ | EV_WRITE); /* Start reading. */
@@ -3461,6 +3487,10 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
             } else {
               s->bev = bufferevent_openssl_socket_new(s->e->event_base, s->fd, s->ssl, BUFFEREVENT_SSL_OPEN,
                                                       TURN_BUFFEREVENTS_OPTIONS);
+            }
+            if (!s->bev) {
+              TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: bufferevent_openssl_socket_new failed\n", __FUNCTION__);
+              return -1;
             }
             bufferevent_setcb(s->bev, socket_input_handler_bev, socket_output_handler_bev, eventcb_bev, s);
             bufferevent_setwatermark(s->bev, EV_READ | EV_WRITE, 0, BUFFEREVENT_HIGH_WATERMARK);
@@ -3531,6 +3561,9 @@ void set_ioa_socket_tobeclosed(ioa_socket_handle s) {
  */
 ioa_network_buffer_handle ioa_network_buffer_allocate(ioa_engine_handle e) {
   stun_buffer_list_elem *buf_elem = new_blist_elem(e);
+  if (!buf_elem) {
+    return NULL;
+  }
   buf_elem->buf.len = 0;
   buf_elem->buf.offset = 0;
   buf_elem->buf.coffset = 0;
@@ -3890,6 +3923,10 @@ struct _super_memory {
 static void init_super_memory_region(super_memory_t *r) {
   if (r) {
     r->super_memory = (char **)malloc(sizeof(char *));
+    if (!r->super_memory) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: failure in call to malloc \n", __FUNCTION__);
+      return;
+    }
     r->super_memory[0] = (char *)calloc(1, TURN_SM_SIZE);
     r->sm_allocated = (size_t *)malloc(sizeof(size_t));
 
@@ -3963,9 +4000,26 @@ void *allocate_super_memory_region_func(super_memory_t *r, size_t size, const ch
 
     if (!region) {
       r->sm_chunk += 1;
-      r->super_memory = (char **)realloc(r->super_memory, (r->sm_chunk + 1) * sizeof(char *));
+      char **tmp = (char **)realloc(r->super_memory, (r->sm_chunk + 1) * sizeof(char *));
+      if (!tmp) {
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: failure in call to realloc \n", __FUNCTION__);
+        TURN_MUTEX_UNLOCK(&r->mutex_sm);
+        return calloc(1, size);
+      }
+      r->super_memory = tmp;
       r->super_memory[r->sm_chunk] = (char *)calloc(1, TURN_SM_SIZE);
-      r->sm_allocated = (size_t *)realloc(r->sm_allocated, (r->sm_chunk + 1) * sizeof(size_t));
+      if (!r->super_memory[r->sm_chunk]) {
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: failure in call to calloc \n", __FUNCTION__);
+        TURN_MUTEX_UNLOCK(&r->mutex_sm);
+        return calloc(1, size);
+      }
+      tmp = (size_t *)realloc(r->sm_allocated, (r->sm_chunk + 1) * sizeof(size_t));
+      if (!tmp) {
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: failure in call to realloc \n", __FUNCTION__);
+        TURN_MUTEX_UNLOCK(&r->mutex_sm);
+        return calloc(1, size);
+      }
+      r->sm_allocated = tmp;
       r->sm_allocated[r->sm_chunk] = 0;
       region = r->super_memory[r->sm_chunk];
       rsz = r->sm_allocated + r->sm_chunk;
