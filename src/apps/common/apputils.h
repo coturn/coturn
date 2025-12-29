@@ -227,7 +227,6 @@ struct event_base *turn_event_base_new(void);
 //////////// Random /////////////////////
 
 void turn_srandom(void);
-long turn_random(void);
 
 ///////////////////////////////////////////////////////
 

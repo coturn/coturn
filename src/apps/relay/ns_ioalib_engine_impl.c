@@ -459,7 +459,7 @@ ioa_engine_handle create_ioa_engine(super_memory_t *sm, struct event_base *eb, t
       }
       e->relays_number = relays_number;
     }
-    e->relay_addr_counter = (unsigned short)turn_random();
+    e->relay_addr_counter = (unsigned short)turn_random_number();
     timer_handler(e, e);
     e->timer_ev = set_ioa_timer(e, 1, 0, timer_handler, e, 1, "timer_handler");
     return e;
@@ -3904,7 +3904,7 @@ static void init_super_memory_region(super_memory_t *r) {
     r->sm_chunk = 0;
 
     while (r->id == 0) {
-      r->id = (uint32_t)turn_random();
+      r->id = (uint32_t)turn_random_number();
     }
 
     TURN_MUTEX_INIT(&r->mutex_sm);

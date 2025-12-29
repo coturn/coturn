@@ -703,10 +703,10 @@ static mobile_id_t get_new_mobile_id(turn_turnserver *server) {
       newid = 0;
       while (!newid) {
         if (TURN_RANDOM_SIZE == sizeof(mobile_id_t)) {
-          newid = (mobile_id_t)turn_random();
+          newid = (mobile_id_t)turn_random_number();
         } else {
-          newid = (mobile_id_t)turn_random();
-          newid = (newid << 32) + (mobile_id_t)turn_random();
+          newid = (mobile_id_t)turn_random_number();
+          newid = (newid << 32) + (mobile_id_t)turn_random_number();
         }
         if (!newid) {
           continue;
@@ -3298,13 +3298,13 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
       if (TURN_RANDOM_SIZE == 8) {
         for (i = 0; i < (NONCE_LENGTH_32BITS >> 1); i++) {
           uint8_t *s = ss->nonce + 8 * i;
-          const uint64_t rand = (uint64_t)turn_random();
+          const uint64_t rand = (uint64_t)turn_random_number();
           snprintf((char *)s, NONCE_MAX_SIZE - 8 * i, "%08lx", (unsigned long)rand);
         }
       } else {
         for (i = 0; i < NONCE_LENGTH_32BITS; i++) {
           uint8_t *s = ss->nonce + 4 * i;
-          const uint32_t rand = (uint32_t)turn_random();
+          const uint32_t rand = (uint32_t)turn_random_number();
           snprintf((char *)s, NONCE_MAX_SIZE - 4 * i, "%04x", (unsigned int)rand);
         }
       }

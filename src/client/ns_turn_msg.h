@@ -212,7 +212,6 @@ size_t get_hmackey_size(SHATYPE shatype);
  */
 
 #define TURN_RANDOM_SIZE (sizeof(long))
-long turn_random(void);
 long turn_random_number(void);
 
 bool stun_produce_integrity_key_str(const uint8_t *uname, const uint8_t *realm, const uint8_t *upwd, hmackey_t key,

@@ -1783,11 +1783,11 @@ static void generate_aes_128_key(char *filePath, unsigned char *returnedKey) {
 
 // generate two 64-bit random values
 #if LONG_MAX > 0xffffffff
-  uint64_t random_value_0 = (uint64_t)turn_random();
-  uint64_t random_value_1 = (uint64_t)turn_random();
+  uint64_t random_value_0 = (uint64_t)turn_random_number();
+  uint64_t random_value_1 = (uint64_t)turn_random_number();
 #else
-  uint64_t random_value_0 = (((uint64_t)turn_random()) << 32) | (uint64_t)turn_random();
-  uint64_t random_value_1 = (((uint64_t)turn_random()) << 32) | (uint64_t)turn_random();
+  uint64_t random_value_0 = (((uint64_t)turn_random_number()) << 32) | (uint64_t)turn_random_number();
+  uint64_t random_value_1 = (((uint64_t)turn_random_number()) << 32) | (uint64_t)turn_random_number();
 #endif
 
   for (size_t i = 0; i < 16; ++i) {

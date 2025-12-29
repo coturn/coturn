@@ -551,7 +551,7 @@ static void set_new_tc_id(uint8_t server_id, tcp_connection *tc) {
   uint32_t newid = 0;
   do {
     do {
-      newid = ((uint32_t)turn_random()) & 0x00FFFFFF;
+      newid = ((uint32_t)turn_random_number()) & 0x00FFFFFF;
     } while (!newid);
     newid = newid | sid;
   } while (ur_map_get(a->tcp_connections, (ur_map_key_type)newid, NULL));

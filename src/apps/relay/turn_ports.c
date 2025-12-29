@@ -94,8 +94,8 @@ static void turnports_randomize(turnports *tp) {
     unsigned int i = 0;
     const unsigned int cycles = size * 10;
     for (i = 0; i < cycles; i++) {
-      const uint16_t port1 = (uint16_t)(tp->low + (uint16_t)(((unsigned long)turn_random()) % ((unsigned long)size)));
-      const uint16_t port2 = (uint16_t)(tp->low + (uint16_t)(((unsigned long)turn_random()) % ((unsigned long)size)));
+      const uint16_t port1 = (uint16_t)(tp->low + (uint16_t)(((unsigned long)turn_random_number()) % ((unsigned long)size)));
+      const uint16_t port2 = (uint16_t)(tp->low + (uint16_t)(((unsigned long)turn_random_number()) % ((unsigned long)size)));
       if (port1 != port2) {
         const uint32_t pos1 = tp->status[port1];
         const uint32_t pos2 = tp->status[port2];
@@ -240,7 +240,7 @@ int turnports_allocate_even(turnports *tp, int allocate_rtcp, uint64_t *reservat
               uint32_t *v32 = (uint32_t *)reservation_token;
               v16[0] = (uint16_t)(tp->ports[(uint16_t)(tp->low & 0x0000FFFF)]);
               v16[1] = (uint16_t)(tp->ports[(uint16_t)(tp->high & 0x0000FFFF)]);
-              v32[1] = (uint32_t)turn_random();
+              v32[1] = (uint32_t)turn_random_number();
             }
             TURN_MUTEX_UNLOCK(&tp->mutex);
             return port;
