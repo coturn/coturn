@@ -146,7 +146,8 @@ static size_t print_packet_txt2pcap(uint64_t now, uint8_t *payload, size_t paylo
   uint32_t ms = dv.rem;
 
   size_t index = 0;
-  index = snprintf((char *)(txt2pcap + index), txt2pcap_length - index, "%02d:%02d:%02d.%03d", hours, minutes, seconds, ms);
+  index =
+      snprintf((char *)(txt2pcap + index), txt2pcap_length - index, "%02d:%02d:%02d.%03d", hours, minutes, seconds, ms);
   index += snprintf((char *)(txt2pcap + index), txt2pcap_length - index, " 0000");
 
   for (size_t i = 0; i < payload_length; i++) {
