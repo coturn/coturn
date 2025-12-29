@@ -2,7 +2,7 @@
 
 # Run it from the root of the coturn source tree
 
-V=4.7.0
+V=4.8.0
 
 PACKDIR=`pwd`/../coturn-releases/
 SRCDIR=`pwd`
