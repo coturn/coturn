@@ -145,11 +145,16 @@ static size_t print_packet_txt2pcap(uint64_t now, uint8_t *payload, size_t paylo
   uint32_t seconds = dv.quot;
   uint32_t ms = dv.rem;
 
-  size_t index = snprintf((char *)(txt2pcap + index), txt2pcap_length - index, "%02d:%02d:%02d.%03d", hours, minutes, seconds, ms);
+  size_t index =
+      snprintf((char *)(txt2pcap + index), txt2pcap_length - index, "%02d:%02d:%02d.%03d", hours, minutes, seconds, ms);
   index += snprintf((char *)(txt2pcap + index), txt2pcap_length - index, " 0000");
 
   for (size_t i = 0; i < payload_length; i++) {
-    index += snprintf((char *)(txt2pcap + index), txt2pcap_length - index, " %02x", payload[i]);
+    int n = snprintf((char *)(txt2pcap + index), txt2pcap_length - index, " %02x", payload[i]);
+    if (n < 0 || n >= txt2pcap_length - index) {
+      break;
+    }
+    index += n;
   }
   index += snprintf((char *)(txt2pcap + index), txt2pcap_length - index, " # STUN_PACKET ");
   return index;
