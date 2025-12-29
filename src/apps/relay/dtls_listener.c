@@ -64,7 +64,11 @@ typedef uint16_t in_port_t;
 
 #define MAX_SINGLE_UDP_BATCH (16)
 
+#if !defined(WINDOWS)
 _Thread_local uint32_t packetcounter = 0;
+#else
+static uint32_t packetcounter = 0;
+#endif
 
 struct dtls_listener_relay_server_info {
   char ifname[1025];
