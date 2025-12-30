@@ -94,8 +94,10 @@ static void turnports_randomize(turnports *tp) {
     unsigned int i = 0;
     const unsigned int cycles = size * 10;
     for (i = 0; i < cycles; i++) {
-      const uint16_t port1 = (uint16_t)(tp->low + (uint16_t)(((unsigned long)turn_random_number()) % ((unsigned long)size)));
-      const uint16_t port2 = (uint16_t)(tp->low + (uint16_t)(((unsigned long)turn_random_number()) % ((unsigned long)size)));
+      const uint16_t port1 =
+          (uint16_t)(tp->low + (uint16_t)(((unsigned long)turn_random_number()) % ((unsigned long)size)));
+      const uint16_t port2 =
+          (uint16_t)(tp->low + (uint16_t)(((unsigned long)turn_random_number()) % ((unsigned long)size)));
       if (port1 != port2) {
         const uint32_t pos1 = tp->status[port1];
         const uint32_t pos2 = tp->status[port2];
