@@ -1406,13 +1406,11 @@ void setup_admin_thread(void) {
 
     adminserver.listen_fd = socket(cli_addr.ss.sa_family, ADMIN_STREAM_SOCKET_TYPE, ADMIN_STREAM_SOCKET_PROTOCOL);
     if (adminserver.listen_fd < 0) {
-      perror("socket");
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open CLI socket\n");
       return;
     }
 
     if (addr_bind(adminserver.listen_fd, &cli_addr, 1, 1, TCP_SOCKET) < 0) {
-      perror("Cannot bind CLI socket to addr");
       char saddr[129];
       addr_to_string(&cli_addr, (uint8_t *)saddr);
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot bind CLI listener socket to addr %s\n", saddr);
