@@ -4,8 +4,12 @@ Coturn TURN server Docker image changelog
 
 
 
-## [edge]
-[edge]: /../../tree/master
+## [4.8.0-r0] · 2026-01-06
+[4.8.0-r0]: /../../tree/docker/4.8.0-r0
+
+### Upgraded
+
+- [Coturn] 4.8.0: <https://github.com/coturn/coturn/blob/4.8.0/ChangeLog>
 
 ### Security updated
 
