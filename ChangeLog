@@ -1,3 +1,57 @@
+Release 4.8.0
+
+Changelist:
+- Allow faster packet validation on listener threads (#1768) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix order of arguments to calloc (#1790) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix crashes while setting socket buffer size (#1789) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Implement configurable buffer sizes (#1780) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Update Alpine to 3.23.2 version in Docker image (tyranron <tyranron@gmail.com>)
+- Update Debian "trixie" to 20251208 snapshot in Docker image (tyranron <tyranron@gmail.com>)
+- Use bool to enable prometheus (#1779) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix memory leak using libevent (#1751) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Addressed possible null pointer dereferences (#1729) (redraincatching <99604494+redraincatching@users.noreply.github.com>)
+- Address possible null pointer dereferences (#1744) (redraincatching <99604494+redraincatching@users.noreply.github.com>)
+- Improve const correctness in coturn (#1424) (Michael Jones <jonesmz@users.noreply.github.com>)
+- Update attribute values according to RFC 8656 (#1748) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fixing missing dependencies in Makefile (#1739) (Jun Lyu <71107931+Meiye-lj@users.noreply.github.com>)
+- Add fuzzing to ci workflows (#1745) (redraincatching <99604494+redraincatching@users.noreply.github.com>)
+- mainreplay: fix leak in decrypt_aes_128() (#1737) (Lidong Yan <502024330056@smail.nju.edu.cn>)
+- Upgrade Debian to "trixie" in Docker image (tyranron <tyranron@gmail.com>)
+- Fix typo in Docker CI spec (tyranron <tyranron@gmail.com>)
+- Verify CHANGELOG date on Docker CI (tyranron <tyranron@gmail.com>)
+- Fix logging before parsing logging cmd line args (#1723) (Gustavo Garcia <gustavogb@gmail.com>)
+- Fix dead link in turnserver.spec Source0 field (#1722) (Copilot <198982749+Copilot@users.noreply.github.com>)
+- reduce calls to random (#1710) (redraincatching <99604494+redraincatching@users.noreply.github.com>)
+- Fix null pointer dereference in set_ssl_ctx function (#1720) (Gustavo Garcia <gustavogb@gmail.com>)
+- Add configurable CPU count option for containerized environments (#1717) (Copilot <198982749+Copilot@users.noreply.github.com>)
+- Fix memory and resource leaks in udp_create_server_socket( ) (#1714) (lhywk <lhywkd22@gmail.com>)
+- Add define to disable OAuth support (#1713) (Shane <ignignokterr@gmail.com>)
+- typo correction (#1715) (redraincatching <99604494+redraincatching@users.noreply.github.com>)
+- refactored tri-state to bools (#1709) (redraincatching <99604494+redraincatching@users.noreply.github.com>)
+- addressed null pointer deref warnings (#1712) (redraincatching <99604494+redraincatching@users.noreply.github.com>)
+- removed unnecessary null check (#1706) (redraincatching <99604494+redraincatching@users.noreply.github.com>)
+- Fix compiler warnings in source files (#1704) (Gustavo Garcia <gustavogb@gmail.com>)
+- Revert random number generation (Pavel Punsky <eakraly@users.noreply.github.com>)
+- guarantee no oob write in strncat (#1702) (redraincatching <99604494+redraincatching@users.noreply.github.com>)
+- Fix issues with Global Allocation Count for drain mode (#1699) (Scott Godin <sgodin@sipspectrum.com>)
+- fix: comment out verbose mode by default (#1696) (Amin Farjadi <31803062+amin-farjadi@users.noreply.github.com>)
+
+Contributors:
+- Amin Farjadi <31803062+amin-farjadi@users.noreply.github.com>
+- Copilot <198982749+Copilot@users.noreply.github.com>
+- dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+- Gustavo Garcia <gustavogb@gmail.com>
+- Jun Lyu <71107931+Meiye-lj@users.noreply.github.com>
+- Kai Ren <tyranron@gmail.com>
+- lhywk <lhywkd22@gmail.com>
+- Lidong Yan <502024330056@smail.nju.edu.cn>
+- Michael Jones <jonesmz@users.noreply.github.com>
+- Pavel Punsky <eakraly@users.noreply.github.com>
+- redraincatching <99604494+redraincatching@users.noreply.github.com>
+- Scott Godin <sgodin@sipspectrum.com>
+- Shane <ignignokterr@gmail.com>
+- tyranron <tyranron@gmail.com>
+
 Release 4.7.0
 
 Changelist:
