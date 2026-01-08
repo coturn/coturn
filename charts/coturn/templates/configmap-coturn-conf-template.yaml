@@ -22,9 +22,9 @@ data:
 
     # Certificate authority validation
     {{- if .Values.ca.enabled }}
-    {{- if .Values.ca.secretRef }}
+    {{- if or .Values.ca.secretRef .Values.ca.cert }}
     # Custom CA bundle from Kubernetes Secret
-    CA-file=/secrets-ca/{{ .Values.ca.secretKey }}
+    CA-file=/secrets-ca/{{ .Values.ca.secretKey | default "ca-certificates.crt" }}
     {{- else }}
     # CA validation explicitly disabled
     {{- end }}

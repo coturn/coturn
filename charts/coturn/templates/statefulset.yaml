@@ -68,10 +68,10 @@ spec:
           secret:
             secretName: coturn-dtls-certificate
         {{- end }}
-        {{- if and .Values.ca.enabled .Values.ca.secretRef }}
+        {{- if and .Values.ca.enabled (or .Values.ca.secretRef .Values.ca.cert) }}
         - name: secrets-ca
           secret:
-            secretName: {{ .Values.ca.secretRef }}
+            secretName: {{ .Values.ca.secretRef | default "coturn-ca-certificate" }}
         {{- end }}
         {{- if .Values.ratelimit.allowlist }}
         - name: allowlist-volume
@@ -165,7 +165,7 @@ spec:
               mountPath: /coturn-dtls-certificate/
               readOnly: true
           {{- end }}
-          {{- if and .Values.ca.enabled .Values.ca.secretRef }}
+          {{- if and .Values.ca.enabled (or .Values.ca.secretRef .Values.ca.cert) }}
             - name: secrets-ca
               mountPath: /secrets-ca/
               readOnly: true
