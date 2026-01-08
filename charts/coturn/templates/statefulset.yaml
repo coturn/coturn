@@ -28,6 +28,10 @@ spec:
         {{- end }}
         checksum/configmap-coturn: {{ include (print .Template.BasePath "/configmap-coturn-conf-template.yaml") . | sha256sum }}
         checksum/secret: {{ include (print .Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- if and .Values.ca.enabled .Values.ca.cert }}
+        checksum/secret-ca: {{ include (print .Template.BasePath "/secret-ca-certificate.yaml") . | sha256sum }}
+        {{- end }}
+        checksum/ca-config: {{ printf "%v-%v-%v" .Values.ca.enabled .Values.ca.secretRef .Values.ca.secretKey | sha256sum }}
         {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
