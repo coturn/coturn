@@ -28,6 +28,10 @@ spec:
         {{- end }}
         checksum/configmap-coturn: {{ include (print .Template.BasePath "/configmap-coturn-conf-template.yaml") . | sha256sum }}
         checksum/secret: {{ include (print .Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- if and .Values.ca.enabled .Values.ca.cert }}
+        checksum/secret-ca: {{ include (print .Template.BasePath "/secret-ca-certificate.yaml") . | sha256sum }}
+        {{- end }}
+        checksum/ca-config: {{ printf "%v-%v-%v" .Values.ca.enabled .Values.ca.secretRef .Values.ca.secretKey | sha256sum }}
         {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -67,6 +71,11 @@ spec:
         - name: coturn-dtls-certificate
           secret:
             secretName: coturn-dtls-certificate
+        {{- end }}
+        {{- if and .Values.ca.enabled (or .Values.ca.secretRef .Values.ca.cert) }}
+        - name: secrets-ca
+          secret:
+            secretName: {{ .Values.ca.secretRef | default "coturn-ca-certificate" }}
         {{- end }}
         {{- if .Values.ratelimit.allowlist }}
         - name: allowlist-volume
@@ -158,6 +167,11 @@ spec:
           {{- if .Values.federate.dtls.enabled }}
             - name: coturn-dtls-certificate
               mountPath: /coturn-dtls-certificate/
+              readOnly: true
+          {{- end }}
+          {{- if and .Values.ca.enabled (or .Values.ca.secretRef .Values.ca.cert) }}
+            - name: secrets-ca
+              mountPath: /secrets-ca/
               readOnly: true
           {{- end }}
           {{- if .Values.ratelimit.allowlist }}

@@ -58,6 +58,39 @@ tls:
     pullPolicy: IfNotPresent
     tag: 72c3c8434660bd157d42012b0bcd67f338fc5c7a
 
+# CA certificate bundle configuration
+# Controls certificate authority validation for coturn
+ca:
+  # When disabled: Uses system CA bundle at /etc/ssl/certs/ca-certificates.crt (default behavior)
+  # When enabled with secretRef OR cert: Uses custom CA bundle
+  # When enabled without secretRef or cert: Disables CA validation entirely (not recommended for production)
+  enabled: false
+
+  # Option 1: Reference to an existing Kubernetes Secret containing the CA bundle
+  # The secret must contain a key (default: ca-certificates.crt) with the CA bundle in PEM format
+  #
+  # Example: Create a secret with your CA bundle:
+  #   kubectl create secret generic my-ca-bundle --from-file=ca-certificates.crt=/path/to/bundle.pem
+  #
+  # Then reference it here:
+  #   secretRef: my-ca-bundle
+  #   secretKey: ca-certificates.crt
+  secretRef:
+
+  # The key within the secret that contains the CA bundle (default: ca-certificates.crt)
+  # Only used when secretRef is set
+  secretKey: ca-certificates.crt
+
+  # Option 2: Inline CA certificate bundle (PEM format)
+  # Mutually exclusive with secretRef - use one or the other, not both
+  #
+  # Example:
+  #   cert: |
+  #     -----BEGIN CERTIFICATE-----
+  #     MIIDXTCCAkWgAwIBAgIJAKJ...
+  #     -----END CERTIFICATE-----
+  cert:
+
 config:
   verboseLogging: false
 

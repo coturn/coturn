@@ -20,8 +20,18 @@ data:
     no-tls
     {{- end }}
 
-    # This is mandatory for federated DTLS
+    # Certificate authority validation
+    {{- if .Values.ca.enabled }}
+    {{- if or .Values.ca.secretRef .Values.ca.cert }}
+    # Custom CA bundle from Kubernetes Secret
+    CA-file=/secrets-ca/{{ .Values.ca.secretKey | default "ca-certificates.crt" }}
+    {{- else }}
+    # CA validation explicitly disabled
+    {{- end }}
+    {{- else }}
+    # Default system CA bundle
     CA-file=/etc/ssl/certs/ca-certificates.crt
+    {{- end }}
 
     ## don't turn on coturn's cli.
     no-cli
