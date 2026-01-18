@@ -1326,7 +1326,7 @@ static const turn_dbdriver_t driver = {
     &mysql_list_realm_options, &mysql_auth_ping,      &mysql_get_ip_list,    &mysql_set_permission_ip,
     &mysql_reread_realms,      &mysql_set_oauth_key,  &mysql_get_oauth_key,  &mysql_del_oauth_key,
     &mysql_list_oauth_keys,    &mysql_get_admin_user, &mysql_set_admin_user, &mysql_del_admin_user,
-    &mysql_list_admin_users,   &mysql_disconnect};
+    &mysql_list_admin_users,   &mysql_disconnect, NULL};
 
 const turn_dbdriver_t *get_mysql_dbdriver(void) { return &driver; }
 

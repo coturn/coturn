@@ -1383,7 +1383,7 @@ static const turn_dbdriver_t driver = {
     &mongo_list_realm_options, &mongo_auth_ping,      &mongo_get_ip_list,    &mongo_set_permission_ip,
     &mongo_reread_realms,      &mongo_set_oauth_key,  &mongo_get_oauth_key,  &mongo_del_oauth_key,
     &mongo_list_oauth_keys,    &mongo_get_admin_user, &mongo_set_admin_user, &mongo_del_admin_user,
-    &mongo_list_admin_users,   &mongo_disconnect};
+    &mongo_list_admin_users,   &mongo_disconnect, NULL};
 
 const turn_dbdriver_t *get_mongo_dbdriver(void) { return &driver; }
 
