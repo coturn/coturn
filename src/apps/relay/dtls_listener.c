@@ -505,7 +505,6 @@ static int create_new_connected_udp_socket(dtls_listener_relay_server_type *serv
 
   evutil_socket_t udp_fd = socket(s->local_addr.ss.sa_family, CLIENT_DGRAM_SOCKET_TYPE, CLIENT_DGRAM_SOCKET_PROTOCOL);
   if (udp_fd < 0) {
-    perror("socket");
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Cannot allocate new socket\n", __FUNCTION__);
     return -1;
   }
@@ -731,7 +730,6 @@ start_udp_cycle:
   if (bsize < 0) {
     if (!to_block && !conn_reset) {
       const int ern = socket_errno();
-      perror(__FUNCTION__);
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: recvfrom error %d\n", __FUNCTION__, ern);
     }
     ioa_network_buffer_delete(server->e, server->sm.m.sm.nd.nbh);
@@ -822,7 +820,7 @@ static int create_server_socket(dtls_listener_relay_server_type *server, int rep
 
     udp_listen_fd = socket(server->addr.ss.sa_family, CLIENT_DGRAM_SOCKET_TYPE, CLIENT_DGRAM_SOCKET_PROTOCOL);
     if (udp_listen_fd < 0) {
-      perror("socket");
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "socket");
       return -1;
     }
 
@@ -844,7 +842,6 @@ static int create_server_socket(dtls_listener_relay_server_type *server, int rep
     retry_addr_bind:
 
       if (addr_bind(udp_listen_fd, &server->addr, 1, 1, UDP_SOCKET) < 0) {
-        perror("Cannot bind local socket to addr");
         char saddr[129];
         addr_to_string(&server->addr, (uint8_t *)saddr);
         TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Cannot bind DTLS/UDP listener socket to addr %s\n", saddr);
@@ -904,7 +901,7 @@ static int reopen_server_socket(dtls_listener_relay_server_type *server, evutil_
     const ioa_socket_raw udp_listen_fd =
         socket(server->addr.ss.sa_family, CLIENT_DGRAM_SOCKET_TYPE, CLIENT_DGRAM_SOCKET_PROTOCOL);
     if (udp_listen_fd < 0) {
-      perror("socket");
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "socket");
       FUNCEND;
       return -1;
     }
@@ -921,7 +918,6 @@ static int reopen_server_socket(dtls_listener_relay_server_type *server, evutil_
     }
 
     if (addr_bind(udp_listen_fd, &server->addr, 1, 1, UDP_SOCKET) < 0) {
-      perror("Cannot bind local socket to addr");
       char saddr[129];
       addr_to_string(&server->addr, (uint8_t *)saddr);
       TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Cannot bind listener socket to addr %s\n", saddr);

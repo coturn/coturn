@@ -95,8 +95,7 @@ static void barrier_wait_func(const char *func, int line) {
     br = pthread_barrier_wait(&barrier);
     if ((br < 0) && (br != PTHREAD_BARRIER_SERIAL_THREAD)) {
       const int err = socket_errno();
-      perror("barrier wait");
-      printf("%s:%s:%d: %d\n", __FUNCTION__, func, line, err);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s:%s:%d: %d\n", __FUNCTION__, func, line, err);
     }
   } while (((br < 0) && (br != PTHREAD_BARRIER_SERIAL_THREAD)) && socket_eintr());
 #else
@@ -784,7 +783,7 @@ static int handle_relay_message(relay_server_handle rs, struct message_to_relay 
       break;
     }
     default: {
-      perror("Weird buffer type\n");
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Weird buffer type\n");
     }
     }
   }
@@ -810,7 +809,7 @@ static void relay_receive_message(struct bufferevent *bev, void *ptr) {
   while ((n = evbuffer_remove(input, &sm, sizeof(struct message_to_relay))) > 0) {
 
     if (n != sizeof(struct message_to_relay)) {
-      perror("Weird buffer error\n");
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Weird buffer error\n");
       continue;
     }
 
@@ -827,7 +826,7 @@ static void relay_receive_auth_message(struct bufferevent *bev, void *ptr) {
   while ((n = evbuffer_remove(input, &am, sizeof(struct auth_message))) > 0) {
 
     if (n != sizeof(struct auth_message)) {
-      perror("Weird auth_buffer error\n");
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Weird auth_buffer error\n");
       continue;
     }
 
@@ -863,12 +862,12 @@ static void listener_receive_message(struct bufferevent *bev, void *ptr) {
 
   while ((n = evbuffer_remove(input, &mm, sizeof(struct message_to_listener))) > 0) {
     if (n != sizeof(struct message_to_listener)) {
-      perror("Weird buffer error\n");
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Weird buffer error\n");
       continue;
     }
 
     if (mm.t != LMT_TO_CLIENT) {
-      perror("Weird buffer type\n");
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Weird buffer type\n");
       continue;
     }
 
@@ -1068,7 +1067,7 @@ static void setup_barriers(void) {
 #if !defined(TURN_NO_THREAD_BARRIERS)
   {
     if (pthread_barrier_init(&barrier, NULL, barrier_count) != 0) {
-      perror("barrier init");
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "barrier init");
     }
   }
 
@@ -1163,7 +1162,7 @@ static void setup_socket_per_endpoint_udp_listener_servers(void) {
         ++udp_relay_server_index;
         pthread_t thr;
         if (pthread_create(&thr, NULL, run_udp_listener_thread, turn_params.listener.aux_udp_services[index][0])) {
-          perror("Cannot create aux listener thread\n");
+          TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create aux listener thread\n");
           exit(-1);
         }
         pthread_detach(thr);
@@ -1190,7 +1189,7 @@ static void setup_socket_per_endpoint_udp_listener_servers(void) {
         ++udp_relay_server_index;
         pthread_t thr;
         if (pthread_create(&thr, NULL, run_udp_listener_thread, turn_params.listener.udp_services[index][0])) {
-          perror("Cannot create listener thread\n");
+          TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create listener thread\n");
           exit(-1);
         }
         pthread_detach(thr);
@@ -1209,7 +1208,7 @@ static void setup_socket_per_endpoint_udp_listener_servers(void) {
           ++udp_relay_server_index;
           pthread_t thr;
           if (pthread_create(&thr, NULL, run_udp_listener_thread, turn_params.listener.udp_services[index + 1][0])) {
-            perror("Cannot create listener thread\n");
+            TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create listener thread\n");
             exit(-1);
           }
           pthread_detach(thr);
@@ -1234,7 +1233,7 @@ static void setup_socket_per_endpoint_udp_listener_servers(void) {
         ++udp_relay_server_index;
         pthread_t thr;
         if (pthread_create(&thr, NULL, run_udp_listener_thread, turn_params.listener.dtls_services[index][0])) {
-          perror("Cannot create listener thread\n");
+          TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create listener thread\n");
           exit(-1);
         }
         pthread_detach(thr);
@@ -1254,7 +1253,7 @@ static void setup_socket_per_endpoint_udp_listener_servers(void) {
           ++udp_relay_server_index;
           pthread_t thr;
           if (pthread_create(&thr, NULL, run_udp_listener_thread, turn_params.listener.dtls_services[index + 1][0])) {
-            perror("Cannot create listener thread\n");
+            TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create listener thread\n");
             exit(-1);
           }
           pthread_detach(thr);
@@ -1737,7 +1736,7 @@ static void setup_general_relay_servers(void) {
       general_relay_servers[i]->id = (turnserver_id)i;
       general_relay_servers[i]->sm = sm;
       if (pthread_create(&(general_relay_servers[i]->thr), NULL, run_general_relay_thread, general_relay_servers[i])) {
-        perror("Cannot create relay thread\n");
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create relay thread\n");
         exit(-1);
       }
       pthread_detach(general_relay_servers[i]->thr);
@@ -1808,7 +1807,7 @@ static void setup_auth_server(struct auth_server *as) {
   pthread_attr_t attr;
   if (pthread_attr_init(&attr) || pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED) ||
       pthread_create(&(as->thr), &attr, run_auth_server_thread, as)) {
-    perror("Cannot create auth thread\n");
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create auth thread\n");
     exit(-1);
   }
 }
@@ -1833,7 +1832,7 @@ static void setup_admin_server(void) {
   adminserver.verbose = turn_params.verbose;
 
   if (pthread_create(&(adminserver.thr), NULL, run_admin_server_thread, &adminserver)) {
-    perror("Cannot create cli thread\n");
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create cli thread\n");
     exit(-1);
   }
 
