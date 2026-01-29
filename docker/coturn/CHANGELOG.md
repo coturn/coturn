@@ -4,11 +4,12 @@ Coturn TURN server Docker image changelog
 
 
 
-## [edge]
-[edge]: /../../tree/master
+## [4.8.0-r1] · 2026-01-29
+[4.8.0-r1]: /../../tree/docker/4.8.0-r1
 
 ### Security updated
 
+- [Alpine Linux] 3.23.3: <https://github.com/docker-library/official-images/commit/11469a99b55a9b5b057d64c583f531417dd1f6c5>
 - [Debian Linux] "trixie" 20260112 (13.3): <https://github.com/docker-library/official-images/commit/054c2b9bf3a057eafd9deb35b7a8d523202f20a2>
 
 
