@@ -4127,12 +4127,13 @@ static int write_to_peerchannel(ts_ur_super_session *ss, uint16_t chnum, ioa_net
       ioa_network_buffer_header_init(nbh);
 
       int skip = 0;
+      uint32_t bytes = (uint32_t)ioa_network_buffer_get_size(in_buffer->nbh);
       rc = send_data_from_ioa_socket_nbh(get_relay_socket_ss(ss, chn->peer_addr.ss.sa_family), &(chn->peer_addr), nbh,
                                          in_buffer->recv_ttl - 1, in_buffer->recv_tos, &skip);
 
       if (!skip && rc > -1) {
         ++(ss->peer_sent_packets);
-        ss->peer_sent_bytes += (uint32_t)ioa_network_buffer_get_size(in_buffer->nbh);
+        ss->peer_sent_bytes += bytes;
         turn_report_session_usage(ss, 0);
       }
 
@@ -4297,12 +4298,12 @@ static int write_client_connection(turn_turnserver *server, ts_ur_super_session 
     }
 
     int skip = 0;
-    size_t bsiz = ioa_network_buffer_get_size(nbh);
+    uint32_t bytes = (uint32_t)ioa_network_buffer_get_size(nbh);
     int ret = send_data_from_ioa_socket_nbh(ss->client_socket, NULL, nbh, ttl, tos, &skip);
 
     if (!skip && ret > -1) {
       ++(ss->sent_packets);
-      ss->sent_bytes += (uint32_t)bsiz;
+      ss->sent_bytes += bytes;
       turn_report_session_usage(ss, 0);
     }
 
