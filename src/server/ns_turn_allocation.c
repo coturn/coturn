@@ -297,8 +297,8 @@ void turn_channel_delete(ch_info *chn) {
     return;
   }
 
-  const int port = addr_get_port(&(chn->peer_addr));
-  if (port < 1) {
+  const uint16_t port = addr_get_port(&(chn->peer_addr));
+  if (port == 0) {
     char s[129];
     addr_to_string(&(chn->peer_addr), (uint8_t *)s);
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s: strange (1) channel to be cleaned: port is empty: %s\n", __FUNCTION__,
