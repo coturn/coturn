@@ -1310,8 +1310,10 @@ static int redis_get_admin_user(const uint8_t *usname, uint8_t *realm, password_
           if (kw) {
             if (!strcmp(kw, "realm")) {
               strncpy((char *)realm, val, STUN_MAX_REALM_SIZE);
+              realm[STUN_MAX_REALM_SIZE] = '\0';
             } else if (!strcmp(kw, "password")) {
               strncpy((char *)pwd, val, STUN_MAX_PWD_SIZE);
+              pwd[STUN_MAX_PWD_SIZE] = '\0';
               ret = 0;
             }
           }
