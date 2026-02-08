@@ -1843,20 +1843,23 @@ int decodedTextSize(char *input) {
 void decrypt_aes_128(char *in, const unsigned char *mykey) {
   unsigned char iv[8] = {0};
   AES_KEY key;
-  unsigned char outdata[256] = {0};
   AES_set_encrypt_key(mykey, 128, &key);
-  const int newTotalSize = decodedTextSize(in);
+  int newTotalSize = decodedTextSize(in);
   const int bytes_to_decode = strlen(in);
   unsigned char *encryptedText = base64decode(in, bytes_to_decode);
   char last[1024] = "";
   struct ctr_state state;
   init_ctr(&state, iv);
 
-  CRYPTO_ctr128_encrypt(encryptedText, outdata, newTotalSize, &key, state.ivec, state.ecount, &state.num,
+  if (newTotalSize > (int)(sizeof(last) - 1)) {
+    newTotalSize = sizeof(last) - 1;
+  }
+
+  CRYPTO_ctr128_encrypt(encryptedText, (unsigned char *)last, newTotalSize, &key, state.ivec, state.ecount, &state.num,
                         (block128_f)AES_encrypt);
 
   free(encryptedText);
-  strcat(last, (char *)outdata);
+  last[newTotalSize] = '\0';
   printf("%s\n", last);
 }
 
