@@ -883,10 +883,12 @@ static int pgsql_get_admin_user(const uint8_t *usname, uint8_t *realm, password_
       const char *kval = PQgetvalue(res, 0, 0);
       if (kval) {
         strncpy((char *)realm, kval, STUN_MAX_REALM_SIZE);
+        realm[STUN_MAX_REALM_SIZE] = '\0';
       }
       kval = (const char *)PQgetvalue(res, 0, 1);
       if (kval) {
         strncpy((char *)pwd, kval, STUN_MAX_PWD_SIZE);
+        pwd[STUN_MAX_PWD_SIZE] = '\0';
       }
       ret = 0;
     }
