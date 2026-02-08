@@ -75,9 +75,15 @@ static void write_http_echo(ioa_socket_handle s) {
 
       ioa_network_buffer_handle nbh_http = ioa_network_buffer_allocate(s->e);
       char *data = (char *)ioa_network_buffer_data(nbh_http);
-
-      strcpy(data, data_http);
-      ioa_network_buffer_set_size(nbh_http, strlen(data_http));
+      size_t cap = ioa_network_buffer_get_capacity(nbh_http);
+      size_t len = strlen(data_http) + 1;
+      if (len > cap)
+        len = cap;
+      if (len > 0) {
+        memcpy(data, data_http, len);
+        data[len - 1] = '\0';
+      }
+      ioa_network_buffer_set_size(nbh_http, len > 0 ? len - 1 : 0);
       send_data_from_ioa_socket_nbh(s, NULL, nbh_http, TTL_IGNORE, TOS_IGNORE, NULL);
     }
   }
