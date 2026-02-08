@@ -1234,10 +1234,12 @@ static int mongo_get_admin_user(const uint8_t *usname, uint8_t *realm, password_
     if (mongoc_cursor_next(cursor, &item)) {
       if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "realm") && BSON_ITER_HOLDS_UTF8(&iter)) {
         strncpy((char *)realm, bson_iter_utf8(&iter, &length), STUN_MAX_REALM_SIZE);
+        realm[STUN_MAX_REALM_SIZE] = '\0';
         ret = 0;
       }
       if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "password") && BSON_ITER_HOLDS_UTF8(&iter)) {
         strncpy((char *)pwd, bson_iter_utf8(&iter, &length), STUN_MAX_PWD_SIZE);
+        pwd[STUN_MAX_PWD_SIZE] = '\0';
         ret = 0;
       }
     }
