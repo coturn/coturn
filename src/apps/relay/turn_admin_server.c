@@ -3335,7 +3335,7 @@ static void handle_logon_request(ioa_socket_handle s, struct http_request *hr) {
         password_t password;
         char realm[STUN_MAX_REALM_SIZE + 1] = "\0";
         if ((*(dbd->get_admin_user))((const uint8_t *)uname, (uint8_t *)realm, password) >= 0) {
-          if (!check_password_equal(pwd, (char *)password)) {
+          if (check_password_equal(pwd, (char *)password)) {
             STRCPY(as->as_login, uname);
             STRCPY(as->as_realm, realm);
             as->as_eff_realm[0] = 0;
