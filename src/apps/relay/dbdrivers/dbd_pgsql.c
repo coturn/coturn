@@ -995,7 +995,7 @@ static const turn_dbdriver_t driver = {
     &pgsql_list_realm_options, &pgsql_auth_ping,      &pgsql_get_ip_list,    &pgsql_set_permission_ip,
     &pgsql_reread_realms,      &pgsql_set_oauth_key,  &pgsql_get_oauth_key,  &pgsql_del_oauth_key,
     &pgsql_list_oauth_keys,    &pgsql_get_admin_user, &pgsql_set_admin_user, &pgsql_del_admin_user,
-    &pgsql_list_admin_users,   &pgsql_disconnect};
+    &pgsql_list_admin_users,   &pgsql_disconnect, NULL};
 
 const turn_dbdriver_t *get_pgsql_dbdriver(void) { return &driver; }
 
