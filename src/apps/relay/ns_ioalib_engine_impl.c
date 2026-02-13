@@ -62,7 +62,6 @@
 #include TURN_SCTP_INCLUDE
 #endif
 
-// issue #1793
 #include "dbdrivers/dbdriver.h"
 
 /* Compilation test:
