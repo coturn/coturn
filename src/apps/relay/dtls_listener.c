@@ -962,9 +962,9 @@ static int dtls_verify_callback(int ok, X509_STORE_CTX *ctx) {
 
 #endif
 
-static int init_server(dtls_listener_relay_server_type *server, const char *ifname, const char *local_address, int port,
-                       int sock_buf_size, int verbose, ioa_engine_handle e, turn_turnserver *ts, int report_creation,
-                       ioa_engine_new_connection_event_handler send_socket) {
+static int init_server(dtls_listener_relay_server_type *server, const char *ifname, const char *local_address,
+                       uint16_t port, int sock_buf_size, int verbose, ioa_engine_handle e, turn_turnserver *ts,
+                       int report_creation, ioa_engine_new_connection_event_handler send_socket) {
 
   if (!server) {
     return -1;
@@ -1018,9 +1018,10 @@ void setup_dtls_callbacks(SSL_CTX *ctx) {
 }
 #endif
 
-dtls_listener_relay_server_type *create_dtls_listener_server(const char *ifname, const char *local_address, int port,
-                                                             int sock_buf_size, int verbose, ioa_engine_handle e,
-                                                             turn_turnserver *ts, int report_creation,
+dtls_listener_relay_server_type *create_dtls_listener_server(const char *ifname, const char *local_address,
+                                                             uint16_t port, int sock_buf_size, int verbose,
+                                                             ioa_engine_handle e, turn_turnserver *ts,
+                                                             int report_creation,
                                                              ioa_engine_new_connection_event_handler send_socket) {
 
   dtls_listener_relay_server_type *server =

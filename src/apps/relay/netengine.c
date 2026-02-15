@@ -207,7 +207,7 @@ void add_aux_server(const char *saddr) { add_aux_server_list(saddr, &turn_params
 
 /////////////// ALTERNATE SERVERS ////////////////
 
-static void add_alt_server(const char *saddr, int default_port, turn_server_addrs_list_t *list) {
+static void add_alt_server(const char *saddr, uint16_t default_port, turn_server_addrs_list_t *list) {
   if (saddr && list) {
     ioa_addr addr;
 
@@ -229,7 +229,7 @@ static void add_alt_server(const char *saddr, int default_port, turn_server_addr
   }
 }
 
-static void del_alt_server(const char *saddr, int default_port, turn_server_addrs_list_t *list) {
+static void del_alt_server(const char *saddr, uint16_t default_port, turn_server_addrs_list_t *list) {
   if (saddr && list && list->size && list->addrs) {
 
     ioa_addr addr;
@@ -891,7 +891,7 @@ static void listener_receive_message(struct bufferevent *bev, void *ptr) {
     int found = 0;
     for (i = 0; i < turn_params.listener.addrs_number; i++) {
       if (addr_eq_no_port(turn_params.listener.encaddrs[i], &mm.m.tc.origin)) {
-        const int o_port = addr_get_port(&mm.m.tc.origin);
+        const uint16_t o_port = addr_get_port(&mm.m.tc.origin);
         if (turn_params.listener.addrs_number == turn_params.listener.services_number) {
           if (o_port == turn_params.listener_port) {
             if (turn_params.listener.udp_services && turn_params.listener.udp_services[i] &&
@@ -901,7 +901,7 @@ static void listener_receive_message(struct bufferevent *bev, void *ptr) {
                                &mm.m.tc.destination);
             }
           } else {
-            TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Wrong origin port(1): %d\n", __FUNCTION__, o_port);
+            TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Wrong origin port(1): %hu\n", __FUNCTION__, o_port);
           }
         } else if ((turn_params.listener.addrs_number * 2) == turn_params.listener.services_number) {
           if (o_port == turn_params.listener_port) {
@@ -919,7 +919,7 @@ static void listener_receive_message(struct bufferevent *bev, void *ptr) {
                                &mm.m.tc.destination);
             }
           } else {
-            TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Wrong origin port(2): %d\n", __FUNCTION__, o_port);
+            TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Wrong origin port(2): %hu\n", __FUNCTION__, o_port);
           }
         } else {
           TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Wrong listener setup\n", __FUNCTION__);
@@ -1149,7 +1149,7 @@ static void setup_socket_per_endpoint_udp_listener_servers(void) {
       ioa_addr addr;
       char saddr[129];
       addr_cpy(&addr, &turn_params.aux_servers_list.addrs[i]);
-      const int port = (int)addr_get_port(&addr);
+      const uint16_t port = addr_get_port(&addr);
       addr_to_string_no_port(&addr, (uint8_t *)saddr);
 
       turn_params.listener.aux_udp_services[index] = (dtls_listener_relay_server_type **)allocate_super_memory_engine(
@@ -1291,7 +1291,7 @@ static void setup_socket_per_thread_udp_listener_servers(void) {
       ioa_addr addr;
       char saddr[129];
       addr_cpy(&addr, &turn_params.aux_servers_list.addrs[i]);
-      const int port = (int)addr_get_port(&addr);
+      const uint16_t port = addr_get_port(&addr);
       addr_to_string_no_port(&addr, (uint8_t *)saddr);
 
       turn_params.listener.aux_udp_services[index] = (dtls_listener_relay_server_type **)allocate_super_memory_engine(
@@ -1394,7 +1394,7 @@ static void setup_socket_per_session_udp_listener_servers(void) {
       ioa_addr addr;
       char saddr[129];
       addr_cpy(&addr, &turn_params.aux_servers_list.addrs[i]);
-      const int port = (int)addr_get_port(&addr);
+      const uint16_t port = addr_get_port(&addr);
       addr_to_string_no_port(&addr, (uint8_t *)saddr);
 
       turn_params.listener.aux_udp_services[index] = (dtls_listener_relay_server_type **)allocate_super_memory_engine(
@@ -1489,7 +1489,7 @@ static void setup_tcp_listener_servers(ioa_engine_handle e, struct relay_server 
       ioa_addr addr;
       char saddr[129];
       addr_cpy(&addr, &turn_params.aux_servers_list.addrs[i]);
-      const int port = (int)addr_get_port(&addr);
+      const uint16_t port = addr_get_port(&addr);
       addr_to_string_no_port(&addr, (uint8_t *)saddr);
 
       aux_tcp_services[i] = create_tls_listener_server(turn_params.listener_ifname, saddr, port, turn_params.verbose, e,
@@ -1546,8 +1546,8 @@ static int get_alt_addr(ioa_addr *addr, ioa_addr *alt_addr) {
   } else {
     size_t index = 0xffff;
     size_t i = 0;
-    int alt_port = -1;
-    const int port = addr_get_port(addr);
+    uint16_t alt_port = 0;
+    const uint16_t port = addr_get_port(addr);
 
     if (port == turn_params.listener_port) {
       alt_port = get_alt_listener_port();
