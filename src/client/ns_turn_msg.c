@@ -95,7 +95,11 @@ int stun_method_str(uint16_t method, char *smethod) {
   };
 
   if (smethod) {
-    strcpy(smethod, s);
+    /* Longest method string is "CONNECTION_ATTEMPT" (20 chars). Use bounded copy. */
+#define STUN_METHOD_STR_MAX 32
+    strncpy(smethod, s, STUN_METHOD_STR_MAX - 1);
+    smethod[STUN_METHOD_STR_MAX - 1] = '\0';
+#undef STUN_METHOD_STR_MAX
   }
 
   return ret;
