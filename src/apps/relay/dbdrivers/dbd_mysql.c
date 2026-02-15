@@ -113,9 +113,22 @@ char *decryptPassword(char *in, const unsigned char *mykey) {
   CRYPTO_ctr128_encrypt(encryptedText, outdata, newTotalSize, &key, state.ivec, state.ecount, &state.num,
                         (block128_f)AES_encrypt);
 
-  strcat(last, (char *)outdata);
-  out = (char *)malloc(sizeof(char) * (strlen(last) + 1)); // add 1 to allocate space for terminating '\0'
-  strcpy(out, last);
+  {
+    size_t len = strlen(last);
+    size_t rem = sizeof(last) - len - 1;
+    if (rem > 0) {
+      size_t n = (size_t)newTotalSize;
+      if (n > rem)
+        n = rem;
+      if (n > sizeof(outdata))
+        n = sizeof(outdata);
+      memcpy(last + len, outdata, n);
+      last[len + n] = '\0';
+    }
+  }
+  out = (char *)malloc(sizeof(char) * (strlen(last) + 1));
+  if (out)
+    strcpy(out, last);
   return out;
 }
 

@@ -1856,7 +1856,19 @@ void decrypt_aes_128(char *in, const unsigned char *mykey) {
                         (block128_f)AES_encrypt);
 
   free(encryptedText);
-  strcat(last, (char *)outdata);
+  {
+    size_t len = strlen(last);
+    size_t rem = sizeof(last) - len - 1;
+    if (rem > 0) {
+      size_t n = (size_t)newTotalSize;
+      if (n > rem)
+        n = rem;
+      if (n > sizeof(outdata))
+        n = sizeof(outdata);
+      memcpy(last + len, outdata, n);
+      last[len + n] = '\0';
+    }
+  }
   printf("%s\n", last);
 }
 
