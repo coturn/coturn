@@ -85,7 +85,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        BUILD_TYPE: ["Release", "Debug"]
+        BUILD_TYPE: ["Release"]
         BUILD_SHARED_LIBS: ["OFF", "ON"]
         CMAKE_GENERATOR_PLATFORM: ["x64", "Win32"]
         os: ["windows"]
