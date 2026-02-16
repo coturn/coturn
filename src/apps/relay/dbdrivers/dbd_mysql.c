@@ -97,25 +97,25 @@ static void MyconninfoFree(Myconninfo *co) {
 }
 
 char *decryptPassword(char *in, const unsigned char *mykey) {
-
-  char *out;
-  unsigned char iv[8] = {0}; // changed
+  unsigned char iv[8] = {0};
   AES_KEY key;
-  unsigned char outdata[256] = {0}; // changed
   AES_set_encrypt_key(mykey, 128, &key);
   int newTotalSize = decodedTextSize(in);
-  int bytes_to_decode = strlen(in);
-  unsigned char *encryptedText = base64decode(in, bytes_to_decode); // changed
-  char last[1024] = "";
+  const int bytes_to_decode = strlen(in);
+  unsigned char *encryptedText = base64decode(in, bytes_to_decode);
   struct ctr_state state;
   init_ctr(&state, iv);
 
-  CRYPTO_ctr128_encrypt(encryptedText, outdata, newTotalSize, &key, state.ivec, state.ecount, &state.num,
-                        (block128_f)AES_encrypt);
-
-  strcat(last, (char *)outdata);
-  out = (char *)malloc(sizeof(char) * (strlen(last) + 1)); // add 1 to allocate space for terminating '\0'
-  strcpy(out, last);
+  char *out = NULL;
+  if (newTotalSize > 0) {
+    out = (char *)malloc(newTotalSize + 1);
+    if (out) {
+      CRYPTO_ctr128_encrypt(encryptedText, (unsigned char *)out, newTotalSize, &key, state.ivec, state.ecount,
+                            &state.num, (block128_f)AES_encrypt);
+      out[newTotalSize] = '\0';
+    }
+  }
+  free(encryptedText);
   return out;
 }
 
