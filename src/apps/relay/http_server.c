@@ -77,8 +77,9 @@ static void write_http_echo(ioa_socket_handle s) {
       char *data = (char *)ioa_network_buffer_data(nbh_http);
       size_t cap = ioa_network_buffer_get_capacity(nbh_http);
       size_t len = strlen(data_http) + 1;
-      if (len > cap)
+      if (len > cap) {
         len = cap;
+      }
       if (len > 0) {
         memcpy(data, data_http, len);
         data[len - 1] = '\0';

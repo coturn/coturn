@@ -1210,7 +1210,9 @@ static int mysql_get_admin_user(const uint8_t *usname, uint8_t *realm, password_
         MYSQL_ROW row = mysql_fetch_row(mres);
         if (row && row[0]) {
           strncpy((char *)realm, row[0], STUN_MAX_REALM_SIZE);
+          realm[STUN_MAX_REALM_SIZE] = '\0';
           strncpy((char *)pwd, row[1], STUN_MAX_PWD_SIZE);
+          pwd[STUN_MAX_PWD_SIZE] = '\0';
           ret = 0;
         }
       }
