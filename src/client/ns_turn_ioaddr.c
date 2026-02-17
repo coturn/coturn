@@ -372,25 +372,26 @@ int make_ioa_addr_from_full_string(const uint8_t *saddr, int default_port, ioa_a
   return ret;
 }
 
-int addr_to_string(const ioa_addr *addr, uint8_t *saddr) {
+int addr_to_string(const ioa_addr *addr, char *saddr) {
 
   if (addr && saddr) {
-
     char addrtmp[INET6_ADDRSTRLEN];
 
     if (addr->ss.sa_family == AF_INET) {
       inet_ntop(AF_INET, &addr->s4.sin_addr, addrtmp, INET_ADDRSTRLEN);
       if (addr_get_port(addr) > 0) {
         snprintf((char *)saddr, MAX_IOA_ADDR_STRING, "%s:%d", addrtmp, addr_get_port(addr));
+        ((char *)saddr)[MAX_IOA_ADDR_STRING - 1] = '\0';
       } else {
-        strncpy((char *)saddr, addrtmp, MAX_IOA_ADDR_STRING);
+        strncpy((char *)saddr, addrtmp, INET_ADDRSTRLEN);
       }
     } else if (addr->ss.sa_family == AF_INET6) {
       inet_ntop(AF_INET6, &addr->s6.sin6_addr, addrtmp, INET6_ADDRSTRLEN);
       if (addr_get_port(addr) > 0) {
         snprintf((char *)saddr, MAX_IOA_ADDR_STRING, "[%s]:%d", addrtmp, addr_get_port(addr));
+        ((char *)saddr)[MAX_IOA_ADDR_STRING - 1] = '\0';
       } else {
-        strncpy((char *)saddr, addrtmp, MAX_IOA_ADDR_STRING);
+        strncpy((char *)saddr, addrtmp, INET6_ADDRSTRLEN);
       }
     } else {
       return -1;
@@ -402,18 +403,15 @@ int addr_to_string(const ioa_addr *addr, uint8_t *saddr) {
   return -1;
 }
 
-int addr_to_string_no_port(const ioa_addr *addr, uint8_t *saddr) {
+int addr_to_string_no_port(const ioa_addr *addr, char *saddr) {
 
   if (addr && saddr) {
-
-    char addrtmp[MAX_IOA_ADDR_STRING];
-
     if (addr->ss.sa_family == AF_INET) {
-      inet_ntop(AF_INET, &addr->s4.sin_addr, addrtmp, INET_ADDRSTRLEN);
-      strncpy((char *)saddr, addrtmp, MAX_IOA_ADDR_STRING);
+      inet_ntop(AF_INET, &addr->s4.sin_addr, saddr, INET_ADDRSTRLEN);
+      saddr[INET_ADDRSTRLEN - 1] = '\0';
     } else if (addr->ss.sa_family == AF_INET6) {
-      inet_ntop(AF_INET6, &addr->s6.sin6_addr, addrtmp, INET6_ADDRSTRLEN);
-      strncpy((char *)saddr, addrtmp, MAX_IOA_ADDR_STRING);
+      inet_ntop(AF_INET6, &addr->s6.sin6_addr, saddr, INET6_ADDRSTRLEN);
+      saddr[INET6_ADDRSTRLEN - 1] = '\0';
     } else {
       return -1;
     }

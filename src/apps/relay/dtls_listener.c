@@ -413,8 +413,8 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server, struct mes
     if (chs && ioa_socket_tobeclosed(chs)) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: socket to be closed\n", __FUNCTION__);
       {
-        uint8_t saddr[129];
-        uint8_t rsaddr[129];
+        char saddr[MAX_IOA_ADDR_STRING];
+        char rsaddr[MAX_IOA_ADDR_STRING];
         addr_to_string(get_local_addr_from_ioa_socket(chs), saddr);
         addr_to_string(get_remote_addr_from_ioa_socket(chs), rsaddr);
         long thrid = 0;
@@ -438,9 +438,8 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server, struct mes
     if (chs && (chs->sockets_container != amap)) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: wrong socket container\n", __FUNCTION__);
       {
-        uint8_t saddr[129];
-        uint8_t rsaddr[129];
-
+        char saddr[MAX_IOA_ADDR_STRING];
+        char rsaddr[MAX_IOA_ADDR_STRING];
         addr_to_string(get_local_addr_from_ioa_socket(chs), saddr);
         addr_to_string(get_remote_addr_from_ioa_socket(chs), rsaddr);
         long thrid = 0;
@@ -482,8 +481,8 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server, struct mes
 
     if (s) {
       if (verbose && turn_params.log_binding) {
-        uint8_t saddr[129];
-        uint8_t rsaddr[129];
+        char saddr[MAX_IOA_ADDR_STRING];
+        char rsaddr[MAX_IOA_ADDR_STRING];
         addr_to_string(get_local_addr_from_ioa_socket(s), saddr);
         addr_to_string(get_remote_addr_from_ioa_socket(s), rsaddr);
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: New UDP endpoint: local addr %s, remote addr %s\n", __FUNCTION__,
@@ -541,10 +540,10 @@ static int create_new_connected_udp_socket(dtls_listener_relay_server_type *serv
   {
     int connect_err = 0;
     if (addr_connect(udp_fd, &(server->sm.m.sm.nd.src_addr), &connect_err) < 0) {
-      char sl[129];
-      char sr[129];
-      addr_to_string(&(ret->local_addr), (uint8_t *)sl);
-      addr_to_string(&(server->sm.m.sm.nd.src_addr), (uint8_t *)sr);
+      char sl[MAX_IOA_ADDR_STRING];
+      char sr[MAX_IOA_ADDR_STRING];
+      addr_to_string(&(ret->local_addr), sl);
+      addr_to_string(&(server->sm.m.sm.nd.src_addr), sr);
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
                     "Cannot connect new detached udp client socket from local addr %s to remote addr %s\n", sl, sr);
       IOA_CLOSE_SOCKET(ret);
@@ -845,8 +844,8 @@ static int create_server_socket(dtls_listener_relay_server_type *server, int rep
 
       if (addr_bind(udp_listen_fd, &server->addr, 1, 1, UDP_SOCKET) < 0) {
         perror("Cannot bind local socket to addr");
-        char saddr[129];
-        addr_to_string(&server->addr, (uint8_t *)saddr);
+        char saddr[MAX_IOA_ADDR_STRING];
+        addr_to_string(&server->addr, saddr);
         TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Cannot bind DTLS/UDP listener socket to addr %s\n", saddr);
         if (addr_bind_cycle++ < max_binding_time) {
           TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Trying to bind DTLS/UDP listener socket to addr %s, again...\n", saddr);
@@ -922,8 +921,8 @@ static int reopen_server_socket(dtls_listener_relay_server_type *server, evutil_
 
     if (addr_bind(udp_listen_fd, &server->addr, 1, 1, UDP_SOCKET) < 0) {
       perror("Cannot bind local socket to addr");
-      char saddr[129];
-      addr_to_string(&server->addr, (uint8_t *)saddr);
+      char saddr[MAX_IOA_ADDR_STRING];
+      addr_to_string(&server->addr, saddr);
       TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Cannot bind listener socket to addr %s\n", saddr);
       return -1;
     }

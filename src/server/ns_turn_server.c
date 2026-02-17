@@ -333,8 +333,8 @@ static int good_peer_addr(turn_turnserver *server, const char *realm, ioa_addr *
       for (int i = server->ip_blacklist->ranges_number - 1; i >= 0; --i) {
         CHECK_REALM(server->ip_blacklist->rs[i].realm);
         if (ioa_addr_in_range(&(server->ip_blacklist->rs[i].enc), peer_addr)) {
-          char saddr[129];
-          addr_to_string_no_port(peer_addr, (uint8_t *)saddr);
+          char saddr[MAX_IOA_ADDR_STRING];
+          addr_to_string_no_port(peer_addr, saddr);
           TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: A peer IP %s denied in the range: %s in server %d \n",
                         (unsigned long long)session_id, saddr, server->ip_blacklist->rs[i].str, server_id);
           return 0;
@@ -352,8 +352,8 @@ static int good_peer_addr(turn_turnserver *server, const char *realm, ioa_addr *
           CHECK_REALM(bl->rs[i].realm);
           if (ioa_addr_in_range(&(bl->rs[i].enc), peer_addr)) {
             ioa_unlock_blacklist(server->e);
-            char saddr[129];
-            addr_to_string_no_port(peer_addr, (uint8_t *)saddr);
+            char saddr[MAX_IOA_ADDR_STRING];
+            addr_to_string_no_port(peer_addr, saddr);
             TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: A peer IP %s denied in the range= %s in server %d \n",
                           (unsigned long long)session_id, saddr, bl->rs[i].str, server_id);
             return 0;
@@ -407,7 +407,7 @@ void turn_session_info_add_peer(struct turn_session_info *tsi, ioa_addr *peer) {
   if (tsi->main_peers_size < TURN_MAIN_PEERS_ARRAY_SIZE) {
     addr_cpy(&(tsi->main_peers_data[tsi->main_peers_size].addr), peer);
     addr_to_string(&(tsi->main_peers_data[tsi->main_peers_size].addr),
-                   (uint8_t *)tsi->main_peers_data[tsi->main_peers_size].saddr);
+                   tsi->main_peers_data[tsi->main_peers_size].saddr);
     tsi->main_peers_size += 1;
     return;
   }
@@ -428,7 +428,7 @@ void turn_session_info_add_peer(struct turn_session_info *tsi, ioa_addr *peer) {
   tsi->extra_peers_data = pTmp;
   addr_cpy(&(tsi->extra_peers_data[tsi->extra_peers_size].addr), peer);
   addr_to_string(&(tsi->extra_peers_data[tsi->extra_peers_size].addr),
-                 (uint8_t *)tsi->extra_peers_data[tsi->extra_peers_size].saddr);
+                 tsi->extra_peers_data[tsi->extra_peers_size].saddr);
   tsi->extra_peers_size += 1;
 }
 
@@ -473,9 +473,9 @@ int turn_session_info_copy_from(struct turn_session_info *tsi, ts_ur_super_sessi
       if (ss->client_socket) {
         tsi->client_protocol = get_ioa_socket_type(ss->client_socket);
         addr_cpy(&(tsi->local_addr_data.addr), get_local_addr_from_ioa_socket(ss->client_socket));
-        addr_to_string(&(tsi->local_addr_data.addr), (uint8_t *)tsi->local_addr_data.saddr);
+        addr_to_string(&(tsi->local_addr_data.addr), tsi->local_addr_data.saddr);
         addr_cpy(&(tsi->remote_addr_data.addr), get_remote_addr_from_ioa_socket(ss->client_socket));
-        addr_to_string(&(tsi->remote_addr_data.addr), (uint8_t *)tsi->remote_addr_data.saddr);
+        addr_to_string(&(tsi->remote_addr_data.addr), tsi->remote_addr_data.saddr);
       }
       {
         if (ss->alloc.relay_sessions[ALLOC_IPV4_INDEX].s) {
@@ -483,7 +483,7 @@ int turn_session_info_copy_from(struct turn_session_info *tsi, ts_ur_super_sessi
           if (ss->alloc.is_valid) {
             addr_cpy(&(tsi->relay_addr_data_ipv4.addr),
                      get_local_addr_from_ioa_socket(ss->alloc.relay_sessions[ALLOC_IPV4_INDEX].s));
-            addr_to_string(&(tsi->relay_addr_data_ipv4.addr), (uint8_t *)tsi->relay_addr_data_ipv4.saddr);
+            addr_to_string(&(tsi->relay_addr_data_ipv4.addr), tsi->relay_addr_data_ipv4.saddr);
           }
         }
         if (ss->alloc.relay_sessions[ALLOC_IPV6_INDEX].s) {
@@ -491,7 +491,7 @@ int turn_session_info_copy_from(struct turn_session_info *tsi, ts_ur_super_sessi
           if (ss->alloc.is_valid) {
             addr_cpy(&(tsi->relay_addr_data_ipv6.addr),
                      get_local_addr_from_ioa_socket(ss->alloc.relay_sessions[ALLOC_IPV6_INDEX].s));
-            addr_to_string(&(tsi->relay_addr_data_ipv6.addr), (uint8_t *)tsi->relay_addr_data_ipv6.saddr);
+            addr_to_string(&(tsi->relay_addr_data_ipv6.addr), tsi->relay_addr_data_ipv6.saddr);
           }
         }
       }
@@ -911,8 +911,8 @@ static int update_turn_permission_lifetime(ts_ur_super_session *ss, turn_permiss
       if (server->verbose) {
         tinfo->verbose = 1;
         tinfo->session_id = ss->id;
-        char s[257] = "\0";
-        addr_to_string(&(tinfo->addr), (uint8_t *)s);
+        char s[MAX_IOA_ADDR_STRING];
+        addr_to_string(&(tinfo->addr), s);
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: peer %s lifetime updated: %lu\n",
                       (unsigned long long)ss->id, s, (unsigned long)time_delta);
       }
@@ -2049,13 +2049,13 @@ static void tcp_peer_connection_completed_callback(int success, void *arg) {
         err_code = 447;
       }
       {
-        char ls[257] = "\0";
-        char rs[257] = "\0";
+        char ls[MAX_IOA_ADDR_STRING];
+        char rs[MAX_IOA_ADDR_STRING];
         ioa_addr *laddr = get_local_addr_from_ioa_socket(ss->client_socket);
         if (laddr) {
-          addr_to_string(laddr, (uint8_t *)ls);
+          addr_to_string(laddr, ls);
         }
-        addr_to_string(&(tc->peer_addr), (uint8_t *)rs);
+        addr_to_string(&(tc->peer_addr), rs);
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: failure to connect from %s to %s\n", __FUNCTION__, ls, rs);
       }
       stun_init_error_response_str(STUN_METHOD_CONNECT, ioa_network_buffer_data(nbh), &len, err_code, NULL, &(tc->tid));
@@ -2207,7 +2207,7 @@ static void tcp_peer_accept_connection(ioa_socket_handle s, void *arg) {
     }
 
     if (!good_peer_addr(server, ss->realm_options.name, peer_addr, ss->id)) {
-      uint8_t saddr[256];
+      char saddr[MAX_IOA_ADDR_STRING];
       addr_to_string(peer_addr, saddr);
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: an attempt to connect from a peer with forbidden address: %s\n",
                     __FUNCTION__, saddr);
@@ -4130,10 +4130,10 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
 
     if (ss->client_socket && server->verbose) {
 
-      char sraddr[129] = "\0";
-      char sladdr[129] = "\0";
-      addr_to_string(get_remote_addr_from_ioa_socket(ss->client_socket), (uint8_t *)sraddr);
-      addr_to_string(get_local_addr_from_ioa_socket(ss->client_socket), (uint8_t *)sladdr);
+      char sraddr[MAX_IOA_ADDR_STRING];
+      char sladdr[MAX_IOA_ADDR_STRING];
+      addr_to_string(get_remote_addr_from_ioa_socket(ss->client_socket), sraddr);
+      addr_to_string(get_local_addr_from_ioa_socket(ss->client_socket), sladdr);
 
       TURN_LOG_FUNC(
           TURN_LOG_LEVEL_INFO,
@@ -4160,10 +4160,10 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
 
   if (server->verbose) {
 
-    char sraddr[129] = "\0";
-    char sladdr[129] = "\0";
-    addr_to_string(get_remote_addr_from_ioa_socket(ss->client_socket), (uint8_t *)sraddr);
-    addr_to_string(get_local_addr_from_ioa_socket(ss->client_socket), (uint8_t *)sladdr);
+    char sraddr[MAX_IOA_ADDR_STRING];
+    char sladdr[MAX_IOA_ADDR_STRING];
+    addr_to_string(get_remote_addr_from_ioa_socket(ss->client_socket), sraddr);
+    addr_to_string(get_local_addr_from_ioa_socket(ss->client_socket), sladdr);
 
     TURN_LOG_FUNC(
         TURN_LOG_LEVEL_INFO,

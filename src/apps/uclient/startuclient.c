@@ -554,7 +554,7 @@ beg_allocate:
                                             NULL)) {
                 // error
               } else if (turn_addr && turn_port) {
-                addr_to_string_no_port(&alternate_server, (uint8_t *)turn_addr);
+                addr_to_string_no_port(&alternate_server, turn_addr);
                 *turn_port = (uint16_t)addr_get_port(&alternate_server);
               }
             }
@@ -850,9 +850,9 @@ static int turn_create_permission(bool verbose, app_ur_conn_info *clnet_info, io
     return 0;
   }
 
-  char saddr[129] = "\0";
+  char saddr[MAX_IOA_ADDR_STRING];
   if (verbose) {
-    addr_to_string(peer_addr, (uint8_t *)saddr);
+    addr_to_string(peer_addr, saddr);
   }
 
   stun_buffer request_message, response_message;
