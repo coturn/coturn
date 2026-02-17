@@ -850,7 +850,7 @@ static int turn_create_permission(bool verbose, app_ur_conn_info *clnet_info, io
     return 0;
   }
 
-  char saddr[MAX_IOA_ADDR_STRING];
+  char saddr[MAX_IOA_ADDR_STRING] = "";
   if (verbose) {
     addr_to_string(peer_addr, saddr);
   }

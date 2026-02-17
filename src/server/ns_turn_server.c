@@ -333,7 +333,7 @@ static int good_peer_addr(turn_turnserver *server, const char *realm, ioa_addr *
       for (int i = server->ip_blacklist->ranges_number - 1; i >= 0; --i) {
         CHECK_REALM(server->ip_blacklist->rs[i].realm);
         if (ioa_addr_in_range(&(server->ip_blacklist->rs[i].enc), peer_addr)) {
-          char saddr[MAX_IOA_ADDR_STRING];
+          char saddr[MAX_IOA_ADDR_STRING] = "";
           addr_to_string_no_port(peer_addr, saddr);
           TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: A peer IP %s denied in the range: %s in server %d \n",
                         (unsigned long long)session_id, saddr, server->ip_blacklist->rs[i].str, server_id);
@@ -352,7 +352,7 @@ static int good_peer_addr(turn_turnserver *server, const char *realm, ioa_addr *
           CHECK_REALM(bl->rs[i].realm);
           if (ioa_addr_in_range(&(bl->rs[i].enc), peer_addr)) {
             ioa_unlock_blacklist(server->e);
-            char saddr[MAX_IOA_ADDR_STRING];
+            char saddr[MAX_IOA_ADDR_STRING] = "";
             addr_to_string_no_port(peer_addr, saddr);
             TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: A peer IP %s denied in the range= %s in server %d \n",
                           (unsigned long long)session_id, saddr, bl->rs[i].str, server_id);
@@ -911,7 +911,7 @@ static int update_turn_permission_lifetime(ts_ur_super_session *ss, turn_permiss
       if (server->verbose) {
         tinfo->verbose = 1;
         tinfo->session_id = ss->id;
-        char s[MAX_IOA_ADDR_STRING];
+        char s[MAX_IOA_ADDR_STRING] = "";
         addr_to_string(&(tinfo->addr), s);
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: peer %s lifetime updated: %lu\n",
                       (unsigned long long)ss->id, s, (unsigned long)time_delta);
@@ -2049,8 +2049,8 @@ static void tcp_peer_connection_completed_callback(int success, void *arg) {
         err_code = 447;
       }
       {
-        char ls[MAX_IOA_ADDR_STRING];
-        char rs[MAX_IOA_ADDR_STRING];
+        char ls[MAX_IOA_ADDR_STRING] = "";
+        char rs[MAX_IOA_ADDR_STRING] = "";
         ioa_addr *laddr = get_local_addr_from_ioa_socket(ss->client_socket);
         if (laddr) {
           addr_to_string(laddr, ls);
@@ -2207,7 +2207,7 @@ static void tcp_peer_accept_connection(ioa_socket_handle s, void *arg) {
     }
 
     if (!good_peer_addr(server, ss->realm_options.name, peer_addr, ss->id)) {
-      char saddr[MAX_IOA_ADDR_STRING];
+      char saddr[MAX_IOA_ADDR_STRING] = "";
       addr_to_string(peer_addr, saddr);
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: an attempt to connect from a peer with forbidden address: %s\n",
                     __FUNCTION__, saddr);
@@ -4130,8 +4130,8 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
 
     if (ss->client_socket && server->verbose) {
 
-      char sraddr[MAX_IOA_ADDR_STRING];
-      char sladdr[MAX_IOA_ADDR_STRING];
+      char sraddr[MAX_IOA_ADDR_STRING] = "";
+      char sladdr[MAX_IOA_ADDR_STRING] = "";
       addr_to_string(get_remote_addr_from_ioa_socket(ss->client_socket), sraddr);
       addr_to_string(get_local_addr_from_ioa_socket(ss->client_socket), sladdr);
 
@@ -4160,8 +4160,8 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
 
   if (server->verbose) {
 
-    char sraddr[MAX_IOA_ADDR_STRING];
-    char sladdr[MAX_IOA_ADDR_STRING];
+    char sraddr[MAX_IOA_ADDR_STRING] = "";
+    char sladdr[MAX_IOA_ADDR_STRING] = "";
     addr_to_string(get_remote_addr_from_ioa_socket(ss->client_socket), sraddr);
     addr_to_string(get_local_addr_from_ioa_socket(ss->client_socket), sladdr);
 
