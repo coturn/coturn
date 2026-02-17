@@ -408,10 +408,8 @@ int addr_to_string_no_port(const ioa_addr *addr, char *saddr) {
   if (addr && saddr) {
     if (addr->ss.sa_family == AF_INET) {
       inet_ntop(AF_INET, &addr->s4.sin_addr, saddr, INET_ADDRSTRLEN);
-      saddr[INET_ADDRSTRLEN - 1] = '\0';
     } else if (addr->ss.sa_family == AF_INET6) {
       inet_ntop(AF_INET6, &addr->s6.sin6_addr, saddr, INET6_ADDRSTRLEN);
-      saddr[INET6_ADDRSTRLEN - 1] = '\0';
     } else {
       return -1;
     }
