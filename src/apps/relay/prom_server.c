@@ -229,7 +229,7 @@ void start_prometheus_server(void) {
     }
   }
 
-  uint8_t addr[MAX_IOA_ADDR_STRING];
+  char addr[MAX_IOA_ADDR_STRING] = "";
   addr_to_string(&server_addr, addr);
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "prometheus exporter server will listen on %s\n", addr);
 

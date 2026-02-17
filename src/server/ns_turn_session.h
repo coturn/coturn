@@ -127,7 +127,7 @@ struct _ts_ur_super_session {
 
 ////// Session info for statistics //////
 
-#define TURN_ADDR_STR_SIZE (65)
+#define TURN_ADDR_STR_SIZE (64)
 #define TURN_MAIN_PEERS_ARRAY_SIZE (5)
 
 typedef struct _addr_data {

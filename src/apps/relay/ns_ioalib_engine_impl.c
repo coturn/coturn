@@ -207,10 +207,10 @@ static void log_socket_event(ioa_socket_handle s, const char *msg, int error) {
     UNUSED_ARG(ll);
 
     {
-      char sraddr[129] = "\0";
-      char sladdr[129] = "\0";
-      addr_to_string(&(s->remote_addr), (uint8_t *)sraddr);
-      addr_to_string(&(s->local_addr), (uint8_t *)sladdr);
+      char sraddr[MAX_IOA_ADDR_STRING] = "";
+      char sladdr[MAX_IOA_ADDR_STRING] = "";
+      addr_to_string(&(s->remote_addr), sraddr);
+      addr_to_string(&(s->local_addr), sladdr);
 
       if (EVUTIL_SOCKET_ERROR()) {
         TURN_LOG_FUNC(ll, "session %018llu: %s: %s (local %s, remote %s)\n", (unsigned long long)id, msg,
@@ -2919,8 +2919,8 @@ static void eventcb_bev(struct bufferevent *bev, short events, void *arg) {
       s->special_session_size = 0;
 
       if (!(s->session) && !(s->sub_session)) {
-        char sraddr[129] = "\0";
-        addr_to_string(&(s->remote_addr), (uint8_t *)sraddr);
+        char sraddr[MAX_IOA_ADDR_STRING] = "";
+        addr_to_string(&(s->remote_addr), sraddr);
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s https server socket closed: %p, st=%d, sat=%d, remote addr=%s\n",
                       __FUNCTION__, s, get_ioa_socket_type(s), get_ioa_socket_app_type(s), sraddr);
         IOA_CLOSE_SOCKET(s);
@@ -2943,8 +2943,8 @@ static void eventcb_bev(struct bufferevent *bev, short events, void *arg) {
           if (server) {
 
             {
-              char sraddr[129] = "\0";
-              addr_to_string(&(s->remote_addr), (uint8_t *)sraddr);
+              char sraddr[MAX_IOA_ADDR_STRING] = "";
+              addr_to_string(&(s->remote_addr), sraddr);
               if (events & BEV_EVENT_EOF) {
                 if (server->verbose) {
                   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: %s socket closed remotely %s\n",
@@ -3304,10 +3304,10 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr *dest_addr, ioa_
               perror("udp send");
 #if defined(EADDRNOTAVAIL)
               if (dest_addr && (perr == EADDRNOTAVAIL)) {
-                char sfrom[129];
-                addr_to_string(&(s->local_addr), (uint8_t *)sfrom);
-                char sto[129];
-                addr_to_string(dest_addr, (uint8_t *)sto);
+                char sfrom[MAX_IOA_ADDR_STRING] = "";
+                addr_to_string(&(s->local_addr), sfrom);
+                char sto[MAX_IOA_ADDR_STRING] = "";
+                addr_to_string(dest_addr, sto);
                 TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: network error: address unreachable from %s to %s\n",
                               __FUNCTION__, sfrom, sto);
               }
@@ -3674,8 +3674,8 @@ void turn_report_allocation_set(void *a, turn_time_t lifetime, int refresh) {
             snprintf(key, sizeof(key), "turn/user/%s/allocation/%018llu/status", (char *)ss->username,
                      (unsigned long long)ss->id);
           }
-          uint8_t saddr[129];
-          uint8_t rsaddr[129];
+          char saddr[MAX_IOA_ADDR_STRING] = "";
+          char rsaddr[MAX_IOA_ADDR_STRING] = "";
           addr_to_string(get_local_addr_from_ioa_socket(ss->client_socket), saddr);
           addr_to_string(get_remote_addr_from_ioa_socket(ss->client_socket), rsaddr);
           const char *type = socket_type_name(get_ioa_socket_type(ss->client_socket));

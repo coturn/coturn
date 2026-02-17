@@ -212,8 +212,8 @@ static int create_server_listener(tls_listener_relay_server_type *server) {
 
     if (addr_bind(tls_listen_fd, &server->addr, 1, 1, TCP_SOCKET) < 0) {
       perror("Cannot bind local socket to addr");
-      char saddr[129];
-      addr_to_string(&server->addr, (uint8_t *)saddr);
+      char saddr[MAX_IOA_ADDR_STRING];
+      addr_to_string(&server->addr, saddr);
       TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Cannot bind TLS/TCP listener socket to addr %s\n", saddr);
       if (addr_bind_cycle++ < max_binding_time) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Trying to bind TLS/TCP listener socket to addr %s, again...\n", saddr);

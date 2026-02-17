@@ -320,8 +320,8 @@ int addr_bind(evutil_socket_t fd, const ioa_addr *addr, int reusable, int debug,
       if (debug) {
         const int err = socket_errno();
         perror("bind");
-        char str[129];
-        addr_to_string(addr, (uint8_t *)str);
+        char str[MAX_IOA_ADDR_STRING];
+        addr_to_string(addr, str);
         TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Trying to bind fd %d to <%s>: errno=%d\n", fd, str, err);
       }
     }
