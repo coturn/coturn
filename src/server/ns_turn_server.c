@@ -3397,8 +3397,10 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
   usname[alen] = 0;
 
   if (!is_secure_string(usname, 1)) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: %s: wrong username: %s\n", (unsigned long long)(ss->id),
-                  __FUNCTION__, (char *)usname);
+    char saddr[129] = "\0";
+    addr_to_string(get_remote_addr_from_ioa_socket(ss->client_socket), (uint8_t *)saddr);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: %s: wrong username: %s Remote IP: %s \n", (unsigned long long)(ss->id),
+                  __FUNCTION__, (char *)usname, saddr);
     usname[0] = 0;
     *err_code = 400;
     return -1;
@@ -3460,9 +3462,10 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
         return 0;
       }
     }
-
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: %s: Cannot find credentials of user <%s>\n",
-                  (unsigned long long)(ss->id), __FUNCTION__, (char *)usname);
+    char saddr[129] = "\0";
+    addr_to_string(get_remote_addr_from_ioa_socket(ss->client_socket), (uint8_t *)saddr);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: %s: Cannot find credentials of user <%s> Remote IP: %s \n",
+                  (unsigned long long)(ss->id), __FUNCTION__, (char *)usname, saddr);
     *err_code = 401;
     return create_challenge_response(ss, tid, resp_constructed, err_code, reason, nbh, method);
   }
