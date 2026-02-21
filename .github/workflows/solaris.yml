@@ -1,0 +1,23 @@
+name: C/C++ CI
+
+on:
+  push:
+    branches: [ $default-branch ]
+  pull_request:
+    types: [ opened, reopened, synchronize ]
+
+jobs:
+  builds:
+    runs-on: macos-12
+    steps:
+    - uses: actions/checkout@v3
+    - name: Test in Solaris
+      id: test
+      uses: vmactions/solaris-vm@v0
+      with:
+        usesh: true
+        prepare: |
+          pkgutil -y -i socat
+        run: |
+          ./configure
+          make
