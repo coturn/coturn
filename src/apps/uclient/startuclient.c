@@ -602,10 +602,10 @@ beg_allocate:
       int fd = clnet_info->fd;
       SSL *ssl = clnet_info->ssl;
 
-      const bool close_now = turn_random_number() % 2;
+      const bool close_now = (turn_random_number() % 2) != 0;
 
       if (close_now) {
-        const bool close_socket = (int)(turn_random_number() % 2);
+        const bool close_socket = (turn_random_number() % 2) != 0;
         if (ssl && !close_socket) {
           SSL_shutdown(ssl);
           SSL_free(ssl);
@@ -659,8 +659,8 @@ beg_allocate:
 
       if (dual_allocation && !mobility) {
         const uint8_t rand = (uint8_t)turn_random_number();
-        bool add_requested_family = rand & 0x01;
-        bool use_ipv4 = rand & 0x02;
+        bool add_requested_family = (rand & 0x01) != 0;
+        bool use_ipv4 = (rand & 0x02) != 0;
 
         if (add_requested_family) {
           uint8_t field[4];
@@ -1090,7 +1090,7 @@ int start_connection(uint16_t clnet_remote_port0, const char *remote_address0, c
       }
     } else {
 
-      const bool before = turn_random_number() % 2;
+      const bool before = (turn_random_number() % 2) != 0;
 
       if (before) {
         if (turn_create_permission(verbose, clnet_info, &peer_addr, 1) < 0) {
