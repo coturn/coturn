@@ -87,7 +87,9 @@
 #include "ns_ioalib_impl.h"
 
 #include <openssl/aes.h>
+#include <openssl/decoder.h>
 #include <openssl/err.h>
+#include <openssl/param_build.h>
 #include <openssl/pem.h>
 #include <openssl/ssl.h>
 
