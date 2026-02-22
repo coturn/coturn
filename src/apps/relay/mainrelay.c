@@ -33,6 +33,7 @@
  */
 
 #include "mainrelay.h"
+
 #include "dbdrivers/dbdriver.h"
 
 #include "prom_server.h"
@@ -3522,7 +3523,7 @@ static void adjust_key_file_names(void) {
     adjust_key_file_name(turn_params.dh_file, "DH key", 0);
   }
 }
-static DH *get_dh566(void) {
+static EVP_PKEY *get_dh566(void) {
 
   unsigned char dh566_p[] = {0x36, 0x53, 0xA8, 0x9C, 0x3C, 0xF1, 0xD1, 0x1B, 0x2D, 0xA2, 0x64, 0xDE, 0x59, 0x3B, 0xE3,
                              0x8C, 0x27, 0x74, 0xC2, 0xBE, 0x9B, 0x6D, 0x56, 0xE7, 0xDF, 0xFF, 0x67, 0x6A, 0xD2, 0x0C,
@@ -3536,16 +3537,33 @@ static DH *get_dh566(void) {
   //	-----END DH PARAMETERS-----
 
   unsigned char dh566_g[] = {0x05};
-  DH *dh;
 
-  if ((dh = DH_new()) == NULL) {
-    return (NULL);
+  BIGNUM *p = BN_bin2bn(dh566_p, sizeof(dh566_p), NULL);
+  BIGNUM *g = BN_bin2bn(dh566_g, sizeof(dh566_g), NULL);
+  if (!p || !g) {
+    BN_free(p);
+    BN_free(g);
+    return NULL;
   }
-  DH_set0_pqg(dh, BN_bin2bn(dh566_p, sizeof(dh566_p), NULL), NULL, BN_bin2bn(dh566_g, sizeof(dh566_g), NULL));
-  return (dh);
+
+  OSSL_PARAM_BLD *bld = OSSL_PARAM_BLD_new();
+  OSSL_PARAM_BLD_push_BN(bld, "p", p);
+  OSSL_PARAM_BLD_push_BN(bld, "g", g);
+  OSSL_PARAM *params = OSSL_PARAM_BLD_to_param(bld);
+  OSSL_PARAM_BLD_free(bld);
+  BN_free(p);
+  BN_free(g);
+
+  EVP_PKEY_CTX *pctx = EVP_PKEY_CTX_new_from_name(NULL, "DH", NULL);
+  EVP_PKEY *pkey = NULL;
+  EVP_PKEY_fromdata_init(pctx);
+  EVP_PKEY_fromdata(pctx, &pkey, EVP_PKEY_KEY_PARAMETERS, params);
+  EVP_PKEY_CTX_free(pctx);
+  OSSL_PARAM_free(params);
+  return pkey;
 }
 
-static DH *get_dh1066(void) {
+static EVP_PKEY *get_dh1066(void) {
 
   unsigned char dh1066_p[] = {0x02, 0x0E, 0x26, 0x6F, 0xAA, 0x9F, 0xA8, 0xE5, 0x3F, 0x70, 0x88, 0xF1, 0xA9, 0x29, 0xAE,
                               0x1A, 0x2B, 0xA8, 0x2F, 0xE8, 0xE5, 0x0E, 0x81, 0x78, 0xD7, 0x12, 0x41, 0xDC, 0xE2, 0xD5,
@@ -3564,16 +3582,33 @@ static DH *get_dh1066(void) {
   //	-----END DH PARAMETERS-----
 
   unsigned char dh1066_g[] = {0x02};
-  DH *dh;
 
-  if ((dh = DH_new()) == NULL) {
-    return (NULL);
+  BIGNUM *p = BN_bin2bn(dh1066_p, sizeof(dh1066_p), NULL);
+  BIGNUM *g = BN_bin2bn(dh1066_g, sizeof(dh1066_g), NULL);
+  if (!p || !g) {
+    BN_free(p);
+    BN_free(g);
+    return NULL;
   }
-  DH_set0_pqg(dh, BN_bin2bn(dh1066_p, sizeof(dh1066_p), NULL), NULL, BN_bin2bn(dh1066_g, sizeof(dh1066_g), NULL));
-  return (dh);
+
+  OSSL_PARAM_BLD *bld = OSSL_PARAM_BLD_new();
+  OSSL_PARAM_BLD_push_BN(bld, "p", p);
+  OSSL_PARAM_BLD_push_BN(bld, "g", g);
+  OSSL_PARAM *params = OSSL_PARAM_BLD_to_param(bld);
+  OSSL_PARAM_BLD_free(bld);
+  BN_free(p);
+  BN_free(g);
+
+  EVP_PKEY_CTX *pctx = EVP_PKEY_CTX_new_from_name(NULL, "DH", NULL);
+  EVP_PKEY *pkey = NULL;
+  EVP_PKEY_fromdata_init(pctx);
+  EVP_PKEY_fromdata(pctx, &pkey, EVP_PKEY_KEY_PARAMETERS, params);
+  EVP_PKEY_CTX_free(pctx);
+  OSSL_PARAM_free(params);
+  return pkey;
 }
 
-static DH *get_dh2066(void) {
+static EVP_PKEY *get_dh2066(void) {
 
   unsigned char dh2066_p[] = {
       0x03, 0x31, 0x77, 0x20, 0x58, 0xA6, 0x69, 0xA3, 0x9D, 0x2D, 0x5E, 0xE0, 0x5C, 0x46, 0x82, 0x0F, 0x9E, 0x80, 0xF0,
@@ -3601,13 +3636,30 @@ static DH *get_dh2066(void) {
   //	-----END DH PARAMETERS-----
 
   unsigned char dh2066_g[] = {0x05};
-  DH *dh;
 
-  if ((dh = DH_new()) == NULL) {
-    return (NULL);
+  BIGNUM *p = BN_bin2bn(dh2066_p, sizeof(dh2066_p), NULL);
+  BIGNUM *g = BN_bin2bn(dh2066_g, sizeof(dh2066_g), NULL);
+  if (!p || !g) {
+    BN_free(p);
+    BN_free(g);
+    return NULL;
   }
-  DH_set0_pqg(dh, BN_bin2bn(dh2066_p, sizeof(dh2066_p), NULL), NULL, BN_bin2bn(dh2066_g, sizeof(dh2066_g), NULL));
-  return (dh);
+
+  OSSL_PARAM_BLD *bld = OSSL_PARAM_BLD_new();
+  OSSL_PARAM_BLD_push_BN(bld, "p", p);
+  OSSL_PARAM_BLD_push_BN(bld, "g", g);
+  OSSL_PARAM *params = OSSL_PARAM_BLD_to_param(bld);
+  OSSL_PARAM_BLD_free(bld);
+  BN_free(p);
+  BN_free(g);
+
+  EVP_PKEY_CTX *pctx = EVP_PKEY_CTX_new_from_name(NULL, "DH", NULL);
+  EVP_PKEY *pkey = NULL;
+  EVP_PKEY_fromdata_init(pctx);
+  EVP_PKEY_fromdata(pctx, &pkey, EVP_PKEY_KEY_PARAMETERS, params);
+  EVP_PKEY_CTX_free(pctx);
+  OSSL_PARAM_free(params);
+  return pkey;
 }
 
 static int pem_password_func(char *buf, int size, int rwflag, void *password) {
@@ -3739,19 +3791,14 @@ static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *metho
         if (nid == 0) {
           TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "unknown curve name: %s\n", curve_name);
           curve_name = DEFAULT_EC_CURVE_NAME;
-          nid = OBJ_sn2nid(curve_name);
           set_auto_curve = 1;
         }
       }
 
       {
-        EC_KEY *ecdh = EC_KEY_new_by_curve_name(nid);
-        if (!ecdh) {
-          TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: allocate EC suite\n", __FUNCTION__);
+        if (SSL_CTX_set1_groups_list(ctx, curve_name) != 1) {
+          TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: set EC curve '%s' failed\n", __FUNCTION__, curve_name);
           set_auto_curve = 1;
-        } else {
-          SSL_CTX_set_tmp_ecdh(ctx, ecdh);
-          EC_KEY_free(ecdh);
         }
       }
     }
@@ -3764,13 +3811,20 @@ static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *metho
 
   { // DH algorithms:
 
-    DH *dh = NULL;
+    EVP_PKEY *dh = NULL;
     if (turn_params.dh_file[0]) {
       FILE *paramfile = fopen(turn_params.dh_file, "r");
       if (!paramfile) {
         perror("Cannot open DH file");
       } else {
-        dh = PEM_read_DHparams(paramfile, NULL, NULL, NULL);
+        OSSL_DECODER_CTX *dctx =
+            OSSL_DECODER_CTX_new_for_pkey(&dh, "PEM", NULL, "DH", EVP_PKEY_KEY_PARAMETERS, NULL, NULL);
+        if (dctx) {
+          if (!OSSL_DECODER_from_fp(dctx, paramfile)) {
+            dh = NULL;
+          }
+          OSSL_DECODER_CTX_free(dctx);
+        }
         fclose(paramfile);
         if (dh) {
           turn_params.dh_key_size = DH_CUSTOM;
@@ -3792,11 +3846,11 @@ static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *metho
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: cannot allocate DH suite\n", __FUNCTION__);
       err = 1;
     } else {
-      if (1 != SSL_CTX_set_tmp_dh(ctx, dh)) {
+      if (1 != SSL_CTX_set0_tmp_dh_pkey(ctx, dh)) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: cannot set DH\n", __FUNCTION__);
         err = 1;
       }
-      DH_free(dh);
+      // No EVP_PKEY_free: SSL_CTX_set0_tmp_dh_pkey always takes ownership
     }
   }
 
