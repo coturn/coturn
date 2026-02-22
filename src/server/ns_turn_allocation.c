@@ -90,7 +90,7 @@ void clear_allocation(allocation *a, SOCKET_TYPE socket_type) {
   free_turn_permission_hashtable(&(a->addr_to_perm));
   ch_map_clean(&(a->chns));
 
-  a->is_valid = 0;
+  a->is_valid = false;
 }
 
 relay_endpoint_session *get_relay_session(allocation *a, int family) {
