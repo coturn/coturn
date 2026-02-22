@@ -292,13 +292,13 @@ void prom_dec_allocation(SOCKET_TYPE type) {
 }
 
 void prom_inc_packet_processed(int count) {
-  if (turn_params.prometheus == 1) {
+  if (turn_params.prometheus) {
     prom_counter_add(packet_processed, count, NULL);
   }
 }
 
 void prom_inc_packet_dropped(int count) {
-  if (turn_params.prometheus == 1) {
+  if (turn_params.prometheus) {
     prom_counter_add(packet_dropped, count, NULL);
   }
 }
