@@ -941,7 +941,7 @@ int getdomainname(char *name, size_t len) {
 
   dw = DsRoleGetPrimaryDomainInformation(NULL, DsRolePrimaryDomainInfoBasic, (PBYTE *)&info);
   if (dw != ERROR_SUCCESS) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "DsRoleGetPrimaryDomainInformation: %u\n", dw);
+    //TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "DsRoleGetPrimaryDomainInformation: %u\n", dw);
     return -1;
   }
 
@@ -956,16 +956,16 @@ int getdomainname(char *name, size_t len) {
         }
         strncpy(name, pszOut, n);
         name[n] = 0;
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "DomainForestName: %s\n", pszOut);
+        //TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "DomainForestName: %s\n", pszOut);
       } else {
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "wchar convert to char fail");
+        //TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "wchar convert to char fail");
       }
 
       free(pszOut);
       break;
-    } else {
+    } /* else {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "DomainForestName is NULL\n");
-    }
+    }*/
 
     if (info->DomainNameDns) {
       char *pszOut = NULL;
@@ -977,16 +977,16 @@ int getdomainname(char *name, size_t len) {
         }
         strncpy(name, pszOut, n);
         name[n] = 0;
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "DomainNameDns: %s\n", pszOut);
-      } else {
+        //TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "DomainNameDns: %s\n", pszOut);
+      } /* else {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "wchar convert to char fail");
-      }
+      }*/
 
       free(pszOut);
       break;
-    } else {
+    } /* else {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "DomainNameDns is NULL\n");
-    }
+    }*/
 
     if (info->DomainNameFlat) {
       char *pszOut = NULL;
@@ -998,14 +998,14 @@ int getdomainname(char *name, size_t len) {
         }
         strncpy(name, pszOut, n);
         name[n] = 0;
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "DomainNameFlat: %s\n", pszOut);
+        //TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "DomainNameFlat: %s\n", pszOut);
       } else {
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "wchar convert to char fail");
+        //TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "wchar convert to char fail");
       }
 
       free(pszOut);
     } else {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "DomainNameFlat is NULL\n");
+      //TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "DomainNameFlat is NULL\n");
       return -2;
     }
   } while (0);
@@ -1057,7 +1057,7 @@ void set_execdir(void) {
 #if defined(_MSC_VER)
   char szPath[MAX_PATH];
   if (!GetModuleFileNameA(NULL, szPath, MAX_PATH)) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "GetModuleFileName failed(%d)\n", GetLastError());
+    //TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "GetModuleFileName failed(%d)\n", GetLastError());
     return;
   }
   _var = szPath;
