@@ -646,7 +646,9 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void *arg) 
 
 start_udp_cycle:
 
-  elem = (ioa_network_buffer_handle *)ioa_network_buffer_allocate(server->e);
+  if (!elem) {
+    elem = (ioa_network_buffer_handle *)ioa_network_buffer_allocate(server->e);
+  }
 
   server->sm.m.sm.nd.nbh = elem;
   server->sm.m.sm.nd.recv_ttl = TTL_IGNORE;
@@ -791,12 +793,20 @@ start_udp_cycle:
     }
   }
 
-  ioa_network_buffer_delete(server->e, server->sm.m.sm.nd.nbh);
-  server->sm.m.sm.nd.nbh = NULL;
+  if (server->sm.m.sm.nd.nbh != NULL) {
+    /* buffer was not consumed downstream, reuse it on the next iteration */
+    server->sm.m.sm.nd.nbh = NULL;
+  } else {
+    /* buffer was consumed (and freed) downstream, need a fresh one next time */
+    elem = NULL;
+  }
 
   if ((bsize > 0) && (cycle++ < MAX_SINGLE_UDP_BATCH)) {
     goto start_udp_cycle;
   }
+
+  ioa_network_buffer_delete(server->e, elem);
+  elem = NULL;
 
   prom_inc_packet_dropped(packets_dropped);
   prom_inc_packet_processed(packets_processed);
