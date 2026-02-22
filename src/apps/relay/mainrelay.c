@@ -2114,7 +2114,7 @@ static void set_option(int c, char *value) {
     break;
   case TCP_PROXY_PORT_OPT:
     turn_params.tcp_proxy_port = atoi(value);
-    turn_params.tcp_use_proxy = 1;
+    turn_params.tcp_use_proxy = true;
     break;
   case MIN_PORT_OPT:
     turn_params.min_port = atoi(value);
@@ -2287,7 +2287,7 @@ static void set_option(int c, char *value) {
     break;
   case 'O':
     STRCPY(turn_params.redis_statsdb.connection_string, value);
-    turn_params.use_redis_statsdb = 1;
+    turn_params.use_redis_statsdb = true;
     break;
 #endif
   case PROMETHEUS_OPT:
@@ -2366,7 +2366,7 @@ static void set_option(int c, char *value) {
     break;
   case NO_TLS_OPT:
 #if !TLS_SUPPORTED
-    turn_params.no_tls = 1;
+    turn_params.no_tls = true;
 #else
     turn_params.no_tls = get_bool_value(value);
 #endif
@@ -2375,7 +2375,7 @@ static void set_option(int c, char *value) {
 #if DTLS_SUPPORTED
     turn_params.no_dtls = get_bool_value(value);
 #else
-    turn_params.no_dtls = 1;
+    turn_params.no_dtls = true;
 #endif
     break;
   case CERT_FILE_OPT:
@@ -2556,7 +2556,7 @@ static void read_config_file(int argc, char **argv, int pass) {
             TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Wrong usage of -c option\n");
           }
         } else if (!strcmp(argv[i], "-n")) {
-          turn_params.do_not_use_config_file = 1;
+          turn_params.do_not_use_config_file = true;
           config_file[0] = 0;
           return;
         } else if (!strcmp(argv[i], "-h")) {
@@ -3121,11 +3121,11 @@ int main(int argc, char **argv) {
   init_dynamic_ip_lists();
 
 #if !TLS_SUPPORTED
-  turn_params.no_tls = 1;
+  turn_params.no_tls = true;
 #endif
 
 #if !DTLS_SUPPORTED
-  turn_params.no_dtls = 1;
+  turn_params.no_dtls = true;
 #endif
 
   if (strstr(argv[0], "turnadmin")) {
@@ -3502,8 +3502,8 @@ static void adjust_key_file_name(char *fn, const char *file_title, int critical)
 
 keyerr:
   if (critical) {
-    turn_params.no_tls = 1;
-    turn_params.no_dtls = 1;
+    turn_params.no_tls = true;
+    turn_params.no_dtls = true;
     TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "cannot start TLS and DTLS listeners because %s file is not set properly\n",
                   file_title);
   }
@@ -3931,22 +3931,22 @@ static void openssl_setup(void) {
 #if !TLS_SUPPORTED
   if (!turn_params.no_tls) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "WARNING: TLS is not supported\n");
-    turn_params.no_tls = 1;
+    turn_params.no_tls = true;
   }
 #endif
 
   if (!(turn_params.no_tls && turn_params.no_dtls) && !turn_params.cert_file[0]) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "\nWARNING: certificate file is not specified, I cannot start TLS/DTLS "
                                           "services.\nOnly 'plain' UDP/TCP listeners can be started.\n");
-    turn_params.no_tls = 1;
-    turn_params.no_dtls = 1;
+    turn_params.no_tls = true;
+    turn_params.no_dtls = true;
   }
 
   if (!(turn_params.no_tls && turn_params.no_dtls) && !turn_params.pkey_file[0]) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "\nWARNING: private key file is not specified, I cannot start TLS/DTLS "
                                           "services.\nOnly 'plain' UDP/TCP listeners can be started.\n");
-    turn_params.no_tls = 1;
-    turn_params.no_dtls = 1;
+    turn_params.no_tls = true;
+    turn_params.no_dtls = true;
   }
 
   if (!(turn_params.no_tls && turn_params.no_dtls)) {

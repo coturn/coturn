@@ -909,7 +909,7 @@ static int update_turn_permission_lifetime(ts_ur_super_session *ss, turn_permiss
                                          "client_ss_channel_timeout_handler");
 
       if (server->verbose) {
-        tinfo->verbose = 1;
+        tinfo->verbose = true;
         tinfo->session_id = ss->id;
         char s[MAX_IOA_ADDR_STRING] = "";
         addr_to_string(&(tinfo->addr), s);
