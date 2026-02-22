@@ -1429,7 +1429,7 @@ static const turn_dbdriver_t driver = {
     &redis_list_realm_options, &redis_auth_ping,      &redis_get_ip_list,    &redis_set_permission_ip,
     &redis_reread_realms,      &redis_set_oauth_key,  &redis_get_oauth_key,  &redis_del_oauth_key,
     &redis_list_oauth_keys,    &redis_get_admin_user, &redis_set_admin_user, &redis_del_admin_user,
-    &redis_list_admin_users,   &redis_disconnect};
+    &redis_list_admin_users,   &redis_disconnect, NULL};
 
 const turn_dbdriver_t *get_redis_dbdriver(void) { return &driver; }
 

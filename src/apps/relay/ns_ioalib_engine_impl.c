@@ -61,6 +61,8 @@
 #include TURN_SCTP_INCLUDE
 #endif
 
+#include "dbdrivers/dbdriver.h"
+
 /* Compilation test:
 #if defined(IP_RECVTTL)
 #undef IP_RECVTTL
@@ -3844,6 +3846,12 @@ void turn_report_session_usage(void *session, int force_invalid) {
         }
 
         report_turn_session_info(server, ss, force_invalid);
+
+		if(force_invalid) {
+			const turn_dbdriver_t * dbd = get_dbdriver();
+			if(dbd->report_usage)
+				dbd->report_usage(session);
+		}
 
         ss->received_packets = 0;
         ss->received_bytes = 0;
