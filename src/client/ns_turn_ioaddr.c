@@ -495,8 +495,9 @@ int ioa_addr_in_range(const ioa_addr_range *range, const ioa_addr *addr) {
     ioa_addr addr4;
     if (addr->ss.sa_family == AF_INET6) {
       sa_family_t range_family = range->min.ss.sa_family;
-      if (range_family == 0)
+      if (range_family == 0) {
         range_family = range->max.ss.sa_family;
+      }
       if (range_family == AF_INET && IN6_IS_ADDR_V4MAPPED(&addr->s6.sin6_addr)) {
         memset(&addr4, 0, sizeof(addr4));
         addr4.s4.sin_family = AF_INET;
