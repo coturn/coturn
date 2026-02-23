@@ -1731,8 +1731,8 @@ static void setup_general_relay_servers(void) {
 
 #if !defined(TURN_NO_THREAD_BARRIERS)
   if (turn_params.general_relay_servers_number > 0) {
-    if (pthread_barrier_init(&relay_setup_barrier, NULL,
-                             (unsigned int)get_real_general_relay_servers_number() + 1) != 0) {
+    if (pthread_barrier_init(&relay_setup_barrier, NULL, (unsigned int)get_real_general_relay_servers_number() + 1) !=
+        0) {
       perror("relay_setup_barrier init");
     }
   }
