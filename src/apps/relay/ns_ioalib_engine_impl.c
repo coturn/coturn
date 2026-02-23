@@ -367,7 +367,7 @@ static void timer_handler(ioa_engine_handle e, void *arg) {
   UNUSED_ARG(arg);
 
   const turn_time_t now = turn_time();
-  atomic_store_explicit(&_log_time_value, now, memory_order_relaxed);
+  STORE_LOG_TIME(now);
 
   e->jiffie = now;
 }

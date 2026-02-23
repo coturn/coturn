@@ -68,14 +68,18 @@
 static volatile int _log_file_line_set = 0;
 
 static volatile turn_time_t log_start_time = 0;
+#if defined(WINDOWS)
+volatile uint32_t _log_time_value = 0;
+#else
 _Atomic uint32_t _log_time_value = 0;
+#endif
 
 static inline turn_time_t log_time(void) {
   if (!log_start_time) {
     log_start_time = turn_time();
   }
 
-  const turn_time_t t = atomic_load_explicit(&_log_time_value, memory_order_relaxed);
+  const turn_time_t t = LOAD_LOG_TIME();
   if (t) {
     return (t - log_start_time);
   }
