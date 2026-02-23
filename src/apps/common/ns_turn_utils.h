@@ -47,6 +47,7 @@ void err(int eval, const char *format, ...);
 
 #include "ns_turn_defs.h" // for turn_time_t
 #include "ns_turn_ioaddr.h"
+#include <stdatomic.h>
 
 #ifdef __cplusplus
 #include <algorithm> // for std::min
@@ -89,8 +90,7 @@ void turn_log_func_default(const char *file, int line, TURN_LOG_LEVEL level, con
 void addr_debug_print(int verbose, const ioa_addr *addr, const char *s);
 
 /* Log */
-extern volatile int _log_time_value_set;
-extern volatile turn_time_t _log_time_value;
+extern _Atomic uint32_t _log_time_value;
 extern int use_new_log_timestamp_format;
 
 void rtpprintf(const char *format, ...);
