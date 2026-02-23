@@ -489,6 +489,20 @@ int addr_less_eq(const ioa_addr *addr1, const ioa_addr *addr2) {
 int ioa_addr_in_range(const ioa_addr_range *range, const ioa_addr *addr) {
 
   if (range && addr) {
+    /* If the range is AF_INET and addr is an IPv4-mapped IPv6 address
+     * (::ffff:x.x.x.x), extract the embedded IPv4 so the comparison works. */
+    ioa_addr addr4;
+    if (addr->ss.sa_family == AF_INET6) {
+      sa_family_t range_family = range->min.ss.sa_family;
+      if (range_family == 0)
+        range_family = range->max.ss.sa_family;
+      if (range_family == AF_INET && IN6_IS_ADDR_V4MAPPED(&addr->s6.sin6_addr)) {
+        memset(&addr4, 0, sizeof(addr4));
+        addr4.s4.sin_family = AF_INET;
+        memcpy(&addr4.s4.sin_addr, addr->s6.sin6_addr.s6_addr + 12, 4);
+        addr = &addr4;
+      }
+    }
     if (addr_any(&(range->min)) || addr_less_eq(&(range->min), addr)) {
       if (addr_any(&(range->max))) {
         return 1;
@@ -516,8 +530,12 @@ int ioa_addr_is_multicast(ioa_addr *addr) {
       const uint8_t *u = ((const uint8_t *)&(addr->s4.sin_addr));
       return (u[0] > 223);
     } else if (addr->ss.sa_family == AF_INET6) {
-      const uint8_t u = ((const uint8_t *)&(addr->s6.sin6_addr))[0];
-      return (u == 255);
+      const uint8_t *u = ((const uint8_t *)&(addr->s6.sin6_addr));
+      /* IPv4-mapped IPv6: ::ffff:x.x.x.x — check embedded IPv4 multicast range */
+      if (IN6_IS_ADDR_V4MAPPED(&addr->s6.sin6_addr)) {
+        return (u[12] > 223);
+      }
+      return (u[0] == 255);
     }
   }
   return 0;
@@ -539,6 +557,10 @@ int ioa_addr_is_loopback(ioa_addr *addr) {
         }
         return 1;
       }
+      /* IPv4-mapped IPv6: ::ffff:x.x.x.x */
+      if (IN6_IS_ADDR_V4MAPPED(&addr->s6.sin6_addr)) {
+        return (u[12] == 127);
+      }
     }
   }
   return 0;
@@ -557,6 +579,10 @@ int ioa_addr_is_zero(ioa_addr *addr) {
       return (u[0] == 0);
     } else if (addr->ss.sa_family == AF_INET6) {
       const uint8_t *u = ((const uint8_t *)&(addr->s6.sin6_addr));
+      /* IPv4-mapped IPv6: ::ffff:0.0.0.0 */
+      if (IN6_IS_ADDR_V4MAPPED(&addr->s6.sin6_addr)) {
+        return (u[12] == 0 && u[13] == 0 && u[14] == 0 && u[15] == 0);
+      }
       int i;
       for (i = 0; i <= 15; ++i) {
         if (u[i]) {
