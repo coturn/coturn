@@ -489,13 +489,15 @@ int addr_less_eq(const ioa_addr *addr1, const ioa_addr *addr2) {
 int ioa_addr_in_range(const ioa_addr_range *range, const ioa_addr *addr) {
 
   if (range && addr) {
+#if !defined(WINDOWS)
     /* If the range is AF_INET and addr is an IPv4-mapped IPv6 address
      * (::ffff:x.x.x.x), extract the embedded IPv4 so the comparison works. */
     ioa_addr addr4;
     if (addr->ss.sa_family == AF_INET6) {
       sa_family_t range_family = range->min.ss.sa_family;
-      if (range_family == 0)
+      if (range_family == 0) {
         range_family = range->max.ss.sa_family;
+      }
       if (range_family == AF_INET && IN6_IS_ADDR_V4MAPPED(&addr->s6.sin6_addr)) {
         memset(&addr4, 0, sizeof(addr4));
         addr4.s4.sin_family = AF_INET;
@@ -503,6 +505,7 @@ int ioa_addr_in_range(const ioa_addr_range *range, const ioa_addr *addr) {
         addr = &addr4;
       }
     }
+#endif
     if (addr_any(&(range->min)) || addr_less_eq(&(range->min), addr)) {
       if (addr_any(&(range->max))) {
         return 1;
