@@ -1731,8 +1731,7 @@ static void setup_general_relay_servers(void) {
   size_t i = 0;
 
 #if !defined(TURN_NO_THREAD_BARRIERS)
-  if (turn_params.general_relay_servers_number > 0 &&
-      turn_params.net_engine_version == NEV_UDP_SOCKET_PER_THREAD) {
+  if (turn_params.general_relay_servers_number > 0 && turn_params.net_engine_version == NEV_UDP_SOCKET_PER_THREAD) {
     if (pthread_barrier_init(&relay_setup_barrier, NULL, (unsigned int)get_real_general_relay_servers_number() + 1) !=
         0) {
       perror("relay_setup_barrier init");
