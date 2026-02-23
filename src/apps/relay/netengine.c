@@ -1277,7 +1277,6 @@ static void setup_socket_per_thread_udp_listener_servers(void) {
   /* Wait for all relay threads to complete setup before accessing their state */
 #if !defined(TURN_NO_THREAD_BARRIERS)
   pthread_barrier_wait(&relay_setup_barrier);
-  pthread_barrier_destroy(&relay_setup_barrier);
 #else
   /* Fallback when barriers are disabled: spin-wait (racy, but preserved for compatibility) */
   for (relayindex = 0; relayindex < get_real_general_relay_servers_number(); relayindex++) {
