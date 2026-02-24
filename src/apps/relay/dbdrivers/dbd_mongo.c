@@ -905,7 +905,7 @@ static int mongo_set_realm_option_one(uint8_t *realm, unsigned long value, const
   BSON_APPEND_UTF8(&query, "realm", (const char *)realm);
   bson_init(&doc);
 
-  size_t klen = 9 + strlen(opt);
+  size_t klen = 9 + strlen(opt) + 1; /* "options." + opt + null */
   char *_k = (char *)malloc(klen);
   if (!_k) {
     return -1;
@@ -1021,7 +1021,7 @@ static int mongo_read_realms_ip_lists(const char *kind, ip_range_list_t *list) {
   int ret = 0;
 
   char field_name[129];
-  sprintf(field_name, "%s_peer_ip", kind);
+  snprintf(field_name, sizeof(field_name), "%s_peer_ip", kind);
 
   mongoc_collection_t *collection = mongo_get_collection("realm");
 
@@ -1234,10 +1234,12 @@ static int mongo_get_admin_user(const uint8_t *usname, uint8_t *realm, password_
     if (mongoc_cursor_next(cursor, &item)) {
       if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "realm") && BSON_ITER_HOLDS_UTF8(&iter)) {
         strncpy((char *)realm, bson_iter_utf8(&iter, &length), STUN_MAX_REALM_SIZE);
+        realm[STUN_MAX_REALM_SIZE] = '\0';
         ret = 0;
       }
       if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "password") && BSON_ITER_HOLDS_UTF8(&iter)) {
         strncpy((char *)pwd, bson_iter_utf8(&iter, &length), STUN_MAX_PWD_SIZE);
+        pwd[STUN_MAX_PWD_SIZE] = '\0';
         ret = 0;
       }
     }

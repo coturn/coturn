@@ -372,25 +372,25 @@ int make_ioa_addr_from_full_string(const uint8_t *saddr, int default_port, ioa_a
   return ret;
 }
 
-int addr_to_string(const ioa_addr *addr, uint8_t *saddr) {
+int addr_to_string(const ioa_addr *addr, char *saddr) {
 
   if (addr && saddr) {
-
+    saddr[0] = '\0';
     char addrtmp[INET6_ADDRSTRLEN];
 
     if (addr->ss.sa_family == AF_INET) {
       inet_ntop(AF_INET, &addr->s4.sin_addr, addrtmp, INET_ADDRSTRLEN);
       if (addr_get_port(addr) > 0) {
-        snprintf((char *)saddr, MAX_IOA_ADDR_STRING, "%s:%d", addrtmp, addr_get_port(addr));
+        snprintf(saddr, MAX_IOA_ADDR_STRING, "%s:%d", addrtmp, addr_get_port(addr));
       } else {
-        strncpy((char *)saddr, addrtmp, MAX_IOA_ADDR_STRING);
+        snprintf(saddr, MAX_IOA_ADDR_STRING, "%s", addrtmp);
       }
     } else if (addr->ss.sa_family == AF_INET6) {
       inet_ntop(AF_INET6, &addr->s6.sin6_addr, addrtmp, INET6_ADDRSTRLEN);
       if (addr_get_port(addr) > 0) {
-        snprintf((char *)saddr, MAX_IOA_ADDR_STRING, "[%s]:%d", addrtmp, addr_get_port(addr));
+        snprintf(saddr, MAX_IOA_ADDR_STRING, "[%s]:%d", addrtmp, addr_get_port(addr));
       } else {
-        strncpy((char *)saddr, addrtmp, MAX_IOA_ADDR_STRING);
+        snprintf(saddr, MAX_IOA_ADDR_STRING, "%s", addrtmp);
       }
     } else {
       return -1;
@@ -402,18 +402,14 @@ int addr_to_string(const ioa_addr *addr, uint8_t *saddr) {
   return -1;
 }
 
-int addr_to_string_no_port(const ioa_addr *addr, uint8_t *saddr) {
+int addr_to_string_no_port(const ioa_addr *addr, char *saddr) {
 
   if (addr && saddr) {
-
-    char addrtmp[MAX_IOA_ADDR_STRING];
-
+    saddr[0] = '\0';
     if (addr->ss.sa_family == AF_INET) {
-      inet_ntop(AF_INET, &addr->s4.sin_addr, addrtmp, INET_ADDRSTRLEN);
-      strncpy((char *)saddr, addrtmp, MAX_IOA_ADDR_STRING);
+      inet_ntop(AF_INET, &addr->s4.sin_addr, saddr, INET_ADDRSTRLEN);
     } else if (addr->ss.sa_family == AF_INET6) {
-      inet_ntop(AF_INET6, &addr->s6.sin6_addr, addrtmp, INET6_ADDRSTRLEN);
-      strncpy((char *)saddr, addrtmp, MAX_IOA_ADDR_STRING);
+      inet_ntop(AF_INET6, &addr->s6.sin6_addr, saddr, INET6_ADDRSTRLEN);
     } else {
       return -1;
     }
@@ -493,6 +489,23 @@ int addr_less_eq(const ioa_addr *addr1, const ioa_addr *addr2) {
 int ioa_addr_in_range(const ioa_addr_range *range, const ioa_addr *addr) {
 
   if (range && addr) {
+#if !defined(WINDOWS)
+    /* If the range is AF_INET and addr is an IPv4-mapped IPv6 address
+     * (::ffff:x.x.x.x), extract the embedded IPv4 so the comparison works. */
+    ioa_addr addr4;
+    if (addr->ss.sa_family == AF_INET6) {
+      sa_family_t range_family = range->min.ss.sa_family;
+      if (range_family == 0) {
+        range_family = range->max.ss.sa_family;
+      }
+      if (range_family == AF_INET && IN6_IS_ADDR_V4MAPPED(&addr->s6.sin6_addr)) {
+        memset(&addr4, 0, sizeof(addr4));
+        addr4.s4.sin_family = AF_INET;
+        memcpy(&addr4.s4.sin_addr, addr->s6.sin6_addr.s6_addr + 12, 4);
+        addr = &addr4;
+      }
+    }
+#endif
     if (addr_any(&(range->min)) || addr_less_eq(&(range->min), addr)) {
       if (addr_any(&(range->max))) {
         return 1;
@@ -520,8 +533,12 @@ int ioa_addr_is_multicast(ioa_addr *addr) {
       const uint8_t *u = ((const uint8_t *)&(addr->s4.sin_addr));
       return (u[0] > 223);
     } else if (addr->ss.sa_family == AF_INET6) {
-      const uint8_t u = ((const uint8_t *)&(addr->s6.sin6_addr))[0];
-      return (u == 255);
+      const uint8_t *u = ((const uint8_t *)&(addr->s6.sin6_addr));
+      /* IPv4-mapped IPv6: ::ffff:x.x.x.x — check embedded IPv4 multicast range */
+      if (IN6_IS_ADDR_V4MAPPED(&addr->s6.sin6_addr)) {
+        return (u[12] > 223);
+      }
+      return (u[0] == 255);
     }
   }
   return 0;
@@ -543,6 +560,10 @@ int ioa_addr_is_loopback(ioa_addr *addr) {
         }
         return 1;
       }
+      /* IPv4-mapped IPv6: ::ffff:x.x.x.x */
+      if (IN6_IS_ADDR_V4MAPPED(&addr->s6.sin6_addr)) {
+        return (u[12] == 127);
+      }
     }
   }
   return 0;
@@ -561,6 +582,10 @@ int ioa_addr_is_zero(ioa_addr *addr) {
       return (u[0] == 0);
     } else if (addr->ss.sa_family == AF_INET6) {
       const uint8_t *u = ((const uint8_t *)&(addr->s6.sin6_addr));
+      /* IPv4-mapped IPv6: ::ffff:0.0.0.0 */
+      if (IN6_IS_ADDR_V4MAPPED(&addr->s6.sin6_addr)) {
+        return (u[12] == 0 && u[13] == 0 && u[14] == 0 && u[15] == 0);
+      }
       int i;
       for (i = 0; i <= 15; ++i) {
         if (u[i]) {

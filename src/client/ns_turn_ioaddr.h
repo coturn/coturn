@@ -43,7 +43,7 @@ extern "C" {
 
 /////////////////////////////////////////////////////
 
-#define MAX_IOA_ADDR_STRING (65)
+#define MAX_IOA_ADDR_STRING (64)
 
 typedef union {
   struct sockaddr ss;
@@ -76,8 +76,8 @@ int make_ioa_addr(const uint8_t *saddr, int port, ioa_addr *addr);
 int make_ioa_addr_from_full_string(const uint8_t *saddr, int default_port, ioa_addr *addr);
 void addr_set_port(ioa_addr *addr, int port);
 int addr_get_port(const ioa_addr *addr);
-int addr_to_string(const ioa_addr *addr, uint8_t *saddr);
-int addr_to_string_no_port(const ioa_addr *addr, uint8_t *saddr);
+int addr_to_string(const ioa_addr *addr, char *saddr);
+int addr_to_string_no_port(const ioa_addr *addr, char *saddr);
 
 uint32_t hash_int32(uint32_t a);
 uint64_t hash_int64(uint64_t a);

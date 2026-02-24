@@ -1215,9 +1215,11 @@ static int sqlite_get_admin_user(const uint8_t *usname, uint8_t *realm, password
 
       if (kval) {
         strncpy((char *)realm, kval, STUN_MAX_REALM_SIZE);
+        realm[STUN_MAX_REALM_SIZE] = '\0';
       }
       if (rval) {
         strncpy((char *)pwd, rval, STUN_MAX_PWD_SIZE);
+        pwd[STUN_MAX_PWD_SIZE] = '\0';
       }
 
       ret = 0;

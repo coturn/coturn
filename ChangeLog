@@ -1,3 +1,23 @@
+Release 4.9.0
+
+Changelist:
+- Fix thread sanitizer warning (#1812) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- OpenSSL: migrate to modern API for DH param (#1809) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Migrate AES-128 encryption from deprecated OpenSSL API to EVP (#1808) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix unbounded strcpy in stun_method_str (ns_turn_msg.c) (#1798) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix missing null termination in addr_to_string (ns_turn_ioaddr.c) (#1806) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix missing null termination after strncpy in DB drivers (#1804) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix unbounded strcpy in HTTP response (http_server.c) (#1800) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Remove ubuntu20, DEBUG builds from build matrix (#1803) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix buffer overflow in decryptPassword  in mysql (#1801) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix missing null termination after strncpy in MongoDB driver (dbd_mongo.c) (#1797) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix buffer overflow in decrypt_aes_128 (#1799) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix Web Admin Password Check (#1802) (薄景仁 <bjrxyz@sina.com>)
+
+Contributors:
+- 薄景仁 <bjrxyz@sina.com>
+- Pavel Punsky <eakraly@users.noreply.github.com>
+
 Release 4.8.0
 
 Changelist:

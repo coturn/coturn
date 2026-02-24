@@ -51,7 +51,8 @@
 ///////////
 
 #define FINGERPRINT_XOR 0x5354554e
-
+// Longest method string is "CONNECTION_ATTEMPT" (20 chars)
+#define STUN_METHOD_STR_MAX 32
 ///////////
 
 int stun_method_str(uint16_t method, char *smethod) {
@@ -95,7 +96,8 @@ int stun_method_str(uint16_t method, char *smethod) {
   };
 
   if (smethod) {
-    strcpy(smethod, s);
+    strncpy(smethod, s, STUN_METHOD_STR_MAX - 1);
+    smethod[STUN_METHOD_STR_MAX - 1] = '\0';
   }
 
   return ret;

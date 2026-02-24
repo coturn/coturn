@@ -292,11 +292,11 @@ static void cli_print_addr(struct cli_session *cs, ioa_addr *value, int use_port
     } else if (changeable == 2) {
       sc = " (**)";
     }
-    char s[256];
+    char s[MAX_IOA_ADDR_STRING];
     if (!use_port) {
-      addr_to_string_no_port(value, (uint8_t *)s);
+      addr_to_string_no_port(value, s);
     } else {
-      addr_to_string(value, (uint8_t *)s);
+      addr_to_string(value, s);
     }
     myprintf(cs, "  %s: %s%s\n", name, s, sc);
   }
@@ -311,13 +311,13 @@ static void cli_print_addr_list(struct cli_session *cs, turn_server_addrs_list_t
     } else if (changeable == 2) {
       sc = " (**)";
     }
-    char s[256];
+    char s[MAX_IOA_ADDR_STRING];
     size_t i;
     for (i = 0; i < value->size; i++) {
       if (!use_port) {
-        addr_to_string_no_port(&(value->addrs[i]), (uint8_t *)s);
+        addr_to_string_no_port(&(value->addrs[i]), s);
       } else {
-        addr_to_string(&(value->addrs[i]), (uint8_t *)s);
+        addr_to_string(&(value->addrs[i]), s);
       }
       myprintf(cs, "  %s: %s%s\n", name, s, sc);
     }
@@ -524,16 +524,16 @@ static bool print_session(ur_map_key_type key, ur_map_value_type value, void *ar
                  socket_type_name(tsi->peer_protocol));
         {
           if (!tsi->local_addr_data.saddr[0]) {
-            addr_to_string(&(tsi->local_addr_data.addr), (uint8_t *)tsi->local_addr_data.saddr);
+            addr_to_string(&(tsi->local_addr_data.addr), tsi->local_addr_data.saddr);
           }
           if (!tsi->remote_addr_data.saddr[0]) {
-            addr_to_string(&(tsi->remote_addr_data.addr), (uint8_t *)tsi->remote_addr_data.saddr);
+            addr_to_string(&(tsi->remote_addr_data.addr), tsi->remote_addr_data.saddr);
           }
           if (!tsi->relay_addr_data_ipv4.saddr[0]) {
-            addr_to_string(&(tsi->relay_addr_data_ipv4.addr), (uint8_t *)tsi->relay_addr_data_ipv4.saddr);
+            addr_to_string(&(tsi->relay_addr_data_ipv4.addr), tsi->relay_addr_data_ipv4.saddr);
           }
           if (!tsi->relay_addr_data_ipv6.saddr[0]) {
-            addr_to_string(&(tsi->relay_addr_data_ipv6.addr), (uint8_t *)tsi->relay_addr_data_ipv6.saddr);
+            addr_to_string(&(tsi->relay_addr_data_ipv6.addr), tsi->relay_addr_data_ipv6.saddr);
           }
           myprintf(cs, "      client addr %s, server addr %s\n", tsi->remote_addr_data.saddr,
                    tsi->local_addr_data.saddr);
@@ -563,14 +563,14 @@ static bool print_session(ur_map_key_type key, ur_map_value_type value, void *ar
           size_t i;
           for (i = 0; i < tsi->main_peers_size; ++i) {
             if (!(tsi->main_peers_data[i].saddr[0])) {
-              addr_to_string(&(tsi->main_peers_data[i].addr), (uint8_t *)tsi->main_peers_data[i].saddr);
+              addr_to_string(&(tsi->main_peers_data[i].addr), tsi->main_peers_data[i].saddr);
             }
             myprintf(cs, "          %s\n", tsi->main_peers_data[i].saddr);
           }
           if (tsi->extra_peers_size && tsi->extra_peers_data) {
             for (i = 0; i < tsi->extra_peers_size; ++i) {
               if (!(tsi->extra_peers_data[i].saddr[0])) {
-                addr_to_string(&(tsi->extra_peers_data[i].addr), (uint8_t *)tsi->extra_peers_data[i].saddr);
+                addr_to_string(&(tsi->extra_peers_data[i].addr), tsi->extra_peers_data[i].saddr);
               }
               myprintf(cs, "          %s\n", tsi->extra_peers_data[i].saddr);
             }
@@ -1379,8 +1379,8 @@ void setup_admin_thread(void) {
 
     addr_set_port(&web_admin_addr, web_admin_port);
 
-    char saddr[129];
-    addr_to_string_no_port(&web_admin_addr, (uint8_t *)saddr);
+    char saddr[MAX_IOA_ADDR_STRING];
+    addr_to_string_no_port(&web_admin_addr, saddr);
 
     tls_listener_relay_server_type *tls_service =
         create_tls_listener_server(turn_params.listener_ifname, saddr, web_admin_port, turn_params.verbose,
@@ -1413,8 +1413,8 @@ void setup_admin_thread(void) {
 
     if (addr_bind(adminserver.listen_fd, &cli_addr, 1, 1, TCP_SOCKET) < 0) {
       perror("Cannot bind CLI socket to addr");
-      char saddr[129];
-      addr_to_string(&cli_addr, (uint8_t *)saddr);
+      char saddr[MAX_IOA_ADDR_STRING];
+      addr_to_string(&cli_addr, saddr);
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot bind CLI listener socket to addr %s\n", saddr);
       socket_closesocket(adminserver.listen_fd);
       return;
@@ -1917,11 +1917,11 @@ static void https_print_str_array(struct str_buffer *sb, char **value, size_t sz
 
 static void https_print_addr(struct str_buffer *sb, ioa_addr *value, int use_port, const char *name) {
   if (sb && name && value) {
-    char s[256];
+    char s[MAX_IOA_ADDR_STRING];
     if (!use_port) {
-      addr_to_string_no_port(value, (uint8_t *)s);
+      addr_to_string_no_port(value, s);
     } else {
-      addr_to_string(value, (uint8_t *)s);
+      addr_to_string(value, s);
     }
     sbprintf(sb, "<tr><td>  %s</td><td> %s</td></tr>\r\n", name, s);
   }
@@ -1930,13 +1930,13 @@ static void https_print_addr(struct str_buffer *sb, ioa_addr *value, int use_por
 static size_t https_print_addr_list(struct str_buffer *sb, turn_server_addrs_list_t *value, int use_port,
                                     const char *name) {
   if (sb && name && value && value->size && value->addrs) {
-    char s[256];
+    char s[MAX_IOA_ADDR_STRING];
     size_t i;
     for (i = 0; i < value->size; i++) {
       if (!use_port) {
-        addr_to_string_no_port(&(value->addrs[i]), (uint8_t *)s);
+        addr_to_string_no_port(&(value->addrs[i]), s);
       } else {
-        addr_to_string(&(value->addrs[i]), (uint8_t *)s);
+        addr_to_string(&(value->addrs[i]), s);
       }
       sbprintf(sb, "</tr><td>  %s</td><td> %s</td></tr>\r\n", name, s);
     }
@@ -2376,16 +2376,16 @@ static bool https_print_session(ur_map_key_type key, ur_map_value_type value, vo
       str_buffer_append(sb, "</td><td>");
       {
         if (!tsi->local_addr_data.saddr[0]) {
-          addr_to_string(&(tsi->local_addr_data.addr), (uint8_t *)tsi->local_addr_data.saddr);
+          addr_to_string(&(tsi->local_addr_data.addr), tsi->local_addr_data.saddr);
         }
         if (!tsi->remote_addr_data.saddr[0]) {
-          addr_to_string(&(tsi->remote_addr_data.addr), (uint8_t *)tsi->remote_addr_data.saddr);
+          addr_to_string(&(tsi->remote_addr_data.addr), tsi->remote_addr_data.saddr);
         }
         if (!tsi->relay_addr_data_ipv4.saddr[0]) {
-          addr_to_string(&(tsi->relay_addr_data_ipv4.addr), (uint8_t *)tsi->relay_addr_data_ipv4.saddr);
+          addr_to_string(&(tsi->relay_addr_data_ipv4.addr), tsi->relay_addr_data_ipv4.saddr);
         }
         if (!tsi->relay_addr_data_ipv6.saddr[0]) {
-          addr_to_string(&(tsi->relay_addr_data_ipv6.addr), (uint8_t *)tsi->relay_addr_data_ipv6.saddr);
+          addr_to_string(&(tsi->relay_addr_data_ipv6.addr), tsi->relay_addr_data_ipv6.saddr);
         }
         str_buffer_append(sb, tsi->remote_addr_data.saddr);
         str_buffer_append(sb, "</td><td>");
@@ -2426,7 +2426,7 @@ static bool https_print_session(ur_map_key_type key, ur_map_value_type value, vo
           size_t i;
           for (i = 0; i < tsi->main_peers_size; ++i) {
             if (!(tsi->main_peers_data[i].saddr[0])) {
-              addr_to_string(&(tsi->main_peers_data[i].addr), (uint8_t *)tsi->main_peers_data[i].saddr);
+              addr_to_string(&(tsi->main_peers_data[i].addr), tsi->main_peers_data[i].saddr);
             }
             str_buffer_append(sb, " ");
             str_buffer_append(sb, tsi->main_peers_data[i].saddr);
@@ -2435,7 +2435,7 @@ static bool https_print_session(ur_map_key_type key, ur_map_value_type value, vo
           if (tsi->extra_peers_size && tsi->extra_peers_data) {
             for (i = 0; i < tsi->extra_peers_size; ++i) {
               if (!(tsi->extra_peers_data[i].saddr[0])) {
-                addr_to_string(&(tsi->extra_peers_data[i].addr), (uint8_t *)tsi->extra_peers_data[i].saddr);
+                addr_to_string(&(tsi->extra_peers_data[i].addr), tsi->extra_peers_data[i].saddr);
               }
               str_buffer_append(sb, " ");
               str_buffer_append(sb, tsi->extra_peers_data[i].saddr);

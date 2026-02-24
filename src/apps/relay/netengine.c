@@ -46,6 +46,7 @@
 #if !defined(TURN_NO_THREAD_BARRIERS)
 static unsigned int barrier_count = 0;
 static pthread_barrier_t barrier;
+static pthread_barrier_t relay_setup_barrier;
 #endif
 
 ////////////// Auth Server ////////////////
@@ -195,7 +196,7 @@ static void add_aux_server_list(const char *saddr, turn_server_addrs_list_t *lis
       list->addrs = (ioa_addr *)realloc(list->addrs, sizeof(ioa_addr) * (list->size + 1));
       addr_cpy(&(list->addrs[(list->size)++]), &addr);
       {
-        uint8_t s[1025];
+        char s[MAX_IOA_ADDR_STRING];
         addr_to_string(&addr, s);
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Aux server: %s\n", s);
       }
@@ -219,7 +220,7 @@ static void add_alt_server(const char *saddr, int default_port, turn_server_addr
       list->addrs = (ioa_addr *)realloc(list->addrs, sizeof(ioa_addr) * (list->size + 1));
       addr_cpy(&(list->addrs[(list->size)++]), &addr);
       {
-        uint8_t s[1025];
+        char s[MAX_IOA_ADDR_STRING];
         addr_to_string(&addr, s);
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Alternate server added: %s\n", s);
       }
@@ -265,7 +266,7 @@ static void del_alt_server(const char *saddr, int default_port, turn_server_addr
         list->size -= 1;
 
         {
-          uint8_t s[1025];
+          char s[MAX_IOA_ADDR_STRING];
           addr_to_string(&addr, s);
           TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Alternate server removed: %s\n", s);
         }
@@ -373,8 +374,8 @@ void add_listener_addr(const char *addr) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot add a listener address: %s\n", addr);
   } else {
 
-    char sbaddr[129];
-    addr_to_string_no_port(&baddr, (uint8_t *)sbaddr);
+    char sbaddr[MAX_IOA_ADDR_STRING];
+    addr_to_string_no_port(&baddr, sbaddr);
 
     size_t i = 0;
     for (i = 0; i < turn_params.listener.addrs_number; ++i) {
@@ -402,8 +403,8 @@ int add_relay_addr(const char *addr) {
     return -1;
   } else {
 
-    char sbaddr[129];
-    addr_to_string_no_port(&baddr, (uint8_t *)sbaddr);
+    char sbaddr[MAX_IOA_ADDR_STRING];
+    addr_to_string_no_port(&baddr, sbaddr);
 
     size_t i = 0;
     for (i = 0; i < turn_params.relays_number; ++i) {
@@ -929,7 +930,7 @@ static void listener_receive_message(struct bufferevent *bev, void *ptr) {
     }
 
     if (!found) {
-      uint8_t saddr[129];
+      char saddr[MAX_IOA_ADDR_STRING];
       addr_to_string(&mm.m.tc.origin, saddr);
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Cannot find local source %s\n", __FUNCTION__, saddr);
     }
@@ -1147,10 +1148,10 @@ static void setup_socket_per_endpoint_udp_listener_servers(void) {
     if (!turn_params.no_udp || !turn_params.no_dtls) {
 
       ioa_addr addr;
-      char saddr[129];
+      char saddr[MAX_IOA_ADDR_STRING];
       addr_cpy(&addr, &turn_params.aux_servers_list.addrs[i]);
       const int port = (int)addr_get_port(&addr);
-      addr_to_string_no_port(&addr, (uint8_t *)saddr);
+      addr_to_string_no_port(&addr, saddr);
 
       turn_params.listener.aux_udp_services[index] = (dtls_listener_relay_server_type **)allocate_super_memory_engine(
           udp_relay_servers[udp_relay_server_index]->ioa_eng, sizeof(dtls_listener_relay_server_type *));
@@ -1273,13 +1274,17 @@ static void setup_socket_per_thread_udp_listener_servers(void) {
   size_t i = 0;
   size_t relayindex = 0;
 
-  /* Create listeners */
-
+  /* Wait for all relay threads to complete setup before accessing their state */
+#if !defined(TURN_NO_THREAD_BARRIERS)
+  pthread_barrier_wait(&relay_setup_barrier);
+#else
+  /* Fallback when barriers are disabled: spin-wait (racy, but preserved for compatibility) */
   for (relayindex = 0; relayindex < get_real_general_relay_servers_number(); relayindex++) {
     while (!(general_relay_servers[relayindex]->ioa_eng) || !(general_relay_servers[relayindex]->server.e)) {
       sched_yield();
     }
   }
+#endif
 
   /* Aux UDP servers */
   for (i = 0; i < turn_params.aux_servers_list.size; i++) {
@@ -1289,10 +1294,10 @@ static void setup_socket_per_thread_udp_listener_servers(void) {
     if (!turn_params.no_udp || !turn_params.no_dtls) {
 
       ioa_addr addr;
-      char saddr[129];
+      char saddr[MAX_IOA_ADDR_STRING];
       addr_cpy(&addr, &turn_params.aux_servers_list.addrs[i]);
       const int port = (int)addr_get_port(&addr);
-      addr_to_string_no_port(&addr, (uint8_t *)saddr);
+      addr_to_string_no_port(&addr, saddr);
 
       turn_params.listener.aux_udp_services[index] = (dtls_listener_relay_server_type **)allocate_super_memory_engine(
           turn_params.listener.ioa_eng,
@@ -1392,10 +1397,10 @@ static void setup_socket_per_session_udp_listener_servers(void) {
     if (!turn_params.no_udp || !turn_params.no_dtls) {
 
       ioa_addr addr;
-      char saddr[129];
+      char saddr[MAX_IOA_ADDR_STRING];
       addr_cpy(&addr, &turn_params.aux_servers_list.addrs[i]);
       const int port = (int)addr_get_port(&addr);
-      addr_to_string_no_port(&addr, (uint8_t *)saddr);
+      addr_to_string_no_port(&addr, saddr);
 
       turn_params.listener.aux_udp_services[index] = (dtls_listener_relay_server_type **)allocate_super_memory_engine(
           turn_params.listener.ioa_eng, sizeof(dtls_listener_relay_server_type *));
@@ -1487,10 +1492,10 @@ static void setup_tcp_listener_servers(ioa_engine_handle e, struct relay_server 
     for (i = 0; i < turn_params.aux_servers_list.size; i++) {
 
       ioa_addr addr;
-      char saddr[129];
+      char saddr[MAX_IOA_ADDR_STRING];
       addr_cpy(&addr, &turn_params.aux_servers_list.addrs[i]);
       const int port = (int)addr_get_port(&addr);
-      addr_to_string_no_port(&addr, (uint8_t *)saddr);
+      addr_to_string_no_port(&addr, saddr);
 
       aux_tcp_services[i] = create_tls_listener_server(turn_params.listener_ifname, saddr, port, turn_params.verbose, e,
                                                        send_socket_to_general_relay, relay_server);
@@ -1707,6 +1712,12 @@ static void *run_general_relay_thread(void *arg) {
 
   setup_relay_server(rs, NULL, we_need_rfc5780);
 
+#if !defined(TURN_NO_THREAD_BARRIERS)
+  if (turn_params.net_engine_version == NEV_UDP_SOCKET_PER_THREAD) {
+    pthread_barrier_wait(&relay_setup_barrier);
+  }
+#endif
+
   barrier_wait();
 
   while (always_true) {
@@ -1718,6 +1729,15 @@ static void *run_general_relay_thread(void *arg) {
 
 static void setup_general_relay_servers(void) {
   size_t i = 0;
+
+#if !defined(TURN_NO_THREAD_BARRIERS)
+  if (turn_params.general_relay_servers_number > 0 && turn_params.net_engine_version == NEV_UDP_SOCKET_PER_THREAD) {
+    if (pthread_barrier_init(&relay_setup_barrier, NULL, (unsigned int)get_real_general_relay_servers_number() + 1) !=
+        0) {
+      perror("relay_setup_barrier init");
+    }
+  }
+#endif
 
   for (i = 0; i < get_real_general_relay_servers_number(); i++) {
 

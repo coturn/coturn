@@ -229,7 +229,7 @@ void start_prometheus_server(void) {
     }
   }
 
-  uint8_t addr[MAX_IOA_ADDR_STRING];
+  char addr[MAX_IOA_ADDR_STRING] = "";
   addr_to_string(&server_addr, addr);
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "prometheus exporter server will listen on %s\n", addr);
 
@@ -292,13 +292,13 @@ void prom_dec_allocation(SOCKET_TYPE type) {
 }
 
 void prom_inc_packet_processed(int count) {
-  if (turn_params.prometheus == 1) {
+  if (turn_params.prometheus) {
     prom_counter_add(packet_processed, count, NULL);
   }
 }
 
 void prom_inc_packet_dropped(int count) {
-  if (turn_params.prometheus == 1) {
+  if (turn_params.prometheus) {
     prom_counter_add(packet_dropped, count, NULL);
   }
 }
