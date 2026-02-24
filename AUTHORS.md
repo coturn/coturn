@@ -1,5 +1,6 @@
 Thanks to the following contributors (in alphabetical order):
 
+- 薄景仁 <bjrxyz@sina.com>
 - Aaron Bird <25508292+Aaron-Bird@users.noreply.github.com>
 - Alessandro Polidori <alessandro.polidori@nethesis.it>
 - Alex Gustafsson <89969483+alexg-axis@users.noreply.github.com>
