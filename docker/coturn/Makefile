@@ -24,7 +24,7 @@ dockerify = $(strip $(if $(call eq,$(1),linux/arm32v6),linux/arm/v6,\
 # Project parameters #
 ######################
 
-COTURN_VER ?= 4.8.0
+COTURN_VER ?= 4.9.0
 COTURN_MIN_VER = $(strip $(shell echo $(COTURN_VER) | cut -d '.' -f1,2))
 COTURN_MAJ_VER = $(strip $(shell echo $(COTURN_VER) | cut -d '.' -f1))
 
@@ -34,7 +34,7 @@ ALPINE_VER := alpine$(strip $(shell grep -m1 'alpine_ver=' alpine/Dockerfile \
 DEBIAN_VER := $(strip $(shell grep -m1 'debian_ver=' debian/Dockerfile \
                               | cut -d '=' -f2))
 
-BUILD_REV ?= 1
+BUILD_REV ?= 0
 
 NAME := coturn
 OWNER := $(or $(GITHUB_REPOSITORY_OWNER),coturn)
