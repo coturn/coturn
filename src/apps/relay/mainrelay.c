@@ -3523,8 +3523,12 @@ static void adjust_key_file_names(void) {
     adjust_key_file_name(turn_params.dh_file, "DH key", 0);
   }
 }
-static EVP_PKEY *get_dh566(void) {
 
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+static EVP_PKEY *get_dh566(void) {
+#else
+static DH *get_dh566(void) {
+#endif /* OPENSSL_VERSION_NUMBER >= 0x30000000L */
   unsigned char dh566_p[] = {0x36, 0x53, 0xA8, 0x9C, 0x3C, 0xF1, 0xD1, 0x1B, 0x2D, 0xA2, 0x64, 0xDE, 0x59, 0x3B, 0xE3,
                              0x8C, 0x27, 0x74, 0xC2, 0xBE, 0x9B, 0x6D, 0x56, 0xE7, 0xDF, 0xFF, 0x67, 0x6A, 0xD2, 0x0C,
                              0xE8, 0x9E, 0x52, 0x00, 0x05, 0xB3, 0x53, 0xF7, 0x1C, 0x41, 0xB2, 0xAC, 0x38, 0x16, 0x32,
@@ -3538,6 +3542,7 @@ static EVP_PKEY *get_dh566(void) {
 
   unsigned char dh566_g[] = {0x05};
 
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
   BIGNUM *p = BN_bin2bn(dh566_p, sizeof(dh566_p), NULL);
   BIGNUM *g = BN_bin2bn(dh566_g, sizeof(dh566_g), NULL);
   if (!p || !g) {
@@ -3561,9 +3566,22 @@ static EVP_PKEY *get_dh566(void) {
   EVP_PKEY_CTX_free(pctx);
   OSSL_PARAM_free(params);
   return pkey;
+#else
+  DH *dh;
+
+  if ((dh = DH_new()) == NULL) {
+    return (NULL);
+  }
+  DH_set0_pqg(dh, BN_bin2bn(dh566_p, sizeof(dh566_p), NULL), NULL, BN_bin2bn(dh566_g, sizeof(dh566_g), NULL));
+  return (dh);
+#endif /* OPENSSL_VERSION_NUMBER >= 0x30000000L */
 }
 
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
 static EVP_PKEY *get_dh1066(void) {
+#else
+static DH *get_dh1066(void) {
+#endif /* OPENSSL_VERSION_NUMBER >= 0x30000000L */
 
   unsigned char dh1066_p[] = {0x02, 0x0E, 0x26, 0x6F, 0xAA, 0x9F, 0xA8, 0xE5, 0x3F, 0x70, 0x88, 0xF1, 0xA9, 0x29, 0xAE,
                               0x1A, 0x2B, 0xA8, 0x2F, 0xE8, 0xE5, 0x0E, 0x81, 0x78, 0xD7, 0x12, 0x41, 0xDC, 0xE2, 0xD5,
@@ -3583,6 +3601,7 @@ static EVP_PKEY *get_dh1066(void) {
 
   unsigned char dh1066_g[] = {0x02};
 
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
   BIGNUM *p = BN_bin2bn(dh1066_p, sizeof(dh1066_p), NULL);
   BIGNUM *g = BN_bin2bn(dh1066_g, sizeof(dh1066_g), NULL);
   if (!p || !g) {
@@ -3606,9 +3625,22 @@ static EVP_PKEY *get_dh1066(void) {
   EVP_PKEY_CTX_free(pctx);
   OSSL_PARAM_free(params);
   return pkey;
+#else
+  DH *dh;
+
+  if ((dh = DH_new()) == NULL) {
+    return (NULL);
+  }
+  DH_set0_pqg(dh, BN_bin2bn(dh1066_p, sizeof(dh1066_p), NULL), NULL, BN_bin2bn(dh1066_g, sizeof(dh1066_g), NULL));
+  return (dh);
+#endif /* OPENSSL_VERSION_NUMBER >= 0x30000000L */
 }
 
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
 static EVP_PKEY *get_dh2066(void) {
+#else
+static DH *get_dh2066(void) {
+#endif /* OPENSSL_VERSION_NUMBER >= 0x30000000L */
 
   unsigned char dh2066_p[] = {
       0x03, 0x31, 0x77, 0x20, 0x58, 0xA6, 0x69, 0xA3, 0x9D, 0x2D, 0x5E, 0xE0, 0x5C, 0x46, 0x82, 0x0F, 0x9E, 0x80, 0xF0,
@@ -3637,6 +3669,7 @@ static EVP_PKEY *get_dh2066(void) {
 
   unsigned char dh2066_g[] = {0x05};
 
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
   BIGNUM *p = BN_bin2bn(dh2066_p, sizeof(dh2066_p), NULL);
   BIGNUM *g = BN_bin2bn(dh2066_g, sizeof(dh2066_g), NULL);
   if (!p || !g) {
@@ -3660,6 +3693,15 @@ static EVP_PKEY *get_dh2066(void) {
   EVP_PKEY_CTX_free(pctx);
   OSSL_PARAM_free(params);
   return pkey;
+#else
+  DH *dh;
+
+  if ((dh = DH_new()) == NULL) {
+    return (NULL);
+  }
+  DH_set0_pqg(dh, BN_bin2bn(dh2066_p, sizeof(dh2066_p), NULL), NULL, BN_bin2bn(dh2066_g, sizeof(dh2066_g), NULL));
+  return (dh);
+#endif /* OPENSSL_VERSION_NUMBER >= 0x30000000L */
 }
 
 static int pem_password_func(char *buf, int size, int rwflag, void *password) {
@@ -3811,12 +3853,17 @@ static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *metho
 
   { // DH algorithms:
 
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
     EVP_PKEY *dh = NULL;
+#else
+    DH *dh = NULL;
+#endif /* OPENSSL_VERSION_NUMBER >= 0x30000000L */
     if (turn_params.dh_file[0]) {
       FILE *paramfile = fopen(turn_params.dh_file, "r");
       if (!paramfile) {
         perror("Cannot open DH file");
       } else {
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
         OSSL_DECODER_CTX *dctx =
             OSSL_DECODER_CTX_new_for_pkey(&dh, "PEM", NULL, "DH", EVP_PKEY_KEY_PARAMETERS, NULL, NULL);
         if (dctx) {
@@ -3825,6 +3872,9 @@ static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *metho
           }
           OSSL_DECODER_CTX_free(dctx);
         }
+#else
+        dh = PEM_read_DHparams(paramfile, NULL, NULL, NULL);
+#endif /* OPENSSL_VERSION_NUMBER >= 0x30000000L */
         fclose(paramfile);
         if (dh) {
           turn_params.dh_key_size = DH_CUSTOM;
@@ -3846,11 +3896,19 @@ static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *metho
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: cannot allocate DH suite\n", __FUNCTION__);
       err = 1;
     } else {
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
       if (1 != SSL_CTX_set0_tmp_dh_pkey(ctx, dh)) {
+#else
+      if (1 != SSL_CTX_set_tmp_dh(ctx, dh)) {
+#endif /* OPENSSL_VERSION_NUMBER >= 0x30000000L */
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: cannot set DH\n", __FUNCTION__);
         err = 1;
       }
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
       // No EVP_PKEY_free: SSL_CTX_set0_tmp_dh_pkey always takes ownership
+#else
+      DH_free(dh);
+#endif /* OPENSSL_VERSION_NUMBER >= 0x30000000L */
     }
   }
 
