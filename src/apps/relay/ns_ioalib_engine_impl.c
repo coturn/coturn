@@ -366,10 +366,10 @@ static void timer_handler(ioa_engine_handle e, void *arg) {
 
   UNUSED_ARG(arg);
 
-  _log_time_value = turn_time();
-  _log_time_value_set = 1;
+  const turn_time_t now = turn_time();
+  STORE_LOG_TIME(now);
 
-  e->jiffie = _log_time_value;
+  e->jiffie = now;
 }
 
 ioa_engine_handle create_ioa_engine(super_memory_t *sm, struct event_base *eb, turnipports *tp,
