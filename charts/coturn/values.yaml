@@ -111,40 +111,40 @@ federate:
     enabled: false
 
     tls:
-  #   Example:
-  #
-  #   tls:
-  #     key: "-----BEGIN EC PRIVATE KEY----- ..." # (ascii blob) private key
-  #     crt: "-----BEGIN CERTIFICATE----- ..." # (ascii blob) certificate
-  #     privateKeyPassword: "XXX" # optional, used when the key is password protected
-  #
-  #   OR (mutually exclusive)
-  #
-  #   tls:
-  #      issuerRef:
-  #        name: letsencrypt-http01
-  #
-  #        # We can reference ClusterIssuers by changing the kind here.
-  #        # The default value is Issuer (i.e. a locally namespaced Issuer)
-  #        # kind: Issuer
-  #        kind: Issuer
-  #
-  #        # This is optional since cert-manager will default to this value however
-  #        # if you are using an external issuer, change this to that issuer group.
-  #        group: cert-manager.io
-  #
-  #      # optional labels to attach to the cert-manager Certificate
-  #      certificate:
-  #        labels: ..
+    #   Example:
+    #
+    #   tls:
+    #     key: "-----BEGIN EC PRIVATE KEY----- ..." # (ascii blob) private key
+    #     crt: "-----BEGIN CERTIFICATE----- ..." # (ascii blob) certificate
+    #     privateKeyPassword: "XXX" # optional, used when the key is password protected
+    #
+    #   OR (mutually exclusive)
+    #
+    #   tls:
+    #      issuerRef:
+    #        name: letsencrypt-http01
+    #
+    #        # We can reference ClusterIssuers by changing the kind here.
+    #        # The default value is Issuer (i.e. a locally namespaced Issuer)
+    #        # kind: Issuer
+    #        kind: Issuer
+    #
+    #        # This is optional since cert-manager will default to this value however
+    #        # if you are using an external issuer, change this to that issuer group.
+    #        group: cert-manager.io
+    #
+    #      # optional labels to attach to the cert-manager Certificate
+    #      certificate:
+    #        labels: ..
 
-  # # list of host/ip/cert common names / subject alt names, and optional issuer
-  # # names to accept DTLS connections from. There can be multiple entries.
-  # remoteWhitelist:
-  #   - host: wire.example
-  #     issuer: Issuer Common Name
-  #   - host: another.wire.example
-  #     issuer: "DigiCert SHA2 Extended Validation Server CA"
-  #   - host: another-host-without-issuer.wire.example
+    # # list of host/ip/cert common names / subject alt names, and optional issuer
+    # # names to accept DTLS connections from. There can be multiple entries.
+    # remoteWhitelist:
+    #   - host: wire.example
+    #     issuer: Issuer Common Name
+    #   - host: another.wire.example
+    #     issuer: "DigiCert SHA2 Extended Validation Server CA"
+    #   - host: another-host-without-issuer.wire.example
     remoteWhitelist: []
 
 ratelimit:
@@ -154,7 +154,7 @@ ratelimit:
   # # Set the time window duration in seconds for rate limiting 401 Unauthorized responses. Defaults is 120.
   # window: 120
   # # Define the IPs allowed to bypass the 401 rate-limiting
-  # allowlist: 
+  # allowlist:
   #   - "192.168.1.1"
   #   - "192.168.1.2"
 
