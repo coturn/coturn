@@ -84,7 +84,10 @@ spec:
         {{- end }}
       initContainers:
         - name: get-external-ip
-          image: bitnamilegacy/kubectl:1.29.11
+          {{- with .Values.externalIpHelper.image }}
+          image: {{ .repository }}:{{ .tag }}
+          imagePullPolicy: {{ .pullPolicy }}
+          {{- end }}
           resources:
             {{- toYaml .Values.initResources | nindent 12 }}
           volumeMounts:
@@ -95,8 +98,8 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
-          command:
-            - /bin/sh
+          command: ['/bin/sh']
+          args:
             - -c
             - |
               set -e

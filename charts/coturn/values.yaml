@@ -10,6 +10,15 @@ image:
   # overwrite the tag here, otherwise `appVersion` of the chart will be used
   tag: ""
 
+externalIpHelper:
+  # The image used for the initContainer that determines the external IP address of the node.
+  # This is a very small image that just contains kubectl, and is only used during startup.
+  # We chose the `compat` flavor of the image since we need a shell to run the command that determines the external IP address, and the `compat` image includes a shell.
+  image:
+    repository: docker.io/alpine/kubectl
+    pullPolicy: IfNotPresent
+    tag: 1.35.1
+
 # If you have multiple deployments of coturn running in one cluster, it is
 # important that they run on disjoint sets of nodes, you can use nodeSelector to enforce this
 nodeSelector: {}
@@ -49,7 +58,7 @@ coturnTurnExternalIP: null
 tls:
   enabled: false
   # compliant with BSI TR-02102-2
-  ciphers: 'ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384'
+  ciphers: "ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384"
   secretRef:
   reloaderImage:
     # container image containing https://github.com/Pluies/config-reloader-sidecar
