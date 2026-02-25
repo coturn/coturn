@@ -175,8 +175,13 @@ int ratelimit_is_address_limited(ioa_addr *address, int max_requests, int window
     ratelimit_entry *rateLimitEntry = (ratelimit_entry *)(void *)(ur_map_value_type)ratelimit_ptr;
     TURN_MUTEX_LOCK(&(rateLimitEntry->mutex));
 
-    if (turn_time_before(current_time, rateLimitEntry->last_request_time)) {
+    if (turn_time_before((rateLimitEntry->last_request_time + window_seconds), current_time)) {
       /* Check if request is inside the ratelimit window; reset the count and request time */
+      char raddr[MAX_IOA_ADDR_STRING + 1];
+
+      addr_to_string_no_port(address_new, (unsigned char *)raddr);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "ratelimit reset for: %s\n", raddr);
+
       rateLimitEntry->request_count = 1;
       rateLimitEntry->last_request_time = current_time;
       retval = 0;
