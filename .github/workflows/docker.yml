@@ -70,7 +70,7 @@ jobs:
       - run: make docker.tar to-file=.cache/image.tar
                   tags=build-${{ github.run_number }}-${{ matrix.dist }}-${{ matrix.arch }}
         working-directory: docker/coturn/
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.dist }}-${{ matrix.arch }}-${{ github.run_number }}
           path: docker/coturn/.cache/image.tar
