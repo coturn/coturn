@@ -151,7 +151,7 @@ jobs:
             }
             return out;
 
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           name: ${{ matrix.dist }}-${{ matrix.arch }}-${{ github.run_number }}
           path: docker/coturn/.cache/
@@ -208,7 +208,7 @@ jobs:
                         ||     'edge' }}-${{ matrix.dist }}"
              >> $GITHUB_OUTPUT
 
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           path: docker/coturn/.cache/
 
