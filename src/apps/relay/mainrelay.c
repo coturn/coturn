@@ -3776,7 +3776,7 @@ static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *metho
     int nid = 0;
     int set_auto_curve = 0;
 
-    const char *curve_name = turn_params.ec_curve_name;
+    char *curve_name = turn_params.ec_curve_name;
 
     if (!(curve_name[0])) {
 #if !SSL_SESSION_ECDH_AUTO_SUPPORTED
