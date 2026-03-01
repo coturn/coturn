@@ -174,7 +174,7 @@ int turnports_allocate(turnports *tp) {
 
     while (1) {
 
-      if (tp->high <= tp->low) {
+      if ((tp->high - tp->low) == 0) {
         TURN_MUTEX_UNLOCK(&tp->mutex);
         return -1;
       }
