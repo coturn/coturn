@@ -135,6 +135,7 @@ Thanks to the following contributors (in alphabetical order):
 - Wittmer, Christian <chris@computersalat.de>
 - Wuelber Castillo <wuelber.castillo@gmail.com>
 - Yoshiki Kadoshita <sublimer.me@gmail.com>
+- Yusuf Motiwala <yusuf@mesibo.com>
 - Zebadiah Long <zeb@noblewhale.com>
 - Zoey <zoey@z0ey.de>
 - ashamedbit <muralianiruddhan@gmail.com>
