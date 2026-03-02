@@ -180,7 +180,7 @@ static void calculate_cookie(SSL *ssl, unsigned char *cookie_secret, unsigned in
 }
 
 static int generate_cookie(SSL *ssl, unsigned char *cookie, unsigned int *cookie_len) {
-  unsigned char *buffer;
+  unsigned char buffer[sizeof(struct in6_addr) + sizeof(in_port_t)];
   unsigned char result[EVP_MAX_MD_SIZE];
   unsigned int length = 0;
   unsigned int resultlength;
@@ -208,12 +208,6 @@ static int generate_cookie(SSL *ssl, unsigned char *cookie, unsigned int *cookie
     break;
   }
   length += sizeof(in_port_t);
-  buffer = (unsigned char *)OPENSSL_malloc(length);
-
-  if (buffer == NULL) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "out of memory\n");
-    return 0;
-  }
 
   // TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: family=%u(2)\n",__FUNCTION__,(unsigned)peer.ss.sa_family);
 
@@ -234,7 +228,6 @@ static int generate_cookie(SSL *ssl, unsigned char *cookie, unsigned int *cookie
   /* Calculate HMAC of buffer using the secret */
   HMAC(EVP_sha1(), (const void *)cookie_secret, COOKIE_SECRET_LENGTH, (const unsigned char *)buffer, length, result,
        &resultlength);
-  OPENSSL_free(buffer);
 
   memcpy(cookie, result, resultlength);
   *cookie_len = resultlength;
@@ -646,7 +639,9 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void *arg) 
 
 start_udp_cycle:
 
-  elem = (ioa_network_buffer_handle *)ioa_network_buffer_allocate(server->e);
+  if (!elem) {
+    elem = (ioa_network_buffer_handle *)ioa_network_buffer_allocate(server->e);
+  }
 
   server->sm.m.sm.nd.nbh = elem;
   server->sm.m.sm.nd.recv_ttl = TTL_IGNORE;
@@ -791,12 +786,20 @@ start_udp_cycle:
     }
   }
 
-  ioa_network_buffer_delete(server->e, server->sm.m.sm.nd.nbh);
-  server->sm.m.sm.nd.nbh = NULL;
+  if (server->sm.m.sm.nd.nbh != NULL) {
+    /* buffer was not consumed downstream, reuse it on the next iteration */
+    server->sm.m.sm.nd.nbh = NULL;
+  } else {
+    /* buffer was consumed (and freed) downstream, need a fresh one next time */
+    elem = NULL;
+  }
 
   if ((bsize > 0) && (cycle++ < MAX_SINGLE_UDP_BATCH)) {
     goto start_udp_cycle;
   }
+
+  ioa_network_buffer_delete(server->e, elem);
+  elem = NULL;
 
   prom_inc_packet_dropped(packets_dropped);
   prom_inc_packet_processed(packets_processed);
