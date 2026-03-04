@@ -38,7 +38,7 @@ jobs:
         with:
           fetch-depth: 0  # for correct image labeling via `git describe --tags`
       # TODO: Try remove once `moby/buildkit` image upgrades its default QEMU version.
-      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-qemu-action@v4
       - uses: docker/setup-buildx-action@v3
 
       - name: Detect correct Git ref for image build
@@ -135,7 +135,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-qemu-action@v4
       - run: make npm.install
         working-directory: docker/coturn/
 
