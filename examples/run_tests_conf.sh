@@ -11,7 +11,6 @@ echo "use-auth-secret" > $BINDIR/turnserver.conf
 echo "static-auth-secret=secret" >> $BINDIR/turnserver.conf
 echo "realm=north.gov" >> $BINDIR/turnserver.conf
 echo "allow-loopback-peers" >> $BINDIR/turnserver.conf
-echo "no-cli" >> $BINDIR/turnserver.conf
 echo "cert=../examples/ca/turn_server_cert.pem" >> $BINDIR/turnserver.conf
 echo "pkey=../examples/ca/turn_server_pkey.pem" >> $BINDIR/turnserver.conf
 
