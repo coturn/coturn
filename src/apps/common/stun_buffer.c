@@ -130,9 +130,9 @@ void stun_init_success_response(uint16_t method, stun_buffer *buf, stun_tid *id)
 }
 
 void stun_init_error_response(uint16_t method, stun_buffer *buf, uint16_t error_code, const uint8_t *reason,
-                              stun_tid *id) {
+                              stun_tid *id, bool include_reason_string) {
   buf->len = stun_get_size(buf);
-  stun_init_error_response_str(method, buf->buf, &(buf->len), error_code, reason, id);
+  stun_init_error_response_str(method, buf->buf, &(buf->len), error_code, reason, id, include_reason_string);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -169,10 +169,11 @@ bool stun_set_allocate_request(stun_buffer *buf, uint32_t lifetime, bool af4, bo
 bool stun_set_allocate_response(stun_buffer *buf, stun_tid *tid, const ioa_addr *relayed_addr1,
                                 const ioa_addr *relayed_addr2, const ioa_addr *reflexive_addr, uint32_t lifetime,
                                 uint32_t max_lifetime, int error_code, const uint8_t *reason,
-                                uint64_t reservation_token, char *mobile_id) {
+                                uint64_t reservation_token, char *mobile_id, bool include_reason_string) {
 
   return stun_set_allocate_response_str(buf->buf, &(buf->len), tid, relayed_addr1, relayed_addr2, reflexive_addr,
-                                        lifetime, max_lifetime, error_code, reason, reservation_token, mobile_id);
+                                        lifetime, max_lifetime, error_code, reason, reservation_token, mobile_id,
+                                        include_reason_string);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -182,8 +183,9 @@ uint16_t stun_set_channel_bind_request(stun_buffer *buf, const ioa_addr *peer_ad
   return stun_set_channel_bind_request_str(buf->buf, &(buf->len), peer_addr, channel_number);
 }
 
-void stun_set_channel_bind_response(stun_buffer *buf, stun_tid *tid, int error_code, const uint8_t *reason) {
-  stun_set_channel_bind_response_str(buf->buf, &(buf->len), tid, error_code, reason);
+void stun_set_channel_bind_response(stun_buffer *buf, stun_tid *tid, int error_code, const uint8_t *reason,
+                                    bool include_reason_string) {
+  stun_set_channel_bind_response_str(buf->buf, &(buf->len), tid, error_code, reason, include_reason_string);
 }
 
 ////////////////////////////////////////////////////////////////
@@ -234,8 +236,9 @@ stun_attr_ref stun_attr_get_first_by_type(const stun_buffer *buf, uint16_t attr_
 void stun_set_binding_request(stun_buffer *buf) { stun_set_binding_request_str(buf->buf, (size_t *)(&(buf->len))); }
 
 bool stun_set_binding_response(stun_buffer *buf, stun_tid *tid, const ioa_addr *reflexive_addr, int error_code,
-                               const uint8_t *reason) {
-  return stun_set_binding_response_str(buf->buf, &(buf->len), tid, reflexive_addr, error_code, reason, 0, false, true);
+                               const uint8_t *reason, bool include_reason_string) {
+  return stun_set_binding_response_str(buf->buf, &(buf->len), tid, reflexive_addr, error_code, reason, 0, false, true,
+                                       include_reason_string);
 }
 
 void stun_prepare_binding_request(stun_buffer *buf) { stun_set_binding_request_str(buf->buf, (size_t *)(&(buf->len))); }

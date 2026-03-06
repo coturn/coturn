@@ -110,9 +110,10 @@ void stun_init_indication_str(uint16_t method, uint8_t *buf, size_t *len);
 void stun_init_success_response_str(uint16_t method, uint8_t *buf, size_t *len, stun_tid *id);
 void old_stun_init_success_response_str(uint16_t method, uint8_t *buf, size_t *len, stun_tid *id, uint32_t cookie);
 void stun_init_error_response_str(uint16_t method, uint8_t *buf, size_t *len, uint16_t error_code,
-                                  const uint8_t *reason, stun_tid *id);
+                                  const uint8_t *reason, stun_tid *id, bool include_reason_string);
 void old_stun_init_error_response_str(uint16_t method, uint8_t *buf, size_t *len, uint16_t error_code,
-                                      const uint8_t *reason, stun_tid *id, uint32_t cookie);
+                                      const uint8_t *reason, stun_tid *id, uint32_t cookie,
+                                      bool include_reason_string);
 bool stun_init_channel_message_str(uint16_t chnumber, uint8_t *buf, size_t *len, int length, bool do_padding);
 
 bool stun_is_command_message_str(const uint8_t *buf, size_t blen);
@@ -135,7 +136,7 @@ bool is_channel_msg_str(const uint8_t *buf, size_t blen);
 void stun_set_binding_request_str(uint8_t *buf, size_t *len);
 bool stun_set_binding_response_str(uint8_t *buf, size_t *len, stun_tid *tid, const ioa_addr *reflexive_addr,
                                    int error_code, const uint8_t *reason, uint32_t cookie, bool old_stun,
-                                   bool stun_backward_compatibility);
+                                   bool stun_backward_compatibility, bool include_reason_string);
 bool stun_is_binding_request_str(const uint8_t *buf, size_t len, size_t offset);
 bool stun_is_binding_response_str(const uint8_t *buf, size_t len);
 
@@ -174,12 +175,12 @@ bool stun_set_allocate_request_str(uint8_t *buf, size_t *len, uint32_t lifetime,
 bool stun_set_allocate_response_str(uint8_t *buf, size_t *len, stun_tid *tid, const ioa_addr *relayed_addr1,
                                     const ioa_addr *relayed_addr2, const ioa_addr *reflexive_addr, uint32_t lifetime,
                                     uint32_t max_lifetime, int error_code, const uint8_t *reason,
-                                    uint64_t reservation_token, char *mobile_id);
+                                    uint64_t reservation_token, char *mobile_id, bool include_reason_string);
 
 uint16_t stun_set_channel_bind_request_str(uint8_t *buf, size_t *len, const ioa_addr *peer_addr,
                                            uint16_t channel_number);
 void stun_set_channel_bind_response_str(uint8_t *buf, size_t *len, stun_tid *tid, int error_code,
-                                        const uint8_t *reason);
+                                        const uint8_t *reason, bool include_reason_string);
 
 int stun_get_requested_address_family(stun_attr_ref attr);
 

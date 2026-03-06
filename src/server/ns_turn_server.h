@@ -201,6 +201,9 @@ struct _turn_turnserver {
      otherwise handling HTTP. */
   bool *respond_http_unsupported;
 
+  /* Include descriptive reason strings in STUN/TURN error responses. */
+  bool include_reason_string;
+
   /* Set to true on SIGUSR1 */
   bool is_draining;
 };
@@ -224,7 +227,8 @@ void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, io
                       send_turn_session_info_cb send_turn_session_info, send_https_socket_cb send_https_socket,
                       int sock_buf_size, allocate_bps_cb allocate_bps_func, int oauth, const char *oauth_server_name,
                       const char *acme_redirect, ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family,
-                      bool *log_binding, bool *stun_backward_compatibility, bool *respond_http_unsupported);
+                      bool *log_binding, bool *stun_backward_compatibility, bool *respond_http_unsupported,
+                      bool include_reason_string);
 
 ioa_engine_handle turn_server_get_engine(turn_turnserver *s);
 
