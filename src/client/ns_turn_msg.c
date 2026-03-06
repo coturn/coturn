@@ -1124,13 +1124,12 @@ uint16_t stun_set_channel_bind_request_str(uint8_t *buf, size_t *len, const ioa_
   return channel_number;
 }
 
-void stun_set_channel_bind_response_str(uint8_t *buf, size_t *len, stun_tid *tid, int error_code,
-                                        const uint8_t *reason, bool include_reason_string) {
+void stun_set_channel_bind_response_str(uint8_t *buf, size_t *len, stun_tid *tid, int error_code, const uint8_t *reason,
+                                        bool include_reason_string) {
   if (!error_code) {
     stun_init_success_response_str(STUN_METHOD_CHANNEL_BIND, buf, len, tid);
   } else {
-    stun_init_error_response_str(STUN_METHOD_CHANNEL_BIND, buf, len, error_code, reason, tid,
-                                 include_reason_string);
+    stun_init_error_response_str(STUN_METHOD_CHANNEL_BIND, buf, len, error_code, reason, tid, include_reason_string);
   }
 }
 

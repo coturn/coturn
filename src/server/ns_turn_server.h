@@ -212,23 +212,20 @@ const char *get_version(turn_turnserver *server);
 
 ///////////////////////////////////////////
 
-void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, ioa_engine_handle e,
-                      turn_credential_type ct, int fingerprint, dont_fragment_option_t dont_fragment,
-                      get_user_key_cb userkeycb, check_new_allocation_quota_cb chquotacb,
-                      release_allocation_quota_cb raqcb, ioa_addr *external_addr, bool *check_origin,
-                      bool *no_tcp_relay, bool *no_udp_relay, vintp stale_nonce, vintp max_allocate_lifetime,
-                      vintp channel_lifetime, vintp permission_lifetime, bool *stun_only, bool *no_stun,
-                      bool software_attribute, bool *web_admin_listen_on_workers,
-                      turn_server_addrs_list_t *alternate_servers_list,
-                      turn_server_addrs_list_t *tls_alternate_servers_list, turn_server_addrs_list_t *aux_servers_list,
-                      int self_udp_balance, bool *no_multicast_peers, bool *allow_loopback_peers,
-                      ip_range_list_t *ip_whitelist, ip_range_list_t *ip_blacklist,
-                      send_socket_to_relay_cb send_socket_to_relay, bool *secure_stun, bool *mobility, int server_relay,
-                      send_turn_session_info_cb send_turn_session_info, send_https_socket_cb send_https_socket,
-                      int sock_buf_size, allocate_bps_cb allocate_bps_func, int oauth, const char *oauth_server_name,
-                      const char *acme_redirect, ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family,
-                      bool *log_binding, bool *stun_backward_compatibility, bool *respond_http_unsupported,
-                      bool include_reason_string);
+void init_turn_server(
+    turn_turnserver *server, turnserver_id id, int verbose, ioa_engine_handle e, turn_credential_type ct,
+    int fingerprint, dont_fragment_option_t dont_fragment, get_user_key_cb userkeycb,
+    check_new_allocation_quota_cb chquotacb, release_allocation_quota_cb raqcb, ioa_addr *external_addr,
+    bool *check_origin, bool *no_tcp_relay, bool *no_udp_relay, vintp stale_nonce, vintp max_allocate_lifetime,
+    vintp channel_lifetime, vintp permission_lifetime, bool *stun_only, bool *no_stun, bool software_attribute,
+    bool *web_admin_listen_on_workers, turn_server_addrs_list_t *alternate_servers_list,
+    turn_server_addrs_list_t *tls_alternate_servers_list, turn_server_addrs_list_t *aux_servers_list,
+    int self_udp_balance, bool *no_multicast_peers, bool *allow_loopback_peers, ip_range_list_t *ip_whitelist,
+    ip_range_list_t *ip_blacklist, send_socket_to_relay_cb send_socket_to_relay, bool *secure_stun, bool *mobility,
+    int server_relay, send_turn_session_info_cb send_turn_session_info, send_https_socket_cb send_https_socket,
+    int sock_buf_size, allocate_bps_cb allocate_bps_func, int oauth, const char *oauth_server_name,
+    const char *acme_redirect, ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family, bool *log_binding,
+    bool *stun_backward_compatibility, bool *respond_http_unsupported, bool include_reason_string);
 
 ioa_engine_handle turn_server_get_engine(turn_turnserver *s);
 

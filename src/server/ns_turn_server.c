@@ -1876,8 +1876,8 @@ static int handle_turn_refresh(turn_turnserver *server, ts_ur_super_session *ss,
       }
 
       size_t len = ioa_network_buffer_get_size(nbh);
-      stun_init_error_response_str(STUN_METHOD_REFRESH, ioa_network_buffer_data(nbh), &len, *err_code,
-                                   *reason, tid, server->include_reason_string);
+      stun_init_error_response_str(STUN_METHOD_REFRESH, ioa_network_buffer_data(nbh), &len, *err_code, *reason, tid,
+                                   server->include_reason_string);
       ioa_network_buffer_set_size(nbh, len);
 
       *resp_constructed = 1;
@@ -2061,8 +2061,8 @@ static void tcp_peer_connection_completed_callback(int success, void *arg) {
         addr_to_string(&(tc->peer_addr), rs);
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: failure to connect from %s to %s\n", __FUNCTION__, ls, rs);
       }
-      stun_init_error_response_str(STUN_METHOD_CONNECT, ioa_network_buffer_data(nbh), &len, err_code, NULL,
-                                   &(tc->tid), server->include_reason_string);
+      stun_init_error_response_str(STUN_METHOD_CONNECT, ioa_network_buffer_data(nbh), &len, err_code, NULL, &(tc->tid),
+                                   server->include_reason_string);
     }
 
     ioa_network_buffer_set_size(nbh, len);
@@ -3214,8 +3214,8 @@ static int create_challenge_response(ts_ur_super_session *ss, stun_tid *tid, int
                                      const uint8_t **reason, ioa_network_buffer_handle nbh, uint16_t method) {
   size_t len = ioa_network_buffer_get_size(nbh);
   const turn_turnserver *srv = (const turn_turnserver *)ss->server;
-  stun_init_error_response_str(method, ioa_network_buffer_data(nbh), &len, *err_code,
-                               *reason, tid, srv ? srv->include_reason_string : false);
+  stun_init_error_response_str(method, ioa_network_buffer_data(nbh), &len, *err_code, *reason, tid,
+                               srv ? srv->include_reason_string : false);
   *resp_constructed = 1;
   stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_NONCE, ss->nonce, (int)(NONCE_MAX_SIZE - 1));
   char *realm = ss->realm_options.name;
@@ -3503,8 +3503,7 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
 
 static void set_alternate_server(turn_server_addrs_list_t *asl, const ioa_addr *local_addr, size_t *counter,
                                  uint16_t method, stun_tid *tid, int *resp_constructed, int *err_code,
-                                 const uint8_t **reason, ioa_network_buffer_handle nbh,
-                                 const turn_turnserver *server) {
+                                 const uint8_t **reason, ioa_network_buffer_handle nbh, const turn_turnserver *server) {
   if (asl && asl->size && local_addr) {
 
     size_t i;
@@ -3529,8 +3528,8 @@ static void set_alternate_server(turn_server_addrs_list_t *asl, const ioa_addr *
         *err_code = 300;
 
         size_t len = ioa_network_buffer_get_size(nbh);
-        stun_init_error_response_str(method, ioa_network_buffer_data(nbh), &len, *err_code,
-                                     *reason, tid, server ? server->include_reason_string : false);
+        stun_init_error_response_str(method, ioa_network_buffer_data(nbh), &len, *err_code, *reason, tid,
+                                     server ? server->include_reason_string : false);
         *resp_constructed = 1;
         stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_ALTERNATE_SERVER, addr);
         ioa_network_buffer_set_size(nbh, len);
