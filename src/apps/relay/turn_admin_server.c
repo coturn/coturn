@@ -34,6 +34,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 #include <time.h>
 
 #if defined(_MSC_VER)
@@ -1406,16 +1407,15 @@ void setup_admin_thread(void) {
 
     adminserver.listen_fd = socket(cli_addr.ss.sa_family, ADMIN_STREAM_SOCKET_TYPE, ADMIN_STREAM_SOCKET_PROTOCOL);
     if (adminserver.listen_fd < 0) {
-      perror("socket");
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open CLI socket\n");
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open CLI socket. Error: %s\n", strerror(errno));
       return;
     }
 
     if (addr_bind(adminserver.listen_fd, &cli_addr, 1, 1, TCP_SOCKET) < 0) {
-      perror("Cannot bind CLI socket to addr");
       char saddr[MAX_IOA_ADDR_STRING];
       addr_to_string(&cli_addr, saddr);
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot bind CLI listener socket to addr %s\n", saddr);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot bind CLI listener socket to addr %s. Error: %s\n", saddr,
+                    strerror(errno));
       socket_closesocket(adminserver.listen_fd);
       return;
     }

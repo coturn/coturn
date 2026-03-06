@@ -32,6 +32,7 @@
  * SUCH DAMAGE.
  */
 
+#include <errno.h>
 #include "apputils.h"
 #include "mainrelay.h"
 
@@ -197,7 +198,7 @@ static int create_server_listener(tls_listener_relay_server_type *server) {
 
   tls_listen_fd = socket(server->addr.ss.sa_family, CLIENT_STREAM_SOCKET_TYPE, CLIENT_STREAM_SOCKET_PROTOCOL);
   if (tls_listen_fd < 0) {
-    perror("socket");
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "socket: %s\n", strerror(errno));
     return -1;
   }
 
@@ -211,7 +212,7 @@ static int create_server_listener(tls_listener_relay_server_type *server) {
   retry_addr_bind:
 
     if (addr_bind(tls_listen_fd, &server->addr, 1, 1, TCP_SOCKET) < 0) {
-      perror("Cannot bind local socket to addr");
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot bind local socket to addr: %s\n", strerror(errno));
       char saddr[MAX_IOA_ADDR_STRING];
       addr_to_string(&server->addr, saddr);
       TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Cannot bind TLS/TCP listener socket to addr %s\n", saddr);
