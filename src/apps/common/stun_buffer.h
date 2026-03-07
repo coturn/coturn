@@ -77,7 +77,7 @@ void stun_init_request(uint16_t method, stun_buffer *buf);
 void stun_init_indication(uint16_t method, stun_buffer *buf);
 void stun_init_success_response(uint16_t method, stun_buffer *buf, stun_tid *id);
 void stun_init_error_response(uint16_t method, stun_buffer *buf, uint16_t error_code, const uint8_t *reason,
-                              stun_tid *id);
+                              stun_tid *id, bool include_reason_string);
 
 ///////////////////////////////////////////////////////////////
 
@@ -110,13 +110,13 @@ bool stun_set_allocate_request(stun_buffer *buf, uint32_t lifetime, bool af4, bo
 bool stun_set_allocate_response(stun_buffer *buf, stun_tid *tid, const ioa_addr *relayed_addr1,
                                 const ioa_addr *relayed_addr2, const ioa_addr *reflexive_addr, uint32_t lifetime,
                                 uint32_t max_lifetime, int error_code, const uint8_t *reason,
-                                uint64_t reservation_token, char *mobile_id);
+                                uint64_t reservation_token, char *mobile_id, bool include_reason_string);
 
 ///////////////////////////////////////////////////////////////
 
 void stun_set_binding_request(stun_buffer *buf);
 bool stun_set_binding_response(stun_buffer *buf, stun_tid *tid, const ioa_addr *reflexive_addr, int error_code,
-                               const uint8_t *reason);
+                               const uint8_t *reason, bool include_reason_string);
 
 void stun_prepare_binding_request(stun_buffer *buf);
 bool stun_is_binding_response(const stun_buffer *buf);
@@ -124,7 +124,8 @@ bool stun_is_binding_response(const stun_buffer *buf);
 ///////////////////////////////////////////////////////////////
 
 uint16_t stun_set_channel_bind_request(stun_buffer *buf, const ioa_addr *peer_addr, uint16_t channel_number);
-void stun_set_channel_bind_response(stun_buffer *buf, stun_tid *tid, int error_code, const uint8_t *reason);
+void stun_set_channel_bind_response(stun_buffer *buf, stun_tid *tid, int error_code, const uint8_t *reason,
+                                    bool include_reason_string);
 
 ///////////////////////////////////////////////////////////////
 

@@ -242,7 +242,8 @@ turn_params_t turn_params = {
     false, /* stun_backward_compatibility */
     false, /* respond_http_unsupported */
     true,  /* drop_invalid_packets */
-    false  /* drop_invalid_packets_log */
+    false, /* drop_invalid_packets_log */
+    false  /* include_reason_string */
 };
 
 //////////////// OpenSSL Init //////////////////////
@@ -1364,6 +1365,10 @@ static char Usage[] =
     "packets.\n"
     " --drop-invalid-packets-log			   Log invalid packets. The default behaviour is to not log "
     "invalid packets.\n"
+    " --include-reason-string			   Include descriptive reason strings in STUN/TURN error responses.\n"
+    "						   By default, only the standard reason phrase for the error code is\n"
+    "						   sent. Enabling this option adds detailed error descriptions which\n"
+    "						   may aid debugging but can also leak internal server information.\n"
     " --version					Print version (and exit).\n"
     " -h						Help\n"
     "\n";
@@ -1526,7 +1531,8 @@ enum EXTRA_OPTS {
   DROP_INVALID_PACKETS_OPT,
   DROP_INVALID_PACKETS_LOG_OPT,
   VERSION_OPT,
-  CPUS_OPT
+  CPUS_OPT,
+  INCLUDE_REASON_STRING_OPT
 };
 
 struct myoption {
@@ -1673,6 +1679,7 @@ static const struct myoption long_options[] = {
     {"respond-http-unsupported", optional_argument, NULL, RESPOND_HTTP_UNSUPPORTED_OPT},
     {"drop-invalid-packets", optional_argument, NULL, DROP_INVALID_PACKETS_OPT},
     {"drop-invalid-packets-log", optional_argument, NULL, DROP_INVALID_PACKETS_LOG_OPT},
+    {"include-reason-string", optional_argument, NULL, INCLUDE_REASON_STRING_OPT},
     {"version", optional_argument, NULL, VERSION_OPT},
     {"syslog-facility", required_argument, NULL, SYSLOG_FACILITY_OPT},
     {"cpus", required_argument, NULL, CPUS_OPT},
@@ -2456,6 +2463,9 @@ static void set_option(int c, char *value) {
     break;
   case DROP_INVALID_PACKETS_LOG_OPT:
     turn_params.drop_invalid_packets_log = get_bool_value(value);
+    break;
+  case INCLUDE_REASON_STRING_OPT:
+    turn_params.include_reason_string = get_bool_value(value);
     break;
   case CPUS_OPT: {
     int cpus = atoi(value);
