@@ -34,6 +34,7 @@
 
 #include "apputils.h"
 #include "mainrelay.h"
+#include <errno.h>
 
 #include "dtls_listener.h"
 #include "ns_ioalib_impl.h"
@@ -497,8 +498,7 @@ static int create_new_connected_udp_socket(dtls_listener_relay_server_type *serv
 
   evutil_socket_t udp_fd = socket(s->local_addr.ss.sa_family, CLIENT_DGRAM_SOCKET_TYPE, CLIENT_DGRAM_SOCKET_PROTOCOL);
   if (udp_fd < 0) {
-    perror("socket");
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Cannot allocate new socket\n", __FUNCTION__);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Cannot allocate new socket. Error: %s\n", __FUNCTION__, strerror(errno));
     return -1;
   }
 
@@ -724,9 +724,7 @@ start_udp_cycle:
 
   if (bsize < 0) {
     if (!to_block && !conn_reset) {
-      const int ern = socket_errno();
-      perror(__FUNCTION__);
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: recvfrom error %d\n", __FUNCTION__, ern);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: recvfrom error %d\n", __FUNCTION__, socket_errno());
     }
     ioa_network_buffer_delete(server->e, server->sm.m.sm.nd.nbh);
     server->sm.m.sm.nd.nbh = NULL;
@@ -824,7 +822,7 @@ static int create_server_socket(dtls_listener_relay_server_type *server, int rep
 
     udp_listen_fd = socket(server->addr.ss.sa_family, CLIENT_DGRAM_SOCKET_TYPE, CLIENT_DGRAM_SOCKET_PROTOCOL);
     if (udp_listen_fd < 0) {
-      perror("socket");
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "socket: %s\n", strerror(errno));
       return -1;
     }
 
@@ -846,17 +844,18 @@ static int create_server_socket(dtls_listener_relay_server_type *server, int rep
     retry_addr_bind:
 
       if (addr_bind(udp_listen_fd, &server->addr, 1, 1, UDP_SOCKET) < 0) {
-        perror("Cannot bind local socket to addr");
         char saddr[MAX_IOA_ADDR_STRING];
         addr_to_string(&server->addr, saddr);
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Cannot bind DTLS/UDP listener socket to addr %s\n", saddr);
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Cannot bind DTLS/UDP listener socket to addr %s. Error: %s\n", saddr,
+                      strerror(errno));
         if (addr_bind_cycle++ < max_binding_time) {
           TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Trying to bind DTLS/UDP listener socket to addr %s, again...\n", saddr);
           sleep(1);
           goto retry_addr_bind;
         }
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Fatal final failure: cannot bind DTLS/UDP listener socket to addr %s\n",
-                      saddr);
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+                      "Fatal final failure: cannot bind DTLS/UDP listener socket to addr %s. Error: %s\n", saddr,
+                      strerror(errno));
         exit(-1);
       }
     }
@@ -906,7 +905,7 @@ static int reopen_server_socket(dtls_listener_relay_server_type *server, evutil_
     const ioa_socket_raw udp_listen_fd =
         socket(server->addr.ss.sa_family, CLIENT_DGRAM_SOCKET_TYPE, CLIENT_DGRAM_SOCKET_PROTOCOL);
     if (udp_listen_fd < 0) {
-      perror("socket");
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "socket: %s\n", strerror(errno));
       FUNCEND;
       return -1;
     }
@@ -919,14 +918,14 @@ static int reopen_server_socket(dtls_listener_relay_server_type *server, evutil_
     set_ioa_socket_buf_size(server->udp_listen_s, server->ts->sock_buf_size);
 
     if (sock_bind_to_device(udp_listen_fd, (unsigned char *)server->ifname) < 0) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Cannot bind listener socket to device %s\n", server->ifname);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot bind listener socket to device %s. Error: %s\n", server->ifname,
+                    strerror(errno));
     }
 
     if (addr_bind(udp_listen_fd, &server->addr, 1, 1, UDP_SOCKET) < 0) {
-      perror("Cannot bind local socket to addr");
       char saddr[MAX_IOA_ADDR_STRING];
       addr_to_string(&server->addr, saddr);
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Cannot bind listener socket to addr %s\n", saddr);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot bind local socket to addr %s. Error: %s\n", saddr, strerror(errno));
       return -1;
     }
 

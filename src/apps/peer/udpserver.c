@@ -35,6 +35,7 @@
 #include "udpserver.h"
 #include "apputils.h"
 #include "stun_buffer.h"
+#include <errno.h>
 
 #include <limits.h> // for USHRT_MAX
 
@@ -93,7 +94,7 @@ static int udp_create_server_socket(server_type *const server, const char *const
 
   evutil_socket_t udp_fd = socket(server_addr->ss.sa_family, RELAY_DGRAM_SOCKET_TYPE, RELAY_DGRAM_SOCKET_PROTOCOL);
   if (udp_fd < 0) {
-    perror("socket");
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "socket: %s\n", strerror(errno));
     free(server_addr);
     return -1;
   }
