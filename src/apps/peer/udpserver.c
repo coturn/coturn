@@ -32,10 +32,10 @@
  * SUCH DAMAGE.
  */
 
-#include <errno.h>
 #include "udpserver.h"
 #include "apputils.h"
 #include "stun_buffer.h"
+#include <errno.h>
 
 #include <limits.h> // for USHRT_MAX
 

@@ -32,11 +32,11 @@
  * SUCH DAMAGE.
  */
 
-#include <errno.h>
 #include "ns_turn_khash.h"
 #include "ns_turn_server.h"
 #include "ns_turn_session.h"
 #include "ns_turn_utils.h"
+#include <errno.h>
 
 #include "apputils.h"
 #include "stun_buffer.h"

@@ -64,10 +64,10 @@
 #include <unistd.h>
 #endif
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
 #include <time.h>
 
 #include <fcntl.h>
@@ -250,7 +250,8 @@ int sock_bind_to_device(evutil_socket_t fd, const unsigned char *ifname) {
 
     if (setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, (const void *)&ifr, sizeof(ifr)) < 0) {
       if (socket_eperm()) {
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "You must obtain superuser privileges to bind a socket to device: %s\n", strerror(errno));
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "You must obtain superuser privileges to bind a socket to device: %s\n",
+                      strerror(errno));
       } else {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot bind socket to device: %s\n", strerror(errno));
       }

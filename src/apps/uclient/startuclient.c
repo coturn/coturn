@@ -32,11 +32,11 @@
  * SUCH DAMAGE.
  */
 
-#include <errno.h>
 #include "ns_turn_defs.h"
 #include "ns_turn_ioalib.h" // for ioa_engine_handle
 #include "ns_turn_msg.h"
 #include "ns_turn_utils.h"
+#include <errno.h>
 
 #include "apputils.h"
 #include "session.h"

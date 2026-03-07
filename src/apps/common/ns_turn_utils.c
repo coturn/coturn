@@ -60,7 +60,7 @@
 #endif
 #endif
 
-#include <ctype.h>  // for tolower
+#include <ctype.h> // for tolower
 #include <errno.h>
 #include <string.h> // for memcmp, strstr, strcmp, strdup, strlen, strerror
 

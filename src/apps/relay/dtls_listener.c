@@ -32,9 +32,9 @@
  * SUCH DAMAGE.
  */
 
-#include <errno.h>
 #include "apputils.h"
 #include "mainrelay.h"
+#include <errno.h>
 
 #include "dtls_listener.h"
 #include "ns_ioalib_impl.h"

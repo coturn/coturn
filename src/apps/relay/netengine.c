@@ -32,8 +32,8 @@
  * SUCH DAMAGE.
  */
 
-#include <errno.h>
 #include "mainrelay.h"
+#include <errno.h>
 
 #include "ns_turn_ioalib.h"
 
