@@ -267,7 +267,7 @@ Flags:
 
 --mobility		Mobility with ICE (MICE) specs support.
 
---no-cli		Turn OFF the CLI support. By default it is always ON.
+--cli		Turn ON the CLI support. By default it is always OFF.
 			See also options --cli-ip and --cli-port.
 
 --server-relay		Server relay. NON-STANDARD AND DANGEROUS OPTION.

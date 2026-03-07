@@ -99,7 +99,7 @@ struct str_buffer;
 
 struct admin_server adminserver;
 
-int use_cli = 1;
+bool use_cli = false;
 
 ioa_addr cli_addr;
 int cli_addr_set = 0;

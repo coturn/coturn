@@ -85,7 +85,6 @@ tls-listening-port=5349
 no-tlsv1
 no-tlsv1_1
 userdb=/usr/local/var/db/turndb
-no-cli
 min-port=45000
 max-port=65535
 log-file=/var/log/turnserver/turnserver.log

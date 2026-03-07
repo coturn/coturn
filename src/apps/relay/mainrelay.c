@@ -1314,7 +1314,7 @@ static char Usage[] =
     "						The standard RFC explicitly define actually that this default must be "
     "IPv4,\n"
     "						so use other option values with care!\n"
-    " --no-cli					Turn OFF the CLI support. By default it is always ON.\n"
+    " --cli					Turn ON the CLI support. By default it is always OFF.\n"
     " --cli-ip=<IP>					Local system IP address to be used for CLI server endpoint. "
     "Default value\n"
     "						is 127.0.0.1.\n"
@@ -1495,6 +1495,7 @@ enum EXTRA_OPTS {
   PROC_GROUP_OPT,
   MOBILITY_OPT,
   NO_CLI_OPT,
+  CLI_OPT,
   CLI_IP_OPT,
   CLI_PORT_OPT,
   CLI_PASSWORD_OPT,
@@ -1651,6 +1652,7 @@ static const struct myoption long_options[] = {
     {"proc-group", required_argument, NULL, PROC_GROUP_OPT},
     {"mobility", optional_argument, NULL, MOBILITY_OPT},
     {"no-cli", optional_argument, NULL, NO_CLI_OPT},
+    {"cli", optional_argument, NULL, CLI_OPT},
     {"cli-ip", required_argument, NULL, CLI_IP_OPT},
     {"cli-port", required_argument, NULL, CLI_PORT_OPT},
     {"cli-password", required_argument, NULL, CLI_PASSWORD_OPT},
@@ -2034,7 +2036,10 @@ static void set_option(int c, char *value) {
     turn_params.mobility = get_bool_value(value);
     break;
   case NO_CLI_OPT:
-    use_cli = !get_bool_value(value);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "no-cli option is deprecated, see --cli\n");
+    break;
+  case CLI_OPT:
+    use_cli = get_bool_value(value);
     break;
   case CLI_IP_OPT:
     if (make_ioa_addr((const uint8_t *)value, 0, &cli_addr) < 0) {
@@ -3273,7 +3278,7 @@ int main(int argc, char **argv) {
   if (use_cli && cli_password[0] == 0) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "CONFIG: Empty cli-password, and so telnet cli interface is disabled! "
                                         "Please set a non empty cli-password!\n");
-    use_cli = 0;
+    use_cli = false;
   }
 
   if (!use_lt_credentials && !anon_credentials) {
