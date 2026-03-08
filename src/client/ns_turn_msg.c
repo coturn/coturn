@@ -1766,7 +1766,7 @@ void print_bin_func(const char *name, size_t len, const void *s, const char *fun
 
 bool stun_attr_add_integrity_str(turn_credential_type ct, uint8_t *buf, size_t *len, hmackey_t key, password_t pwd,
                                  SHATYPE shatype) {
-  uint8_t hmac[MAXSHASIZE];
+  uint8_t hmac[MAXSHASIZE] = {0};
 
   unsigned int shasize;
 
