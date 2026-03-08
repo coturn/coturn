@@ -1422,14 +1422,15 @@ static void redis_disconnect(void) {
 
 //////////////////////////////////////////////////////
 
-static const turn_dbdriver_t driver = {
-    &redis_get_auth_secrets,   &redis_get_user_key,   &redis_set_user_key,   &redis_del_user,
-    &redis_list_users,         &redis_list_secrets,   &redis_del_secret,     &redis_set_secret,
-    &redis_add_origin,         &redis_del_origin,     &redis_list_origins,   &redis_set_realm_option_one,
-    &redis_list_realm_options, &redis_auth_ping,      &redis_get_ip_list,    &redis_set_permission_ip,
-    &redis_reread_realms,      &redis_set_oauth_key,  &redis_get_oauth_key,  &redis_del_oauth_key,
-    &redis_list_oauth_keys,    &redis_get_admin_user, &redis_set_admin_user, &redis_del_admin_user,
-    &redis_list_admin_users,   &redis_disconnect, NULL};
+static const turn_dbdriver_t driver = {&redis_get_auth_secrets,   &redis_get_user_key,   &redis_set_user_key,
+                                       &redis_del_user,           &redis_list_users,     &redis_list_secrets,
+                                       &redis_del_secret,         &redis_set_secret,     &redis_add_origin,
+                                       &redis_del_origin,         &redis_list_origins,   &redis_set_realm_option_one,
+                                       &redis_list_realm_options, &redis_auth_ping,      &redis_get_ip_list,
+                                       &redis_set_permission_ip,  &redis_reread_realms,  &redis_set_oauth_key,
+                                       &redis_get_oauth_key,      &redis_del_oauth_key,  &redis_list_oauth_keys,
+                                       &redis_get_admin_user,     &redis_set_admin_user, &redis_del_admin_user,
+                                       &redis_list_admin_users,   &redis_disconnect,     NULL};
 
 const turn_dbdriver_t *get_redis_dbdriver(void) { return &driver; }
 

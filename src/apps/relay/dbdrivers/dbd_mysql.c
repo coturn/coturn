@@ -1321,14 +1321,15 @@ static void mysql_disconnect(void) {
 
 //////////////////////////////////////////////////////
 
-static const turn_dbdriver_t driver = {
-    &mysql_get_auth_secrets,   &mysql_get_user_key,   &mysql_set_user_key,   &mysql_del_user,
-    &mysql_list_users,         &mysql_list_secrets,   &mysql_del_secret,     &mysql_set_secret,
-    &mysql_add_origin,         &mysql_del_origin,     &mysql_list_origins,   &mysql_set_realm_option_one,
-    &mysql_list_realm_options, &mysql_auth_ping,      &mysql_get_ip_list,    &mysql_set_permission_ip,
-    &mysql_reread_realms,      &mysql_set_oauth_key,  &mysql_get_oauth_key,  &mysql_del_oauth_key,
-    &mysql_list_oauth_keys,    &mysql_get_admin_user, &mysql_set_admin_user, &mysql_del_admin_user,
-    &mysql_list_admin_users,   &mysql_disconnect, NULL};
+static const turn_dbdriver_t driver = {&mysql_get_auth_secrets,   &mysql_get_user_key,   &mysql_set_user_key,
+                                       &mysql_del_user,           &mysql_list_users,     &mysql_list_secrets,
+                                       &mysql_del_secret,         &mysql_set_secret,     &mysql_add_origin,
+                                       &mysql_del_origin,         &mysql_list_origins,   &mysql_set_realm_option_one,
+                                       &mysql_list_realm_options, &mysql_auth_ping,      &mysql_get_ip_list,
+                                       &mysql_set_permission_ip,  &mysql_reread_realms,  &mysql_set_oauth_key,
+                                       &mysql_get_oauth_key,      &mysql_del_oauth_key,  &mysql_list_oauth_keys,
+                                       &mysql_get_admin_user,     &mysql_set_admin_user, &mysql_del_admin_user,
+                                       &mysql_list_admin_users,   &mysql_disconnect,     NULL};
 
 const turn_dbdriver_t *get_mysql_dbdriver(void) { return &driver; }
 

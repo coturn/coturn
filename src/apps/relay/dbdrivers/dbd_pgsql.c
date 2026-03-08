@@ -990,14 +990,15 @@ static void pgsql_disconnect(void) {
 
 /////////////////////////////////////////////////////////////
 
-static const turn_dbdriver_t driver = {
-    &pgsql_get_auth_secrets,   &pgsql_get_user_key,   &pgsql_set_user_key,   &pgsql_del_user,
-    &pgsql_list_users,         &pgsql_list_secrets,   &pgsql_del_secret,     &pgsql_set_secret,
-    &pgsql_add_origin,         &pgsql_del_origin,     &pgsql_list_origins,   &pgsql_set_realm_option_one,
-    &pgsql_list_realm_options, &pgsql_auth_ping,      &pgsql_get_ip_list,    &pgsql_set_permission_ip,
-    &pgsql_reread_realms,      &pgsql_set_oauth_key,  &pgsql_get_oauth_key,  &pgsql_del_oauth_key,
-    &pgsql_list_oauth_keys,    &pgsql_get_admin_user, &pgsql_set_admin_user, &pgsql_del_admin_user,
-    &pgsql_list_admin_users,   &pgsql_disconnect, NULL};
+static const turn_dbdriver_t driver = {&pgsql_get_auth_secrets,   &pgsql_get_user_key,   &pgsql_set_user_key,
+                                       &pgsql_del_user,           &pgsql_list_users,     &pgsql_list_secrets,
+                                       &pgsql_del_secret,         &pgsql_set_secret,     &pgsql_add_origin,
+                                       &pgsql_del_origin,         &pgsql_list_origins,   &pgsql_set_realm_option_one,
+                                       &pgsql_list_realm_options, &pgsql_auth_ping,      &pgsql_get_ip_list,
+                                       &pgsql_set_permission_ip,  &pgsql_reread_realms,  &pgsql_set_oauth_key,
+                                       &pgsql_get_oauth_key,      &pgsql_del_oauth_key,  &pgsql_list_oauth_keys,
+                                       &pgsql_get_admin_user,     &pgsql_set_admin_user, &pgsql_del_admin_user,
+                                       &pgsql_list_admin_users,   &pgsql_disconnect,     NULL};
 
 const turn_dbdriver_t *get_pgsql_dbdriver(void) { return &driver; }
 
