@@ -822,7 +822,7 @@ static int create_server_socket(dtls_listener_relay_server_type *server, int rep
 
     udp_listen_fd = socket(server->addr.ss.sa_family, CLIENT_DGRAM_SOCKET_TYPE, CLIENT_DGRAM_SOCKET_PROTOCOL);
     if (udp_listen_fd < 0) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "socket: %s\n", strerror(errno));
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: socket error: %s\n", __FUNCTION__, strerror(errno));
       return -1;
     }
 
@@ -905,7 +905,7 @@ static int reopen_server_socket(dtls_listener_relay_server_type *server, evutil_
     const ioa_socket_raw udp_listen_fd =
         socket(server->addr.ss.sa_family, CLIENT_DGRAM_SOCKET_TYPE, CLIENT_DGRAM_SOCKET_PROTOCOL);
     if (udp_listen_fd < 0) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "socket: %s\n", strerror(errno));
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: socket error: %s\n", __FUNCTION__, strerror(errno));
       FUNCEND;
       return -1;
     }
