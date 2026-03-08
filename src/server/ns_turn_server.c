@@ -3553,7 +3553,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
     return -1;
   }
 
-  uint16_t unknown_attrs[MAX_NUMBER_OF_UNKNOWN_ATTRS];
+  uint16_t unknown_attrs[MAX_NUMBER_OF_UNKNOWN_ATTRS] = {0};
   uint16_t ua_num = 0;
   const uint16_t method =
       stun_get_method_str(ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh));
@@ -3946,7 +3946,7 @@ static int handle_old_stun_command(turn_turnserver *server, ts_ur_super_session 
   const uint8_t *reason = NULL;
   int no_response = 0;
 
-  uint16_t unknown_attrs[MAX_NUMBER_OF_UNKNOWN_ATTRS];
+  uint16_t unknown_attrs[MAX_NUMBER_OF_UNKNOWN_ATTRS] = {0};
   uint16_t ua_num = 0;
   const uint16_t method =
       stun_get_method_str(ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh));
