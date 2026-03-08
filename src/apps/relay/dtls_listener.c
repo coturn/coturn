@@ -691,7 +691,7 @@ start_udp_cycle:
 #endif
     static char buffer[65535];
     uint32_t errcode = 0;
-    ioa_addr orig_addr;
+    ioa_addr orig_addr = {0};
     int ttl = 0;
     int tos = 0;
     socklen_t slen = server->slen0;
