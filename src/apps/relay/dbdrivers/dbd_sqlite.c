@@ -1370,14 +1370,15 @@ static void sqlite_disconnect(void) {
 
 ///////////////////////////////////////////////////////
 
-static const turn_dbdriver_t driver = {
-    &sqlite_get_auth_secrets,   &sqlite_get_user_key,   &sqlite_set_user_key,   &sqlite_del_user,
-    &sqlite_list_users,         &sqlite_list_secrets,   &sqlite_del_secret,     &sqlite_set_secret,
-    &sqlite_add_origin,         &sqlite_del_origin,     &sqlite_list_origins,   &sqlite_set_realm_option_one,
-    &sqlite_list_realm_options, &sqlite_auth_ping,      &sqlite_get_ip_list,    &sqlite_set_permission_ip,
-    &sqlite_reread_realms,      &sqlite_set_oauth_key,  &sqlite_get_oauth_key,  &sqlite_del_oauth_key,
-    &sqlite_list_oauth_keys,    &sqlite_get_admin_user, &sqlite_set_admin_user, &sqlite_del_admin_user,
-    &sqlite_list_admin_users,   &sqlite_disconnect};
+static const turn_dbdriver_t driver = {&sqlite_get_auth_secrets,   &sqlite_get_user_key,   &sqlite_set_user_key,
+                                       &sqlite_del_user,           &sqlite_list_users,     &sqlite_list_secrets,
+                                       &sqlite_del_secret,         &sqlite_set_secret,     &sqlite_add_origin,
+                                       &sqlite_del_origin,         &sqlite_list_origins,   &sqlite_set_realm_option_one,
+                                       &sqlite_list_realm_options, &sqlite_auth_ping,      &sqlite_get_ip_list,
+                                       &sqlite_set_permission_ip,  &sqlite_reread_realms,  &sqlite_set_oauth_key,
+                                       &sqlite_get_oauth_key,      &sqlite_del_oauth_key,  &sqlite_list_oauth_keys,
+                                       &sqlite_get_admin_user,     &sqlite_set_admin_user, &sqlite_del_admin_user,
+                                       &sqlite_list_admin_users,   &sqlite_disconnect,     NULL};
 
 //////////////////////////////////////////////////
 

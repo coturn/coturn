@@ -1378,14 +1378,15 @@ static void mongo_disconnect(void) {
 
 //////////////////////////////////////////////////////////
 
-static const turn_dbdriver_t driver = {
-    &mongo_get_auth_secrets,   &mongo_get_user_key,   &mongo_set_user_key,   &mongo_del_user,
-    &mongo_list_users,         &mongo_list_secrets,   &mongo_del_secret,     &mongo_set_secret,
-    &mongo_add_origin,         &mongo_del_origin,     &mongo_list_origins,   &mongo_set_realm_option_one,
-    &mongo_list_realm_options, &mongo_auth_ping,      &mongo_get_ip_list,    &mongo_set_permission_ip,
-    &mongo_reread_realms,      &mongo_set_oauth_key,  &mongo_get_oauth_key,  &mongo_del_oauth_key,
-    &mongo_list_oauth_keys,    &mongo_get_admin_user, &mongo_set_admin_user, &mongo_del_admin_user,
-    &mongo_list_admin_users,   &mongo_disconnect};
+static const turn_dbdriver_t driver = {&mongo_get_auth_secrets,   &mongo_get_user_key,   &mongo_set_user_key,
+                                       &mongo_del_user,           &mongo_list_users,     &mongo_list_secrets,
+                                       &mongo_del_secret,         &mongo_set_secret,     &mongo_add_origin,
+                                       &mongo_del_origin,         &mongo_list_origins,   &mongo_set_realm_option_one,
+                                       &mongo_list_realm_options, &mongo_auth_ping,      &mongo_get_ip_list,
+                                       &mongo_set_permission_ip,  &mongo_reread_realms,  &mongo_set_oauth_key,
+                                       &mongo_get_oauth_key,      &mongo_del_oauth_key,  &mongo_list_oauth_keys,
+                                       &mongo_get_admin_user,     &mongo_set_admin_user, &mongo_del_admin_user,
+                                       &mongo_list_admin_users,   &mongo_disconnect,     NULL};
 
 const turn_dbdriver_t *get_mongo_dbdriver(void) { return &driver; }
 
