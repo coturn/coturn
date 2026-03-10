@@ -215,7 +215,7 @@ int addr_eq_no_port(const ioa_addr *a1, const ioa_addr *a2) {
   return 0;
 }
 
-int make_ioa_addr(const uint8_t *saddr0, int port, ioa_addr *addr) {
+int make_ioa_addr(const uint8_t *saddr0, uint16_t port, ioa_addr *addr) {
 
   if (!saddr0 || !addr) {
     return -1;
@@ -315,7 +315,7 @@ int make_ioa_addr(const uint8_t *saddr0, int port, ioa_addr *addr) {
   return 0;
 }
 
-static char *get_addr_string_and_port(char *s0, int *port) {
+static char *get_addr_string_and_port(char *s0, uint16_t *port) {
   char *s = s0;
   while (*s && (*s == ' ')) {
     ++s;
@@ -353,13 +353,13 @@ static char *get_addr_string_and_port(char *s0, int *port) {
   return NULL;
 }
 
-int make_ioa_addr_from_full_string(const uint8_t *saddr, int default_port, ioa_addr *addr) {
+int make_ioa_addr_from_full_string(const uint8_t *saddr, uint16_t default_port, ioa_addr *addr) {
   if (!addr) {
     return -1;
   }
 
   int ret = -1;
-  int port = 0;
+  uint16_t port = 0;
   char *s = strdup((const char *)saddr);
   char *sa = get_addr_string_and_port(s, &port);
   if (sa) {
@@ -420,7 +420,7 @@ int addr_to_string_no_port(const ioa_addr *addr, char *saddr) {
   return -1;
 }
 
-void addr_set_port(ioa_addr *addr, int port) {
+void addr_set_port(ioa_addr *addr, uint16_t port) {
   if (addr) {
     if (addr->s4.sin_family == AF_INET) {
       addr->s4.sin_port = nswap16(port);
@@ -430,7 +430,7 @@ void addr_set_port(ioa_addr *addr, int port) {
   }
 }
 
-int addr_get_port(const ioa_addr *addr) {
+uint16_t addr_get_port(const ioa_addr *addr) {
   if (!addr) {
     return 0;
   }

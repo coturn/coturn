@@ -556,7 +556,7 @@ beg_allocate:
                 // error
               } else if (turn_addr && turn_port) {
                 addr_to_string_no_port(&alternate_server, turn_addr);
-                *turn_port = (uint16_t)addr_get_port(&alternate_server);
+                *turn_port = addr_get_port(&alternate_server);
               }
             }
 
