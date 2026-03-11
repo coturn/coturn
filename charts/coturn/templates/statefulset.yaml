@@ -84,7 +84,10 @@ spec:
         {{- end }}
       initContainers:
         - name: get-external-ip
-          image: bitnamilegacy/kubectl:1.29.11
+          {{- with .Values.externalIpHelper.image }}
+          image: {{ .repository }}:{{ .tag }}
+          imagePullPolicy: {{ .pullPolicy }}
+          {{- end }}
           resources:
             {{- toYaml .Values.initResources | nindent 12 }}
           volumeMounts:
@@ -95,8 +98,8 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
-          command:
-            - /bin/sh
+          command: ['/bin/sh']
+          args:
             - -c
             - |
               set -e
@@ -126,6 +129,10 @@ spec:
                 echo "Error: No external IP found after $max_tries attempts." >&2
                 exit 1
               fi
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsRoot: false
+            runAsUser: 65534 # non-root user in alpine
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository}}:{{ .Values.image.tag | default .Chart.AppVersion }}"
