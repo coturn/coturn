@@ -87,9 +87,13 @@
 #include "ns_ioalib_impl.h"
 
 #include <openssl/aes.h>
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
 #include <openssl/decoder.h>
+#endif /* OPENSSL_VERSION_NUMBER >= 0x30000000L */
 #include <openssl/err.h>
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
 #include <openssl/param_build.h>
+#endif /* OPENSSL_VERSION_NUMBER >= 0x30000000L */
 #include <openssl/pem.h>
 #include <openssl/ssl.h>
 
