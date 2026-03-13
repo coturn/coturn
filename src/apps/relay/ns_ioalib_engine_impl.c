@@ -3849,7 +3849,7 @@ void turn_report_session_usage(void *session, int force_invalid) {
 
         if (force_invalid) {
           const turn_dbdriver_t *dbd = get_dbdriver();
-          if (dbd->report_usage) {
+          if (dbd && dbd->report_usage) {
             dbd->report_usage(session);
           }
         }
