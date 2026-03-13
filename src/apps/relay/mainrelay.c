@@ -3038,7 +3038,6 @@ static void drop_privileges(void) {
 #if defined(WINDOWS)
   // TODO: implement it!!!
 #else
-  setgroups(0, NULL);
   if (procgroupid_set) {
     if (getgid() != procgroupid) {
       if (setgid(procgroupid) != 0) {
@@ -3054,6 +3053,11 @@ static void drop_privileges(void) {
 
   if (procuserid_set) {
     if (procuserid != getuid()) {
+      if (setgroups(0, NULL) != 0) {
+        perror("setgroups: Unable drop supplementary groups");
+        exit(-1);
+      }
+
       if (setuid(procuserid) != 0) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "setuid: Unable to change user privileges: %s\n", strerror(errno));
         exit(-1);
