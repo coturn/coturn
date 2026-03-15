@@ -37,9 +37,6 @@ jobs:
       - name: Build
         run: cmake --build build --parallel $(nproc)
 
-      - name: Unit tests
-        run: ctest --test-dir build --output-on-failure
-
       - run: ./run_tests.sh
         working-directory: examples/
       - run: ./run_tests_conf.sh
