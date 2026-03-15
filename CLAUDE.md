@@ -37,7 +37,7 @@ Key style rules (LLVM-based):
 - Column limit: 120
 - Pointer alignment: right (`int *p`)
 - Brace style: attach (K&R)
-- `= {0}` zero-initialization for stack buffers before use
+- Zero-initialize stack buffers at declaration: `uint8_t buf[N] = {0}` or `SomeStruct s = {0}`
 
 ## Tests
 
@@ -74,9 +74,11 @@ docs/              # Protocol notes and configuration docs
 
 ## Common patterns
 
-- **Port types**: use `uint16_t` for port fields (not `int`)
-- **Buffer initialization**: always zero-initialize stack buffers before passing to functions (`= {0}` or `memset`)
-- **HMAC output buffers**: declare as `uint8_t buf[MAXSHASIZE] = {0}` before passing to integrity functions
+- **Port types**: use `uint16_t` for port fields and parameters (not `int`); port 0 means OS-assigned ephemeral
+- **Buffer initialization**: zero-initialize stack buffers at declaration (`= {0}`), not just before first use
+- **HMAC output buffers**: declare as `uint8_t buf[MAXSHASIZE] = {0}` — the buffer is written into the message before HMAC runs, so uninitialized bytes would be briefly present in the packet
 - **Uninitialized structs**: use `= {0}` for stack-allocated address structs (e.g., `ioa_addr`)
+- **Counter overflow in `turn_ports.c`**: `_turnports` uses `uint32_t low/high` counters; comparisons must be overflow-safe (use subtraction, not `>=`)
+- **Port bounds checks**: use `<= USHRT_MAX` (not `< USHRT_MAX`) when validating that an `int` holds a valid port — port 65535 is valid
 - **Error handling**: check return values of all OpenSSL/libevent calls; use `ERR_clear_error()` before HMAC operations
 - **Logging**: use `TURN_LOG_FUNC` macros, not `fprintf`/`perror`
