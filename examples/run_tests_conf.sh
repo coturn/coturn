@@ -1,5 +1,10 @@
 #!/bin/bash
 
+cleanup() {
+    kill "$turnserver_pid" "$peer_pid" 2>/dev/null
+}
+trap cleanup EXIT
+
 # Detect cmake build and adjust path
 BINDIR="../bin"
 if [ ! -f $BINDIR/turnserver ]; then
@@ -19,6 +24,7 @@ $BINDIR/turnserver -c $BINDIR/turnserver.conf > /dev/null &
 turnserver_pid="$!"
 echo 'Running peer client'
 $BINDIR/turnutils_peer -L 127.0.0.1 -L ::1 -L 0.0.0.0 > /dev/null &
+peer_pid="$!"
 
 sleep 5
 
@@ -59,4 +65,3 @@ else
 fi
 
 sleep 2
-kill "$turnserver_pid"
