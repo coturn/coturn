@@ -57,6 +57,7 @@ jobs:
 
       - run: ./configure
       - run: make
+      - run: make install prefix=$(pwd)
 
       - run: make check
 
