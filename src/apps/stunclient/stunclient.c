@@ -88,9 +88,7 @@ static int run_stunclient(const char *rip, uint16_t rport, uint16_t *port, bool 
   }
 
   int new_udp_fd = -1;
-  // note: while port numbers are restricted to the range [0, USHRT_MAX], local_port is used throughout
-  // this file as an int, using -1 as a pseudo-boolean, marking that no local port will be used
-  if (response_port >= 0 && response_port < USHRT_MAX) {
+  if (response_port >= 0 && response_port <= USHRT_MAX) {
     new_udp_fd = socket(remote_addr.ss.sa_family, SOCK_DGRAM, 0);
     if (new_udp_fd < 0) {
       err(-1, nullptr);
@@ -107,7 +105,7 @@ static int run_stunclient(const char *rip, uint16_t rport, uint16_t *port, bool 
 
   req.constructBindingRequest();
 
-  if (response_port >= 0 && response_port < USHRT_MAX) {
+  if (response_port >= 0 && response_port <= USHRT_MAX) {
     turn::StunAttrResponsePort rpa;
     rpa.setResponsePort((uint16_t)response_port);
     try {
@@ -302,7 +300,7 @@ static int run_stunclient(const char *rip, uint16_t rport, uint16_t *port, bool 
 
   stun_prepare_binding_request(&buf);
 
-  if (response_port >= 0 && response_port < USHRT_MAX) {
+  if (response_port >= 0 && response_port <= USHRT_MAX) {
     stun_attr_add_response_port_str((uint8_t *)(buf.buf), (size_t *)&(buf.len), (uint16_t)response_port);
   }
   if (change_ip || change_port) {
@@ -468,7 +466,6 @@ int main(int argc, char **argv) {
     }
   }
 
-  // NOTE: not sure about this change
   uint16_t local_port = 0;
   bool rfc5780 = false;
 

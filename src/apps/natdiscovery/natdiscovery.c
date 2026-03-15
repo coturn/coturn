@@ -63,12 +63,11 @@ static int counter = 0;
 
 #ifdef __cplusplus
 
-// note: while port numbers are restricted to the range [0, USHRT_MAX], local_port is used throughout
-// this file as an int, using -1 as a pseudo-boolean, marking that no local port will be used
+// note: local_port uses port 0 to indicate no specific local port (OS assigns ephemeral)
 static int init_socket(int *socketfd, ioa_addr *local_addr, int local_port, ioa_addr *remote_addr) {
   const int ret = 0;
 
-  if (local_port >= 0 && local_port < USHRT_MAX) {
+  if (local_port >= 0 && local_port <= USHRT_MAX) {
     addr_set_port(local_addr, (uint16_t)local_port);
   }
 
@@ -278,11 +277,11 @@ static int stunclient_receive(int sockfd, ioa_addr *local_addr, ioa_addr *reflex
 }
 
 static int run_stunclient(ioa_addr *local_addr, ioa_addr *remote_addr, ioa_addr *reflexive_addr, ioa_addr *other_addr,
-                          int *local_port, bool *rfc5780, bool change_ip, bool change_port, int padding) {
+                          uint16_t *local_port, bool *rfc5780, bool change_ip, bool change_port, int padding) {
   int ret = 0;
 
   ret = init_socket(&udp_fd, local_addr, *local_port, remote_addr);
-  ret = stunclient_send(udp_fd, local_addr, (uint16_t *)local_port, remote_addr, change_ip, change_port, padding, -1);
+  ret = stunclient_send(udp_fd, local_addr, local_port, remote_addr, change_ip, change_port, padding, -1);
   ret = stunclient_receive(udp_fd, local_addr, reflexive_addr, other_addr, rfc5780);
   socket_closesocket(udp_fd);
 
@@ -290,13 +289,13 @@ static int run_stunclient(ioa_addr *local_addr, ioa_addr *remote_addr, ioa_addr 
 }
 
 static int run_stunclient_hairpinning(ioa_addr *local_addr, ioa_addr *remote_addr, ioa_addr *reflexive_addr,
-                                      ioa_addr *other_addr, int *local_port, bool *rfc5780, bool change_ip,
+                                      ioa_addr *other_addr, uint16_t *local_port, bool *rfc5780, bool change_ip,
                                       bool change_port, int padding) {
   int ret = 0;
 
   init_socket(&udp_fd, local_addr, *local_port, remote_addr);
 
-  ret = stunclient_send(udp_fd, local_addr, (uint16_t *)local_port, remote_addr, change_ip, change_port, padding, -1);
+  ret = stunclient_send(udp_fd, local_addr, local_port, remote_addr, change_ip, change_port, padding, -1);
   ret = stunclient_receive(udp_fd, local_addr, reflexive_addr, other_addr, rfc5780);
 
   addr_cpy(remote_addr, reflexive_addr);
@@ -304,7 +303,7 @@ static int run_stunclient_hairpinning(ioa_addr *local_addr, ioa_addr *remote_add
 
   init_socket(&udp_fd2, local_addr, 0, remote_addr);
 
-  ret = stunclient_send(udp_fd2, local_addr, (uint16_t *)local_port, remote_addr, change_ip, change_port, padding, -1);
+  ret = stunclient_send(udp_fd2, local_addr, local_port, remote_addr, change_ip, change_port, padding, -1);
   ret = stunclient_receive(udp_fd, local_addr, reflexive_addr, other_addr, rfc5780);
 
   if (ret) {
@@ -317,14 +316,14 @@ static int run_stunclient_hairpinning(ioa_addr *local_addr, ioa_addr *remote_add
 }
 
 static int run_stunclient_lifetime(int timer, ioa_addr *local_addr, ioa_addr *remote_addr, ioa_addr *reflexive_addr,
-                                   ioa_addr *other_addr, int *local_port, bool *rfc5780, bool change_ip,
+                                   ioa_addr *other_addr, uint16_t *local_port, bool *rfc5780, bool change_ip,
                                    bool change_port, int padding) {
   int ret = 0;
   int response_port;
 
   init_socket(&udp_fd, local_addr, *local_port, remote_addr);
 
-  ret = stunclient_send(udp_fd, local_addr, (uint16_t *)local_port, remote_addr, change_ip, change_port, padding, -1);
+  ret = stunclient_send(udp_fd, local_addr, local_port, remote_addr, change_ip, change_port, padding, -1);
   ret = stunclient_receive(udp_fd, local_addr, reflexive_addr, other_addr, rfc5780);
 
   addr_set_port(local_addr, 0);
@@ -333,7 +332,7 @@ static int run_stunclient_lifetime(int timer, ioa_addr *local_addr, ioa_addr *re
   init_socket(&udp_fd2, local_addr, 0, remote_addr);
   response_port = addr_get_port(reflexive_addr);
 
-  ret = stunclient_send(udp_fd2, local_addr, (uint16_t *)local_port, remote_addr, change_ip, change_port, padding,
+  ret = stunclient_send(udp_fd2, local_addr, local_port, remote_addr, change_ip, change_port, padding,
                         response_port);
   ret = stunclient_receive(udp_fd, local_addr, reflexive_addr, other_addr, rfc5780);
 
@@ -345,8 +344,7 @@ static int run_stunclient_lifetime(int timer, ioa_addr *local_addr, ioa_addr *re
 
 #else
 
-// note: while port numbers are restricted to the range [0, USHRT_MAX], local_port is used throughout
-// this file as an int, using -1 as a pseudo-boolean, marking that no local port will be used
+// note: local_port uses port 0 to indicate no specific local port (OS assigns ephemeral)
 static int init_socket(int *socketfd, ioa_addr *local_addr, int local_port, ioa_addr *remote_addr) {
   int ret = 0;
 
@@ -355,7 +353,7 @@ static int init_socket(int *socketfd, ioa_addr *local_addr, int local_port, ioa_
     err(-1, NULL);
   }
 
-  if (local_port >= 0 && local_port < USHRT_MAX) {
+  if (local_port >= 0 && local_port <= USHRT_MAX) {
     addr_set_port(local_addr, (uint16_t)local_port);
   }
   if (!addr_any(local_addr)) {
@@ -509,13 +507,13 @@ static int stunclient_receive(stun_buffer *buf, int sockfd, ioa_addr *local_addr
 }
 
 static int run_stunclient(ioa_addr *local_addr, ioa_addr *remote_addr, ioa_addr *reflexive_addr, ioa_addr *other_addr,
-                          int *local_port, bool *rfc5780, bool change_ip, bool change_port, int padding) {
+                          uint16_t *local_port, bool *rfc5780, bool change_ip, bool change_port, int padding) {
   int ret = 0;
   stun_buffer buf;
 
   init_socket(&udp_fd, local_addr, *local_port, remote_addr);
 
-  ret = stunclient_send(&buf, udp_fd, local_addr, (uint16_t *)local_port, remote_addr, change_ip, change_port, padding,
+  ret = stunclient_send(&buf, udp_fd, local_addr, local_port, remote_addr, change_ip, change_port, padding,
                         -1);
   ret = stunclient_receive(&buf, udp_fd, local_addr, reflexive_addr, other_addr, rfc5780);
 
@@ -525,7 +523,7 @@ static int run_stunclient(ioa_addr *local_addr, ioa_addr *remote_addr, ioa_addr 
 }
 
 static int run_stunclient_hairpinning(ioa_addr *local_addr, ioa_addr *remote_addr, ioa_addr *reflexive_addr,
-                                      ioa_addr *other_addr, int *local_port, bool *rfc5780, bool change_ip,
+                                      ioa_addr *other_addr, uint16_t *local_port, bool *rfc5780, bool change_ip,
                                       bool change_port, int padding) {
   int ret = 0;
   stun_buffer buf;
@@ -533,7 +531,7 @@ static int run_stunclient_hairpinning(ioa_addr *local_addr, ioa_addr *remote_add
 
   init_socket(&udp_fd, local_addr, *local_port, remote_addr);
 
-  ret = stunclient_send(&buf, udp_fd, local_addr, (uint16_t *)local_port, remote_addr, change_ip, change_port, padding,
+  ret = stunclient_send(&buf, udp_fd, local_addr, local_port, remote_addr, change_ip, change_port, padding,
                         -1);
   ret = stunclient_receive(&buf, udp_fd, local_addr, reflexive_addr, other_addr, rfc5780);
 
@@ -542,7 +540,7 @@ static int run_stunclient_hairpinning(ioa_addr *local_addr, ioa_addr *remote_add
 
   init_socket(&udp_fd2, local_addr, 0, remote_addr);
 
-  ret = stunclient_send(&buf2, udp_fd2, local_addr, (uint16_t *)local_port, remote_addr, change_ip, change_port,
+  ret = stunclient_send(&buf2, udp_fd2, local_addr, local_port, remote_addr, change_ip, change_port,
                         padding, -1);
   ret = stunclient_receive(&buf, udp_fd, local_addr, reflexive_addr, other_addr, rfc5780);
 
@@ -557,7 +555,7 @@ static int run_stunclient_hairpinning(ioa_addr *local_addr, ioa_addr *remote_add
 }
 
 static int run_stunclient_lifetime(int timer, ioa_addr *local_addr, ioa_addr *remote_addr, ioa_addr *reflexive_addr,
-                                   ioa_addr *other_addr, int *local_port, bool *rfc5780, bool change_ip,
+                                   ioa_addr *other_addr, uint16_t *local_port, bool *rfc5780, bool change_ip,
                                    bool change_port, int padding) {
   int ret = 0;
   stun_buffer buf;
@@ -566,7 +564,7 @@ static int run_stunclient_lifetime(int timer, ioa_addr *local_addr, ioa_addr *re
 
   init_socket(&udp_fd, local_addr, *local_port, remote_addr);
 
-  ret = stunclient_send(&buf, udp_fd, local_addr, (uint16_t *)local_port, remote_addr, change_ip, change_port, padding,
+  ret = stunclient_send(&buf, udp_fd, local_addr, local_port, remote_addr, change_ip, change_port, padding,
                         -1);
   ret = stunclient_receive(&buf, udp_fd, local_addr, reflexive_addr, other_addr, rfc5780);
 
@@ -576,7 +574,7 @@ static int run_stunclient_lifetime(int timer, ioa_addr *local_addr, ioa_addr *re
   init_socket(&udp_fd2, local_addr, 0, remote_addr);
   response_port = addr_get_port(reflexive_addr);
 
-  ret = stunclient_send(&buf2, udp_fd2, local_addr, (uint16_t *)local_port, remote_addr, change_ip, change_port,
+  ret = stunclient_send(&buf2, udp_fd2, local_addr, local_port, remote_addr, change_ip, change_port,
                         padding, response_port);
   ret = stunclient_receive(&buf, udp_fd, local_addr, reflexive_addr, other_addr, rfc5780);
 
@@ -611,8 +609,8 @@ static char Usage[] = "Usage: natdiscovery [options] address\n"
 
 //////////////////////////////////////////////////
 
-static void init(int first, ioa_addr *local_addr, ioa_addr *remote_addr, int *local_port, uint16_t port, bool *rfc5780,
-                 char *local_addr_string, char *remote_param) {
+static void init(int first, ioa_addr *local_addr, ioa_addr *remote_addr, uint16_t *local_port, uint16_t port,
+                 bool *rfc5780, char *local_addr_string, char *remote_param) {
   addr_set_any(local_addr);
 
   if (local_addr_string[0]) {
@@ -621,7 +619,7 @@ static void init(int first, ioa_addr *local_addr, ioa_addr *remote_addr, int *lo
     }
   }
   if (!first) {
-    *local_port = -1;
+    *local_port = 0;
   }
   *rfc5780 = false;
 
@@ -648,7 +646,7 @@ int main(int argc, char **argv) {
   int collision = 0;
   int padding = 0;
   int hairpinning = 0;
-  int local_port = -1;
+  uint16_t local_port = 0;
   bool rfc5780;
   int first = 1;
   ioa_addr other_addr, reflexive_addr, tmp_addr, remote_addr, local_addr, local2_addr;
