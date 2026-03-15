@@ -64,12 +64,10 @@ static int counter = 0;
 #ifdef __cplusplus
 
 // note: local_port uses port 0 to indicate no specific local port (OS assigns ephemeral)
-static int init_socket(int *socketfd, ioa_addr *local_addr, int local_port, ioa_addr *remote_addr) {
+static int init_socket(int *socketfd, ioa_addr *local_addr, uint16_t local_port, ioa_addr *remote_addr) {
   const int ret = 0;
 
-  if (local_port >= 0 && local_port <= USHRT_MAX) {
-    addr_set_port(local_addr, (uint16_t)local_port);
-  }
+  addr_set_port(local_addr, local_port);
 
   *socketfd = socket(remote_addr->ss.sa_family, SOCK_DGRAM, 0);
   if (udp_fd < 0) {
@@ -319,7 +317,7 @@ static int run_stunclient_lifetime(int timer, ioa_addr *local_addr, ioa_addr *re
                                    ioa_addr *other_addr, uint16_t *local_port, bool *rfc5780, bool change_ip,
                                    bool change_port, int padding) {
   int ret = 0;
-  int response_port;
+  uint16_t response_port;
 
   init_socket(&udp_fd, local_addr, *local_port, remote_addr);
 
@@ -345,7 +343,7 @@ static int run_stunclient_lifetime(int timer, ioa_addr *local_addr, ioa_addr *re
 #else
 
 // note: local_port uses port 0 to indicate no specific local port (OS assigns ephemeral)
-static int init_socket(int *socketfd, ioa_addr *local_addr, int local_port, ioa_addr *remote_addr) {
+static int init_socket(int *socketfd, ioa_addr *local_addr, uint16_t local_port, ioa_addr *remote_addr) {
   int ret = 0;
 
   *socketfd = socket(remote_addr->ss.sa_family, CLIENT_DGRAM_SOCKET_TYPE, CLIENT_DGRAM_SOCKET_PROTOCOL);
@@ -353,9 +351,7 @@ static int init_socket(int *socketfd, ioa_addr *local_addr, int local_port, ioa_
     err(-1, NULL);
   }
 
-  if (local_port >= 0 && local_port <= USHRT_MAX) {
-    addr_set_port(local_addr, (uint16_t)local_port);
-  }
+  addr_set_port(local_addr, local_port);
   if (!addr_any(local_addr)) {
     if (addr_bind(*socketfd, local_addr, 0, 1, UDP_SOCKET) < 0) {
       err(-1, NULL);
@@ -560,7 +556,7 @@ static int run_stunclient_lifetime(int timer, ioa_addr *local_addr, ioa_addr *re
   int ret = 0;
   stun_buffer buf;
   stun_buffer buf2;
-  int response_port;
+  uint16_t response_port;
 
   init_socket(&udp_fd, local_addr, *local_port, remote_addr);
 
