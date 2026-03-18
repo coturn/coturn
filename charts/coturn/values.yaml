@@ -161,6 +161,10 @@ ratelimit:
 metrics:
   serviceMonitor:
     enabled: false
+    # Optional: set fallback scrape protocol for prometheus-operator targets
+    # that don't send a Content-Type header. Requires Prometheus >= 3.0.0.
+    # Example: PrometheusText0.0.4
+    fallbackScrapeProtocol: ""
 
 # This chart supports waiting for traffic to drain from coturn
 # before pods are actually terminated. Once in 'drain' mode, no new connections

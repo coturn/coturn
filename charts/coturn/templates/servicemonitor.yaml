@@ -9,6 +9,9 @@ metadata:
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
 spec:
+  {{- if .Values.metrics.serviceMonitor.fallbackScrapeProtocol }}
+  fallbackScrapeProtocol: {{ .Values.metrics.serviceMonitor.fallbackScrapeProtocol }}
+  {{- end }}
   endpoints:
     - port: status-http
       path: /metrics
