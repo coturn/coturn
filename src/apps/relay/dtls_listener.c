@@ -741,6 +741,7 @@ start_udp_cycle:
     // stun_is_channel_message_str and stun_is_command_message_str
     size_t blen = bsize;
     uint16_t chnum = 0;
+    uint32_t old_stun_cookie = 0;
     uint8_t *data = ioa_network_buffer_data(elem);
 
     bool is_valid_packet = false;
@@ -752,6 +753,10 @@ start_udp_cycle:
       is_valid_packet = true;
     }
 #endif
+    else if (turn_params.stun_backward_compatibility &&
+             old_stun_is_command_message_str(data, blen, &old_stun_cookie)) {
+      is_valid_packet = true;
+    }
 
     if (turn_params.drop_invalid_packets && !is_valid_packet) {
       packetcounter++;
