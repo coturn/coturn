@@ -1224,10 +1224,282 @@ static int bind_ioa_socket(ioa_socket_handle s, const ioa_addr *local_addr, int 
   return -1;
 }
 
+/* ======================================================================
+ * PORT-SHARING IMPLEMENTATION
+ * ====================================================================== */
+
+/*
+ * UDP receive callback for the thread-local shared relay socket.
+ *
+ * Packets arriving here come from peers. Port sharing assumes each peer
+ * IP:port belongs to one client allocation, so the exact peer endpoint is
+ * the routing key.
+ */
+static void ps_relay_input_handler(ioa_socket_handle s, int event_type, ioa_net_data *data, void *ctx, int can_resume) {
+  ioa_engine_handle e = (ioa_engine_handle)ctx;
+  if (!e || !data) {
+    return;
+  }
+
+  ur_addr_map_value_type value = 0;
+  ioa_addr key = {0};
+  addr_cpy(&key, &data->src_addr);
+  if (!ur_addr_map_get(&e->ps_table, &key, &value) || !value) {
+    return;
+  }
+
+  ts_ur_super_session *ss = (ts_ur_super_session *)(uintptr_t)value;
+  if (!ss || ss->to_be_closed) {
+    return;
+  }
+
+  allocation *a = get_allocation_ss(ss);
+  if (!is_allocation_valid(a)) {
+    return;
+  }
+
+  turn_turnserver *server = (turn_turnserver *)ss->server;
+  if ((!server || !server->server_relay) && !allocation_get_permission(a, &data->src_addr)) {
+    return;
+  }
+
+  turn_peer_input_handler(s, event_type, data, ss, can_resume);
+}
+
+/*
+ * Open a single UDP socket bound to relay_addr:port, set SO_REUSEPORT,
+ * register ps_relay_input_handler, and store the handle in *sock_out.
+ */
+static int ps_open_socket(ioa_engine_handle e, const char *relay_addr, int af, uint16_t port,
+                          ioa_socket_handle *sock_out) {
+  ioa_addr addr = {0};
+  if (make_ioa_addr((const uint8_t *)relay_addr, port, &addr) != 0) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "port-sharing: cannot parse relay addr '%s'\n", relay_addr);
+    return -1;
+  }
+
+  ioa_socket_handle s = create_unbound_relay_ioa_socket(e, af, UDP_SOCKET, RELAY_SOCKET);
+  if (!s) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "port-sharing: socket() failed for %s:%u\n", relay_addr, (unsigned)port);
+    return -1;
+  }
+
+  int opt = 1;
+  setsockopt(s->fd, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt));
+
+  if (bind_ioa_socket(s, &addr, /*is_tcp=*/0) < 0) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "port-sharing: bind() failed for %s:%u\n", relay_addr, (unsigned)port);
+    IOA_CLOSE_SOCKET(s);
+    return -1;
+  }
+
+  sock_bind_to_device(s->fd, (unsigned char *)e->relay_ifname);
+
+  register_callback_on_ioa_socket(e, s, IOA_EV_READ, ps_relay_input_handler, (void *)e, /*clean_preexisting=*/0);
+
+  *sock_out = s;
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "port-sharing: thread %d %s socket bound to %s:%u\n", e->relay_thread_id,
+                af == AF_INET ? "IPv4" : "IPv6", relay_addr, (unsigned)port);
+  return 0;
+}
+
+/* Called once per relay thread from setup_relay_server(). */
+int init_port_sharing(ioa_engine_handle e, int thread_id, uint16_t base_port) {
+  if (!e) {
+    return -1;
+  }
+
+  ur_addr_map_init(&e->ps_table);
+  e->relay_thread_id = thread_id;
+
+  /*
+   * Port formula (no two threads clash):
+   *   IPv4 = base_port + thread_id * 2
+   *   IPv6 = base_port + thread_id * 2 + 1
+   */
+  const uint32_t port_v4_calc = (uint32_t)base_port + (uint32_t)thread_id * 2u;
+  const uint32_t port_v6_calc = port_v4_calc + 1u;
+  if (port_v6_calc > UINT16_MAX) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "port-sharing: calculated port range exceeds 65535\n");
+    return -1;
+  }
+
+  const uint16_t port_v4 = (uint16_t)port_v4_calc;
+  const uint16_t port_v6 = (uint16_t)port_v6_calc;
+
+  e->ps_port_v4 = port_v4;
+  e->ps_port_v6 = port_v6;
+
+  for (size_t i = 0; i < e->relays_number; i++) {
+    char ra_str[MAX_IOA_ADDR_STRING] = {0};
+    addr_to_string_no_port(&e->relay_addrs[i], ra_str);
+    int af = e->relay_addrs[i].ss.sa_family;
+
+    if (af == AF_INET && !e->ps_sock_v4) {
+      ps_open_socket(e, ra_str, AF_INET, port_v4, &e->ps_sock_v4);
+    } else if (af == AF_INET6 && !e->ps_sock_v6) {
+      ps_open_socket(e, ra_str, AF_INET6, port_v6, &e->ps_sock_v6);
+    }
+  }
+
+  if (!e->ps_sock_v4 && !e->ps_sock_v6) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+                  "port-sharing: thread %d: no sockets opened – "
+                  "check --relay-ip configuration\n",
+                  thread_id);
+    return -1;
+  }
+
+  e->ps_enabled = 1;
+  return 0;
+}
+
+int ps_register_peer(ioa_engine_handle e, const ioa_addr *peer_addr, void *turn_session) {
+  if (!e || !peer_addr || !turn_session) {
+    return -1;
+  }
+
+  if (addr_get_port(peer_addr) == 0) {
+    return 0;
+  }
+
+  ioa_addr key = {0};
+  addr_cpy(&key, peer_addr);
+
+  ur_addr_map_value_type existing = 0;
+  if (ur_addr_map_get(&e->ps_table, &key, &existing) && existing && existing != (ur_addr_map_value_type)turn_session) {
+    return -1;
+  }
+
+  return ur_addr_map_put(&e->ps_table, &key, (ur_addr_map_value_type)(uintptr_t)turn_session) ? 0 : -1;
+}
+
+void ps_deregister_peer(ioa_engine_handle e, const ioa_addr *peer_addr, void *turn_session) {
+  if (!e || !peer_addr) {
+    return;
+  }
+  ioa_addr key = {0};
+  addr_cpy(&key, peer_addr);
+  if (turn_session) {
+    ur_addr_map_value_type existing = 0;
+    if (!ur_addr_map_get(&e->ps_table, &key, &existing) || existing != (ur_addr_map_value_type)turn_session) {
+      return;
+    }
+  }
+  ur_addr_map_del(&e->ps_table, &key, NULL);
+}
+
+struct ps_deregister_ctx {
+  ioa_engine_handle e;
+  ur_addr_map_value_type session;
+  const ioa_addr *peer_addr;
+  int address_family;
+};
+
+static bool ps_deregister_cb(const ioa_addr *key, ur_addr_map_value_type value, void *arg) {
+  struct ps_deregister_ctx *ctx = (struct ps_deregister_ctx *)arg;
+  if (!ctx || value != ctx->session) {
+    return true;
+  }
+  if (ctx->address_family && key->ss.sa_family != ctx->address_family) {
+    return true;
+  }
+  if (ctx->peer_addr && !addr_eq_no_port(key, ctx->peer_addr)) {
+    return true;
+  }
+
+  ioa_addr key_copy = {0};
+  addr_cpy(&key_copy, key);
+  ur_addr_map_del(&ctx->e->ps_table, &key_copy, NULL);
+  return true;
+}
+
+void ps_deregister_permission_peers(ioa_engine_handle e, const ioa_addr *peer_addr, void *turn_session) {
+  if (!e || !peer_addr || !turn_session) {
+    return;
+  }
+  struct ps_deregister_ctx ctx = {e, (ur_addr_map_value_type)(uintptr_t)turn_session, peer_addr, 0};
+  ur_addr_map_foreach_key_arg(&e->ps_table, ps_deregister_cb, &ctx);
+}
+
+void ps_deregister_session_peers(ioa_engine_handle e, void *turn_session, int address_family) {
+  if (!e || !turn_session) {
+    return;
+  }
+  struct ps_deregister_ctx ctx = {e, (ur_addr_map_value_type)(uintptr_t)turn_session, NULL, address_family};
+  ur_addr_map_foreach_key_arg(&e->ps_table, ps_deregister_cb, &ctx);
+}
+
+ioa_socket_handle ps_get_socket(ioa_engine_handle e, int af) {
+  if (!e || !e->ps_enabled) {
+    return NULL;
+  }
+  return (af == AF_INET6) ? e->ps_sock_v6 : e->ps_sock_v4;
+}
+
+uint16_t ps_get_port(ioa_engine_handle e, int af) {
+  if (!e || !e->ps_enabled) {
+    return 0;
+  }
+  return (af == AF_INET6) ? e->ps_port_v6 : e->ps_port_v4;
+}
+
+/*
+ * Port-sharing allocation path.
+ * Called from create_relay_ioa_sockets() when port_sharing_mode is set.
+ */
+static int create_relay_socket_port_sharing(ioa_engine_handle e, ioa_socket_handle client_s, int address_family,
+                                            ioa_socket_handle *rtp_s, int *err_code, const uint8_t **reason) {
+  int family;
+  switch (address_family) {
+  case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6:
+    family = AF_INET6;
+    break;
+  case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT:
+    family = (e->default_relays && get_ioa_socket_address_family(client_s) == AF_INET6) ? AF_INET6 : AF_INET;
+    break;
+  default:
+    family = AF_INET;
+    break;
+  }
+  ioa_socket_handle shared = ps_get_socket(e, family);
+  if (!shared) {
+    *err_code = 508;
+    *reason = (const uint8_t *)"No port-sharing socket for requested address family";
+    return -1;
+  }
+
+  *rtp_s = shared;
+  return 0;
+}
+
+/* ======================================================================
+ * END PORT-SHARING IMPLEMENTATION
+ * ====================================================================== */
+
 int create_relay_ioa_sockets(ioa_engine_handle e, ioa_socket_handle client_s, int address_family, uint8_t transport,
                              int even_port, ioa_socket_handle *rtp_s, ioa_socket_handle *rtcp_s,
                              uint64_t *out_reservation_token, int *err_code, const uint8_t **reason, accept_cb acb,
-                             void *acbarg) {
+                             void *acbarg, bool port_sharing_mode) {
+  if (port_sharing_mode && transport == STUN_ATTRIBUTE_TRANSPORT_UDP_VALUE) {
+    if (even_port >= 0) {
+      if (err_code) {
+        *err_code = 400;
+      }
+      if (reason) {
+        *reason = (const uint8_t *)"EVEN-PORT is not supported with port-sharing";
+      }
+      return -1;
+    }
+    if (rtcp_s) {
+      *rtcp_s = NULL;
+    }
+    if (out_reservation_token) {
+      *out_reservation_token = 0;
+    }
+    return create_relay_socket_port_sharing(e, client_s, address_family, rtp_s, err_code, reason);
+  }
+  /* original code unchanged below */
 
   *rtp_s = NULL;
   if (rtcp_s) {

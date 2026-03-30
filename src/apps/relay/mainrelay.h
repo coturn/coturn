@@ -365,6 +365,9 @@ typedef struct _turn_params_ {
   bool udp_sendmmsg;
   bool udp_gso;
   bool include_reason_string;
+
+  bool port_sharing;               /* --port-sharing flag */
+  uint16_t port_sharing_base_port; /* --port-sharing-port (default 3480) */
 } turn_params_t;
 
 extern turn_params_t turn_params;

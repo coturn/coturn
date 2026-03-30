@@ -206,6 +206,8 @@ struct _turn_turnserver {
 
   /* Set to true on SIGUSR1 */
   bool is_draining;
+
+  bool port_sharing_mode;
 };
 
 const char *get_version(turn_turnserver *server);
@@ -248,6 +250,9 @@ int report_turn_session_info(turn_turnserver *server, ts_ur_super_session *ss, i
 turn_time_t get_turn_server_time(turn_turnserver *server);
 
 void turn_cancel_session(turn_turnserver *server, turnsession_id sid);
+
+/* Non-static relay input handler — called by port-sharing dispatch */
+void turn_peer_input_handler(ioa_socket_handle s, int event_type, ioa_net_data *data, void *arg, int can_resume);
 
 ///////////////////////////////////////////
 

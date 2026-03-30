@@ -244,7 +244,9 @@ turn_params_t turn_params = {
     false, /* udp_recvmmsg_log */
     false, /* udp_sendmmsg */
     false, /* udp_gso */
-    false  /* include_reason_string */
+    false, /* include_reason_string */
+    false, /* port_sharing */
+    0      /* port_sharing_base_port */
 };
 
 //////////////// OpenSSL Init //////////////////////
@@ -1371,6 +1373,17 @@ static char Usage[] =
     "UDP input batches.\n"
     " --udp-gso				   Enable Linux UDP-GSO (UDP_SEGMENT cmsg) when a sendmmsg batch shares "
     "destination and size; collapses N datagrams into one network-stack traversal. Requires --udp-sendmmsg.\n"
+    " --port-sharing\n"
+    "        Enable port-sharing relay mode (non-standard, optional).\n"
+    "        Each relay thread opens one UDP socket pair (IPv4+IPv6) shared\n"
+    "        across all TURN sessions on that thread. Sessions are demultiplexed\n"
+    "        by exact peer IP:port lookup. Port layout (B=--port-sharing-port):\n"
+    "          thread 0: IPv4=B+0, IPv6=B+1\n"
+    "          thread 1: IPv4=B+2, IPv6=B+3  ...\n"
+    "        Eliminates port-range exhaustion. Incompatible with EVEN-PORT.\n"
+    " --port-sharing-port <port>\n"
+    "        Base UDP port for port-sharing relay sockets. Default: 3480.\n"
+    "        Total ports consumed = relay_threads * 2.\n"
     " --include-reason-string			   Include descriptive reason strings in STUN/TURN error responses.\n"
     "						   By default, only the standard reason phrase for the error code is\n"
     "						   sent. Enabling this option adds detailed error descriptions which\n"
@@ -1542,7 +1555,9 @@ enum EXTRA_OPTS {
   UDP_GSO_OPT,
   VERSION_OPT,
   CPUS_OPT,
-  INCLUDE_REASON_STRING_OPT
+  INCLUDE_REASON_STRING_OPT,
+  OPT_PORT_SHARING = 800,
+  OPT_PORT_SHARING_PORT = 801
 };
 
 struct myoption {
@@ -1694,6 +1709,8 @@ static const struct myoption long_options[] = {
     {"udp-sendmmsg", optional_argument, NULL, UDP_SENDMMSG_OPT},
     {"udp-gso", optional_argument, NULL, UDP_GSO_OPT},
     {"include-reason-string", optional_argument, NULL, INCLUDE_REASON_STRING_OPT},
+    {"port-sharing", no_argument, NULL, OPT_PORT_SHARING},
+    {"port-sharing-port", required_argument, NULL, OPT_PORT_SHARING_PORT},
     {"version", optional_argument, NULL, VERSION_OPT},
     {"syslog-facility", required_argument, NULL, SYSLOG_FACILITY_OPT},
     {"cpus", required_argument, NULL, CPUS_OPT},
@@ -2503,6 +2520,19 @@ static void set_option(int c, char *value) {
   case INCLUDE_REASON_STRING_OPT:
     turn_params.include_reason_string = get_bool_value(value);
     break;
+  case OPT_PORT_SHARING:
+    turn_params.port_sharing = true;
+    break;
+  case OPT_PORT_SHARING_PORT: {
+    const long parsed_port = strtol(value, NULL, 10);
+    if (parsed_port <= 0 || parsed_port > 65000) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "--port-sharing-port must be 1-65000\n");
+      exit(1);
+    }
+    const uint16_t p = (uint16_t)parsed_port;
+    turn_params.port_sharing_base_port = p;
+    break;
+  }
   case CPUS_OPT: {
     int cpus = atoi(value);
     if (cpus < 1) {

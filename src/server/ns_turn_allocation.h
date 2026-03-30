@@ -58,6 +58,7 @@ typedef struct {
   ioa_socket_handle s;
   turn_time_t expiration_time;
   ioa_timer_handle lifetime_ev;
+  void *owner;
 } relay_endpoint_session;
 
 static inline void clear_relay_endpoint_session_data(relay_endpoint_session *cdi) {

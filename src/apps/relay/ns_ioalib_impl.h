@@ -175,6 +175,14 @@ struct _ioa_engine {
   turn_time_t udp_recvmmsg_last_report_time;
 #endif
   redis_context_handle rch;
+  /* port-sharing (zero-initialised = disabled) */
+  int ps_enabled;
+  int relay_thread_id;
+  ioa_socket_handle ps_sock_v4;
+  ioa_socket_handle ps_sock_v6;
+  uint16_t ps_port_v4;
+  uint16_t ps_port_v6;
+  ur_addr_map ps_table; /* peer_addr:port -> ts_ur_super_session*; O(1) get/put/del */
 };
 
 #define SOCKET_MAGIC (0xABACADEF)
@@ -251,6 +259,16 @@ typedef struct _timer_event {
 
 void create_default_realm(void);
 int get_realm_data(char *name, realm_params_t *rp);
+
+/* port-sharing */
+
+int init_port_sharing(ioa_engine_handle e, int thread_id, uint16_t base_port);
+int ps_register_peer(ioa_engine_handle e, const ioa_addr *peer_addr, void *turn_session);
+void ps_deregister_peer(ioa_engine_handle e, const ioa_addr *peer_addr, void *turn_session);
+void ps_deregister_permission_peers(ioa_engine_handle e, const ioa_addr *peer_addr, void *turn_session);
+void ps_deregister_session_peers(ioa_engine_handle e, void *turn_session, int address_family);
+ioa_socket_handle ps_get_socket(ioa_engine_handle e, int af);
+uint16_t ps_get_port(ioa_engine_handle e, int af);
 
 /* engine handling */
 
