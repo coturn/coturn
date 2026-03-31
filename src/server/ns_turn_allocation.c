@@ -323,7 +323,13 @@ ch_info* allocation_get_new_ch_info(allocation* a, uint16_t chnum, ioa_addr* pee
 	if (!tinfo)
 		tinfo = allocation_add_permission(a, peer_addr);
 
+	if (!tinfo)
+		return NULL;
+
 	ch_info* chn = ch_map_get(&(a->chns), chnum, 1);
+
+	if (!chn)
+		return NULL;
 
 	chn->allocated = 1;
 	chn->chnum = chnum;
