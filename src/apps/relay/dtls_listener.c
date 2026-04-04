@@ -753,8 +753,7 @@ start_udp_cycle:
       is_valid_packet = true;
     }
 #endif
-    else if (turn_params.stun_backward_compatibility &&
-             old_stun_is_command_message_str(data, blen, &old_stun_cookie)) {
+    else if (turn_params.stun_backward_compatibility && old_stun_is_command_message_str(data, blen, &old_stun_cookie)) {
       is_valid_packet = true;
     }
 
