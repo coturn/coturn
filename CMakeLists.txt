@@ -172,7 +172,7 @@ include(cmake/CMakeCPack.cmake)
 
 option(FUZZER "Build oss-fuzz fuzzing" OFF)
 if(FUZZER)
-    if (NOT CMAKE_C_COMPILER_ID STREQUAL "Clang")
+    if (NOT CMAKE_C_COMPILER_ID MATCHES "Clang")
         message(FATAL_ERROR "clang is require for libFuzzer")
     endif()
 
