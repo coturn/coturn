@@ -1112,12 +1112,12 @@ static void setup_tcp_listener_servers(ioa_engine_handle e, struct relay_server 
   size_t i = 0;
 
   tls_listener_relay_server_type **tcp_services = (tls_listener_relay_server_type **)allocate_super_memory_engine(
-      turn_params.listener.ioa_eng, sizeof(tls_listener_relay_server_type *) * turn_params.listener.services_number);
+      e, sizeof(tls_listener_relay_server_type *) * turn_params.listener.services_number);
   tls_listener_relay_server_type **tls_services = (tls_listener_relay_server_type **)allocate_super_memory_engine(
-      turn_params.listener.ioa_eng, sizeof(tls_listener_relay_server_type *) * turn_params.listener.services_number);
+      e, sizeof(tls_listener_relay_server_type *) * turn_params.listener.services_number);
 
   tls_listener_relay_server_type **aux_tcp_services = (tls_listener_relay_server_type **)allocate_super_memory_engine(
-      turn_params.listener.ioa_eng, sizeof(tls_listener_relay_server_type *) * turn_params.aux_servers_list.size + 1);
+      e, sizeof(tls_listener_relay_server_type *) * turn_params.aux_servers_list.size + 1);
 
   /* Create listeners */
 
