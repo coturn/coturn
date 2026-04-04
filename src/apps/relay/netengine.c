@@ -441,10 +441,16 @@ static struct relay_server *get_relay_server(turnserver_id id) {
   return rs;
 }
 
+#if defined(WINDOWS)
+static volatile LONG auth_message_counter = 0;
+#define FETCH_ADD_AUTH_COUNTER() ((unsigned int)InterlockedIncrement(&auth_message_counter) - 1)
+#else
 static _Atomic unsigned int auth_message_counter = 0;
+#define FETCH_ADD_AUTH_COUNTER() atomic_fetch_add(&auth_message_counter, 1)
+#endif
 
 void send_auth_message_to_auth_server(struct auth_message *am) {
-  const authserver_id sn = (authserver_id)(atomic_fetch_add(&auth_message_counter, 1) % (authserver_number - 1)) + 1;
+  const authserver_id sn = (authserver_id)(FETCH_ADD_AUTH_COUNTER() % (authserver_number - 1)) + 1;
 
   struct evbuffer *output = bufferevent_get_output(authserver[sn].out_buf);
   if (evbuffer_add(output, &am, sizeof(am)) < 0) {
