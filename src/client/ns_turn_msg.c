@@ -788,11 +788,13 @@ bool stun_is_channel_message_str(const uint8_t *buf, size_t *blen, uint16_t *chn
     return false;
   }
 
-  if (*blen > (uint16_t)-1) {
-    *blen = (uint16_t)-1;
-  }
-
-  datalen_actual = (uint16_t)(*blen) - 4;
+  /* Clamp to uint16_t range for comparison without mutating the caller's
+   * *blen — the modification to *blen at the end of this function is
+   * intentional (it reports actual message length consumed), but clamping
+   * during validation must not alter the caller's view of the buffer size
+   * if the function later returns false (issue #1837). */
+  const uint16_t blen16 = (*blen > (uint16_t)-1) ? (uint16_t)-1 : (uint16_t)*blen;
+  datalen_actual = blen16 - 4;
   datalen_header = ((const uint16_t *)buf)[1];
   datalen_header = nswap16(datalen_header);
 
@@ -928,16 +930,19 @@ int stun_get_message_len_str(uint8_t *buf, size_t blen, int padding, size_t *app
       const uint16_t chn = nswap16(((const uint16_t *)(buf))[0]);
       if (STUN_VALID_CHANNEL(chn)) {
 
-        uint16_t bret = (4 + (nswap16(((const uint16_t *)(buf))[1])));
+        /* Use uint32_t to avoid uint16_t truncation overflow when data_len is
+         * near 0xFFFF: 4 + 0xFFFF = 65539, which wraps to 3 in uint16_t and
+         * causes TCP framing bypass (CVE candidate, issue #1837). */
+        uint32_t bret = 4u + (uint32_t)nswap16(((const uint16_t *)(buf))[1]);
 
         *app_len = bret;
 
-        if (padding && (bret & 0x0003)) {
-          bret = ((bret >> 2) + 1) << 2;
+        if (padding && (bret & 0x0003u)) {
+          bret = ((bret >> 2) + 1u) << 2;
         }
 
         if (bret <= blen) {
-          return bret;
+          return (int)bret;
         }
       }
     }
