@@ -321,9 +321,15 @@ typedef struct _turn_params_ {
   bool mobility;
   turn_credential_type ct;
   bool use_auth_secret_with_timestamp;
-  band_limit_t max_bps;
-  band_limit_t bps_capacity;
-  band_limit_t bps_capacity_allocated;
+#ifdef _MSC_VER
+  volatile band_limit_t max_bps;
+  volatile band_limit_t bps_capacity;
+  volatile band_limit_t bps_capacity_allocated;
+#else
+  _Atomic band_limit_t max_bps;
+  _Atomic band_limit_t bps_capacity;
+  _Atomic band_limit_t bps_capacity_allocated;
+#endif
   vint total_quota;
   vint user_quota;
   bool prometheus;
