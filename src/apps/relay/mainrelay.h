@@ -121,12 +121,13 @@ extern _Atomic
 #define atomic_fetch_add(ptr, val) ((band_limit_t)InterlockedExchangeAdd((volatile LONG *)(ptr), (LONG)(val)))
 static inline int _msvc_cas_weak(volatile LONG *ptr, band_limit_t *expected, band_limit_t desired) {
   LONG old = InterlockedCompareExchange(ptr, (LONG)desired, (LONG)*expected);
-  if ((band_limit_t)old == *expected)
+  if ((band_limit_t)old == *expected) {
     return 1;
+  }
   *expected = (band_limit_t)old;
   return 0;
 }
-#define atomic_compare_exchange_weak(ptr, expected, desired) \
+#define atomic_compare_exchange_weak(ptr, expected, desired)                                                           \
   _msvc_cas_weak((volatile LONG *)(ptr), (band_limit_t *)(expected), (band_limit_t)(desired))
 #endif /* _MSC_VER */
 
