@@ -112,6 +112,25 @@ extern _Atomic
 #endif
     size_t global_allocation_count; // used for drain mode, to know when all allocations have gone away
 
+#ifdef _MSC_VER
+/* C11 stdatomic.h shims for MSVC.
+ * band_limit_t = unsigned long = 32-bit on Windows; map to Interlocked 32-bit ops. */
+#include <windows.h>
+#define atomic_load(ptr) (*(volatile LONG *)(ptr))
+#define atomic_store(ptr, val) (*(volatile LONG *)(ptr) = (LONG)(val))
+#define atomic_fetch_add(ptr, val) ((band_limit_t)InterlockedExchangeAdd((volatile LONG *)(ptr), (LONG)(val)))
+static inline int _msvc_cas_weak(volatile LONG *ptr, band_limit_t *expected, band_limit_t desired) {
+  LONG old = InterlockedCompareExchange(ptr, (LONG)desired, (LONG)*expected);
+  if ((band_limit_t)old == *expected) {
+    return 1;
+  }
+  *expected = (band_limit_t)old;
+  return 0;
+}
+#define atomic_compare_exchange_weak(ptr, expected, desired)                                                           \
+  _msvc_cas_weak((volatile LONG *)(ptr), (band_limit_t *)(expected), (band_limit_t)(desired))
+#endif /* _MSC_VER */
+
 ////////////// DEFINES ////////////////////////////
 
 #define DEFAULT_CONFIG_FILE "turnserver.conf"
@@ -321,9 +340,15 @@ typedef struct _turn_params_ {
   bool mobility;
   turn_credential_type ct;
   bool use_auth_secret_with_timestamp;
-  band_limit_t max_bps;
-  band_limit_t bps_capacity;
-  band_limit_t bps_capacity_allocated;
+#ifdef _MSC_VER
+  volatile band_limit_t max_bps;
+  volatile band_limit_t bps_capacity;
+  volatile band_limit_t bps_capacity_allocated;
+#else
+  _Atomic band_limit_t max_bps;
+  _Atomic band_limit_t bps_capacity;
+  _Atomic band_limit_t bps_capacity_allocated;
+#endif
   vint total_quota;
   vint user_quota;
   bool prometheus;

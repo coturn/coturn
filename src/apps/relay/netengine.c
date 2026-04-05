@@ -112,79 +112,48 @@ static void barrier_wait_func(const char *func, int line) {
 
 /////////////// Bandwidth //////////////////
 
-static TURN_MUTEX_DECLARE(mutex_bps);
-
 static band_limit_t allocate_bps(band_limit_t bps, int positive) {
   band_limit_t ret = 0;
   if (bps > 0) {
-    TURN_MUTEX_LOCK(&mutex_bps);
-
     if (positive) {
-
-      if (!(turn_params.bps_capacity)) {
+      const band_limit_t cap = atomic_load(&turn_params.bps_capacity);
+      if (!cap) {
+        atomic_fetch_add(&turn_params.bps_capacity_allocated, bps);
         ret = bps;
-        turn_params.bps_capacity_allocated += ret;
-      } else if (turn_params.bps_capacity_allocated < turn_params.bps_capacity) {
-        const band_limit_t reserve = turn_params.bps_capacity - turn_params.bps_capacity_allocated;
-        if (reserve <= bps) {
-          ret = reserve;
-          turn_params.bps_capacity_allocated = turn_params.bps_capacity;
-        } else {
-          ret = bps;
-          turn_params.bps_capacity_allocated += ret;
+      } else {
+        band_limit_t old_alloc = atomic_load(&turn_params.bps_capacity_allocated);
+        while (old_alloc < cap) {
+          const band_limit_t reserve = cap - old_alloc;
+          const band_limit_t to_alloc = (reserve <= bps) ? reserve : bps;
+          if (atomic_compare_exchange_weak(&turn_params.bps_capacity_allocated, &old_alloc, old_alloc + to_alloc)) {
+            ret = to_alloc;
+            break;
+          }
         }
       }
-
     } else {
-
-      if (turn_params.bps_capacity_allocated >= bps) {
-        turn_params.bps_capacity_allocated -= bps;
-      } else {
-        turn_params.bps_capacity_allocated = 0;
+      band_limit_t old_alloc = atomic_load(&turn_params.bps_capacity_allocated);
+      while (old_alloc > 0) {
+        const band_limit_t new_alloc = (old_alloc >= bps) ? (old_alloc - bps) : 0;
+        if (atomic_compare_exchange_weak(&turn_params.bps_capacity_allocated, &old_alloc, new_alloc)) {
+          break;
+        }
       }
     }
-
-    TURN_MUTEX_UNLOCK(&mutex_bps);
   }
 
   return ret;
 }
 
-band_limit_t get_bps_capacity_allocated(void) {
-  band_limit_t ret = 0;
-  TURN_MUTEX_LOCK(&mutex_bps);
-  ret = turn_params.bps_capacity_allocated;
-  TURN_MUTEX_UNLOCK(&mutex_bps);
-  return ret;
-}
+band_limit_t get_bps_capacity_allocated(void) { return atomic_load(&turn_params.bps_capacity_allocated); }
 
-band_limit_t get_bps_capacity(void) {
-  band_limit_t ret = 0;
-  TURN_MUTEX_LOCK(&mutex_bps);
-  ret = turn_params.bps_capacity;
-  TURN_MUTEX_UNLOCK(&mutex_bps);
-  return ret;
-}
+band_limit_t get_bps_capacity(void) { return atomic_load(&turn_params.bps_capacity); }
 
-void set_bps_capacity(band_limit_t value) {
-  TURN_MUTEX_LOCK(&mutex_bps);
-  turn_params.bps_capacity = value;
-  TURN_MUTEX_UNLOCK(&mutex_bps);
-}
+void set_bps_capacity(band_limit_t value) { atomic_store(&turn_params.bps_capacity, value); }
 
-band_limit_t get_max_bps(void) {
-  band_limit_t ret = 0;
-  TURN_MUTEX_LOCK(&mutex_bps);
-  ret = turn_params.max_bps;
-  TURN_MUTEX_UNLOCK(&mutex_bps);
-  return ret;
-}
+band_limit_t get_max_bps(void) { return atomic_load(&turn_params.max_bps); }
 
-void set_max_bps(band_limit_t value) {
-  TURN_MUTEX_LOCK(&mutex_bps);
-  turn_params.max_bps = value;
-  TURN_MUTEX_UNLOCK(&mutex_bps);
-}
+void set_max_bps(band_limit_t value) { atomic_store(&turn_params.max_bps, value); }
 
 /////////////// AUX SERVERS ////////////////
 
@@ -1868,7 +1837,6 @@ void setup_server(void) {
   evthread_use_pthreads();
 #endif
 
-  TURN_MUTEX_INIT(&mutex_bps);
   TURN_MUTEX_INIT(&auth_message_counter_mutex);
 
   authserver_number = 1 + (authserver_id)(turn_params.cpus / 2);
