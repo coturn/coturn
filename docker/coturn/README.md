@@ -81,7 +81,6 @@ By default, default Coturn configuration and CLI options provided in the `CMD` [
                --min-port=49160 --max-port=49200 \
                --lt-cred-mech --fingerprint \
                --no-multicast-peers \
-               --no-tlsv1 --no-tlsv1_1 \
                --realm=my.realm.org \  
     ```
     
