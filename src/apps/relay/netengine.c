@@ -441,62 +441,57 @@ static struct relay_server *get_relay_server(turnserver_id id) {
   return rs;
 }
 
-static TURN_MUTEX_DECLARE(auth_message_counter_mutex);
-static authserver_id auth_message_counter = 1;
+#if defined(WINDOWS)
+static volatile LONG auth_message_counter = 0;
+#define FETCH_ADD_AUTH_COUNTER() ((unsigned int)InterlockedIncrement(&auth_message_counter) - 1)
+#else
+static _Atomic unsigned int auth_message_counter = 0;
+#define FETCH_ADD_AUTH_COUNTER() atomic_fetch_add(&auth_message_counter, 1)
+#endif
 
 void send_auth_message_to_auth_server(struct auth_message *am) {
-  TURN_MUTEX_LOCK(&auth_message_counter_mutex);
-  if (auth_message_counter >= authserver_number) {
-    auth_message_counter = 1;
-  } else if (auth_message_counter < 1) {
-    auth_message_counter = 1;
-  }
-  const authserver_id sn = auth_message_counter++;
-  TURN_MUTEX_UNLOCK(&auth_message_counter_mutex);
+  const authserver_id sn = (authserver_id)(FETCH_ADD_AUTH_COUNTER() % (authserver_number - 1)) + 1;
 
   struct evbuffer *output = bufferevent_get_output(authserver[sn].out_buf);
-  if (evbuffer_add(output, am, sizeof(struct auth_message)) < 0) {
+  if (evbuffer_add(output, &am, sizeof(am)) < 0) {
     fprintf(stderr, "%s: Weird buffer error\n", __FUNCTION__);
+    free(am);
   }
 }
 
 static void auth_server_receive_message(struct bufferevent *bev, void *ptr) {
   UNUSED_ARG(ptr);
 
-  struct auth_message am;
+  struct auth_message *am = NULL;
   int n = 0;
   struct evbuffer *input = bufferevent_get_input(bev);
 
-  while ((n = evbuffer_remove(input, &am, sizeof(struct auth_message))) > 0) {
-    if (n != sizeof(struct auth_message)) {
+  while ((n = evbuffer_remove(input, &am, sizeof(am))) > 0) {
+    if (n != sizeof(am)) {
       fprintf(stderr, "%s: Weird buffer error: size=%d\n", __FUNCTION__, n);
       continue;
     }
 
-    {
-      hmackey_t key;
-      if (get_user_key(am.in_oauth, &(am.out_oauth), &(am.max_session_time), am.username, am.realm, key,
-                       am.in_buffer.nbh) < 0) {
-        am.success = 0;
-      } else {
-        memcpy(am.key, key, sizeof(hmackey_t));
-        am.success = 1;
-      }
+    if (get_user_key(am->in_oauth, &(am->out_oauth), &(am->max_session_time), am->username, am->realm, am->key,
+                     am->in_buffer.nbh) < 0) {
+      am->success = 0;
+    } else {
+      am->success = 1;
     }
 
     struct evbuffer *output = NULL;
-    struct relay_server *relay_server = get_relay_server(am.id);
+    struct relay_server *relay_server = get_relay_server(am->id);
     if (relay_server) {
       output = bufferevent_get_output(relay_server->auth_out_buf);
     } else {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: can't find relay for turn_server_id: %d\n", __FUNCTION__, (int)am.id);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: can't find relay for turn_server_id: %d\n", __FUNCTION__, (int)am->id);
     }
 
     if (output) {
-      evbuffer_add(output, &am, sizeof(struct auth_message));
+      evbuffer_add(output, &am, sizeof(am));
     } else {
-      ioa_network_buffer_delete(NULL, am.in_buffer.nbh);
-      am.in_buffer.nbh = NULL;
+      ioa_network_buffer_delete(NULL, am->in_buffer.nbh);
+      free(am);
     }
   }
 }
@@ -790,19 +785,20 @@ static void relay_receive_message(struct bufferevent *bev, void *ptr) {
 }
 
 static void relay_receive_auth_message(struct bufferevent *bev, void *ptr) {
-  struct auth_message am;
+  struct auth_message *am = NULL;
   int n = 0;
   struct evbuffer *input = bufferevent_get_input(bev);
   struct relay_server *rs = (struct relay_server *)ptr;
 
-  while ((n = evbuffer_remove(input, &am, sizeof(struct auth_message))) > 0) {
+  while ((n = evbuffer_remove(input, &am, sizeof(am))) > 0) {
 
-    if (n != sizeof(struct auth_message)) {
+    if (n != sizeof(am)) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Weird auth_buffer error: %s\n", strerror(errno));
       continue;
     }
 
-    handle_relay_auth_message(rs, &am);
+    handle_relay_auth_message(rs, am);
+    free(am);
   }
 }
 
@@ -1836,8 +1832,6 @@ void setup_server(void) {
 #else
   evthread_use_pthreads();
 #endif
-
-  TURN_MUTEX_INIT(&auth_message_counter_mutex);
 
   authserver_number = 1 + (authserver_id)(turn_params.cpus / 2);
 

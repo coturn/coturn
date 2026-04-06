@@ -643,20 +643,22 @@ uint8_t *start_user_check(turnserver_id id, turn_credential_type ct, int in_oaut
                           int *postpone_reply) {
   *postpone_reply = 1;
 
-  struct auth_message am;
-  memset(&am, 0, sizeof(struct auth_message));
-  am.id = id;
-  am.ct = ct;
-  am.in_oauth = in_oauth;
-  am.out_oauth = *out_oauth;
-  STRCPY(am.username, usname);
-  STRCPY(am.realm, realm);
-  am.resume_func = resume;
-  memcpy(&(am.in_buffer), in_buffer, sizeof(ioa_net_data));
+  struct auth_message *am = calloc(1, sizeof(*am));
+  if (!am) {
+    return NULL;
+  }
+  am->id = id;
+  am->ct = ct;
+  am->in_oauth = in_oauth;
+  am->out_oauth = *out_oauth;
+  STRCPY(am->username, usname);
+  STRCPY(am->realm, realm);
+  am->resume_func = resume;
+  memcpy(&(am->in_buffer), in_buffer, sizeof(ioa_net_data));
   in_buffer->nbh = NULL;
-  am.ctxkey = ctxkey;
+  am->ctxkey = ctxkey;
 
-  send_auth_message_to_auth_server(&am);
+  send_auth_message_to_auth_server(am);
 
   return NULL;
 }
