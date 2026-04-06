@@ -196,18 +196,6 @@ struct listener_server {
   dtls_listener_relay_server_type ***aux_udp_services;
 };
 
-enum _NET_ENG_VERSION {
-  NEV_UNKNOWN = 0,
-  NEV_MIN,
-  NEV_UDP_SOCKET_PER_SESSION = NEV_MIN,
-  NEV_UDP_SOCKET_PER_ENDPOINT,
-  NEV_UDP_SOCKET_PER_THREAD,
-  NEV_MAX = NEV_UDP_SOCKET_PER_THREAD,
-  NEV_TOTAL
-};
-
-typedef enum _NET_ENG_VERSION NET_ENG_VERSION;
-
 /////////// PARAMS //////////////////////////////////
 
 typedef struct _turn_params_ {
@@ -275,9 +263,6 @@ typedef struct _turn_params_ {
 
   ip_range_list_t ip_whitelist;
   ip_range_list_t ip_blacklist;
-
-  NET_ENG_VERSION net_engine_version;
-  const char *net_engine_version_txt[NEV_TOTAL];
 
   //////////////// Relay servers /////////////
 
