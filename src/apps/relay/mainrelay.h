@@ -380,6 +380,7 @@ typedef struct _turn_params_ {
   bool drop_invalid_packets;
   bool drop_invalid_packets_log;
   bool include_reason_string;
+  bool use_recvmmsg;
 } turn_params_t;
 
 extern turn_params_t turn_params;
