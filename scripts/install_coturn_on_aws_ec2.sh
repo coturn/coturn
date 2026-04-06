@@ -81,9 +81,6 @@ echo "--------> applying new config changes..."
 sudo bash -c "cat > /etc/turnserver.conf << EOL
 listening-port=3478
 tls-listening-port=5349
-# allow only TLSv1.2+
-no-tlsv1
-no-tlsv1_1
 userdb=/usr/local/var/db/turndb
 min-port=45000
 max-port=65535
