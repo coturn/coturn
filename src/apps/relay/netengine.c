@@ -841,7 +841,7 @@ static void listener_receive_message(struct bufferevent *bev, void *ptr) {
 
     size_t relay_thread_index = 0;
 
-    if (turn_params.net_engine_version == NEV_UDP_SOCKET_PER_THREAD) {
+    {
       size_t ri;
       for (ri = 0; ri < get_real_general_relay_servers_number(); ri++) {
         if (!(general_relay_servers[ri])) {
@@ -927,22 +927,6 @@ static ioa_engine_handle create_new_listener_engine(void) {
   return e;
 }
 
-static void *run_udp_listener_thread(void *arg) {
-  static const int always_true = 1;
-
-  ignore_sigpipe();
-
-  barrier_wait();
-
-  dtls_listener_relay_server_type *server = (dtls_listener_relay_server_type *)arg;
-
-  while (always_true && server) {
-    run_events(NULL, get_engine(server));
-  }
-
-  return arg;
-}
-
 static void setup_listener(void) {
   super_memory_t *sm = new_super_memory_region();
 
@@ -1001,239 +985,11 @@ static void setup_listener(void) {
 }
 
 static void setup_barriers(void) {
-  /* Adjust barriers: */
-
 #if !defined(TURN_NO_THREAD_BARRIERS)
-
-  if ((turn_params.net_engine_version == NEV_UDP_SOCKET_PER_ENDPOINT) && turn_params.general_relay_servers_number > 1) {
-
-    /* UDP: */
-    if (!turn_params.no_udp) {
-
-      barrier_count += turn_params.listener.addrs_number;
-
-      if (turn_params.rfc5780) {
-        barrier_count += turn_params.listener.addrs_number;
-      }
-    }
-
-    if (!turn_params.no_dtls && (turn_params.no_udp || (turn_params.listener_port != turn_params.tls_listener_port))) {
-
-      barrier_count += turn_params.listener.addrs_number;
-
-      if (turn_params.rfc5780) {
-        barrier_count += turn_params.listener.addrs_number;
-      }
-    }
-
-    if (!turn_params.no_udp || !turn_params.no_dtls) {
-      barrier_count += (unsigned int)turn_params.aux_servers_list.size;
-    }
+  if (pthread_barrier_init(&barrier, NULL, barrier_count) != 0) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "barrier init: %s\n", strerror(errno));
   }
 #endif
-
-#if !defined(TURN_NO_THREAD_BARRIERS)
-  {
-    if (pthread_barrier_init(&barrier, NULL, barrier_count) != 0) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "barrier init: %s\n", strerror(errno));
-    }
-  }
-
-#endif
-}
-
-static void setup_socket_per_endpoint_udp_listener_servers(void) {
-  size_t i = 0;
-
-  /* Adjust udp relay number */
-
-  if (turn_params.general_relay_servers_number > 1) {
-
-    if (!turn_params.no_udp) {
-
-      turn_params.udp_relay_servers_number += turn_params.listener.addrs_number;
-
-      if (turn_params.rfc5780) {
-        turn_params.udp_relay_servers_number += turn_params.listener.addrs_number;
-      }
-    }
-
-    if (!turn_params.no_dtls && (turn_params.no_udp || (turn_params.listener_port != turn_params.tls_listener_port))) {
-
-      turn_params.udp_relay_servers_number += turn_params.listener.addrs_number;
-
-      if (turn_params.rfc5780) {
-        turn_params.udp_relay_servers_number += turn_params.listener.addrs_number;
-      }
-    }
-
-    if (!turn_params.no_udp || !turn_params.no_dtls) {
-      turn_params.udp_relay_servers_number += (unsigned int)turn_params.aux_servers_list.size;
-    }
-  }
-
-  {
-    if (!turn_params.no_udp || !turn_params.no_dtls) {
-
-      for (i = 0; i < get_real_udp_relay_servers_number(); i++) {
-
-        ioa_engine_handle e = turn_params.listener.ioa_eng;
-        int is_5780 = turn_params.rfc5780;
-
-        if (turn_params.general_relay_servers_number <= 1) {
-          while (!(general_relay_servers[0]->ioa_eng)) {
-            sched_yield();
-          }
-          udp_relay_servers[i] = general_relay_servers[0];
-          continue;
-        } else if (turn_params.general_relay_servers_number > 1) {
-          e = create_new_listener_engine();
-          is_5780 = is_5780 && (i >= (size_t)(turn_params.aux_servers_list.size));
-        }
-
-        super_memory_t *sm = new_super_memory_region();
-        struct relay_server *udp_rs =
-            (struct relay_server *)allocate_super_memory_region(sm, sizeof(struct relay_server));
-        udp_rs->id = (turnserver_id)i + TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP;
-        udp_rs->sm = sm;
-        setup_relay_server(udp_rs, e, is_5780);
-        udp_relay_servers[i] = udp_rs;
-      }
-    }
-  }
-
-  int udp_relay_server_index = 0;
-
-  /* Create listeners */
-
-  /* Aux UDP servers */
-  for (i = 0; i < turn_params.aux_servers_list.size; i++) {
-
-    const int index = i;
-
-    if (!turn_params.no_udp || !turn_params.no_dtls) {
-
-      ioa_addr addr;
-      char saddr[MAX_IOA_ADDR_STRING];
-      addr_cpy(&addr, &turn_params.aux_servers_list.addrs[i]);
-      const uint16_t port = addr_get_port(&addr);
-      addr_to_string_no_port(&addr, saddr);
-
-      turn_params.listener.aux_udp_services[index] = (dtls_listener_relay_server_type **)allocate_super_memory_engine(
-          udp_relay_servers[udp_relay_server_index]->ioa_eng, sizeof(dtls_listener_relay_server_type *));
-      turn_params.listener.aux_udp_services[index][0] =
-          create_dtls_listener_server(turn_params.listener_ifname, saddr, port, turn_params.sock_buf_size,
-                                      turn_params.verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng,
-                                      &(udp_relay_servers[udp_relay_server_index]->server), 1, NULL);
-
-      if (turn_params.general_relay_servers_number > 1) {
-        ++udp_relay_server_index;
-        pthread_t thr;
-        if (pthread_create(&thr, NULL, run_udp_listener_thread, turn_params.listener.aux_udp_services[index][0])) {
-          TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create aux listener thread: %s\n", strerror(errno));
-          exit(-1);
-        }
-        pthread_detach(thr);
-      }
-    }
-  }
-
-  /* Main servers */
-  for (i = 0; i < turn_params.listener.addrs_number; i++) {
-
-    const int index = turn_params.rfc5780 ? i * 2 : i;
-
-    /* UDP: */
-    if (!turn_params.no_udp) {
-
-      turn_params.listener.udp_services[index] = (dtls_listener_relay_server_type **)allocate_super_memory_engine(
-          udp_relay_servers[udp_relay_server_index]->ioa_eng, sizeof(dtls_listener_relay_server_type *));
-      turn_params.listener.udp_services[index][0] = create_dtls_listener_server(
-          turn_params.listener_ifname, turn_params.listener.addrs[i], turn_params.listener_port,
-          turn_params.sock_buf_size, turn_params.verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng,
-          &(udp_relay_servers[udp_relay_server_index]->server), 1, NULL);
-
-      if (turn_params.general_relay_servers_number > 1) {
-        ++udp_relay_server_index;
-        pthread_t thr;
-        if (pthread_create(&thr, NULL, run_udp_listener_thread, turn_params.listener.udp_services[index][0])) {
-          TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create listener thread: %s\n", strerror(errno));
-          exit(-1);
-        }
-        pthread_detach(thr);
-      }
-
-      if (turn_params.rfc5780) {
-
-        turn_params.listener.udp_services[index + 1] = (dtls_listener_relay_server_type **)allocate_super_memory_engine(
-            udp_relay_servers[udp_relay_server_index]->ioa_eng, sizeof(dtls_listener_relay_server_type *));
-        turn_params.listener.udp_services[index + 1][0] = create_dtls_listener_server(
-            turn_params.listener_ifname, turn_params.listener.addrs[i], get_alt_listener_port(),
-            turn_params.sock_buf_size, turn_params.verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng,
-            &(udp_relay_servers[udp_relay_server_index]->server), 1, NULL);
-
-        if (turn_params.general_relay_servers_number > 1) {
-          ++udp_relay_server_index;
-          pthread_t thr;
-          if (pthread_create(&thr, NULL, run_udp_listener_thread, turn_params.listener.udp_services[index + 1][0])) {
-            TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create listener thread: %s\n", strerror(errno));
-            exit(-1);
-          }
-          pthread_detach(thr);
-        }
-      }
-    } else {
-      turn_params.listener.udp_services[index] = NULL;
-      if (turn_params.rfc5780) {
-        turn_params.listener.udp_services[index + 1] = NULL;
-      }
-    }
-    if (!turn_params.no_dtls && (turn_params.no_udp || (turn_params.listener_port != turn_params.tls_listener_port))) {
-
-      turn_params.listener.dtls_services[index] = (dtls_listener_relay_server_type **)allocate_super_memory_engine(
-          udp_relay_servers[udp_relay_server_index]->ioa_eng, sizeof(dtls_listener_relay_server_type *));
-      turn_params.listener.dtls_services[index][0] = create_dtls_listener_server(
-          turn_params.listener_ifname, turn_params.listener.addrs[i], turn_params.tls_listener_port,
-          turn_params.sock_buf_size, turn_params.verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng,
-          &(udp_relay_servers[udp_relay_server_index]->server), 1, NULL);
-
-      if (turn_params.general_relay_servers_number > 1) {
-        ++udp_relay_server_index;
-        pthread_t thr;
-        if (pthread_create(&thr, NULL, run_udp_listener_thread, turn_params.listener.dtls_services[index][0])) {
-          TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create listener thread: %s\n", strerror(errno));
-          exit(-1);
-        }
-        pthread_detach(thr);
-      }
-
-      if (turn_params.rfc5780) {
-
-        turn_params.listener.dtls_services[index + 1] =
-            (dtls_listener_relay_server_type **)allocate_super_memory_engine(
-                udp_relay_servers[udp_relay_server_index]->ioa_eng, sizeof(dtls_listener_relay_server_type *));
-        turn_params.listener.dtls_services[index + 1][0] = create_dtls_listener_server(
-            turn_params.listener_ifname, turn_params.listener.addrs[i], get_alt_tls_listener_port(),
-            turn_params.sock_buf_size, turn_params.verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng,
-            &(udp_relay_servers[udp_relay_server_index]->server), 1, NULL);
-
-        if (turn_params.general_relay_servers_number > 1) {
-          ++udp_relay_server_index;
-          pthread_t thr;
-          if (pthread_create(&thr, NULL, run_udp_listener_thread, turn_params.listener.dtls_services[index + 1][0])) {
-            TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create listener thread: %s\n", strerror(errno));
-            exit(-1);
-          }
-          pthread_detach(thr);
-        }
-      }
-    } else {
-      turn_params.listener.dtls_services[index] = NULL;
-      if (turn_params.rfc5780) {
-        turn_params.listener.dtls_services[index + 1] = NULL;
-      }
-    }
-  }
 }
 
 static void setup_socket_per_thread_udp_listener_servers(void) {
@@ -1342,93 +1098,6 @@ static void setup_socket_per_thread_udp_listener_servers(void) {
               turn_params.sock_buf_size, turn_params.verbose, general_relay_servers[relayindex]->ioa_eng,
               &(general_relay_servers[relayindex]->server), !relayindex, NULL);
         }
-      }
-    } else {
-      turn_params.listener.dtls_services[index] = NULL;
-      if (turn_params.rfc5780) {
-        turn_params.listener.dtls_services[index + 1] = NULL;
-      }
-    }
-  }
-}
-
-static void setup_socket_per_session_udp_listener_servers(void) {
-  size_t i = 0;
-
-  /* Aux UDP servers */
-  for (i = 0; i < turn_params.aux_servers_list.size; i++) {
-
-    const int index = i;
-
-    if (!turn_params.no_udp || !turn_params.no_dtls) {
-
-      ioa_addr addr;
-      char saddr[MAX_IOA_ADDR_STRING];
-      addr_cpy(&addr, &turn_params.aux_servers_list.addrs[i]);
-      const uint16_t port = addr_get_port(&addr);
-      addr_to_string_no_port(&addr, saddr);
-
-      turn_params.listener.aux_udp_services[index] = (dtls_listener_relay_server_type **)allocate_super_memory_engine(
-          turn_params.listener.ioa_eng, sizeof(dtls_listener_relay_server_type *));
-
-      turn_params.listener.aux_udp_services[index][0] = create_dtls_listener_server(
-          turn_params.listener_ifname, saddr, port, turn_params.sock_buf_size, turn_params.verbose,
-          turn_params.listener.ioa_eng, NULL, 1, send_socket_to_general_relay);
-    }
-  }
-
-  /* Main servers */
-  for (i = 0; i < turn_params.listener.addrs_number; i++) {
-
-    const int index = turn_params.rfc5780 ? i * 2 : i;
-
-    /* UDP: */
-    if (!turn_params.no_udp) {
-
-      turn_params.listener.udp_services[index] = (dtls_listener_relay_server_type **)allocate_super_memory_engine(
-          turn_params.listener.ioa_eng, sizeof(dtls_listener_relay_server_type *));
-
-      turn_params.listener.udp_services[index][0] =
-          create_dtls_listener_server(turn_params.listener_ifname, turn_params.listener.addrs[i],
-                                      turn_params.listener_port, turn_params.sock_buf_size, turn_params.verbose,
-                                      turn_params.listener.ioa_eng, NULL, 1, send_socket_to_general_relay);
-
-      if (turn_params.rfc5780) {
-
-        turn_params.listener.udp_services[index + 1] = (dtls_listener_relay_server_type **)allocate_super_memory_engine(
-            turn_params.listener.ioa_eng, sizeof(dtls_listener_relay_server_type *));
-
-        turn_params.listener.udp_services[index + 1][0] =
-            create_dtls_listener_server(turn_params.listener_ifname, turn_params.listener.addrs[i],
-                                        get_alt_listener_port(), turn_params.sock_buf_size, turn_params.verbose,
-                                        turn_params.listener.ioa_eng, NULL, 1, send_socket_to_general_relay);
-      }
-    } else {
-      turn_params.listener.udp_services[index] = NULL;
-      if (turn_params.rfc5780) {
-        turn_params.listener.udp_services[index + 1] = NULL;
-      }
-    }
-    if (!turn_params.no_dtls && (turn_params.no_udp || (turn_params.listener_port != turn_params.tls_listener_port))) {
-
-      turn_params.listener.dtls_services[index] = (dtls_listener_relay_server_type **)allocate_super_memory_engine(
-          turn_params.listener.ioa_eng, sizeof(dtls_listener_relay_server_type *));
-
-      turn_params.listener.dtls_services[index][0] =
-          create_dtls_listener_server(turn_params.listener_ifname, turn_params.listener.addrs[i],
-                                      turn_params.tls_listener_port, turn_params.sock_buf_size, turn_params.verbose,
-                                      turn_params.listener.ioa_eng, NULL, 1, send_socket_to_general_relay);
-
-      if (turn_params.rfc5780) {
-
-        turn_params.listener.dtls_services[index + 1] =
-            (dtls_listener_relay_server_type **)allocate_super_memory_engine(turn_params.listener.ioa_eng,
-                                                                             sizeof(dtls_listener_relay_server_type *));
-
-        turn_params.listener.dtls_services[index + 1][0] =
-            create_dtls_listener_server(turn_params.listener_ifname, turn_params.listener.addrs[i],
-                                        get_alt_tls_listener_port(), turn_params.sock_buf_size, turn_params.verbose,
-                                        turn_params.listener.ioa_eng, NULL, 1, send_socket_to_general_relay);
       }
     } else {
       turn_params.listener.dtls_services[index] = NULL;
@@ -1659,18 +1328,14 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
     set_rfc5780(&(rs->server), get_alt_addr, send_message_from_listener_to_client);
   }
 
-  if (turn_params.net_engine_version == NEV_UDP_SOCKET_PER_THREAD) {
-    setup_tcp_listener_servers(rs->ioa_eng, rs);
-  }
+  setup_tcp_listener_servers(rs->ioa_eng, rs);
 }
 
 static void *run_general_relay_thread(void *arg) {
   static const int always_true = 1;
   struct relay_server *rs = (struct relay_server *)arg;
 
-  const int udp_reuses_the_same_relay_server = (turn_params.general_relay_servers_number <= 1) ||
-                                               (turn_params.net_engine_version == NEV_UDP_SOCKET_PER_THREAD) ||
-                                               (turn_params.net_engine_version == NEV_UDP_SOCKET_PER_SESSION);
+  const int udp_reuses_the_same_relay_server = 1;
 
   const int we_need_rfc5780 = udp_reuses_the_same_relay_server && turn_params.rfc5780;
 
@@ -1679,9 +1344,7 @@ static void *run_general_relay_thread(void *arg) {
   setup_relay_server(rs, NULL, we_need_rfc5780);
 
 #if !defined(TURN_NO_THREAD_BARRIERS)
-  if (turn_params.net_engine_version == NEV_UDP_SOCKET_PER_THREAD) {
-    pthread_barrier_wait(&relay_setup_barrier);
-  }
+  pthread_barrier_wait(&relay_setup_barrier);
 #endif
 
   barrier_wait();
@@ -1697,7 +1360,7 @@ static void setup_general_relay_servers(void) {
   size_t i = 0;
 
 #if !defined(TURN_NO_THREAD_BARRIERS)
-  if (turn_params.general_relay_servers_number > 0 && turn_params.net_engine_version == NEV_UDP_SOCKET_PER_THREAD) {
+  if (turn_params.general_relay_servers_number > 0) {
     if (pthread_barrier_init(&relay_setup_barrier, NULL, (unsigned int)get_real_general_relay_servers_number() + 1) !=
         0) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "relay_setup_barrier init: %s\n", strerror(errno));
@@ -1712,10 +1375,7 @@ static void setup_general_relay_servers(void) {
                                                                                      sizeof(struct relay_server));
       general_relay_servers[i]->id = (turnserver_id)i;
       general_relay_servers[i]->sm = NULL;
-      setup_relay_server(general_relay_servers[i], turn_params.listener.ioa_eng,
-                         ((turn_params.net_engine_version == NEV_UDP_SOCKET_PER_THREAD) ||
-                          (turn_params.net_engine_version == NEV_UDP_SOCKET_PER_SESSION)) &&
-                             turn_params.rfc5780);
+      setup_relay_server(general_relay_servers[i], turn_params.listener.ioa_eng, turn_params.rfc5780);
       general_relay_servers[i]->thr = pthread_self();
     } else {
       super_memory_t *sm = new_super_memory_region();
@@ -1854,17 +1514,7 @@ void setup_server(void) {
   setup_general_relay_servers();
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total General servers: %d\n", (int)get_real_general_relay_servers_number());
 
-  if (turn_params.net_engine_version == NEV_UDP_SOCKET_PER_THREAD) {
-    setup_socket_per_thread_udp_listener_servers();
-  } else if (turn_params.net_engine_version == NEV_UDP_SOCKET_PER_ENDPOINT) {
-    setup_socket_per_endpoint_udp_listener_servers();
-  } else if (turn_params.net_engine_version == NEV_UDP_SOCKET_PER_SESSION) {
-    setup_socket_per_session_udp_listener_servers();
-  }
-
-  if (turn_params.net_engine_version != NEV_UDP_SOCKET_PER_THREAD) {
-    setup_tcp_listener_servers(turn_params.listener.ioa_eng, NULL);
-  }
+  setup_socket_per_thread_udp_listener_servers();
 
   {
     int tot = 0;
