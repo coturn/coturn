@@ -692,8 +692,8 @@ static void cli_print_configuration(struct cli_session *cs) {
     cli_print_flag(cs, turn_params.secure_stun, "secure-stun", 1);
     cli_print_flag(cs, turn_params.do_not_use_config_file, "do-not-use-config-file", 0);
     cli_print_flag(cs, turn_params.rfc5780, "RFC5780 support", 0);
-    cli_print_uint(cs, (unsigned int)turn_params.net_engine_version, "net engine version", 0);
-    cli_print_str(cs, turn_params.net_engine_version_txt[(int)turn_params.net_engine_version], "net engine", 0);
+    cli_print_uint(cs, 3, "net engine version", 0);
+    cli_print_str(cs, "UDP thread per CPU core", "net engine", 0);
     cli_print_flag(cs, turn_params.fingerprint, "enforce fingerprints", 0);
     cli_print_flag(cs, turn_params.mobility, "mobility", 1);
     cli_print_flag(cs, turn_params.udp_self_balance, "udp-self-balance", 0);
@@ -2091,8 +2091,8 @@ static void write_pc_page(ioa_socket_handle s) {
         https_print_flag(sb, turn_params.secure_stun, "secure-stun", "secure-stun");
         https_print_flag(sb, turn_params.do_not_use_config_file, "do-not-use-config-file", 0);
         https_print_flag(sb, turn_params.rfc5780, "RFC5780 support", 0);
-        https_print_uint(sb, (unsigned int)turn_params.net_engine_version, "net engine version", 0);
-        https_print_str(sb, turn_params.net_engine_version_txt[(int)turn_params.net_engine_version], "net engine", 0);
+        https_print_uint(sb, 3, "net engine version", 0);
+        https_print_str(sb, "UDP thread per CPU core", "net engine", 0);
         https_print_flag(sb, turn_params.fingerprint, "enforce fingerprints", 0);
         https_print_flag(sb, turn_params.mobility, "mobility", "mobility");
         https_print_flag(sb, turn_params.udp_self_balance, "udp-self-balance", 0);

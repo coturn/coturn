@@ -41,11 +41,9 @@ The listeners are smart enough to recognize whether the new session is a TLS ses
 The listener then creates a client endpoint (depending on the protocol and on the 
 "network engine" - see below).
 
-What happens next depends on the "network engine" that the Coturn is using in runtime.
-If the relay server that will be handling that session is located in a different thread,
-then the listener will "send" the endpoint to that relay server (see the "connect_cb"
-callback function). If the relay server is located in the same thread as the listener,
-then the listener will call the session establishment function itself. See the function
+What happens next depends on the network engine. In the current implementation
+(`NEV_UDP_SOCKET_PER_THREAD`), the listener and relay servers are paired within the same
+thread, so the listener calls the session establishment function directly. See the function
 open_client_connection_session() and where and how it is called in various cases,
 for reference.
 
@@ -81,26 +79,14 @@ the result. The the original relay server will have to pack the session, say
 will adopt the session and the session will stay with the new relay server - until the
 next client address change.
 
-### IV. NETWORK ENGINES
+### IV. NETWORK ENGINE
 
-UDP communications are rather under-developed, comparing to the TCP communications,
-in modern operational systems. Because TURN stresses UDP communications, UDP
-performance is very important. Different OS's have different capabilities, so Coturn,
-being a portable server, had to employ different strategies for different systems. 
+Coturn uses a single network engine: `NEV_UDP_SOCKET_PER_THREAD`. In this model,
+each thread owns one UDP socket per listener address. Multiple UDP and TCP listeners
+and relay servers are bound to each frontend IP, with the listener and relay servers
+paired and running in the same thread. This design eliminates cross-thread session
+hand-offs for the common UDP path and delivers the best performance on modern kernels.
 
-There are three "network engines" (or rather "network threading patterns") implemented
-in Coturn:
-
-1) UDP listener thread per frontend IP (FreeBSD, Solaris) with multiple UDP/TCP
-relay servers. Listeners and relays are in different threads.
-//TODO
-
-2) UDP listener and relay thread per frontend IP, with multiple TCP relay threads
-(early Linux). The listener and the relay servers are related, form pairs and are
-working in the same thread.
-//TODO
-
-3) Multiple UDP and TCP listeners and relay per each frontend IP (advanced Linuxes).
-The listener and the relay servers are related, form pairs and are
-working in the same thread.
-//TODO
+Previous releases supported two additional engine variants (a per-IP listener thread
+model for older Linux and a BSD/Solaris model with separate listener and relay threads).
+These have been removed; there is no longer an engine selection option.

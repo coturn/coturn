@@ -159,9 +159,6 @@ turn_params_t turn_params = {
     {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, 0, NULL, NULL, NULL}, /*listener*/
     {NULL, 0},                                                                /*ip_whitelist*/
     {NULL, 0},                                                                /*ip_blacklist*/
-    NEV_UNKNOWN,                                                              /*net_engine_version*/
-    {"Unknown", "UDP listening socket per session", "UDP thread per network endpoint",
-     "UDP thread per CPU core"}, /*net_engine_version_txt*/
 
     //////////////// Relay servers //////////////////////////////////
     LOW_DEFAULT_PORTS_BOUNDARY,  /*min_port*/
@@ -1509,7 +1506,6 @@ enum EXTRA_OPTS {
   EC_CURVE_NAME_OPT,
   DH566_OPT,
   DH1066_OPT,
-  NE_TYPE_OPT,
   ENABLE_TLSV1_OPT,
   ENABLE_TLSV1_1_OPT,
   NO_TLSV1_2_OPT,
@@ -1666,7 +1662,6 @@ static const struct myoption long_options[] = {
     {"ec-curve-name", required_argument, NULL, EC_CURVE_NAME_OPT},
     {"dh566", optional_argument, NULL, DH566_OPT},
     {"dh1066", optional_argument, NULL, DH1066_OPT},
-    {"ne", required_argument, NULL, NE_TYPE_OPT},
     {"tlsv1", optional_argument, NULL, ENABLE_TLSV1_OPT},
     {"tlsv1_1", optional_argument, NULL, ENABLE_TLSV1_1_OPT},
     {"no-tlsv1_2", optional_argument, NULL, NO_TLSV1_2_OPT},
@@ -2007,13 +2002,6 @@ static void set_option(int c, char *value) {
   case NO_TLSV1_2_OPT:
     turn_params.no_tlsv1_2 = get_bool_value(value);
     break;
-  case NE_TYPE_OPT: {
-    const int ne = atoi(value);
-    if ((ne < (int)NEV_MIN) || (ne > (int)NEV_MAX)) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: wrong version of the network engine: %d\n", ne);
-    }
-    turn_params.net_engine_version = (NET_ENG_VERSION)ne;
-  } break;
   case DH566_OPT:
     if (get_bool_value(value)) {
       turn_params.dh_key_size = DH_566;
@@ -2906,11 +2894,7 @@ static int adminmain(int argc, char **argv) {
 static void print_features(unsigned long mfn) {
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Coturn Version %s\n", TURN_SOFTWARE);
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Max number of open files/sockets allowed for this process: %lu\n", mfn);
-  if (turn_params.net_engine_version == NEV_UDP_SOCKET_PER_ENDPOINT) {
-    mfn = mfn / 3;
-  } else {
-    mfn = mfn / 2;
-  }
+  mfn = mfn / 2;
   mfn = ((unsigned long)(mfn / 500)) * 500;
   if (mfn < 500) {
     mfn = 500;
@@ -3000,39 +2984,13 @@ static void print_features(unsigned long mfn) {
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "MongoDB is not supported\n");
 #endif
 
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Default Net Engine version: %d (%s)\n", (int)turn_params.net_engine_version,
-                turn_params.net_engine_version_txt[(int)turn_params.net_engine_version]);
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Net Engine: UDP thread per CPU core\n");
 }
 
 #if defined(__linux__) || defined(__LINUX__) || defined(__linux) || defined(linux__) || defined(LINUX) ||              \
     defined(__LINUX) || defined(LINUX__)
 #include <linux/version.h>
 #endif
-
-static void set_network_engine(void) {
-  if (turn_params.net_engine_version != NEV_UNKNOWN) {
-    return;
-  }
-  turn_params.net_engine_version = NEV_UDP_SOCKET_PER_ENDPOINT;
-#if defined(SO_REUSEPORT)
-#if defined(__linux__) || defined(__LINUX__) || defined(__linux) || defined(linux__) || defined(LINUX) ||              \
-    defined(__LINUX) || defined(LINUX__)
-  turn_params.net_engine_version = NEV_UDP_SOCKET_PER_THREAD;
-#else  /* BSD ? */
-  turn_params.net_engine_version = NEV_UDP_SOCKET_PER_SESSION;
-#endif /* Linux */
-#else  /* defined(SO_REUSEPORT) */
-#if defined(__linux__) || defined(__LINUX__) || defined(__linux) || defined(linux__) || defined(LINUX) ||              \
-    defined(__LINUX) || defined(LINUX__)
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 33)
-  // net_engine_version = NEV_UDP_SOCKET_PER_SESSION;
-  turn_params.net_engine_version = NEV_UDP_SOCKET_PER_ENDPOINT;
-#else
-  turn_params.net_engine_version = NEV_UDP_SOCKET_PER_ENDPOINT;
-#endif /* Linux version */
-#endif /* Linux */
-#endif /* defined(SO_REUSEPORT) */
-}
 
 static void drop_privileges(void) {
 #if defined(WINDOWS)
@@ -3129,8 +3087,6 @@ int main(int argc, char **argv) {
   init_turn_server_addrs_list(&turn_params.alternate_servers_list);
   init_turn_server_addrs_list(&turn_params.tls_alternate_servers_list);
   init_turn_server_addrs_list(&turn_params.aux_servers_list);
-
-  set_network_engine();
 
   init_listener();
   init_secrets_list(&turn_params.default_users_db.ram_db.static_auth_secrets);
