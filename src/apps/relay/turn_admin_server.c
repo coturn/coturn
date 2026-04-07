@@ -697,6 +697,7 @@ static void cli_print_configuration(struct cli_session *cs) {
     cli_print_flag(cs, turn_params.fingerprint, "enforce fingerprints", 0);
     cli_print_flag(cs, turn_params.mobility, "mobility", 1);
     cli_print_flag(cs, turn_params.udp_self_balance, "udp-self-balance", 0);
+    cli_print_flag(cs, turn_params.udp_recvmmsg, "udp-recvmmsg", 0);
     cli_print_str(cs, turn_params.pidfile, "pidfile", 0);
 #if defined(WINDOWS)
     // TODO: implement it!!!

@@ -64,6 +64,7 @@ typedef uint16_t in_port_t;
 #define COOKIE_SECRET_LENGTH (32)
 
 #define MAX_SINGLE_UDP_BATCH (16)
+#define MAX_RECVMMSG_BATCH MAX_SINGLE_UDP_BATCH
 
 #if !defined(WINDOWS)
 _Thread_local uint32_t packetcounter = 0;
@@ -83,13 +84,29 @@ struct dtls_listener_relay_server_info {
   struct message_to_relay sm;
   size_t slen0;
   ioa_engine_new_connection_event_handler connect_cb;
+#if defined(__linux__)
+  struct dtls_listener_recvmmsg_state *recvmmsg_state;
+#endif
 };
+
+#if defined(__linux__)
+struct dtls_listener_recvmmsg_state {
+  struct mmsghdr msgs[MAX_RECVMMSG_BATCH];
+  struct iovec iovecs[MAX_RECVMMSG_BATCH];
+  char cmsgs[MAX_RECVMMSG_BATCH][TURN_CMSG_SZ];
+  ioa_addr src_addrs[MAX_RECVMMSG_BATCH];
+  int ttls[MAX_RECVMMSG_BATCH];
+  int toss[MAX_RECVMMSG_BATCH];
+  ioa_network_buffer_handle elems[MAX_RECVMMSG_BATCH];
+};
+#endif
 
 ///////////// forward declarations ////////
 
 static int create_server_socket(dtls_listener_relay_server_type *server, int report_creation, int sock_buf_size);
 static int clean_server(dtls_listener_relay_server_type *server);
 static int reopen_server_socket(dtls_listener_relay_server_type *server, evutil_socket_t fd);
+static int create_new_connected_udp_socket(dtls_listener_relay_server_type *server, ioa_socket_handle s);
 
 ///////////// dtls message types //////////
 
@@ -494,6 +511,219 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server, struct mes
   return 0;
 }
 
+static int process_udp_datagram(dtls_listener_relay_server_type *server, ioa_socket_handle s, ioa_network_buffer_handle elem,
+                                const ioa_addr *src_addr, ssize_t bsize, int recv_ttl, int recv_tos,
+                                uint32_t *packets_processed, uint32_t *packets_dropped) {
+  int rc = 0;
+
+  server->sm.m.sm.s = s;
+  server->sm.m.sm.nd.nbh = elem;
+  server->sm.m.sm.nd.recv_ttl = recv_ttl;
+  server->sm.m.sm.nd.recv_tos = recv_tos;
+  server->sm.m.sm.can_resume = 1;
+  addr_cpy(&(server->sm.m.sm.nd.src_addr), src_addr);
+
+  ioa_network_buffer_set_size(elem, (size_t)bsize);
+
+  // Do minimal validation on the received UDP packet
+  // stun_is_channel_message_str and stun_is_command_message_str
+  size_t blen = (size_t)bsize;
+  uint16_t chnum = 0;
+  uint32_t old_stun_cookie = 0;
+  uint8_t *data = ioa_network_buffer_data(elem);
+
+  bool is_valid_packet = false;
+  if (stun_is_channel_message_str(data, &blen, &chnum, false) || stun_is_command_message_str(data, blen)) {
+    is_valid_packet = true;
+  }
+#if DTLS_SUPPORTED
+  else if (!turn_params.no_dtls && is_dtls_message(data, (int)blen)) {
+    is_valid_packet = true;
+  }
+#endif
+  else if (turn_params.stun_backward_compatibility && old_stun_is_command_message_str(data, blen, &old_stun_cookie)) {
+    is_valid_packet = true;
+  }
+
+  if (turn_params.drop_invalid_packets && !is_valid_packet) {
+    packetcounter++;
+    if (turn_params.drop_invalid_packets_log && (packetcounter % 1000 == 0)) {
+      uint8_t txt2pcap[1000]; // 1000 is enough to print ~300B packet (3 chars per byte) with extras
+      print_packet_txt2pcap(packetcounter, data, blen, txt2pcap, sizeof(txt2pcap));
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "TXT2PCAP: %s\n", txt2pcap);
+    }
+    ++(*packets_dropped);
+  } else {
+    ++(*packets_processed);
+
+    if (server->connect_cb) {
+      rc = create_new_connected_udp_socket(server, s);
+      if (rc < 0) {
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot handle UDP packet, size %d\n", (int)bsize);
+      }
+    } else {
+      rc = handle_udp_packet(server, &(server->sm), server->e, server->ts);
+    }
+
+    if (rc < 0 && eve(server->e->verbose)) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot handle UDP event\n");
+    }
+  }
+
+  if (server->sm.m.sm.nd.nbh != NULL) {
+    /* buffer was not consumed downstream, return ownership to the caller */
+    server->sm.m.sm.nd.nbh = NULL;
+    return 1;
+  }
+
+  return 0;
+}
+
+#if defined(__linux__)
+typedef unsigned char listener_recv_ttl_t;
+typedef unsigned char listener_recv_tos_t;
+
+static void parse_udp_cmsg(struct msghdr *msg, int *ttl, int *tos) {
+  listener_recv_ttl_t recv_ttl = TTL_DEFAULT;
+  listener_recv_tos_t recv_tos = TOS_DEFAULT;
+  struct cmsghdr *cmsgh = NULL;
+
+  for (cmsgh = CMSG_FIRSTHDR(msg); cmsgh != NULL; cmsgh = CMSG_NXTHDR(msg, cmsgh)) {
+    const int l = cmsgh->cmsg_level;
+    const int t = cmsgh->cmsg_type;
+
+    switch (l) {
+    case IPPROTO_IP:
+      switch (t) {
+#if defined(IP_RECVTTL) && !defined(__sparc_v9__)
+      case IP_RECVTTL:
+      case IP_TTL:
+        recv_ttl = *((listener_recv_ttl_t *)CMSG_DATA(cmsgh));
+        break;
+#endif
+#if defined(IP_RECVTOS)
+      case IP_RECVTOS:
+      case IP_TOS:
+        recv_tos = *((listener_recv_tos_t *)CMSG_DATA(cmsgh));
+        break;
+#endif
+      default:;
+      };
+      break;
+    case IPPROTO_IPV6:
+      switch (t) {
+#if defined(IPV6_RECVHOPLIMIT) && !defined(__sparc_v9__)
+      case IPV6_RECVHOPLIMIT:
+      case IPV6_HOPLIMIT:
+        recv_ttl = *((listener_recv_ttl_t *)CMSG_DATA(cmsgh));
+        break;
+#endif
+#if defined(IPV6_RECVTCLASS)
+      case IPV6_RECVTCLASS:
+      case IPV6_TCLASS:
+        recv_tos = *((listener_recv_tos_t *)CMSG_DATA(cmsgh));
+        break;
+#endif
+      default:;
+      };
+      break;
+    default:;
+    };
+  }
+
+  *ttl = recv_ttl;
+  CORRECT_RAW_TTL(*ttl);
+  *tos = recv_tos;
+  CORRECT_RAW_TOS(*tos);
+}
+
+static int ensure_recvmmsg_state(dtls_listener_relay_server_type *server) {
+  if (!server) {
+    return -1;
+  }
+
+  if (server->recvmmsg_state) {
+    return 0;
+  }
+
+  server->recvmmsg_state = (struct dtls_listener_recvmmsg_state *)calloc(1, sizeof(struct dtls_listener_recvmmsg_state));
+  if (!server->recvmmsg_state) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Cannot allocate recvmmsg scratch state\n", __FUNCTION__);
+    return -1;
+  }
+
+  for (unsigned int i = 0; i < MAX_RECVMMSG_BATCH; ++i) {
+    server->recvmmsg_state->msgs[i].msg_hdr.msg_name = &(server->recvmmsg_state->src_addrs[i]);
+    server->recvmmsg_state->msgs[i].msg_hdr.msg_namelen = (socklen_t)server->slen0;
+    server->recvmmsg_state->msgs[i].msg_hdr.msg_iov = &(server->recvmmsg_state->iovecs[i]);
+    server->recvmmsg_state->msgs[i].msg_hdr.msg_iovlen = 1;
+    server->recvmmsg_state->msgs[i].msg_hdr.msg_control = server->recvmmsg_state->cmsgs[i];
+    server->recvmmsg_state->msgs[i].msg_hdr.msg_controllen = TURN_CMSG_SZ;
+  }
+
+  return 0;
+}
+
+static int receive_udp_batch_recvmmsg(dtls_listener_relay_server_type *server, evutil_socket_t fd,
+                                      ioa_network_buffer_handle elems[MAX_RECVMMSG_BATCH], ioa_addr src_addrs[MAX_RECVMMSG_BATCH],
+                                      int ttls[MAX_RECVMMSG_BATCH], int toss[MAX_RECVMMSG_BATCH]) {
+  unsigned int i = 0;
+
+  if (ensure_recvmmsg_state(server) < 0) {
+    return -1;
+  }
+
+  struct dtls_listener_recvmmsg_state *state = server->recvmmsg_state;
+
+  for (i = 0; i < MAX_RECVMMSG_BATCH; ++i) {
+    elems[i] = ioa_network_buffer_allocate(server->e);
+    if (!elems[i]) {
+      break;
+    }
+
+    state->elems[i] = elems[i];
+    addr_set_any(&(state->src_addrs[i]));
+    state->ttls[i] = TTL_IGNORE;
+    state->toss[i] = TOS_IGNORE;
+    state->iovecs[i].iov_base = ioa_network_buffer_data(elems[i]);
+    state->iovecs[i].iov_len = ioa_network_buffer_get_capacity_udp();
+    state->msgs[i].msg_hdr.msg_namelen = (socklen_t)server->slen0;
+    state->msgs[i].msg_hdr.msg_controllen = TURN_CMSG_SZ;
+    state->msgs[i].msg_len = 0;
+  }
+
+  if (i == 0) {
+    return -1;
+  }
+
+  const int rc = recvmmsg(fd, state->msgs, i, MSG_DONTWAIT, NULL);
+  if (rc <= 0) {
+    for (unsigned int j = 0; j < i; ++j) {
+      ioa_network_buffer_delete(server->e, elems[j]);
+      elems[j] = NULL;
+      state->elems[j] = NULL;
+    }
+    return rc;
+  }
+
+  for (int j = 0; j < rc; ++j) {
+    src_addrs[j] = state->src_addrs[j];
+    ttls[j] = state->ttls[j];
+    toss[j] = state->toss[j];
+    ioa_network_buffer_set_size(elems[j], state->msgs[j].msg_len);
+    parse_udp_cmsg(&(state->msgs[j].msg_hdr), &(ttls[j]), &(toss[j]));
+  }
+
+  for (unsigned int j = (unsigned int)rc; j < i; ++j) {
+    ioa_network_buffer_delete(server->e, elems[j]);
+    elems[j] = NULL;
+    state->elems[j] = NULL;
+  }
+
+  return rc;
+}
+#endif
+
 static int create_new_connected_udp_socket(dtls_listener_relay_server_type *server, ioa_socket_handle s) {
 
   evutil_socket_t udp_fd = socket(s->local_addr.ss.sa_family, CLIENT_DGRAM_SOCKET_TYPE, CLIENT_DGRAM_SOCKET_PROTOCOL);
@@ -633,14 +863,63 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void *arg) 
 
   // printf_server_socket(server, fd);
 
-  ioa_network_buffer_handle *elem = NULL;
+  ioa_network_buffer_handle elem = NULL;
   uint32_t packets_processed = 0;
   uint32_t packets_dropped = 0;
+
+#if defined(__linux__)
+  if (turn_params.udp_recvmmsg) {
+    ioa_network_buffer_handle batch_elems[MAX_RECVMMSG_BATCH] = {0};
+    ioa_addr src_addrs[MAX_RECVMMSG_BATCH];
+    int ttls[MAX_RECVMMSG_BATCH];
+    int toss[MAX_RECVMMSG_BATCH];
+    const int batch_rc = receive_udp_batch_recvmmsg(server, fd, batch_elems, src_addrs, ttls, toss);
+
+    if (batch_rc > 0) {
+      for (int i = 0; i < batch_rc; ++i) {
+        if (!batch_elems[i]) {
+          continue;
+        }
+        const int keep_elem =
+            process_udp_datagram(server, s, batch_elems[i], &(src_addrs[i]), (ssize_t)ioa_network_buffer_get_size(batch_elems[i]),
+                                 ttls[i], toss[i], &packets_processed, &packets_dropped);
+        if (keep_elem) {
+          ioa_network_buffer_delete(server->e, batch_elems[i]);
+        }
+      }
+
+      prom_inc_packet_dropped(packets_dropped);
+      prom_inc_packet_processed(packets_processed);
+      FUNCEND;
+      return;
+    }
+
+    if (batch_rc < 0) {
+      if (errno == ENOSYS || errno == EINVAL || errno == EOPNOTSUPP) {
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
+                      "%s: recvmmsg() is unavailable on this system, disabling udp-recvmmsg fast path\n",
+                      __FUNCTION__);
+        turn_params.udp_recvmmsg = false;
+      } else if (would_block()) {
+        prom_inc_packet_dropped(packets_dropped);
+        prom_inc_packet_processed(packets_processed);
+        FUNCEND;
+        return;
+      } else if (is_connreset()) {
+        reopen_server_socket(server, fd);
+        prom_inc_packet_dropped(packets_dropped);
+        prom_inc_packet_processed(packets_processed);
+        FUNCEND;
+        return;
+      }
+    }
+  }
+#endif
 
 start_udp_cycle:
 
   if (!elem) {
-    elem = (ioa_network_buffer_handle *)ioa_network_buffer_allocate(server->e);
+    elem = ioa_network_buffer_allocate(server->e);
   }
 
   server->sm.m.sm.nd.nbh = elem;
@@ -733,59 +1012,8 @@ start_udp_cycle:
   }
 
   if (bsize > 0) {
-
-    int rc = 0;
-    ioa_network_buffer_set_size(elem, (size_t)bsize);
-
-    // Do minimal validation on the received UDP packet
-    // stun_is_channel_message_str and stun_is_command_message_str
-    size_t blen = bsize;
-    uint16_t chnum = 0;
-    uint32_t old_stun_cookie = 0;
-    uint8_t *data = ioa_network_buffer_data(elem);
-
-    bool is_valid_packet = false;
-    if (stun_is_channel_message_str(data, &blen, &chnum, false) || stun_is_command_message_str(data, blen)) {
-      is_valid_packet = true;
-    }
-#if DTLS_SUPPORTED
-    else if (!turn_params.no_dtls && is_dtls_message(data, blen)) {
-      is_valid_packet = true;
-    }
-#endif
-    else if (turn_params.stun_backward_compatibility && old_stun_is_command_message_str(data, blen, &old_stun_cookie)) {
-      is_valid_packet = true;
-    }
-
-    if (turn_params.drop_invalid_packets && !is_valid_packet) {
-      packetcounter++;
-      if (turn_params.drop_invalid_packets_log && (packetcounter % 1000 == 0)) {
-        uint8_t txt2pcap[1000]; // 1000 is enough to print ~300B packet (3 chars per byte) with extras
-        print_packet_txt2pcap(packetcounter, data, blen, txt2pcap, sizeof(txt2pcap));
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "TXT2PCAP: %s\n", txt2pcap);
-      }
-      ++packets_dropped;
-    } else {
-      ++packets_processed;
-
-      if (server->connect_cb) {
-
-        rc = create_new_connected_udp_socket(server, s);
-        if (rc < 0) {
-          TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot handle UDP packet, size %d\n", (int)bsize);
-        }
-
-      } else {
-        server->sm.m.sm.s = s;
-        rc = handle_udp_packet(server, &(server->sm), server->e, server->ts);
-      }
-
-      if (rc < 0) {
-        if (eve(server->e->verbose)) {
-          TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot handle UDP event\n");
-        }
-      }
-    }
+    process_udp_datagram(server, s, elem, &(server->sm.m.sm.nd.src_addr), bsize, server->sm.m.sm.nd.recv_ttl,
+                         server->sm.m.sm.nd.recv_tos, &packets_processed, &packets_dropped);
   }
 
   if (server->sm.m.sm.nd.nbh != NULL) {
@@ -1001,6 +1229,12 @@ static int clean_server(dtls_listener_relay_server_type *server) {
     EVENT_DEL(server->udp_listen_ev);
     close_ioa_socket(server->udp_listen_s);
     server->udp_listen_s = NULL;
+#if defined(__linux__)
+    if (server->recvmmsg_state) {
+      free(server->recvmmsg_state);
+      server->recvmmsg_state = NULL;
+    }
+#endif
   }
   return 0;
 }
