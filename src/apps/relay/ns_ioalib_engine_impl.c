@@ -3888,7 +3888,6 @@ const char *get_ioa_socket_tls_method(ioa_socket_handle s) {
 #define TURN_SM_SIZE (1024 << 11)
 
 struct _super_memory {
-  TURN_MUTEX_DECLARE(mutex_sm)
   char **super_memory;
   size_t *sm_allocated;
   size_t sm_total_sz;
@@ -3915,8 +3914,6 @@ static void init_super_memory_region(super_memory_t *r) {
     while (r->id == 0) {
       r->id = (uint32_t)turn_random_number();
     }
-
-    TURN_MUTEX_INIT(&r->mutex_sm);
   }
 }
 
@@ -3939,8 +3936,6 @@ void *allocate_super_memory_region_func(super_memory_t *r, size_t size, const ch
     ret = calloc(1, size);
     return ret;
   }
-
-  TURN_MUTEX_LOCK(&r->mutex_sm);
 
   size = ((size_t)((size + sizeof(void *)) / (sizeof(void *)))) * sizeof(void *);
 
@@ -3990,8 +3985,6 @@ void *allocate_super_memory_region_func(super_memory_t *r, size_t size, const ch
       ret = ptr;
     }
   }
-
-  TURN_MUTEX_UNLOCK(&r->mutex_sm);
 
   if (!ret) {
     ret = calloc(1, size);
