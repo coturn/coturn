@@ -2349,6 +2349,13 @@ static bool decode_oauth_token_gcm(const uint8_t *server_name, const encoded_oau
     const unsigned char *csnl = snl;
 
     const uint16_t nonce_len = nswap16(*((const uint16_t *)csnl));
+
+    if (nonce_len > OAUTH_MAX_NONCE_SIZE) {
+      OAUTH_ERROR("%s: nonce length too large: %u > %u\n", __FUNCTION__, (unsigned)nonce_len,
+                  (unsigned)OAUTH_MAX_NONCE_SIZE);
+      return false;
+    }
+
     dtoken->enc_block.nonce_length = nonce_len;
 
     const size_t min_encoded_field_size = 2 + 4 + 8 + nonce_len + 2 + OAUTH_GCM_TAG_SIZE + 1;
