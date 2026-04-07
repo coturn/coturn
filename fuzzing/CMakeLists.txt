@@ -21,3 +21,6 @@ target_link_libraries(FuzzStunClient turnclient ${LIB_FUZZING_ENGINE})
 
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/input/FuzzStunClient_seed_corpus.zip
         DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+
+add_executable(FuzzOAuthToken FuzzOAuthToken.c)
+target_link_libraries(FuzzOAuthToken turnclient ${LIB_FUZZING_ENGINE})
