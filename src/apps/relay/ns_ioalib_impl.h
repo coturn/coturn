@@ -220,6 +220,9 @@ struct _ioa_socket {
   /* <<== RFC 6062 */
   void *special_session;
   size_t special_session_size;
+#if defined(__linux__)
+  struct ioa_socket_recvmmsg_state *udp_recvmmsg_state;
+#endif
 };
 
 typedef struct _timer_event {
@@ -270,6 +273,15 @@ int udp_send(ioa_socket_handle s, const ioa_addr *dest_addr, const char *buffer,
 int udp_recvfrom(evutil_socket_t fd, ioa_addr *orig_addr, const ioa_addr *like_addr, char *buffer, int buf_size,
                  int *ttl, int *tos, char *ecmsg, int flags, uint32_t *errcode);
 int ssl_read(evutil_socket_t fd, SSL *ssl, ioa_network_buffer_handle nbh, int verbose);
+
+#if defined(__linux__)
+void ioa_init_recvmmsg_hdr(struct mmsghdr *msg, struct iovec *iov, ioa_addr *src_addr, char *cmsg, socklen_t slen,
+                           void *buf, size_t len);
+#endif
+
+#if !defined(_MSC_VER) && defined(CMSG_SPACE)
+void ioa_parse_udp_recvmsg_cmsg(struct msghdr *msg, int *ttl, int *tos, uint32_t *errcode);
+#endif
 
 int set_raw_socket_ttl_options(evutil_socket_t fd, int family);
 int set_raw_socket_tos_options(evutil_socket_t fd, int family);

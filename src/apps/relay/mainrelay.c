@@ -241,6 +241,7 @@ turn_params_t turn_params = {
     true,  /* drop_invalid_packets */
     false, /* drop_invalid_packets_log */
     false, /* udp_recvmmsg */
+    false, /* udp_relay_recvmmsg */
     false  /* include_reason_string */
 };
 
@@ -1363,6 +1364,7 @@ static char Usage[] =
     "invalid packets.\n"
     " --udp-recvmmsg				   Enable Linux-only batched UDP receive via recvmmsg() on listener "
     "sockets.\n"
+    " --udp-relay-recvmmsg			   Enable Linux-only batched UDP receive via recvmmsg() for relay UDP sockets.\n"
     " --include-reason-string			   Include descriptive reason strings in STUN/TURN error responses.\n"
     "						   By default, only the standard reason phrase for the error code is\n"
     "						   sent. Enabling this option adds detailed error descriptions which\n"
@@ -1529,6 +1531,7 @@ enum EXTRA_OPTS {
   DROP_INVALID_PACKETS_OPT,
   DROP_INVALID_PACKETS_LOG_OPT,
   UDP_RECVMMSG_OPT,
+  UDP_RELAY_RECVMMSG_OPT,
   VERSION_OPT,
   CPUS_OPT,
   INCLUDE_REASON_STRING_OPT
@@ -1679,6 +1682,7 @@ static const struct myoption long_options[] = {
     {"drop-invalid-packets", optional_argument, NULL, DROP_INVALID_PACKETS_OPT},
     {"drop-invalid-packets-log", optional_argument, NULL, DROP_INVALID_PACKETS_LOG_OPT},
     {"udp-recvmmsg", optional_argument, NULL, UDP_RECVMMSG_OPT},
+    {"udp-relay-recvmmsg", optional_argument, NULL, UDP_RELAY_RECVMMSG_OPT},
     {"include-reason-string", optional_argument, NULL, INCLUDE_REASON_STRING_OPT},
     {"version", optional_argument, NULL, VERSION_OPT},
     {"syslog-facility", required_argument, NULL, SYSLOG_FACILITY_OPT},
@@ -2476,6 +2480,9 @@ static void set_option(int c, char *value) {
     break;
   case UDP_RECVMMSG_OPT:
     turn_params.udp_recvmmsg = get_bool_value(value);
+    break;
+  case UDP_RELAY_RECVMMSG_OPT:
+    turn_params.udp_relay_recvmmsg = get_bool_value(value);
     break;
   case INCLUDE_REASON_STRING_OPT:
     turn_params.include_reason_string = get_bool_value(value);
