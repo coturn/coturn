@@ -96,6 +96,7 @@ typedef uint16_t in_port_t;
 #define RECVMMSG_IPV6_CMSG_SZ (RECVMMSG_IPV6_TTL_CMSG_SZ + RECVMMSG_IPV6_TOS_CMSG_SZ)
 #define RECVMMSG_CMSG_SZ                                                                                               \
   ((RECVMMSG_IPV4_CMSG_SZ > RECVMMSG_IPV6_CMSG_SZ) ? RECVMMSG_IPV4_CMSG_SZ : RECVMMSG_IPV6_CMSG_SZ)
+#define RECVMMSG_CMSG_ALLOC_SZ ((RECVMMSG_CMSG_SZ) > 0 ? (RECVMMSG_CMSG_SZ) : 1)
 #endif
 
 #if !defined(WINDOWS)
@@ -133,7 +134,7 @@ struct dtls_listener_relay_server_info {
 struct dtls_listener_recvmmsg_state {
   struct mmsghdr msgs[MAX_RECVMMSG_BATCH];
   struct iovec iovecs[MAX_RECVMMSG_BATCH];
-  char cmsgs[MAX_RECVMMSG_BATCH][RECVMMSG_CMSG_SZ];
+  char cmsgs[MAX_RECVMMSG_BATCH][RECVMMSG_CMSG_ALLOC_SZ];
   ioa_addr src_addrs[MAX_RECVMMSG_BATCH];
   int ttls[MAX_RECVMMSG_BATCH];
   int toss[MAX_RECVMMSG_BATCH];
@@ -625,7 +626,6 @@ static udp_packet_classification_t classify_udp_packet(const uint8_t *data, size
 
   return UDP_PACKET_CLASS_INVALID;
 }
-
 #if defined(__linux__)
 typedef unsigned char listener_recv_ttl_t;
 typedef unsigned char listener_recv_tos_t;
