@@ -89,7 +89,7 @@ typedef uint16_t in_port_t;
 #endif
 #define RECVMMSG_IPV4_CMSG_SZ (RECVMMSG_IPV4_TTL_CMSG_SZ + RECVMMSG_IPV4_TOS_CMSG_SZ)
 #define RECVMMSG_IPV6_CMSG_SZ (RECVMMSG_IPV6_TTL_CMSG_SZ + RECVMMSG_IPV6_TOS_CMSG_SZ)
-#define RECVMMSG_CMSG_SZ                                                                                            \
+#define RECVMMSG_CMSG_SZ                                                                                               \
   ((RECVMMSG_IPV4_CMSG_SZ > RECVMMSG_IPV6_CMSG_SZ) ? RECVMMSG_IPV4_CMSG_SZ : RECVMMSG_IPV6_CMSG_SZ)
 #endif
 
@@ -393,8 +393,7 @@ static ioa_socket_handle dtls_server_input_handler(dtls_listener_relay_server_ty
 #endif
 
 static int handle_udp_packet(dtls_listener_relay_server_type *server, struct message_to_relay *sm,
-                             ioa_engine_handle ioa_eng, turn_turnserver *ts,
-                             udp_packet_classification_t packet_type) {
+                             ioa_engine_handle ioa_eng, turn_turnserver *ts, udp_packet_classification_t packet_type) {
   const int verbose = ioa_eng->verbose;
   ioa_socket_handle s = sm->m.sm.s;
 
@@ -547,10 +546,9 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server, struct mes
   return 0;
 }
 
-static int process_udp_datagram(dtls_listener_relay_server_type *server, ioa_socket_handle s, ioa_network_buffer_handle elem,
-                                const ioa_addr *src_addr, ssize_t bsize, int recv_ttl, int recv_tos,
-                                int packet_type,
-                                uint32_t *packets_processed, uint32_t *packets_dropped) {
+static int process_udp_datagram(dtls_listener_relay_server_type *server, ioa_socket_handle s,
+                                ioa_network_buffer_handle elem, const ioa_addr *src_addr, ssize_t bsize, int recv_ttl,
+                                int recv_tos, int packet_type, uint32_t *packets_processed, uint32_t *packets_dropped) {
   int rc = 0;
 
   server->sm.m.sm.s = s;
@@ -604,7 +602,8 @@ static udp_packet_classification_t classify_udp_packet(const uint8_t *data, size
   uint16_t chnum = 0;
   uint32_t old_stun_cookie = 0;
 
-  if (stun_is_channel_message_str(data, &candidate_len, &chnum, false) || stun_is_command_message_str(data, candidate_len)) {
+  if (stun_is_channel_message_str(data, &candidate_len, &chnum, false) ||
+      stun_is_command_message_str(data, candidate_len)) {
     return UDP_PACKET_CLASS_STUN_OR_CHANNEL;
   }
 #if DTLS_SUPPORTED
@@ -689,7 +688,8 @@ static int ensure_recvmmsg_state(dtls_listener_relay_server_type *server) {
     return 0;
   }
 
-  server->recvmmsg_state = (struct dtls_listener_recvmmsg_state *)calloc(1, sizeof(struct dtls_listener_recvmmsg_state));
+  server->recvmmsg_state =
+      (struct dtls_listener_recvmmsg_state *)calloc(1, sizeof(struct dtls_listener_recvmmsg_state));
   if (!server->recvmmsg_state) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Cannot allocate recvmmsg scratch state\n", __FUNCTION__);
     return -1;
@@ -914,10 +914,9 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void *arg) 
         if (!state->elems[i]) {
           continue;
         }
-        const int keep_elem = process_udp_datagram(server, s, state->elems[i], &(state->src_addrs[i]),
-                                                   (ssize_t)ioa_network_buffer_get_size(state->elems[i]), state->ttls[i],
-                                                   state->toss[i], state->packet_types[i], &packets_processed,
-                                                   &packets_dropped);
+        const int keep_elem = process_udp_datagram(
+            server, s, state->elems[i], &(state->src_addrs[i]), (ssize_t)ioa_network_buffer_get_size(state->elems[i]),
+            state->ttls[i], state->toss[i], state->packet_types[i], &packets_processed, &packets_dropped);
         if (keep_elem) {
           ioa_network_buffer_reset(state->elems[i]);
         } else {
@@ -934,8 +933,7 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void *arg) 
     if (batch_rc < 0) {
       if (errno == ENOSYS || errno == EINVAL || errno == EOPNOTSUPP) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
-                      "%s: recvmmsg() is unavailable on this system, disabling udp-recvmmsg fast path\n",
-                      __FUNCTION__);
+                      "%s: recvmmsg() is unavailable on this system, disabling udp-recvmmsg fast path\n", __FUNCTION__);
         turn_params.udp_recvmmsg = false;
       } else if (would_block()) {
         prom_inc_packet_dropped(packets_dropped);
