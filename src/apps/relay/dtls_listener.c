@@ -66,6 +66,36 @@ typedef uint16_t in_port_t;
 #define MAX_SINGLE_UDP_BATCH (16)
 #define MAX_RECVMMSG_BATCH MAX_SINGLE_UDP_BATCH
 
+#if defined(__linux__) && defined(CMSG_SPACE)
+#if defined(IP_RECVTTL) || defined(IP_TTL)
+#define RECVMMSG_IPV4_TTL_CMSG_SZ CMSG_SPACE(sizeof(int))
+#else
+#define RECVMMSG_IPV4_TTL_CMSG_SZ 0
+#endif
+#if defined(IP_RECVTOS) || defined(IP_TOS)
+#define RECVMMSG_IPV4_TOS_CMSG_SZ CMSG_SPACE(sizeof(int))
+#else
+#define RECVMMSG_IPV4_TOS_CMSG_SZ 0
+#endif
+#if defined(IPV6_RECVHOPLIMIT) || defined(IPV6_HOPLIMIT)
+#define RECVMMSG_IPV6_TTL_CMSG_SZ CMSG_SPACE(sizeof(int))
+#else
+#define RECVMMSG_IPV6_TTL_CMSG_SZ 0
+#endif
+#if defined(IPV6_RECVTCLASS) || defined(IPV6_TCLASS)
+#define RECVMMSG_IPV6_TOS_CMSG_SZ CMSG_SPACE(sizeof(int))
+#else
+#define RECVMMSG_IPV6_TOS_CMSG_SZ 0
+#endif
+#define RECVMMSG_IPV4_CMSG_SZ (RECVMMSG_IPV4_TTL_CMSG_SZ + RECVMMSG_IPV4_TOS_CMSG_SZ)
+#define RECVMMSG_IPV6_CMSG_SZ (RECVMMSG_IPV6_TTL_CMSG_SZ + RECVMMSG_IPV6_TOS_CMSG_SZ)
+#if RECVMMSG_IPV4_CMSG_SZ > RECVMMSG_IPV6_CMSG_SZ
+#define RECVMMSG_CMSG_SZ RECVMMSG_IPV4_CMSG_SZ
+#else
+#define RECVMMSG_CMSG_SZ RECVMMSG_IPV6_CMSG_SZ
+#endif
+#endif
+
 #if !defined(WINDOWS)
 _Thread_local uint32_t packetcounter = 0;
 #else
@@ -93,7 +123,7 @@ struct dtls_listener_relay_server_info {
 struct dtls_listener_recvmmsg_state {
   struct mmsghdr msgs[MAX_RECVMMSG_BATCH];
   struct iovec iovecs[MAX_RECVMMSG_BATCH];
-  char cmsgs[MAX_RECVMMSG_BATCH][TURN_CMSG_SZ];
+  char cmsgs[MAX_RECVMMSG_BATCH][RECVMMSG_CMSG_SZ];
   ioa_addr src_addrs[MAX_RECVMMSG_BATCH];
   int ttls[MAX_RECVMMSG_BATCH];
   int toss[MAX_RECVMMSG_BATCH];
@@ -658,7 +688,7 @@ static int ensure_recvmmsg_state(dtls_listener_relay_server_type *server) {
     server->recvmmsg_state->msgs[i].msg_hdr.msg_iov = &(server->recvmmsg_state->iovecs[i]);
     server->recvmmsg_state->msgs[i].msg_hdr.msg_iovlen = 1;
     server->recvmmsg_state->msgs[i].msg_hdr.msg_control = server->recvmmsg_state->cmsgs[i];
-    server->recvmmsg_state->msgs[i].msg_hdr.msg_controllen = TURN_CMSG_SZ;
+    server->recvmmsg_state->msgs[i].msg_hdr.msg_controllen = RECVMMSG_CMSG_SZ;
     server->recvmmsg_state->elems[i] = ioa_network_buffer_allocate(server->e);
     if (!server->recvmmsg_state->elems[i]) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Cannot allocate recvmmsg batch buffer\n", __FUNCTION__);
@@ -693,7 +723,7 @@ static int receive_udp_batch_recvmmsg(dtls_listener_relay_server_type *server, e
     state->iovecs[i].iov_base = ioa_network_buffer_data(state->elems[i]);
     state->iovecs[i].iov_len = ioa_network_buffer_get_capacity_udp();
     state->msgs[i].msg_hdr.msg_namelen = (socklen_t)server->slen0;
-    state->msgs[i].msg_hdr.msg_controllen = TURN_CMSG_SZ;
+    state->msgs[i].msg_hdr.msg_controllen = RECVMMSG_CMSG_SZ;
     state->msgs[i].msg_len = 0;
   }
 
