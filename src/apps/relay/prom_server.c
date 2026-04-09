@@ -78,11 +78,18 @@ prom_gauge_t *turn_total_allocations;
 #define MHD_RESULT int
 #endif
 
-MHD_RESULT promhttp_handler(void *cls, struct MHD_Connection *connection, const char *url, const char *method,
-                            const char *version, const char *upload_data, size_t *upload_data_size, void **con_cls) {
+static MHD_RESULT promhttp_handler(void *cls, struct MHD_Connection *connection, const char *url, const char *method,
+                                   const char *version, const char *upload_data, size_t *upload_data_size,
+                                   void **con_cls) {
   MHD_RESULT ret;
+  (void)cls;
+  (void)version;
+  (void)upload_data;
+  (void)upload_data_size;
+  (void)con_cls;
 
   char *body = "not found";
+  char *owned_body = NULL;
   enum MHD_ResponseMemoryMode mode = MHD_RESPMEM_PERSISTENT;
   unsigned int status = MHD_HTTP_NOT_FOUND;
 
@@ -90,7 +97,15 @@ MHD_RESULT promhttp_handler(void *cls, struct MHD_Connection *connection, const 
     status = MHD_HTTP_METHOD_NOT_ALLOWED;
     body = "method not allowed";
   } else if (strcmp(url, turn_params.prometheus_path) == 0) {
-    body = prom_collector_registry_bridge(PROM_COLLECTOR_REGISTRY_DEFAULT);
+    const char *prom_body = prom_collector_registry_bridge(PROM_COLLECTOR_REGISTRY_DEFAULT);
+    if (prom_body == NULL) {
+      return MHD_NO;
+    }
+    owned_body = strdup(prom_body);
+    if (owned_body == NULL) {
+      return MHD_NO;
+    }
+    body = owned_body;
     mode = MHD_RESPMEM_MUST_FREE;
     status = MHD_HTTP_OK;
   } else if (strcmp(url, "/") == 0) {
@@ -103,7 +118,7 @@ MHD_RESULT promhttp_handler(void *cls, struct MHD_Connection *connection, const 
   struct MHD_Response *response = MHD_create_response_from_buffer(strlen(body), body, mode);
   if (response == NULL) {
     if (mode == MHD_RESPMEM_MUST_FREE) {
-      free(body);
+      free(owned_body);
     }
     ret = MHD_NO;
   } else {

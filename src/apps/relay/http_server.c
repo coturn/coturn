@@ -62,29 +62,32 @@ static void write_http_echo(ioa_socket_handle s) {
     if ((sat == HTTP_CLIENT_SOCKET) || (sat == HTTPS_CLIENT_SOCKET)) {
       char content_http[1025];
       const char *const title = "TURN Server";
-      snprintf(content_http, sizeof(content_http) - 1,
-               "<!DOCTYPE html>\r\n<html>\r\n  <head>\r\n    <title>%s</title>\r\n  </head>\r\n  <body>\r\n    "
-               "<b>%s</b> <br> <b><i>use https connection for the admin session</i></b>\r\n  </body>\r\n</html>\r\n",
-               title, title);
-
-      char data_http[1025];
-      snprintf(data_http, sizeof(data_http) - 1,
-               "HTTP/1.0 200 OK\r\nServer: %s\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Length: "
-               "%zu\r\n\r\n%.906s",
-               TURN_SOFTWARE, strlen(content_http), content_http);
+      const int content_len = snprintf(
+          content_http, sizeof(content_http),
+          "<!DOCTYPE html>\r\n<html>\r\n  <head>\r\n    <title>%s</title>\r\n  </head>\r\n  <body>\r\n    "
+          "<b>%s</b> <br> <b><i>use https connection for the admin session</i></b>\r\n  </body>\r\n</html>\r\n",
+          title, title);
+      if (content_len < 0) {
+        return;
+      }
 
       ioa_network_buffer_handle nbh_http = ioa_network_buffer_allocate(s->e);
       char *data = (char *)ioa_network_buffer_data(nbh_http);
       size_t cap = ioa_network_buffer_get_capacity(nbh_http);
-      size_t len = strlen(data_http) + 1;
-      if (len > cap) {
-        len = cap;
+      const int response_len =
+          snprintf(data, cap,
+                   "HTTP/1.0 200 OK\r\nServer: %s\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Length: "
+                   "%d\r\n\r\n%s",
+                   TURN_SOFTWARE, content_len, content_http);
+      if (response_len < 0) {
+        ioa_network_buffer_delete(s->e, nbh_http);
+        return;
       }
-      if (len > 0) {
-        memcpy(data, data_http, len);
-        data[len - 1] = '\0';
+      size_t len = (size_t)response_len;
+      if (len >= cap) {
+        len = cap - 1;
       }
-      ioa_network_buffer_set_size(nbh_http, len > 0 ? len - 1 : 0);
+      ioa_network_buffer_set_size(nbh_http, len);
       send_data_from_ioa_socket_nbh(s, NULL, nbh_http, TTL_IGNORE, TOS_IGNORE, NULL);
     }
   }
