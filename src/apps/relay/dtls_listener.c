@@ -659,6 +659,11 @@ static int ensure_recvmmsg_state(dtls_listener_relay_server_type *server) {
     server->recvmmsg_state->msgs[i].msg_hdr.msg_iovlen = 1;
     server->recvmmsg_state->msgs[i].msg_hdr.msg_control = server->recvmmsg_state->cmsgs[i];
     server->recvmmsg_state->msgs[i].msg_hdr.msg_controllen = TURN_CMSG_SZ;
+    server->recvmmsg_state->elems[i] = ioa_network_buffer_allocate(server->e);
+    if (!server->recvmmsg_state->elems[i]) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Cannot allocate recvmmsg batch buffer\n", __FUNCTION__);
+      return -1;
+    }
   }
 
   return 0;
@@ -676,12 +681,15 @@ static int receive_udp_batch_recvmmsg(dtls_listener_relay_server_type *server, e
   struct dtls_listener_recvmmsg_state *state = server->recvmmsg_state;
 
   for (i = 0; i < MAX_RECVMMSG_BATCH; ++i) {
-    elems[i] = ioa_network_buffer_allocate(server->e);
-    if (!elems[i]) {
-      break;
+    if (!state->elems[i]) {
+      state->elems[i] = ioa_network_buffer_allocate(server->e);
+      if (!state->elems[i]) {
+        break;
+      }
     }
 
-    state->elems[i] = elems[i];
+    elems[i] = state->elems[i];
+    ioa_network_buffer_reset(elems[i]);
     addr_set_any(&(state->src_addrs[i]));
     state->ttls[i] = TTL_IGNORE;
     state->toss[i] = TOS_IGNORE;
@@ -699,9 +707,7 @@ static int receive_udp_batch_recvmmsg(dtls_listener_relay_server_type *server, e
   const int rc = recvmmsg(fd, state->msgs, i, MSG_DONTWAIT, NULL);
   if (rc <= 0) {
     for (unsigned int j = 0; j < i; ++j) {
-      ioa_network_buffer_delete(server->e, elems[j]);
-      elems[j] = NULL;
-      state->elems[j] = NULL;
+      elems[j] = state->elems[j];
     }
     return rc;
   }
@@ -715,9 +721,7 @@ static int receive_udp_batch_recvmmsg(dtls_listener_relay_server_type *server, e
   }
 
   for (unsigned int j = (unsigned int)rc; j < i; ++j) {
-    ioa_network_buffer_delete(server->e, elems[j]);
-    elems[j] = NULL;
-    state->elems[j] = NULL;
+    elems[j] = state->elems[j];
   }
 
   return rc;
@@ -884,7 +888,9 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void *arg) 
             process_udp_datagram(server, s, batch_elems[i], &(src_addrs[i]), (ssize_t)ioa_network_buffer_get_size(batch_elems[i]),
                                  ttls[i], toss[i], &packets_processed, &packets_dropped);
         if (keep_elem) {
-          ioa_network_buffer_delete(server->e, batch_elems[i]);
+          ioa_network_buffer_reset(batch_elems[i]);
+        } else if (server->recvmmsg_state) {
+          server->recvmmsg_state->elems[i] = NULL;
         }
       }
 
@@ -1231,6 +1237,10 @@ static int clean_server(dtls_listener_relay_server_type *server) {
     server->udp_listen_s = NULL;
 #if defined(__linux__)
     if (server->recvmmsg_state) {
+      for (unsigned int i = 0; i < MAX_RECVMMSG_BATCH; ++i) {
+        ioa_network_buffer_delete(server->e, server->recvmmsg_state->elems[i]);
+        server->recvmmsg_state->elems[i] = NULL;
+      }
       free(server->recvmmsg_state);
       server->recvmmsg_state = NULL;
     }

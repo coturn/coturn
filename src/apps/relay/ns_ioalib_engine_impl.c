@@ -3542,6 +3542,15 @@ ioa_network_buffer_handle ioa_network_buffer_allocate(ioa_engine_handle e) {
 /* We do not use special header in this simple implementation */
 void ioa_network_buffer_header_init(ioa_network_buffer_handle nbh) { UNUSED_ARG(nbh); }
 
+void ioa_network_buffer_reset(ioa_network_buffer_handle nbh) {
+  if (nbh) {
+    stun_buffer_list_elem *buf_elem = (stun_buffer_list_elem *)nbh;
+    buf_elem->buf.len = 0;
+    buf_elem->buf.offset = 0;
+    buf_elem->buf.coffset = 0;
+  }
+}
+
 uint8_t *ioa_network_buffer_data(ioa_network_buffer_handle nbh) {
   stun_buffer_list_elem *buf_elem = (stun_buffer_list_elem *)nbh;
   return buf_elem->buf.buf + buf_elem->buf.offset - buf_elem->buf.coffset;
