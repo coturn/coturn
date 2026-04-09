@@ -906,27 +906,6 @@ static void listener_receive_message(struct bufferevent *bev, void *ptr) {
   }
 }
 
-// <<== communications between listener and relays
-
-static ioa_engine_handle create_new_listener_engine(void) {
-  struct event_base *eb = turn_event_base_new();
-  super_memory_t *sm = new_super_memory_region();
-  ioa_engine_handle e =
-      create_ioa_engine(sm, eb, turn_params.listener.tp, turn_params.relay_ifname, turn_params.relays_number,
-                        turn_params.relay_addrs, turn_params.default_relays, turn_params.verbose
-#if !defined(TURN_NO_HIREDIS)
-                        ,
-                        &turn_params.redis_statsdb
-#endif
-      );
-  if (!e) {
-    exit(-1);
-  }
-  set_ssl_ctx(e, &turn_params);
-  ioa_engine_set_rtcp_map(e, turn_params.listener.rtcpmap);
-  return e;
-}
-
 static void setup_listener(void) {
   super_memory_t *sm = new_super_memory_region();
 

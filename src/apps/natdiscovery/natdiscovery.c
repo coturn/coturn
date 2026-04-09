@@ -713,7 +713,7 @@ int main(int argc, char **argv) {
     exit(-1);
   }
 
-  if (local_port >= 0 && !strcmp(local_addr_string, "\0")) {
+  if (local_port != 0 && !strcmp(local_addr_string, "\0")) {
     fprintf(stderr, "To use local port please specify local address \"-L\"!\n");
     fprintf(stderr, "We need to know the address familly to set the port.\n");
     exit(-1);

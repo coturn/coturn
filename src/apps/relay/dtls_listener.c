@@ -156,11 +156,11 @@ static size_t print_packet_txt2pcap(uint64_t now, uint8_t *payload, size_t paylo
   index += snprintf((char *)(txt2pcap + index), txt2pcap_length - index, " 0000");
 
   for (size_t i = 0; i < payload_length; i++) {
-    size_t n = snprintf((char *)(txt2pcap + index), txt2pcap_length - index, " %02x", payload[i]);
-    if (n < 0 || n >= txt2pcap_length - index) {
+    int n = snprintf((char *)(txt2pcap + index), txt2pcap_length - index, " %02x", payload[i]);
+    if (n < 0 || (size_t)n >= txt2pcap_length - index) {
       break;
     }
-    index += n;
+    index += (size_t)n;
   }
   index += snprintf((char *)(txt2pcap + index), txt2pcap_length - index, " # STUN_PACKET ");
   return index;
