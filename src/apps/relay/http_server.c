@@ -74,10 +74,11 @@ static void write_http_echo(ioa_socket_handle s) {
       ioa_network_buffer_handle nbh_http = ioa_network_buffer_allocate(s->e);
       char *data = (char *)ioa_network_buffer_data(nbh_http);
       size_t cap = ioa_network_buffer_get_capacity(nbh_http);
-      const int response_len = snprintf(
-          data, cap, "HTTP/1.0 200 OK\r\nServer: %s\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Length: "
-                     "%d\r\n\r\n%s",
-          TURN_SOFTWARE, content_len, content_http);
+      const int response_len =
+          snprintf(data, cap,
+                   "HTTP/1.0 200 OK\r\nServer: %s\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Length: "
+                   "%d\r\n\r\n%s",
+                   TURN_SOFTWARE, content_len, content_http);
       if (response_len < 0) {
         ioa_network_buffer_delete(s->e, nbh_http);
         return;
