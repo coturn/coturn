@@ -14,6 +14,7 @@ fi
 TURNSERVER_EXTRA_ARGS=""
 if [ "$(uname -s)" = "Linux" ]; then
     TURNSERVER_EXTRA_ARGS="--udp-recvmmsg"
+	echo 'Using TURNSERVER_EXTRA_ARGS="--udp-recvmmsg"'
 fi
 
 echo 'Running turnserver'
