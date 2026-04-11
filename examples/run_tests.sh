@@ -6,7 +6,7 @@ cleanup() {
 trap cleanup EXIT
 
 check_result() {
-    status="$?"
+    local status="$?"
     if [ "$status" -eq 0 ]; then
         echo OK
     else
