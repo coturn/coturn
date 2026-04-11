@@ -107,8 +107,9 @@ extern int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
   /* DATA attribute with fuzz payload */
   if (Size > STUN_HEADER_LENGTH + 4) {
     int data_len = (int)(Size - STUN_HEADER_LENGTH);
-    if (data_len > 1024)
+    if (data_len > 1024) {
       data_len = 1024;
+    }
     stun_attr_add_str(buf, &len, STUN_ATTRIBUTE_DATA, Data + STUN_HEADER_LENGTH, data_len);
   }
 

@@ -32,7 +32,8 @@ extern int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
    * if input is shorter), remaining bytes are the raw address attribute value.
    */
   uint8_t tid[STUN_TID_SIZE] = {0};
-  size_t tid_bytes = Size > (STUN_TID_SIZE + kMinInputLength) ? STUN_TID_SIZE : (Size > kMinInputLength ? Size - kMinInputLength : 0);
+  size_t tid_bytes =
+      Size > (STUN_TID_SIZE + kMinInputLength) ? STUN_TID_SIZE : (Size > kMinInputLength ? Size - kMinInputLength : 0);
   memcpy(tid, Data, tid_bytes);
   const uint8_t *payload = Data + tid_bytes;
   int payload_len = (int)(Size - tid_bytes);
