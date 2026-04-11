@@ -5,6 +5,16 @@ cleanup() {
 }
 trap cleanup EXIT
 
+check_result() {
+    status="$?"
+    if [ "$status" -eq 0 ]; then
+        echo OK
+    else
+        echo FAIL
+        exit "$status"
+    fi
+}
+
 # Detect cmake build and adjust path
 BINDIR="../bin"
 if [ ! -f $BINDIR/turnserver ]; then
@@ -29,37 +39,17 @@ sleep 2
 
 echo 'Running turn client TCP'
 $BINDIR/turnutils_uclient -t -e 127.0.0.1 -X -g -u user -W secret 127.0.0.1 | grep "start_mclient: tot_send_bytes ~ 1000, tot_recv_bytes ~ 1000" > /dev/null
-if [ $? -eq 0 ]; then
-    echo OK
-else
-    echo FAIL
-	exit $?
-fi
+check_result
 
 echo 'Running turn client TLS'
 $BINDIR/turnutils_uclient -t -S -e 127.0.0.1 -X -g -u user -W secret 127.0.0.1 | grep "start_mclient: tot_send_bytes ~ 1000, tot_recv_bytes ~ 1000" > /dev/null
-if [ $? -eq 0 ]; then
-    echo OK
-else
-    echo FAIL
-	exit $?
-fi
+check_result
 
 echo 'Running turn client UDP'
 $BINDIR/turnutils_uclient -e 127.0.0.1 -X -g -u user -W secret 127.0.0.1  | grep "start_mclient: tot_send_bytes ~ 1000, tot_recv_bytes ~ 1000" > /dev/null
-if [ $? -eq 0 ]; then
-    echo OK
-else
-    echo FAIL
-	exit $?
-fi
+check_result
 
 echo 'Running turn client DTLS'
 $BINDIR/turnutils_uclient -S -e 127.0.0.1 -X -g -u user -W secret 127.0.0.1  | grep "start_mclient: tot_send_bytes ~ 1000, tot_recv_bytes ~ 1000" > /dev/null
-if [ $? -eq 0 ]; then
-    echo OK
-else
-    echo FAIL
-	exit $?
-fi
+check_result
 sleep 2
