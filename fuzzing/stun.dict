@@ -1,0 +1,137 @@
+# STUN/TURN fuzzer dictionary
+# Shared across all fuzzing targets to accelerate coverage.
+
+# STUN magic cookie (RFC 5389)
+kw_magic_cookie="\x21\x12\xa4\x42"
+
+# STUN methods (request class, bits 0x0110 = 0x0000)
+kw_method_binding="\x00\x01"
+kw_method_allocate="\x00\x03"
+kw_method_refresh="\x00\x04"
+kw_method_send="\x00\x06"
+kw_method_data="\x00\x07"
+kw_method_create_permission="\x00\x08"
+kw_method_channel_bind="\x00\x09"
+kw_method_connect="\x00\x0a"
+kw_method_connection_bind="\x00\x0b"
+kw_method_connection_attempt="\x00\x0c"
+
+# Success response class (bits 0x0110 = 0x0100)
+kw_binding_success="\x01\x01"
+kw_allocate_success="\x01\x03"
+kw_refresh_success="\x01\x04"
+kw_channel_bind_success="\x01\x09"
+kw_connect_success="\x01\x0a"
+kw_connection_bind_success="\x01\x0b"
+
+# Error response class (bits 0x0110 = 0x0110)
+kw_binding_error="\x01\x11"
+kw_allocate_error="\x01\x13"
+kw_refresh_error="\x01\x14"
+
+# Indication class (bits 0x0110 = 0x0010)
+kw_send_indication="\x00\x16"
+kw_data_indication="\x00\x17"
+kw_connection_attempt_ind="\x00\x1c"
+
+# Attribute types - comprehension-required (0x0000-0x7FFF)
+kw_attr_mapped_address="\x00\x01"
+kw_attr_response_address="\x00\x02"
+kw_attr_change_request="\x00\x03"
+kw_attr_source_address="\x00\x04"
+kw_attr_changed_address="\x00\x05"
+kw_attr_username="\x00\x06"
+kw_attr_password="\x00\x07"
+kw_attr_message_integrity="\x00\x08"
+kw_attr_error_code="\x00\x09"
+kw_attr_unknown_attributes="\x00\x0a"
+kw_attr_reflected_from="\x00\x0b"
+kw_attr_channel_number="\x00\x0c"
+kw_attr_lifetime="\x00\x0d"
+kw_attr_bandwidth="\x00\x10"
+kw_attr_xor_peer_address="\x00\x12"
+kw_attr_data="\x00\x13"
+kw_attr_realm="\x00\x14"
+kw_attr_nonce="\x00\x15"
+kw_attr_xor_relayed_address="\x00\x16"
+kw_attr_requested_address_family="\x00\x17"
+kw_attr_even_port="\x00\x18"
+kw_attr_requested_transport="\x00\x19"
+kw_attr_dont_fragment="\x00\x1a"
+kw_attr_oauth_access_token="\x00\x1b"
+kw_attr_xor_mapped_address="\x00\x20"
+kw_attr_timer_val="\x00\x21"
+kw_attr_reservation_token="\x00\x22"
+kw_attr_priority="\x00\x24"
+kw_attr_padding="\x00\x26"
+kw_attr_response_port="\x00\x27"
+kw_attr_connection_id="\x00\x2a"
+
+# Attribute types - comprehension-optional (0x8000-0xFFFF)
+kw_attr_additional_address_family="\x80\x00"
+kw_attr_address_error_code="\x80\x01"
+kw_attr_old_xor_mapped_address="\x80\x20"
+kw_attr_software="\x80\x22"
+kw_attr_alternate_server="\x80\x23"
+kw_attr_fingerprint="\x80\x28"
+kw_attr_ice_controlled="\x80\x29"
+kw_attr_response_origin="\x80\x2b"
+kw_attr_other_address="\x80\x2c"
+kw_attr_third_party_auth="\x80\x2e"
+kw_attr_origin="\x80\x2f"
+kw_attr_mobility_ticket="\x80\x30"
+
+# Address family values
+kw_af_ipv4="\x00\x01"
+kw_af_ipv6="\x00\x02"
+
+# Transport protocol values
+kw_transport_tcp="\x06"
+kw_transport_udp="\x11"
+kw_transport_tls="\x38"
+kw_transport_dtls="\xfa"
+
+# Channel number boundaries
+kw_chan_min_valid="\x40\x00"
+kw_chan_max_valid="\x7f\xff"
+kw_chan_below_valid="\x3f\xff"
+kw_chan_above_valid="\x80\x00"
+
+# Overflow-interesting lengths
+kw_len_zero="\x00\x00"
+kw_len_fffd="\xff\xfd"
+kw_len_fffe="\xff\xfe"
+kw_len_ffff="\xff\xff"
+
+# Common attribute value lengths
+kw_len_4="\x00\x04"
+kw_len_8="\x00\x08"
+kw_len_12="\x00\x0c"
+kw_len_16="\x00\x10"
+kw_len_20="\x00\x14"
+
+# STUN error codes (encoded as class*100+number in ERROR-CODE attribute)
+# Byte layout: [0x00, 0x00, class, number]
+kw_err_300="\x00\x00\x03\x00"
+kw_err_400="\x00\x00\x04\x00"
+kw_err_401="\x00\x00\x04\x01"
+kw_err_403="\x00\x00\x04\x03"
+kw_err_420="\x00\x00\x04\x14"
+kw_err_437="\x00\x00\x04\x25"
+kw_err_438="\x00\x00\x04\x26"
+kw_err_440="\x00\x00\x04\x28"
+kw_err_441="\x00\x00\x04\x29"
+kw_err_442="\x00\x00\x04\x2a"
+kw_err_443="\x00\x00\x04\x2b"
+kw_err_486="\x00\x00\x04\x56"
+kw_err_500="\x00\x00\x05\x00"
+kw_err_508="\x00\x00\x05\x08"
+
+# FINGERPRINT XOR constant
+kw_fingerprint_xor="\x53\x54\x55\x4e"
+
+# HMAC sizes
+kw_sha1_size="\x00\x14"
+kw_sha256_size="\x00\x20"
+kw_sha384_size="\x00\x30"
+kw_sha512_size="\x00\x40"

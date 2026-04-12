@@ -22,6 +22,12 @@ extern int LLVMFuzzerTestOneInput(const uint8_t *Data,
   memcpy(buf.buf, Data, buf.len);
 
   if (stun_is_command_message(&buf)) {
+    /* Message type and method extraction */
+    uint16_t method = stun_get_method_str(buf.buf, buf.len);
+    uint16_t msg_type = stun_get_msg_type_str(buf.buf, buf.len);
+    (void)method;
+    (void)msg_type;
+
     if (stun_is_response(&buf)) {
       if (stun_is_success_response(&buf)) {
         if (stun_is_binding_response(&buf)) {
@@ -29,6 +35,13 @@ extern int LLVMFuzzerTestOneInput(const uint8_t *Data,
         }
       }
     }
+
+    /* Indication and error response checks */
+    stun_is_indication_str(buf.buf, buf.len);
+
+    int err_code = 0;
+    uint8_t err_msg[256] = {0};
+    stun_is_error_response_str(buf.buf, buf.len, &err_code, err_msg, sizeof(err_msg));
   }
 
   return 1;
