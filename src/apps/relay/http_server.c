@@ -119,6 +119,8 @@ const char *get_http_date_header(void) {
 
 ///////////////////////////////////////////////
 
+static void free_headers_list(struct headers_list *h);
+
 static struct headers_list *post_parse(char *data, size_t data_len) {
   while ((*data == '\r') || (*data == '\n')) {
     ++data;
@@ -131,6 +133,10 @@ static struct headers_list *post_parse(char *data, size_t data_len) {
       char *fmarker = NULL;
       char *fsplit = strtok_r(post_data, "&", &fmarker);
       struct headers_list *list = (struct headers_list *)calloc(1, sizeof(struct headers_list));
+      if (list == NULL) {
+        free(post_data);
+        return NULL;
+      }
       while (fsplit != NULL) {
         char *vmarker = NULL;
         char *key = strtok_r(fsplit, "=", &vmarker);
@@ -149,9 +155,25 @@ static struct headers_list *post_parse(char *data, size_t data_len) {
             }
             p++;
           }
-          list->keys = (char **)realloc(list->keys, sizeof(char *) * (list->n + 1));
-          list->keys[list->n] = strdup(key);
-          list->values = (char **)realloc(list->values, sizeof(char *) * (list->n + 1));
+          char **new_keys = (char **)realloc(list->keys, sizeof(char *) * (list->n + 1));
+          char **new_values = (char **)realloc(list->values, sizeof(char *) * (list->n + 1));
+          char *new_key = strdup(key);
+          if (new_keys == NULL || new_values == NULL || new_key == NULL) {
+            free(new_key);
+            if (new_keys) {
+              list->keys = new_keys;
+            }
+            if (new_values) {
+              list->values = new_values;
+            }
+            free(value);
+            free_headers_list(list);
+            free(post_data);
+            return NULL;
+          }
+          list->keys = new_keys;
+          list->values = new_values;
+          list->keys[list->n] = new_key;
           list->values[list->n] = value;
           ++(list->n);
           fsplit = strtok_r(NULL, "&", &fmarker);
