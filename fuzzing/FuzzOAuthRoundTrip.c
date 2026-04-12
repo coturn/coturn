@@ -45,8 +45,9 @@ extern int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
     memcpy(&src_token.enc_block.lifetime, p, sizeof(uint32_t));
     p += sizeof(uint32_t);
     size_t key_len = Size - (size_t)(p - Data);
-    if (key_len > MAXSHASIZE)
+    if (key_len > MAXSHASIZE) {
       key_len = MAXSHASIZE;
+    }
     src_token.enc_block.key_length = (uint16_t)key_len;
     memcpy(src_token.enc_block.mac_key, p, key_len);
   }
