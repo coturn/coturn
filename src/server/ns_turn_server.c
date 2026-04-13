@@ -4560,8 +4560,8 @@ static int read_client_connection(turn_turnserver *server, ts_ur_super_session *
     const uint16_t method =
         stun_get_method_str(ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh));
 
-    const int is_indication = stun_is_indication_str(ioa_network_buffer_data(in_buffer->nbh),
-                                                     ioa_network_buffer_get_size(in_buffer->nbh));
+    const int is_indication =
+        stun_is_indication_str(ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh));
 
     /* Indications never produce a response, so skip the response buffer allocation. */
     ioa_network_buffer_handle nbh = is_indication ? NULL : ioa_network_buffer_allocate(server->e);
