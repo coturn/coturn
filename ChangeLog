@@ -1,3 +1,44 @@
+Release 4.10.0
+
+Changelist:
+- Skip response buffer allocation for STUN indications (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Remove unused mutex from ur_map structure (#1861) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Merge commit from fork (Pavel Punsky <eakraly@users.noreply.github.com>)
+- WebRTC Auth optimization path (#1860) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix null pointer dereferences in post_parse() (#1859) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Extend seed corpus (#1858) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Add more fuzzing scenarios (#1857) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Add Linux-only `recvmmsg` receive path for DTLS/UDP listener (#1852) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix Linux build warnings (#1853) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- perf: remove mutex from per-thread super_memory allocator (#1851) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Keep only NEV_UDP_SOCKET_PER_THREAD network engine (#1849) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix stack buffer overflow in OAuth token decoding (#1850) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Update config and Readme files about deprecated TLSv1/1.1 (#1848) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- perf: eliminate mutex and reduce copies on auth message dispatch (#1843) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- perf: replace mutex_bps with lock-free atomics for bandwidth tracking (#1846) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix uint16_t truncation overflow in stun_get_message_len_str() causes… (#1844) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- fix: restore RFC 3489 (old STUN) backward compatibility broken since 4.7.0 (#1839) (Carlos Ruiz Ballesteros <carlos.ruizbal@gmail.com>)
+- Change port identifiers to use uint16_t (#1752) (redraincatching <99604494+redraincatching@users.noreply.github.com>)
+- Fixes: run_tests.sh and no db (#1834) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Improve PostgreSQL.md Clarity (#1833) (Captain Picarl <109193553+CaptainPicarl@users.noreply.github.com>)
+- Add session usage reporting callback to TURN database driver (#1794) (mesibo <yusuf@mesibo.com>)
+- Initialize variables before use (#1832) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Replace perror with logging (#1831) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- CLI interface is disabled by default (#1830) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Disable reason string in response messages to reduce amplification factor (#1829) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Perf: improve worst case scenario optimization (#1823) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix compilation warnings (#1822) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix codeql scanning definition (#1814) (Pavel Punsky <eakraly@users.noreply.github.com>)
+
+Contributors:
+- Captain Picarl <109193553+CaptainPicarl@users.noreply.github.com>
+- Carlos Ruiz Ballesteros <carlos.ruizbal@gmail.com>
+- Pavel Punsky <eakraly@users.noreply.github.com>
+- dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+- mesibo <yusuf@mesibo.com>
+- redraincatching <99604494+redraincatching@users.noreply.github.com>
+- tyranron <tyranron@gmail.com>
+
 Release 4.9.0
 
 Changelist:
