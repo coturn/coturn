@@ -64,6 +64,7 @@ struct auth_server {
 };
 
 #define MIN_AUTHSERVER_NUMBER (3)
+#define MIN_AUTHSERVER_NUMBER_INLINE (2)
 static authserver_id authserver_number = MIN_AUTHSERVER_NUMBER;
 static struct auth_server authserver[256];
 
@@ -449,12 +450,53 @@ static _Atomic unsigned int auth_message_counter = 0;
 #define FETCH_ADD_AUTH_COUNTER() atomic_fetch_add(&auth_message_counter, 1)
 #endif
 
+static void send_auth_message_to_relay(struct auth_message *am) {
+  struct evbuffer *output = NULL;
+  struct relay_server *relay_server = NULL;
+
+  if (am) {
+    relay_server = get_relay_server(am->id);
+  }
+
+  if (relay_server) {
+    output = bufferevent_get_output(relay_server->auth_out_buf);
+  } else if (am) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: can't find relay for turn_server_id: %d\n", __FUNCTION__, (int)am->id);
+  }
+
+  if (output && evbuffer_add(output, &am, sizeof(am)) >= 0) {
+    return;
+  }
+
+  if (am) {
+    ioa_network_buffer_delete(NULL, am->in_buffer.nbh);
+    free(am);
+  }
+}
+
+static bool can_auth_message_inline(const struct auth_message *am) {
+  return am && turn_params.use_auth_secret_with_timestamp && !am->in_oauth && am->ct == TURN_CREDENTIALS_LONG_TERM &&
+         am->in_buffer.nbh && get_secrets_list_size(&turn_params.default_users_db.ram_db.static_auth_secrets) > 0;
+}
+
 void send_auth_message_to_auth_server(struct auth_message *am) {
+  if (can_auth_message_inline(am)) {
+    if (get_user_key(am->in_oauth, &(am->out_oauth), &(am->max_session_time), am->username, am->realm, am->key,
+                     am->in_buffer.nbh) < 0) {
+      am->success = 0;
+    } else {
+      am->success = 1;
+    }
+    send_auth_message_to_relay(am);
+    return;
+  }
+
   const authserver_id sn = (authserver_id)(FETCH_ADD_AUTH_COUNTER() % (authserver_number - 1)) + 1;
 
   struct evbuffer *output = bufferevent_get_output(authserver[sn].out_buf);
   if (evbuffer_add(output, &am, sizeof(am)) < 0) {
     fprintf(stderr, "%s: Weird buffer error\n", __FUNCTION__);
+    ioa_network_buffer_delete(NULL, am->in_buffer.nbh);
     free(am);
   }
 }
@@ -479,20 +521,7 @@ static void auth_server_receive_message(struct bufferevent *bev, void *ptr) {
       am->success = 1;
     }
 
-    struct evbuffer *output = NULL;
-    struct relay_server *relay_server = get_relay_server(am->id);
-    if (relay_server) {
-      output = bufferevent_get_output(relay_server->auth_out_buf);
-    } else {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: can't find relay for turn_server_id: %d\n", __FUNCTION__, (int)am->id);
-    }
-
-    if (output) {
-      evbuffer_add(output, &am, sizeof(am));
-    } else {
-      ioa_network_buffer_delete(NULL, am->in_buffer.nbh);
-      free(am);
-    }
+    send_auth_message_to_relay(am);
   }
 }
 
@@ -1474,7 +1503,12 @@ void setup_server(void) {
 
   authserver_number = 1 + (authserver_id)(turn_params.cpus / 2);
 
-  if (authserver_number < MIN_AUTHSERVER_NUMBER) {
+  if (turn_params.use_auth_secret_with_timestamp && !turn_params.oauth &&
+      get_secrets_list_size(&turn_params.default_users_db.ram_db.static_auth_secrets) > 0) {
+    /* All auth is handled inline on relay threads — only need
+     * 1 housekeeping thread + 1 fallback worker. */
+    authserver_number = MIN_AUTHSERVER_NUMBER_INLINE;
+  } else if (authserver_number < MIN_AUTHSERVER_NUMBER) {
     authserver_number = MIN_AUTHSERVER_NUMBER;
   }
 
