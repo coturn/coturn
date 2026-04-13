@@ -64,6 +64,7 @@ struct auth_server {
 };
 
 #define MIN_AUTHSERVER_NUMBER (3)
+#define MIN_AUTHSERVER_NUMBER_INLINE (2)
 static authserver_id authserver_number = MIN_AUTHSERVER_NUMBER;
 static struct auth_server authserver[256];
 
@@ -1503,8 +1504,17 @@ void setup_server(void) {
 
   authserver_number = 1 + (authserver_id)(turn_params.cpus / 2);
 
-  if (authserver_number < MIN_AUTHSERVER_NUMBER) {
-    authserver_number = MIN_AUTHSERVER_NUMBER;
+  /* When all auth can be handled inline on relay threads
+   * (REST API + static secrets, no OAuth), we only need
+   * 1 housekeeping thread + 1 fallback worker. */
+  authserver_id min_auth = MIN_AUTHSERVER_NUMBER;
+  if (turn_params.use_auth_secret_with_timestamp && !turn_params.oauth &&
+      get_secrets_list_size(&turn_params.default_users_db.ram_db.static_auth_secrets) > 0) {
+    min_auth = MIN_AUTHSERVER_NUMBER_INLINE;
+  }
+
+  if (authserver_number < min_auth) {
+    authserver_number = min_auth;
   }
 
 #if !defined(TURN_NO_THREAD_BARRIERS)
