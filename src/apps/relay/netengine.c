@@ -475,9 +475,8 @@ static void send_auth_message_to_relay(struct auth_message *am) {
 }
 
 static bool can_auth_message_inline(const struct auth_message *am) {
-  return am && turn_params.use_auth_secret_with_timestamp && !am->in_oauth &&
-         am->ct == TURN_CREDENTIALS_LONG_TERM && am->in_buffer.nbh &&
-         get_secrets_list_size(&turn_params.default_users_db.ram_db.static_auth_secrets) > 0;
+  return am && turn_params.use_auth_secret_with_timestamp && !am->in_oauth && am->ct == TURN_CREDENTIALS_LONG_TERM &&
+         am->in_buffer.nbh && get_secrets_list_size(&turn_params.default_users_db.ram_db.static_auth_secrets) > 0;
 }
 
 void send_auth_message_to_auth_server(struct auth_message *am) {
