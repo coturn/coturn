@@ -3885,7 +3885,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
     return 0;
   }
 
-  if (ua_num > 0) {
+  if (ua_num > 0 && nbh) {
 
     err_code = 420;
 
@@ -4555,11 +4555,16 @@ static int read_client_connection(turn_turnserver *server, ts_ur_super_session *
                                                     ioa_network_buffer_get_size(in_buffer->nbh), 0,
                                                     &(ss->enforce_fingerprints))) {
 
-    ioa_network_buffer_handle nbh = ioa_network_buffer_allocate(server->e);
     int resp_constructed = 0;
 
     const uint16_t method =
         stun_get_method_str(ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh));
+
+    const int is_indication =
+        stun_is_indication_str(ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh));
+
+    /* Indications never produce a response, so skip the response buffer allocation. */
+    ioa_network_buffer_handle nbh = is_indication ? NULL : ioa_network_buffer_allocate(server->e);
 
     handle_turn_command(server, ss, in_buffer, nbh, &resp_constructed, can_resume);
 
