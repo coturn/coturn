@@ -109,20 +109,6 @@ bool ur_map_foreach(ur_map *map, foreachcb_type func);
  */
 bool ur_map_foreach_arg(const ur_map *map, foreachcb_arg_type func, void *arg);
 
-/**
- * @ret:
- * true - success
- * false - failure
- */
-bool ur_map_lock(const ur_map *map);
-
-/**
- * @ret:
- * true - success
- * false - failure
- */
-bool ur_map_unlock(const ur_map *map);
-
 ///////////// "local" map /////////////////////
 
 #define LM_MAP_HASH_SIZE (8)

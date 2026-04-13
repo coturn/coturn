@@ -49,7 +49,6 @@ KHASH_MAP_INIT_INT64(3, ur_map_value_type)
 struct _ur_map {
   khash_t(3) * h;
   uint64_t magic;
-  TURN_MUTEX_DECLARE(mutex)
 };
 
 static bool ur_map_init(ur_map *map) {
@@ -57,7 +56,6 @@ static bool ur_map_init(ur_map *map) {
     map->h = kh_init(3);
     if (map->h) {
       map->magic = MAGIC_HASH;
-      TURN_MUTEX_INIT_RECURSIVE(&(map->mutex));
       return true;
     }
   }
@@ -155,7 +153,6 @@ void ur_map_free(ur_map **map) {
     kh_destroy(3, (*map)->h);
     (*map)->h = NULL;
     (*map)->magic = 0;
-    TURN_MUTEX_DESTROY(&((*map)->mutex));
     free(*map);
     *map = NULL;
   }
@@ -191,22 +188,6 @@ bool ur_map_foreach_arg(const ur_map *map, foreachcb_arg_type func, void *arg) {
         }
       }
     }
-  }
-  return false;
-}
-
-bool ur_map_lock(const ur_map *map) {
-  if (ur_map_valid(map)) {
-    TURN_MUTEX_LOCK((const turn_mutex *)&(map->mutex));
-    return true;
-  }
-  return false;
-}
-
-bool ur_map_unlock(const ur_map *map) {
-  if (ur_map_valid(map)) {
-    TURN_MUTEX_UNLOCK((const turn_mutex *)&(map->mutex));
-    return true;
   }
   return false;
 }
