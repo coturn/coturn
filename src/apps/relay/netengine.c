@@ -1504,17 +1504,13 @@ void setup_server(void) {
 
   authserver_number = 1 + (authserver_id)(turn_params.cpus / 2);
 
-  /* When all auth can be handled inline on relay threads
-   * (REST API + static secrets, no OAuth), we only need
-   * 1 housekeeping thread + 1 fallback worker. */
-  authserver_id min_auth = MIN_AUTHSERVER_NUMBER;
   if (turn_params.use_auth_secret_with_timestamp && !turn_params.oauth &&
       get_secrets_list_size(&turn_params.default_users_db.ram_db.static_auth_secrets) > 0) {
-    min_auth = MIN_AUTHSERVER_NUMBER_INLINE;
-  }
-
-  if (authserver_number < min_auth) {
-    authserver_number = min_auth;
+    /* All auth is handled inline on relay threads — only need
+     * 1 housekeeping thread + 1 fallback worker. */
+    authserver_number = MIN_AUTHSERVER_NUMBER_INLINE;
+  } else if (authserver_number < MIN_AUTHSERVER_NUMBER) {
+    authserver_number = MIN_AUTHSERVER_NUMBER;
   }
 
 #if !defined(TURN_NO_THREAD_BARRIERS)
