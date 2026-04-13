@@ -1292,7 +1292,7 @@ int stun_attr_get_type(stun_attr_ref attr) {
 int stun_attr_get_len(stun_attr_ref attr) {
   if (attr) {
     uint16_t val;
-    memcpy(&val, attr + 2, sizeof(val));
+    memcpy(&val, (const uint8_t *)attr + 2, sizeof(val));
     return (int)(nswap16(val));
   }
   return -1;
@@ -1301,7 +1301,7 @@ int stun_attr_get_len(stun_attr_ref attr) {
 const uint8_t *stun_attr_get_value(stun_attr_ref attr) {
   if (attr) {
     uint16_t val;
-    memcpy(&val, attr + 2, sizeof(val));
+    memcpy(&val, (const uint8_t *)attr + 2, sizeof(val));
     const int len = (int)(nswap16(val));
     if (len < 1) {
       return NULL;
@@ -1314,7 +1314,7 @@ const uint8_t *stun_attr_get_value(stun_attr_ref attr) {
 int stun_get_requested_address_family(stun_attr_ref attr) {
   if (attr) {
     uint16_t raw_len;
-    memcpy(&raw_len, attr + 2, sizeof(raw_len));
+    memcpy(&raw_len, (const uint8_t *)attr + 2, sizeof(raw_len));
     const int len = (int)(nswap16(raw_len));
     if (len != 4) {
       return STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_INVALID;
