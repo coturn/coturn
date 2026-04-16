@@ -34,7 +34,7 @@ ALPINE_VER := alpine$(strip $(shell grep -m1 'alpine_ver=' alpine/Dockerfile \
 DEBIAN_VER := $(strip $(shell grep -m1 'debian_ver=' debian/Dockerfile \
                               | cut -d '=' -f2))
 
-BUILD_REV ?= 0
+BUILD_REV ?= 1
 
 NAME := coturn
 OWNER := $(or $(GITHUB_REPOSITORY_OWNER),coturn)
