@@ -2420,11 +2420,25 @@ static void set_option(int c, char *value) {
   case ALLOWED_PEER_IPS:
     if (add_ip_list_range(value, NULL, &turn_params.ip_whitelist) == 0) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "White listing: %s\n", value);
+    } else {
+      /* Fail closed: a malformed allowed-peer-ips entry must abort startup so the operator
+         notices, instead of silently leaving the intended whitelist incomplete. */
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+                    "Aborting: invalid allowed-peer-ip value %s. Use IP or IP-IP range (CIDR is not supported).\n",
+                    value);
+      exit(-1);
     }
     break;
   case DENIED_PEER_IPS:
     if (add_ip_list_range(value, NULL, &turn_params.ip_blacklist) == 0) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Black listing: %s\n", value);
+    } else {
+      /* Fail closed: a malformed denied-peer-ips entry would otherwise leave intended
+         blocks unenforced, exposing internal targets (SSRF-via-TURN). */
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+                    "Aborting: invalid denied-peer-ip value %s. Use IP or IP-IP range (CIDR is not supported).\n",
+                    value);
+      exit(-1);
     }
     break;
   case CIPHER_LIST_OPT:
