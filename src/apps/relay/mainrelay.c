@@ -176,7 +176,6 @@ turn_params_t turn_params = {
 
     NULL,                                 /*external_ip*/
     DEFAULT_GENERAL_RELAY_SERVERS_NUMBER, /*general_relay_servers_number*/
-    0,                                    /*udp_relay_servers_number*/
     UR_SERVER_SOCK_BUF_SIZE,
 
     ////////////// Auth server /////////////////////////////////////

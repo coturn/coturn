@@ -753,8 +753,6 @@ static int redis_list_secrets(uint8_t *realm, secrets_list_t *secrets, secrets_l
     if (reply) {
       secrets_list_t keys;
       size_t isz = 0;
-      char s[257];
-
       init_secrets_list(&keys);
 
       if (reply->type == REDIS_REPLY_ERROR) {
