@@ -1931,7 +1931,9 @@ int stun_check_message_integrity_by_key_str(turn_credential_type ct, uint8_t *bu
     return -1;
   }
 
-  if (0 != memcmp(old_hmac, new_hmac, shasize)) {
+  /* Use constant-time comparison: a short-circuiting memcmp leaks the matching prefix
+     length via response timing, allowing byte-by-byte HMAC recovery. */
+  if (0 != CRYPTO_memcmp(old_hmac, new_hmac, shasize)) {
     return 0;
   }
 
