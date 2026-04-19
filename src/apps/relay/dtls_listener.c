@@ -32,6 +32,11 @@
  * SUCH DAMAGE.
  */
 
+/* recvmmsg() and struct mmsghdr require _GNU_SOURCE on Linux */
+#if defined(__linux__) && !defined(_GNU_SOURCE)
+#define _GNU_SOURCE
+#endif
+
 #include "apputils.h"
 #include "mainrelay.h"
 #include <errno.h>

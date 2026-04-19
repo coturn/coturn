@@ -424,6 +424,9 @@ OSCFLAGS="${CFLAGS}"
 OSLIBS="${LDFLAGS}"
 
 SYSTEM=`uname`
+if [ "${SYSTEM}" = "Linux" ] ; then
+	OSCFLAGS="${OSCFLAGS} -D_GNU_SOURCE"
+fi
 if [ "${SYSTEM}" = "NetBSD" ] ; then
 	OSCFLAGS="${OSCFLAGS} -I/usr/pkg/include"
 	OSLIBS="-L/usr/pkg/lib ${OSLIBS}"
