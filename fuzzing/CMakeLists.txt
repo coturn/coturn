@@ -2,18 +2,13 @@ set(FUZZ_COMMON_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/FuzzOpenSSLInit.c
 )
 
+# Only two fuzz targets are produced because the upstream OSS-Fuzz build
+# recipe (google/oss-fuzz/projects/coturn/build.sh) copies only these two
+# binaries and their seed corpora into $OUT. Additional fuzzing coverage is
+# reached by dispatching from a single-byte selector inside each target.
+
 add_executable(FuzzStun FuzzStun.c ${FUZZ_COMMON_SOURCES})
 target_link_libraries(FuzzStun turnclient ${LIB_FUZZING_ENGINE})
-
-add_executable(FuzzChannelData FuzzChannelData.c ${FUZZ_COMMON_SOURCES})
-target_link_libraries(FuzzChannelData turnclient ${LIB_FUZZING_ENGINE})
-
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/input/FuzzChannelData_seed_corpus.zip
-        DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
-
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/input/FuzzStun_seed_corpus.zip
-        DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
-
 
 set(FuzzStunClientSRC
     ${CMAKE_CURRENT_SOURCE_DIR}/FuzzStunClient.c
@@ -23,32 +18,12 @@ set(FuzzStunClientSRC
 add_executable(FuzzStunClient ${FuzzStunClientSRC} ${FUZZ_COMMON_SOURCES})
 target_link_libraries(FuzzStunClient turnclient ${LIB_FUZZING_ENGINE})
 
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/input/FuzzStun_seed_corpus.zip
+        DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/input/FuzzStunClient_seed_corpus.zip
         DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
-add_executable(FuzzOAuthToken FuzzOAuthToken.c ${FUZZ_COMMON_SOURCES})
-target_link_libraries(FuzzOAuthToken turnclient ${LIB_FUZZING_ENGINE})
-
-# --- New fuzzing targets ---
-
-add_executable(FuzzStunAttrIter FuzzStunAttrIter.c ${FUZZ_COMMON_SOURCES})
-target_link_libraries(FuzzStunAttrIter turnclient ${LIB_FUZZING_ENGINE})
-
-add_executable(FuzzStunIntegrity FuzzStunIntegrity.c ${FUZZ_COMMON_SOURCES})
-target_link_libraries(FuzzStunIntegrity turnclient ${LIB_FUZZING_ENGINE})
-
-add_executable(FuzzStunAddrCodec FuzzStunAddrCodec.c ${FUZZ_COMMON_SOURCES})
-target_link_libraries(FuzzStunAddrCodec turnclient ${LIB_FUZZING_ENGINE})
-
-add_executable(FuzzOldStun FuzzOldStun.c ${FUZZ_COMMON_SOURCES})
-target_link_libraries(FuzzOldStun turnclient ${LIB_FUZZING_ENGINE})
-
-add_executable(FuzzOAuthRoundTrip FuzzOAuthRoundTrip.c ${FUZZ_COMMON_SOURCES})
-target_link_libraries(FuzzOAuthRoundTrip turnclient ${LIB_FUZZING_ENGINE})
-
-add_executable(FuzzStunAttrAdd FuzzStunAttrAdd.c ${FUZZ_COMMON_SOURCES})
-target_link_libraries(FuzzStunAttrAdd turnclient ${LIB_FUZZING_ENGINE})
-
-# Shared dictionary for all STUN/TURN fuzz targets
+# Shared dictionary for STUN/TURN fuzz targets
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/stun.dict
         DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
