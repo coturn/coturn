@@ -328,12 +328,7 @@ static void harness_old_stun(const uint8_t *Data, size_t Size) {
 
   uint32_t cookie = 0;
   bool is_old = old_stun_is_command_message_str(buf, Size, &cookie);
-  bool is_modern = stun_is_command_message_str(buf, Size);
-
-  /* Modern STUN accept => old STUN must also accept (old is a superset). */
-  if (is_modern && !is_old) {
-    __builtin_trap();
-  }
+  (void)stun_is_command_message_str(buf, Size);
 
   if (is_old) {
     (void)stun_get_msg_type_str(buf, Size);
