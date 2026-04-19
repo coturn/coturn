@@ -6,9 +6,9 @@
  * Multi-harness libFuzzer entry point for client-side STUN parsing,
  * TCP framing, and address codec.
  *
- * The first input byte selects one of several sub-harnesses. Keeping
- * everything behind a single binary allows the upstream OSS-Fuzz build
- * recipe (which only copies FuzzStun and FuzzStunClient) to stay
+ * Every iteration runs all sub-harnesses in sequence on the same input.
+ * Keeping everything behind a single binary allows the upstream OSS-Fuzz
+ * build recipe (which only copies FuzzStun and FuzzStunClient) to stay
  * unchanged.
  */
 
@@ -154,7 +154,7 @@ static void harness_addr_codec(const uint8_t *Data, size_t Size) {
 }
 
 /* ------------------------------------------------------------------ */
-/* libFuzzer entry point — dispatch on Data[0] mod N.                 */
+/* libFuzzer entry point — run every harness on each input.           */
 /*                                                                    */
 /* Note: OAuth token sub-harnesses are intentionally omitted here.    */
 /* decode_oauth_token_gcm in src/client/ns_turn_msg.c leaks the       */
@@ -163,25 +163,8 @@ static void harness_addr_codec(const uint8_t *Data, size_t Size) {
 /* leak is fixed in a separate PR.                                    */
 /* ------------------------------------------------------------------ */
 extern int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
-  if (Size < 1) {
-    return 0;
-  }
-
-  uint8_t selector = Data[0];
-  const uint8_t *sub_data = Data + 1;
-  size_t sub_size = Size - 1;
-
-  switch (selector % 3) {
-  case 0:
-    harness_stun_client(sub_data, sub_size);
-    break;
-  case 1:
-    harness_channel_data(sub_data, sub_size);
-    break;
-  case 2:
-    harness_addr_codec(sub_data, sub_size);
-    break;
-  }
-
+  harness_stun_client(Data, Size);
+  harness_channel_data(Data, Size);
+  harness_addr_codec(Data, Size);
   return 0;
 }

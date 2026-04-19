@@ -5,7 +5,7 @@
  *
  * Multi-harness libFuzzer entry point for server-side STUN parsing.
  *
- * The first input byte selects one of several sub-harnesses covering
+ * Every iteration runs all sub-harnesses in sequence on the same input:
  * RFC 5769 integrity checks, multi-SHA/credential integrity, attribute
  * iteration, attribute serialization, and legacy (pre-RFC 5389) STUN
  * detection. Keeping everything behind a single binary allows the
@@ -359,34 +359,13 @@ static void harness_old_stun(const uint8_t *Data, size_t Size) {
 }
 
 /* ------------------------------------------------------------------ */
-/* libFuzzer entry point — dispatch on Data[0] mod N.                 */
+/* libFuzzer entry point — run every harness on each input.           */
 /* ------------------------------------------------------------------ */
 extern int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
-  if (Size < 1) {
-    return 0;
-  }
-
-  uint8_t selector = Data[0];
-  const uint8_t *sub_data = Data + 1;
-  size_t sub_size = Size - 1;
-
-  switch (selector % 5) {
-  case 0:
-    harness_integrity_sha1(sub_data, sub_size);
-    break;
-  case 1:
-    harness_integrity_multi(sub_data, sub_size);
-    break;
-  case 2:
-    harness_attr_iter(sub_data, sub_size);
-    break;
-  case 3:
-    harness_attr_add(sub_data, sub_size);
-    break;
-  case 4:
-    harness_old_stun(sub_data, sub_size);
-    break;
-  }
-
+  harness_integrity_sha1(Data, Size);
+  harness_integrity_multi(Data, Size);
+  harness_attr_iter(Data, Size);
+  harness_attr_add(Data, Size);
+  harness_old_stun(Data, Size);
   return 0;
 }
