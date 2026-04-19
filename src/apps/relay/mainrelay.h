@@ -151,9 +151,6 @@ static inline int _msvc_cas_weak(volatile LONG *ptr, band_limit_t *expected, ban
 
 #define MAX_NUMBER_OF_GENERAL_RELAY_SERVERS ((uint8_t)(0x80))
 
-#define TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP MAX_NUMBER_OF_GENERAL_RELAY_SERVERS
-#define TURNSERVER_ID_BOUNDARY_BETWEEN_UDP_AND_TCP TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP
-
 #define DEFAULT_CPUS_NUMBER (2)
 
 /////////// TYPES ///////////////////////////////////
