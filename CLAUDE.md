@@ -66,9 +66,8 @@ cmake --build build -j --target check     # builds tests, runs ctest
 cmake --build build -j --target test_ioaddr  # build a single binary
 ctest --test-dir build --output-on-failure   # run already-built tests
 
-# Legacy Makefile bridge (after ./configure)
+# Legacy Makefile bridge (after ./configure; requires cmake on PATH)
 make unit-tests   # bootstraps build/unit-tests/, builds + runs Unity tests
-make check        # RFC 5769 conformance + unit tests
 ```
 
 Adding a new test: drop `tests/test_<name>.c` and append

@@ -42,10 +42,10 @@ all: ${TURN_BUILD_RESULTS}
 
 test: check
 
-check: bin/turnutils_rfc5769check unit-tests
+check: bin/turnutils_rfc5769check
 	bin/turnutils_rfc5769check
 
-### Unit tests (Unity, configured via CMake):
+### Unit tests (Unity, configured via CMake — opt-in, requires cmake):
 unit-tests:
 	${MKDIR} build/unit-tests
 	cd build/unit-tests && cmake -DBUILD_TESTING=ON ${CURDIR} && $(MAKE) check
