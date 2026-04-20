@@ -72,11 +72,8 @@ static struct auth_server authserver[256];
 
 #define get_real_general_relay_servers_number()                                                                        \
   (turn_params.general_relay_servers_number > 1 ? turn_params.general_relay_servers_number : 1)
-#define get_real_udp_relay_servers_number()                                                                            \
-  (turn_params.udp_relay_servers_number > 1 ? turn_params.udp_relay_servers_number : 1)
 
 static struct relay_server *general_relay_servers[1 + ((turnserver_id)-1)];
-static struct relay_server *udp_relay_servers[1 + ((turnserver_id)-1)];
 
 static struct relay_server *get_relay_server(turnserver_id id);
 
@@ -415,29 +412,15 @@ static void allocate_relay_addrs_ports(void) {
 static int handle_relay_message(relay_server_handle rs, struct message_to_relay *sm);
 
 static struct relay_server *get_relay_server(turnserver_id id) {
-  struct relay_server *rs = NULL;
-  if (id >= TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP) {
-    const size_t dest = id - TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP;
-    if (dest >= get_real_udp_relay_servers_number()) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Too large UDP relay number: %d, total=%d\n", __FUNCTION__, (int)dest,
-                    (int)get_real_udp_relay_servers_number());
-    }
-    rs = udp_relay_servers[dest];
-    if (!rs) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Wrong UDP relay number: %d, total=%d\n", __FUNCTION__, (int)dest,
-                    (int)get_real_udp_relay_servers_number());
-    }
-  } else {
-    const size_t dest = id;
-    if (dest >= get_real_general_relay_servers_number()) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Too large general relay number: %d, total=%d\n", __FUNCTION__, (int)dest,
-                    (int)get_real_general_relay_servers_number());
-    }
-    rs = general_relay_servers[dest];
-    if (!rs) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Wrong general relay number: %d, total=%d\n", __FUNCTION__, (int)dest,
-                    (int)get_real_general_relay_servers_number());
-    }
+  const size_t dest = id;
+  if (dest >= get_real_general_relay_servers_number()) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Too large general relay number: %d, total=%d\n", __FUNCTION__, (int)dest,
+                  (int)get_real_general_relay_servers_number());
+  }
+  struct relay_server *rs = general_relay_servers[dest];
+  if (!rs) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Wrong general relay number: %d, total=%d\n", __FUNCTION__, (int)dest,
+                  (int)get_real_general_relay_servers_number());
   }
   return rs;
 }
@@ -1525,20 +1508,9 @@ void setup_server(void) {
   allocate_relay_addrs_ports();
   setup_barriers();
   setup_general_relay_servers();
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total General servers: %d\n", (int)get_real_general_relay_servers_number());
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total relay threads: %d\n", (int)get_real_general_relay_servers_number());
 
   setup_socket_per_thread_udp_listener_servers();
-
-  {
-    int tot = 0;
-    if (udp_relay_servers[0]) {
-      tot = get_real_udp_relay_servers_number();
-    }
-    if (tot) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total UDP servers: %d\n", (int)tot);
-    }
-  }
-
   {
     const int tot = get_real_general_relay_servers_number();
     if (tot) {
@@ -1572,11 +1544,6 @@ void enable_drain_mode(void) {
   for (size_t i = 0; i < get_real_general_relay_servers_number(); i++) {
     if (general_relay_servers[i]) {
       general_relay_servers[i]->server.is_draining = true;
-    }
-  }
-  for (size_t i = 0; i < get_real_udp_relay_servers_number(); i++) {
-    if (udp_relay_servers[i]) {
-      udp_relay_servers[i]->server.is_draining = true;
     }
   }
   turn_params.drain_turn_server = true;
