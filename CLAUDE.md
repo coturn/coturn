@@ -53,6 +53,28 @@ cd examples && ./scripts/basic/udp_c2c_client.sh
 cd examples && ./run_tests.sh
 ```
 
+### Unit tests (Unity, opt-in via `BUILD_TESTING=ON`)
+
+Unity is fetched on demand via CMake `FetchContent`; nothing is vendored.
+Tests live under [tests/](tests/) and link against the existing
+`turnclient` static library.
+
+```bash
+# CMake direct
+cmake -S . -B build -DBUILD_TESTING=ON
+cmake --build build -j --target check     # builds tests, runs ctest
+cmake --build build -j --target test_ioaddr  # build a single binary
+ctest --test-dir build --output-on-failure   # run already-built tests
+
+# Legacy Makefile bridge (after ./configure)
+make unit-tests   # bootstraps build/unit-tests/, builds + runs Unity tests
+make check        # RFC 5769 conformance + unit tests
+```
+
+Adding a new test: drop `tests/test_<name>.c` and append
+`coturn_add_test(test_<name>)` in [tests/CMakeLists.txt](tests/CMakeLists.txt).
+The `check` target picks it up automatically.
+
 See [docs/Testing.md](docs/Testing.md) for database setup and extended test scenarios.
 
 ## Source layout
