@@ -4978,8 +4978,6 @@ void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, io
   }
   server->acme_redirect = acme_redirect;
 
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "turn server id=%d created\n", (int)id);
-
   server->check_origin = check_origin;
   server->no_tcp_relay = no_tcp_relay;
   server->no_udp_relay = no_udp_relay;
