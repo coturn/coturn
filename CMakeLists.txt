@@ -183,3 +183,9 @@ if(FUZZER)
     add_subdirectory(fuzzing)
 
 endif()
+
+option(BUILD_TESTING "Build unit tests" OFF)
+if(BUILD_TESTING)
+    enable_testing()
+    add_subdirectory(tests)
+endif()

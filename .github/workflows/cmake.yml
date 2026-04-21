@@ -33,9 +33,12 @@ jobs:
         uses: ./.github/workflows/actions/ubuntu-build-deps
 
       - name: Configure
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DBUILD_TESTING=ON
       - name: Build
         run: cmake --build build --parallel $(nproc)
+
+      - name: Unit tests
+        run: ctest --test-dir build --output-on-failure
 
       - run: ./run_tests.sh
         working-directory: examples/
