@@ -91,6 +91,15 @@ static void test_channel_message_roundtrip(void) {
   TEST_ASSERT_EQUAL_UINT16(channel, parsed_channel);
 }
 
+static void test_http_message_len_handles_non_null_terminated_buffer(void) {
+  uint8_t buf[] = {'G', 'E', 'T', ' ', '/', ' ', 'H', 'T', 'T', 'P', '/', '1', '.', '1', '\r', '\n', '\r', '\n'};
+  size_t app_len = 0;
+
+  TEST_ASSERT_EQUAL_INT((int)sizeof(buf), stun_get_message_len_str(buf, sizeof(buf), 1, &app_len));
+  TEST_ASSERT_EQUAL_size_t(sizeof(buf), app_len);
+  TEST_ASSERT_EQUAL_INT((int)sizeof(buf), is_http((const char *)buf, sizeof(buf)));
+}
+
 int main(void) {
   UNITY_BEGIN();
   RUN_TEST(test_init_request_produces_valid_stun_header);
@@ -100,5 +109,6 @@ int main(void) {
   RUN_TEST(test_truncated_buffer_is_not_command_message);
   RUN_TEST(test_zeroed_buffer_is_not_command_message);
   RUN_TEST(test_channel_message_roundtrip);
+  RUN_TEST(test_http_message_len_handles_non_null_terminated_buffer);
   return UNITY_END();
 }
