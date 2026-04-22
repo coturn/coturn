@@ -835,7 +835,7 @@ bool stun_is_channel_message_str(const uint8_t *buf, size_t *blen, uint16_t *chn
 static inline bool sheadof(const char *head, const char *full, bool ignore_case) {
   while (*head) {
     if (*head != *full) {
-      if (ignore_case && (tolower((int)*head) == tolower((int)*full))) {
+      if (ignore_case && (tolower((unsigned char)*head) == tolower((unsigned char)*full))) {
         // OK
       } else {
         return false;
@@ -867,10 +867,19 @@ static inline const char *findstr(const char *hay, size_t slen, const char *need
   return ret;
 }
 
+static inline bool has_prefix(const char *buf, size_t blen, const char *prefix, bool ignore_case) {
+  if (!buf || !prefix) {
+    return false;
+  }
+
+  const size_t prefix_len = strlen(prefix);
+  return (prefix_len <= blen) && sheadof(prefix, buf, ignore_case);
+}
+
 int is_http(const char *s, size_t blen) {
   if (s && blen >= 12) {
-    if ((strstr(s, "GET ") == s) || (strstr(s, "POST ") == s) || (strstr(s, "DELETE ") == s) ||
-        (strstr(s, "PUT ") == s)) {
+    if (has_prefix(s, blen, "GET ", false) || has_prefix(s, blen, "POST ", false) ||
+        has_prefix(s, blen, "DELETE ", false) || has_prefix(s, blen, "PUT ", false)) {
       const char *sp = findstr(s + 4, blen - 4, " HTTP/", false);
       if (sp) {
         sp += 6;
