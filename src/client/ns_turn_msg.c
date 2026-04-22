@@ -751,6 +751,7 @@ static void stun_init_error_response_common_str(uint8_t *buf, size_t *len, uint1
   }
 
   uint8_t avalue[513];
+  memset(avalue, 0, sizeof(avalue));
   avalue[0] = 0;
   avalue[1] = 0;
   avalue[2] = (uint8_t)(error_code / 100);
