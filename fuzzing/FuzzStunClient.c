@@ -23,9 +23,7 @@
 #include "ns_turn_utils.h"
 #include "stun_buffer.h"
 
-static uint8_t fuzz_byte(const uint8_t *Data, size_t Size, size_t idx) {
-  return Size ? Data[idx % Size] : 0;
-}
+static uint8_t fuzz_byte(const uint8_t *Data, size_t Size, size_t idx) { return Size ? Data[idx % Size] : 0; }
 
 static uint16_t fuzz_u16(const uint8_t *Data, size_t Size, size_t idx) {
   return (uint16_t)(((uint16_t)fuzz_byte(Data, Size, idx) << 8) | (uint16_t)fuzz_byte(Data, Size, idx + 1));
@@ -39,9 +37,7 @@ static uint64_t fuzz_u64(const uint8_t *Data, size_t Size, size_t idx) {
   return ((uint64_t)fuzz_u32(Data, Size, idx) << 32) | (uint64_t)fuzz_u32(Data, Size, idx + 4);
 }
 
-static bool fuzz_flag(const uint8_t *Data, size_t Size, size_t idx) {
-  return (fuzz_byte(Data, Size, idx) & 1u) != 0;
-}
+static bool fuzz_flag(const uint8_t *Data, size_t Size, size_t idx) { return (fuzz_byte(Data, Size, idx) & 1u) != 0; }
 
 static void fuzz_string(const uint8_t *Data, size_t Size, size_t idx, char *out, size_t out_size) {
   if (!out || !out_size) {
@@ -352,7 +348,8 @@ static void harness_message_builders(const uint8_t *Data, size_t Size) {
   {
     stun_buffer msg;
     stun_init_buffer(&msg);
-    stun_init_error_response(method, &msg, error_code, reason[0] ? (const uint8_t *)reason : NULL, &tid, include_reason);
+    stun_init_error_response(method, &msg, error_code, reason[0] ? (const uint8_t *)reason : NULL, &tid,
+                             include_reason);
     inspect_buffer_message(&msg, STUN_ATTRIBUTE_MAPPED_ADDRESS, &default_addr);
   }
 
@@ -362,8 +359,8 @@ static void harness_message_builders(const uint8_t *Data, size_t Size) {
     stun_buffer msg;
     stun_init_buffer(&msg);
     (void)stun_set_allocate_response(&msg, &tid, &relay1, fuzz_flag(Data, Size, 355) ? &relay2 : NULL, &reflexive,
-                                     lifetime, max_lifetime, 0, (const uint8_t *)reason, reservation_token,
-                                     mobile_id, include_reason);
+                                     lifetime, max_lifetime, 0, (const uint8_t *)reason, reservation_token, mobile_id,
+                                     include_reason);
     inspect_buffer_message(&msg, STUN_ATTRIBUTE_XOR_RELAYED_ADDRESS, &default_addr);
 
     size_t raw_len = sizeof(raw);
@@ -393,8 +390,8 @@ static void harness_message_builders(const uint8_t *Data, size_t Size) {
     size_t raw_len = sizeof(raw);
     (void)stun_set_binding_response_str(raw, &raw_len, &tid, &reflexive, 0, (const uint8_t *)reason, old_cookie,
                                         old_stun, stun_backward_compatibility, include_reason);
-    inspect_raw_message(raw, raw_len,
-                        old_stun ? STUN_ATTRIBUTE_MAPPED_ADDRESS : STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS, &default_addr);
+    inspect_raw_message(raw, raw_len, old_stun ? STUN_ATTRIBUTE_MAPPED_ADDRESS : STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS,
+                        &default_addr);
 
     stun_init_buffer(&msg);
     (void)stun_set_binding_response(&msg, &tid, NULL, error_code, reason[0] ? (const uint8_t *)reason : NULL,
@@ -423,8 +420,8 @@ static void harness_message_builders(const uint8_t *Data, size_t Size) {
     inspect_buffer_message(&msg, STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &default_addr);
 
     raw_len = sizeof(raw);
-    stun_set_channel_bind_response_str(raw, &raw_len, &tid, error_code,
-                                       reason[0] ? (const uint8_t *)reason : NULL, include_reason);
+    stun_set_channel_bind_response_str(raw, &raw_len, &tid, error_code, reason[0] ? (const uint8_t *)reason : NULL,
+                                       include_reason);
     inspect_raw_message(raw, raw_len, STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &default_addr);
   }
 }
