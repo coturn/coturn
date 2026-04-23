@@ -103,32 +103,69 @@ int stun_method_str(uint16_t method, char *smethod) {
   return ret;
 }
 
+#if defined(FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION)
+/*
+ * CIFuzz memory builds use an unsanitized OpenSSL. Hitting RAND_bytes() from
+ * harness setup produces startup-only MSan reports inside libcrypto that mask
+ * the message-construction logic we actually want to fuzz.
+ */
+static uint64_t fuzz_prng_next(void) {
+  static uint64_t state = UINT64_C(0x9e3779b97f4a7c15);
+
+  state += UINT64_C(0x9e3779b97f4a7c15);
+  uint64_t z = state;
+  z = (z ^ (z >> 30)) * UINT64_C(0xbf58476d1ce4e5b9);
+  z = (z ^ (z >> 27)) * UINT64_C(0x94d049bb133111eb);
+  return z ^ (z >> 31);
+}
+#endif
+
 long turn_random_number(void) {
   long ret = 0;
+#if defined(FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION)
+  ret = (long)fuzz_prng_next();
+#else
   if (!RAND_bytes((unsigned char *)&ret, sizeof(ret)))
 #if defined(WINDOWS)
     ret = rand();
 #else
     ret = random();
 #endif
+#endif
   return ret;
 }
 
 static void generate_random_nonce(unsigned char *nonce, size_t sz) {
+#if defined(FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION)
+  if (nonce) {
+    for (size_t i = 0; i < sz; ++i) {
+      nonce[i] = (unsigned char)turn_random_number();
+    }
+  }
+#else
   if (!RAND_bytes(nonce, (int)sz)) {
     for (size_t i = 0; i < sz; ++i) {
       nonce[i] = (unsigned char)turn_random_number();
     }
   }
+#endif
 }
 
 static void turn_random_tid_size(void *id) {
   uint32_t *ar = (uint32_t *)id;
+#if defined(FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION)
+  if (ar) {
+    for (size_t i = 0; i < 3; ++i) {
+      ar[i] = (uint32_t)turn_random_number();
+    }
+  }
+#else
   if (!RAND_bytes((unsigned char *)ar, 12)) {
     for (size_t i = 0; i < 3; ++i) {
       ar[i] = (uint32_t)turn_random_number();
     }
   }
+#endif
 }
 
 bool stun_calculate_hmac(const uint8_t *buf, size_t len, const uint8_t *key, size_t keylen, uint8_t *hmac,
@@ -714,6 +751,7 @@ static void stun_init_error_response_common_str(uint8_t *buf, size_t *len, uint1
   }
 
   uint8_t avalue[513];
+  memset(avalue, 0, sizeof(avalue));
   avalue[0] = 0;
   avalue[1] = 0;
   avalue[2] = (uint8_t)(error_code / 100);
