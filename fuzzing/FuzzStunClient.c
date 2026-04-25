@@ -500,8 +500,7 @@ static void harness_response_matrix(const uint8_t *Data, size_t Size) {
 
   const uint32_t max_lifetime = fuzz_u32(Data, Size, 328) | 1u;
   const uint64_t reservation_token = fuzz_u64(Data, Size, 332) | 1ull;
-  const uint16_t channel_number_valid =
-      (uint16_t)(0x4000u + (fuzz_u16(Data, Size, 340) % (0x7FFFu - 0x4000u + 1u)));
+  const uint16_t channel_number_valid = (uint16_t)(0x4000u + (fuzz_u16(Data, Size, 340) % (0x7FFFu - 0x4000u + 1u)));
   const uint32_t old_cookie = fuzz_u32(Data, Size, 344);
 
   /* stun_init_error_response — cover (reason NULL vs set) × (include reason). */
