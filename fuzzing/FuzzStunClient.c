@@ -170,6 +170,43 @@ static void inspect_raw_message(const uint8_t *buf, size_t len, uint16_t addr_at
 }
 
 /* ------------------------------------------------------------------ */
+/* Raw-input coverage for stun_attr_get_first_addr.                   */
+/*                                                                    */
+/* The inspect_buffer_message() path only sees messages produced by   */
+/* the project's own serializers, which are always well-formed. This  */
+/* harness feeds arbitrary fuzzer input through the stun_buffer       */
+/* wrapper (not just the _str variant) for every address attribute    */
+/* type, with both NULL and a fuzzed default_addr fallback.           */
+/* ------------------------------------------------------------------ */
+static const uint16_t kFirstAddrAttrs[] = {
+    STUN_ATTRIBUTE_MAPPED_ADDRESS,   STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS,  OLD_STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS,
+    STUN_ATTRIBUTE_XOR_PEER_ADDRESS, STUN_ATTRIBUTE_XOR_RELAYED_ADDRESS, STUN_ATTRIBUTE_ALTERNATE_SERVER,
+    STUN_ATTRIBUTE_RESPONSE_ORIGIN,  STUN_ATTRIBUTE_OTHER_ADDRESS,
+};
+
+static void harness_attr_get_first_addr(const uint8_t *Data, size_t Size) {
+  if (Size < STUN_HEADER_LENGTH || Size > 5120) {
+    return;
+  }
+
+  stun_buffer msg;
+  msg.len = Size;
+  memcpy(msg.buf, Data, Size);
+
+  ioa_addr default_addr = {0};
+  fuzz_addr(Data, Size, 0, &default_addr);
+
+  const size_t num_attrs = sizeof(kFirstAddrAttrs) / sizeof(kFirstAddrAttrs[0]);
+  for (size_t i = 0; i < num_attrs; ++i) {
+    ioa_addr parsed = {0};
+    (void)stun_attr_get_first_addr(&msg, kFirstAddrAttrs[i], &parsed, NULL);
+
+    memset(&parsed, 0, sizeof(parsed));
+    (void)stun_attr_get_first_addr(&msg, kFirstAddrAttrs[i], &parsed, &default_addr);
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /* stun_buffer-based client message parsing (original FuzzStunClient). */
 /* ------------------------------------------------------------------ */
 static void harness_stun_client(const uint8_t *Data, size_t Size) {
@@ -427,6 +464,171 @@ static void harness_message_builders(const uint8_t *Data, size_t Size) {
 }
 
 /* ------------------------------------------------------------------ */
+/* Deterministic branch coverage for the response builders.          */
+/*                                                                    */
+/* harness_message_builders randomizes include_reason/old_stun/NULL- */
+/* vs-present selectors from single input bytes, so any one iteration */
+/* only visits a fraction of the branches inside these builders. This */
+/* harness hits every branch point of each listed builder on every   */
+/* iteration so coverage is not gated on libFuzzer finding the right  */
+/* bytes. Inputs (tid / addrs / strings / numeric fields) are still   */
+/* fuzz-derived to keep each call meaningfully distinct.              */
+/* ------------------------------------------------------------------ */
+static void harness_response_matrix(const uint8_t *Data, size_t Size) {
+  if (!Size || Size > 4096) {
+    return;
+  }
+
+  stun_tid tid = {0};
+  ioa_addr relay1 = {0};
+  ioa_addr relay2 = {0};
+  ioa_addr reflexive = {0};
+  ioa_addr peer = {0};
+  ioa_addr default_addr = {0};
+  char reason[96] = {0};
+  char mobile_id[96] = {0};
+  uint8_t raw[MAX_STUN_MESSAGE_SIZE] = {0};
+
+  fuzz_tid(Data, Size, 0, &tid);
+  fuzz_addr(Data, Size, 16, &relay1);
+  fuzz_addr(Data, Size, 40, &relay2);
+  fuzz_addr(Data, Size, 64, &reflexive);
+  fuzz_addr(Data, Size, 88, &peer);
+  fuzz_addr(Data, Size, 112, &default_addr);
+  fuzz_string(Data, Size, 136, reason, sizeof(reason));
+  fuzz_string(Data, Size, 232, mobile_id, sizeof(mobile_id));
+
+  const uint32_t max_lifetime = fuzz_u32(Data, Size, 328) | 1u;
+  const uint64_t reservation_token = fuzz_u64(Data, Size, 332) | 1ull;
+  const uint16_t channel_number_valid = (uint16_t)(0x4000u + (fuzz_u16(Data, Size, 340) % (0x7FFFu - 0x4000u + 1u)));
+  const uint32_t old_cookie = fuzz_u32(Data, Size, 344);
+
+  /* stun_init_error_response — cover (reason NULL vs set) × (include reason). */
+  {
+    stun_buffer msg;
+    stun_init_buffer(&msg);
+    stun_init_error_response(STUN_METHOD_ALLOCATE, &msg, 437, NULL, &tid, false);
+    inspect_buffer_message(&msg, STUN_ATTRIBUTE_MAPPED_ADDRESS, &default_addr);
+
+    stun_init_buffer(&msg);
+    stun_init_error_response(STUN_METHOD_BINDING, &msg, 400, (const uint8_t *)reason, &tid, true);
+    inspect_buffer_message(&msg, STUN_ATTRIBUTE_MAPPED_ADDRESS, &default_addr);
+  }
+
+  /* stun_set_allocate_response / _str — cover every optional-field branch and
+   * the error path independently of the fuzzer selectors. */
+  {
+    stun_buffer msg;
+
+    /* Minimal success: relay1 only, no reflexive, no reservation, no mobile id,
+     * lifetime 0 (triggers the <1 default branch). */
+    stun_init_buffer(&msg);
+    (void)stun_set_allocate_response(&msg, &tid, &relay1, NULL, NULL, 0, max_lifetime, 0, NULL, 0, NULL, false);
+    inspect_buffer_message(&msg, STUN_ATTRIBUTE_XOR_RELAYED_ADDRESS, &default_addr);
+
+    size_t raw_len = sizeof(raw);
+    (void)stun_set_allocate_response_str(raw, &raw_len, &tid, &relay1, NULL, NULL, 0, max_lifetime, 0, NULL, 0, NULL,
+                                         false);
+    inspect_raw_message(raw, raw_len, STUN_ATTRIBUTE_XOR_RELAYED_ADDRESS, &default_addr);
+
+    /* Full success: both relays + reflexive + reservation + mobile id,
+     * lifetime > max (triggers clamp branch). */
+    stun_init_buffer(&msg);
+    (void)stun_set_allocate_response(&msg, &tid, &relay1, &relay2, &reflexive, max_lifetime + 1, max_lifetime, 0,
+                                     (const uint8_t *)reason, reservation_token, mobile_id, true);
+    inspect_buffer_message(&msg, STUN_ATTRIBUTE_XOR_RELAYED_ADDRESS, &default_addr);
+
+    raw_len = sizeof(raw);
+    (void)stun_set_allocate_response_str(raw, &raw_len, &tid, &relay1, &relay2, &reflexive, max_lifetime + 1,
+                                         max_lifetime, 0, (const uint8_t *)reason, reservation_token, mobile_id, true);
+    inspect_raw_message(raw, raw_len, STUN_ATTRIBUTE_XOR_RELAYED_ADDRESS, &default_addr);
+
+    /* Error path with and without a reason string. */
+    stun_init_buffer(&msg);
+    (void)stun_set_allocate_response(&msg, &tid, NULL, NULL, NULL, 0, max_lifetime, 441, NULL, 0, NULL, false);
+    inspect_buffer_message(&msg, STUN_ATTRIBUTE_XOR_RELAYED_ADDRESS, &default_addr);
+
+    raw_len = sizeof(raw);
+    (void)stun_set_allocate_response_str(raw, &raw_len, &tid, NULL, NULL, NULL, 0, max_lifetime, 508,
+                                         (const uint8_t *)reason, 0, NULL, true);
+    inspect_raw_message(raw, raw_len, STUN_ATTRIBUTE_XOR_RELAYED_ADDRESS, &default_addr);
+  }
+
+  /* stun_set_binding_response / _str — cover success × error × old_stun. */
+  {
+    stun_buffer msg;
+
+    stun_init_buffer(&msg);
+    (void)stun_set_binding_response(&msg, &tid, &reflexive, 0, NULL, false);
+    inspect_buffer_message(&msg, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS, &default_addr);
+
+    stun_init_buffer(&msg);
+    (void)stun_set_binding_response(&msg, &tid, NULL, 420, (const uint8_t *)reason, true);
+    inspect_buffer_message(&msg, STUN_ATTRIBUTE_MAPPED_ADDRESS, &default_addr);
+
+    const bool matrix_old_stun[] = {false, true};
+    const bool matrix_backcompat[] = {false, true};
+    for (size_t o = 0; o < sizeof(matrix_old_stun) / sizeof(matrix_old_stun[0]); ++o) {
+      for (size_t b = 0; b < sizeof(matrix_backcompat) / sizeof(matrix_backcompat[0]); ++b) {
+        size_t raw_len = sizeof(raw);
+        (void)stun_set_binding_response_str(raw, &raw_len, &tid, &reflexive, 0, NULL, old_cookie, matrix_old_stun[o],
+                                            matrix_backcompat[b], false);
+        inspect_raw_message(raw, raw_len,
+                            matrix_old_stun[o] ? STUN_ATTRIBUTE_MAPPED_ADDRESS : STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS,
+                            &default_addr);
+
+        raw_len = sizeof(raw);
+        (void)stun_set_binding_response_str(raw, &raw_len, &tid, NULL, 500, (const uint8_t *)reason, old_cookie,
+                                            matrix_old_stun[o], matrix_backcompat[b], true);
+        inspect_raw_message(raw, raw_len, STUN_ATTRIBUTE_MAPPED_ADDRESS, &default_addr);
+      }
+    }
+  }
+
+  /* stun_set_channel_bind_request / _str — cover peer NULL vs set. */
+  {
+    stun_buffer msg;
+
+    stun_init_buffer(&msg);
+    (void)stun_set_channel_bind_request(&msg, NULL, channel_number_valid);
+    inspect_buffer_message(&msg, STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &default_addr);
+
+    stun_init_buffer(&msg);
+    (void)stun_set_channel_bind_request(&msg, &peer, channel_number_valid);
+    inspect_buffer_message(&msg, STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &default_addr);
+
+    size_t raw_len = sizeof(raw);
+    (void)stun_set_channel_bind_request_str(raw, &raw_len, NULL, channel_number_valid);
+    inspect_raw_message(raw, raw_len, STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &default_addr);
+
+    raw_len = sizeof(raw);
+    (void)stun_set_channel_bind_request_str(raw, &raw_len, &peer, channel_number_valid);
+    inspect_raw_message(raw, raw_len, STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &default_addr);
+  }
+
+  /* stun_set_channel_bind_response / _str — cover success vs error. */
+  {
+    stun_buffer msg;
+
+    stun_init_buffer(&msg);
+    stun_set_channel_bind_response(&msg, &tid, 0, NULL, false);
+    inspect_buffer_message(&msg, STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &default_addr);
+
+    stun_init_buffer(&msg);
+    stun_set_channel_bind_response(&msg, &tid, 438, (const uint8_t *)reason, true);
+    inspect_buffer_message(&msg, STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &default_addr);
+
+    size_t raw_len = sizeof(raw);
+    stun_set_channel_bind_response_str(raw, &raw_len, &tid, 0, NULL, false);
+    inspect_raw_message(raw, raw_len, STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &default_addr);
+
+    raw_len = sizeof(raw);
+    stun_set_channel_bind_response_str(raw, &raw_len, &tid, 486, (const uint8_t *)reason, true);
+    inspect_raw_message(raw, raw_len, STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &default_addr);
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /* libFuzzer entry point — run every harness on each input.           */
 /*                                                                    */
 /* Note: OAuth token sub-harnesses are intentionally omitted here.    */
@@ -440,5 +642,7 @@ extern int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
   harness_channel_data(Data, Size);
   harness_addr_codec(Data, Size);
   harness_message_builders(Data, Size);
+  harness_attr_get_first_addr(Data, Size);
+  harness_response_matrix(Data, Size);
   return 0;
 }
