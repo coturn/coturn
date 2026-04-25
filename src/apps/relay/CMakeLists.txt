@@ -68,6 +68,7 @@ set(SOURCE_FILES
     ns_ioalib_engine_impl.c
     turn_ports.c
     http_server.c
+    http_buffer.c
     acme.c
     userdb.c
     dbdrivers/dbdriver.c
