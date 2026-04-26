@@ -629,6 +629,182 @@ static void harness_response_matrix(const uint8_t *Data, size_t Size) {
 }
 
 /* ------------------------------------------------------------------ */
+/* stun_buffer.c wrapper coverage.                                    */
+/*                                                                    */
+/* Exercises every public wrapper in src/apps/common/stun_buffer.c    */
+/* that is not already reached by the harnesses above:                */
+/*  - stun_get_size NULL/non-NULL                                     */
+/*  - stun_init_request / _indication / _success_response             */
+/*  - stun_tid_from_message, stun_tid_generate_in_message             */
+/*  - stun_is_indication wrapper (gates static is_channel_msg)        */
+/*  - stun_attr_add, stun_attr_add_channel_number, stun_attr_add_addr */
+/*  - stun_attr_add_even_port (zero + non-zero branches)              */
+/*  - stun_attr_get_first_by_type                                     */
+/*  - stun_set_allocate_request (rt NULL + non-NULL)                  */
+/*  - stun_set_binding_request, stun_prepare_binding_request          */
+/*  - stun_init_channel_message + stun_is_channel_message wrappers    */
+/*                                                                    */
+/* Each call is followed by inspect_buffer_message so the resulting   */
+/* serialized message is also walked by the parser predicates.        */
+/* The tail block also pumps raw fuzzer bytes through the predicate   */
+/* wrappers to hit malformed-input branches the serializers cannot    */
+/* produce.                                                           */
+/* ------------------------------------------------------------------ */
+static void harness_stun_buffer_api(const uint8_t *Data, size_t Size) {
+  if (!Size || Size > 4096) {
+    return;
+  }
+
+  static const uint16_t kMethods[] = {
+      STUN_METHOD_ALLOCATE, STUN_METHOD_BINDING, STUN_METHOD_CHANNEL_BIND, STUN_METHOD_REFRESH, STUN_METHOD_CONNECT,
+  };
+
+  stun_tid tid = {0};
+  ioa_addr peer = {0};
+  ioa_addr default_addr = {0};
+  char attr_value[64] = {0};
+  char rt[8] = {0};
+
+  fuzz_tid(Data, Size, 0, &tid);
+  fuzz_addr(Data, Size, 16, &peer);
+  fuzz_addr(Data, Size, 40, &default_addr);
+  fuzz_string(Data, Size, 64, attr_value, sizeof(attr_value));
+  fuzz_string(Data, Size, 128, rt, sizeof(rt));
+
+  const uint16_t method = kMethods[fuzz_byte(Data, Size, 200) % (sizeof(kMethods) / sizeof(kMethods[0]))];
+  const uint32_t lifetime = fuzz_u32(Data, Size, 201);
+  const uint16_t channel_number = (uint16_t)(0x4000u + (fuzz_u16(Data, Size, 205) & 0x3FFFu));
+  const uint8_t transport = fuzz_byte(Data, Size, 207);
+  const uint8_t even_port_value = fuzz_byte(Data, Size, 208);
+  const bool af4 = fuzz_flag(Data, Size, 209);
+  const bool af6 = fuzz_flag(Data, Size, 210);
+  const bool mobile = fuzz_flag(Data, Size, 211);
+  const bool padding = fuzz_flag(Data, Size, 212);
+  const int chan_payload_len = (int)(fuzz_u16(Data, Size, 213) % 256);
+  const int ep = (int)(int8_t)fuzz_byte(Data, Size, 215);
+
+  /* NULL-guard branches. */
+  (void)stun_get_size(NULL);
+  (void)stun_init_buffer(NULL);
+  (void)stun_get_msg_type(NULL);
+  {
+    stun_tid scratch = {0};
+    stun_tid_generate_in_message(NULL, &scratch);
+  }
+
+  /* stun_init_request — also covers stun_get_size (non-NULL), the static
+   * stun_init_command helper, and stun_attr_add* / stun_attr_get_first_by_type
+   * over the freshly built message. */
+  {
+    stun_buffer msg;
+    stun_init_buffer(&msg);
+    stun_init_request(method, &msg);
+
+    stun_tid extracted = {0};
+    stun_tid_from_message(&msg, &extracted);
+    stun_tid_generate_in_message(&msg, &extracted);
+
+    const int alen = (int)strlen(attr_value);
+    (void)stun_attr_add(&msg, STUN_ATTRIBUTE_USERNAME, attr_value, alen);
+    (void)stun_attr_add_channel_number(&msg, channel_number);
+    (void)stun_attr_add_addr(&msg, STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &peer);
+    (void)stun_attr_add_even_port(&msg, even_port_value);
+    (void)stun_attr_add_even_port(&msg, 0);
+
+    (void)stun_attr_get_first_by_type(&msg, STUN_ATTRIBUTE_USERNAME);
+    (void)stun_attr_get_first_by_type(&msg, STUN_ATTRIBUTE_CHANNEL_NUMBER);
+    (void)stun_attr_get_first_by_type(&msg, STUN_ATTRIBUTE_XOR_PEER_ADDRESS);
+    (void)stun_attr_get_first_by_type(&msg, STUN_ATTRIBUTE_EVEN_PORT);
+
+    (void)stun_is_indication(&msg);
+    inspect_buffer_message(&msg, STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &default_addr);
+  }
+
+  /* stun_init_indication — drives the IS_STUN_INDICATION branch of
+   * stun_is_indication. */
+  {
+    stun_buffer msg;
+    stun_init_buffer(&msg);
+    stun_init_indication(method, &msg);
+    (void)stun_is_indication(&msg);
+    inspect_buffer_message(&msg, STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &default_addr);
+  }
+
+  /* stun_init_success_response. */
+  {
+    stun_buffer msg;
+    stun_init_buffer(&msg);
+    stun_init_success_response(method, &msg, &tid);
+    inspect_buffer_message(&msg, STUN_ATTRIBUTE_MAPPED_ADDRESS, &default_addr);
+  }
+
+  /* stun_set_allocate_request — both rt NULL and rt non-NULL paths. */
+  {
+    stun_buffer msg;
+    stun_init_buffer(&msg);
+    (void)stun_set_allocate_request(&msg, lifetime, af4, af6, transport, mobile, rt[0] ? rt : NULL, ep);
+    inspect_buffer_message(&msg, STUN_ATTRIBUTE_XOR_RELAYED_ADDRESS, &default_addr);
+
+    stun_init_buffer(&msg);
+    (void)stun_set_allocate_request(&msg, lifetime, !af4, !af6, transport, !mobile, NULL, ep);
+    inspect_buffer_message(&msg, STUN_ATTRIBUTE_XOR_RELAYED_ADDRESS, &default_addr);
+  }
+
+  /* stun_set_binding_request + stun_prepare_binding_request (both currently
+   * delegate to stun_set_binding_request_str but exercise the wrappers). */
+  {
+    stun_buffer msg;
+    stun_init_buffer(&msg);
+    stun_set_binding_request(&msg);
+    inspect_buffer_message(&msg, STUN_ATTRIBUTE_MAPPED_ADDRESS, &default_addr);
+
+    stun_init_buffer(&msg);
+    stun_prepare_binding_request(&msg);
+    inspect_buffer_message(&msg, STUN_ATTRIBUTE_MAPPED_ADDRESS, &default_addr);
+  }
+
+  /* stun_init_channel_message + stun_is_channel_message wrappers. */
+  {
+    stun_buffer msg;
+    stun_init_buffer(&msg);
+    if (stun_init_channel_message(channel_number, &msg, chan_payload_len, padding)) {
+      uint16_t parsed_chn = 0;
+      (void)stun_is_channel_message(&msg, &parsed_chn, true);
+      (void)stun_is_channel_message(&msg, &parsed_chn, false);
+    }
+    {
+      uint16_t chn = 0;
+      (void)stun_is_channel_message(NULL, &chn, false);
+    }
+  }
+
+  /* Raw fuzzer bytes through the wrapper-form predicates so they see
+   * malformed inputs the serializer paths above never produce. */
+  {
+    stun_buffer msg;
+    msg.len = Size > sizeof(msg.buf) ? sizeof(msg.buf) : Size;
+    memcpy(msg.buf, Data, msg.len);
+
+    (void)stun_is_indication(&msg);
+
+    stun_tid extracted = {0};
+    stun_tid_from_message(&msg, &extracted);
+
+    {
+      uint16_t chn = 0;
+      const size_t saved_len = msg.len;
+      (void)stun_is_channel_message(&msg, &chn, true);
+      msg.len = saved_len;
+      (void)stun_is_channel_message(&msg, &chn, false);
+    }
+
+    (void)stun_attr_get_first_by_type(&msg, STUN_ATTRIBUTE_USERNAME);
+    (void)stun_attr_get_first_by_type(&msg, STUN_ATTRIBUTE_XOR_PEER_ADDRESS);
+    (void)stun_attr_get_first_by_type(&msg, STUN_ATTRIBUTE_CHANNEL_NUMBER);
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /* libFuzzer entry point — run every harness on each input.           */
 /*                                                                    */
 /* Note: OAuth token sub-harnesses are intentionally omitted here.    */
@@ -644,5 +820,6 @@ extern int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
   harness_message_builders(Data, Size);
   harness_attr_get_first_addr(Data, Size);
   harness_response_matrix(Data, Size);
+  harness_stun_buffer_api(Data, Size);
   return 0;
 }
