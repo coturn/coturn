@@ -24,6 +24,68 @@ Key CMake options:
 - `-DCMAKE_BUILD_TYPE=Debug|Release`
 - `-DWITH_MYSQL=ON/OFF`, `-DWITH_PGSQL=ON/OFF`, `-DWITH_MONGO=ON/OFF`, `-DWITH_REDIS=ON/OFF`
 
+## Required validation
+
+Every code change must be validated before it is considered complete. Run the
+unit tests, the local/system tests, and the fuzzing smoke tests. When working
+from macOS, also validate the Linux build and Docker image tests inside Docker
+containers.
+
+```bash
+# Local build + unit tests
+cmake -S . -B build -DBUILD_TESTING=ON
+cmake --build build --parallel $(nproc)
+ctest --test-dir build --output-on-failure
+
+# Local/system tests
+cd examples
+./run_tests.sh
+./run_tests_conf.sh
+./run_tests_prom.sh   # only when Prometheus support is built
+cd ..
+
+# Fuzzing smoke tests (increase runs/time for fuzzing-related changes)
+fuzzing/run-local.sh ASan 0 -runs=1
+fuzzing/run-local.sh ASan 1 -runs=1
+```
+
+Treat any `FAIL` line from the example scripts as a test failure even if the
+script exits with status 0.
+
+On macOS, run the Linux validation in Docker as well. The fuzzing smoke tests
+build the reusable `coturn-fuzz-local` image; then run a clean Linux build and
+system-test pass against a copied checkout so no root-owned build artifacts are
+left in the working tree:
+
+```bash
+docker run --rm \
+  -v "$PWD:/src:ro" \
+  --entrypoint bash \
+  coturn-fuzz-local \
+  -lc 'apt-get update && apt-get install -y --no-install-recommends git && \
+       cp -a /src /tmp/coturn && \
+       cd /tmp/coturn && \
+       cmake -S . -B build-linux -DBUILD_TESTING=ON && \
+       cmake --build build-linux --parallel $(nproc) && \
+       ctest --test-dir build-linux --output-on-failure && \
+       rm -rf build && ln -s build-linux build && \
+       cd examples && ./run_tests.sh && ./run_tests_conf.sh'
+```
+
+Also validate the packaged Docker image:
+
+```bash
+cd docker/coturn
+make docker.image dockerfile=debian tag=codex-local platform=linux/arm64
+make test.docker tag=codex-local platform=linux/arm64/v8
+cd ../..
+```
+
+Use `platform=linux/amd64` on x86_64 hosts. On Apple Silicon, build with
+`platform=linux/arm64` and run the Bats image tests with
+`platform=linux/arm64/v8`, which is the spelling expected by
+`docker/coturn/tests/main.bats`.
+
 ## Code style
 
 All C source must be formatted with `clang-format` using the project's [.clang-format](.clang-format):
