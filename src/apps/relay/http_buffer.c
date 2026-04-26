@@ -36,6 +36,7 @@
 
 #include <event2/http.h>
 
+#include <stdint.h>
 #include <string.h>
 
 struct str_buffer {
@@ -62,9 +63,25 @@ struct str_buffer *str_buffer_new(void) {
 void str_buffer_append(struct str_buffer *sb, const char *str) {
   if (sb && str && str[0]) {
     const size_t len = strlen(str);
-    while (sb->sz + len + 1 > sb->capacity) {
-      sb->capacity += len + 1024;
-      sb->buffer = (char *)realloc(sb->buffer, sb->capacity);
+    if (!sb->buffer || sb->sz == SIZE_MAX || len > SIZE_MAX - sb->sz - 1) {
+      return;
+    }
+
+    const size_t required_capacity = sb->sz + len + 1;
+    while (required_capacity > sb->capacity) {
+      const size_t growth = len + 1024;
+      if (growth < len || sb->capacity > SIZE_MAX - growth) {
+        return;
+      }
+
+      const size_t new_capacity = sb->capacity + growth;
+      char *new_buffer = (char *)realloc(sb->buffer, new_capacity);
+      if (!new_buffer) {
+        return;
+      }
+
+      sb->buffer = new_buffer;
+      sb->capacity = new_capacity;
     }
     memcpy(sb->buffer + sb->sz, str, len + 1);
     sb->sz += len;
