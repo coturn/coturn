@@ -8,7 +8,8 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(Unity)
 
 function(coturn_add_test name)
-    add_executable(${name} ${name}.c)
+    add_executable(${name} ${name}.c ${ARGN})
+    target_include_directories(${name} PRIVATE ../src/apps/relay)
     target_link_libraries(${name} PRIVATE turnclient unity)
     add_test(NAME ${name} COMMAND ${name})
     list(APPEND COTURN_TEST_TARGETS ${name})
@@ -17,6 +18,7 @@ endfunction()
 
 coturn_add_test(test_ioaddr)
 coturn_add_test(test_stun_msg)
+coturn_add_test(test_http_server ../src/apps/relay/http_buffer.c)
 
 add_custom_target(check
     COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure

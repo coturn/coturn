@@ -1666,7 +1666,7 @@ static void https_print_page_header(struct str_buffer *sb) {
   str_buffer_append(sb, "<br><a href=\"/home?");
   str_buffer_append(sb, HR_REALM);
   str_buffer_append(sb, "=");
-  str_buffer_append(sb, current_eff_realm());
+  str_buffer_append_uri_escaped(sb, current_eff_realm());
   str_buffer_append(sb, "\">home page</a><br>\r\n<br><a href=\"/logout\">logout</a><br>\r\n");
   str_buffer_append(sb, "<br>\r\n");
 }
@@ -1763,7 +1763,7 @@ static void write_https_home_page(ioa_socket_handle s) {
       str_buffer_append(sb, "  Realm name: <input type=\"text\" name=\"");
       str_buffer_append(sb, HR_REALM);
       str_buffer_append(sb, "\" value=\"");
-      str_buffer_append(sb, current_eff_realm());
+      str_buffer_append_html_escaped(sb, current_eff_realm());
       str_buffer_append(sb, "\"");
       if (!is_superuser()) {
         str_buffer_append(sb, " disabled >");
@@ -1778,7 +1778,7 @@ static void write_https_home_page(ioa_socket_handle s) {
       str_buffer_append(sb, "?");
       str_buffer_append(sb, HR_REALM);
       str_buffer_append(sb, "=");
-      str_buffer_append(sb, current_eff_realm());
+      str_buffer_append_uri_escaped(sb, current_eff_realm());
       str_buffer_append(sb, "\">Configuration Parameters</a>");
 
       str_buffer_append(sb, "<br><a href=\"");
@@ -1786,7 +1786,7 @@ static void write_https_home_page(ioa_socket_handle s) {
       str_buffer_append(sb, "?");
       str_buffer_append(sb, HR_REALM);
       str_buffer_append(sb, "=");
-      str_buffer_append(sb, current_eff_realm());
+      str_buffer_append_uri_escaped(sb, current_eff_realm());
       str_buffer_append(sb, "&");
       str_buffer_append(sb, HR_MAX_SESSIONS);
       str_buffer_append(sb, "=");
@@ -1798,7 +1798,7 @@ static void write_https_home_page(ioa_socket_handle s) {
       str_buffer_append(sb, "?");
       str_buffer_append(sb, HR_REALM);
       str_buffer_append(sb, "=");
-      str_buffer_append(sb, current_eff_realm());
+      str_buffer_append_uri_escaped(sb, current_eff_realm());
       str_buffer_append(sb, "\">Users</a>");
 
       str_buffer_append(sb, "<br><a href=\"");
@@ -1806,7 +1806,7 @@ static void write_https_home_page(ioa_socket_handle s) {
       str_buffer_append(sb, "?");
       str_buffer_append(sb, HR_REALM);
       str_buffer_append(sb, "=");
-      str_buffer_append(sb, current_eff_realm());
+      str_buffer_append_uri_escaped(sb, current_eff_realm());
       str_buffer_append(sb, "\">Shared Secrets (for TURN REST API)</a>");
 
       str_buffer_append(sb, "<br><a href=\"");
@@ -1814,7 +1814,7 @@ static void write_https_home_page(ioa_socket_handle s) {
       str_buffer_append(sb, "?");
       str_buffer_append(sb, HR_REALM);
       str_buffer_append(sb, "=");
-      str_buffer_append(sb, current_eff_realm());
+      str_buffer_append_uri_escaped(sb, current_eff_realm());
       str_buffer_append(sb, "\">Origins</a>");
 
       if (is_superuser()) {
@@ -1824,7 +1824,7 @@ static void write_https_home_page(ioa_socket_handle s) {
           str_buffer_append(sb, "?");
           str_buffer_append(sb, HR_REALM);
           str_buffer_append(sb, "=");
-          str_buffer_append(sb, current_eff_realm());
+          str_buffer_append_uri_escaped(sb, current_eff_realm());
           str_buffer_append(sb, "\">oAuth keys</a>");
         }
       }
@@ -2353,11 +2353,11 @@ static bool https_print_session(ur_map_key_type key, ur_map_value_type value, vo
       str_buffer_append_sid(sb, tsi->id);
       str_buffer_append(sb, "\">cancel</a>");
       str_buffer_append(sb, "</td><td>");
-      str_buffer_append(sb, (char *)tsi->username);
+      str_buffer_append_html_escaped(sb, (char *)tsi->username);
       str_buffer_append(sb, "</td><td>");
-      str_buffer_append(sb, tsi->realm);
+      str_buffer_append_html_escaped(sb, tsi->realm);
       str_buffer_append(sb, "</td><td>");
-      str_buffer_append(sb, tsi->origin);
+      str_buffer_append_html_escaped(sb, tsi->origin);
       str_buffer_append(sb, "</td><td>");
       if (turn_time_before(csarg->ct, tsi->start_time)) {
         str_buffer_append(sb, "undefined time\n");
@@ -2388,21 +2388,21 @@ static bool https_print_session(ur_map_key_type key, ur_map_value_type value, vo
         if (!tsi->relay_addr_data_ipv6.saddr[0]) {
           addr_to_string(&(tsi->relay_addr_data_ipv6.addr), tsi->relay_addr_data_ipv6.saddr);
         }
-        str_buffer_append(sb, tsi->remote_addr_data.saddr);
+        str_buffer_append_html_escaped(sb, tsi->remote_addr_data.saddr);
         str_buffer_append(sb, "</td><td>");
-        str_buffer_append(sb, tsi->local_addr_data.saddr);
+        str_buffer_append_html_escaped(sb, tsi->local_addr_data.saddr);
         str_buffer_append(sb, "</td><td>");
-        str_buffer_append(sb, tsi->relay_addr_data_ipv4.saddr);
+        str_buffer_append_html_escaped(sb, tsi->relay_addr_data_ipv4.saddr);
         str_buffer_append(sb, "</td><td>");
-        str_buffer_append(sb, tsi->relay_addr_data_ipv6.saddr);
+        str_buffer_append_html_escaped(sb, tsi->relay_addr_data_ipv6.saddr);
         str_buffer_append(sb, "</td><td>");
         str_buffer_append(sb, get_flag(tsi->enforce_fingerprints));
         str_buffer_append(sb, "</td><td>");
         str_buffer_append(sb, get_flag(tsi->is_mobile));
         str_buffer_append(sb, "</td><td>");
-        str_buffer_append(sb, tsi->tls_method);
+        str_buffer_append_html_escaped(sb, tsi->tls_method);
         str_buffer_append(sb, "</td><td>");
-        str_buffer_append(sb, tsi->tls_cipher);
+        str_buffer_append_html_escaped(sb, tsi->tls_cipher);
         str_buffer_append(sb, "</td><td>");
         str_buffer_append_sz(sb, (size_t)tsi->bps);
         str_buffer_append(sb, "</td><td>");
@@ -2430,7 +2430,7 @@ static bool https_print_session(ur_map_key_type key, ur_map_value_type value, vo
               addr_to_string(&(tsi->main_peers_data[i].addr), tsi->main_peers_data[i].saddr);
             }
             str_buffer_append(sb, " ");
-            str_buffer_append(sb, tsi->main_peers_data[i].saddr);
+            str_buffer_append_html_escaped(sb, tsi->main_peers_data[i].saddr);
             str_buffer_append(sb, " ");
           }
           if (tsi->extra_peers_size && tsi->extra_peers_data) {
@@ -2439,7 +2439,7 @@ static bool https_print_session(ur_map_key_type key, ur_map_value_type value, vo
                 addr_to_string(&(tsi->extra_peers_data[i].addr), tsi->extra_peers_data[i].saddr);
               }
               str_buffer_append(sb, " ");
-              str_buffer_append(sb, tsi->extra_peers_data[i].saddr);
+              str_buffer_append_html_escaped(sb, tsi->extra_peers_data[i].saddr);
               str_buffer_append(sb, " ");
             }
           }
@@ -2484,7 +2484,7 @@ static void write_ps_page(ioa_socket_handle s, const char *client_protocol, cons
       str_buffer_append(sb, "  <br>Realm name: <input type=\"text\" name=\"");
       str_buffer_append(sb, HR_REALM);
       str_buffer_append(sb, "\" value=\"");
-      str_buffer_append(sb, current_eff_realm());
+      str_buffer_append_html_escaped(sb, current_eff_realm());
       str_buffer_append(sb, "\"");
       if (!is_superuser()) {
         str_buffer_append(sb, " disabled ");
@@ -2494,14 +2494,14 @@ static void write_ps_page(ioa_socket_handle s, const char *client_protocol, cons
       str_buffer_append(sb, "  Client protocol: <input type=\"text\" name=\"");
       str_buffer_append(sb, HR_CLIENT_PROTOCOL);
       str_buffer_append(sb, "\" value=\"");
-      str_buffer_append(sb, client_protocol);
+      str_buffer_append_html_escaped(sb, client_protocol);
       str_buffer_append(sb, "\"");
       str_buffer_append(sb, ">");
 
       str_buffer_append(sb, "  User name contains: <input type=\"text\" name=\"");
       str_buffer_append(sb, HR_USER_PATTERN);
       str_buffer_append(sb, "\" value=\"");
-      str_buffer_append(sb, user_pattern);
+      str_buffer_append_html_escaped(sb, user_pattern);
       str_buffer_append(sb, "\"");
       str_buffer_append(sb, "><br><br>");
 
@@ -2554,11 +2554,11 @@ static size_t https_print_users(struct str_buffer *sb) {
       str_buffer_append_sz(sb, i + 1);
       str_buffer_append(sb, "</td>");
       str_buffer_append(sb, "<td>");
-      str_buffer_append(sb, get_secrets_list_elem(&users, i));
+      str_buffer_append_html_escaped(sb, get_secrets_list_elem(&users, i));
       str_buffer_append(sb, "</td>");
       if (!current_eff_realm()[0]) {
         str_buffer_append(sb, "<td>");
-        str_buffer_append(sb, get_secrets_list_elem(&realms, i));
+        str_buffer_append_html_escaped(sb, get_secrets_list_elem(&realms, i));
         str_buffer_append(sb, "</td>");
       }
       str_buffer_append(sb, "<td> <a href=\"");
@@ -2566,11 +2566,11 @@ static size_t https_print_users(struct str_buffer *sb) {
       str_buffer_append(sb, "?");
       str_buffer_append(sb, HR_DELETE_USER);
       str_buffer_append(sb, "=");
-      str_buffer_append(sb, get_secrets_list_elem(&users, i));
+      str_buffer_append_uri_escaped(sb, get_secrets_list_elem(&users, i));
       str_buffer_append(sb, "&");
       str_buffer_append(sb, HR_DELETE_REALM);
       str_buffer_append(sb, "=");
-      str_buffer_append(sb, get_secrets_list_elem(&realms, i));
+      str_buffer_append_uri_escaped(sb, get_secrets_list_elem(&realms, i));
       str_buffer_append(sb, "\">delete</a>");
       str_buffer_append(sb, "</td>");
       str_buffer_append(sb, "</tr>");
@@ -2603,7 +2603,7 @@ static void write_users_page(ioa_socket_handle s, const uint8_t *add_user, const
       str_buffer_append(sb, "  <br>Realm name: <input type=\"text\" name=\"");
       str_buffer_append(sb, HR_REALM);
       str_buffer_append(sb, "\" value=\"");
-      str_buffer_append(sb, current_eff_realm());
+      str_buffer_append_html_escaped(sb, current_eff_realm());
       str_buffer_append(sb, "\"");
       if (!is_superuser()) {
         str_buffer_append(sb, " disabled ");
@@ -2622,14 +2622,14 @@ static void write_users_page(ioa_socket_handle s, const uint8_t *add_user, const
 
       if (msg && msg[0]) {
         str_buffer_append(sb, "<br><table id=\"msg\"><th>");
-        str_buffer_append(sb, msg);
+        str_buffer_append_html_escaped(sb, msg);
         str_buffer_append(sb, "</th></table><br>");
       }
 
       str_buffer_append(sb, "  <br>Realm name: <input type=\"text\" name=\"");
       str_buffer_append(sb, HR_ADD_REALM);
       str_buffer_append(sb, "\" value=\"");
-      str_buffer_append(sb, (const char *)add_realm);
+      str_buffer_append_html_escaped(sb, (const char *)add_realm);
       str_buffer_append(sb, "\"");
       if (!is_superuser()) {
         str_buffer_append(sb, " disabled ");
@@ -2639,7 +2639,7 @@ static void write_users_page(ioa_socket_handle s, const uint8_t *add_user, const
       str_buffer_append(sb, "  <br>User name: <input required type=\"text\" name=\"");
       str_buffer_append(sb, HR_ADD_USER);
       str_buffer_append(sb, "\" value=\"");
-      str_buffer_append(sb, (const char *)add_user);
+      str_buffer_append_html_escaped(sb, (const char *)add_user);
       str_buffer_append(sb, "\"");
       str_buffer_append(sb, "><br>\r\n");
 
@@ -2700,11 +2700,11 @@ static size_t https_print_secrets(struct str_buffer *sb) {
       str_buffer_append_sz(sb, i + 1);
       str_buffer_append(sb, "</td>");
       str_buffer_append(sb, "<td>");
-      str_buffer_append(sb, get_secrets_list_elem(&secrets, i));
+      str_buffer_append_html_escaped(sb, get_secrets_list_elem(&secrets, i));
       str_buffer_append(sb, "</td>");
       if (!current_eff_realm()[0]) {
         str_buffer_append(sb, "<td>");
-        str_buffer_append(sb, get_secrets_list_elem(&realms, i));
+        str_buffer_append_html_escaped(sb, get_secrets_list_elem(&realms, i));
         str_buffer_append(sb, "</td>");
       }
       str_buffer_append(sb, "<td> <a href=\"");
@@ -2712,11 +2712,11 @@ static size_t https_print_secrets(struct str_buffer *sb) {
       str_buffer_append(sb, "?");
       str_buffer_append(sb, HR_DELETE_SECRET);
       str_buffer_append(sb, "=");
-      str_buffer_append(sb, get_secrets_list_elem(&secrets, i));
+      str_buffer_append_uri_escaped(sb, get_secrets_list_elem(&secrets, i));
       str_buffer_append(sb, "&");
       str_buffer_append(sb, HR_DELETE_REALM);
       str_buffer_append(sb, "=");
-      str_buffer_append(sb, get_secrets_list_elem(&realms, i));
+      str_buffer_append_uri_escaped(sb, get_secrets_list_elem(&realms, i));
       str_buffer_append(sb, "\">delete</a>");
       str_buffer_append(sb, "</td>");
       str_buffer_append(sb, "</tr>");
@@ -2750,7 +2750,7 @@ static void write_shared_secrets_page(ioa_socket_handle s, const char *add_secre
       str_buffer_append(sb, "  <br>Realm name: <input type=\"text\" name=\"");
       str_buffer_append(sb, HR_REALM);
       str_buffer_append(sb, "\" value=\"");
-      str_buffer_append(sb, current_eff_realm());
+      str_buffer_append_html_escaped(sb, current_eff_realm());
       str_buffer_append(sb, "\"");
       if (!is_superuser()) {
         str_buffer_append(sb, " disabled ");
@@ -2769,14 +2769,14 @@ static void write_shared_secrets_page(ioa_socket_handle s, const char *add_secre
 
       if (msg && msg[0]) {
         str_buffer_append(sb, "<br><table id=\"msg\"><th>");
-        str_buffer_append(sb, msg);
+        str_buffer_append_html_escaped(sb, msg);
         str_buffer_append(sb, "</th></table><br>");
       }
 
       str_buffer_append(sb, "  <br>Realm name: <input type=\"text\" name=\"");
       str_buffer_append(sb, HR_ADD_REALM);
       str_buffer_append(sb, "\" value=\"");
-      str_buffer_append(sb, (const char *)add_realm);
+      str_buffer_append_html_escaped(sb, (const char *)add_realm);
       str_buffer_append(sb, "\"");
       if (!is_superuser()) {
         str_buffer_append(sb, " disabled ");
@@ -2786,7 +2786,7 @@ static void write_shared_secrets_page(ioa_socket_handle s, const char *add_secre
       str_buffer_append(sb, "  <br>Secret: <input required type=\"text\" name=\"");
       str_buffer_append(sb, HR_ADD_SECRET);
       str_buffer_append(sb, "\" value=\"");
-      str_buffer_append(sb, (const char *)add_secret);
+      str_buffer_append_html_escaped(sb, (const char *)add_secret);
       str_buffer_append(sb, "\"");
       str_buffer_append(sb, "><br>\r\n");
 
@@ -2833,11 +2833,11 @@ static size_t https_print_origins(struct str_buffer *sb) {
       str_buffer_append_sz(sb, i + 1);
       str_buffer_append(sb, "</td>");
       str_buffer_append(sb, "<td>");
-      str_buffer_append(sb, get_secrets_list_elem(&origins, i));
+      str_buffer_append_html_escaped(sb, get_secrets_list_elem(&origins, i));
       str_buffer_append(sb, "</td>");
       if (!current_eff_realm()[0]) {
         str_buffer_append(sb, "<td>");
-        str_buffer_append(sb, get_secrets_list_elem(&realms, i));
+        str_buffer_append_html_escaped(sb, get_secrets_list_elem(&realms, i));
         str_buffer_append(sb, "</td>");
       }
       if (is_superuser()) {
@@ -2846,7 +2846,7 @@ static size_t https_print_origins(struct str_buffer *sb) {
         str_buffer_append(sb, "?");
         str_buffer_append(sb, HR_DELETE_ORIGIN);
         str_buffer_append(sb, "=");
-        str_buffer_append(sb, get_secrets_list_elem(&origins, i));
+        str_buffer_append_uri_escaped(sb, get_secrets_list_elem(&origins, i));
         str_buffer_append(sb, "\">delete</a>");
         str_buffer_append(sb, "</td>");
       }
@@ -2880,7 +2880,7 @@ static void write_origins_page(ioa_socket_handle s, const char *add_origin, cons
       str_buffer_append(sb, "  <br>Realm name: <input type=\"text\" name=\"");
       str_buffer_append(sb, HR_REALM);
       str_buffer_append(sb, "\" value=\"");
-      str_buffer_append(sb, current_eff_realm());
+      str_buffer_append_html_escaped(sb, current_eff_realm());
       str_buffer_append(sb, "\"");
       if (!is_superuser()) {
         str_buffer_append(sb, " disabled ");
@@ -2900,21 +2900,21 @@ static void write_origins_page(ioa_socket_handle s, const char *add_origin, cons
 
         if (msg && msg[0]) {
           str_buffer_append(sb, "<br><table id=\"msg\"><th>");
-          str_buffer_append(sb, msg);
+          str_buffer_append_html_escaped(sb, msg);
           str_buffer_append(sb, "</th></table><br>");
         }
 
         str_buffer_append(sb, "  <br>Realm name: <input required type=\"text\" name=\"");
         str_buffer_append(sb, HR_ADD_REALM);
         str_buffer_append(sb, "\" value=\"");
-        str_buffer_append(sb, (const char *)add_realm);
+        str_buffer_append_html_escaped(sb, (const char *)add_realm);
         str_buffer_append(sb, "\"");
         str_buffer_append(sb, "><br>\r\n");
 
         str_buffer_append(sb, "  <br>Origin: <input required type=\"text\" name=\"");
         str_buffer_append(sb, HR_ADD_ORIGIN);
         str_buffer_append(sb, "\" value=\"");
-        str_buffer_append(sb, (const char *)add_origin);
+        str_buffer_append_html_escaped(sb, (const char *)add_origin);
         str_buffer_append(sb, "\"");
         str_buffer_append(sb, "><br>\r\n");
 
@@ -2967,7 +2967,7 @@ static size_t https_print_oauth_keys(struct str_buffer *sb) {
       str_buffer_append_sz(sb, i + 1);
       str_buffer_append(sb, "</td>");
       str_buffer_append(sb, "<td>");
-      str_buffer_append(sb, get_secrets_list_elem(&kids, i));
+      str_buffer_append_html_escaped(sb, get_secrets_list_elem(&kids, i));
       str_buffer_append(sb, "</td>");
 
       str_buffer_append(sb, "<td><a href=\"");
@@ -2975,20 +2975,20 @@ static size_t https_print_oauth_keys(struct str_buffer *sb) {
       str_buffer_append(sb, "?");
       str_buffer_append(sb, HR_OAUTH_KID);
       str_buffer_append(sb, "=");
-      str_buffer_append(sb, get_secrets_list_elem(&kids, i));
+      str_buffer_append_uri_escaped(sb, get_secrets_list_elem(&kids, i));
       str_buffer_append(sb, "\"> show </a></td>");
 
       str_buffer_append(sb, "<td>");
-      str_buffer_append(sb, get_secrets_list_elem(&tss, i));
+      str_buffer_append_html_escaped(sb, get_secrets_list_elem(&tss, i));
       str_buffer_append(sb, "</td>");
       str_buffer_append(sb, "<td>");
-      str_buffer_append(sb, get_secrets_list_elem(&lts, i));
+      str_buffer_append_html_escaped(sb, get_secrets_list_elem(&lts, i));
       str_buffer_append(sb, "</td>");
       str_buffer_append(sb, "<td>");
-      str_buffer_append(sb, get_secrets_list_elem(&teas, i));
+      str_buffer_append_html_escaped(sb, get_secrets_list_elem(&teas, i));
       str_buffer_append(sb, "</td>");
       str_buffer_append(sb, "<td>");
-      str_buffer_append(sb, get_secrets_list_elem(&realms, i));
+      str_buffer_append_html_escaped(sb, get_secrets_list_elem(&realms, i));
       str_buffer_append(sb, "</td>");
 
       {
@@ -2997,7 +2997,7 @@ static size_t https_print_oauth_keys(struct str_buffer *sb) {
         str_buffer_append(sb, "?");
         str_buffer_append(sb, HR_DELETE_OAUTH_KID);
         str_buffer_append(sb, "=");
-        str_buffer_append(sb, get_secrets_list_elem(&kids, i));
+        str_buffer_append_uri_escaped(sb, get_secrets_list_elem(&kids, i));
         str_buffer_append(sb, "\">delete</a>");
         str_buffer_append(sb, "</td>");
       }
@@ -3052,14 +3052,14 @@ static void write_https_oauth_show_keys(ioa_socket_handle s, const char *kid) {
             memset(&okey, 0, sizeof(okey));
 
             if (!convert_oauth_key_data(&okd, &okey, err_msg, err_msg_size)) {
-              str_buffer_append(sb, err_msg);
+              str_buffer_append_html_escaped(sb, err_msg);
             } else {
 
               str_buffer_append(sb, "<table>\r\n");
 
               if (key.ikm_key[0]) {
                 str_buffer_append(sb, "<tr><td>Base64-encoded key:</td><td>");
-                str_buffer_append(sb, key.ikm_key);
+                str_buffer_append_html_escaped(sb, key.ikm_key);
                 str_buffer_append(sb, "</td></tr>\r\n");
               }
 
@@ -3096,7 +3096,7 @@ static void write_https_oauth_page(ioa_socket_handle s, const char *add_kid, con
 
         if (msg && msg[0]) {
           str_buffer_append(sb, "<br><table id=\"msg\"><th>");
-          str_buffer_append(sb, msg);
+          str_buffer_append_html_escaped(sb, msg);
           str_buffer_append(sb, "</th></table><br>");
         }
 
@@ -3110,7 +3110,7 @@ static void write_https_oauth_page(ioa_socket_handle s, const char *add_kid, con
           str_buffer_append(sb, "  <br>KID (required): <input required type=\"text\" name=\"");
           str_buffer_append(sb, HR_ADD_OAUTH_KID);
           str_buffer_append(sb, "\" value=\"");
-          str_buffer_append(sb, (const char *)add_kid);
+          str_buffer_append_html_escaped(sb, (const char *)add_kid);
           str_buffer_append(sb, "\"><br>\r\n");
         }
 
@@ -3124,7 +3124,7 @@ static void write_https_oauth_page(ioa_socket_handle s, const char *add_kid, con
           str_buffer_append(sb, "  <br>Timestamp, secs (optional): <input type=\"number\" min=\"0\" name=\"");
           str_buffer_append(sb, HR_ADD_OAUTH_TS);
           str_buffer_append(sb, "\" value=\"");
-          str_buffer_append(sb, (const char *)add_ts);
+          str_buffer_append_html_escaped(sb, (const char *)add_ts);
           str_buffer_append(sb, "\"><br>\r\n");
         }
 
@@ -3138,7 +3138,7 @@ static void write_https_oauth_page(ioa_socket_handle s, const char *add_kid, con
           str_buffer_append(sb, "  <br>Lifetime, secs (optional): <input type=\"number\" min=\"0\" name=\"");
           str_buffer_append(sb, HR_ADD_OAUTH_LT);
           str_buffer_append(sb, "\" value=\"");
-          str_buffer_append(sb, (const char *)add_lt);
+          str_buffer_append_html_escaped(sb, (const char *)add_lt);
           str_buffer_append(sb, "\"><br>\r\n");
         }
 
@@ -3155,7 +3155,7 @@ static void write_https_oauth_page(ioa_socket_handle s, const char *add_kid, con
                                 "cols=40 rows=4 name=\"");
           str_buffer_append(sb, HR_ADD_OAUTH_IKM);
           str_buffer_append(sb, "\" maxLength=256 >");
-          str_buffer_append(sb, (const char *)add_ikm);
+          str_buffer_append_html_escaped(sb, (const char *)add_ikm);
           str_buffer_append(sb, "</textarea>");
           str_buffer_append(sb, "<br>\r\n");
         }
@@ -3170,7 +3170,7 @@ static void write_https_oauth_page(ioa_socket_handle s, const char *add_kid, con
           str_buffer_append(sb, "  <br>Realm (optional): <input type=\"text\" name=\"");
           str_buffer_append(sb, HR_ADD_OAUTH_REALM);
           str_buffer_append(sb, "\" value=\"");
-          str_buffer_append(sb, (const char *)add_realm);
+          str_buffer_append_html_escaped(sb, (const char *)add_realm);
           str_buffer_append(sb, "\"><br>\r\n");
         }
 
