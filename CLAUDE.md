@@ -88,11 +88,30 @@ Use `platform=linux/amd64` on x86_64 hosts. On Apple Silicon, build with
 
 ## Code style
 
-All C source must be formatted with `clang-format` using the project's [.clang-format](.clang-format):
+All C source — including `src/`, `fuzzing/`, and `tests/` — must be formatted
+with `clang-format-15` using the project's [.clang-format](.clang-format).
+The CI job [.github/workflows/clang.yml](.github/workflows/clang.yml) runs
+`make lint` and **fails the build on any formatting drift**, so any commit
+containing C/H files must be formatted before it is created.
 
 ```bash
-find src -name '*.c' -o -name '*.h' | xargs clang-format -i
+# Format the entire repo (uses the Makefile target — equivalent to
+# `find . -iname "*.c" -o -iname "*.h" | xargs clang-format -i`):
+make format
+
+# Verify formatting matches CI (zero output = clean):
+make lint
 ```
+
+**Mandatory pre-commit step for any session that edits C/H files:**
+
+```bash
+find . -iname "*.c" -o -iname "*.h" | xargs clang-format -i
+```
+
+Run this before `git commit` whenever the staged diff touches `*.c` or `*.h`,
+even when only one file was edited. The `find` form above does not require
+`./configure` to have been run, so it works in worktrees and fresh clones.
 
 Key style rules (LLVM-based):
 - Indent: 2 spaces, no tabs
