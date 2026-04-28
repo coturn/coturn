@@ -386,7 +386,10 @@ static void harness_challenge_response_builder(const uint8_t *Data, size_t Size)
   }
 
   static const uint16_t kMethods[] = {
-      STUN_METHOD_ALLOCATE, STUN_METHOD_BINDING, STUN_METHOD_REFRESH, STUN_METHOD_CHANNEL_BIND,
+      STUN_METHOD_ALLOCATE,
+      STUN_METHOD_BINDING,
+      STUN_METHOD_REFRESH,
+      STUN_METHOD_CHANNEL_BIND,
   };
   const uint16_t method = kMethods[Data[0] % (sizeof(kMethods) / sizeof(kMethods[0]))];
 
@@ -424,12 +427,12 @@ static void harness_challenge_response_builder(const uint8_t *Data, size_t Size)
     bool include_nonce;
     bool include_third_party_auth;
   } kVariants[] = {
-      {401, true, true, false},  /* canonical 401 challenge: REALM + NONCE */
-      {401, true, true, true},   /* same + THIRD-PARTY-AUTHORIZATION (OAuth branch) */
-      {438, true, true, false},  /* covers the (*err_code) == 438 disjunct */
-      {401, true, false, false}, /* REALM present, NONCE missing — negative inner path */
-      {401, false, false, false},/* err_code matches but no REALM — outer negative path */
-      {400, true, true, false},  /* err_code does not match 401/438 — early-out path */
+      {401, true, true, false},   /* canonical 401 challenge: REALM + NONCE */
+      {401, true, true, true},    /* same + THIRD-PARTY-AUTHORIZATION (OAuth branch) */
+      {438, true, true, false},   /* covers the (*err_code) == 438 disjunct */
+      {401, true, false, false},  /* REALM present, NONCE missing — negative inner path */
+      {401, false, false, false}, /* err_code matches but no REALM — outer negative path */
+      {400, true, true, false},   /* err_code does not match 401/438 — early-out path */
   };
 
   for (size_t v = 0; v < sizeof(kVariants) / sizeof(kVariants[0]); ++v) {
