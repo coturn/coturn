@@ -135,3 +135,14 @@ kw_sha1_size="\x00\x14"
 kw_sha256_size="\x00\x20"
 kw_sha384_size="\x00\x30"
 kw_sha512_size="\x00\x40"
+
+# HTTP framing tokens — required for is_http() in src/client/ns_turn_msg.c
+# to descend past the prefix/version/EOH guards into findstr().
+kw_http_get="GET "
+kw_http_post="POST "
+kw_http_put="PUT "
+kw_http_delete="DELETE "
+kw_http_version_11=" HTTP/1.1"
+kw_http_version_10=" HTTP/1.0"
+kw_http_eoh="\r\n\r\n"
+kw_http_content_length="content-length: "
