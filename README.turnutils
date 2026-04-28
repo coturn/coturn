@@ -123,6 +123,12 @@ Flags:
 
 -J	Use oAuth with default test key kid='north'.
 
+-Y	Load-generator mode:
+	packet floods data through a single TURN allocation as fast as possible,
+	alloc creates allocations as fast as possible,
+	and invalid sends small invalid packets to the TURN listener as fast as possible.
+	Load-generator modes imply -c and do not support -y.
+
 Options with required values:
 
 -l      Message length (Default: 100 Bytes).
@@ -137,6 +143,8 @@ Options with required values:
 -p      TURN Server port (Defaults: 3478 unsecure, 5349 secure).
 
 -n      Number of messages to send (Default: 5).
+	In load-generator mode, -n is the number of operations per client.
+	If omitted there, the client runs until interrupted.
 
 -d      Local interface device (optional, Linux only).
 
@@ -149,6 +157,7 @@ Options with required values:
 -r      Peer port (Default: 3480).
 
 -z      Per-session packet interval in milliseconds (Default: 20).
+	In packet and invalid load-generator modes the default is 0 ms.
 
 -u      STUN/TURN user name.
 
@@ -167,6 +176,15 @@ Options with required values:
 -o	the ORIGIN STUN attribute value.
 
 -a	Bandwidth for the bandwidth request in ALLOCATE. The default value is zero.
+
+Notes for load-generator mode:
+
+- packet mode still performs the normal TURN allocation/setup and then starts sending immediately with no pacing.
+
+- alloc mode does not require -e; it repeatedly establishes new allocations and closes them again.
+- alloc mode does not require -e; it repeatedly establishes new allocations, uses a unique client local port for each one, attaches each one to a unique synthetic peer ip:port, and closes them again.
+
+- invalid mode does not require -e; by default it uses 16-byte payloads unless -l is specified.
 
 See the examples in the "examples/scripts" directory.
 

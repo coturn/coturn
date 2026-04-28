@@ -97,6 +97,8 @@ char origin[STUN_MAX_ORIGIN_SIZE + 1] = "\0";
 band_limit_t bps = 0;
 
 bool dual_allocation = false;
+bool unique_client_ports = false;
+uclient_load_mode load_mode = UCLIENT_LOAD_MODE_NONE;
 
 int oauth = 0;
 oauth_key okey_array[3];
@@ -107,6 +109,22 @@ static oauth_key_data_raw okdr_array[3] = {
     {"oldempire", "MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIK", 0, 0, "A256GCM", ""}};
 
 //////////////// local definitions /////////////////
+
+static uclient_load_mode parse_load_mode(const char *mode) {
+  if (!mode) {
+    return UCLIENT_LOAD_MODE_NONE;
+  }
+  if (!strcmp(mode, "packet")) {
+    return UCLIENT_LOAD_MODE_PACKET_FLOOD;
+  }
+  if (!strcmp(mode, "alloc")) {
+    return UCLIENT_LOAD_MODE_ALLOC_FLOOD;
+  }
+  if (!strcmp(mode, "invalid")) {
+    return UCLIENT_LOAD_MODE_INVALID_FLOOD;
+  }
+  return UCLIENT_LOAD_MODE_NONE;
+}
 
 static char Usage[] =
     "Usage: uclient [flags] [options] turn-server-ip-address\n"
@@ -138,6 +156,7 @@ static char Usage[] =
     "	-Z	Dual allocation (implies -c).\n"
     "	-J	Use oAuth with default test keys kid='north', 'union' or 'oldempire'.\n"
     "Options:\n"
+    "	-Y	<packet|alloc|invalid> Enable load-generator mode.\n"
     "	-l	Message length (Default: 100 Bytes).\n"
     "	-i	Certificate file (for secure connections only, optional).\n"
     "	-k	Private key file (for secure connections only).\n"
@@ -172,6 +191,9 @@ int main(int argc, char **argv) {
 
   char rest_api_separator = ':';
   bool use_null_cipher = false;
+  bool message_length_set = false;
+  bool message_count_set = false;
+  bool packet_interval_set = false;
 
 #if defined(WINDOWS)
 
@@ -200,7 +222,7 @@ int main(int argc, char **argv) {
 
   memset(local_addr, 0, sizeof(local_addr));
 
-  while ((c = getopt(argc, argv, "a:d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:E:F:o:bZvsyhcxXgtTSAPDNOUMRIGBJ")) != -1) {
+  while ((c = getopt(argc, argv, "a:d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:E:F:o:Y:bZvsyhcxXgtTSAPDNOUMRIGBJ")) != -1) {
     switch (c) {
     case 'J': {
 
@@ -231,6 +253,13 @@ int main(int argc, char **argv) {
     } break;
     case 'a':
       bps = (band_limit_t)strtoul(optarg, NULL, 10);
+      break;
+    case 'Y':
+      load_mode = parse_load_mode(optarg);
+      if (load_mode == UCLIENT_LOAD_MODE_NONE) {
+        fprintf(stderr, "Unknown load mode: %s\n", optarg);
+        exit(1);
+      }
       break;
     case 'o':
       STRCPY(origin, optarg);
@@ -274,6 +303,7 @@ int main(int argc, char **argv) {
       negative_protocol_test = true;
       break;
     case 'z':
+      packet_interval_set = true;
       RTP_PACKET_INTERVAL = atoi(optarg);
       break;
     case 'Z':
@@ -298,12 +328,14 @@ int main(int argc, char **argv) {
       default_address_family = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4;
       break;
     case 'l':
+      message_length_set = true;
       clmessage_length = atoi(optarg);
       break;
     case 's':
       do_not_use_channel = true;
       break;
     case 'n':
+      message_count_set = true;
       messagenumber = atoi(optarg);
       break;
     case 'p':
@@ -388,6 +420,31 @@ int main(int argc, char **argv) {
     no_rtcp = true;
   }
 
+  if (is_load_generator_mode()) {
+    no_rtcp = true;
+
+    if (!message_count_set) {
+      messagenumber = 0;
+    }
+
+    if ((is_packet_flood_mode() || is_invalid_flood_mode()) && !packet_interval_set) {
+      RTP_PACKET_INTERVAL = 0;
+    }
+
+    if (is_invalid_flood_mode() && !message_length_set) {
+      clmessage_length = 16;
+    }
+
+    if (is_alloc_flood_mode()) {
+      unique_client_ports = true;
+    }
+
+    if (c2c) {
+      fprintf(stderr, "Load-generator mode does not support -y client-to-client mode\n");
+      exit(1);
+    }
+  }
+
   if (g_use_auth_secret_with_timestamp) {
 
     {
@@ -453,14 +510,20 @@ int main(int argc, char **argv) {
     }
   }
 
-  if (clmessage_length < (int)sizeof(message_info)) {
+  if (!is_invalid_flood_mode() && clmessage_length < (int)sizeof(message_info)) {
     clmessage_length = (int)sizeof(message_info);
   }
 
+  if (is_invalid_flood_mode() && clmessage_length < 1) {
+    clmessage_length = 1;
+  }
+
   const int max_header = 100;
-  if (clmessage_length > (int)(STUN_BUFFER_SIZE - max_header)) {
-    fprintf(stderr, "Message length was corrected to %d\n", (STUN_BUFFER_SIZE - max_header));
-    clmessage_length = (int)(STUN_BUFFER_SIZE - max_header);
+  const int max_message_length =
+      is_invalid_flood_mode() ? (int)STUN_BUFFER_SIZE : (int)(STUN_BUFFER_SIZE - max_header);
+  if (clmessage_length > max_message_length) {
+    fprintf(stderr, "Message length was corrected to %d\n", max_message_length);
+    clmessage_length = max_message_length;
   }
 
   if (optind >= argc) {
@@ -468,7 +531,7 @@ int main(int argc, char **argv) {
     exit(-1);
   }
 
-  if (!c2c) {
+  if (!c2c && !is_alloc_flood_mode() && !is_invalid_flood_mode()) {
     if (!peer_address[0]) {
       fprintf(stderr, "Either -e peer_address or -y must be specified\n");
       return -1;

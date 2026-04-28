@@ -62,8 +62,18 @@ static const int never_allocate_rtcp = 0;
 
 static const unsigned char kALPNProtos[] = "\x08http/1.1\x09stun.turn\x12stun.nat-discovery";
 static const size_t kALPNProtosLen = sizeof(kALPNProtos) - 1;
+static uint16_t next_unique_local_port = 49152;
 
 /////////////////////////////////////////
+
+static uint16_t allocate_unique_local_port(void) {
+  const uint16_t port = next_unique_local_port;
+  ++next_unique_local_port;
+  if (next_unique_local_port < 49152) {
+    next_unique_local_port = 49152;
+  }
+  return port;
+}
 
 int rare_event(void) {
   if (dos) {
@@ -160,7 +170,7 @@ static SSL *tls_connect(ioa_socket_raw fd, ioa_addr *remote_addr, bool *try_agai
       switch (SSL_get_error(ssl, rc)) {
       case SSL_ERROR_WANT_READ:
       case SSL_ERROR_WANT_WRITE:
-        if (!dos) {
+        if (!dos && !is_load_generator_mode()) {
           usleep(1000);
         }
         continue;
@@ -216,6 +226,7 @@ static int clnet_connect(uint16_t clnet_remote_port, const char *remote_address,
 
   ioa_addr local_addr;
   int connect_cycle = 0;
+  int bind_cycle = 0;
 
   ioa_addr remote_addr;
 
@@ -261,16 +272,36 @@ start_socket:
       }
     }
 
-    addr_bind(clnet_fd, &local_addr, 0, 1, get_socket_type());
-
-  } else if (strlen(local_address) > 0) {
-
-    if (make_ioa_addr((const uint8_t *)local_address, 0, &local_addr) < 0) {
+    if (addr_bind(clnet_fd, &local_addr, 0, 1, get_socket_type()) < 0) {
       socket_closesocket(clnet_fd);
       return -1;
     }
 
-    addr_bind(clnet_fd, &local_addr, 0, 1, get_socket_type());
+  } else if (strlen(local_address) > 0 || unique_client_ports) {
+
+    const char *bind_address = local_address;
+    if (!bind_address[0]) {
+      bind_address = (remote_addr.ss.sa_family == AF_INET6) ? "::" : "0.0.0.0";
+    }
+
+    if (make_ioa_addr((const uint8_t *)bind_address, 0, &local_addr) < 0) {
+      socket_closesocket(clnet_fd);
+      return -1;
+    }
+
+    if (unique_client_ports) {
+      addr_set_port(&local_addr, allocate_unique_local_port());
+    }
+
+    const int bind_debug = unique_client_ports ? 0 : 1;
+    if (addr_bind(clnet_fd, &local_addr, 0, bind_debug, get_socket_type()) < 0) {
+      const int bind_err = socket_errno();
+      socket_closesocket(clnet_fd);
+      if (unique_client_ports && bind_err == EADDRINUSE && bind_cycle++ < MAX_CONNECT_EFFORTS) {
+        goto start_socket;
+      }
+      return -1;
+    }
   }
 
   int connect_err = 0;
@@ -307,7 +338,7 @@ start_socket:
     addr_debug_print(verbose, &remote_addr, "Connected to");
   }
 
-  if (!dos) {
+  if (!dos && !is_load_generator_mode()) {
     usleep(500);
   }
 
@@ -943,6 +974,62 @@ beg_cp:
   return 0;
 }
 
+int turn_refresh_allocation(bool verbose, app_ur_conn_info *clnet_info, uint32_t lifetime) {
+
+  stun_buffer request_message, response_message;
+
+beg_refresh:
+
+  stun_init_request(STUN_METHOD_REFRESH, &request_message);
+  uint32_t lt = htonl(lifetime);
+  stun_attr_add(&request_message, STUN_ATTRIBUTE_LIFETIME, (const char *)&lt, 4);
+
+  add_origin(&request_message);
+
+  if (add_integrity(clnet_info, &request_message) < 0) {
+    return -1;
+  }
+
+  stun_attr_add_fingerprint_str(request_message.buf, &(request_message.len));
+
+  if (send_buffer(clnet_info, &request_message, 0, 0) <= 0) {
+    return -1;
+  }
+
+  while (true) {
+    const int len = recv_buffer(clnet_info, &response_message, 1, 0, NULL, &request_message);
+    if (len <= 0) {
+      return -1;
+    }
+
+    response_message.len = len;
+
+    int err_code = 0;
+    uint8_t err_msg[129];
+
+    if (stun_is_success_response(&response_message)) {
+      if (clnet_info->nonce[0]) {
+        if (check_integrity(clnet_info, &response_message) < 0) {
+          return -1;
+        }
+      }
+      if (verbose) {
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "refresh success: lifetime=%u\n", lifetime);
+      }
+      return 0;
+    } else if (stun_is_challenge_response_str(response_message.buf, response_message.len, &err_code, err_msg,
+                                              sizeof(err_msg), clnet_info->realm, clnet_info->nonce,
+                                              clnet_info->server_name, &(clnet_info->oauth))) {
+      goto beg_refresh;
+    } else if (stun_is_error_response(&response_message, &err_code, err_msg, sizeof(err_msg))) {
+      if (verbose) {
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "refresh error %d (%s)\n", err_code, (char *)err_msg);
+      }
+      return -1;
+    }
+  }
+}
+
 int start_connection(uint16_t clnet_remote_port0, const char *remote_address0, const unsigned char *ifname,
                      const char *local_address, bool verbose, app_ur_conn_info *clnet_info_probe,
                      app_ur_conn_info *clnet_info, uint16_t *chn, app_ur_conn_info *clnet_info_rtcp,
@@ -1168,6 +1255,37 @@ int start_connection(uint16_t clnet_remote_port0, const char *remote_address0, c
   }
 
   return 0;
+}
+
+int start_allocate_only_connection(uint16_t clnet_remote_port0, const char *remote_address0, const unsigned char *ifname,
+                                   const char *local_address, bool verbose, app_ur_conn_info *clnet_info_probe,
+                                   app_ur_conn_info *clnet_info, ioa_addr *peer_addr) {
+
+  UNUSED_ARG(clnet_info_probe);
+
+  ioa_addr relay_addr;
+
+  if (clnet_connect(clnet_remote_port0, remote_address0, ifname, local_address, verbose, clnet_info) < 0) {
+    exit(-1);
+  }
+
+  if (clnet_allocate(verbose, clnet_info, &relay_addr, default_address_family, NULL, NULL) < 0) {
+    return -1;
+  }
+
+  if (peer_addr) {
+    addr_cpy(&(clnet_info->peer_addr), peer_addr);
+    if (turn_create_permission(verbose, clnet_info, peer_addr, 1) < 0) {
+      return -1;
+    }
+  }
+
+  return 0;
+}
+
+int start_raw_connection(uint16_t clnet_remote_port, const char *remote_address, const unsigned char *ifname,
+                         const char *local_address, bool verbose, app_ur_conn_info *clnet_info) {
+  return clnet_connect(clnet_remote_port, remote_address, ifname, local_address, verbose, clnet_info);
 }
 
 int start_c2c_connection(uint16_t clnet_remote_port0, const char *remote_address0, const unsigned char *ifname,

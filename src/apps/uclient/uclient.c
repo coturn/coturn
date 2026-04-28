@@ -62,6 +62,11 @@ static uint64_t tot_send_bytes = 0;
 static uint32_t tot_recv_messages = 0;
 static uint64_t tot_recv_bytes = 0;
 static uint64_t tot_send_dropped = 0;
+static uint64_t tot_allocations = 0;
+static uint64_t load_sent_packets = 0;
+static uint64_t load_last_sent_packets = 0;
+static uint64_t load_last_report_time = 0;
+static uint64_t synthetic_peer_counter = 0;
 
 struct event_base *client_event_base = NULL;
 
@@ -96,6 +101,74 @@ static uint64_t min_jitter = 0xFFFFFFFF;
 static uint64_t max_jitter = 0;
 
 static bool show_statistics = false;
+
+static bool uses_turn_allocation(void) { return !is_invalid_flood_mode(); }
+
+static bool uses_unlimited_message_count(const app_ur_session *elem) {
+  return elem && is_load_generator_mode() && (elem->tot_msgnum <= 0);
+}
+
+static int get_send_burst_limit(void) { return is_packet_flood_mode() || is_invalid_flood_mode() ? 4096 : 50; }
+
+static size_t get_invalid_packet_length(void) {
+  if (clmessage_length < 1) {
+    return 1;
+  }
+  if (clmessage_length > (int)STUN_BUFFER_SIZE) {
+    return STUN_BUFFER_SIZE;
+  }
+  return (size_t)clmessage_length;
+}
+
+static void reset_load_generator_rate_stats(void) {
+  load_sent_packets = 0;
+  load_last_sent_packets = 0;
+  load_last_report_time = current_time;
+}
+
+static void print_load_generator_rate(const char *context) {
+  if (!is_load_generator_mode()) {
+    return;
+  }
+
+  if (current_time <= load_last_report_time) {
+    return;
+  }
+
+  const uint64_t elapsed = current_time - load_last_report_time;
+  const uint64_t delta_packets = load_sent_packets - load_last_sent_packets;
+  const double pps = (double)delta_packets / (double)elapsed;
+
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: send_pps=%.2f, total_packets=%llu\n", context, pps,
+                (unsigned long long)load_sent_packets);
+
+  load_last_report_time = current_time;
+  load_last_sent_packets = load_sent_packets;
+}
+
+static void generate_unique_allocation_peer(ioa_addr *peer_addr) {
+  if (!peer_addr) {
+    return;
+  }
+
+  const uint64_t peer_index = synthetic_peer_counter++;
+  const uint16_t port = (uint16_t)(1024 + (peer_index % (uint64_t)(0x10000 - 1024)));
+  char peer_saddr[129];
+
+  if (default_address_family == STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6) {
+    const uint64_t host_index = peer_index / (uint64_t)(0x10000 - 1024);
+    snprintf(peer_saddr, sizeof(peer_saddr), "2001:db8:%x:%x::1", (unsigned int)((host_index >> 16) & 0xffffU),
+             (unsigned int)(host_index & 0xffffU));
+  } else {
+    const uint64_t host_index = 1 + (peer_index / (uint64_t)(0x10000 - 1024));
+    snprintf(peer_saddr, sizeof(peer_saddr), "198.%u.%u.%u", 18 + (unsigned int)((host_index >> 16) & 0x1U),
+             (unsigned int)((host_index >> 8) & 0xffU), (unsigned int)(host_index & 0xffU));
+  }
+
+  if (make_ioa_addr((const uint8_t *)peer_saddr, port, peer_addr) < 0) {
+    addr_set_any(peer_addr);
+  }
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -305,6 +378,10 @@ int send_buffer(app_ur_conn_info *clnet_info, stun_buffer *message, bool data_co
     }
 
     ret = (int)message->len;
+  }
+
+  if ((ret > 0) && is_load_generator_mode()) {
+    ++load_sent_packets;
   }
 
   return ret;
@@ -878,12 +955,27 @@ static int client_write(app_ur_session *elem) {
 
   elem->ctime = current_time;
 
-  message_info *mi = (message_info *)buffer_to_send;
-  mi->msgnum = elem->wmsgnum;
-  mi->mstime = current_mstime;
   app_tcp_conn_info *atc = NULL;
+  size_t payload_len = (size_t)clmessage_length;
 
-  if (is_TCP_relay()) {
+  if (is_invalid_flood_mode()) {
+    payload_len = get_invalid_packet_length();
+    memset(elem->out_buffer.buf, 0xA5, payload_len);
+    if (payload_len >= 8) {
+      elem->out_buffer.buf[0] = 0x00;
+      elem->out_buffer.buf[1] = 0x01;
+      elem->out_buffer.buf[2] = 0x7f;
+      elem->out_buffer.buf[3] = 0x7f;
+      memcpy(elem->out_buffer.buf + 4, &(elem->wmsgnum), sizeof(elem->wmsgnum));
+    }
+    elem->out_buffer.len = payload_len;
+  } else {
+    message_info *mi = (message_info *)buffer_to_send;
+    mi->msgnum = elem->wmsgnum;
+    mi->mstime = current_mstime;
+  }
+
+  if (!is_invalid_flood_mode() && is_TCP_relay()) {
 
     memcpy(elem->out_buffer.buf, buffer_to_send, clmessage_length);
     elem->out_buffer.len = clmessage_length;
@@ -893,7 +985,7 @@ static int client_write(app_ur_session *elem) {
         ++elem->wmsgnum;
         elem->to_send_timems += RTP_PACKET_INTERVAL;
         tot_send_messages++;
-        tot_send_bytes += clmessage_length;
+        tot_send_bytes += payload_len;
       }
       return 0;
     }
@@ -907,11 +999,11 @@ static int client_write(app_ur_session *elem) {
       printf("%s: Uninitialized atc: i=%d, atc=%p\n", __FUNCTION__, i, atc);
       return -1;
     }
-  } else if (!do_not_use_channel) {
+  } else if (!is_invalid_flood_mode() && !do_not_use_channel) {
     /* Let's always do padding: */
     stun_init_channel_message(elem->chnum, &(elem->out_buffer), clmessage_length, mandatory_channel_padding || use_tcp);
     memcpy(elem->out_buffer.buf + 4, buffer_to_send, clmessage_length);
-  } else {
+  } else if (!is_invalid_flood_mode()) {
     stun_init_indication(STUN_METHOD_SEND, &(elem->out_buffer));
     stun_attr_add(&(elem->out_buffer), STUN_ATTRIBUTE_DATA, buffer_to_send, clmessage_length);
     stun_attr_add_addr(&(elem->out_buffer), STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &(elem->pinfo.peer_addr));
@@ -940,7 +1032,7 @@ static int client_write(app_ur_session *elem) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "wrote %d bytes\n", (int)rc);
       }
       tot_send_messages++;
-      tot_send_bytes += clmessage_length;
+      tot_send_bytes += payload_len;
     } else {
       return -1;
     }
@@ -990,6 +1082,33 @@ void client_input_handler(evutil_socket_t fd, short what, void *arg) {
   }
 }
 
+static void client_discard_input_handler(evutil_socket_t fd, short what, void *arg) {
+  if (!(what & EV_READ) || !arg) {
+    return;
+  }
+
+  UNUSED_ARG(fd);
+
+  app_ur_session *elem = (app_ur_session *)arg;
+  if (!elem || (elem->state != UR_STATE_READY)) {
+    return;
+  }
+
+  uint8_t buffer[STUN_BUFFER_SIZE];
+
+  if (elem->pinfo.ssl) {
+    int rc = 0;
+    do {
+      rc = SSL_read(elem->pinfo.ssl, buffer, (int)sizeof(buffer));
+    } while ((rc > 0) || (rc < 0 && socket_eintr()));
+  } else if (elem->pinfo.fd >= 0) {
+    ssize_t rc = 0;
+    do {
+      rc = recv(elem->pinfo.fd, buffer, sizeof(buffer), 0);
+    } while ((rc > 0) || (rc < 0 && socket_eintr()));
+  }
+}
+
 static void run_events(int short_burst) {
   struct timeval timeout;
 
@@ -1007,6 +1126,32 @@ static void run_events(int short_burst) {
 }
 
 ////////////////////// main method /////////////////
+
+static int start_invalid_client(const char *remote_address, uint16_t port, const unsigned char *ifname,
+                                const char *local_address, int messagenumber, int i) {
+
+  app_ur_session *ss = create_new_ss();
+  app_ur_conn_info *clnet_info = &(ss->pinfo);
+
+  if (start_raw_connection(port, remote_address, ifname, local_address, clnet_verbose, clnet_info) < 0) {
+    exit(-1);
+  }
+
+  socket_set_nonblocking(clnet_info->fd);
+
+  struct event *ev = event_new(client_event_base, clnet_info->fd, EV_READ | EV_PERSIST, client_discard_input_handler, ss);
+  event_add(ev, NULL);
+
+  ss->state = UR_STATE_READY;
+  ss->input_ev = ev;
+  ss->tot_msgnum = messagenumber;
+  ss->recvmsgnum = -1;
+  ss->chnum = 0;
+
+  elems[i] = ss;
+
+  return 0;
+}
 
 static int start_client(const char *remote_address, uint16_t port, const unsigned char *ifname,
                         const char *local_address, int messagenumber, int i) {
@@ -1090,6 +1235,74 @@ static int start_client(const char *remote_address, uint16_t port, const unsigne
   }
 
   return 0;
+}
+
+static void start_allocation_flood(const char *remote_address, uint16_t port, const unsigned char *ifname,
+                                   const char *local_address, int allocation_count, int mclient) {
+
+  const bool unlimited = allocation_count <= 0;
+  const uint64_t per_client_target = unlimited ? 0 : (uint64_t)allocation_count;
+  const uint64_t total_target = unlimited ? 0 : (per_client_target * (uint64_t)mclient);
+
+  __turn_getMSTime();
+  const uint64_t start_time = current_time;
+  tot_allocations = 0;
+  synthetic_peer_counter = 0;
+  reset_load_generator_rate_stats();
+
+  while (unlimited || (tot_allocations < total_target)) {
+    for (int i = 0; i < mclient; ++i) {
+      app_ur_conn_info clnet_info_probe;
+      app_ur_conn_info clnet_info;
+      ioa_addr synthetic_peer_addr;
+      memset(&clnet_info_probe, 0, sizeof(clnet_info_probe));
+      memset(&clnet_info, 0, sizeof(clnet_info));
+      memset(&synthetic_peer_addr, 0, sizeof(synthetic_peer_addr));
+      clnet_info_probe.fd = -1;
+      clnet_info.fd = -1;
+
+      generate_unique_allocation_peer(&synthetic_peer_addr);
+
+      if (start_allocate_only_connection(port, remote_address, ifname, local_address, clnet_verbose, &clnet_info_probe,
+                                         &clnet_info, &synthetic_peer_addr) < 0) {
+        exit(-1);
+      }
+
+      turn_refresh_allocation(clnet_verbose, &clnet_info, 0);
+
+      app_ur_session ss_probe;
+      app_ur_session ss_alloc;
+      memset(&ss_probe, 0, sizeof(ss_probe));
+      memset(&ss_alloc, 0, sizeof(ss_alloc));
+      ss_probe.pinfo = clnet_info_probe;
+      ss_alloc.pinfo = clnet_info;
+      if (ss_probe.pinfo.fd >= 0 || ss_probe.pinfo.ssl) {
+        uc_delete_session_elem_data(&ss_probe);
+      }
+      uc_delete_session_elem_data(&ss_alloc);
+
+      ++tot_allocations;
+
+      __turn_getMSTime();
+      if (show_statistics) {
+        print_load_generator_rate(__FUNCTION__);
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: total_allocations=%llu\n", __FUNCTION__,
+                      (unsigned long long)tot_allocations);
+        show_statistics = false;
+      }
+
+      if (!unlimited && (tot_allocations >= total_target)) {
+        break;
+      }
+    }
+  }
+
+  __turn_getMSTime();
+  print_load_generator_rate(__FUNCTION__);
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: total_allocations=%llu\n", __FUNCTION__,
+                (unsigned long long)tot_allocations);
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total allocation flood time is %u\n",
+                (unsigned int)(current_time - start_time));
 }
 
 static int start_c2c(const char *remote_address, uint16_t port, const unsigned char *ifname, const char *local_address,
@@ -1303,7 +1516,7 @@ static int refresh_channel(app_ur_session *elem, uint16_t method, uint32_t lt) {
 
 static inline int client_timer_handler(app_ur_session *elem, int *done) {
   if (elem) {
-    if (!turn_time_before(current_mstime, elem->refresh_time)) {
+    if (uses_turn_allocation() && !turn_time_before(current_mstime, elem->refresh_time)) {
       refresh_channel(elem, 0, 600);
     }
 
@@ -1311,15 +1524,17 @@ static inline int client_timer_handler(app_ur_session *elem, int *done) {
       return 0;
     }
 
-    int max_num = 50;
+    const bool unlimited = uses_unlimited_message_count(elem);
+    int max_num = get_send_burst_limit();
     int cur_num = 0;
 
     while (!turn_time_before(current_mstime, elem->to_send_timems)) {
       if (cur_num++ >= max_num) {
         break;
       }
-      if (elem->wmsgnum >= elem->tot_msgnum) {
-        if (!turn_time_before(current_mstime, elem->finished_time) || (tot_recv_messages >= tot_messages)) {
+      if (!unlimited && (elem->wmsgnum >= elem->tot_msgnum)) {
+        if (!turn_time_before(current_mstime, elem->finished_time) ||
+            (!is_invalid_flood_mode() && (tot_recv_messages >= tot_messages))) {
           /*
           TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: elem=0x%x: 111.111: c=%d, t=%d, r=%d,
           w=%d\n",__FUNCTION__,(int)elem,elem->wait_cycles,elem->tot_msgnum,elem->rmsgnum,elem->wmsgnum);
@@ -1347,7 +1562,10 @@ static inline int client_timer_handler(app_ur_session *elem, int *done) {
         }
       } else {
         *done += 1;
-        client_write(elem);
+        if (client_write(elem) < 0) {
+          client_shutdown(elem);
+          return 1;
+        }
         elem->finished_time = current_mstime + STOPPING_TIME * 1000;
       }
     }
@@ -1393,6 +1611,11 @@ void start_mclient(const char *remote_address, uint16_t port, const unsigned cha
 
   total_clients = mclient;
 
+  if (is_alloc_flood_mode()) {
+    start_allocation_flood(remote_address, port, ifname, local_address, messagenumber, mclient);
+    return;
+  }
+
   if (c2c) {
     // mclient must be a multiple of 4:
     if (!no_rtcp) {
@@ -1416,6 +1639,7 @@ void start_mclient(const char *remote_address, uint16_t port, const unsigned cha
 
   __turn_getMSTime();
   uint32_t stime = current_time;
+  reset_load_generator_rate_stats();
 
   memset(buffer_to_send, 7, clmessage_length);
 
@@ -1426,7 +1650,7 @@ void start_mclient(const char *remote_address, uint16_t port, const unsigned cha
   if (c2c) {
     if (!no_rtcp) {
       for (int i = 0; i < (mclient >> 2); i++) {
-        if (!dos) {
+        if (!dos && !is_load_generator_mode()) {
           usleep(SLEEP_INTERVAL);
         }
         if (start_c2c(remote_address, port, ifname, local_address, messagenumber, i << 2) < 0) {
@@ -1436,7 +1660,7 @@ void start_mclient(const char *remote_address, uint16_t port, const unsigned cha
       }
     } else {
       for (int i = 0; i < (mclient >> 1); i++) {
-        if (!dos) {
+        if (!dos && !is_load_generator_mode()) {
           usleep(SLEEP_INTERVAL);
         }
         if (start_c2c(remote_address, port, ifname, local_address, messagenumber, i << 1) < 0) {
@@ -1448,7 +1672,7 @@ void start_mclient(const char *remote_address, uint16_t port, const unsigned cha
   } else {
     if (!no_rtcp) {
       for (int i = 0; i < (mclient >> 1); i++) {
-        if (!dos) {
+        if (!dos && !is_load_generator_mode()) {
           usleep(SLEEP_INTERVAL);
         }
         if (start_client(remote_address, port, ifname, local_address, messagenumber, i << 1) < 0) {
@@ -1458,10 +1682,13 @@ void start_mclient(const char *remote_address, uint16_t port, const unsigned cha
       }
     } else {
       for (int i = 0; i < mclient; i++) {
-        if (!dos) {
+        if (!dos && !is_load_generator_mode()) {
           usleep(SLEEP_INTERVAL);
         }
-        if (start_client(remote_address, port, ifname, local_address, messagenumber, i) < 0) {
+        const int rc = is_invalid_flood_mode()
+                           ? start_invalid_client(remote_address, port, ifname, local_address, messagenumber, i)
+                           : start_client(remote_address, port, ifname, local_address, messagenumber, i);
+        if (rc < 0) {
           exit(-1);
         }
         tot_clients++;
@@ -1481,7 +1708,7 @@ void start_mclient(const char *remote_address, uint16_t port, const unsigned cha
   struct timeval tv;
 
   tv.tv_sec = 0;
-  tv.tv_usec = 1000;
+  tv.tv_usec = (is_packet_flood_mode() || is_invalid_flood_mode()) ? 100 : 1000;
 
   evtimer_add(ev, &tv);
 
@@ -1550,7 +1777,11 @@ void start_mclient(const char *remote_address, uint16_t port, const unsigned cha
   stime = current_time;
 
   for (int i = 0; i < total_clients; i++) {
-    elems[i]->to_send_timems = current_mstime + 1000 + ((uint32_t)turn_random_number()) % 5000;
+    if (is_packet_flood_mode() || is_invalid_flood_mode()) {
+      elems[i]->to_send_timems = current_mstime;
+    } else {
+      elems[i]->to_send_timems = current_mstime + 1000 + ((uint32_t)turn_random_number()) % 5000;
+    }
   }
 
   tot_messages = elems[0]->tot_msgnum * total_clients;
@@ -1567,6 +1798,7 @@ void start_mclient(const char *remote_address, uint16_t port, const unsigned cha
     }
 
     if (show_statistics) {
+      print_load_generator_rate(__FUNCTION__);
       TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
                     "%s: msz=%d, tot_send_msgs=%lu, tot_recv_msgs=%lu, tot_send_bytes ~ %llu, tot_recv_bytes ~ %llu\n",
                     __FUNCTION__, msz, (unsigned long)tot_send_messages, (unsigned long)tot_recv_messages,
@@ -1574,6 +1806,9 @@ void start_mclient(const char *remote_address, uint16_t port, const unsigned cha
       show_statistics = false;
     }
   }
+
+  __turn_getMSTime();
+  print_load_generator_rate(__FUNCTION__);
 
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: tot_send_msgs=%lu, tot_recv_msgs=%lu\n", __FUNCTION__,
                 (unsigned long)tot_send_messages, (unsigned long)tot_recv_messages);
@@ -1592,16 +1827,26 @@ void start_mclient(const char *remote_address, uint16_t port, const unsigned cha
   total_loss = tot_send_messages - tot_recv_messages;
 
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total transmit time is %u\n", ((unsigned int)(current_time - stime)));
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total lost packets %llu (%f%c), total send dropped %llu (%f%c)\n",
-                (unsigned long long)total_loss, (((double)total_loss / (double)tot_send_messages) * 100.00), '%',
-                (unsigned long long)tot_send_dropped,
-                (((double)tot_send_dropped / (double)(tot_send_messages + tot_send_dropped)) * 100.00), '%');
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Average round trip delay %f ms; min = %lu ms, max = %lu ms\n",
-                ((double)total_latency / (double)((tot_recv_messages < 1) ? 1 : tot_recv_messages)),
-                (unsigned long)min_latency, (unsigned long)max_latency);
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Average jitter %f ms; min = %lu ms, max = %lu ms\n",
-                ((double)total_jitter / (double)tot_recv_messages), (unsigned long)min_jitter,
-                (unsigned long)max_jitter);
+  if (is_invalid_flood_mode()) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total send dropped %llu (%f%c)\n", (unsigned long long)tot_send_dropped,
+                  (((double)tot_send_dropped / (double)((tot_send_messages + tot_send_dropped) ? (tot_send_messages + tot_send_dropped) : 1)) *
+                   100.00),
+                  '%');
+  } else {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total lost packets %llu (%f%c), total send dropped %llu (%f%c)\n",
+                  (unsigned long long)total_loss,
+                  (((double)total_loss / (double)(tot_send_messages ? tot_send_messages : 1)) * 100.00), '%',
+                  (unsigned long long)tot_send_dropped,
+                  (((double)tot_send_dropped / (double)((tot_send_messages + tot_send_dropped) ? (tot_send_messages + tot_send_dropped) : 1)) *
+                   100.00),
+                  '%');
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Average round trip delay %f ms; min = %lu ms, max = %lu ms\n",
+                  ((double)total_latency / (double)((tot_recv_messages < 1) ? 1 : tot_recv_messages)),
+                  (unsigned long)min_latency, (unsigned long)max_latency);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Average jitter %f ms; min = %lu ms, max = %lu ms\n",
+                  ((double)total_jitter / (double)((tot_recv_messages < 1) ? 1 : tot_recv_messages)),
+                  (unsigned long)min_jitter, (unsigned long)max_jitter);
+  }
 
   free(elems);
 }
