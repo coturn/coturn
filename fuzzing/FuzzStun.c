@@ -359,6 +359,111 @@ static void harness_old_stun(const uint8_t *Data, size_t Size) {
 }
 
 /* ------------------------------------------------------------------ */
+/* Challenge-response builder (FuzzStunChallengeResponse).            */
+/*                                                                    */
+/* stun_is_challenge_response_str only descends into its three inner  */
+/* stun_attr_get_first_by_type_str calls when:                        */
+/*   1) the message is an error response,                             */
+/*   2) err_code is 401 OR 438,                                       */
+/*   3) a REALM attribute is present,                                 */
+/*   4) a NONCE attribute is present.                                 */
+/* The OAuth branch additionally requires THIRD-PARTY-AUTHORIZATION.  */
+/*                                                                    */
+/* The fuzzer-driven harness in harness_attr_iter calls the function  */
+/* every iteration but the conjunction of conditions is too specific  */
+/* for libFuzzer to discover from binary mutation alone — OSS-Fuzz    */
+/* introspector flags 9 unreached callsites under                     */
+/* stun_attr_get_first_by_type_str gated on this function.            */
+/*                                                                    */
+/* Build six deterministic message variants on every iteration so     */
+/* every internal branch is exercised regardless of the input bytes.  */
+/* Realm / nonce / server-name lengths are derived from fuzz bytes so */
+/* each iteration is still meaningfully distinct.                     */
+/* ------------------------------------------------------------------ */
+static void harness_challenge_response_builder(const uint8_t *Data, size_t Size) {
+  if (!Size) {
+    return;
+  }
+
+  static const uint16_t kMethods[] = {
+      STUN_METHOD_ALLOCATE, STUN_METHOD_BINDING, STUN_METHOD_REFRESH, STUN_METHOD_CHANNEL_BIND,
+  };
+  const uint16_t method = kMethods[Data[0] % (sizeof(kMethods) / sizeof(kMethods[0]))];
+
+  /* Length of each variable-length string is taken from a single fuzz byte
+   * so libFuzzer still varies the inputs across iterations. Floors keep the
+   * attribute non-empty so the inner copies in stun_is_challenge_response_str
+   * actually populate the output buffers. */
+  const size_t realm_len = 1 + (Size > 1 ? (Data[1] % 16) : 0);
+  const size_t nonce_len = 1 + (Size > 2 ? (Data[2] % 16) : 0);
+  const size_t server_len = 1 + (Size > 3 ? (Data[3] % 16) : 0);
+
+  uint8_t realm_buf[STUN_MAX_REALM_SIZE + 1] = {0};
+  uint8_t nonce_buf[STUN_MAX_NONCE_SIZE + 1] = {0};
+  uint8_t server_buf[STUN_MAX_SERVER_NAME_SIZE + 1] = {0};
+  for (size_t i = 0; i < realm_len; ++i) {
+    realm_buf[i] = (uint8_t)('a' + (i % 26));
+  }
+  for (size_t i = 0; i < nonce_len; ++i) {
+    nonce_buf[i] = (uint8_t)('0' + (i % 10));
+  }
+  for (size_t i = 0; i < server_len; ++i) {
+    server_buf[i] = (uint8_t)('A' + (i % 26));
+  }
+
+  stun_tid tid = {0};
+  for (size_t i = 0; i < STUN_TID_SIZE; ++i) {
+    tid.tsx_id[i] = (uint8_t)(Size > i + 4 ? Data[i + 4] : (uint8_t)i);
+  }
+
+  /* Each variant builds a fresh error response and runs it through the
+   * predicate so the inner attribute lookups fire. */
+  static const struct {
+    uint16_t err_code;
+    bool include_realm;
+    bool include_nonce;
+    bool include_third_party_auth;
+  } kVariants[] = {
+      {401, true, true, false},  /* canonical 401 challenge: REALM + NONCE */
+      {401, true, true, true},   /* same + THIRD-PARTY-AUTHORIZATION (OAuth branch) */
+      {438, true, true, false},  /* covers the (*err_code) == 438 disjunct */
+      {401, true, false, false}, /* REALM present, NONCE missing — negative inner path */
+      {401, false, false, false},/* err_code matches but no REALM — outer negative path */
+      {400, true, true, false},  /* err_code does not match 401/438 — early-out path */
+  };
+
+  for (size_t v = 0; v < sizeof(kVariants) / sizeof(kVariants[0]); ++v) {
+    uint8_t buf[MAX_STUN_MESSAGE_SIZE] = {0};
+    size_t len = 0;
+    stun_init_error_response_str(method, buf, &len, kVariants[v].err_code, (const uint8_t *)"unauthorized", &tid, true);
+
+    if (kVariants[v].include_realm) {
+      stun_attr_add_str(buf, &len, STUN_ATTRIBUTE_REALM, realm_buf, (int)realm_len);
+    }
+    if (kVariants[v].include_third_party_auth) {
+      stun_attr_add_str(buf, &len, STUN_ATTRIBUTE_THIRD_PARTY_AUTHORIZATION, server_buf, (int)server_len);
+    }
+    if (kVariants[v].include_nonce) {
+      stun_attr_add_str(buf, &len, STUN_ATTRIBUTE_NONCE, nonce_buf, (int)nonce_len);
+    }
+
+    int err_code = 0;
+    uint8_t err_msg[1024] = {0};
+    uint8_t out_realm[STUN_MAX_REALM_SIZE + 1] = {0};
+    uint8_t out_nonce[STUN_MAX_NONCE_SIZE + 1] = {0};
+    uint8_t out_server[STUN_MAX_SERVER_NAME_SIZE + 1] = {0};
+    bool oauth = false;
+    (void)stun_is_challenge_response_str(buf, len, &err_code, err_msg, sizeof(err_msg), out_realm, out_nonce,
+                                         out_server, &oauth);
+
+    /* Also exercise the NULL-oauth-pointer branch, which is reachable from
+     * other call sites in the codebase. */
+    (void)stun_is_challenge_response_str(buf, len, &err_code, err_msg, sizeof(err_msg), out_realm, out_nonce,
+                                         out_server, NULL);
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /* libFuzzer entry point — run every harness on each input.           */
 /* ------------------------------------------------------------------ */
 extern int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
@@ -367,5 +472,6 @@ extern int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
   harness_attr_iter(Data, Size);
   harness_attr_add(Data, Size);
   harness_old_stun(Data, Size);
+  harness_challenge_response_builder(Data, Size);
   return 0;
 }
