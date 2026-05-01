@@ -14,13 +14,34 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 
 #include "apputils.h"
+#include "ns_turn_ioaddr.h"
 #include "ns_turn_msg.h"
 #include "ns_turn_msg_defs.h"
 #include "ns_turn_utils.h"
 #include "stun_buffer.h"
+
+static uint8_t fuzz_byte(const uint8_t *Data, size_t Size, size_t idx) { return Size ? Data[idx % Size] : 0; }
+
+static uint16_t fuzz_u16(const uint8_t *Data, size_t Size, size_t idx) {
+  return (uint16_t)(((uint16_t)fuzz_byte(Data, Size, idx) << 8) | (uint16_t)fuzz_byte(Data, Size, idx + 1));
+}
+
+static void fuzz_printable_string(const uint8_t *Data, size_t Size, size_t idx, uint8_t *out, size_t out_size) {
+  if (!out_size) {
+    return;
+  }
+
+  const size_t max_len = out_size - 1;
+  const size_t len = max_len ? (size_t)(fuzz_byte(Data, Size, idx) % (max_len + 1)) : 0;
+  for (size_t i = 0; i < len; ++i) {
+    out[i] = (uint8_t)(33 + (fuzz_byte(Data, Size, idx + 1 + i) % 94));
+  }
+  out[len] = 0;
+}
 
 /* ------------------------------------------------------------------ */
 /* Integrity: SHA1 short-term + SHA256 long-term (original FuzzStun). */
@@ -467,6 +488,111 @@ static void harness_challenge_response_builder(const uint8_t *Data, size_t Size)
 }
 
 /* ------------------------------------------------------------------ */
+/* Address parser coverage for make_ioa_addr_from_full_string.        */
+/* ------------------------------------------------------------------ */
+static void harness_full_addr_parser(const uint8_t *Data, size_t Size) {
+  ioa_addr addr;
+  const uint16_t default_port = fuzz_u16(Data, Size, 0);
+  const uint16_t explicit_port = fuzz_u16(Data, Size, 2);
+
+  char ipv4_plain[MAX_IOA_ADDR_STRING];
+  char ipv4_with_port[MAX_IOA_ADDR_STRING];
+  char ipv6_bracketed[MAX_IOA_ADDR_STRING];
+  char ipv6_with_port[MAX_IOA_ADDR_STRING];
+  char ipv4_spaced[MAX_IOA_ADDR_STRING];
+
+  snprintf(ipv4_plain, sizeof(ipv4_plain), "%u.%u.%u.%u", fuzz_byte(Data, Size, 4), fuzz_byte(Data, Size, 5),
+           fuzz_byte(Data, Size, 6), fuzz_byte(Data, Size, 7));
+  snprintf(ipv4_with_port, sizeof(ipv4_with_port), "%u.%u.%u.%u:%u", fuzz_byte(Data, Size, 8), fuzz_byte(Data, Size, 9),
+           fuzz_byte(Data, Size, 10), fuzz_byte(Data, Size, 11), explicit_port);
+  snprintf(ipv6_bracketed, sizeof(ipv6_bracketed), "[2001:db8:%x:%x::%x]", fuzz_u16(Data, Size, 12),
+           fuzz_u16(Data, Size, 14), fuzz_u16(Data, Size, 16));
+  snprintf(ipv6_with_port, sizeof(ipv6_with_port), "[2001:db8:%x:%x::%x]:%u", fuzz_u16(Data, Size, 18),
+           fuzz_u16(Data, Size, 20), fuzz_u16(Data, Size, 22), explicit_port);
+  snprintf(ipv4_spaced, sizeof(ipv4_spaced), "  %u.%u.%u.%u:%u", fuzz_byte(Data, Size, 24), fuzz_byte(Data, Size, 25),
+           fuzz_byte(Data, Size, 26), fuzz_byte(Data, Size, 27), explicit_port);
+
+  static const char *kFixedInputs[] = {
+      "", "0.0.0.0", "127.0.0.1:3478", "192.0.2.1:", "[::1]", "[::1]:5349", "[2001:db8::1]  ", "::1",
+  };
+
+  for (size_t i = 0; i < sizeof(kFixedInputs) / sizeof(kFixedInputs[0]); ++i) {
+    memset(&addr, 0, sizeof(addr));
+    (void)make_ioa_addr_from_full_string((const uint8_t *)kFixedInputs[i], default_port, &addr);
+  }
+
+  const char *generated[] = {ipv4_plain, ipv4_with_port, ipv6_bracketed, ipv6_with_port, ipv4_spaced};
+  for (size_t i = 0; i < sizeof(generated) / sizeof(generated[0]); ++i) {
+    memset(&addr, 0, sizeof(addr));
+    (void)make_ioa_addr_from_full_string((const uint8_t *)generated[i], default_port, &addr);
+  }
+
+  (void)make_ioa_addr_from_full_string((const uint8_t *)ipv4_plain, default_port, NULL);
+}
+
+/* ------------------------------------------------------------------ */
+/* Direct MESSAGE-INTEGRITY append helpers.                           */
+/* ------------------------------------------------------------------ */
+static void harness_integrity_attr_add(const uint8_t *Data, size_t Size) {
+  static const SHATYPE kShaTypes[] = {SHATYPE_SHA1, SHATYPE_SHA256, SHATYPE_SHA384, SHATYPE_SHA512};
+  const SHATYPE shatype = kShaTypes[fuzz_byte(Data, Size, 0) % (sizeof(kShaTypes) / sizeof(kShaTypes[0]))];
+
+  uint8_t uname[STUN_MAX_USERNAME_SIZE + 1] = {0};
+  uint8_t realm[STUN_MAX_REALM_SIZE + 1] = {0};
+  uint8_t nonce[STUN_MAX_NONCE_SIZE + 1] = {0};
+  uint8_t upwd[STUN_MAX_PWD_SIZE + 1] = {0};
+  password_t pwd = {0};
+  hmackey_t key = {0};
+
+  fuzz_printable_string(Data, Size, 1, uname, sizeof(uname));
+  fuzz_printable_string(Data, Size, 1 + sizeof(uname), realm, sizeof(realm));
+  fuzz_printable_string(Data, Size, 1 + sizeof(uname) + sizeof(realm), nonce, sizeof(nonce));
+  fuzz_printable_string(Data, Size, 1 + sizeof(uname) + sizeof(realm) + sizeof(nonce), upwd, sizeof(upwd));
+  fuzz_printable_string(Data, Size, 1 + sizeof(uname) + sizeof(realm) + sizeof(nonce) + sizeof(upwd), pwd, sizeof(pwd));
+
+  if (!uname[0]) {
+    memcpy(uname, "fuzzuser", sizeof("fuzzuser"));
+  }
+  if (!realm[0]) {
+    memcpy(realm, "fuzz.realm", sizeof("fuzz.realm"));
+  }
+  if (!nonce[0]) {
+    memcpy(nonce, "fuzznonce", sizeof("fuzznonce"));
+  }
+  if (!upwd[0]) {
+    memcpy(upwd, "fuzzpassword", sizeof("fuzzpassword"));
+  }
+  if (!pwd[0]) {
+    memcpy(pwd, "shortterm", sizeof("shortterm"));
+  }
+
+  for (size_t i = 0; i < sizeof(key); ++i) {
+    key[i] = fuzz_byte(Data, Size, 32 + i);
+  }
+
+  uint8_t buf[MAX_STUN_MESSAGE_SIZE];
+  size_t len = 0;
+  stun_init_request_str(STUN_METHOD_BINDING, buf, &len);
+  (void)stun_attr_add_integrity_by_key_str(buf, &len, uname, realm, key, nonce, shatype);
+
+  len = 0;
+  stun_init_request_str(STUN_METHOD_ALLOCATE, buf, &len);
+  (void)stun_attr_add_integrity_by_user_str(buf, &len, uname, realm, upwd, nonce, shatype);
+
+  len = 0;
+  stun_init_request_str(STUN_METHOD_REFRESH, buf, &len);
+  (void)stun_attr_add_integrity_by_user_short_term_str(buf, &len, uname, pwd, shatype);
+
+  len = 0;
+  stun_init_request_str(STUN_METHOD_CHANNEL_BIND, buf, &len);
+  (void)stun_attr_add_integrity_str(TURN_CREDENTIALS_SHORT_TERM, buf, &len, key, pwd, shatype);
+
+  len = 0;
+  stun_init_request_str(STUN_METHOD_BINDING, buf, &len);
+  (void)stun_attr_add_integrity_str(TURN_CREDENTIALS_LONG_TERM, buf, &len, key, pwd, shatype);
+}
+
+/* ------------------------------------------------------------------ */
 /* libFuzzer entry point — run every harness on each input.           */
 /* ------------------------------------------------------------------ */
 extern int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
@@ -476,5 +602,7 @@ extern int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
   harness_attr_add(Data, Size);
   harness_old_stun(Data, Size);
   harness_challenge_response_builder(Data, Size);
+  harness_full_addr_parser(Data, Size);
+  harness_integrity_attr_add(Data, Size);
   return 0;
 }
