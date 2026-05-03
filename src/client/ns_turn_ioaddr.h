@@ -69,7 +69,16 @@ int addr_any(const ioa_addr *addr);
 int addr_any_no_port(const ioa_addr *addr);
 uint32_t addr_hash(const ioa_addr *addr);
 uint32_t addr_hash_no_port(const ioa_addr *addr);
-void addr_cpy(ioa_addr *dst, const ioa_addr *src);
+
+/* Inlined: addr_cpy is on the per-packet receive path (every nd.src_addr
+ * dispatch and every map-key copy) and is just a single memcpy. Inlining
+ * eliminates the cross-TU call. */
+static inline void addr_cpy(ioa_addr *dst, const ioa_addr *src) {
+  if (dst && src) {
+    memcpy(dst, src, sizeof(ioa_addr));
+  }
+}
+
 void addr_cpy4(ioa_addr *dst, const struct sockaddr_in *src);
 void addr_cpy6(ioa_addr *dst, const struct sockaddr_in6 *src);
 int addr_eq(const ioa_addr *a1, const ioa_addr *a2);
