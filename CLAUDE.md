@@ -134,6 +134,209 @@ cd examples && ./scripts/basic/udp_c2c_client.sh
 cd examples && ./run_tests.sh
 ```
 
+## Load Test on DigitalOcean
+
+Use two same-region CPU-optimized droplets for repeatable load tests. The last
+known setup used Ubuntu 24.04 `c-4` droplets in `nyc1`:
+
+- turnserver droplet private IP: `10.116.0.2`
+- loadgen droplet private IP: `10.116.0.3`
+- build: current branch archived with `git archive`
+- important baseline: turnserver was **not** run with `--udp-recvmmsg`
+
+Never paste DigitalOcean tokens into logs or files. Use a local environment
+variable such as `DIGITALOCEAN_TOKEN`, and revoke temporary tokens after the
+run.
+
+Local source package and upload:
+
+```bash
+git archive --format=tar HEAD -o /tmp/coturn.tar
+
+scp /tmp/coturn.tar root@TURN_PUBLIC_IP:/root/coturn.tar
+scp /tmp/coturn.tar root@LOADGEN_PUBLIC_IP:/root/coturn.tar
+```
+
+Install dependencies and build on both droplets:
+
+```bash
+export DEBIAN_FRONTEND=noninteractive
+apt-get update
+apt-get install -y build-essential cmake pkg-config libssl-dev libevent-dev \
+  libsqlite3-dev libhiredis-dev git iproute2 sysstat
+
+rm -rf /root/coturn
+mkdir /root/coturn
+tar -xf /root/coturn.tar -C /root/coturn
+cmake -S /root/coturn -B /root/coturn/build -DCMAKE_BUILD_TYPE=Release
+cmake --build /root/coturn/build --target turnserver turnutils_uclient turnutils_peer -j$(nproc)
+```
+
+Start `turnserver` on the server droplet. This is the baseline command used for
+the final run; add `--udp-recvmmsg` only when intentionally comparing that mode:
+
+```bash
+pkill -x turnserver || true
+sysctl -w net.core.rmem_max=134217728 net.core.wmem_max=134217728 \
+  net.core.netdev_max_backlog=250000 || true
+ulimit -n 1048576
+
+nohup /root/coturn/build/bin/turnserver \
+  --use-auth-secret \
+  --static-auth-secret=secret \
+  --realm=north.gov \
+  --allow-loopback-peers \
+  --listening-ip=10.116.0.2 \
+  --relay-ip=10.116.0.2 \
+  --min-port=49152 \
+  --max-port=65535 \
+  --no-cli \
+  --no-tls \
+  --no-dtls \
+  --log-file=stdout \
+  --simple-log \
+  > /root/turnserver.log 2>&1 &
+echo $! > /root/turnserver.pid
+```
+
+Start the UDP peer on the loadgen droplet:
+
+```bash
+pkill -x turnutils_peer || true
+sysctl -w net.core.rmem_max=134217728 net.core.wmem_max=134217728 \
+  net.core.netdev_max_backlog=250000 || true
+ulimit -n 1048576
+
+nohup /root/coturn/build/bin/turnutils_peer -L 10.116.0.3 -p 3480 \
+  > /root/peer.log 2>&1 &
+echo $! > /root/peer.pid
+```
+
+Optional server-side monitor, run on the turnserver droplet before each test:
+
+```bash
+cat > /root/start_monitor.sh <<'EOF'
+#!/bin/bash
+label=$1
+pid=$(cat /root/turnserver.pid)
+rm -f /root/${label}_*.txt
+nohup bash -c "pidstat -h -u -r -p $pid 1 14 > /root/${label}_pidstat.txt & \
+  mpstat 1 14 > /root/${label}_mpstat.txt & \
+  sar -n DEV 1 14 > /root/${label}_sar.txt & wait" \
+  > /root/${label}_monitor.out 2>&1 &
+echo $! > /root/${label}_monitor.pid
+EOF
+chmod +x /root/start_monitor.sh
+```
+
+Connectivity smoke from loadgen:
+
+```bash
+/root/coturn/build/bin/turnutils_uclient \
+  -Y packet -m 1 -n 1000 -l 120 \
+  -e 10.116.0.3 -r 3480 -X -g \
+  -u user -W secret \
+  10.116.0.2
+```
+
+Packet relay sweep from loadgen:
+
+```bash
+for m in 1 2 4 8 16 32; do
+  log=/root/packet_m${m}.log
+  timeout -s INT 12s /root/coturn/build/bin/turnutils_uclient \
+    -Y packet -m "$m" -l 120 \
+    -e 10.116.0.3 -r 3480 -X -g \
+    -u user -W secret \
+    10.116.0.2 > "$log" 2>&1 || true
+  tail -20 "$log"
+done
+```
+
+Monitored packet run:
+
+```bash
+# on turnserver
+/root/start_monitor.sh packet_m1_mon
+
+# on loadgen
+timeout -s INT 12s /root/coturn/build/bin/turnutils_uclient \
+  -Y packet -m 1 -l 120 \
+  -e 10.116.0.3 -r 3480 -X -g \
+  -u user -W secret \
+  10.116.0.2 > /root/packet_m1_mon.log 2>&1 || true
+```
+
+Packet-only CPU profile, useful when checking the relay bottleneck. Build with
+`-DCMAKE_BUILD_TYPE=RelWithDebInfo` if you want readable user-space symbols.
+Run once without `--udp-recvmmsg`, then restart `turnserver` with
+`--udp-recvmmsg` and rerun the same commands with the `recvmmsg` label:
+
+```bash
+# on turnserver
+sysctl -w kernel.perf_event_paranoid=-1 kernel.kptr_restrict=0 || true
+pid=$(cat /root/turnserver.pid)
+label=no_recvmmsg
+
+(pidstat -h -u -r -p "$pid" 1 14 > /root/${label}_pidstat.txt & \
+  mpstat 1 14 > /root/${label}_mpstat.txt & \
+  sar -n DEV 1 14 > /root/${label}_sar.txt & wait) \
+  > /root/${label}_monitor.out 2>&1 &
+
+perf record -F 99 -g -p "$pid" -o /root/${label}.perf.data -- sleep 14
+perf report --stdio -i /root/${label}.perf.data --no-children \
+  --sort comm,dso,symbol > /root/${label}_perf.report
+perf report --stdio -i /root/${label}.perf.data --children \
+  --sort symbol,dso > /root/${label}_perf.children
+
+# on loadgen, started about one second after perf starts
+timeout -s INT 12s /root/coturn/build/bin/turnutils_uclient \
+  -Y packet -m 1 -l 120 \
+  -e 10.116.0.3 -r 3480 -X -g \
+  -u user -W secret \
+  10.116.0.2 > /root/${label}_packet_m1.log 2>&1 || true
+```
+
+Invalid-packet flood:
+
+```bash
+# on turnserver
+/root/start_monitor.sh invalid_m1_mon
+
+# on loadgen
+timeout -s INT 12s /root/coturn/build/bin/turnutils_uclient \
+  -Y invalid -m 1 -l 16 \
+  10.116.0.2 > /root/invalid_m1_mon.log 2>&1 || true
+```
+
+Restart `turnserver` after invalid-packet tests before allocation tests. The
+last run saw rapid RSS growth during invalid flood, so avoid chaining tests on
+the same server process.
+
+Allocation flood:
+
+```bash
+# on turnserver
+/root/start_monitor.sh alloc_10000_mon
+
+# on loadgen
+/root/coturn/build/bin/turnutils_uclient \
+  -Y alloc -m 50 -n 200 \
+  -L 10.116.0.3 \
+  -u user -W secret \
+  10.116.0.2 > /root/alloc_10000.log 2>&1
+```
+
+Useful summaries:
+
+```bash
+grep -h 'send_pps=' /root/packet_m*.log /root/*_mon.log | tail -50
+grep -h 'total_allocations=' /root/alloc_*.log | tail -20
+ps -o pid,rss,vsz,pcpu,pmem,comm -p $(cat /root/turnserver.pid)
+tail -20 /root/*_pidstat.txt
+tail -20 /root/*_sar.txt
+```
+
 ### Unit tests (Unity, opt-in via `BUILD_TESTING=ON`)
 
 Unity is fetched on demand via CMake `FetchContent`; nothing is vendored.
