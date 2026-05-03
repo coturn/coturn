@@ -46,14 +46,8 @@
 
 //////////////////////////////////////////////////////////////
 
-uint32_t get_ioa_addr_len(const ioa_addr *addr) {
-  if (addr->ss.sa_family == AF_INET) {
-    return sizeof(struct sockaddr_in);
-  } else if (addr->ss.sa_family == AF_INET6) {
-    return sizeof(struct sockaddr_in6);
-  }
-  return 0;
-}
+/* get_ioa_addr_len is now defined as static inline in ns_turn_ioaddr.h so
+ * per-packet sendto/recvmsg sites can fold it inline. */
 
 ///////////////////////////////////////////////////////////////
 

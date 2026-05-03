@@ -60,7 +60,17 @@ typedef struct {
 
 ////////////////////////////
 
-uint32_t get_ioa_addr_len(const ioa_addr *addr);
+/* Inlined: this is a per-packet helper called from sendto/recvmsg paths;
+ * keeping it in the header lets the compiler fold the family check directly
+ * into the syscall site instead of paying for a cross-TU call. */
+static inline uint32_t get_ioa_addr_len(const ioa_addr *addr) {
+  if (addr->ss.sa_family == AF_INET) {
+    return sizeof(struct sockaddr_in);
+  } else if (addr->ss.sa_family == AF_INET6) {
+    return sizeof(struct sockaddr_in6);
+  }
+  return 0;
+}
 
 ////////////////////////////
 
