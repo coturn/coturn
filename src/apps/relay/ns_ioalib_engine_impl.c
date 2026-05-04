@@ -3788,92 +3788,98 @@ void turn_report_allocation_delete(void *a, SOCKET_TYPE socket_type) {
 }
 
 void turn_report_session_usage(void *session, int force_invalid) {
-  if (session) {
-    ts_ur_super_session *ss = (ts_ur_super_session *)session;
-    turn_turnserver *server = (turn_turnserver *)ss->server;
-    if (server && (ss->received_packets || ss->sent_packets || force_invalid)) {
-      ioa_engine_handle e = turn_server_get_engine(server);
-      if (((ss->received_packets + ss->sent_packets + ss->peer_received_packets + ss->peer_sent_packets) & 4095) == 0 ||
-          force_invalid) {
-        if (e && e->verbose) {
-          TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-                        "session %018llu: usage: realm=<%s>, username=<%s>, rp=%lu, rb=%lu, sp=%lu, sb=%lu\n",
-                        (unsigned long long)(ss->id), (char *)ss->realm_options.name, (char *)ss->username,
-                        (unsigned long)(ss->received_packets), (unsigned long)(ss->received_bytes),
-                        (unsigned long)(ss->sent_packets), (unsigned long)(ss->sent_bytes));
-          TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-                        "session %018llu: peer usage: realm=<%s>, username=<%s>, rp=%lu, rb=%lu, sp=%lu, sb=%lu\n",
-                        (unsigned long long)(ss->id), (char *)ss->realm_options.name, (char *)ss->username,
-                        (unsigned long)(ss->peer_received_packets), (unsigned long)(ss->peer_received_bytes),
-                        (unsigned long)(ss->peer_sent_packets), (unsigned long)(ss->peer_sent_bytes));
-        }
+  if (!session) {
+    return;
+  }
+  ts_ur_super_session *ss = (ts_ur_super_session *)session;
+  turn_turnserver *server = (turn_turnserver *)ss->server;
+  if (!server || (!ss->received_packets && !ss->sent_packets && !force_invalid)) {
+    return;
+  }
+  /* Hot path: this function is called per packet. Fast-exit when no report is
+   * due (only one call in 4096 actually does work) before the cross-TU
+   * turn_server_get_engine() call. */
+  if (!force_invalid &&
+      ((ss->received_packets + ss->sent_packets + ss->peer_received_packets + ss->peer_sent_packets) & 4095) != 0) {
+    return;
+  }
+  ioa_engine_handle e = turn_server_get_engine(server);
+  if (e && e->verbose) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+                  "session %018llu: usage: realm=<%s>, username=<%s>, rp=%lu, rb=%lu, sp=%lu, sb=%lu\n",
+                  (unsigned long long)(ss->id), (char *)ss->realm_options.name, (char *)ss->username,
+                  (unsigned long)(ss->received_packets), (unsigned long)(ss->received_bytes),
+                  (unsigned long)(ss->sent_packets), (unsigned long)(ss->sent_bytes));
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+                  "session %018llu: peer usage: realm=<%s>, username=<%s>, rp=%lu, rb=%lu, sp=%lu, sb=%lu\n",
+                  (unsigned long long)(ss->id), (char *)ss->realm_options.name, (char *)ss->username,
+                  (unsigned long)(ss->peer_received_packets), (unsigned long)(ss->peer_received_bytes),
+                  (unsigned long)(ss->peer_sent_packets), (unsigned long)(ss->peer_sent_bytes));
+  }
 #if !defined(TURN_NO_HIREDIS)
-        if (e) {
-          char key[1024];
-          if (ss->realm_options.name[0]) {
-            snprintf(key, sizeof(key), "turn/realm/%s/user/%s/allocation/%018llu/traffic", ss->realm_options.name,
-                     (char *)ss->username, (unsigned long long)(ss->id));
-          } else {
-            snprintf(key, sizeof(key), "turn/user/%s/allocation/%018llu/traffic", (char *)ss->username,
-                     (unsigned long long)(ss->id));
-          }
-          send_message_to_redis(e->rch, "publish", key, "rcvp=%lu, rcvb=%lu, sentp=%lu, sentb=%lu",
-                                (unsigned long)(ss->received_packets), (unsigned long)(ss->received_bytes),
-                                (unsigned long)(ss->sent_packets), (unsigned long)(ss->sent_bytes));
-          if (ss->realm_options.name[0]) {
-            snprintf(key, sizeof(key), "turn/realm/%s/user/%s/allocation/%018llu/traffic/peer", ss->realm_options.name,
-                     (char *)ss->username, (unsigned long long)(ss->id));
-          } else {
-            snprintf(key, sizeof(key), "turn/user/%s/allocation/%018llu/traffic/peer", (char *)ss->username,
-                     (unsigned long long)(ss->id));
-          }
-          send_message_to_redis(e->rch, "publish", key, "rcvp=%lu, rcvb=%lu, sentp=%lu, sentb=%lu",
-                                (unsigned long)(ss->peer_received_packets), (unsigned long)(ss->peer_received_bytes),
-                                (unsigned long)(ss->peer_sent_packets), (unsigned long)(ss->peer_sent_bytes));
-        }
+  if (e) {
+    char key[1024];
+    if (ss->realm_options.name[0]) {
+      snprintf(key, sizeof(key), "turn/realm/%s/user/%s/allocation/%018llu/traffic", ss->realm_options.name,
+               (char *)ss->username, (unsigned long long)(ss->id));
+    } else {
+      snprintf(key, sizeof(key), "turn/user/%s/allocation/%018llu/traffic", (char *)ss->username,
+               (unsigned long long)(ss->id));
+    }
+    send_message_to_redis(e->rch, "publish", key, "rcvp=%lu, rcvb=%lu, sentp=%lu, sentb=%lu",
+                          (unsigned long)(ss->received_packets), (unsigned long)(ss->received_bytes),
+                          (unsigned long)(ss->sent_packets), (unsigned long)(ss->sent_bytes));
+    if (ss->realm_options.name[0]) {
+      snprintf(key, sizeof(key), "turn/realm/%s/user/%s/allocation/%018llu/traffic/peer", ss->realm_options.name,
+               (char *)ss->username, (unsigned long long)(ss->id));
+    } else {
+      snprintf(key, sizeof(key), "turn/user/%s/allocation/%018llu/traffic/peer", (char *)ss->username,
+               (unsigned long long)(ss->id));
+    }
+    send_message_to_redis(e->rch, "publish", key, "rcvp=%lu, rcvb=%lu, sentp=%lu, sentb=%lu",
+                          (unsigned long)(ss->peer_received_packets), (unsigned long)(ss->peer_received_bytes),
+                          (unsigned long)(ss->peer_sent_packets), (unsigned long)(ss->peer_sent_bytes));
+  }
 #endif
-        ss->t_received_packets += ss->received_packets;
-        ss->t_received_bytes += ss->received_bytes;
-        ss->t_sent_packets += ss->sent_packets;
-        ss->t_sent_bytes += ss->sent_bytes;
-        ss->t_peer_received_packets += ss->peer_received_packets;
-        ss->t_peer_received_bytes += ss->peer_received_bytes;
-        ss->t_peer_sent_packets += ss->peer_sent_packets;
-        ss->t_peer_sent_bytes += ss->peer_sent_bytes;
+  ss->t_received_packets += ss->received_packets;
+  ss->t_received_bytes += ss->received_bytes;
+  ss->t_sent_packets += ss->sent_packets;
+  ss->t_sent_bytes += ss->sent_bytes;
+  ss->t_peer_received_packets += ss->peer_received_packets;
+  ss->t_peer_received_bytes += ss->peer_received_bytes;
+  ss->t_peer_sent_packets += ss->peer_sent_packets;
+  ss->t_peer_sent_bytes += ss->peer_sent_bytes;
 
-        {
-          turn_time_t ct = get_turn_server_time(server);
-          if (ct != ss->start_time) {
-            ct = ct - ss->start_time;
-            ss->received_rate = (uint32_t)(ss->t_received_bytes / ct);
-            ss->sent_rate = (uint32_t)(ss->t_sent_bytes / ct);
-            ss->total_rate = ss->received_rate + ss->sent_rate;
-            ss->peer_received_rate = (uint32_t)(ss->t_peer_received_bytes / ct);
-            ss->peer_sent_rate = (uint32_t)(ss->t_peer_sent_bytes / ct);
-            ss->peer_total_rate = ss->peer_received_rate + ss->peer_sent_rate;
-          }
-        }
-
-        report_turn_session_info(server, ss, force_invalid);
-
-        if (force_invalid) {
-          const turn_dbdriver_t *dbd = get_dbdriver();
-          if (dbd && dbd->report_usage) {
-            dbd->report_usage(session);
-          }
-        }
-
-        ss->received_packets = 0;
-        ss->received_bytes = 0;
-        ss->sent_packets = 0;
-        ss->sent_bytes = 0;
-        ss->peer_received_packets = 0;
-        ss->peer_received_bytes = 0;
-        ss->peer_sent_packets = 0;
-        ss->peer_sent_bytes = 0;
-      }
+  {
+    turn_time_t ct = get_turn_server_time(server);
+    if (ct != ss->start_time) {
+      ct = ct - ss->start_time;
+      ss->received_rate = (uint32_t)(ss->t_received_bytes / ct);
+      ss->sent_rate = (uint32_t)(ss->t_sent_bytes / ct);
+      ss->total_rate = ss->received_rate + ss->sent_rate;
+      ss->peer_received_rate = (uint32_t)(ss->t_peer_received_bytes / ct);
+      ss->peer_sent_rate = (uint32_t)(ss->t_peer_sent_bytes / ct);
+      ss->peer_total_rate = ss->peer_received_rate + ss->peer_sent_rate;
     }
   }
+
+  report_turn_session_info(server, ss, force_invalid);
+
+  if (force_invalid) {
+    const turn_dbdriver_t *dbd = get_dbdriver();
+    if (dbd && dbd->report_usage) {
+      dbd->report_usage(session);
+    }
+  }
+
+  ss->received_packets = 0;
+  ss->received_bytes = 0;
+  ss->sent_packets = 0;
+  ss->sent_bytes = 0;
+  ss->peer_received_packets = 0;
+  ss->peer_received_bytes = 0;
+  ss->peer_sent_packets = 0;
+  ss->peer_sent_bytes = 0;
 }
 
 /////////////// SSL ///////////////////
