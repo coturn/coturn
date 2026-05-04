@@ -278,6 +278,8 @@ void delete_socket_from_map(ioa_socket_handle s);
 
 int is_connreset(void);
 int would_block(void);
+void udp_sendmmsg_batch_begin(void);
+void udp_sendmmsg_batch_end(void);
 int udp_send(ioa_socket_handle s, const ioa_addr *dest_addr, const char *buffer, int len);
 int udp_recvfrom(evutil_socket_t fd, ioa_addr *orig_addr, const ioa_addr *like_addr, char *buffer, int buf_size,
                  int *ttl, int *tos, char *ecmsg, int flags, uint32_t *errcode);

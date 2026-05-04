@@ -859,6 +859,7 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void *arg) 
 
     if (batch_rc > 0) {
       struct dtls_listener_recvmmsg_state *state = server->recvmmsg_state;
+      udp_sendmmsg_batch_begin();
       for (int i = 0; i < batch_rc; ++i) {
         if (!state->elems[i]) {
           continue;
@@ -872,6 +873,7 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void *arg) 
           state->elems[i] = NULL;
         }
       }
+      udp_sendmmsg_batch_end();
 
       prom_inc_packet_dropped(packets_dropped);
       prom_inc_packet_processed(packets_processed);
@@ -997,10 +999,12 @@ start_udp_cycle:
   }
 
   if (bsize > 0) {
+    udp_sendmmsg_batch_begin();
     process_udp_datagram(server, s, elem, &(server->sm.m.sm.nd.src_addr), bsize, server->sm.m.sm.nd.recv_ttl,
                          server->sm.m.sm.nd.recv_tos,
                          (int)classify_udp_packet(ioa_network_buffer_data(elem), (size_t)bsize), &packets_processed,
                          &packets_dropped);
+    udp_sendmmsg_batch_end();
   }
 
   if (server->sm.m.sm.nd.nbh != NULL) {

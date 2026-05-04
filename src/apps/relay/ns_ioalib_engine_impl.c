@@ -32,6 +32,10 @@
  * SUCH DAMAGE.
  */
 
+#if defined(__linux__) && !defined(_GNU_SOURCE)
+#define _GNU_SOURCE
+#endif
+
 #include "ns_turn_khash.h"
 #include "ns_turn_server.h"
 #include "ns_turn_session.h"
@@ -134,6 +138,8 @@ struct ioa_socket_recvmmsg_state {
 #endif
 
 #define TRIAL_EFFORTS_TO_SEND (2)
+#define MAX_SENDMMSG_BATCH (32)
+#define MIN_SENDMMSG_BATCH (4)
 
 #define SSL_MAX_RENEG_NUMBER (3)
 
@@ -877,18 +883,16 @@ void delete_ioa_timer(ioa_timer_handle th) {
 /************** SOCKETS HELPERS ***********************/
 
 int ioa_socket_check_bandwidth(ioa_socket_handle s, ioa_network_buffer_handle nbh, int read) {
-  /* Fast path: per-packet hot call. Most sessions have no bandwidth limit
-   * configured (max_bps == 0), so short-circuit before the multi-condition
-   * sat/session/engine checks below. */
-  if (s && s->session && s->session->bps < 1) {
-    return 1;
-  }
   if (s && (s->e) && nbh && ((s->sat == CLIENT_SOCKET) || (s->sat == RELAY_SOCKET) || (s->sat == RELAY_RTCP_SOCKET)) &&
       (s->session)) {
 
     const size_t sz = ioa_network_buffer_get_size(nbh);
 
     const band_limit_t max_bps = s->session->bps;
+
+    if (max_bps < 1) {
+      return 1;
+    }
 
     struct traffic_bytes *traffic = &(s->data_traffic);
 
@@ -3448,6 +3452,194 @@ int is_connreset(void) {
 
 int would_block(void) { return socket_ewouldblock(); }
 
+#if defined(__linux__)
+typedef struct udp_sendmmsg_batch_entry {
+  ioa_socket_handle s;
+  ioa_engine_handle e;
+  evutil_socket_t fd;
+  ioa_addr dest_addr;
+  int has_dest_addr;
+  ioa_network_buffer_handle nbh;
+  int len;
+  struct iovec iov;
+  struct mmsghdr msg;
+} udp_sendmmsg_batch_entry;
+
+typedef struct udp_sendmmsg_batch_state {
+  unsigned int depth;
+  unsigned int count;
+  evutil_socket_t fd;
+  int ttl;
+  int tos;
+  udp_sendmmsg_batch_entry entries[MAX_SENDMMSG_BATCH];
+} udp_sendmmsg_batch_state;
+
+static _Thread_local udp_sendmmsg_batch_state udp_sendmmsg_batch = {0};
+
+static evutil_socket_t udp_send_fd(ioa_socket_handle s) {
+  if (!s) {
+    return -1;
+  }
+
+  if (s->parent_s) {
+    return s->parent_s->fd;
+  }
+
+  return s->fd;
+}
+
+static int udp_sendmmsg_flush(void) {
+  udp_sendmmsg_batch_state *state = &udp_sendmmsg_batch;
+  unsigned int sent = 0;
+
+  if (state->count < MIN_SENDMMSG_BATCH) {
+    for (unsigned int i = 0; i < state->count; ++i) {
+      udp_sendmmsg_batch_entry *entry = &(state->entries[i]);
+      udp_send(entry->s, entry->has_dest_addr ? &(entry->dest_addr) : NULL,
+               (const char *)ioa_network_buffer_data(entry->nbh), entry->len);
+    }
+
+    sent = state->count;
+  }
+
+  while (sent < state->count) {
+    int rc = 0;
+
+    do {
+      rc = sendmmsg(state->fd, &(state->entries[sent].msg), state->count - sent, 0);
+    } while (rc < 0 && socket_eintr());
+
+    if (rc <= 0) {
+      break;
+    }
+
+    sent += (unsigned int)rc;
+  }
+
+  for (unsigned int i = sent; i < state->count; ++i) {
+    udp_sendmmsg_batch_entry *entry = &(state->entries[i]);
+    udp_send(entry->s, entry->has_dest_addr ? &(entry->dest_addr) : NULL,
+             (const char *)ioa_network_buffer_data(entry->nbh), entry->len);
+  }
+
+  for (unsigned int i = 0; i < state->count; ++i) {
+    ioa_network_buffer_delete(state->entries[i].e, state->entries[i].nbh);
+  }
+
+  state->count = 0;
+  state->fd = -1;
+  state->ttl = TTL_IGNORE;
+  state->tos = TOS_IGNORE;
+
+  return (int)sent;
+}
+
+void udp_sendmmsg_batch_begin(void) {
+  if (!turn_params.udp_sendmmsg) {
+    return;
+  }
+
+  ++udp_sendmmsg_batch.depth;
+}
+
+void udp_sendmmsg_batch_end(void) {
+  if (!turn_params.udp_sendmmsg || udp_sendmmsg_batch.depth == 0) {
+    return;
+  }
+
+  --udp_sendmmsg_batch.depth;
+  if (udp_sendmmsg_batch.depth == 0) {
+    udp_sendmmsg_flush();
+  }
+}
+
+static int udp_sendmmsg_enqueue(ioa_socket_handle s, const ioa_addr *dest_addr, ioa_network_buffer_handle nbh, int ttl,
+                                int tos) {
+  udp_sendmmsg_batch_state *state = &udp_sendmmsg_batch;
+  const evutil_socket_t fd = udp_send_fd(s);
+
+  if (!turn_params.udp_sendmmsg || state->depth == 0 || fd < 0 || !nbh) {
+    return 0;
+  }
+
+  if (state->count > 0 && (state->fd != fd || state->ttl != ttl || state->tos != tos)) {
+    udp_sendmmsg_flush();
+  }
+
+  if (state->count == MAX_SENDMMSG_BATCH) {
+    udp_sendmmsg_flush();
+  }
+
+  if (state->count == 0) {
+    state->fd = fd;
+    state->ttl = ttl;
+    state->tos = tos;
+  }
+
+  udp_sendmmsg_batch_entry *entry = &(state->entries[state->count]);
+  memset(entry, 0, sizeof(*entry));
+  entry->s = s;
+  entry->e = s->e;
+  entry->fd = fd;
+  entry->nbh = nbh;
+  entry->len = (int)ioa_network_buffer_get_size(nbh);
+  entry->has_dest_addr = dest_addr != NULL;
+  if (entry->has_dest_addr) {
+    addr_cpy(&(entry->dest_addr), dest_addr);
+    entry->msg.msg_hdr.msg_name = &(entry->dest_addr);
+    entry->msg.msg_hdr.msg_namelen = (socklen_t)get_ioa_addr_len(&(entry->dest_addr));
+  }
+  entry->iov.iov_base = ioa_network_buffer_data(nbh);
+  entry->iov.iov_len = (size_t)entry->len;
+  entry->msg.msg_hdr.msg_iov = &(entry->iov);
+  entry->msg.msg_hdr.msg_iovlen = 1;
+
+  ++state->count;
+
+  return 1;
+}
+
+static void udp_sendmmsg_flush_if_pending(void) {
+  if (udp_sendmmsg_batch.count > 0) {
+    udp_sendmmsg_flush();
+  }
+}
+
+static void udp_sendmmsg_flush_before_socket_options(ioa_socket_handle s, int ttl, int tos) {
+  udp_sendmmsg_batch_state *state = &udp_sendmmsg_batch;
+
+  if (state->count == 0) {
+    return;
+  }
+
+  if (state->fd == udp_send_fd(s) && (state->ttl != ttl || state->tos != tos)) {
+    udp_sendmmsg_flush();
+  }
+}
+#else
+void udp_sendmmsg_batch_begin(void) {}
+
+void udp_sendmmsg_batch_end(void) {}
+
+static int udp_sendmmsg_enqueue(ioa_socket_handle s, const ioa_addr *dest_addr, ioa_network_buffer_handle nbh, int ttl,
+                                int tos) {
+  UNUSED_ARG(s);
+  UNUSED_ARG(dest_addr);
+  UNUSED_ARG(nbh);
+  UNUSED_ARG(ttl);
+  UNUSED_ARG(tos);
+  return 0;
+}
+
+static void udp_sendmmsg_flush_if_pending(void) {}
+
+static void udp_sendmmsg_flush_before_socket_options(ioa_socket_handle s, int ttl, int tos) {
+  UNUSED_ARG(s);
+  UNUSED_ARG(ttl);
+  UNUSED_ARG(tos);
+}
+#endif
+
 int udp_send(ioa_socket_handle s, const ioa_addr *dest_addr, const char *buffer, int len) {
   int rc = 0;
   evutil_socket_t fd = -1;
@@ -3533,90 +3725,101 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr *dest_addr, ioa_
         *skip = 1;
       }
     } else {
-      /* Outer branch already established !s->done && s->fd != -1, and
-       * ioa_socket_tobeclosed() rechecks both — drop the redundant inner test
-       * that gated this path on every send. */
       if (!ioa_socket_tobeclosed(s) && s->e) {
-        set_socket_ttl(s, ttl);
-        set_socket_tos(s, tos);
 
-        if (s->connected && s->bev) {
-          if ((s->st == TLS_SOCKET) || (s->st == TLS_SCTP_SOCKET)) {
+        if (!(s->done || (s->fd == -1))) {
+          udp_sendmmsg_flush_before_socket_options(s, ttl, tos);
+          set_socket_ttl(s, ttl);
+          set_socket_tos(s, tos);
+
+          if (s->connected && s->bev) {
+            udp_sendmmsg_flush_if_pending();
+            if ((s->st == TLS_SOCKET) || (s->st == TLS_SCTP_SOCKET)) {
 #if TLS_SUPPORTED
-            SSL *ctx = bufferevent_openssl_get_ssl(s->bev);
-            if (!ctx || SSL_get_shutdown(ctx)) {
-              s->tobeclosed = 1;
-              ret = 0;
-            }
+              SSL *ctx = bufferevent_openssl_get_ssl(s->bev);
+              if (!ctx || SSL_get_shutdown(ctx)) {
+                s->tobeclosed = 1;
+                ret = 0;
+              }
 #endif
-          }
+            }
 
-          if (!(s->tobeclosed)) {
+            if (!(s->tobeclosed)) {
+
+              ret = (int)ioa_network_buffer_get_size(nbh);
+
+              if (!tcp_congestion_control || is_socket_writeable(s, (size_t)ret, __FUNCTION__, 2)) {
+                s->in_write = 1;
+                if (bufferevent_write(s->bev, ioa_network_buffer_data(nbh), ioa_network_buffer_get_size(nbh)) < 0) {
+                  ret = -1;
+                  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "bufev send: %s\n", strerror(errno));
+                  log_socket_event(s, "socket write failed, to be closed", 1);
+                  s->tobeclosed = 1;
+                  s->broken = 1;
+                }
+                /*
+                bufferevent_flush(s->bev,
+                                                EV_READ|EV_WRITE,
+                                                BEV_FLUSH);
+                                                */
+                s->in_write = 0;
+              } else {
+                // drop the packet
+                ;
+              }
+            }
+          } else if (s->ssl) {
+            udp_sendmmsg_flush_if_pending();
+            send_ssl_backlog_buffers(s);
+            ret = ssl_send(s, (char *)ioa_network_buffer_data(nbh), ioa_network_buffer_get_size(nbh),
+                           (s->e ? s->e->verbose : TURN_VERBOSE_NONE));
+            if (ret < 0) {
+              s->tobeclosed = 1;
+            } else if (ret == 0) {
+              add_buffer_to_buffer_list(&(s->bufs), (char *)ioa_network_buffer_data(nbh),
+                                        ioa_network_buffer_get_size(nbh));
+            }
+          } else if (s->fd >= 0) {
+
+            if (s->connected && !(s->parent_s)) {
+              dest_addr = NULL; /* ignore dest_addr */
+            } else if (!dest_addr) {
+              dest_addr = &(s->remote_addr);
+            }
 
             ret = (int)ioa_network_buffer_get_size(nbh);
-
-            if (!tcp_congestion_control || is_socket_writeable(s, (size_t)ret, __FUNCTION__, 2)) {
-              s->in_write = 1;
-              if (bufferevent_write(s->bev, ioa_network_buffer_data(nbh), ioa_network_buffer_get_size(nbh)) < 0) {
-                ret = -1;
-                TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "bufev send: %s\n", strerror(errno));
-                log_socket_event(s, "socket write failed, to be closed", 1);
-                s->tobeclosed = 1;
-                s->broken = 1;
-              }
-              /*
-              bufferevent_flush(s->bev,
-                                              EV_READ|EV_WRITE,
-                                              BEV_FLUSH);
-                                              */
-              s->in_write = 0;
+            if (udp_sendmmsg_enqueue(s, dest_addr, nbh, ttl, tos)) {
+              nbh = NULL;
             } else {
-              // drop the packet
-              ;
-            }
-          }
-        } else if (s->ssl) {
-          send_ssl_backlog_buffers(s);
-          ret = ssl_send(s, (char *)ioa_network_buffer_data(nbh), ioa_network_buffer_get_size(nbh),
-                         (s->e ? s->e->verbose : TURN_VERBOSE_NONE));
-          if (ret < 0) {
-            s->tobeclosed = 1;
-          } else if (ret == 0) {
-            add_buffer_to_buffer_list(&(s->bufs), (char *)ioa_network_buffer_data(nbh),
-                                      ioa_network_buffer_get_size(nbh));
-          }
-        } else if (s->fd >= 0) {
-
-          if (s->connected && !(s->parent_s)) {
-            dest_addr = NULL; /* ignore dest_addr */
-          } else if (!dest_addr) {
-            dest_addr = &(s->remote_addr);
-          }
-
-          ret = udp_send(s, dest_addr, (char *)ioa_network_buffer_data(nbh), ioa_network_buffer_get_size(nbh));
-          if (ret < 0) {
-            s->tobeclosed = 1;
+              udp_sendmmsg_flush_if_pending();
+              ret = udp_send(s, dest_addr, (char *)ioa_network_buffer_data(nbh), ioa_network_buffer_get_size(nbh));
+              if (ret < 0) {
+                s->tobeclosed = 1;
 #if defined(EADDRNOTAVAIL)
-            const int perr = socket_errno();
+                const int perr = socket_errno();
 #endif
-            TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "udp send: %s\n", strerror(errno));
+                TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "udp send: %s\n", strerror(errno));
 #if defined(EADDRNOTAVAIL)
-            if (dest_addr && (perr == EADDRNOTAVAIL)) {
-              char sfrom[MAX_IOA_ADDR_STRING] = "";
-              addr_to_string(&(s->local_addr), sfrom);
-              char sto[MAX_IOA_ADDR_STRING] = "";
-              addr_to_string(dest_addr, sto);
-              TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: network error: address unreachable from %s to %s\n",
-                            __FUNCTION__, sfrom, sto);
-            }
+                if (dest_addr && (perr == EADDRNOTAVAIL)) {
+                  char sfrom[MAX_IOA_ADDR_STRING] = "";
+                  addr_to_string(&(s->local_addr), sfrom);
+                  char sto[MAX_IOA_ADDR_STRING] = "";
+                  addr_to_string(dest_addr, sto);
+                  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: network error: address unreachable from %s to %s\n",
+                                __FUNCTION__, sfrom, sto);
+                }
 #endif
+              }
+            }
           }
         }
       }
     }
   }
 
-  ioa_network_buffer_delete(s->e, nbh);
+  if (nbh) {
+    ioa_network_buffer_delete(s->e, nbh);
+  }
 
   return ret;
 }
@@ -4083,98 +4286,92 @@ void turn_report_allocation_delete(void *a, SOCKET_TYPE socket_type) {
 }
 
 void turn_report_session_usage(void *session, int force_invalid) {
-  if (!session) {
-    return;
-  }
-  ts_ur_super_session *ss = (ts_ur_super_session *)session;
-  turn_turnserver *server = (turn_turnserver *)ss->server;
-  if (!server || (!ss->received_packets && !ss->sent_packets && !force_invalid)) {
-    return;
-  }
-  /* Hot path: this function is called per packet. Fast-exit when no report is
-   * due (only one call in 4096 actually does work) before the cross-TU
-   * turn_server_get_engine() call. */
-  if (!force_invalid &&
-      ((ss->received_packets + ss->sent_packets + ss->peer_received_packets + ss->peer_sent_packets) & 4095) != 0) {
-    return;
-  }
-  ioa_engine_handle e = turn_server_get_engine(server);
-  if (e && e->verbose) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-                  "session %018llu: usage: realm=<%s>, username=<%s>, rp=%lu, rb=%lu, sp=%lu, sb=%lu\n",
-                  (unsigned long long)(ss->id), (char *)ss->realm_options.name, (char *)ss->username,
-                  (unsigned long)(ss->received_packets), (unsigned long)(ss->received_bytes),
-                  (unsigned long)(ss->sent_packets), (unsigned long)(ss->sent_bytes));
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-                  "session %018llu: peer usage: realm=<%s>, username=<%s>, rp=%lu, rb=%lu, sp=%lu, sb=%lu\n",
-                  (unsigned long long)(ss->id), (char *)ss->realm_options.name, (char *)ss->username,
-                  (unsigned long)(ss->peer_received_packets), (unsigned long)(ss->peer_received_bytes),
-                  (unsigned long)(ss->peer_sent_packets), (unsigned long)(ss->peer_sent_bytes));
-  }
+  if (session) {
+    ts_ur_super_session *ss = (ts_ur_super_session *)session;
+    turn_turnserver *server = (turn_turnserver *)ss->server;
+    if (server && (ss->received_packets || ss->sent_packets || force_invalid)) {
+      ioa_engine_handle e = turn_server_get_engine(server);
+      if (((ss->received_packets + ss->sent_packets + ss->peer_received_packets + ss->peer_sent_packets) & 4095) == 0 ||
+          force_invalid) {
+        if (e && e->verbose) {
+          TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+                        "session %018llu: usage: realm=<%s>, username=<%s>, rp=%lu, rb=%lu, sp=%lu, sb=%lu\n",
+                        (unsigned long long)(ss->id), (char *)ss->realm_options.name, (char *)ss->username,
+                        (unsigned long)(ss->received_packets), (unsigned long)(ss->received_bytes),
+                        (unsigned long)(ss->sent_packets), (unsigned long)(ss->sent_bytes));
+          TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+                        "session %018llu: peer usage: realm=<%s>, username=<%s>, rp=%lu, rb=%lu, sp=%lu, sb=%lu\n",
+                        (unsigned long long)(ss->id), (char *)ss->realm_options.name, (char *)ss->username,
+                        (unsigned long)(ss->peer_received_packets), (unsigned long)(ss->peer_received_bytes),
+                        (unsigned long)(ss->peer_sent_packets), (unsigned long)(ss->peer_sent_bytes));
+        }
 #if !defined(TURN_NO_HIREDIS)
-  if (e) {
-    char key[1024];
-    if (ss->realm_options.name[0]) {
-      snprintf(key, sizeof(key), "turn/realm/%s/user/%s/allocation/%018llu/traffic", ss->realm_options.name,
-               (char *)ss->username, (unsigned long long)(ss->id));
-    } else {
-      snprintf(key, sizeof(key), "turn/user/%s/allocation/%018llu/traffic", (char *)ss->username,
-               (unsigned long long)(ss->id));
-    }
-    send_message_to_redis(e->rch, "publish", key, "rcvp=%lu, rcvb=%lu, sentp=%lu, sentb=%lu",
-                          (unsigned long)(ss->received_packets), (unsigned long)(ss->received_bytes),
-                          (unsigned long)(ss->sent_packets), (unsigned long)(ss->sent_bytes));
-    if (ss->realm_options.name[0]) {
-      snprintf(key, sizeof(key), "turn/realm/%s/user/%s/allocation/%018llu/traffic/peer", ss->realm_options.name,
-               (char *)ss->username, (unsigned long long)(ss->id));
-    } else {
-      snprintf(key, sizeof(key), "turn/user/%s/allocation/%018llu/traffic/peer", (char *)ss->username,
-               (unsigned long long)(ss->id));
-    }
-    send_message_to_redis(e->rch, "publish", key, "rcvp=%lu, rcvb=%lu, sentp=%lu, sentb=%lu",
-                          (unsigned long)(ss->peer_received_packets), (unsigned long)(ss->peer_received_bytes),
-                          (unsigned long)(ss->peer_sent_packets), (unsigned long)(ss->peer_sent_bytes));
-  }
+        if (e) {
+          char key[1024];
+          if (ss->realm_options.name[0]) {
+            snprintf(key, sizeof(key), "turn/realm/%s/user/%s/allocation/%018llu/traffic", ss->realm_options.name,
+                     (char *)ss->username, (unsigned long long)(ss->id));
+          } else {
+            snprintf(key, sizeof(key), "turn/user/%s/allocation/%018llu/traffic", (char *)ss->username,
+                     (unsigned long long)(ss->id));
+          }
+          send_message_to_redis(e->rch, "publish", key, "rcvp=%lu, rcvb=%lu, sentp=%lu, sentb=%lu",
+                                (unsigned long)(ss->received_packets), (unsigned long)(ss->received_bytes),
+                                (unsigned long)(ss->sent_packets), (unsigned long)(ss->sent_bytes));
+          if (ss->realm_options.name[0]) {
+            snprintf(key, sizeof(key), "turn/realm/%s/user/%s/allocation/%018llu/traffic/peer", ss->realm_options.name,
+                     (char *)ss->username, (unsigned long long)(ss->id));
+          } else {
+            snprintf(key, sizeof(key), "turn/user/%s/allocation/%018llu/traffic/peer", (char *)ss->username,
+                     (unsigned long long)(ss->id));
+          }
+          send_message_to_redis(e->rch, "publish", key, "rcvp=%lu, rcvb=%lu, sentp=%lu, sentb=%lu",
+                                (unsigned long)(ss->peer_received_packets), (unsigned long)(ss->peer_received_bytes),
+                                (unsigned long)(ss->peer_sent_packets), (unsigned long)(ss->peer_sent_bytes));
+        }
 #endif
-  ss->t_received_packets += ss->received_packets;
-  ss->t_received_bytes += ss->received_bytes;
-  ss->t_sent_packets += ss->sent_packets;
-  ss->t_sent_bytes += ss->sent_bytes;
-  ss->t_peer_received_packets += ss->peer_received_packets;
-  ss->t_peer_received_bytes += ss->peer_received_bytes;
-  ss->t_peer_sent_packets += ss->peer_sent_packets;
-  ss->t_peer_sent_bytes += ss->peer_sent_bytes;
+        ss->t_received_packets += ss->received_packets;
+        ss->t_received_bytes += ss->received_bytes;
+        ss->t_sent_packets += ss->sent_packets;
+        ss->t_sent_bytes += ss->sent_bytes;
+        ss->t_peer_received_packets += ss->peer_received_packets;
+        ss->t_peer_received_bytes += ss->peer_received_bytes;
+        ss->t_peer_sent_packets += ss->peer_sent_packets;
+        ss->t_peer_sent_bytes += ss->peer_sent_bytes;
 
-  {
-    turn_time_t ct = get_turn_server_time(server);
-    if (ct != ss->start_time) {
-      ct = ct - ss->start_time;
-      ss->received_rate = (uint32_t)(ss->t_received_bytes / ct);
-      ss->sent_rate = (uint32_t)(ss->t_sent_bytes / ct);
-      ss->total_rate = ss->received_rate + ss->sent_rate;
-      ss->peer_received_rate = (uint32_t)(ss->t_peer_received_bytes / ct);
-      ss->peer_sent_rate = (uint32_t)(ss->t_peer_sent_bytes / ct);
-      ss->peer_total_rate = ss->peer_received_rate + ss->peer_sent_rate;
+        {
+          turn_time_t ct = get_turn_server_time(server);
+          if (ct != ss->start_time) {
+            ct = ct - ss->start_time;
+            ss->received_rate = (uint32_t)(ss->t_received_bytes / ct);
+            ss->sent_rate = (uint32_t)(ss->t_sent_bytes / ct);
+            ss->total_rate = ss->received_rate + ss->sent_rate;
+            ss->peer_received_rate = (uint32_t)(ss->t_peer_received_bytes / ct);
+            ss->peer_sent_rate = (uint32_t)(ss->t_peer_sent_bytes / ct);
+            ss->peer_total_rate = ss->peer_received_rate + ss->peer_sent_rate;
+          }
+        }
+
+        report_turn_session_info(server, ss, force_invalid);
+
+        if (force_invalid) {
+          const turn_dbdriver_t *dbd = get_dbdriver();
+          if (dbd && dbd->report_usage) {
+            dbd->report_usage(session);
+          }
+        }
+
+        ss->received_packets = 0;
+        ss->received_bytes = 0;
+        ss->sent_packets = 0;
+        ss->sent_bytes = 0;
+        ss->peer_received_packets = 0;
+        ss->peer_received_bytes = 0;
+        ss->peer_sent_packets = 0;
+        ss->peer_sent_bytes = 0;
+      }
     }
   }
-
-  report_turn_session_info(server, ss, force_invalid);
-
-  if (force_invalid) {
-    const turn_dbdriver_t *dbd = get_dbdriver();
-    if (dbd && dbd->report_usage) {
-      dbd->report_usage(session);
-    }
-  }
-
-  ss->received_packets = 0;
-  ss->received_bytes = 0;
-  ss->sent_packets = 0;
-  ss->sent_bytes = 0;
-  ss->peer_received_packets = 0;
-  ss->peer_received_bytes = 0;
-  ss->peer_sent_packets = 0;
-  ss->peer_sent_bytes = 0;
 }
 
 /////////////// SSL ///////////////////

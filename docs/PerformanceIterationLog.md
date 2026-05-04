@@ -351,3 +351,44 @@ Ordered by expected impact for the m=1 packet-flood metric:
    environment drifted and the baseline needs re-anchoring.
 4. Pick the next item from the backlog. Item (1) — `recvmmsg` into
    `socket_input_worker` — is where the next material gain lives.
+
+## 2026-05-03 sendmmsg follow-up
+
+A later run on two DigitalOcean CPU-optimized `c-4` droplets in `sfo3`
+(`10.124.0.2` turnserver, `10.124.0.3` loadgen) tested an experimental
+Linux-only `--udp-sendmmsg` flag with `--udp-recvmmsg`.
+
+| Run | Code/flags | Generator max pps | Generator avg pps | Server RX avg pps | Server TX avg pps | Server TX peak pps | CPU avg | Perf conclusion |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| iter0 | baseline, `--udp-recvmmsg` | 335,872 | 286,721 | 360,900 | 257,357 | 323,488 | 97.8% | `sendto`/`udp_sendmsg` dominates |
+| iter1 | `--udp-sendmmsg`, both directions | 409,600 | 312,662 | 428,184 | 197,300 | 260,453 | 99.8% | `sendmmsg` path dominates; TX regressed |
+| iter2 | `sendmmsg` only for batches >= 4 | 393,216 | 315,393 | 398,121 | 163,626 | 215,068 | 98.9% | Threshold did not recover TX |
+| iter3 | listener-side batching only | 425,984 | 286,038 | 376,444 | 210,050 | 332,417 | 97.4% | Peak ingress/TX improved, average TX still below baseline |
+
+Validation result: `sendmmsg()` is not a proven general win for this workload.
+It can increase generator max pps and peak server TX, but average delivered
+server TX stayed below the `--udp-recvmmsg` baseline. Keep it opt-in until a
+follow-up change proves better end-to-end relay throughput.
+
+Perf still points at per-datagram kernel transmit cost:
+
+- baseline: `udp_send -> sendto -> __sys_sendto -> udp_sendmsg -> udp_send_skb -> ip_output`
+- sendmmsg variants: `udp_sendmmsg_flush -> __sendmmsg -> __sys_sendmmsg -> ___sys_sendmsg -> udp_sendmsg -> ip_output`
+
+The key observation is that `sendmmsg()` reduces syscall entry count but still
+walks `udp_sendmsg` and the IP output path once per datagram. On this workload,
+the extra `mmsghdr` copy/looping overhead can offset the syscall savings.
+
+Deferred bigger refactors from this run:
+
+- Per-peer connected UDP relay sockets or a destination cache could reduce
+  address handling and route lookup for repeated peer sends, but it changes
+  relay socket semantics and receive filtering.
+- Shard a single hot allocation/flow across multiple relay workers only with a
+  careful design for ordering, session accounting, socket ownership, and lock
+  contention.
+- Investigate `io_uring` send batching or kernel-bypass style transmit only as
+  a larger architecture experiment.
+- Consider a purpose-built benchmark mode that measures delivered relay pps at a
+  controlled input rate. The current saturated packet flood is useful for
+  finding hot functions but can obscure end-to-end delivery changes.
