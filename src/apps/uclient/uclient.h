@@ -46,6 +46,13 @@ extern "C" {
 
 //////////////////////////////////////////////
 
+typedef enum {
+  UCLIENT_LOAD_MODE_NONE = 0,
+  UCLIENT_LOAD_MODE_PACKET_FLOOD,
+  UCLIENT_LOAD_MODE_ALLOC_FLOOD,
+  UCLIENT_LOAD_MODE_INVALID_FLOOD
+} uclient_load_mode;
+
 #define STOPPING_TIME (10)
 #define STARTING_TCP_RELAY_TIME (30)
 
@@ -86,6 +93,8 @@ extern bool no_permissions;
 extern bool extra_requests;
 extern band_limit_t bps;
 extern bool dual_allocation;
+extern bool unique_client_ports;
+extern uclient_load_mode load_mode;
 
 extern char origin[STUN_MAX_ORIGIN_SIZE + 1];
 
@@ -96,6 +105,10 @@ extern oauth_key okey_array[3];
 #define OAUTH_SESSION_LIFETIME (555)
 
 #define is_TCP_relay() (relay_transport == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE)
+#define is_packet_flood_mode() (load_mode == UCLIENT_LOAD_MODE_PACKET_FLOOD)
+#define is_alloc_flood_mode() (load_mode == UCLIENT_LOAD_MODE_ALLOC_FLOOD)
+#define is_invalid_flood_mode() (load_mode == UCLIENT_LOAD_MODE_INVALID_FLOOD)
+#define is_load_generator_mode() (load_mode != UCLIENT_LOAD_MODE_NONE)
 
 void start_mclient(const char *remote_address, uint16_t port, const unsigned char *ifname, const char *local_address,
                    int messagenumber, int mclient);

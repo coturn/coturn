@@ -191,6 +191,14 @@ Dual allocation (SSODA). Implies \fB\-c\fP option.
 .B
 \fB\-J\fP
 Use oAuth with default test key kid='north'.
+.TP
+.B
+\fB\-Y\fP
+Load\-generator mode:
+\fIpacket\fP floods data through a single TURN allocation as fast as possible,
+\fIalloc\fP creates allocations as fast as possible,
+and \fIinvalid\fP sends small invalid packets to the TURN listener as fast as possible.
+Load\-generator modes imply \fB\-c\fP and do not support \fB\-y\fP.
 .PP
 Options with required values:
 .TP
@@ -218,6 +226,8 @@ if the server certificate to be verified.
 .B
 \fB\-n\fP
 Number of messages to send (Default: 5).
+In load\-generator mode, \fB\-n\fP is the number of operations per client.
+If omitted there, the client runs until interrupted.
 .TP
 .B
 \fB\-d\fP
@@ -242,6 +252,7 @@ Peer port (Default: 3480).
 .B
 \fB\-z\fP
 Per\-session packet interval in milliseconds (Default: 20).
+In \fIpacket\fP and \fIinvalid\fP load\-generator modes the default is 0 ms.
 .TP
 .B
 \fB\-u\fP
@@ -274,6 +285,14 @@ the ORIGIN STUN attribute value.
 .B
 \fB\-a\fP
 Bandwidth for the bandwidth request in ALLOCATE. The default value is zero.
+.PP
+Notes for load\-generator mode:
+.IP
+\fIpacket\fP mode still performs the normal TURN allocation/setup and then starts sending immediately with no pacing.
+.IP
+\fIalloc\fP mode does not require \fB\-e\fP; it repeatedly establishes new allocations, uses a unique client local port for each one, attaches each one to a unique synthetic peer ip:port, and closes them again.
+.IP
+\fIinvalid\fP mode does not require \fB\-e\fP; by default it uses 16\-byte payloads unless \fB\-l\fP is specified.
 .PP
 See the examples in the "examples/scripts" directory.
 .SH ======================================
