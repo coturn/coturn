@@ -44,19 +44,6 @@
 #include <netdb.h>
 #endif
 
-//////////////////////////////////////////////////////////////
-
-uint32_t get_ioa_addr_len(const ioa_addr *addr) {
-  if (addr->ss.sa_family == AF_INET) {
-    return sizeof(struct sockaddr_in);
-  } else if (addr->ss.sa_family == AF_INET6) {
-    return sizeof(struct sockaddr_in6);
-  }
-  return 0;
-}
-
-///////////////////////////////////////////////////////////////
-
 void addr_set_any(ioa_addr *addr) {
   if (addr) {
     memset(addr, 0, sizeof(ioa_addr));
