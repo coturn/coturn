@@ -44,13 +44,6 @@
 #include <netdb.h>
 #endif
 
-//////////////////////////////////////////////////////////////
-
-/* get_ioa_addr_len is now defined as static inline in ns_turn_ioaddr.h so
- * per-packet sendto/recvmsg sites can fold it inline. */
-
-///////////////////////////////////////////////////////////////
-
 void addr_set_any(ioa_addr *addr) {
   if (addr) {
     memset(addr, 0, sizeof(ioa_addr));
