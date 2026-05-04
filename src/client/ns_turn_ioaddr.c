@@ -152,11 +152,7 @@ uint32_t addr_hash_no_port(const ioa_addr *addr) {
   return ret;
 }
 
-void addr_cpy(ioa_addr *dst, const ioa_addr *src) {
-  if (dst && src) {
-    memcpy(dst, src, sizeof(ioa_addr));
-  }
-}
+/* addr_cpy is now defined as static inline in ns_turn_ioaddr.h. */
 
 void addr_cpy4(ioa_addr *dst, const struct sockaddr_in *src) {
   if (src && dst) {
