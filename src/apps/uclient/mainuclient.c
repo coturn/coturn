@@ -519,8 +519,7 @@ int main(int argc, char **argv) {
   }
 
   const int max_header = 100;
-  const int max_message_length =
-      is_invalid_flood_mode() ? (int)STUN_BUFFER_SIZE : (int)(STUN_BUFFER_SIZE - max_header);
+  const int max_message_length = is_invalid_flood_mode() ? (int)STUN_BUFFER_SIZE : (int)(STUN_BUFFER_SIZE - max_header);
   if (clmessage_length > max_message_length) {
     fprintf(stderr, "Message length was corrected to %d\n", max_message_length);
     clmessage_length = max_message_length;

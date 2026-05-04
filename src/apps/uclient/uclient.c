@@ -1139,7 +1139,8 @@ static int start_invalid_client(const char *remote_address, uint16_t port, const
 
   socket_set_nonblocking(clnet_info->fd);
 
-  struct event *ev = event_new(client_event_base, clnet_info->fd, EV_READ | EV_PERSIST, client_discard_input_handler, ss);
+  struct event *ev =
+      event_new(client_event_base, clnet_info->fd, EV_READ | EV_PERSIST, client_discard_input_handler, ss);
   event_add(ev, NULL);
 
   ss->state = UR_STATE_READY;
@@ -1299,10 +1300,8 @@ static void start_allocation_flood(const char *remote_address, uint16_t port, co
 
   __turn_getMSTime();
   print_load_generator_rate(__FUNCTION__);
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: total_allocations=%llu\n", __FUNCTION__,
-                (unsigned long long)tot_allocations);
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total allocation flood time is %u\n",
-                (unsigned int)(current_time - start_time));
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: total_allocations=%llu\n", __FUNCTION__, (unsigned long long)tot_allocations);
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total allocation flood time is %u\n", (unsigned int)(current_time - start_time));
 }
 
 static int start_c2c(const char *remote_address, uint16_t port, const unsigned char *ifname, const char *local_address,
@@ -1829,7 +1828,8 @@ void start_mclient(const char *remote_address, uint16_t port, const unsigned cha
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total transmit time is %u\n", ((unsigned int)(current_time - stime)));
   if (is_invalid_flood_mode()) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total send dropped %llu (%f%c)\n", (unsigned long long)tot_send_dropped,
-                  (((double)tot_send_dropped / (double)((tot_send_messages + tot_send_dropped) ? (tot_send_messages + tot_send_dropped) : 1)) *
+                  (((double)tot_send_dropped /
+                    (double)((tot_send_messages + tot_send_dropped) ? (tot_send_messages + tot_send_dropped) : 1)) *
                    100.00),
                   '%');
   } else {
@@ -1837,7 +1837,8 @@ void start_mclient(const char *remote_address, uint16_t port, const unsigned cha
                   (unsigned long long)total_loss,
                   (((double)total_loss / (double)(tot_send_messages ? tot_send_messages : 1)) * 100.00), '%',
                   (unsigned long long)tot_send_dropped,
-                  (((double)tot_send_dropped / (double)((tot_send_messages + tot_send_dropped) ? (tot_send_messages + tot_send_dropped) : 1)) *
+                  (((double)tot_send_dropped /
+                    (double)((tot_send_messages + tot_send_dropped) ? (tot_send_messages + tot_send_dropped) : 1)) *
                    100.00),
                   '%');
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Average round trip delay %f ms; min = %lu ms, max = %lu ms\n",

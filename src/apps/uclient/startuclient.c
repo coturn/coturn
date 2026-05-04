@@ -1257,9 +1257,10 @@ int start_connection(uint16_t clnet_remote_port0, const char *remote_address0, c
   return 0;
 }
 
-int start_allocate_only_connection(uint16_t clnet_remote_port0, const char *remote_address0, const unsigned char *ifname,
-                                   const char *local_address, bool verbose, app_ur_conn_info *clnet_info_probe,
-                                   app_ur_conn_info *clnet_info, ioa_addr *peer_addr) {
+int start_allocate_only_connection(uint16_t clnet_remote_port0, const char *remote_address0,
+                                   const unsigned char *ifname, const char *local_address, bool verbose,
+                                   app_ur_conn_info *clnet_info_probe, app_ur_conn_info *clnet_info,
+                                   ioa_addr *peer_addr) {
 
   UNUSED_ARG(clnet_info_probe);
 
