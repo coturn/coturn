@@ -3014,7 +3014,8 @@ static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss, in
 
       if (tinfo || (server->server_relay)) {
 
-        set_df_on_ioa_socket(get_relay_socket_ss(ss, peer_addr.ss.sa_family), set_df);
+        ioa_socket_handle relay_s = get_relay_socket_ss(ss, peer_addr.ss.sa_family);
+        set_df_on_ioa_socket(relay_s, set_df);
 
         ioa_network_buffer_handle nbh = in_buffer->nbh;
         if (value && len > 0) {
@@ -3026,8 +3027,7 @@ static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss, in
         }
         ioa_network_buffer_header_init(nbh);
         int skip = 0;
-        send_data_from_ioa_socket_nbh(get_relay_socket_ss(ss, peer_addr.ss.sa_family), &peer_addr, nbh,
-                                      in_buffer->recv_ttl - 1, in_buffer->recv_tos, &skip);
+        send_data_from_ioa_socket_nbh(relay_s, &peer_addr, nbh, in_buffer->recv_ttl - 1, in_buffer->recv_tos, &skip);
         if (!skip) {
           ++(ss->peer_sent_packets);
           ss->peer_sent_bytes += len;
@@ -4092,23 +4092,26 @@ static int write_to_peerchannel(ts_ur_super_session *ss, uint16_t chnum, ioa_net
         return -1;
       }
 
-      /* Channel packets are always sent with DF=0: */
-      set_df_on_ioa_socket(get_relay_socket_ss(ss, chn->peer_addr.ss.sa_family), 0);
-
+      /* Cache relay socket and buffer-size lookups that were each called twice
+       * per channel-data packet on the hot path. */
+      ioa_socket_handle relay_s = get_relay_socket_ss(ss, chn->peer_addr.ss.sa_family);
       ioa_network_buffer_handle nbh = in_buffer->nbh;
+      const size_t in_size = ioa_network_buffer_get_size(nbh);
 
-      ioa_network_buffer_add_offset_size(in_buffer->nbh, STUN_CHANNEL_HEADER_LENGTH, 0,
-                                         ioa_network_buffer_get_size(in_buffer->nbh) - STUN_CHANNEL_HEADER_LENGTH);
+      /* Channel packets are always sent with DF=0: */
+      set_df_on_ioa_socket(relay_s, 0);
+
+      ioa_network_buffer_add_offset_size(nbh, STUN_CHANNEL_HEADER_LENGTH, 0, in_size - STUN_CHANNEL_HEADER_LENGTH);
 
       ioa_network_buffer_header_init(nbh);
 
       int skip = 0;
-      rc = send_data_from_ioa_socket_nbh(get_relay_socket_ss(ss, chn->peer_addr.ss.sa_family), &(chn->peer_addr), nbh,
-                                         in_buffer->recv_ttl - 1, in_buffer->recv_tos, &skip);
+      rc = send_data_from_ioa_socket_nbh(relay_s, &(chn->peer_addr), nbh, in_buffer->recv_ttl - 1, in_buffer->recv_tos,
+                                         &skip);
 
       if (!skip && rc > -1) {
         ++(ss->peer_sent_packets);
-        ss->peer_sent_bytes += (uint32_t)ioa_network_buffer_get_size(in_buffer->nbh);
+        ss->peer_sent_bytes += (uint32_t)in_size;
         turn_report_session_usage(ss, 0);
       }
 
@@ -4500,23 +4503,25 @@ static int read_client_connection(turn_turnserver *server, ts_ur_super_session *
     FUNCEND;
     return -1;
   }
+  /* Cross-TU helper that just reads buf->len; cache once and reuse instead of
+   * calling four times per packet. */
+  const size_t orig_blen = (size_t)ret;
 
   if (count_usage) {
     ++(ss->received_packets);
-    ss->received_bytes += (uint32_t)ioa_network_buffer_get_size(in_buffer->nbh);
+    ss->received_bytes += (uint32_t)orig_blen;
     turn_report_session_usage(ss, 0);
   }
 
   if (eve(server->verbose)) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: data.buffer=%p, data.len=%ld\n", __FUNCTION__,
-                  ioa_network_buffer_data(in_buffer->nbh), (long)ioa_network_buffer_get_size(in_buffer->nbh));
+                  ioa_network_buffer_data(in_buffer->nbh), (long)orig_blen);
   }
 
   uint16_t chnum = 0;
   uint32_t old_stun_cookie = 0;
 
-  size_t blen = ioa_network_buffer_get_size(in_buffer->nbh);
-  const size_t orig_blen = blen;
+  size_t blen = orig_blen;
   const SOCKET_TYPE st = get_ioa_socket_type(ss->client_socket);
   const SOCKET_APP_TYPE sat = get_ioa_socket_app_type(ss->client_socket);
   const int is_padding_mandatory = is_stream_socket(st);
