@@ -1,3 +1,36 @@
+Release 4.11.0
+
+Changelist:
+- Filc harness and pointer typedefs (#1896) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Load generator mode in turnutils_uclient (#1894) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Cache hot lookups in TURN data-path handlers (#1893) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Inline get_ioa_addr_len() in the header (#1891) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Trim two redundant checks from per-packet relay hot path (#1890) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Inline addr_cpy() in the header (#1892) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Hoist turn_server_get_engine() out of per-packet hot path (#1889) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Add fuzz coverage for integrity helpers (#1888) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Add deterministic challenge-response builder to FuzzStun (#1886) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Seed address-mapping table in fuzz initializer (#1885) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Unblock fuzz coverage for is_http and rare STUN attributes (#1884) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- HTTP parsing fixes (#1882) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Cover all public stun_buffer.c wrappers in FuzzStunClient (#1883) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Extend fuzzing coverage and enable local fuzzing in a container (#1881) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Extend STUN client fuzz builder coverage (#1878) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Out of bound HTTP detection in parser (#1877) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Delete log line per relay thread on start (#1876) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Add Unity-based unit test scaffolding (#1875) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Drop udp_relay_servers_number config and clean up dead UDP id-space (#1874) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Merge 10 fuzz targets into FuzzStun and FuzzStunClient via dispatcher (#1873) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix build failure: define _GNU_SOURCE for recvmmsg() on Linux (#1868) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Pin session origin only after MESSAGE-INTEGRITY validates (#1871) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Abort on malformed allowed/denied-peer-ip at startup (#1872) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix format-string injection in Redis DB driver (#1870) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Use constant-time compare for STUN MESSAGE-INTEGRITY HMAC (#1869) (Pavel Punsky <eakraly@users.noreply.github.com>)
+
+Contributors:
+- Pavel Punsky <eakraly@users.noreply.github.com>
+- tyranron <tyranron@gmail.com>
+
 Release 4.10.0
 
 Changelist:
