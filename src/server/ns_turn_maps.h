@@ -52,7 +52,7 @@ typedef struct _ur_map ur_map;
 //////////////// Common Definitions //////
 
 typedef uint64_t ur_map_key_type;
-typedef uintptr_t ur_map_value_type;
+typedef void *ur_map_value_type;
 
 typedef void (*ur_map_del_func)(ur_map_value_type);
 
@@ -176,7 +176,7 @@ bool lm_map_foreach_arg(lm_map *map, foreachcb_arg_type func, void *arg);
 
 //////////////// UR ADDR MAP //////////////////
 
-typedef uintptr_t ur_addr_map_value_type;
+typedef void *ur_addr_map_value_type;
 
 #define ADDR_MAP_SIZE (1024)
 #define ADDR_ARRAY_SIZE (4)
