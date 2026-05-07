@@ -115,7 +115,7 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Install NSIS for packaging
-        uses: repolevedavaj/install-nsis@v1.1.0
+        uses: repolevedavaj/install-nsis@v1.2.0
         with:
           nsis-version: "3.11"
         if: ${{ matrix.BUILD_TYPE == 'Release' }}
