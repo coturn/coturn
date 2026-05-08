@@ -89,7 +89,6 @@ static MHD_RESULT promhttp_handler(void *cls, struct MHD_Connection *connection,
   (void)con_cls;
 
   char *body = "not found";
-  char *owned_body = NULL;
   enum MHD_ResponseMemoryMode mode = MHD_RESPMEM_PERSISTENT;
   unsigned int status = MHD_HTTP_NOT_FOUND;
 
@@ -97,15 +96,10 @@ static MHD_RESULT promhttp_handler(void *cls, struct MHD_Connection *connection,
     status = MHD_HTTP_METHOD_NOT_ALLOWED;
     body = "method not allowed";
   } else if (strcmp(url, turn_params.prometheus_path) == 0) {
-    const char *prom_body = prom_collector_registry_bridge(PROM_COLLECTOR_REGISTRY_DEFAULT);
-    if (prom_body == NULL) {
+    body = (char *)prom_collector_registry_bridge(PROM_COLLECTOR_REGISTRY_DEFAULT);
+    if (body == NULL) {
       return MHD_NO;
     }
-    owned_body = strdup(prom_body);
-    if (owned_body == NULL) {
-      return MHD_NO;
-    }
-    body = owned_body;
     mode = MHD_RESPMEM_MUST_FREE;
     status = MHD_HTTP_OK;
   } else if (strcmp(url, "/") == 0) {
@@ -118,7 +112,7 @@ static MHD_RESULT promhttp_handler(void *cls, struct MHD_Connection *connection,
   struct MHD_Response *response = MHD_create_response_from_buffer(strlen(body), body, mode);
   if (response == NULL) {
     if (mode == MHD_RESPMEM_MUST_FREE) {
-      free(owned_body);
+      free(body);
     }
     ret = MHD_NO;
   } else {
