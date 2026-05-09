@@ -156,7 +156,7 @@ static int set_accept_cb(ioa_socket_handle s, accept_cb acb, void *arg);
 static void close_socket_net_data(ioa_socket_handle s);
 
 #if defined(__linux__)
-static int ensure_socket_recvmmsg_state(ioa_socket_handle s);
+static int ensure_engine_recvmmsg_state(ioa_engine_handle e);
 static int socket_udp_read_batch_recvmmsg(ioa_socket_handle s, int *last_len);
 #endif
 
@@ -1670,13 +1670,6 @@ ioa_socket_handle create_ioa_socket_from_ssl(ioa_engine_handle e, ioa_socket_han
 
 static void close_socket_net_data(ioa_socket_handle s) {
   if (s) {
-#if defined(__linux__)
-    if (s->udp_recvmmsg_state) {
-      free(s->udp_recvmmsg_state);
-      s->udp_recvmmsg_state = NULL;
-    }
-#endif
-
     EVENT_DEL(s->read_event);
     if (s->list_ev) {
       evconnlistener_free(s->list_ev);
@@ -2317,25 +2310,19 @@ try_again:
 }
 
 #if defined(__linux__)
-static int ensure_socket_recvmmsg_state(ioa_socket_handle s) {
-  if (!s) {
+static int ensure_engine_recvmmsg_state(ioa_engine_handle e) {
+  if (!e) {
     return -1;
   }
 
-  if (s->udp_recvmmsg_state) {
+  if (e->udp_recvmmsg_state) {
     return 0;
   }
 
-  s->udp_recvmmsg_state = (struct ioa_socket_recvmmsg_state *)calloc(1, sizeof(struct ioa_socket_recvmmsg_state));
-  if (!s->udp_recvmmsg_state) {
+  e->udp_recvmmsg_state = (struct ioa_socket_recvmmsg_state *)calloc(1, sizeof(struct ioa_socket_recvmmsg_state));
+  if (!e->udp_recvmmsg_state) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: failure in call to calloc\n", __FUNCTION__);
     return -1;
-  }
-
-  for (unsigned int i = 0; i < MAX_SOCKET_RECVMMSG_BATCH; ++i) {
-    ioa_init_recvmmsg_hdr(&(s->udp_recvmmsg_state->msgs[i]), &(s->udp_recvmmsg_state->iovecs[i]),
-                          &(s->udp_recvmmsg_state->src_addrs[i]), s->udp_recvmmsg_state->cmsgs[i],
-                          SOCKET_RECVMMSG_CMSG_SZ, (socklen_t)get_ioa_addr_len(&(s->local_addr)), NULL, 0);
   }
 
   return 0;
@@ -2350,12 +2337,12 @@ static int socket_udp_read_batch_recvmmsg(ioa_socket_handle s, int *last_len) {
     return 0;
   }
 
-  if (ensure_socket_recvmmsg_state(s) < 0) {
+  ioa_engine_handle e = s->e;
+  if (ensure_engine_recvmmsg_state(e) < 0) {
     return 0;
   }
 
-  ioa_engine_handle e = s->e;
-  struct ioa_socket_recvmmsg_state *state = s->udp_recvmmsg_state;
+  struct ioa_socket_recvmmsg_state *state = e->udp_recvmmsg_state;
   stun_buffer_list_elem *buf_elems[MAX_SOCKET_RECVMMSG_BATCH] = {0};
   unsigned int count = 0;
 

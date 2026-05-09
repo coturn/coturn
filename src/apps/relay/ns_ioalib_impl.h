@@ -161,6 +161,7 @@ struct _ioa_engine {
   size_t relay_addr_counter;
   ioa_addr *relay_addrs;
 #if defined(__linux__)
+  struct ioa_socket_recvmmsg_state *udp_recvmmsg_state;
   uint64_t udp_recvmmsg_calls;
   uint64_t udp_recvmmsg_packets;
   uint64_t udp_recvmmsg_wouldblock;
@@ -231,9 +232,6 @@ struct _ioa_socket {
   /* <<== RFC 6062 */
   void *special_session;
   size_t special_session_size;
-#if defined(__linux__)
-  struct ioa_socket_recvmmsg_state *udp_recvmmsg_state;
-#endif
 };
 
 typedef struct _timer_event {
