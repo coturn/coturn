@@ -141,8 +141,12 @@ known setup used Ubuntu 24.04 `c-4` droplets in `nyc1`:
 
 - turnserver droplet private IP: `10.116.0.2`
 - loadgen droplet private IP: `10.116.0.3`
+- current public IPs: turnserver `157.230.3.102`, loadgen `167.99.153.216`
 - build: current branch archived with `git archive`
-- important baseline: turnserver was **not** run with `--udp-recvmmsg`
+- important baseline: turnserver is not run with `--udp-recvmmsg`
+- `--udp-recvmmsg` is opt-in and covers both UDP listener receive and plain
+  connected relay UDP receive on Linux; DTLS session sockets still use the SSL
+  read path
 
 Never paste DigitalOcean tokens into logs or files. Use a local environment
 variable such as `DIGITALOCEAN_TOKEN`, and revoke temporary tokens after the
@@ -173,7 +177,8 @@ cmake --build /root/coturn/build --target turnserver turnutils_uclient turnutils
 ```
 
 Start `turnserver` on the server droplet. This is the baseline command used for
-the final run; add `--udp-recvmmsg` only when intentionally comparing that mode:
+the final run; add `--udp-recvmmsg` only when intentionally comparing batched
+Linux UDP receive:
 
 ```bash
 pkill -x turnserver || true
@@ -253,6 +258,11 @@ for m in 1 2 4 8 16 32; do
 done
 ```
 
+For higher `-m` values, the load generator can finish its default work before
+the timeout. Add `-n 1000` when you want a longer many-connection run, and if
+the final log line omits `tot_recv_msgs`, derive receive count from
+`tot_recv_bytes / message_length`.
+
 Monitored packet run:
 
 ```bash
@@ -270,13 +280,14 @@ timeout -s INT 12s /root/coturn/build/bin/turnutils_uclient \
 Packet-only CPU profile, useful when checking the relay bottleneck. Build with
 `-DCMAKE_BUILD_TYPE=RelWithDebInfo` if you want readable user-space symbols.
 Run once without `--udp-recvmmsg`, then restart `turnserver` with
-`--udp-recvmmsg` and rerun the same commands with the `recvmmsg` label:
+`--udp-recvmmsg` and rerun the same commands with labels such as
+`recvmmsg_off` and `recvmmsg_on`:
 
 ```bash
 # on turnserver
 sysctl -w kernel.perf_event_paranoid=-1 kernel.kptr_restrict=0 || true
 pid=$(cat /root/turnserver.pid)
-label=no_recvmmsg
+label=recvmmsg_off
 
 (pidstat -h -u -r -p "$pid" 1 14 > /root/${label}_pidstat.txt & \
   mpstat 1 14 > /root/${label}_mpstat.txt & \
