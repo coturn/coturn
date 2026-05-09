@@ -68,7 +68,7 @@ typedef uint16_t in_port_t;
 
 #define COOKIE_SECRET_LENGTH (32)
 
-#define MAX_SINGLE_UDP_BATCH (16)
+#define MAX_SINGLE_UDP_BATCH IOA_UDP_RECVMMSG_MAX_BATCH
 #define MAX_RECVMMSG_BATCH MAX_SINGLE_UDP_BATCH
 
 #if defined(__linux__) && defined(CMSG_SPACE)
@@ -670,6 +670,7 @@ static int receive_udp_batch_recvmmsg(dtls_listener_relay_server_type *server, e
     if (!state->elems[i]) {
       state->elems[i] = ioa_network_buffer_allocate(server->e);
       if (!state->elems[i]) {
+        ioa_engine_record_udp_recvmmsg_no_buffer(server->e);
         break;
       }
     }
@@ -690,8 +691,13 @@ static int receive_udp_batch_recvmmsg(dtls_listener_relay_server_type *server, e
 
   const int rc = recvmmsg(fd, state->msgs, i, MSG_DONTWAIT, NULL);
   if (rc <= 0) {
+    if (rc == 0 || would_block()) {
+      ioa_engine_record_udp_recvmmsg_wouldblock(server->e);
+    }
     return rc;
   }
+
+  ioa_engine_record_udp_recvmmsg_batch(server->e, rc);
 
   for (int j = 0; j < rc; ++j) {
     ioa_network_buffer_set_size(state->elems[j], state->msgs[j].msg_len);
@@ -877,6 +883,7 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void *arg) 
       if (errno == ENOSYS || errno == EINVAL || errno == EOPNOTSUPP) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
                       "%s: recvmmsg() is unavailable on this system, disabling udp-recvmmsg fast path\n", __FUNCTION__);
+        ioa_engine_record_udp_recvmmsg_unavailable(server->e);
         turn_params.udp_recvmmsg = false;
       } else if (would_block()) {
         prom_inc_packet_dropped(packets_dropped);

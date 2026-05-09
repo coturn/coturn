@@ -80,7 +80,7 @@
 */
 
 #define MAX_ERRORS_IN_UDP_BATCH (1024)
-#define MAX_SOCKET_RECVMMSG_BATCH (16)
+#define MAX_SOCKET_RECVMMSG_BATCH IOA_UDP_RECVMMSG_MAX_BATCH
 
 #if defined(__linux__) && defined(CMSG_SPACE)
 #if defined(IP_RECVTTL) || defined(IP_TTL)
@@ -519,6 +519,66 @@ void ioa_init_recvmmsg_hdr(struct mmsghdr *msg, struct iovec *iov, ioa_addr *src
 
 /************** ENGINE *************************/
 
+#if defined(__linux__)
+void ioa_engine_record_udp_recvmmsg_batch(ioa_engine_handle e, int rc) {
+  if (!e || rc <= 0) {
+    return;
+  }
+
+  unsigned int bucket = (unsigned int)rc;
+  if (bucket > IOA_UDP_RECVMMSG_MAX_BATCH) {
+    bucket = IOA_UDP_RECVMMSG_MAX_BATCH;
+  }
+
+  e->udp_recvmmsg_calls++;
+  e->udp_recvmmsg_packets += (uint64_t)rc;
+  e->udp_recvmmsg_hist[bucket]++;
+}
+
+void ioa_engine_record_udp_recvmmsg_wouldblock(ioa_engine_handle e) {
+  if (e) {
+    e->udp_recvmmsg_wouldblock++;
+  }
+}
+
+void ioa_engine_record_udp_recvmmsg_unavailable(ioa_engine_handle e) {
+  if (e) {
+    e->udp_recvmmsg_unavailable++;
+  }
+}
+
+void ioa_engine_record_udp_recvmmsg_no_buffer(ioa_engine_handle e) {
+  if (e) {
+    e->udp_recvmmsg_no_buffer++;
+  }
+}
+
+static void maybe_log_udp_recvmmsg_stats(ioa_engine_handle e, turn_time_t now) {
+  if (!e || (e->udp_recvmmsg_calls == e->udp_recvmmsg_last_report_calls) ||
+      ((now - e->udp_recvmmsg_last_report_time) < 10)) {
+    return;
+  }
+
+  e->udp_recvmmsg_last_report_calls = e->udp_recvmmsg_calls;
+  e->udp_recvmmsg_last_report_time = now;
+
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+                "udp-recvmmsg stats: calls=%llu packets=%llu avg_batch=%.2f wouldblock=%llu unavailable=%llu "
+                "no_buffer=%llu hist_1=%llu hist_2=%llu hist_3_4=%llu hist_5_8=%llu hist_9_16=%llu\n",
+                (unsigned long long)e->udp_recvmmsg_calls, (unsigned long long)e->udp_recvmmsg_packets,
+                e->udp_recvmmsg_calls ? ((double)e->udp_recvmmsg_packets / (double)e->udp_recvmmsg_calls) : 0.0,
+                (unsigned long long)e->udp_recvmmsg_wouldblock, (unsigned long long)e->udp_recvmmsg_unavailable,
+                (unsigned long long)e->udp_recvmmsg_no_buffer, (unsigned long long)e->udp_recvmmsg_hist[1],
+                (unsigned long long)e->udp_recvmmsg_hist[2],
+                (unsigned long long)(e->udp_recvmmsg_hist[3] + e->udp_recvmmsg_hist[4]),
+                (unsigned long long)(e->udp_recvmmsg_hist[5] + e->udp_recvmmsg_hist[6] + e->udp_recvmmsg_hist[7] +
+                                     e->udp_recvmmsg_hist[8]),
+                (unsigned long long)(e->udp_recvmmsg_hist[9] + e->udp_recvmmsg_hist[10] + e->udp_recvmmsg_hist[11] +
+                                     e->udp_recvmmsg_hist[12] + e->udp_recvmmsg_hist[13] + e->udp_recvmmsg_hist[14] +
+                                     e->udp_recvmmsg_hist[15] + e->udp_recvmmsg_hist[16]));
+}
+#endif
+
 static void timer_handler(ioa_engine_handle e, void *arg) {
 
   UNUSED_ARG(arg);
@@ -527,6 +587,10 @@ static void timer_handler(ioa_engine_handle e, void *arg) {
   STORE_LOG_TIME(now);
 
   e->jiffie = now;
+
+#if defined(__linux__)
+  maybe_log_udp_recvmmsg_stats(e, now);
+#endif
 }
 
 ioa_engine_handle create_ioa_engine(super_memory_t *sm, struct event_base *eb, turnipports *tp,
@@ -2309,6 +2373,7 @@ static int socket_udp_read_batch_recvmmsg(ioa_socket_handle s, int *last_len) {
   }
 
   if (count == 0) {
+    ioa_engine_record_udp_recvmmsg_no_buffer(e);
     return 0;
   }
 
@@ -2320,18 +2385,27 @@ static int socket_udp_read_batch_recvmmsg(ioa_socket_handle s, int *last_len) {
     }
 
     if (rc == 0) {
+      ioa_engine_record_udp_recvmmsg_wouldblock(e);
       return 1;
     }
 
     if (rc < 0 && (errno == ENOSYS || errno == EINVAL || errno == EOPNOTSUPP)) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
                     "%s: recvmmsg() is unavailable on this system, disabling udp-recvmmsg fast path\n", __FUNCTION__);
+      ioa_engine_record_udp_recvmmsg_unavailable(e);
       turn_params.udp_recvmmsg = false;
       return 0;
     }
 
-    return would_block() ? 1 : 0;
+    if (would_block()) {
+      ioa_engine_record_udp_recvmmsg_wouldblock(e);
+      return 1;
+    }
+
+    return 0;
   }
+
+  ioa_engine_record_udp_recvmmsg_batch(e, rc);
 
   for (int i = 0; i < rc; ++i) {
     stun_buffer_list_elem *buf_elem = buf_elems[i];
