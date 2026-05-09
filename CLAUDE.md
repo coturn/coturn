@@ -147,6 +147,9 @@ known setup used Ubuntu 24.04 `c-4` droplets in `nyc1`:
 - `--udp-recvmmsg` is opt-in and covers both UDP listener receive and plain
   connected relay UDP receive on Linux; DTLS session sockets still use the SSL
   read path
+- current `relay-recvmmsg` builds log `udp-recvmmsg stats` every 10 seconds
+  while the flag is active; use those lines to check batch occupancy per relay
+  thread
 
 Never paste DigitalOcean tokens into logs or files. Use a local environment
 variable such as `DIGITALOCEAN_TOKEN`, and revoke temporary tokens after the
