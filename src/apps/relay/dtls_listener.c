@@ -645,9 +645,8 @@ static int ensure_recvmmsg_state(dtls_listener_relay_server_type *server) {
 
   for (unsigned int i = 0; i < MAX_RECVMMSG_BATCH; ++i) {
     ioa_init_recvmmsg_hdr(&(server->recvmmsg_state->msgs[i]), &(server->recvmmsg_state->iovecs[i]),
-                          &(server->recvmmsg_state->src_addrs[i]), server->recvmmsg_state->cmsgs[i],
+                          &(server->recvmmsg_state->src_addrs[i]), server->recvmmsg_state->cmsgs[i], RECVMMSG_CMSG_SZ,
                           (socklen_t)server->slen0, NULL, 0);
-    server->recvmmsg_state->msgs[i].msg_hdr.msg_controllen = RECVMMSG_CMSG_SZ;
     server->recvmmsg_state->elems[i] = ioa_network_buffer_allocate(server->e);
     if (!server->recvmmsg_state->elems[i]) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Cannot allocate recvmmsg batch buffer\n", __FUNCTION__);
@@ -681,9 +680,8 @@ static int receive_udp_batch_recvmmsg(dtls_listener_relay_server_type *server, e
     state->toss[i] = TOS_IGNORE;
     state->packet_types[i] = UDP_PACKET_CLASS_INVALID;
     ioa_init_recvmmsg_hdr(&(state->msgs[i]), &(state->iovecs[i]), &(state->src_addrs[i]), state->cmsgs[i],
-                          (socklen_t)server->slen0, ioa_network_buffer_data(state->elems[i]),
+                          RECVMMSG_CMSG_SZ, (socklen_t)server->slen0, ioa_network_buffer_data(state->elems[i]),
                           ioa_network_buffer_get_capacity_udp());
-    state->msgs[i].msg_hdr.msg_controllen = RECVMMSG_CMSG_SZ;
   }
 
   if (i == 0) {

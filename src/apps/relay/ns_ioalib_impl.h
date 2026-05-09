@@ -275,8 +275,8 @@ int udp_recvfrom(evutil_socket_t fd, ioa_addr *orig_addr, const ioa_addr *like_a
 int ssl_read(evutil_socket_t fd, SSL *ssl, ioa_network_buffer_handle nbh, int verbose);
 
 #if defined(__linux__)
-void ioa_init_recvmmsg_hdr(struct mmsghdr *msg, struct iovec *iov, ioa_addr *src_addr, char *cmsg, socklen_t slen,
-                           void *buf, size_t len);
+void ioa_init_recvmmsg_hdr(struct mmsghdr *msg, struct iovec *iov, ioa_addr *src_addr, char *cmsg, size_t cmsg_len,
+                           socklen_t slen, void *buf, size_t len);
 #endif
 
 #if !defined(_MSC_VER) && defined(CMSG_SPACE)

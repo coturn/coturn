@@ -82,6 +82,35 @@
 #define MAX_ERRORS_IN_UDP_BATCH (1024)
 #define MAX_SOCKET_RECVMMSG_BATCH (16)
 
+#if defined(__linux__) && defined(CMSG_SPACE)
+#if defined(IP_RECVTTL) || defined(IP_TTL)
+#define SOCKET_RECVMMSG_IPV4_TTL_CMSG_SZ CMSG_SPACE(sizeof(int))
+#else
+#define SOCKET_RECVMMSG_IPV4_TTL_CMSG_SZ 0
+#endif
+#if defined(IP_RECVTOS) || defined(IP_TOS)
+#define SOCKET_RECVMMSG_IPV4_TOS_CMSG_SZ CMSG_SPACE(sizeof(int))
+#else
+#define SOCKET_RECVMMSG_IPV4_TOS_CMSG_SZ 0
+#endif
+#if defined(IPV6_RECVHOPLIMIT) || defined(IPV6_HOPLIMIT)
+#define SOCKET_RECVMMSG_IPV6_TTL_CMSG_SZ CMSG_SPACE(sizeof(int))
+#else
+#define SOCKET_RECVMMSG_IPV6_TTL_CMSG_SZ 0
+#endif
+#if defined(IPV6_RECVTCLASS) || defined(IPV6_TCLASS)
+#define SOCKET_RECVMMSG_IPV6_TOS_CMSG_SZ CMSG_SPACE(sizeof(int))
+#else
+#define SOCKET_RECVMMSG_IPV6_TOS_CMSG_SZ 0
+#endif
+#define SOCKET_RECVMMSG_IPV4_CMSG_SZ (SOCKET_RECVMMSG_IPV4_TTL_CMSG_SZ + SOCKET_RECVMMSG_IPV4_TOS_CMSG_SZ)
+#define SOCKET_RECVMMSG_IPV6_CMSG_SZ (SOCKET_RECVMMSG_IPV6_TTL_CMSG_SZ + SOCKET_RECVMMSG_IPV6_TOS_CMSG_SZ)
+#define SOCKET_RECVMMSG_CMSG_SZ                                                                                        \
+  ((SOCKET_RECVMMSG_IPV4_CMSG_SZ > SOCKET_RECVMMSG_IPV6_CMSG_SZ) ? SOCKET_RECVMMSG_IPV4_CMSG_SZ                        \
+                                                                 : SOCKET_RECVMMSG_IPV6_CMSG_SZ)
+#define SOCKET_RECVMMSG_CMSG_ALLOC_SZ ((SOCKET_RECVMMSG_CMSG_SZ) > 0 ? (SOCKET_RECVMMSG_CMSG_SZ) : 1)
+#endif
+
 struct turn_sock_extended_err {
   uint32_t ee_errno; /* error number */
   uint8_t ee_origin; /* where the error originated */
@@ -97,11 +126,10 @@ struct turn_sock_extended_err {
 struct ioa_socket_recvmmsg_state {
   struct mmsghdr msgs[MAX_SOCKET_RECVMMSG_BATCH];
   struct iovec iovecs[MAX_SOCKET_RECVMMSG_BATCH];
-  char cmsgs[MAX_SOCKET_RECVMMSG_BATCH][TURN_CMSG_SZ];
+  char cmsgs[MAX_SOCKET_RECVMMSG_BATCH][SOCKET_RECVMMSG_CMSG_ALLOC_SZ];
   ioa_addr src_addrs[MAX_SOCKET_RECVMMSG_BATCH];
   int ttls[MAX_SOCKET_RECVMMSG_BATCH];
   int toss[MAX_SOCKET_RECVMMSG_BATCH];
-  stun_buffer_list_elem *buf_elems[MAX_SOCKET_RECVMMSG_BATCH];
 };
 #endif
 
@@ -129,7 +157,7 @@ static void close_socket_net_data(ioa_socket_handle s);
 
 #if defined(__linux__)
 static int ensure_socket_recvmmsg_state(ioa_socket_handle s);
-static int socket_udp_read_batch_recvmmsg(ioa_socket_handle s);
+static int socket_udp_read_batch_recvmmsg(ioa_socket_handle s, int *last_len);
 #endif
 
 /************** Utils **************************/
@@ -465,8 +493,8 @@ void ioa_parse_udp_recvmsg_cmsg(struct msghdr *msg, int *ttl, int *tos, uint32_t
 #endif
 
 #if defined(__linux__)
-void ioa_init_recvmmsg_hdr(struct mmsghdr *msg, struct iovec *iov, ioa_addr *src_addr, char *cmsg, socklen_t slen,
-                           void *buf, size_t len) {
+void ioa_init_recvmmsg_hdr(struct mmsghdr *msg, struct iovec *iov, ioa_addr *src_addr, char *cmsg, size_t cmsg_len,
+                           socklen_t slen, void *buf, size_t len) {
   if (!msg || !iov || !src_addr || !cmsg) {
     return;
   }
@@ -484,7 +512,7 @@ void ioa_init_recvmmsg_hdr(struct mmsghdr *msg, struct iovec *iov, ioa_addr *src
   msg->msg_hdr.msg_iov = iov;
   msg->msg_hdr.msg_iovlen = 1;
   msg->msg_hdr.msg_control = cmsg;
-  msg->msg_hdr.msg_controllen = TURN_CMSG_SZ;
+  msg->msg_hdr.msg_controllen = cmsg_len;
   msg->msg_len = 0;
 }
 #endif
@@ -2243,69 +2271,80 @@ static int ensure_socket_recvmmsg_state(ioa_socket_handle s) {
   for (unsigned int i = 0; i < MAX_SOCKET_RECVMMSG_BATCH; ++i) {
     ioa_init_recvmmsg_hdr(&(s->udp_recvmmsg_state->msgs[i]), &(s->udp_recvmmsg_state->iovecs[i]),
                           &(s->udp_recvmmsg_state->src_addrs[i]), s->udp_recvmmsg_state->cmsgs[i],
-                          (socklen_t)get_ioa_addr_len(&(s->local_addr)), NULL, 0);
+                          SOCKET_RECVMMSG_CMSG_SZ, (socklen_t)get_ioa_addr_len(&(s->local_addr)), NULL, 0);
   }
 
   return 0;
 }
 
-static int socket_udp_read_batch_recvmmsg(ioa_socket_handle s) {
-  int last_len = -1;
+static int socket_udp_read_batch_recvmmsg(ioa_socket_handle s, int *last_len) {
+  if (last_len) {
+    *last_len = -1;
+  }
 
   if (!s || !s->e || !s->read_cb || s->ssl || !turn_params.udp_recvmmsg) {
-    return -1;
+    return 0;
   }
 
   if (ensure_socket_recvmmsg_state(s) < 0) {
-    return -1;
+    return 0;
   }
 
+  ioa_engine_handle e = s->e;
   struct ioa_socket_recvmmsg_state *state = s->udp_recvmmsg_state;
+  stun_buffer_list_elem *buf_elems[MAX_SOCKET_RECVMMSG_BATCH] = {0};
   unsigned int count = 0;
 
   for (count = 0; count < MAX_SOCKET_RECVMMSG_BATCH; ++count) {
-    stun_buffer_list_elem *buf_elem = new_blist_elem(s->e);
+    stun_buffer_list_elem *buf_elem = new_blist_elem(e);
     if (!buf_elem) {
       break;
     }
-    state->buf_elems[count] = buf_elem;
+    buf_elems[count] = buf_elem;
     ioa_init_recvmmsg_hdr(&(state->msgs[count]), &(state->iovecs[count]), &(state->src_addrs[count]),
-                          state->cmsgs[count], (socklen_t)get_ioa_addr_len(&(s->local_addr)), buf_elem->buf.buf,
-                          UDP_STUN_BUFFER_SIZE);
+                          state->cmsgs[count], SOCKET_RECVMMSG_CMSG_SZ, (socklen_t)get_ioa_addr_len(&(s->local_addr)),
+                          buf_elem->buf.buf, UDP_STUN_BUFFER_SIZE);
     state->ttls[count] = TTL_IGNORE;
     state->toss[count] = TOS_IGNORE;
   }
 
   if (count == 0) {
-    return -1;
+    return 0;
   }
 
   const int rc = recvmmsg(s->fd, state->msgs, count, MSG_DONTWAIT, NULL);
   if (rc <= 0) {
     for (unsigned int i = 0; i < count; ++i) {
-      free_blist_elem(s->e, state->buf_elems[i]);
-      state->buf_elems[i] = NULL;
+      free_blist_elem(e, buf_elems[i]);
+      buf_elems[i] = NULL;
+    }
+
+    if (rc == 0) {
+      return 1;
     }
 
     if (rc < 0 && (errno == ENOSYS || errno == EINVAL || errno == EOPNOTSUPP)) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
                     "%s: recvmmsg() is unavailable on this system, disabling udp-recvmmsg fast path\n", __FUNCTION__);
       turn_params.udp_recvmmsg = false;
+      return 0;
     }
 
-    return -1;
+    return would_block() ? 1 : 0;
   }
 
   for (int i = 0; i < rc; ++i) {
-    stun_buffer_list_elem *buf_elem = state->buf_elems[i];
+    stun_buffer_list_elem *buf_elem = buf_elems[i];
     ioa_net_data nd;
+    const int msg_len = (int)state->msgs[i].msg_len;
+
+    buf_elems[i] = NULL;
 
     ioa_parse_udp_recvmsg_cmsg(&(state->msgs[i].msg_hdr), &(state->ttls[i]), &(state->toss[i]), NULL);
-    buf_elem->buf.len = state->msgs[i].msg_len;
+    buf_elem->buf.len = (size_t)msg_len;
 
     if (!ioa_socket_check_bandwidth(s, (ioa_network_buffer_handle)buf_elem, 1)) {
-      free_blist_elem(s->e, buf_elem);
-      state->buf_elems[i] = NULL;
+      free_blist_elem(e, buf_elem);
       continue;
     }
 
@@ -2318,25 +2357,26 @@ static int socket_udp_read_batch_recvmmsg(ioa_socket_handle s) {
     s->read_cb(s, IOA_EV_READ, &nd, s->read_ctx, 1);
 
     if (nd.nbh) {
-      free_blist_elem(s->e, buf_elem);
+      free_blist_elem(e, buf_elem);
     }
 
-    state->buf_elems[i] = NULL;
-    last_len = (int)state->msgs[i].msg_len;
+    if (last_len) {
+      *last_len = msg_len;
+    }
 
-    if (s->done || s->tobeclosed) {
+    if ((s->magic != SOCKET_MAGIC) || s->done || s->tobeclosed) {
       break;
     }
   }
 
-  for (int i = 0; i < rc; ++i) {
-    if (state->buf_elems[i]) {
-      free_blist_elem(s->e, state->buf_elems[i]);
-      state->buf_elems[i] = NULL;
+  for (unsigned int i = 0; i < count; ++i) {
+    if (buf_elems[i]) {
+      free_blist_elem(e, buf_elems[i]);
+      buf_elems[i] = NULL;
     }
   }
 
-  return last_len;
+  return 1;
 }
 #endif
 
@@ -2795,9 +2835,9 @@ try_start:
   } else if (s->fd >= 0) { /* UDP and DTLS */
 #if defined(__linux__)
     if (turn_params.udp_recvmmsg && !s->ssl && s->read_cb) {
-      ret = socket_udp_read_batch_recvmmsg(s);
-      if (ret >= 0) {
-        return ret;
+      int batch_len = -1;
+      if (socket_udp_read_batch_recvmmsg(s, &batch_len)) {
+        return batch_len;
       }
     }
 #endif
