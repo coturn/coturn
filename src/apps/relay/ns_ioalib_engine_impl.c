@@ -2252,7 +2252,7 @@ static int ensure_socket_recvmmsg_state(ioa_socket_handle s) {
 static int socket_udp_read_batch_recvmmsg(ioa_socket_handle s) {
   int last_len = -1;
 
-  if (!s || !s->e || !s->read_cb || s->ssl || !turn_params.udp_relay_recvmmsg) {
+  if (!s || !s->e || !s->read_cb || s->ssl || !turn_params.udp_recvmmsg) {
     return -1;
   }
 
@@ -2289,9 +2289,8 @@ static int socket_udp_read_batch_recvmmsg(ioa_socket_handle s) {
 
     if (rc < 0 && (errno == ENOSYS || errno == EINVAL || errno == EOPNOTSUPP)) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
-                    "%s: recvmmsg() is unavailable on this system, disabling udp-relay-recvmmsg fast path\n",
-                    __FUNCTION__);
-      turn_params.udp_relay_recvmmsg = false;
+                    "%s: recvmmsg() is unavailable on this system, disabling udp-recvmmsg fast path\n", __FUNCTION__);
+      turn_params.udp_recvmmsg = false;
     }
 
     return -1;
@@ -2795,7 +2794,7 @@ try_start:
     }
   } else if (s->fd >= 0) { /* UDP and DTLS */
 #if defined(__linux__)
-    if (turn_params.udp_relay_recvmmsg && !s->ssl && s->read_cb) {
+    if (turn_params.udp_recvmmsg && !s->ssl && s->read_cb) {
       ret = socket_udp_read_batch_recvmmsg(s);
       if (ret >= 0) {
         return ret;

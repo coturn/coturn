@@ -361,7 +361,6 @@ typedef struct _turn_params_ {
   bool drop_invalid_packets;
   bool drop_invalid_packets_log;
   bool udp_recvmmsg;
-  bool udp_relay_recvmmsg;
   bool include_reason_string;
 } turn_params_t;
 

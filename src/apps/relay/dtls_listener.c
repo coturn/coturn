@@ -697,7 +697,7 @@ static int receive_udp_batch_recvmmsg(dtls_listener_relay_server_type *server, e
 
   for (int j = 0; j < rc; ++j) {
     ioa_network_buffer_set_size(state->elems[j], state->msgs[j].msg_len);
-    parse_udp_cmsg(&(state->msgs[j].msg_hdr), &(state->ttls[j]), &(state->toss[j]));
+    ioa_parse_udp_recvmsg_cmsg(&(state->msgs[j].msg_hdr), &(state->ttls[j]), &(state->toss[j]), NULL);
     state->packet_types[j] =
         classify_udp_packet(ioa_network_buffer_data(state->elems[j]), ioa_network_buffer_get_size(state->elems[j]));
   }
