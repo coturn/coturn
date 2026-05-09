@@ -392,3 +392,108 @@ Deferred bigger refactors from this run:
 - Consider a purpose-built benchmark mode that measures delivered relay pps at a
   controlled input rate. The current saturated packet flood is useful for
   finding hot functions but can obscure end-to-end delivery changes.
+
+## 2026-05-09 UDP-GSO send path (`--udp-gso`)
+
+Realizes the GSO backlog item from the iter-5 backlog above. The recvmmsg /
+sendmmsg follow-ups confirmed that on this workload the dominant cost is the
+per-datagram kernel TX path (`udp_sendmsg → ip_finish_output → __dev_queue_xmit
+→ start_xmit`), which mmsg-style batching does not collapse. UDP-GSO (Linux
+`UDP_SEGMENT` cmsg) does collapse it: N same-destination, same-size datagrams
+are submitted as one `sendmsg` carrying an iovec; the kernel allocates one
+super-skb that traverses the network stack once and is split at egress (NIC).
+
+Implementation lives in [src/apps/relay/ns_ioalib_engine_impl.c](../src/apps/relay/ns_ioalib_engine_impl.c)
+and reuses the existing `--udp-sendmmsg` batch state. Eligibility (same fd,
+same dest, same size, ≤ 1472 B per datagram) is tracked on every
+`udp_sendmmsg_enqueue`; eligible flushes go through `udp_gso_attempt_flush`
+ahead of the `sendmmsg` loop, with an automatic sticky disable on
+`EINVAL/ENOPROTOOPT` so a kernel/NIC without GSO support gracefully falls back.
+The relay-side `socket_udp_read_batch_recvmmsg` now wraps its callback loop
+in `udp_sendmmsg_batch_begin/end` so peer→client sends triggered inside a
+recvmmsg batch can also coalesce — without that wrapping, the relay path
+issues one `sendto` per delivered datagram.
+
+DigitalOcean validation on 2026-05-09 — fresh nyc1 `c-4` droplets (turn
+`10.116.0.4`, load `10.116.0.5`), all variants built from the same source tree
+under `/root/coturn/build`, `-Y packet -m 1 -l 120`, monitor window via `sar
+-n DEV` for `eth1`, `mpstat`, `pidstat`. The 12 s sweep first established the
+ordering, then a 30 s alternating A/B (`baseline → gso → baseline → gso`)
+confirmed the magnitude of the delta:
+
+| Variant | eth1 RX pps | eth1 TX pps | sys CPU | idle CPU |
+|---|---:|---:|---:|---:|
+| baseline_r1 | 322,091 | 127,445 | 22.9% | 67.5% |
+| `--udp-recvmmsg --udp-sendmmsg --udp-gso` (gso_r1) | 266,068 | **257,996** | 15.0% | 78.7% |
+| baseline_r2 | 309,475 | 125,573 | 20.9% | 70.7% |
+| gso_r2 | 275,992 | **225,366** | 14.9% | 74.3% |
+
+Mean server forwarding rate (eth1 TX): baseline 126,509 pps → GSO 241,681 pps,
+**+91 % (1.91×)**, with mean system CPU dropping from 21.9 % to 14.9 % — about
+**2.8× CPU efficiency** in TX pps per system-CPU-%.
+
+12 s packet sweep, all four variants, mean send_pps reported by uclient (used
+only for ordering — for absolute throughput trust eth1 TX above):
+
+| Variant | m=1 | m=2 | m=4 | m=8 | m=16 | m=32 |
+|---|---:|---:|---:|---:|---:|---:|
+| baseline | 230,401 | 150,189 | 187,055 | 174,771 | 160,871 | 167,789 |
+| `--udp-recvmmsg` | 255,660 | 148,824 | 174,767 | 142,997 | 150,743 | 144,200 |
+| `--udp-recvmmsg --udp-sendmmsg` | 231,766 | 146,776 | 148,826 | 136,542 | 148,955 | 143,575 |
+| `--udp-recvmmsg --udp-sendmmsg --udp-gso` | 136,876 | 147,458 | 124,250 | 131,081 | 137,636 | 114,714 |
+
+The uclient generator reports its own send rate, which drops with GSO because
+the loadgen droplet's `turnutils_peer` becomes the new bottleneck — it is
+single-threaded and cannot reflect 240 k pps. The 30 s `eth1` capture is the
+authoritative server-side metric; `sweep_m1` is retained only to show that
+GSO does not regress in the moderately-loaded `m=2..32` range relative to
+`recvmmsg+sendmmsg`.
+
+Perf children share, m=1 12 s perf record on the turnserver process:
+
+| Symbol | baseline | recvmmsg | recvsendmmsg | gso |
+|---|---:|---:|---:|---:|
+| `__x64_sys_sendto` (children) | 43.6 % | 47.6 % | 22.8 % | 0.0 % |
+| `__x64_sys_sendmsg` (children) | — | — | — | **38.1 %** |
+| `__x64_sys_sendmmsg` (children) | — | — | 27.0 % | 0.0 % |
+| `udp_sendmsg` | 38.8 % | 41.9 % | 20.6 % | 35.9 % |
+| `__dev_queue_xmit` | 18.5 % | — | — | 29.3 % |
+| `skb_segment` (egress GSO split) | absent | absent | absent | 2.2 % |
+| `syscall_return_via_sysret` (self) | 7.2 % | 4.7 % | 4.4 % | 2.4 % |
+| `entry_SYSCALL_64_after_hwframe` (self) | 4.1 % | 3.6 % | 2.6 % | 1.8 % |
+
+In the GSO column the per-packet kernel-stack cost is now amortized across
+the segments of a single super-skb. The proportional rise of
+`__dev_queue_xmit` is misleading on its own — it reflects a smaller
+denominator (CPU usage dropped) while the per-packet absolute cost dropped.
+
+Operational notes:
+
+- Flag is opt-in. `--udp-gso` requires `--udp-sendmmsg`; without that flag
+  the batch state never accumulates and GSO has nothing to flush. The
+  `--help` text states the dependency.
+- GSO eligibility resets on every `_begin/_end`. Mixed-destination or
+  mixed-size workloads transparently fall back through the existing
+  `sendmmsg` and `udp_send` paths.
+- Sticky disable on `EINVAL/ENOPROTOOPT` keeps a process running on an
+  un-virtio host or older kernel from hot-looping in the sticky failure
+  path. A WARNING line is logged once.
+- Tested on Linux 6.8 + virtio-net (DO `c-4`), `gso_max_segs=65535`. Older
+  hosts (kernel <4.18) lack `UDP_SEGMENT` entirely; the sticky-disable
+  path covers them.
+
+Suggested next levers if more relay throughput is needed:
+
+1. **Move loadgen off turnutils_peer.** The 240 k → 90 k tot_recv_msgs/30 s
+   gap at GSO is dominated by single-threaded peer reflection, not the TURN
+   server. A multi-thread peer or `pktgen`-style reflector would let us
+   measure the real ceiling.
+2. **Per-peer connected relay sockets.** Same-destination is the GSO
+   eligibility predicate; a connected relay socket would always be
+   same-dest and would also save `route_lookup` per send.
+3. **`MSG_ZEROCOPY` on the GSO sendmsg.** `rep_movs_alternative` is still
+   3 % self in GSO, and zerocopy avoids the userspace→kernel copy.
+   Probably small for 32-B STUN packets; revisit when payloads are larger.
+
+Artifacts (perf.data, sar/mpstat/pidstat, sweep logs, AB logs) are saved at
+`perf-results-20260508-213056/` in the worktree.

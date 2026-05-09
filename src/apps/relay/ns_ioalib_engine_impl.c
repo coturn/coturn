@@ -140,6 +140,18 @@ struct ioa_socket_recvmmsg_state {
 #define TRIAL_EFFORTS_TO_SEND (2)
 #define MAX_SENDMMSG_BATCH (32)
 #define MIN_SENDMMSG_BATCH (4)
+#define MIN_UDP_GSO_BATCH (2)
+#define MAX_UDP_GSO_DGRAM_SIZE (1472)
+
+#if defined(__linux__)
+#include <netinet/udp.h>
+#ifndef UDP_SEGMENT
+#define UDP_SEGMENT 103
+#endif
+#ifndef SOL_UDP
+#define SOL_UDP 17
+#endif
+#endif
 
 #define SSL_MAX_RENEG_NUMBER (3)
 
@@ -2398,6 +2410,11 @@ static int socket_udp_read_batch_recvmmsg(ioa_socket_handle s, int *last_len) {
 
   ioa_engine_record_udp_recvmmsg_batch(e, rc);
 
+  /* Wrap the per-datagram callbacks so that any sends triggered by them can
+   * be coalesced via udp_sendmmsg / UDP-GSO. Without this, the relay-side
+   * recvmmsg path issues one send syscall per delivered datagram. */
+  udp_sendmmsg_batch_begin();
+
   for (int i = 0; i < rc; ++i) {
     stun_buffer_list_elem *buf_elem = buf_elems[i];
     ioa_net_data nd;
@@ -2433,6 +2450,8 @@ static int socket_udp_read_batch_recvmmsg(ioa_socket_handle s, int *last_len) {
       break;
     }
   }
+
+  udp_sendmmsg_batch_end();
 
   for (unsigned int i = 0; i < count; ++i) {
     if (buf_elems[i]) {
@@ -3471,6 +3490,11 @@ typedef struct udp_sendmmsg_batch_state {
   evutil_socket_t fd;
   int ttl;
   int tos;
+  /* GSO eligibility tracked while enqueuing: when true, all entries so far
+   * share the same destination address and size, so the batch can be flushed
+   * with one sendmsg + UDP_SEGMENT cmsg instead of N sendmsg-equivalents. */
+  int gso_eligible;
+  uint16_t gso_size;
   udp_sendmmsg_batch_entry entries[MAX_SENDMMSG_BATCH];
 } udp_sendmmsg_batch_state;
 
@@ -3488,12 +3512,76 @@ static evutil_socket_t udp_send_fd(ioa_socket_handle s) {
   return s->fd;
 }
 
+/* Attempt to flush the batch as a single UDP-GSO sendmsg.
+ * Returns the number of datagrams handed to the kernel (== state->count) on
+ * success, or 0 if the GSO path is disabled / not eligible / not supported.
+ * On EINVAL/ENOPROTOOPT the GSO flag is sticky-disabled to avoid retrying.
+ */
+static int udp_gso_attempt_flush(void) {
+  udp_sendmmsg_batch_state *state = &udp_sendmmsg_batch;
+
+  if (!turn_params.udp_gso || !state->gso_eligible || state->count < MIN_UDP_GSO_BATCH || state->gso_size == 0 ||
+      state->gso_size > MAX_UDP_GSO_DGRAM_SIZE || state->fd < 0) {
+    return 0;
+  }
+
+  struct iovec iov[MAX_SENDMMSG_BATCH];
+  for (unsigned int i = 0; i < state->count; ++i) {
+    iov[i].iov_base = ioa_network_buffer_data(state->entries[i].nbh);
+    iov[i].iov_len = (size_t)state->entries[i].len;
+  }
+
+  union {
+    struct cmsghdr align;
+    char buf[CMSG_SPACE(sizeof(uint16_t))];
+  } cmsg_buf = {0};
+
+  struct msghdr mh = {0};
+  mh.msg_iov = iov;
+  mh.msg_iovlen = state->count;
+  if (state->entries[0].has_dest_addr) {
+    mh.msg_name = &(state->entries[0].dest_addr);
+    mh.msg_namelen = (socklen_t)get_ioa_addr_len(&(state->entries[0].dest_addr));
+  }
+  mh.msg_control = cmsg_buf.buf;
+  mh.msg_controllen = sizeof(cmsg_buf.buf);
+
+  struct cmsghdr *cm = CMSG_FIRSTHDR(&mh);
+  cm->cmsg_level = SOL_UDP;
+  cm->cmsg_type = UDP_SEGMENT;
+  cm->cmsg_len = CMSG_LEN(sizeof(uint16_t));
+  uint16_t seg = state->gso_size;
+  memcpy(CMSG_DATA(cm), &seg, sizeof(seg));
+
+  ssize_t rc = 0;
+  do {
+    rc = sendmsg(state->fd, &mh, 0);
+  } while (rc < 0 && socket_eintr());
+
+  if (rc < 0) {
+    if (errno == EINVAL || errno == ENOPROTOOPT || errno == EOPNOTSUPP) {
+      /* Kernel/NIC does not support UDP_SEGMENT here. Disable to avoid
+       * retrying on every flush; user can re-enable next process restart. */
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "UDP-GSO sendmsg failed (errno=%d), disabling --udp-gso for this process\n",
+                    errno);
+      turn_params.udp_gso = false;
+    }
+    return 0;
+  }
+
+  return (int)state->count;
+}
+
 static int udp_sendmmsg_flush(void) {
   udp_sendmmsg_batch_state *state = &udp_sendmmsg_batch;
   unsigned int sent = 0;
 
-  if (state->count < MIN_SENDMMSG_BATCH) {
-    for (unsigned int i = 0; i < state->count; ++i) {
+  if (turn_params.udp_gso) {
+    sent = (unsigned int)udp_gso_attempt_flush();
+  }
+
+  if (sent < state->count && (state->count - sent) < MIN_SENDMMSG_BATCH) {
+    for (unsigned int i = sent; i < state->count; ++i) {
       udp_sendmmsg_batch_entry *entry = &(state->entries[i]);
       udp_send(entry->s, entry->has_dest_addr ? &(entry->dest_addr) : NULL,
                (const char *)ioa_network_buffer_data(entry->nbh), entry->len);
@@ -3530,6 +3618,8 @@ static int udp_sendmmsg_flush(void) {
   state->fd = -1;
   state->ttl = TTL_IGNORE;
   state->tos = TOS_IGNORE;
+  state->gso_eligible = 0;
+  state->gso_size = 0;
 
   return (int)sent;
 }
@@ -3574,6 +3664,8 @@ static int udp_sendmmsg_enqueue(ioa_socket_handle s, const ioa_addr *dest_addr, 
     state->fd = fd;
     state->ttl = ttl;
     state->tos = tos;
+    state->gso_eligible = 1;
+    state->gso_size = 0;
   }
 
   udp_sendmmsg_batch_entry *entry = &(state->entries[state->count]);
@@ -3593,6 +3685,22 @@ static int udp_sendmmsg_enqueue(ioa_socket_handle s, const ioa_addr *dest_addr, 
   entry->iov.iov_len = (size_t)entry->len;
   entry->msg.msg_hdr.msg_iov = &(entry->iov);
   entry->msg.msg_hdr.msg_iovlen = 1;
+
+  /* Maintain GSO eligibility: same dest, same size, fits one segment. */
+  if (state->gso_eligible) {
+    if (entry->len <= 0 || entry->len > MAX_UDP_GSO_DGRAM_SIZE) {
+      state->gso_eligible = 0;
+    } else if (state->count == 0) {
+      /* First entry — lock in the segment size and dest. */
+      state->gso_size = (uint16_t)entry->len;
+    } else if ((uint16_t)entry->len != state->gso_size) {
+      state->gso_eligible = 0;
+    } else if (state->entries[0].has_dest_addr != entry->has_dest_addr) {
+      state->gso_eligible = 0;
+    } else if (entry->has_dest_addr && !addr_eq(&(entry->dest_addr), &(state->entries[0].dest_addr))) {
+      state->gso_eligible = 0;
+    }
+  }
 
   ++state->count;
 

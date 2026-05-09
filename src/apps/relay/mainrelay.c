@@ -243,6 +243,7 @@ turn_params_t turn_params = {
     false, /* udp_recvmmsg */
     false, /* udp_recvmmsg_log */
     false, /* udp_sendmmsg */
+    false, /* udp_gso */
     false  /* include_reason_string */
 };
 
@@ -1368,6 +1369,8 @@ static char Usage[] =
     " --udp-recvmmsg-log			   Log Linux recvmmsg batch occupancy stats every 10 seconds.\n"
     " --udp-sendmmsg				   Enable Linux-only batched UDP send via sendmmsg() while processing "
     "UDP input batches.\n"
+    " --udp-gso				   Enable Linux UDP-GSO (UDP_SEGMENT cmsg) when a sendmmsg batch shares "
+    "destination and size; collapses N datagrams into one network-stack traversal. Requires --udp-sendmmsg.\n"
     " --include-reason-string			   Include descriptive reason strings in STUN/TURN error responses.\n"
     "						   By default, only the standard reason phrase for the error code is\n"
     "						   sent. Enabling this option adds detailed error descriptions which\n"
@@ -1536,6 +1539,7 @@ enum EXTRA_OPTS {
   UDP_RECVMMSG_OPT,
   UDP_RECVMMSG_LOG_OPT,
   UDP_SENDMMSG_OPT,
+  UDP_GSO_OPT,
   VERSION_OPT,
   CPUS_OPT,
   INCLUDE_REASON_STRING_OPT
@@ -1688,6 +1692,7 @@ static const struct myoption long_options[] = {
     {"udp-recvmmsg", optional_argument, NULL, UDP_RECVMMSG_OPT},
     {"udp-recvmmsg-log", optional_argument, NULL, UDP_RECVMMSG_LOG_OPT},
     {"udp-sendmmsg", optional_argument, NULL, UDP_SENDMMSG_OPT},
+    {"udp-gso", optional_argument, NULL, UDP_GSO_OPT},
     {"include-reason-string", optional_argument, NULL, INCLUDE_REASON_STRING_OPT},
     {"version", optional_argument, NULL, VERSION_OPT},
     {"syslog-facility", required_argument, NULL, SYSLOG_FACILITY_OPT},
@@ -2491,6 +2496,9 @@ static void set_option(int c, char *value) {
     break;
   case UDP_SENDMMSG_OPT:
     turn_params.udp_sendmmsg = get_bool_value(value);
+    break;
+  case UDP_GSO_OPT:
+    turn_params.udp_gso = get_bool_value(value);
     break;
   case INCLUDE_REASON_STRING_OPT:
     turn_params.include_reason_string = get_bool_value(value);

@@ -363,6 +363,7 @@ typedef struct _turn_params_ {
   bool udp_recvmmsg;
   bool udp_recvmmsg_log;
   bool udp_sendmmsg;
+  bool udp_gso;
   bool include_reason_string;
 } turn_params_t;
 
