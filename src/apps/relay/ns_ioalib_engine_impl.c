@@ -554,7 +554,7 @@ void ioa_engine_record_udp_recvmmsg_no_buffer(ioa_engine_handle e) {
 }
 
 static void maybe_log_udp_recvmmsg_stats(ioa_engine_handle e, turn_time_t now) {
-  if (!e || (e->udp_recvmmsg_calls == e->udp_recvmmsg_last_report_calls) ||
+  if (!turn_params.udp_recvmmsg_log || !e || (e->udp_recvmmsg_calls == e->udp_recvmmsg_last_report_calls) ||
       ((now - e->udp_recvmmsg_last_report_time) < 10)) {
     return;
   }

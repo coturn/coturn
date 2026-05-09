@@ -300,7 +300,9 @@ Flags:
 
 --drop-invalid-packets-log	Log invalid packets. The default behaviour is to not log invalid packets.
 
---udp-recvmmsg		Enable Linux-only batched UDP receive via recvmmsg() on listener sockets.
+--udp-recvmmsg		Enable Linux-only batched UDP receive via recvmmsg() on UDP sockets.
+
+--udp-recvmmsg-log	Log Linux recvmmsg batch occupancy stats every 10 seconds.
 
 --respond-http-unsupported	Return an HTTP response with a 400 status code to HTTP
 			connections made to ports not supporting HTTP. The default
@@ -1066,4 +1068,3 @@ https://groups.google.com/forum/?fromgroups=#!forum/turn-server-project-rfc5766-
   AUTHORS
 
 	See the AUTHORS.md file in the coturn source distribution.
-
