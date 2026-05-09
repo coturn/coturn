@@ -1339,8 +1339,6 @@ static char Usage[] =
     " --cli-max-output-sessions			Maximum number of output sessions in ps CLI command.\n"
     "						This value can be changed on-the-fly in CLI. The default value is "
     "256.\n"
-    " --ne=[1|2|3]					Set network engine type for the process (for internal "
-    "purposes).\n"
     " --no-rfc5780					DEPRECATED and now default, see --rfc5780.\n"
     " --rfc5780					Enable RFC5780 (NAT behavior discovery).\n"
     "						Originally, if there are more than one listener address from the same\n"
