@@ -94,7 +94,7 @@ User database settings:
 -b, --db, --userdb	SQLite user database file name (default - /var/db/turndb or
 		/usr/local/var/db/turndb or /var/lib/turn/turndb).
 
--e, --psql-userdb	User database connection string for PostgreSQL.
+-e, --psql-userdb, --sql-userdb	User database connection string for PostgreSQL.
 		This database can be used for long-term credentials mechanism,
 		and it can store the secret value
 		for secret-based timed authentication in TURN REST API.
@@ -178,6 +178,11 @@ Flags:
 			fingerprints to the messages in this session, regardless of the
 			per-server setting.
 
+--include-reason-string	Include descriptive reason strings in STUN/TURN error responses.
+			By default, only the standard reason phrase for the error code is
+			sent. Enabling this option adds detailed error descriptions which
+			may aid debugging but can also leak internal server information.
+
 -a, --lt-cred-mech	Use long-term credentials mechanism (this one you need for WebRTC usage).
 
 -z, --no-auth		Do not use any credentials mechanism, allow anonymous access.
@@ -234,6 +239,8 @@ Flags:
 
 --syslog		With this flag, all log will be redirected to the system log (syslog).
 
+--syslog-facility	<value>		Set syslog facility for syslog messages. Default is ''.
+
 --simple-log		This flag means that no log file rollover will be used, and the log file
 			name will be constructed as-is, without PID and date appendage.
 			This option can be used, for example, together with the logrotate tool.
@@ -267,6 +274,10 @@ Flags:
 --cli		Turn ON the CLI support. By default it is always OFF.
 			See also options --cli-ip and --cli-port.
 
+--no-cli	Turn OFF the CLI support. Since the CLI is OFF by default,
+			this flag is only useful to override a "cli" setting from
+			the configuration file.
+
 --server-relay		Server relay. NON-STANDARD AND DANGEROUS OPTION.
 			Only for those applications when we want to run
 			server applications on the relay endpoints.
@@ -285,6 +296,16 @@ Flags:
 			main ORIGIN attribute value (if the ORIGIN was
 			initially used by the session).
 
+--drop-invalid-packets	Drop invalid packets early. The default behaviour is to accept all packets.
+
+--drop-invalid-packets-log	Log invalid packets. The default behaviour is to not log invalid packets.
+
+--udp-recvmmsg		Enable Linux-only batched UDP receive via recvmmsg() on listener sockets.
+
+--respond-http-unsupported	Return an HTTP response with a 400 status code to HTTP
+			connections made to ports not supporting HTTP. The default
+			behaviour is to immediately close the connection.
+
 --prometheus		Enable prometheus metrics. By default it is
 			disabled. Would listen on port 9641 under the path /metrics
 			also the path / on this port can be used as a health check. 
@@ -296,6 +317,12 @@ Flags:
 		authentication with ephemeral usernames (e.g. TURN REST API).
 
 --prometheus-port	Prometheus listener port (Default: 9641).
+
+--prometheus-address	<address>	Prometheus listening address (Default: any).
+
+--prometheus-path	<path>		Prometheus serve path (Default: /metrics).
+
+--version		Print version and exit.
 
 -h			Help.
 
@@ -407,6 +434,11 @@ Options with values:
 			will be employed (OS-dependent). In the older Linux systems
 			(before Linux kernel 3.9), the number of UDP threads is always one threads
 			per network listening endpoint - unless "-m 0" or "-m 1" is set.
+
+--cpus			<number>	Override system CPU count detection. Use this number
+			instead of the auto-detected CPU count. Useful in virtualized
+			or containerized environments where the visible CPU count does
+			not match what the cgroup actually allows.
 
 --min-port		Lower bound of the UDP port range for relay
 			endpoints allocation.
@@ -627,13 +659,18 @@ Options with values:
 			By default it is disabled for security reasons!
 			(This behavior used to be the default behavior, and was enabled by default.)
 
---ne=[1|2|3]		Set network engine type for the process (for internal purposes).
 --rfc5780			Enable RFC5780 (NAT behavior discovery).
                     Originally, if there are more than one listener address from the same
                     address family, then by default the NAT behavior discovery feature enabled.
                     This option enables this original behavior, because the NAT behavior discovery
                     adds attributes to response, and this increase the possibility of an amplification attack.
                     Strongly encouraged to use this option to decrease gain factor in STUN binding responses.
+
+--no-rfc5780	DEPRECATED and now the default behaviour. See --rfc5780.
+
+--response-origin-only-with-rfc5780	Only send the RESPONSE-ORIGIN attribute in the
+			binding response when --rfc5780 (NAT behavior discovery) is enabled.
+
 --stun-backward-compatibility		Enable handling old STUN Binding requests using MAPPED-ADDRESS attribute in binding response (instead of XOR-MAPPED-ADDRESS).
 
 
