@@ -30,13 +30,21 @@ Current `relay-recvmmsg` follow-up:
 | 8 | `d48686b7` | Reduce relay per-socket `recvmmsg` state from 16 x 64 KiB cmsg buffers to TTL/TOS-sized buffers, avoid an extra would-block fallback `recvmsg`, and clean up all preallocated buffers after partial batches |
 | 9 | `ad81705e` | Add per-engine `recvmmsg` occupancy counters and 10 s log summaries (`calls`, `packets`, `avg_batch`, `wouldblock`, `unavailable`, `no_buffer`, batch-size histogram) |
 | 10 | `388b15d4` | Move connected relay UDP `recvmmsg` scratch from per-socket state to per-engine/per-thread state |
+| 11 | `4c4fd67e` | Make the occupancy summaries opt-in behind `--udp-recvmmsg-log`, so `--udp-recvmmsg` can ship without periodic stats logs |
 
-Validation after #7-#10:
+Validation after #7-#11:
 
 - Local `cmake -S . -B build -DBUILD_TESTING=ON` passed.
 - Local `cmake --build build --parallel 8` passed.
 - Local `ctest --test-dir build --output-on-failure` passed 3/3.
+- Local `build/bin/turnserver --udp-recvmmsg --udp-recvmmsg-log --version`
+  parsed both flags and printed `4.11.0`.
 - Linux Docker `turnserver` build passed after #7, after #8, and after #10.
+
+Shipping cleanup learning: keep the occupancy counters in place because they
+are low overhead and useful for DigitalOcean diagnostics, but keep the periodic
+summaries off by default. Use `--udp-recvmmsg-log` only during measured runs
+where the log stream is part of the observation.
 
 DigitalOcean check on 2026-05-09:
 
