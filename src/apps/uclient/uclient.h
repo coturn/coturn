@@ -56,6 +56,15 @@ typedef enum {
 #define STOPPING_TIME (10)
 #define STARTING_TCP_RELAY_TIME (30)
 
+/* Per-socket SO_RCVBUF/SO_SNDBUF for uclient. The default
+ * UR_CLIENT_SOCK_BUF_SIZE (64 KB) is a poor fit for load-test runs:
+ * with many concurrent sessions or short scheduling stalls the kernel
+ * receive queue overflows and uclient reports phantom "lost packets".
+ * 4 MB is large enough to survive typical jitter at 10k pps per socket;
+ * set_sock_buf_size() halves on EPERM/EINVAL until the kernel
+ * net.core.rmem_max ceiling is satisfied. */
+#define UCLIENT_SOCK_BUF_SIZE (4 * 1024 * 1024)
+
 extern int clmessage_length;
 extern bool do_not_use_channel;
 extern int clnet_verbose;

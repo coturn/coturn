@@ -253,7 +253,12 @@ start_socket:
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Cannot bind client socket to device %s\n", ifname);
   }
 
-  set_sock_buf_size(clnet_fd, UR_CLIENT_SOCK_BUF_SIZE);
+  /* Loadgen sockets need much larger kernel buffers than the 64 KB
+   * UR_CLIENT_SOCK_BUF_SIZE default. With 16 sessions x ~1k pps, the kernel
+   * receive queue overflows during scheduling jitter and uclient reports
+   * spurious "lost packets". Bump to 4 MB; set_sock_buf_size() halves on
+   * EPERM/EINVAL until the kernel rmem_max ceiling is met. */
+  set_sock_buf_size(clnet_fd, UCLIENT_SOCK_BUF_SIZE);
 
   set_raw_socket_tos(clnet_fd, remote_addr.ss.sa_family, 0x22);
   set_raw_socket_ttl(clnet_fd, remote_addr.ss.sa_family, 47);
@@ -1705,7 +1710,7 @@ again:
   if (sock_bind_to_device(clnet_fd, client_ifname) < 0) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Cannot bind client socket to device %s\n", client_ifname);
   }
-  set_sock_buf_size(clnet_fd, (UR_CLIENT_SOCK_BUF_SIZE << 2));
+  set_sock_buf_size(clnet_fd, UCLIENT_SOCK_BUF_SIZE);
 
   ++elem->pinfo.tcp_conn_number;
   const int i = (int)(elem->pinfo.tcp_conn_number - 1);
@@ -1743,7 +1748,7 @@ again:
         if (sock_bind_to_device(clnet_fd, client_ifname) < 0) {
           TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Cannot bind client socket to device %s\n", client_ifname);
         }
-        set_sock_buf_size(clnet_fd, UR_CLIENT_SOCK_BUF_SIZE << 2);
+        set_sock_buf_size(clnet_fd, UCLIENT_SOCK_BUF_SIZE);
 
         elem->pinfo.tcp_conn[i]->tcp_data_fd = clnet_fd;
 
