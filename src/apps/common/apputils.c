@@ -1197,16 +1197,25 @@ void ignore_sigpipe(void) {
 }
 
 static uint64_t turn_getRandTime(void) {
+#if defined(_MSC_VER)
+  /* MSVC build uses the in-tree shim clock_gettime(int, struct timeval *) -
+   * sub-second field is microseconds, not nanoseconds. */
+  struct timeval tp = {0, 0};
+#if defined(CLOCK_REALTIME)
+  clock_gettime(CLOCK_REALTIME, &tp);
+#else
+  tp.tv_sec = (long)time(NULL);
+#endif
+  return (uint64_t)tp.tv_sec + (uint64_t)tp.tv_usec;
+#else
   struct timespec tp = {0, 0};
 #if defined(CLOCK_REALTIME)
   clock_gettime(CLOCK_REALTIME, &tp);
 #else
   tp.tv_sec = time(NULL);
 #endif
-  const uint64_t current_time = (uint64_t)(tp.tv_sec);
-  const uint64_t current_mstime = (uint64_t)(current_time + (tp.tv_nsec));
-
-  return current_mstime;
+  return (uint64_t)tp.tv_sec + (uint64_t)tp.tv_nsec;
+#endif
 }
 
 void turn_srandom(void) {

@@ -211,6 +211,10 @@ typedef struct UCLIENT_CACHE_ALIGNED(UCLIENT_LISTENER_CACHE_LINE) uclient_listen
   uint64_t l_min_jitter;
   uint64_t l_max_jitter;
   volatile int stop;
+  /* pthread_t is a struct on the Windows pthreads-win32 shim, so it can
+   * neither be cast from 0 nor compared with a truthy check. Track the
+   * "thread has been spawned" state explicitly. */
+  bool started;
 } uclient_listener;
 
 static uclient_listener *listeners = NULL;
@@ -333,11 +337,12 @@ static int start_listener_threads(void) {
     listeners[i].stop = 0;
     if (pthread_create(&listeners[i].thread, NULL, uclient_listener_thread_main, &listeners[i]) != 0) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "uclient: pthread_create listener %d failed\n", i);
-      /* Mark the slot as not started so stop_listener_threads doesn't
-       * pthread_join an invalid handle. */
-      listeners[i].thread = (pthread_t)0;
+      /* Leave started=false so stop_listener_threads doesn't pthread_join
+       * a handle that was never spawned (pthread_t may be a struct on
+       * Windows, so a zero-valued sentinel isn't portable). */
       return -1;
     }
+    listeners[i].started = true;
   }
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "uclient: started %d listener thread(s) (%s)\n", num_listener_threads, origin);
   return 0;
@@ -354,8 +359,9 @@ static void stop_listener_threads(void) {
     }
   }
   for (int i = 0; i < num_listener_threads; ++i) {
-    if (listeners[i].thread) {
+    if (listeners[i].started) {
       pthread_join(listeners[i].thread, NULL);
+      listeners[i].started = false;
     }
   }
   /* Reduce per-thread counters into the globals before reporting runs.
