@@ -2921,6 +2921,13 @@ try_start:
     if (turn_params.udp_recvmmsg && !s->ssl && s->read_cb) {
       int batch_len = -1;
       if (socket_udp_read_batch_recvmmsg(s, &batch_len)) {
+        /* The recvmmsg fast path allocates its own per-datagram buffers
+         * via new_blist_elem(). The `buf_elem` allocated above for the
+         * legacy single-recv path is unused here -- return it to the
+         * engine pool so it does not leak. Without this, every successful
+         * batch leaks one 64KB stun_buffer_list_elem, which under sustained
+         * load grows RSS by ~200 MB/sec/socket. */
+        free_blist_elem(s->e, buf_elem);
         return batch_len;
       }
     }
