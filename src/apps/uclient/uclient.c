@@ -60,6 +60,58 @@
 #endif
 #endif
 
+/* ===== Portability shims for MSVC =====
+ * MSVC does not understand the GCC/Clang __attribute__((aligned)),
+ * __atomic_* built-ins, or _Thread_local. Provide equivalents so the
+ * Windows MSVC build of turnutils_uclient links the same listener-pool
+ * recv path used on POSIX. The semantics we need are relaxed atomics
+ * (no inter-thread ordering, just race-free read-modify-write and load
+ * of an 8-byte counter), which map cleanly onto MSVC's Interlocked64
+ * intrinsics on x86_64. */
+#if defined(_MSC_VER)
+#include <windows.h>
+#if !defined(_Thread_local)
+#define _Thread_local __declspec(thread)
+#endif
+#define UCLIENT_CACHE_ALIGNED(N) __declspec(align(N))
+static inline uint64_t uclient_atomic_load_u64(const uint64_t *p) { return (uint64_t)(*(const volatile __int64 *)p); }
+static inline uint64_t uclient_atomic_fetch_add_u64(uint64_t *p, uint64_t v) {
+  return (uint64_t)InterlockedExchangeAdd64((volatile LONG64 *)p, (LONG64)v);
+}
+static inline uint64_t uclient_atomic_exchange_u64(uint64_t *p, uint64_t v) {
+  return (uint64_t)InterlockedExchange64((volatile LONG64 *)p, (LONG64)v);
+}
+static inline size_t uclient_atomic_fetch_add_size(size_t *p, size_t v) {
+#if SIZE_MAX > 0xFFFFFFFFu
+  return (size_t)InterlockedExchangeAdd64((volatile LONG64 *)p, (LONG64)v);
+#else
+  return (size_t)InterlockedExchangeAdd((volatile LONG *)p, (LONG)v);
+#endif
+}
+static inline size_t uclient_atomic_exchange_size(size_t *p, size_t v) {
+#if SIZE_MAX > 0xFFFFFFFFu
+  return (size_t)InterlockedExchange64((volatile LONG64 *)p, (LONG64)v);
+#else
+  return (size_t)InterlockedExchange((volatile LONG *)p, (LONG)v);
+#endif
+}
+#else
+#define UCLIENT_CACHE_ALIGNED(N) __attribute__((aligned(N)))
+static inline uint64_t uclient_atomic_load_u64(const uint64_t *p) { return __atomic_load_n(p, __ATOMIC_RELAXED); }
+static inline uint64_t uclient_atomic_fetch_add_u64(uint64_t *p, uint64_t v) {
+  return __atomic_fetch_add(p, v, __ATOMIC_RELAXED);
+}
+static inline uint64_t uclient_atomic_exchange_u64(uint64_t *p, uint64_t v) {
+  return __atomic_exchange_n(p, v, __ATOMIC_RELAXED);
+}
+static inline size_t uclient_atomic_fetch_add_size(size_t *p, size_t v) {
+  return __atomic_fetch_add(p, v, __ATOMIC_RELAXED);
+}
+static inline size_t uclient_atomic_exchange_size(size_t *p, size_t v) {
+  return __atomic_exchange_n(p, v, __ATOMIC_RELAXED);
+}
+#endif
+
 static int verbose_packets = 0;
 
 static size_t current_clients_number = 0;
@@ -143,7 +195,7 @@ bool num_listener_threads_explicit = false; /* set by mainuclient when -K is sup
  * door for the rest of the slab. */
 #define UCLIENT_LISTENER_CACHE_LINE 64
 
-typedef struct uclient_listener_s {
+typedef struct UCLIENT_CACHE_ALIGNED(UCLIENT_LISTENER_CACHE_LINE) uclient_listener_s {
   int id;
   pthread_t thread;
   struct event_base *event_base;
@@ -159,7 +211,7 @@ typedef struct uclient_listener_s {
   uint64_t l_min_jitter;
   uint64_t l_max_jitter;
   volatile int stop;
-} __attribute__((aligned(UCLIENT_LISTENER_CACHE_LINE))) uclient_listener;
+} uclient_listener;
 
 static uclient_listener *listeners = NULL;
 static int listener_assignment_counter = 0; /* main-thread-only writes */
@@ -201,7 +253,7 @@ static inline uint32_t recv_count_snapshot(void) {
   uint32_t s = tot_recv_messages;
   if (listeners) {
     for (int i = 0; i < num_listener_threads; ++i) {
-      s += (uint32_t)__atomic_load_n(&listeners[i].l_tot_recv_messages, __ATOMIC_RELAXED);
+      s += (uint32_t)uclient_atomic_load_u64(&listeners[i].l_tot_recv_messages);
     }
   }
   return s;
@@ -210,7 +262,7 @@ static inline uint64_t recv_bytes_snapshot(void) {
   uint64_t s = tot_recv_bytes;
   if (listeners) {
     for (int i = 0; i < num_listener_threads; ++i) {
-      s += __atomic_load_n(&listeners[i].l_tot_recv_bytes, __ATOMIC_RELAXED);
+      s += uclient_atomic_load_u64(&listeners[i].l_tot_recv_bytes);
     }
   }
   return s;
@@ -1107,7 +1159,7 @@ static int process_received_buffer(app_ur_session *elem, int is_tcp_data, app_tc
         /* Atomic increment: the timer thread on main harvests elem->loss
          * with an atomic exchange-and-zero (see client_timer_handler);
          * this builtin pairs with that to make the harvest race-free. */
-        __atomic_fetch_add(&elem->loss, 1u, __ATOMIC_RELAXED);
+        (void)uclient_atomic_fetch_add_size(&elem->loss, (size_t)1);
       } else {
         uint64_t clatency = (uint64_t)time_minus(current_mstime, mi.mstime);
         /* min/max latency: use this thread's per-listener accumulator when
@@ -1129,7 +1181,7 @@ static int process_received_buffer(app_ur_session *elem, int is_tcp_data, app_tc
             min_latency = clatency;
           }
         }
-        __atomic_fetch_add(&elem->latency, clatency, __ATOMIC_RELAXED);
+        (void)uclient_atomic_fetch_add_u64(&elem->latency, clatency);
         if (elem->rmsgnum > 0) {
           uint64_t cjitter = abs((int)(current_mstime - elem->recvtimems) - RTP_PACKET_INTERVAL);
 
@@ -1149,7 +1201,7 @@ static int process_received_buffer(app_ur_session *elem, int is_tcp_data, app_tc
             }
           }
 
-          __atomic_fetch_add(&elem->jitter, cjitter, __ATOMIC_RELAXED);
+          (void)uclient_atomic_fetch_add_u64(&elem->jitter, cjitter);
         }
       }
 
@@ -1927,9 +1979,9 @@ static inline int client_timer_handler(app_ur_session *elem, int *done) {
            * listener side; __atomic_exchange_n returns the previous
            * value and zeroes the slot in one indivisible step so no
            * increment is lost or double-counted. */
-          total_loss += __atomic_exchange_n(&elem->loss, (size_t)0, __ATOMIC_RELAXED);
-          total_latency += __atomic_exchange_n(&elem->latency, (uint64_t)0, __ATOMIC_RELAXED);
-          total_jitter += __atomic_exchange_n(&elem->jitter, (uint64_t)0, __ATOMIC_RELAXED);
+          total_loss += uclient_atomic_exchange_size(&elem->loss, (size_t)0);
+          total_latency += uclient_atomic_exchange_u64(&elem->latency, (uint64_t)0);
+          total_jitter += uclient_atomic_exchange_u64(&elem->jitter, (uint64_t)0);
           elem->completed = 1;
           if (!hang_on) {
             refresh_channel(elem, 0, 0);
