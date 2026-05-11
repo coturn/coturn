@@ -1225,17 +1225,17 @@ static int bind_ioa_socket(ioa_socket_handle s, const ioa_addr *local_addr, int 
 }
 
 /* ======================================================================
- * PORT-SHARING IMPLEMENTATION
+ * MULTIPLEX-PEER IMPLEMENTATION
  * ====================================================================== */
 
 /*
  * UDP receive callback for the thread-local shared relay socket.
  *
- * Packets arriving here come from peers. Port sharing assumes each peer
+ * Packets arriving here come from peers. Multiplex-peer assumes each peer
  * IP:port belongs to one client allocation, so the exact peer endpoint is
  * the routing key.
  */
-static void ps_relay_input_handler(ioa_socket_handle s, int event_type, ioa_net_data *data, void *ctx, int can_resume) {
+static void mp_relay_input_handler(ioa_socket_handle s, int event_type, ioa_net_data *data, void *ctx, int can_resume) {
   ioa_engine_handle e = (ioa_engine_handle)ctx;
   if (!e || !data) {
     return;
@@ -1244,7 +1244,7 @@ static void ps_relay_input_handler(ioa_socket_handle s, int event_type, ioa_net_
   ur_addr_map_value_type value = 0;
   ioa_addr key = {0};
   addr_cpy(&key, &data->src_addr);
-  if (!ur_addr_map_get(&e->ps_table, &key, &value) || !value) {
+  if (!ur_addr_map_get(&e->mp_table, &key, &value) || !value) {
     return;
   }
 
@@ -1268,19 +1268,19 @@ static void ps_relay_input_handler(ioa_socket_handle s, int event_type, ioa_net_
 
 /*
  * Open a single UDP socket bound to relay_addr:port, set SO_REUSEPORT,
- * register ps_relay_input_handler, and store the handle in *sock_out.
+ * register mp_relay_input_handler, and store the handle in *sock_out.
  */
-static int ps_open_socket(ioa_engine_handle e, const char *relay_addr, int af, uint16_t port,
+static int mp_open_socket(ioa_engine_handle e, const char *relay_addr, int af, uint16_t port,
                           ioa_socket_handle *sock_out) {
   ioa_addr addr = {0};
   if (make_ioa_addr((const uint8_t *)relay_addr, port, &addr) != 0) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "port-sharing: cannot parse relay addr '%s'\n", relay_addr);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "multiplex-peer: cannot parse relay addr '%s'\n", relay_addr);
     return -1;
   }
 
   ioa_socket_handle s = create_unbound_relay_ioa_socket(e, af, UDP_SOCKET, RELAY_SOCKET);
   if (!s) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "port-sharing: socket() failed for %s:%u\n", relay_addr, (unsigned)port);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "multiplex-peer: socket() failed for %s:%u\n", relay_addr, (unsigned)port);
     return -1;
   }
 
@@ -1288,28 +1288,28 @@ static int ps_open_socket(ioa_engine_handle e, const char *relay_addr, int af, u
   setsockopt(s->fd, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt));
 
   if (bind_ioa_socket(s, &addr, /*is_tcp=*/0) < 0) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "port-sharing: bind() failed for %s:%u\n", relay_addr, (unsigned)port);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "multiplex-peer: bind() failed for %s:%u\n", relay_addr, (unsigned)port);
     IOA_CLOSE_SOCKET(s);
     return -1;
   }
 
   sock_bind_to_device(s->fd, (unsigned char *)e->relay_ifname);
 
-  register_callback_on_ioa_socket(e, s, IOA_EV_READ, ps_relay_input_handler, (void *)e, /*clean_preexisting=*/0);
+  register_callback_on_ioa_socket(e, s, IOA_EV_READ, mp_relay_input_handler, (void *)e, /*clean_preexisting=*/0);
 
   *sock_out = s;
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "port-sharing: thread %d %s socket bound to %s:%u\n", e->relay_thread_id,
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "multiplex-peer: thread %d %s socket bound to %s:%u\n", e->relay_thread_id,
                 af == AF_INET ? "IPv4" : "IPv6", relay_addr, (unsigned)port);
   return 0;
 }
 
 /* Called once per relay thread from setup_relay_server(). */
-int init_port_sharing(ioa_engine_handle e, int thread_id, uint16_t base_port) {
+int init_multiplex_peer(ioa_engine_handle e, int thread_id, uint16_t base_port) {
   if (!e) {
     return -1;
   }
 
-  ur_addr_map_init(&e->ps_table);
+  ur_addr_map_init(&e->mp_table);
   e->relay_thread_id = thread_id;
 
   /*
@@ -1320,41 +1320,41 @@ int init_port_sharing(ioa_engine_handle e, int thread_id, uint16_t base_port) {
   const uint32_t port_v4_calc = (uint32_t)base_port + (uint32_t)thread_id * 2u;
   const uint32_t port_v6_calc = port_v4_calc + 1u;
   if (port_v6_calc > UINT16_MAX) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "port-sharing: calculated port range exceeds 65535\n");
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "multiplex-peer: calculated port range exceeds 65535\n");
     return -1;
   }
 
   const uint16_t port_v4 = (uint16_t)port_v4_calc;
   const uint16_t port_v6 = (uint16_t)port_v6_calc;
 
-  e->ps_port_v4 = port_v4;
-  e->ps_port_v6 = port_v6;
+  e->mp_port_v4 = port_v4;
+  e->mp_port_v6 = port_v6;
 
   for (size_t i = 0; i < e->relays_number; i++) {
     char ra_str[MAX_IOA_ADDR_STRING] = {0};
     addr_to_string_no_port(&e->relay_addrs[i], ra_str);
     int af = e->relay_addrs[i].ss.sa_family;
 
-    if (af == AF_INET && !e->ps_sock_v4) {
-      ps_open_socket(e, ra_str, AF_INET, port_v4, &e->ps_sock_v4);
-    } else if (af == AF_INET6 && !e->ps_sock_v6) {
-      ps_open_socket(e, ra_str, AF_INET6, port_v6, &e->ps_sock_v6);
+    if (af == AF_INET && !e->mp_sock_v4) {
+      mp_open_socket(e, ra_str, AF_INET, port_v4, &e->mp_sock_v4);
+    } else if (af == AF_INET6 && !e->mp_sock_v6) {
+      mp_open_socket(e, ra_str, AF_INET6, port_v6, &e->mp_sock_v6);
     }
   }
 
-  if (!e->ps_sock_v4 && !e->ps_sock_v6) {
+  if (!e->mp_sock_v4 && !e->mp_sock_v6) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
-                  "port-sharing: thread %d: no sockets opened – "
+                  "multiplex-peer: thread %d: no sockets opened – "
                   "check --relay-ip configuration\n",
                   thread_id);
     return -1;
   }
 
-  e->ps_enabled = 1;
+  e->mp_enabled = 1;
   return 0;
 }
 
-int ps_register_peer(ioa_engine_handle e, const ioa_addr *peer_addr, void *turn_session) {
+int mp_register_peer(ioa_engine_handle e, const ioa_addr *peer_addr, void *turn_session) {
   if (!e || !peer_addr || !turn_session) {
     return -1;
   }
@@ -1367,14 +1367,14 @@ int ps_register_peer(ioa_engine_handle e, const ioa_addr *peer_addr, void *turn_
   addr_cpy(&key, peer_addr);
 
   ur_addr_map_value_type existing = 0;
-  if (ur_addr_map_get(&e->ps_table, &key, &existing) && existing && existing != (ur_addr_map_value_type)turn_session) {
+  if (ur_addr_map_get(&e->mp_table, &key, &existing) && existing && existing != (ur_addr_map_value_type)turn_session) {
     return -1;
   }
 
-  return ur_addr_map_put(&e->ps_table, &key, (ur_addr_map_value_type)(uintptr_t)turn_session) ? 0 : -1;
+  return ur_addr_map_put(&e->mp_table, &key, (ur_addr_map_value_type)(uintptr_t)turn_session) ? 0 : -1;
 }
 
-void ps_deregister_peer(ioa_engine_handle e, const ioa_addr *peer_addr, void *turn_session) {
+void mp_deregister_peer(ioa_engine_handle e, const ioa_addr *peer_addr, void *turn_session) {
   if (!e || !peer_addr) {
     return;
   }
@@ -1382,22 +1382,22 @@ void ps_deregister_peer(ioa_engine_handle e, const ioa_addr *peer_addr, void *tu
   addr_cpy(&key, peer_addr);
   if (turn_session) {
     ur_addr_map_value_type existing = 0;
-    if (!ur_addr_map_get(&e->ps_table, &key, &existing) || existing != (ur_addr_map_value_type)turn_session) {
+    if (!ur_addr_map_get(&e->mp_table, &key, &existing) || existing != (ur_addr_map_value_type)turn_session) {
       return;
     }
   }
-  ur_addr_map_del(&e->ps_table, &key, NULL);
+  ur_addr_map_del(&e->mp_table, &key, NULL);
 }
 
-struct ps_deregister_ctx {
+struct mp_deregister_ctx {
   ioa_engine_handle e;
   ur_addr_map_value_type session;
   const ioa_addr *peer_addr;
   int address_family;
 };
 
-static bool ps_deregister_cb(const ioa_addr *key, ur_addr_map_value_type value, void *arg) {
-  struct ps_deregister_ctx *ctx = (struct ps_deregister_ctx *)arg;
+static bool mp_deregister_cb(const ioa_addr *key, ur_addr_map_value_type value, void *arg) {
+  struct mp_deregister_ctx *ctx = (struct mp_deregister_ctx *)arg;
   if (!ctx || value != ctx->session) {
     return true;
   }
@@ -1410,46 +1410,141 @@ static bool ps_deregister_cb(const ioa_addr *key, ur_addr_map_value_type value, 
 
   ioa_addr key_copy = {0};
   addr_cpy(&key_copy, key);
-  ur_addr_map_del(&ctx->e->ps_table, &key_copy, NULL);
+  ur_addr_map_del(&ctx->e->mp_table, &key_copy, NULL);
   return true;
 }
 
-void ps_deregister_permission_peers(ioa_engine_handle e, const ioa_addr *peer_addr, void *turn_session) {
+void mp_deregister_permission_peers(ioa_engine_handle e, const ioa_addr *peer_addr, void *turn_session) {
   if (!e || !peer_addr || !turn_session) {
     return;
   }
-  struct ps_deregister_ctx ctx = {e, (ur_addr_map_value_type)(uintptr_t)turn_session, peer_addr, 0};
-  ur_addr_map_foreach_key_arg(&e->ps_table, ps_deregister_cb, &ctx);
+  struct mp_deregister_ctx ctx = {e, (ur_addr_map_value_type)(uintptr_t)turn_session, peer_addr, 0};
+  ur_addr_map_foreach_key_arg(&e->mp_table, mp_deregister_cb, &ctx);
 }
 
-void ps_deregister_session_peers(ioa_engine_handle e, void *turn_session, int address_family) {
+void mp_deregister_session_peers(ioa_engine_handle e, void *turn_session, int address_family) {
   if (!e || !turn_session) {
     return;
   }
-  struct ps_deregister_ctx ctx = {e, (ur_addr_map_value_type)(uintptr_t)turn_session, NULL, address_family};
-  ur_addr_map_foreach_key_arg(&e->ps_table, ps_deregister_cb, &ctx);
+  struct mp_deregister_ctx ctx = {e, (ur_addr_map_value_type)(uintptr_t)turn_session, NULL, address_family};
+  ur_addr_map_foreach_key_arg(&e->mp_table, mp_deregister_cb, &ctx);
 }
 
-ioa_socket_handle ps_get_socket(ioa_engine_handle e, int af) {
-  if (!e || !e->ps_enabled) {
+ioa_socket_handle mp_get_socket(ioa_engine_handle e, int af) {
+  if (!e || !e->mp_enabled) {
     return NULL;
   }
-  return (af == AF_INET6) ? e->ps_sock_v6 : e->ps_sock_v4;
+  return (af == AF_INET6) ? e->mp_sock_v6 : e->mp_sock_v4;
 }
 
-uint16_t ps_get_port(ioa_engine_handle e, int af) {
-  if (!e || !e->ps_enabled) {
+uint16_t mp_get_port(ioa_engine_handle e, int af) {
+  if (!e || !e->mp_enabled) {
     return 0;
   }
-  return (af == AF_INET6) ? e->ps_port_v6 : e->ps_port_v4;
+  return (af == AF_INET6) ? e->mp_port_v6 : e->mp_port_v4;
+}
+
+/* ======================================================================
+ * MULTIPLEX-CLIENT IMPLEMENTATION
+ * ======================================================================
+ *
+ * Client-side analogue of multiplex-peer. With --multiplex-client, the
+ * listener's UDP fd is shared across all plain-UDP TURN client sessions on
+ * the thread, and incoming datagrams are demultiplexed by exact client
+ * IP:port using cs_table -> ts_ur_super_session. DTLS-handshake datagrams
+ * fall back to the existing per-source-addr (children_ss) socket path; the
+ * fast path is plaintext-UDP only.
+ */
+
+/* Called once per relay thread from setup_relay_server() when
+ * turn_params.multiplex_client is set. */
+int init_multiplex_client(ioa_engine_handle e) {
+  if (!e) {
+    return -1;
+  }
+  ur_addr_map_init(&e->cs_table);
+  e->mc_enabled = 1;
+  return 0;
+}
+
+int mc_register_client(ioa_engine_handle e, const ioa_addr *client_addr, void *turn_session) {
+  if (!e || !e->mc_enabled || !client_addr || !turn_session) {
+    return -1;
+  }
+
+  if (addr_get_port(client_addr) == 0) {
+    return 0;
+  }
+
+  ioa_addr key = {0};
+  addr_cpy(&key, client_addr);
+
+  ur_addr_map_value_type existing = 0;
+  if (ur_addr_map_get(&e->cs_table, &key, &existing) && existing && existing != (ur_addr_map_value_type)turn_session) {
+    return -1;
+  }
+
+  return ur_addr_map_put(&e->cs_table, &key, (ur_addr_map_value_type)(uintptr_t)turn_session) ? 0 : -1;
+}
+
+void mc_deregister_client(ioa_engine_handle e, const ioa_addr *client_addr, void *turn_session) {
+  if (!e || !e->mc_enabled || !client_addr) {
+    return;
+  }
+  ioa_addr key = {0};
+  addr_cpy(&key, client_addr);
+  if (turn_session) {
+    ur_addr_map_value_type existing = 0;
+    if (!ur_addr_map_get(&e->cs_table, &key, &existing) || existing != (ur_addr_map_value_type)turn_session) {
+      return;
+    }
+  }
+  ur_addr_map_del(&e->cs_table, &key, NULL);
+}
+
+struct mc_deregister_ctx {
+  ioa_engine_handle e;
+  ur_addr_map_value_type session;
+};
+
+static bool mc_deregister_cb(const ioa_addr *key, ur_addr_map_value_type value, void *arg) {
+  struct mc_deregister_ctx *ctx = (struct mc_deregister_ctx *)arg;
+  if (!ctx || value != ctx->session) {
+    return true;
+  }
+  ioa_addr key_copy = {0};
+  addr_cpy(&key_copy, key);
+  ur_addr_map_del(&ctx->e->cs_table, &key_copy, NULL);
+  return true;
+}
+
+void mc_deregister_session(ioa_engine_handle e, void *turn_session) {
+  if (!e || !e->mc_enabled || !turn_session) {
+    return;
+  }
+  struct mc_deregister_ctx ctx = {e, (ur_addr_map_value_type)(uintptr_t)turn_session};
+  ur_addr_map_foreach_key_arg(&e->cs_table, mc_deregister_cb, &ctx);
+}
+
+ts_ur_super_session *mc_lookup_session(ioa_engine_handle e, const ioa_addr *client_addr) {
+  if (!e || !e->mc_enabled || !client_addr) {
+    return NULL;
+  }
+  ioa_addr key = {0};
+  addr_cpy(&key, client_addr);
+  ur_addr_map_value_type value = 0;
+  if (!ur_addr_map_get(&e->cs_table, &key, &value) || !value) {
+    return NULL;
+  }
+  return (ts_ur_super_session *)(uintptr_t)value;
 }
 
 /*
- * Port-sharing allocation path.
- * Called from create_relay_ioa_sockets() when port_sharing_mode is set.
+ * Multiplex-peer allocation path.
+ * Called from create_relay_ioa_sockets() when multiplex_peer_mode is set.
  */
-static int create_relay_socket_port_sharing(ioa_engine_handle e, ioa_socket_handle client_s, int address_family,
-                                            ioa_socket_handle *rtp_s, int *err_code, const uint8_t **reason) {
+static int create_relay_socket_multiplex_peer(ioa_engine_handle e, ioa_socket_handle client_s, int address_family,
+                                              ioa_socket_handle *rtp_s, int *err_code, const uint8_t **reason) {
   int family;
   switch (address_family) {
   case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6:
@@ -1462,10 +1557,10 @@ static int create_relay_socket_port_sharing(ioa_engine_handle e, ioa_socket_hand
     family = AF_INET;
     break;
   }
-  ioa_socket_handle shared = ps_get_socket(e, family);
+  ioa_socket_handle shared = mp_get_socket(e, family);
   if (!shared) {
     *err_code = 508;
-    *reason = (const uint8_t *)"No port-sharing socket for requested address family";
+    *reason = (const uint8_t *)"No multiplex-peer socket for requested address family";
     return -1;
   }
 
@@ -1474,20 +1569,20 @@ static int create_relay_socket_port_sharing(ioa_engine_handle e, ioa_socket_hand
 }
 
 /* ======================================================================
- * END PORT-SHARING IMPLEMENTATION
+ * END MULTIPLEX-PEER IMPLEMENTATION
  * ====================================================================== */
 
 int create_relay_ioa_sockets(ioa_engine_handle e, ioa_socket_handle client_s, int address_family, uint8_t transport,
                              int even_port, ioa_socket_handle *rtp_s, ioa_socket_handle *rtcp_s,
                              uint64_t *out_reservation_token, int *err_code, const uint8_t **reason, accept_cb acb,
-                             void *acbarg, bool port_sharing_mode) {
-  if (port_sharing_mode && transport == STUN_ATTRIBUTE_TRANSPORT_UDP_VALUE) {
+                             void *acbarg, bool multiplex_peer_mode) {
+  if (multiplex_peer_mode && transport == STUN_ATTRIBUTE_TRANSPORT_UDP_VALUE) {
     if (even_port >= 0) {
       if (err_code) {
         *err_code = 400;
       }
       if (reason) {
-        *reason = (const uint8_t *)"EVEN-PORT is not supported with port-sharing";
+        *reason = (const uint8_t *)"EVEN-PORT is not supported with multiplex-peer";
       }
       return -1;
     }
@@ -1497,7 +1592,7 @@ int create_relay_ioa_sockets(ioa_engine_handle e, ioa_socket_handle client_s, in
     if (out_reservation_token) {
       *out_reservation_token = 0;
     }
-    return create_relay_socket_port_sharing(e, client_s, address_family, rtp_s, err_code, reason);
+    return create_relay_socket_multiplex_peer(e, client_s, address_family, rtp_s, err_code, reason);
   }
   /* original code unchanged below */
 

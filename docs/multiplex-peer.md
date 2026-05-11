@@ -1,4 +1,4 @@
-# coturn Port-Sharing Mode — Design & Implementation Guide
+# coturn Multiplex-Peer Mode — Design & Implementation Guide
 
 ## Problem Statement
 
@@ -33,13 +33,13 @@ Capacity`.
 
 ---
 
-## Design: Per-Thread-Port Sharing
+## Design: Per-Thread Peer-Side Multiplexing
 
 ### Core idea
 
 Replace the per-session `bind()` with **one persistent socket pair per relay
 thread** (one IPv4 socket, one IPv6 socket).  Sessions are demultiplexed by
-the **client's source IP:port** rather than by the relay destination port.
+the **peer's source IP:port** rather than by the relay destination port.
 
 ### Why per-thread (not a single global socket)?
 
@@ -61,7 +61,7 @@ IPv4 port = base_port + thread_id × 2
 IPv6 port = base_port + thread_id × 2 + 1
 ```
 
-Example with `--port-sharing-port=3480` and 4 relay threads:
+Example with `--multiplex-peer-port=3480` and 4 relay threads:
 
 | Thread | IPv4 port | IPv6 port |
 |--------|-----------|-----------|
@@ -89,7 +89,7 @@ Normal mode:
   Client B ──► relay-ip:55002 (fd B, thread 0) ──► peer B
   ... (one fd + one port consumed per session)
 
-Port-sharing mode (4 threads):
+Multiplex-peer mode (4 threads):
   Client A (→ thread 0) ──► relay-ip:3480 (shared fd, thread 0) ──► peer A
   Client B (→ thread 0) ──► relay-ip:3480 (shared fd, thread 0) ──► peer B
   Client C (→ thread 1) ──► relay-ip:3482 (shared fd, thread 1) ──► peer C
@@ -101,21 +101,21 @@ Port-sharing mode (4 threads):
 
 ## Architecture: Where State Lives
 
-All port-sharing state is embedded directly in `ioa_engine_t`.
+All multiplex-peer state is embedded directly in `ioa_engine_t`.
 There are **no globals** and **no mutexes**.
 
 ```c
 /* New fields added to ioa_engine_t in ns_ioalib_engine_impl.c */
-int               ps_enabled;       // 1 when port-sharing is active
+int               mp_enabled;       // 1 when multiplex-peer is active
 int               relay_thread_id;  // zero-based thread index
-ioa_socket_handle ps_sock_v4;       // thread-local IPv4 relay socket
-ioa_socket_handle ps_sock_v6;       // thread-local IPv6 relay socket
-uint16_t          ps_port_v4;       // port ps_sock_v4 is bound to
-uint16_t          ps_port_v6;       // port ps_sock_v6 is bound to
-ur_addr_map       ps_table;         // exact peer IP:port -> turn session
+ioa_socket_handle mp_sock_v4;       // thread-local IPv4 relay socket
+ioa_socket_handle mp_sock_v6;       // thread-local IPv6 relay socket
+uint16_t          mp_port_v4;       // port mp_sock_v4 is bound to
+uint16_t          mp_port_v6;       // port mp_sock_v6 is bound to
+ur_addr_map       mp_table;         // exact peer IP:port -> turn session
 ```
 
-The `ps_table` address map:
+The `mp_table` address map:
 
 ```c
 peer_addr:port -> ts_ur_super_session*
@@ -129,9 +129,9 @@ peer_addr:port -> ts_ur_super_session*
 
 ```
 create_relay_connection()
-  └─ create_relay_ioa_sockets(..., port_sharing_mode=1)
-       └─ create_relay_socket_port_sharing()
-            ├─ shared = ps_get_socket(e, AF_INET)   // engine's own socket
+  └─ create_relay_ioa_sockets(..., multiplex_peer_mode=1)
+       └─ create_relay_socket_multiplex_peer()
+            ├─ shared = mp_get_socket(e, AF_INET)   // engine's own socket
             └─ *rtp_s = shared                       // no bind(), no port consumed
 ```
 
@@ -144,8 +144,8 @@ to the session, and sends to the peer from the shared relay socket.
 ### Peer → client (inbound relay data)
 
 ```
-libevent fires ps_relay_input_handler(s=shared_sock, data->remote_addr=peer)
-  └─ ps_table exact lookup: peer IP:port -> turn_session
+libevent fires mp_relay_input_handler(s=shared_sock, data->remote_addr=peer)
+  └─ mp_table exact lookup: peer IP:port -> turn_session
        └─ verify the allocation still has permission for peer IP
        └─ forward to client socket
 ```
@@ -158,7 +158,7 @@ the second registration is rejected instead of routing ambiguously.
 
 ```
 shutdown_client_connection()
-  ├─ ps_deregister_session_peers(e, ss, 0)   // remove exact-peer entries
+  ├─ mp_deregister_session_peers(e, ss, 0)   // remove exact-peer entries
   ├─ relay_endpoint_session->s = NULL        // prevent shared socket close
   └─ clear_allocation() / IOA_CLOSE_SOCKET() // now a safe no-op for relay sock
 ```
@@ -173,13 +173,13 @@ closed by session teardown code.
 
 | File | What changes |
 |------|-------------|
-| `src/apps/relay/ns_ioalib_impl.h` | Port-sharing fields; declarations for `init_port_sharing`, exact-peer registration cleanup helpers, `ps_get_socket`, and `ps_get_port` |
-| `src/apps/relay/ns_ioalib_engine_impl.c` | Shared socket setup, exact-peer routing table, registration cleanup helpers, and the port-sharing branch in `create_relay_ioa_sockets` |
-| `src/server/ns_turn_ioalib.h` | Add `port_sharing_mode` parameter to `create_relay_ioa_sockets` declaration |
-| `src/server/ns_turn_server.h` | Add `port_sharing_mode` field to `turn_turnserver` |
+| `src/apps/relay/ns_ioalib_impl.h` | Multiplex-peer fields; declarations for `init_multiplex_peer`, exact-peer registration cleanup helpers, `mp_get_socket`, and `mp_get_port` |
+| `src/apps/relay/ns_ioalib_engine_impl.c` | Shared socket setup, exact-peer routing table, registration cleanup helpers, and the multiplex-peer branch in `create_relay_ioa_sockets` |
+| `src/server/ns_turn_ioalib.h` | Add `multiplex_peer_mode` parameter to `create_relay_ioa_sockets` declaration |
+| `src/server/ns_turn_server.h` | Add `multiplex_peer_mode` field to `turn_turnserver` |
 | `src/server/ns_turn_server.c` | Pass flag; register exact peers from CREATE_PERMISSION/SEND/CHANNEL_BIND; clean mappings on timeout/teardown; keep shared sockets open |
-| `src/apps/relay/mainrelay.h` | Add `port_sharing` and `port_sharing_base_port` to `turn_params_t` |
-| `src/apps/relay/mainrelay.c` | CLI options; startup validation; call `init_port_sharing` from `setup_relay_server` |
+| `src/apps/relay/mainrelay.h` | Add `multiplex_peer` and `multiplex_peer_base_port` to `turn_params_t` |
+| `src/apps/relay/mainrelay.c` | CLI options; startup validation; call `init_multiplex_peer` from `setup_relay_server` |
 
 ---
 
@@ -188,28 +188,28 @@ closed by session teardown code.
 ```bash
 # Enable with default base port 3480 and default relay threads (4)
 # Opens ports 3480-3487 (4 threads × 2 address families)
-turnserver --port-sharing
+turnserver --multiplex-peer
 
 # Custom base port
-turnserver --port-sharing --port-sharing-port=4000
+turnserver --multiplex-peer --multiplex-peer-port=4000
 
 # Full example
 turnserver \
   --listening-port=3478 \
   --relay-ip=203.0.113.1 \
   --relay-threads=4 \
-  --port-sharing \
-  --port-sharing-port=3480 \
+  --multiplex-peer \
+  --multiplex-peer-port=3480 \
   --lt-cred-mech \
   --realm=example.com
 ```
 
 Startup log:
 ```
-port-sharing: 4 thread(s), port range 3480-3487 (IPv4+IPv6 per thread, no shared state)
-port-sharing: thread 0 IPv4 socket bound to 203.0.113.1:3480
-port-sharing: thread 0 IPv6 socket bound to ::1:3481
-port-sharing: thread 1 IPv4 socket bound to 203.0.113.1:3482
+multiplex-peer: 4 thread(s), port range 3480-3487 (IPv4+IPv6 per thread)
+multiplex-peer: thread 0 IPv4 socket bound to 203.0.113.1:3480
+multiplex-peer: thread 0 IPv6 socket bound to ::1:3481
+multiplex-peer: thread 1 IPv4 socket bound to 203.0.113.1:3482
 ...
 ```
 
@@ -218,13 +218,13 @@ port-sharing: thread 1 IPv4 socket bound to 203.0.113.1:3482
 ## Firewall Rules
 
 Standard mode requires opening 49152–65535 (16 383 ports).
-Port-sharing mode requires only:
+Multiplex-peer mode requires only:
 
 | Port(s) | Protocol | Purpose |
 |---------|----------|---------|
 | 3478 | UDP + TCP | TURN signalling (unchanged) |
 | 5349 | UDP + TCP | TURN/TLS (unchanged, optional) |
-| **3480 – 3480 + threads×2 − 1** | **UDP** | **Relay media (port-sharing)** |
+| **3480 – 3480 + threads×2 − 1** | **UDP** | **Relay media (multiplex-peer)** |
 
 With 4 threads: open 3480–3487.  With 8 threads: open 3480–3495.
 
@@ -251,8 +251,8 @@ turnserver \
   --listening-ip=127.0.0.1 \
   --relay-ip=127.0.0.1 \
   --relay-threads=2 \
-  --port-sharing \
-  --port-sharing-port=3480
+  --multiplex-peer \
+  --multiplex-peer-port=3480
 
 # Confirm ports 3480-3483 are open and listening
 ss -ulnp | grep -E '348[0-3]'

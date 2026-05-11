@@ -270,7 +270,7 @@ void inc_ioa_socket_ref_counter(ioa_socket_handle s);
 int create_relay_ioa_sockets(ioa_engine_handle e, ioa_socket_handle client_s, int address_family, uint8_t transport,
                              int even_port, ioa_socket_handle *rtp_s, ioa_socket_handle *rtcp_s,
                              uint64_t *out_reservation_token, int *err_code, const uint8_t **reason, accept_cb acb,
-                             void *acbarg, bool port_sharing_mode);
+                             void *acbarg, bool multiplex_peer_mode);
 
 ioa_socket_handle ioa_create_connecting_tcp_relay_socket(ioa_socket_handle s, ioa_addr *peer_addr, connect_cb cb,
                                                          void *arg);

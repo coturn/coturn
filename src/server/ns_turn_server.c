@@ -382,31 +382,31 @@ static inline ioa_socket_handle get_relay_socket_ss(ts_ur_super_session *ss, int
   return get_relay_socket(&(ss->alloc), family);
 }
 
-static bool is_port_sharing_udp_relay(turn_turnserver *server, ioa_socket_handle relay_s) {
-  if (!server || !server->port_sharing_mode || !relay_s || get_ioa_socket_type(relay_s) != UDP_SOCKET) {
+static bool is_multiplex_peer_udp_relay(turn_turnserver *server, ioa_socket_handle relay_s) {
+  if (!server || !server->multiplex_peer_mode || !relay_s || get_ioa_socket_type(relay_s) != UDP_SOCKET) {
     return false;
   }
 
-  return relay_s == ps_get_socket(server->e, get_ioa_socket_address_family(relay_s));
+  return relay_s == mp_get_socket(server->e, get_ioa_socket_address_family(relay_s));
 }
 
-static int register_port_sharing_peer(turn_turnserver *server, ts_ur_super_session *ss, const ioa_addr *peer_addr,
-                                      int *err_code, const uint8_t **reason) {
+static int register_multiplex_peer(turn_turnserver *server, ts_ur_super_session *ss, const ioa_addr *peer_addr,
+                                   int *err_code, const uint8_t **reason) {
   if (!server || !ss || !peer_addr || addr_get_port(peer_addr) == 0) {
     return 0;
   }
 
   ioa_socket_handle relay_s = get_relay_socket_ss(ss, peer_addr->ss.sa_family);
-  if (!is_port_sharing_udp_relay(server, relay_s)) {
+  if (!is_multiplex_peer_udp_relay(server, relay_s)) {
     return 0;
   }
 
-  if (ps_register_peer(server->e, peer_addr, ss) < 0) {
+  if (mp_register_peer(server->e, peer_addr, ss) < 0) {
     if (err_code) {
       *err_code = 400;
     }
     if (reason) {
-      *reason = (const uint8_t *)"Peer address already used by another port-sharing allocation";
+      *reason = (const uint8_t *)"Peer address already used by another multiplex-peer allocation";
     }
     return -1;
   }
@@ -920,8 +920,8 @@ static void client_ss_perm_timeout_handler(ioa_engine_handle e, void *arg) {
   allocation *a = (allocation *)tinfo->owner;
   ts_ur_super_session *ss = a ? (ts_ur_super_session *)a->owner : NULL;
   turn_turnserver *server = ss ? (turn_turnserver *)ss->server : NULL;
-  if (server && server->port_sharing_mode) {
-    ps_deregister_permission_peers(server->e, &tinfo->addr, ss);
+  if (server && server->multiplex_peer_mode) {
+    mp_deregister_permission_peers(server->e, &tinfo->addr, ss);
   }
 
   turn_permission_clean(tinfo);
@@ -2760,7 +2760,7 @@ static int handle_turn_channel_bind(turn_turnserver *server, ts_ur_super_session
         if (update_channel_lifetime(ss, chn) < 0) {
           *err_code = 500;
           *reason = (const uint8_t *)"Cannot update channel lifetime (internal error)";
-        } else if (register_port_sharing_peer(server, ss, &peer_addr, err_code, reason) < 0) {
+        } else if (register_multiplex_peer(server, ss, &peer_addr, err_code, reason) < 0) {
           ;
         } else {
           size_t len = ioa_network_buffer_get_size(nbh);
@@ -3055,7 +3055,7 @@ static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss, in
 
       if (tinfo || (server->server_relay)) {
 
-        if (register_port_sharing_peer(server, ss, &peer_addr, err_code, reason) < 0) {
+        if (register_multiplex_peer(server, ss, &peer_addr, err_code, reason) < 0) {
           return 0;
         }
 
@@ -3218,7 +3218,7 @@ static int handle_turn_create_permission(turn_turnserver *server, ts_ur_super_se
           if (update_permission(ss, &peer_addr) < 0) {
             *err_code = 500;
             *reason = (const uint8_t *)"Cannot update some permissions (critical server software error)";
-          } else if (register_port_sharing_peer(server, ss, &exact_peer_addr, err_code, reason) < 0) {
+          } else if (register_multiplex_peer(server, ss, &exact_peer_addr, err_code, reason) < 0) {
             ;
           }
         } break;
@@ -4246,15 +4246,15 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
   }
 
   {
-    if (server->port_sharing_mode) {
+    if (server->multiplex_peer_mode) {
       /*
        * Remove all exact-peer demux entries for this session, then null out
        * shared socket pointers so IOA_CLOSE_SOCKET below is a no-op for them.
        */
-      ps_deregister_session_peers(server->e, ss, 0);
+      mp_deregister_session_peers(server->e, ss, 0);
       for (int af = AF_INET;; af = AF_INET6) {
         relay_endpoint_session *res = get_relay_session_ss(ss, af);
-        if (res && res->s == ps_get_socket(server->e, af)) {
+        if (res && res->s == mp_get_socket(server->e, af)) {
           res->s = NULL;
           res->owner = NULL;
         }
@@ -4263,6 +4263,10 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
         }
       }
     }
+    /* Multiplex-client: drop the cs_table entry for this client 5-tuple
+     * before the client_socket handle is destroyed so the listener fast
+     * path cannot dispatch into freed memory. */
+    mc_deregister_session(server->e, ss);
     IOA_CLOSE_SOCKET(ss->client_socket);
     int i;
     for (i = 0; i < ALLOC_PROTOCOLS_NUMBER; ++i) {
@@ -4395,8 +4399,8 @@ static void client_ss_allocation_timeout_handler(ioa_engine_handle e, void *arg)
 
   const int family = get_ioa_socket_address_family(rsession->s);
 
-  if (is_port_sharing_udp_relay(server, rsession->s)) {
-    ps_deregister_session_peers(server->e, ss, family);
+  if (is_multiplex_peer_udp_relay(server, rsession->s)) {
+    mp_deregister_session_peers(server->e, ss, family);
     IOA_EVENT_DEL(rsession->lifetime_ev);
     rsession->s = NULL;
     rsession->owner = NULL;
@@ -4421,11 +4425,11 @@ static int create_relay_connection(turn_turnserver *server, ts_ur_super_session 
     allocation *a = get_allocation_ss(ss);
     relay_endpoint_session *newelem = NULL;
     ioa_socket_handle rtcp_s = NULL;
-    const bool port_sharing_udp = server->port_sharing_mode && transport == STUN_ATTRIBUTE_TRANSPORT_UDP_VALUE;
+    const bool multiplex_peer_udp = server->multiplex_peer_mode && transport == STUN_ATTRIBUTE_TRANSPORT_UDP_VALUE;
 
-    if (port_sharing_udp && in_reservation_token) {
+    if (multiplex_peer_udp && in_reservation_token) {
       *err_code = 400;
-      *reason = (const uint8_t *)"Reservation tokens are not supported with port-sharing";
+      *reason = (const uint8_t *)"Reservation tokens are not supported with multiplex-peer";
       return -1;
     }
 
@@ -4461,7 +4465,7 @@ static int create_relay_connection(turn_turnserver *server, ts_ur_super_session 
 
       newelem = get_relay_session_ss(ss, family);
 
-      if (newelem->s == ps_get_socket(server->e, family)) {
+      if (newelem->s == mp_get_socket(server->e, family)) {
         newelem->s = NULL;
       } else {
         IOA_CLOSE_SOCKET(newelem->s);
@@ -4472,7 +4476,7 @@ static int create_relay_connection(turn_turnserver *server, ts_ur_super_session 
 
       const int res = create_relay_ioa_sockets(server->e, ss->client_socket, address_family, transport, even_port,
                                                &(newelem->s), &rtcp_s, out_reservation_token, err_code, reason, acb, ss,
-                                               server->port_sharing_mode);
+                                               server->multiplex_peer_mode);
       if (res < 0) {
         if (!(*err_code)) {
           *err_code = 508;
@@ -4480,7 +4484,7 @@ static int create_relay_connection(turn_turnserver *server, ts_ur_super_session 
         if (!(*reason)) {
           *reason = (const uint8_t *)"Cannot create socket";
         }
-        if (port_sharing_udp && newelem->s == ps_get_socket(server->e, family)) {
+        if (multiplex_peer_udp && newelem->s == mp_get_socket(server->e, family)) {
           newelem->s = NULL;
         }
         IOA_CLOSE_SOCKET(newelem->s);
@@ -4522,7 +4526,7 @@ static int create_relay_connection(turn_turnserver *server, ts_ur_super_session 
       set_do_not_use_df(newelem->s);
     }
 
-    if (get_ioa_socket_type(newelem->s) != TCP_SOCKET && !port_sharing_udp) {
+    if (get_ioa_socket_type(newelem->s) != TCP_SOCKET && !multiplex_peer_udp) {
       if (register_callback_on_ioa_socket(server->e, newelem->s, IOA_EV_READ, peer_input_handler, ss, 0) < 0) {
         IOA_CLOSE_SOCKET(newelem->s);
         IOA_CLOSE_SOCKET(rtcp_s);
@@ -4542,7 +4546,7 @@ static int create_relay_connection(turn_turnserver *server, ts_ur_super_session 
                                         "client_ss_allocation_timeout_handler");
     set_allocation_lifetime_ev(a, server->ctime + lifetime, ev, get_ioa_socket_address_family(newelem->s));
 
-    if (!port_sharing_udp) {
+    if (!multiplex_peer_udp) {
       set_ioa_socket_session(newelem->s, ss);
     }
   }

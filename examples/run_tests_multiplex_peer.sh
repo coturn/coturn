@@ -35,14 +35,14 @@ if [ ! -x "$BINDIR/turnserver" ]; then
   exit 1
 fi
 
-PORT_SHARING_PORT="${PORT_SHARING_PORT:-35000}"
-TURNSERVER_EXTRA_ARGS=("--port-sharing" "--port-sharing-port=$PORT_SHARING_PORT")
+MULTIPLEX_PEER_PORT="${MULTIPLEX_PEER_PORT:-35000}"
+TURNSERVER_EXTRA_ARGS=("--multiplex-peer" "--multiplex-peer-port=$MULTIPLEX_PEER_PORT")
 if [ "$(uname -s)" = "Linux" ]; then
   TURNSERVER_EXTRA_ARGS+=("--udp-recvmmsg")
   echo 'Using TURNSERVER_EXTRA_ARGS="--udp-recvmmsg"'
 fi
 
-turnserver_log="$(mktemp "${TMPDIR:-/tmp}/turnserver-port-sharing.XXXXXX.log")"
+turnserver_log="$(mktemp "${TMPDIR:-/tmp}/turnserver-multiplex-peer.XXXXXX.log")"
 
 print_turnserver_log_tail() {
   echo "Last turnserver log lines:"
@@ -77,7 +77,7 @@ run_client() {
     fi
 
     if printf '%s\n' "$output" | grep -q "error 400" &&
-      grep -q "EVEN-PORT is not supported with port-sharing" "$turnserver_log" &&
+      grep -q "EVEN-PORT is not supported with multiplex-peer" "$turnserver_log" &&
       [ "$attempt" -lt "$max_attempts" ]; then
       echo "Retrying $name after randomized EVEN-PORT request"
       continue
@@ -99,7 +99,7 @@ run_client() {
   return 1
 }
 
-echo "Running turnserver in port-sharing mode on base port $PORT_SHARING_PORT"
+echo "Running turnserver in multiplex-peer mode on base port $MULTIPLEX_PEER_PORT"
 "$BINDIR/turnserver" \
   --use-auth-secret \
   --sock-buf-size=1048576 \
@@ -119,7 +119,7 @@ turnserver_pid="$!"
 
 sleep 5
 
-# Port-sharing is incompatible with EVEN-PORT, so these tests disable RTCP reservation with -c.
+# Multiplex-peer is incompatible with EVEN-PORT, so these tests disable RTCP reservation with -c.
 run_client "turn client UDP" 3480 500 -c -e 127.0.0.1 -r 3480 -X -g -u user -W secret 127.0.0.1
 run_client "turn client TCP" 3482 500 -c -t -e 127.0.0.1 -r 3482 -X -g -u user -W secret 127.0.0.1
 run_client "turn client TLS" 3484 500 -c -t -S -e 127.0.0.1 -r 3484 -X -g -u user -W secret 127.0.0.1

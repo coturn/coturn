@@ -362,12 +362,13 @@ typedef struct _turn_params_ {
   bool drop_invalid_packets_log;
   bool udp_recvmmsg;
   bool udp_recvmmsg_log;
-  bool udp_sendmmsg;
+  bool udp_sendmmsg; /* derived: (multiplex_client || multiplex_peer); not user-settable */
   bool udp_gso;
   bool include_reason_string;
 
-  bool port_sharing;               /* --port-sharing flag */
-  uint16_t port_sharing_base_port; /* --port-sharing-port (default 3480) */
+  bool multiplex_client;             /* --multiplex-client flag */
+  bool multiplex_peer;               /* --multiplex-peer flag */
+  uint16_t multiplex_peer_base_port; /* --multiplex-peer-port (default 3480) */
 } turn_params_t;
 
 extern turn_params_t turn_params;

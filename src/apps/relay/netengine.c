@@ -1321,16 +1321,20 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
 
   setup_tcp_listener_servers(rs->ioa_eng, rs);
 
-  if (turn_params.port_sharing) {
-    const uint16_t base = turn_params.port_sharing_base_port ? turn_params.port_sharing_base_port : 3480;
-    if (init_port_sharing(rs->ioa_eng, (int)rs->id, base) == 0) {
-      rs->server.port_sharing_mode = true;
+  if (turn_params.multiplex_peer) {
+    const uint16_t base = turn_params.multiplex_peer_base_port ? turn_params.multiplex_peer_base_port : 3480;
+    if (init_multiplex_peer(rs->ioa_eng, (int)rs->id, base) == 0) {
+      rs->server.multiplex_peer_mode = true;
     } else {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
-                    "port-sharing init failed for thread %d – "
+                    "multiplex-peer init failed for thread %d – "
                     "this thread will use normal port allocation\n",
                     (int)rs->id);
     }
+  }
+
+  if (turn_params.multiplex_client) {
+    init_multiplex_client(rs->ioa_eng);
   }
 }
 
@@ -1516,16 +1520,16 @@ void setup_server(void) {
 
 #endif
 
-  if (turn_params.port_sharing) {
-    const uint16_t base = turn_params.port_sharing_base_port ? turn_params.port_sharing_base_port : 3480;
+  if (turn_params.multiplex_peer) {
+    const uint16_t base = turn_params.multiplex_peer_base_port ? turn_params.multiplex_peer_base_port : 3480;
     const uint32_t n = (uint32_t)get_real_general_relay_servers_number();
     const uint32_t top = (uint32_t)base + n * 2u - 1u;
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "port-sharing: %u thread(s), port range %u-%u (IPv4+IPv6 per thread)\n",
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "multiplex-peer: %u thread(s), port range %u-%u (IPv4+IPv6 per thread)\n",
                   (unsigned)n, (unsigned)base, (unsigned)top);
     if (top > 65535) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
-                    "port-sharing: port range %u-%u exceeds 65535. "
-                    "Reduce relay-threads or lower --port-sharing-port.\n",
+                    "multiplex-peer: port range %u-%u exceeds 65535. "
+                    "Reduce relay-threads or lower --multiplex-peer-port.\n",
                     (unsigned)base, (unsigned)top);
       exit(1);
     }

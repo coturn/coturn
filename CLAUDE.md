@@ -151,8 +151,7 @@ known setup used Ubuntu 24.04 `c-4` droplets in `nyc1`:
   every 10 seconds; use those lines to check batch occupancy per relay thread
 
 Never paste DigitalOcean tokens into logs or files. Use a local environment
-variable such as `DIGITALOCEAN_TOKEN`, and revoke temporary tokens after the
-run.
+variable such as `DIGITALOCEAN_TOKEN`.
 
 Local source package and upload:
 
@@ -322,9 +321,7 @@ timeout -s INT 12s /root/coturn/build/bin/turnutils_uclient \
   10.116.0.2 > /root/invalid_m1_mon.log 2>&1 || true
 ```
 
-Restart `turnserver` after invalid-packet tests before allocation tests. The
-last run saw rapid RSS growth during invalid flood, so avoid chaining tests on
-the same server process.
+Restart `turnserver` after invalid-packet tests before allocation tests.
 
 Allocation flood:
 
