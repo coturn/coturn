@@ -4039,7 +4039,11 @@ static void drain_handler(evutil_socket_t sock, short events, void *args) {
 
 void increment_global_allocation_count(void) {
 #ifdef _MSC_VER
-  size_t cur_count = InterlockedIncrement(&global_allocation_count);
+#if SIZE_MAX > 0xFFFFFFFFu
+  size_t cur_count = (size_t)InterlockedIncrement64((volatile LONG64 *)&global_allocation_count);
+#else
+  size_t cur_count = (size_t)InterlockedIncrement((volatile LONG *)&global_allocation_count);
+#endif
 #else
   size_t cur_count = ++global_allocation_count;
 #endif
@@ -4054,7 +4058,11 @@ void decrement_global_allocation_count(void) {
     log_level = TURN_LOG_LEVEL_INFO;
   }
 #ifdef _MSC_VER
-  size_t cur_count = InterlockedDecrement(&global_allocation_count);
+#if SIZE_MAX > 0xFFFFFFFFu
+  size_t cur_count = (size_t)InterlockedDecrement64((volatile LONG64 *)&global_allocation_count);
+#else
+  size_t cur_count = (size_t)InterlockedDecrement((volatile LONG *)&global_allocation_count);
+#endif
 #else
   size_t cur_count = --global_allocation_count;
 #endif

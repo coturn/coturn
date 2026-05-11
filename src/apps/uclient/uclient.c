@@ -462,20 +462,38 @@ static void generate_unique_allocation_peer(ioa_addr *peer_addr) {
 
 static void __turn_getMSTime(void) {
   static uint64_t start_sec = 0;
+  uint64_t sec = 0;
+  uint64_t msec_in_sec = 0;
+#if defined(_MSC_VER)
+  /* MSVC build uses the in-tree shim from apputils.h, which has signature
+   * clock_gettime(int, struct timeval *) and fills tv_sec / tv_usec. */
+  struct timeval tp = {0, 0};
+#if defined(CLOCK_REALTIME)
+  clock_gettime(CLOCK_REALTIME, &tp);
+#else
+  tp.tv_sec = (long)time(NULL);
+#endif
+  sec = (uint64_t)tp.tv_sec;
+  msec_in_sec = (uint64_t)tp.tv_usec / 1000u;
+#else
   struct timespec tp = {0, 0};
 #if defined(CLOCK_REALTIME)
   clock_gettime(CLOCK_REALTIME, &tp);
 #else
   tp.tv_sec = time(NULL);
 #endif
+  sec = (uint64_t)tp.tv_sec;
+  msec_in_sec = (uint64_t)tp.tv_nsec / 1000000u;
+#endif
   if (!start_sec) {
-    start_sec = tp.tv_sec;
+    start_sec = sec;
   }
-  if (current_time != (uint64_t)((uint64_t)(tp.tv_sec) - start_sec)) {
+  const uint64_t new_time = sec - start_sec;
+  if (current_time != new_time) {
     show_statistics = true;
   }
-  current_time = (uint64_t)((uint64_t)(tp.tv_sec) - start_sec);
-  current_mstime = (uint64_t)((current_time * 1000) + (tp.tv_nsec / 1000000));
+  current_time = new_time;
+  current_mstime = current_time * 1000 + msec_in_sec;
 }
 
 ////////////////////////////////////////////////////////////////////

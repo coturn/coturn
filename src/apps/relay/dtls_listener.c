@@ -230,10 +230,10 @@ static size_t print_packet_txt2pcap(uint64_t now, uint8_t *payload, size_t paylo
 #if DTLS_SUPPORTED
 
 static void calculate_cookie(SSL *ssl, unsigned char *cookie_secret, unsigned int cookie_length) {
-  const long rv = (long)ssl;
-  const long inum = (cookie_length - (((long)cookie_secret) % sizeof(long))) / sizeof(long);
-  long i = 0;
-  long *ip = (long *)cookie_secret;
+  const uintptr_t rv = (uintptr_t)ssl;
+  const uintptr_t inum = (cookie_length - (((uintptr_t)cookie_secret) % sizeof(uintptr_t))) / sizeof(uintptr_t);
+  uintptr_t i = 0;
+  uintptr_t *ip = (uintptr_t *)cookie_secret;
   for (i = 0; i < inum; ++i, ++ip) {
     *ip = rv;
   }
@@ -503,8 +503,8 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server, struct mes
 #endif
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
                       "%s: 111.222: thrid=0x%lx: Amap = %p, socket container=%p, local addr %s, remote addr %s, "
-                      "s=0x%lx, done=%d, tbc=%d, st=%d, sat=%d\n",
-                      __FUNCTION__, thrid, amap, chs->sockets_container, (char *)saddr, (char *)rsaddr, (long)chs,
+                      "s=%p, done=%d, tbc=%d, st=%d, sat=%d\n",
+                      __FUNCTION__, thrid, amap, chs->sockets_container, (char *)saddr, (char *)rsaddr, (void *)chs,
                       (int)(chs->done), (int)(chs->tobeclosed), (int)(chs->st), (int)(chs->sat));
       }
     }
