@@ -51,6 +51,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #endif
+#include <pthread.h>
 #include <time.h>
 
 #if defined(__MINGW32__)
@@ -109,6 +110,233 @@ static uint64_t min_jitter = 0xFFFFFFFF;
 static uint64_t max_jitter = 0;
 
 static bool show_statistics = false;
+
+/* ===== Multi-threaded listener (recv) pool =====
+ *
+ * The main thread keeps owning the sender timer, the lifecycle, and the
+ * control plane. EV_READ events for client UDP sockets are routed to one of
+ * N listener threads, each with its own libevent base. Per-session state
+ * touched by the recv path (recvmsgnum, loss, latency, jitter, recvtimems,
+ * rmsgnum) is mutated only by the owning listener thread, which avoids
+ * locking; the few globals that the recv path accumulates into use either
+ * atomic adds (tot_recv_messages, tot_recv_bytes) or per-thread accumulators
+ * reduced into the global on the main thread after pthread_join (min/max
+ * latency/jitter).
+ *
+ * num_listener_threads = 0 disables the pool and reverts to the legacy
+ * single-event-base behaviour. The real-Linux bench (c-4 / 4 vCPU)
+ * shows K=0 winning at -m 1 and -m 2 (4.6k / 6.2k recv pps vs ~3.2k
+ * for K=1) and K=1 winning decisively from -m 4 upward, so the
+ * default is K=0 with an auto-bump to K=1 once -m crosses
+ * UCLIENT_AUTO_LISTENERS_THRESHOLD. Auto-scale is suppressed when
+ * the user passes -K explicitly. */
+
+int num_listener_threads = 0;               /* CLI override; auto-bumped when -m >= UCLIENT_AUTO_LISTENERS_THRESHOLD */
+bool num_listener_threads_explicit = false; /* set by mainuclient when -K is supplied */
+
+/* Cache-line size (assumed 64 B for x86_64 / arm64). Aligning the
+ * uclient_listener struct prevents two listeners' counter slabs from
+ * sharing a cache line, which is what caused the K=2/K=4 regression in
+ * the earlier bench: every per-packet __atomic_fetch_add into the global
+ * tot_recv_messages was bouncing the line across cores. With slabs the
+ * counter writes are thread-local; alignment closes the false-sharing
+ * door for the rest of the slab. */
+#define UCLIENT_LISTENER_CACHE_LINE 64
+
+typedef struct uclient_listener_s {
+  int id;
+  pthread_t thread;
+  struct event_base *event_base;
+  /* Per-thread accumulators. Updated only by this listener thread; read
+   * by main on-demand (atomic load) during the test and authoritatively
+   * after pthread_join. The reads-during-run race is benign -- progress
+   * prints and the completion-check threshold (tot_recv_messages >=
+   * tot_messages) tolerate a few stale increments. */
+  uint64_t l_tot_recv_messages;
+  uint64_t l_tot_recv_bytes;
+  uint64_t l_min_latency;
+  uint64_t l_max_latency;
+  uint64_t l_min_jitter;
+  uint64_t l_max_jitter;
+  volatile int stop;
+} __attribute__((aligned(UCLIENT_LISTENER_CACHE_LINE))) uclient_listener;
+
+static uclient_listener *listeners = NULL;
+static int listener_assignment_counter = 0; /* main-thread-only writes */
+static _Thread_local uclient_listener *current_listener = NULL;
+
+/* True iff caller is one of the listener threads (i.e. NOT the main thread). */
+static inline bool on_listener_thread(void) { return current_listener != NULL; }
+
+/* Per-packet counter writes go into a per-listener slab (when running on
+ * a listener thread) or directly into the global (when running on main,
+ * i.e. the K=0 legacy path). The slab strategy eliminates the cross-
+ * thread cache-line bouncing that __atomic_fetch_add on a single global
+ * was causing -- in the K=2/K=4 bench, every recv was an L1-invalidation
+ * on every other listener's core, which crashed throughput by ~19x. With
+ * slabs, writes are thread-local; main reads them on-demand via the
+ * snapshot helpers below (atomic loads, no contention with writers). */
+static inline void recv_count_add(uint32_t n) {
+  if (current_listener) {
+    current_listener->l_tot_recv_messages += n;
+  } else {
+    tot_recv_messages += n;
+  }
+}
+static inline void recv_bytes_add(uint64_t n) {
+  if (current_listener) {
+    current_listener->l_tot_recv_bytes += n;
+  } else {
+    tot_recv_bytes += n;
+  }
+}
+
+/* On-demand reductions: main thread reads tot_recv_messages /
+ * tot_recv_bytes through these snapshots while listeners are running.
+ * Race semantics match the pre-slab implementation -- progress prints
+ * and the completion threshold tolerate a slightly stale value. After
+ * stop_listener_threads() folds the slabs back into the globals these
+ * helpers degenerate to a plain global read (listeners == NULL). */
+static inline uint32_t recv_count_snapshot(void) {
+  uint32_t s = tot_recv_messages;
+  if (listeners) {
+    for (int i = 0; i < num_listener_threads; ++i) {
+      s += (uint32_t)__atomic_load_n(&listeners[i].l_tot_recv_messages, __ATOMIC_RELAXED);
+    }
+  }
+  return s;
+}
+static inline uint64_t recv_bytes_snapshot(void) {
+  uint64_t s = tot_recv_bytes;
+  if (listeners) {
+    for (int i = 0; i < num_listener_threads; ++i) {
+      s += __atomic_load_n(&listeners[i].l_tot_recv_bytes, __ATOMIC_RELAXED);
+    }
+  }
+  return s;
+}
+
+/* Returns the event_base that should host the EV_READ event for a session.
+ * Picks a listener via round-robin and stamps elem->listener_id so we can
+ * find the right per-thread accumulator at recv time. Called only from the
+ * main thread during start_client / start_c2c, so the rr counter doesn't
+ * need to be atomic. */
+static struct event_base *pick_listener_base(app_ur_session *elem) {
+  if (num_listener_threads <= 0 || !listeners) {
+    if (elem) {
+      elem->listener_id = -1;
+    }
+    return client_event_base;
+  }
+  const int idx = listener_assignment_counter++ % num_listener_threads;
+  if (elem) {
+    elem->listener_id = idx;
+  }
+  return listeners[idx].event_base;
+}
+
+static void *uclient_listener_thread_main(void *arg) {
+  uclient_listener *l = (uclient_listener *)arg;
+  current_listener = l;
+
+  while (!l->stop) {
+    /* 100 ms loopexit cap so we can poll the stop flag promptly even if
+     * no events are firing on this thread. */
+    struct timeval tv;
+    tv.tv_sec = 0;
+    tv.tv_usec = 100000;
+    event_base_loopexit(l->event_base, &tv);
+    event_base_dispatch(l->event_base);
+  }
+  return NULL;
+}
+
+static int start_listener_threads(void) {
+  /* Show how the pool is configured for this run, regardless of whether
+   * the count came from -K or auto-scaling. Surfacing the actual number
+   * (and whether it was auto-derived) is the only way an operator can
+   * tell from the log that the pool did or didn't engage. */
+  const char *origin = num_listener_threads_explicit ? "explicit -K" : "auto";
+  if (num_listener_threads <= 0) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "uclient: listener pool disabled (single-threaded recv on main; %s)\n", origin);
+    return 0;
+  }
+  if (num_listener_threads > UCLIENT_MAX_LISTENER_THREADS) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "uclient: clamping --listener-threads %d to max %d\n", num_listener_threads,
+                  UCLIENT_MAX_LISTENER_THREADS);
+    num_listener_threads = UCLIENT_MAX_LISTENER_THREADS;
+  }
+
+  listeners = (uclient_listener *)calloc((size_t)num_listener_threads, sizeof(uclient_listener));
+  if (!listeners) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "uclient: cannot allocate listener pool\n");
+    num_listener_threads = 0;
+    return -1;
+  }
+  for (int i = 0; i < num_listener_threads; ++i) {
+    listeners[i].id = i;
+    listeners[i].event_base = turn_event_base_new();
+    listeners[i].l_min_latency = 0xFFFFFFFFu;
+    listeners[i].l_min_jitter = 0xFFFFFFFFu;
+    listeners[i].stop = 0;
+    if (pthread_create(&listeners[i].thread, NULL, uclient_listener_thread_main, &listeners[i]) != 0) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "uclient: pthread_create listener %d failed\n", i);
+      /* Mark the slot as not started so stop_listener_threads doesn't
+       * pthread_join an invalid handle. */
+      listeners[i].thread = (pthread_t)0;
+      return -1;
+    }
+  }
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "uclient: started %d listener thread(s) (%s)\n", num_listener_threads, origin);
+  return 0;
+}
+
+static void stop_listener_threads(void) {
+  if (num_listener_threads <= 0 || !listeners) {
+    return;
+  }
+  for (int i = 0; i < num_listener_threads; ++i) {
+    listeners[i].stop = 1;
+    if (listeners[i].event_base) {
+      event_base_loopbreak(listeners[i].event_base);
+    }
+  }
+  for (int i = 0; i < num_listener_threads; ++i) {
+    if (listeners[i].thread) {
+      pthread_join(listeners[i].thread, NULL);
+    }
+  }
+  /* Reduce per-thread counters into the globals before reporting runs.
+   * Includes the slab counters (l_tot_recv_messages / l_tot_recv_bytes)
+   * that were diverted from the shared atomics to dodge cross-core
+   * cache-line bouncing during the test. After this point the globals
+   * are authoritative and the snapshot helpers degenerate to a plain
+   * global read. */
+  for (int i = 0; i < num_listener_threads; ++i) {
+    tot_recv_messages += (uint32_t)listeners[i].l_tot_recv_messages;
+    tot_recv_bytes += listeners[i].l_tot_recv_bytes;
+    if (listeners[i].l_min_latency < min_latency) {
+      min_latency = listeners[i].l_min_latency;
+    }
+    if (listeners[i].l_max_latency > max_latency) {
+      max_latency = listeners[i].l_max_latency;
+    }
+    if (listeners[i].l_min_jitter < min_jitter) {
+      min_jitter = listeners[i].l_min_jitter;
+    }
+    if (listeners[i].l_max_jitter > max_jitter) {
+      max_jitter = listeners[i].l_max_jitter;
+    }
+  }
+  for (int i = 0; i < num_listener_threads; ++i) {
+    if (listeners[i].event_base) {
+      event_base_free(listeners[i].event_base);
+      listeners[i].event_base = NULL;
+    }
+  }
+  free(listeners);
+  listeners = NULL;
+}
 
 static bool uses_turn_allocation(void) { return !is_invalid_flood_mode(); }
 
@@ -208,6 +436,10 @@ static app_ur_session *init_app_session(app_ur_session *ss) {
   if (ss) {
     memset(ss, 0, sizeof(app_ur_session));
     ss->pinfo.fd = -1;
+    /* -1 = not yet routed to a listener thread (legacy single-threaded
+     * mode or session lives on the main event_base). pick_listener_base()
+     * stamps the assigned index when routing recv events. */
+    ss->listener_id = -1;
   }
   return ss;
 }
@@ -797,7 +1029,9 @@ static int process_received_buffer(app_ur_session *elem, int is_tcp_data, app_tc
         if (rlen != clmessage_length) {
           TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "ERROR: received DATA message has wrong len: %d, must be %d\n", rlen,
                         clmessage_length);
-          tot_recv_bytes += applen;
+          /* recv_bytes_add routes to the per-listener slab when called
+           * from a listener thread, otherwise to the global directly. */
+          recv_bytes_add((uint64_t)applen);
           return rc;
         }
 
@@ -870,27 +1104,52 @@ static int process_received_buffer(app_ur_session *elem, int is_tcp_data, app_tc
               mi->msgnum,elem->recvmsgnum,(unsigned long)mi->mstime,(unsigned long)current_mstime);
               */
       if (mi.msgnum != elem->recvmsgnum + 1) {
-        ++(elem->loss);
+        /* Atomic increment: the timer thread on main harvests elem->loss
+         * with an atomic exchange-and-zero (see client_timer_handler);
+         * this builtin pairs with that to make the harvest race-free. */
+        __atomic_fetch_add(&elem->loss, 1u, __ATOMIC_RELAXED);
       } else {
         uint64_t clatency = (uint64_t)time_minus(current_mstime, mi.mstime);
-        if (clatency > max_latency) {
-          max_latency = clatency;
+        /* min/max latency: use this thread's per-listener accumulator when
+         * running on a listener thread, otherwise the legacy global. The
+         * listener accumulators are reduced into the globals after
+         * pthread_join (see stop_listener_threads). */
+        if (on_listener_thread()) {
+          if (clatency > current_listener->l_max_latency) {
+            current_listener->l_max_latency = clatency;
+          }
+          if (clatency < current_listener->l_min_latency) {
+            current_listener->l_min_latency = clatency;
+          }
+        } else {
+          if (clatency > max_latency) {
+            max_latency = clatency;
+          }
+          if (clatency < min_latency) {
+            min_latency = clatency;
+          }
         }
-        if (clatency < min_latency) {
-          min_latency = clatency;
-        }
-        elem->latency += clatency;
+        __atomic_fetch_add(&elem->latency, clatency, __ATOMIC_RELAXED);
         if (elem->rmsgnum > 0) {
           uint64_t cjitter = abs((int)(current_mstime - elem->recvtimems) - RTP_PACKET_INTERVAL);
 
-          if (cjitter > max_jitter) {
-            max_jitter = cjitter;
-          }
-          if (cjitter < min_jitter) {
-            min_jitter = cjitter;
+          if (on_listener_thread()) {
+            if (cjitter > current_listener->l_max_jitter) {
+              current_listener->l_max_jitter = cjitter;
+            }
+            if (cjitter < current_listener->l_min_jitter) {
+              current_listener->l_min_jitter = cjitter;
+            }
+          } else {
+            if (cjitter > max_jitter) {
+              max_jitter = cjitter;
+            }
+            if (cjitter < min_jitter) {
+              min_jitter = cjitter;
+            }
           }
 
-          elem->jitter += cjitter;
+          __atomic_fetch_add(&elem->jitter, cjitter, __ATOMIC_RELAXED);
         }
       }
 
@@ -898,12 +1157,10 @@ static int process_received_buffer(app_ur_session *elem, int is_tcp_data, app_tc
     }
 
     elem->rmsgnum += buffers;
-    tot_recv_messages += buffers;
-    if (applen > 0) {
-      tot_recv_bytes += applen;
-    } else {
-      tot_recv_bytes += elem->in_buffer.len;
-    }
+    /* recv_count_add / recv_bytes_add route to the per-listener slab
+     * on a listener thread or to the global directly on main. */
+    recv_count_add((uint32_t)buffers);
+    recv_bytes_add(applen > 0 ? (uint64_t)applen : (uint64_t)elem->in_buffer.len);
     elem->recvtimems = current_mstime;
     elem->wait_cycles = 0;
 
@@ -1310,14 +1567,15 @@ static int start_client(const char *remote_address, uint16_t port, const unsigne
     socket_set_nonblocking(clnet_info_rtcp->fd);
   }
 
-  struct event *ev = event_new(client_event_base, clnet_info->fd, EV_READ | EV_PERSIST, client_input_handler, ss);
+  struct event *ev = event_new(pick_listener_base(ss), clnet_info->fd, EV_READ | EV_PERSIST, client_input_handler, ss);
 
   event_add(ev, NULL);
 
   struct event *ev_rtcp = NULL;
 
   if (!no_rtcp) {
-    ev_rtcp = event_new(client_event_base, clnet_info_rtcp->fd, EV_READ | EV_PERSIST, client_input_handler, ss_rtcp);
+    ev_rtcp = event_new(pick_listener_base(ss_rtcp), clnet_info_rtcp->fd, EV_READ | EV_PERSIST, client_input_handler,
+                        ss_rtcp);
 
     event_add(ev_rtcp, NULL);
   }
@@ -1482,26 +1740,30 @@ static int start_c2c(const char *remote_address, uint16_t port, const unsigned c
     socket_set_nonblocking(clnet_info2_rtcp->fd);
   }
 
-  struct event *ev1 = event_new(client_event_base, clnet_info1->fd, EV_READ | EV_PERSIST, client_input_handler, ss1);
+  struct event *ev1 =
+      event_new(pick_listener_base(ss1), clnet_info1->fd, EV_READ | EV_PERSIST, client_input_handler, ss1);
 
   event_add(ev1, NULL);
 
   struct event *ev1_rtcp = NULL;
 
   if (!no_rtcp) {
-    ev1_rtcp = event_new(client_event_base, clnet_info1_rtcp->fd, EV_READ | EV_PERSIST, client_input_handler, ss1_rtcp);
+    ev1_rtcp = event_new(pick_listener_base(ss1_rtcp), clnet_info1_rtcp->fd, EV_READ | EV_PERSIST, client_input_handler,
+                         ss1_rtcp);
 
     event_add(ev1_rtcp, NULL);
   }
 
-  struct event *ev2 = event_new(client_event_base, clnet_info2->fd, EV_READ | EV_PERSIST, client_input_handler, ss2);
+  struct event *ev2 =
+      event_new(pick_listener_base(ss2), clnet_info2->fd, EV_READ | EV_PERSIST, client_input_handler, ss2);
 
   event_add(ev2, NULL);
 
   struct event *ev2_rtcp = NULL;
 
   if (!no_rtcp) {
-    ev2_rtcp = event_new(client_event_base, clnet_info2_rtcp->fd, EV_READ | EV_PERSIST, client_input_handler, ss2_rtcp);
+    ev2_rtcp = event_new(pick_listener_base(ss2_rtcp), clnet_info2_rtcp->fd, EV_READ | EV_PERSIST, client_input_handler,
+                         ss2_rtcp);
 
     event_add(ev2_rtcp, NULL);
   }
@@ -1648,7 +1910,7 @@ static inline int client_timer_handler(app_ur_session *elem, int *done) {
       }
       if (!unlimited && (elem->wmsgnum >= elem->tot_msgnum)) {
         if (!turn_time_before(current_mstime, elem->finished_time) ||
-            (!is_invalid_flood_mode() && (tot_recv_messages >= tot_messages))) {
+            (!is_invalid_flood_mode() && (recv_count_snapshot() >= tot_messages))) {
           /*
           TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: elem=0x%x: 111.111: c=%d, t=%d, r=%d,
           w=%d\n",__FUNCTION__,(int)elem,elem->wait_cycles,elem->tot_msgnum,elem->rmsgnum,elem->wmsgnum);
@@ -1659,12 +1921,15 @@ static inline int client_timer_handler(app_ur_session *elem, int *done) {
            (unsigned long long)elem->loss,
            (unsigned long long)elem->jitter);
           */
-          total_loss += elem->loss;
-          elem->loss = 0;
-          total_latency += elem->latency;
-          elem->latency = 0;
-          total_jitter += elem->jitter;
-          elem->jitter = 0;
+          /* Atomic exchange-and-zero on each per-elem stat. The listener
+           * thread that owns this session may still be running, so a
+           * plain read+store would race with __atomic_fetch_add on the
+           * listener side; __atomic_exchange_n returns the previous
+           * value and zeroes the slot in one indivisible step so no
+           * increment is lost or double-counted. */
+          total_loss += __atomic_exchange_n(&elem->loss, (size_t)0, __ATOMIC_RELAXED);
+          total_latency += __atomic_exchange_n(&elem->latency, (uint64_t)0, __ATOMIC_RELAXED);
+          total_jitter += __atomic_exchange_n(&elem->jitter, (uint64_t)0, __ATOMIC_RELAXED);
           elem->completed = 1;
           if (!hang_on) {
             refresh_channel(elem, 0, 0);
@@ -1758,6 +2023,31 @@ void start_mclient(const char *remote_address, uint16_t port, const unsigned cha
   memset(buffer_to_send, 7, clmessage_length);
 
   client_event_base = turn_event_base_new();
+
+  /* Auto-scale listener thread count based on the requested concurrency
+   * unless the user explicitly set -K. The single-threaded default keeps
+   * -m 1 cheap (no context-switch overhead from a worker thread that
+   * would have nothing to share); from -m UCLIENT_AUTO_LISTENERS_THRESHOLD
+   * upward the recv path becomes the bottleneck, so we bump to
+   * UCLIENT_AUTO_LISTENERS_TARGET. Cap is enforced at the user-facing
+   * argument layer (UCLIENT_MAX_LISTENER_THREADS). */
+  if (!num_listener_threads_explicit && mclient >= UCLIENT_AUTO_LISTENERS_THRESHOLD &&
+      num_listener_threads < UCLIENT_AUTO_LISTENERS_TARGET) {
+    num_listener_threads = UCLIENT_AUTO_LISTENERS_TARGET;
+  }
+
+  /* Start the listener thread pool BEFORE any session creation. Each new
+   * session's recv events will be registered against the assigned
+   * listener's event_base via pick_listener_base() inside start_client /
+   * start_c2c. The pool runs concurrently with the main thread for the
+   * lifetime of the test. */
+  if (start_listener_threads() < 0) {
+    /* Falling back to legacy single-threaded model is safer than aborting
+     * a load test; pick_listener_base() returns client_event_base when
+     * num_listener_threads is 0 or listeners is NULL. */
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "uclient: listener pool init failed, falling back to single-threaded\n");
+    num_listener_threads = 0;
+  }
 
   int tot_clients = 0;
 
@@ -1913,16 +2203,23 @@ void start_mclient(const char *remote_address, uint16_t port, const unsigned cha
 
     if (show_statistics) {
       print_load_generator_rate(__FUNCTION__);
+      /* Snapshot for the live progress print -- listeners haven't joined yet. */
       TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
                     "%s: msz=%d, tot_send_msgs=%lu, tot_recv_msgs=%lu, tot_send_bytes ~ %llu, tot_recv_bytes ~ %llu\n",
-                    __FUNCTION__, msz, (unsigned long)tot_send_messages, (unsigned long)tot_recv_messages,
-                    (unsigned long long)tot_send_bytes, (unsigned long long)tot_recv_bytes);
+                    __FUNCTION__, msz, (unsigned long)tot_send_messages, (unsigned long)recv_count_snapshot(),
+                    (unsigned long long)tot_send_bytes, (unsigned long long)recv_bytes_snapshot());
       show_statistics = false;
     }
   }
 
   __turn_getMSTime();
   print_load_generator_rate(__FUNCTION__);
+
+  /* Quiesce listener threads BEFORE freeing event bases or printing
+   * totals: stop_listener_threads() reduces per-thread min/max latency/
+   * jitter accumulators into the globals, and the event_base_free below
+   * is illegal while a thread is still dispatching on it. */
+  stop_listener_threads();
 
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: tot_send_msgs=%lu, tot_recv_msgs=%lu\n", __FUNCTION__,
                 (unsigned long)tot_send_messages, (unsigned long)tot_recv_messages);

@@ -65,6 +65,40 @@ typedef enum {
  * net.core.rmem_max ceiling is satisfied. */
 #define UCLIENT_SOCK_BUF_SIZE (4 * 1024 * 1024)
 
+/* Multi-threaded listener (recv) pool. The main thread keeps owning the
+ * sender timer, the lifecycle, and the control plane; receive events for
+ * each session are sharded across N listener threads, each with its own
+ * libevent base. Default 0 (= legacy single-event-base, no worker
+ * thread): a real-Linux bench on a c-4 loadgen showed K=0 winning at
+ * -m {1,2} (4.6k / 6.2k pps vs ~3.2k for K=1), so the cheap default is
+ * also the right one for short smoke tests. Auto-scales to K=1 once
+ * concurrency reaches UCLIENT_AUTO_LISTENERS_THRESHOLD, where the
+ * bench shows K=1 winning decisively (-m 4: 6.5k vs K=0's 5.1k; -m 8:
+ * 7.9k vs 4.0k).
+ *
+ * Capped at UCLIENT_MAX_LISTENER_THREADS. The bench shows K=2 and K=4
+ * regressing severely on a 4-vCPU loadgen (-m 4: 344/309 pps vs K=1's
+ * 6557 -- 19x worse) due to cross-thread cache-line bouncing on the
+ * shared atomic counters when each worker only owns 1-2 sessions. The
+ * cap stays available for explicit -K on hardware where it might help,
+ * but the auto rule never crosses it. */
+#define UCLIENT_MAX_LISTENER_THREADS (4)
+extern int num_listener_threads;
+/* Set to true by mainuclient.c when -K / --listener-threads is given on
+ * the command line; consumed by start_mclient() to decide whether to
+ * auto-scale the pool based on -m (see UCLIENT_AUTO_LISTENERS_THRESHOLD). */
+extern bool num_listener_threads_explicit;
+/* Concurrency at/above which uclient auto-bumps the listener pool from
+ * the K=0 default (lowest-overhead) to UCLIENT_AUTO_LISTENERS_TARGET.
+ * Only applied when the user did not pass -K. Threshold lowered to 2
+ * after per-listener counter slabs removed the K>=2 regression that
+ * originally made the threshold conservative; with the slabs in place
+ * the worker thread is a small loss at m=2 but a clear win from m=4
+ * upward and the always-on shape is friendlier for downstream tooling
+ * that expects a consistent thread topology. */
+#define UCLIENT_AUTO_LISTENERS_THRESHOLD (2)
+#define UCLIENT_AUTO_LISTENERS_TARGET (1)
+
 extern int clmessage_length;
 extern bool do_not_use_channel;
 extern int clnet_verbose;

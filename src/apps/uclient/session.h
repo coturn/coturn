@@ -115,6 +115,12 @@ typedef struct {
   size_t loss;
   uint64_t latency;
   uint64_t jitter;
+  // Multi-threaded listener routing: which listener thread (index into the
+  // global listeners[] array) owns this session's read-side libevent. Set
+  // once at allocation time when --listener-threads > 0, then read-only
+  // for the lifetime of the session. -1 means "main event_base" (legacy
+  // single-threaded mode).
+  int listener_id;
 } app_ur_session;
 
 ///////////////////////////////////////////////////////

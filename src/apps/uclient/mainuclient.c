@@ -46,6 +46,9 @@
 #include <getopt.h>
 #else
 #include <unistd.h>
+/* getopt_long lives in <getopt.h> on glibc and macOS libc; include it
+ * unconditionally on POSIX so the long-option table compiles. */
+#include <getopt.h>
 #endif
 
 /////////////// extern definitions /////////////////////
@@ -176,7 +179,13 @@ static char Usage[] =
     "	-C	TURN REST API timestamp/username separator symbol (character). The default value is ':'.\n"
     "	-F	<cipher-suite> Cipher suite for TLS/DTLS. Default value is DEFAULT.\n"
     "	-o	<origin> - the ORIGIN STUN attribute value.\n"
-    "	-a	<bytes-per-second> Bandwidth for the bandwidth request in ALLOCATE. The default value is zero.\n";
+    "	-a	<bytes-per-second> Bandwidth for the bandwidth request in ALLOCATE. The default value is zero.\n"
+    "	-K, --listener-threads <N>	Number of receive (listener) threads. Default auto: 0 for -m < 4,\n"
+    "				bumped to 1 when -m >= 4. 0 = legacy single-event-base (no worker thread).\n"
+    "				Each listener owns its own libevent base; sessions are sharded round-robin.\n"
+    "				Real-Linux bench shows K=2+ regresses on a 4-vCPU loadgen at low/mid m due to\n"
+    "				cross-thread cache-line bouncing on shared atomics; tune higher only if your\n"
+    "				hardware bench shows otherwise. Max 4. -K overrides the auto rule.\n";
 
 //////////////////////////////////////////////////
 
@@ -222,7 +231,15 @@ int main(int argc, char **argv) {
 
   memset(local_addr, 0, sizeof(local_addr));
 
-  while ((c = getopt(argc, argv, "a:d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:E:F:o:Y:bZvsyhcxXgtTSAPDNOUMRIGBJ")) != -1) {
+  /* Long-option table for the few flags that don't fit cleanly into the
+   * historical single-letter getopt(3) namespace. New options should
+   * generally be added here. Mirrored to a short letter where one is
+   * still free (currently: -K for --listener-threads). */
+  static const struct option uclient_long_opts[] = {{"listener-threads", required_argument, NULL, 'K'},
+                                                    {NULL, 0, NULL, 0}};
+
+  while ((c = getopt_long(argc, argv, "a:d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:E:F:o:Y:K:bZvsyhcxXgtTSAPDNOUMRIGBJ",
+                          uclient_long_opts, NULL)) != -1) {
     switch (c) {
     case 'J': {
 
@@ -254,6 +271,15 @@ int main(int argc, char **argv) {
     case 'a':
       bps = (band_limit_t)strtoul(optarg, NULL, 10);
       break;
+    case 'K': {
+      const long n = strtol(optarg, NULL, 10);
+      if (n < 0 || n > UCLIENT_MAX_LISTENER_THREADS) {
+        fprintf(stderr, "Invalid --listener-threads %ld; valid range is 0..%d\n", n, UCLIENT_MAX_LISTENER_THREADS);
+        exit(1);
+      }
+      num_listener_threads = (int)n;
+      num_listener_threads_explicit = true;
+    } break;
     case 'Y':
       load_mode = parse_load_mode(optarg);
       if (load_mode == UCLIENT_LOAD_MODE_NONE) {
