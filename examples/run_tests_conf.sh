@@ -1,8 +1,13 @@
 #!/bin/bash
 
+TURNSERVER_LOG="/tmp/run_tests_conf.$$.turnserver.log"
+PEER_LOG="/tmp/run_tests_conf.$$.peer.log"
+UCLIENT_LOG="/tmp/run_tests_conf.$$.uclient.log"
+LOADGEN_LOG="/tmp/run_tests_conf.$$.loadgen.log"
+
 cleanup() {
     kill "$turnserver_pid" "$peer_pid" 2>/dev/null
-    rm -f /tmp/run_tests_conf_loadgen.$$.log
+    rm -f "$TURNSERVER_LOG" "$PEER_LOG" "$UCLIENT_LOG" "$LOADGEN_LOG"
 }
 trap cleanup EXIT
 
@@ -28,13 +33,35 @@ if [ "$(uname -s)" = "Linux" ]; then
 fi
 
 echo 'Running turnserver'
-$BINDIR/turnserver -c $BINDIR/turnserver.conf > /dev/null &
+$BINDIR/turnserver -c $BINDIR/turnserver.conf > "$TURNSERVER_LOG" 2>&1 &
 turnserver_pid="$!"
 echo 'Running peer client'
-$BINDIR/turnutils_peer -L 127.0.0.1 -L ::1 -L 0.0.0.0 > /dev/null &
+$BINDIR/turnutils_peer -L 127.0.0.1 -L ::1 -L 0.0.0.0 > "$PEER_LOG" 2>&1 &
 peer_pid="$!"
 
 sleep 5
+
+# See run_tests.sh for rationale — same shape, mirrored here so the
+# conf-driven test produces the same actionable failure output.
+diagnose_failure() {
+    local label="$1"
+    echo "=== Diagnostics for failed test: $label ==="
+    echo "--- uclient: tot_send/tot_recv progress (last 6 lines) ---"
+    grep "start_mclient: tot_send_msgs" "$UCLIENT_LOG" 2>/dev/null | tail -6
+    echo "--- uclient: errors / warnings ---"
+    grep -iE "error|warning|fail|broken|drop" "$UCLIENT_LOG" 2>/dev/null | tail -10
+    echo "--- turnserver log (last 20 lines) ---"
+    tail -20 "$TURNSERVER_LOG" 2>/dev/null
+    echo "--- peer log (last 10 lines) ---"
+    tail -10 "$PEER_LOG" 2>/dev/null
+    echo "==="
+    if [ "$(uname -s)" = "Darwin" ]; then
+        echo "Note: these tests are known to fail on macOS — every protocol stalls"
+        echo "at tot_recv_msgs=0. The relay->peer loopback echo path on Darwin"
+        echo "drops returned packets even though signaling / channel-bind succeed."
+        echo "CI runs on Linux where the round trip works. Pre-existing on master."
+    fi
+}
 
 # Same factoring as run_tests.sh: function-per-test, run each protocol
 # with the legacy single-threaded uclient and again with the listener +
@@ -44,12 +71,12 @@ run_uclient() {
     local label="$1"
     shift
     echo "Running $label"
-    "$BINDIR/turnutils_uclient" "$@" -e 127.0.0.1 -X -g -u user -W secret 127.0.0.1 \
-        | grep "start_mclient: tot_send_bytes ~ 1000, tot_recv_bytes ~ 1000" > /dev/null
-    if [ $? -eq 0 ]; then
+    "$BINDIR/turnutils_uclient" "$@" -e 127.0.0.1 -X -g -u user -W secret 127.0.0.1 > "$UCLIENT_LOG" 2>&1
+    if grep -q "start_mclient: tot_send_bytes ~ 1000, tot_recv_bytes ~ 1000" "$UCLIENT_LOG"; then
         echo OK
     else
         echo FAIL
+        diagnose_failure "$label"
         exit 1
     fi
 }
@@ -69,7 +96,6 @@ run_uclient "turn client DTLS (threaded)" -S      --listener-threads 1 --sender-
 # Linux-only load-gen smoke (see comment in run_tests.sh for rationale).
 if [ "$(uname -s)" = "Linux" ]; then
     echo "Running turn client UDP load-gen smoke (-Y packet, threaded)"
-    LOADGEN_LOG="/tmp/run_tests_conf_loadgen.$$.log"
     timeout -s INT 6s "$BINDIR/turnutils_uclient" \
         -Y packet -m 4 -l 100 -c -e 127.0.0.1 -g \
         --listener-threads 1 --sender-threads 2 \
@@ -77,14 +103,20 @@ if [ "$(uname -s)" = "Linux" ]; then
     rc=$?
     if [ $rc -ne 0 ] && [ $rc -ne 124 ] && [ $rc -ne 130 ]; then
         echo "FAIL: uclient exited with $rc"
+        echo "--- load-gen log ---"
         cat "$LOADGEN_LOG"
+        echo "--- turnserver log (last 20 lines) ---"
+        tail -20 "$TURNSERVER_LOG"
         exit 1
     fi
     if grep -qE "send_pps=[1-9][0-9]*\.[0-9]+, recv_pps=[1-9][0-9]*\.[0-9]+" "$LOADGEN_LOG"; then
         echo OK
     else
         echo "FAIL: no non-zero send_pps/recv_pps line in load-gen output"
+        echo "--- load-gen log (last 20 lines) ---"
         tail -20 "$LOADGEN_LOG"
+        echo "--- turnserver log (last 20 lines) ---"
+        tail -20 "$TURNSERVER_LOG"
         exit 1
     fi
 fi
