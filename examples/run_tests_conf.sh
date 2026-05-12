@@ -24,6 +24,13 @@ echo "realm=north.gov" >> $BINDIR/turnserver.conf
 echo "allow-loopback-peers" >> $BINDIR/turnserver.conf
 echo "cert=../examples/ca/turn_server_cert.pem" >> $BINDIR/turnserver.conf
 echo "pkey=../examples/ca/turn_server_pkey.pem" >> $BINDIR/turnserver.conf
+# Force log output to stdout (which we redirect to $TURNSERVER_LOG below).
+# Without this, turnserver writes to its platform-default location
+# (syslog or /var/log/turn_*.log) and our log file stays empty, which
+# breaks wait_for_turnserver's "Total relay threads:" probe and leaves
+# the FAIL diagnostics useless. simple-log keeps the format compact.
+echo "log-file=stdout" >> $BINDIR/turnserver.conf
+echo "simple-log" >> $BINDIR/turnserver.conf
 # Server-side fast paths: enable on Linux so the conf-driven test cycle
 # also exercises recvmmsg drain + UDP-GSO send. These keys map 1:1 to
 # the --udp-recvmmsg / --udp-gso CLI flags (see mainrelay.c long_options).
@@ -39,7 +46,36 @@ echo 'Running peer client'
 $BINDIR/turnutils_peer -L 127.0.0.1 -L ::1 -L 0.0.0.0 > "$PEER_LOG" 2>&1 &
 peer_pid="$!"
 
-sleep 5
+# Wait for OUR turnserver instance to finish init -- see run_tests.sh
+# for the rationale. We poll the per-invocation log (uniquely named via
+# $$) for "Total relay threads:" so a stale turnserver from a prior
+# script invocation can't false-positive us.
+wait_for_turnserver() {
+    local i
+    for i in $(seq 1 40); do
+        if grep -q "Total relay threads:" "$TURNSERVER_LOG" 2>/dev/null; then
+            return 0
+        fi
+        if ! kill -0 "$turnserver_pid" 2>/dev/null; then
+            echo "FATAL: turnserver (pid $turnserver_pid) exited before init completed"
+            echo "--- turnserver log ---"
+            cat "$TURNSERVER_LOG" 2>/dev/null || echo "(log file missing)"
+            return 1
+        fi
+        if ! kill -0 "$peer_pid" 2>/dev/null; then
+            echo "FATAL: turnutils_peer (pid $peer_pid) exited before tests started"
+            echo "--- peer log ---"
+            cat "$PEER_LOG" 2>/dev/null || echo "(log file missing)"
+            return 1
+        fi
+        sleep 0.5
+    done
+    echo "FATAL: turnserver never reached 'Total relay threads:' init line within 20s"
+    echo "--- turnserver log (last 30 lines) ---"
+    tail -30 "$TURNSERVER_LOG" 2>/dev/null || echo "(log file missing)"
+    return 1
+}
+wait_for_turnserver || exit 1
 
 # See run_tests.sh for rationale — same shape, mirrored here so the
 # conf-driven test produces the same actionable failure output.
@@ -51,9 +87,21 @@ diagnose_failure() {
     echo "--- uclient: errors / warnings ---"
     grep -iE "error|warning|fail|broken|drop" "$UCLIENT_LOG" 2>/dev/null | tail -10
     echo "--- turnserver log (last 20 lines) ---"
-    tail -20 "$TURNSERVER_LOG" 2>/dev/null
+    if [ -s "$TURNSERVER_LOG" ]; then
+        tail -20 "$TURNSERVER_LOG"
+    elif [ -e "$TURNSERVER_LOG" ]; then
+        echo "(turnserver log exists but is empty — likely never produced output)"
+    else
+        echo "(turnserver log missing — redirect path: $TURNSERVER_LOG)"
+    fi
     echo "--- peer log (last 10 lines) ---"
-    tail -10 "$PEER_LOG" 2>/dev/null
+    if [ -s "$PEER_LOG" ]; then
+        tail -10 "$PEER_LOG"
+    elif [ -e "$PEER_LOG" ]; then
+        echo "(peer log exists but is empty)"
+    else
+        echo "(peer log missing — redirect path: $PEER_LOG)"
+    fi
     echo "==="
     if [ "$(uname -s)" = "Darwin" ]; then
         echo "Note: these tests are known to fail on macOS — every protocol stalls"

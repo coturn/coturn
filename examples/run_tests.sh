@@ -30,14 +30,58 @@ if [ "$(uname -s)" = "Linux" ]; then
 fi
 
 echo 'Running turnserver'
-$BINDIR/turnserver --use-auth-secret --sock-buf-size=1048576 --static-auth-secret=secret --realm=north.gov --allow-loopback-peers $TURNSERVER_EXTRA_ARGS --cert ../examples/ca/turn_server_cert.pem --pkey ../examples/ca/turn_server_pkey.pem > "$TURNSERVER_LOG" 2>&1 &
+# --log-file=stdout forces turnserver's per-line log into our redirected
+# stdout so $TURNSERVER_LOG actually gets populated. Without it,
+# turnserver writes to its platform-default location (syslog or
+# /var/log/turn_*.log) and our redirect captures an empty file; that
+# breaks wait_for_turnserver, which polls the log for a known
+# late-startup line, and it leaves the FAIL-path diagnostics useless.
+$BINDIR/turnserver --use-auth-secret --sock-buf-size=1048576 --static-auth-secret=secret --realm=north.gov --allow-loopback-peers --log-file=stdout --simple-log $TURNSERVER_EXTRA_ARGS --cert ../examples/ca/turn_server_cert.pem --pkey ../examples/ca/turn_server_pkey.pem > "$TURNSERVER_LOG" 2>&1 &
 turnserver_pid="$!"
 
 echo 'Running peer client'
 $BINDIR/turnutils_peer -L 127.0.0.1 -L ::1 -L 0.0.0.0 > "$PEER_LOG" 2>&1 &
 peer_pid="$!"
 
-sleep 2
+# Wait for OUR turnserver instance to finish coming up before running any
+# client tests. The previous static `sleep 2` was tight for an uninstrumented
+# binary and broke under sanitizer builds (ASan/TSan): instrumented
+# turnserver routinely takes 5-10s before it has bound 3478, so uclient
+# raced in and hit "Connection refused".
+#
+# We can't just poll /dev/tcp/127.0.0.1/3478: when this script runs
+# back-to-back with another that didn't fully clean up, the dying
+# previous turnserver may still answer the connect long enough to give
+# a false positive, and uclient ends up talking to a half-dead server.
+# Instead, poll OUR log file (uniquely named via $$) for a known
+# late-startup line. That's by-construction immune to other instances.
+# "Total relay threads:" is emitted near the end of init in netengine.c.
+wait_for_turnserver() {
+    local i
+    for i in $(seq 1 40); do
+        if grep -q "Total relay threads:" "$TURNSERVER_LOG" 2>/dev/null; then
+            return 0
+        fi
+        if ! kill -0 "$turnserver_pid" 2>/dev/null; then
+            echo "FATAL: turnserver (pid $turnserver_pid) exited before init completed"
+            echo "--- turnserver log ---"
+            cat "$TURNSERVER_LOG" 2>/dev/null || echo "(log file missing)"
+            return 1
+        fi
+        if ! kill -0 "$peer_pid" 2>/dev/null; then
+            echo "FATAL: turnutils_peer (pid $peer_pid) exited before tests started"
+            echo "--- peer log ---"
+            cat "$PEER_LOG" 2>/dev/null || echo "(log file missing)"
+            return 1
+        fi
+        sleep 0.5
+    done
+    echo "FATAL: turnserver never reached 'Total relay threads:' init line within 20s"
+    echo "--- turnserver log (last 30 lines) ---"
+    tail -30 "$TURNSERVER_LOG" 2>/dev/null || echo "(log file missing)"
+    return 1
+}
+wait_for_turnserver || exit 1
 
 # Dump the bits a maintainer needs to see when a protocol test fails: the
 # uclient progress lines (shows where send/recv counters stalled), any
@@ -55,9 +99,21 @@ diagnose_failure() {
     echo "--- uclient: errors / warnings ---"
     grep -iE "error|warning|fail|broken|drop" "$UCLIENT_LOG" 2>/dev/null | tail -10
     echo "--- turnserver log (last 20 lines) ---"
-    tail -20 "$TURNSERVER_LOG" 2>/dev/null
+    if [ -s "$TURNSERVER_LOG" ]; then
+        tail -20 "$TURNSERVER_LOG"
+    elif [ -e "$TURNSERVER_LOG" ]; then
+        echo "(turnserver log exists but is empty — likely never produced output)"
+    else
+        echo "(turnserver log missing — redirect path: $TURNSERVER_LOG)"
+    fi
     echo "--- peer log (last 10 lines) ---"
-    tail -10 "$PEER_LOG" 2>/dev/null
+    if [ -s "$PEER_LOG" ]; then
+        tail -10 "$PEER_LOG"
+    elif [ -e "$PEER_LOG" ]; then
+        echo "(peer log exists but is empty)"
+    else
+        echo "(peer log missing — redirect path: $PEER_LOG)"
+    fi
     echo "==="
     if [ "$(uname -s)" = "Darwin" ]; then
         echo "Note: these tests are known to fail on macOS — every protocol stalls"
