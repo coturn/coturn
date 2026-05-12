@@ -61,8 +61,10 @@ diagnose_failure() {
     echo "==="
     if [ "$(uname -s)" = "Darwin" ]; then
         echo "Note: these tests are known to fail on macOS — every protocol stalls"
-        echo "at tot_recv_msgs=0. The relay->peer loopback echo path on Darwin"
-        echo "drops returned packets even though signaling / channel-bind succeed."
+        echo "at tot_recv_msgs=0. Forcing both listener and relay onto 127.0.0.1,"
+        echo "or both onto a non-loopback IP, both still fail; with verbose logs"
+        echo "the peer never sees a single packet from the relay, so the relay"
+        echo "is not forwarding client data on Darwin. Cause not yet diagnosed."
         echo "CI runs on Linux where the round trip works. Pre-existing on master."
     fi
 }
