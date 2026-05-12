@@ -121,6 +121,12 @@ typedef struct {
   // for the lifetime of the session. -1 means "main event_base" (legacy
   // single-threaded mode).
   int listener_id;
+  // Multi-threaded sender routing: which sender thread (index into the
+  // global senders[] array) owns this session's send-burst iteration. Set
+  // once at allocation time when --sender-threads > 0, then read-only for
+  // the lifetime of the session. -1 means "main thread" (legacy
+  // single-threaded send path).
+  int sender_id;
 } app_ur_session;
 
 ///////////////////////////////////////////////////////

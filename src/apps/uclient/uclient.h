@@ -99,6 +99,20 @@ extern bool num_listener_threads_explicit;
 #define UCLIENT_AUTO_LISTENERS_THRESHOLD (2)
 #define UCLIENT_AUTO_LISTENERS_TARGET (1)
 
+/* ============================================================
+ * Sender thread pool — mirror of the listener pool above, for
+ * the send-burst side of the load generator. Without it the
+ * timer_handler iteration runs on a single thread and caps
+ * loadgen pps at ~1 core's worth of send() overhead.
+ * Capped at UCLIENT_MAX_SENDER_THREADS. Auto-bumped from -m >=
+ * UCLIENT_AUTO_SENDERS_THRESHOLD when --sender-threads is not
+ * explicitly set. ============================================ */
+#define UCLIENT_MAX_SENDER_THREADS (4)
+extern int num_sender_threads;
+extern bool num_sender_threads_explicit;
+#define UCLIENT_AUTO_SENDERS_THRESHOLD (4)
+#define UCLIENT_AUTO_SENDERS_TARGET (2)
+
 extern int clmessage_length;
 extern bool do_not_use_channel;
 extern int clnet_verbose;

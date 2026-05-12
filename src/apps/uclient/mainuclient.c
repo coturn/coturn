@@ -185,7 +185,12 @@ static char Usage[] =
     "				Each listener owns its own libevent base; sessions are sharded round-robin.\n"
     "				Real-Linux bench shows K=2+ regresses on a 4-vCPU loadgen at low/mid m due to\n"
     "				cross-thread cache-line bouncing on shared atomics; tune higher only if your\n"
-    "				hardware bench shows otherwise. Max 4. -K overrides the auto rule.\n";
+    "				hardware bench shows otherwise. Max 4. -K overrides the auto rule.\n"
+    "	--sender-threads <N>	Number of send (timer-driven) threads. Default auto: 0 for -m < 4,\n"
+    "				bumped to 2 when -m >= 4. 0 = legacy single-threaded send (main thread's\n"
+    "				timer_handler iterates all sessions). Each sender owns its own libevent base\n"
+    "				and a session shard; counters use per-thread cache-line-aligned slabs.\n"
+    "				Max 4. Explicit --sender-threads overrides the auto rule.\n";
 
 //////////////////////////////////////////////////
 
@@ -235,8 +240,11 @@ int main(int argc, char **argv) {
    * historical single-letter getopt(3) namespace. New options should
    * generally be added here. Mirrored to a short letter where one is
    * still free (currently: -K for --listener-threads). */
-  static const struct option uclient_long_opts[] = {{"listener-threads", required_argument, NULL, 'K'},
-                                                    {NULL, 0, NULL, 0}};
+  enum { UCLIENT_OPT_SENDER_THREADS = 256 };
+  static const struct option uclient_long_opts[] = {
+      {"listener-threads", required_argument, NULL, 'K'},
+      {"sender-threads", required_argument, NULL, UCLIENT_OPT_SENDER_THREADS},
+      {NULL, 0, NULL, 0}};
 
   while ((c = getopt_long(argc, argv, "a:d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:E:F:o:Y:K:bZvsyhcxXgtTSAPDNOUMRIGBJ",
                           uclient_long_opts, NULL)) != -1) {
@@ -279,6 +287,15 @@ int main(int argc, char **argv) {
       }
       num_listener_threads = (int)n;
       num_listener_threads_explicit = true;
+    } break;
+    case UCLIENT_OPT_SENDER_THREADS: {
+      const long n = strtol(optarg, NULL, 10);
+      if (n < 0 || n > UCLIENT_MAX_SENDER_THREADS) {
+        fprintf(stderr, "Invalid --sender-threads %ld; valid range is 0..%d\n", n, UCLIENT_MAX_SENDER_THREADS);
+        exit(1);
+      }
+      num_sender_threads = (int)n;
+      num_sender_threads_explicit = true;
     } break;
     case 'Y':
       load_mode = parse_load_mode(optarg);

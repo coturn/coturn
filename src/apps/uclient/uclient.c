@@ -47,9 +47,18 @@
 
 #if defined(__linux__)
 #include <errno.h>
+#include <netinet/in.h>
+#include <netinet/udp.h>
 #include <sys/select.h>
 #include <sys/socket.h>
 #include <unistd.h>
+/* UDP_SEGMENT is the Linux UDP-GSO cmsg type. Older glibc may not define
+ * it even though the kernel supports it; provide a fallback so the build
+ * works on slightly stale toolchains and the runtime probe will detect
+ * actual kernel support. */
+#ifndef UDP_SEGMENT
+#define UDP_SEGMENT 103
+#endif
 #endif
 #include <pthread.h>
 #include <time.h>
@@ -126,6 +135,12 @@ static uint64_t tot_send_dropped = 0;
 static uint64_t tot_allocations = 0;
 static uint64_t load_sent_packets = 0;
 static uint64_t load_last_sent_packets = 0;
+/* Mirror of load_last_sent_packets for the recv side. recv_count_snapshot()
+ * (atomic-load reduction over listener slabs) gives the current total; we
+ * remember the previous report's value and divide the delta by elapsed
+ * wall-clock to get recv_pps. Reset alongside load_last_sent_packets in
+ * reset_load_generator_rate_stats(). */
+static uint64_t load_last_recv_packets = 0;
 static uint64_t load_last_report_time = 0;
 static uint64_t synthetic_peer_counter = 0;
 
@@ -396,6 +411,485 @@ static void stop_listener_threads(void) {
   listeners = NULL;
 }
 
+/* ============================================================
+ * Per-thread send-side batching with UDP-GSO.
+ *
+ * The sender pool below opens a batching window around its per-tick
+ * iteration of the session shard. Within that window send_buffer
+ * (plaintext-UDP path only) does not call send(2) directly; it copies
+ * the payload into a per-thread slot and appends to a scatter-gather
+ * iov[]. Flush triggers:
+ *
+ *   1. Different fd (next session) — auto-flush.
+ *   2. Different segment size — auto-flush (UDP-GSO requires uniform
+ *      size; only the last segment may be shorter, but we conservatively
+ *      flush instead of relying on that).
+ *   3. count == UCLIENT_TX_BATCH — capacity flush.
+ *   4. uclient_send_batch_end at end of timer iteration.
+ *
+ * Flush emits ONE sendmsg(2) with UDP_SEGMENT cmsg when count > 1 and
+ * the kernel accepts it; otherwise falls back to sendmmsg(2) or to
+ * per-entry send(2) on older systems. UDP-GSO is sticky-disabled per
+ * thread on EINVAL/ENOPROTOOPT/EOPNOTSUPP so we don't probe every flush
+ * after we know the kernel won't accept it.
+ *
+ * The copy is unavoidable because the caller reuses elem->out_buffer
+ * across the burst's iterations; pointing iov[i] at elem->out_buffer
+ * would alias all entries to the same content. The copy cost is
+ * justified by collapsing N sendmsg(2) syscalls into one UDP-GSO
+ * sendmsg per session-burst, which crushes the kernel-entry/skb-alloc
+ * cost on the loadgen. */
+
+#if defined(__linux__)
+#define UCLIENT_TX_BATCH 64
+#define UCLIENT_TX_SLOT_SZ 2048
+
+typedef struct uclient_tx_state_s {
+  unsigned int depth;
+  unsigned int count;
+  evutil_socket_t fd;
+  uint16_t seg_size;
+  bool same_size;
+  bool gso_disabled; /* sticky after first kernel refusal */
+  struct iovec iov[UCLIENT_TX_BATCH];
+  int lens[UCLIENT_TX_BATCH];
+  uint8_t bufs[UCLIENT_TX_BATCH][UCLIENT_TX_SLOT_SZ];
+} uclient_tx_state;
+
+static _Thread_local uclient_tx_state uclient_tx_batch = {0};
+
+/* Forward declaration. The helper itself is defined further down, next
+ * to the per-sender send-counter slab plumbing it touches. Declared up
+ * here so GCC doesn't infer an implicit non-static declaration when
+ * uclient_tx_flush() below references it. */
+static void send_dropped_inc_helper(void);
+
+static int uclient_tx_flush_gso(void) {
+  uclient_tx_state *st = &uclient_tx_batch;
+  struct msghdr mh = {0};
+  mh.msg_iov = st->iov;
+  mh.msg_iovlen = st->count;
+
+  /* msg_name=NULL on a connected UDP socket; iov_len[i] are the
+   * per-segment payload sizes. Kernel splits the assembled UDP payload
+   * at seg_size boundaries; with iov_len[i] == seg_size this gives one
+   * sendmsg() per N segments. */
+  union {
+    struct cmsghdr align;
+    char buf[CMSG_SPACE(sizeof(uint16_t))];
+  } cmsg_buf = {0};
+  mh.msg_control = cmsg_buf.buf;
+  mh.msg_controllen = sizeof(cmsg_buf.buf);
+  struct cmsghdr *cm = CMSG_FIRSTHDR(&mh);
+  cm->cmsg_level = SOL_UDP;
+  cm->cmsg_type = UDP_SEGMENT;
+  cm->cmsg_len = CMSG_LEN(sizeof(uint16_t));
+  uint16_t seg = st->seg_size;
+  memcpy(CMSG_DATA(cm), &seg, sizeof(seg));
+
+  ssize_t rc;
+  do {
+    rc = sendmsg(st->fd, &mh, 0);
+  } while (rc < 0 && errno == EINTR);
+
+  if (rc < 0) {
+    if (errno == EINVAL || errno == ENOPROTOOPT || errno == EOPNOTSUPP) {
+      /* Kernel/NIC does not support UDP_SEGMENT for this socket. Sticky-
+       * disable so the rest of the test uses the sendmmsg/per-entry
+       * fallback without re-probing every flush. */
+      st->gso_disabled = true;
+    }
+    return -1;
+  }
+  return (int)st->count;
+}
+
+static int uclient_tx_flush_mmsg(void) {
+  uclient_tx_state *st = &uclient_tx_batch;
+  struct mmsghdr msgs[UCLIENT_TX_BATCH];
+  for (unsigned int i = 0; i < st->count; ++i) {
+    memset(&msgs[i], 0, sizeof(msgs[i]));
+    msgs[i].msg_hdr.msg_iov = &(st->iov[i]);
+    msgs[i].msg_hdr.msg_iovlen = 1;
+  }
+  unsigned int sent = 0;
+  while (sent < st->count) {
+    int rc;
+    do {
+      rc = sendmmsg(st->fd, &msgs[sent], st->count - sent, 0);
+    } while (rc < 0 && errno == EINTR);
+    if (rc <= 0) {
+      break;
+    }
+    sent += (unsigned int)rc;
+  }
+  return (int)sent;
+}
+
+static int uclient_tx_flush(void) {
+  uclient_tx_state *st = &uclient_tx_batch;
+  if (st->count == 0) {
+    return 0;
+  }
+
+  int sent = 0;
+  bool gso_ok = false;
+  if (st->count > 1 && st->same_size && !st->gso_disabled) {
+    const int r = uclient_tx_flush_gso();
+    if (r >= 0) {
+      sent = r;
+      gso_ok = true;
+    }
+  }
+  if (!gso_ok) {
+    sent = uclient_tx_flush_mmsg();
+  }
+
+  /* Any leftover (partial sendmmsg or short last segment of a failed
+   * GSO attempt that left some entries unsent) goes via plain send(2). */
+  for (unsigned int i = (unsigned int)sent; i < st->count; ++i) {
+    ssize_t rc;
+    do {
+      rc = send(st->fd, st->iov[i].iov_base, st->iov[i].iov_len, 0);
+    } while (rc < 0 && errno == EINTR);
+    if (rc > 0) {
+      ++sent;
+    } else {
+      send_dropped_inc_helper();
+    }
+  }
+
+  st->count = 0;
+  st->fd = -1;
+  st->seg_size = 0;
+  st->same_size = true;
+  return sent;
+}
+
+void uclient_send_batch_begin(void) {
+  uclient_tx_state *st = &uclient_tx_batch;
+  if (st->depth == 0) {
+    st->count = 0;
+    st->fd = -1;
+    st->seg_size = 0;
+    st->same_size = true;
+  }
+  ++st->depth;
+}
+
+void uclient_send_batch_end(void) {
+  uclient_tx_state *st = &uclient_tx_batch;
+  if (st->depth == 0) {
+    return;
+  }
+  if (--st->depth == 0) {
+    uclient_tx_flush();
+  }
+}
+
+static bool uclient_tx_enqueue(evutil_socket_t fd, const void *data, size_t len) {
+  uclient_tx_state *st = &uclient_tx_batch;
+  if (st->depth == 0 || fd < 0 || len == 0 || len > UCLIENT_TX_SLOT_SZ) {
+    return false;
+  }
+  if (st->count > 0 && st->fd != fd) {
+    uclient_tx_flush();
+  }
+  if (st->count == UCLIENT_TX_BATCH) {
+    uclient_tx_flush();
+  }
+  if (st->count == 0) {
+    st->fd = fd;
+    st->seg_size = (uint16_t)len;
+    st->same_size = true;
+  } else if ((uint16_t)len != st->seg_size) {
+    /* Size change kills GSO eligibility for this batch. Flush now and
+     * start a new batch at the new size; cheaper than sending the prior
+     * group via sendmmsg fallback. */
+    uclient_tx_flush();
+    st->fd = fd;
+    st->seg_size = (uint16_t)len;
+    st->same_size = true;
+  }
+
+  uint8_t *slot = st->bufs[st->count];
+  memcpy(slot, data, len);
+  st->iov[st->count].iov_base = slot;
+  st->iov[st->count].iov_len = len;
+  st->lens[st->count] = (int)len;
+  ++st->count;
+  return true;
+}
+#else  /* !__linux__ */
+void uclient_send_batch_begin(void) {}
+void uclient_send_batch_end(void) {}
+static bool uclient_tx_enqueue(evutil_socket_t fd, const void *data, size_t len) {
+  (void)fd;
+  (void)data;
+  (void)len;
+  return false;
+}
+#endif /* __linux__ */
+
+/* ============================================================
+ * SENDER thread pool — mirror of the listener pool.
+ *
+ * The legacy single-threaded model runs timer_handler on the main
+ * client_event_base, walks elems[] every tick, and calls client_write
+ * (which calls send_buffer / send) inline. With -m >= a few sessions and
+ * a 100us tick, this saturates one CPU on the loadgen long before the
+ * NIC or the relay does, capping send_pps at roughly one core's worth of
+ * syscall + STUN-framing overhead.
+ *
+ * With the pool engaged, sessions are sharded across N sender threads
+ * round-robin at allocation time (elem->sender_id). Each sender thread
+ * owns its own libevent base and a single timer event that fires the
+ * same RTP_PACKET_INTERVAL/100us cadence and iterates only its session
+ * shard. Send-side counters (tot_send_messages, tot_send_bytes,
+ * tot_send_dropped, load_sent_packets) and the completion accumulators
+ * touched by client_timer_handler (total_loss / total_latency /
+ * total_jitter) are written into per-thread, cache-line-aligned slabs
+ * and reduced into the globals after pthread_join in
+ * stop_sender_threads(). This avoids the cross-core cache-line bouncing
+ * that an atomic-counter design would have introduced.
+ *
+ * num_sender_threads = 0 disables the pool and reverts to the legacy
+ * main-thread iteration. */
+
+#define UCLIENT_SENDER_CACHE_LINE 64
+
+typedef struct UCLIENT_CACHE_ALIGNED(UCLIENT_SENDER_CACHE_LINE) uclient_sender_s {
+  int id;
+  pthread_t thread;
+  struct event_base *event_base;
+  struct event *timer_ev;
+  /* Per-thread accumulators -- updated only by this sender thread. */
+  uint64_t s_tot_send_messages;
+  uint64_t s_tot_send_bytes;
+  uint64_t s_tot_send_dropped;
+  uint64_t s_load_sent_packets;
+  uint64_t s_total_loss;
+  uint64_t s_total_latency;
+  uint64_t s_total_jitter;
+  volatile int stop;
+  bool started;
+} uclient_sender;
+
+int num_sender_threads = 0;
+bool num_sender_threads_explicit = false;
+static uclient_sender *senders = NULL;
+static int sender_assignment_counter = 0; /* main-thread-only writes */
+static _Thread_local uclient_sender *current_sender = NULL;
+
+static inline bool on_sender_thread(void) { return current_sender != NULL; }
+
+/* Per-packet send counter writes go into a per-sender slab when on a
+ * sender thread, or directly into the global on main. */
+static inline void send_count_add(uint32_t n) {
+  if (current_sender) {
+    current_sender->s_tot_send_messages += n;
+  } else {
+    tot_send_messages += n;
+  }
+}
+static inline void send_bytes_add(uint64_t n) {
+  if (current_sender) {
+    current_sender->s_tot_send_bytes += n;
+  } else {
+    tot_send_bytes += n;
+  }
+}
+static inline void send_dropped_add(uint64_t n) {
+  if (current_sender) {
+    current_sender->s_tot_send_dropped += n;
+  } else {
+    tot_send_dropped += n;
+  }
+}
+
+#if defined(__linux__)
+/* Definition of the forward-declared helper used by the GSO flush
+ * fallback. Kept thin so the batching code above doesn't have to know
+ * about the per-sender slab plumbing. */
+static void send_dropped_inc_helper(void) { send_dropped_add(1); }
+#endif
+static inline void load_sent_add(uint64_t n) {
+  if (current_sender) {
+    current_sender->s_load_sent_packets += n;
+  } else {
+    load_sent_packets += n;
+  }
+}
+
+/* Snapshot helpers — main thread reads during the run. The
+ * accumulators are reduced into the globals authoritatively in
+ * stop_sender_threads(). */
+static inline uint64_t send_count_snapshot(void) {
+  uint64_t s = tot_send_messages;
+  if (senders) {
+    for (int i = 0; i < num_sender_threads; ++i) {
+      s += uclient_atomic_load_u64(&senders[i].s_tot_send_messages);
+    }
+  }
+  return s;
+}
+static inline uint64_t send_bytes_snapshot(void) {
+  uint64_t s = tot_send_bytes;
+  if (senders) {
+    for (int i = 0; i < num_sender_threads; ++i) {
+      s += uclient_atomic_load_u64(&senders[i].s_tot_send_bytes);
+    }
+  }
+  return s;
+}
+static inline uint64_t load_sent_snapshot(void) {
+  uint64_t s = load_sent_packets;
+  if (senders) {
+    for (int i = 0; i < num_sender_threads; ++i) {
+      s += uclient_atomic_load_u64(&senders[i].s_load_sent_packets);
+    }
+  }
+  return s;
+}
+
+/* Used by client_timer_handler when a session completes -- the
+ * exchange-and-zero of per-session stats accumulates into a sender-
+ * thread-local total to avoid touching the global from N threads. */
+static inline void completion_loss_add(size_t n) {
+  if (current_sender) {
+    current_sender->s_total_loss += (uint64_t)n;
+  } else {
+    total_loss += n;
+  }
+}
+static inline void completion_latency_add(uint64_t n) {
+  if (current_sender) {
+    current_sender->s_total_latency += n;
+  } else {
+    total_latency += n;
+  }
+}
+static inline void completion_jitter_add(uint64_t n) {
+  if (current_sender) {
+    current_sender->s_total_jitter += n;
+  } else {
+    total_jitter += n;
+  }
+}
+
+static int pick_sender_id(void) {
+  if (num_sender_threads <= 0 || !senders) {
+    return -1;
+  }
+  return sender_assignment_counter++ % num_sender_threads;
+}
+
+/* Forward declaration: the per-sender timer handler iterates a session
+ * shard and calls into client_timer_handler exactly like the legacy
+ * main-thread timer_handler did. */
+static void sender_timer_handler(evutil_socket_t fd, short event, void *arg);
+
+static void *uclient_sender_thread_main(void *arg) {
+  uclient_sender *s = (uclient_sender *)arg;
+  current_sender = s;
+  while (!s->stop) {
+    /* 100 ms cap so we can poll the stop flag promptly even when there
+     * are no events besides our timer firing. */
+    struct timeval tv;
+    tv.tv_sec = 0;
+    tv.tv_usec = 100000;
+    event_base_loopexit(s->event_base, &tv);
+    event_base_dispatch(s->event_base);
+  }
+  return NULL;
+}
+
+static int start_sender_threads(void) {
+  const char *origin = num_sender_threads_explicit ? "explicit -J" : "auto";
+  if (num_sender_threads <= 0) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "uclient: sender pool disabled (single-threaded send on main; %s)\n", origin);
+    return 0;
+  }
+  if (num_sender_threads > UCLIENT_MAX_SENDER_THREADS) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "uclient: clamping --sender-threads %d to max %d\n", num_sender_threads,
+                  UCLIENT_MAX_SENDER_THREADS);
+    num_sender_threads = UCLIENT_MAX_SENDER_THREADS;
+  }
+  senders = (uclient_sender *)calloc((size_t)num_sender_threads, sizeof(uclient_sender));
+  if (!senders) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "uclient: cannot allocate sender pool\n");
+    num_sender_threads = 0;
+    return -1;
+  }
+  for (int i = 0; i < num_sender_threads; ++i) {
+    senders[i].id = i;
+    senders[i].event_base = turn_event_base_new();
+    senders[i].stop = 0;
+
+    /* Each sender installs its own timer on its own base. Cadence
+     * matches the legacy main-thread timer: 100us in flood modes,
+     * 1ms otherwise. */
+    senders[i].timer_ev =
+        event_new(senders[i].event_base, -1, EV_TIMEOUT | EV_PERSIST, sender_timer_handler, &senders[i]);
+    if (!senders[i].timer_ev) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "uclient: cannot create sender %d timer event\n", i);
+      return -1;
+    }
+    struct timeval tv;
+    tv.tv_sec = 0;
+    tv.tv_usec = (is_packet_flood_mode() || is_invalid_flood_mode()) ? 100 : 1000;
+    evtimer_add(senders[i].timer_ev, &tv);
+
+    if (pthread_create(&senders[i].thread, NULL, uclient_sender_thread_main, &senders[i]) != 0) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "uclient: pthread_create sender %d failed\n", i);
+      return -1;
+    }
+    senders[i].started = true;
+  }
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "uclient: started %d sender thread(s) (%s)\n", num_sender_threads, origin);
+  return 0;
+}
+
+static void stop_sender_threads(void) {
+  if (num_sender_threads <= 0 || !senders) {
+    return;
+  }
+  for (int i = 0; i < num_sender_threads; ++i) {
+    senders[i].stop = 1;
+    if (senders[i].event_base) {
+      event_base_loopbreak(senders[i].event_base);
+    }
+  }
+  for (int i = 0; i < num_sender_threads; ++i) {
+    if (senders[i].started) {
+      pthread_join(senders[i].thread, NULL);
+      senders[i].started = false;
+    }
+  }
+  /* Reduce per-thread slabs into the globals. */
+  for (int i = 0; i < num_sender_threads; ++i) {
+    tot_send_messages += (uint32_t)senders[i].s_tot_send_messages;
+    tot_send_bytes += senders[i].s_tot_send_bytes;
+    tot_send_dropped += senders[i].s_tot_send_dropped;
+    load_sent_packets += senders[i].s_load_sent_packets;
+    total_loss += (size_t)senders[i].s_total_loss;
+    total_latency += senders[i].s_total_latency;
+    total_jitter += senders[i].s_total_jitter;
+  }
+  for (int i = 0; i < num_sender_threads; ++i) {
+    if (senders[i].timer_ev) {
+      event_free(senders[i].timer_ev);
+      senders[i].timer_ev = NULL;
+    }
+    if (senders[i].event_base) {
+      event_base_free(senders[i].event_base);
+      senders[i].event_base = NULL;
+    }
+  }
+  free(senders);
+  senders = NULL;
+}
+
 static bool uses_turn_allocation(void) { return !is_invalid_flood_mode(); }
 
 static bool uses_unlimited_message_count(const app_ur_session *elem) {
@@ -417,6 +911,7 @@ static size_t get_invalid_packet_length(void) {
 static void reset_load_generator_rate_stats(void) {
   load_sent_packets = 0;
   load_last_sent_packets = 0;
+  load_last_recv_packets = 0;
   load_last_report_time = current_time;
 }
 
@@ -430,14 +925,29 @@ static void print_load_generator_rate(const char *context) {
   }
 
   const uint64_t elapsed = current_time - load_last_report_time;
-  const uint64_t delta_packets = load_sent_packets - load_last_sent_packets;
-  const double pps = (double)delta_packets / (double)elapsed;
 
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: send_pps=%.2f, total_packets=%llu\n", context, pps,
-                (unsigned long long)load_sent_packets);
+  const uint64_t now_sent = load_sent_snapshot();
+  const uint64_t delta_sent = now_sent - load_last_sent_packets;
+  const double send_pps = (double)delta_sent / (double)elapsed;
+
+  /* Round-trip throughput: packets received back from the relay/peer
+   * loop. With aggressive sender-side batching this can be 1-2 orders
+   * of magnitude lower than send_pps -- most drops happen at the
+   * turnserver UDP recv buffer or the peer once uclient pushes past
+   * the relay's per-thread saturation. Reporting both makes the actual
+   * end-to-end ceiling visible at a glance. recv_count_snapshot() is
+   * a sum of per-listener slabs (atomic loads, no contention with
+   * writers). */
+  const uint64_t now_recv = (uint64_t)recv_count_snapshot();
+  const uint64_t delta_recv = (now_recv >= load_last_recv_packets) ? (now_recv - load_last_recv_packets) : 0;
+  const double recv_pps = (double)delta_recv / (double)elapsed;
+
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: send_pps=%.2f, recv_pps=%.2f, total_sent=%llu, total_recv=%llu\n", context,
+                send_pps, recv_pps, (unsigned long long)now_sent, (unsigned long long)now_recv);
 
   load_last_report_time = current_time;
-  load_last_sent_packets = load_sent_packets;
+  load_last_sent_packets = now_sent;
+  load_last_recv_packets = now_recv;
 }
 
 static void generate_unique_allocation_peer(ioa_addr *peer_addr) {
@@ -516,13 +1026,23 @@ static app_ur_session *init_app_session(app_ur_session *ss) {
      * mode or session lives on the main event_base). pick_listener_base()
      * stamps the assigned index when routing recv events. */
     ss->listener_id = -1;
+    /* -1 = not yet routed to a sender thread (legacy single-threaded
+     * send path; main thread's timer_handler owns iteration). */
+    ss->sender_id = -1;
   }
   return ss;
 }
 
 static app_ur_session *create_new_ss(void) {
   ++current_clients_number;
-  return init_app_session((app_ur_session *)malloc(sizeof(app_ur_session)));
+  app_ur_session *ss = init_app_session((app_ur_session *)malloc(sizeof(app_ur_session)));
+  if (ss) {
+    /* Sender pool routing: when the pool is engaged, round-robin assign
+     * this session to a sender thread. -1 keeps the legacy single-thread
+     * (main timer_handler) path. */
+    ss->sender_id = pick_sender_id();
+  }
+  return ss;
 }
 
 static void uc_delete_session_elem_data(app_ur_session *cdi) {
@@ -672,32 +1192,39 @@ int send_buffer(app_ur_conn_info *clnet_info, stun_buffer *message, bool data_co
 
   } else if (fd >= 0) {
 
-    size_t left = message->len;
+    /* When a send-batch window is open on this thread (sender-pool's
+     * per-tick iteration), enqueue and return success. The actual
+     * sendmsg (UDP-GSO when eligible) happens at flush time. */
+    if (uclient_tx_enqueue(fd, message->buf, message->len)) {
+      ret = (int)message->len;
+    } else {
+      size_t left = message->len;
 
-    ssize_t rc = 0;
+      ssize_t rc = 0;
 
-    while (left > 0) {
-      do {
-        rc = send(fd, buffer, left, 0);
-      } while (rc <= 0 && (socket_eintr() || socket_enobufs() || socket_eagain()));
-      if (rc > 0) {
-        left -= rc;
-        buffer += rc;
-      } else {
-        tot_send_dropped += 1;
-        break;
+      while (left > 0) {
+        do {
+          rc = send(fd, buffer, left, 0);
+        } while (rc <= 0 && (socket_eintr() || socket_enobufs() || socket_eagain()));
+        if (rc > 0) {
+          left -= rc;
+          buffer += rc;
+        } else {
+          send_dropped_add(1);
+          break;
+        }
       }
-    }
 
-    if (left > 0) {
-      return -1;
-    }
+      if (left > 0) {
+        return -1;
+      }
 
-    ret = (int)message->len;
+      ret = (int)message->len;
+    }
   }
 
   if ((ret > 0) && is_load_generator_mode()) {
-    ++load_sent_packets;
+    load_sent_add(1);
   }
 
   return ret;
@@ -1422,8 +1949,8 @@ static int client_write(app_ur_session *elem) {
       if (send(elem->pinfo.fd, elem->out_buffer.buf, clmessage_length, 0) >= 0) {
         ++elem->wmsgnum;
         elem->to_send_timems += RTP_PACKET_INTERVAL;
-        tot_send_messages++;
-        tot_send_bytes += payload_len;
+        send_count_add(1);
+        send_bytes_add(payload_len);
       }
       return 0;
     }
@@ -1469,8 +1996,8 @@ static int client_write(app_ur_session *elem) {
       if (clnet_verbose && verbose_packets) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "wrote %d bytes\n", (int)rc);
       }
-      tot_send_messages++;
-      tot_send_bytes += payload_len;
+      send_count_add(1);
+      send_bytes_add(payload_len);
     } else {
       return -1;
     }
@@ -2003,9 +2530,9 @@ static inline int client_timer_handler(app_ur_session *elem, int *done) {
            * listener side; __atomic_exchange_n returns the previous
            * value and zeroes the slot in one indivisible step so no
            * increment is lost or double-counted. */
-          total_loss += uclient_atomic_exchange_size(&elem->loss, (size_t)0);
-          total_latency += uclient_atomic_exchange_u64(&elem->latency, (uint64_t)0);
-          total_jitter += uclient_atomic_exchange_u64(&elem->jitter, (uint64_t)0);
+          completion_loss_add(uclient_atomic_exchange_size(&elem->loss, (size_t)0));
+          completion_latency_add(uclient_atomic_exchange_u64(&elem->latency, (uint64_t)0));
+          completion_jitter_add(uclient_atomic_exchange_u64(&elem->jitter, (uint64_t)0));
           elem->completed = 1;
           if (!hang_on) {
             refresh_channel(elem, 0, 0);
@@ -2037,6 +2564,12 @@ static void timer_handler(evutil_socket_t fd, short event, void *arg) {
   __turn_getMSTime();
 
   if (start_full_timer) {
+    /* When the sender pool is engaged, the per-sender timers own session
+     * iteration and the main thread's timer is idle (it still fires so
+     * lifecycle code and __turn_getMSTime stay current on main). */
+    if (num_sender_threads > 0 && senders) {
+      return;
+    }
     int done = 0;
     for (int i = 0; i < total_clients; ++i) {
       if (elems[i]) {
@@ -2052,6 +2585,48 @@ static void timer_handler(evutil_socket_t fd, short event, void *arg) {
           socket_closesocket(elems[i]->pinfo.fd);
           elems[i]->pinfo.fd = -1;
         }
+      }
+    }
+  }
+}
+
+/* Per-sender-thread timer: iterates only the sessions sharded onto this
+ * sender. Cadence and burst semantics match the legacy timer_handler. */
+static void sender_timer_handler(evutil_socket_t fd, short event, void *arg) {
+  UNUSED_ARG(fd);
+  UNUSED_ARG(event);
+  uclient_sender *s = (uclient_sender *)arg;
+  if (!s || !start_full_timer) {
+    return;
+  }
+  __turn_getMSTime();
+  int done = 0;
+  /* Open the send batch for the duration of this tick's iteration so that
+   * each session's burst coalesces into a single UDP-GSO sendmsg (or a
+   * single sendmmsg when GSO is unavailable). Fd-change between sessions
+   * auto-flushes; uclient_send_batch_end flushes the final group. */
+  uclient_send_batch_begin();
+  for (int i = 0; i < total_clients; ++i) {
+    app_ur_session *elem = elems[i];
+    if (!elem || elem->sender_id != s->id) {
+      continue;
+    }
+    int finished = client_timer_handler(elem, &done);
+    if (finished) {
+      /* Single-writer per slot: this sender thread is the only one that
+       * iterates entries with sender_id == s->id, so this store does not
+       * race with another sender. Main thread reads elems[i] without
+       * locks under the same legacy invariant. */
+      elems[i] = NULL;
+    }
+  }
+  uclient_send_batch_end();
+  if (done > 5 && (dos || random_disconnect)) {
+    for (int i = 0; i < total_clients; ++i) {
+      app_ur_session *elem = elems[i];
+      if (elem && elem->sender_id == s->id) {
+        socket_closesocket(elem->pinfo.fd);
+        elem->pinfo.fd = -1;
       }
     }
   }
@@ -2125,6 +2700,24 @@ void start_mclient(const char *remote_address, uint16_t port, const unsigned cha
     num_listener_threads = 0;
   }
 
+  /* Auto-scale sender thread count. Mirrors the listener auto-scale rule
+   * but with a higher threshold (UCLIENT_AUTO_SENDERS_THRESHOLD): at low
+   * -m the single sender on main is cheaper than waking a worker, while
+   * at -m >= threshold the timer_handler iteration is the choke. */
+  if (!num_sender_threads_explicit && mclient >= UCLIENT_AUTO_SENDERS_THRESHOLD &&
+      num_sender_threads < UCLIENT_AUTO_SENDERS_TARGET) {
+    num_sender_threads = UCLIENT_AUTO_SENDERS_TARGET;
+  }
+
+  /* Start the sender thread pool BEFORE start_full_timer is set so the
+   * per-sender timers exist by the time iteration begins. Session
+   * sender_id assignment happens during create_new_ss / per-session
+   * setup (pick_sender_id), so the pool must be live at that point. */
+  if (start_sender_threads() < 0) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "uclient: sender pool init failed, falling back to single-threaded\n");
+    num_sender_threads = 0;
+  }
+
   int tot_clients = 0;
 
   if (c2c) {
@@ -2188,7 +2781,15 @@ void start_mclient(const char *remote_address, uint16_t port, const unsigned cha
   struct timeval tv;
 
   tv.tv_sec = 0;
-  tv.tv_usec = (is_packet_flood_mode() || is_invalid_flood_mode()) ? 100 : 1000;
+  if (num_sender_threads > 0) {
+    /* Per-sender timers own session iteration. Main thread's timer only
+     * needs to refresh current_mstime for lifecycle code that runs there,
+     * so a slow cadence is enough and avoids burning a core on no-op
+     * wake-ups. */
+    tv.tv_usec = 10000; /* 10 ms */
+  } else {
+    tv.tv_usec = (is_packet_flood_mode() || is_invalid_flood_mode()) ? 100 : 1000;
+  }
 
   evtimer_add(ev, &tv);
 
@@ -2279,17 +2880,25 @@ void start_mclient(const char *remote_address, uint16_t port, const unsigned cha
 
     if (show_statistics) {
       print_load_generator_rate(__FUNCTION__);
-      /* Snapshot for the live progress print -- listeners haven't joined yet. */
+      /* Snapshot for the live progress print -- senders/listeners haven't joined yet. */
       TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
                     "%s: msz=%d, tot_send_msgs=%lu, tot_recv_msgs=%lu, tot_send_bytes ~ %llu, tot_recv_bytes ~ %llu\n",
-                    __FUNCTION__, msz, (unsigned long)tot_send_messages, (unsigned long)recv_count_snapshot(),
-                    (unsigned long long)tot_send_bytes, (unsigned long long)recv_bytes_snapshot());
+                    __FUNCTION__, msz, (unsigned long)send_count_snapshot(), (unsigned long)recv_count_snapshot(),
+                    (unsigned long long)send_bytes_snapshot(), (unsigned long long)recv_bytes_snapshot());
       show_statistics = false;
     }
   }
 
   __turn_getMSTime();
   print_load_generator_rate(__FUNCTION__);
+
+  /* Quiesce sender threads BEFORE listener threads. The senders own the
+   * session mutation side (wmsgnum, to_send_timems, finished flag,
+   * shutdown). Joining them first prevents a race where a listener
+   * thread accumulates a stat into a session whose owning sender is
+   * still iterating it. stop_sender_threads() also folds the per-
+   * sender slabs into the globals (tot_send_*, total_loss, etc.). */
+  stop_sender_threads();
 
   /* Quiesce listener threads BEFORE freeing event bases or printing
    * totals: stop_listener_threads() reduces per-thread min/max latency/
