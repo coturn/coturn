@@ -2,6 +2,7 @@
 
 cleanup() {
     kill "$turnserver_pid" "$peer_pid" 2>/dev/null
+    rm -f /tmp/run_tests_conf_loadgen.$$.log
 }
 trap cleanup EXIT
 
@@ -18,6 +19,13 @@ echo "realm=north.gov" >> $BINDIR/turnserver.conf
 echo "allow-loopback-peers" >> $BINDIR/turnserver.conf
 echo "cert=../examples/ca/turn_server_cert.pem" >> $BINDIR/turnserver.conf
 echo "pkey=../examples/ca/turn_server_pkey.pem" >> $BINDIR/turnserver.conf
+# Server-side fast paths: enable on Linux so the conf-driven test cycle
+# also exercises recvmmsg drain + UDP-GSO send. These keys map 1:1 to
+# the --udp-recvmmsg / --udp-gso CLI flags (see mainrelay.c long_options).
+if [ "$(uname -s)" = "Linux" ]; then
+    echo "udp-recvmmsg" >> $BINDIR/turnserver.conf
+    echo "udp-gso" >> $BINDIR/turnserver.conf
+fi
 
 echo 'Running turnserver'
 $BINDIR/turnserver -c $BINDIR/turnserver.conf > /dev/null &
@@ -28,40 +36,57 @@ peer_pid="$!"
 
 sleep 5
 
-echo 'Running turn client TCP'
-$BINDIR/turnutils_uclient -t -e 127.0.0.1 -X -g -u user -W secret 127.0.0.1 | grep "start_mclient: tot_send_bytes ~ 1000, tot_recv_bytes ~ 1000" > /dev/null
-if [ $? -eq 0 ]; then
-    echo OK
-else
-    echo FAIL
-	exit $?
-fi
+# Same factoring as run_tests.sh: function-per-test, run each protocol
+# with the legacy single-threaded uclient and again with the listener +
+# sender thread pools engaged. Total bytes stay at 1000 either way at
+# -m 1 -n 5.
+run_uclient() {
+    local label="$1"
+    shift
+    echo "Running $label"
+    "$BINDIR/turnutils_uclient" "$@" -e 127.0.0.1 -X -g -u user -W secret 127.0.0.1 \
+        | grep "start_mclient: tot_send_bytes ~ 1000, tot_recv_bytes ~ 1000" > /dev/null
+    if [ $? -eq 0 ]; then
+        echo OK
+    else
+        echo FAIL
+        exit 1
+    fi
+}
 
-echo 'Running turn client TLS'
-$BINDIR/turnutils_uclient -t -S -e 127.0.0.1 -X -g -u user -W secret 127.0.0.1 | grep "start_mclient: tot_send_bytes ~ 1000, tot_recv_bytes ~ 1000" > /dev/null
-if [ $? -eq 0 ]; then
-    echo OK
-else
-    echo FAIL
-	exit $?
-fi
+# Legacy single-threaded uclient.
+run_uclient "turn client TCP"   -t
+run_uclient "turn client TLS"   -t -S
+run_uclient "turn client UDP"
+run_uclient "turn client DTLS"  -S
 
-echo 'Running turn client UDP'
-$BINDIR/turnutils_uclient -e 127.0.0.1 -X -g -u user -W secret 127.0.0.1  | grep "start_mclient: tot_send_bytes ~ 1000, tot_recv_bytes ~ 1000" > /dev/null
-if [ $? -eq 0 ]; then
-    echo OK
-else
-    echo FAIL
-	exit $?
-fi
+# Listener + sender thread pools engaged at minimum non-zero size.
+run_uclient "turn client TCP (threaded)"  -t      --listener-threads 1 --sender-threads 1
+run_uclient "turn client TLS (threaded)"  -t -S   --listener-threads 1 --sender-threads 1
+run_uclient "turn client UDP (threaded)"          --listener-threads 1 --sender-threads 1
+run_uclient "turn client DTLS (threaded)" -S      --listener-threads 1 --sender-threads 1
 
-echo 'Running turn client DTLS'
-$BINDIR/turnutils_uclient -S -e 127.0.0.1 -X -g -u user -W secret 127.0.0.1  | grep "start_mclient: tot_send_bytes ~ 1000, tot_recv_bytes ~ 1000" > /dev/null
-if [ $? -eq 0 ]; then
-    echo OK
-else
-    echo FAIL
-	exit $?
+# Linux-only load-gen smoke (see comment in run_tests.sh for rationale).
+if [ "$(uname -s)" = "Linux" ]; then
+    echo "Running turn client UDP load-gen smoke (-Y packet, threaded)"
+    LOADGEN_LOG="/tmp/run_tests_conf_loadgen.$$.log"
+    timeout -s INT 6s "$BINDIR/turnutils_uclient" \
+        -Y packet -m 4 -l 100 -c -e 127.0.0.1 -g \
+        --listener-threads 1 --sender-threads 2 \
+        -u user -W secret 127.0.0.1 > "$LOADGEN_LOG" 2>&1
+    rc=$?
+    if [ $rc -ne 0 ] && [ $rc -ne 124 ] && [ $rc -ne 130 ]; then
+        echo "FAIL: uclient exited with $rc"
+        cat "$LOADGEN_LOG"
+        exit 1
+    fi
+    if grep -qE "send_pps=[1-9][0-9]*\.[0-9]+, recv_pps=[1-9][0-9]*\.[0-9]+" "$LOADGEN_LOG"; then
+        echo OK
+    else
+        echo "FAIL: no non-zero send_pps/recv_pps line in load-gen output"
+        tail -20 "$LOADGEN_LOG"
+        exit 1
+    fi
 fi
 
 sleep 2
