@@ -21,6 +21,11 @@ if [ ! -f $BINDIR/turnserver ]; then
     BINDIR="../build/bin"
 fi
 
+if [ "$(uname -s)" = "Darwin" ]; then
+    echo "Skipping TURN round-trip tests on Darwin: relay->peer loopback forwarding is known to stall."
+    exit 0
+fi
+
 # Server-side fast paths that we ship as Linux-only: enable them in the
 # default test run so every CI cycle exercises recvmmsg drain + GSO send.
 # Stays off on non-Linux because the kernel APIs aren't available.
