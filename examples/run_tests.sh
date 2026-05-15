@@ -21,56 +21,9 @@ if [ ! -f $BINDIR/turnserver ]; then
     BINDIR="../build/bin"
 fi
 
+IS_DARWIN=0
 if [ "$(uname -s)" = "Darwin" ]; then
-    echo "Running Darwin legacy TURN round-trip tests"
-    echo 'Running turnserver'
-    $BINDIR/turnserver --use-auth-secret --sock-buf-size=1048576 --static-auth-secret=secret --realm=north.gov --allow-loopback-peers --cert ../examples/ca/turn_server_cert.pem --pkey ../examples/ca/turn_server_pkey.pem > /dev/null &
-    turnserver_pid="$!"
-
-    echo 'Running peer client'
-    $BINDIR/turnutils_peer -L 127.0.0.1 -L ::1 -L 0.0.0.0 > /dev/null &
-    peer_pid="$!"
-
-    sleep 2
-
-    echo 'Running turn client TCP'
-    $BINDIR/turnutils_uclient -t -e 127.0.0.1 -X -g -u user -W secret 127.0.0.1 | grep "start_mclient: tot_send_bytes ~ 1000, tot_recv_bytes ~ 1000" > /dev/null
-    if [ $? -eq 0 ]; then
-        echo OK
-    else
-        echo FAIL
-        exit $?
-    fi
-
-    echo 'Running turn client TLS'
-    $BINDIR/turnutils_uclient -t -S -e 127.0.0.1 -X -g -u user -W secret 127.0.0.1 | grep "start_mclient: tot_send_bytes ~ 1000, tot_recv_bytes ~ 1000" > /dev/null
-    if [ $? -eq 0 ]; then
-        echo OK
-    else
-        echo FAIL
-        exit $?
-    fi
-
-    echo 'Running turn client UDP'
-    $BINDIR/turnutils_uclient -e 127.0.0.1 -X -g -u user -W secret 127.0.0.1 | grep "start_mclient: tot_send_bytes ~ 1000, tot_recv_bytes ~ 1000" > /dev/null
-    if [ $? -eq 0 ]; then
-        echo OK
-    else
-        echo FAIL
-        exit $?
-    fi
-
-    echo 'Running turn client DTLS'
-    $BINDIR/turnutils_uclient -S -e 127.0.0.1 -X -g -u user -W secret 127.0.0.1 | grep "start_mclient: tot_send_bytes ~ 1000, tot_recv_bytes ~ 1000" > /dev/null
-    if [ $? -eq 0 ]; then
-        echo OK
-    else
-        echo FAIL
-        exit $?
-    fi
-
-    sleep 2
-    exit 0
+    IS_DARWIN=1
 fi
 
 # Server-side fast paths that we ship as Linux-only: enable them in the
@@ -83,13 +36,17 @@ if [ "$(uname -s)" = "Linux" ]; then
 fi
 
 echo 'Running turnserver'
-# --log-file=stdout forces turnserver's per-line log into our redirected
-# stdout so $TURNSERVER_LOG actually gets populated. Without it,
-# turnserver writes to its platform-default location (syslog or
-# /var/log/turn_*.log) and our redirect captures an empty file; that
-# breaks wait_for_turnserver, which polls the log for a known
-# late-startup line, and it leaves the FAIL-path diagnostics useless.
-$BINDIR/turnserver --use-auth-secret --sock-buf-size=1048576 --static-auth-secret=secret --realm=north.gov --allow-loopback-peers --log-file=stdout --simple-log $TURNSERVER_EXTRA_ARGS --cert ../examples/ca/turn_server_cert.pem --pkey ../examples/ca/turn_server_pkey.pem > "$TURNSERVER_LOG" 2>&1 &
+if [ $IS_DARWIN -eq 1 ]; then
+    $BINDIR/turnserver --use-auth-secret --sock-buf-size=1048576 --static-auth-secret=secret --realm=north.gov --allow-loopback-peers --cert ../examples/ca/turn_server_cert.pem --pkey ../examples/ca/turn_server_pkey.pem > "$TURNSERVER_LOG" 2>&1 &
+else
+    # --log-file=stdout forces turnserver's per-line log into our redirected
+    # stdout so $TURNSERVER_LOG actually gets populated. Without it,
+    # turnserver writes to its platform-default location (syslog or
+    # /var/log/turn_*.log) and our redirect captures an empty file; that
+    # breaks wait_for_turnserver, which polls the log for a known
+    # late-startup line, and it leaves the FAIL-path diagnostics useless.
+    $BINDIR/turnserver --use-auth-secret --sock-buf-size=1048576 --static-auth-secret=secret --realm=north.gov --allow-loopback-peers --log-file=stdout --simple-log $TURNSERVER_EXTRA_ARGS --cert ../examples/ca/turn_server_cert.pem --pkey ../examples/ca/turn_server_pkey.pem > "$TURNSERVER_LOG" 2>&1 &
+fi
 turnserver_pid="$!"
 
 echo 'Running peer client'
@@ -136,11 +93,15 @@ wait_for_turnserver() {
     tail -30 "$TURNSERVER_LOG" 2>/dev/null || echo "(log file missing)"
     return 1
 }
-wait_for_turnserver || exit 1
-# No-barrier builds can log readiness before all worker event loops have
-# had a scheduling turn. Keep the old startup cushion after the active
-# per-process readiness check.
-sleep 2
+if [ $IS_DARWIN -eq 1 ]; then
+    sleep 2
+else
+    wait_for_turnserver || exit 1
+    # No-barrier builds can log readiness before all worker event loops have
+    # had a scheduling turn. Keep the old startup cushion after the active
+    # per-process readiness check.
+    sleep 2
+fi
 
 # Dump the bits a maintainer needs to see when a protocol test fails: the
 # uclient progress lines (shows where send/recv counters stalled), any
@@ -176,14 +137,6 @@ diagnose_failure() {
         echo "(peer log missing — redirect path: $PEER_LOG)"
     fi
     echo "==="
-    if [ "$(uname -s)" = "Darwin" ]; then
-        echo "Note: these tests are known to fail on macOS — every protocol stalls"
-        echo "at tot_recv_msgs=0. Forcing both listener and relay onto 127.0.0.1,"
-        echo "or both onto a non-loopback IP, both still fail; with verbose logs"
-        echo "the peer never sees a single packet from the relay, so the relay"
-        echo "is not forwarding client data on Darwin. Cause not yet diagnosed."
-        echo "CI runs on Linux where the round trip works. Pre-existing on master."
-    fi
 }
 
 # Each protocol test runs turnutils_uclient with the supplied flags and
@@ -213,6 +166,11 @@ run_uclient "turn client TCP"   -t
 run_uclient "turn client TLS"   -t -S
 run_uclient "turn client UDP"
 run_uclient "turn client DTLS"  -S
+
+if [ $IS_DARWIN -eq 1 ]; then
+    sleep 2
+    exit 0
+fi
 
 # Same four protocols with both worker pools at minimum non-zero size so
 # we exercise the threaded recv (#1911) and threaded send (#1913) paths.
