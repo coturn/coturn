@@ -85,6 +85,10 @@ wait_for_turnserver() {
     return 1
 }
 wait_for_turnserver || exit 1
+# No-barrier builds can log readiness before all worker event loops have
+# had a scheduling turn. Keep the old startup cushion after the active
+# per-process readiness check.
+sleep 2
 
 # Dump the bits a maintainer needs to see when a protocol test fails: the
 # uclient progress lines (shows where send/recv counters stalled), any

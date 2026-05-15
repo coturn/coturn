@@ -78,6 +78,10 @@ wait_for_turnserver() {
     return 1
 }
 wait_for_turnserver || exit 1
+# No-barrier builds can log readiness before all worker event loops have
+# had a scheduling turn. Keep the old startup cushion after the active
+# per-process readiness check.
+sleep 2
 
 # See run_tests.sh for rationale — same shape, mirrored here so the
 # conf-driven test produces the same actionable failure output.
