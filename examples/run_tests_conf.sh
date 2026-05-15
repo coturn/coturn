@@ -7,6 +7,7 @@ LOADGEN_LOG="/tmp/run_tests_conf.$$.loadgen.log"
 
 cleanup() {
     kill "$turnserver_pid" "$peer_pid" 2>/dev/null
+    wait "$turnserver_pid" "$peer_pid" 2>/dev/null
     rm -f "$TURNSERVER_LOG" "$PEER_LOG" "$UCLIENT_LOG" "$LOADGEN_LOG"
 }
 trap cleanup EXIT
@@ -22,6 +23,7 @@ echo "use-auth-secret" > $BINDIR/turnserver.conf
 echo "static-auth-secret=secret" >> $BINDIR/turnserver.conf
 echo "realm=north.gov" >> $BINDIR/turnserver.conf
 echo "allow-loopback-peers" >> $BINDIR/turnserver.conf
+echo "sock-buf-size=1048576" >> $BINDIR/turnserver.conf
 echo "cert=../examples/ca/turn_server_cert.pem" >> $BINDIR/turnserver.conf
 echo "pkey=../examples/ca/turn_server_pkey.pem" >> $BINDIR/turnserver.conf
 # Force log output to stdout (which we redirect to $TURNSERVER_LOG below).
@@ -48,12 +50,12 @@ peer_pid="$!"
 
 # Wait for OUR turnserver instance to finish init -- see run_tests.sh
 # for the rationale. We poll the per-invocation log (uniquely named via
-# $$) for "Total relay threads:" so a stale turnserver from a prior
+# $$) for "Total auth threads:" so a stale turnserver from a prior
 # script invocation can't false-positive us.
 wait_for_turnserver() {
     local i
     for i in $(seq 1 40); do
-        if grep -q "Total relay threads:" "$TURNSERVER_LOG" 2>/dev/null; then
+        if grep -q "Total auth threads:" "$TURNSERVER_LOG" 2>/dev/null; then
             return 0
         fi
         if ! kill -0 "$turnserver_pid" 2>/dev/null; then
@@ -70,7 +72,7 @@ wait_for_turnserver() {
         fi
         sleep 0.5
     done
-    echo "FATAL: turnserver never reached 'Total relay threads:' init line within 20s"
+    echo "FATAL: turnserver never reached 'Total auth threads:' init line within 20s"
     echo "--- turnserver log (last 30 lines) ---"
     tail -30 "$TURNSERVER_LOG" 2>/dev/null || echo "(log file missing)"
     return 1
@@ -86,6 +88,8 @@ diagnose_failure() {
     grep "start_mclient: tot_send_msgs" "$UCLIENT_LOG" 2>/dev/null | tail -6
     echo "--- uclient: errors / warnings ---"
     grep -iE "error|warning|fail|broken|drop" "$UCLIENT_LOG" 2>/dev/null | tail -10
+    echo "--- turnserver: socket / relay / allocation errors (last 40 lines) ---"
+    grep -iE "508|capacity|socket|bind|available ports|relay|allocation" "$TURNSERVER_LOG" 2>/dev/null | tail -40
     echo "--- turnserver log (last 20 lines) ---"
     if [ -s "$TURNSERVER_LOG" ]; then
         tail -20 "$TURNSERVER_LOG"

@@ -10,6 +10,7 @@ LOADGEN_LOG="/tmp/run_tests.$$.loadgen.log"
 
 cleanup() {
     kill "$turnserver_pid" "$peer_pid" 2>/dev/null
+    wait "$turnserver_pid" "$peer_pid" 2>/dev/null
     rm -f "$TURNSERVER_LOG" "$PEER_LOG" "$UCLIENT_LOG" "$LOADGEN_LOG"
 }
 trap cleanup EXIT
@@ -53,13 +54,15 @@ peer_pid="$!"
 # back-to-back with another that didn't fully clean up, the dying
 # previous turnserver may still answer the connect long enough to give
 # a false positive, and uclient ends up talking to a half-dead server.
-# Instead, poll OUR log file (uniquely named via $$) for a known
-# late-startup line. That's by-construction immune to other instances.
-# "Total relay threads:" is emitted near the end of init in netengine.c.
+# Instead, poll OUR log file (uniquely named via $$) for a known late
+# startup line. That's by-construction immune to other instances. "Total
+# auth threads:" is emitted after relay setup and socket-per-thread UDP
+# listener setup, so it is a better client-start gate than "Total relay
+# threads:".
 wait_for_turnserver() {
     local i
     for i in $(seq 1 40); do
-        if grep -q "Total relay threads:" "$TURNSERVER_LOG" 2>/dev/null; then
+        if grep -q "Total auth threads:" "$TURNSERVER_LOG" 2>/dev/null; then
             return 0
         fi
         if ! kill -0 "$turnserver_pid" 2>/dev/null; then
@@ -76,7 +79,7 @@ wait_for_turnserver() {
         fi
         sleep 0.5
     done
-    echo "FATAL: turnserver never reached 'Total relay threads:' init line within 20s"
+    echo "FATAL: turnserver never reached 'Total auth threads:' init line within 20s"
     echo "--- turnserver log (last 30 lines) ---"
     tail -30 "$TURNSERVER_LOG" 2>/dev/null || echo "(log file missing)"
     return 1
@@ -98,6 +101,8 @@ diagnose_failure() {
     grep "start_mclient: tot_send_msgs" "$UCLIENT_LOG" 2>/dev/null | tail -6
     echo "--- uclient: errors / warnings ---"
     grep -iE "error|warning|fail|broken|drop" "$UCLIENT_LOG" 2>/dev/null | tail -10
+    echo "--- turnserver: socket / relay / allocation errors (last 40 lines) ---"
+    grep -iE "508|capacity|socket|bind|available ports|relay|allocation" "$TURNSERVER_LOG" 2>/dev/null | tail -40
     echo "--- turnserver log (last 20 lines) ---"
     if [ -s "$TURNSERVER_LOG" ]; then
         tail -20 "$TURNSERVER_LOG"
