@@ -229,13 +229,16 @@ static size_t print_packet_txt2pcap(uint64_t now, uint8_t *payload, size_t paylo
 
 #if DTLS_SUPPORTED
 
-static void calculate_cookie(SSL *ssl, unsigned char *cookie_secret, unsigned int cookie_length) {
-  const uintptr_t rv = (uintptr_t)ssl;
-  const uintptr_t inum = (cookie_length - (((uintptr_t)cookie_secret) % sizeof(uintptr_t))) / sizeof(uintptr_t);
-  uintptr_t i = 0;
-  uintptr_t *ip = (uintptr_t *)cookie_secret;
-  for (i = 0; i < inum; ++i, ++ip) {
-    *ip = rv;
+static unsigned char dtls_cookie_secret[COOKIE_SECRET_LENGTH];
+static pthread_once_t dtls_cookie_secret_once = PTHREAD_ONCE_INIT;
+
+static void init_dtls_cookie_secret(void) {
+  if (RAND_bytes(dtls_cookie_secret, sizeof(dtls_cookie_secret)) == 1) {
+    return;
+  }
+
+  for (size_t i = 0; i < sizeof(dtls_cookie_secret); ++i) {
+    dtls_cookie_secret[i] = (unsigned char)turn_random_number();
   }
 }
 
@@ -246,8 +249,7 @@ static int generate_cookie(SSL *ssl, unsigned char *cookie, unsigned int *cookie
   unsigned int resultlength;
   ioa_addr peer;
 
-  unsigned char cookie_secret[COOKIE_SECRET_LENGTH];
-  calculate_cookie(ssl, cookie_secret, sizeof(cookie_secret));
+  pthread_once(&dtls_cookie_secret_once, init_dtls_cookie_secret);
 
   /* Read peer information */
   (void)BIO_dgram_get_peer(SSL_get_wbio(ssl), &peer);
@@ -286,8 +288,8 @@ static int generate_cookie(SSL *ssl, unsigned char *cookie, unsigned int *cookie
   }
 
   /* Calculate HMAC of buffer using the secret */
-  HMAC(EVP_sha1(), (const void *)cookie_secret, COOKIE_SECRET_LENGTH, (const unsigned char *)buffer, length, result,
-       &resultlength);
+  HMAC(EVP_sha1(), (const void *)dtls_cookie_secret, sizeof(dtls_cookie_secret), (const unsigned char *)buffer, length,
+       result, &resultlength);
 
   memcpy(cookie, result, resultlength);
   *cookie_len = resultlength;
