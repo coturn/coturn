@@ -428,7 +428,7 @@ static void free_blist_elem(ioa_engine_handle e, stun_buffer_list_elem *buf_elem
 }
 
 #if !defined(_MSC_VER) && defined(CMSG_SPACE)
-void ioa_parse_udp_recvmsg_cmsg(struct msghdr *msg, recv_ttl_t *ttl, recv_tos_t *tos, uint32_t *errcode) {
+void ioa_parse_udp_recvmsg_cmsg(struct msghdr *msg, int *ttl, int *tos, uint32_t *errcode) {
 
   recv_ttl_t recv_ttl = TTL_DEFAULT;
   recv_tos_t recv_tos = TOS_DEFAULT;
@@ -2246,8 +2246,8 @@ int udp_recvfrom(evutil_socket_t fd, ioa_addr *orig_addr, const ioa_addr *like_a
   }
 
   const int slen = get_ioa_addr_len(like_addr);
-  recv_ttl_t recv_ttl = TTL_DEFAULT;
-  recv_tos_t recv_tos = TOS_DEFAULT;
+  int recv_ttl = TTL_DEFAULT;
+  int recv_tos = TOS_DEFAULT;
 
 #if defined(_MSC_VER) || !defined(CMSG_SPACE)
   do {

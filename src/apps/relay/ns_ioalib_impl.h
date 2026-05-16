@@ -294,7 +294,7 @@ void ioa_init_recvmmsg_hdr(struct mmsghdr *msg, struct iovec *iov, ioa_addr *src
 #endif
 
 #if !defined(_MSC_VER) && defined(CMSG_SPACE)
-void ioa_parse_udp_recvmsg_cmsg(struct msghdr *msg, recv_ttl_t *ttl, recv_tos_t *tos, uint32_t *errcode);
+void ioa_parse_udp_recvmsg_cmsg(struct msghdr *msg, int *ttl, int *tos, uint32_t *errcode);
 #endif
 
 #if defined(__linux__)
