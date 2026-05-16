@@ -42,10 +42,13 @@ if [ $IS_DARWIN -eq 0 ]; then
     echo "log-file=stdout" >> $BINDIR/turnserver.conf
     echo "simple-log" >> $BINDIR/turnserver.conf
     # Server-side fast paths: enable on Linux so the conf-driven test cycle
-    # also exercises recvmmsg drain + UDP-GSO send. These keys map 1:1 to
-    # the --udp-recvmmsg / --udp-gso CLI flags (see mainrelay.c long_options).
+    # also exercises recvmmsg drain + sendmmsg batching + UDP-GSO send.
+    # These keys map 1:1 to the --udp-recvmmsg / --udp-sendmmsg / --udp-gso
+    # CLI flags (see mainrelay.c long_options). udp-gso is a no-op without
+    # udp-sendmmsg, so the three keys travel together.
     if [ "$(uname -s)" = "Linux" ]; then
         echo "udp-recvmmsg" >> $BINDIR/turnserver.conf
+        echo "udp-sendmmsg" >> $BINDIR/turnserver.conf
         echo "udp-gso" >> $BINDIR/turnserver.conf
     fi
 fi

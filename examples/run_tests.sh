@@ -27,11 +27,14 @@ if [ "$(uname -s)" = "Darwin" ]; then
 fi
 
 # Server-side fast paths that we ship as Linux-only: enable them in the
-# default test run so every CI cycle exercises recvmmsg drain + GSO send.
-# Stays off on non-Linux because the kernel APIs aren't available.
+# default test run so every CI cycle exercises recvmmsg drain + sendmmsg
+# batching + GSO send. --udp-gso is a no-op without --udp-sendmmsg
+# (udp_sendmmsg_batch_begin early-returns when sendmmsg is off), so the
+# three flags travel together. Stays off on non-Linux because the kernel
+# APIs aren't available.
 TURNSERVER_EXTRA_ARGS=""
 if [ "$(uname -s)" = "Linux" ]; then
-    TURNSERVER_EXTRA_ARGS="--udp-recvmmsg --udp-gso"
+    TURNSERVER_EXTRA_ARGS="--udp-recvmmsg --udp-sendmmsg --udp-gso"
     echo "Using TURNSERVER_EXTRA_ARGS=\"$TURNSERVER_EXTRA_ARGS\""
 fi
 
