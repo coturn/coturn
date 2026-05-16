@@ -76,6 +76,9 @@ extern "C" {
 #define BUFFEREVENT_MAX_UDP_TO_TCP_WRITE (64 << 9)
 #define BUFFEREVENT_MAX_TCP_TO_TCP_WRITE (192 << 10)
 
+typedef unsigned char recv_ttl_t;
+typedef unsigned char recv_tos_t;
+
 typedef struct _stun_buffer_list_elem {
   struct _stun_buffer_list_elem *next;
   stun_buffer buf;
@@ -291,7 +294,7 @@ void ioa_init_recvmmsg_hdr(struct mmsghdr *msg, struct iovec *iov, ioa_addr *src
 #endif
 
 #if !defined(_MSC_VER) && defined(CMSG_SPACE)
-void ioa_parse_udp_recvmsg_cmsg(struct msghdr *msg, int *ttl, int *tos, uint32_t *errcode);
+void ioa_parse_udp_recvmsg_cmsg(struct msghdr *msg, recv_ttl_t *ttl, recv_tos_t *tos, uint32_t *errcode);
 #endif
 
 #if defined(__linux__)

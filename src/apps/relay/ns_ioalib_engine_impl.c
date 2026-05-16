@@ -428,9 +428,7 @@ static void free_blist_elem(ioa_engine_handle e, stun_buffer_list_elem *buf_elem
 }
 
 #if !defined(_MSC_VER) && defined(CMSG_SPACE)
-void ioa_parse_udp_recvmsg_cmsg(struct msghdr *msg, int *ttl, int *tos, uint32_t *errcode) {
-  typedef unsigned char recv_ttl_t;
-  typedef unsigned char recv_tos_t;
+void ioa_parse_udp_recvmsg_cmsg(struct msghdr *msg, recv_ttl_t *ttl, recv_tos_t *tos, uint32_t *errcode) {
 
   recv_ttl_t recv_ttl = TTL_DEFAULT;
   recv_tos_t recv_tos = TOS_DEFAULT;
@@ -2235,9 +2233,6 @@ static int socket_readerr(evutil_socket_t fd, ioa_addr *orig_addr) {
   return 0;
 }
 
-typedef unsigned char recv_ttl_t;
-typedef unsigned char recv_tos_t;
-
 int udp_recvfrom(evutil_socket_t fd, ioa_addr *orig_addr, const ioa_addr *like_addr, char *buffer, int buf_size,
                  int *ttl, int *tos, char *ecmsg, int flags, uint32_t *errcode) {
   int len = 0;
@@ -2309,7 +2304,7 @@ try_again:
 #endif
 
   if (len >= 0) {
-    ioa_parse_udp_recvmsg_cmsg(&msg, (int *)&recv_ttl, (int *)&recv_tos, errcode);
+    ioa_parse_udp_recvmsg_cmsg(&msg, &recv_ttl, &recv_tos, errcode);
   }
 
 #endif
