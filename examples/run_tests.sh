@@ -37,7 +37,7 @@ fi
 
 echo 'Running turnserver'
 if [ $IS_DARWIN -eq 1 ]; then
-    $BINDIR/turnserver --use-auth-secret --sock-buf-size=1048576 --static-auth-secret=secret --realm=north.gov --allow-loopback-peers --cert ../examples/ca/turn_server_cert.pem --pkey ../examples/ca/turn_server_pkey.pem > "$TURNSERVER_LOG" 2>&1 &
+    $BINDIR/turnserver --use-auth-secret --sock-buf-size=1048576 --static-auth-secret=secret --realm=north.gov --allow-loopback-peers --cert ../examples/ca/turn_server_cert.pem --pkey ../examples/ca/turn_server_pkey.pem > /dev/null &
 else
     # --log-file=stdout forces turnserver's per-line log into our redirected
     # stdout so $TURNSERVER_LOG actually gets populated. Without it,
@@ -50,7 +50,11 @@ fi
 turnserver_pid="$!"
 
 echo 'Running peer client'
-$BINDIR/turnutils_peer -L 127.0.0.1 -L ::1 -L 0.0.0.0 > "$PEER_LOG" 2>&1 &
+if [ $IS_DARWIN -eq 1 ]; then
+    $BINDIR/turnutils_peer -L 127.0.0.1 -L ::1 -L 0.0.0.0 > /dev/null &
+else
+    $BINDIR/turnutils_peer -L 127.0.0.1 -L ::1 -L 0.0.0.0 > "$PEER_LOG" 2>&1 &
+fi
 peer_pid="$!"
 
 # Wait for OUR turnserver instance to finish coming up before running any

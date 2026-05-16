@@ -51,10 +51,18 @@ if [ $IS_DARWIN -eq 0 ]; then
 fi
 
 echo 'Running turnserver'
-$BINDIR/turnserver -c $BINDIR/turnserver.conf > "$TURNSERVER_LOG" 2>&1 &
+if [ $IS_DARWIN -eq 1 ]; then
+    $BINDIR/turnserver -c $BINDIR/turnserver.conf > /dev/null &
+else
+    $BINDIR/turnserver -c $BINDIR/turnserver.conf > "$TURNSERVER_LOG" 2>&1 &
+fi
 turnserver_pid="$!"
 echo 'Running peer client'
-$BINDIR/turnutils_peer -L 127.0.0.1 -L ::1 -L 0.0.0.0 > "$PEER_LOG" 2>&1 &
+if [ $IS_DARWIN -eq 1 ]; then
+    $BINDIR/turnutils_peer -L 127.0.0.1 -L ::1 -L 0.0.0.0 > /dev/null &
+else
+    $BINDIR/turnutils_peer -L 127.0.0.1 -L ::1 -L 0.0.0.0 > "$PEER_LOG" 2>&1 &
+fi
 peer_pid="$!"
 
 # Wait for OUR turnserver instance to finish init -- see run_tests.sh
