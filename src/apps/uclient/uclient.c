@@ -2571,6 +2571,12 @@ static void timer_handler(evutil_socket_t fd, short event, void *arg) {
       return;
     }
     int done = 0;
+    /* Mirror the sender-pool path: open the per-tick send batch so each
+     * session's burst coalesces into a single UDP-GSO sendmsg (or one
+     * sendmmsg when GSO is unavailable). Without this the legacy path
+     * silently bypasses uclient_tx_enqueue and every send falls through
+     * to plain send(2). */
+    uclient_send_batch_begin();
     for (int i = 0; i < total_clients; ++i) {
       if (elems[i]) {
         int finished = client_timer_handler(elems[i], &done);
@@ -2579,6 +2585,7 @@ static void timer_handler(evutil_socket_t fd, short event, void *arg) {
         }
       }
     }
+    uclient_send_batch_end();
     if (done > 5 && (dos || random_disconnect)) {
       for (int i = 0; i < total_clients; ++i) {
         if (elems[i]) {
