@@ -125,6 +125,7 @@ extern bool hang_on;
 extern bool c2c;
 extern ioa_addr peer_addr;
 extern bool no_rtcp;
+extern bool no_even_port;
 extern int default_address_family;
 extern bool dont_fragment;
 extern uint8_t g_uname[STUN_MAX_USERNAME_SIZE + 1];
