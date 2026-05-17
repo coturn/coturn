@@ -1267,8 +1267,11 @@ static void mp_relay_input_handler(ioa_socket_handle s, int event_type, ioa_net_
 }
 
 /*
- * Open a single UDP socket bound to relay_addr:port, set SO_REUSEPORT,
- * register mp_relay_input_handler, and store the handle in *sock_out.
+ * Open a single UDP socket bound to relay_addr:port, optionally set
+ * SO_REUSEPORT, register mp_relay_input_handler, and store the handle in
+ * *sock_out. The REUSEPORT call is defensive (per-thread base+2i ports are
+ * already unique, so no two threads ever try to share); skipping it on
+ * platforms that don't define SO_REUSEPORT (Windows) is harmless.
  */
 static int mp_open_socket(ioa_engine_handle e, const char *relay_addr, int af, uint16_t port,
                           ioa_socket_handle *sock_out) {
@@ -1284,8 +1287,10 @@ static int mp_open_socket(ioa_engine_handle e, const char *relay_addr, int af, u
     return -1;
   }
 
+#if defined(SO_REUSEPORT)
   int opt = 1;
   setsockopt(s->fd, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt));
+#endif
 
   if (bind_ioa_socket(s, &addr, /*is_tcp=*/0) < 0) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "multiplex-peer: bind() failed for %s:%u\n", relay_addr, (unsigned)port);
