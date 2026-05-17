@@ -405,38 +405,6 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server, struct mes
   const int verbose = ioa_eng->verbose;
   ioa_socket_handle s = sm->m.sm.s;
 
-  /*
-   * Multiplex-client fast path (plain UDP only). DTLS handshakes and any
-   * DTLS-bearing session are not registered in cs_table, so they fall
-   * through to the existing children_ss path automatically.
-   */
-  if (turn_params.multiplex_client && ioa_eng->mc_enabled && packet_type != UDP_PACKET_CLASS_DTLS_HANDSHAKE) {
-    ts_ur_super_session *ss = mc_lookup_session(ioa_eng, &(sm->m.sm.nd.src_addr));
-    if (ss && !ss->to_be_closed) {
-      ioa_socket_handle ms = ss->client_socket;
-      if (ms && !ioa_socket_tobeclosed(ms) && (ms->magic == SOCKET_MAGIC) && !ms->ssl) {
-        if (ioa_socket_check_bandwidth(ms, sm->m.sm.nd.nbh, 1)) {
-          ms->e = ioa_eng;
-          if (ms->read_cb && sm->m.sm.nd.nbh) {
-            ms->read_cb(ms, IOA_EV_READ, &(sm->m.sm.nd), ms->read_ctx, 1);
-            ioa_network_buffer_delete(ioa_eng, sm->m.sm.nd.nbh);
-            sm->m.sm.nd.nbh = NULL;
-
-            if (ioa_socket_tobeclosed(ms)) {
-              turn_turnserver *srv = (turn_turnserver *)ss->server;
-              if (srv) {
-                shutdown_client_connection(srv, ss, 0, "UDP packet processing error");
-              }
-            }
-          }
-        }
-        return 0;
-      }
-      /* fall through if the cached client_socket is unusable */
-    }
-    /* miss: fall through to existing children_ss path */
-  }
-
   ur_addr_map_value_type mvt = 0;
   if (!(server->children_ss)) {
     server->children_ss = (ur_addr_map *)allocate_super_memory_engine(server->e, sizeof(ur_addr_map));
@@ -579,19 +547,6 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server, struct mes
       add_socket_to_map(s, amap);
       if (open_client_connection_session(ts, &(sm->m.sm)) < 0) {
         return -1;
-      }
-      /*
-       * Multiplex-client: register the new session in cs_table so that
-       * subsequent datagrams from this client 5-tuple can take the fast
-       * direct-dispatch path. Plain-UDP only — DTLS handshake packets are
-       * never registered here (they take the DTLS BIO path above).
-       */
-      if (turn_params.multiplex_client && ioa_eng->mc_enabled && !s->ssl &&
-          packet_type != UDP_PACKET_CLASS_DTLS_HANDSHAKE && packet_type != UDP_PACKET_CLASS_DTLS_OTHER) {
-        ts_ur_super_session *ss = (ts_ur_super_session *)s->session;
-        if (ss) {
-          mc_register_client(ioa_eng, &(sm->m.sm.nd.src_addr), ss);
-        }
       }
     }
   }

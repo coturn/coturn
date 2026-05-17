@@ -42,16 +42,13 @@ cd examples
 ./run_tests.sh                  # default protocols, both legacy and
                                 # threaded uclient (--listener-threads /
                                 # --sender-threads). On Linux it also
-                                # exercises the server's UDP fast paths
-                                # and the -Y packet load-gen smoke that
-                                # checks non-zero send_pps + recv_pps.
-                                # NOTE: the script currently passes
-                                # --udp-sendmmsg, which was folded into
-                                # --multiplex-* on master — fix the
-                                # script before running on Linux.
+                                # enables --udp-recvmmsg on the server
+                                # and runs a -Y packet load-gen smoke
+                                # that checks non-zero send_pps +
+                                # recv_pps. GSO/multiplex live in
+                                # run_tests_multiplex_peer.sh.
 ./run_tests_conf.sh             # same protocols, conf-file driven;
-                                # mirrors run_tests.sh via config keys
-                                # (same --udp-sendmmsg caveat).
+                                # mirrors run_tests.sh via config keys.
 ./run_tests_multiplex_peer.sh   # exercises --multiplex-peer with shared
                                 # per-thread relay sockets (UDP/TCP/TLS/
                                 # DTLS) on the small port range opened by
@@ -180,14 +177,14 @@ environment variable such as `DIGITALOCEAN_TOKEN`.
   through the OpenSSL read path.
 - `--udp-gso` — Linux UDP-GSO (`UDP_SEGMENT` cmsg) when a sendmmsg
   batch shares destination and segment size. **Requires
-  `--multiplex-client` or `--multiplex-peer`** — those modes are what
-  enables the sendmmsg batching that GSO piggybacks on; passing
-  `--udp-gso` alone is a silent no-op.
-- `--multiplex-client` / `--multiplex-peer` — replace the per-session
-  port bind with a per-thread shared socket. Implies sendmmsg batching
-  on Linux and default-enables `--udp-recvmmsg` (override with an
-  explicit `--udp-recvmmsg=0`). Multiplex-peer port layout: thread `i`
-  binds `--multiplex-peer-port + 2*i` (IPv4) and `+1` (IPv6); a 4-thread
+  `--multiplex-peer`** — that mode is what enables the sendmmsg
+  batching GSO piggybacks on; passing `--udp-gso` alone is a silent
+  no-op.
+- `--multiplex-peer` — replace the per-allocation relay-port bind with
+  a per-thread shared IPv4+IPv6 relay socket pair. Implies sendmmsg
+  batching on Linux and default-enables `--udp-recvmmsg` (override
+  with an explicit `--udp-recvmmsg=0`). Port layout: thread `i` binds
+  `--multiplex-peer-port + 2*i` (IPv4) and `+1` (IPv6); a 4-thread
   server with default base 3480 uses 3480–3487. See
   [docs/multiplex-peer.md](docs/multiplex-peer.md) for the design.
 - `--udp-recvmmsg-log` — emit `udp-recvmmsg stats` every 10 s; useful

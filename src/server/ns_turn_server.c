@@ -4263,10 +4263,6 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
         }
       }
     }
-    /* Multiplex-client: drop the cs_table entry for this client 5-tuple
-     * before the client_socket handle is destroyed so the listener fast
-     * path cannot dispatch into freed memory. */
-    mc_deregister_session(server->e, ss);
     IOA_CLOSE_SOCKET(ss->client_socket);
     int i;
     for (i = 0; i < ALLOC_PROTOCOLS_NUMBER; ++i) {

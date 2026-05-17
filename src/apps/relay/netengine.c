@@ -1332,10 +1332,6 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
                     (int)rs->id);
     }
   }
-
-  if (turn_params.multiplex_client) {
-    init_multiplex_client(rs->ioa_eng);
-  }
 }
 
 static void *run_general_relay_thread(void *arg) {

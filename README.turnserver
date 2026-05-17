@@ -301,25 +301,16 @@ Flags:
 --drop-invalid-packets-log	Log invalid packets. The default behaviour is to not log invalid packets.
 
 --udp-recvmmsg		Enable Linux-only batched UDP receive via recvmmsg() on UDP sockets.
-			Auto-enabled when --multiplex-client or --multiplex-peer is set;
-			pass --udp-recvmmsg=0 to override.
+			Auto-enabled when --multiplex-peer is set; pass --udp-recvmmsg=0
+			to override.
 
 --udp-recvmmsg-log	Log Linux recvmmsg batch occupancy stats every 10 seconds.
 
 --udp-gso		Enable Linux UDP-GSO (UDP_SEGMENT cmsg) on the relay send path.
 			When a sendmmsg batch shares destination and segment size, one
 			network-stack traversal carries N datagrams. Requires
-			--multiplex-client or --multiplex-peer (which is what enables
-			the sendmmsg batching GSO piggybacks on); passing --udp-gso
-			alone is a silent no-op.
-
---multiplex-client	Enable client-side multiplexing fast path for plain UDP
-			(non-standard, optional). Each relay thread owns one shared
-			UDP socket for its client sessions; incoming datagrams are
-			demultiplexed by exact client IP:port lookup. DTLS, TCP, and
-			TLS client paths are unaffected. Implies sendmmsg batching on
-			Linux and default-enables --udp-recvmmsg (explicit
-			--udp-recvmmsg=0 is honoured).
+			--multiplex-peer (which is what enables the sendmmsg batching
+			GSO piggybacks on); passing --udp-gso alone is a silent no-op.
 
 --multiplex-peer	Enable peer-side multiplexing relay mode (non-standard,
 			optional). Replaces the per-allocation relay-port bind with a

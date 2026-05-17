@@ -183,9 +183,6 @@ struct _ioa_engine {
   uint16_t mp_port_v4;
   uint16_t mp_port_v6;
   ur_addr_map mp_table; /* peer_addr:port -> ts_ur_super_session*; O(1) get/put/del */
-  /* multiplex-client (zero-initialised = disabled) */
-  int mc_enabled;
-  ur_addr_map cs_table; /* client_addr:port -> ts_ur_super_session*; O(1) get/put/del */
 };
 
 #define SOCKET_MAGIC (0xABACADEF)
@@ -272,14 +269,6 @@ void mp_deregister_permission_peers(ioa_engine_handle e, const ioa_addr *peer_ad
 void mp_deregister_session_peers(ioa_engine_handle e, void *turn_session, int address_family);
 ioa_socket_handle mp_get_socket(ioa_engine_handle e, int af);
 uint16_t mp_get_port(ioa_engine_handle e, int af);
-
-/* multiplex-client */
-
-int init_multiplex_client(ioa_engine_handle e);
-int mc_register_client(ioa_engine_handle e, const ioa_addr *client_addr, void *turn_session);
-void mc_deregister_client(ioa_engine_handle e, const ioa_addr *client_addr, void *turn_session);
-void mc_deregister_session(ioa_engine_handle e, void *turn_session);
-ts_ur_super_session *mc_lookup_session(ioa_engine_handle e, const ioa_addr *client_addr);
 
 /* engine handling */
 

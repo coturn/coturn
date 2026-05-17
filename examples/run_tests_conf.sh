@@ -41,15 +41,15 @@ if [ $IS_DARWIN -eq 0 ]; then
     # the FAIL diagnostics useless. simple-log keeps the format compact.
     echo "log-file=stdout" >> $BINDIR/turnserver.conf
     echo "simple-log" >> $BINDIR/turnserver.conf
-    # Server-side fast paths: enable on Linux so the conf-driven test cycle
-    # also exercises recvmmsg drain + sendmmsg batching + UDP-GSO send.
-    # These keys map 1:1 to the --udp-recvmmsg / --udp-sendmmsg / --udp-gso
-    # CLI flags (see mainrelay.c long_options). udp-gso is a no-op without
-    # udp-sendmmsg, so the three keys travel together.
+    # Server-side fast paths: enable on Linux so the conf-driven test
+    # cycle also exercises the recvmmsg drain path. The udp-gso path
+    # lives behind multiplex-peer (that mode is what enables sendmmsg
+    # batching, which GSO piggybacks on); exercising GSO would flip the
+    # server into multiplex-peer mode and change the relay-port model
+    # the protocol tests below assume. run_tests_multiplex_peer.sh
+    # covers the multiplex path.
     if [ "$(uname -s)" = "Linux" ]; then
         echo "udp-recvmmsg" >> $BINDIR/turnserver.conf
-        echo "udp-sendmmsg" >> $BINDIR/turnserver.conf
-        echo "udp-gso" >> $BINDIR/turnserver.conf
     fi
 fi
 
