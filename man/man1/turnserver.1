@@ -527,28 +527,30 @@ GSO piggybacks on); passing \-\-udp\-gso alone is a silent no\-op.
 .TP
 .B
 \fB\-\-multiplex\-peer\fP
-Enable peer\-side multiplexing relay mode (non\-standard,
-optional). Replaces the per\-allocation relay\-port bind with a
+Linux only. Enable peer\-side multiplexing relay mode
+(non\-standard, optional). Replaces the per\-allocation
 .RE
-pair of shared UDP sockets per relay thread (one IPv4, one
-IPv6) covering all TURN sessions on that thread; sessions are
-demultiplexed by exact peer IP:port lookup. Lifts the
-~16 k allocation cap imposed by the relay port range and
-cuts kernel\-side UDP rcvbuf drops dramatically. Implies
-sendmmsg batching on Linux and default\-enables \-\-udp\-recvmmsg
-(explicit \-\-udp\-recvmmsg=0 is honoured). Note: EVEN\-PORT
-allocate requests are rejected with 400 in this mode; clients
-that need EVEN\-PORT must use the legacy path. See
-docs/multiplex\-peer.md for design and trade\-offs.
+relay\-port bind with a pair of shared UDP sockets per relay
+thread (one IPv4, one IPv6) covering all TURN sessions on
+that thread; sessions are demultiplexed by exact peer
+IP:port lookup. Lifts the ~16 k allocation cap imposed by
+the relay port range and cuts kernel\-side UDP rcvbuf drops
+dramatically. Implies sendmmsg batching and default\-enables
+\-\-udp\-recvmmsg (explicit \-\-udp\-recvmmsg=0 is honoured).
+Note: EVEN\-PORT allocate requests are rejected with 400 in
+this mode; clients that need EVEN\-PORT must use the legacy
+path. See docs/multiplex\-peer.md for design and trade\-offs.
 
 .RS
 .TP
 .B
 \fB\-\-multiplex\-peer\-port\fP <port>
-Base UDP port for multiplex\-peer relay sockets
-(default: 3480). Thread i binds <base>+2i (IPv4) and <base>+2i+1
+Linux only. Base UDP port for multiplex\-peer relay sockets
+(default: 3480, valid range 1\-65000). Thread i binds
 .RE
-(IPv6); a 4\-thread server consumes ports <base>..<base>+7.
+<base>+2i (IPv4) and <base>+2i+1 (IPv6); a 4\-thread server
+consumes ports <base>..<base>+7. Total ports consumed =
+relay_threads * 2.
 
 .RS
 .TP
