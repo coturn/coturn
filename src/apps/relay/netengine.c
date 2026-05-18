@@ -1321,6 +1321,7 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
 
   setup_tcp_listener_servers(rs->ioa_eng, rs);
 
+#if defined(__linux__)
   if (turn_params.multiplex_peer) {
     const uint16_t base = turn_params.multiplex_peer_base_port ? turn_params.multiplex_peer_base_port : 3480;
     if (init_multiplex_peer(rs->ioa_eng, (int)rs->id, base) == 0) {
@@ -1332,6 +1333,7 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
                     (int)rs->id);
     }
   }
+#endif
 }
 
 static void *run_general_relay_thread(void *arg) {
@@ -1516,6 +1518,7 @@ void setup_server(void) {
 
 #endif
 
+#if defined(__linux__)
   if (turn_params.multiplex_peer) {
     const uint16_t base = turn_params.multiplex_peer_base_port ? turn_params.multiplex_peer_base_port : 3480;
     const uint32_t n = (uint32_t)get_real_general_relay_servers_number();
@@ -1530,6 +1533,7 @@ void setup_server(void) {
       exit(1);
     }
   }
+#endif
 
   setup_listener();
   allocate_relay_addrs_ports();
