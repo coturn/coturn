@@ -1364,8 +1364,7 @@ static char Usage[] =
     "connections made to ports not\n"
     "						supporting HTTP. The default behaviour is to immediately "
     "close the connection.\n"
-    " --drop-invalid-packets			   Drop invalid packets early. The default behaviour is to accept all "
-    "packets.\n"
+    " --drop-invalid-packets			   Drop invalid packets early. Enabled by default.\n"
     " --drop-invalid-packets-log			   Log invalid packets. The default behaviour is to not log "
     "invalid packets.\n"
 #if defined(__linux__)
