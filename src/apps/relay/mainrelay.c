@@ -240,11 +240,15 @@ turn_params_t turn_params = {
     false, /* respond_http_unsupported */
     true,  /* drop_invalid_packets */
     false, /* drop_invalid_packets_log */
+#if defined(__linux__)
     false, /* udp_recvmmsg */
     false, /* udp_recvmmsg_log */
-    false, /* udp_sendmmsg */
+    false, /* udp_sendmmsg (derived from multiplex_peer) */
     false, /* udp_gso */
-    false  /* include_reason_string */
+#endif
+    false, /* include_reason_string */
+    false, /* multiplex_peer */
+    0      /* multiplex_peer_base_port */
 };
 
 //////////////// OpenSSL Init //////////////////////
@@ -1363,13 +1367,27 @@ static char Usage[] =
     " --drop-invalid-packets			   Drop invalid packets early. Enabled by default.\n"
     " --drop-invalid-packets-log			   Log invalid packets. The default behaviour is to not log "
     "invalid packets.\n"
+#if defined(__linux__)
     " --udp-recvmmsg				   Enable Linux-only batched UDP receive via recvmmsg() on UDP "
     "sockets.\n"
     " --udp-recvmmsg-log			   Log Linux recvmmsg batch occupancy stats every 10 seconds.\n"
-    " --udp-sendmmsg				   Enable Linux-only batched UDP send via sendmmsg() while processing "
-    "UDP input batches.\n"
     " --udp-gso				   Enable Linux UDP-GSO (UDP_SEGMENT cmsg) when a sendmmsg batch shares "
-    "destination and size; collapses N datagrams into one network-stack traversal. Requires --udp-sendmmsg.\n"
+    "destination and size; collapses N datagrams into one network-stack traversal. Requires "
+    "--multiplex-peer (which enables sendmmsg batching).\n"
+#endif
+    " --multiplex-peer\n"
+    "        Enable peer-side multiplexing relay mode (non-standard, optional).\n"
+    "        Each relay thread opens one UDP socket pair (IPv4+IPv6) shared\n"
+    "        across all TURN sessions on that thread. Sessions are demultiplexed\n"
+    "        by exact peer IP:port lookup. Port layout (B=--multiplex-peer-port):\n"
+    "          thread 0: IPv4=B+0, IPv6=B+1\n"
+    "          thread 1: IPv4=B+2, IPv6=B+3  ...\n"
+    "        Eliminates port-range exhaustion. Incompatible with EVEN-PORT.\n"
+    "        Implies sendmmsg batching on Linux, and default-enables --udp-recvmmsg\n"
+    "        unless explicitly disabled (an explicit --udp-recvmmsg=0 is honoured).\n"
+    " --multiplex-peer-port <port>\n"
+    "        Base UDP port for multiplex-peer relay sockets. Default: 3480.\n"
+    "        Total ports consumed = relay_threads * 2.\n"
     " --include-reason-string			   Include descriptive reason strings in STUN/TURN error responses.\n"
     "						   By default, only the standard reason phrase for the error code is\n"
     "						   sent. Enabling this option adds detailed error descriptions which\n"
@@ -1535,13 +1553,16 @@ enum EXTRA_OPTS {
   RESPOND_HTTP_UNSUPPORTED_OPT,
   DROP_INVALID_PACKETS_OPT,
   DROP_INVALID_PACKETS_LOG_OPT,
+#if defined(__linux__)
   UDP_RECVMMSG_OPT,
   UDP_RECVMMSG_LOG_OPT,
-  UDP_SENDMMSG_OPT,
   UDP_GSO_OPT,
+#endif
   VERSION_OPT,
   CPUS_OPT,
-  INCLUDE_REASON_STRING_OPT
+  INCLUDE_REASON_STRING_OPT,
+  OPT_MULTIPLEX_PEER = 800,
+  OPT_MULTIPLEX_PEER_PORT = 801
 };
 
 struct myoption {
@@ -1688,11 +1709,14 @@ static const struct myoption long_options[] = {
     {"respond-http-unsupported", optional_argument, NULL, RESPOND_HTTP_UNSUPPORTED_OPT},
     {"drop-invalid-packets", optional_argument, NULL, DROP_INVALID_PACKETS_OPT},
     {"drop-invalid-packets-log", optional_argument, NULL, DROP_INVALID_PACKETS_LOG_OPT},
+#if defined(__linux__)
     {"udp-recvmmsg", optional_argument, NULL, UDP_RECVMMSG_OPT},
     {"udp-recvmmsg-log", optional_argument, NULL, UDP_RECVMMSG_LOG_OPT},
-    {"udp-sendmmsg", optional_argument, NULL, UDP_SENDMMSG_OPT},
     {"udp-gso", optional_argument, NULL, UDP_GSO_OPT},
+#endif
     {"include-reason-string", optional_argument, NULL, INCLUDE_REASON_STRING_OPT},
+    {"multiplex-peer", no_argument, NULL, OPT_MULTIPLEX_PEER},
+    {"multiplex-peer-port", required_argument, NULL, OPT_MULTIPLEX_PEER_PORT},
     {"version", optional_argument, NULL, VERSION_OPT},
     {"syslog-facility", required_argument, NULL, SYSLOG_FACILITY_OPT},
     {"cpus", required_argument, NULL, CPUS_OPT},
@@ -1964,6 +1988,14 @@ static int get_bool_value(const char *s) {
   TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown boolean value: %s. You can use on/off, yes/no, 1/0, true/false.\n", s);
   exit(-1);
 }
+
+#if defined(__linux__)
+/* Tracks whether --udp-recvmmsg was set via CLI or config. Lets
+ * --multiplex-peer default-enable recvmmsg only when the user has not
+ * made an explicit choice. Linux-only because the flag itself is
+ * Linux-only. */
+static bool udp_recvmmsg_set_explicitly = false;
+#endif
 
 static void set_option(int c, char *value) {
   if (value && value[0] == '=') {
@@ -2487,18 +2519,31 @@ static void set_option(int c, char *value) {
   case DROP_INVALID_PACKETS_LOG_OPT:
     turn_params.drop_invalid_packets_log = get_bool_value(value);
     break;
+#if defined(__linux__)
   case UDP_RECVMMSG_OPT:
     turn_params.udp_recvmmsg = get_bool_value(value);
+    udp_recvmmsg_set_explicitly = true;
     break;
   case UDP_RECVMMSG_LOG_OPT:
     turn_params.udp_recvmmsg_log = get_bool_value(value);
     break;
-  case UDP_SENDMMSG_OPT:
-    turn_params.udp_sendmmsg = get_bool_value(value);
-    break;
   case UDP_GSO_OPT:
     turn_params.udp_gso = get_bool_value(value);
     break;
+#endif
+  case OPT_MULTIPLEX_PEER:
+    turn_params.multiplex_peer = true;
+    break;
+  case OPT_MULTIPLEX_PEER_PORT: {
+    const long parsed_port = strtol(value, NULL, 10);
+    if (parsed_port <= 0 || parsed_port > 65000) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "--multiplex-peer-port must be 1-65000\n");
+      exit(1);
+    }
+    const uint16_t p = (uint16_t)parsed_port;
+    turn_params.multiplex_peer_base_port = p;
+    break;
+  }
   case INCLUDE_REASON_STRING_OPT:
     turn_params.include_reason_string = get_bool_value(value);
     break;
@@ -3212,6 +3257,23 @@ int main(int argc, char **argv) {
       set_option(c, optarg);
     }
   }
+
+#if defined(__linux__)
+  /* --multiplex-peer only realises its sendmmsg-batching benefit when the
+   * recvmmsg drain wraps a begin/end window. Default-enable --udp-recvmmsg
+   * whenever multiplex-peer is set and the user has not made an explicit
+   * choice. An explicit --udp-recvmmsg=0 is honoured. Linux-only because
+   * the recvmmsg/sendmmsg fast paths are Linux-only — on other platforms
+   * multiplex-peer falls back to per-send sendmsg. */
+  if (turn_params.multiplex_peer && !udp_recvmmsg_set_explicitly) {
+    turn_params.udp_recvmmsg = true;
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "auto-enabling --udp-recvmmsg (required for multiplex-peer batching)\n");
+  }
+
+  /* udp_sendmmsg is not a user-visible CLI flag; it is derived from the
+   * modes that benefit from batched UDP sends. */
+  turn_params.udp_sendmmsg = turn_params.multiplex_peer;
+#endif
 
   if (turn_params.bps_capacity && !(turn_params.max_bps)) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,

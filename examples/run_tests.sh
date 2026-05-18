@@ -27,14 +27,18 @@ if [ "$(uname -s)" = "Darwin" ]; then
 fi
 
 # Server-side fast paths that we ship as Linux-only: enable them in the
-# default test run so every CI cycle exercises recvmmsg drain + sendmmsg
-# batching + GSO send. --udp-gso is a no-op without --udp-sendmmsg
-# (udp_sendmmsg_batch_begin early-returns when sendmmsg is off), so the
-# three flags travel together. Stays off on non-Linux because the kernel
-# APIs aren't available.
+# default test run so every CI cycle exercises the recvmmsg drain path.
+# Stays off on non-Linux because the kernel APIs aren't available.
+#
+# Note: --udp-gso lives behind --multiplex-peer (that mode is what
+# enables the sendmmsg batching GSO piggybacks on); driving GSO from
+# this script would require flipping the server into multiplex-peer
+# mode, which changes the relay-port model in ways the protocol tests
+# below assume. run_tests_multiplex_peer.sh exercises the multiplex
+# path explicitly — leave GSO to that script.
 TURNSERVER_EXTRA_ARGS=""
 if [ "$(uname -s)" = "Linux" ]; then
-    TURNSERVER_EXTRA_ARGS="--udp-recvmmsg --udp-sendmmsg --udp-gso"
+    TURNSERVER_EXTRA_ARGS="--udp-recvmmsg"
     echo "Using TURNSERVER_EXTRA_ARGS=\"$TURNSERVER_EXTRA_ARGS\""
 fi
 

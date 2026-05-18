@@ -200,6 +200,10 @@ struct _ur_addr_map {
 typedef struct _ur_addr_map ur_addr_map;
 
 typedef void (*ur_addr_map_func)(ur_addr_map_value_type);
+/* Return false from the callback to stop iteration early */
+typedef bool (*ur_addr_map_func_arg)(ur_addr_map_value_type value, void *arg);
+/* Return false from the callback to stop iteration early */
+typedef bool (*ur_addr_map_key_func_arg)(const ioa_addr *key, ur_addr_map_value_type value, void *arg);
 
 void ur_addr_map_init(ur_addr_map *map);
 void ur_addr_map_clean(ur_addr_map *map);
@@ -227,6 +231,8 @@ bool ur_addr_map_get(const ur_addr_map *map, ioa_addr *key, ur_addr_map_value_ty
 bool ur_addr_map_del(ur_addr_map *map, ioa_addr *key, ur_addr_map_func func);
 
 void ur_addr_map_foreach(ur_addr_map *map, ur_addr_map_func func);
+bool ur_addr_map_foreach_arg(ur_addr_map *map, ur_addr_map_func_arg func, void *arg);
+bool ur_addr_map_foreach_key_arg(ur_addr_map *map, ur_addr_map_key_func_arg func, void *arg);
 
 size_t ur_addr_map_num_elements(const ur_addr_map *map);
 size_t ur_addr_map_size(const ur_addr_map *map);

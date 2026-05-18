@@ -1320,6 +1320,20 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
   }
 
   setup_tcp_listener_servers(rs->ioa_eng, rs);
+
+#if defined(__linux__)
+  if (turn_params.multiplex_peer) {
+    const uint16_t base = turn_params.multiplex_peer_base_port ? turn_params.multiplex_peer_base_port : 3480;
+    if (init_multiplex_peer(rs->ioa_eng, (int)rs->id, base) == 0) {
+      rs->server.multiplex_peer_mode = true;
+    } else {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
+                    "multiplex-peer init failed for thread %d – "
+                    "this thread will use normal port allocation\n",
+                    (int)rs->id);
+    }
+  }
+#endif
 }
 
 static void *run_general_relay_thread(void *arg) {
@@ -1502,6 +1516,23 @@ void setup_server(void) {
   /* udp address listener thread(s) will start later */
   barrier_count = turn_params.general_relay_servers_number + authserver_number + 1 + 1;
 
+#endif
+
+#if defined(__linux__)
+  if (turn_params.multiplex_peer) {
+    const uint16_t base = turn_params.multiplex_peer_base_port ? turn_params.multiplex_peer_base_port : 3480;
+    const uint32_t n = (uint32_t)get_real_general_relay_servers_number();
+    const uint32_t top = (uint32_t)base + n * 2u - 1u;
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "multiplex-peer: %u thread(s), port range %u-%u (IPv4+IPv6 per thread)\n",
+                  (unsigned)n, (unsigned)base, (unsigned)top);
+    if (top > 65535) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+                    "multiplex-peer: port range %u-%u exceeds 65535. "
+                    "Reduce relay-threads or lower --multiplex-peer-port.\n",
+                    (unsigned)base, (unsigned)top);
+      exit(1);
+    }
+  }
 #endif
 
   setup_listener();
