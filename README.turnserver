@@ -296,7 +296,7 @@ Flags:
 			main ORIGIN attribute value (if the ORIGIN was
 			initially used by the session).
 
---drop-invalid-packets	Drop invalid packets early. The default behaviour is to accept all packets.
+--drop-invalid-packets	Drop invalid packets early. Enabled by default.
 
 --drop-invalid-packets-log	Log invalid packets. The default behaviour is to not log invalid packets.
 
@@ -669,9 +669,6 @@ Options with values:
                     Strongly encouraged to use this option to decrease gain factor in STUN binding responses.
 
 --no-rfc5780	DEPRECATED and now the default behaviour. See --rfc5780.
-
---response-origin-only-with-rfc5780	Only send the RESPONSE-ORIGIN attribute in the
-			binding response when --rfc5780 (NAT behavior discovery) is enabled.
 
 --stun-backward-compatibility		Enable handling old STUN Binding requests using MAPPED-ADDRESS attribute in binding response (instead of XOR-MAPPED-ADDRESS).
 
