@@ -365,10 +365,11 @@ typedef struct _turn_params_ {
   bool udp_recvmmsg_log;
   bool udp_sendmmsg; /* derived: multiplex_peer; not user-settable */
   bool udp_gso;
-  bool multiplex_peer;               /* --multiplex-peer flag */
-  uint16_t multiplex_peer_base_port; /* --multiplex-peer-port (default 3480) */
 #endif
   bool include_reason_string;
+
+  bool multiplex_peer;               /* --multiplex-peer flag */
+  uint16_t multiplex_peer_base_port; /* --multiplex-peer-port (default 3480) */
 } turn_params_t;
 
 extern turn_params_t turn_params;

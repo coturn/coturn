@@ -245,10 +245,10 @@ turn_params_t turn_params = {
     false, /* udp_recvmmsg_log */
     false, /* udp_sendmmsg (derived from multiplex_peer) */
     false, /* udp_gso */
-    false, /* multiplex_peer */
-    0,     /* multiplex_peer_base_port */
 #endif
-    false /* include_reason_string */
+    false, /* include_reason_string */
+    false, /* multiplex_peer */
+    0      /* multiplex_peer_base_port */
 };
 
 //////////////// OpenSSL Init //////////////////////
@@ -1375,6 +1375,7 @@ static char Usage[] =
     " --udp-gso				   Enable Linux UDP-GSO (UDP_SEGMENT cmsg) when a sendmmsg batch shares "
     "destination and size; collapses N datagrams into one network-stack traversal. Requires "
     "--multiplex-peer (which enables sendmmsg batching).\n"
+#endif
     " --multiplex-peer\n"
     "        Enable peer-side multiplexing relay mode (non-standard, optional).\n"
     "        Each relay thread opens one UDP socket pair (IPv4+IPv6) shared\n"
@@ -1388,7 +1389,6 @@ static char Usage[] =
     " --multiplex-peer-port <port>\n"
     "        Base UDP port for multiplex-peer relay sockets. Default: 3480.\n"
     "        Total ports consumed = relay_threads * 2.\n"
-#endif
     " --include-reason-string			   Include descriptive reason strings in STUN/TURN error responses.\n"
     "						   By default, only the standard reason phrase for the error code is\n"
     "						   sent. Enabling this option adds detailed error descriptions which\n"
@@ -2531,6 +2531,7 @@ static void set_option(int c, char *value) {
   case UDP_GSO_OPT:
     turn_params.udp_gso = get_bool_value(value);
     break;
+#endif
   case OPT_MULTIPLEX_PEER:
     turn_params.multiplex_peer = true;
     break;
@@ -2544,7 +2545,6 @@ static void set_option(int c, char *value) {
     turn_params.multiplex_peer_base_port = p;
     break;
   }
-#endif
   case INCLUDE_REASON_STRING_OPT:
     turn_params.include_reason_string = get_bool_value(value);
     break;
