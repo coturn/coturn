@@ -1298,6 +1298,15 @@ static int mp_open_socket(ioa_engine_handle e, const char *relay_addr, int af, u
     return -1;
   }
 
+  /* Size the shared relay socket per --sock-buf-size at startup. The
+   * legacy per-allocation path applies this after each Allocate, but the
+   * shared multiplex-peer socket would otherwise run with the kernel's
+   * UDP rcvbuf default until the first allocate landed — and since the
+   * socket carries every session on the thread, an undersized rcvbuf
+   * here drops more inbound traffic at UdpRcvbufErrors than a single
+   * legacy relay socket ever would. */
+  set_ioa_socket_buf_size(s, turn_params.sock_buf_size);
+
   sock_bind_to_device(s->fd, (unsigned char *)e->relay_ifname);
 
   register_callback_on_ioa_socket(e, s, IOA_EV_READ, mp_relay_input_handler, (void *)e, /*clean_preexisting=*/0);
