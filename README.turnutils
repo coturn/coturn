@@ -129,6 +129,25 @@ Flags:
 	and invalid sends small invalid packets to the TURN listener as fast as possible.
 	Load-generator modes imply -c and do not support -y.
 
+--no-even-port	Never attach an EVEN-PORT attribute to ALLOCATE requests. The
+		default clnet_allocate path picks 0 or -1 randomly even under -c,
+		which the turnserver --multiplex-peer mode strictly rejects with
+		error 400. Use --no-even-port for clean alloc-flood runs and any
+		other testing against --multiplex-peer.
+
+--listener-threads <N>	Number of receive (listener) threads on the loadgen
+		(also available as -K N). Default auto: 0 for -m < 4, bumped to 1
+		when -m >= 4. 0 keeps the legacy single-event-base behaviour. Each
+		listener owns its own libevent base; sessions are sharded
+		round-robin. Max 4.
+
+--sender-threads <N>	Number of send (timer-driven) threads on the loadgen.
+		Default auto: 0 for -m < 4, bumped to 2 when -m >= 4. 0 keeps the
+		legacy single-threaded send (main thread's timer_handler iterates
+		all sessions). Each sender owns its own libevent base and a session
+		shard; per-tick sends coalesce into one UDP-GSO sendmsg (or one
+		sendmmsg when GSO is unavailable). Max 4.
+
 Options with required values:
 
 -l      Message length (Default: 100 Bytes).

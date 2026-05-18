@@ -39,9 +39,22 @@ ctest --test-dir build --output-on-failure
 
 # Local/system tests
 cd examples
-./run_tests.sh
-./run_tests_conf.sh
-./run_tests_prom.sh   # only when Prometheus support is built
+./run_tests.sh                  # default protocols, both legacy and
+                                # threaded uclient (--listener-threads /
+                                # --sender-threads). On Linux it also
+                                # enables --udp-recvmmsg on the server
+                                # and runs a -Y packet load-gen smoke
+                                # that checks non-zero send_pps +
+                                # recv_pps. GSO/multiplex live in
+                                # run_tests_multiplex_peer.sh.
+./run_tests_conf.sh             # same protocols, conf-file driven;
+                                # mirrors run_tests.sh via config keys.
+./run_tests_multiplex_peer.sh   # exercises --multiplex-peer with shared
+                                # per-thread relay sockets (UDP/TCP/TLS/
+                                # DTLS) on the small port range opened by
+                                # --multiplex-peer-port. Auto-enables
+                                # --udp-recvmmsg on Linux.
+./run_tests_prom.sh             # only when Prometheus support is built
 cd ..
 
 # Fuzzing smoke tests (increase runs/time for fuzzing-related changes)
@@ -69,7 +82,8 @@ docker run --rm \
        cmake --build build-linux --parallel $(nproc) && \
        ctest --test-dir build-linux --output-on-failure && \
        rm -rf build && ln -s build-linux build && \
-       cd examples && ./run_tests.sh && ./run_tests_conf.sh'
+       cd examples && ./run_tests.sh && ./run_tests_conf.sh && \
+       ./run_tests_multiplex_peer.sh'
 ```
 
 Also validate the packaged Docker image:
@@ -136,218 +150,307 @@ cd examples && ./run_tests.sh
 
 ## Load Test on DigitalOcean
 
-Use two same-region CPU-optimized droplets for repeatable load tests. The last
-known setup used Ubuntu 24.04 `c-4` droplets in `nyc1`:
+### Topology — 3 same-region droplets
 
-- turnserver droplet private IP: `10.116.0.2`
-- loadgen droplet private IP: `10.116.0.3`
-- current public IPs: turnserver `157.230.3.102`, loadgen `167.99.153.216`
-- build: current branch archived with `git archive`
-- important baseline: turnserver is not run with `--udp-recvmmsg`
-- `--udp-recvmmsg` is opt-in and covers both UDP listener receive and plain
-  connected relay UDP receive on Linux; DTLS session sockets still use the SSL
-  read path
-- add `--udp-recvmmsg-log` with `--udp-recvmmsg` to log `udp-recvmmsg stats`
-  every 10 seconds; use those lines to check batch occupancy per relay thread
+Run uclient, turnserver, and peer on **separate** droplets so the loadgen
+and reflector never compete with the server under test. Last known setup
+was three Ubuntu 24.04 `c-4` (4 vCPU / 8 GB) droplets in `nyc1`, all in
+the `default-nyc1` VPC (`10.116.0.0/24`):
 
-Never paste DigitalOcean tokens into logs or files. Use a local environment
-variable such as `DIGITALOCEAN_TOKEN`, and revoke temporary tokens after the
-run.
+| Role | Droplet | Private IP |
+|---|---|---|
+| turnserver | `coturn-server-perf` (id `570437076`) | `10.116.0.2` |
+| uclient (loadgen) | `coturn-loadgen-perf` (id `570437077`) | `10.116.0.3` |
+| peer (reflector) | `coturn-peer-perf` (id `571385939`) | `10.116.0.4` |
 
-Local source package and upload:
+The 2-droplet shape (peer co-located on the loadgen) is fine for smoke
+runs but burns ~20 % of loadgen CPU on the peer reflector and skews
+`send_pps` comparisons across configs.
+
+Never paste DigitalOcean tokens into logs or files. Use a local
+environment variable such as `DIGITALOCEAN_TOKEN`.
+
+### Flag inventory (relay-side)
+
+- `--udp-recvmmsg` — Linux `recvmmsg()` batched receive on UDP listener
+  and plain connected relay UDP sockets. DTLS session sockets still go
+  through the OpenSSL read path.
+- `--udp-gso` — Linux UDP-GSO (`UDP_SEGMENT` cmsg) when a sendmmsg
+  batch shares destination and segment size. **Requires
+  `--multiplex-peer`** — that mode is what enables the sendmmsg
+  batching GSO piggybacks on; passing `--udp-gso` alone is a silent
+  no-op.
+- `--multiplex-peer` — replace the per-allocation relay-port bind with
+  a per-thread shared IPv4+IPv6 relay socket pair. Implies sendmmsg
+  batching on Linux and default-enables `--udp-recvmmsg` (override
+  with an explicit `--udp-recvmmsg=0`). Port layout: thread `i` binds
+  `--multiplex-peer-port + 2*i` (IPv4) and `+1` (IPv6); a 4-thread
+  server with default base 3480 uses 3480–3487. See
+  [docs/multiplex-peer.md](docs/multiplex-peer.md) for the design.
+- `--udp-recvmmsg-log` — emit `udp-recvmmsg stats` every 10 s; useful
+  to confirm per-thread batch occupancy.
+
+### Flag inventory (uclient)
+
+- `-Y packet|invalid|alloc` — load-generator mode.
+- `-c` — no rtcp; in `clnet_allocate` the EVEN-PORT slot is then chosen
+  randomly between 0 and -1 ([startuclient.c:440](src/apps/uclient/startuclient.c:440)).
+- `--no-even-port` — force `ep = -1` unconditionally. **Required** for
+  alloc-flood runs against `--multiplex-peer`, which strictly rejects
+  EVEN-PORT with error 400 ([ns_ioalib_engine_impl.c:1585](src/apps/relay/ns_ioalib_engine_impl.c:1585)).
+- `-K N` / `--listener-threads N`, `--sender-threads N` — loadgen-side
+  receive/send pools. Auto: 0 for `-m < 4`, bumped to 1 listener / 2
+  sender for `-m >= 4`. Max 4 each. Use `--sender-threads 4` to push
+  the loadgen harder when you're trying to saturate the server.
+
+### Source upload + build
 
 ```bash
+# locally
 git archive --format=tar HEAD -o /tmp/coturn.tar
+for ip in TURN_PUBLIC_IP UCLIENT_PUBLIC_IP PEER_PUBLIC_IP; do
+  scp /tmp/coturn.tar root@$ip:/root/coturn.tar &
+done; wait
 
-scp /tmp/coturn.tar root@TURN_PUBLIC_IP:/root/coturn.tar
-scp /tmp/coturn.tar root@LOADGEN_PUBLIC_IP:/root/coturn.tar
-```
-
-Install dependencies and build on both droplets:
-
-```bash
+# on each droplet (apt step needed once per droplet; peer needs at least
+# turnutils_peer; uclient needs turnutils_uclient; server needs turnserver)
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
-apt-get install -y build-essential cmake pkg-config libssl-dev libevent-dev \
-  libsqlite3-dev libhiredis-dev git iproute2 sysstat
+apt-get install -y --no-install-recommends build-essential cmake pkg-config \
+  libssl-dev libevent-dev libsqlite3-dev libhiredis-dev git iproute2 sysstat
 
-rm -rf /root/coturn
-mkdir /root/coturn
+rm -rf /root/coturn && mkdir /root/coturn
 tar -xf /root/coturn.tar -C /root/coturn
 cmake -S /root/coturn -B /root/coturn/build -DCMAKE_BUILD_TYPE=Release
-cmake --build /root/coturn/build --target turnserver turnutils_uclient turnutils_peer -j$(nproc)
+cmake --build /root/coturn/build \
+  --target turnserver turnutils_uclient turnutils_peer -j$(nproc)
 ```
 
-Start `turnserver` on the server droplet. This is the baseline command used for
-the final run; add `--udp-recvmmsg` only when intentionally comparing batched
-Linux UDP receive:
+### Sysctl + ulimit on every droplet
 
 ```bash
-pkill -x turnserver || true
 sysctl -w net.core.rmem_max=134217728 net.core.wmem_max=134217728 \
-  net.core.netdev_max_backlog=250000 || true
+  net.core.netdev_max_backlog=250000
 ulimit -n 1048576
+```
+
+### Peer fleet (peer droplet, 10.116.0.4)
+
+Bring up 8 `turnutils_peer` processes on ports 3480..3487 so the
+loadgen can target multiple distinct peer ports. The Linux peer
+transparently batches inbound datagrams via `recvmmsg()` and echoes
+with GSO-segmented `sendmsg()` when the batch shares source IP and
+segment size (see [src/apps/peer/udpserver.c](src/apps/peer/udpserver.c)),
+so 8 processes on a 4-vCPU peer droplet stay well below saturation:
+
+```bash
+pkill -x turnutils_peer 2>/dev/null || true
+for p in 3480 3481 3482 3483 3484 3485 3486 3487; do
+  nohup /root/coturn/build/bin/turnutils_peer -L 10.116.0.4 -p $p \
+    > /root/peer_${p}.log 2>&1 &
+done
+ss -ulnp | grep -E ':(348[0-7])\b' | wc -l  # expect >= 8
+```
+
+### turnserver (server droplet, 10.116.0.2)
+
+Baseline (no fast paths). Add flags from the table above to compare:
+
+```bash
+pkill -x turnserver 2>/dev/null || true
+mkdir -p /root/runs
+LABEL=baseline   # or recvmmsg / mpx_peer / mpx_gso
+EXTRA=""         # "--udp-recvmmsg" |
+                 # "--multiplex-peer --multiplex-peer-port=3480" |
+                 # "--multiplex-peer --multiplex-peer-port=3480 --udp-gso"
 
 nohup /root/coturn/build/bin/turnserver \
-  --use-auth-secret \
-  --static-auth-secret=secret \
-  --realm=north.gov \
+  --use-auth-secret --static-auth-secret=secret --realm=north.gov \
   --allow-loopback-peers \
-  --listening-ip=10.116.0.2 \
-  --relay-ip=10.116.0.2 \
-  --min-port=49152 \
-  --max-port=65535 \
-  --no-cli \
-  --no-tls \
-  --no-dtls \
-  --log-file=stdout \
-  --simple-log \
-  > /root/turnserver.log 2>&1 &
-echo $! > /root/turnserver.pid
-```
+  --listening-ip=10.116.0.2 --relay-ip=10.116.0.2 \
+  --min-port=49152 --max-port=65535 \
+  --no-cli --no-tls --no-dtls \
+  --log-file=stdout --simple-log \
+  $EXTRA \
+  > /root/runs/${LABEL}.turnserver.log 2>&1 &
+echo $! > /root/runs/${LABEL}.pid
 
-Start the UDP peer on the loadgen droplet:
-
-```bash
-pkill -x turnutils_peer || true
-sysctl -w net.core.rmem_max=134217728 net.core.wmem_max=134217728 \
-  net.core.netdev_max_backlog=250000 || true
-ulimit -n 1048576
-
-nohup /root/coturn/build/bin/turnutils_peer -L 10.116.0.3 -p 3480 \
-  > /root/peer.log 2>&1 &
-echo $! > /root/peer.pid
-```
-
-Optional server-side monitor, run on the turnserver droplet before each test:
-
-```bash
-cat > /root/start_monitor.sh <<'EOF'
-#!/bin/bash
-label=$1
-pid=$(cat /root/turnserver.pid)
-rm -f /root/${label}_*.txt
-nohup bash -c "pidstat -h -u -r -p $pid 1 14 > /root/${label}_pidstat.txt & \
-  mpstat 1 14 > /root/${label}_mpstat.txt & \
-  sar -n DEV 1 14 > /root/${label}_sar.txt & wait" \
-  > /root/${label}_monitor.out 2>&1 &
-echo $! > /root/${label}_monitor.pid
-EOF
-chmod +x /root/start_monitor.sh
-```
-
-Connectivity smoke from loadgen:
-
-```bash
-/root/coturn/build/bin/turnutils_uclient \
-  -Y packet -m 1 -n 1000 -l 120 \
-  -e 10.116.0.3 -r 3480 -X -g \
-  -u user -W secret \
-  10.116.0.2
-```
-
-Packet relay sweep from loadgen:
-
-```bash
-for m in 1 2 4 8 16 32; do
-  log=/root/packet_m${m}.log
-  timeout -s INT 12s /root/coturn/build/bin/turnutils_uclient \
-    -Y packet -m "$m" -l 120 \
-    -e 10.116.0.3 -r 3480 -X -g \
-    -u user -W secret \
-    10.116.0.2 > "$log" 2>&1 || true
-  tail -20 "$log"
+# Wait for readiness before driving load.
+until grep -q "Total auth threads:" /root/runs/${LABEL}.turnserver.log; do
+  sleep 0.5
 done
 ```
 
-For higher `-m` values, the load generator can finish its default work before
-the timeout. Add `-n 1000` when you want a longer many-connection run, and if
-the final log line omits `tot_recv_msgs`, derive receive count from
-`tot_recv_bytes / message_length`.
+### Packet-flood matrix workload (uclient droplet, 10.116.0.3)
 
-Monitored packet run:
+8 parallel uclient processes, each `-m 1` against a distinct peer port
+(3480..3487). The 1-session-per-(thread, peer-port) shape is what keeps
+`--multiplex-peer`'s per-thread `mp_table` collision-free regardless of
+which relay thread the server's round-robin assigns each session to.
 
 ```bash
-# on turnserver
-/root/start_monitor.sh packet_m1_mon
-
-# on loadgen
-timeout -s INT 12s /root/coturn/build/bin/turnutils_uclient \
-  -Y packet -m 1 -l 120 \
-  -e 10.116.0.3 -r 3480 -X -g \
-  -u user -W secret \
-  10.116.0.2 > /root/packet_m1_mon.log 2>&1 || true
+mkdir -p /root/runs
+LABEL=baseline
+PIDS=()
+for pp in 3480 3481 3482 3483 3484 3485 3486 3487; do
+  LOG=/root/runs/${LABEL}.par_p${pp}.log
+  (timeout -s INT 45s /root/coturn/build/bin/turnutils_uclient \
+     -Y packet -m 1 -n 50000000 -l 120 -c --no-even-port \
+     --listener-threads 1 --sender-threads 4 \
+     -e 10.116.0.4 -r "$pp" -X -g \
+     -u user -W secret \
+     10.116.0.2 > "$LOG" 2>&1) &
+  PIDS+=("$!")
+done
+for p in "${PIDS[@]}"; do wait "$p"; done
 ```
 
-Packet-only CPU profile, useful when checking the relay bottleneck. Build with
-`-DCMAKE_BUILD_TYPE=RelWithDebInfo` if you want readable user-space symbols.
-Run once without `--udp-recvmmsg`, then restart `turnserver` with
-`--udp-recvmmsg` and rerun the same commands with labels such as
-`recvmmsg_off` and `recvmmsg_on`:
+`turnutils_uclient` logs `send_pps=… , recv_pps=… , total_sent=… ,
+total_recv=…` periodically ([uclient.c:945](src/apps/uclient/uclient.c:945)).
+Always take the **median of in-flight progress lines** (drop the first
+2-3 warm-up samples and any trailing zero-pps lines), then **sum across
+the 8 streams**. Two derived values that matter:
+
+- `recv_pps` = end-to-end relayed throughput. The canonical comparison
+  metric across configs.
+- `send_pps − recv_pps` = packets dropped somewhere on the round trip.
+  At parity throughput this should match across configs.
+
+### 3-host CPU instrumentation
+
+Run `mpstat` on all three droplets (host-wide CPU breakdown) and
+`pidstat` on the server droplet (turnserver process slice), pinned to
+the duration of the loadgen run:
 
 ```bash
+DUR=45
+
 # on turnserver
-sysctl -w kernel.perf_event_paranoid=-1 kernel.kptr_restrict=0 || true
-pid=$(cat /root/turnserver.pid)
-label=recvmmsg_off
+nohup mpstat 1 $DUR > /root/runs/${LABEL}.server_mpstat.txt 2>&1 & disown
+nohup pidstat -h -u -r -p $(cat /root/runs/${LABEL}.pid) 1 $DUR \
+  > /root/runs/${LABEL}.server_pidstat.txt 2>&1 & disown
 
-(pidstat -h -u -r -p "$pid" 1 14 > /root/${label}_pidstat.txt & \
-  mpstat 1 14 > /root/${label}_mpstat.txt & \
-  sar -n DEV 1 14 > /root/${label}_sar.txt & wait) \
-  > /root/${label}_monitor.out 2>&1 &
+# on uclient
+nohup mpstat 1 $DUR > /root/runs/${LABEL}.uclient_mpstat.txt 2>&1 & disown
 
-perf record -F 99 -g -p "$pid" -o /root/${label}.perf.data -- sleep 14
-perf report --stdio -i /root/${label}.perf.data --no-children \
-  --sort comm,dso,symbol > /root/${label}_perf.report
-perf report --stdio -i /root/${label}.perf.data --children \
-  --sort symbol,dso > /root/${label}_perf.children
-
-# on loadgen, started about one second after perf starts
-timeout -s INT 12s /root/coturn/build/bin/turnutils_uclient \
-  -Y packet -m 1 -l 120 \
-  -e 10.116.0.3 -r 3480 -X -g \
-  -u user -W secret \
-  10.116.0.2 > /root/${label}_packet_m1.log 2>&1 || true
+# on peer
+nohup mpstat 1 $DUR > /root/runs/${LABEL}.peer_mpstat.txt 2>&1 & disown
 ```
 
-Invalid-packet flood:
+Parse the `Average:` line — note field offsets differ from the
+per-sample lines because there's no time column:
 
 ```bash
-# on turnserver
-/root/start_monitor.sh invalid_m1_mon
+awk '$1=="Average:" && $2=="all" {
+  printf "user=%5.1f sys=%5.1f softirq=%5.1f idle=%5.1f\n", $3, $5, $8, $NF
+}' /root/runs/${LABEL}.server_mpstat.txt
 
-# on loadgen
-timeout -s INT 12s /root/coturn/build/bin/turnutils_uclient \
-  -Y invalid -m 1 -l 16 \
-  10.116.0.2 > /root/invalid_m1_mon.log 2>&1 || true
+# turnserver process CPU only:
+tail -1 /root/runs/${LABEL}.server_pidstat.txt | awk '{
+  print "usr="$4" sys="$5" CPU="$8"%"
+}'
 ```
 
-Restart `turnserver` after invalid-packet tests before allocation tests. The
-last run saw rapid RSS growth during invalid flood, so avoid chaining tests on
-the same server process.
+### Reading the matrix (what "good" looks like)
 
-Allocation flood:
+A last clean run (2026-05-16, 3-droplet, 8 streams × 45 s, `c-4`):
+
+| Config | recv pps (8-stream sum) | `turnserver` CPU | server host idle | server host softirq |
+|---|---:|---:|---:|---:|
+| baseline | 91 k | 367 % | 24 % | 14.1 % |
+| `--udp-recvmmsg` | 99 k | 229 % (−38 %) | 48 % | 2.6 % |
+| `--multiplex-peer` | 97 k | 293 % (−20 %) | 42 % | 13.3 % |
+| `--multiplex-peer --udp-gso` | 96 k | **134 % (−63 %)** | **65 %** | **0.8 %** |
+
+The recv-pps ceiling (~95-100 k) is the loadgen-side cap on a `c-4`
+uclient — `%sys + %softirq` on the uclient host runs at ~70 % per core
+across all configs, indicating the kernel network stack is saturated.
+The win shows up as server-side CPU savings, **not** as more relayed
+pps. To push the server toward saturation, resize the uclient to `c-8`
+(or larger) first.
+
+### Bottleneck identification
+
+For any run, look at the three `mpstat Average:` lines:
+
+| Host idle % | Reading |
+|---|---|
+| < 20 % on uclient | uclient is the cap; you're measuring loadgen, not server. Bump uclient size or thread pools. |
+| < 20 % on peer | peer reflector saturated; add more peer processes or move peer to a bigger droplet. |
+| > 50 % on server | server has headroom; you can push it harder if uclient/peer allow. |
+| < 10 % on server | server is the bottleneck — this is what you want when measuring server-side perf changes. |
+
+### Allocation throughput
 
 ```bash
-# on turnserver
-/root/start_monitor.sh alloc_10000_mon
-
-# on loadgen
-/root/coturn/build/bin/turnutils_uclient \
-  -Y alloc -m 50 -n 200 \
+# on uclient — alloc-flood; --no-even-port keeps multiplex-peer from
+# rejecting every other request with 400.
+timeout -s INT 60s /root/coturn/build/bin/turnutils_uclient \
+  -Y alloc -m 200 -n 1000 -c --no-even-port \
   -L 10.116.0.3 \
   -u user -W secret \
-  10.116.0.2 > /root/alloc_10000.log 2>&1
+  10.116.0.2 > /root/runs/${LABEL}.alloc.log 2>&1
+
+# rate:
+grep -oE "total_allocations=[0-9]+" /root/runs/${LABEL}.alloc.log \
+  | awk -F= '{print $2}' | sort -n | tail -1
 ```
 
-Useful summaries:
+Sessions are torn down between iterations, so this measures alloc/s
+**throughput**, not concurrent-session cap. Baseline and
+`--multiplex-peer` deliver roughly the same rate (~700 alloc/s on
+`c-4`); allocation is control-plane and isn't where the fast paths
+help. The cap-removal property of `--multiplex-peer` is structural (2
+ports per relay thread, total) — cite [docs/multiplex-peer.md](docs/multiplex-peer.md)
+rather than trying to demo it via a load test.
+
+### Invalid-packet flood
 
 ```bash
-grep -h 'send_pps=' /root/packet_m*.log /root/*_mon.log | tail -50
-grep -h 'total_allocations=' /root/alloc_*.log | tail -20
-ps -o pid,rss,vsz,pcpu,pmem,comm -p $(cat /root/turnserver.pid)
-tail -20 /root/*_pidstat.txt
-tail -20 /root/*_sar.txt
+# on uclient
+timeout -s INT 12s /root/coturn/build/bin/turnutils_uclient \
+  -Y invalid -m 1 -l 16 \
+  10.116.0.2 > /root/runs/invalid_m1.log 2>&1 || true
+```
+
+`-Y invalid` bypasses the TURN allocate handshake and sprays malformed
+datagrams at the listener; useful for the parse/reject hot path. The
+uclient pacer drops its interval to 100 µs and lifts the per-burst send
+cap to 4096 in flood modes ([uclient.c:899](src/apps/uclient/uclient.c:899)),
+so even `-m 1` produces real load. **Restart turnserver after an invalid
+flood** before any allocation test — past runs saw rapid RSS growth.
+
+### CPU profile (perf, server droplet)
+
+Build with `-DCMAKE_BUILD_TYPE=RelWithDebInfo` for readable symbols.
+Capture once per config you're comparing (`fastpath_off`, `fastpath_on`,
+optionally one-flag-at-a-time):
+
+```bash
+sysctl -w kernel.perf_event_paranoid=-1 kernel.kptr_restrict=0
+pid=$(cat /root/runs/${LABEL}.pid)
+perf record -F 99 -g -p "$pid" -o /root/runs/${LABEL}.perf.data -- sleep 30
+perf report --stdio -i /root/runs/${LABEL}.perf.data --no-children \
+  --sort comm,dso,symbol > /root/runs/${LABEL}_perf.report
+```
+
+### Useful summaries
+
+```bash
+# per-stream median send/recv pps across all 8 streams of a run:
+for f in /root/runs/${LABEL}.par_p*.log; do
+  grep "send_pps=" "$f" | awk -F'[=, ]' '
+    {for (i=1;i<=NF;i++) {if ($i=="send_pps") s=$(i+1)+0;
+                          if ($i=="recv_pps") r=$(i+1)+0}
+     print s" "r}' | sort -n | awk -v f="$f" '
+    {a[NR]=$0} END {print f": median="a[int(NR/2)]}'
+done
+
+# turnserver process RSS over time:
+ps -o pid,rss,vsz,pcpu,pmem,comm -p $(cat /root/runs/${LABEL}.pid)
+
+# server NIC counters (drops show up as nonzero rx_dropped on eth1):
+ssh root@TURN_PUBLIC_IP 'cat /proc/net/dev | column -t | head -5'
 ```
 
 ### Unit tests (Unity, opt-in via `BUILD_TESTING=ON`)

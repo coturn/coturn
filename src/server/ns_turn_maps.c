@@ -588,6 +588,56 @@ static void addr_list_foreach(addr_list_header *slh, ur_addr_map_func func) {
   }
 }
 
+/* Returns false as soon as the callback returns false (early exit). */
+static bool addr_list_foreach_arg(addr_list_header *slh, ur_addr_map_func_arg func, void *arg) {
+  if (slh && func) {
+    for (size_t i = 0; i < ADDR_ARRAY_SIZE; ++i) {
+      addr_elem *elem = &(slh->main_list[i]);
+      if (elem->value) {
+        if (!func(elem->value, arg)) {
+          return false;
+        }
+      }
+    }
+    if (slh->extra_list) {
+      for (size_t i = 0; i < slh->extra_sz; ++i) {
+        addr_elem *elem = &(slh->extra_list[i]);
+        if (elem->value) {
+          if (!func(elem->value, arg)) {
+            return false;
+          }
+        }
+      }
+    }
+  }
+  return true;
+}
+
+/* Returns false as soon as the callback returns false (early exit). */
+static bool addr_list_foreach_key_arg(addr_list_header *slh, ur_addr_map_key_func_arg func, void *arg) {
+  if (slh && func) {
+    for (size_t i = 0; i < ADDR_ARRAY_SIZE; ++i) {
+      addr_elem *elem = &(slh->main_list[i]);
+      if (elem->value) {
+        if (!func(&(elem->key), elem->value, arg)) {
+          return false;
+        }
+      }
+    }
+    if (slh->extra_list) {
+      for (size_t i = 0; i < slh->extra_sz; ++i) {
+        addr_elem *elem = &(slh->extra_list[i]);
+        if (elem->value) {
+          if (!func(&(elem->key), elem->value, arg)) {
+            return false;
+          }
+        }
+      }
+    }
+  }
+  return true;
+}
+
 static size_t addr_list_num_elements(const addr_list_header *slh) {
   size_t ret = 0;
 
@@ -756,6 +806,30 @@ void ur_addr_map_foreach(ur_addr_map *map, ur_addr_map_func func) {
       addr_list_foreach(slh, func);
     }
   }
+}
+
+bool ur_addr_map_foreach_arg(ur_addr_map *map, ur_addr_map_func_arg func, void *arg) {
+  if (ur_addr_map_valid(map)) {
+    for (size_t i = 0; i < ADDR_MAP_SIZE; i++) {
+      addr_list_header *slh = &(map->lists[i]);
+      if (!addr_list_foreach_arg(slh, func, arg)) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+bool ur_addr_map_foreach_key_arg(ur_addr_map *map, ur_addr_map_key_func_arg func, void *arg) {
+  if (ur_addr_map_valid(map)) {
+    for (size_t i = 0; i < ADDR_MAP_SIZE; i++) {
+      addr_list_header *slh = &(map->lists[i]);
+      if (!addr_list_foreach_key_arg(slh, func, arg)) {
+        return false;
+      }
+    }
+  }
+  return true;
 }
 
 size_t ur_addr_map_num_elements(const ur_addr_map *map) {

@@ -63,6 +63,7 @@ bool use_secure = false;
 bool hang_on = false;
 ioa_addr peer_addr;
 bool no_rtcp = false;
+bool no_even_port = false;
 int default_address_family = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT;
 bool dont_fragment = false;
 uint8_t g_uname[STUN_MAX_USERNAME_SIZE + 1];
@@ -190,7 +191,10 @@ static char Usage[] =
     "				bumped to 2 when -m >= 4. 0 = legacy single-threaded send (main thread's\n"
     "				timer_handler iterates all sessions). Each sender owns its own libevent base\n"
     "				and a session shard; counters use per-thread cache-line-aligned slabs.\n"
-    "				Max 4. Explicit --sender-threads overrides the auto rule.\n";
+    "				Max 4. Explicit --sender-threads overrides the auto rule.\n"
+    "	--no-even-port		Never attach EVEN-PORT to allocate requests. The default path picks\n"
+    "				0 or -1 randomly under -c, which is rejected by --multiplex-peer with\n"
+    "				error 400. Use this for clean alloc-flood runs against multiplex-peer.\n";
 
 //////////////////////////////////////////////////
 
@@ -240,10 +244,11 @@ int main(int argc, char **argv) {
    * historical single-letter getopt(3) namespace. New options should
    * generally be added here. Mirrored to a short letter where one is
    * still free (currently: -K for --listener-threads). */
-  enum { UCLIENT_OPT_SENDER_THREADS = 256 };
+  enum { UCLIENT_OPT_SENDER_THREADS = 256, UCLIENT_OPT_NO_EVEN_PORT };
   static const struct option uclient_long_opts[] = {
       {"listener-threads", required_argument, NULL, 'K'},
       {"sender-threads", required_argument, NULL, UCLIENT_OPT_SENDER_THREADS},
+      {"no-even-port", no_argument, NULL, UCLIENT_OPT_NO_EVEN_PORT},
       {NULL, 0, NULL, 0}};
 
   while ((c = getopt_long(argc, argv, "a:d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:E:F:o:Y:K:bZvsyhcxXgtTSAPDNOUMRIGBJ",
@@ -297,6 +302,9 @@ int main(int argc, char **argv) {
       num_sender_threads = (int)n;
       num_sender_threads_explicit = true;
     } break;
+    case UCLIENT_OPT_NO_EVEN_PORT:
+      no_even_port = true;
+      break;
     case 'Y':
       load_mode = parse_load_mode(optarg);
       if (load_mode == UCLIENT_LOAD_MODE_NONE) {

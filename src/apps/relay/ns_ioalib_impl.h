@@ -175,6 +175,14 @@ struct _ioa_engine {
   turn_time_t udp_recvmmsg_last_report_time;
 #endif
   redis_context_handle rch;
+  /* multiplex-peer (zero-initialised = disabled) */
+  int mp_enabled;
+  int relay_thread_id;
+  ioa_socket_handle mp_sock_v4;
+  ioa_socket_handle mp_sock_v6;
+  uint16_t mp_port_v4;
+  uint16_t mp_port_v6;
+  ur_addr_map mp_table; /* peer_addr:port -> ts_ur_super_session*; O(1) get/put/del */
 };
 
 #define SOCKET_MAGIC (0xABACADEF)
@@ -251,6 +259,16 @@ typedef struct _timer_event {
 
 void create_default_realm(void);
 int get_realm_data(char *name, realm_params_t *rp);
+
+/* multiplex-peer */
+
+int init_multiplex_peer(ioa_engine_handle e, int thread_id, uint16_t base_port);
+int mp_register_peer(ioa_engine_handle e, const ioa_addr *peer_addr, void *turn_session);
+void mp_deregister_peer(ioa_engine_handle e, const ioa_addr *peer_addr, void *turn_session);
+void mp_deregister_permission_peers(ioa_engine_handle e, const ioa_addr *peer_addr, void *turn_session);
+void mp_deregister_session_peers(ioa_engine_handle e, void *turn_session, int address_family);
+ioa_socket_handle mp_get_socket(ioa_engine_handle e, int af);
+uint16_t mp_get_port(ioa_engine_handle e, int af);
 
 /* engine handling */
 

@@ -440,6 +440,9 @@ beg_allocate:
       ep = (((uint8_t)turn_random_number()) % 2);
       ep = ep - 1;
     }
+    if (no_even_port) {
+      ep = -1;
+    }
 
     if (!dos) {
       stun_set_allocate_request(&request_message, UCLIENT_SESSION_LIFETIME, af4, af6, relay_transport, mobility, rt,
