@@ -232,34 +232,75 @@ fi
 
 sleep 2
 
-killall -9 turnserver &> /dev/null
-../bin/turnserver --use-auth-secret  --static-auth-secret=secret --realm=north.gov --allow-loopback-peers --no-cli --cert ../examples/ca/turn_server_cert.pem --pkey ../examples/ca/turn_server_pkey.pem &> /tmp/coturn.log &
+# 401 rate-limit feature check.
+#
+# Start a fresh turnserver with the feature enabled and a very low
+# threshold, then run one unauthenticated turnutils_uclient session
+# against it. The client retries on each 401 (re-sends with the same
+# wrong password), so a single session produces several 401-bound
+# requests — comfortably above a threshold of 1 — and the server
+# should emit at least one "401 rate-limit exceeded" log line.
+#
+# We then repeat with a huge threshold to confirm the limit does NOT
+# trip in the negative case.
+#
+# Restarting turnserver inline keeps the rate-limit configuration
+# isolated from the protocol-test server above; mixing the flags into
+# that one would risk masking unrelated regressions.
+run_ratelimit_server() {
+    local log="$1"
+    shift
+    kill "$turnserver_pid" 2>/dev/null
+    wait "$turnserver_pid" 2>/dev/null
+    : > "$log"
+    $BINDIR/turnserver --use-auth-secret --static-auth-secret=secret --realm=north.gov \
+        --allow-loopback-peers --no-cli --no-tls --no-dtls \
+        --listening-ip=127.0.0.1 --relay-ip=127.0.0.1 \
+        --listening-port=3479 \
+        --log-file=stdout --simple-log \
+        "$@" > "$log" 2>&1 &
+    turnserver_pid="$!"
+    TURNSERVER_LOG="$log"
+    wait_for_turnserver
+}
 
-sleep 5
+RATELIMIT_LOG="/tmp/run_tests.$$.ratelimit.log"
 
-echo 'Running rate limit by IP'
-../bin/turnutils_uclient  -e 127.0.0.1 -X -g -u user1 -W wrongsecret 127.0.0.1 > /dev/null
-../bin/turnutils_uclient  -e 127.0.0.1 -X -g -u user1 -W wrongsecret 127.0.0.1 > /dev/null
-../bin/turnutils_uclient  -e 127.0.0.1 -X -g -u user1 -W wrongsecret 127.0.0.1 > /dev/null
-../bin/turnutils_uclient  -e 127.0.0.1 -X -g -u user1 -W wrongsecret 127.0.0.1 > /dev/null
-../bin/turnutils_uclient  -e 127.0.0.1 -X -g -u user1 -W wrongsecret 127.0.0.1 > /dev/null &
-sleep 5
-grep '401 rate limit exceeded from' /tmp/coturn.log >/dev/null
-if [ $? -eq 0 ]; then
+echo "Running 401 rate-limit (positive)"
+run_ratelimit_server "$RATELIMIT_LOG" --401-ratelimit --401-req-limit=1 --401-window=60 || {
+    echo "FAIL: turnserver did not start for ratelimit positive test"; exit 1;
+}
+# One client session is enough — it retries on each 401, easily
+# crossing a threshold of 1. The session itself will time out / exit
+# on its own; cap the wait with `timeout` so a hang doesn't stall CI.
+timeout 15s "$BINDIR/turnutils_uclient" -e 127.0.0.1 -X -g -u baduser -W wrongsecret -p 3479 127.0.0.1 \
+    > /dev/null 2>&1 || true
+sleep 1
+
+if grep -q '401 rate-limit exceeded from' "$RATELIMIT_LOG"; then
     echo OK
 else
-    echo FAIL
-    exit $?
+    echo "FAIL: rate-limit log line not emitted under attack"
+    echo "--- ratelimit turnserver log (last 40 lines) ---"
+    tail -40 "$RATELIMIT_LOG"
+    exit 1
 fi
 
-echo 'Running NOT rated limit by IP'
-../bin/turnutils_uclient  -e 127.0.0.1 -X -g -u user1 -W wrongsecret 127.0.0.1 > /dev/null
-../bin/turnutils_uclient  -e 127.0.0.1 -X -g -u user1 -W wrongsecret 127.0.0.1 > /dev/null &
-sleep 5
-grep '401 rate limit exceeded from' /tmp/coturn.log >/dev/null
-if [ $? -eq 1 ]; then
-    echo OK
+echo "Running 401 rate-limit (negative: high threshold)"
+run_ratelimit_server "$RATELIMIT_LOG" --401-ratelimit --401-req-limit=100000 --401-window=60 || {
+    echo "FAIL: turnserver did not start for ratelimit negative test"; exit 1;
+}
+timeout 15s "$BINDIR/turnutils_uclient" -e 127.0.0.1 -X -g -u baduser -W wrongsecret -p 3479 127.0.0.1 \
+    > /dev/null 2>&1 || true
+sleep 1
+
+if grep -q '401 rate-limit exceeded from' "$RATELIMIT_LOG"; then
+    echo "FAIL: rate-limit triggered below threshold (--401-req-limit=100000)"
+    echo "--- ratelimit turnserver log (last 40 lines) ---"
+    tail -40 "$RATELIMIT_LOG"
+    exit 1
 else
-    echo FAIL
-	exit $?
+    echo OK
 fi
+
+rm -f "$RATELIMIT_LOG"

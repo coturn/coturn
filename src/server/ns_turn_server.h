@@ -209,7 +209,13 @@ struct _turn_turnserver {
 
   bool multiplex_peer_mode;
 
-  bool ratelimit_401_requests;
+  /* All three of these are pointers into turn_params so the CLI flags
+   * affect every relay thread without per-thread copies. The legacy
+   * version of this struct had `ratelimit_401_requests` typed as `bool`
+   * (not `bool *`), which silently truncated the parameter pointer in
+   * init_turn_server() and left the feature always-on. Keep them all as
+   * pointers and dereference at use sites. */
+  bool *ratelimit_401_requests;
   vintp ratelimit_401_requests_per_window;
   vintp ratelimit_401_window_seconds;
 };

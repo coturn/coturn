@@ -55,7 +55,6 @@ typedef uint64_t ur_map_key_type;
 typedef void *ur_map_value_type;
 
 typedef void (*ur_map_del_func)(ur_map_value_type);
-typedef int (ur_addr_map_cond_func)(ur_addr_map_value_type);
 
 typedef bool (*foreachcb_type)(ur_map_key_type key, ur_map_value_type value);
 typedef bool (*foreachcb_arg_type)(ur_map_key_type key, ur_map_value_type value, void *arg);
@@ -237,8 +236,6 @@ bool ur_addr_map_foreach_key_arg(ur_addr_map *map, ur_addr_map_key_func_arg func
 
 size_t ur_addr_map_num_elements(const ur_addr_map *map);
 size_t ur_addr_map_size(const ur_addr_map *map);
-
-int addr_list_foreach_del_condition(ur_addr_map *map, ur_addr_map_cond_func func);
 
 //////////////// UR STRING MAP //////////////////
 

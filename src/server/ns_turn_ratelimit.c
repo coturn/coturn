@@ -28,89 +28,104 @@
  * SUCH DAMAGE.
  */
 
-#include "ns_turn_maps.h"
-#include "ns_turn_ioalib.h"
 #include "ns_turn_ratelimit.h"
 
-/////////////////// rate limit //////////////////////////
+#include <stdatomic.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <string.h>
 
-ur_addr_map *rate_limit_map = NULL;
-int ratelimit_window_secs = RATELIMIT_DEFAULT_WINDOW_SECS;
-TURN_MUTEX_DECLARE(rate_limit_main_mutex);
+#include "ns_turn_defs.h" // for turn_time_t / turn_time()
 
-void ratelimit_add_node(ioa_addr *address) {
-  // copy address
-  ratelimit_entry *rateLimitEntry = (ratelimit_entry *)malloc(sizeof(ratelimit_entry));
-  TURN_MUTEX_INIT(&(rateLimitEntry->mutex));
-  rateLimitEntry->request_count = 1;
-  rateLimitEntry->last_request_time = time(NULL);
+/* Power-of-two bucket count. 4096 buckets * 12 B/bucket = ~48 KiB resident.
+ * Increasing this lowers hash-collision probability for legit traffic; it
+ * does not change behavior under attack (collisions converge to "drop"). */
+#define RL_BUCKETS 4096u
+#define RL_MASK (RL_BUCKETS - 1u)
 
-  ur_addr_map_put(rate_limit_map, address, (ur_addr_map_value_type)rateLimitEntry);
-}
+typedef struct {
+  _Atomic uint32_t tag;          /* hash of source IP (port stripped); 0 = empty */
+  _Atomic uint32_t window_start; /* turn_time() value when the current window opened */
+  _Atomic uint32_t count;        /* requests counted in this window */
+  _Atomic uint32_t logged;       /* 1 once we've logged a drop in this window */
+} rl_bucket;
 
-int ratelimit_delete_expired(ur_map_value_type value) {
-  turn_time_t current_time = turn_time();
-  ratelimit_entry *rateLimitEntry = (ratelimit_entry*)(void*)(ur_map_value_type)value;
-  return (rateLimitEntry->last_request_time + ratelimit_window_secs < current_time);
-}
+static rl_bucket rl_table[RL_BUCKETS];
 
-void ratelimit_init_map() {
-  TURN_MUTEX_INIT(&rate_limit_main_mutex);
-  TURN_MUTEX_LOCK(&rate_limit_main_mutex);
-
-  rate_limit_map = (ur_addr_map*)malloc(sizeof(ur_addr_map));
-  ur_addr_map_init(rate_limit_map);
-  TURN_MUTEX_UNLOCK(&rate_limit_main_mutex);
-}
-
-bool ratelimit_is_address_limited(ioa_addr *address, int max_requests, int window_seconds) {
-  /* Housekeeping, prune the map when ADDR_MAP_SIZE is hit and delete expired items */
-  turn_time_t current_time = turn_time();
-
-  if (ur_addr_map_num_elements(rate_limit_map) >= ADDR_MAP_SIZE) {
-    TURN_MUTEX_LOCK(&rate_limit_main_mutex);
-    /* Set ratelimit_window_secs to grant access to our delete function */
-    ratelimit_window_secs = window_seconds;
-
-    addr_list_foreach_del_condition(rate_limit_map, ratelimit_delete_expired);
-    TURN_MUTEX_UNLOCK(&rate_limit_main_mutex);
-  }
-
-  ur_addr_map_value_type ratelimit_ptr = 0;
-
-  ioa_addr address_new = *address;
-  addr_set_port(&address_new, 0);
-
-  if (ur_addr_map_get(rate_limit_map, &address_new, &ratelimit_ptr)) {
-    ratelimit_entry *rateLimitEntry = (ratelimit_entry *)(void *)(ur_map_value_type)ratelimit_ptr;
-    TURN_MUTEX_LOCK(&(rateLimitEntry->mutex));
-
-    if (turn_time_before(current_time, rateLimitEntry->last_request_time)) {
-      /* Check if request is inside the ratelimit window; reset the count and request time */
-      rateLimitEntry->request_count = 1;
-      rateLimitEntry->last_request_time = current_time;
-      TURN_MUTEX_UNLOCK(&(rateLimitEntry->mutex));
-      return 0;
-    } else if (rateLimitEntry->request_count < max_requests) {
-      /* Check if request count is below requests per window; increment the count */
-      if (rateLimitEntry->request_count < UINT32_MAX)
-        rateLimitEntry->request_count++;
-      rateLimitEntry->last_request_time = current_time;
-      TURN_MUTEX_UNLOCK(&(rateLimitEntry->mutex));
-      return 0;
-    } else {
-      /* Request is outside of defined window and count, request is ratelimited */
-      if (rateLimitEntry->request_count < UINT32_MAX)
-        rateLimitEntry->request_count++;
-      rateLimitEntry->last_request_time = current_time;
-      TURN_MUTEX_UNLOCK(&(rateLimitEntry->mutex));
-      return 1;
+/* 32-bit hash over the address bytes, ignoring port. Returns a value
+ * != 0 so we can reserve 0 as the "empty bucket" tag. */
+static uint32_t rl_hash(const ioa_addr *a) {
+  uint32_t h;
+  if (a->ss.sa_family == AF_INET6) {
+    /* FNV-1a 32-bit over the 16-byte v6 address. */
+    const uint8_t *b = (const uint8_t *)&a->s6.sin6_addr;
+    h = 2166136261u;
+    for (int i = 0; i < 16; i++) {
+      h ^= b[i];
+      h *= 16777619u;
     }
   } else {
-    // New entry, allow response
-    TURN_MUTEX_LOCK(&rate_limit_main_mutex);
-    ratelimit_add_node(&address_new);
-    TURN_MUTEX_UNLOCK(&rate_limit_main_mutex);
-    return 0;
+    /* splitmix-style finalizer on the 32-bit v4 address. */
+    h = (uint32_t)a->s4.sin_addr.s_addr;
+    h ^= h >> 16;
+    h *= 0x7feb352du;
+    h ^= h >> 15;
+    h *= 0x846ca68bu;
+    h ^= h >> 16;
   }
+  return h ? h : 1u;
+}
+
+void ratelimit_init(void) {
+  /* Static storage is zero-initialized; this is here so the symbol
+   * exists for callers and the intent is explicit. */
+  memset(rl_table, 0, sizeof(rl_table));
+}
+
+bool ratelimit_consume_address(const ioa_addr *address, uint32_t max_requests, uint32_t window_seconds,
+                               bool *first_drop) {
+  if (first_drop) {
+    *first_drop = false;
+  }
+  if (!address || max_requests == 0 || window_seconds == 0) {
+    return false;
+  }
+
+  const uint32_t h = rl_hash(address);
+  rl_bucket *b = &rl_table[h & RL_MASK];
+  const uint32_t now = (uint32_t)turn_time();
+
+  const uint32_t tag = atomic_load_explicit(&b->tag, memory_order_acquire);
+  const uint32_t ws = atomic_load_explicit(&b->window_start, memory_order_relaxed);
+
+  if (tag != h || (now - ws) >= window_seconds) {
+    /* New address (or expired window) — reset the bucket atomically.
+     * Two concurrent resets are fine: the second one wins, and both
+     * see count == 1 by the time the release store on count lands. */
+    atomic_store_explicit(&b->window_start, now, memory_order_relaxed);
+    atomic_store_explicit(&b->logged, 0u, memory_order_relaxed);
+    atomic_store_explicit(&b->count, 1u, memory_order_relaxed);
+    atomic_store_explicit(&b->tag, h, memory_order_release);
+    return false;
+  }
+
+  /* fetch_add returns the value BEFORE the increment, so prev == max
+   * means this request is exactly the (max+1)-th in the window — the
+   * first that crosses the threshold. */
+  const uint32_t prev = atomic_fetch_add_explicit(&b->count, 1u, memory_order_relaxed);
+  if (prev < max_requests) {
+    return false;
+  }
+
+  if (first_drop) {
+    /* Emit a single log line per (bucket, window) by CAS'ing the
+     * `logged` flag from 0 to 1. Subsequent drops in the same window
+     * silently increment the counter but don't log. */
+    uint32_t expected = 0u;
+    if (atomic_compare_exchange_strong_explicit(&b->logged, &expected, 1u, memory_order_relaxed,
+                                                memory_order_relaxed)) {
+      *first_drop = true;
+    }
+  }
+  return true;
 }

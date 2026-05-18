@@ -37,8 +37,8 @@
 
 #include "dbdrivers/dbdriver.h"
 
-#include "prom_server.h"
 #include "ns_turn_ratelimit.h"
+#include "prom_server.h"
 #include <assert.h>
 #include <limits.h>
 
@@ -1398,12 +1398,14 @@ static char Usage[] =
     "						   By default, only the standard reason phrase for the error code is\n"
     "						   sent. Enabling this option adds detailed error descriptions which\n"
     "						   may aid debugging but can also leak internal server information.\n"
-    " --401-ratelimit                                Enable ratelimiting 401 responses to mitigate "
-    " abuse of coturn in DDoS attacks.\n"
-    " --401-req-limit=<request>                      Set the maximum number of 401 Unauthorized"
-    " responses allowed per rate-limiting window.\n"
-    " --401-window=<seconds>                         Set the time window duration in seconds for "
-    "rate limiting 401 Unauthorized responses\n"
+    " --401-ratelimit                                Enable per-source rate-limiting of 401\n"
+    "                                                 Unauthorized responses on UDP. Mitigates\n"
+    "                                                 reflection/amplification abuse where attackers\n"
+    "                                                 spoof a victim's source address to bounce 401\n"
+    "                                                 challenges off the server. Off by default.\n"
+    " --401-req-limit=<count>                        Max 401 responses to send per source IP per\n"
+    "                                                 window (default 1000).\n"
+    " --401-window=<seconds>                         Rate-limit window length in seconds (default 120).\n"
     " --version					Print version (and exit).\n"
     " -h						Help\n"
     "\n";
@@ -2581,16 +2583,29 @@ static void set_option(int c, char *value) {
   } break;
   case RATELIMIT_OPT:
     turn_params.ratelimit_401_requests = get_bool_value(value);
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Enabling 401 request ratelimiting\n");
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "401 response rate-limiting: %s\n",
+                  turn_params.ratelimit_401_requests ? "enabled" : "disabled");
     break;
-  case RATELIMIT_REQUESTS_OPT:
-    turn_params.ratelimit_401_requests_per_window = get_int_value(value, RATELIMIT_DEFAULT_MAX_REQUESTS_PER_WINDOW);
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Setting 401 ratelimit requests per window to: %i\n", turn_params.ratelimit_401_requests_per_window);
-    break;
-  case RATELIMIT_WINDOW_OPT:
-    turn_params.ratelimit_401_window_seconds = get_int_value(value, RATELIMIT_DEFAULT_WINDOW_SECS);
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Setting 401 ratelimit window to: %i seconds\n", turn_params.ratelimit_401_window_seconds);
-    break;
+  case RATELIMIT_REQUESTS_OPT: {
+    int v = get_int_value(value, (int)RATELIMIT_DEFAULT_MAX_REQUESTS_PER_WINDOW);
+    if (v <= 0) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Invalid --401-req-limit=%d (must be > 0); using default %u\n", v,
+                    RATELIMIT_DEFAULT_MAX_REQUESTS_PER_WINDOW);
+      v = (int)RATELIMIT_DEFAULT_MAX_REQUESTS_PER_WINDOW;
+    }
+    turn_params.ratelimit_401_requests_per_window = v;
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "401 rate-limit threshold: %d responses per window\n", v);
+  } break;
+  case RATELIMIT_WINDOW_OPT: {
+    int v = get_int_value(value, (int)RATELIMIT_DEFAULT_WINDOW_SECS);
+    if (v <= 0) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Invalid --401-window=%d (must be > 0); using default %u\n", v,
+                    RATELIMIT_DEFAULT_WINDOW_SECS);
+      v = (int)RATELIMIT_DEFAULT_WINDOW_SECS;
+    }
+    turn_params.ratelimit_401_window_seconds = v;
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "401 rate-limit window: %d seconds\n", v);
+  } break;
 
   /* these options have been already taken care of before: */
   case 'l':
@@ -3540,7 +3555,7 @@ int main(int argc, char **argv) {
 #endif
 
   if (turn_params.ratelimit_401_requests) {
-    ratelimit_init_map();
+    ratelimit_init();
   }
 
   setup_server();

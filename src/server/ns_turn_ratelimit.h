@@ -31,27 +31,57 @@
 #ifndef __TURN_RATE_LIMIT__
 #define __TURN_RATE_LIMIT__
 
-#include "ns_turn_session.h"
+#include <stdbool.h>
+#include <stdint.h>
+
 #include "ns_turn_ioaddr.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-bool ratelimit_is_address_limited(ioa_addr *address, int max_requests, int window_seconds);
-void ratelimit_add_node(ioa_addr *address);
-int ratelimit_delete_expired(ur_map_value_type value);
-void ratelimit_init_map(void);
-////// Rate limit for 401 Unauthorized //////
+/* Defaults for the 401 rate-limit feature. The PR opts in via
+ * --401-ratelimit; once enabled, --401-req-limit and --401-window
+ * tune the threshold and window. */
+#define RATELIMIT_DEFAULT_MAX_REQUESTS_PER_WINDOW 1000u
+#define RATELIMIT_DEFAULT_WINDOW_SECS 120u
 
-#define RATELIMIT_DEFAULT_MAX_REQUESTS_PER_WINDOW (1000)
-#define RATELIMIT_DEFAULT_WINDOW_SECS (120)
+/*
+ * Lock-free per-source-IP rate-limit, designed for the 401-reflection
+ * attack mitigation in handle_turn_command.
+ *
+ * Design:
+ *  - Fixed-size table of buckets (no malloc/free on the hot path).
+ *  - Each bucket holds a 32-bit tag derived from the source address,
+ *    the start of the current window, and a counter — all atomics.
+ *  - Direct-mapped hash: bucket = hash(addr_without_port) & MASK.
+ *  - On collision (different tag in bucket) the bucket rotates to the
+ *    new tag and the previous occupant gets a fresh window the next
+ *    time it lands in the same bucket.
+ *  - No global mutex, no list scan, no UAF surface: the address never
+ *    appears as a pointer, only as a tag.
+ *
+ * Caveats:
+ *  - Hash collisions cause two unrelated addresses to share a bucket;
+ *    on rotation the loser gets a fresh window. With RL_BUCKETS = 4096
+ *    the collision rate for legit traffic is ~1/4096; in attack mode
+ *    a spoofed flood saturates buckets anyway, so this is acceptable.
+ *  - The port is stripped from the key, so attackers cannot evade by
+ *    rotating the source port.
+ */
 
-typedef struct {
-  time_t last_request_time;
-  uint32_t request_count;
-  TURN_MUTEX_DECLARE(mutex);
-} ratelimit_entry;
+/* Reset the rate-limit table. Called once at server startup. Safe to
+ * call multiple times; safe to skip (the table is zero-initialized at
+ * load time). */
+void ratelimit_init(void);
+
+/* Atomic bump. Returns true if THIS request is OVER the limit, i.e.
+ * the caller should suppress the 401 response. The out parameter
+ * `first_drop` is set to true exactly once per (bucket, window) pair
+ * so callers can emit a single log line per window instead of spamming
+ * on every dropped request. May be NULL. */
+bool ratelimit_consume_address(const ioa_addr *address, uint32_t max_requests, uint32_t window_seconds,
+                               bool *first_drop);
 
 #ifdef __cplusplus
 }

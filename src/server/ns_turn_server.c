@@ -37,10 +37,10 @@
 #include "../apps/relay/ns_ioalib_impl.h"
 #include "ns_turn_allocation.h"
 #include "ns_turn_ioalib.h"
-#include "ns_turn_msg_defs.h" // for STUN_ATTRIBUTE_NONCE
-#include "ns_turn_utils.h"
-#include "ns_turn_ratelimit.h"
 #include "ns_turn_maps.h"
+#include "ns_turn_msg_defs.h" // for STUN_ATTRIBUTE_NONCE
+#include "ns_turn_ratelimit.h"
+#include "ns_turn_utils.h"
 
 #include "apputils.h" // for turn_random, base64_decode
 
@@ -166,7 +166,6 @@ static int read_client_connection(turn_turnserver *server, ts_ur_super_session *
                                   int can_resume, int count_usage);
 
 static int need_stun_authentication(turn_turnserver *server, ts_ur_super_session *ss);
-
 
 /////////////////// timer //////////////////////////
 
@@ -3958,14 +3957,26 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 
     *resp_constructed = 1;
   }
-  if(err_code == 401 && server->ratelimit_401_requests) {
-      ioa_addr *rate_limit_address = get_remote_addr_from_ioa_socket(ss->client_socket);
-      if (ratelimit_is_address_limited(rate_limit_address, *server->ratelimit_401_requests_per_window, *server->ratelimit_401_window_seconds)) {
-          no_response = 1;
-          char raddr[129];
-          addr_to_string_no_port(rate_limit_address, (unsigned char *)raddr);
-          TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "401 rate limit exceeded from %s, response not sent\n", raddr);
+  /* 401 rate-limit (consume): we only count tokens against requests
+   * that actually produce a 401. UDP-only — reflection requires a
+   * spoofable source. The log line is self-rate-limited to one
+   * message per (bucket, window) via first_drop, so a flood doesn't
+   * produce log-write amplification. */
+  if (err_code == 401 && server->ratelimit_401_requests && *(server->ratelimit_401_requests) &&
+      get_ioa_socket_type(ss->client_socket) == UDP_SOCKET) {
+    const ioa_addr *rate_limit_address = get_remote_addr_from_ioa_socket(ss->client_socket);
+    bool first_drop = false;
+    if (rate_limit_address &&
+        ratelimit_consume_address(rate_limit_address, (uint32_t) * (server->ratelimit_401_requests_per_window),
+                                  (uint32_t) * (server->ratelimit_401_window_seconds), &first_drop)) {
+      no_response = 1;
+      if (first_drop) {
+        char raddr[INET6_ADDRSTRLEN + 1] = {0};
+        addr_to_string_no_port(rate_limit_address, raddr);
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "401 rate-limit exceeded from %s, suppressing responses for this window\n",
+                      raddr);
       }
+    }
   }
 
   if (!no_response) {
@@ -5057,8 +5068,8 @@ void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, io
                       int sock_buf_size, allocate_bps_cb allocate_bps_func, int oauth, const char *oauth_server_name,
                       const char *acme_redirect, ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family,
                       bool *log_binding, bool *stun_backward_compatibility, bool *respond_http_unsupported,
-                      bool include_reason_string, bool *ratelimit_401_requests,
-                      vintp ratelimit_401_requests_per_window, vintp ratelimit_401_window_seconds) {
+                      bool include_reason_string, bool *ratelimit_401_requests, vintp ratelimit_401_requests_per_window,
+                      vintp ratelimit_401_window_seconds) {
 
   if (!server) {
     return;
