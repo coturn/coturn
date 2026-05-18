@@ -38,6 +38,7 @@
 #include "dbdrivers/dbdriver.h"
 
 #include "prom_server.h"
+#include "ns_turn_ratelimit.h"
 #include <assert.h>
 #include <limits.h>
 
@@ -248,7 +249,12 @@ turn_params_t turn_params = {
 #endif
     false, /* include_reason_string */
     false, /* multiplex_peer */
-    0      /* multiplex_peer_base_port */
+    0,     /* multiplex_peer_base_port */
+
+    ///////// Ratelimit /////////
+    false,                                     /* 401-ratelimit */
+    RATELIMIT_DEFAULT_MAX_REQUESTS_PER_WINDOW, /* 401-req-limit */
+    RATELIMIT_DEFAULT_WINDOW_SECS              /* 401-window */
 };
 
 //////////////// OpenSSL Init //////////////////////
@@ -1392,6 +1398,12 @@ static char Usage[] =
     "						   By default, only the standard reason phrase for the error code is\n"
     "						   sent. Enabling this option adds detailed error descriptions which\n"
     "						   may aid debugging but can also leak internal server information.\n"
+    " --401-ratelimit                                Enable ratelimiting 401 responses to mitigate "
+    " abuse of coturn in DDoS attacks.\n"
+    " --401-req-limit=<request>                      Set the maximum number of 401 Unauthorized"
+    " responses allowed per rate-limiting window.\n"
+    " --401-window=<seconds>                         Set the time window duration in seconds for "
+    "rate limiting 401 Unauthorized responses\n"
     " --version					Print version (and exit).\n"
     " -h						Help\n"
     "\n";
@@ -1559,6 +1571,9 @@ enum EXTRA_OPTS {
   UDP_GSO_OPT,
 #endif
   VERSION_OPT,
+  RATELIMIT_OPT,
+  RATELIMIT_REQUESTS_OPT,
+  RATELIMIT_WINDOW_OPT,
   CPUS_OPT,
   INCLUDE_REASON_STRING_OPT,
   OPT_MULTIPLEX_PEER = 800,
@@ -1720,6 +1735,9 @@ static const struct myoption long_options[] = {
     {"version", optional_argument, NULL, VERSION_OPT},
     {"syslog-facility", required_argument, NULL, SYSLOG_FACILITY_OPT},
     {"cpus", required_argument, NULL, CPUS_OPT},
+    {"401-ratelimit", optional_argument, NULL, RATELIMIT_OPT},
+    {"401-req-limit", optional_argument, NULL, RATELIMIT_REQUESTS_OPT},
+    {"401-window", optional_argument, NULL, RATELIMIT_WINDOW_OPT},
     {NULL, no_argument, NULL, 0}};
 
 static const struct myoption admin_long_options[] = {
@@ -2561,6 +2579,18 @@ static void set_option(int c, char *value) {
       turn_params.cpus_configured = true;
     }
   } break;
+  case RATELIMIT_OPT:
+    turn_params.ratelimit_401_requests = get_bool_value(value);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Enabling 401 request ratelimiting\n");
+    break;
+  case RATELIMIT_REQUESTS_OPT:
+    turn_params.ratelimit_401_requests_per_window = get_int_value(value, RATELIMIT_DEFAULT_MAX_REQUESTS_PER_WINDOW);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Setting 401 ratelimit requests per window to: %i\n", turn_params.ratelimit_401_requests_per_window);
+    break;
+  case RATELIMIT_WINDOW_OPT:
+    turn_params.ratelimit_401_window_seconds = get_int_value(value, RATELIMIT_DEFAULT_WINDOW_SECS);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Setting 401 ratelimit window to: %i seconds\n", turn_params.ratelimit_401_window_seconds);
+    break;
 
   /* these options have been already taken care of before: */
   case 'l':
@@ -3508,6 +3538,10 @@ int main(int argc, char **argv) {
     }
   }
 #endif
+
+  if (turn_params.ratelimit_401_requests) {
+    ratelimit_init_map();
+  }
 
   setup_server();
 
