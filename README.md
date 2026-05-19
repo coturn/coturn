@@ -1,6 +1,7 @@
 [![Docker CI](https://github.com/coturn/coturn/actions/workflows/docker.yml/badge.svg  "Docker CI")](https://github.com/coturn/coturn/actions/workflows/docker.yml)
 [![Docker Hub](https://img.shields.io/docker/pulls/coturn/coturn?label=Docker%20Hub%20pulls "Docker Hub pulls")](https://hub.docker.com/r/coturn/coturn)
 [![Fuzzing Status](https://oss-fuzz-build-logs.storage.googleapis.com/badges/coturn.svg)](https://bugs.chromium.org/p/oss-fuzz/issues/list?sort=-opened&can=1&q=proj:coturn)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/coturn/coturn)
 
 [Docker Hub](https://hub.docker.com/r/coturn/coturn)
 | [GitHub Container Registry](https://github.com/orgs/coturn/packages/container/package/coturn)
