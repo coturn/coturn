@@ -110,7 +110,9 @@ containing C/H files must be formatted before it is created.
 
 ```bash
 # Format the entire repo (uses the Makefile target — equivalent to
-# `find . -iname "*.c" -o -iname "*.h" | xargs clang-format -i`):
+# `find . \( -iname "*.c" -o -iname "*.h" \) -not -name "ns_turn_khash.h" \
+#    | xargs clang-format -i`. ns_turn_khash.h is a vendored 3rd-party
+# header and is excluded from both format and lint):
 make format
 
 # Verify formatting matches CI (zero output = clean):
@@ -120,7 +122,7 @@ make lint
 **Mandatory pre-commit step for any session that edits C/H files:**
 
 ```bash
-find . -iname "*.c" -o -iname "*.h" | xargs clang-format -i
+find . \( -iname "*.c" -o -iname "*.h" \) -not -name "ns_turn_khash.h" | xargs clang-format -i
 ```
 
 Run this before `git commit` whenever the staged diff touches `*.c` or `*.h`,
