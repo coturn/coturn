@@ -82,7 +82,11 @@ typedef const char *kh_cstr_t;
 #endif
 
 #ifndef kh_packed /* pack the key-value struct */
+#if (defined __clang__ && __clang_major__ >= 3) || (defined __GNUC__ && __GNUC__ >= 3)
 #define kh_packed __attribute__((__packed__))
+#else
+#define kh_packed /* MSVC and others: no portable trailing-token packing attribute */
+#endif
 #endif
 
 #if !defined(Kmalloc) || !defined(Kcalloc) || !defined(Krealloc) || !defined(Kfree)
