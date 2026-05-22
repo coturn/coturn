@@ -231,4 +231,3 @@ if [ "$(uname -s)" = "Linux" ]; then
 fi
 
 sleep 2
-# 401 rate-limit feature has its own driver, see run_tests_ratelimit_401.sh.
