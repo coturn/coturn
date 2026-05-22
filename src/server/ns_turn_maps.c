@@ -42,18 +42,18 @@
 #include <stdlib.h> // for size_t, free, malloc, NULL, realloc
 #include <string.h> // for memset, strcmp, memcpy, strlen
 
-KHASH_MAP_INIT_INT64(3, ur_map_value_type)
+KHASHL_MAP_INIT(KH_LOCAL, ur_map_hash, ur_map_hash, ur_map_key_type, ur_map_value_type, kh_hash_uint64, kh_eq_generic)
 
 #define MAGIC_HASH ((uint64_t)(0x90ABCDEFL))
 
 struct _ur_map {
-  khash_t(3) * h;
+  ur_map_hash *h;
   uint64_t magic;
 };
 
 static bool ur_map_init(ur_map *map) {
   if (map) {
-    map->h = kh_init(3);
+    map->h = ur_map_hash_init();
     if (map->h) {
       map->magic = MAGIC_HASH;
       return true;
@@ -78,20 +78,14 @@ bool ur_map_put(ur_map *map, ur_map_key_type key, ur_map_value_type value) {
     return false;
   }
 
-  khiter_t k = kh_get(3, map->h, key);
-  if (k != kh_end(map->h)) {
-    kh_del(3, map->h, k);
-  }
-
   int ret = 0;
-  k = kh_put(3, map->h, key, &ret);
+  khint_t k = ur_map_hash_put(map->h, key, &ret);
 
-  if (!ret) {
-    kh_del(3, map->h, k);
+  if (ret < 0) {
     return false;
   }
 
-  kh_value(map->h, k) = value;
+  kh_val(map->h, k) = value;
 
   return true;
 }
@@ -101,10 +95,10 @@ bool ur_map_get(const ur_map *map, ur_map_key_type key, ur_map_value_type *value
     return false;
   }
 
-  khiter_t k = kh_get(3, map->h, key);
+  khint_t k = ur_map_hash_get(map->h, key);
   if ((k != kh_end(map->h)) && kh_exist(map->h, k)) {
     if (value) {
-      *value = kh_value(map->h, k);
+      *value = kh_val(map->h, k);
     }
     return true;
   }
@@ -117,12 +111,12 @@ bool ur_map_del(ur_map *map, ur_map_key_type key, ur_map_del_func delfunc) {
     return false;
   }
 
-  khiter_t k = kh_get(3, map->h, key);
+  khint_t k = ur_map_hash_get(map->h, key);
   if ((k != kh_end(map->h)) && kh_exist(map->h, k)) {
     if (delfunc) {
-      delfunc(kh_value(map->h, k));
+      delfunc(kh_val(map->h, k));
     }
-    kh_del(3, map->h, k);
+    ur_map_hash_del(map->h, k);
     return true;
   }
 
@@ -134,7 +128,7 @@ bool ur_map_exist(const ur_map *map, ur_map_key_type key) {
     return false;
   }
 
-  khiter_t k = kh_get(3, map->h, key);
+  khint_t k = ur_map_hash_get(map->h, key);
   if ((k != kh_end(map->h)) && kh_exist(map->h, k)) {
     return true;
   }
@@ -147,10 +141,10 @@ void ur_map_free(ur_map **map) {
     {
       static const int khctest = 0;
       if (khctest) {
-        kh_clear(3, (*map)->h);
+        ur_map_hash_clear((*map)->h);
       }
     }
-    kh_destroy(3, (*map)->h);
+    ur_map_hash_destroy((*map)->h);
     (*map)->h = NULL;
     (*map)->magic = 0;
     free(*map);
@@ -168,9 +162,9 @@ size_t ur_map_size(const ur_map *map) {
 
 bool ur_map_foreach(ur_map *map, foreachcb_type func) {
   if (map && func && ur_map_valid(map)) {
-    for (khiter_t k = kh_begin((*map)->h); k != kh_end(map->h); ++k) {
+    for (khint_t k = 0; k != kh_end(map->h); ++k) {
       if (kh_exist(map->h, k)) {
-        if (func((ur_map_key_type)(kh_key(map->h, k)), (ur_map_value_type)(kh_value(map->h, k)))) {
+        if (func((ur_map_key_type)(kh_key(map->h, k)), (ur_map_value_type)(kh_val(map->h, k)))) {
           return true;
         }
       }
@@ -181,9 +175,9 @@ bool ur_map_foreach(ur_map *map, foreachcb_type func) {
 
 bool ur_map_foreach_arg(const ur_map *map, foreachcb_arg_type func, void *arg) {
   if (map && func && ur_map_valid(map)) {
-    for (khiter_t k = kh_begin((*map)->h); k != kh_end(map->h); ++k) {
+    for (khint_t k = 0; k != kh_end(map->h); ++k) {
       if (kh_exist(map->h, k)) {
-        if (func((ur_map_key_type)(kh_key(map->h, k)), (ur_map_value_type)(kh_value(map->h, k)), arg)) {
+        if (func((ur_map_key_type)(kh_key(map->h, k)), (ur_map_value_type)(kh_val(map->h, k)), arg)) {
           return true;
         }
       }

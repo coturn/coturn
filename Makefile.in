@@ -50,11 +50,12 @@ unit-tests:
 	${MKDIR} build/unit-tests
 	cd build/unit-tests && cmake -DBUILD_TESTING=ON ${CURDIR} && $(MAKE) check
 
-format: 
-	find . -iname "*.c" -o -iname "*.h" | xargs clang-format -i
+# ns_turn_khash.h is a vendored 3rd-party header (khash); skip it.
+format:
+	find . \( -iname "*.c" -o -iname "*.h" \) -not -name "ns_turn_khash.h" | xargs clang-format -i
 
-lint: 
-	find . -iname "*.c" -o -iname "*.h" | xargs clang-format --dry-run -Werror
+lint:
+	find . \( -iname "*.c" -o -iname "*.h" \) -not -name "ns_turn_khash.h" | xargs clang-format --dry-run -Werror
 
 include/turn/ns_turn_defs.h: src/ns_turn_defs.h
 	${RMCMD} include
