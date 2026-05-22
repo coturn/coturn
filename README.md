@@ -150,10 +150,10 @@ The implementation is supposed to be simple, easy to install and configure. The 
 
 To achieve high performance and scalability, the TURN server is implemented with the following features:
 
-  * High-performance industrial-strength Network IO engine libevent2 is used
-  * Configurable multi-threading model implemented to allow full usage of available CPU resources (if OS allows multi-threading)
+  * On linux platform, where available, UDP high throughput is achieved through recvmmsg/sendmmsg/GSO combination
+  * High-performance industrial-strength Network IO engine libevent2 in other cases
   * Multiple listening and relay addresses can be configured
-  * Efficient memory model used
+  * Efficient per-thread memory allocation model is used
   * The TURN project code can be used in a custom proprietary networking environment. In the TURN server code, an abstract networking API is used. Only couple files in the project have to be re-written to plug-in the TURN server into a proprietary environment. With this project, only implementation for standard UNIX Networking/IO API is provided, but the  user can implement any other environment. The TURN server code was originally developed for a high-performance proprietary corporate environment, then adopted for UNIX Networking API
   * The TURN server works as a user space process, without imposing any special requirements on the system
 
