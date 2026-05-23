@@ -69,11 +69,7 @@
 static volatile int _log_file_line_set = 0;
 
 static volatile turn_time_t log_start_time = 0;
-#if defined(WINDOWS)
-volatile uint32_t _log_time_value = 0;
-#else
-_Atomic uint32_t _log_time_value = 0;
-#endif
+turn_atomic_u32 _log_time_value = 0;
 
 static inline turn_time_t log_time(void) {
   if (!log_start_time) {

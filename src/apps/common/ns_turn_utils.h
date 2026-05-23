@@ -48,11 +48,7 @@ void err(int eval, const char *format, ...);
 #include "ns_turn_defs.h" // for turn_time_t
 #include "ns_turn_ioaddr.h"
 
-#if defined(WINDOWS)
-#include <stdint.h>
-#else
-#include <stdatomic.h>
-#endif
+#include "ns_turn_atomic.h"
 
 #ifdef __cplusplus
 #include <algorithm> // for std::min
@@ -95,15 +91,9 @@ void turn_log_func_default(const char *file, int line, TURN_LOG_LEVEL level, con
 void addr_debug_print(int verbose, const ioa_addr *addr, const char *s);
 
 /* Log */
-#if defined(WINDOWS)
-extern volatile uint32_t _log_time_value;
-#define LOAD_LOG_TIME() (_log_time_value)
-#define STORE_LOG_TIME(v) (_log_time_value = (v))
-#else
-extern _Atomic uint32_t _log_time_value;
-#define LOAD_LOG_TIME() atomic_load_explicit(&_log_time_value, memory_order_relaxed)
-#define STORE_LOG_TIME(v) atomic_store_explicit(&_log_time_value, (v), memory_order_relaxed)
-#endif
+extern turn_atomic_u32 _log_time_value;
+#define LOAD_LOG_TIME() turn_atomic_load_u32(&_log_time_value)
+#define STORE_LOG_TIME(v) turn_atomic_store_u32(&_log_time_value, (v))
 extern int use_new_log_timestamp_format;
 
 void rtpprintf(const char *format, ...);
