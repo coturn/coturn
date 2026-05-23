@@ -76,7 +76,7 @@ static inline turn_time_t log_time(void) {
     log_start_time = turn_time();
   }
 
-  const turn_time_t t = LOAD_LOG_TIME();
+  const turn_time_t t = turn_atomic_load_u32(&_log_time_value);
   if (t) {
     return (t - log_start_time);
   }

@@ -430,7 +430,6 @@ static struct relay_server *get_relay_server(turnserver_id id) {
 }
 
 static turn_atomic_u32 auth_message_counter = 0;
-#define FETCH_ADD_AUTH_COUNTER() turn_atomic_fetch_add_u32(&auth_message_counter, 1)
 
 static void send_auth_message_to_relay(struct auth_message *am) {
   struct evbuffer *output = NULL;
@@ -473,7 +472,8 @@ void send_auth_message_to_auth_server(struct auth_message *am) {
     return;
   }
 
-  const authserver_id sn = (authserver_id)(FETCH_ADD_AUTH_COUNTER() % (authserver_number - 1)) + 1;
+  const authserver_id sn =
+      (authserver_id)(turn_atomic_fetch_add_u32(&auth_message_counter, 1) % (authserver_number - 1)) + 1;
 
   struct evbuffer *output = bufferevent_get_output(authserver[sn].out_buf);
   if (evbuffer_add(output, &am, sizeof(am)) < 0) {

@@ -92,8 +92,6 @@ void addr_debug_print(int verbose, const ioa_addr *addr, const char *s);
 
 /* Log */
 extern turn_atomic_u32 _log_time_value;
-#define LOAD_LOG_TIME() turn_atomic_load_u32(&_log_time_value)
-#define STORE_LOG_TIME(v) turn_atomic_store_u32(&_log_time_value, (v))
 extern int use_new_log_timestamp_format;
 
 void rtpprintf(const char *format, ...);
