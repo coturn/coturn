@@ -3267,10 +3267,14 @@ static void handle_update_request(ioa_socket_handle s, struct http_request *hr) 
             r = current_realm();
           }
 
-          if (current_realm()[0] && strcmp(current_realm(), r)) {
+          if (check_ip_list_range(ip) < 0) {
+            TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong address range format: %s\n", ip);
+          } else if (current_realm()[0] && strcmp(current_realm(), r)) {
             // forbidden
           } else if (strcmp(kind, "allowed") != 0 && strcmp(kind, "denied") != 0) {
             // forbidden
+          } else if (r[0] && !is_secure_string((const uint8_t *)r, 1)) {
+            // forbidden: realm contains invalid characters
           } else {
 
             uint8_t realm[STUN_MAX_REALM_SIZE + 1] = "\0";
@@ -3306,6 +3310,8 @@ static void handle_update_request(ioa_socket_handle s, struct http_request *hr) 
               // forbidden
             } else if (strcmp(kind, "allowed") != 0 && strcmp(kind, "denied") != 0) {
               // forbidden
+            } else if (r[0] && !is_secure_string((const uint8_t *)r, 1)) {
+              // forbidden: realm contains invalid characters
             } else {
 
               uint8_t realm[STUN_MAX_REALM_SIZE + 1] = "\0";
@@ -3461,12 +3467,12 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
 
           {
             const uint8_t *user = (const uint8_t *)get_http_header_value(hr, HR_DELETE_USER, NULL);
-            if (user && user[0]) {
+            if (user && user[0] && is_secure_string(user, 1)) {
               const uint8_t *realm = (const uint8_t *)get_http_header_value(hr, HR_DELETE_REALM, "");
               if (!is_superuser()) {
                 realm = (const uint8_t *)current_realm();
               }
-              if (realm && realm[0]) {
+              if (realm && realm[0] && is_secure_string(realm, 1)) {
                 const turn_dbdriver_t *dbd = get_dbdriver();
                 if (dbd && dbd->del_user) {
                   uint8_t u[STUN_MAX_USERNAME_SIZE + 1];
@@ -3562,12 +3568,12 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
 
           {
             const uint8_t *secret = (const uint8_t *)get_http_header_value(hr, HR_DELETE_SECRET, NULL);
-            if (secret && secret[0]) {
+            if (secret && secret[0] && is_secure_string(secret, 1)) {
               const uint8_t *realm = (const uint8_t *)get_http_header_value(hr, HR_DELETE_REALM, NULL);
               if (!is_superuser()) {
                 realm = (const uint8_t *)current_realm();
               }
-              if (realm && realm[0]) {
+              if (realm && realm[0] && is_secure_string(realm, 1)) {
                 const turn_dbdriver_t *dbd = get_dbdriver();
                 if (dbd && dbd->del_secret) {
                   uint8_t ss[AUTH_SECRET_SIZE + 1];
