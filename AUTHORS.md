@@ -24,6 +24,7 @@ Thanks to the following contributors (in alphabetical order):
 - Chai-Shi <changchaishi@gmail.com>
 - Copilot <198982749+Copilot@users.noreply.github.com>
 - Corey Cole <coreyleoc@gmail.com>
+- Corey Siltala <41675024+csiltala@users.noreply.github.com>
 - Cybermilitia <Cybermilitia@users.noreply.github.com>
 - Cédric DIJOUX <45537432+PrinceChoco@users.noreply.github.com>
 - Cédric Krier <ced@b2ck.com>
@@ -169,6 +170,7 @@ Thanks to the following contributors (in alphabetical order):
 - misi <bakfitty@gmail.com>
 - mom040267 <mom040267@gmail.com>
 - mom040267 <mom040267@users.noreply.github.com>
+- nfuhler <74792136+nfuhler@users.noreply.github.com>
 - nicolas-laduguie <111897939+nicolas-laduguie@users.noreply.github.com>
 - oleg <oleg@lamb.(none)>
 - oleg <oleg@sck63.oleg.net>

@@ -1,3 +1,35 @@
+Release 4.12.0
+
+Changelist:
+- Update khash to the latest version (#1919) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Update readme to match latest changes (#1920) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Add DeepWiki link to the README (Gustavo Garcia <gustavogb@gmail.com>)
+- Update docs for drop-invalid-packets and response-origin-only-with-rfc5780 (#1918) (Corey Siltala <41675024+csiltala@users.noreply.github.com>)
+- Multiplexpeer (#1916) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- examples: exercise uclient thread pools, UDP-GSO, recv_pps in CI tests (#1914) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix TTL/TOS type conversion (#1915) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- turnutils_uclient: sender thread pool + UDP-GSO send batching + recv_pps reporting (#1913) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix memory leak introduced by recvmmsg path (#1912) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- turnutils_uclient: multi-threaded listener (recv) pool (#1911) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- examples/turnserver.conf: update description of cli option (#1909) (nfuhler <74792136+nfuhler@users.noreply.github.com>)
+- turnutils_uclient: Linux recvmmsg receive path + larger SO_RCVBUF (#1910) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Add UDP-GSO send path (--udp-gso) (#1907) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Upgrade Docker image to 4.11.0 Coturn version (Kai Ren <tyranron@gmail.com>)
+- Update Debian "trixie" to 20260406 snapshot in Docker image (Kai Ren <tyranron@gmail.com>)
+- turnutils_peer: Linux fast path with drain loop, recvmmsg/sendmmsg, U… (#1908) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Relay recvmmsg (#1906) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- fuzzing: use hex escapes for HTTP EOH dictionary entry (#1905) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Sync turnserver man page with current CLI options (#1903) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Remove stale --ne option from turnserver --help (#1904) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Restore CodeQL permissions, category, and manual build mode (#1901) (Pavel Punsky <eakraly@users.noreply.github.com>)
+
+Contributors:
+- Corey Siltala <41675024+csiltala@users.noreply.github.com>
+- Gustavo Garcia <gustavogb@gmail.com>
+- Kai Ren <tyranron@gmail.com>
+- Pavel Punsky <eakraly@users.noreply.github.com>
+- nfuhler <74792136+nfuhler@users.noreply.github.com>
+
 Release 4.11.0
 
 Changelist:
