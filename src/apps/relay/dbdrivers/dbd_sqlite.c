@@ -225,6 +225,31 @@ static sqlite3 *get_sqlite_connection(void) {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+/* Prepare `sql` (which must use '?' placeholders) and bind `nparams` values as
+ * text, in order, starting at placeholder 1. This is the only path that should
+ * be used for statements carrying caller-supplied values: it keeps the values
+ * out of the SQL text entirely, so there is no SQL injection surface. NULL
+ * params are bound as empty strings. SQLITE_TRANSIENT lets SQLite copy each
+ * value, so callers need not keep the buffers alive past this call.
+ *
+ * On success *st holds the prepared, fully-bound statement and SQLITE_OK is
+ * returned. On error *st is whatever sqlite3_prepare() produced (possibly NULL)
+ * and the caller must still sqlite3_finalize() it, exactly as before. */
+static int sqlite_prepare_bind(sqlite3 *sqliteconnection, sqlite3_stmt **st, const char *sql, int nparams,
+                               const char *const params[]) {
+  int rc = sqlite3_prepare(sqliteconnection, sql, -1, st, 0);
+  if (rc != SQLITE_OK) {
+    return rc;
+  }
+  for (int i = 0; i < nparams; ++i) {
+    rc = sqlite3_bind_text(*st, i + 1, params[i] ? params[i] : "", -1, SQLITE_TRANSIENT);
+    if (rc != SQLITE_OK) {
+      return rc;
+    }
+  }
+  return SQLITE_OK;
+}
+
 static int sqlite_get_auth_secrets(secrets_list_t *sl, uint8_t *realm) {
   int ret = -1;
 
@@ -233,13 +258,13 @@ static int sqlite_get_auth_secrets(secrets_list_t *sl, uint8_t *realm) {
     return ret;
   }
 
-  char statement[TURN_LONG_STRING_SIZE];
-  snprintf(statement, sizeof(statement) - 1, "select value from turn_secret where realm='%s'", realm);
+  const char *const params[] = {(const char *)realm};
 
   sqlite_lock(0);
 
   sqlite3_stmt *st = NULL;
-  if (sqlite3_prepare(sqliteconnection, statement, -1, &st, 0) == SQLITE_OK) {
+  if (sqlite_prepare_bind(sqliteconnection, &st, "select value from turn_secret where realm=?", 1, params) ==
+      SQLITE_OK) {
 
     ret = 0;
     if (sqlite3_column_count(st) > 0) {
@@ -275,15 +300,13 @@ static int sqlite_get_user_key(uint8_t *usname, uint8_t *realm, hmackey_t key) {
     return ret;
   }
 
-  char statement[TURN_LONG_STRING_SIZE];
-  /* direct user input eliminated - there is no SQL injection problem (since version 4.4.5.3) */
-  snprintf(statement, sizeof(statement), "select hmackey from turnusers_lt where name='%s' and realm='%s'", usname,
-           realm);
+  const char *const params[] = {(const char *)usname, (const char *)realm};
 
   sqlite_lock(0);
 
   sqlite3_stmt *st = NULL;
-  if (sqlite3_prepare(sqliteconnection, statement, -1, &st, 0) == SQLITE_OK) {
+  if (sqlite_prepare_bind(sqliteconnection, &st, "select hmackey from turnusers_lt where name=? and realm=?", 2,
+                          params) == SQLITE_OK) {
 
     // TODO: Error if more than one result.
     if (sqlite3_step(st) == SQLITE_ROW) {
@@ -312,16 +335,15 @@ static int sqlite_get_oauth_key(const uint8_t *kid, oauth_key_data_raw *key) {
     return ret;
   }
 
-  char statement[TURN_LONG_STRING_SIZE];
   sqlite3_stmt *st = NULL;
 
-  /* direct user input eliminated - there is no SQL injection problem (since version 4.4.5.3) */
-  snprintf(statement, sizeof(statement),
-           "select ikm_key,timestamp,lifetime,as_rs_alg,realm from oauth_key where kid='%s'", (const char *)kid);
+  const char *const params[] = {(const char *)kid};
 
   sqlite_lock(0);
 
-  if (sqlite3_prepare(sqliteconnection, statement, -1, &st, 0) == SQLITE_OK) {
+  if (sqlite_prepare_bind(sqliteconnection, &st,
+                          "select ikm_key,timestamp,lifetime,as_rs_alg,realm from oauth_key where kid=?", 1,
+                          params) == SQLITE_OK) {
 
     // TODO: Error if more than one result.
     if (sqlite3_step(st) == SQLITE_ROW) {
@@ -428,14 +450,14 @@ static int sqlite_set_user_key(uint8_t *usname, uint8_t *realm, const char *key)
     return ret;
   }
 
-  char statement[TURN_LONG_STRING_SIZE];
-  snprintf(statement, sizeof(statement),
-           "insert or replace into turnusers_lt (realm,name,hmackey) values('%s','%s','%s')", realm, usname, key);
+  const char *const params[] = {(const char *)realm, (const char *)usname, key};
 
   sqlite_lock(1);
 
   sqlite3_stmt *st = NULL;
-  if (sqlite3_prepare(sqliteconnection, statement, -1, &st, 0) == SQLITE_OK) {
+  if (sqlite_prepare_bind(sqliteconnection, &st,
+                          "insert or replace into turnusers_lt (realm,name,hmackey) values(?,?,?)", 3,
+                          params) == SQLITE_OK) {
     // TODO: Check the result...
     sqlite3_step(st);
     ret = 0;
@@ -461,17 +483,19 @@ static int sqlite_set_oauth_key(oauth_key_data_raw *key) {
     return ret;
   }
 
-  char statement[TURN_LONG_STRING_SIZE];
-  snprintf(statement, sizeof(statement),
-           "insert or replace into oauth_key (kid,ikm_key,timestamp,lifetime,as_rs_alg,realm) "
-           "values('%s','%s',%llu,%lu,'%s','%s')",
-           key->kid, key->ikm_key, (unsigned long long)key->timestamp, (unsigned long)key->lifetime, key->as_rs_alg,
-           key->realm);
+  char ts[32];
+  char lt[32];
+  snprintf(ts, sizeof(ts), "%llu", (unsigned long long)key->timestamp);
+  snprintf(lt, sizeof(lt), "%lu", (unsigned long)key->lifetime);
+  const char *const params[] = {key->kid, key->ikm_key, ts, lt, key->as_rs_alg, key->realm};
 
   sqlite_lock(1);
 
   sqlite3_stmt *st = NULL;
-  if (sqlite3_prepare(sqliteconnection, statement, -1, &st, 0) == SQLITE_OK) {
+  if (sqlite_prepare_bind(sqliteconnection, &st,
+                          "insert or replace into oauth_key (kid,ikm_key,timestamp,lifetime,as_rs_alg,realm) "
+                          "values(?,?,?,?,?,?)",
+                          6, params) == SQLITE_OK) {
     // TODO: Check the result...
     sqlite3_step(st);
     ret = 0;
@@ -497,13 +521,13 @@ static int sqlite_del_user(uint8_t *usname, uint8_t *realm) {
     return ret;
   }
 
-  char statement[TURN_LONG_STRING_SIZE];
-  snprintf(statement, sizeof(statement), "delete from turnusers_lt where name='%s' and realm='%s'", usname, realm);
+  const char *const params[] = {(const char *)usname, (const char *)realm};
 
   sqlite_lock(1);
 
   sqlite3_stmt *st = NULL;
-  if (sqlite3_prepare(sqliteconnection, statement, -1, &st, 0) == SQLITE_OK) {
+  if (sqlite_prepare_bind(sqliteconnection, &st, "delete from turnusers_lt where name=? and realm=?", 2, params) ==
+      SQLITE_OK) {
     // TODO: Check the result...
     sqlite3_step(st);
     ret = 0;
@@ -529,13 +553,12 @@ static int sqlite_del_oauth_key(const uint8_t *kid) {
     return ret;
   }
 
-  char statement[TURN_LONG_STRING_SIZE];
-  snprintf(statement, sizeof(statement), "delete from oauth_key where kid = '%s'", (const char *)kid);
+  const char *const params[] = {(const char *)kid};
 
   sqlite_lock(1);
 
   sqlite3_stmt *st = NULL;
-  if (sqlite3_prepare(sqliteconnection, statement, -1, &st, 0) == SQLITE_OK) {
+  if (sqlite_prepare_bind(sqliteconnection, &st, "delete from oauth_key where kid = ?", 1, params) == SQLITE_OK) {
     // TODO: Check the result...
     sqlite3_step(st);
     ret = 0;
@@ -561,17 +584,20 @@ static int sqlite_list_users(uint8_t *realm, secrets_list_t *users, secrets_list
     return ret;
   }
 
-  char statement[TURN_LONG_STRING_SIZE];
+  const char *statement;
+  const char *params[1];
+  int nparams = 0;
   if ((realm != NULL) && (realm[0] != '\0')) {
-    snprintf(statement, sizeof(statement), "select name,realm from turnusers_lt where realm='%s' order by name", realm);
+    statement = "select name,realm from turnusers_lt where realm=? order by name";
+    params[nparams++] = (const char *)realm;
   } else {
-    snprintf(statement, sizeof(statement), "select name,realm from turnusers_lt order by realm,name");
+    statement = "select name,realm from turnusers_lt order by realm,name";
   }
 
   sqlite_lock(0);
 
   sqlite3_stmt *st = NULL;
-  if (sqlite3_prepare(sqliteconnection, statement, -1, &st, 0) == SQLITE_OK) {
+  if (sqlite_prepare_bind(sqliteconnection, &st, statement, nparams, params) == SQLITE_OK) {
 
     // TODO: Validate column count...
     ret = 0;
@@ -626,18 +652,20 @@ static int sqlite_list_secrets(uint8_t *realm, secrets_list_t *secrets, secrets_
     return ret;
   }
 
-  char statement[TURN_LONG_STRING_SIZE];
+  const char *statement;
+  const char *params[1];
+  int nparams = 0;
   if ((realm != NULL) && (realm[0] != '\0')) {
-    snprintf(statement, sizeof(statement), "select value,realm from turn_secret where realm='%s' order by value",
-             realm);
+    statement = "select value,realm from turn_secret where realm=? order by value";
+    params[nparams++] = (const char *)realm;
   } else {
-    snprintf(statement, sizeof(statement), "select value,realm from turn_secret order by realm,value");
+    statement = "select value,realm from turn_secret order by realm,value";
   }
 
   sqlite_lock(0);
 
   sqlite3_stmt *st = NULL;
-  if (sqlite3_prepare(sqliteconnection, statement, -1, &st, 0) == SQLITE_OK) {
+  if (sqlite_prepare_bind(sqliteconnection, &st, statement, nparams, params) == SQLITE_OK) {
 
     // TODO: Validate column count...
     ret = 0;
@@ -688,18 +716,22 @@ static int sqlite_del_secret(uint8_t *secret, uint8_t *realm) {
     return ret;
   }
 
-  char statement[TURN_LONG_STRING_SIZE];
-
+  const char *statement;
+  const char *params[2];
+  int nparams = 0;
   if (!secret || (secret[0] == 0)) {
-    snprintf(statement, sizeof(statement), "delete from turn_secret where realm='%s'", realm);
+    statement = "delete from turn_secret where realm=?";
+    params[nparams++] = (const char *)realm;
   } else {
-    snprintf(statement, sizeof(statement), "delete from turn_secret where value='%s' and realm='%s'", secret, realm);
+    statement = "delete from turn_secret where value=? and realm=?";
+    params[nparams++] = (const char *)secret;
+    params[nparams++] = (const char *)realm;
   }
 
   sqlite_lock(1);
 
   sqlite3_stmt *st = NULL;
-  if (sqlite3_prepare(sqliteconnection, statement, -1, &st, 0) == SQLITE_OK) {
+  if (sqlite_prepare_bind(sqliteconnection, &st, statement, nparams, params) == SQLITE_OK) {
     // TODO: Check results...
     sqlite3_step(st);
     ret = 0;
@@ -725,14 +757,13 @@ static int sqlite_set_secret(uint8_t *secret, uint8_t *realm) {
     return ret;
   }
 
-  char statement[TURN_LONG_STRING_SIZE];
-  snprintf(statement, sizeof(statement), "insert or replace into turn_secret (realm,value) values('%s','%s')", realm,
-           secret);
+  const char *const params[] = {(const char *)realm, (const char *)secret};
 
   sqlite_lock(1);
 
   sqlite3_stmt *st = NULL;
-  if (sqlite3_prepare(sqliteconnection, statement, -1, &st, 0) == SQLITE_OK) {
+  if (sqlite_prepare_bind(sqliteconnection, &st, "insert or replace into turn_secret (realm,value) values(?,?)", 2,
+                          params) == SQLITE_OK) {
     // TODO: Check results...
     sqlite3_step(st);
     ret = 0;
@@ -758,14 +789,14 @@ static int sqlite_add_origin(uint8_t *origin, uint8_t *realm) {
     return ret;
   }
 
-  char statement[TURN_LONG_STRING_SIZE];
-  snprintf(statement, sizeof(statement), "insert or replace into turn_origin_to_realm (origin,realm) values('%s','%s')",
-           origin, realm);
+  const char *const params[] = {(const char *)origin, (const char *)realm};
 
   sqlite_lock(1);
 
   sqlite3_stmt *st = NULL;
-  if (sqlite3_prepare(sqliteconnection, statement, -1, &st, 0) == SQLITE_OK) {
+  if (sqlite_prepare_bind(sqliteconnection, &st,
+                          "insert or replace into turn_origin_to_realm (origin,realm) values(?,?)", 2,
+                          params) == SQLITE_OK) {
     // TODO: Check results...
     sqlite3_step(st);
     ret = 0;
@@ -791,13 +822,13 @@ static int sqlite_del_origin(uint8_t *origin) {
     return ret;
   }
 
-  char statement[TURN_LONG_STRING_SIZE];
-  snprintf(statement, sizeof(statement), "delete from turn_origin_to_realm where origin='%s'", origin);
+  const char *const params[] = {(const char *)origin};
 
   sqlite_lock(1);
 
   sqlite3_stmt *st = NULL;
-  if (sqlite3_prepare(sqliteconnection, statement, -1, &st, 0) == SQLITE_OK) {
+  if (sqlite_prepare_bind(sqliteconnection, &st, "delete from turn_origin_to_realm where origin=?", 1, params) ==
+      SQLITE_OK) {
     // TODO: Check results...
     sqlite3_step(st);
     ret = 0;
@@ -823,18 +854,20 @@ static int sqlite_list_origins(uint8_t *realm, secrets_list_t *origins, secrets_
     return ret;
   }
 
-  char statement[TURN_LONG_STRING_SIZE];
+  const char *statement;
+  const char *params[1];
+  int nparams = 0;
   if (realm && realm[0]) {
-    snprintf(statement, sizeof(statement),
-             "select origin,realm from turn_origin_to_realm where realm='%s' order by origin", realm);
+    statement = "select origin,realm from turn_origin_to_realm where realm=? order by origin";
+    params[nparams++] = (const char *)realm;
   } else {
-    snprintf(statement, sizeof(statement), "select origin,realm from turn_origin_to_realm order by realm,origin");
+    statement = "select origin,realm from turn_origin_to_realm order by realm,origin";
   }
 
   sqlite_lock(0);
 
   sqlite3_stmt *st = NULL;
-  if (sqlite3_prepare(sqliteconnection, statement, -1, &st, 0) == SQLITE_OK) {
+  if (sqlite_prepare_bind(sqliteconnection, &st, statement, nparams, params) == SQLITE_OK) {
 
     // TODO: Validate column count...
     ret = 0;
@@ -892,14 +925,16 @@ static int sqlite_set_realm_option_one(uint8_t *realm, unsigned long value, cons
     return ret;
   }
 
-  char statement[TURN_LONG_STRING_SIZE];
-  snprintf(statement, sizeof(statement),
-           "insert or replace into turn_realm_option (realm,opt,value) values('%s','%s','%lu')", realm, opt, value);
+  char val[32];
+  snprintf(val, sizeof(val), "%lu", value);
+  const char *const params[] = {(const char *)realm, opt, val};
 
   sqlite_lock(1);
 
   sqlite3_stmt *st = NULL;
-  if (sqlite3_prepare(sqliteconnection, statement, -1, &st, 0) == SQLITE_OK) {
+  if (sqlite_prepare_bind(sqliteconnection, &st,
+                          "insert or replace into turn_realm_option (realm,opt,value) values(?,?,?)", 3,
+                          params) == SQLITE_OK) {
     // TODO: Check results...
     sqlite3_step(st);
     ret = 0;
@@ -925,18 +960,20 @@ static int sqlite_list_realm_options(uint8_t *realm) {
     return ret;
   }
 
-  char statement[TURN_LONG_STRING_SIZE];
+  const char *statement;
+  const char *params[1];
+  int nparams = 0;
   if (realm && realm[0]) {
-    snprintf(statement, sizeof(statement),
-             "select realm,opt,value from turn_realm_option where realm='%s' order by realm,opt", realm);
+    statement = "select realm,opt,value from turn_realm_option where realm=? order by realm,opt";
+    params[nparams++] = (const char *)realm;
   } else {
-    snprintf(statement, sizeof(statement), "select realm,opt,value from turn_realm_option order by realm,opt");
+    statement = "select realm,opt,value from turn_realm_option order by realm,opt";
   }
 
   sqlite_lock(0);
 
   sqlite3_stmt *st = NULL;
-  if (sqlite3_prepare(sqliteconnection, statement, -1, &st, 0) == SQLITE_OK) {
+  if (sqlite_prepare_bind(sqliteconnection, &st, statement, nparams, params) == SQLITE_OK) {
 
     // TODO: Validate column count...
     ret = 0;
@@ -1036,17 +1073,19 @@ static int sqlite_set_permission_ip(const char *kind, uint8_t *realm, const char
 
   sqlite_lock(1);
 
+  /* `kind` selects the table ("allowed"/"denied") and cannot be a bound
+   * parameter; the caller has already validated it against that whitelist.
+   * The realm and ip values are bound, never interpolated. */
   char statement[TURN_LONG_STRING_SIZE];
   if (del) {
-    snprintf(statement, sizeof(statement), "delete from %s_peer_ip where realm = '%s'  and ip_range = '%s'", kind,
-             (char *)realm, ip);
+    snprintf(statement, sizeof(statement), "delete from %s_peer_ip where realm = ?  and ip_range = ?", kind);
   } else {
-    snprintf(statement, sizeof(statement), "insert or replace into %s_peer_ip (realm,ip_range) values('%s','%s')", kind,
-             (char *)realm, ip);
+    snprintf(statement, sizeof(statement), "insert or replace into %s_peer_ip (realm,ip_range) values(?,?)", kind);
   }
+  const char *const params[] = {(const char *)realm, ip};
 
   sqlite3_stmt *st = NULL;
-  if (sqlite3_prepare(sqliteconnection, statement, -1, &st, 0) == SQLITE_OK) {
+  if (sqlite_prepare_bind(sqliteconnection, &st, statement, 2, params) == SQLITE_OK) {
     // TODO: Check result...
     sqlite3_step(st);
     ret = 0;
@@ -1199,13 +1238,13 @@ static int sqlite_get_admin_user(const uint8_t *usname, uint8_t *realm, password
   realm[0] = 0;
   pwd[0] = 0;
 
-  char statement[TURN_LONG_STRING_SIZE];
-  snprintf(statement, sizeof(statement), "select realm,password from admin_user where name='%s'", usname);
+  const char *const params[] = {(const char *)usname};
 
   sqlite_lock(0);
 
   sqlite3_stmt *st = NULL;
-  if (sqlite3_prepare(sqliteconnection, statement, -1, &st, 0) == SQLITE_OK) {
+  if (sqlite_prepare_bind(sqliteconnection, &st, "select realm,password from admin_user where name=?", 1, params) ==
+      SQLITE_OK) {
     // TODO: Validate column count...
     // TODO: Error if more than one result.
     if (sqlite3_step(st) == SQLITE_ROW) {
@@ -1249,14 +1288,14 @@ static int sqlite_set_admin_user(const uint8_t *usname, const uint8_t *realm, co
     return ret;
   }
 
-  char statement[TURN_LONG_STRING_SIZE];
-  snprintf(statement, sizeof(statement),
-           "insert or replace into admin_user (realm,name,password) values('%s','%s','%s')", realm, usname, pwd);
+  const char *const params[] = {(const char *)realm, (const char *)usname, (const char *)pwd};
 
   sqlite_lock(1);
 
   sqlite3_stmt *st = NULL;
-  if (sqlite3_prepare(sqliteconnection, statement, -1, &st, 0) == SQLITE_OK) {
+  if (sqlite_prepare_bind(sqliteconnection, &st,
+                          "insert or replace into admin_user (realm,name,password) values(?,?,?)", 3,
+                          params) == SQLITE_OK) {
     // TODO: Check result...
     sqlite3_step(st);
     ret = 0;
@@ -1282,13 +1321,12 @@ static int sqlite_del_admin_user(const uint8_t *usname) {
     return ret;
   }
 
-  char statement[TURN_LONG_STRING_SIZE];
-  snprintf(statement, sizeof(statement), "delete from admin_user where name='%s'", usname);
+  const char *const params[] = {(const char *)usname};
 
   sqlite_lock(1);
 
   sqlite3_stmt *st = NULL;
-  if (sqlite3_prepare(sqliteconnection, statement, -1, &st, 0) == SQLITE_OK) {
+  if (sqlite_prepare_bind(sqliteconnection, &st, "delete from admin_user where name=?", 1, params) == SQLITE_OK) {
     // TODO: Check result...
     sqlite3_step(st);
     ret = 0;
