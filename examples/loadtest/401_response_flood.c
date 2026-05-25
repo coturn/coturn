@@ -114,8 +114,8 @@ static bool response_is_401(const uint8_t *response, size_t length) {
       return false;
     }
     if (type == STUN_ERROR_CODE && attr_length >= 4u) {
-      unsigned int code = ((unsigned int)(response[attr_offset + 6u] & 0x07u) * 100u) +
-                          (unsigned int)response[attr_offset + 7u];
+      unsigned int code =
+          ((unsigned int)(response[attr_offset + 6u] & 0x07u) * 100u) + (unsigned int)response[attr_offset + 7u];
       return code == 401u;
     }
     attr_offset += 4u + ((attr_length + 3u) & ~3u);
