@@ -1,0 +1,236 @@
+# 401 Unauthorized rate-limiting
+
+This document describes the per-source rate-limit on `401 Unauthorized`
+responses introduced on branch `pr1588`. It covers what the feature defends
+against, how it is implemented, how to operate it, expected performance, and
+its known weaknesses.
+
+## Why
+
+TURN/STUN long-term authentication is a challenge/response flow: the first
+request from a client arrives without valid credentials, and the server
+answers with `401 Unauthorized` carrying a `REALM` and a `NONCE`. This is
+normal — the legitimate client then retries with credentials derived from the
+nonce.
+
+The problem is on UDP. UDP source addresses are trivially spoofable, and a
+`401` response is larger than the request that triggers it (it carries
+`REALM`, `NONCE`, `SOFTWARE`, and message-integrity material). An attacker can
+therefore:
+
+- **Reflect**: send authentication requests with the *victim's* IP forged as
+  the source, so the server bounces `401` responses at the victim, and
+- **Amplify**: each small spoofed request produces a larger `401`, multiplying
+  the attacker's outbound bandwidth at the victim.
+
+The server is an unwitting reflector/amplifier. The mitigation is to cap how
+many `401` responses the server will emit toward any single source address per
+unit time. Past the cap, the server simply stays silent — it does not send the
+`401`, denying the attacker both the reflection and the amplification.
+
+The feature is **off by default** and opt-in, because suppressing `401`
+responses changes a protocol-visible behavior and only matters for operators
+exposed to UDP reflection abuse.
+
+## What it does
+
+When enabled, for every request that *would* produce a `401`:
+
+1. Only `UDP` client sockets are considered. TCP/TLS can't be spoofed for
+   reflection (the handshake forces a real return path), so they are never
+   rate-limited.
+2. The source IP (port stripped) is looked up in a fixed bucket table and its
+   counter for the current window is incremented.
+3. If the count is within the limit, the `401` is sent as normal.
+4. If the count is over the limit, `no_response` is set: the `401` is silently
+   suppressed for the rest of the window.
+5. The first suppression in each window emits exactly one log line; further
+   drops in the same window are silent (no log-write amplification).
+
+Counting is **consume-on-401**: only requests that actually result in a `401`
+spend a token. Successful or otherwise-errored requests don't touch the table.
+
+## How it works
+
+### Components
+
+| File | Role |
+|---|---|
+| [src/ns_turn_atomic.h](../src/ns_turn_atomic.h) | Portable 32-bit atomics (load/store/fetch_add/CAS) over C11 `<stdatomic.h>` and, on MSVC, the `Interlocked*` intrinsics. |
+| [src/server/ns_turn_ratelimit.h](../src/server/ns_turn_ratelimit.h) / [.c](../src/server/ns_turn_ratelimit.c) | The lock-free rate-limit table and its two entry points. |
+| [src/server/ns_turn_server.c](../src/server/ns_turn_server.c) | The consume call site inside `handle_turn_command`. |
+| [src/apps/relay/mainrelay.c](../src/apps/relay/mainrelay.c) | CLI flags, defaults, and one-time `ratelimit_init()`. |
+| [examples/run_tests_ratelimit_401.sh](../examples/run_tests_ratelimit_401.sh) | End-to-end positive/negative system test. |
+
+### The table
+
+```c
+#define RL_BUCKETS 4096u           // power of two
+typedef struct {
+  turn_atomic_u32 tag;             // hash of source IP (port stripped); 0 = empty
+  turn_atomic_u32 window_start;    // turn_time() when the current window opened
+  turn_atomic_u32 count;           // requests counted in this window
+  turn_atomic_u32 logged;          // 1 once a drop has been logged this window
+} rl_bucket;
+static rl_bucket rl_table[RL_BUCKETS];
+```
+
+A single statically-allocated, zero-initialized table of 4096 buckets, 16
+bytes each (~64 KiB resident). No `malloc`/`free` on the hot path, no growth,
+no eviction list.
+
+It is a **direct-mapped** structure: `bucket = hash(addr) & (RL_BUCKETS-1)`.
+There is exactly one slot per address-hash; on collision the bucket simply
+rotates to whichever address most recently landed in it.
+
+- IPv4 keys are hashed with a splitmix-style 32-bit finalizer over
+  `sin_addr.s_addr`.
+- IPv6 keys are hashed with FNV-1a over the 16 address bytes.
+- The hash is forced non-zero so `0` can mean "empty bucket".
+- The **port is deliberately excluded** from the key, so an attacker cannot
+  evade the limit by rotating the source port.
+
+### The consume algorithm ([ns_turn_ratelimit.c](../src/server/ns_turn_ratelimit.c))
+
+`ratelimit_consume_address(addr, max, window, &first_drop)` returns `true` when
+the current request is *over* the limit (caller should suppress):
+
+1. Hash the address, index the bucket, read `now = (uint32_t)turn_time()`.
+2. Read the bucket's `tag` and `window_start`.
+3. **Reset path** — if the tag doesn't match (different/new address, or a
+   collision evicting the previous occupant) *or* the window has expired
+   (`now - window_start >= window`): atomically store a fresh
+   `window_start`, clear `logged`, set `count = 1`, and finally store the new
+   `tag`. Returns `false` (this request is the first in a fresh window).
+4. **Count path** — otherwise `fetch_add(count, 1)` returns the pre-increment
+   value `prev`. If `prev < max`, allow (`false`). Otherwise this is the
+   `(max+1)`-th request: it's over the limit, return `true`.
+5. **First-drop logging** — on an over-limit request, `CAS(logged, 0 -> 1)`.
+   The single winner of that CAS gets `*first_drop = true`; everyone else in
+   the window is silent.
+
+### Lock-free design and its tradeoffs
+
+There is no mutex. All bucket fields are sequentially-consistent atomics, and
+the design accepts small, bounded races by construction rather than locking
+them out:
+
+- Two threads resetting the same bucket concurrently: the second store wins;
+  both observe `count == 1` by the time the `tag` store lands. Worst case the
+  effective count is off by a request or two at a window boundary.
+- The window-expiry check and the increment are not one transaction, so a
+  request landing exactly at the boundary may be counted in the old or the new
+  window. Bounded and harmless for a rate-limit.
+
+This is acceptable because the goal is *coarse abuse mitigation*, not exact
+accounting. Under attack, collisions and races all converge to "drop", which is
+the safe direction.
+
+### Why a dedicated atomics header
+
+The earlier shim typed the on/off flag as `bool` instead of `bool *` in
+`init_turn_server()`, which truncated the parameter pointer and left the
+feature effectively always-on. The fix makes all three tunables pointers into
+`turn_params` (so every relay thread sees live CLI values without per-thread
+copies) and centralizes the atomic primitives in
+[src/ns_turn_atomic.h](../src/ns_turn_atomic.h). That header gates on
+`_MSC_VER` (not the project `WINDOWS` macro) because only MSVC lacks usable C11
+atomics — MinGW is a GCC toolchain and takes the `<stdatomic.h>` path. The
+`Interlocked*` intrinsics and the non-explicit C11 atomics are both
+sequentially consistent, so callers never reason about per-platform ordering.
+
+## Configuration
+
+| Flag | Default | Meaning |
+|---|---|---|
+| `--401-ratelimit` | off | Enable per-source 401 rate-limiting on UDP. |
+| `--401-req-limit=<count>` | `1000` | Max 401 responses per source IP per window. |
+| `--401-window=<seconds>` | `120` | Window length in seconds. |
+
+Non-positive values for the threshold or window are rejected with a warning and
+fall back to the default. The defaults (1000 per 120 s) are well above any
+legitimate client's challenge/retry rate, so normal traffic is never affected.
+
+Example:
+
+```bash
+turnserver --use-auth-secret --static-auth-secret=secret --realm=north.gov \
+  --401-ratelimit --401-req-limit=1000 --401-window=120
+```
+
+When the limit is first crossed for a source in a window the server logs:
+
+```
+401 rate-limit exceeded from <ip>, suppressing responses for this window
+```
+
+## Performance
+
+The feature is built to be effectively free on the data path:
+
+- **Per-request cost**: one hash (a few multiplies/xors over 4 or 16 bytes),
+  one array index, and 2–5 atomic operations on a single 16-byte bucket. No
+  allocation, no syscall, no lock, no list traversal — O(1) with a tiny
+  constant. It only runs on requests that already reached the `401` branch, so
+  it adds nothing to authenticated relay traffic (the throughput the load tests
+  in [CLAUDE.md](../CLAUDE.md) measure).
+- **Memory**: a single static `rl_table` of `4096 * 16 B ≈ 64 KiB` (four
+  32-bit atomic fields per bucket), fixed for the life of the process and
+  shared across all relay threads.
+- **Cache/contention**: one bucket is one cache line's worth of atomics.
+  Distinct attacker addresses hit distinct buckets, so there is no central
+  contention point; a single hot source serializes only on its own bucket.
+- **Log amplification**: bounded to one line per (bucket, window) via the
+  `logged` CAS, so even a sustained flood can't turn the mitigation into a
+  log-I/O DoS.
+
+No microbenchmark numbers are committed for this path; the cost is dominated by
+the existing `401` message construction it guards, not by the table operation.
+The DigitalOcean load-test harness in [CLAUDE.md](../CLAUDE.md) measures relay
+throughput, which this feature does not touch.
+
+## Weaknesses and limitations
+
+- **UDP only by design.** TCP/TLS/DTLS `401`s are never rate-limited. That is
+  correct for the reflection threat (those transports can't be spoofed), but it
+  means this is not a general brute-force-auth throttle.
+- **Hash collisions share a bucket.** Two unrelated addresses mapping to the
+  same of 4096 buckets will rotate the bucket between them; the evicted one
+  gets a fresh window next time it lands. For legitimate traffic the collision
+  probability is ~1/4096 and harmless. Under a spoofed flood with many forged
+  addresses, buckets saturate and collisions converge to "drop" — the safe
+  direction, but it does mean a flood can cause incidental suppression of a
+  colliding legitimate source's `401`s.
+- **Fixed table size.** 4096 buckets is a compile-time constant
+  (`RL_BUCKETS`); there is no runtime sizing. A very large, highly-distributed
+  spoof set will cycle buckets faster, but the table never grows.
+- **Per-process, in-memory, non-persistent.** State is per `turnserver`
+  process and resets on restart. There is no coordination across a cluster of
+  servers behind a load balancer; each instance rate-limits independently.
+- **Coarse accounting.** The lock-free design tolerates off-by-a-few counts at
+  window boundaries and under concurrent resets. It is an abuse limiter, not an
+  exact quota.
+- **Granularity is whole-IP.** Because the port is stripped, all clients behind
+  a single NAT/CGNAT public IP share one bucket. With many legitimate clients
+  behind one address plus a tuned-down `--401-req-limit`, legitimate
+  challenges could be suppressed. Keep the threshold comfortably above
+  aggregate legitimate challenge rates for shared egress IPs.
+- **Time source resolution.** Windows and timestamps use `turn_time()` at
+  1-second granularity stored in 32 bits; fine for windows measured in seconds,
+  not suitable for sub-second limiting.
+
+## Testing
+
+[examples/run_tests_ratelimit_401.sh](../examples/run_tests_ratelimit_401.sh)
+runs two end-to-end cases against a real `turnserver` with bad credentials:
+
+- **Positive** (`--401-req-limit=1`): a single `turnutils_uclient` session
+  retries the `401` challenge enough times to cross the threshold, so exactly
+  one `401 rate-limit exceeded` line must appear.
+- **Negative** (`--401-req-limit=100000`): the same traffic stays far below the
+  threshold, so the line must *not* appear.
+
+It is split out of `run_tests.sh` so the rate-limit server fixture can't mask
+or be masked by the protocol suite's flags. It is **skipped on macOS** (loopback
+UDP relay is intermittently lossy there, making the log-line accounting flaky);
+Linux CI is the canonical target.

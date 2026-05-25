@@ -63,6 +63,8 @@ jobs:
 
       - run: ./run_tests.sh
         working-directory: examples/
+      - run: ./run_tests_ratelimit_401.sh
+        working-directory: examples/
       - run: ./run_tests_conf.sh
         working-directory: examples/
       - run: ./run_tests_prom.sh

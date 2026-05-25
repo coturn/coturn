@@ -37,7 +37,7 @@
 #include "ns_turn_atomic.h" // for turn_atomic_* portable atomics
 #include "ns_turn_defs.h"   // for turn_time_t / turn_time()
 
-/* Power-of-two bucket count. 4096 buckets * 12 B/bucket = ~48 KiB resident.
+/* Power-of-two bucket count. 4096 buckets * 16 B/bucket = ~64 KiB resident.
  * Increasing this lowers hash-collision probability for legit traffic; it
  * does not change behavior under attack (collisions converge to "drop"). */
 #define RL_BUCKETS 4096u
