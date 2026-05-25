@@ -354,6 +354,10 @@ typedef struct _turn_params_ {
 
   bool multiplex_peer;               /* --multiplex-peer flag */
   uint16_t multiplex_peer_base_port; /* --multiplex-peer-port (default 3480) */
+
+  bool ratelimit_401_requests;
+  vint ratelimit_401_requests_per_window;
+  vint ratelimit_401_window_seconds;
 } turn_params_t;
 
 extern turn_params_t turn_params;

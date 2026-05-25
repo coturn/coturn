@@ -37,6 +37,7 @@
 
 #include "dbdrivers/dbdriver.h"
 
+#include "ns_turn_ratelimit.h"
 #include "prom_server.h"
 #include <assert.h>
 #include <limits.h>
@@ -249,7 +250,12 @@ turn_params_t turn_params = {
 #endif
     false, /* include_reason_string */
     false, /* multiplex_peer */
-    0      /* multiplex_peer_base_port */
+    0,     /* multiplex_peer_base_port */
+
+    ///////// Ratelimit /////////
+    false,                                     /* 401-ratelimit */
+    RATELIMIT_DEFAULT_MAX_REQUESTS_PER_WINDOW, /* 401-req-limit */
+    RATELIMIT_DEFAULT_WINDOW_SECS              /* 401-window */
 };
 
 //////////////// OpenSSL Init //////////////////////
@@ -1399,6 +1405,14 @@ static char Usage[] =
     "						   By default, only the standard reason phrase for the error code is\n"
     "						   sent. Enabling this option adds detailed error descriptions which\n"
     "						   may aid debugging but can also leak internal server information.\n"
+    " --401-ratelimit                                Enable per-source rate-limiting of 401\n"
+    "                                                 Unauthorized responses on UDP. Mitigates\n"
+    "                                                 reflection/amplification abuse where attackers\n"
+    "                                                 spoof a victim's source address to bounce 401\n"
+    "                                                 challenges off the server. Off by default.\n"
+    " --401-req-limit=<count>                        Max 401 responses to send per source IP per\n"
+    "                                                 window (default 1000).\n"
+    " --401-window=<seconds>                         Rate-limit window length in seconds (default 120).\n"
     " --version					Print version (and exit).\n"
     " -h						Help\n"
     "\n";
@@ -1567,6 +1581,9 @@ enum EXTRA_OPTS {
   UDP_GSO_OPT,
 #endif
   VERSION_OPT,
+  RATELIMIT_OPT,
+  RATELIMIT_REQUESTS_OPT,
+  RATELIMIT_WINDOW_OPT,
   CPUS_OPT,
   INCLUDE_REASON_STRING_OPT,
   OPT_MULTIPLEX_PEER = 800,
@@ -1729,6 +1746,9 @@ static const struct myoption long_options[] = {
     {"version", optional_argument, NULL, VERSION_OPT},
     {"syslog-facility", required_argument, NULL, SYSLOG_FACILITY_OPT},
     {"cpus", required_argument, NULL, CPUS_OPT},
+    {"401-ratelimit", optional_argument, NULL, RATELIMIT_OPT},
+    {"401-req-limit", optional_argument, NULL, RATELIMIT_REQUESTS_OPT},
+    {"401-window", optional_argument, NULL, RATELIMIT_WINDOW_OPT},
     {NULL, no_argument, NULL, 0}};
 
 static const struct myoption admin_long_options[] = {
@@ -2563,6 +2583,31 @@ static void set_option(int c, char *value) {
       turn_params.cpus = (unsigned long)cpus;
       turn_params.cpus_configured = true;
     }
+  } break;
+  case RATELIMIT_OPT:
+    turn_params.ratelimit_401_requests = get_bool_value(value);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "401 response rate-limiting: %s\n",
+                  turn_params.ratelimit_401_requests ? "enabled" : "disabled");
+    break;
+  case RATELIMIT_REQUESTS_OPT: {
+    int v = get_int_value(value, (int)RATELIMIT_DEFAULT_MAX_REQUESTS_PER_WINDOW);
+    if (v <= 0) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Invalid --401-req-limit=%d (must be > 0); using default %u\n", v,
+                    RATELIMIT_DEFAULT_MAX_REQUESTS_PER_WINDOW);
+      v = (int)RATELIMIT_DEFAULT_MAX_REQUESTS_PER_WINDOW;
+    }
+    turn_params.ratelimit_401_requests_per_window = v;
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "401 rate-limit threshold: %d responses per window\n", v);
+  } break;
+  case RATELIMIT_WINDOW_OPT: {
+    int v = get_int_value(value, (int)RATELIMIT_DEFAULT_WINDOW_SECS);
+    if (v <= 0) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Invalid --401-window=%d (must be > 0); using default %u\n", v,
+                    RATELIMIT_DEFAULT_WINDOW_SECS);
+      v = (int)RATELIMIT_DEFAULT_WINDOW_SECS;
+    }
+    turn_params.ratelimit_401_window_seconds = v;
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "401 rate-limit window: %d seconds\n", v);
   } break;
 
   /* these options have been already taken care of before: */
@@ -3503,6 +3548,10 @@ int main(int argc, char **argv) {
     }
   }
 #endif
+
+  if (turn_params.ratelimit_401_requests) {
+    ratelimit_init();
+  }
 
   setup_server();
 

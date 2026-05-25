@@ -19,6 +19,8 @@ endfunction()
 coturn_add_test(test_ioaddr)
 coturn_add_test(test_stun_msg)
 coturn_add_test(test_http_server ../src/apps/relay/http_buffer.c)
+coturn_add_test(test_ratelimit ../src/server/ns_turn_ratelimit.c)
+target_include_directories(test_ratelimit PRIVATE ../src/server ../src)
 
 # SQLite DB-driver interface test. Compiles the driver in isolation with a small
 # support/stub layer, so it needs the same include set the relay build uses.

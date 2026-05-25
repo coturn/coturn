@@ -1236,6 +1236,24 @@ DEPRECATED and now the default behaviour. See \-\-rfc5780.
 \fB\-\-stun\-backward\-compatibility\fP
 Enable handling old STUN Binding requests using MAPPED\-ADDRESS attribute in binding response (instead of XOR\-MAPPED\-ADDRESS).
 .RE
+
+.RS
+.TP
+.B
+\fB\-\-401\-ratelimit\fP
+Enable per\-source rate limiting of UDP 401 Unauthorized responses.
+This mitigates reflection and amplification attacks that spoof a victim's
+source address to receive authentication challenges. Disabled by default.
+.TP
+.B
+\fB\-\-401\-req\-limit\fP=<count>
+Maximum number of UDP 401 Unauthorized responses sent per source IP in
+each rate\-limit window. Default is 1000.
+.TP
+.B
+\fB\-\-401\-window\fP=<seconds>
+Length of the UDP 401 response rate\-limit window. Default is 120 seconds.
+.RE
 .PP
 
 .SH ==================================

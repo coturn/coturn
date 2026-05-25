@@ -38,6 +38,7 @@ set(SOURCE_FILES
     ns_turn_allocation.c
     ns_turn_maps_rtcp.c
     ns_turn_maps.c
+    ns_turn_ratelimit.c
     ns_turn_server.c
     )
 
@@ -47,6 +48,7 @@ set(HEADER_FILES
     ns_turn_khash.h
     ns_turn_maps_rtcp.h
     ns_turn_maps.h
+    ns_turn_ratelimit.h
     ns_turn_server.h
     ns_turn_session.h
     )

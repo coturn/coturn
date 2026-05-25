@@ -34,6 +34,7 @@
 
 #include "prom_server.h"
 #include "mainrelay.h"
+#include "ns_turn_ratelimit.h"
 #include "ns_turn_utils.h"
 #if !defined(WINDOWS)
 #include <errno.h>
@@ -49,6 +50,14 @@ prom_counter_t *packet_dropped;
 prom_counter_t *stun_binding_request;
 prom_counter_t *stun_binding_response;
 prom_counter_t *stun_binding_error;
+
+prom_counter_t *turn_unauthenticated_401_requests;
+prom_counter_t *turn_unauthenticated_401_responses;
+prom_counter_t *turn_unauthenticated_401_dropped_responses;
+
+prom_counter_t *turn_ratelimit_hash_collisions;
+prom_gauge_t *turn_ratelimit_occupied_buckets;
+prom_gauge_t *turn_ratelimit_total_buckets;
 
 prom_counter_t *turn_traffic_rcvp;
 prom_counter_t *turn_traffic_rcvb;
@@ -84,6 +93,23 @@ prom_counter_t *turn_udp_sendmmsg_gso_datagrams;
 #define MHD_RESULT int
 #endif
 
+// Pull the 401 rate-limit table's self-instrumented stats into Prometheus
+// metrics. Called only from the single MHD scrape thread, so the static delta
+// tracker below needs no locking. The whole-table scan in
+// ratelimit_count_occupied() touches the buckets once per scrape and never runs
+// on the data path, so this stays off the hot path entirely.
+static void prom_refresh_ratelimit_stats(void) {
+  static uint32_t last_collisions = 0;
+  uint32_t cur = ratelimit_get_collisions();
+  uint32_t delta = cur - last_collisions; // unsigned subtraction is correct across the 2^32 wrap
+  if (delta) {
+    prom_counter_add(turn_ratelimit_hash_collisions, (double)delta, NULL);
+    last_collisions = cur;
+  }
+  prom_gauge_set(turn_ratelimit_occupied_buckets,
+                 (double)ratelimit_count_occupied((uint32_t)turn_params.ratelimit_401_window_seconds), NULL);
+}
+
 static MHD_RESULT promhttp_handler(void *cls, struct MHD_Connection *connection, const char *url, const char *method,
                                    const char *version, const char *upload_data, size_t *upload_data_size,
                                    void **con_cls) {
@@ -102,6 +128,7 @@ static MHD_RESULT promhttp_handler(void *cls, struct MHD_Connection *connection,
     status = MHD_HTTP_METHOD_NOT_ALLOWED;
     body = "method not allowed";
   } else if (strcmp(url, turn_params.prometheus_path) == 0) {
+    prom_refresh_ratelimit_stats();
     body = (char *)prom_collector_registry_bridge(PROM_COLLECTOR_REGISTRY_DEFAULT);
     if (body == NULL) {
       return MHD_NO;
@@ -151,6 +178,26 @@ void start_prometheus_server(void) {
       prom_counter_new("stun_binding_response", "Outgoing STUN Binding responses", 0, NULL));
   stun_binding_error = prom_collector_registry_must_register_metric(
       prom_counter_new("stun_binding_error", "STUN Binding errors", 0, NULL));
+
+  turn_unauthenticated_401_requests = prom_collector_registry_must_register_metric(prom_counter_new(
+      "turn_unauthenticated_401_requests", "UDP requests requiring a 401 Unauthorized response", 0, NULL));
+  turn_unauthenticated_401_responses = prom_collector_registry_must_register_metric(
+      prom_counter_new("turn_unauthenticated_401_responses", "UDP 401 Unauthorized responses emitted", 0, NULL));
+  turn_unauthenticated_401_dropped_responses = prom_collector_registry_must_register_metric(prom_counter_new(
+      "turn_unauthenticated_401_dropped_responses", "UDP 401 responses suppressed by DDoS mitigation", 0, NULL));
+
+  // 401 rate-limit hash-table health. Refreshed lazily at scrape time from the
+  // lock-free table's self-instrumented counters (see prom_refresh_ratelimit_stats).
+  turn_ratelimit_hash_collisions = prom_collector_registry_must_register_metric(
+      prom_counter_new("turn_ratelimit_hash_collisions",
+                       "401 rate-limit hash-bucket collisions (a source sharing another's live bucket)", 0, NULL));
+  turn_ratelimit_occupied_buckets = prom_collector_registry_must_register_metric(prom_gauge_new(
+      "turn_ratelimit_occupied_buckets", "401 rate-limit buckets currently tracking a live window", 0, NULL));
+  turn_ratelimit_total_buckets = prom_collector_registry_must_register_metric(
+      prom_gauge_new("turn_ratelimit_total_buckets", "401 rate-limit hash table capacity in buckets", 0, NULL));
+  // Capacity is a compile-time constant; publish it once so occupancy can be
+  // read as a utilization ratio in PromQL.
+  prom_gauge_set(turn_ratelimit_total_buckets, (double)ratelimit_get_capacity(), NULL);
 
   // Create TURN traffic counter metrics
   turn_traffic_rcvp = prom_collector_registry_must_register_metric(
@@ -348,6 +395,24 @@ void prom_observe_udp_sendmmsg_flush(unsigned int datagrams, unsigned int gso_da
   }
 }
 
+void prom_inc_unauthenticated_401_request(void) {
+  if (turn_params.prometheus) {
+    prom_counter_add(turn_unauthenticated_401_requests, 1, NULL);
+  }
+}
+
+void prom_inc_unauthenticated_401_response(void) {
+  if (turn_params.prometheus) {
+    prom_counter_add(turn_unauthenticated_401_responses, 1, NULL);
+  }
+}
+
+void prom_inc_unauthenticated_401_dropped_response(void) {
+  if (turn_params.prometheus) {
+    prom_counter_add(turn_unauthenticated_401_dropped_responses, 1, NULL);
+  }
+}
+
 void prom_inc_stun_binding_request(void) {
   if (turn_params.prometheus) {
     prom_counter_add(stun_binding_request, 1, NULL);
@@ -414,5 +479,11 @@ void prom_observe_udp_sendmmsg_flush(unsigned int datagrams, unsigned int gso_da
   UNUSED_ARG(datagrams);
   UNUSED_ARG(gso_datagrams);
 }
+
+void prom_inc_unauthenticated_401_request(void) {}
+
+void prom_inc_unauthenticated_401_response(void) {}
+
+void prom_inc_unauthenticated_401_dropped_response(void) {}
 
 #endif /* TURN_NO_PROMETHEUS */
