@@ -66,6 +66,10 @@ extern prom_counter_t *stun_binding_request;
 extern prom_counter_t *stun_binding_response;
 extern prom_counter_t *stun_binding_error;
 
+extern prom_counter_t *turn_unauthenticated_401_requests;
+extern prom_counter_t *turn_unauthenticated_401_responses;
+extern prom_counter_t *turn_unauthenticated_401_dropped_responses;
+
 extern prom_counter_t *turn_new_allocation;
 extern prom_counter_t *turn_refreshed_allocation;
 extern prom_counter_t *turn_deleted_allocation;
@@ -109,5 +113,8 @@ void prom_inc_allocation(SOCKET_TYPE type);
 void prom_dec_allocation(SOCKET_TYPE type);
 void prom_inc_packet_processed(int count);
 void prom_inc_packet_dropped(int count);
+void prom_inc_unauthenticated_401_request(void);
+void prom_inc_unauthenticated_401_response(void);
+void prom_inc_unauthenticated_401_dropped_response(void);
 
 #endif /* __PROM_SERVER_H__ */

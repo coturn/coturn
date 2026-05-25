@@ -112,6 +112,7 @@ typedef int (*send_turn_session_info_cb)(struct turn_session_info *tsi);
 typedef void (*send_https_socket_cb)(ioa_socket_handle s);
 
 typedef band_limit_t (*allocate_bps_cb)(band_limit_t bps, int positive);
+typedef void (*unauthenticated_401_metric_cb)(void);
 
 struct _turn_turnserver {
 
@@ -218,6 +219,9 @@ struct _turn_turnserver {
   bool *ratelimit_401_requests;
   vintp ratelimit_401_requests_per_window;
   vintp ratelimit_401_window_seconds;
+  unauthenticated_401_metric_cb unauthenticated_401_request_cb;
+  unauthenticated_401_metric_cb unauthenticated_401_response_cb;
+  unauthenticated_401_metric_cb unauthenticated_401_dropped_response_cb;
 };
 
 const char *get_version(turn_turnserver *server);
@@ -251,6 +255,9 @@ void set_rfc5780(turn_turnserver *server, get_alt_addr_cb cb, send_message_cb sm
 int open_client_connection_session(turn_turnserver *server, struct socket_message *sm);
 int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss, int force, const char *reason);
 void set_disconnect_cb(turn_turnserver *server, int (*disconnect)(ts_ur_super_session *));
+void set_unauthenticated_401_metric_cbs(turn_turnserver *server, unauthenticated_401_metric_cb request_cb,
+                                        unauthenticated_401_metric_cb response_cb,
+                                        unauthenticated_401_metric_cb dropped_response_cb);
 
 int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_connection_id tcid, stun_tid *tid,
                                                  ioa_socket_handle s, int message_integrity, ioa_net_data *nd,

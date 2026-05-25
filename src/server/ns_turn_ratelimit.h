@@ -55,17 +55,16 @@ extern "C" {
  *  - Each bucket holds a 32-bit tag derived from the source address,
  *    the start of the current window, and a counter — all atomics.
  *  - Direct-mapped hash: bucket = hash(addr_without_port) & MASK.
- *  - On collision (different tag in bucket) the bucket rotates to the
- *    new tag and the previous occupant gets a fresh window the next
- *    time it lands in the same bucket.
+ *  - An address colliding with a live bucket shares its response budget
+ *    until the window expires; it does not replace the current tag or
+ *    receive a fresh allowance.
  *  - No global mutex, no list scan, no UAF surface: the address never
  *    appears as a pointer, only as a tag.
  *
  * Caveats:
  *  - Hash collisions cause two unrelated addresses to share a bucket;
- *    on rotation the loser gets a fresh window. With RL_BUCKETS = 4096
- *    the collision rate for legit traffic is ~1/4096; in attack mode
- *    a spoofed flood saturates buckets anyway, so this is acceptable.
+ *    this can suppress a colliding legitimate source when the shared
+ *    budget is exhausted, but cannot expand reflection output.
  *  - The port is stripped from the key, so attackers cannot evade by
  *    rotating the source port.
  */
@@ -77,11 +76,11 @@ void ratelimit_init(void);
 
 /* Atomic bump. Returns true if THIS request is OVER the limit, i.e.
  * the caller should suppress the 401 response. The out parameter
- * `first_drop` is set to true exactly once per (bucket, window) pair
- * so callers can emit a single log line per window instead of spamming
- * on every dropped request. May be NULL. */
+ * `first_drop` is set to true exactly once per (bucket, window) pair.
+ * `first_collision` is set to true exactly once when a live bucket is
+ * first shared by a colliding address during a window. Either may be NULL. */
 bool ratelimit_consume_address(const ioa_addr *address, uint32_t max_requests, uint32_t window_seconds,
-                               bool *first_drop);
+                               bool *first_drop, bool *first_collision);
 
 #ifdef __cplusplus
 }

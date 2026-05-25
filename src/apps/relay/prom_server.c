@@ -50,6 +50,10 @@ prom_counter_t *stun_binding_request;
 prom_counter_t *stun_binding_response;
 prom_counter_t *stun_binding_error;
 
+prom_counter_t *turn_unauthenticated_401_requests;
+prom_counter_t *turn_unauthenticated_401_responses;
+prom_counter_t *turn_unauthenticated_401_dropped_responses;
+
 prom_counter_t *turn_traffic_rcvp;
 prom_counter_t *turn_traffic_rcvb;
 prom_counter_t *turn_traffic_sentp;
@@ -145,6 +149,13 @@ void start_prometheus_server(void) {
       prom_counter_new("stun_binding_response", "Outgoing STUN Binding responses", 0, NULL));
   stun_binding_error = prom_collector_registry_must_register_metric(
       prom_counter_new("stun_binding_error", "STUN Binding errors", 0, NULL));
+
+  turn_unauthenticated_401_requests = prom_collector_registry_must_register_metric(prom_counter_new(
+      "turn_unauthenticated_401_requests", "UDP requests requiring a 401 Unauthorized response", 0, NULL));
+  turn_unauthenticated_401_responses = prom_collector_registry_must_register_metric(
+      prom_counter_new("turn_unauthenticated_401_responses", "UDP 401 Unauthorized responses emitted", 0, NULL));
+  turn_unauthenticated_401_dropped_responses = prom_collector_registry_must_register_metric(prom_counter_new(
+      "turn_unauthenticated_401_dropped_responses", "UDP 401 responses suppressed by DDoS mitigation", 0, NULL));
 
   // Create TURN traffic counter metrics
   turn_traffic_rcvp = prom_collector_registry_must_register_metric(
@@ -312,6 +323,24 @@ void prom_inc_packet_dropped(int count) {
   }
 }
 
+void prom_inc_unauthenticated_401_request(void) {
+  if (turn_params.prometheus) {
+    prom_counter_add(turn_unauthenticated_401_requests, 1, NULL);
+  }
+}
+
+void prom_inc_unauthenticated_401_response(void) {
+  if (turn_params.prometheus) {
+    prom_counter_add(turn_unauthenticated_401_responses, 1, NULL);
+  }
+}
+
+void prom_inc_unauthenticated_401_dropped_response(void) {
+  if (turn_params.prometheus) {
+    prom_counter_add(turn_unauthenticated_401_dropped_responses, 1, NULL);
+  }
+}
+
 void prom_inc_stun_binding_request(void) {
   if (turn_params.prometheus) {
     prom_counter_add(stun_binding_request, 1, NULL);
@@ -371,5 +400,11 @@ void prom_dec_allocation(SOCKET_TYPE type) { UNUSED_ARG(type); }
 void prom_inc_packet_processed(int count) { UNUSED_ARG(count); }
 
 void prom_inc_packet_dropped(int count) { UNUSED_ARG(count); }
+
+void prom_inc_unauthenticated_401_request(void) {}
+
+void prom_inc_unauthenticated_401_response(void) {}
+
+void prom_inc_unauthenticated_401_dropped_response(void) {}
 
 #endif /* TURN_NO_PROMETHEUS */

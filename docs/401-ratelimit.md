@@ -60,6 +60,7 @@ spend a token. Successful or otherwise-errored requests don't touch the table.
 | [src/server/ns_turn_ratelimit.h](../src/server/ns_turn_ratelimit.h) / [.c](../src/server/ns_turn_ratelimit.c) | The lock-free rate-limit table and its two entry points. |
 | [src/server/ns_turn_server.c](../src/server/ns_turn_server.c) | The consume call site inside `handle_turn_command`. |
 | [src/apps/relay/mainrelay.c](../src/apps/relay/mainrelay.c) | CLI flags, defaults, and one-time `ratelimit_init()`. |
+| [src/apps/relay/prom_server.c](../src/apps/relay/prom_server.c) | Prometheus counters for UDP `401` decisions. |
 | [examples/run_tests_ratelimit_401.sh](../examples/run_tests_ratelimit_401.sh) | End-to-end positive/negative system test. |
 
 ### The table
@@ -71,17 +72,19 @@ typedef struct {
   turn_atomic_u32 window_start;    // turn_time() when the current window opened
   turn_atomic_u32 count;           // requests counted in this window
   turn_atomic_u32 logged;          // 1 once a drop has been logged this window
+  turn_atomic_u32 collision_logged;// 1 once a collision has been logged this window
 } rl_bucket;
 static rl_bucket rl_table[RL_BUCKETS];
 ```
 
-A single statically-allocated, zero-initialized table of 4096 buckets, 16
-bytes each (~64 KiB resident). No `malloc`/`free` on the hot path, no growth,
+A single statically-allocated, zero-initialized table of 4096 buckets, 20
+bytes each (~80 KiB resident). No `malloc`/`free` on the hot path, no growth,
 no eviction list.
 
 It is a **direct-mapped** structure: `bucket = hash(addr) & (RL_BUCKETS-1)`.
-There is exactly one slot per address-hash; on collision the bucket simply
-rotates to whichever address most recently landed in it.
+There is exactly one active budget per bucket. An address that collides with
+an unexpired bucket shares that existing budget; it cannot replace the bucket
+owner and get a fresh response allowance.
 
 - IPv4 keys are hashed with a splitmix-style 32-bit finalizer over
   `sin_addr.s_addr`.
@@ -92,20 +95,23 @@ rotates to whichever address most recently landed in it.
 
 ### The consume algorithm ([ns_turn_ratelimit.c](../src/server/ns_turn_ratelimit.c))
 
-`ratelimit_consume_address(addr, max, window, &first_drop)` returns `true` when
-the current request is *over* the limit (caller should suppress):
+`ratelimit_consume_address(addr, max, window, &first_drop, &first_collision)`
+returns `true` when the current request is *over* the limit (caller should
+suppress):
 
 1. Hash the address, index the bucket, read `now = (uint32_t)turn_time()`.
 2. Read the bucket's `tag` and `window_start`.
-3. **Reset path** — if the tag doesn't match (different/new address, or a
-   collision evicting the previous occupant) *or* the window has expired
-   (`now - window_start >= window`): atomically store a fresh
-   `window_start`, clear `logged`, set `count = 1`, and finally store the new
-   `tag`. Returns `false` (this request is the first in a fresh window).
-4. **Count path** — otherwise `fetch_add(count, 1)` returns the pre-increment
+3. **Reset path** — if the bucket is empty or the window has expired
+   (`now - window_start >= window`): atomically store a fresh `window_start`,
+   clear the log latches, set `count = 1`, and finally store the new `tag`.
+   Returns `false` (this request is the first in a fresh window).
+4. **Collision path** — if an unexpired bucket has another tag, retain the
+   bucket owner and count the new request against the same budget. The first
+   such event sets `first_collision` for one bounded diagnostic log line.
+5. **Count path** — `fetch_add(count, 1)` returns the pre-increment
    value `prev`. If `prev < max`, allow (`false`). Otherwise this is the
    `(max+1)`-th request: it's over the limit, return `true`.
-5. **First-drop logging** — on an over-limit request, `CAS(logged, 0 -> 1)`.
+6. **First-drop logging** — on an over-limit request, `CAS(logged, 0 -> 1)`.
    The single winner of that CAS gets `*first_drop = true`; everyone else in
    the window is silent.
 
@@ -123,8 +129,8 @@ them out:
   window. Bounded and harmless for a rate-limit.
 
 This is acceptable because the goal is *coarse abuse mitigation*, not exact
-accounting. Under attack, collisions and races all converge to "drop", which is
-the safe direction.
+accounting. Most importantly, active collisions share a budget instead of
+granting additional reflected responses.
 
 ### Why a dedicated atomics header
 
@@ -164,25 +170,40 @@ When the limit is first crossed for a source in a window the server logs:
 401 rate-limit exceeded from <ip>, suppressing responses for this window
 ```
 
+If a different address first collides with an active bucket in a window, the
+server also logs one diagnostic line for that bucket and window:
+
+```
+401 rate-limit bucket collision from <ip>, sharing active bucket budget for this window
+```
+
+When Prometheus is enabled, these counters describe the UDP `401` reflection
+surface:
+
+| Metric | Meaning |
+|---|---|
+| `turn_unauthenticated_401_requests` | Requests that required a UDP `401` response. |
+| `turn_unauthenticated_401_responses` | UDP `401` responses emitted. |
+| `turn_unauthenticated_401_dropped_responses` | UDP `401` responses suppressed by this mitigation. |
+
 ## Performance
 
 The feature is built to be effectively free on the data path:
 
 - **Per-request cost**: one hash (a few multiplies/xors over 4 or 16 bytes),
-  one array index, and 2–5 atomic operations on a single 16-byte bucket. No
+  one array index, and a handful of atomic operations on a single bucket. No
   allocation, no syscall, no lock, no list traversal — O(1) with a tiny
   constant. It only runs on requests that already reached the `401` branch, so
   it adds nothing to authenticated relay traffic (the throughput the load tests
   in [CLAUDE.md](../CLAUDE.md) measure).
-- **Memory**: a single static `rl_table` of `4096 * 16 B ≈ 64 KiB` (four
+- **Memory**: a single static `rl_table` of `4096 * 20 B ≈ 80 KiB` (five
   32-bit atomic fields per bucket), fixed for the life of the process and
   shared across all relay threads.
 - **Cache/contention**: one bucket is one cache line's worth of atomics.
   Distinct attacker addresses hit distinct buckets, so there is no central
   contention point; a single hot source serializes only on its own bucket.
-- **Log amplification**: bounded to one line per (bucket, window) via the
-  `logged` CAS, so even a sustained flood can't turn the mitigation into a
-  log-I/O DoS.
+- **Log amplification**: drop and collision diagnostics each have a
+  once-per-(bucket, window) CAS latch.
 
 No microbenchmark numbers are committed for this path; the cost is dominated by
 the existing `401` message construction it guards, not by the table operation.
@@ -195,12 +216,9 @@ throughput, which this feature does not touch.
   correct for the reflection threat (those transports can't be spoofed), but it
   means this is not a general brute-force-auth throttle.
 - **Hash collisions share a bucket.** Two unrelated addresses mapping to the
-  same of 4096 buckets will rotate the bucket between them; the evicted one
-  gets a fresh window next time it lands. For legitimate traffic the collision
-  probability is ~1/4096 and harmless. Under a spoofed flood with many forged
-  addresses, buckets saturate and collisions converge to "drop" — the safe
-  direction, but it does mean a flood can cause incidental suppression of a
-  colliding legitimate source's `401`s.
+  same of 4096 buckets consume one shared budget while its window is live. This
+  prevents a collision from increasing reflected output, but a flood can cause
+  incidental suppression of a colliding legitimate source's `401`s.
 - **Fixed table size.** 4096 buckets is a compile-time constant
   (`RL_BUCKETS`); there is no runtime sizing. A very large, highly-distributed
   spoof set will cycle buckets faster, but the table never grows.
@@ -234,3 +252,9 @@ It is split out of `run_tests.sh` so the rate-limit server fixture can't mask
 or be masked by the protocol suite's flags. It is **skipped on macOS** (loopback
 UDP relay is intermittently lossy there, making the log-line accounting flaky);
 Linux CI is the canonical target.
+
+[tests/test_ratelimit.c](../tests/test_ratelimit.c) finds a colliding source
+address and verifies that a live collision remains suppressed and emits its
+collision signal only once. [examples/run_tests_prom.sh](../examples/run_tests_prom.sh)
+drives a low-limit unauthorized flow and verifies all three Prometheus counters
+are non-zero in Linux CI.

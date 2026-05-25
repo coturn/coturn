@@ -3957,25 +3957,37 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 
     *resp_constructed = 1;
   }
-  /* 401 rate-limit (consume): we only count tokens against requests
-   * that actually produce a 401. UDP-only — reflection requires a
-   * spoofable source. The log line is self-rate-limited to one
-   * message per (bucket, window) via first_drop, so a flood doesn't
-   * produce log-write amplification. */
-  if (err_code == 401 && server->ratelimit_401_requests && *(server->ratelimit_401_requests) &&
-      get_ioa_socket_type(ss->client_socket) == UDP_SOCKET) {
+  /* UDP 401 responses are the reflection surface. Metrics cover the
+   * response decision even when mitigation is disabled. */
+  if (err_code == 401 && get_ioa_socket_type(ss->client_socket) == UDP_SOCKET) {
+    if (server->unauthenticated_401_request_cb) {
+      server->unauthenticated_401_request_cb();
+    }
     const ioa_addr *rate_limit_address = get_remote_addr_from_ioa_socket(ss->client_socket);
     bool first_drop = false;
-    if (rate_limit_address &&
+    bool first_collision = false;
+    if (server->ratelimit_401_requests && *(server->ratelimit_401_requests) && rate_limit_address &&
         ratelimit_consume_address(rate_limit_address, (uint32_t) * (server->ratelimit_401_requests_per_window),
-                                  (uint32_t) * (server->ratelimit_401_window_seconds), &first_drop)) {
+                                  (uint32_t) * (server->ratelimit_401_window_seconds), &first_drop, &first_collision)) {
       no_response = 1;
+      if (server->unauthenticated_401_dropped_response_cb) {
+        server->unauthenticated_401_dropped_response_cb();
+      }
       if (first_drop) {
         char raddr[INET6_ADDRSTRLEN + 1] = {0};
         addr_to_string_no_port(rate_limit_address, raddr);
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "401 rate-limit exceeded from %s, suppressing responses for this window\n",
                       raddr);
       }
+    }
+    if (first_collision) {
+      char raddr[INET6_ADDRSTRLEN + 1] = {0};
+      addr_to_string_no_port(rate_limit_address, raddr);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+                    "401 rate-limit bucket collision from %s, sharing active bucket budget for this window\n", raddr);
+    }
+    if (!no_response && server->unauthenticated_401_response_cb) {
+      server->unauthenticated_401_response_cb();
     }
   }
 
@@ -5166,6 +5178,16 @@ ioa_engine_handle turn_server_get_engine(turn_turnserver *s) {
 
 void set_disconnect_cb(turn_turnserver *server, int (*disconnect)(ts_ur_super_session *)) {
   server->disconnect = disconnect;
+}
+
+void set_unauthenticated_401_metric_cbs(turn_turnserver *server, unauthenticated_401_metric_cb request_cb,
+                                        unauthenticated_401_metric_cb response_cb,
+                                        unauthenticated_401_metric_cb dropped_response_cb) {
+  if (server) {
+    server->unauthenticated_401_request_cb = request_cb;
+    server->unauthenticated_401_response_cb = response_cb;
+    server->unauthenticated_401_dropped_response_cb = dropped_response_cb;
+  }
 }
 
 //////////////////////////////////////////////////////////////////
