@@ -37,6 +37,7 @@
 
 #include "dbdrivers/dbdriver.h"
 
+#include "ns_turn_ratelimit.h"
 #include "prom_server.h"
 #include <assert.h>
 #include <limits.h>
@@ -253,7 +254,11 @@ turn_params_t turn_params = {
 #endif
     false, /* include_reason_string */
     false, /* multiplex_peer */
-    0      /* multiplex_peer_base_port */
+    0,     /* multiplex_peer_base_port */
+
+    ///////// Ratelimit /////////
+    false,                                 /* unauthorized-ratelimit */
+    RATELIMIT_DEFAULT_MAX_REQUESTS_PER_SEC /* unauthorized-ratelimit-rps */
 };
 
 //////////////// OpenSSL Init //////////////////////
@@ -1409,6 +1414,13 @@ static char Usage[] =
     "						   By default, only the standard reason phrase for the error code is\n"
     "						   sent. Enabling this option adds detailed error descriptions which\n"
     "						   may aid debugging but can also leak internal server information.\n"
+    " --unauthorized-ratelimit                       Enable per-source rate-limiting of 401\n"
+    "                                                 Unauthorized responses on UDP. Mitigates\n"
+    "                                                 reflection/amplification abuse where attackers\n"
+    "                                                 spoof a victim's source address to bounce 401\n"
+    "                                                 challenges off the server. Off by default.\n"
+    " --unauthorized-ratelimit-rps=<count>           Max 401 Unauthorized responses to send per\n"
+    "                                                 source IP per second (default 10).\n"
     " --version					Print version (and exit).\n"
     " -h						Help\n"
     "\n";
@@ -1580,6 +1592,8 @@ enum EXTRA_OPTS {
   UDP_GSO_OPT,
 #endif
   VERSION_OPT,
+  RATELIMIT_OPT,
+  RATELIMIT_RPS_OPT,
   CPUS_OPT,
   INCLUDE_REASON_STRING_OPT,
   OPT_MULTIPLEX_PEER = 800,
@@ -1745,6 +1759,8 @@ static const struct myoption long_options[] = {
     {"version", optional_argument, NULL, VERSION_OPT},
     {"syslog-facility", required_argument, NULL, SYSLOG_FACILITY_OPT},
     {"cpus", required_argument, NULL, CPUS_OPT},
+    {"unauthorized-ratelimit", optional_argument, NULL, RATELIMIT_OPT},
+    {"unauthorized-ratelimit-rps", optional_argument, NULL, RATELIMIT_RPS_OPT},
     {NULL, no_argument, NULL, 0}};
 
 static const struct myoption admin_long_options[] = {
@@ -2612,6 +2628,21 @@ static void set_option(int c, char *value) {
       turn_params.cpus = (unsigned long)cpus;
       turn_params.cpus_configured = true;
     }
+  } break;
+  case RATELIMIT_OPT:
+    turn_params.ratelimit_unauthorized_requests = get_bool_value(value);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Unauthorized response rate-limiting: %s\n",
+                  turn_params.ratelimit_unauthorized_requests ? "enabled" : "disabled");
+    break;
+  case RATELIMIT_RPS_OPT: {
+    int v = get_int_value(value, (int)RATELIMIT_DEFAULT_MAX_REQUESTS_PER_SEC);
+    if (v <= 0) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Invalid --unauthorized-ratelimit-rps=%d (must be > 0); using default %u\n",
+                    v, RATELIMIT_DEFAULT_MAX_REQUESTS_PER_SEC);
+      v = (int)RATELIMIT_DEFAULT_MAX_REQUESTS_PER_SEC;
+    }
+    turn_params.ratelimit_unauthorized_requests_per_sec = v;
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Unauthorized rate-limit threshold: %d responses per second\n", v);
   } break;
 
   /* these options have been already taken care of before: */
@@ -3686,6 +3717,10 @@ int main(int argc, char **argv) {
   /* Auto-deny coturn's own DB backend endpoints as relay peers (after all
    * config is parsed, before servers bind their copy of the blacklist). */
   deny_self_db_endpoints();
+
+  if (turn_params.ratelimit_unauthorized_requests) {
+    ratelimit_init();
+  }
 
   setup_server();
 

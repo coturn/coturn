@@ -696,7 +696,10 @@ Options with values:
 --no-rfc5780	DEPRECATED and now the default behaviour. See --rfc5780.
 
 --stun-backward-compatibility		Enable handling old STUN Binding requests using MAPPED-ADDRESS attribute in binding response (instead of XOR-MAPPED-ADDRESS).
-
+--unauthorized-ratelimit		Enable per-source rate-limiting of 401 Unauthorized responses on UDP. Mitigates
+			reflection/amplification abuse where attackers spoof a victim's source address to
+			bounce 401 challenges off the server. Off by default; opt in explicitly.
+--unauthorized-ratelimit-rps=<count>		Maximum number of 401 Unauthorized responses to send per source IP per second. Default 10.
 
 ==================================
 

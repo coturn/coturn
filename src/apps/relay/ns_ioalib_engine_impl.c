@@ -687,6 +687,10 @@ static void maybe_flush_prom_counters(ioa_engine_handle e) {
 #endif
 
   prom_flush_udp_counters(&d);
+
+  /* Same once-per-second-per-thread flush for the 401 mitigation counters,
+   * which accumulate lock-free in _Thread_local storage on the relay hot path. */
+  prom_flush_401_counters();
 }
 
 static void timer_handler(ioa_engine_handle e, void *arg) {

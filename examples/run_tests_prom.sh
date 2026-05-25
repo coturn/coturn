@@ -125,6 +125,17 @@ function assert_prom_response_tls() {
   echo OK
 }
 
+function assert_prom_metric_nonzero() {
+  metric="$1"
+  body="$2"
+  if echo "$body" | grep -Eq "^${metric}(_total)? [1-9][0-9]*(\\.[0-9]+)?$"; then
+    echo OK
+  else
+    echo "FAIL: metric ${metric} was not non-zero"
+    exit 1
+  fi
+}
+
 echo "Running without prometheus"
 start_turnserver
 wait_for_prom_decision
@@ -165,4 +176,25 @@ start_turnserver --prometheus-tls \
   --prometheus-cert=/nonexistent/cert.pem --prometheus-key=/nonexistent/key.pem
 wait_for_prom_decision
 assert_prom_no_response "https://localhost:9641/metrics"
+stop_turnserver
+
+# COMMON_ARGS already supplies -L/-E 127.0.0.1 and --no-tls --no-dtls.
+echo "Running turnserver with prometheus 401 mitigation counters"
+start_turnserver --prometheus --prometheus-address="127.0.0.1" --prometheus-port="8081" \
+  --use-auth-secret --static-auth-secret=secret --realm=north.gov \
+  --allow-loopback-peers --no-cli --listening-port=3479 \
+  --unauthorized-ratelimit --unauthorized-ratelimit-rps=1
+assert_prom_response "http://127.0.0.1:8081/metrics"
+timeout 15s "$BINDIR/turnutils_uclient" \
+  -e 127.0.0.1 -X -g -u baduser -W wrongsecret -p 3479 127.0.0.1 \
+  > /dev/null 2>&1 || true
+sleep 1
+prom_metrics="$(wget --quiet --output-document=- --tries=1 "http://127.0.0.1:8081/metrics")"
+assert_prom_metric_nonzero "turn_unauthenticated_401_requests" "$prom_metrics"
+assert_prom_metric_nonzero "turn_unauthenticated_401_responses" "$prom_metrics"
+assert_prom_metric_nonzero "turn_unauthenticated_401_dropped_responses" "$prom_metrics"
+# The single bad-cred source occupies exactly one live bucket; capacity is the
+# fixed table size. (Collisions stay 0 with one source, so are not asserted here.)
+assert_prom_metric_nonzero "turn_ratelimit_occupied_buckets" "$prom_metrics"
+assert_prom_metric_nonzero "turn_ratelimit_total_buckets" "$prom_metrics"
 stop_turnserver

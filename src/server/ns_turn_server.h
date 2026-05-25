@@ -112,6 +112,7 @@ typedef int (*send_turn_session_info_cb)(struct turn_session_info *tsi);
 typedef void (*send_https_socket_cb)(ioa_socket_handle s);
 
 typedef band_limit_t (*allocate_bps_cb)(band_limit_t bps, int positive);
+typedef void (*unauthenticated_401_metric_cb)(void);
 
 struct _turn_turnserver {
 
@@ -208,6 +209,18 @@ struct _turn_turnserver {
   bool is_draining;
 
   bool multiplex_peer_mode;
+
+  /* Both of these are pointers into turn_params so the CLI flags affect
+   * every relay thread without per-thread copies. The legacy version of
+   * this struct had `ratelimit_unauthorized_requests` typed as `bool`
+   * (not `bool *`), which silently truncated the parameter pointer in
+   * init_turn_server() and left the feature always-on. Keep them as
+   * pointers and dereference at use sites. */
+  bool *ratelimit_unauthorized_requests;
+  vintp ratelimit_unauthorized_requests_per_sec;
+  unauthenticated_401_metric_cb unauthenticated_401_request_cb;
+  unauthenticated_401_metric_cb unauthenticated_401_response_cb;
+  unauthenticated_401_metric_cb unauthenticated_401_dropped_response_cb;
 };
 
 const char *get_version(turn_turnserver *server);
@@ -227,7 +240,8 @@ void init_turn_server(
     int server_relay, send_turn_session_info_cb send_turn_session_info, send_https_socket_cb send_https_socket,
     int sock_buf_size, allocate_bps_cb allocate_bps_func, int oauth, const char *oauth_server_name,
     const char *acme_redirect, ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family, bool *log_binding,
-    bool *stun_backward_compatibility, bool *respond_http_unsupported, bool include_reason_string);
+    bool *stun_backward_compatibility, bool *respond_http_unsupported, bool include_reason_string,
+    bool *ratelimit_unauthorized_requests, vintp ratelimit_unauthorized_requests_per_sec);
 
 ioa_engine_handle turn_server_get_engine(turn_turnserver *s);
 
@@ -240,6 +254,9 @@ void set_rfc5780(turn_turnserver *server, get_alt_addr_cb cb, send_message_cb sm
 int open_client_connection_session(turn_turnserver *server, struct socket_message *sm);
 int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss, int force, const char *reason);
 void set_disconnect_cb(turn_turnserver *server, int (*disconnect)(ts_ur_super_session *));
+void set_unauthenticated_401_metric_cbs(turn_turnserver *server, unauthenticated_401_metric_cb request_cb,
+                                        unauthenticated_401_metric_cb response_cb,
+                                        unauthenticated_401_metric_cb dropped_response_cb);
 
 int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_connection_id tcid, stun_tid *tid,
                                                  ioa_socket_handle s, int message_integrity, ioa_net_data *nd,

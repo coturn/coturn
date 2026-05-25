@@ -68,6 +68,14 @@ extern prom_counter_t *stun_binding_request;
 extern prom_counter_t *stun_binding_response;
 extern prom_counter_t *stun_binding_error;
 
+extern prom_counter_t *turn_unauthenticated_401_requests;
+extern prom_counter_t *turn_unauthenticated_401_responses;
+extern prom_counter_t *turn_unauthenticated_401_dropped_responses;
+
+extern prom_counter_t *turn_ratelimit_hash_collisions;
+extern prom_gauge_t *turn_ratelimit_occupied_buckets;
+extern prom_gauge_t *turn_ratelimit_total_buckets;
+
 extern prom_counter_t *turn_new_allocation;
 extern prom_counter_t *turn_refreshed_allocation;
 extern prom_counter_t *turn_deleted_allocation;
@@ -118,6 +126,9 @@ void prom_set_finished_traffic(const char *realm, const char *user, unsigned lon
 
 void prom_inc_allocation(SOCKET_TYPE type);
 void prom_dec_allocation(SOCKET_TYPE type);
+void prom_inc_unauthenticated_401_request(void);
+void prom_inc_unauthenticated_401_response(void);
+void prom_inc_unauthenticated_401_dropped_response(void);
 
 /* Per-engine deltas accumulated lock-free on the relay hot path and flushed
  * into the shared prometheus counters once per second (see timer_handler).
@@ -135,5 +146,10 @@ struct prom_udp_counter_deltas {
 /* Add the given non-zero deltas to the shared prometheus counters.
  * No-op when prometheus is disabled or compiled out. */
 void prom_flush_udp_counters(const struct prom_udp_counter_deltas *d);
+
+/* Flush this thread's lock-free 401 mitigation counters into the shared
+ * prometheus counters. Called once per second per relay thread from the engine
+ * timer. No-op when prometheus is disabled or compiled out. */
+void prom_flush_401_counters(void);
 
 #endif /* __PROM_SERVER_H__ */

@@ -37,7 +37,9 @@
 #include "../apps/relay/ns_ioalib_impl.h"
 #include "ns_turn_allocation.h"
 #include "ns_turn_ioalib.h"
+#include "ns_turn_maps.h"
 #include "ns_turn_msg_defs.h" // for STUN_ATTRIBUTE_NONCE
+#include "ns_turn_ratelimit.h"
 #include "ns_turn_utils.h"
 
 #include "apputils.h" // for turn_random, base64_decode
@@ -4039,6 +4041,39 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 
     *resp_constructed = 1;
   }
+  /* UDP 401 responses are the reflection surface. Metrics cover the
+   * response decision even when mitigation is disabled. */
+  if (err_code == 401 && get_ioa_socket_type(ss->client_socket) == UDP_SOCKET) {
+    if (server->unauthenticated_401_request_cb) {
+      server->unauthenticated_401_request_cb();
+    }
+    const ioa_addr *rate_limit_address = get_remote_addr_from_ioa_socket(ss->client_socket);
+    bool first_drop = false;
+    bool first_collision = false;
+    if (server->ratelimit_unauthorized_requests && *(server->ratelimit_unauthorized_requests) && rate_limit_address &&
+        ratelimit_consume_address(rate_limit_address, (uint32_t) * (server->ratelimit_unauthorized_requests_per_sec),
+                                  &first_drop, &first_collision)) {
+      no_response = 1;
+      if (server->unauthenticated_401_dropped_response_cb) {
+        server->unauthenticated_401_dropped_response_cb();
+      }
+      if (first_drop) {
+        char raddr[INET6_ADDRSTRLEN + 1] = {0};
+        addr_to_string_no_port(rate_limit_address, raddr);
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "401 rate-limit exceeded from %s, suppressing responses for this window\n",
+                      raddr);
+      }
+    }
+    if (first_collision) {
+      char raddr[INET6_ADDRSTRLEN + 1] = {0};
+      addr_to_string_no_port(rate_limit_address, raddr);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+                    "401 rate-limit bucket collision from %s, sharing active bucket budget for this window\n", raddr);
+    }
+    if (!no_response && server->unauthenticated_401_response_cb) {
+      server->unauthenticated_401_response_cb();
+    }
+  }
 
   if (!no_response) {
 
@@ -5129,7 +5164,8 @@ void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, io
                       int sock_buf_size, allocate_bps_cb allocate_bps_func, int oauth, const char *oauth_server_name,
                       const char *acme_redirect, ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family,
                       bool *log_binding, bool *stun_backward_compatibility, bool *respond_http_unsupported,
-                      bool include_reason_string) {
+                      bool include_reason_string, bool *ratelimit_unauthorized_requests,
+                      vintp ratelimit_unauthorized_requests_per_sec) {
 
   if (!server) {
     return;
@@ -5211,6 +5247,9 @@ void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, io
   server->include_reason_string = include_reason_string;
 
   server->is_draining = false;
+
+  server->ratelimit_unauthorized_requests = ratelimit_unauthorized_requests;
+  server->ratelimit_unauthorized_requests_per_sec = ratelimit_unauthorized_requests_per_sec;
 }
 
 ioa_engine_handle turn_server_get_engine(turn_turnserver *s) {
@@ -5222,6 +5261,16 @@ ioa_engine_handle turn_server_get_engine(turn_turnserver *s) {
 
 void set_disconnect_cb(turn_turnserver *server, int (*disconnect)(ts_ur_super_session *)) {
   server->disconnect = disconnect;
+}
+
+void set_unauthenticated_401_metric_cbs(turn_turnserver *server, unauthenticated_401_metric_cb request_cb,
+                                        unauthenticated_401_metric_cb response_cb,
+                                        unauthenticated_401_metric_cb dropped_response_cb) {
+  if (server) {
+    server->unauthenticated_401_request_cb = request_cb;
+    server->unauthenticated_401_response_cb = response_cb;
+    server->unauthenticated_401_dropped_response_cb = dropped_response_cb;
+  }
 }
 
 //////////////////////////////////////////////////////////////////
