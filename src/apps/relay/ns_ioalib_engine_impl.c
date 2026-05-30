@@ -3769,7 +3769,6 @@ typedef struct udp_sendmmsg_batch_entry {
   ioa_network_buffer_handle nbh;
   int len;
   struct iovec iov;
-  struct mmsghdr msg;
 } udp_sendmmsg_batch_entry;
 
 typedef struct udp_sendmmsg_batch_state {
@@ -3784,6 +3783,11 @@ typedef struct udp_sendmmsg_batch_state {
   int gso_eligible;
   uint16_t gso_size;
   udp_sendmmsg_batch_entry entries[MAX_SENDMMSG_BATCH];
+  /* Contiguous mmsghdr array passed straight to sendmmsg(), which requires a
+   * packed array (stride sizeof(struct mmsghdr)). Each slot is filled at
+   * enqueue time and points at the matching entry's stable iov/dest_addr, so
+   * the flush path needs no per-call rebuild or copy. */
+  struct mmsghdr msgs[MAX_SENDMMSG_BATCH];
 } udp_sendmmsg_batch_state;
 
 static _Thread_local udp_sendmmsg_batch_state udp_sendmmsg_batch = {0};
@@ -3878,11 +3882,13 @@ static int udp_sendmmsg_flush(void) {
     sent = state->count;
   }
 
+  /* state->msgs is already packed contiguously and was filled at enqueue
+   * time, so it can be handed straight to sendmmsg() without any rebuild. */
   while (sent < state->count) {
     int rc = 0;
 
     do {
-      rc = sendmmsg(state->fd, &(state->entries[sent].msg), state->count - sent, 0);
+      rc = sendmmsg(state->fd, &(state->msgs[sent]), state->count - sent, 0);
     } while (rc < 0 && socket_eintr());
 
     if (rc <= 0) {
@@ -3966,13 +3972,20 @@ static int udp_sendmmsg_enqueue(ioa_socket_handle s, const ioa_addr *dest_addr, 
   entry->has_dest_addr = dest_addr != NULL;
   if (entry->has_dest_addr) {
     addr_cpy(&(entry->dest_addr), dest_addr);
-    entry->msg.msg_hdr.msg_name = &(entry->dest_addr);
-    entry->msg.msg_hdr.msg_namelen = (socklen_t)get_ioa_addr_len(&(entry->dest_addr));
   }
   entry->iov.iov_base = ioa_network_buffer_data(nbh);
   entry->iov.iov_len = (size_t)entry->len;
-  entry->msg.msg_hdr.msg_iov = &(entry->iov);
-  entry->msg.msg_hdr.msg_iovlen = 1;
+
+  /* Fill the packed mmsghdr slot for this entry. msg_name/msg_iov point at the
+   * entry's own stable storage, which lives until the batch is flushed. */
+  struct mmsghdr *mh = &(state->msgs[state->count]);
+  memset(mh, 0, sizeof(*mh));
+  if (entry->has_dest_addr) {
+    mh->msg_hdr.msg_name = &(entry->dest_addr);
+    mh->msg_hdr.msg_namelen = (socklen_t)get_ioa_addr_len(&(entry->dest_addr));
+  }
+  mh->msg_hdr.msg_iov = &(entry->iov);
+  mh->msg_hdr.msg_iovlen = 1;
 
   /* Maintain GSO eligibility: same dest, same size, fits one segment. */
   if (state->gso_eligible) {
