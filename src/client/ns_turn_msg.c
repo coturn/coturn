@@ -2490,8 +2490,23 @@ static bool decode_oauth_token_gcm(const uint8_t *server_name, const encoded_oau
 
     size_t len = 0;
 
+    if ((size_t)outl < sizeof(uint16_t)) {
+      OAUTH_ERROR("%s: decoded token too small: %d\n", __FUNCTION__, (int)outl);
+      return false;
+    }
     dtoken->enc_block.key_length = nswap16(*((uint16_t *)(decoded_field + len)));
-    len += 2;
+    len += sizeof(uint16_t);
+
+    if (dtoken->enc_block.key_length > sizeof(dtoken->enc_block.mac_key)) {
+      OAUTH_ERROR("%s: mac key length too large: %u > %u\n", __FUNCTION__, (unsigned)dtoken->enc_block.key_length,
+                  (unsigned)sizeof(dtoken->enc_block.mac_key));
+      return false;
+    }
+
+    if ((size_t)outl < len + dtoken->enc_block.key_length + sizeof(uint64_t) + sizeof(uint32_t)) {
+      OAUTH_ERROR("%s: decoded token truncated: %d\n", __FUNCTION__, (int)outl);
+      return false;
+    }
 
     memcpy(dtoken->enc_block.mac_key, decoded_field + len, dtoken->enc_block.key_length);
     len += dtoken->enc_block.key_length;

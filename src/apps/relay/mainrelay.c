@@ -1975,6 +1975,24 @@ static int get_int_value(const char *s, int default_value) {
   return atoi(s);
 }
 
+/* Parse a TCP/UDP port from a config/CLI value with range validation.
+ * Accepts 0 (meaning OS-assigned/disabled, depending on the option) through
+ * 65535. Rejects non-numeric, negative, and out-of-range values rather than
+ * silently truncating them into a uint16_t (e.g. 65536 -> 0). */
+static uint16_t get_port_value(const char *s) {
+  if (!s || !(s[0])) {
+    return 0;
+  }
+  char *endptr = NULL;
+  errno = 0;
+  const long parsed = strtol(s, &endptr, 10);
+  if (errno != 0 || endptr == s || (endptr && *endptr != '\0') || parsed < 0 || parsed > 65535) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Invalid port value: %s (must be 0-65535)\n", s);
+    exit(-1);
+  }
+  return (uint16_t)parsed;
+}
+
 static int get_bool_value(const char *s) {
   if (!s || !(s[0])) {
     return 1;
@@ -2086,7 +2104,7 @@ static void set_option(int c, char *value) {
     }
     break;
   case CLI_PORT_OPT:
-    cli_port = atoi(value);
+    cli_port = get_port_value(value);
     break;
   case CLI_PASSWORD_OPT:
     STRCPY(cli_password, value);
@@ -2102,7 +2120,7 @@ static void set_option(int c, char *value) {
     }
     break;
   case WEB_ADMIN_PORT_OPT:
-    web_admin_port = atoi(value);
+    web_admin_port = get_port_value(value);
     break;
   case WEB_ADMIN_LISTEN_ON_WORKERS_OPT:
     turn_params.web_admin_listen_on_workers = get_bool_value(value);
@@ -2150,26 +2168,26 @@ static void set_option(int c, char *value) {
     STRCPY(turn_params.listener_ifname, value);
     break;
   case 'p':
-    turn_params.listener_port = atoi(value);
+    turn_params.listener_port = get_port_value(value);
     break;
   case TLS_PORT_OPT:
-    turn_params.tls_listener_port = atoi(value);
+    turn_params.tls_listener_port = get_port_value(value);
     break;
   case ALT_PORT_OPT:
-    turn_params.alt_listener_port = atoi(value);
+    turn_params.alt_listener_port = get_port_value(value);
     break;
   case ALT_TLS_PORT_OPT:
-    turn_params.alt_tls_listener_port = atoi(value);
+    turn_params.alt_tls_listener_port = get_port_value(value);
     break;
   case TCP_PROXY_PORT_OPT:
-    turn_params.tcp_proxy_port = atoi(value);
+    turn_params.tcp_proxy_port = get_port_value(value);
     turn_params.tcp_use_proxy = true;
     break;
   case MIN_PORT_OPT:
-    turn_params.min_port = atoi(value);
+    turn_params.min_port = get_port_value(value);
     break;
   case MAX_PORT_OPT:
-    turn_params.max_port = atoi(value);
+    turn_params.max_port = get_port_value(value);
     break;
   case SOCK_BUF_SIZE_OPT:
     turn_params.sock_buf_size = atoi(value);
@@ -2343,7 +2361,7 @@ static void set_option(int c, char *value) {
     turn_params.prometheus = true;
     break;
   case PROMETHEUS_PORT_OPT:
-    turn_params.prometheus_port = atoi(value);
+    turn_params.prometheus_port = get_port_value(value);
     break;
   case PROMETHEUS_ADDRESS_OPT:
     STRCPY(turn_params.prometheus_address, value);

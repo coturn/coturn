@@ -36,6 +36,8 @@
 #include "session.h"
 #include "uclient.h"
 
+#include <event2/thread.h>
+
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -229,6 +231,18 @@ int main(int argc, char **argv) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "WSAStartup failed with error: %d\n", err);
     return 1;
   }
+#endif
+
+  /* Enable libevent thread support before any event_base is created. The
+   * threaded uclient modes (--listener-threads / --sender-threads > 0, also
+   * auto-enabled at high -m) register events on a worker thread's event_base
+   * from the main thread while that worker runs event_base_dispatch(), so the
+   * base's internal structures (and the epoll changelist) are accessed cross-
+   * thread. libevent only locks them when threading was enabled up front. */
+#if defined(WINDOWS)
+  evthread_use_windows_threads();
+#else
+  evthread_use_pthreads();
 #endif
 
   set_logfile("stdout");
