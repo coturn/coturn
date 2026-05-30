@@ -114,28 +114,32 @@ static band_limit_t allocate_bps(band_limit_t bps, int positive) {
   band_limit_t ret = 0;
   if (bps > 0) {
     if (positive) {
-      const band_limit_t cap = atomic_load(&turn_params.bps_capacity);
+      const band_limit_t cap = turn_atomic_load_u32(&turn_params.bps_capacity);
       if (!cap) {
-        atomic_fetch_add(&turn_params.bps_capacity_allocated, bps);
+        turn_atomic_fetch_add_u32(&turn_params.bps_capacity_allocated, bps);
         ret = bps;
       } else {
-        band_limit_t old_alloc = atomic_load(&turn_params.bps_capacity_allocated);
+        band_limit_t old_alloc = turn_atomic_load_u32(&turn_params.bps_capacity_allocated);
         while (old_alloc < cap) {
           const band_limit_t reserve = cap - old_alloc;
           const band_limit_t to_alloc = (reserve <= bps) ? reserve : bps;
-          if (atomic_compare_exchange_weak(&turn_params.bps_capacity_allocated, &old_alloc, old_alloc + to_alloc)) {
+          if (turn_atomic_cas_u32(&turn_params.bps_capacity_allocated, old_alloc, old_alloc + to_alloc)) {
             ret = to_alloc;
             break;
           }
+          /* CAS failed: another thread changed the counter. The strong CAS
+           * wrapper does not report the observed value, so reload before retry. */
+          old_alloc = turn_atomic_load_u32(&turn_params.bps_capacity_allocated);
         }
       }
     } else {
-      band_limit_t old_alloc = atomic_load(&turn_params.bps_capacity_allocated);
+      band_limit_t old_alloc = turn_atomic_load_u32(&turn_params.bps_capacity_allocated);
       while (old_alloc > 0) {
         const band_limit_t new_alloc = (old_alloc >= bps) ? (old_alloc - bps) : 0;
-        if (atomic_compare_exchange_weak(&turn_params.bps_capacity_allocated, &old_alloc, new_alloc)) {
+        if (turn_atomic_cas_u32(&turn_params.bps_capacity_allocated, old_alloc, new_alloc)) {
           break;
         }
+        old_alloc = turn_atomic_load_u32(&turn_params.bps_capacity_allocated);
       }
     }
   }
@@ -143,15 +147,15 @@ static band_limit_t allocate_bps(band_limit_t bps, int positive) {
   return ret;
 }
 
-band_limit_t get_bps_capacity_allocated(void) { return atomic_load(&turn_params.bps_capacity_allocated); }
+band_limit_t get_bps_capacity_allocated(void) { return turn_atomic_load_u32(&turn_params.bps_capacity_allocated); }
 
-band_limit_t get_bps_capacity(void) { return atomic_load(&turn_params.bps_capacity); }
+band_limit_t get_bps_capacity(void) { return turn_atomic_load_u32(&turn_params.bps_capacity); }
 
-void set_bps_capacity(band_limit_t value) { atomic_store(&turn_params.bps_capacity, value); }
+void set_bps_capacity(band_limit_t value) { turn_atomic_store_u32(&turn_params.bps_capacity, value); }
 
-band_limit_t get_max_bps(void) { return atomic_load(&turn_params.max_bps); }
+band_limit_t get_max_bps(void) { return turn_atomic_load_u32(&turn_params.max_bps); }
 
-void set_max_bps(band_limit_t value) { atomic_store(&turn_params.max_bps, value); }
+void set_max_bps(band_limit_t value) { turn_atomic_store_u32(&turn_params.max_bps, value); }
 
 /////////////// AUX SERVERS ////////////////
 
@@ -425,13 +429,7 @@ static struct relay_server *get_relay_server(turnserver_id id) {
   return rs;
 }
 
-#if defined(WINDOWS)
-static volatile LONG auth_message_counter = 0;
-#define FETCH_ADD_AUTH_COUNTER() ((unsigned int)InterlockedIncrement(&auth_message_counter) - 1)
-#else
-static _Atomic unsigned int auth_message_counter = 0;
-#define FETCH_ADD_AUTH_COUNTER() atomic_fetch_add(&auth_message_counter, 1)
-#endif
+static turn_atomic_u32 auth_message_counter = 0;
 
 static void send_auth_message_to_relay(struct auth_message *am) {
   struct evbuffer *output = NULL;
@@ -474,7 +472,8 @@ void send_auth_message_to_auth_server(struct auth_message *am) {
     return;
   }
 
-  const authserver_id sn = (authserver_id)(FETCH_ADD_AUTH_COUNTER() % (authserver_number - 1)) + 1;
+  const authserver_id sn =
+      (authserver_id)(turn_atomic_fetch_add_u32(&auth_message_counter, 1) % (authserver_number - 1)) + 1;
 
   struct evbuffer *output = bufferevent_get_output(authserver[sn].out_buf);
   if (evbuffer_add(output, &am, sizeof(am)) < 0) {
