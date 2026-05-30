@@ -188,11 +188,6 @@ void turn_permission_clean(turn_permission_info *tinfo) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: peer %s deleted\n", tinfo->session_id, s);
   }
 
-  if (!(tinfo->lifetime_ev)) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s: strange (1) permission to be cleaned\n", __FUNCTION__);
-  }
-
-  IOA_EVENT_DEL(tinfo->lifetime_ev);
   lm_map_foreach(&(tinfo->chns), (foreachcb_type)delete_channel_info_from_allocation_map);
   lm_map_clean(&(tinfo->chns));
   memset(tinfo, 0, sizeof(turn_permission_info));
@@ -271,7 +266,6 @@ static void ch_info_clean(ch_info *c) {
       DELETE_TURN_CHANNEL_KERNEL(c->kernel_channel);
       c->kernel_channel = 0;
     }
-    IOA_EVENT_DEL(c->lifetime_ev);
     memset(c, 0, sizeof(ch_info));
   }
 }
