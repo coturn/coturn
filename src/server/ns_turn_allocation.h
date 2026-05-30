@@ -119,7 +119,6 @@ typedef struct _ch_info {
   uint16_t port;
   ioa_addr peer_addr;
   turn_time_t expiration_time;
-  ioa_timer_handle lifetime_ev;
   void *owner; // perm
   TURN_CHANNEL_HANDLER_KERNEL kernel_channel;
 } ch_info;
@@ -149,7 +148,6 @@ typedef struct _turn_permission_info {
   lm_map chns;
   ioa_addr addr;
   turn_time_t expiration_time;
-  ioa_timer_handle lifetime_ev;
   void *owner; // a
   bool verbose;
   unsigned long long session_id;
