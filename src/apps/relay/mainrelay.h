@@ -347,6 +347,7 @@ typedef struct _turn_params_ {
   bool udp_recvmmsg;
   bool udp_recvmmsg_log;
   bool udp_sendmmsg; /* derived: multiplex_peer; not user-settable */
+  bool udp_sendmmsg_log;
   bool udp_gso;
 #endif
   bool include_reason_string;

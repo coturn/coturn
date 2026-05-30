@@ -244,6 +244,7 @@ turn_params_t turn_params = {
     false, /* udp_recvmmsg */
     false, /* udp_recvmmsg_log */
     false, /* udp_sendmmsg (derived from multiplex_peer) */
+    false, /* udp_sendmmsg_log */
     false, /* udp_gso */
 #endif
     false, /* include_reason_string */
@@ -1371,6 +1372,9 @@ static char Usage[] =
     " --udp-recvmmsg				   Enable Linux-only batched UDP receive via recvmmsg() on UDP "
     "sockets.\n"
     " --udp-recvmmsg-log			   Log Linux recvmmsg batch occupancy stats every 10 seconds.\n"
+    " --udp-sendmmsg-log			   Log Linux sendmmsg/UDP-GSO egress batch occupancy and "
+    "GSO-engagement "
+    "stats every 10 seconds. Only meaningful with --multiplex-peer (which enables sendmmsg batching).\n"
     " --udp-gso				   Enable Linux UDP-GSO (UDP_SEGMENT cmsg) when a sendmmsg batch shares "
     "destination and size; collapses N datagrams into one network-stack traversal. Requires "
     "--multiplex-peer (which enables sendmmsg batching).\n"
@@ -1556,6 +1560,7 @@ enum EXTRA_OPTS {
 #if defined(__linux__)
   UDP_RECVMMSG_OPT,
   UDP_RECVMMSG_LOG_OPT,
+  UDP_SENDMMSG_LOG_OPT,
   UDP_GSO_OPT,
 #endif
   VERSION_OPT,
@@ -1712,6 +1717,7 @@ static const struct myoption long_options[] = {
 #if defined(__linux__)
     {"udp-recvmmsg", optional_argument, NULL, UDP_RECVMMSG_OPT},
     {"udp-recvmmsg-log", optional_argument, NULL, UDP_RECVMMSG_LOG_OPT},
+    {"udp-sendmmsg-log", optional_argument, NULL, UDP_SENDMMSG_LOG_OPT},
     {"udp-gso", optional_argument, NULL, UDP_GSO_OPT},
 #endif
     {"include-reason-string", optional_argument, NULL, INCLUDE_REASON_STRING_OPT},
@@ -2526,6 +2532,9 @@ static void set_option(int c, char *value) {
     break;
   case UDP_RECVMMSG_LOG_OPT:
     turn_params.udp_recvmmsg_log = get_bool_value(value);
+    break;
+  case UDP_SENDMMSG_LOG_OPT:
+    turn_params.udp_sendmmsg_log = get_bool_value(value);
     break;
   case UDP_GSO_OPT:
     turn_params.udp_gso = get_bool_value(value);
