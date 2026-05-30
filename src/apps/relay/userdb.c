@@ -732,7 +732,8 @@ int add_static_user_account(char *user) {
 
   char *s = strstr(user, ":");
   if (!s || (s == user) || (strlen(s) < 2)) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong user account: %s\n", user);
+    /* Do not log the value: it contains the password component. */
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong user account: missing or malformed ':' separator\n");
     return -1;
   }
 
@@ -750,7 +751,8 @@ int add_static_user_account(char *user) {
   usname[ulen] = 0;
 
   if (!SASLprep((uint8_t *)usname)) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong user name: %s\n", user);
+    /* Log the username only, never the trailing password/key component. */
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong user name: %s\n", usname);
     free(usname);
     return -1;
   }
@@ -766,7 +768,8 @@ int add_static_user_account(char *user) {
     char *keysource = s + 2;
     const size_t sz = get_hmackey_size(SHATYPE_DEFAULT);
     if (strlen(keysource) < sz * 2) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key format: %s\n", s);
+      /* Do not log the key material itself; identify by username. */
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key format for user: %s\n", usname);
     }
     convert_string_key_to_binary(keysource, *key, sz);
   } else {

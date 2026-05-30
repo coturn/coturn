@@ -100,7 +100,11 @@ struct str_buffer;
 
 struct admin_server adminserver;
 
-bool use_cli = false;
+/* Guards the HTTPS admin logon brute-force throttle table (defined lower in this
+ * file). Declared here because setup_admin_thread() initializes it. */
+static TURN_MUTEX_DECLARE(admin_logon_throttle_mutex)
+
+    bool use_cli = false;
 
 ioa_addr cli_addr;
 int cli_addr_set = 0;
@@ -1244,9 +1248,16 @@ static void web_admin_input_handler(ioa_socket_handle s, int event_type, ioa_net
           proto = "HTTPS";
           set_ioa_socket_app_type(s, HTTPS_CLIENT_SOCKET);
 
-          TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s (%s %s) request: %s\n", __FUNCTION__, proto,
-                        get_ioa_socket_cipher(s), get_ioa_socket_ssl_method(s),
-                        (char *)ioa_network_buffer_data(in_buffer->nbh));
+          /* Suppress logging of the raw request when it carries credentials
+           * (the logon POST body contains "pwd="), mirroring handle_https(). */
+          if (strstr((char *)ioa_network_buffer_data(in_buffer->nbh), "pwd")) {
+            TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s (%s %s) request (body redacted: contains credentials)\n",
+                          __FUNCTION__, proto, get_ioa_socket_cipher(s), get_ioa_socket_ssl_method(s));
+          } else {
+            TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s (%s %s) request: %s\n", __FUNCTION__, proto,
+                          get_ioa_socket_cipher(s), get_ioa_socket_ssl_method(s),
+                          (char *)ioa_network_buffer_data(in_buffer->nbh));
+          }
 
           TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s socket to be detached: %p, st=%d, sat=%d\n", __FUNCTION__, s,
                         get_ioa_socket_type(s), get_ioa_socket_app_type(s));
@@ -1335,6 +1346,7 @@ static int send_socket_to_admin_server(ioa_engine_handle e, struct message_to_re
 }
 
 void setup_admin_thread(void) {
+  TURN_MUTEX_INIT(&admin_logon_throttle_mutex);
   adminserver.event_base = turn_event_base_new();
   super_memory_t *sm = new_super_memory_region();
   adminserver.e = create_ioa_engine(sm, adminserver.event_base, turn_params.listener.tp, turn_params.relay_ifname,
@@ -3327,10 +3339,103 @@ static void handle_update_request(ioa_socket_handle s, struct http_request *hr) 
   }
 }
 
+/* ---- HTTPS admin logon brute-force throttle (per source IP) ----
+ * The HTTPS admin interface authenticates per TLS connection, so without a
+ * cross-connection control an attacker can attempt unlimited password guesses
+ * by opening a fresh connection per attempt. This bounds the guess rate per
+ * source IP. State lives in a small fixed table; on overflow the
+ * least-recently-seen entry is evicted (worst case an attacker evicts their own
+ * lockout, which only resets them to the start of the failure window). All
+ * access happens on the single admin thread, but the mutex keeps it safe if
+ * that ever changes. */
+#define ADMIN_LOGON_THROTTLE_SIZE (256)
+#define ADMIN_LOGON_MAX_FAILURES (5)
+#define ADMIN_LOGON_LOCKOUT_SECS (30)
+#define ADMIN_LOGON_WINDOW_SECS (60)
+
+struct admin_logon_throttle_entry {
+  ioa_addr addr;
+  bool used;
+  int failures;
+  turn_time_t window_start;
+  turn_time_t lockout_until;
+  turn_time_t last_seen;
+};
+
+static struct admin_logon_throttle_entry admin_logon_throttle[ADMIN_LOGON_THROTTLE_SIZE];
+
+/* Find or (re)allocate the entry for addr. Caller must hold the mutex. */
+static struct admin_logon_throttle_entry *admin_logon_throttle_lookup(const ioa_addr *addr, turn_time_t now) {
+  struct admin_logon_throttle_entry *lru = &admin_logon_throttle[0];
+  for (size_t i = 0; i < ADMIN_LOGON_THROTTLE_SIZE; ++i) {
+    struct admin_logon_throttle_entry *e = &admin_logon_throttle[i];
+    if (e->used && addr_eq_no_port(&e->addr, addr)) {
+      return e;
+    }
+    if (!e->used) {
+      if (lru->used) {
+        lru = e; /* prefer any free slot */
+      }
+    } else if (lru->used && turn_time_before(e->last_seen, lru->last_seen)) {
+      lru = e;
+    }
+  }
+  memset(lru, 0, sizeof(*lru));
+  addr_cpy(&lru->addr, addr);
+  lru->used = true;
+  lru->window_start = now;
+  return lru;
+}
+
+static bool admin_logon_is_locked(const ioa_addr *addr) {
+  if (!addr) {
+    return false;
+  }
+  const turn_time_t now = turn_time();
+  TURN_MUTEX_LOCK(&admin_logon_throttle_mutex);
+  struct admin_logon_throttle_entry *e = admin_logon_throttle_lookup(addr, now);
+  const bool locked = (e->lockout_until != 0) && turn_time_before(now, e->lockout_until);
+  TURN_MUTEX_UNLOCK(&admin_logon_throttle_mutex);
+  return locked;
+}
+
+static void admin_logon_record_failure(const ioa_addr *addr) {
+  if (!addr) {
+    return;
+  }
+  const turn_time_t now = turn_time();
+  TURN_MUTEX_LOCK(&admin_logon_throttle_mutex);
+  struct admin_logon_throttle_entry *e = admin_logon_throttle_lookup(addr, now);
+  if (!turn_time_before(now, e->window_start + ADMIN_LOGON_WINDOW_SECS)) {
+    e->failures = 0;
+    e->window_start = now;
+  }
+  e->failures++;
+  e->last_seen = now;
+  if (e->failures >= ADMIN_LOGON_MAX_FAILURES) {
+    e->lockout_until = now + ADMIN_LOGON_LOCKOUT_SECS;
+    e->failures = 0;
+    e->window_start = now;
+  }
+  TURN_MUTEX_UNLOCK(&admin_logon_throttle_mutex);
+}
+
+static void admin_logon_record_success(const ioa_addr *addr) {
+  if (!addr) {
+    return;
+  }
+  const turn_time_t now = turn_time();
+  TURN_MUTEX_LOCK(&admin_logon_throttle_mutex);
+  struct admin_logon_throttle_entry *e = admin_logon_throttle_lookup(addr, now);
+  memset(e, 0, sizeof(*e)); /* clear counters/lockout on a successful logon */
+  TURN_MUTEX_UNLOCK(&admin_logon_throttle_mutex);
+}
+
 static void handle_logon_request(ioa_socket_handle s, struct http_request *hr) {
   if (s && hr) {
     const char *uname = get_http_header_value(hr, HR_USERNAME, NULL);
     const char *pwd = get_http_header_value(hr, HR_PASSWORD, NULL);
+    const ioa_addr *src = get_remote_addr_from_ioa_socket(s);
 
     struct admin_session *as = (struct admin_session *)s->special_session;
     if (!as) {
@@ -3343,6 +3448,11 @@ static void handle_logon_request(ioa_socket_handle s, struct http_request *hr) {
     }
 
     if (!(as->as_ok) && uname && is_secure_string((const uint8_t *)uname, 1) && pwd) {
+      if (admin_logon_is_locked(src)) {
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
+                      "%s: HTTPS admin logon rejected: too many failed attempts from source address\n", __FUNCTION__);
+        return;
+      }
       const turn_dbdriver_t *dbd = get_dbdriver();
       if (dbd && dbd->get_admin_user) {
         password_t password;
@@ -3356,6 +3466,11 @@ static void handle_logon_request(ioa_socket_handle s, struct http_request *hr) {
             as->number_of_user_sessions = DEFAULT_CLI_MAX_OUTPUT_SESSIONS;
           }
         }
+      }
+      if (as->as_ok) {
+        admin_logon_record_success(src);
+      } else {
+        admin_logon_record_failure(src);
       }
     }
   }
