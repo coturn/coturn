@@ -379,6 +379,24 @@ ch_info *get_turn_channel(turn_permission_info *tinfo, ioa_addr *addr) {
 
 turn_permission_hashtable *allocation_get_turn_permission_hashtable(allocation *a) { return &(a->addr_to_perm); }
 
+static size_t allocation_count_permissions(const turn_permission_hashtable *map) {
+  size_t count = 0;
+  for (size_t b = 0; b < TURN_PERMISSION_HASHTABLE_SIZE; ++b) {
+    const turn_permission_array *parray = &(map->table[b]);
+    for (size_t i = 0; i < TURN_PERMISSION_ARRAY_SIZE; ++i) {
+      if (parray->main_slots[i].info.allocated) {
+        ++count;
+      }
+    }
+    for (size_t i = 0; i < parray->extra_sz; ++i) {
+      if (parray->extra_slots[i] && parray->extra_slots[i]->info.allocated) {
+        ++count;
+      }
+    }
+  }
+  return count;
+}
+
 turn_permission_info *allocation_add_permission(allocation *a, const ioa_addr *addr) {
   if (!a || !addr) {
     return NULL;
@@ -417,6 +435,12 @@ turn_permission_info *allocation_add_permission(allocation *a, const ioa_addr *a
     }
 
     if (!slot) {
+      /* A new slot can only be created once every existing slot is in use, so
+       * enforcing the per-allocation cap here bounds total permission growth
+       * without penalizing reuse of freed slots. */
+      if (allocation_count_permissions(map) >= TURN_MAX_PERMISSIONS_PER_ALLOCATION) {
+        return NULL;
+      }
       size_t old_sz_mem = old_sz * sizeof(turn_permission_slot *);
       turn_permission_slot **new_slots =
           (turn_permission_slot **)realloc(parray->extra_slots, old_sz_mem + sizeof(turn_permission_slot *));

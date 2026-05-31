@@ -113,6 +113,14 @@ typedef struct _tcp_connection_list {
 #define TURN_PERMISSION_HASHTABLE_SIZE (0x8)
 #define TURN_PERMISSION_ARRAY_SIZE (0x3)
 
+/* Upper bound on the number of concurrent permissions a single allocation may
+ * hold. Permissions are created on demand (CreatePermission / ChannelBind) and
+ * the backing storage grows one slot at a time, so without a cap an
+ * authenticated client can drive unbounded heap and timer growth by covering a
+ * large set of distinct peer addresses. RFC 5766 does not bound this; the cap
+ * is generous so legitimate clients are unaffected. */
+#define TURN_MAX_PERMISSIONS_PER_ALLOCATION (1024)
+
 typedef struct _ch_info {
   uint16_t chnum;
   bool allocated;

@@ -371,14 +371,25 @@ static bool encrypted_password(const char *pin, unsigned char *salt) {
   return false;
 }
 
+/* Length-checked constant-time string compare. The length comparison can leak
+ * the length of the secret, but the byte content is compared in constant time
+ * via CRYPTO_memcmp so no per-byte timing oracle remains. */
+static bool const_time_str_equal(const char *a, const char *b) {
+  const size_t la = strlen(a);
+  if (la != strlen(b)) {
+    return false;
+  }
+  return CRYPTO_memcmp(a, b, la) == 0;
+}
+
 bool check_password_equal(const char *pin, const char *pwd) {
   unsigned char salt[PWD_SALT_SIZE];
   if (!encrypted_password(pwd, salt)) {
-    return 0 == strcmp(pin, pwd);
+    return const_time_str_equal(pin, pwd);
   }
   char enc_pin[257];
   generate_enc_password(pin, enc_pin, salt);
-  return 0 == strcmp(enc_pin, pwd);
+  return const_time_str_equal(enc_pin, pwd);
 }
 
 /////////////////////////////////////////////////////////////////
@@ -2490,8 +2501,23 @@ static bool decode_oauth_token_gcm(const uint8_t *server_name, const encoded_oau
 
     size_t len = 0;
 
+    if ((size_t)outl < sizeof(uint16_t)) {
+      OAUTH_ERROR("%s: decoded token too small: %d\n", __FUNCTION__, (int)outl);
+      return false;
+    }
     dtoken->enc_block.key_length = nswap16(*((uint16_t *)(decoded_field + len)));
-    len += 2;
+    len += sizeof(uint16_t);
+
+    if (dtoken->enc_block.key_length > sizeof(dtoken->enc_block.mac_key)) {
+      OAUTH_ERROR("%s: mac key length too large: %u > %u\n", __FUNCTION__, (unsigned)dtoken->enc_block.key_length,
+                  (unsigned)sizeof(dtoken->enc_block.mac_key));
+      return false;
+    }
+
+    if ((size_t)outl < len + dtoken->enc_block.key_length + sizeof(uint64_t) + sizeof(uint32_t)) {
+      OAUTH_ERROR("%s: decoded token truncated: %d\n", __FUNCTION__, (int)outl);
+      return false;
+    }
 
     memcpy(dtoken->enc_block.mac_key, decoded_field + len, dtoken->enc_block.key_length);
     len += dtoken->enc_block.key_length;
