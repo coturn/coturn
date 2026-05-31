@@ -1369,8 +1369,10 @@ static char Usage[] =
     " --drop-invalid-packets-log			   Log invalid packets. The default behaviour is to not log "
     "invalid packets.\n"
 #if defined(__linux__)
-    " --udp-recvmmsg				   Enable Linux-only batched UDP receive via recvmmsg() on UDP "
-    "sockets.\n"
+    " --udp-recvmmsg				   Enable Linux-only batched UDP receive via recvmmsg() on the "
+    "shared fan-in sockets (the client listener and, when --multiplex-peer is set, the per-thread relay socket). "
+    "Independent of --multiplex-peer and worth enabling on its own for high client concurrency. Per-session relay "
+    "sockets are left on the single-recv path, where batching would only add buffer churn.\n"
     " --udp-recvmmsg-log			   Log Linux recvmmsg batch occupancy stats every 10 seconds.\n"
     " --udp-sendmmsg-log			   Log Linux sendmmsg/UDP-GSO egress batch occupancy and "
     "GSO-engagement "
