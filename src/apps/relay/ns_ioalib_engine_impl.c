@@ -593,6 +593,59 @@ static void maybe_log_udp_recvmmsg_stats(ioa_engine_handle e, turn_time_t now) {
                                      e->udp_recvmmsg_hist[12] + e->udp_recvmmsg_hist[13] + e->udp_recvmmsg_hist[14] +
                                      e->udp_recvmmsg_hist[15] + e->udp_recvmmsg_hist[16]));
 }
+
+void ioa_engine_record_udp_sendmmsg_flush(ioa_engine_handle e, unsigned int count, unsigned int gso_count) {
+  if (!e || count == 0) {
+    return;
+  }
+
+  unsigned int bucket = count;
+  if (bucket > IOA_UDP_SENDMMSG_MAX_BATCH) {
+    bucket = IOA_UDP_SENDMMSG_MAX_BATCH;
+  }
+
+  e->udp_sendmmsg_flushes++;
+  e->udp_sendmmsg_datagrams += (uint64_t)count;
+  e->udp_sendmmsg_hist[bucket]++;
+
+  if (gso_count > 0) {
+    e->udp_sendmmsg_gso_flushes++;
+    e->udp_sendmmsg_gso_datagrams += (uint64_t)gso_count;
+  }
+}
+
+static uint64_t udp_sendmmsg_hist_sum(const ioa_engine_handle e, unsigned int lo, unsigned int hi) {
+  uint64_t s = 0;
+  for (unsigned int i = lo; i <= hi && i <= IOA_UDP_SENDMMSG_MAX_BATCH; ++i) {
+    s += e->udp_sendmmsg_hist[i];
+  }
+  return s;
+}
+
+static void maybe_log_udp_sendmmsg_stats(ioa_engine_handle e, turn_time_t now) {
+  if (!turn_params.udp_sendmmsg_log || !e || (e->udp_sendmmsg_flushes == e->udp_sendmmsg_last_report_flushes) ||
+      ((now - e->udp_sendmmsg_last_report_time) < 10)) {
+    return;
+  }
+
+  e->udp_sendmmsg_last_report_flushes = e->udp_sendmmsg_flushes;
+  e->udp_sendmmsg_last_report_time = now;
+
+  const double avg_batch =
+      e->udp_sendmmsg_flushes ? ((double)e->udp_sendmmsg_datagrams / (double)e->udp_sendmmsg_flushes) : 0.0;
+  const double gso_frac =
+      e->udp_sendmmsg_datagrams ? ((double)e->udp_sendmmsg_gso_datagrams / (double)e->udp_sendmmsg_datagrams) : 0.0;
+
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+                "udp-sendmmsg stats: flushes=%llu datagrams=%llu avg_batch=%.2f gso_flushes=%llu gso_datagrams=%llu "
+                "gso_frac=%.3f hist_1=%llu hist_2=%llu hist_3_4=%llu hist_5_8=%llu hist_9_16=%llu hist_17_32=%llu\n",
+                (unsigned long long)e->udp_sendmmsg_flushes, (unsigned long long)e->udp_sendmmsg_datagrams, avg_batch,
+                (unsigned long long)e->udp_sendmmsg_gso_flushes, (unsigned long long)e->udp_sendmmsg_gso_datagrams,
+                gso_frac, (unsigned long long)e->udp_sendmmsg_hist[1], (unsigned long long)e->udp_sendmmsg_hist[2],
+                (unsigned long long)udp_sendmmsg_hist_sum(e, 3, 4), (unsigned long long)udp_sendmmsg_hist_sum(e, 5, 8),
+                (unsigned long long)udp_sendmmsg_hist_sum(e, 9, 16),
+                (unsigned long long)udp_sendmmsg_hist_sum(e, 17, 32));
+}
 #endif
 
 static void timer_handler(ioa_engine_handle e, void *arg) {
@@ -606,6 +659,7 @@ static void timer_handler(ioa_engine_handle e, void *arg) {
 
 #if defined(__linux__)
   maybe_log_udp_recvmmsg_stats(e, now);
+  maybe_log_udp_sendmmsg_stats(e, now);
 #endif
 }
 
@@ -3867,9 +3921,14 @@ static int udp_gso_attempt_flush(void) {
 static int udp_sendmmsg_flush(void) {
   udp_sendmmsg_batch_state *state = &udp_sendmmsg_batch;
   unsigned int sent = 0;
+  unsigned int gso_sent = 0;
+  const unsigned int batch_count = state->count;
+  /* All entries in a thread-local batch share the relay thread's engine. */
+  ioa_engine_handle stat_e = (batch_count > 0) ? state->entries[0].e : NULL;
 
   if (turn_params.udp_gso) {
-    sent = (unsigned int)udp_gso_attempt_flush();
+    gso_sent = (unsigned int)udp_gso_attempt_flush();
+    sent = gso_sent;
   }
 
   if (sent < state->count && (state->count - sent) < MIN_SENDMMSG_BATCH) {
@@ -3907,6 +3966,8 @@ static int udp_sendmmsg_flush(void) {
   for (unsigned int i = 0; i < state->count; ++i) {
     ioa_network_buffer_delete(state->entries[i].e, state->entries[i].nbh);
   }
+
+  ioa_engine_record_udp_sendmmsg_flush(stat_e, batch_count, gso_sent);
 
   state->count = 0;
   state->fd = -1;

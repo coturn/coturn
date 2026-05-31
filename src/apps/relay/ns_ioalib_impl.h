@@ -71,6 +71,7 @@ extern "C" {
 #define MAX_BUFFER_QUEUE_SIZE_PER_ENGINE (64)
 #define MAX_SOCKET_BUFFER_BACKLOG (16)
 #define IOA_UDP_RECVMMSG_MAX_BATCH (16)
+#define IOA_UDP_SENDMMSG_MAX_BATCH (32)
 
 #define BUFFEREVENT_HIGH_WATERMARK (128 << 10)
 #define BUFFEREVENT_MAX_UDP_TO_TCP_WRITE (64 << 9)
@@ -173,6 +174,14 @@ struct _ioa_engine {
   uint64_t udp_recvmmsg_hist[IOA_UDP_RECVMMSG_MAX_BATCH + 1];
   uint64_t udp_recvmmsg_last_report_calls;
   turn_time_t udp_recvmmsg_last_report_time;
+  /* sendmmsg / UDP-GSO egress batching stats (see --udp-sendmmsg-log) */
+  uint64_t udp_sendmmsg_flushes;                              /* batch flushes carrying >=1 datagram */
+  uint64_t udp_sendmmsg_datagrams;                            /* total datagrams handed to the kernel via batches */
+  uint64_t udp_sendmmsg_gso_flushes;                          /* flushes that coalesced via a single UDP-GSO sendmsg */
+  uint64_t udp_sendmmsg_gso_datagrams;                        /* datagrams coalesced via UDP-GSO */
+  uint64_t udp_sendmmsg_hist[IOA_UDP_SENDMMSG_MAX_BATCH + 1]; /* per-flush occupancy histogram */
+  uint64_t udp_sendmmsg_last_report_flushes;
+  turn_time_t udp_sendmmsg_last_report_time;
 #endif
   redis_context_handle rch;
   /* multiplex-peer (zero-initialised = disabled) */
@@ -320,6 +329,7 @@ void ioa_engine_record_udp_recvmmsg_batch(ioa_engine_handle e, int rc);
 void ioa_engine_record_udp_recvmmsg_wouldblock(ioa_engine_handle e);
 void ioa_engine_record_udp_recvmmsg_unavailable(ioa_engine_handle e);
 void ioa_engine_record_udp_recvmmsg_no_buffer(ioa_engine_handle e);
+void ioa_engine_record_udp_sendmmsg_flush(ioa_engine_handle e, unsigned int count, unsigned int gso_count);
 #endif
 
 int set_raw_socket_ttl_options(evutil_socket_t fd, int family);

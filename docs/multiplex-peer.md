@@ -169,6 +169,71 @@ closed by session teardown code.
 
 ---
 
+## Egress Batching (sendmmsg / UDP-GSO) and Observability
+
+Multiplex-peer mode does more than save ports — it is also what makes
+**cross-session egress batching** possible on Linux.
+
+### Why both directions batch under multiplex-peer
+
+`recvmmsg` on a UDP socket drains many datagrams in one syscall, and the
+drain loop (`socket_udp_read_batch_recvmmsg`) wraps its per-datagram dispatch
+in `udp_sendmmsg_batch_begin()` / `udp_sendmmsg_batch_end()`. Any sends issued
+while processing that drain are collected into a thread-local batch keyed by
+the **send fd** and flushed once (via `sendmmsg`, or a single UDP-GSO `sendmsg`
+when destination and segment size match) at `batch_end`.
+
+- **Uplink (client → relay → peer).** The client listener's `recvmmsg` drain
+  pulls many clients' datagrams; each is forwarded to its peer on the shared
+  relay socket → one `sendmmsg` on the relay fd.
+- **Downlink (peer → relay → client).** With multiplex-peer the **shared**
+  relay socket's `recvmmsg` drain pulls datagrams for *many sessions* at once;
+  each is forwarded to its client. Per-session UDP client sockets are children
+  of the listener socket (`parent_s`), and `udp_send_fd()` returns the
+  **listener fd** for all of them — so downlink sends to *different clients*
+  coalesce into one `sendmmsg` on the shared listener fd, each `mmsghdr`
+  carrying its own client destination.
+
+This is why downlink-to-client is **not** an unbatched per-packet `sendto`
+path under multiplex-peer: the listener fd is effectively a shared
+client-facing send socket, and `sendmmsg` amortizes the syscall across
+clients. (In non-multiplex mode each allocation has its own relay socket, so a
+relay `recvmmsg` drain only ever spans one session and the downlink batch is a
+singleton — cross-client batching genuinely requires multiplex-peer.)
+
+`udp_sendmmsg` is enabled automatically whenever `--multiplex-peer` is set;
+`--udp-gso` additionally turns on UDP-GSO segmentation for batches that share
+destination and size.
+
+### Measuring it: `--udp-sendmmsg-log`
+
+GSO only engages when every datagram in a batch shares the same destination
+and size, so at low per-flow packet rates (e.g. VoIP, a few dozen pps per
+flow) it rarely fires and batches tend toward singletons. To see what is
+actually happening, enable per-thread egress stats every 10 s:
+
+```bash
+turnserver --multiplex-peer --udp-gso --udp-sendmmsg-log ...
+```
+
+```
+udp-sendmmsg stats: flushes=21 datagrams=27 avg_batch=1.29 \
+  gso_flushes=0 gso_datagrams=0 gso_frac=0.000 \
+  hist_1=17 hist_2=2 hist_3_4=2 hist_5_8=0 hist_9_16=0 hist_17_32=0
+```
+
+- `avg_batch` — mean datagrams coalesced per flush (1.0 = no coalescing).
+- `gso_frac` — fraction of datagrams sent via UDP-GSO (≈0 means GSO is not
+  earning its keep at this workload).
+- `hist_*` — per-flush occupancy histogram.
+
+Batch occupancy scales with how many datagrams arrive per `recvmmsg` drain,
+which grows with aggregate pps — so these numbers rise under higher load and
+stay near 1.0 on lightly loaded servers. Pair with `--udp-recvmmsg-log` to see
+the ingress side.
+
+---
+
 ## Files Changed
 
 | File | What changes |
