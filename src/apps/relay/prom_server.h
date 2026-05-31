@@ -92,6 +92,15 @@ extern prom_counter_t *turn_total_traffic_peer_sentb;
 
 extern prom_gauge_t *turn_total_allocations_number;
 
+/* Linux UDP recvmmsg/sendmmsg batching. Counters are bumped once per syscall
+ * (not per datagram), so average batch size is rate(packets)/rate(calls) and
+ * rate(datagrams)/rate(flushes) in PromQL — cheap to expose, cheap to scrape. */
+extern prom_counter_t *turn_udp_recvmmsg_calls;
+extern prom_counter_t *turn_udp_recvmmsg_packets;
+extern prom_counter_t *turn_udp_sendmmsg_flushes;
+extern prom_counter_t *turn_udp_sendmmsg_datagrams;
+extern prom_counter_t *turn_udp_sendmmsg_gso_datagrams;
+
 int is_ipv6_enabled(void);
 
 void prom_inc_stun_binding_request(void);
@@ -109,5 +118,10 @@ void prom_inc_allocation(SOCKET_TYPE type);
 void prom_dec_allocation(SOCKET_TYPE type);
 void prom_inc_packet_processed(int count);
 void prom_inc_packet_dropped(int count);
+
+/* Record one Linux recvmmsg/sendmmsg syscall and the datagrams it carried.
+ * No-ops when prometheus is disabled or compiled out. */
+void prom_observe_udp_recvmmsg_batch(unsigned int packets);
+void prom_observe_udp_sendmmsg_flush(unsigned int datagrams, unsigned int gso_datagrams);
 
 #endif /* __PROM_SERVER_H__ */
