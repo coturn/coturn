@@ -614,7 +614,6 @@ void ioa_engine_record_udp_sendmmsg_flush(ioa_engine_handle e, unsigned int coun
     e->udp_sendmmsg_gso_flushes++;
     e->udp_sendmmsg_gso_datagrams += (uint64_t)gso_count;
   }
-
   prom_observe_udp_sendmmsg_flush(count, gso_count);
 }
 

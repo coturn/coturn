@@ -167,11 +167,14 @@ static int need_stun_authentication(turn_turnserver *server, ts_ur_super_session
 
 /////////////////// timer //////////////////////////
 
+static void turn_server_sweep_timed_events(turn_turnserver *server);
+
 static void timer_timeout_handler(ioa_engine_handle e, void *arg) {
   UNUSED_ARG(e);
   if (arg) {
     turn_turnserver *server = (turn_turnserver *)arg;
     server->ctime = turn_time();
+    turn_server_sweep_timed_events(server);
   }
 }
 
@@ -909,10 +912,6 @@ static void client_ss_perm_timeout_handler(ioa_engine_handle e, void *arg) {
     return;
   }
 
-  if (!(tinfo->lifetime_ev)) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s: strange (1) permission to be cleaned\n", __FUNCTION__);
-  }
-
   if (!(tinfo->owner)) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s: strange (2) permission to be cleaned\n", __FUNCTION__);
   }
@@ -943,9 +942,8 @@ static int update_turn_permission_lifetime(ts_ur_super_session *ss, turn_permiss
       }
       tinfo->expiration_time = server->ctime + time_delta;
 
-      IOA_EVENT_DEL(tinfo->lifetime_ev);
-      tinfo->lifetime_ev = set_ioa_timer(server->e, time_delta, 0, client_ss_perm_timeout_handler, tinfo, 0,
-                                         "client_ss_channel_timeout_handler");
+      /* Expiry is reaped lazily by the per-thread sweep in timer_timeout_handler();
+       * touching the permission only needs to push its expiration_time forward. */
 
       if (server->verbose) {
         tinfo->verbose = true;
@@ -980,15 +978,87 @@ static int update_channel_lifetime(ts_ur_super_session *ss, ch_info *chn) {
 
         chn->expiration_time = server->ctime + *(server->channel_lifetime);
 
-        IOA_EVENT_DEL(chn->lifetime_ev);
-        chn->lifetime_ev = set_ioa_timer(server->e, *(server->channel_lifetime), 0, client_ss_channel_timeout_handler,
-                                         chn, 0, "client_ss_channel_timeout_handler");
+        /* Channel expiry is reaped lazily by the per-thread sweep in
+         * timer_timeout_handler(); just push its expiration_time forward. */
 
         return 0;
       }
     }
   }
   return -1;
+}
+
+//////////////// lazy expiry sweep ////////////////////////
+
+/* Reap expired permissions and channels for a single allocation. This replaces
+ * the former per-permission / per-channel libevent timers: update_*_lifetime()
+ * only pushes expiration_time forward, and this sweep (driven once per second by
+ * the per-thread timer_timeout_handler) tears down whatever has fallen past its
+ * deadline. At high allocation counts this trades ~1M libevent min-heap nodes and
+ * two heap ops per refresh for a bounded per-thread array walk. */
+static void sweep_allocation_timed_events(turn_turnserver *server, allocation *a) {
+  if (!a || !is_allocation_valid(a)) {
+    return;
+  }
+
+  const turn_time_t ctime = server->ctime;
+
+  /* Permissions first: cleaning a permission also tears down its channels, so
+   * channels of an expired permission are already gone by the channel pass. */
+  turn_permission_hashtable *pmap = allocation_get_turn_permission_hashtable(a);
+  for (size_t i = 0; i < TURN_PERMISSION_HASHTABLE_SIZE; ++i) {
+    turn_permission_array *parray = &(pmap->table[i]);
+    for (size_t j = 0; j < TURN_PERMISSION_ARRAY_SIZE; ++j) {
+      turn_permission_info *tinfo = &(parray->main_slots[j].info);
+      if (tinfo->allocated && turn_time_before(tinfo->expiration_time, ctime)) {
+        client_ss_perm_timeout_handler(server->e, tinfo);
+      }
+    }
+    if (parray->extra_slots) {
+      for (size_t j = 0; j < parray->extra_sz; ++j) {
+        turn_permission_slot *slot = parray->extra_slots[j];
+        if (slot && slot->info.allocated && turn_time_before(slot->info.expiration_time, ctime)) {
+          client_ss_perm_timeout_handler(server->e, &(slot->info));
+        }
+      }
+    }
+  }
+
+  /* Channels whose owning permission is still alive but whose own deadline passed. */
+  ch_map *cmap = &(a->chns);
+  for (size_t i = 0; i < CH_MAP_HASH_SIZE; ++i) {
+    ch_map_array *carray = &(cmap->table[i]);
+    for (size_t j = 0; j < CH_MAP_ARRAY_SIZE; ++j) {
+      ch_info *chn = &(carray->main_chns[j]);
+      if (chn->allocated && turn_time_before(chn->expiration_time, ctime)) {
+        client_ss_channel_timeout_handler(server->e, chn);
+      }
+    }
+    if (carray->extra_chns) {
+      for (size_t j = 0; j < carray->extra_sz; ++j) {
+        ch_info *chn = carray->extra_chns[j];
+        if (chn && chn->allocated && turn_time_before(chn->expiration_time, ctime)) {
+          client_ss_channel_timeout_handler(server->e, chn);
+        }
+      }
+    }
+  }
+}
+
+static bool sweep_session_cb(ur_map_key_type key, ur_map_value_type value, void *arg) {
+  UNUSED_ARG(key);
+  if (value) {
+    ts_ur_super_session *ss = (ts_ur_super_session *)value;
+    turn_turnserver *server = (turn_turnserver *)arg;
+    sweep_allocation_timed_events(server, get_allocation_ss(ss));
+  }
+  return false; /* keep iterating all sessions */
+}
+
+static void turn_server_sweep_timed_events(turn_turnserver *server) {
+  if (server && server->sessions_map) {
+    ur_map_foreach_arg(server->sessions_map, sweep_session_cb, server);
+  }
 }
 
 /////////////// TURN ///////////////////////////
