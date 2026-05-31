@@ -218,19 +218,23 @@ That ~23 % syscall overhead is the next big lever. Halving it
 
 ## What didn't work
 
-### Default `--udp-recvmmsg=true` on Linux (tried in iter 1, kept opt-in)
+### Default `--udp-recvmmsg=true` on Linux — opt-in in iters 1–11, **shipped default-on later**
 
-The flag now covers both the unconnected listener socket in
-[dtls_listener.c](../src/apps/relay/dtls_listener.c) and connected plain-UDP
-relay sockets in
-[ns_ioalib_engine_impl.c](../src/apps/relay/ns_ioalib_engine_impl.c). DTLS
-session sockets remain on the SSL read path and are not batched by the relay
-socket helper.
+Original finding (iters 1–11): the flag applied the 16-buffer batch path to
+**every connected per-session relay socket**, which only ever receives one
+flow. Throughput parity or slight negative results were confirmed across
+multiple A/B rounds on `m=1` and `m=100` — the per-session prealloc churn ate
+the listener-side win — so the flag was kept opt-in.
 
-Throughput parity or slight negative results were confirmed across multiple
-A/B rounds on `m=1` and `m=100`; keep this opt-in until batch occupancy
-instrumentation proves that real deployments commonly receive multiple queued
-datagrams per connected socket readiness event.
+Resolution: a later change scoped `recvmmsg` to **shared fan-in sockets only**
+(the `udp_recvmmsg_eligible` flag in
+[ns_ioalib_impl.h](../src/apps/relay/ns_ioalib_impl.h) — set on the client
+listener and, under `--multiplex-peer`, the per-thread shared relay socket).
+Per-session relay sockets now stay on the single-recv path regardless of the
+flag, so the per-session tax that motivated keeping it opt-in is gone. With the
+cost surface reduced to the one genuine fan-in point (the listener), the flag
+ships **on by default on Linux**; operators opt out with `--udp-recvmmsg=false`.
+DTLS session sockets remain on the SSL read path and are never batched.
 
 ### Caching `get_relay_socket_ss` (iter 3) — no measurable wall-clock win
 
@@ -314,9 +318,13 @@ Ordered by expected impact for the m=1 packet-flood metric:
    body inline doesn't break ABI but does require a recompile of all
    consumers. Likely <1 % each but cheap to do.
 
-5. **Re-evaluate `--udp-recvmmsg` default after instrumentation.** The current
-   measurements do not justify default-on. Revisit only if production-like
-   traces show frequent batch sizes above one and no latency/memory downside.
+5. **Re-evaluate `--udp-recvmmsg` default after instrumentation.** *(Done.)*
+   Scoping `recvmmsg` to shared fan-in sockets removed the per-session-relay
+   tax that blocked default-on; the listener is a genuine fan-in point that
+   benefits whenever client concurrency is non-trivial and costs little when
+   idle (few packets ⇒ few prealloc cycles). Now ships on by default on Linux,
+   with `--udp-recvmmsg=false` as the opt-out. See the resolved entry under
+   "What didn't work" above.
 
 ## Things investigated and ruled out (don't redo)
 

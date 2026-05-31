@@ -503,10 +503,11 @@ Log invalid packets. The default behaviour is to not log invalid packets.
 .TP
 .B
 \fB\-\-udp\-recvmmsg\fP
-Enable Linux\-only batched UDP receive via recvmmsg() on UDP sockets.
-Auto\-enabled when \-\-multiplex\-peer is set; pass \-\-udp\-recvmmsg=0
+Linux\-only batched UDP receive via recvmmsg() on the shared fan\-in
+sockets (the client listener and, with \-\-multiplex\-peer, the per\-thread
+relay socket). Enabled by default on Linux; pass \-\-udp\-recvmmsg=false
 .RE
-to override.
+(or =0) to disable.
 
 .RS
 .TP
@@ -535,8 +536,8 @@ thread (one IPv4, one IPv6) covering all TURN sessions on
 that thread; sessions are demultiplexed by exact peer
 IP:port lookup. Lifts the ~16 k allocation cap imposed by
 the relay port range and cuts kernel\-side UDP rcvbuf drops
-dramatically. Implies sendmmsg batching and default\-enables
-\-\-udp\-recvmmsg (explicit \-\-udp\-recvmmsg=0 is honoured).
+dramatically. Implies sendmmsg batching; \-\-udp\-recvmmsg (on by
+default) supplies the recvmmsg window the batching piggybacks on.
 Note: EVEN\-PORT allocate requests are rejected with 400 in
 this mode; clients that need EVEN\-PORT must use the legacy
 path. See docs/multiplex\-peer.md for design and trade\-offs.
