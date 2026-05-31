@@ -241,7 +241,7 @@ turn_params_t turn_params = {
     true,  /* drop_invalid_packets */
     false, /* drop_invalid_packets_log */
 #if defined(__linux__)
-    false, /* udp_recvmmsg */
+    true,  /* udp_recvmmsg (on by default; disable with --udp-recvmmsg=false) */
     false, /* udp_recvmmsg_log */
     false, /* udp_sendmmsg (derived from multiplex_peer) */
     false, /* udp_sendmmsg_log */
@@ -1369,10 +1369,11 @@ static char Usage[] =
     " --drop-invalid-packets-log			   Log invalid packets. The default behaviour is to not log "
     "invalid packets.\n"
 #if defined(__linux__)
-    " --udp-recvmmsg				   Enable Linux-only batched UDP receive via recvmmsg() on the "
+    " --udp-recvmmsg				   Linux-only batched UDP receive via recvmmsg() on the "
     "shared fan-in sockets (the client listener and, when --multiplex-peer is set, the per-thread relay socket). "
-    "Independent of --multiplex-peer and worth enabling on its own for high client concurrency. Per-session relay "
-    "sockets are left on the single-recv path, where batching would only add buffer churn.\n"
+    "Enabled by default; disable with --udp-recvmmsg=false. Independent of --multiplex-peer and worth keeping on for "
+    "high client concurrency. Per-session relay sockets are left on the single-recv path, where batching would only "
+    "add buffer churn.\n"
     " --udp-recvmmsg-log			   Log Linux recvmmsg batch occupancy stats every 10 seconds.\n"
     " --udp-sendmmsg-log			   Log Linux sendmmsg/UDP-GSO egress batch occupancy and "
     "GSO-engagement "
@@ -1389,8 +1390,8 @@ static char Usage[] =
     "          thread 0: IPv4=B+0, IPv6=B+1\n"
     "          thread 1: IPv4=B+2, IPv6=B+3  ...\n"
     "        Eliminates port-range exhaustion. Incompatible with EVEN-PORT.\n"
-    "        Implies sendmmsg batching on Linux, and default-enables --udp-recvmmsg\n"
-    "        unless explicitly disabled (an explicit --udp-recvmmsg=0 is honoured).\n"
+    "        Implies sendmmsg batching on Linux. --udp-recvmmsg (on by default)\n"
+    "        provides the recvmmsg window the batching piggybacks on.\n"
     " --multiplex-peer-port <port>\n"
     "        Base UDP port for multiplex-peer relay sockets. Default: 3480.\n"
     "        Total ports consumed = relay_threads * 2.\n"
@@ -1997,14 +1998,6 @@ static int get_bool_value(const char *s) {
   exit(-1);
 }
 
-#if defined(__linux__)
-/* Tracks whether --udp-recvmmsg was set via CLI or config. Lets
- * --multiplex-peer default-enable recvmmsg only when the user has not
- * made an explicit choice. Linux-only because the flag itself is
- * Linux-only. */
-static bool udp_recvmmsg_set_explicitly = false;
-#endif
-
 static void set_option(int c, char *value) {
   if (value && value[0] == '=') {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
@@ -2530,7 +2523,6 @@ static void set_option(int c, char *value) {
 #if defined(__linux__)
   case UDP_RECVMMSG_OPT:
     turn_params.udp_recvmmsg = get_bool_value(value);
-    udp_recvmmsg_set_explicitly = true;
     break;
   case UDP_RECVMMSG_LOG_OPT:
     turn_params.udp_recvmmsg_log = get_bool_value(value);
@@ -3270,19 +3262,11 @@ int main(int argc, char **argv) {
   }
 
 #if defined(__linux__)
-  /* --multiplex-peer only realises its sendmmsg-batching benefit when the
-   * recvmmsg drain wraps a begin/end window. Default-enable --udp-recvmmsg
-   * whenever multiplex-peer is set and the user has not made an explicit
-   * choice. An explicit --udp-recvmmsg=0 is honoured. Linux-only because
-   * the recvmmsg/sendmmsg fast paths are Linux-only — on other platforms
-   * multiplex-peer falls back to per-send sendmsg. */
-  if (turn_params.multiplex_peer && !udp_recvmmsg_set_explicitly) {
-    turn_params.udp_recvmmsg = true;
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "auto-enabling --udp-recvmmsg (required for multiplex-peer batching)\n");
-  }
-
   /* udp_sendmmsg is not a user-visible CLI flag; it is derived from the
-   * modes that benefit from batched UDP sends. */
+   * modes that benefit from batched UDP sends. --udp-recvmmsg is on by
+   * default (see turn_params initialiser); it provides the begin/end recvmmsg
+   * window that multiplex-peer's sendmmsg batching piggybacks on. Operators
+   * who want to opt out can pass --udp-recvmmsg=false. */
   turn_params.udp_sendmmsg = turn_params.multiplex_peer;
 #endif
 

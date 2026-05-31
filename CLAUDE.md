@@ -174,9 +174,12 @@ environment variable such as `DIGITALOCEAN_TOKEN`.
 
 ### Flag inventory (relay-side)
 
-- `--udp-recvmmsg` — Linux `recvmmsg()` batched receive on UDP listener
-  and plain connected relay UDP sockets. DTLS session sockets still go
-  through the OpenSSL read path.
+- `--udp-recvmmsg` — Linux `recvmmsg()` batched receive on the shared
+  fan-in sockets only: the client listener and, under `--multiplex-peer`,
+  the per-thread shared relay socket (`udp_recvmmsg_eligible`). Per-session
+  relay sockets stay on the single-recv path. **On by default on Linux**;
+  disable with `--udp-recvmmsg=false` (or `=0`). DTLS session sockets still
+  go through the OpenSSL read path.
 - `--udp-gso` — Linux UDP-GSO (`UDP_SEGMENT` cmsg) when a sendmmsg
   batch shares destination and segment size. **Requires
   `--multiplex-peer`** — that mode is what enables the sendmmsg
@@ -184,8 +187,8 @@ environment variable such as `DIGITALOCEAN_TOKEN`.
   no-op.
 - `--multiplex-peer` — replace the per-allocation relay-port bind with
   a per-thread shared IPv4+IPv6 relay socket pair. Implies sendmmsg
-  batching on Linux and default-enables `--udp-recvmmsg` (override
-  with an explicit `--udp-recvmmsg=0`). Port layout: thread `i` binds
+  batching on Linux; `--udp-recvmmsg` (on by default) supplies the
+  recvmmsg window the batching piggybacks on. Port layout: thread `i` binds
   `--multiplex-peer-port + 2*i` (IPv4) and `+1` (IPv6); a 4-thread
   server with default base 3480 uses 3480–3487. See
   [docs/multiplex-peer.md](docs/multiplex-peer.md) for the design.
