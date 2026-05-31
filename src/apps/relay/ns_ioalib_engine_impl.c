@@ -549,6 +549,8 @@ void ioa_engine_record_udp_recvmmsg_batch(ioa_engine_handle e, int rc) {
   e->udp_recvmmsg_calls++;
   e->udp_recvmmsg_packets += (uint64_t)rc;
   e->udp_recvmmsg_hist[bucket]++;
+
+  prom_observe_udp_recvmmsg_batch((unsigned int)rc);
 }
 
 void ioa_engine_record_udp_recvmmsg_wouldblock(ioa_engine_handle e) {
@@ -612,6 +614,7 @@ void ioa_engine_record_udp_sendmmsg_flush(ioa_engine_handle e, unsigned int coun
     e->udp_sendmmsg_gso_flushes++;
     e->udp_sendmmsg_gso_datagrams += (uint64_t)gso_count;
   }
+  prom_observe_udp_sendmmsg_flush(count, gso_count);
 }
 
 static uint64_t udp_sendmmsg_hist_sum(const ioa_engine_handle e, unsigned int lo, unsigned int hi) {
