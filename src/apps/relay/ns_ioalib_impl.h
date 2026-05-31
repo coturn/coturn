@@ -223,6 +223,14 @@ struct _ioa_socket {
   struct event *read_event;
   ioa_net_event_handler read_cb;
   void *read_ctx;
+  /* recvmmsg batch-receive eligibility: set once at creation for the shared
+   * fan-in sockets (the client listener and the multiplex-peer relay socket).
+   * Per-session relay sockets stay false, so socket_input_worker() keeps them on
+   * the single-recv path where batching would only add buffer churn. Checked on
+   * the read hot path (Linux only) but kept unconditional to avoid guarding the
+   * set-sites. Defaults to false via the calloc() zero-init every ioa_socket
+   * gets; only the shared sockets flip it true. */
+  bool udp_recvmmsg_eligible;
   int done;
   ts_ur_super_session *session;
   int current_df_relay_flag;

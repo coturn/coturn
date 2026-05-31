@@ -1247,6 +1247,11 @@ ioa_socket_handle create_unbound_relay_ioa_socket(ioa_engine_handle e, int famil
   ret->family = family;
   ret->st = st;
   ret->sat = sat;
+  if (sat == LISTENER_SOCKET) {
+    /* The client listener is a shared fan-in socket: it receives datagrams from
+     * many clients per wakeup, so it benefits from recvmmsg batching. */
+    ret->udp_recvmmsg_eligible = true;
+  }
   ret->e = e;
 
   set_socket_options(ret);
@@ -1419,6 +1424,17 @@ int init_multiplex_peer(ioa_engine_handle e, int thread_id, uint16_t base_port) 
                   "check --relay-ip configuration\n",
                   thread_id);
     return -1;
+  }
+
+  /* The per-thread multiplex-peer relay sockets receive peer datagrams for every
+   * session on the thread, so they are the relay-side sockets where recvmmsg
+   * batching pays off. Mark them eligible here, once, rather than re-deriving it
+   * on every read in socket_input_worker(). */
+  if (e->mp_sock_v4) {
+    e->mp_sock_v4->udp_recvmmsg_eligible = true;
+  }
+  if (e->mp_sock_v6) {
+    e->mp_sock_v6->udp_recvmmsg_eligible = true;
   }
 
   e->mp_enabled = 1;
@@ -1952,6 +1968,11 @@ ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e, ioa_socket_raw 
   ret->fd = fd;
   ret->st = st;
   ret->sat = sat;
+  if (sat == LISTENER_SOCKET) {
+    /* The client listener is a shared fan-in socket: it receives datagrams from
+     * many clients per wakeup, so it benefits from recvmmsg batching. */
+    ret->udp_recvmmsg_eligible = true;
+  }
   ret->e = e;
 
   if (local_addr) {
@@ -3256,7 +3277,9 @@ try_start:
     }
   } else if (s->fd >= 0) { /* UDP and DTLS */
 #if defined(__linux__)
-    if (turn_params.udp_recvmmsg && !s->ssl && s->read_cb) {
+    /* udp_recvmmsg_eligible is set once at socket creation (shared fan-in
+     * sockets only); no per-wakeup recomputation here. */
+    if (turn_params.udp_recvmmsg && s->udp_recvmmsg_eligible && !s->ssl && s->read_cb) {
       int batch_len = -1;
       if (socket_udp_read_batch_recvmmsg(s, &batch_len)) {
         /* The recvmmsg fast path allocates its own per-datagram buffers
