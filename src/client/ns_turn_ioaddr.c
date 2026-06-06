@@ -534,6 +534,12 @@ int ioa_addr_is_loopback(ioa_addr *addr) {
       return (u[0] == 127);
     } else if (addr->ss.sa_family == AF_INET6) {
       const uint8_t *u = ((const uint8_t *)&(addr->s6.sin6_addr));
+      /* IPv4-mapped IPv6: ::ffff:x.x.x.x — check before the ::1 literal branch,
+       * otherwise ::ffff:127.0.0.1 (u[15] == 1) falls into the ::1 path and is
+       * misclassified as non-loopback (GHSA-w4hf-cr3w-6h79). */
+      if (IN6_IS_ADDR_V4MAPPED(&addr->s6.sin6_addr)) {
+        return (u[12] == 127);
+      }
       if (u[15] == 1) {
         int i;
         for (i = 0; i < 15; ++i) {
@@ -542,10 +548,6 @@ int ioa_addr_is_loopback(ioa_addr *addr) {
           }
         }
         return 1;
-      }
-      /* IPv4-mapped IPv6: ::ffff:x.x.x.x */
-      if (IN6_IS_ADDR_V4MAPPED(&addr->s6.sin6_addr)) {
-        return (u[12] == 127);
       }
     }
   }

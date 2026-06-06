@@ -51,6 +51,52 @@ static void test_addr_to_string_roundtrip_ipv4(void) {
   TEST_ASSERT_NOT_NULL(strstr(buf, "8080"));
 }
 
+static void test_is_loopback_ipv4(void) {
+  ioa_addr addr = {0};
+  make_ioa_addr((const uint8_t *)"127.0.0.1", 3478, &addr);
+  TEST_ASSERT_TRUE(ioa_addr_is_loopback(&addr));
+}
+
+static void test_is_loopback_ipv6(void) {
+  ioa_addr addr = {0};
+  make_ioa_addr((const uint8_t *)"::1", 3478, &addr);
+  TEST_ASSERT_TRUE(ioa_addr_is_loopback(&addr));
+}
+
+/* Regression for GHSA-w4hf-cr3w-6h79: the IPv4-mapped form of 127.0.0.1 must be
+ * classified as loopback, otherwise the default loopback peer guard is bypassed. */
+static void test_is_loopback_mapped_ipv4_loopback(void) {
+  ioa_addr addr = {0};
+  make_ioa_addr((const uint8_t *)"::ffff:127.0.0.1", 3478, &addr);
+  TEST_ASSERT_TRUE(ioa_addr_is_loopback(&addr));
+}
+
+static void test_is_loopback_mapped_ipv4_loopback_other(void) {
+  ioa_addr addr = {0};
+  make_ioa_addr((const uint8_t *)"::ffff:127.0.0.2", 3478, &addr);
+  TEST_ASSERT_TRUE(ioa_addr_is_loopback(&addr));
+}
+
+static void test_is_loopback_non_loopback(void) {
+  ioa_addr addr = {0};
+  make_ioa_addr((const uint8_t *)"8.8.8.8", 3478, &addr);
+  TEST_ASSERT_FALSE(ioa_addr_is_loopback(&addr));
+}
+
+static void test_is_loopback_mapped_non_loopback(void) {
+  ioa_addr addr = {0};
+  make_ioa_addr((const uint8_t *)"::ffff:8.8.8.8", 3478, &addr);
+  TEST_ASSERT_FALSE(ioa_addr_is_loopback(&addr));
+}
+
+/* The mapped any-address is not loopback but must still be caught by the zero guard. */
+static void test_is_zero_mapped_any(void) {
+  ioa_addr addr = {0};
+  make_ioa_addr((const uint8_t *)"::ffff:0.0.0.0", 3478, &addr);
+  TEST_ASSERT_FALSE(ioa_addr_is_loopback(&addr));
+  TEST_ASSERT_TRUE(ioa_addr_is_zero(&addr));
+}
+
 int main(void) {
   UNITY_BEGIN();
   RUN_TEST(test_make_ioa_addr_ipv4_sets_family_and_port);
@@ -59,5 +105,12 @@ int main(void) {
   RUN_TEST(test_addr_set_port_max_value_roundtrips);
   RUN_TEST(test_addr_eq_distinguishes_ports);
   RUN_TEST(test_addr_to_string_roundtrip_ipv4);
+  RUN_TEST(test_is_loopback_ipv4);
+  RUN_TEST(test_is_loopback_ipv6);
+  RUN_TEST(test_is_loopback_mapped_ipv4_loopback);
+  RUN_TEST(test_is_loopback_mapped_ipv4_loopback_other);
+  RUN_TEST(test_is_loopback_non_loopback);
+  RUN_TEST(test_is_loopback_mapped_non_loopback);
+  RUN_TEST(test_is_zero_mapped_any);
   return UNITY_END();
 }
