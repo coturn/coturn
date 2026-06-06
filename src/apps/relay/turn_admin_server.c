@@ -131,7 +131,6 @@ struct cli_session {
   struct bufferevent *bev;
   ioa_addr addr;
   telnet_t *ts;
-  FILE *f;
   char realm[STUN_MAX_REALM_SIZE + 1];
   char origin[STUN_MAX_ORIGIN_SIZE + 1];
   realm_params_t *rp;
@@ -170,8 +169,6 @@ static const char *CLI_HELP_STR[] = {"",
                                      "  ps [username] - print sessions, with optional exact user match",
                                      "",
                                      "  psp <usernamestr> - print sessions, with partial user string match",
-                                     "",
-                                     "  psd <file-name> - dump ps command output into file on the TURN server system",
                                      "",
                                      "  pu [udp|tcp|dtls|tls]- print current users",
                                      "",
@@ -219,11 +216,7 @@ static void myprintf(struct cli_session *cs, const char *format, ...) {
   if (cs && format) {
     va_list args;
     va_start(args, format);
-    if (cs->f) {
-      vfprintf(cs->f, format, args);
-    } else {
-      telnet_vprintf(cs->ts, format, args);
-    }
+    telnet_vprintf(cs->ts, format, args);
     va_end(args);
   }
 }
@@ -505,7 +498,7 @@ static bool print_session(ur_map_key_type key, ur_map_value_type value, void *ar
           }
         }
       }
-      if (cs->f || (unsigned long)csarg->counter < (unsigned long)cli_max_output_sessions) {
+      if ((unsigned long)csarg->counter < (unsigned long)cli_max_output_sessions) {
         myprintf(cs, "\n");
         myprintf(cs, "    %lu) id=%018llu, user <%s>:\n", (unsigned long)(csarg->counter + 1),
                  (unsigned long long)tsi->id, tsi->username);
@@ -624,7 +617,7 @@ static void print_sessions(struct cli_session *cs, const char *pn, int exact_mat
 
     myprintf(cs, "\n");
 
-    if (!print_users && !(cs->f)) {
+    if (!print_users) {
       if ((unsigned long)arg.counter > (unsigned long)cli_max_output_sessions) {
         myprintf(cs, "...\n");
         myprintf(cs, "\n");
@@ -657,7 +650,7 @@ static void print_sessions(struct cli_session *cs, const char *pn, int exact_mat
       myprintf(cs, "\n");
     }
 
-    if (!print_users && !(cs->f)) {
+    if (!print_users) {
       if ((unsigned long)arg.counter > (unsigned long)cli_max_output_sessions) {
         myprintf(cs, "  Warning: too many output sessions, more than the\n");
         myprintf(cs, "  current value of cli-max-output-sessions CLI parameter.\n");
@@ -1042,26 +1035,6 @@ static int run_cli_input(struct cli_session *cs, const char *buf0, unsigned int 
         type_cli_cursor(cs);
       } else if (strstr(cmd, "psp") == cmd) {
         print_sessions(cs, cmd + 3, 0, 0);
-        type_cli_cursor(cs);
-      } else if (strstr(cmd, "psd") == cmd) {
-        cmd += 3;
-        while (cmd[0] == ' ') {
-          ++cmd;
-        }
-        if (!(cmd[0])) {
-          const char *str = "You have to provide file name for ps dump\n";
-          myprintf(cs, "%s\n", str);
-        } else {
-          cs->f = fopen(cmd, "w");
-          if (!(cs->f)) {
-            const char *str = "Cannot open file for writing\n";
-            myprintf(cs, "%s\n", str);
-          } else {
-            print_sessions(cs, "", 1, 0);
-            fclose(cs->f);
-            cs->f = NULL;
-          }
-        }
         type_cli_cursor(cs);
       } else if (strstr(cmd, "pu ") == cmd) {
         print_sessions(cs, cmd + 3, 0, 1);
