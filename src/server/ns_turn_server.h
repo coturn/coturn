@@ -209,6 +209,7 @@ struct _turn_turnserver {
   bool is_draining;
 
   bool multiplex_peer_mode;
+  bool multiplex_peer_tag; /* --multiplex-peer-tag: per-session mux-id trailer routing */
 
   /* Both of these are pointers into turn_params so the CLI flags affect
    * every relay thread without per-thread copies. They must stay pointers

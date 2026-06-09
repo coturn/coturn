@@ -63,6 +63,15 @@ struct server_info {
 
 //////////////////////////////
 
+/*
+ * Enable single-port multiplex mode: the peer treats the trailing 4 bytes of
+ * each datagram as a per-logical-peer mux-id (see --multiplex-peer-tag on the
+ * turnserver), accounts distinct ids seen on the shared port, and echoes the
+ * whole datagram back unchanged so the trailer survives the round trip. Must
+ * be called before start_udp_server(). No-op for the wire format otherwise.
+ */
+void peer_set_multiplex(int enabled);
+
 server_type *start_udp_server(int verbose, const char *ifname, char **local_addresses, size_t las, uint16_t port);
 
 void run_udp_server(server_type *server);

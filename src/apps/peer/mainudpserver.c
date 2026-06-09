@@ -54,6 +54,10 @@ static char Usage[] = "Usage: server [options]\n"
                       "        -p      Listening UDP port (Default: 3480)\n"
                       "        -d      Listening interface device (optional)\n"
                       "        -L      Listening address\n"
+                      "        -M      Single-port multiplex mode: parse the per-session mux-id\n"
+                      "                trailer (paired with turnserver --multiplex-peer-tag) and\n"
+                      "                account distinct logical peers seen on this port. Echo is\n"
+                      "                unchanged, so the trailer round-trips back to the relay.\n"
                       "        -v      verbose\n";
 
 //////////////////////////////////////////////////
@@ -76,10 +80,13 @@ int main(int argc, char **argv) {
   set_no_stdout_log(1);
   set_system_parameters(0);
 
-  while ((c = getopt(argc, argv, "d:p:L:v")) != -1) {
+  while ((c = getopt(argc, argv, "d:p:L:Mv")) != -1) {
     switch (c) {
     case 'd':
       STRCPY(ifname, optarg);
+      break;
+    case 'M':
+      peer_set_multiplex(1);
       break;
     case 'p':
       port = atoi(optarg);

@@ -206,6 +206,12 @@ struct _ioa_engine {
   uint16_t mp_port_v4;
   uint16_t mp_port_v6;
   ur_addr_map mp_table; /* peer_addr:port -> ts_ur_super_session*; O(1) get/put/del */
+  /* multiplex-peer tagging (--multiplex-peer-tag): route by per-session mux-id
+   * trailer instead of peer IP:port, so multiple sessions may share one peer
+   * IP:port on the shared relay socket. */
+  int mp_tag_enabled;      /* 1 when --multiplex-peer-tag is active */
+  uint32_t mp_next_mux_id; /* monotonic per-engine mux-id allocator (starts at 1) */
+  ur_map *mp_mux_table;    /* mux_id -> ts_ur_super_session*; O(1) get/put/del */
 };
 
 #define SOCKET_MAGIC (0xABACADEF)
@@ -293,8 +299,12 @@ int get_realm_data(char *name, realm_params_t *rp);
 
 /* multiplex-peer */
 
-int init_multiplex_peer(ioa_engine_handle e, int thread_id, uint16_t base_port);
+int init_multiplex_peer(ioa_engine_handle e, int thread_id, uint16_t base_port, int tag_enabled);
 int mp_register_peer(ioa_engine_handle e, const ioa_addr *peer_addr, void *turn_session);
+/* mux-id tagging helpers (no-ops unless --multiplex-peer-tag is active) */
+uint32_t mp_assign_mux_id(ioa_engine_handle e, void *turn_session);
+void *mp_lookup_mux_id(ioa_engine_handle e, uint32_t mux_id);
+void mp_deregister_mux_id(ioa_engine_handle e, uint32_t mux_id);
 void mp_deregister_peer(ioa_engine_handle e, const ioa_addr *peer_addr, void *turn_session);
 void mp_deregister_permission_peers(ioa_engine_handle e, const ioa_addr *peer_addr, void *turn_session);
 void mp_deregister_session_peers(ioa_engine_handle e, void *turn_session, int address_family);

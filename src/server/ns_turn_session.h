@@ -79,6 +79,9 @@ struct _ts_ur_super_session {
   int enforce_fingerprints;
   int is_tcp_relay;
   int to_be_closed;
+  /* multiplex-peer tagging: per-session mux-id (0 = unassigned) carried as the
+   * relay<->peer trailer when --multiplex-peer-tag is active. */
+  uint32_t mux_id;
   /* Auth */
   uint8_t nonce[NONCE_MAX_SIZE];
   turn_time_t nonce_expiration_time;

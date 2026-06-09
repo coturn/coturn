@@ -37,10 +37,44 @@
 #endif
 
 #include "udpserver.h"
+#include "../relay/multiplex_peer_tag.h"
 #include "apputils.h"
 #include "stun_buffer.h"
 #include <errno.h>
 #include <string.h>
+
+/* Single-port multiplex accounting (the peer is single-threaded, so plain
+ * file-static state is race-free). Echo behaviour is unchanged — the whole
+ * datagram, including the mux-id trailer, is reflected back. */
+static int g_peer_multiplex = 0;
+#define PEER_MUX_MAX_TRACK 4096
+static uint32_t g_peer_mux_seen[PEER_MUX_MAX_TRACK];
+static size_t g_peer_mux_seen_count = 0;
+
+void peer_set_multiplex(int enabled) { g_peer_multiplex = enabled ? 1 : 0; }
+
+/* Read the mux-id trailer of one received datagram (without mutating it) and
+ * log the first time each distinct logical peer is seen on the shared port. */
+static void peer_mux_account(const uint8_t *buf, size_t len) {
+  if (!g_peer_multiplex) {
+    return;
+  }
+  size_t l = len;
+  uint32_t mux_id = MULTIPLEX_PEER_TAG_NONE;
+  if (!multiplex_peer_tag_strip(buf, &l, &mux_id)) {
+    return;
+  }
+  for (size_t i = 0; i < g_peer_mux_seen_count; ++i) {
+    if (g_peer_mux_seen[i] == mux_id) {
+      return;
+    }
+  }
+  if (g_peer_mux_seen_count < PEER_MUX_MAX_TRACK) {
+    g_peer_mux_seen[g_peer_mux_seen_count++] = mux_id;
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "multiplex: new logical peer mux-id=%u (distinct=%lu) on shared port\n",
+                  (unsigned)mux_id, (unsigned long)g_peer_mux_seen_count);
+  }
+}
 
 #include <limits.h> // for USHRT_MAX
 
@@ -170,6 +204,12 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void *arg) 
       return;
     }
 
+    if (g_peer_multiplex) {
+      for (int i = 0; i < n; ++i) {
+        peer_mux_account(g_bufs[i], (size_t)g_msgs[i].msg_len);
+      }
+    }
+
     int sent = try_gso_echo(fd, n);
     if (!sent) {
       /* Reuse the same mmsghdr array for sendmmsg: each entry already has
@@ -221,6 +261,7 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void *arg) 
   buffer.len = len;
 
   if (len >= 0) {
+    peer_mux_account((const uint8_t *)buffer.buf, (size_t)buffer.len);
     do {
       len = sendto(fd, buffer.buf, buffer.len, 0, (const struct sockaddr *)&remote_addr, (socklen_t)slen);
     } while (len < 0 && (socket_eintr() || socket_enobufs() || socket_eagain()));

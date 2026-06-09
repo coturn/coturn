@@ -45,6 +45,7 @@
 #include "apputils.h"
 #include "stun_buffer.h"
 
+#include "multiplex_peer_tag.h"
 #include "ns_ioalib_impl.h"
 
 #include "mainrelay.h"
@@ -1347,14 +1348,34 @@ static void mp_relay_input_handler(ioa_socket_handle s, int event_type, ioa_net_
     return;
   }
 
-  ur_addr_map_value_type value = 0;
-  ioa_addr key = {0};
-  addr_cpy(&key, &data->src_addr);
-  if (!ur_addr_map_get(&e->mp_table, &key, &value) || !value) {
-    return;
+  ts_ur_super_session *ss = NULL;
+
+  if (e->mp_tag_enabled) {
+    /*
+     * Tagging mode: the routing key is the per-session mux-id trailer, not the
+     * peer IP:port. Read and strip the trailer, then look up the session by id.
+     * This is what allows multiple sessions to share one peer IP:port.
+     */
+    size_t sz = ioa_network_buffer_get_size(data->nbh);
+    uint32_t mux_id = MULTIPLEX_PEER_TAG_NONE;
+    if (!multiplex_peer_tag_strip(ioa_network_buffer_data(data->nbh), &sz, &mux_id)) {
+      return;
+    }
+    ioa_network_buffer_set_size(data->nbh, sz);
+    ss = (ts_ur_super_session *)mp_lookup_mux_id(e, mux_id);
+    if (!ss) {
+      return;
+    }
+  } else {
+    ur_addr_map_value_type value = 0;
+    ioa_addr key = {0};
+    addr_cpy(&key, &data->src_addr);
+    if (!ur_addr_map_get(&e->mp_table, &key, &value) || !value) {
+      return;
+    }
+    ss = (ts_ur_super_session *)(uintptr_t)value;
   }
 
-  ts_ur_super_session *ss = (ts_ur_super_session *)(uintptr_t)value;
   if (!ss || ss->to_be_closed) {
     return;
   }
@@ -1424,13 +1445,22 @@ static int mp_open_socket(ioa_engine_handle e, const char *relay_addr, int af, u
 }
 
 /* Called once per relay thread from setup_relay_server(). */
-int init_multiplex_peer(ioa_engine_handle e, int thread_id, uint16_t base_port) {
+int init_multiplex_peer(ioa_engine_handle e, int thread_id, uint16_t base_port, int tag_enabled) {
   if (!e) {
     return -1;
   }
 
   ur_addr_map_init(&e->mp_table);
   e->relay_thread_id = thread_id;
+  e->mp_tag_enabled = tag_enabled ? 1 : 0;
+  e->mp_next_mux_id = 1; /* 0 is reserved for "unassigned" */
+  if (e->mp_tag_enabled) {
+    e->mp_mux_table = ur_map_create();
+    if (!e->mp_mux_table) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "multiplex-peer: thread %d: failed to create mux-id table\n", thread_id);
+      return -1;
+    }
+  }
 
   /*
    * Port formula (no two threads clash):
@@ -1503,6 +1533,50 @@ int mp_register_peer(ioa_engine_handle e, const ioa_addr *peer_addr, void *turn_
   }
 
   return ur_addr_map_put(&e->mp_table, &key, (ur_addr_map_value_type)(uintptr_t)turn_session) ? 0 : -1;
+}
+
+uint32_t mp_assign_mux_id(ioa_engine_handle e, void *turn_session) {
+  if (!e || !e->mp_tag_enabled || !e->mp_mux_table || !turn_session) {
+    return MULTIPLEX_PEER_TAG_NONE;
+  }
+  /* Find the next free id, skipping the reserved 0 on wraparound. The id space
+   * is 2^32; exhausting it would require that many concurrent sessions on one
+   * relay thread, far beyond any real deployment. */
+  for (uint32_t attempts = 0; attempts < 0xFFFFFFFFu; ++attempts) {
+    uint32_t id = e->mp_next_mux_id++;
+    if (e->mp_next_mux_id == MULTIPLEX_PEER_TAG_NONE) {
+      e->mp_next_mux_id = 1;
+    }
+    if (id == MULTIPLEX_PEER_TAG_NONE) {
+      continue;
+    }
+    if (ur_map_exist(e->mp_mux_table, (ur_map_key_type)id)) {
+      continue;
+    }
+    if (!ur_map_put(e->mp_mux_table, (ur_map_key_type)id, (ur_map_value_type)turn_session)) {
+      return MULTIPLEX_PEER_TAG_NONE;
+    }
+    return id;
+  }
+  return MULTIPLEX_PEER_TAG_NONE;
+}
+
+void *mp_lookup_mux_id(ioa_engine_handle e, uint32_t mux_id) {
+  if (!e || !e->mp_mux_table || mux_id == MULTIPLEX_PEER_TAG_NONE) {
+    return NULL;
+  }
+  ur_map_value_type value = NULL;
+  if (!ur_map_get(e->mp_mux_table, (ur_map_key_type)mux_id, &value)) {
+    return NULL;
+  }
+  return (void *)value;
+}
+
+void mp_deregister_mux_id(ioa_engine_handle e, uint32_t mux_id) {
+  if (!e || !e->mp_mux_table || mux_id == MULTIPLEX_PEER_TAG_NONE) {
+    return;
+  }
+  ur_map_del(e->mp_mux_table, (ur_map_key_type)mux_id, NULL);
 }
 
 void mp_deregister_peer(ioa_engine_handle e, const ioa_addr *peer_addr, void *turn_session) {

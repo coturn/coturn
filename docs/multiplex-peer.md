@@ -154,6 +154,11 @@ This mode assumes each peer IP:port belongs to exactly one client
 allocation on the relay worker. If two clients use the same peer IP:port,
 the second registration is rejected instead of routing ambiguously.
 
+To lift this restriction — letting multiple sessions share one peer IP:port —
+enable the opt-in tagging extension `--multiplex-peer-tag`, which routes inbound
+datagrams by a per-session mux-id trailer instead of peer IP:port. See
+[multiplex-peer-tag.md](multiplex-peer-tag.md).
+
 ### Session teardown
 
 ```

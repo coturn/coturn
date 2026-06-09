@@ -255,6 +255,7 @@ turn_params_t turn_params = {
     false, /* include_reason_string */
     false, /* multiplex_peer */
     0,     /* multiplex_peer_base_port */
+    false, /* multiplex_peer_tag */
 
     ///////// Ratelimit /////////
     false,                                 /* unauthorized-ratelimit */
@@ -1410,6 +1411,13 @@ static char Usage[] =
     " --multiplex-peer-port <port>\n"
     "        Base UDP port for multiplex-peer relay sockets. Default: 3480.\n"
     "        Total ports consumed = relay_threads * 2.\n"
+    " --multiplex-peer-tag\n"
+    "        Requires --multiplex-peer (non-standard, optional). Append a 4-byte\n"
+    "        per-session mux-id trailer to relay<->peer UDP datagrams and route\n"
+    "        inbound packets by that id instead of peer IP:port. This lets\n"
+    "        multiple TURN sessions share one peer IP:port (which plain\n"
+    "        --multiplex-peer rejects). The peer must understand the trailer:\n"
+    "        run turnutils_peer with --multiplex.\n"
     " --include-reason-string			   Include descriptive reason strings in STUN/TURN error responses.\n"
     "						   By default, only the standard reason phrase for the error code is\n"
     "						   sent. Enabling this option adds detailed error descriptions which\n"
@@ -1597,7 +1605,8 @@ enum EXTRA_OPTS {
   CPUS_OPT,
   INCLUDE_REASON_STRING_OPT,
   OPT_MULTIPLEX_PEER = 800,
-  OPT_MULTIPLEX_PEER_PORT = 801
+  OPT_MULTIPLEX_PEER_PORT = 801,
+  OPT_MULTIPLEX_PEER_TAG = 802
 };
 
 struct myoption {
@@ -1756,6 +1765,7 @@ static const struct myoption long_options[] = {
     {"include-reason-string", optional_argument, NULL, INCLUDE_REASON_STRING_OPT},
     {"multiplex-peer", no_argument, NULL, OPT_MULTIPLEX_PEER},
     {"multiplex-peer-port", required_argument, NULL, OPT_MULTIPLEX_PEER_PORT},
+    {"multiplex-peer-tag", no_argument, NULL, OPT_MULTIPLEX_PEER_TAG},
     {"version", optional_argument, NULL, VERSION_OPT},
     {"syslog-facility", required_argument, NULL, SYSLOG_FACILITY_OPT},
     {"cpus", required_argument, NULL, CPUS_OPT},
@@ -2601,6 +2611,9 @@ static void set_option(int c, char *value) {
 #endif
   case OPT_MULTIPLEX_PEER:
     turn_params.multiplex_peer = true;
+    break;
+  case OPT_MULTIPLEX_PEER_TAG:
+    turn_params.multiplex_peer_tag = true;
     break;
   case OPT_MULTIPLEX_PEER_PORT: {
     const long parsed_port = strtol(value, NULL, 10);
@@ -3479,6 +3492,11 @@ int main(int argc, char **argv) {
    * who want to opt out can pass --udp-recvmmsg=false. */
   turn_params.udp_sendmmsg = turn_params.multiplex_peer;
 #endif
+
+  if (turn_params.multiplex_peer_tag && !turn_params.multiplex_peer) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nCONFIG ERROR: --multiplex-peer-tag requires --multiplex-peer.\n");
+    exit(-1);
+  }
 
   if (turn_params.bps_capacity && !(turn_params.max_bps)) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,

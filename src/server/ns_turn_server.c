@@ -34,6 +34,7 @@
 
 #include "ns_turn_server.h"
 
+#include "../apps/relay/multiplex_peer_tag.h"
 #include "../apps/relay/ns_ioalib_impl.h"
 #include "ns_turn_allocation.h"
 #include "ns_turn_ioalib.h"
@@ -420,6 +421,27 @@ static int register_multiplex_peer(turn_turnserver *server, ts_ur_super_session 
     return 0;
   }
 
+  if (server->multiplex_peer_tag) {
+    /*
+     * Tagging mode routes inbound packets by the per-session mux-id trailer,
+     * not by peer IP:port, so there is no peer-address collision to reject and
+     * no mp_table entry to create. Just make sure this session has a mux-id.
+     */
+    if (ss->mux_id == MULTIPLEX_PEER_TAG_NONE) {
+      ss->mux_id = mp_assign_mux_id(server->e, ss);
+      if (ss->mux_id == MULTIPLEX_PEER_TAG_NONE) {
+        if (err_code) {
+          *err_code = 508;
+        }
+        if (reason) {
+          *reason = (const uint8_t *)"Cannot allocate multiplex-peer mux-id";
+        }
+        return -1;
+      }
+    }
+    return 0;
+  }
+
   if (mp_register_peer(server->e, peer_addr, ss) < 0) {
     if (err_code) {
       *err_code = 400;
@@ -431,6 +453,26 @@ static int register_multiplex_peer(turn_turnserver *server, ts_ur_super_session 
   }
 
   return 0;
+}
+
+/*
+ * Append the per-session mux-id trailer to a datagram about to be sent to a
+ * peer on the shared multiplex-peer relay socket. No-op unless tagging is on,
+ * the relay socket is the shared mp socket, and the session has a mux-id.
+ */
+static void mp_tag_append_egress(turn_turnserver *server, ts_ur_super_session *ss, ioa_socket_handle relay_s,
+                                 ioa_network_buffer_handle nbh) {
+  if (!server || !server->multiplex_peer_tag || ss->mux_id == MULTIPLEX_PEER_TAG_NONE) {
+    return;
+  }
+  if (!is_multiplex_peer_udp_relay(server, relay_s)) {
+    return;
+  }
+  size_t len = ioa_network_buffer_get_size(nbh);
+  if (multiplex_peer_tag_append(ioa_network_buffer_data(nbh), &len, ioa_network_buffer_get_capacity_udp(),
+                                ss->mux_id)) {
+    ioa_network_buffer_set_size(nbh, len);
+  }
 }
 
 /////////// Session info ///////
@@ -3157,6 +3199,7 @@ static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss, in
           ioa_network_buffer_set_size(nbh, len);
         }
         ioa_network_buffer_header_init(nbh);
+        mp_tag_append_egress(server, ss, relay_s, nbh);
         int skip = 0;
         send_data_from_ioa_socket_nbh(relay_s, &peer_addr, nbh, in_buffer->recv_ttl - 1, in_buffer->recv_tos, &skip);
         if (!skip) {
@@ -4273,6 +4316,8 @@ static int write_to_peerchannel(ts_ur_super_session *ss, uint16_t chnum, ioa_net
 
       ioa_network_buffer_header_init(nbh);
 
+      mp_tag_append_egress((turn_turnserver *)ss->server, ss, relay_s, nbh);
+
       int skip = 0;
       rc = send_data_from_ioa_socket_nbh(relay_s, &(chn->peer_addr), nbh, in_buffer->recv_ttl - 1, in_buffer->recv_tos,
                                          &skip);
@@ -4371,6 +4416,10 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
        * shared socket pointers so IOA_CLOSE_SOCKET below is a no-op for them.
        */
       mp_deregister_session_peers(server->e, ss, 0);
+      if (server->multiplex_peer_tag && ss->mux_id != MULTIPLEX_PEER_TAG_NONE) {
+        mp_deregister_mux_id(server->e, ss->mux_id);
+        ss->mux_id = MULTIPLEX_PEER_TAG_NONE;
+      }
       for (int af = AF_INET;; af = AF_INET6) {
         relay_endpoint_session *res = get_relay_session_ss(ss, af);
         if (res && res->s == mp_get_socket(server->e, af)) {
