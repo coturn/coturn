@@ -428,11 +428,26 @@ Local address to use (optional).
 .B
 \fB\-f\fP
 Force RFC 5780 processing.
+.TP
+.B
+\fB\-c\fP
+Continuously send STUN binding requests and report round\-trip latency until interrupted.
+.TP
+.B
+\fB\-i\fP
+Interval between continuous requests in milliseconds (Default: 1000).
+.TP
+.B
+\fB\-t\fP
+Response timeout in milliseconds (Default: 3000).
 .PP
 The turnutils_stunclient program checks the results of the first request,
 and if it finds that the STUN server supports RFC 5780
 (the binding response reveals that) then the turnutils_stunclient makes a couple more
 requests with different parameters, to demonstrate the NAT discovery capabilities.
+.PP
+Continuous mode reports every response or timeout and prints packet loss and
+minimum/average/maximum round\-trip latency when interrupted with Ctrl\-C.
 .PP
 This utility does not support the "old" "classic" STUN protocol (RFC 3489).
 .SH =====================================
