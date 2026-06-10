@@ -62,7 +62,6 @@ struct redisLibeventEvents {
 ///////////// Messages ////////////////////////////
 
 struct redis_message {
-  char format[513];
   char arg[513];
 };
 
@@ -199,15 +198,13 @@ void send_message_to_redis(redis_context_handle rch, const char *command, const 
 
       struct redis_message rm;
 
-      snprintf(rm.format, sizeof(rm.format) - 3, "%s %s ", command, key);
-      strcpy(rm.format + strlen(rm.format), "%s");
-
       va_list args;
       va_start(args, format);
       vsnprintf(rm.arg, sizeof(rm.arg) - 1, format, args);
       va_end(args);
+      rm.arg[sizeof(rm.arg) - 1] = 0;
 
-      if ((redisAsyncCommand(ac, NULL, e, rm.format, rm.arg) != REDIS_OK)) {
+      if ((redisAsyncCommand(ac, NULL, e, "%s %s %s", command, key, rm.arg) != REDIS_OK)) {
         e->invalid = 1;
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Redis connection broken: ac=0x%p, e=0x%p\n", __FUNCTION__, ac, e);
       }

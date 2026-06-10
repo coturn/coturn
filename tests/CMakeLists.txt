@@ -123,6 +123,33 @@ else()
     message(STATUS "MySQL headers not found; skipping test_mysql_dbd")
 endif()
 
+# Redis format-string-injection regression test (GHSA-4g7c-p5wg-j4hp).
+# Compiles the real hiredis_libevent2.c (included by the test) with a capturing
+# redisAsyncCommand() stub and asserts attacker-controlled USERNAME/REALM never
+# enter the Redis command format string. Needs only the hiredis + libevent
+# headers (the hiredis library itself is stubbed out).
+pkg_check_modules(HIREDIS QUIET hiredis)
+pkg_check_modules(LIBEVENT QUIET libevent)
+if(HIREDIS_FOUND AND LIBEVENT_FOUND)
+    find_package(OpenSSL QUIET)
+    add_executable(test_redis_format test_redis_format.c)
+    target_include_directories(test_redis_format PRIVATE
+        ../src/apps/relay
+        ../src/server
+        ../src/apps/common
+        ../src
+        ../src/client
+        ${HIREDIS_INCLUDE_DIRS}
+        ${OPENSSL_INCLUDE_DIR}
+        ${LIBEVENT_INCLUDE_DIRS})
+    target_link_directories(test_redis_format PRIVATE ${LIBEVENT_LIBRARY_DIRS})
+    target_link_libraries(test_redis_format PRIVATE turnclient unity ${LIBEVENT_LIBRARIES})
+    add_test(NAME test_redis_format COMMAND test_redis_format)
+    list(APPEND COTURN_TEST_TARGETS test_redis_format)
+else()
+    message(STATUS "hiredis/libevent headers not found; skipping test_redis_format")
+endif()
+
 add_custom_target(check
     COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
     DEPENDS ${COTURN_TEST_TARGETS}
