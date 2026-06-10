@@ -33,6 +33,7 @@
  */
 
 #include <limits.h>
+#include <signal.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -61,11 +62,52 @@
 static int udp_fd = -1;
 static ioa_addr real_local_addr;
 static int counter = 0;
+static volatile sig_atomic_t stop_continuous = 0;
+
+static void stop_continuous_handler(int signo) {
+  (void)signo;
+  stop_continuous = 1;
+}
+
+static double monotonic_time_ms(void) {
+#if defined(_MSC_VER)
+  struct timeval tv = {0, 0};
+  clock_gettime(CLOCK_REALTIME, &tv);
+  return ((double)tv.tv_sec * 1000.0) + ((double)tv.tv_usec / 1000.0);
+#else
+  struct timespec ts = {0, 0};
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  return ((double)ts.tv_sec * 1000.0) + ((double)ts.tv_nsec / 1000000.0);
+#endif
+}
+
+static void sleep_ms(unsigned int milliseconds) {
+#if defined(WINDOWS)
+  Sleep(milliseconds);
+#else
+  struct timespec requested = {(time_t)(milliseconds / 1000), (long)(milliseconds % 1000) * 1000000L};
+  struct timespec remaining;
+
+  while (!stop_continuous && nanosleep(&requested, &remaining) < 0 && errno == EINTR) {
+    requested = remaining;
+  }
+#endif
+}
+
+static void set_receive_timeout(int fd, unsigned int timeout_ms) {
+#if defined(WINDOWS)
+  DWORD timeout = timeout_ms;
+  setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&timeout, sizeof(timeout));
+#else
+  struct timeval timeout = {(time_t)(timeout_ms / 1000), (suseconds_t)(timeout_ms % 1000) * 1000};
+  setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&timeout, sizeof(timeout));
+#endif
+}
 
 #ifdef __cplusplus
 
 static int run_stunclient(const char *rip, uint16_t rport, uint16_t *port, bool *rfc5780, int response_port,
-                          bool change_ip, bool change_port, int padding) {
+                          bool change_ip, bool change_port, int padding, unsigned int timeout_ms, bool print_details) {
 
   ioa_addr remote_addr;
 
@@ -179,6 +221,8 @@ static int run_stunclient(const char *rip, uint16_t rport, uint16_t *port, bool 
     udp_fd = new_udp_fd;
   }
 
+  set_receive_timeout(udp_fd, timeout_ms);
+
   {
     ssize_t len = 0;
     stun_buffer buf;
@@ -195,6 +239,11 @@ static int run_stunclient(const char *rip, uint16_t rport, uint16_t *port, bool 
 
     if (recvd > 0) {
       len = recvd;
+    } else {
+      if (socket_eagain() || socket_ewouldblock()) {
+        return 1;
+      }
+      return -1;
     }
     buf.len = len;
 
@@ -218,8 +267,10 @@ static int run_stunclient(const char *rip, uint16_t rport, uint16_t *port, bool 
               turn::StunAttrIterator iter1(res, STUN_ATTRIBUTE_OTHER_ADDRESS);
               if (!iter1.eof()) {
                 *rfc5780 = 1;
-                printf("\n========================================\n");
-                printf("RFC 5780 response %d\n", ++counter);
+                if (print_details) {
+                  printf("\n========================================\n");
+                  printf("RFC 5780 response %d\n", ++counter);
+                }
                 const ioa_addr other_addr;
                 turn::StunAttrAddr addr1(iter1);
                 addr1.getAddr(other_addr);
@@ -228,11 +279,17 @@ static int run_stunclient(const char *rip, uint16_t rport, uint16_t *port, bool 
                   const ioa_addr response_origin;
                   turn::StunAttrAddr addr2(iter2);
                   addr2.getAddr(response_origin);
-                  addr_debug_print(1, &response_origin, "Response origin: ");
+                  if (print_details) {
+                    addr_debug_print(1, &response_origin, "Response origin: ");
+                  }
                 }
-                addr_debug_print(1, &other_addr, "Other addr: ");
+                if (print_details) {
+                  addr_debug_print(1, &other_addr, "Other addr: ");
+                }
               }
-              addr_debug_print(1, &reflexive_addr, "UDP reflexive addr");
+              if (print_details) {
+                addr_debug_print(1, &reflexive_addr, "UDP reflexive addr");
+              }
 
             } else {
               printf("Cannot read the response\n");
@@ -260,7 +317,7 @@ static int run_stunclient(const char *rip, uint16_t rport, uint16_t *port, bool 
 #else  // ifdef __cplusplus
 
 static int run_stunclient(const char *rip, uint16_t rport, uint16_t *port, bool *rfc5780, int response_port,
-                          bool change_ip, bool change_port, int padding) {
+                          bool change_ip, bool change_port, int padding, unsigned int timeout_ms, bool print_details) {
 
   ioa_addr remote_addr;
   stun_buffer buf;
@@ -335,6 +392,8 @@ static int run_stunclient(const char *rip, uint16_t rport, uint16_t *port, bool 
     udp_fd = new_udp_fd;
   }
 
+  set_receive_timeout(udp_fd, timeout_ms);
+
   {
     ssize_t len = 0;
     int recvd = 0;
@@ -346,10 +405,15 @@ static int run_stunclient(const char *rip, uint16_t rport, uint16_t *port, bool 
         recvd += len;
         break;
       }
-    } while (len < 0 && (socket_eintr() || socket_eagain()));
+    } while (len < 0 && socket_eintr());
 
     if (recvd > 0) {
       len = recvd;
+    } else {
+      if (socket_eagain() || socket_ewouldblock()) {
+        return 1;
+      }
+      return -1;
     }
     buf.len = len;
 
@@ -368,19 +432,27 @@ static int run_stunclient(const char *rip, uint16_t rport, uint16_t *port, bool 
               stun_attr_ref sar = stun_attr_get_first_by_type_str(buf.buf, buf.len, STUN_ATTRIBUTE_OTHER_ADDRESS);
               if (sar) {
                 *rfc5780 = 1;
-                printf("\n========================================\n");
-                printf("RFC 5780 response %d\n", ++counter);
+                if (print_details) {
+                  printf("\n========================================\n");
+                  printf("RFC 5780 response %d\n", ++counter);
+                }
                 ioa_addr other_addr;
                 stun_attr_get_addr_str((uint8_t *)buf.buf, (size_t)buf.len, sar, &other_addr, NULL);
                 sar = stun_attr_get_first_by_type_str(buf.buf, buf.len, STUN_ATTRIBUTE_RESPONSE_ORIGIN);
                 if (sar) {
                   ioa_addr response_origin;
                   stun_attr_get_addr_str((uint8_t *)buf.buf, (size_t)buf.len, sar, &response_origin, NULL);
-                  addr_debug_print(1, &response_origin, "Response origin: ");
+                  if (print_details) {
+                    addr_debug_print(1, &response_origin, "Response origin: ");
+                  }
                 }
-                addr_debug_print(1, &other_addr, "Other addr: ");
+                if (print_details) {
+                  addr_debug_print(1, &other_addr, "Other addr: ");
+                }
               }
-              addr_debug_print(1, &reflexive_addr, "UDP reflexive addr");
+              if (print_details) {
+                addr_debug_print(1, &reflexive_addr, "UDP reflexive addr");
+              }
 
             } else {
               printf("Cannot read the response\n");
@@ -416,7 +488,10 @@ static char Usage[] = "Usage: stunclient [options] address\n"
                       "Options:\n"
                       "        -p      STUN server port (Default: 3478)\n"
                       "        -L      Local address to use (optional)\n"
-                      "        -f      Force RFC 5780 processing\n";
+                      "        -f      Force RFC 5780 processing\n"
+                      "        -c      Continuously send binding requests and report latency\n"
+                      "        -i      Interval between continuous requests in milliseconds (Default: 1000)\n"
+                      "        -t      Response timeout in milliseconds (Default: 3000)\n";
 
 //////////////////////////////////////////////////
 
@@ -425,6 +500,9 @@ int main(int argc, char **argv) {
   char local_addr[256] = "\0";
   int c = 0;
   bool forceRfc5780 = false;
+  bool continuous = false;
+  unsigned int interval_ms = 1000;
+  unsigned int timeout_ms = 3000;
 
   if (socket_init()) {
     return -1;
@@ -436,14 +514,37 @@ int main(int argc, char **argv) {
 
   memset(local_addr, 0, sizeof(local_addr));
 
-  while ((c = getopt(argc, argv, "p:L:f")) != -1) {
+  while ((c = getopt(argc, argv, "p:L:fci:t:")) != -1) {
     switch (c) {
+    case 'c':
+      continuous = true;
+      break;
     case 'f':
       forceRfc5780 = 1;
       break;
+    case 'i': {
+      char *end = NULL;
+      unsigned long value = strtoul(optarg, &end, 10);
+      if (!optarg[0] || *end || value > UINT_MAX) {
+        fprintf(stderr, "Invalid interval: %s\n", optarg);
+        exit(1);
+      }
+      interval_ms = (unsigned int)value;
+      break;
+    }
     case 'p':
       port = atoi(optarg);
       break;
+    case 't': {
+      char *end = NULL;
+      unsigned long value = strtoul(optarg, &end, 10);
+      if (!optarg[0] || *end || value == 0 || value > UINT_MAX) {
+        fprintf(stderr, "Invalid timeout: %s\n", optarg);
+        exit(1);
+      }
+      timeout_ms = (unsigned int)value;
+      break;
+    }
     case 'L':
       STRCPY(local_addr, optarg);
       break;
@@ -469,11 +570,71 @@ int main(int argc, char **argv) {
   uint16_t local_port = 0;
   bool rfc5780 = false;
 
-  run_stunclient(argv[optind], port, &local_port, &rfc5780, -1, 0, 0, 0);
+  if (continuous) {
+    unsigned long sent = 0;
+    unsigned long received = 0;
+    double total_ms = 0.0;
+    double min_ms = 0.0;
+    double max_ms = 0.0;
 
-  if (rfc5780 || forceRfc5780) {
-    run_stunclient(argv[optind], port, &local_port, &rfc5780, local_port + 1, 1, 1, 0);
-    run_stunclient(argv[optind], port, &local_port, &rfc5780, -1, 1, 1, 1);
+    signal(SIGINT, stop_continuous_handler);
+    printf("Continuous STUN binding requests to %s:%u, interval %u ms, timeout %u ms\n", argv[optind], port,
+           interval_ms, timeout_ms);
+
+    while (!stop_continuous) {
+      const double started_ms = monotonic_time_ms();
+      int result;
+      double elapsed_ms;
+
+      ++sent;
+      result = run_stunclient(argv[optind], port, &local_port, &rfc5780, -1, 0, 0, 0, timeout_ms, false);
+      elapsed_ms = monotonic_time_ms() - started_ms;
+
+      if (result == 0) {
+        ++received;
+        total_ms += elapsed_ms;
+        if (received == 1 || elapsed_ms < min_ms) {
+          min_ms = elapsed_ms;
+        }
+        if (received == 1 || elapsed_ms > max_ms) {
+          max_ms = elapsed_ms;
+        }
+        printf("%lu: time=%.3f ms\n", sent, elapsed_ms);
+      } else if (result == 1) {
+        printf("%lu: timeout after %u ms\n", sent, timeout_ms);
+      } else {
+        printf("%lu: receive error\n", sent);
+      }
+      fflush(stdout);
+
+      if (!stop_continuous && interval_ms > elapsed_ms) {
+        sleep_ms((unsigned int)((double)interval_ms - elapsed_ms));
+      }
+    }
+
+    printf("\n--- %s STUN latency statistics ---\n", argv[optind]);
+    printf("%lu requests sent, %lu responses received, %.1f%% packet loss\n", sent, received,
+           sent ? ((double)(sent - received) * 100.0 / (double)sent) : 0.0);
+    if (received > 0) {
+      printf("round-trip min/avg/max = %.3f/%.3f/%.3f ms\n", min_ms, total_ms / (double)received, max_ms);
+    }
+  } else {
+    int result = run_stunclient(argv[optind], port, &local_port, &rfc5780, -1, 0, 0, 0, timeout_ms, true);
+    if (result == 1) {
+      fprintf(stderr, "STUN receive timeout after %u ms\n", timeout_ms);
+      socket_closesocket(udp_fd);
+      return 1;
+    }
+    if (result < 0) {
+      fprintf(stderr, "STUN receive error\n");
+      socket_closesocket(udp_fd);
+      return 1;
+    }
+
+    if (rfc5780 || forceRfc5780) {
+      run_stunclient(argv[optind], port, &local_port, &rfc5780, local_port + 1, 1, 1, 0, timeout_ms, true);
+      run_stunclient(argv[optind], port, &local_port, &rfc5780, -1, 1, 1, 1, timeout_ms, true);
+    }
   }
 
   socket_closesocket(udp_fd);

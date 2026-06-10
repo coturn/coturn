@@ -254,10 +254,19 @@ Options with required values:
 
 -f  Force RFC 5780 processing.
 
+-c  Continuously send STUN binding requests and report round-trip latency until interrupted.
+
+-i  Interval between continuous requests in milliseconds (Default: 1000).
+
+-t  Response timeout in milliseconds (Default: 3000).
+
 The turnutils_stunclient program checks the results of the first request,
 and if it finds that the STUN server supports RFC 5780
 (the binding response reveals that) then the turnutils_stunclient makes a couple more
 requests with different parameters, to demonstrate the NAT discovery capabilities.
+
+Continuous mode reports every response or timeout and prints packet loss and
+minimum/average/maximum round-trip latency when interrupted with Ctrl-C.
 
 This utility does not support the "old" "classic" STUN protocol (RFC 3489).
 
