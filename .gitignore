@@ -1,11 +1,10 @@
 /Makefile
 /bin/
-*build*/
+/build
 include
 lib
 sqlite
 examples/ca/CA.pl
-.vscode
 .idea
 .vs/
 
