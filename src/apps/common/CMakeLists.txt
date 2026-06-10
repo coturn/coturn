@@ -89,6 +89,12 @@ message("COMMON_LIBS:${COMMON_LIBS}")
 add_library(${PROJECT_NAME} STATIC ${SOURCE_FILES} ${HEADER_FILES})
 
 target_link_libraries(${PROJECT_NAME} PUBLIC ${COMMON_LIBS})
+# turncommon and turnclient are mutually dependent static libraries:
+# stun_buffer.c and ns_turn_utils.c call stun_*/addr_* from turnclient, while
+# turnclient calls the logging functions here. Declaring the cycle makes CMake
+# repeat both archives on the link line so single-pass linkers (GNU ld) can
+# resolve symbols regardless of which library is scanned first.
+target_link_libraries(${PROJECT_NAME} PUBLIC turnclient)
 target_compile_definitions(${PROJECT_NAME} PUBLIC ${COMMON_DEFINED})
 target_compile_options(${PROJECT_NAME} PUBLIC
 	$<$<C_COMPILER_ID:GNU>:-Wno-deprecated-declarations>
