@@ -273,7 +273,7 @@ do
     LIBDIR=$ac_optarg ;;
 
   -mandir | --mandir | --mandi | --mand | --man | --ma | --m | -manprefix | --manprefix)
-    ac_prev=MAXPREFIX ;;
+    ac_prev=MANPREFIX ;;
   -mandir=* | --mandir=* | --mandi=* | --mand=* | --man=* | --ma=* | --m=* | -manprefix=* | --manprefix=*)
     MANPREFIX=$ac_optarg ;;
 
