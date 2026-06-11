@@ -78,7 +78,7 @@ RUN apt-get update \
 RUN apt-get install -y --no-install-recommends --no-install-suggests \
             libevent-dev \
             libssl-dev \
-            libpq-dev libmariadb-dev libsqlite3-dev \
+            libpq-dev libmariadb-dev libsqlite3-dev sqlite3 \
             libhiredis-dev \
             libmongoc-dev \
             libmicrohttpd-dev
