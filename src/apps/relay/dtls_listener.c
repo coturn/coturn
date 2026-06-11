@@ -1000,16 +1000,17 @@ start_udp_cycle:
     return;
   }
 
+  int keep_elem = 1;
   if (bsize > 0) {
     udp_sendmmsg_batch_begin();
-    process_udp_datagram(server, s, elem, &(server->sm.m.sm.nd.src_addr), bsize, server->sm.m.sm.nd.recv_ttl,
-                         server->sm.m.sm.nd.recv_tos,
-                         (int)classify_udp_packet(ioa_network_buffer_data(elem), (size_t)bsize), &packets_processed,
-                         &packets_dropped);
+    keep_elem = process_udp_datagram(server, s, elem, &(server->sm.m.sm.nd.src_addr), bsize,
+                                     server->sm.m.sm.nd.recv_ttl, server->sm.m.sm.nd.recv_tos,
+                                     (int)classify_udp_packet(ioa_network_buffer_data(elem), (size_t)bsize),
+                                     &packets_processed, &packets_dropped);
     udp_sendmmsg_batch_end();
   }
 
-  if (server->sm.m.sm.nd.nbh != NULL) {
+  if (keep_elem) {
     /* buffer was not consumed downstream, reuse it on the next iteration */
     server->sm.m.sm.nd.nbh = NULL;
   } else {
