@@ -1,3 +1,32 @@
+Release 4.13.0
+
+Changelist:
+- Fix UDP receive buffer ownership (#1938) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix missing sqlite3 dependendcy (#1941) (Mészáros Mihály <misi@majd.eu>)
+- Fix configure MANPREFIX typo (#1940) (Mészáros Mihály <misi@majd.eu>)
+- Fix test_redis_format link failure (#1939) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Add continuous latency mode to stunclient (#1937) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Merge commit from fork (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Adapt .gitignore to allow files already in repo (#1935) (#1936) (tbart <github.tbart@neverbox.org>)
+- Merge commit from fork (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Merge commit from fork (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Security hardening: port parsing, admin brute-force throttle, credential log redaction, constant-time compare, OAuth bounds checks, permission cap (#1932) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Enable --udp-recvmmsg by default on Linux (#1930) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Restrict recvmmsg fast path to shared fan-in sockets (make --udp-recvmmsg useful standalone) (#1929) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Expose recvmmsg/sendmmsg UDP batch sizes as Prometheus metrics (#1928) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Add --udp-sendmmsg-log to observe egress sendmmsg/UDP-GSO batching (#1927) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Reap TURN permissions/channels via a per-thread sweep instead of per-object timers (#1926) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix sendmmsg stride bug in multiplex-peer UDP batch flush (#1925) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Wrap atomic everywhere (#1922) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Upgrade Docker image to 4.11.0 Coturn version (Kai Ren <tyranron@gmail.com>)
+
+Contributors:
+- Kai Ren <tyranron@gmail.com>
+- Mészáros Mihály <misi@majd.eu>
+- Pavel Punsky <eakraly@users.noreply.github.com>
+- dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+- tbart <github.tbart@neverbox.org>
+
 Release 4.12.0
 
 Changelist:

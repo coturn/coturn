@@ -185,6 +185,7 @@ Thanks to the following contributors (in alphabetical order):
 - seungbin-ko <seungbin.ko@navercorp.com>
 - shuyin.wsy <shuyin.wsy@alibaba-inc.com>
 - skystar-p <wogus150@naver.com>
+- tbart <github.tbart@neverbox.org>
 - tyranron <tyranron@gmail.com>
 - unicode-it <info@unicode-it.de>
 - vuittont60 <81072379+vuittont60@users.noreply.github.com>
