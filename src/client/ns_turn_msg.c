@@ -587,6 +587,7 @@ bool stun_is_challenge_response_str(const uint8_t *buf, size_t len, int *err_cod
               if (vlen > 0) {
                 if (server_name) {
                   memcpy(server_name, value, vlen);
+                  server_name[vlen] = 0;
                 }
                 found_oauth = true;
               }

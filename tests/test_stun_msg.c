@@ -106,6 +106,41 @@ static void test_channel_message_roundtrip(void) {
   TEST_ASSERT_EQUAL_UINT16(channel, parsed_channel);
 }
 
+static void test_challenge_response_null_terminates_max_length_server_name(void) {
+  uint8_t buf[MAX_STUN_MESSAGE_SIZE] = {0};
+  size_t len = 0;
+  stun_tid tid = {0};
+
+  stun_init_error_response_str(STUN_METHOD_ALLOCATE, buf, &len, 401, (const uint8_t *)"Unauthorized", &tid, true);
+
+  uint8_t realm[] = "example.org";
+  TEST_ASSERT_TRUE(stun_attr_add_str(buf, &len, STUN_ATTRIBUTE_REALM, realm, (int)(sizeof(realm) - 1)));
+
+  /* A malicious server can send a THIRD-PARTY-AUTHORIZATION value as long as the
+   * receiving buffer, leaving no room for an implicit terminator. */
+  uint8_t long_name[STUN_MAX_SERVER_NAME_SIZE];
+  memset(long_name, 'a', sizeof(long_name));
+  TEST_ASSERT_TRUE(
+      stun_attr_add_str(buf, &len, STUN_ATTRIBUTE_THIRD_PARTY_AUTHORIZATION, long_name, (int)sizeof(long_name)));
+
+  uint8_t nonce[] = "0123456789abcdef";
+  TEST_ASSERT_TRUE(stun_attr_add_str(buf, &len, STUN_ATTRIBUTE_NONCE, nonce, (int)(sizeof(nonce) - 1)));
+
+  int err_code = 0;
+  uint8_t err_msg[128] = {0};
+  uint8_t out_realm[STUN_MAX_REALM_SIZE + 1] = {0};
+  uint8_t out_nonce[STUN_MAX_NONCE_SIZE + 1] = {0};
+  uint8_t server_name[STUN_MAX_SERVER_NAME_SIZE + 1];
+  memset(server_name, 0xFF, sizeof(server_name));
+  bool oauth = false;
+
+  TEST_ASSERT_TRUE(stun_is_challenge_response_str(buf, len, &err_code, err_msg, sizeof(err_msg), out_realm, out_nonce,
+                                                  server_name, &oauth));
+  TEST_ASSERT_TRUE(oauth);
+  TEST_ASSERT_NOT_NULL(memchr(server_name, 0, sizeof(server_name)));
+  TEST_ASSERT_EQUAL_size_t(STUN_MAX_SERVER_NAME_SIZE, strlen((const char *)server_name));
+}
+
 static void test_http_message_len_handles_non_null_terminated_buffer(void) {
   uint8_t buf[] = {'G', 'E', 'T', ' ', '/', ' ', 'H', 'T', 'T', 'P', '/', '1', '.', '1', '\r', '\n', '\r', '\n'};
   size_t app_len = 0;
@@ -125,6 +160,7 @@ int main(void) {
   RUN_TEST(test_truncated_buffer_is_not_command_message);
   RUN_TEST(test_zeroed_buffer_is_not_command_message);
   RUN_TEST(test_channel_message_roundtrip);
+  RUN_TEST(test_challenge_response_null_terminates_max_length_server_name);
   RUN_TEST(test_http_message_len_handles_non_null_terminated_buffer);
   return UNITY_END();
 }
