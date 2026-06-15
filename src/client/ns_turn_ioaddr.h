@@ -37,6 +37,7 @@
 
 #include "ns_turn_defs.h"
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #ifdef __cplusplus
@@ -109,6 +110,14 @@ void ioa_addr_range_set(ioa_addr_range *range, const ioa_addr *addr_min, const i
 int addr_less_eq(const ioa_addr *addr1, const ioa_addr *addr2);
 int ioa_addr_in_range(const ioa_addr_range *range, const ioa_addr *addr);
 void ioa_addr_range_cpy(ioa_addr_range *dest, const ioa_addr_range *src);
+
+/* If addr is an IPv6 address that embeds an IPv4 address in one of the
+ * transition encodings an attacker can use to dodge an IPv4 ACL (IPv4-mapped
+ * ::ffff:0:0/96, IPv4-compatible ::/96, 6to4 2002::/16, NAT64 64:ff9b::/96),
+ * write the embedded IPv4 (with the original port) into *embedded and return
+ * true. The :: and ::1 literals are deliberately NOT treated as embedded IPv4.
+ * Returns false (leaving *embedded untouched) for any other address. */
+bool ioa_addr_get_embedded_ipv4(const ioa_addr *addr, ioa_addr *embedded);
 
 /////// Check whether this is a good address //////////////
 
