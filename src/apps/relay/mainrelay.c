@@ -3142,6 +3142,134 @@ static void init_domain(void) {
 #endif
 }
 
+/* Extract candidate host strings from a DB connection string into out[],
+ * returning the count. Handles the space-separated key=value form used by the
+ * redis/mysql/pgsql drivers (host=/ip=/addr=/ipaddr=/hostaddr=) and the
+ * scheme://[user[:pass]@]host[:port][,host:port]/path URI form used by mongodb
+ * and pgsql URIs. */
+static size_t db_extract_hosts(const char *connstr, char out[][TURN_LONG_STRING_SIZE], size_t max) {
+  size_t n = 0;
+  if (!connstr || !connstr[0]) {
+    return 0;
+  }
+
+  if (strstr(connstr, "://")) {
+    /* URI form */
+    const char *p = strstr(connstr, "://") + 3;
+    size_t authlen = strcspn(p, "/?"); /* authority ends at first '/' or '?' */
+    char auth[TURN_LONG_STRING_SIZE] = {0};
+    if (authlen >= sizeof(auth)) {
+      authlen = sizeof(auth) - 1;
+    }
+    memcpy(auth, p, authlen);
+    char *at = strrchr(auth, '@'); /* drop any userinfo */
+    char *hostlist = at ? at + 1 : auth;
+    char *save = NULL;
+    for (char *tok = strtok_r(hostlist, ",", &save); tok && n < max; tok = strtok_r(NULL, ",", &save)) {
+      char host[TURN_LONG_STRING_SIZE] = {0};
+      if (tok[0] == '[') {
+        /* [IPv6]:port */
+        char *end = strchr(tok, ']');
+        if (end) {
+          size_t hl = (size_t)(end - (tok + 1));
+          if (hl >= sizeof(host)) {
+            hl = sizeof(host) - 1;
+          }
+          memcpy(host, tok + 1, hl);
+        }
+      } else {
+        size_t hl = strcspn(tok, ":"); /* strip :port */
+        if (hl >= sizeof(host)) {
+          hl = sizeof(host) - 1;
+        }
+        memcpy(host, tok, hl);
+      }
+      if (host[0]) {
+        STRCPY(out[n], host);
+        ++n;
+      }
+    }
+    return n;
+  }
+
+  /* key=value form (space-separated) */
+  char buf[TURN_LONG_STRING_SIZE] = {0};
+  STRCPY(buf, connstr);
+  char *save = NULL;
+  for (char *tok = strtok_r(buf, " ", &save); tok && n < max; tok = strtok_r(NULL, " ", &save)) {
+    char *eq = strchr(tok, '=');
+    if (!eq) {
+      continue;
+    }
+    *eq = 0;
+    const char *key = tok;
+    const char *val = eq + 1;
+    if (!strcmp(key, "host") || !strcmp(key, "ip") || !strcmp(key, "addr") || !strcmp(key, "ipaddr") ||
+        !strcmp(key, "hostaddr")) {
+      if (val[0]) {
+        STRCPY(out[n], val);
+        ++n;
+      }
+    }
+  }
+  return n;
+}
+
+/* Best-effort: deny the relay from ever connecting to one of coturn's own
+ * database backends, regardless of denied-peer-ip, so the relay cannot be used
+ * as an SSRF primitive against the auth/stats DB. */
+static void deny_one_db_connstr(const char *label, const char *connstr) {
+  char hosts[8][TURN_LONG_STRING_SIZE];
+  const size_t n = db_extract_hosts(connstr, hosts, 8);
+  if (n == 0) {
+    /* No explicit host: the redis/mysql/pgsql drivers then default to loopback,
+     * which good_peer_addr() already denies. Remote DBs always carry a host. */
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+                  "Security: no explicit host in the %s connection string; backend assumed loopback (already "
+                  "denied). Add a denied-peer-ip if your database is remote.\n",
+                  label);
+    return;
+  }
+  for (size_t i = 0; i < n; ++i) {
+    if (add_ip_list_range(hosts[i], NULL, &turn_params.ip_blacklist) == 0) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+                    "Security: relay connections to the %s backend host %s are denied (auto denied-peer-ip)\n", label,
+                    hosts[i]);
+    } else {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
+                    "Security: could not resolve %s backend host %s to auto-deny it; add an explicit "
+                    "denied-peer-ip for it.\n",
+                    label, hosts[i]);
+    }
+  }
+}
+
+/* Auto-deny every configured database backend endpoint as a relay peer. */
+static void deny_self_db_endpoints(void) {
+  const persistent_users_db_t *pudb = &(turn_params.default_users_db.persistent_users_db);
+  switch (turn_params.default_users_db.userdb_type) {
+  case TURN_USERDB_TYPE_PQ:
+    deny_one_db_connstr("PostgreSQL userdb", pudb->userdb);
+    break;
+  case TURN_USERDB_TYPE_MYSQL:
+    deny_one_db_connstr("MySQL userdb", pudb->userdb);
+    break;
+  case TURN_USERDB_TYPE_MONGO:
+    deny_one_db_connstr("MongoDB userdb", pudb->userdb);
+    break;
+  case TURN_USERDB_TYPE_REDIS:
+    deny_one_db_connstr("Redis userdb", pudb->userdb);
+    break;
+  case TURN_USERDB_TYPE_SQLITE:
+  case TURN_USERDB_TYPE_UNKNOWN:
+  default:
+    break; /* SQLite is a local file -- no network endpoint to deny. */
+  }
+  if (turn_params.use_redis_statsdb && turn_params.redis_statsdb.connection_string[0]) {
+    deny_one_db_connstr("Redis stats DB", turn_params.redis_statsdb.connection_string);
+  }
+}
+
 int main(int argc, char **argv) {
   int c = 0;
 
@@ -3521,6 +3649,10 @@ int main(int argc, char **argv) {
     }
   }
 #endif
+
+  /* Auto-deny coturn's own DB backend endpoints as relay peers (after all
+   * config is parsed, before servers bind their copy of the blacklist). */
+  deny_self_db_endpoints();
 
   setup_server();
 
