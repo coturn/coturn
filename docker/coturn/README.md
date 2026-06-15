@@ -15,8 +15,8 @@ Coturn TURN server Docker image
 
 ## Supported tags and respective `Dockerfile` links
 
-- [`4.13.0-r0`, `4.13.0-r0-debian`, `4.13.0`, `4.13.0-debian`, `4.13.0-trixie`, `4.13`, `4.13-debian`, `4.13-trixie`, `4`, `4-debian`, `4-trixie`, `debian`, `trixie`, `latest`][d1]
-- [`4.13.0-r0-alpine`, `4.13.0-alpine`, `4.13.0-alpine3.24`, `4.13-alpine`, `4.13-alpine3.24`, `4-alpine`, `4-alpine3.24`, `alpine`, `alpine3.24`][d2]
+- [`4.13.1-r0`, `4.13.1-r0-debian`, `4.13.1`, `4.13.1-debian`, `4.13.1-trixie`, `4.13`, `4.13-debian`, `4.13-trixie`, `4`, `4-debian`, `4-trixie`, `debian`, `trixie`, `latest`][d1]
+- [`4.13.1-r0-alpine`, `4.13.1-alpine`, `4.13.1-alpine3.24`, `4.13-alpine`, `4.13-alpine3.24`, `4-alpine`, `4-alpine3.24`, `alpine`, `alpine3.24`][d2]
 
 
 
