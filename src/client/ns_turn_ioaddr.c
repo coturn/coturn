@@ -630,6 +630,41 @@ int ioa_addr_is_zero(ioa_addr *addr) {
   return 0;
 }
 
+int ioa_addr_is_internal_deny_default(ioa_addr *addr) {
+  if (!addr) {
+    return 0;
+  }
+  /* Canonicalize any IPv4-in-IPv6 encoding first so e.g. ::ffff:169.254.169.254
+   * or a NAT64/6to4 form of a link-local address is classified too. */
+  ioa_addr embedded;
+  if (ioa_addr_get_embedded_ipv4(addr, &embedded)) {
+    addr = &embedded;
+  }
+  if (addr->ss.sa_family == AF_INET) {
+    const uint8_t *u = ((const uint8_t *)&(addr->s4.sin_addr));
+    /* IPv4 link-local 169.254.0.0/16 -- includes the 169.254.169.254 cloud
+     * metadata service, a classic SSRF target that is never a valid relay peer. */
+    if (u[0] == 169 && u[1] == 254) {
+      return 1;
+    }
+  } else if (addr->ss.sa_family == AF_INET6) {
+    const uint8_t *u = ((const uint8_t *)&(addr->s6.sin6_addr));
+    /* IPv6 link-local fe80::/10 */
+    if (u[0] == 0xfe && (u[1] & 0xc0) == 0x80) {
+      return 1;
+    }
+    /* IPv6 unique-local address (ULA) fc00::/7 -- fc00::/8 and fd00::/8 */
+    if ((u[0] & 0xfe) == 0xfc) {
+      return 1;
+    }
+    /* IPv6 site-local (deprecated, RFC 3879) fec0::/10 */
+    if (u[0] == 0xfe && (u[1] & 0xc0) == 0xc0) {
+      return 1;
+    }
+  }
+  return 0;
+}
+
 /////// Map "public" address to "private" address //////////////
 
 // Must be called only in a single-threaded context,

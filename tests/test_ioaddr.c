@@ -193,6 +193,40 @@ static void test_is_multicast_and_zero_through_nat64(void) {
   TEST_ASSERT_TRUE(ioa_addr_is_zero(&zero));
 }
 
+/* ---- Secure-default internal-scope deny ---- */
+
+static void test_internal_deny_default_flags_internal_scopes(void) {
+  const char *internal[] = {
+      "169.254.169.254",        /* IPv4 link-local / cloud metadata */
+      "169.254.1.1",            /* IPv4 link-local                  */
+      "::ffff:169.254.169.254", /* mapped metadata                  */
+      "64:ff9b::a9fe:a9fe",     /* NAT64 metadata 169.254.169.254   */
+      "fe80::1",                /* IPv6 link-local                  */
+      "fc00::1",                /* IPv6 ULA (fc00::/8)              */
+      "fd12:3456::99",          /* IPv6 ULA (fd00::/8)              */
+      "fec0::1",                /* IPv6 site-local (deprecated)     */
+  };
+  for (size_t i = 0; i < sizeof(internal) / sizeof(internal[0]); ++i) {
+    ioa_addr a = {0};
+    make_addr(internal[i], &a);
+    TEST_ASSERT_TRUE_MESSAGE(ioa_addr_is_internal_deny_default(&a), internal[i]);
+  }
+}
+
+/* Loopback and RFC1918 must NOT be flagged here: loopback keeps its own
+ * allow-loopback-peers gate, and private ranges stay relayable for legitimate
+ * LAN/enterprise TURN deployments. */
+static void test_internal_deny_default_allows_other_scopes(void) {
+  const char *other[] = {
+      "8.8.8.8", "10.0.0.5", "172.16.0.1", "192.168.1.1", "100.64.0.1", "::1", "127.0.0.1", "2001:db8::1",
+  };
+  for (size_t i = 0; i < sizeof(other) / sizeof(other[0]); ++i) {
+    ioa_addr a = {0};
+    make_addr(other[i], &a);
+    TEST_ASSERT_FALSE_MESSAGE(ioa_addr_is_internal_deny_default(&a), other[i]);
+  }
+}
+
 int main(void) {
   UNITY_BEGIN();
   RUN_TEST(test_make_ioa_addr_ipv4_sets_family_and_port);
@@ -214,5 +248,7 @@ int main(void) {
   RUN_TEST(test_in_range_native_ipv6_not_matched_by_ipv4_range);
   RUN_TEST(test_is_loopback_all_ipv4_in_ipv6_encodings);
   RUN_TEST(test_is_multicast_and_zero_through_nat64);
+  RUN_TEST(test_internal_deny_default_flags_internal_scopes);
+  RUN_TEST(test_internal_deny_default_allows_other_scopes);
   return UNITY_END();
 }

@@ -123,6 +123,14 @@ bool ioa_addr_get_embedded_ipv4(const ioa_addr *addr, ioa_addr *embedded);
 
 int ioa_addr_is_multicast(ioa_addr *a);
 int ioa_addr_is_loopback(ioa_addr *addr);
+
+/* Returns true for address scopes that must never be used as a relay peer
+ * regardless of the configured denied-peer-ip ranges: IPv4 link-local
+ * (169.254.0.0/16, incl. the 169.254.169.254 cloud metadata service), IPv6
+ * link-local (fe80::/10), IPv6 unique-local (fc00::/7) and IPv6 site-local
+ * (fec0::/10). Loopback is intentionally excluded -- it keeps its own
+ * allow-loopback-peers gate. IPv4-in-IPv6 encodings are canonicalized first. */
+int ioa_addr_is_internal_deny_default(ioa_addr *addr);
 int ioa_addr_is_zero(ioa_addr *addr);
 
 /////// Map "public" address to "private" address //////////////
