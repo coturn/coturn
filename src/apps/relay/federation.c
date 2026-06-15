@@ -586,12 +586,14 @@ int federation_send_data_imp(dtls_listener_relay_server_type* server, ioa_addr* 
       }  
     }
 
+    addr_debug_print(eve(server->verbose), get_local_addr_from_ioa_socket(chs), "Federation: relaying data from SendInd from");
     addr_debug_print(eve(server->verbose), dest_addr, "Federation: relaying data from SendInd to");
 
     return send_data_from_ioa_socket_nbh(chs, dest_addr, nbh, ttl, tos, skip);
   }
   else
   {
+    addr_debug_print(eve(server->verbose), get_local_addr_from_ioa_socket(server->udp_listen_s), "Federation: relaying data from SendInd from");
     addr_debug_print(eve(server->verbose), dest_addr, "Federation: relaying data from SendInd to");
 
     // Relay UDP data
@@ -659,6 +661,7 @@ void federation_input_handler(ioa_socket_handle s, int event_type,
     // We are reusing the inbound buffer for outbound sending, NULL it out so caller doesn't free
     in_buffer->nbh = NULL;
     ioa_network_buffer_set_size(nbh, 2);
+    addr_debug_print(eve(server->verbose), get_local_addr_from_ioa_socket(s), "Federation: PONG from");
     send_data_from_ioa_socket_nbh(s, &in_buffer->src_addr, nbh, TTL_IGNORE, TOS_IGNORE, NULL /* skip/ret */);
 
     s->federation_heartbeat_pings_outstanding = 0;  // We have a ping, reset pings outstanding counter
@@ -763,6 +766,7 @@ static void federation_client_heartbeat_timeout_handler(ioa_engine_handle e, voi
     uint8_t *data = ioa_network_buffer_data(nbh);
     bcopy("\r\n\r\n", data, 4);
     ioa_network_buffer_set_size(nbh, 4);
+    addr_debug_print(eve(server->verbose), get_local_addr_from_ioa_socket(s), "Federation: PING from");
     send_data_from_ioa_socket_nbh(s, NULL /* dest_addr */, nbh, TTL_IGNORE, TOS_IGNORE, NULL /* skip/ret */);
 
     s->federation_heartbeat_pings_outstanding  = s->federation_heartbeat_pings_outstanding + 1;
