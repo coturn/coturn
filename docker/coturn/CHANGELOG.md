@@ -4,10 +4,12 @@ Coturn TURN server Docker image changelog
 
 
 
-## master
+## [4.13.0-r0] · 2026-06-15
+[4.13.0-r0]: /../../tree/docker/4.13.0-r0
 
 ### Upgraded
 
+- [Coturn] 4.13.0: <https://github.com/coturn/coturn/blob/4.13.0/ChangeLog>
 - [Alpine Linux] 3.24: <https://www.alpinelinux.org/posts/Alpine-3.24.0-released.html>
 
 ### Security updated
