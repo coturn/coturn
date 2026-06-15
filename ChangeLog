@@ -1,3 +1,16 @@
+Release 4.13.1
+
+Changelist:
+- Add per-source rate-limiting of UDP 401 Unauthorized responses (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Deny link-local / ULA / site-local relay peers by default (#1947) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Auto-deny coturn's own database backend endpoints as relay peers (#1946) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Canonicalize all IPv4-in-IPv6 encodings before peer-IP checks (#1945) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- null-terminate server_name in stun_is_challenge_response_str (#1944) (alhuda <50839256+alhudz@users.noreply.github.com>)
+
+Contributors:
+- Pavel Punsky <eakraly@users.noreply.github.com>
+- alhuda <50839256+alhudz@users.noreply.github.com>
+
 Release 4.13.0
 
 Changelist:

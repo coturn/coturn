@@ -148,6 +148,7 @@ Thanks to the following contributors (in alphabetical order):
 - Yoshiki Kadoshita <sublimer.me@gmail.com>
 - Zebadiah Long <zeb@noblewhale.com>
 - Zoey <zoey@z0ey.de>
+- alhuda <50839256+alhudz@users.noreply.github.com>
 - ashamedbit <muralianiruddhan@gmail.com>
 - bpcurse <29312856+bpcurse@users.noreply.github.com>
 - brevilo <brevilo@users.noreply.github.com>
