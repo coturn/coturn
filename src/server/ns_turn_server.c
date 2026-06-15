@@ -302,6 +302,20 @@ static int good_peer_addr(turn_turnserver *server, const char *realm, ioa_addr *
     if (ioa_addr_is_zero(peer_addr)) {
       return 0;
     }
+    /* Secure default: never relay to link-local / unique-local / site-local
+     * scopes (incl. the 169.254.169.254 cloud metadata service), regardless of
+     * denied-peer-ip. An IPv4 denied-peer-ip range cannot even express an IPv6
+     * internal target, so this closes the native-IPv6 SSRF path to internal
+     * services such as a ULA-hosted database. */
+    if (ioa_addr_is_internal_deny_default(peer_addr)) {
+      char saddr[MAX_IOA_ADDR_STRING] = "";
+      addr_to_string_no_port(peer_addr, saddr);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+                    "session %018llu: A peer IP %s denied: link-local/unique-local/site-local scope is not a "
+                    "permitted relay peer in server %d \n",
+                    (unsigned long long)session_id, saddr, server_id);
+      return 0;
+    }
 
     if (server->ip_whitelist) {
       // White listing of addr ranges
