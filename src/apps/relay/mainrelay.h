@@ -271,6 +271,7 @@ typedef struct _turn_params_ {
   ioa_addr *external_ip;
 
   turnserver_id general_relay_servers_number;
+  bool relay_threads_configured;
 
   int sock_buf_size;
 

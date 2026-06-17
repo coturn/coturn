@@ -176,6 +176,7 @@ turn_params_t turn_params = {
 
     NULL,                                 /*external_ip*/
     DEFAULT_GENERAL_RELAY_SERVERS_NUMBER, /*general_relay_servers_number*/
+    false,                                /*relay_threads_configured*/
     UR_SERVER_SOCK_BUF_SIZE,
 
     ////////////// Auth server /////////////////////////////////////
@@ -2155,6 +2156,7 @@ static void set_option(int c, char *value) {
     STRCPY(turn_params.relay_ifname, value);
     break;
   case 'm':
+    turn_params.relay_threads_configured = true;
     if (atoi(value) > MAX_NUMBER_OF_GENERAL_RELAY_SERVERS) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: max number of relay threads is 128.\n");
       turn_params.general_relay_servers_number = MAX_NUMBER_OF_GENERAL_RELAY_SERVERS;
@@ -3370,7 +3372,9 @@ int main(int argc, char **argv) {
     turn_params.cpus = MAX_NUMBER_OF_GENERAL_RELAY_SERVERS;
   }
 
-  turn_params.general_relay_servers_number = (turnserver_id)turn_params.cpus;
+  if (!turn_params.relay_threads_configured) {
+    turn_params.general_relay_servers_number = (turnserver_id)turn_params.cpus;
+  }
 
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "System cpu num is %lu\n", get_system_number_of_cpus());
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "System enable num is %lu\n", get_system_active_number_of_cpus());
