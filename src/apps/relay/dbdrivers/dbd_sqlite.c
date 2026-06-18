@@ -312,8 +312,14 @@ static int sqlite_get_user_key(uint8_t *usname, uint8_t *realm, hmackey_t key) {
     if (sqlite3_step(st) == SQLITE_ROW) {
       const char *const kval = (const char *)sqlite3_column_text(st, 0);
       const size_t sz = get_hmackey_size(SHATYPE_DEFAULT);
-      convert_string_key_to_binary(kval, key, sz);
-      ret = 0;
+      if (!kval) {
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong hmackey data for user %s: NULL\n", usname);
+      } else if (strlen(kval) < sz * 2) {
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key format: %s, user %s\n", kval, usname);
+      } else {
+        convert_string_key_to_binary(kval, key, sz);
+        ret = 0;
+      }
     }
   } else {
     const char *errmsg = sqlite3_errmsg(sqliteconnection);
