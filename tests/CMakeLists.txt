@@ -19,6 +19,9 @@ endfunction()
 coturn_add_test(test_ioaddr)
 coturn_add_test(test_stun_msg)
 coturn_add_test(test_http_server ../src/apps/relay/http_buffer.c)
+# Redis connection-string parser (incl. TLS options). The parser unit is
+# dependency-free, so it is compiled straight into the test with no hiredis lib.
+coturn_add_test(test_redis_conninfo ../src/apps/relay/dbdrivers/dbd_redis_conninfo.c)
 
 # SQLite DB-driver interface test. Compiles the driver in isolation with a small
 # support/stub layer, so it needs the same include set the relay build uses.
