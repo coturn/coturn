@@ -18,6 +18,7 @@ endfunction()
 
 coturn_add_test(test_ioaddr)
 coturn_add_test(test_stun_msg)
+coturn_add_test(test_base64)
 coturn_add_test(test_http_server ../src/apps/relay/http_buffer.c)
 
 # SQLite DB-driver interface test. Compiles the driver in isolation with a small
