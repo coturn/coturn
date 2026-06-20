@@ -38,7 +38,11 @@
 
 #if !defined(TURN_NO_HIREDIS)
 #include "../hiredis_libevent2.h"
+#include "dbd_redis_conninfo.h"
 #include <hiredis/hiredis.h>
+#if defined(TURN_HAVE_HIREDIS_SSL)
+#include <hiredis/hiredis_ssl.h>
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -50,129 +54,77 @@ static void turnFreeRedisReply(void *reply) {
   }
 }
 
-struct _Ryconninfo {
-  char *host;
-  char *dbname;
-  char *user;
-  char *password;
-  unsigned int connect_timeout;
-  unsigned int port;
-};
+#if defined(TURN_HAVE_HIREDIS_SSL)
 
-typedef struct _Ryconninfo Ryconninfo;
+static void redis_init_openssl_once(void) { (void)redisInitOpenSSL(); }
 
-static void RyconninfoFree(Ryconninfo *co) {
-  if (co) {
-    if (co->host) {
-      free(co->host);
-    }
-    if (co->dbname) {
-      free(co->dbname);
-    }
-    if (co->user) {
-      free(co->user);
-    }
-    if (co->password) {
-      free(co->password);
-    }
-    memset(co, 0, sizeof(Ryconninfo));
-    free(co);
+/* Build a reusable hiredis SSL context from the parsed connection options.
+   The caller owns the returned context and must redisFreeSSLContext() it. */
+static redisSSLContext *redis_create_ssl_ctx(Ryconninfo *co) {
+  static pthread_once_t openssl_once = PTHREAD_ONCE_INIT;
+  (void)pthread_once(&openssl_once, redis_init_openssl_once);
+
+  redisSSLContextError ssl_error = REDIS_SSL_CTX_NONE;
+  redisSSLOptions opt = {0};
+  opt.cacert_filename = co->tls_ca;
+  opt.capath = co->tls_capath;
+  opt.cert_filename = co->tls_cert;
+  opt.private_key_filename = co->tls_key;
+  opt.server_name = co->tls_sni ? co->tls_sni : co->host;
+  opt.verify_mode = co->tls_verify ? REDIS_SSL_VERIFY_PEER : REDIS_SSL_VERIFY_NONE;
+
+  redisSSLContext *ssl_ctx = redisCreateSSLContextWithOptions(&opt, &ssl_error);
+  if (!ssl_ctx) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Redis TLS: cannot create SSL context: %s\n",
+                  redisSSLContextGetError(ssl_error));
   }
+  return ssl_ctx;
 }
 
-static Ryconninfo *RyconninfoParse(const char *userdb, char **errmsg) {
-  Ryconninfo *co = (Ryconninfo *)calloc(1, sizeof(Ryconninfo));
-  if (userdb) {
-    char *s0 = strdup(userdb);
-    char *s = s0;
-
-    while (s && *s) {
-
-      while (*s && (*s == ' ')) {
-        ++s;
-      }
-      char *snext = strstr(s, " ");
-      if (snext) {
-        *snext = 0;
-        ++snext;
-      }
-
-      char *seq = strstr(s, "=");
-      if (!seq) {
-        RyconninfoFree(co);
-        co = NULL;
-        if (errmsg) {
-          *errmsg = strdup(s);
-        }
-        break;
-      }
-
-      *seq = 0;
-      if (!strcmp(s, "host")) {
-        co->host = strdup(seq + 1);
-      } else if (!strcmp(s, "ip")) {
-        co->host = strdup(seq + 1);
-      } else if (!strcmp(s, "addr")) {
-        co->host = strdup(seq + 1);
-      } else if (!strcmp(s, "ipaddr")) {
-        co->host = strdup(seq + 1);
-      } else if (!strcmp(s, "hostaddr")) {
-        co->host = strdup(seq + 1);
-      } else if (!strcmp(s, "dbname")) {
-        co->dbname = strdup(seq + 1);
-      } else if (!strcmp(s, "db")) {
-        co->dbname = strdup(seq + 1);
-      } else if (!strcmp(s, "database")) {
-        co->dbname = strdup(seq + 1);
-      } else if (!strcmp(s, "user")) {
-        co->user = strdup(seq + 1);
-      } else if (!strcmp(s, "uname")) {
-        co->user = strdup(seq + 1);
-      } else if (!strcmp(s, "name")) {
-        co->user = strdup(seq + 1);
-      } else if (!strcmp(s, "username")) {
-        co->user = strdup(seq + 1);
-      } else if (!strcmp(s, "password")) {
-        co->password = strdup(seq + 1);
-      } else if (!strcmp(s, "pwd")) {
-        co->password = strdup(seq + 1);
-      } else if (!strcmp(s, "passwd")) {
-        co->password = strdup(seq + 1);
-      } else if (!strcmp(s, "secret")) {
-        co->password = strdup(seq + 1);
-      } else if (!strcmp(s, "port")) {
-        co->port = (unsigned int)atoi(seq + 1);
-      } else if (!strcmp(s, "p")) {
-        co->port = (unsigned int)atoi(seq + 1);
-      } else if (!strcmp(s, "connect_timeout")) {
-        co->connect_timeout = (unsigned int)atoi(seq + 1);
-      } else if (!strcmp(s, "timeout")) {
-        co->connect_timeout = (unsigned int)atoi(seq + 1);
-      } else {
-        RyconninfoFree(co);
-        co = NULL;
-        if (errmsg) {
-          *errmsg = strdup(s);
-        }
-        break;
-      }
-
-      s = snext;
-    }
-
-    free(s0);
+/* Upgrade an already-connected synchronous redis context to TLS.
+   Returns 0 on success, -1 on failure (the caller frees the context). */
+static int redis_start_tls(redisContext *rc, Ryconninfo *co) {
+  redisSSLContext *ssl_ctx = redis_create_ssl_ctx(co);
+  if (!ssl_ctx) {
+    return -1;
   }
 
-  if (co) {
-    if (!(co->dbname)) {
-      co->dbname = strdup("0");
-    }
-    if (!(co->host)) {
-      co->host = strdup("127.0.0.1");
-    }
+  /* The synchronous handshake is blocking; bound it with the configured
+     timeout so a plaintext endpoint mistakenly addressed with tls=true cannot
+     hang the connection forever. This timeout also applies to later commands. */
+  if (co->connect_timeout) {
+    struct timeval tv = {0};
+    tv.tv_sec = (time_t)co->connect_timeout;
+    redisSetTimeout(rc, tv);
   }
 
-  return co;
+  /* redisInitiateSSLWithContext() builds an SSL object that keeps its own
+     reference to the context, so the context can be released right after. */
+  int rc_ssl = redisInitiateSSLWithContext(rc, ssl_ctx);
+  redisFreeSSLContext(ssl_ctx);
+
+  if (rc_ssl != REDIS_OK) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Redis TLS: handshake failed: %s\n", rc->errstr);
+    return -1;
+  }
+  return 0;
+}
+
+#endif /* TURN_HAVE_HIREDIS_SSL */
+
+/* Upgrade a freshly connected synchronous redis context to TLS when the
+   connection string requested it. Returns 0 if no TLS is needed or TLS was
+   established; -1 if TLS was requested but could not be set up. */
+static int redis_maybe_start_tls_sync(redisContext *rc, Ryconninfo *co) {
+  if (!rc || !co->use_tls) {
+    return 0;
+  }
+#if defined(TURN_HAVE_HIREDIS_SSL)
+  return redis_start_tls(rc, co);
+#else
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Redis TLS requested but hiredis_ssl support is not compiled in\n");
+  return -1;
+#endif
 }
 
 redis_context_handle get_redis_async_connection(struct event_base *base, redis_stats_db_t *redis_stats_db,
@@ -228,6 +180,8 @@ redis_context_handle get_redis_async_connection(struct event_base *base, redis_s
 
         if (!rc) {
           TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot initialize Redis DB async connection\n");
+        } else if (redis_maybe_start_tls_sync(rc, co) < 0) {
+          redisFree(rc);
         } else {
           if (co->password && strlen(co->password)) {
             if (co->user && strlen(co->user)) {
@@ -273,10 +227,36 @@ redis_context_handle get_redis_async_connection(struct event_base *base, redis_s
         }
       }
 
-      ret = redisLibeventAttach(base, co->host, co->port, co->user, co->password, atoi(co->dbname));
+      void *ssl_ctx = NULL;
+      int tls_setup_failed = 0;
+      if (co->use_tls) {
+#if defined(TURN_HAVE_HIREDIS_SSL)
+        ssl_ctx = redis_create_ssl_ctx(co);
+        if (!ssl_ctx) {
+          tls_setup_failed = 1;
+        }
+#else
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Redis TLS requested but hiredis_ssl support is not compiled in\n");
+        tls_setup_failed = 1;
+#endif
+      }
+
+      if (tls_setup_failed) {
+        ret = NULL;
+      } else {
+        /* On success, ownership of ssl_ctx (if any) transfers to the async
+           handle, which reuses it across reconnects for the handle's lifetime. */
+        ret = redisLibeventAttach(base, co->host, co->port, co->user, co->password, atoi(co->dbname), ssl_ctx);
+      }
 
       if (!ret) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot initialize Redis DB connection\n");
+        /* Attach did not take ownership on failure; release the SSL context. */
+#if defined(TURN_HAVE_HIREDIS_SSL)
+        if (ssl_ctx) {
+          redisFreeSSLContext((redisSSLContext *)ssl_ctx);
+        }
+#endif
       } else if (is_redis_asyncconn_good(ret) && !donot_print_connection_success) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Redis DB async connection to be used: %s\n",
                       redis_stats_db->connection_string_sanitized);
@@ -350,6 +330,12 @@ static redisContext *get_redis_connection(void) {
         if (redisconnection->errstr[0]) {
           TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Redis: %s\n", redisconnection->errstr);
         }
+        redisFree(redisconnection);
+        redisconnection = NULL;
+      }
+
+      /* Upgrade to TLS before any AUTH/SELECT/commands travel over the wire. */
+      if (redisconnection && redis_maybe_start_tls_sync(redisconnection, co) < 0) {
         redisFree(redisconnection);
         redisconnection = NULL;
       }

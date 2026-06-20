@@ -28,6 +28,51 @@ Or in the turnserver.conf file:
 
 redis-userdb="ip=127.0.0.1 dbname=2 password=turn connect_timeout=30"
 
+## TLS / SSL connections to Redis
+
+By default the TURN server talks to Redis over plaintext TCP. If your Redis
+server is configured to accept TLS connections (Redis `tls-port`, see
+https://redis.io/docs/management/security/encryption/), the connection string
+can request a TLS transport. This requires the TURN server to have been built
+against the `hiredis_ssl` library (the TLS companion to Hiredis); if it was not,
+`tls=true` is rejected with an explicit error at connection time.
+
+The TLS-related connection-string keys are:
+
+| Key | Aliases | Meaning |
+|---|---|---|
+| `tls=true` | `ssl` | Enable TLS for this connection (`true/1/on/yes`). |
+| `ca=<file>` | `cacert`, `tls-ca` | CA certificate/bundle used to verify the server. |
+| `capath=<dir>` | `tls-capath` | Directory of CA certificates (OpenSSL hashed layout). |
+| `cert=<file>` | `tls-cert` | Client certificate file (mutual TLS). |
+| `clientkey=<file>` | `tls-key` | Client private key file (mutual TLS). |
+| `sni=<name>` | `servername`, `tls-sni` | Server name for SNI and certificate verification (defaults to the host). |
+| `verify=peer` | `tls-verify` | Server-certificate verification mode: `peer` (default) or `none`. |
+
+Notes:
+
+* Server-certificate verification is **on by default**. Provide a `ca=` (or
+  `capath=`) so the server certificate can be validated. Use `verify=none` only
+  for testing — it disables verification entirely.
+* When connecting by IP address, set `sni=` to the name present in the server
+  certificate so hostname verification succeeds.
+* Client certificate (`cert=`) and key (`clientkey=`) must be supplied together
+  for mutual TLS, or both omitted.
+* Set `connect_timeout=<seconds>` when using TLS so a misconfigured plaintext
+  endpoint cannot block the TLS handshake indefinitely.
+* As with all connection-string keys, values may not contain spaces; keep
+  certificate paths space-free.
+
+Example (verify the server with a CA bundle):
+
+--redis-userdb="host=redis.example.com port=6390 dbname=2 password=turn tls=true ca=/etc/coturn/redis-ca.crt connect_timeout=10"
+
+Example with mutual TLS:
+
+--redis-statsdb="host=redis.example.com port=6390 password=turn tls=true ca=/etc/coturn/redis-ca.crt cert=/etc/coturn/client.crt clientkey=/etc/coturn/client.key connect_timeout=10"
+
+The same `tls=*` keys apply to both `--redis-userdb` and `--redis-statsdb`.
+
 Redis can be also used for the TURN allocation status check and for status and 
 traffic notifications.
 

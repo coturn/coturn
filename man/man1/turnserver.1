@@ -220,6 +220,12 @@ The connection string format is like that:
 
 "ip=<ip\-addr> dbname=<db\-number> password=<db\-password> connect_timeout=<seconds>"
 
+If the TURN server was built with hiredis_ssl support, a TLS transport can be
+requested by adding "tls=true" plus, typically, a CA file: "... tls=true
+ca=<ca\-cert\-file>". Server\-certificate verification is on by default; see the
+docs/Redis.md file for the full list of TLS keys (ca, capath, cert, clientkey,
+sni, verify) and examples.
+
 See the docs/Redis.md file for more explanations and examples.
 
 Also, see http://redis.io for full Redis documentation.
