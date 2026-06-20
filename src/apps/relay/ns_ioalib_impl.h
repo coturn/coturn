@@ -164,6 +164,14 @@ struct _ioa_engine {
   size_t relays_number;
   size_t relay_addr_counter;
   ioa_addr *relay_addrs;
+  /* Prometheus hot-path packet counters: accumulated lock-free per engine
+   * (relay thread) and flushed to the shared prom_counter_t objects once per
+   * second from timer_handler, to avoid per-batch lock contention. The
+   * *_flushed fields snapshot the last value pushed to prometheus. */
+  uint64_t prom_packets_processed;
+  uint64_t prom_packets_dropped;
+  uint64_t prom_packets_processed_flushed;
+  uint64_t prom_packets_dropped_flushed;
 #if defined(__linux__)
   struct ioa_socket_recvmmsg_state *udp_recvmmsg_state;
   uint64_t udp_recvmmsg_calls;
@@ -182,6 +190,12 @@ struct _ioa_engine {
   uint64_t udp_sendmmsg_hist[IOA_UDP_SENDMMSG_MAX_BATCH + 1]; /* per-flush occupancy histogram */
   uint64_t udp_sendmmsg_last_report_flushes;
   turn_time_t udp_sendmmsg_last_report_time;
+  /* Snapshots of the above batch counters last flushed to prometheus. */
+  uint64_t udp_recvmmsg_calls_prom_flushed;
+  uint64_t udp_recvmmsg_packets_prom_flushed;
+  uint64_t udp_sendmmsg_flushes_prom_flushed;
+  uint64_t udp_sendmmsg_datagrams_prom_flushed;
+  uint64_t udp_sendmmsg_gso_datagrams_prom_flushed;
 #endif
   redis_context_handle rch;
   /* multiplex-peer (zero-initialised = disabled) */
@@ -331,6 +345,10 @@ void ioa_init_recvmmsg_hdr(struct mmsghdr *msg, struct iovec *iov, ioa_addr *src
 #if !defined(_MSC_VER) && defined(CMSG_SPACE)
 void ioa_parse_udp_recvmsg_cmsg(struct msghdr *msg, int *ttl, int *tos, uint32_t *errcode);
 #endif
+
+/* Accumulate processed/dropped packet counts for prometheus, lock-free, on the
+ * owning relay thread. Flushed to the shared prom counters by timer_handler. */
+void ioa_engine_record_packets(ioa_engine_handle e, uint32_t processed, uint32_t dropped);
 
 #if defined(__linux__)
 void ioa_engine_record_udp_recvmmsg_batch(ioa_engine_handle e, int rc);

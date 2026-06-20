@@ -319,32 +319,30 @@ void prom_dec_allocation(SOCKET_TYPE type) {
   }
 }
 
-void prom_inc_packet_processed(int count) {
-  if (turn_params.prometheus) {
-    prom_counter_add(packet_processed, count, NULL);
+void prom_flush_udp_counters(const struct prom_udp_counter_deltas *d) {
+  if (!turn_params.prometheus || !d) {
+    return;
   }
-}
-
-void prom_inc_packet_dropped(int count) {
-  if (turn_params.prometheus) {
-    prom_counter_add(packet_dropped, count, NULL);
+  if (d->packets_processed) {
+    prom_counter_add(packet_processed, (double)d->packets_processed, NULL);
   }
-}
-
-void prom_observe_udp_recvmmsg_batch(unsigned int packets) {
-  if (turn_params.prometheus && packets > 0) {
-    prom_counter_add(turn_udp_recvmmsg_calls, 1, NULL);
-    prom_counter_add(turn_udp_recvmmsg_packets, (double)packets, NULL);
+  if (d->packets_dropped) {
+    prom_counter_add(packet_dropped, (double)d->packets_dropped, NULL);
   }
-}
-
-void prom_observe_udp_sendmmsg_flush(unsigned int datagrams, unsigned int gso_datagrams) {
-  if (turn_params.prometheus && datagrams > 0) {
-    prom_counter_add(turn_udp_sendmmsg_flushes, 1, NULL);
-    prom_counter_add(turn_udp_sendmmsg_datagrams, (double)datagrams, NULL);
-    if (gso_datagrams > 0) {
-      prom_counter_add(turn_udp_sendmmsg_gso_datagrams, (double)gso_datagrams, NULL);
-    }
+  if (d->recvmmsg_calls) {
+    prom_counter_add(turn_udp_recvmmsg_calls, (double)d->recvmmsg_calls, NULL);
+  }
+  if (d->recvmmsg_packets) {
+    prom_counter_add(turn_udp_recvmmsg_packets, (double)d->recvmmsg_packets, NULL);
+  }
+  if (d->sendmmsg_flushes) {
+    prom_counter_add(turn_udp_sendmmsg_flushes, (double)d->sendmmsg_flushes, NULL);
+  }
+  if (d->sendmmsg_datagrams) {
+    prom_counter_add(turn_udp_sendmmsg_datagrams, (double)d->sendmmsg_datagrams, NULL);
+  }
+  if (d->sendmmsg_gso_datagrams) {
+    prom_counter_add(turn_udp_sendmmsg_gso_datagrams, (double)d->sendmmsg_gso_datagrams, NULL);
   }
 }
 
@@ -404,15 +402,6 @@ void prom_inc_allocation(SOCKET_TYPE type) { UNUSED_ARG(type); }
 
 void prom_dec_allocation(SOCKET_TYPE type) { UNUSED_ARG(type); }
 
-void prom_inc_packet_processed(int count) { UNUSED_ARG(count); }
-
-void prom_inc_packet_dropped(int count) { UNUSED_ARG(count); }
-
-void prom_observe_udp_recvmmsg_batch(unsigned int packets) { UNUSED_ARG(packets); }
-
-void prom_observe_udp_sendmmsg_flush(unsigned int datagrams, unsigned int gso_datagrams) {
-  UNUSED_ARG(datagrams);
-  UNUSED_ARG(gso_datagrams);
-}
+void prom_flush_udp_counters(const struct prom_udp_counter_deltas *d) { UNUSED_ARG(d); }
 
 #endif /* TURN_NO_PROMETHEUS */
