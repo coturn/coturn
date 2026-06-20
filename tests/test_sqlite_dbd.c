@@ -242,6 +242,20 @@ static void test_sql_injection_neutralized(void) {
                                 "del_secret realm parameter is SQL-injectable: unintended secret rows were deleted");
 }
 
+/* A short hmackey stored in turnusers_lt must be rejected, not fed to the
+ * hex->binary decoder. The decoder reads sz*2 chars unconditionally, so a row
+ * with fewer hex chars than the key size makes get_user_key over-read past the
+ * column buffer (visible under ASan). The sibling mysql/pgsql/redis drivers
+ * already length-check before decoding. */
+static void test_short_hmackey_rejected(void) {
+  exec_vfy("insert into turnusers_lt (realm,name,hmackey) values('north.gov','shorty','00112233')");
+  TEST_ASSERT_EQUAL_INT(1, count_rows("select count(*) from turnusers_lt where name='shorty'"));
+
+  hmackey_t key;
+  memset(key, 0, sizeof(key));
+  TEST_ASSERT_EQUAL_INT(-1, db->get_user_key((uint8_t *)"shorty", (uint8_t *)"north.gov", key));
+}
+
 ///////////////////////////// main /////////////////////////////
 
 int main(void) {
@@ -273,6 +287,7 @@ int main(void) {
   RUN_TEST(test_oauth_roundtrip);
   RUN_TEST(test_permission_ip_roundtrip);
   RUN_TEST(test_admin_user_roundtrip);
+  RUN_TEST(test_short_hmackey_rejected);
   RUN_TEST(test_sql_injection_neutralized);
   int rc = UNITY_END();
 
