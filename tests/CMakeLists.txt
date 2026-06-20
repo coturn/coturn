@@ -18,6 +18,7 @@ endfunction()
 
 coturn_add_test(test_ioaddr)
 coturn_add_test(test_stun_msg)
+coturn_add_test(test_base64)
 coturn_add_test(test_http_server ../src/apps/relay/http_buffer.c)
 # Redis connection-string parser (incl. TLS options). The parser unit is
 # dependency-free, so it is compiled straight into the test with no hiredis lib.
