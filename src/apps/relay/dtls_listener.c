@@ -877,8 +877,7 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void *arg) 
       }
       udp_sendmmsg_batch_end();
 
-      prom_inc_packet_dropped(packets_dropped);
-      prom_inc_packet_processed(packets_processed);
+      ioa_engine_record_packets(server->e, packets_processed, packets_dropped);
       FUNCEND;
       return;
     }
@@ -890,14 +889,12 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void *arg) 
         ioa_engine_record_udp_recvmmsg_unavailable(server->e);
         turn_params.udp_recvmmsg = false;
       } else if (would_block()) {
-        prom_inc_packet_dropped(packets_dropped);
-        prom_inc_packet_processed(packets_processed);
+        ioa_engine_record_packets(server->e, packets_processed, packets_dropped);
         FUNCEND;
         return;
       } else if (is_connreset()) {
         reopen_server_socket(server, fd);
-        prom_inc_packet_dropped(packets_dropped);
-        prom_inc_packet_processed(packets_processed);
+        ioa_engine_record_packets(server->e, packets_processed, packets_dropped);
         FUNCEND;
         return;
       }
@@ -1025,8 +1022,7 @@ start_udp_cycle:
   ioa_network_buffer_delete(server->e, elem);
   elem = NULL;
 
-  prom_inc_packet_dropped(packets_dropped);
-  prom_inc_packet_processed(packets_processed);
+  ioa_engine_record_packets(server->e, packets_processed, packets_dropped);
 
   FUNCEND;
 }

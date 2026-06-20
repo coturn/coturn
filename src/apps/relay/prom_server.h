@@ -116,12 +116,22 @@ void prom_set_finished_traffic(const char *realm, const char *user, unsigned lon
 
 void prom_inc_allocation(SOCKET_TYPE type);
 void prom_dec_allocation(SOCKET_TYPE type);
-void prom_inc_packet_processed(int count);
-void prom_inc_packet_dropped(int count);
 
-/* Record one Linux recvmmsg/sendmmsg syscall and the datagrams it carried.
- * No-ops when prometheus is disabled or compiled out. */
-void prom_observe_udp_recvmmsg_batch(unsigned int packets);
-void prom_observe_udp_sendmmsg_flush(unsigned int datagrams, unsigned int gso_datagrams);
+/* Per-engine deltas accumulated lock-free on the relay hot path and flushed
+ * into the shared prometheus counters once per second (see timer_handler).
+ * Defined unconditionally so callers compile regardless of TURN_NO_PROMETHEUS. */
+struct prom_udp_counter_deltas {
+  uint64_t packets_processed;
+  uint64_t packets_dropped;
+  uint64_t recvmmsg_calls;
+  uint64_t recvmmsg_packets;
+  uint64_t sendmmsg_flushes;
+  uint64_t sendmmsg_datagrams;
+  uint64_t sendmmsg_gso_datagrams;
+};
+
+/* Add the given non-zero deltas to the shared prometheus counters.
+ * No-op when prometheus is disabled or compiled out. */
+void prom_flush_udp_counters(const struct prom_udp_counter_deltas *d);
 
 #endif /* __PROM_SERVER_H__ */

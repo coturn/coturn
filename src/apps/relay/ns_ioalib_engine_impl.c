@@ -535,6 +535,16 @@ void ioa_init_recvmmsg_hdr(struct mmsghdr *msg, struct iovec *iov, ioa_addr *src
 
 /************** ENGINE *************************/
 
+void ioa_engine_record_packets(ioa_engine_handle e, uint32_t processed, uint32_t dropped) {
+  if (!e) {
+    return;
+  }
+  /* Lock-free: only ever touched by this engine's own relay thread. Flushed to
+   * the shared prometheus counters once per second by timer_handler. */
+  e->prom_packets_processed += processed;
+  e->prom_packets_dropped += dropped;
+}
+
 #if defined(__linux__)
 void ioa_engine_record_udp_recvmmsg_batch(ioa_engine_handle e, int rc) {
   if (!e || rc <= 0) {
@@ -549,8 +559,6 @@ void ioa_engine_record_udp_recvmmsg_batch(ioa_engine_handle e, int rc) {
   e->udp_recvmmsg_calls++;
   e->udp_recvmmsg_packets += (uint64_t)rc;
   e->udp_recvmmsg_hist[bucket]++;
-
-  prom_observe_udp_recvmmsg_batch((unsigned int)rc);
 }
 
 void ioa_engine_record_udp_recvmmsg_wouldblock(ioa_engine_handle e) {
@@ -614,7 +622,6 @@ void ioa_engine_record_udp_sendmmsg_flush(ioa_engine_handle e, unsigned int coun
     e->udp_sendmmsg_gso_flushes++;
     e->udp_sendmmsg_gso_datagrams += (uint64_t)gso_count;
   }
-  prom_observe_udp_sendmmsg_flush(count, gso_count);
 }
 
 static uint64_t udp_sendmmsg_hist_sum(const ioa_engine_handle e, unsigned int lo, unsigned int hi) {
@@ -651,6 +658,37 @@ static void maybe_log_udp_sendmmsg_stats(ioa_engine_handle e, turn_time_t now) {
 }
 #endif
 
+/* Flush this engine's lock-free per-thread counters into the shared prometheus
+ * counters as deltas. Called once per second from timer_handler so the global
+ * prom_counter locks are hit ~1x/sec/thread instead of per batch. */
+static void maybe_flush_prom_counters(ioa_engine_handle e) {
+  if (!turn_params.prometheus || !e) {
+    return;
+  }
+
+  struct prom_udp_counter_deltas d = {0};
+
+  d.packets_processed = e->prom_packets_processed - e->prom_packets_processed_flushed;
+  d.packets_dropped = e->prom_packets_dropped - e->prom_packets_dropped_flushed;
+  e->prom_packets_processed_flushed = e->prom_packets_processed;
+  e->prom_packets_dropped_flushed = e->prom_packets_dropped;
+
+#if defined(__linux__)
+  d.recvmmsg_calls = e->udp_recvmmsg_calls - e->udp_recvmmsg_calls_prom_flushed;
+  d.recvmmsg_packets = e->udp_recvmmsg_packets - e->udp_recvmmsg_packets_prom_flushed;
+  d.sendmmsg_flushes = e->udp_sendmmsg_flushes - e->udp_sendmmsg_flushes_prom_flushed;
+  d.sendmmsg_datagrams = e->udp_sendmmsg_datagrams - e->udp_sendmmsg_datagrams_prom_flushed;
+  d.sendmmsg_gso_datagrams = e->udp_sendmmsg_gso_datagrams - e->udp_sendmmsg_gso_datagrams_prom_flushed;
+  e->udp_recvmmsg_calls_prom_flushed = e->udp_recvmmsg_calls;
+  e->udp_recvmmsg_packets_prom_flushed = e->udp_recvmmsg_packets;
+  e->udp_sendmmsg_flushes_prom_flushed = e->udp_sendmmsg_flushes;
+  e->udp_sendmmsg_datagrams_prom_flushed = e->udp_sendmmsg_datagrams;
+  e->udp_sendmmsg_gso_datagrams_prom_flushed = e->udp_sendmmsg_gso_datagrams;
+#endif
+
+  prom_flush_udp_counters(&d);
+}
+
 static void timer_handler(ioa_engine_handle e, void *arg) {
 
   UNUSED_ARG(arg);
@@ -659,6 +697,8 @@ static void timer_handler(ioa_engine_handle e, void *arg) {
   turn_atomic_store_u32(&_log_time_value, now);
 
   e->jiffie = now;
+
+  maybe_flush_prom_counters(e);
 
 #if defined(__linux__)
   maybe_log_udp_recvmmsg_stats(e, now);
