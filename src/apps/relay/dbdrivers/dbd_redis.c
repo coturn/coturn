@@ -246,7 +246,8 @@ redis_context_handle get_redis_async_connection(struct event_base *base, redis_s
       } else {
         /* On success, ownership of ssl_ctx (if any) transfers to the async
            handle, which reuses it across reconnects for the handle's lifetime. */
-        ret = redisLibeventAttach(base, co->host, co->port, co->user, co->password, atoi(co->dbname), ssl_ctx);
+        ret = redisLibeventAttach(base, co->host, co->port, co->user, co->password, co->dbname ? atoi(co->dbname) : 0,
+                                  ssl_ctx);
       }
 
       if (!ret) {
