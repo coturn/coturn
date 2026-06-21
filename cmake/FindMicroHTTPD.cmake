@@ -23,8 +23,10 @@ find_path(MicroHTTPD_INCLUDE_DIR
     PATH_SUFFIXES include
     )
 
+# vcpkg (Windows) installs the import library as "libmicrohttpd", so accept
+# both that and the bare "microhttpd" used by *NIX distributions.
 find_library(MicroHTTPD_LIBRARY
-    NAMES microhttpd
+    NAMES microhttpd libmicrohttpd microhttpd-dll libmicrohttpd-dll
     HINTS ${MicroHTTPD_DIR} ${MicroHTTPD_ROOT} ${PC_microhttpd_LIBRARY_DIRS}
     PATHS $ENV{MicroHTTPD_DIR} $ENV{MicroHTTPD_ROOT}
     PATH_SUFFIXES lib ${CMAKE_INSTALL_LIBDIR})

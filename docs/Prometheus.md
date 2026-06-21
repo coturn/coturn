@@ -48,10 +48,10 @@ make install
 
 ## Build
 
-The exporter is built whenever libmicrohttpd is found, and skipped otherwise;
-there is no separate opt-in flag. The runtime `--prometheus` flag controls
-whether it is started. To point CMake at a non-standard libmicrohttpd install
-prefix, set `MicroHTTPD_ROOT`:
+The exporter is always compiled in; libmicrohttpd is a required build
+dependency (provided by vcpkg on Windows). The runtime `--prometheus` flag
+controls whether it is started. To point CMake at a non-standard libmicrohttpd
+install prefix, set `MicroHTTPD_ROOT`:
 
 ```
 cmake -S . -B build -DMicroHTTPD_ROOT=/path/to/libmicrohttpd/install

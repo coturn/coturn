@@ -33,10 +33,10 @@ See more details about using docker container [Docker Readme](https://github.com
 
 coturn requires following dependencies to be installed first
 - libevent2
+- libmicrohttpd (Prometheus metrics interface)
 
 Optional
 - openssl (to support TLS and DTLS, authorized STUN and TURN)
-- libmicrohttpd (Prometheus metrics interface)
 - MariaDB/MySQL (user database)
 - [Hiredis](https://github.com/redis/hiredis) (user database, monitoring)
 - SQLite (user database)
