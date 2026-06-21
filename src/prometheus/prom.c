@@ -435,7 +435,7 @@ static void prom_metric_render(prom_buf_t *b, prom_metric_t *m) {
   pthread_mutex_unlock(&m->mutex);
 }
 
-const char *prom_collector_registry_bridge(prom_collector_registry_t *registry) {
+char *prom_collector_registry_bridge(prom_collector_registry_t *registry) {
   if (registry == NULL) {
     return NULL;
   }

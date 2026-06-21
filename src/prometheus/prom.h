@@ -75,7 +75,7 @@ prom_metric_t *prom_collector_registry_must_register_metric(prom_metric_t *metri
 /* Render every registered metric in Prometheus text-exposition format. Returns
  * a heap-allocated NUL-terminated string the caller must free(), or NULL on
  * allocation failure. */
-const char *prom_collector_registry_bridge(prom_collector_registry_t *registry);
+char *prom_collector_registry_bridge(prom_collector_registry_t *registry);
 
 /* Counters: monotonically increasing values. label_keys may be NULL when
  * label_key_count is 0. */
