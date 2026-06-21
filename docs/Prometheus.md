@@ -1,39 +1,41 @@
 # Prometheus setup
 
-It is need the following libraries:
+coturn exposes a Prometheus metrics endpoint (default `:9641/metrics`) when
+started with `--prometheus`.
 
-- prometheus-client-c
-- libmicrohttpd
+## Vendored Prometheus client
 
-## Ubuntu
+coturn ships a minimal, self-contained Prometheus client under
+[`src/prometheus`](../src/prometheus) and builds it straight from those
+sources.
 
-### Install libmicrohttpd
+The vendored client implements the slice of the API coturn uses —
+counters, gauges, a single default registry, and the text-exposition
+serializer. Histograms, summaries, custom registries and a bundled HTTP
+handler are out of scope; coturn serves the endpoint with its own
+libmicrohttpd handler in
+[`src/apps/relay/prom_server.c`](../src/apps/relay/prom_server.c).
 
-```
-sudo apt install libmicrohttpd-dev 
-```
+The exporter's only external dependency is **libmicrohttpd**.
 
-## Install From source code
+## Install libmicrohttpd
 
-- [libmicrohttpd](https://www.gnu.org/software/libmicrohttpd/)
-
-Download from https://git.gnunet.org/libmicrohttpd.git
-
-```
-git clone https://git.gnunet.org/libmicrohttpd.git
-```
-
-- [prometheus-client-c](https://github.com/digitalocean/prometheus-client-c)
-
-Download from https://github.com/digitalocean/prometheus-client-c.git
+### Ubuntu / Debian
 
 ```
-git clone https://github.com/digitalocean/prometheus-client-c.git
+sudo apt install libmicrohttpd-dev
 ```
 
-## Build
+### macOS (Homebrew)
 
-- Build libmicrohttpd from source code
+```
+brew install libmicrohttpd
+```
+
+### From source
+
+[libmicrohttpd](https://www.gnu.org/software/libmicrohttpd/) — download from
+https://git.gnunet.org/libmicrohttpd.git
 
 ```
 git clone https://git.gnunet.org/libmicrohttpd.git
@@ -44,10 +46,14 @@ cd libmicrohttpd
 make install
 ```
 
-- Build prometheus-client-c from source code
+## Build
+
+The exporter is always compiled in; libmicrohttpd is a required build
+dependency (provided by vcpkg on Windows). The runtime `--prometheus` flag
+controls whether it is started. To point CMake at a non-standard libmicrohttpd
+install prefix, set `MicroHTTPD_ROOT`:
 
 ```
-git clone https://github.com/digitalocean/prometheus-client-c.git
-cd prometheus-client-c
-make
+cmake -S . -B build -DMicroHTTPD_ROOT=/path/to/libmicrohttpd/install
+cmake --build build
 ```

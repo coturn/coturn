@@ -54,10 +54,6 @@ runs:
             libmicrohttpd-dev
         if [ "$(lsb_release -s -r)x" == "16.04x" ]; then apt-get install -y libmariadb-client-lgpl-dev; fi
         if [ "$(lsb_release -s -r)x" == "16.04x" ]; then apt-get install -y libmariadb-dev; fi
-
-    - name: Prometheus Support
-      shell: bash
-      run: |
-        wget https://github.com/digitalocean/prometheus-client-c/releases/download/v0.1.3/libprom-dev-0.1.3-Linux.deb
-        ${{ env.AS_ROOT }} apt install -y ./libprom-dev-0.1.3-Linux.deb
-      working-directory: /tmp/
+        # The Prometheus exporter builds from coturn's vendored client
+        # (src/prometheus); libmicrohttpd-dev above is the only dependency it
+        # needs.

@@ -53,7 +53,9 @@ extern "C" {
 #endif
 
 #include <microhttpd.h>
-#include <prom.h>
+
+/* Vendored, self-contained Prometheus client (src/prometheus). */
+#include "prom.h"
 
 #ifdef __cplusplus
 }

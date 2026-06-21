@@ -14,7 +14,8 @@
     "sqlite3",
     "libpq",
     "hiredis",
-    "mongo-c-driver"
+    "mongo-c-driver",
+    "libmicrohttpd"
   ]
 
 }

@@ -64,25 +64,8 @@ jobs:
           path: ${{ env.INSTALL_DIR }}
           key: coturn-cache-installed-mingw
 
-      - name: Build Prometheus
-        run: |
-          cd ${{ env.SOURCE_DIR }}
-          git clone https://github.com/digitalocean/prometheus-client-c.git
-          cd prometheus-client-c/prom
-          mkdir build
-          cd build
-          cmake .. -G"MinGW Makefiles" ^
-              -DBUILD_SHARED_LIBS=${{ matrix.BUILD_SHARED_LIBS }} ^
-              -DCMAKE_BUILD_TYPE=${{ matrix.BUILD_TYPE }} ^
-              -DCMAKE_INSTALL_PREFIX=${{ env.INSTALL_DIR }}
-          cmake --build . --config ${{ matrix.BUILD_TYPE }}
-          cmake --build . --config ${{ matrix.BUILD_TYPE }} --target install
-        env:
-          MSYSTEM: MINGW64
-          PATH: C:\msys64\mingw64\bin;C:\msys64\usr\bin
-        working-directory: ${{ env.SOURCE_DIR }}
-        if: ${{ false }}
-        
+      # The Prometheus exporter builds from coturn's vendored client
+      # (src/prometheus); only libmicrohttpd (installed above) is required.
       - name: Build Coturn
         run: |
           cmake -E make_directory build
@@ -96,7 +79,6 @@ jobs:
         env:
           MSYSTEM: MINGW64
           PATH: C:\msys64\mingw64\bin;C:\msys64\usr\bin
-          Prometheus_ROOT: ${{ env.INSTALL_DIR }}
         working-directory: ${{ github.workspace }}
 
       - name: Package

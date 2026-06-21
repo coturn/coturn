@@ -154,6 +154,17 @@ else()
     message(STATUS "hiredis/libevent headers not found; skipping test_redis_format")
 endif()
 
+# Vendored Prometheus client (src/prometheus). Fully self-contained: only the
+# client sources plus pthread are needed, no turnclient/microhttpd.
+add_executable(test_prometheus
+    test_prometheus.c
+    ../src/prometheus/prom.c)
+target_include_directories(test_prometheus PRIVATE ../src/prometheus)
+find_package(Threads REQUIRED)
+target_link_libraries(test_prometheus PRIVATE unity Threads::Threads)
+add_test(NAME test_prometheus COMMAND test_prometheus)
+list(APPEND COTURN_TEST_TARGETS test_prometheus)
+
 add_custom_target(check
     COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
     DEPENDS ${COTURN_TEST_TARGETS}
