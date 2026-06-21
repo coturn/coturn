@@ -54,8 +54,7 @@ extern "C" {
 
 #include <microhttpd.h>
 
-/* Vendored, self-contained Prometheus client (src/prometheus). Replaces the
- * unmaintained digitalocean/prometheus-client-c system library. */
+/* Vendored, self-contained Prometheus client (src/prometheus). */
 #include "prom.h"
 
 #ifdef __cplusplus

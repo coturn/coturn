@@ -5,22 +5,18 @@ started with `--prometheus`.
 
 ## Vendored Prometheus client
 
-Historically coturn linked against the
-[prometheus-client-c](https://github.com/digitalocean/prometheus-client-c)
-(`prom`) library. That project is no longer maintained, so coturn now ships a
-minimal, self-contained Prometheus client under
+coturn ships a minimal, self-contained Prometheus client under
 [`src/prometheus`](../src/prometheus) and builds it straight from those
-sources. There is **no longer any need to install or build `libprom`**.
+sources.
 
-The vendored client implements only the small slice of the API coturn uses —
+The vendored client implements the slice of the API coturn uses —
 counters, gauges, a single default registry, and the text-exposition
-serializer. Histograms, summaries, custom registries and the upstream
-`promhttp` handler are intentionally omitted (coturn serves the endpoint with
-its own libmicrohttpd handler in
-[`src/apps/relay/prom_server.c`](../src/apps/relay/prom_server.c)).
+serializer. Histograms, summaries, custom registries and a bundled HTTP
+handler are out of scope; coturn serves the endpoint with its own
+libmicrohttpd handler in
+[`src/apps/relay/prom_server.c`](../src/apps/relay/prom_server.c).
 
-The only remaining external dependency is **libmicrohttpd**, which is actively
-maintained and packaged by every major distribution.
+The exporter's only external dependency is **libmicrohttpd**.
 
 ## Install libmicrohttpd
 

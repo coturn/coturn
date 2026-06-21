@@ -155,12 +155,10 @@ endif()
 # Prometheus exporter.
 #
 # coturn ships a minimal, self-contained Prometheus client under
-# src/prometheus and builds it straight from these sources, so it no longer
-# depends on the unmaintained digitalocean/prometheus-client-c ("prom")
-# library. The exporter is always compiled in; the runtime --prometheus flag
-# controls whether it is actually started. The only build dependency is
-# libmicrohttpd, which serves the /metrics endpoint and is still actively
-# maintained, so it is required.
+# src/prometheus and builds it straight from these sources. The exporter is
+# always compiled in; the runtime --prometheus flag controls whether it is
+# actually started. libmicrohttpd serves the /metrics endpoint and is a
+# required build dependency.
 find_package(MicroHTTPD REQUIRED)
 list(APPEND SOURCE_FILES ${CMAKE_SOURCE_DIR}/src/prometheus/prom.c)
 list(APPEND HEADER_FILES ${CMAKE_SOURCE_DIR}/src/prometheus/prom.h)

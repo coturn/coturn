@@ -64,10 +64,8 @@ jobs:
           path: ${{ env.INSTALL_DIR }}
           key: coturn-cache-installed-mingw
 
-      # The Prometheus exporter now builds from coturn's vendored client
-      # (src/prometheus); only libmicrohttpd (installed above) is required, so
-      # the former "Build Prometheus" step that compiled prometheus-client-c
-      # has been removed.
+      # The Prometheus exporter builds from coturn's vendored client
+      # (src/prometheus); only libmicrohttpd (installed above) is required.
       - name: Build Coturn
         run: |
           cmake -E make_directory build

@@ -7,18 +7,14 @@
  *
  * Minimal, self-contained Prometheus client used by coturn.
  *
- * This is a drop-in replacement for the small subset of the
- * digitalocean/prometheus-client-c ("prom") API that coturn consumes.
- * The upstream library is no longer maintained, so the pieces coturn
- * actually needs -- counters, gauges, a single default registry, and the
- * text-exposition "bridge" -- are reimplemented here and built straight
- * from coturn's own sources. The public names and signatures match the
- * upstream library so prom_server.c does not need to change.
+ * Implements the slice of the Prometheus client API that coturn consumes:
+ * counters, gauges, a single default registry, and the text-exposition
+ * "bridge". Built straight from coturn's own sources.
  *
- * Out of scope on purpose (coturn never used them): histograms, summaries,
- * process/collector plugins, custom registries beyond the default one, and
- * the bundled promhttp HTTP handler (coturn ships its own microhttpd
- * handler in prom_server.c).
+ * Scope is limited to what coturn uses: histograms, summaries,
+ * process/collector plugins, and custom registries beyond the default one
+ * are not provided. The HTTP handler that serves the metrics lives in
+ * prom_server.c (coturn's own microhttpd handler).
  *
  * All rights reserved.
  *

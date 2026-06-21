@@ -1,8 +1,7 @@
 # Find libmicrohttpd.
 #
-# coturn's Prometheus exporter now uses a vendored, self-contained Prometheus
-# client (src/prometheus); libmicrohttpd is the only remaining external
-# dependency, used to serve the /metrics endpoint. This module locates it.
+# libmicrohttpd serves coturn's Prometheus /metrics endpoint. This module
+# locates it.
 #
 # Set MicroHTTPD_DIR or MicroHTTPD_ROOT (variable or environment) to point at a
 # non-standard install prefix.

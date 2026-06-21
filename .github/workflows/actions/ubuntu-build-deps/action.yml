@@ -54,6 +54,6 @@ runs:
             libmicrohttpd-dev
         if [ "$(lsb_release -s -r)x" == "16.04x" ]; then apt-get install -y libmariadb-client-lgpl-dev; fi
         if [ "$(lsb_release -s -r)x" == "16.04x" ]; then apt-get install -y libmariadb-dev; fi
-        # The Prometheus exporter now builds from coturn's vendored client
+        # The Prometheus exporter builds from coturn's vendored client
         # (src/prometheus); libmicrohttpd-dev above is the only dependency it
-        # needs. The former libprom-dev download step has been removed.
+        # needs.
