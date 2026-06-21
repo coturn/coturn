@@ -201,7 +201,7 @@ If you are not using the rpath linking option, then after the installation,
 you may have to adjust the system-wide shared library search path with
 "ldconfig -n <libdirname>" (Linux), "ldconfig -m <libdirname>" (BSD) or 
 "crle -u -l <libdirname>" (Solaris). Your system must be able to find the 
-libevent2, openssl, libmicrohttpd and (optionally) SQLite and/or PostgreSQL 
+libevent2, openssl and (optionally) libmicrohttpd and/or SQLite and/or PostgreSQL 
 and/or MySQL (MariaDB) and/or MongoDB and/or Redis shared libraries, either with the 
 help of the system-wide library search configuration or by using 
 LD_LIBRARY_PATH. "make install" will make a non-guaranteed effort to add 
@@ -215,9 +215,9 @@ to adjust LD_LIBRARY_PATH.
 # WHICH EXTRA LIBRARIES AND UTILITIES YOU NEED 
 
 In addition to common *NIX OS services and libraries, to compile this code, 
-OpenSSL (version 1.0.0a or better recommended), libevent2 (version 2.0.5 
-or better) and libmicrohttpd (Prometheus metrics interface) are required, 
-SQLite C development library and header is optional,
+OpenSSL (version 1.0.0a or better recommended) and libevent2 (version 2.0.5 
+or better) are required, libmicrohttpd (for the Prometheus metrics interface) 
+is optional, SQLite C development library and header is optional,
 the PostgreSQL C client development setup is optional, 
 the MySQL (MariaDB) C client development setup is optional, 
 the MongoDB C Driver and the Hiredis development files for Redis database 
@@ -230,7 +230,7 @@ OpenSSL, SQLite, libevent2, PostgreSQL, MySQL (or MariaDB) and Hiredis
 libraries can be downloaded from their web sites:
  - http://www.openssl.org (required);
  - http://www.libevent.org (required);
- - https://www.gnu.org/software/libmicrohttpd/ (required, Prometheus metrics);
+ - https://www.gnu.org/software/libmicrohttpd/ (optional, Prometheus metrics);
  - http://www.sqlite.org (optional);
  - http://www.postgresql.org (optional);
  - http://www.mysql.org (or http://mariadb.org) (optional);

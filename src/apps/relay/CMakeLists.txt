@@ -156,10 +156,10 @@ endif()
 #
 # coturn ships a minimal, self-contained Prometheus client under
 # src/prometheus and builds it straight from these sources. The exporter is
-# always compiled in; the runtime --prometheus flag controls whether it is
-# actually started. libmicrohttpd serves the /metrics endpoint and is a
-# required build dependency -- except in the fuzzing build (FUZZER), which has
-# no use for the metrics endpoint and may run in environments without it.
+# compiled in whenever libmicrohttpd (which serves the /metrics endpoint) is
+# available; the runtime --prometheus flag controls whether it is started.
+# When libmicrohttpd is absent (e.g. the fuzzing build, or a platform without
+# a libmicrohttpd port) the build proceeds without the exporter.
 find_package(MicroHTTPD)
 if(MicroHTTPD_FOUND)
     list(APPEND SOURCE_FILES ${CMAKE_SOURCE_DIR}/src/prometheus/prom.c)
@@ -168,12 +168,10 @@ if(MicroHTTPD_FOUND)
     list(APPEND turnserver_include_dirs
         ${CMAKE_SOURCE_DIR}/src/prometheus
         ${MicroHTTPD_INCLUDE_DIRS})
-elseif(FUZZER)
-    message(STATUS "libmicrohttpd not found; building fuzzing targets without the Prometheus exporter")
-    list(APPEND turnserver_DEFINED TURN_NO_PROMETHEUS)
 else()
-    message(FATAL_ERROR "libmicrohttpd not found. Install libmicrohttpd-dev "
-        "(or set MicroHTTPD_ROOT). See docs/Prometheus.md")
+    message(STATUS "libmicrohttpd not found; building without the Prometheus exporter. "
+        "Install libmicrohttpd-dev (or set MicroHTTPD_ROOT) to enable it. See docs/Prometheus.md")
+    list(APPEND turnserver_DEFINED TURN_NO_PROMETHEUS)
 endif()
 
 list(APPEND turnserver_DEFINED TURN_NO_SCTP)

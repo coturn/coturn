@@ -48,17 +48,12 @@ make install
 
 ## Build
 
-The exporter is built by default (CMake option `WITH_PROMETHEUS=ON`) whenever
-libmicrohttpd is found. To point CMake at a non-standard libmicrohttpd install
+The exporter is built whenever libmicrohttpd is found, and skipped otherwise;
+there is no separate opt-in flag. The runtime `--prometheus` flag controls
+whether it is started. To point CMake at a non-standard libmicrohttpd install
 prefix, set `MicroHTTPD_ROOT`:
 
 ```
 cmake -S . -B build -DMicroHTTPD_ROOT=/path/to/libmicrohttpd/install
 cmake --build build
-```
-
-To build without the exporter:
-
-```
-cmake -S . -B build -DWITH_PROMETHEUS=OFF
 ```
