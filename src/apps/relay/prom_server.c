@@ -34,6 +34,7 @@
 
 #include "prom_server.h"
 #include "mainrelay.h"
+#include "ns_turn_atomic.h" // for TURN_THREAD_LOCAL (portable thread-local on MSVC)
 #include "ns_turn_ratelimit.h"
 #include "ns_turn_utils.h"
 #include <stdio.h>
@@ -468,12 +469,12 @@ void prom_flush_udp_counters(const struct prom_udp_counter_deltas *d) {
  * unauthenticated UDP request -- the reflection surface, and the busiest path
  * under the very flood this feature mitigates). To keep the global prom_counter
  * locks off that path, each relay thread accumulates into lock-free
- * _Thread_local counters here and prom_flush_401_counters() pushes the deltas
+ * thread-local counters here and prom_flush_401_counters() pushes the deltas
  * once per second from the engine timer -- mirroring the UDP packet counters
  * (see prom_flush_udp_counters / maybe_flush_prom_counters). */
-static _Thread_local uint64_t tl_401_requests, tl_401_requests_flushed;
-static _Thread_local uint64_t tl_401_responses, tl_401_responses_flushed;
-static _Thread_local uint64_t tl_401_dropped, tl_401_dropped_flushed;
+static TURN_THREAD_LOCAL uint64_t tl_401_requests, tl_401_requests_flushed;
+static TURN_THREAD_LOCAL uint64_t tl_401_responses, tl_401_responses_flushed;
+static TURN_THREAD_LOCAL uint64_t tl_401_dropped, tl_401_dropped_flushed;
 
 void prom_inc_unauthenticated_401_request(void) {
   if (turn_params.prometheus) {
