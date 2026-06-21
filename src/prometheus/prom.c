@@ -37,7 +37,6 @@
 
 #include "prom.h"
 
-#include <math.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -383,10 +382,13 @@ static void prom_buf_append_label_value(prom_buf_t *b, const char *s) {
 static void prom_buf_append_value(prom_buf_t *b, double v) {
   char tmp[64];
   int n;
-  /* Print integral values without a fractional part for clean, exact output of
-   * packet/byte counters; fall back to %g for the rare fractional gauge. */
-  if (isfinite(v) && v == floor(v) && fabs(v) < 1e15) {
-    n = snprintf(tmp, sizeof(tmp), "%.0f", v);
+  /* Print integral values within a double's exact-integer range (2^53) without
+   * a fractional part for clean, exact output of packet/byte counters; fall
+   * back to %g for the rare fractional gauge or an out-of-range/NaN value.
+   * Integrality is tested with a round-trip cast so no <math.h> (and no libm
+   * link) is needed. */
+  if (v >= -9007199254740992.0 && v <= 9007199254740992.0 && v == (double)(long long)v) {
+    n = snprintf(tmp, sizeof(tmp), "%lld", (long long)v);
   } else {
     n = snprintf(tmp, sizeof(tmp), "%g", v);
   }
