@@ -566,7 +566,7 @@ static int uclient_tx_flush(void) {
   return sent;
 }
 
-void uclient_send_batch_begin(void) {
+static void uclient_send_batch_begin(void) {
   uclient_tx_state *st = &uclient_tx_batch;
   if (st->depth == 0) {
     st->count = 0;
@@ -577,7 +577,7 @@ void uclient_send_batch_begin(void) {
   ++st->depth;
 }
 
-void uclient_send_batch_end(void) {
+static void uclient_send_batch_end(void) {
   uclient_tx_state *st = &uclient_tx_batch;
   if (st->depth == 0) {
     return;
@@ -621,8 +621,8 @@ static bool uclient_tx_enqueue(evutil_socket_t fd, const void *data, size_t len)
   return true;
 }
 #else  /* !__linux__ */
-void uclient_send_batch_begin(void) {}
-void uclient_send_batch_end(void) {}
+static void uclient_send_batch_begin(void) {}
+static void uclient_send_batch_end(void) {}
 static bool uclient_tx_enqueue(evutil_socket_t fd, const void *data, size_t len) {
   (void)fd;
   (void)data;
@@ -1570,6 +1570,7 @@ recv_again:
  * Extracted from client_read() so the Linux recvmmsg batch path can reuse
  * the per-packet processing without going through recv_buffer() again. */
 static int process_received_buffer(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info *atc, int rc) {
+  UNUSED_ARG(atc);
 
   app_ur_conn_info *clnet_info = &(elem->pinfo);
   int err_code = 0;

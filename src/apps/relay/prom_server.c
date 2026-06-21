@@ -103,7 +103,7 @@ static MHD_RESULT promhttp_handler(void *cls, struct MHD_Connection *connection,
     status = MHD_HTTP_METHOD_NOT_ALLOWED;
     body = "method not allowed";
   } else if (strcmp(url, turn_params.prometheus_path) == 0) {
-    body = (char *)prom_collector_registry_bridge(PROM_COLLECTOR_REGISTRY_DEFAULT);
+    body = prom_collector_registry_bridge(PROM_COLLECTOR_REGISTRY_DEFAULT);
     if (body == NULL) {
       return MHD_NO;
     }
