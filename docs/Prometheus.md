@@ -57,3 +57,28 @@ install prefix, set `MicroHTTPD_ROOT`:
 cmake -S . -B build -DMicroHTTPD_ROOT=/path/to/libmicrohttpd/install
 cmake --build build
 ```
+
+The exporter is always compiled in (libmicrohttpd is a required build
+dependency); the runtime `--prometheus` flag controls whether it is started.
+
+## HTTPS (optional)
+
+By default the metrics endpoint is served over plain HTTP. To serve it over
+HTTPS instead, pass `--prometheus-tls` (requires libmicrohttpd built with TLS
+support). `--prometheus-tls` implies `--prometheus`, so it enables the exporter
+on its own — there is no need to pass both. The certificate and key default to
+the server's own `--cert` / `--pkey`; override them with `--prometheus-cert` /
+`--prometheus-key`:
+
+```
+# Reuse the server's TLS material:
+turnserver --prometheus-tls --cert server.pem --pkey server.key
+
+# Or use a dedicated certificate for the metrics endpoint:
+turnserver --prometheus-tls \
+    --prometheus-cert metrics.pem --prometheus-key metrics.key
+```
+
+Then scrape with `https://<host>:9641/metrics`. If `--prometheus-tls` is set
+but no certificate/key can be loaded, the exporter logs an error and does not
+start.

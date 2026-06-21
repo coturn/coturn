@@ -220,6 +220,9 @@ turn_params_t turn_params = {
     "",                                 /* prometheus address */
     "/metrics",                         /* prometheus path */
     false, /* prometheus username labelling disabled by default when prometheus is enabled */
+    false, /* prometheus TLS (HTTPS) disabled by default */
+    "",    /* prometheus cert file (defaults to --cert) */
+    "",    /* prometheus key file (defaults to --pkey) */
 
     ///////////// Users DB //////////////
     {(TURN_USERDB_TYPE)0, {"\0", "\0"}, {0, NULL, {NULL, 0}}},
@@ -1167,6 +1170,12 @@ static char Usage[] =
     " --prometheus-address		<address>		Prometheus listening address (Default: any).\n"
     " --prometheus-path		<path>		Prometheus serve path (Default: /metrics).\n"
     " --prometheus-username-labels			When metrics are enabled, add labels with client usernames.\n"
+    " --prometheus-tls				Serve the metrics endpoint over HTTPS instead of HTTP "
+    "(optional). Implies --prometheus. Requires libmicrohttpd built with TLS support.\n"
+    " --prometheus-cert		<file>		PEM certificate for the HTTPS metrics endpoint "
+    "(Default: the server's --cert).\n"
+    " --prometheus-key		<file>		PEM private key for the HTTPS metrics endpoint "
+    "(Default: the server's --pkey).\n"
 #endif
     " --use-auth-secret				TURN REST API flag.\n"
     "						Flag that sets a special authorization option that is based upon "
@@ -1495,6 +1504,9 @@ enum EXTRA_OPTS {
   PROMETHEUS_ADDRESS_OPT,
   PROMETHEUS_PATH_OPT,
   PROMETHEUS_ENABLE_USERNAMES_OPT,
+  PROMETHEUS_TLS_OPT,
+  PROMETHEUS_CERT_OPT,
+  PROMETHEUS_KEY_OPT,
   AUTH_SECRET_OPT,
   NO_AUTH_PINGS_OPT,
   NO_DYNAMIC_IP_LIST_OPT,
@@ -1629,6 +1641,9 @@ static const struct myoption long_options[] = {
     {"prometheus-address", optional_argument, NULL, PROMETHEUS_ADDRESS_OPT},
     {"prometheus-path", optional_argument, NULL, PROMETHEUS_PATH_OPT},
     {"prometheus-username-labels", optional_argument, NULL, PROMETHEUS_ENABLE_USERNAMES_OPT},
+    {"prometheus-tls", optional_argument, NULL, PROMETHEUS_TLS_OPT},
+    {"prometheus-cert", required_argument, NULL, PROMETHEUS_CERT_OPT},
+    {"prometheus-key", required_argument, NULL, PROMETHEUS_KEY_OPT},
 #endif
     {"use-auth-secret", optional_argument, NULL, AUTH_SECRET_OPT},
     {"static-auth-secret", required_argument, NULL, STATIC_AUTH_SECRET_VAL_OPT},
@@ -2373,6 +2388,20 @@ static void set_option(int c, char *value) {
     break;
   case PROMETHEUS_ENABLE_USERNAMES_OPT:
     turn_params.prometheus_username_labels = true;
+    break;
+  case PROMETHEUS_TLS_OPT:
+    turn_params.prometheus_tls = get_bool_value(value);
+    if (turn_params.prometheus_tls) {
+      /* Serving the metrics endpoint over TLS implies enabling the exporter,
+       * so --prometheus-tls alone is enough (no separate --prometheus needed). */
+      turn_params.prometheus = true;
+    }
+    break;
+  case PROMETHEUS_CERT_OPT:
+    STRCPY(turn_params.prometheus_cert_file, value);
+    break;
+  case PROMETHEUS_KEY_OPT:
+    STRCPY(turn_params.prometheus_pkey_file, value);
     break;
   case AUTH_SECRET_OPT:
     turn_params.use_auth_secret_with_timestamp = 1;

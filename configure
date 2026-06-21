@@ -850,9 +850,18 @@ if [ -z "${TURN_NO_PROMETHEUS}" ] ; then
     # coturn ships a vendored, self-contained Prometheus client under
     # src/prometheus (built from local sources). libmicrohttpd serves the
     # /metrics endpoint and is the only external dependency.
-    testlib microhttpd
-    ER=$?
-    if ! [ ${ER} -eq 0 ] ; then
+    #
+    # Prefer pkg-config so non-default install prefixes (e.g. Homebrew's
+    # /opt/homebrew) are picked up like libssl/libevent below; fall back to the
+    # bare -lmicrohttpd link probe for platforms without a .pc file.
+    MICROHTTPD_OK=0
+    if testpkg_common libmicrohttpd; then
+        MICROHTTPD_OK=1
+    else
+        testlib microhttpd
+        [ $? -ne 0 ] && MICROHTTPD_OK=1
+    fi
+    if [ ${MICROHTTPD_OK} -eq 1 ] ; then
         ${ECHO_CMD} "Microhttpd lib found; using vendored Prometheus client."
         OSCFLAGS="${OSCFLAGS} -Isrc/prometheus"
         # Adjustments for Debian

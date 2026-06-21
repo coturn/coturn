@@ -4,10 +4,6 @@
 
 ARG debian_ver=trixie
 
-# The Prometheus exporter is built from coturn's vendored client
-# (src/prometheus). libmicrohttpd is the only dependency it needs, and it is
-# installed in the build and runtime stages below.
-
 
 
 
