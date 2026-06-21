@@ -35,6 +35,7 @@
 #include "prom_server.h"
 #include "mainrelay.h"
 #include "ns_turn_utils.h"
+#include <stdio.h>
 #if !defined(WINDOWS)
 #include <errno.h>
 #include <sys/socket.h>
@@ -127,6 +128,32 @@ static MHD_RESULT promhttp_handler(void *cls, struct MHD_Connection *connection,
     MHD_destroy_response(response);
   }
   return ret;
+}
+
+/* Read an entire file into a freshly malloc'd NUL-terminated buffer, or return
+ * NULL on error. Used to load the PEM cert/key for the HTTPS metrics endpoint. */
+static char *prom_read_file(const char *path) {
+  FILE *f = fopen(path, "rb");
+  if (f == NULL) {
+    return NULL;
+  }
+  char *buf = NULL;
+  if (fseek(f, 0, SEEK_END) == 0) {
+    long size = ftell(f);
+    if (size >= 0 && fseek(f, 0, SEEK_SET) == 0) {
+      buf = malloc((size_t)size + 1);
+      if (buf != NULL) {
+        if (fread(buf, 1, (size_t)size, f) != (size_t)size) {
+          free(buf);
+          buf = NULL;
+        } else {
+          buf[size] = '\0';
+        }
+      }
+    }
+  }
+  fclose(f);
+  return buf;
 }
 
 void start_prometheus_server(void) {
@@ -235,6 +262,42 @@ void start_prometheus_server(void) {
                                           "The exporter might be unreachable on highly used servers\n");
   }
 
+  // Optional HTTPS for the metrics endpoint. The cert/key buffers are kept for
+  // the daemon's (process) lifetime, as libmicrohttpd references them.
+  char *https_cert = NULL;
+  char *https_key = NULL;
+  if (turn_params.prometheus_tls) {
+    const char *cert_path =
+        turn_params.prometheus_cert_file[0] ? turn_params.prometheus_cert_file : turn_params.cert_file;
+    const char *key_path =
+        turn_params.prometheus_pkey_file[0] ? turn_params.prometheus_pkey_file : turn_params.pkey_file;
+    if (!cert_path[0] || !key_path[0]) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "prometheus TLS requested but no certificate/key is configured "
+                                          "(set --prometheus-cert/--prometheus-key or the server --cert/--pkey)\n");
+      return;
+    }
+#if MHD_VERSION >= 0x00095300
+    if (!MHD_is_feature_supported(MHD_FEATURE_TLS)) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "prometheus TLS requested but libmicrohttpd was built without TLS support\n");
+      return;
+    }
+#endif
+    https_cert = prom_read_file(cert_path);
+    https_key = prom_read_file(key_path);
+    if (https_cert == NULL || https_key == NULL) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "prometheus TLS: could not read certificate '%s' or key '%s'\n", cert_path,
+                    key_path);
+      free(https_cert);
+      free(https_key);
+      return;
+    }
+#if MHD_VERSION >= 0x00095300
+    flags |= MHD_USE_TLS;
+#else
+    flags |= MHD_USE_SSL;
+#endif
+  }
+
   ioa_addr server_addr;
   addr_set_any(&server_addr);
   if (turn_params.prometheus_address[0]) {
@@ -259,13 +322,22 @@ void start_prometheus_server(void) {
 
   char addr[MAX_IOA_ADDR_STRING] = "";
   addr_to_string(&server_addr, addr);
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "prometheus exporter server will listen on %s\n", addr);
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "prometheus exporter server will listen on %s (%s)\n", addr,
+                turn_params.prometheus_tls ? "https" : "http");
 
-  struct MHD_Daemon *daemon =
-      MHD_start_daemon(flags, 0, NULL, NULL, &promhttp_handler, NULL, MHD_OPTION_LISTENING_ADDRESS_REUSE, 1,
-                       MHD_OPTION_SOCK_ADDR, &server_addr, MHD_OPTION_END);
+  struct MHD_Daemon *daemon;
+  if (turn_params.prometheus_tls) {
+    daemon = MHD_start_daemon(flags, 0, NULL, NULL, &promhttp_handler, NULL, MHD_OPTION_LISTENING_ADDRESS_REUSE, 1,
+                              MHD_OPTION_SOCK_ADDR, &server_addr, MHD_OPTION_HTTPS_MEM_CERT, https_cert,
+                              MHD_OPTION_HTTPS_MEM_KEY, https_key, MHD_OPTION_END);
+  } else {
+    daemon = MHD_start_daemon(flags, 0, NULL, NULL, &promhttp_handler, NULL, MHD_OPTION_LISTENING_ADDRESS_REUSE, 1,
+                              MHD_OPTION_SOCK_ADDR, &server_addr, MHD_OPTION_END);
+  }
   if (daemon == NULL) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "could not start prometheus collector\n");
+    free(https_cert);
+    free(https_key);
     return;
   }
 

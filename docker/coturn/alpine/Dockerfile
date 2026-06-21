@@ -4,10 +4,6 @@
 
 ARG alpine_ver=3.24
 
-# The Prometheus exporter is built from coturn's vendored client
-# (src/prometheus). libmicrohttpd is the only dependency it needs, and it is
-# installed in the build and runtime stages below.
-
 
 
 

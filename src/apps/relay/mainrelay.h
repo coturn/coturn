@@ -321,6 +321,11 @@ typedef struct _turn_params_ {
   char prometheus_address[INET6_ADDRSTRLEN];
   char prometheus_path[1025];
   bool prometheus_username_labels;
+  bool prometheus_tls; /* serve the metrics endpoint over HTTPS */
+  /* PEM cert/key for the HTTPS metrics endpoint; empty means fall back to the
+   * server's main --cert / --pkey. */
+  char prometheus_cert_file[1025];
+  char prometheus_pkey_file[1025];
 
   /////// Users DB ///////////
 
