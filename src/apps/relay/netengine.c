@@ -44,11 +44,73 @@
 
 //////////// Barrier for the threads //////////////
 
-#if !defined(TURN_NO_THREAD_BARRIERS)
-static unsigned int barrier_count = 0;
-static pthread_barrier_t barrier;
-static pthread_barrier_t relay_setup_barrier;
+#if !defined(PTHREAD_BARRIER_SERIAL_THREAD)
+#define PTHREAD_BARRIER_SERIAL_THREAD (-1)
 #endif
+
+#if defined(TURN_NO_THREAD_BARRIERS)
+/* Portable thread barrier for platforms that lack pthread_barrier_* (e.g.
+ * macOS). Built on a mutex + condition variable, which are universally
+ * available. This replaces the former sleep(5) shim: it is both instant and
+ * race-free (the shim let threads proceed if any setup took longer than the
+ * fixed sleep). */
+typedef struct {
+  pthread_mutex_t mtx;
+  pthread_cond_t cond;
+  unsigned int threshold;  /* number of threads to rendezvous */
+  unsigned int count;      /* threads currently waiting */
+  unsigned int generation; /* bumped each time the barrier trips, guards reuse */
+} turn_barrier_t;
+
+static int turn_barrier_init(turn_barrier_t *b, unsigned int n) {
+  if (n == 0) {
+    errno = EINVAL;
+    return -1;
+  }
+  if (pthread_mutex_init(&b->mtx, NULL) != 0) {
+    return -1;
+  }
+  if (pthread_cond_init(&b->cond, NULL) != 0) {
+    pthread_mutex_destroy(&b->mtx);
+    return -1;
+  }
+  b->threshold = n;
+  b->count = 0;
+  b->generation = 0;
+  return 0;
+}
+
+static int turn_barrier_wait(turn_barrier_t *b) {
+  pthread_mutex_lock(&b->mtx);
+  const unsigned int gen = b->generation;
+  if (++b->count == b->threshold) {
+    /* Last thread to arrive releases the rest and resets for reuse. */
+    b->generation++;
+    b->count = 0;
+    pthread_cond_broadcast(&b->cond);
+    pthread_mutex_unlock(&b->mtx);
+    return PTHREAD_BARRIER_SERIAL_THREAD;
+  }
+  /* The generation guard absorbs spurious condvar wakeups. */
+  while (gen == b->generation) {
+    pthread_cond_wait(&b->cond, &b->mtx);
+  }
+  pthread_mutex_unlock(&b->mtx);
+  return 0;
+}
+
+#define TURN_BARRIER turn_barrier_t
+#define TURN_BARRIER_INIT(b, n) turn_barrier_init((b), (n))
+#define TURN_BARRIER_WAIT(b) turn_barrier_wait((b))
+#else
+#define TURN_BARRIER pthread_barrier_t
+#define TURN_BARRIER_INIT(b, n) pthread_barrier_init((b), NULL, (n))
+#define TURN_BARRIER_WAIT(b) pthread_barrier_wait((b))
+#endif
+
+static unsigned int barrier_count = 0;
+static TURN_BARRIER barrier;
+static TURN_BARRIER relay_setup_barrier;
 
 ////////////// Auth Server ////////////////
 
@@ -84,26 +146,16 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
 
 /////////////// BARRIERS ///////////////////
 
-#if !defined(PTHREAD_BARRIER_SERIAL_THREAD)
-#define PTHREAD_BARRIER_SERIAL_THREAD (-1)
-#endif
-
 static void barrier_wait_func(const char *func, int line) {
-#if !defined(TURN_NO_THREAD_BARRIERS)
   int br = 0;
   do {
-    br = pthread_barrier_wait(&barrier);
+    br = TURN_BARRIER_WAIT(&barrier);
     if ((br < 0) && (br != PTHREAD_BARRIER_SERIAL_THREAD)) {
       const int err = socket_errno();
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "barrier wait: %s\n", strerror(errno));
       printf("%s:%s:%d: %d\n", __FUNCTION__, func, line, err);
     }
   } while (((br < 0) && (br != PTHREAD_BARRIER_SERIAL_THREAD)) && socket_eintr());
-#else
-  UNUSED_ARG(func);
-  UNUSED_ARG(line);
-  sleep(5);
-#endif
 }
 
 #define barrier_wait() barrier_wait_func(__FUNCTION__, __LINE__)
@@ -975,28 +1027,22 @@ static void setup_listener(void) {
 }
 
 static void setup_barriers(void) {
-#if !defined(TURN_NO_THREAD_BARRIERS)
-  if (pthread_barrier_init(&barrier, NULL, barrier_count) != 0) {
+  if (TURN_BARRIER_INIT(&barrier, barrier_count) != 0) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "barrier init: %s\n", strerror(errno));
   }
-#endif
 }
 
 static void setup_socket_per_thread_udp_listener_servers(void) {
   size_t i = 0;
   size_t relayindex = 0;
 
-  /* Wait for all relay threads to complete setup before accessing their state */
-#if !defined(TURN_NO_THREAD_BARRIERS)
-  pthread_barrier_wait(&relay_setup_barrier);
-#else
-  /* Fallback when barriers are disabled: spin-wait (racy, but preserved for compatibility) */
-  for (relayindex = 0; relayindex < get_real_general_relay_servers_number(); relayindex++) {
-    while (!(general_relay_servers[relayindex]->ioa_eng) || !(general_relay_servers[relayindex]->server.e)) {
-      sched_yield();
-    }
+  /* Wait for all relay threads to complete setup before accessing their state.
+   * When relays run inline on the main thread (general_relay_servers_number == 0)
+   * there is no separate thread to rendezvous with and the barrier is not
+   * initialized, so the wait is skipped. */
+  if (turn_params.general_relay_servers_number > 0) {
+    TURN_BARRIER_WAIT(&relay_setup_barrier);
   }
-#endif
 
   /* Aux UDP servers */
   for (i = 0; i < turn_params.aux_servers_list.size; i++) {
@@ -1347,9 +1393,7 @@ static void *run_general_relay_thread(void *arg) {
 
   setup_relay_server(rs, NULL, we_need_rfc5780);
 
-#if !defined(TURN_NO_THREAD_BARRIERS)
-  pthread_barrier_wait(&relay_setup_barrier);
-#endif
+  TURN_BARRIER_WAIT(&relay_setup_barrier);
 
   barrier_wait();
 
@@ -1363,14 +1407,11 @@ static void *run_general_relay_thread(void *arg) {
 static void setup_general_relay_servers(void) {
   size_t i = 0;
 
-#if !defined(TURN_NO_THREAD_BARRIERS)
   if (turn_params.general_relay_servers_number > 0) {
-    if (pthread_barrier_init(&relay_setup_barrier, NULL, (unsigned int)get_real_general_relay_servers_number() + 1) !=
-        0) {
+    if (TURN_BARRIER_INIT(&relay_setup_barrier, (unsigned int)get_real_general_relay_servers_number() + 1) != 0) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "relay_setup_barrier init: %s\n", strerror(errno));
     }
   }
-#endif
 
   for (i = 0; i < get_real_general_relay_servers_number(); i++) {
 
@@ -1508,14 +1549,10 @@ void setup_server(void) {
     authserver_number = MIN_AUTHSERVER_NUMBER;
   }
 
-#if !defined(TURN_NO_THREAD_BARRIERS)
-
   /* relay threads plus auth threads plus main listener thread */
   /* plus admin thread */
   /* udp address listener thread(s) will start later */
   barrier_count = turn_params.general_relay_servers_number + authserver_number + 1 + 1;
-
-#endif
 
 #if defined(__linux__)
   if (turn_params.multiplex_peer) {
