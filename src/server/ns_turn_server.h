@@ -211,11 +211,10 @@ struct _turn_turnserver {
   bool multiplex_peer_mode;
 
   /* Both of these are pointers into turn_params so the CLI flags affect
-   * every relay thread without per-thread copies. The legacy version of
-   * this struct had `ratelimit_unauthorized_requests` typed as `bool`
-   * (not `bool *`), which silently truncated the parameter pointer in
-   * init_turn_server() and left the feature always-on. Keep them as
-   * pointers and dereference at use sites. */
+   * every relay thread without per-thread copies. They must stay pointers
+   * (not a `bool`/value copy): the server dereferences them live at the use
+   * sites, so a value copy would snapshot the flag at struct-init time and
+   * ignore later updates. */
   bool *ratelimit_unauthorized_requests;
   vintp ratelimit_unauthorized_requests_per_sec;
   unauthenticated_401_metric_cb unauthenticated_401_request_cb;
