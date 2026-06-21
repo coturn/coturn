@@ -100,4 +100,19 @@ static inline bool turn_atomic_cas_u32(turn_atomic_u32 *p, uint32_t expected, ui
 
 #endif
 
+/*
+ * Thread-local storage-class specifier. MSVC spells it __declspec(thread) and
+ * rejects the C11 _Thread_local keyword on the toolsets we build against;
+ * GCC/Clang/MinGW take _Thread_local. Callers that keep per-thread accumulators
+ * (e.g. the lock-free relay-thread counters flushed into Prometheus) use this
+ * instead of a per-file shim, and get true thread-local storage on every
+ * platform. Gated on _MSC_VER (the compiler), not WINDOWS: MinGW is GCC and
+ * uses the _Thread_local path even though WINDOWS is defined for it.
+ */
+#if defined(_MSC_VER)
+#define TURN_THREAD_LOCAL __declspec(thread)
+#else
+#define TURN_THREAD_LOCAL _Thread_local
+#endif
+
 #endif //__TURN_ATOMIC__

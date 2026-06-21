@@ -125,6 +125,17 @@ function assert_prom_response_tls() {
   echo OK
 }
 
+function assert_prom_metric_nonzero() {
+  metric="$1"
+  body="$2"
+  if echo "$body" | grep -Eq "^${metric}(_total)? [1-9][0-9]*(\\.[0-9]+)?$"; then
+    echo OK
+  else
+    echo "FAIL: metric ${metric} was not non-zero"
+    exit 1
+  fi
+}
+
 echo "Running without prometheus"
 start_turnserver
 wait_for_prom_decision
@@ -165,4 +176,54 @@ start_turnserver --prometheus-tls \
   --prometheus-cert=/nonexistent/cert.pem --prometheus-key=/nonexistent/key.pem
 wait_for_prom_decision
 assert_prom_no_response "https://localhost:9641/metrics"
+stop_turnserver
+
+# COMMON_ARGS already supplies -L/-E 127.0.0.1 and --no-tls --no-dtls.
+echo "Running turnserver with prometheus 401 mitigation counters"
+start_turnserver --prometheus --prometheus-address="127.0.0.1" --prometheus-port="8081" \
+  --use-auth-secret --static-auth-secret=secret --realm=north.gov \
+  --allow-loopback-peers --no-cli --listening-port=3479 \
+  --unauthorized-ratelimit --unauthorized-ratelimit-rps=1
+assert_prom_response "http://127.0.0.1:8081/metrics"
+# The two 401-mitigation metric families have deliberately different exposure
+# timing, and a single bad-cred client run satisfies only one at a time:
+#   * turn_unauthenticated_401_* are per-thread accumulators flushed into the
+#     registry on the engine's 1 Hz timer, so they only appear ~1s AFTER traffic.
+#   * turn_ratelimit_occupied_buckets is computed live at scrape time and decays
+#     to 0 within RATELIMIT_WINDOW_SECS (1s) of the most recent 401.
+# turnutils_uclient emits its whole 401 burst in well under a second and then
+# idles, so right after a burst the gauge is live but the counters have not
+# flushed, and a second later the counters appear but the gauge has decayed.
+# Keep bad-cred traffic flowing continuously (a short-lived client restarted in a
+# loop) so a rate-limit window stays open across at least one counter-flush tick,
+# then poll until a single scrape shows both families non-zero.
+flood_stop="$(mktemp "${TMPDIR:-/tmp}/run_tests_prom_flood.XXXXXX")"
+(
+  while [ -e "$flood_stop" ]; do
+    timeout 1s "$BINDIR/turnutils_uclient" \
+      -e 127.0.0.1 -X -g -u baduser -W wrongsecret -p 3479 127.0.0.1 \
+      > /dev/null 2>&1
+  done
+) &
+flood_pid="$!"
+prom_metrics=""
+deadline=$((SECONDS + POLL_TIMEOUT))
+while [ "$SECONDS" -lt "$deadline" ]; do
+  scrape="$(wget --quiet --output-document=- --tries=1 "http://127.0.0.1:8081/metrics" 2>/dev/null)"
+  if echo "$scrape" | grep -Eq "^turn_ratelimit_occupied_buckets [1-9][0-9]*(\\.[0-9]+)?$" &&
+     echo "$scrape" | grep -Eq "^turn_unauthenticated_401_requests(_total)? [1-9][0-9]*(\\.[0-9]+)?$"; then
+    prom_metrics="$scrape"
+    break
+  fi
+  sleep 0.2
+done
+rm -f "$flood_stop"
+wait "$flood_pid" 2>/dev/null
+assert_prom_metric_nonzero "turn_unauthenticated_401_requests" "$prom_metrics"
+assert_prom_metric_nonzero "turn_unauthenticated_401_responses" "$prom_metrics"
+assert_prom_metric_nonzero "turn_unauthenticated_401_dropped_responses" "$prom_metrics"
+# The single bad-cred source occupies exactly one live bucket; capacity is the
+# fixed table size. (Collisions stay 0 with one source, so are not asserted here.)
+assert_prom_metric_nonzero "turn_ratelimit_occupied_buckets" "$prom_metrics"
+assert_prom_metric_nonzero "turn_ratelimit_total_buckets" "$prom_metrics"
 stop_turnserver
