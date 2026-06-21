@@ -1,3 +1,22 @@
+Release 4.14.0
+
+Changelist:
+- Experimental: Add per-source rate-limiting of UDP 401 Unauthorized responses (#1957) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Experimental: Prom https (#1956) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix realm quota data race and warnings (#1958) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Build Prometheus exporter from vendored local sources (#1955) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- fix signed-char index out-of-bounds read in base64_decode (#1950) (alhuda <50839256+alhudz@users.noreply.github.com>)
+- Flush prometheus hot-path counters once per second to kill lock contention (#1954) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix relay threads override (#1953) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Add optional TLS transport for Redis connections (#1951) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Add out-of-tree patch to restore deprecated OpenSSL 1.1.1 support (#1952) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- validate hmackey length in sqlite_get_user_key before hex decode (#1948) (alhuda <50839256+alhudz@users.noreply.github.com>)
+
+Contributors:
+- Kai Ren <tyranron@gmail.com>
+- Pavel Punsky <eakraly@users.noreply.github.com>
+- alhuda <50839256+alhudz@users.noreply.github.com>
+
 Release 4.13.1
 
 Changelist:
