@@ -668,9 +668,16 @@ int check_new_allocation_quota(uint8_t *user, int oauth, uint8_t *realm) {
   if (user || oauth) {
     uint8_t *username = oauth ? (uint8_t *)strdup("") : (uint8_t *)get_real_username((char *)user);
     realm_params_t *rp = get_realm((char *)realm);
+    /* Snapshot the realm quota configuration under the realms lock. These
+     * fields are written by reread_realms()/change_*_quota() while holding
+     * lock_realms(), so reading them under the per-realm alloc_counters lock
+     * below (a different mutex) would be a data race. */
+    lock_realms();
+    const vint total_quota = rp->options.perf_options.total_quota;
+    const vint user_quota = rp->options.perf_options.user_quota;
+    unlock_realms();
     ur_string_map_lock(rp->status.alloc_counters);
-    if (rp->options.perf_options.total_quota &&
-        (rp->status.total_current_allocs >= rp->options.perf_options.total_quota)) {
+    if (total_quota && (rp->status.total_current_allocs >= total_quota)) {
       ret = -1;
     } else if (username[0]) {
       ur_string_map_value_type value = 0;
@@ -679,7 +686,7 @@ int check_new_allocation_quota(uint8_t *user, int oauth, uint8_t *realm) {
         ur_string_map_put(rp->status.alloc_counters, (ur_string_map_key_type)username, value);
         ++(rp->status.total_current_allocs);
       } else {
-        if ((rp->options.perf_options.user_quota) && ((size_t)value >= (size_t)(rp->options.perf_options.user_quota))) {
+        if ((user_quota) && ((size_t)value >= (size_t)user_quota)) {
           ret = -1;
         } else {
           value = (ur_string_map_value_type)(((size_t)value) + 1);
