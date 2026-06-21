@@ -122,7 +122,7 @@ static MHD_RESULT promhttp_handler(void *cls, struct MHD_Connection *connection,
     }
     ret = MHD_NO;
   } else {
-    MHD_add_response_header(response, "Content-Type", "text/plain");
+    MHD_add_response_header(response, "Content-Type", "text/plain; version=0.0.4; charset=utf-8");
     ret = MHD_queue_response(connection, status, response);
     MHD_destroy_response(response);
   }
