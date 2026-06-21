@@ -847,30 +847,23 @@ fi
 
 if [ -z "${TURN_NO_PROMETHEUS}" ] ; then
 
-    testlib prom
+    # coturn now ships a vendored, self-contained Prometheus client under
+    # src/prometheus (built from local sources), so libprom is no longer
+    # required. Only libmicrohttpd, which serves the /metrics endpoint, is
+    # still an external dependency.
+    testlib microhttpd
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
-        ${ECHO_CMD} "Prometheus lib found."
-        testlib microhttpd
-        ER=$?
-        if ! [ ${ER} -eq 0 ] ; then
-            ${ECHO_CMD} "Microhttpd lib found."
-            # Adjustments for Debian
-            # See: https://github.com/coturn/coturn/pull/754#issuecomment-824693226
-            if [ -f "/etc/debian_version" ] ; then
-                OSLIBS="${OSLIBS} -latomic"
-            fi
-        else
-            ${ECHO_CMD}
-            ${ECHO_CMD} "Warning: microhttpd development libraries are not installed properly in required location."
-            ${ECHO_CMD} "Prometheus support will be disabled."
-            ${ECHO_CMD} "See the docs/Prometheus.md file."
-            ${ECHO_CMD}
-            OSCFLAGS="${OSCFLAGS} -DTURN_NO_PROMETHEUS"
+        ${ECHO_CMD} "Microhttpd lib found; using vendored Prometheus client."
+        OSCFLAGS="${OSCFLAGS} -Isrc/prometheus"
+        # Adjustments for Debian
+        # See: https://github.com/coturn/coturn/pull/754#issuecomment-824693226
+        if [ -f "/etc/debian_version" ] ; then
+            OSLIBS="${OSLIBS} -latomic"
         fi
     else
         ${ECHO_CMD}
-        ${ECHO_CMD} "Warning: Libprom development libraries are not installed properly in required location."
+        ${ECHO_CMD} "Warning: microhttpd development libraries are not installed properly in required location."
         ${ECHO_CMD} "Prometheus support will be disabled."
         ${ECHO_CMD} "See the docs/Prometheus.md file."
         ${ECHO_CMD}

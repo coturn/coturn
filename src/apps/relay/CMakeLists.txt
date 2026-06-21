@@ -152,16 +152,22 @@ else()
     list(APPEND turnserver_DEFINED TURN_NO_SYSTEMD)
 endif()
 
-find_package(Prometheus)
-if(Prometheus_FOUND)
-    list(APPEND turnserver_LIBS ${Prometheus_LIBRARIES})
-    list(APPEND turnserver_include_dirs ${Prometheus_INCLUDE_DIRS})
-else()
-    message(AUTHOR_WARNING "Could not find prometheus. Please install "
-        "prom, microhttpd, and set Prometheus_ROOT. "
-        "See docs/Prometheus.md")
-    list(APPEND turnserver_DEFINED TURN_NO_PROMETHEUS)
-endif()
+# Prometheus exporter.
+#
+# coturn ships a minimal, self-contained Prometheus client under
+# src/prometheus and builds it straight from these sources, so it no longer
+# depends on the unmaintained digitalocean/prometheus-client-c ("prom")
+# library. The exporter is always compiled in; the runtime --prometheus flag
+# controls whether it is actually started. The only build dependency is
+# libmicrohttpd, which serves the /metrics endpoint and is still actively
+# maintained, so it is required.
+find_package(MicroHTTPD REQUIRED)
+list(APPEND SOURCE_FILES ${CMAKE_SOURCE_DIR}/src/prometheus/prom.c)
+list(APPEND HEADER_FILES ${CMAKE_SOURCE_DIR}/src/prometheus/prom.h)
+list(APPEND turnserver_LIBS ${MicroHTTPD_LIBRARIES})
+list(APPEND turnserver_include_dirs
+    ${CMAKE_SOURCE_DIR}/src/prometheus
+    ${MicroHTTPD_INCLUDE_DIRS})
 
 list(APPEND turnserver_DEFINED TURN_NO_SCTP)
 
