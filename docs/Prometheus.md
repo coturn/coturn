@@ -65,15 +65,17 @@ dependency); the runtime `--prometheus` flag controls whether it is started.
 
 By default the metrics endpoint is served over plain HTTP. To serve it over
 HTTPS instead, pass `--prometheus-tls` (requires libmicrohttpd built with TLS
-support). The certificate and key default to the server's own `--cert` /
-`--pkey`; override them with `--prometheus-cert` / `--prometheus-key`:
+support). `--prometheus-tls` implies `--prometheus`, so it enables the exporter
+on its own — there is no need to pass both. The certificate and key default to
+the server's own `--cert` / `--pkey`; override them with `--prometheus-cert` /
+`--prometheus-key`:
 
 ```
 # Reuse the server's TLS material:
-turnserver --prometheus --prometheus-tls --cert server.pem --pkey server.key
+turnserver --prometheus-tls --cert server.pem --pkey server.key
 
 # Or use a dedicated certificate for the metrics endpoint:
-turnserver --prometheus --prometheus-tls \
+turnserver --prometheus-tls \
     --prometheus-cert metrics.pem --prometheus-key metrics.key
 ```
 

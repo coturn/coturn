@@ -146,20 +146,22 @@ start_turnserver --prometheus --prometheus-path="/coturn/metrics"
 assert_prom_response "http://localhost:9641/coturn/metrics"
 stop_turnserver
 
+# --prometheus-tls implies --prometheus, so the exporter is enabled without a
+# separate --prometheus flag below.
 echo "Running turnserver with prometheus over TLS, explicit --prometheus-cert/--prometheus-key"
-start_turnserver --prometheus --prometheus-tls \
+start_turnserver --prometheus-tls \
   --prometheus-cert=etc/turn_server_cert.pem --prometheus-key=etc/turn_server_pkey.pem
 assert_prom_response_tls "https://localhost:9641/metrics"
 stop_turnserver
 
 echo "Running turnserver with prometheus over TLS, cert/key inherited from server --cert/--pkey"
-start_turnserver --prometheus --prometheus-tls \
+start_turnserver --prometheus-tls \
   --cert=etc/turn_server_cert.pem --pkey=etc/turn_server_pkey.pem
 assert_prom_response_tls "https://localhost:9641/metrics"
 stop_turnserver
 
 echo "Running turnserver with prometheus TLS but an unreadable cert: endpoint must not start"
-start_turnserver --prometheus --prometheus-tls \
+start_turnserver --prometheus-tls \
   --prometheus-cert=/nonexistent/cert.pem --prometheus-key=/nonexistent/key.pem
 wait_for_prom_decision
 assert_prom_no_response "https://localhost:9641/metrics"

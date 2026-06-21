@@ -1171,7 +1171,7 @@ static char Usage[] =
     " --prometheus-path		<path>		Prometheus serve path (Default: /metrics).\n"
     " --prometheus-username-labels			When metrics are enabled, add labels with client usernames.\n"
     " --prometheus-tls				Serve the metrics endpoint over HTTPS instead of HTTP "
-    "(optional). Requires libmicrohttpd built with TLS support.\n"
+    "(optional). Implies --prometheus. Requires libmicrohttpd built with TLS support.\n"
     " --prometheus-cert		<file>		PEM certificate for the HTTPS metrics endpoint "
     "(Default: the server's --cert).\n"
     " --prometheus-key		<file>		PEM private key for the HTTPS metrics endpoint "
@@ -2391,6 +2391,11 @@ static void set_option(int c, char *value) {
     break;
   case PROMETHEUS_TLS_OPT:
     turn_params.prometheus_tls = get_bool_value(value);
+    if (turn_params.prometheus_tls) {
+      /* Serving the metrics endpoint over TLS implies enabling the exporter,
+       * so --prometheus-tls alone is enough (no separate --prometheus needed). */
+      turn_params.prometheus = true;
+    }
     break;
   case PROMETHEUS_CERT_OPT:
     STRCPY(turn_params.prometheus_cert_file, value);
