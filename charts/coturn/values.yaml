@@ -133,9 +133,18 @@ federate:
     #        # if you are using an external issuer, change this to that issuer group.
     #        group: cert-manager.io
     #
-    #      # optional labels to attach to the cert-manager Certificate
+    #      # optional Certificate fields. duration / renewBefore / usages
+    #      # are passed through verbatim to the cert-manager Certificate.
+    #      # Required when issuing from an AWS Private CA in SHORT_LIVED
+    #      # mode (which caps validity at 168h and rejects the cert-manager
+    #      # default of 2160h).
     #      certificate:
     #        labels: ..
+    #        duration: 168h
+    #        renewBefore: 144h
+    #        usages:
+    #          - server auth
+    #          - client auth
 
     # # list of host/ip/cert common names / subject alt names, and optional issuer
     # # names to accept DTLS connections from. There can be multiple entries.
