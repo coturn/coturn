@@ -141,6 +141,66 @@ static void test_challenge_response_null_terminates_max_length_server_name(void)
   TEST_ASSERT_EQUAL_size_t(STUN_MAX_SERVER_NAME_SIZE, strlen((const char *)server_name));
 }
 
+/* Build a minimal valid STUN message header with a chosen body length field,
+ * so we can drive stun_get_message_len_str() across the uint16_t-overflow
+ * boundary. */
+static void make_stun_header(uint8_t *buf, uint16_t body_len) {
+  /* Type: top two bits clear, not a valid channel number. Use BINDING. */
+  buf[0] = (uint8_t)(STUN_METHOD_BINDING >> 8);
+  buf[1] = (uint8_t)(STUN_METHOD_BINDING & 0xFF);
+  /* Body length (network byte order). */
+  buf[2] = (uint8_t)(body_len >> 8);
+  buf[3] = (uint8_t)(body_len & 0xFF);
+  /* Magic cookie. */
+  buf[4] = 0x21;
+  buf[5] = 0x12;
+  buf[6] = 0xA4;
+  buf[7] = 0x42;
+  /* Transaction id (bytes 8..19) left as-is by the caller. */
+}
+
+static void test_message_len_does_not_overflow_uint16(void) {
+  /* Body lengths that are 4-byte aligned and within 16 of 0xFFFF: len + 20
+   * wraps a uint16_t to 4/8/12/16. With only a header-sized buffer present,
+   * the truncated value would falsely pass the `<= blen` bounds check and the
+   * function would claim a tiny message, orphaning the rest of the TCP stream.
+   * The fix computes the length in uint32_t, so each of these must instead be
+   * reported as "incomplete" (return -1) given a short buffer. */
+  const uint16_t overflow_body_lens[] = {65520, 65524, 65528, 65532};
+
+  for (size_t i = 0; i < sizeof(overflow_body_lens) / sizeof(overflow_body_lens[0]); ++i) {
+    uint8_t buf[STUN_HEADER_LENGTH] = {0};
+    make_stun_header(buf, overflow_body_lens[i]);
+
+    size_t app_len = 12345; /* sentinel; must not be written on the short path */
+    const int mlen = stun_get_message_len_str(buf, sizeof(buf), 1, &app_len);
+
+    /* Without the uint32_t widening this returned a small positive value
+     * (4/8/12/16) that the TCP framing layer would act on
+     * (mlen > 0 && mlen <= blen), consuming only a few bytes. With the fix the
+     * real length (body + 20) exceeds blen, so the function reports
+     * "incomplete" (-1) and the framing layer waits for more data instead of
+     * desynchronizing. The key property is that it is never a small positive
+     * value here. */
+    TEST_ASSERT_EQUAL_INT(-1, mlen);
+    TEST_ASSERT_FALSE(mlen > 0 && mlen <= (int)sizeof(buf));
+    TEST_ASSERT_EQUAL_size_t(12345, app_len);
+  }
+}
+
+static void test_message_len_accepts_full_well_formed_message(void) {
+  /* A genuine, fully-present STUN message is still parsed correctly. */
+  const uint16_t body_len = 8;
+  uint8_t buf[STUN_HEADER_LENGTH + 8] = {0};
+  make_stun_header(buf, body_len);
+
+  size_t app_len = 0;
+  const int mlen = stun_get_message_len_str(buf, sizeof(buf), 1, &app_len);
+
+  TEST_ASSERT_EQUAL_INT((int)(STUN_HEADER_LENGTH + body_len), mlen);
+  TEST_ASSERT_EQUAL_size_t((size_t)(STUN_HEADER_LENGTH + body_len), app_len);
+}
+
 static void test_http_message_len_handles_non_null_terminated_buffer(void) {
   uint8_t buf[] = {'G', 'E', 'T', ' ', '/', ' ', 'H', 'T', 'T', 'P', '/', '1', '.', '1', '\r', '\n', '\r', '\n'};
   size_t app_len = 0;
@@ -161,6 +221,8 @@ int main(void) {
   RUN_TEST(test_zeroed_buffer_is_not_command_message);
   RUN_TEST(test_channel_message_roundtrip);
   RUN_TEST(test_challenge_response_null_terminates_max_length_server_name);
+  RUN_TEST(test_message_len_does_not_overflow_uint16);
+  RUN_TEST(test_message_len_accepts_full_well_formed_message);
   RUN_TEST(test_http_message_len_handles_non_null_terminated_buffer);
   return UNITY_END();
 }
