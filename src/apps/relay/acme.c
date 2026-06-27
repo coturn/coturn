@@ -74,13 +74,27 @@ int try_acme_redirect(char *req, size_t len, const char *url, ioa_socket_handle 
   if (url == NULL || url[0] == '\0' || req == NULL || s == 0) {
     return 1;
   }
-  size_t plen;
+  // is_acme_req() returns a negative int on every rejection path. Capture it in
+  // a signed int and reject negatives *before* any unsigned use: assigning the
+  // negative value into a size_t would wrap it to a huge number that slips past
+  // the lower-bound guard, leaving the path un-terminated and causing the %s
+  // below to over-read adjacent heap into the response (CVE: heap disclosure).
+  int prc;
   if (len < (GET_ACME_PREFIX_LEN + 32) || len > (512 - GET_ACME_PREFIX_LEN) ||
-      (plen = is_acme_req(req, len)) < (GET_ACME_PREFIX_LEN + 1)) {
+      (prc = is_acme_req(req, len)) < (int)(GET_ACME_PREFIX_LEN + 1)) {
     return 2;
   }
+  size_t plen = (size_t)prc;
 
-  req[plen] = '\0';
+  // Copy the path out and NUL-terminate it locally rather than mutating the
+  // shared receive buffer in place (req[plen] = '\0' / ' ').
+  size_t path_len = plen - GET_ACME_PREFIX_LEN;
+  char path[131 + 1] = {0};
+  if (path_len >= sizeof(path)) {
+    return 2;
+  }
+  memcpy(path, req + GET_ACME_PREFIX_LEN, path_len);
+  path[path_len] = '\0';
 
   snprintf(http_response, sizeof(http_response) - 1,
            "HTTP/1.1 301 Moved Permanently\r\n"
@@ -89,7 +103,7 @@ int try_acme_redirect(char *req, size_t len, const char *url, ioa_socket_handle 
            "Connection: close\r\n"
            "Location: %s%s\r\n"
            "\r\n%s",
-           strlen(HTML), url, req + GET_ACME_PREFIX_LEN, HTML);
+           strlen(HTML), url, path, HTML);
 
   size_t rlen = strlen(http_response);
 
@@ -101,13 +115,11 @@ int try_acme_redirect(char *req, size_t len, const char *url, ioa_socket_handle 
   send_data_from_ioa_socket_nbh(s, NULL, nbh_acme, TTL_IGNORE, TOS_IGNORE, NULL);
 #else
   if (write(s->fd, http_response, rlen) == -1) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Sending redirect to '%s%s' failed", url, req + GET_ACME_PREFIX_LEN);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Sending redirect to '%s%s' failed", url, path);
   } else if (((turn_turnserver *)s->session->server)->verbose) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "ACME redirected to %s%s\n", url, req + GET_ACME_PREFIX_LEN);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "ACME redirected to %s%s\n", url, path);
   }
 #endif
-
-  req[plen] = ' ';
 
   return 0;
 }
