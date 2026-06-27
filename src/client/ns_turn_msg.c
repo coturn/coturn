@@ -2357,18 +2357,21 @@ static bool encode_oauth_token_gcm(const uint8_t *server_name, encoded_oauth_tok
 
     /* Initialize the encryption operation. */
     if (1 != EVP_EncryptInit_ex(ctxp, cipher, NULL, NULL, NULL)) {
-      return -1;
+      EVP_CIPHER_CTX_free(ctxp);
+      return false;
     }
 
     EVP_CIPHER_CTX_set_padding(ctxp, 1);
 
     /* Set IV length if default 12 bytes (96 bits) is not appropriate */
     if (1 != EVP_CIPHER_CTX_ctrl(ctxp, EVP_CTRL_GCM_SET_IVLEN, OAUTH_GCM_NONCE_SIZE, NULL)) {
+      EVP_CIPHER_CTX_free(ctxp);
       return false;
     }
 
     /* Initialize key and IV */
     if (1 != EVP_EncryptInit_ex(ctxp, NULL, NULL, (const unsigned char *)key->as_rs_key, nonce)) {
+      EVP_CIPHER_CTX_free(ctxp);
       return false;
     }
 
@@ -2379,6 +2382,7 @@ static bool encode_oauth_token_gcm(const uint8_t *server_name, encoded_oauth_tok
      * required
      */
     if (1 != my_EVP_EncryptUpdate(ctxp, NULL, &outl, server_name, (int)sn_len)) {
+      EVP_CIPHER_CTX_free(ctxp);
       return false;
     }
 
@@ -2390,7 +2394,8 @@ static bool encode_oauth_token_gcm(const uint8_t *server_name, encoded_oauth_tok
     len -= OAUTH_GCM_NONCE_SIZE + 2;
 
     if (1 != my_EVP_EncryptUpdate(ctxp, encoded_field, &outl, start_field, (int)len)) {
-      return -1;
+      EVP_CIPHER_CTX_free(ctxp);
+      return false;
     }
 
     int tmp_outl = 0;
@@ -2454,6 +2459,7 @@ static bool decode_oauth_token_gcm(const uint8_t *server_name, const encoded_oau
     /* Initialize the decryption operation. */
     if (1 != EVP_DecryptInit_ex(ctxp, cipher, NULL, NULL, NULL)) {
       OAUTH_ERROR("%s: Cannot initialize decryption\n", __FUNCTION__);
+      EVP_CIPHER_CTX_free(ctxp);
       return false;
     }
 
@@ -2462,12 +2468,14 @@ static bool decode_oauth_token_gcm(const uint8_t *server_name, const encoded_oau
     /* Set IV length if default 12 bytes (96 bits) is not appropriate */
     if (1 != EVP_CIPHER_CTX_ctrl(ctxp, EVP_CTRL_GCM_SET_IVLEN, nonce_len, NULL)) {
       OAUTH_ERROR("%s: Cannot set nonce length\n", __FUNCTION__);
+      EVP_CIPHER_CTX_free(ctxp);
       return false;
     }
 
     /* Initialize key and IV */
     if (1 != EVP_DecryptInit_ex(ctxp, NULL, NULL, (const unsigned char *)key->as_rs_key, nonce)) {
       OAUTH_ERROR("%s: Cannot set nonce\n", __FUNCTION__);
+      EVP_CIPHER_CTX_free(ctxp);
       return false;
     }
 
@@ -2483,10 +2491,12 @@ static bool decode_oauth_token_gcm(const uint8_t *server_name, const encoded_oau
      */
     if (1 != my_EVP_DecryptUpdate(ctxp, NULL, &outl, server_name, (int)sn_len)) {
       OAUTH_ERROR("%s: Cannot decrypt update server_name: %s, len=%d\n", __FUNCTION__, server_name, (int)sn_len);
+      EVP_CIPHER_CTX_free(ctxp);
       return false;
     }
     if (1 != my_EVP_DecryptUpdate(ctxp, decoded_field, &outl, encoded_field, (int)encoded_field_size)) {
       OAUTH_ERROR("%s: Cannot decrypt update\n", __FUNCTION__);
+      EVP_CIPHER_CTX_free(ctxp);
       return false;
     }
 
