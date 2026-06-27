@@ -962,11 +962,16 @@ int stun_get_message_len_str(uint8_t *buf, size_t blen, int padding, size_t *app
       if (!STUN_VALID_CHANNEL(nswap16(((const uint16_t *)buf)[0]))) {
         if ((((uint8_t)buf[0]) & ((uint8_t)(0xC0))) == 0) {
           if (nswap32(((const uint32_t *)(buf))[1]) == STUN_MAGIC_COOKIE) {
-            uint16_t len = nswap16(((const uint16_t *)(buf))[1]);
-            if ((len & 0x0003) == 0) {
+            /* Use uint32_t to avoid uint16_t truncation overflow when the body
+             * length is near 0xFFFF: e.g. 65532 + STUN_HEADER_LENGTH (20) =
+             * 65552, which wraps to 16 in uint16_t and lets the truncated value
+             * pass the bounds check, desynchronizing TCP/TLS framing. Mirrors
+             * the channel-data path below. */
+            uint32_t len = (uint32_t)nswap16(((const uint16_t *)(buf))[1]);
+            if ((len & 0x0003u) == 0) {
               len += STUN_HEADER_LENGTH;
-              if ((size_t)len <= blen) {
-                *app_len = (size_t)len;
+              if (len <= blen) {
+                *app_len = len;
                 return (int)len;
               }
             }
