@@ -916,7 +916,7 @@ static char *_WTA(__in wchar_t *pszInBuf, __in int nInSize, __out char **pszOutB
   // if MultiByteToWideChar is provided a length for the input, it does not add space for a nul-terminator
   // and we have to add space to the allocation ourselves.
   (*pnOutSize)++;
-  *pszOutBuf = malloc((size_t)*pnOutSize);
+  *pszOutBuf = malloc(*pnOutSize * sizeof(char));
   if (!pszOutBuf) {
     return NULL;
   }

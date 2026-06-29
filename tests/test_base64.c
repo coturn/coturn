@@ -34,6 +34,26 @@ static void test_decode_high_bit_bytes_are_not_oob(void) {
   free(out);
 }
 
+static void test_decode_one_padding_char(void) {
+  size_t out_len = 0;
+  unsigned char *out = base64_decode("Zm8=", 4, &out_len); /* "fo" */
+
+  TEST_ASSERT_NOT_NULL(out);
+  TEST_ASSERT_EQUAL_size_t(2, out_len);
+  TEST_ASSERT_EQUAL_MEMORY("fo", out, 2);
+  free(out);
+}
+
+static void test_decode_two_padding_chars(void) {
+  size_t out_len = 0;
+  unsigned char *out = base64_decode("Zg==", 4, &out_len); /* "f" */
+
+  TEST_ASSERT_NOT_NULL(out);
+  TEST_ASSERT_EQUAL_size_t(1, out_len);
+  TEST_ASSERT_EQUAL_MEMORY("f", out, 1);
+  free(out);
+}
+
 /* Empty input must not read data[-1]/data[-2] when probing for padding. */
 static void test_decode_empty_input_returns_null(void) {
   size_t out_len = 123;
@@ -47,6 +67,8 @@ int main(void) {
   UNITY_BEGIN();
   RUN_TEST(test_decode_roundtrips_ascii);
   RUN_TEST(test_decode_high_bit_bytes_are_not_oob);
+  RUN_TEST(test_decode_one_padding_char);
+  RUN_TEST(test_decode_two_padding_chars);
   RUN_TEST(test_decode_empty_input_returns_null);
   return UNITY_END();
 }
