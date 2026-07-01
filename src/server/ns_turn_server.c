@@ -4741,6 +4741,7 @@ static int read_client_connection(turn_turnserver *server, ts_ur_super_session *
   if (sat == HTTP_CLIENT_SOCKET) {
 
     if (server->verbose) {
+      ((char *)ioa_network_buffer_data(in_buffer->nbh))[ioa_network_buffer_get_size(in_buffer->nbh)] = 0;
       TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: HTTP connection input: %s\n", __FUNCTION__,
                     (char *)ioa_network_buffer_data(in_buffer->nbh));
     }
