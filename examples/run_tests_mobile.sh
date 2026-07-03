@@ -47,9 +47,9 @@ fi
 
 # Match run_tests.sh: enable the Linux-only recvmmsg drain path so the
 # mobility run also exercises it.
-TURNSERVER_EXTRA_ARGS=""
+TURNSERVER_EXTRA_ARGS="--relay-threads=1"
 if [ "$(uname -s)" = "Linux" ]; then
-    TURNSERVER_EXTRA_ARGS="--udp-recvmmsg"
+    TURNSERVER_EXTRA_ARGS="$TURNSERVER_EXTRA_ARGS  --udp-recvmmsg "
     echo "Using TURNSERVER_EXTRA_ARGS=\"$TURNSERVER_EXTRA_ARGS\""
 fi
 
