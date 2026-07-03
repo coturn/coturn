@@ -131,7 +131,7 @@ spec:
               fi
           securityContext:
             allowPrivilegeEscalation: false
-            runAsRoot: false
+            runAsNonRoot: true
             runAsUser: 65534 # non-root user in alpine
       containers:
         - name: {{ .Chart.Name }}
