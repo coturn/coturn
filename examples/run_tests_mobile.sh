@@ -54,11 +54,9 @@ if [ "$(uname -s)" = "Linux" ]; then
 fi
 
 echo 'Running turnserver (--mobility)'
-if [ $IS_DARWIN -eq 1 ]; then
-    $BINDIR/turnserver --use-auth-secret --sock-buf-size=1048576 --static-auth-secret=secret --realm=north.gov --allow-loopback-peers --mobility --cert ../examples/ca/turn_server_cert.pem --pkey ../examples/ca/turn_server_pkey.pem > /dev/null &
-else
-    $BINDIR/turnserver --use-auth-secret --sock-buf-size=1048576 --static-auth-secret=secret --realm=north.gov --allow-loopback-peers --mobility --log-file=stdout --simple-log $TURNSERVER_EXTRA_ARGS --cert ../examples/ca/turn_server_cert.pem --pkey ../examples/ca/turn_server_pkey.pem > "$TURNSERVER_LOG" 2>&1 &
-fi
+# Always capture the server log (both platforms): the handoff assertion below
+# greps it for the RFC 8016 dual-5-tuple transition marker.
+$BINDIR/turnserver --use-auth-secret --sock-buf-size=1048576 --static-auth-secret=secret --realm=north.gov --allow-loopback-peers --mobility --log-file=stdout --simple-log $TURNSERVER_EXTRA_ARGS --cert ../examples/ca/turn_server_cert.pem --pkey ../examples/ca/turn_server_pkey.pem > "$TURNSERVER_LOG" 2>&1 &
 turnserver_pid="$!"
 
 echo 'Running peer client'
@@ -131,9 +129,30 @@ run_uclient() {
     fi
 }
 
+# Assert the RFC 8016 dual-5-tuple handoff actually executed on the server. Each
+# -M resume drives handle_turn_refresh into the transition path, and the client's
+# first packet on the new 5-tuple promotes the allocation, emitting this marker.
+# Its presence proves the handoff code ran end-to-end, not merely that a resume
+# response was returned.
+assert_handoff() {
+    echo "Checking mobility handoff marker"
+    local n
+    n=$(grep -c "mobility handoff completed" "$TURNSERVER_LOG" 2>/dev/null)
+    if [ "${n:-0}" -ge 1 ]; then
+        echo "OK (mobility handoff x$n)"
+    else
+        echo "FAIL: no 'mobility handoff completed' marker in server log"
+        echo "--- turnserver log (mobility lines) ---"
+        grep -iE "mobil|handoff|refresh" "$TURNSERVER_LOG" 2>/dev/null | tail -20
+        exit 1
+    fi
+}
+
 # Legacy single-threaded uclient.
 run_uclient "mobile turn client UDP"
 run_uclient "mobile turn client TCP" -t
+
+assert_handoff
 
 if [ $IS_DARWIN -eq 1 ]; then
     # macOS loopback is unreliable for the mobility reopen beyond plain UDP;

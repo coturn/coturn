@@ -143,6 +143,10 @@ static inline void log_method(ts_ur_super_session *ss, const char *method, int e
 
 static int attach_socket_to_session(turn_turnserver *server, ioa_socket_handle s, ts_ur_super_session *ss);
 
+/* RFC 8016 mobility handoff helpers (defined near handle_turn_refresh). */
+static ts_ur_super_session *mobile_complete_transition(turn_turnserver *server, ts_ur_super_session *pending_ss);
+static void mobile_abort_transition(turn_turnserver *server, ts_ur_super_session *orig_ss);
+
 static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stun_tid *tid, int *resp_constructed,
                            int *err_code, const uint8_t **reason, ioa_net_data *in_buffer,
                            ioa_network_buffer_handle nbh, uint16_t method, int *message_integrity, int *postpone_reply,
@@ -1066,6 +1070,13 @@ static bool sweep_session_cb(ur_map_key_type key, ur_map_value_type value, void 
   if (value) {
     ts_ur_super_session *ss = (ts_ur_super_session *)value;
     turn_turnserver *server = (turn_turnserver *)arg;
+    /* RFC 8016: if a mobility handoff has been open past its deadline without the
+     * client sending on the new path, abandon it — keep the allocation on the
+     * old path and reap the pending session. Only marks sessions to_be_closed /
+     * clears links, so it is safe during map iteration. */
+    if (ss->mobile_pending_resume && !turn_time_before(server->ctime, ss->mobile_transition_deadline)) {
+      mobile_abort_transition(server, ss);
+    }
     sweep_allocation_timed_events(server, get_allocation_ss(ss));
   }
   return false; /* keep iterating all sessions */
@@ -1633,6 +1644,102 @@ static void copy_auth_parameters(ts_ur_super_session *orig_ss, ts_ur_super_sessi
   }
 }
 
+/* RFC 8016 graceful dual-5-tuple mobility handoff.
+ *
+ * A mobility resume does not hard-switch the allocation onto the new client
+ * path at REFRESH time. Instead the allocation stays on the original session
+ * (peer->client keeps flowing to the old 5-tuple) and the resuming session is
+ * kept alive and linked as "pending". The allocation is promoted onto the new
+ * socket on the first client->peer datagram (Send indication / ChannelData) on
+ * the new path, or aborted back to the old path if a bounded deadline elapses
+ * with no such datagram. See docs/mobility-rfc8016.md. */
+
+/* Seconds to keep the dual-5-tuple transition open waiting for the client to
+ * send on the new path before conservatively abandoning it (keeping the old
+ * path). The RFC-conformant trigger is the client's first Send/ChannelData on
+ * the new 5-tuple, which in practice arrives well within this window. */
+#define MOBILITY_TRANSITION_TIMEOUT (30)
+
+/* Link a resuming session (new client path) to its allocation session and open
+ * the transition window. orig_ss keeps the allocation and the old client
+ * socket; pending_ss keeps the new client socket and is kept alive for the
+ * window (its un-allocated watchdog is disarmed and its stray mobile-map entry
+ * removed, since it owns no allocation of its own). */
+static void mobile_begin_transition(turn_turnserver *server, ts_ur_super_session *orig_ss,
+                                    ts_ur_super_session *pending_ss) {
+  /* A pending session must never itself be resumable. */
+  delete_session_from_mobile_map(pending_ss);
+  /* Do not let the un-allocated watchdog reap the pending session; it owns no
+   * allocation until (and unless) it is promoted. */
+  IOA_EVENT_DEL(pending_ss->to_be_allocated_timeout_ev);
+
+  orig_ss->mobile_pending_resume = pending_ss->id;
+  orig_ss->mobile_transition_deadline = server->ctime + MOBILITY_TRANSITION_TIMEOUT;
+  pending_ss->mobile_resume_target = orig_ss->id;
+
+  if (server->verbose) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+                  "session %018llu: mobility handoff started (dual-5-tuple transition to session %018llu)\n",
+                  (unsigned long long)orig_ss->id, (unsigned long long)pending_ss->id);
+  }
+}
+
+/* Promote the allocation onto the pending session's new client socket: move the
+ * socket into the original allocation session, close the old client socket
+ * (discarding the old 5-tuple), tear down the now-spent pending session, and
+ * return the allocation session (now living on the new path). Returns NULL on
+ * failure or if the allocation session no longer exists. */
+static ts_ur_super_session *mobile_complete_transition(turn_turnserver *server, ts_ur_super_session *pending_ss) {
+  ts_ur_super_session *orig_ss = get_session_from_map(server, pending_ss->mobile_resume_target);
+
+  /* Clear the link regardless of outcome so we never promote twice. */
+  pending_ss->mobile_resume_target = 0;
+  if (!orig_ss) {
+    return NULL;
+  }
+  orig_ss->mobile_pending_resume = 0;
+  orig_ss->mobile_transition_deadline = 0;
+
+  ioa_socket_handle s = detach_ioa_socket(pending_ss->client_socket);
+  pending_ss->to_be_closed = 1;
+  if (!s) {
+    return NULL;
+  }
+
+  if (attach_socket_to_session(server, s, orig_ss) < 0) {
+    if (orig_ss->client_socket != s) {
+      IOA_CLOSE_SOCKET(s);
+    }
+    return NULL;
+  }
+
+  /* Carry the resuming session's (refreshed) auth context onto the allocation
+   * session; both hold the same owner credentials after the resume. The pending
+   * session's quota unit is released when it is torn down (to_be_closed above ->
+   * shutdown_client_connection -> dec_quota), so we do not release it here. */
+  if (pending_ss->hmackey_set) {
+    copy_auth_parameters(pending_ss, orig_ss);
+  }
+
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+                "session %018llu: mobility handoff completed (allocation moved to new client path)\n",
+                (unsigned long long)orig_ss->id);
+
+  return orig_ss;
+}
+
+/* Abandon a transition that timed out (or whose pending session died): keep the
+ * allocation on the original/old path and reap the pending session. */
+static void mobile_abort_transition(turn_turnserver *server, ts_ur_super_session *orig_ss) {
+  ts_ur_super_session *pending_ss = get_session_from_map(server, orig_ss->mobile_pending_resume);
+  orig_ss->mobile_pending_resume = 0;
+  orig_ss->mobile_transition_deadline = 0;
+  if (pending_ss && pending_ss->mobile_resume_target == orig_ss->id) {
+    pending_ss->mobile_resume_target = 0;
+    pending_ss->to_be_closed = 1;
+  }
+}
+
 static int handle_turn_refresh(turn_turnserver *server, ts_ur_super_session *ss, stun_tid *tid, int *resp_constructed,
                                int *err_code, const uint8_t **reason, uint16_t *unknown_attrs, uint16_t *ua_num,
                                ioa_net_data *in_buffer, ioa_network_buffer_handle nbh, int message_integrity,
@@ -1797,8 +1904,9 @@ static int handle_turn_refresh(turn_turnserver *server, ts_ur_super_session *ss,
 
           ts_ur_super_session *orig_ss = get_session_from_mobile_map(server, mid);
           if (!orig_ss || orig_ss->to_be_closed || ioa_socket_tobeclosed(orig_ss->client_socket)) {
-            *err_code = 404;
-            *reason = (const uint8_t *)"Allocation not found";
+            /* RFC 8016: an unusable/unknown ticket is an Allocation Mismatch. */
+            *err_code = 437;
+            *reason = (const uint8_t *)"Allocation Mismatch";
           } else if (orig_ss == ss) {
             *err_code = 437;
             *reason = (const uint8_t *)"Invalid allocation";
@@ -1865,78 +1973,63 @@ static int handle_turn_refresh(turn_turnserver *server, ts_ur_super_session *ss,
 
               } else {
 
-                // Transfer socket:
+                // RFC 8016 graceful handoff: keep the allocation on orig_ss so
+                // peer->client traffic keeps flowing to the old 5-tuple, and open
+                // a dual-5-tuple transition rather than hard-switching now. The
+                // allocation is promoted onto this new socket on the client's
+                // first Send/ChannelData on the new path (see read_client_connection),
+                // or abandoned back to the old path after a bounded deadline (see
+                // the per-session sweep).
 
-                ioa_socket_handle s = detach_ioa_socket(ss->client_socket);
+                // Rotate the mobility ticket (the new ticket MUST differ from the
+                // old) and re-key orig_ss in the mobile map under the new id.
+                delete_session_from_mobile_map(orig_ss);
+                put_session_into_mobile_map(orig_ss);
+                orig_ss->old_mobile_id = mid;
 
-                ss->to_be_closed = 1;
+                mobile_begin_transition(server, orig_ss, ss);
 
-                if (!s) {
-                  *err_code = 500;
-                } else {
+                turn_report_allocation_set(&(orig_ss->alloc), lifetime, 1);
 
-                  if (attach_socket_to_session(server, s, orig_ss) < 0) {
-                    if (orig_ss->client_socket != s) {
-                      IOA_CLOSE_SOCKET(s);
-                    }
-                    *err_code = 500;
-                  } else {
+                // Build the REFRESH success response carrying the new ticket. It
+                // is sent on the resuming session's new socket (ss is left as the
+                // pending session), so the roaming client learns the allocation
+                // survived the move.
+                nbh = ioa_network_buffer_allocate(server->e);
+                size_t len = ioa_network_buffer_get_size(nbh);
 
-                    if (ss->hmackey_set) {
-                      copy_auth_parameters(ss, orig_ss);
-                    }
+                stun_init_success_response_str(STUN_METHOD_REFRESH, ioa_network_buffer_data(nbh), &len, tid);
+                uint32_t lt = nswap32(lifetime);
 
-                    delete_session_from_mobile_map(ss);
-                    delete_session_from_mobile_map(orig_ss);
-                    put_session_into_mobile_map(orig_ss);
+                stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_LIFETIME, (const uint8_t *)&lt, 4);
+                ioa_network_buffer_set_size(nbh, len);
 
-                    // Use new buffer and redefine ss:
-                    nbh = ioa_network_buffer_allocate(server->e);
+                stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_MOBILITY_TICKET,
+                                  (uint8_t *)orig_ss->s_mobile_id, strlen(orig_ss->s_mobile_id));
+                ioa_network_buffer_set_size(nbh, len);
 
-                    dec_quota(ss);
-                    ss = orig_ss;
-                    inc_quota(ss, ss->username);
+                maybe_add_software_attribute(server, nbh);
 
-                    ss->old_mobile_id = mid;
-                    size_t len = ioa_network_buffer_get_size(nbh);
-
-                    turn_report_allocation_set(&(ss->alloc), lifetime, 1);
-
-                    stun_init_success_response_str(STUN_METHOD_REFRESH, ioa_network_buffer_data(nbh), &len, tid);
-                    uint32_t lt = nswap32(lifetime);
-
-                    stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_LIFETIME, (const uint8_t *)&lt,
-                                      4);
-                    ioa_network_buffer_set_size(nbh, len);
-
-                    stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_MOBILITY_TICKET,
-                                      (uint8_t *)ss->s_mobile_id, strlen(ss->s_mobile_id));
-                    ioa_network_buffer_set_size(nbh, len);
-
-                    maybe_add_software_attribute(server, nbh);
-
-                    if (message_integrity) {
-                      size_t len = ioa_network_buffer_get_size(nbh);
-                      stun_attr_add_integrity_str(server->ct, ioa_network_buffer_data(nbh), &len, ss->hmackey, ss->pwd,
-                                                  SHATYPE_DEFAULT);
-                      ioa_network_buffer_set_size(nbh, len);
-                    }
-
-                    if ((server->fingerprint) || ss->enforce_fingerprints) {
-                      size_t len = ioa_network_buffer_get_size(nbh);
-                      if (!stun_attr_add_fingerprint_str(ioa_network_buffer_data(nbh), &len)) {
-                        *err_code = 500;
-                        ioa_network_buffer_delete(server->e, nbh);
-                        return -1;
-                      }
-                      ioa_network_buffer_set_size(nbh, len);
-                    }
-
-                    *no_response = 1;
-
-                    return write_client_connection(server, ss, nbh, TTL_IGNORE, TOS_IGNORE);
-                  }
+                if (message_integrity) {
+                  size_t ilen = ioa_network_buffer_get_size(nbh);
+                  stun_attr_add_integrity_str(server->ct, ioa_network_buffer_data(nbh), &ilen, ss->hmackey, ss->pwd,
+                                              SHATYPE_DEFAULT);
+                  ioa_network_buffer_set_size(nbh, ilen);
                 }
+
+                if ((server->fingerprint) || ss->enforce_fingerprints) {
+                  size_t flen = ioa_network_buffer_get_size(nbh);
+                  if (!stun_attr_add_fingerprint_str(ioa_network_buffer_data(nbh), &flen)) {
+                    *err_code = 500;
+                    ioa_network_buffer_delete(server->e, nbh);
+                    return -1;
+                  }
+                  ioa_network_buffer_set_size(nbh, flen);
+                }
+
+                *no_response = 1;
+
+                return write_client_connection(server, ss, nbh, TTL_IGNORE, TOS_IGNORE);
               }
             }
 
@@ -4346,6 +4439,27 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
     return 0;
   }
 
+  /* RFC 8016 mobility handoff: this session is being freed. If it is part of a
+   * transition, unlink its peer so a surviving allocation session doesn't wait
+   * on a dead pending resume (and vice versa). */
+  if (ss->mobile_resume_target) {
+    ts_ur_super_session *tgt = get_session_from_map(server, ss->mobile_resume_target);
+    if (tgt && tgt->mobile_pending_resume == ss->id) {
+      tgt->mobile_pending_resume = 0;
+      tgt->mobile_transition_deadline = 0;
+    }
+    ss->mobile_resume_target = 0;
+  }
+  if (ss->mobile_pending_resume) {
+    ts_ur_super_session *pend = get_session_from_map(server, ss->mobile_pending_resume);
+    if (pend && pend->mobile_resume_target == ss->id) {
+      pend->mobile_resume_target = 0;
+      pend->to_be_closed = 1;
+    }
+    ss->mobile_pending_resume = 0;
+    ss->mobile_transition_deadline = 0;
+  }
+
   if (eve(server->verbose)) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "closing session %p, client socket %p (socket session=%p)\n", ss,
                   ss->client_socket, get_ioa_socket_session(ss->client_socket));
@@ -4713,6 +4827,21 @@ static int read_client_connection(turn_turnserver *server, ts_ur_super_session *
       ioa_socket_tobeclosed(ss->client_socket)) {
     FUNCEND;
     return -1;
+  }
+
+  /* RFC 8016 mobility handoff: this is the client's first packet on the new
+   * 5-tuple after a resume. Complete the transition now — promote the allocation
+   * onto this socket and process the packet against the allocation session.
+   * Peer->client relayed traffic stayed on the old 5-tuple up to this point
+   * (make-before-break); the client's activity here is what ends that window
+   * (RFC 8016 uses the first Send/ChannelData as the trigger — we also promote
+   * on control requests such as CreatePermission/ChannelBind so they are served
+   * by the allocation rather than the pending session). */
+  if (ss->mobile_resume_target) {
+    ts_ur_super_session *promoted = mobile_complete_transition(server, ss);
+    if (promoted) {
+      ss = promoted;
+    }
   }
 
   const int ret = (int)ioa_network_buffer_get_size(in_buffer->nbh);
