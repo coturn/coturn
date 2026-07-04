@@ -67,6 +67,8 @@ jobs:
         working-directory: examples/
       - run: ./run_tests_conf.sh
         working-directory: examples/
+      - run: ./run_tests_mobile.sh
+        working-directory: examples/
 
   tidy:
     runs-on: ubuntu-latest

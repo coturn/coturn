@@ -1818,9 +1818,14 @@ static int handle_turn_refresh(turn_turnserver *server, ts_ur_super_session *ss,
             // Check security:
             int postpone_reply = 0;
 
-            if (!(ss->hmackey_set)) {
-              copy_auth_parameters(orig_ss, ss);
-            }
+            // A mobility resume must be authorized by the ORIGINAL allocation's
+            // owner. Unconditionally adopt the original session's credentials so
+            // that check_stun_auth() below verifies this REFRESH's
+            // MESSAGE-INTEGRITY (and USERNAME/REALM) against the original owner's
+            // key. Gating this on the resuming session being unauthenticated let
+            // an already-authenticated session be validated against its own
+            // credentials rather than the resumed allocation's owner.
+            copy_auth_parameters(orig_ss, ss);
 
             if (check_stun_auth(server, ss, tid, resp_constructed, err_code, reason, in_buffer, nbh,
                                 STUN_METHOD_REFRESH, &message_integrity, &postpone_reply, can_resume) < 0) {
@@ -4741,6 +4746,7 @@ static int read_client_connection(turn_turnserver *server, ts_ur_super_session *
   if (sat == HTTP_CLIENT_SOCKET) {
 
     if (server->verbose) {
+      ((char *)ioa_network_buffer_data(in_buffer->nbh))[ioa_network_buffer_get_size(in_buffer->nbh)] = 0;
       TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: HTTP connection input: %s\n", __FUNCTION__,
                     (char *)ioa_network_buffer_data(in_buffer->nbh));
     }

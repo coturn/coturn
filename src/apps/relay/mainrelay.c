@@ -2773,7 +2773,7 @@ static void read_config_file(int argc, char **argv, int pass) {
         size_t slen = strlen(s);
 
         // strip white-spaces from config file lines end
-        while (slen && isspace(s[slen - 1])) {
+        while (slen && isspace((unsigned char)s[slen - 1])) {
           s[--slen] = 0;
         }
         if (slen) {

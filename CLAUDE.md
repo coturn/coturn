@@ -54,6 +54,13 @@ cd examples
                                 # DTLS) on the small port range opened by
                                 # --multiplex-peer-port. Auto-enables
                                 # --udp-recvmmsg on Linux.
+./run_tests_mobile.sh           # starts the server with --mobility (MICE)
+                                # and drives -M clients so the
+                                # MOBILITY-TICKET session-resume branch in
+                                # handle_turn_refresh gets automated
+                                # coverage. UDP/TCP only (legacy + threaded);
+                                # -M over TLS/DTLS re-handshakes mid-run and
+                                # is non-deterministic on loopback.
 ./run_tests_prom.sh             # only when Prometheus support is built
 cd ..
 
@@ -83,7 +90,7 @@ docker run --rm \
        ctest --test-dir build-linux --output-on-failure && \
        rm -rf build && ln -s build-linux build && \
        cd examples && ./run_tests.sh && ./run_tests_conf.sh && \
-       ./run_tests_multiplex_peer.sh'
+       ./run_tests_mobile.sh && ./run_tests_multiplex_peer.sh'
 ```
 
 Also validate the packaged Docker image:
