@@ -1346,7 +1346,7 @@ unsigned char *base64_decode(const char *data, size_t input_length, size_t *outp
     return NULL;
   }
 
-  *output_length = input_length - input_length / 4;
+  *output_length = input_length / 4 * 3;
   if (data[input_length - 1] == '=') {
     (*output_length)--;
   }
