@@ -1107,7 +1107,11 @@ void print_abs_file_name(const char *msg1, const char *msg2, const char *fn) {
     }
   }
   if (absfn[0]) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s%s file found: %s\n", msg1, msg2, absfn);
+    if (access(absfn, R_OK) == 0) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s%s file found: %s\n", msg1, msg2, absfn);
+    } else {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "%s%s file not found or not readable: %s\n", msg1, msg2, absfn);
+    }
   }
 }
 

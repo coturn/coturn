@@ -230,6 +230,7 @@ typedef struct _turn_params_ {
   uint16_t tls_listener_port;
   uint16_t alt_listener_port;
   uint16_t alt_tls_listener_port;
+  bool tls_port_configured;
   uint16_t tcp_proxy_port;
   bool rfc5780;
 
