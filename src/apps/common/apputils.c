@@ -60,6 +60,11 @@
 
 #if defined(_MSC_VER)
 #include <direct.h>
+#include <io.h>
+#ifndef R_OK
+#define R_OK 4 /* MSVC has no R_OK; 4 is the _access() read-permission mode */
+#endif
+#define access _access /* the POSIX name is deprecated in the MSVC CRT (C4996) */
 #else
 #include <unistd.h>
 #endif
