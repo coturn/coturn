@@ -143,6 +143,7 @@ turn_params_t turn_params = {
     DEFAULT_STUN_TLS_PORT, /* tls_listener_port */
     0,                     /* alt_listener_port */
     0,                     /* alt_tls_listener_port */
+    false,                 /* tls_port_configured */
     0,                     /* tcp_proxy_port */
     false,                 /* rfc5780 */
 
@@ -2205,12 +2206,14 @@ static void set_option(int c, char *value) {
     break;
   case TLS_PORT_OPT:
     turn_params.tls_listener_port = get_port_value(value);
+    turn_params.tls_port_configured = true;
     break;
   case ALT_PORT_OPT:
     turn_params.alt_listener_port = get_port_value(value);
     break;
   case ALT_TLS_PORT_OPT:
     turn_params.alt_tls_listener_port = get_port_value(value);
+    turn_params.tls_port_configured = true;
     break;
   case TCP_PROXY_PORT_OPT:
     turn_params.tcp_proxy_port = get_port_value(value);
@@ -4239,6 +4242,14 @@ static void openssl_setup(void) {
 
   if (!(turn_params.no_tls && turn_params.no_dtls)) {
     adjust_key_file_names();
+  }
+
+  if (turn_params.tls_port_configured && turn_params.no_tls && turn_params.no_dtls) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+                  "tls-listening-port %d is configured, but the TLS and DTLS listeners are disabled "
+                  "(see the messages above). The server will NOT listen on that port. Set valid 'cert' and "
+                  "'pkey' files (readable by the turnserver process) to enable TLS/DTLS.\n",
+                  (int)turn_params.tls_listener_port);
   }
 
   openssl_load_certificates();
