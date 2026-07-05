@@ -246,7 +246,7 @@ int sock_bind_to_device(evutil_socket_t fd, const unsigned char *ifname) {
     struct ifreq ifr;
     memset(&ifr, 0, sizeof(ifr));
 
-    strncpy(ifr.ifr_name, (const char *)ifname, sizeof(ifr.ifr_name));
+    snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), "%s", (const char *)ifname);
 
     if (setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, (const void *)&ifr, sizeof(ifr)) < 0) {
       if (socket_eperm()) {
@@ -952,8 +952,7 @@ int getdomainname(char *name, size_t len) {
         if (nOutSize > len - 1) {
           n = len - 1;
         }
-        strncpy(name, pszOut, n);
-        name[n] = 0;
+        snprintf(name, n + 1, "%s", pszOut);
         TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "DomainForestName: %s\n", pszOut);
       } else {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "wchar convert to char fail");
@@ -973,8 +972,7 @@ int getdomainname(char *name, size_t len) {
         if (nOutSize > len - 1) {
           n = len - 1;
         }
-        strncpy(name, pszOut, n);
-        name[n] = 0;
+        snprintf(name, n + 1, "%s", pszOut);
         TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "DomainNameDns: %s\n", pszOut);
       } else {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "wchar convert to char fail");
@@ -994,8 +992,7 @@ int getdomainname(char *name, size_t len) {
         if (nOutSize > len - 1) {
           n = len - 1;
         }
-        strncpy(name, pszOut, n);
-        name[n] = 0;
+        snprintf(name, n + 1, "%s", pszOut);
         TURN_LOG_FUNC(TURN_LOG_LEVEL_DEBUG, "DomainNameFlat: %s\n", pszOut);
       } else {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "wchar convert to char fail");
@@ -1101,8 +1098,7 @@ void print_abs_file_name(const char *msg1, const char *msg2, const char *fn) {
         }
         const size_t blen = strlen(absfn);
         if (blen < sizeof(absfn) - 1) {
-          strncpy(absfn + blen, "/", sizeof(absfn) - blen);
-          strncpy(absfn + blen + 1, fn, sizeof(absfn) - blen - 1);
+          snprintf(absfn + blen, sizeof(absfn) - blen, "/%s", fn);
         } else {
           STRCPY(absfn, fn);
         }
@@ -1133,9 +1129,7 @@ char *find_config_file(const char *config_file) {
         const size_t dirlen = strlen(config_file_search_dirs[i]);
         size_t fnsz = sizeof(char) * (dirlen + cflen + 10);
         char *fn = (char *)malloc(fnsz + 1);
-        strncpy(fn, config_file_search_dirs[i], fnsz);
-        strncpy(fn + dirlen, config_file, fnsz - dirlen);
-        fn[fnsz] = 0;
+        snprintf(fn, fnsz + 1, "%s%s", config_file_search_dirs[i], config_file);
         FILE *f = fopen(fn, "r");
         if (f) {
           fclose(f);
@@ -1147,20 +1141,7 @@ char *find_config_file(const char *config_file) {
           const size_t celen = strlen(c_execdir);
           fnsz = sizeof(char) * (dirlen + cflen + celen + 10);
           fn = (char *)malloc(fnsz + 1);
-          strncpy(fn, c_execdir, fnsz);
-          size_t fnlen = strlen(fn);
-          if (fnlen < fnsz) {
-            strncpy(fn + fnlen, "/", fnsz - fnlen);
-            fnlen = strlen(fn);
-            if (fnlen < fnsz) {
-              strncpy(fn + fnlen, config_file_search_dirs[i], fnsz - fnlen);
-              fnlen = strlen(fn);
-              if (fnlen < fnsz) {
-                strncpy(fn + fnlen, config_file, fnsz - fnlen);
-              }
-            }
-          }
-          fn[fnsz] = 0;
+          snprintf(fn, fnsz + 1, "%s/%s%s", c_execdir, config_file_search_dirs[i], config_file);
           if (strstr(fn, "//") != fn) {
             f = fopen(fn, "r");
             if (f) {
