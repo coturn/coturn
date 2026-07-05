@@ -706,7 +706,9 @@ static int _mssp_telnet(telnet_t *telnet, char *buffer, size_t size) {
 
     /* remember our next type and increment c for next loop run */
     last = out;
-    next_type = *c++;
+    if (c < buffer + size) {
+      next_type = *c++;
+    }
   }
 
   /* invoke event with our arguments */
