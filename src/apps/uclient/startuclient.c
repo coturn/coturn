@@ -101,13 +101,25 @@ static int get_allocate_address_family(ioa_addr *relay_addr) {
 
 /////////////////////////////////////////
 
-static SSL *tls_connect(ioa_socket_raw fd, ioa_addr *remote_addr, bool *try_again, int connect_cycle) {
+static SSL *tls_connect(ioa_socket_raw fd, ioa_addr *remote_addr, const char *remote_host, bool *try_again,
+                        int connect_cycle) {
 
   const int ctxtype = (int)(((unsigned long)turn_random_number()) % root_tls_ctx_num);
 
   SSL *const ssl = SSL_new(root_tls_ctx[ctxtype]);
 
   SSL_set_alpn_protos(ssl, kALPNProtos, kALPNProtosLen);
+
+  /* RFC 6066 section 3: SNI carries DNS hostnames only, never IP literals. */
+  if (remote_host && remote_host[0]) {
+    struct in_addr v4;
+    struct in6_addr v6;
+    if (inet_pton(AF_INET, remote_host, &v4) != 1 && inet_pton(AF_INET6, remote_host, &v6) != 1) {
+      if (SSL_set_tlsext_host_name(ssl, remote_host) != 1) {
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "%s: cannot set SNI host name '%s'\n", __FUNCTION__, remote_host);
+      }
+    }
+  }
 
   if (use_tcp) {
     SSL_set_fd(ssl, fd);
@@ -328,7 +340,7 @@ start_socket:
 
   if (use_secure && clnet_info) {
     bool try_again = false;
-    clnet_info->ssl = tls_connect(clnet_info->fd, &remote_addr, &try_again, connect_cycle++);
+    clnet_info->ssl = tls_connect(clnet_info->fd, &remote_addr, remote_address, &try_again, connect_cycle++);
     if (!clnet_info->ssl) {
       if (try_again) {
         goto start_socket;
@@ -1778,7 +1790,8 @@ again:
   if (use_secure) {
     bool try_again = false;
     elem->pinfo.tcp_conn[i]->tcp_data_ssl =
-        tls_connect(elem->pinfo.tcp_conn[i]->tcp_data_fd, &(elem->pinfo.remote_addr), &try_again, connect_cycle++);
+        tls_connect(elem->pinfo.tcp_conn[i]->tcp_data_fd, &(elem->pinfo.remote_addr), elem->pinfo.rsaddr, &try_again,
+                    connect_cycle++);
     if (!(elem->pinfo.tcp_conn[i]->tcp_data_ssl)) {
       if (try_again) {
         --elem->pinfo.tcp_conn_number;
