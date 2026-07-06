@@ -240,37 +240,34 @@ spec:
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
 
-        {{- if .Values.tls.enabled }}
+        {{- $reloadDirs := list -}}
+        {{- if .Values.tls.enabled -}}{{- $reloadDirs = append $reloadDirs "/secrets-tls" -}}{{- end -}}
+        {{- if .Values.federate.dtls.enabled -}}{{- $reloadDirs = append $reloadDirs "/coturn-dtls-certificate" -}}{{- end }}
+        {{- if $reloadDirs }}
         - name: {{ .Chart.Name }}-cert-reloader
           image: "{{ .Values.tls.reloaderImage.repository }}:{{ .Values.tls.reloaderImage.tag }}"
           imagePullPolicy: {{ .Values.tls.reloaderImage.pullPolicy }}
           env:
+            # config-reloader-sidecar accepts a comma-separated list of dirs to
+            # watch; SIGUSR2 handler in coturn (reload_ssl_certs) reloads both
+            # TURNS and federation contexts, so one signal covers both certs.
             - name: CONFIG_DIR
-              value: /secrets-tls
+              value: {{ join "," $reloadDirs | quote }}
             - name: PROCESS_NAME
               value: turnserver
             - name: RELOAD_SIGNAL
               value: SIGUSR2
           volumeMounts:
+            {{- if .Values.tls.enabled }}
             - name: secrets-tls
               mountPath: /secrets-tls/
               readOnly: true
-        {{- end }}
-        {{- if .Values.federate.dtls.enabled }}
-        - name: {{ .Chart.Name }}-dtls-cert-reloader
-          image: "{{ .Values.tls.reloaderImage.repository }}:{{ .Values.tls.reloaderImage.tag }}"
-          imagePullPolicy: {{ .Values.tls.reloaderImage.pullPolicy }}
-          env:
-            - name: CONFIG_DIR
-              value: /coturn-dtls-certificate
-            - name: PROCESS_NAME
-              value: turnserver
-            - name: RELOAD_SIGNAL
-              value: SIGUSR2
-          volumeMounts:
+            {{- end }}
+            {{- if .Values.federate.dtls.enabled }}
             - name: coturn-dtls-certificate
               mountPath: /coturn-dtls-certificate/
               readOnly: true
+            {{- end }}
         {{- end }}
 
       {{- if .Values.coturnGracefulTermination }}
