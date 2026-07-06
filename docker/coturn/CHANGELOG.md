@@ -4,6 +4,15 @@ Coturn TURN server Docker image changelog
 
 
 
+## master
+
+### Security updated
+
+- [Debian Linux] "trixie" 20260623 (13.5): <https://github.com/docker-library/official-images/commit/9b0711ed609dceb3046d6606466747914a9caf03>
+
+
+
+
 ## [4.14.0-r0] · 2026-06-22
 [4.14.0-r0]: /../../tree/docker/4.14.0-r0
 
