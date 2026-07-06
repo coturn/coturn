@@ -256,6 +256,22 @@ spec:
               mountPath: /secrets-tls/
               readOnly: true
         {{- end }}
+        {{- if .Values.federate.dtls.enabled }}
+        - name: {{ .Chart.Name }}-dtls-cert-reloader
+          image: "{{ .Values.tls.reloaderImage.repository }}:{{ .Values.tls.reloaderImage.tag }}"
+          imagePullPolicy: {{ .Values.tls.reloaderImage.pullPolicy }}
+          env:
+            - name: CONFIG_DIR
+              value: /coturn-dtls-certificate
+            - name: PROCESS_NAME
+              value: turnserver
+            - name: RELOAD_SIGNAL
+              value: SIGUSR2
+          volumeMounts:
+            - name: coturn-dtls-certificate
+              mountPath: /coturn-dtls-certificate/
+              readOnly: true
+        {{- end }}
 
       {{- if .Values.coturnGracefulTermination }}
       terminationGracePeriodSeconds: {{ .Values.coturnGracePeriodSeconds }}
