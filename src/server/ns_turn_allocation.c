@@ -622,6 +622,7 @@ tcp_connection *create_tcp_connection(uint8_t server_id, allocation *a, stun_tid
     size_t old_sz_mem = a->tcs.sz * sizeof(tcp_connection *);
     tcp_connection **new_elems = realloc(a->tcs.elems, old_sz_mem + sizeof(tcp_connection *));
     if (!new_elems) {
+      free(tc);
       return NULL;
     }
     a->tcs.elems = new_elems;
@@ -742,12 +743,14 @@ void add_unsent_buffer(unsent_buffer *ub, ioa_network_buffer_handle nbh) {
   if (!ub || (ub->sz >= MAX_UNSENT_BUFFER_SIZE)) {
     ioa_network_buffer_delete(NULL, nbh);
   } else {
-    ub->bufs = (ioa_network_buffer_handle *)realloc(ub->bufs, sizeof(ioa_network_buffer_handle) * (ub->sz + 1));
-    if (!ub->bufs) {
+    ioa_network_buffer_handle *new_bufs =
+        (ioa_network_buffer_handle *)realloc(ub->bufs, sizeof(ioa_network_buffer_handle) * (ub->sz + 1));
+    if (!new_bufs) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Memory allocation failed in add_unsent_buffer\n");
       ioa_network_buffer_delete(NULL, nbh);
       return;
     }
+    ub->bufs = new_bufs;
     ub->bufs[ub->sz] = nbh;
     ub->sz += 1;
   }
