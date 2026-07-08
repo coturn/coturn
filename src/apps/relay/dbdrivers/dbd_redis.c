@@ -1325,7 +1325,7 @@ static int redis_list_admin_users(int no_print) {
   for (isz = 0; isz < keys.sz; ++isz) {
     char *s = keys.secrets[isz];
     s += strlen("turn/admin_user/");
-    uint8_t realm[STUN_MAX_REALM_SIZE];
+    uint8_t realm[STUN_MAX_REALM_SIZE + 1];
     password_t pwd;
     if (redis_get_admin_user((const uint8_t *)s, realm, pwd) == 0) {
       ++ret;
