@@ -133,6 +133,32 @@ spec:
             allowPrivilegeEscalation: false
             runAsNonRoot: true
             runAsUser: 65534 # non-root user in alpine
+        {{- if .Values.federate.enabled }}
+        # Pin the federation source port on node egress so the node SNAT
+        # (e.g. AWS VPC CNI --random-fully) does not randomize it and break the
+        # remote peer's return DTLS handshake. Runs in the host
+        # netns because the pod is hostNetwork. See WPB-26112.
+        - name: pin-federation-sport
+          image: alpine:3
+          command: ['/bin/sh', '-c']
+          args:
+            - |
+              apk add --no-cache iptables conntrack-tools
+              P={{ .Values.federate.port }}
+              iptables-nft -t nat -C POSTROUTING -p udp --sport $P -j SNAT --to-source "$NODE_IP:$P" 2>/dev/null || {
+                iptables-nft -t nat -I POSTROUTING 1 -p udp --sport $P -j SNAT --to-source "$NODE_IP:$P"
+                conntrack -D -p udp --orig-port-src $P || true
+              }
+          env:
+            - name: NODE_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+          securityContext:
+            privileged: true
+            capabilities:
+              add: ["NET_ADMIN"]
+        {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository}}:{{ .Values.image.tag | default .Chart.AppVersion }}"
