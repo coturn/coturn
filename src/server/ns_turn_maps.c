@@ -223,26 +223,12 @@ bool lm_map_put(lm_map *map, ur_map_key_type key, ur_map_value_type value) {
     for (size_t i = 0; i < esz; ++i) {
       ur_map_key_type *keyp = a->extra_keys[i];
       ur_map_value_type *valuep = a->extra_values[i];
-      if (keyp && valuep) {
-        if (!(*keyp) || !(*valuep)) {
-          *keyp = key;
-          *valuep = value;
-          return true;
-        }
-      } else {
-        if (!(*keyp)) {
-          a->extra_keys[i] = (ur_map_key_type *)turn_malloc(sizeof(ur_map_key_type));
-          keyp = a->extra_keys[i];
-        }
-        if (!(*valuep)) {
-          a->extra_values[i] = (ur_map_value_type *)turn_malloc(sizeof(ur_map_value_type));
-          valuep = a->extra_values[i];
-        }
-        assert(keyp);
-        assert(valuep);
+      // Every slot below extra_sz has both pointers allocated; deletion only
+      // zeroes the pointed-to values, so an empty slot is (!*keyp || !*valuep).
+      if (keyp && valuep && (!(*keyp) || !(*valuep))) {
         *keyp = key;
         *valuep = value;
-        return false;
+        return true;
       }
     }
   }
