@@ -952,7 +952,7 @@ static void _process(telnet_t *telnet, const char *buffer, size_t size) {
       /* on an IAC byte, pass through all pending bytes and
        * switch states */
       if (byte == TELNET_IAC) {
-        if (i != start) {
+        if (start < i) {
           ev.type = TELNET_EV_DATA;
           ev.data.buffer = buffer + start;
           ev.data.size = i - start;
@@ -961,7 +961,7 @@ static void _process(telnet_t *telnet, const char *buffer, size_t size) {
         telnet->state = TELNET_STATE_IAC;
       } else if (byte == '\r' && (telnet->flags & TELNET_FLAG_NVT_EOL) &&
                  !(telnet->flags & TELNET_FLAG_RECEIVE_BINARY)) {
-        if (i != start) {
+        if (start < i) {
           ev.type = TELNET_EV_DATA;
           ev.data.buffer = buffer + start;
           ev.data.size = i - start;
@@ -1136,7 +1136,7 @@ static void _process(telnet_t *telnet, const char *buffer, size_t size) {
   }
 
   /* pass through any remaining bytes */
-  if (telnet->state == TELNET_STATE_DATA && i != start) {
+  if (telnet->state == TELNET_STATE_DATA && start < i) {
     ev.type = TELNET_EV_DATA;
     ev.data.buffer = buffer + start;
     ev.data.size = i - start;
