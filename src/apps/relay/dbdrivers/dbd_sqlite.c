@@ -147,7 +147,7 @@ static void fix_user_directory(char *dir0) {
     }
     const size_t szh = strlen(home);
     const size_t sz = strlen(dir0) + 1 + szh;
-    char *dir_fixed = (char *)malloc(sz);
+    char *dir_fixed = (char *)turn_malloc(sz);
     strncpy(dir_fixed, home, szh);
     strncpy(dir_fixed + szh, dir + 1, (sz - szh - 1));
     strncpy(dir0, dir_fixed, sz);
@@ -1132,8 +1132,8 @@ static void sqlite_reread_realms(secrets_list_t *realms_list) {
         if (stepResult == SQLITE_ROW) {
 
           // TODO: Why does oval need to be strdup? It seems used read-only, non-owning?
-          char *oval = strdup((const char *)sqlite3_column_text(st, 0));
-          char *rval = strdup((const char *)sqlite3_column_text(st, 1));
+          char *oval = turn_strdup((const char *)sqlite3_column_text(st, 0));
+          char *rval = turn_strdup((const char *)sqlite3_column_text(st, 1));
 
           get_realm(rval);
           ur_string_map_value_type value = rval;
@@ -1193,7 +1193,7 @@ static void sqlite_reread_realms(secrets_list_t *realms_list) {
         if (stepResult == SQLITE_ROW) {
 
           // TODO: Why does rval need strdup? seems read-only non-owning.
-          char *rval = strdup((const char *)sqlite3_column_text(st, 0));
+          char *rval = turn_strdup((const char *)sqlite3_column_text(st, 0));
           const char *oval = (const char *)sqlite3_column_text(st, 1);
           const char *vval = (const char *)sqlite3_column_text(st, 2);
 

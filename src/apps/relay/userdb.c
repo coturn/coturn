@@ -159,12 +159,8 @@ realm_params_t *get_realm(char *name) {
       unlock_realms();
       return (realm_params_t *)value;
     } else {
-      realm_params_t *ret = (realm_params_t *)malloc(sizeof(realm_params_t));
+      realm_params_t *ret = (realm_params_t *)turn_malloc(sizeof(realm_params_t));
       memcpy(ret, default_realm_params_ptr, sizeof(realm_params_t));
-      if (ret == NULL) {
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: error allocating memory\n", __FUNCTION__);
-        return default_realm_params_ptr;
-      }
       STRCPY(ret->options.name, name);
       value = (ur_string_map_value_type)ret;
       ur_string_map_put(realms, key, value);
@@ -189,7 +185,7 @@ int get_realm_options_by_origin(char *origin, realm_options_t *ro) {
   ur_string_map_value_type value = 0;
   TURN_MUTEX_LOCK(&o_to_realm_mutex);
   if (ur_string_map_get(o_to_realm, (ur_string_map_key_type)origin, &value) && value) {
-    char *realm = strdup((char *)value);
+    char *realm = turn_strdup((char *)value);
     TURN_MUTEX_UNLOCK(&o_to_realm_mutex);
     realm_params_t rp;
     get_realm_data(realm, &rp);
@@ -299,8 +295,8 @@ const char *get_secrets_list_elem(secrets_list_t *sl, size_t i) {
 
 void add_to_secrets_list(secrets_list_t *sl, const char *elem) {
   if (sl && elem) {
-    sl->secrets = (char **)realloc(sl->secrets, (sizeof(char *) * (sl->sz + 1)));
-    sl->secrets[sl->sz] = strdup(elem);
+    sl->secrets = (char **)turn_realloc(sl->secrets, (sizeof(char *) * (sl->sz + 1)));
+    sl->secrets[sl->sz] = turn_strdup(elem);
     sl->sz += 1;
   }
 }
@@ -389,7 +385,7 @@ static char *get_real_username(char *usname) {
           usname = col + 1;
         } else {
           *col = 0;
-          usname = strdup(usname);
+          usname = turn_strdup(usname);
           *col = turn_params.rest_api_separator;
           return usname;
         }
@@ -397,7 +393,7 @@ static char *get_real_username(char *usname) {
     }
   }
 
-  return strdup(usname);
+  return turn_strdup(usname);
 }
 
 /*
@@ -643,10 +639,7 @@ uint8_t *start_user_check(turnserver_id id, turn_credential_type ct, int in_oaut
                           int *postpone_reply) {
   *postpone_reply = 1;
 
-  struct auth_message *am = calloc(1, sizeof(*am));
-  if (!am) {
-    return NULL;
-  }
+  struct auth_message *am = turn_calloc(1, sizeof(*am));
   am->id = id;
   am->ct = ct;
   am->in_oauth = in_oauth;
@@ -666,7 +659,7 @@ uint8_t *start_user_check(turnserver_id id, turn_credential_type ct, int in_oaut
 int check_new_allocation_quota(uint8_t *user, int oauth, uint8_t *realm) {
   int ret = 0;
   if (user || oauth) {
-    uint8_t *username = oauth ? (uint8_t *)strdup("") : (uint8_t *)get_real_username((char *)user);
+    uint8_t *username = oauth ? (uint8_t *)turn_strdup("") : (uint8_t *)get_real_username((char *)user);
     realm_params_t *rp = get_realm((char *)realm);
     /* Snapshot the realm quota configuration under the realms lock. These
      * fields are written by reread_realms()/change_*_quota() while holding
@@ -706,7 +699,7 @@ int check_new_allocation_quota(uint8_t *user, int oauth, uint8_t *realm) {
 
 void release_allocation_quota(uint8_t *user, int oauth, uint8_t *realm) {
   if (user) {
-    uint8_t *username = oauth ? (uint8_t *)strdup("") : (uint8_t *)get_real_username((char *)user);
+    uint8_t *username = oauth ? (uint8_t *)turn_strdup("") : (uint8_t *)get_real_username((char *)user);
     realm_params_t *rp = get_realm((char *)realm);
     ur_string_map_lock(rp->status.alloc_counters);
     if (username[0]) {
@@ -749,10 +742,7 @@ int add_static_user_account(char *user) {
   // TODO: TURN usernames should be length limited by the RFC.
   // are user account names as well? If so, we can avoid allocating
   // and instead use a stack buffer.
-  char *usname = (char *)malloc(ulen + 1);
-  if (!usname) {
-    return -1;
-  }
+  char *usname = (char *)turn_malloc(ulen + 1);
 
   strncpy(usname, user, ulen);
   usname[ulen] = 0;
@@ -765,7 +755,7 @@ int add_static_user_account(char *user) {
   }
   s = skip_blanks(s + 1);
 
-  hmackey_t *key = (hmackey_t *)malloc(sizeof(hmackey_t));
+  hmackey_t *key = (hmackey_t *)turn_malloc(sizeof(hmackey_t));
   if (!key) {
     free(usname);
     return -1;
@@ -1122,10 +1112,10 @@ static ip_range_list_t *ipblacklist = NULL;
 
 void init_dynamic_ip_lists(void) {
 #if !defined(TURN_NO_RWLOCK)
-  whitelist_rwlock = (pthread_rwlock_t *)malloc(sizeof(pthread_rwlock_t));
+  whitelist_rwlock = (pthread_rwlock_t *)turn_malloc(sizeof(pthread_rwlock_t));
   pthread_rwlock_init(whitelist_rwlock, NULL);
 
-  blacklist_rwlock = (pthread_rwlock_t *)malloc(sizeof(pthread_rwlock_t));
+  blacklist_rwlock = (pthread_rwlock_t *)turn_malloc(sizeof(pthread_rwlock_t));
   pthread_rwlock_init(blacklist_rwlock, NULL);
 #else
   TURN_MUTEX_INIT(&whitelist_mutex);
@@ -1192,7 +1182,7 @@ const ip_range_list_t *ioa_get_blacklist(ioa_engine_handle e) {
 }
 
 ip_range_list_t *get_ip_list(const char *kind) {
-  ip_range_list_t *ret = (ip_range_list_t *)calloc(1, sizeof(ip_range_list_t));
+  ip_range_list_t *ret = (ip_range_list_t *)turn_calloc(1, sizeof(ip_range_list_t));
 
   const turn_dbdriver_t *dbd = get_dbdriver();
   if (dbd && dbd->get_ip_list && !turn_params.no_dynamic_ip_list) {
@@ -1235,7 +1225,7 @@ void update_white_and_black_lists(void) {
 /////////////// add ACL record ///////////////////
 
 int add_ip_list_range(const char *range0, const char *realm, ip_range_list_t *list) {
-  char *range = strdup(range0);
+  char *range = turn_strdup(range0);
 
   char *separator = strchr(range, '-');
 
@@ -1267,7 +1257,7 @@ int add_ip_list_range(const char *range0, const char *realm, ip_range_list_t *li
   }
 
   ++(list->ranges_number);
-  list->rs = (ip_range_t *)realloc(list->rs, sizeof(ip_range_t) * list->ranges_number);
+  list->rs = (ip_range_t *)turn_realloc(list->rs, sizeof(ip_range_t) * list->ranges_number);
   STRCPY(list->rs[list->ranges_number - 1].str, range);
   if (realm) {
     STRCPY(list->rs[list->ranges_number - 1].realm, realm);
@@ -1281,7 +1271,7 @@ int add_ip_list_range(const char *range0, const char *realm, ip_range_list_t *li
 }
 
 int check_ip_list_range(const char *range0) {
-  char *range = strdup(range0);
+  char *range = turn_strdup(range0);
 
   char *separator = strchr(range, '-');
 

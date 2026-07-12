@@ -921,7 +921,7 @@ static char *_WTA(__in wchar_t *pszInBuf, __in int nInSize, __out char **pszOutB
   // if MultiByteToWideChar is provided a length for the input, it does not add space for a nul-terminator
   // and we have to add space to the allocation ourselves.
   (*pnOutSize)++;
-  *pszOutBuf = malloc(*pnOutSize * sizeof(char));
+  *pszOutBuf = turn_malloc(*pnOutSize * sizeof(char));
   if (!pszOutBuf) {
     return NULL;
   }
@@ -1065,7 +1065,7 @@ void set_execdir(void) {
   _var = getenv("_");
 #endif
   if (_var && *_var) {
-    _var = strdup(_var);
+    _var = turn_strdup(_var);
     char *edir = _var;
     if (edir[0] != '.') {
       edir = strstr(edir, "/");
@@ -1078,7 +1078,7 @@ void set_execdir(void) {
     if (c_execdir) {
       free(c_execdir);
     }
-    c_execdir = strdup(edir);
+    c_execdir = turn_strdup(edir);
     free(_var);
   }
 }
@@ -1128,7 +1128,7 @@ char *find_config_file(const char *config_file) {
       FILE *f = fopen(config_file, "r");
       if (f) {
         fclose(f);
-        full_path_to_config_file = strdup(config_file);
+        full_path_to_config_file = turn_strdup(config_file);
       }
     } else {
       int i = 0;
@@ -1137,7 +1137,7 @@ char *find_config_file(const char *config_file) {
       while (config_file_search_dirs[i]) {
         const size_t dirlen = strlen(config_file_search_dirs[i]);
         size_t fnsz = sizeof(char) * (dirlen + cflen + 10);
-        char *fn = (char *)malloc(fnsz + 1);
+        char *fn = (char *)turn_malloc(fnsz + 1);
         snprintf(fn, fnsz + 1, "%s%s", config_file_search_dirs[i], config_file);
         FILE *f = fopen(fn, "r");
         if (f) {
@@ -1149,7 +1149,7 @@ char *find_config_file(const char *config_file) {
         if (config_file_search_dirs[i][0] != '/' && config_file_search_dirs[i][0] != '.' && c_execdir && c_execdir[0]) {
           const size_t celen = strlen(c_execdir);
           fnsz = sizeof(char) * (dirlen + cflen + celen + 10);
-          fn = (char *)malloc(fnsz + 1);
+          fn = (char *)turn_malloc(fnsz + 1);
           snprintf(fn, fnsz + 1, "%s/%s%s", c_execdir, config_file_search_dirs[i], config_file);
           if (strstr(fn, "//") != fn) {
             f = fopen(fn, "r");
@@ -1300,10 +1300,7 @@ char *base64_encode(const unsigned char *data, size_t input_length, size_t *outp
 
   *output_length = 4 * ((input_length + 2) / 3);
 
-  char *encoded_data = (char *)malloc(*output_length + 1);
-  if (encoded_data == NULL) {
-    return NULL;
-  }
+  char *encoded_data = (char *)turn_malloc(*output_length + 1);
 
   for (size_t i = 0, j = 0; i < input_length;) {
 
@@ -1330,7 +1327,7 @@ char *base64_encode(const unsigned char *data, size_t input_length, size_t *outp
 
 void build_base64_decoding_table(void) {
 
-  char *table = (char *)calloc(256, sizeof(char));
+  char *table = (char *)turn_calloc(256, sizeof(char));
 
   if (table) {
     for (size_t i = 0; i < 64; i++) {
@@ -1363,10 +1360,7 @@ unsigned char *base64_decode(const char *data, size_t input_length, size_t *outp
     (*output_length)--;
   }
 
-  unsigned char *decoded_data = (unsigned char *)malloc(*output_length);
-  if (decoded_data == NULL) {
-    return NULL;
-  }
+  unsigned char *decoded_data = (unsigned char *)turn_malloc(*output_length);
 
   int i;
   size_t j;

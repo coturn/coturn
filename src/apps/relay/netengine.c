@@ -218,7 +218,7 @@ static void add_aux_server_list(const char *saddr, turn_server_addrs_list_t *lis
     if (make_ioa_addr_from_full_string((const uint8_t *)saddr, 0, &addr) != 0) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong full address format: %s\n", saddr);
     } else {
-      list->addrs = (ioa_addr *)realloc(list->addrs, sizeof(ioa_addr) * (list->size + 1));
+      list->addrs = (ioa_addr *)turn_realloc(list->addrs, sizeof(ioa_addr) * (list->size + 1));
       addr_cpy(&(list->addrs[(list->size)++]), &addr);
       {
         char s[MAX_IOA_ADDR_STRING];
@@ -242,7 +242,7 @@ static void add_alt_server(const char *saddr, uint16_t default_port, turn_server
     if (make_ioa_addr_from_full_string((const uint8_t *)saddr, default_port, &addr) != 0) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong IP address format: %s\n", saddr);
     } else {
-      list->addrs = (ioa_addr *)realloc(list->addrs, sizeof(ioa_addr) * (list->size + 1));
+      list->addrs = (ioa_addr *)turn_realloc(list->addrs, sizeof(ioa_addr) * (list->size + 1));
       addr_cpy(&(list->addrs[(list->size)++]), &addr);
       {
         char s[MAX_IOA_ADDR_STRING];
@@ -275,7 +275,7 @@ static void del_alt_server(const char *saddr, uint16_t default_port, turn_server
 
       if (i < list->size) {
 
-        ioa_addr *new_addrs = (ioa_addr *)malloc(sizeof(ioa_addr) * (list->size - 1));
+        ioa_addr *new_addrs = (ioa_addr *)turn_malloc(sizeof(ioa_addr) * (list->size - 1));
         if (!new_addrs) {
           return;
         }
@@ -366,11 +366,7 @@ static void update_ssl_ctx(evutil_socket_t sock, short events, update_ssl_ctx_cb
 }
 
 void set_ssl_ctx(ioa_engine_handle e, turn_params_t *params) {
-  update_ssl_ctx_cb_args_t *args = (update_ssl_ctx_cb_args_t *)malloc(sizeof(update_ssl_ctx_cb_args_t));
-  if (args == NULL) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: failure in call to calloc \n", __FUNCTION__);
-    return;
-  }
+  update_ssl_ctx_cb_args_t *args = (update_ssl_ctx_cb_args_t *)turn_malloc(sizeof(update_ssl_ctx_cb_args_t));
   args->engine = e;
   args->params = params;
   args->next = NULL;
@@ -411,11 +407,11 @@ void add_listener_addr(const char *addr) {
     ++turn_params.listener.addrs_number;
     ++turn_params.listener.services_number;
     turn_params.listener.addrs =
-        (char **)realloc(turn_params.listener.addrs, sizeof(char *) * turn_params.listener.addrs_number);
-    turn_params.listener.addrs[turn_params.listener.addrs_number - 1] = strdup(sbaddr);
-    turn_params.listener.encaddrs =
-        (ioa_addr **)realloc(turn_params.listener.encaddrs, sizeof(ioa_addr *) * turn_params.listener.addrs_number);
-    turn_params.listener.encaddrs[turn_params.listener.addrs_number - 1] = (ioa_addr *)malloc(sizeof(ioa_addr));
+        (char **)turn_realloc(turn_params.listener.addrs, sizeof(char *) * turn_params.listener.addrs_number);
+    turn_params.listener.addrs[turn_params.listener.addrs_number - 1] = turn_strdup(sbaddr);
+    turn_params.listener.encaddrs = (ioa_addr **)turn_realloc(turn_params.listener.encaddrs,
+                                                              sizeof(ioa_addr *) * turn_params.listener.addrs_number);
+    turn_params.listener.encaddrs[turn_params.listener.addrs_number - 1] = (ioa_addr *)turn_malloc(sizeof(ioa_addr));
     addr_cpy(turn_params.listener.encaddrs[turn_params.listener.addrs_number - 1], &baddr);
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Listener address to use: %s\n", sbaddr);
   }
@@ -439,8 +435,9 @@ int add_relay_addr(const char *addr) {
     }
 
     ++turn_params.relays_number;
-    turn_params.relay_addrs = (char **)realloc(turn_params.relay_addrs, sizeof(char *) * turn_params.relays_number);
-    turn_params.relay_addrs[turn_params.relays_number - 1] = strdup(sbaddr);
+    turn_params.relay_addrs =
+        (char **)turn_realloc(turn_params.relay_addrs, sizeof(char *) * turn_params.relays_number);
+    turn_params.relay_addrs[turn_params.relays_number - 1] = turn_strdup(sbaddr);
 
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Relay address to use: %s\n", sbaddr);
     return 1;

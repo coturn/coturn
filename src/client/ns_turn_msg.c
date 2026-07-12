@@ -219,14 +219,7 @@ bool stun_produce_integrity_key_str(const uint8_t *uname, const uint8_t *realm, 
   const size_t plen = strlen((const char *)upwd);
   const size_t sz = ulen + 1 + rlen + 1 + plen + 1 + 10;
   const size_t strl = ulen + 1 + rlen + 1 + plen;
-  uint8_t *str = (uint8_t *)malloc(sz + 1);
-  if (str == NULL) {
-    return false;
-  }
-
-  if (!str) {
-    return false;
-  }
+  uint8_t *str = (uint8_t *)turn_malloc(sz + 1);
 
   strncpy((char *)str, (const char *)uname, sz);
   str[ulen] = ':';

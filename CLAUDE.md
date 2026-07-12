@@ -143,6 +143,46 @@ Key style rules (LLVM-based):
 - Brace style: attach (K&R)
 - Zero-initialize stack buffers at declaration: `uint8_t buf[N] = {0}` or `SomeStruct s = {0}`
 
+## Memory allocation
+
+**MANDATORY.** All heap allocation in coturn-owned C code MUST go through the
+fail-fast wrappers declared in
+[ns_turn_utils.h](src/apps/common/ns_turn_utils.h):
+
+- `turn_malloc(size)`
+- `turn_calloc(number, size)`
+- `turn_realloc(ptr, size)`
+- `turn_strdup(str)`
+
+Raw `malloc` / `calloc` / `realloc` / `strdup` are **not allowed** — do not add
+them, and do not review/merge code that uses them. Any file that allocates must
+include `ns_turn_utils.h`. Release memory with plain `free()` (there is no
+`turn_free`; `free(NULL)` is a no-op).
+
+The wrappers log the failing call site and `abort()` on allocation failure; they
+**never return `NULL`** for a real failure. Therefore callers MUST NOT add a
+NULL/failure check on the result, and "fixing" an allocation by adding a NULL
+check is the wrong fix — route it through a wrapper instead. (`turn_malloc`,
+`turn_calloc`, `turn_realloc` return `NULL` only for a zero-size request;
+`turn_strdup` returns `NULL` only for a `NULL` argument.)
+
+Rationale: an allocation that fails mid-request cannot be recovered correctly in
+a long-running TURN server, so a controlled, logged abort is safer than a NULL
+dereference or a silently degraded process. The logger writes into a stack
+buffer (no heap allocation), so it stays usable when the heap is exhausted.
+
+The only permitted exceptions — do not convert these, and exclude them from any
+bare-allocator check:
+
+- [src/apps/relay/libtelnet.c](src/apps/relay/libtelnet.c) — vendored,
+  public-domain third-party code.
+- [src/prometheus/prom.c](src/prometheus/prom.c) — self-contained module with its
+  own `NULL`-return error contract; does not link `turncommon`.
+- [ns_turn_utils.c](src/apps/common/ns_turn_utils.c) — the wrapper implementation
+  itself, plus its `turn_mutex_*` helpers, which deliberately degrade (return an
+  error) rather than abort.
+- `fuzzing/`, `tests/`, and Windows-only shims.
+
 ## Tests
 
 ```bash

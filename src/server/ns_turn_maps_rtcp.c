@@ -34,7 +34,8 @@
 
 #include "ns_turn_maps_rtcp.h"
 
-#include "ns_turn_defs.h" // for NULL, UNUSED_ARG, size_t, turn_time,
+#include "ns_turn_defs.h"  // for NULL, UNUSED_ARG, size_t, turn_time,
+#include "ns_turn_utils.h" // for turn_malloc, turn_calloc, turn_realloc, turn_strdup
 
 #include <stdlib.h> // for free, calloc
 
@@ -177,7 +178,7 @@ static bool rtcp_map_init(rtcp_map *map, ioa_engine_handle e) {
 }
 
 rtcp_map *rtcp_map_create(ioa_engine_handle e) {
-  rtcp_map *map = (rtcp_map *)calloc(1, sizeof(rtcp_map));
+  rtcp_map *map = (rtcp_map *)turn_calloc(1, sizeof(rtcp_map));
   if (!rtcp_map_init(map, e)) {
     free(map);
     return NULL;
@@ -194,10 +195,7 @@ bool rtcp_map_put(rtcp_map *map, rtcp_token_type token, ioa_socket_handle s) {
   if (!rtcp_map_valid(map)) {
     return false;
   } else {
-    rtcp_alloc_type *value = (rtcp_alloc_type *)calloc(1, sizeof(rtcp_alloc_type));
-    if (!value) {
-      return false;
-    }
+    rtcp_alloc_type *value = (rtcp_alloc_type *)turn_calloc(1, sizeof(rtcp_alloc_type));
 
     value->s = s;
     value->t = turn_time() + RTCP_TIMEOUT;

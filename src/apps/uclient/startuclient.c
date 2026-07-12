@@ -409,13 +409,8 @@ static int clnet_allocate(bool verbose, app_ur_conn_info *clnet_info, ioa_addr *
   bool allocate_finished;
 
   int ret = 0;
-  stun_buffer *request_message = (stun_buffer *)calloc(1, sizeof(stun_buffer));
-  stun_buffer *response_message = (stun_buffer *)calloc(1, sizeof(stun_buffer));
-  if (!request_message || !response_message) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: cannot allocate STUN message buffers\n", __FUNCTION__);
-    ret = -1;
-    goto done;
-  }
+  stun_buffer *request_message = (stun_buffer *)turn_calloc(1, sizeof(stun_buffer));
+  stun_buffer *response_message = (stun_buffer *)turn_calloc(1, sizeof(stun_buffer));
 
 beg_allocate:
 
@@ -826,13 +821,8 @@ done:
 static int turn_channel_bind(bool verbose, uint16_t *chn, app_ur_conn_info *clnet_info, ioa_addr *peer_addr) {
 
   int ret = 0;
-  stun_buffer *request_message = (stun_buffer *)calloc(1, sizeof(stun_buffer));
-  stun_buffer *response_message = (stun_buffer *)calloc(1, sizeof(stun_buffer));
-  if (!request_message || !response_message) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: cannot allocate STUN message buffers\n", __FUNCTION__);
-    ret = -1;
-    goto done;
-  }
+  stun_buffer *request_message = (stun_buffer *)turn_calloc(1, sizeof(stun_buffer));
+  stun_buffer *response_message = (stun_buffer *)turn_calloc(1, sizeof(stun_buffer));
 
 beg_bind:
 
@@ -938,13 +928,8 @@ static int turn_create_permission(bool verbose, app_ur_conn_info *clnet_info, io
   }
 
   int ret = 0;
-  stun_buffer *request_message = (stun_buffer *)calloc(1, sizeof(stun_buffer));
-  stun_buffer *response_message = (stun_buffer *)calloc(1, sizeof(stun_buffer));
-  if (!request_message || !response_message) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: cannot allocate STUN message buffers\n", __FUNCTION__);
-    ret = -1;
-    goto done;
-  }
+  stun_buffer *request_message = (stun_buffer *)turn_calloc(1, sizeof(stun_buffer));
+  stun_buffer *response_message = (stun_buffer *)turn_calloc(1, sizeof(stun_buffer));
 
 beg_cp:
 
@@ -1040,13 +1025,8 @@ done:
 int turn_refresh_allocation(bool verbose, app_ur_conn_info *clnet_info, uint32_t lifetime) {
 
   int ret = 0;
-  stun_buffer *request_message = (stun_buffer *)calloc(1, sizeof(stun_buffer));
-  stun_buffer *response_message = (stun_buffer *)calloc(1, sizeof(stun_buffer));
-  if (!request_message || !response_message) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: cannot allocate STUN message buffers\n", __FUNCTION__);
-    ret = -1;
-    goto done;
-  }
+  stun_buffer *request_message = (stun_buffer *)turn_calloc(1, sizeof(stun_buffer));
+  stun_buffer *response_message = (stun_buffer *)turn_calloc(1, sizeof(stun_buffer));
 
 beg_refresh:
 
@@ -1633,12 +1613,7 @@ int start_c2c_connection(uint16_t clnet_remote_port0, const char *remote_address
 
 int turn_tcp_connect(bool verbose, app_ur_conn_info *clnet_info, ioa_addr *peer_addr) {
   int ret = 0;
-  stun_buffer *message = (stun_buffer *)calloc(1, sizeof(stun_buffer));
-  if (!message) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: cannot allocate STUN message buffer\n", __FUNCTION__);
-    ret = -1;
-    goto done;
-  }
+  stun_buffer *message = (stun_buffer *)turn_calloc(1, sizeof(stun_buffer));
 
   {
     bool cp_sent = false;
@@ -1681,13 +1656,8 @@ done:
 static int turn_tcp_connection_bind(int verbose, app_ur_conn_info *clnet_info, app_tcp_conn_info *atc, int errorOK) {
 
   int ret = 0;
-  stun_buffer *request_message = (stun_buffer *)calloc(1, sizeof(stun_buffer));
-  stun_buffer *response_message = (stun_buffer *)calloc(1, sizeof(stun_buffer));
-  if (!request_message || !response_message) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: cannot allocate STUN message buffers\n", __FUNCTION__);
-    ret = -1;
-    goto done;
-  }
+  stun_buffer *request_message = (stun_buffer *)turn_calloc(1, sizeof(stun_buffer));
+  stun_buffer *response_message = (stun_buffer *)turn_calloc(1, sizeof(stun_buffer));
 
 beg_cb:
 
@@ -1810,14 +1780,9 @@ again:
 
   ++elem->pinfo.tcp_conn_number;
   const int i = (int)(elem->pinfo.tcp_conn_number - 1);
-  elem->pinfo.tcp_conn =
-      (app_tcp_conn_info **)realloc(elem->pinfo.tcp_conn, elem->pinfo.tcp_conn_number * sizeof(app_tcp_conn_info *));
-  elem->pinfo.tcp_conn[i] = (app_tcp_conn_info *)calloc(1, sizeof(app_tcp_conn_info));
-
-  if (elem->pinfo.tcp_conn[i] == NULL) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: failure in call to calloc \n", __FUNCTION__);
-    return;
-  }
+  elem->pinfo.tcp_conn = (app_tcp_conn_info **)turn_realloc(elem->pinfo.tcp_conn,
+                                                            elem->pinfo.tcp_conn_number * sizeof(app_tcp_conn_info *));
+  elem->pinfo.tcp_conn[i] = (app_tcp_conn_info *)turn_calloc(1, sizeof(app_tcp_conn_info));
 
   elem->pinfo.tcp_conn[i]->tcp_data_fd = clnet_fd;
   elem->pinfo.tcp_conn[i]->cid = cid;

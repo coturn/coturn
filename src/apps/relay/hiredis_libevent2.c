@@ -264,21 +264,18 @@ redis_context_handle redisLibeventAttach(struct event_base *base, char *ip0, int
   }
 
   /* Create container for context and r/w events */
-  struct redisLibeventEvents *e = (struct redisLibeventEvents *)calloc(1, sizeof(struct redisLibeventEvents));
-  if (!e) {
-    return NULL;
-  }
+  struct redisLibeventEvents *e = (struct redisLibeventEvents *)turn_calloc(1, sizeof(struct redisLibeventEvents));
 
   e->allocated = 1;
   e->context = ac;
   e->base = base;
-  e->ip = strdup(ip);
+  e->ip = turn_strdup(ip);
   e->port = port;
   if (user) {
-    e->user = strdup(user);
+    e->user = turn_strdup(user);
   }
   if (pwd) {
-    e->pwd = strdup(pwd);
+    e->pwd = turn_strdup(pwd);
   }
   e->db = db;
   e->ssl_ctx = ssl_ctx;

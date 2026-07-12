@@ -35,6 +35,8 @@
 
 #include "dbd_redis_conninfo.h"
 
+#include "ns_turn_utils.h" // for turn_malloc, turn_calloc, turn_realloc, turn_strdup
+
 #include <stdlib.h>
 #include <string.h>
 
@@ -60,17 +62,14 @@ static int ry_parse_bool(const char *v) {
 }
 
 Ryconninfo *RyconninfoParse(const char *userdb, char **errmsg) {
-  Ryconninfo *co = (Ryconninfo *)calloc(1, sizeof(Ryconninfo));
-  if (!co) {
-    return NULL;
-  }
+  Ryconninfo *co = (Ryconninfo *)turn_calloc(1, sizeof(Ryconninfo));
   /* Tri-state: -1 means "not specified", so the secure default (peer
    * verification on) can be applied without clobbering an explicit
    * "tls-verify=none". */
   co->tls_verify = -1;
 
   if (userdb) {
-    char *s0 = strdup(userdb);
+    char *s0 = turn_strdup(userdb);
     char *s = s0;
 
     while (s && *s) {
@@ -91,7 +90,7 @@ Ryconninfo *RyconninfoParse(const char *userdb, char **errmsg) {
           RyconninfoFree(co);
           co = NULL;
           if (errmsg) {
-            *errmsg = strdup(s);
+            *errmsg = turn_strdup(s);
           }
         }
         break;
@@ -100,52 +99,52 @@ Ryconninfo *RyconninfoParse(const char *userdb, char **errmsg) {
       *seq = 0;
       if (!strcmp(s, "host")) {
         free(co->host);
-        co->host = strdup(seq + 1);
+        co->host = turn_strdup(seq + 1);
       } else if (!strcmp(s, "ip")) {
         free(co->host);
-        co->host = strdup(seq + 1);
+        co->host = turn_strdup(seq + 1);
       } else if (!strcmp(s, "addr")) {
         free(co->host);
-        co->host = strdup(seq + 1);
+        co->host = turn_strdup(seq + 1);
       } else if (!strcmp(s, "ipaddr")) {
         free(co->host);
-        co->host = strdup(seq + 1);
+        co->host = turn_strdup(seq + 1);
       } else if (!strcmp(s, "hostaddr")) {
         free(co->host);
-        co->host = strdup(seq + 1);
+        co->host = turn_strdup(seq + 1);
       } else if (!strcmp(s, "dbname")) {
         free(co->dbname);
-        co->dbname = strdup(seq + 1);
+        co->dbname = turn_strdup(seq + 1);
       } else if (!strcmp(s, "db")) {
         free(co->dbname);
-        co->dbname = strdup(seq + 1);
+        co->dbname = turn_strdup(seq + 1);
       } else if (!strcmp(s, "database")) {
         free(co->dbname);
-        co->dbname = strdup(seq + 1);
+        co->dbname = turn_strdup(seq + 1);
       } else if (!strcmp(s, "user")) {
         free(co->user);
-        co->user = strdup(seq + 1);
+        co->user = turn_strdup(seq + 1);
       } else if (!strcmp(s, "uname")) {
         free(co->user);
-        co->user = strdup(seq + 1);
+        co->user = turn_strdup(seq + 1);
       } else if (!strcmp(s, "name")) {
         free(co->user);
-        co->user = strdup(seq + 1);
+        co->user = turn_strdup(seq + 1);
       } else if (!strcmp(s, "username")) {
         free(co->user);
-        co->user = strdup(seq + 1);
+        co->user = turn_strdup(seq + 1);
       } else if (!strcmp(s, "password")) {
         free(co->password);
-        co->password = strdup(seq + 1);
+        co->password = turn_strdup(seq + 1);
       } else if (!strcmp(s, "pwd")) {
         free(co->password);
-        co->password = strdup(seq + 1);
+        co->password = turn_strdup(seq + 1);
       } else if (!strcmp(s, "passwd")) {
         free(co->password);
-        co->password = strdup(seq + 1);
+        co->password = turn_strdup(seq + 1);
       } else if (!strcmp(s, "secret")) {
         free(co->password);
-        co->password = strdup(seq + 1);
+        co->password = turn_strdup(seq + 1);
       } else if (!strcmp(s, "port")) {
         co->port = (unsigned int)atoi(seq + 1);
       } else if (!strcmp(s, "p")) {
@@ -158,26 +157,26 @@ Ryconninfo *RyconninfoParse(const char *userdb, char **errmsg) {
         co->use_tls = ry_parse_bool(seq + 1);
       } else if (!strcmp(s, "tls-ca") || !strcmp(s, "ca") || !strcmp(s, "cacert")) {
         free(co->tls_ca);
-        co->tls_ca = strdup(seq + 1);
+        co->tls_ca = turn_strdup(seq + 1);
       } else if (!strcmp(s, "tls-capath") || !strcmp(s, "capath")) {
         free(co->tls_capath);
-        co->tls_capath = strdup(seq + 1);
+        co->tls_capath = turn_strdup(seq + 1);
       } else if (!strcmp(s, "tls-cert") || !strcmp(s, "cert")) {
         free(co->tls_cert);
-        co->tls_cert = strdup(seq + 1);
+        co->tls_cert = turn_strdup(seq + 1);
       } else if (!strcmp(s, "tls-key") || !strcmp(s, "clientkey")) {
         free(co->tls_key);
-        co->tls_key = strdup(seq + 1);
+        co->tls_key = turn_strdup(seq + 1);
       } else if (!strcmp(s, "tls-sni") || !strcmp(s, "sni") || !strcmp(s, "servername")) {
         free(co->tls_sni);
-        co->tls_sni = strdup(seq + 1);
+        co->tls_sni = turn_strdup(seq + 1);
       } else if (!strcmp(s, "tls-verify") || !strcmp(s, "verify")) {
         co->tls_verify = (!strcmp(seq + 1, "none") || !strcmp(seq + 1, "0") || !strcmp(seq + 1, "false")) ? 0 : 1;
       } else {
         RyconninfoFree(co);
         co = NULL;
         if (errmsg) {
-          *errmsg = strdup(s);
+          *errmsg = turn_strdup(s);
         }
         break;
       }
@@ -190,10 +189,10 @@ Ryconninfo *RyconninfoParse(const char *userdb, char **errmsg) {
 
   if (co) {
     if (!(co->dbname)) {
-      co->dbname = strdup("0");
+      co->dbname = turn_strdup("0");
     }
     if (!(co->host)) {
-      co->host = strdup("127.0.0.1");
+      co->host = turn_strdup("127.0.0.1");
     }
     if (co->tls_verify < 0) {
       co->tls_verify = 1; /* secure default: verify the server certificate */

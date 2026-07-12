@@ -168,7 +168,7 @@ static char *prom_read_file(const char *path) {
   if (fseek(f, 0, SEEK_END) == 0) {
     long size = ftell(f);
     if (size >= 0 && fseek(f, 0, SEEK_SET) == 0) {
-      buf = malloc((size_t)size + 1);
+      buf = turn_malloc((size_t)size + 1);
       if (buf != NULL) {
         if (fread(buf, 1, (size_t)size, f) != (size_t)size) {
           free(buf);

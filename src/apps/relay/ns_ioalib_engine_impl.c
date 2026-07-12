@@ -375,7 +375,7 @@ static stun_buffer_list_elem *new_blist_elem(ioa_engine_handle e) {
   stun_buffer_list_elem *ret = get_elem_from_buffer_list(&(e->bufs));
 
   if (!ret) {
-    ret = (stun_buffer_list_elem *)malloc(sizeof(stun_buffer_list_elem));
+    ret = (stun_buffer_list_elem *)turn_malloc(sizeof(stun_buffer_list_elem));
   }
 
   if (ret) {
@@ -404,11 +404,7 @@ static inline void add_elem_to_buffer_list(stun_buffer_list *bufs, stun_buffer_l
 
 static void add_buffer_to_buffer_list(stun_buffer_list *bufs, char *buf, size_t len) {
   if (bufs && buf && (bufs->tsz < MAX_SOCKET_BUFFER_BACKLOG)) {
-    stun_buffer_list_elem *buf_elem = (stun_buffer_list_elem *)malloc(sizeof(stun_buffer_list_elem));
-    if (buf_elem == NULL) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: failure in call to calloc \n", __FUNCTION__);
-      return;
-    }
+    stun_buffer_list_elem *buf_elem = (stun_buffer_list_elem *)turn_malloc(sizeof(stun_buffer_list_elem));
     memcpy(buf_elem->buf.buf, buf, len);
     buf_elem->buf.len = len;
     buf_elem->buf.offset = 0;
@@ -924,11 +920,7 @@ ioa_timer_handle set_ioa_timer(ioa_engine_handle e, int secs, int ms, ioa_timer_
 
   if (e && cb && secs > 0) {
 
-    timer_event *te = (timer_event *)malloc(sizeof(timer_event));
-    if (te == NULL) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: failure in call to calloc \n", __FUNCTION__);
-      return NULL;
-    }
+    timer_event *te = (timer_event *)turn_malloc(sizeof(timer_event));
 
     int flags = EV_TIMEOUT;
     if (persist) {
@@ -944,7 +936,7 @@ ioa_timer_handle set_ioa_timer(ioa_engine_handle e, int secs, int ms, ioa_timer_
       te->e = e;
       te->ev = ev;
       te->cb = cb;
-      te->txt = strdup(txt);
+      te->txt = turn_strdup(txt);
     }
 
     if (!ms) {
@@ -1278,12 +1270,7 @@ ioa_socket_handle create_unbound_relay_ioa_socket(ioa_engine_handle e, int famil
     return NULL;
   }
 
-  ret = (ioa_socket *)calloc(1, sizeof(ioa_socket));
-
-  if (ret == NULL) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: failure in call to calloc \n", __FUNCTION__);
-    return NULL;
-  }
+  ret = (ioa_socket *)turn_calloc(1, sizeof(ioa_socket));
 
   ret->magic = SOCKET_MAGIC;
 
@@ -2001,12 +1988,7 @@ ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e, ioa_socket_raw 
     return NULL;
   }
 
-  ret = (ioa_socket *)calloc(1, sizeof(ioa_socket));
-
-  if (ret == NULL) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: failure in call to calloc \n", __FUNCTION__);
-    return NULL;
-  }
+  ret = (ioa_socket *)turn_calloc(1, sizeof(ioa_socket));
 
   ret->magic = SOCKET_MAGIC;
   ret->fd = fd;
@@ -2272,7 +2254,7 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s) {
 
     ioa_network_buffer_delete(s->e, s->defer_nbh);
 
-    ret = (ioa_socket *)calloc(1, sizeof(ioa_socket));
+    ret = (ioa_socket *)turn_calloc(1, sizeof(ioa_socket));
     if (!ret) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Cannot allocate new socket structure\n", __FUNCTION__);
       if (udp_fd >= 0) {
@@ -2738,11 +2720,7 @@ static int ensure_engine_recvmmsg_state(ioa_engine_handle e) {
     return 0;
   }
 
-  e->udp_recvmmsg_state = (struct ioa_socket_recvmmsg_state *)calloc(1, sizeof(struct ioa_socket_recvmmsg_state));
-  if (!e->udp_recvmmsg_state) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: failure in call to calloc\n", __FUNCTION__);
-    return -1;
-  }
+  e->udp_recvmmsg_state = (struct ioa_socket_recvmmsg_state *)turn_calloc(1, sizeof(struct ioa_socket_recvmmsg_state));
 
   return 0;
 }
@@ -4944,14 +4922,9 @@ struct _super_memory {
 
 static void init_super_memory_region(super_memory_t *r) {
   if (r) {
-    r->super_memory = (char **)malloc(sizeof(char *));
-    r->super_memory[0] = (char *)calloc(1, TURN_SM_SIZE);
-    r->sm_allocated = (size_t *)malloc(sizeof(size_t));
-
-    if (r->sm_allocated == NULL || r->super_memory == NULL) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: failure in call to calloc \n", __FUNCTION__);
-      return;
-    }
+    r->super_memory = (char **)turn_malloc(sizeof(char *));
+    r->super_memory[0] = (char *)turn_calloc(1, TURN_SM_SIZE);
+    r->sm_allocated = (size_t *)turn_malloc(sizeof(size_t));
 
     r->sm_allocated[0] = 0;
 
@@ -4967,7 +4940,7 @@ static void init_super_memory_region(super_memory_t *r) {
 void init_super_memory(void) { ; }
 
 super_memory_t *new_super_memory_region(void) {
-  super_memory_t *r = (super_memory_t *)calloc(1, sizeof(super_memory_t));
+  super_memory_t *r = (super_memory_t *)turn_calloc(1, sizeof(super_memory_t));
   init_super_memory_region(r);
   return r;
 }
@@ -4980,7 +4953,7 @@ void *allocate_super_memory_region_func(super_memory_t *r, size_t size, const ch
   void *ret = NULL;
 
   if (!r) {
-    ret = calloc(1, size);
+    ret = turn_calloc(1, size);
     return ret;
   }
 
@@ -5014,9 +4987,9 @@ void *allocate_super_memory_region_func(super_memory_t *r, size_t size, const ch
 
     if (!region) {
       r->sm_chunk += 1;
-      r->super_memory = (char **)realloc(r->super_memory, (r->sm_chunk + 1) * sizeof(char *));
-      r->super_memory[r->sm_chunk] = (char *)calloc(1, TURN_SM_SIZE);
-      r->sm_allocated = (size_t *)realloc(r->sm_allocated, (r->sm_chunk + 1) * sizeof(size_t));
+      r->super_memory = (char **)turn_realloc(r->super_memory, (r->sm_chunk + 1) * sizeof(char *));
+      r->super_memory[r->sm_chunk] = (char *)turn_calloc(1, TURN_SM_SIZE);
+      r->sm_allocated = (size_t *)turn_realloc(r->sm_allocated, (r->sm_chunk + 1) * sizeof(size_t));
       r->sm_allocated[r->sm_chunk] = 0;
       region = r->super_memory[r->sm_chunk];
       rsz = r->sm_allocated + r->sm_chunk;
@@ -5034,7 +5007,7 @@ void *allocate_super_memory_region_func(super_memory_t *r, size_t size, const ch
   }
 
   if (!ret) {
-    ret = calloc(1, size);
+    ret = turn_calloc(1, size);
   }
 
   return ret;

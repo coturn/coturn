@@ -338,12 +338,7 @@ static int start_listener_threads(void) {
     num_listener_threads = UCLIENT_MAX_LISTENER_THREADS;
   }
 
-  listeners = (uclient_listener *)calloc((size_t)num_listener_threads, sizeof(uclient_listener));
-  if (!listeners) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "uclient: cannot allocate listener pool\n");
-    num_listener_threads = 0;
-    return -1;
-  }
+  listeners = (uclient_listener *)turn_calloc((size_t)num_listener_threads, sizeof(uclient_listener));
   for (int i = 0; i < num_listener_threads; ++i) {
     listeners[i].id = i;
     listeners[i].event_base = turn_event_base_new();
@@ -815,12 +810,7 @@ static int start_sender_threads(void) {
                   UCLIENT_MAX_SENDER_THREADS);
     num_sender_threads = UCLIENT_MAX_SENDER_THREADS;
   }
-  senders = (uclient_sender *)calloc((size_t)num_sender_threads, sizeof(uclient_sender));
-  if (!senders) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "uclient: cannot allocate sender pool\n");
-    num_sender_threads = 0;
-    return -1;
-  }
+  senders = (uclient_sender *)turn_calloc((size_t)num_sender_threads, sizeof(uclient_sender));
   for (int i = 0; i < num_sender_threads; ++i) {
     senders[i].id = i;
     senders[i].event_base = turn_event_base_new();
@@ -1035,7 +1025,7 @@ static app_ur_session *init_app_session(app_ur_session *ss) {
 
 static app_ur_session *create_new_ss(void) {
   ++current_clients_number;
-  app_ur_session *ss = init_app_session((app_ur_session *)malloc(sizeof(app_ur_session)));
+  app_ur_session *ss = init_app_session((app_ur_session *)turn_malloc(sizeof(app_ur_session)));
   if (ss) {
     /* Sender pool routing: when the pool is engaged, round-robin assign
      * this session to a sender thread. -1 keeps the legacy single-thread
@@ -2669,11 +2659,7 @@ void start_mclient(const char *remote_address, uint16_t port, const unsigned cha
     }
   }
 
-  elems = (app_ur_session **)malloc(sizeof(app_ur_session) * ((mclient * 2) + 1) + sizeof(void *));
-  if (elems == NULL) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s: failure in call to malloc !!!\n", __FUNCTION__);
-    return;
-  }
+  elems = (app_ur_session **)turn_malloc(sizeof(app_ur_session) * ((mclient * 2) + 1) + sizeof(void *));
 
   __turn_getMSTime();
   uint32_t stime = current_time;

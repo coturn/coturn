@@ -328,7 +328,7 @@ static int make_local_listeners_list(void) {
 
   do {
 
-    pAddresses = (IP_ADAPTER_ADDRESSES *)malloc(outBufLen);
+    pAddresses = (IP_ADAPTER_ADDRESSES *)turn_malloc(outBufLen);
     if (pAddresses == NULL) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Memory allocation failed for IP_ADAPTER_ADDRESSES struct\n");
       return -1;
@@ -602,7 +602,7 @@ static int make_local_relays_list(int allow_local, int family) {
 
   do {
 
-    pAddresses = (IP_ADAPTER_ADDRESSES *)malloc(outBufLen);
+    pAddresses = (IP_ADAPTER_ADDRESSES *)turn_malloc(outBufLen);
     if (pAddresses == NULL) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Memory allocation failed for IP_ADAPTER_ADDRESSES struct\n");
       return -1;
@@ -787,7 +787,7 @@ int get_a_local_relay(int family, ioa_addr *relay_addr) {
   outBufLen = WORKING_BUFFER_SIZE;
 
   do {
-    pAddresses = (IP_ADAPTER_ADDRESSES *)malloc(outBufLen);
+    pAddresses = (IP_ADAPTER_ADDRESSES *)turn_malloc(outBufLen);
     if (pAddresses == NULL) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Memory allocation failed for IP_ADAPTER_ADDRESSES struct\n");
       return -1;
@@ -1924,13 +1924,13 @@ static void generate_aes_128_key(char *filePath, unsigned char *returnedKey) {
 unsigned char *base64decode(const void *b64_decode_this, int decode_this_many_bytes) {
   BIO *b64_bio, *mem_bio; // Declares two OpenSSL BIOs: a base64 filter and a memory BIO.
   unsigned char *base64_decoded =
-      (unsigned char *)calloc((decode_this_many_bytes * 3) / 4 + 1, sizeof(char)); //+1 = null.
-  b64_bio = BIO_new(BIO_f_base64());                                               // Initialize our base64 filter BIO.
-  mem_bio = BIO_new(BIO_s_mem());                                                  // Initialize our memory source BIO.
-  BIO_write(mem_bio, b64_decode_this, decode_this_many_bytes);                     // Base64 data saved in source.
-  BIO_push(b64_bio, mem_bio);                     // Link the BIOs by creating a filter-source BIO chain.
-  BIO_set_flags(b64_bio, BIO_FLAGS_BASE64_NO_NL); // Don't require trailing newlines.
-  int decoded_byte_index = 0;                     // Index where the next base64_decoded byte should be written.
+      (unsigned char *)turn_calloc((decode_this_many_bytes * 3) / 4 + 1, sizeof(char)); //+1 = null.
+  b64_bio = BIO_new(BIO_f_base64());                           // Initialize our base64 filter BIO.
+  mem_bio = BIO_new(BIO_s_mem());                              // Initialize our memory source BIO.
+  BIO_write(mem_bio, b64_decode_this, decode_this_many_bytes); // Base64 data saved in source.
+  BIO_push(b64_bio, mem_bio);                                  // Link the BIOs by creating a filter-source BIO chain.
+  BIO_set_flags(b64_bio, BIO_FLAGS_BASE64_NO_NL);              // Don't require trailing newlines.
+  int decoded_byte_index = 0; // Index where the next base64_decoded byte should be written.
   while (0 < BIO_read(b64_bio, base64_decoded + decoded_byte_index, 1)) { // Read byte-by-byte.
     decoded_byte_index++; // Increment the index until read of BIO decoded data is complete.
   }                       // Once we're done reading decoded data, BIO_read returns -1 even though there's no error.
@@ -2274,7 +2274,7 @@ static void set_option(int c, char *value) {
     if (value) {
       char *div = strchr(value, '/');
       if (div) {
-        char *nval = strdup(value);
+        char *nval = turn_strdup(value);
         div = strchr(nval, '/');
         div[0] = 0;
         ++div;
