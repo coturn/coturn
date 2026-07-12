@@ -61,6 +61,13 @@ cd examples
                                 # coverage. UDP/TCP only (legacy + threaded);
                                 # -M over TLS/DTLS re-handshakes mid-run and
                                 # is non-deterministic on loopback.
+./run_tests_rfc5780.sh          # starts the server with --rfc5780 (NAT
+                                # behavior discovery) on two loopback IPs and
+                                # drives turnutils_stunclient -f, asserting the
+                                # OTHER-ADDRESS / CHANGE-REQUEST / RESPONSE-PORT
+                                # path. Needs a second bindable loopback IP
+                                # (native on Linux; SKIPs on macOS without a
+                                # 127.0.0.2 alias).
 ./run_tests_prom.sh             # only when Prometheus support is built
 cd ..
 
@@ -90,7 +97,8 @@ docker run --rm \
        ctest --test-dir build-linux --output-on-failure && \
        rm -rf build && ln -s build-linux build && \
        cd examples && ./run_tests.sh && ./run_tests_conf.sh && \
-       ./run_tests_mobile.sh && ./run_tests_multiplex_peer.sh'
+       ./run_tests_mobile.sh && ./run_tests_multiplex_peer.sh && \
+       ./run_tests_rfc5780.sh'
 ```
 
 Also validate the packaged Docker image:
