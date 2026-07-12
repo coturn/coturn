@@ -46,15 +46,8 @@ struct str_buffer {
 };
 
 struct str_buffer *str_buffer_new(void) {
-  struct str_buffer *ret = (struct str_buffer *)calloc(1, sizeof(struct str_buffer));
-  if (!ret) {
-    return NULL;
-  }
-  ret->buffer = (char *)malloc(1);
-  if (!(ret->buffer)) {
-    free(ret);
-    return NULL;
-  }
+  struct str_buffer *ret = (struct str_buffer *)turn_calloc(1, sizeof(struct str_buffer));
+  ret->buffer = (char *)turn_malloc(1);
   ret->buffer[0] = 0;
   ret->capacity = 1;
   return ret;
@@ -75,10 +68,7 @@ void str_buffer_append(struct str_buffer *sb, const char *str) {
       }
 
       const size_t new_capacity = sb->capacity + growth;
-      char *new_buffer = (char *)realloc(sb->buffer, new_capacity);
-      if (!new_buffer) {
-        return;
-      }
+      char *new_buffer = (char *)turn_realloc(sb->buffer, new_capacity);
 
       sb->buffer = new_buffer;
       sb->capacity = new_capacity;

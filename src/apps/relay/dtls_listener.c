@@ -639,11 +639,7 @@ static int ensure_recvmmsg_state(dtls_listener_relay_server_type *server) {
   }
 
   server->recvmmsg_state =
-      (struct dtls_listener_recvmmsg_state *)calloc(1, sizeof(struct dtls_listener_recvmmsg_state));
-  if (!server->recvmmsg_state) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Cannot allocate recvmmsg scratch state\n", __FUNCTION__);
-    return -1;
-  }
+      (struct dtls_listener_recvmmsg_state *)turn_calloc(1, sizeof(struct dtls_listener_recvmmsg_state));
 
   for (unsigned int i = 0; i < MAX_RECVMMSG_BATCH; ++i) {
     ioa_init_recvmmsg_hdr(&(server->recvmmsg_state->msgs[i]), &(server->recvmmsg_state->iovecs[i]),
@@ -724,12 +720,7 @@ static int create_new_connected_udp_socket(dtls_listener_relay_server_type *serv
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot bind udp server socket to device %s\n", (char *)(s->e->relay_ifname));
   }
 
-  ioa_socket_handle ret = (ioa_socket *)calloc(1, sizeof(ioa_socket));
-  if (!ret) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Cannot allocate new socket structure\n", __FUNCTION__);
-    socket_closesocket(udp_fd);
-    return -1;
-  }
+  ioa_socket_handle ret = (ioa_socket *)turn_calloc(1, sizeof(ioa_socket));
 
   ret->magic = SOCKET_MAGIC;
 

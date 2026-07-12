@@ -34,7 +34,8 @@
 
 #include "ns_turn_ioaddr.h"
 
-#include "ns_turn_defs.h" // for nswap16, nswap32, STRCPY
+#include "ns_turn_defs.h"  // for nswap16, nswap32, STRCPY
+#include "ns_turn_utils.h" // for turn_malloc, turn_calloc, turn_realloc, turn_strdup
 
 #include <stdio.h>  // for snprintf, fprintf, stderr
 #include <stdlib.h> // for atoi, malloc, realloc, free
@@ -343,7 +344,7 @@ int make_ioa_addr_from_full_string(const uint8_t *saddr, uint16_t default_port, 
 
   int ret = -1;
   uint16_t port = 0;
-  char *s = strdup((const char *)saddr);
+  char *s = turn_strdup((const char *)saddr);
   char *sa = get_addr_string_and_port(s, &port);
   if (sa) {
     if (port < 1) {
@@ -677,10 +678,10 @@ static size_t msz = 0;
 
 void ioa_addr_add_mapping(ioa_addr *apub, ioa_addr *apriv) {
   const size_t new_size = msz + sizeof(ioa_addr *);
-  public_addrs = (ioa_addr **)realloc(public_addrs, new_size);
-  private_addrs = (ioa_addr **)realloc(private_addrs, new_size);
-  public_addrs[mcount] = (ioa_addr *)malloc(sizeof(ioa_addr));
-  private_addrs[mcount] = (ioa_addr *)malloc(sizeof(ioa_addr));
+  public_addrs = (ioa_addr **)turn_realloc(public_addrs, new_size);
+  private_addrs = (ioa_addr **)turn_realloc(private_addrs, new_size);
+  public_addrs[mcount] = (ioa_addr *)turn_malloc(sizeof(ioa_addr));
+  private_addrs[mcount] = (ioa_addr *)turn_malloc(sizeof(ioa_addr));
   addr_cpy(public_addrs[mcount], apub);
   addr_cpy(private_addrs[mcount], apriv);
   ++mcount;

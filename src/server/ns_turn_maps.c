@@ -35,6 +35,7 @@
 #include "ns_turn_maps.h"
 
 #include "ns_turn_ioalib.h"
+#include "ns_turn_utils.h" // for turn_malloc, turn_calloc, turn_realloc, turn_strdup
 
 #include "ns_turn_khash.h"
 
@@ -65,7 +66,7 @@ static bool ur_map_init(ur_map *map) {
 #define ur_map_valid(map) ((map) && ((map)->h) && ((map)->magic == MAGIC_HASH))
 
 ur_map *ur_map_create(void) {
-  ur_map *map = (ur_map *)malloc(sizeof(ur_map));
+  ur_map *map = (ur_map *)turn_malloc(sizeof(ur_map));
   if (!ur_map_init(map)) {
     free(map);
     return NULL;
@@ -230,11 +231,11 @@ bool lm_map_put(lm_map *map, ur_map_key_type key, ur_map_value_type value) {
         }
       } else {
         if (!(*keyp)) {
-          a->extra_keys[i] = (ur_map_key_type *)malloc(sizeof(ur_map_key_type));
+          a->extra_keys[i] = (ur_map_key_type *)turn_malloc(sizeof(ur_map_key_type));
           keyp = a->extra_keys[i];
         }
         if (!(*valuep)) {
-          a->extra_values[i] = (ur_map_value_type *)malloc(sizeof(ur_map_value_type));
+          a->extra_values[i] = (ur_map_value_type *)turn_malloc(sizeof(ur_map_value_type));
           valuep = a->extra_values[i];
         }
         assert(keyp);
@@ -248,15 +249,15 @@ bool lm_map_put(lm_map *map, ur_map_key_type key, ur_map_value_type value) {
 
   const size_t old_sz = esz;
   size_t old_sz_mem = esz * sizeof(ur_map_key_type *);
-  a->extra_keys = (ur_map_key_type **)realloc(a->extra_keys, old_sz_mem + sizeof(ur_map_key_type *));
+  a->extra_keys = (ur_map_key_type **)turn_realloc(a->extra_keys, old_sz_mem + sizeof(ur_map_key_type *));
   assert(a->extra_keys);
-  a->extra_keys[old_sz] = (ur_map_key_type *)malloc(sizeof(ur_map_key_type));
+  a->extra_keys[old_sz] = (ur_map_key_type *)turn_malloc(sizeof(ur_map_key_type));
   *(a->extra_keys[old_sz]) = key;
 
   old_sz_mem = esz * sizeof(ur_map_value_type *);
-  a->extra_values = (ur_map_value_type **)realloc(a->extra_values, old_sz_mem + sizeof(ur_map_value_type *));
+  a->extra_values = (ur_map_value_type **)turn_realloc(a->extra_values, old_sz_mem + sizeof(ur_map_value_type *));
   assert(a->extra_values);
-  a->extra_values[old_sz] = (ur_map_value_type *)malloc(sizeof(ur_map_value_type));
+  a->extra_values[old_sz] = (ur_map_value_type *)turn_malloc(sizeof(ur_map_value_type));
   if (a->extra_values[old_sz] != NULL) {
     *(a->extra_values[old_sz]) = value;
     a->extra_sz += 1;
@@ -509,7 +510,7 @@ static void addr_list_add(addr_list_header *slh, const ioa_addr *key, ur_addr_ma
   if (!elem) {
     const size_t old_sz = slh->extra_sz;
     const size_t old_sz_mem = old_sz * sizeof(addr_elem);
-    slh->extra_list = (addr_elem *)realloc(slh->extra_list, old_sz_mem + sizeof(addr_elem));
+    slh->extra_list = (addr_elem *)turn_realloc(slh->extra_list, old_sz_mem + sizeof(addr_elem));
     assert(slh->extra_list);
     elem = &(slh->extra_list[old_sz]);
     slh->extra_sz += 1;
@@ -901,17 +902,10 @@ static string_list *string_list_add(string_list *sl, const ur_string_map_key_typ
   if (!key) {
     return sl;
   }
-  string_elem *elem = (string_elem *)malloc(sizeof(string_elem));
-  if (!elem) {
-    return sl;
-  }
+  string_elem *elem = (string_elem *)turn_malloc(sizeof(string_elem));
   elem->list.next = sl;
   elem->key_size = strlen(key) + 1;
-  elem->key = (char *)malloc(elem->key_size);
-  if (!elem->key) {
-    free(elem);
-    return sl;
-  }
+  elem->key = (char *)turn_malloc(elem->key_size);
   memcpy(elem->key, key, elem->key_size);
   elem->value = value;
   return &(elem->list);
@@ -999,7 +993,7 @@ static bool ur_string_map_init(ur_string_map *map) {
 #define ur_string_map_valid(map) ((map) && ((map)->magic == MAGIC_HASH))
 
 ur_string_map *ur_string_map_create(ur_string_map_func del_value_func) {
-  ur_string_map *map = (ur_string_map *)malloc(sizeof(ur_string_map));
+  ur_string_map *map = (ur_string_map *)turn_malloc(sizeof(ur_string_map));
   if (map == NULL) {
     return NULL;
   } else if (!ur_string_map_init(map)) {

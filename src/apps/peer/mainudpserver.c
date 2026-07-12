@@ -85,8 +85,8 @@ int main(int argc, char **argv) {
       port = atoi(optarg);
       break;
     case 'L':
-      local_addr_list = (char **)realloc(local_addr_list, ++las * sizeof(char *));
-      local_addr_list[las - 1] = strdup(optarg);
+      local_addr_list = (char **)turn_realloc(local_addr_list, ++las * sizeof(char *));
+      local_addr_list[las - 1] = turn_strdup(optarg);
       break;
     case 'v':
       verbose = TURN_VERBOSE_NORMAL;
@@ -98,10 +98,10 @@ int main(int argc, char **argv) {
   }
 
   if (las < 1) {
-    local_addr_list = (char **)realloc(local_addr_list, ++las * sizeof(char *));
-    local_addr_list[las - 1] = strdup("0.0.0.0");
-    local_addr_list = (char **)realloc(local_addr_list, ++las * sizeof(char *));
-    local_addr_list[las - 1] = strdup("::");
+    local_addr_list = (char **)turn_realloc(local_addr_list, ++las * sizeof(char *));
+    local_addr_list[las - 1] = turn_strdup("0.0.0.0");
+    local_addr_list = (char **)turn_realloc(local_addr_list, ++las * sizeof(char *));
+    local_addr_list[las - 1] = turn_strdup("::");
   }
 
   server_type *server = start_udp_server(verbose, ifname, local_addr_list, las, port);

@@ -100,6 +100,24 @@ void set_logfile(const char *fn);
 void rollover_logfile(void);
 void set_log_file_line(int set);
 
+///////////////////////// MEMORY ///////////////////////
+
+/*
+ * Memory allocation wrappers with a fail-fast policy: on allocation failure
+ * they log the failing call site and abort() the process. They never return
+ * NULL, so callers must not check the result. Use these throughout coturn
+ * instead of malloc/calloc/realloc/strdup.
+ */
+void *turn_malloc_impl(size_t sz, const char *file, int line);
+void *turn_calloc_impl(size_t number, size_t size, const char *file, int line);
+void *turn_realloc_impl(void *ptr, size_t sz, const char *file, int line);
+char *turn_strdup_impl(const char *s, const char *file, int line);
+
+#define turn_malloc(sz) turn_malloc_impl((sz), __FILE__, __LINE__)
+#define turn_calloc(number, size) turn_calloc_impl((number), (size), __FILE__, __LINE__)
+#define turn_realloc(ptr, sz) turn_realloc_impl((ptr), (sz), __FILE__, __LINE__)
+#define turn_strdup(s) turn_strdup_impl((s), __FILE__, __LINE__)
+
 ///////////////////////////////////////////////////////
 
 int is_secure_string(const uint8_t *string, int sanitizesql);

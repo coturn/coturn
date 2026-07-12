@@ -643,6 +643,57 @@ void turn_log_func_default(const char *const file, const int line, const TURN_LO
   va_end(args);
 }
 
+///////////// MEMORY ///////////////////
+
+/*
+ * Fail-fast allocation wrappers. On allocation failure they log the failing
+ * call site and abort(): a TURN server that cannot allocate cannot correctly
+ * continue, and a controlled abort is preferable to a NULL dereference or a
+ * silently degraded process. The logger writes into a stack buffer (no heap
+ * allocation), so it remains usable when the heap is exhausted.
+ */
+
+static void turn_out_of_memory(const char *file, int line, const char *what, size_t sz) {
+  turn_log_func_default(file, line, TURN_LOG_LEVEL_ERROR, "FATAL: out of memory: %s(%lu) failed, aborting\n", what,
+                        (unsigned long)sz);
+  abort();
+}
+
+void *turn_malloc_impl(size_t sz, const char *file, int line) {
+  void *ptr = malloc(sz);
+  if (!ptr && sz) {
+    turn_out_of_memory(file, line, "malloc", sz);
+  }
+  return ptr;
+}
+
+void *turn_calloc_impl(size_t number, size_t size, const char *file, int line) {
+  void *ptr = calloc(number, size);
+  if (!ptr && number && size) {
+    turn_out_of_memory(file, line, "calloc", number * size);
+  }
+  return ptr;
+}
+
+void *turn_realloc_impl(void *ptr, size_t sz, const char *file, int line) {
+  void *newptr = realloc(ptr, sz);
+  if (!newptr && sz) {
+    turn_out_of_memory(file, line, "realloc", sz);
+  }
+  return newptr;
+}
+
+char *turn_strdup_impl(const char *s, const char *file, int line) {
+  if (!s) {
+    return NULL;
+  }
+  char *ptr = strdup(s);
+  if (!ptr) {
+    turn_out_of_memory(file, line, "strdup", strlen(s) + 1);
+  }
+  return ptr;
+}
+
 ///////////// ORIGIN ///////////////////
 
 int get_default_protocol_port(const char *scheme, size_t slen) {

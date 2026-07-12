@@ -443,17 +443,11 @@ turn_permission_info *allocation_add_permission(allocation *a, const ioa_addr *a
       }
       size_t old_sz_mem = old_sz * sizeof(turn_permission_slot *);
       turn_permission_slot **new_slots =
-          (turn_permission_slot **)realloc(parray->extra_slots, old_sz_mem + sizeof(turn_permission_slot *));
-      if (!new_slots) {
-        return NULL;
-      }
+          (turn_permission_slot **)turn_realloc(parray->extra_slots, old_sz_mem + sizeof(turn_permission_slot *));
       parray->extra_slots = new_slots;
       slots = parray->extra_slots;
       parray->extra_sz = old_sz + 1;
-      slot = (turn_permission_slot *)malloc(sizeof(turn_permission_slot));
-      if (!slot) {
-        return NULL;
-      }
+      slot = (turn_permission_slot *)turn_malloc(sizeof(turn_permission_slot));
       slots[old_sz] = slot;
     }
   }
@@ -504,18 +498,9 @@ ch_info *ch_map_get(ch_map *const map, const uint16_t chnum, const int new_chn) 
 
   if (new_chn) {
     const size_t old_sz_mem = old_sz * sizeof(ch_info *);
-    ch_info **const pTmp = (ch_info **)realloc(a->extra_chns, old_sz_mem + sizeof(ch_info *));
-    if (!pTmp) {
-      return NULL;
-    }
+    ch_info **const pTmp = (ch_info **)turn_realloc(a->extra_chns, old_sz_mem + sizeof(ch_info *));
     a->extra_chns = pTmp;
-    a->extra_chns[old_sz] = (ch_info *)calloc(1, sizeof(ch_info));
-    if (!a->extra_chns[old_sz]) {
-      // if the realloc succeeds, but the calloc fails, we don't attempt to shrink the realloc back down
-      // by not recording the change to the size, we allow the next call to this function to realloc the
-      // block to presumably the same size it already is, which should be fine and not result in any leaks.
-      return NULL;
-    }
+    a->extra_chns[old_sz] = (ch_info *)turn_calloc(1, sizeof(ch_info));
 
     a->extra_sz += 1;
     return a->extra_chns[old_sz];
@@ -596,10 +581,7 @@ tcp_connection *create_tcp_connection(uint8_t server_id, allocation *a, stun_tid
     }
   }
 
-  tcp_connection *tc = (tcp_connection *)calloc(1, sizeof(tcp_connection));
-  if (!tc) {
-    return NULL;
-  }
+  tcp_connection *tc = (tcp_connection *)turn_calloc(1, sizeof(tcp_connection));
   addr_cpy(&(tc->peer_addr), peer_addr);
   if (tid) {
     memcpy(&(tc->tid), tid, sizeof(stun_tid));
@@ -620,11 +602,7 @@ tcp_connection *create_tcp_connection(uint8_t server_id, allocation *a, stun_tid
 
   if (!found) {
     size_t old_sz_mem = a->tcs.sz * sizeof(tcp_connection *);
-    tcp_connection **new_elems = realloc(a->tcs.elems, old_sz_mem + sizeof(tcp_connection *));
-    if (!new_elems) {
-      free(tc);
-      return NULL;
-    }
+    tcp_connection **new_elems = turn_realloc(a->tcs.elems, old_sz_mem + sizeof(tcp_connection *));
     a->tcs.elems = new_elems;
     a->tcs.elems[a->tcs.sz] = tc;
     a->tcs.sz += 1;
@@ -744,12 +722,7 @@ void add_unsent_buffer(unsent_buffer *ub, ioa_network_buffer_handle nbh) {
     ioa_network_buffer_delete(NULL, nbh);
   } else {
     ioa_network_buffer_handle *new_bufs =
-        (ioa_network_buffer_handle *)realloc(ub->bufs, sizeof(ioa_network_buffer_handle) * (ub->sz + 1));
-    if (!new_bufs) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Memory allocation failed in add_unsent_buffer\n");
-      ioa_network_buffer_delete(NULL, nbh);
-      return;
-    }
+        (ioa_network_buffer_handle *)turn_realloc(ub->bufs, sizeof(ioa_network_buffer_handle) * (ub->sz + 1));
     ub->bufs = new_bufs;
     ub->bufs[ub->sz] = nbh;
     ub->sz += 1;

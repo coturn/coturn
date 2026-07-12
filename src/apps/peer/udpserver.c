@@ -242,10 +242,7 @@ static int udp_create_server_socket(server_type *const server, const char *const
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Start\n");
   }
 
-  ioa_addr *server_addr = (ioa_addr *)malloc(sizeof(ioa_addr));
-  if (!server_addr) {
-    return -1;
-  }
+  ioa_addr *server_addr = (ioa_addr *)turn_malloc(sizeof(ioa_addr));
 
   STRCPY(server->ifname, ifname);
 
@@ -305,10 +302,7 @@ static server_type *init_server(int verbose, const char *ifname, char **local_ad
   if (port == USHRT_MAX) {
     return NULL;
   }
-  server_type *server = (server_type *)calloc(1, sizeof(server_type));
-  if (!server) {
-    return NULL;
-  }
+  server_type *server = (server_type *)turn_calloc(1, sizeof(server_type));
 
   server->verbose = verbose;
   server->event_base = turn_event_base_new();

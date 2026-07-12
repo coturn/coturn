@@ -127,16 +127,12 @@ static struct headers_list *post_parse(char *data, size_t data_len) {
     --data_len;
   }
   if (data_len) {
-    char *post_data = (char *)calloc(data_len + 1, sizeof(char));
+    char *post_data = (char *)turn_calloc(data_len + 1, sizeof(char));
     if (post_data != NULL) {
       memcpy(post_data, data, data_len);
       char *fmarker = NULL;
       char *fsplit = strtok_r(post_data, "&", &fmarker);
-      struct headers_list *list = (struct headers_list *)calloc(1, sizeof(struct headers_list));
-      if (list == NULL) {
-        free(post_data);
-        return NULL;
-      }
+      struct headers_list *list = (struct headers_list *)turn_calloc(1, sizeof(struct headers_list));
       while (fsplit != NULL) {
         char *vmarker = NULL;
         char *key = strtok_r(fsplit, "=", &vmarker);
@@ -155,9 +151,9 @@ static struct headers_list *post_parse(char *data, size_t data_len) {
             }
             p++;
           }
-          char **new_keys = (char **)realloc(list->keys, sizeof(char *) * (list->n + 1));
-          char **new_values = (char **)realloc(list->values, sizeof(char *) * (list->n + 1));
-          char *new_key = strdup(key);
+          char **new_keys = (char **)turn_realloc(list->keys, sizeof(char *) * (list->n + 1));
+          char **new_values = (char **)turn_realloc(list->values, sizeof(char *) * (list->n + 1));
+          char *new_key = turn_strdup(key);
           if (new_keys == NULL || new_values == NULL || new_key == NULL) {
             free(new_key);
             if (new_keys) {
@@ -205,7 +201,7 @@ static struct http_request *parse_http_request_1(struct http_request *ret, char 
 
         const char *query = evhttp_uri_get_query(uri);
         if (query) {
-          struct evkeyvalq *kv = (struct evkeyvalq *)calloc(1, sizeof(struct evkeyvalq));
+          struct evkeyvalq *kv = (struct evkeyvalq *)turn_calloc(1, sizeof(struct evkeyvalq));
           if (evhttp_parse_query_str(query, kv) < 0) {
             free(ret);
             ret = NULL;
@@ -214,14 +210,14 @@ static struct http_request *parse_http_request_1(struct http_request *ret, char 
               free(kv);
             }
           } else {
-            ret->headers = (struct http_headers *)calloc(1, sizeof(struct http_headers));
+            ret->headers = (struct http_headers *)turn_calloc(1, sizeof(struct http_headers));
             ret->headers->uri_headers = kv;
           }
         }
 
         const char *path = evhttp_uri_get_path(uri);
         if (path && ret) {
-          ret->path = strdup(path);
+          ret->path = turn_strdup(path);
         }
 
         evhttp_uri_free(uri);
@@ -230,7 +226,7 @@ static struct http_request *parse_http_request_1(struct http_request *ret, char 
           char *body = strstr(s + 1, "\r\n\r\n");
           if (body && body[0]) {
             if (!ret->headers) {
-              ret->headers = (struct http_headers *)calloc(1, sizeof(struct http_headers));
+              ret->headers = (struct http_headers *)turn_calloc(1, sizeof(struct http_headers));
             }
             ret->headers->post_headers = post_parse(body, strlen(body));
           }
@@ -250,12 +246,7 @@ struct http_request *parse_http_request(char *request) {
 
   if (request) {
 
-    ret = (struct http_request *)calloc(1, sizeof(struct http_request));
-
-    if (ret == NULL) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: failure in call to calloc \n", __FUNCTION__);
-      return NULL;
-    }
+    ret = (struct http_request *)turn_calloc(1, sizeof(struct http_request));
 
     if (strstr(request, "GET ") == request) {
       ret->rtype = HRT_GET;

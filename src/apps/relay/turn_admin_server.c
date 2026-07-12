@@ -479,9 +479,9 @@ static bool print_session(ur_map_key_type key, ur_map_value_type value, void *ar
       if (!ur_string_map_get(csarg->users, (ur_string_map_key_type)(char *)tsi->username, &value)) {
         value = (ur_string_map_value_type)csarg->users_number;
         csarg->users_number += 1;
-        csarg->user_counters = (size_t *)realloc(csarg->user_counters, csarg->users_number * sizeof(size_t));
-        csarg->user_names = (char **)realloc(csarg->user_names, csarg->users_number * sizeof(char *));
-        csarg->user_names[(size_t)value] = strdup((char *)tsi->username);
+        csarg->user_counters = (size_t *)turn_realloc(csarg->user_counters, csarg->users_number * sizeof(size_t));
+        csarg->user_names = (char **)turn_realloc(csarg->user_names, csarg->users_number * sizeof(char *));
+        csarg->user_names[(size_t)value] = turn_strdup((char *)tsi->username);
         csarg->user_counters[(size_t)value] = 0;
         ur_string_map_put(csarg->users, (ur_string_map_key_type)(char *)tsi->username, value);
       }
@@ -948,7 +948,7 @@ static int run_cli_input(struct cli_session *cs, const char *buf0, unsigned int 
 
   if (cs && buf0 && cs->ts && cs->bev) {
 
-    char *buf = (char *)malloc(len + 1);
+    char *buf = (char *)turn_malloc(len + 1);
     memcpy(buf, buf0, len);
     buf[len] = 0;
 
@@ -1157,11 +1157,7 @@ static void cliserver_input_handler(struct evconnlistener *l, evutil_socket_t fd
 
   addr_debug_print(adminserver.verbose, (ioa_addr *)sa, "CLI connected to");
 
-  struct cli_session *clisession = (struct cli_session *)calloc(1, sizeof(struct cli_session));
-  if (clisession == NULL) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: failure in call to calloc \n", __FUNCTION__);
-    return;
-  }
+  struct cli_session *clisession = (struct cli_session *)turn_calloc(1, sizeof(struct cli_session));
 
   if (clisession) {
     clisession->rp = get_realm(NULL);
@@ -1434,11 +1430,7 @@ void setup_admin_thread(void) {
 void admin_server_receive_message(struct bufferevent *bev, void *ptr) {
   UNUSED_ARG(ptr);
 
-  struct turn_session_info *tsi = (struct turn_session_info *)calloc(1, sizeof(struct turn_session_info));
-  if (tsi == NULL) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: failure in call to calloc \n", __FUNCTION__);
-    return;
-  }
+  struct turn_session_info *tsi = (struct turn_session_info *)turn_calloc(1, sizeof(struct turn_session_info));
 
   int n = 0;
   struct evbuffer *input = bufferevent_get_input(bev);
@@ -1459,7 +1451,7 @@ void admin_server_receive_message(struct bufferevent *bev, void *ptr) {
 
     if (tsi->valid) {
       ur_map_put(adminserver.sessions, (ur_map_key_type)tsi->id, (ur_map_value_type)tsi);
-      tsi = (struct turn_session_info *)calloc(1, sizeof(struct turn_session_info));
+      tsi = (struct turn_session_info *)turn_calloc(1, sizeof(struct turn_session_info));
     } else {
       turn_session_info_clean(tsi);
     }
@@ -3412,10 +3404,7 @@ static void handle_logon_request(ioa_socket_handle s, struct http_request *hr) {
 
     struct admin_session *as = (struct admin_session *)s->special_session;
     if (!as) {
-      as = (struct admin_session *)calloc(1, sizeof(struct admin_session));
-      if (!as) {
-        return;
-      }
+      as = (struct admin_session *)turn_calloc(1, sizeof(struct admin_session));
       s->special_session = as;
       s->special_session_size = sizeof(struct admin_session);
     }
