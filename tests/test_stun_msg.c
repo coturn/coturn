@@ -201,6 +201,89 @@ static void test_message_len_accepts_full_well_formed_message(void) {
   TEST_ASSERT_EQUAL_size_t((size_t)(STUN_HEADER_LENGTH + body_len), app_len);
 }
 
+/* ----------------------------- RFC 5780 ----------------------------------- */
+/* NAT behavior discovery (RFC 5780) relies on a handful of STUN attributes:
+ * CHANGE-REQUEST / RESPONSE-PORT / PADDING on the request side, and
+ * OTHER-ADDRESS / RESPONSE-ORIGIN (both plain address attributes) on the
+ * response side. These tests assert the encode/decode helpers still
+ * round-trip so the feature stays wired up. */
+
+static void test_rfc5780_change_request_roundtrip(void) {
+  /* Every combination of the change-ip / change-port flag bits must survive an
+   * encode/decode cycle. */
+  const bool combos[4][2] = {{false, false}, {true, false}, {false, true}, {true, true}};
+
+  for (size_t i = 0; i < 4; ++i) {
+    uint8_t buf[1024] = {0};
+    size_t len = 0;
+    stun_init_request_str(STUN_METHOD_BINDING, buf, &len);
+
+    TEST_ASSERT_TRUE(stun_attr_add_change_request_str(buf, &len, combos[i][0], combos[i][1]));
+
+    stun_attr_ref sar = stun_attr_get_first_by_type_str(buf, len, STUN_ATTRIBUTE_CHANGE_REQUEST);
+    TEST_ASSERT_NOT_NULL(sar);
+
+    bool change_ip = !combos[i][0];
+    bool change_port = !combos[i][1];
+    TEST_ASSERT_TRUE(stun_attr_get_change_request_str(sar, &change_ip, &change_port));
+    TEST_ASSERT_EQUAL(combos[i][0], change_ip);
+    TEST_ASSERT_EQUAL(combos[i][1], change_port);
+  }
+}
+
+static void test_rfc5780_response_port_roundtrip(void) {
+  uint8_t buf[1024] = {0};
+  size_t len = 0;
+  stun_init_request_str(STUN_METHOD_BINDING, buf, &len);
+
+  const uint16_t rport = 0xBEEF;
+  TEST_ASSERT_TRUE(stun_attr_add_response_port_str(buf, &len, rport));
+
+  stun_attr_ref sar = stun_attr_get_first_by_type_str(buf, len, STUN_ATTRIBUTE_RESPONSE_PORT);
+  TEST_ASSERT_NOT_NULL(sar);
+  TEST_ASSERT_EQUAL_INT((int)rport, stun_attr_get_response_port_str(sar));
+}
+
+static void test_rfc5780_padding_roundtrip(void) {
+  uint8_t buf[1024] = {0};
+  size_t len = 0;
+  stun_init_request_str(STUN_METHOD_BINDING, buf, &len);
+
+  const uint16_t padding_len = 37;
+  TEST_ASSERT_TRUE(stun_attr_add_padding_str(buf, &len, padding_len));
+
+  stun_attr_ref sar = stun_attr_get_first_by_type_str(buf, len, STUN_ATTRIBUTE_PADDING);
+  TEST_ASSERT_NOT_NULL(sar);
+  TEST_ASSERT_EQUAL_INT((int)padding_len, stun_attr_get_padding_len_str(sar));
+}
+
+static void test_rfc5780_other_address_and_response_origin_roundtrip(void) {
+  /* The server answers a NAT-discovery binding request with OTHER-ADDRESS (the
+   * alternate ip:port pair) and RESPONSE-ORIGIN (where the response was sent
+   * from). Both are ordinary STUN address attributes; confirm they encode and
+   * decode back to the exact addresses. */
+  uint8_t buf[1024] = {0};
+  size_t len = 0;
+  stun_tid tid = {0};
+  stun_init_success_response_str(STUN_METHOD_BINDING, buf, &len, &tid);
+
+  ioa_addr other_address = {0};
+  ioa_addr response_origin = {0};
+  TEST_ASSERT_EQUAL_INT(0, make_ioa_addr((const uint8_t *)"203.0.113.5", 3479, &other_address));
+  TEST_ASSERT_EQUAL_INT(0, make_ioa_addr((const uint8_t *)"192.0.2.10", 3478, &response_origin));
+
+  TEST_ASSERT_TRUE(stun_attr_add_addr_str(buf, &len, STUN_ATTRIBUTE_OTHER_ADDRESS, &other_address));
+  TEST_ASSERT_TRUE(stun_attr_add_addr_str(buf, &len, STUN_ATTRIBUTE_RESPONSE_ORIGIN, &response_origin));
+
+  ioa_addr got_other = {0};
+  ioa_addr got_origin = {0};
+  TEST_ASSERT_TRUE(stun_attr_get_first_addr_str(buf, len, STUN_ATTRIBUTE_OTHER_ADDRESS, &got_other, NULL));
+  TEST_ASSERT_TRUE(stun_attr_get_first_addr_str(buf, len, STUN_ATTRIBUTE_RESPONSE_ORIGIN, &got_origin, NULL));
+
+  TEST_ASSERT_TRUE(addr_eq(&other_address, &got_other));
+  TEST_ASSERT_TRUE(addr_eq(&response_origin, &got_origin));
+}
+
 static void test_http_message_len_handles_non_null_terminated_buffer(void) {
   uint8_t buf[] = {'G', 'E', 'T', ' ', '/', ' ', 'H', 'T', 'T', 'P', '/', '1', '.', '1', '\r', '\n', '\r', '\n'};
   size_t app_len = 0;
@@ -223,6 +306,10 @@ int main(void) {
   RUN_TEST(test_challenge_response_null_terminates_max_length_server_name);
   RUN_TEST(test_message_len_does_not_overflow_uint16);
   RUN_TEST(test_message_len_accepts_full_well_formed_message);
+  RUN_TEST(test_rfc5780_change_request_roundtrip);
+  RUN_TEST(test_rfc5780_response_port_roundtrip);
+  RUN_TEST(test_rfc5780_padding_roundtrip);
+  RUN_TEST(test_rfc5780_other_address_and_response_origin_roundtrip);
   RUN_TEST(test_http_message_len_handles_non_null_terminated_buffer);
   return UNITY_END();
 }
