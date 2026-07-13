@@ -810,7 +810,11 @@ bool stun_init_channel_message_str(uint16_t chnumber, uint8_t *buf, size_t *len,
   ((uint16_t *)(buf))[1] = nswap16((uint16_t)length);
 
   if (do_padding && (rlen & 0x0003)) {
-    rlen = ((rlen >> 2) + 1) << 2;
+    const uint16_t padded = ((rlen >> 2) + 1) << 2;
+    // Zero the pad bytes so stale buffer contents are not leaked on the wire
+    // (matches the padding handling in stun_attr_add_str).
+    memset(buf + 4 + rlen, 0, (size_t)(padded - rlen));
+    rlen = padded;
   }
 
   *len = 4 + rlen;
