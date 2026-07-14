@@ -226,7 +226,7 @@ void set_syslog_facility(char *val) {
 #endif
 }
 
-int log_min_level = TURN_LOG_LEVEL_DEBUG;
+TURN_LOG_LEVEL log_min_level = TURN_LOG_LEVEL_DEBUG;
 
 #if defined(TURN_LOG_FUNC_IMPL)
 extern void TURN_LOG_FUNC_IMPL(TURN_LOG_LEVEL level, const char *format, va_list args);
@@ -243,7 +243,28 @@ void set_turn_log_timestamp_format(char *new_format) {
   strncpy(turn_log_timestamp_format, new_format, MAX_LOG_TIMESTAMP_FORMAT_LEN - 1);
 }
 
-void set_log_min_level(const char *value) { log_min_level = strtol(value, NULL, 10); }
+static const struct {
+  const char *const name;
+  const TURN_LOG_LEVEL level;
+} log_min_level_names[] = {{"debug", TURN_LOG_LEVEL_DEBUG},
+                           {"info", TURN_LOG_LEVEL_INFO},
+                           {"warning", TURN_LOG_LEVEL_WARNING},
+                           {"error", TURN_LOG_LEVEL_ERROR}};
+
+void set_log_min_level(const char *value) {
+  if (value == NULL) {
+    return;
+  }
+  for (size_t i = 0; i < sizeof(log_min_level_names) / sizeof(log_min_level_names[0]); i++) {
+    if (!strcasecmp(value, log_min_level_names[i].name)) {
+      log_min_level = log_min_level_names[i].level;
+      return;
+    }
+  }
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
+                "WARNING: invalid log-min-level value (%s); ignored. Valid values: debug, info, warning, error.\n",
+                value);
+}
 
 int use_new_log_timestamp_format = 0;
 

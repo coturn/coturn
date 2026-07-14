@@ -166,12 +166,13 @@ Flags:
 
 -V, --Verbose		Extra verbose mode, very annoying and not recommended.
 
---log-min-level	<level>	Set the minimum level at which to log:
-		0 = debug
-		1 = information
-		2 = control
-		3 = warning
-		4 = errors only
+--log-min-level	<level>	Only emit log messages at or above this level.
+		Valid levels, from most to least verbose:
+		debug   = everything (the default)
+		info    = informational messages and above
+		warning = warnings and errors only
+		error   = errors only
+		An unrecognized level is ignored with a warning.
 
 -o, --daemon		Run server as daemon.
 
