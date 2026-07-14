@@ -4231,10 +4231,10 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr *dest_addr, ioa_
 
   do {
     if (s->done || (s->fd == -1)) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
                     "!!! %s: (1) Trying to send data from closed socket: %p (1): done=%d, fd=%d, st=%d, sat=%d\n",
                     __FUNCTION__, s, (int)s->done, (int)s->fd, s->st, s->sat);
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s socket: %p was closed\n", __FUNCTION__, s);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "!!! %s socket: %p was closed\n", __FUNCTION__, s);
       break;
     }
 
