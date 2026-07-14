@@ -999,7 +999,11 @@ start_udp_cycle:
   }
 
   if (keep_elem) {
-    /* buffer was not consumed downstream, reuse it on the next iteration */
+    /* buffer was not consumed downstream, reuse it on the next iteration.
+     * Reset offset/len first (as the recvmmsg path does): recvfrom()/ssl_read()
+     * write at buf + offset with a fixed capacity, so a stale offset left by a
+     * kept DTLS packet accumulates and eventually walks past the buffer. */
+    ioa_network_buffer_reset(elem);
     server->sm.m.sm.nd.nbh = NULL;
   } else {
     /* buffer was consumed (and freed) downstream, need a fresh one next time */
