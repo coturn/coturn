@@ -63,7 +63,6 @@ extern "C" {
 typedef enum {
   TURN_LOG_LEVEL_DEBUG = 0,
   TURN_LOG_LEVEL_INFO,
-  TURN_LOG_LEVEL_CONTROL,
   TURN_LOG_LEVEL_WARNING,
   TURN_LOG_LEVEL_ERROR
 } TURN_LOG_LEVEL;
@@ -81,6 +80,10 @@ void set_simple_log(int val);
 void set_syslog_facility(char *val);
 
 void set_turn_log_timestamp_format(char *new_format);
+
+/* Messages below this level are dropped. Set with --log-min-level=<debug|info|warning|error>. */
+extern TURN_LOG_LEVEL log_min_level;
+void set_log_min_level(const char *value);
 
 void turn_log_func_default(const char *file, int line, TURN_LOG_LEVEL level, const char *format, ...)
 #ifdef __GNUC__

@@ -53,6 +53,10 @@
 #if defined(WINDOWS)
 #include <process.h>
 #include <ws2tcpip.h>
+/* MSVC has no <strings.h>; it spells the POSIX case-insensitive compares with a
+ * leading underscore, in <string.h>. */
+#define strcasecmp _stricmp
+#define strncasecmp _strnicmp
 #else
 #include <arpa/inet.h>   // IWYU pragma: export
 #include <net/if.h>      // IWYU pragma: export

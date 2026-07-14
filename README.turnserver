@@ -166,6 +166,14 @@ Flags:
 
 -V, --Verbose		Extra verbose mode, very annoying and not recommended.
 
+--log-min-level	<level>	Only emit log messages at or above this level.
+		Valid levels, from most to least verbose:
+		debug   = everything (the default)
+		info    = informational messages and above
+		warning = warnings and errors only
+		error   = errors only
+		An unrecognized level is ignored with a warning.
+
 -o, --daemon		Run server as daemon.
 
 --no-software-attribute	DEPRECATED. See "--software-attribute".
@@ -411,7 +419,7 @@ Options with values:
 --tcp-proxy-port	Support connections from TCP loadbalancer on this port. The loadbalancer
 			should use the binary proxy protocol.
 			(https://www.haproxy.org/download/1.8/doc/proxy-protocol.txt)
-				
+
 --aux-server		Auxiliary STUN/TURN server listening endpoint.
 			Aux servers have almost full TURN and STUN functionality.
 			The (minor) limitations are:
@@ -527,7 +535,8 @@ Options with values:
 --no-dynamic-ip-list	Do not use dynamic allowed/denied peer ip list.
 
 --no-dynamic-realms	Do not use dynamic realm assignment and options.
-			
+
+
 --server-name		Server name used for
 			the oAuth authentication purposes.
 			The default value is the realm name.
@@ -658,7 +667,7 @@ Options with values:
 -A --allocation-default-address-family=<ipv4|ipv6|keep> 		Default is IPv4
 			TURN server allocates address family according TURN client requested address family.
 			If address family not requested explicitly by the client, then it falls back to this default.
-			The standard RFC explicitly define that this default must be IPv4, 
+			The standard RFC explicitly define that this default must be IPv4,
 			so use other option values with care!
 
 --cli-ip		Local system IP address to be used for CLI management interface.

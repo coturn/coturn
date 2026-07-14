@@ -226,6 +226,8 @@ void set_syslog_facility(char *val) {
 #endif
 }
 
+TURN_LOG_LEVEL log_min_level = TURN_LOG_LEVEL_DEBUG;
+
 #if defined(TURN_LOG_FUNC_IMPL)
 extern void TURN_LOG_FUNC_IMPL(TURN_LOG_LEVEL level, const char *format, va_list args);
 #endif
@@ -239,6 +241,29 @@ static char turn_log_timestamp_format[MAX_LOG_TIMESTAMP_FORMAT_LEN] = "%FT%T%z";
 
 void set_turn_log_timestamp_format(char *new_format) {
   strncpy(turn_log_timestamp_format, new_format, MAX_LOG_TIMESTAMP_FORMAT_LEN - 1);
+}
+
+static const struct {
+  const char *const name;
+  const TURN_LOG_LEVEL level;
+} log_min_level_names[] = {{"debug", TURN_LOG_LEVEL_DEBUG},
+                           {"info", TURN_LOG_LEVEL_INFO},
+                           {"warning", TURN_LOG_LEVEL_WARNING},
+                           {"error", TURN_LOG_LEVEL_ERROR}};
+
+void set_log_min_level(const char *value) {
+  if (value == NULL) {
+    return;
+  }
+  for (size_t i = 0; i < sizeof(log_min_level_names) / sizeof(log_min_level_names[0]); i++) {
+    if (!strcasecmp(value, log_min_level_names[i].name)) {
+      log_min_level = log_min_level_names[i].level;
+      return;
+    }
+  }
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
+                "WARNING: invalid log-min-level value (%s); ignored. Valid values: debug, info, warning, error.\n",
+                value);
 }
 
 int use_new_log_timestamp_format = 0;
@@ -545,8 +570,6 @@ void rollover_logfile(void) {
 static int get_syslog_level(TURN_LOG_LEVEL level) {
 #if defined(__unix__) || defined(unix) || defined(__APPLE__)
   switch (level) {
-  case TURN_LOG_LEVEL_CONTROL:
-    return LOG_NOTICE;
   case TURN_LOG_LEVEL_WARNING:
     return LOG_WARNING;
   case TURN_LOG_LEVEL_ERROR:
@@ -569,6 +592,9 @@ void err(int eval, const char *format, ...) {
 
 void turn_log_func_default(const char *const file, const int line, const TURN_LOG_LEVEL level, const char *const format,
                            ...) {
+  if (level < log_min_level) {
+    return;
+  }
   va_list args;
   va_start(args, format);
 #if defined(TURN_LOG_FUNC_IMPL)
@@ -599,9 +625,6 @@ void turn_log_func_default(const char *const file, const int line, const TURN_LO
     break;
   case TURN_LOG_LEVEL_INFO:
     so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "INFO: ");
-    break;
-  case TURN_LOG_LEVEL_CONTROL:
-    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "CONTROL: ");
     break;
   case TURN_LOG_LEVEL_WARNING:
     so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "WARNING: ");
