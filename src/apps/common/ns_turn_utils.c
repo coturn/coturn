@@ -549,8 +549,6 @@ void rollover_logfile(void) {
 static int get_syslog_level(TURN_LOG_LEVEL level) {
 #if defined(__unix__) || defined(unix) || defined(__APPLE__)
   switch (level) {
-  case TURN_LOG_LEVEL_CONTROL:
-    return LOG_NOTICE;
   case TURN_LOG_LEVEL_WARNING:
     return LOG_WARNING;
   case TURN_LOG_LEVEL_ERROR:
@@ -606,9 +604,6 @@ void turn_log_func_default(const char *const file, const int line, const TURN_LO
     break;
   case TURN_LOG_LEVEL_INFO:
     so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "INFO: ");
-    break;
-  case TURN_LOG_LEVEL_CONTROL:
-    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "CONTROL: ");
     break;
   case TURN_LOG_LEVEL_WARNING:
     so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "WARNING: ");
