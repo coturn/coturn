@@ -4229,111 +4229,134 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr *dest_addr, ioa_
     return -1;
   }
 
-  if (s->done || (s->fd == -1)) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-                  "!!! %s: (1) Trying to send data from closed socket: %p (1): done=%d, fd=%d, st=%d, sat=%d\n",
-                  __FUNCTION__, s, (int)s->done, (int)s->fd, s->st, s->sat);
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s socket: %p was closed\n", __FUNCTION__, s);
+  do {
+    if (s->done || (s->fd == -1)) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+                    "!!! %s: (1) Trying to send data from closed socket: %p (1): done=%d, fd=%d, st=%d, sat=%d\n",
+                    __FUNCTION__, s, (int)s->done, (int)s->fd, s->st, s->sat);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s socket: %p was closed\n", __FUNCTION__, s);
+      break;
+    }
 
-  } else if (nbh) {
+    if (!nbh) {
+      break; /* nothing to send */
+    }
+
     if (!ioa_socket_check_bandwidth(s, nbh, 0)) {
       /* Bandwidth exhausted, we pretend everything is fine: */
-      ret = (int)(ioa_network_buffer_get_size(nbh));
+      ret = (int)ioa_network_buffer_get_size(nbh);
       if (skip) {
         *skip = 1;
       }
-    } else {
-      if (!ioa_socket_tobeclosed(s) && s->e) {
-
-        if (!(s->done || (s->fd == -1))) {
-          udp_sendmmsg_flush_before_socket_options(s, ttl, tos);
-          set_socket_ttl(s, ttl);
-          set_socket_tos(s, tos);
-
-          if (s->connected && s->bev) {
-            udp_sendmmsg_flush_if_pending();
-            if ((s->st == TLS_SOCKET) || (s->st == TLS_SCTP_SOCKET)) {
-#if TLS_SUPPORTED
-              SSL *ctx = bufferevent_openssl_get_ssl(s->bev);
-              if (!ctx || SSL_get_shutdown(ctx)) {
-                s->tobeclosed = 1;
-                ret = 0;
-              }
-#endif
-            }
-
-            if (!(s->tobeclosed)) {
-
-              ret = (int)ioa_network_buffer_get_size(nbh);
-
-              if (!tcp_congestion_control || is_socket_writeable(s, (size_t)ret, __FUNCTION__, 2)) {
-                s->in_write = 1;
-                if (bufferevent_write(s->bev, ioa_network_buffer_data(nbh), ioa_network_buffer_get_size(nbh)) < 0) {
-                  ret = -1;
-                  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "bufev send: %s\n", strerror(errno));
-                  log_socket_event(s, "socket write failed, to be closed", 1);
-                  s->tobeclosed = 1;
-                  s->broken = 1;
-                }
-                /*
-                bufferevent_flush(s->bev,
-                                                EV_READ|EV_WRITE,
-                                                BEV_FLUSH);
-                                                */
-                s->in_write = 0;
-              } else {
-                // drop the packet
-                ;
-              }
-            }
-          } else if (s->ssl) {
-            udp_sendmmsg_flush_if_pending();
-            send_ssl_backlog_buffers(s);
-            ret = ssl_send(s, (char *)ioa_network_buffer_data(nbh), ioa_network_buffer_get_size(nbh),
-                           (s->e ? s->e->verbose : TURN_VERBOSE_NONE));
-            if (ret < 0) {
-              s->tobeclosed = 1;
-            } else if (ret == 0) {
-              add_buffer_to_buffer_list(&(s->bufs), (char *)ioa_network_buffer_data(nbh),
-                                        ioa_network_buffer_get_size(nbh));
-            }
-          } else if (s->fd >= 0) {
-
-            if (s->connected && !(s->parent_s)) {
-              dest_addr = NULL; /* ignore dest_addr */
-            } else if (!dest_addr) {
-              dest_addr = &(s->remote_addr);
-            }
-
-            ret = (int)ioa_network_buffer_get_size(nbh);
-            if (udp_sendmmsg_enqueue(s, dest_addr, nbh, ttl, tos)) {
-              nbh = NULL;
-            } else {
-              udp_sendmmsg_flush_if_pending();
-              ret = udp_send(s, dest_addr, (char *)ioa_network_buffer_data(nbh), ioa_network_buffer_get_size(nbh));
-              if (ret < 0) {
-                s->tobeclosed = 1;
-#if defined(EADDRNOTAVAIL)
-                const int perr = socket_errno();
-#endif
-                TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "udp send: %s\n", strerror(errno));
-#if defined(EADDRNOTAVAIL)
-                if (dest_addr && (perr == EADDRNOTAVAIL)) {
-                  char sfrom[MAX_IOA_ADDR_STRING] = "";
-                  addr_to_string(&(s->local_addr), sfrom);
-                  char sto[MAX_IOA_ADDR_STRING] = "";
-                  addr_to_string(dest_addr, sto);
-                  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: network error: address unreachable from %s to %s\n",
-                                __FUNCTION__, sfrom, sto);
-                }
-#endif
-              }
-            }
-          }
-        }
-      }
+      break;
     }
-  }
+
+    if (ioa_socket_tobeclosed(s) || !s->e) {
+      break;
+    }
+
+    /* A pending sendmmsg batch was queued under the previous ttl/tos and is
+     * per-fd; drain it before we mutate socket options or switch transports. */
+    udp_sendmmsg_flush_before_socket_options(s, ttl, tos);
+    set_socket_ttl(s, ttl);
+    set_socket_tos(s, tos);
+
+    /* ---- TLS / bufferevent transport ---- */
+    if (s->connected && s->bev) {
+      udp_sendmmsg_flush_if_pending();
+
+      if ((s->st == TLS_SOCKET) || (s->st == TLS_SCTP_SOCKET)) {
+#if TLS_SUPPORTED
+        SSL *ctx = bufferevent_openssl_get_ssl(s->bev);
+        if (!ctx || SSL_get_shutdown(ctx)) {
+          s->tobeclosed = 1;
+          ret = 0;
+        }
+#endif
+      }
+
+      if (s->tobeclosed) {
+        break;
+      }
+
+      ret = (int)ioa_network_buffer_get_size(nbh);
+
+      if (tcp_congestion_control && !is_socket_writeable(s, (size_t)ret, __FUNCTION__, 2)) {
+        break; /* drop the packet; ret already == size */
+      }
+
+      s->in_write = 1;
+      if (bufferevent_write(s->bev, ioa_network_buffer_data(nbh), ioa_network_buffer_get_size(nbh)) < 0) {
+        ret = -1;
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "bufev send: %s\n", strerror(errno));
+        log_socket_event(s, "socket write failed, to be closed", 1);
+        s->tobeclosed = 1;
+        s->broken = 1;
+      }
+      /*
+      bufferevent_flush(s->bev,
+                                      EV_READ|EV_WRITE,
+                                      BEV_FLUSH);
+                                      */
+      s->in_write = 0;
+      break;
+    }
+
+    /* ---- OpenSSL (DTLS) transport ---- */
+    if (s->ssl) {
+      udp_sendmmsg_flush_if_pending();
+      send_ssl_backlog_buffers(s);
+      ret = ssl_send(s, (char *)ioa_network_buffer_data(nbh), ioa_network_buffer_get_size(nbh),
+                     (s->e ? s->e->verbose : TURN_VERBOSE_NONE));
+      if (ret < 0) {
+        s->tobeclosed = 1;
+      } else if (ret == 0) {
+        add_buffer_to_buffer_list(&(s->bufs), (char *)ioa_network_buffer_data(nbh), ioa_network_buffer_get_size(nbh));
+      }
+      break;
+    }
+
+    /* ---- plain UDP transport (sendmmsg-batchable) ---- */
+    if (s->fd >= 0) {
+      if (s->connected && !(s->parent_s)) {
+        dest_addr = NULL; /* ignore dest_addr */
+      } else if (!dest_addr) {
+        dest_addr = &(s->remote_addr);
+      }
+
+      ret = (int)ioa_network_buffer_get_size(nbh);
+
+      /* Coalesce into the per-thread sendmmsg batch. On success the batch takes
+       * ownership of nbh (freed at flush), so clear our handle to suppress the
+       * tail delete below. */
+      if (udp_sendmmsg_enqueue(s, dest_addr, nbh, ttl, tos)) {
+        nbh = NULL;
+        break;
+      }
+
+      udp_sendmmsg_flush_if_pending();
+      ret = udp_send(s, dest_addr, (char *)ioa_network_buffer_data(nbh), ioa_network_buffer_get_size(nbh));
+      if (ret < 0) {
+        s->tobeclosed = 1;
+#if defined(EADDRNOTAVAIL)
+        const int perr = socket_errno();
+#endif
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "udp send: %s\n", strerror(errno));
+#if defined(EADDRNOTAVAIL)
+        if (dest_addr && (perr == EADDRNOTAVAIL)) {
+          char sfrom[MAX_IOA_ADDR_STRING] = "";
+          addr_to_string(&(s->local_addr), sfrom);
+          char sto[MAX_IOA_ADDR_STRING] = "";
+          addr_to_string(dest_addr, sto);
+          TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: network error: address unreachable from %s to %s\n", __FUNCTION__,
+                        sfrom, sto);
+        }
+#endif
+      }
+      break;
+    }
+
+  } while (0);
 
   if (nbh) {
     ioa_network_buffer_delete(s->e, nbh);
