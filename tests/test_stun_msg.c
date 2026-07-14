@@ -106,6 +106,29 @@ static void test_channel_message_roundtrip(void) {
   TEST_ASSERT_EQUAL_UINT16(channel, parsed_channel);
 }
 
+static void test_channel_message_zeroes_padding_bytes(void) {
+  uint8_t buf[1024];
+  // Prefill with a stale marker, mimicking a reused pooled buffer.
+  memset(buf, 0xAA, sizeof(buf));
+  size_t len = 0;
+  const uint16_t channel = 0x4001;
+  const int payload_len = 5; // not a multiple of 4 -> padding is added
+
+  for (int i = 0; i < payload_len; i++) {
+    buf[4 + i] = (uint8_t)(0x10 + i);
+  }
+
+  TEST_ASSERT_TRUE(stun_init_channel_message_str(channel, buf, &len, payload_len, true));
+
+  // 4 header + 5 payload rounded up to a 4-byte boundary.
+  TEST_ASSERT_EQUAL_size_t(12, len);
+
+  // The 3 pad bytes must be zeroed, not the stale 0xAA, so nothing leaks.
+  for (size_t i = (size_t)(4 + payload_len); i < len; i++) {
+    TEST_ASSERT_EQUAL_UINT8(0, buf[i]);
+  }
+}
+
 static void test_challenge_response_null_terminates_max_length_server_name(void) {
   uint8_t buf[MAX_STUN_MESSAGE_SIZE] = {0};
   size_t len = 0;
@@ -303,6 +326,7 @@ int main(void) {
   RUN_TEST(test_truncated_buffer_is_not_command_message);
   RUN_TEST(test_zeroed_buffer_is_not_command_message);
   RUN_TEST(test_channel_message_roundtrip);
+  RUN_TEST(test_channel_message_zeroes_padding_bytes);
   RUN_TEST(test_challenge_response_null_terminates_max_length_server_name);
   RUN_TEST(test_message_len_does_not_overflow_uint16);
   RUN_TEST(test_message_len_accepts_full_well_formed_message);
