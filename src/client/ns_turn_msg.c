@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * https://opensource.org/license/bsd-3-clause
+ *
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
@@ -47,7 +51,8 @@
 ///////////
 
 #define FINGERPRINT_XOR 0x5354554e
-
+// Longest method string is "CONNECTION_ATTEMPT" (20 chars)
+#define STUN_METHOD_STR_MAX 32
 ///////////
 
 int stun_method_str(uint16_t method, char *smethod) {
@@ -91,38 +96,76 @@ int stun_method_str(uint16_t method, char *smethod) {
   };
 
   if (smethod) {
-    strcpy(smethod, s);
+    strncpy(smethod, s, STUN_METHOD_STR_MAX - 1);
+    smethod[STUN_METHOD_STR_MAX - 1] = '\0';
   }
 
   return ret;
 }
 
+#if defined(FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION)
+/*
+ * CIFuzz memory builds use an unsanitized OpenSSL. Hitting RAND_bytes() from
+ * harness setup produces startup-only MSan reports inside libcrypto that mask
+ * the message-construction logic we actually want to fuzz.
+ */
+static uint64_t fuzz_prng_next(void) {
+  static uint64_t state = UINT64_C(0x9e3779b97f4a7c15);
+
+  state += UINT64_C(0x9e3779b97f4a7c15);
+  uint64_t z = state;
+  z = (z ^ (z >> 30)) * UINT64_C(0xbf58476d1ce4e5b9);
+  z = (z ^ (z >> 27)) * UINT64_C(0x94d049bb133111eb);
+  return z ^ (z >> 31);
+}
+#endif
+
 long turn_random_number(void) {
   long ret = 0;
+#if defined(FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION)
+  ret = (long)fuzz_prng_next();
+#else
   if (!RAND_bytes((unsigned char *)&ret, sizeof(ret)))
 #if defined(WINDOWS)
     ret = rand();
 #else
     ret = random();
 #endif
+#endif
   return ret;
 }
 
 static void generate_random_nonce(unsigned char *nonce, size_t sz) {
+#if defined(FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION)
+  if (nonce) {
+    for (size_t i = 0; i < sz; ++i) {
+      nonce[i] = (unsigned char)turn_random_number();
+    }
+  }
+#else
   if (!RAND_bytes(nonce, (int)sz)) {
     for (size_t i = 0; i < sz; ++i) {
       nonce[i] = (unsigned char)turn_random_number();
     }
   }
+#endif
 }
 
 static void turn_random_tid_size(void *id) {
   uint32_t *ar = (uint32_t *)id;
+#if defined(FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION)
+  if (ar) {
+    for (size_t i = 0; i < 3; ++i) {
+      ar[i] = (uint32_t)turn_random_number();
+    }
+  }
+#else
   if (!RAND_bytes((unsigned char *)ar, 12)) {
     for (size_t i = 0; i < 3; ++i) {
       ar[i] = (uint32_t)turn_random_number();
     }
   }
+#endif
 }
 
 bool stun_calculate_hmac(const uint8_t *buf, size_t len, const uint8_t *key, size_t keylen, uint8_t *hmac,
@@ -171,12 +214,12 @@ bool stun_produce_integrity_key_str(const uint8_t *uname, const uint8_t *realm, 
   ERR_clear_error();
   UNUSED_ARG(shatype);
 
-  size_t ulen = strlen((const char *)uname);
-  size_t rlen = strlen((const char *)realm);
-  size_t plen = strlen((const char *)upwd);
-  size_t sz = ulen + 1 + rlen + 1 + plen + 1 + 10;
-  size_t strl = ulen + 1 + rlen + 1 + plen;
-  uint8_t *str = (uint8_t *)malloc(sz + 1);
+  const size_t ulen = strlen((const char *)uname);
+  const size_t rlen = strlen((const char *)realm);
+  const size_t plen = strlen((const char *)upwd);
+  const size_t sz = ulen + 1 + rlen + 1 + plen + 1 + 10;
+  const size_t strl = ulen + 1 + rlen + 1 + plen;
+  uint8_t *str = (uint8_t *)turn_malloc(sz + 1);
 
   strncpy((char *)str, (const char *)uname, sz);
   str[ulen] = ':';
@@ -321,14 +364,25 @@ static bool encrypted_password(const char *pin, unsigned char *salt) {
   return false;
 }
 
+/* Length-checked constant-time string compare. The length comparison can leak
+ * the length of the secret, but the byte content is compared in constant time
+ * via CRYPTO_memcmp so no per-byte timing oracle remains. */
+static bool const_time_str_equal(const char *a, const char *b) {
+  const size_t la = strlen(a);
+  if (la != strlen(b)) {
+    return false;
+  }
+  return CRYPTO_memcmp(a, b, la) == 0;
+}
+
 bool check_password_equal(const char *pin, const char *pwd) {
   unsigned char salt[PWD_SALT_SIZE];
   if (!encrypted_password(pwd, salt)) {
-    return 0 == strcmp(pin, pwd);
+    return const_time_str_equal(pin, pwd);
   }
   char enc_pin[257];
   generate_enc_password(pin, enc_pin, salt);
-  return 0 == strcmp(enc_pin, pwd);
+  return const_time_str_equal(enc_pin, pwd);
 }
 
 /////////////////////////////////////////////////////////////////
@@ -343,7 +397,7 @@ int stun_get_command_message_len_str(const uint8_t *buf, size_t len) {
   }
 
   /* Validate the size the buffer claims to be */
-  size_t bufLen = (size_t)(nswap16(((const uint16_t *)(buf))[1]) + STUN_HEADER_LENGTH);
+  const size_t bufLen = (size_t)(nswap16(((const uint16_t *)(buf))[1]) + STUN_HEADER_LENGTH);
   if (bufLen > len) {
     return -1;
   }
@@ -371,7 +425,7 @@ uint16_t stun_get_method_str(const uint8_t *buf, size_t len) {
     return (uint16_t)-1;
   }
 
-  uint16_t tt = nswap16(((const uint16_t *)buf)[0]);
+  const uint16_t tt = nswap16(((const uint16_t *)buf)[0]);
 
   return (tt & 0x000F) | ((tt & 0x00E0) >> 1) | ((tt & 0x0E00) >> 2) | ((tt & 0x3000) >> 2);
 }
@@ -394,7 +448,7 @@ bool stun_is_command_message_str(const uint8_t *buf, size_t blen) {
     if (!STUN_VALID_CHANNEL(nswap16(((const uint16_t *)buf)[0]))) {
       if ((((uint8_t)buf[0]) & ((uint8_t)(0xC0))) == 0) {
         if (nswap32(((const uint32_t *)(buf))[1]) == STUN_MAGIC_COOKIE) {
-          uint16_t len = nswap16(((const uint16_t *)(buf))[1]);
+          const uint16_t len = nswap16(((const uint16_t *)(buf))[1]);
           if ((len & 0x0003) == 0) {
             if ((size_t)(len + STUN_HEADER_LENGTH) == blen) {
               return true;
@@ -412,7 +466,7 @@ bool old_stun_is_command_message_str(const uint8_t *buf, size_t blen, uint32_t *
     if (!STUN_VALID_CHANNEL(nswap16(((const uint16_t *)buf)[0]))) {
       if ((((uint8_t)buf[0]) & ((uint8_t)(0xC0))) == 0) {
         if (nswap32(((const uint32_t *)(buf))[1]) != STUN_MAGIC_COOKIE) {
-          uint16_t len = nswap16(((const uint16_t *)(buf))[1]);
+          const uint16_t len = nswap16(((const uint16_t *)(buf))[1]);
           if ((len & 0x0003) == 0) {
             if ((size_t)(len + STUN_HEADER_LENGTH) == blen) {
               *cookie = nswap32(((const uint32_t *)(buf))[1]);
@@ -448,8 +502,8 @@ bool stun_is_command_message_full_check_str(const uint8_t *buf, size_t blen, int
   if (!fingerprint) {
     return !must_check_fingerprint;
   }
-  uint32_t crc32len = (uint32_t)((((const uint8_t *)fingerprint) - buf) - 4);
-  bool ret = (*fingerprint == nswap32(ns_crc32(buf, crc32len) ^ ((uint32_t)FINGERPRINT_XOR)));
+  const uint32_t crc32len = (uint32_t)((((const uint8_t *)fingerprint) - buf) - 4);
+  const bool ret = (*fingerprint == nswap32(ns_crc32(buf, crc32len) ^ ((uint32_t)FINGERPRINT_XOR)));
   if (ret && fingerprint_present) {
     *fingerprint_present = ret;
   }
@@ -503,7 +557,7 @@ bool stun_is_error_response_str(const uint8_t *buf, size_t len, int *err_code, u
 bool stun_is_challenge_response_str(const uint8_t *buf, size_t len, int *err_code, uint8_t *err_msg,
                                     size_t err_msg_size, uint8_t *realm, uint8_t *nonce, uint8_t *server_name,
                                     bool *oauth) {
-  bool ret = stun_is_error_response_str(buf, len, err_code, err_msg, err_msg_size);
+  const bool ret = stun_is_error_response_str(buf, len, err_code, err_msg, err_msg_size);
 
   if (ret && (((*err_code) == 401) || ((*err_code) == 438))) {
     stun_attr_ref sar = stun_attr_get_first_by_type_str(buf, len, STUN_ATTRIBUTE_REALM);
@@ -526,6 +580,7 @@ bool stun_is_challenge_response_str(const uint8_t *buf, size_t len, int *err_cod
               if (vlen > 0) {
                 if (server_name) {
                   memcpy(server_name, value, vlen);
+                  server_name[vlen] = 0;
                 }
                 found_oauth = true;
               }
@@ -694,24 +749,27 @@ const uint8_t *get_default_reason(int error_code) {
 }
 
 static void stun_init_error_response_common_str(uint8_t *buf, size_t *len, uint16_t error_code, const uint8_t *reason,
-                                                stun_tid *id) {
+                                                stun_tid *id, bool include_reason_string) {
 
-  if (!reason || !strcmp((const char *)reason, "Unknown error")) {
+  if (include_reason_string && (!reason || !strcmp((const char *)reason, "Unknown error"))) {
     reason = get_default_reason(error_code);
   }
 
   uint8_t avalue[513];
+  memset(avalue, 0, sizeof(avalue));
   avalue[0] = 0;
   avalue[1] = 0;
   avalue[2] = (uint8_t)(error_code / 100);
   avalue[3] = (uint8_t)(error_code % 100);
-  strncpy((char *)(avalue + 4), (const char *)reason, sizeof(avalue) - 4);
+  if (include_reason_string) {
+    strncpy((char *)(avalue + 4), (const char *)reason, sizeof(avalue) - 4);
+  }
   avalue[sizeof(avalue) - 1] = 0;
   int alen = 4 + (int)strlen((const char *)(avalue + 4));
 
   //"Manual" padding for compatibility with classic old stun:
   {
-    int rem = alen % 4;
+    const int rem = alen % 4;
     if (rem) {
       alen += (4 - rem);
     }
@@ -724,19 +782,20 @@ static void stun_init_error_response_common_str(uint8_t *buf, size_t *len, uint1
 }
 
 void old_stun_init_error_response_str(uint16_t method, uint8_t *buf, size_t *len, uint16_t error_code,
-                                      const uint8_t *reason, stun_tid *id, uint32_t cookie) {
+                                      const uint8_t *reason, stun_tid *id, uint32_t cookie,
+                                      bool include_reason_string) {
 
   old_stun_init_command_str(stun_make_error_response(method), buf, len, cookie);
 
-  stun_init_error_response_common_str(buf, len, error_code, reason, id);
+  stun_init_error_response_common_str(buf, len, error_code, reason, id, include_reason_string);
 }
 
 void stun_init_error_response_str(uint16_t method, uint8_t *buf, size_t *len, uint16_t error_code,
-                                  const uint8_t *reason, stun_tid *id) {
+                                  const uint8_t *reason, stun_tid *id, bool include_reason_string) {
 
   stun_init_command_str(stun_make_error_response(method), buf, len);
 
-  stun_init_error_response_common_str(buf, len, error_code, reason, id);
+  stun_init_error_response_common_str(buf, len, error_code, reason, id, include_reason_string);
 }
 
 /////////// CHANNEL ////////////////////////////////////////////////
@@ -751,7 +810,11 @@ bool stun_init_channel_message_str(uint16_t chnumber, uint8_t *buf, size_t *len,
   ((uint16_t *)(buf))[1] = nswap16((uint16_t)length);
 
   if (do_padding && (rlen & 0x0003)) {
-    rlen = ((rlen >> 2) + 1) << 2;
+    const uint16_t padded = ((rlen >> 2) + 1) << 2;
+    // Zero the pad bytes so stale buffer contents are not leaked on the wire
+    // (matches the padding handling in stun_attr_add_str).
+    memset(buf + 4 + rlen, 0, (size_t)(padded - rlen));
+    rlen = padded;
   }
 
   *len = 4 + rlen;
@@ -767,16 +830,18 @@ bool stun_is_channel_message_str(const uint8_t *buf, size_t *blen, uint16_t *chn
     return false;
   }
 
-  uint16_t chn = nswap16(((const uint16_t *)(buf))[0]);
+  const uint16_t chn = nswap16(((const uint16_t *)(buf))[0]);
   if (!STUN_VALID_CHANNEL(chn)) {
     return false;
   }
 
-  if (*blen > (uint16_t)-1) {
-    *blen = (uint16_t)-1;
-  }
-
-  datalen_actual = (uint16_t)(*blen) - 4;
+  /* Clamp to uint16_t range for comparison without mutating the caller's
+   * *blen — the modification to *blen at the end of this function is
+   * intentional (it reports actual message length consumed), but clamping
+   * during validation must not alter the caller's view of the buffer size
+   * if the function later returns false (issue #1837). */
+  const uint16_t blen16 = (*blen > (uint16_t)-1) ? (uint16_t)-1 : (uint16_t)*blen;
+  datalen_actual = blen16 - 4;
   datalen_header = ((const uint16_t *)buf)[1];
   datalen_header = nswap16(datalen_header);
 
@@ -795,7 +860,7 @@ bool stun_is_channel_message_str(const uint8_t *buf, size_t *blen, uint16_t *chn
       } else if (datalen_header == 0) {
         return false;
       } else {
-        uint16_t diff = datalen_actual - datalen_header;
+        const uint16_t diff = datalen_actual - datalen_header;
         if (diff > 3) {
           return false;
         }
@@ -817,7 +882,7 @@ bool stun_is_channel_message_str(const uint8_t *buf, size_t *blen, uint16_t *chn
 static inline bool sheadof(const char *head, const char *full, bool ignore_case) {
   while (*head) {
     if (*head != *full) {
-      if (ignore_case && (tolower((int)*head) == tolower((int)*full))) {
+      if (ignore_case && (tolower((unsigned char)*head) == tolower((unsigned char)*full))) {
         // OK
       } else {
         return false;
@@ -833,9 +898,9 @@ static inline const char *findstr(const char *hay, size_t slen, const char *need
   const char *ret = NULL;
 
   if (hay && slen && needle) {
-    size_t nlen = strlen(needle);
+    const size_t nlen = strlen(needle);
     if (nlen <= slen) {
-      size_t smax = slen - nlen + 1;
+      const size_t smax = slen - nlen + 1;
       const char *sp = hay;
       for (size_t i = 0; i < smax; ++i) {
         if (sheadof(needle, sp + i, ignore_case)) {
@@ -849,14 +914,23 @@ static inline const char *findstr(const char *hay, size_t slen, const char *need
   return ret;
 }
 
+static inline bool has_prefix(const char *buf, size_t blen, const char *prefix, bool ignore_case) {
+  if (!buf || !prefix) {
+    return false;
+  }
+
+  const size_t prefix_len = strlen(prefix);
+  return (prefix_len <= blen) && sheadof(prefix, buf, ignore_case);
+}
+
 int is_http(const char *s, size_t blen) {
   if (s && blen >= 12) {
-    if ((strstr(s, "GET ") == s) || (strstr(s, "POST ") == s) || (strstr(s, "DELETE ") == s) ||
-        (strstr(s, "PUT ") == s)) {
+    if (has_prefix(s, blen, "GET ", false) || has_prefix(s, blen, "POST ", false) ||
+        has_prefix(s, blen, "DELETE ", false) || has_prefix(s, blen, "PUT ", false)) {
       const char *sp = findstr(s + 4, blen - 4, " HTTP/", false);
       if (sp) {
         sp += 6;
-        size_t diff_blen = sp - s;
+        const size_t diff_blen = sp - s;
         if (diff_blen + 4 <= blen) {
           sp = findstr(sp, blen - diff_blen, "\r\n\r\n", false);
           if (sp) {
@@ -864,7 +938,7 @@ int is_http(const char *s, size_t blen) {
             const char *clheader = "content-length: ";
             const char *cl = findstr(s, sp - s, clheader, true);
             if (cl) {
-              unsigned long clen = strtoul(cl + strlen(clheader), NULL, 10);
+              const unsigned long clen = strtoul(cl + strlen(clheader), NULL, 10);
               if (clen > 0 && clen < (0x0FFFFFFF)) {
                 ret_len += (int)clen;
               }
@@ -885,11 +959,16 @@ int stun_get_message_len_str(uint8_t *buf, size_t blen, int padding, size_t *app
       if (!STUN_VALID_CHANNEL(nswap16(((const uint16_t *)buf)[0]))) {
         if ((((uint8_t)buf[0]) & ((uint8_t)(0xC0))) == 0) {
           if (nswap32(((const uint32_t *)(buf))[1]) == STUN_MAGIC_COOKIE) {
-            uint16_t len = nswap16(((const uint16_t *)(buf))[1]);
-            if ((len & 0x0003) == 0) {
+            /* Use uint32_t to avoid uint16_t truncation overflow when the body
+             * length is near 0xFFFF: e.g. 65532 + STUN_HEADER_LENGTH (20) =
+             * 65552, which wraps to 16 in uint16_t and lets the truncated value
+             * pass the bounds check, desynchronizing TCP/TLS framing. Mirrors
+             * the channel-data path below. */
+            uint32_t len = (uint32_t)nswap16(((const uint16_t *)(buf))[1]);
+            if ((len & 0x0003u) == 0) {
               len += STUN_HEADER_LENGTH;
-              if ((size_t)len <= blen) {
-                *app_len = (size_t)len;
+              if (len <= blen) {
+                *app_len = len;
                 return (int)len;
               }
             }
@@ -900,7 +979,7 @@ int stun_get_message_len_str(uint8_t *buf, size_t blen, int padding, size_t *app
 
     // HTTP request ?
     {
-      int http_len = is_http(((char *)buf), blen);
+      const int http_len = is_http(((char *)buf), blen);
       if ((http_len > 0) && ((size_t)http_len <= blen)) {
         *app_len = (size_t)http_len;
         return http_len;
@@ -909,19 +988,22 @@ int stun_get_message_len_str(uint8_t *buf, size_t blen, int padding, size_t *app
 
     /* STUN channel ? */
     if (blen >= 4) {
-      uint16_t chn = nswap16(((const uint16_t *)(buf))[0]);
+      const uint16_t chn = nswap16(((const uint16_t *)(buf))[0]);
       if (STUN_VALID_CHANNEL(chn)) {
 
-        uint16_t bret = (4 + (nswap16(((const uint16_t *)(buf))[1])));
+        /* Use uint32_t to avoid uint16_t truncation overflow when data_len is
+         * near 0xFFFF: 4 + 0xFFFF = 65539, which wraps to 3 in uint16_t and
+         * causes TCP framing bypass (CVE candidate, issue #1837). */
+        uint32_t bret = 4u + (uint32_t)nswap16(((const uint16_t *)(buf))[1]);
 
         *app_len = bret;
 
-        if (padding && (bret & 0x0003)) {
-          bret = ((bret >> 2) + 1) << 2;
+        if (padding && (bret & 0x0003u)) {
+          bret = ((bret >> 2) + 1u) << 2;
         }
 
         if (bret <= blen) {
-          return bret;
+          return (int)bret;
         }
       }
     }
@@ -1022,7 +1104,7 @@ bool stun_set_allocate_request_str(uint8_t *buf, size_t *len, uint32_t lifetime,
 bool stun_set_allocate_response_str(uint8_t *buf, size_t *len, stun_tid *tid, const ioa_addr *relayed_addr1,
                                     const ioa_addr *relayed_addr2, const ioa_addr *reflexive_addr, uint32_t lifetime,
                                     uint32_t max_lifetime, int error_code, const uint8_t *reason,
-                                    uint64_t reservation_token, char *mobile_id) {
+                                    uint64_t reservation_token, char *mobile_id, bool include_reason_string) {
 
   if (!error_code) {
 
@@ -1071,7 +1153,7 @@ bool stun_set_allocate_response_str(uint8_t *buf, size_t *len, stun_tid *tid, co
     }
 
   } else {
-    stun_init_error_response_str(STUN_METHOD_ALLOCATE, buf, len, error_code, reason, tid);
+    stun_init_error_response_str(STUN_METHOD_ALLOCATE, buf, len, error_code, reason, tid, include_reason_string);
   }
 
   return true;
@@ -1108,12 +1190,12 @@ uint16_t stun_set_channel_bind_request_str(uint8_t *buf, size_t *len, const ioa_
   return channel_number;
 }
 
-void stun_set_channel_bind_response_str(uint8_t *buf, size_t *len, stun_tid *tid, int error_code,
-                                        const uint8_t *reason) {
+void stun_set_channel_bind_response_str(uint8_t *buf, size_t *len, stun_tid *tid, int error_code, const uint8_t *reason,
+                                        bool include_reason_string) {
   if (!error_code) {
     stun_init_success_response_str(STUN_METHOD_CHANNEL_BIND, buf, len, tid);
   } else {
-    stun_init_error_response_str(STUN_METHOD_CHANNEL_BIND, buf, len, error_code, reason, tid);
+    stun_init_error_response_str(STUN_METHOD_CHANNEL_BIND, buf, len, error_code, reason, tid, include_reason_string);
   }
 }
 
@@ -1123,7 +1205,7 @@ void stun_set_binding_request_str(uint8_t *buf, size_t *len) { stun_init_request
 
 bool stun_set_binding_response_str(uint8_t *buf, size_t *len, stun_tid *tid, const ioa_addr *reflexive_addr,
                                    int error_code, const uint8_t *reason, uint32_t cookie, bool old_stun,
-                                   bool no_stun_backward_compatibility)
+                                   bool stun_backward_compatibility, bool include_reason_string)
 
 {
   if (!error_code) {
@@ -1138,15 +1220,16 @@ bool stun_set_binding_response_str(uint8_t *buf, size_t *len, stun_tid *tid, con
       }
     }
     if (reflexive_addr) {
-      if (!no_stun_backward_compatibility &&
+      if (stun_backward_compatibility &&
           !stun_attr_add_addr_str(buf, len, STUN_ATTRIBUTE_MAPPED_ADDRESS, reflexive_addr)) {
         return false;
       }
     }
   } else if (!old_stun) {
-    stun_init_error_response_str(STUN_METHOD_BINDING, buf, len, error_code, reason, tid);
+    stun_init_error_response_str(STUN_METHOD_BINDING, buf, len, error_code, reason, tid, include_reason_string);
   } else {
-    old_stun_init_error_response_str(STUN_METHOD_BINDING, buf, len, error_code, reason, tid, cookie);
+    old_stun_init_error_response_str(STUN_METHOD_BINDING, buf, len, error_code, reason, tid, cookie,
+                                     include_reason_string);
   }
 
   return true;
@@ -1260,21 +1343,27 @@ turn_time_t stun_adjust_allocate_lifetime(turn_time_t lifetime, turn_time_t max_
 
 int stun_attr_get_type(stun_attr_ref attr) {
   if (attr) {
-    return (int)(nswap16(((const uint16_t *)attr)[0]));
+    uint16_t val;
+    memcpy(&val, attr, sizeof(val));
+    return (int)(nswap16(val));
   }
   return -1;
 }
 
 int stun_attr_get_len(stun_attr_ref attr) {
   if (attr) {
-    return (int)(nswap16(((const uint16_t *)attr)[1]));
+    uint16_t val;
+    memcpy(&val, (const uint8_t *)attr + 2, sizeof(val));
+    return (int)(nswap16(val));
   }
   return -1;
 }
 
 const uint8_t *stun_attr_get_value(stun_attr_ref attr) {
   if (attr) {
-    int len = (int)(nswap16(((const uint16_t *)attr)[1]));
+    uint16_t val;
+    memcpy(&val, (const uint8_t *)attr + 2, sizeof(val));
+    const int len = (int)(nswap16(val));
     if (len < 1) {
       return NULL;
     }
@@ -1285,11 +1374,13 @@ const uint8_t *stun_attr_get_value(stun_attr_ref attr) {
 
 int stun_get_requested_address_family(stun_attr_ref attr) {
   if (attr) {
-    int len = (int)(nswap16(((const uint16_t *)attr)[1]));
+    uint16_t raw_len;
+    memcpy(&raw_len, (const uint8_t *)attr + 2, sizeof(raw_len));
+    const int len = (int)(nswap16(raw_len));
     if (len != 4) {
       return STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_INVALID;
     }
-    int val = ((const uint8_t *)attr)[4];
+    const int val = ((const uint8_t *)attr)[4];
     switch (val) {
     case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4:
     case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6:
@@ -1305,7 +1396,7 @@ uint16_t stun_attr_get_channel_number(stun_attr_ref attr) {
   if (attr) {
     const uint8_t *value = stun_attr_get_value(attr);
     if (value && (stun_attr_get_len(attr) >= 2)) {
-      uint16_t cn = nswap16(((const uint16_t *)value)[0]);
+      const uint16_t cn = nswap16(((const uint16_t *)value)[0]);
       if (STUN_VALID_CHANNEL(cn)) {
         return cn;
       }
@@ -1318,7 +1409,7 @@ band_limit_t stun_attr_get_bandwidth(stun_attr_ref attr) {
   if (attr) {
     const uint8_t *value = stun_attr_get_value(attr);
     if (value && (stun_attr_get_len(attr) >= 4)) {
-      uint32_t bps = nswap32(((const uint32_t *)value)[0]);
+      const uint32_t bps = nswap32(((const uint32_t *)value)[0]);
       return (band_limit_t)(bps << 7);
     }
   }
@@ -1391,7 +1482,7 @@ static stun_attr_ref stun_attr_check_valid(stun_attr_ref attr, size_t remaining)
     remaining -= 4;
 
     /* Round to boundary */
-    uint16_t rem4 = ((uint16_t)attrlen) & 0x0003;
+    const uint16_t rem4 = ((uint16_t)attrlen) & 0x0003;
     if (rem4) {
       attrlen = attrlen + 4 - (int)rem4;
     }
@@ -1406,7 +1497,7 @@ static stun_attr_ref stun_attr_check_valid(stun_attr_ref attr, size_t remaining)
 }
 
 stun_attr_ref stun_attr_get_first_str(const uint8_t *buf, size_t len) {
-  int bufLen = stun_get_command_message_len_str(buf, len);
+  const int bufLen = stun_get_command_message_len_str(buf, len);
   if (bufLen > STUN_HEADER_LENGTH) {
     stun_attr_ref attr = (stun_attr_ref)(buf + STUN_HEADER_LENGTH);
     return stun_attr_check_valid(attr, bufLen - STUN_HEADER_LENGTH);
@@ -1421,7 +1512,7 @@ stun_attr_ref stun_attr_get_next_str(const uint8_t *buf, size_t len, stun_attr_r
   } else {
     const uint8_t *end = buf + stun_get_command_message_len_str(buf, len);
     int attrlen = stun_attr_get_len(prev);
-    uint16_t rem4 = ((uint16_t)attrlen) & 0x0003;
+    const uint16_t rem4 = ((uint16_t)attrlen) & 0x0003;
     if (rem4) {
       attrlen = attrlen + 4 - (int)rem4;
     }
@@ -1443,9 +1534,9 @@ bool stun_attr_add_str(uint8_t *buf, size_t *len, uint16_t attr, const uint8_t *
     alen = 0;
     avalue = tmp;
   }
-  int clen = stun_get_command_message_len_str(buf, *len);
+  const int clen = stun_get_command_message_len_str(buf, *len);
   int newlen = clen + 4 + alen;
-  int newlenrem4 = newlen & 0x00000003;
+  const int newlenrem4 = newlen & 0x00000003;
   int paddinglen = 0;
   if (newlenrem4) {
     paddinglen = 4 - newlenrem4;
@@ -1515,7 +1606,7 @@ bool stun_attr_get_addr_str(const uint8_t *buf, size_t len, stun_attr_ref attr, 
   addr_set_any(ca);
   addr_set_any(&public_addr);
 
-  int attr_type = stun_attr_get_type(attr);
+  const int attr_type = stun_attr_get_type(attr);
   if (attr_type < 0) {
     return false;
   }
@@ -1542,7 +1633,7 @@ bool stun_attr_get_addr_str(const uint8_t *buf, size_t len, stun_attr_ref attr, 
   map_addr_from_public_to_private(&public_addr, ca);
 
   if (default_addr && addr_any_no_port(ca) && !addr_any_no_port(default_addr)) {
-    int port = addr_get_port(ca);
+    const uint16_t port = addr_get_port(ca);
     addr_cpy(ca, default_addr);
     addr_set_port(ca, port);
   }
@@ -1577,7 +1668,7 @@ bool stun_attr_add_channel_number_str(uint8_t *buf, size_t *len, uint16_t chnumb
 
 bool stun_attr_add_bandwidth_str(uint8_t *buf, size_t *len, band_limit_t bps0) {
 
-  uint32_t bps = (uint32_t)(band_limit_t)(bps0 >> 7);
+  const uint32_t bps = (uint32_t)(band_limit_t)(bps0 >> 7);
 
   uint32_t field = nswap32(bps);
 
@@ -1598,7 +1689,7 @@ bool stun_attr_add_address_error_code(uint8_t *buf, size_t *len, int requested_a
 
   //"Manual" padding for compatibility with classic old stun:
   {
-    int rem = alen % 4;
+    const int rem = alen % 4;
     if (rem) {
       alen += (4 - rem);
     }
@@ -1612,7 +1703,7 @@ uint16_t stun_attr_get_first_channel_number_str(const uint8_t *buf, size_t len) 
   stun_attr_ref attr = stun_attr_get_first_str(buf, len);
   while (attr) {
     if (stun_attr_get_type(attr) == STUN_ATTRIBUTE_CHANNEL_NUMBER) {
-      uint16_t ret = stun_attr_get_channel_number(attr);
+      const uint16_t ret = stun_attr_get_channel_number(attr);
       if (STUN_VALID_CHANNEL(ret)) {
         return ret;
       }
@@ -1689,7 +1780,7 @@ bool SASLprep(uint8_t *s) {
     uint8_t *strin = s;
     uint8_t *strout = s;
     for (;;) {
-      uint8_t c = *strin;
+      const uint8_t c = *strin;
       if (!c) {
         *strout = 0;
         break;
@@ -1749,7 +1840,7 @@ void print_bin_func(const char *name, size_t len, const void *s, const char *fun
 
 bool stun_attr_add_integrity_str(turn_credential_type ct, uint8_t *buf, size_t *len, hmackey_t key, password_t pwd,
                                  SHATYPE shatype) {
-  uint8_t hmac[MAXSHASIZE];
+  uint8_t hmac[MAXSHASIZE] = {0};
 
   unsigned int shasize;
 
@@ -1859,12 +1950,12 @@ int stun_check_message_integrity_by_key_str(turn_credential_type ct, uint8_t *bu
     return -1;
   };
 
-  int orig_len = stun_get_command_message_len_str(buf, len);
+  const int orig_len = stun_get_command_message_len_str(buf, len);
   if (orig_len < 0) {
     return -1;
   }
 
-  int new_len = (int)((const uint8_t *)sar - buf) + 4 + shasize;
+  const int new_len = (int)((const uint8_t *)sar - buf) + 4 + shasize;
   if (new_len > orig_len) {
     return -1;
   }
@@ -1901,7 +1992,9 @@ int stun_check_message_integrity_by_key_str(turn_credential_type ct, uint8_t *bu
     return -1;
   }
 
-  if (0 != memcmp(old_hmac, new_hmac, shasize)) {
+  /* Use constant-time comparison: a short-circuiting memcmp leaks the matching prefix
+     length via response timing, allowing byte-by-byte HMAC recovery. */
+  if (0 != CRYPTO_memcmp(old_hmac, new_hmac, shasize)) {
     return 0;
   }
 
@@ -1976,7 +2069,7 @@ bool stun_attr_add_response_port_str(uint8_t *buf, size_t *len, uint16_t port) {
 }
 
 int stun_attr_get_padding_len_str(stun_attr_ref attr) {
-  int len = stun_attr_get_len(attr);
+  const int len = stun_attr_get_len(attr);
   if (len < 0) {
     return -1;
   }
@@ -2074,6 +2167,7 @@ static bool calculate_key(char *key, size_t key_size, char *new_key, size_t new_
 }
 
 bool convert_oauth_key_data(const oauth_key_data *oakd0, oauth_key *key, char *err_msg, size_t err_msg_size) {
+#if !defined(TURN_NO_OAUTH)
   if (oakd0 && key) {
 
     oauth_key_data oakd_obj;
@@ -2155,7 +2249,13 @@ bool convert_oauth_key_data(const oauth_key_data *oakd0, oauth_key *key, char *e
   }
 
   return true;
+#else
+  OAUTH_ERROR("Oauth support not included");
+  return false;
+#endif
 }
+
+#if !defined(TURN_NO_OAUTH)
 
 const EVP_CIPHER *get_cipher_type(ENC_ALG enc_alg);
 const EVP_CIPHER *get_cipher_type(ENC_ALG enc_alg) {
@@ -2183,7 +2283,7 @@ int my_EVP_EncryptUpdate(EVP_CIPHER_CTX *ctx, unsigned char *out, int *outl, con
     if (out) {
       ptr = out + out_len;
     }
-    int ret = EVP_EncryptUpdate(ctx, ptr, &tmp_outl, in + out_len, inl - out_len);
+    const int ret = EVP_EncryptUpdate(ctx, ptr, &tmp_outl, in + out_len, inl - out_len);
     out_len += tmp_outl;
     if (ret < 1) {
       return ret;
@@ -2203,7 +2303,7 @@ int my_EVP_DecryptUpdate(EVP_CIPHER_CTX *ctx, unsigned char *out, int *outl, con
     if (out) {
       ptr = out + out_len;
     }
-    int ret = EVP_DecryptUpdate(ctx, ptr, &tmp_outl, in + out_len, inl - out_len);
+    const int ret = EVP_DecryptUpdate(ctx, ptr, &tmp_outl, in + out_len, inl - out_len);
     out_len += tmp_outl;
     if (ret < 1) {
       return ret;
@@ -2259,28 +2359,32 @@ static bool encode_oauth_token_gcm(const uint8_t *server_name, encoded_oauth_tok
 
     /* Initialize the encryption operation. */
     if (1 != EVP_EncryptInit_ex(ctxp, cipher, NULL, NULL, NULL)) {
-      return -1;
+      EVP_CIPHER_CTX_free(ctxp);
+      return false;
     }
 
     EVP_CIPHER_CTX_set_padding(ctxp, 1);
 
     /* Set IV length if default 12 bytes (96 bits) is not appropriate */
     if (1 != EVP_CIPHER_CTX_ctrl(ctxp, EVP_CTRL_GCM_SET_IVLEN, OAUTH_GCM_NONCE_SIZE, NULL)) {
+      EVP_CIPHER_CTX_free(ctxp);
       return false;
     }
 
     /* Initialize key and IV */
     if (1 != EVP_EncryptInit_ex(ctxp, NULL, NULL, (const unsigned char *)key->as_rs_key, nonce)) {
+      EVP_CIPHER_CTX_free(ctxp);
       return false;
     }
 
     int outl = 0;
-    size_t sn_len = strlen((const char *)server_name);
+    const size_t sn_len = strlen((const char *)server_name);
 
     /* Provide any AAD data. This can be called zero or more times as
      * required
      */
     if (1 != my_EVP_EncryptUpdate(ctxp, NULL, &outl, server_name, (int)sn_len)) {
+      EVP_CIPHER_CTX_free(ctxp);
       return false;
     }
 
@@ -2292,7 +2396,8 @@ static bool encode_oauth_token_gcm(const uint8_t *server_name, encoded_oauth_tok
     len -= OAUTH_GCM_NONCE_SIZE + 2;
 
     if (1 != my_EVP_EncryptUpdate(ctxp, encoded_field, &outl, start_field, (int)len)) {
-      return -1;
+      EVP_CIPHER_CTX_free(ctxp);
+      return false;
     }
 
     int tmp_outl = 0;
@@ -2319,17 +2424,24 @@ static bool decode_oauth_token_gcm(const uint8_t *server_name, const encoded_oau
     memcpy(snl, (const unsigned char *)(etoken->token), 2);
     const unsigned char *csnl = snl;
 
-    uint16_t nonce_len = nswap16(*((const uint16_t *)csnl));
+    const uint16_t nonce_len = nswap16(*((const uint16_t *)csnl));
+
+    if (nonce_len > OAUTH_MAX_NONCE_SIZE) {
+      OAUTH_ERROR("%s: nonce length too large: %u > %u\n", __FUNCTION__, (unsigned)nonce_len,
+                  (unsigned)OAUTH_MAX_NONCE_SIZE);
+      return false;
+    }
+
     dtoken->enc_block.nonce_length = nonce_len;
 
-    size_t min_encoded_field_size = 2 + 4 + 8 + nonce_len + 2 + OAUTH_GCM_TAG_SIZE + 1;
+    const size_t min_encoded_field_size = 2 + 4 + 8 + nonce_len + 2 + OAUTH_GCM_TAG_SIZE + 1;
     if (etoken->size < min_encoded_field_size) {
       OAUTH_ERROR("%s: token size too small: %d\n", __FUNCTION__, (int)etoken->size);
       return false;
     }
 
     const unsigned char *encoded_field = (const unsigned char *)(etoken->token + nonce_len + 2);
-    unsigned int encoded_field_size = (unsigned int)etoken->size - nonce_len - 2 - OAUTH_GCM_TAG_SIZE;
+    const unsigned int encoded_field_size = (unsigned int)etoken->size - nonce_len - 2 - OAUTH_GCM_TAG_SIZE;
     const unsigned char *nonce = ((const unsigned char *)etoken->token + 2);
     memcpy(dtoken->enc_block.nonce, nonce, nonce_len);
 
@@ -2349,6 +2461,7 @@ static bool decode_oauth_token_gcm(const uint8_t *server_name, const encoded_oau
     /* Initialize the decryption operation. */
     if (1 != EVP_DecryptInit_ex(ctxp, cipher, NULL, NULL, NULL)) {
       OAUTH_ERROR("%s: Cannot initialize decryption\n", __FUNCTION__);
+      EVP_CIPHER_CTX_free(ctxp);
       return false;
     }
 
@@ -2357,12 +2470,14 @@ static bool decode_oauth_token_gcm(const uint8_t *server_name, const encoded_oau
     /* Set IV length if default 12 bytes (96 bits) is not appropriate */
     if (1 != EVP_CIPHER_CTX_ctrl(ctxp, EVP_CTRL_GCM_SET_IVLEN, nonce_len, NULL)) {
       OAUTH_ERROR("%s: Cannot set nonce length\n", __FUNCTION__);
+      EVP_CIPHER_CTX_free(ctxp);
       return false;
     }
 
     /* Initialize key and IV */
     if (1 != EVP_DecryptInit_ex(ctxp, NULL, NULL, (const unsigned char *)key->as_rs_key, nonce)) {
       OAUTH_ERROR("%s: Cannot set nonce\n", __FUNCTION__);
+      EVP_CIPHER_CTX_free(ctxp);
       return false;
     }
 
@@ -2371,17 +2486,19 @@ static bool decode_oauth_token_gcm(const uint8_t *server_name, const encoded_oau
     EVP_CIPHER_CTX_ctrl(ctxp, EVP_CTRL_GCM_SET_TAG, OAUTH_GCM_TAG_SIZE, tag);
 
     int outl = 0;
-    size_t sn_len = strlen((const char *)server_name);
+    const size_t sn_len = strlen((const char *)server_name);
 
     /* Provide any AAD data. This can be called zero or more times as
      * required
      */
     if (1 != my_EVP_DecryptUpdate(ctxp, NULL, &outl, server_name, (int)sn_len)) {
       OAUTH_ERROR("%s: Cannot decrypt update server_name: %s, len=%d\n", __FUNCTION__, server_name, (int)sn_len);
+      EVP_CIPHER_CTX_free(ctxp);
       return false;
     }
     if (1 != my_EVP_DecryptUpdate(ctxp, decoded_field, &outl, encoded_field, (int)encoded_field_size)) {
       OAUTH_ERROR("%s: Cannot decrypt update\n", __FUNCTION__);
+      EVP_CIPHER_CTX_free(ctxp);
       return false;
     }
 
@@ -2397,8 +2514,23 @@ static bool decode_oauth_token_gcm(const uint8_t *server_name, const encoded_oau
 
     size_t len = 0;
 
+    if ((size_t)outl < sizeof(uint16_t)) {
+      OAUTH_ERROR("%s: decoded token too small: %d\n", __FUNCTION__, (int)outl);
+      return false;
+    }
     dtoken->enc_block.key_length = nswap16(*((uint16_t *)(decoded_field + len)));
-    len += 2;
+    len += sizeof(uint16_t);
+
+    if (dtoken->enc_block.key_length > sizeof(dtoken->enc_block.mac_key)) {
+      OAUTH_ERROR("%s: mac key length too large: %u > %u\n", __FUNCTION__, (unsigned)dtoken->enc_block.key_length,
+                  (unsigned)sizeof(dtoken->enc_block.mac_key));
+      return false;
+    }
+
+    if ((size_t)outl < len + dtoken->enc_block.key_length + sizeof(uint64_t) + sizeof(uint32_t)) {
+      OAUTH_ERROR("%s: decoded token truncated: %d\n", __FUNCTION__, (int)outl);
+      return false;
+    }
 
     memcpy(dtoken->enc_block.mac_key, decoded_field + len, dtoken->enc_block.key_length);
     len += dtoken->enc_block.key_length;
@@ -2420,8 +2552,11 @@ static bool decode_oauth_token_gcm(const uint8_t *server_name, const encoded_oau
 
 #endif
 
+#endif
+
 bool encode_oauth_token(const uint8_t *server_name, encoded_oauth_token *etoken, const oauth_key *key,
                         const oauth_token *dtoken, const uint8_t *nonce) {
+#if !defined(TURN_NO_OAUTH)
   UNUSED_ARG(nonce);
   if (server_name && etoken && key && dtoken) {
     switch (key->as_rs_alg) {
@@ -2436,10 +2571,15 @@ bool encode_oauth_token(const uint8_t *server_name, encoded_oauth_token *etoken,
     };
   }
   return false;
+#else
+  OAUTH_ERROR("Oauth support not included");
+  return false;
+#endif
 }
 
 bool decode_oauth_token(const uint8_t *server_name, const encoded_oauth_token *etoken, const oauth_key *key,
                         oauth_token *dtoken) {
+#if !defined(TURN_NO_OAUTH)
   if (server_name && etoken && key && dtoken) {
     switch (key->as_rs_alg) {
 #if !defined(TURN_NO_GCM)
@@ -2453,6 +2593,10 @@ bool decode_oauth_token(const uint8_t *server_name, const encoded_oauth_token *e
     };
   }
   return false;
+#else
+  OAUTH_ERROR("Oauth support not included");
+  return false;
+#endif
 }
 
 ///////////////////////////////////////////////////////////////

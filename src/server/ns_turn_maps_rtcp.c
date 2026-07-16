@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * https://opensource.org/license/bsd-3-clause
+ *
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
@@ -30,7 +34,8 @@
 
 #include "ns_turn_maps_rtcp.h"
 
-#include "ns_turn_defs.h" // for NULL, UNUSED_ARG, size_t, turn_time,
+#include "ns_turn_defs.h"  // for NULL, UNUSED_ARG, size_t, turn_time,
+#include "ns_turn_utils.h" // for turn_malloc, turn_calloc, turn_realloc, turn_strdup
 
 #include <stdlib.h> // for free, calloc
 
@@ -115,7 +120,7 @@ static bool rtcp_map_del(rtcp_map *map, rtcp_token_type token) {
   }
 
   TURN_MUTEX_LOCK(&map->mutex);
-  bool ret = ur_map_del(map->map, token, rtcp_alloc_free);
+  const bool ret = ur_map_del(map->map, token, rtcp_alloc_free);
   TURN_MUTEX_UNLOCK(&map->mutex);
   return ret;
 }
@@ -173,7 +178,7 @@ static bool rtcp_map_init(rtcp_map *map, ioa_engine_handle e) {
 }
 
 rtcp_map *rtcp_map_create(ioa_engine_handle e) {
-  rtcp_map *map = (rtcp_map *)calloc(sizeof(rtcp_map), 1);
+  rtcp_map *map = (rtcp_map *)turn_calloc(1, sizeof(rtcp_map));
   if (!rtcp_map_init(map, e)) {
     free(map);
     return NULL;
@@ -190,16 +195,13 @@ bool rtcp_map_put(rtcp_map *map, rtcp_token_type token, ioa_socket_handle s) {
   if (!rtcp_map_valid(map)) {
     return false;
   } else {
-    rtcp_alloc_type *value = (rtcp_alloc_type *)calloc(sizeof(rtcp_alloc_type), 1);
-    if (!value) {
-      return false;
-    }
+    rtcp_alloc_type *value = (rtcp_alloc_type *)turn_calloc(1, sizeof(rtcp_alloc_type));
 
     value->s = s;
     value->t = turn_time() + RTCP_TIMEOUT;
     value->token = token;
     TURN_MUTEX_LOCK(&map->mutex);
-    bool ret = ur_map_put(map->map, token, (ur_map_value_type)value);
+    const bool ret = ur_map_put(map->map, token, (ur_map_value_type)value);
     // TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: 111.111: ret=%d, token=%llu\n",__FUNCTION__,ret,token);
     TURN_MUTEX_UNLOCK(&map->mutex);
     if (!ret) {
@@ -219,7 +221,7 @@ ioa_socket_handle rtcp_map_get(rtcp_map *map, rtcp_token_type token) {
   if (rtcp_map_valid(map)) {
     ur_map_value_type value;
     TURN_MUTEX_LOCK(&map->mutex);
-    int ret = ur_map_get(map->map, token, &value);
+    const int ret = ur_map_get(map->map, token, &value);
     if (ret) {
       rtcp_alloc_type *rval = (rtcp_alloc_type *)value;
       if (rval) {
@@ -249,7 +251,7 @@ void rtcp_map_free(rtcp_map **map) {
 size_t rtcp_map_size(const rtcp_map *map) {
   if (rtcp_map_valid(map)) {
     TURN_MUTEX_LOCK(&map->mutex);
-    size_t ret = ur_map_size(map->map);
+    const size_t ret = ur_map_size(map->map);
     TURN_MUTEX_UNLOCK(&map->mutex);
     return ret;
   } else {

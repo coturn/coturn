@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * https://opensource.org/license/bsd-3-clause
+ *
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
@@ -56,24 +60,25 @@
 #endif
 #endif
 
-#include <ctype.h>  // for tolower
-#include <string.h> // for memcmp, strstr, strcmp, strdup, strlen
+#include <ctype.h> // for tolower
+#include <errno.h>
+#include <string.h> // for memcmp, strstr, strcmp, strdup, strlen, strerror
 
 ////////// LOG TIME OPTIMIZATION ///////////
 
 static volatile int _log_file_line_set = 0;
 
 static volatile turn_time_t log_start_time = 0;
-volatile int _log_time_value_set = 0;
-volatile turn_time_t _log_time_value = 0;
+turn_atomic_u32 _log_time_value = 0;
 
 static inline turn_time_t log_time(void) {
   if (!log_start_time) {
     log_start_time = turn_time();
   }
 
-  if (_log_time_value_set) {
-    return (_log_time_value - log_start_time);
+  const turn_time_t t = turn_atomic_load_u32(&_log_time_value);
+  if (t) {
+    return (t - log_start_time);
   }
 
   return (turn_time() - log_start_time);
@@ -88,7 +93,7 @@ int turn_mutex_lock(const turn_mutex *mutex) {
     int ret = 0;
     ret = pthread_mutex_lock((pthread_mutex_t *)mutex->mutex);
     if (ret < 0) {
-      perror("Mutex lock");
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Mutex lock: %s\n", strerror(errno));
     }
     return ret;
   } else {
@@ -102,7 +107,7 @@ int turn_mutex_unlock(const turn_mutex *mutex) {
     int ret = 0;
     ret = pthread_mutex_unlock((pthread_mutex_t *)mutex->mutex);
     if (ret < 0) {
-      perror("Mutex unlock");
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Mutex unlock: %s\n", strerror(errno));
     }
     return ret;
   } else {
@@ -112,39 +117,60 @@ int turn_mutex_unlock(const turn_mutex *mutex) {
 }
 
 int turn_mutex_init(turn_mutex *mutex) {
-  if (mutex) {
-    mutex->data = MAGIC_CODE;
-    mutex->mutex = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t));
-    pthread_mutex_init((pthread_mutex_t *)mutex->mutex, NULL);
-    return 0;
-  } else {
+  if (!mutex) {
     return -1;
   }
+
+  mutex->mutex = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t));
+  if (!(mutex->mutex)) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot allocate mutex: %s\n", strerror(errno));
+    return -1;
+  }
+
+  if (pthread_mutex_init((pthread_mutex_t *)mutex->mutex, NULL) != 0) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot init mutex: %s\n", strerror(errno));
+    free(mutex->mutex);
+    mutex->mutex = NULL;
+    return -1;
+  }
+
+  mutex->data = MAGIC_CODE;
+  return 0;
 }
 
 int turn_mutex_init_recursive(turn_mutex *mutex) {
-  int ret = -1;
-  if (mutex) {
-    pthread_mutexattr_t attr;
-    if (pthread_mutexattr_init(&attr) < 0) {
-      perror("Cannot init mutex attr");
-    } else {
-      if (pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE) < 0) {
-        perror("Cannot set type on mutex attr");
-      } else {
-        mutex->data = MAGIC_CODE;
-        mutex->mutex = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t));
-        if ((ret = pthread_mutex_init((pthread_mutex_t *)mutex->mutex, &attr)) < 0) {
-          perror("Cannot init mutex");
-          mutex->data = 0;
-          free(mutex->mutex);
-          mutex->mutex = NULL;
-        }
-      }
-      pthread_mutexattr_destroy(&attr);
-    }
+  if (!mutex) {
+    return -1;
   }
-  return ret;
+
+  pthread_mutexattr_t attr;
+  if (pthread_mutexattr_init(&attr) != 0) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot init mutex attr: %s\n", strerror(errno));
+    return -1;
+  }
+
+  if (pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE) != 0) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot set type on mutex attr: %s\n", strerror(errno));
+    return -1;
+  }
+
+  mutex->mutex = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t));
+  if (!(mutex->mutex)) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot allocate mutex: %s\n", strerror(errno));
+    return -1;
+  }
+
+  if (pthread_mutex_init((pthread_mutex_t *)mutex->mutex, &attr) != 0) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot init mutex: %s\n", strerror(errno));
+    free(mutex->mutex);
+    mutex->mutex = NULL;
+    return -1;
+  }
+
+  pthread_mutexattr_destroy(&attr);
+
+  mutex->data = MAGIC_CODE;
+  return 0;
 }
 
 int turn_mutex_destroy(turn_mutex *mutex) {
@@ -191,7 +217,7 @@ void set_syslog_facility(char *val) {
     return;
   }
 #if defined(__unix__) || defined(unix) || defined(__APPLE__)
-  int tmp = str_to_syslog_facility(val);
+  const int tmp = str_to_syslog_facility(val);
   if (tmp == -1) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: invalid syslog-facility value (%s); ignored.\n", val);
     return;
@@ -199,6 +225,8 @@ void set_syslog_facility(char *val) {
   syslog_facility = tmp;
 #endif
 }
+
+TURN_LOG_LEVEL log_min_level = TURN_LOG_LEVEL_DEBUG;
 
 #if defined(TURN_LOG_FUNC_IMPL)
 extern void TURN_LOG_FUNC_IMPL(TURN_LOG_LEVEL level, const char *format, va_list args);
@@ -213,6 +241,29 @@ static char turn_log_timestamp_format[MAX_LOG_TIMESTAMP_FORMAT_LEN] = "%FT%T%z";
 
 void set_turn_log_timestamp_format(char *new_format) {
   strncpy(turn_log_timestamp_format, new_format, MAX_LOG_TIMESTAMP_FORMAT_LEN - 1);
+}
+
+static const struct {
+  const char *const name;
+  const TURN_LOG_LEVEL level;
+} log_min_level_names[] = {{"debug", TURN_LOG_LEVEL_DEBUG},
+                           {"info", TURN_LOG_LEVEL_INFO},
+                           {"warning", TURN_LOG_LEVEL_WARNING},
+                           {"error", TURN_LOG_LEVEL_ERROR}};
+
+void set_log_min_level(const char *value) {
+  if (value == NULL) {
+    return;
+  }
+  for (size_t i = 0; i < sizeof(log_min_level_names) / sizeof(log_min_level_names[0]); i++) {
+    if (!strcasecmp(value, log_min_level_names[i].name)) {
+      log_min_level = log_min_level_names[i].level;
+      return;
+    }
+  }
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
+                "WARNING: invalid log-min-level value (%s); ignored. Valid values: debug, info, warning, error.\n",
+                value);
 }
 
 int use_new_log_timestamp_format = 0;
@@ -280,7 +331,7 @@ static void get_date(char *s, size_t sz) {
 void set_logfile(const char *fn) {
   if (fn) {
     log_lock();
-    if (strcmp(fn, log_fn_base)) {
+    if (strcmp(fn, log_fn_base) != 0) {
       reset_rtpprintf();
       STRCPY(log_fn_base, fn);
     }
@@ -501,7 +552,7 @@ void rollover_logfile(void) {
     char logf[FILE_STR_LEN];
 
     set_log_file_name(log_fn_base, logf);
-    if (strcmp(log_fn, logf)) {
+    if (strcmp(log_fn, logf) != 0) {
       fclose(_rtpfile);
       log_fn[0] = 0;
       _rtpfile = fopen(logf, "w");
@@ -519,8 +570,6 @@ void rollover_logfile(void) {
 static int get_syslog_level(TURN_LOG_LEVEL level) {
 #if defined(__unix__) || defined(unix) || defined(__APPLE__)
   switch (level) {
-  case TURN_LOG_LEVEL_CONTROL:
-    return LOG_NOTICE;
   case TURN_LOG_LEVEL_WARNING:
     return LOG_WARNING;
   case TURN_LOG_LEVEL_ERROR:
@@ -543,6 +592,9 @@ void err(int eval, const char *format, ...) {
 
 void turn_log_func_default(const char *const file, const int line, const TURN_LOG_LEVEL level, const char *const format,
                            ...) {
+  if (level < log_min_level) {
+    return;
+  }
   va_list args;
   va_start(args, format);
 #if defined(TURN_LOG_FUNC_IMPL)
@@ -553,7 +605,7 @@ void turn_log_func_default(const char *const file, const int line, const TURN_LO
   char s[MAX_RTPPRINTF_BUFFER_SIZE + 1];
   size_t so_far = 0;
   if (use_new_log_timestamp_format) {
-    time_t now = time(NULL);
+    const time_t now = time(NULL);
     so_far += strftime(s, sizeof(s), turn_log_timestamp_format, localtime(&now));
   } else {
     so_far += snprintf(s, sizeof(s), "%lu: ", (unsigned long)log_time());
@@ -573,9 +625,6 @@ void turn_log_func_default(const char *const file, const int line, const TURN_LO
     break;
   case TURN_LOG_LEVEL_INFO:
     so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "INFO: ");
-    break;
-  case TURN_LOG_LEVEL_CONTROL:
-    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "CONTROL: ");
     break;
   case TURN_LOG_LEVEL_WARNING:
     so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "WARNING: ");
@@ -615,6 +664,57 @@ void turn_log_func_default(const char *const file, const int line, const TURN_LO
   }
 #endif
   va_end(args);
+}
+
+///////////// MEMORY ///////////////////
+
+/*
+ * Fail-fast allocation wrappers. On allocation failure they log the failing
+ * call site and abort(): a TURN server that cannot allocate cannot correctly
+ * continue, and a controlled abort is preferable to a NULL dereference or a
+ * silently degraded process. The logger writes into a stack buffer (no heap
+ * allocation), so it remains usable when the heap is exhausted.
+ */
+
+static void turn_out_of_memory(const char *file, int line, const char *what, size_t sz) {
+  turn_log_func_default(file, line, TURN_LOG_LEVEL_ERROR, "FATAL: out of memory: %s(%lu) failed, aborting\n", what,
+                        (unsigned long)sz);
+  abort();
+}
+
+void *turn_malloc_impl(size_t sz, const char *file, int line) {
+  void *ptr = malloc(sz);
+  if (!ptr && sz) {
+    turn_out_of_memory(file, line, "malloc", sz);
+  }
+  return ptr;
+}
+
+void *turn_calloc_impl(size_t number, size_t size, const char *file, int line) {
+  void *ptr = calloc(number, size);
+  if (!ptr && number && size) {
+    turn_out_of_memory(file, line, "calloc", number * size);
+  }
+  return ptr;
+}
+
+void *turn_realloc_impl(void *ptr, size_t sz, const char *file, int line) {
+  void *newptr = realloc(ptr, sz);
+  if (!newptr && sz) {
+    turn_out_of_memory(file, line, "realloc", sz);
+  }
+  return newptr;
+}
+
+char *turn_strdup_impl(const char *s, const char *file, int line) {
+  if (!s) {
+    return NULL;
+  }
+  char *ptr = strdup(s);
+  if (!ptr) {
+    turn_out_of_memory(file, line, "strdup", strlen(s) + 1);
+  }
+  return ptr;
 }
 
 ///////////// ORIGIN ///////////////////
@@ -696,7 +796,7 @@ int get_canonic_origin(const char *o, char *co, int sz) {
     if (uri) {
       const char *scheme = evhttp_uri_get_scheme(uri);
       if (scheme && scheme[0]) {
-        size_t schlen = strlen(scheme);
+        const size_t schlen = strlen(scheme);
         if ((schlen < (size_t)sz) && (schlen < STUN_MAX_ORIGIN_SIZE)) {
           const char *host = evhttp_uri_get_host(uri);
           if (host && host[0]) {

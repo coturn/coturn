@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * https://opensource.org/license/bsd-3-clause
+ *
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
@@ -34,7 +38,8 @@
 #include "ns_turn_ioalib.h"
 #include "ns_turn_maps.h"
 
-#include <stddef.h> // for size_t
+#include <stdbool.h> // for bool
+#include <stddef.h>  // for size_t
 
 #ifdef __cplusplus
 extern "C" {
@@ -56,7 +61,7 @@ rtcp_map *rtcp_map_create(ioa_engine_handle e);
  * true - success
  * false - error
  */
-bool rtcp_map_put(rtcp_map *map, rtcp_token_type key, ioa_socket_handle s);
+bool rtcp_map_put(rtcp_map *map, rtcp_token_type token, ioa_socket_handle s);
 
 /**
  * @ret:

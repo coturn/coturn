@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * https://opensource.org/license/bsd-3-clause
+ *
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
@@ -33,8 +37,9 @@
 #include "ns_turn_msg_defs.h" // for STUN_VALID_CHANNEL
 #include "ns_turn_utils.h"    // for TURN_LOG_FUNC, TURN_LOG_LEVEL_ERROR
 
-#include <stdlib.h> // for NULL, size_t, free, realloc, calloc
-#include <string.h> // for memset, memcpy
+#include <stdbool.h> // for bool, false, true
+#include <stdlib.h>  // for NULL, size_t, free, realloc, calloc
+#include <string.h>  // for memset, memcpy
 
 /////////////// Permission forward declarations /////////////////
 
@@ -85,7 +90,7 @@ void clear_allocation(allocation *a, SOCKET_TYPE socket_type) {
   free_turn_permission_hashtable(&(a->addr_to_perm));
   ch_map_clean(&(a->chns));
 
-  a->is_valid = 0;
+  a->is_valid = false;
 }
 
 relay_endpoint_session *get_relay_session(allocation *a, int family) {
@@ -178,16 +183,11 @@ void turn_permission_clean(turn_permission_info *tinfo) {
   }
 
   if (tinfo->verbose) {
-    char s[257] = "\0";
-    addr_to_string(&(tinfo->addr), (uint8_t *)s);
+    char s[MAX_IOA_ADDR_STRING] = "";
+    addr_to_string(&(tinfo->addr), s);
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: peer %s deleted\n", tinfo->session_id, s);
   }
 
-  if (!(tinfo->lifetime_ev)) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s: strange (1) permission to be cleaned\n", __FUNCTION__);
-  }
-
-  IOA_EVENT_DEL(tinfo->lifetime_ev);
   lm_map_foreach(&(tinfo->chns), (foreachcb_type)delete_channel_info_from_allocation_map);
   lm_map_clean(&(tinfo->chns));
   memset(tinfo, 0, sizeof(turn_permission_info));
@@ -238,7 +238,7 @@ static turn_permission_info *get_from_turn_permission_hashtable(turn_permission_
     return NULL;
   }
 
-  uint32_t index = addr_hash_no_port(addr) & (TURN_PERMISSION_HASHTABLE_SIZE - 1);
+  const uint32_t index = addr_hash_no_port(addr) & (TURN_PERMISSION_HASHTABLE_SIZE - 1);
   turn_permission_array *parray = &(map->table[index]);
 
   for (size_t i = 0; i < TURN_PERMISSION_ARRAY_SIZE; ++i) {
@@ -266,7 +266,6 @@ static void ch_info_clean(ch_info *c) {
       DELETE_TURN_CHANNEL_KERNEL(c->kernel_channel);
       c->kernel_channel = 0;
     }
-    IOA_EVENT_DEL(c->lifetime_ev);
     memset(c, 0, sizeof(ch_info));
   }
 }
@@ -292,10 +291,10 @@ void turn_channel_delete(ch_info *chn) {
     return;
   }
 
-  int port = addr_get_port(&(chn->peer_addr));
-  if (port < 1) {
-    char s[129];
-    addr_to_string(&(chn->peer_addr), (uint8_t *)s);
+  const uint16_t port = addr_get_port(&(chn->peer_addr));
+  if (port == 0) {
+    char s[MAX_IOA_ADDR_STRING] = "";
+    addr_to_string(&(chn->peer_addr), s);
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s: strange (1) channel to be cleaned: port is empty: %s\n", __FUNCTION__,
                   s);
   }
@@ -380,14 +379,32 @@ ch_info *get_turn_channel(turn_permission_info *tinfo, ioa_addr *addr) {
 
 turn_permission_hashtable *allocation_get_turn_permission_hashtable(allocation *a) { return &(a->addr_to_perm); }
 
+static size_t allocation_count_permissions(const turn_permission_hashtable *map) {
+  size_t count = 0;
+  for (size_t b = 0; b < TURN_PERMISSION_HASHTABLE_SIZE; ++b) {
+    const turn_permission_array *parray = &(map->table[b]);
+    for (size_t i = 0; i < TURN_PERMISSION_ARRAY_SIZE; ++i) {
+      if (parray->main_slots[i].info.allocated) {
+        ++count;
+      }
+    }
+    for (size_t i = 0; i < parray->extra_sz; ++i) {
+      if (parray->extra_slots[i] && parray->extra_slots[i]->info.allocated) {
+        ++count;
+      }
+    }
+  }
+  return count;
+}
+
 turn_permission_info *allocation_add_permission(allocation *a, const ioa_addr *addr) {
   if (!a || !addr) {
     return NULL;
   }
 
   turn_permission_hashtable *map = &(a->addr_to_perm);
-  uint32_t hash = addr_hash_no_port(addr);
-  size_t fds = (size_t)(hash & (TURN_PERMISSION_HASHTABLE_SIZE - 1));
+  const uint32_t hash = addr_hash_no_port(addr);
+  const size_t fds = (size_t)(hash & (TURN_PERMISSION_HASHTABLE_SIZE - 1));
 
   turn_permission_array *parray = &(map->table[fds]);
 
@@ -418,19 +435,19 @@ turn_permission_info *allocation_add_permission(allocation *a, const ioa_addr *a
     }
 
     if (!slot) {
-      size_t old_sz_mem = old_sz * sizeof(turn_permission_slot *);
-      turn_permission_slot **new_slots =
-          (turn_permission_slot **)realloc(parray->extra_slots, old_sz_mem + sizeof(turn_permission_slot *));
-      if (!new_slots) {
+      /* A new slot can only be created once every existing slot is in use, so
+       * enforcing the per-allocation cap here bounds total permission growth
+       * without penalizing reuse of freed slots. */
+      if (allocation_count_permissions(map) >= TURN_MAX_PERMISSIONS_PER_ALLOCATION) {
         return NULL;
       }
+      size_t old_sz_mem = old_sz * sizeof(turn_permission_slot *);
+      turn_permission_slot **new_slots =
+          (turn_permission_slot **)turn_realloc(parray->extra_slots, old_sz_mem + sizeof(turn_permission_slot *));
       parray->extra_slots = new_slots;
       slots = parray->extra_slots;
       parray->extra_sz = old_sz + 1;
-      slot = (turn_permission_slot *)malloc(sizeof(turn_permission_slot));
-      if (!slot) {
-        return NULL;
-      }
+      slot = (turn_permission_slot *)turn_malloc(sizeof(turn_permission_slot));
       slots[old_sz] = slot;
     }
   }
@@ -481,18 +498,9 @@ ch_info *ch_map_get(ch_map *const map, const uint16_t chnum, const int new_chn) 
 
   if (new_chn) {
     const size_t old_sz_mem = old_sz * sizeof(ch_info *);
-    ch_info **const pTmp = (ch_info **)realloc(a->extra_chns, old_sz_mem + sizeof(ch_info *));
-    if (!pTmp) {
-      return NULL;
-    }
+    ch_info **const pTmp = (ch_info **)turn_realloc(a->extra_chns, old_sz_mem + sizeof(ch_info *));
     a->extra_chns = pTmp;
-    a->extra_chns[old_sz] = (ch_info *)calloc(1, sizeof(ch_info));
-    if (!a->extra_chns[old_sz]) {
-      // if the realloc succeeds, but the calloc fails, we don't attempt to shrink the realloc back down
-      // by not recording the change to the size, we allow the next call to this function to realloc the
-      // block to presumably the same size it already is, which should be fine and not result in any leaks.
-      return NULL;
-    }
+    a->extra_chns[old_sz] = (ch_info *)turn_calloc(1, sizeof(ch_info));
 
     a->extra_sz += 1;
     return a->extra_chns[old_sz];
@@ -546,7 +554,7 @@ static void set_new_tc_id(uint8_t server_id, tcp_connection *tc) {
   uint32_t newid = 0;
   do {
     do {
-      newid = ((uint32_t)turn_random()) & 0x00FFFFFF;
+      newid = ((uint32_t)turn_random_number()) & 0x00FFFFFF;
     } while (!newid);
     newid = newid | sid;
   } while (ur_map_get(a->tcp_connections, (ur_map_key_type)newid, NULL));
@@ -556,7 +564,7 @@ static void set_new_tc_id(uint8_t server_id, tcp_connection *tc) {
 
 tcp_connection *create_tcp_connection(uint8_t server_id, allocation *a, stun_tid *tid, ioa_addr *peer_addr,
                                       int *err_code) {
-  tcp_connection_list *tcl = &(a->tcs);
+  tcp_connection_list *const tcl = &(a->tcs);
   if (!tcl) {
     return NULL;
   }
@@ -573,10 +581,7 @@ tcp_connection *create_tcp_connection(uint8_t server_id, allocation *a, stun_tid
     }
   }
 
-  tcp_connection *tc = (tcp_connection *)calloc(1, sizeof(tcp_connection));
-  if (!tc) {
-    return NULL;
-  }
+  tcp_connection *tc = (tcp_connection *)turn_calloc(1, sizeof(tcp_connection));
   addr_cpy(&(tc->peer_addr), peer_addr);
   if (tid) {
     memcpy(&(tc->tid), tid, sizeof(stun_tid));
@@ -597,14 +602,10 @@ tcp_connection *create_tcp_connection(uint8_t server_id, allocation *a, stun_tid
 
   if (!found) {
     size_t old_sz_mem = a->tcs.sz * sizeof(tcp_connection *);
-    tcp_connection **new_elems = realloc(a->tcs.elems, old_sz_mem + sizeof(tcp_connection *));
-    if (!new_elems) {
-      return NULL;
-    }
+    tcp_connection **new_elems = turn_realloc(a->tcs.elems, old_sz_mem + sizeof(tcp_connection *));
     a->tcs.elems = new_elems;
     a->tcs.elems[a->tcs.sz] = tc;
     a->tcs.sz += 1;
-    tcl = &(a->tcs);
   }
 
   set_new_tc_id(server_id, tc);
@@ -720,7 +721,9 @@ void add_unsent_buffer(unsent_buffer *ub, ioa_network_buffer_handle nbh) {
   if (!ub || (ub->sz >= MAX_UNSENT_BUFFER_SIZE)) {
     ioa_network_buffer_delete(NULL, nbh);
   } else {
-    ub->bufs = (ioa_network_buffer_handle *)realloc(ub->bufs, sizeof(ioa_network_buffer_handle) * (ub->sz + 1));
+    ioa_network_buffer_handle *new_bufs =
+        (ioa_network_buffer_handle *)turn_realloc(ub->bufs, sizeof(ioa_network_buffer_handle) * (ub->sz + 1));
+    ub->bufs = new_bufs;
     ub->bufs[ub->sz] = nbh;
     ub->sz += 1;
   }

@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * https://opensource.org/license/bsd-3-clause
+ *
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
@@ -33,13 +37,16 @@
 
 #include "ns_turn_defs.h"
 
+#include <stdbool.h>
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /////////////////////////////////////////////////////
 
-#define MAX_IOA_ADDR_STRING (65)
+#define MAX_IOA_ADDR_STRING (64)
 
 typedef union {
   struct sockaddr ss;
@@ -54,7 +61,17 @@ typedef struct {
 
 ////////////////////////////
 
-uint32_t get_ioa_addr_len(const ioa_addr *addr);
+/* Inlined: this is a per-packet helper called from sendto/recvmsg paths;
+ * keeping it in the header lets the compiler fold the family check directly
+ * into the syscall site instead of paying for a cross-TU call. */
+static inline uint32_t get_ioa_addr_len(const ioa_addr *addr) {
+  if (addr->ss.sa_family == AF_INET) {
+    return sizeof(struct sockaddr_in);
+  } else if (addr->ss.sa_family == AF_INET6) {
+    return sizeof(struct sockaddr_in6);
+  }
+  return 0;
+}
 
 ////////////////////////////
 
@@ -63,17 +80,26 @@ int addr_any(const ioa_addr *addr);
 int addr_any_no_port(const ioa_addr *addr);
 uint32_t addr_hash(const ioa_addr *addr);
 uint32_t addr_hash_no_port(const ioa_addr *addr);
-void addr_cpy(ioa_addr *dst, const ioa_addr *src);
+
+/* Inlined: addr_cpy is on the per-packet receive path (every nd.src_addr
+ * dispatch and every map-key copy) and is just a single memcpy. Inlining
+ * eliminates the cross-TU call. */
+static inline void addr_cpy(ioa_addr *dst, const ioa_addr *src) {
+  if (dst && src) {
+    memcpy(dst, src, sizeof(ioa_addr));
+  }
+}
+
 void addr_cpy4(ioa_addr *dst, const struct sockaddr_in *src);
 void addr_cpy6(ioa_addr *dst, const struct sockaddr_in6 *src);
 int addr_eq(const ioa_addr *a1, const ioa_addr *a2);
 int addr_eq_no_port(const ioa_addr *a1, const ioa_addr *a2);
-int make_ioa_addr(const uint8_t *saddr, int port, ioa_addr *addr);
-int make_ioa_addr_from_full_string(const uint8_t *saddr, int default_port, ioa_addr *addr);
-void addr_set_port(ioa_addr *addr, int port);
-int addr_get_port(const ioa_addr *addr);
-int addr_to_string(const ioa_addr *addr, uint8_t *saddr);
-int addr_to_string_no_port(const ioa_addr *addr, uint8_t *saddr);
+int make_ioa_addr(const uint8_t *saddr, uint16_t port, ioa_addr *addr);
+int make_ioa_addr_from_full_string(const uint8_t *saddr, uint16_t default_port, ioa_addr *addr);
+void addr_set_port(ioa_addr *addr, uint16_t port);
+uint16_t addr_get_port(const ioa_addr *addr);
+int addr_to_string(const ioa_addr *addr, char *saddr);
+int addr_to_string_no_port(const ioa_addr *addr, char *saddr);
 
 uint32_t hash_int32(uint32_t a);
 uint64_t hash_int64(uint64_t a);
@@ -85,10 +111,26 @@ int addr_less_eq(const ioa_addr *addr1, const ioa_addr *addr2);
 int ioa_addr_in_range(const ioa_addr_range *range, const ioa_addr *addr);
 void ioa_addr_range_cpy(ioa_addr_range *dest, const ioa_addr_range *src);
 
+/* If addr is an IPv6 address that embeds an IPv4 address in one of the
+ * transition encodings an attacker can use to dodge an IPv4 ACL (IPv4-mapped
+ * ::ffff:0:0/96, IPv4-compatible ::/96, 6to4 2002::/16, NAT64 64:ff9b::/96),
+ * write the embedded IPv4 (with the original port) into *embedded and return
+ * true. The :: and ::1 literals are deliberately NOT treated as embedded IPv4.
+ * Returns false (leaving *embedded untouched) for any other address. */
+bool ioa_addr_get_embedded_ipv4(const ioa_addr *addr, ioa_addr *embedded);
+
 /////// Check whether this is a good address //////////////
 
 int ioa_addr_is_multicast(ioa_addr *a);
 int ioa_addr_is_loopback(ioa_addr *addr);
+
+/* Returns true for address scopes that must never be used as a relay peer
+ * regardless of the configured denied-peer-ip ranges: IPv4 link-local
+ * (169.254.0.0/16, incl. the 169.254.169.254 cloud metadata service), IPv6
+ * link-local (fe80::/10), IPv6 unique-local (fc00::/7) and IPv6 site-local
+ * (fec0::/10). Loopback is intentionally excluded -- it keeps its own
+ * allow-loopback-peers gate. IPv4-in-IPv6 encodings are canonicalized first. */
+int ioa_addr_is_internal_deny_default(ioa_addr *addr);
 int ioa_addr_is_zero(ioa_addr *addr);
 
 /////// Map "public" address to "private" address //////////////

@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * https://opensource.org/license/bsd-3-clause
+ *
  * Copyright (C) 2011, 2012, 2013, 2014 Citrix Systems
  *
  * All rights reserved.
@@ -54,25 +58,36 @@ struct http_headers {
 
 static void write_http_echo(ioa_socket_handle s) {
   if (s && !ioa_socket_tobeclosed(s)) {
-    SOCKET_APP_TYPE sat = get_ioa_socket_app_type(s);
+    const SOCKET_APP_TYPE sat = get_ioa_socket_app_type(s);
     if ((sat == HTTP_CLIENT_SOCKET) || (sat == HTTPS_CLIENT_SOCKET)) {
-      ioa_network_buffer_handle nbh_http = ioa_network_buffer_allocate(s->e);
-      size_t len_http = ioa_network_buffer_get_size(nbh_http);
-      uint8_t *data = ioa_network_buffer_data(nbh_http);
-      char data_http[1025];
       char content_http[1025];
-      const char *title = "TURN Server";
-      snprintf(content_http, sizeof(content_http) - 1,
-               "<!DOCTYPE html>\r\n<html>\r\n  <head>\r\n    <title>%s</title>\r\n  </head>\r\n  <body>\r\n    "
-               "<b>%s</b> <br> <b><i>use https connection for the admin session</i></b>\r\n  </body>\r\n</html>\r\n",
-               title, title);
-      snprintf(
-          data_http, sizeof(data_http) - 1,
-          "HTTP/1.0 200 OK\r\nServer: %s\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Length: %d\r\n\r\n%.906s",
-          TURN_SOFTWARE, (int)strlen(content_http), content_http);
-      len_http = strlen(data_http);
-      memcpy(data, data_http, len_http);
-      ioa_network_buffer_set_size(nbh_http, len_http);
+      const char *const title = "TURN Server";
+      const int content_len = snprintf(
+          content_http, sizeof(content_http),
+          "<!DOCTYPE html>\r\n<html>\r\n  <head>\r\n    <title>%s</title>\r\n  </head>\r\n  <body>\r\n    "
+          "<b>%s</b> <br> <b><i>use https connection for the admin session</i></b>\r\n  </body>\r\n</html>\r\n",
+          title, title);
+      if (content_len < 0) {
+        return;
+      }
+
+      ioa_network_buffer_handle nbh_http = ioa_network_buffer_allocate(s->e);
+      char *data = (char *)ioa_network_buffer_data(nbh_http);
+      size_t cap = ioa_network_buffer_get_capacity(nbh_http);
+      const int response_len =
+          snprintf(data, cap,
+                   "HTTP/1.0 200 OK\r\nServer: %s\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Length: "
+                   "%d\r\n\r\n%s",
+                   TURN_SOFTWARE, content_len, content_http);
+      if (response_len < 0) {
+        ioa_network_buffer_delete(s->e, nbh_http);
+        return;
+      }
+      size_t len = (size_t)response_len;
+      if (len >= cap) {
+        len = cap - 1;
+      }
+      ioa_network_buffer_set_size(nbh_http, len);
       send_data_from_ioa_socket_nbh(s, NULL, nbh_http, TTL_IGNORE, TOS_IGNORE, NULL);
     }
   }
@@ -86,7 +101,7 @@ const char *get_http_date_header(void) {
   static const char *wds[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
   static const char *mons[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
 
-  time_t now = time(NULL);
+  const time_t now = time(NULL);
   struct tm *gmtm = gmtime(&now);
 
   buffer_header[0] = 0;
@@ -104,18 +119,20 @@ const char *get_http_date_header(void) {
 
 ///////////////////////////////////////////////
 
+static void free_headers_list(struct headers_list *h);
+
 static struct headers_list *post_parse(char *data, size_t data_len) {
   while ((*data == '\r') || (*data == '\n')) {
     ++data;
     --data_len;
   }
   if (data_len) {
-    char *post_data = (char *)calloc(data_len + 1, sizeof(char));
+    char *post_data = (char *)turn_calloc(data_len + 1, sizeof(char));
     if (post_data != NULL) {
       memcpy(post_data, data, data_len);
       char *fmarker = NULL;
       char *fsplit = strtok_r(post_data, "&", &fmarker);
-      struct headers_list *list = (struct headers_list *)calloc(sizeof(struct headers_list), 1);
+      struct headers_list *list = (struct headers_list *)turn_calloc(1, sizeof(struct headers_list));
       while (fsplit != NULL) {
         char *vmarker = NULL;
         char *key = strtok_r(fsplit, "=", &vmarker);
@@ -134,9 +151,25 @@ static struct headers_list *post_parse(char *data, size_t data_len) {
             }
             p++;
           }
-          list->keys = (char **)realloc(list->keys, sizeof(char *) * (list->n + 1));
-          list->keys[list->n] = strdup(key);
-          list->values = (char **)realloc(list->values, sizeof(char *) * (list->n + 1));
+          char **new_keys = (char **)turn_realloc(list->keys, sizeof(char *) * (list->n + 1));
+          char **new_values = (char **)turn_realloc(list->values, sizeof(char *) * (list->n + 1));
+          char *new_key = turn_strdup(key);
+          if (new_keys == NULL || new_values == NULL || new_key == NULL) {
+            free(new_key);
+            if (new_keys) {
+              list->keys = new_keys;
+            }
+            if (new_values) {
+              list->values = new_values;
+            }
+            free(value);
+            free_headers_list(list);
+            free(post_data);
+            return NULL;
+          }
+          list->keys = new_keys;
+          list->values = new_values;
+          list->keys[list->n] = new_key;
           list->values[list->n] = value;
           ++(list->n);
           fsplit = strtok_r(NULL, "&", &fmarker);
@@ -168,7 +201,7 @@ static struct http_request *parse_http_request_1(struct http_request *ret, char 
 
         const char *query = evhttp_uri_get_query(uri);
         if (query) {
-          struct evkeyvalq *kv = (struct evkeyvalq *)calloc(sizeof(struct evkeyvalq), 1);
+          struct evkeyvalq *kv = (struct evkeyvalq *)turn_calloc(1, sizeof(struct evkeyvalq));
           if (evhttp_parse_query_str(query, kv) < 0) {
             free(ret);
             ret = NULL;
@@ -177,14 +210,14 @@ static struct http_request *parse_http_request_1(struct http_request *ret, char 
               free(kv);
             }
           } else {
-            ret->headers = (struct http_headers *)calloc(sizeof(struct http_headers), 1);
+            ret->headers = (struct http_headers *)turn_calloc(1, sizeof(struct http_headers));
             ret->headers->uri_headers = kv;
           }
         }
 
         const char *path = evhttp_uri_get_path(uri);
         if (path && ret) {
-          ret->path = strdup(path);
+          ret->path = turn_strdup(path);
         }
 
         evhttp_uri_free(uri);
@@ -193,7 +226,7 @@ static struct http_request *parse_http_request_1(struct http_request *ret, char 
           char *body = strstr(s + 1, "\r\n\r\n");
           if (body && body[0]) {
             if (!ret->headers) {
-              ret->headers = (struct http_headers *)calloc(sizeof(struct http_headers), 1);
+              ret->headers = (struct http_headers *)turn_calloc(1, sizeof(struct http_headers));
             }
             ret->headers->post_headers = post_parse(body, strlen(body));
           }
@@ -213,7 +246,7 @@ struct http_request *parse_http_request(char *request) {
 
   if (request) {
 
-    ret = (struct http_request *)calloc(sizeof(struct http_request), 1);
+    ret = (struct http_request *)turn_calloc(1, sizeof(struct http_request));
 
     if (strstr(request, "GET ") == request) {
       ret->rtype = HRT_GET;
@@ -320,73 +353,3 @@ void free_http_request(struct http_request *request) {
     free(request);
   }
 }
-
-////////////////////////////////////////////
-
-struct str_buffer {
-  size_t capacity;
-  size_t sz;
-  char *buffer;
-};
-
-struct str_buffer *str_buffer_new(void) {
-  struct str_buffer *ret = (struct str_buffer *)calloc(sizeof(struct str_buffer), 1);
-  if (!ret) {
-    return NULL;
-  }
-  ret->buffer = (char *)malloc(1);
-  if (!(ret->buffer)) {
-    free(ret);
-    return NULL;
-  }
-  ret->buffer[0] = 0;
-  ret->capacity = 1;
-  return ret;
-}
-
-void str_buffer_append(struct str_buffer *sb, const char *str) {
-  if (sb && str && str[0]) {
-    size_t len = strlen(str);
-    while (sb->sz + len + 1 > sb->capacity) {
-      sb->capacity += len + 1024;
-      sb->buffer = (char *)realloc(sb->buffer, sb->capacity);
-    }
-    memcpy(sb->buffer + sb->sz, str, len + 1);
-    sb->sz += len;
-  }
-}
-
-void str_buffer_append_sz(struct str_buffer *sb, size_t sz) {
-  char ssz[129];
-  snprintf(ssz, sizeof(ssz) - 1, "%lu", (unsigned long)sz);
-  str_buffer_append(sb, ssz);
-}
-
-void str_buffer_append_sid(struct str_buffer *sb, turnsession_id sid) {
-  char ssz[129];
-  snprintf(ssz, sizeof(ssz) - 1, "%018llu", (unsigned long long)sid);
-  str_buffer_append(sb, ssz);
-}
-
-const char *str_buffer_get_str(const struct str_buffer *sb) {
-  if (sb) {
-    return sb->buffer;
-  }
-  return NULL;
-}
-
-size_t str_buffer_get_str_len(const struct str_buffer *sb) {
-  if (sb) {
-    return sb->sz;
-  }
-  return 0;
-}
-
-void str_buffer_free(struct str_buffer *sb) {
-  if (sb) {
-    free(sb->buffer);
-    free(sb);
-  }
-}
-
-///////////////////////////////////////////////

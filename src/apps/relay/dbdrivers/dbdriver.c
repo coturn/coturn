@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * https://opensource.org/license/bsd-3-clause
+ *
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
  * Copyright (C) 2014 Vivocha S.p.A.
  *
@@ -45,7 +49,7 @@ static void make_connection_key(void) { (void)pthread_key_create(&connection_key
 pthread_key_t connection_key;
 pthread_once_t connection_key_once = PTHREAD_ONCE_INIT;
 
-void convert_string_key_to_binary(char const *keysource, hmackey_t key, size_t sz) {
+void convert_string_key_to_binary(const char *keysource, hmackey_t key, size_t sz) {
   char is[3];
   size_t i;
   unsigned int v;
@@ -108,7 +112,7 @@ char *sanitize_userdb_string(char *udb) {
   char *pend;
 
   /* host=localhost dbname=coturn user=turn password=turn connect_timeout=30 */
-  ret = strdup(udb);
+  ret = turn_strdup(udb);
   pstart = strstr(ret, "password=");
   if (pstart != NULL) {
     pstart += strlen("password=");
@@ -125,7 +129,7 @@ char *sanitize_userdb_string(char *udb) {
       pstart += strlen("postgresql://");
       pend = strstr(pstart, "@");
       if (pend != NULL) {
-        size_t plen = pend - pstart;
+        const size_t plen = pend - pstart;
         memset(pstart, '*', plen);
       }
     }

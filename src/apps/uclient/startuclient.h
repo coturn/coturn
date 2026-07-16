@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * https://opensource.org/license/bsd-3-clause
+ *
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
@@ -56,6 +60,15 @@ int start_connection(uint16_t clnet_remote_port, const char *remote_address, con
                      const char *local_address, bool verbose, app_ur_conn_info *clnet_info_probe,
                      app_ur_conn_info *clnet_info, uint16_t *chn, app_ur_conn_info *clnet_info_rtcp,
                      uint16_t *chn_rtcp);
+
+int start_allocate_only_connection(uint16_t clnet_remote_port, const char *remote_address, const unsigned char *ifname,
+                                   const char *local_address, bool verbose, app_ur_conn_info *clnet_info_probe,
+                                   app_ur_conn_info *clnet_info, ioa_addr *peer_addr);
+
+int start_raw_connection(uint16_t clnet_remote_port, const char *remote_address, const unsigned char *ifname,
+                         const char *local_address, bool verbose, app_ur_conn_info *clnet_info);
+
+int turn_refresh_allocation(bool verbose, app_ur_conn_info *clnet_info, uint32_t lifetime);
 
 int turn_tcp_connect(bool verbose, app_ur_conn_info *clnet_info, ioa_addr *peer_addr);
 

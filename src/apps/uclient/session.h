@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * https://opensource.org/license/bsd-3-clause
+ *
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
@@ -111,6 +115,18 @@ typedef struct {
   size_t loss;
   uint64_t latency;
   uint64_t jitter;
+  // Multi-threaded listener routing: which listener thread (index into the
+  // global listeners[] array) owns this session's read-side libevent. Set
+  // once at allocation time when --listener-threads > 0, then read-only
+  // for the lifetime of the session. -1 means "main event_base" (legacy
+  // single-threaded mode).
+  int listener_id;
+  // Multi-threaded sender routing: which sender thread (index into the
+  // global senders[] array) owns this session's send-burst iteration. Set
+  // once at allocation time when --sender-threads > 0, then read-only for
+  // the lifetime of the session. -1 means "main thread" (legacy
+  // single-threaded send path).
+  int sender_id;
 } app_ur_session;
 
 ///////////////////////////////////////////////////////

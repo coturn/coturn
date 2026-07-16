@@ -19,7 +19,7 @@ jobs:
       matrix:
         os: ["windows"]
         # Customize the CMake build type here (`Release`, `Debug`, `RelWithDebInfo`, etc.)
-        BUILD_TYPE: ["Release", "Debug"]
+        BUILD_TYPE: ["Release"]
         BUILD_SHARED_LIBS: ["OFF"]
     defaults:
       run:
@@ -31,7 +31,7 @@ jobs:
       TOOSL_DIR:   ${{ github.workspace }}\.cache\tools
       INSTALL_DIR: ${{ github.workspace }}\.cache\install_mingw_2022_02_15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
             
       - name: Install dependencies
         run: |
@@ -58,31 +58,14 @@ jobs:
           cmake -E make_directory ${{ env.INSTALL_DIR }}
     
       - name: Cache installed
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         id: cache-installed
         with:
           path: ${{ env.INSTALL_DIR }}
           key: coturn-cache-installed-mingw
 
-      - name: Build Prometheus
-        run: |
-          cd ${{ env.SOURCE_DIR }}
-          git clone https://github.com/digitalocean/prometheus-client-c.git
-          cd prometheus-client-c/prom
-          mkdir build
-          cd build
-          cmake .. -G"MinGW Makefiles" ^
-              -DBUILD_SHARED_LIBS=${{ matrix.BUILD_SHARED_LIBS }} ^
-              -DCMAKE_BUILD_TYPE=${{ matrix.BUILD_TYPE }} ^
-              -DCMAKE_INSTALL_PREFIX=${{ env.INSTALL_DIR }}
-          cmake --build . --config ${{ matrix.BUILD_TYPE }}
-          cmake --build . --config ${{ matrix.BUILD_TYPE }} --target install
-        env:
-          MSYSTEM: MINGW64
-          PATH: C:\msys64\mingw64\bin;C:\msys64\usr\bin
-        working-directory: ${{ env.SOURCE_DIR }}
-        if: ${{ false }}
-        
+      # The Prometheus exporter builds from coturn's vendored client
+      # (src/prometheus); only libmicrohttpd (installed above) is required.
       - name: Build Coturn
         run: |
           cmake -E make_directory build
@@ -96,7 +79,6 @@ jobs:
         env:
           MSYSTEM: MINGW64
           PATH: C:\msys64\mingw64\bin;C:\msys64\usr\bin
-          Prometheus_ROOT: ${{ env.INSTALL_DIR }}
         working-directory: ${{ github.workspace }}
 
       - name: Package
@@ -106,11 +88,14 @@ jobs:
           copy /Y ${{ env.RUNVCPKG_VCPKG_ROOT }}\installed\${{ env.RUNVCPKG_VCPKG_TRIPLET_OUT }}\bin\*.dll install\bin
           7z a coturn_windows_mingw.zip ${{ github.workspace }}\build\install\*
           cmake --build . --config ${{ matrix.BUILD_TYPE }} --target package
+        env:
+          MSYSTEM: MINGW64
+          PATH: C:\msys64\mingw64\bin;C:\msys64\usr\bin
         working-directory: ${{ github.workspace }}\build
         if: ${{ matrix.BUILD_TYPE == 'Release' }}
 
       - name: Update artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coturn_mingw_${{ matrix.os }}
           path: |

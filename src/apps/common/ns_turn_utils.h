@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * https://opensource.org/license/bsd-3-clause
+ *
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
@@ -44,6 +48,8 @@ void err(int eval, const char *format, ...);
 #include "ns_turn_defs.h" // for turn_time_t
 #include "ns_turn_ioaddr.h"
 
+#include "ns_turn_atomic.h"
+
 #ifdef __cplusplus
 #include <algorithm> // for std::min
 #endif
@@ -57,7 +63,6 @@ extern "C" {
 typedef enum {
   TURN_LOG_LEVEL_DEBUG = 0,
   TURN_LOG_LEVEL_INFO,
-  TURN_LOG_LEVEL_CONTROL,
   TURN_LOG_LEVEL_WARNING,
   TURN_LOG_LEVEL_ERROR
 } TURN_LOG_LEVEL;
@@ -76,6 +81,10 @@ void set_syslog_facility(char *val);
 
 void set_turn_log_timestamp_format(char *new_format);
 
+/* Messages below this level are dropped. Set with --log-min-level=<debug|info|warning|error>. */
+extern TURN_LOG_LEVEL log_min_level;
+void set_log_min_level(const char *value);
+
 void turn_log_func_default(const char *file, int line, TURN_LOG_LEVEL level, const char *format, ...)
 #ifdef __GNUC__
     __attribute__((format(printf, 4, 5)))
@@ -85,8 +94,7 @@ void turn_log_func_default(const char *file, int line, TURN_LOG_LEVEL level, con
 void addr_debug_print(int verbose, const ioa_addr *addr, const char *s);
 
 /* Log */
-extern volatile int _log_time_value_set;
-extern volatile turn_time_t _log_time_value;
+extern turn_atomic_u32 _log_time_value;
 extern int use_new_log_timestamp_format;
 
 void rtpprintf(const char *format, ...);
@@ -94,6 +102,24 @@ void reset_rtpprintf(void);
 void set_logfile(const char *fn);
 void rollover_logfile(void);
 void set_log_file_line(int set);
+
+///////////////////////// MEMORY ///////////////////////
+
+/*
+ * Memory allocation wrappers with a fail-fast policy: on allocation failure
+ * they log the failing call site and abort() the process. They never return
+ * NULL, so callers must not check the result. Use these throughout coturn
+ * instead of malloc/calloc/realloc/strdup.
+ */
+void *turn_malloc_impl(size_t sz, const char *file, int line);
+void *turn_calloc_impl(size_t number, size_t size, const char *file, int line);
+void *turn_realloc_impl(void *ptr, size_t sz, const char *file, int line);
+char *turn_strdup_impl(const char *s, const char *file, int line);
+
+#define turn_malloc(sz) turn_malloc_impl((sz), __FILE__, __LINE__)
+#define turn_calloc(number, size) turn_calloc_impl((number), (size), __FILE__, __LINE__)
+#define turn_realloc(ptr, sz) turn_realloc_impl((ptr), (sz), __FILE__, __LINE__)
+#define turn_strdup(s) turn_strdup_impl((s), __FILE__, __LINE__)
 
 ///////////////////////////////////////////////////////
 

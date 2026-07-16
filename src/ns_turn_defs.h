@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * https://opensource.org/license/bsd-3-clause
+ *
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
@@ -31,7 +35,7 @@
 #ifndef __IOADEFS__
 #define __IOADEFS__
 
-#define TURN_SERVER_VERSION "4.6.3"
+#define TURN_SERVER_VERSION "4.14.0"
 #define TURN_SERVER_VERSION_NAME "Gorst"
 #ifndef TURN_SERVER_BUILD_INFO
 #define TURN_SERVER_BUILD_INFO ""
@@ -49,6 +53,10 @@
 #if defined(WINDOWS)
 #include <process.h>
 #include <ws2tcpip.h>
+/* MSVC has no <strings.h>; it spells the POSIX case-insensitive compares with a
+ * leading underscore, in <string.h>. */
+#define strcasecmp _stricmp
+#define strncasecmp _strnicmp
 #else
 #include <arpa/inet.h>   // IWYU pragma: export
 #include <net/if.h>      // IWYU pragma: export

@@ -1,29 +1,608 @@
+/*
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * https://opensource.org/license/bsd-3-clause
+ *
+ * Multi-harness libFuzzer entry point for server-side STUN parsing.
+ *
+ * Every iteration runs all sub-harnesses in sequence on the same input:
+ * RFC 5769 integrity checks, multi-SHA/credential integrity, attribute
+ * iteration, attribute serialization, and legacy (pre-RFC 5389) STUN
+ * detection. Keeping everything behind a single binary allows the
+ * upstream OSS-Fuzz build recipe to stay unchanged.
+ */
+
+#include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include "apputils.h"
+#include "ns_turn_ioaddr.h"
+#include "ns_turn_msg.h"
+#include "ns_turn_msg_defs.h"
 #include "ns_turn_utils.h"
 #include "stun_buffer.h"
 
-static SHATYPE shatype = SHATYPE_SHA1;
+static uint8_t fuzz_byte(const uint8_t *Data, size_t Size, size_t idx) { return Size ? Data[idx % Size] : 0; }
 
-#define kMinInputLength 10
-#define kMaxInputLength 5120
+static uint16_t fuzz_u16(const uint8_t *Data, size_t Size, size_t idx) {
+  return (uint16_t)(((uint16_t)fuzz_byte(Data, Size, idx) << 8) | (uint16_t)fuzz_byte(Data, Size, idx + 1));
+}
 
-extern int LLVMFuzzerTestOneInput(const uint8_t *Data,
-                                  size_t Size) { // rfc5769check
+static void fuzz_printable_string(const uint8_t *Data, size_t Size, size_t idx, uint8_t *out, size_t out_size) {
+  if (!out_size) {
+    return;
+  }
 
-  if (Size < kMinInputLength || Size > kMaxInputLength) {
-    return 1;
+  const size_t max_len = out_size - 1;
+  const size_t len = max_len ? (size_t)(fuzz_byte(Data, Size, idx) % (max_len + 1)) : 0;
+  for (size_t i = 0; i < len; ++i) {
+    out[i] = (uint8_t)(33 + (fuzz_byte(Data, Size, idx + 1 + i) % 94));
+  }
+  out[len] = 0;
+}
+
+/* ------------------------------------------------------------------ */
+/* Integrity: SHA1 short-term + SHA256 long-term (original FuzzStun). */
+/* ------------------------------------------------------------------ */
+static void harness_integrity_sha1(const uint8_t *Data, size_t Size) {
+  if (Size < 10 || Size > 5120) {
+    return;
   }
 
   stun_is_command_message_full_check_str((uint8_t *)Data, Size, 1, NULL);
 
-  uint8_t uname[33];
-  uint8_t realm[33];
-  uint8_t upwd[33];
-  strcpy((char *)upwd, "VOkJxbRl1RmTxUk/WvJxBt");
-  stun_check_message_integrity_str(TURN_CREDENTIALS_SHORT_TERM, (uint8_t *)Data, Size, uname, realm, upwd, shatype);
+  uint8_t uname[STUN_MAX_USERNAME_SIZE + 1] = "fuzzuser";
+  uint8_t realm[STUN_MAX_REALM_SIZE + 1] = "fuzz.realm";
+  uint8_t upwd[STUN_MAX_PWD_SIZE + 1] = "VOkJxbRl1RmTxUk/WvJxBt";
+
+  stun_check_message_integrity_str(TURN_CREDENTIALS_SHORT_TERM, (uint8_t *)Data, Size, uname, realm, upwd,
+                                   SHATYPE_SHA1);
+  stun_check_message_integrity_str(TURN_CREDENTIALS_LONG_TERM, (uint8_t *)Data, Size, uname, realm, upwd,
+                                   SHATYPE_SHA256);
+}
+
+/* ------------------------------------------------------------------ */
+/* Integrity across all SHA types + credential modes (FuzzStunIntegrity). */
+/* ------------------------------------------------------------------ */
+static void harness_integrity_multi(const uint8_t *Data, size_t Size) {
+  if (Size < STUN_HEADER_LENGTH || Size > 5120) {
+    return;
+  }
+
+  uint8_t buf[5120];
+  uint8_t uname[STUN_MAX_USERNAME_SIZE + 1] = "fuzzuser";
+  uint8_t realm[STUN_MAX_REALM_SIZE + 1] = "fuzz.realm";
+  uint8_t upwd[STUN_MAX_PWD_SIZE + 1] = "VOkJxbRl1RmTxUk/WvJxBt";
+
+  static const SHATYPE sha_types[] = {SHATYPE_SHA1, SHATYPE_SHA256, SHATYPE_SHA384, SHATYPE_SHA512};
+  const size_t num_sha = sizeof(sha_types) / sizeof(sha_types[0]);
+
+  for (size_t s = 0; s < num_sha; s++) {
+    memcpy(buf, Data, Size);
+    stun_is_command_message_full_check_str(buf, Size, 1, NULL);
+    stun_check_message_integrity_str(TURN_CREDENTIALS_SHORT_TERM, buf, Size, uname, realm, upwd, sha_types[s]);
+
+    memcpy(buf, Data, Size);
+    stun_check_message_integrity_str(TURN_CREDENTIALS_LONG_TERM, buf, Size, uname, realm, upwd, sha_types[s]);
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Attribute TLV iteration + typed extraction (FuzzStunAttrIter).     */
+/* ------------------------------------------------------------------ */
+static const uint16_t kAllAttrTypes[] = {
+    STUN_ATTRIBUTE_MAPPED_ADDRESS,
+    OLD_STUN_ATTRIBUTE_RESPONSE_ADDRESS,
+    STUN_ATTRIBUTE_CHANGE_REQUEST,
+    OLD_STUN_ATTRIBUTE_SOURCE_ADDRESS,
+    OLD_STUN_ATTRIBUTE_CHANGED_ADDRESS,
+    STUN_ATTRIBUTE_USERNAME,
+    OLD_STUN_ATTRIBUTE_PASSWORD,
+    STUN_ATTRIBUTE_MESSAGE_INTEGRITY,
+    STUN_ATTRIBUTE_ERROR_CODE,
+    STUN_ATTRIBUTE_UNKNOWN_ATTRIBUTES,
+    OLD_STUN_ATTRIBUTE_REFLECTED_FROM,
+    STUN_ATTRIBUTE_CHANNEL_NUMBER,
+    STUN_ATTRIBUTE_LIFETIME,
+    STUN_ATTRIBUTE_BANDWIDTH,
+    STUN_ATTRIBUTE_XOR_PEER_ADDRESS,
+    STUN_ATTRIBUTE_DATA,
+    STUN_ATTRIBUTE_REALM,
+    STUN_ATTRIBUTE_NONCE,
+    STUN_ATTRIBUTE_XOR_RELAYED_ADDRESS,
+    STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY,
+    STUN_ATTRIBUTE_EVEN_PORT,
+    STUN_ATTRIBUTE_REQUESTED_TRANSPORT,
+    STUN_ATTRIBUTE_DONT_FRAGMENT,
+    STUN_ATTRIBUTE_OAUTH_ACCESS_TOKEN,
+    STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS,
+    OLD_STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS,
+    STUN_ATTRIBUTE_TIMER_VAL,
+    STUN_ATTRIBUTE_RESERVATION_TOKEN,
+    STUN_ATTRIBUTE_PRIORITY,
+    STUN_ATTRIBUTE_PADDING,
+    STUN_ATTRIBUTE_RESPONSE_PORT,
+    STUN_ATTRIBUTE_CONNECTION_ID,
+    STUN_ATTRIBUTE_ADDITIONAL_ADDRESS_FAMILY,
+    STUN_ATTRIBUTE_ADDRESS_ERROR_CODE,
+    STUN_ATTRIBUTE_SOFTWARE,
+    STUN_ATTRIBUTE_ALTERNATE_SERVER,
+    STUN_ATTRIBUTE_FINGERPRINT,
+    STUN_ATTRIBUTE_ICE_CONTROLLED,
+    STUN_ATTRIBUTE_RESPONSE_ORIGIN,
+    STUN_ATTRIBUTE_OTHER_ADDRESS,
+    STUN_ATTRIBUTE_THIRD_PARTY_AUTHORIZATION,
+    STUN_ATTRIBUTE_ORIGIN,
+    STUN_ATTRIBUTE_MOBILITY_TICKET,
+    STUN_ATTRIBUTE_NEW_BANDWIDTH,
+};
+
+static const uint16_t kAddrAttrs[] = {
+    STUN_ATTRIBUTE_MAPPED_ADDRESS,   STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS,  OLD_STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS,
+    STUN_ATTRIBUTE_XOR_PEER_ADDRESS, STUN_ATTRIBUTE_XOR_RELAYED_ADDRESS, STUN_ATTRIBUTE_ALTERNATE_SERVER,
+    STUN_ATTRIBUTE_RESPONSE_ORIGIN,  STUN_ATTRIBUTE_OTHER_ADDRESS,
+};
+
+static void harness_attr_iter(const uint8_t *Data, size_t Size) {
+  if (Size < STUN_HEADER_LENGTH || Size > 8192) {
+    return;
+  }
+
+  uint8_t buf[8192];
+  memcpy(buf, Data, Size);
+
+  if (!stun_is_command_message_str(buf, Size)) {
+    return;
+  }
+
+  stun_attr_ref sar = stun_attr_get_first_str(buf, Size);
+  while (sar) {
+    (void)stun_attr_get_type(sar);
+    (void)stun_attr_get_len(sar);
+    (void)stun_attr_get_value(sar);
+    (void)stun_attr_is_addr(sar);
+    sar = stun_attr_get_next_str(buf, Size, sar);
+  }
+
+  ioa_addr addr;
+  const size_t num_addr_attrs = sizeof(kAddrAttrs) / sizeof(kAddrAttrs[0]);
+  for (size_t i = 0; i < num_addr_attrs; i++) {
+    sar = stun_attr_get_first_by_type_str(buf, Size, kAddrAttrs[i]);
+    if (sar) {
+      memset(&addr, 0, sizeof(addr));
+      stun_attr_get_addr_str(buf, Size, sar, &addr, NULL);
+    }
+    memset(&addr, 0, sizeof(addr));
+    stun_attr_get_first_addr_str(buf, Size, kAddrAttrs[i], &addr, NULL);
+  }
+
+  sar = stun_attr_get_first_by_type_str(buf, Size, STUN_ATTRIBUTE_CHANNEL_NUMBER);
+  if (sar) {
+    (void)stun_attr_get_channel_number(sar);
+  }
+  (void)stun_attr_get_first_channel_number_str(buf, Size);
+
+  sar = stun_attr_get_first_by_type_str(buf, Size, STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY);
+  if (sar) {
+    (void)stun_get_requested_address_family(sar);
+  }
+
+  sar = stun_attr_get_first_by_type_str(buf, Size, STUN_ATTRIBUTE_ADDITIONAL_ADDRESS_FAMILY);
+  if (sar) {
+    (void)stun_get_requested_address_family(sar);
+  }
+
+  sar = stun_attr_get_first_by_type_str(buf, Size, STUN_ATTRIBUTE_EVEN_PORT);
+  if (sar) {
+    (void)stun_attr_get_even_port(sar);
+  }
+
+  sar = stun_attr_get_first_by_type_str(buf, Size, STUN_ATTRIBUTE_BANDWIDTH);
+  if (sar) {
+    (void)stun_attr_get_bandwidth(sar);
+  }
+
+  sar = stun_attr_get_first_by_type_str(buf, Size, STUN_ATTRIBUTE_NEW_BANDWIDTH);
+  if (sar) {
+    (void)stun_attr_get_bandwidth(sar);
+  }
+
+  sar = stun_attr_get_first_by_type_str(buf, Size, STUN_ATTRIBUTE_RESERVATION_TOKEN);
+  if (sar) {
+    (void)stun_attr_get_reservation_token_value(sar);
+  }
+
+  sar = stun_attr_get_first_by_type_str(buf, Size, STUN_ATTRIBUTE_CHANGE_REQUEST);
+  if (sar) {
+    bool change_ip = false, change_port = false;
+    stun_attr_get_change_request_str(sar, &change_ip, &change_port);
+  }
+
+  sar = stun_attr_get_first_by_type_str(buf, Size, STUN_ATTRIBUTE_RESPONSE_PORT);
+  if (sar) {
+    (void)stun_attr_get_response_port_str(sar);
+  }
+
+  sar = stun_attr_get_first_by_type_str(buf, Size, STUN_ATTRIBUTE_PADDING);
+  if (sar) {
+    (void)stun_attr_get_padding_len_str(sar);
+  }
+
+  {
+    int err_code = 0;
+    uint8_t err_msg[1024] = {0};
+    stun_is_error_response_str(buf, Size, &err_code, err_msg, sizeof(err_msg));
+  }
+  {
+    int err_code = 0;
+    uint8_t err_msg[1024] = {0};
+    uint8_t chal_realm[STUN_MAX_REALM_SIZE + 1] = {0};
+    uint8_t chal_nonce[STUN_MAX_NONCE_SIZE + 1] = {0};
+    uint8_t server_name[STUN_MAX_SERVER_NAME_SIZE + 1] = {0};
+    bool oauth = false;
+    stun_is_challenge_response_str(buf, Size, &err_code, err_msg, sizeof(err_msg), chal_realm, chal_nonce, server_name,
+                                   &oauth);
+  }
+
+  const size_t num_all_attrs = sizeof(kAllAttrTypes) / sizeof(kAllAttrTypes[0]);
+  for (size_t i = 0; i < num_all_attrs; i++) {
+    sar = stun_attr_get_first_by_type_str(buf, Size, kAllAttrTypes[i]);
+    if (sar) {
+      (void)stun_attr_get_type(sar);
+      (void)stun_attr_get_len(sar);
+      (void)stun_attr_get_value(sar);
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Attribute serialization / append paths (FuzzStunAttrAdd).          */
+/* ------------------------------------------------------------------ */
+static void harness_attr_add(const uint8_t *Data, size_t Size) {
+  if (Size < STUN_HEADER_LENGTH || Size > 4096) {
+    return;
+  }
+
+  uint8_t buf[MAX_STUN_MESSAGE_SIZE] = {0};
+  memcpy(buf, Data, Size);
+  size_t len = Size;
+
+  if (!stun_is_command_message_str(buf, len)) {
+    return;
+  }
+
+  uint8_t test_uname[] = "fuzzuser@fuzz.realm";
+  stun_attr_add_str(buf, &len, STUN_ATTRIBUTE_USERNAME, test_uname, (int)(sizeof(test_uname) - 1));
+
+  uint8_t test_realm[] = "fuzz.realm";
+  stun_attr_add_str(buf, &len, STUN_ATTRIBUTE_REALM, test_realm, (int)(sizeof(test_realm) - 1));
+
+  uint8_t test_nonce[] = "fuzznonce0123456789abcdef";
+  stun_attr_add_str(buf, &len, STUN_ATTRIBUTE_NONCE, test_nonce, (int)(sizeof(test_nonce) - 1));
+
+  uint8_t test_sw[] = "coturn-fuzz/1.0";
+  stun_attr_add_str(buf, &len, STUN_ATTRIBUTE_SOFTWARE, test_sw, (int)(sizeof(test_sw) - 1));
+
+  uint8_t lifetime_val[4] = {0x00, 0x00, 0x02, 0x58};
+  stun_attr_add_str(buf, &len, STUN_ATTRIBUTE_LIFETIME, lifetime_val, 4);
+
+  uint8_t transport_val[4] = {STUN_ATTRIBUTE_TRANSPORT_UDP_VALUE, 0x00, 0x00, 0x00};
+  stun_attr_add_str(buf, &len, STUN_ATTRIBUTE_REQUESTED_TRANSPORT, transport_val, 4);
+
+  uint8_t af_val[4] = {STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4, 0x00, 0x00, 0x00};
+  stun_attr_add_str(buf, &len, STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY, af_val, 4);
+
+  uint8_t even_port_val[1] = {0x80};
+  stun_attr_add_str(buf, &len, STUN_ATTRIBUTE_EVEN_PORT, even_port_val, 1);
+
+  stun_attr_add_str(buf, &len, STUN_ATTRIBUTE_DONT_FRAGMENT, NULL, 0);
+
+  stun_attr_add_channel_number_str(buf, &len, 0x4001);
+
+  stun_attr_add_bandwidth_str(buf, &len, 1000000);
+
+  ioa_addr addr4 = {0};
+  addr4.s4.sin_family = AF_INET;
+  addr4.s4.sin_port = htons(12345);
+  addr4.s4.sin_addr.s_addr = htonl(0xC0A80001);
+  stun_attr_add_addr_str(buf, &len, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS, &addr4);
+  stun_attr_add_addr_str(buf, &len, STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &addr4);
+  stun_attr_add_addr_str(buf, &len, STUN_ATTRIBUTE_XOR_RELAYED_ADDRESS, &addr4);
+  stun_attr_add_addr_str(buf, &len, STUN_ATTRIBUTE_MAPPED_ADDRESS, &addr4);
+
+  ioa_addr addr6 = {0};
+  addr6.s6.sin6_family = AF_INET6;
+  addr6.s6.sin6_port = htons(54321);
+  addr6.s6.sin6_addr.s6_addr[15] = 1;
+  stun_attr_add_addr_str(buf, &len, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS, &addr6);
+  stun_attr_add_addr_str(buf, &len, STUN_ATTRIBUTE_XOR_RELAYED_ADDRESS, &addr6);
+
+  stun_attr_add_address_error_code(buf, &len, STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6, 440);
+
+  stun_attr_add_change_request_str(buf, &len, true, true);
+  stun_attr_add_response_port_str(buf, &len, 3479);
+  stun_attr_add_padding_str(buf, &len, 64);
+
+  if (Size > STUN_HEADER_LENGTH + 4) {
+    int data_len = (int)(Size - STUN_HEADER_LENGTH);
+    if (data_len > 1024) {
+      data_len = 1024;
+    }
+    stun_attr_add_str(buf, &len, STUN_ATTRIBUTE_DATA, Data + STUN_HEADER_LENGTH, data_len);
+  }
+
+  stun_attr_add_fingerprint_str(buf, &len);
+}
+
+/* ------------------------------------------------------------------ */
+/* Legacy (pre-RFC 5389) STUN detection (FuzzOldStun).                */
+/* ------------------------------------------------------------------ */
+static void harness_old_stun(const uint8_t *Data, size_t Size) {
+  if (Size < STUN_HEADER_LENGTH || Size > 5120) {
+    return;
+  }
+
+  uint8_t buf[5120];
+  memcpy(buf, Data, Size);
+
+  uint32_t cookie = 0;
+  bool is_old = old_stun_is_command_message_str(buf, Size, &cookie);
+  (void)stun_is_command_message_str(buf, Size);
+
+  if (is_old) {
+    (void)stun_get_msg_type_str(buf, Size);
+    (void)stun_get_method_str(buf, Size);
+
+    stun_is_request_str(buf, Size);
+    stun_is_indication_str(buf, Size);
+    stun_is_success_response_str(buf, Size);
+
+    int err_code = 0;
+    uint8_t err_msg[256] = {0};
+    stun_is_error_response_str(buf, Size, &err_code, err_msg, sizeof(err_msg));
+
+    int fp_present = 0;
+    stun_is_command_message_full_check_str(buf, Size, 1, &fp_present);
+    stun_is_command_message_full_check_str(buf, Size, 0, &fp_present);
+
+    stun_is_binding_request_str(buf, Size, 0);
+    stun_is_binding_response_str(buf, Size);
+
+    stun_attr_ref sar = stun_attr_get_first_str(buf, Size);
+    while (sar) {
+      (void)stun_attr_get_type(sar);
+      (void)stun_attr_get_len(sar);
+      sar = stun_attr_get_next_str(buf, Size, sar);
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Challenge-response builder (FuzzStunChallengeResponse).            */
+/*                                                                    */
+/* stun_is_challenge_response_str only descends into its three inner  */
+/* stun_attr_get_first_by_type_str calls when:                        */
+/*   1) the message is an error response,                             */
+/*   2) err_code is 401 OR 438,                                       */
+/*   3) a REALM attribute is present,                                 */
+/*   4) a NONCE attribute is present.                                 */
+/* The OAuth branch additionally requires THIRD-PARTY-AUTHORIZATION.  */
+/*                                                                    */
+/* The fuzzer-driven harness in harness_attr_iter calls the function  */
+/* every iteration but the conjunction of conditions is too specific  */
+/* for libFuzzer to discover from binary mutation alone — OSS-Fuzz    */
+/* introspector flags 9 unreached callsites under                     */
+/* stun_attr_get_first_by_type_str gated on this function.            */
+/*                                                                    */
+/* Build six deterministic message variants on every iteration so     */
+/* every internal branch is exercised regardless of the input bytes.  */
+/* Realm / nonce / server-name lengths are derived from fuzz bytes so */
+/* each iteration is still meaningfully distinct.                     */
+/* ------------------------------------------------------------------ */
+static void harness_challenge_response_builder(const uint8_t *Data, size_t Size) {
+  if (!Size) {
+    return;
+  }
+
+  static const uint16_t kMethods[] = {
+      STUN_METHOD_ALLOCATE,
+      STUN_METHOD_BINDING,
+      STUN_METHOD_REFRESH,
+      STUN_METHOD_CHANNEL_BIND,
+  };
+  const uint16_t method = kMethods[Data[0] % (sizeof(kMethods) / sizeof(kMethods[0]))];
+
+  /* Length of each variable-length string is taken from a single fuzz byte
+   * so libFuzzer still varies the inputs across iterations. Floors keep the
+   * attribute non-empty so the inner copies in stun_is_challenge_response_str
+   * actually populate the output buffers. */
+  const size_t realm_len = 1 + (Size > 1 ? (Data[1] % 16) : 0);
+  const size_t nonce_len = 1 + (Size > 2 ? (Data[2] % 16) : 0);
+  const size_t server_len = 1 + (Size > 3 ? (Data[3] % 16) : 0);
+
+  uint8_t realm_buf[STUN_MAX_REALM_SIZE + 1] = {0};
+  uint8_t nonce_buf[STUN_MAX_NONCE_SIZE + 1] = {0};
+  uint8_t server_buf[STUN_MAX_SERVER_NAME_SIZE + 1] = {0};
+  for (size_t i = 0; i < realm_len; ++i) {
+    realm_buf[i] = (uint8_t)('a' + (i % 26));
+  }
+  for (size_t i = 0; i < nonce_len; ++i) {
+    nonce_buf[i] = (uint8_t)('0' + (i % 10));
+  }
+  for (size_t i = 0; i < server_len; ++i) {
+    server_buf[i] = (uint8_t)('A' + (i % 26));
+  }
+
+  stun_tid tid = {0};
+  for (size_t i = 0; i < STUN_TID_SIZE; ++i) {
+    tid.tsx_id[i] = (uint8_t)(Size > i + 4 ? Data[i + 4] : (uint8_t)i);
+  }
+
+  /* Each variant builds a fresh error response and runs it through the
+   * predicate so the inner attribute lookups fire. */
+  static const struct {
+    uint16_t err_code;
+    bool include_realm;
+    bool include_nonce;
+    bool include_third_party_auth;
+  } kVariants[] = {
+      {401, true, true, false},   /* canonical 401 challenge: REALM + NONCE */
+      {401, true, true, true},    /* same + THIRD-PARTY-AUTHORIZATION (OAuth branch) */
+      {438, true, true, false},   /* covers the (*err_code) == 438 disjunct */
+      {401, true, false, false},  /* REALM present, NONCE missing — negative inner path */
+      {401, false, false, false}, /* err_code matches but no REALM — outer negative path */
+      {400, true, true, false},   /* err_code does not match 401/438 — early-out path */
+  };
+
+  for (size_t v = 0; v < sizeof(kVariants) / sizeof(kVariants[0]); ++v) {
+    uint8_t buf[MAX_STUN_MESSAGE_SIZE] = {0};
+    size_t len = 0;
+    stun_init_error_response_str(method, buf, &len, kVariants[v].err_code, (const uint8_t *)"unauthorized", &tid, true);
+
+    if (kVariants[v].include_realm) {
+      stun_attr_add_str(buf, &len, STUN_ATTRIBUTE_REALM, realm_buf, (int)realm_len);
+    }
+    if (kVariants[v].include_third_party_auth) {
+      stun_attr_add_str(buf, &len, STUN_ATTRIBUTE_THIRD_PARTY_AUTHORIZATION, server_buf, (int)server_len);
+    }
+    if (kVariants[v].include_nonce) {
+      stun_attr_add_str(buf, &len, STUN_ATTRIBUTE_NONCE, nonce_buf, (int)nonce_len);
+    }
+
+    int err_code = 0;
+    uint8_t err_msg[1024] = {0};
+    uint8_t out_realm[STUN_MAX_REALM_SIZE + 1] = {0};
+    uint8_t out_nonce[STUN_MAX_NONCE_SIZE + 1] = {0};
+    uint8_t out_server[STUN_MAX_SERVER_NAME_SIZE + 1] = {0};
+    bool oauth = false;
+    (void)stun_is_challenge_response_str(buf, len, &err_code, err_msg, sizeof(err_msg), out_realm, out_nonce,
+                                         out_server, &oauth);
+
+    /* Also exercise the NULL-oauth-pointer branch, which is reachable from
+     * other call sites in the codebase. */
+    (void)stun_is_challenge_response_str(buf, len, &err_code, err_msg, sizeof(err_msg), out_realm, out_nonce,
+                                         out_server, NULL);
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Address parser coverage for make_ioa_addr_from_full_string.        */
+/* ------------------------------------------------------------------ */
+static void harness_full_addr_parser(const uint8_t *Data, size_t Size) {
+  ioa_addr addr;
+  const uint16_t default_port = fuzz_u16(Data, Size, 0);
+  const uint16_t explicit_port = fuzz_u16(Data, Size, 2);
+
+  char ipv4_plain[MAX_IOA_ADDR_STRING];
+  char ipv4_with_port[MAX_IOA_ADDR_STRING];
+  char ipv6_bracketed[MAX_IOA_ADDR_STRING];
+  char ipv6_with_port[MAX_IOA_ADDR_STRING];
+  char ipv4_spaced[MAX_IOA_ADDR_STRING];
+
+  snprintf(ipv4_plain, sizeof(ipv4_plain), "%u.%u.%u.%u", fuzz_byte(Data, Size, 4), fuzz_byte(Data, Size, 5),
+           fuzz_byte(Data, Size, 6), fuzz_byte(Data, Size, 7));
+  snprintf(ipv4_with_port, sizeof(ipv4_with_port), "%u.%u.%u.%u:%u", fuzz_byte(Data, Size, 8), fuzz_byte(Data, Size, 9),
+           fuzz_byte(Data, Size, 10), fuzz_byte(Data, Size, 11), explicit_port);
+  snprintf(ipv6_bracketed, sizeof(ipv6_bracketed), "[2001:db8:%x:%x::%x]", fuzz_u16(Data, Size, 12),
+           fuzz_u16(Data, Size, 14), fuzz_u16(Data, Size, 16));
+  snprintf(ipv6_with_port, sizeof(ipv6_with_port), "[2001:db8:%x:%x::%x]:%u", fuzz_u16(Data, Size, 18),
+           fuzz_u16(Data, Size, 20), fuzz_u16(Data, Size, 22), explicit_port);
+  snprintf(ipv4_spaced, sizeof(ipv4_spaced), "  %u.%u.%u.%u:%u", fuzz_byte(Data, Size, 24), fuzz_byte(Data, Size, 25),
+           fuzz_byte(Data, Size, 26), fuzz_byte(Data, Size, 27), explicit_port);
+
+  static const char *kFixedInputs[] = {
+      "", "0.0.0.0", "127.0.0.1:3478", "192.0.2.1:", "[::1]", "[::1]:5349", "[2001:db8::1]  ", "::1",
+  };
+
+  for (size_t i = 0; i < sizeof(kFixedInputs) / sizeof(kFixedInputs[0]); ++i) {
+    memset(&addr, 0, sizeof(addr));
+    (void)make_ioa_addr_from_full_string((const uint8_t *)kFixedInputs[i], default_port, &addr);
+  }
+
+  const char *generated[] = {ipv4_plain, ipv4_with_port, ipv6_bracketed, ipv6_with_port, ipv4_spaced};
+  for (size_t i = 0; i < sizeof(generated) / sizeof(generated[0]); ++i) {
+    memset(&addr, 0, sizeof(addr));
+    (void)make_ioa_addr_from_full_string((const uint8_t *)generated[i], default_port, &addr);
+  }
+
+  (void)make_ioa_addr_from_full_string((const uint8_t *)ipv4_plain, default_port, NULL);
+}
+
+/* ------------------------------------------------------------------ */
+/* Direct MESSAGE-INTEGRITY append helpers.                           */
+/* ------------------------------------------------------------------ */
+static void harness_integrity_attr_add(const uint8_t *Data, size_t Size) {
+  static const SHATYPE kShaTypes[] = {SHATYPE_SHA1, SHATYPE_SHA256, SHATYPE_SHA384, SHATYPE_SHA512};
+  const SHATYPE shatype = kShaTypes[fuzz_byte(Data, Size, 0) % (sizeof(kShaTypes) / sizeof(kShaTypes[0]))];
+
+  uint8_t uname[STUN_MAX_USERNAME_SIZE + 1] = {0};
+  uint8_t realm[STUN_MAX_REALM_SIZE + 1] = {0};
+  uint8_t nonce[STUN_MAX_NONCE_SIZE + 1] = {0};
+  uint8_t upwd[STUN_MAX_PWD_SIZE + 1] = {0};
+  password_t pwd = {0};
+  hmackey_t key = {0};
+
+  fuzz_printable_string(Data, Size, 1, uname, sizeof(uname));
+  fuzz_printable_string(Data, Size, 1 + sizeof(uname), realm, sizeof(realm));
+  fuzz_printable_string(Data, Size, 1 + sizeof(uname) + sizeof(realm), nonce, sizeof(nonce));
+  fuzz_printable_string(Data, Size, 1 + sizeof(uname) + sizeof(realm) + sizeof(nonce), upwd, sizeof(upwd));
+  fuzz_printable_string(Data, Size, 1 + sizeof(uname) + sizeof(realm) + sizeof(nonce) + sizeof(upwd), pwd, sizeof(pwd));
+
+  if (!uname[0]) {
+    memcpy(uname, "fuzzuser", sizeof("fuzzuser"));
+  }
+  if (!realm[0]) {
+    memcpy(realm, "fuzz.realm", sizeof("fuzz.realm"));
+  }
+  if (!nonce[0]) {
+    memcpy(nonce, "fuzznonce", sizeof("fuzznonce"));
+  }
+  if (!upwd[0]) {
+    memcpy(upwd, "fuzzpassword", sizeof("fuzzpassword"));
+  }
+  if (!pwd[0]) {
+    memcpy(pwd, "shortterm", sizeof("shortterm"));
+  }
+
+  for (size_t i = 0; i < sizeof(key); ++i) {
+    key[i] = fuzz_byte(Data, Size, 32 + i);
+  }
+
+  uint8_t buf[MAX_STUN_MESSAGE_SIZE];
+  size_t len = 0;
+  stun_init_request_str(STUN_METHOD_BINDING, buf, &len);
+  (void)stun_attr_add_integrity_by_key_str(buf, &len, uname, realm, key, nonce, shatype);
+
+  len = 0;
+  stun_init_request_str(STUN_METHOD_ALLOCATE, buf, &len);
+  (void)stun_attr_add_integrity_by_user_str(buf, &len, uname, realm, upwd, nonce, shatype);
+
+  len = 0;
+  stun_init_request_str(STUN_METHOD_REFRESH, buf, &len);
+  (void)stun_attr_add_integrity_by_user_short_term_str(buf, &len, uname, pwd, shatype);
+
+  len = 0;
+  stun_init_request_str(STUN_METHOD_CHANNEL_BIND, buf, &len);
+  (void)stun_attr_add_integrity_str(TURN_CREDENTIALS_SHORT_TERM, buf, &len, key, pwd, shatype);
+
+  len = 0;
+  stun_init_request_str(STUN_METHOD_BINDING, buf, &len);
+  (void)stun_attr_add_integrity_str(TURN_CREDENTIALS_LONG_TERM, buf, &len, key, pwd, shatype);
+}
+
+/* ------------------------------------------------------------------ */
+/* libFuzzer entry point — run every harness on each input.           */
+/* ------------------------------------------------------------------ */
+extern int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
+  harness_integrity_sha1(Data, Size);
+  harness_integrity_multi(Data, Size);
+  harness_attr_iter(Data, Size);
+  harness_attr_add(Data, Size);
+  harness_old_stun(Data, Size);
+  harness_challenge_response_builder(Data, Size);
+  harness_full_addr_parser(Data, Size);
+  harness_integrity_attr_add(Data, Size);
   return 0;
 }

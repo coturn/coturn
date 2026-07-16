@@ -19,7 +19,6 @@ jobs:
       matrix:
         os:
           - amazonlinux:2023
-          - ubuntu:20.04
           - ubuntu:22.04
           - ubuntu:24.04
     runs-on: ubuntu-latest
@@ -47,7 +46,7 @@ jobs:
         working-directory: /tmp/
         if: ${{ contains('amazonlinux:2 ubuntu:16.04 ubuntu:18.04', matrix.os) }}
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install `apt` dependencies
         # Set env variable or otherwise `tzdata` package requires interaction.
@@ -58,12 +57,17 @@ jobs:
 
       - run: ./configure
       - run: make
+      - run: make install prefix=$(pwd)
 
       - run: make check
 
       - run: ./run_tests.sh
         working-directory: examples/
+      - run: ./run_tests_ratelimit_401.sh
+        working-directory: examples/
       - run: ./run_tests_conf.sh
+        working-directory: examples/
+      - run: ./run_tests_mobile.sh
         working-directory: examples/
       - run: ./run_tests_prom.sh
         working-directory: examples/

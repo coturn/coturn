@@ -15,8 +15,8 @@ Coturn TURN server Docker image
 
 ## Supported tags and respective `Dockerfile` links
 
-- [`4.6.3-r3`, `4.6.3-r3-debian`, `4.6.3`, `4.6.3-debian`, `4.6.3-bookworm`, `4.6`, `4.6-debian`, `4.6-bookworm`, `4`, `4-debian`, `4-bookworm`, `debian`, `bookworm`, `latest`][d1]
-- [`4.6.3-r3-alpine`, `4.6.3-alpine`, `4.6.3-alpine3.21`, `4.6-alpine`, `4.6-alpine3.21`, `4-alpine`, `4-alpine3.21`, `alpine`, `alpine3.21`][d2]
+- [`4.14.0-r0`, `4.14.0-r0-debian`, `4.14.0`, `4.14.0-debian`, `4.14.0-trixie`, `4.14`, `4.14-debian`, `4.14-trixie`, `4`, `4-debian`, `4-trixie`, `debian`, `trixie`, `latest`][d1]
+- [`4.14.0-r0-alpine`, `4.14.0-alpine`, `4.14.0-alpine3.24`, `4.14-alpine`, `4.14-alpine3.24`, `4-alpine`, `4-alpine3.24`, `alpine`, `alpine3.24`][d2]
 
 
 
@@ -80,8 +80,7 @@ By default, default Coturn configuration and CLI options provided in the `CMD` [
                -n --log-file=stdout \
                --min-port=49160 --max-port=49200 \
                --lt-cred-mech --fingerprint \
-               --no-multicast-peers --no-cli \
-               --no-tlsv1 --no-tlsv1_1 \
+               --no-multicast-peers \
                --realm=my.realm.org \  
     ```
     

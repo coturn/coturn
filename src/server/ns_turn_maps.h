@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * https://opensource.org/license/bsd-3-clause
+ *
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
@@ -48,7 +52,7 @@ typedef struct _ur_map ur_map;
 //////////////// Common Definitions //////
 
 typedef uint64_t ur_map_key_type;
-typedef uintptr_t ur_map_value_type;
+typedef void *ur_map_value_type;
 
 typedef void (*ur_map_del_func)(ur_map_value_type);
 
@@ -104,20 +108,6 @@ bool ur_map_foreach(ur_map *map, foreachcb_type func);
  * false - func is not called, or is called and returns false
  */
 bool ur_map_foreach_arg(const ur_map *map, foreachcb_arg_type func, void *arg);
-
-/**
- * @ret:
- * true - success
- * false - failure
- */
-bool ur_map_lock(const ur_map *map);
-
-/**
- * @ret:
- * true - success
- * false - failure
- */
-bool ur_map_unlock(const ur_map *map);
 
 ///////////// "local" map /////////////////////
 
@@ -186,7 +176,7 @@ bool lm_map_foreach_arg(lm_map *map, foreachcb_arg_type func, void *arg);
 
 //////////////// UR ADDR MAP //////////////////
 
-typedef uintptr_t ur_addr_map_value_type;
+typedef void *ur_addr_map_value_type;
 
 #define ADDR_MAP_SIZE (1024)
 #define ADDR_ARRAY_SIZE (4)
@@ -210,6 +200,10 @@ struct _ur_addr_map {
 typedef struct _ur_addr_map ur_addr_map;
 
 typedef void (*ur_addr_map_func)(ur_addr_map_value_type);
+/* Return false from the callback to stop iteration early */
+typedef bool (*ur_addr_map_func_arg)(ur_addr_map_value_type value, void *arg);
+/* Return false from the callback to stop iteration early */
+typedef bool (*ur_addr_map_key_func_arg)(const ioa_addr *key, ur_addr_map_value_type value, void *arg);
 
 void ur_addr_map_init(ur_addr_map *map);
 void ur_addr_map_clean(ur_addr_map *map);
@@ -237,6 +231,8 @@ bool ur_addr_map_get(const ur_addr_map *map, ioa_addr *key, ur_addr_map_value_ty
 bool ur_addr_map_del(ur_addr_map *map, ioa_addr *key, ur_addr_map_func func);
 
 void ur_addr_map_foreach(ur_addr_map *map, ur_addr_map_func func);
+bool ur_addr_map_foreach_arg(ur_addr_map *map, ur_addr_map_func_arg func, void *arg);
+bool ur_addr_map_foreach_key_arg(ur_addr_map *map, ur_addr_map_key_func_arg func, void *arg);
 
 size_t ur_addr_map_num_elements(const ur_addr_map *map);
 size_t ur_addr_map_size(const ur_addr_map *map);

@@ -1,5 +1,7 @@
 [![Docker CI](https://github.com/coturn/coturn/actions/workflows/docker.yml/badge.svg  "Docker CI")](https://github.com/coturn/coturn/actions/workflows/docker.yml)
 [![Docker Hub](https://img.shields.io/docker/pulls/coturn/coturn?label=Docker%20Hub%20pulls "Docker Hub pulls")](https://hub.docker.com/r/coturn/coturn)
+[![Fuzzing Status](https://oss-fuzz-build-logs.storage.googleapis.com/badges/coturn.svg)](https://bugs.chromium.org/p/oss-fuzz/issues/list?sort=-opened&can=1&q=proj:coturn)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/coturn/coturn)
 
 [Docker Hub](https://hub.docker.com/r/coturn/coturn)
 | [GitHub Container Registry](https://github.com/orgs/coturn/packages/container/package/coturn)
@@ -31,10 +33,10 @@ See more details about using docker container [Docker Readme](https://github.com
 
 coturn requires following dependencies to be installed first
 - libevent2
+- libmicrohttpd (Prometheus metrics interface)
 
 Optional
 - openssl (to support TLS and DTLS, authorized STUN and TURN)
-- libmicrohttp and [prometheus-client-c](https://github.com/digitalocean/prometheus-client-c) (prometheus interface)
 - MariaDB/MySQL (user database)
 - [Hiredis](https://github.com/redis/hiredis) (user database, monitoring)
 - SQLite (user database)
@@ -67,8 +69,8 @@ TURN specs:
   * [RFC 6156](https://datatracker.ietf.org/doc/html/rfc6156) - IPv6 extension for TURN
   * [RFC 7443](https://datatracker.ietf.org/doc/html/rfc7443) - ALPN support for STUN & TURN
   * [RFC 7635](https://datatracker.ietf.org/doc/html/rfc7635) - oAuth third-party TURN/STUN authorization
+  * [RFC 8016](https://datatracker.ietf.org/doc/html/rfc8016) - Mobility with Traversal Using Relays around NAT (TURN)
   * DTLS support (http://tools.ietf.org/html/draft-petithuguenin-tram-turn-dtls-00)
-  * Mobile ICE (MICE) support (http://tools.ietf.org/html/draft-wing-tram-turn-mobility-02)
   * TURN REST API (http://tools.ietf.org/html/draft-uberti-behave-turn-rest-00)
   * Origin field in TURN (Multi-tenant TURN Server) (https://tools.ietf.org/html/draft-ietf-tram-stun-origin-06)
   * TURN Bandwidth draft specs (http://tools.ietf.org/html/draft-thomson-tram-turn-bandwidth-01)
@@ -148,10 +150,10 @@ The implementation is supposed to be simple, easy to install and configure. The 
 
 To achieve high performance and scalability, the TURN server is implemented with the following features:
 
-  * High-performance industrial-strength Network IO engine libevent2 is used
-  * Configurable multi-threading model implemented to allow full usage of available CPU resources (if OS allows multi-threading)
+  * On linux platform, where available, UDP high throughput is achieved through recvmmsg/sendmmsg/GSO combination
+  * High-performance industrial-strength Network IO engine libevent2 in other cases
   * Multiple listening and relay addresses can be configured
-  * Efficient memory model used
+  * Efficient per-thread memory allocation model is used
   * The TURN project code can be used in a custom proprietary networking environment. In the TURN server code, an abstract networking API is used. Only couple files in the project have to be re-written to plug-in the TURN server into a proprietary environment. With this project, only implementation for standard UNIX Networking/IO API is provided, but the  user can implement any other environment. The TURN server code was originally developed for a high-performance proprietary corporate environment, then adopted for UNIX Networking API
   * The TURN server works as a user space process, without imposing any special requirements on the system
 

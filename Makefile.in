@@ -12,123 +12,129 @@ LIBCLIENTTURN_MODS = src/client/ns_turn_ioaddr.c src/client/ns_turn_msg_addr.c s
 LIBCLIENTTURN_DEPS = ${LIBCLIENTTURN_HEADERS} ${MAKE_DEPS}
 LIBCLIENTTURN_OBJS = build/obj/ns_turn_ioaddr.o build/obj/ns_turn_msg_addr.o build/obj/ns_turn_msg.o
 
-SERVERTURN_HEADERS = src/server/ns_turn_allocation.h src/server/ns_turn_ioalib.h src/server/ns_turn_khash.h src/server/ns_turn_maps_rtcp.h src/server/ns_turn_maps.h src/server/ns_turn_server.h src/server/ns_turn_session.h 
+SERVERTURN_HEADERS = src/ns_turn_atomic.h src/server/ns_turn_allocation.h src/server/ns_turn_ioalib.h src/server/ns_turn_khash.h src/server/ns_turn_maps_rtcp.h src/server/ns_turn_maps.h src/server/ns_turn_server.h src/server/ns_turn_session.h  src/server/ns_turn_ratelimit.h
 SERVERTURN_DEPS = ${LIBCLIENTTURN_HEADERS} ${SERVERTURN_HEADERS} ${MAKE_DEPS}
-SERVERTURN_MODS = ${LIBCLIENTTURN_MODS} src/server/ns_turn_allocation.c src/server/ns_turn_maps_rtcp.c src/server/ns_turn_maps.c src/server/ns_turn_server.c
+SERVERTURN_MODS = ${LIBCLIENTTURN_MODS} src/server/ns_turn_allocation.c src/server/ns_turn_maps_rtcp.c src/server/ns_turn_maps.c src/server/ns_turn_server.c src/server/ns_turn_ratelimit.c
 
 COMMON_HEADERS = src/apps/common/apputils.h src/apps/common/ns_turn_openssl.h src/apps/common/ns_turn_utils.h src/apps/common/stun_buffer.h
 COMMON_MODS = src/apps/common/apputils.c src/apps/common/ns_turn_utils.c src/apps/common/stun_buffer.c
 COMMON_DEPS = ${LIBCLIENTTURN_DEPS} ${COMMON_MODS} ${COMMON_HEADERS}
 
 IMPL_HEADERS = src/apps/relay/ns_ioalib_impl.h src/apps/relay/ns_sm.h src/apps/relay/turn_ports.h
-IMPL_MODS = src/apps/relay/ns_ioalib_engine_impl.c src/apps/relay/turn_ports.c src/apps/relay/http_server.c src/apps/relay/acme.c
+IMPL_MODS = src/apps/relay/ns_ioalib_engine_impl.c src/apps/relay/turn_ports.c src/apps/relay/http_server.c src/apps/relay/http_buffer.c src/apps/relay/acme.c
 IMPL_DEPS = ${COMMON_DEPS} ${IMPL_HEADERS} ${IMPL_MODS}
 
 HIREDIS_HEADERS = src/apps/relay/hiredis_libevent2.h
 HIREDIS_MODS = src/apps/relay/hiredis_libevent2.c
 
-USERDB_HEADERS = src/apps/relay/dbdrivers/dbdriver.h src/apps/relay/dbdrivers/dbd_sqlite.h src/apps/relay/dbdrivers/dbd_pgsql.h src/apps/relay/dbdrivers/dbd_mysql.h src/apps/relay/dbdrivers/dbd_mongo.h src/apps/relay/dbdrivers/dbd_redis.h
-USERDB_MODS = src/apps/relay/dbdrivers/dbdriver.c src/apps/relay/dbdrivers/dbd_sqlite.c src/apps/relay/dbdrivers/dbd_pgsql.c src/apps/relay/dbdrivers/dbd_mysql.c src/apps/relay/dbdrivers/dbd_mongo.c src/apps/relay/dbdrivers/dbd_redis.c
+USERDB_HEADERS = src/apps/relay/dbdrivers/dbdriver.h src/apps/relay/dbdrivers/dbd_sqlite.h src/apps/relay/dbdrivers/dbd_pgsql.h src/apps/relay/dbdrivers/dbd_mysql.h src/apps/relay/dbdrivers/dbd_mongo.h src/apps/relay/dbdrivers/dbd_redis.h src/apps/relay/dbdrivers/dbd_redis_conninfo.h
+USERDB_MODS = src/apps/relay/dbdrivers/dbdriver.c src/apps/relay/dbdrivers/dbd_sqlite.c src/apps/relay/dbdrivers/dbd_pgsql.c src/apps/relay/dbdrivers/dbd_mysql.c src/apps/relay/dbdrivers/dbd_mongo.c src/apps/relay/dbdrivers/dbd_redis.c src/apps/relay/dbdrivers/dbd_redis_conninfo.c
 
-SERVERAPP_HEADERS = src/apps/relay/userdb.h src/apps/relay/tls_listener.h src/apps/relay/mainrelay.h src/apps/relay/turn_admin_server.h src/apps/relay/dtls_listener.h src/apps/relay/libtelnet.h src/apps/relay/prom_server.h ${HIREDIS_HEADERS} ${USERDB_HEADERS}
-SERVERAPP_MODS = src/apps/relay/mainrelay.c src/apps/relay/netengine.c src/apps/relay/libtelnet.c src/apps/relay/turn_admin_server.c src/apps/relay/userdb.c src/apps/relay/tls_listener.c src/apps/relay/dtls_listener.c src/apps/relay/prom_server.c ${HIREDIS_MODS} ${USERDB_MODS}
+SERVERAPP_HEADERS = src/apps/relay/userdb.h src/apps/relay/tls_listener.h src/apps/relay/mainrelay.h src/apps/relay/turn_admin_server.h src/apps/relay/dtls_listener.h src/apps/relay/libtelnet.h src/apps/relay/prom_server.h src/prometheus/prom.h ${HIREDIS_HEADERS} ${USERDB_HEADERS}
+SERVERAPP_MODS = src/apps/relay/mainrelay.c src/apps/relay/netengine.c src/apps/relay/libtelnet.c src/apps/relay/turn_admin_server.c src/apps/relay/userdb.c src/apps/relay/tls_listener.c src/apps/relay/dtls_listener.c src/apps/relay/prom_server.c src/prometheus/prom.c ${HIREDIS_MODS} ${USERDB_MODS}
 SERVERAPP_DEPS = ${SERVERTURN_MODS} ${SERVERTURN_DEPS} ${SERVERAPP_MODS} ${SERVERAPP_HEADERS} ${COMMON_DEPS} ${IMPL_DEPS} lib/libturnclient.a
 
 TURN_BUILD_RESULTS = bin/turnutils_oauth bin/turnutils_natdiscovery bin/turnutils_stunclient bin/turnutils_rfc5769check bin/turnutils_uclient bin/turnserver bin/turnutils_peer lib/libturnclient.a include/turn/ns_turn_defs.h sqlite_empty_db
 
-.PHONY: all test check clean distclean sqlite_empty_db install deinstall uninstall reinstall
+.PHONY: all test check unit-tests clean distclean sqlite_empty_db install deinstall uninstall reinstall
 
-all:	${TURN_BUILD_RESULTS}
+all: ${TURN_BUILD_RESULTS}
 
-test:	check
+test: check
 
-check:	bin/turnutils_rfc5769check
+check: bin/turnutils_rfc5769check
 	bin/turnutils_rfc5769check
 
+### Unit tests (Unity, configured via CMake — opt-in, requires cmake):
+unit-tests:
+	${MKDIR} build/unit-tests
+	cd build/unit-tests && cmake -DBUILD_TESTING=ON ${CURDIR} && $(MAKE) check
+
+# ns_turn_khash.h is a vendored 3rd-party header (khash); skip it.
 format:
-	find . -iname "*.c" -o -iname "*.h" | xargs clang-format -i
+	find . \( -iname "*.c" -o -iname "*.h" \) -not -name "ns_turn_khash.h" | xargs clang-format -i
 
 lint:
-	find . -iname "*.c" -o -iname "*.h" | xargs clang-format --dry-run -Werror
+	find . \( -iname "*.c" -o -iname "*.h" \) -not -name "ns_turn_khash.h" | xargs clang-format --dry-run -Werror
 
-include/turn/ns_turn_defs.h:	src/ns_turn_defs.h
+include/turn/ns_turn_defs.h: src/ns_turn_defs.h
 	${RMCMD} include
 	${MKBUILDDIR} include/turn/client
 	cp -pf src/client/*.h include/turn/client/
 	cp -pf src/client++/*.h include/turn/client/
 	cp -pf src/ns_turn_defs.h include/turn/
 
-bin/turnutils_uclient:	${COMMON_DEPS} src/apps/uclient/session.h lib/libturnclient.a src/apps/uclient/mainuclient.c src/apps/uclient/uclient.c src/apps/uclient/uclient.h src/apps/uclient/startuclient.c src/apps/uclient/startuclient.h
+bin/turnutils_uclient: ${COMMON_DEPS} src/apps/uclient/session.h lib/libturnclient.a src/apps/uclient/mainuclient.c src/apps/uclient/uclient.c src/apps/uclient/uclient.h src/apps/uclient/startuclient.c src/apps/uclient/startuclient.h src/server/ns_turn_ioalib.h
 	${MKBUILDDIR} bin
 	${CC} ${CPPFLAGS} ${CFLAGS} src/apps/uclient/uclient.c src/apps/uclient/startuclient.c src/apps/uclient/mainuclient.c ${COMMON_MODS} -o $@ -Llib -lturnclient -Llib ${LDFLAGS}
 
-bin/turnutils_natdiscovery:	${COMMON_DEPS} lib/libturnclient.a src/apps/natdiscovery/natdiscovery.c
+bin/turnutils_natdiscovery: ${COMMON_DEPS} lib/libturnclient.a src/apps/natdiscovery/natdiscovery.c src/server/ns_turn_ioalib.h
 	pwd
 	${MKBUILDDIR} bin
 	${CC} ${CPPFLAGS} ${CFLAGS} src/apps/natdiscovery/natdiscovery.c ${COMMON_MODS} -o $@ -Llib -lturnclient -Llib ${LDFLAGS}
 
-bin/turnutils_oauth:	${COMMON_DEPS} lib/libturnclient.a src/apps/oauth/oauth.c
+bin/turnutils_oauth: ${COMMON_DEPS} lib/libturnclient.a src/apps/oauth/oauth.c src/server/ns_turn_ioalib.h
 	pwd
 	${MKBUILDDIR} bin
 	${CC} ${CPPFLAGS} ${CFLAGS} src/apps/oauth/oauth.c ${COMMON_MODS} -o $@ -Llib -lturnclient -Llib ${LDFLAGS}
 
-bin/turnutils_stunclient:	${COMMON_DEPS} lib/libturnclient.a src/apps/stunclient/stunclient.c
+bin/turnutils_stunclient: ${COMMON_DEPS} lib/libturnclient.a src/apps/stunclient/stunclient.c src/server/ns_turn_ioalib.h
 	pwd
 	${MKBUILDDIR} bin
 	${CC} ${CPPFLAGS} ${CFLAGS} src/apps/stunclient/stunclient.c ${COMMON_MODS} -o $@ -Llib -lturnclient -Llib ${LDFLAGS}
 
-bin/turnutils_rfc5769check:	${COMMON_DEPS} lib/libturnclient.a src/apps/rfc5769/rfc5769check.c
+bin/turnutils_rfc5769check: ${COMMON_DEPS} lib/libturnclient.a src/apps/rfc5769/rfc5769check.c src/server/ns_turn_ioalib.h
 	pwd
 	${MKBUILDDIR} bin
 	${CC} ${CPPFLAGS} ${CFLAGS} src/apps/rfc5769/rfc5769check.c ${COMMON_MODS} -o $@ -Llib -lturnclient -Llib ${LDFLAGS}
 
-bin/turnserver:	${SERVERAPP_DEPS}
+bin/turnserver: ${SERVERAPP_DEPS} src/apps/relay/acme.h src/apps/relay/http_server.h
 	${MKBUILDDIR} bin
 	${RMCMD} bin/turnadmin
 	${CC} ${CPPFLAGS} ${CFLAGS} ${DBCFLAGS} ${IMPL_MODS} -Ilib ${SERVERAPP_MODS} ${COMMON_MODS} ${SERVERTURN_MODS} -o $@ ${DBLIBS} ${LDFLAGS}
 	cd bin; ln -s turnserver turnadmin
 
-bin/turnutils_peer:	${COMMON_DEPS} ${LIBCLIENTTURN_MODS} ${LIBCLIENTTURN_DEPS} lib/libturnclient.a src/apps/peer/mainudpserver.c src/apps/peer/udpserver.h src/apps/peer/udpserver.c
+bin/turnutils_peer: ${COMMON_DEPS} ${LIBCLIENTTURN_MODS} ${LIBCLIENTTURN_DEPS} lib/libturnclient.a src/apps/peer/mainudpserver.c src/apps/peer/udpserver.h src/apps/peer/udpserver.c src/server/ns_turn_ioalib.h
 	${MKBUILDDIR} bin
 	${CC} ${CPPFLAGS} ${CFLAGS} src/apps/peer/mainudpserver.c src/apps/peer/udpserver.c ${COMMON_MODS} -o $@ -Llib -lturnclient -Llib ${LDFLAGS}  
 
-### Client Library:
+### Client Library: 
 
-lib/libturnclient.a:	${LIBCLIENTTURN_OBJS} ${LIBCLIENTTURN_DEPS}
+lib/libturnclient.a: ${LIBCLIENTTURN_OBJS} ${LIBCLIENTTURN_DEPS}
 	${MKBUILDDIR} lib
 	${ARCHIVERCMD} $@ ${LIBCLIENTTURN_OBJS}
 
-build/obj/ns_turn_ioaddr.o:	src/client/ns_turn_ioaddr.c ${LIBCLIENTTURN_DEPS}
+build/obj/ns_turn_ioaddr.o: src/client/ns_turn_ioaddr.c ${LIBCLIENTTURN_DEPS}
 	${MKBUILDDIR} build/obj
 	${CC} ${CPPFLAGS} ${CFLAGS} -c src/client/ns_turn_ioaddr.c -o $@
 
-build/obj/ns_turn_msg_addr.o:	src/client/ns_turn_msg_addr.c ${LIBCLIENTTURN_DEPS}
+build/obj/ns_turn_msg_addr.o: src/client/ns_turn_msg_addr.c ${LIBCLIENTTURN_DEPS}
 	${MKBUILDDIR} build/obj
 	${CC} ${CPPFLAGS} ${CFLAGS} -c src/client/ns_turn_msg_addr.c -o $@
 
-build/obj/ns_turn_msg.o:	src/client/ns_turn_msg.c ${LIBCLIENTTURN_DEPS}
+build/obj/ns_turn_msg.o: src/client/ns_turn_msg.c ${LIBCLIENTTURN_DEPS} src/apps/common/ns_turn_openssl.h src/apps/common/ns_turn_utils.h
 	${MKBUILDDIR} build/obj
 	${CC} ${CPPFLAGS} ${CFLAGS} -c src/client/ns_turn_msg.c -o $@
 
-### Clean all:
+### Clean all: 
 
-clean:
+clean: 
 	${RMCMD} bin build lib obj *bak *~ */*~ */*/*~ */*/*/*~ *core */*core */*/*core include tmp sqlite
 
-distclean:	clean
+distclean: clean
 	${RMCMD} Makefile
 
-### SQLite empty database:
-sqlite_empty_db	:	sqlite/turndb
+### SQLite empty database: 
+sqlite_empty_db	: sqlite/turndb
 
-sqlite/turndb	:	turndb/schema.sql
+sqlite/turndb	: turndb/schema.sql
 	${MKDIR} sqlite
 	${RMCMD} sqlite/turndb
 	${SQLITE_CMD} sqlite/turndb < turndb/schema.sql
 
-### Install all:
+### Install all: 
 
-install:	all ${MAKE_DEPS}
+install: all ${MAKE_DEPS}
 	${MKDIR} ${DESTDIR}${PREFIX}
 	${MKDIR} ${DESTDIR}${BINDIR}
 	${MKDIR} ${DESTDIR}${TURNDBDIR}
@@ -178,7 +184,7 @@ install:	all ${MAKE_DEPS}
 	${INSTALL_DATA} include/turn/ns_turn_defs.h ${DESTDIR}${TURNINCLUDEDIR}
 	${MORECMD} ${DESTDIR}${DOCSDIR}/postinstall.txt
 
-deinstall:	${MAKE_DEPS}
+deinstall: ${MAKE_DEPS}
 	${PKILL_PROGRAM} turnserver || ${ECHO_CMD} OK
 	${RMCMD} ${DESTDIR}${TURNDBDIR}/turndb
 	${RMCMD} ${DESTDIR}${DOCSDIR}
@@ -204,6 +210,6 @@ deinstall:	${MAKE_DEPS}
 	${RMCMD} ${DESTDIR}${CONFDIR}/turnserver.conf.default
 	${RMCMD} ${DESTDIR}${TURNINCLUDEDIR}
 
-uninstall:	deinstall
+uninstall: deinstall
 
-reinstall:	deinstall install
+reinstall: deinstall install

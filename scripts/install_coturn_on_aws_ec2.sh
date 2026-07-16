@@ -4,15 +4,15 @@
 ############## verification on aws     : tested & verified on aws ec2        ########
 ############## platform                : aws ec2                             ########
 ############## aws ubuntu version      : ubuntu 22.04 LTS                    ########
-############## coturn base version     : 4.6.3                               ########
+############## coturn base version     : 4.8.0                               ########
 ############## dependent tools         : installs prometheus client as well  ########
 ############## file permissions        : chmod 777 install_coturn_on_aws_ec2.sh #####
 ############## run command             : ./install_coturn_on_aws_ec2.sh      ########
 ############## developer               : hariprasad.t@samsung.com            ########
 #####################################################################################
 
-coturn_package="https://github.com/coturn/coturn/archive/refs/tags/4.6.3.tar.gz"
-coturn_version="4.6.3"
+coturn_package="https://github.com/coturn/coturn/archive/refs/tags/4.8.0.tar.gz"
+coturn_version="4.8.0"
 
 if [ "$#" -eq 0 ]
 then
@@ -81,11 +81,7 @@ echo "--------> applying new config changes..."
 sudo bash -c "cat > /etc/turnserver.conf << EOL
 listening-port=3478
 tls-listening-port=5349
-# allow only TLSv1.2+
-no-tlsv1
-no-tlsv1_1
 userdb=/usr/local/var/db/turndb
-no-cli
 min-port=45000
 max-port=65535
 log-file=/var/log/turnserver/turnserver.log

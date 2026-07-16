@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * https://opensource.org/license/bsd-3-clause
+ *
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
@@ -38,6 +42,7 @@
 #include <event2/event.h>
 
 #include <stddef.h> // for size_t
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -58,7 +63,7 @@ struct server_info {
 
 //////////////////////////////
 
-server_type *start_udp_server(int verbose, const char *ifname, char **local_addresses, size_t las, int port);
+server_type *start_udp_server(int verbose, const char *ifname, char **local_addresses, size_t las, uint16_t port);
 
 void run_udp_server(server_type *server);
 

@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * https://opensource.org/license/bsd-3-clause
+ *
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
@@ -31,13 +35,8 @@
 #ifndef __TURN_SERVER__
 #define __TURN_SERVER__
 
-#include "ns_turn_allocation.h" // for tcp_connection_id
-#include "ns_turn_defs.h"       // for vintp, uint8_t, size_t, uint64_t
-#include "ns_turn_ioaddr.h"     // for ioa_addr
-#include "ns_turn_ioalib.h"     // for ioa_net_data, ioa_engine_handle, ioa...
-#include "ns_turn_maps.h"       // for ur_map
-#include "ns_turn_msg.h"        // for turn_credential_type, band_limit_t
 #include "ns_turn_session.h"
+#include "ns_turn_utils.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -113,6 +112,7 @@ typedef int (*send_turn_session_info_cb)(struct turn_session_info *tsi);
 typedef void (*send_https_socket_cb)(ioa_socket_handle s);
 
 typedef band_limit_t (*allocate_bps_cb)(band_limit_t bps, int positive);
+typedef void (*unauthenticated_401_metric_cb)(void);
 
 struct _turn_turnserver {
 
@@ -151,6 +151,7 @@ struct _turn_turnserver {
   bool *no_multicast_peers;
   send_turn_session_info_cb send_turn_session_info;
   send_https_socket_cb send_https_socket;
+  int sock_buf_size;
 
   /* RFC 6062 ==>> */
   bool *no_udp_relay;
@@ -198,18 +199,31 @@ struct _turn_turnserver {
   /* Log Binding Requrest */
   bool *log_binding;
 
-  /* Disable handling old STUN Binding Requests and disable MAPPED-ADDRESS attribute in response */
-  bool *no_stun_backward_compatibility;
-
-  /* Only send RESPONSE-ORIGIN attribute in response if RFC5780 is enabled */
-  bool *response_origin_only_with_rfc5780;
+  /* Enable handling old STUN Binding Requests and enable MAPPED-ADDRESS attribute in response */
+  bool *stun_backward_compatibility;
 
   /* Return an HTTP 400 response to HTTP connections made to ports not
      otherwise handling HTTP. */
   bool *respond_http_unsupported;
 
+  /* Include descriptive reason strings in STUN/TURN error responses. */
+  bool include_reason_string;
+
   /* Set to true on SIGUSR1 */
   bool is_draining;
+
+  bool multiplex_peer_mode;
+
+  /* Both of these are pointers into turn_params so the CLI flags affect
+   * every relay thread without per-thread copies. They must stay pointers
+   * (not a `bool`/value copy): the server dereferences them live at the use
+   * sites, so a value copy would snapshot the flag at struct-init time and
+   * ignore later updates. */
+  bool *ratelimit_unauthorized_requests;
+  vintp ratelimit_unauthorized_requests_per_sec;
+  unauthenticated_401_metric_cb unauthenticated_401_request_cb;
+  unauthenticated_401_metric_cb unauthenticated_401_response_cb;
+  unauthenticated_401_metric_cb unauthenticated_401_dropped_response_cb;
 };
 
 const char *get_version(turn_turnserver *server);
@@ -228,9 +242,10 @@ void init_turn_server(
     int self_udp_balance, bool *no_multicast_peers, bool *allow_loopback_peers, ip_range_list_t *ip_whitelist,
     ip_range_list_t *ip_blacklist, send_socket_to_relay_cb send_socket_to_relay, bool *secure_stun, bool *mobility,
     int server_relay, send_turn_session_info_cb send_turn_session_info, send_https_socket_cb send_https_socket,
-    allocate_bps_cb allocate_bps_func, int oauth, const char *oauth_server_name, const char *acme_redirect,
-    ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family, bool *log_binding,
-    bool *no_stun_backward_compatibility, bool *response_origin_only_with_rfc5780, bool *respond_http_unsupported);
+    int sock_buf_size, allocate_bps_cb allocate_bps_func, int oauth, const char *oauth_server_name,
+    const char *acme_redirect, ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family, bool *log_binding,
+    bool *stun_backward_compatibility, bool *respond_http_unsupported, bool include_reason_string,
+    bool *ratelimit_unauthorized_requests, vintp ratelimit_unauthorized_requests_per_sec);
 
 ioa_engine_handle turn_server_get_engine(turn_turnserver *s);
 
@@ -243,6 +258,9 @@ void set_rfc5780(turn_turnserver *server, get_alt_addr_cb cb, send_message_cb sm
 int open_client_connection_session(turn_turnserver *server, struct socket_message *sm);
 int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss, int force, const char *reason);
 void set_disconnect_cb(turn_turnserver *server, int (*disconnect)(ts_ur_super_session *));
+void set_unauthenticated_401_metric_cbs(turn_turnserver *server, unauthenticated_401_metric_cb request_cb,
+                                        unauthenticated_401_metric_cb response_cb,
+                                        unauthenticated_401_metric_cb dropped_response_cb);
 
 int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_connection_id tcid, stun_tid *tid,
                                                  ioa_socket_handle s, int message_integrity, ioa_net_data *nd,
@@ -253,6 +271,9 @@ int report_turn_session_info(turn_turnserver *server, ts_ur_super_session *ss, i
 turn_time_t get_turn_server_time(turn_turnserver *server);
 
 void turn_cancel_session(turn_turnserver *server, turnsession_id sid);
+
+/* Non-static relay input handler — called by multiplex-peer dispatch */
+void turn_peer_input_handler(ioa_socket_handle s, int event_type, ioa_net_data *data, void *arg, int can_resume);
 
 ///////////////////////////////////////////
 

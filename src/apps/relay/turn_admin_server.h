@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * https://opensource.org/license/bsd-3-clause
+ *
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
@@ -79,7 +83,7 @@ struct admin_server {
 
 extern struct admin_server adminserver;
 
-extern int use_cli;
+extern bool use_cli;
 
 #define CLI_DEFAULT_IP ("127.0.0.1")
 extern ioa_addr cli_addr;

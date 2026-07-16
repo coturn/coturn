@@ -94,7 +94,7 @@ User database settings:
 -b, --db, --userdb	SQLite user database file name (default - /var/db/turndb or
 		/usr/local/var/db/turndb or /var/lib/turn/turndb).
 
--e, --psql-userdb	User database connection string for PostgreSQL.
+-e, --psql-userdb, --sql-userdb	User database connection string for PostgreSQL.
 		This database can be used for long-term credentials mechanism,
 		and it can store the secret value
 		for secret-based timed authentication in TURN REST API.
@@ -166,6 +166,14 @@ Flags:
 
 -V, --Verbose		Extra verbose mode, very annoying and not recommended.
 
+--log-min-level	<level>	Only emit log messages at or above this level.
+		Valid levels, from most to least verbose:
+		debug   = everything (the default)
+		info    = informational messages and above
+		warning = warnings and errors only
+		error   = errors only
+		An unrecognized level is ignored with a warning.
+
 -o, --daemon		Run server as daemon.
 
 --no-software-attribute	DEPRECATED. See "--software-attribute".
@@ -177,6 +185,11 @@ Flags:
 			contains a fingerprint, then TURN server will always add
 			fingerprints to the messages in this session, regardless of the
 			per-server setting.
+
+--include-reason-string	Include descriptive reason strings in STUN/TURN error responses.
+			By default, only the standard reason phrase for the error code is
+			sent. Enabling this option adds detailed error descriptions which
+			may aid debugging but can also leak internal server information.
 
 -a, --lt-cred-mech	Use long-term credentials mechanism (this one you need for WebRTC usage).
 
@@ -207,14 +220,11 @@ Flags:
 
 --dh1066		Use 1066 bits predefined DH TLS key. Default size of the key is 2066.
 
---no-tlsv1		Set TLSv1_1/DTLSv1.2 as a minimum supported protocol version.
-				With openssl-1.0.2 and below, do not allow TLSv1.2/DTLSv1.2 protocols.
+--tlsv1			Set TLSv1 as a minimum supported protocol version.
 
---no-tlsv1_1		Set TLSv1_2/DTLSv1.2 as a minimum supported protocol version.
-					With openssl-1.0.2 and below, do not allow TLSv1.1 protocol.
+--tlsv1_1		Set TLSv1.1 as a minimum supported protocol version.
 
---no-tlsv1_2		Set TLSv1_3/DTLSv1.2 as a minimum supported protocol version.
-					With openssl-1.0.2 and below, do not allow TLSv1.2/DTLSv1.2 protocols.
+--no-tlsv1_2		Set TLSv1.3/DTLSv1.2 as a minimum supported protocol version.
 
 --no-udp		Do not start UDP client listeners.
 
@@ -236,6 +246,8 @@ Flags:
 			the log file only (unless the log file itself is stdout).
 
 --syslog		With this flag, all log will be redirected to the system log (syslog).
+
+--syslog-facility	<value>		Set syslog facility for syslog messages. Default is ''.
 
 --simple-log		This flag means that no log file rollover will be used, and the log file
 			name will be constructed as-is, without PID and date appendage.
@@ -267,8 +279,12 @@ Flags:
 
 --mobility		Mobility with ICE (MICE) specs support.
 
---no-cli		Turn OFF the CLI support. By default it is always ON.
+--cli		Turn ON the CLI support. By default it is always OFF.
 			See also options --cli-ip and --cli-port.
+
+--no-cli	Turn OFF the CLI support. Since the CLI is OFF by default,
+			this flag is only useful to override a "cli" setting from
+			the configuration file.
 
 --server-relay		Server relay. NON-STANDARD AND DANGEROUS OPTION.
 			Only for those applications when we want to run
@@ -288,6 +304,43 @@ Flags:
 			main ORIGIN attribute value (if the ORIGIN was
 			initially used by the session).
 
+--drop-invalid-packets	Drop invalid packets early. Enabled by default.
+
+--drop-invalid-packets-log	Log invalid packets. The default behaviour is to not log invalid packets.
+
+--udp-recvmmsg		Enable Linux-only batched UDP receive via recvmmsg() on UDP sockets.
+			Auto-enabled when --multiplex-peer is set; pass --udp-recvmmsg=0
+			to override.
+
+--udp-recvmmsg-log	Log Linux recvmmsg batch occupancy stats every 10 seconds.
+
+--udp-gso		Enable Linux UDP-GSO (UDP_SEGMENT cmsg) on the relay send path.
+			When a sendmmsg batch shares destination and segment size, one
+			network-stack traversal carries N datagrams. Requires
+			--multiplex-peer (which is what enables the sendmmsg batching
+			GSO piggybacks on); passing --udp-gso alone is a silent no-op.
+
+--multiplex-peer	Enable peer-side multiplexing relay mode (non-standard,
+			optional). Replaces the per-allocation relay-port bind with a
+			pair of shared UDP sockets per relay thread (one IPv4, one
+			IPv6) covering all TURN sessions on that thread; sessions are
+			demultiplexed by exact peer IP:port lookup. Lifts the
+			~16 k allocation cap imposed by the relay port range and
+			cuts kernel-side UDP rcvbuf drops dramatically. Implies
+			sendmmsg batching on Linux and default-enables --udp-recvmmsg
+			(explicit --udp-recvmmsg=0 is honoured). Note: EVEN-PORT
+			allocate requests are rejected with 400 in this mode; clients
+			that need EVEN-PORT must use the legacy path. See
+			docs/multiplex-peer.md for design and trade-offs.
+
+--multiplex-peer-port <port>	Base UDP port for multiplex-peer relay sockets
+			(default: 3480). Thread i binds <base>+2i (IPv4) and <base>+2i+1
+			(IPv6); a 4-thread server consumes ports <base>..<base>+7.
+
+--respond-http-unsupported	Return an HTTP response with a 400 status code to HTTP
+			connections made to ports not supporting HTTP. The default
+			behaviour is to immediately close the connection.
+
 --prometheus		Enable prometheus metrics. By default it is
 			disabled. Would listen on port 9641 under the path /metrics
 			also the path / on this port can be used as a health check. 
@@ -299,6 +352,12 @@ Flags:
 		authentication with ephemeral usernames (e.g. TURN REST API).
 
 --prometheus-port	Prometheus listener port (Default: 9641).
+
+--prometheus-address	<address>	Prometheus listening address (Default: any).
+
+--prometheus-path	<path>		Prometheus serve path (Default: /metrics).
+
+--version		Print version and exit.
 
 -h			Help.
 
@@ -360,7 +419,7 @@ Options with values:
 --tcp-proxy-port	Support connections from TCP loadbalancer on this port. The loadbalancer
 			should use the binary proxy protocol.
 			(https://www.haproxy.org/download/1.8/doc/proxy-protocol.txt)
-				
+
 --aux-server		Auxiliary STUN/TURN server listening endpoint.
 			Aux servers have almost full TURN and STUN functionality.
 			The (minor) limitations are:
@@ -411,6 +470,11 @@ Options with values:
 			(before Linux kernel 3.9), the number of UDP threads is always one threads
 			per network listening endpoint - unless "-m 0" or "-m 1" is set.
 
+--cpus			<number>	Override system CPU count detection. Use this number
+			instead of the auto-detected CPU count. Useful in virtualized
+			or containerized environments where the visible CPU count does
+			not match what the cgroup actually allows.
+
 --min-port		Lower bound of the UDP port range for relay
 			endpoints allocation.
 			Default value is 49152, according to RFC 5766.
@@ -418,6 +482,8 @@ Options with values:
 --max-port		Upper bound of the UDP port range for relay
 			endpoints allocation.
 			Default value is 65535, according to RFC 5766.
+
+--sock-buf-size		Set socket buffer size to a new value (in bytes).
 
 -u, --user		Long-term security mechanism credentials user account,
 			in the column-separated form username:key.
@@ -464,12 +530,13 @@ Options with values:
 			that other mode is dynamic. Multiple shared secrets can be used
 			(both in the database and in the "static" fashion).
 
- --no-auth-pings			Disable periodic health checks to 'dynamic' auth secret tables.
+--no-auth-pings			Disable periodic health checks to 'dynamic' auth secret tables.
 
- --no-dynamic-ip-list	Do not use dynamic allowed/denied peer ip list.
+--no-dynamic-ip-list	Do not use dynamic allowed/denied peer ip list.
 
- --no-dynamic-realms	Do not use dynamic realm assignment and options.
-			
+--no-dynamic-realms	Do not use dynamic realm assignment and options.
+
+
 --server-name		Server name used for
 			the oAuth authentication purposes.
 			The default value is the realm name.
@@ -616,7 +683,7 @@ Options with values:
 -A --allocation-default-address-family=<ipv4|ipv6|keep> 		Default is IPv4
 			TURN server allocates address family according TURN client requested address family.
 			If address family not requested explicitly by the client, then it falls back to this default.
-			The standard RFC explicitly define that this default must be IPv4, 
+			The standard RFC explicitly define that this default must be IPv4,
 			so use other option values with care!
 
 --cli-ip		Local system IP address to be used for CLI management interface.
@@ -644,16 +711,20 @@ Options with values:
 			By default it is disabled for security reasons!
 			(This behavior used to be the default behavior, and was enabled by default.)
 
---ne=[1|2|3]		Set network engine type for the process (for internal purposes).
---no-rfc5780		Disable RFC5780 (NAT behavior discovery).
+--rfc5780			Enable RFC5780 (NAT behavior discovery).
                     Originally, if there are more than one listener address from the same
                     address family, then by default the NAT behavior discovery feature enabled.
-                    This option disables this original behavior, because the NAT behavior discovery
+                    This option enables this original behavior, because the NAT behavior discovery
                     adds attributes to response, and this increase the possibility of an amplification attack.
                     Strongly encouraged to use this option to decrease gain factor in STUN binding responses.
---no-stun-backward-compatibility		Disable handling old STUN Binding requests and disable MAPPED-ADDRESS attribute in binding response (use only the XOR-MAPPED-ADDRESS).
---response-origin-only-with-rfc5780		Only send RESPONSE-ORIGIN attribute in binding response if RFC5780 is enabled.
-					
+
+--no-rfc5780	DEPRECATED and now the default behaviour. See --rfc5780.
+
+--stun-backward-compatibility		Enable handling old STUN Binding requests using MAPPED-ADDRESS attribute in binding response (instead of XOR-MAPPED-ADDRESS).
+--unauthorized-ratelimit		Enable per-source rate-limiting of 401 Unauthorized responses on UDP. Mitigates
+			reflection/amplification abuse where attackers spoof a victim's source address to
+			bounce 401 challenges off the server. Off by default; opt in explicitly.
+--unauthorized-ratelimit-rps=<count>		Maximum number of 401 Unauthorized responses to send per source IP per second. Default 10.
 
 ==================================
 
@@ -1047,4 +1118,3 @@ https://groups.google.com/forum/?fromgroups=#!forum/turn-server-project-rfc5766-
   AUTHORS
 
 	See the AUTHORS.md file in the coturn source distribution.
-

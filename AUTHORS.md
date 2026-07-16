@@ -6,22 +6,28 @@ Thanks to the following contributors (in alphabetical order):
 - Alexander N <a@a>
 - Alexander Terczka <alex@mail.at>
 - Alexander Udovichenko <udovichenko48@gmail.com>
+- Amin Farjadi <31803062+amin-farjadi@users.noreply.github.com>
 - Antony Dovgal <tony@daylessday.org>
 - Arjun <36335769+0x34d@users.noreply.github.com>
 - Arne Georg Gisnås Gleditsch <argggh@appear.in>
 - Arne Georg Gisnås Gleditsch <argggh@whereby.com>
+- Asmir Mehic <asmir.mehic@gmail.com>
 - Benjamin Porter <FreedomBen@users.noreply.github.com>
 - Bertold Van den Bergh <vandenbergh@bertold.org>
 - Bradley T. Hughes <bradleythughes@appear.in>
 - Bradley T. Hughes <bradleythughes@fastmail.fm>
 - Byron Clark <byron@theclarkfamily.name>
 - Camden Narzt <c.narzt@me.com>
+- Captain Picarl <109193553+CaptainPicarl@users.noreply.github.com>
+- Carlos Ruiz Ballesteros <carlos.ruizbal@gmail.com>
 - Carsten Bock <carsten@ng-voice.com>
+- Chai-Shi <changchaishi@gmail.com>
+- Copilot <198982749+Copilot@users.noreply.github.com>
+- Corey Cole <coreyleoc@gmail.com>
+- Corey Siltala <41675024+csiltala@users.noreply.github.com>
+- Cybermilitia <Cybermilitia@users.noreply.github.com>
 - Cédric DIJOUX <45537432+PrinceChoco@users.noreply.github.com>
 - Cédric Krier <ced@b2ck.com>
-- Chai-Shi <changchaishi@gmail.com>
-- Corey Cole <coreyleoc@gmail.com>
-- Cybermilitia <Cybermilitia@users.noreply.github.com>
 - Daniil Meitis <30820460+dsmeytis@users.noreply.github.com>
 - Daniil Meitis <daniil.meitis@viber.com>
 - Danilo Bargen <mail@dbrgn.ch>
@@ -40,6 +46,7 @@ Thanks to the following contributors (in alphabetical order):
 - Giacomo Vacca <gvacca@subspace.com>
 - GingerAdonis <2751672+GingerAdonis@users.noreply.github.com>
 - Greg Fodor <gfodor@gmail.com>
+- Greg Troxel <gdt@lexort.com>
 - Gregor Jasny <gjasny@googlemail.com>
 - Gustavo Garcia <gustavogb@gmail.com>
 - Gustavo Garcia <gustavogb@mail.com>
@@ -61,6 +68,7 @@ Thanks to the following contributors (in alphabetical order):
 - JooYoung <qkdlql@naver.com>
 - Jorge <46056498+jorgectf@users.noreply.github.com>
 - Juan Navarro <juan.navarro@gmx.es>
+- Jun Lyu <71107931+Meiye-lj@users.noreply.github.com>
 - KORAY VATANSEVER <koray.vatansever@turkcell.com.tr>
 - KORAY VATANSEVER <ttkvatansever@TC08966777>
 - Kai Ren <tyranron@gmail.com>
@@ -68,22 +76,24 @@ Thanks to the following contributors (in alphabetical order):
 - KangLin <kl222@126.com>
 - Kirill Gribunin <gribunin@gmail.com>
 - Krithin Sitaram <me@krith.in>
+- Leonid Gorbachev <60500216+leonidgorbachev@users.noreply.github.com>
+- Lidong Yan <502024330056@smail.nju.edu.cn>
 - Lionel Nicolas <lionel.nicolas@nividic.org>
-- MÉSZÁROS Mihály <misi@majd.eu>
-- MÉSZÁROS Mihály <misi@odu.duckdns.org>
 - Majid Motallebikashani <chakmeshma@gmail.com>
 - Mark Hills <mark@xwax.org>
 - Mathieu Aubin <mathieu@zeroserieux.com>
 - Mathieu Brunot <mb.mathieu.brunot@gmail.com>
-- Mészáros Mihály <bakfitty@gmail.com>
-- Mészáros Mihály <misi@majd.eu>
-- Mészáros Mihály <misi@niif.hu>
 - Michael Jones <jonesmz@users.noreply.github.com>
 - Michal Biskup <eiver@eiver.pl>
 - Miquel Ortega <miquel@syncrtc.com>
 - Molly Miller <33266253+sysvinit@users.noreply.github.com>
 - Molly Miller <molly.miller@wire.com>
 - Mustafa Bingül <bnglmstf@gmail.com>
+- MÉSZÁROS Mihály <misi@majd.eu>
+- MÉSZÁROS Mihály <misi@odu.duckdns.org>
+- Mészáros Mihály <bakfitty@gmail.com>
+- Mészáros Mihály <misi@majd.eu>
+- Mészáros Mihály <misi@niif.hu>
 - NO NAME <45446340+linwenchen@users.noreply.github.com>
 - NeoCat <neocat@neocat.jp>
 - Nicolas Edet <nicedet@cisco.com>
@@ -119,9 +129,11 @@ Thanks to the following contributors (in alphabetical order):
 - Sergey Radionov <RSATom@gmail.com>
 - Sergey Safarov <s.safarov@gmail.com>
 - Serhii Charykov <laammaar@gmail.com>
+- Shane <ignignokterr@gmail.com>
 - Shu Muto <shu.mutow@gmail.com>
 - Shu Muto <shu.mutow@nec.com>
 - Stefan Junker <1181362+steveej@users.noreply.github.com>
+- Stefan Kieszkowski <85728496+stefankiesz@users.noreply.github.com>
 - Stefan Sundin <git@stefansundin.com>
 - Steffen Moser <public@steffen-moser.de>
 - Steffen Moser <steffen.moser@uni-ulm.de>
@@ -136,6 +148,7 @@ Thanks to the following contributors (in alphabetical order):
 - Yoshiki Kadoshita <sublimer.me@gmail.com>
 - Zebadiah Long <zeb@noblewhale.com>
 - Zoey <zoey@z0ey.de>
+- alhuda <50839256+alhudz@users.noreply.github.com>
 - ashamedbit <muralianiruddhan@gmail.com>
 - bpcurse <29312856+bpcurse@users.noreply.github.com>
 - brevilo <brevilo@users.noreply.github.com>
@@ -146,15 +159,20 @@ Thanks to the following contributors (in alphabetical order):
 - dominiquefournier <dominique@fournier38.fr>
 - eakraly <eakraly@users.noreply.github.com>
 - ggalperi <81175455+ggalperi@users.noreply.github.com>
+- guoyingbo <guoyingbo@gmail.com>
 - hariprasadt <hariprasad.t@samsung.com>
 - huhaipeng <huhaipeng@corp.netease.com>
 - islamoglus <islamogluselahaddin@gmail.com>
 - korayvt <korayvt@users.noreply.github.com>
+- lhywk <lhywkd22@gmail.com>
 - maddy <maddy@kitty.garden>
 - marcoschum <50410120+marcoschum@users.noreply.github.com>
+- mesibo <yusuf@mesibo.com>
 - misi <bakfitty@gmail.com>
 - mom040267 <mom040267@gmail.com>
 - mom040267 <mom040267@users.noreply.github.com>
+- nfuhler <74792136+nfuhler@users.noreply.github.com>
+- nicolas-laduguie <111897939+nicolas-laduguie@users.noreply.github.com>
 - oleg <oleg@lamb.(none)>
 - oleg <oleg@sck63.oleg.net>
 - oleg <oleg@shy.(none)>
@@ -168,6 +186,7 @@ Thanks to the following contributors (in alphabetical order):
 - seungbin-ko <seungbin.ko@navercorp.com>
 - shuyin.wsy <shuyin.wsy@alibaba-inc.com>
 - skystar-p <wogus150@naver.com>
+- tbart <github.tbart@neverbox.org>
 - tyranron <tyranron@gmail.com>
 - unicode-it <info@unicode-it.de>
 - vuittont60 <81072379+vuittont60@users.noreply.github.com>
@@ -175,4 +194,5 @@ Thanks to the following contributors (in alphabetical order):
 - xthursdayx <xthursdayx@mailbox.org>
 - yohan <783b8c87@scimetis.net>
 - z00316370 <zhangzhiwen@hisilicon.com>
+- 薄景仁 <bjrxyz@sina.com>
 

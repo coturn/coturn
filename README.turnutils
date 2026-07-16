@@ -123,6 +123,31 @@ Flags:
 
 -J	Use oAuth with default test key kid='north'.
 
+-Y	Load-generator mode:
+	packet floods data through a single TURN allocation as fast as possible,
+	alloc creates allocations as fast as possible,
+	and invalid sends small invalid packets to the TURN listener as fast as possible.
+	Load-generator modes imply -c and do not support -y.
+
+--no-even-port	Never attach an EVEN-PORT attribute to ALLOCATE requests. The
+		default clnet_allocate path picks 0 or -1 randomly even under -c,
+		which the turnserver --multiplex-peer mode strictly rejects with
+		error 400. Use --no-even-port for clean alloc-flood runs and any
+		other testing against --multiplex-peer.
+
+--listener-threads <N>	Number of receive (listener) threads on the loadgen
+		(also available as -K N). Default auto: 0 for -m < 4, bumped to 1
+		when -m >= 4. 0 keeps the legacy single-event-base behaviour. Each
+		listener owns its own libevent base; sessions are sharded
+		round-robin. Max 4.
+
+--sender-threads <N>	Number of send (timer-driven) threads on the loadgen.
+		Default auto: 0 for -m < 4, bumped to 2 when -m >= 4. 0 keeps the
+		legacy single-threaded send (main thread's timer_handler iterates
+		all sessions). Each sender owns its own libevent base and a session
+		shard; per-tick sends coalesce into one UDP-GSO sendmsg (or one
+		sendmmsg when GSO is unavailable). Max 4.
+
 Options with required values:
 
 -l      Message length (Default: 100 Bytes).
@@ -137,6 +162,8 @@ Options with required values:
 -p      TURN Server port (Defaults: 3478 unsecure, 5349 secure).
 
 -n      Number of messages to send (Default: 5).
+	In load-generator mode, -n is the number of operations per client.
+	If omitted there, the client runs until interrupted.
 
 -d      Local interface device (optional, Linux only).
 
@@ -149,6 +176,7 @@ Options with required values:
 -r      Peer port (Default: 3480).
 
 -z      Per-session packet interval in milliseconds (Default: 20).
+	In packet and invalid load-generator modes the default is 0 ms.
 
 -u      STUN/TURN user name.
 
@@ -167,6 +195,15 @@ Options with required values:
 -o	the ORIGIN STUN attribute value.
 
 -a	Bandwidth for the bandwidth request in ALLOCATE. The default value is zero.
+
+Notes for load-generator mode:
+
+- packet mode still performs the normal TURN allocation/setup and then starts sending immediately with no pacing.
+
+- alloc mode does not require -e; it repeatedly establishes new allocations and closes them again.
+- alloc mode does not require -e; it repeatedly establishes new allocations, uses a unique client local port for each one, attaches each one to a unique synthetic peer ip:port, and closes them again.
+
+- invalid mode does not require -e; by default it uses 16-byte payloads unless -l is specified.
 
 See the examples in the "examples/scripts" directory.
 
@@ -217,10 +254,19 @@ Options with required values:
 
 -f  Force RFC 5780 processing.
 
+-c  Continuously send STUN binding requests and report round-trip latency until interrupted.
+
+-i  Interval between continuous requests in milliseconds (Default: 1000).
+
+-t  Response timeout in milliseconds (Default: 3000).
+
 The turnutils_stunclient program checks the results of the first request,
 and if it finds that the STUN server supports RFC 5780
 (the binding response reveals that) then the turnutils_stunclient makes a couple more
 requests with different parameters, to demonstrate the NAT discovery capabilities.
+
+Continuous mode reports every response or timeout and prints packet loss and
+minimum/average/maximum round-trip latency when interrupted with Ctrl-C.
 
 This utility does not support the "old" "classic" STUN protocol (RFC 3489).
 

@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * https://opensource.org/license/bsd-3-clause
+ *
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
@@ -54,6 +58,7 @@ typedef struct {
   ioa_socket_handle s;
   turn_time_t expiration_time;
   ioa_timer_handle lifetime_ev;
+  void *owner;
 } relay_endpoint_session;
 
 static inline void clear_relay_endpoint_session_data(relay_endpoint_session *cdi) {
@@ -108,13 +113,20 @@ typedef struct _tcp_connection_list {
 #define TURN_PERMISSION_HASHTABLE_SIZE (0x8)
 #define TURN_PERMISSION_ARRAY_SIZE (0x3)
 
+/* Upper bound on the number of concurrent permissions a single allocation may
+ * hold. Permissions are created on demand (CreatePermission / ChannelBind) and
+ * the backing storage grows one slot at a time, so without a cap an
+ * authenticated client can drive unbounded heap and timer growth by covering a
+ * large set of distinct peer addresses. RFC 5766 does not bound this; the cap
+ * is generous so legitimate clients are unaffected. */
+#define TURN_MAX_PERMISSIONS_PER_ALLOCATION (1024)
+
 typedef struct _ch_info {
   uint16_t chnum;
   bool allocated;
   uint16_t port;
   ioa_addr peer_addr;
   turn_time_t expiration_time;
-  ioa_timer_handle lifetime_ev;
   void *owner; // perm
   TURN_CHANNEL_HANDLER_KERNEL kernel_channel;
 } ch_info;
@@ -144,7 +156,6 @@ typedef struct _turn_permission_info {
   lm_map chns;
   ioa_addr addr;
   turn_time_t expiration_time;
-  ioa_timer_handle lifetime_ev;
   void *owner; // a
   bool verbose;
   unsigned long long session_id;

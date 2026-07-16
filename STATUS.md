@@ -73,7 +73,7 @@ compatibility.
 
 29) SHA256 support added (experimental).
 
-30) UDP network engine optimized for the new Linux kernels (3.9+).
+30) UDP/TCP network engine (`NEV_UDP_SOCKET_PER_THREAD`) optimized for modern kernels; all previous engine variants removed.
 
 31) ICE Mobility draft implemented (experimental). 
 
@@ -85,7 +85,7 @@ compatibility.
 
 35) Optimized (for thousands and more sessions) timers implementation.
 
-36) TCP network engine optimized for the new Linux kernels (3.9+). 
+36) TCP network engine consolidated into `NEV_UDP_SOCKET_PER_THREAD` (see item 30).
 
 37) telnet-based monitor implemented.
 

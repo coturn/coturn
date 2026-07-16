@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * https://opensource.org/license/bsd-3-clause
+ *
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
@@ -117,13 +121,21 @@ struct _ts_ur_super_session {
   mobile_id_t mobile_id;
   mobile_id_t old_mobile_id;
   char s_mobile_id[33];
+  /* RFC 8016 mobility graceful handoff (dual-5-tuple transition state).
+   * During a resume the allocation stays on the original session while the
+   * resuming session (new client path) is kept alive and linked, so peer->client
+   * traffic keeps flowing on the old 5-tuple until the client sends on the new
+   * one (or a bounded deadline elapses). See docs/mobility-rfc8016.md. */
+  turnsession_id mobile_resume_target;    /* resuming session -> allocation session id being resumed */
+  turnsession_id mobile_pending_resume;   /* allocation session -> resuming session id */
+  turn_time_t mobile_transition_deadline; /* allocation session: promote/abort by this time */
   /* Bandwidth */
   band_limit_t bps;
 };
 
 ////// Session info for statistics //////
 
-#define TURN_ADDR_STR_SIZE (65)
+#define TURN_ADDR_STR_SIZE (64)
 #define TURN_MAIN_PEERS_ARRAY_SIZE (5)
 
 typedef struct _addr_data {

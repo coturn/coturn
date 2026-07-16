@@ -1,0 +1,20 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug turnserver",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/turnserver",
+            "args": ["-use-auth-secret", "--sock-buf-size=1048576", "--static-auth-secret=secret", "--realm=north.gov", "--allow-loopback-peers", "--cert", "../examples/ca/turn_server_cert.pem", "--pkey", "../examples/ca/turn_server_pkey.pem"],
+            "stopAtEntry": false,
+            "cwd": "${fileDirname}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "lldb"
+        },
+    ]
+}

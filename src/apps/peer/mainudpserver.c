@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * https://opensource.org/license/bsd-3-clause
+ *
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
@@ -29,13 +33,14 @@
  */
 
 #include "apputils.h"
+#include "ns_turn_defs.h" // for NULL, STRCPY
 #include "ns_turn_utils.h"
 #include "udpserver.h"
 
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 #if defined(_MSC_VER)
 #include <getopt.h>
 #else
@@ -54,7 +59,7 @@ static char Usage[] = "Usage: server [options]\n"
 //////////////////////////////////////////////////
 
 int main(int argc, char **argv) {
-  int port = PEER_DEFAULT_PORT;
+  uint16_t port = PEER_DEFAULT_PORT;
   char **local_addr_list = NULL;
   size_t las = 0;
   int verbose = TURN_VERBOSE_NONE;
@@ -80,8 +85,8 @@ int main(int argc, char **argv) {
       port = atoi(optarg);
       break;
     case 'L':
-      local_addr_list = (char **)realloc(local_addr_list, ++las * sizeof(char *));
-      local_addr_list[las - 1] = strdup(optarg);
+      local_addr_list = (char **)turn_realloc(local_addr_list, ++las * sizeof(char *));
+      local_addr_list[las - 1] = turn_strdup(optarg);
       break;
     case 'v':
       verbose = TURN_VERBOSE_NORMAL;
@@ -93,10 +98,10 @@ int main(int argc, char **argv) {
   }
 
   if (las < 1) {
-    local_addr_list = (char **)realloc(local_addr_list, ++las * sizeof(char *));
-    local_addr_list[las - 1] = strdup("0.0.0.0");
-    local_addr_list = (char **)realloc(local_addr_list, ++las * sizeof(char *));
-    local_addr_list[las - 1] = strdup("::");
+    local_addr_list = (char **)turn_realloc(local_addr_list, ++las * sizeof(char *));
+    local_addr_list[las - 1] = turn_strdup("0.0.0.0");
+    local_addr_list = (char **)turn_realloc(local_addr_list, ++las * sizeof(char *));
+    local_addr_list[las - 1] = turn_strdup("::");
   }
 
   server_type *server = start_udp_server(verbose, ifname, local_addr_list, las, port);

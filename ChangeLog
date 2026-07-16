@@ -1,3 +1,298 @@
+Release 4.14.0
+
+Changelist:
+- Experimental: Add per-source rate-limiting of UDP 401 Unauthorized responses (#1957) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Experimental: Prom https (#1956) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix realm quota data race and warnings (#1958) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Build Prometheus exporter from vendored local sources (#1955) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- fix signed-char index out-of-bounds read in base64_decode (#1950) (alhuda <50839256+alhudz@users.noreply.github.com>)
+- Flush prometheus hot-path counters once per second to kill lock contention (#1954) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix relay threads override (#1953) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Add optional TLS transport for Redis connections (#1951) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Add out-of-tree patch to restore deprecated OpenSSL 1.1.1 support (#1952) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- validate hmackey length in sqlite_get_user_key before hex decode (#1948) (alhuda <50839256+alhudz@users.noreply.github.com>)
+
+Contributors:
+- Kai Ren <tyranron@gmail.com>
+- Pavel Punsky <eakraly@users.noreply.github.com>
+- alhuda <50839256+alhudz@users.noreply.github.com>
+
+Release 4.13.1
+
+Changelist:
+- Add per-source rate-limiting of UDP 401 Unauthorized responses (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Deny link-local / ULA / site-local relay peers by default (#1947) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Auto-deny coturn's own database backend endpoints as relay peers (#1946) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Canonicalize all IPv4-in-IPv6 encodings before peer-IP checks (#1945) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- null-terminate server_name in stun_is_challenge_response_str (#1944) (alhuda <50839256+alhudz@users.noreply.github.com>)
+
+Contributors:
+- Pavel Punsky <eakraly@users.noreply.github.com>
+- alhuda <50839256+alhudz@users.noreply.github.com>
+
+Release 4.13.0
+
+Changelist:
+- Fix UDP receive buffer ownership (#1938) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix missing sqlite3 dependendcy (#1941) (Mészáros Mihály <misi@majd.eu>)
+- Fix configure MANPREFIX typo (#1940) (Mészáros Mihály <misi@majd.eu>)
+- Fix test_redis_format link failure (#1939) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Add continuous latency mode to stunclient (#1937) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Merge commit from fork (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Adapt .gitignore to allow files already in repo (#1935) (#1936) (tbart <github.tbart@neverbox.org>)
+- Merge commit from fork (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Merge commit from fork (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Security hardening: port parsing, admin brute-force throttle, credential log redaction, constant-time compare, OAuth bounds checks, permission cap (#1932) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Enable --udp-recvmmsg by default on Linux (#1930) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Restrict recvmmsg fast path to shared fan-in sockets (make --udp-recvmmsg useful standalone) (#1929) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Expose recvmmsg/sendmmsg UDP batch sizes as Prometheus metrics (#1928) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Add --udp-sendmmsg-log to observe egress sendmmsg/UDP-GSO batching (#1927) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Reap TURN permissions/channels via a per-thread sweep instead of per-object timers (#1926) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix sendmmsg stride bug in multiplex-peer UDP batch flush (#1925) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Wrap atomic everywhere (#1922) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Upgrade Docker image to 4.11.0 Coturn version (Kai Ren <tyranron@gmail.com>)
+
+Contributors:
+- Kai Ren <tyranron@gmail.com>
+- Mészáros Mihály <misi@majd.eu>
+- Pavel Punsky <eakraly@users.noreply.github.com>
+- dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+- tbart <github.tbart@neverbox.org>
+
+Release 4.12.0
+
+Changelist:
+- Update khash to the latest version (#1919) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Update readme to match latest changes (#1920) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Add DeepWiki link to the README (Gustavo Garcia <gustavogb@gmail.com>)
+- Update docs for drop-invalid-packets and response-origin-only-with-rfc5780 (#1918) (Corey Siltala <41675024+csiltala@users.noreply.github.com>)
+- Multiplexpeer (#1916) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- examples: exercise uclient thread pools, UDP-GSO, recv_pps in CI tests (#1914) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix TTL/TOS type conversion (#1915) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- turnutils_uclient: sender thread pool + UDP-GSO send batching + recv_pps reporting (#1913) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix memory leak introduced by recvmmsg path (#1912) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- turnutils_uclient: multi-threaded listener (recv) pool (#1911) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- examples/turnserver.conf: update description of cli option (#1909) (nfuhler <74792136+nfuhler@users.noreply.github.com>)
+- turnutils_uclient: Linux recvmmsg receive path + larger SO_RCVBUF (#1910) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Add UDP-GSO send path (--udp-gso) (#1907) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Upgrade Docker image to 4.11.0 Coturn version (Kai Ren <tyranron@gmail.com>)
+- Update Debian "trixie" to 20260406 snapshot in Docker image (Kai Ren <tyranron@gmail.com>)
+- turnutils_peer: Linux fast path with drain loop, recvmmsg/sendmmsg, U… (#1908) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Relay recvmmsg (#1906) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- fuzzing: use hex escapes for HTTP EOH dictionary entry (#1905) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Sync turnserver man page with current CLI options (#1903) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Remove stale --ne option from turnserver --help (#1904) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Restore CodeQL permissions, category, and manual build mode (#1901) (Pavel Punsky <eakraly@users.noreply.github.com>)
+
+Contributors:
+- Corey Siltala <41675024+csiltala@users.noreply.github.com>
+- Gustavo Garcia <gustavogb@gmail.com>
+- Kai Ren <tyranron@gmail.com>
+- Pavel Punsky <eakraly@users.noreply.github.com>
+- nfuhler <74792136+nfuhler@users.noreply.github.com>
+
+Release 4.11.0
+
+Changelist:
+- Filc harness and pointer typedefs (#1896) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Load generator mode in turnutils_uclient (#1894) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Cache hot lookups in TURN data-path handlers (#1893) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Inline get_ioa_addr_len() in the header (#1891) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Trim two redundant checks from per-packet relay hot path (#1890) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Inline addr_cpy() in the header (#1892) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Hoist turn_server_get_engine() out of per-packet hot path (#1889) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Add fuzz coverage for integrity helpers (#1888) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Add deterministic challenge-response builder to FuzzStun (#1886) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Seed address-mapping table in fuzz initializer (#1885) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Unblock fuzz coverage for is_http and rare STUN attributes (#1884) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- HTTP parsing fixes (#1882) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Cover all public stun_buffer.c wrappers in FuzzStunClient (#1883) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Extend fuzzing coverage and enable local fuzzing in a container (#1881) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Extend STUN client fuzz builder coverage (#1878) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Out of bound HTTP detection in parser (#1877) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Delete log line per relay thread on start (#1876) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Add Unity-based unit test scaffolding (#1875) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Drop udp_relay_servers_number config and clean up dead UDP id-space (#1874) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Merge 10 fuzz targets into FuzzStun and FuzzStunClient via dispatcher (#1873) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix build failure: define _GNU_SOURCE for recvmmsg() on Linux (#1868) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Pin session origin only after MESSAGE-INTEGRITY validates (#1871) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Abort on malformed allowed/denied-peer-ip at startup (#1872) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix format-string injection in Redis DB driver (#1870) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Use constant-time compare for STUN MESSAGE-INTEGRITY HMAC (#1869) (Pavel Punsky <eakraly@users.noreply.github.com>)
+
+Contributors:
+- Pavel Punsky <eakraly@users.noreply.github.com>
+- tyranron <tyranron@gmail.com>
+
+Release 4.10.0
+
+Changelist:
+- Skip response buffer allocation for STUN indications (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Remove unused mutex from ur_map structure (#1861) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Merge commit from fork (Pavel Punsky <eakraly@users.noreply.github.com>)
+- WebRTC Auth optimization path (#1860) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix null pointer dereferences in post_parse() (#1859) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Extend seed corpus (#1858) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Add more fuzzing scenarios (#1857) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Add Linux-only `recvmmsg` receive path for DTLS/UDP listener (#1852) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix Linux build warnings (#1853) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- perf: remove mutex from per-thread super_memory allocator (#1851) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Keep only NEV_UDP_SOCKET_PER_THREAD network engine (#1849) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix stack buffer overflow in OAuth token decoding (#1850) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Update config and Readme files about deprecated TLSv1/1.1 (#1848) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- perf: eliminate mutex and reduce copies on auth message dispatch (#1843) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- perf: replace mutex_bps with lock-free atomics for bandwidth tracking (#1846) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix uint16_t truncation overflow in stun_get_message_len_str() causes… (#1844) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- fix: restore RFC 3489 (old STUN) backward compatibility broken since 4.7.0 (#1839) (Carlos Ruiz Ballesteros <carlos.ruizbal@gmail.com>)
+- Change port identifiers to use uint16_t (#1752) (redraincatching <99604494+redraincatching@users.noreply.github.com>)
+- Fixes: run_tests.sh and no db (#1834) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Improve PostgreSQL.md Clarity (#1833) (Captain Picarl <109193553+CaptainPicarl@users.noreply.github.com>)
+- Add session usage reporting callback to TURN database driver (#1794) (mesibo <yusuf@mesibo.com>)
+- Initialize variables before use (#1832) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Replace perror with logging (#1831) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- CLI interface is disabled by default (#1830) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Disable reason string in response messages to reduce amplification factor (#1829) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Perf: improve worst case scenario optimization (#1823) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix compilation warnings (#1822) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix codeql scanning definition (#1814) (Pavel Punsky <eakraly@users.noreply.github.com>)
+
+Contributors:
+- Captain Picarl <109193553+CaptainPicarl@users.noreply.github.com>
+- Carlos Ruiz Ballesteros <carlos.ruizbal@gmail.com>
+- Pavel Punsky <eakraly@users.noreply.github.com>
+- dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+- mesibo <yusuf@mesibo.com>
+- redraincatching <99604494+redraincatching@users.noreply.github.com>
+- tyranron <tyranron@gmail.com>
+
+Release 4.9.0
+
+Changelist:
+- Fix thread sanitizer warning (#1812) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- OpenSSL: migrate to modern API for DH param (#1809) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Migrate AES-128 encryption from deprecated OpenSSL API to EVP (#1808) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix unbounded strcpy in stun_method_str (ns_turn_msg.c) (#1798) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix missing null termination in addr_to_string (ns_turn_ioaddr.c) (#1806) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix missing null termination after strncpy in DB drivers (#1804) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix unbounded strcpy in HTTP response (http_server.c) (#1800) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Remove ubuntu20, DEBUG builds from build matrix (#1803) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix buffer overflow in decryptPassword  in mysql (#1801) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix missing null termination after strncpy in MongoDB driver (dbd_mongo.c) (#1797) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix buffer overflow in decrypt_aes_128 (#1799) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix Web Admin Password Check (#1802) (薄景仁 <bjrxyz@sina.com>)
+
+Contributors:
+- 薄景仁 <bjrxyz@sina.com>
+- Pavel Punsky <eakraly@users.noreply.github.com>
+
+Release 4.8.0
+
+Changelist:
+- Allow faster packet validation on listener threads (#1768) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix order of arguments to calloc (#1790) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix crashes while setting socket buffer size (#1789) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Implement configurable buffer sizes (#1780) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Update Alpine to 3.23.2 version in Docker image (tyranron <tyranron@gmail.com>)
+- Update Debian "trixie" to 20251208 snapshot in Docker image (tyranron <tyranron@gmail.com>)
+- Use bool to enable prometheus (#1779) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix memory leak using libevent (#1751) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Addressed possible null pointer dereferences (#1729) (redraincatching <99604494+redraincatching@users.noreply.github.com>)
+- Address possible null pointer dereferences (#1744) (redraincatching <99604494+redraincatching@users.noreply.github.com>)
+- Improve const correctness in coturn (#1424) (Michael Jones <jonesmz@users.noreply.github.com>)
+- Update attribute values according to RFC 8656 (#1748) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fixing missing dependencies in Makefile (#1739) (Jun Lyu <71107931+Meiye-lj@users.noreply.github.com>)
+- Add fuzzing to ci workflows (#1745) (redraincatching <99604494+redraincatching@users.noreply.github.com>)
+- mainreplay: fix leak in decrypt_aes_128() (#1737) (Lidong Yan <502024330056@smail.nju.edu.cn>)
+- Upgrade Debian to "trixie" in Docker image (tyranron <tyranron@gmail.com>)
+- Fix typo in Docker CI spec (tyranron <tyranron@gmail.com>)
+- Verify CHANGELOG date on Docker CI (tyranron <tyranron@gmail.com>)
+- Fix logging before parsing logging cmd line args (#1723) (Gustavo Garcia <gustavogb@gmail.com>)
+- Fix dead link in turnserver.spec Source0 field (#1722) (Copilot <198982749+Copilot@users.noreply.github.com>)
+- reduce calls to random (#1710) (redraincatching <99604494+redraincatching@users.noreply.github.com>)
+- Fix null pointer dereference in set_ssl_ctx function (#1720) (Gustavo Garcia <gustavogb@gmail.com>)
+- Add configurable CPU count option for containerized environments (#1717) (Copilot <198982749+Copilot@users.noreply.github.com>)
+- Fix memory and resource leaks in udp_create_server_socket( ) (#1714) (lhywk <lhywkd22@gmail.com>)
+- Add define to disable OAuth support (#1713) (Shane <ignignokterr@gmail.com>)
+- typo correction (#1715) (redraincatching <99604494+redraincatching@users.noreply.github.com>)
+- refactored tri-state to bools (#1709) (redraincatching <99604494+redraincatching@users.noreply.github.com>)
+- addressed null pointer deref warnings (#1712) (redraincatching <99604494+redraincatching@users.noreply.github.com>)
+- removed unnecessary null check (#1706) (redraincatching <99604494+redraincatching@users.noreply.github.com>)
+- Fix compiler warnings in source files (#1704) (Gustavo Garcia <gustavogb@gmail.com>)
+- Revert random number generation (Pavel Punsky <eakraly@users.noreply.github.com>)
+- guarantee no oob write in strncat (#1702) (redraincatching <99604494+redraincatching@users.noreply.github.com>)
+- Fix issues with Global Allocation Count for drain mode (#1699) (Scott Godin <sgodin@sipspectrum.com>)
+- fix: comment out verbose mode by default (#1696) (Amin Farjadi <31803062+amin-farjadi@users.noreply.github.com>)
+
+Contributors:
+- Amin Farjadi <31803062+amin-farjadi@users.noreply.github.com>
+- Copilot <198982749+Copilot@users.noreply.github.com>
+- dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+- Gustavo Garcia <gustavogb@gmail.com>
+- Jun Lyu <71107931+Meiye-lj@users.noreply.github.com>
+- Kai Ren <tyranron@gmail.com>
+- lhywk <lhywkd22@gmail.com>
+- Lidong Yan <502024330056@smail.nju.edu.cn>
+- Michael Jones <jonesmz@users.noreply.github.com>
+- Pavel Punsky <eakraly@users.noreply.github.com>
+- redraincatching <99604494+redraincatching@users.noreply.github.com>
+- Scott Godin <sgodin@sipspectrum.com>
+- Shane <ignignokterr@gmail.com>
+- tyranron <tyranron@gmail.com>
+
+Release 4.7.0
+
+Changelist:
+- [BREAKING] Remove support for openssl older than 1.1.1 (#1397) (Michael Jones <jonesmz@users.noreply.github.com>)
+- [BREAKING] Cleanup deprecated options (#1599) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- [BREAKING] Reverse SOFTWARE_ATTRIBUTE_OPT to avoid inverse logic (#1598) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- [BREAKING] Deprecate response-origin-only-with-rfc5780 (#1690) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- [BREAKING] Invert no-stun-backward-compatibility to be default on (#1689) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Make older TLS versions optional (#1693) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Add missing close socket when ioa_socket call fails (#1694) (tyranron <tyranron@gmail.com>)
+- Add spdx tags to all source files (#1510) (Michael Jones <jonesmz@users.noreply.github.com>)
+- Address various minor clang-tidy warnings (#1513) (Michael Jones <jonesmz@users.noreply.github.com>)
+- Update reference to old draft in README to RFC8016 (Gustavo Garcia <gustavogb@gmail.com>)
+- Invert RFC5780 option to default off (#1688) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Add modules diagram to developer doc (#1685) (Gustavo Garcia <gustavogb@gmail.com>)
+- Fix compilation warning with const - non const conversions (#1686) (Gustavo Garcia <gustavogb@gmail.com>)
+- Makefile.in: Don't install sql schema into DOCSDIR (#1684) (Greg Troxel <gdt@lexort.com>)
+- Fix infinite loop in ns_turn_server.c (#1460) (Asmir Mehic <asmir.mehic@gmail.com>)
+- Fix the ability to compile coturn using C++ compiler (#1546) (Michael Jones <jonesmz@users.noreply.github.com>)
+- Restore returning 200 OK on root prometheus path for health check (#1678) (Gustavo Garcia <gustavogb@gmail.com>)
+- Improve MySQL connection error logging to include actual MySQL error message (#1679) (Gustavo Garcia <gustavogb@gmail.com>)
+- redis: use dbname param when redis is unauthenticated (#1668) (maddy <maddy@kitty.garden>)
+- Show allocations increment/decrement logs behind verbose flag (#1677) (Gustavo Garcia <gustavogb@gmail.com>)
+- [Fix] Fix Repeated Line in Example turnserver.conf (#1671) (Stefan Kieszkowski <85728496+stefankiesz@users.noreply.github.com>)
+- change for incorrect handling of TURN_NO_TLS environment variable (#1663) (Leonid Gorbachev <60500216+leonidgorbachev@users.noreply.github.com>)
+- Add Content-Type header to prometheus response (#1662) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix infinite loop while triggering SIGHUP and log file reset causing … (#1630) (nicolas-laduguie <111897939+nicolas-laduguie@users.noreply.github.com>)
+- rename and dependency extraction (#1634) (redraincatching <99604494+redraincatching@users.noreply.github.com>)
+- updated types to bool in _turn_params_ to reflect C11 (#1406) (redraincatching <99604494+redraincatching@users.noreply.github.com>)
+- Windows '_WTA' bug (#1624) (guoyingbo <guoyingbo@gmail.com>)
+- Fix cmake issues detecting mongo and libsystemd on macOS (#1621) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix hiredis detection by cmake (#1620) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Drop TLS version support detection (#1617) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Cleanup ALPN_SUPPORTED define usage (#1616) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix warnings type conversion (#1615) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Add parameter for specifying prometheus path (#1602) (Alex Gustafsson <89969483+alexg-axis@users.noreply.github.com>)
+- Do not build with Ubuntu 18, use 24 (#1613) (Pavel Punsky <eakraly@users.noreply.github.com>)
+
+Contributors:
+- Alex Gustafsson <89969483+alexg-axis@users.noreply.github.com>
+- Asmir Mehic <asmir.mehic@gmail.com>
+- Greg Troxel <gdt@lexort.com>
+- guoyingbo <guoyingbo@gmail.com>
+- Gustavo Garcia <gustavogb@gmail.com>
+- Kai Ren <tyranron@gmail.com>
+- Leonid Gorbachev <60500216+leonidgorbachev@users.noreply.github.com>
+- maddy <maddy@kitty.garden>
+- Michael Jones <jonesmz@users.noreply.github.com>
+- nicolas-laduguie <111897939+nicolas-laduguie@users.noreply.github.com>
+- Pavel Punsky <eakraly@users.noreply.github.com>
+- redraincatching <99604494+redraincatching@users.noreply.github.com>
+- Stefan Kieszkowski <85728496+stefankiesz@users.noreply.github.com>
+- tyranron <tyranron@gmail.com>
+
 Release 4.6.3
 
 Changelist:

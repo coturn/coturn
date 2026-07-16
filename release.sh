@@ -27,8 +27,14 @@ fi
 
 VERSION=$1
 
-sed -i "s/SET(BUILD_VERSION \".*)/SET(BUILD_VERSION \"${VERSION}\")/g" ${SOURCE_DIR}/CMakeLists.txt
-sed -i "s/#define TURN_SERVER_VERSION .*/#define TURN_SERVER_VERSION \"${VERSION}\"/g" ${SOURCE_DIR}/src/ns_turn_defs.h
+SED="sed"
+if [ $(uname -s) = "Darwin" ]; then
+    gsed -i "s/SET(BUILD_VERSION \".*)/SET(BUILD_VERSION \"${VERSION}\")/g" ${SOURCE_DIR}/CMakeLists.txt
+    gsed -i "s/#define TURN_SERVER_VERSION .*/#define TURN_SERVER_VERSION \"${VERSION}\"/g" ${SOURCE_DIR}/src/ns_turn_defs.h
+else
+    sed -i "s/SET(BUILD_VERSION \".*)/SET(BUILD_VERSION \"${VERSION}\")/g" ${SOURCE_DIR}/CMakeLists.txt
+    sed -i "s/#define TURN_SERVER_VERSION .*/#define TURN_SERVER_VERSION \"${VERSION}\"/g" ${SOURCE_DIR}/src/ns_turn_defs.h
+fi
 
 # Generate ChangeLog
 if [ -f ${SOURCE_DIR}/ChangeLog ]; then

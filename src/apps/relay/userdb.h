@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * https://opensource.org/license/bsd-3-clause
+ *
  * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
@@ -45,14 +49,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#ifndef _MSC_VER
-#include <stdatomic.h>
-extern _Atomic
-#else
-extern volatile
-#endif
-    size_t global_allocation_count;
 
 //////////// REALM //////////////
 
@@ -187,7 +183,7 @@ void add_to_secrets_list(secrets_list_t *sl, const char *elem);
 
 int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *uname, uint8_t *realm, hmackey_t key,
                  ioa_network_buffer_handle nbh);
-uint8_t *start_user_check(turnserver_id id, turn_credential_type ct, int in_oauth, int *out_oauth, uint8_t *uname,
+uint8_t *start_user_check(turnserver_id id, turn_credential_type ct, int in_oauth, int *out_oauth, uint8_t *usname,
                           uint8_t *realm, get_username_resume_cb resume, ioa_net_data *in_buffer, uint64_t ctxkey,
                           int *postpone_reply);
 int check_new_allocation_quota(uint8_t *username, int oauth, uint8_t *realm);

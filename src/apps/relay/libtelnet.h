@@ -1,4 +1,6 @@
 /*!
+ * SPDX-License-Identifier: Unknown
+ *
  * \brief libtelnet - TELNET protocol handling library
  *
  * SUMMARY:

@@ -1,6 +1,6 @@
 {
   "name": "coturn",
-  "version-string": "4.6.3",
+  "version-string": "4.8.0",
   "dependencies": [
     {
       "name": "pthreads",
@@ -14,7 +14,8 @@
     "sqlite3",
     "libpq",
     "hiredis",
-    "mongo-c-driver"
+    "mongo-c-driver",
+    "libmicrohttpd"
   ]
 
 }
