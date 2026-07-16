@@ -3592,7 +3592,11 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
           size_t *any_counter = &(server->as_counter);
           turn_server_addrs_list_t *asl = server->alternate_servers_list;
 
-          if ((cst == UDP_SOCKET) && server->udp_alternate_servers_list && server->udp_alternate_servers_list->size) {
+          /* UDP and DTLS clients share the UDP alternate-server list: DTLS is carried over UDP, and a
+           * DTLS client redirected via ALTERNATE-SERVER keeps speaking DTLS to the new address. When the
+           * UDP list is unset, DTLS falls through to the aux (self-balance) and TLS branches as before. */
+          if (((cst == UDP_SOCKET) || (cst == DTLS_SOCKET)) && server->udp_alternate_servers_list &&
+              server->udp_alternate_servers_list->size) {
             asl = server->udp_alternate_servers_list;
             any_counter = &(server->udp_as_counter);
           } else if ((cst == TCP_SOCKET) && server->tcp_alternate_servers_list &&

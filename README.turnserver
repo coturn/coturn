@@ -549,6 +549,22 @@ Options with values:
 			number 5349 for the TLS/DTLS protocols will be used. See the
 			previous option for the functionality description.
 
+--udp-alternate-server	Option to set alternative server for UDP & DTLS services in form of
+			<ip>[:<port>]. If the port number is omitted, then the default port
+			number 3478 for the UDP protocol will be used. This list takes
+			precedence over --alternate-server (and over --udp-self-balance) for
+			UDP and DTLS clients. When it is not set, UDP/DTLS clients keep using
+			--alternate-server / --udp-self-balance / --tls-alternate-server as
+			before. See the --alternate-server option for the functionality
+			description.
+
+--tcp-alternate-server	Option to set alternative server for TCP services in form of
+			<ip>[:<port>]. If the port number is omitted, then the default port
+			number 3478 for the TCP protocol will be used. This list takes
+			precedence over --alternate-server for TCP clients. When it is not set,
+			TCP clients keep using --alternate-server as before. See the
+			--alternate-server option for the functionality description.
+
 -O, --redis-statsdb	Redis status and statistics database connection string, if used (default - empty,
 			no Redis stats DB used). This database keeps allocations status information, and it can
 			be also used for publishing and delivering traffic and allocation event notifications.
