@@ -307,6 +307,38 @@ static void test_rfc5780_other_address_and_response_origin_roundtrip(void) {
   TEST_ASSERT_TRUE(addr_eq(&response_origin, &got_origin));
 }
 
+static void test_attr_accessors_survive_misaligned_pointer(void) {
+  /* stun_attr_get_type/get_len/get_value and stun_get_requested_address_family used to cast the wire-format byte
+   * pointer straight to a wider integer pointer and dereference it. An
+   * attribute that lands at a non-4-byte-aligned offset (e.g. preceding
+   * attributes sent without RFC 5766 padding) triggered undefined behavior
+   * and SIGBUS on strict-alignment architectures such as ARM64. Build a
+   * hand-crafted REQUESTED-ADDRESS-FAMILY attribute one byte off from an
+   * aligned base and confirm the accessors still decode it correctly
+   * instead of crashing.
+   */
+  uint8_t raw[1 + 8] = {0};
+  uint8_t *attr = raw + 1;
+
+  attr[0] = (STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY >> 8) & 0xFF;
+  attr[1] = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY & 0xFF;
+  attr[2] = 0x00;
+  attr[3] = 0x04; // length = 4
+  attr[4] = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4;
+  attr[5] = 0x00;
+  attr[6] = 0x00;
+  attr[7] = 0x00;
+
+  TEST_ASSERT_EQUAL_INT(STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY, stun_attr_get_type(attr));
+  TEST_ASSERT_EQUAL_INT(4, stun_attr_get_len(attr));
+
+  const uint8_t *value = stun_attr_get_value(attr);
+  TEST_ASSERT_NOT_NULL(value);
+  TEST_ASSERT_EQUAL_UINT8(STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4, value[0]);
+
+  TEST_ASSERT_EQUAL_INT(STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4, stun_get_requested_address_family(attr));
+}
+
 static void test_http_message_len_handles_non_null_terminated_buffer(void) {
   uint8_t buf[] = {'G', 'E', 'T', ' ', '/', ' ', 'H', 'T', 'T', 'P', '/', '1', '.', '1', '\r', '\n', '\r', '\n'};
   size_t app_len = 0;
@@ -334,6 +366,7 @@ int main(void) {
   RUN_TEST(test_rfc5780_response_port_roundtrip);
   RUN_TEST(test_rfc5780_padding_roundtrip);
   RUN_TEST(test_rfc5780_other_address_and_response_origin_roundtrip);
+  RUN_TEST(test_attr_accessors_survive_misaligned_pointer);
   RUN_TEST(test_http_message_len_handles_non_null_terminated_buffer);
   return UNITY_END();
 }
