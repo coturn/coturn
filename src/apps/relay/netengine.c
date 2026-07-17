@@ -275,15 +275,20 @@ static void del_alt_server(const char *saddr, uint16_t default_port, turn_server
 
       if (i < list->size) {
 
-        ioa_addr *new_addrs = (ioa_addr *)turn_malloc(sizeof(ioa_addr) * (list->size - 1));
-        if (!new_addrs) {
-          return;
-        }
-        for (size_t j = 0; j < i; ++j) {
-          addr_cpy(&(new_addrs[j]), &(list->addrs[j]));
-        }
-        for (size_t j = i; j < list->size - 1; ++j) {
-          addr_cpy(&(new_addrs[j]), &(list->addrs[j + 1]));
+        /* Removing the last entry means shrinking to zero elements. Requesting
+         * turn_malloc(0) would return NULL (the fail-fast wrappers only ever
+         * return NULL for a zero-size request), and NULL-checking a wrapper
+         * result is not allowed, so only allocate when there is something left
+         * to keep. */
+        ioa_addr *new_addrs = NULL;
+        if (list->size > 1) {
+          new_addrs = (ioa_addr *)turn_malloc(sizeof(ioa_addr) * (list->size - 1));
+          for (size_t j = 0; j < i; ++j) {
+            addr_cpy(&(new_addrs[j]), &(list->addrs[j]));
+          }
+          for (size_t j = i; j < list->size - 1; ++j) {
+            addr_cpy(&(new_addrs[j]), &(list->addrs[j + 1]));
+          }
         }
 
         free(list->addrs);
