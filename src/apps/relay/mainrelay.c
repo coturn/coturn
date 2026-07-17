@@ -193,6 +193,8 @@ turn_params_t turn_params = {
     /////////////// ALTERNATE SERVERS ////////////////
     {NULL, 0, {0, NULL}}, /*alternate_servers_list*/
     {NULL, 0, {0, NULL}}, /*tls_alternate_servers_list*/
+    {NULL, 0, {0, NULL}}, /*tcp_alternate_servers_list*/
+    {NULL, 0, {0, NULL}}, /*udp_alternate_servers_list*/
 
     /////////////// stop server ////////////////
     false, /*drain_turn_server*/
@@ -1297,6 +1299,19 @@ static char Usage[] =
     "						Multiple alternate-server options can be set for load balancing "
     "purposes.\n"
     "						See the docs for more information.\n"
+    " --udp-alternate-server	<ip:port>		Set the TURN server to redirect the allocate requests (UDP "
+    "and DTLS services).\n"
+    "						Takes precedence over --alternate-server and --udp-self-balance "
+    "for UDP/DTLS clients.\n"
+    "						Multiple alternate-server options can be set for load balancing "
+    "purposes.\n"
+    "						See the docs for more information.\n"
+    " --tcp-alternate-server	<ip:port>		Set the TURN server to redirect the allocate requests (TCP "
+    "service).\n"
+    "						Takes precedence over --alternate-server for TCP clients.\n"
+    "						Multiple alternate-server options can be set for load balancing "
+    "purposes.\n"
+    "						See the docs for more information.\n"
     " -C, --rest-api-separator	<SYMBOL>	This is the timestamp/username separator symbol (character) in TURN "
     "REST API.\n"
     "						The default value is ':'.\n"
@@ -1537,6 +1552,8 @@ enum EXTRA_OPTS {
   UDP_SELF_BALANCE_OPT,
   ALTERNATE_SERVER_OPT,
   TLS_ALTERNATE_SERVER_OPT,
+  TCP_ALTERNATE_SERVER_OPT,
+  UDP_ALTERNATE_SERVER_OPT,
   NO_MULTICAST_PEERS_OPT,
   ALLOW_LOOPBACK_PEERS_OPT,
   MAX_ALLOCATE_TIMEOUT_OPT,
@@ -1707,6 +1724,8 @@ static const struct myoption long_options[] = {
     {"udp-self-balance", optional_argument, NULL, UDP_SELF_BALANCE_OPT},
     {"alternate-server", required_argument, NULL, ALTERNATE_SERVER_OPT},
     {"tls-alternate-server", required_argument, NULL, TLS_ALTERNATE_SERVER_OPT},
+    {"tcp-alternate-server", required_argument, NULL, TCP_ALTERNATE_SERVER_OPT},
+    {"udp-alternate-server", required_argument, NULL, UDP_ALTERNATE_SERVER_OPT},
     {"rest-api-separator", required_argument, NULL, 'C'},
     {"max-allocate-timeout", required_argument, NULL, MAX_ALLOCATE_TIMEOUT_OPT},
     {"no-multicast-peers", optional_argument, NULL, NO_MULTICAST_PEERS_OPT},
@@ -2529,6 +2548,12 @@ static void set_option(int c, char *value) {
     break;
   case TLS_ALTERNATE_SERVER_OPT:
     add_tls_alternate_server(value);
+    break;
+  case TCP_ALTERNATE_SERVER_OPT:
+    add_tcp_alternate_server(value);
+    break;
+  case UDP_ALTERNATE_SERVER_OPT:
+    add_udp_alternate_server(value);
     break;
   case ALLOWED_PEER_IPS:
     if (add_ip_list_range(value, NULL, &turn_params.ip_whitelist) == 0) {
@@ -3398,6 +3423,8 @@ int main(int argc, char **argv) {
 
   init_turn_server_addrs_list(&turn_params.alternate_servers_list);
   init_turn_server_addrs_list(&turn_params.tls_alternate_servers_list);
+  init_turn_server_addrs_list(&turn_params.tcp_alternate_servers_list);
+  init_turn_server_addrs_list(&turn_params.udp_alternate_servers_list);
   init_turn_server_addrs_list(&turn_params.aux_servers_list);
 
   init_listener();
