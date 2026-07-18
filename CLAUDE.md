@@ -31,6 +31,30 @@ unit tests, the local/system tests, and the fuzzing smoke tests. When working
 from macOS, also validate the Linux build and Docker image tests inside Docker
 containers.
 
+**Clean stale build output first.** Before running the system tests, copying
+the checkout into a container, or building Docker images for testing, remove
+leftover build output from earlier runs — both the legacy autotools build and
+CMake:
+
+- The legacy `./configure && make` build writes `Makefile`, `bin/`, `lib/`,
+  `include/`, and `sqlite/` at the repo root (all gitignored, so `git status`
+  looks clean).
+- `examples/run_tests*.sh` resolve `../bin/turnserver` **before** the CMake
+  `build/bin/`, so a stale root `bin/` silently shadows the freshly built
+  server. On the host you end up testing old binaries; inside a Linux
+  container a copied macOS `bin/` fails with
+  `cannot execute binary file: Exec format error`.
+- `cp -a` / Docker build contexts copy gitignored dirs too, so stale CMake
+  trees (`build/`, `build-win/`) and legacy output ride along into containers
+  and image builds, causing wrong-arch errors and longer build/test cycles.
+
+```bash
+# Legacy-build output at the repo root (all gitignored):
+rm -rf Makefile bin lib include sqlite
+# CMake trees from other platforms/configs (keep the one you are using):
+rm -rf build-win
+```
+
 ```bash
 # Local build + unit tests
 cmake -S . -B build -DBUILD_TESTING=ON
@@ -92,6 +116,7 @@ docker run --rm \
   -lc 'apt-get update && apt-get install -y --no-install-recommends git && \
        cp -a /src /tmp/coturn && \
        cd /tmp/coturn && \
+       rm -rf Makefile bin lib include sqlite build build-win && \
        cmake -S . -B build-linux -DBUILD_TESTING=ON && \
        cmake --build build-linux --parallel $(nproc) && \
        ctest --test-dir build-linux --output-on-failure && \
@@ -101,7 +126,9 @@ docker run --rm \
        ./run_tests_rfc5780.sh'
 ```
 
-Also validate the packaged Docker image:
+Also validate the packaged Docker image. Run the same stale-output cleanup at
+the repo root first (see above) so the image build context does not pick up
+prebuilt host binaries:
 
 ```bash
 cd docker/coturn

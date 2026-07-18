@@ -26,6 +26,29 @@ coturn_add_test(test_log_min_level)
 coturn_add_test(test_ratelimit ../src/server/ns_turn_ratelimit.c)
 target_include_directories(test_ratelimit PRIVATE ../src/server ../src)
 
+# Alternate-server list regression test (#1988). The test compiles the real
+# src/apps/relay/netengine.c into its own translation unit (to reach the static
+# add_alt_server/del_alt_server), with link-only stubs for the rest of the
+# relay in test_alt_server_stubs.c, so it needs the relay's full include set.
+find_package(OpenSSL QUIET)
+find_package(PkgConfig QUIET)
+pkg_check_modules(LIBEVENT QUIET libevent)
+coturn_add_test(test_alt_server_list test_alt_server_stubs.c)
+target_include_directories(test_alt_server_list PRIVATE
+    ../src/server
+    ../src/apps/common
+    ../src
+    ../src/client
+    ${OPENSSL_INCLUDE_DIR}
+    ${LIBEVENT_INCLUDE_DIRS})
+target_compile_definitions(test_alt_server_list PRIVATE
+    TURN_NO_MONGO TURN_NO_MYSQL TURN_NO_PQ TURN_NO_PROMETHEUS
+    TURN_NO_SCTP TURN_NO_SYSTEMD TURN_NO_THREAD_BARRIERS TURN_NO_HIREDIS
+    _FILE_OFFSET_BITS=64)
+# The #1988 bug left the list mutex locked; if it regresses, the follow-up
+# add_alt_server blocks forever, so fail by timeout instead of hanging ctest.
+set_tests_properties(test_alt_server_list PROPERTIES TIMEOUT 60)
+
 # SQLite DB-driver interface test. Compiles the driver in isolation with a small
 # support/stub layer, so it needs the same include set the relay build uses.
 find_package(SQLite QUIET)
