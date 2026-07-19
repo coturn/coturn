@@ -3372,6 +3372,15 @@ static void deny_self_db_endpoints(void) {
 int main(int argc, char **argv) {
   int c = 0;
 
+#if defined(OPENSSL_INIT_NO_ATEXIT)
+  /* Detached workers may still use OpenSSL when main returns. Suppress
+   * automatic cleanup until shutdown joins them (#1633). */
+  if (!strstr(argv[0], "turnadmin") && !OPENSSL_init_ssl(OPENSSL_INIT_NO_ATEXIT, NULL)) {
+    fprintf(stderr, "ERROR: Cannot initialize OpenSSL without automatic cleanup\n");
+    return EXIT_FAILURE;
+  }
+#endif
+
   IS_TURN_SERVER = 1;
 
   TURN_MUTEX_INIT(&turn_params.tls_mutex);
