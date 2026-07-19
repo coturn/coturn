@@ -3794,6 +3794,8 @@ int main(int argc, char **argv) {
 
   run_listener_server(&(turn_params.listener));
 
+  shutdown_server();
+
   disconnect_database();
 
   return 0;

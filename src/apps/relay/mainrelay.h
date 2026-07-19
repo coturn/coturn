@@ -297,7 +297,9 @@ typedef struct _turn_params_ {
   /////////////// stop/drain server ////////////////
   bool drain_turn_server;
   /////////////// stop server ////////////////
-  bool stop_turn_server;
+  /* Written from the signal handler and the admin thread, read by every
+   * worker loop — volatile so those reads are not optimized away. */
+  volatile bool stop_turn_server;
 
   ////////////// MISC PARAMS ////////////////
 
@@ -413,6 +415,7 @@ void send_auth_message_to_auth_server(struct auth_message *am);
 
 void init_listener(void);
 void setup_server(void);
+void shutdown_server(void);
 void run_listener_server(struct listener_server *ls);
 void enable_drain_mode(void);
 
