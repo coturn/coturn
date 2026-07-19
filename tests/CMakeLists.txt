@@ -49,6 +49,25 @@ target_compile_definitions(test_alt_server_list PRIVATE
 # add_alt_server blocks forever, so fail by timeout instead of hanging ctest.
 set_tests_properties(test_alt_server_list PROPERTIES TIMEOUT 60)
 
+# Relay port-allocator counter-wrap regression test (#1649). The allocator's
+# uint32_t low/high cursors wrap after ~4G alloc/release operations on a pool;
+# the old `high <= low` empty-pool guard then failed permanently. The test
+# compiles the real src/apps/relay/turn_ports.c into its own translation unit
+# (to reach the static turnports_* functions and the private struct), so it
+# needs the relay's full include set.
+coturn_add_test(test_turn_ports)
+target_include_directories(test_turn_ports PRIVATE
+    ../src/server
+    ../src/apps/common
+    ../src
+    ../src/client
+    ${OPENSSL_INCLUDE_DIR}
+    ${LIBEVENT_INCLUDE_DIRS})
+target_compile_definitions(test_turn_ports PRIVATE
+    TURN_NO_MONGO TURN_NO_MYSQL TURN_NO_PQ TURN_NO_PROMETHEUS
+    TURN_NO_SCTP TURN_NO_SYSTEMD TURN_NO_THREAD_BARRIERS TURN_NO_HIREDIS
+    _FILE_OFFSET_BITS=64)
+
 # SQLite DB-driver interface test. Compiles the driver in isolation with a small
 # support/stub layer, so it needs the same include set the relay build uses.
 find_package(SQLite QUIET)
