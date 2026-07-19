@@ -1406,7 +1406,6 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
 }
 
 static void *run_general_relay_thread(void *arg) {
-  static const int always_true = 1;
   struct relay_server *rs = (struct relay_server *)arg;
 
   const int udp_reuses_the_same_relay_server = 1;
@@ -1421,7 +1420,7 @@ static void *run_general_relay_thread(void *arg) {
 
   barrier_wait();
 
-  while (always_true) {
+  while (!turn_params.stop_turn_server) {
     run_events(rs->event_base, rs->ioa_eng);
   }
 
@@ -1455,12 +1454,11 @@ static void setup_general_relay_servers(void) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create relay thread: %s\n", strerror(errno));
         exit(-1);
       }
-      pthread_detach(general_relay_servers[i]->thr);
     }
   }
 }
 
-static int run_auth_server_flag = 1;
+static volatile int run_auth_server_flag = 1;
 
 static void *run_auth_server_thread(void *arg) {
   ignore_sigpipe();
@@ -1480,17 +1478,24 @@ static void *run_auth_server_thread(void *arg) {
 #if defined(DB_TEST)
       run_db_test();
 #endif
-      sleep(5);
+      /* Sleep in 1-second slices so shutdown_server is not stalled for
+       * the full 5-second housekeeping period. */
+      for (int slice = 0; slice < 5 && run_auth_server_flag; ++slice) {
+        sleep(1);
+      }
+      if (!run_auth_server_flag) {
+        break;
+      }
       reread_realms();
       update_white_and_black_lists();
     }
 
   } else {
 
-    memset(as, 0, sizeof(struct auth_server));
-
-    as->id = id;
-
+    /* No memset here: the static authserver[] array is already
+     * zero-initialized, and wiping the struct from inside the thread
+     * would destroy as->thr, which shutdown_server needs for
+     * pthread_join. */
     as->event_base = turn_event_base_new();
 
     struct bufferevent *pair[2];
@@ -1520,9 +1525,7 @@ static void *run_auth_server_thread(void *arg) {
 }
 
 static void setup_auth_server(struct auth_server *as) {
-  pthread_attr_t attr;
-  if (pthread_attr_init(&attr) || pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED) ||
-      pthread_create(&(as->thr), &attr, run_auth_server_thread, as)) {
+  if (pthread_create(&(as->thr), NULL, run_auth_server_thread, as)) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create auth thread: %s\n", strerror(errno));
     exit(-1);
   }
@@ -1535,7 +1538,7 @@ static void *run_admin_server_thread(void *arg) {
 
   barrier_wait();
 
-  while (adminserver.event_base) {
+  while (adminserver.event_base && !turn_params.stop_turn_server) {
     run_events(adminserver.event_base, NULL);
   }
 
@@ -1551,8 +1554,6 @@ static void setup_admin_server(void) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create cli thread: %s\n", strerror(errno));
     exit(-1);
   }
-
-  pthread_detach(adminserver.thr);
 }
 
 void setup_server(void) {
@@ -1626,6 +1627,50 @@ void setup_server(void) {
   setup_admin_server();
 
   barrier_wait();
+}
+
+void shutdown_server(void) {
+  run_auth_server_flag = 0; /* turn_params.stop_turn_server is already true */
+
+  /* Wake every dispatching event loop immediately instead of waiting for
+   * its 5-second loopexit tick. Safe cross-thread because
+   * evthread_use_pthreads() was called in setup_server. */
+  if (turn_params.general_relay_servers_number > 0) {
+    for (size_t i = 0; i < get_real_general_relay_servers_number(); i++) {
+      if (general_relay_servers[i] && general_relay_servers[i]->event_base) {
+        event_base_loopbreak(general_relay_servers[i]->event_base);
+      }
+    }
+  }
+  /* Auth server 0 is the housekeeping thread: it has no event base and
+   * exits via run_auth_server_flag within its 1-second sleep slice. */
+  for (authserver_id sn = 1; sn < authserver_number; ++sn) {
+    if (authserver[sn].event_base) {
+      event_base_loopbreak(authserver[sn].event_base);
+    }
+  }
+  if (adminserver.event_base) {
+    event_base_loopbreak(adminserver.event_base);
+  }
+
+  /* Join all worker threads so none of them can be inside an OpenSSL
+   * call when main returns and OPENSSL_cleanup runs from atexit
+   * (https://github.com/coturn/coturn/issues/1633). When
+   * general_relay_servers_number == 0 the relay servers run inline on
+   * this thread (thr == pthread_self()), so joining would deadlock. */
+  if (turn_params.general_relay_servers_number > 0) {
+    for (size_t i = 0; i < get_real_general_relay_servers_number(); i++) {
+      if (general_relay_servers[i]) {
+        pthread_join(general_relay_servers[i]->thr, NULL);
+      }
+    }
+  }
+  for (authserver_id sn = 0; sn < authserver_number; ++sn) {
+    pthread_join(authserver[sn].thr, NULL);
+  }
+  pthread_join(adminserver.thr, NULL);
+
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "All worker threads joined\n");
 }
 
 void init_listener(void) { memset(&turn_params.listener, 0, sizeof(struct listener_server)); }
