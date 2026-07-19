@@ -339,6 +339,52 @@ static void test_attr_accessors_survive_misaligned_pointer(void) {
   TEST_ASSERT_EQUAL_INT(STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4, stun_get_requested_address_family(attr));
 }
 
+static void test_value_accessors_survive_misaligned_pointer(void) {
+  /* stun_attr_get_channel_number/get_bandwidth/get_response_port_str read a
+   * uint16/uint32 straight out of the attribute value via a cast to a wider
+   * integer pointer, the same construct the type/len/value accessors were
+   * moved off. On a misaligned base (an attribute one byte off an aligned
+   * origin) that is undefined behavior and SIGBUS on strict-alignment
+   * architectures such as ARM64. Drive each accessor from a misaligned
+   * attribute and confirm it still decodes the field correctly.
+   */
+  {
+    uint8_t raw[1 + 8] = {0};
+    uint8_t *attr = raw + 1;
+    attr[0] = (STUN_ATTRIBUTE_CHANNEL_NUMBER >> 8) & 0xFF;
+    attr[1] = STUN_ATTRIBUTE_CHANNEL_NUMBER & 0xFF;
+    attr[2] = 0x00;
+    attr[3] = 0x04; // length = 4
+    attr[4] = 0x40; // channel 0x4000 (valid)
+    attr[5] = 0x00;
+    stun_attr_ref sar = attr;
+    TEST_ASSERT_EQUAL_UINT16(0x4000, stun_attr_get_channel_number(sar));
+  }
+  {
+    uint8_t raw[1 + 8] = {0};
+    uint8_t *attr = raw + 1;
+    attr[0] = (STUN_ATTRIBUTE_BANDWIDTH >> 8) & 0xFF;
+    attr[1] = STUN_ATTRIBUTE_BANDWIDTH & 0xFF;
+    attr[2] = 0x00;
+    attr[3] = 0x04; // length = 4
+    attr[7] = 0x01; // 1 -> get_bandwidth returns 1 << 7
+    stun_attr_ref sar = attr;
+    TEST_ASSERT_EQUAL_UINT64(128, (uint64_t)stun_attr_get_bandwidth(sar));
+  }
+  {
+    uint8_t raw[1 + 8] = {0};
+    uint8_t *attr = raw + 1;
+    attr[0] = (STUN_ATTRIBUTE_RESPONSE_PORT >> 8) & 0xFF;
+    attr[1] = STUN_ATTRIBUTE_RESPONSE_PORT & 0xFF;
+    attr[2] = 0x00;
+    attr[3] = 0x04; // length = 4
+    attr[4] = 0x30; // port 12345
+    attr[5] = 0x39;
+    stun_attr_ref sar = attr;
+    TEST_ASSERT_EQUAL_INT(12345, stun_attr_get_response_port_str(sar));
+  }
+}
+
 static void test_http_message_len_handles_non_null_terminated_buffer(void) {
   uint8_t buf[] = {'G', 'E', 'T', ' ', '/', ' ', 'H', 'T', 'T', 'P', '/', '1', '.', '1', '\r', '\n', '\r', '\n'};
   size_t app_len = 0;
@@ -367,6 +413,7 @@ int main(void) {
   RUN_TEST(test_rfc5780_padding_roundtrip);
   RUN_TEST(test_rfc5780_other_address_and_response_origin_roundtrip);
   RUN_TEST(test_attr_accessors_survive_misaligned_pointer);
+  RUN_TEST(test_value_accessors_survive_misaligned_pointer);
   RUN_TEST(test_http_message_len_handles_non_null_terminated_buffer);
   return UNITY_END();
 }

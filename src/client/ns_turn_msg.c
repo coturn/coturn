@@ -1396,7 +1396,9 @@ uint16_t stun_attr_get_channel_number(stun_attr_ref attr) {
   if (attr) {
     const uint8_t *value = stun_attr_get_value(attr);
     if (value && (stun_attr_get_len(attr) >= 2)) {
-      const uint16_t cn = nswap16(((const uint16_t *)value)[0]);
+      uint16_t raw_cn;
+      memcpy(&raw_cn, value, sizeof(raw_cn));
+      const uint16_t cn = nswap16(raw_cn);
       if (STUN_VALID_CHANNEL(cn)) {
         return cn;
       }
@@ -1409,7 +1411,9 @@ band_limit_t stun_attr_get_bandwidth(stun_attr_ref attr) {
   if (attr) {
     const uint8_t *value = stun_attr_get_value(attr);
     if (value && (stun_attr_get_len(attr) >= 4)) {
-      const uint32_t bps = nswap32(((const uint32_t *)value)[0]);
+      uint32_t raw_bps;
+      memcpy(&raw_bps, value, sizeof(raw_bps));
+      const uint32_t bps = nswap32(raw_bps);
       return (band_limit_t)(bps << 7);
     }
   }
@@ -2053,7 +2057,9 @@ int stun_attr_get_response_port_str(stun_attr_ref attr) {
   if (stun_attr_get_len(attr) >= 2) {
     const uint8_t *value = stun_attr_get_value(attr);
     if (value) {
-      return nswap16(((const uint16_t *)value)[0]);
+      uint16_t raw_port;
+      memcpy(&raw_port, value, sizeof(raw_port));
+      return nswap16(raw_port);
     }
   }
   return -1;
