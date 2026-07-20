@@ -1274,9 +1274,7 @@ static int handle_turn_allocate(turn_turnserver *server, ts_ur_super_session *ss
             *err_code = 400;
             *reason = (const uint8_t *)"Wrong Lifetime Data";
           } else {
-            uint32_t raw_lifetime;
-            memcpy(&raw_lifetime, value, sizeof(raw_lifetime));
-            lifetime = nswap32(raw_lifetime);
+            lifetime = turn_read_u32(value);
           }
         }
       } break;
@@ -1810,9 +1808,7 @@ static int handle_turn_refresh(turn_turnserver *server, ts_ur_super_session *ss,
             *err_code = 400;
             *reason = (const uint8_t *)"Wrong lifetime field data";
           } else {
-            uint32_t raw_lifetime;
-            memcpy(&raw_lifetime, value, sizeof(raw_lifetime));
-            lifetime = nswap32(raw_lifetime);
+            lifetime = turn_read_u32(value);
             if (!lifetime) {
               to_delete = 1;
             }
