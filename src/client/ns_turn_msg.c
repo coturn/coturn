@@ -152,17 +152,19 @@ static void generate_random_nonce(unsigned char *nonce, size_t sz) {
 }
 
 static void turn_random_tid_size(void *id) {
-  uint32_t *ar = (uint32_t *)id;
+  uint8_t *ar = (uint8_t *)id;
 #if defined(FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION)
   if (ar) {
     for (size_t i = 0; i < 3; ++i) {
-      ar[i] = (uint32_t)turn_random_number();
+      const uint32_t r = (uint32_t)turn_random_number();
+      memcpy(ar + i * sizeof(r), &r, sizeof(r));
     }
   }
 #else
   if (!RAND_bytes((unsigned char *)ar, 12)) {
     for (size_t i = 0; i < 3; ++i) {
-      ar[i] = (uint32_t)turn_random_number();
+      const uint32_t r = (uint32_t)turn_random_number();
+      memcpy(ar + i * sizeof(r), &r, sizeof(r));
     }
   }
 #endif
@@ -397,7 +399,9 @@ int stun_get_command_message_len_str(const uint8_t *buf, size_t len) {
   }
 
   /* Validate the size the buffer claims to be */
-  const size_t bufLen = (size_t)(nswap16(((const uint16_t *)(buf))[1]) + STUN_HEADER_LENGTH);
+  uint16_t raw_len;
+  memcpy(&raw_len, buf + 2, sizeof(raw_len));
+  const size_t bufLen = (size_t)(nswap16(raw_len) + STUN_HEADER_LENGTH);
   if (bufLen > len) {
     return -1;
   }
@@ -409,7 +413,8 @@ static bool stun_set_command_message_len_str(uint8_t *buf, int len) {
   if (len < STUN_HEADER_LENGTH) {
     return false;
   }
-  ((uint16_t *)buf)[1] = nswap16((uint16_t)(len - STUN_HEADER_LENGTH));
+  const uint16_t raw_len = nswap16((uint16_t)(len - STUN_HEADER_LENGTH));
+  memcpy(buf + 2, &raw_len, sizeof(raw_len));
   return true;
 }
 
@@ -425,7 +430,9 @@ uint16_t stun_get_method_str(const uint8_t *buf, size_t len) {
     return (uint16_t)-1;
   }
 
-  const uint16_t tt = nswap16(((const uint16_t *)buf)[0]);
+  uint16_t raw_tt;
+  memcpy(&raw_tt, buf, sizeof(raw_tt));
+  const uint16_t tt = nswap16(raw_tt);
 
   return (tt & 0x000F) | ((tt & 0x00E0) >> 1) | ((tt & 0x0E00) >> 2) | ((tt & 0x3000) >> 2);
 }
@@ -434,21 +441,34 @@ uint16_t stun_get_msg_type_str(const uint8_t *buf, size_t len) {
   if (!buf || len < 2) {
     return (uint16_t)-1;
   }
-  return ((nswap16(((const uint16_t *)buf)[0])) & 0x3FFF);
+  uint16_t raw_type;
+  memcpy(&raw_type, buf, sizeof(raw_type));
+  return (nswap16(raw_type) & 0x3FFF);
 }
 
 bool is_channel_msg_str(const uint8_t *buf, size_t blen) {
-  return (buf && blen >= 4 && STUN_VALID_CHANNEL(nswap16(((const uint16_t *)buf)[0])));
+  if (!buf || blen < 4) {
+    return false;
+  }
+  uint16_t raw_chn;
+  memcpy(&raw_chn, buf, sizeof(raw_chn));
+  return STUN_VALID_CHANNEL(nswap16(raw_chn));
 }
 
 /////////////// message types /////////////////////////////////
 
 bool stun_is_command_message_str(const uint8_t *buf, size_t blen) {
   if (buf && blen >= STUN_HEADER_LENGTH) {
-    if (!STUN_VALID_CHANNEL(nswap16(((const uint16_t *)buf)[0]))) {
+    uint16_t raw_chn;
+    memcpy(&raw_chn, buf, sizeof(raw_chn));
+    if (!STUN_VALID_CHANNEL(nswap16(raw_chn))) {
       if ((((uint8_t)buf[0]) & ((uint8_t)(0xC0))) == 0) {
-        if (nswap32(((const uint32_t *)(buf))[1]) == STUN_MAGIC_COOKIE) {
-          const uint16_t len = nswap16(((const uint16_t *)(buf))[1]);
+        uint32_t raw_cookie;
+        memcpy(&raw_cookie, buf + 4, sizeof(raw_cookie));
+        if (nswap32(raw_cookie) == STUN_MAGIC_COOKIE) {
+          uint16_t raw_len;
+          memcpy(&raw_len, buf + 2, sizeof(raw_len));
+          const uint16_t len = nswap16(raw_len);
           if ((len & 0x0003) == 0) {
             if ((size_t)(len + STUN_HEADER_LENGTH) == blen) {
               return true;
@@ -463,13 +483,19 @@ bool stun_is_command_message_str(const uint8_t *buf, size_t blen) {
 
 bool old_stun_is_command_message_str(const uint8_t *buf, size_t blen, uint32_t *cookie) {
   if (buf && blen >= STUN_HEADER_LENGTH) {
-    if (!STUN_VALID_CHANNEL(nswap16(((const uint16_t *)buf)[0]))) {
+    uint16_t raw_chn;
+    memcpy(&raw_chn, buf, sizeof(raw_chn));
+    if (!STUN_VALID_CHANNEL(nswap16(raw_chn))) {
       if ((((uint8_t)buf[0]) & ((uint8_t)(0xC0))) == 0) {
-        if (nswap32(((const uint32_t *)(buf))[1]) != STUN_MAGIC_COOKIE) {
-          const uint16_t len = nswap16(((const uint16_t *)(buf))[1]);
+        uint32_t raw_cookie;
+        memcpy(&raw_cookie, buf + 4, sizeof(raw_cookie));
+        if (nswap32(raw_cookie) != STUN_MAGIC_COOKIE) {
+          uint16_t raw_len;
+          memcpy(&raw_len, buf + 2, sizeof(raw_len));
+          const uint16_t len = nswap16(raw_len);
           if ((len & 0x0003) == 0) {
             if ((size_t)(len + STUN_HEADER_LENGTH) == blen) {
-              *cookie = nswap32(((const uint32_t *)(buf))[1]);
+              *cookie = nswap32(raw_cookie);
               return true;
             }
           }
@@ -498,12 +524,14 @@ bool stun_is_command_message_full_check_str(const uint8_t *buf, size_t blen, int
   if (stun_attr_get_len(sar) != 4) {
     return false;
   }
-  const uint32_t *fingerprint = (const uint32_t *)stun_attr_get_value(sar);
+  const uint8_t *fingerprint = stun_attr_get_value(sar);
   if (!fingerprint) {
     return !must_check_fingerprint;
   }
-  const uint32_t crc32len = (uint32_t)((((const uint8_t *)fingerprint) - buf) - 4);
-  const bool ret = (*fingerprint == nswap32(ns_crc32(buf, crc32len) ^ ((uint32_t)FINGERPRINT_XOR)));
+  uint32_t raw_fingerprint;
+  memcpy(&raw_fingerprint, fingerprint, sizeof(raw_fingerprint));
+  const uint32_t crc32len = (uint32_t)((fingerprint - buf) - 4);
+  const bool ret = (raw_fingerprint == nswap32(ns_crc32(buf, crc32len) ^ ((uint32_t)FINGERPRINT_XOR)));
   if (ret && fingerprint_present) {
     *fingerprint_present = ret;
   }
@@ -647,18 +675,24 @@ void stun_init_buffer_str(uint8_t *buf, size_t *len) {
 void stun_init_command_str(uint16_t message_type, uint8_t *buf, size_t *len) {
   stun_init_buffer_str(buf, len);
   message_type &= (uint16_t)(0x3FFF);
-  ((uint16_t *)buf)[0] = nswap16(message_type);
-  ((uint16_t *)buf)[1] = 0;
-  ((uint32_t *)buf)[1] = nswap32(STUN_MAGIC_COOKIE);
+  const uint16_t raw_type = nswap16(message_type);
+  memcpy(buf, &raw_type, sizeof(raw_type));
+  buf[2] = 0;
+  buf[3] = 0;
+  const uint32_t raw_cookie = nswap32(STUN_MAGIC_COOKIE);
+  memcpy(buf + 4, &raw_cookie, sizeof(raw_cookie));
   stun_tid_generate_in_message_str(buf, NULL);
 }
 
 void old_stun_init_command_str(uint16_t message_type, uint8_t *buf, size_t *len, uint32_t cookie) {
   stun_init_buffer_str(buf, len);
   message_type &= (uint16_t)(0x3FFF);
-  ((uint16_t *)buf)[0] = nswap16(message_type);
-  ((uint16_t *)buf)[1] = 0;
-  ((uint32_t *)buf)[1] = nswap32(cookie);
+  const uint16_t raw_type = nswap16(message_type);
+  memcpy(buf, &raw_type, sizeof(raw_type));
+  buf[2] = 0;
+  buf[3] = 0;
+  const uint32_t raw_cookie = nswap32(cookie);
+  memcpy(buf + 4, &raw_cookie, sizeof(raw_cookie));
   stun_tid_generate_in_message_str(buf, NULL);
 }
 
@@ -806,8 +840,10 @@ bool stun_init_channel_message_str(uint16_t chnumber, uint8_t *buf, size_t *len,
   if (length < 0 || (MAX_STUN_MESSAGE_SIZE < (4 + length))) {
     return false;
   }
-  ((uint16_t *)(buf))[0] = nswap16(chnumber);
-  ((uint16_t *)(buf))[1] = nswap16((uint16_t)length);
+  const uint16_t raw_chn = nswap16(chnumber);
+  memcpy(buf, &raw_chn, sizeof(raw_chn));
+  const uint16_t raw_dlen = nswap16((uint16_t)length);
+  memcpy(buf + 2, &raw_dlen, sizeof(raw_dlen));
 
   if (do_padding && (rlen & 0x0003)) {
     const uint16_t padded = ((rlen >> 2) + 1) << 2;
@@ -830,7 +866,9 @@ bool stun_is_channel_message_str(const uint8_t *buf, size_t *blen, uint16_t *chn
     return false;
   }
 
-  const uint16_t chn = nswap16(((const uint16_t *)(buf))[0]);
+  uint16_t raw_chn;
+  memcpy(&raw_chn, buf, sizeof(raw_chn));
+  const uint16_t chn = nswap16(raw_chn);
   if (!STUN_VALID_CHANNEL(chn)) {
     return false;
   }
@@ -842,7 +880,7 @@ bool stun_is_channel_message_str(const uint8_t *buf, size_t *blen, uint16_t *chn
    * if the function later returns false (issue #1837). */
   const uint16_t blen16 = (*blen > (uint16_t)-1) ? (uint16_t)-1 : (uint16_t)*blen;
   datalen_actual = blen16 - 4;
-  datalen_header = ((const uint16_t *)buf)[1];
+  memcpy(&datalen_header, buf + 2, sizeof(datalen_header));
   datalen_header = nswap16(datalen_header);
 
   if (datalen_header > datalen_actual) {
@@ -956,15 +994,21 @@ int stun_get_message_len_str(uint8_t *buf, size_t blen, int padding, size_t *app
   if (buf && blen) {
     /* STUN request/response ? */
     if (buf && blen >= STUN_HEADER_LENGTH) {
-      if (!STUN_VALID_CHANNEL(nswap16(((const uint16_t *)buf)[0]))) {
+      uint16_t raw_chn;
+      memcpy(&raw_chn, buf, sizeof(raw_chn));
+      if (!STUN_VALID_CHANNEL(nswap16(raw_chn))) {
         if ((((uint8_t)buf[0]) & ((uint8_t)(0xC0))) == 0) {
-          if (nswap32(((const uint32_t *)(buf))[1]) == STUN_MAGIC_COOKIE) {
+          uint32_t raw_cookie;
+          memcpy(&raw_cookie, buf + 4, sizeof(raw_cookie));
+          if (nswap32(raw_cookie) == STUN_MAGIC_COOKIE) {
             /* Use uint32_t to avoid uint16_t truncation overflow when the body
              * length is near 0xFFFF: e.g. 65532 + STUN_HEADER_LENGTH (20) =
              * 65552, which wraps to 16 in uint16_t and lets the truncated value
              * pass the bounds check, desynchronizing TCP/TLS framing. Mirrors
              * the channel-data path below. */
-            uint32_t len = (uint32_t)nswap16(((const uint16_t *)(buf))[1]);
+            uint16_t raw_len;
+            memcpy(&raw_len, buf + 2, sizeof(raw_len));
+            uint32_t len = (uint32_t)nswap16(raw_len);
             if ((len & 0x0003u) == 0) {
               len += STUN_HEADER_LENGTH;
               if (len <= blen) {
@@ -988,13 +1032,17 @@ int stun_get_message_len_str(uint8_t *buf, size_t blen, int padding, size_t *app
 
     /* STUN channel ? */
     if (blen >= 4) {
-      const uint16_t chn = nswap16(((const uint16_t *)(buf))[0]);
+      uint16_t raw_chn;
+      memcpy(&raw_chn, buf, sizeof(raw_chn));
+      const uint16_t chn = nswap16(raw_chn);
       if (STUN_VALID_CHANNEL(chn)) {
 
         /* Use uint32_t to avoid uint16_t truncation overflow when data_len is
          * near 0xFFFF: 4 + 0xFFFF = 65539, which wraps to 3 in uint16_t and
          * causes TCP framing bypass (CVE candidate, issue #1837). */
-        uint32_t bret = 4u + (uint32_t)nswap16(((const uint16_t *)(buf))[1]);
+        uint16_t raw_dlen;
+        memcpy(&raw_dlen, buf + 2, sizeof(raw_dlen));
+        uint32_t bret = 4u + (uint32_t)nswap16(raw_dlen);
 
         *app_len = bret;
 
@@ -1553,13 +1601,13 @@ bool stun_attr_add_str(uint8_t *buf, size_t *len, uint16_t attr, const uint8_t *
 
   uint8_t *attr_start = buf + clen;
 
-  uint16_t *attr_start_16t = (uint16_t *)attr_start;
-
   stun_set_command_message_len_str(buf, newlen);
   *len = newlen;
 
-  attr_start_16t[0] = nswap16(attr);
-  attr_start_16t[1] = nswap16(alen);
+  const uint16_t raw_attr = nswap16(attr);
+  memcpy(attr_start, &raw_attr, sizeof(raw_attr));
+  const uint16_t raw_alen = nswap16((uint16_t)alen);
+  memcpy(attr_start + 2, &raw_alen, sizeof(raw_alen));
   if (alen > 0) {
     memcpy(attr_start + 4, avalue, alen);
   }
@@ -1726,7 +1774,8 @@ bool stun_attr_add_fingerprint_str(uint8_t *buf, size_t *len) {
     return false;
   }
   crc32 = ns_crc32(buf, (int)*len - 8);
-  *((uint32_t *)(buf + *len - 4)) = nswap32(crc32 ^ ((uint32_t)FINGERPRINT_XOR));
+  const uint32_t raw_fingerprint = nswap32(crc32 ^ ((uint32_t)FINGERPRINT_XOR));
+  memcpy(buf + *len - 4, &raw_fingerprint, sizeof(raw_fingerprint));
   return true;
 }
 ////////////// CRC ///////////////////////////////////////////////
@@ -2067,9 +2116,8 @@ int stun_attr_get_response_port_str(stun_attr_ref attr) {
 
 bool stun_attr_add_response_port_str(uint8_t *buf, size_t *len, uint16_t port) {
   uint8_t avalue[4] = {0, 0, 0, 0};
-  uint16_t *port_ptr = (uint16_t *)avalue;
-
-  *port_ptr = nswap16(port);
+  const uint16_t raw_port = nswap16(port);
+  memcpy(avalue, &raw_port, sizeof(raw_port));
 
   return stun_attr_add_str(buf, len, STUN_ATTRIBUTE_RESPONSE_PORT, avalue, 4);
 }
@@ -2336,13 +2384,15 @@ static bool encode_oauth_token_gcm(const uint8_t *server_name, encoded_oauth_tok
 
     size_t len = 0;
 
-    *((uint16_t *)(orig_field + len)) = nswap16(OAUTH_GCM_NONCE_SIZE);
+    const uint16_t raw_nonce_len = nswap16(OAUTH_GCM_NONCE_SIZE);
+    memcpy(orig_field + len, &raw_nonce_len, sizeof(raw_nonce_len));
     len += 2;
 
     memcpy(orig_field + len, nonce, OAUTH_GCM_NONCE_SIZE);
     len += OAUTH_GCM_NONCE_SIZE;
 
-    *((uint16_t *)(orig_field + len)) = nswap16(dtoken->enc_block.key_length);
+    const uint16_t raw_key_length = nswap16(dtoken->enc_block.key_length);
+    memcpy(orig_field + len, &raw_key_length, sizeof(raw_key_length));
     len += 2;
 
     memcpy(orig_field + len, dtoken->enc_block.mac_key, dtoken->enc_block.key_length);
@@ -2352,7 +2402,8 @@ static bool encode_oauth_token_gcm(const uint8_t *server_name, encoded_oauth_tok
     memcpy((orig_field + len), &ts, sizeof(ts));
     len += sizeof(ts);
 
-    *((uint32_t *)(orig_field + len)) = nswap32(dtoken->enc_block.lifetime);
+    const uint32_t raw_lifetime = nswap32(dtoken->enc_block.lifetime);
+    memcpy(orig_field + len, &raw_lifetime, sizeof(raw_lifetime));
     len += 4;
 
     const EVP_CIPHER *cipher = get_cipher_type(key->as_rs_alg);
@@ -2426,11 +2477,9 @@ static bool decode_oauth_token_gcm(const uint8_t *server_name, const encoded_oau
                                    oauth_token *dtoken) {
   if (server_name && etoken && key && dtoken) {
 
-    unsigned char snl[2];
-    memcpy(snl, (const unsigned char *)(etoken->token), 2);
-    const unsigned char *csnl = snl;
-
-    const uint16_t nonce_len = nswap16(*((const uint16_t *)csnl));
+    uint16_t raw_nonce_len;
+    memcpy(&raw_nonce_len, etoken->token, sizeof(raw_nonce_len));
+    const uint16_t nonce_len = nswap16(raw_nonce_len);
 
     if (nonce_len > OAUTH_MAX_NONCE_SIZE) {
       OAUTH_ERROR("%s: nonce length too large: %u > %u\n", __FUNCTION__, (unsigned)nonce_len,
@@ -2524,7 +2573,9 @@ static bool decode_oauth_token_gcm(const uint8_t *server_name, const encoded_oau
       OAUTH_ERROR("%s: decoded token too small: %d\n", __FUNCTION__, (int)outl);
       return false;
     }
-    dtoken->enc_block.key_length = nswap16(*((uint16_t *)(decoded_field + len)));
+    uint16_t raw_key_length;
+    memcpy(&raw_key_length, decoded_field + len, sizeof(raw_key_length));
+    dtoken->enc_block.key_length = nswap16(raw_key_length);
     len += sizeof(uint16_t);
 
     if (dtoken->enc_block.key_length > sizeof(dtoken->enc_block.mac_key)) {

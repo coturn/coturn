@@ -1595,7 +1595,10 @@ static int process_received_buffer(app_ur_session *elem, int is_tcp_data, app_tc
         while (sar) {
           int attr_type = stun_attr_get_type(sar);
           if (attr_type == STUN_ATTRIBUTE_CONNECTION_ID) {
-            cid = *((const uint32_t *)stun_attr_get_value(sar));
+            const uint8_t *value = stun_attr_get_value(sar);
+            if (value && (stun_attr_get_len(sar) == 4)) {
+              memcpy(&cid, value, sizeof(cid));
+            }
             break;
           }
           sar = stun_attr_get_next_str(elem->in_buffer.buf, elem->in_buffer.len, sar);
@@ -1649,7 +1652,10 @@ static int process_received_buffer(app_ur_session *elem, int is_tcp_data, app_tc
         while (sar) {
           int attr_type = stun_attr_get_type(sar);
           if (attr_type == STUN_ATTRIBUTE_CONNECTION_ID) {
-            cid = *((const uint32_t *)stun_attr_get_value(sar));
+            const uint8_t *value = stun_attr_get_value(sar);
+            if (value && (stun_attr_get_len(sar) == 4)) {
+              memcpy(&cid, value, sizeof(cid));
+            }
             break;
           }
           sar = stun_attr_get_next_str(elem->in_buffer.buf, elem->in_buffer.len, sar);

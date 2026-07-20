@@ -4,10 +4,18 @@
 
 #include <unity.h>
 
+#include <stdint.h>
 #include <string.h>
 
 void setUp(void) {}
 void tearDown(void) {}
+
+/* uint8_t arrays carry no alignment guarantee, so a fixed `raw + 1` is only
+ * misaligned when the array base happens to land on an even address. Pick the
+ * offset at runtime so the returned pointer always sits on an odd address and
+ * the misaligned-access regression tests below are deterministic. Callers
+ * must size `raw` with two bytes of headroom. */
+static uint8_t *misalign(uint8_t *raw) { return raw + 1 + ((uintptr_t)raw & 1); }
 
 static void test_init_request_produces_valid_stun_header(void) {
   uint8_t buf[1024] = {0};
@@ -317,8 +325,8 @@ static void test_attr_accessors_survive_misaligned_pointer(void) {
    * aligned base and confirm the accessors still decode it correctly
    * instead of crashing.
    */
-  uint8_t raw[1 + 8] = {0};
-  uint8_t *attr = raw + 1;
+  uint8_t raw[2 + 8] = {0};
+  uint8_t *attr = misalign(raw);
 
   attr[0] = (STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY >> 8) & 0xFF;
   attr[1] = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY & 0xFF;
@@ -349,8 +357,8 @@ static void test_value_accessors_survive_misaligned_pointer(void) {
    * attribute and confirm it still decodes the field correctly.
    */
   {
-    uint8_t raw[1 + 8] = {0};
-    uint8_t *attr = raw + 1;
+    uint8_t raw[2 + 8] = {0};
+    uint8_t *attr = misalign(raw);
     attr[0] = (STUN_ATTRIBUTE_CHANNEL_NUMBER >> 8) & 0xFF;
     attr[1] = STUN_ATTRIBUTE_CHANNEL_NUMBER & 0xFF;
     attr[2] = 0x00;
@@ -361,8 +369,8 @@ static void test_value_accessors_survive_misaligned_pointer(void) {
     TEST_ASSERT_EQUAL_UINT16(0x4000, stun_attr_get_channel_number(sar));
   }
   {
-    uint8_t raw[1 + 8] = {0};
-    uint8_t *attr = raw + 1;
+    uint8_t raw[2 + 8] = {0};
+    uint8_t *attr = misalign(raw);
     attr[0] = (STUN_ATTRIBUTE_BANDWIDTH >> 8) & 0xFF;
     attr[1] = STUN_ATTRIBUTE_BANDWIDTH & 0xFF;
     attr[2] = 0x00;
@@ -372,8 +380,8 @@ static void test_value_accessors_survive_misaligned_pointer(void) {
     TEST_ASSERT_EQUAL_UINT64(128, (uint64_t)stun_attr_get_bandwidth(sar));
   }
   {
-    uint8_t raw[1 + 8] = {0};
-    uint8_t *attr = raw + 1;
+    uint8_t raw[2 + 8] = {0};
+    uint8_t *attr = misalign(raw);
     attr[0] = (STUN_ATTRIBUTE_RESPONSE_PORT >> 8) & 0xFF;
     attr[1] = STUN_ATTRIBUTE_RESPONSE_PORT & 0xFF;
     attr[2] = 0x00;
@@ -383,6 +391,124 @@ static void test_value_accessors_survive_misaligned_pointer(void) {
     stun_attr_ref sar = attr;
     TEST_ASSERT_EQUAL_INT(12345, stun_attr_get_response_port_str(sar));
   }
+}
+
+static void test_message_build_and_parse_survive_misaligned_buffer(void) {
+  /* The message builders and header parsers (stun_init_command_str,
+   * stun_attr_add_str, stun_attr_add_fingerprint_str, stun_get_method_str,
+   * stun_is_command_message_str, stun_get_message_len_str, ...) used to
+   * access the wire buffer through casts to wider integer pointers — the
+   * store-side twin of the attribute-accessor reads already pinned by the
+   * misaligned tests above. Build and re-parse a complete message on a buffer
+   * one byte off an aligned base and confirm every step still works.
+   */
+  uint8_t raw[2 + 1024] = {0};
+  uint8_t *buf = misalign(raw);
+  size_t len = 0;
+
+  stun_init_request_str(STUN_METHOD_BINDING, buf, &len);
+  TEST_ASSERT_EQUAL_size_t(STUN_HEADER_LENGTH, len);
+
+  const uint16_t rport = 12345;
+  TEST_ASSERT_TRUE(stun_attr_add_response_port_str(buf, &len, rport));
+  TEST_ASSERT_TRUE(stun_attr_add_fingerprint_str(buf, &len));
+
+  TEST_ASSERT_TRUE(stun_is_command_message_str(buf, len));
+  TEST_ASSERT_TRUE(stun_is_request_str(buf, len));
+  TEST_ASSERT_EQUAL_UINT16(STUN_METHOD_BINDING, stun_get_method_str(buf, len));
+  TEST_ASSERT_EQUAL_UINT16(stun_make_request(STUN_METHOD_BINDING), stun_get_msg_type_str(buf, len));
+  TEST_ASSERT_EQUAL_INT((int)len, stun_get_command_message_len_str(buf, len));
+  TEST_ASSERT_FALSE(is_channel_msg_str(buf, len));
+
+  int fingerprint_present = 0;
+  TEST_ASSERT_TRUE(stun_is_command_message_full_check_str(buf, len, 1, &fingerprint_present));
+  TEST_ASSERT_TRUE(fingerprint_present);
+
+  stun_attr_ref sar = stun_attr_get_first_by_type_str(buf, len, STUN_ATTRIBUTE_RESPONSE_PORT);
+  TEST_ASSERT_NOT_NULL(sar);
+  TEST_ASSERT_EQUAL_INT((int)rport, stun_attr_get_response_port_str(sar));
+
+  size_t app_len = 0;
+  TEST_ASSERT_EQUAL_INT((int)len, stun_get_message_len_str(buf, len, 0, &app_len));
+  TEST_ASSERT_EQUAL_size_t(len, app_len);
+
+  /* Old (RFC 3489) header path: cookie is read and reported through the same
+   * previously-misaligned loads. */
+  {
+    uint8_t raw_old[2 + 64] = {0};
+    uint8_t *obuf = misalign(raw_old);
+    size_t olen = 0;
+    const uint32_t old_cookie = 0x12345678;
+    old_stun_init_command_str(stun_make_request(STUN_METHOD_BINDING), obuf, &olen, old_cookie);
+    uint32_t parsed_cookie = 0;
+    TEST_ASSERT_TRUE(old_stun_is_command_message_str(obuf, olen, &parsed_cookie));
+    TEST_ASSERT_EQUAL_UINT32(old_cookie, parsed_cookie);
+  }
+}
+
+static void test_channel_message_survives_misaligned_buffer(void) {
+  /* Channel-data framing (stun_init_channel_message_str,
+   * stun_is_channel_message_str, is_channel_msg_str, and the channel branch of
+   * stun_get_message_len_str) reads and writes the channel number and data
+   * length through what used to be direct wide-pointer access. Exercise the
+   * whole round trip on a misaligned buffer.
+   */
+  uint8_t raw[2 + 1024] = {0};
+  uint8_t *buf = misalign(raw);
+  size_t len = 0;
+  const uint16_t channel = 0x4001;
+  const int payload_len = 200;
+
+  TEST_ASSERT_TRUE(stun_init_channel_message_str(channel, buf, &len, payload_len, false));
+  TEST_ASSERT_EQUAL_size_t((size_t)(4 + payload_len), len);
+
+  TEST_ASSERT_TRUE(is_channel_msg_str(buf, len));
+  TEST_ASSERT_FALSE(stun_is_command_message_str(buf, len));
+
+  uint16_t parsed_channel = 0;
+  size_t blen = len;
+  TEST_ASSERT_TRUE(stun_is_channel_message_str(buf, &blen, &parsed_channel, false));
+  TEST_ASSERT_EQUAL_UINT16(channel, parsed_channel);
+
+  size_t app_len = 0;
+  TEST_ASSERT_EQUAL_INT((int)len, stun_get_message_len_str(buf, len, 0, &app_len));
+  TEST_ASSERT_EQUAL_size_t(len, app_len);
+}
+
+static void test_addr_attrs_survive_misaligned_buffer(void) {
+  /* stun_addr_encode/stun_addr_decode wrote and read the port and IPv4
+   * address fields through casts to wider integer pointers into the attribute
+   * body. Round-trip XOR-mapped (port and address are XORed with the magic
+   * cookie / transaction id) and plain address attributes, IPv4 and IPv6, on
+   * a message that sits one byte off an aligned base.
+   */
+  uint8_t raw[2 + 1024] = {0};
+  uint8_t *buf = misalign(raw);
+  size_t len = 0;
+  stun_tid tid = {0};
+  stun_init_success_response_str(STUN_METHOD_BINDING, buf, &len, &tid);
+
+  ioa_addr peer4 = {0};
+  ioa_addr peer6 = {0};
+  ioa_addr origin4 = {0};
+  TEST_ASSERT_EQUAL_INT(0, make_ioa_addr((const uint8_t *)"203.0.113.5", 43210, &peer4));
+  TEST_ASSERT_EQUAL_INT(0, make_ioa_addr((const uint8_t *)"2001:db8::1", 43211, &peer6));
+  TEST_ASSERT_EQUAL_INT(0, make_ioa_addr((const uint8_t *)"192.0.2.10", 3478, &origin4));
+
+  TEST_ASSERT_TRUE(stun_attr_add_addr_str(buf, &len, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS, &peer4));
+  TEST_ASSERT_TRUE(stun_attr_add_addr_str(buf, &len, STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &peer6));
+  TEST_ASSERT_TRUE(stun_attr_add_addr_str(buf, &len, STUN_ATTRIBUTE_RESPONSE_ORIGIN, &origin4));
+
+  ioa_addr got4 = {0};
+  ioa_addr got6 = {0};
+  ioa_addr got_origin = {0};
+  TEST_ASSERT_TRUE(stun_attr_get_first_addr_str(buf, len, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS, &got4, NULL));
+  TEST_ASSERT_TRUE(stun_attr_get_first_addr_str(buf, len, STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &got6, NULL));
+  TEST_ASSERT_TRUE(stun_attr_get_first_addr_str(buf, len, STUN_ATTRIBUTE_RESPONSE_ORIGIN, &got_origin, NULL));
+
+  TEST_ASSERT_TRUE(addr_eq(&peer4, &got4));
+  TEST_ASSERT_TRUE(addr_eq(&peer6, &got6));
+  TEST_ASSERT_TRUE(addr_eq(&origin4, &got_origin));
 }
 
 static void test_http_message_len_handles_non_null_terminated_buffer(void) {
@@ -414,6 +540,9 @@ int main(void) {
   RUN_TEST(test_rfc5780_other_address_and_response_origin_roundtrip);
   RUN_TEST(test_attr_accessors_survive_misaligned_pointer);
   RUN_TEST(test_value_accessors_survive_misaligned_pointer);
+  RUN_TEST(test_message_build_and_parse_survive_misaligned_buffer);
+  RUN_TEST(test_channel_message_survives_misaligned_buffer);
+  RUN_TEST(test_addr_attrs_survive_misaligned_buffer);
   RUN_TEST(test_http_message_len_handles_non_null_terminated_buffer);
   return UNITY_END();
 }
