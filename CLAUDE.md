@@ -177,6 +177,8 @@ Key style rules (LLVM-based):
 - Pointer alignment: right (`int *p`)
 - Brace style: attach (K&R)
 - Zero-initialize stack buffers at declaration: `uint8_t buf[N] = {0}` or `SomeStruct s = {0}`
+- Prefix new identifiers (functions, types, macros) with `turn_`, not `ns_` — the `ns_` names are
+  legacy; do not add new ones
 
 ## Memory allocation
 
@@ -588,5 +590,12 @@ docs/              # Protocol notes and configuration docs
 - **Uninitialized structs**: use `= {0}` for stack-allocated address structs (e.g., `ioa_addr`)
 - **Counter overflow in `turn_ports.c`**: `_turnports` uses `uint32_t low/high` counters; comparisons must be overflow-safe (use subtraction, not `>=`)
 - **Port bounds checks**: use `<= USHRT_MAX` (not `< USHRT_MAX`) when validating that an `int` holds a valid port — port 65535 is valid
+- **Wire-format field access**: read/write multi-byte STUN/TURN wire fields with the alignment-safe
+  helpers in [src/ns_turn_defs.h](src/ns_turn_defs.h) — `turn_read_u16/u32/u64(field)` and
+  `turn_write_u16/u32/u64(field, value)` (memcpy + network-byte-order swap). Never cast a wire byte
+  pointer to `uint16_t *`/`uint32_t *`/`uint64_t *` and dereference it: attributes sit at arbitrary
+  offsets, so the cast is undefined behavior and a SIGBUS on strict-alignment targets. For fields
+  that are **not** byte-swapped (CONNECTION-ID's as-is encoding, values already in network order),
+  use a plain `memcpy`, not the swapping helpers
 - **Error handling**: check return values of all OpenSSL/libevent calls; use `ERR_clear_error()` before HMAC operations
 - **Logging**: use `TURN_LOG_FUNC` macros, not `fprintf`/`perror`
