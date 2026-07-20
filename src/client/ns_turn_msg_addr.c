@@ -57,18 +57,22 @@ int stun_addr_encode(const ioa_addr *ca, uint8_t *cfield, int *clen, int xor_ed,
     if (xor_ed) {
 
       /* Port */
-      ((uint16_t *)cfield)[1] = (ca->s4.sin_port) ^ nswap16(mc >> 16);
+      const uint16_t port = (ca->s4.sin_port) ^ nswap16(mc >> 16);
+      memcpy(cfield + 2, &port, sizeof(port));
 
       /* Address */
-      ((uint32_t *)cfield)[1] = (ca->s4.sin_addr.s_addr) ^ nswap32(mc);
+      const uint32_t addr = (ca->s4.sin_addr.s_addr) ^ nswap32(mc);
+      memcpy(cfield + 4, &addr, sizeof(addr));
 
     } else {
 
       /* Port */
-      ((uint16_t *)cfield)[1] = ca->s4.sin_port;
+      const uint16_t port = ca->s4.sin_port;
+      memcpy(cfield + 2, &port, sizeof(port));
 
       /* Address */
-      ((uint32_t *)cfield)[1] = ca->s4.sin_addr.s_addr;
+      const uint32_t addr = ca->s4.sin_addr.s_addr;
+      memcpy(cfield + 4, &addr, sizeof(addr));
     }
 
   } else if (ca->ss.sa_family == AF_INET6) {
@@ -88,7 +92,8 @@ int stun_addr_encode(const ioa_addr *ca, uint8_t *cfield, int *clen, int xor_ed,
       uint32_t magic = nswap32(mc);
 
       /* Port */
-      ((uint16_t *)cfield)[1] = ca->s6.sin6_port ^ nswap16(mc >> 16);
+      const uint16_t port = ca->s6.sin6_port ^ nswap16(mc >> 16);
+      memcpy(cfield + 2, &port, sizeof(port));
 
       /* Address */
 
@@ -102,7 +107,8 @@ int stun_addr_encode(const ioa_addr *ca, uint8_t *cfield, int *clen, int xor_ed,
     } else {
 
       /* Port */
-      ((uint16_t *)cfield)[1] = ca->s6.sin6_port;
+      const uint16_t port = ca->s6.sin6_port;
+      memcpy(cfield + 2, &port, sizeof(port));
 
       /* Address */
       memcpy(((uint8_t *)cfield) + 4, &ca->s6.sin6_addr, 16);
@@ -146,10 +152,10 @@ int stun_addr_decode(ioa_addr *ca, const uint8_t *cfield, int len, int xor_ed, u
     /* IPv4 address */
 
     /* Port */
-    ca->s4.sin_port = ((const uint16_t *)cfield)[1];
+    memcpy(&ca->s4.sin_port, cfield + 2, sizeof(ca->s4.sin_port));
 
     /* Address */
-    ca->s4.sin_addr.s_addr = ((const uint32_t *)cfield)[1];
+    memcpy(&ca->s4.sin_addr.s_addr, cfield + 4, sizeof(ca->s4.sin_addr.s_addr));
 
     if (xor_ed) {
       ca->s4.sin_port ^= nswap16(mc >> 16);
@@ -165,7 +171,7 @@ int stun_addr_decode(ioa_addr *ca, const uint8_t *cfield, int len, int xor_ed, u
     }
 
     /* Port */
-    ca->s6.sin6_port = ((const uint16_t *)cfield)[1];
+    memcpy(&ca->s6.sin6_port, cfield + 2, sizeof(ca->s6.sin6_port));
 
     /* Address */
     memcpy(&ca->s6.sin6_addr, ((const uint8_t *)cfield) + 4, 16);

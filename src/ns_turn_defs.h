@@ -115,6 +115,48 @@ static inline uint64_t _ioa_ntoh64(uint64_t v) {
 #define ioa_ntoh64 _ioa_ntoh64
 #define ioa_hton64 _ioa_ntoh64
 
+/* Alignment-safe access to network-order (big-endian) wire fields.
+ *
+ * STUN attributes and headers sit at arbitrary byte offsets inside receive
+ * buffers, so casting the byte pointer to a wider integer pointer and
+ * dereferencing it is undefined behavior (SIGBUS on strict-alignment
+ * architectures). These helpers go through memcpy — which compilers fold
+ * into a single load/store — and convert to/from host byte order.
+ * For fields that are NOT byte-swapped (e.g. values kept in network order
+ * or CONNECTION-ID's as-is encoding), use a plain memcpy instead. */
+static inline uint16_t turn_read_u16(const void *field) {
+  uint16_t v;
+  memcpy(&v, field, sizeof(v));
+  return nswap16(v);
+}
+
+static inline uint32_t turn_read_u32(const void *field) {
+  uint32_t v;
+  memcpy(&v, field, sizeof(v));
+  return nswap32(v);
+}
+
+static inline uint64_t turn_read_u64(const void *field) {
+  uint64_t v;
+  memcpy(&v, field, sizeof(v));
+  return nswap64(v);
+}
+
+static inline void turn_write_u16(void *field, uint16_t v) {
+  const uint16_t raw = nswap16(v);
+  memcpy(field, &raw, sizeof(raw));
+}
+
+static inline void turn_write_u32(void *field, uint32_t v) {
+  const uint32_t raw = nswap32(v);
+  memcpy(field, &raw, sizeof(raw));
+}
+
+static inline void turn_write_u64(void *field, uint64_t v) {
+  const uint64_t raw = nswap64(v);
+  memcpy(field, &raw, sizeof(raw));
+}
+
 #if defined(WINDOWS)
 static inline int socket_errno(void) { return WSAGetLastError(); }
 static inline int socket_enomem(void) { return socket_errno() == WSA_NOT_ENOUGH_MEMORY; }

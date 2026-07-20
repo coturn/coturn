@@ -152,17 +152,19 @@ static void generate_random_nonce(unsigned char *nonce, size_t sz) {
 }
 
 static void turn_random_tid_size(void *id) {
-  uint32_t *ar = (uint32_t *)id;
+  uint8_t *ar = (uint8_t *)id;
 #if defined(FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION)
   if (ar) {
     for (size_t i = 0; i < 3; ++i) {
-      ar[i] = (uint32_t)turn_random_number();
+      const uint32_t r = (uint32_t)turn_random_number();
+      memcpy(ar + i * sizeof(r), &r, sizeof(r));
     }
   }
 #else
   if (!RAND_bytes((unsigned char *)ar, 12)) {
     for (size_t i = 0; i < 3; ++i) {
-      ar[i] = (uint32_t)turn_random_number();
+      const uint32_t r = (uint32_t)turn_random_number();
+      memcpy(ar + i * sizeof(r), &r, sizeof(r));
     }
   }
 #endif
@@ -397,7 +399,7 @@ int stun_get_command_message_len_str(const uint8_t *buf, size_t len) {
   }
 
   /* Validate the size the buffer claims to be */
-  const size_t bufLen = (size_t)(nswap16(((const uint16_t *)(buf))[1]) + STUN_HEADER_LENGTH);
+  const size_t bufLen = (size_t)(turn_read_u16(buf + 2) + STUN_HEADER_LENGTH);
   if (bufLen > len) {
     return -1;
   }
@@ -409,7 +411,7 @@ static bool stun_set_command_message_len_str(uint8_t *buf, int len) {
   if (len < STUN_HEADER_LENGTH) {
     return false;
   }
-  ((uint16_t *)buf)[1] = nswap16((uint16_t)(len - STUN_HEADER_LENGTH));
+  turn_write_u16(buf + 2, (uint16_t)(len - STUN_HEADER_LENGTH));
   return true;
 }
 
@@ -425,7 +427,7 @@ uint16_t stun_get_method_str(const uint8_t *buf, size_t len) {
     return (uint16_t)-1;
   }
 
-  const uint16_t tt = nswap16(((const uint16_t *)buf)[0]);
+  const uint16_t tt = turn_read_u16(buf);
 
   return (tt & 0x000F) | ((tt & 0x00E0) >> 1) | ((tt & 0x0E00) >> 2) | ((tt & 0x3000) >> 2);
 }
@@ -434,21 +436,21 @@ uint16_t stun_get_msg_type_str(const uint8_t *buf, size_t len) {
   if (!buf || len < 2) {
     return (uint16_t)-1;
   }
-  return ((nswap16(((const uint16_t *)buf)[0])) & 0x3FFF);
+  return (turn_read_u16(buf) & 0x3FFF);
 }
 
 bool is_channel_msg_str(const uint8_t *buf, size_t blen) {
-  return (buf && blen >= 4 && STUN_VALID_CHANNEL(nswap16(((const uint16_t *)buf)[0])));
+  return (buf && blen >= 4 && STUN_VALID_CHANNEL(turn_read_u16(buf)));
 }
 
 /////////////// message types /////////////////////////////////
 
 bool stun_is_command_message_str(const uint8_t *buf, size_t blen) {
   if (buf && blen >= STUN_HEADER_LENGTH) {
-    if (!STUN_VALID_CHANNEL(nswap16(((const uint16_t *)buf)[0]))) {
+    if (!STUN_VALID_CHANNEL(turn_read_u16(buf))) {
       if ((((uint8_t)buf[0]) & ((uint8_t)(0xC0))) == 0) {
-        if (nswap32(((const uint32_t *)(buf))[1]) == STUN_MAGIC_COOKIE) {
-          const uint16_t len = nswap16(((const uint16_t *)(buf))[1]);
+        if (turn_read_u32(buf + 4) == STUN_MAGIC_COOKIE) {
+          const uint16_t len = turn_read_u16(buf + 2);
           if ((len & 0x0003) == 0) {
             if ((size_t)(len + STUN_HEADER_LENGTH) == blen) {
               return true;
@@ -463,13 +465,14 @@ bool stun_is_command_message_str(const uint8_t *buf, size_t blen) {
 
 bool old_stun_is_command_message_str(const uint8_t *buf, size_t blen, uint32_t *cookie) {
   if (buf && blen >= STUN_HEADER_LENGTH) {
-    if (!STUN_VALID_CHANNEL(nswap16(((const uint16_t *)buf)[0]))) {
+    if (!STUN_VALID_CHANNEL(turn_read_u16(buf))) {
       if ((((uint8_t)buf[0]) & ((uint8_t)(0xC0))) == 0) {
-        if (nswap32(((const uint32_t *)(buf))[1]) != STUN_MAGIC_COOKIE) {
-          const uint16_t len = nswap16(((const uint16_t *)(buf))[1]);
+        const uint32_t msg_cookie = turn_read_u32(buf + 4);
+        if (msg_cookie != STUN_MAGIC_COOKIE) {
+          const uint16_t len = turn_read_u16(buf + 2);
           if ((len & 0x0003) == 0) {
             if ((size_t)(len + STUN_HEADER_LENGTH) == blen) {
-              *cookie = nswap32(((const uint32_t *)(buf))[1]);
+              *cookie = msg_cookie;
               return true;
             }
           }
@@ -498,12 +501,12 @@ bool stun_is_command_message_full_check_str(const uint8_t *buf, size_t blen, int
   if (stun_attr_get_len(sar) != 4) {
     return false;
   }
-  const uint32_t *fingerprint = (const uint32_t *)stun_attr_get_value(sar);
+  const uint8_t *fingerprint = stun_attr_get_value(sar);
   if (!fingerprint) {
     return !must_check_fingerprint;
   }
-  const uint32_t crc32len = (uint32_t)((((const uint8_t *)fingerprint) - buf) - 4);
-  const bool ret = (*fingerprint == nswap32(ns_crc32(buf, crc32len) ^ ((uint32_t)FINGERPRINT_XOR)));
+  const uint32_t crc32len = (uint32_t)((fingerprint - buf) - 4);
+  const bool ret = (turn_read_u32(fingerprint) == (ns_crc32(buf, crc32len) ^ ((uint32_t)FINGERPRINT_XOR)));
   if (ret && fingerprint_present) {
     *fingerprint_present = ret;
   }
@@ -647,18 +650,18 @@ void stun_init_buffer_str(uint8_t *buf, size_t *len) {
 void stun_init_command_str(uint16_t message_type, uint8_t *buf, size_t *len) {
   stun_init_buffer_str(buf, len);
   message_type &= (uint16_t)(0x3FFF);
-  ((uint16_t *)buf)[0] = nswap16(message_type);
-  ((uint16_t *)buf)[1] = 0;
-  ((uint32_t *)buf)[1] = nswap32(STUN_MAGIC_COOKIE);
+  turn_write_u16(buf, message_type);
+  turn_write_u16(buf + 2, 0);
+  turn_write_u32(buf + 4, STUN_MAGIC_COOKIE);
   stun_tid_generate_in_message_str(buf, NULL);
 }
 
 void old_stun_init_command_str(uint16_t message_type, uint8_t *buf, size_t *len, uint32_t cookie) {
   stun_init_buffer_str(buf, len);
   message_type &= (uint16_t)(0x3FFF);
-  ((uint16_t *)buf)[0] = nswap16(message_type);
-  ((uint16_t *)buf)[1] = 0;
-  ((uint32_t *)buf)[1] = nswap32(cookie);
+  turn_write_u16(buf, message_type);
+  turn_write_u16(buf + 2, 0);
+  turn_write_u32(buf + 4, cookie);
   stun_tid_generate_in_message_str(buf, NULL);
 }
 
@@ -806,8 +809,8 @@ bool stun_init_channel_message_str(uint16_t chnumber, uint8_t *buf, size_t *len,
   if (length < 0 || (MAX_STUN_MESSAGE_SIZE < (4 + length))) {
     return false;
   }
-  ((uint16_t *)(buf))[0] = nswap16(chnumber);
-  ((uint16_t *)(buf))[1] = nswap16((uint16_t)length);
+  turn_write_u16(buf, chnumber);
+  turn_write_u16(buf + 2, (uint16_t)length);
 
   if (do_padding && (rlen & 0x0003)) {
     const uint16_t padded = ((rlen >> 2) + 1) << 2;
@@ -830,7 +833,7 @@ bool stun_is_channel_message_str(const uint8_t *buf, size_t *blen, uint16_t *chn
     return false;
   }
 
-  const uint16_t chn = nswap16(((const uint16_t *)(buf))[0]);
+  const uint16_t chn = turn_read_u16(buf);
   if (!STUN_VALID_CHANNEL(chn)) {
     return false;
   }
@@ -842,8 +845,7 @@ bool stun_is_channel_message_str(const uint8_t *buf, size_t *blen, uint16_t *chn
    * if the function later returns false (issue #1837). */
   const uint16_t blen16 = (*blen > (uint16_t)-1) ? (uint16_t)-1 : (uint16_t)*blen;
   datalen_actual = blen16 - 4;
-  datalen_header = ((const uint16_t *)buf)[1];
-  datalen_header = nswap16(datalen_header);
+  datalen_header = turn_read_u16(buf + 2);
 
   if (datalen_header > datalen_actual) {
     return false;
@@ -956,15 +958,15 @@ int stun_get_message_len_str(uint8_t *buf, size_t blen, int padding, size_t *app
   if (buf && blen) {
     /* STUN request/response ? */
     if (buf && blen >= STUN_HEADER_LENGTH) {
-      if (!STUN_VALID_CHANNEL(nswap16(((const uint16_t *)buf)[0]))) {
+      if (!STUN_VALID_CHANNEL(turn_read_u16(buf))) {
         if ((((uint8_t)buf[0]) & ((uint8_t)(0xC0))) == 0) {
-          if (nswap32(((const uint32_t *)(buf))[1]) == STUN_MAGIC_COOKIE) {
+          if (turn_read_u32(buf + 4) == STUN_MAGIC_COOKIE) {
             /* Use uint32_t to avoid uint16_t truncation overflow when the body
              * length is near 0xFFFF: e.g. 65532 + STUN_HEADER_LENGTH (20) =
              * 65552, which wraps to 16 in uint16_t and lets the truncated value
              * pass the bounds check, desynchronizing TCP/TLS framing. Mirrors
              * the channel-data path below. */
-            uint32_t len = (uint32_t)nswap16(((const uint16_t *)(buf))[1]);
+            uint32_t len = (uint32_t)turn_read_u16(buf + 2);
             if ((len & 0x0003u) == 0) {
               len += STUN_HEADER_LENGTH;
               if (len <= blen) {
@@ -988,13 +990,13 @@ int stun_get_message_len_str(uint8_t *buf, size_t blen, int padding, size_t *app
 
     /* STUN channel ? */
     if (blen >= 4) {
-      const uint16_t chn = nswap16(((const uint16_t *)(buf))[0]);
+      const uint16_t chn = turn_read_u16(buf);
       if (STUN_VALID_CHANNEL(chn)) {
 
         /* Use uint32_t to avoid uint16_t truncation overflow when data_len is
          * near 0xFFFF: 4 + 0xFFFF = 65539, which wraps to 3 in uint16_t and
          * causes TCP framing bypass (CVE candidate, issue #1837). */
-        uint32_t bret = 4u + (uint32_t)nswap16(((const uint16_t *)(buf))[1]);
+        uint32_t bret = 4u + (uint32_t)turn_read_u16(buf + 2);
 
         *app_len = bret;
 
@@ -1343,27 +1345,21 @@ turn_time_t stun_adjust_allocate_lifetime(turn_time_t lifetime, turn_time_t max_
 
 int stun_attr_get_type(stun_attr_ref attr) {
   if (attr) {
-    uint16_t val;
-    memcpy(&val, attr, sizeof(val));
-    return (int)(nswap16(val));
+    return (int)turn_read_u16(attr);
   }
   return -1;
 }
 
 int stun_attr_get_len(stun_attr_ref attr) {
   if (attr) {
-    uint16_t val;
-    memcpy(&val, (const uint8_t *)attr + 2, sizeof(val));
-    return (int)(nswap16(val));
+    return (int)turn_read_u16((const uint8_t *)attr + 2);
   }
   return -1;
 }
 
 const uint8_t *stun_attr_get_value(stun_attr_ref attr) {
   if (attr) {
-    uint16_t val;
-    memcpy(&val, (const uint8_t *)attr + 2, sizeof(val));
-    const int len = (int)(nswap16(val));
+    const int len = (int)turn_read_u16((const uint8_t *)attr + 2);
     if (len < 1) {
       return NULL;
     }
@@ -1374,9 +1370,7 @@ const uint8_t *stun_attr_get_value(stun_attr_ref attr) {
 
 int stun_get_requested_address_family(stun_attr_ref attr) {
   if (attr) {
-    uint16_t raw_len;
-    memcpy(&raw_len, (const uint8_t *)attr + 2, sizeof(raw_len));
-    const int len = (int)(nswap16(raw_len));
+    const int len = (int)turn_read_u16((const uint8_t *)attr + 2);
     if (len != 4) {
       return STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_INVALID;
     }
@@ -1396,9 +1390,7 @@ uint16_t stun_attr_get_channel_number(stun_attr_ref attr) {
   if (attr) {
     const uint8_t *value = stun_attr_get_value(attr);
     if (value && (stun_attr_get_len(attr) >= 2)) {
-      uint16_t raw_cn;
-      memcpy(&raw_cn, value, sizeof(raw_cn));
-      const uint16_t cn = nswap16(raw_cn);
+      const uint16_t cn = turn_read_u16(value);
       if (STUN_VALID_CHANNEL(cn)) {
         return cn;
       }
@@ -1411,9 +1403,7 @@ band_limit_t stun_attr_get_bandwidth(stun_attr_ref attr) {
   if (attr) {
     const uint8_t *value = stun_attr_get_value(attr);
     if (value && (stun_attr_get_len(attr) >= 4)) {
-      uint32_t raw_bps;
-      memcpy(&raw_bps, value, sizeof(raw_bps));
-      const uint32_t bps = nswap32(raw_bps);
+      const uint32_t bps = turn_read_u32(value);
       return (band_limit_t)(bps << 7);
     }
   }
@@ -1424,9 +1414,7 @@ uint64_t stun_attr_get_reservation_token_value(stun_attr_ref attr) {
   if (attr) {
     const uint8_t *value = stun_attr_get_value(attr);
     if (value && (stun_attr_get_len(attr) == 8)) {
-      uint64_t token;
-      memcpy(&token, value, sizeof(uint64_t));
-      return nswap64(token);
+      return turn_read_u64(value);
     }
   }
   return 0;
@@ -1553,13 +1541,11 @@ bool stun_attr_add_str(uint8_t *buf, size_t *len, uint16_t attr, const uint8_t *
 
   uint8_t *attr_start = buf + clen;
 
-  uint16_t *attr_start_16t = (uint16_t *)attr_start;
-
   stun_set_command_message_len_str(buf, newlen);
   *len = newlen;
 
-  attr_start_16t[0] = nswap16(attr);
-  attr_start_16t[1] = nswap16(alen);
+  turn_write_u16(attr_start, attr);
+  turn_write_u16(attr_start + 2, (uint16_t)alen);
   if (alen > 0) {
     memcpy(attr_start + 4, avalue, alen);
   }
@@ -1726,7 +1712,7 @@ bool stun_attr_add_fingerprint_str(uint8_t *buf, size_t *len) {
     return false;
   }
   crc32 = ns_crc32(buf, (int)*len - 8);
-  *((uint32_t *)(buf + *len - 4)) = nswap32(crc32 ^ ((uint32_t)FINGERPRINT_XOR));
+  turn_write_u32(buf + *len - 4, crc32 ^ ((uint32_t)FINGERPRINT_XOR));
   return true;
 }
 ////////////// CRC ///////////////////////////////////////////////
@@ -2057,9 +2043,7 @@ int stun_attr_get_response_port_str(stun_attr_ref attr) {
   if (stun_attr_get_len(attr) >= 2) {
     const uint8_t *value = stun_attr_get_value(attr);
     if (value) {
-      uint16_t raw_port;
-      memcpy(&raw_port, value, sizeof(raw_port));
-      return nswap16(raw_port);
+      return turn_read_u16(value);
     }
   }
   return -1;
@@ -2067,9 +2051,7 @@ int stun_attr_get_response_port_str(stun_attr_ref attr) {
 
 bool stun_attr_add_response_port_str(uint8_t *buf, size_t *len, uint16_t port) {
   uint8_t avalue[4] = {0, 0, 0, 0};
-  uint16_t *port_ptr = (uint16_t *)avalue;
-
-  *port_ptr = nswap16(port);
+  turn_write_u16(avalue, port);
 
   return stun_attr_add_str(buf, len, STUN_ATTRIBUTE_RESPONSE_PORT, avalue, 4);
 }
@@ -2336,23 +2318,22 @@ static bool encode_oauth_token_gcm(const uint8_t *server_name, encoded_oauth_tok
 
     size_t len = 0;
 
-    *((uint16_t *)(orig_field + len)) = nswap16(OAUTH_GCM_NONCE_SIZE);
+    turn_write_u16(orig_field + len, OAUTH_GCM_NONCE_SIZE);
     len += 2;
 
     memcpy(orig_field + len, nonce, OAUTH_GCM_NONCE_SIZE);
     len += OAUTH_GCM_NONCE_SIZE;
 
-    *((uint16_t *)(orig_field + len)) = nswap16(dtoken->enc_block.key_length);
+    turn_write_u16(orig_field + len, dtoken->enc_block.key_length);
     len += 2;
 
     memcpy(orig_field + len, dtoken->enc_block.mac_key, dtoken->enc_block.key_length);
     len += dtoken->enc_block.key_length;
 
-    uint64_t ts = nswap64(dtoken->enc_block.timestamp);
-    memcpy((orig_field + len), &ts, sizeof(ts));
-    len += sizeof(ts);
+    turn_write_u64(orig_field + len, dtoken->enc_block.timestamp);
+    len += sizeof(uint64_t);
 
-    *((uint32_t *)(orig_field + len)) = nswap32(dtoken->enc_block.lifetime);
+    turn_write_u32(orig_field + len, dtoken->enc_block.lifetime);
     len += 4;
 
     const EVP_CIPHER *cipher = get_cipher_type(key->as_rs_alg);
@@ -2426,11 +2407,7 @@ static bool decode_oauth_token_gcm(const uint8_t *server_name, const encoded_oau
                                    oauth_token *dtoken) {
   if (server_name && etoken && key && dtoken) {
 
-    unsigned char snl[2];
-    memcpy(snl, (const unsigned char *)(etoken->token), 2);
-    const unsigned char *csnl = snl;
-
-    const uint16_t nonce_len = nswap16(*((const uint16_t *)csnl));
+    const uint16_t nonce_len = turn_read_u16(etoken->token);
 
     if (nonce_len > OAUTH_MAX_NONCE_SIZE) {
       OAUTH_ERROR("%s: nonce length too large: %u > %u\n", __FUNCTION__, (unsigned)nonce_len,
@@ -2524,7 +2501,7 @@ static bool decode_oauth_token_gcm(const uint8_t *server_name, const encoded_oau
       OAUTH_ERROR("%s: decoded token too small: %d\n", __FUNCTION__, (int)outl);
       return false;
     }
-    dtoken->enc_block.key_length = nswap16(*((uint16_t *)(decoded_field + len)));
+    dtoken->enc_block.key_length = turn_read_u16(decoded_field + len);
     len += sizeof(uint16_t);
 
     if (dtoken->enc_block.key_length > sizeof(dtoken->enc_block.mac_key)) {
@@ -2541,15 +2518,11 @@ static bool decode_oauth_token_gcm(const uint8_t *server_name, const encoded_oau
     memcpy(dtoken->enc_block.mac_key, decoded_field + len, dtoken->enc_block.key_length);
     len += dtoken->enc_block.key_length;
 
-    uint64_t ts;
-    memcpy(&ts, (decoded_field + len), sizeof(ts));
-    dtoken->enc_block.timestamp = nswap64(ts);
-    len += sizeof(ts);
+    dtoken->enc_block.timestamp = turn_read_u64(decoded_field + len);
+    len += sizeof(uint64_t);
 
-    uint32_t lt;
-    memcpy(&lt, (decoded_field + len), sizeof(lt));
-    dtoken->enc_block.lifetime = nswap32(lt);
-    len += sizeof(lt);
+    dtoken->enc_block.lifetime = turn_read_u32(decoded_field + len);
+    len += sizeof(uint32_t);
 
     return true;
   }

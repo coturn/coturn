@@ -1274,7 +1274,7 @@ static int handle_turn_allocate(turn_turnserver *server, ts_ur_super_session *ss
             *err_code = 400;
             *reason = (const uint8_t *)"Wrong Lifetime Data";
           } else {
-            lifetime = nswap32(*((const uint32_t *)value));
+            lifetime = turn_read_u32(value);
           }
         }
       } break;
@@ -1808,7 +1808,7 @@ static int handle_turn_refresh(turn_turnserver *server, ts_ur_super_session *ss,
             *err_code = 400;
             *reason = (const uint8_t *)"Wrong lifetime field data";
           } else {
-            lifetime = nswap32(*((const uint32_t *)value));
+            lifetime = turn_read_u32(value);
             if (!lifetime) {
               to_delete = 1;
             }
@@ -2612,7 +2612,7 @@ static int handle_turn_connection_bind(turn_turnserver *server, ts_ur_super_sess
             *err_code = 400;
             *reason = (const uint8_t *)"Wrong Connection ID field data";
           } else {
-            id = *((const uint32_t *)value); // AS-IS encoding, no conversion to/from network byte order
+            memcpy(&id, value, sizeof(id)); // AS-IS encoding, no conversion to/from network byte order
           }
         }
       } break;
