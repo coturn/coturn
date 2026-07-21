@@ -2985,6 +2985,10 @@ static int handle_turn_binding(turn_turnserver *server, ts_ur_super_session *ss,
   const SOCKET_TYPE st = get_ioa_socket_type(ss->client_socket);
   int use_reflected_from = 0;
 
+  /* Every incoming Binding request is counted here, exactly once; the matching
+   * response/error is counted where the reply is actually sent out. */
+  stun_report_binding(ss, STUN_PROMETHEUS_METRIC_TYPE_REQUEST);
+
   if (!(ss->client_socket)) {
     return -1;
   }
@@ -3076,12 +3080,7 @@ static int handle_turn_binding(turn_turnserver *server, ts_ur_super_session *ss,
 
   if (*ua_num > 0) {
     *err_code = 420;
-    stun_report_binding(ss, STUN_PROMETHEUS_METRIC_TYPE_ERROR);
-  } else if (*err_code) {
-    stun_report_binding(ss, STUN_PROMETHEUS_METRIC_TYPE_ERROR);
-
-  } else if (ss->client_socket && get_remote_addr_from_ioa_socket(ss->client_socket)) {
-    stun_report_binding(ss, STUN_PROMETHEUS_METRIC_TYPE_REQUEST);
+  } else if (!(*err_code) && ss->client_socket && get_remote_addr_from_ioa_socket(ss->client_socket)) {
 
     size_t len = ioa_network_buffer_get_size(nbh);
     if (stun_set_binding_response_str(ioa_network_buffer_data(nbh), &len, tid,
@@ -4204,6 +4203,10 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
       ioa_network_buffer_set_size(nbh, len);
     }
 
+    if (method == STUN_METHOD_BINDING) {
+      stun_report_binding(ss, err_code ? STUN_PROMETHEUS_METRIC_TYPE_ERROR : STUN_PROMETHEUS_METRIC_TYPE_RESPONSE);
+    }
+
     if (err_code) {
       if (server->verbose) {
         log_method(ss, "message", err_code, reason);
@@ -4277,6 +4280,7 @@ static int handle_old_stun_command(turn_turnserver *server, ts_ur_super_session 
         }
 
         send_turn_message_to(server, nbh, &response_origin, &response_destination);
+        stun_report_binding(ss, STUN_PROMETHEUS_METRIC_TYPE_RESPONSE);
 
         no_response = 1;
       }
@@ -4332,6 +4336,10 @@ static int handle_old_stun_command(turn_turnserver *server, ts_ur_super_session 
       size_t len = ioa_network_buffer_get_size(nbh);
       stun_attr_add_str(ioa_network_buffer_data(nbh), &len, OLD_STUN_ATTRIBUTE_SERVER, software, newsz);
       ioa_network_buffer_set_size(nbh, len);
+    }
+
+    if (method == STUN_METHOD_BINDING) {
+      stun_report_binding(ss, err_code ? STUN_PROMETHEUS_METRIC_TYPE_ERROR : STUN_PROMETHEUS_METRIC_TYPE_RESPONSE);
     }
 
     if (err_code) {
