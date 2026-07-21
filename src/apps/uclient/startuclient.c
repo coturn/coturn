@@ -570,7 +570,9 @@ beg_allocate:
                   }
                 }
 
-                sar = stun_attr_get_next(response_message, sar);
+                /* Integrity was checked above; stop at MESSAGE-INTEGRITY so a
+                 * relay address appended past the HMAC is never accepted. */
+                sar = stun_attr_get_next_covered(response_message, sar);
               }
 
               if (!found) {

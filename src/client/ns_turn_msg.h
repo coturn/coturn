@@ -158,6 +158,25 @@ uint64_t stun_attr_get_reservation_token_value(stun_attr_ref attr);
 stun_attr_ref stun_attr_get_first_by_type_str(const uint8_t *buf, size_t len, uint16_t attr_type);
 stun_attr_ref stun_attr_get_first_str(const uint8_t *buf, size_t len);
 stun_attr_ref stun_attr_get_next_str(const uint8_t *buf, size_t len, stun_attr_ref prev);
+/**
+ * Like stun_attr_get_next_str(), but stops once MESSAGE-INTEGRITY has been
+ * yielded. Use this to walk the attributes a message is allowed to act on.
+ *
+ * RFC 8489 Section 9: "agents MUST ignore all attributes that follow
+ * MESSAGE-INTEGRITY, with the exception of the MESSAGE-INTEGRITY-SHA256 and
+ * FINGERPRINT attributes." The HMAC only covers the bytes up to the end of
+ * MESSAGE-INTEGRITY, so trailing attributes are attacker-mutable even on a
+ * message whose integrity validates.
+ *
+ * A message carrying no MESSAGE-INTEGRITY is walked in full: nothing about it
+ * is protected, so there is no boundary to honour.
+ *
+ * FINGERPRINT is exempt in the RFC but needs no special case here: it is an
+ * unkeyed checksum validated separately over the whole message, and carries no
+ * semantics a caller would act on. MESSAGE-INTEGRITY-SHA256 is not implemented
+ * yet; when it is, this boundary moves to the end of that attribute.
+ */
+stun_attr_ref stun_attr_get_next_covered_str(const uint8_t *buf, size_t len, stun_attr_ref prev);
 bool stun_attr_add_str(uint8_t *buf, size_t *len, uint16_t attr, const uint8_t *avalue, int alen);
 bool stun_attr_add_addr_str(uint8_t *buf, size_t *len, uint16_t attr_type, const ioa_addr *ca);
 bool stun_attr_get_addr_str(const uint8_t *buf, size_t len, stun_attr_ref attr, ioa_addr *ca,

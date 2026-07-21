@@ -520,6 +520,138 @@ static void test_http_message_len_handles_non_null_terminated_buffer(void) {
   TEST_ASSERT_EQUAL_INT((int)sizeof(buf), is_http((const char *)buf, sizeof(buf)));
 }
 
+/*
+ * RFC 8489 Section 9: "agents MUST ignore all attributes that follow
+ * MESSAGE-INTEGRITY, with the exception of the MESSAGE-INTEGRITY-SHA256 and
+ * FINGERPRINT attributes."
+ *
+ * The HMAC covers only the bytes up to the end of MESSAGE-INTEGRITY, so an
+ * on-path attacker can append attributes to an authenticated request and the
+ * integrity check still passes. The parse boundary, not the HMAC, is what has
+ * to reject them -- these pin that boundary.
+ */
+
+/* RFC 8489 MESSAGE-INTEGRITY-SHA256. Not implemented yet, so it has no name in
+ * ns_turn_msg_defs.h; declared here to pin the behaviour a conformant client
+ * that sends it will meet. */
+#define TEST_ATTR_MESSAGE_INTEGRITY_SHA256 (0x001C)
+
+static const uint8_t TEST_UNAME[] = "pavel";
+static const uint8_t TEST_REALM[] = "north.gov";
+static const uint8_t TEST_UPWD[] = "secret";
+static const uint8_t TEST_NONCE[] = "0123456789abcdef";
+
+static const uint8_t TEST_TRANSPORT_UDP[4] = {STUN_ATTRIBUTE_TRANSPORT_UDP_VALUE, 0, 0, 0};
+static const uint8_t TEST_LIFETIME_600[4] = {0, 0, 0x02, 0x58};
+static const uint8_t TEST_LIFETIME_1[4] = {0, 0, 0, 1};
+
+static void test_integrity_key(hmackey_t key) {
+  memset(key, 0, sizeof(hmackey_t));
+  TEST_ASSERT_TRUE(stun_produce_integrity_key_str(TEST_UNAME, TEST_REALM, TEST_UPWD, key, SHATYPE_DEFAULT));
+}
+
+/* An ALLOCATE requesting a 600 s lifetime, sealed with MESSAGE-INTEGRITY. */
+static void build_authenticated_allocate(uint8_t *buf, size_t *len) {
+  hmackey_t key;
+  test_integrity_key(key);
+
+  *len = 0;
+  stun_init_request_str(STUN_METHOD_ALLOCATE, buf, len);
+  TEST_ASSERT_TRUE(stun_attr_add_str(buf, len, STUN_ATTRIBUTE_REQUESTED_TRANSPORT, TEST_TRANSPORT_UDP, 4));
+  TEST_ASSERT_TRUE(stun_attr_add_str(buf, len, STUN_ATTRIBUTE_LIFETIME, TEST_LIFETIME_600, 4));
+  TEST_ASSERT_TRUE(
+      stun_attr_add_integrity_by_key_str(buf, len, TEST_UNAME, TEST_REALM, key, TEST_NONCE, SHATYPE_DEFAULT));
+}
+
+static int count_attrs_of_type(const uint8_t *buf, size_t len, uint16_t type, bool covered_only) {
+  int n = 0;
+  stun_attr_ref sar = stun_attr_get_first_str(buf, len);
+  while (sar) {
+    if (stun_attr_get_type(sar) == (int)type) {
+      ++n;
+    }
+    sar = covered_only ? stun_attr_get_next_covered_str(buf, len, sar) : stun_attr_get_next_str(buf, len, sar);
+  }
+  return n;
+}
+
+static void test_trailing_attr_survives_integrity_check(void) {
+  uint8_t buf[1024] = {0};
+  size_t len = 0;
+  hmackey_t key;
+
+  build_authenticated_allocate(buf, &len);
+  test_integrity_key(key);
+
+  /* Appending an attribute rewrites the header length; no key is needed,
+     because the HMAC does not reach past MESSAGE-INTEGRITY. */
+  TEST_ASSERT_TRUE(stun_attr_add_str(buf, &len, STUN_ATTRIBUTE_LIFETIME, TEST_LIFETIME_1, 4));
+
+  /* The tampered message still authenticates. This is the whole reason the
+     parse loops must stop at MESSAGE-INTEGRITY on their own. */
+  TEST_ASSERT_EQUAL_INT(
+      1, stun_check_message_integrity_by_key_str(TURN_CREDENTIALS_LONG_TERM, buf, len, key, NULL, SHATYPE_DEFAULT));
+}
+
+static void test_covered_walk_ignores_attr_after_message_integrity(void) {
+  uint8_t buf[1024] = {0};
+  size_t len = 0;
+
+  build_authenticated_allocate(buf, &len);
+  TEST_ASSERT_EQUAL_INT(1, count_attrs_of_type(buf, len, STUN_ATTRIBUTE_LIFETIME, true));
+
+  TEST_ASSERT_TRUE(stun_attr_add_str(buf, &len, STUN_ATTRIBUTE_LIFETIME, TEST_LIFETIME_1, 4));
+
+  /* An unbounded walk hands the attacker's LIFETIME to the handler, which
+     assigns unconditionally, so the trailing value wins. */
+  TEST_ASSERT_EQUAL_INT(2, count_attrs_of_type(buf, len, STUN_ATTRIBUTE_LIFETIME, false));
+  /* A covered walk never sees it. */
+  TEST_ASSERT_EQUAL_INT(1, count_attrs_of_type(buf, len, STUN_ATTRIBUTE_LIFETIME, true));
+}
+
+static void test_covered_walk_yields_message_integrity_itself(void) {
+  uint8_t buf[1024] = {0};
+  size_t len = 0;
+
+  build_authenticated_allocate(buf, &len);
+
+  /* The boundary is inclusive: callers still dispatch on MESSAGE-INTEGRITY
+     (SKIP_ATTRIBUTES relies on seeing it) and stop only afterwards. */
+  TEST_ASSERT_EQUAL_INT(1, count_attrs_of_type(buf, len, STUN_ATTRIBUTE_MESSAGE_INTEGRITY, true));
+}
+
+static void test_covered_walk_is_full_walk_without_message_integrity(void) {
+  uint8_t buf[1024] = {0};
+  size_t len = 0;
+
+  /* Nothing is protected, so there is no boundary to honour. */
+  stun_init_request_str(STUN_METHOD_ALLOCATE, buf, &len);
+  TEST_ASSERT_TRUE(stun_attr_add_str(buf, &len, STUN_ATTRIBUTE_REQUESTED_TRANSPORT, TEST_TRANSPORT_UDP, 4));
+  TEST_ASSERT_TRUE(stun_attr_add_str(buf, &len, STUN_ATTRIBUTE_LIFETIME, TEST_LIFETIME_600, 4));
+  TEST_ASSERT_TRUE(stun_attr_add_str(buf, &len, STUN_ATTRIBUTE_LIFETIME, TEST_LIFETIME_1, 4));
+
+  TEST_ASSERT_EQUAL_INT(2, count_attrs_of_type(buf, len, STUN_ATTRIBUTE_LIFETIME, true));
+  TEST_ASSERT_EQUAL_INT(1, count_attrs_of_type(buf, len, STUN_ATTRIBUTE_REQUESTED_TRANSPORT, true));
+}
+
+static void test_covered_walk_hides_message_integrity_sha256_from_420(void) {
+  uint8_t buf[1024] = {0};
+  size_t len = 0;
+  uint8_t sha256_hmac[32] = {0};
+
+  build_authenticated_allocate(buf, &len);
+
+  /* An RFC 8489 client sends MESSAGE-INTEGRITY-SHA256 after MESSAGE-INTEGRITY.
+     0x001C is comprehension-required, so an unbounded walk collects it as an
+     unknown attribute and the server answers 420 -- rejecting a conformant
+     client. The covered walk never reaches it, which is what the RFC requires
+     and what keeps such clients working. */
+  TEST_ASSERT_TRUE(stun_attr_add_str(buf, &len, TEST_ATTR_MESSAGE_INTEGRITY_SHA256, sha256_hmac, 32));
+
+  TEST_ASSERT_EQUAL_INT(1, count_attrs_of_type(buf, len, TEST_ATTR_MESSAGE_INTEGRITY_SHA256, false));
+  TEST_ASSERT_EQUAL_INT(0, count_attrs_of_type(buf, len, TEST_ATTR_MESSAGE_INTEGRITY_SHA256, true));
+}
+
 int main(void) {
   UNITY_BEGIN();
   RUN_TEST(test_init_request_produces_valid_stun_header);
@@ -544,5 +676,10 @@ int main(void) {
   RUN_TEST(test_channel_message_survives_misaligned_buffer);
   RUN_TEST(test_addr_attrs_survive_misaligned_buffer);
   RUN_TEST(test_http_message_len_handles_non_null_terminated_buffer);
+  RUN_TEST(test_trailing_attr_survives_integrity_check);
+  RUN_TEST(test_covered_walk_ignores_attr_after_message_integrity);
+  RUN_TEST(test_covered_walk_yields_message_integrity_itself);
+  RUN_TEST(test_covered_walk_is_full_walk_without_message_integrity);
+  RUN_TEST(test_covered_walk_hides_message_integrity_sha256_from_420);
   return UNITY_END();
 }

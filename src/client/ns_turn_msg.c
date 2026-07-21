@@ -1455,6 +1455,14 @@ uint8_t stun_attr_get_even_port(stun_attr_ref attr) {
   return 0;
 }
 
+stun_attr_ref stun_attr_get_next_covered_str(const uint8_t *buf, size_t len, stun_attr_ref prev) {
+  /* Everything past MESSAGE-INTEGRITY falls outside the HMAC, so stop here. */
+  if (prev && stun_attr_get_type(prev) == STUN_ATTRIBUTE_MESSAGE_INTEGRITY) {
+    return NULL;
+  }
+  return stun_attr_get_next_str(buf, len, prev);
+}
+
 stun_attr_ref stun_attr_get_first_by_type_str(const uint8_t *buf, size_t len, uint16_t attr_type) {
   stun_attr_ref attr = stun_attr_get_first_str(buf, len);
   while (attr) {

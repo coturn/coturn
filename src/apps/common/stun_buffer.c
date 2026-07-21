@@ -196,6 +196,10 @@ stun_attr_ref stun_attr_get_next(const stun_buffer *buf, stun_attr_ref prev) {
   return stun_attr_get_next_str(buf->buf, buf->len, prev);
 }
 
+stun_attr_ref stun_attr_get_next_covered(const stun_buffer *buf, stun_attr_ref prev) {
+  return stun_attr_get_next_covered_str(buf->buf, buf->len, prev);
+}
+
 bool stun_attr_add(stun_buffer *buf, uint16_t attr, const char *avalue, int alen) {
   return stun_attr_add_str(buf->buf, &(buf->len), attr, (const uint8_t *)avalue, alen);
 }

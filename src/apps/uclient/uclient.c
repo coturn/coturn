@@ -1601,7 +1601,9 @@ static int process_received_buffer(app_ur_session *elem, int is_tcp_data, app_tc
             }
             break;
           }
-          sar = stun_attr_get_next_str(elem->in_buffer.buf, elem->in_buffer.len, sar);
+          /* Indications carry no MESSAGE-INTEGRITY, so this walks the whole
+           * message; kept covered for consistency with the response paths. */
+          sar = stun_attr_get_next_covered_str(elem->in_buffer.buf, elem->in_buffer.len, sar);
         }
         if (negative_test) {
           tcp_data_connect(elem, (uint64_t)turn_random_number());
@@ -1658,7 +1660,9 @@ static int process_received_buffer(app_ur_session *elem, int is_tcp_data, app_tc
             }
             break;
           }
-          sar = stun_attr_get_next_str(elem->in_buffer.buf, elem->in_buffer.len, sar);
+          /* Integrity was checked above; stop at MESSAGE-INTEGRITY so a
+           * CONNECTION-ID appended past the HMAC is never accepted. */
+          sar = stun_attr_get_next_covered_str(elem->in_buffer.buf, elem->in_buffer.len, sar);
         }
         tcp_data_connect(elem, cid);
       }

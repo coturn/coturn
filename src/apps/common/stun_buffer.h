@@ -88,6 +88,10 @@ bool stun_attr_add_addr(stun_buffer *buf, uint16_t attr_type, const ioa_addr *ca
 stun_attr_ref stun_attr_get_first(const stun_buffer *buf);
 stun_attr_ref stun_attr_get_first_by_type(const stun_buffer *buf, uint16_t attr_type);
 stun_attr_ref stun_attr_get_next(const stun_buffer *buf, stun_attr_ref prev);
+/** stun_attr_get_next_covered_str() over a stun_buffer: stops once
+ * MESSAGE-INTEGRITY has been yielded. Use when walking a message whose
+ * integrity was checked, so trailing attributes outside the HMAC are ignored. */
+stun_attr_ref stun_attr_get_next_covered(const stun_buffer *buf, stun_attr_ref prev);
 bool stun_attr_get_addr(const stun_buffer *buf, stun_attr_ref attr, ioa_addr *ca, const ioa_addr *default_addr);
 bool stun_attr_add_even_port(stun_buffer *buf, uint8_t value);
 

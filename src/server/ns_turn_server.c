@@ -1093,8 +1093,8 @@ static void turn_server_sweep_timed_events(turn_turnserver *server) {
   case STUN_ATTRIBUTE_REALM:                                                                                           \
   case STUN_ATTRIBUTE_NONCE:                                                                                           \
   case STUN_ATTRIBUTE_ORIGIN:                                                                                          \
-    sar = stun_attr_get_next_str(ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh), \
-                                 sar);                                                                                 \
+    sar = stun_attr_get_next_covered_str(ioa_network_buffer_data(in_buffer->nbh),                                      \
+                                         ioa_network_buffer_get_size(in_buffer->nbh), sar);                            \
     continue
 
 static uint8_t get_transport_value(const uint8_t *value) {
@@ -1353,8 +1353,8 @@ static int handle_turn_allocate(turn_turnserver *server, ts_ur_super_session *ss
           unknown_attrs[(*ua_num)++] = nswap16(attr_type);
         }
       };
-      sar = stun_attr_get_next_str(ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh),
-                                   sar);
+      sar = stun_attr_get_next_covered_str(ioa_network_buffer_data(in_buffer->nbh),
+                                           ioa_network_buffer_get_size(in_buffer->nbh), sar);
     }
 
     if (!transport) {
@@ -1851,8 +1851,8 @@ static int handle_turn_refresh(turn_turnserver *server, ts_ur_super_session *ss,
           unknown_attrs[(*ua_num)++] = nswap16(attr_type);
         }
       };
-      sar = stun_attr_get_next_str(ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh),
-                                   sar);
+      sar = stun_attr_get_next_covered_str(ioa_network_buffer_data(in_buffer->nbh),
+                                           ioa_network_buffer_get_size(in_buffer->nbh), sar);
     }
 
     if (*ua_num > 0) {
@@ -2539,8 +2539,8 @@ static int handle_turn_connect(turn_turnserver *server, ts_ur_super_session *ss,
           unknown_attrs[(*ua_num)++] = nswap16(attr_type);
         }
       };
-      sar = stun_attr_get_next_str(ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh),
-                                   sar);
+      sar = stun_attr_get_next_covered_str(ioa_network_buffer_data(in_buffer->nbh),
+                                           ioa_network_buffer_get_size(in_buffer->nbh), sar);
     }
 
     if (*ua_num > 0) {
@@ -2621,8 +2621,8 @@ static int handle_turn_connection_bind(turn_turnserver *server, ts_ur_super_sess
           unknown_attrs[(*ua_num)++] = nswap16(attr_type);
         }
       };
-      sar = stun_attr_get_next_str(ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh),
-                                   sar);
+      sar = stun_attr_get_next_covered_str(ioa_network_buffer_data(in_buffer->nbh),
+                                           ioa_network_buffer_get_size(in_buffer->nbh), sar);
     }
 
     if (*ua_num > 0) {
@@ -2859,8 +2859,8 @@ static int handle_turn_channel_bind(turn_turnserver *server, ts_ur_super_session
           unknown_attrs[(*ua_num)++] = nswap16(attr_type);
         }
       };
-      sar = stun_attr_get_next_str(ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh),
-                                   sar);
+      sar = stun_attr_get_next_covered_str(ioa_network_buffer_data(in_buffer->nbh),
+                                           ioa_network_buffer_get_size(in_buffer->nbh), sar);
     }
 
     if (*ua_num > 0) {
@@ -3074,8 +3074,8 @@ static int handle_turn_binding(turn_turnserver *server, ts_ur_super_session *ss,
         unknown_attrs[(*ua_num)++] = nswap16(attr_type);
       }
     };
-    sar = stun_attr_get_next_str(ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh),
-                                 sar);
+    sar = stun_attr_get_next_covered_str(ioa_network_buffer_data(in_buffer->nbh),
+                                         ioa_network_buffer_get_size(in_buffer->nbh), sar);
   }
 
   if (*ua_num > 0) {
@@ -3211,8 +3211,8 @@ static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss, in
           unknown_attrs[(*ua_num)++] = nswap16(attr_type);
         }
       };
-      sar = stun_attr_get_next_str(ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh),
-                                   sar);
+      sar = stun_attr_get_next_covered_str(ioa_network_buffer_data(in_buffer->nbh),
+                                           ioa_network_buffer_get_size(in_buffer->nbh), sar);
     }
 
     if (*err_code) {
@@ -3349,8 +3349,8 @@ static int handle_turn_create_permission(turn_turnserver *server, ts_ur_super_se
             unknown_attrs[(*ua_num)++] = nswap16(attr_type);
           }
         };
-        sar = stun_attr_get_next_str(ioa_network_buffer_data(in_buffer->nbh),
-                                     ioa_network_buffer_get_size(in_buffer->nbh), sar);
+        sar = stun_attr_get_next_covered_str(ioa_network_buffer_data(in_buffer->nbh),
+                                             ioa_network_buffer_get_size(in_buffer->nbh), sar);
       }
     }
 
@@ -3401,8 +3401,8 @@ static int handle_turn_create_permission(turn_turnserver *server, ts_ur_super_se
         default:;
         }
 
-        sar = stun_attr_get_next_str(ioa_network_buffer_data(in_buffer->nbh),
-                                     ioa_network_buffer_get_size(in_buffer->nbh), sar);
+        sar = stun_attr_get_next_covered_str(ioa_network_buffer_data(in_buffer->nbh),
+                                             ioa_network_buffer_get_size(in_buffer->nbh), sar);
       }
 
       if (*err_code == 0) {
@@ -3881,8 +3881,8 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
               free(o);
             }
           }
-          sar = stun_attr_get_next_str(ioa_network_buffer_data(in_buffer->nbh),
-                                       ioa_network_buffer_get_size(in_buffer->nbh), sar);
+          sar = stun_attr_get_next_covered_str(ioa_network_buffer_data(in_buffer->nbh),
+                                               ioa_network_buffer_get_size(in_buffer->nbh), sar);
         }
 
         if (server->check_origin && *(server->check_origin)) {
@@ -3937,8 +3937,8 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
               origin_found = get_realm_options_by_origin(ss->origin, &(ss->realm_options));
             }
           }
-          sar = stun_attr_get_next_str(ioa_network_buffer_data(in_buffer->nbh),
-                                       ioa_network_buffer_get_size(in_buffer->nbh), sar);
+          sar = stun_attr_get_next_covered_str(ioa_network_buffer_data(in_buffer->nbh),
+                                               ioa_network_buffer_get_size(in_buffer->nbh), sar);
         }
         /* Note: ss->origin_set is intentionally NOT committed here. We pin the origin only
            after the request's MESSAGE-INTEGRITY validates (see post-auth block below). An
