@@ -8,7 +8,7 @@ Coturn TURN server Docker image changelog
 
 ### Security updated
 
-- [Debian Linux] "trixie" 20260623 (13.5): <https://github.com/docker-library/official-images/commit/9b0711ed609dceb3046d6606466747914a9caf03>
+- [Debian Linux] "trixie" 20260713 (13.6): <https://github.com/docker-library/official-images/commit/66ceaa32c0335e6f89173798988f0a395af3b9e2>
 
 
 
