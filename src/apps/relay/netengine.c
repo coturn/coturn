@@ -1315,9 +1315,11 @@ void run_listener_server(struct listener_server *ls) {
       }
     }
 
-    if (turn_params.drain_turn_server && global_allocation_count == 0) {
+    if (turn_params.drain_turn_server && global_allocation_count <= turn_params.drain_min_allocations) {
       turn_params.stop_turn_server = true;
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Drain complete, shutting down now...\n");
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+                    "Drain complete (%zu allocations remaining, threshold %zu), shutting down now...\n",
+                    global_allocation_count, turn_params.drain_min_allocations);
     }
 
     run_events(ls->event_base, ls->ioa_eng);

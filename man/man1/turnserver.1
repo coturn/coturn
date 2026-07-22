@@ -1090,6 +1090,12 @@ The connection string has the same parameters as redis\-userdb connection string
 \fB\-\-max\-allocate\-timeout\fP
 Max time, in seconds, allowed for full allocation establishment.
 Default is 60 seconds.
+.TP
+.B
+\fB\-\-drain\-min\-allocations\fP
+In drain mode (entered on SIGUSR1), shut down once the number of
+active allocations drops to this value or below.
+Default is 0 (wait until all allocations are gone).
 .RE
 
 .RS

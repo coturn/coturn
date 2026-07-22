@@ -296,6 +296,9 @@ typedef struct _turn_params_ {
 
   /////////////// stop/drain server ////////////////
   bool drain_turn_server;
+  /* Drain completes once the active allocation count drops to this value
+   * (default 0: wait for every allocation to go away). */
+  size_t drain_min_allocations;
   /////////////// stop server ////////////////
   /* Written from the signal handler and the admin thread, read by every
    * worker loop — volatile so those reads are not optimized away. */
