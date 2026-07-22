@@ -198,6 +198,7 @@ turn_params_t turn_params = {
 
     /////////////// stop server ////////////////
     false, /*drain_turn_server*/
+    0,     /*drain_min_allocations*/
     false, /*stop_turn_server*/
 
     /////////////// MISC PARAMS ////////////////
@@ -1317,6 +1318,10 @@ static char Usage[] =
     "						The default value is ':'.\n"
     " --max-allocate-timeout=<seconds>		Max time, in seconds, allowed for full allocation establishment. "
     "Default is 60.\n"
+    " --drain-min-allocations=<number>		In drain mode (SIGUSR1), shut down once the number of active "
+    "allocations\n"
+    "						drops to this value or below. Default is 0 (wait until all "
+    "allocations are gone).\n"
     " --allowed-peer-ip=<ip[-ip]> 			Specifies an ip or range of ips that are explicitly allowed to "
     "connect to the \n"
     "						turn server. Multiple allowed-peer-ip can be set.\n"
@@ -1611,6 +1616,7 @@ enum EXTRA_OPTS {
   UDP_GSO_OPT,
 #endif
   VERSION_OPT,
+  DRAIN_MIN_ALLOCATIONS_OPT,
   RATELIMIT_OPT,
   RATELIMIT_RPS_OPT,
   CPUS_OPT,
@@ -1728,6 +1734,7 @@ static const struct myoption long_options[] = {
     {"udp-alternate-server", required_argument, NULL, UDP_ALTERNATE_SERVER_OPT},
     {"rest-api-separator", required_argument, NULL, 'C'},
     {"max-allocate-timeout", required_argument, NULL, MAX_ALLOCATE_TIMEOUT_OPT},
+    {"drain-min-allocations", required_argument, NULL, DRAIN_MIN_ALLOCATIONS_OPT},
     {"no-multicast-peers", optional_argument, NULL, NO_MULTICAST_PEERS_OPT},
     {"allow-loopback-peers", optional_argument, NULL, ALLOW_LOOPBACK_PEERS_OPT},
     {"allowed-peer-ip", required_argument, NULL, ALLOWED_PEER_IPS},
@@ -2279,6 +2286,14 @@ static void set_option(int c, char *value) {
     TURN_MAX_ALLOCATE_TIMEOUT = atoi(value);
     TURN_MAX_ALLOCATE_TIMEOUT_STUN_ONLY = atoi(value);
     break;
+  case DRAIN_MIN_ALLOCATIONS_OPT: {
+    int dma = get_int_value(value, 0);
+    if (dma < 0) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: negative drain-min-allocations value %d ignored, using 0\n", dma);
+      dma = 0;
+    }
+    turn_params.drain_min_allocations = (size_t)dma;
+  } break;
   case 'S':
     turn_params.stun_only = get_bool_value(value);
     break;

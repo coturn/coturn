@@ -643,6 +643,10 @@ Options with values:
 --max-allocate-timeout	Max time, in seconds, allowed for full allocation establishment.
 			Default is 60 seconds.
 
+--drain-min-allocations	In drain mode (entered on SIGUSR1), shut down once the number of
+			active allocations drops to this value or below.
+			Default is 0 (wait until all allocations are gone).
+
 --denied-peer-ip=<IPaddr[-IPaddr]>
 
 --allowed-peer-ip=<IPaddr[-IPaddr]> Options to ban or allow specific ip addresses or ranges
