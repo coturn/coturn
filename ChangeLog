@@ -1,3 +1,56 @@
+Release 4.15.0
+
+Changelist:
+- Add --drain-min-allocations: shutdown threshold for drain mode (#1997) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Merge commit from fork (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Count every STUN Binding response in the Prometheus metrics (#1996) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix remaining misaligned wire-buffer accesses; add turn_read/write helpers (#1995) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- fix misaligned value reads in three stun attribute accessors (#1994) (alhuda <50839256+alhudz@users.noreply.github.com>)
+- Fix uint32_t counter wraparound in relay port allocator (#1992) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Join worker threads on shutdown to fix exit-time OpenSSL race (#1991) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- fix: disable OpenSSL atexit cleanup in turnserver (#1990) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Tests: del alt server last entry (#1989) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- release list mutex when del_alt_server removes the last entry (#1988) (alhuda <50839256+alhudz@users.noreply.github.com>)
+- tests: add regression coverage for misaligned STUN attribute access (#1987) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Alternate server tcp udp distinction (#1605) (Cybermilitia <Cybermilitia@users.noreply.github.com>)
+- Don't call `setgroups` unconditionally in mainrelay (#1508) (networkException <github@nwex.de>)
+- feat: RFC 8016 graceful dual-5-tuple mobility handoff (#1975) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Implement a minimum log level option (#1222) (Paul Wayper <paulway@redhat.com>)
+- refactor: flatten send_data_from_ioa_socket_nbh with guard clauses (#1985) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- reset reused udp recv buffer offset in dtls listener (#1986) (alhuda <50839256+alhudz@users.noreply.github.com>)
+- zero channel-data padding in stun_init_channel_message_str (#1984) (alhuda <50839256+alhudz@users.noreply.github.com>)
+- test: add RFC 5780 (NAT behavior discovery) coverage (#1982) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- fix: remove unreachable null-deref branch in lm_map_put (#1983) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- feat: fail-fast allocation wrappers (log + abort on OOM) (#1981) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- fix size_t underflow in telnet _process data emit (#1980) (alhuda <50839256+alhudz@users.noreply.github.com>)
+- avoid leaks on realloc failure in tcp relay allocation (#1977) (alhuda <50839256+alhudz@users.noreply.github.com>)
+- fix off-by-one write past realm buffer in redis_list_admin_users (#1978) (alhuda <50839256+alhudz@users.noreply.github.com>)
+- docker: Update Debian "trixie" to 20260623 snapshot (Kai Ren <tyranron@gmail.com>)
+- fix: heap-allocate uclient STUN message buffers instead of stack (#1976) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- fix: log explicit error when configured tls-listening-port cannot start (#1974) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- fix: use bounded snprintf in apputils.c (#1966) (OrbisAI Security <mediratta01.pally@gmail.com>)
+- fix: send SNI host name in turnutils_uclient TLS connections (#1973) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- bound mssp subnegotiation parse to the buffer end (#1972) (alhuda <50839256+alhudz@users.noreply.github.com>)
+- fix: cast to unsigned char before isspace() in read_config_file (#1968) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- fix: bind mobility session-resume to the original allocation owner (#1969) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- null-terminate http request buffer before verbose %s log (#1967) (alhuda <50839256+alhudz@users.noreply.github.com>)
+- fix: reject ACME requests via signed return (#1965) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- fix: avoid uint16_t truncation overflow in STUN message length (#1964) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- configure: detect hiredis_ssl for Redis TLS in autotools build (#1963) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- free EVP_CIPHER_CTX on error returns in oauth gcm encode/decode (#1962) (alhuda <50839256+alhudz@users.noreply.github.com>)
+- Upgrade Docker image to 4.14.0 Coturn version (Kai Ren <tyranron@gmail.com>)
+- Update Alpine to 3.24.1 version to fix OpenSSL CVEs in Docker image (Kai Ren <tyranron@gmail.com>)
+
+Contributors:
+- alhuda <50839256+alhudz@users.noreply.github.com>
+- Cybermilitia <Cybermilitia@users.noreply.github.com>
+- dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+- Kai Ren <tyranron@gmail.com>
+- networkException <github@nwex.de>
+- OrbisAI Security <mediratta01.pally@gmail.com>
+- Paul Wayper <paulway@redhat.com>
+- Pavel Punsky <eakraly@users.noreply.github.com>
+
 Release 4.14.0
 
 Changelist:
