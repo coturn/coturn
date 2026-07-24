@@ -65,6 +65,9 @@ static redisSSLContext *redis_create_ssl_ctx(Ryconninfo *co) {
   (void)pthread_once(&openssl_once, redis_init_openssl_once);
 
   redisSSLContextError ssl_error = REDIS_SSL_CTX_NONE;
+
+#if defined(HIREDIS_MAJOR) && (HIREDIS_MAJOR > 1 || (HIREDIS_MAJOR == 1 && HIREDIS_MINOR >= 1))
+  /* hiredis >= 1.1.0: options-struct SSL API, supports verify_mode. */
   redisSSLOptions opt = {0};
   opt.cacert_filename = co->tls_ca;
   opt.capath = co->tls_capath;
@@ -74,6 +77,21 @@ static redisSSLContext *redis_create_ssl_ctx(Ryconninfo *co) {
   opt.verify_mode = co->tls_verify ? REDIS_SSL_VERIFY_PEER : REDIS_SSL_VERIFY_NONE;
 
   redisSSLContext *ssl_ctx = redisCreateSSLContextWithOptions(&opt, &ssl_error);
+#else
+  /* hiredis < 1.1.0: legacy positional-args SSL API. There is no verify_mode
+     knob here -- verification behavior is fixed by the library based on
+     whether a CA/capath is supplied. Warn if the connection string asked for
+     verify=none, since we cannot honor that on this hiredis version. */
+  if (!co->tls_verify) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
+                  "Redis TLS: verify=none requested but this hiredis version has no verify-mode "
+                  "control; server certificate will still be verified if a CA is configured\n");
+  }
+
+  redisSSLContext *ssl_ctx = redisCreateSSLContext(co->tls_ca, co->tls_capath, co->tls_cert, co->tls_key,
+                                                   co->tls_sni ? co->tls_sni : co->host, &ssl_error);
+#endif
+
   if (!ssl_ctx) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Redis TLS: cannot create SSL context: %s\n",
                   redisSSLContextGetError(ssl_error));
