@@ -261,8 +261,12 @@ turn_params_t turn_params = {
     0,     /* multiplex_peer_base_port */
 
     ///////// Ratelimit /////////
-    false,                                 /* unauthorized-ratelimit */
-    RATELIMIT_DEFAULT_MAX_REQUESTS_PER_SEC /* unauthorized-ratelimit-rps */
+    false,                                  /* unauthorized-ratelimit */
+    RATELIMIT_DEFAULT_MAX_REQUESTS_PER_SEC, /* unauthorized-ratelimit-rps */
+
+    ///////// Stateless nonce /////////
+    false, /* stateless-nonce */
+    {0}    /* stateless_nonce_key (generated at startup when enabled) */
 };
 
 //////////////// OpenSSL Init //////////////////////
@@ -1442,6 +1446,13 @@ static char Usage[] =
     "                                                 challenges off the server. Off by default.\n"
     " --unauthorized-ratelimit-rps=<count>           Max 401 Unauthorized responses to send per\n"
     "                                                 source IP per second (default 10).\n"
+    " --stateless-nonce                              Derive 401/438 challenge nonces from a per-process\n"
+    "                                                 secret key (HMAC over client address and a time\n"
+    "                                                 window) instead of storing a random nonce in the\n"
+    "                                                 session. Unauthenticated UDP requests are then\n"
+    "                                                 answered without allocating per-client session\n"
+    "                                                 state, bounding memory under spoofed-source floods\n"
+    "                                                 of structurally valid STUN messages. Off by default.\n"
     " --version					Print version (and exit).\n"
     " -h						Help\n"
     "\n";
@@ -1619,6 +1630,7 @@ enum EXTRA_OPTS {
   DRAIN_MIN_ALLOCATIONS_OPT,
   RATELIMIT_OPT,
   RATELIMIT_RPS_OPT,
+  STATELESS_NONCE_OPT,
   CPUS_OPT,
   INCLUDE_REASON_STRING_OPT,
   OPT_MULTIPLEX_PEER = 800,
@@ -1790,6 +1802,7 @@ static const struct myoption long_options[] = {
     {"cpus", required_argument, NULL, CPUS_OPT},
     {"unauthorized-ratelimit", optional_argument, NULL, RATELIMIT_OPT},
     {"unauthorized-ratelimit-rps", optional_argument, NULL, RATELIMIT_RPS_OPT},
+    {"stateless-nonce", optional_argument, NULL, STATELESS_NONCE_OPT},
     {NULL, no_argument, NULL, 0}};
 
 static const struct myoption admin_long_options[] = {
@@ -2689,6 +2702,11 @@ static void set_option(int c, char *value) {
     turn_params.ratelimit_unauthorized_requests_per_sec = v;
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Unauthorized rate-limit threshold: %d responses per second\n", v);
   } break;
+  case STATELESS_NONCE_OPT:
+    turn_params.stateless_nonce = get_bool_value(value);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Stateless nonce mode is %s\n",
+                  turn_params.stateless_nonce ? "enabled" : "disabled");
+    break;
 
   /* these options have been already taken care of before: */
   case 'l':
@@ -3786,6 +3804,16 @@ int main(int argc, char **argv) {
 
   if (turn_params.ratelimit_unauthorized_requests) {
     ratelimit_init();
+  }
+
+  if (turn_params.stateless_nonce) {
+    /* Process-wide key for derived challenge nonces. A restart invalidates
+     * outstanding nonces, which just re-triggers the standard 438 re-auth. */
+    if (RAND_bytes(turn_params.stateless_nonce_key, sizeof(turn_params.stateless_nonce_key)) != 1) {
+      for (size_t i = 0; i < sizeof(turn_params.stateless_nonce_key); ++i) {
+        turn_params.stateless_nonce_key[i] = (uint8_t)turn_random_number();
+      }
+    }
   }
 
   setup_server();

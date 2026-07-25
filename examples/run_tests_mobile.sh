@@ -91,12 +91,11 @@ wait_for_turnserver() {
     tail -30 "$TURNSERVER_LOG" 2>/dev/null || echo "(log file missing)"
     return 1
 }
-if [ $IS_DARWIN -eq 1 ]; then
-    sleep 2
-else
-    wait_for_turnserver || exit 1
-    sleep 2
-fi
+# Poll on both platforms: the log is captured on macOS too, and a fixed
+# sleep races uclient against a still-initializing server on hosts with
+# many local addresses (relay init runs per address).
+wait_for_turnserver || exit 1
+sleep 2
 
 diagnose_failure() {
     local label="$1"

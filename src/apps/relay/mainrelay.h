@@ -371,6 +371,13 @@ typedef struct _turn_params_ {
 
   bool ratelimit_unauthorized_requests;
   vint ratelimit_unauthorized_requests_per_sec;
+
+  /* --stateless-nonce (issue #1999): derive challenge nonces from a
+   * process-wide secret key so unauthenticated UDP requests can be answered
+   * (and their sessions torn down) without keeping per-client state. The key
+   * is generated once at startup. */
+  bool stateless_nonce;
+  uint8_t stateless_nonce_key[TURN_STATELESS_NONCE_KEY_SIZE];
 } turn_params_t;
 
 extern turn_params_t turn_params;

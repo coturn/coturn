@@ -209,6 +209,41 @@ bool stun_calculate_hmac(const uint8_t *buf, size_t len, const uint8_t *key, siz
   return true;
 }
 
+bool turn_compute_stateless_nonce(const uint8_t *key, size_t key_size, const ioa_addr *addr, uint64_t window,
+                                  char *nonce, size_t nonce_size) {
+  if (!key || !key_size || !addr || !nonce || (nonce_size < 2)) {
+    return false;
+  }
+
+  const size_t hex_len = nonce_size - 1;
+  const size_t raw_len = (hex_len + 1) / 2;
+  uint8_t hmac[MAXSHASIZE] = {0};
+  unsigned int hmac_len = sizeof(hmac);
+
+  if (raw_len > 32) { /* SHA-256 digest size */
+    return false;
+  }
+
+  char msg[MAX_IOA_ADDR_STRING + 24] = {0};
+  addr_to_string(addr, msg);
+  const size_t alen = strlen(msg);
+  snprintf(msg + alen, sizeof(msg) - alen, "|%llu", (unsigned long long)window);
+
+  if (!stun_calculate_hmac((const uint8_t *)msg, strlen(msg), key, key_size, hmac, &hmac_len, SHATYPE_SHA256) ||
+      (hmac_len < raw_len)) {
+    return false;
+  }
+
+  static const char hex[] = "0123456789abcdef";
+  for (size_t i = 0; i < hex_len; ++i) {
+    const uint8_t b = hmac[i / 2];
+    nonce[i] = hex[(i % 2) ? (b & 0x0f) : (b >> 4)];
+  }
+  nonce[hex_len] = 0;
+
+  return true;
+}
+
 bool stun_produce_integrity_key_str(const uint8_t *uname, const uint8_t *realm, const uint8_t *upwd, hmackey_t key,
                                     SHATYPE shatype) {
   bool ret;

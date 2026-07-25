@@ -1268,6 +1268,15 @@ source address to receive authentication challenges. Disabled by default.
 \fB\-\-unauthorized\-ratelimit\-rps\fP=<count>
 Maximum number of UDP 401 Unauthorized responses sent per source IP
 per second. Default is 10.
+.TP
+.B
+\fB\-\-stateless\-nonce\fP
+Derive 401/438 challenge nonces from a per\-process secret key (HMAC over
+the client address and a time window) instead of storing a random nonce
+in per\-client session state. Unauthenticated UDP requests are then
+answered without allocating a session, bounding server memory under
+spoofed\-source floods of structurally valid STUN messages.
+Wire\-compatible with standard TURN clients. Disabled by default.
 .RE
 .PP
 

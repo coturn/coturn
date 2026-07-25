@@ -3435,6 +3435,23 @@ static int need_stun_authentication(turn_turnserver *server, ts_ur_super_session
   return 0;
 }
 
+/* Derive the stateless nonce this session's client would have been challenged
+ * with, for the current derivation window shifted by window_delta. */
+static bool compute_session_stateless_nonce(turn_turnserver *server, ts_ur_super_session *ss, int window_delta,
+                                            char *nonce, size_t nonce_size) {
+  const ioa_addr *raddr = get_remote_addr_from_ioa_socket(ss->client_socket);
+  if (!raddr) {
+    return false;
+  }
+  const turn_time_t lifetime = turn_server_stateless_nonce_lifetime(server);
+  const uint64_t window = (uint64_t)(server->ctime / lifetime);
+  if ((window_delta < 0) && (window < (uint64_t)(-window_delta))) {
+    return false;
+  }
+  return turn_compute_stateless_nonce(server->stateless_nonce_key, server->stateless_nonce_key_size, raddr,
+                                      window + (uint64_t)(int64_t)window_delta, nonce, nonce_size);
+}
+
 static int create_challenge_response(ts_ur_super_session *ss, stun_tid *tid, int *resp_constructed, int *err_code,
                                      const uint8_t **reason, ioa_network_buffer_handle nbh, uint16_t method) {
   size_t len = ioa_network_buffer_get_size(nbh);
@@ -3526,19 +3543,28 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
 
     if (generate_new_nonce) {
 
-      int i = 0;
+      int need_random_nonce = 1;
 
-      if (TURN_RANDOM_SIZE == 8) {
-        for (i = 0; i < (NONCE_LENGTH_32BITS >> 1); i++) {
-          uint8_t *s = ss->nonce + 8 * i;
-          const uint64_t rand = (uint64_t)turn_random_number();
-          snprintf((char *)s, NONCE_MAX_SIZE - 8 * i, "%08lx", (unsigned long)rand);
-        }
-      } else {
-        for (i = 0; i < NONCE_LENGTH_32BITS; i++) {
-          uint8_t *s = ss->nonce + 4 * i;
-          const uint32_t rand = (uint32_t)turn_random_number();
-          snprintf((char *)s, NONCE_MAX_SIZE - 4 * i, "%04x", (unsigned int)rand);
+      if (turn_server_stateless_nonce_enabled(server) &&
+          compute_session_stateless_nonce(server, ss, 0, (char *)ss->nonce, sizeof(ss->nonce))) {
+        need_random_nonce = 0;
+      }
+
+      if (need_random_nonce) {
+        int i = 0;
+
+        if (TURN_RANDOM_SIZE == 8) {
+          for (i = 0; i < (NONCE_LENGTH_32BITS >> 1); i++) {
+            uint8_t *s = ss->nonce + 8 * i;
+            const uint64_t rand = (uint64_t)turn_random_number();
+            snprintf((char *)s, NONCE_MAX_SIZE - 8 * i, "%08lx", (unsigned long)rand);
+          }
+        } else {
+          for (i = 0; i < NONCE_LENGTH_32BITS; i++) {
+            uint8_t *s = ss->nonce + 4 * i;
+            const uint32_t rand = (uint32_t)turn_random_number();
+            snprintf((char *)s, NONCE_MAX_SIZE - 4 * i, "%04x", (unsigned int)rand);
+          }
         }
       }
       ss->nonce_expiration_time = server->ctime + *(server->stale_nonce);
@@ -3672,9 +3698,34 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
     /* Stale Nonce check: */
 
     if (new_nonce) {
-      *err_code = 438;
-      *reason = (const uint8_t *)"Wrong nonce";
-      return create_challenge_response(ss, tid, resp_constructed, err_code, reason, nbh, method);
+      /* A fresh session has no nonce history. Without stateless nonces the
+       * presented nonce cannot be valid (this session never issued one). With
+       * them, the client may hold a nonce issued by the listener fast path or
+       * by a since-closed challenge session: accept it if it derives for the
+       * current window, or for an adjacent one (a challenge issued just before
+       * a window roll, or by a listener clock one tick ahead of ctime). */
+      int accepted = 0;
+      if (turn_server_stateless_nonce_enabled(server)) {
+        if (!strcmp((char *)ss->nonce, (char *)nonce)) {
+          accepted = 1;
+        } else {
+          const int deltas[] = {-1, 1};
+          for (size_t i = 0; i < sizeof(deltas) / sizeof(deltas[0]); ++i) {
+            char derived[NONCE_MAX_SIZE] = {0};
+            if (compute_session_stateless_nonce(server, ss, deltas[i], derived, sizeof(derived)) &&
+                !strcmp(derived, (char *)nonce)) {
+              STRCPY(ss->nonce, derived);
+              accepted = 1;
+              break;
+            }
+          }
+        }
+      }
+      if (!accepted) {
+        *err_code = 438;
+        *reason = (const uint8_t *)"Wrong nonce";
+        return create_challenge_response(ss, tid, resp_constructed, err_code, reason, nbh, method);
+      }
     }
 
     if (strcmp((char *)ss->nonce, (char *)nonce)) {
@@ -4161,6 +4212,13 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
       if (server->unauthenticated_401_dropped_response_cb) {
         server->unauthenticated_401_dropped_response_cb();
       }
+      /* Stateless-nonce mode: a suppressed challenge leaves nothing for this
+       * session to do — the client will retry and be re-challenged from
+       * scratch — so drop the session state right away instead of letting it
+       * sit out the to-be-allocated timeout. */
+      if (turn_server_stateless_nonce_enabled(server) && !is_allocation_valid(get_allocation_ss(ss))) {
+        ss->to_be_closed = 1;
+      }
       if (first_drop) {
         char raddr[INET6_ADDRSTRLEN + 1] = {0};
         addr_to_string_no_port(rate_limit_address, raddr);
@@ -4215,6 +4273,19 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 
   } else {
     *resp_constructed = 0;
+  }
+
+  /* Stateless-nonce mode: a UDP session that only carried an auth challenge
+   * holds no state the client's retry will need (the nonce is recomputable),
+   * so schedule it for teardown once the challenge has been written. This is
+   * what bounds memory under spoofed-source floods that carry a (garbage)
+   * MESSAGE-INTEGRITY and therefore bypass the listener fast path. Sessions
+   * with a live allocation (e.g. an established client answering a stale-nonce
+   * challenge) are never torn down here. */
+  if (((err_code == 401) || (err_code == 438)) && *resp_constructed && !no_response &&
+      turn_server_stateless_nonce_enabled(server) && (get_ioa_socket_type(ss->client_socket) == UDP_SOCKET) &&
+      !is_allocation_valid(get_allocation_ss(ss))) {
+    ss->close_after_auth_challenge = 1;
   }
 
   return 0;
@@ -4965,6 +5036,11 @@ static int read_client_connection(turn_turnserver *server, ts_ur_super_session *
 
       const int ret = write_client_connection(server, ss, nbh, TTL_IGNORE, TOS_IGNORE);
 
+      if (ss->close_after_auth_challenge) {
+        ss->close_after_auth_challenge = 0;
+        ss->to_be_closed = 1;
+      }
+
       FUNCEND;
       return ret;
     } else {
@@ -5135,6 +5211,16 @@ int open_client_connection_session(turn_turnserver *server, struct socket_messag
     client_input_handler(ss->client_socket, IOA_EV_READ, &(sm->nd), ss, sm->can_resume);
     ioa_network_buffer_delete(server->e, sm->nd.nbh);
     sm->nd.nbh = NULL;
+
+    /* The initial packet may have scheduled this brand-new session for
+     * teardown (e.g. a stateless-nonce auth challenge, issue #1999). Nothing
+     * later on this code path would reap it, so do it here; otherwise the
+     * session would linger until the to-be-allocated timeout. */
+    if ((ret == 0) && (ss->to_be_closed || ioa_socket_tobeclosed(ss->client_socket))) {
+      shutdown_client_connection(server, ss, 0, "initial packet processing");
+      FUNCEND;
+      return 0;
+    }
   }
 
   FUNCEND;
@@ -5422,6 +5508,29 @@ void set_unauthenticated_401_metric_cbs(turn_turnserver *server, unauthenticated
     server->unauthenticated_401_response_cb = response_cb;
     server->unauthenticated_401_dropped_response_cb = dropped_response_cb;
   }
+}
+
+void set_stateless_nonce(turn_turnserver *server, bool *enabled, const uint8_t *key, size_t key_size) {
+  if (server) {
+    server->stateless_nonce = enabled;
+    server->stateless_nonce_key = key;
+    server->stateless_nonce_key_size = key_size;
+  }
+}
+
+bool turn_server_stateless_nonce_enabled(const turn_turnserver *server) {
+  return server && server->stateless_nonce && *(server->stateless_nonce) && server->stateless_nonce_key &&
+         server->stateless_nonce_key_size;
+}
+
+/* Length of one stateless-nonce validity window. --stale-nonce=0 means "nonce
+ * never goes stale" for an established session, but the derivation still needs
+ * a finite window, so fall back to the protocol default. */
+turn_time_t turn_server_stateless_nonce_lifetime(const turn_turnserver *server) {
+  if (server && server->stale_nonce && (*(server->stale_nonce) > 0)) {
+    return (turn_time_t)(*(server->stale_nonce));
+  }
+  return (turn_time_t)STUN_DEFAULT_NONCE_EXPIRATION_TIME;
 }
 
 //////////////////////////////////////////////////////////////////

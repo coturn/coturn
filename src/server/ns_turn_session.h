@@ -79,6 +79,10 @@ struct _ts_ur_super_session {
   int enforce_fingerprints;
   int is_tcp_relay;
   int to_be_closed;
+  /* Stateless-nonce mode: this UDP session only exists to carry an auth
+   * challenge (401/438) whose nonce can be recomputed later, so it is torn
+   * down as soon as the challenge response has been written (issue #1999). */
+  int close_after_auth_challenge;
   /* Auth */
   uint8_t nonce[NONCE_MAX_SIZE];
   turn_time_t nonce_expiration_time;

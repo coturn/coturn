@@ -43,6 +43,8 @@
 
 #include "dtls_listener.h"
 #include "ns_ioalib_impl.h"
+#include "ns_turn_ratelimit.h"
+#include "ns_turn_utils.h"
 
 #include "ns_turn_openssl.h"
 #include "prom_server.h"
@@ -400,6 +402,214 @@ static ioa_socket_handle dtls_server_input_handler(dtls_listener_relay_server_ty
 
 #endif
 
+/* Stateless-nonce fast path (issue #1999): answer a MESSAGE-INTEGRITY-less
+ * request from an unknown UDP source with the derived-nonce 401 challenge
+ * directly from the listener, without creating a child socket or session.
+ * Packets the relay would silently ignore for a fresh source (indications,
+ * unbound channel data, malformed-but-classifiable STUN) are swallowed with
+ * no state either. Returns true when the packet was fully handled here;
+ * false means "fall through to the regular per-session path". Every branch
+ * below is matched against handle_turn_command's behavior for a brand-new
+ * session so that the bytes on the wire are identical. */
+static bool udp_stateless_nonce_fast_path(dtls_listener_relay_server_type *server, ioa_net_data *nd) {
+  turn_turnserver *ts = server->ts;
+
+  if (!turn_server_stateless_nonce_enabled(ts) || turn_params.no_udp || !server->udp_listen_s) {
+    return false;
+  }
+
+  /* Only long-term-credential setups issue 401 challenges. */
+  if (ts->ct != TURN_CREDENTIALS_LONG_TERM) {
+    return false;
+  }
+
+  const uint8_t *data = ioa_network_buffer_data(nd->nbh);
+  const size_t len = ioa_network_buffer_get_size(nd->nbh);
+
+  {
+    /* Channel data from a source with no allocation: the relay would create a
+     * session and drop the message (no channel is bound). */
+    size_t blen = len;
+    uint16_t chnum = 0;
+    if (stun_is_channel_message_str(data, &blen, &chnum, false)) {
+      return true;
+    }
+  }
+
+  int enforce_fingerprints = 0;
+  if (!stun_is_command_message_full_check_str(data, len, 0, &enforce_fingerprints)) {
+    /* Classified as STUN but fails the full check (e.g. bad FINGERPRINT):
+     * the relay would create a session and ignore the message. */
+    return true;
+  }
+
+  if (stun_is_indication_str(data, len)) {
+    /* Indications never get a response, and without an allocation the relay
+     * drops them. */
+    return true;
+  }
+
+  if (!stun_is_request_str(data, len)) {
+    /* Success/error "responses" from a client: handle_turn_command treats
+     * them as wrong messages and stays silent. */
+    return true;
+  }
+
+  /* Requests that carry MESSAGE-INTEGRITY must go through the session path
+   * for credential verification. */
+  if (stun_attr_get_first_by_type_str(data, len, STUN_ATTRIBUTE_MESSAGE_INTEGRITY)) {
+    return false;
+  }
+
+  const uint16_t method = stun_get_method_str(data, len);
+
+  /* BINDING keeps its session-based path: it is answerable without auth
+   * (unless --secure-stun) and may involve RFC 5780 alternate sockets. */
+  if (method == STUN_METHOD_BINDING) {
+    return false;
+  }
+
+  if (*(ts->stun_only)) {
+    /* Non-BINDING methods are silently ignored in STUN-only mode. */
+    return true;
+  }
+
+  if (method == STUN_METHOD_ALLOCATE) {
+    /* An ALLOCATE may be redirected (300) before authentication; keep the
+     * session path when any UDP-relevant alternate-server list is set. */
+    if ((ts->alternate_servers_list && ts->alternate_servers_list->size) ||
+        (ts->udp_alternate_servers_list && ts->udp_alternate_servers_list->size) ||
+        (ts->self_udp_balance && ts->aux_servers_list && ts->aux_servers_list->size)) {
+      return false;
+    }
+  } else if (method == STUN_METHOD_REFRESH) {
+    /* With --mobility a REFRESH can resume a session using MOBILITY-TICKET
+     * instead of a first-pass challenge. */
+    if (*(ts->mobility)) {
+      return false;
+    }
+  } else if (method == STUN_METHOD_CONNECTION_BIND) {
+    /* CONNECTION-BIND is exempt from the auth challenge. */
+    return false;
+  }
+
+  /* Every remaining request method gets a 401 challenge from
+   * check_stun_auth() before any method-specific processing. Build the same
+   * challenge here: error response, NONCE, REALM, [THIRD-PARTY-AUTHORIZATION],
+   * [SOFTWARE], [FINGERPRINT] - the same attributes in the same order. */
+
+  realm_options_t realm_options;
+  get_default_realm_options(&realm_options);
+
+  if (method == STUN_METHOD_ALLOCATE) {
+    /* Realm selection by ORIGIN, as in handle_turn_command for a session
+     * whose origin is not pinned yet. */
+    stun_attr_ref sar = stun_attr_get_first_str(data, len);
+    int origin_found = 0;
+    while (sar && !origin_found) {
+      if (stun_attr_get_type(sar) == STUN_ATTRIBUTE_ORIGIN) {
+        const int sarlen = stun_attr_get_len(sar);
+        if (sarlen > 0) {
+          char *o = (char *)turn_malloc(sarlen + 1);
+          memcpy(o, stun_attr_get_value(sar), sarlen);
+          o[sarlen] = 0;
+          char corigin[STUN_MAX_ORIGIN_SIZE + 1] = {0};
+          if (get_canonic_origin(o, corigin, STUN_MAX_ORIGIN_SIZE) < 0) {
+            TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Wrong origin format: %s\n", __FUNCTION__, o);
+          }
+          free(o);
+          origin_found = get_realm_options_by_origin(corigin, &realm_options);
+        }
+      }
+      sar = stun_attr_get_next_covered_str(data, len, sar);
+    }
+  }
+
+  char nonce[NONCE_MAX_SIZE] = {0};
+  const turn_time_t lifetime = turn_server_stateless_nonce_lifetime(ts);
+  const uint64_t window = (uint64_t)(turn_time() / lifetime);
+  if (!turn_compute_stateless_nonce(ts->stateless_nonce_key, ts->stateless_nonce_key_size, &(nd->src_addr), window,
+                                    nonce, sizeof(nonce))) {
+    return false;
+  }
+
+  if (ts->unauthenticated_401_request_cb) {
+    ts->unauthenticated_401_request_cb();
+  }
+
+  bool first_drop = false;
+  bool first_collision = false;
+  if (ts->ratelimit_unauthorized_requests && *(ts->ratelimit_unauthorized_requests) &&
+      ratelimit_consume_address(&(nd->src_addr), (uint32_t) * (ts->ratelimit_unauthorized_requests_per_sec),
+                                &first_drop, &first_collision)) {
+    if (ts->unauthenticated_401_dropped_response_cb) {
+      ts->unauthenticated_401_dropped_response_cb();
+    }
+    if (first_drop) {
+      char raddr[INET6_ADDRSTRLEN + 1] = {0};
+      addr_to_string_no_port(&(nd->src_addr), raddr);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "401 rate-limit exceeded from %s, suppressing responses for this window\n",
+                    raddr);
+    }
+    return true;
+  }
+  if (first_collision) {
+    char raddr[INET6_ADDRSTRLEN + 1] = {0};
+    addr_to_string_no_port(&(nd->src_addr), raddr);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+                  "401 rate-limit bucket collision from %s, sharing active bucket budget for this window\n", raddr);
+  }
+
+  stun_tid tid;
+  stun_tid_from_message_str(data, len, &tid);
+
+  ioa_network_buffer_handle nbh = ioa_network_buffer_allocate(server->e);
+  size_t rlen = ioa_network_buffer_get_size(nbh);
+  stun_init_error_response_str(method, ioa_network_buffer_data(nbh), &rlen, 401, NULL, &tid, ts->include_reason_string);
+  stun_attr_add_str(ioa_network_buffer_data(nbh), &rlen, STUN_ATTRIBUTE_NONCE, (const uint8_t *)nonce,
+                    (int)(NONCE_MAX_SIZE - 1));
+  stun_attr_add_str(ioa_network_buffer_data(nbh), &rlen, STUN_ATTRIBUTE_REALM, (const uint8_t *)realm_options.name,
+                    (int)strlen(realm_options.name));
+  if (ts->oauth) {
+    const char *server_name = ts->oauth_server_name;
+    if (!(server_name && server_name[0])) {
+      server_name = realm_options.name;
+    }
+    stun_attr_add_str(ioa_network_buffer_data(nbh), &rlen, STUN_ATTRIBUTE_THIRD_PARTY_AUTHORIZATION,
+                      (const uint8_t *)server_name, strlen(server_name));
+  }
+  if (ts->software_attribute) {
+    const char *software = get_version(ts);
+    stun_attr_add_str(ioa_network_buffer_data(nbh), &rlen, STUN_ATTRIBUTE_SOFTWARE, (const uint8_t *)software,
+                      strlen(software));
+  }
+  if (ts->fingerprint || enforce_fingerprints) {
+    if (!stun_attr_add_fingerprint_str(ioa_network_buffer_data(nbh), &rlen)) {
+      ioa_network_buffer_delete(server->e, nbh);
+      return true;
+    }
+  }
+  ioa_network_buffer_set_size(nbh, rlen);
+
+  if (ts->unauthenticated_401_response_cb) {
+    ts->unauthenticated_401_response_cb();
+  }
+
+  /* One-time operational marker (also asserted by
+   * examples/run_tests_stateless_nonce.sh). Benign race: worst case the
+   * line is logged once per listener thread. */
+  static volatile int fast_path_logged = 0;
+  if (!fast_path_logged) {
+    fast_path_logged = 1;
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "stateless-nonce: listener fast-path challenge active\n");
+  }
+
+  udp_send_message(server, nbh, &(nd->src_addr));
+  ioa_network_buffer_delete(server->e, nbh);
+
+  return true;
+}
+
 static int handle_udp_packet(dtls_listener_relay_server_type *server, struct message_to_relay *sm,
                              ioa_engine_handle ioa_eng, turn_turnserver *ts, udp_packet_classification_t packet_type) {
   const int verbose = ioa_eng->verbose;
@@ -520,6 +730,14 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server, struct mes
       sm->m.sm.nd.nbh = NULL;
     }
 #endif
+
+    /* Stateless-nonce mode: a first packet that only needs the derived-nonce
+     * 401 challenge (or that the relay would ignore anyway) is answered or
+     * dropped right here, without a child socket or session (issue #1999). */
+    if (!chs && (packet_type == UDP_PACKET_CLASS_STUN_OR_CHANNEL) &&
+        udp_stateless_nonce_fast_path(server, &(sm->m.sm.nd))) {
+      return 0;
+    }
 
     if (!chs) {
       // Disallow raw UDP if no_udp is enabled

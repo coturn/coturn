@@ -1386,6 +1386,8 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
   set_unauthenticated_401_metric_cbs(&(rs->server), prom_inc_unauthenticated_401_request,
                                      prom_inc_unauthenticated_401_response,
                                      prom_inc_unauthenticated_401_dropped_response);
+  set_stateless_nonce(&(rs->server), &turn_params.stateless_nonce, turn_params.stateless_nonce_key,
+                      sizeof(turn_params.stateless_nonce_key));
   if (to_set_rfc5780) {
     set_rfc5780(&(rs->server), get_alt_addr, send_message_from_listener_to_client);
   }

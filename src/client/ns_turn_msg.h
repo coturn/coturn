@@ -238,6 +238,17 @@ bool stun_produce_integrity_key_str(const uint8_t *uname, const uint8_t *realm, 
 bool stun_calculate_hmac(const uint8_t *buf, size_t len, const uint8_t *key, size_t sz, uint8_t *hmac,
                          unsigned int *hmac_len, SHATYPE shatype);
 
+/* Stateless NONCE derivation (see docs/stateless-nonce.md): the nonce a server
+ * hands out in a 401/438 challenge is HMAC-SHA256(key, "<client-addr>|<window>")
+ * hex-encoded and truncated to nonce_size-1 characters, so it can be recomputed
+ * later instead of being stored in per-client session state. `window` is a
+ * coarse time counter (now / nonce-lifetime); the caller checks adjacent
+ * windows to tolerate clock-boundary races. Returns false on bad arguments or
+ * HMAC failure; on success writes a NUL-terminated nonce string. */
+#define TURN_STATELESS_NONCE_KEY_SIZE (32)
+bool turn_compute_stateless_nonce(const uint8_t *key, size_t key_size, const ioa_addr *addr, uint64_t window,
+                                  char *nonce, size_t nonce_size);
+
 /* RFC 5780 */
 bool stun_attr_get_change_request_str(stun_attr_ref attr, bool *change_ip, bool *change_port);
 bool stun_attr_add_change_request_str(uint8_t *buf, size_t *len, bool change_ip, bool change_port);
