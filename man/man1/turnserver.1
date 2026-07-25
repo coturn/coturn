@@ -1271,9 +1271,9 @@ per second. Default is 10.
 .TP
 .B
 \fB\-\-stateless\-nonce\fP
-Derive 401/438 challenge nonces from a per\-process secret key (HMAC over
-the client address and a time window) instead of storing a random nonce
-in per\-client session state. Unauthenticated UDP requests are then
+Issue 401/438 challenge nonces as authenticated timestamp cookies (issue
+time plus an HMAC over the client address, keyed by a per\-process
+secret) instead of storing a random nonce in per\-client session state. Unauthenticated UDP requests are then
 answered without allocating a session, bounding server memory under
 spoofed\-source floods of structurally valid STUN messages.
 Wire\-compatible with standard TURN clients. Disabled by default.

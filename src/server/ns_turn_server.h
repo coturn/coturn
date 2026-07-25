@@ -225,8 +225,9 @@ struct _turn_turnserver {
   unauthenticated_401_metric_cb unauthenticated_401_response_cb;
   unauthenticated_401_metric_cb unauthenticated_401_dropped_response_cb;
 
-  /* Stateless-nonce mode (issue #1999): challenge nonces are derived with
-   * turn_compute_stateless_nonce() instead of being random, so unauthenticated
+  /* Stateless-nonce mode (issue #1999): challenge nonces are authenticated
+   * timestamp cookies (turn_generate_stateless_nonce() /
+   * turn_check_stateless_nonce()) instead of random values, so unauthenticated
    * UDP sessions do not have to be kept alive just to remember the nonce.
    * `stateless_nonce` points into turn_params (same live-flag rule as the
    * ratelimit fields above); the key is process-wide and shared by every
@@ -273,8 +274,10 @@ void set_unauthenticated_401_metric_cbs(turn_turnserver *server, unauthenticated
                                         unauthenticated_401_metric_cb dropped_response_cb);
 void set_stateless_nonce(turn_turnserver *server, bool *enabled, const uint8_t *key, size_t key_size);
 
-/* Helpers shared with the UDP listener fast path (dtls_listener.c), which
- * answers MESSAGE-INTEGRITY-less requests without creating a session. */
+/* turn_server_stateless_nonce_enabled() is shared with the UDP listener fast
+ * path (dtls_listener.c), which answers MESSAGE-INTEGRITY-less requests
+ * without creating a session; the lifetime accessor backs nonce validation in
+ * check_stun_auth(). */
 bool turn_server_stateless_nonce_enabled(const turn_turnserver *server);
 turn_time_t turn_server_stateless_nonce_lifetime(const turn_turnserver *server);
 

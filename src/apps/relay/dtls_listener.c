@@ -525,11 +525,9 @@ static bool udp_stateless_nonce_fast_path(dtls_listener_relay_server_type *serve
     }
   }
 
-  char nonce[NONCE_MAX_SIZE] = {0};
-  const turn_time_t lifetime = turn_server_stateless_nonce_lifetime(ts);
-  const uint64_t window = (uint64_t)(turn_time() / lifetime);
-  if (!turn_compute_stateless_nonce(ts->stateless_nonce_key, ts->stateless_nonce_key_size, &(nd->src_addr), window,
-                                    nonce, sizeof(nonce))) {
+  char nonce[TURN_STATELESS_NONCE_SIZE] = {0};
+  if (!turn_generate_stateless_nonce(ts->stateless_nonce_key, ts->stateless_nonce_key_size, &(nd->src_addr),
+                                     (uint32_t)turn_time(), nonce, sizeof(nonce))) {
     return false;
   }
 
@@ -567,7 +565,7 @@ static bool udp_stateless_nonce_fast_path(dtls_listener_relay_server_type *serve
   size_t rlen = ioa_network_buffer_get_size(nbh);
   stun_init_error_response_str(method, ioa_network_buffer_data(nbh), &rlen, 401, NULL, &tid, ts->include_reason_string);
   stun_attr_add_str(ioa_network_buffer_data(nbh), &rlen, STUN_ATTRIBUTE_NONCE, (const uint8_t *)nonce,
-                    (int)(NONCE_MAX_SIZE - 1));
+                    (int)strlen(nonce));
   stun_attr_add_str(ioa_network_buffer_data(nbh), &rlen, STUN_ATTRIBUTE_REALM, (const uint8_t *)realm_options.name,
                     (int)strlen(realm_options.name));
   if (ts->oauth) {

@@ -9,7 +9,7 @@
 #     derived-nonce 401 straight from the listener, with no session
 #     allocated (udp_stateless_nonce_fast_path in dtls_listener.c);
 #   - the client's authenticated retry lands on a brand-new session whose
-#     check_stun_auth accepts the derived nonce (window +/- 1);
+#     check_stun_auth validates the presented timestamp+MAC nonce;
 #   - UDP sessions that only carried a challenge are torn down right after
 #     the response instead of lingering for the to-be-allocated timeout.
 # The whole point of the feature is wire-transparency, so the assertion is

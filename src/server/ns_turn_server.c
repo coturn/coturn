@@ -3435,23 +3435,6 @@ static int need_stun_authentication(turn_turnserver *server, ts_ur_super_session
   return 0;
 }
 
-/* Derive the stateless nonce this session's client would have been challenged
- * with, for the current derivation window shifted by window_delta. */
-static bool compute_session_stateless_nonce(turn_turnserver *server, ts_ur_super_session *ss, int window_delta,
-                                            char *nonce, size_t nonce_size) {
-  const ioa_addr *raddr = get_remote_addr_from_ioa_socket(ss->client_socket);
-  if (!raddr) {
-    return false;
-  }
-  const turn_time_t lifetime = turn_server_stateless_nonce_lifetime(server);
-  const uint64_t window = (uint64_t)(server->ctime / lifetime);
-  if ((window_delta < 0) && (window < (uint64_t)(-window_delta))) {
-    return false;
-  }
-  return turn_compute_stateless_nonce(server->stateless_nonce_key, server->stateless_nonce_key_size, raddr,
-                                      window + (uint64_t)(int64_t)window_delta, nonce, nonce_size);
-}
-
 static int create_challenge_response(ts_ur_super_session *ss, stun_tid *tid, int *resp_constructed, int *err_code,
                                      const uint8_t **reason, ioa_network_buffer_handle nbh, uint16_t method) {
   size_t len = ioa_network_buffer_get_size(nbh);
@@ -3459,7 +3442,10 @@ static int create_challenge_response(ts_ur_super_session *ss, stun_tid *tid, int
   stun_init_error_response_str(method, ioa_network_buffer_data(nbh), &len, *err_code, *reason, tid,
                                srv ? srv->include_reason_string : false);
   *resp_constructed = 1;
-  stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_NONCE, ss->nonce, (int)(NONCE_MAX_SIZE - 1));
+  /* strlen, not NONCE_MAX_SIZE - 1: the random nonce (16 chars) and the
+   * stateless timestamp||MAC nonce (24 chars) differ in length. */
+  stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_NONCE, ss->nonce,
+                    (int)strlen((char *)ss->nonce));
   char *realm = ss->realm_options.name;
   stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_REALM, (uint8_t *)realm,
                     (int)(strlen((char *)(realm))));
@@ -3545,9 +3531,12 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
 
       bool need_random_nonce = true;
 
-      if (turn_server_stateless_nonce_enabled(server) &&
-          compute_session_stateless_nonce(server, ss, 0, (char *)ss->nonce, sizeof(ss->nonce))) {
-        need_random_nonce = false;
+      if (turn_server_stateless_nonce_enabled(server)) {
+        const ioa_addr *raddr = get_remote_addr_from_ioa_socket(ss->client_socket);
+        if (raddr && turn_generate_stateless_nonce(server->stateless_nonce_key, server->stateless_nonce_key_size, raddr,
+                                                   (uint32_t)server->ctime, (char *)ss->nonce, sizeof(ss->nonce))) {
+          need_random_nonce = false;
+        }
       }
 
       if (need_random_nonce) {
@@ -3701,23 +3690,26 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
       /* A fresh session has no nonce history. Without stateless nonces the
        * presented nonce cannot be valid (this session never issued one). With
        * them, the client may hold a nonce issued by the listener fast path or
-       * by a since-closed challenge session: accept it if it derives for the
-       * current window, or for an adjacent one (a challenge issued just before
-       * a window roll, or by a listener clock one tick ahead of ctime). */
+       * by a since-closed challenge session: accept it if its MAC verifies for
+       * this client address and its embedded issue timestamp is within the
+       * nonce lifetime. */
       bool accepted = false;
       if (turn_server_stateless_nonce_enabled(server)) {
         if (!strcmp((char *)ss->nonce, (char *)nonce)) {
           accepted = true;
         } else {
-          const int deltas[] = {-1, 1};
-          for (size_t i = 0; i < sizeof(deltas) / sizeof(deltas[0]); ++i) {
-            char derived[NONCE_MAX_SIZE] = {0};
-            if (compute_session_stateless_nonce(server, ss, deltas[i], derived, sizeof(derived)) &&
-                !strcmp(derived, (char *)nonce)) {
-              STRCPY(ss->nonce, derived);
-              accepted = true;
-              break;
+          const ioa_addr *raddr = get_remote_addr_from_ioa_socket(ss->client_socket);
+          uint32_t issued_at = 0;
+          if (raddr && turn_check_stateless_nonce(server->stateless_nonce_key, server->stateless_nonce_key_size, raddr,
+                                                  (uint32_t)server->ctime, turn_server_stateless_nonce_lifetime(server),
+                                                  (const char *)nonce, &issued_at)) {
+            STRCPY(ss->nonce, nonce);
+            if (*(server->stale_nonce)) {
+              /* Expire relative to the nonce's real issue time, matching what
+               * the issuing challenge promised. */
+              ss->nonce_expiration_time = (turn_time_t)issued_at + (turn_time_t)(*(server->stale_nonce));
             }
+            accepted = true;
           }
         }
       }
@@ -5523,9 +5515,10 @@ bool turn_server_stateless_nonce_enabled(const turn_turnserver *server) {
          server->stateless_nonce_key_size;
 }
 
-/* Length of one stateless-nonce validity window. --stale-nonce=0 means "nonce
- * never goes stale" for an established session, but the derivation still needs
- * a finite window, so fall back to the protocol default. */
+/* Maximum age of a presented stateless nonce. --stale-nonce=0 means "nonce
+ * never goes stale" for an established session, but validating a nonce on a
+ * fresh session still needs a finite bound, so fall back to the protocol
+ * default. */
 turn_time_t turn_server_stateless_nonce_lifetime(const turn_turnserver *server) {
   if (server && server->stale_nonce && (*(server->stale_nonce) > 0)) {
     return (turn_time_t)(*(server->stale_nonce));

@@ -33,17 +33,20 @@ been allocated by the time it runs, so it does not bound memory.
 ## What it does
 
 With `--stateless-nonce` the challenge nonce is no longer random per session;
-it is derived:
+it is an authenticated timestamp cookie:
 
 ```
-nonce = hex( HMAC-SHA256( K, "<client-ip>:<port>|<window>" ) )[0..15]
-window = now / nonce-lifetime      (lifetime = --stale-nonce, or 600s if unset)
+nonce = ts || hex( HMAC-SHA256( K, "<client-ip>:<port>|<ts>" ) )[0..15]
+ts    = 8 lowercase hex chars: the 32-bit issue time in seconds
 ```
 
-`K` is a random 256-bit key generated once at process startup
-(`turn_params.stateless_nonce_key`) and shared by every listener and relay
-thread. Because the server can *recompute* the nonce, three things become
-possible:
+24 lowercase hex characters total. `K` is a random 256-bit key generated once
+at process startup (`turn_params.stateless_nonce_key`) and shared by every
+listener and relay thread. The issue time rides in the clear - it is covered
+by the MAC, and it is nothing an observer does not already learn from seeing
+the cleartext 401 itself. Because the server can *validate* the nonce (parse
+the timestamp, recompute the MAC, check the age against the nonce lifetime -
+`--stale-nonce`, or 600s if unset), three things become possible:
 
 1. **Listener fast path** (`udp_stateless_nonce_fast_path` in
    `dtls_listener.c`): a MESSAGE-INTEGRITY-less request from an unknown UDP
@@ -55,9 +58,12 @@ possible:
    exactly as they do to the session path.
 2. **Fresh-session nonce acceptance** (`check_stun_auth` in
    `ns_turn_server.c`): when the client's authenticated retry arrives, the
-   brand-new session accepts a presented nonce that derives correctly for the
-   current window or an adjacent one (window ± 1, covering challenges issued
-   just before a window roll). Without the flag a fresh session rejects any
+   brand-new session accepts a presented nonce whose MAC verifies for this
+   client address and whose issue time is no older than the nonce lifetime
+   (a few seconds of future skew are tolerated: the issuing listener stamps
+   with `turn_time()` while the validator compares against its cached
+   `ctime`). The session's stale-nonce expiry is then anchored to the
+   nonce's real issue time. Without the flag a fresh session rejects any
    presented nonce with `438 Wrong nonce`.
 3. **Challenge-session teardown**: a UDP session whose response was only an
    auth challenge (401/438) and that has no allocation is torn down
@@ -79,7 +85,7 @@ The mode is designed to be invisible to clients:
   `REALM`, `THIRD-PARTY-AUTHORIZATION` (oauth only), `SOFTWARE` (unless
   disabled), `FINGERPRINT` (if the server enforces it or the request used
   one). Realm selection by `ORIGIN` on ALLOCATE is replicated.
-- A nonce is opaque to clients; only its *value generation* changed. RFC 8489
+- A nonce is opaque to clients; only its value and length changed. RFC 8489
   relies on MESSAGE-INTEGRITY over the (random) transaction ID for
   per-request freshness — nonce reuse within its lifetime is already how the
   protocol works, and binding the nonce to the client's address is strictly
@@ -110,10 +116,11 @@ Linux), and the server log must show the fast path actually engaged.
   load balancer, a retry that lands on a *different* server likewise costs
   one extra `438` round-trip. A shared/derived cluster key would remove that
   and is left as future work.
-- **Nonce validity is up to ~2 lifetimes.** Accepting window ± 1 means a
-  nonce can validate for up to twice `--stale-nonce` (or 2×600s) on a fresh
-  session. This is within RFC 8489's stale-nonce intent; established sessions
-  still rotate on the configured lifetime.
+- **Nonce length changes when the flag is on.** Challenges carry a 24-char
+  nonce instead of the stock 16-char one. RFC 8489 requires clients to treat
+  the nonce as an opaque string of up to 128 characters, so compliant clients
+  are unaffected; a hypothetical client with a hard-coded 16-char nonce
+  buffer would only misbehave with the flag enabled.
 - **BINDING floods are out of scope.** BINDING is answerable without
   authentication, so an unknown-source BINDING still creates a session (as
   today). `--secure-stun` BINDING challenges do benefit from the

@@ -67,7 +67,11 @@ struct _realm_options_t {
 
 typedef uint64_t turnsession_id;
 
-#define NONCE_MAX_SIZE (NONCE_LENGTH_32BITS * 4 + 1)
+/* Big enough for both nonce formats the server can issue: the legacy random
+ * nonce (NONCE_LENGTH_32BITS * 4 = 16 chars) and the stateless timestamp||MAC
+ * nonce (TURN_STATELESS_NONCE_LENGTH = 24 chars). The two differ in length,
+ * so emitters must use strlen(), not NONCE_MAX_SIZE - 1. */
+#define NONCE_MAX_SIZE (TURN_STATELESS_NONCE_SIZE)
 
 typedef uint64_t mobile_id_t;
 
