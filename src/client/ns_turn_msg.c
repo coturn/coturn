@@ -239,6 +239,27 @@ static bool stateless_nonce_mac(const uint8_t *key, size_t key_size, const ioa_a
   return true;
 }
 
+bool turn_derive_stateless_nonce_key(const uint8_t *secret, size_t secret_len, uint8_t *key, size_t key_size) {
+  if (!secret || !secret_len || !key || (key_size != TURN_STATELESS_NONCE_KEY_SIZE)) {
+    return false;
+  }
+
+  static const char label[] = "coturn-stateless-nonce-v1";
+
+  ERR_clear_error();
+  EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+  if (!ctx) {
+    return false;
+  }
+  unsigned int key_len = 0;
+  const bool ok = (EVP_DigestInit(ctx, EVP_sha256()) == 1) && (EVP_DigestUpdate(ctx, label, sizeof(label)) == 1) &&
+                  (EVP_DigestUpdate(ctx, secret, secret_len) == 1) && (EVP_DigestFinal(ctx, key, &key_len) == 1) &&
+                  (key_len == TURN_STATELESS_NONCE_KEY_SIZE);
+  EVP_MD_CTX_free(ctx);
+
+  return ok;
+}
+
 bool turn_generate_stateless_nonce(const uint8_t *key, size_t key_size, const ioa_addr *addr, uint32_t timestamp,
                                    char *nonce, size_t nonce_size) {
   if (!key || !key_size || !addr || !nonce || (nonce_size < TURN_STATELESS_NONCE_SIZE)) {

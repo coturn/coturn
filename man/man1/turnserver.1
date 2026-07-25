@@ -1277,6 +1277,14 @@ secret) instead of storing a random nonce in per\-client session state. Unauthen
 answered without allocating a session, bounding server memory under
 spoofed\-source floods of structurally valid STUN messages.
 Wire\-compatible with standard TURN clients. Disabled by default.
+.TP
+.B
+\fB\-\-stateless\-nonce\-secret\fP=<secret>
+Derive the stateless\-nonce signing key from this secret instead of a
+random per\-process key (implies \-\-stateless\-nonce). Servers sharing
+the secret validate each other's nonces, so challenges survive restarts
+and work across a load\-balanced fleet. Use a long, high\-entropy string
+and keep fleet clocks NTP\-synced.
 .RE
 .PP
 

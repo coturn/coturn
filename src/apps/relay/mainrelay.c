@@ -266,7 +266,8 @@ turn_params_t turn_params = {
 
     ///////// Stateless nonce /////////
     false, /* stateless-nonce */
-    {0}    /* stateless_nonce_key (generated at startup when enabled) */
+    {0},   /* stateless_nonce_key (generated at startup when enabled) */
+    false  /* stateless_nonce_key_set */
 };
 
 //////////////// OpenSSL Init //////////////////////
@@ -1454,6 +1455,12 @@ static char Usage[] =
     "                                                 answered without allocating per-client session\n"
     "                                                 state, bounding memory under spoofed-source floods\n"
     "                                                 of structurally valid STUN messages. Off by default.\n"
+    " --stateless-nonce-secret=<secret>              Derive the stateless-nonce signing key from this\n"
+    "                                                 secret instead of a random per-process key, so\n"
+    "                                                 servers sharing the secret (and NTP-synced clocks)\n"
+    "                                                 validate each other's nonces across restarts and\n"
+    "                                                 load-balanced fleets. Use a high-entropy string.\n"
+    "                                                 Implies --stateless-nonce.\n"
     " --version					Print version (and exit).\n"
     " -h						Help\n"
     "\n";
@@ -1632,6 +1639,7 @@ enum EXTRA_OPTS {
   RATELIMIT_OPT,
   RATELIMIT_RPS_OPT,
   STATELESS_NONCE_OPT,
+  STATELESS_NONCE_SECRET_OPT,
   CPUS_OPT,
   INCLUDE_REASON_STRING_OPT,
   OPT_MULTIPLEX_PEER = 800,
@@ -1804,6 +1812,7 @@ static const struct myoption long_options[] = {
     {"unauthorized-ratelimit", optional_argument, NULL, RATELIMIT_OPT},
     {"unauthorized-ratelimit-rps", optional_argument, NULL, RATELIMIT_RPS_OPT},
     {"stateless-nonce", optional_argument, NULL, STATELESS_NONCE_OPT},
+    {"stateless-nonce-secret", required_argument, NULL, STATELESS_NONCE_SECRET_OPT},
     {NULL, no_argument, NULL, 0}};
 
 static const struct myoption admin_long_options[] = {
@@ -2707,6 +2716,21 @@ static void set_option(int c, char *value) {
     turn_params.stateless_nonce = get_bool_value(value);
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Stateless nonce mode is %s\n",
                   turn_params.stateless_nonce ? "enabled" : "disabled");
+    break;
+  case STATELESS_NONCE_SECRET_OPT:
+    if (value && value[0] &&
+        turn_derive_stateless_nonce_key((const uint8_t *)value, strlen(value), turn_params.stateless_nonce_key,
+                                        sizeof(turn_params.stateless_nonce_key))) {
+      turn_params.stateless_nonce_key_set = true;
+      if (!turn_params.stateless_nonce) {
+        turn_params.stateless_nonce = true;
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Stateless nonce mode is enabled (implied by --stateless-nonce-secret)\n");
+      }
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Stateless nonce key derived from the configured secret\n");
+    } else {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
+                    "Ignoring empty or invalid --stateless-nonce-secret; an ephemeral random key will be used\n");
+    }
     break;
 
   /* these options have been already taken care of before: */
@@ -3807,9 +3831,10 @@ int main(int argc, char **argv) {
     ratelimit_init();
   }
 
-  if (turn_params.stateless_nonce) {
-    /* Process-wide key for derived challenge nonces. A restart invalidates
-     * outstanding nonces, which just re-triggers the standard 438 re-auth. */
+  if (turn_params.stateless_nonce && !turn_params.stateless_nonce_key_set) {
+    /* Process-wide ephemeral key for challenge nonces (no
+     * --stateless-nonce-secret configured). A restart invalidates outstanding
+     * nonces, which just re-triggers the standard 438 re-auth. */
     if (RAND_bytes(turn_params.stateless_nonce_key, sizeof(turn_params.stateless_nonce_key)) != 1) {
       for (size_t i = 0; i < sizeof(turn_params.stateless_nonce_key); ++i) {
         turn_params.stateless_nonce_key[i] = (uint8_t)turn_random_number();

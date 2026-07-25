@@ -212,6 +212,56 @@ static void test_ipv6_roundtrip(void) {
   TEST_ASSERT_EQUAL_UINT32(TEST_TS, issued_at);
 }
 
+static void test_derive_key_is_deterministic_and_secret_bound(void) {
+  static const char secret[] = "north.gov-fleet-secret";
+  uint8_t k1[TURN_STATELESS_NONCE_KEY_SIZE] = {0};
+  uint8_t k2[TURN_STATELESS_NONCE_KEY_SIZE] = {0};
+  uint8_t other[TURN_STATELESS_NONCE_KEY_SIZE] = {0};
+
+  TEST_ASSERT_TRUE(turn_derive_stateless_nonce_key((const uint8_t *)secret, strlen(secret), k1, sizeof(k1)));
+  TEST_ASSERT_TRUE(turn_derive_stateless_nonce_key((const uint8_t *)secret, strlen(secret), k2, sizeof(k2)));
+  TEST_ASSERT_EQUAL_MEMORY(k1, k2, sizeof(k1));
+
+  TEST_ASSERT_TRUE(turn_derive_stateless_nonce_key((const uint8_t *)"other-secret", 12, other, sizeof(other)));
+  TEST_ASSERT_TRUE(memcmp(k1, other, sizeof(k1)) != 0);
+
+  /* The derived key is not the raw digest of the secret alone: the
+   * domain-separation label must participate. */
+  TEST_ASSERT_TRUE(memcmp(k1, secret, strlen(secret) < sizeof(k1) ? strlen(secret) : sizeof(k1)) != 0);
+
+  /* Bad arguments. */
+  TEST_ASSERT_FALSE(turn_derive_stateless_nonce_key(NULL, 5, k1, sizeof(k1)));
+  TEST_ASSERT_FALSE(turn_derive_stateless_nonce_key((const uint8_t *)secret, 0, k1, sizeof(k1)));
+  TEST_ASSERT_FALSE(turn_derive_stateless_nonce_key((const uint8_t *)secret, strlen(secret), NULL, sizeof(k1)));
+  TEST_ASSERT_FALSE(turn_derive_stateless_nonce_key((const uint8_t *)secret, strlen(secret), k1, sizeof(k1) - 1));
+}
+
+static void test_shared_secret_cross_validates_between_servers(void) {
+  /* Two "servers" configured with the same --stateless-nonce-secret must
+   * accept each other's nonces; a third with a different secret must not. */
+  static const char secret[] = "north.gov-fleet-secret";
+  uint8_t server_a[TURN_STATELESS_NONCE_KEY_SIZE] = {0};
+  uint8_t server_b[TURN_STATELESS_NONCE_KEY_SIZE] = {0};
+  uint8_t server_c[TURN_STATELESS_NONCE_KEY_SIZE] = {0};
+  TEST_ASSERT_TRUE(
+      turn_derive_stateless_nonce_key((const uint8_t *)secret, strlen(secret), server_a, sizeof(server_a)));
+  TEST_ASSERT_TRUE(
+      turn_derive_stateless_nonce_key((const uint8_t *)secret, strlen(secret), server_b, sizeof(server_b)));
+  TEST_ASSERT_TRUE(turn_derive_stateless_nonce_key((const uint8_t *)"rogue", 5, server_c, sizeof(server_c)));
+
+  const ioa_addr addr = make_addr("192.0.2.7", 51000);
+  char nonce[TURN_STATELESS_NONCE_SIZE] = {0};
+  TEST_ASSERT_TRUE(turn_generate_stateless_nonce(server_a, sizeof(server_a), &addr, TEST_TS, nonce, sizeof(nonce)));
+
+  uint32_t issued_at = 0;
+  TEST_ASSERT_TRUE(
+      turn_check_stateless_nonce(server_b, sizeof(server_b), &addr, TEST_TS + 5, TEST_LIFETIME, nonce, &issued_at));
+  TEST_ASSERT_EQUAL_UINT32(TEST_TS, issued_at);
+
+  TEST_ASSERT_FALSE(
+      turn_check_stateless_nonce(server_c, sizeof(server_c), &addr, TEST_TS + 5, TEST_LIFETIME, nonce, NULL));
+}
+
 static void test_bad_arguments_rejected(void) {
   const ioa_addr addr = make_addr("192.0.2.7", 51000);
   char nonce[TURN_STATELESS_NONCE_SIZE] = {0};
@@ -243,6 +293,8 @@ int main(void) {
   RUN_TEST(test_check_rejects_any_tampered_character);
   RUN_TEST(test_check_rejects_malformed_nonces);
   RUN_TEST(test_ipv6_roundtrip);
+  RUN_TEST(test_derive_key_is_deterministic_and_secret_bound);
+  RUN_TEST(test_shared_secret_cross_validates_between_servers);
   RUN_TEST(test_bad_arguments_rejected);
   return UNITY_END();
 }

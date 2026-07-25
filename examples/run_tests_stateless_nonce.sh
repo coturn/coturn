@@ -2,7 +2,9 @@
 
 # Stateless-nonce regression suite (issue #1999).
 #
-# Starts the server with --stateless-nonce and drives the same relay
+# Starts the server with --stateless-nonce-secret (which implies
+# --stateless-nonce and derives the signing key from the secret, the
+# fleet/shared-key configuration) and drives the same relay
 # workload as run_tests.sh over UDP and TCP (plus TLS/DTLS on Linux).
 # With the flag on:
 #   - a first MESSAGE-INTEGRITY-less UDP request is answered with a
@@ -45,8 +47,8 @@ if [ "$(uname -s)" = "Linux" ]; then
     echo "Using TURNSERVER_EXTRA_ARGS=\"$TURNSERVER_EXTRA_ARGS\""
 fi
 
-echo 'Running turnserver (--stateless-nonce)'
-$BINDIR/turnserver --use-auth-secret --sock-buf-size=1048576 --static-auth-secret=secret --realm=north.gov --allow-loopback-peers --stateless-nonce --log-file=stdout --simple-log $TURNSERVER_EXTRA_ARGS --cert ../examples/ca/turn_server_cert.pem --pkey ../examples/ca/turn_server_pkey.pem > "$TURNSERVER_LOG" 2>&1 &
+echo 'Running turnserver (--stateless-nonce-secret)'
+$BINDIR/turnserver --use-auth-secret --sock-buf-size=1048576 --static-auth-secret=secret --realm=north.gov --allow-loopback-peers --stateless-nonce-secret=fleet-nonce-secret --log-file=stdout --simple-log $TURNSERVER_EXTRA_ARGS --cert ../examples/ca/turn_server_cert.pem --pkey ../examples/ca/turn_server_pkey.pem > "$TURNSERVER_LOG" 2>&1 &
 turnserver_pid="$!"
 
 echo 'Running peer client'
@@ -123,6 +125,16 @@ run_uclient "stateless-nonce turn client TCP" -t
 # The UDP run above must have gone through the listener fast path: the first
 # ALLOCATE has no MESSAGE-INTEGRITY, so the 401 challenge is emitted without
 # creating a session, and the server logs this one-time marker.
+echo "Checking secret-derived key markers"
+if grep -q "Stateless nonce mode is enabled (implied by --stateless-nonce-secret)" "$TURNSERVER_LOG" \
+   && grep -q "Stateless nonce key derived from the configured secret" "$TURNSERVER_LOG"; then
+    echo "OK (key derived from secret, mode implied)"
+else
+    echo "FAIL: missing stateless-nonce-secret startup markers in server log"
+    diagnose_failure "secret markers"
+    exit 1
+fi
+
 echo "Checking listener fast-path marker"
 if grep -q "stateless-nonce: listener fast-path challenge active" "$TURNSERVER_LOG"; then
     echo "OK (listener fast path engaged)"

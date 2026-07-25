@@ -260,6 +260,14 @@ bool stun_calculate_hmac(const uint8_t *buf, size_t len, const uint8_t *key, siz
  * couple of timer ticks. */
 #define TURN_STATELESS_NONCE_MAX_CLOCK_SKEW (5)
 
+/* Derive the nonce-signing key from an operator-configured secret
+ * (--stateless-nonce-secret), so a fleet of servers sharing the secret
+ * cross-validates each other's nonces: key = SHA-256(label || secret) with a
+ * fixed domain-separation label, so the same string can never collide with
+ * another credential use. `key` must be exactly TURN_STATELESS_NONCE_KEY_SIZE
+ * bytes. Returns false on bad arguments or digest failure. */
+bool turn_derive_stateless_nonce_key(const uint8_t *secret, size_t secret_len, uint8_t *key, size_t key_size);
+
 /* Build the nonce issued to `addr` at `timestamp`. `nonce` receives a
  * NUL-terminated TURN_STATELESS_NONCE_LENGTH-char string and must be at least
  * TURN_STATELESS_NONCE_SIZE bytes. Returns false on bad arguments or HMAC

@@ -40,9 +40,10 @@ nonce = ts || hex( HMAC-SHA256( K, "<client-ip>:<port>|<ts>" ) )[0..15]
 ts    = 8 lowercase hex chars: the 32-bit issue time in seconds
 ```
 
-24 lowercase hex characters total. `K` is a random 256-bit key generated once
-at process startup (`turn_params.stateless_nonce_key`) and shared by every
-listener and relay thread. The issue time rides in the clear - it is covered
+24 lowercase hex characters total. `K` is a 256-bit key shared by every
+listener and relay thread: by default an ephemeral random key generated once
+at process startup, or - with `--stateless-nonce-secret` - a key derived from
+an operator-configured secret (see "Shared fleet key" below). The issue time rides in the clear - it is covered
 by the MAC, and it is nothing an observer does not already learn from seeing
 the cleartext 401 itself. Because the server can *validate* the nonce (parse
 the timestamp, recompute the MAC, check the age against the nonce lifetime -
@@ -105,17 +106,54 @@ The mode is designed to be invisible to clients:
 standard client workload must succeed unchanged over UDP/TCP (and TLS/DTLS on
 Linux), and the server log must show the fast path actually engaged.
 
+## Shared fleet key (`--stateless-nonce-secret`)
+
+By default the key is ephemeral: generated at startup, gone at exit. That is
+zero-management and leak-proof, but it means a restart invalidates
+outstanding nonces (one `438` re-auth per client), and in a multi-server
+deployment - a UDP load balancer, DNS round-robin, or coturn's own
+ALTERNATE-SERVER balancing - a retry that lands on a different instance
+likewise costs one extra `438` round-trip, and the listener fast path only
+short-circuits nonces its own instance issued.
+
+`--stateless-nonce-secret=<secret>` (config file: `stateless-nonce-secret`;
+implies `--stateless-nonce`) derives the key from an operator-configured
+secret instead:
+
+```
+K = SHA-256( "coturn-stateless-nonce-v1" || secret )
+```
+
+Every server configured with the same secret then validates every other
+server's nonces, across restarts and across the fleet. The label
+domain-separates this derivation, so the string can never collide with any
+other credential use - but do not reuse another credential (such as
+`--static-auth-secret`) as the value anyway.
+
+Operational notes:
+
+- **Entropy is on you.** The KDF fixes the key length, not the guessing
+  entropy: an attacker who collects a few 401s can mount an offline
+  dictionary attack against a weak passphrase. Use a long random string.
+- **Leak impact is bounded.** This key signs DoS-hardening cookies, not
+  credentials: forging nonces never authenticates anyone (MESSAGE-INTEGRITY
+  is still verified), it only lets spoofed traffic reach the credential
+  lookup again - roughly the pre-feature load, with memory still bounded by
+  the challenge-session teardown. Still, prefer the config file over the
+  command line, where the secret is visible in the process list.
+- **Clocks must agree.** Cross-instance validation compares the nonce's
+  embedded issue time against the validating server's clock; keep the fleet
+  NTP-synced well within the `--stale-nonce` lifetime (the future-skew
+  allowance is a few seconds).
+- **Rotation** currently means changing the secret and restarting; clients
+  re-authenticate via one standard `438` round-trip. Accepting an old and a
+  new secret simultaneously (sign with new, verify with both) is left as
+  future work.
+
 ## Limitations
 
 - **Off by default.** Enable with `--stateless-nonce` (config file:
-  `stateless-nonce`).
-- **Single-process key.** The key lives in process memory. After a restart,
-  outstanding nonces stop validating and clients re-authenticate via the
-  standard `438` round-trip (the same thing that happens today, since stored
-  nonces die with their sessions). In a multi-server deployment behind a UDP
-  load balancer, a retry that lands on a *different* server likewise costs
-  one extra `438` round-trip. A shared/derived cluster key would remove that
-  and is left as future work.
+  `stateless-nonce`), or implicitly via `--stateless-nonce-secret`.
 - **Nonce length changes when the flag is on.** Challenges carry a 24-char
   nonce instead of the stock 16-char one. RFC 8489 requires clients to treat
   the nonce as an opaque string of up to 128 characters, so compliant clients

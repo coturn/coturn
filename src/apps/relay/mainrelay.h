@@ -378,6 +378,10 @@ typedef struct _turn_params_ {
    * is generated once at startup. */
   bool stateless_nonce;
   uint8_t stateless_nonce_key[TURN_STATELESS_NONCE_KEY_SIZE];
+  /* true when the key was derived from --stateless-nonce-secret (shared
+   * across a fleet); false means an ephemeral random key is generated at
+   * startup. */
+  bool stateless_nonce_key_set;
 } turn_params_t;
 
 extern turn_params_t turn_params;
