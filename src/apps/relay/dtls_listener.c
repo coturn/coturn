@@ -436,8 +436,8 @@ static bool udp_stateless_nonce_fast_path(dtls_listener_relay_server_type *serve
     }
   }
 
-  int enforce_fingerprints = 0;
-  if (!stun_is_command_message_full_check_str(data, len, 0, &enforce_fingerprints)) {
+  bool enforce_fingerprints = false;
+  if (!stun_is_command_message_full_check_str(data, len, false, &enforce_fingerprints)) {
     /* Classified as STUN but fails the full check (e.g. bad FINGERPRINT):
      * the relay would create a session and ignore the message. */
     return true;
@@ -505,7 +505,7 @@ static bool udp_stateless_nonce_fast_path(dtls_listener_relay_server_type *serve
     /* Realm selection by ORIGIN, as in handle_turn_command for a session
      * whose origin is not pinned yet. */
     stun_attr_ref sar = stun_attr_get_first_str(data, len);
-    int origin_found = 0;
+    bool origin_found = false;
     while (sar && !origin_found) {
       if (stun_attr_get_type(sar) == STUN_ATTRIBUTE_ORIGIN) {
         const int sarlen = stun_attr_get_len(sar);
@@ -598,9 +598,9 @@ static bool udp_stateless_nonce_fast_path(dtls_listener_relay_server_type *serve
   /* One-time operational marker (also asserted by
    * examples/run_tests_stateless_nonce.sh). Benign race: worst case the
    * line is logged once per listener thread. */
-  static volatile int fast_path_logged = 0;
+  static volatile bool fast_path_logged = false;
   if (!fast_path_logged) {
-    fast_path_logged = 1;
+    fast_path_logged = true;
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "stateless-nonce: listener fast-path challenge active\n");
   }
 

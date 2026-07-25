@@ -117,8 +117,8 @@ bool stun_init_channel_message_str(uint16_t chnumber, uint8_t *buf, size_t *len,
 
 bool stun_is_command_message_str(const uint8_t *buf, size_t blen);
 bool old_stun_is_command_message_str(const uint8_t *buf, size_t blen, uint32_t *cookie);
-bool stun_is_command_message_full_check_str(const uint8_t *buf, size_t blen, int must_check_fingerprint,
-                                            int *fingerprint_present);
+bool stun_is_command_message_full_check_str(const uint8_t *buf, size_t blen, bool must_check_fingerprint,
+                                            bool *fingerprint_present);
 bool stun_is_request_str(const uint8_t *buf, size_t len);
 bool stun_is_success_response_str(const uint8_t *buf, size_t len);
 bool stun_is_error_response_str(const uint8_t *buf, size_t len, int *err_code, uint8_t *err_msg, size_t err_msg_size);

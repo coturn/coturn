@@ -1694,7 +1694,7 @@ static ts_ur_super_session *mobile_complete_transition(turn_turnserver *server, 
   orig_ss->mobile_transition_deadline = 0;
 
   ioa_socket_handle s = detach_ioa_socket(pending_ss->client_socket);
-  pending_ss->to_be_closed = 1;
+  pending_ss->to_be_closed = true;
   if (!s) {
     return NULL;
   }
@@ -1729,7 +1729,7 @@ static void mobile_abort_transition(turn_turnserver *server, ts_ur_super_session
   orig_ss->mobile_transition_deadline = 0;
   if (pending_ss && pending_ss->mobile_resume_target == orig_ss->id) {
     pending_ss->mobile_resume_target = 0;
-    pending_ss->to_be_closed = 1;
+    pending_ss->to_be_closed = true;
   }
 }
 
@@ -1891,7 +1891,7 @@ static int handle_turn_refresh(turn_turnserver *server, ts_ur_super_session *ss,
             *reason = (const uint8_t *)"Server send socket procedure is not set";
           }
 
-          ss->to_be_closed = 1;
+          ss->to_be_closed = true;
 
         } else {
 
@@ -2654,7 +2654,7 @@ static int handle_turn_connection_bind(turn_turnserver *server, ts_ur_super_sess
       } else {
         *err_code = 500;
       }
-      ss->to_be_closed = 1;
+      ss->to_be_closed = true;
     }
   }
 
@@ -3526,28 +3526,28 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
     return 0;
   }
 
-  int new_nonce = 0;
+  bool new_nonce = false;
 
   {
-    int generate_new_nonce = 0;
+    bool generate_new_nonce = false;
     if (ss->nonce[0] == 0) {
-      generate_new_nonce = 1;
-      new_nonce = 1;
+      generate_new_nonce = true;
+      new_nonce = true;
     }
 
     if (*(server->stale_nonce)) {
       if (turn_time_before(ss->nonce_expiration_time, server->ctime)) {
-        generate_new_nonce = 1;
+        generate_new_nonce = true;
       }
     }
 
     if (generate_new_nonce) {
 
-      int need_random_nonce = 1;
+      bool need_random_nonce = true;
 
       if (turn_server_stateless_nonce_enabled(server) &&
           compute_session_stateless_nonce(server, ss, 0, (char *)ss->nonce, sizeof(ss->nonce))) {
-        need_random_nonce = 0;
+        need_random_nonce = false;
       }
 
       if (need_random_nonce) {
@@ -3704,10 +3704,10 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
        * by a since-closed challenge session: accept it if it derives for the
        * current window, or for an adjacent one (a challenge issued just before
        * a window roll, or by a listener clock one tick ahead of ctime). */
-      int accepted = 0;
+      bool accepted = false;
       if (turn_server_stateless_nonce_enabled(server)) {
         if (!strcmp((char *)ss->nonce, (char *)nonce)) {
-          accepted = 1;
+          accepted = true;
         } else {
           const int deltas[] = {-1, 1};
           for (size_t i = 0; i < sizeof(deltas) / sizeof(deltas[0]); ++i) {
@@ -3715,7 +3715,7 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
             if (compute_session_stateless_nonce(server, ss, deltas[i], derived, sizeof(derived)) &&
                 !strcmp(derived, (char *)nonce)) {
               STRCPY(ss->nonce, derived);
-              accepted = 1;
+              accepted = true;
               break;
             }
           }
@@ -3908,7 +3908,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
         stun_attr_ref sar = stun_attr_get_first_str(ioa_network_buffer_data(in_buffer->nbh),
                                                     ioa_network_buffer_get_size(in_buffer->nbh));
 
-        int origin_found = 0;
+        bool origin_found = false;
         int norigins = 0;
 
         while (sar && !origin_found) {
@@ -3926,7 +3926,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
                               (unsigned long long)(ss->id), __FUNCTION__, o);
               }
               if (!strncmp(ss->origin, corigin, STUN_MAX_ORIGIN_SIZE)) {
-                origin_found = 1;
+                origin_found = true;
               }
               free(corigin);
               free(o);
@@ -3967,7 +3967,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
         stun_attr_ref sar = stun_attr_get_first_str(ioa_network_buffer_data(in_buffer->nbh),
                                                     ioa_network_buffer_get_size(in_buffer->nbh));
 
-        int origin_found = 0;
+        bool origin_found = false;
 
         while (sar && !origin_found) {
           if (stun_attr_get_type(sar) == STUN_ATTRIBUTE_ORIGIN) {
@@ -4217,7 +4217,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
        * scratch — so drop the session state right away instead of letting it
        * sit out the to-be-allocated timeout. */
       if (turn_server_stateless_nonce_enabled(server) && !is_allocation_valid(get_allocation_ss(ss))) {
-        ss->to_be_closed = 1;
+        ss->to_be_closed = true;
       }
       if (first_drop) {
         char raddr[INET6_ADDRSTRLEN + 1] = {0};
@@ -4285,7 +4285,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
   if (((err_code == 401) || (err_code == 438)) && *resp_constructed && !no_response &&
       turn_server_stateless_nonce_enabled(server) && (get_ioa_socket_type(ss->client_socket) == UDP_SOCKET) &&
       !is_allocation_valid(get_allocation_ss(ss))) {
-    ss->close_after_auth_challenge = 1;
+    ss->close_after_auth_challenge = true;
   }
 
   return 0;
@@ -4540,7 +4540,7 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
     ts_ur_super_session *pend = get_session_from_map(server, ss->mobile_pending_resume);
     if (pend && pend->mobile_resume_target == ss->id) {
       pend->mobile_resume_target = 0;
-      pend->to_be_closed = 1;
+      pend->to_be_closed = true;
     }
     ss->mobile_pending_resume = 0;
     ss->mobile_transition_deadline = 0;
@@ -4996,7 +4996,7 @@ static int read_client_connection(turn_turnserver *server, ts_ur_super_session *
     return 0;
 
   } else if (stun_is_command_message_full_check_str(ioa_network_buffer_data(in_buffer->nbh),
-                                                    ioa_network_buffer_get_size(in_buffer->nbh), 0,
+                                                    ioa_network_buffer_get_size(in_buffer->nbh), false,
                                                     &(ss->enforce_fingerprints))) {
 
     int resp_constructed = 0;
@@ -5037,8 +5037,8 @@ static int read_client_connection(turn_turnserver *server, ts_ur_super_session *
       const int ret = write_client_connection(server, ss, nbh, TTL_IGNORE, TOS_IGNORE);
 
       if (ss->close_after_auth_challenge) {
-        ss->close_after_auth_challenge = 0;
-        ss->to_be_closed = 1;
+        ss->close_after_auth_challenge = false;
+        ss->to_be_closed = true;
       }
 
       FUNCEND;
@@ -5077,7 +5077,7 @@ static int read_client_connection(turn_turnserver *server, ts_ur_super_session *
         if ((st == TCP_SOCKET) && (try_acme_redirect((char *)ioa_network_buffer_data(in_buffer->nbh),
                                                      ioa_network_buffer_get_size(in_buffer->nbh), server->acme_redirect,
                                                      ss->client_socket) == 0)) {
-          ss->to_be_closed = 1;
+          ss->to_be_closed = true;
           return 0;
         } else if (*server->web_admin_listen_on_workers) {
           if (st == TLS_SOCKET) {
@@ -5095,7 +5095,7 @@ static int read_client_connection(turn_turnserver *server, ts_ur_super_session *
                               get_ioa_socket_type(new_s), get_ioa_socket_app_type(new_s));
                 server->send_https_socket(new_s);
               }
-              ss->to_be_closed = 1;
+              ss->to_be_closed = true;
             }
           } else {
             set_ioa_socket_app_type(ss->client_socket, HTTP_CLIENT_SOCKET);
@@ -5137,7 +5137,7 @@ static int read_client_connection(turn_turnserver *server, ts_ur_super_session *
           memcpy(ioa_network_buffer_data(nbh_http), buffer, strlen(buffer));
           send_data_from_ioa_socket_nbh(ss->client_socket, NULL, nbh_http, TTL_IGNORE, TOS_IGNORE, NULL);
         } else {
-          ss->to_be_closed = 1;
+          ss->to_be_closed = true;
           return 0;
         }
       }

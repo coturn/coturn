@@ -518,15 +518,15 @@ bool old_stun_is_command_message_str(const uint8_t *buf, size_t blen, uint32_t *
   return false;
 }
 
-bool stun_is_command_message_full_check_str(const uint8_t *buf, size_t blen, int must_check_fingerprint,
-                                            int *fingerprint_present) {
+bool stun_is_command_message_full_check_str(const uint8_t *buf, size_t blen, bool must_check_fingerprint,
+                                            bool *fingerprint_present) {
   if (!stun_is_command_message_str(buf, blen)) {
     return false;
   }
   stun_attr_ref sar = stun_attr_get_first_by_type_str(buf, blen, STUN_ATTRIBUTE_FINGERPRINT);
   if (!sar) {
     if (fingerprint_present) {
-      *fingerprint_present = 0;
+      *fingerprint_present = false;
     }
     if (stun_get_method_str(buf, blen) == STUN_METHOD_BINDING) {
       return true;

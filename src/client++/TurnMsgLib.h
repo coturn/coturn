@@ -620,7 +620,7 @@ public:
    * Check the fingerprint
    */
   static bool checkFingerprint(uint8_t *buffer, size_t sz) {
-    return stun_is_command_message_full_check_str(buffer, sz, 1, NULL);
+    return stun_is_command_message_full_check_str(buffer, sz, true, NULL);
   }
 
   /**

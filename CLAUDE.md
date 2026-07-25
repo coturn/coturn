@@ -121,6 +121,7 @@ docker run --rm \
   coturn-fuzz-local \
   -lc 'apt-get update && apt-get install -y --no-install-recommends git libmicrohttpd-dev && \
        cp -a /src /tmp/coturn && \
+       git config --global --add safe.directory /tmp/coturn && \
        cd /tmp/coturn && \
        rm -rf Makefile bin lib include sqlite build build-win && \
        cmake -S . -B build-linux -DBUILD_TESTING=ON && \

@@ -40,6 +40,8 @@
 #include "ns_turn_maps.h"
 #include "ns_turn_utils.h"
 
+#include <stdbool.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -76,13 +78,13 @@ struct _ts_ur_super_session {
   ioa_socket_handle client_socket;
   allocation alloc;
   ioa_timer_handle to_be_allocated_timeout_ev;
-  int enforce_fingerprints;
-  int is_tcp_relay;
-  int to_be_closed;
+  bool enforce_fingerprints;
+  bool is_tcp_relay;
+  bool to_be_closed;
   /* Stateless-nonce mode: this UDP session only exists to carry an auth
    * challenge (401/438) whose nonce can be recomputed later, so it is torn
    * down as soon as the challenge response has been written (issue #1999). */
-  int close_after_auth_challenge;
+  bool close_after_auth_challenge;
   /* Auth */
   uint8_t nonce[NONCE_MAX_SIZE];
   turn_time_t nonce_expiration_time;
@@ -161,7 +163,7 @@ struct turn_session_info {
   addr_data relay_addr_data_ipv4;
   addr_data relay_addr_data_ipv6;
   uint8_t username[STUN_MAX_USERNAME_SIZE + 1];
-  int enforce_fingerprints;
+  bool enforce_fingerprints;
   /* Stats */
   uint64_t received_packets;
   uint64_t sent_packets;
