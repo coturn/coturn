@@ -209,6 +209,133 @@ bool stun_calculate_hmac(const uint8_t *buf, size_t len, const uint8_t *key, siz
   return true;
 }
 
+/* MAC half of the stateless nonce: 16 lowercase hex chars = first 8 bytes of
+ * HMAC-SHA256(key, "<client-addr>|<timestamp-hex>"). `ts_hex` is the 8-char
+ * timestamp exactly as it appears in the nonce, so the MAC covers the same
+ * bytes the validator parses. */
+static bool stateless_nonce_mac(const uint8_t *key, size_t key_size, const ioa_addr *addr,
+                                const char ts_hex[TURN_STATELESS_NONCE_TIMESTAMP_LENGTH + 1],
+                                char mac_hex[TURN_STATELESS_NONCE_MAC_LENGTH + 1]) {
+  uint8_t hmac[MAXSHASIZE] = {0};
+  unsigned int hmac_len = sizeof(hmac);
+
+  char msg[MAX_IOA_ADDR_STRING + TURN_STATELESS_NONCE_TIMESTAMP_LENGTH + 2] = {0};
+  addr_to_string(addr, msg);
+  const size_t alen = strlen(msg);
+  snprintf(msg + alen, sizeof(msg) - alen, "|%s", ts_hex);
+
+  if (!stun_calculate_hmac((const uint8_t *)msg, strlen(msg), key, key_size, hmac, &hmac_len, SHATYPE_SHA256) ||
+      (hmac_len < TURN_STATELESS_NONCE_MAC_LENGTH / 2)) {
+    return false;
+  }
+
+  static const char hex[] = "0123456789abcdef";
+  for (size_t i = 0; i < TURN_STATELESS_NONCE_MAC_LENGTH; ++i) {
+    const uint8_t b = hmac[i / 2];
+    mac_hex[i] = hex[(i % 2) ? (b & 0x0f) : (b >> 4)];
+  }
+  mac_hex[TURN_STATELESS_NONCE_MAC_LENGTH] = 0;
+
+  return true;
+}
+
+bool turn_derive_stateless_nonce_key(const uint8_t *secret, size_t secret_len, uint8_t *key, size_t key_size) {
+  if (!secret || !secret_len || !key || (key_size != TURN_STATELESS_NONCE_KEY_SIZE)) {
+    return false;
+  }
+
+  static const char label[] = "coturn-stateless-nonce-v1";
+
+  ERR_clear_error();
+  EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+  if (!ctx) {
+    return false;
+  }
+  unsigned int key_len = 0;
+  const bool ok = (EVP_DigestInit(ctx, EVP_sha256()) == 1) && (EVP_DigestUpdate(ctx, label, sizeof(label)) == 1) &&
+                  (EVP_DigestUpdate(ctx, secret, secret_len) == 1) && (EVP_DigestFinal(ctx, key, &key_len) == 1) &&
+                  (key_len == TURN_STATELESS_NONCE_KEY_SIZE);
+  EVP_MD_CTX_free(ctx);
+
+  return ok;
+}
+
+bool turn_generate_stateless_nonce(const uint8_t *key, size_t key_size, const ioa_addr *addr, uint32_t timestamp,
+                                   char *nonce, size_t nonce_size) {
+  if (!key || !key_size || !addr || !nonce || (nonce_size < TURN_STATELESS_NONCE_SIZE)) {
+    return false;
+  }
+
+  char ts_hex[TURN_STATELESS_NONCE_TIMESTAMP_LENGTH + 1] = {0};
+  snprintf(ts_hex, sizeof(ts_hex), "%08lx", (unsigned long)timestamp);
+
+  char mac_hex[TURN_STATELESS_NONCE_MAC_LENGTH + 1] = {0};
+  if (!stateless_nonce_mac(key, key_size, addr, ts_hex, mac_hex)) {
+    return false;
+  }
+
+  snprintf(nonce, nonce_size, "%s%s", ts_hex, mac_hex);
+  return true;
+}
+
+bool turn_check_stateless_nonce(const uint8_t *key, size_t key_size, const ioa_addr *addr, uint32_t now,
+                                uint32_t max_age, const char *nonce, uint32_t *timestamp_out) {
+  if (!key || !key_size || !addr || !nonce) {
+    return false;
+  }
+
+  /* Strict format: exactly 24 lowercase hex chars. */
+  if (strlen(nonce) != TURN_STATELESS_NONCE_LENGTH) {
+    return false;
+  }
+  uint32_t ts = 0;
+  for (size_t i = 0; i < TURN_STATELESS_NONCE_LENGTH; ++i) {
+    const char c = nonce[i];
+    int v;
+    if ((c >= '0') && (c <= '9')) {
+      v = c - '0';
+    } else if ((c >= 'a') && (c <= 'f')) {
+      v = 10 + (c - 'a');
+    } else {
+      return false;
+    }
+    if (i < TURN_STATELESS_NONCE_TIMESTAMP_LENGTH) {
+      ts = (ts << 4) | (uint32_t)v;
+    }
+  }
+
+  char ts_hex[TURN_STATELESS_NONCE_TIMESTAMP_LENGTH + 1] = {0};
+  memcpy(ts_hex, nonce, TURN_STATELESS_NONCE_TIMESTAMP_LENGTH);
+
+  char mac_hex[TURN_STATELESS_NONCE_MAC_LENGTH + 1] = {0};
+  if (!stateless_nonce_mac(key, key_size, addr, ts_hex, mac_hex)) {
+    return false;
+  }
+
+  /* Constant-time comparison: no early exit a forger could time. */
+  uint8_t diff = 0;
+  for (size_t i = 0; i < TURN_STATELESS_NONCE_MAC_LENGTH; ++i) {
+    diff |= (uint8_t)(mac_hex[i] ^ nonce[TURN_STATELESS_NONCE_TIMESTAMP_LENGTH + i]);
+  }
+  if (diff) {
+    return false;
+  }
+
+  /* Freshness. */
+  if (ts > now) {
+    if ((ts - now) > TURN_STATELESS_NONCE_MAX_CLOCK_SKEW) {
+      return false;
+    }
+  } else if ((now - ts) > max_age) {
+    return false;
+  }
+
+  if (timestamp_out) {
+    *timestamp_out = ts;
+  }
+  return true;
+}
+
 bool stun_produce_integrity_key_str(const uint8_t *uname, const uint8_t *realm, const uint8_t *upwd, hmackey_t key,
                                     SHATYPE shatype) {
   bool ret;
@@ -483,15 +610,15 @@ bool old_stun_is_command_message_str(const uint8_t *buf, size_t blen, uint32_t *
   return false;
 }
 
-bool stun_is_command_message_full_check_str(const uint8_t *buf, size_t blen, int must_check_fingerprint,
-                                            int *fingerprint_present) {
+bool stun_is_command_message_full_check_str(const uint8_t *buf, size_t blen, bool must_check_fingerprint,
+                                            bool *fingerprint_present) {
   if (!stun_is_command_message_str(buf, blen)) {
     return false;
   }
   stun_attr_ref sar = stun_attr_get_first_by_type_str(buf, blen, STUN_ATTRIBUTE_FINGERPRINT);
   if (!sar) {
     if (fingerprint_present) {
-      *fingerprint_present = 0;
+      *fingerprint_present = false;
     }
     if (stun_get_method_str(buf, blen) == STUN_METHOD_BINDING) {
       return true;

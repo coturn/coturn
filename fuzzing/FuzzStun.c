@@ -51,7 +51,7 @@ static void harness_integrity_sha1(const uint8_t *Data, size_t Size) {
     return;
   }
 
-  stun_is_command_message_full_check_str((uint8_t *)Data, Size, 1, NULL);
+  stun_is_command_message_full_check_str((uint8_t *)Data, Size, true, NULL);
 
   uint8_t uname[STUN_MAX_USERNAME_SIZE + 1] = "fuzzuser";
   uint8_t realm[STUN_MAX_REALM_SIZE + 1] = "fuzz.realm";
@@ -81,7 +81,7 @@ static void harness_integrity_multi(const uint8_t *Data, size_t Size) {
 
   for (size_t s = 0; s < num_sha; s++) {
     memcpy(buf, Data, Size);
-    stun_is_command_message_full_check_str(buf, Size, 1, NULL);
+    stun_is_command_message_full_check_str(buf, Size, true, NULL);
     stun_check_message_integrity_str(TURN_CREDENTIALS_SHORT_TERM, buf, Size, uname, realm, upwd, sha_types[s]);
 
     memcpy(buf, Data, Size);
@@ -363,9 +363,9 @@ static void harness_old_stun(const uint8_t *Data, size_t Size) {
     uint8_t err_msg[256] = {0};
     stun_is_error_response_str(buf, Size, &err_code, err_msg, sizeof(err_msg));
 
-    int fp_present = 0;
-    stun_is_command_message_full_check_str(buf, Size, 1, &fp_present);
-    stun_is_command_message_full_check_str(buf, Size, 0, &fp_present);
+    bool fp_present = false;
+    stun_is_command_message_full_check_str(buf, Size, true, &fp_present);
+    stun_is_command_message_full_check_str(buf, Size, false, &fp_present);
 
     stun_is_binding_request_str(buf, Size, 0);
     stun_is_binding_response_str(buf, Size);

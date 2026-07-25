@@ -117,8 +117,8 @@ bool stun_init_channel_message_str(uint16_t chnumber, uint8_t *buf, size_t *len,
 
 bool stun_is_command_message_str(const uint8_t *buf, size_t blen);
 bool old_stun_is_command_message_str(const uint8_t *buf, size_t blen, uint32_t *cookie);
-bool stun_is_command_message_full_check_str(const uint8_t *buf, size_t blen, int must_check_fingerprint,
-                                            int *fingerprint_present);
+bool stun_is_command_message_full_check_str(const uint8_t *buf, size_t blen, bool must_check_fingerprint,
+                                            bool *fingerprint_present);
 bool stun_is_request_str(const uint8_t *buf, size_t len);
 bool stun_is_success_response_str(const uint8_t *buf, size_t len);
 bool stun_is_error_response_str(const uint8_t *buf, size_t len, int *err_code, uint8_t *err_msg, size_t err_msg_size);
@@ -237,6 +237,52 @@ bool stun_produce_integrity_key_str(const uint8_t *uname, const uint8_t *realm, 
                                     SHATYPE shatype);
 bool stun_calculate_hmac(const uint8_t *buf, size_t len, const uint8_t *key, size_t sz, uint8_t *hmac,
                          unsigned int *hmac_len, SHATYPE shatype);
+
+/* Stateless NONCE (see docs/stateless-nonce.md): the nonce a server hands out
+ * in a 401/438 challenge is an authenticated timestamp cookie,
+ *
+ *   nonce = <8 hex chars: 32-bit issue timestamp>
+ *        || <16 hex chars: HMAC-SHA256(key, "<client-addr>|<timestamp-hex>") truncated>
+ *
+ * so it can be validated later - parse the timestamp, recompute the MAC, check
+ * the age - instead of being stored in per-client session state. All hex is
+ * lowercase. The timestamp rides in the clear; it is covered by the MAC, and
+ * it is nothing an observer does not already know (the 401 itself travels in
+ * cleartext at issue time). */
+#define TURN_STATELESS_NONCE_KEY_SIZE (32)
+#define TURN_STATELESS_NONCE_TIMESTAMP_LENGTH (8)
+#define TURN_STATELESS_NONCE_MAC_LENGTH (16)
+#define TURN_STATELESS_NONCE_LENGTH (TURN_STATELESS_NONCE_TIMESTAMP_LENGTH + TURN_STATELESS_NONCE_MAC_LENGTH)
+#define TURN_STATELESS_NONCE_SIZE (TURN_STATELESS_NONCE_LENGTH + 1)
+/* How many seconds a nonce's timestamp may sit in the future of the
+ * validator's clock: the issuing listener stamps with turn_time() while the
+ * validating relay compares against its cached ctime, which can lag by a
+ * couple of timer ticks. */
+#define TURN_STATELESS_NONCE_MAX_CLOCK_SKEW (5)
+
+/* Derive the nonce-signing key from an operator-configured secret
+ * (--stateless-nonce-secret), so a fleet of servers sharing the secret
+ * cross-validates each other's nonces: key = SHA-256(label || secret) with a
+ * fixed domain-separation label, so the same string can never collide with
+ * another credential use. `key` must be exactly TURN_STATELESS_NONCE_KEY_SIZE
+ * bytes. Returns false on bad arguments or digest failure. */
+bool turn_derive_stateless_nonce_key(const uint8_t *secret, size_t secret_len, uint8_t *key, size_t key_size);
+
+/* Build the nonce issued to `addr` at `timestamp`. `nonce` receives a
+ * NUL-terminated TURN_STATELESS_NONCE_LENGTH-char string and must be at least
+ * TURN_STATELESS_NONCE_SIZE bytes. Returns false on bad arguments or HMAC
+ * failure. */
+bool turn_generate_stateless_nonce(const uint8_t *key, size_t key_size, const ioa_addr *addr, uint32_t timestamp,
+                                   char *nonce, size_t nonce_size);
+
+/* Validate a presented nonce for `addr`: strict format check, MAC
+ * recomputation (constant-time compare), and freshness - the embedded
+ * timestamp must not be older than `max_age` seconds nor more than
+ * TURN_STATELESS_NONCE_MAX_CLOCK_SKEW seconds ahead of `now`. On success
+ * optionally returns the embedded timestamp via `timestamp_out` (may be
+ * NULL). */
+bool turn_check_stateless_nonce(const uint8_t *key, size_t key_size, const ioa_addr *addr, uint32_t now,
+                                uint32_t max_age, const char *nonce, uint32_t *timestamp_out);
 
 /* RFC 5780 */
 bool stun_attr_get_change_request_str(stun_attr_ref attr, bool *change_ip, bool *change_port);

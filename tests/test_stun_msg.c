@@ -420,8 +420,8 @@ static void test_message_build_and_parse_survive_misaligned_buffer(void) {
   TEST_ASSERT_EQUAL_INT((int)len, stun_get_command_message_len_str(buf, len));
   TEST_ASSERT_FALSE(is_channel_msg_str(buf, len));
 
-  int fingerprint_present = 0;
-  TEST_ASSERT_TRUE(stun_is_command_message_full_check_str(buf, len, 1, &fingerprint_present));
+  bool fingerprint_present = false;
+  TEST_ASSERT_TRUE(stun_is_command_message_full_check_str(buf, len, true, &fingerprint_present));
   TEST_ASSERT_TRUE(fingerprint_present);
 
   stun_attr_ref sar = stun_attr_get_first_by_type_str(buf, len, STUN_ATTRIBUTE_RESPONSE_PORT);
