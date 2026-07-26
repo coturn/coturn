@@ -246,6 +246,7 @@ turn_params_t turn_params = {
 
     false, /* log_binding */
     false, /* stun_backward_compatibility */
+    false, /* rfc5766_channel_numbers */
     false, /* respond_http_unsupported */
     true,  /* drop_invalid_packets */
     false, /* drop_invalid_packets_log */
@@ -1402,6 +1403,13 @@ static char Usage[] =
     "binding responses.\n"
     " --stun-backward-compatibility		        Enable handling old STUN Binding requests and enable "
     "MAPPED-ADDRESS attribute\n"
+    " --rfc5766-channel-numbers			Accept ChannelBind channel numbers from the obsolete RFC 5766 "
+    "range 0x5000-0x7FFF,\n"
+    "						which RFC 8656 reserves for multiplexing collision avoidance "
+    "(RFC 7983). Only for\n"
+    "						compatibility with legacy clients; ChannelData on those "
+    "channels may be dropped by\n"
+    "						conformant demultiplexing endpoints.\n"
     " --respond-http-unsupported			Return an HTTP reponse with a 400 status code to HTTP "
     "connections made to ports not\n"
     "						supporting HTTP. The default behaviour is to immediately "
@@ -1624,6 +1632,7 @@ enum EXTRA_OPTS {
   NO_RFC5780,
   ENABLE_RFC5780,
   STUN_BACKWARD_COMPATIBILITY_OPT,
+  RFC5766_CHANNEL_NUMBERS_OPT,
   RESPONSE_ORIGIN_ONLY_WITH_RFC5780_OPT,
   RESPOND_HTTP_UNSUPPORTED_OPT,
   DROP_INVALID_PACKETS_OPT,
@@ -1793,6 +1802,7 @@ static const struct myoption long_options[] = {
     {"no-rfc5780", optional_argument, NULL, NO_RFC5780},
     {"rfc5780", optional_argument, NULL, ENABLE_RFC5780},
     {"stun-backward-compatibility", optional_argument, NULL, STUN_BACKWARD_COMPATIBILITY_OPT},
+    {"rfc5766-channel-numbers", optional_argument, NULL, RFC5766_CHANNEL_NUMBERS_OPT},
     {"response-origin-only-with-rfc5780", optional_argument, NULL, RESPONSE_ORIGIN_ONLY_WITH_RFC5780_OPT},
     {"respond-http-unsupported", optional_argument, NULL, RESPOND_HTTP_UNSUPPORTED_OPT},
     {"drop-invalid-packets", optional_argument, NULL, DROP_INVALID_PACKETS_OPT},
@@ -2641,6 +2651,9 @@ static void set_option(int c, char *value) {
     break;
   case STUN_BACKWARD_COMPATIBILITY_OPT:
     turn_params.stun_backward_compatibility = get_bool_value(value);
+    break;
+  case RFC5766_CHANNEL_NUMBERS_OPT:
+    turn_params.rfc5766_channel_numbers = get_bool_value(value);
     break;
   case RESPONSE_ORIGIN_ONLY_WITH_RFC5780_OPT:
     break;
