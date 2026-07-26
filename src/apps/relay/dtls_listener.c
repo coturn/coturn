@@ -250,6 +250,37 @@ static size_t print_packet_txt2pcap(uint64_t now, uint8_t *payload, size_t paylo
  */
 #define TURN_DTLS_MAX_CERT_LIST (SSL3_RT_MAX_ENCRYPTED_LENGTH)
 
+/*
+ * Cap on concurrent half-open (handshake-incomplete) DTLS sockets, summed
+ * across all relay threads. A DTLS ClientHello from a new source makes the
+ * listener allocate a per-peer SSL + ioa_socket + ts_ur_super_session before
+ * the source has answered the RFC 6347 cookie challenge, so a source-spoofing
+ * flood of unanswered ClientHellos would otherwise accumulate unbounded state
+ * (GHSA-5x2p-4vqj-f6m4, CWE-770/400). Once the cap is reached, new handshakes
+ * are dropped until in-progress ones finish (freeing their slot) or are reaped
+ * by the allocate timeout. Legitimate clients finish the handshake in a few
+ * round trips and release their slot immediately, so this only bites under a
+ * flood.
+ *
+ * The cap scales with server size: it is this many slots per relay thread, so a
+ * bigger deployment (more relay threads) tolerates proportionally more
+ * concurrent handshakes and a small box is not over-committed. The live count
+ * is a single global counter rather than a hard per-thread partition, so a busy
+ * relay thread can use headroom left idle by others while the process-wide
+ * ceiling (this * relay-thread count) still bounds total memory. A fixed
+ * per-thread bound for now; a --dtls-max-half-open option could expose it.
+ */
+#define TURN_DTLS_HALF_OPEN_PER_THREAD 16
+
+/* Process-wide cap = per-thread budget * number of relay threads (>= 1). */
+static uint32_t dtls_half_open_cap(void) {
+  uint32_t threads = (uint32_t)turn_params.general_relay_servers_number;
+  if (threads < 1) {
+    threads = 1;
+  }
+  return TURN_DTLS_HALF_OPEN_PER_THREAD * threads;
+}
+
 static unsigned char dtls_cookie_secret[COOKIE_SECRET_LENGTH];
 static pthread_once_t dtls_cookie_secret_once = PTHREAD_ONCE_INIT;
 
@@ -384,6 +415,14 @@ static ioa_socket_handle dtls_server_input_handler(dtls_listener_relay_server_ty
   BIO *wbio = NULL;
   struct timeval timeout;
 
+  /* Refuse a new DTLS handshake once too many are already in flight, before
+   * allocating any per-peer state, so a ClientHello flood cannot exhaust memory
+   * (GHSA-5x2p-4vqj-f6m4). The reserved slot is released below if the accept
+   * fails, or later when the handshake finishes / the socket is closed. */
+  if (!turn_dtls_half_open_try_inc(dtls_half_open_cap())) {
+    return NULL;
+  }
+
   /* Create BIO */
   wbio = BIO_new_dgram(s->fd, BIO_NOCLOSE);
   (void)BIO_dgram_set_peer(wbio, (struct sockaddr *)&(server->sm.m.sm.nd.src_addr));
@@ -414,6 +453,13 @@ static ioa_socket_handle dtls_server_input_handler(dtls_listener_relay_server_ty
       SSL_shutdown(connecting_ssl);
     }
     SSL_free(connecting_ssl);
+    /* No socket was created, so nothing will ever release the slot we reserved
+     * above - release it here. */
+    turn_dtls_half_open_dec();
+  } else {
+    /* The socket now owns the reserved slot; it is released when the handshake
+     * completes (data path below) or the socket is closed. */
+    rc->dtls_half_open = true;
   }
 
   return rc;
@@ -673,6 +719,14 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server, struct mes
       }
     }
 
+    /* The DTLS handshake just finished on this session's socket: release its
+     * half-open slot so it no longer counts against the cap (it is now a
+     * return-routable, fully-established peer). */
+    if (s && s->dtls_half_open && s->ssl && SSL_is_init_finished(s->ssl)) {
+      s->dtls_half_open = false;
+      turn_dtls_half_open_dec();
+    }
+
     if (s && ioa_socket_check_bandwidth(s, sm->m.sm.nd.nbh, 1)) {
       s->e = ioa_eng;
       if (s && s->read_cb && sm->m.sm.nd.nbh) {
@@ -745,6 +799,13 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server, struct mes
       chs = dtls_server_input_handler(server, s, sm->m.sm.nd.nbh);
       ioa_network_buffer_delete(server->e, sm->m.sm.nd.nbh);
       sm->m.sm.nd.nbh = NULL;
+      if (!chs) {
+        /* The handshake produced no DTLS socket: the half-open cap was reached
+         * or the handshake errored. Drop it - a DTLS handshake datagram must
+         * never fall through to create_ioa_socket_from_fd below and become a
+         * plain-UDP socket + session (GHSA-5x2p-4vqj-f6m4). */
+        return 0;
+      }
     } else if (!turn_params.no_dtls && (packet_type == UDP_PACKET_CLASS_DTLS_OTHER)) {
       /* A non-handshake DTLS record (ApplicationData / Alert /
        * ChangeCipherSpec) from a source with no established DTLS session - the
