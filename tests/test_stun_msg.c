@@ -652,6 +652,53 @@ static void test_covered_walk_hides_message_integrity_sha256_from_420(void) {
   TEST_ASSERT_EQUAL_INT(0, count_attrs_of_type(buf, len, TEST_ATTR_MESSAGE_INTEGRITY_SHA256, true));
 }
 
+/* RFC 8656 par. 12: ChannelBind may only establish channels 0x4000-0x4FFF;
+   0x5000-0xFFFF is reserved for RFC 7983 demultiplexing. The receive-side
+   macro deliberately keeps the RFC 5766 range so legacy ChannelData frames
+   are still recognized and stream framing stays in sync. */
+static void test_channel_bind_macro_is_strict_rfc8656_range(void) {
+  TEST_ASSERT_FALSE(STUN_VALID_CHANNEL_BIND(0x3FFF));
+  TEST_ASSERT_TRUE(STUN_VALID_CHANNEL_BIND(0x4000));
+  TEST_ASSERT_TRUE(STUN_VALID_CHANNEL_BIND(0x4FFF));
+  TEST_ASSERT_FALSE(STUN_VALID_CHANNEL_BIND(0x5000));
+  TEST_ASSERT_FALSE(STUN_VALID_CHANNEL_BIND(0x7FFF));
+
+  TEST_ASSERT_FALSE(STUN_VALID_CHANNEL(0x3FFF));
+  TEST_ASSERT_TRUE(STUN_VALID_CHANNEL(0x4000));
+  TEST_ASSERT_TRUE(STUN_VALID_CHANNEL(0x5000));
+  TEST_ASSERT_TRUE(STUN_VALID_CHANNEL(0x7FFF));
+  TEST_ASSERT_FALSE(STUN_VALID_CHANNEL(0x8000));
+}
+
+static void test_channel_bind_request_stays_in_rfc8656_range(void) {
+  const uint16_t requested[] = {0x0000, 0x3FFF, 0x5000, 0x7FFF, 0xFFFF};
+  for (size_t i = 0; i < sizeof(requested) / sizeof(requested[0]); ++i) {
+    uint8_t buf[1024] = {0};
+    size_t len = 0;
+    const uint16_t chosen = stun_set_channel_bind_request_str(buf, &len, NULL, requested[i]);
+    TEST_ASSERT_TRUE(STUN_VALID_CHANNEL_BIND(chosen));
+  }
+}
+
+static void test_channel_bind_request_keeps_explicit_valid_channel(void) {
+  uint8_t buf[1024] = {0};
+  size_t len = 0;
+  TEST_ASSERT_EQUAL_UINT16(0x4ABC, stun_set_channel_bind_request_str(buf, &len, NULL, 0x4ABC));
+}
+
+static void test_legacy_rfc5766_channel_frame_still_recognized(void) {
+  uint8_t buf[1024] = {0};
+  size_t len = 0;
+  const uint16_t legacy_channel = 0x7ABC;
+  const int payload_len = 16;
+  TEST_ASSERT_TRUE(stun_init_channel_message_str(legacy_channel, buf, &len, payload_len, false));
+
+  uint16_t parsed_channel = 0;
+  size_t blen = len;
+  TEST_ASSERT_TRUE(stun_is_channel_message_str(buf, &blen, &parsed_channel, false));
+  TEST_ASSERT_EQUAL_UINT16(legacy_channel, parsed_channel);
+}
+
 int main(void) {
   UNITY_BEGIN();
   RUN_TEST(test_init_request_produces_valid_stun_header);
@@ -681,5 +728,9 @@ int main(void) {
   RUN_TEST(test_covered_walk_yields_message_integrity_itself);
   RUN_TEST(test_covered_walk_is_full_walk_without_message_integrity);
   RUN_TEST(test_covered_walk_hides_message_integrity_sha256_from_420);
+  RUN_TEST(test_channel_bind_macro_is_strict_rfc8656_range);
+  RUN_TEST(test_channel_bind_request_stays_in_rfc8656_range);
+  RUN_TEST(test_channel_bind_request_keeps_explicit_valid_channel);
+  RUN_TEST(test_legacy_rfc5766_channel_frame_still_recognized);
   return UNITY_END();
 }

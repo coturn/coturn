@@ -141,6 +141,21 @@
 #define STUN_ATTRIBUTE_ADDRESS_ERROR_CODE (0x8001)
 /* <<== RFC 8656 */
 
+/* Channel-number ranges.
+ *
+ * RFC 8656 par. 12 narrows the allowed ChannelBind range to 0x4000-0x4FFF;
+ * 0x5000-0xFFFF is reserved so that the first byte of a ChannelData message
+ * stays inside the [64..79] slot that RFC 7983 assigns to TURN in the
+ * DTLS-SRTP demultiplexing scheme. STUN_VALID_CHANNEL_BIND is that strict
+ * range: use it wherever a channel number is being established (ChannelBind,
+ * on both the client and the server side).
+ *
+ * STUN_VALID_CHANNEL keeps the RFC 5766 range (0x4000-0x7FFF) and is the
+ * lenient receive/framing-side check: ChannelData from legacy RFC 5766 peers
+ * must still be recognized as ChannelData so that stream framing stays in
+ * sync (the server option --rfc5766-channel-numbers re-enables binding in
+ * the legacy range). */
+#define STUN_VALID_CHANNEL_BIND(chn) ((chn) >= 0x4000 && (chn) <= 0x4FFF)
 #define STUN_VALID_CHANNEL(chn) ((chn) >= 0x4000 && (chn) <= 0x7FFF)
 
 ///////// extra values //////////////////

@@ -1293,8 +1293,8 @@ bool stun_set_allocate_response_str(uint8_t *buf, size_t *len, stun_tid *tid, co
 uint16_t stun_set_channel_bind_request_str(uint8_t *buf, size_t *len, const ioa_addr *peer_addr,
                                            uint16_t channel_number) {
 
-  if (!STUN_VALID_CHANNEL(channel_number)) {
-    channel_number = 0x4000 + ((uint16_t)(((uint32_t)turn_random_number()) % (0x7FFF - 0x4000 + 1)));
+  if (!STUN_VALID_CHANNEL_BIND(channel_number)) {
+    channel_number = 0x4000 + ((uint16_t)(((uint32_t)turn_random_number()) % (0x4FFF - 0x4000 + 1)));
   }
 
   stun_init_request_str(STUN_METHOD_CHANNEL_BIND, buf, len);

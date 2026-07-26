@@ -2876,7 +2876,7 @@ static int handle_turn_channel_bind(turn_turnserver *server, ts_ur_super_session
       *err_code = 400;
       *reason = (const uint8_t *)"Bad channel bind request";
 
-    } else if (!STUN_VALID_CHANNEL(chnum)) {
+    } else if (!STUN_VALID_CHANNEL_BIND(chnum) && !(*server->rfc5766_channel_numbers && STUN_VALID_CHANNEL(chnum))) {
 
       *err_code = 400;
       *reason = (const uint8_t *)"Bad channel number";
@@ -5391,8 +5391,8 @@ void init_turn_server(
     int server_relay, send_turn_session_info_cb send_turn_session_info, send_https_socket_cb send_https_socket,
     int sock_buf_size, allocate_bps_cb allocate_bps_func, int oauth, const char *oauth_server_name,
     const char *acme_redirect, ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family, bool *log_binding,
-    bool *stun_backward_compatibility, bool *respond_http_unsupported, bool include_reason_string,
-    bool *ratelimit_unauthorized_requests, vintp ratelimit_unauthorized_requests_per_sec) {
+    bool *stun_backward_compatibility, bool *rfc5766_channel_numbers, bool *respond_http_unsupported,
+    bool include_reason_string, bool *ratelimit_unauthorized_requests, vintp ratelimit_unauthorized_requests_per_sec) {
 
   if (!server) {
     return;
@@ -5470,6 +5470,8 @@ void init_turn_server(
   server->log_binding = log_binding;
 
   server->stun_backward_compatibility = stun_backward_compatibility;
+
+  server->rfc5766_channel_numbers = rfc5766_channel_numbers;
 
   server->respond_http_unsupported = respond_http_unsupported;
 
