@@ -231,6 +231,27 @@ static size_t print_packet_txt2pcap(uint64_t now, uint8_t *payload, size_t paylo
 
 #if DTLS_SUPPORTED
 
+/*
+ * Upper bound on the handshake buffer OpenSSL grows for a DTLS peer.
+ *
+ * OpenSSL sizes the per-connection handshake buffer from the length declared in
+ * the message header, capped by
+ * max(DTLS1_HM_HEADER_LENGTH + SSL3_RT_MAX_ENCRYPTED_LENGTH, max_cert_list)
+ * (dtls1_max_handshake_message_len() in ssl/statem/statem_dtls.c). A peer that
+ * declares a large length and then sends a single fragment byte still forces
+ * the whole allocation, so max_cert_list is what an unvalidated source can make
+ * the server allocate per pending handshake.
+ *
+ * A source that has not answered the DTLS cookie challenge (RFC 6347, section
+ * 4.2.1) is not validated at all, so keep this at the OpenSSL floor - lower
+ * values have no further effect. REQUEST_CLIENT_CERT is not defined, so the
+ * server never asks for a client certificate and no client handshake message
+ * other than the ClientHello comes close to the floor. A build that enables
+ * REQUEST_CLIENT_CERT and needs to accept a chain larger than the floor has to
+ * raise this, and gives up the bound on unvalidated sources by doing so.
+ */
+#define TURN_DTLS_MAX_CERT_LIST (SSL3_RT_MAX_ENCRYPTED_LENGTH)
+
 static unsigned char dtls_cookie_secret[COOKIE_SECRET_LENGTH];
 static pthread_once_t dtls_cookie_secret_once = PTHREAD_ONCE_INIT;
 
@@ -384,7 +405,7 @@ static ioa_socket_handle dtls_server_input_handler(dtls_listener_relay_server_ty
                                       | SSL_OP_NO_RENEGOTIATION
 #endif
   );
-  SSL_set_max_cert_list(connecting_ssl, 655350);
+  SSL_set_max_cert_list(connecting_ssl, TURN_DTLS_MAX_CERT_LIST);
 
   ioa_socket_handle rc =
       dtls_accept_client_connection(server, s, connecting_ssl, &(server->sm.m.sm.nd.src_addr), &(server->addr), nbh);
@@ -1011,7 +1032,7 @@ static int create_new_connected_udp_socket(dtls_listener_relay_server_type *serv
 #endif
     );
 
-    SSL_set_max_cert_list(connecting_ssl, 655350);
+    SSL_set_max_cert_list(connecting_ssl, TURN_DTLS_MAX_CERT_LIST);
     const int rc = ssl_read(ret->fd, connecting_ssl, server->sm.m.sm.nd.nbh, server->verbose);
 
     if (rc < 0) {
