@@ -215,8 +215,8 @@ to adjust LD_LIBRARY_PATH.
 # WHICH EXTRA LIBRARIES AND UTILITIES YOU NEED 
 
 In addition to common *NIX OS services and libraries, to compile this code, 
-OpenSSL (version 1.0.0a or better recommended), libevent2 (version 2.0.5 
-or better) and libmicrohttpd (Prometheus metrics interface) are required, 
+OpenSSL (version 3.0 or newer; older versions are not supported), libevent2 
+(version 2.0.5 or better) and libmicrohttpd (Prometheus metrics interface) are required, 
 SQLite C development library and header is optional,
 the PostgreSQL C client development setup is optional, 
 the MySQL (MariaDB) C client development setup is optional, 
@@ -400,26 +400,17 @@ libevent2 from their web site. It was tested with older *NIXes
 
 NOTE: SQLite must be of version 3.x.
 
-NOTE: For extra security features (like DTLS)
-support, OpenSSL version 1.0.0a or newer is recommended. Older versions do 
-not support DTLS, reliably, in some cases. For example, the Debian 'Squeeze'
-Linux supplies 0.9.8 version of OpenSSL, that does not work correctly with
-DTLS over IPv6. If your system already has an older version of OpenSSL
-installed (usually in directory /usr) then you may want to install your
-newer OpenSSL "over" the old one (because it will most probably will not allow
-removal of the old one). When installing the newer OpenSSL, run the OpenSSL's
-configure command like this:
-
-    $ ./config --prefix=/usr
-
-that will set the installation prefix to /usr (without "--prefix=/usr" 
-by default it would be installed to /usr/local). This is necessary if you 
-want to overwrite your existing older OpenSSL installation.
+NOTE: coturn requires OpenSSL 3.0 or newer for TLS and DTLS. Older OpenSSL
+releases (1.x, 1.1.x, 0.9.x) are not supported and are not tested or validated
+against; do not attempt to build or validate coturn with them. If your system
+ships an OpenSSL older than 3.0, build against a newer OpenSSL installed under a
+non-default prefix as described in the next section rather than replacing the
+system OpenSSL.
 
 IX. BUILDING WITH NON-DEFAULT PREFIX DIRECTORY
 
-Say, you have an older system with old openssl and old libevent 
-library and you do not want to change that, but you still want 
+Say, your system ships an OpenSSL older than the required 3.0 (or an old 
+libevent) and you do not want to change that, but you still want 
 to build the turnserver.
 
 Do the following steps:

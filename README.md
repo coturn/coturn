@@ -36,7 +36,7 @@ coturn requires following dependencies to be installed first
 - libmicrohttpd (Prometheus metrics interface)
 
 Optional
-- openssl (to support TLS and DTLS, authorized STUN and TURN)
+- openssl 3.0 or newer (to support TLS and DTLS, authorized STUN and TURN); older OpenSSL versions are not supported
 - MariaDB/MySQL (user database)
 - [Hiredis](https://github.com/redis/hiredis) (user database, monitoring)
 - SQLite (user database)
