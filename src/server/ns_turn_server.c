@@ -3167,7 +3167,7 @@ static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss, in
   ioa_addr peer_addr;
   const uint8_t *value = NULL;
   int len = -1;
-  const int addr_found = 0;
+  int addr_found = 0;
   int set_df = 0;
 
   addr_set_any(&peer_addr);
@@ -3196,10 +3196,10 @@ static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss, in
         }
         break;
       case STUN_ATTRIBUTE_XOR_PEER_ADDRESS: {
-        if (addr_found) {
-          *err_code = 400;
-          *reason = (const uint8_t *)"Address duplication";
-        } else {
+        /* RFC 8489 Section 14: only the first occurrence of a repeated attribute needs
+         * to be processed; duplicates may be ignored. */
+        if (!addr_found) {
+          addr_found = 1;
           stun_attr_get_addr_str(ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh),
                                  sar, &peer_addr, NULL);
         }
