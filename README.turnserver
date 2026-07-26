@@ -724,7 +724,19 @@ Options with values:
 
 --no-rfc5780	DEPRECATED and now the default behaviour. See --rfc5780.
 
---stun-backward-compatibility		Enable handling old STUN Binding requests using MAPPED-ADDRESS attribute in binding response (instead of XOR-MAPPED-ADDRESS).
+--stun-backward-compatibility		Add the deprecated MAPPED-ADDRESS attribute to STUN Binding responses, in
+			addition to the XOR-MAPPED-ADDRESS attribute that is always sent. Only needed for
+			clients that cannot parse XOR-MAPPED-ADDRESS. Strongly encouraged to keep this
+			option off to decrease gain factor in STUN binding responses.
+
+--rfc3489-compatibility		DEPRECATED. Enable handling of obsolete RFC 3489 ("classic" STUN) Binding
+			requests, which carry no magic cookie. RFC 5389 deprecated these mechanisms and
+			RFC 8489 dropped them entirely. Scheduled for removal in the next major release,
+			with no replacement.
+			Before this option existed, the RFC 3489 request path was controlled by
+			--stun-backward-compatibility. Operators who set that option in order to serve
+			classic-STUN clients should now set --rfc3489-compatibility instead, or both
+			options to retain the exact previous behavior.
 --unauthorized-ratelimit		Enable per-source rate-limiting of 401 Unauthorized responses on UDP. Mitigates
 			reflection/amplification abuse where attackers spoof a victim's source address to
 			bounce 401 challenges off the server. Off by default; opt in explicitly.
