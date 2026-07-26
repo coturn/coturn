@@ -90,6 +90,79 @@ static void test_error_response_without_reason_string_still_parses(void) {
   TEST_ASSERT_EQUAL_INT(437, err_code);
 }
 
+/* RFC 8489 Section 14: the declared length is the value length prior to padding. */
+static void test_error_code_length_excludes_padding(void) {
+  const uint8_t *reason = get_default_reason(508);
+  const int reason_len = (int)strlen((const char *)reason);
+  /* Only an unpadded reason phrase can distinguish the two lengths. */
+  TEST_ASSERT_NOT_EQUAL_INT(0, reason_len % 4);
+
+  uint8_t buf[1024] = {0};
+  size_t len = 0;
+  stun_tid tid = {0};
+
+  stun_init_error_response_str(STUN_METHOD_ALLOCATE, buf, &len, 508, reason, &tid, true);
+
+  stun_attr_ref sar = stun_attr_get_first_by_type_str(buf, len, STUN_ATTRIBUTE_ERROR_CODE);
+  TEST_ASSERT_NOT_NULL(sar);
+  TEST_ASSERT_EQUAL_INT(4 + reason_len, stun_attr_get_len(sar));
+  TEST_ASSERT_EQUAL_MEMORY(reason, stun_attr_get_value(sar) + 4, (size_t)reason_len);
+
+  /* The attribute is still padded on the wire; only the declared length differs. */
+  TEST_ASSERT_EQUAL_size_t(0, len % 4);
+  TEST_ASSERT_EQUAL_size_t(STUN_HEADER_LENGTH + 4 + 28, len);
+
+  /* Pad bytes are zeroed, not stale buffer contents. */
+  const uint8_t *pad = stun_attr_get_value(sar) + 4 + reason_len;
+  for (size_t i = 0; i < (size_t)(28 - 4 - reason_len); ++i) {
+    TEST_ASSERT_EQUAL_UINT8(0, pad[i]);
+  }
+}
+
+/* RFC 3489 Section 11.2.9 requires a reason phrase length that is a multiple of 4. */
+static void test_old_stun_error_code_length_stays_padded(void) {
+  const uint8_t *reason = get_default_reason(508);
+  const int reason_len = (int)strlen((const char *)reason);
+
+  uint8_t buf[1024] = {0};
+  size_t len = 0;
+  stun_tid tid = {0};
+
+  old_stun_init_error_response_str(STUN_METHOD_BINDING, buf, &len, 508, reason, &tid, 0, true);
+
+  /* ERROR-CODE is the only attribute, so it starts right after the header. */
+  const uint8_t *attr = buf + STUN_HEADER_LENGTH;
+  TEST_ASSERT_EQUAL_UINT16(STUN_ATTRIBUTE_ERROR_CODE, turn_read_u16(attr));
+  TEST_ASSERT_EQUAL_UINT16(4 + reason_len + (4 - (reason_len % 4)), turn_read_u16(attr + 2));
+}
+
+/* RFC 8656 Section 18.12 ADDRESS-ERROR-CODE, declared per RFC 8489 Section 14. */
+static void test_address_error_code_length_excludes_padding(void) {
+  const uint8_t *reason = get_default_reason(508);
+  const int reason_len = (int)strlen((const char *)reason);
+  TEST_ASSERT_NOT_EQUAL_INT(0, reason_len % 4);
+
+  uint8_t buf[1024] = {0};
+  size_t len = 0;
+  stun_tid tid = {0};
+
+  stun_init_success_response_str(STUN_METHOD_ALLOCATE, buf, &len, &tid);
+  TEST_ASSERT_TRUE(
+      stun_attr_add_address_error_code(buf, &len, STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6, 508));
+
+  stun_attr_ref sar = stun_attr_get_first_by_type_str(buf, len, STUN_ATTRIBUTE_ADDRESS_ERROR_CODE);
+  TEST_ASSERT_NOT_NULL(sar);
+  TEST_ASSERT_EQUAL_INT(4 + reason_len, stun_attr_get_len(sar));
+
+  const uint8_t *value = stun_attr_get_value(sar);
+  TEST_ASSERT_EQUAL_UINT8(STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6, value[0]);
+  TEST_ASSERT_EQUAL_UINT8(5, value[2]);
+  TEST_ASSERT_EQUAL_UINT8(8, value[3]);
+  TEST_ASSERT_EQUAL_MEMORY(reason, value + 4, (size_t)reason_len);
+
+  TEST_ASSERT_EQUAL_size_t(0, len % 4);
+}
+
 static void test_truncated_buffer_is_not_command_message(void) {
   uint8_t buf[10] = {0};
   TEST_ASSERT_FALSE(stun_is_command_message_str(buf, sizeof(buf)));
@@ -763,6 +836,9 @@ int main(void) {
   RUN_TEST(test_success_response_carries_transaction_id);
   RUN_TEST(test_error_response_carries_error_code);
   RUN_TEST(test_error_response_without_reason_string_still_parses);
+  RUN_TEST(test_error_code_length_excludes_padding);
+  RUN_TEST(test_old_stun_error_code_length_stays_padded);
+  RUN_TEST(test_address_error_code_length_excludes_padding);
   RUN_TEST(test_truncated_buffer_is_not_command_message);
   RUN_TEST(test_zeroed_buffer_is_not_command_message);
   RUN_TEST(test_channel_message_roundtrip);

@@ -879,7 +879,7 @@ const uint8_t *get_default_reason(int error_code) {
 }
 
 static void stun_init_error_response_common_str(uint8_t *buf, size_t *len, uint16_t error_code, const uint8_t *reason,
-                                                stun_tid *id, bool include_reason_string) {
+                                                stun_tid *id, bool include_reason_string, bool pad_reason_phrase) {
 
   if (include_reason_string && (!reason || !strcmp((const char *)reason, "Unknown error"))) {
     reason = get_default_reason(error_code);
@@ -897,8 +897,9 @@ static void stun_init_error_response_common_str(uint8_t *buf, size_t *len, uint1
   avalue[sizeof(avalue) - 1] = 0;
   int alen = 4 + (int)strlen((const char *)(avalue + 4));
 
-  //"Manual" padding for compatibility with classic old stun:
-  {
+  /* RFC 3489 Section 11.2.9 requires a reason phrase length that is a multiple of 4;
+   * RFC 8489 Section 14 requires the declared length to exclude padding. */
+  if (pad_reason_phrase) {
     const int rem = alen % 4;
     if (rem) {
       alen += (4 - rem);
@@ -917,7 +918,7 @@ void old_stun_init_error_response_str(uint16_t method, uint8_t *buf, size_t *len
 
   old_stun_init_command_str(stun_make_error_response(method), buf, len, cookie);
 
-  stun_init_error_response_common_str(buf, len, error_code, reason, id, include_reason_string);
+  stun_init_error_response_common_str(buf, len, error_code, reason, id, include_reason_string, true);
 }
 
 void stun_init_error_response_str(uint16_t method, uint8_t *buf, size_t *len, uint16_t error_code,
@@ -925,7 +926,7 @@ void stun_init_error_response_str(uint16_t method, uint8_t *buf, size_t *len, ui
 
   stun_init_command_str(stun_make_error_response(method), buf, len);
 
-  stun_init_error_response_common_str(buf, len, error_code, reason, id, include_reason_string);
+  stun_init_error_response_common_str(buf, len, error_code, reason, id, include_reason_string, false);
 }
 
 /////////// CHANNEL ////////////////////////////////////////////////
@@ -1807,22 +1808,16 @@ bool stun_attr_add_bandwidth_str(uint8_t *buf, size_t *len, band_limit_t bps0) {
 bool stun_attr_add_address_error_code(uint8_t *buf, size_t *len, int requested_address_family, int error_code) {
   const uint8_t *reason = get_default_reason(error_code);
 
-  uint8_t avalue[513];
+  uint8_t avalue[513] = {0};
   avalue[0] = (uint8_t)requested_address_family;
   avalue[1] = 0;
   avalue[2] = (uint8_t)(error_code / 100);
   avalue[3] = (uint8_t)(error_code % 100);
   strncpy((char *)(avalue + 4), (const char *)reason, sizeof(avalue) - 4);
   avalue[sizeof(avalue) - 1] = 0;
-  int alen = 4 + (int)strlen((const char *)(avalue + 4));
 
-  //"Manual" padding for compatibility with classic old stun:
-  {
-    const int rem = alen % 4;
-    if (rem) {
-      alen += (4 - rem);
-    }
-  }
+  /* RFC 8489 Section 14: the declared length excludes padding. */
+  const int alen = 4 + (int)strlen((const char *)(avalue + 4));
 
   return stun_attr_add_str(buf, len, STUN_ATTRIBUTE_ADDRESS_ERROR_CODE, (uint8_t *)avalue, alen);
 }
