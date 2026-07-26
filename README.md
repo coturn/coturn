@@ -56,7 +56,8 @@ make
 STUN specs:
 
   * [RFC 3489](https://datatracker.ietf.org/doc/html/rfc3489) - "classic" STUN (DEPRECATED, opt-in via
-    `--rfc3489-compatibility`; scheduled for removal in the next major release)
+    `--rfc3489-compatibility`; scheduled for removal in the next major release — see
+    [docs/rfc3489-deprecation.md](docs/rfc3489-deprecation.md))
   * [RFC 5389](https://datatracker.ietf.org/doc/html/rfc5389) - base "new" STUN specs
   * [RFC 5769](https://datatracker.ietf.org/doc/html/rfc5769) - test vectors for STUN protocol testing
   * [RFC 5780](https://datatracker.ietf.org/doc/html/rfc5780) - NAT behavior discovery support

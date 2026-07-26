@@ -55,7 +55,7 @@ for Linux. Other platforms support the alternative behavior of RFC 5766.
 
 22) RFC3489 backward compatibility (DEPRECATED, opt-in via
 --rfc3489-compatibility; scheduled for removal in the next major
-release).
+release - see docs/rfc3489-deprecation.md).
 
 23) Multithreaded TCP relay processing (UDP relay has been 
 multithreaded from the beginning).
