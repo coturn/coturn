@@ -112,14 +112,29 @@ ioa_socket_handle mp_sock_v4;       // thread-local IPv4 relay socket
 ioa_socket_handle mp_sock_v6;       // thread-local IPv6 relay socket
 uint16_t          mp_port_v4;       // port mp_sock_v4 is bound to
 uint16_t          mp_port_v6;       // port mp_sock_v6 is bound to
-ur_addr_map       mp_table;         // exact peer IP:port -> turn session
+mp_peer_table     mp_table;         // exact peer IP:port -> turn session
 ```
 
-The `mp_table` address map:
+The `mp_table` demux table (`src/apps/relay/mp_peer_table.c`):
 
 ```c
-peer_addr:port -> ts_ur_super_session*
+peer_addr:port -> ts_ur_super_session*   /* which session owns the endpoint */
+ts_ur_super_session* -> [peer_addr:port] /* that session's own endpoints */
 ```
+
+The table is shared by every session on the relay thread, and a client adds an
+entry for each new peer endpoint it names in CREATE_PERMISSION, CHANNEL_BIND or
+a SEND indication — a SEND only needs the per-IP permission, so one permission
+covers all 65535 ports of that IP. Two properties keep one client from
+degrading its co-tenants:
+
+- Each allocation may hold at most `--multiplex-peer-max-peers` endpoints
+  (default 256); beyond that CREATE_PERMISSION and CHANNEL_BIND are answered
+  with 508 and SEND indications are dropped.
+- The reverse index makes permission expiry
+  (`mp_deregister_permission_peers`) and teardown
+  (`mp_deregister_session_peers`) cost the session's own endpoints instead of
+  a scan of the whole shared table.
 
 ---
 
@@ -243,7 +258,8 @@ the ingress side.
 | `src/server/ns_turn_ioalib.h` | Add `multiplex_peer_mode` parameter to `create_relay_ioa_sockets` declaration |
 | `src/server/ns_turn_server.h` | Add `multiplex_peer_mode` field to `turn_turnserver` |
 | `src/server/ns_turn_server.c` | Pass flag; register exact peers from CREATE_PERMISSION/SEND/CHANNEL_BIND; clean mappings on timeout/teardown; keep shared sockets open |
-| `src/apps/relay/mainrelay.h` | Add `multiplex_peer` and `multiplex_peer_base_port` to `turn_params_t` |
+| `src/apps/relay/mp_peer_table.c/.h` | Per-thread demux table: registration cap per session, reverse index for O(own endpoints) deregistration |
+| `src/apps/relay/mainrelay.h` | Add `multiplex_peer`, `multiplex_peer_base_port` and `multiplex_peer_max_peers` to `turn_params_t` |
 | `src/apps/relay/mainrelay.c` | CLI options; startup validation; call `init_multiplex_peer` from `setup_relay_server` |
 
 ---
@@ -257,6 +273,9 @@ turnserver --multiplex-peer
 
 # Custom base port
 turnserver --multiplex-peer --multiplex-peer-port=4000
+
+# Raise the per-allocation peer-endpoint cap (default 256)
+turnserver --multiplex-peer --multiplex-peer-max-peers=1024
 
 # Full example
 turnserver \

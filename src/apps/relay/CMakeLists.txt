@@ -53,6 +53,7 @@ set(HEADER_FILES
     ns_sm.h
     turn_ports.h
     userdb.h
+    mp_peer_table.h
     dbdrivers/dbdriver.h
     prom_server.h
     dbdrivers/dbd_redis.h
@@ -66,6 +67,7 @@ set(SOURCE_FILES
     tls_listener.c
     dtls_listener.c
     ns_ioalib_engine_impl.c
+    mp_peer_table.c
     turn_ports.c
     http_server.c
     http_buffer.c

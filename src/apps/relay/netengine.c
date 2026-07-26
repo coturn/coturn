@@ -1398,7 +1398,7 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
 #if defined(__linux__)
   if (turn_params.multiplex_peer) {
     const uint16_t base = turn_params.multiplex_peer_base_port ? turn_params.multiplex_peer_base_port : 3480;
-    if (init_multiplex_peer(rs->ioa_eng, (int)rs->id, base) == 0) {
+    if (init_multiplex_peer(rs->ioa_eng, (int)rs->id, base, turn_params.multiplex_peer_max_peers) == 0) {
       rs->server.multiplex_peer_mode = true;
     } else {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
