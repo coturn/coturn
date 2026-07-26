@@ -1697,9 +1697,9 @@ static const struct myoption long_options[] = {
 #endif
 #if !defined(TURN_NO_PROMETHEUS)
     {"prometheus", optional_argument, NULL, PROMETHEUS_OPT},
-    {"prometheus-port", optional_argument, NULL, PROMETHEUS_PORT_OPT},
-    {"prometheus-address", optional_argument, NULL, PROMETHEUS_ADDRESS_OPT},
-    {"prometheus-path", optional_argument, NULL, PROMETHEUS_PATH_OPT},
+    {"prometheus-port", required_argument, NULL, PROMETHEUS_PORT_OPT},
+    {"prometheus-address", required_argument, NULL, PROMETHEUS_ADDRESS_OPT},
+    {"prometheus-path", required_argument, NULL, PROMETHEUS_PATH_OPT},
     {"prometheus-username-labels", optional_argument, NULL, PROMETHEUS_ENABLE_USERNAMES_OPT},
     {"prometheus-tls", optional_argument, NULL, PROMETHEUS_TLS_OPT},
     {"prometheus-cert", required_argument, NULL, PROMETHEUS_CERT_OPT},
