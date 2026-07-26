@@ -689,6 +689,37 @@ static void maybe_flush_prom_counters(ioa_engine_handle e) {
   prom_flush_401_counters();
 }
 
+/* Concurrent DTLS handshakes that have not finished yet, summed across all
+ * relay threads. Bounds pre-cookie per-source state (GHSA-5x2p-4vqj-f6m4): a
+ * ClientHello flood cannot grow this past the cap the listener enforces. */
+static turn_atomic_u32 turn_dtls_half_open = 0;
+
+bool turn_dtls_half_open_try_inc(uint32_t cap) {
+  for (;;) {
+    const uint32_t cur = turn_atomic_load_u32(&turn_dtls_half_open);
+    if (cur >= cap) {
+      return false;
+    }
+    if (turn_atomic_cas_u32(&turn_dtls_half_open, cur, cur + 1)) {
+      return true;
+    }
+  }
+}
+
+void turn_dtls_half_open_dec(void) {
+  for (;;) {
+    const uint32_t cur = turn_atomic_load_u32(&turn_dtls_half_open);
+    if (cur == 0) {
+      return; /* defensive: never wrap below zero */
+    }
+    if (turn_atomic_cas_u32(&turn_dtls_half_open, cur, cur - 1)) {
+      return;
+    }
+  }
+}
+
+uint32_t turn_dtls_half_open_count(void) { return turn_atomic_load_u32(&turn_dtls_half_open); }
+
 static void timer_handler(ioa_engine_handle e, void *arg) {
 
   UNUSED_ARG(arg);
@@ -2148,6 +2179,14 @@ void close_ioa_socket(ioa_socket_handle s) {
     }
 
     s->done = 1;
+
+    /* Release the DTLS half-open slot if this socket's handshake never finished
+     * (GHSA-5x2p-4vqj-f6m4). Idempotent via the flag; a completed handshake
+     * already cleared it in the listener's data path. */
+    if (s->dtls_half_open) {
+      s->dtls_half_open = false;
+      turn_dtls_half_open_dec();
+    }
 
     while (!buffer_list_empty(&(s->bufs))) {
       pop_elem_from_buffer_list(&(s->bufs));
