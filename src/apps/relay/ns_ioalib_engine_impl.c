@@ -1601,8 +1601,10 @@ int create_relay_ioa_sockets(ioa_engine_handle e, ioa_socket_handle client_s, in
                              void *acbarg, bool multiplex_peer_mode) {
   if (multiplex_peer_mode && transport == STUN_ATTRIBUTE_TRANSPORT_UDP_VALUE) {
     if (even_port >= 0) {
+      /* RFC 8656 par. 7.2: the request is well-formed but this configuration
+       * cannot satisfy it, so 508 (Insufficient Capacity), not 400. */
       if (err_code) {
-        *err_code = 400;
+        *err_code = 508;
       }
       if (reason) {
         *reason = (const uint8_t *)"EVEN-PORT is not supported with multiplex-peer";

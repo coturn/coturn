@@ -293,7 +293,7 @@ environment variable such as `DIGITALOCEAN_TOKEN`.
   randomly between 0 and -1 ([startuclient.c:440](src/apps/uclient/startuclient.c:440)).
 - `--no-even-port` — force `ep = -1` unconditionally. **Required** for
   alloc-flood runs against `--multiplex-peer`, which strictly rejects
-  EVEN-PORT with error 400 ([ns_ioalib_engine_impl.c:1585](src/apps/relay/ns_ioalib_engine_impl.c:1585)).
+  EVEN-PORT with error 508 ([ns_ioalib_engine_impl.c:1603](src/apps/relay/ns_ioalib_engine_impl.c:1603)).
 - `-K N` / `--listener-threads N`, `--sender-threads N` — loadgen-side
   receive/send pools. Auto: 0 for `-m < 4`, bumped to 1 listener / 2
   sender for `-m >= 4`. Max 4 each. Use `--sender-threads 4` to push
@@ -480,7 +480,7 @@ For any run, look at the three `mpstat Average:` lines:
 
 ```bash
 # on uclient — alloc-flood; --no-even-port keeps multiplex-peer from
-# rejecting every other request with 400.
+# rejecting every other request with 508.
 timeout -s INT 60s /root/coturn/build/bin/turnutils_uclient \
   -Y alloc -m 200 -n 1000 -c --no-even-port \
   -L 10.116.0.3 \
