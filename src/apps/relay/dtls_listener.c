@@ -52,8 +52,6 @@
 #include <pthread.h>
 #include <stdint.h>
 
-/* #define REQUEST_CLIENT_CERT */
-
 ///////////////////////////////////////////////////
 #if defined(WINDOWS)
 // TODO: test it!
@@ -244,11 +242,11 @@ static size_t print_packet_txt2pcap(uint64_t now, uint8_t *payload, size_t paylo
  *
  * A source that has not answered the DTLS cookie challenge (RFC 6347, section
  * 4.2.1) is not validated at all, so keep this at the OpenSSL floor - lower
- * values have no further effect. REQUEST_CLIENT_CERT is not defined, so the
- * server never asks for a client certificate and no client handshake message
- * other than the ClientHello comes close to the floor. A build that enables
- * REQUEST_CLIENT_CERT and needs to accept a chain larger than the floor has to
- * raise this, and gives up the bound on unvalidated sources by doing so.
+ * values have no further effect. The server does not ask for a client
+ * certificate, so no client handshake message other than the ClientHello comes
+ * close to the floor. Adding client-certificate support means raising this, and
+ * giving up the bound on unvalidated sources unless it is raised only after the
+ * cookie has been answered.
  */
 #define TURN_DTLS_MAX_CERT_LIST (SSL3_RT_MAX_ENCRYPTED_LENGTH)
 
@@ -1402,21 +1400,6 @@ static int reopen_server_socket(dtls_listener_relay_server_type *server, evutil_
   return 0;
 }
 
-#if defined(REQUEST_CLIENT_CERT)
-
-static int dtls_verify_callback(int ok, X509_STORE_CTX *ctx) {
-  /* This function should ask the user
-   * if he trusts the received certificate.
-   * Here we always trust.
-   */
-  if (ok && ctx) {
-    return 1;
-  }
-  return -1;
-}
-
-#endif
-
 static int init_server(dtls_listener_relay_server_type *server, const char *ifname, const char *local_address,
                        uint16_t port, int sock_buf_size, int verbose, ioa_engine_handle e, turn_turnserver *ts,
                        int report_creation, ioa_engine_new_connection_event_handler send_socket) {
@@ -1472,11 +1455,6 @@ void setup_dtls_callbacks(SSL_CTX *ctx) {
   if (!ctx) {
     return;
   }
-
-#if defined(REQUEST_CLIENT_CERT)
-  /* If client has to authenticate, then  */
-  SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, dtls_verify_callback);
-#endif
 
   SSL_CTX_set_cookie_generate_cb(ctx, generate_cookie);
   SSL_CTX_set_cookie_verify_cb(ctx, verify_cookie);
