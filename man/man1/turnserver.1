@@ -1253,7 +1253,24 @@ DEPRECATED and now the default behaviour. See \-\-rfc5780.
 .TP
 .B
 \fB\-\-stun\-backward\-compatibility\fP
-Enable handling old STUN Binding requests using MAPPED\-ADDRESS attribute in binding response (instead of XOR\-MAPPED\-ADDRESS).
+Add the deprecated MAPPED\-ADDRESS attribute to STUN Binding responses, in addition to the
+XOR\-MAPPED\-ADDRESS attribute that is always sent. Only needed for clients that cannot parse
+XOR\-MAPPED\-ADDRESS. Strongly encouraged to keep this option off to decrease gain factor in
+STUN binding responses.
+.RE
+
+.RS
+.TP
+.B
+\fB\-\-rfc3489\-compatibility\fP
+DEPRECATED. Enable handling of obsolete RFC 3489 ("classic" STUN) Binding requests, which carry
+no magic cookie. RFC 5389 deprecated these mechanisms and RFC 8489 dropped them entirely. This
+option is scheduled for removal in the next major release, with no replacement.
+.IP
+Before this option existed, the RFC 3489 request path was controlled by
+\fB\-\-stun\-backward\-compatibility\fP. Operators who set that option in order to serve
+classic\-STUN clients should now set \fB\-\-rfc3489\-compatibility\fP instead, or both options to
+retain the exact previous behavior.
 .RE
 
 .RS

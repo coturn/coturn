@@ -199,12 +199,16 @@ struct _turn_turnserver {
   /* Log Binding Requrest */
   bool *log_binding;
 
-  /* Enable handling old STUN Binding Requests and enable MAPPED-ADDRESS attribute in response */
+  /* Add the deprecated MAPPED-ADDRESS attribute to Binding responses, alongside XOR-MAPPED-ADDRESS */
   bool *stun_backward_compatibility;
 
   /* Accept ChannelBind channel numbers from the obsolete RFC 5766 range
      0x5000-0x7FFF, which RFC 8656 reserves for multiplexing (RFC 7983) */
   bool *rfc5766_channel_numbers;
+
+  /* DEPRECATED: handle obsolete RFC 3489 ("classic" STUN) Binding Requests, which carry no magic
+   * cookie. Scheduled for removal in the next major release. */
+  bool *rfc3489_compatibility;
 
   /* Return an HTTP 400 response to HTTP connections made to ports not
      otherwise handling HTTP. */
@@ -259,8 +263,9 @@ void init_turn_server(
     int server_relay, send_turn_session_info_cb send_turn_session_info, send_https_socket_cb send_https_socket,
     int sock_buf_size, allocate_bps_cb allocate_bps_func, int oauth, const char *oauth_server_name,
     const char *acme_redirect, ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family, bool *log_binding,
-    bool *stun_backward_compatibility, bool *rfc5766_channel_numbers, bool *respond_http_unsupported,
-    bool include_reason_string, bool *ratelimit_unauthorized_requests, vintp ratelimit_unauthorized_requests_per_sec);
+    bool *stun_backward_compatibility, bool *rfc5766_channel_numbers, bool *rfc3489_compatibility,
+    bool *respond_http_unsupported, bool include_reason_string, bool *ratelimit_unauthorized_requests,
+    vintp ratelimit_unauthorized_requests_per_sec);
 
 ioa_engine_handle turn_server_get_engine(turn_turnserver *s);
 

@@ -1348,8 +1348,12 @@ bool stun_set_binding_response_str(uint8_t *buf, size_t *len, stun_tid *tid, con
         return false;
       }
     }
+    /* MAPPED-ADDRESS is the only address attribute RFC 3489 defines, so the old-STUN
+     * path always needs it. On the modern path it is purely a backward-compatibility
+     * courtesy for clients that cannot parse XOR-MAPPED-ADDRESS, and it widens the
+     * response, so it stays opt-in there. */
     if (reflexive_addr) {
-      if (stun_backward_compatibility &&
+      if ((old_stun || stun_backward_compatibility) &&
           !stun_attr_add_addr_str(buf, len, STUN_ATTRIBUTE_MAPPED_ADDRESS, reflexive_addr)) {
         return false;
       }

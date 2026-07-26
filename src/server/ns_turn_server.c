@@ -5049,7 +5049,7 @@ static int read_client_connection(turn_turnserver *server, ts_ur_super_session *
 
   } else if (old_stun_is_command_message_str(ioa_network_buffer_data(in_buffer->nbh),
                                              ioa_network_buffer_get_size(in_buffer->nbh), &old_stun_cookie) &&
-             !(*(server->no_stun)) && *(server->stun_backward_compatibility)) {
+             !(*(server->no_stun)) && *(server->rfc3489_compatibility)) {
 
     ioa_network_buffer_handle nbh = ioa_network_buffer_allocate(server->e);
     int resp_constructed = 0;
@@ -5384,22 +5384,25 @@ static void client_input_handler(ioa_socket_handle s, int event_type, ioa_net_da
 
 ///////////////////////////////////////////////////////////
 
-void init_turn_server(
-    turn_turnserver *server, turnserver_id id, int verbose, ioa_engine_handle e, turn_credential_type ct,
-    int fingerprint, dont_fragment_option_t dont_fragment, get_user_key_cb userkeycb,
-    check_new_allocation_quota_cb chquotacb, release_allocation_quota_cb raqcb, ioa_addr *external_ip,
-    bool *check_origin, bool *no_tcp_relay, bool *no_udp_relay, vintp stale_nonce, vintp max_allocate_lifetime,
-    vintp channel_lifetime, vintp permission_lifetime, bool *stun_only, bool *no_stun, bool software_attribute,
-    bool *web_admin_listen_on_workers, turn_server_addrs_list_t *alternate_servers_list,
-    turn_server_addrs_list_t *tls_alternate_servers_list, turn_server_addrs_list_t *tcp_alternate_servers_list,
-    turn_server_addrs_list_t *udp_alternate_servers_list, turn_server_addrs_list_t *aux_servers_list,
-    int self_udp_balance, bool *no_multicast_peers, bool *allow_loopback_peers, ip_range_list_t *ip_whitelist,
-    ip_range_list_t *ip_blacklist, send_socket_to_relay_cb send_socket_to_relay, bool *secure_stun, bool *mobility,
-    int server_relay, send_turn_session_info_cb send_turn_session_info, send_https_socket_cb send_https_socket,
-    int sock_buf_size, allocate_bps_cb allocate_bps_func, int oauth, const char *oauth_server_name,
-    const char *acme_redirect, ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family, bool *log_binding,
-    bool *stun_backward_compatibility, bool *rfc5766_channel_numbers, bool *respond_http_unsupported,
-    bool include_reason_string, bool *ratelimit_unauthorized_requests, vintp ratelimit_unauthorized_requests_per_sec) {
+void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, ioa_engine_handle e,
+                      turn_credential_type ct, int fingerprint, dont_fragment_option_t dont_fragment,
+                      get_user_key_cb userkeycb, check_new_allocation_quota_cb chquotacb,
+                      release_allocation_quota_cb raqcb, ioa_addr *external_ip, bool *check_origin, bool *no_tcp_relay,
+                      bool *no_udp_relay, vintp stale_nonce, vintp max_allocate_lifetime, vintp channel_lifetime,
+                      vintp permission_lifetime, bool *stun_only, bool *no_stun, bool software_attribute,
+                      bool *web_admin_listen_on_workers, turn_server_addrs_list_t *alternate_servers_list,
+                      turn_server_addrs_list_t *tls_alternate_servers_list,
+                      turn_server_addrs_list_t *tcp_alternate_servers_list,
+                      turn_server_addrs_list_t *udp_alternate_servers_list, turn_server_addrs_list_t *aux_servers_list,
+                      int self_udp_balance, bool *no_multicast_peers, bool *allow_loopback_peers,
+                      ip_range_list_t *ip_whitelist, ip_range_list_t *ip_blacklist,
+                      send_socket_to_relay_cb send_socket_to_relay, bool *secure_stun, bool *mobility, int server_relay,
+                      send_turn_session_info_cb send_turn_session_info, send_https_socket_cb send_https_socket,
+                      int sock_buf_size, allocate_bps_cb allocate_bps_func, int oauth, const char *oauth_server_name,
+                      const char *acme_redirect, ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family,
+                      bool *log_binding, bool *stun_backward_compatibility, bool *rfc5766_channel_numbers,
+                      bool *rfc3489_compatibility, bool *respond_http_unsupported, bool include_reason_string,
+                      bool *ratelimit_unauthorized_requests, vintp ratelimit_unauthorized_requests_per_sec) {
 
   if (!server) {
     return;
@@ -5479,6 +5482,8 @@ void init_turn_server(
   server->stun_backward_compatibility = stun_backward_compatibility;
 
   server->rfc5766_channel_numbers = rfc5766_channel_numbers;
+
+  server->rfc3489_compatibility = rfc3489_compatibility;
 
   server->respond_http_unsupported = respond_http_unsupported;
 

@@ -699,6 +699,63 @@ static void test_legacy_rfc5766_channel_frame_still_recognized(void) {
   TEST_ASSERT_EQUAL_UINT16(legacy_channel, parsed_channel);
 }
 
+static void test_binding_response_address_attrs_by_compat_mode(void) {
+  /* stun_backward_compatibility and the old_stun (RFC 3489) request path are
+     independent knobs, so each combination has to produce the right address
+     attributes on its own:
+
+       - XOR-MAPPED-ADDRESS is RFC 5389 only; RFC 3489 has no such attribute.
+       - MAPPED-ADDRESS is the ONLY address attribute RFC 3489 defines, so the
+         old-STUN path must always emit it, regardless of the modern-response
+         backward-compatibility flag. On the modern path it stays opt-in,
+         because it widens the response and raises the amplification gain. */
+  ioa_addr reflexive = {0};
+  TEST_ASSERT_EQUAL_INT(0, make_ioa_addr((const uint8_t *)"203.0.113.5", 43210, &reflexive));
+
+  const struct {
+    bool old_stun;
+    bool backward_compat;
+    int want_xor;
+    int want_mapped;
+  } cases[] = {
+      {false, false, 1, 0}, /* default: XOR only */
+      {false, true, 1, 1},  /* --stun-backward-compatibility: both */
+      {true, false, 0, 1},  /* --rfc3489-compatibility alone: MAPPED only */
+      {true, true, 0, 1},   /* both flags: still MAPPED only on the old path */
+  };
+
+  for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); ++i) {
+    uint8_t buf[1024] = {0};
+    size_t len = 0;
+    stun_tid tid = {0};
+    const uint32_t cookie = 0x12345678;
+
+    TEST_ASSERT_TRUE(stun_set_binding_response_str(buf, &len, &tid, &reflexive, 0, NULL, cookie, cases[i].old_stun,
+                                                   cases[i].backward_compat, true));
+
+    TEST_ASSERT_EQUAL_INT(cases[i].want_xor, count_attrs_of_type(buf, len, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS, false));
+    TEST_ASSERT_EQUAL_INT(cases[i].want_mapped, count_attrs_of_type(buf, len, STUN_ATTRIBUTE_MAPPED_ADDRESS, false));
+
+    /* Whichever attribute is present must round-trip to the address we passed in,
+       and the old path must echo the caller's cookie rather than the magic one. */
+    const uint16_t addr_attr =
+        cases[i].want_xor ? STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS : (uint16_t)STUN_ATTRIBUTE_MAPPED_ADDRESS;
+    stun_attr_ref sar = stun_attr_get_first_by_type_str(buf, len, addr_attr);
+    TEST_ASSERT_NOT_NULL(sar);
+    ioa_addr got = {0};
+    TEST_ASSERT_TRUE(stun_attr_get_addr_str(buf, len, sar, &got, NULL));
+    TEST_ASSERT_TRUE(addr_eq(&reflexive, &got));
+
+    if (cases[i].old_stun) {
+      uint32_t parsed_cookie = 0;
+      TEST_ASSERT_TRUE(old_stun_is_command_message_str(buf, len, &parsed_cookie));
+      TEST_ASSERT_EQUAL_UINT32(cookie, parsed_cookie);
+    } else {
+      TEST_ASSERT_TRUE(stun_is_command_message_str(buf, len));
+    }
+  }
+}
+
 int main(void) {
   UNITY_BEGIN();
   RUN_TEST(test_init_request_produces_valid_stun_header);
@@ -732,5 +789,6 @@ int main(void) {
   RUN_TEST(test_channel_bind_request_stays_in_rfc8656_range);
   RUN_TEST(test_channel_bind_request_keeps_explicit_valid_channel);
   RUN_TEST(test_legacy_rfc5766_channel_frame_still_recognized);
+  RUN_TEST(test_binding_response_address_attrs_by_compat_mode);
   return UNITY_END();
 }
