@@ -187,6 +187,21 @@ Key style rules (LLVM-based):
 - Prefix new identifiers (functions, types, macros) with `turn_`, not `ns_` — the `ns_` names are
   legacy; do not add new ones
 
+### Comments
+
+Keep comments short — one line, two at most. A comment explains **why** the code is there,
+not what it does; if the code already reads clearly, omit it. Cite the normative source when
+that is the reason for the code:
+
+```c
+/* RFC 8656 Section 12: channel numbers are restricted to 0x4000-0x4FFF. */
+```
+
+A comment must stand on its own, read cold, with no knowledge of the change that introduced
+it. Do not write: that a change is part of a larger or multi-part effort, references to a
+prior discussion or review, what the code used to do, an issue/PR number as the only
+justification, or attribution.
+
 ## Memory allocation
 
 **MANDATORY.** All heap allocation in coturn-owned C code MUST go through the
