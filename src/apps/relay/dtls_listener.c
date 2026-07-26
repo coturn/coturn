@@ -745,6 +745,15 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server, struct mes
       chs = dtls_server_input_handler(server, s, sm->m.sm.nd.nbh);
       ioa_network_buffer_delete(server->e, sm->m.sm.nd.nbh);
       sm->m.sm.nd.nbh = NULL;
+    } else if (!turn_params.no_dtls && (packet_type == UDP_PACKET_CLASS_DTLS_OTHER)) {
+      /* A non-handshake DTLS record (ApplicationData / Alert /
+       * ChangeCipherSpec) from a source with no established DTLS session - the
+       * per-source lookup at the top of this function already missed, so there
+       * are no session keys to decrypt it and it cannot advance any handshake.
+       * Drop it instead of falling through to create_ioa_socket_from_fd below. */
+      ioa_network_buffer_delete(server->e, sm->m.sm.nd.nbh);
+      sm->m.sm.nd.nbh = NULL;
+      return 0;
     }
 #endif
 
