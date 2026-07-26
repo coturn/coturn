@@ -1,19 +1,24 @@
 # OPENSSL
 
-If you are using the OpenSSL that is coming with your system, and you are
-OK with it, then you do not have to read this chapter. If your system has
-an outdated OpenSSL version, or if you need some very fresh OpenSSL features
-that are not present in the current usual stable version, then you may have
-to compile (and run) your TURN server with a different OpenSSL version.
+coturn requires **OpenSSL 3.0 or newer**. This is the supported target.
+Older OpenSSL releases (1.x, 1.1.x, 0.9.x) and other libraries are **not
+supported** and are **not tested or validated against** - do not build or
+validate coturn with them. (Some individual features need a newer 3.x: for
+example RFC 7250 raw public keys require OpenSSL 3.2.1 or newer.)
 
-For example, if you need ALPN feature, or DTLS1.2, and your system comes with
-OpenSSL 1.0.1, you will not be able to use those features unless you install
-OpenSSL 1.0.2 and compile and run the TURN server with the newer version.
+A downstream compatibility patch for building against the deprecated,
+end-of-life OpenSSL 1.1.1 is kept under `patches/openssl-1.1.1/` for operators
+who cannot yet move off 1.1.1, but it is unsupported and outside the tested
+configuration.
 
-The problem is, it is usually not safe to replace the system's OpenSSL with
-a different version. Some systems are "bound" to its "native" OpenSSL 
-installations, and their behavior may become unpredictable with the newer
-versions.
+If your system already ships OpenSSL 3.0 or newer, you do not have to read the
+rest of this chapter. If it ships an older version, install a supported OpenSSL
+(3.0+) under a non-default prefix and build coturn against it, as below.
+
+The reason not to simply replace the system's OpenSSL is that some systems are
+"bound" to their "native" OpenSSL installation, and their behavior may become
+unpredictable if it is swapped out. So preserve the system OpenSSL and build
+(and run) the TURN server against a separate, supported OpenSSL:
 
 So you want to preserve your system's OpenSSL but you want to compile and to
 run the TURN server with newer OpenSSL version. There are different ways to
