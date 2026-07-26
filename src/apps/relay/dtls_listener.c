@@ -857,7 +857,7 @@ static udp_packet_classification_t classify_udp_packet(const uint8_t *data, size
     return UDP_PACKET_CLASS_DTLS_OTHER;
   }
 #endif
-  if (turn_params.stun_backward_compatibility && old_stun_is_command_message_str(data, blen, &old_stun_cookie)) {
+  if (turn_params.rfc3489_compatibility && old_stun_is_command_message_str(data, blen, &old_stun_cookie)) {
     return UDP_PACKET_CLASS_OLD_STUN;
   }
 

@@ -247,6 +247,7 @@ turn_params_t turn_params = {
     false, /* log_binding */
     false, /* stun_backward_compatibility */
     false, /* rfc5766_channel_numbers */
+    false, /* rfc3489_compatibility */
     false, /* respond_http_unsupported */
     true,  /* drop_invalid_packets */
     false, /* drop_invalid_packets_log */
@@ -1401,8 +1402,17 @@ static char Usage[] =
     "amplification attack.)\n"
     "						Strongly encouraged to keep it off to decrease gain factor in STUN "
     "binding responses.\n"
-    " --stun-backward-compatibility		        Enable handling old STUN Binding requests and enable "
-    "MAPPED-ADDRESS attribute\n"
+    " --stun-backward-compatibility		        Add the deprecated MAPPED-ADDRESS attribute to STUN Binding\n"
+    "						responses, alongside XOR-MAPPED-ADDRESS, for clients that cannot "
+    "parse\n"
+    "						the latter. Strongly encouraged to keep it off to decrease gain factor "
+    "in\n"
+    "						STUN binding responses.\n"
+    " --rfc3489-compatibility			DEPRECATED. Enable handling of obsolete RFC 3489 (\"classic\" "
+    "STUN)\n"
+    "						Binding requests, which carry no magic cookie. Scheduled for removal "
+    "in\n"
+    "						the next major release; there is no replacement.\n"
     " --rfc5766-channel-numbers			Accept ChannelBind channel numbers from the obsolete RFC 5766 "
     "range 0x5000-0x7FFF,\n"
     "						which RFC 8656 reserves for multiplexing collision avoidance "
@@ -1633,6 +1643,7 @@ enum EXTRA_OPTS {
   ENABLE_RFC5780,
   STUN_BACKWARD_COMPATIBILITY_OPT,
   RFC5766_CHANNEL_NUMBERS_OPT,
+  RFC3489_COMPATIBILITY_OPT,
   RESPONSE_ORIGIN_ONLY_WITH_RFC5780_OPT,
   RESPOND_HTTP_UNSUPPORTED_OPT,
   DROP_INVALID_PACKETS_OPT,
@@ -1803,6 +1814,7 @@ static const struct myoption long_options[] = {
     {"rfc5780", optional_argument, NULL, ENABLE_RFC5780},
     {"stun-backward-compatibility", optional_argument, NULL, STUN_BACKWARD_COMPATIBILITY_OPT},
     {"rfc5766-channel-numbers", optional_argument, NULL, RFC5766_CHANNEL_NUMBERS_OPT},
+    {"rfc3489-compatibility", optional_argument, NULL, RFC3489_COMPATIBILITY_OPT},
     {"response-origin-only-with-rfc5780", optional_argument, NULL, RESPONSE_ORIGIN_ONLY_WITH_RFC5780_OPT},
     {"respond-http-unsupported", optional_argument, NULL, RESPOND_HTTP_UNSUPPORTED_OPT},
     {"drop-invalid-packets", optional_argument, NULL, DROP_INVALID_PACKETS_OPT},
@@ -2654,6 +2666,9 @@ static void set_option(int c, char *value) {
     break;
   case RFC5766_CHANNEL_NUMBERS_OPT:
     turn_params.rfc5766_channel_numbers = get_bool_value(value);
+    break;
+  case RFC3489_COMPATIBILITY_OPT:
+    turn_params.rfc3489_compatibility = get_bool_value(value);
     break;
   case RESPONSE_ORIGIN_ONLY_WITH_RFC5780_OPT:
     break;
@@ -3601,6 +3616,17 @@ int main(int argc, char **argv) {
    * who want to opt out can pass --udp-recvmmsg=false. */
   turn_params.udp_sendmmsg = turn_params.multiplex_peer;
 #endif
+
+  if (turn_params.rfc3489_compatibility) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
+                  "DEPRECATED: --rfc3489-compatibility enables handling of obsolete RFC 3489 (\"classic\" STUN) "
+                  "Binding requests. RFC 5389 deprecated those mechanisms in 2008 and RFC 8489 dropped them "
+                  "entirely. This option is scheduled for removal in the next major release, with no "
+                  "replacement. If you still need it, please report your use case upstream.\n");
+    if (turn_params.no_stun) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "--rfc3489-compatibility has no effect because --no-stun is also set.\n");
+    }
+  }
 
   if (turn_params.bps_capacity && !(turn_params.max_bps)) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,

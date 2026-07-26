@@ -53,7 +53,9 @@ for Linux. Other platforms support the alternative behavior of RFC 5766.
 
 21) Redis database support added.
 
-22) RFC3489 backward compatibility.
+22) RFC3489 backward compatibility (DEPRECATED, opt-in via
+--rfc3489-compatibility; scheduled for removal in the next major
+release).
 
 23) Multithreaded TCP relay processing (UDP relay has been 
 multithreaded from the beginning).
