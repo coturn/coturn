@@ -299,7 +299,7 @@ With 4 threads: open 3480–3487.  With 8 threads: open 3480–3495.
 
 | Limitation | Detail |
 |------------|--------|
-| EVEN-PORT silently ignored | Modern WebRTC uses `rtcp-mux` — EVEN-PORT is not needed |
+| EVEN-PORT rejected with 508 (Insufficient Capacity) | Modern WebRTC uses `rtcp-mux` — EVEN-PORT is not needed |
 | Clients on different threads see different relay ports | Correct and expected; the thread assignment is stable per connection |
 | Source-IP must be preserved | If a load balancer SNATs clients, the src-IP uniqueness guarantee breaks — use DSR or PROXY protocol |
 | Ports exposed = 2 × relay_threads | Still tiny compared to the default range; adjust `--relay-threads` if needed |

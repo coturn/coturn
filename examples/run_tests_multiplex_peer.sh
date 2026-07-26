@@ -76,7 +76,7 @@ run_client() {
       return 0
     fi
 
-    if printf '%s\n' "$output" | grep -q "error 400" &&
+    if printf '%s\n' "$output" | grep -q "error 508" &&
       grep -q "EVEN-PORT is not supported with multiplex-peer" "$turnserver_log" &&
       [ "$attempt" -lt "$max_attempts" ]; then
       echo "Retrying $name after randomized EVEN-PORT request"

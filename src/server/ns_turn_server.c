@@ -1420,12 +1420,19 @@ static int handle_turn_allocate(turn_turnserver *server, ts_ur_super_session *ss
 
         if (af4 && af6) {
           if (server->external_ip_set) {
-            *err_code = 440;
+            /* RFC 8656 par. 7.2: both families are supported here, the server
+             * just cannot do a dual allocation with a rewritten external
+             * address -- 508 (Insufficient Capacity), not 440, so clients do
+             * not conclude the server lacks an address family entirely. */
+            *err_code = 508;
             *reason = (const uint8_t *)"Dual allocation cannot be supported in the current server configuration";
           }
           if (even_port > 0) {
-            *err_code = 440;
-            *reason = (const uint8_t *)"Dual allocation cannot be supported with even-port functionality";
+            /* Unreachable backstop: the attribute loop above already rejects
+             * ADDITIONAL-ADDRESS-FAMILY + EVEN-PORT in both orderings. Kept
+             * with the same 400 the loop uses (malformed combination). */
+            *err_code = 400;
+            *reason = (const uint8_t *)"Even Port cannot be used with Dual Allocation";
           }
         }
 
