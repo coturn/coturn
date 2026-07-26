@@ -436,6 +436,10 @@ static ioa_socket_handle dtls_server_input_handler(dtls_listener_relay_server_ty
 
   SSL_set_accept_state(connecting_ssl);
 
+  /* Release idle record buffers so a half-open handshake (parked after the
+   * HelloVerifyRequest) does not pin them */
+  SSL_set_mode(connecting_ssl, SSL_MODE_RELEASE_BUFFERS);
+
   SSL_set_bio(connecting_ssl, NULL, wbio);
   SSL_set_options(connecting_ssl, SSL_OP_COOKIE_EXCHANGE
 #if defined(SSL_OP_NO_RENEGOTIATION)
