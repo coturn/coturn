@@ -50,6 +50,31 @@ target_compile_definitions(test_alt_server_list PRIVATE
 # add_alt_server blocks forever, so fail by timeout instead of hanging ctest.
 set_tests_properties(test_alt_server_list PROPERTIES TIMEOUT 60)
 
+# TURN server core (src/server/ns_turn_server.c). The core is written against
+# the abstract ioa_* interface that src/apps/relay implements, so the test
+# substitutes its own implementation of that interface and runs the server
+# in-process with no socket, timer or database. ns_turn_server.c is compiled
+# into the test translation unit to reach the static per-method handlers; the
+# sibling server sources it needs are listed explicitly rather than linked from
+# libturn_server, which would define ns_turn_server.c twice.
+coturn_add_test(test_turn_server_send
+    test_turn_server_stubs.c
+    ../src/server/ns_turn_allocation.c
+    ../src/server/ns_turn_maps.c
+    ../src/server/ns_turn_maps_rtcp.c
+    ../src/server/ns_turn_ratelimit.c)
+target_include_directories(test_turn_server_send PRIVATE
+    ../src/server
+    ../src/apps/common
+    ../src
+    ../src/client
+    ${OPENSSL_INCLUDE_DIR}
+    ${LIBEVENT_INCLUDE_DIRS})
+target_compile_definitions(test_turn_server_send PRIVATE
+    TURN_NO_MONGO TURN_NO_MYSQL TURN_NO_PQ TURN_NO_PROMETHEUS
+    TURN_NO_SCTP TURN_NO_SYSTEMD TURN_NO_THREAD_BARRIERS TURN_NO_HIREDIS
+    _FILE_OFFSET_BITS=64)
+
 # Relay port-allocator counter-wrap regression test (#1649). The allocator's
 # uint32_t low/high cursors wrap after ~4G alloc/release operations on a pool;
 # the old `high <= low` empty-pool guard then failed permanently. The test

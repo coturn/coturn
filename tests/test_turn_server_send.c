@@ -1,0 +1,355 @@
+/*
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * https://opensource.org/license/bsd-3-clause
+ *
+ * Unit-test harness for the TURN server core, src/server/ns_turn_server.c,
+ * plus its first tests: Send indication peer-address selection.
+ *
+ * ns_turn_server.c is written against the abstract ioa_* interface in
+ * src/server/ns_turn_ioalib.h, which src/apps/relay implements with real
+ * sockets, libevent timers and a database. That interface is the seam this
+ * harness uses: the functional stubs below stand in for the relay, so the
+ * server core runs in-process with no socket, no event loop and no I/O, and a
+ * test can hand it a STUN message and inspect exactly what it decided to
+ * relay. Everything the tested paths never touch is an abort()ing link stub in
+ * test_turn_server_stubs.c.
+ *
+ * ns_turn_server.c is compiled into this translation unit (the same pattern
+ * test_alt_server_list.c uses for netengine.c) because the per-method handlers
+ * are static.
+ *
+ * Adding a test for another method: build the request with the client library
+ * as make_send_indication() does, call the handler, and assert on
+ * sent_capture / the session state. A handler that reaches a path currently
+ * covered by an abort() stub will abort with the symbol name, which tells you
+ * which stub to promote from test_turn_server_stubs.c to a functional one
+ * here.
+ */
+
+#include <unity.h>
+
+#include <stdint.h>
+#include <string.h>
+
+#include "ns_turn_server.c"
+
+/* ---------------------------------------------------------------- *
+ * Network buffers                                                   *
+ * ---------------------------------------------------------------- */
+
+/* Mirrors the offset/coffset arithmetic of the real stun_buffer_list_elem in
+ * src/apps/relay/ns_ioalib_engine_impl.c, so the DATA-payload offset handling
+ * in handle_turn_send() is exercised as it is in production rather than
+ * simplified away. */
+typedef struct {
+  uint8_t buf[65536];
+  size_t len;
+  uint16_t offset;
+  uint8_t coffset;
+} test_buffer;
+
+static test_buffer test_nbh;
+
+uint8_t *ioa_network_buffer_data(ioa_network_buffer_handle nbh) {
+  test_buffer *b = (test_buffer *)nbh;
+  return b->buf + b->offset - b->coffset;
+}
+
+size_t ioa_network_buffer_get_size(ioa_network_buffer_handle nbh) {
+  if (!nbh) {
+    return 0;
+  }
+  return ((test_buffer *)nbh)->len;
+}
+
+void ioa_network_buffer_set_size(ioa_network_buffer_handle nbh, size_t len) { ((test_buffer *)nbh)->len = len; }
+
+void ioa_network_buffer_add_offset_size(ioa_network_buffer_handle nbh, uint16_t offset, uint8_t coffset, size_t len) {
+  test_buffer *b = (test_buffer *)nbh;
+  b->len = len;
+  b->offset = (uint16_t)(b->offset + offset);
+  b->coffset = (uint8_t)(b->coffset + coffset);
+}
+
+void ioa_network_buffer_header_init(ioa_network_buffer_handle nbh) { UNUSED_ARG(nbh); }
+
+size_t ioa_network_buffer_get_capacity_udp(void) { return sizeof(test_nbh.buf); }
+
+ioa_network_buffer_handle ioa_network_buffer_allocate(ioa_engine_handle e) {
+  UNUSED_ARG(e);
+  return &test_nbh;
+}
+
+void ioa_network_buffer_delete(ioa_engine_handle e, ioa_network_buffer_handle nbh) {
+  UNUSED_ARG(e);
+  UNUSED_ARG(nbh);
+}
+
+/* ---------------------------------------------------------------- *
+ * Relay socket                                                      *
+ * ---------------------------------------------------------------- */
+
+/* Stands in for an ioa_socket_handle. Only its address is compared, except for
+ * the family/type the multiplex-peer check reads. */
+typedef struct {
+  int family;
+} test_socket;
+
+static test_socket relay_socket_v4 = {AF_INET};
+
+int get_ioa_socket_address_family(const ioa_socket_handle s) { return ((const test_socket *)s)->family; }
+
+SOCKET_TYPE get_ioa_socket_type(const ioa_socket_handle s) {
+  (void)s;
+  return UDP_SOCKET;
+}
+
+/* What the server decided to relay, captured instead of sent. */
+static struct {
+  int calls;
+  ioa_addr dest;
+  size_t len;
+  uint8_t payload[1500];
+  ioa_socket_handle s;
+  int ttl;
+  int tos;
+  int df;
+} sent_capture;
+
+int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr *dest_addr, ioa_network_buffer_handle nbh, int ttl,
+                                  int tos, int *skip) {
+  sent_capture.calls++;
+  sent_capture.s = s;
+  sent_capture.ttl = ttl;
+  sent_capture.tos = tos;
+  if (dest_addr) {
+    addr_cpy(&(sent_capture.dest), dest_addr);
+  }
+  sent_capture.len = ioa_network_buffer_get_size(nbh);
+  if (sent_capture.len > sizeof(sent_capture.payload)) {
+    sent_capture.len = sizeof(sent_capture.payload);
+  }
+  memcpy(sent_capture.payload, ioa_network_buffer_data(nbh), sent_capture.len);
+  if (skip) {
+    *skip = 0;
+  }
+  return (int)sent_capture.len;
+}
+
+int set_df_on_ioa_socket(ioa_socket_handle s, int value) {
+  UNUSED_ARG(s);
+  sent_capture.df = value;
+  return 0;
+}
+
+void turn_report_session_usage(void *session, int force_invalid) {
+  UNUSED_ARG(session);
+  UNUSED_ARG(force_invalid);
+}
+
+/* Reached from clear_allocation() in tearDown(). The relay socket is a plain
+ * struct here, so tearing it down is a no-op. */
+void turn_report_allocation_delete(void *a, SOCKET_TYPE socket_type) {
+  UNUSED_ARG(a);
+  UNUSED_ARG(socket_type);
+}
+
+void clear_ioa_socket_session_if(ioa_socket_handle s, void *ss_arg) {
+  UNUSED_ARG(s);
+  UNUSED_ARG(ss_arg);
+}
+
+void close_ioa_socket(ioa_socket_handle s) { UNUSED_ARG(s); }
+
+/* is_multiplex_peer_udp_relay() short-circuits on !server->multiplex_peer_mode,
+ * so this is only reached if a test opts into multiplex-peer mode. */
+ioa_socket_handle mp_get_socket(ioa_engine_handle e, int family) {
+  UNUSED_ARG(e);
+  UNUSED_ARG(family);
+  return NULL;
+}
+
+/* ---------------------------------------------------------------- *
+ * Fixture                                                           *
+ * ---------------------------------------------------------------- */
+
+static turn_turnserver server;
+static ts_ur_super_session ss;
+
+#define PEER_A "127.0.0.1"
+#define PEER_B "127.0.0.2"
+#define PEER_PORT_A (4000)
+#define PEER_PORT_B (5000)
+
+static void make_addr(ioa_addr *addr, const char *ip, uint16_t port) {
+  TEST_ASSERT_EQUAL_INT(0, make_ioa_addr((const uint8_t *)ip, port, addr));
+}
+
+void setUp(void) {
+  memset(&server, 0, sizeof(server));
+  memset(&ss, 0, sizeof(ss));
+  memset(&sent_capture, 0, sizeof(sent_capture));
+  memset(&test_nbh, 0, sizeof(test_nbh));
+
+  server.dont_fragment = DONT_FRAGMENT_UNSUPPORTED;
+
+  init_allocation(&ss, &(ss.alloc), NULL);
+  set_allocation_valid(&(ss.alloc), true);
+  ss.alloc.relay_sessions[ALLOC_INDEX(AF_INET)].s = (ioa_socket_handle)&relay_socket_v4;
+}
+
+void tearDown(void) { clear_allocation(&(ss.alloc), UDP_SOCKET); }
+
+static void add_permission(const char *ip, uint16_t port) {
+  ioa_addr addr;
+  make_addr(&addr, ip, port);
+  TEST_ASSERT_NOT_NULL(allocation_add_permission(&(ss.alloc), &addr));
+}
+
+/* Builds a Send indication carrying peer_count XOR-PEER-ADDRESS attributes
+ * followed by a DATA attribute, and loads it into the fixture buffer. */
+static void make_send_indication(const ioa_addr *peers, size_t peer_count, const uint8_t *payload, size_t payload_len) {
+  size_t len = 0;
+  stun_init_indication_str(STUN_METHOD_SEND, test_nbh.buf, &len);
+
+  for (size_t i = 0; i < peer_count; ++i) {
+    TEST_ASSERT_TRUE(stun_attr_add_addr_str(test_nbh.buf, &len, STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &(peers[i])));
+  }
+  TEST_ASSERT_TRUE(stun_attr_add_str(test_nbh.buf, &len, STUN_ATTRIBUTE_DATA, payload, (int)payload_len));
+
+  test_nbh.len = len;
+  test_nbh.offset = 0;
+  test_nbh.coffset = 0;
+}
+
+/* Drives handle_turn_send() over the fixture buffer and returns its err_code
+ * (0 when the indication was accepted). */
+static int run_send(void) {
+  ioa_net_data in_buffer;
+  memset(&in_buffer, 0, sizeof(in_buffer));
+  in_buffer.nbh = &test_nbh;
+  in_buffer.recv_ttl = 64;
+  in_buffer.recv_tos = 0;
+
+  int err_code = 0;
+  const uint8_t *reason = NULL;
+  uint16_t unknown_attrs[MAX_NUMBER_OF_UNKNOWN_ATTRS];
+  uint16_t ua_num = 0;
+  memset(unknown_attrs, 0, sizeof(unknown_attrs));
+
+  TEST_ASSERT_EQUAL_INT(0, handle_turn_send(&server, &ss, &err_code, &reason, unknown_attrs, &ua_num, &in_buffer));
+  return err_code;
+}
+
+/* ---------------------------------------------------------------- *
+ * Tests                                                             *
+ * ---------------------------------------------------------------- */
+
+/* Harness sanity: the ordinary one-peer case must relay the DATA payload
+ * verbatim to the peer named by the single XOR-PEER-ADDRESS. */
+static void test_send_relays_payload_to_the_permitted_peer(void) {
+  ioa_addr peer;
+  make_addr(&peer, PEER_A, PEER_PORT_A);
+  add_permission(PEER_A, PEER_PORT_A);
+
+  const uint8_t payload[] = {0xde, 0xad, 0xbe, 0xef, 0x01};
+  make_send_indication(&peer, 1, payload, sizeof(payload));
+
+  TEST_ASSERT_EQUAL_INT(0, run_send());
+  TEST_ASSERT_EQUAL_INT(1, sent_capture.calls);
+  TEST_ASSERT_TRUE(addr_eq(&peer, &(sent_capture.dest)));
+  TEST_ASSERT_EQUAL_size_t(sizeof(payload), sent_capture.len);
+  TEST_ASSERT_EQUAL_MEMORY(payload, sent_capture.payload, sizeof(payload));
+  /* RFC 8656 Section 11.2: the relayed datagram carries the received TTL minus one. */
+  TEST_ASSERT_EQUAL_INT(63, sent_capture.ttl);
+}
+
+/* RFC 8489 Section 14: only the first occurrence of a repeated attribute needs
+ * to be processed. The peer that receives the data must therefore be the one
+ * named first, whatever follows it. */
+static void test_send_uses_first_of_duplicate_peer_addresses(void) {
+  ioa_addr peers[2];
+  make_addr(&(peers[0]), PEER_A, PEER_PORT_A);
+  make_addr(&(peers[1]), PEER_B, PEER_PORT_B);
+  add_permission(PEER_A, PEER_PORT_A);
+  add_permission(PEER_B, PEER_PORT_B);
+
+  const uint8_t payload[] = {0x11, 0x22, 0x33, 0x44};
+  make_send_indication(peers, 2, payload, sizeof(payload));
+
+  TEST_ASSERT_EQUAL_INT(0, run_send());
+  TEST_ASSERT_EQUAL_INT(1, sent_capture.calls);
+  TEST_ASSERT_TRUE(addr_eq(&(peers[0]), &(sent_capture.dest)));
+  TEST_ASSERT_FALSE(addr_eq(&(peers[1]), &(sent_capture.dest)));
+  TEST_ASSERT_EQUAL_MEMORY(payload, sent_capture.payload, sizeof(payload));
+}
+
+/* The permission check applies to the address actually used, so a trailing
+ * permitted address cannot smuggle data past a first address that has none. */
+static void test_send_is_dropped_when_only_a_later_peer_is_permitted(void) {
+  ioa_addr peers[2];
+  make_addr(&(peers[0]), PEER_A, PEER_PORT_A);
+  make_addr(&(peers[1]), PEER_B, PEER_PORT_B);
+  add_permission(PEER_B, PEER_PORT_B);
+
+  const uint8_t payload[] = {0x55, 0x66};
+  make_send_indication(peers, 2, payload, sizeof(payload));
+
+  TEST_ASSERT_EQUAL_INT(0, run_send());
+  TEST_ASSERT_EQUAL_INT(0, sent_capture.calls);
+}
+
+/* Six repetitions, to show the choice is the first occurrence rather than an
+ * artifact of pairwise ordering. */
+static void test_send_uses_first_of_many_duplicate_peer_addresses(void) {
+  ioa_addr peers[6];
+  make_addr(&(peers[0]), PEER_A, PEER_PORT_A);
+  add_permission(PEER_A, PEER_PORT_A);
+  for (size_t i = 1; i < 6; ++i) {
+    make_addr(&(peers[i]), PEER_B, (uint16_t)(PEER_PORT_B + i));
+    add_permission(PEER_B, (uint16_t)(PEER_PORT_B + i));
+  }
+
+  const uint8_t payload[] = {0x77};
+  make_send_indication(peers, 6, payload, sizeof(payload));
+
+  TEST_ASSERT_EQUAL_INT(0, run_send());
+  TEST_ASSERT_EQUAL_INT(1, sent_capture.calls);
+  TEST_ASSERT_TRUE(addr_eq(&(peers[0]), &(sent_capture.dest)));
+}
+
+/* RFC 8656 Section 11.2: a Send indication without XOR-PEER-ADDRESS is
+ * discarded. */
+static void test_send_without_peer_address_is_discarded(void) {
+  const uint8_t payload[] = {0x88, 0x99};
+  make_send_indication(NULL, 0, payload, sizeof(payload));
+
+  TEST_ASSERT_EQUAL_INT(400, run_send());
+  TEST_ASSERT_EQUAL_INT(0, sent_capture.calls);
+}
+
+/* RFC 8656 Section 11.2: Send indications do not install permissions, so an
+ * unpermitted peer is silently dropped rather than answered. */
+static void test_send_to_unpermitted_peer_is_dropped_without_error(void) {
+  ioa_addr peer;
+  make_addr(&peer, PEER_A, PEER_PORT_A);
+
+  const uint8_t payload[] = {0xaa};
+  make_send_indication(&peer, 1, payload, sizeof(payload));
+
+  TEST_ASSERT_EQUAL_INT(0, run_send());
+  TEST_ASSERT_EQUAL_INT(0, sent_capture.calls);
+  TEST_ASSERT_NULL(allocation_get_permission(&(ss.alloc), &peer));
+}
+
+int main(void) {
+  UNITY_BEGIN();
+  RUN_TEST(test_send_relays_payload_to_the_permitted_peer);
+  RUN_TEST(test_send_uses_first_of_duplicate_peer_addresses);
+  RUN_TEST(test_send_is_dropped_when_only_a_later_peer_is_permitted);
+  RUN_TEST(test_send_uses_first_of_many_duplicate_peer_addresses);
+  RUN_TEST(test_send_without_peer_address_is_discarded);
+  RUN_TEST(test_send_to_unpermitted_peer_is_dropped_without_error);
+  return UNITY_END();
+}
