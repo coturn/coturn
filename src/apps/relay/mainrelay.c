@@ -261,6 +261,7 @@ turn_params_t turn_params = {
     false, /* include_reason_string */
     false, /* multiplex_peer */
     0,     /* multiplex_peer_base_port */
+    0,     /* multiplex_peer_max_peers */
 
     ///////// Ratelimit /////////
     false,                                  /* unauthorized-ratelimit */
@@ -1454,6 +1455,10 @@ static char Usage[] =
     " --multiplex-peer-port <port>\n"
     "        Base UDP port for multiplex-peer relay sockets. Default: 3480.\n"
     "        Total ports consumed = relay_threads * 2.\n"
+    " --multiplex-peer-max-peers <number>\n"
+    "        Maximum distinct peer IP:port endpoints one allocation may keep in\n"
+    "        the shared demux table. Further endpoints are refused with 508.\n"
+    "        Default: 256. Only meaningful with --multiplex-peer.\n"
     " --include-reason-string			   Include descriptive reason strings in STUN/TURN error responses.\n"
     "						   By default, only the standard reason phrase for the error code is\n"
     "						   sent. Enabling this option adds detailed error descriptions which\n"
@@ -1663,7 +1668,8 @@ enum EXTRA_OPTS {
   CPUS_OPT,
   INCLUDE_REASON_STRING_OPT,
   OPT_MULTIPLEX_PEER = 800,
-  OPT_MULTIPLEX_PEER_PORT = 801
+  OPT_MULTIPLEX_PEER_PORT = 801,
+  OPT_MULTIPLEX_PEER_MAX_PEERS = 802
 };
 
 struct myoption {
@@ -1828,6 +1834,7 @@ static const struct myoption long_options[] = {
     {"include-reason-string", optional_argument, NULL, INCLUDE_REASON_STRING_OPT},
     {"multiplex-peer", no_argument, NULL, OPT_MULTIPLEX_PEER},
     {"multiplex-peer-port", required_argument, NULL, OPT_MULTIPLEX_PEER_PORT},
+    {"multiplex-peer-max-peers", required_argument, NULL, OPT_MULTIPLEX_PEER_MAX_PEERS},
     {"version", optional_argument, NULL, VERSION_OPT},
     {"syslog-facility", required_argument, NULL, SYSLOG_FACILITY_OPT},
     {"cpus", required_argument, NULL, CPUS_OPT},
@@ -2706,6 +2713,15 @@ static void set_option(int c, char *value) {
     }
     const uint16_t p = (uint16_t)parsed_port;
     turn_params.multiplex_peer_base_port = p;
+    break;
+  }
+  case OPT_MULTIPLEX_PEER_MAX_PEERS: {
+    const long parsed = strtol(value, NULL, 10);
+    if (parsed <= 0 || parsed > TURN_MP_PEERS_PER_SESSION_MAX) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "--multiplex-peer-max-peers must be 1-%d\n", TURN_MP_PEERS_PER_SESSION_MAX);
+      exit(1);
+    }
+    turn_params.multiplex_peer_max_peers = (size_t)parsed;
     break;
   }
   case INCLUDE_REASON_STRING_OPT:

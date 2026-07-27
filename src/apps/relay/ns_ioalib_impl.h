@@ -43,6 +43,7 @@
 
 #include "ns_turn_openssl.h"
 
+#include "mp_peer_table.h"
 #include "ns_turn_maps.h"
 #include "ns_turn_maps_rtcp.h"
 #include "ns_turn_server.h"
@@ -205,7 +206,7 @@ struct _ioa_engine {
   ioa_socket_handle mp_sock_v6;
   uint16_t mp_port_v4;
   uint16_t mp_port_v6;
-  ur_addr_map mp_table; /* peer_addr:port -> ts_ur_super_session*; O(1) get/put/del */
+  mp_peer_table mp_table; /* peer_addr:port -> ts_ur_super_session*, capped per session */
 };
 
 #define SOCKET_MAGIC (0xABACADEF)
@@ -300,7 +301,8 @@ int get_realm_data(char *name, realm_params_t *rp);
 
 /* multiplex-peer */
 
-int init_multiplex_peer(ioa_engine_handle e, int thread_id, uint16_t base_port);
+int init_multiplex_peer(ioa_engine_handle e, int thread_id, uint16_t base_port, size_t max_peers_per_session);
+/* Returns MP_REGISTER_OK, MP_REGISTER_CONFLICT or MP_REGISTER_LIMIT. */
 int mp_register_peer(ioa_engine_handle e, const ioa_addr *peer_addr, void *turn_session);
 void mp_deregister_peer(ioa_engine_handle e, const ioa_addr *peer_addr, void *turn_session);
 void mp_deregister_permission_peers(ioa_engine_handle e, const ioa_addr *peer_addr, void *turn_session);

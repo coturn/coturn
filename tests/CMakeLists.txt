@@ -27,6 +27,12 @@ coturn_add_test(test_log_min_level)
 coturn_add_test(test_ratelimit ../src/server/ns_turn_ratelimit.c)
 target_include_directories(test_ratelimit PRIVATE ../src/server ../src)
 
+# Multiplex-peer demux table: per-session registration cap and per-session
+# deregistration. The module is self-contained, so it is compiled together
+# with the map implementation it uses.
+coturn_add_test(test_mp_peer_table ../src/apps/relay/mp_peer_table.c ../src/server/ns_turn_maps.c)
+target_include_directories(test_mp_peer_table PRIVATE ../src/server ../src)
+
 # Alternate-server list regression test (#1988). The test compiles the real
 # src/apps/relay/netengine.c into its own translation unit (to reach the static
 # add_alt_server/del_alt_server), with link-only stubs for the rest of the

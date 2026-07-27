@@ -20,8 +20,8 @@ COMMON_HEADERS = src/apps/common/apputils.h src/apps/common/ns_turn_openssl.h sr
 COMMON_MODS = src/apps/common/apputils.c src/apps/common/ns_turn_utils.c src/apps/common/stun_buffer.c
 COMMON_DEPS = ${LIBCLIENTTURN_DEPS} ${COMMON_MODS} ${COMMON_HEADERS}
 
-IMPL_HEADERS = src/apps/relay/ns_ioalib_impl.h src/apps/relay/ns_sm.h src/apps/relay/turn_ports.h
-IMPL_MODS = src/apps/relay/ns_ioalib_engine_impl.c src/apps/relay/turn_ports.c src/apps/relay/http_server.c src/apps/relay/http_buffer.c src/apps/relay/acme.c
+IMPL_HEADERS = src/apps/relay/ns_ioalib_impl.h src/apps/relay/ns_sm.h src/apps/relay/turn_ports.h src/apps/relay/mp_peer_table.h
+IMPL_MODS = src/apps/relay/ns_ioalib_engine_impl.c src/apps/relay/mp_peer_table.c src/apps/relay/turn_ports.c src/apps/relay/http_server.c src/apps/relay/http_buffer.c src/apps/relay/acme.c
 IMPL_DEPS = ${COMMON_DEPS} ${IMPL_HEADERS} ${IMPL_MODS}
 
 HIREDIS_HEADERS = src/apps/relay/hiredis_libevent2.h

@@ -424,7 +424,17 @@ static int register_multiplex_peer(turn_turnserver *server, ts_ur_super_session 
     return 0;
   }
 
-  if (mp_register_peer(server->e, peer_addr, ss) < 0) {
+  const int ret = mp_register_peer(server->e, peer_addr, ss);
+  if (ret == MP_REGISTER_LIMIT) {
+    if (err_code) {
+      *err_code = 508;
+    }
+    if (reason) {
+      *reason = (const uint8_t *)"Too many peer endpoints for this allocation";
+    }
+    return -1;
+  }
+  if (ret < 0) {
     if (err_code) {
       *err_code = 400;
     }

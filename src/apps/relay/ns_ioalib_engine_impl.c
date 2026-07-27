@@ -1365,14 +1365,7 @@ static void mp_relay_input_handler(ioa_socket_handle s, int event_type, ioa_net_
     return;
   }
 
-  ur_addr_map_value_type value = 0;
-  ioa_addr key = {0};
-  addr_cpy(&key, &data->src_addr);
-  if (!ur_addr_map_get(&e->mp_table, &key, &value) || !value) {
-    return;
-  }
-
-  ts_ur_super_session *ss = (ts_ur_super_session *)(uintptr_t)value;
+  ts_ur_super_session *ss = (ts_ur_super_session *)mp_peer_table_lookup(&e->mp_table, &data->src_addr);
   if (!ss || ss->to_be_closed) {
     return;
   }
@@ -1442,12 +1435,12 @@ static int mp_open_socket(ioa_engine_handle e, const char *relay_addr, int af, u
 }
 
 /* Called once per relay thread from setup_relay_server(). */
-int init_multiplex_peer(ioa_engine_handle e, int thread_id, uint16_t base_port) {
+int init_multiplex_peer(ioa_engine_handle e, int thread_id, uint16_t base_port, size_t max_peers_per_session) {
   if (!e) {
     return -1;
   }
 
-  ur_addr_map_init(&e->mp_table);
+  mp_peer_table_init(&e->mp_table, max_peers_per_session);
   e->relay_thread_id = thread_id;
 
   /*
@@ -1505,78 +1498,35 @@ int init_multiplex_peer(ioa_engine_handle e, int thread_id, uint16_t base_port) 
 
 int mp_register_peer(ioa_engine_handle e, const ioa_addr *peer_addr, void *turn_session) {
   if (!e || !peer_addr || !turn_session) {
-    return -1;
+    return MP_REGISTER_CONFLICT;
   }
 
   if (addr_get_port(peer_addr) == 0) {
-    return 0;
+    return MP_REGISTER_OK;
   }
 
-  ioa_addr key = {0};
-  addr_cpy(&key, peer_addr);
-
-  ur_addr_map_value_type existing = 0;
-  if (ur_addr_map_get(&e->mp_table, &key, &existing) && existing && existing != (ur_addr_map_value_type)turn_session) {
-    return -1;
-  }
-
-  return ur_addr_map_put(&e->mp_table, &key, (ur_addr_map_value_type)(uintptr_t)turn_session) ? 0 : -1;
+  return mp_peer_table_register(&e->mp_table, peer_addr, turn_session);
 }
 
 void mp_deregister_peer(ioa_engine_handle e, const ioa_addr *peer_addr, void *turn_session) {
-  if (!e || !peer_addr) {
+  if (!e) {
     return;
   }
-  ioa_addr key = {0};
-  addr_cpy(&key, peer_addr);
-  if (turn_session) {
-    ur_addr_map_value_type existing = 0;
-    if (!ur_addr_map_get(&e->mp_table, &key, &existing) || existing != (ur_addr_map_value_type)turn_session) {
-      return;
-    }
-  }
-  ur_addr_map_del(&e->mp_table, &key, NULL);
-}
-
-struct mp_deregister_ctx {
-  ioa_engine_handle e;
-  ur_addr_map_value_type session;
-  const ioa_addr *peer_addr;
-  int address_family;
-};
-
-static bool mp_deregister_cb(const ioa_addr *key, ur_addr_map_value_type value, void *arg) {
-  struct mp_deregister_ctx *ctx = (struct mp_deregister_ctx *)arg;
-  if (!ctx || value != ctx->session) {
-    return true;
-  }
-  if (ctx->address_family && key->ss.sa_family != ctx->address_family) {
-    return true;
-  }
-  if (ctx->peer_addr && !addr_eq_no_port(key, ctx->peer_addr)) {
-    return true;
-  }
-
-  ioa_addr key_copy = {0};
-  addr_cpy(&key_copy, key);
-  ur_addr_map_del(&ctx->e->mp_table, &key_copy, NULL);
-  return true;
+  mp_peer_table_deregister(&e->mp_table, peer_addr, turn_session);
 }
 
 void mp_deregister_permission_peers(ioa_engine_handle e, const ioa_addr *peer_addr, void *turn_session) {
-  if (!e || !peer_addr || !turn_session) {
+  if (!e) {
     return;
   }
-  struct mp_deregister_ctx ctx = {e, (ur_addr_map_value_type)(uintptr_t)turn_session, peer_addr, 0};
-  ur_addr_map_foreach_key_arg(&e->mp_table, mp_deregister_cb, &ctx);
+  mp_peer_table_deregister_ip(&e->mp_table, peer_addr, turn_session);
 }
 
 void mp_deregister_session_peers(ioa_engine_handle e, void *turn_session, int address_family) {
-  if (!e || !turn_session) {
+  if (!e) {
     return;
   }
-  struct mp_deregister_ctx ctx = {e, (ur_addr_map_value_type)(uintptr_t)turn_session, NULL, address_family};
-  ur_addr_map_foreach_key_arg(&e->mp_table, mp_deregister_cb, &ctx);
+  mp_peer_table_deregister_session(&e->mp_table, turn_session, address_family);
 }
 
 ioa_socket_handle mp_get_socket(ioa_engine_handle e, int af) {
