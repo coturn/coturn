@@ -170,12 +170,50 @@ ioa_socket_handle mp_get_socket(ioa_engine_handle e, int family) {
   return NULL;
 }
 
+/* Engine-wide peer access lists, consulted by good_peer_addr() on the
+ * CreatePermission and ChannelBind paths. Empty here: the per-server lists in
+ * turn_turnserver are what the tests configure. */
+const ip_range_list_t *ioa_get_whitelist(ioa_engine_handle e) {
+  UNUSED_ARG(e);
+  return NULL;
+}
+
+const ip_range_list_t *ioa_get_blacklist(ioa_engine_handle e) {
+  UNUSED_ARG(e);
+  return NULL;
+}
+
+void ioa_lock_whitelist(ioa_engine_handle e) { UNUSED_ARG(e); }
+void ioa_unlock_whitelist(ioa_engine_handle e) { UNUSED_ARG(e); }
+void ioa_lock_blacklist(ioa_engine_handle e) { UNUSED_ARG(e); }
+void ioa_unlock_blacklist(ioa_engine_handle e) { UNUSED_ARG(e); }
+
 /* ---------------------------------------------------------------- *
  * Fixture                                                           *
  * ---------------------------------------------------------------- */
 
 static turn_turnserver server;
 static ts_ur_super_session ss;
+
+/* Response buffer for the handlers that build one. Separate from test_nbh so a
+ * test can inspect request and response independently. */
+static test_buffer response_nbh;
+
+/* Backing storage for the turn_turnserver fields that are pointers to config
+ * values. good_peer_addr() and update_turn_permission_lifetime() dereference
+ * these unconditionally. */
+static bool allow_loopback_peers;
+static bool no_multicast_peers;
+static vint permission_lifetime;
+static vint channel_lifetime;
+
+/* TTL presented on the incoming datagram; a test lowers it to reach the
+ * TTL-exhausted path. */
+static int recv_ttl;
+
+/* Number of comprehension-required attributes the handler could not process,
+ * recorded so a test can assert on the 420 path. */
+static uint16_t last_ua_num;
 
 #define PEER_A "127.0.0.1"
 #define PEER_B "127.0.0.2"
@@ -191,8 +229,26 @@ void setUp(void) {
   memset(&ss, 0, sizeof(ss));
   memset(&sent_capture, 0, sizeof(sent_capture));
   memset(&test_nbh, 0, sizeof(test_nbh));
+  memset(&response_nbh, 0, sizeof(response_nbh));
 
   server.dont_fragment = DONT_FRAGMENT_UNSUPPORTED;
+
+  /* The tests relay to 127.0.0.x, which good_peer_addr() rejects by default. */
+  allow_loopback_peers = true;
+  no_multicast_peers = false;
+  server.allow_loopback_peers = &allow_loopback_peers;
+  server.no_multicast_peers = &no_multicast_peers;
+
+  permission_lifetime = STUN_DEFAULT_PERMISSION_LIFETIME;
+  channel_lifetime = STUN_DEFAULT_CHANNEL_LIFETIME;
+  server.permission_lifetime = &permission_lifetime;
+  server.channel_lifetime = &channel_lifetime;
+
+  recv_ttl = 64;
+  last_ua_num = 0;
+
+  /* update_turn_permission_lifetime() reaches the server through the session. */
+  ss.server = &server;
 
   init_allocation(&ss, &(ss.alloc), NULL);
   set_allocation_valid(&(ss.alloc), true);
@@ -207,20 +263,46 @@ static void add_permission(const char *ip, uint16_t port) {
   TEST_ASSERT_NOT_NULL(allocation_add_permission(&(ss.alloc), &addr));
 }
 
+/* Incremental message builder over the fixture buffer, so a test can compose an
+ * attribute sequence a conformant client would never send. */
+static size_t msg_len;
+
+static void msg_begin(uint16_t method, bool indication) {
+  msg_len = 0;
+  if (indication) {
+    stun_init_indication_str(method, test_nbh.buf, &msg_len);
+  } else {
+    stun_init_request_str(method, test_nbh.buf, &msg_len);
+  }
+}
+
+static void msg_add_peer(const ioa_addr *peer) {
+  TEST_ASSERT_TRUE(stun_attr_add_addr_str(test_nbh.buf, &msg_len, STUN_ATTRIBUTE_XOR_PEER_ADDRESS, peer));
+}
+
+static void msg_add_data(const uint8_t *payload, size_t payload_len) {
+  TEST_ASSERT_TRUE(stun_attr_add_str(test_nbh.buf, &msg_len, STUN_ATTRIBUTE_DATA, payload, (int)payload_len));
+}
+
+static void msg_add_dont_fragment(void) {
+  TEST_ASSERT_TRUE(stun_attr_add_str(test_nbh.buf, &msg_len, STUN_ATTRIBUTE_DONT_FRAGMENT, NULL, 0));
+}
+
+static void msg_finish(void) {
+  test_nbh.len = msg_len;
+  test_nbh.offset = 0;
+  test_nbh.coffset = 0;
+}
+
 /* Builds a Send indication carrying peer_count XOR-PEER-ADDRESS attributes
  * followed by a DATA attribute, and loads it into the fixture buffer. */
 static void make_send_indication(const ioa_addr *peers, size_t peer_count, const uint8_t *payload, size_t payload_len) {
-  size_t len = 0;
-  stun_init_indication_str(STUN_METHOD_SEND, test_nbh.buf, &len);
-
+  msg_begin(STUN_METHOD_SEND, true);
   for (size_t i = 0; i < peer_count; ++i) {
-    TEST_ASSERT_TRUE(stun_attr_add_addr_str(test_nbh.buf, &len, STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &(peers[i])));
+    msg_add_peer(&(peers[i]));
   }
-  TEST_ASSERT_TRUE(stun_attr_add_str(test_nbh.buf, &len, STUN_ATTRIBUTE_DATA, payload, (int)payload_len));
-
-  test_nbh.len = len;
-  test_nbh.offset = 0;
-  test_nbh.coffset = 0;
+  msg_add_data(payload, payload_len);
+  msg_finish();
 }
 
 /* Drives handle_turn_send() over the fixture buffer and returns its err_code
@@ -229,7 +311,7 @@ static int run_send(void) {
   ioa_net_data in_buffer;
   memset(&in_buffer, 0, sizeof(in_buffer));
   in_buffer.nbh = &test_nbh;
-  in_buffer.recv_ttl = 64;
+  in_buffer.recv_ttl = recv_ttl;
   in_buffer.recv_tos = 0;
 
   int err_code = 0;
@@ -239,7 +321,42 @@ static int run_send(void) {
   memset(unknown_attrs, 0, sizeof(unknown_attrs));
 
   TEST_ASSERT_EQUAL_INT(0, handle_turn_send(&server, &ss, &err_code, &reason, unknown_attrs, &ua_num, &in_buffer));
+  last_ua_num = ua_num;
   return err_code;
+}
+
+/* Drives handle_turn_create_permission() over the fixture buffer. Returns the
+ * err_code; resp_constructed reports whether a success response was built. */
+static int run_create_permission(int *resp_constructed) {
+  ioa_net_data in_buffer;
+  memset(&in_buffer, 0, sizeof(in_buffer));
+  in_buffer.nbh = &test_nbh;
+  in_buffer.recv_ttl = recv_ttl;
+
+  stun_tid tid;
+  memset(&tid, 0, sizeof(tid));
+  stun_tid_from_message_str(test_nbh.buf, test_nbh.len, &tid);
+
+  int err_code = 0;
+  int constructed = 0;
+  const uint8_t *reason = NULL;
+  uint16_t unknown_attrs[MAX_NUMBER_OF_UNKNOWN_ATTRS];
+  uint16_t ua_num = 0;
+  memset(unknown_attrs, 0, sizeof(unknown_attrs));
+
+  handle_turn_create_permission(&server, &ss, &tid, &constructed, &err_code, &reason, unknown_attrs, &ua_num,
+                                &in_buffer, &response_nbh);
+  last_ua_num = ua_num;
+  if (resp_constructed) {
+    *resp_constructed = constructed;
+  }
+  return err_code;
+}
+
+static bool has_permission(const char *ip, uint16_t port) {
+  ioa_addr addr;
+  make_addr(&addr, ip, port);
+  return allocation_get_permission(&(ss.alloc), &addr) != NULL;
 }
 
 /* ---------------------------------------------------------------- *
@@ -343,6 +460,192 @@ static void test_send_to_unpermitted_peer_is_dropped_without_error(void) {
   TEST_ASSERT_NULL(allocation_get_permission(&(ss.alloc), &peer));
 }
 
+/* RFC 8656 Section 11.2: the DATA attribute is allowed to carry zero bytes. */
+static void test_send_relays_zero_length_data(void) {
+  ioa_addr peer;
+  make_addr(&peer, PEER_A, PEER_PORT_A);
+  add_permission(PEER_A, PEER_PORT_A);
+
+  msg_begin(STUN_METHOD_SEND, true);
+  msg_add_peer(&peer);
+  msg_add_data(NULL, 0);
+  msg_finish();
+
+  TEST_ASSERT_EQUAL_INT(0, run_send());
+  TEST_ASSERT_EQUAL_INT(1, sent_capture.calls);
+  TEST_ASSERT_TRUE(addr_eq(&peer, &(sent_capture.dest)));
+  TEST_ASSERT_EQUAL_size_t(0, sent_capture.len);
+}
+
+/* RFC 8656 Section 11.2: a Send indication must carry a DATA attribute, and one
+ * that does not is discarded. */
+static void test_send_without_data_is_discarded(void) {
+  ioa_addr peer;
+  make_addr(&peer, PEER_A, PEER_PORT_A);
+  add_permission(PEER_A, PEER_PORT_A);
+
+  msg_begin(STUN_METHOD_SEND, true);
+  msg_add_peer(&peer);
+  msg_finish();
+
+  TEST_ASSERT_EQUAL_INT(400, run_send());
+  TEST_ASSERT_EQUAL_INT(0, sent_capture.calls);
+}
+
+/* Current behaviour, pinned: a repeated DATA attribute is treated as an error
+ * and the indication is discarded. RFC 8489 Section 14 would instead have the
+ * first occurrence win, as XOR-PEER-ADDRESS does; changing that is a
+ * deliberate decision and must update this test. */
+static void test_send_with_duplicate_data_is_discarded(void) {
+  ioa_addr peer;
+  make_addr(&peer, PEER_A, PEER_PORT_A);
+  add_permission(PEER_A, PEER_PORT_A);
+
+  const uint8_t first[] = {0x01, 0x02};
+  const uint8_t second[] = {0x03, 0x04};
+  msg_begin(STUN_METHOD_SEND, true);
+  msg_add_peer(&peer);
+  msg_add_data(first, sizeof(first));
+  msg_add_data(second, sizeof(second));
+  msg_finish();
+
+  TEST_ASSERT_EQUAL_INT(400, run_send());
+  TEST_ASSERT_EQUAL_INT(0, sent_capture.calls);
+}
+
+/* RFC 8656 Section 14.9 (DONT-FRAGMENT is comprehension-required): a server
+ * that cannot set DF reports it as an unknown attribute, and the indication is
+ * not relayed. */
+static void test_send_dont_fragment_is_unknown_when_unsupported(void) {
+  ioa_addr peer;
+  make_addr(&peer, PEER_A, PEER_PORT_A);
+  add_permission(PEER_A, PEER_PORT_A);
+
+  const uint8_t payload[] = {0xab};
+  server.dont_fragment = DONT_FRAGMENT_UNSUPPORTED;
+  msg_begin(STUN_METHOD_SEND, true);
+  msg_add_peer(&peer);
+  msg_add_dont_fragment();
+  msg_add_data(payload, sizeof(payload));
+  msg_finish();
+
+  TEST_ASSERT_EQUAL_INT(420, run_send());
+  TEST_ASSERT_EQUAL_UINT16(1, last_ua_num);
+  TEST_ASSERT_EQUAL_INT(0, sent_capture.calls);
+}
+
+/* RFC 8656 Section 11.2: when the server supports it, DONT-FRAGMENT sets the DF
+ * bit on the relayed datagram. */
+static void test_send_dont_fragment_sets_df_when_supported(void) {
+  ioa_addr peer;
+  make_addr(&peer, PEER_A, PEER_PORT_A);
+  add_permission(PEER_A, PEER_PORT_A);
+
+  const uint8_t payload[] = {0xcd};
+  server.dont_fragment = DONT_FRAGMENT_SUPPORTED;
+  msg_begin(STUN_METHOD_SEND, true);
+  msg_add_peer(&peer);
+  msg_add_dont_fragment();
+  msg_add_data(payload, sizeof(payload));
+  msg_finish();
+
+  TEST_ASSERT_EQUAL_INT(0, run_send());
+  TEST_ASSERT_EQUAL_INT(1, sent_capture.calls);
+  TEST_ASSERT_EQUAL_INT(1, sent_capture.df);
+}
+
+/* RFC 6062 Section 5.3: Send and Data indications are not used with a TCP
+ * allocation. */
+static void test_send_over_a_tcp_relay_is_rejected(void) {
+  ioa_addr peer;
+  make_addr(&peer, PEER_A, PEER_PORT_A);
+  add_permission(PEER_A, PEER_PORT_A);
+
+  const uint8_t payload[] = {0x01};
+  make_send_indication(&peer, 1, payload, sizeof(payload));
+  ss.is_tcp_relay = true;
+
+  TEST_ASSERT_EQUAL_INT(403, run_send());
+  TEST_ASSERT_EQUAL_INT(0, sent_capture.calls);
+}
+
+/* A session whose allocation has gone away relays nothing, and says nothing:
+ * an indication has no response to carry an error. */
+static void test_send_without_a_valid_allocation_is_dropped(void) {
+  ioa_addr peer;
+  make_addr(&peer, PEER_A, PEER_PORT_A);
+  add_permission(PEER_A, PEER_PORT_A);
+
+  const uint8_t payload[] = {0x01};
+  make_send_indication(&peer, 1, payload, sizeof(payload));
+  set_allocation_valid(&(ss.alloc), false);
+
+  TEST_ASSERT_EQUAL_INT(0, run_send());
+  TEST_ASSERT_EQUAL_INT(0, sent_capture.calls);
+}
+
+/* The relayed datagram carries the received TTL minus one, so a datagram that
+ * arrives with the TTL already exhausted is dropped rather than relayed with a
+ * negative value. */
+static void test_send_with_exhausted_ttl_is_dropped(void) {
+  ioa_addr peer;
+  make_addr(&peer, PEER_A, PEER_PORT_A);
+  add_permission(PEER_A, PEER_PORT_A);
+
+  const uint8_t payload[] = {0x01};
+  make_send_indication(&peer, 1, payload, sizeof(payload));
+  recv_ttl = 0;
+
+  TEST_ASSERT_EQUAL_INT(0, run_send());
+  TEST_ASSERT_EQUAL_INT(0, sent_capture.calls);
+}
+
+/* RFC 8656 Section 9.2: a CreatePermission request may carry several
+ * XOR-PEER-ADDRESS attributes, and a permission is installed for each. This is
+ * why CreatePermission counts addresses where Send takes only the first. */
+static void test_create_permission_installs_every_peer_address(void) {
+  ioa_addr peers[3];
+  make_addr(&(peers[0]), PEER_A, PEER_PORT_A);
+  make_addr(&(peers[1]), PEER_B, PEER_PORT_B);
+  make_addr(&(peers[2]), PEER_B, (uint16_t)(PEER_PORT_B + 1));
+
+  msg_begin(STUN_METHOD_CREATE_PERMISSION, false);
+  for (size_t i = 0; i < 3; ++i) {
+    msg_add_peer(&(peers[i]));
+  }
+  msg_finish();
+
+  int resp_constructed = 0;
+  TEST_ASSERT_EQUAL_INT(0, run_create_permission(&resp_constructed));
+  TEST_ASSERT_EQUAL_INT(1, resp_constructed);
+  TEST_ASSERT_TRUE(has_permission(PEER_A, PEER_PORT_A));
+  TEST_ASSERT_TRUE(has_permission(PEER_B, PEER_PORT_B));
+}
+
+/* RFC 8656 Section 9.2: a permission covers the peer's IP address only, so one
+ * created for a given port also admits traffic on another. The permission
+ * hashtable keys on the address without the port, so this holds end to end
+ * rather than resting on the handler zeroing the port. */
+static void test_create_permission_ignores_the_port(void) {
+  ioa_addr peer;
+  make_addr(&peer, PEER_A, PEER_PORT_A);
+
+  msg_begin(STUN_METHOD_CREATE_PERMISSION, false);
+  msg_add_peer(&peer);
+  msg_finish();
+
+  TEST_ASSERT_EQUAL_INT(0, run_create_permission(NULL));
+  TEST_ASSERT_TRUE(has_permission(PEER_A, (uint16_t)(PEER_PORT_A + 1234)));
+}
+
+/* A CreatePermission naming no peer at all is malformed. */
+static void test_create_permission_without_peer_address_is_rejected(void) {
+  msg_begin(STUN_METHOD_CREATE_PERMISSION, false);
+  msg_finish();
+
+  TEST_ASSERT_EQUAL_INT(400, run_create_permission(NULL));
+}
+
 int main(void) {
   UNITY_BEGIN();
   RUN_TEST(test_send_relays_payload_to_the_permitted_peer);
@@ -351,5 +654,16 @@ int main(void) {
   RUN_TEST(test_send_uses_first_of_many_duplicate_peer_addresses);
   RUN_TEST(test_send_without_peer_address_is_discarded);
   RUN_TEST(test_send_to_unpermitted_peer_is_dropped_without_error);
+  RUN_TEST(test_send_relays_zero_length_data);
+  RUN_TEST(test_send_without_data_is_discarded);
+  RUN_TEST(test_send_with_duplicate_data_is_discarded);
+  RUN_TEST(test_send_dont_fragment_is_unknown_when_unsupported);
+  RUN_TEST(test_send_dont_fragment_sets_df_when_supported);
+  RUN_TEST(test_send_over_a_tcp_relay_is_rejected);
+  RUN_TEST(test_send_without_a_valid_allocation_is_dropped);
+  RUN_TEST(test_send_with_exhausted_ttl_is_dropped);
+  RUN_TEST(test_create_permission_installs_every_peer_address);
+  RUN_TEST(test_create_permission_ignores_the_port);
+  RUN_TEST(test_create_permission_without_peer_address_is_rejected);
   return UNITY_END();
 }
