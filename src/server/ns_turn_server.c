@@ -146,6 +146,7 @@ static int attach_socket_to_session(turn_turnserver *server, ioa_socket_handle s
 /* RFC 8016 mobility handoff helpers (defined near handle_turn_refresh). */
 static ts_ur_super_session *mobile_complete_transition(turn_turnserver *server, ts_ur_super_session *pending_ss);
 static void mobile_abort_transition(turn_turnserver *server, ts_ur_super_session *orig_ss);
+static void client_to_be_allocated_timeout_handler(ioa_engine_handle e, void *arg);
 
 static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stun_tid *tid, int *resp_constructed,
                            int *err_code, const uint8_t **reason, ioa_net_data *in_buffer,
@@ -1677,6 +1678,24 @@ static void copy_auth_parameters(ts_ur_super_session *orig_ss, ts_ur_super_sessi
  * removed, since it owns no allocation of its own). */
 static void mobile_begin_transition(turn_turnserver *server, ts_ur_super_session *orig_ss,
                                     ts_ur_super_session *pending_ss) {
+  /* At most one pending resume per allocation. If a transition is already open,
+   * fully tear down the previous pending session before opening the new one.
+   * Otherwise chained resumes from fresh 5-tuples would overwrite the single
+   * backlink below and orphan every superseded pending session: each has had its
+   * un-allocated watchdog disarmed and, once orig_ss->mobile_pending_resume no
+   * longer names it, is unreachable by the transition-deadline sweep, so it
+   * stays allocated indefinitely. This runs in REFRESH packet context (not the
+   * session-map sweep), so a synchronous shutdown is safe; it also clears
+   * orig_ss->mobile_pending_resume via shutdown's transition-unlink path. */
+  if (orig_ss->mobile_pending_resume) {
+    ts_ur_super_session *stale_ss = get_session_from_map(server, orig_ss->mobile_pending_resume);
+    if (stale_ss) {
+      shutdown_client_connection(server, stale_ss, 1, "superseded by newer mobility resume");
+    }
+    orig_ss->mobile_pending_resume = 0;
+    orig_ss->mobile_transition_deadline = 0;
+  }
+
   /* A pending session must never itself be resumable. */
   delete_session_from_mobile_map(pending_ss);
   /* Do not let the un-allocated watchdog reap the pending session; it owns no
@@ -1703,8 +1722,16 @@ static ts_ur_super_session *mobile_complete_transition(turn_turnserver *server, 
   ts_ur_super_session *orig_ss = get_session_from_map(server, pending_ss->mobile_resume_target);
 
   /* Clear the link regardless of outcome so we never promote twice. */
+  const turnsession_id pending_id = pending_ss->id;
   pending_ss->mobile_resume_target = 0;
   if (!orig_ss) {
+    return NULL;
+  }
+  /* Promote only if this session is still the allocation's current pending
+   * resume. A superseded pending session (its transition was replaced by a
+   * newer resume) must not clear the allocation's live transition state or
+   * steal a socket move that belongs to the current pending session. */
+  if (orig_ss->mobile_pending_resume != pending_id) {
     return NULL;
   }
   orig_ss->mobile_pending_resume = 0;
@@ -1747,6 +1774,15 @@ static void mobile_abort_transition(turn_turnserver *server, ts_ur_super_session
   if (pending_ss && pending_ss->mobile_resume_target == orig_ss->id) {
     pending_ss->mobile_resume_target = 0;
     pending_ss->to_be_closed = true;
+    /* An abandoned pending client may sit idle forever (it never sends on the new
+     * path), and to_be_closed is only observed when a packet next arrives on the
+     * session's socket. The pending's un-allocated watchdog was disarmed when the
+     * transition opened, so re-arm it to reap the session from timer context. This
+     * only schedules a timer, so it is safe during the map-iterating sweep (the
+     * shutdown happens later, from the timer handler, not here). */
+    IOA_EVENT_DEL(pending_ss->to_be_allocated_timeout_ev);
+    pending_ss->to_be_allocated_timeout_ev =
+        set_ioa_timer(server->e, 1, 0, client_to_be_allocated_timeout_handler, pending_ss, 0, "mobile_pending_reap");
   }
 }
 
