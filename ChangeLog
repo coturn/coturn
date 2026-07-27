@@ -1,3 +1,30 @@
+Release 4.16.0
+
+Changelist:
+- tests: broaden TURN server core coverage to Send and CreatePermission (#2018) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- multiplex-peer: bound the shared per-thread peer demux table (#2017) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Send: make a duplicate XOR-PEER-ADDRESS first-wins instead of last-wins (#2016) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Declare ERROR-CODE / ADDRESS-ERROR-CODE reason phrases without padding (#2015) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- docs: state the comment style expected in CLAUDE.md (#2014) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- DTLS: release idle handshake buffers on half-open sockets (#2013) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- docs: state OpenSSL 3.0+ as the supported target; drop stale guidance (#2011) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- DTLS: cap concurrent half-open handshakes (pre-cookie state-exhaustion) (#2012) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- DTLS: drop non-handshake records from unknown sources (#2010) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- docs: record the RFC 3489 deprecation roadmap; fix stale option text (#2009) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Split --stun-backward-compatibility: move RFC 3489 handling to its own deprecated flag (#2008) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Narrow ChannelBind to the RFC 8656 channel range 0x4000-0x4FFF (#2006) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Return 508, not 400/440, when a well-formed Allocate cannot be satisfied (#2007) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix NULL deref: --prometheus-address/-path/-port take a required value (#2005) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- DTLS listener: correct the handshake buffer bound and remove the non-functional client-cert path (#2003) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- docs: cite RFC 7350 for DTLS support in README (#2004) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Add --stateless-nonce: bound memory under valid-structure STUN floods (#1999) (#2002) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Restore support for hiredis < 1.1.0 (for AlmaLinux/RHEL/Rocky Linux 9) (#2001) (Robert Scheck <robert-scheck@users.noreply.github.com>)
+
+Contributors:
+- Kai Ren <tyranron@gmail.com>
+- Pavel Punsky <eakraly@users.noreply.github.com>
+- Robert Scheck <robert-scheck@users.noreply.github.com>
+
 Release 4.15.0
 
 Changelist:
