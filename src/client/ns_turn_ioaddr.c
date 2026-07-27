@@ -456,14 +456,11 @@ int addr_less_eq(const ioa_addr *addr1, const ioa_addr *addr2) {
     } else if (addr1->ss.sa_family == AF_INET) {
       return ((uint32_t)nswap32(addr1->s4.sin_addr.s_addr) <= (uint32_t)nswap32(addr2->s4.sin_addr.s_addr));
     } else if (addr1->ss.sa_family == AF_INET6) {
-      int i;
-      for (i = 0; i < 16; i++) {
-        if ((uint8_t)(((const char *)&(addr1->s6.sin6_addr))[i]) >
-            (uint8_t)(((const char *)&(addr2->s6.sin6_addr))[i])) {
-          return 0;
-        }
-      }
-      return 1;
+      /* in6_addr is stored MSB-first (network order), so a byte-wise memcmp is
+       * the lexicographic total order. A component-wise per-byte comparison
+       * would test a rectangular box, not the contiguous span [min,max], and
+       * under-block IPv6 denied-peer-ip ranges. */
+      return memcmp(&(addr1->s6.sin6_addr), &(addr2->s6.sin6_addr), 16) <= 0;
     } else {
       return 1;
     }

@@ -169,6 +169,69 @@ static void test_in_range_native_ipv6_not_matched_by_ipv4_range(void) {
   TEST_ASSERT_FALSE(ioa_addr_in_range(&denied, &peer));
 }
 
+/* A native IPv6 denied range must block every address in the contiguous span
+ * [min,max], not only the per-byte box. addr_less_eq must be lexicographic:
+ * a component-wise comparison lets an authenticated client relay to denied
+ * IPv6 peers whenever the range is not prefix-aligned (TURN-specific SSRF). */
+static void test_in_range_native_ipv6_non_prefix_aligned(void) {
+  ioa_addr a = {0}, b = {0};
+  make_addr("2001:db8::100", &a);
+  make_addr("2001:db8::200", &b);
+  ioa_addr_range denied = {0};
+  ioa_addr_range_set(&denied, &a, &b);
+
+  const char *inside[] = {
+      "2001:db8::100",                  /* min endpoint          */
+      "2001:db8::101", "2001:db8::1ff", /* the byte15 > 0 gap */
+      "2001:db8::200",                  /* max endpoint          */
+  };
+  for (size_t i = 0; i < sizeof(inside) / sizeof(inside[0]); ++i) {
+    ioa_addr peer = {0};
+    make_addr(inside[i], &peer);
+    TEST_ASSERT_TRUE_MESSAGE(ioa_addr_in_range(&denied, &peer), inside[i]);
+  }
+
+  const char *outside[] = {"2001:db8::ff", "2001:db8::201", "2001:db9::1"};
+  for (size_t i = 0; i < sizeof(outside) / sizeof(outside[0]); ++i) {
+    ioa_addr peer = {0};
+    make_addr(outside[i], &peer);
+    TEST_ASSERT_FALSE_MESSAGE(ioa_addr_in_range(&denied, &peer), outside[i]);
+  }
+}
+
+/* A wide native-IPv6 span must include the addresses between its endpoints; the
+ * component-wise bug collapsed the advisory's [2001:db8:: - 2001:db9::] range to
+ * just its two endpoints. Addresses below are the report's own examples: the
+ * PoC Case 2 peers (2001:db8::1 and its fully-expanded form) and the exploit
+ * scenario's internal DNS/DB host 2001:db8::53. */
+static void test_in_range_native_ipv6_wide_span(void) {
+  ioa_addr a = {0}, b = {0};
+  make_addr("2001:db8::", &a);
+  make_addr("2001:db9::", &b);
+  ioa_addr_range denied = {0};
+  ioa_addr_range_set(&denied, &a, &b);
+
+  const char *inside[] = {
+      "2001:db8::",           /* min endpoint                       */
+      "2001:db8::1",          /* PoC Case 2                          */
+      "2001:db8:0:0:0:0:0:1", /* PoC Case 2, fully-expanded form     */
+      "2001:db8::53",         /* exploit scenario internal DNS/DB host */
+      "2001:db9::",           /* max endpoint                       */
+  };
+  for (size_t i = 0; i < sizeof(inside) / sizeof(inside[0]); ++i) {
+    ioa_addr peer = {0};
+    make_addr(inside[i], &peer);
+    TEST_ASSERT_TRUE_MESSAGE(ioa_addr_in_range(&denied, &peer), inside[i]);
+  }
+
+  const char *outside[] = {"2001:db7:ffff::1", "2001:db9::1"};
+  for (size_t i = 0; i < sizeof(outside) / sizeof(outside[0]); ++i) {
+    ioa_addr peer = {0};
+    make_addr(outside[i], &peer);
+    TEST_ASSERT_FALSE_MESSAGE(ioa_addr_in_range(&denied, &peer), outside[i]);
+  }
+}
+
 /* Loopback must be detected through every IPv4-in-IPv6 encoding of 127.x. */
 static void test_is_loopback_all_ipv4_in_ipv6_encodings(void) {
   const char *encodings[] = {
@@ -246,6 +309,8 @@ int main(void) {
   RUN_TEST(test_embedded_ipv4_rejects_non_embedding);
   RUN_TEST(test_in_range_matches_all_ipv4_in_ipv6_encodings);
   RUN_TEST(test_in_range_native_ipv6_not_matched_by_ipv4_range);
+  RUN_TEST(test_in_range_native_ipv6_non_prefix_aligned);
+  RUN_TEST(test_in_range_native_ipv6_wide_span);
   RUN_TEST(test_is_loopback_all_ipv4_in_ipv6_encodings);
   RUN_TEST(test_is_multicast_and_zero_through_nat64);
   RUN_TEST(test_internal_deny_default_flags_internal_scopes);
