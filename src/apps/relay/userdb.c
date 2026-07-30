@@ -542,7 +542,10 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
 
     init_secrets_list(&sl);
 
+    /* get_auth_secrets() populates the list before it can fail, so every exit
+       from here on has to release it. */
     if (get_auth_secrets(&sl, realm) < 0) {
+      clean_secrets_list(&sl);
       return ret;
     }
 
@@ -559,6 +562,7 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
       stun_attr_ref sar = stun_attr_get_first_by_type_str(
           ioa_network_buffer_data(nbh), ioa_network_buffer_get_size(nbh), STUN_ATTRIBUTE_MESSAGE_INTEGRITY);
       if (!sar) {
+        clean_secrets_list(&sl);
         return -1;
       }
 
@@ -571,6 +575,7 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
       case SHA384SIZEBYTES:
       case SHA512SIZEBYTES:
       default:
+        clean_secrets_list(&sl);
         return -1;
       };
 
