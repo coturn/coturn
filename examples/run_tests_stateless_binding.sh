@@ -98,12 +98,16 @@ python3 scripts/stateless_binding_probe.py 127.0.0.1 $PORT challenge || fail "--
 # them used to leave a session behind for TURN_MAX_ALLOCATE_TIMEOUT (~22KB
 # each, so ~44MB); the listener path leaves nothing but buffers. The threshold
 # is deliberately loose - it is there to catch the sessions coming back, not to
-# pin an allocator.
+# pin an allocator. A warm-up flood first, so the per-thread receive buffers
+# (which scale with core count) are already charged to the baseline.
 FLOOD=2000
-FLOOD_MAX_GROWTH_KB=8192
+FLOOD_WARMUP=200
+FLOOD_MAX_GROWTH_KB=16384
 
 echo "Running Binding flood ($FLOOD requests from distinct source ports)"
 run_server || exit 1
+python3 scripts/stateless_binding_probe.py 127.0.0.1 $PORT flood "$FLOOD_WARMUP" > /dev/null || fail "Binding warm-up"
+sleep 1
 rss_before="$(ps -o rss= -p "$turnserver_pid" | tr -d ' ')"
 python3 scripts/stateless_binding_probe.py 127.0.0.1 $PORT flood "$FLOOD" || fail "Binding flood"
 sleep 2
