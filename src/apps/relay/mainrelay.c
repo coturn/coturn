@@ -116,12 +116,8 @@ turn_params_t turn_params = {
 #else
     false,
 #endif
-/*no_dtls*/
-#if !DTLS_SUPPORTED
-    true,
-#else
+    /* dtls: the DTLS listeners are opt-in, enabled with --dtls. */
     false,
-#endif
 
     NULL,      /*tls_ctx_update_ev*/
     {0, NULL}, /*tls_mutex*/
@@ -1219,11 +1215,12 @@ static char Usage[] =
     "command line only.\n"
     " --cert			<filename>		Certificate file, PEM format. Same file search rules\n"
     "						applied as for the configuration file.\n"
-    "						If both --no-tls and --no_dtls options\n"
-    "						are specified, then this parameter is not needed.\n"
+    "						If --no-tls is specified and --dtls is not,\n"
+    "						then this parameter is not needed.\n"
     " --pkey			<filename>		Private key file, PEM format. Same file search rules\n"
     "						applied as for the configuration file.\n"
-    "						If both --no-tls and --no-dtls options\n"
+    "						If --no-tls is specified and --dtls is not,\n"
+    "						then this parameter is not needed.\n"
     " --pkey-pwd		<password>		If the private key file is encrypted, then this password to be "
     "used.\n"
     " --cipher-list		<cipher-string>		Allowed OpenSSL cipher list for TLS/DTLS connections.\n"
@@ -1254,7 +1251,9 @@ static char Usage[] =
     " --no-udp					Do not start UDP client listeners.\n"
     " --no-tcp					Do not start TCP client listeners.\n"
     " --no-tls					Do not start TLS client listeners.\n"
-    " --no-dtls					Do not start DTLS client listeners.\n"
+    " --dtls					Start DTLS client listeners. DTLS is not started by default.\n"
+    " --no-dtls					Deprecated: DTLS client listeners are not started unless\n"
+    "						--dtls is given.\n"
     " --no-udp-relay					Do not allow UDP relay endpoints, use only TCP relay option.\n"
     " --no-tcp-relay					Do not allow TCP relay endpoints, use only UDP relay options.\n"
     " -l, --log-file		<filename>		Option to set the full path name of the log file.\n"
@@ -1557,6 +1556,7 @@ enum EXTRA_OPTS {
   NO_TCP_OPT,
   TCP_PROXY_PORT_OPT,
   NO_TLS_OPT,
+  DTLS_OPT,
   NO_DTLS_OPT,
   NO_UDP_RELAY_OPT,
   NO_TCP_RELAY_OPT,
@@ -1753,7 +1753,8 @@ static const struct myoption long_options[] = {
     {"no-udp", optional_argument, NULL, NO_UDP_OPT},
     {"no-tcp", optional_argument, NULL, NO_TCP_OPT},
     {"no-tls", optional_argument, NULL, NO_TLS_OPT},
-    {"no-dtls", optional_argument, NULL, NO_DTLS_OPT},
+    {"dtls", optional_argument, NULL, DTLS_OPT},
+    /* deprecated: */ {"no-dtls", optional_argument, NULL, NO_DTLS_OPT},
     {"no-udp-relay", optional_argument, NULL, NO_UDP_RELAY_OPT},
     {"no-tcp-relay", optional_argument, NULL, NO_TCP_RELAY_OPT},
     {"stale-nonce", optional_argument, NULL, STALE_NONCE_OPT},
@@ -2576,12 +2577,28 @@ static void set_option(int c, char *value) {
     turn_params.no_tls = get_bool_value(value);
 #endif
     break;
+  case DTLS_OPT:
+#if DTLS_SUPPORTED
+    turn_params.dtls = get_bool_value(value);
+#else
+    turn_params.dtls = false;
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "CONFIG: --dtls is ignored: this build has no DTLS support\n");
+#endif
+    break;
   case NO_DTLS_OPT:
 #if DTLS_SUPPORTED
-    turn_params.no_dtls = get_bool_value(value);
+    turn_params.dtls = !get_bool_value(value);
 #else
-    turn_params.no_dtls = true;
+    turn_params.dtls = false;
 #endif
+    if (!turn_params.dtls) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
+                    "CONFIG: --no-dtls is deprecated and now redundant: DTLS listeners are not started unless --dtls "
+                    "is given\n");
+    } else {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
+                    "CONFIG: --no-dtls=false is deprecated: use --dtls to start the DTLS listeners\n");
+    }
     break;
   case CERT_FILE_OPT:
     STRCPY(turn_params.cert_file, value);
@@ -3547,7 +3564,7 @@ int main(int argc, char **argv) {
 #endif
 
 #if !DTLS_SUPPORTED
-  turn_params.no_dtls = true;
+  turn_params.dtls = false;
 #endif
 
   if (strstr(argv[0], "turnadmin")) {
@@ -3968,7 +3985,7 @@ static void adjust_key_file_name(char *fn, const char *file_title, int critical)
 keyerr:
   if (critical) {
     turn_params.no_tls = true;
-    turn_params.no_dtls = true;
+    turn_params.dtls = false;
     TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "cannot start TLS and DTLS listeners because %s file is not set properly\n",
                   file_title);
   }
@@ -4400,25 +4417,25 @@ static void openssl_setup(void) {
   }
 #endif
 
-  if (!(turn_params.no_tls && turn_params.no_dtls) && !turn_params.cert_file[0]) {
+  if ((!turn_params.no_tls || turn_params.dtls) && !turn_params.cert_file[0]) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "\nWARNING: certificate file is not specified, I cannot start TLS/DTLS "
                                           "services.\nOnly 'plain' UDP/TCP listeners can be started.\n");
     turn_params.no_tls = true;
-    turn_params.no_dtls = true;
+    turn_params.dtls = false;
   }
 
-  if (!(turn_params.no_tls && turn_params.no_dtls) && !turn_params.pkey_file[0]) {
+  if ((!turn_params.no_tls || turn_params.dtls) && !turn_params.pkey_file[0]) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "\nWARNING: private key file is not specified, I cannot start TLS/DTLS "
                                           "services.\nOnly 'plain' UDP/TCP listeners can be started.\n");
     turn_params.no_tls = true;
-    turn_params.no_dtls = true;
+    turn_params.dtls = false;
   }
 
-  if (!(turn_params.no_tls && turn_params.no_dtls)) {
+  if (!turn_params.no_tls || turn_params.dtls) {
     adjust_key_file_names();
   }
 
-  if (turn_params.tls_port_configured && turn_params.no_tls && turn_params.no_dtls) {
+  if (turn_params.tls_port_configured && turn_params.no_tls && !turn_params.dtls) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
                   "tls-listening-port %d is configured, but the TLS and DTLS listeners are disabled "
                   "(see the messages above). The server will NOT listen on that port. Set valid 'cert' and "
@@ -4453,7 +4470,7 @@ static void openssl_load_certificates(void) {
 #endif
   }
 
-  if (!turn_params.no_dtls) {
+  if (turn_params.dtls) {
 #if !DTLS_SUPPORTED
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: DTLS is not supported.\n");
 #else
@@ -4464,6 +4481,10 @@ static void openssl_load_certificates(void) {
     setup_dtls_callbacks(turn_params.dtls_ctx);
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS cipher suite: %s\n", turn_params.cipher_list);
 #endif
+  } else if (!turn_params.no_tls) {
+    /* The certificates are usable, so the operator may well have expected the
+     * DTLS listeners to come up with the TLS ones. */
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS listeners are not started; use --dtls to start them\n");
   }
   TURN_MUTEX_UNLOCK(&turn_params.tls_mutex);
 }

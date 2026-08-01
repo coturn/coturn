@@ -207,7 +207,7 @@ typedef struct _turn_params_ {
   bool enable_tlsv1_1;
   bool no_tlsv1_2;
   bool no_tls;
-  bool no_dtls;
+  bool dtls;
 
   struct event *tls_ctx_update_ev;
   TURN_MUTEX_DECLARE(tls_mutex)

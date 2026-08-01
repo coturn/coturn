@@ -92,7 +92,7 @@ The implementation fully supports the following client-to-TURN-server protocols:
   * UDP (per [RFC 5766](https://datatracker.ietf.org/doc/html/rfc5766))
   * TCP (per [RFC 5766](https://datatracker.ietf.org/doc/html/rfc5766) and [RFC 6062](https://datatracker.ietf.org/doc/html/rfc6062))
   * TLS (per [RFC 5766](https://datatracker.ietf.org/doc/html/rfc5766) and [RFC 6062](https://datatracker.ietf.org/doc/html/rfc6062)): including TLS1.3; ECDHE is supported.
-  * DTLS1.0 and DTLS1.2 (per [RFC 7350](https://datatracker.ietf.org/doc/html/rfc7350))
+  * DTLS1.0 and DTLS1.2 (per [RFC 7350](https://datatracker.ietf.org/doc/html/rfc7350)): the DTLS listeners are not started unless `--dtls` is given.
   * SCTP (experimental implementation).
 
 Relay protocols:

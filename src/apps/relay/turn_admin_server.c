@@ -755,7 +755,7 @@ static void cli_print_configuration(struct cli_session *cs) {
 
     cli_print_flag(cs, turn_params.no_udp, "no-udp", 0);
     cli_print_flag(cs, turn_params.no_tcp, "no-tcp", 0);
-    cli_print_flag(cs, turn_params.no_dtls, "no-dtls", 0);
+    cli_print_flag(cs, turn_params.dtls, "dtls", 0);
     cli_print_flag(cs, turn_params.no_tls, "no-tls", 0);
 
     cli_print_flag(cs, (turn_params.enable_tlsv1 && !turn_params.no_tls), "TLSv1.0", 0);
@@ -2173,7 +2173,7 @@ static void write_pc_page(ioa_socket_handle s) {
 
         https_print_flag(sb, turn_params.no_udp, "no-udp", 0);
         https_print_flag(sb, turn_params.no_tcp, "no-tcp", 0);
-        https_print_flag(sb, turn_params.no_dtls, "no-dtls", 0);
+        https_print_flag(sb, turn_params.dtls, "dtls", 0);
         https_print_flag(sb, turn_params.no_tls, "no-tls", 0);
 
         https_print_flag(sb, (!turn_params.no_tlsv1_2 && !turn_params.no_tls), "TLSv1.2", 0);

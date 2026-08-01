@@ -22,7 +22,7 @@ turnserver_pid=""
 # and leaving address auto-discovery on makes startup slow and flaky on hosts
 # with tentative/temporary IPv6 addresses (the DTLS/UDP bind retries with
 # sleep(1) until Duplicate Address Detection completes).
-COMMON_ARGS="-L 127.0.0.1 -E 127.0.0.1 --no-tls --no-dtls --log-file=stdout --simple-log"
+COMMON_ARGS="-L 127.0.0.1 -E 127.0.0.1 --no-tls --log-file=stdout --simple-log"
 
 # stop_turnserver: stop the running turnserver and wait for it to exit so its
 # listening ports are released before the next instance binds them. SIGKILL is
@@ -178,7 +178,7 @@ wait_for_prom_decision
 assert_prom_no_response "https://localhost:9641/metrics"
 stop_turnserver
 
-# COMMON_ARGS already supplies -L/-E 127.0.0.1 and --no-tls --no-dtls.
+# COMMON_ARGS already supplies -L/-E 127.0.0.1 and --no-tls.
 echo "Running turnserver with prometheus 401 mitigation counters"
 start_turnserver --prometheus --prometheus-address="127.0.0.1" --prometheus-port="8081" \
   --use-auth-secret --static-auth-secret=secret --realm=north.gov \

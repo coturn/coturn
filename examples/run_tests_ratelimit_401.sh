@@ -83,7 +83,7 @@ run_ratelimit_server() {
     fi
     : > "$RATELIMIT_LOG"
     "$BINDIR/turnserver" --use-auth-secret --static-auth-secret=secret --realm=north.gov \
-        --allow-loopback-peers --no-cli --no-tls --no-dtls \
+        --allow-loopback-peers --no-cli --no-tls \
         --listening-ip=127.0.0.1 --relay-ip=127.0.0.1 \
         --listening-port=3479 \
         --log-file=stdout --simple-log \

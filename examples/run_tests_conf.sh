@@ -31,6 +31,7 @@ echo "allow-loopback-peers" >> $BINDIR/turnserver.conf
 if [ $IS_DARWIN -eq 0 ]; then
     echo "sock-buf-size=1048576" >> $BINDIR/turnserver.conf
 fi
+echo "dtls" >> $BINDIR/turnserver.conf
 echo "cert=../examples/ca/turn_server_cert.pem" >> $BINDIR/turnserver.conf
 echo "pkey=../examples/ca/turn_server_pkey.pem" >> $BINDIR/turnserver.conf
 if [ $IS_DARWIN -eq 0 ]; then
