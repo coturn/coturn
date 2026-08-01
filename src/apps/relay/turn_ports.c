@@ -219,8 +219,6 @@ void turnports_release(turnports *tp, uint16_t port) {
 }
 
 int turnports_allocate_even(turnports *tp, int allocate_rtcp, uint64_t *reservation_token) {
-  UNUSED_ARG(allocate_rtcp);
-
   if (tp) {
     TURN_MUTEX_LOCK(&tp->mutex);
     const uint16_t size = turnports_size(tp);
@@ -230,6 +228,12 @@ int turnports_allocate_even(turnports *tp, int allocate_rtcp, uint64_t *reservat
         const int port = turnports_allocate(tp);
         if (port & 0x00000001) {
           turnports_release(tp, port);
+        } else if (!allocate_rtcp) {
+          /* RFC 8656 Section 14.6: with the EVEN-PORT R bit clear only the even
+           * port is requested, so the sibling must stay in the pool — reserving
+           * it here would leak it, as no RTCP socket is ever bound to release it. */
+          TURN_MUTEX_UNLOCK(&tp->mutex);
+          return port;
         } else {
           const int rtcp_port = port + 1;
           if (rtcp_port > tp->range_stop) {

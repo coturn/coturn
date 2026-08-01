@@ -160,6 +160,65 @@ static void test_allocate_survives_counter_wraparound(void) {
   free(t);
 }
 
+/* GHSA-847g-qmc6-6m4r: EVEN-PORT with the reservation (R) bit clear must
+ * allocate only the even port and leave its odd sibling in the pool. The
+ * pre-fix allocator marked the sibling TPS_TAKEN_ODD unconditionally, but for
+ * R=0 no RTCP socket is ever bound to it, so it was never released - every such
+ * allocation permanently lost one port. */
+static void test_evenport_r0_does_not_reserve_sibling(void) {
+  turnports *t = turnports_create(NULL, TEST_PORT_START, TEST_PORT_END);
+  TEST_ASSERT_NOT_NULL(t);
+
+  const int port = turnports_allocate_even(t, 0 /* R=0: no rtcp reservation */, NULL);
+  TEST_ASSERT_TRUE(port >= TEST_PORT_START && port <= TEST_PORT_END);
+  TEST_ASSERT_EQUAL_INT(0, port & 1);
+  TEST_ASSERT_TRUE(turnports_is_allocated(t, (uint16_t)port));
+  /* The odd sibling must stay available. */
+  TEST_ASSERT_TRUE(turnports_is_available(t, (uint16_t)(port + 1)));
+
+  turnports_release(t, (uint16_t)port);
+  TEST_ASSERT_EQUAL_UINT16(TEST_NPORTS, turnports_size(t));
+
+  free(t);
+}
+
+/* The leak's cumulative effect: clean allocate+deallocate cycles must not
+ * shrink the pool. Pre-fix it lost one port per cycle and returned -1 (508 on
+ * the wire) once drained. */
+static void test_evenport_r0_alloc_release_does_not_leak(void) {
+  turnports *t = turnports_create(NULL, TEST_PORT_START, TEST_PORT_END);
+  TEST_ASSERT_NOT_NULL(t);
+
+  for (int i = 0; i < 100; ++i) {
+    const int port = turnports_allocate_even(t, 0, NULL);
+    char msg[96] = {0};
+    snprintf(msg, sizeof(msg), "EVEN-PORT(R=0) allocation failed at cycle %d (pool leaked)", i);
+    TEST_ASSERT_TRUE_MESSAGE(port >= TEST_PORT_START && port <= TEST_PORT_END, msg);
+    TEST_ASSERT_EQUAL_INT(0, port & 1);
+    turnports_release(t, (uint16_t)port);
+    TEST_ASSERT_EQUAL_UINT16(TEST_NPORTS, turnports_size(t));
+  }
+
+  free(t);
+}
+
+/* R=1 (reservation requested) must still hold the odd sibling so a later
+ * RESERVATION-TOKEN allocation can claim it. */
+static void test_evenport_r1_reserves_sibling(void) {
+  turnports *t = turnports_create(NULL, TEST_PORT_START, TEST_PORT_END);
+  TEST_ASSERT_NOT_NULL(t);
+
+  uint64_t token = 0;
+  const int port = turnports_allocate_even(t, 1 /* R=1: reserve rtcp */, &token);
+  TEST_ASSERT_TRUE(port >= TEST_PORT_START && port <= TEST_PORT_END);
+  TEST_ASSERT_EQUAL_INT(0, port & 1);
+  TEST_ASSERT_TRUE(turnports_is_allocated(t, (uint16_t)port));
+  /* Sibling is held, not free. */
+  TEST_ASSERT_FALSE(turnports_is_available(t, (uint16_t)(port + 1)));
+
+  free(t);
+}
+
 /* ---- harness ----------------------------------------------------------- */
 
 void setUp(void) {}
@@ -169,5 +228,8 @@ int main(void) {
   UNITY_BEGIN();
   RUN_TEST(test_basic_allocate_release_cycle);
   RUN_TEST(test_allocate_survives_counter_wraparound);
+  RUN_TEST(test_evenport_r0_does_not_reserve_sibling);
+  RUN_TEST(test_evenport_r0_alloc_release_does_not_leak);
+  RUN_TEST(test_evenport_r1_reserves_sibling);
   return UNITY_END();
 }
