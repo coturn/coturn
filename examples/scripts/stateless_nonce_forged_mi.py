@@ -87,10 +87,34 @@ def check(label, sock, host, port, msg, want):
     return True
 
 
+def flood(host, port, user, realm, count):
+    """Send `count` forged-MESSAGE-INTEGRITY requests as fast as possible and
+    report how many were answered. Used to observe --unauthorized-ratelimit
+    suppressing the 438s; the caller owns the pass/fail decision."""
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.settimeout(0.5)
+    msg = make(
+        M_ALLOCATE,
+        [(A_USERNAME, user), (A_REALM, realm), (A_NONCE, FORGED_NONCE), (A_REQ_TRANSPORT, b"\x11\0\0\0"), (A_MI, FORGED_MI)],
+    )
+    for _ in range(count):
+        s.sendto(msg, (host, port))
+    replied = 0
+    while True:
+        try:
+            s.recvfrom(4096)
+        except socket.timeout:
+            break
+        replied += 1
+    print(f"RESULT flood sent={count} replied={replied}")
+    return 0
+
+
 def main():
     host = sys.argv[1] if len(sys.argv) > 1 else "127.0.0.1"
     port = int(sys.argv[2]) if len(sys.argv) > 2 else 3478
     user = (sys.argv[3] if len(sys.argv) > 3 else "user").encode()
+    flood_count = int(sys.argv[5]) if len(sys.argv) > 5 and sys.argv[4] == "flood" else 0
 
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.settimeout(3)
@@ -108,6 +132,9 @@ def main():
         print(f"FAIL: unauthenticated request: err={errcode(aa)} realm={realm} nonce={issued_nonce}")
         return 2
     print(f"OK: unauthenticated challenge: 401 realm={realm.decode()}")
+
+    if flood_count:
+        return flood(host, port, user, realm, flood_count)
 
     creds = [(A_USERNAME, user), (A_REALM, realm)]
     ok = True

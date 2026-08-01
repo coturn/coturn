@@ -614,6 +614,41 @@ static bool udp_get_string_attr(const uint8_t *data, size_t len, uint16_t attr_t
   return true;
 }
 
+/* Charge one unauthenticated reply to this source's --unauthorized-ratelimit
+ * budget - the same bucket the 401 challenge uses, since every reply to an
+ * unverified source is a reflection surface whatever its error code. Returns
+ * true when the caller must stay silent. */
+static bool udp_unauthenticated_reply_ratelimited(dtls_listener_relay_server_type *server, const ioa_addr *src,
+                                                  int err_code) {
+  turn_turnserver *ts = server->ts;
+
+  if (!ts->ratelimit_unauthorized_requests || !*(ts->ratelimit_unauthorized_requests)) {
+    return false;
+  }
+
+  bool first_drop = false;
+  bool first_collision = false;
+  const bool over = ratelimit_consume_address(src, (uint32_t) * (ts->ratelimit_unauthorized_requests_per_sec),
+                                              &first_drop, &first_collision);
+
+  if (first_collision) {
+    char raddr[INET6_ADDRSTRLEN + 1] = {0};
+    addr_to_string_no_port(src, raddr);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+                  "401 rate-limit bucket collision from %s, sharing active bucket budget for this window\n", raddr);
+  }
+  if (over && first_drop) {
+    char raddr[INET6_ADDRSTRLEN + 1] = {0};
+    addr_to_string_no_port(src, raddr);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+                  "unauthorized-response rate-limit exceeded from %s (error %d), suppressing responses for this "
+                  "window\n",
+                  raddr, err_code);
+  }
+
+  return over;
+}
+
 /* Emit the reply handle_turn_command would build for a brand-new session: the
  * error response, the challenge attributes when `nonce` is given (as
  * create_challenge_response does), then SOFTWARE and FINGERPRINT. */
@@ -799,59 +834,61 @@ static bool udp_stateless_nonce_fast_path(dtls_listener_relay_server_type *serve
     char usname[STUN_MAX_USERNAME_SIZE + 1] = {0};
     char client_nonce[STUN_MAX_NONCE_SIZE + 1] = {0};
 
+    int err_code = 400;
+    const uint8_t *reason = NULL;
+    bool challenge = false;
+
     if (!udp_get_string_attr(data, len, STUN_ATTRIBUTE_REALM, realm, sizeof(realm)) ||
         !is_secure_string((const uint8_t *)realm, 0)) {
-      udp_send_stateless_error(server, nd, method, &tid, 400, NULL, NULL, NULL, enforce_fingerprints);
-      return true;
-    }
-
-    if (strcmp(realm, realm_options.name)) {
+      ;
+    } else if (strcmp(realm, realm_options.name)) {
       if (method == STUN_METHOD_ALLOCATE) {
-        udp_send_stateless_error(
-            server, nd, method, &tid, 437,
-            (const uint8_t *)"Allocation mismatch: wrong credentials: the realm value is incorrect", NULL, NULL,
-            enforce_fingerprints);
+        err_code = 437;
+        reason = (const uint8_t *)"Allocation mismatch: wrong credentials: the realm value is incorrect";
       } else {
-        udp_send_stateless_error(server, nd, method, &tid, 441,
-                                 (const uint8_t *)"Wrong credentials: the realm value is incorrect", NULL, NULL,
-                                 enforce_fingerprints);
+        err_code = 441;
+        reason = (const uint8_t *)"Wrong credentials: the realm value is incorrect";
       }
-      return true;
-    }
-
-    if (!udp_get_string_attr(data, len, STUN_ATTRIBUTE_USERNAME, usname, sizeof(usname)) ||
-        !is_secure_string((const uint8_t *)usname, 1)) {
-      udp_send_stateless_error(server, nd, method, &tid, 400, NULL, NULL, NULL, enforce_fingerprints);
-      return true;
-    }
-
-    if (!udp_get_string_attr(data, len, STUN_ATTRIBUTE_NONCE, client_nonce, sizeof(client_nonce))) {
-      udp_send_stateless_error(server, nd, method, &tid, 400, NULL, NULL, NULL, enforce_fingerprints);
-      return true;
-    }
-
-    if (turn_check_stateless_nonce(ts->stateless_nonce_key, ts->stateless_nonce_key_size, &(nd->src_addr),
-                                   (uint32_t)turn_time(), turn_server_stateless_nonce_lifetime(ts), client_nonce,
-                                   NULL)) {
+    } else if (!udp_get_string_attr(data, len, STUN_ATTRIBUTE_USERNAME, usname, sizeof(usname)) ||
+               !is_secure_string((const uint8_t *)usname, 1)) {
+      ;
+    } else if (!udp_get_string_attr(data, len, STUN_ATTRIBUTE_NONCE, client_nonce, sizeof(client_nonce))) {
+      ;
+    } else if (turn_check_stateless_nonce(ts->stateless_nonce_key, ts->stateless_nonce_key_size, &(nd->src_addr),
+                                          (uint32_t)turn_time(), turn_server_stateless_nonce_lifetime(ts), client_nonce,
+                                          NULL)) {
       /* The source is proven return-routable and the credentials now have to be
        * looked up, possibly asynchronously - that needs a session. */
       return false;
+    } else {
+      err_code = 438;
+      reason = (const uint8_t *)"Wrong nonce";
+      challenge = true;
     }
+
+    /* These replies go to an unverified source, so they share the 401's
+     * per-source budget: a real client needs one 438 to re-authenticate after
+     * its nonce expires, a spoofed flood gets one per window. */
+    if (udp_unauthenticated_reply_ratelimited(server, &(nd->src_addr), err_code)) {
+      return true;
+    }
+
+    char fresh_nonce[TURN_STATELESS_NONCE_SIZE] = {0};
+    if (challenge &&
+        !turn_generate_stateless_nonce(ts->stateless_nonce_key, ts->stateless_nonce_key_size, &(nd->src_addr),
+                                       (uint32_t)turn_time(), fresh_nonce, sizeof(fresh_nonce))) {
+      return false;
+    }
+
+    udp_send_stateless_error(server, nd, method, &tid, err_code, reason, challenge ? fresh_nonce : NULL,
+                             realm_options.name, enforce_fingerprints);
+    return true;
   }
 
   char nonce[TURN_STATELESS_NONCE_SIZE] = {0};
   if (!turn_generate_stateless_nonce(ts->stateless_nonce_key, ts->stateless_nonce_key_size, &(nd->src_addr),
                                      (uint32_t)turn_time(), nonce, sizeof(nonce))) {
     return false;
-  }
-
-  if (mi_attr) {
-    /* "Wrong nonce": the same challenge attributes as the 401 path, but no rate
-     * limit and no unauthenticated-401 accounting - check_stun_auth() applies
-     * neither to a 438. */
-    udp_send_stateless_error(server, nd, method, &tid, 438, (const uint8_t *)"Wrong nonce", nonce, realm_options.name,
-                             enforce_fingerprints);
-    return true;
   }
 
   if (ts->unauthenticated_401_request_cb) {

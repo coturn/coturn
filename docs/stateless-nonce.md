@@ -67,6 +67,13 @@ the timestamp, recompute the MAC, check the age against the nonce lifetime -
    session's, and `438 Wrong nonce` for a nonce this server cannot have
    issued. So a spoofed-source flood that appends a garbage MESSAGE-INTEGRITY
    no longer allocates a socket and a session per packet.
+   These replies are answered to an unverified source, so under
+   `--unauthorized-ratelimit` they spend from the same per-source budget as the
+   401 (logged as `unauthorized-response rate-limit exceeded`). They are poor
+   reflection amplifiers to begin with — a `438` costs the attacker a ≥76-byte
+   request for a 72-byte reply, under 1:1, against 3.6:1 for the 401 that a
+   bare 20-byte header elicits — but a flood is capped all the same, while the
+   one `438` a real client needs when its nonce expires is not.
 2. **Fresh-session nonce acceptance** (`check_stun_auth` in
    `ns_turn_server.c`): when the client's authenticated retry arrives, the
    brand-new session accepts a presented nonce whose MAC verifies for this
