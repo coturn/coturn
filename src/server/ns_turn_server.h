@@ -69,6 +69,9 @@ typedef int (*send_message_cb)(ioa_engine_handle e, ioa_network_buffer_handle nb
 extern int TURN_MAX_ALLOCATE_TIMEOUT;
 extern int TURN_MAX_ALLOCATE_TIMEOUT_STUN_ONLY;
 
+/* Cap on the attributes reported back in a 420 UNKNOWN-ATTRIBUTES response. */
+#define MAX_NUMBER_OF_UNKNOWN_ATTRS (128)
+
 typedef uint8_t turnserver_id;
 
 enum _MESSAGE_TO_RELAY_TYPE { RMT_UNKNOWN = 0, RMT_SOCKET, RMT_CB_SOCKET, RMT_MOBILE_SOCKET, RMT_CANCEL_SESSION };

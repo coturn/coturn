@@ -471,6 +471,135 @@ static ioa_socket_handle dtls_server_input_handler(dtls_listener_relay_server_ty
 
 #endif
 
+/* Answer a plain STUN Binding request from an unknown UDP source straight from
+ * the listener. handle_turn_binding() derives the whole response from the
+ * request bytes and the socket's own addresses, so the child socket and the
+ * session the relay would build for it are pure overhead - and they are held
+ * for the to-be-allocated timeout, in the default configuration, for traffic
+ * that authenticates nothing. Returns true when the packet was fully handled
+ * here; false means "fall through to the regular per-session path". Every
+ * branch below is matched against handle_turn_command's behavior for a
+ * brand-new session so that the bytes on the wire are identical. */
+static bool udp_stateless_binding_fast_path(dtls_listener_relay_server_type *server, ioa_socket_handle listen_s,
+                                            ioa_net_data *nd) {
+  turn_turnserver *ts = server->ts;
+
+  if (!ts || turn_params.no_udp || !server->udp_listen_s || !listen_s) {
+    return false;
+  }
+
+  const uint8_t *data = ioa_network_buffer_data(nd->nbh);
+  const size_t len = ioa_network_buffer_get_size(nd->nbh);
+
+  bool enforce_fingerprints = false;
+  if (!stun_is_command_message_full_check_str(data, len, false, &enforce_fingerprints) ||
+      !stun_is_request_str(data, len) || (stun_get_method_str(data, len) != STUN_METHOD_BINDING)) {
+    return false;
+  }
+
+  /* --secure-stun makes BINDING an authenticated method, which is
+   * check_stun_auth's business, not the listener's. */
+  if (*(ts->secure_stun)) {
+    return false;
+  }
+
+  if (*(ts->no_stun)) {
+    /* handle_turn_command ignores the request without a reply. Do the same,
+     * minus the session it would have left behind. */
+    return true;
+  }
+
+  /* --log-binding is a debugging aid whose per-session lines only the relay can
+   * produce, so leave the old path in place while it is on. */
+  if (server->e->verbose && ts->log_binding && *(ts->log_binding)) {
+    return false;
+  }
+
+  /* The attribute walk mirrors handle_turn_binding's, including which
+   * attributes are silently accepted and which count as unknown. */
+  uint16_t unknown_attrs[MAX_NUMBER_OF_UNKNOWN_ATTRS] = {0};
+  uint16_t ua_num = 0;
+
+  stun_attr_ref sar = stun_attr_get_first_str(data, len);
+  while (sar && (ua_num < MAX_NUMBER_OF_UNKNOWN_ATTRS)) {
+    const int attr_type = stun_attr_get_type(sar);
+    switch (attr_type) {
+    case STUN_ATTRIBUTE_CHANGE_REQUEST:
+    case STUN_ATTRIBUTE_PADDING:
+    case STUN_ATTRIBUTE_RESPONSE_PORT:
+      /* RFC 5780 probes are answered from an alternate address or port, which
+       * only the relay's alternate sockets can do. */
+      return false;
+    case OLD_STUN_ATTRIBUTE_RESPONSE_ADDRESS:
+    case STUN_ATTRIBUTE_OAUTH_ACCESS_TOKEN:
+    case STUN_ATTRIBUTE_PRIORITY:
+    case STUN_ATTRIBUTE_FINGERPRINT:
+    case STUN_ATTRIBUTE_MESSAGE_INTEGRITY:
+    case STUN_ATTRIBUTE_USERNAME:
+    case STUN_ATTRIBUTE_REALM:
+    case STUN_ATTRIBUTE_NONCE:
+    case STUN_ATTRIBUTE_ORIGIN:
+      break;
+    default:
+      if (attr_type >= 0x0000 && attr_type <= 0x7FFF) {
+        unknown_attrs[ua_num++] = nswap16(attr_type);
+      }
+    };
+    sar = stun_attr_get_next_covered_str(data, len, sar);
+  }
+
+  stun_report_binding(NULL, STUN_PROMETHEUS_METRIC_TYPE_REQUEST);
+
+  stun_tid tid;
+  stun_tid_from_message_str(data, len, &tid);
+
+  ioa_network_buffer_handle nbh = ioa_network_buffer_allocate(server->e);
+  size_t rlen = ioa_network_buffer_get_size(nbh);
+
+  if (ua_num > 0) {
+    stun_init_error_response_str(STUN_METHOD_BINDING, ioa_network_buffer_data(nbh), &rlen, 420, NULL, &tid,
+                                 ts->include_reason_string);
+    stun_attr_add_str(ioa_network_buffer_data(nbh), &rlen, STUN_ATTRIBUTE_UNKNOWN_ATTRIBUTES,
+                      (const uint8_t *)unknown_attrs, (ua_num * 2));
+  } else {
+    if (!stun_set_binding_response_str(ioa_network_buffer_data(nbh), &rlen, &tid, &(nd->src_addr), 0, NULL, 0, false,
+                                       *(ts->stun_backward_compatibility), ts->include_reason_string)) {
+      ioa_network_buffer_delete(server->e, nbh);
+      return false;
+    }
+    /* An RFC 5780 server advertises its alternate address on every Binding
+     * response, not only on the CHANGE-REQUEST probes. */
+    if (ts->rfc5780 && ts->alt_addr_cb) {
+      ioa_addr *response_origin = get_local_addr_from_ioa_socket(listen_s);
+      ioa_addr other_address = {0};
+      if (response_origin && (ts->alt_addr_cb(response_origin, &other_address) == 0)) {
+        stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &rlen, STUN_ATTRIBUTE_RESPONSE_ORIGIN, response_origin);
+        stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &rlen, STUN_ATTRIBUTE_OTHER_ADDRESS, &other_address);
+      }
+    }
+  }
+
+  if (ts->software_attribute) {
+    const char *software = get_version(ts);
+    stun_attr_add_str(ioa_network_buffer_data(nbh), &rlen, STUN_ATTRIBUTE_SOFTWARE, (const uint8_t *)software,
+                      strlen(software));
+  }
+  if (ts->fingerprint || enforce_fingerprints) {
+    if (!stun_attr_add_fingerprint_str(ioa_network_buffer_data(nbh), &rlen)) {
+      ioa_network_buffer_delete(server->e, nbh);
+      return true;
+    }
+  }
+  ioa_network_buffer_set_size(nbh, rlen);
+
+  stun_report_binding(NULL, ua_num ? STUN_PROMETHEUS_METRIC_TYPE_ERROR : STUN_PROMETHEUS_METRIC_TYPE_RESPONSE);
+
+  udp_send_message(server, nbh, &(nd->src_addr));
+  ioa_network_buffer_delete(server->e, nbh);
+
+  return true;
+}
+
 /* Stateless-nonce fast path (issue #1999): answer a MESSAGE-INTEGRITY-less
  * request from an unknown UDP source with the derived-nonce 401 challenge
  * directly from the listener, without creating a child socket or session.
@@ -821,6 +950,13 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server, struct mes
       return 0;
     }
 #endif
+
+    /* A Binding request is answerable from the request bytes and this socket's
+     * addresses alone, so it never needs a child socket or a session. */
+    if (!chs && (packet_type == UDP_PACKET_CLASS_STUN_OR_CHANNEL) &&
+        udp_stateless_binding_fast_path(server, s, &(sm->m.sm.nd))) {
+      return 0;
+    }
 
     /* Stateless-nonce mode: a first packet that only needs the derived-nonce
      * 401 challenge (or that the relay would ignore anyway) is answered or

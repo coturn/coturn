@@ -99,8 +99,6 @@ static void maybe_add_software_attribute(turn_turnserver *server, ioa_network_bu
   }
 }
 
-#define MAX_NUMBER_OF_UNKNOWN_ATTRS (128)
-
 int TURN_MAX_ALLOCATE_TIMEOUT = 60;
 int TURN_MAX_ALLOCATE_TIMEOUT_STUN_ONLY = 3;
 
