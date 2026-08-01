@@ -57,6 +57,23 @@ the timestamp, recompute the MAC, check the age against the nonce lifetime -
    check) are dropped with no state either. The `--unauthorized-ratelimit`
    response suppression and the Prometheus 401 counters apply to this path
    exactly as they do to the session path.
+   A request that *does* carry MESSAGE-INTEGRITY is admitted to the session
+   path only once its `NONCE` is shown to be one this server issued to that
+   source address — the return-routability proof, and a strict prerequisite
+   for any successful authentication. Everything the session path would reject
+   before the credential lookup is answered here instead, in
+   `check_stun_auth`'s own order and with its own bytes: `400` for a missing
+   or malformed REALM/USERNAME/NONCE, `437`/`441` for a realm that is not the
+   session's, and `438 Wrong nonce` for a nonce this server cannot have
+   issued. So a spoofed-source flood that appends a garbage MESSAGE-INTEGRITY
+   no longer allocates a socket and a session per packet.
+   These replies are answered to an unverified source, so under
+   `--unauthorized-ratelimit` they spend from the same per-source budget as the
+   401 (logged as `unauthorized-response rate-limit exceeded`). They are poor
+   reflection amplifiers to begin with — a `438` costs the attacker a ≥76-byte
+   request for a 72-byte reply, under 1:1, against 3.6:1 for the 401 that a
+   bare 20-byte header elicits — but a flood is capped all the same, while the
+   one `438` a real client needs when its nonce expires is not.
 2. **Fresh-session nonce acceptance** (`check_stun_auth` in
    `ns_turn_server.c`): when the client's authenticated retry arrives, the
    brand-new session accepts a presented nonce whose MAC verifies for this
@@ -69,13 +86,13 @@ the timestamp, recompute the MAC, check the age against the nonce lifetime -
 3. **Challenge-session teardown**: a UDP session whose response was only an
    auth challenge (401/438) and that has no allocation is torn down
    immediately after the response is written, instead of lingering for the
-   60s to-be-allocated timeout. This is what bounds memory against floods
-   that *do* attach a (garbage) MESSAGE-INTEGRITY attribute and therefore
-   have to travel the session path.
+   60s to-be-allocated timeout. This still covers every session-path
+   challenge — a stale nonce on an established client, TLS/DTLS clients, a
+   nonce that verifies but whose credentials do not.
 
-The result: for MESSAGE-INTEGRITY-less floods the attacker's memory cost is
-zero; for garbage-MI floods it is one transient session per packet, freed as
-soon as the challenge is sent.
+The result: an unauthenticated flood allocates nothing at all, whether or not
+it carries a MESSAGE-INTEGRITY attribute. Only a source that echoes back a
+nonce this server issued to it gets a session.
 
 ## Wire compatibility
 
@@ -100,11 +117,15 @@ The mode is designed to be invisible to clients:
   alternate/aux server redirection (300) is configured, REFRESH under
   `--mobility` (MOBILITY-TICKET may authenticate without a first-pass
   challenge), CONNECTION-BIND (exempt from the challenge), and any request
-  carrying MESSAGE-INTEGRITY.
+  whose nonce verifies (the credential lookup itself may be asynchronous, and
+  resuming it needs a session).
 
 `examples/run_tests_stateless_nonce.sh` asserts all of this end-to-end: the
 standard client workload must succeed unchanged over UDP/TCP (and TLS/DTLS on
-Linux), and the server log must show the fast path actually engaged.
+Linux), the server log must show the fast path actually engaged, and
+`examples/scripts/stateless_nonce_forged_mi.py` drives the forged-integrity
+shapes and pins each reply code (438/437/441/400, and 401 for a request whose
+nonce does verify).
 
 ## Shared fleet key (`--stateless-nonce-secret`)
 

@@ -50,6 +50,17 @@ When enabled, for every request that *would* produce a `401`:
 Counting is **consume-on-401**: only requests that actually result in a `401`
 spend a token. Successful or otherwise-errored requests don't touch the table.
 
+Under `--stateless-nonce` the listener also answers a request carrying a forged
+MESSAGE-INTEGRITY without building a session (see
+[stateless-nonce.md](stateless-nonce.md)). Those replies — `438` for a nonce
+this server never issued, `437`/`441`/`400` for malformed credentials
+attributes — go to an equally unverified source, so they draw on the same
+per-source budget and are suppressed the same way. They are logged as
+`unauthorized-response rate-limit exceeded` rather than the `401` line, and they
+do not touch the Prometheus 401 counters, which stay 401-only. A real client
+needs one `438` to re-authenticate when its nonce expires; at the default 10
+replies/s that is never suppressed.
+
 ## How it works
 
 ### Components
@@ -264,6 +275,11 @@ runs two end-to-end cases against a real `turnserver` with bad credentials:
   exactly one `401 rate-limit exceeded` line must appear.
 - **Negative** (`--unauthorized-ratelimit-rps=100000`): the same traffic stays
   far below the threshold, so the line must *not* appear.
+- The same two thresholds against a `--stateless-nonce-secret` server, driven by
+  a 50-packet forged-MESSAGE-INTEGRITY flood
+  ([examples/scripts/stateless_nonce_forged_mi.py](../examples/scripts/stateless_nonce_forged_mi.py)
+  in `flood` mode): the `438`s must be capped and logged at rps=1, and all 50
+  must be answered with no log line at rps=100000.
 
 It is split out of `run_tests.sh` so the rate-limit server fixture can't mask
 or be masked by the protocol suite's flags. It is **skipped on macOS** (loopback
