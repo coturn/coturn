@@ -22,11 +22,12 @@
 TURNSERVER_LOG="/tmp/run_tests_stateless_nonce.$$.turnserver.log"
 PEER_LOG="/tmp/run_tests_stateless_nonce.$$.peer.log"
 UCLIENT_LOG="/tmp/run_tests_stateless_nonce.$$.uclient.log"
+PROBE_LOG="/tmp/run_tests_stateless_nonce.$$.probe.log"
 
 cleanup() {
     kill "$turnserver_pid" "$peer_pid" 2>/dev/null
     wait "$turnserver_pid" "$peer_pid" 2>/dev/null
-    rm -f "$TURNSERVER_LOG" "$PEER_LOG" "$UCLIENT_LOG"
+    rm -f "$TURNSERVER_LOG" "$PEER_LOG" "$UCLIENT_LOG" "$PROBE_LOG"
 }
 trap cleanup EXIT
 
@@ -142,6 +143,25 @@ else
     echo "FAIL: no listener fast-path marker in server log"
     diagnose_failure "fast-path marker"
     exit 1
+fi
+
+# A request carrying MESSAGE-INTEGRITY only reaches the session path once its
+# nonce proves to be one the server issued to that source address; the listener
+# answers the rejections ahead of that itself, and must answer them exactly as
+# check_stun_auth would.
+if command -v python3 >/dev/null 2>&1; then
+    echo "Running forged-MESSAGE-INTEGRITY probe"
+    if python3 scripts/stateless_nonce_forged_mi.py 127.0.0.1 3478 user > "$PROBE_LOG" 2>&1; then
+        cat "$PROBE_LOG"
+        echo "OK (forged MESSAGE-INTEGRITY answered without a session)"
+    else
+        cat "$PROBE_LOG"
+        echo "FAIL: forged-MESSAGE-INTEGRITY probe"
+        diagnose_failure "forged-mi probe"
+        exit 1
+    fi
+else
+    echo "SKIP: python3 not available (forged-MESSAGE-INTEGRITY probe)"
 fi
 
 if [ $IS_DARWIN -eq 1 ]; then
