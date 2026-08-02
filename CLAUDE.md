@@ -386,7 +386,7 @@ nohup /root/coturn/build/bin/turnserver \
   --listening-ip=10.116.0.2 --relay-ip=10.116.0.2 \
   --min-port=49152 --max-port=65535 \
   --no-cli --no-tls --no-dtls \
-  --log-file=stdout --simple-log \
+  --log-file=stdout \
   $EXTRA \
   > /root/runs/${LABEL}.turnserver.log 2>&1 &
 echo $! > /root/runs/${LABEL}.pid

@@ -56,7 +56,7 @@ fi
 echo 'Running turnserver (--mobility)'
 # Always capture the server log (both platforms): the handoff assertion below
 # greps it for the RFC 8016 dual-5-tuple transition marker.
-$BINDIR/turnserver --use-auth-secret --sock-buf-size=1048576 --static-auth-secret=secret --realm=north.gov --allow-loopback-peers --mobility --log-file=stdout --simple-log $TURNSERVER_EXTRA_ARGS --cert ../examples/ca/turn_server_cert.pem --pkey ../examples/ca/turn_server_pkey.pem > "$TURNSERVER_LOG" 2>&1 &
+$BINDIR/turnserver --use-auth-secret --sock-buf-size=1048576 --static-auth-secret=secret --realm=north.gov --allow-loopback-peers --mobility --log-file=stdout $TURNSERVER_EXTRA_ARGS --cert ../examples/ca/turn_server_cert.pem --pkey ../examples/ca/turn_server_pkey.pem > "$TURNSERVER_LOG" 2>&1 &
 turnserver_pid="$!"
 
 echo 'Running peer client'

@@ -49,7 +49,7 @@ if [ "$(uname -s)" = "Linux" ]; then
 fi
 
 echo 'Running turnserver (--stateless-nonce-secret)'
-$BINDIR/turnserver --use-auth-secret --sock-buf-size=1048576 --static-auth-secret=secret --realm=north.gov --allow-loopback-peers --stateless-nonce-secret=fleet-nonce-secret --log-file=stdout --simple-log --dtls $TURNSERVER_EXTRA_ARGS --cert ../examples/ca/turn_server_cert.pem --pkey ../examples/ca/turn_server_pkey.pem > "$TURNSERVER_LOG" 2>&1 &
+$BINDIR/turnserver --use-auth-secret --sock-buf-size=1048576 --static-auth-secret=secret --realm=north.gov --allow-loopback-peers --stateless-nonce-secret=fleet-nonce-secret --log-file=stdout --dtls $TURNSERVER_EXTRA_ARGS --cert ../examples/ca/turn_server_cert.pem --pkey ../examples/ca/turn_server_pkey.pem > "$TURNSERVER_LOG" 2>&1 &
 turnserver_pid="$!"
 
 echo 'Running peer client'

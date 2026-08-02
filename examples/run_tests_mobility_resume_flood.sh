@@ -52,7 +52,7 @@ echo 'Running turnserver (--mobility --user-quota=1)'
 # credentials (--user) match the raw-STUN client's MD5 key derivation.
 $BINDIR/turnserver --realm="$REALM" --user="$USER:$PASS" --user-quota=1 --mobility \
     --listening-port="$PORT" --no-tls --no-cli --relay-threads=1 \
-    --verbose --log-file=stdout --simple-log > "$TURNSERVER_LOG" 2>&1 &
+    --verbose --log-file=stdout > "$TURNSERVER_LOG" 2>&1 &
 turnserver_pid="$!"
 
 wait_for_turnserver() {
