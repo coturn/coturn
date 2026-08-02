@@ -1282,6 +1282,8 @@ static char Usage[] =
     " --new-log-timestamp				Enable full ISO-8601 timestamp in all logs.\n"
     " --new-log-timestamp-format    	<format>	Set timestamp format (in strftime(1) format). Depends on "
     "--new-log-timestamp to be enabled.\n"
+    "						Besides the strftime(1) conversions, %f expands to "
+    "milliseconds.\n"
     " --log-binding					Log STUN binding request. It is now disabled by default to "
     "avoid DoS attacks.\n"
     " --stale-nonce[=<value>]			Use extra security with nonce value having limited lifetime (default "
