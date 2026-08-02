@@ -232,7 +232,10 @@ Flags:
 
 --no-tls		Do not start TLS client listeners.
 
---no-dtls		Do not start DTLS client listeners.
+--dtls			Start DTLS client listeners. DTLS is not started by default.
+
+--no-dtls		Deprecated: DTLS client listeners are not started unless
+			--dtls is given.
 
 --no-udp-relay		Do not allow UDP relay endpoints defined in RFC 5766,
 			use only TCP relay endpoints as defined in RFC 6062.
@@ -543,14 +546,14 @@ Options with values:
 
 --cert			Certificate file, PEM format. Same file
 			search rules applied as for the configuration
-			file. If both --no-tls and --no-dtls options
-			are specified, then this parameter is not needed.
+			file. If --no-tls is specified and --dtls is not,
+			then this parameter is not needed.
 			Default value is turn_server_cert.pem.
 
 --pkey		     	Private key file, PEM format. Same file
 			search rules applied as for the configuration
-			file. If both --no-tls and --no-dtls options
-			are specified, then this parameter is not needed.
+			file. If --no-tls is specified and --dtls is not,
+			then this parameter is not needed.
 			Default value is turn_server_pkey.pem.
 
 --raw-public-keys        Raw public keys support.

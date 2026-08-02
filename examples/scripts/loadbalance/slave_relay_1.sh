@@ -22,7 +22,7 @@
 # 7) "--user=gorst:hero" means "allow user 'gorst' with password 'hero' ". 
 # 8) "--log-file=stdout" means that all log output will go to the stdout. 
 # 9) "-v" means normal verbose mode (with some moderate logging).
-# 10) --no-dtls and --no-tls measn that we are not using DTLS & TLS protocols here 
+# 10) --no-tls means that we are not using the TLS protocol here
 # (for the sake of simplicity).
 # 11) -p 3333 means that we are using UDP & TCP listening port 3333.
 # 12) --cli-password=secret means that cli password set to "secret"
@@ -35,4 +35,4 @@ fi
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib/:/usr/local/mysql/lib/
 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/usr/local/lib/:/usr/local/mysql/lib/
 
-PATH="./bin/:../bin/:../../bin/:${PATH}" turnserver --syslog -a -L 127.0.0.1 -E 127.0.0.1 --allow-loopback-peers --max-bps=3000000 -f -m 3 --min-port=10000 --max-port=19999 --user=ninefingers:0xbc807ee29df3c9ffa736523fb2c4e8ee --user=gorst:hero -r north.gov --log-file=stdout -v --no-dtls --no-tls -p 3333 --cli-port=5767 --cli-password=secret $@
+PATH="./bin/:../bin/:../../bin/:${PATH}" turnserver --syslog -a -L 127.0.0.1 -E 127.0.0.1 --allow-loopback-peers --max-bps=3000000 -f -m 3 --min-port=10000 --max-port=19999 --user=ninefingers:0xbc807ee29df3c9ffa736523fb2c4e8ee --user=gorst:hero -r north.gov --log-file=stdout -v --no-tls -p 3333 --cli-port=5767 --cli-password=secret $@

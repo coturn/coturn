@@ -1058,7 +1058,7 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server, struct mes
     chs = NULL;
 
 #if DTLS_SUPPORTED
-    if (!turn_params.no_dtls && (packet_type == UDP_PACKET_CLASS_DTLS_HANDSHAKE)) {
+    if (turn_params.dtls && (packet_type == UDP_PACKET_CLASS_DTLS_HANDSHAKE)) {
       chs = dtls_server_input_handler(server, s, sm->m.sm.nd.nbh);
       ioa_network_buffer_delete(server->e, sm->m.sm.nd.nbh);
       sm->m.sm.nd.nbh = NULL;
@@ -1069,7 +1069,7 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server, struct mes
          * plain-UDP socket + session (GHSA-5x2p-4vqj-f6m4). */
         return 0;
       }
-    } else if (!turn_params.no_dtls && (packet_type == UDP_PACKET_CLASS_DTLS_OTHER)) {
+    } else if (turn_params.dtls && (packet_type == UDP_PACKET_CLASS_DTLS_OTHER)) {
       /* A non-handshake DTLS record (ApplicationData / Alert /
        * ChangeCipherSpec) from a source with no established DTLS session - the
        * per-source lookup at the top of this function already missed, so there
@@ -1190,10 +1190,10 @@ static udp_packet_classification_t classify_udp_packet(const uint8_t *data, size
     return UDP_PACKET_CLASS_STUN_OR_CHANNEL;
   }
 #if DTLS_SUPPORTED
-  if (!turn_params.no_dtls && is_dtls_handshake_message(data, (int)blen)) {
+  if (turn_params.dtls && is_dtls_handshake_message(data, (int)blen)) {
     return UDP_PACKET_CLASS_DTLS_HANDSHAKE;
   }
-  if (!turn_params.no_dtls && is_dtls_message(data, (int)blen)) {
+  if (turn_params.dtls && is_dtls_message(data, (int)blen)) {
     return UDP_PACKET_CLASS_DTLS_OTHER;
   }
 #endif
@@ -1339,8 +1339,8 @@ static int create_new_connected_udp_socket(dtls_listener_relay_server_type *serv
   ret->default_tos = s->default_tos;
 
 #if DTLS_SUPPORTED
-  if (!turn_params.no_dtls && is_dtls_handshake_message(ioa_network_buffer_data(server->sm.m.sm.nd.nbh),
-                                                        (int)ioa_network_buffer_get_size(server->sm.m.sm.nd.nbh))) {
+  if (turn_params.dtls && is_dtls_handshake_message(ioa_network_buffer_data(server->sm.m.sm.nd.nbh),
+                                                    (int)ioa_network_buffer_get_size(server->sm.m.sm.nd.nbh))) {
 
     SSL *connecting_ssl = NULL;
 
@@ -1659,9 +1659,9 @@ static int create_server_socket(dtls_listener_relay_server_type *server, int rep
   }
 
   if (report_creation) {
-    if (!turn_params.no_udp && !turn_params.no_dtls) {
+    if (!turn_params.no_udp && turn_params.dtls) {
       addr_debug_print(server->verbose, &server->addr, "DTLS/UDP listener opened on");
-    } else if (!turn_params.no_dtls) {
+    } else if (turn_params.dtls) {
       addr_debug_print(server->verbose, &server->addr, "DTLS listener opened on");
     } else if (!turn_params.no_udp) {
       addr_debug_print(server->verbose, &server->addr, "UDP listener opened on");
@@ -1727,9 +1727,9 @@ static int reopen_server_socket(dtls_listener_relay_server_type *server, evutil_
     event_add(server->udp_listen_ev, NULL);
   }
 
-  if (!turn_params.no_udp && !turn_params.no_dtls) {
+  if (!turn_params.no_udp && turn_params.dtls) {
     addr_debug_print(server->verbose, &server->addr, "DTLS/UDP listener opened on ");
-  } else if (!turn_params.no_dtls) {
+  } else if (turn_params.dtls) {
     addr_debug_print(server->verbose, &server->addr, "DTLS listener opened on ");
   } else if (!turn_params.no_udp) {
     addr_debug_print(server->verbose, &server->addr, "UDP listener opened on ");

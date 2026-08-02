@@ -98,6 +98,10 @@ cd examples
                                 # UDP/TCP (+TLS/DTLS on Linux), asserting
                                 # wire-transparency plus the listener
                                 # fast-path marker in the server log.
+./run_tests_dtls_default.sh     # pins that the DTLS listeners stay down
+                                # unless --dtls is given, that --dtls brings
+                                # them up, and that the deprecated --no-dtls /
+                                # --no-dtls=false still work and warn.
 ./run_tests_prom.sh             # only when Prometheus support is built
 cd ..
 
@@ -130,7 +134,8 @@ docker run --rm \
        rm -rf build && ln -s build-linux build && \
        cd examples && ./run_tests.sh && ./run_tests_conf.sh && \
        ./run_tests_mobile.sh && ./run_tests_multiplex_peer.sh && \
-       ./run_tests_rfc5780.sh && ./run_tests_stateless_nonce.sh'
+       ./run_tests_rfc5780.sh && ./run_tests_stateless_nonce.sh && \
+       ./run_tests_dtls_default.sh'
 ```
 
 Also validate the packaged Docker image. Run the same stale-output cleanup at

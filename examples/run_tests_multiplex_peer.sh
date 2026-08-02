@@ -112,6 +112,7 @@ start_turnserver() {
     "${TURNSERVER_EXTRA_ARGS[@]}" \
     "$@" \
     -v \
+    --dtls \
     --cert ca/turn_server_cert.pem \
     --pkey ca/turn_server_pkey.pem \
     --simple-log \

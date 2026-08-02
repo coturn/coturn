@@ -82,7 +82,7 @@ echo "Running turnserver with RFC 5780 enabled on $PRIMARY_IP + $ALT_IP"
 $BINDIR/turnserver \
     --use-auth-secret --static-auth-secret=secret --realm=north.gov \
     --allow-loopback-peers --rfc5780 \
-    --no-cli --no-tls --no-dtls \
+    --no-cli --no-tls \
     --listening-ip=$PRIMARY_IP --listening-ip=$ALT_IP \
     --min-port=49152 --max-port=49300 \
     --log-file=stdout --simple-log > "$TURNSERVER_LOG" 2>&1 &

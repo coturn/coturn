@@ -10,7 +10,7 @@
 # use fingerprints (-f)
 # use 3 relay threads (-m 3)
 # use min UDP relay port 32355 and max UDP relay port 65535
-# --no-tls and --no-dtls mean that we are not trying to
+# --no-tls means that we are not trying to
 # --no-auth means that no authentication to be used, 
 # allow anonymous users. 
 # start TLS and DTLS services.
@@ -24,4 +24,4 @@ fi
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib/:/usr/local/mysql/lib/
 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/usr/local/lib/:/usr/local/mysql/lib/
 
-PATH="bin:../bin:../../bin:${PATH}" turnserver -v --syslog -L 127.0.0.1 -L ::1 -E 127.0.0.1 -E ::1 --allow-loopback-peers --cli-password secred --max-bps=3000000 -f -m 3 --min-port=32355 --max-port=65535 --no-tls --no-dtls --no-auth --db="var/db/turndb" $@
+PATH="bin:../bin:../../bin:${PATH}" turnserver -v --syslog -L 127.0.0.1 -L ::1 -E 127.0.0.1 -E ::1 --allow-loopback-peers --cli-password secred --max-bps=3000000 -f -m 3 --min-port=32355 --max-port=65535 --no-tls --no-auth --db="var/db/turndb" $@

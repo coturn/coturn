@@ -51,7 +51,7 @@ echo 'Running turnserver (--mobility --user-quota=1)'
 # --user-quota=1 proves the quota does not bound the chain. Long-term
 # credentials (--user) match the raw-STUN client's MD5 key derivation.
 $BINDIR/turnserver --realm="$REALM" --user="$USER:$PASS" --user-quota=1 --mobility \
-    --listening-port="$PORT" --no-tls --no-dtls --no-cli --relay-threads=1 \
+    --listening-port="$PORT" --no-tls --no-cli --relay-threads=1 \
     --verbose --log-file=stdout --simple-log > "$TURNSERVER_LOG" 2>&1 &
 turnserver_pid="$!"
 

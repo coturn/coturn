@@ -1068,7 +1068,7 @@ static void setup_socket_per_thread_udp_listener_servers(void) {
 
     const int index = i;
 
-    if (!turn_params.no_udp || !turn_params.no_dtls) {
+    if (!turn_params.no_udp || turn_params.dtls) {
 
       ioa_addr addr;
       char saddr[MAX_IOA_ADDR_STRING];
@@ -1127,7 +1127,7 @@ static void setup_socket_per_thread_udp_listener_servers(void) {
         turn_params.listener.udp_services[index + 1] = NULL;
       }
     }
-    if (!turn_params.no_dtls && (turn_params.no_udp || (turn_params.listener_port != turn_params.tls_listener_port))) {
+    if (turn_params.dtls && (turn_params.no_udp || (turn_params.listener_port != turn_params.tls_listener_port))) {
 
       turn_params.listener.dtls_services[index] = (dtls_listener_relay_server_type **)allocate_super_memory_engine(
           turn_params.listener.ioa_eng,
