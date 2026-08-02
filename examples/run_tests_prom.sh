@@ -22,7 +22,7 @@ turnserver_pid=""
 # and leaving address auto-discovery on makes startup slow and flaky on hosts
 # with tentative/temporary IPv6 addresses (the DTLS/UDP bind retries with
 # sleep(1) until Duplicate Address Detection completes).
-COMMON_ARGS="-L 127.0.0.1 -E 127.0.0.1 --no-tls --log-file=stdout --simple-log"
+COMMON_ARGS="-L 127.0.0.1 -E 127.0.0.1 --no-tls --log-file=stdout"
 
 # stop_turnserver: stop the running turnserver and wait for it to exit so its
 # listening ports are released before the next instance binds them. SIGKILL is

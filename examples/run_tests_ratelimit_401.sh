@@ -86,7 +86,7 @@ run_ratelimit_server() {
         --allow-loopback-peers --no-cli --no-tls \
         --listening-ip=127.0.0.1 --relay-ip=127.0.0.1 \
         --listening-port=3479 \
-        --log-file=stdout --simple-log \
+        --log-file=stdout \
         "$@" > "$RATELIMIT_LOG" 2>&1 &
     turnserver_pid="$!"
     wait_for_turnserver

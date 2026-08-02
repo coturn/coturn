@@ -82,7 +82,7 @@ start_turnserver() {
         --listening-port="$SERVER_PORT" \
         --cert ../examples/ca/turn_server_cert.pem \
         --pkey ../examples/ca/turn_server_pkey.pem \
-        --log-file=stdout --simple-log \
+        --log-file=stdout \
         "$@" > "$DTLS_LOG" 2>&1 &
     turnserver_pid="$!"
     wait_for_turnserver

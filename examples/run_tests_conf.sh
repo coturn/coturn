@@ -39,9 +39,8 @@ if [ $IS_DARWIN -eq 0 ]; then
     # Without this, turnserver writes to its platform-default location
     # (syslog or /var/log/turn_*.log) and our log file stays empty, which
     # breaks wait_for_turnserver's "Total relay threads:" probe and leaves
-    # the FAIL diagnostics useless. simple-log keeps the format compact.
+    # the FAIL diagnostics useless.
     echo "log-file=stdout" >> $BINDIR/turnserver.conf
-    echo "simple-log" >> $BINDIR/turnserver.conf
     # Server-side fast paths: enable on Linux so the conf-driven test
     # cycle also exercises the recvmmsg drain path. The udp-gso path
     # lives behind multiplex-peer (that mode is what enables sendmmsg
