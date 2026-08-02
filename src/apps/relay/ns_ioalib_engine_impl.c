@@ -1108,6 +1108,12 @@ static int set_socket_ttl(ioa_socket_handle s, int ttl) {
     ttl = s->default_ttl;
   }
 
+  /* Linux rejects IP_TTL outside 1..255; a relayed packet that arrived with
+   * TTL 1 would otherwise ask for 0. */
+  if (ttl < 1) {
+    ttl = 1;
+  }
+
   if (s->current_ttl != ttl) {
     const int ret = set_raw_socket_ttl(s->fd, s->family, ttl);
     s->current_ttl = ttl;
