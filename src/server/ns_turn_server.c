@@ -1635,7 +1635,13 @@ static int handle_turn_allocate(turn_turnserver *server, ts_ur_super_session *ss
   return 0;
 }
 
-static void copy_auth_parameters(ts_ur_super_session *orig_ss, ts_ur_super_session *ss) {
+/* Copy orig_ss's auth context onto ss. acquire_quota controls whether ss takes
+ * an allocation quota unit under the copied identity: pass true when ss is the
+ * session that will own the allocation, false when orig_ss already holds the
+ * allocation's single quota unit (a mobility resume, where ss is only the
+ * temporary resuming session and must not be charged a second time). In both
+ * cases any stale charge ss held under its previous identity is released first. */
+static void copy_auth_parameters(ts_ur_super_session *orig_ss, ts_ur_super_session *ss, bool acquire_quota) {
   if (orig_ss && ss) {
     dec_quota(ss);
     memcpy(ss->nonce, orig_ss->nonce, sizeof(ss->nonce));
@@ -1649,7 +1655,9 @@ static void copy_auth_parameters(ts_ur_super_session *orig_ss, ts_ur_super_sessi
     ss->origin_set = orig_ss->origin_set;
     memcpy(ss->pwd, orig_ss->pwd, sizeof(ss->pwd));
     ss->max_session_time_auth = orig_ss->max_session_time_auth;
-    inc_quota(ss, ss->username);
+    if (acquire_quota) {
+      inc_quota(ss, ss->username);
+    }
   }
 }
 
@@ -1749,11 +1757,12 @@ static ts_ur_super_session *mobile_complete_transition(turn_turnserver *server, 
   }
 
   /* Carry the resuming session's (refreshed) auth context onto the allocation
-   * session; both hold the same owner credentials after the resume. The pending
-   * session's quota unit is released when it is torn down (to_be_closed above ->
-   * shutdown_client_connection -> dec_quota), so we do not release it here. */
+   * session; both hold the same owner credentials after the resume. The
+   * allocation's single quota unit stays on the surviving session (acquire_quota
+   * re-checks it under the refreshed identity); the pending session was never
+   * separately charged, so its teardown below releases nothing. */
   if (pending_ss->hmackey_set) {
-    copy_auth_parameters(pending_ss, orig_ss);
+    copy_auth_parameters(pending_ss, orig_ss, true);
   }
 
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
@@ -1977,7 +1986,11 @@ static int handle_turn_refresh(turn_turnserver *server, ts_ur_super_session *ss,
             // key. Gating this on the resuming session being unauthenticated let
             // an already-authenticated session be validated against its own
             // credentials rather than the resumed allocation's owner.
-            copy_auth_parameters(orig_ss, ss);
+            // acquire_quota=false: orig_ss keeps holding the allocation's single
+            // quota unit for the whole mobility grace period, so charging this
+            // temporary resuming session too would double-count and reject
+            // legitimate resumes under --user-quota / --total-quota.
+            copy_auth_parameters(orig_ss, ss, false);
 
             if (check_stun_auth(server, ss, tid, resp_constructed, err_code, reason, in_buffer, nbh,
                                 STUN_METHOD_REFRESH, &message_integrity, &postpone_reply, can_resume) < 0) {
@@ -4548,14 +4561,19 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
   const SOCKET_TYPE socket_type = get_ioa_socket_type(ss->client_socket);
 
   turn_report_session_usage(ss, 1);
-  dec_quota(ss);
-  dec_bps(ss);
 
   allocation *alloc = get_allocation_ss(ss);
   if (!is_allocation_valid(alloc)) {
     force = 1;
   }
 
+  /* A first-stage mobility close only suspends the session: it keeps the
+   * allocation, relay socket, and mobility ticket alive for a later resume.
+   * The allocation and bandwidth quota charge must stay held for as long as the
+   * allocation remains resumable; releasing it here would let an authenticated
+   * client disconnect and immediately re-allocate past --user-quota /
+   * --total-quota. The charge is released only in the
+   * final (2nd stage) teardown below. */
   if (!force && ss->is_mobile) {
 
     if (ss->client_socket && server->verbose) {
@@ -4578,6 +4596,11 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
 
     return 0;
   }
+
+  /* Final teardown: the allocation is gone, so release its quota and bandwidth
+   * charge now (a first-stage mobility close returned above without releasing). */
+  dec_quota(ss);
+  dec_bps(ss);
 
   /* RFC 8016 mobility handoff: this session is being freed. If it is part of a
    * transition, unlink its peer so a surviving allocation session doesn't wait
