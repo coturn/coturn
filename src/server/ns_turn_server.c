@@ -3486,6 +3486,30 @@ static int need_stun_authentication(turn_turnserver *server, ts_ur_super_session
   return 0;
 }
 
+/* Fill `nonce` (at least NONCE_MAX_SIZE bytes) with the legacy random
+ * challenge nonce: TURN_RANDOM_NONCE_LENGTH lowercase hex chars.
+ *
+ * Each snprintf is bounded by what is left of TURN_RANDOM_NONCE_SIZE, not of
+ * the destination buffer: `%08lx` of a 64-bit draw is up to 16 chars and
+ * `%04x` of a 32-bit draw is 8, so it is the bound that clips every write back
+ * to the 16-char format. Bounding by the (larger) stateless-nonce buffer would
+ * let those digits through and emit a 24-char nonce instead. */
+static void generate_random_challenge_nonce(uint8_t *nonce) {
+  if (TURN_RANDOM_SIZE == 8) {
+    for (int i = 0; i < (NONCE_LENGTH_32BITS >> 1); i++) {
+      uint8_t *s = nonce + 8 * i;
+      const uint64_t rand = (uint64_t)turn_random_number();
+      snprintf((char *)s, TURN_RANDOM_NONCE_SIZE - 8 * i, "%08lx", (unsigned long)rand);
+    }
+  } else {
+    for (int i = 0; i < NONCE_LENGTH_32BITS; i++) {
+      uint8_t *s = nonce + 4 * i;
+      const uint32_t rand = (uint32_t)turn_random_number();
+      snprintf((char *)s, TURN_RANDOM_NONCE_SIZE - 4 * i, "%04x", (unsigned int)rand);
+    }
+  }
+}
+
 static int create_challenge_response(ts_ur_super_session *ss, stun_tid *tid, int *resp_constructed, int *err_code,
                                      const uint8_t **reason, ioa_network_buffer_handle nbh, uint16_t method) {
   size_t len = ioa_network_buffer_get_size(nbh);
@@ -3493,8 +3517,9 @@ static int create_challenge_response(ts_ur_super_session *ss, stun_tid *tid, int
   stun_init_error_response_str(method, ioa_network_buffer_data(nbh), &len, *err_code, *reason, tid,
                                srv ? srv->include_reason_string : false);
   *resp_constructed = 1;
-  /* strlen, not NONCE_MAX_SIZE - 1: the random nonce (16 chars) and the
-   * stateless timestamp||MAC nonce (24 chars) differ in length. */
+  /* strlen, not NONCE_MAX_SIZE - 1: the random nonce (TURN_RANDOM_NONCE_LENGTH
+   * chars) and the stateless timestamp||MAC nonce
+   * (TURN_STATELESS_NONCE_LENGTH) differ in length. */
   stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_NONCE, ss->nonce,
                     (int)strlen((char *)ss->nonce));
   char *realm = ss->realm_options.name;
@@ -3591,21 +3616,7 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
       }
 
       if (need_random_nonce) {
-        int i = 0;
-
-        if (TURN_RANDOM_SIZE == 8) {
-          for (i = 0; i < (NONCE_LENGTH_32BITS >> 1); i++) {
-            uint8_t *s = ss->nonce + 8 * i;
-            const uint64_t rand = (uint64_t)turn_random_number();
-            snprintf((char *)s, NONCE_MAX_SIZE - 8 * i, "%08lx", (unsigned long)rand);
-          }
-        } else {
-          for (i = 0; i < NONCE_LENGTH_32BITS; i++) {
-            uint8_t *s = ss->nonce + 4 * i;
-            const uint32_t rand = (uint32_t)turn_random_number();
-            snprintf((char *)s, NONCE_MAX_SIZE - 4 * i, "%04x", (unsigned int)rand);
-          }
-        }
+        generate_random_challenge_nonce(ss->nonce);
       }
       ss->nonce_expiration_time = server->ctime + *(server->stale_nonce);
     }

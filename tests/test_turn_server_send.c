@@ -646,6 +646,27 @@ static void test_create_permission_without_peer_address_is_rejected(void) {
   TEST_ASSERT_EQUAL_INT(400, run_create_permission(NULL));
 }
 
+/* The legacy challenge nonce is 16 lowercase hex chars on every platform. It
+ * is written into a buffer sized for the longer stateless nonce, so a
+ * generator bound by the buffer rather than by its own format emits 24 chars
+ * (64-bit) or 20 (LLP64/32-bit) instead - a wire-format change for servers
+ * that never enabled --stateless-nonce. Loop, because only draws above 2^32
+ * overflow the format. */
+static void test_random_challenge_nonce_is_sixteen_lowercase_hex_chars(void) {
+  for (int attempt = 0; attempt < 64; ++attempt) {
+    uint8_t nonce[NONCE_MAX_SIZE];
+    memset(nonce, 0xff, sizeof(nonce));
+
+    generate_random_challenge_nonce(nonce);
+
+    TEST_ASSERT_EQUAL_size_t(TURN_RANDOM_NONCE_LENGTH, strlen((char *)nonce));
+    for (size_t i = 0; i < TURN_RANDOM_NONCE_LENGTH; ++i) {
+      const char c = (char)nonce[i];
+      TEST_ASSERT_TRUE(((c >= '0') && (c <= '9')) || ((c >= 'a') && (c <= 'f')));
+    }
+  }
+}
+
 int main(void) {
   UNITY_BEGIN();
   RUN_TEST(test_send_relays_payload_to_the_permitted_peer);
@@ -665,5 +686,6 @@ int main(void) {
   RUN_TEST(test_create_permission_installs_every_peer_address);
   RUN_TEST(test_create_permission_ignores_the_port);
   RUN_TEST(test_create_permission_without_peer_address_is_rejected);
+  RUN_TEST(test_random_challenge_nonce_is_sixteen_lowercase_hex_chars);
   return UNITY_END();
 }
