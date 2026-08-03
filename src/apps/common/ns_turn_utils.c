@@ -318,14 +318,27 @@ static void log_lock(void) {
 
 static void log_unlock(void) { turn_mutex_unlock(&log_mutex); }
 
+/* localtime() returns a pointer to a static struct tm shared by all threads;
+ * every relay thread logs, so use the reentrant form. */
+static struct tm *turn_localtime(const time_t *timep, struct tm *result) {
+#if defined(WINDOWS)
+  return (localtime_s(result, timep) == 0) ? result : NULL;
+#else
+  return localtime_r(timep, result);
+#endif
+}
+
 static void get_date(char *s, size_t sz) {
   time_t curtm;
-  struct tm *tm_info;
+  struct tm tm_info = {0};
 
   curtm = time(NULL);
-  tm_info = localtime(&curtm);
 
-  strftime(s, sz, "%F", tm_info);
+  if (turn_localtime(&curtm, &tm_info)) {
+    strftime(s, sz, "%F", &tm_info);
+  } else if (sz) {
+    s[0] = 0;
+  }
 }
 
 void set_logfile(const char *fn) {
@@ -606,7 +619,10 @@ void turn_log_func_default(const char *const file, const int line, const TURN_LO
   size_t so_far = 0;
   if (use_new_log_timestamp_format) {
     const time_t now = time(NULL);
-    so_far += strftime(s, sizeof(s), turn_log_timestamp_format, localtime(&now));
+    struct tm tm_now = {0};
+    if (turn_localtime(&now, &tm_now)) {
+      so_far += strftime(s, sizeof(s), turn_log_timestamp_format, &tm_now);
+    }
   } else {
     so_far += snprintf(s, sizeof(s), "%lu: ", (unsigned long)log_time());
   }

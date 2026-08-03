@@ -255,9 +255,9 @@ static size_t print_packet_txt2pcap(uint64_t now, uint8_t *payload, size_t paylo
  * across all relay threads. A DTLS ClientHello from a new source makes the
  * listener allocate a per-peer SSL + ioa_socket + ts_ur_super_session before
  * the source has answered the RFC 6347 cookie challenge, so a source-spoofing
- * flood of unanswered ClientHellos would otherwise accumulate unbounded state. 
- * Once the cap is reached, new handshakes are dropped until in-progress ones 
- * finish (freeing their slot) or are reaped by the allocate timeout. 
+ * flood of unanswered ClientHellos would otherwise accumulate unbounded state.
+ * Once the cap is reached, new handshakes are dropped until in-progress ones
+ * finish (freeing their slot) or are reaped by the allocate timeout.
  * Legitimate clients finish the handshake in a few
  * round trips and release their slot immediately, so this only bites under a
  * flood.
