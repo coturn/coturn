@@ -53,13 +53,6 @@
 
 #include <signal.h>
 
-#if !defined(WINDOWS) && !defined(__CYGWIN__) && !defined(__CYGWIN32__) && !defined(__CYGWIN64__)
-#include <sys/syscall.h>
-#ifdef SYS_gettid
-#define gettid() ((pid_t)syscall(SYS_gettid))
-#endif
-#endif
-
 #include <ctype.h> // for tolower
 #include <errno.h>
 #include <string.h> // for memcmp, strstr, strcmp, strdup, strlen, strerror
@@ -271,7 +264,7 @@ void set_log_min_level(const char *value) {
                 value);
 }
 
-int use_new_log_timestamp_format = 0;
+int use_new_log_timestamp_format = 1;
 
 void addr_debug_print(int verbose, const ioa_addr *addr, const char *s) {
   if (verbose) {
@@ -483,7 +476,7 @@ static size_t turn_log_render_timestamp(char *out, size_t outsz) {
         }
       }
     } else {
-      const int written = snprintf(cache.text, sizeof(cache.text), "%lu: ", (unsigned long)key);
+      const int written = snprintf(cache.text, sizeof(cache.text), "%lu", (unsigned long)key);
       if (written > 0 && (size_t)written < sizeof(cache.text)) {
         len = (size_t)written;
       }
@@ -782,26 +775,28 @@ void turn_log_func_default(const char *const file, const int line, const TURN_LO
   size_t so_far = 0;
   so_far += turn_log_render_timestamp(s, sizeof(s));
 
-#ifdef SYS_gettid
-  so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "(%lu): ", (unsigned long)gettid());
-#endif
+  /* Fields are separated by a single space: ':' occurs throughout message
+   * bodies, so it cannot delimit anything a log parser can rely on. */
+  if (so_far < MAX_RTPPRINTF_BUFFER_SIZE) {
+    s[so_far++] = ' ';
+  }
 
   if (_log_file_line_set) {
-    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "%s(%d):", file, line);
+    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "%s(%d) ", file, line);
   }
 
   switch (level) {
   case TURN_LOG_LEVEL_DEBUG:
-    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "DEBUG: ");
+    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "DEBUG ");
     break;
   case TURN_LOG_LEVEL_INFO:
-    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "INFO: ");
+    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "INFO ");
     break;
   case TURN_LOG_LEVEL_WARNING:
-    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "WARNING: ");
+    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "WARNING ");
     break;
   case TURN_LOG_LEVEL_ERROR:
-    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "ERROR: ");
+    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "ERROR ");
     break;
   }
   so_far += vsnprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), format, args);
