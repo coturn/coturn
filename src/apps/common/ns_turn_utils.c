@@ -759,6 +759,82 @@ void err(int eval, const char *format, ...) {
 }
 #endif
 
+/*
+ * Log-record assembly helpers.
+ *
+ * These exist because snprintf() reports what it *would* have written, so
+ * accumulating its return value overstates the length once the buffer fills.
+ * Left unchecked that both overruns the bookkeeping -- the remaining-space
+ * argument is computed as `int - size_t`, which wraps to a huge size_t -- and
+ * lets the caller hand a length past the written bytes to fwrite(). Every
+ * helper below advances the offset by bytes *actually* written and never lets
+ * it pass bufsz - 1, leaving room for the terminator.
+ */
+
+/* Content bytes still writable before `limit`. Saturates at 0. */
+static size_t turn_log_room(size_t limit, size_t len) { return (len < limit) ? (limit - len) : 0; }
+
+static size_t turn_log_advance(size_t len, size_t room, int written) {
+  if (written <= 0) {
+    return len;
+  }
+  return len + (((size_t)written < room) ? (size_t)written : room);
+}
+
+static size_t turn_log_append(char *buf, size_t limit, size_t len, const char *text) {
+  const size_t room = turn_log_room(limit, len);
+  size_t n = strlen(text);
+  if (n > room) {
+    n = room;
+  }
+  memcpy(buf + len, text, n);
+  return len + n;
+}
+
+static size_t turn_log_appendf(char *buf, size_t limit, size_t len, const char *format, ...)
+#ifdef __GNUC__
+    __attribute__((format(printf, 4, 5)))
+#endif
+    ;
+
+static size_t turn_log_appendf(char *buf, size_t limit, size_t len, const char *format, ...) {
+  const size_t room = turn_log_room(limit, len);
+  va_list args;
+  va_start(args, format);
+  /* room + 1 so the field can fill `limit` exactly; the NUL vsnprintf writes is
+   * overwritten by whatever is appended next, or by the terminator below. */
+  const int written = vsnprintf(buf + len, room + 1, format, args);
+  va_end(args);
+  return turn_log_advance(len, room, written);
+}
+
+/*
+ * Collapse a record onto a single line in place, returning the new length.
+ * Callers variously terminate with "\n", omit it, or embed newlines mid-message
+ * (see the startup banner in mainrelay.c), and a log shipper needs exactly one
+ * record per line. Leading and trailing newlines are dropped, and any interior
+ * run becomes a single space.
+ */
+static size_t turn_log_flatten(char *buf, size_t len) {
+  size_t out = 0;
+  bool pending_space = false;
+  for (size_t i = 0; i < len; ++i) {
+    const char c = buf[i];
+    if (c == '\n' || c == '\r') {
+      pending_space = (out > 0);
+      continue;
+    }
+    if (pending_space) {
+      if (buf[out - 1] != ' ') {
+        buf[out++] = ' ';
+      }
+      pending_space = false;
+    }
+    buf[out++] = c;
+  }
+  return out;
+}
+
 void turn_log_func_default(const char *const file, const int line, const TURN_LOG_LEVEL level, const char *const format,
                            ...) {
   if (level < log_min_level) {
@@ -771,39 +847,50 @@ void turn_log_func_default(const char *const file, const int line, const TURN_LO
 #else
   /* Fix for Issue 24, raised by John Selbie: */
 #define MAX_RTPPRINTF_BUFFER_SIZE (1024)
+  /* Not zero-initialized: every byte up to so_far is written below, so a memset
+   * of the whole buffer on each log line would be pure cost. */
   char s[MAX_RTPPRINTF_BUFFER_SIZE + 1];
+  /* Content stops here so the newline and the terminator always have room: the
+   * one-record-per-line guarantee must not depend on the record being short. */
+  const size_t limit = MAX_RTPPRINTF_BUFFER_SIZE - 1;
   size_t so_far = 0;
-  so_far += turn_log_render_timestamp(s, sizeof(s));
+  so_far += turn_log_render_timestamp(s, limit);
 
   /* Fields are separated by a single space: ':' occurs throughout message
    * bodies, so it cannot delimit anything a log parser can rely on. */
-  if (so_far < MAX_RTPPRINTF_BUFFER_SIZE) {
+  if (so_far < limit) {
     s[so_far++] = ' ';
   }
 
   if (_log_file_line_set) {
-    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "%s(%d) ", file, line);
+    so_far = turn_log_appendf(s, limit, so_far, "%s(%d) ", file, line);
   }
 
   switch (level) {
   case TURN_LOG_LEVEL_DEBUG:
-    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "DEBUG ");
+    so_far = turn_log_append(s, limit, so_far, "DEBUG ");
     break;
   case TURN_LOG_LEVEL_INFO:
-    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "INFO ");
+    so_far = turn_log_append(s, limit, so_far, "INFO ");
     break;
   case TURN_LOG_LEVEL_WARNING:
-    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "WARNING ");
+    so_far = turn_log_append(s, limit, so_far, "WARNING ");
     break;
   case TURN_LOG_LEVEL_ERROR:
-    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "ERROR ");
+    so_far = turn_log_append(s, limit, so_far, "ERROR ");
     break;
   }
-  so_far += vsnprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), format, args);
 
-  if (so_far > MAX_RTPPRINTF_BUFFER_SIZE + 1) {
-    so_far = MAX_RTPPRINTF_BUFFER_SIZE + 1;
+  {
+    const size_t room = turn_log_room(limit, so_far);
+    so_far = turn_log_advance(so_far, room, vsnprintf(s + so_far, room + 1, format, args));
   }
+
+  /* One record per line, whatever the caller passed. */
+  so_far = turn_log_flatten(s, so_far);
+  s[so_far++] = '\n';
+  s[so_far] = 0;
+
   if (!no_stdout_log) {
     fwrite(s, so_far, 1, stdout);
   }
