@@ -67,10 +67,16 @@ struct _realm_options_t {
 
 typedef uint64_t turnsession_id;
 
+/* The legacy random challenge nonce: 16 lowercase hex chars. */
+#define TURN_RANDOM_NONCE_LENGTH (NONCE_LENGTH_32BITS * 4)
+#define TURN_RANDOM_NONCE_SIZE (TURN_RANDOM_NONCE_LENGTH + 1)
+
 /* Big enough for both nonce formats the server can issue: the legacy random
- * nonce (NONCE_LENGTH_32BITS * 4 = 16 chars) and the stateless timestamp||MAC
- * nonce (TURN_STATELESS_NONCE_LENGTH = 24 chars). The two differ in length,
- * so emitters must use strlen(), not NONCE_MAX_SIZE - 1. */
+ * nonce (TURN_RANDOM_NONCE_LENGTH = 16 chars) and the stateless
+ * timestamp||MAC nonce (TURN_STATELESS_NONCE_LENGTH = 24 chars). The two
+ * differ in length, so emitters must use strlen(), not NONCE_MAX_SIZE - 1, and
+ * a generator must bound itself with its own format's size - bounding the
+ * random nonce with NONCE_MAX_SIZE widens it to 24 chars. */
 #define NONCE_MAX_SIZE (TURN_STATELESS_NONCE_SIZE)
 
 typedef uint64_t mobile_id_t;
