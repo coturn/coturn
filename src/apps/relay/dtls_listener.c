@@ -255,10 +255,10 @@ static size_t print_packet_txt2pcap(uint64_t now, uint8_t *payload, size_t paylo
  * across all relay threads. A DTLS ClientHello from a new source makes the
  * listener allocate a per-peer SSL + ioa_socket + ts_ur_super_session before
  * the source has answered the RFC 6347 cookie challenge, so a source-spoofing
- * flood of unanswered ClientHellos would otherwise accumulate unbounded state
- * (GHSA-5x2p-4vqj-f6m4, CWE-770/400). Once the cap is reached, new handshakes
- * are dropped until in-progress ones finish (freeing their slot) or are reaped
- * by the allocate timeout. Legitimate clients finish the handshake in a few
+ * flood of unanswered ClientHellos would otherwise accumulate unbounded state. 
+ * Once the cap is reached, new handshakes are dropped until in-progress ones 
+ * finish (freeing their slot) or are reaped by the allocate timeout. 
+ * Legitimate clients finish the handshake in a few
  * round trips and release their slot immediately, so this only bites under a
  * flood.
  *
@@ -366,42 +366,6 @@ static int verify_cookie(SSL *ssl, const unsigned char *cookie, unsigned int coo
 
 /////////////// io handlers ///////////////////
 
-static ioa_socket_handle dtls_accept_client_connection(dtls_listener_relay_server_type *server, ioa_socket_handle sock,
-                                                       SSL *ssl, ioa_addr *remote_addr, ioa_addr *local_addr,
-                                                       ioa_network_buffer_handle nbh) {
-  FUNCSTART;
-
-  if (!server || !ssl) {
-    return NULL;
-  }
-
-  const int rc = ssl_read(sock->fd, ssl, nbh, server->verbose);
-
-  if (rc < 0) {
-    return NULL;
-  }
-
-  addr_debug_print(server->verbose, remote_addr, "Accepted connection from");
-
-  ioa_socket_handle ioas =
-      create_ioa_socket_from_ssl(server->e, sock, ssl, DTLS_SOCKET, CLIENT_SOCKET, remote_addr, local_addr);
-
-  if (ioas) {
-    set_ioa_socket_buf_size(ioas, server->ts->sock_buf_size);
-
-    addr_cpy(&(server->sm.m.sm.nd.src_addr), remote_addr);
-    server->sm.m.sm.nd.recv_ttl = TTL_IGNORE;
-    server->sm.m.sm.nd.recv_tos = TOS_IGNORE;
-    server->sm.m.sm.s = ioas;
-  } else {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create ioa_socket from SSL\n");
-  }
-
-  FUNCEND;
-
-  return ioas;
-}
-
 static ioa_socket_handle dtls_server_input_handler(dtls_listener_relay_server_type *server, ioa_socket_handle s,
                                                    ioa_network_buffer_handle nbh) {
   FUNCSTART;
@@ -410,63 +374,79 @@ static ioa_socket_handle dtls_server_input_handler(dtls_listener_relay_server_ty
     return NULL;
   }
 
-  SSL *connecting_ssl = NULL;
+  /* RFC 8656 / RFC 6347 section 4.2.1 stateless cookie exchange, via
+   * DTLSv1_listen(). A ClientHello without a valid cookie only elicits a
+   * HelloVerifyRequest and leaves no per-source state: the SSL is built over a
+   * memory BIO holding just this datagram and is freed immediately unless the
+   * cookie verifies. Only a cookie-verified ClientHello - proof the source can
+   * receive at its claimed address - is promoted to a real socket + session.
+   * This is what the half-open cap could bound but not prevent:
+   * a spoofed-source flood now creates zero state. */
 
-  BIO *wbio = NULL;
-  struct timeval timeout;
+  SSL *ssl = SSL_new(server->e->dtls_ctx);
+  SSL_set_accept_state(ssl);
+  SSL_set_options(ssl, SSL_OP_COOKIE_EXCHANGE
+#if defined(SSL_OP_NO_RENEGOTIATION)
+                           | SSL_OP_NO_RENEGOTIATION
+#endif
+  );
+  SSL_set_max_cert_list(ssl, TURN_DTLS_MAX_CERT_LIST);
+  /* Release idle record buffers so a parked half-open handshake does not pin them. */
+  SSL_set_mode(ssl, SSL_MODE_RELEASE_BUFFERS);
 
-  /* Refuse a new DTLS handshake once too many are already in flight, before
-   * allocating any per-peer state, so a ClientHello flood cannot exhaust memory
-   * (GHSA-5x2p-4vqj-f6m4). The reserved slot is released below if the accept
-   * fails, or later when the handshake finishes / the socket is closed. */
-  if (!turn_dtls_half_open_try_inc(dtls_half_open_cap())) {
+  /* wbio: datagram BIO on the shared listener fd, addressed to this peer, so the
+   * HelloVerifyRequest and the later handshake flights reach the right source
+   * and the cookie callbacks can read the peer from it. rbio: the ClientHello we
+   * already read off the fd, wrapped in a memory BIO (EOF -> WANT_READ). */
+  BIO *wbio = BIO_new_dgram(s->fd, BIO_NOCLOSE);
+  (void)BIO_dgram_set_peer(wbio, (struct sockaddr *)&(server->sm.m.sm.nd.src_addr));
+  BIO *rbio = BIO_new_mem_buf(ioa_network_buffer_data(nbh), (int)ioa_network_buffer_get_size(nbh));
+  BIO_set_mem_eof_return(rbio, -1);
+  SSL_set_bio(ssl, rbio, wbio); /* SSL owns both BIOs from here. */
+
+  BIO_ADDR *bpeer = BIO_ADDR_new();
+  const int lret = DTLSv1_listen(ssl, bpeer);
+  BIO_ADDR_free(bpeer);
+
+  if (lret <= 0) {
+    /* 0: no valid cookie yet (HelloVerifyRequest sent). <0: listen error.
+     * Nothing was retained - drop the datagram with no per-source state. */
+    SSL_free(ssl);
     return NULL;
   }
 
-  /* Create BIO */
-  wbio = BIO_new_dgram(s->fd, BIO_NOCLOSE);
-  (void)BIO_dgram_set_peer(wbio, (struct sockaddr *)&(server->sm.m.sm.nd.src_addr));
-
-  /* Set and activate timeouts */
-  timeout.tv_sec = DTLS_MAX_RECV_TIMEOUT;
-  timeout.tv_usec = 0;
-  BIO_ctrl(wbio, BIO_CTRL_DGRAM_SET_RECV_TIMEOUT, 0, &timeout);
-
-  connecting_ssl = SSL_new(server->e->dtls_ctx);
-
-  SSL_set_accept_state(connecting_ssl);
-
-  /* Release idle record buffers so a half-open handshake (parked after the
-   * HelloVerifyRequest) does not pin them */
-  SSL_set_mode(connecting_ssl, SSL_MODE_RELEASE_BUFFERS);
-
-  SSL_set_bio(connecting_ssl, NULL, wbio);
-  SSL_set_options(connecting_ssl, SSL_OP_COOKIE_EXCHANGE
-#if defined(SSL_OP_NO_RENEGOTIATION)
-                                      | SSL_OP_NO_RENEGOTIATION
-#endif
-  );
-  SSL_set_max_cert_list(connecting_ssl, TURN_DTLS_MAX_CERT_LIST);
-
-  ioa_socket_handle rc =
-      dtls_accept_client_connection(server, s, connecting_ssl, &(server->sm.m.sm.nd.src_addr), &(server->addr), nbh);
-
-  if (!rc) {
-    if (!(SSL_get_shutdown(connecting_ssl) & SSL_SENT_SHUTDOWN)) {
-      SSL_set_shutdown(connecting_ssl, SSL_RECEIVED_SHUTDOWN);
-      SSL_shutdown(connecting_ssl);
-    }
-    SSL_free(connecting_ssl);
-    /* No socket was created, so nothing will ever release the slot we reserved
-     * above - release it here. */
-    turn_dtls_half_open_dec();
-  } else {
-    /* The socket now owns the reserved slot; it is released when the handshake
-     * completes (data path below) or the socket is closed. */
-    rc->dtls_half_open = true;
+  /* Cookie verified: charge the now-return-routable peer against the half-open
+   * cap. A completing or closing handshake releases the slot, so the cap still
+   * guards against a flood of validated peers that stall mid-handshake. */
+  if (!turn_dtls_half_open_try_inc(dtls_half_open_cap())) {
+    SSL_free(ssl);
+    return NULL;
   }
 
-  return rc;
+  ioa_socket_handle ioas = create_ioa_socket_from_ssl(server->e, s, ssl, DTLS_SOCKET, CLIENT_SOCKET,
+                                                      &(server->sm.m.sm.nd.src_addr), &(server->addr));
+  if (!ioas) {
+    turn_dtls_half_open_dec();
+    SSL_free(ssl);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create ioa_socket from SSL\n");
+    return NULL;
+  }
+
+  ioas->dtls_half_open = true;
+  set_ioa_socket_buf_size(ioas, server->ts->sock_buf_size);
+  server->sm.m.sm.nd.recv_ttl = TTL_IGNORE;
+  server->sm.m.sm.nd.recv_tos = TOS_IGNORE;
+  server->sm.m.sm.s = ioas;
+
+  addr_debug_print(server->verbose, &(server->sm.m.sm.nd.src_addr), "Accepted connection from");
+
+  /* The cookie-bearing ClientHello is consumed; drive the handshake once so the
+   * ServerHello flight goes out now instead of after the client's retransmit.
+   * The rest of the handshake completes over the child socket's read path. */
+  SSL_do_handshake(ssl);
+
+  FUNCEND;
+  return ioas;
 }
 
 #endif
@@ -1066,7 +1046,7 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server, struct mes
         /* The handshake produced no DTLS socket: the half-open cap was reached
          * or the handshake errored. Drop it - a DTLS handshake datagram must
          * never fall through to create_ioa_socket_from_fd below and become a
-         * plain-UDP socket + session (GHSA-5x2p-4vqj-f6m4). */
+         * plain-UDP socket + session. */
         return 0;
       }
     } else if (turn_params.dtls && (packet_type == UDP_PACKET_CLASS_DTLS_OTHER)) {
