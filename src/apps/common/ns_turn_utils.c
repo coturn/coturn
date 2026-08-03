@@ -53,13 +53,6 @@
 
 #include <signal.h>
 
-#if !defined(WINDOWS) && !defined(__CYGWIN__) && !defined(__CYGWIN32__) && !defined(__CYGWIN64__)
-#include <sys/syscall.h>
-#ifdef SYS_gettid
-#define gettid() ((pid_t)syscall(SYS_gettid))
-#endif
-#endif
-
 #include <ctype.h> // for tolower
 #include <errno.h>
 #include <string.h> // for memcmp, strstr, strcmp, strdup, strlen, strerror
@@ -237,10 +230,15 @@ static int no_stdout_log = 0;
 void set_no_stdout_log(int val) { no_stdout_log = val; }
 
 #define MAX_LOG_TIMESTAMP_FORMAT_LEN 48
-static char turn_log_timestamp_format[MAX_LOG_TIMESTAMP_FORMAT_LEN] = "%FT%T%z";
+/* %f is not a strftime conversion; it is expanded here to milliseconds. */
+static char turn_log_timestamp_format[MAX_LOG_TIMESTAMP_FORMAT_LEN] = "%FT%T.%f%z";
+
+/* Bumped so that per-thread timestamp caches re-render after a format change. */
+static turn_atomic_u32 log_timestamp_format_generation = 0;
 
 void set_turn_log_timestamp_format(char *new_format) {
   strncpy(turn_log_timestamp_format, new_format, MAX_LOG_TIMESTAMP_FORMAT_LEN - 1);
+  turn_atomic_fetch_add_u32(&log_timestamp_format_generation, 1);
 }
 
 static const struct {
@@ -266,7 +264,7 @@ void set_log_min_level(const char *value) {
                 value);
 }
 
-int use_new_log_timestamp_format = 0;
+int use_new_log_timestamp_format = 1;
 
 void addr_debug_print(int verbose, const ioa_addr *addr, const char *s) {
   if (verbose) {
@@ -339,6 +337,164 @@ static void get_date(char *s, size_t sz) {
   } else if (sz) {
     s[0] = 0;
   }
+}
+
+/* Wall clock as whole seconds plus milliseconds from one reading, so the
+ * seconds text and the fraction appended to it cannot straddle a boundary. */
+static void turn_wall_clock(time_t *secs, unsigned *msec) {
+#if defined(_MSC_VER)
+  /* 100ns ticks since 1601-01-01; 11644473600s from there to the Unix epoch. */
+  FILETIME ft;
+  ULARGE_INTEGER ticks;
+  GetSystemTimeAsFileTime(&ft);
+  ticks.LowPart = ft.dwLowDateTime;
+  ticks.HighPart = ft.dwHighDateTime;
+  const uint64_t since_epoch = ticks.QuadPart - 116444736000000000ULL;
+  *secs = (time_t)(since_epoch / 10000000ULL);
+  *msec = (unsigned)((since_epoch / 10000ULL) % 1000ULL);
+#elif defined(CLOCK_REALTIME)
+  struct timespec tp = {0, 0};
+  clock_gettime(CLOCK_REALTIME, &tp);
+  *secs = tp.tv_sec;
+  *msec = (unsigned)(tp.tv_nsec / 1000000);
+#else
+  *secs = time(NULL);
+  *msec = 0;
+#endif
+}
+
+/* First unescaped %f in the format, skipping %% pairs. */
+static const char *turn_find_msec_spec(const char *format) {
+  for (const char *p = format; *p; ++p) {
+    if (*p != '%') {
+      continue;
+    }
+    if (p[1] == '%') {
+      ++p;
+      continue;
+    }
+    if (p[1] == 'f') {
+      return p;
+    }
+  }
+  return NULL;
+}
+
+#define TURN_LOG_MSEC_DIGITS 3
+
+static void turn_write_msec(char *p, unsigned msec) {
+  p[0] = (char)('0' + (msec / 100) % 10);
+  p[1] = (char)('0' + (msec / 10) % 10);
+  p[2] = (char)('0' + msec % 10);
+}
+
+#define TURN_LOG_NO_MSEC ((size_t)-1)
+
+/* Renders turn_log_timestamp_format, expanding the first %f to milliseconds.
+ * Returns 0 if the result does not fit. *msec_off receives the offset of the
+ * millisecond digits, or TURN_LOG_NO_MSEC when the format has none. */
+static size_t turn_render_timestamp_format(char *buf, size_t bufsz, const struct tm *tm_now, unsigned msec,
+                                           size_t *msec_off) {
+  *msec_off = TURN_LOG_NO_MSEC;
+
+  const char *spec = turn_find_msec_spec(turn_log_timestamp_format);
+  if (!spec) {
+    return strftime(buf, bufsz, turn_log_timestamp_format, tm_now);
+  }
+
+  size_t len = 0;
+  const size_t head_len = (size_t)(spec - turn_log_timestamp_format);
+  if (head_len) {
+    char head[MAX_LOG_TIMESTAMP_FORMAT_LEN] = {0};
+    memcpy(head, turn_log_timestamp_format, head_len);
+    len = strftime(buf, bufsz, head, tm_now);
+    if (len == 0) {
+      return 0;
+    }
+  }
+
+  if (len + TURN_LOG_MSEC_DIGITS >= bufsz) {
+    return 0;
+  }
+  turn_write_msec(buf + len, msec);
+  *msec_off = len;
+  len += TURN_LOG_MSEC_DIGITS;
+
+  const char *tail = spec + 2;
+  if (*tail) {
+    const size_t tail_len = strftime(buf + len, bufsz - len, tail, tm_now);
+    if (tail_len == 0) {
+      return 0;
+    }
+    len += tail_len;
+  }
+  return len;
+}
+
+/*
+ * The timestamp prefix is re-rendered on every log line, but everything down to
+ * the second only changes once a second. Rendering costs a localtime_r() --
+ * which takes a lock inside libc, so it serializes relay threads -- plus a
+ * strftime(). Cache the rendered text per thread and patch in just the
+ * millisecond digits per line: the steady state is a comparison, a memcpy and
+ * three stores, with no state shared between threads to contend on.
+ */
+#define TURN_LOG_TIMESTAMP_CACHE_SIZE 128
+
+static size_t turn_log_render_timestamp(char *out, size_t outsz) {
+  static TURN_THREAD_LOCAL struct {
+    bool valid;
+    bool iso_format;
+    uint32_t generation;
+    turn_time_t key;
+    size_t len;
+    size_t msec_off;
+    char text[TURN_LOG_TIMESTAMP_CACHE_SIZE];
+  } cache;
+
+  const bool iso_format = (use_new_log_timestamp_format != 0);
+  const uint32_t generation = turn_atomic_load_u32(&log_timestamp_format_generation);
+
+  time_t now = 0;
+  unsigned msec = 0;
+  if (iso_format) {
+    turn_wall_clock(&now, &msec);
+  }
+  const turn_time_t key = iso_format ? (turn_time_t)now : log_time();
+
+  if (!cache.valid || cache.key != key || cache.iso_format != iso_format || cache.generation != generation) {
+    size_t len = 0;
+    size_t msec_off = TURN_LOG_NO_MSEC;
+    if (iso_format) {
+      struct tm tm_now = {0};
+      if (turn_localtime(&now, &tm_now)) {
+        len = turn_render_timestamp_format(cache.text, sizeof(cache.text), &tm_now, msec, &msec_off);
+        if (len == 0) {
+          /* Rendering does not fit the cache; fall back to the caller's buffer. */
+          size_t direct_off = TURN_LOG_NO_MSEC;
+          return turn_render_timestamp_format(out, outsz, &tm_now, msec, &direct_off);
+        }
+      }
+    } else {
+      const int written = snprintf(cache.text, sizeof(cache.text), "%lu", (unsigned long)key);
+      if (written > 0 && (size_t)written < sizeof(cache.text)) {
+        len = (size_t)written;
+      }
+    }
+    cache.len = len;
+    cache.msec_off = msec_off;
+    cache.key = key;
+    cache.iso_format = iso_format;
+    cache.generation = generation;
+    cache.valid = true;
+  }
+
+  const size_t len = min(cache.len, outsz);
+  memcpy(out, cache.text, len);
+  if (cache.msec_off != TURN_LOG_NO_MSEC && cache.msec_off + TURN_LOG_MSEC_DIGITS <= len) {
+    turn_write_msec(out + cache.msec_off, msec);
+  }
+  return len;
 }
 
 void set_logfile(const char *fn) {
@@ -617,36 +773,30 @@ void turn_log_func_default(const char *const file, const int line, const TURN_LO
 #define MAX_RTPPRINTF_BUFFER_SIZE (1024)
   char s[MAX_RTPPRINTF_BUFFER_SIZE + 1];
   size_t so_far = 0;
-  if (use_new_log_timestamp_format) {
-    const time_t now = time(NULL);
-    struct tm tm_now = {0};
-    if (turn_localtime(&now, &tm_now)) {
-      so_far += strftime(s, sizeof(s), turn_log_timestamp_format, &tm_now);
-    }
-  } else {
-    so_far += snprintf(s, sizeof(s), "%lu: ", (unsigned long)log_time());
+  so_far += turn_log_render_timestamp(s, sizeof(s));
+
+  /* Fields are separated by a single space: ':' occurs throughout message
+   * bodies, so it cannot delimit anything a log parser can rely on. */
+  if (so_far < MAX_RTPPRINTF_BUFFER_SIZE) {
+    s[so_far++] = ' ';
   }
 
-#ifdef SYS_gettid
-  so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "(%lu): ", (unsigned long)gettid());
-#endif
-
   if (_log_file_line_set) {
-    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "%s(%d):", file, line);
+    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "%s(%d) ", file, line);
   }
 
   switch (level) {
   case TURN_LOG_LEVEL_DEBUG:
-    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "DEBUG: ");
+    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "DEBUG ");
     break;
   case TURN_LOG_LEVEL_INFO:
-    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "INFO: ");
+    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "INFO ");
     break;
   case TURN_LOG_LEVEL_WARNING:
-    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "WARNING: ");
+    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "WARNING ");
     break;
   case TURN_LOG_LEVEL_ERROR:
-    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "ERROR: ");
+    so_far += snprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), "ERROR ");
     break;
   }
   so_far += vsnprintf(s + so_far, MAX_RTPPRINTF_BUFFER_SIZE - (so_far + 1), format, args);

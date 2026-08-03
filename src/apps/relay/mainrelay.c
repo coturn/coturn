@@ -1279,9 +1279,13 @@ static char Usage[] =
     "						name will be constructed as-is, without PID and date appendage.\n"
     "						This option can be used, for example, together with the logrotate "
     "tool.\n"
-    " --new-log-timestamp				Enable full ISO-8601 timestamp in all logs.\n"
+    " --new-log-timestamp[=<value>]		Use a full ISO-8601 timestamp in all logs. Enabled by default;\n"
+    "						pass --new-log-timestamp=false for the legacy counter of\n"
+    "						seconds since start.\n"
     " --new-log-timestamp-format    	<format>	Set timestamp format (in strftime(1) format). Depends on "
     "--new-log-timestamp to be enabled.\n"
+    "						Besides the strftime(1) conversions, %f expands to "
+    "milliseconds.\n"
     " --log-binding					Log STUN binding request. It is now disabled by default to "
     "avoid DoS attacks.\n"
     " --stale-nonce[=<value>]			Use extra security with nonce value having limited lifetime (default "
@@ -2943,7 +2947,7 @@ static void read_config_file(int argc, char **argv, int pass) {
           } else if ((pass == 0) && (c == LOG_MIN_LEVEL_OPT)) {
             set_log_min_level(value);
           } else if ((pass == 0) && (c == NEW_LOG_TIMESTAMP_OPT)) {
-            use_new_log_timestamp_format = 1;
+            use_new_log_timestamp_format = get_bool_value(value);
           } else if ((pass == 0) && (c == NEW_LOG_TIMESTAMP_FORMAT_OPT)) {
             set_turn_log_timestamp_format(value);
           } else if ((pass == 0) && (c == SYSLOG_FACILITY_OPT)) {
@@ -3531,7 +3535,7 @@ int main(int argc, char **argv) {
         set_log_min_level(optarg);
         break;
       case NEW_LOG_TIMESTAMP_OPT:
-        use_new_log_timestamp_format = 1;
+        use_new_log_timestamp_format = get_bool_value(optarg);
         break;
       case NEW_LOG_TIMESTAMP_FORMAT_OPT:
         set_turn_log_timestamp_format(optarg);
