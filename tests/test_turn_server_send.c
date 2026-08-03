@@ -646,6 +646,11 @@ static void test_create_permission_without_peer_address_is_rejected(void) {
   TEST_ASSERT_EQUAL_INT(400, run_create_permission(NULL));
 }
 
+/* Spelled as a literal, not as TURN_RANDOM_NONCE_LENGTH: the generator bounds
+ * itself with that macro, so asserting it would hold for any width the macro
+ * happened to take. 16 is the wire format. */
+#define RANDOM_NONCE_WIRE_LENGTH 16
+
 /* The legacy challenge nonce is 16 lowercase hex chars on every platform. It
  * is written into a buffer sized for the longer stateless nonce, so a
  * generator bound by the buffer rather than by its own format emits 24 chars
@@ -653,16 +658,23 @@ static void test_create_permission_without_peer_address_is_rejected(void) {
  * that never enabled --stateless-nonce. Loop, because only draws above 2^32
  * overflow the format. */
 static void test_random_challenge_nonce_is_sixteen_lowercase_hex_chars(void) {
+  TEST_ASSERT_EQUAL_size_t(RANDOM_NONCE_WIRE_LENGTH, (size_t)TURN_RANDOM_NONCE_LENGTH);
+
   for (int attempt = 0; attempt < 64; ++attempt) {
     uint8_t nonce[NONCE_MAX_SIZE];
     memset(nonce, 0xff, sizeof(nonce));
 
     generate_random_challenge_nonce(nonce);
 
-    TEST_ASSERT_EQUAL_size_t(TURN_RANDOM_NONCE_LENGTH, strlen((char *)nonce));
-    for (size_t i = 0; i < TURN_RANDOM_NONCE_LENGTH; ++i) {
+    TEST_ASSERT_EQUAL_size_t(RANDOM_NONCE_WIRE_LENGTH, strlen((char *)nonce));
+    for (size_t i = 0; i < RANDOM_NONCE_WIRE_LENGTH; ++i) {
       const char c = (char)nonce[i];
       TEST_ASSERT_TRUE(((c >= '0') && (c <= '9')) || ((c >= 'a') && (c <= 'f')));
+    }
+    /* The generator gets a NONCE_MAX_SIZE buffer but may only use its own
+     * format's size, so everything past the terminator is still untouched. */
+    for (size_t i = RANDOM_NONCE_WIRE_LENGTH + 1; i < sizeof(nonce); ++i) {
+      TEST_ASSERT_EQUAL_HEX8(0xff, nonce[i]);
     }
   }
 }

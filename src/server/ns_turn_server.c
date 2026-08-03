@@ -3517,6 +3517,9 @@ static int create_challenge_response(ts_ur_super_session *ss, stun_tid *tid, int
   stun_init_error_response_str(method, ioa_network_buffer_data(nbh), &len, *err_code, *reason, tid,
                                srv ? srv->include_reason_string : false);
   *resp_constructed = 1;
+  /* strlen, not NONCE_MAX_SIZE - 1: the random nonce (TURN_RANDOM_NONCE_LENGTH
+   * chars) and the stateless timestamp||MAC nonce
+   * (TURN_STATELESS_NONCE_LENGTH) differ in length. */
   stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_NONCE, ss->nonce,
                     (int)strlen((char *)ss->nonce));
   char *realm = ss->realm_options.name;
