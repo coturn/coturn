@@ -672,6 +672,49 @@ static void udp_send_stateless_error(dtls_listener_relay_server_type *server, io
   ioa_network_buffer_delete(server->e, nbh);
 }
 
+/* True when a REFRESH carries no attribute that could steer
+ * handle_turn_refresh() away from its ticketless "437 Invalid allocation"
+ * reply. Anything that could produce 420, 443 or 400 instead - and any
+ * MOBILITY-TICKET, which selects the resume path - returns false so the
+ * request falls back to the session path. A new comprehension-required
+ * attribute therefore fails safe: it reads as unknown here and falls back. */
+static bool udp_refresh_is_plain_ticketless(const uint8_t *data, size_t len) {
+  stun_attr_ref sar = stun_attr_get_first_str(data, len);
+  while (sar) {
+    const int attr_type = stun_attr_get_type(sar);
+    switch (attr_type) {
+    /* Ignored by handle_turn_refresh's walk, so they cannot change the reply. */
+    case STUN_ATTRIBUTE_OAUTH_ACCESS_TOKEN:
+    case STUN_ATTRIBUTE_PRIORITY:
+    case STUN_ATTRIBUTE_FINGERPRINT:
+    case STUN_ATTRIBUTE_MESSAGE_INTEGRITY:
+    case STUN_ATTRIBUTE_USERNAME:
+    case STUN_ATTRIBUTE_REALM:
+    case STUN_ATTRIBUTE_NONCE:
+    case STUN_ATTRIBUTE_ORIGIN:
+      break;
+    case STUN_ATTRIBUTE_LIFETIME:
+      /* A malformed LIFETIME is 400 "Wrong Lifetime field format"; a valid one
+       * only sets to_delete, which does not apply without an allocation. */
+      if ((stun_attr_get_len(sar) != 4) || !stun_attr_get_value(sar)) {
+        return false;
+      }
+      break;
+    case STUN_ATTRIBUTE_MOBILITY_TICKET:
+    case STUN_ATTRIBUTE_ADDITIONAL_ADDRESS_FAMILY:
+      return false;
+    default:
+      /* Comprehension-required attributes the walk does not know are 420. */
+      if ((attr_type >= 0x0000) && (attr_type <= 0x7FFF)) {
+        return false;
+      }
+      break;
+    }
+    sar = stun_attr_get_next_covered_str(data, len, sar);
+  }
+  return true;
+}
+
 /* Stateless-nonce fast path (issue #1999): answer a request from an unknown
  * UDP source with the derived-nonce 401 challenge directly from the listener,
  * without creating a child socket or session. A request that does carry
@@ -757,14 +800,34 @@ static bool udp_stateless_nonce_fast_path(dtls_listener_relay_server_type *serve
       return false;
     }
   } else if (method == STUN_METHOD_REFRESH) {
-    /* With --mobility a REFRESH can resume a session using MOBILITY-TICKET
-     * instead of a first-pass challenge. */
+    /* With --mobility a REFRESH skips the auth challenge entirely: it may
+     * resume an allocation using MOBILITY-TICKET. A resume attempt needs the
+     * session path, but a ticketless REFRESH from a source with no allocation
+     * always ends at 437, so answer it here. */
     if (*(ts->mobility)) {
-      return false;
+      if (!udp_refresh_is_plain_ticketless(data, len)) {
+        return false;
+      }
+      stun_tid rtid;
+      stun_tid_from_message_str(data, len, &rtid);
+      if (!udp_unauthenticated_reply_ratelimited(server, &(nd->src_addr), 437)) {
+        udp_send_stateless_error(server, nd, method, &rtid, 437, (const uint8_t *)"Invalid allocation", NULL, NULL,
+                                 enforce_fingerprints);
+      }
+      return true;
     }
   } else if (method == STUN_METHOD_CONNECTION_BIND) {
-    /* CONNECTION-BIND is exempt from the auth challenge. */
-    return false;
+    /* CONNECTION-BIND is exempt from the auth challenge, and
+     * handle_turn_connection_bind() rejects it on a datagram socket before it
+     * looks at any attribute, so the reply is fixed for every UDP source. */
+    stun_tid ctid;
+    stun_tid_from_message_str(data, len, &ctid);
+    if (!udp_unauthenticated_reply_ratelimited(server, &(nd->src_addr), 400)) {
+      udp_send_stateless_error(server, nd, method, &ctid, 400,
+                               (const uint8_t *)"Bad request: CONNECTION_BIND only possible with TCP/TLS", NULL, NULL,
+                               enforce_fingerprints);
+    }
+    return true;
   }
 
   /* Every remaining request method reaches check_stun_auth() before any

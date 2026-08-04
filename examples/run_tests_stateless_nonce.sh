@@ -126,12 +126,14 @@ run_uclient "stateless-nonce turn client TCP" -t
 # The UDP run above must have gone through the listener fast path: the first
 # ALLOCATE has no MESSAGE-INTEGRITY, so the 401 challenge is emitted without
 # creating a session, and the server logs this one-time marker.
-echo "Checking secret-derived key markers"
-if grep -q "Stateless nonce mode is enabled (implied by --stateless-nonce-secret)" "$TURNSERVER_LOG" \
-   && grep -q "Stateless nonce key derived from the configured secret" "$TURNSERVER_LOG"; then
-    echo "OK (key derived from secret, mode implied)"
+# Only the key-derivation marker is asserted: stateless mode is the default, so
+# --stateless-nonce-secret no longer has anything to imply and logs the
+# "implied by" line only when an explicit --stateless-nonce=false preceded it.
+echo "Checking secret-derived key marker"
+if grep -q "Stateless nonce key derived from the configured secret" "$TURNSERVER_LOG"; then
+    echo "OK (key derived from secret)"
 else
-    echo "FAIL: missing stateless-nonce-secret startup markers in server log"
+    echo "FAIL: missing stateless-nonce-secret startup marker in server log"
     diagnose_failure "secret markers"
     exit 1
 fi
@@ -162,6 +164,35 @@ if command -v python3 >/dev/null 2>&1; then
     fi
 else
     echo "SKIP: python3 not available (forged-MESSAGE-INTEGRITY probe)"
+fi
+
+# Stateless mode is the default, so the legacy stored-nonce path has no other
+# coverage: pin that --stateless-nonce=false still starts, still challenges,
+# and still hands out the 16-character random nonce.
+if command -v python3 >/dev/null 2>&1; then
+    echo "Running legacy stored-nonce check (--stateless-nonce=false)"
+    LEGACY_LOG="/tmp/run_tests_stateless_nonce.$$.legacy.log"
+    $BINDIR/turnserver --use-auth-secret --static-auth-secret=secret --realm=north.gov --allow-loopback-peers \
+        --stateless-nonce=false --listening-port=3488 --no-cli --log-file=stdout > "$LEGACY_LOG" 2>&1 &
+    legacy_pid="$!"
+    for _ in $(seq 1 40); do
+        grep -q "Total auth threads:" "$LEGACY_LOG" 2>/dev/null && break
+        sleep 0.5
+    done
+    legacy_rc=0
+    python3 scripts/stateless_nonce_forged_mi.py 127.0.0.1 3488 user noncelen 16 || legacy_rc=$?
+    legacy_ok=0
+    if [ $legacy_rc -eq 0 ] && ! grep -q "stateless-nonce: listener fast-path challenge active" "$LEGACY_LOG"; then
+        echo "OK (legacy 16-char nonce, no fast path)"
+    else
+        echo "FAIL: legacy stored-nonce path"
+        tail -20 "$LEGACY_LOG"
+        legacy_ok=1
+    fi
+    kill "$legacy_pid" 2>/dev/null
+    wait "$legacy_pid" 2>/dev/null
+    rm -f "$LEGACY_LOG"
+    [ $legacy_ok -eq 0 ] || exit 1
 fi
 
 if [ $IS_DARWIN -eq 1 ]; then

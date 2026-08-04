@@ -22,6 +22,7 @@ import sys
 MAGIC = 0x2112A442
 M_ALLOCATE = 0x0003
 M_REFRESH = 0x0004
+M_CONNECTION_BIND = 0x000B
 
 A_USERNAME = 0x0006
 A_MI = 0x0008
@@ -29,6 +30,7 @@ A_ERROR = 0x0009
 A_REALM = 0x0014
 A_NONCE = 0x0015
 A_REQ_TRANSPORT = 0x0019
+A_CONNECTION_ID = 0x002A
 
 FORGED_MI = b"\0" * 20  # right length, wrong HMAC
 FORGED_NONCE = b"deadbeefdeadbeefdeadbeef"  # right format, never issued here
@@ -115,6 +117,9 @@ def main():
     port = int(sys.argv[2]) if len(sys.argv) > 2 else 3478
     user = (sys.argv[3] if len(sys.argv) > 3 else "user").encode()
     flood_count = int(sys.argv[5]) if len(sys.argv) > 5 and sys.argv[4] == "flood" else 0
+    # noncelen <n>: assert the challenge nonce is n characters. Used to pin the
+    # legacy stored-nonce path (16) once stateless mode became the default (24).
+    want_nonce_len = int(sys.argv[5]) if len(sys.argv) > 5 and sys.argv[4] == "noncelen" else 0
 
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.settimeout(3)
@@ -132,6 +137,13 @@ def main():
         print(f"FAIL: unauthenticated request: err={errcode(aa)} realm={realm} nonce={issued_nonce}")
         return 2
     print(f"OK: unauthenticated challenge: 401 realm={realm.decode()}")
+
+    if want_nonce_len:
+        if len(issued_nonce) != want_nonce_len:
+            print(f"FAIL: nonce length {len(issued_nonce)}, want {want_nonce_len}")
+            return 2
+        print(f"RESULT nonce_len={len(issued_nonce)}")
+        return 0
 
     if flood_count:
         return flood(host, port, user, realm, flood_count)
@@ -171,6 +183,18 @@ def main():
             [(A_USERNAME, user), (A_REALM, b"wrong.realm"), (A_NONCE, issued_nonce), (A_MI, FORGED_MI)],
         ),
         441,
+    )
+
+    # CONNECTION-BIND is exempt from the auth challenge and is rejected on a
+    # datagram socket before any attribute is read, so the listener answers it
+    # without a session.
+    ok &= check(
+        "CONNECTION-BIND over UDP",
+        s,
+        host,
+        port,
+        make(M_CONNECTION_BIND, [(A_CONNECTION_ID, b"\0\0\0\1")]),
+        400,
     )
 
     ok &= check(

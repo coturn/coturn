@@ -112,12 +112,23 @@ The mode is designed to be invisible to clients:
 - Established sessions keep the exact stock stale-nonce behavior: the session
   caches its nonce, `--stale-nonce` expiry regenerates it and answers `438`,
   and the client re-authenticates as usual.
+- Two methods that skip the challenge entirely still have a reply fixed by the
+  request bytes alone, so they are answered here rather than falling back:
+  **CONNECTION-BIND**, which `handle_turn_connection_bind()` rejects on a
+  datagram socket before reading any attribute (`400`), and a **ticketless
+  REFRESH under `--mobility`**, which reaches `437 Invalid allocation` when the
+  source has no allocation. Both matter because neither reply is a `401`/`438`,
+  so neither qualifies for the challenge-session teardown — before this, each
+  such packet from a fresh source held a session for the full 60s
+  to-be-allocated timeout. The REFRESH shortcut is taken only when no attribute
+  could steer the reply elsewhere: a MOBILITY-TICKET (the actual resume path),
+  a malformed LIFETIME (`400`), an address-family attribute (`443`), or any
+  comprehension-required attribute the handler does not know (`420`) all fall
+  back to the session path, so a newly added attribute fails safe.
 - Cases the fast path cannot replicate byte-for-byte fall back to the session
   path automatically: BINDING (RFC 5780 alternate sockets), ALLOCATE when
-  alternate/aux server redirection (300) is configured, REFRESH under
-  `--mobility` (MOBILITY-TICKET may authenticate without a first-pass
-  challenge), CONNECTION-BIND (exempt from the challenge), and any request
-  whose nonce verifies (the credential lookup itself may be asynchronous, and
+  alternate/aux server redirection (300) is configured, and any request whose
+  nonce verifies (the credential lookup itself may be asynchronous, and
   resuming it needs a session).
 
 `examples/run_tests_stateless_nonce.sh` asserts all of this end-to-end: the
@@ -173,17 +184,21 @@ Operational notes:
 
 ## Limitations
 
-- **Off by default.** Enable with `--stateless-nonce` (config file:
-  `stateless-nonce`), or implicitly via `--stateless-nonce-secret`.
-- **Nonce length changes when the flag is on.** Challenges carry a 24-char
-  nonce instead of the stock 16-char one. RFC 8489 requires clients to treat
-  the nonce as an opaque string of up to 128 characters, so compliant clients
-  are unaffected; a hypothetical client with a hard-coded 16-char nonce
-  buffer would only misbehave with the flag enabled.
-- **BINDING floods are out of scope.** BINDING is answerable without
-  authentication, so an unknown-source BINDING still creates a session (as
-  today). `--secure-stun` BINDING challenges do benefit from the
-  challenge-session teardown, but not from the listener fast path.
+- **On by default.** Disable with `--stateless-nonce=false` (config file:
+  `stateless-nonce=false`). `--stateless-nonce-secret` implies it.
+- **Nonce length.** Challenges carry a 24-char nonce instead of the legacy
+  16-char one. RFC 8489 requires clients to treat the nonce as an opaque
+  string of up to 128 characters, so compliant clients are unaffected; a
+  hypothetical client with a hard-coded 16-char nonce buffer would need
+  `--stateless-nonce=false`.
+- **Restarts and fleets.** The default key is ephemeral, so a restart costs
+  each client one `438` re-auth round-trip, as does a retry that lands on a
+  different instance behind a load balancer. Set `--stateless-nonce-secret`
+  across the fleet to avoid both.
+- **BINDING does not use this path.** BINDING is answerable without
+  authentication and is short-circuited by its own listener fast path, which
+  is independent of this option. `--secure-stun` BINDING challenges benefit
+  from the challenge-session teardown, but not from the nonce fast path.
 - **TCP/TLS are unchanged.** Those transports cannot be source-spoofed and
   already pin a connection per client; sessions there keep stock behavior
   (the derived nonce is used, which is harmless).
