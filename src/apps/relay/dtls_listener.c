@@ -824,7 +824,7 @@ static bool udp_stateless_nonce_fast_path(dtls_listener_relay_server_type *serve
     stun_tid_from_message_str(data, len, &ctid);
     if (!udp_unauthenticated_reply_ratelimited(server, &(nd->src_addr), 400)) {
       udp_send_stateless_error(server, nd, method, &ctid, 400,
-                               (const uint8_t *)"Bad request: CONNECTION_BIND only possible with TCP/TLS", NULL, NULL,
+                               (const uint8_t *)"CONNECTION_BIND only possible with TCP/TLS", NULL, NULL,
                                enforce_fingerprints);
     }
     return true;

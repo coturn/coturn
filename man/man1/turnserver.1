@@ -1293,7 +1293,9 @@ time plus an HMAC over the client address, keyed by a per\-process
 secret) instead of storing a random nonce in per\-client session state. Unauthenticated UDP requests are then
 answered without allocating a session, bounding server memory under
 spoofed\-source floods of structurally valid STUN messages.
-Wire\-compatible with standard TURN clients. Disabled by default.
+Wire\-compatible with standard TURN clients. Enabled by default; disable
+with \-\-stateless\-nonce=false, which restores the stored random nonce and
+the legacy 16\-character challenge in place of the 24\-character one.
 .TP
 .B
 \fB\-\-stateless\-nonce\-secret\fP=<secret>
