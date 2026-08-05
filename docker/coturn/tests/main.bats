@@ -42,7 +42,7 @@
   run docker run --rm --pull never --platform $PLATFORM \
                  --entrypoint sh $IMAGE -c \
     "turnserver -o --log-file=stdout | grep -m 1 'Version Coturn' \
-                                     | cut -d ' ' -f6 \
+                                     | cut -d ' ' -f5 \
                                      | cut -d '-' -f2"
   [ "$status" -eq 0 ]
   [ ! "$output" = '' ]
