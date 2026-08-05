@@ -2650,12 +2650,12 @@ static int handle_turn_connection_bind(turn_turnserver *server, ts_ur_super_sess
   } else if (is_allocation_valid(a)) {
 
     *err_code = 400;
-    *reason = (const uint8_t *)"Bad request: CONNECTION_BIND cannot be issued after allocation";
+    *reason = (const uint8_t *)"CONNECTION_BIND cannot be issued after allocation";
 
   } else if (!is_stream_socket(get_ioa_socket_type(ss->client_socket))) {
 
     *err_code = 400;
-    *reason = (const uint8_t *)"Bad request: CONNECTION_BIND only possible with TCP/TLS";
+    *reason = (const uint8_t *)"CONNECTION_BIND only possible with TCP/TLS";
 
   } else {
     tcp_connection_id id = 0;

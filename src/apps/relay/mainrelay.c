@@ -264,9 +264,9 @@ turn_params_t turn_params = {
     RATELIMIT_DEFAULT_MAX_REQUESTS_PER_SEC, /* unauthorized-ratelimit-rps */
 
     ///////// Stateless nonce /////////
-    false, /* stateless-nonce */
-    {0},   /* stateless_nonce_key (generated at startup when enabled) */
-    false  /* stateless_nonce_key_set */
+    true, /* stateless-nonce */
+    {0},  /* stateless_nonce_key (generated at startup when enabled) */
+    false /* stateless_nonce_key_set */
 };
 
 //////////////// OpenSSL Init //////////////////////
@@ -1480,7 +1480,8 @@ static char Usage[] =
     "                                                 session. Unauthenticated UDP requests are then\n"
     "                                                 answered without allocating per-client session\n"
     "                                                 state, bounding memory under spoofed-source floods\n"
-    "                                                 of structurally valid STUN messages. Off by default.\n"
+    "                                                 of structurally valid STUN messages. On by default;\n"
+    "                                                 disable with --stateless-nonce=false.\n"
     " --stateless-nonce-secret=<secret>              Derive the stateless-nonce signing key from this\n"
     "                                                 secret instead of a random per-process key, so\n"
     "                                                 servers sharing the secret (and NTP-synced clocks)\n"
