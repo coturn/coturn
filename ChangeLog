@@ -1,3 +1,23 @@
+Release 4.17.0
+
+Changelist:
+- Enable stateless nonce by default  (#2036) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Emit exactly one log line per record (#2033) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Keep the legacy random nonce at 16 chars (#2032) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Log format: ISO-8601 timestamp by default, no thread id, space delimiter (#2031) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Fix localtime() data race in the logger (#2030) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Remove syslog from the Docker Compose turnserver.conf (#2029) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Drop --simple-log where it is a no-op alongside --log-file=stdout (#2028) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Do not ask the kernel for an outgoing IP TTL of zero (#2027) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Start the DTLS listeners only when --dtls is given (#2026) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Worktree stateless nonce mi fastpath (#2025) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Binding stateless fastpath (#2024) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Free the secrets list on the get_user_key error paths (#2019) (alhuda <50839256+alhudz@users.noreply.github.com>)
+
+Contributors:
+- Pavel Punsky <eakraly@users.noreply.github.com>
+- alhuda <50839256+alhudz@users.noreply.github.com>
+
 Release 4.16.0
 
 Changelist:
