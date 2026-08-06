@@ -74,3 +74,22 @@ jobs:
       - run: ./run_tests_prom.sh
         working-directory: examples/
         if: ${{ contains(matrix.os, 'ubuntu') }}
+
+      # Regression cover for shipped security fixes. These drive raw STUN over
+      # python3, so a missing interpreter must not silently skip them here.
+      - run: ./run_tests_mobility_quota.sh
+        working-directory: examples/
+      - run: ./run_tests_mobility_resume_flood.sh
+        working-directory: examples/
+      - run: ./run_tests_stateless_binding.sh
+        working-directory: examples/
+      - run: ./run_tests_stateless_nonce.sh
+        working-directory: examples/
+
+      - run: ./run_tests_expiry.sh
+        working-directory: examples/
+      # Needs a second bindable loopback address, which is native on Linux.
+      - run: ./run_tests_rfc5780.sh
+        working-directory: examples/
+      - run: ./run_tests_multiplex_peer.sh
+        working-directory: examples/
