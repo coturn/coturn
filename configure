@@ -450,36 +450,26 @@ fi
 # Install shell commands
 ###########################
 
-type ginstall 2>>/dev/null
+# install(1) dates from 4.2BSD and takes explicit modes, so non-executable
+# files (man pages, docs, schemas) do not inherit the 0755 default.
+type install 2>>/dev/null
 ER=$?
 if [ ${ER} -eq 0 ] ; then
-	INSTALL_PROGRAM="ginstall"
-	INSTALL_MAN="ginstall"
-	INSTALL_SCRIPT="ginstall"
-	INSTALL_SHARED_LIB="ginstall"
-	INSTALL_STATIC_LIB="ginstall"
-	INSTALL_DATA="ginstall"
-	MKDIR="ginstall -d"
+	INSTALL_PROGRAM="install -p"
+	INSTALL_MAN="install -p -m 0644"
+	INSTALL_SCRIPT="install -p"
+	INSTALL_SHARED_LIB="install -p"
+	INSTALL_STATIC_LIB="install -p"
+	INSTALL_DATA="install -p -m 0644"
+	MKDIR="install -d"
 else
-	type install 2>>/dev/null
-	ER=$?
-	if [ ${ER} -eq 0 ] ; then
-		INSTALL_PROGRAM="install -p"
-		INSTALL_MAN="install -p -m 0644"
-		INSTALL_SCRIPT="install -p"
-		INSTALL_SHARED_LIB="install -p"
-		INSTALL_STATIC_LIB="install -p"
-		INSTALL_DATA="install -p -m 0644"
-		MKDIR="install -d"
-	else
-		INSTALL_PROGRAM="cp -pf"
-		INSTALL_MAN="cp -pf"
-		INSTALL_SCRIPT="cp -pf"
-		INSTALL_SHARED_LIB="cp -pf"
-		INSTALL_STATIC_LIB="cp -pf"
-		INSTALL_DATA="cp -pf"
-		MKDIR="mkdir -p"
-	fi
+	INSTALL_PROGRAM="cp -pf"
+	INSTALL_MAN="cp -pf"
+	INSTALL_SCRIPT="cp -pf"
+	INSTALL_SHARED_LIB="cp -pf"
+	INSTALL_STATIC_LIB="cp -pf"
+	INSTALL_DATA="cp -pf"
+	MKDIR="mkdir -p"
 fi
 
 type pkill 2>>/dev/null
