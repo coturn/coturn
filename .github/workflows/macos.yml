@@ -51,6 +51,19 @@ jobs:
       - run: ./run_tests_dtls_default.sh
         working-directory: examples/
 
+      # run_tests_rfc5780.sh and run_tests_multiplex_peer.sh are deliberately
+      # absent: the first needs a 127.0.0.2 alias macOS does not configure by
+      # default and would only SKIP, the second exercises Linux-only paths.
+      # Both run in the Linux workflow.
+      - run: ./run_tests_mobility_quota.sh
+        working-directory: examples/
+      - run: ./run_tests_mobility_resume_flood.sh
+        working-directory: examples/
+      - run: ./run_tests_stateless_binding.sh
+        working-directory: examples/
+      - run: ./run_tests_stateless_nonce.sh
+        working-directory: examples/
+
   build-cmake:
     name: build + test cmake
     strategy:
@@ -86,4 +99,17 @@ jobs:
       - run: ./run_tests_conf.sh
         working-directory: examples/
       - run: ./run_tests_dtls_default.sh
+        working-directory: examples/
+
+      # run_tests_rfc5780.sh and run_tests_multiplex_peer.sh are deliberately
+      # absent: the first needs a 127.0.0.2 alias macOS does not configure by
+      # default and would only SKIP, the second exercises Linux-only paths.
+      # Both run in the Linux workflow.
+      - run: ./run_tests_mobility_quota.sh
+        working-directory: examples/
+      - run: ./run_tests_mobility_resume_flood.sh
+        working-directory: examples/
+      - run: ./run_tests_stateless_binding.sh
+        working-directory: examples/
+      - run: ./run_tests_stateless_nonce.sh
         working-directory: examples/
