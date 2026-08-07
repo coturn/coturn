@@ -173,6 +173,8 @@ static int set_accept_cb(ioa_socket_handle s, accept_cb acb, void *arg);
 
 static void close_socket_net_data(ioa_socket_handle s);
 
+static void udp_sendmmsg_flush_before_socket_invalidation(ioa_socket_handle s);
+
 #if defined(__linux__)
 static int ensure_engine_recvmmsg_state(ioa_engine_handle e);
 static int socket_udp_read_batch_recvmmsg(ioa_socket_handle s, int *last_len);
@@ -2134,6 +2136,11 @@ void close_ioa_socket(ioa_socket_handle s) {
       return;
     }
 
+    /* Drain the thread-local sendmmsg/GSO batch while this socket and its
+     * descriptor are still valid: a deferred flush would otherwise dereference
+     * freed memory or write to a closed (possibly reused) fd. */
+    udp_sendmmsg_flush_before_socket_invalidation(s);
+
     s->done = 1;
 
     /* Release the DTLS half-open slot if this socket's handshake never finished
@@ -2202,6 +2209,10 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s) {
                     s->st, s->sat);
       return ret;
     }
+
+    /* Detaching clears s->fd and s->parent_s, so any queued datagram would be
+     * flushed to a descriptor this socket no longer owns. */
+    udp_sendmmsg_flush_before_socket_invalidation(s);
 
     s->tobeclosed = 1;
 
@@ -4131,6 +4142,30 @@ static void udp_sendmmsg_flush_before_socket_options(ioa_socket_handle s, int tt
     udp_sendmmsg_flush();
   }
 }
+
+static void udp_sendmmsg_flush_before_socket_invalidation(ioa_socket_handle s) {
+  udp_sendmmsg_batch_state *state = &udp_sendmmsg_batch;
+
+  if (state->count == 0) {
+    return;
+  }
+
+  /* sendmmsg()/GSO write to the cached fd, so a socket can invalidate the batch
+   * without owning any entry: child sockets queue under their parent's fd. */
+  if (state->fd == udp_send_fd(s)) {
+    udp_sendmmsg_flush();
+    return;
+  }
+
+  /* A detached socket no longer resolves to the batch fd, but its queued
+   * entries still point at it. */
+  for (unsigned int i = 0; i < state->count; ++i) {
+    if (state->entries[i].s == s) {
+      udp_sendmmsg_flush();
+      return;
+    }
+  }
+}
 #else
 void udp_sendmmsg_batch_begin(void) {}
 
@@ -4153,6 +4188,8 @@ static void udp_sendmmsg_flush_before_socket_options(ioa_socket_handle s, int tt
   UNUSED_ARG(ttl);
   UNUSED_ARG(tos);
 }
+
+static void udp_sendmmsg_flush_before_socket_invalidation(ioa_socket_handle s) { UNUSED_ARG(s); }
 #endif
 
 int udp_send(ioa_socket_handle s, const ioa_addr *dest_addr, const char *buffer, int len) {
