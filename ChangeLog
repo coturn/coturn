@@ -1,3 +1,17 @@
+Release 4.17.1
+
+Changelist:
+- Flash before socket close (#2041) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- build: Drop ginstall detection in configure (#2038) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Gate merges on the more tests suites (#2039) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- docker: Fix test for image version (Kai Ren <tyranron@gmail.com>)
+- docker: Upgrade Coturn to 4.17.0 version (Kai Ren <tyranron@gmail.com>)
+
+Contributors:
+- Kai Ren <tyranron@gmail.com>
+- Pavel Punsky <eakraly@users.noreply.github.com>
+- dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
 Release 4.17.0
 
 Changelist:
