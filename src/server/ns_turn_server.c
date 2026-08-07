@@ -103,20 +103,26 @@ int TURN_MAX_ALLOCATE_TIMEOUT = 60;
 int TURN_MAX_ALLOCATE_TIMEOUT_STUN_ONLY = 3;
 
 static inline void log_method(ts_ur_super_session *ss, const char *method, int err_code, const uint8_t *reason) {
+  char sraddr[129] = "\0";
+  if (ss->client_socket) {
+    addr_to_string(get_remote_addr_from_ioa_socket(ss->client_socket), (uint8_t *)sraddr);
+  }
   if (ss) {
     if (!method) {
       method = "unknown";
     }
     if (!err_code) {
       if (ss->origin[0]) {
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-                      "session %018llu: origin <%s> realm <%s> user <%s>: incoming packet %s processed, success\n",
-                      (unsigned long long)(ss->id), (const char *)(ss->origin), (const char *)(ss->realm_options.name),
-                      (const char *)(ss->username), method);
-      } else {
         TURN_LOG_FUNC(
-            TURN_LOG_LEVEL_INFO, "session %018llu: realm <%s> user <%s>: incoming packet %s processed, success\n",
-            (unsigned long long)(ss->id), (const char *)(ss->realm_options.name), (const char *)(ss->username), method);
+            TURN_LOG_LEVEL_INFO,
+            "session %018llu: origin <%s> realm <%s> user <%s> remote <%s>: incoming packet %s processed, success\n",
+            (unsigned long long)(ss->id), (const char *)(ss->origin), (const char *)(ss->realm_options.name),
+            (const char *)(ss->username), (const char *)sraddr, method);
+      } else {
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+                      "session %018llu: realm <%s> user <%s> remote <%s>: incoming packet %s processed, success\n",
+                      (unsigned long long)(ss->id), (const char *)(ss->realm_options.name),
+                      (const char *)(ss->username), (const char *)sraddr, method);
       }
     } else {
       if (!reason) {
@@ -124,14 +130,15 @@ static inline void log_method(ts_ur_super_session *ss, const char *method, int e
       }
       if (ss->origin[0]) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-                      "session %018llu: origin <%s> realm <%s> user <%s>: incoming packet %s processed, error %d: %s\n",
+                      "session %018llu: origin <%s> realm <%s> user <%s> remote <%s>: incoming packet %s processed, "
+                      "error %d: %s\n",
                       (unsigned long long)(ss->id), (const char *)(ss->origin), (const char *)(ss->realm_options.name),
-                      (const char *)(ss->username), method, err_code, reason);
+                      (const char *)(ss->username), (const char *)sraddr, method, err_code, reason);
       } else {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-                      "session %018llu: realm <%s> user <%s>: incoming packet %s processed, error %d: %s\n",
+                      "session %018llu: realm <%s> user <%s> remote <%s>: incoming packet %s processed, error %d: %s\n",
                       (unsigned long long)(ss->id), (const char *)(ss->realm_options.name),
-                      (const char *)(ss->username), method, err_code, reason);
+                      (const char *)(ss->username), (const char *)sraddr, method, err_code, reason);
       }
     }
   }
