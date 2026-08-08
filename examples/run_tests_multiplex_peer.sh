@@ -55,8 +55,6 @@ run_client() {
   local expected_bytes="$3"
   local output
   local rc=0
-  local attempt
-  local max_attempts=8
   shift 3
 
   echo "Running $name"
@@ -64,27 +62,15 @@ run_client() {
   peer_pid="$!"
   sleep 1
 
-  for attempt in $(seq 1 "$max_attempts"); do
-    rc=0
-    output=$("$BINDIR/turnutils_uclient" "$@" 2>&1) || rc=$?
-    if printf '%s\n' "$output" |
-      grep -q "start_mclient: tot_send_bytes ~ $expected_bytes, tot_recv_bytes ~ $expected_bytes"; then
-      kill "$peer_pid" 2>/dev/null || true
-      wait "$peer_pid" 2>/dev/null || true
-      peer_pid=""
-      echo OK
-      return 0
-    fi
-
-    if printf '%s\n' "$output" | grep -q "error 508" &&
-      grep -q "EVEN-PORT is not supported with multiplex-peer" "$turnserver_log" &&
-      [ "$attempt" -lt "$max_attempts" ]; then
-      echo "Retrying $name after randomized EVEN-PORT request"
-      continue
-    fi
-
-    break
-  done
+  output=$("$BINDIR/turnutils_uclient" "$@" 2>&1) || rc=$?
+  if printf '%s\n' "$output" |
+    grep -q "start_mclient: tot_send_bytes ~ $expected_bytes, tot_recv_bytes ~ $expected_bytes"; then
+    kill "$peer_pid" 2>/dev/null || true
+    wait "$peer_pid" 2>/dev/null || true
+    peer_pid=""
+    echo OK
+    return 0
+  fi
 
   kill "$peer_pid" 2>/dev/null || true
   wait "$peer_pid" 2>/dev/null || true
@@ -168,18 +154,21 @@ expect_peer_endpoint_limit() {
 echo "Running turnserver in multiplex-peer mode on base port $MULTIPLEX_PEER_PORT"
 start_turnserver
 
-# Multiplex-peer is incompatible with EVEN-PORT, so these tests disable RTCP reservation with -c.
-run_client "turn client UDP" 3480 500 -c -e 127.0.0.1 -r 3480 -X -g -u user -W secret 127.0.0.1
-run_client "turn client TCP" 3482 500 -c -t -e 127.0.0.1 -r 3482 -X -g -u user -W secret 127.0.0.1
-run_client "turn client TLS" 3484 500 -c -t -S -e 127.0.0.1 -r 3484 -X -g -u user -W secret 127.0.0.1
-run_client "turn client DTLS" 3490 500 -c -S -e 127.0.0.1 -r 3490 -X -g -u user -W secret 127.0.0.1
+# Multiplex-peer rejects EVEN-PORT with 508, and -c alone leaves the client
+# picking EVEN-PORT at random, so --no-even-port is what makes these runs
+# deterministic.
+run_client "turn client UDP" 3480 500 -c --no-even-port -e 127.0.0.1 -r 3480 -X -g -u user -W secret 127.0.0.1
+run_client "turn client TCP" 3482 500 -c --no-even-port -t -e 127.0.0.1 -r 3482 -X -g -u user -W secret 127.0.0.1
+run_client "turn client TLS" 3484 500 -c --no-even-port -t -S -e 127.0.0.1 -r 3484 -X -g -u user -W secret 127.0.0.1
+run_client "turn client DTLS" 3490 500 -c --no-even-port -S -e 127.0.0.1 -r 3490 -X -g -u user -W secret 127.0.0.1
 
 sleep 2
 
 stop_turnserver
 echo "Restarting turnserver with --multiplex-peer-max-peers=4"
 start_turnserver --multiplex-peer-max-peers=4
-run_client "turn client UDP (peer-endpoint cap 4)" 3492 500 -c -e 127.0.0.1 -r 3492 -X -g -u user -W secret 127.0.0.1
+run_client "turn client UDP (peer-endpoint cap 4)" 3492 500 -c --no-even-port -e 127.0.0.1 -r 3492 -X -g -u user \
+  -W secret 127.0.0.1
 
 stop_turnserver
 echo "Restarting turnserver with --multiplex-peer-max-peers=1"
