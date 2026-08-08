@@ -2008,6 +2008,13 @@ ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e, ioa_socket_raw 
 
   if (parent_s) {
     add_socket_to_parent(parent_s, ret);
+    /* This socket shares the parent's fd, so IP_TTL/TOS is the same kernel-level
+     * socket option: inherit the parent's known state instead of leaving these
+     * zero-initialized, which floors every outgoing TTL to 1 (see set_socket_ttl). */
+    ret->default_ttl = parent_s->default_ttl;
+    ret->current_ttl = parent_s->current_ttl;
+    ret->default_tos = parent_s->default_tos;
+    ret->current_tos = parent_s->current_tos;
   } else {
     set_socket_options(ret);
   }
