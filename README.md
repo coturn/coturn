@@ -58,7 +58,13 @@ STUN specs:
   * [RFC 3489](https://datatracker.ietf.org/doc/html/rfc3489) - "classic" STUN (DEPRECATED, opt-in via
     `--rfc3489-compatibility`; scheduled for removal in the next major release — see
     [docs/rfc3489-deprecation.md](docs/rfc3489-deprecation.md))
-  * [RFC 5389](https://datatracker.ietf.org/doc/html/rfc5389) - base "new" STUN specs
+  * [RFC 5389](https://datatracker.ietf.org/doc/html/rfc5389) - base "new" STUN specs (obsoleted by RFC 8489)
+  * [RFC 8489](https://datatracker.ietf.org/doc/html/rfc8489) - STUN, obsoleting RFC 5389. Its message-processing
+    rules are implemented: attributes following `MESSAGE-INTEGRITY` are ignored, repeated attributes are
+    first-wins, and `ERROR-CODE` reason phrases are declared without their padding. Its authentication additions
+    are **not** implemented - `MESSAGE-INTEGRITY-SHA256`, `PASSWORD-ALGORITHMS`, `PASSWORD-ALGORITHM`, `USERHASH`
+    and the nonce cookie are all absent, so an RFC 8489 client falls back to that spec's MD5 key derivation with
+    SHA-1 `MESSAGE-INTEGRITY`, which RFC 8489 permits.
   * [RFC 5769](https://datatracker.ietf.org/doc/html/rfc5769) - test vectors for STUN protocol testing
   * [RFC 5780](https://datatracker.ietf.org/doc/html/rfc5780) - NAT behavior discovery support
   * [RFC 7350](https://datatracker.ietf.org/doc/html/rfc7350) - DTLS as transport for STUN & TURN
@@ -67,9 +73,13 @@ STUN specs:
   
 TURN specs:
 
-  * [RFC 5766](https://datatracker.ietf.org/doc/html/rfc5766) - base TURN specs
+  * [RFC 5766](https://datatracker.ietf.org/doc/html/rfc5766) - base TURN specs (obsoleted by RFC 8656)
+  * [RFC 8656](https://datatracker.ietf.org/doc/html/rfc8656) - TURN, obsoleting RFC 5766 and folding in RFC 6156.
+    Implemented, including dual allocation (`ADDITIONAL-ADDRESS-FAMILY`, `ADDRESS-ERROR-CODE`, the 440/443/508
+    error codes) and the 0x4000-0x4FFF channel-number range. ICMP relaying (Section 11.5, the `ICMP` attribute)
+    is **not** implemented: an unreachable peer produces silence rather than a Data indication.
   * [RFC 6062](https://datatracker.ietf.org/doc/html/rfc6062) - TCP relaying TURN extension
-  * [RFC 6156](https://datatracker.ietf.org/doc/html/rfc6156) - IPv6 extension for TURN
+  * [RFC 6156](https://datatracker.ietf.org/doc/html/rfc6156) - IPv6 extension for TURN (folded into RFC 8656)
   * [RFC 7443](https://datatracker.ietf.org/doc/html/rfc7443) - ALPN support for STUN & TURN
   * [RFC 7635](https://datatracker.ietf.org/doc/html/rfc7635) - oAuth third-party TURN/STUN authorization
   * [RFC 8016](https://datatracker.ietf.org/doc/html/rfc8016) - Mobility with Traversal Using Relays around NAT (TURN)
@@ -77,7 +87,6 @@ TURN specs:
   * TURN REST API (http://tools.ietf.org/html/draft-uberti-behave-turn-rest-00)
   * Origin field in TURN (Multi-tenant TURN Server) (https://tools.ietf.org/html/draft-ietf-tram-stun-origin-06)
   * TURN Bandwidth draft specs (http://tools.ietf.org/html/draft-thomson-tram-turn-bandwidth-01)
-  * TURN-bis (with dual allocation) draft specs (http://tools.ietf.org/html/draft-ietf-tram-turnbis-04)
 
 ICE and related specs:
 
@@ -89,15 +98,15 @@ ICE and related specs:
 
 The implementation fully supports the following client-to-TURN-server protocols:
 
-  * UDP (per [RFC 5766](https://datatracker.ietf.org/doc/html/rfc5766))
-  * TCP (per [RFC 5766](https://datatracker.ietf.org/doc/html/rfc5766) and [RFC 6062](https://datatracker.ietf.org/doc/html/rfc6062))
-  * TLS (per [RFC 5766](https://datatracker.ietf.org/doc/html/rfc5766) and [RFC 6062](https://datatracker.ietf.org/doc/html/rfc6062)): including TLS1.3; ECDHE is supported.
+  * UDP (per [RFC 8656](https://datatracker.ietf.org/doc/html/rfc8656))
+  * TCP (per [RFC 8656](https://datatracker.ietf.org/doc/html/rfc8656) and [RFC 6062](https://datatracker.ietf.org/doc/html/rfc6062))
+  * TLS (per [RFC 8656](https://datatracker.ietf.org/doc/html/rfc8656) and [RFC 6062](https://datatracker.ietf.org/doc/html/rfc6062)): including TLS1.3; ECDHE is supported.
   * DTLS1.0 and DTLS1.2 (per [RFC 7350](https://datatracker.ietf.org/doc/html/rfc7350)): the DTLS listeners are not started unless `--dtls` is given.
   * SCTP (experimental implementation).
 
 Relay protocols:
 
-  * UDP (per [RFC 5766](https://datatracker.ietf.org/doc/html/rfc5766))
+  * UDP (per [RFC 8656](https://datatracker.ietf.org/doc/html/rfc8656))
   * TCP (per [RFC 6062](https://datatracker.ietf.org/doc/html/rfc6062))
 
 User databases (for user repository, with passwords or keys, if authentication is required):
