@@ -1,3 +1,11 @@
+Release 4.17.2
+
+Changelist:
+- Fix outgoing UDP TTL pinned to 1 on client-facing sockets (#2045) (Pavel Punsky <eakraly@users.noreply.github.com>)
+
+Contributors:
+- Pavel Punsky <eakraly@users.noreply.github.com>
+
 Release 4.17.1
 
 Changelist:
