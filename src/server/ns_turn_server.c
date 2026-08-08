@@ -2901,6 +2901,14 @@ static int handle_turn_channel_bind(turn_turnserver *server, ts_ur_super_session
         }
       } break;
       case STUN_ATTRIBUTE_XOR_PEER_ADDRESS: {
+        /* RFC 8489 Section 14: only the first occurrence of a repeated attribute needs
+         * to be processed; duplicates may be ignored. Unlike CreatePermission, which
+         * legitimately carries several peer addresses (RFC 8656 Section 9.2), a channel
+         * binds to exactly one. */
+        if (addr_found) {
+          break;
+        }
+
         stun_attr_get_addr_str(ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh),
                                sar, &peer_addr, NULL);
 
