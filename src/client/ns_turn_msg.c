@@ -697,7 +697,11 @@ bool stun_is_challenge_response_str(const uint8_t *buf, size_t len, int *err_cod
       const uint8_t *value = stun_attr_get_value(sar);
       if (value) {
         size_t vlen = (size_t)stun_attr_get_len(sar);
-        vlen = min(vlen, (size_t)STUN_MAX_REALM_SIZE);
+        /* Truncating would corrupt the realm mid-codepoint and fail the integrity
+         * check later with an unrelated error; reject the challenge instead. */
+        if (vlen > (size_t)STUN_MAX_REALM_SIZE) {
+          return false;
+        }
         memcpy(realm, value, vlen);
         realm[vlen] = 0;
         {
@@ -723,7 +727,9 @@ bool stun_is_challenge_response_str(const uint8_t *buf, size_t len, int *err_cod
           value = stun_attr_get_value(sar);
           if (value) {
             vlen = (size_t)stun_attr_get_len(sar);
-            vlen = min(vlen, (size_t)STUN_MAX_NONCE_SIZE);
+            if (vlen > (size_t)STUN_MAX_NONCE_SIZE) {
+              return false;
+            }
             memcpy(nonce, value, vlen);
             nonce[vlen] = 0;
             if (oauth) {

@@ -245,6 +245,56 @@ static void test_challenge_response_null_terminates_max_length_server_name(void)
   TEST_ASSERT_EQUAL_size_t(STUN_MAX_SERVER_NAME_SIZE, strlen((const char *)server_name));
 }
 
+/* The limits are byte counts, and RFC 8489 states them per attribute: USERNAME
+ * fewer than 509 bytes (Section 14.3); REALM and NONCE fewer than 128
+ * characters (Sections 14.9 and 14.10), which is up to 763 bytes of UTF-8.
+ * Spelled as literals so a change to the macros has to be deliberate. */
+static void test_length_limits_are_the_rfc8489_byte_counts(void) {
+  TEST_ASSERT_EQUAL_INT(508, STUN_MAX_USERNAME_SIZE);
+  TEST_ASSERT_EQUAL_INT(763, STUN_MAX_REALM_SIZE);
+  TEST_ASSERT_EQUAL_INT(763, STUN_MAX_NONCE_SIZE);
+}
+
+/* Builds a 401 challenge carrying realm_len realm bytes and nonce_len nonce
+ * bytes, and reports whether the client accepted it. */
+static bool parse_challenge_with(size_t realm_len, size_t nonce_len) {
+  uint8_t buf[MAX_STUN_MESSAGE_SIZE] = {0};
+  size_t len = 0;
+  stun_tid tid = {0};
+
+  stun_init_error_response_str(STUN_METHOD_ALLOCATE, buf, &len, 401, (const uint8_t *)"Unauthorized", &tid, true);
+
+  uint8_t value[STUN_MAX_REALM_SIZE + 2];
+  memset(value, 'a', sizeof(value));
+  TEST_ASSERT_TRUE(stun_attr_add_str(buf, &len, STUN_ATTRIBUTE_REALM, value, (int)realm_len));
+  TEST_ASSERT_TRUE(stun_attr_add_str(buf, &len, STUN_ATTRIBUTE_NONCE, value, (int)nonce_len));
+
+  int err_code = 0;
+  uint8_t err_msg[128] = {0};
+  uint8_t out_realm[STUN_MAX_REALM_SIZE + 1] = {0};
+  uint8_t out_nonce[STUN_MAX_NONCE_SIZE + 1] = {0};
+
+  return stun_is_challenge_response_str(buf, len, &err_code, err_msg, sizeof(err_msg), out_realm, out_nonce, NULL,
+                                        NULL);
+}
+
+/* A realm or nonce at the RFC 8489 maximum must parse: a 127-character UTF-8
+ * realm can occupy all 763 bytes. */
+static void test_challenge_accepts_max_length_realm_and_nonce(void) {
+  TEST_ASSERT_TRUE(parse_challenge_with(STUN_MAX_REALM_SIZE, STUN_MAX_NONCE_SIZE));
+}
+
+/* Past the maximum the challenge is rejected rather than silently truncated:
+ * truncation cuts a multi-byte codepoint in half and then fails the integrity
+ * check with an unrelated error. */
+static void test_challenge_rejects_oversized_realm(void) {
+  TEST_ASSERT_FALSE(parse_challenge_with(STUN_MAX_REALM_SIZE + 1, 16));
+}
+
+static void test_challenge_rejects_oversized_nonce(void) {
+  TEST_ASSERT_FALSE(parse_challenge_with(16, STUN_MAX_NONCE_SIZE + 1));
+}
+
 /* Build a minimal valid STUN message header with a chosen body length field,
  * so we can drive stun_get_message_len_str() across the uint16_t-overflow
  * boundary. */
@@ -844,6 +894,10 @@ int main(void) {
   RUN_TEST(test_channel_message_roundtrip);
   RUN_TEST(test_channel_message_zeroes_padding_bytes);
   RUN_TEST(test_challenge_response_null_terminates_max_length_server_name);
+  RUN_TEST(test_length_limits_are_the_rfc8489_byte_counts);
+  RUN_TEST(test_challenge_accepts_max_length_realm_and_nonce);
+  RUN_TEST(test_challenge_rejects_oversized_realm);
+  RUN_TEST(test_challenge_rejects_oversized_nonce);
   RUN_TEST(test_message_len_does_not_overflow_uint16);
   RUN_TEST(test_message_len_accepts_full_well_formed_message);
   RUN_TEST(test_rfc5780_change_request_roundtrip);

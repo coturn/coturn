@@ -3673,7 +3673,12 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
       return -1;
     }
 
-    alen = min((size_t)stun_attr_get_len(sar), sizeof(realm) - 1);
+    alen = (size_t)stun_attr_get_len(sar);
+    if (alen >= sizeof(realm)) {
+      *err_code = 400;
+      *reason = (const uint8_t *)"Realm is too long";
+      return -1;
+    }
     memcpy(realm, stun_attr_get_value(sar), alen);
     realm[alen] = 0;
 
@@ -3715,7 +3720,12 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
     return -1;
   }
 
-  alen = min((size_t)stun_attr_get_len(sar), sizeof(usname) - 1);
+  alen = (size_t)stun_attr_get_len(sar);
+  if (alen >= sizeof(usname)) {
+    *err_code = 400;
+    *reason = (const uint8_t *)"User name is too long";
+    return -1;
+  }
   memcpy(usname, stun_attr_get_value(sar), alen);
   usname[alen] = 0;
 
@@ -3755,7 +3765,12 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
       return -1;
     }
 
-    alen = min((size_t)stun_attr_get_len(sar), sizeof(nonce) - 1);
+    alen = (size_t)stun_attr_get_len(sar);
+    if (alen >= sizeof(nonce)) {
+      *err_code = 400;
+      *reason = (const uint8_t *)"Nonce is too long";
+      return -1;
+    }
     memcpy(nonce, stun_attr_get_value(sar), alen);
     nonce[alen] = 0;
 
