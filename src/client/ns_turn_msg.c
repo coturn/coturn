@@ -2205,10 +2205,15 @@ int stun_attr_get_padding_len_str(stun_attr_ref attr) {
 }
 
 bool stun_attr_add_padding_str(uint8_t *buf, size_t *len, uint16_t padding_len) {
-  uint8_t avalue[0xFFFF];
-  memset(avalue, 0, padding_len);
+  /* PADDING is all zeroes, so the scratch value is heap-allocated rather than a
+   * 64 KB stack array: this runs on relay threads for RFC 5780 responses. */
+  uint8_t *avalue = (uint8_t *)turn_calloc(1, padding_len);
 
-  return stun_attr_add_str(buf, len, STUN_ATTRIBUTE_PADDING, avalue, padding_len);
+  const bool ret = stun_attr_add_str(buf, len, STUN_ATTRIBUTE_PADDING, avalue, padding_len);
+
+  free(avalue);
+
+  return ret;
 }
 
 /* OAUTH */

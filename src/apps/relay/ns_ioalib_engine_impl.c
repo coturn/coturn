@@ -2559,9 +2559,12 @@ int ssl_read(evutil_socket_t fd, SSL *ssl, ioa_network_buffer_handle nbh, int ve
       case SSL_ERROR_SSL:
         if (verbose) {
           TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "SSL read error: ");
-          char buf[65536];
-          TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s (%d)\n", ERR_error_string(ERR_get_error(), buf),
-                        SSL_get_error(ssl, len));
+          /* ERR_error_string() demands a caller buffer of at least 256 bytes; the
+           * _n form takes the size and truncates instead. */
+          const int ssl_err = SSL_get_error(ssl, len);
+          char errstr[256] = {0};
+          ERR_error_string_n(ERR_get_error(), errstr, sizeof(errstr));
+          TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s (%d)\n", errstr, ssl_err);
         }
         if (verbose) {
           TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "SSL connection closed.\n");
@@ -3835,8 +3838,12 @@ try_start:
     case SSL_ERROR_SSL:
       if (verbose) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "SSL write error: ");
-        char buf[65536];
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s (%d)\n", ERR_error_string(ERR_get_error(), buf), SSL_get_error(ssl, rc));
+        /* ERR_error_string() demands a caller buffer of at least 256 bytes; the
+         * _n form takes the size and truncates instead. */
+        const int ssl_err = SSL_get_error(ssl, rc);
+        char errstr[256] = {0};
+        ERR_error_string_n(ERR_get_error(), errstr, sizeof(errstr));
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s (%d)\n", errstr, ssl_err);
       }
       return -1;
     default:
