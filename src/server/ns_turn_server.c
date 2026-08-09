@@ -4411,7 +4411,7 @@ static int handle_old_stun_command(turn_turnserver *server, ts_ur_super_session 
           if (newsz > sizeof(software)) {
             newsz = sizeof(software);
           }
-          memcpy(software, get_version(server), oldsz);
+          memcpy(software, get_version(server), min(oldsz, sizeof(software)));
           size_t len = ioa_network_buffer_get_size(nbh);
           stun_attr_add_str(ioa_network_buffer_data(nbh), &len, OLD_STUN_ATTRIBUTE_SERVER, software, newsz);
           ioa_network_buffer_set_size(nbh, len);
@@ -4470,7 +4470,7 @@ static int handle_old_stun_command(turn_turnserver *server, ts_ur_super_session 
       if (newsz > sizeof(software)) {
         newsz = sizeof(software);
       }
-      memcpy(software, get_version(server), oldsz);
+      memcpy(software, get_version(server), min(oldsz, sizeof(software)));
       size_t len = ioa_network_buffer_get_size(nbh);
       stun_attr_add_str(ioa_network_buffer_data(nbh), &len, OLD_STUN_ATTRIBUTE_SERVER, software, newsz);
       ioa_network_buffer_set_size(nbh, len);
