@@ -322,7 +322,11 @@ static void *uclient_listener_thread_main(void *arg) {
   return NULL;
 }
 
-static int start_listener_threads(void) {
+/* Build the pool's per-listener state and event bases without running any of
+ * them yet. Session creation needs pick_listener_base() to hand out a base, so
+ * this must happen before start_client / start_c2c; the threads themselves are
+ * spawned later by start_listener_threads(). */
+static int init_listener_pool(void) {
   /* Show how the pool is configured for this run, regardless of whether
    * the count came from -K or auto-scaling. Surfacing the actual number
    * (and whether it was auto-derived) is the only way an operator can
@@ -345,6 +349,17 @@ static int start_listener_threads(void) {
     listeners[i].l_min_latency = 0xFFFFFFFFu;
     listeners[i].l_min_jitter = 0xFFFFFFFFu;
     listeners[i].stop = 0;
+  }
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "uclient: listener pool configured for %d thread(s) (%s)\n", num_listener_threads,
+                origin);
+  return 0;
+}
+
+static int start_listener_threads(void) {
+  if (num_listener_threads <= 0 || !listeners) {
+    return 0;
+  }
+  for (int i = 0; i < num_listener_threads; ++i) {
     if (pthread_create(&listeners[i].thread, NULL, uclient_listener_thread_main, &listeners[i]) != 0) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "uclient: pthread_create listener %d failed\n", i);
       /* Leave started=false so stop_listener_threads doesn't pthread_join
@@ -354,7 +369,7 @@ static int start_listener_threads(void) {
     }
     listeners[i].started = true;
   }
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "uclient: started %d listener thread(s) (%s)\n", num_listener_threads, origin);
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "uclient: started %d listener thread(s)\n", num_listener_threads);
   return 0;
 }
 
@@ -799,7 +814,11 @@ static void *uclient_sender_thread_main(void *arg) {
   return NULL;
 }
 
-static int start_sender_threads(void) {
+/* Counterpart to init_listener_pool(): build the sender state and arm each
+ * per-sender timer, but do not run them. pick_sender_id() needs the array
+ * during session creation; the threads start once every session exists. The
+ * armed timers stay dormant until their base is dispatched by the thread. */
+static int init_sender_pool(void) {
   const char *origin = num_sender_threads_explicit ? "explicit -J" : "auto";
   if (num_sender_threads <= 0) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "uclient: sender pool disabled (single-threaded send on main; %s)\n", origin);
@@ -829,14 +848,24 @@ static int start_sender_threads(void) {
     tv.tv_sec = 0;
     tv.tv_usec = (is_packet_flood_mode() || is_invalid_flood_mode()) ? 100 : 1000;
     evtimer_add(senders[i].timer_ev, &tv);
+  }
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "uclient: sender pool configured for %d thread(s) (%s)\n", num_sender_threads,
+                origin);
+  return 0;
+}
 
+static int start_sender_threads(void) {
+  if (num_sender_threads <= 0 || !senders) {
+    return 0;
+  }
+  for (int i = 0; i < num_sender_threads; ++i) {
     if (pthread_create(&senders[i].thread, NULL, uclient_sender_thread_main, &senders[i]) != 0) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "uclient: pthread_create sender %d failed\n", i);
       return -1;
     }
     senders[i].started = true;
   }
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "uclient: started %d sender thread(s) (%s)\n", num_sender_threads, origin);
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "uclient: started %d sender thread(s)\n", num_sender_threads);
   return 0;
 }
 
@@ -2691,12 +2720,12 @@ void start_mclient(const char *remote_address, uint16_t port, const unsigned cha
     num_listener_threads = UCLIENT_AUTO_LISTENERS_TARGET;
   }
 
-  /* Start the listener thread pool BEFORE any session creation. Each new
+  /* Configure the listener pool BEFORE any session creation. Each new
    * session's recv events will be registered against the assigned
    * listener's event_base via pick_listener_base() inside start_client /
-   * start_c2c. The pool runs concurrently with the main thread for the
-   * lifetime of the test. */
-  if (start_listener_threads() < 0) {
+   * start_c2c. The threads are spawned only once every session exists -
+   * see start_listener_threads() below. */
+  if (init_listener_pool() < 0) {
     /* Falling back to legacy single-threaded model is safer than aborting
      * a load test; pick_listener_base() returns client_event_base when
      * num_listener_threads is 0 or listeners is NULL. */
@@ -2713,11 +2742,11 @@ void start_mclient(const char *remote_address, uint16_t port, const unsigned cha
     num_sender_threads = UCLIENT_AUTO_SENDERS_TARGET;
   }
 
-  /* Start the sender thread pool BEFORE start_full_timer is set so the
+  /* Configure the sender pool BEFORE start_full_timer is set so the
    * per-sender timers exist by the time iteration begins. Session
    * sender_id assignment happens during create_new_ss / per-session
-   * setup (pick_sender_id), so the pool must be live at that point. */
-  if (start_sender_threads() < 0) {
+   * setup (pick_sender_id), so the array must exist at that point. */
+  if (init_sender_pool() < 0) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "uclient: sender pool init failed, falling back to single-threaded\n");
     num_sender_threads = 0;
   }
@@ -2778,6 +2807,19 @@ void start_mclient(const char *remote_address, uint16_t port, const unsigned cha
   }
 
   total_clients = tot_clients;
+
+  /* Only now start the pools. Session creation runs TLS handshakes and builds
+   * MESSAGE-INTEGRITY on the main thread, and a listener verifying integrity
+   * concurrently touches the same OpenSSL library state - freeing it here
+   * while a worker reads it is a data race ThreadSanitizer reports against
+   * libcrypto. Spawning after the last session also means senders never
+   * iterate elems[] while it is still being appended to.
+   * A spawn failure cannot fall back to single-threaded: sessions are already
+   * bound to listener bases that would then never be dispatched. */
+  if (start_listener_threads() < 0 || start_sender_threads() < 0) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "uclient: cannot start worker threads\n");
+    exit(-1);
+  }
 
   __turn_getMSTime();
 
