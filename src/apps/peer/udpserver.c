@@ -209,7 +209,9 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void *arg) 
 
   ioa_addr *addr = (ioa_addr *)arg;
 
-  stun_buffer buffer;
+  /* One event_base dispatches every peer socket serially, so a module-static
+   * echo buffer is race-free and keeps ~64 KB out of the callback frame. */
+  static stun_buffer buffer;
   ioa_addr remote_addr;
   uint32_t slen = get_ioa_addr_len(addr);
   ssize_t len = 0;
