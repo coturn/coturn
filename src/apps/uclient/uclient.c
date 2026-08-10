@@ -2070,7 +2070,9 @@ static void client_discard_input_handler(evutil_socket_t fd, short what, void *a
     return;
   }
 
-  uint8_t buffer[STUN_BUFFER_SIZE];
+  /* Received bytes are discarded, so the drain loop just needs somewhere to put
+   * them — a full STUN_BUFFER_SIZE frame on a listener thread buys nothing. */
+  uint8_t buffer[4096];
 
   if (elem->pinfo.ssl) {
     int rc = 0;
@@ -2228,6 +2230,11 @@ static void start_allocation_flood(const char *remote_address, uint16_t port, co
   synthetic_peer_counter = 0;
   reset_load_generator_rate_stats();
 
+  /* Each app_ur_session carries two ~64 KB stun_buffers. Allocate the pair once
+   * and reset it per iteration rather than paying for it in the frame. */
+  app_ur_session *ss_probe = (app_ur_session *)turn_calloc(1, sizeof(app_ur_session));
+  app_ur_session *ss_alloc = (app_ur_session *)turn_calloc(1, sizeof(app_ur_session));
+
   while (unlimited || (tot_allocations < total_target)) {
     for (int i = 0; i < mclient; ++i) {
       app_ur_conn_info clnet_info_probe;
@@ -2248,16 +2255,14 @@ static void start_allocation_flood(const char *remote_address, uint16_t port, co
 
       turn_refresh_allocation(clnet_verbose, &clnet_info, 0);
 
-      app_ur_session ss_probe;
-      app_ur_session ss_alloc;
-      memset(&ss_probe, 0, sizeof(ss_probe));
-      memset(&ss_alloc, 0, sizeof(ss_alloc));
-      ss_probe.pinfo = clnet_info_probe;
-      ss_alloc.pinfo = clnet_info;
-      if (ss_probe.pinfo.fd >= 0 || ss_probe.pinfo.ssl) {
-        uc_delete_session_elem_data(&ss_probe);
+      memset(ss_probe, 0, sizeof(*ss_probe));
+      memset(ss_alloc, 0, sizeof(*ss_alloc));
+      ss_probe->pinfo = clnet_info_probe;
+      ss_alloc->pinfo = clnet_info;
+      if (ss_probe->pinfo.fd >= 0 || ss_probe->pinfo.ssl) {
+        uc_delete_session_elem_data(ss_probe);
       }
-      uc_delete_session_elem_data(&ss_alloc);
+      uc_delete_session_elem_data(ss_alloc);
 
       ++tot_allocations;
 
@@ -2274,6 +2279,9 @@ static void start_allocation_flood(const char *remote_address, uint16_t port, co
       }
     }
   }
+
+  free(ss_probe);
+  free(ss_alloc);
 
   __turn_getMSTime();
   print_load_generator_rate(__FUNCTION__);
@@ -2422,17 +2430,19 @@ static int start_c2c(const char *remote_address, uint16_t port, const unsigned c
 
 static int refresh_channel(app_ur_session *elem, uint16_t method, uint32_t lt) {
 
-  stun_buffer message;
   app_ur_conn_info *clnet_info = &(elem->pinfo);
 
   if (clnet_info->is_peer) {
     return 0;
   }
 
+  int ret = 0;
+  stun_buffer *message = (stun_buffer *)turn_calloc(1, sizeof(stun_buffer));
+
   if (!method || (method == STUN_METHOD_REFRESH)) {
-    stun_init_request(STUN_METHOD_REFRESH, &message);
+    stun_init_request(STUN_METHOD_REFRESH, message);
     lt = htonl(lt);
-    stun_attr_add(&message, STUN_ATTRIBUTE_LIFETIME, (const char *)&lt, 4);
+    stun_attr_add(message, STUN_ATTRIBUTE_LIFETIME, (const char *)&lt, 4);
 
     if (dual_allocation && !mobility) {
       int t = ((uint8_t)turn_random_number()) % 3;
@@ -2443,55 +2453,62 @@ static int refresh_channel(app_ur_session *elem, uint16_t method, uint32_t lt) {
         field[1] = 0;
         field[2] = 0;
         field[3] = 0;
-        stun_attr_add(&message, STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY, (const char *)field, 4);
+        stun_attr_add(message, STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY, (const char *)field, 4);
       }
     }
 
-    add_origin(&message);
-    if (add_integrity(clnet_info, &message) < 0) {
-      return -1;
+    add_origin(message);
+    if (add_integrity(clnet_info, message) < 0) {
+      ret = -1;
+      goto done;
     }
     if (use_fingerprints) {
-      stun_attr_add_fingerprint_str(message.buf, (size_t *)&(message.len));
+      stun_attr_add_fingerprint_str(message->buf, (size_t *)&(message->len));
     }
-    send_buffer(clnet_info, &message, 0, 0);
+    send_buffer(clnet_info, message, 0, 0);
   }
 
   if (lt && !addr_any(&(elem->pinfo.peer_addr))) {
 
     if (!no_permissions) {
       if (!method || (method == STUN_METHOD_CREATE_PERMISSION)) {
-        stun_init_request(STUN_METHOD_CREATE_PERMISSION, &message);
-        stun_attr_add_addr(&message, STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &(elem->pinfo.peer_addr));
-        add_origin(&message);
-        if (add_integrity(clnet_info, &message) < 0) {
-          return -1;
+        stun_init_request(STUN_METHOD_CREATE_PERMISSION, message);
+        stun_attr_add_addr(message, STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &(elem->pinfo.peer_addr));
+        add_origin(message);
+        if (add_integrity(clnet_info, message) < 0) {
+          ret = -1;
+          goto done;
         }
         if (use_fingerprints) {
-          stun_attr_add_fingerprint_str(message.buf, (size_t *)&(message.len));
+          stun_attr_add_fingerprint_str(message->buf, (size_t *)&(message->len));
         }
-        send_buffer(&(elem->pinfo), &message, 0, 0);
+        send_buffer(&(elem->pinfo), message, 0, 0);
       }
     }
 
     if (!method || (method == STUN_METHOD_CHANNEL_BIND)) {
       if (STUN_VALID_CHANNEL(elem->chnum)) {
-        stun_set_channel_bind_request(&message, &(elem->pinfo.peer_addr), elem->chnum);
-        add_origin(&message);
-        if (add_integrity(clnet_info, &message) < 0) {
-          return -1;
+        stun_set_channel_bind_request(message, &(elem->pinfo.peer_addr), elem->chnum);
+        add_origin(message);
+        if (add_integrity(clnet_info, message) < 0) {
+          ret = -1;
+          goto done;
         }
         if (use_fingerprints) {
-          stun_attr_add_fingerprint_str(message.buf, (size_t *)&(message.len));
+          stun_attr_add_fingerprint_str(message->buf, (size_t *)&(message->len));
         }
-        send_buffer(&(elem->pinfo), &message, 1, 0);
+        send_buffer(&(elem->pinfo), message, 1, 0);
       }
     }
   }
 
   elem->refresh_time = current_mstime + 30 * 1000;
 
-  return 0;
+done:
+
+  free(message);
+
+  return ret;
 }
 
 static inline int client_timer_handler(app_ur_session *elem, int *done) {

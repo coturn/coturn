@@ -504,14 +504,16 @@ static int stunclient_receive(stun_buffer *buf, int sockfd, ioa_addr *local_addr
 static int run_stunclient(ioa_addr *local_addr, ioa_addr *remote_addr, ioa_addr *reflexive_addr, ioa_addr *other_addr,
                           uint16_t *local_port, bool *rfc5780, bool change_ip, bool change_port, int padding) {
   int ret = 0;
-  stun_buffer buf;
+  stun_buffer *buf = (stun_buffer *)turn_calloc(1, sizeof(stun_buffer));
 
   init_socket(&udp_fd, local_addr, *local_port, remote_addr);
 
-  ret = stunclient_send(&buf, udp_fd, local_addr, local_port, remote_addr, change_ip, change_port, padding, -1);
-  ret = stunclient_receive(&buf, udp_fd, local_addr, reflexive_addr, other_addr, rfc5780);
+  ret = stunclient_send(buf, udp_fd, local_addr, local_port, remote_addr, change_ip, change_port, padding, -1);
+  ret = stunclient_receive(buf, udp_fd, local_addr, reflexive_addr, other_addr, rfc5780);
 
   socket_closesocket(udp_fd);
+
+  free(buf);
 
   return ret;
 }
@@ -520,28 +522,31 @@ static int run_stunclient_hairpinning(ioa_addr *local_addr, ioa_addr *remote_add
                                       ioa_addr *other_addr, uint16_t *local_port, bool *rfc5780, bool change_ip,
                                       bool change_port, int padding) {
   int ret = 0;
-  stun_buffer buf;
-  stun_buffer buf2;
+  stun_buffer *buf = (stun_buffer *)turn_calloc(1, sizeof(stun_buffer));
+  stun_buffer *buf2 = (stun_buffer *)turn_calloc(1, sizeof(stun_buffer));
 
   init_socket(&udp_fd, local_addr, *local_port, remote_addr);
 
-  ret = stunclient_send(&buf, udp_fd, local_addr, local_port, remote_addr, change_ip, change_port, padding, -1);
-  ret = stunclient_receive(&buf, udp_fd, local_addr, reflexive_addr, other_addr, rfc5780);
+  ret = stunclient_send(buf, udp_fd, local_addr, local_port, remote_addr, change_ip, change_port, padding, -1);
+  ret = stunclient_receive(buf, udp_fd, local_addr, reflexive_addr, other_addr, rfc5780);
 
   addr_cpy(remote_addr, reflexive_addr);
   addr_set_port(local_addr, 0);
 
   init_socket(&udp_fd2, local_addr, 0, remote_addr);
 
-  ret = stunclient_send(&buf2, udp_fd2, local_addr, local_port, remote_addr, change_ip, change_port, padding, -1);
-  ret = stunclient_receive(&buf, udp_fd, local_addr, reflexive_addr, other_addr, rfc5780);
+  ret = stunclient_send(buf2, udp_fd2, local_addr, local_port, remote_addr, change_ip, change_port, padding, -1);
+  ret = stunclient_receive(buf, udp_fd, local_addr, reflexive_addr, other_addr, rfc5780);
 
   if (ret) {
-    ret = stunclient_receive(&buf2, udp_fd2, local_addr, reflexive_addr, other_addr, rfc5780);
+    ret = stunclient_receive(buf2, udp_fd2, local_addr, reflexive_addr, other_addr, rfc5780);
   }
 
   socket_closesocket(udp_fd);
   socket_closesocket(udp_fd2);
+
+  free(buf);
+  free(buf2);
 
   return ret;
 }
@@ -550,14 +555,14 @@ static int run_stunclient_lifetime(int timer, ioa_addr *local_addr, ioa_addr *re
                                    ioa_addr *other_addr, uint16_t *local_port, bool *rfc5780, bool change_ip,
                                    bool change_port, int padding) {
   int ret = 0;
-  stun_buffer buf;
-  stun_buffer buf2;
+  stun_buffer *buf = (stun_buffer *)turn_calloc(1, sizeof(stun_buffer));
+  stun_buffer *buf2 = (stun_buffer *)turn_calloc(1, sizeof(stun_buffer));
   uint16_t response_port;
 
   init_socket(&udp_fd, local_addr, *local_port, remote_addr);
 
-  ret = stunclient_send(&buf, udp_fd, local_addr, local_port, remote_addr, change_ip, change_port, padding, -1);
-  ret = stunclient_receive(&buf, udp_fd, local_addr, reflexive_addr, other_addr, rfc5780);
+  ret = stunclient_send(buf, udp_fd, local_addr, local_port, remote_addr, change_ip, change_port, padding, -1);
+  ret = stunclient_receive(buf, udp_fd, local_addr, reflexive_addr, other_addr, rfc5780);
 
   addr_set_port(local_addr, 0);
   sleep(timer);
@@ -565,12 +570,15 @@ static int run_stunclient_lifetime(int timer, ioa_addr *local_addr, ioa_addr *re
   init_socket(&udp_fd2, local_addr, 0, remote_addr);
   response_port = addr_get_port(reflexive_addr);
 
-  ret = stunclient_send(&buf2, udp_fd2, local_addr, local_port, remote_addr, change_ip, change_port, padding,
+  ret = stunclient_send(buf2, udp_fd2, local_addr, local_port, remote_addr, change_ip, change_port, padding,
                         response_port);
-  ret = stunclient_receive(&buf, udp_fd, local_addr, reflexive_addr, other_addr, rfc5780);
+  ret = stunclient_receive(buf, udp_fd, local_addr, reflexive_addr, other_addr, rfc5780);
 
   socket_closesocket(udp_fd);
   socket_closesocket(udp_fd2);
+
+  free(buf);
+  free(buf2);
 
   return ret;
 }

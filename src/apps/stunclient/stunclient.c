@@ -320,7 +320,8 @@ static int run_stunclient(const char *rip, uint16_t rport, uint16_t *port, bool 
                           bool change_ip, bool change_port, int padding, unsigned int timeout_ms, bool print_details) {
 
   ioa_addr remote_addr;
-  stun_buffer buf;
+  int ret = 0;
+  stun_buffer *buf = (stun_buffer *)turn_calloc(1, sizeof(stun_buffer));
 
   memset(&remote_addr, 0, sizeof(remote_addr));
   if (make_ioa_addr((const uint8_t *)rip, rport, &remote_addr) < 0) {
@@ -355,16 +356,16 @@ static int run_stunclient(const char *rip, uint16_t rport, uint16_t *port, bool 
     }
   }
 
-  stun_prepare_binding_request(&buf);
+  stun_prepare_binding_request(buf);
 
   if (response_port >= 0 && response_port <= USHRT_MAX) {
-    stun_attr_add_response_port_str((uint8_t *)(buf.buf), (size_t *)&(buf.len), (uint16_t)response_port);
+    stun_attr_add_response_port_str((uint8_t *)(buf->buf), (size_t *)&(buf->len), (uint16_t)response_port);
   }
   if (change_ip || change_port) {
-    stun_attr_add_change_request_str((uint8_t *)buf.buf, (size_t *)&(buf.len), change_ip, change_port);
+    stun_attr_add_change_request_str((uint8_t *)buf->buf, (size_t *)&(buf->len), change_ip, change_port);
   }
 
-  if (padding && !stun_attr_add_padding_str((uint8_t *)buf.buf, (size_t *)&(buf.len), 1500)) {
+  if (padding && !stun_attr_add_padding_str((uint8_t *)buf->buf, (size_t *)&(buf->len), 1500)) {
     printf("%s: ERROR: Cannot add padding\n", __FUNCTION__);
   }
 
@@ -373,7 +374,7 @@ static int run_stunclient(const char *rip, uint16_t rport, uint16_t *port, bool 
     uint32_t slen = get_ioa_addr_len(&remote_addr);
 
     do {
-      len = sendto(udp_fd, buf.buf, buf.len, 0, (struct sockaddr *)&remote_addr, (socklen_t)slen);
+      len = sendto(udp_fd, buf->buf, buf->len, 0, (struct sockaddr *)&remote_addr, (socklen_t)slen);
     } while (len < 0 && (socket_eintr() || socket_enobufs() || socket_eagain()));
 
     if (len < 0) {
@@ -397,10 +398,10 @@ static int run_stunclient(const char *rip, uint16_t rport, uint16_t *port, bool 
   {
     ssize_t len = 0;
     int recvd = 0;
-    const int to_recv = sizeof(buf.buf);
+    const int to_recv = sizeof(buf->buf);
 
     do {
-      len = recv(udp_fd, buf.buf, to_recv - recvd, 0);
+      len = recv(udp_fd, buf->buf, to_recv - recvd, 0);
       if (len > 0) {
         recvd += len;
         break;
@@ -410,26 +411,24 @@ static int run_stunclient(const char *rip, uint16_t rport, uint16_t *port, bool 
     if (recvd > 0) {
       len = recvd;
     } else {
-      if (socket_eagain() || socket_ewouldblock()) {
-        return 1;
-      }
-      return -1;
+      ret = (socket_eagain() || socket_ewouldblock()) ? 1 : -1;
+      goto done;
     }
-    buf.len = len;
+    buf->len = len;
 
-    if (stun_is_command_message(&buf)) {
+    if (stun_is_command_message(buf)) {
 
-      if (stun_is_response(&buf)) {
+      if (stun_is_response(buf)) {
 
-        if (stun_is_success_response(&buf)) {
+        if (stun_is_success_response(buf)) {
 
-          if (stun_is_binding_response(&buf)) {
+          if (stun_is_binding_response(buf)) {
 
             ioa_addr reflexive_addr;
             addr_set_any(&reflexive_addr);
-            if (stun_attr_get_first_addr(&buf, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS, &reflexive_addr, NULL)) {
+            if (stun_attr_get_first_addr(buf, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS, &reflexive_addr, NULL)) {
 
-              stun_attr_ref sar = stun_attr_get_first_by_type_str(buf.buf, buf.len, STUN_ATTRIBUTE_OTHER_ADDRESS);
+              stun_attr_ref sar = stun_attr_get_first_by_type_str(buf->buf, buf->len, STUN_ATTRIBUTE_OTHER_ADDRESS);
               if (sar) {
                 *rfc5780 = 1;
                 if (print_details) {
@@ -437,11 +436,11 @@ static int run_stunclient(const char *rip, uint16_t rport, uint16_t *port, bool 
                   printf("RFC 5780 response %d\n", ++counter);
                 }
                 ioa_addr other_addr;
-                stun_attr_get_addr_str((uint8_t *)buf.buf, (size_t)buf.len, sar, &other_addr, NULL);
-                sar = stun_attr_get_first_by_type_str(buf.buf, buf.len, STUN_ATTRIBUTE_RESPONSE_ORIGIN);
+                stun_attr_get_addr_str((uint8_t *)buf->buf, (size_t)buf->len, sar, &other_addr, NULL);
+                sar = stun_attr_get_first_by_type_str(buf->buf, buf->len, STUN_ATTRIBUTE_RESPONSE_ORIGIN);
                 if (sar) {
                   ioa_addr response_origin;
-                  stun_attr_get_addr_str((uint8_t *)buf.buf, (size_t)buf.len, sar, &response_origin, NULL);
+                  stun_attr_get_addr_str((uint8_t *)buf->buf, (size_t)buf->len, sar, &response_origin, NULL);
                   if (print_details) {
                     addr_debug_print(1, &response_origin, "Response origin: ");
                   }
@@ -464,7 +463,7 @@ static int run_stunclient(const char *rip, uint16_t rport, uint16_t *port, bool 
           int err_code = 0;
           uint8_t err_msg[1025] = "\0";
           size_t err_msg_size = sizeof(err_msg);
-          if (stun_is_error_response(&buf, &err_code, err_msg, err_msg_size)) {
+          if (stun_is_error_response(buf, &err_code, err_msg, err_msg_size)) {
             printf("The response is an error %d (%s)\n", err_code, (char *)err_msg);
           } else {
             printf("The response is an unrecognized error\n");
@@ -478,7 +477,11 @@ static int run_stunclient(const char *rip, uint16_t rport, uint16_t *port, bool 
     }
   }
 
-  return 0;
+done:
+
+  free(buf);
+
+  return ret;
 }
 #endif // ifdef __cplusplus
 
