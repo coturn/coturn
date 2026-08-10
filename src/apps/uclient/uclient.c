@@ -152,7 +152,11 @@ static int client_shutdown(app_ur_session *elem);
 static uint64_t current_time = 0;
 static uint64_t current_mstime = 0;
 
-static char buffer_to_send[65536] = "\0";
+/* Constant payload filler, written once during setup and only read afterwards.
+ * It must stay immutable: every sender thread copies from it concurrently, so
+ * anything stamped here would be shared between sessions. Per-send fields go
+ * into the outgoing packet via stamp_message_info(). */
+static char payload_template[65536] = "\0";
 
 static int total_clients = 0;
 
@@ -1909,6 +1913,24 @@ static int client_shutdown(app_ur_session *elem) {
   return 0;
 }
 
+/* Write this send's sequence number and timestamp into the outgoing packet.
+ * The peer echoes them back and client_read() derives loss, latency and jitter
+ * from them, so they must describe this session's send and no other: stamping
+ * them into the shared payload_template instead let a second sender thread
+ * overwrite them between the stamp and the copy, and the packet then carried
+ * another session's values. memcpy because the destination sits at an
+ * arbitrary offset in the message and mstime is 64-bit.
+ * clmessage_length >= sizeof(message_info) is enforced in mainuclient.c for
+ * every mode that stamps. */
+static void stamp_message_info(void *payload, const app_ur_session *elem) {
+  /* Zero-initialized: message_info has padding between msgnum and mstime, and
+   * the whole struct is copied onto the wire. */
+  message_info mi = {0};
+  mi.msgnum = elem->wmsgnum;
+  mi.mstime = current_mstime;
+  memcpy(payload, &mi, sizeof(mi));
+}
+
 static int client_write(app_ur_session *elem) {
 
   if (!elem) {
@@ -1935,15 +1957,12 @@ static int client_write(app_ur_session *elem) {
       memcpy(elem->out_buffer.buf + 4, &(elem->wmsgnum), sizeof(elem->wmsgnum));
     }
     elem->out_buffer.len = payload_len;
-  } else {
-    message_info *mi = (message_info *)buffer_to_send;
-    mi->msgnum = elem->wmsgnum;
-    mi->mstime = current_mstime;
   }
 
   if (!is_invalid_flood_mode() && is_TCP_relay()) {
 
-    memcpy(elem->out_buffer.buf, buffer_to_send, clmessage_length);
+    memcpy(elem->out_buffer.buf, payload_template, clmessage_length);
+    stamp_message_info(elem->out_buffer.buf, elem);
     elem->out_buffer.len = clmessage_length;
 
     if (elem->pinfo.is_peer) {
@@ -1968,10 +1987,15 @@ static int client_write(app_ur_session *elem) {
   } else if (!is_invalid_flood_mode() && !do_not_use_channel) {
     /* Let's always do padding: */
     stun_init_channel_message(elem->chnum, &(elem->out_buffer), clmessage_length, mandatory_channel_padding || use_tcp);
-    memcpy(elem->out_buffer.buf + 4, buffer_to_send, clmessage_length);
+    memcpy(elem->out_buffer.buf + 4, payload_template, clmessage_length);
+    stamp_message_info(elem->out_buffer.buf + 4, elem);
   } else if (!is_invalid_flood_mode()) {
     stun_init_indication(STUN_METHOD_SEND, &(elem->out_buffer));
-    stun_attr_add(&(elem->out_buffer), STUN_ATTRIBUTE_DATA, buffer_to_send, clmessage_length);
+    /* The DATA value lands 4 bytes (the attribute header) past the current end
+     * of the message, so capture that before appending. */
+    const size_t data_offset = elem->out_buffer.len + 4;
+    stun_attr_add(&(elem->out_buffer), STUN_ATTRIBUTE_DATA, payload_template, clmessage_length);
+    stamp_message_info(elem->out_buffer.buf + data_offset, elem);
     stun_attr_add_addr(&(elem->out_buffer), STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &(elem->pinfo.peer_addr));
     if (dont_fragment) {
       stun_attr_add(&(elem->out_buffer), STUN_ATTRIBUTE_DONT_FRAGMENT, NULL, 0);
@@ -2675,7 +2699,7 @@ void start_mclient(const char *remote_address, uint16_t port, const unsigned cha
   uint32_t stime = current_time;
   reset_load_generator_rate_stats();
 
-  memset(buffer_to_send, 7, clmessage_length);
+  memset(payload_template, 7, clmessage_length);
 
   client_event_base = turn_event_base_new();
 
