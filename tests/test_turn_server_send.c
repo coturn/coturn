@@ -492,11 +492,9 @@ static void test_send_without_data_is_discarded(void) {
   TEST_ASSERT_EQUAL_INT(0, sent_capture.calls);
 }
 
-/* Current behaviour, pinned: a repeated DATA attribute is treated as an error
- * and the indication is discarded. RFC 8489 Section 14 would instead have the
- * first occurrence win, as XOR-PEER-ADDRESS does; changing that is a
- * deliberate decision and must update this test. */
-static void test_send_with_duplicate_data_is_discarded(void) {
+/* RFC 8489 Section 14: a repeated DATA attribute is not an error - the first
+ * occurrence is relayed and the duplicate ignored, as for XOR-PEER-ADDRESS. */
+static void test_send_uses_first_of_duplicate_data(void) {
   ioa_addr peer;
   make_addr(&peer, PEER_A, PEER_PORT_A);
   add_permission(PEER_A, PEER_PORT_A);
@@ -509,8 +507,10 @@ static void test_send_with_duplicate_data_is_discarded(void) {
   msg_add_data(second, sizeof(second));
   msg_finish();
 
-  TEST_ASSERT_EQUAL_INT(400, run_send());
-  TEST_ASSERT_EQUAL_INT(0, sent_capture.calls);
+  TEST_ASSERT_EQUAL_INT(0, run_send());
+  TEST_ASSERT_EQUAL_INT(1, sent_capture.calls);
+  TEST_ASSERT_EQUAL_size_t(sizeof(first), sent_capture.len);
+  TEST_ASSERT_EQUAL_MEMORY(first, sent_capture.payload, sizeof(first));
 }
 
 /* RFC 8656 Section 14.9 (DONT-FRAGMENT is comprehension-required): a server
@@ -689,7 +689,7 @@ int main(void) {
   RUN_TEST(test_send_to_unpermitted_peer_is_dropped_without_error);
   RUN_TEST(test_send_relays_zero_length_data);
   RUN_TEST(test_send_without_data_is_discarded);
-  RUN_TEST(test_send_with_duplicate_data_is_discarded);
+  RUN_TEST(test_send_uses_first_of_duplicate_data);
   RUN_TEST(test_send_dont_fragment_is_unknown_when_unsupported);
   RUN_TEST(test_send_dont_fragment_sets_df_when_supported);
   RUN_TEST(test_send_over_a_tcp_relay_is_rejected);

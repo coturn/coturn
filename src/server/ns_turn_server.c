@@ -3262,10 +3262,9 @@ static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss, in
         }
       } break;
       case STUN_ATTRIBUTE_DATA: {
-        if (len >= 0) {
-          *err_code = 400;
-          *reason = (const uint8_t *)"Data duplication";
-        } else {
+        /* RFC 8489 Section 14: only the first occurrence of a repeated attribute needs
+         * to be processed; duplicates may be ignored. */
+        if (len < 0) {
           len = stun_attr_get_len(sar);
           value = stun_attr_get_value(sar);
         }
