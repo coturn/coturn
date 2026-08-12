@@ -288,6 +288,10 @@ static void msg_add_dont_fragment(void) {
   TEST_ASSERT_TRUE(stun_attr_add_str(test_nbh.buf, &msg_len, STUN_ATTRIBUTE_DONT_FRAGMENT, NULL, 0));
 }
 
+static void msg_add_channel_number(uint16_t chnum) {
+  TEST_ASSERT_TRUE(stun_attr_add_channel_number_str(test_nbh.buf, &msg_len, chnum));
+}
+
 static void msg_finish(void) {
   test_nbh.len = msg_len;
   test_nbh.offset = 0;
@@ -346,6 +350,34 @@ static int run_create_permission(int *resp_constructed) {
 
   handle_turn_create_permission(&server, &ss, &tid, &constructed, &err_code, &reason, unknown_attrs, &ua_num,
                                 &in_buffer, &response_nbh);
+  last_ua_num = ua_num;
+  if (resp_constructed) {
+    *resp_constructed = constructed;
+  }
+  return err_code;
+}
+
+/* Drives handle_turn_channel_bind() over the fixture buffer. Returns the
+ * err_code; resp_constructed reports whether a success response was built. */
+static int run_channel_bind(int *resp_constructed) {
+  ioa_net_data in_buffer;
+  memset(&in_buffer, 0, sizeof(in_buffer));
+  in_buffer.nbh = &test_nbh;
+  in_buffer.recv_ttl = recv_ttl;
+
+  stun_tid tid;
+  memset(&tid, 0, sizeof(tid));
+  stun_tid_from_message_str(test_nbh.buf, test_nbh.len, &tid);
+
+  int err_code = 0;
+  int constructed = 0;
+  const uint8_t *reason = NULL;
+  uint16_t unknown_attrs[MAX_NUMBER_OF_UNKNOWN_ATTRS];
+  uint16_t ua_num = 0;
+  memset(unknown_attrs, 0, sizeof(unknown_attrs));
+
+  handle_turn_channel_bind(&server, &ss, &tid, &constructed, &err_code, &reason, unknown_attrs, &ua_num, &in_buffer,
+                           &response_nbh);
   last_ua_num = ua_num;
   if (resp_constructed) {
     *resp_constructed = constructed;
@@ -646,6 +678,70 @@ static void test_create_permission_without_peer_address_is_rejected(void) {
   TEST_ASSERT_EQUAL_INT(400, run_create_permission(NULL));
 }
 
+/* A channel number in the strict RFC 8656 Section 12 range. */
+#define TEST_CHANNEL_NUMBER (0x4001)
+
+/* Harness sanity for the ChannelBind path: one peer address binds that peer to
+ * the channel and a success response is built. */
+static void test_channel_bind_binds_the_peer_address(void) {
+  ioa_addr peer;
+  make_addr(&peer, PEER_A, PEER_PORT_A);
+
+  msg_begin(STUN_METHOD_CHANNEL_BIND, false);
+  msg_add_channel_number(TEST_CHANNEL_NUMBER);
+  msg_add_peer(&peer);
+  msg_finish();
+
+  int constructed = 0;
+  TEST_ASSERT_EQUAL_INT(0, run_channel_bind(&constructed));
+  TEST_ASSERT_TRUE(constructed);
+
+  ch_info *chn = allocation_get_ch_info(&(ss.alloc), TEST_CHANNEL_NUMBER);
+  TEST_ASSERT_NOT_NULL(chn);
+  TEST_ASSERT_TRUE(addr_eq(&peer, &(chn->peer_addr)));
+}
+
+/* RFC 8489 Section 14: only the first occurrence of a repeated attribute needs
+ * to be processed. A channel binds to exactly one peer, so the first
+ * XOR-PEER-ADDRESS must win however many follow it - otherwise the bound peer
+ * is attribute-order dependent. */
+static void test_channel_bind_uses_first_of_duplicate_peer_addresses(void) {
+  ioa_addr peers[2];
+  make_addr(&(peers[0]), PEER_A, PEER_PORT_A);
+  make_addr(&(peers[1]), PEER_B, PEER_PORT_B);
+
+  msg_begin(STUN_METHOD_CHANNEL_BIND, false);
+  msg_add_channel_number(TEST_CHANNEL_NUMBER);
+  msg_add_peer(&(peers[0]));
+  msg_add_peer(&(peers[1]));
+  msg_finish();
+
+  TEST_ASSERT_EQUAL_INT(0, run_channel_bind(NULL));
+
+  ch_info *chn = allocation_get_ch_info(&(ss.alloc), TEST_CHANNEL_NUMBER);
+  TEST_ASSERT_NOT_NULL(chn);
+  TEST_ASSERT_TRUE(addr_eq(&(peers[0]), &(chn->peer_addr)));
+  TEST_ASSERT_FALSE(addr_eq(&(peers[1]), &(chn->peer_addr)));
+}
+
+/* The permission installed alongside the channel follows the same first-wins
+ * choice, so a trailing address cannot open a permission of its own. */
+static void test_channel_bind_permits_only_the_first_peer(void) {
+  ioa_addr peers[2];
+  make_addr(&(peers[0]), PEER_A, PEER_PORT_A);
+  make_addr(&(peers[1]), PEER_B, PEER_PORT_B);
+
+  msg_begin(STUN_METHOD_CHANNEL_BIND, false);
+  msg_add_channel_number(TEST_CHANNEL_NUMBER);
+  msg_add_peer(&(peers[0]));
+  msg_add_peer(&(peers[1]));
+  msg_finish();
+
+  TEST_ASSERT_EQUAL_INT(0, run_channel_bind(NULL));
+  TEST_ASSERT_TRUE(has_permission(PEER_A, PEER_PORT_A));
+  TEST_ASSERT_FALSE(has_permission(PEER_B, PEER_PORT_B));
+}
+
 /* Spelled as a literal, not as TURN_RANDOM_NONCE_LENGTH: the generator bounds
  * itself with that macro, so asserting it would hold for any width the macro
  * happened to take. 16 is the wire format. */
@@ -698,6 +794,9 @@ int main(void) {
   RUN_TEST(test_create_permission_installs_every_peer_address);
   RUN_TEST(test_create_permission_ignores_the_port);
   RUN_TEST(test_create_permission_without_peer_address_is_rejected);
+  RUN_TEST(test_channel_bind_binds_the_peer_address);
+  RUN_TEST(test_channel_bind_uses_first_of_duplicate_peer_addresses);
+  RUN_TEST(test_channel_bind_permits_only_the_first_peer);
   RUN_TEST(test_random_challenge_nonce_is_sixteen_lowercase_hex_chars);
   return UNITY_END();
 }
