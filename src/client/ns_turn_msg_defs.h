@@ -46,9 +46,13 @@
 #define STUN_HEADER_LENGTH (20)
 #define STUN_CHANNEL_HEADER_LENGTH (4)
 
-#define STUN_MAX_USERNAME_SIZE (512)
-#define STUN_MAX_REALM_SIZE (127)
-#define STUN_MAX_NONCE_SIZE (127)
+/* Longest valid value in bytes, not in characters. RFC 8489 Section 14.3 caps
+ * USERNAME at fewer than 509 bytes; Sections 14.9 and 14.10 cap REALM and NONCE
+ * at fewer than 128 characters, which is up to 763 bytes once UTF-8 encoded.
+ * Buffers sized from these add one byte for the terminator. */
+#define STUN_MAX_USERNAME_SIZE (508)
+#define STUN_MAX_REALM_SIZE (763)
+#define STUN_MAX_NONCE_SIZE (763)
 #define STUN_MAX_SERVER_NAME_SIZE (1025)
 #define STUN_MAX_PWD_SIZE (256)
 #define AUTH_SECRET_SIZE STUN_MAX_PWD_SIZE

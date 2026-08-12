@@ -1598,16 +1598,18 @@ static char *get_bold_admin_title(void) {
   if (current_socket && current_socket->special_session) {
     struct admin_session *as = (struct admin_session *)current_socket->special_session;
     if (as && as->as_ok) {
+      /* Bound each append by what is left of sbat, not by the length of the value
+       * being appended: the value can be longer than the space remaining. */
       if (as->as_login[0]) {
-        char *dst = sbat + strlen(sbat);
-        snprintf(dst, ADMIN_USER_MAX_LENGTH * 2 + 2, " admin user: <b><i>%s</i></b><br>\r\n", as->as_login);
+        const size_t used = strlen(sbat);
+        snprintf(sbat + used, sizeof(sbat) - used, " admin user: <b><i>%s</i></b><br>\r\n", as->as_login);
       }
       if (as->as_realm[0]) {
-        char *dst = sbat + strlen(sbat);
-        snprintf(dst, STUN_MAX_REALM_SIZE * 2, " admin session realm: <b><i>%s</i></b><br>\r\n", as->as_realm);
+        const size_t used = strlen(sbat);
+        snprintf(sbat + used, sizeof(sbat) - used, " admin session realm: <b><i>%s</i></b><br>\r\n", as->as_realm);
       } else if (as->as_eff_realm[0]) {
-        char *dst = sbat + strlen(sbat);
-        snprintf(dst, STUN_MAX_REALM_SIZE * 2, " admin session realm: <b><i>%s</i></b><br>\r\n", as->as_eff_realm);
+        const size_t used = strlen(sbat);
+        snprintf(sbat + used, sizeof(sbat) - used, " admin session realm: <b><i>%s</i></b><br>\r\n", as->as_eff_realm);
       }
     }
   }
