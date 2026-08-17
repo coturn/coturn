@@ -57,6 +57,8 @@ prom_counter_t *turn_unauthenticated_401_requests;
 prom_counter_t *turn_unauthenticated_401_responses;
 prom_counter_t *turn_unauthenticated_401_dropped_responses;
 
+prom_counter_t *turn_auth_credential_failures;
+
 prom_counter_t *turn_ratelimit_hash_collisions;
 prom_gauge_t *turn_ratelimit_occupied_buckets;
 prom_gauge_t *turn_ratelimit_total_buckets;
@@ -212,6 +214,13 @@ void start_prometheus_server(void) {
       prom_counter_new("turn_unauthenticated_401_responses", "UDP 401 Unauthorized responses emitted", 0, NULL));
   turn_unauthenticated_401_dropped_responses = prom_collector_registry_must_register_metric(prom_counter_new(
       "turn_unauthenticated_401_dropped_responses", "UDP 401 responses suppressed by DDoS mitigation", 0, NULL));
+
+  const char *causeLabel[] = {"cause"};
+  turn_auth_credential_failures = prom_collector_registry_must_register_metric(
+      prom_counter_new("turn_auth_credential_failures",
+                       "Rejected authentications by cause: expired (credentials valid but the time-limited username "
+                       "timestamp has passed), integrity_mismatch (wrong credentials), or not_found (unknown user)",
+                       1, causeLabel));
 
   // 401 rate-limit hash-table health. Refreshed lazily at scrape time from the
   // lock-free table's self-instrumented counters (see prom_refresh_ratelimit_stats).
@@ -513,6 +522,24 @@ void prom_flush_401_counters(void) {
   }
 }
 
+void prom_inc_auth_credential_failure(turn_key_lookup_result cause) {
+  if (turn_params.prometheus) {
+    const char *label[1];
+    switch (cause) {
+    case TURN_KEY_LOOKUP_EXPIRED:
+      label[0] = "expired";
+      break;
+    case TURN_KEY_LOOKUP_INTEGRITY_MISMATCH:
+      label[0] = "integrity_mismatch";
+      break;
+    default:
+      label[0] = "not_found";
+      break;
+    }
+    prom_counter_add(turn_auth_credential_failures, 1, label);
+  }
+}
+
 void prom_inc_stun_binding_request(void) {
   if (turn_params.prometheus) {
     prom_counter_add(stun_binding_request, 1, NULL);
@@ -576,6 +603,8 @@ void prom_inc_unauthenticated_401_request(void) {}
 void prom_inc_unauthenticated_401_response(void) {}
 
 void prom_inc_unauthenticated_401_dropped_response(void) {}
+
+void prom_inc_auth_credential_failure(turn_key_lookup_result cause) { UNUSED_ARG(cause); }
 
 void prom_flush_401_counters(void) {}
 

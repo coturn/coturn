@@ -36,6 +36,7 @@
 #define __PROM_SERVER_H__
 
 #include "ns_turn_ioalib.h"
+#include "ns_turn_session.h"
 #include <stdbool.h>
 #include <stdlib.h>
 
@@ -71,6 +72,8 @@ extern prom_counter_t *stun_binding_error;
 extern prom_counter_t *turn_unauthenticated_401_requests;
 extern prom_counter_t *turn_unauthenticated_401_responses;
 extern prom_counter_t *turn_unauthenticated_401_dropped_responses;
+
+extern prom_counter_t *turn_auth_credential_failures;
 
 extern prom_counter_t *turn_ratelimit_hash_collisions;
 extern prom_gauge_t *turn_ratelimit_occupied_buckets;
@@ -129,6 +132,9 @@ void prom_dec_allocation(SOCKET_TYPE type);
 void prom_inc_unauthenticated_401_request(void);
 void prom_inc_unauthenticated_401_response(void);
 void prom_inc_unauthenticated_401_dropped_response(void);
+/* Count one rejected authentication, labeled by cause: expired,
+ * integrity_mismatch, or not_found. */
+void prom_inc_auth_credential_failure(turn_key_lookup_result cause);
 
 /* Per-engine deltas accumulated lock-free on the relay hot path and flushed
  * into the shared prometheus counters once per second (see timer_handler).

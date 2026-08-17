@@ -400,8 +400,10 @@ static char *get_real_username(char *usname) {
  * Password retrieval
  */
 int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *usname, uint8_t *realm, hmackey_t key,
-                 ioa_network_buffer_handle nbh) {
+                 ioa_network_buffer_handle nbh, turn_key_lookup_result *key_lookup) {
   int ret = -1;
+
+  *key_lookup = TURN_KEY_LOOKUP_NOT_FOUND;
 
   if (max_session_time) {
     *max_session_time = 0;
@@ -551,8 +553,7 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
 
     ts = get_rest_api_timestamp((char *)usname);
 
-    if (!turn_time_before(ts, ctime)) {
-
+    {
       uint8_t hmac[MAXSHASIZE];
       unsigned int hmac_len;
       password_t pwdtmp;
@@ -610,6 +611,17 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
             }
           }
         }
+      }
+
+      /* Integrity is verified even when the timestamp already expired, so the
+         auth log can tell valid-but-expired credentials from wrong ones. */
+      if (ret == 0) {
+        if (turn_time_before(ts, ctime)) {
+          *key_lookup = TURN_KEY_LOOKUP_EXPIRED;
+          ret = -1;
+        }
+      } else {
+        *key_lookup = TURN_KEY_LOOKUP_INTEGRITY_MISMATCH;
       }
     }
 

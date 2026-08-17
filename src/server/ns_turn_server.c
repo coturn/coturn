@@ -3555,15 +3555,18 @@ static int create_challenge_response(ts_ur_super_session *ss, stun_tid *tid, int
   return 0;
 }
 
-static void resume_processing_after_username_check(int success, int oauth, int max_session_time, hmackey_t hmackey,
-                                                   password_t pwd, turn_turnserver *server, uint64_t ctxkey,
-                                                   ioa_net_data *in_buffer, uint8_t *realm) {
+static void resume_processing_after_username_check(int success, turn_key_lookup_result key_lookup, int oauth,
+                                                   int max_session_time, hmackey_t hmackey, password_t pwd,
+                                                   turn_turnserver *server, uint64_t ctxkey, ioa_net_data *in_buffer,
+                                                   uint8_t *realm) {
 
   if (server && in_buffer && in_buffer->nbh) {
 
     ts_ur_super_session *ss = get_session_from_map(server, (turnsession_id)ctxkey);
     if (ss && ss->client_socket) {
       turn_turnserver *server = (turn_turnserver *)ss->server;
+
+      ss->key_lookup_result = success ? TURN_KEY_LOOKUP_OK : key_lookup;
 
       if (success) {
         memcpy(ss->hmackey, hmackey, sizeof(hmackey_t));
@@ -3833,8 +3836,28 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
       }
     }
 
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: %s: Cannot find credentials of user <%s>\n",
-                  (unsigned long long)(ss->id), __FUNCTION__, (char *)usname);
+    switch (ss->key_lookup_result) {
+    case TURN_KEY_LOOKUP_EXPIRED:
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+                    "session %018llu: %s: credentials of user <%s> are valid but expired (the time-limited username "
+                    "timestamp is in the past)\n",
+                    (unsigned long long)(ss->id), __FUNCTION__, (char *)usname);
+      break;
+    case TURN_KEY_LOOKUP_INTEGRITY_MISMATCH:
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+                    "session %018llu: %s: credentials of user <%s> are wrong (message integrity does not match any "
+                    "auth secret)\n",
+                    (unsigned long long)(ss->id), __FUNCTION__, (char *)usname);
+      break;
+    default:
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: %s: Cannot find credentials of user <%s>\n",
+                    (unsigned long long)(ss->id), __FUNCTION__, (char *)usname);
+      break;
+    }
+    if (server->auth_credential_failure_cb) {
+      server->auth_credential_failure_cb(ss->key_lookup_result);
+    }
+    ss->key_lookup_result = TURN_KEY_LOOKUP_NOT_FOUND;
     *err_code = 401;
     return create_challenge_response(ss, tid, resp_constructed, err_code, reason, nbh, method);
   }
@@ -3854,6 +3877,9 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
 
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: %s: user %s credentials are incorrect\n",
                   (unsigned long long)(ss->id), __FUNCTION__, (char *)usname);
+    if (server->auth_credential_failure_cb) {
+      server->auth_credential_failure_cb(TURN_KEY_LOOKUP_INTEGRITY_MISMATCH);
+    }
     *err_code = 401;
     return create_challenge_response(ss, tid, resp_constructed, err_code, reason, nbh, method);
   }
@@ -5612,6 +5638,12 @@ void set_unauthenticated_401_metric_cbs(turn_turnserver *server, unauthenticated
     server->unauthenticated_401_request_cb = request_cb;
     server->unauthenticated_401_response_cb = response_cb;
     server->unauthenticated_401_dropped_response_cb = dropped_response_cb;
+  }
+}
+
+void set_auth_credential_failure_metric_cb(turn_turnserver *server, auth_credential_failure_metric_cb cb) {
+  if (server) {
+    server->auth_credential_failure_cb = cb;
   }
 }
 

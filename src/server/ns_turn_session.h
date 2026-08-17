@@ -81,6 +81,17 @@ typedef uint64_t turnsession_id;
 
 typedef uint64_t mobile_id_t;
 
+/* Outcome of a user-key lookup, reported through get_username_resume_cb so the
+ * 401 log line can name the actual cause instead of a generic "not found". */
+typedef enum {
+  TURN_KEY_LOOKUP_NOT_FOUND = 0,
+  TURN_KEY_LOOKUP_OK,
+  /* Time-limited credentials verified against an auth secret, but their timestamp has passed. */
+  TURN_KEY_LOOKUP_EXPIRED,
+  /* Time-limited credentials matched no configured auth secret. */
+  TURN_KEY_LOOKUP_INTEGRITY_MISMATCH,
+} turn_key_lookup_result;
+
 struct _ts_ur_super_session {
   void *server;
   turnsession_id id;
@@ -101,6 +112,8 @@ struct _ts_ur_super_session {
   uint8_t username[STUN_MAX_USERNAME_SIZE + 1];
   hmackey_t hmackey;
   int hmackey_set;
+  /* Why the last user-key lookup failed; consumed by the 401 log message. */
+  turn_key_lookup_result key_lookup_result;
   password_t pwd;
   int quota_used;
   int oauth;
