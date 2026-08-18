@@ -86,7 +86,7 @@ typedef uint64_t mobile_id_t;
 typedef enum {
   TURN_KEY_LOOKUP_NOT_FOUND = 0,
   TURN_KEY_LOOKUP_OK,
-  /* Time-limited credentials verified against an auth secret, but their timestamp has passed. */
+  /* Time-limited username timestamp has passed; rejected before integrity verification. */
   TURN_KEY_LOOKUP_EXPIRED,
   /* Time-limited credentials matched no configured auth secret. */
   TURN_KEY_LOOKUP_INTEGRITY_MISMATCH,

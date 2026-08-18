@@ -3839,7 +3839,7 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
     switch (ss->key_lookup_result) {
     case TURN_KEY_LOOKUP_EXPIRED:
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
-                    "session %018llu: %s: credentials of user <%s> are valid but expired (the time-limited username "
+                    "session %018llu: %s: credentials of user <%s> have expired (the time-limited username "
                     "timestamp is in the past)\n",
                     (unsigned long long)(ss->id), __FUNCTION__, (char *)usname);
       break;

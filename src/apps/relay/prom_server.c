@@ -218,8 +218,9 @@ void start_prometheus_server(void) {
   const char *causeLabel[] = {"cause"};
   turn_auth_credential_failures = prom_collector_registry_must_register_metric(
       prom_counter_new("turn_auth_credential_failures",
-                       "Rejected authentications by cause: expired (credentials valid but the time-limited username "
-                       "timestamp has passed), integrity_mismatch (wrong credentials), or not_found (unknown user)",
+                       "Rejected authentications by cause: expired (time-limited username timestamp has passed; "
+                       "rejected before integrity verification), integrity_mismatch (wrong credentials), or "
+                       "not_found (unknown user)",
                        1, causeLabel));
 
   // 401 rate-limit hash-table health. Refreshed lazily at scrape time from the
@@ -485,6 +486,13 @@ static TURN_THREAD_LOCAL uint64_t tl_401_requests, tl_401_requests_flushed;
 static TURN_THREAD_LOCAL uint64_t tl_401_responses, tl_401_responses_flushed;
 static TURN_THREAD_LOCAL uint64_t tl_401_dropped, tl_401_dropped_flushed;
 
+/* Auth credential failures, by cause. Accumulated the same way: a client
+ * holding a valid nonce can drive these from every relay thread, so keep the
+ * prom registry lock off that path too. */
+static TURN_THREAD_LOCAL uint64_t tl_auth_fail_expired, tl_auth_fail_expired_flushed;
+static TURN_THREAD_LOCAL uint64_t tl_auth_fail_mismatch, tl_auth_fail_mismatch_flushed;
+static TURN_THREAD_LOCAL uint64_t tl_auth_fail_not_found, tl_auth_fail_not_found_flushed;
+
 void prom_inc_unauthenticated_401_request(void) {
   if (turn_params.prometheus) {
     tl_401_requests++;
@@ -520,23 +528,36 @@ void prom_flush_401_counters(void) {
     prom_counter_add(turn_unauthenticated_401_dropped_responses, (double)d, NULL);
     tl_401_dropped_flushed = tl_401_dropped;
   }
+  if ((d = tl_auth_fail_expired - tl_auth_fail_expired_flushed)) {
+    const char *label[] = {"expired"};
+    prom_counter_add(turn_auth_credential_failures, (double)d, label);
+    tl_auth_fail_expired_flushed = tl_auth_fail_expired;
+  }
+  if ((d = tl_auth_fail_mismatch - tl_auth_fail_mismatch_flushed)) {
+    const char *label[] = {"integrity_mismatch"};
+    prom_counter_add(turn_auth_credential_failures, (double)d, label);
+    tl_auth_fail_mismatch_flushed = tl_auth_fail_mismatch;
+  }
+  if ((d = tl_auth_fail_not_found - tl_auth_fail_not_found_flushed)) {
+    const char *label[] = {"not_found"};
+    prom_counter_add(turn_auth_credential_failures, (double)d, label);
+    tl_auth_fail_not_found_flushed = tl_auth_fail_not_found;
+  }
 }
 
 void prom_inc_auth_credential_failure(turn_key_lookup_result cause) {
   if (turn_params.prometheus) {
-    const char *label[1];
     switch (cause) {
     case TURN_KEY_LOOKUP_EXPIRED:
-      label[0] = "expired";
+      tl_auth_fail_expired++;
       break;
     case TURN_KEY_LOOKUP_INTEGRITY_MISMATCH:
-      label[0] = "integrity_mismatch";
+      tl_auth_fail_mismatch++;
       break;
     default:
-      label[0] = "not_found";
+      tl_auth_fail_not_found++;
       break;
     }
-    prom_counter_add(turn_auth_credential_failures, 1, label);
   }
 }
 

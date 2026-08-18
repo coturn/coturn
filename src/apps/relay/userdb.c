@@ -553,6 +553,18 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
 
     ts = get_rest_api_timestamp((char *)usname);
 
+    if (turn_time_before(ts, ctime)) {
+      /* Cheap reject: no per-secret HMAC work for expired timestamps, so a
+         replay flood cannot induce integrity computation. The integrity of an
+         expired request is therefore never checked. A zero timestamp means the
+         username carried no parseable timestamp at all, not an expired one. */
+      if (ts) {
+        *key_lookup = TURN_KEY_LOOKUP_EXPIRED;
+      }
+      clean_secrets_list(&sl);
+      return ret;
+    }
+
     {
       uint8_t hmac[MAXSHASIZE];
       unsigned int hmac_len;
@@ -613,14 +625,7 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
         }
       }
 
-      /* Integrity is verified even when the timestamp already expired, so the
-         auth log can tell valid-but-expired credentials from wrong ones. */
-      if (ret == 0) {
-        if (turn_time_before(ts, ctime)) {
-          *key_lookup = TURN_KEY_LOOKUP_EXPIRED;
-          ret = -1;
-        }
-      } else {
+      if (ret < 0) {
         *key_lookup = TURN_KEY_LOOKUP_INTEGRITY_MISMATCH;
       }
     }

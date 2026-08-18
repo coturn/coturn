@@ -133,7 +133,8 @@ void prom_inc_unauthenticated_401_request(void);
 void prom_inc_unauthenticated_401_response(void);
 void prom_inc_unauthenticated_401_dropped_response(void);
 /* Count one rejected authentication, labeled by cause: expired,
- * integrity_mismatch, or not_found. */
+ * integrity_mismatch, or not_found. Accumulated thread-locally and flushed
+ * by prom_flush_401_counters(). */
 void prom_inc_auth_credential_failure(turn_key_lookup_result cause);
 
 /* Per-engine deltas accumulated lock-free on the relay hot path and flushed
@@ -153,9 +154,9 @@ struct prom_udp_counter_deltas {
  * No-op when prometheus is disabled or compiled out. */
 void prom_flush_udp_counters(const struct prom_udp_counter_deltas *d);
 
-/* Flush this thread's lock-free 401 mitigation counters into the shared
- * prometheus counters. Called once per second per relay thread from the engine
- * timer. No-op when prometheus is disabled or compiled out. */
+/* Flush this thread's lock-free 401 mitigation and auth-failure counters into
+ * the shared prometheus counters. Called once per second per relay thread from
+ * the engine timer. No-op when prometheus is disabled or compiled out. */
 void prom_flush_401_counters(void);
 
 #endif /* __PROM_SERVER_H__ */
