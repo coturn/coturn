@@ -60,7 +60,7 @@ RUN if [ "${coturn_git_ref}" != 'HEAD' ]; then true \
  && true; fi
 
 # Build Coturn from sources.
-RUN ./configure --prefix=/usr \
+RUN CFLAGS="-O3" ./configure --prefix=/usr \
                 --turndbdir=/var/lib/coturn \
                 --disable-rpath \
                 --sysconfdir=/etc/coturn \
