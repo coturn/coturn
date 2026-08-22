@@ -226,6 +226,10 @@ int turnports_allocate_even(turnports *tp, int allocate_rtcp, uint64_t *reservat
       uint16_t i = 0;
       for (i = 0; i < size; i++) {
         const int port = turnports_allocate(tp);
+        if (port < 0) {
+          /* No port available: -1 must not be re-released as (uint16_t)65535. */
+          break;
+        }
         if (port & 0x00000001) {
           turnports_release(tp, port);
         } else if (!allocate_rtcp) {

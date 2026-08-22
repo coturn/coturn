@@ -202,6 +202,32 @@ static void test_evenport_r0_alloc_release_does_not_leak(void) {
   free(t);
 }
 
+/* turnports_allocate() reports failure as -1. turnports_allocate_even() must
+ * not feed that -1 to turnports_release(): the uint16_t parameter turns it into
+ * 65535, and when the range includes 65535 (the default max) and that port is
+ * held by another allocation, the release frees it out from under its owner. */
+static void test_evenport_failure_keeps_foreign_port(void) {
+  turnports *t = turnports_create(NULL, 65534, 65535);
+  TEST_ASSERT_NOT_NULL(t);
+
+  /* Port 65535 is held by a different allocation. */
+  t->status[65535] = TPS_TAKEN_SINGLE;
+  TEST_ASSERT_TRUE(turnports_is_allocated(t, 65535));
+
+  /* Make the next dequeue land on an out-of-range queue entry so
+   * turnports_allocate() returns -1 (turn_ports.c:185) while the pool still
+   * reports a non-empty size and the EVEN-PORT loop runs. */
+  t->ports[t->low & 0xFFFF] = 0;
+  TEST_ASSERT_GREATER_THAN_UINT16(1, turnports_size(t));
+
+  /* No even port can be allocated, so this fails - without touching 65535. */
+  TEST_ASSERT_EQUAL_INT(-1, turnports_allocate_even(t, 1, NULL));
+  TEST_ASSERT_TRUE_MESSAGE(turnports_is_allocated(t, 65535),
+                           "EVEN-PORT failure released a port held by another allocation");
+
+  free(t);
+}
+
 /* R=1 (reservation requested) must still hold the odd sibling so a later
  * RESERVATION-TOKEN allocation can claim it. */
 static void test_evenport_r1_reserves_sibling(void) {
@@ -230,6 +256,7 @@ int main(void) {
   RUN_TEST(test_allocate_survives_counter_wraparound);
   RUN_TEST(test_evenport_r0_does_not_reserve_sibling);
   RUN_TEST(test_evenport_r0_alloc_release_does_not_leak);
+  RUN_TEST(test_evenport_failure_keeps_foreign_port);
   RUN_TEST(test_evenport_r1_reserves_sibling);
   return UNITY_END();
 }
