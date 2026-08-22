@@ -75,9 +75,16 @@ endif()
 message("BUILD_VERSION:${BUILD_VERSION};${_BUILD_VERSION}")
 set(VERSION ${BUILD_VERSION})
 
-if(NOT DEFINED CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE "Release")
-endif(NOT DEFINED CMAKE_BUILD_TYPE)
+option(FUZZER "Build oss-fuzz fuzzing" OFF)
+
+# `project()` already defines CMAKE_BUILD_TYPE as an empty string, so test the
+# value rather than DEFINED -- otherwise an unspecified build type silently
+# compiles at -O0. Fuzzer builds take their -O/-fsanitize flags from the
+# OSS-Fuzz CFLAGS environment and must not be overridden.
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES AND NOT FUZZER)
+    set(CMAKE_BUILD_TYPE "Release" CACHE STRING
+        "Build type: Debug, Release, RelWithDebInfo or MinSizeRel" FORCE)
+endif()
 string(TOLOWER "${CMAKE_BUILD_TYPE}" build_type)
 if("debug" STREQUAL build_type)
     add_definitions(-D_DEBUG)
@@ -174,7 +181,6 @@ install(DIRECTORY
     )
 include(cmake/CMakeCPack.cmake)
 
-option(FUZZER "Build oss-fuzz fuzzing" OFF)
 if(FUZZER)
     if (NOT CMAKE_C_COMPILER_ID MATCHES "Clang")
         message(FATAL_ERROR "clang is require for libFuzzer")
