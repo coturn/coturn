@@ -21,7 +21,10 @@ cmake --build build -j$(nproc)
 
 Key CMake options:
 - `-DFUZZER=ON` — build OSS-Fuzz targets (requires Clang or AppleClang)
-- `-DCMAKE_BUILD_TYPE=Debug|Release`
+- `-DCMAKE_BUILD_TYPE=Debug|Release` — defaults to `Release` (`-O3 -DNDEBUG`) when
+  unset, so benchmark and load-test builds are optimized without opting in.
+  `-DFUZZER=ON` builds are exempt: they take their `-O`/`-fsanitize` flags from
+  the OSS-Fuzz `CFLAGS` environment.
 - `-DWITH_MYSQL=ON/OFF`, `-DWITH_PGSQL=ON/OFF`, `-DWITH_MONGO=ON/OFF`, `-DWITH_REDIS=ON/OFF`
 
 ## Required validation
