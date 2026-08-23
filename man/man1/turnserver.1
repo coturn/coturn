@@ -778,7 +778,8 @@ address family is the same as the family of the client socket).
 TURN Server public/private address mapping, if the server is behind NAT.
 In that situation, if a \-X is used in form "\-X <ip>" then that ip will be reported
 .RE
-as relay IP address of all allocations. This scenario works only in a simple case
+as relay IP address of all allocations of its own address family (a relay of the
+other family is reported under its own address). This scenario works only in a simple case
 when one single relay address is be used, and no CHANGE_REQUEST functionality is
 required. That single relay address must be mapped by NAT to the 'external' IP.
 The "external\-ip" value, if not empty, is returned in XOR\-RELAYED\-ADDRESS field.

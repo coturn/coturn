@@ -79,6 +79,19 @@ static inline int get_family(int stun_family, ioa_engine_handle e, ioa_socket_ha
   };
 }
 
+/* RFC 8656 Section 3: XOR-RELAYED-ADDRESS carries the relayed transport address,
+ * an address on the server itself. An external IP of a different family is not
+ * that address, so it can only stand in for a relay of its own family. */
+static void turn_set_xor_relayed_addr(turn_turnserver *server, ioa_addr *xor_relayed_addr,
+                                      const ioa_addr *relayed_addr) {
+  if (server->external_ip_set && (server->external_ip.ss.sa_family == relayed_addr->ss.sa_family)) {
+    addr_cpy(xor_relayed_addr, &(server->external_ip));
+    addr_set_port(xor_relayed_addr, addr_get_port(relayed_addr));
+  } else {
+    addr_cpy(xor_relayed_addr, relayed_addr);
+  }
+}
+
 ////////////////////////////////////////////////
 
 const char *get_version(turn_turnserver *server) {
@@ -1138,12 +1151,7 @@ static int handle_turn_allocate(turn_turnserver *server, ts_ur_super_session *ss
         addr_set_any(&xor_relayed_addr1);
         pxor_relayed_addr1 = &xor_relayed_addr1;
       } else if (relayed_addr1) {
-        if (server->external_ip_set) {
-          addr_cpy(&xor_relayed_addr1, &(server->external_ip));
-          addr_set_port(&xor_relayed_addr1, addr_get_port(relayed_addr1));
-        } else {
-          addr_cpy(&xor_relayed_addr1, relayed_addr1);
-        }
+        turn_set_xor_relayed_addr(server, &xor_relayed_addr1, relayed_addr1);
         pxor_relayed_addr1 = &xor_relayed_addr1;
       }
 
@@ -1151,12 +1159,7 @@ static int handle_turn_allocate(turn_turnserver *server, ts_ur_super_session *ss
         addr_set_any(&xor_relayed_addr2);
         pxor_relayed_addr2 = &xor_relayed_addr2;
       } else if (relayed_addr2) {
-        if (server->external_ip_set) {
-          addr_cpy(&xor_relayed_addr2, &(server->external_ip));
-          addr_set_port(&xor_relayed_addr2, addr_get_port(relayed_addr2));
-        } else {
-          addr_cpy(&xor_relayed_addr2, relayed_addr2);
-        }
+        turn_set_xor_relayed_addr(server, &xor_relayed_addr2, relayed_addr2);
         pxor_relayed_addr2 = &xor_relayed_addr2;
       }
 
@@ -1560,12 +1563,7 @@ static int handle_turn_allocate(turn_turnserver *server, ts_ur_super_session *ss
             addr_set_any(&xor_relayed_addr1);
             pxor_relayed_addr1 = &xor_relayed_addr1;
           } else if (relayed_addr1) {
-            if (server->external_ip_set) {
-              addr_cpy(&xor_relayed_addr1, &(server->external_ip));
-              addr_set_port(&xor_relayed_addr1, addr_get_port(relayed_addr1));
-            } else {
-              addr_cpy(&xor_relayed_addr1, relayed_addr1);
-            }
+            turn_set_xor_relayed_addr(server, &xor_relayed_addr1, relayed_addr1);
             pxor_relayed_addr1 = &xor_relayed_addr1;
           }
 
@@ -1573,12 +1571,7 @@ static int handle_turn_allocate(turn_turnserver *server, ts_ur_super_session *ss
             addr_set_any(&xor_relayed_addr2);
             pxor_relayed_addr2 = &xor_relayed_addr2;
           } else if (relayed_addr2) {
-            if (server->external_ip_set) {
-              addr_cpy(&xor_relayed_addr2, &(server->external_ip));
-              addr_set_port(&xor_relayed_addr2, addr_get_port(relayed_addr2));
-            } else {
-              addr_cpy(&xor_relayed_addr2, relayed_addr2);
-            }
+            turn_set_xor_relayed_addr(server, &xor_relayed_addr2, relayed_addr2);
             pxor_relayed_addr2 = &xor_relayed_addr2;
           }
 

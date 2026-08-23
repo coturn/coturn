@@ -552,19 +552,20 @@ beg_allocate:
                     }
 
                     if (!addr_any(relay_addr)) {
+                      /* RFC 8656 Section 7.3: only a family this client cannot
+                       * handle is rejected. Both are usable here, so a relay is
+                       * refused solely when it contradicts the family that this
+                       * allocation asked for. */
+                      bool family_usable = false;
                       if (relay_addr->ss.sa_family == AF_INET) {
-                        if (default_address_family != STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6) {
-                          found = true;
-                          addr_cpy(&(clnet_info->relay_addr), relay_addr);
-                          break;
-                        }
+                        family_usable = (af != STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6);
+                      } else if (relay_addr->ss.sa_family == AF_INET6) {
+                        family_usable = (af != STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4);
                       }
-                      if (relay_addr->ss.sa_family == AF_INET6) {
-                        if (default_address_family == STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6) {
-                          found = true;
-                          addr_cpy(&(clnet_info->relay_addr), relay_addr);
-                          break;
-                        }
+                      if (family_usable) {
+                        found = true;
+                        addr_cpy(&(clnet_info->relay_addr), relay_addr);
+                        break;
                       }
                     }
                   }

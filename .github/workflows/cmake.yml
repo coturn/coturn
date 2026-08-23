@@ -48,5 +48,7 @@ jobs:
         working-directory: examples/
       - run: ./run_tests_dtls_default.sh
         working-directory: examples/
+      - run: ./run_tests_ipv6_relay.sh
+        working-directory: examples/
       - run: ./run_tests_mobile.sh
         working-directory: examples/

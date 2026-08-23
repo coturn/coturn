@@ -101,6 +101,12 @@ cd examples
                                 # UDP/TCP (+TLS/DTLS on Linux), asserting
                                 # wire-transparency plus the listener
                                 # fast-path marker in the server log.
+./run_tests_ipv6_relay.sh       # pins that an IPv6 allocation is advertised
+                                # under its real IPv6 relayed transport address
+                                # (not an IPv4 --external-ip) and that uclient
+                                # accepts an IPv6 relay it did not explicitly
+                                # request (-A keep). SKIPs without a usable
+                                # IPv6 loopback.
 ./run_tests_dtls_default.sh     # pins that the DTLS listeners stay down
                                 # unless --dtls is given, that --dtls brings
                                 # them up, and that the deprecated --no-dtls /
@@ -138,7 +144,7 @@ docker run --rm \
        cd examples && ./run_tests.sh && ./run_tests_conf.sh && \
        ./run_tests_mobile.sh && ./run_tests_multiplex_peer.sh && \
        ./run_tests_rfc5780.sh && ./run_tests_stateless_nonce.sh && \
-       ./run_tests_dtls_default.sh'
+       ./run_tests_ipv6_relay.sh && ./run_tests_dtls_default.sh'
 ```
 
 Also validate the packaged Docker image. Run the same stale-output cleanup at
