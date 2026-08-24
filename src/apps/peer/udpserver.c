@@ -45,6 +45,7 @@
 #include <limits.h> // for USHRT_MAX
 
 #if defined(__linux__)
+#include <netinet/in.h> // for IPPROTO_IP/IPPROTO_IPV6, IP_RECVTOS, IPV6_RECVTCLASS
 #include <netinet/udp.h>
 #include <sys/socket.h>
 #ifndef UDP_SEGMENT
@@ -57,6 +58,12 @@
 
 /////////////// io handlers ///////////////////
 
+/* DSCP/TOS reflection: turnutils_peer echoes every datagram back with the same
+ * marking it arrived with, so an end-to-end QoS test can confirm a TURN relay
+ * preserves DSCP on the peer->client leg too (issue #385). This reads the
+ * marking off the ancillary data of each inbound packet, so — like the relay's
+ * own TOS handling — it lives on the Linux recvmmsg path; other platforms echo
+ * without it (the relay likewise drops TOS there, per RFC 5766). */
 #if defined(__linux__)
 
 /* Per-callback batch state. The peer is single-threaded (one libevent
@@ -81,6 +88,65 @@ static struct mmsghdr g_msgs[PEER_BATCH];
 static struct iovec g_iovs[PEER_BATCH];
 static ioa_addr g_srcs[PEER_BATCH];
 static uint8_t g_bufs[PEER_BATCH][PEER_DGRAM_MAX];
+/* Per-entry recv ancillary buffers (TOS) and the parsed marking per datagram. */
+static char g_cmsgs[PEER_BATCH][CMSG_SPACE(sizeof(int)) * 2];
+static int g_toss[PEER_BATCH];
+
+/* Last (fd, tos) pushed to a socket: a steady single flow keeps the marking
+ * constant, so this short-circuits the repeated setsockopt, exactly like the
+ * relay's own set_socket_tos. Single-threaded peer, so no locking. */
+static evutil_socket_t g_tos_fd = -1;
+static int g_tos_cur = INT_MIN;
+
+/* Ask the kernel to attach the received DSCP/TOS as ancillary data. */
+static void enable_recv_tos(evutil_socket_t fd, int family) {
+  const int on = 1;
+  if (family == AF_INET6) {
+#if defined(IPV6_RECVTCLASS)
+    if (setsockopt(fd, IPPROTO_IPV6, IPV6_RECVTCLASS, (const void *)&on, sizeof(on)) < 0) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "set IPV6_RECVTCLASS on peer socket: %s\n", strerror(errno));
+    }
+#endif
+  } else {
+#if defined(IP_RECVTOS)
+    if (setsockopt(fd, IPPROTO_IP, IP_RECVTOS, (const void *)&on, sizeof(on)) < 0) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "set IP_RECVTOS on peer socket: %s\n", strerror(errno));
+    }
+#endif
+  }
+}
+
+/* Pull the DSCP/TOS marking out of a received message's ancillary data, or -1
+ * if none was present. */
+static int peer_recv_tos(struct msghdr *mh) {
+  for (struct cmsghdr *cm = CMSG_FIRSTHDR(mh); cm != NULL; cm = CMSG_NXTHDR(mh, cm)) {
+#if defined(IP_RECVTOS)
+    if (cm->cmsg_level == IPPROTO_IP && (cm->cmsg_type == IP_TOS || cm->cmsg_type == IP_RECVTOS)) {
+      return *((unsigned char *)CMSG_DATA(cm));
+    }
+#endif
+#if defined(IPV6_RECVTCLASS) || defined(IPV6_TCLASS)
+    if (cm->cmsg_level == IPPROTO_IPV6 && cm->cmsg_type == IPV6_TCLASS) {
+      return *((unsigned char *)CMSG_DATA(cm));
+    }
+#endif
+  }
+  return -1;
+}
+
+/* Set the socket's egress marking so the echo carries it. No-op when the value
+ * is already current or was not captured (< 0). */
+static void peer_reflect_tos(evutil_socket_t fd, int family, int tos) {
+  if (tos < 0) {
+    return;
+  }
+  if (fd == g_tos_fd && tos == g_tos_cur) {
+    return;
+  }
+  set_raw_socket_tos(fd, family, tos);
+  g_tos_fd = fd;
+  g_tos_cur = tos;
+}
 
 static int try_gso_echo(evutil_socket_t fd, int n) {
   if (n < 2) {
@@ -158,6 +224,8 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void *arg) 
       g_msgs[i].msg_hdr.msg_iovlen = 1;
       g_msgs[i].msg_hdr.msg_name = &g_srcs[i];
       g_msgs[i].msg_hdr.msg_namelen = sizeof(g_srcs[i]);
+      g_msgs[i].msg_hdr.msg_control = g_cmsgs[i];
+      g_msgs[i].msg_hdr.msg_controllen = sizeof(g_cmsgs[i]);
       g_msgs[i].msg_len = 0;
     }
 
@@ -168,6 +236,37 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void *arg) 
 
     if (n <= 0) {
       return;
+    }
+
+    /* Read each datagram's marking, then drop the recv control so the mmsghdr
+     * array can be reused for sending. If the whole batch shares one marking
+     * (a single steady flow — the common case, and what GSO already needs),
+     * push it to the socket once and fall through to the batched echo. A mixed
+     * batch takes a per-packet echo so each reply keeps its own marking. */
+    int uniform_tos = 1;
+    for (int i = 0; i < n; ++i) {
+      g_toss[i] = peer_recv_tos(&g_msgs[i].msg_hdr);
+      g_msgs[i].msg_hdr.msg_control = NULL;
+      g_msgs[i].msg_hdr.msg_controllen = 0;
+      if (i > 0 && g_toss[i] != g_toss[0]) {
+        uniform_tos = 0;
+      }
+    }
+    if (uniform_tos) {
+      peer_reflect_tos(fd, g_srcs[0].ss.sa_family, g_toss[0]);
+    } else {
+      for (int i = 0; i < n; ++i) {
+        peer_reflect_tos(fd, g_srcs[i].ss.sa_family, g_toss[i]);
+        ssize_t r;
+        do {
+          r = sendto(fd, g_bufs[i], (size_t)g_msgs[i].msg_len, 0, (const struct sockaddr *)&g_srcs[i],
+                     g_msgs[i].msg_hdr.msg_namelen);
+        } while (r < 0 && errno == EINTR);
+      }
+      if (n < PEER_BATCH) {
+        return;
+      }
+      continue;
     }
 
     int sent = try_gso_echo(fd, n);
@@ -200,6 +299,13 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void *arg) 
 }
 
 #else /* !__linux__ */
+
+/* No ancillary-data recv path here, so TOS is not reflected off-Linux — the
+ * same tradeoff the relay makes (RFC 5766 "alternative behavior"). */
+static void enable_recv_tos(evutil_socket_t fd, int family) {
+  UNUSED_ARG(fd);
+  UNUSED_ARG(family);
+}
 
 static void udp_server_input_handler(evutil_socket_t fd, short what, void *arg) {
 
@@ -271,6 +377,9 @@ static int udp_create_server_socket(server_type *const server, const char *const
   }
 
   socket_set_nonblocking(udp_fd);
+
+  /* Echo back with the sender's DSCP/TOS: read it via IP_RECVTOS/IPV6_RECVTCLASS. */
+  enable_recv_tos(udp_fd, server_addr->ss.sa_family);
 
   struct event *udp_ev =
       event_new(server->event_base, udp_fd, EV_READ | EV_PERSIST, udp_server_input_handler, server_addr);
