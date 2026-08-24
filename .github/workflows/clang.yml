@@ -39,6 +39,9 @@ jobs:
 
   sanitize:
     runs-on: ubuntu-latest
+    # Backstop against a hung test binary (e.g. a threaded-loadgen livelock the
+    # ThreadSanitizer build has exposed) burning the 6h GitHub default.
+    timeout-minutes: 40
     strategy:
       matrix:
         sanitizer:
