@@ -19,6 +19,8 @@ jobs:
       matrix:
         ver: ["14", "15", "26"]
     runs-on: macos-${{ matrix.ver }}
+    # Backstop so a hung test script cannot burn the 6h GitHub default.
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v7
 
@@ -73,6 +75,8 @@ jobs:
       matrix:
         ver: ["15", "26"]
     runs-on: macos-${{ matrix.ver }}
+    # Backstop so a hung test script cannot burn the 6h GitHub default.
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v7
 

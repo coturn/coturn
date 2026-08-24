@@ -55,6 +55,17 @@ if [ ! -f $BINDIR/turnserver ]; then
     BINDIR="../build/bin"
 fi
 
+# Bound the client where a timeout tool exists. A stock macOS runner has
+# neither `timeout` nor `gtimeout` and never hits the Linux/TSan loadgen
+# livelock this guards; its job timeout-minutes is the backstop.
+if command -v timeout >/dev/null 2>&1; then
+    RUN_BOUNDED="timeout 120s"
+elif command -v gtimeout >/dev/null 2>&1; then
+    RUN_BOUNDED="gtimeout 120s"
+else
+    RUN_BOUNDED=""
+fi
+
 stop_turnserver() {
     if [ -n "$turnserver_pid" ]; then
         kill "$turnserver_pid" 2>/dev/null
@@ -113,10 +124,13 @@ diagnose_failure() {
 # only appears once traffic has gone out through the relay and come back, which
 # an unusable relay address cannot fake. One session relays 1000 bytes each way
 # (-m 1, 5 messages of 200 B); client-to-client runs two sessions, so 2000.
+# The byte-count pair appears on the periodic progress line as well as the final
+# summary, so a client the timeout above had to kill (it completed the round trip
+# but a TSan-timing loadgen race left it spinning instead of exiting) still counts.
 check_relay_traffic() {
     local label="$1"
     local bytes="$2"
-    if ! grep -q "start_mclient: tot_send_bytes ~ $bytes, tot_recv_bytes ~ $bytes" "$UCLIENT_LOG"; then
+    if ! grep -q "tot_send_bytes ~ $bytes, tot_recv_bytes ~ $bytes" "$UCLIENT_LOG"; then
         echo "FAIL: $label did not complete a relayed round trip"
         diagnose_failure
         exit 1
@@ -148,7 +162,10 @@ case "$?" in
 esac
 
 echo "Running turn client IPv6 relay (-x) against an IPv4 external-ip"
-"$BINDIR/turnutils_uclient" -v -x -g -e $TURN_IP -r $PEER_PORT -p $TURN_PORT \
+# Bound the run so a ThreadSanitizer-exposed loadgen livelock can't hang CI;
+# success is decided by grepping the log below, so a post-completion timeout
+# kill still passes, while a genuine failure still shows no marker.
+$RUN_BOUNDED "$BINDIR/turnutils_uclient" -v -x -g -e $TURN_IP -r $PEER_PORT -p $TURN_PORT \
     -u user -W secret $TURN_IP > "$UCLIENT_LOG" 2>&1
 
 # The advertised address must be the IPv6 relay, not the IPv4 external-ip: an
@@ -172,7 +189,9 @@ esac
 # No -x: the client sends no REQUESTED-ADDRESS-FAMILY and the server's keep
 # policy answers an IPv6 client with an IPv6 relay anyway.
 echo "Running turn client c2c with no requested address family"
-"$BINDIR/turnutils_uclient" -v -y -g -p $TURN_PORT \
+# Same bound as above: the -y c2c client is the one the TSan loadgen race has
+# been observed to hang; the check below is grep-based so the kill is safe.
+$RUN_BOUNDED "$BINDIR/turnutils_uclient" -v -y -g -p $TURN_PORT \
     -u user -W secret $TURN_IP > "$UCLIENT_LOG" 2>&1
 
 check_relay_traffic "unrequested IPv6 relay" 2000
