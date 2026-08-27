@@ -1235,6 +1235,18 @@ static void cliserver_input_handler(struct evconnlistener *l, evutil_socket_t fd
   }
 }
 
+/* Log the request line only: the headers and the POST body carry admin credentials
+ * (the logon "pwd" field, "add_secret", "oauth_ikm"). */
+static const char *turn_http_request_line(const char *request, char *buf, size_t buf_size) {
+  size_t len = strcspn(request, "\r\n");
+  if (len >= buf_size) {
+    len = buf_size - 1;
+  }
+  memcpy(buf, request, len);
+  buf[len] = 0;
+  return buf;
+}
+
 static void web_admin_input_handler(ioa_socket_handle s, int event_type, ioa_net_data *in_buffer, void *arg,
                                     int can_resume) {
   UNUSED_ARG(event_type);
@@ -1259,15 +1271,12 @@ static void web_admin_input_handler(ioa_socket_handle s, int event_type, ioa_net
           proto = "HTTPS";
           set_ioa_socket_app_type(s, HTTPS_CLIENT_SOCKET);
 
-          /* Suppress logging of the raw request when it carries credentials
-           * (the logon POST body contains "pwd="), mirroring handle_https(). */
-          if (strstr((char *)ioa_network_buffer_data(in_buffer->nbh), "pwd")) {
-            TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s (%s %s) request (body redacted: contains credentials)\n",
-                          __FUNCTION__, proto, get_ioa_socket_cipher(s), get_ioa_socket_ssl_method(s));
-          } else {
+          if (adminserver.verbose) {
+            char request_line[256] = {0};
             TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s (%s %s) request: %s\n", __FUNCTION__, proto,
                           get_ioa_socket_cipher(s), get_ioa_socket_ssl_method(s),
-                          (char *)ioa_network_buffer_data(in_buffer->nbh));
+                          turn_http_request_line((char *)ioa_network_buffer_data(in_buffer->nbh), request_line,
+                                                 sizeof(request_line)));
           }
 
           TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s socket to be detached: %p, st=%d, sat=%d\n", __FUNCTION__, s,
@@ -1285,8 +1294,10 @@ static void web_admin_input_handler(ioa_socket_handle s, int event_type, ioa_net
         } else {
           set_ioa_socket_app_type(s, HTTP_CLIENT_SOCKET);
           if (adminserver.verbose) {
+            char request_line[256] = {0};
             TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: %s request: %s\n", __FUNCTION__, proto,
-                          (char *)ioa_network_buffer_data(in_buffer->nbh));
+                          turn_http_request_line((char *)ioa_network_buffer_data(in_buffer->nbh), request_line,
+                                                 sizeof(request_line)));
           }
           handle_http_echo(s);
         }
@@ -3502,11 +3513,10 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
 
   if (turn_params.verbose) {
     if (nbh) {
+      char request_line[256] = {0};
       ((char *)ioa_network_buffer_data(nbh))[ioa_network_buffer_get_size(nbh)] = 0;
-      if (!strstr((char *)ioa_network_buffer_data(nbh), "pwd")) {
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: HTTPS connection input: %s\n", __FUNCTION__,
-                      (char *)ioa_network_buffer_data(nbh));
-      }
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: HTTPS connection input: %s\n", __FUNCTION__,
+                    turn_http_request_line((char *)ioa_network_buffer_data(nbh), request_line, sizeof(request_line)));
     } else {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: HTTPS connection initial input\n", __FUNCTION__);
     }
