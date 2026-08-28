@@ -589,7 +589,9 @@ static bool udp_get_string_attr(const uint8_t *data, size_t len, uint16_t attr_t
     return false;
   }
   const size_t alen = min((size_t)stun_attr_get_len(sar), out_size - 1);
-  memcpy(out, stun_attr_get_value(sar), alen);
+  if (alen) {
+    memcpy(out, stun_attr_get_value(sar), alen);
+  }
   out[alen] = 0;
   return true;
 }
