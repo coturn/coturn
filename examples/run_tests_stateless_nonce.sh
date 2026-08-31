@@ -9,7 +9,7 @@
 # With the flag on:
 #   - a first MESSAGE-INTEGRITY-less UDP request is answered with a
 #     derived-nonce 401 straight from the listener, with no session
-#     allocated (udp_stateless_nonce_fast_path in dtls_listener.c);
+#     allocated (udp_stateless_fast_path in dtls_listener.c);
 #   - the client's authenticated retry lands on a brand-new session whose
 #     check_stun_auth validates the presented timestamp+MAC nonce;
 #   - UDP sessions that only carried a challenge are torn down right after

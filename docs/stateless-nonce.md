@@ -49,12 +49,20 @@ the cleartext 401 itself. Because the server can *validate* the nonce (parse
 the timestamp, recompute the MAC, check the age against the nonce lifetime -
 `--stale-nonce`, or 600s if unset), three things become possible:
 
-1. **Listener fast path** (`udp_stateless_nonce_fast_path` in
+1. **Listener fast path** (`udp_stateless_fast_path` in
    `dtls_listener.c`): a MESSAGE-INTEGRITY-less request from an unknown UDP
    source is answered with the 401 challenge directly from the listener — no
    child socket, no session. Packets the relay would silently ignore for a
    fresh source (indications, unbound channel data, STUN that fails the full
-   check) are dropped with no state either. The `--unauthorized-ratelimit`
+   check, stray responses, and — under `--stun-only` — any non-BINDING method)
+   are dropped with no state either. This drop discipline runs in **every**
+   credential mode, not just long-term: without it a no-auth/short-term server
+   built a socket and a ~19KB session for each such packet and held it for the
+   60s to-be-allocated timeout, so a spoofed-source flood exhausted memory and
+   OOM-killed the process (GHSA-4xqq-hcgg-4mcw, CWE-770). Only the 401/438
+   challenge synthesis is long-term/stateless-nonce specific; in no-auth mode a
+   real request (e.g. ALLOCATE) still takes the session path and an erroring one
+   is reaped on the initial packet. The `--unauthorized-ratelimit`
    response suppression and the Prometheus 401 counters apply to this path
    exactly as they do to the session path.
    A request that *does* carry MESSAGE-INTEGRITY is admitted to the session

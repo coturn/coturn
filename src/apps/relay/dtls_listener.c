@@ -717,26 +717,12 @@ static bool udp_refresh_is_plain_ticketless(const uint8_t *data, size_t len) {
   return true;
 }
 
-/* Stateless-nonce fast path (issue #1999): answer a request from an unknown
- * UDP source with the derived-nonce 401 challenge directly from the listener,
- * without creating a child socket or session. A request that does carry
- * MESSAGE-INTEGRITY is admitted to the session path only once its NONCE is
- * shown to be one this server issued to that very source address.
- * Packets the relay would silently ignore for a fresh source (indications,
- * unbound channel data, malformed-but-classifiable STUN) are swallowed with
- * no state either. Returns true when the packet was fully handled here;
- * false means "fall through to the regular per-session path". Every branch
- * below is matched against handle_turn_command's behavior for a brand-new
- * session so that the bytes on the wire are identical. */
-static bool udp_stateless_nonce_fast_path(dtls_listener_relay_server_type *server, ioa_net_data *nd) {
+/* Handle a first packet from an unknown UDP source without a child socket or session.
+   True when fully handled. */
+static bool udp_stateless_fast_path(dtls_listener_relay_server_type *server, ioa_net_data *nd) {
   turn_turnserver *ts = server->ts;
 
-  if (!turn_server_stateless_nonce_enabled(ts) || turn_params.no_udp || !server->udp_listen_s) {
-    return false;
-  }
-
-  /* Only long-term-credential setups issue 401 challenges. */
-  if (ts->ct != TURN_CREDENTIALS_LONG_TERM) {
+  if (turn_params.no_udp || !server->udp_listen_s) {
     return false;
   }
 
@@ -744,8 +730,7 @@ static bool udp_stateless_nonce_fast_path(dtls_listener_relay_server_type *serve
   const size_t len = ioa_network_buffer_get_size(nd->nbh);
 
   {
-    /* Channel data from a source with no allocation: the relay would create a
-     * session and drop the message (no channel is bound). */
+    /* Unbound channel data: no allocation, so nothing to deliver. */
     size_t blen = len;
     uint16_t chnum = 0;
     if (stun_is_channel_message_str(data, &blen, &chnum, false)) {
@@ -755,21 +740,32 @@ static bool udp_stateless_nonce_fast_path(dtls_listener_relay_server_type *serve
 
   bool enforce_fingerprints = false;
   if (!stun_is_command_message_full_check_str(data, len, false, &enforce_fingerprints)) {
-    /* Classified as STUN but fails the full check (e.g. bad FINGERPRINT):
-     * the relay would create a session and ignore the message. */
-    return true;
+    return true; /* Malformed STUN: the relay would create a session and ignore it. */
   }
 
   if (stun_is_indication_str(data, len)) {
-    /* Indications never get a response, and without an allocation the relay
-     * drops them. */
-    return true;
+    return true; /* Indications get no response and are dropped without an allocation. */
   }
 
   if (!stun_is_request_str(data, len)) {
-    /* Success/error "responses" from a client: handle_turn_command treats
-     * them as wrong messages and stays silent. */
-    return true;
+    return true; /* Stray success/error responses are ignored. */
+  }
+
+  const uint16_t method = stun_get_method_str(data, len);
+
+  /* BINDING may still need a session (--secure-stun, RFC 5780 alternate sockets). */
+  if (method == STUN_METHOD_BINDING) {
+    return false;
+  }
+
+  if (*(ts->stun_only)) {
+    return true; /* --stun-only silently ignores non-BINDING methods. */
+  }
+
+  /* Only a long-term-credential server with derived nonces can synthesize the
+   * challenge below; the drops above are credential-independent. */
+  if (!turn_server_stateless_nonce_enabled(ts) || ts->ct != TURN_CREDENTIALS_LONG_TERM) {
+    return false;
   }
 
   /* MESSAGE-INTEGRITY is acted upon further down, after the method-specific
@@ -778,19 +774,6 @@ static bool udp_stateless_nonce_fast_path(dtls_listener_relay_server_type *serve
   stun_attr_ref mi_attr = stun_attr_get_first_by_type_str(data, len, STUN_ATTRIBUTE_MESSAGE_INTEGRITY);
   if (mi_attr && (stun_attr_get_len(mi_attr) != SHA1SIZEBYTES)) {
     mi_attr = NULL;
-  }
-
-  const uint16_t method = stun_get_method_str(data, len);
-
-  /* BINDING keeps its session-based path: it is answerable without auth
-   * (unless --secure-stun) and may involve RFC 5780 alternate sockets. */
-  if (method == STUN_METHOD_BINDING) {
-    return false;
-  }
-
-  if (*(ts->stun_only)) {
-    /* Non-BINDING methods are silently ignored in STUN-only mode. */
-    return true;
   }
 
   if (method == STUN_METHOD_ALLOCATE) {
@@ -1133,11 +1116,9 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server, struct mes
       return 0;
     }
 
-    /* Stateless-nonce mode: a first packet that only needs the derived-nonce
-     * 401 challenge (or that the relay would ignore anyway) is answered or
-     * dropped right here, without a child socket or session (issue #1999). */
-    if (!chs && (packet_type == UDP_PACKET_CLASS_STUN_OR_CHANNEL) &&
-        udp_stateless_nonce_fast_path(server, &(sm->m.sm.nd))) {
+    /* Drop a first packet that leads nowhere, or answer a bare challenge,
+     * without a child socket or session (see udp_stateless_fast_path). */
+    if (!chs && (packet_type == UDP_PACKET_CLASS_STUN_OR_CHANNEL) && udp_stateless_fast_path(server, &(sm->m.sm.nd))) {
       return 0;
     }
 
