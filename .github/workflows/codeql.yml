@@ -32,7 +32,7 @@ jobs:
           SUDO: true
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v4.37.8
+        uses: github/codeql-action/init@v4.37.9
         with:
           languages: c-cpp
           build-mode: manual
@@ -43,6 +43,6 @@ jobs:
         run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --parallel
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v4.37.8
+        uses: github/codeql-action/analyze@v4.37.9
         with:
           category: "/language:c-cpp"
