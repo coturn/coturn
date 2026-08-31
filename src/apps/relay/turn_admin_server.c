@@ -1135,23 +1135,27 @@ static void cli_socket_input_handler_bev(struct bufferevent *bev, void *arg) {
       return;
     }
 
-    stun_buffer buf;
-
     if (cs->bev) {
 
-      const int len = (int)bufferevent_read(cs->bev, buf.buf, STUN_BUFFER_SIZE - 1);
+      stun_buffer *buf = (stun_buffer *)turn_calloc(1, sizeof(stun_buffer));
+
+      const int len = (int)bufferevent_read(cs->bev, buf->buf, STUN_BUFFER_SIZE - 1);
       if (len < 0) {
+        free(buf);
         close_cli_session(cs);
         return;
       } else if (len == 0) {
+        free(buf);
         return;
       }
 
-      buf.len = len;
-      buf.offset = 0;
-      buf.buf[len] = 0;
+      buf->len = len;
+      buf->offset = 0;
+      buf->buf[len] = 0;
 
-      telnet_recv(cs->ts, (const char *)buf.buf, (unsigned int)(buf.len));
+      telnet_recv(cs->ts, (const char *)buf->buf, (unsigned int)(buf->len));
+
+      free(buf);
     }
   }
 }
