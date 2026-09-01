@@ -3839,19 +3839,16 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
     switch (ss->key_lookup_result) {
     case TURN_KEY_LOOKUP_EXPIRED:
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
-                    "%018llu: %s: credentials of user <%s> have expired (the time-limited username "
-                    "timestamp is in the past)\n",
-                    (unsigned long long)(ss->id), __FUNCTION__, (char *)usname);
+                    "credentials of user <%s> have expired (the time-limited username timestamp is in the past)\n",
+                    (char *)usname);
       break;
     case TURN_KEY_LOOKUP_INTEGRITY_MISMATCH:
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
-                    "%018llu: %s: credentials of user <%s> are wrong (message integrity does not match any "
-                    "auth secret)\n",
-                    (unsigned long long)(ss->id), __FUNCTION__, (char *)usname);
+                    "credentials of user <%s> are wrong (message integrity does not match any auth secret)\n",
+                    (char *)usname);
       break;
     default:
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%018llu: %s: Cannot find credentials of user <%s>\n",
-                    (unsigned long long)(ss->id), __FUNCTION__, (char *)usname);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot find credentials of user <%s>\n", (char *)usname);
       break;
     }
     if (server->auth_credential_failure_cb) {
