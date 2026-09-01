@@ -185,7 +185,7 @@ void turn_permission_clean(turn_permission_info *tinfo) {
   if (tinfo->verbose) {
     char s[MAX_IOA_ADDR_STRING] = "";
     addr_to_string(&(tinfo->addr), s);
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: peer %s deleted\n", tinfo->session_id, s);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "peer %s deleted (session %018llu)\n", s, tinfo->session_id);
   }
 
   lm_map_foreach(&(tinfo->chns), (foreachcb_type)delete_channel_info_from_allocation_map);
