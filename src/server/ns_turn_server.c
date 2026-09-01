@@ -3857,6 +3857,7 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
     if (server->auth_credential_failure_cb) {
       server->auth_credential_failure_cb(ss->key_lookup_result);
     }
+    /* Reset so a later 401 that runs no fresh key lookup cannot report a stale cause. */
     ss->key_lookup_result = TURN_KEY_LOOKUP_NOT_FOUND;
     *err_code = 401;
     return create_challenge_response(ss, tid, resp_constructed, err_code, reason, nbh, method);

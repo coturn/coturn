@@ -486,9 +486,8 @@ static TURN_THREAD_LOCAL uint64_t tl_401_requests, tl_401_requests_flushed;
 static TURN_THREAD_LOCAL uint64_t tl_401_responses, tl_401_responses_flushed;
 static TURN_THREAD_LOCAL uint64_t tl_401_dropped, tl_401_dropped_flushed;
 
-/* Auth credential failures, by cause. Accumulated the same way: a client
- * holding a valid nonce can drive these from every relay thread, so keep the
- * prom registry lock off that path too. */
+/* Auth-failure counters take the same lock-free thread-local path: a client holding a valid
+ * nonce can drive them from every relay thread, so the prom registry lock stays off it. */
 static TURN_THREAD_LOCAL uint64_t tl_auth_fail_expired, tl_auth_fail_expired_flushed;
 static TURN_THREAD_LOCAL uint64_t tl_auth_fail_mismatch, tl_auth_fail_mismatch_flushed;
 static TURN_THREAD_LOCAL uint64_t tl_auth_fail_not_found, tl_auth_fail_not_found_flushed;

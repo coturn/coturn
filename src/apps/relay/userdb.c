@@ -553,11 +553,10 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
 
     ts = get_rest_api_timestamp((char *)usname);
 
+    /* Expired timestamps are rejected before any per-secret HMAC work (integrity is never
+       checked), so a replay flood cannot induce integrity computation. */
     if (turn_time_before(ts, ctime)) {
-      /* Cheap reject: no per-secret HMAC work for expired timestamps, so a
-         replay flood cannot induce integrity computation. The integrity of an
-         expired request is therefore never checked. A zero timestamp means the
-         username carried no parseable timestamp at all, not an expired one. */
+      /* ts == 0 means the username carried no parseable timestamp, not an expired one. */
       if (ts) {
         *key_lookup = TURN_KEY_LOOKUP_EXPIRED;
       }

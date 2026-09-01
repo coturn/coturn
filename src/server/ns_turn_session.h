@@ -81,14 +81,14 @@ typedef uint64_t turnsession_id;
 
 typedef uint64_t mobile_id_t;
 
-/* Outcome of a user-key lookup, reported through get_username_resume_cb so the
- * 401 log line can name the actual cause instead of a generic "not found". */
+/* Outcome of a user-key lookup, reported through get_username_resume_cb so the 401 log line
+ * and the auth-failure metric can name the actual cause instead of a generic "not found". */
 typedef enum {
   TURN_KEY_LOOKUP_NOT_FOUND = 0,
   TURN_KEY_LOOKUP_OK,
   /* Time-limited username timestamp has passed; rejected before integrity verification. */
   TURN_KEY_LOOKUP_EXPIRED,
-  /* Time-limited credentials matched no configured auth secret. */
+  /* MESSAGE-INTEGRITY did not verify against any known secret or key. */
   TURN_KEY_LOOKUP_INTEGRITY_MISMATCH,
 } turn_key_lookup_result;
 
@@ -112,7 +112,7 @@ struct _ts_ur_super_session {
   uint8_t username[STUN_MAX_USERNAME_SIZE + 1];
   hmackey_t hmackey;
   int hmackey_set;
-  /* Why the last user-key lookup failed; consumed by the 401 log message. */
+  /* Why the last user-key lookup failed; consumed when the 401 rejection is reported. */
   turn_key_lookup_result key_lookup_result;
   password_t pwd;
   int quota_used;

@@ -132,9 +132,7 @@ void prom_dec_allocation(SOCKET_TYPE type);
 void prom_inc_unauthenticated_401_request(void);
 void prom_inc_unauthenticated_401_response(void);
 void prom_inc_unauthenticated_401_dropped_response(void);
-/* Count one rejected authentication, labeled by cause: expired,
- * integrity_mismatch, or not_found. Accumulated thread-locally and flushed
- * by prom_flush_401_counters(). */
+/* Accumulated thread-locally; flushed by prom_flush_401_counters(). */
 void prom_inc_auth_credential_failure(turn_key_lookup_result cause);
 
 /* Per-engine deltas accumulated lock-free on the relay hot path and flushed
