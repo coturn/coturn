@@ -282,11 +282,11 @@ static void log_socket_event(ioa_socket_handle s, const char *msg, int error) {
       addr_to_string(&(s->local_addr), sladdr);
 
       if (EVUTIL_SOCKET_ERROR()) {
-        TURN_LOG_FUNC(ll, "session %018llu: %s: %s (local %s, remote %s)\n", (unsigned long long)id, msg,
-                      evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()), sladdr, sraddr);
+        TURN_LOG_FUNC(ll, "socket event: %s: %s (local %s, remote %s) (session %018llu)\n", msg,
+                      evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()), sladdr, sraddr, (unsigned long long)id);
       } else {
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: %s (local %s, remote %s)\n", (unsigned long long)id, msg,
-                      sladdr, sraddr);
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "socket event: %s (local %s, remote %s) (session %018llu)\n", msg, sladdr,
+                      sraddr, (unsigned long long)id);
       }
     }
   }
@@ -3675,8 +3675,8 @@ static void eventcb_bev(struct bufferevent *bev, short events, void *arg) {
               addr_to_string(&(s->remote_addr), sraddr);
               if (events & BEV_EVENT_EOF) {
                 if (server->verbose) {
-                  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: %s socket closed remotely %s\n",
-                                (unsigned long long)(ss->id), socket_type_name(s->st), sraddr);
+                  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "socket closed remotely: %s (%s socket, session %018llu)\n",
+                                sraddr, socket_type_name(s->st), (unsigned long long)(ss->id));
                 }
                 if (s == ss->client_socket) {
                   char msg[256];
@@ -3700,12 +3700,12 @@ static void eventcb_bev(struct bufferevent *bev, short events, void *arg) {
                 }
               } else if (events & BEV_EVENT_ERROR) {
                 if (EVUTIL_SOCKET_ERROR()) {
-                  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: %s socket error: %s %s\n",
-                                (unsigned long long)(ss->id), socket_type_name(s->st),
-                                evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()), sraddr);
+                  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "socket error: %s %s (%s socket, session %018llu)\n",
+                                evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()), sraddr, socket_type_name(s->st),
+                                (unsigned long long)(ss->id));
                 } else if (server->verbose) {
-                  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: %s socket disconnected: %s\n",
-                                (unsigned long long)(ss->id), socket_type_name(s->st), sraddr);
+                  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "socket disconnected: %s (%s socket, session %018llu)\n", sraddr,
+                                socket_type_name(s->st), (unsigned long long)(ss->id));
                 }
                 char msg[256];
                 snprintf(msg, sizeof(msg) - 1, "%s socket buffer operation error (callback)", socket_type_name(s->st));
@@ -4752,14 +4752,16 @@ void turn_report_allocation_set(void *a, turn_time_t lifetime, int refresh) {
         if (e && e->verbose && ss->client_socket) {
           if (ss->client_socket->ssl) {
             TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-                          "session %018llu: %s, realm=<%s>, username=<%s>, lifetime=%lu, cipher=%s, method=%s\n",
-                          (unsigned long long)ss->id, status, (char *)ss->realm_options.name, (char *)ss->username,
-                          (unsigned long)lifetime, SSL_get_cipher(ss->client_socket->ssl),
-                          turn_get_ssl_method(ss->client_socket->ssl, "UNKNOWN"));
+                          "allocation %s, realm=<%s>, username=<%s>, lifetime=%lu, cipher=%s, method=%s "
+                          "(session %018llu)\n",
+                          status, (char *)ss->realm_options.name, (char *)ss->username, (unsigned long)lifetime,
+                          SSL_get_cipher(ss->client_socket->ssl),
+                          turn_get_ssl_method(ss->client_socket->ssl, "UNKNOWN"), (unsigned long long)ss->id);
           } else {
-            TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: %s, realm=<%s>, username=<%s>, lifetime=%lu\n",
-                          (unsigned long long)ss->id, status, (char *)ss->realm_options.name, (char *)ss->username,
-                          (unsigned long)lifetime);
+            TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+                          "allocation %s, realm=<%s>, username=<%s>, lifetime=%lu (session %018llu)\n", status,
+                          (char *)ss->realm_options.name, (char *)ss->username, (unsigned long)lifetime,
+                          (unsigned long long)ss->id);
           }
         }
 #if !defined(TURN_NO_HIREDIS)
@@ -4805,8 +4807,8 @@ void turn_report_allocation_delete(void *a, SOCKET_TYPE socket_type) {
       if (server) {
         ioa_engine_handle e = turn_server_get_engine(server);
         if (e && e->verbose) {
-          TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: delete: realm=<%s>, username=<%s>\n",
-                        (unsigned long long)ss->id, (char *)ss->realm_options.name, (char *)ss->username);
+          TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "allocation delete: realm=<%s>, username=<%s> (session %018llu)\n",
+                        (char *)ss->realm_options.name, (char *)ss->username, (unsigned long long)ss->id);
         }
 #if !defined(TURN_NO_HIREDIS)
         if (e) {
@@ -4884,15 +4886,16 @@ void turn_report_session_usage(void *session, int force_invalid) {
           force_invalid) {
         if (e && e->verbose) {
           TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-                        "session %018llu: usage: realm=<%s>, username=<%s>, rp=%lu, rb=%lu, sp=%lu, sb=%lu\n",
-                        (unsigned long long)(ss->id), (char *)ss->realm_options.name, (char *)ss->username,
-                        (unsigned long)(ss->received_packets), (unsigned long)(ss->received_bytes),
-                        (unsigned long)(ss->sent_packets), (unsigned long)(ss->sent_bytes));
+                        "usage: realm=<%s>, username=<%s>, rp=%lu, rb=%lu, sp=%lu, sb=%lu (session %018llu)\n",
+                        (char *)ss->realm_options.name, (char *)ss->username, (unsigned long)(ss->received_packets),
+                        (unsigned long)(ss->received_bytes), (unsigned long)(ss->sent_packets),
+                        (unsigned long)(ss->sent_bytes), (unsigned long long)(ss->id));
           TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-                        "session %018llu: peer usage: realm=<%s>, username=<%s>, rp=%lu, rb=%lu, sp=%lu, sb=%lu\n",
-                        (unsigned long long)(ss->id), (char *)ss->realm_options.name, (char *)ss->username,
+                        "peer usage: realm=<%s>, username=<%s>, rp=%lu, rb=%lu, sp=%lu, sb=%lu (session %018llu)\n",
+                        (char *)ss->realm_options.name, (char *)ss->username,
                         (unsigned long)(ss->peer_received_packets), (unsigned long)(ss->peer_received_bytes),
-                        (unsigned long)(ss->peer_sent_packets), (unsigned long)(ss->peer_sent_bytes));
+                        (unsigned long)(ss->peer_sent_packets), (unsigned long)(ss->peer_sent_bytes),
+                        (unsigned long long)(ss->id));
         }
 #if !defined(TURN_NO_HIREDIS)
         if (e) {

@@ -123,28 +123,29 @@ static inline void log_method(ts_ur_super_session *ss, const char *method, int e
     if (!err_code) {
       if (ss->origin[0]) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-                      "session %018llu: origin <%s> realm <%s> user <%s>: incoming packet %s processed, success\n",
-                      (unsigned long long)(ss->id), (const char *)(ss->origin), (const char *)(ss->realm_options.name),
-                      (const char *)(ss->username), method);
+                      "origin <%s> realm <%s> user <%s>: incoming packet %s processed, success (session %018llu)\n",
+                      (const char *)(ss->origin), (const char *)(ss->realm_options.name), (const char *)(ss->username),
+                      method, (unsigned long long)(ss->id));
       } else {
         TURN_LOG_FUNC(
-            TURN_LOG_LEVEL_INFO, "session %018llu: realm <%s> user <%s>: incoming packet %s processed, success\n",
-            (unsigned long long)(ss->id), (const char *)(ss->realm_options.name), (const char *)(ss->username), method);
+            TURN_LOG_LEVEL_INFO, "realm <%s> user <%s>: incoming packet %s processed, success (session %018llu)\n",
+            (const char *)(ss->realm_options.name), (const char *)(ss->username), method, (unsigned long long)(ss->id));
       }
     } else {
       if (!reason) {
         reason = get_default_reason(err_code);
       }
       if (ss->origin[0]) {
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-                      "session %018llu: origin <%s> realm <%s> user <%s>: incoming packet %s processed, error %d: %s\n",
-                      (unsigned long long)(ss->id), (const char *)(ss->origin), (const char *)(ss->realm_options.name),
-                      (const char *)(ss->username), method, err_code, reason);
+        TURN_LOG_FUNC(
+            TURN_LOG_LEVEL_INFO,
+            "origin <%s> realm <%s> user <%s>: incoming packet %s processed, error %d: %s (session %018llu)\n",
+            (const char *)(ss->origin), (const char *)(ss->realm_options.name), (const char *)(ss->username), method,
+            err_code, reason, (unsigned long long)(ss->id));
       } else {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-                      "session %018llu: realm <%s> user <%s>: incoming packet %s processed, error %d: %s\n",
-                      (unsigned long long)(ss->id), (const char *)(ss->realm_options.name),
-                      (const char *)(ss->username), method, err_code, reason);
+                      "realm <%s> user <%s>: incoming packet %s processed, error %d: %s (session %018llu)\n",
+                      (const char *)(ss->realm_options.name), (const char *)(ss->username), method, err_code, reason,
+                      (unsigned long long)(ss->id));
       }
     }
   }
@@ -329,9 +330,9 @@ static int good_peer_addr(turn_turnserver *server, const char *realm, ioa_addr *
       char saddr[MAX_IOA_ADDR_STRING] = "";
       addr_to_string_no_port(peer_addr, saddr);
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
-                    "session %018llu: A peer IP %s denied: link-local/unique-local/site-local scope is not a "
-                    "permitted relay peer in server %d \n",
-                    (unsigned long long)session_id, saddr, server_id);
+                    "A peer IP %s denied: link-local/unique-local/site-local scope is not a "
+                    "permitted relay peer in server %d (session %018llu)\n",
+                    saddr, server_id, (unsigned long long)session_id);
       return 0;
     }
 
@@ -370,8 +371,8 @@ static int good_peer_addr(turn_turnserver *server, const char *realm, ioa_addr *
         if (ioa_addr_in_range(&(server->ip_blacklist->rs[i].enc), peer_addr)) {
           char saddr[MAX_IOA_ADDR_STRING] = "";
           addr_to_string_no_port(peer_addr, saddr);
-          TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: A peer IP %s denied in the range: %s in server %d \n",
-                        (unsigned long long)session_id, saddr, server->ip_blacklist->rs[i].str, server_id);
+          TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "A peer IP %s denied in the range: %s in server %d (session %018llu)\n",
+                        saddr, server->ip_blacklist->rs[i].str, server_id, (unsigned long long)session_id);
           return 0;
         }
       }
@@ -389,8 +390,8 @@ static int good_peer_addr(turn_turnserver *server, const char *realm, ioa_addr *
             ioa_unlock_blacklist(server->e);
             char saddr[MAX_IOA_ADDR_STRING] = "";
             addr_to_string_no_port(peer_addr, saddr);
-            TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: A peer IP %s denied in the range= %s in server %d \n",
-                          (unsigned long long)session_id, saddr, bl->rs[i].str, server_id);
+            TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "A peer IP %s denied in the range= %s in server %d (session %018llu)\n",
+                          saddr, bl->rs[i].str, server_id, (unsigned long long)session_id);
             return 0;
           }
         }
@@ -855,7 +856,8 @@ void turn_cancel_session(turn_turnserver *server, turnsession_id sid) {
   if (server) {
     ts_ur_super_session *ts = get_session_from_map(server, sid);
     if (ts) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Session %018llu to be forcefully canceled\n", (unsigned long long)sid);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Session to be forcefully canceled (session %018llu)\n",
+                    (unsigned long long)sid);
       shutdown_client_connection(server, ts, 0, "Forceful shutdown");
     }
   }
@@ -985,8 +987,8 @@ static int update_turn_permission_lifetime(ts_ur_super_session *ss, turn_permiss
         tinfo->session_id = ss->id;
         char s[MAX_IOA_ADDR_STRING] = "";
         addr_to_string(&(tinfo->addr), s);
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: peer %s lifetime updated: %lu\n",
-                      (unsigned long long)ss->id, s, (unsigned long)time_delta);
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "peer %s lifetime updated: %lu (session %018llu)\n", s,
+                      (unsigned long)time_delta, (unsigned long long)ss->id);
       }
 
       return 0;
@@ -1707,8 +1709,8 @@ static void mobile_begin_transition(turn_turnserver *server, ts_ur_super_session
 
   if (server->verbose) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-                  "session %018llu: mobility handoff started (dual-5-tuple transition to session %018llu)\n",
-                  (unsigned long long)orig_ss->id, (unsigned long long)pending_ss->id);
+                  "mobility handoff started: dual-5-tuple transition to session %018llu (session %018llu)\n",
+                  (unsigned long long)pending_ss->id, (unsigned long long)orig_ss->id);
   }
 }
 
@@ -1759,7 +1761,7 @@ static ts_ur_super_session *mobile_complete_transition(turn_turnserver *server, 
   }
 
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-                "session %018llu: mobility handoff completed (allocation moved to new client path)\n",
+                "mobility handoff completed: allocation moved to new client path (session %018llu)\n",
                 (unsigned long long)orig_ss->id);
 
   return orig_ss;
@@ -3688,8 +3690,8 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
     realm[alen] = 0;
 
     if (!is_secure_string(realm, 0)) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: %s: wrong realm: %s\n", (unsigned long long)(ss->id),
-                    __FUNCTION__, (char *)realm);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "wrong realm: %s (session %018llu, %s)\n", (char *)realm,
+                    (unsigned long long)(ss->id), __FUNCTION__);
       realm[0] = 0;
       *err_code = 400;
       return -1;
@@ -3737,8 +3739,8 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
   usname[alen] = 0;
 
   if (!is_secure_string(usname, 1)) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: %s: wrong username: %s\n", (unsigned long long)(ss->id),
-                  __FUNCTION__, (char *)usname);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "wrong username: %s (session %018llu, %s)\n", (char *)usname,
+                  (unsigned long long)(ss->id), __FUNCTION__);
     usname[0] = 0;
     *err_code = 400;
     return -1;
@@ -3873,8 +3875,8 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
       }
     }
 
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: %s: user %s credentials are incorrect\n",
-                  (unsigned long long)(ss->id), __FUNCTION__, (char *)usname);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "user %s credentials are incorrect (session %018llu, %s)\n", (char *)usname,
+                  (unsigned long long)(ss->id), __FUNCTION__);
     if (server->auth_credential_failure_cb) {
       server->auth_credential_failure_cb(TURN_KEY_LOOKUP_INTEGRITY_MISMATCH);
     }
@@ -3956,16 +3958,16 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 
       no_response = 1;
       if (server->verbose) {
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: %s: STUN method 0x%x ignored\n",
-                      (unsigned long long)(ss->id), __FUNCTION__, (unsigned int)method);
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "STUN method 0x%x ignored (session %018llu, %s)\n", (unsigned int)method,
+                      (unsigned long long)(ss->id), __FUNCTION__);
       }
 
     } else if ((method != STUN_METHOD_BINDING) && (*(server->stun_only))) {
 
       no_response = 1;
       if (server->verbose) {
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: %s: STUN method 0x%x ignored\n",
-                      (unsigned long long)(ss->id), __FUNCTION__, (unsigned int)method);
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "STUN method 0x%x ignored (session %018llu, %s)\n", (unsigned int)method,
+                      (unsigned long long)(ss->id), __FUNCTION__);
       }
 
     } else if ((method != STUN_METHOD_BINDING) || (*(server->secure_stun))) {
@@ -4034,8 +4036,8 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
               char *corigin = (char *)turn_malloc(STUN_MAX_ORIGIN_SIZE + 1);
               corigin[0] = 0;
               if (get_canonic_origin(o, corigin, STUN_MAX_ORIGIN_SIZE) < 0) {
-                TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: %s: Wrong origin format: %s\n",
-                              (unsigned long long)(ss->id), __FUNCTION__, o);
+                TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong origin format: %s (session %018llu, %s)\n", o,
+                              (unsigned long long)(ss->id), __FUNCTION__);
               }
               if (!strncmp(ss->origin, corigin, STUN_MAX_ORIGIN_SIZE)) {
                 origin_found = true;
@@ -4091,8 +4093,8 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
               char *corigin = (char *)turn_malloc(STUN_MAX_ORIGIN_SIZE + 1);
               corigin[0] = 0;
               if (get_canonic_origin(o, corigin, STUN_MAX_ORIGIN_SIZE) < 0) {
-                TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: %s: Wrong origin format: %s\n",
-                              (unsigned long long)(ss->id), __FUNCTION__, o);
+                TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong origin format: %s (session %018llu, %s)\n", o,
+                              (unsigned long long)(ss->id), __FUNCTION__);
               }
               strncpy(ss->origin, corigin, STUN_MAX_ORIGIN_SIZE);
               free(corigin);
@@ -4218,7 +4220,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
         if (*resp_constructed && !err_code && (origin_changed || dest_changed)) {
 
           if (server->verbose && *(server->log_binding)) {
-            TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: RFC 5780 request successfully processed\n",
+            TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "RFC 5780 request successfully processed (session %018llu)\n",
                           (unsigned long long)(ss->id));
           }
 
@@ -4232,8 +4234,8 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
         break;
       }
       default:
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: Unsupported STUN request received, method 0x%x\n",
-                      (unsigned long long)(ss->id), (unsigned int)method);
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unsupported STUN request received, method 0x%x (session %018llu)\n",
+                      (unsigned int)method, (unsigned long long)(ss->id));
       };
     }
 
@@ -4273,8 +4275,8 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 
       default:
         if (server->verbose) {
-          TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: Unsupported STUN indication received: method 0x%x\n",
-                        (unsigned long long)(ss->id), (unsigned int)method);
+          TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Unsupported STUN indication received: method 0x%x (session %018llu)\n",
+                        (unsigned int)method, (unsigned long long)(ss->id));
         }
       }
     };
@@ -4284,7 +4286,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
     no_response = 1;
 
     if (server->verbose) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: Wrong STUN message received\n",
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Wrong STUN message received (session %018llu)\n",
                     (unsigned long long)(ss->id));
     }
   }
@@ -4630,9 +4632,9 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
 
       TURN_LOG_FUNC(
           TURN_LOG_LEVEL_INFO,
-          "session %018llu: closed (1st stage), user <%s> realm <%s> origin <%s>, local %s, remote %s, reason: %s\n",
-          (unsigned long long)(ss->id), (char *)ss->username, (char *)ss->realm_options.name, (char *)ss->origin,
-          sladdr, sraddr, reason);
+          "closed (1st stage), user <%s> realm <%s> origin <%s>, local %s, remote %s, reason: %s (session %018llu)\n",
+          (char *)ss->username, (char *)ss->realm_options.name, (char *)ss->origin, sladdr, sraddr, reason,
+          (unsigned long long)(ss->id));
     }
 
     IOA_CLOSE_SOCKET(ss->client_socket);
@@ -4686,9 +4688,9 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
 
     TURN_LOG_FUNC(
         TURN_LOG_LEVEL_INFO,
-        "session %018llu: closed (2nd stage), user <%s> realm <%s> origin <%s>, local %s, remote %s, reason: %s\n",
-        (unsigned long long)(ss->id), (char *)ss->username, (char *)ss->realm_options.name, (char *)ss->origin, sladdr,
-        sraddr, reason);
+        "closed (2nd stage), user <%s> realm <%s> origin <%s>, local %s, remote %s, reason: %s (session %018llu)\n",
+        (char *)ss->username, (char *)ss->realm_options.name, (char *)ss->origin, sladdr, sraddr, reason,
+        (unsigned long long)(ss->id));
   }
 
   {
@@ -5498,8 +5500,8 @@ static void client_input_handler(ioa_socket_handle s, int event_type, ioa_net_da
 
   if (ss->to_be_closed) {
     if (server->verbose) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: client socket to be closed in client handler: ss=%p\n",
-                    (unsigned long long)(ss->id), ss);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "client socket to be closed in client handler: ss=%p (session %018llu)\n", ss,
+                    (unsigned long long)(ss->id));
     }
     set_ioa_socket_tobeclosed(s);
   }
