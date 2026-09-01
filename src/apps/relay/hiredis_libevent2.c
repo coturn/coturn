@@ -260,6 +260,7 @@ redis_context_handle redisLibeventAttach(struct event_base *base, char *ip0, int
     return NULL;
   } else if (ac->err) {
     fprintf(stderr, "Error: %s:%s\n", ac->errstr, ac->c.errstr);
+    redisAsyncFree(ac);
     return NULL;
   }
 
@@ -306,6 +307,11 @@ redis_context_handle redisLibeventAttach(struct event_base *base, char *ip0, int
   e->wev = event_new(e->base, e->context->c.fd, EV_WRITE, redisLibeventWriteEvent, e);
 
   if (e->rev == NULL || e->wev == NULL) {
+    redisAsyncFree(ac);
+    e->context = NULL;
+    free(e->ip);
+    free(e->user);
+    free(e->pwd);
     free(e);
     return NULL;
   }
@@ -370,6 +376,11 @@ static void redis_reconnect(struct redisLibeventEvents *e) {
     return;
   }
 
+  if (ac->err) {
+    redisAsyncFree(ac);
+    return;
+  }
+
   e->context = ac;
 
   /* Re-upgrade to TLS before any command is queued on the new context. */
@@ -394,6 +405,8 @@ static void redis_reconnect(struct redisLibeventEvents *e) {
   e->wev = event_new(e->base, e->context->c.fd, EV_WRITE, redisLibeventWriteEvent, e);
 
   if (e->rev == NULL || e->wev == NULL) {
+    redisAsyncFree(ac);
+    e->context = NULL;
     return;
   }
 
