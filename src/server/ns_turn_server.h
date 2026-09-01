@@ -100,9 +100,9 @@ typedef enum {
 struct _turn_turnserver;
 typedef struct _turn_turnserver turn_turnserver;
 
-typedef void (*get_username_resume_cb)(int success, int oauth, int max_session_time, hmackey_t hmackey, password_t pwd,
-                                       turn_turnserver *server, uint64_t ctxkey, ioa_net_data *in_buffer,
-                                       uint8_t *realm);
+typedef void (*get_username_resume_cb)(int success, turn_key_lookup_result key_lookup, int oauth, int max_session_time,
+                                       hmackey_t hmackey, password_t pwd, turn_turnserver *server, uint64_t ctxkey,
+                                       ioa_net_data *in_buffer, uint8_t *realm);
 typedef uint8_t *(*get_user_key_cb)(turnserver_id id, turn_credential_type ct, int in_oauth, int *out_oauth,
                                     uint8_t *uname, uint8_t *realm, get_username_resume_cb resume,
                                     ioa_net_data *in_buffer, uint64_t ctxkey, int *postpone_reply);
@@ -116,6 +116,7 @@ typedef void (*send_https_socket_cb)(ioa_socket_handle s);
 
 typedef band_limit_t (*allocate_bps_cb)(band_limit_t bps, int positive);
 typedef void (*unauthenticated_401_metric_cb)(void);
+typedef void (*auth_credential_failure_metric_cb)(turn_key_lookup_result cause);
 
 struct _turn_turnserver {
 
@@ -235,6 +236,7 @@ struct _turn_turnserver {
   unauthenticated_401_metric_cb unauthenticated_401_request_cb;
   unauthenticated_401_metric_cb unauthenticated_401_response_cb;
   unauthenticated_401_metric_cb unauthenticated_401_dropped_response_cb;
+  auth_credential_failure_metric_cb auth_credential_failure_cb;
 
   /* Stateless-nonce mode (issue #1999): challenge nonces are authenticated
    * timestamp cookies (turn_generate_stateless_nonce() /
@@ -284,6 +286,7 @@ void set_disconnect_cb(turn_turnserver *server, int (*disconnect)(ts_ur_super_se
 void set_unauthenticated_401_metric_cbs(turn_turnserver *server, unauthenticated_401_metric_cb request_cb,
                                         unauthenticated_401_metric_cb response_cb,
                                         unauthenticated_401_metric_cb dropped_response_cb);
+void set_auth_credential_failure_metric_cb(turn_turnserver *server, auth_credential_failure_metric_cb cb);
 void set_stateless_nonce(turn_turnserver *server, bool *enabled, const uint8_t *key, size_t key_size);
 
 /* turn_server_stateless_nonce_enabled() is shared with the UDP listener fast

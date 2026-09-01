@@ -57,6 +57,8 @@ prom_counter_t *turn_unauthenticated_401_requests;
 prom_counter_t *turn_unauthenticated_401_responses;
 prom_counter_t *turn_unauthenticated_401_dropped_responses;
 
+prom_counter_t *turn_auth_credential_failures;
+
 prom_counter_t *turn_ratelimit_hash_collisions;
 prom_gauge_t *turn_ratelimit_occupied_buckets;
 prom_gauge_t *turn_ratelimit_total_buckets;
@@ -212,6 +214,14 @@ void start_prometheus_server(void) {
       prom_counter_new("turn_unauthenticated_401_responses", "UDP 401 Unauthorized responses emitted", 0, NULL));
   turn_unauthenticated_401_dropped_responses = prom_collector_registry_must_register_metric(prom_counter_new(
       "turn_unauthenticated_401_dropped_responses", "UDP 401 responses suppressed by DDoS mitigation", 0, NULL));
+
+  const char *causeLabel[] = {"cause"};
+  turn_auth_credential_failures = prom_collector_registry_must_register_metric(
+      prom_counter_new("turn_auth_credential_failures",
+                       "Rejected authentications by cause: expired (time-limited username timestamp has passed; "
+                       "rejected before integrity verification), integrity_mismatch (wrong credentials), or "
+                       "not_found (unknown user)",
+                       1, causeLabel));
 
   // 401 rate-limit hash-table health. Refreshed lazily at scrape time from the
   // lock-free table's self-instrumented counters (see prom_refresh_ratelimit_stats).
@@ -476,6 +486,12 @@ static TURN_THREAD_LOCAL uint64_t tl_401_requests, tl_401_requests_flushed;
 static TURN_THREAD_LOCAL uint64_t tl_401_responses, tl_401_responses_flushed;
 static TURN_THREAD_LOCAL uint64_t tl_401_dropped, tl_401_dropped_flushed;
 
+/* Auth-failure counters take the same lock-free thread-local path: a client holding a valid
+ * nonce can drive them from every relay thread, so the prom registry lock stays off it. */
+static TURN_THREAD_LOCAL uint64_t tl_auth_fail_expired, tl_auth_fail_expired_flushed;
+static TURN_THREAD_LOCAL uint64_t tl_auth_fail_mismatch, tl_auth_fail_mismatch_flushed;
+static TURN_THREAD_LOCAL uint64_t tl_auth_fail_not_found, tl_auth_fail_not_found_flushed;
+
 void prom_inc_unauthenticated_401_request(void) {
   if (turn_params.prometheus) {
     tl_401_requests++;
@@ -510,6 +526,37 @@ void prom_flush_401_counters(void) {
   if ((d = tl_401_dropped - tl_401_dropped_flushed)) {
     prom_counter_add(turn_unauthenticated_401_dropped_responses, (double)d, NULL);
     tl_401_dropped_flushed = tl_401_dropped;
+  }
+  if ((d = tl_auth_fail_expired - tl_auth_fail_expired_flushed)) {
+    const char *label[] = {"expired"};
+    prom_counter_add(turn_auth_credential_failures, (double)d, label);
+    tl_auth_fail_expired_flushed = tl_auth_fail_expired;
+  }
+  if ((d = tl_auth_fail_mismatch - tl_auth_fail_mismatch_flushed)) {
+    const char *label[] = {"integrity_mismatch"};
+    prom_counter_add(turn_auth_credential_failures, (double)d, label);
+    tl_auth_fail_mismatch_flushed = tl_auth_fail_mismatch;
+  }
+  if ((d = tl_auth_fail_not_found - tl_auth_fail_not_found_flushed)) {
+    const char *label[] = {"not_found"};
+    prom_counter_add(turn_auth_credential_failures, (double)d, label);
+    tl_auth_fail_not_found_flushed = tl_auth_fail_not_found;
+  }
+}
+
+void prom_inc_auth_credential_failure(turn_key_lookup_result cause) {
+  if (turn_params.prometheus) {
+    switch (cause) {
+    case TURN_KEY_LOOKUP_EXPIRED:
+      tl_auth_fail_expired++;
+      break;
+    case TURN_KEY_LOOKUP_INTEGRITY_MISMATCH:
+      tl_auth_fail_mismatch++;
+      break;
+    default:
+      tl_auth_fail_not_found++;
+      break;
+    }
   }
 }
 
@@ -576,6 +623,8 @@ void prom_inc_unauthenticated_401_request(void) {}
 void prom_inc_unauthenticated_401_response(void) {}
 
 void prom_inc_unauthenticated_401_dropped_response(void) {}
+
+void prom_inc_auth_credential_failure(turn_key_lookup_result cause) { UNUSED_ARG(cause); }
 
 void prom_flush_401_counters(void) {}
 

@@ -400,8 +400,10 @@ static char *get_real_username(char *usname) {
  * Password retrieval
  */
 int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *usname, uint8_t *realm, hmackey_t key,
-                 ioa_network_buffer_handle nbh) {
+                 ioa_network_buffer_handle nbh, turn_key_lookup_result *key_lookup) {
   int ret = -1;
+
+  *key_lookup = TURN_KEY_LOOKUP_NOT_FOUND;
 
   if (max_session_time) {
     *max_session_time = 0;
@@ -551,8 +553,18 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
 
     ts = get_rest_api_timestamp((char *)usname);
 
-    if (!turn_time_before(ts, ctime)) {
+    /* Expired timestamps are rejected before any per-secret HMAC work (integrity is never
+       checked), so a replay flood cannot induce integrity computation. */
+    if (turn_time_before(ts, ctime)) {
+      /* ts == 0 means the username carried no parseable timestamp, not an expired one. */
+      if (ts) {
+        *key_lookup = TURN_KEY_LOOKUP_EXPIRED;
+      }
+      clean_secrets_list(&sl);
+      return ret;
+    }
 
+    {
       uint8_t hmac[MAXSHASIZE];
       unsigned int hmac_len;
       password_t pwdtmp;
@@ -610,6 +622,10 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
             }
           }
         }
+      }
+
+      if (ret < 0) {
+        *key_lookup = TURN_KEY_LOOKUP_INTEGRITY_MISMATCH;
       }
     }
 

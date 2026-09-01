@@ -534,7 +534,7 @@ static bool can_auth_message_inline(const struct auth_message *am) {
 void send_auth_message_to_auth_server(struct auth_message *am) {
   if (can_auth_message_inline(am)) {
     if (get_user_key(am->in_oauth, &(am->out_oauth), &(am->max_session_time), am->username, am->realm, am->key,
-                     am->in_buffer.nbh) < 0) {
+                     am->in_buffer.nbh, &(am->key_lookup)) < 0) {
       am->success = 0;
     } else {
       am->success = 1;
@@ -568,7 +568,7 @@ static void auth_server_receive_message(struct bufferevent *bev, void *ptr) {
     }
 
     if (get_user_key(am->in_oauth, &(am->out_oauth), &(am->max_session_time), am->username, am->realm, am->key,
-                     am->in_buffer.nbh) < 0) {
+                     am->in_buffer.nbh, &(am->key_lookup)) < 0) {
       am->success = 0;
     } else {
       am->success = 1;
@@ -841,8 +841,8 @@ static int handle_relay_message(relay_server_handle rs, struct message_to_relay 
 }
 
 static void handle_relay_auth_message(struct relay_server *rs, struct auth_message *am) {
-  am->resume_func(am->success, am->out_oauth, am->max_session_time, am->key, am->pwd, &(rs->server), am->ctxkey,
-                  &(am->in_buffer), am->realm);
+  am->resume_func(am->success, am->key_lookup, am->out_oauth, am->max_session_time, am->key, am->pwd, &(rs->server),
+                  am->ctxkey, &(am->in_buffer), am->realm);
   if (am->in_buffer.nbh) {
     ioa_network_buffer_delete(rs->ioa_eng, am->in_buffer.nbh);
     am->in_buffer.nbh = NULL;
@@ -1387,6 +1387,7 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
   set_unauthenticated_401_metric_cbs(&(rs->server), prom_inc_unauthenticated_401_request,
                                      prom_inc_unauthenticated_401_response,
                                      prom_inc_unauthenticated_401_dropped_response);
+  set_auth_credential_failure_metric_cb(&(rs->server), prom_inc_auth_credential_failure);
   set_stateless_nonce(&(rs->server), &turn_params.stateless_nonce, turn_params.stateless_nonce_key,
                       sizeof(turn_params.stateless_nonce_key));
   if (to_set_rfc5780) {
