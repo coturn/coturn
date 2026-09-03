@@ -1613,6 +1613,18 @@ stun_attr_ref stun_attr_get_first_by_type_str(const uint8_t *buf, size_t len, ui
   return NULL;
 }
 
+stun_attr_ref stun_attr_get_first_covered_by_type_str(const uint8_t *buf, size_t len, uint16_t attr_type) {
+  stun_attr_ref attr = stun_attr_get_first_str(buf, len);
+  while (attr) {
+    if (stun_attr_get_type(attr) == attr_type) {
+      return attr;
+    }
+    attr = stun_attr_get_next_covered_str(buf, len, attr);
+  }
+
+  return NULL;
+}
+
 static stun_attr_ref stun_attr_check_valid(stun_attr_ref attr, size_t remaining) {
   if (remaining >= 4) {
     /* Read the size of the attribute */
