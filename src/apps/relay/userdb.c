@@ -411,8 +411,8 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
 
   if (in_oauth && out_oauth && usname && usname[0]) {
 
-    stun_attr_ref sar = stun_attr_get_first_by_type_str(ioa_network_buffer_data(nbh), ioa_network_buffer_get_size(nbh),
-                                                        STUN_ATTRIBUTE_OAUTH_ACCESS_TOKEN);
+    stun_attr_ref sar = stun_attr_get_first_covered_by_type_str(
+        ioa_network_buffer_data(nbh), ioa_network_buffer_get_size(nbh), STUN_ATTRIBUTE_OAUTH_ACCESS_TOKEN);
     if (sar) {
 
       const int len = stun_attr_get_len(sar);

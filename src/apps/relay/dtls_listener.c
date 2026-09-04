@@ -584,7 +584,7 @@ static bool udp_stateless_binding_fast_path(dtls_listener_relay_server_type *ser
  * is truncated exactly as check_stun_auth() truncates it, so both paths judge
  * the same string. Returns false when the attribute is absent. */
 static bool udp_get_string_attr(const uint8_t *data, size_t len, uint16_t attr_type, char *out, size_t out_size) {
-  stun_attr_ref sar = stun_attr_get_first_by_type_str(data, len, attr_type);
+  stun_attr_ref sar = stun_attr_get_first_covered_by_type_str(data, len, attr_type);
   if (!sar) {
     return false;
   }

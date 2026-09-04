@@ -775,6 +775,49 @@ static void test_covered_walk_hides_message_integrity_sha256_from_420(void) {
   TEST_ASSERT_EQUAL_INT(0, count_attrs_of_type(buf, len, TEST_ATTR_MESSAGE_INTEGRITY_SHA256, true));
 }
 
+static bool attr_value_equals(stun_attr_ref sar, const char *expected) {
+  const int alen = stun_attr_get_len(sar);
+  return (alen == (int)strlen(expected)) && (memcmp(stun_attr_get_value(sar), expected, (size_t)alen) == 0);
+}
+
+static void test_covered_by_type_ignores_attr_after_message_integrity(void) {
+  uint8_t buf[1024] = {0};
+  size_t len = 0;
+  uint8_t hmac[SHA1SIZEBYTES] = {0};
+
+  /* A USERNAME that exists only past the HMAC boundary: nothing signed it, so
+     check_stun_auth() must not derive a key from it. */
+  stun_init_request_str(STUN_METHOD_ALLOCATE, buf, &len);
+  TEST_ASSERT_TRUE(stun_attr_add_str(buf, &len, STUN_ATTRIBUTE_MESSAGE_INTEGRITY, hmac, SHA1SIZEBYTES));
+  TEST_ASSERT_TRUE(
+      stun_attr_add_str(buf, &len, STUN_ATTRIBUTE_USERNAME, TEST_UNAME, (int)strlen((const char *)TEST_UNAME)));
+
+  TEST_ASSERT_NOT_NULL(stun_attr_get_first_by_type_str(buf, len, STUN_ATTRIBUTE_USERNAME));
+  TEST_ASSERT_NULL(stun_attr_get_first_covered_by_type_str(buf, len, STUN_ATTRIBUTE_USERNAME));
+}
+
+static void test_covered_by_type_keeps_protected_attr_over_trailing_copy(void) {
+  uint8_t buf[1024] = {0};
+  size_t len = 0;
+
+  build_authenticated_allocate(buf, &len);
+  TEST_ASSERT_TRUE(stun_attr_add_str(buf, &len, STUN_ATTRIBUTE_USERNAME, (const uint8_t *)"attacker", 8));
+
+  stun_attr_ref sar = stun_attr_get_first_covered_by_type_str(buf, len, STUN_ATTRIBUTE_USERNAME);
+  TEST_ASSERT_NOT_NULL(sar);
+  TEST_ASSERT_TRUE(attr_value_equals(sar, (const char *)TEST_UNAME));
+}
+
+static void test_covered_by_type_finds_message_integrity_itself(void) {
+  uint8_t buf[1024] = {0};
+  size_t len = 0;
+
+  build_authenticated_allocate(buf, &len);
+
+  /* The boundary is inclusive, so the auth path can still locate the HMAC. */
+  TEST_ASSERT_NOT_NULL(stun_attr_get_first_covered_by_type_str(buf, len, STUN_ATTRIBUTE_MESSAGE_INTEGRITY));
+}
+
 /* RFC 8656 par. 12: ChannelBind may only establish channels 0x4000-0x4FFF;
    0x5000-0xFFFF is reserved for RFC 7983 demultiplexing. The receive-side
    macro deliberately keeps the RFC 5766 range so legacy ChannelData frames
@@ -915,6 +958,9 @@ int main(void) {
   RUN_TEST(test_covered_walk_yields_message_integrity_itself);
   RUN_TEST(test_covered_walk_is_full_walk_without_message_integrity);
   RUN_TEST(test_covered_walk_hides_message_integrity_sha256_from_420);
+  RUN_TEST(test_covered_by_type_ignores_attr_after_message_integrity);
+  RUN_TEST(test_covered_by_type_keeps_protected_attr_over_trailing_copy);
+  RUN_TEST(test_covered_by_type_finds_message_integrity_itself);
   RUN_TEST(test_channel_bind_macro_is_strict_rfc8656_range);
   RUN_TEST(test_channel_bind_request_stays_in_rfc8656_range);
   RUN_TEST(test_channel_bind_request_keeps_explicit_valid_channel);

@@ -3670,8 +3670,8 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
 
     /* REALM ATTR: */
 
-    sar = stun_attr_get_first_by_type_str(ioa_network_buffer_data(in_buffer->nbh),
-                                          ioa_network_buffer_get_size(in_buffer->nbh), STUN_ATTRIBUTE_REALM);
+    sar = stun_attr_get_first_covered_by_type_str(ioa_network_buffer_data(in_buffer->nbh),
+                                                  ioa_network_buffer_get_size(in_buffer->nbh), STUN_ATTRIBUTE_REALM);
 
     if (!sar) {
       *err_code = 400;
@@ -3719,8 +3719,8 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
 
   /* USERNAME ATTR: */
 
-  sar = stun_attr_get_first_by_type_str(ioa_network_buffer_data(in_buffer->nbh),
-                                        ioa_network_buffer_get_size(in_buffer->nbh), STUN_ATTRIBUTE_USERNAME);
+  sar = stun_attr_get_first_covered_by_type_str(ioa_network_buffer_data(in_buffer->nbh),
+                                                ioa_network_buffer_get_size(in_buffer->nbh), STUN_ATTRIBUTE_USERNAME);
 
   if (!sar) {
     *err_code = 400;
@@ -3766,8 +3766,8 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
   {
     /* NONCE ATTR: */
 
-    sar = stun_attr_get_first_by_type_str(ioa_network_buffer_data(in_buffer->nbh),
-                                          ioa_network_buffer_get_size(in_buffer->nbh), STUN_ATTRIBUTE_NONCE);
+    sar = stun_attr_get_first_covered_by_type_str(ioa_network_buffer_data(in_buffer->nbh),
+                                                  ioa_network_buffer_get_size(in_buffer->nbh), STUN_ATTRIBUTE_NONCE);
 
     if (!sar) {
       *err_code = 400;

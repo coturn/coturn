@@ -177,6 +177,13 @@ stun_attr_ref stun_attr_get_next_str(const uint8_t *buf, size_t len, stun_attr_r
  * yet; when it is, this boundary moves to the end of that attribute.
  */
 stun_attr_ref stun_attr_get_next_covered_str(const uint8_t *buf, size_t len, stun_attr_ref prev);
+/**
+ * Like stun_attr_get_first_by_type_str(), but honours the same MESSAGE-INTEGRITY
+ * boundary as stun_attr_get_next_covered_str(): an attribute that appears only
+ * after MESSAGE-INTEGRITY is not found. Use this for any attribute the server
+ * acts on, so an unprotected copy appended past the HMAC cannot supply it.
+ */
+stun_attr_ref stun_attr_get_first_covered_by_type_str(const uint8_t *buf, size_t len, uint16_t attr_type);
 bool stun_attr_add_str(uint8_t *buf, size_t *len, uint16_t attr, const uint8_t *avalue, int alen);
 bool stun_attr_add_addr_str(uint8_t *buf, size_t *len, uint16_t attr_type, const ioa_addr *ca);
 bool stun_attr_get_addr_str(const uint8_t *buf, size_t len, stun_attr_ref attr, ioa_addr *ca,
