@@ -701,6 +701,25 @@ static void test_channel_bind_binds_the_peer_address(void) {
   TEST_ASSERT_TRUE(addr_eq(&peer, &(chn->peer_addr)));
 }
 
+/* RFC 8656 Section 7.3: requests other than Allocate require an existing
+ * allocation for the request's 5-tuple. A ChannelBind received after that
+ * allocation expires reports Allocation Mismatch rather than falling through
+ * to the generic Bad Request response. */
+static void test_channel_bind_without_a_valid_allocation_reports_mismatch(void) {
+  ioa_addr peer;
+  make_addr(&peer, PEER_A, PEER_PORT_A);
+
+  msg_begin(STUN_METHOD_CHANNEL_BIND, false);
+  msg_add_channel_number(TEST_CHANNEL_NUMBER);
+  msg_add_peer(&peer);
+  msg_finish();
+  set_allocation_valid(&(ss.alloc), false);
+
+  int constructed = 0;
+  TEST_ASSERT_EQUAL_INT(437, run_channel_bind(&constructed));
+  TEST_ASSERT_FALSE(constructed);
+}
+
 /* RFC 8489 Section 14: only the first occurrence of a repeated attribute needs
  * to be processed. A channel binds to exactly one peer, so the first
  * XOR-PEER-ADDRESS must win however many follow it - otherwise the bound peer
@@ -795,6 +814,7 @@ int main(void) {
   RUN_TEST(test_create_permission_ignores_the_port);
   RUN_TEST(test_create_permission_without_peer_address_is_rejected);
   RUN_TEST(test_channel_bind_binds_the_peer_address);
+  RUN_TEST(test_channel_bind_without_a_valid_allocation_reports_mismatch);
   RUN_TEST(test_channel_bind_uses_first_of_duplicate_peer_addresses);
   RUN_TEST(test_channel_bind_permits_only_the_first_peer);
   RUN_TEST(test_random_challenge_nonce_is_sixteen_lowercase_hex_chars);

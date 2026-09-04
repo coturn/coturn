@@ -2873,7 +2873,10 @@ static int handle_turn_channel_bind(turn_turnserver *server, ts_ur_super_session
   if (ss->is_tcp_relay) {
     *err_code = 403;
     *reason = (const uint8_t *)"Channel bind cannot be used with TCP relay";
-  } else if (is_allocation_valid(a)) {
+  } else if (!is_allocation_valid(a)) {
+    *err_code = 437;
+    *reason = (const uint8_t *)"Allocation Mismatch";
+  } else {
 
     stun_attr_ref sar =
         stun_attr_get_first_str(ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh));
