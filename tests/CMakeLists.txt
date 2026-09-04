@@ -226,8 +226,28 @@ if(HIREDIS_FOUND AND LIBEVENT_FOUND)
     target_link_libraries(test_redis_format PRIVATE turnclient unity ${LIBEVENT_LIBRARIES})
     add_test(NAME test_redis_format COMMAND test_redis_format)
     list(APPEND COTURN_TEST_TARGETS test_redis_format)
+
+    # Uses real hiredis/libevent cleanup and wraps event_new() only to inject
+    # deterministic read/write event allocation failures.
+    add_executable(test_redis_libevent_cleanup test_redis_libevent_cleanup.c)
+    target_include_directories(test_redis_libevent_cleanup PRIVATE
+        ../src/apps/relay
+        ../src/server
+        ../src/apps/common
+        ../src
+        ../src/client
+        ${HIREDIS_INCLUDE_DIRS}
+        ${OPENSSL_INCLUDE_DIR}
+        ${LIBEVENT_INCLUDE_DIRS})
+    target_link_directories(test_redis_libevent_cleanup PRIVATE
+        ${HIREDIS_LIBRARY_DIRS}
+        ${LIBEVENT_LIBRARY_DIRS})
+    target_link_libraries(test_redis_libevent_cleanup PRIVATE
+        turnclient unity ${HIREDIS_LIBRARIES} ${LIBEVENT_LIBRARIES})
+    add_test(NAME test_redis_libevent_cleanup COMMAND test_redis_libevent_cleanup)
+    list(APPEND COTURN_TEST_TARGETS test_redis_libevent_cleanup)
 else()
-    message(STATUS "hiredis/libevent headers not found; skipping test_redis_format")
+    message(STATUS "hiredis/libevent not found; skipping Redis tests")
 endif()
 
 # Vendored Prometheus client (src/prometheus). Fully self-contained: only the
