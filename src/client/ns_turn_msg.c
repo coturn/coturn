@@ -1941,7 +1941,9 @@ bool SASLprep(uint8_t *s) {
       case 0x7F:
         return false;
       default:
-        if (c < 0x1F) {
+        /* RFC 4013 Section 2.3 / RFC 3454 Table C.2.1: the prohibited ASCII
+         * control range is U+0000-U+001F, so 0x1F must be rejected too. */
+        if (c <= 0x1F) {
           return false;
         }
         if (c >= 0x80 && c <= 0x9F) {
