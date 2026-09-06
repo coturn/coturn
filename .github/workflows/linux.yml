@@ -20,7 +20,7 @@ jobs:
         os:
           - amazonlinux:2023
           - ubuntu:22.04
-          - ubuntu:24.04
+          - ubuntu:26.04
     runs-on: ubuntu-latest
     # Backstop so a hung test script cannot burn the 6h GitHub default.
     timeout-minutes: 40
