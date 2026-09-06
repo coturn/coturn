@@ -701,10 +701,10 @@ static void test_channel_bind_binds_the_peer_address(void) {
   TEST_ASSERT_TRUE(addr_eq(&peer, &(chn->peer_addr)));
 }
 
-/* RFC 8656 Section 7.3: requests other than Allocate require an existing
- * allocation for the request's 5-tuple. A ChannelBind received after that
- * allocation expires reports Allocation Mismatch rather than falling through
- * to the generic Bad Request response. */
+/* RFC 8656 Section 5: for any request other than Allocate, a 5-tuple that
+ * does not identify an existing allocation is rejected with 437 (Allocation
+ * Mismatch). A ChannelBind received after its allocation expires reports
+ * that rather than falling through to the generic Bad Request response. */
 static void test_channel_bind_without_a_valid_allocation_reports_mismatch(void) {
   ioa_addr peer;
   make_addr(&peer, PEER_A, PEER_PORT_A);
