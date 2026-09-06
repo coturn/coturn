@@ -3144,7 +3144,8 @@ static int adminmain(int argc, char **argv) {
     case 'p':
       STRCPY(pwd, optarg);
       if (!SASLprep((uint8_t *)pwd)) {
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong password: %s\n", pwd);
+        /* Do not log the value: it is the password. */
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong password: contains a character prohibited by RFC 4013\n");
         exit(-1);
       }
       if (print_enc_password) {
