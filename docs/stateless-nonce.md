@@ -15,7 +15,7 @@ stock implementation does that by *storing* a random nonce in per-client
 session state.
 
 That storage is the problem on UDP. Early packet validation
-(`--drop-invalid-packets`, PR #1768) discards malformed floods cheaply, but a
+(PR #1768) discards malformed floods cheaply, but a
 *structurally valid* STUN Allocate from a spoofed source still commits real
 resources before any authentication:
 

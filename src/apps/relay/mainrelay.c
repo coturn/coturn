@@ -245,7 +245,6 @@ turn_params_t turn_params = {
     false, /* rfc5766_channel_numbers */
     false, /* rfc3489_compatibility */
     false, /* respond_http_unsupported */
-    true,  /* drop_invalid_packets */
     false, /* drop_invalid_packets_log */
 #if defined(__linux__)
     true,  /* udp_recvmmsg (on by default; disable with --udp-recvmmsg=false) */
@@ -1430,7 +1429,6 @@ static char Usage[] =
     "connections made to ports not\n"
     "						supporting HTTP. The default behaviour is to immediately "
     "close the connection.\n"
-    " --drop-invalid-packets			   Drop invalid packets early. Enabled by default.\n"
     " --drop-invalid-packets-log			   Log invalid packets. The default behaviour is to not log "
     "invalid packets.\n"
 #if defined(__linux__)
@@ -1658,7 +1656,6 @@ enum EXTRA_OPTS {
   RFC3489_COMPATIBILITY_OPT,
   RESPONSE_ORIGIN_ONLY_WITH_RFC5780_OPT,
   RESPOND_HTTP_UNSUPPORTED_OPT,
-  DROP_INVALID_PACKETS_OPT,
   DROP_INVALID_PACKETS_LOG_OPT,
 #if defined(__linux__)
   UDP_RECVMMSG_OPT,
@@ -1831,7 +1828,6 @@ static const struct myoption long_options[] = {
     {"rfc3489-compatibility", optional_argument, NULL, RFC3489_COMPATIBILITY_OPT},
     {"response-origin-only-with-rfc5780", optional_argument, NULL, RESPONSE_ORIGIN_ONLY_WITH_RFC5780_OPT},
     {"respond-http-unsupported", optional_argument, NULL, RESPOND_HTTP_UNSUPPORTED_OPT},
-    {"drop-invalid-packets", optional_argument, NULL, DROP_INVALID_PACKETS_OPT},
     {"drop-invalid-packets-log", optional_argument, NULL, DROP_INVALID_PACKETS_LOG_OPT},
 #if defined(__linux__)
     {"udp-recvmmsg", optional_argument, NULL, UDP_RECVMMSG_OPT},
@@ -2705,9 +2701,6 @@ static void set_option(int c, char *value) {
     break;
   case RESPOND_HTTP_UNSUPPORTED_OPT:
     turn_params.respond_http_unsupported = get_bool_value(value);
-    break;
-  case DROP_INVALID_PACKETS_OPT:
-    turn_params.drop_invalid_packets = get_bool_value(value);
     break;
   case DROP_INVALID_PACKETS_LOG_OPT:
     turn_params.drop_invalid_packets_log = get_bool_value(value);

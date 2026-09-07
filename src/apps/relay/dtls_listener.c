@@ -1172,7 +1172,7 @@ static int process_udp_datagram(dtls_listener_relay_server_type *server, ioa_soc
   uint8_t *data = ioa_network_buffer_data(elem);
   const bool is_valid_packet = (packet_type != UDP_PACKET_CLASS_INVALID);
 
-  if (turn_params.drop_invalid_packets && !is_valid_packet) {
+  if (!is_valid_packet) {
     packetcounter++;
     if (turn_params.drop_invalid_packets_log && (packetcounter % 1000 == 0)) {
       uint8_t txt2pcap[1000]; // 1000 is enough to print ~300B packet (3 chars per byte) with extras
