@@ -152,5 +152,5 @@ Two details for whoever does this:
   signature change hits the same audience.
 
 After removal, a cookie-less datagram is classified `UDP_PACKET_CLASS_INVALID`
-and therefore covered by `--drop-invalid-packets`, which is the desired end
-state.
+and therefore dropped by the listener's early packet validation, which is the
+desired end state.

@@ -357,7 +357,6 @@ typedef struct _turn_params_ {
   bool rfc5766_channel_numbers;
   bool rfc3489_compatibility;
   bool respond_http_unsupported;
-  bool drop_invalid_packets;
   bool drop_invalid_packets_log;
 #if defined(__linux__)
   bool udp_recvmmsg;

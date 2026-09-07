@@ -307,8 +307,6 @@ Flags:
 			main ORIGIN attribute value (if the ORIGIN was
 			initially used by the session).
 
---drop-invalid-packets	Drop invalid packets early. Enabled by default.
-
 --drop-invalid-packets-log	Log invalid packets. The default behaviour is to not log invalid packets.
 
 --udp-recvmmsg		Enable Linux-only batched UDP receive via recvmmsg() on UDP sockets.
