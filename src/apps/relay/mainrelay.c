@@ -1255,8 +1255,6 @@ static char Usage[] =
     " --no-tcp					Do not start TCP client listeners.\n"
     " --no-tls					Do not start TLS client listeners.\n"
     " --dtls					Start DTLS client listeners. DTLS is not started by default.\n"
-    " --no-dtls					Deprecated: DTLS client listeners are not started unless\n"
-    "						--dtls is given.\n"
     " --no-udp-relay					Do not allow UDP relay endpoints, use only TCP relay option.\n"
     " --no-tcp-relay					Do not allow TCP relay endpoints, use only UDP relay options.\n"
     " -l, --log-file		<filename>		Option to set the full path name of the log file.\n"
@@ -1568,7 +1566,6 @@ enum EXTRA_OPTS {
   TCP_PROXY_PORT_OPT,
   NO_TLS_OPT,
   DTLS_OPT,
-  NO_DTLS_OPT,
   NO_UDP_RELAY_OPT,
   NO_TCP_RELAY_OPT,
   TLS_PORT_OPT,
@@ -1764,7 +1761,6 @@ static const struct myoption long_options[] = {
     {"no-tcp", optional_argument, NULL, NO_TCP_OPT},
     {"no-tls", optional_argument, NULL, NO_TLS_OPT},
     {"dtls", optional_argument, NULL, DTLS_OPT},
-    /* deprecated: */ {"no-dtls", optional_argument, NULL, NO_DTLS_OPT},
     {"no-udp-relay", optional_argument, NULL, NO_UDP_RELAY_OPT},
     {"no-tcp-relay", optional_argument, NULL, NO_TCP_RELAY_OPT},
     {"stale-nonce", optional_argument, NULL, STALE_NONCE_OPT},
@@ -2593,21 +2589,6 @@ static void set_option(int c, char *value) {
     turn_params.dtls = false;
     TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "CONFIG: --dtls is ignored: this build has no DTLS support\n");
 #endif
-    break;
-  case NO_DTLS_OPT:
-#if DTLS_SUPPORTED
-    turn_params.dtls = !get_bool_value(value);
-#else
-    turn_params.dtls = false;
-#endif
-    if (!turn_params.dtls) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
-                    "CONFIG: --no-dtls is deprecated and now redundant: DTLS listeners are not started unless --dtls "
-                    "is given\n");
-    } else {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
-                    "CONFIG: --no-dtls=false is deprecated: use --dtls to start the DTLS listeners\n");
-    }
     break;
   case CERT_FILE_OPT:
     STRCPY(turn_params.cert_file, value);

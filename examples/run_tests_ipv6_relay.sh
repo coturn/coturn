@@ -98,7 +98,7 @@ start_turnserver() {
     $BINDIR/turnserver \
         --use-auth-secret --static-auth-secret=secret --realm=north.gov \
         --allow-loopback-peers \
-        --no-cli --no-tls \
+        --no-tls \
         --listening-ip=127.0.0.1 --listening-ip=$TURN_IP --listening-port=$TURN_PORT \
         --relay-ip=127.0.0.1 --relay-ip=$TURN_IP \
         --min-port=49400 --max-port=49500 \

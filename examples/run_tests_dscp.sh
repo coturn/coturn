@@ -104,7 +104,7 @@ fi
 echo "Running turnserver (no-auth) on $PRIMARY_IP:$STUN_PORT, relay ports $MIN_PORT-$MAX_PORT"
 "$BINDIR/turnserver" \
     --listening-ip=$PRIMARY_IP --relay-ip=$PRIMARY_IP --allow-loopback-peers \
-    --no-tls --no-dtls --no-auth --cli=false \
+    --no-tls --no-auth \
     --listening-port=$STUN_PORT --min-port=$MIN_PORT --max-port=$MAX_PORT \
     --log-file=stdout > "$TURNSERVER_LOG" 2>&1 &
 turnserver_pid=$!

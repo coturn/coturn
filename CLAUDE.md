@@ -109,8 +109,7 @@ cd examples
                                 # IPv6 loopback.
 ./run_tests_dtls_default.sh     # pins that the DTLS listeners stay down
                                 # unless --dtls is given, that --dtls brings
-                                # them up, and that the deprecated --no-dtls /
-                                # --no-dtls=false still work and warn.
+                                # them up
 ./run_tests_prom.sh             # only when Prometheus support is built
 cd ..
 
@@ -394,7 +393,7 @@ nohup /root/coturn/build/bin/turnserver \
   --allow-loopback-peers \
   --listening-ip=10.116.0.2 --relay-ip=10.116.0.2 \
   --min-port=49152 --max-port=65535 \
-  --no-cli --no-tls --no-dtls \
+  --no-tls \
   --log-file=stdout \
   $EXTRA \
   > /root/runs/${LABEL}.turnserver.log 2>&1 &

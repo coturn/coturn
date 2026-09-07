@@ -173,7 +173,7 @@ if command -v python3 >/dev/null 2>&1; then
     echo "Running legacy stored-nonce check (--stateless-nonce=false)"
     LEGACY_LOG="/tmp/run_tests_stateless_nonce.$$.legacy.log"
     $BINDIR/turnserver --use-auth-secret --static-auth-secret=secret --realm=north.gov --allow-loopback-peers \
-        --stateless-nonce=false --listening-port=3488 --no-cli --log-file=stdout > "$LEGACY_LOG" 2>&1 &
+        --stateless-nonce=false --listening-port=3488 --log-file=stdout > "$LEGACY_LOG" 2>&1 &
     legacy_pid="$!"
     for _ in $(seq 1 40); do
         grep -q "Total auth threads:" "$LEGACY_LOG" 2>/dev/null && break
