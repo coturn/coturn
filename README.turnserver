@@ -234,9 +234,6 @@ Flags:
 
 --dtls			Start DTLS client listeners. DTLS is not started by default.
 
---no-dtls		Deprecated: DTLS client listeners are not started unless
-			--dtls is given.
-
 --no-udp-relay		Do not allow UDP relay endpoints defined in RFC 5766,
 			use only TCP relay endpoints as defined in RFC 6062.
 
@@ -284,10 +281,6 @@ Flags:
 
 --cli		Turn ON the CLI support. By default it is always OFF.
 			See also options --cli-ip and --cli-port.
-
---no-cli	Turn OFF the CLI support. Since the CLI is OFF by default,
-			this flag is only useful to override a "cli" setting from
-			the configuration file.
 
 --server-relay		Server relay. NON-STANDARD AND DANGEROUS OPTION.
 			Only for those applications when we want to run

@@ -182,7 +182,7 @@ stop_turnserver
 echo "Running turnserver with prometheus 401 mitigation counters"
 start_turnserver --prometheus --prometheus-address="127.0.0.1" --prometheus-port="8081" \
   --use-auth-secret --static-auth-secret=secret --realm=north.gov \
-  --allow-loopback-peers --no-cli --listening-port=3479 \
+  --allow-loopback-peers --listening-port=3479 \
   --unauthorized-ratelimit --unauthorized-ratelimit-rps=1
 assert_prom_response "http://127.0.0.1:8081/metrics"
 # The two 401-mitigation metric families have deliberately different exposure

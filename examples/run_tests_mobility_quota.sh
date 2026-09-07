@@ -39,7 +39,7 @@ $BINDIR/turnserver --realm=north.gov --user=user:pass \
     --user-quota=1 --total-quota=1 --mobility \
     --listening-port=3478 --listening-ip=127.0.0.1 --relay-ip=127.0.0.1 \
     --min-port=53000 --max-port=53009 \
-    --no-tls --no-dtls --no-cli --relay-threads=1 \
+    --no-tls --relay-threads=1 \
     --verbose --log-file=stdout --simple-log > "$TURNSERVER_LOG" 2>&1 &
 turnserver_pid="$!"
 
